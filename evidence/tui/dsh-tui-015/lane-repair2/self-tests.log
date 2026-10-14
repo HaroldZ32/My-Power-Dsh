@@ -1,0 +1,12 @@
+### bun skills/dsh-qa/scripts/tui-team-surface.ts --self-test
+[tui-team-surface self-test] ok: fixture, parser, assertion falsifiability and the dist invariants all hold
+exit=0
+
+### bun skills/dsh-qa/scripts/tui-deps-ctrla.ts --self-test
+[tui-deps-ctrla self-test] ok: 4 legacy + 3 seam-present arms asserted; the arrow, the takeover, the flip, the store pair and the contact controls all fail as required
+exit=0
+
+### bun skills/dsh-qa/scripts/tui-admission.ts --self-test
+[tui-admission self-test] ok: structural rules, pane classification and spec-root resolution are two-sided
+exit=0
+

@@ -1,0 +1,488 @@
+{
+  "wave": "A — skills corpus re-source",
+  "plan": ".mpd/plans/de-omo-decoupling.md",
+  "source": {
+    "repository": "https://github.com/code-yeongyu/lazycodex",
+    "pinnedRevision": "6f08c77347a68eaa87f4e7656147e8d793c9a069",
+    "resolvedRevision": "6f08c77347a68eaa87f4e7656147e8d793c9a069",
+    "resolvedTree": "4fb859401f1de02d5904dea516868c37ea9842ed",
+    "resolvedVia": "codeload tarball by commit SHA (git clone is denied to member sessions by AGENTS.md §5)",
+    "license": "MIT",
+    "copyright": "Copyright (c) 2026 Yeongyu Kim",
+    "noticePath": "plugins/omo/components/rules/NOTICE",
+    "noticeSha256": "8068fb3509c240a37192caa9192fad768ecec91b64cb5ce0dbd82aa03c37069a",
+    "skillsPath": "plugins/omo/skills/<name>/",
+    "tarballSha256": "6c6cbb2863f418e66bb2694f4a51ba4ae235b60397d102cdbb39c3b5d69c92dc",
+    "tarballBytes": 156605477
+  },
+  "preMergeCorpus": {
+    "files": 331,
+    "treeSha": "d55938c34e1d2c3a82ca7ffe130d19f66dc4a6ad151441df364c2ac1cbef7850"
+  },
+  "postMergeCorpus": {
+    "files": 371,
+    "treeSha": "c3d30d48e8915e1f7fa24c5f252c806e4958bb04606aa954c9891d0647bf0b00"
+  },
+  "merge": {
+    "filesRebuiltFromUpstream": 90,
+    "hunksKeptFromOurs": 140,
+    "hunksTakenFromUpstream": 234,
+    "upstreamOnlyFilesNotImported": 192,
+    "upstreamOnlyImportedForReferenceIntegrity": 29
+  },
+  "perSkill": [
+    {
+      "skill": "ast-grep",
+      "files": 19,
+      "added": [
+        "ATTRIBUTION.md"
+      ],
+      "removed": [],
+      "changed": [
+        "AGENTS.md",
+        "SKILL.md"
+      ],
+      "keptFiles": [
+        "AGENTS.md",
+        "install.ps1",
+        "install.sh",
+        "scripts/ast_grep_helper.py",
+        "tests/smoke.sh"
+      ],
+      "oursOnlyKept": [
+        ".gitignore"
+      ],
+      "oursOnlyDropped": []
+    },
+    {
+      "skill": "data-scientist",
+      "files": 12,
+      "added": [
+        "ATTRIBUTION.md",
+        "references/execution-surfaces.md",
+        "references/placement.md",
+        "references/polars-lane.md",
+        "references/visualization.md",
+        "scripts/ensure-js-deps.sh",
+        "scripts/ensure-py-deps.sh"
+      ],
+      "removed": [
+        "references/common-scenarios.md",
+        "references/execution-templates.md",
+        "references/integration-patterns.md",
+        "references/performance-benchmarks.md"
+      ],
+      "changed": [
+        "references/uv-setup.md",
+        "SKILL.md"
+      ],
+      "keptFiles": [],
+      "oursOnlyKept": [],
+      "oursOnlyDropped": [
+        "references/common-scenarios.md",
+        "references/execution-templates.md",
+        "references/integration-patterns.md",
+        "references/performance-benchmarks.md"
+      ]
+    },
+    {
+      "skill": "debugging",
+      "files": 21,
+      "added": [
+        "ATTRIBUTION.md"
+      ],
+      "removed": [],
+      "changed": [
+        "references/methodology/00-setup.md",
+        "references/methodology/02-investigate.md",
+        "references/methodology/06-fix.md",
+        "references/runtimes/go.md",
+        "references/runtimes/native-binary.md",
+        "references/runtimes/node.md",
+        "references/runtimes/python.md",
+        "references/runtimes/rust.md",
+        "SKILL.md"
+      ],
+      "keptFiles": [
+        "references/methodology/04-oracle-triple.md",
+        "references/methodology/08-qa.md",
+        "references/methodology/partial-runtime-evidence.md",
+        "SKILL.md"
+      ],
+      "oursOnlyKept": [
+        "references/tools/playwright-cli.md"
+      ],
+      "oursOnlyDropped": []
+    },
+    {
+      "skill": "frontend",
+      "files": 30,
+      "added": [
+        "references/design/ambience-skill.md",
+        "references/design/component-catalogs.md"
+      ],
+      "removed": [],
+      "changed": [
+        "ATTRIBUTION.md",
+        "references/design/aside.md",
+        "references/design/clone-from-url.md",
+        "references/design/design-system-architecture.md",
+        "references/design/_INDEX.md",
+        "references/design/interaction-skill.md",
+        "references/design/layout-skill.md",
+        "references/design/README.md",
+        "references/perfection/README.md",
+        "scripts/perfection/lighthouse-audit.py",
+        "SKILL.md"
+      ],
+      "keptFiles": [
+        "references/design/aside.md",
+        "references/designpowers/lane-a-direction.md",
+        "references/designpowers/lane-b-execution.md",
+        "references/designpowers/lane-d-memory.md",
+        "references/designpowers/orchestration.md",
+        "references/designpowers/routing.md"
+      ],
+      "oursOnlyKept": [
+        ".gitignore",
+        ".npmignore"
+      ],
+      "oursOnlyDropped": []
+    },
+    {
+      "skill": "git-master",
+      "files": 3,
+      "added": [
+        "ATTRIBUTION.md"
+      ],
+      "removed": [],
+      "changed": [],
+      "keptFiles": [],
+      "oursOnlyKept": [],
+      "oursOnlyDropped": []
+    },
+    {
+      "skill": "init-deep",
+      "files": 2,
+      "added": [
+        "ATTRIBUTION.md"
+      ],
+      "removed": [],
+      "changed": [
+        "SKILL.md"
+      ],
+      "keptFiles": [
+        "SKILL.md"
+      ],
+      "oursOnlyKept": [],
+      "oursOnlyDropped": []
+    },
+    {
+      "skill": "lsp-setup",
+      "files": 26,
+      "added": [
+        "ATTRIBUTION.md"
+      ],
+      "removed": [],
+      "changed": [
+        "scripts/verify-lsp.ts",
+        "SKILL.md"
+      ],
+      "keptFiles": [
+        "scripts/detect-lsp.ts",
+        "scripts/lsp-server-table.ts",
+        "scripts/verify-lsp.ts",
+        "SKILL.md"
+      ],
+      "oursOnlyKept": [],
+      "oursOnlyDropped": []
+    },
+    {
+      "skill": "programming",
+      "files": 79,
+      "added": [
+        "ATTRIBUTION.md",
+        "references/rust/api-design.md",
+        "references/rust/macros.md"
+      ],
+      "removed": [],
+      "changed": [
+        "references/rust/async-tokio.md",
+        "references/rust/axum-stack.md",
+        "references/rust/cargo-strict.md",
+        "references/rust/clap-stack.md",
+        "references/rust/concurrency.md",
+        "references/rust/libraries.md",
+        "references/rust/one-liners.md",
+        "references/rust/proptest-insta.md",
+        "references/rust/README.md",
+        "references/rust/type-state.md",
+        "references/rust-ub/miri-sanitizers-loom.md",
+        "references/rust-ub/ub-taxonomy.md",
+        "references/rust/unsafe-discipline.md",
+        "references/rust/zero-cost-safety.md",
+        "scripts/rust/check-no-excuse-rules.sh",
+        "scripts/rust/new-project.py",
+        "scripts/typescript/check-no-excuse-rules.ts",
+        "SKILL.md"
+      ],
+      "keptFiles": [
+        "references/rust/cargo-strict.md",
+        "scripts/typescript/check-no-excuse-rules.ts",
+        "scripts/typescript/new-project.ts"
+      ],
+      "oursOnlyKept": [
+        "scripts/rust/check-no-excuse-rules.py",
+        "scripts/typescript/check-no-excuse-rules.test.ts",
+        "scripts/typescript/typescript-unstable.d.ts"
+      ],
+      "oursOnlyDropped": []
+    },
+    {
+      "skill": "refactor",
+      "files": 2,
+      "added": [
+        "ATTRIBUTION.md"
+      ],
+      "removed": [],
+      "changed": [
+        "SKILL.md"
+      ],
+      "keptFiles": [
+        "SKILL.md"
+      ],
+      "oursOnlyKept": [],
+      "oursOnlyDropped": []
+    },
+    {
+      "skill": "remove-ai-slops",
+      "files": 2,
+      "added": [
+        "ATTRIBUTION.md"
+      ],
+      "removed": [],
+      "changed": [],
+      "keptFiles": [
+        "SKILL.md"
+      ],
+      "oursOnlyKept": [],
+      "oursOnlyDropped": []
+    },
+    {
+      "skill": "review-work",
+      "files": 2,
+      "added": [
+        "ATTRIBUTION.md"
+      ],
+      "removed": [],
+      "changed": [
+        "SKILL.md"
+      ],
+      "keptFiles": [
+        "SKILL.md"
+      ],
+      "oursOnlyKept": [],
+      "oursOnlyDropped": []
+    },
+    {
+      "skill": "ultimate-browsing",
+      "files": 57,
+      "added": [],
+      "removed": [],
+      "changed": [
+        "ATTRIBUTION.md",
+        "engine/AGENTS.md",
+        "engine/templates/package.json",
+        "engine/templates/playwright_mobile_chrome.js",
+        "engine/templates/playwright_real_chrome.js",
+        "engine/tests/test_playwright_templates.py",
+        "references/insane-search/playwright.md",
+        "references/insane-search/README.md",
+        "scripts/extract_cookies.py",
+        "SKILL.md"
+      ],
+      "keptFiles": [
+        "engine/tests/test_playwright_templates.py",
+        "references/chrome-stealth.md",
+        "scripts/extract_cookies.py"
+      ],
+      "oursOnlyKept": [
+        ".gitignore",
+        "scripts/tests/test_cookie_domain_filter.py",
+        "scripts/tests/test_extract_cookies.py"
+      ],
+      "oursOnlyDropped": []
+    },
+    {
+      "skill": "ulw-execute",
+      "files": 2,
+      "added": [
+        "ATTRIBUTION.md"
+      ],
+      "removed": [],
+      "changed": [
+        "SKILL.md"
+      ],
+      "keptFiles": [
+        "SKILL.md"
+      ],
+      "oursOnlyKept": [],
+      "oursOnlyDropped": []
+    },
+    {
+      "skill": "ulw-plan",
+      "files": 7,
+      "added": [
+        "ATTRIBUTION.md"
+      ],
+      "removed": [],
+      "changed": [
+        "references/full-workflow.md",
+        "references/intent-clear.md",
+        "references/intent-unclear.md",
+        "SKILL.md"
+      ],
+      "keptFiles": [
+        "references/full-workflow.md",
+        "SKILL.md"
+      ],
+      "oursOnlyKept": [
+        "scripts/scaffold-plan.ts"
+      ],
+      "oursOnlyDropped": []
+    },
+    {
+      "skill": "ulw-research",
+      "files": 23,
+      "added": [
+        "references/deliverable-phase.md",
+        "references/report-gates.md",
+        "scripts/cli-support.mjs",
+        "scripts/contracts.mjs",
+        "scripts/css-lite.mjs",
+        "scripts/design-spec.mjs",
+        "scripts/entities.mjs",
+        "scripts/entry-guard.mjs",
+        "scripts/format-extract-css.mjs",
+        "scripts/format-extract.mjs",
+        "scripts/gates-figures.mjs",
+        "scripts/gates-layout.mjs",
+        "scripts/gates-static.mjs",
+        "scripts/gates-structure.mjs",
+        "scripts/gates-text.mjs",
+        "scripts/html-lite.mjs",
+        "scripts/layout-probe.mjs",
+        "scripts/outcome.mjs",
+        "scripts/repair-tracker.mjs",
+        "scripts/report-tools-commands.mjs",
+        "scripts/report-tools.mjs"
+      ],
+      "removed": [],
+      "changed": [
+        "ATTRIBUTION.md",
+        "SKILL.md"
+      ],
+      "keptFiles": [
+        "SKILL.md"
+      ],
+      "oursOnlyKept": [],
+      "oursOnlyDropped": []
+    },
+    {
+      "skill": "visual-qa",
+      "files": 20,
+      "added": [
+        "ATTRIBUTION.md"
+      ],
+      "removed": [],
+      "changed": [
+        "references/agent-browser-setup.md",
+        "scripts/cli.ts",
+        "scripts/image-diff.ts",
+        "scripts/png-decode.ts",
+        "scripts/tui-grid.ts",
+        "SKILL.md"
+      ],
+      "keptFiles": [
+        "scripts/ansi.ts",
+        "scripts/cli.ts",
+        "scripts/east-asian-width.ts",
+        "scripts/image-diff.ts",
+        "scripts/png-crc.ts",
+        "scripts/png-decode.ts",
+        "scripts/png-synth.ts",
+        "scripts/tui-grid.ts",
+        "scripts/types.ts",
+        "SKILL.md"
+      ],
+      "oursOnlyKept": [
+        "references/agent-browser-setup.md",
+        "scripts/ansi.test.ts",
+        "scripts/cli.test.ts",
+        "scripts/east-asian-width.test.ts",
+        "scripts/image-diff.test.ts",
+        "scripts/png-decode.test.ts",
+        "scripts/tui-grid.test.ts"
+      ],
+      "oursOnlyDropped": []
+    }
+  ],
+  "gates": [
+    {
+      "command": "node scripts/verify-vendor.ts",
+      "preRepin": "FAIL - asset skills count drifted: 371 vs 331; treeSha mismatch",
+      "postRepin": "PASS - 6 shipped asset(s) fingerprinted (skills 371 files)",
+      "exit": 0
+    },
+    {
+      "command": "node scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step",
+      "exit": 0,
+      "note": "see repin{} - two invocations in the working tree, one lock change"
+    },
+    {
+      "command": "node scripts/repin-vendor.ts --check",
+      "exit": 0,
+      "note": "GREEN - lock matches the working tree (drift=0, problems=0)"
+    },
+    {
+      "command": "bun run verify:docs",
+      "exit": 0,
+      "note": "pairs=47 failed=0 violations=0 dead=0 - PASS"
+    },
+    {
+      "command": "bun run verify:comments",
+      "exit": 0,
+      "note": "367 TS files / 32439 declarations - PASS (was FAIL with 103 violations after the merge dropped our declaration comments)"
+    },
+    {
+      "command": "bun test packages/mpd-bootstrap-plugin/test/ ./skills/visual-qa/scripts/",
+      "exit": 0,
+      "note": "43 pass, 0 fail - every SKILL.md parses and satisfies the frontmatter contract"
+    }
+  ],
+  "knownDeltas": [
+    "review-work: the re-sourced upstream body is the ONE-reviewer gate review; our five-agent panel was an older upstream revision and is gone. Its frontmatter description was adopted from upstream to match.",
+    "data-scientist: four legacy reference docs (common-scenarios, execution-templates, integration-patterns, performance-benchmarks) were removed — unreferenced after the re-source and superseded by upstream's execution-surfaces / placement / polars-lane / visualization, which were imported.",
+    "frontend: the 11 pre-existing dangling references (ui-ux-db/**, scripts/audit.ts, …) are UNCHANGED by this wave — the merge added none and the two it introduced were fixed by importing the referenced upstream files.",
+    "192 upstream-only files were NOT imported (frontend's 86-file brand catalogue, ui-ux-db/**, designpowers/vendor/**, ulw-research's script tree was imported only where a shipped document references it).",
+    "A blanket `.omo/` -> `.mpd/` remap turned upstreams `~/.omo/teams/...` into a home-scoped `~/.mpd/teams/...` (4 spots in refactor + debugging); fixed to the workspace-scoped `.mpd/teams/...` this bundle mandates.",
+    "debugging/02-investigate and refactor: upstreams re-sourced team-mode sections are kept (same squad names/rules) but are FILE-based and name the retired `team_*` agent-teams API - the same staleness class our pre-wave text had. Not fixed here: the agent-teams retirement is another waves scope."
+  ],
+  "unfinished": [
+    "Independent verification by a DIFFERENT agent could not be performed from this session: subagent spawn is refused at delegation depth 2 (`subagent depth 2 exceeds maxDepth 1`). The provenance audit the plan requires is therefore OPEN and belongs to the captain.",
+    "docs/features/doc mentions of the corpus provenance (AGENTS.md §1/§3/§9, README, agent-references) are wave E's scope and were left alone.",
+    "The still-true historical statement that this repository WAS derived from oh-my-openagent is kept in LICENSE-NOTICES.md as instructed."
+  ],
+  "repin": {
+    "invocationsInWorkingTree": 2,
+    "reason": "the first --write landed before the final three text fixes (declaration-comment restores, .ts import extensions, workspace-scoped .mpd/teams paths); the tree moved after it, so it was re-run. The COMMIT carries exactly ONE VENDOR_LOCK.json change.",
+    "firstWrite": {
+      "fileCount": "331 -> 371",
+      "treeSha": "d55938c3... -> 32c924e8..."
+    },
+    "finalWrite": {
+      "fileCount": "371 (unchanged)",
+      "treeSha": "32c924e8... -> c3d30d48e8915e1f7fa24c5f252c806e4958bb04606aa954c9891d0647bf0b00"
+    }
+  }
+}

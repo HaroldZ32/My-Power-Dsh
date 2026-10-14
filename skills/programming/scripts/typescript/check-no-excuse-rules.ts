@@ -305,7 +305,7 @@ function analyzeFile(filePath: string, sourceFile: tsTypes.SourceFile): Violatio
           ts.isPropertyDeclaration(parent) ||
           parent.kind === ts.SyntaxKind.PropertySignature
         )) {
-          /** Position of the any keyword. */
+        /** Position where the assertion is reported. */
           const p = pos(node)
           violations.push({ ruleId: "no-any-annotation", filePath, ...p, message: "`: any` annotation — use `unknown` and narrow" })
         } else if (parent && (

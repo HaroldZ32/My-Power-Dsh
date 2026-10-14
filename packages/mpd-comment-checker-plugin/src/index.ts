@@ -1,8 +1,8 @@
 // C4 mpd-comment-checker-plugin: comment-detection discipline on the DSH tool seam.
-// Vendored core: the upstream project packages/comment-checker-core parser
-// (base 8c57e46; SUL-1.0, inherited from upstream). The check runner is adapted to a
-// spawnSync-based stdin JSON call against the @code-yeongyu/comment-checker
-// native binary (MIT, github.com/code-yeongyu/go-claude-code-comment-checker).
+// No vendored parser: this row VENDORS NOTHING. Detection is done by the on-demand npm
+// binary @code-yeongyu/comment-checker, which this plugin RESOLVES and then SPAWNS per
+// check as a spawnSync-based stdin JSON call (MIT,
+// github.com/code-yeongyu/go-claude-code-comment-checker).
 // Binary resolution: dependency-first — @code-yeongyu/comment-checker is declared
 // as an optionalDependency of the bundle package (used UNMODIFIED, per policy),
 // resolved from the plugin's own package location via createRequire; then env /

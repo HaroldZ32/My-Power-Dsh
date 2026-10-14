@@ -1,0 +1,6 @@
+# pre-rebuild hashes (UTC 2026-10-14T10:27:28Z)
+6c6cd5c06acda45999528a1d885c7aea91658a9b3d423d2354fe43935a08d0ab  packages/mpd-tui-adapter-plugin/src/index.ts
+bea550ab918a59cbf91b4d8a38b1f28936b8f16082b9a50bd745ebea14e4d4bc  packages/mpd-tui-adapter-plugin/dist/index.js
+9552ca8d4dc07f84f6525a6b511442a38fe9c48a20c1ba62c1002452f1d92bfc  packages/mpd-tui-plugin/src/index.ts
+a8bf8bbdb2baee8b739e7f015255d9b35cefd6a9016a8858a9b8f26c2d6d1293  packages/mpd-tui-plugin/src/panel-dag.ts
+529b2eb7363d94311ed43515c96a519dabac2f5656bfd05712b256e7b188e26e  packages/mpd-tui-plugin/dist/index.js

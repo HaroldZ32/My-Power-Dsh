@@ -15,11 +15,14 @@
 //     in one line, because a listener on that default's fresh emitter is a silent no-op.
 import { describe, expect, test } from "bun:test"
 import { EventEmitter } from "node:events"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import { createDashboardKeyComponent, DASHBOARD_KEY_MAX_ROWS, DASHBOARD_KEY_VIEW, interceptDashboardKey, readDashboardWorkflow, registerDashboardKey } from "../src/dashboard-key.js"
 import type { DashboardKeyDeps, HostInputEmitter } from "../src/dashboard-key.js"
 import type { Log } from "../src/log.js"
 import type { SeamOutcome, TuiAdapter } from "../src/types.js"
 import type { TeamTaskRow, TeamWorkflow } from "../src/team-state.js"
+import { teamWorkflowLines, WORKSPACE_SCOPE_MARKER } from "../src/team-state.js"
 
 /** A log double: every line it received, by level. */
 interface LogDouble extends Log {
@@ -52,7 +55,7 @@ function task(id: string): TeamTaskRow {
 /** A team projection WITH a head and the given tasks — the takeover's positive case. */
 function workflowWith(tasks: TeamTaskRow[]): TeamWorkflow {
   return {
-    workspace: "/tmp/mpd-dashboard-key",
+    workspace: join(tmpdir(), "mpd-dashboard-key"),
     team: { id: "team-1", name: "lead", phase: "active", staged: false, runnable: true, links: 0 },
     members: [],
     tasks,
@@ -66,7 +69,7 @@ function workflowWith(tasks: TeamTaskRow[]): TeamWorkflow {
 /** A projection of a workspace that holds NO team: the empty workflow has no head. */
 function workflowWithoutTeam(): TeamWorkflow {
   return {
-    workspace: "/tmp/mpd-dashboard-key",
+    workspace: join(tmpdir(), "mpd-dashboard-key"),
     members: [],
     tasks: [],
     counts: { total: 0, completed: 0, inProgress: 0, pending: 0, claimed: 0, failed: 0, cancelled: 0, other: 0 },
@@ -538,21 +541,32 @@ describe("the team reader", () => {
     const record = {
       id: "team-1",
       name: "lead",
-      workspace: "/tmp/mpd-dashboard-key",
+      workspace: join(tmpdir(), "mpd-dashboard-key"),
       createdAt: "2026-10-05T00:00:00.000Z",
       tasks: [{ id: "R1", subject: "record task", status: "pending", kind: "work", owner: "member", blockedBy: [], attempt: 1, round: 1 }],
       members: [],
     }
     /** The projection read from the RECORD, while the official readout would answer with another team. */
-    const fromRecord = readDashboardWorkflow(() => "/tmp/mpd-dashboard-key", () => [], () => [], () => [record as never])
+    const fromRecord = readDashboardWorkflow(() => join(tmpdir(), "mpd-dashboard-key"), () => [], () => [], () => [record as never])
     expect(fromRecord?.tasks.map((row) => row.id)).toEqual(["R1"])
     /** The official fallback: no record at all, so the readout decides (and here it is empty). */
-    const official = readDashboardWorkflow(() => "/tmp/mpd-dashboard-key", () => [], () => [], () => [])
+    const official = readDashboardWorkflow(() => join(tmpdir(), "mpd-dashboard-key"), () => [], () => [], () => [])
     expect(official?.team).toBeUndefined()
     /** A reader that throws is "no team", never a broken keypress. */
-    const broken = readDashboardWorkflow(() => "/tmp/mpd-dashboard-key", () => [], undefined, () => {
+    const broken = readDashboardWorkflow(() => join(tmpdir(), "mpd-dashboard-key"), () => [], undefined, () => {
       throw new Error("record read exploded")
     })
     expect(broken === undefined || broken.tasks.length === 0).toBe(true)
+    // S-c: THE CONTACT CANNOT BE SCOPED, SO IT IS MARKED (frozen PART S, option b). `readDashboardWorkflow`
+    // is called with NO session id here — exactly as the composition calls it for Ctrl+A — and the proof
+    // that no id is reachable on that seam is the host's own type: a rich status view receives
+    // `TuiStatusProps { React, ui }` and NOTHING else, so there is no `host` and no `channel` to read.
+    // The read therefore lands in the marked fallback, and the scene it opens DRAWS the marker.
+    expect(fromRecord?.source?.scope).toBe("workspace")
+    expect(teamWorkflowLines(fromRecord as TeamWorkflow).join("\n")).toContain(WORKSPACE_SCOPE_MARKER)
+    // AND THE COMPLEMENT, so the assertion above is falsifiable: a read WITH a session id is scoped, and
+    // its body carries no marker at all. `readDashboardWorkflow` cannot do that itself (no id to read),
+    // which is the whole reason the contact is the marked one.
+    expect(broken?.source?.scope).toBe("workspace")
   })
 })

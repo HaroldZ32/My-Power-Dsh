@@ -1,0 +1,8 @@
+cd /home/haroldzhao/MyProj/DshProj/My-Power-Dsh && bun skills/dsh-qa/scripts/tui-mount.ts --sandbox-root .mpd/recon/qa/tui-lanes/tui-015
+cd /home/haroldzhao/MyProj/DshProj/My-Power-Dsh && bun skills/dsh-qa/scripts/tui-deps-ctrla.ts --sandbox-root .mpd/recon/qa/tui-lanes/tui-015
+cd /home/haroldzhao/MyProj/DshProj/My-Power-Dsh && bun skills/dsh-qa/scripts/tui-panels.ts --sandbox-root .mpd/recon/qa/tui-lanes/tui-015
+cd /home/haroldzhao/MyProj/DshProj/My-Power-Dsh && bun skills/dsh-qa/scripts/tui-team-surface.ts --sandbox-root .mpd/recon/qa/tui-lanes/tui-015
+cd /home/haroldzhao/MyProj/DshProj/My-Power-Dsh && bun skills/dsh-qa/scripts/tui-settings-bridge.ts --out evidence/tui/dsh-tui-015/lane-repair2/step3/settings-bridge.evidence.20261014T110507Z
+cd /home/haroldzhao/MyProj/DshProj/My-Power-Dsh && bun skills/dsh-qa/scripts/tui-admission.ts --sandbox-root .mpd/recon/qa/tui-lanes/tui-015
+cd /home/haroldzhao/MyProj/DshProj/My-Power-Dsh && bun skills/dsh-qa/scripts/tui-distribution.ts --sandbox-root .mpd/recon/qa/tui-lanes/tui-015
+cd /home/haroldzhao/MyProj/DshProj/My-Power-Dsh && bun skills/dsh-qa/scripts/tui-spec-conformance.ts --sandbox-root .mpd/recon/qa/tui-lanes/tui-015

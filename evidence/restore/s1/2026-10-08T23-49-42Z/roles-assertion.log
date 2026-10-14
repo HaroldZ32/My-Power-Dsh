@@ -1,0 +1,22 @@
+ASSERTION: lane-roles-in-ROLES (criterion 2 - asserted BY THE CASE, not by review)
+how: skills/dsh-qa/scripts/review-panel.ts imports the roster DATA MODULE and compares each lane's role cell against it:
+19://                                          `packages/mpd-roles-plugin/src/roles.data.ts` (IMPORTED and
+52:import { ROLES } from "../../../packages/mpd-roles-plugin/src/roles.data.ts"
+53:import type { MpdRoleSpec } from "../../../packages/mpd-roles-plugin/src/roles.data.ts"
+585:        rolesSource: "packages/mpd-roles-plugin/src/roles.data.ts",
+
+observed (from case-real-node.log):
+  ok   prose-lane-count — prose declares 4 lane(s)
+  ok   panel-table-count-equals-prose — panel table rows=4 prose=4
+  ok   lane-roles-in-ROLES — Architect=in-ROLES Reviewer=in-ROLES Explorer=in-ROLES
+  ok   read-only-lanes — 3 lane(s) carry 'read-only findings'
+  ok   roster-readonly-per-lane — Architect=roster-readonly Reviewer=findings-only-by-description Explorer=roster-readonly
+  ok   merge-table-lanes-match — merge=[Manual QA, Quality & architecture, Correctness & risk, Missed context] panel=[Manual QA, Quality & architecture, Correctness & risk, Missed context]
+
+roster source: packages/mpd-roles-plugin/src/roles.data.ts
+31:    "name": "Architect",
+98:    "name": "Explorer",
+109:    "name": "Reviewer",
+109:    "name": "Reviewer",
+110-    "description": "Deep reviewer: correctness and risk findings with evidence, no fixes.",
+111-    "readonly": false,

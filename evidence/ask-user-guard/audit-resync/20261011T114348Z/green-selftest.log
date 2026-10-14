@@ -1,0 +1,1 @@
+[ask-user-question-audit self-test] ok: 4 concatenated zstd frame(s), 19 record(s), 12 occurrence(s), every rule of the local restatement, both answer pairings, the CLI exit codes and the repair arms (R2 wrong-type detail, R3 array line, R4 mixed-arg usage, D5 options MANDATORY) are verified offline

@@ -1,0 +1,101 @@
+{
+  "arm": "W-d",
+  "implemented": false,
+  "declaredBound": "team-view.ts keeps its own TONE/GLYPH literals; no build-time derivation from dag-theme.ts",
+  "states": [
+    "completed",
+    "running",
+    "open",
+    "failed",
+    "blocked",
+    "cancelled"
+  ],
+  "rows": [
+    {
+      "state": "completed",
+      "glyph": {
+        "contract": "✓",
+        "web": "✓",
+        "agree": true
+      },
+      "hex": {
+        "contract": "#12a150",
+        "web": "#12a150",
+        "agree": true
+      },
+      "webTone": "var(--dsw-alias-state-success, #12a150)"
+    },
+    {
+      "state": "running",
+      "glyph": {
+        "contract": "◐",
+        "web": "◐",
+        "agree": true
+      },
+      "hex": {
+        "contract": "#4d6bfe",
+        "web": "#4d6bfe",
+        "agree": true
+      },
+      "webTone": "var(--dsw-alias-state-business-primary, #4d6bfe)"
+    },
+    {
+      "state": "open",
+      "glyph": {
+        "contract": "○",
+        "web": "○",
+        "agree": true
+      },
+      "hex": {
+        "contract": "#5b6472",
+        "web": "#5b6472",
+        "agree": true
+      },
+      "webTone": "var(--dsw-alias-label-secondary, #5b6472)"
+    },
+    {
+      "state": "failed",
+      "glyph": {
+        "contract": "✗",
+        "web": "✗",
+        "agree": true
+      },
+      "hex": {
+        "contract": "#e5484d",
+        "web": "#e5484d",
+        "agree": true
+      },
+      "webTone": "var(--dsw-alias-state-error-primary, #e5484d)"
+    },
+    {
+      "state": "blocked",
+      "glyph": {
+        "contract": "○",
+        "web": "○",
+        "agree": true
+      },
+      "hex": {
+        "contract": "#e08700",
+        "web": "#e08700",
+        "agree": true
+      },
+      "webTone": "var(--dsw-alias-state-warn-primary, #e08700)"
+    },
+    {
+      "state": "cancelled",
+      "glyph": {
+        "contract": "⊘",
+        "web": "⊘",
+        "agree": true
+      },
+      "hex": {
+        "contract": "#8a94a6",
+        "web": "#8a94a6",
+        "agree": true
+      },
+      "webTone": "var(--dsw-alias-label-tertiary, #8a94a6)"
+    }
+  ],
+  "drift": [],
+  "agree": true
+}

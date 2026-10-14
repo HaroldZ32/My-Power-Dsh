@@ -3,11 +3,11 @@
   "private": false,
   "type": "module",
   "buildToolchain": "bun@1.4.0",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "description": "my-power-dsh: a DeepSeek Harness plugin bundle (@mpd-dsh/mpd) carrying the specialist roster and the model-chain vocabulary on DSH-native plumbing (upstream reference: oh-my-openagent 8c57e46 — historical, no synchronisation owed)",
   "main": "packages/mpd-bundle-plugin/dist/index.js",
   "icon": "./icon.svg",
-  "license": "SEE LICENSE IN LICENSE.md",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/HaroldZ32/My-Power-Dsh.git"
@@ -33,8 +33,6 @@
     "PLAN.md",
     "README.md",
     "README.zh-CN.md",
-    "SECURITY.md",
-    "SECURITY.zh-CN.md",
     "VENDOR_LOCK.json",
     "agent-references/**",
     "cordis.patch.yml",
@@ -91,7 +89,7 @@
     "repin:vendor": "node scripts/repin-vendor.ts",
     "dump-config": "node scripts/dump-config.ts",
     "bootstrap": "node scripts/bootstrap.ts",
-    "evidence:mount": "node skills/dsh-qa/scripts/mount-assert.ts --expect \"name: '@deepseek-ai/dsh-llm'\"",
+    "evidence:mount": "node scripts/evidence-mount.ts",
     "pack": "node scripts/pack-mpd.ts",
     "verify:docker": "node ./scripts/docker-e2e.ts"
   },
@@ -99,7 +97,10 @@
     "packages/*"
   ],
   "optionalDependencies": {
-    "@colbymchenry/codegraph": "1.5.0"
+    "@colbymchenry/codegraph": "1.5.0",
+    "cclsp": "0.7.0",
+    "@cyanheads/git-mcp-server": "2.15.3",
+    "mcp-server-commands": "0.8.2"
   },
   "devDependencies": {
     "@typescript/native-preview": "^7.0.0-dev.20260707.2",
@@ -110,7 +111,8 @@
   "dependencies": {
     "@deepseek-ai/dsh-experimental-agent-team": "0.2.0-rc.2",
     "@deepseek-ai/dsh-experimental-client-ui-agent-team": "0.2.0-rc.2",
-    "@deepseek-ai/dsh-experimental-tool-agent-team": "0.2.0-rc.2"
+    "@deepseek-ai/dsh-experimental-tool-agent-team": "0.2.0-rc.2",
+    "@dsh-std/sdk": "0.1.1-rc.2"
   },
   "peerDependencies": {
     "dsh-better-sidebar": ">=0.24.1 <0.25.0"

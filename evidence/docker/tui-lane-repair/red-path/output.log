@@ -1,0 +1,189 @@
+=== RED-path harness for the Docker TUI lane ===
+harness=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/docker/tui-lane-repair/red-path/run-red-path-harness.sh
+harness sha256=618d55165574abf4f97adec87f342000cfbc9116e77838f6160a859784e2d2e2
+bash=GNU bash, version 5.3.9(1)-release (x86_64-pc-linux-gnu)
+
+--- 1. the frozen artifact ---
+lane=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/docker/tui-lane.sh
+lane sha256=226cdb1c84b9eff09a3260aa9aec33abe40bacb87358c833dcb5db9557094b00
+expected sha256=226cdb1c84b9eff09a3260aa9aec33abe40bacb87358c833dcb5db9557094b00
+lane sha256 matches the freeze (FROZEN, unmodified by this harness: this file only ever READS it).
+
+--- 2. extracted byte ranges (verbatim, no rewriting) ---
+prologue.sh: 48 lines, sha256=e5c49b9930ff315aca4c922b789809be9a241d53b37bff9f4413003cb920e3dc
+  first=[json_escape() {]
+  last =[trap 'on_exit' EXIT]
+epilogue.sh: 23 lines, sha256=179394fd34c0205da13518c35cf866ca4c4382de0c115717ce3ffffaabdccbec
+  first=[# Summarise: every tui.* record this lane owns, so the run cannot end without a verdict.]
+  last =[exit 1]
+
+--- 2b. the extracted text carries the mechanism under test ---
+ASSERT PASS  prologue carries: record() {                                   got=1
+ASSERT PASS  prologue carries: LANE_EXIT_RECORDED=0                         got=1
+ASSERT PASS  prologue carries: trap 'on_err' ERR                            got=1
+ASSERT PASS  prologue carries: trap 'on_exit' EXIT                          got=1
+ASSERT PASS  prologue carries: abort=exit-$code net=EXIT-trap               got=1
+ASSERT PASS  epilogue carries: TUI_SUMMARY=                                 got=1
+ASSERT PASS  epilogue carries: "name":"tui\.                                got=1
+ASSERT PASS  epilogue carries: LANE_EXIT_RECORDED=1                         got=1
+ASSERT PASS  epilogue carries: exit 1                                       got=1
+
+--- 3. arm generation ---
+ASSERT PASS  the lane writes 21 tui.* arm records before its terminal record got=21
+arms written under /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/docker/tui-lane-repair/red-path/arms
+
+--- 4. ARM d-green — the wave GREEN ending (fidelity control) ---
+process exit=0
+console.log:
+[record] tui.hostInstall=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.pluginAddHost=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.pluginAddBundle=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.compose=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.presetPreference=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.presetRow=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.mpdTuiRow=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.agentTeamRows=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.teamFixtureBound=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.teamSceneOtherSessionInvisible=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.teamSceneOpened=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.teamGraphDrawn=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.teamGraphEdges=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.teamGraphContent=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.mergedPanelOpens=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.mergedPanelOrder=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.hostDashboardKeyIntact=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.noDirectTuiSeam=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.boot=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.noFatalSignatures=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.sessionPreset=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.laneExit=true — the TUI lane ran to completion with every assertion green
+state.jsonl (tui.laneExit only):
+{"name":"tui.laneExit","ok":true,"reason":"the TUI lane ran to completion with every assertion green","raw":"records=21"}
+ASSERT PASS  d-green process exit                                           got=0
+ASSERT PASS  d-green tui.laneExit records written                           got=1
+ASSERT PASS  d-green terminal record is the all-green one                   got=22
+ASSERT PASS  d-green abort claims anywhere                                  got=0
+
+--- 5. ARM a-red — an ORDINARY red terminal exit (half 1, the repaired behaviour) ---
+process exit=1
+console.log:
+[record] tui.hostInstall=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.pluginAddHost=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.pluginAddBundle=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.compose=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.presetPreference=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.presetRow=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.mpdTuiRow=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.agentTeamRows=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.teamFixtureBound=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.teamSceneOtherSessionInvisible=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.teamSceneOpened=false — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.teamGraphDrawn=false — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.teamGraphEdges=false — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.teamGraphContent=false — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.mergedPanelOpens=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.mergedPanelOrder=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.hostDashboardKeyIntact=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.noDirectTuiSeam=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.boot=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.noFatalSignatures=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.sessionPreset=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.laneExit=false — the TUI lane finished with failing or missing assertions
+state.jsonl (tui.laneExit + the four red arms):
+{"name":"tui.laneExit","ok":false,"reason":"the TUI lane finished with failing or missing assertions","raw":"records=21 failed=4"}
+{"name":"tui.teamSceneOpened","ok":false,"reason":"arm seed: this lane arm ran and recorded through the lane own record helper","raw":"seed=red-path-harness"}
+{"name":"tui.teamGraphDrawn","ok":false,"reason":"arm seed: this lane arm ran and recorded through the lane own record helper","raw":"seed=red-path-harness"}
+{"name":"tui.teamGraphEdges","ok":false,"reason":"arm seed: this lane arm ran and recorded through the lane own record helper","raw":"seed=red-path-harness"}
+{"name":"tui.teamGraphContent","ok":false,"reason":"arm seed: this lane arm ran and recorded through the lane own record helper","raw":"seed=red-path-harness"}
+the lane OWN summary line (records/failed) as written by the epilogue awk census:
+{"name":"tui.laneExit","ok":false,"reason":"the TUI lane finished with failing or missing assertions","raw":"records=21 failed=4"}
+ASSERT PASS  a-red process exit                                             got=1
+ASSERT PASS  a-red tui.laneExit records written (exactly ONE record)        got=1
+ASSERT PASS  a-red terminal record says the lane FINISHED with failing assertions got=1
+ASSERT PASS  a-red the terminal record counts records=21 failed=4           got=1
+ASSERT PASS  a-red abort=exit- claims in console.log (half 1)               got=0
+ASSERT PASS  a-red abort=exit- claims in state.jsonl (half 1)               got=0
+ASSERT PASS  a-red EXIT-net claims anywhere                                 got=0
+
+--- 6. ARM b-exitnet — a GENUINE abort the ERR trap cannot see (half 2) ---
+process exit=1
+console.err:
+/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/docker/tui-lane-repair/red-path/arms/b-exitnet/arm.sh: line 88: MERGED_TITLE_HITS: unbound variable
+console.log:
+[record] tui.hostInstall=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.pluginAddHost=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.pluginAddBundle=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.compose=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.presetPreference=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.presetRow=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.mpdTuiRow=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.agentTeamRows=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.teamFixtureBound=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.teamSceneOtherSessionInvisible=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.teamSceneOpened=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.teamGraphDrawn=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.teamGraphEdges=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.teamGraphContent=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.mergedPanelOpens=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.mergedPanelOrder=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.hostDashboardKeyIntact=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.noDirectTuiSeam=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.boot=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.noFatalSignatures=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.sessionPreset=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.laneExit=false — the TUI lane exited with 1 without the ERR trap seeing it (an immediate abort such as a set -u unbound variable) — earlier tui.* records are the assertions that had already run, and every arm after this point reads as 'not reached'
+state.jsonl (tui.laneExit):
+{"name":"tui.laneExit","ok":false,"reason":"the TUI lane exited with 1 without the ERR trap seeing it (an immediate abort such as a set -u unbound variable) — earlier tui.* records are the assertions that had already run, and every arm after this point reads as 'not reached'","raw":"abort=exit-1 net=EXIT-trap"}
+ASSERT PASS  b-exitnet process exit                                         got=1
+ASSERT PASS  b-exitnet the EXIT net PUBLISHED the abort record              got=1
+ASSERT PASS  b-exitnet the abort record must not claim a completed run      got=1
+
+--- 7. ARM c-errtrap — a GENUINE abort the ERR trap DOES see (half 2) ---
+process exit=9
+console.log:
+[record] tui.hostInstall=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.pluginAddHost=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.pluginAddBundle=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.compose=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.presetPreference=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.presetRow=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.mpdTuiRow=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.agentTeamRows=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.teamFixtureBound=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.teamSceneOtherSessionInvisible=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.teamSceneOpened=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.teamGraphDrawn=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.teamGraphEdges=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.teamGraphContent=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.mergedPanelOpens=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.mergedPanelOrder=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.hostDashboardKeyIntact=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.noDirectTuiSeam=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.boot=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.noFatalSignatures=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.sessionPreset=true — arm seed: this lane arm ran and recorded through the lane own record helper
+[record] tui.laneExit=false — the TUI lane aborted (exit 9) — see this step's log; earlier tui.* records are the assertions that had already run
+state.jsonl (tui.laneExit):
+{"name":"tui.laneExit","ok":false,"reason":"the TUI lane aborted (exit 9) — see this step's log; earlier tui.* records are the assertions that had already run","raw":"line=88"}
+ASSERT PASS  c-errtrap process exit (the failing step code 9 is preserved)  got=9
+ASSERT PASS  c-errtrap the ERR trap PUBLISHED the abort record              got=1
+ASSERT PASS  c-errtrap exactly ONE tui.laneExit record (no double-report)   got=1
+ASSERT PASS  c-errtrap the EXIT net did NOT add a second record             got=0
+
+--- 8. ARM a-red-nofix — the same red run with the ONE repair line deleted (control) ---
+process exit=1
+BOTH tui.laneExit records this arm wrote (the double report):
+{"name":"tui.laneExit","ok":false,"reason":"the TUI lane finished with failing or missing assertions","raw":"records=21 failed=4"}
+{"name":"tui.laneExit","ok":false,"reason":"the TUI lane exited with 1 without the ERR trap seeing it (an immediate abort such as a set -u unbound variable) — earlier tui.* records are the assertions that had already run, and every arm after this point reads as 'not reached'","raw":"abort=exit-1 net=EXIT-trap"}
+ASSERT PASS  a-red-nofix process exit                                       got=1
+ASSERT PASS  a-red-nofix TWO tui.laneExit records (the pre-repair double report) got=2
+ASSERT PASS  a-red-nofix the SECOND record is the false abort claim         got=1
+ASSERT PASS  a-red-nofix the FIRST record still says the lane finished with failures got=1
+CONTROL READING: the harness CAN fail — deleting `LANE_EXIT_RECORDED=1` from the red ending
+reproduces the measured 2026-10-08T08-52-23Z defect, so the a-red reading above is caused by
+that line and not by the harness being unable to observe an abort.
+
+--- 9. harness verdict ---
+assertions failed=0
+lane sha256 after all arms=226cdb1c84b9eff09a3260aa9aec33abe40bacb87358c833dcb5db9557094b00
+HARNESS RESULT: PASS (every paired observation held)

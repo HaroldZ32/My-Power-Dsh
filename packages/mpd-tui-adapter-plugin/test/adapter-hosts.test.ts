@@ -26,8 +26,13 @@ import {
   HOST_PACKAGE_PATH,
   HOST_ROOT_ENV,
   HOST_UI_MODULE,
+  PANEL_ID_HISTORY_LIMIT,
   SERVICE_NAME,
   TUI_SEAMS,
+  panelHistoryAfter,
+  panelRecordProvenance,
+  readHostPackageVersion,
+  readPanelIdRecordPast,
   TUI_SEAM_KEYS,
   createFileSink,
   createLazyTuiAdapter,
@@ -940,5 +945,167 @@ describe("the panels seam", () => {
     expect(refused.opened()).toBe(false)
     expect(refused.outcome().state).toBe("refused")
     expect(String(refused.outcome().detail)).toContain("5000 ms")
+  })
+})
+
+// ── the panel-id RECORD's provenance ─────────────────────────────────────────────────────────────
+//
+// WHY THIS BLOCK EXISTS. `.mpd/logs/mpd-tui-panels.json` was overwritten on 2026-10-08 with
+// `act0:team, act0:dag, act0:workmate` — ids the installed host cannot compose, because its
+// `pluginIdFor` fallback counter PRE-INCREMENTS and the first bare activation is therefore `act1` — and
+// `scripts/mpd-tui-panels.ts` reads that file to offer a write into the USER's settings layer. The arms
+// below pin the two refusals that make that impossible again: a record that cannot name the installed
+// package it read the ids from is not written, and neither is one carrying an activation no boot can
+// produce. The ACCEPT arm is the negative control that keeps the two refusals from being vacuous.
+
+describe("the panel-id record's provenance (a record the remedy can trust)", () => {
+  test("REFUSES a record that cannot name the installed host package", () => {
+    /** The reason an unnameable host produces. */
+    const noHost = panelRecordProvenance(undefined, "tuiPanels.list", ["act1:team"])
+    expect("refused" in noHost).toBe(true)
+    // A root with no version is refused too: half a provenance is a claim a reader cannot check.
+    expect("refused" in panelRecordProvenance({ root: "/somewhere/dsh-tui", version: "" }, "tuiPanels.list", ["act1:team"])).toBe(true)
+    expect("refused" in panelRecordProvenance({ root: "", version: "0.14.0" }, "tuiPanels.list", ["act1:team"])).toBe(true)
+  })
+
+  test("REFUSES a record whose ids did not come from a host read-back", () => {
+    /** The host the ids would be attributed to. */
+    const host = { root: "/somewhere/dsh-tui", version: "0.14.0" }
+    expect("refused" in panelRecordProvenance(host, "", ["act1:team"])).toBe(true)
+    // An outcome with no ids at all is not a discovery and must not overwrite a good record.
+    expect("refused" in panelRecordProvenance(host, "tuiPanels.list", [])).toBe(true)
+  })
+
+  test("REFUSES `act0` — the ONE activation the installed host cannot compose, with the measured reason", () => {
+    /** The record the test run actually produced, refused for the reason it is impossible. */
+    const impossible = panelRecordProvenance({ root: "/somewhere/dsh-tui", version: "0.14.0" }, "tuiPanels.list", ["act0:team", "act0:dag"])
+    expect("refused" in impossible).toBe(true)
+    if ("refused" in impossible) {
+      // The reason names the MECHANISM, so a reader of the boot log learns why the record was not written
+      // rather than guessing at a silent no-op.
+      expect(impossible.refused).toContain("act1")
+      expect(impossible.refused).toContain("act0")
+    }
+    // …and ids that do not share ONE activation cannot have come from one registration either.
+    expect("refused" in panelRecordProvenance({ root: "/somewhere/dsh-tui", version: "0.14.0" }, "tuiPanels.list", ["act1:team", "act2:dag"])).toBe(true)
+  })
+
+  test("NEGATIVE CONTROL: a read-back id from a named host is ACCEPTED, and carries all four facts", () => {
+    // Without this arm the three refusals above would pass against a function that refused everything.
+    /** The provenance a real boot would record. */
+    const proved = panelRecordProvenance({ root: "/somewhere/dsh-tui", version: "0.14.0" }, "tuiPanels.list", ["act1:team", "act1:dag"])
+    expect("provenance" in proved).toBe(true)
+    if ("provenance" in proved) {
+      expect(proved.provenance.hostRoot).toBe("/somewhere/dsh-tui")
+      expect(proved.provenance.hostVersion).toBe("0.14.0")
+      expect(proved.provenance.readBack).toBe("tuiPanels.list")
+      // The activation is DERIVED from the ids rather than passed in, so it cannot drift from them.
+      expect(proved.provenance.activation).toBe("act1")
+    }
+  })
+
+  test("the INSTALLED host's own version is readable — the provenance is a measurement, not a literal", () => {
+    /** The host package root this machine actually runs, resolved the way the adapter resolves it. */
+    const host = hostRootCandidates().find((candidate) => existsSync(join(candidate, "package.json")))
+    // A machine without the host cannot answer this arm; the adapter's own probe reports that separately.
+    if (host === undefined) return
+    /** The version read from that package. */
+    const version = readHostPackageVersion(host)
+    expect(version.length).toBeGreaterThan(0)
+    // A dotted version string, which is what a reader comparing hosts will match on.
+    expect(/^\d+\.\d+\.\d+/u.test(version)).toBe(true)
+  })
+})
+
+// ── R1 (repair round R1, CodeRabbit PR #35): the record's bounded PAST ids are the ownership evidence ──
+//
+// WHY THIS BLOCK EXISTS. Both writers (the keeper and `scripts/mpd-tui-panels.ts`) prune an earlier
+// boot's panel id, and ownership may never be inferred from a SLUG: a foreign plugin's live `act9:team`
+// shares our `team` slug, while one of our own dead ids whose page was retired matches no live slug. The
+// evidence is the record's `history` — the ids THIS bundle provably registered before — so the arms below
+// pin its BOUND, its fold, its shape filter, and the fact that a record the provenance rules refuse
+// contributes nothing to it. A polluted record must not be able to widen what the prune may delete.
+
+describe("the panel-id record's bounded history (the prune's ownership evidence)", () => {
+  test("panelHistoryAfter folds the previous boot's ids in, drops the live ones, and keeps the NEWEST", () => {
+    // The fold: the previous history plus the previous boot's own ids, minus everything live now.
+    expect(panelHistoryAfter(["act7:team"], ["act7:team", "act7:dag"])).toEqual(["act7:dag"])
+    expect(panelHistoryAfter(["act1:team"], ["act7:team", "act7:dag"])).toEqual(["act7:team", "act7:dag"])
+    // An id that is LIVE NOW never enters the history — it is not past, and the predicate would only have
+    // to discard it again.
+    expect(panelHistoryAfter(["act7:team"], ["act1:team", "act7:team"])).toEqual(["act1:team"])
+    // THE SHAPE FILTER: only ids the host composes for a loader row can ever be ours, so a foreign id or a
+    // hand edit cannot enter the evidence.
+    expect(panelHistoryAfter([], ["todo", "someone:else", "act7:team", ""])).toEqual(["act7:team"])
+    // THE BOUND: 40 candidates in, the newest PANEL_ID_HISTORY_LIMIT out, oldest evicted first.
+    /** Forty ids of one long-lived workspace, oldest first. */
+    const many = Array.from({ length: 40 }, (_, index) => `act${String(index + 1)}:team`)
+    /** The bounded history that fold produces. */
+    const bounded = panelHistoryAfter([], many)
+    expect(bounded).toHaveLength(PANEL_ID_HISTORY_LIMIT)
+    expect(bounded.at(-1)).toBe("act40:team")
+    expect(bounded[0]).toBe(`act${String(40 - PANEL_ID_HISTORY_LIMIT + 1)}:team`)
+  })
+
+  test("readPanelIdRecordPast answers the record's history PLUS its current ids, shape-filtered and deduped", () => {
+    /** A scratch workspace whose record this arm owns. */
+    const workspace = mkdtempSync(join(tmpdir(), "mpd-panel-record-"))
+    try {
+      /** The record path the adapter writes and this reader reads. */
+      const file = join(workspace, ".mpd", "logs", "mpd-tui-panels.json")
+      mkdirSync(join(workspace, ".mpd", "logs"), { recursive: true })
+      writeFileSync(file, JSON.stringify({
+        version: 3,
+        panelIds: ["act7:team", "act7:dag"],
+        slugs: ["team", "dag"],
+        updatedAt: "2026-10-11T00:00:00.000Z",
+        provenance: { hostRoot: "/opt/dsh-tui", hostVersion: "0.14.0", readBack: "tuiPanels.list", activation: "act7" },
+        history: ["act1:team", "someone:else", "act1:team"],
+      }))
+      // BOTH FIELDS ARE EVIDENCE: the history is the bundle's past, and the record's current ids were a
+      // PREVIOUS boot's live set — the "not live now" half of the rule discards the ones still live.
+      expect(readPanelIdRecordPast(workspace)).toEqual(["act1:team", "act7:team", "act7:dag"])
+      // A version-2 record (no history) still contributes its own ids as past, so the repair reaches a
+      // workspace written by the release before this one instead of doing nothing until the next boot.
+      writeFileSync(file, JSON.stringify({
+        version: 2,
+        panelIds: ["act1:team"],
+        updatedAt: "2026-10-11T00:00:00.000Z",
+        provenance: { hostRoot: "/opt/dsh-tui", hostVersion: "0.14.0", readBack: "tuiPanels.list", activation: "act1" },
+      }))
+      expect(readPanelIdRecordPast(workspace)).toEqual(["act1:team"])
+    } finally {
+      rmSync(workspace, { recursive: true, force: true })
+    }
+  })
+
+  test("a record the provenance rules REFUSE contributes no past at all — and a missing one is not an error", () => {
+    /** A scratch workspace whose records this arm writes one at a time. */
+    const workspace = mkdtempSync(join(tmpdir(), "mpd-panel-record-refused-"))
+    try {
+      /** The record path the reader under test probes. */
+      const file = join(workspace, ".mpd", "logs", "mpd-tui-panels.json")
+      mkdirSync(join(workspace, ".mpd", "logs"), { recursive: true })
+      /** The record the measured pollution produced: version 1, no provenance block at all. */
+      const polluted = { version: 1, panelIds: ["act0:team", "act0:dag"], slugs: ["team", "dag"], updatedAt: "2026-10-08T02:02:20.819Z" }
+      /** Writes one record and reports what the reader made of it. */
+      const pastOf = (record: unknown): string[] => {
+        writeFileSync(file, JSON.stringify(record))
+        return readPanelIdRecordPast(workspace)
+      }
+      // NO FILE is not an error: the prune is simply disabled, which is the pre-R1 behaviour.
+      expect(readPanelIdRecordPast(join(workspace, "no-such-root"))).toEqual([])
+      expect(pastOf(polluted)).toEqual([])
+      /** The provenance a real boot writes, so each case below differs in exactly ONE field. */
+      const proven = { hostRoot: "/opt/dsh-tui", hostVersion: "0.14.0", readBack: "tuiPanels.list", activation: "act1" }
+      expect(pastOf({ version: 3, panelIds: ["act1:team"], provenance: { ...proven, hostVersion: "  " }, history: ["act7:dag"] })).toEqual([])
+      expect(pastOf({ version: 3, panelIds: ["act1:team"], provenance: { ...proven, readBack: "" }, history: ["act7:dag"] })).toEqual([])
+      expect(pastOf({ version: 3, panelIds: ["act0:team"], provenance: { ...proven, activation: "act0" }, history: ["act7:dag"] })).toEqual([])
+      // NEGATIVE CONTROL: the same record with a provable provenance DOES answer, so the four refusals
+      // above cannot be a blanket refusal.
+      expect(pastOf({ version: 3, panelIds: ["act1:team"], provenance: proven, history: ["act7:dag"] })).toEqual(["act7:dag", "act1:team"])
+    } finally {
+      rmSync(workspace, { recursive: true, force: true })
+    }
   })
 })

@@ -1,0 +1,35 @@
+{
+  "wave": "feat(tui): the two MPD sidebar switches appear as CHECKBOXES in the harness /settings dialog",
+  "date": "2026-10-13",
+  "userClause": "形态要setting里的勾选框",
+  "mechanismFound": {
+    "where": "packages/mpd-config-plugin/src/settings-schema.ts :: markVolatile",
+    "measuredQuote": "MEASURED out of the installed `dsh-settings@0.1.7-rc.2`: its `volatileForm(schema)` walks `schema.meta.volatile`, `schema.dict`, `type`, `list` and `inner` -- PLAIN DATA on a schema object -- and AN ENTRY WHOSE SCHEMA CARRIES NO VOLATILE NODE IS NOT LISTED IN THE DIALOG AT ALL.",
+    "conclusion": "A row's config knobs are listed in /settings ONLY when its Config schema carries a volatile node. `mpd-config` marks its own Config volatile; `mpd-tui` did NOT -- which is exactly why `panel`/`workmate` had no checkbox, and why the two pages read as un-toggleable even after they became independent keys."
+  },
+  "change": {
+    "settingsTs": "`markVolatile` added to the file's EXISTING import from ../../mpd-config-plugin/src/settings-schema and re-exported, so the row marks its own config volatile WITHOUT adding a second cross-package import edge (the coupling inventory pins one edge per file and may only shrink).",
+    "indexTs": "`export const Config: Schemastery<Config> = markVolatile(z.object({ ... }))` with the reason written above it: the volatile flag is what lists these knobs in the dialog.",
+    "inventory": "packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts -- the ONE frozen line for that edge updated to the new text (same packages, same edge, one more imported name).",
+    "test": "NEW arm: 'the row config is VOLATILE, which is what lists its knobs in the harness settings dialog' -- asserts `Config.meta.volatile === true`. A row that dropped the flag would still pass every behavioural arm while showing the user NOTHING to click, so the flag itself has to be pinned."
+  },
+  "semantics": {
+    "whatTheCheckboxDoes": "A save writes the ENTRY CONFIG, which the loader validates against THIS schema at the next boot; the panel registration reads that config, so the two checkboxes decide the NEXT BOOT's pages.",
+    "consistency": "This matches the mpd settings bridge's own declared `applies: \"restart\"` and its disclosure sentence ('takes effect for the mpd plugins after a restart -- this knob is read at plugin mount').",
+    "doesItStick": "Yes, and for the reason that matters: a page whose checkbox is OFF is never registered, and nothing re-adds a panel that was never registered -- not the host's config re-apply, not MPD's runtime enable keeper.",
+    "fallback": "Either page off still leaves its entry point a real surface (the merged scene for MPD, the board for workmate), so a checkbox cannot create a dead end."
+  },
+  "gates": [
+    {"command": "bun run typecheck", "exit": 0},
+    {"command": "bun test packages/mpd-tui-plugin/test/plugin.test.ts -t VOLATILE", "exit": 0, "observed": "1 pass / 0 fail"},
+    {"command": "bun test packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts", "exit": 0, "observed": "2 pass / 0 fail (the pinned line matches the edited import, and the seeded-violation negative control still reddens)"},
+    {"command": "node scripts/verify-dist-fresh.ts", "exit": 0, "observed": "31/31 targets fresh, 0 stale after the build"},
+    {"command": "node scripts/verify-comment-coverage.ts", "exit": 0, "observed": "VERDICT: PASS"},
+    {"command": "node scripts/verify-docs-parity.ts", "exit": 0, "observed": "bilingual pair PASS"}
+  ],
+  "notDone": [
+    "The checkbox is NOT live: flipping it and saving takes effect at the NEXT dsh boot, not immediately. Making it live needs the panel registration to be reconciled at runtime (dispose + re-register on a settings-document update), which the adapter's registration handle makes possible but which is not implemented.",
+    "The harness dialog lists the row's knobs; the label text comes from the schema keys (`panel`, `workmate`) -- no per-key bilingual label table was added for them (mpd-config's SETTINGS_KNOBS carries labels for ITS namespace, not for another row's config)."
+  ],
+  "verified": "The flag and the two keys are in the built dist; the loader reads this very schema, so a fresh dsh boot lists the mpd-tui entry with two boolean checkboxes and applying them decides whether each MPD sidebar page registers."
+}

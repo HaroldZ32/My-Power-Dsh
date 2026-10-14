@@ -15,6 +15,12 @@ harness settings provider 的 mpd 插件都经由本适配器调用，因此 dsh
 0.12.0 起提供的十四个，加上 0.13.0 新增的 `tuiPanels` 侧栏面板注册表——另有 `tuiPrompt`（每一个实测版本
 都不提供）以及 harness 的 `commands` 注册表与 `settings` 提供者。
 
+**DSH-TUI 0.14.0 适配（2026-10-08）重新测量：这张表没有动。** 宿主 `lib/types/dsh-adapter/` 下的
+十五个模块及其声明在 0.13.0 与 0.14.0 之间**逐字节相同**，不存在第十六条接缝，harness 的
+`peerDependencies` 范围末端仍是 `0.2.0-rc.2`——因此该波次**在接缝层面不需要任何适配器代码改动**，
+`MPD_E2E_DSH_VERSION` 也不动。0.14.0 真正改动的东西都在这些接缝之外（Claude 后端 peer、`ws` 运行时
+依赖、第八个内置侧栏面板，以及轮播式的 `PanelBar`）；那张表见 `docs/tui.md` §11.6，细节见 §3。
+
 | 接缝键 | 服务 | 类型化成员 | 注册 |
 |---|---|---|---|
 | `scenes` | `tuiScenes` | `scenes()` | `registerScene(descriptor, identity?)` → 句柄带 `openScene(id)` / `closeScene(id)`；适配器上也有 `openScene(id)` / `closeScene(id)` |

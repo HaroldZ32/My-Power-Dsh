@@ -1,0 +1,18 @@
+{
+  "shape": "present",
+  "opens": false,
+  "order": false,
+  "pane": {
+    "titleHits": 2,
+    "subHits": 2,
+    "teamHits": 0,
+    "subLine": 7,
+    "teamLine": 0,
+    "headLine": 7,
+    "emptyLine": 8
+  },
+  "controlHits": 0,
+  "reason": "the captured pane does NOT carry the merged panel: titleHits=2 subagentHits=2 teamHits=0 subagentMarker=line 7 teamMarker=line 0 header=line 7 emptyState=line 8 (each family must be > 0, pre-key control hits = 0)",
+  "panePath": "/work/tui/pane-merged.txt",
+  "controlPath": "/work/tui/pane-teamClosed.txt"
+}

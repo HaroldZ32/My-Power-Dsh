@@ -1,0 +1,25 @@
+# Proves: PR #36 CodeRabbit round-3 fix (quoted -PythonBin) final state, captured 2026-10-12T01:45:20Z, after the last skills/** write.
+
+## File fingerprint (must match live bytes at verify time)
+42bbc5d7cbdb7bc49898ba5717e8abaa00c820bf794d36b2fd382bebed168232  skills/data-scientist/SKILL.md
+
+## Universal scan: EVERY -PythonBin occurrence in SKILL.md, verbatim
+$ grep -n "PythonBin" skills/data-scientist/SKILL.md
+25:   `pwsh scripts/ensure-py-deps.ps1 -PythonBin "<kernel sys.executable>"`; Windows
+27:   scripts/ensure-py-deps.ps1 -PythonBin "<kernel sys.executable>"`), which installs
+45:  (`pwsh scripts/ensure-py-deps.ps1 -PythonBin "<kernel sys.executable>"` on Windows;
+47:  scripts/ensure-py-deps.ps1 -PythonBin "<kernel sys.executable>"`).
+hit-count=4
+
+## Absence: no UNQUOTED placeholder remains
+$ grep -n "PythonBin <kernel" skills/data-scientist/SKILL.md
+exit=1 (1 = all four occurrences quoted)
+
+## Commit binding
+$ git show --stat --format=%h d563c3e0
+d563c3e0 docs(skills): quote -PythonBin placeholder in Windows examples (CodeRabbit PR #36 round 3)
+
+ VENDOR_LOCK.json                                        |  2 +-
+ evidence/windows/coderabbit-pass3/clause-transcript.txt | 16 ++++++++++++++++
+ skills/data-scientist/SKILL.md                          |  8 ++++----
+ 3 files changed, 21 insertions(+), 5 deletions(-)

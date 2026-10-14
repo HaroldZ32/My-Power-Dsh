@@ -1,0 +1,24 @@
+[WARN] GET https://registry.npmjs.org/@deepseek-harness-tui%2Fdsh-tui error (ETIMEDOUT). Will retry in 10 seconds. 2 retries left.
+[WARN] GET https://registry.npmjs.org/@deepseek-harness-tui%2Fdsh-tui error (ETIMEDOUT). Will retry in 1 minute. 1 retries left.
+[ERR_PNPM_META_FETCH_FAIL] GET https://registry.npmjs.org/@deepseek-harness-tui%2Fdsh-tui: fetch failed
+
+This error happened while installing a direct dependency of /root/dshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/tui-014/dshhome/profiles/dsh-tui
+dsh: initialized profile dsh-tui at /root/dshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/tui-014/dshhome/profiles/dsh-tui
+TypeError: Cannot set property message of  which has only a getter
+    at RetryOperation._fn (file:///root/.local/share/pnpm/store/v11/links/@pnpm/exe/directory/20b9161868dfcb34012541056dc285b85dc8643375010c6ae414d8552fbfaaaa/node_modules/@pnpm/exe/dist/pnpm.mjs:103000:27)
+dsh: plugin command failed; diagnostics: /root/dshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/tui-014/dshhome/profiles/dsh-tui/.plugin-manager/logs/operation-TzT6Q3/pnpm.log
+
+dependencies:
++ @mpd-dsh/mpd link:/root/dshProj/My-Power-Dsh
+
+Already up to date
+Done in 176ms using pnpm v11.23.0
+
+   ╭──────────────────────────────────────────╮
+   │                                          │
+   │   Update available! 11.23.0 → 12.10.1.   │
+   │   Changelog: https://pnpm.io/v/12.10.1   │
+   │     To update, run: pnpm self-update     │
+   │                                          │
+   ╰──────────────────────────────────────────╯
+

@@ -1,0 +1,50 @@
+
+    Host Descriptor: dsh-tui v0.15.0 · generation d8be5e6f-9635-4197-8449-279fada7f3e6
+    facets: v1alpha1                                          
+    commands.dsh/v1alpha1#Command · definition @dsh-std/command · perms commands.invoke            
+    storage.dsh/v1alpha1#LocalStorage · definition @dsh-std/storage · perms storage.local.read, storage.local.write
+    messages.dsh/v1alpha1#MessageObserver · definition @dsh-std/messages · perms messages.observe.read
+    tui.dsh/v1alpha1#DecisionEvents · definition sha256:56440dde1b00… · perms session.input.intercept, session.rewind.intercept, session.switch.intercept, session.compact.intercept
+    tui.dsh/v1alpha1#Backend · definition sha256:14d0923ccead… · perms —                           
+    授权矩阵（✓ 允许 / · 拒绝；仅显示有足迹的插件——授权文件、效果台账与存储目录的并集）：
+    [1] storage.local.read [2] storage.local.write [3] commands.invoke [4] messages.observe.read [5] session.input.intercept [6] session.rewind.intercept [7] session.switch.intercept [8] session.compact.intercept
+    com.mpd-dsh.mpd-tui · · ✓ · ✓ ✓ ✓ ✓                                                       
+    授权方法：在 ~/.dsh-tui/extension-grants.json 的 "grants" 段为插件 id 添加规则（如 { "name": "<权限>", "scope": "<范围>" }），保存即生效、无需重启。
+    效果台账（/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/tui-015/home/.dsh-tui/effect-ledger.jsonl）尾 5 条：
+    #539 create command/ultimate-browsing host applied                                            
+    #540 create command/ulw-execute host applied                       
+    #541 create command/ulw-plan host applied                                                                              
+    #542 create command/ulw-research host applied                                                     
+    #543 create command/visual-qa host applied
+    已装 bundle（数据来自 profile 插件服务）：
+    安装自带:
+    @deepseek-ai/dsh-base 0.2.0-rc.2 · 已启用 · 不可卸载 · 不可管理（management-required） · 行 94 / 覆盖 0
+    @deepseek-ai/dsh-acp-app 0.2.0-rc.2 · 未启用 · 不可卸载 · 行 2 / 覆盖 3                 
+    智能体团队 0.2.0-rc.2 · 未启用 · 不可卸载 · 行 3 / 覆盖 4                       
+    自动化任务 0.2.0-rc.2 · 未启用 · 不可卸载 · 行 3 / 覆盖 0
+    @deepseek-ai/dsh-headless 0.2.0-rc.2 · 未启用 · 不可卸载 · 行 2 / 覆盖 3
+    @deepseek-ai/dsh-sdk-app 0.2.0-rc.2 · 未启用 · 不可卸载 · 行 4 / 覆盖 3
+    @deepseek-ai/dsh-sdk-minimal 0.2.0-rc.2 · 未启用 · 不可卸载 · 不可管理（management-required） · 行 32 / 覆盖 0
+    @deepseek-ai/dsh-web-app 0.2.0-rc.2 · 未启用 · 不可卸载 · 不可管理（management-required） · 行 89 / 覆盖 27
+    语音输入 0.2.0-rc.2 · 未启用 · 不可卸载 · 行 4 / 覆盖 0
+    自动授权审查 0.2.0-rc.2 · 未启用 · 不可卸载 · 行 1 / 覆盖 0
+    profile 依赖:
+    @deepseek-harness-tui/dsh-tui 0.14.0 · 已启用 · 不可卸载 · 不可管理（management-required） · 行 20 / 覆盖 30
+    @mpd-dsh/mpd 0.12.0 · 已启用 · TUI 贡献：compatible · 行 35 / 覆盖 0
+    没有 patch 行可管理的 loader 条目：
+    cordis:include · unaddressable · include
+    @deepseek-ai/dsh-plugin-manager · management-required · include:plugin-manager
+    @deepseek-ai/cordis-plugin-timer · management-required · include:timer
+    @deepseek-ai/dsh-hmr · management-required · include:hmr
+    @deepseek-ai/dsh-typert-registry · management-required · include:typert
+    @deepseek-ai/dsh-api-gateway · management-required · include:typert-gateway
+    @deepseek-ai/dsh-tools · management-required · include:tools
+    @deepseek-ai/dsh-host-webserver · management-required · include:dsh-tui-webserver
+  mpd: 团队 Fixture Team 2·1/2 (workspace-level) · 计划 0 · workmate 1
+                                                                                                                                                                                                      再次按 Esc 时间回溯
+  ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+  ⌸ ❯                                                                                                                                                                                                                    ⛶
+  ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+   deepseek-flash · max · ws
+
+

@@ -1,0 +1,85 @@
+# Raw observed output — the win32 file-URL sweep (2026-10-12)
+
+## What was swept
+Every live (non-evidence) site in the repo that either (a) handed a BARE PATH to node's ESM loader, or
+(b) HAND-BUILT a `file://` URL by concatenation.
+
+$ grep -n 'await import(' over packages/ scripts/ skills/ extensions/
+  -> classified each hit; the production launchers were fixed in 184fb1b9.
+
+$ grep -rn '"file://" *+\|'"'"'file://'"'"' *+\|`file://' --include='*.ts'
+  -> 30 hits, of which LIVE code: tui-spec-conformance.ts:420, tui-admission.ts:349,
+     mpd-memory-plugin/src/index.ts:106 (an svn CLI URL — deliberately NOT changed), the rest are
+     evidence/ historical records (must stay verbatim) or test fixtures.
+
+## Fixed (5 files, 10 import sites)
+skills/dsh-qa/scripts/verify-law.ts            4 sites  + pathToFileURL import
+packages/mpd-verify-plugin/qa/verify-law.ts    4 sites  (the AUTHORED twin, synced byte-for-byte)
+skills/dsh-qa/scripts/team-watchdog-boot.ts    1 site   + pathToFileURL import
+skills/dsh-qa/scripts/team-watchdog-notify.ts  3 sites  + pathToFileURL import
+skills/dsh-qa/scripts/tui-admission.ts         1 site   (hand-built url() helper)
+skills/dsh-qa/scripts/tui-spec-conformance.ts  1 site   (hand-built "file://" + join(...))
+
+Checked and NOT changed:
+scripts/mpd-bg.ts:155 -> `lib` is ALREADY `pathToFileURL(join(REPO, …)).href` (line 152). Not a defect.
+
+## The anti-drift trap this sweep walked into (and out of)
+verify-law.ts exists TWICE — authored at packages/mpd-verify-plugin/qa/verify-law.ts and registered
+VERBATIM at skills/dsh-qa/scripts/verify-law.ts. Its --self-test carries a drift arm:
+
+  const authored   = fileURLToPath(import.meta.url)          // = whichever copy RUNS
+  const registered = join(repoRoot, "skills", …, "verify-law.ts")
+  if (authoredSha !== registeredSha) fail("the registered case has DRIFTED …")
+
+Run from the REGISTERED copy, `authored === registered` (same path) so the arm is VACUOUS and prints ok —
+which is exactly how editing only the skills copy looks green:
+
+$ node skills/dsh-qa/scripts/verify-law.ts --self-test
+[verify-law self-test] ok: the registered copy is byte-identical (1b17a528b0db)     <-- vacuous
+  (but: authored 23534 bytes vs registered 24030 bytes => identical: False)
+
+So the authored copy was synced from the registered one, and the arm was then run from the side that
+actually compares:
+
+$ Copy-Item skills\…\verify-law.ts packages\mpd-verify-plugin\qa\verify-law.ts -Force
+identical now: True
+$ node packages/mpd-verify-plugin/qa/verify-law.ts --self-test
+[verify-law self-test] ok: the registered copy is byte-identical (1b17a528b0db)
+[verify-law self-test] ok: patch row + dist symbols + refusal vocabulary + decision/row arms
+exit=0
+
+## The law falsifier now RUNS on win32 (it could not before)
+$ node skills/dsh-qa/scripts/verify-law.ts --self-test
+[verify-law self-test] ok: the registered copy is byte-identical (1b17a528b0db)
+[verify-law self-test] ok: patch row + dist symbols + refusal vocabulary + decision/row arms
+exit=0
+
+## The §9 skills/** re-pin (ONE per wave, same commit)
+$ node scripts/verify-vendor.ts
+[verify-vendor] FAIL - asset skills treeSha mismatch                      <-- before the re-pin
+$ node scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step
+[repin-vendor] WRITE : applied 1 field change(s) to …\VENDOR_LOCK.json
+[repin-vendor]   skills.treeSha: fe1e163fa491… -> 1c51a5320553…
+$ node scripts/verify-vendor.ts
+[verify-vendor] PASS - 7 shipped asset(s) fingerprinted, upstream identity not checked
+exit=0
+
+## QA aggregate
+$ bun run test:qa
+[test:qa] FAILED: session-start-team.ts (exit 1)
+[test:qa] FAILED: tui-deps-ctrla.ts (exit 1)
+[test:qa] FAIL - 2 of 47 case(s) failed
+=> 45 passed, INCLUDING every lane edited by this sweep.
+
+## Those 2 failures are PRE-EXISTING (proved by stashing everything)
+$ git stash push -u   # my sweep AND the re-pin reverted => self-consistent pristine tree
+$ node skills/dsh-qa/scripts/session-start-team.ts --self-test   -> exit 1   (its own line:
+      "c7: a record led by THIS session with 7 members must read leading, got {leading:false,members:0}")
+$ bun  skills/dsh-qa/scripts/tui-deps-ctrla.ts --self-test       -> exit 1   ("a sibling install must fail the contact verdict")
+== WITH the sweep ==      session-start-team exit=1   tui-deps-ctrla exit=1
+== PRISTINE ==            session-start-team exit=1   tui-deps-ctrla exit=1
+$ git stash pop   # restored
+
+## Static gates
+$ node scripts/verify-comment-coverage.ts  -> VERDICT: PASS      exit=0
+$ bun run typecheck (tsgo --noEmit)        -> no diagnostics      exit=0

@@ -11,6 +11,17 @@
 //   {"type":"tool/call",   "data":{"callId":"…","name":"mcp__codegraph__codegraph_explore","arguments":{…}}}
 //   {"type":"tool/result", "data":{"message":{"content":[{"type":"tool-result","toolCallId":"…","isError":false,"content":[…]}]}}}
 //
+// TWO RESULT SHAPES must both be read, because the harness moved from v3 to v4 and a caller must not
+// care which one wrote the store:
+//   v3 `data.message.content[0] = {"type":"tool-result","toolCallId":…,"isError":…,"content":[{"type":"text",…}]}`
+//   v4 `data.message           = {"role":"tool","toolCallId":…,"isError":…,"content":[{"type":"text","text":…}]}`
+// v4 moved the call id, the error flag and the payload off the content BLOCK and onto the MESSAGE.
+// Measured on a live v4 store (2026-10-09, this workspace, 42 `tool/result` records): `isError` present
+// on 42/42 and `toolCallId` on every one, while `content[0].type` is `"text"`. Reading only v3 is a
+// SILENT-WRONG-ANSWER defect, not a missing feature: the payload reads `""` (so `codegraph-smoke` and
+// `mcp-call` recorded `resultChars: 0` against real, successful tool calls) and a call whose record
+// says `isError: true` is reported `succeeded: true` — a FAILED call counted as evidence.
+//
 // (`lib/tool-call.js#appendToolCall` / `appendToolResult` in the installed
 // harness; records land in `<DSH_HOME>/sessions/<projectKey(cwd)>/<sessionId>/`).
 //
@@ -367,28 +378,59 @@ export function readSessionEvents(dshHome: string, { workspace }: ReadSessionEve
   return { file: file ?? null, records, sessions: logs.length, frames, tornStart, undecodableLines }
 }
 
+/** What one `tool/result` record says about the call it answers, in whichever shape wrote it. */
+interface RecordedToolResult {
+  /** The id of the call this result answers: block-level in v3, message-level in v4. */
+  readonly toolCallId: string | undefined
+  /** Whether the harness flagged this result as an error: block-level in v3, message-level in v4. */
+  readonly isError: boolean
+  /** The joined text of the result's own content payload, `""` when it carries none. */
+  readonly text: string
+}
+
 /**
- * The `tool/result` text of one call id, flattened over its content blocks.
- * @param record Any decoded record; only `tool/result`-shaped ones contribute text.
- * @returns The joined inner text, or `""` when the record carries none.
+ * Read one `tool/result` record in whichever session shape the harness wrote (see the header's two
+ * shapes). The discriminator is the MESSAGE: v4 carries the tool facts (`toolCallId` / `isError`) there,
+ * v3 carries them on a `tool-result` content block.
+ * @param record Any decoded record; one that is not `tool/result`-shaped reads as an empty result.
+ * @returns The call id, the error flag and the payload text, with absent fields reading `false`/`""`.
  */
-function resultTextOf(record: unknown): string {
-  // The record's `data.message.content` blocks, when it carries an array of them.
-  const blocks = arrayFieldOf(fieldOf(fieldOf(record, "data"), "message"), "content")
-  if (blocks === undefined) return ""
-  // The inner text of every `tool-result` block, joined below.
+function recordedResultOf(record: unknown): RecordedToolResult {
+  // The record's message, which is where both shapes keep everything this reader needs.
+  const message = fieldOf(fieldOf(record, "data"), "message")
+  // The message's content blocks, empty when the record carries none.
+  const blocks = arrayFieldOf(message, "content")
+  // The joined payload text, filled from whichever shape this record uses.
   const parts: string[] = []
-  for (const block of blocks) {
+  // Whether the MESSAGE itself carries the tool facts, which is what makes this record v4.
+  const messageCarriesResult = fieldOf(message, "toolCallId") !== undefined || fieldOf(message, "isError") !== undefined
+  if (messageCarriesResult) {
+    for (const block of blocks ?? []) {
+      // A text block's own text, accepted only when it really is a string.
+      const text = stringFieldOf(block, "text")
+      if (text !== undefined) parts.push(text)
+    }
+    return {
+      toolCallId: stringFieldOf(message, "toolCallId"),
+      isError: fieldOf(message, "isError") === true,
+      text: parts.join("\n"),
+    }
+  }
+  // The v3 shape: the id, the flag and the payload all live on the `tool-result` content block.
+  let toolCallId: string | undefined
+  // The block-level error flag, false until a `tool-result` block sets it.
+  let isError = false
+  for (const block of blocks ?? []) {
     if (!recordIs(block, "tool-result")) continue
-    // The `tool-result` block's own content blocks, when it carries an array of them.
-    const innerBlocks = arrayFieldOf(block, "content")
-    for (const inner of innerBlocks ?? []) {
+    if (fieldOf(block, "isError") === true) isError = true
+    toolCallId = stringFieldOf(block, "toolCallId")
+    for (const inner of arrayFieldOf(block, "content") ?? []) {
       // The inner block's text, accepted only when it really is a string.
       const text = stringFieldOf(inner, "text")
       if (text !== undefined) parts.push(text)
     }
   }
-  return parts.join("\n")
+  return { toolCallId, isError, text: parts.join("\n") }
 }
 
 /**
@@ -414,15 +456,12 @@ export function findToolCall(events: SessionStore | readonly SessionRecord[], na
   const texts: string[] = []
   for (const record of list) {
     if (!recordIs(record, "tool/result")) continue
-    // The message content blocks of this result record, if it has any.
-    const blocks = arrayFieldOf(fieldOf(fieldOf(record, "data"), "message"), "content")
-    if (blocks !== undefined) {
-      for (const block of blocks) {
-        if (!recordIs(block, "tool-result")) continue
-        if (fieldOf(block, "isError") === true) errored.add(stringFieldOf(block, "toolCallId"))
-        texts.push(resultTextOf(record))
-      }
-    }
+    // This record's own result, read in whichever shape the harness wrote it (v3 block, or v4 message).
+    const result = recordedResultOf(record)
+    // Errors are keyed by CALL ID, so a failure pairs with its own call and can never taint another.
+    if (result.isError) errored.add(result.toolCallId)
+    // Only real payloads are joined in: an empty result contributes no separator to `resultText`.
+    if (result.text.length > 0) texts.push(result.text)
   }
   // Every result text the log carried, newline-joined for a caller's substring assertions.
   const resultText = texts.join("\n")
@@ -501,10 +540,10 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
    * Write one synthetic session store.
    * @param id Session id, which becomes the store directory name.
    * @param batches One frame's records, or a list of frames.
-   * @param options Compression and mtime knobs.
+   * @param options Compression, mtime and container-NAME knobs (the name carries the session version).
    * @returns The store directory that was written.
    */
-  const writeStore = (id: string, batches: ReadonlyArray<ReadonlyArray<Record<string, unknown>>> | ReadonlyArray<Record<string, unknown>>, options: { zstd?: boolean; mtimeSec?: number } = {}): string => {
+  const writeStore = (id: string, batches: ReadonlyArray<ReadonlyArray<Record<string, unknown>>> | ReadonlyArray<Record<string, unknown>>, options: { zstd?: boolean; mtimeSec?: number; name?: string } = {}): string => {
     // The store directory this fixture occupies.
     const dir = join(home, "sessions", projectKey(ws), id)
     mkdirSync(dir, { recursive: true })
@@ -524,8 +563,8 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
       const body = batch.map((l) => JSON.stringify(l)).join("\n") + "\n"
       return zstd ? zstdCompressSync(Buffer.from(body, "utf8")) : Buffer.from(body, "utf8")
     }))
-    // The artifact path, named the way the harness names it.
-    const file = join(dir, "session.v3.jsonl" + (zstd ? ".zstd" : ""))
+    // The artifact path, named the way the harness names it for this fixture's session version.
+    const file = join(dir, options.name ?? ("session.v3.jsonl" + (zstd ? ".zstd" : "")))
     writeFileSync(file, bytes)
     if (options.mtimeSec !== undefined) utimesSync(file, options.mtimeSec, options.mtimeSec)
     return dir
@@ -541,6 +580,17 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
   const resultRecord = (isError: boolean, text: string): Record<string, unknown> => ({
     type: "tool/result", seq: 3,
     data: { message: { content: [{ type: "tool-result", toolCallId: "c1", isError, content: [{ type: "text", text }] }] } }
+  })
+  /**
+   * Build a v4 `tool/result` record for the fixture call: the id, the flag and the payload on the
+   * MESSAGE, which is the shape the installed harness writes (field-for-field a live record).
+   * @param isError Whether the recorded result is an error.
+   * @param text The text the result's content block carries.
+   * @returns The record to append to a fixture frame.
+   */
+  const v4ResultRecord = (isError: boolean, text: string): Record<string, unknown> => ({
+    type: "tool/result", seq: 3,
+    data: { message: { role: "tool", source: { kind: "tool", callId: "c1" }, toolCallId: "c1", isError, id: "m1", content: [{ type: "text", text }] } }
   })
   try {
     if (!existsSync(join(home, "sessions"))) mkdirSync(join(home, "sessions"), { recursive: true })
@@ -596,6 +646,36 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
     if (!errored.reason.includes("ERROR")) fail("the errored reason must say the recorded result is an error")
     if (!existsSync(join(dir, "session.v3.jsonl"))) fail("the plain (uncompressed) store fixture was not written")
 
+    // V4 POSITIVE ARM: the shape the installed harness really writes. Reading only v3 left every v4
+    // payload as "" and is exactly why a real, successful `mcp__ast_grep__search` call was recorded
+    // `ok:false, resultChars:0` in evidence/dsh-qa/mcp-call/2026-09-27T23-25-27.334Z.
+    const v4dir = writeStore("session-v4", [
+      [{ type: "session", version: 4 }],
+      [callRecord],
+      [v4ResultRecord(false, "return 0;")],
+    ], { mtimeSec: 3_100, name: "session.v4.jsonl.zstd" })
+    // The v4 fixture's pairing verdict, which must find the call AND its payload text.
+    const v4 = findToolCall(readSessionEvents(home, { workspace: ws }), TOOL)
+    if (!v4.called || !v4.succeeded) fail("a v4 store's successful call must report succeeded=true")
+    if (v4.resultText !== "return 0;") fail("a v4 store's tool-result TEXT must be returned non-empty, saw " + JSON.stringify(v4.resultText))
+    if (!existsSync(join(v4dir, "session.v4.jsonl.zstd"))) fail("the v4 fixture was not written under the v4 store name")
+
+    // V4 NEGATIVE CONTROL: the SAME payload text with the message-level `isError: true` must never read
+    // as success. This arm fails when a reader takes the payload but ignores the flag — the defect that
+    // let a failed call be reported as "made and recorded". The text stays non-empty on purpose, so the
+    // flag is the only variable between this store and the positive arm above.
+    writeStore("session-v4-errored", [
+      [{ type: "session", version: 4 }],
+      [callRecord],
+      [v4ResultRecord(true, "return 0;")],
+    ], { mtimeSec: 3_200, name: "session.v4.jsonl.zstd" })
+    // The errored v4 fixture's verdict.
+    const v4errored = findToolCall(readSessionEvents(home, { workspace: ws }), TOOL)
+    if (v4errored.succeeded) fail("a v4 result flagged isError:true must report succeeded=false")
+    if (!v4errored.called) fail("a v4 errored result is still a recorded call")
+    if (v4errored.resultText !== "return 0;") fail("the errored v4 payload must still be returned, saw " + JSON.stringify(v4errored.resultText))
+    if (!v4errored.reason.includes("ERROR")) fail("the v4 errored reason must say the recorded result is an error")
+
     // A frame header cut mid-write (a crashed boot) is reported as torn, not thrown.
     const torn = writeStore("session-torn", [[{ type: "session", version: 3 }], [callRecord]], { mtimeSec: 3_500 })
     // The container file whose final frame is about to be truncated.
@@ -617,5 +697,5 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
   } finally {
     rmSync(home, { recursive: true, force: true })
   }
-  console.log("[session-evidence self-test] ok: multi-frame + plain stores, torn-frame reporting, call/result pairing, and both negative controls verified")
+  console.log("[session-evidence self-test] ok: v3 + v4 result shapes (v4 payload text non-empty, v4 isError:true refused), multi-frame + plain stores, torn-frame reporting, call/result pairing, and every negative control verified")
 }

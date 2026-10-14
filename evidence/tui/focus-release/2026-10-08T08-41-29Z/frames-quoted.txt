@@ -1,0 +1,69 @@
+LANE FOCUS / ESCAPE-RELEASE — the frames this lane's acceptance rests on, quoted VERBATIM.
+Every line below is copied from the file named above it; nothing is paraphrased.
+
+═══════════════════════════════════════════════════════════════════════════════════════════════════
+S-a · THE PRE-FIX REPRODUCTION (another session's team named by the keyed status row), from the
+      PREVIOUS lane's own real-PTY capture — no re-capture needed, and none is claimed.
+      File: evidence/tui/session-scope-and-push/2026-10-08T08-22-12Z/pty/P1-sidebar-other-session.txt
+═══════════════════════════════════════════════════════════════════════════════════════════════════
+  ── line 9  (the panel BODY, correctly scoped) ──
+no team in this session — `agent_teams_pl
+  ── line 10 (its informational count row — this is the row that USED to carry the scope token,
+              which is what made `workspace-level` match two of the three states) ──
+workspace-level: this workspace holds 1 t
+  ── line 37 (the KEYED STATUS ROW, naming the other session's team with no mark) ──
+  mpd: team OTHERBOARD 1·0/4 · plans 0 · workmates 0                                          ││                                         │
+
+═══════════════════════════════════════════════════════════════════════════════════════════════════
+F-b · THE PRE-FIX WALK (panel open → Escape → a typed command), SAME host, SAME recipe, swallowed.
+      File: evidence/tui/session-scope-and-push/2026-10-08T08-22-12Z/pty/run.log
+═══════════════════════════════════════════════════════════════════════════════════════════════════
+[08:23:11] --- [5] re-opening the full-screen scene for the CALLING session
+[08:24:41] scene NOT rendered in 90s
+  (and `evidence/tui/live-refresh/2026-10-08T07-32-09Z/` is where the defect was first measured: after
+   `/mpd panel`, commands typed afterwards never reached the command registry.)
+
+═══════════════════════════════════════════════════════════════════════════════════════════════════
+POST-FIX, THIS LANE — one boot, host 0.14.0, dist sha256 7d2f5d2a7d9437cd7c09e20cdf3d90e031b941992ae55e87fd72a539c103d2be
+      File: evidence/tui/focus-release/2026-10-08T08-41-29Z/pty/run.log (attempt 2, 08:43:32 → 08:44:05)
+═══════════════════════════════════════════════════════════════════════════════════════════════════
+  ── [1] `/mpd panel` opened over the OTHER session's board ──
+[08:43:51] P1 panel-body marker : 1 occurrence(s)
+[08:43:51] P1 status row        : mpd: team OTHERBOARD 1·0/4 (workspace-level) · plans 0 · workmates 0                        ││                                         │
+[08:43:51] P1 status marker     : 1 occurrence(s) on the row
+  ── [2] the FOCUS PRECONDITION: the page really holds the keyboard, so [3] means something ──
+[08:43:53] P2 composer row      : ⌸ ❯                                                                                        ⛶││                                         │
+[08:43:53] P2 PRECONDITION HELD: 'j' was consumed by the page; the composer is still empty
+  ── [3] Escape with NOTHING pinned, then a typed command: half 1 (keystrokes) and half 2 (registry) ──
+[08:43:55] P3 status row        : mpd: team OTHERBOARD 1·0/4 (workspace-level) · plans 0 · workmates 0                        ││                                         │
+[08:43:57] P3b composer row     : ⌸ ❯ /mpd team                                                                              ⛶││                                         │
+[08:43:57] F-b HALF 1 PASS: the typed text appears in the CHAT composer — the keyboard is back
+[08:43:58] F-b HALF 2 PASS: the command REGISTRY answered — the full-screen scene rendered
+[08:44:01] P4 scene marker      : 1 occurrence(s)
+[08:44:01] P4 other-name count  : 0 occurrence(s)
+[08:44:01] P4 state-2 rows      : marker=1 count=1 scope-token=0
+  ── [4] the status command answers, carrying the SAME marked sentence (plus the state mark `○`) ──
+[08:44:03] STEP 4 PASS: '/mpd status' answered with the MARKED row — the keyboard is back on the composer
+[08:44:05] P6 status output     : mpd: team OTHERBOARD 1·0/4 (workspace-level) · plans 0 · workmates 0 ○ ││                                         │
+
+  ── the SCENE the typed command opened, quoted from pty/P4-command-reached.txt ──
+  ┌○ MPD team · 136x42───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ ○ MPD team — (none) · 136x42                                                                                                         │
+  │ no team in this session — stage one with agent_teams_plan, then approve it                                                           │
+  │ this workspace holds 1 team(s), none bound to this session                                                                           │
+  (three facts in one frame: the COMMAND REACHED THE REGISTRY, the scene is scoped to the CALLING
+   session (`no team in this session`), and state 2 carries NO `workspace-level` token — `scope-token=0`.)
+
+═══════════════════════════════════════════════════════════════════════════════════════════════════
+THE FIRST ATTEMPT (08:42), KEPT ON PURPOSE — a FALSE NEGATIVE OF THE INSTRUMENT, not of the fix.
+      File: evidence/tui/focus-release/2026-10-08T08-41-29Z/pty/run.log (attempt 1, 08:41:46 → 08:43:06)
+═══════════════════════════════════════════════════════════════════════════════════════════════════
+[08:42:58] F-b FAIL: the scene did NOT render in 45s — the command was swallowed again
+[08:43:02] P4 scene marker      : 0 occurrence(s)
+[08:43:02] P4 status row        : 
+  The attempt-1 script waited for the string `task dependency graph`, which only a board-DRAWING scene
+  carries. This session has no team of its own (the only board on disk belongs to `sess-other`), so the
+  scene it correctly opened renders the session-empty state and no DAG — the frame captured at 08:43:01
+  IS that scene (`┌○ MPD team · 136x42`), and `P4 status row` is empty because the full-screen scene
+  covers the keyed row. The marker was corrected to the scene's own header and the arm re-run; both runs
+  and both scripts' logic stay in this directory. No assertion anywhere rests on attempt 1's verdict.

@@ -1,0 +1,116 @@
+{
+  "slug": "tui-mount",
+  "ok": true,
+  "steps": {
+    "face": {
+      "ok": true,
+      "layering": {
+        "ok": true,
+        "missing": [],
+        "ordered": true,
+        "bundles": [
+          "@deepseek-ai/dsh-base",
+          "@deepseek-harness-tui/dsh-tui",
+          "@mpd-dsh/mpd"
+        ],
+        "reason": "triple layer in order"
+      },
+      "crashSignatures": [],
+      "statusLine": true,
+      "counters": true,
+      "rendered": true,
+      "presetSessionId": "b40ec9e6-317d-4b7e-8a4b-25622fcb9e59",
+      "presetAgentPreset": "mpd",
+      "rowComposed": true,
+      "homeFixture": {
+        "onboarding": {
+          "completed": true,
+          "version": 1
+        },
+        "preset": "mpd",
+        "evidence": [
+          ".mpd/recon/qa/tui-lanes/tui-014b/home/.dsh-tui/onboarding.json",
+          ".mpd/recon/qa/tui-lanes/tui-014b/home/.dsh-tui/agent-preset.json"
+        ]
+      },
+      "launchpadGate": {
+        "key": "DSH_TUI_NO_LAUNCHPAD",
+        "value": "1"
+      },
+      "isolationOffenders": [],
+      "sessionKeysCreated": [],
+      "sessionKeysInherited": [
+        "--root-dshProj-My-Power-Dsh-.mpd-recon-qa-tui-lanes-tui-014b-ws--"
+      ],
+      "expectedProjectKey": "--root-dshProj-My-Power-Dsh-.mpd-recon-qa-tui-lanes-tui-014b-ws--",
+      "sandboxSessions": 15,
+      "sandboxRoot": "/root/dshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/tui-014b",
+      "layeringEvidence": "dump-config.txt",
+      "paneEvidence": "boot.pane.txt + tui-pane.log",
+      "presetEvidence": "preset.pane.txt + preset.session.json + evidence/tui/lanes/2026-10-08T04-04-38.297Z/preset.session.json"
+    },
+    "rowComposed": true,
+    "isolation": []
+  },
+  "face": {
+    "ok": true,
+    "layering": {
+      "ok": true,
+      "missing": [],
+      "ordered": true,
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-harness-tui/dsh-tui",
+        "@mpd-dsh/mpd"
+      ],
+      "reason": "triple layer in order"
+    },
+    "crashSignatures": [],
+    "statusLine": true,
+    "counters": true,
+    "rendered": true,
+    "presetSessionId": "b40ec9e6-317d-4b7e-8a4b-25622fcb9e59",
+    "presetAgentPreset": "mpd",
+    "rowComposed": true,
+    "homeFixture": {
+      "onboarding": {
+        "completed": true,
+        "version": 1
+      },
+      "preset": "mpd",
+      "evidence": [
+        ".mpd/recon/qa/tui-lanes/tui-014b/home/.dsh-tui/onboarding.json",
+        ".mpd/recon/qa/tui-lanes/tui-014b/home/.dsh-tui/agent-preset.json"
+      ]
+    },
+    "launchpadGate": {
+      "key": "DSH_TUI_NO_LAUNCHPAD",
+      "value": "1"
+    },
+    "isolationOffenders": [],
+    "sessionKeysCreated": [],
+    "sessionKeysInherited": [
+      "--root-dshProj-My-Power-Dsh-.mpd-recon-qa-tui-lanes-tui-014b-ws--"
+    ],
+    "expectedProjectKey": "--root-dshProj-My-Power-Dsh-.mpd-recon-qa-tui-lanes-tui-014b-ws--",
+    "sandboxSessions": 15,
+    "sandboxRoot": "/root/dshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/tui-014b",
+    "layeringEvidence": "dump-config.txt",
+    "paneEvidence": "boot.pane.txt + tui-pane.log",
+    "presetEvidence": "preset.pane.txt + preset.session.json + evidence/tui/lanes/2026-10-08T04-04-38.297Z/preset.session.json"
+  },
+  "revision": {
+    "path": "packages/mpd-tui-plugin/dist/index.js",
+    "sha256": "32fe62b445929552e40a5bfbed7a1b11a3196bdbb8dbcec973a942fed54b5cfe",
+    "bytes": 379623,
+    "mtimeLocal": "2026-10-08T03:24:17.164Z",
+    "mtimeUtc": "2026-10-08T03:24:17.164Z"
+  },
+  "revisionDelta": {
+    "changed": false,
+    "before": "32fe62b445929552e40a5bfbed7a1b11a3196bdbb8dbcec973a942fed54b5cfe",
+    "after": "32fe62b445929552e40a5bfbed7a1b11a3196bdbb8dbcec973a942fed54b5cfe",
+    "reason": "unchanged across the run"
+  },
+  "manifestDigest": "00884651369f45999b66ef1798cc9a9633ade7799cbcfb3c53c80a8c617198bb"
+}

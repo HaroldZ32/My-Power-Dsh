@@ -1,0 +1,6 @@
+ packages/mpd-hashline-plugin/dist/index.js       | 151 +++++++++++-
+ packages/mpd-hashline-plugin/src/index.ts        |  37 ++-
+ packages/mpd-hashline-plugin/src/vendor/edits.ts | 302 +++++++++++++++++++++--
+ packages/mpd-hashline-plugin/src/vendor/index.ts |   2 +-
+ packages/mpd-hashline-plugin/src/vendor/types.ts |  20 +-
+ 5 files changed, 479 insertions(+), 33 deletions(-)

@@ -54,16 +54,16 @@ import { AMBIGUOUS_MULTI_ROOT_NOTICE, NO_LIVE_SESSION_NOTICE, readBoardState } f
 import { registerStatus } from "./status.js"
 import { registerRenderers } from "./renderers.js"
 import { registerSettingsSection } from "./settings.js"
-import { DASHBOARD_TAKEOVER_KNOB } from "./settings.js"
+import { DASHBOARD_TAKEOVER_KNOB, markVolatile, wheelInvertFrom } from "./settings.js"
+import { setWheelInvertRead } from "./panel-core.ts"
 import { readDashboardWorkflow, registerDashboardKey } from "./dashboard-key.js"
 import { registerPanelSurface, takeoverArmed } from "./panel.js"
 import type { PanelOpenOutcome } from "./panel.js"
 import { requestSubagentDetail, takeSubagentDetailRequest } from "./subagent-scene.js"
-import { registerDagPanel } from "./panel-dag.js"
 import { registerWorkmatePanel } from "./panel-workmate.js"
 import { boardSummary, registerScene, type PlanActionOutcome, type PlanActions } from "./scenes.js"
 import { readPlanView, type MpdPlanView } from "./team-state.js"
-import { liveTeamViews, mpdTeamRecords, type MpdTeamsLike } from "./team-state.js"
+import { liveTeamViews, mpdTeamRecords, type MpdTeamsLike, type TeamFeedAccessor, type TeamFeedSubscribe, type TeamFeedSubscribeMember, type TeamSourceDeps } from "./team-state.js"
 import type { TeamRecord } from "../../mpd-team-core-plugin/src/team-store.js"
 import type { DshLiveAgent, DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import { registerCommandTrees } from "./command-trees.js"
@@ -105,6 +105,15 @@ export type Config = {
    */
   panel?: boolean
   /**
+   * Contribute the WORKMATE sidebar page (dsh-tui 0.13.0+).
+   *
+   * ITS OWN KNOB, independent of `panel`: the two MPD pages toggle apart, so turning the MPD page off
+   * does not take the workmate page with it (and vice versa). With it off the page is never registered
+   * and the library stays reachable through the full-screen board scene — the same declared fallback the
+   * MPD page keeps. Restart-scoped, like every row-config knob.
+   */
+  workmate?: boolean
+  /**
    * Enable the Ctrl+A takeover — MEANINGFUL ON OLD dsh-tui BUILDS ONLY.
    *
    * On a host WITHOUT the sidebar panel seam (every dsh-tui before 0.13.0) the takeover intercepts
@@ -116,6 +125,16 @@ export type Config = {
    * row) outranks it per press.
    */
   dashboardKey?: boolean
+  /**
+   * Invert the wheel's vertical sign on every panel and scene this row draws.
+   *
+   * The host derives a wheel event's `deltaY` from the terminal's own wheelup/wheeldown bits, so which
+   * direction a wheel reports is a property of the terminal / multiplexer / OS and arrives reversed on
+   * some machines. This key is the FLOOR of the toggle: a saved `tui.wheelInvert` in the workspace's
+   * `.mpd/mpd.jsonc` outranks it, read through the same `mpdConfig` service the Ctrl+A toggle uses.
+   * `false` — today's behaviour — is the default, so an unconfigured composition is unchanged.
+   */
+  wheelInvert?: boolean
   /** Append the log-only board-opened session record (only when verified safe). */
   sessionEvents?: boolean
   /** Attempt the mediated DecisionEvents registration (expected: refused). */
@@ -129,7 +148,13 @@ export type Config = {
  * `Dict` under a virtual path, which is not portable in declaration emit; the
  * global `Schemastery` interface comes from schemastery's own declarations.
  */
-export const Config: Schemastery<Config> = z.object({
+// VOLATILE — and THAT FLAG is what puts these knobs in the harness's `/settings` dialog. The
+// harness's own volatile-form walk of `schema.meta.volatile` (measured out of the installed
+// `dsh-settings@0.1.7-rc.2`) skips an entry whose schema carries NO volatile node, so it is not listed at all.
+// Without it `panel` / `workmate` — the two sidebar-page switches — were invisible to the user, which is
+// what made the pages feel un-toggleable. A save writes the ENTRY CONFIG, which the loader validates
+// against THIS schema at the next boot, so the two checkboxes decide the next boot's pages.
+export const Config: Schemastery<Config> = markVolatile(z.object({
   statusLine: z.boolean().default(true),
   statusIntervalMs: z.number().default(3000),
   renderers: z.boolean().default(true),
@@ -140,11 +165,17 @@ export const Config: Schemastery<Config> = z.object({
   shortcuts: z.boolean().default(true),
   dialogs: z.boolean().default(true),
   panel: z.boolean().default(true),
+  // The SECOND sidebar page's OWN knob (the workmate page), INDEPENDENT of `panel` so the two MPD
+  // pages can be toggled apart. A disabled page is never registered at all, which is what makes the
+  // switch stick: nothing — not the runtime enable keeper, not the config re-apply — can resurrect a
+  // panel that was never registered.
+  workmate: z.boolean().default(true),
   dashboardKey: z.boolean().default(true),
+  wheelInvert: z.boolean().default(false),
   sessionEvents: z.boolean().default(true),
   decisionEvents: z.boolean().default(true),
   logPrefix: z.string().default("mpd-tui"),
-})
+}))
 
 /** A config with every key resolved (nothing optional left). */
 export interface ResolvedConfig {
@@ -166,10 +197,14 @@ export interface ResolvedConfig {
   shortcuts: boolean
   /** Whether the mediated dialog facade is enabled. */
   dialogs: boolean
-  /** Whether the sidebar panel surface is contributed and the merged-view opens route through it. */
+  /** Whether the MPD sidebar page is contributed and the merged-view opens route through it. */
   panel: boolean
+  /** Whether the workmate sidebar page is contributed — its OWN knob, independent of `panel`. */
+  workmate: boolean
   /** Whether the Ctrl+A takeover may intercept at all (the per-press floor of the toggle). */
   dashboardKey: boolean
+  /** Whether the wheel's sign is inverted (the floor of the `tui.wheelInvert` knob; false = today). */
+  wheelInvert: boolean
   /** Whether the log-only board-opened record may be appended. */
   sessionEvents: boolean
   /** Whether the mediated decision-event registration is attempted. */
@@ -199,7 +234,11 @@ export function resolveConfig(config: Config = {}): ResolvedConfig {
     shortcuts: bool(config.shortcuts, true),
     dialogs: bool(config.dialogs, true),
     panel: bool(config.panel, true),
+    workmate: bool(config.workmate, true),
     dashboardKey: bool(config.dashboardKey, true),
+    // TODAY'S BEHAVIOUR IS THE DEFAULT: `false` means the raw host delta is used unchanged, which is what
+    // every wheel path did before this knob existed. Only a deliberate configuration inverts it.
+    wheelInvert: bool(config.wheelInvert, false),
     sessionEvents: bool(config.sessionEvents, true),
     decisionEvents: bool(config.decisionEvents, true),
     logPrefix: typeof config.logPrefix === "string" && config.logPrefix.length > 0 ? config.logPrefix : "mpd-tui",
@@ -462,6 +501,54 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
   })
   /** The mpd team records for the CURRENT workspace, resolved per call; `[]` when the row is absent. */
   const teamRecords = (): readonly TeamRecord[] => mpdTeamRecords(teamsService, workspaceRoot())
+  // ── THE PUBLISHED FEED, and the ONE subtlety that makes it work (PART P) ────
+  // A surface subscribes from an EFFECT, so the accessor it is handed must return a STABLE function
+  // while the service is bound: a closure rebuilt on every render would re-subscribe on every frame —
+  // tearing down and rebuilding the subscription the watcher counts its lifetime by. The service binds
+  // ASYNCHRONOUSLY (the deferred `onService` above), so the accessor is asked again on every render and
+  // must start answering `undefined` and then flip to the same function for the rest of the session.
+  /** The subscribe function this row published, kept for the whole binding. */
+  let feedClosure: TeamFeedSubscribe | undefined
+  /** The service object `feedClosure` was minted against, so a REBOUND service mints a new one. */
+  let feedClosureFor: MpdTeamsLike | undefined
+  /**
+   * Resolve the live team feed for the CALLING session's workspace, per call.
+   * @returns the stable subscribe function while `mpdTeams` is bound, else undefined.
+   */
+  const teamFeed: TeamFeedAccessor = (): TeamFeedSubscribe | undefined => {
+    /** Whether the team row is bound AND carries the feed member (the Lane S interface). */
+    const bound = teamsService !== undefined && typeof teamsService.subscribe === "function"
+    if (!bound) {
+      // A service that went away (or never arrived) releases the closure, so a later re-bind mints a
+      // fresh one instead of handing out a function that would subscribe to nothing.
+      feedClosure = undefined
+      feedClosureFor = undefined
+      return undefined
+    }
+    // THE IDENTITY IS PART OF THE KEY: a re-bound service object must not be handed a closure that
+    // still calls the OLD instance's `subscribe` — the workspace would be watched on a dead writer.
+    if (feedClosure === undefined || feedClosureFor !== teamsService) {
+      /** The bound service, narrowed once so the closure below cannot read a rebound variable. */
+      const service = teamsService as MpdTeamsLike & { subscribe: TeamFeedSubscribeMember }
+      feedClosure = (listener: () => void): (() => void) => {
+        try {
+          // THE WORKSPACE IS RESOLVED AT SUBSCRIBE TIME (inside this call), never at apply: one host
+          // serves many sessions with different workspaces, and §6 forbids caching the root.
+          return service.subscribe(workspaceRoot(), listener) ?? ((): void => {})
+        } catch {
+          // A feed that throws costs the push, never the surface: the caller gets a dead disposer.
+          return (): void => {}
+        }
+      }
+      feedClosureFor = teamsService
+    }
+    return feedClosure
+  }
+  /** The session-scoped team reads every scene needs, resolved per call. */
+  const sceneTeamDeps: TeamSourceDeps = {
+    teams: () => teamsService,
+    subscribeTeams: teamFeed,
+  }
   // THE SHARED PLAN READER. The service face is the SAME projection the Web panel's `/plan` route
   // serves, so the two surfaces cannot disagree about what is staged or what phrase the gate demands.
   // The workspace is resolved per CALL (§6) and the session id comes from the scene's own live channel.
@@ -514,6 +601,27 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
     configHandle = service as { states?: () => { writeback?: { skipped?: string } | null }; get?: (key?: string) => unknown }
   })
 
+  // THE WHEEL-DIRECTION READER (contract D2). Installed unconditionally, BEFORE any page can render, so
+  // every wheel path in `panel-core.ts` and `scenes.ts` resolves the SAME setting through the ONE
+  // normalisation helper. It is a READER rather than a sampled value because `mpdConfig` binds through a
+  // deferred inject and can land after this row applies — and it reads the RAW merged layer stack
+  // (`get()` with no key), which is where `<workspace>/.mpd/mpd.jsonc`'s `tui.wheelInvert` lands. A
+  // composition without `mpdConfig` therefore keeps the row config's own floor, whose default is today's
+  // behaviour; a row-private adapter used in a unit test also leaves the process default untouched.
+  //
+  // THE THROW IS CONTAINED HERE, WHERE THE FLOOR IS IN SCOPE (repair round R1, CodeRabbit PR #35).
+  // `wheelInvertOn()` catches a throwing reader and clamps to `false` (today's behaviour), so a config
+  // layer that throws on `get()` — a bridge whose workspace resolution blew up, a reshaped service —
+  // would silently disable a knob the ROW CONFIG (or a saved `tui.wheelInvert`) had turned ON. Catching it
+  // at this boundary keeps the debuggable part of the setting: the row's own `resolved.wheelInvert`.
+  setWheelInvertRead((): boolean => {
+    try {
+      return wheelInvertFrom(configHandle?.get?.(), resolved.wheelInvert)
+    } catch {
+      return resolved.wheelInvert
+    }
+  })
+
   // The watchdog front door's notice is composed into the SAME status value as the bridge notice
   // (w6): a held team and an unread-incident replay are line content, not a constant nobody renders.
   // It is built BEFORE the status seam so the FIRST publish already carries it; the acknowledge
@@ -557,6 +665,10 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
         // reports the kit per render and the adapter prefers it — so the Ctrl+A take-over arms once
         // an MPD scene has rendered in the session and stays inert before that.
         (ui: unknown) => tui.rememberHostKit(ui),
+        // THE SESSION-SCOPED TEAM READS (PARTS D and P). Every scene resolves its OWN session id off
+        // its live channel and asks this row for the team of THAT session; the feed below re-reads it
+        // the instant the team state changes. The timers stay as the fallback.
+        sceneTeamDeps,
       )
     : {
         ...skipped("scenes", "disabled by config"),
@@ -566,22 +678,46 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
         openPlan: () => false,
         openSubagents: () => false,
       }
-  // ── the sidebar panel (dsh-tui 0.13.0, frozen R2/R3) ─────────────────────
-  // ONE panel, carrying the SAME merged view the full-screen scene draws: the host's curated
-  // `host.snapshot().subagents` rows FIRST, then the MPD dependency DAG. The two surfaces share one
-  // `readWorkflow` closure, so they cannot describe one team differently, and the descriptor is the
-  // frozen one (`id: "team"`, `title: "MPD"`, `minColumns: 32`, `order: 10`, no icon, no `compact`).
-  // Registering it is safe on every host build: the adapter's deferred binder queues the call until
-  // the seam binds and settles it as `absent` where the host has no panel seam at all.
+  // ── the sidebar's TWO panels (frozen clause C3) ──────────────────────────
+  // EXACTLY TWO, and the collapse is named here because it is the clause's whole subject: the MPD panel
+  // (the rich DAG page, with the host's curated `host.snapshot().subagents` rows drawn ABOVE the drawing
+  // inside its frame) and the workmate page. The standalone merged page and the standalone DAG page do
+  // not both survive — ONE descriptor (`id: "team"`, `title: "MPD"`, icon `❖`, `order: 10`), ONE slug and
+  // ONE ordered position remain, and the merged slot now RENDERS the DAG page's rich component (see
+  // `panel.ts`'s `createPanelComponent`).
+  //
+  // WHY THE SLOT AND NOT THE DAG's OWN REGISTRATION SURVIVED: this seam owns the ONE routed open with its
+  // four outcomes and its refusal path, and `/mpd panel`, `/mpd subagents`, `/mpd dag`, `alt+a` and the
+  // Ctrl+A contact all already route through it. Keeping the route while replacing what it renders is what
+  // makes it impossible for a user-visible entry point to become a dead end.
+  //
+  // The host budgets a plugin at FOUR panels (`MAX_PANELS_PER_PLUGIN` in `lib/types/dsh-adapter/panels.js`)
+  // and this row now contributes TWO, so the budget is met with room to spare.
+  // Registering is safe on every host build: the adapter's deferred binder queues the call until the seam
+  // binds and settles it as `absent` where the host has no panel seam at all.
   const panel = registerPanelSurface(tui, {
     enabled: resolved.panel,
     // The panel reads the SAME projection the Ctrl+A contact reads (`readDashboardWorkflow`, the
     // scenes' own reader in its agentless form), so the sidebar and the full-screen scene cannot
-    // describe one team differently.
-    readWorkflow: () => readDashboardWorkflow(workspaceRoot, () => watchdogFrontDoor.view().holds, teamViews, teamRecords),
+    // describe one team differently. IT TAKES A SESSION ID (PART D): the DAG page reads its own
+    // session off `host.snapshot().sessionId` and passes it here, which is what stops a NEW session
+    // from drawing the OLD session's board. A call with no id is the marked workspace-level fallback.
+    readWorkflow: (sessionId?: string) => readDashboardWorkflow(workspaceRoot, () => watchdogFrontDoor.view().holds, teamViews, teamRecords, () => teamsService, sessionId),
+    // THE PUSH (PART P): the page subscribes while mounted and re-reads the new record; the tick stays.
+    subscribeTeams: teamFeed,
     // THE FALLBACK IS THE EXISTING SURFACE, never a silent no-op: every refusal lands on the scene
     // this wave must not lose (frozen R4/R5).
     openMergedScene: () => scene.openSubagents(),
+    // THE `⤢` CONTROL'S OWN SURFACE (frozen clause C5): the rich team scene, chosen by the ONE property
+    // the clause names — the reader must not fall from a rich page into a bare one. `scenes.ts`'s team
+    // scene draws the DAG, the composed legend, the focused task's detail pane (the pin's full-screen
+    // form), the key hints and the frame, which is the grammar this page draws with; the merged subagents
+    // scene stays the ROUTE's fallback below, where it is the honest answer.
+    openFullscreenScene: () => scene.openTeam(),
+    // THE SECOND CLICK ON A PINNED TASK rides the page this slot now renders, so its dep is forwarded
+    // here. An arrow rather than the binding itself because `openAgentPage` closes over the scene handle
+    // declared below; the option is read at render time, long after this line has run.
+    openAgentPage: (agentId: string): boolean => openAgentPage(agentId),
     log,
   })
   // ── the agent work page (AC6, scene side) ────────────────────────────────
@@ -601,34 +737,23 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
     log.debug(`openAgentPage(${agentId}): no subagent scene is reachable here; the request was cleared`)
     return false
   }
-  // ── the two INDEPENDENT pages (frozen R1/R12) ────────────────────────────
-  // The DAG page and the workmate page are their own panels, registered through the SAME adapter and
-  // fed by the SAME projections the merged panel uses, so three surfaces cannot describe one team or
-  // one library differently. The host budgets a plugin at FOUR panels (host `MAX_PANELS_PER_PLUGIN`
-  // in `lib/types/dsh-adapter/panels.js`), and this row now contributes THREE (team, dag, workmate) —
-  // inside the budget with one slot to spare. Each slug is a single lowercase word (`dag`,
-  // `workmate`), which is what the host's own `SUB_ID_PATTERN` requires before it prefixes the id.
+  // ── the ONE remaining independent page (frozen R12) ──────────────────────
+  // The workmate page is a panel of its own, registered through the SAME adapter and fed by the SAME
+  // projections the MPD panel uses, so two surfaces cannot describe one library differently. The DAG
+  // page's own registration is GONE: it merged into the MPD panel above (clause C3), and its slug,
+  // descriptor and order collapsed with it — a second registration would be the "both survive" the clause
+  // forbids, and the adapter's recorded id set is DISCOVERED from what actually registers, so it records
+  // the two surviving ids rather than three.
   //
-  // A HOST THAT CANNOT SERVE A PANEL STILL GETS A SURFACE: each page's `openScene` fallback is the
-  // existing full-screen view that already carries this content (the merged subagents scene, the
-  // board), never a silent no-op — the same rule the merged panel follows.
-  const dagPanel = registerDagPanel(tui, {
-    enabled: resolved.panel,
-    readWorkflow: () => readDashboardWorkflow(workspaceRoot, () => watchdogFrontDoor.view().holds, teamViews, teamRecords),
-    openScene: () => scene.openSubagents(),
-    // The page's own `⤢` control calls THIS, and it is deliberately the same full-screen surface the
-    // `openScene` fallback above names: one route, so the button and the fallback cannot part ways.
-    openFullscreen: () => scene.openSubagents(),
-    // The page's own "open that member's work page" route. `panel-dag.ts` forwards it into the page's
-    // component; the boolean is the page's own answer and the reason it can say "no page was reached"
-    // instead of pretending it opened one.
-    openAgentPage,
-    log,
-  })
+  // A HOST THAT CANNOT SERVE A PANEL STILL GETS A SURFACE: this page's `openScene` fallback is the
+  // existing full-screen board view, never a silent no-op — the same rule the MPD panel follows.
   // The workmate page: the durable library under the user's HOME, with the board scene (which already
   // lists it) as the full-screen surface for a host that cannot serve a panel.
   const workmatePanel = registerWorkmatePanel(tui, {
-    enabled: resolved.panel,
+    // ITS OWN KNOB (independent of `panel`): turning the MPD page off must not take the workmate page
+    // with it, and vice versa. Restart-scoped, like every row-config knob — the registration happens at
+    // apply, and a page that is never registered cannot be re-added by the runtime enable keeper.
+    enabled: resolved.workmate,
     // The library lives under the user's HOME and is resolved per read, never cached at apply.
     home,
     // The board scene is the full-screen surface that lists the library.
@@ -768,12 +893,16 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
           const route = openMergedPanel()
           return { outcome: route.outcome, id: route.id }
         },
-        // `/mpd dag` and `/mpd workmate`: the two independent pages (frozen R1/R12) reach the SAME
-        // arbitrated route as `alt+a`, so a host without a usable panel seam lands on each page's own
-        // full-screen surface instead of nothing.
+        // `/mpd dag` and `/mpd workmate`: BOTH still resolve a LIVE surface (clause C3's no-dead-end
+        // constraint). `/mpd dag` re-aims onto the MPD panel — the DAG page IS that panel now, so the
+        // route reaches the very page it names rather than a second registration of it — and `/mpd
+        // workmate` keeps the page that did not merge.
         openDag: () => {
-          /** How the routed open of the DAG page ended. */
-          const route = openPage(dagPanel)
+          // THE SAME ARBITRATION, WITH THIS PAGE'S OWN FALLBACK: the panel when the host serves it, else
+          // the surface that carries the DAG page's appearance (C5) rather than the one that carries the
+          // host's rows. `openPage` is the existing helper, so this route cannot drift from the others.
+          /** How the routed open of the MPD panel ended: the DAG page lives inside it. */
+          const route = openPage({ id: (): string | undefined => panel.id(), openScene: (): boolean => scene.openTeam() })
           return { outcome: route.outcome, id: route.id }
         },
         openWorkmate: () => {
@@ -808,6 +937,28 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
     ? attemptDecisionEvents(ctx, tui, log)
     : { ...skipped("pluginHost", "disabled by config"), attempts: () => [] }
 
+  // ── the one outcome the seam itself CANNOT disclose ───────────────────────
+  // `decisions.ts` states its verdict from inside `tui.whenBound("pluginHost", …)`, which by
+  // construction never runs when the mediated host is absent — so the unbound case was SILENT
+  // (T16-OBS: no mpd-tui line named it at all). It is stated here, ONCE, from the aggregate the
+  // seam itself computed.
+  //
+  // THE WORDING IS AN OBSERVATION, NOT A VERDICT, and here is the measurement that forces it
+  // (lane `tui-admission`, 0.15.0, `ws/.mpd/logs/mpd-tui.log`): the row applies BEFORE the
+  // adapter's deferred `ctx.inject(["tuiPluginHost"], …)` callback runs, so `absent` here means
+  // "not bound YET" in a healthy boot — the very next lines carry the seam's own disclosure once
+  // the host binds. Claiming `ABSENT` would be the same trap the triage report flagged for
+  // `TUI_SEAMS=(none composed)`: a synchronous read inside `apply` cannot see a later bind. A host
+  // that NEVER binds leaves exactly this line, which is the case it exists for.
+  /** The decision seam's aggregate verdict, read once so the line below cannot quote two reads. */
+  const decisionOutcome = decisions.outcome()
+  if (decisionOutcome.state === "absent") {
+    log.info(
+      `decision-event seam: no intercept point attempted — ${decisionOutcome.detail ?? "the mediated plugin host was not injected"} ` +
+        "(read at apply time; the seam discloses its own verdict once it binds)",
+    )
+  }
+
   record(status)
   record(renderers)
   record(settings)
@@ -818,11 +969,10 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
   // this row does not carry — see `PanelRegistrationHandle.id`).
   outcomes.push({ id: "panel", outcome: panel.outcome() })
   log.debug(`sidebar panel id: ${panel.id() ?? "(not discovered)"}`)
-  // The two PAGES report under their own names for the same reason: `panel.id()` names one discovered
-  // host id, and each page composes a DIFFERENT one (`<pluginId>:dag`, `<pluginId>:workmate`), so a
-  // single line could not tell an operator which page the host actually admitted.
-  outcomes.push({ id: "dagPanel", outcome: dagPanel.outcome() })
-  log.debug(`sidebar DAG page id: ${dagPanel.id() ?? "(not discovered)"}`)
+  // The workmate page reports under its own name for the same reason: `panel.id()` names one discovered
+  // host id and this page composes a DIFFERENT one (`<pluginId>:workmate`), so a single line could not
+  // tell an operator which page the host actually admitted. The DAG page's own entry is gone with its
+  // registration: its id would now be the SAME `<pluginId>:team` the `panel` entry already reports.
   outcomes.push({ id: "workmatePanel", outcome: workmatePanel.outcome() })
   log.debug(`sidebar workmate page id: ${workmatePanel.id() ?? "(not discovered)"}`)
   // The takeover ROLE is reported under its own name (it rides the status seam, which reports

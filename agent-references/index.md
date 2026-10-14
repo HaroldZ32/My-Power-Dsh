@@ -15,6 +15,7 @@ keep their `§N` provenance lines as historical citations of the repository manu
 | File | Holds |
 |---|---|
 | `troubleshooting.md` | the full symptom → cause/fix table (former `AGENTS.md` §12 body) |
+| `repository-layout.md` | the map of `AGENTS.md` §3 (the tree moved there VERBATIM 2026-10-08 by the wave E instruction-budget split): every root entry, every `packages/<dir>` and what each one owns |
 | `verification-flow.md` | the ordered verification flow behind `AGENTS.md` §4/§11 — AND the former §4 body verbatim (the full gate table with every per-row measurement): what each gate is worth, why the Docker real-machine lane is the LAST step, and the measured rootless / skip / `--require-docker` policy |
 | `seam-adapters.md` | the TWO contact surfaces in detail (`AGENTS.md` §6): the harness adapter and the DSH-TUI adapter, the fifteen `tui*` seams (the fourteen dsh-tui has exposed since 0.12.0, plus the `tuiPanels` sidebar registry 0.13.0 added) with their binder/probe/degrade discipline, the R5 "no terminal writes" rule and its gates, the declared WEB-plane residual, and the upstream panel-seam ask (ANSWERED for the sidebar by 0.13.0, still open for the dashboard) |
 | `upstream-dsh-tui-seam-request.md` | the upstream ask drafted from this bundle's DSH-TUI seam work |

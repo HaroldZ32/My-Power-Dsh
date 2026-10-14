@@ -20,6 +20,11 @@
 #   tui.presetRow        the `preset-mpd` row is composed in the TUI plane
 #   tui.mpdTuiRow        the bundle's `mpd-tui` row is composed
 #   tui.agentTeamRows    the three official Agent Teams rows are composed
+#   tui.teamFixtureBound the seeded board is BOUND to the live session the TUI runs as — BOTH spellings
+#                        the product's own `createTeam` writes — BEFORE any scene arm judges a drawing
+#   tui.teamSceneOtherSessionInvisible  a session with NO bound board draws the product's OWN
+#                        empty-state marker and does NOT draw the board a SIBLING session owns; the row
+#                        is null (never a pass) when this boot found no sibling session to bind
 #   tui.teamSceneOpened  the /mpd team scene opens on a real terminal
 #   tui.teamGraphDrawn   the team DAG BOXES are drawn, one per task the record carries (the ROUNDED
 #                        corner census equals that count; the square corners are the scene FRAME's)
@@ -55,10 +60,11 @@ STATE_FILE="${STATE_FILE:?}"
 FACTS_FILE="${FACTS_FILE:?}"
 APP_DIR="${APP_DIR:?}"
 WORK_DIR="${WORK_DIR:?}"
-# Same default as docker/entrypoint.sh, and for the same reason: 0.12.0 is the dsh-tui release whose
-# peer ranges cover the whole band this lane runs (up to and including 0.2.0-rc.2), while 0.11.2 stopped
-# at 0.2.0-rc.1 and is REFUSED against a 0.2.0-rc.2 harness. Keep the two in step.
-TUI_VERSION="${TUI_VERSION:-0.13.0}"
+# Same default as docker/entrypoint.sh, and for the same reason: 0.15.0 is the dsh-tui release this
+# bundle targets, and its peer ranges still cover the whole band this lane runs (up to and including
+# 0.2.0-rc.2), while 0.11.2 stopped at 0.2.0-rc.1 and is REFUSED against a 0.2.0-rc.2 harness. (0.14.0,
+# 0.13.0 and 0.12.0 were the pins before it.) Keep the two in step.
+TUI_VERSION="${TUI_VERSION:-0.15.0}"
 # The apparatus library (docker/lib/live-verdict.ts) and the caller's live-arm switch. Both are handed
 # over by docker/entrypoint.sh, which also owns the credential staging — the TUI cannot run a real
 # turn without them, and a missing LIB_DIR then reddens live.tui.* instead of passing silently.
@@ -98,6 +104,17 @@ record() {
 # arms were reported "not reached" and the driver still printed `ok=true` (evidence
 # `evidence/docker/client-install/2026-10-06T11-11-30Z`). That is a false pass, so the EXIT trap below
 # is the second net: it leaves the record for any non-zero exit the ERR trap did not already record.
+#
+# AND THE SECOND NET MUST NOT FIRE ON THE LANE'S OWN RED ENDING — MEASURED 2026-10-08, the mirror image
+# of the defect above: the lane performed its whole duty, wrote its last record
+# (`tui.laneExit false "the TUI lane finished with failing or missing assertions"`) and then exited 1,
+# which fired the EXIT net and published a SECOND, FALSE record claiming the lane aborted and that every
+# arm after that point reads as "not reached" (`evidence/docker/client-install/2026-10-08T08-52-23Z/`
+# `console.log:3193-3194`, raw at `:3210`). A red run was therefore DOUBLE-reported, and the false
+# reading is the one that says a finished run never finished. `LANE_EXIT_RECORDED` is the ONE predicate
+# both nets read — it means "this exit already carries a `tui.laneExit` record" — so the terminal red
+# path sets it BEFORE exiting, exactly as `on_err` does, and the net keeps firing for the exit NOBODY
+# recorded: the ERR trap, or an exit the lane did not itself request.
 LANE_EXIT_RECORDED=0
 on_err() {
   local code=$?
@@ -278,6 +295,25 @@ else
 fi
 
 # ── 4. the REAL boot on a real PTY ─────────────────────────────────────────────
+# THE SESSION-STORE SNAPSHOT, taken BEFORE the TUI can create a session of its own. The product draws
+# the CALLING session's team (the user-required behaviour this wave landed), so the board seeded in
+# 4a must be BOUND to the session THIS boot creates — and that id is knowable only from the harness's
+# own store, `<DSH_HOME>/sessions/<projectKey(cwd)>/<sessionId>/`. Everything already in the store at
+# this instant belongs to a SIBLING session (the Web lane runs before this step and creates one), which
+# is exactly what the "another session's board is invisible" arm needs — so this one snapshot answers
+# both questions at once, and both answers come from the harness's own artifacts, never from a guess:
+# the session that APPEARS while the TUI boots is the TUI's, and the ones already here are someone
+# else's. (MEASURED 2026-10-08 on the frozen revision: the Web lane held
+# `session-5cc7bb93-9e5d-407f-922c-9a581fe18975` while the TUI session was
+# `7d2ced5c-bcf5-4a8f-b03c-4be6ad1ee606` — a different id, so the TUI really does create its own.)
+SESSIONS_BEFORE="$TUI_DIR/sessions-before.txt"
+: > "$SESSIONS_BEFORE"
+if [ -d "$DSH_HOME/sessions" ]; then
+  # `<projectKey>/<sessionId>` pairs, the shape the store itself uses. No reader exits early here
+  # (`sort` and `sed` read their whole input), so `pipefail` cannot turn a SIGPIPE into an abort.
+  (cd "$DSH_HOME/sessions" && find . -mindepth 2 -maxdepth 2 -type d | sed 's#^\./##' | sort) \
+    >"$SESSIONS_BEFORE" 2>/dev/null || true
+fi
 SOCK="$TUI_DIR/tui.sock"
 PANE_LOG="$TUI_DIR/pane.log"
 : > "$PANE_LOG"
@@ -311,19 +347,90 @@ BOOT_PANE="$(cat "$TUI_DIR/pane-boot.txt" 2>/dev/null || true)"
 # session is closed) is the arm that judges it, and this count is its evidence.
 BOOT_LANDING_HITS="$(printf '%s' "$BOOT_PANE" | grep -cE "$LANDING_MARKERS" || true)"
 
-# ── THE TEAM SCENE, on a real terminal (W3) ──────────────────────────────────
+# ── 4.0 THE SESSION MATERIALIZER (measured 2026-10-14 on dsh-tui 0.15.0) ──────
+# WHY THIS EXISTS. The harness writes a session store directory only once the session APPENDS an event,
+# and this lane's boot is COMMAND-ONLY: it opens the chat screen and waits. Nothing appends, so
+# `<DSH_HOME>/sessions/<projectKey>/<sessionId>` never appears, the `resolve` poll below can only answer
+# "no session", and the fixture ends up keyed to a session this TUI does not have — after which every
+# team arm judges a board NOBODY owns and correctly sees the empty state. A lane defect wearing a
+# product defect's clothes.
+# MEASURED, this lane's 2026-10-14 run (evidence/docker/client-install/2026-10-14T11-58-50Z): the probe
+# answered `before=1;after=1;created=` with `source=none`, the lane wrote
+# `active={"none":"tui-scene"}` — a key no session has — and the merged panel drew
+# `no team in this session … this workspace holds 1 team(s), none bound to this session`: the PRODUCT
+# was right and the FIXTURE was unbound.
+# WHAT APPENDS. `/mpd board` (`packages/mpd-tui-plugin/src/commands.ts` :: runAction → recordBoardOpened
+# → appendBoardOpened) is the ONE log-only record this composition appends from a real terminal. The
+# identical drive was measured on the SANDBOX lane on this same host generation
+# (`skills/dsh-qa/scripts/tui-team-surface.ts`, step `session-materialized`), so the two lanes now drive
+# the same way instead of one of them depending on a boot that no longer writes.
+# IT MUST RUN FIRST AND IT MUST BE CLOSED. The board command typed at an already-open sidebar panel is
+# swallowed by that panel (measured on the sandbox lane: its probe arm produced no store), and the board
+# scene owns the keyboard until Esc — which is why the close belongs to this block and not to a caller
+# further down.
+# AND IT MUST BE RETRIED, because the COMMAND IS RIGHT AND THE TIMING IS NOT. The first version of this
+# block sent the command ONCE, straight after the readiness check, and still materialized nothing
+# (measured: `materialized=false`, `before=1;after=1;created=` in
+# evidence/docker/client-install/2026-10-14T12-37-34Z). The cause is in that run's own `pane-boot.txt`:
+# the readiness predicate accepts the COMPOSER GLYPH, and at that instant the status bar still reads the
+# host's startup phrase — the session is not attached yet, so the command renders its transcript line
+# without appending anything. A controlled re-run inside the same container (boot, wait 60 s, THEN
+# `/mpd board`) created the store entry within 30 s, so the command is correct and only the moment was
+# wrong.
+# THE STORE IS THEREFORE THE WITNESS, and the retry is part of the drive rather than a timer: the command
+# is re-sent until `<DSH_HOME>/sessions` really changes. That needs no knowledge of the host's startup
+# string (a string the host is free to rename) and it cannot silently pass — a TUI that never materializes
+# ends the loop with `materialized=false` and the fixture stays honestly unbound instead of being keyed
+# to a session that does not exist.
+SESSION_MATERIALIZED="false"
+SESSION_MATERIALIZE_ATTEMPTS=0
+SESSION_STORE_NOW="$(cat "$SESSIONS_BEFORE" 2>/dev/null || true)"
+while [ "$SESSION_MATERIALIZED" != "true" ] && [ "$SESSION_MATERIALIZE_ATTEMPTS" -lt 4 ]; do
+  SESSION_MATERIALIZE_ATTEMPTS=$((SESSION_MATERIALIZE_ATTEMPTS + 1))
+  tmux -S "$SOCK" send-keys -t tui "/mpd board" Enter 2>/dev/null || true
+  for _ in $(seq 1 12); do
+    sleep 3
+    # `find | sed | sort` reads its whole input, so `pipefail` cannot turn a SIGPIPE into an abort — the
+    # same shape the pre-boot snapshot above is built with.
+    SESSION_STORE_NOW="$(cd "$DSH_HOME/sessions" 2>/dev/null && find . -mindepth 2 -maxdepth 2 -type d | sed 's#^\./##' | sort || true)"
+    if [ "$SESSION_STORE_NOW" != "$(cat "$SESSIONS_BEFORE" 2>/dev/null || true)" ]; then SESSION_MATERIALIZED="true"; break; fi
+  done
+  # The scene owns the keyboard while it is open, so it is closed before the next attempt AND before the
+  # captures below, every one of which sends from the plain chat state.
+  tmux -S "$SOCK" send-keys -t tui Escape 2>/dev/null || true
+  sleep 2
+done
+capture_pane boardOpened
+
+# ── 4a. THE TEAM SCENE, on a real terminal (W3) ──────────────────────────────
 # The graph is this wave's visual centrepiece and until now only unit arms had ever drawn it: the
 # arms render the component through a host DOUBLE, so no real terminal had produced a single box. The
 # record is written FIRST, because a scene with no team correctly renders its empty state and proving
 # that would prove nothing about the drawing.
+#
+# AND IT MUST BE BOUND TO THIS SESSION — F1 of the 2026-10-08 repair, `evidence/docker/client-install/
+# 2026-10-08T08-52-23Z`. The board below used to be seeded and then left bound to NOBODY (the index was
+# written as `{"version":1,"active":{}}`), which was invisible only while the product drew the
+# workspace's PRINCIPAL record. The wave deliberately changed that — the TUI draws the CALLING
+# session's team — so an unbound fixture is now correctly invisible and the lane, not the product, had
+# to catch up. The binding is written the way the PRODUCT's own creation path writes it
+# (`packages/mpd-team-core-plugin/src/team-store.ts :: createTeam`): the index entry
+# `active[sessionKey(leadSessionId)] = teamId` (`bindActiveTeam`) AND the record's
+# `leadSessionId = sessionKey(leadSessionId)`. Both, because the product's own reader resolves through
+# both: the `mpdTeams` service answers from the INDEX (`activeTeamId`), and its session-scoped
+# degradation path matches the RECORD's `leadSessionId` against the calling session.
 mkdir -p "$WORK_DIR/ws/.mpd/team/teams"
+# THE `leadSessionId` BELOW IS A PLACEHOLDER AND IS EXPECTED TO BE REPLACED before `/mpd team` is
+# sent: the binding step right after this heredoc rewrites it to the LIVE session id the boot
+# discovered. A run that fails to discover one leaves this literal visible, which is the honest
+# "unbound fixture" state rather than a plausible-looking fake id.
 cat >"$WORK_DIR/ws/.mpd/team/teams/tui-scene.json" <<'TEAMJSON'
 {
   "version": 1,
   "teamId": "tui-scene",
   "name": "Scene Smoke",
   "description": "proves the graph draws on a real terminal",
-  "leadSessionId": "scene-smoke",
+  "leadSessionId": "unbound-fixture",
   "phase": "active",
   "createdAt": "2026-09-30T00:00:00.000Z",
   "approvedAt": "2026-09-30T00:01:00.000Z",
@@ -342,15 +449,262 @@ cat >"$WORK_DIR/ws/.mpd/team/teams/tui-scene.json" <<'TEAMJSON'
 TEAMJSON
 printf '{"version":1,"active":{}}' >"$WORK_DIR/ws/.mpd/team/teams.json"
 
-tmux -S "$SOCK" send-keys -t tui "/mpd team" Enter 2>/dev/null || true
-sleep 6
-capture_pane team
-TEAM_PANE="$(cat "$TUI_DIR/pane-team.txt" 2>/dev/null || true)"
+# ── (i) WHICH SESSION IS THIS? — discovered from the harness's own store, then BOUND ───────────
+# The id is never guessed and never defaulted: the store is read twice (the pre-boot snapshot taken
+# above and the store as it is now) and the difference IS this boot's session. A store that has not
+# been written yet is polled rather than worked around, because a wrong id here would silently turn
+# every team-scene arm below into a claim about a board this session does not own.
+SESSION_PROBE="$TUI_DIR/session-resolve.ts"
+cat > "$SESSION_PROBE" <<'SESSION_PROBE_EOF'
+// Which session does THIS TUI run as, and bind the lane's team fixture to it.
+//
+// WHY THIS EXISTS: the product draws the CALLING session's team, and a fixture is not something a
+// session approved — so an unbound board is CORRECTLY invisible and the lane must bind it to the id
+// the TUI runs as. The key rule is the PRODUCT'S OWN: `sessionKey` is imported from
+// `packages/mpd-team-core-plugin/src/team-store.ts` (the module `createTeam` binds through), so no key
+// format is invented here.
+//
+// PROTOCOL: exactly ONE TAB-separated line on stdout per mode — the whole contract with the lane.
+//   resolve <appDir> <dshHome> <workspace> <snapshotFile>
+//     -> <sessionId> <source> <projectKey> <others> <detail>
+//   bind <appDir> <workspace> <sessionId> <teamId> <recordFile>
+//     -> <bound> <sessionKey> <detail>
+//   index <appDir> <workspace> <sessionId> <teamId>
+//     -> <written> <sessionKey> <activeJson>
+import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs"
+import { join } from "node:path"
+import { pathToFileURL } from "node:url"
 
-# ── THE RECORD'S OWN TASK TABLE, read ONCE for the two arms that judge the drawing ──
-# Both arms take their expected values from the fixture this lane just wrote, never from a literal: a
+/**
+ * Print the ONE protocol line and exit.
+ * @param line The tab-separated fields this mode answers with.
+ * @returns Never: the process exits here.
+ */
+function answer(line: string): never {
+  process.stdout.write(line + "\n")
+  process.exit(0)
+}
+
+/**
+ * The protocol's ABSENT sentinel, emitted for every field that has no value.
+ *
+ * WHY: the lane reads each answer line with `IFS=$'\t' read -r`, and bash STRIPS a leading run of IFS
+ * whitespace — so an empty FIRST field silently shifts every later field one slot to the LEFT. Measured
+ * 2026-10-14 (`evidence/docker/client-install/2026-10-14T11-58-50Z`): an undiscovered session id made
+ * the lane read the `source` string as the session id, the sibling id as the project key, and the
+ * detail line as the sibling id — then BIND the fixture to a key no session has
+ * (`active={"none":"tui-scene"}`), which made `tui.teamFixtureBound` record a false PASS. A non-empty
+ * sentinel makes that shift impossible: the lane compares against it and reads it as "not present".
+ */
+const ABSENT = "-"
+
+/**
+ * Every `<projectKey>/<sessionId>` pair the store holds right now, sorted.
+ * @param dshHome The harness home whose `sessions` store is listed.
+ * @returns The pairs; empty when the store does not exist and for every unreadable entry.
+ */
+function sessionDirs(dshHome: string): string[] {
+  /** The `<dshHome>/sessions` root; absent until a boot writes its first store. */
+  const root = join(dshHome, "sessions")
+  /** The pairs found so far. */
+  const found: string[] = []
+  if (!existsSync(root)) return found
+  for (const key of readdirSync(root)) {
+    /** One project key's directory. */
+    const keyDir = join(root, key)
+    try { if (!statSync(keyDir).isDirectory()) continue } catch { continue }
+    for (const id of readdirSync(keyDir)) {
+      try { if (statSync(join(keyDir, id)).isDirectory()) found.push(key + "/" + id) } catch { /* raced */ }
+    }
+  }
+  return found.sort()
+}
+
+/**
+ * The non-empty lines of the lane's pre-boot snapshot.
+ * @param file The snapshot file the lane wrote before the boot.
+ * @returns The trimmed lines; empty when the file is unreadable.
+ */
+function snapshotLines(file: string): string[] {
+  try {
+    return readFileSync(file, "utf8").split("\n").map((line) => line.trim()).filter((line) => line !== "")
+  } catch { return [] }
+}
+
+/**
+ * The product's own `sessionKey`, imported from the checkout this container installed.
+ * @param appDir The checkout root (`$APP_DIR`, which carries `packages/`).
+ * @returns The key function plus the witness naming where that rule came from.
+ */
+async function productSessionKey(appDir: string): Promise<{ key: (sessionId: string | undefined) => string; source: string }> {
+  /** The store module `createTeam` binds through, run from SOURCE (node strips the types). */
+  const modulePath: string = join(appDir, "packages", "mpd-team-core-plugin", "src", "team-store.ts")
+  try {
+    /** The imported namespace, read field by field so a shape change cannot pass as the rule. */
+    const mod: Record<string, unknown> = await import(pathToFileURL(modulePath).href) as Record<string, unknown>
+    if (typeof mod.sessionKey === "function") {
+      /** The product's own function, called through a cast because the import is untyped here. */
+      const sessionKey = mod.sessionKey as (sessionId: string | undefined) => unknown
+      return { key: (sessionId) => String(sessionKey(sessionId)), source: "import:packages/mpd-team-core-plugin/src/team-store.ts#sessionKey" }
+    }
+  } catch { /* the literal below is the same rule for every input that can occur here */ }
+  // A FALLBACK THAT INVENTS NO RULE: `sessionKey` answers the id ITSELF for every non-empty string and
+  // `"workspace"` only for an empty one, and a store directory name is never empty — so the two agree
+  // on every input this probe can produce, and the witness says which of them ran.
+  return { key: (sessionId) => (typeof sessionId === "string" && sessionId !== "" ? sessionId : "workspace"), source: "literal:non-empty-id-else-workspace (the import was unreachable)" }
+}
+
+/**
+ * Read one JSON object.
+ * @param path The file to read.
+ * @returns The parsed object, or `undefined` when the file is absent or is not a plain object.
+ */
+function readJsonObject(path: string): Record<string, unknown> | undefined {
+  try {
+    /** The parsed value, usable only when it is a plain object. */
+    const parsed: unknown = JSON.parse(readFileSync(path, "utf8"))
+    return parsed !== null && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Record<string, unknown> : undefined
+  } catch { return undefined }
+}
+
+/**
+ * The index file of a workspace, at the path the product's own `teamsIndexPath` names.
+ * @param workspace The workspace whose `.mpd/team` tree is written.
+ * @returns The absolute path of `teams.json`.
+ */
+function indexPathOf(workspace: string): string {
+  return join(workspace, ".mpd", "team", "teams.json")
+}
+
+/**
+ * Set one session's binding in the index, preserving every other entry.
+ * @param workspace The workspace whose index is edited.
+ * @param key The session key (the product's own rule produced it).
+ * @param teamId The team id to bind.
+ * @returns The `active` map read back from disk after the write.
+ */
+function writeIndexEntry(workspace: string, key: string, teamId: string): Record<string, string> {
+  /** The file this call edits. */
+  const indexPath: string = indexPathOf(workspace)
+  /** The index as it is, or an empty one when it is absent or its shape is unusable. */
+  const index: Record<string, unknown> = readJsonObject(indexPath) ?? { version: 1, active: {} }
+  /** The `active` map, replaced when the file's own is unusable. */
+  const active: Record<string, string> = (index.active !== null && typeof index.active === "object" && !Array.isArray(index.active))
+    ? index.active as Record<string, string> : {}
+  active[key] = teamId
+  // The product's own writer shape (`writeJson`): two-space JSON with a trailing newline.
+  writeFileSync(indexPath, JSON.stringify({ version: 1, active }, null, 2) + "\n")
+  /** The map READ BACK from disk, so the answer is a fact rather than this write's intention. */
+  const readBack: Record<string, unknown> | undefined = readJsonObject(indexPath)
+  return (readBack?.active ?? {}) as Record<string, string>
+}
+
+/** The mode the lane asked for, and its arguments. */
+const [mode, ...args]: string[] = process.argv.slice(2)
+
+if (mode === "resolve") {
+  /** `resolve <appDir> <dshHome> <workspace> <snapshotFile>`. */
+  const [appDir, dshHome, workspace, snapshotFile] = args
+  /** The pairs present at the pre-boot snapshot: every one of them is SOMEBODY ELSE's session. */
+  const before: string[] = snapshotLines(snapshotFile)
+  /** The pairs present now. */
+  const after: string[] = sessionDirs(dshHome)
+  /** The pairs this boot added. */
+  const created: string[] = after.filter((pair) => !before.includes(pair))
+  /** This workspace's project key, imported so the PATH shape is the harness's own. */
+  let projectKey = ""
+  try {
+    /** The isolation helper that owns the directory-key rule. */
+    const iso: Record<string, unknown> = await import(pathToFileURL(join(appDir, "skills", "dsh-qa", "scripts", "lib", "workspace-isolation.ts")).href) as Record<string, unknown>
+    if (typeof iso.projectKey === "function") projectKey = String((iso.projectKey as (cwd: string) => unknown)(workspace))
+  } catch { /* an empty key only narrows the fallbacks, it never widens the answer */ }
+  /** The session ids already present under THIS key, i.e. genuine sibling sessions of this workspace. */
+  const others: string[] = projectKey === "" ? [] : before.filter((pair) => pair.startsWith(projectKey + "/")).map((pair) => pair.slice(pair.indexOf("/") + 1))
+  /** The created pair under this key, then any created pair: order is the preference. */
+  const pick: string | undefined = (projectKey === "" ? undefined : created.filter((pair) => pair.startsWith(projectKey + "/"))[0]) ?? created[0]
+  /** The id of the picked pair, or an empty string when this boot created none yet. */
+  const sessionId: string = pick === undefined ? "" : pick.slice(pick.indexOf("/") + 1)
+  /** How the id was obtained: stated, never assumed. */
+  const source: string = pick === undefined ? "none"
+    : (projectKey !== "" && pick.startsWith(projectKey + "/") ? "created-during-this-boot-under-this-project-key" : "created-during-this-boot-other-project-key")
+  answer([
+    sessionId === "" ? ABSENT : sessionId, source, projectKey === "" ? ABSENT : projectKey,
+    others.length === 0 ? ABSENT : others.join(","),
+    "store=" + join(dshHome, "sessions") + ";before=" + String(before.length) + ";after=" + String(after.length) + ";created=" + created.join(","),
+  ].join("\t"))
+}
+
+if (mode === "bind") {
+  /** `bind <appDir> <workspace> <sessionId> <teamId> <recordFile>`. */
+  const [appDir, workspace, sessionId, teamId, recordFile] = args
+  // `ABSENT` is refused exactly like an empty id: a caller that read the sentinel out of a previous
+  // answer must never be able to bind a team to the literal "-".
+  if (sessionId === "" || sessionId === undefined || sessionId === ABSENT) answer(["false", ABSENT, "no-session-id-discovered"].join("\t"))
+  /** The product's own key rule. */
+  const rule = await productSessionKey(appDir)
+  /** The key the product's own rule produces for this session. */
+  const key: string = rule.key(sessionId)
+  /** The `active` map as it stands on disk after the index write. */
+  const active: Record<string, string> = writeIndexEntry(workspace, key, teamId)
+  /** The fixture record, rewritten so its OWN `leadSessionId` names this session too. */
+  const record: Record<string, unknown> | undefined = readJsonObject(recordFile)
+  if (record !== undefined) {
+    record.leadSessionId = key
+    writeFileSync(recordFile, JSON.stringify(record, null, 2) + "\n")
+  }
+  /** The record READ BACK, so the answer covers the bytes on disk. */
+  const readBack: Record<string, unknown> | undefined = readJsonObject(recordFile)
+  /** Both spellings the product's own `createTeam` writes must hold, or the binding is not a binding. */
+  const bound: boolean = active[key] === teamId && readBack?.leadSessionId === key
+  answer([
+    String(bound), key,
+    "index=" + indexPathOf(workspace) + ";active=" + JSON.stringify(active) + ";recordLeadSessionId=" + String(readBack?.leadSessionId ?? "(absent)") + ";keySource=" + rule.source,
+  ].join("\t"))
+}
+
+if (mode === "index") {
+  /** `index <appDir> <workspace> <sessionId> <teamId>`: bind a DIFFERENT session's board. */
+  const [appDir, workspace, sessionId, teamId] = args
+  // Same refusal as `bind`: the sentinel is a marker, never an id to hang a foreign board on.
+  if (sessionId === "" || sessionId === undefined || sessionId === ABSENT) answer(["false", ABSENT, "no-other-session-id"].join("\t"))
+  /** The product's own key rule. */
+  const rule = await productSessionKey(appDir)
+  /** The key the product's own rule produces for that session. */
+  const key: string = rule.key(sessionId)
+  /** The `active` map read back from disk. */
+  const active: Record<string, string> = writeIndexEntry(workspace, key, teamId)
+  answer([String(active[key] === teamId), key, JSON.stringify(active)].join("\t"))
+}
+
+answer([ABSENT, "unknown-mode", "usage: resolve|bind|index"].join("\t"))
+SESSION_PROBE_EOF
+
+# THE POLL: the TUI writes its store record as it boots, so this waits for the pair to APPEAR rather
+# than falling back to "the newest session here" — which, before the TUI has written anything, is the
+# WEB lane's session, and binding THAT would leave the scene correctly empty while looking like a fix.
+LIVE_SESSION_ID=""
+LIVE_SESSION_SOURCE="none"
+LIVE_SESSION_PROJECT_KEY=""
+OTHER_SESSION_IDS=""
+RESOLVE_DETAIL=""
+for _ in $(seq 1 15); do
+  RESOLVE_TSV="$(node "$SESSION_PROBE" resolve "$APP_DIR" "$DSH_HOME" "$WORK_DIR/ws" "$SESSIONS_BEFORE" 2>>"$TUI_DIR/session-probe.err" || true)"
+  IFS=$'\t' read -r LIVE_SESSION_ID LIVE_SESSION_SOURCE LIVE_SESSION_PROJECT_KEY OTHER_SESSION_IDS RESOLVE_DETAIL <<<"$RESOLVE_TSV" || true
+  # THE PROBE'S ABSENT SENTINEL IS "NO VALUE" — normalised HERE, in one place, so every branch below
+  # keeps reading the plain empty string it was written against. `if` rather than `[ … ] && …`: a
+  # failing test as the loop body's last status would hand the ERR trap a red that is not one.
+  if [ "${LIVE_SESSION_ID:-}" = "-" ]; then LIVE_SESSION_ID=""; fi
+  if [ "${LIVE_SESSION_PROJECT_KEY:-}" = "-" ]; then LIVE_SESSION_PROJECT_KEY=""; fi
+  if [ "${OTHER_SESSION_IDS:-}" = "-" ]; then OTHER_SESSION_IDS=""; fi
+  [ -n "${LIVE_SESSION_ID:-}" ] && break
+  sleep 3
+done
+
+# ── THE RECORD'S OWN TASK TABLE, read ONCE for EVERY arm that judges a drawing ──────────────────
+# The arms take their expected values from the fixture this lane just wrote, never from a literal: a
 # hard-coded id, or a hard-coded `3`, keeps passing after the renderer silently drops a task — which is
-# exactly how the arm this replaces outlived the drawing it was written for.
+# exactly how the arm this replaces outlived the drawing it was written for. It is read HERE, before the
+# first scene is opened, because the empty-state arm below asserts the ABSENCE of these same ids.
 TEAM_TASKS_PROBE="$TUI_DIR/team-tasks.ts"
 cat > "$TEAM_TASKS_PROBE" <<'TEAMTASKS_EOF'
 // One `<id>\t<subject>` line per task in the lane's OWN team fixture: the assertions below read their
@@ -371,8 +725,182 @@ while IFS=$'\t' read -r id subject; do
   TEAM_IDS_SEEN="${TEAM_IDS_SEEN}${TEAM_IDS_SEEN:+,}${id}"
 done <<<"$TEAM_TASKS"
 
+# ── (i-bis) ANOTHER SESSION'S BOARD IS NOT THIS SESSION'S BOARD (required behaviour 3) ──────────
+# WHAT THIS PROVES: the product draws the CALLING session's team, so a session with NO bound board must
+# draw the honest empty state and must NOT draw a board another session approved.
+# WHY IT RUNS HERE, BEFORE the binding below: the state under test is "THIS session owns nothing while a
+# SIBLING owns a board". Once the binding has run this session owns one too and the state is
+# unreachable — the product's own writer (`writeIndexEntry`) only ADDS an index entry, so it cannot
+# spell an unbind.
+# THE INSTRUMENT IS THE ONE ALREADY CAPTURED: `resolve` above returned `OTHER_SESSION_IDS`, the
+# `<projectKey>/<sessionId>` pairs the store held BEFORE this boot (in a full run, the Web lane's
+# session), and the probe's `index` mode binds a team to a DIFFERENT session — exactly the state.
+# NON-VACUITY IS PART OF THE ARM, not an assumption: a run whose `OTHER_SESSION_IDS` is empty has no
+# other board to be invisible, so the row records `null` with that reason rather than passing on an
+# assertion that could not have failed (the false-pass class the lane's ERR/EXIT header was written
+# against).
+# THE MARKER IS THE PRODUCT'S OWN: `NO_SESSION_TEAM_MARKER` is exported by
+# `packages/mpd-tui-plugin/src/team-state.ts:57` and is the string every session-empty surface draws. It
+# is READ OUT OF THAT SOURCE at run time instead of being retyped, so a product that moves the constant
+# moves this arm with it, and the test is a SUBSTRING test because the real pane line carries a suffix
+# (`… — stage one with agent_teams_plan, then approve it`). (Importing the export is impossible inside a
+# container: `src/team-state.ts` imports sibling `src/*.js` specifiers that exist only after a build,
+# and the built `dist/index.js` does not re-export the constant — both measured 2026-10-08. The source
+# declaration is therefore the only reachable spelling, and an unreadable one reddens this row as null.)
+OTHER_SESSION_ID="${OTHER_SESSION_IDS%%,*}"
+OTHER_BOUND="false"
+OTHER_KEY=""
+OTHER_INDEX_DETAIL="no-index-attempted"
+if [ -n "${OTHER_SESSION_ID:-}" ]; then
+  OTHER_INDEX_TSV="$(node "$SESSION_PROBE" index "$APP_DIR" "$WORK_DIR/ws" "$OTHER_SESSION_ID" tui-scene 2>>"$TUI_DIR/session-probe.err" || true)"
+  IFS=$'\t' read -r OTHER_BOUND OTHER_KEY OTHER_INDEX_DETAIL <<<"$OTHER_INDEX_TSV" || true
+fi
+
+# The product's empty-state marker, derived from its own source declaration — never a literal here.
+MARKER_PROBE="$TUI_DIR/team-marker.ts"
+cat > "$MARKER_PROBE" <<'MARKER_PROBE_EOF'
+// The text of the product's `NO_SESSION_TEAM_MARKER`, read from the product's OWN source declaration so
+// this lane cannot drift from the constant the product's `test/session-scope.test.ts` asserts on.
+// PROTOCOL: ONE tab-separated line on stdout — the marker text, then the site it was read from. An
+// empty first field means the declaration was not found and the lane must record an unmade
+// measurement rather than fall back to a retyped string.
+import { readFileSync } from "node:fs"
+import { join } from "node:path"
+const [appDir] = process.argv.slice(2)
+const file = join(appDir, "packages", "mpd-tui-plugin", "src", "team-state.ts")
+const site = "packages/mpd-tui-plugin/src/team-state.ts#NO_SESSION_TEAM_MARKER"
+const text = readFileSync(file, "utf8")
+const match = /^export const NO_SESSION_TEAM_MARKER = "([^"]*)"$/m.exec(text)
+// The sentinel, not an empty first field: the lane reads this line with `IFS=$'\t' read -r`, and bash
+// DROPS a leading run of IFS whitespace — so an empty marker would arrive as the SITE string and the
+// substring test below would then match a path, i.e. pass on nothing. The declared contract ("an empty
+// first field means not found") is only real when the field cannot vanish.
+process.stdout.write([match === null ? "-" : match[1], site].join("\t") + "\n")
+MARKER_PROBE_EOF
+OTHER_MARKER=""
+OTHER_MARKER_SITE="none"
+MARKER_TSV="$(node "$MARKER_PROBE" "$APP_DIR" 2>"$TUI_DIR/team-marker.err" || true)"
+IFS=$'\t' read -r OTHER_MARKER OTHER_MARKER_SITE <<<"$MARKER_TSV" || true
+if [ "${OTHER_MARKER:-}" = "-" ]; then OTHER_MARKER=""; fi
+
+# THE PANE IS CAPTURED ONLY ONCE THE STATE UNDER TEST REALLY EXISTS: the sibling id must differ from the
+# session this TUI runs as, the sibling's key must be the one the index now carries, and the marker must
+# have been read. Anything less is an unmade measurement, and no pane is judged.
+OTHER_PANE_FILE="$TUI_DIR/pane-teamOtherSession.txt"
+OTHER_PANE=""
+OTHER_CORNERS=0
+OTHER_IDS_DRAWN=""
+OTHER_STATE_READY="false"
+if [ -n "${OTHER_SESSION_ID:-}" ] && [ "${OTHER_SESSION_ID:-}" != "${LIVE_SESSION_ID:-}" ] \
+  && [ "${OTHER_BOUND:-false}" = "true" ] && [ -n "${OTHER_KEY:-}" ] && [ -n "${OTHER_MARKER:-}" ]; then
+  OTHER_STATE_READY="true"
+  tmux -S "$SOCK" send-keys -t tui "/mpd team" Enter 2>/dev/null || true
+  sleep 6
+  capture_pane teamOtherSession
+  OTHER_PANE="$(cat "$OTHER_PANE_FILE" 2>/dev/null || true)"
+  # The corner census is an OBSERVATION of the same pane, not a third verdict: the two asserted
+  # directions are the marker's presence and the foreign ids' absence below.
+  OTHER_CORNERS=$(( $(pane_glyphs '╭' "$OTHER_PANE_FILE") + $(pane_glyphs '╮' "$OTHER_PANE_FILE") + $(pane_glyphs '╰' "$OTHER_PANE_FILE") + $(pane_glyphs '╯' "$OTHER_PANE_FILE") ))
+  # The NODE-LABEL predicate is the content arm's own (`[^ ] <id> +│`, clause AC1's `<marker> <id>`
+  # inside a box) — the shape this pane is PROVEN not to carry in the empty state: the F1 run reported
+  # `missing=[T1,T2,T3]` on exactly this state, so a hit here means the foreign board was really drawn.
+  # An `if` rather than `grep … && …`: the body must END on a zero status, or a pane with no foreign id
+  # (the expected case) would hand the ERR trap a non-zero loop status to act on.
+  while IFS=$'\t' read -r id subject; do
+    [ -n "$id" ] || continue
+    if printf '%s' "$OTHER_PANE" | grep -qE "[^ ] $id +│"; then
+      OTHER_IDS_DRAWN="${OTHER_IDS_DRAWN}${OTHER_IDS_DRAWN:+,}${id}"
+    fi
+  done <<<"$TEAM_TASKS"
+  # Close the scene again: the arms below open it for THEIR state, and this lane never sends two opens
+  # without a close between them.
+  tmux -S "$SOCK" send-keys -t tui Escape 2>/dev/null || true
+  sleep 2
+fi
+
+OTHER_RAW="otherSession=${OTHER_SESSION_ID:-none} liveSession=${LIVE_SESSION_ID:-none} otherKey=${OTHER_KEY:-none} index=${OTHER_INDEX_DETAIL:-none} marker=[${OTHER_MARKER:-none}] markerSite=${OTHER_MARKER_SITE:-none} assertedAbsent=[${TEAM_IDS_SEEN:-none}] foundDrawn=[${OTHER_IDS_DRAWN:-none}] corners=${OTHER_CORNERS} pane=pane-teamOtherSession.txt"
+if [ -z "${OTHER_SESSION_ID:-}" ]; then
+  record tui.teamSceneOtherSessionInvisible null \
+    "NOT MEASURED: this boot found no SIBLING session under this workspace's project key, so there IS no other session's board to be invisible and the absence direction would have asserted nothing — an unmade measurement, never a pass" \
+    "$OTHER_RAW"
+elif [ "${OTHER_STATE_READY:-false}" != "true" ]; then
+  record tui.teamSceneOtherSessionInvisible null \
+    "NOT MEASURED: the state under test could not be built — the foreign board bound as bound=${OTHER_BOUND:-false} to key=${OTHER_KEY:-none} (${OTHER_INDEX_DETAIL:-none}) for sibling session ${OTHER_SESSION_ID} while this TUI runs as ${LIVE_SESSION_ID:-none}, and the product's NO_SESSION_TEAM_MARKER was read as [${OTHER_MARKER:-none}] from ${OTHER_MARKER_SITE:-none}" \
+    "$OTHER_RAW"
+elif printf '%s' "$OTHER_PANE" | grep -qF "$OTHER_MARKER" && [ -z "$OTHER_IDS_DRAWN" ]; then
+  record tui.teamSceneOtherSessionInvisible true \
+    "a session with NO bound board drew the product's OWN empty-state marker, and the board a SIBLING session owns was NOT drawn in it: the marker is the exported constant NO_SESSION_TEAM_MARKER read out of its source declaration and matched as a SUBSTRING of the captured pane, and none of the ${TEAM_TASK_COUNT} task id(s) the sibling's record carries appeared in that same pane as a node label" \
+    "$OTHER_RAW"
+else
+  record tui.teamSceneOtherSessionInvisible false \
+    "the session-empty state did NOT hold: the marker [${OTHER_MARKER:-none}] is absent from the captured pane (markerHits=$(printf '%s' "$OTHER_PANE" | grep -cF "${OTHER_MARKER:-no-marker-read}" || true)) and/or the SIBLING session's board WAS drawn — ids found as node labels=[${OTHER_IDS_DRAWN:-none}] out of [${TEAM_IDS_SEEN:-none}], rounded corners on the pane=${OTHER_CORNERS}" \
+    "$OTHER_RAW"
+fi
+
+# ── (ii) THE BINDING ITSELF, written the way the product's OWN creation path writes it ─────────
+# `createTeam` (`team-store.ts`) does two things with one session id, and the fixture does both:
+#   * `leadSessionId: sessionKey(input.leadSessionId)` — the record names the session, which is what the
+#     session-scoped degradation path matches (`sessionRecord` → `records.find(… leadSessionId …)`);
+#   * `bindActiveTeam(workspace, input.leadSessionId, teamId)` — the index maps
+#     `active[sessionKey(sessionId)] = teamId`, which is what the `mpdTeams` service answers from
+#     (`activeTeamId`).
+# Writing only one of the two would leave the board reachable through ONE of the product's two readers.
+BIND_BOUND="false"
+BIND_KEY=""
+BIND_DETAIL=""
+if [ -n "${LIVE_SESSION_ID:-}" ]; then
+  BIND_TSV="$(node "$SESSION_PROBE" bind "$APP_DIR" "$WORK_DIR/ws" "$LIVE_SESSION_ID" tui-scene \
+    "$WORK_DIR/ws/.mpd/team/teams/tui-scene.json" 2>>"$TUI_DIR/session-probe.err" || true)"
+  IFS=$'\t' read -r BIND_BOUND BIND_KEY BIND_DETAIL <<<"$BIND_TSV" || true
+fi
+BIND_RAW="session=${LIVE_SESSION_ID:-none} materialized=${SESSION_MATERIALIZED} attempts=${SESSION_MATERIALIZE_ATTEMPTS} source=${LIVE_SESSION_SOURCE:-none} projectKey=${LIVE_SESSION_PROJECT_KEY:-none} ${BIND_DETAIL:-no-bind-attempted} resolve=${RESOLVE_DETAIL:-none}"
+if [ "${BIND_BOUND:-false}" = "true" ]; then
+  record tui.teamFixtureBound true \
+    "the seeded board is bound to the LIVE session this TUI runs as — the id discovered from the harness's OWN store (a pre-boot snapshot differenced against the store as it is now, so the id that APPEARED during this boot is the TUI's) and keyed through the PRODUCT's own rule, imported from packages/mpd-team-core-plugin/src/team-store.ts :: sessionKey. Both spellings the product's own createTeam writes are on disk: teams.json's active[<sessionKey>] = \"tui-scene\" AND the record's leadSessionId = <sessionKey>, because the product has two readers (the mpdTeams service answers from the index; its session-scoped degradation matches the record's leadSessionId). WITHOUT this binding the scene correctly draws its empty state and every team arm below reddens — which is exactly the F1 defect of evidence/docker/client-install/2026-10-08T08-52-23Z" \
+    "$BIND_RAW"
+elif [ -z "${LIVE_SESSION_ID:-}" ]; then
+  record tui.teamFixtureBound null \
+    "the fixture could NOT be bound: this boot created no new session under <DSH_HOME>/sessions while the poll ran, so the id the TUI runs as is not knowable here — an unmade measurement, never a pass. Every team-scene arm below reads a board bound to no session, which is why they are about to redden for THIS reason and not for a drawing defect" \
+    "$BIND_RAW"
+else
+  record tui.teamFixtureBound false \
+    "the fixture was NOT bound to $LIVE_SESSION_ID: the read-back does not carry BOTH spellings on disk (expected teams.json active[<sessionKey>] = \"tui-scene\" AND the record's leadSessionId = <sessionKey>) — the scene will draw its empty state whatever the drawing code does" \
+    "$BIND_RAW"
+fi
+
+# THE UNBOUND-FIXTURE NOTE: ONE line, appended by EVERY scene arm below that reddens for a drawing it
+# never had the state to judge. Without it a red here reads as "the renderer dropped the boxes" when the
+# cause is "the fixture was bound to no session" — the misattribution the 2026-10-14 run published for
+# five arms at once. It is EMPTY when the binding took, so a green lane carries no noise.
+SCENE_UNBOUND_NOTE=""
+if [ "${BIND_BOUND:-false}" != "true" ]; then
+  SCENE_UNBOUND_NOTE=" THE FIXTURE WAS NOT BOUND TO THIS SESSION (${BIND_RAW}), so this red is about an UNMEASURED fixture and NOT yet about the drawing: the product is entitled to draw the empty state for a session that owns no board (tui.teamFixtureBound carries the cause)."
+fi
+
+# THE CAPTURE WAITS FOR THE SCENE, NOT FOR A CLOCK. The 2026-10-14 run captured `pane-team.txt` while the
+# host was still drawing its startup frame (`正在启动 DSH…`), so every drawing arm below judged a pane
+# that carried no scene at all — a capture-timing red wearing a renderer's clothes. The scene is on
+# screen when EITHER the graph header OR the product's own empty-state line is there; a scene that never
+# opens still ends the wait at 60 s and the arms redden on the pane they were always meant to read.
+# `case` and not `grep -q`: a `grep -q` that matches exits early, SIGPIPEs `tmux`, and `pipefail` would
+# then report the pipeline as failed on the very match the loop is waiting for.
+tmux -S "$SOCK" send-keys -t tui "/mpd team" Enter 2>/dev/null || true
+for _ in $(seq 1 30); do
+  sleep 2
+  SCENE_NOW="$(tmux -S "$SOCK" capture-pane -p -J -t tui 2>/dev/null || true)"
+  case "$SCENE_NOW" in
+    *"task dependency graph"*) break ;;
+    *"${OTHER_MARKER:-no team in this session}"*) break ;;
+  esac
+done
+capture_pane team
+TEAM_PANE="$(cat "$TUI_DIR/pane-team.txt" 2>/dev/null || true)"
+
+# The record's own task table, id list and count are read ABOVE — before the first scene is opened,
+# because the empty-state arm asserts the ABSENCE of these same ids. They are reused here, never
+# re-derived: a second reader could answer a different question than the one the arms judge.
 record tui.teamSceneOpened "$(printf '%s' "$TEAM_PANE" | grep -q 'task dependency graph' && echo true || echo false)" \
-  "the /mpd team scene opened on a real terminal" "chars=$(printf '%s' "$TEAM_PANE" | wc -c)"
+  "the /mpd team scene opened on a real terminal (the capture waited for the scene's own header or for the product's empty-state line, so a pane still on the host's startup frame is no longer judged as a drawing)${SCENE_UNBOUND_NOTE}" "chars=$(printf '%s' "$TEAM_PANE" | wc -c)"
 # ── THE BOXES, COUNTED — the FRAME is not the drawing ─────────────────────────
 # The arm this replaces grepped `┌.*┐`/`└.*┘`, and the scene FRAME satisfies BOTH of those on its own:
 # measured on the captured pane (2026-10-07) there is exactly ONE `┌…┐` row and ONE `└…┘` row — the
@@ -397,11 +925,11 @@ if [ "$TEAM_TASK_COUNT" -gt 0 ] \
     "$TEAM_BOX_RAW"
 else
   record tui.teamGraphDrawn false \
-    "the boxes were NOT drawn one per task: the record carries ${TEAM_TASK_COUNT} task(s) and the pane's rounded corners are ╭${TEAM_BOX_TL} ╮${TEAM_BOX_TR} ╰${TEAM_BOX_BL} ╯${TEAM_BOX_BR}, each of which must equal the task count" \
+    "the boxes were NOT drawn one per task: the record carries ${TEAM_TASK_COUNT} task(s) and the pane's rounded corners are ╭${TEAM_BOX_TL} ╮${TEAM_BOX_TR} ╰${TEAM_BOX_BL} ╯${TEAM_BOX_BR}, each of which must equal the task count.${SCENE_UNBOUND_NOTE}" \
     "$TEAM_BOX_RAW"
 fi
 record tui.teamGraphEdges "$(printf '%s' "$TEAM_PANE" | grep -qE '┬|┴|│' && echo true || echo false)" \
-  "the dependency EDGES were drawn with box-drawing junctions" "junctions=$(printf '%s' "$TEAM_PANE" | grep -coE '┬|┴|│' || echo 0)"
+  "the dependency EDGES were drawn with box-drawing junctions${SCENE_UNBOUND_NOTE}" "junctions=$(printf '%s' "$TEAM_PANE" | grep -coE '┬|┴|│' || echo 0)"
 # ── THE CONTENT ARM: the RECORD's own ids and subject ─────────────────────────
 # The values come from the task table read above, never from a literal. Commit 6fdfc012 froze clause
 # AC1, which limits a node label to `<marker> <id>` and moves the subject into the PINNED DETAIL BODY;
@@ -452,7 +980,7 @@ if [ "$TEAM_TASK_COUNT" -gt 0 ] && [ -z "$TEAM_MISSING" ] && [ -n "$TEAM_FOCUS_I
     "$TEAM_CONTENT_RAW"
 else
   record tui.teamGraphContent false \
-    "the pane does not carry the record's own data: ids read from the record=${TEAM_TASK_COUNT} missing=[${TEAM_MISSING:-none}] pinnedFocus=[${TEAM_FOCUS_ID:-none}] — each record id must be DRAWN, and one 'j' keystroke must reach a task's own subject in the pinned detail body" \
+    "the pane does not carry the record's own data: ids read from the record=${TEAM_TASK_COUNT} missing=[${TEAM_MISSING:-none}] pinnedFocus=[${TEAM_FOCUS_ID:-none}] — each record id must be DRAWN, and one 'j' keystroke must reach a task's own subject in the pinned detail body.${SCENE_UNBOUND_NOTE}" \
     "$TEAM_CONTENT_RAW"
 fi
 
@@ -487,20 +1015,13 @@ else
   PANEL_SEAM="absent"
 fi
 if [ "$PANEL_SEAM" = "present" ]; then
-  # NOT MEASURABLE IN A PANE, recorded as such rather than as a pass. On this host the merged view is
-  # the SIDEBAR panel (`alt+a` / `/mpd subagents` / `/mpd panel` all route through `tuiPanels.open()`),
-  # and this lane's evidence channel is a tmux capture. MEASURED 2026-10-06 across four container runs
-  # (`evidence/docker/client-install/`): a host-ACCEPTED `open()` changes ZERO bytes of the capture, and
-  # the routed command's own printed line does not reach the pane either — the transcript stays empty
-  # while the same command's `command/run` + `command/done` records ARE written to the session store.
-  # The dashboard asks for a VERDICT, not for a hopeful grep, so this arm declares the bound and names
-  # the assertion that does carry the proof on the SAME host version: `skills/dsh-qa/scripts/
-  # tui-panels.ts` + `tui-deps-ctrla.ts` read the store and assert the host's own `list()` read-back id
-  # (`act1:team`) plus an accepted open (both PASS on 0.13.0, evidence/tui/lanes/).
-  record tui.mergedPanelOpens null \
-    "the merged view's OPEN is not pane-observable on this host: with the 0.13.0 panel seam present it is a sidebar panel, a host-ACCEPTED open() changes zero bytes of a tmux capture, and the routed command's printed line does not reach the transcript either. The panel registration + accepted open ARE asserted, store-backed, by the sandbox lanes on the SAME host version (tui-panels, tui-deps-ctrla). Full-screen surfaces that this lane CAN see on this host are covered by the team-scene arms above" \
-    "panelSeam=$PANEL_SEAM rowHits=${TUI_PANEL_ROW:-0} module=${TUI_PANEL_MODULE:+present} proofOwner=skills/dsh-qa/scripts/tui-panels.ts,tui-deps-ctrla.ts"
-  # Give the composer focus back before the next arms, in case an interactive opened earlier.
+  # The 0.13.0+ branch records NOTHING here any more: it used to write `tui.mergedPanelOpens` as NULL on
+  # the ground that "a host-ACCEPTED open() changes zero bytes of a tmux capture", which the
+  # authoritative run's own `pane-merged.txt` REFUTES (see the classifier block below). The
+  # discriminator still matters, because it selects the marker FAMILY the classifier uses — the sidebar
+  # panel body on `present`, the pre-0.13 full-screen scene's strings on `absent`.
+  # Focus is given back to the composer before the combo is sent, because the host's own shortcut
+  # registry matches shortcuts only in the plain chat state.
   tmux -S "$SOCK" send-keys -t tui Escape 2>/dev/null || true
   sleep 2
 fi
@@ -509,55 +1030,66 @@ sleep 5
 capture_pane merged
 MERGED_PANE="$TUI_DIR/pane-merged.txt"
 
-# (1) THE PANEL OPENED — and it is the MERGED one, not the team scene it came from: its own title
-# line, the subagent section this scene exists to add (the section header always renders; without a
-# host subagent row the panel also carries the host's own empty-state line), and the team body's
-# record markers `tui.teamGraphContent` above already proves are drawn.
-MERGED_TITLE_HITS="$(pane_hits 'MPD subagents \+ team' "$MERGED_PANE")"
-MERGED_SUB_HITS="$(pane_hits 'subagents +[0-9]+ total|No subagents in the current session' "$MERGED_PANE")"
-MERGED_TEAM_HITS="$(pane_hits 'build the graph|task dependency graph' "$MERGED_PANE")"
-if [ "$PANEL_SEAM" != "present" ] && [ "$MERGED_TITLE_HITS" -gt 0 ] && [ "$MERGED_SUB_HITS" -gt 0 ] && [ "$MERGED_TEAM_HITS" -gt 0 ]; then
+# (1) THE PANEL OPENED — and it is the MERGED one, not the team scene it came from.
+#
+# WHAT CHANGED AND WHY (2026-10-09, §4 S-B criterion 4). This block used to record BOTH rows as NULL on
+# any host offering the panel seam, on the recorded ground that "a host-ACCEPTED open() changes zero
+# bytes of a tmux capture". That ground was measured on the PRE-0.13 full-screen scene and never
+# re-measured after dsh-tui moved the merged view into a SIDEBAR PANEL: the authoritative run's own
+# `tui-panes/pane-merged.txt` carries the entire panel body (the tab bar with MPD's tab active, the
+# `┌MPD` border, the host's `subagents  0 total` summary, `No subagents in the current session`, MPD's
+# `team … phase active  tasks 1/3  members 2` header, the T1/T2/T3 DAG and `view boxes · 3 tasks · ranks
+# derived`) on a 218-column pane, while the PRE-KEY capture `pane-teamClosed.txt` carries none of it.
+# The rows were structurally unmeasurable, not physically so, and a null there was reading as a bound.
+#
+# THE CLASSIFIER IS SHARED WITH THE OFFLINE FALSIFIER (`docker/lib/tui-panel-body.ts`, exercised by
+# `scripts/docker-e2e.ts --self-test` on planted panes) so the two can never drift: the shell keeps no
+# marker of its own, it only reads the module's verdict. THE PRE-KEY CAPTURE IS THE CONTROL — if that
+# pane already carries the panel body, the post-key pane proves nothing and the module says FALSE, which
+# is exactly how this row REDDENS when the capture order or the keypress is broken.
+#
+# The marker FAMILY is chosen by the SAME seam discriminator the sandbox lanes use (`PANEL_SEAM`, read
+# from the composed host row AND the shipped module): `present` is the 0.13.0+ sidebar panel body, and
+# `absent` is the pre-0.13 full-screen scene's strings, so a host without the seam keeps its old meaning.
+MERGED_PANE="$TUI_DIR/pane-merged.txt"
+MERGED_TEAMCLOSED_PANE="$TUI_DIR/pane-teamClosed.txt"
+MERGED_PANEL_JSON="$TUI_DIR/merged-panel.json"
+node "$LIB_DIR/tui-panel-body.ts" \
+  --pane "$MERGED_PANE" --control "$MERGED_TEAMCLOSED_PANE" --shape "$PANEL_SEAM" \
+  --json "$MERGED_PANEL_JSON" > "$TUI_DIR/merged-panel.log" 2>&1 || true
+# The classifier's own artifacts travel with the panes, so a reader re-reads the exact measurement and
+# its control out of the EVIDENCE tree rather than out of a container-internal path.
+cp "$MERGED_PANEL_JSON" "$PANE_DIR/merged-panel.json" 2>/dev/null || true
+cp "$TUI_DIR/merged-panel.log" "$PANE_DIR/merged-panel.log" 2>/dev/null || true
+MERGED_PANEL_LOG="$(cat "$TUI_DIR/merged-panel.log" 2>/dev/null || true)"
+# The verdicts and their witnesses come ONLY from the module's printed contract, never from a re-grep:
+# one classifier, one truth, and the offline falsifier grades the same code path.
+MERGED_PANEL_OPENS="$(printf '%s\n' "$MERGED_PANEL_LOG" | grep -m1 -oE '^\[tui-panel\] OPENS=(true|false)$' | sed 's/.*=//' || true)"
+MERGED_PANEL_ORDER="$(printf '%s\n' "$MERGED_PANEL_LOG" | grep -m1 -oE '^\[tui-panel\] ORDER=(true|false)$' | sed 's/.*=//' || true)"
+MERGED_PANEL_REASON="$(printf '%s\n' "$MERGED_PANEL_LOG" | grep -m1 -oE '^\[tui-panel\] REASON=.*' | sed 's/^\[tui-panel\] REASON=//' || true)"
+MERGED_PANEL_HITS="$(printf '%s\n' "$MERGED_PANEL_LOG" | grep -m1 -oE '^\[tui-panel\] TITLE_HITS=.*' | sed 's/^\[tui-panel\] //' || true)"
+MERGED_PANEL_LINES="$(printf '%s\n' "$MERGED_PANEL_LOG" | grep -m1 -oE '^\[tui-panel\] SUB_LINE=.*' | sed 's/^\[tui-panel\] //' || true)"
+MERGED_ORDER_RAW="panelSeam=$PANEL_SEAM driver=docker/lib/tui-panel-body.ts $MERGED_PANEL_HITS $MERGED_PANEL_LINES pane=pane-merged.txt control=pane-teamClosed.txt chars=$(wc -c <"$MERGED_PANE" 2>/dev/null || echo 0) controlChars=$(wc -c <"$MERGED_TEAMCLOSED_PANE" 2>/dev/null || echo 0)"
+if [ "$MERGED_PANEL_OPENS" = "true" ]; then
   record tui.mergedPanelOpens true \
-    "the MPD combo (alt+a, sent as tmux M-a from the plain chat state) opened the MERGED panel on a real terminal: the pane carries the scene's own title, its subagent section, and the team body the /mpd team arm proves is drawn" \
-    "title=\"MPD subagents + team\" titleHits=$MERGED_TITLE_HITS subagentSectionHits=$MERGED_SUB_HITS teamBodyHits=$MERGED_TEAM_HITS pane=pane-merged.txt chars=$(wc -c <"$MERGED_PANE" 2>/dev/null || echo 0)"
-elif [ "$PANEL_SEAM" != "present" ]; then
+    "the MPD combo (alt+a, sent as tmux M-a from the plain chat state) opened the MERGED panel on a real terminal, and the PRE-KEY capture proves the combo is what opened it: ${MERGED_PANEL_REASON}" \
+    "$MERGED_ORDER_RAW"
+else
   record tui.mergedPanelOpens false \
-    "the MPD combo did NOT open the merged panel: titleHits=$MERGED_TITLE_HITS subagentSectionHits=$MERGED_SUB_HITS teamBodyHits=$MERGED_TEAM_HITS (each must be > 0) — the pane is the screen alt+a produced after Escape closed the team scene" \
-    "pane=pane-merged.txt chars=$(wc -c <"$MERGED_PANE" 2>/dev/null || echo 0) head=$(head -c 200 "$MERGED_PANE" 2>/dev/null | tr '\n' ' ' | tr -d '"\\')"
+    "the MPD combo did NOT open the merged panel on the captured pane, or the capture cannot attribute the panel to the combo: ${MERGED_PANEL_REASON}${SCENE_UNBOUND_NOTE}" \
+    "$MERGED_ORDER_RAW log=$(printf '%s' "$MERGED_PANEL_LOG" | tr '\n' ' ' | tr -d '"\\')"
 fi
 
 # (2) THE ROW ORDER on the CAPTURED pane: the subagent section above the team section. The branch
-# actually measured is stated in the record, because the two are different screens: a session with no
-# host subagent row renders the host's own EMPTY-STATE line, and one with a row renders the row.
-# Whichever branch it is, the marker's line index must be > 0 and BELOW the team body's first marker.
-MERGED_SUB_HEAD_LINE="$(pane_line_of 'subagents +[0-9]+ total' "$MERGED_PANE")"
-MERGED_SUB_EMPTY_LINE="$(pane_line_of 'No subagents in the current session' "$MERGED_PANE")"
-MERGED_TEAM_LINE="$(pane_line_of 'task dependency graph|build the graph' "$MERGED_PANE")"
-if [ "$MERGED_SUB_EMPTY_LINE" -gt 0 ]; then
-  MERGED_SUB_LINE="$MERGED_SUB_EMPTY_LINE"
-  MERGED_SUB_BRANCH="the host's own empty-state line (this session carries NO host subagent row)"
-else
-  MERGED_SUB_LINE="$MERGED_SUB_HEAD_LINE"
-  MERGED_SUB_BRANCH="the subagent section header (this session carries at least one host subagent row)"
-fi
-MERGED_ORDER_RAW="subagentMarker=line ${MERGED_SUB_LINE:-0} [${MERGED_SUB_BRANCH}] teamMarker=line ${MERGED_TEAM_LINE:-0} header=line ${MERGED_SUB_HEAD_LINE:-0} emptyState=line ${MERGED_SUB_EMPTY_LINE:-0} pane=pane-merged.txt"
-if [ "$PANEL_SEAM" = "present" ]; then
-  # NOT MEASURABLE HERE, and recorded as such rather than as a pass: on this host the merged body
-  # lives in a SIDEBAR panel whose rows a tmux capture does not carry (measured: a byte-identical
-  # capture around a host-ACCEPTED open). The order is asserted by the unit arms instead
-  # (`packages/mpd-tui-plugin/test/panel.test.ts` renders the panel through a host double and checks
-  # the two sections' order), and the pre-0.13.0 branch below keeps the pane-level assertion alive for
-  # a host that still renders the merged view full-screen.
-  record tui.mergedPanelOrder null \
-    "the merged body's section order is NOT observable on this host: with the panel seam present the merged view is a sidebar panel and its rows do not reach a tmux capture, so this arm is not attempted here (the order is covered by the plugin's unit arms). Recording it as a pass would be a claim the pane does not carry" \
-    "panelSeam=$PANEL_SEAM orderCoveredBy=packages/mpd-tui-plugin/test/panel.test.ts $MERGED_ORDER_RAW"
-elif [ "${MERGED_SUB_LINE:-0}" -gt 0 ] && [ "${MERGED_TEAM_LINE:-0}" -gt 0 ] && [ "${MERGED_SUB_LINE:-0}" -lt "${MERGED_TEAM_LINE:-0}" ]; then
+# actually measured is stated in the module's own reason (this session carries no host subagent ROW, so
+# the host's EMPTY-STATE line is the marker; a session with a row uses the section header instead).
+if [ "$MERGED_PANEL_ORDER" = "true" ]; then
   record tui.mergedPanelOrder true \
-    "the captured pane holds the subagent section ABOVE the team section — measured marker: ${MERGED_SUB_BRANCH}, at line ${MERGED_SUB_LINE}, above the team body's first marker at line ${MERGED_TEAM_LINE}" \
+    "the captured pane holds the subagent section ABOVE the team body — measured on the same pane the open row reads: ${MERGED_PANEL_REASON}" \
     "$MERGED_ORDER_RAW"
 else
   record tui.mergedPanelOrder false \
-    "the subagent section is NOT above the team section on the captured pane (or a marker is missing, which compares as line 0): ${MERGED_ORDER_RAW}" \
+    "the subagent section is NOT above the team body on the captured pane (or a marker is missing, or the panel did not open — an order claim about a panel that is not on screen is not a measurement): ${MERGED_PANEL_REASON}${SCENE_UNBOUND_NOTE}" \
     "$MERGED_ORDER_RAW"
 fi
 
@@ -753,17 +1285,24 @@ import { readdirSync, existsSync, statSync } from "node:fs"
 import { join } from "node:path"
 import { pathToFileURL } from "node:url"
 
-const [appDir, dshHome] = process.argv.slice(2)
+const [appDir, dshHome, ownSessionId] = process.argv.slice(2)
 const out = (value) => { console.log(JSON.stringify(value)); process.exit(0) }
 try {
   const lib = await import(pathToFileURL(join(appDir, "skills", "dsh-qa", "scripts", "lib", "session-evidence.ts")).href)
   const root = join(dshHome, "sessions")
   if (!existsSync(root)) out({ found: false, reason: "no session store at " + root })
+  // SCOPED TO THIS LANE'S OWN SESSION WHEN IT KNOWS IT. The newest record is a PROXY, and on the
+  // 2026-10-14 run the proxy was wrong in the dangerous direction: this boot created no session, so
+  // "newest" was the WEB lane's session, whose record also says agentPreset=mpd — the arm passed while
+  // measuring ANOTHER session. An id the lane discovered from this boot's own store delta is the only
+  // id whose preset this lane may claim; with no id the arm reports the scope it used.
+  const own = typeof ownSessionId === "string" && ownSessionId !== "" && ownSessionId !== "-" ? ownSessionId : ""
   let newest = null
   for (const key of readdirSync(root)) {
     const dir = join(root, key)
     try { if (!statSync(dir).isDirectory()) continue } catch { continue }
     for (const id of readdirSync(dir)) {
+      if (own !== "" && id !== own) continue
       const p = join(dir, id)
       try { if (!statSync(p).isDirectory()) continue } catch { continue }
       for (const f of readdirSync(p)) {
@@ -774,16 +1313,16 @@ try {
       }
     }
   }
-  if (newest === null) out({ found: false, reason: "no session.v*.zstd record under " + root })
+  if (newest === null) out({ found: false, reason: (own === "" ? "no session.v*.zstd record under " : "no session.v*.zstd record for this boot's own session " + own + " under ") + root, scope: own === "" ? "newest-record-proxy" : "this-boot-session" })
   let text = ""
   try { text = lib.decodeSessionLog(newest.file).text } catch (error) { out({ found: false, reason: "decode failed: " + String(error?.message ?? error), file: newest.file }) }
   const m = /"agentPreset"\s*:\s*"([^"]*)"/.exec(text)
-  out({ found: true, sessionId: newest.id, agentPreset: m === null ? "(absent)" : m[1], bytes: text.length })
+  out({ found: true, sessionId: newest.id, agentPreset: m === null ? "(absent)" : m[1], bytes: text.length, scope: own === "" ? "newest-record-proxy" : "this-boot-session" })
 } catch (error) {
   out({ found: false, reason: "probe failed: " + String(error?.stack ?? error?.message ?? error) })
 }
 PROBE_EOF
-PRESET_JSON="$(node "$PROBE" "$APP_DIR" "$DSH_HOME" 2>"$TUI_DIR/store.err" || true)"
+PRESET_JSON="$(node "$PROBE" "$APP_DIR" "$DSH_HOME" "${LIVE_SESSION_ID:-}" 2>"$TUI_DIR/store.err" || true)"
 if [ -z "$PRESET_JSON" ]; then
   PROBE_ERR="$(head -c 300 "$TUI_DIR/store.err" 2>/dev/null | tr '\n' ' ' | tr -d '"\\')"
   PRESET_JSON="{\"found\":false,\"reason\":\"the store probe produced no output; stderr: ${PROBE_ERR}\"}"
@@ -802,15 +1341,19 @@ fi
 TUI_SUMMARY="$(awk '/"name":"tui\./ { total++; if ($0 ~ /"ok":false/) bad++ } END { printf "%d %d", total, bad }' "$STATE_FILE" 2>/dev/null || echo "0 0")"
 TUI_TOTAL="${TUI_SUMMARY%% *}"
 TUI_BAD="${TUI_SUMMARY##* }"
-# The floor is the number of tui.* records this lane REALLY writes BEFORE this exit record (19 since
-# the merged-panel group landed: the closed R5/zero-override set of 15 plus mergedPanelOpens,
-# mergedPanelOrder, hostDashboardKeyIntact and noDirectTuiSeam — counted from the writers, not
-# guessed). It is pinned so a record that silently disappears from the writer reddens instead of
-# shrinking the lane's coverage (measured 2026-09-27: all eleven assertions green and the lane
-# still reported laneExit=false — the inverse failure).
-if [ "${TUI_BAD:-0}" = "0" ] && [ "${TUI_TOTAL:-0}" -ge 19 ]; then
+# The floor is the number of tui.* records this lane REALLY writes BEFORE this exit record (21: the 19
+# names the merged-panel group closed on, plus teamFixtureBound and teamSceneOtherSessionInvisible,
+# which the F1 repair added — counted from the writers, not guessed). It is pinned so a record that
+# silently disappears from the writer reddens instead of shrinking the lane's coverage (measured
+# 2026-09-27: all eleven assertions green and the lane still reported laneExit=false — the inverse
+# failure). `tui.laneExit` itself is NOT part of it: it is written after this count on either ending.
+if [ "${TUI_BAD:-0}" = "0" ] && [ "${TUI_TOTAL:-0}" -ge 21 ]; then
   record tui.laneExit true "the TUI lane ran to completion with every assertion green" "records=$TUI_TOTAL"
   exit 0
 fi
 record tui.laneExit false "the TUI lane finished with failing or missing assertions" "records=$TUI_TOTAL failed=$TUI_BAD"
+# This exit is REQUESTED and the record above already covers it: without this line `on_exit` would read
+# an ordinary red ending as the abort it was written to catch, and publish the false second record the
+# trap's own comment describes.
+LANE_EXIT_RECORDED=1
 exit 1

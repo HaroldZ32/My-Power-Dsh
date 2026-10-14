@@ -1,0 +1,7 @@
+stamp directories found (newest first): evidence/docker/client-install/2026-01-01T00-00-00Z evidence/docker/client-install-oneclick/2026-01-02T00-00-00Z
+SKIPPED (no readable result.json): evidence/docker/client-install/2026-01-01T00-00-00Z/
+stamp directory: evidence/docker/client-install-oneclick/2026-01-02T00-00-00Z/
+driver: exit=1 liveRequested=false browserEnabled=false requiredPrefixes=[] containerExit=1 imageMiB=321
+rows: total=3 passed=1 failed=1 null=1
+FAIL boot.mcpToolNaming — pretend failure
+NULL ui.replyRendered — --no-browser was passed, so the browser lane did not run

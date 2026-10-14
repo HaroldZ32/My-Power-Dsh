@@ -4,8 +4,8 @@
 // §10.1 places the REGISTRATION in this package (it is the only module that can supply the
 // file-derived `base`); the TUI package keeps a guarded fallback for compositions without this
 // plugin. Both therefore read the schema and the field list from HERE, so the two front doors
-// cannot drift and the twenty-five knobs (thirteen mpd knobs + twelve team-model slot leaves) stay
-// one declaration.
+// cannot drift and the fifty-nine knobs (thirteen mpd knobs + twelve team-model slot leaves +
+// thirty-three agentRoutes leaves) stay one declaration.
 import z from "../../mpd-schemastery"
 
 /** The settings namespace the section and the Web card both edit. */
@@ -60,6 +60,82 @@ function teamModelSlotSchema(slot: TeamModelSlot): Schemastery<TeamModelSlot> {
   })
 }
 
+/** One team-model slot's human identity: its group name in both languages and its members, in the group's own order. */
+export interface TeamModelSlotGroup {
+  /** The group name as the zh label and heading render it, e.g. `重推理成员`. */
+  readonly zh: string
+  /** The group name as the EN label and heading render it, e.g. `heavy members`. */
+  readonly en: string
+  /** The members this slot routes, in the group's own order — the order every sentence names them in. */
+  readonly members: readonly string[]
+}
+
+/**
+ * What each slot IS: one member group per slot (A3). The group name and the member list are the
+ * ONLY inputs the shared per-leaf templates interpolate (slot 4 carries its own sentences below,
+ * because it states an image-input constraint rather than a shared-route one), so a slot's copy is
+ * declared once here and both front doors mirror it (the Web card cannot import this module).
+ *
+ * DECLARED ABOVE the schema on purpose (moved verbatim, wave fix/model-config-live-refresh):
+ * `ROSTER_AGENT_NAMES` derives from it, and `agentRoutes`'s key schema derives from THAT — a
+ * const the schema builder reads must already be initialised when the module evaluates the
+ * `SettingsSchema` literal, or the import itself dies on the temporal dead zone.
+ */
+export const TEAM_MODEL_SLOT_GROUPS: Readonly<Record<(typeof TEAM_MODEL_SLOTS)[number], TeamModelSlotGroup>> = {
+  slot1: { zh: "重推理成员", en: "heavy members", members: ["Architect", "Planner", "Reviewer", "Lead", "Senior Engineer"] },
+  slot2: { zh: "分析型成员", en: "analysis members", members: ["Researcher", "Explorer", "Plan Reviewer"] },
+  slot3: { zh: "执行型成员", en: "execution members", members: ["Deep Worker", "Junior Engineer"] },
+  slot4: { zh: "视觉成员", en: "vision member", members: ["Vision Analyst"] },
+}
+
+/**
+ * The ELEVEN roster base names `agentRoutes` may key on, derived from the slots' own membership
+ * declaration so the route table's vocabulary is the roster's vocabulary — ONE declaration, never
+ * a second copy that can drift from the surfaces that route these members.
+ */
+export const ROSTER_AGENT_NAMES: readonly string[] = Object.values(TEAM_MODEL_SLOT_GROUPS).flatMap((group) => [...group.members])
+
+/**
+ * One per-base-agent route entry: every leaf is OPTIONAL because the precedence is per FIELD — a
+ * leaf an entry leaves unset falls through to the member's `teamModels` slot value, so
+ * `{ "Deep Worker": { "model": "deepseek-v4-pro" } }` changes the model and keeps the slot's
+ * provider and effort.
+ */
+export interface AgentRouteEntry {
+  /** Provider id this member is routed through; absent means "the slot's provider stands". */
+  readonly provider?: string
+  /** Model id; absent means "the slot's model stands". */
+  readonly model?: string
+  /** Reasoning effort (`off` / `low` / `high` / `max`); absent means "the slot's effort stands". */
+  readonly reasoningEffort?: string
+}
+
+/**
+ * One entry's value schema: an object of optional strings.
+ *
+ * NOT exhaustive on unknown inner keys — the vendored `object` resolver merges extras through
+ * rather than rejecting them — which is why the READ path (`agentRouteEntryOfMember`) re-validates
+ * the exact three-leaf shape for the member it resolves; that guard is what makes a hand-edited
+ * FILE entry (which never passes this schema) loud too.
+ */
+export const AGENT_ROUTE_SCHEMA = z.object({
+  provider: z.string().required(false),
+  model: z.string().required(false),
+  reasoningEffort: z.string().required(false),
+})
+
+/**
+ * The `agentRoutes` knob itself (R2): a dict keyed by the eleven roster base NAMES, defaulting to
+ * empty. Validation is LOUD by construction: the KEY schema is a union of the eleven exact names,
+ * so an unknown name throws at schema-validation time — the row-config load and every settings
+ * save both pass through here — and a value that is not an object of optional strings throws the
+ * same way.
+ */
+export const AGENT_ROUTES_SCHEMA = z.dict(
+  AGENT_ROUTE_SCHEMA,
+  z.union(ROSTER_AGENT_NAMES.map((name) => z.const(name))),
+)
+
 /**
  * The mpd.jsonc knob schema (mirrors the keys `packages/mpd-config-plugin` consumes). The
  * defaults here are the design's L0 layer; the file-derived values arrive as the namespace `base`.
@@ -99,6 +175,11 @@ export const SettingsSchema = z.object({
     slot3: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot3),
     slot4: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot4),
   }),
+  // The per-base-agent route table (R2): one entry may carry a PARTIAL route for ONE member, and
+  // every leaf it sets outranks that member's `teamModels` slot leaf. Declared AFTER `teamModels`
+  // so the schema reads in precedence order; the front-door rows live in `SETTINGS_KNOBS` below
+  // (`AGENT_ROUTE_KNOBS`, added by L4 — the editing surface's lane, per this key's landing note).
+  agentRoutes: AGENT_ROUTES_SCHEMA,
   // The watchdog block is the §3 defaults table of the frozen contract and MUST stay byte-equal in
   // value to `packages/mpd-team-watchdog-plugin/src/machine.ts` `WATCHDOG_DEFAULTS` and to the
   // `mpd-team-watchdog` row config in `cordis.patch.yml` — those are the three
@@ -126,20 +207,19 @@ export const SettingsSchema = z.object({
 })
 
 /** The two-part disclosure every surface must be able to show (§D.2, and the "not lost" clause). */
-export const BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime"
+export const BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect in the RUNNING process — no restart: the config service re-resolves on every settings save and on a watched edit of the project file, and the model routes (teamModels, agentRoutes, modelchain) are read per use, so the next spawn or resolve carries them"
 
 /**
- * The HOST LIMITATION half of the truth (T-18), stated where the user meets it rather than papered
- * over: the file-derived base is captured at plugin mount and stays fixed for the process lifetime,
- * so a hand edit of `.mpd/mpd.jsonc` (or of any file-backed value) can never reach the running
- * process — only the next `dsh` boot reads it. The settings document is the only path that can
- * reach a RUNNING plugin, and only where that plugin subscribes to the host's settings-document
- * update (the watchdog engine does, `engine.ts` `onSettingsDocumentUpdated`); nothing in this
- * change proves that seam is exposed on the installed host, so the sentence stays true by being
- * conditional instead of claiming a live reload the wave did not measure.
+ * The RESTART half of the truth, REWORDED by wave fix/model-config-live-refresh (L1 landed the
+ * mount-armed file watcher and the entry-config subscription, so the old "the file half is
+ * host-limited … never mid-process" claim is no longer true): a `.mpd/mpd.jsonc` edit now reaches
+ * the running process through the watcher, and a settings save reaches it through the entry-config
+ * subscription. What STILL waits for a boot is exactly one class: a knob some plugin captured at
+ * its own mount instead of reading the live config service per use — the model routes this section
+ * edits are not such knobs, and the sentence says so instead of claiming a blanket restart.
  */
 export const BRIDGE_RESTART_LIMIT =
-  "the file half is host-limited: a .mpd/mpd.jsonc edit is read once at plugin mount and stays fixed for the running process, so it applies at the next dsh boot and never mid-process; only a change made through this settings document can reach a running plugin, and only where the plugin subscribes to the host's settings-document update"
+  "the restart wording now applies only to a knob some plugin captured at its own mount instead of reading the live config service per use — the model routes above are not such knobs; a captured knob keeps its captured value until the next dsh boot"
 
 /**
  * The sentence that keeps a settings-only save from reading as a LOST save (captain's ruling 1):
@@ -224,29 +304,6 @@ export function knobHint(key: string, semantics?: string): string {
  */
 export const BRIDGE_SECTION_NOTICE = `${BRIDGE_DISCLOSURE} ${BRIDGE_NOT_LOST}`
 
-/** One team-model slot's human identity: its group name in both languages and its members, in the group's own order. */
-export interface TeamModelSlotGroup {
-  /** The group name as the zh label and heading render it, e.g. `重推理成员`. */
-  readonly zh: string
-  /** The group name as the EN label and heading render it, e.g. `heavy members`. */
-  readonly en: string
-  /** The members this slot routes, in the group's own order — the order every sentence names them in. */
-  readonly members: readonly string[]
-}
-
-/**
- * What each slot IS: one member group per slot (A3). The group name and the member list are the
- * ONLY inputs the shared per-leaf templates interpolate (slot 4 carries its own sentences below,
- * because it states an image-input constraint rather than a shared-route one), so a slot's copy is
- * declared once here and both front doors mirror it (the Web card cannot import this module).
- */
-export const TEAM_MODEL_SLOT_GROUPS: Readonly<Record<(typeof TEAM_MODEL_SLOTS)[number], TeamModelSlotGroup>> = {
-  slot1: { zh: "重推理成员", en: "heavy members", members: ["Architect", "Planner", "Reviewer", "Lead", "Senior Engineer"] },
-  slot2: { zh: "分析型成员", en: "analysis members", members: ["Researcher", "Explorer", "Plan Reviewer"] },
-  slot3: { zh: "执行型成员", en: "execution members", members: ["Deep Worker", "Junior Engineer"] },
-  slot4: { zh: "视觉成员", en: "vision member", members: ["Vision Analyst"] },
-}
-
 /**
  * The HUMAN sentence of one slot leaf, as a template: `{group}` is the slot's group name and
  * `{members}` its member list in the group's own order. The sentence states what the slot IS and
@@ -262,8 +319,8 @@ const TEAM_MODEL_LEAF_TEMPLATES: Readonly<Record<keyof typeof TEAM_MODEL_FALLBAC
     zh: "这一档的模型。与上面的提供商共同决定 {group}（{members}）建队时使用的模型。改它的影响：同上，下次建队生效；模型与提供商不匹配、或该提供商没有这个模型时，建队会点名失败。",
   },
   reasoningEffort: {
-    en: "This slot's reasoning effort (off / low / high / max). It sets how much the {group} ({members}) think when a team is created: max is the strongest, high the usual balance, low cheaper, off disables reasoning. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot.",
-    zh: "这一档的推理强度（off / low / high / max）。它决定 {group}（{members}）建队时的思考深度：max 最强、high 是常规平衡、low 更省、off 关闭思考。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。",
+    en: "This slot's reasoning effort (off / low / high / max). It sets how much the {group} ({members}) think when a team is created: max is the strongest, high the usual balance, low cheaper, off disables reasoning. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot. EXCEPTION: a model whose catalog entry declares no reasoning efforts at all is sent none — its call still runs.",
+    zh: "这一档的推理强度（off / low / high / max）。它决定 {group}（{members}）建队时的思考深度：max 最强、high 是常规平衡、low 更省、off 关闭思考。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。例外：若该模型的目录条目完全没有推理等级，则不发送任何等级——调用照常。",
   },
 }
 
@@ -285,8 +342,8 @@ const TEAM_MODEL_SLOT_LEAF_OVERRIDES: Partial<
       zh: "这一档的模型。必须选支持图像输入的模型：Vision Analyst 的全部价值在于读图，纯文本模型会让它的读图任务直接失败。改它的影响：下次建队生效。",
     },
     reasoningEffort: {
-      en: "This slot's reasoning effort (off / low / high / max). It sets how much Vision Analyst thinks while reading an image. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot.",
-      zh: "这一档的推理强度（off / low / high / max）。决定 Vision Analyst 读图时的思考深度。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。",
+      en: "This slot's reasoning effort (off / low / high / max). It sets how much Vision Analyst thinks while reading an image. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot. EXCEPTION: a model whose catalog entry declares no reasoning efforts at all is sent none — its call still runs.",
+      zh: "这一档的推理强度（off / low / high / max）。决定 Vision Analyst 读图时的思考深度。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。例外：若该模型的目录条目完全没有推理等级，则不发送任何等级——调用照常。",
     },
   },
 }
@@ -366,6 +423,111 @@ const TEAM_MODEL_KNOBS: readonly SettingsKnob[] = TEAM_MODEL_SLOTS.flatMap((slot
   }))
 })
 
+/**
+ * The per-leaf HUMAN sentence templates of an `agentRoutes` row. `{name}` is the roster member the
+ * row overrides and `{group}` its slot's group name; the sentence states the R2 precedence (this
+ * leaf outranks the member's slot), the LIVE effect (the member's next spawn/resolve — no restart)
+ * and the fall-through of an unset leaf. One declaration; both front doors mirror it (the Web card
+ * cannot import this module, so a parity test compares the copies).
+ */
+const AGENT_ROUTE_LEAF_TEMPLATES: Readonly<Record<keyof typeof TEAM_MODEL_FALLBACK_OPTIONS, { readonly en: string; readonly zh: string }>> = {
+  provider: {
+    en: "The provider half of {name}'s OWN route override. An agentRoutes leaf outranks {name}'s team-model slot: it applies to {name} only, and LIVE — the member's next spawn or resolve carries it, no restart and no new team needed. An unset leaf falls through to the slot's provider; clearing every leaf returns {name} to the slot.",
+    zh: "{name} 专属路由覆盖的提供商。agentRoutes 的叶子优先于 {name} 的 team 模型槽位：只作用于 {name} 本人，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的提供商；清空全部叶子即恢复跟随槽位。",
+  },
+  model: {
+    en: "The model half of {name}'s OWN route override. It outranks the model of {name}'s team-model slot ({group}) and applies LIVE — the member's next spawn or resolve carries it, no restart and no new team needed. An unset leaf falls through to the slot's model; clearing every leaf returns {name} to the slot.",
+    zh: "{name} 专属路由覆盖的模型。优先于 {name} 所属槽位（{group}）的模型，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的模型；清空全部叶子即恢复跟随槽位。",
+  },
+  reasoningEffort: {
+    en: "The reasoning-effort half of {name}'s OWN route override (off / low / high / max). It outranks the effort of {name}'s team-model slot ({group}) and applies LIVE — the member's next spawn or resolve carries it. An unset leaf falls through to the slot's effort; an effort the chosen model does not support fails that member's spawn loudly, naming the member.",
+    zh: "{name} 专属路由覆盖的推理强度（off / low / high / max）。优先于 {name} 所属槽位（{group}）的推理强度，且即时生效——该成员下次生成/解析即携带新值。未设置的叶子回落到槽位的等级；该模型不支持的等级会让该成员的生成直接报错并点名。",
+  },
+}
+
+/**
+ * The slot one roster member belongs to, so a per-member surface can name the layer its override
+ * sits on. Derived from the groups' own membership (the same declaration the routing reads), so a
+ * member the roster re-slots re-points every heading built from here.
+ * @param name - the roster member's functional NAME.
+ * @returns the slot id whose group carries the member, or undefined for a name no group routes.
+ */
+export function agentRouteSlotOf(name: string): (typeof TEAM_MODEL_SLOTS)[number] | undefined {
+  return TEAM_MODEL_SLOTS.find((slot) => TEAM_MODEL_SLOT_GROUPS[slot].members.includes(name))
+}
+
+/**
+ * One agentRoutes row's HUMAN sentence in `lang` — the same builder shape
+ * {@link teamModelLeafSentence} has, so a front door renders the two row families the same way.
+ * @param name - the roster member the row overrides.
+ * @param leaf - the row's leaf (`provider` / `model` / `reasoningEffort`).
+ * @param lang - the sentence's language.
+ * @returns the sentence with `{name}` and `{group}` interpolated.
+ */
+export function agentRouteLeafSentence(name: string, leaf: keyof typeof TEAM_MODEL_FALLBACK_OPTIONS, lang: "en" | "zh"): string {
+  /** The member's slot, whose group name the sentence interpolates (the name itself is literal). */
+  const slot = agentRouteSlotOf(name)
+  /** The group spelling the template interpolates; unknown names keep a neutral placeholder. */
+  const group = slot === undefined ? (lang === "zh" ? "未编组" : "ungrouped") : TEAM_MODEL_SLOT_GROUPS[slot][lang]
+  return AGENT_ROUTE_LEAF_TEMPLATES[leaf][lang].split("{name}").join(name).split("{group}").join(group)
+}
+
+/**
+ * The heading a front door renders above ONE member's three agentRoutes rows, e.g.
+ * `Architect — own route (overrides slot 1 · heavy members)`. It names the member and the slot the
+ * override sits on, which is exactly what a reader needs before touching a row (R3).
+ * @param name - the roster member the group edits.
+ * @param lang - the heading's language.
+ * @returns the heading string.
+ */
+export function agentRouteGroupHeading(name: string, lang: "en" | "zh"): string {
+  /** The member's slot, whose 1-based number and group name the heading interpolates. */
+  const slot = agentRouteSlotOf(name)
+  if (slot === undefined) return lang === "zh" ? `${name} —— 专属路由` : `${name} — own route`
+  /** 1-based slot number, spelled the way the slot headings spell it. */
+  const index = TEAM_MODEL_SLOTS.indexOf(slot) + 1
+  return lang === "zh"
+    ? `${name} —— 专属路由（覆盖槽位 ${index} · ${TEAM_MODEL_SLOT_GROUPS[slot].zh}）`
+    : `${name} — own route (overrides slot ${index} · ${TEAM_MODEL_SLOT_GROUPS[slot].en})`
+}
+
+/**
+ * The one-line impact sentence under an agentRoutes group heading: the R2 precedence in one breath,
+ * shared by every member group (a per-member group needs no per-member variant).
+ */
+export const AGENT_ROUTE_IMPACT: Readonly<Record<"en" | "zh", string>> = {
+  en: "A leaf set here applies to this member only and LIVE — the next spawn or resolve carries it; an unset leaf falls through to the member's slot, and clearing every leaf returns the member to the slot.",
+  zh: "在这里设置的叶子只作用于该成员本人且即时生效——下次生成/解析即携带；未设置的叶子回落到该成员的槽位，清空全部叶子即恢复跟随槽位。",
+}
+
+/**
+ * The thirty-three agentRoutes knobs (R2's front door, added by L4): one provider/model/reasoning-
+ * effort `select` row per roster member, enumerated from the slots' own membership so the eleven
+ * names can never drift from the routing vocabulary and the user never free-types a name. Inserted
+ * AFTER the team-model knobs (the schema reads in precedence order) and BEFORE the TUI surface's
+ * own knob (which stays LAST for the index-keyed assertions over the original twenty-five).
+ */
+const AGENT_ROUTE_KNOBS: readonly SettingsKnob[] = TEAM_MODEL_SLOTS.flatMap((slot) =>
+  TEAM_MODEL_SLOT_GROUPS[slot].members.flatMap((member) => {
+    // The member's three route leaves, in the fixed order both front doors render them.
+    const leaves: readonly { leaf: keyof typeof TEAM_MODEL_FALLBACK_OPTIONS; label: string; zh: string }[] = [
+      { leaf: "provider", label: "provider", zh: "提供商" },
+      { leaf: "model", label: "model", zh: "模型" },
+      { leaf: "reasoningEffort", label: "reasoning effort", zh: "推理强度" },
+    ]
+    return leaves.map(({ leaf, label, zh }) => ({
+      path: ["agentRoutes", member, leaf] as const,
+      label: `${member} ${label} (own route)`,
+      zh: `${member} ${zh}（专属路由）`,
+      kind: "select" as const,
+      options: TEAM_MODEL_FALLBACK_OPTIONS[leaf],
+      semantics: agentRouteLeafSentence(member, leaf, "en"),
+      semanticsZh: agentRouteLeafSentence(member, leaf, "zh"),
+      hint: knobHint(`agentRoutes.${member}.${leaf}`, agentRouteLeafSentence(member, leaf, "en")),
+    }))
+  }),
+)
+
 /** One knob: the decoded settings path plus the labels both front doors render. */
 export interface SettingsKnob {
   /** Decoded settings path this knob edits, root segment first. */
@@ -394,7 +556,7 @@ export interface SettingsKnob {
   readonly hint?: string
 }
 
-/** The twenty-six knobs, in display order: the original thirteen, the twelve team-model slot leaves, then the TUI surface's own knob. */
+/** The fifty-nine knobs, in display order: the original thirteen, the twelve team-model slot leaves, the thirty-three agentRoutes leaves (eleven members × three), then the TUI surface's own knob. */
 export const SETTINGS_KNOBS: readonly SettingsKnob[] = [
   { path: ["hashline", "maxDiffChars"], label: "Inline diff limit", zh: "行内 diff 上限", kind: "number" },
   { path: ["commentChecker", "autoCheck"], label: "Comment checker", zh: "注释检查", kind: "boolean" },
@@ -410,6 +572,10 @@ export const SETTINGS_KNOBS: readonly SettingsKnob[] = [
   { path: ["watchdog", "toolInFlightMaxMs"], label: "Tool-in-flight bound (ms, 0 = no bound)", zh: "工具在飞上限（毫秒，0 表示不设上限）", kind: "number", hint: "how long ONE tool call may run before it stops explaining a silent member: past this bound the call is reported ONCE as a `tool-expired` incident (a warning — never a scene, never a hold, never an escalation), and `0` disables the bound" },
   { path: ["watchdog", "holdTtlMs"], label: "Hold TTL (ms, 0 = no expiry)", zh: "暂停持有有效期（毫秒，0 表示不设有效期）", kind: "number", hint: "how long a watchdog hold may stay latched before it auto-releases: past this bound the hold releases itself and changes ZERO team bytes, and activity newer than the hold releases it sooner — `0` disables the expiry" },
   ...TEAM_MODEL_KNOBS,
+  // The per-member route-table rows (R2's front door, L4): enumerated from the slots' own
+  // membership — the eleven roster NAMES, never a free-typed key — so an unknown name is
+  // unrepresentable in the UI and the loud server-side validation stays the only reject path.
+  ...AGENT_ROUTE_KNOBS,
   // The TUI surface's own knob, LAST so every index-keyed assertion over the original thirteen and
   // the twelve slot leaves keeps its meaning. Its `hint` is the semantics sentence only — the
   // bridge/restart disclosure is appended by each front door's own hint builder, never hand-written.

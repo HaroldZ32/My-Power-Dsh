@@ -1,0 +1,7 @@
+dsh: warning: 1 entry did not activate
+preset-mpd (@deepseek-ai/dsh-agent-preset): pending (waiting for service: agentPresets)
+dsh: reasoning:
+The user wants me to call the subagent tool exactly once with label "gate-probe" and prompt "reply with the single word ok". The subagent tool doesn't have a "label" parameter — it has description and prompt. Hmm, but they say label "gate-probe". The tool has `description` which is the label-ish. I should map label to description.
+
+Let me call it once and report.
+The call was refused — the delegation gate blocked `subagent` and directed me to `mpd_role_spawn` / `mpd_workmate_spawn` / Agent Teams instead.

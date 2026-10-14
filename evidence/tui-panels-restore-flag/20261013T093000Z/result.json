@@ -1,0 +1,72 @@
+{
+  "wave": "fix/tui-panels-restore-flag — removing the last declared residual",
+  "date": "2026-10-13",
+  "userClause": "边界也别有，想办法给修了 — do not leave that boundary either; find a way to fix it.",
+  "residualRemoved": {
+    "whatItWas": "The previous wave repaired a leaf that names NONE of the host's builtins AUTOMATICALLY, and documented the residual: a user who DELIBERATELY removes every builtin is byte-identical to that damage and would be repaired once more.",
+    "whyGuessingWasWrong": "The two states are the same bytes, so any automatic rule must either overwrite a real choice or leave real damage — there is no third option. The boundary is therefore removed by NOT guessing: the automatic path never overrules an existing list, and the repair becomes an act only a human can request.",
+    "newRules": [
+      "AUTOMATIC: an ABSENT leaf is seeded from the host's own current default (read from the installed module; the run REFUSES if it cannot be read).",
+      "AUTOMATIC: an EXISTING leaf is a POSITION and is returned BYTE-FOR-BYTE — including one that names none of the builtins. No residual: nothing automatic can ever touch it.",
+      "EXPLICIT: `--restore-builtins` is the ONE path that puts missing builtins back. It is a flag, not an inference."
+    ],
+    "noResidualLeft": "The only remaining way the builtins can be absent is that the user (or the host's own /settings UI) put them absent — and the tool now leaves that alone by construction."
+  },
+  "implementation": {
+    "resolvePanelSeed": "reduced to TWO cases — absent leaf -> the host default; existing leaf -> itself. The 'all builtins missing' branch was DELETED.",
+    "restoreMissingBuiltins": "NEW pure helper for the explicit act: prepends the host's canonical default (the merge's first-occurrence dedupe keeps the host's order), reports exactly which ids were missing, is a no-op on a healthy list, and REFUSES when the host default cannot be read.",
+    "options": "`--restore-builtins` added to the option parser and to the usage block.",
+    "earlyExit": "the 'already enabled' return still requires `restored.length === 0`, so an explicit restore is never swallowed (proved below: the sandbox `--apply` WROTE).",
+    "header": "the file header now states both rules and why the repair is explicit."
+  },
+  "proofs": [
+    {
+      "case": "AUTOMATIC path over a leaf that names NONE of the builtins (sandbox)",
+      "observed": "[mpd-tui-panels] panel ids (--ids): act1:team / [mpd-tui-panels] already enabled, and no stale id of ours to prune: act1:team",
+      "reading": "the list was LEFT ALONE — a deliberate all-builtins removal is respected, which is exactly the boundary that is now gone"
+    },
+    {
+      "case": "EXPLICIT --restore-builtins over the same leaf (sandbox)",
+      "observed": "--restore-builtins: restoring todo,jobs,agents,info,trajectory,workspace,btw,companion ahead of the tokens the leaf already carries / panels (before): act1:team / panels (after): todo,jobs,agents,info,trajectory,workspace,btw,companion,act1:team",
+      "reading": "the explicit act restores, and says exactly what it restored"
+    },
+    {
+      "case": "the same explicit restore with --apply (sandbox)",
+      "observed": "WROTE …\\cordis.patch.yml (backup: cordis.patch.yml.bak-17577700); read back: todo,jobs,agents,info,trajectory,workspace,btw,companion,act1:team",
+      "reading": "the restoration LANDS — the early exit does not swallow it (its condition is `restored.length === 0`)"
+    },
+    {
+      "case": "the REAL profile, plain run",
+      "observed": "already enabled, and no stale id of ours to prune: todo,jobs,agents,info,trajectory,workspace,btw,companion,act1:team,act1:workmate",
+      "reading": "a healthy list is a no-op"
+    },
+    {
+      "case": "the REAL profile, --restore-builtins",
+      "observed": "--restore-builtins: every builtin the host ships is already enabled — nothing to restore / already enabled, and no stale id of ours to prune: <the same 10 ids>",
+      "reading": "the flag is a no-op on a healthy list too"
+    }
+  ],
+  "selfTest": {
+    "result": "SELF-TEST PASS (all arms held)",
+    "newArms": [
+      "(a) a leaf naming NONE of the builtins is left BYTE-FOR-BYTE by the automatic path",
+      "(a) so the merge writes nothing at all for it (a deliberate removal is respected)",
+      "(a) --restore-builtins puts the whole default back AHEAD of the leaf's own tokens",
+      "(a) --restore-builtins on a HEALTHY list is a no-op that restores nothing",
+      "(a) --restore-builtins completes a PARTIAL selection, in the host's own order",
+      "(a) --restore-builtins REFUSES when the host default cannot be read",
+      "(a) all EIGHT builtins survive every path (absent leaf, explicit restore, healthy list)",
+      "(a) a FULLY repaired list (all eight + ours) is a NO-OP, not a rewrite",
+      "(a) and its AUTOMATIC SEED is that same list untouched — nothing is restored"
+    ]
+  },
+  "gates": [
+    { "command": "node scripts/mpd-tui-panels.ts --self-test", "exit": 0, "observed": "SELF-TEST PASS (all arms held)" },
+    { "command": "node scripts/verify-comment-coverage.ts", "exit": 0, "observed": "VERDICT: PASS" },
+    { "command": "bun run typecheck (tsgo --noEmit)", "exit": 0, "observed": "no diagnostics" }
+  ],
+  "stateAfter": {
+    "profile": "~/.dsh/profiles/dsh-tui/cordis.patch.yml -> sidePanel.panels = todo,jobs,agents,info,trajectory,workspace,btw,companion,act1:team,act1:workmate",
+    "sandbox": "left under %TEMP%/mpd-panels-probe (throwaway; not part of the repository)"
+  }
+}

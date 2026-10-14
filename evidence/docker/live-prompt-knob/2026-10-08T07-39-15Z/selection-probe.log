@@ -1,0 +1,48 @@
+repo:              /home/haroldzhao/MyProj/DshProj/My-Power-Dsh
+entrypoint:        /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/docker/entrypoint.sh
+entrypoint sha256: 131f4a1573cba6328a165f64a275d95adaea60116719eca4f15886e55ff1d390
+
+--- extracted selection expression (entrypoint lines 120..127) ---
+live_prompt_select() {
+  local fallback="$1" override="$2"
+  if [ -n "$override" ]; then
+    printf '%s' "$override"
+  else
+    printf '%s' "$fallback"
+  fi
+}
+--- end of extracted expression ---
+
+--- extracted default literal (entrypoint line 1431) ---
+  LIVE_PROMPT_DEFAULT="Do these steps in order: (1) call mpd_config_get once with no arguments; (2) call agent_teams_plan with action \"create\" (name it live-smoke, description \"docker live turn\"); (3) call agent_teams_plan with action \"add_member\" for a member named Reviewer; (4) call agent_teams_plan with action \"create_task\" with subject \"check the mount\"; (5) call agent_teams_plan with action \"approve\". Then reply with the single word DONE."
+--- end of extracted literal ---
+  default bytes=424 sha256=b9828b0fd730e077dd0f4585e2ce30718295036326ef49082da254a168f4c007 firstLine="Do these steps in order: (1) call mpd_config_get once with no arguments; (2) call agent_teams_plan with action "create" (name it live-smoke, description "docker live turn"); (3) call agent_teams_plan with action "add_member" for a member named Reviewer; (4) call agent_teams_plan with action "create_task" with subject "check the mount"; (5) call agent_teams_plan with action "approve". Then reply with the single word DONE."
+
+=== case 1: MPD_E2E_LIVE_PROMPT UNSET ===
+  selected bytes=424 sha256=b9828b0fd730e077dd0f4585e2ce30718295036326ef49082da254a168f4c007 firstLine="Do these steps in order: (1) call mpd_config_get once with no arguments; (2) call agent_teams_plan with action "create" (name it live-smoke, description "docker live turn"); (3) call agent_teams_plan with action "add_member" for a member named Reviewer; (4) call agent_teams_plan with action "create_task" with subject "check the mount"; (5) call agent_teams_plan with action "approve". Then reply with the single word DONE."
+
+=== case 2: MPD_E2E_LIVE_PROMPT set to the EMPTY string ===
+  selected bytes=424 sha256=b9828b0fd730e077dd0f4585e2ce30718295036326ef49082da254a168f4c007 firstLine="Do these steps in order: (1) call mpd_config_get once with no arguments; (2) call agent_teams_plan with action "create" (name it live-smoke, description "docker live turn"); (3) call agent_teams_plan with action "add_member" for a member named Reviewer; (4) call agent_teams_plan with action "create_task" with subject "check the mount"; (5) call agent_teams_plan with action "approve". Then reply with the single word DONE."
+
+=== case 3: MPD_E2E_LIVE_PROMPT set to a MARKER (negative control) ===
+  selected bytes=57 sha256=9d0ba11b0a6c58bae93895cac979455eed02c044231c0a49658dacaef0fbb9dc firstLine="E1-MARKER: write a playable snake game to /out/snake.html"
+  marker   bytes=57 sha256=9d0ba11b0a6c58bae93895cac979455eed02c044231c0a49658dacaef0fbb9dc firstLine="E1-MARKER: write a playable snake game to /out/snake.html"
+
+[probe] all 3 cases passed against the extracted expression
+
+=== the note block step 15 runs, extracted and executed for two cases ===
+--- extracted note block (entrypoint lines 1432..1440) ---
+  LIVE_PROMPT_OVERRIDE="${MPD_E2E_LIVE_PROMPT:-}"
+  LIVE_PROMPT="$(live_prompt_select "$LIVE_PROMPT_DEFAULT" "$LIVE_PROMPT_OVERRIDE")"
+  if [ -n "$LIVE_PROMPT_OVERRIDE" ]; then LIVE_PROMPT_SOURCE="caller (MPD_E2E_LIVE_PROMPT)"; else LIVE_PROMPT_SOURCE="default"; fi
+  # WHICH PROMPT RAN IS ITSELF EVIDENCE, stated without dumping a long caller prompt into the log or
+  # the report: the source label, the BYTE LENGTH and the FIRST LINE identify it in one readable line,
+  # and the fact travels into output.log and result.json's facts map un-truncated.
+  LIVE_PROMPT_BYTES="$(printf '%s' "$LIVE_PROMPT" | wc -c | tr -d '[:space:]')"
+  LIVE_PROMPT_FIRST_LINE="$(printf '%s' "$LIVE_PROMPT" | sed -n '1p')"
+  LIVE_PROMPT_NOTE="promptSource=$LIVE_PROMPT_SOURCE bytes=$LIVE_PROMPT_BYTES firstLine=\"$LIVE_PROMPT_FIRST_LINE\""
+--- end of extracted note block ---
+  case marker: promptSource=caller (MPD_E2E_LIVE_PROMPT) bytes=57 firstLine="E1-MARKER: write a playable snake game to /out/snake.html"
+  case unset:  promptSource=default bytes=424 firstLine="Do these steps in order: (1) call mpd_config_get once with no arguments; (2) call agent_teams_plan with action "create" (name it live-smoke, description "docker live turn"); (3) call agent_teams_plan with action "add_member" for a member named Reviewer; (4) call agent_teams_plan with action "create_task" with subject "check the mount"; (5) call agent_teams_plan with action "approve". Then reply with the single word DONE."
+
+[probe] selection (3 cases) + evidence note (2 cases) all passed against extracted code

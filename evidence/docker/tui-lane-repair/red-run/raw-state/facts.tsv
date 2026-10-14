@@ -1,0 +1,46 @@
+stamp	2026-10-08T12:24:16Z
+entrypoint	docker/entrypoint.sh
+image	mpd-docker-e2e:local
+ubuntuImage	ubuntu 24.04 (Ubuntu 24.04.5 LTS)
+pins	nodePin=24.19.0 dsh=0.2.0-rc.2 pnpm=11.23.0
+home	/root/sandbox-home
+dshHome	/root/sandbox-dsh
+aptSeconds	15
+nodeArch	amd64 -> linux-x64
+nodeSource	image (node:24-bookworm /usr/local)
+node	v24.21.0 (npm 11.19.0)
+bunPath	/opt/toolchain/bun/bin/bun
+bun	1.4.2 (route=official-script, BUN_INSTALL=/opt/toolchain/bun)
+pnpm	11.23.0
+dsh	0.2.0-rc.2 (/usr/local/bin/dsh)
+harnessVersion	0.2.0-rc.2
+harnessVersionExpected	0.2.0-rc.2
+copyManifest	@mpd-dsh/mpd
+rebuildEntries	ENTRIES=30
+obs.rebuildNoSrc	NO_SRC=mpd-bundle=package has no src/ directory (dist is the only committed artifact),mpd-mcp-shared=built offline by scripts/build-mcp.ts from the upstream checkout (no local src/),mpd-schemastery=package has no src/ directory (dist is the only committed artifact)
+obs.installSpec	.
+obs.installTail	+ @mpd-dsh/mpd link:/opt/mpd  Already up to date Done in 319ms using pnpm v11.23.0 
+profileDep	link:/opt/mpd
+profileBundles	@deepseek-ai/dsh-base,@deepseek-ai/dsh-web-app,@mpd-dsh/mpd
+obs.dumpMpdRowIds	mpd-agent-team,mpd-better-sidebar,mpd-bootstrap,mpd-boulder,mpd-codegraph,mpd-comment-checker,mpd-config,mpd-dsh-adapter,mpd-ext,mpd-goal,mpd-hashline,mpd-memory,mpd-modelchain,mpd-roles,mpd-roster-provider,mpd-team-compact,mpd-team-core,mpd-team-watchdog,mpd-tool-agent-team,mpd-tools,mpd-tui,mpd-tui-adapter,mpd-ui-agent-team,mpd-ulw,mpd-verify,mpd-web-compat,mpd-workmate,
+obs.dumpDefaultMpdLines	0 (expected 0: the bundle ships no preset override)
+obs.dumpAgentTeamRows	mpd-agent-team,mpd-tool-agent-team,mpd-ui-agent-team,
+bootCoreTools	6/6
+bootTeamToolsRootPlane	0/9
+bootAdapterCaps	tools,toolsRegister,toolsGuard,toolsGet,toolsExecute,toolsPreExecute,toolsPostExecute,subagents,subagentsSpawn,skills,skillsProvider,agentPresets,commands,commandsRegister,agents,events,llmCatalog,toolsRegisterHost,subagentsProvider,subagentsContinuable,teamExecutorNative,subagentsInterrupt,llmListModels,llmResolveCallConfig,systemPromptSection,agentPreStep,team,teamTasks,teamMessages,subagentsProviderRegister,goals
+obs.retiredToolsPresent	<probe did not report>
+obs.teamToolPlane	root-plane read=0/9 (0/9 is the documented shape: @deepseek-ai/dsh-experimental-tool-agent-team registers scoped.tools on agent.ctx per agent); the graded read is AGENT_TEAM_TOOLS below
+bootAgentTeamsMethods	listMembers,spawnTeammate,sendMessage,createTask,getTask,listTasks,updateTask,waitForChange,interrupt,tryMembership
+obs.uiTeamRow	resolved in the bundle's own node_modules (resolved through the link: dependency) at /opt/mpd/node_modules/@deepseek-ai/dsh-experimental-client-ui-agent-team/package.json with dsh.client.platform=web; host half is a no-op apply(), so no server-side registration can witness this browser-discovered plugin — its load is witnessed as resolved+composed+no apply failure (boot.noFatalSignatures)
+bootCookieJarLines	4
+bootCookieExchange	http=303 tokenPresent=yes
+bootHttp	/plugins/mpd-workmate/list -> 200
+obs.sessionCreate	http=200 type=server-response rpcIdEcho=match ok=true agentPreset=mpd
+bootAgentTeamToolsScoped	[docker-probe] AGENT_TEAM_TOOLS=9/9 agent=session-f2cc2acf-a540-4568-9885-a62aeb82
+bootSessionGate	[mpd-roles] session gate listener registered for agent "session-f2cc2acf-a540-4568-9885-a62aeb824276" agentPreset=mpd (file=/work/.mpd/logs/mpd-roles.log)
+teamRoutesSession	session-f2cc2acf-a540-4568-9885-a62aeb824276
+teamRoutes	 state=200/true plan=200/true task=200/true mail=200/true
+obs.realHomeMarkers	.bashrc,.profile,sandbox-dsh,sandbox-home,
+obs.credentialFiles	.credentials.yaml(161B), (sizes only; the CONTENT of a credential-shaped file is deliberately never copied into the evidence — the check is a secret-shape match, not a dump)
+hashesMeasuredAt	2026-10-08T12:29:36Z
+finishedAt	2026-10-08T12:29:36Z

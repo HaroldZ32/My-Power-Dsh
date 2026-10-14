@@ -339,7 +339,7 @@ async function runReal(): Promise<void> {
     /** The `init` route's response. */
     const r = await fetch("http://127.0.0.1:" + PORT + "/plugins/mpd-workmate/init", {
       method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ base: "hephaestus", name: "gui-alice", note: "created from GUI" }),
+      body: JSON.stringify({ base: "Deep Worker", name: "gui-alice", note: "created from GUI" }),
       signal: AbortSignal.timeout(5000),
     })
     /** The route's response body, quoted into the evidence. */

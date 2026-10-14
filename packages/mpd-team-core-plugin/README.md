@@ -32,6 +32,81 @@ the budget and the action sets, so a new tool has to justify itself against that
 
 `/agent-teams <what the team is for>` stages a plan from the current goal.
 
+## The change feed — publish, do not poll
+
+Every team mutation **publishes**. The record at `<workspace>/.mpd/team/teams/<teamId>.json` is the one
+source of team truth, and it now announces its own changes, so a surface re-reads when something
+happened instead of every 1000–2000 ms.
+
+### The service (`mpdTeams`)
+
+| Member | Signature | Contract |
+|---|---|---|
+| `subscribe` | `(workspace: string, listener: () => void) => () => void` | Called at most once per change window, **never inside the writer's stack**. The disposer is idempotent. |
+| `revision` | `(workspace: string) => number` | A monotonic counter of the change windows this process has OBSERVED for that workspace. `0` for a workspace never seen. A client that reconnects compares its own number against the stream's `hello` frame to detect a missed notification. |
+
+- **No matter who wrote it.** This process's own writes (`writeTeam`, `writeTeamsIndex`, `deleteTeam`)
+  notify through a hook on the store, and a write by **another process** — a second session, a CLI, a
+  container lane — is seen by a non-recursive `fs.watch` on `<workspace>/.mpd/team` (the index) and
+  `<workspace>/.mpd/team/teams` (the records). Both funnel into the same per-workspace window.
+- **Coalescing.** A burst inside one window is ONE listener call, and the revision counts the window,
+  not the writes in it. The window is FIXED (50 ms by default), never extended by a late arrival, so a
+  continuously busy team cannot postpone its own notification forever. The first write of a burst
+  notifies on its own: it is the one that opens the window.
+- **Containment.** A throwing listener is swallowed for that call and reported once; it cannot break
+  the writer, the other listeners or the boot.
+- **Lazy and released.** The watchers for a workspace are armed on its first subscriber and closed with
+  its last; every watcher, timer and hook is released on row dispose.
+- **Degradation, never failure.** If `fs.watch` (or the workspace) refuses, the feed still delivers
+  in-process notifications and writes **ONE** bounded log line per workspace saying the watch is off.
+  A refused arming is retried on the next subscriber or change, so a directory that appears later is
+  picked up rather than watched by nobody forever.
+
+### The route (`GET /plugins/mpd-team/events`)
+
+Server-Sent Events, under the same `/plugins/mpd-team/*` family as the four JSON routes (the host
+throws on a duplicate exact route, and `/plugins/events` belongs to the harness's own HMR row).
+The workspace and session are resolved from the request **per request**, exactly as the JSON routes
+resolve them.
+
+```
+HTTP/1.1 200 OK
+content-type: text/event-stream; charset=utf-8
+cache-control: no-store, no-transform
+connection: keep-alive
+x-accel-buffering: no
+
+retry: 1000
+
+event: hello
+data: {"rev":7}
+
+data: {"rev":8}
+
+: ping
+```
+
+- On connect: `retry: 1000`, then one `event: hello` frame carrying the current revision; the head is
+  flushed explicitly so a client reports OPEN before any change exists.
+- On every feed change: one unnamed `data:` frame (the client's default `message` event).
+- A `: ping` comment every 15 s, so no proxy drops an idle stream.
+- `req.on("close")` disposes the subscription and clears the interval; nothing survives the client
+  leaving.
+- A composition with **no feed** answers `503` with a JSON body rather than holding a dead stream open.
+
+### Bounds, stated rather than implied
+
+- The watch is **two non-recursive directory watches** per armed workspace: Linux inotify has no
+  recursive mode, and a record is a child of `teams/` while the index is a child of `.mpd/team`.
+- Creating those directories is a deliberate side effect of subscribing (a watch cannot be armed on a
+  path that does not exist), so a surface that subscribes may create empty
+  `<workspace>/.mpd/team/teams/`.
+- On a network filesystem, or one whose kernel inotify watch limit is exhausted, the watch degrades
+  exactly as an unwritable workspace does: in-process only, one log line.
+- The feed follows the **team record and the teams index**. The sidecar files (the staged plan, the
+  contracts, the hold, the mailbox) are not published by it.
+- `revision` is **per process**. Two processes serving the same workspace each count their own windows.
+
 ## Semantics
 
 - **A plan is a review point, not a queue.** `agent_teams_create` writes a plan and returns; the only

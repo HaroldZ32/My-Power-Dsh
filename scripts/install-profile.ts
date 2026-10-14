@@ -306,12 +306,18 @@ function buildPlan(o: PlanInputs): Plan {
         env: existsSync(astCli) ? { MPD_AST_GREP_SG_PATH: astCli } : undefined, toolCallTimeoutMs: 60000 }
     },
     {
-      id: "mcp-gitbash", name: "@deepseek-ai/dsh-mcp-client", disabled: true,
-      config: { serverName: "git_bash", transport: "stdio", command: "node", args: [p("packages/mpd-mcp-gitbash/dist/cli.js")], toolCallTimeoutMs: 60000 }
+      // ONE old row became TWO (de-omo wave B2): the git toolbox and the raw shell runner are separate
+      // third-party servers, and one MCP client row starts exactly one server process.
+      id: "mcp-git", name: "@deepseek-ai/dsh-mcp-client", disabled: true,
+      config: { serverName: "git", transport: "stdio", command: "node", args: [p("packages/mpd-mcp-gitbash/dist/launch.js"), "git"], toolCallTimeoutMs: 60000 }
+    },
+    {
+      id: "mcp-shell", name: "@deepseek-ai/dsh-mcp-client", disabled: true,
+      config: { serverName: "shell", transport: "stdio", command: "node", args: [p("packages/mpd-mcp-gitbash/dist/launch.js"), "shell"], toolCallTimeoutMs: 60000 }
     },
     {
       id: "mcp-lsp", name: "@deepseek-ai/dsh-mcp-client",
-      config: { serverName: "lsp", transport: "stdio", command: "node", args: [p("packages/mpd-mcp-lsp/dist/cli.js"), "mcp"], toolCallTimeoutMs: 60000 }
+      config: { serverName: "lsp", transport: "stdio", command: "node", args: [p("packages/mpd-mcp-lsp/dist/launch.js")], toolCallTimeoutMs: 60000 }
     },
     {
       id: "mcp-codegraph", name: "@deepseek-ai/dsh-mcp-client",
@@ -603,7 +609,7 @@ function selfTest(): void {
   if (!/^!!js\s/.test(SIDEBAR_GUARD) || !SIDEBAR_GUARD.includes("dsh-better-sidebar")) { console.error("[install-profile self-test] FAIL: the extracted sidebar guard is not the patch's `!!js` mount guard"); process.exit(1) }
   if (!bundlePatchText.includes("disabled: " + SIDEBAR_GUARD)) { console.error("[install-profile self-test] FAIL: the extracted sidebar guard is not byte-identical to the bundle patch's own `disabled:` scalar"); process.exit(1) }
   if (!rows.includes("mcp-context7") || !rows.includes("mcp-grepapp")) { console.error("[install-profile self-test] FAIL: mcp-context7/mcp-grepapp rows"); process.exit(1) }
-  for (const mcp of ["mcp-astgrep", "mcp-gitbash", "mcp-lsp", "mcp-codegraph"]) {
+  for (const mcp of ["mcp-astgrep", "mcp-git", "mcp-shell", "mcp-lsp", "mcp-codegraph"]) {
     /** The MCP row under test; every one of them must carry the same call timeout. */
     const r: Row | undefined = plan.rows.find((x: Row): boolean => x.id === mcp)
     // Every MCP row is built with a config object above, so the optional field is present here.

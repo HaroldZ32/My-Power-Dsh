@@ -8,8 +8,11 @@
 //
 // It is ALSO the server half of the bundle's web surface: the stuck-team front door's
 // two routes are registered here (src/watchdog-web.ts), because a browser client cannot
-// read the workspace store itself and the watchdog package is not ours to edit. Everything
-// is soft-probed and effect-owned, so a webless profile keeps this plugin a pure marker.
+// read the workspace store itself and the watchdog package is not ours to edit — and so is
+// the effective model-config route (src/model-config-web.ts, R3) the settings card fetches.
+// Everything is soft-probed and effect-owned, so a webless profile keeps this plugin a pure marker.
+import { registerModelConfigRoute } from "./model-config-web.js"
+import type { ConfigServiceLike } from "./model-config-web.js"
 import { registerWatchdogRoutes, WATCHDOG_WEB_READER, DEFAULT_TEAM_STATE_DIR } from "./watchdog-web.js"
 
 /** The loader entry id the bundle patch's self-registration row names. */
@@ -132,6 +135,23 @@ function apply(ctx: any): void {
       rowLogLine("mpd-bundle", "[mpd] the web server refused the watchdog routes — the stuck-team banner has no data source")
       return false
     }
+    // The effective model-config route (R3, lane L4): the Web settings card's live read of the
+    // slot/agentRoutes/modelchain tables. Registered beside the watchdog routes on the SAME
+    // rebind-retried path; a refusal costs the card its live half (it degrades to a notice) and
+    // never the section, so it does not gate `registered`.
+    const modelConfig = registerModelConfigRoute(webServer, {
+      config: (): ConfigServiceLike | undefined => {
+        try {
+          // The service double, probed per request because the config row's fiber is not ours.
+          const service = typeof ctx?.get === "function" ? ctx.get("mpdConfig", false) : undefined
+          return service !== null && typeof service === "object" ? (service as ConfigServiceLike) : undefined
+        } catch {
+          return undefined
+        }
+      },
+      effect: (fn: () => unknown, label: string) => ctx.effect(fn, label),
+    })
+    if (!modelConfig) rowLogLine("mpd-bundle", "[mpd] the web server refused the model-config route — the settings card shows the document values only")
     registered = true
     return true
   }

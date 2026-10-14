@@ -1,0 +1,57 @@
+# Proves: PR #36 CodeRabbit round-2 fixes F1/F2 final state, captured 2026-10-11T15:57:43Z, after the last skills/** write.
+# Repair of rep-20261011T155631-c25591: universal Windows-coverage scan, braced-form absence, hit counts, verbatim grep -A output.
+
+## File fingerprints (must match live bytes at verify time)
+5f8007c21fac8a17eb211598d617d578f534f490200b9d8f86010be378da6aa8  skills/data-scientist/references/execution-surfaces.md
+4c638e77829433b4f4cca8f8103e44a8de48cec45d637ed894e9396fcef4d490  skills/data-scientist/references/polars-lane.md
+aa9ce4be1dd832c5b0cecd6d35cee9b239366ded784f69f4cc8e36683e78e2f4  skills/data-scientist/SKILL.md
+
+## Commit binding
+$ git show --stat --format=%h 638ad4ac
+638ad4ac docs(skills): address CodeRabbit PR #36 round 2 (F1/F2)
+
+ VENDOR_LOCK.json                                   |  2 +-
+ .../windows/coderabbit-pass2/clause-transcript.txt | 24 ++++++++++++++++++++++
+ skills/data-scientist/SKILL.md                     |  8 ++++++--
+ .../references/execution-surfaces.md               |  9 ++++----
+ skills/data-scientist/references/polars-lane.md    |  9 ++++----
+ 5 files changed, 41 insertions(+), 11 deletions(-)
+
+## F1a (coverage): EVERY Windows-related mention in both reference files, bare-token scan
+$ grep -n -i -E "windows|pwsh|powershell" skills/data-scientist/references/execution-surfaces.md
+12:# or: pwsh scripts/ensure-js-deps.ps1   # Windows; prints the same single import path
+13:#     (Windows PowerShell 5.1: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/ensure-js-deps.ps1)
+45:# Windows: run the PowerShell twin the same way, passing the KERNEL's interpreter as
+48:#   site = subprocess.run(["pwsh", "scripts/ensure-py-deps.ps1", "-PythonBin", sys.executable],
+hit-count=4
+$ grep -n -i -E "windows|pwsh|powershell" skills/data-scientist/references/polars-lane.md
+13:# Windows: run the PowerShell twin the same way, passing the KERNEL's interpreter as
+16:#   site = subprocess.run(["pwsh", "scripts/ensure-py-deps.ps1", "-PythonBin", sys.executable],
+hit-count=2
+
+## F1b (absence): no PowerShell site variable in either spelling
+$ grep -nE "\$\{?site\}?" both files
+exit=1
+
+## F1c (mechanism): the complete Windows capture statement per file, verbatim
+$ grep -n -A2 "pwsh., .scripts/ensure-py-deps.ps1" execution-surfaces.md
+48:#   site = subprocess.run(["pwsh", "scripts/ensure-py-deps.ps1", "-PythonBin", sys.executable],
+49-#                         capture_output=True, text=True, check=True).stdout.strip()
+50-sys.path.insert(0, site)
+$ grep -n -A2 "pwsh., .scripts/ensure-py-deps.ps1" polars-lane.md
+16:#   site = subprocess.run(["pwsh", "scripts/ensure-py-deps.ps1", "-PythonBin", sys.executable],
+17-#                         capture_output=True, text=True, check=True).stdout.strip()
+18-sys.path.insert(0, site)
+
+## F2: EVERY ensure-py-deps.ps1 mention in SKILL.md with adjacent line, bare-token scan
+$ grep -n -A1 "ensure-py-deps\.ps1" skills/data-scientist/SKILL.md
+25:   `pwsh scripts/ensure-py-deps.ps1 -PythonBin <kernel sys.executable>`; Windows
+26-   PowerShell 5.1: `powershell -NoProfile -ExecutionPolicy Bypass -File
+27:   scripts/ensure-py-deps.ps1 -PythonBin <kernel sys.executable>`), which installs
+28-   them once into a user cache keyed to the kernel's interpreter — `sys.path.insert` the
+--
+45:  (`pwsh scripts/ensure-py-deps.ps1 -PythonBin <kernel sys.executable>` on Windows;
+46-  Windows PowerShell 5.1: `powershell -NoProfile -ExecutionPolicy Bypass -File
+47:  scripts/ensure-py-deps.ps1 -PythonBin <kernel sys.executable>`).
+48-  Read `references/polars-lane.md` — the current 1.x API differs from widely-memorized
+hit-count=4

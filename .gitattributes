@@ -1,5 +1,21 @@
 # EOL normalization (preventive; repo currently has no CRLF)
-* text=auto
+#
+# WHY `eol=lf` IS SPELLED ON THE CATCH-ALL RULE (win32 defect, measured 2026-10-12). `text=auto`
+# alone normalizes to LF in the BLOB but lets git CHECK OUT the platform's own ending, so on a
+# Windows checkout whose `core.autocrlf=true` every text file the explicit list below did not name —
+# `*.js` above all, i.e. every `packages/*/dist/*.js` — landed on disk with CRLF. Three gates read
+# BYTES, not lines, so all three answered red on Windows with nothing wrong in the tree:
+#   • `node scripts/verify-dist-fresh.ts` reported **31 of 31 targets stale** (committed 1702 B with
+#     50 CR bytes vs a fresh `bun build` at 1652 B); the rebuilt bytes and the GIT BLOB are both LF,
+#     so the "drift" was the checkout, not the artifact;
+#   • `node scripts/verify-vendor.ts` reported `sha256 mismatch` for the two fingerprint-pinned `.js`
+#     assets (`packages/mpd-mcp-codegraph/dist/serve.js`, `packages/mpd-bundle-plugin/client.js`);
+#   • the per-package `F1 shipped artifact — the committed dist is the byte-identical product of a
+#     canonical build` arms reddened for the same reason.
+# The blob side is already LF, so `eol=lf` changes no committed byte; it makes the WORKING TREE
+# agree with the blobs and the bundler on every platform. `text=auto` still decides WHICH files are
+# text, so binary assets (icons, prebuilt binaries) are never touched.
+* text=auto eol=lf
 *.md text eol=lf
 *.ts text eol=lf
 *.yml text eol=lf

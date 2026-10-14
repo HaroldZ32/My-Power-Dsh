@@ -1,0 +1,22 @@
+Packages: -105
+--------------------------------------------------------------------------------
+Lockfile is up to date, resolution step is skipped
+
+dependencies:
+- @deepseek-harness-tui/dsh-tui 0.15.0
+
+Done in 70ms using pnpm v12.11.2
+Packages: -105
+--------------------------------------------------------------------------------
+Lockfile is up to date, resolution step is skipped
+
+dependencies:
+- @deepseek-harness-tui/dsh-tui 0.15.0
+
+Done in 65ms using pnpm v12.11.2
+Already up to date
+
+dependencies:
+- @mpd-dsh/mpd link:/home/haroldzhao/MyProj/DshProj/My-Power-Dsh
+
+Done in 22ms using pnpm v12.11.2

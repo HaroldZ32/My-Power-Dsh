@@ -1,0 +1,6 @@
+[docker-probe] APPLIED=ok
+[docker-probe] MCP_REGISTERED=mcp__ast_grep__search,mcp__git__run,mcp__shell__run,mcp__lsp__get_diagnostics,mcp__codegraph__codegraph_explore,mcp__lsp__renamed
+[docker-probe] MCP_SERVER_COUNTS=ast_grep:1,codegraph:1,git:1,lsp:2,shell:1
+[docker-probe] MCP_LIVE_SEARCH=fail:BINARY_NOT_FOUND: ast-grep executable not found
+[docker-probe] MCP_LIVE_SEARCH_CONTROL=ok:3
+[docker-probe] DONE=1

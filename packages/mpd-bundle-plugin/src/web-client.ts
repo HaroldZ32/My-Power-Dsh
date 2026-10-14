@@ -230,8 +230,13 @@
 
   /** The settings card module's surface: the one method this entry calls on it. */
   interface SettingsCardModule {
-    /** Mount the card's own top-level settings section. */
-    mountSettingsCard: (ctx: ClientContext) => unknown
+    /**
+     * Mount the card's own top-level settings section. The options mirror the card's own
+     * `MountOptions`; the one member this entry provides is `fetchJson` — the ENTRY-owned JSON
+     * reader the card's effective-value block reads the live `/plugins/mpd/model-config` route
+     * through (the card itself does no I/O; this module is the one allowed to reach the network).
+     */
+    mountSettingsCard: (ctx: ClientContext, options?: { fetchJson?: (url: string) => Promise<unknown> }) => unknown
   }
 
   /** One teammate row of the shared board. */
@@ -433,6 +438,17 @@
    * on screen from a task that genuinely has none, so the route is threaded rather than left out.
    */
   const TEAM_TASK_PATH = "/plugins/mpd-team/task"
+
+  /**
+   * The route the team view SUBSCRIBES to (lane W), beside the three it reads.
+   *
+   * Server-Sent Events, owned by `mpd-team-core-plugin`'s `TEAM_EVENTS_PATH`: the view opens an
+   * `EventSource` on it for the session it is showing and re-reads the routes above on every frame,
+   * while its interval keeps running as the fallback. The path is named here rather than imported
+   * because the browser artifact is assembled by SPLICING factory sources as text — a cross-package
+   * import inside one would not resolve — so the name is the same fact recorded on the client side.
+   */
+  const TEAM_EVENTS_PATH = "/plugins/mpd-team/events"
 
   /**
    * The team view's own copy, in English — the fallback AND the key list.
@@ -703,8 +719,11 @@
         statePath: TEAM_STATE_PATH,
         planPath: TEAM_PLAN_PATH,
         // The task route is what lets a pinned node quote its frozen contract; the translator is the
-        // view's only language source (it runs in a render path with no `ctx` of its own).
+        // view's only language source (it runs in a render path with no `ctx` of its own). The events
+        // route is what turns the poll into a push: the view subscribes per MOUNT, so the two sidebar
+        // hosts that render this component each own one stream.
         taskPath: TEAM_TASK_PATH,
+        eventsPath: TEAM_EVENTS_PATH,
         t: teamSay,
       })
       return teamView
@@ -1826,9 +1845,14 @@
     // The settings section: the Web HALF of the same `mpd` namespace the TUI /settings section
     // edits, mounted as its OWN top-level `MPD` section of the settings dialog (w14) — it no longer
     // rides the Plugins tab. Its mount is deferred (the settings scope is a plugin-provided
-    // service, so it is awaited with ctx.inject, never declared here).
+    // service, so it is awaited with ctx.inject, never declared here). The ENTRY also hands the
+    // card its JSON reader (R3): the card does no I/O of its own, so THIS module — the one allowed
+    // to reach the network — lends it `request`, which the card uses for the live
+    // `/plugins/mpd/model-config` read behind its effective-value block.
     try {
-      loadSettingsCard().mountSettingsCard(ctx);
+      loadSettingsCard().mountSettingsCard(ctx, {
+        fetchJson: (url: string): Promise<unknown> => request(url, { headers: { accept: "application/json" } }),
+      });
     } catch (error) {
       console.warn("[mpd] settings card mount failed: " + String(error));
     }
@@ -1907,7 +1931,7 @@ declare const MPD_SETTINGS_CARD: MpdSettingsCardGlobal | undefined
 /** The spliced team-view global's shape: the ONE factory both sidebar hosts build their body from. */
 interface MpdTeamViewGlobal {
   /** Build the shared team view once, so both hosts render one component with one poller. */
-  createTeamView: (deps: { react: unknown; statePath: string; planPath?: string; taskPath?: string; pollMs?: number; t?: (key: string) => string }) => MpdTeamViewModule
+  createTeamView: (deps: { react: unknown; statePath: string; planPath?: string; taskPath?: string; eventsPath?: string; pollMs?: number; t?: (key: string) => string }) => MpdTeamViewModule
 }
 
 /** The built team view. */

@@ -1,0 +1,2 @@
+[tui-panels self-test] ok: 8 surfaces asserted, negative controls fail as required
+qa-lane --self-test exit=0

@@ -112,7 +112,7 @@ a measured Web artifact). `—` means there is no TUI surface to name.
 | `plan-add-task` | `lib/index.ts:443` (`add_task`) | absent | — | — | NOT-CLAIMED #2 |
 | `plan-remove-task` | `lib/index.ts:458` (`remove_task`) | absent | — | — | NOT-CLAIMED #2 |
 | `plan-pre-approval editing / merge` | `lib/index.ts:405-475` (the editor action block); `lib/tools.ts:759` (the plugin's edit-plan tool) | absent | — | — | NOT-CLAIMED #2; the contract's row label `merge-autonomous-plan` has no locatable anchor in the adopted client bytes — see deviation D2. (The Web column is the deleted plugin's; the plan-approval family itself is back on this bundle's own plane — see the banner and `docs/tui.md` §3.2.) |
-| `activity-panel/archived-teams view (?archived=1)` | `lib/index.ts:255-272`; `lib/client.js:360-367` | absent | — | — | measured: the TUI reads the live state root only and selects one newest record (`packages/mpd-tui-plugin/src/state.ts:107-109`); archived teams are not projected |
+| `activity-panel/archived-teams view (?archived=1)` | `lib/index.ts:255-272`; `lib/client.js:360-367` | absent | — | — | measured: the TUI reads the live state root only and resolves exactly ONE record — since the live-session wave, THIS SESSION's own, with the marked `workspace-level` fallback where no session id is readable (`packages/mpd-tui-plugin/src/team-state.ts`'s `readScopedWorkflow`, `docs/tui.md` §3.4); archived teams are not projected |
 | `activity-panel/panel-geometry + drag/resize` | `lib/client/panel-geometry.ts:121` | not-applicable | — | — | a terminal scene has no floating geometry (§7.1) |
 | `activity-panel/localization (t())` | `lib/client/locales.ts` | not-applicable | the injected `tuiCommandTrees` carries `descriptions.zh` (`src/command-trees.ts:18-25`); scene text stays English | E4 (`16-command-completion.pane.txt`) | §5.1 plus §7.1 — no scene-text localization is claimed |
 | `activity-panel/member-artwork (assets route)` | `lib/index.ts:492` (`/plugins/dsh-agent-teams/assets`) | not-applicable | — | — | terminal scenes render text |
@@ -137,9 +137,10 @@ TUI user who wants a subject typo fixed must ask the captain — that consequenc
 contract's NOT-CLAIMED #2 rather than hidden, and `continue` additionally has no tool surface to
 adopt (NOT-CLAIMED #3), so there is nothing to wire even if the TUI wanted to.
 
-**Archived teams (row 16).** The TUI resolves exactly one newest live record per workspace
-(`state.ts:107-109`, the board's own rule) so that the board and the team scene can never disagree
-about which team is "the" team. Archived teams are a Web-side browsing affordance; the TUI has no
+**Archived teams (row 16).** The TUI resolves exactly ONE live record — and, since the live-session
+wave, that record is THIS SESSION's own, with the marked `workspace-level` fallback only where no
+session id is readable (`team-state.ts`'s `readScopedWorkflow`) — so that the board and the team scene
+can never disagree about which team is "the" team. Archived teams are a Web-side browsing affordance; the TUI has no
 second state root to read them from.
 
 **Panel geometry (row 17), localization (row 18), member artwork (row 19).** Not ported because the

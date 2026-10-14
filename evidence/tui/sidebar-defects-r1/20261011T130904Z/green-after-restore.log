@@ -1,0 +1,17 @@
+## RESTORED scenes.ts — sha256 992670172ea6a0f451efe0b3d96da4270f13779c4dff30d77123bb3e69f74ef5 (== pre-mutation hash)
+## command: cd packages/mpd-tui-plugin && bun test  |  2026-10-11T13:58:35Z
+
+ 466 pass
+ 0 fail
+ 12780 expect() calls
+Ran 466 tests across 20 files. [8.36s]
+bun test v1.4.2 (744846f84)
+
+test/team-surface.test.ts:
+(pass) the team scene's focus > with the `tui.wheelInvert` knob ON the SCENE's own wheel handler flips BOTH axes and still clamps [6.43ms]
+
+ 1 pass
+ 33 filtered out
+ 0 fail
+ 12 expect() calls
+Ran 1 test across 1 file. [22.00ms]

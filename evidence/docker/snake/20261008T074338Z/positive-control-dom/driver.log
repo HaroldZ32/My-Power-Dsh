@@ -1,0 +1,12 @@
+[PASS] snake.driverStarted: chromium launched and the page opened in a real engine :: browser=131.0.6778.33 page=file:///out/positive-control-dom/index.html | note=known-good DOM snake (positive control)
+[PASS] snake.scoreVisible: a score-labelled number is visible on the page :: labelled=0 numbers=[0] chars=37 | note=known-good DOM snake (positive control)
+[sensor] the board was already finished when the driver arrived; restarting it once
+[sensor] steps=48 blind=1 sensor=dom palette=bg=2148 snake=13138 food=-1 scoreGrew=true
+[PASS] snake.scoreIncreased: the visible score grew while the snake was driven with real key events (method=labelled) :: from=0 to=1 restarts=1 attempts=0 sensor=dom sensorSteps=48 sensorBlind=1 palette=bg=2148 snake=13138 food=-1 | note=known-good DOM snake (positive control)
+[PASS] snake.visuallyMoved: the rendered viewport changed after a real key press (the snake is drawn where the game moved it) :: start=d4d5efbfd4535552/8848B after=e092596741cbe79e/12621B | note=known-good DOM snake (positive control)
+[PASS] snake.gameOverOrRestart: driving into the wall produced a game-over announcement the resting page did not carry :: branch=game-over-text overSeen=true scoreStopped=true restartAffordance=true wallChars=61 beforeWall=8849B | note=known-good DOM snake (positive control)
+[PASS] snake.noPageError: no uncaught page error and no console error over the whole run :: pageErrors=0 consoleErrors=0 first= | note=known-good DOM snake (positive control)
+[PASS] snake.selfContained: the page requested nothing but local file/data URLs — no network fetch, no external file :: requests=1 external=0 first= | note=known-good DOM snake (positive control)
+[PASS] snake.screenshots: the three mandated moments were captured (start / after eating or after the first key / final state) :: /out/pc-dom-01-start.png , /out/pc-dom-03-after-eating.png , /out/pc-dom-05-game-over.png | note=known-good DOM snake (positive control)
+[snake-driver] label=pc-dom rows=8 failed=0
+driver-exit=0

@@ -38,10 +38,13 @@ import {
 import {
   assign,
   dispatchMessage,
+  isReadonlyMemberName,
   planDispatch,
+  readonlyMemberKeys,
   reconcile,
   release,
   type DispatchLedger,
+  type RosterRow,
 } from "./dispatch"
 import {
   addMember,
@@ -64,23 +67,28 @@ import {
   type StagedTask,
 } from "./plan-store"
 import { planForSession, registerTeamRoutes, TEAM_ROUTES, type TeamWebPlan } from "./team-web"
+import { ChangeFeed } from "./change-feed"
 import {
   activeTeamId,
   addTeamMember,
   addTeamTask,
+  bindActiveTeam,
   blockingDependencies,
   casClaimTask,
   casCloseTask,
   createTeam,
   idleMembers,
+  memberNamedBy,
   readyTasks,
   deleteTeam,
   derivePhase,
   listTeams,
   losslessSummary,
   memberProgress,
+  onTeamStateWritten,
   readTeam,
   recordNamesMember,
+  rememberLead,
   summariseTeam,
   taskDepths,
   taskVisual,
@@ -89,9 +97,17 @@ import {
   updateTeamTask,
   withDerivedPhase,
   writeTeam,
+  TASK_KINDS,
+  type TaskKind,
   type TeamRecord,
   type TeamTaskRecord,
 } from "./team-store"
+import {
+  readArchivedPlanIndex,
+  reapReapedTeams,
+  resolveTeamRecord,
+  type TeamResolution,
+} from "./team-lifecycle"
 
 /** The cordis plugin name, matched against this row's id in the bundle patch. */
 export const name = "mpd-team-core"
@@ -141,6 +157,10 @@ export interface MpdTeamsService {
    * @returns the payload, with `plan: null` when that session has nothing staged.
    */
   planFor: (workspace: string, sessionId: string) => TeamWebPlan
+  /** Subscribe to change notifications for one workspace; the returned disposer is idempotent. */
+  subscribe: (workspace: string, listener: () => void) => () => void
+  /** A monotonically increasing revision of one workspace's team state; 0 before any change is seen. */
+  revision: (workspace: string) => number
 }
 
 /** A tool result narrow enough for the adapter's renderer. */
@@ -159,22 +179,6 @@ export interface WatchdogHoldRead {
   state: "held" | "free" | "not-readable"
   /** Why, for `held` and `not-readable`; absent for `free`. */
   reason?: string
-}
-
-/**
- * What a session's team resolution answered: the team, or the sentence that says why none resolved.
- *
- * TWO FIELDS RATHER THAN `TeamRecord | undefined`, because the two ways of resolving nothing are
- * different facts and a caller must be able to say which one it hit: a session with NO team at all
- * gets the standing `approve a plan first` sentence, while a session that is a member of MORE THAN
- * ONE team gets a refusal naming the ambiguity — guessing there would silently bind a board action to
- * the wrong team. `record` is present exactly when the resolution was unique.
- */
-interface TeamResolution {
-  /** The one team this session belongs to; absent when nothing (or more than one thing) resolved. */
-  record?: TeamRecord
-  /** Why nothing resolved, already a sentence a refusal quotes; absent when a record did resolve. */
-  refusal?: string
 }
 
 /** The dispatch ledger path: `<workspace>/.mpd/team/dispatch.json`. */
@@ -232,6 +236,24 @@ function stringList(value: unknown): string[] | undefined {
 }
 
 /**
+ * Parse the `kind` a `create_task` call carries, refusing a word the board does not know.
+ *
+ * PARSE-DON'T-VALIDATE at the tool boundary (C7-4 F1): the requirement chain is a typed vocabulary, and
+ * silently storing a typo would make a `repair` row indistinguishable from a typo'd one. An absent value
+ * answers `undefined` so the store's own `work` default applies.
+ * @param value - the raw argument at `task.kind` or its top-level alias.
+ * @returns the parsed kind, or undefined when the caller sent none.
+ * @throws when the value is not one of the five known kinds.
+ */
+function parseTaskKind(value: unknown): TaskKind | undefined {
+  if (value === undefined || value === null || value === "") return undefined
+  /** The word as the caller wrote it. */
+  const text = String(value)
+  if (!TASK_KINDS.includes(text as TaskKind)) throw new Error(`unknown task kind "${text}" (${TASK_KINDS.join(" | ")})`)
+  return text as TaskKind
+}
+
+/**
  * Read a written blocker list back to the caller, one entry per reference, in written order.
  *
  * The WRITE-TIME half of R21: `agent_teams_plan {action:"create_task"}` answers with this, so a captain
@@ -281,6 +303,47 @@ function sessionIdOf(exec: DshToolExec | undefined): string {
   return typeof id === "string" && id !== "" ? id : "workspace"
 }
 
+/**
+ * The OTHER session ids this call's own session descends from, as the harness recorded them (C7-4 F5).
+ *
+ * A captain session that FORKS or RESUMES is given a fresh id while `teams.json` and the team record
+ * keep the original, and the one durable link back is the parent the harness stamps on the new session
+ * (`agent.session.header.parentSession`). Resolution accepts it, so the team is not lost to the churn —
+ * and an ordinary session, whose header carries no parent, degrades to the exact-id match it always had.
+ * @param exec - the tool execution, read defensively because a route-driven call may carry no session.
+ * @returns the recorded ancestor session ids, deduplicated; empty when the harness recorded none.
+ */
+function sessionLineageOf(exec: DshToolExec | undefined): string[] {
+  /** The calling agent, read defensively. */
+  const agent = exec?.agent as any
+  /** The session header, where the harness records the lineage it knows. */
+  const session = agent?.session
+  /** The parent spellings the harness may carry, at either nesting the other reads use. */
+  const candidates = [session?.header?.parentSession, session?.parentSession]
+  /** The usable ids, deduplicated. */
+  const ids = candidates.filter((value): value is string => typeof value === "string" && value !== "")
+  return [...new Set(ids)]
+}
+
+/**
+ * Whether the harness RECORDED this call's session as a DELEGATION CHILD (C7-4 F5's heal guard).
+ *
+ * A member's own session names the captain as its parent, so without this guard a member's board write
+ * would read as a churned Lead and be healed into `leadHistory` — the opposite of the fix. The predicate
+ * is the repository's OWN captain rule (`origin: "subagent"` or a depth of 1+), and a SEEDED FORK carries
+ * neither, which is exactly the session churn this arm serves.
+ * @param exec - the tool execution, read defensively.
+ * @returns true when the session is a recorded delegation child.
+ */
+function sessionIsDelegatedChild(exec: DshToolExec | undefined): boolean {
+  /** The session header, where the harness records the delegation facts. */
+  const header = (exec?.agent as any)?.session?.header
+  if (header?.origin === "subagent") return true
+  /** The recorded depth, non-numeric when the harness never set one. */
+  const depth = Number(header?.delegationDepth)
+  return Number.isFinite(depth) && depth >= 1
+}
+
 /** Row entry point: build the adapter once, then register the five tools and the `/agent-teams` command. */
 export function apply(ctx: any): void {
   /** The adapter facade — the only contact surface this row has with the harness seams. */
@@ -289,6 +352,21 @@ export function apply(ctx: any): void {
   const disposers: Array<() => void> = []
   /** The clock seam: one place to substitute in a test, and the reason every store takes a `Date`. */
   const now = (): Date => new Date()
+
+  /**
+   * THE CHANGE FEED: the push substrate every other mpd surface subscribes to.
+   *
+   * It is built FIRST, before the service that publishes it, for the same reason the service is
+   * published before the tools: a consumer that resolves `mpdTeams` during this row's own activation
+   * must find a live feed rather than a member that throws when called. Constructing it also registers
+   * its hook on the store's writers (`onTeamStateWritten`), which is what makes this process's OWN
+   * mutations — a tool call, an approval, a dispatch pass — notify without polling anything.
+   *
+   * DISPOSED WITH THE ROW: the hook, the debounce timers and every `fs.watch` handle go together, so a
+   * reload cannot leave a dead feed observing writes or a stale watcher holding the teams directory.
+   */
+  const feed = new ChangeFeed({ warn: (line: string): void => { rowLogLine("mpd-team-core", line) } })
+  disposers.push((): void => { feed.dispose() })
 
   /**
    * THE TEAM EXECUTOR: the ONE seam a member is raised through and a message delivered to.
@@ -301,18 +379,67 @@ export function apply(ctx: any): void {
    */
   const executor = (): ReturnType<DshAdapter["teamExecutor"]> => dsh.teamExecutor()
 
-  /** Resolve the workspace + session for one call. */
-  const where = (exec: DshToolExec | undefined): { workspace: string; sessionId: string } => ({ workspace: dsh.workspaceRoot(exec), sessionId: sessionIdOf(exec) })
+  /**
+   * Resolve the workspace, the caller's own session id and its recorded ancestors for one call.
+   *
+   * `lineage` is the C7-4 F5 addition: a forked/resumed session's NEW id plus the parent the harness
+   * stamped on it, so resolution can still find the team the session came from. It is EMPTY for a
+   * recorded DELEGATION CHILD, deliberately: a teammate and a captain's subagent both carry the captain
+   * as `parentSession`, and letting that link grant the Lead arm would widen captaincy to every child.
+   * A child resolves through its own identity (the member arm) and nothing else.
+   */
+  const where = (exec: DshToolExec | undefined): { workspace: string; sessionId: string; lineage: string[] } => ({
+    workspace: dsh.workspaceRoot(exec),
+    sessionId: sessionIdOf(exec),
+    lineage: sessionIsDelegatedChild(exec) ? [] : sessionLineageOf(exec),
+  })
 
-  /** Read the staged plan for a call, or fail with a sentence the captain can act on. */
-  const requirePlan = (exec: DshToolExec | undefined): { workspace: string; sessionId: string; plan: StagedPlan } => {
-    /** The call's workspace and session, resolved once so the plan lookup and the write agree. */
-    const { workspace, sessionId } = where(exec)
+  /**
+   * The staged, not-yet-approved plan for a session, or `undefined` when nothing is staged.
+   *
+   * C7-4 F1 keeps BOTH of the old refusals: a plan that IS staged and already approved still refuses with
+   * the exact sentence, while a session with NO staged plan answers `undefined` so the caller can fall
+   * through to its live APPROVED team — the mid-run append verb the old surface never had. The third
+   * sentence ("no team is staged in this session") is produced by the caller when NEITHER exists.
+   */
+  const stagedPlan = (workspace: string, sessionId: string): StagedPlan | undefined => {
     /** The session's staged plan, or undefined when nothing is staged yet. */
     const plan = readPlan(workspace, sessionId)
-    if (plan === undefined) throw new Error("no team is staged in this session — call agent_teams_create first")
-    if (plan.approvedAt !== undefined) throw new Error(`plan ${plan.planId} is already approved; stage a new one to change the team`)
-    return { workspace, sessionId, plan }
+    if (plan !== undefined && plan.approvedAt !== undefined) throw new Error(`plan ${plan.planId} is already approved; stage a new one to change the team`)
+    return plan
+  }
+
+  /**
+   * Persist a forked/resumed Lead's NEW session id onto the record and the registry (C7-4 F5).
+   *
+   * WHY IT WRITES AT ALL. Resolution accepting the ancestor would be enough for ONE call, but the record's
+   * `leadHistory` and `teams.json` are what make the captaincy durable — exactly what the hand rebind
+   * rewrote this wave. The write is narrowly gated so it can never invent a Lead: only a session the
+   * record does NOT already name by its own id, whose recorded ancestor IS the record's Lead, that is
+   * neither on the record's roster (a member resolves through the member arm) nor a DELEGATION CHILD
+   * (`origin: "subagent"` or a depth of 1+, which is what the harness records for a subagent — a seeded
+   * fork carries none of them). Anything else leaves the record untouched.
+   * @param workspace - the workspace holding the record.
+   * @param sessionId - the caller's own session id.
+   * @param lineage - the ancestors the harness recorded for this call.
+   * @param record - the record resolution found.
+   * @param delegated - true when the caller is a recorded delegation child.
+   * @returns the record to use (the healed one, or the input untouched).
+   */
+  const healLeadBinding = (workspace: string, sessionId: string, lineage: readonly string[], record: TeamRecord, delegated: boolean): TeamRecord => {
+    /** Whether the record already names the caller's OWN id as its Lead — nothing to heal then. */
+    const ownLead = record.leadSessionId === sessionId || (record.leadHistory ?? []).includes(sessionId)
+    if (ownLead || delegated) return record
+    if (recordNamesMember(record, [sessionId])) return record
+    /** Whether a recorded ancestor of this call IS this record's Lead. */
+    const fromLead = lineage.some((id) => id === record.leadSessionId || (record.leadHistory ?? []).includes(id))
+    if (!fromLead) return record
+    /** The record carrying the caller in its Lead history; `leadSessionId` stays the durable identity. */
+    const healed = rememberLead(record, [sessionId])
+    writeTeam(workspace, healed)
+    bindActiveTeam(workspace, sessionId, record.teamId)
+    rowLogLine("mpd-team-core", `[mpd-team-core] rebound team ${record.teamId} to resumed/forked lead session ${sessionId}`)
+    return healed
   }
 
   /**
@@ -330,12 +457,13 @@ export function apply(ctx: any): void {
    * watchdog dispatches exactly as it did before.
    * @param workspace - the workspace the pass runs in.
    * @param sessionId - the Lead session whose team is being dispatched.
+   * @param lineage - the ancestors the harness recorded for this caller (C7-4 F5); empty by default.
    * @returns the discriminated reading; see {@link WatchdogHoldRead}.
    */
-  const readWatchdogHold = (workspace: string, sessionId: string): WatchdogHoldRead => {
+  const readWatchdogHold = (workspace: string, sessionId: string, lineage: readonly string[] = []): WatchdogHoldRead => {
     try {
       /** This session's team, or undefined when nothing has been approved here. */
-      const record = recordFor(workspace, sessionId)
+      const record = recordFor(workspace, sessionId, lineage)
       if (record === undefined) return { state: "free" }
       /** The watchdog's own service, read defensively: it is another row and may be absent. */
       const watchdog = typeof (ctx as { get?: unknown })?.get === "function" ? (ctx as { get: (id: string) => any }).get("mpdWatchdog") : undefined
@@ -378,38 +506,60 @@ export function apply(ctx: any): void {
    * AMBIGUITY IS REFUSED, NOT GUESSED: a session recorded on the roster of more than one team resolves
    * NONE and says so, because binding a board write to the wrong team is worse than refusing it.
    *
+   * C7-3 (plan amendment, 2026-10-14): only LIVE teams are candidates. A record whose phase is terminal
+   * (the hand-patched `archived` included) or whose plan was archived without approval is FILTERED OUT
+   * inside `team-lifecycle.ts#resolveTeamRecord`, so a reaped ghost can bind nothing and resolution
+   * falls through to the next candidate or to none. This closure only supplies the raw rows and the
+   * archive evidence, which keeps the whole rule unit-testable without a harness.
+   *
    * Never throws — a status render cannot be taken down by a bad record.
    * @param workspace - the workspace to read.
    * @param sessionId - the session whose team is wanted.
+   * @param lineage - the ancestors the harness recorded for this caller (C7-4 F5); empty for an ordinary
+   *   session, in which case resolution is exactly the pre-C7-4 exact-id match.
    * @returns the resolution; see {@link TeamResolution}.
    */
-  const resolveTeam = (workspace: string, sessionId: string): TeamResolution => {
+  const resolveTeam = (workspace: string, sessionId: string, lineage: readonly string[] = []): TeamResolution => {
     try {
-      /** The bound team id, when the index still carries one. */
-      const bound = activeTeamId(workspace, sessionId)
-      if (bound !== undefined) {
-        /** The bound record, which may have been deleted out from under the index. */
-        const record = readTeam(workspace, bound)
-        if (record !== undefined) return { record }
-      }
-      /** Every team this workspace holds, newest first. */
-      const teams = listTeams(workspace)
-      // Newest first, so a session that approved several waves gets its LATEST team.
-      /** The newest team this session LEADS, if any. */
-      const leading = teams.find((record) => record.leadSessionId === sessionId)
-      if (leading !== undefined) return { record: leading }
-      /** Every team whose durable roster names this session as a member. */
-      const memberOf = teams.filter((record) => recordNamesMember(record, [sessionId]))
-      if (memberOf.length === 1) return { record: memberOf[0] }
-      if (memberOf.length > 1) {
-        return {
-          refusal: `this session is on the roster of ${memberOf.length} teams in this workspace (${memberOf.map((record) => record.teamId).join(", ")}) and the record does not say which one it works on — run this from the team's lead session, or remove the duplicate roster entry`,
-        }
-      }
-      return {}
+      /** The archive index, read ONCE for every candidate this call classifies. */
+      const archive = readArchivedPlanIndex(workspace)
+      /** Every id the registry may have bound this caller under, own id first, then its ancestors. */
+      const keys = [sessionId, ...lineage]
+      /** The bound team id, when the index still carries one — under ANY of the caller's spellings. */
+      const bound = keys.map((key) => activeTeamId(workspace, key)).find((id) => id !== undefined)
+      /** The bound record, which may have been deleted — or REAPED — out from under the index. */
+      const boundRecord = bound === undefined ? undefined : readTeam(workspace, bound)
+      return resolveTeamRecord({
+        ...(boundRecord === undefined ? {} : { bound: boundRecord }),
+        teams: listTeams(workspace),
+        sessionId,
+        ...(lineage.length === 0 ? {} : { alsoSessions: lineage }),
+        index: archive,
+      })
     } catch {
       return {}
     }
+  }
+
+  /**
+   * Resolve the caller's team for a WRITE, healing a forked/resumed Lead's binding first (C7-4 F5).
+   *
+   * The heal is a write, so it is kept OFF the render paths ({@link recordFor} stays pure) and reached
+   * only from the mutating tools that already write the team. When the caller is already its own Lead the
+   * call is a no-op, so an ordinary write costs one comparison and nothing else.
+   * @param workspace - the workspace the write lands in.
+   * @param sessionId - the caller's own session id.
+   * @param lineage - the ancestors the harness recorded for this caller.
+   * @param delegated - true when the caller is a recorded delegation child.
+   * @returns the resolution, with a healed record when a rebind was owed.
+   */
+  const resolveForWrite = (workspace: string, sessionId: string, lineage: readonly string[], delegated: boolean): TeamResolution => {
+    /** The resolution over the caller's own id plus its recorded ancestors. */
+    const resolved = resolveTeam(workspace, sessionId, lineage)
+    if (resolved.record === undefined) return resolved
+    /** The record after the churn heal, or the same one when no rebind was owed. */
+    const healed = healLeadBinding(workspace, sessionId, lineage, resolved.record, delegated)
+    return healed === resolved.record ? resolved : { ...resolved, record: healed }
   }
 
   /**
@@ -420,9 +570,10 @@ export function apply(ctx: any): void {
    * mailbox roster) and have nothing to refuse.
    * @param workspace - the workspace to read.
    * @param sessionId - the session whose team is wanted.
+   * @param lineage - the ancestors the harness recorded for this caller (C7-4 F5); empty by default.
    * @returns the record, or undefined when this session has no single team.
    */
-  const recordFor = (workspace: string, sessionId: string): TeamRecord | undefined => resolveTeam(workspace, sessionId).record
+  const recordFor = (workspace: string, sessionId: string, lineage: readonly string[] = []): TeamRecord | undefined => resolveTeam(workspace, sessionId, lineage).record
 
   // ── the mpd team read surface: THE seam every other mpd plugin reads ────────
   // Published before the tools so a consumer that resolves the service during this row's own
@@ -465,6 +616,19 @@ export function apply(ctx: any): void {
             return { ok: true, workspace, sessionId, plan: null }
           }
         },
+        // THE PUSH SUBSTRATE, and the two members that make a surface stop polling. `subscribe` is
+        // the in-process half of the feed — the same one the `/events` route serves over the wire —
+        // so a TUI page and a browser tab are watching the same observation, not two of them.
+        //
+        // BOTH ARE CONTAINED LIKE EVERY OTHER MEMBER HERE: they are resolved during activation and
+        // called from a render path, so a broken feed must answer (a dead disposer, a zero revision)
+        // rather than throw into a surface that cannot catch.
+        subscribe: (workspace: string, listener: () => void) => {
+          try { return feed.subscribe(workspace, listener) } catch { return (): void => {} }
+        },
+        revision: (workspace: string) => {
+          try { return feed.revision(workspace) } catch { return 0 }
+        },
       } satisfies MpdTeamsService)
     } catch (error) {
       rowLogLine("mpd-team-core", `[mpd-team-core] publishing the ${TEAMS_SERVICE} service failed: ${String((error as Error)?.message ?? error)}`)
@@ -485,7 +649,7 @@ export function apply(ctx: any): void {
   disposers.push(dsh.registerTool({
     name: "agent_teams_plan",
     description:
-      "The team PLAN. `create` stages a plan and spawns nothing; `add_member`/`create_task` append to it; `edit` reads or replaces it; `approve` EXECUTES it through the TEAM EXECUTOR — the NATIVE continuable-subagent backend is the DEFAULT, and the official `dsh.team*` calls are the FALLBACK — REFUSING a plan with 0 members and 0 tasks; `delete` archives; `status` shows plan, halt, roster and board.",
+      "The team PLAN. `create` stages a plan and spawns nothing; `add_member`/`create_task` append to it or to the live team; `edit` reads or replaces it; `approve` EXECUTES it through the TEAM EXECUTOR (NATIVE backend DEFAULT, official `dsh.team*` FALLBACK), REFUSING a plan with 0 members and 0 tasks; `delete` archives; `status` shows plan, halt, roster and board.",
     parameters: {
       type: "object",
       properties: {
@@ -496,8 +660,10 @@ export function apply(ctx: any): void {
         replace: { type: "boolean", description: "create: required to replace an ALREADY APPROVED plan." },
         member: { type: "object", description: "add_member: {name, prompt, description?, role?}; `prompt` is the teammate's instantiation prompt." },
         // The canonical shape stays in the description because the context budget below is binding:
-        // only the TWO keys a caller really put somewhere else are declared as their own properties.
-        task: { type: "object", description: "create_task: {subject, description, blocked_by?, write_scopes?, owner?}; `owner`/`blocked_by` may also sit beside it." },
+        // only the keys a caller really put somewhere else are declared as their own properties. The
+        // C7-4 F1 requirement-chain fields (kind/coverageOf/sourceTaskId) ride inside `task` for the
+        // same reason — declaring three more top-level aliases costs every turn's context.
+        task: { type: "object", description: "create_task: {subject, description, blocked_by?, write_scopes?, owner?, kind?, coverageOf?, sourceTaskId?}." },
         owner: { type: "string", description: "create_task: alias of `task.owner`." },
         blocked_by: { type: "array", items: { type: "string" }, description: "create_task: alias of `task.blocked_by`." },
         members: { type: "array", items: { type: "object" }, description: "edit: replacement members." },
@@ -524,6 +690,11 @@ export function apply(ctx: any): void {
           tasks: { type: "array", items: { type: "object" } },
           contracts: { type: "array", items: { type: "object" } },
           created: { type: "object" },
+          // The F1 live-team append: the sentence naming the row and the team it landed on, plus the row
+          // (and, for `add_member`, the handle the raise minted).
+          appended: { type: "string" },
+          task: { type: "object" },
+          spawned: { type: "string" },
           stoppedAt: { type: "string" },
           archivedTo: { type: "string" },
           // The write-time blocker reading of `create_task` / `edit`: one `{ reference, form }` per
@@ -542,6 +713,9 @@ export function apply(ctx: any): void {
                 ? ` — WARNING: ${value.created.unresolved.length} task(s) carry blockers that name no task (${value.created.unresolved.map((entry: { taskId?: string; references?: string[] }) => `${entry.taskId ?? "?"}:[${(entry.references ?? []).join(",")}]`).join(" ")}); they draw no edge`
                 : "")
             : value?.members !== undefined ? `plan ${value.plan?.planId ?? "(none)"} · members ${value.members.length} · tasks ${value.tasks?.length ?? 0} · hold ${value.hold === null || value.hold === undefined ? "none" : "held"}`
+            // The F1 live-team append says WHAT it appended and to which team, instead of the misleading
+            // "no plan staged" the staged-plan render would answer for a call that never had one.
+            : typeof value?.appended === "string" ? value.appended
             // The task-writing branches answer with the blockers reading, which is the sentence that
             // tells a captain at WRITE time whether their references can resolve (R21).
             : Array.isArray(value?.blockers) && value.blockers.length > 0 ? `task "${value.plan?.tasks?.at?.(-1)?.subject ?? ""}" staged${blockerSentence(value.blockers)}`
@@ -551,8 +725,10 @@ export function apply(ctx: any): void {
     execute: async (args: any, exec: DshToolExec) => {
       /** The requested action, stringified so a non-string argument can only miss, never throw. */
       const action = String(args?.action ?? "")
-      /** The call's workspace and session; every branch below stays inside them. */
-      const { workspace, sessionId } = where(exec)
+      /** The call's workspace, session and recorded ancestors; every branch below stays inside them. */
+      const { workspace, sessionId, lineage } = where(exec)
+      /** Whether this caller is a recorded delegation child (the C7-4 F5 heal guard). */
+      const delegated = sessionIsDelegatedChild(exec)
 
       if (action === "status") {
         /** Read one seam defensively: a status call must answer even when a service is absent. */
@@ -589,24 +765,66 @@ export function apply(ctx: any): void {
       }
 
       if (action === "add_member") {
-        /** The staged, not-yet-approved plan this call appends to. */
-        const { plan } = requirePlan(exec)
         /** The raw member argument, read as a record because the tool schema is not enforced here. */
         const raw = (args?.member ?? {}) as Record<string, unknown>
-        /** The plan with the member appended (trimmed and duplicate-checked by the store). */
-        const next = addMember(plan, {
+        /** The member the caller wants, in the store's own input shape. */
+        const input = {
           name: String(raw.name ?? ""),
           description: String(raw.description ?? ""),
           prompt: String(raw.prompt ?? ""),
           ...(raw.role === undefined ? {} : { role: String(raw.role) }),
-        })
-        writePlan(workspace, next)
-        return { plan: next }
+        }
+        /** The staged, not-yet-approved plan this call appends to, when one exists. */
+        const plan = stagedPlan(workspace, sessionId)
+        if (plan !== undefined) {
+          /** The plan with the member appended (trimmed and duplicate-checked by the store). */
+          const next = addMember(plan, input)
+          writePlan(workspace, next)
+          return { plan: next }
+        }
+        // ── THE MID-RUN ARM (C7-4 F1) ─────────────────────────────────────────
+        // With NO staged plan the caller used to get "no team is staged in this session" even though it
+        // HAD approved a team minutes earlier (approval archives the staging file). Resolution finds the
+        // live APPROVED record and the append lands on it, persisted through `writeTeam` so the change
+        // feed every panel follows fires.
+        /** The caller's live team, or the sentence saying why none unambiguous resolved. */
+        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated)
+        if (resolved.record === undefined) throw new Error(resolved.refusal ?? "no team is staged in this session — call agent_teams_create first")
+        /** The trimmed name, which is both the duplicate key and the stored value. */
+        const name = input.name.trim()
+        if (name === "") throw new Error("a teammate needs a non-empty name")
+        if (resolved.record.members.some((member) => member.name === name)) throw new Error(`teammate "${name}" is already on the roster of team ${resolved.record.teamId}`)
+        /** The live record with the member appended. */
+        const roster = addTeamMember(resolved.record, input, now())
+        /** The member this append minted — the LAST row of the new roster. */
+        const added = roster.members[roster.members.length - 1]
+        writeTeam(workspace, withDerivedPhase(roster))
+        // THE MEMBER IS RAISED HERE, exactly as approval raises one: a roster row nothing ever spawned
+        // would be the C7-3 ghost class again. A failed raise is written on the row AND reported in the
+        // answer, never left silent.
+        try {
+          /** The backend's answer, whose handle the record keeps beside our own member id. */
+          const spawned = await executor().spawn(exec.agent, {
+            teamId: roster.teamId,
+            memberId: added.id,
+            name: added.name,
+            description: added.description === "" ? added.name : added.description,
+            prompt: input.prompt === "" ? added.description : input.prompt,
+            ...(exec.signal === undefined ? {} : { signal: exec.signal }),
+          })
+          /** The record re-read immediately before the handle is written, so the raise cannot clobber a concurrent write. */
+          const running = updateTeamMember(readTeam(workspace, roster.teamId) ?? roster, added.id, { executorRef: spawned.handle, status: "running" })
+          writeTeam(workspace, withDerivedPhase(running))
+          return { team: running, member: { ...added, executorRef: spawned.handle, status: "running" }, spawned: spawned.handle, appended: `member ${added.name} (${added.id}) appended to the live team ${running.teamId}` }
+        } catch (error) {
+          /** The record with the member marked failed, so the roster never shows a member that is not there. */
+          const failed = updateTeamMember(readTeam(workspace, roster.teamId) ?? roster, added.id, { status: "failed" })
+          writeTeam(workspace, withDerivedPhase(failed))
+          return { team: failed, member: { ...added, status: "failed" }, stoppedAt: `member ${added.name}: ${String((error as Error)?.message ?? error)}`, appended: `member ${added.name} (${added.id}) appended to the live team ${failed.teamId}, but the raise FAILED` }
+        }
       }
 
       if (action === "create_task") {
-        /** The staged, not-yet-approved plan this call appends to. */
-        const { plan } = requirePlan(exec)
         /** The raw task argument, read as a record because the tool schema is not enforced here. */
         const raw = (args?.task ?? {}) as Record<string, unknown>
         // BOTH SPELLINGS, ONE READING (measured 2026-10-02, defects 4 and 5): the caller sent
@@ -619,20 +837,61 @@ export function apply(ctx: any): void {
         const writeScopes = stringList(raw.write_scopes ?? raw.writeScopes ?? args?.write_scopes)
         /** The owning teammate's display name, from the nested key or its top-level alias. */
         const owner = raw.owner ?? args?.owner
-        /** The plan with the task appended (trimmed by the store). */
-        const next = addTask(plan, {
+        /** The requirement-chain fields (C7-4 F1), declared inside `task` to keep the context budget. */
+        /** The parsed task kind, refused at this boundary when the word is unknown. */
+        const kind = parseTaskKind(raw.kind)
+        /** The user clause this task serves, when the caller named one. */
+        const coverageOf = raw.coverageOf
+        /** The task a repair row was opened from, when the caller named one. */
+        const sourceTaskId = raw.sourceTaskId
+        /** The staged, not-yet-approved plan this call appends to, when one exists. */
+        const plan = stagedPlan(workspace, sessionId)
+        if (plan !== undefined) {
+          /** The plan with the task appended (trimmed by the store). */
+          const next = addTask(plan, {
+            subject: String(raw.subject ?? ""),
+            description: String(raw.description ?? ""),
+            ...(blockedBy === undefined ? {} : { blockedBy }),
+            ...(writeScopes === undefined ? {} : { writeScopes }),
+            ...(owner === undefined ? {} : { owner: String(owner) }),
+          })
+          writePlan(workspace, next)
+          // SAID AT WRITE TIME (R21): each reference is classified against the plan AS IT NOW STANDS, so
+          // a captain sees immediately which forms will resolve and which name nothing this plan can
+          // resolve — the sentence the defect never produced. Advisory, never a refusal: a forward
+          // reference (`3` before task 3 exists) is legitimate and reads as `position`.
+          return { plan: next, ...(blockedBy === undefined ? {} : { blockers: blockerReading(next, blockedBy) }) }
+        }
+        // ── THE MID-RUN ARM (C7-4 F1) ─────────────────────────────────────────
+        // The measured defect: after approval this exact call answered "no team is staged in this
+        // session", so a DAG could never grow a repair row mid-run. It now appends to the live APPROVED
+        // record through `addTeamTask` + `writeTeam`, carrying the requirement-chain fields.
+        /** The caller's live team, or the sentence saying why none unambiguous resolved. */
+        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated)
+        if (resolved.record === undefined) throw new Error(resolved.refusal ?? "no team is staged in this session — call agent_teams_create first")
+        if (String(raw.subject ?? "").trim() === "") throw new Error("a task needs a non-empty subject")
+        /** The live record with the task appended (blockers split and reported by the store). */
+        const next = addTeamTask(resolved.record, {
           subject: String(raw.subject ?? ""),
           description: String(raw.description ?? ""),
+          ...(kind === undefined ? {} : { kind }),
           ...(blockedBy === undefined ? {} : { blockedBy }),
           ...(writeScopes === undefined ? {} : { writeScopes }),
           ...(owner === undefined ? {} : { owner: String(owner) }),
-        })
-        writePlan(workspace, next)
-        // SAID AT WRITE TIME (R21): each reference is classified against the plan AS IT NOW STANDS, so
-        // a captain sees immediately which forms will resolve and which name nothing this plan can
-        // resolve — the sentence the defect never produced. Advisory, never a refusal: a forward
-        // reference (`3` before task 3 exists) is legitimate and reads as `position`.
-        return { plan: next, ...(blockedBy === undefined ? {} : { blockers: blockerReading(next, blockedBy) }) }
+          ...(coverageOf === undefined ? {} : { coverageOf: String(coverageOf) }),
+          ...(sourceTaskId === undefined ? {} : { sourceTaskId: String(sourceTaskId) }),
+        }, now())
+        writeTeam(workspace, withDerivedPhase(next))
+        /** The row this append minted — the LAST task of the new board. */
+        const appendedTask = next.tasks[next.tasks.length - 1]
+        return {
+          team: next,
+          task: appendedTask,
+          appended: `task ${appendedTask.id} "${appendedTask.subject}" appended to the live team ${next.teamId}`,
+          ...(appendedTask.unresolvedBlockers === undefined
+            ? {}
+            : { blockers: appendedTask.unresolvedBlockers.map((reference) => ({ reference, form: "unknown" })) }),
+        }
       }
 
       if (action === "edit") {
@@ -848,8 +1107,10 @@ export function apply(ctx: any): void {
         ),
     },
     execute: async (args: any, exec: DshToolExec) => {
-      /** The call's workspace, which is where contracts and the ledger live. */
-      const { workspace } = where(exec)
+      /** The call's workspace, session and recorded ancestors; contracts and the ledger live here. */
+      const { workspace, sessionId, lineage } = where(exec)
+      /** Whether this caller is a recorded delegation child (the C7-4 F5 heal guard). */
+      const delegated = sessionIsDelegatedChild(exec)
       /** The requested action, stringified so a non-string argument can only miss, never throw. */
       const action = String(args?.action ?? "")
 
@@ -876,7 +1137,7 @@ export function apply(ctx: any): void {
         // THE SPECIFIC SENTENCE WHERE THERE IS ONE: an ambiguous roster gets the refusal that names the
         // teams instead of the standing "approve a plan first", which would be a lie about the cause.
         /** The team this call works on, or the sentence saying why none resolved. */
-        const resolved = resolveTeam(workspace, sessionIdOf(exec))
+        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated)
         if (resolved.record === undefined) throw new Error(resolved.refusal ?? "no team record in this workspace — approve a plan first")
         /** The team this call works on. */
         const record = resolved.record
@@ -884,7 +1145,7 @@ export function apply(ctx: any): void {
         const task = record.tasks.find((candidate) => candidate.id === String(args?.task_id ?? ""))
         if (task === undefined) throw new Error(`no task "${String(args?.task_id ?? "")}" in team ${record.teamId}`)
         /** The claimer, defaulting to the calling session. */
-        const claimant = String(args?.claimant ?? sessionIdOf(exec))
+        const claimant = String(args?.claimant ?? sessionId)
         /** The contract for this attempt, written before the record is told about the claim. */
         const contract = claimContract(workspace, {
           id: task.id,
@@ -912,7 +1173,7 @@ export function apply(ctx: any): void {
         // THE SPECIFIC SENTENCE WHERE THERE IS ONE: an ambiguous roster gets the refusal that names the
         // teams instead of the standing "approve a plan first", which would be a lie about the cause.
         /** The team this call works on, or the sentence saying why none resolved. */
-        const resolved = resolveTeam(workspace, sessionIdOf(exec))
+        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated)
         if (resolved.record === undefined) throw new Error(resolved.refusal ?? "no team record in this workspace — approve a plan first")
         /** The team this call works on. */
         const record = resolved.record
@@ -925,9 +1186,21 @@ export function apply(ctx: any): void {
         const membership = ((): { role?: string; name?: string } | undefined => {
           try { return dsh.teamMembership(exec.agent) as { role?: string; name?: string } | undefined } catch { return undefined }
         })()
+        /** The session header title the harness gives this caller (the persona prompt prefix). */
+        const title = String(self?.session?.header?.title ?? "")
+        // ── C7-4 F2: THE MEMBER'S OWN NAME ────────────────────────────────────
+        // A member's session id IS the `executorRef` the record kept at spawn, while its row's `owner`
+        // may be the member's NAME — and the caller's other spelling is the session TITLE, which in this
+        // composition is the persona prompt prefix ("You are the Senior Engineer,"), not a name. So the
+        // caller could not normalize to its own row and the captain closed every task by hand. The
+        // record ALREADY knows which member this session is: match it by the recorded handle, then fall
+        // back to a member name the title CONTAINS, and add that name to the caller's spellings.
+        /** The member this session is, as the resolved record names it. */
+        const ownMember = memberNamedBy(record, [sessionId, ...lineage])
+          ?? record.members.find((member) => member.name !== "" && title.includes(member.name))
         // THE CALLER'S OWN SPELLINGS, never a name the caller TYPES: `claimant` is deliberately NOT read
         // here, because accepting it would let any agent close any row by naming its owner.
-        const caller = [sessionIdOf(exec), String(self?.session?.header?.title ?? ""), String(membership?.name ?? "")].filter((value) => value !== "")
+        const caller = [sessionId, title, String(membership?.name ?? ""), ...(ownMember === undefined ? [] : [ownMember.name]), ...lineage].filter((value) => value !== "")
         // RE-READ IMMEDIATELY BEFORE THE CAS, the dispatch pass's own discipline: the record was opened
         // before this branch and a concurrent write may have moved it.
         const fresh = readTeam(workspace, record.teamId) ?? record
@@ -987,7 +1260,8 @@ export function apply(ctx: any): void {
     output: {
       // `refused` and `holdRead` are declared because BOTH really appear: a pass with no team record
       // is refused, and a watchdog hold that could not be read is REPORTED rather than guessed at.
-      schema: { type: "object", properties: { pairs: { type: "array", items: { type: "object" } }, skipped: { type: "array", items: { type: "object" } }, halted: { type: "string" }, refused: { type: "string" }, holdRead: { type: "string" }, forgotten: { type: "array", items: { type: "string" } }, released: { type: "boolean" } } },
+      // `reaped` is the C7-3 consistency pass's own report: the team ids it marked terminal on disk.
+      schema: { type: "object", properties: { pairs: { type: "array", items: { type: "object" } }, skipped: { type: "array", items: { type: "object" } }, halted: { type: "string" }, refused: { type: "string" }, holdRead: { type: "string" }, forgotten: { type: "array", items: { type: "string" } }, reaped: { type: "array", items: { type: "string" } }, released: { type: "boolean" } } },
       render: (_args: any, value: any) =>
         text(
           value?.released !== undefined ? (value.released ? "released" : "that task was not dispatched")
@@ -998,8 +1272,8 @@ export function apply(ctx: any): void {
         ),
     },
     execute: async (args: any, exec: DshToolExec) => {
-      /** The call's workspace, where the dispatch ledger lives. */
-      const { workspace } = where(exec)
+      /** The call's workspace, session and recorded ancestors; the dispatch ledger lives here. */
+      const { workspace, sessionId, lineage } = where(exec)
       /** The requested action, stringified so a non-string argument can only miss, never throw. */
       const action = String(args?.action ?? "")
 
@@ -1012,15 +1286,23 @@ export function apply(ctx: any): void {
 
       /** The workspace hold, if any; its reason refuses the WHOLE pass inside `planDispatch`. */
       const hold = readHold(workspace)
+      // THE C7-3 CONSISTENCY PASS runs on the ONE write path a team already has: a record that is not
+      // live (the hand-patched `archived` phase included, or a plan archived without approval) is
+      // rewritten to `ended` WITH a reason here, so a reaped ghost cannot survive on disk and
+      // `derivePhase` agrees with it afterwards. Reported as `reaped` so the caller sees the repair.
+      // It runs on the `run` action whatever `dry_run` says: the repair is not a dispatch, `dry_run`
+      // scopes the PAIRING ("send nothing"), and a ghost left on disk is the defect itself.
+      /** The team ids this pass marked terminal on disk. */
+      const reaped = reapReapedTeams(workspace, now())
       // The WATCHDOG's hold is a second, per-team pause. It is composed into the same refusal so a
       // caller reads one sentence whichever hold stopped the pass.
       /** This session's team, which names the team a watchdog hold would apply to. */
-      const teamId = recordFor(workspace, sessionIdOf(exec))?.teamId
+      const teamId = recordFor(workspace, sessionId, lineage)?.teamId
       // ONE AUTHORITATIVE SOURCE for the watchdog's hold: its own `mpdWatchdog` service, read through
       // the gate call the watchdog documents (`isHeld(teamId, workspace)?.held === true`). A hold that
       // cannot be read is NOT a hold — it is reported as `not-readable` and the pass continues.
       /** The watchdog's reading for this session's team. */
-      const watchdog = teamId === undefined ? ({ state: "free" } as WatchdogHoldRead) : readWatchdogHold(workspace, sessionIdOf(exec))
+      const watchdog = teamId === undefined ? ({ state: "free" } as WatchdogHoldRead) : readWatchdogHold(workspace, sessionId, lineage)
       /** The refusal reason, whichever of the two holds applies first. */
       const holdReason = hold?.reason ?? (watchdog.state === "held" ? watchdog.reason : undefined)
       /** The honest note a caller reads when the watchdog's hold could not be read at all. */
@@ -1030,8 +1312,8 @@ export function apply(ctx: any): void {
       // of owning the record — and the readiness rule is the store's own OPT-1 rule rather than a
       // projection of somebody else's.
       /** The team this pass dispatches, or the sentence saying why none resolved. */
-      const resolvedDispatch = resolveTeam(workspace, sessionIdOf(exec))
-      if (resolvedDispatch.record === undefined) return { pairs: [], skipped: [], refused: resolvedDispatch.refusal ?? "no team record in this workspace — approve a plan first" }
+      const resolvedDispatch = resolveTeam(workspace, sessionId, lineage)
+      if (resolvedDispatch.record === undefined) return { pairs: [], skipped: [], refused: resolvedDispatch.refusal ?? "no team record in this workspace — approve a plan first", ...(reaped.length === 0 ? {} : { reaped }) }
       /** The team this pass dispatches. */
       let record: TeamRecord = resolvedDispatch.record
       // Bound to a const because `record` is REASSIGNED as pairs are accepted, so a captured `let`
@@ -1049,12 +1331,42 @@ export function apply(ctx: any): void {
         // that rule lives, so the dispatch engine cannot drift from the store.
         ready: readyIds.has(task.id),
         blockedBy: task.blockedBy,
+        // C7-1: the team this task belongs to, on the task side of the pairing guard.
+        teamId: opened.teamId,
+        // C7-2: a task with write scopes is a WRITE task, whatever its kind says.
+        writeScopes: task.writeScopes,
         ...(task.owner === undefined ? {} : { ownerName: task.owner }),
       }))
       /** The roster, in the dispatch engine's shape; the engine pairs only with `inactive` (idle). */
       const idle = new Set(idleMembers(opened).map((member) => member.name))
+      // C7-2's SOURCE, read PER CALL and never copied: mpd-roles-plugin's OWN published service, whose
+      // `readonly` flag is the same one that decides whether a spawn passes `READONLY_DENY`. The guard
+      // FAILS OPEN when the row is absent (no read-only key, so the pairing is left as it was) and says
+      // so ONCE, so a composition without the roster can never have its dispatch silently narrowed.
+      /** The roster rows the `mpdRoles` service publishes, or none when that row is absent. */
+      const rosterRows: readonly RosterRow[] = (() => {
+        try {
+          /** The mpd-owned roster service; absent in a composition that does not mount the roles row. */
+          const roles = (ctx as { get?: (id: string, required?: boolean) => unknown }).get?.("mpdRoles", false) as { list?: () => RosterRow[] } | undefined
+          return typeof roles?.list === "function" ? roles.list() : []
+        } catch {
+          return []
+        }
+      })()
+      if (rosterRows.length === 0) rowLogLine("mpd-team-core", "[mpd-team-core] the mpdRoles service is absent or empty — the C7-2 read-only dispatch guard has no roster to classify against and fails OPEN")
+      /** The read-only member keys, indexed from that roster by the shared key rule. */
+      const readonlyKeys = readonlyMemberKeys(rosterRows)
       /** The roster in the dispatch engine's shape: a member is `inactive` when it is free. */
-      const members = opened.members.map((member) => ({ id: member.executorRef ?? member.id, name: member.name, status: idle.has(member.name) ? "inactive" : "running" }))
+      const members = opened.members.map((member) => ({
+        id: member.executorRef ?? member.id,
+        name: member.name,
+        status: idle.has(member.name) ? "inactive" : "running",
+        // C7-1: the SAME record's team id on the member side; the guard refuses any mismatch.
+        teamId: opened.teamId,
+        // C7-2: readonly when the record's role label OR its display name is a read-only roster member
+        // (the two spellings of the same specialist); an unknown member is treated as write-capable.
+        readonly: isReadonlyMemberName(member.name, readonlyKeys) || (member.role !== undefined && isReadonlyMemberName(member.role, readonlyKeys)),
+      }))
       // PRUNE FIRST: a task deleted or completed out of band must not keep its member busy forever.
       const pruned = reconcile(readLedger(workspace), tasks)
       /** The pure decision for this pass: the pairs to dispatch and a reason for every task left out. */
@@ -1067,7 +1379,7 @@ export function apply(ctx: any): void {
       })
       if (plan.halted !== undefined || args?.dry_run === true || plan.pairs.length === 0) {
         if (pruned.forgotten.length > 0) writeLedger(workspace, pruned.ledger)
-        return { ...plan, forgotten: pruned.forgotten, ...(holdNote === undefined ? {} : { holdRead: holdNote }) }
+        return { ...plan, forgotten: pruned.forgotten, ...(holdNote === undefined ? {} : { holdRead: holdNote }), ...(reaped.length === 0 ? {} : { reaped }) }
       }
       // The pass's OWN view of the ledger: the pre-await prune, extended by each accepted pairing.
       // It is deliberately NOT what gets written — the merge before the write (T7) re-reads the file
@@ -1138,7 +1450,7 @@ export function apply(ctx: any): void {
       // Only `sent` is re-applied; an entry this pass merely inherited is never resurrected.
       for (const pair of sent) merged[pair.taskId] = ledger[pair.taskId]
       writeLedger(workspace, merged)
-      return { pairs: sent, skipped, forgotten: pruned.forgotten, ...(holdNote === undefined ? {} : { holdRead: holdNote }) }
+      return { pairs: sent, skipped, forgotten: pruned.forgotten, ...(holdNote === undefined ? {} : { holdRead: holdNote }), ...(reaped.length === 0 ? {} : { reaped }) }
     },
   }))
 
@@ -1166,28 +1478,29 @@ export function apply(ctx: any): void {
       additionalProperties: false,
     },
     output: {
-      schema: { type: "object", properties: { message: { type: "object" }, messages: { type: "array", items: { type: "object" } }, summary: { type: "array", items: { type: "object" } }, moved: { type: "array", items: { type: "string" } }, refused: { type: "string" } } },
+      schema: { type: "object", properties: { message: { type: "object" }, messages: { type: "array", items: { type: "object" } }, summary: { type: "array", items: { type: "object" } }, scope: { type: "string" }, moved: { type: "array", items: { type: "string" } }, refused: { type: "string" } } },
       render: (_args: any, value: any) =>
         text(
           value?.refused !== undefined ? `refused: ${value.refused}`
             : value?.message !== undefined ? `sent ${value.message.id} to ${value.message.toName}`
             : value?.moved !== undefined ? `acknowledged ${value.moved.length} message(s)`
-            : value?.summary !== undefined ? (value.summary.length === 0 ? "no mail" : value.summary.map((row: any) => `${row.memberName}: ${row.unread} unread / ${row.total} total`).join("\n"))
+            // C7-4 F3: the scope is printed, so a workspace-global fold is never mistaken for this team's.
+            : value?.summary !== undefined ? (value.summary.length === 0 ? `no mail (${value.scope ?? "workspace"} scope)` : value.summary.map((row: any) => `${row.memberName}: ${row.unread} unread / ${row.total} total`).join("\n") + ` (${value.scope ?? "workspace"} scope)`)
             : (value?.messages?.length ?? 0) === 0 ? "nothing unread"
             : value.messages.map((mail: any) => `${mail.id} from ${mail.fromName}: ${mail.subject}`).join("\n"),
         ),
     },
     execute: async (args: any, exec: DshToolExec) => {
-      /** The call's workspace, where the mailbox log lives. */
-      const { workspace } = where(exec)
+      /** The call's workspace, session and recorded ancestors; the mailbox log lives here. */
+      const { workspace, sessionId, lineage } = where(exec)
       /** The caller's id, used when the payload carries no session of its own. */
-      const caller = sessionIdOf(exec)
+      const caller = sessionId
       /** The raw calling agent, read for the display name the official payload carries. */
       const self = exec.agent as any
       // THE RECORD IS THE ROSTER (W2): a mailbox call must answer with no official plane mounted,
       // and the handle a message is delivered to is the one the EXECUTOR recorded at spawn time.
-      /** This session's team, when one was approved here. */
-      const mailTeam = recordFor(workspace, caller)
+      /** This session's team, when one was approved here (C7-4 F5: its recorded ancestors count too). */
+      const mailTeam = recordFor(workspace, caller, lineage)
       /** The roster in the shape this tool addresses members by: id OR name, plus the handle. */
       const roster = (mailTeam?.members ?? []).map((member) => ({ id: member.id, name: member.name, status: member.status, handle: member.executorRef ?? "" }))
       /** Resolve a member by name OR by id, because a captain addresses people by name. */
@@ -1229,7 +1542,23 @@ export function apply(ctx: any): void {
       }
 
       if (args?.action === "summary") {
-        return { summary: summarise(readMailbox(workspace)) }
+        /** The whole folded ledger's per-member summary. */
+        const rows = summarise(readMailbox(workspace))
+        // ── C7-4 F3: THE SCOPE IS STATED ──────────────────────────────────────
+        // The fold is WORKSPACE-GLOBAL, so a brand-new team read a stale roster from a wave that ended
+        // days earlier. With a resolved team the rows are FILTERED to that team's members (id, name and
+        // recorded handle all match a row's recipient), and the answer says `scope:"team"`. With no team
+        // resolved the whole fold is returned and LABELLED `scope:"workspace"` — the honest degrade, never
+        // a silent one.
+        if (mailTeam === undefined) return { summary: rows, scope: "workspace" }
+        /** Every identity a row of THIS team's mailbox can carry. */
+        const keys = new Set<string>()
+        for (const member of mailTeam.members) {
+          keys.add(member.id)
+          keys.add(member.name)
+          if (member.executorRef !== undefined && member.executorRef !== "") keys.add(member.executorRef)
+        }
+        return { summary: rows.filter((row) => keys.has(row.memberId) || keys.has(row.memberName)), scope: "team" }
       }
 
       /** The folded mailbox, read once so the unread/undelivered/total counts agree. */
@@ -1358,6 +1687,11 @@ export function apply(ctx: any): void {
         },
         effect: (fn: () => unknown, label: string) => { try { return ctx?.effect?.(fn, label) } catch { return undefined } },
         warn: (line: string) => rowLogLine("mpd-team-core", `[mpd-team-core] ${line}`),
+        // The SAME feed the service publishes, handed to the stream route as its two doors. A route
+        // that had its own feed would be a second observer of the same writes and a second watcher on
+        // the same directory — the exact duplication the ONE substrate exists to prevent.
+        subscribe: (workspace: string, listener: () => void) => feed.subscribe(workspace, listener),
+        revision: (workspace: string) => feed.revision(workspace),
       })
       // Mounted ONCE here and retried on the binding below; the route is idempotent by path on the
       // host's own registry, and a second registration attempt against the SAME server is harmless

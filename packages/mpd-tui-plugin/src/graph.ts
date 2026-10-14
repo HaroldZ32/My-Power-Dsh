@@ -238,56 +238,37 @@ const LEGEND_ENTRY: readonly string[] = Object.freeze([
   `${ARROW_DOWN}/${ARROW_RIGHT} arrow`,
 ])
 
-/** The states the legend keys, in the order it prints them and in the drawing's own vocabulary. */
-const LEGEND_STATES: readonly string[] = Object.freeze(["completed", "running", "open", "failed", "cancelled"])
-
-/** The one-word fallback names the terse state line uses when the full names do not fit. */
-const LEGEND_SHORT: Readonly<Record<string, string>> = Object.freeze({
-  completed: "done", running: "run", open: "open", failed: "fail", cancelled: "cancel",
-})
-
-/**
- * THE LEGEND'S STATE KEY, roomiest first.
- *
- * Every mark is read out of {@link GLYPH}, never re-typed: a legend that spells its own glyphs is a
- * second source of truth for what the drawing means, and the two would drift the first time a state
- * glyph changed.
- */
-const LEGEND_KEY: readonly string[] = Object.freeze([
-  LEGEND_STATES.map((state) => `${GLYPH[state] ?? "?"} ${state}`).join(" · "),
-  LEGEND_STATES.map((state) => `${GLYPH[state] ?? "?"} ${LEGEND_SHORT[state] ?? state}`).join(" · "),
-])
-
-/** The legend's lines, in print order: the arrow sentence first, because the drawing exists for it. */
-const LEGEND_LINES: readonly (readonly string[])[] = Object.freeze([LEGEND_ENTRY, LEGEND_KEY])
-
 /** The narrowest row that can still carry a legend; below it a lone `▼` would be a riddle, not a key. */
 const MIN_LEGEND_COLS = 8
 
 /**
- * THE LEGEND: what the drawing's marks mean, rendered under the graph.
+ * THE LEGEND'S ARROW/FOCUS SENTENCE: what the drawing's own marks mean, rendered under the graph.
+ *
+ * ONE OWNER PER LINE, and this module owns exactly this line. The STATE KEY — what each state mark
+ * means — belongs to `panel-core.ts`'s `legendLinesFor`, which composes it from the frozen six-state
+ * contract (`DAG_STATE_TONES` + `DAG_TONE_GLYPH`). This module used to print a SECOND, five-state key
+ * (`LEGEND_STATES` + `LEGEND_SHORT` + `LEGEND_KEY`, all three deleted with the redundant legend): it
+ * omitted `blocked`, so it could not tell `○ blocked` from `○ open` — precisely the ambiguity the
+ * contract's key exists to resolve — and printed under that key it was the same legend twice, which
+ * is the user's report that the DAG legend carried two rows. The arrow sentence stays HERE because
+ * only the drawing knows which marks it painted.
  *
  * The SIGNATURE is the contract: two callers (the team scene in `scenes.ts` and the merged subagent
  * panel in `subagent-scene.ts`) render these lines under the DAG they just laid out, so the shape is
  * `string[]`, the lines carry no tone of their own, and the width bound belongs to the CALLER's
- * viewport. It answers exactly three questions — which way an edge runs, what each state mark means,
- * and what the focus marker is — because those are the marks a reader cannot recover from the
- * drawing alone.
+ * viewport.
  * @param cols - the cells available on the scene row.
- * @returns 1..2 plain unstyled lines, each clamped to `cols` cells; empty when nothing honest fits.
+ * @returns 0..1 plain unstyled lines, each clamped to `cols` cells; empty when nothing honest fits.
  */
 export function legendLines(cols: number): string[] {
   /** The cells available; a width that is not a finite number says nothing about the viewport. */
   const width = Number.isFinite(cols) ? Math.floor(cols) : 0
   if (width < MIN_LEGEND_COLS) return []
-  /** The lines whose tersest wording still fits; a line that cannot be said is DROPPED, not cut. */
-  const lines: string[] = []
-  for (const variants of LEGEND_LINES) {
-    /** The roomiest wording that fits this viewport, undefined when even the tersest one would not. */
-    const wording = variants.find((variant) => cellWidth(variant) <= width)
-    if (wording !== undefined) lines.push(clampCells(wording, width))
-  }
-  return lines
+  /** The roomiest rung that fits this viewport; undefined when even the tersest one would not. */
+  const wording = LEGEND_ENTRY.find((variant) => cellWidth(variant) <= width)
+  // A sentence that cannot be said is DROPPED, never cut — the same choice the rail makes when it
+  // drops its tail — so a width that cleared the floor may still return nothing at all.
+  return wording === undefined ? [] : [clampCells(wording, width)]
 }
 
 /**

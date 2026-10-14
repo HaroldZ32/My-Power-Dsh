@@ -14,13 +14,13 @@
 //  node            | -                                           | REQUIRED | PATH lookup `node` (what every row's `command: node` uses) -> this doctor's own process.execPath
 //  ast-grep        | MPD_AST_GREP_SG_PATH, MPD_AST_GREP_BIN_DIR   | OPTIONAL | env pin (a non-empty pin wins untouched) -> $MPD_AST_GREP_BIN_DIR/{ast-grep,sg} -> createRequire(@ast-grep/cli) package bin -> <bundle>/.toolchain/node_modules/.bin/{ast-grep,sg}; every candidate must pass the `--version` probe whose output contains "ast-grep" (the deprecated `sg` wrapper fails it); NO PATH tier in the MPD resolver - the adopted server's own PATH fallback is reported, not used
 //  codegraph       | MPD_CODEGRAPH_BIN, MPD_DSH_CODEGRAPH_BIN     | OPTIONAL | env pin -> createRequire(@colbymchenry/codegraph) `bin` entry -> <bundle>/.toolchain/node_modules/.bin/codegraph -> PATH lookup `codegraph` (the plugin's last tier; the MCP launcher stops before it)
-//  lsp             | MPD_DSH_LSP_CLI                              | REQUIRED | env override -> <bundle>/packages/mpd-mcp-lsp/dist/cli.js (the row launches `node <that file> mcp`); no PATH tier for the entrypoint
-//  git-bash        | MPD_DSH_GITBASH_CLI                          | OPTIONAL | win32: %ProgramFiles%\Git\bin\bash.exe -> %ProgramFiles(x86)%\Git\bin\bash.exe -> `where bash` filtered to bash.exe outside system32/WindowsApps; posix: not-required (the row is `disabled: true` and `run` is Windows-only)
+//  lsp             | MPD_DSH_LSP_CLI                              | REQUIRED | env override -> <bundle>/packages/mpd-mcp-lsp/dist/launch.js (the row launches `node <that file>`; the launcher resolves the declared cclsp dependency itself); no PATH tier for the entrypoint
+//  git-bash        | MPD_DSH_GIT_CLI, MPD_DSH_SHELL_CLI           | OPTIONAL | env override -> <bundle>/packages/mpd-mcp-gitbash/dist/launch.js (the `mcp-git`/`mcp-shell` rows, both `disabled: true`); `mcp-git` additionally needs `git` on PATH, checked and reported
 //  comment-checker | MPD_DSH_COMMENT_CHECKER_BIN                  | OPTIONAL | env override -> createRequire(@code-yeongyu/comment-checker) vendor/<platform>-<arch>/comment-checker -> <bundle>/.toolchain/node_modules/@code-yeongyu/comment-checker/{vendor/<platform>-<arch>/comment-checker,bin/comment-checker}
 //
 // Resolution sources: packages/mpd-mcp-shared/bin-resolve.ts,
 // packages/mpd-mcp-{astgrep,codegraph}/launch.ts, packages/mpd-codegraph-plugin/src/index.ts,
-// packages/mpd-comment-checker-plugin/src/index.ts, packages/mpd-mcp-{lsp,gitbash}/dist/cli.js,
+// packages/mpd-comment-checker-plugin/src/index.ts, packages/mpd-mcp-{lsp,gitbash}/dist/launch.js,
 // cordis.patch.yml, package.json optionalDependencies.
 //
 // EXIT CODES (the verdict line always names the rule that decided the code):
@@ -754,21 +754,21 @@ const ENTRY_SPECS: ReadonlyArray<EntrySpec> = [
     kind: "mcp-entry",
     required: true,
     envKeys: ["MPD_DSH_LSP_CLI"],
-    resolution: "MPD_DSH_LSP_CLI -> <bundle>/packages/mpd-mcp-lsp/dist/cli.js (the `mcp-lsp` row launches `node <that file> mcp`); no PATH tier for the entrypoint - per-language servers (typescript-language-server, pyright-langserver, ...) resolve from PATH at use time",
-    degrade: "the mcp-lsp row cannot start at all (node exits MODULE_NOT_FOUND), so no mcp__lsp__* tools exist (diagnostics, definition, references, rename): this is a hard fault, not a degrade",
+    resolution: "MPD_DSH_LSP_CLI -> <bundle>/packages/mpd-mcp-lsp/dist/launch.js (the `mcp-lsp` row launches `node <that file>`); no PATH tier for the entrypoint - the launcher resolves the declared `cclsp` dependency from the installed profile, and cclsp spawns the per-language servers named in its config (`typescript-language-server` arrives as cclsp's own dependency)",
+    degrade: "the mcp-lsp row cannot start, so no mcp__lsp__* tools exist (find_definition, find_references, get_diagnostics, rename_symbol, ...): this is a hard fault, not a degrade",
     /** The REQUIRED lsp entry: the env override, else the bundle-shipped row entrypoint, with no fallback. */
     resolve(ctx: DoctorContext): EntryOutcome {
       /** The env override, when it names an entrypoint. */
       const override = nonEmpty(ctx.env.MPD_DSH_LSP_CLI)
       /** The bundle-shipped entrypoint the row falls back to. */
-      const bundled = join(ctx.bundleRoot, "packages", "mpd-mcp-lsp", "dist", "cli.js")
+      const bundled = join(ctx.bundleRoot, "packages", "mpd-mcp-lsp", "dist", "launch.js")
       /** The entrypoint in force: the override first, the bundle-relative operand otherwise. */
       const path = override ?? bundled
       /** The tier that supplied the entrypoint, printed after `via=`. */
       const via = override !== null ? "env override MPD_DSH_LSP_CLI" : "bundle-shipped row entrypoint"
       if (!existsSync(path) || !isFile(path)) {
         return result("missing", {
-          rule: "a REQUIRED row entrypoint has no fallback: the launcher is `node <file> mcp` and nothing substitutes a missing file",
+          rule: "a REQUIRED row entrypoint has no fallback: the launcher is `node <file>` and nothing substitutes a missing file",
           reason: override !== null ? "MPD_DSH_LSP_CLI=" + override + " is set and is not a file" : "the bundle-shipped CLI " + bundled + " is missing",
           checked: [override !== null ? "env override MPD_DSH_LSP_CLI=" + override : "env override MPD_DSH_LSP_CLI: unset", bundled],
         })
@@ -782,37 +782,37 @@ const ENTRY_SPECS: ReadonlyArray<EntrySpec> = [
     id: "git-bash",
     kind: "mcp-entry",
     required: false,
-    envKeys: ["MPD_DSH_GITBASH_CLI"],
-    resolution: "MPD_DSH_GITBASH_CLI -> <bundle>/packages/mpd-mcp-gitbash/dist/cli.js (the `mcp-gitbash` row, `disabled: true` by default); the shell itself: win32 %ProgramFiles%\\Git\\bin\\bash.exe -> %ProgramFiles(x86)%\\Git\\bin\\bash.exe -> `where bash` filtered to bash.exe outside system32/WindowsApps; on posix resolveGitBash() answers source \"not-required\"",
-    degrade: "on win32 without Git Bash: `git_bash` run/which_bash are unavailable (winget install --id Git.Git) - and the row is disabled by default, so nothing is lost until it is enabled; on posix the whole row is inert by design (run is Windows-only)",
-    /** The git-bash entry: not-required on posix, and the row entrypoint plus the shell on win32. */
+    envKeys: ["MPD_DSH_GIT_CLI", "MPD_DSH_SHELL_CLI"],
+    resolution: "MPD_DSH_GIT_CLI / MPD_DSH_SHELL_CLI -> <bundle>/packages/mpd-mcp-gitbash/dist/launch.js (ONE launcher, two rows: `mcp-git` and `mcp-shell`, both `disabled: true` by default, and `argv[2]` selects the dependency the launcher starts); `mcp-git` additionally needs `git` on PATH, reported here",
+    degrade: "`mcp-git` cannot run git without `git` on PATH (install git), and `mcp-shell` cannot answer run_process without its declared dependency - but BOTH rows ship `disabled: true`, so nothing is lost until one is enabled",
+    /** The git-bash entry: the shared row entrypoint plus the one external requirement `mcp-git` adds. */
     resolve(ctx: DoctorContext): EntryOutcome {
-      /** The env override, when it names an entrypoint. */
-      const override = nonEmpty(ctx.env.MPD_DSH_GITBASH_CLI)
-      /** The bundle-shipped entrypoint the row falls back to. */
-      const bundled = join(ctx.bundleRoot, "packages", "mpd-mcp-gitbash", "dist", "cli.js")
+      /** The env override, when it names an entrypoint (either row's key). */
+      const override = nonEmpty(ctx.env.MPD_DSH_GIT_CLI) ?? nonEmpty(ctx.env.MPD_DSH_SHELL_CLI)
+      /** The bundle-shipped entrypoint the two rows fall back to. */
+      const bundled = join(ctx.bundleRoot, "packages", "mpd-mcp-gitbash", "dist", "launch.js")
       /** The entrypoint in force: the override first, the bundle-relative operand otherwise. */
       const cli = override ?? bundled
+      /** `git` on PATH, the one external requirement the `mcp-git` row adds. */
+      const git = pathLookup("git", ctx.env)
       /** The candidates consulted, starting with the entrypoint's own presence. */
-      const checked = [override !== null ? "env override MPD_DSH_GITBASH_CLI=" + override : "env override MPD_DSH_GITBASH_CLI: unset", "row entrypoint " + cli + " (" + (isFile(cli) ? "present" : "MISSING") + ")"]
-      if (ctx.platform !== "win32") {
-        return result("not-required", {
-          via: "resolveGitBash(): platform !== win32 -> { found: true, path: null, source: \"not-required\" }",
-          rule: "the git_bash MCP answers \"disabled: git_bash command execution is only exposed on native Windows\", and the bundle row itself is `disabled: true`",
-          notes: [isFile(cli) ? "the disabled row's entrypoint is present at " + cli : "the resolved row entrypoint " + cli + " is missing; enable the row only after fixing that"],
-          checked,
-        })
-      }
-      /** The shell resolution: the two Program Files spellings, then `where bash` filtered. */
-      const bash = resolveWindowsBash(ctx.env)
-      checked.push(...bash.checked)
+      const checked = [
+        override !== null ? "env override " + (nonEmpty(ctx.env.MPD_DSH_GIT_CLI) !== null ? "MPD_DSH_GIT_CLI" : "MPD_DSH_SHELL_CLI") + "=" + override : "env overrides MPD_DSH_GIT_CLI/MPD_DSH_SHELL_CLI: unset",
+        "row entrypoint " + cli + " (" + (isFile(cli) ? "present" : "MISSING") + ")",
+        git !== null ? "git on PATH: " + git : "git on PATH: absent",
+      ]
       if (!isFile(cli)) {
-        return result("missing", { rule: "the row's entrypoint must exist before the row can be enabled on win32", reason: "the row entrypoint " + cli + " is missing", notes: [bash.path !== null ? "the shell itself resolves at " + bash.path : "no Git Bash found either"], checked })
+        return result("missing", { rule: "the shared launcher is the only entrypoint both rows name, and nothing substitutes a missing file", reason: "the row entrypoint " + cli + " is missing", notes: [git !== null ? "git itself resolves at " + git : "no git on PATH either"], checked })
       }
-      if (bash.path === null) {
-        return result("missing", { rule: "win32: the MCP's own resolution is program-files -> program-files-x86 -> `where bash` (bash.exe only)", reason: "no Git Bash found", notes: ["install it with: winget install --id Git.Git -e --source winget"], checked })
-      }
-      return acceptResolved(bash.path, { probed: probe(bash.path, ["--version"]), via: "source=" + bash.source, rule: "win32 Git Bash resolution order (the row stays disabled until it is enabled)", notes: ["the row entrypoint itself is present at " + cli], checked })
+      return result("not-required", {
+        via: "the two rows ship `disabled: true` on every platform",
+        rule: "both `mcp-git` and `mcp-shell` ship `disabled: true`, so no mcp__git__*/mcp__shell__* tool exists until one of them is enabled; the capability is NOT Windows-only any more",
+        notes: [
+          git !== null ? "`mcp-git` will find git at " + git : "`mcp-git` needs `git` on PATH and none was found: install git, or enable `mcp-shell` instead",
+          "the disabled rows' entrypoint is present at " + cli,
+        ],
+        checked,
+      })
     },
   },
   {
@@ -904,44 +904,6 @@ function astGrepDirectlySpawnable(path: string): boolean {
  */
 function isFile(path: string): boolean {
   try { return statSync(path).isFile() } catch { return false }
-}
-
-/** The Windows Git Bash resolution: the shell's path, the tier that found it, and the candidates tried. */
-interface BashResolution {
-  /** The resolved `bash.exe`, or null when win32 has no Git Bash. */
-  path: string | null
-  /** The tier that produced the path (`program-files`, `program-files-x86`, `path` or `missing`). */
-  source: string
-  /** The candidates consulted, in resolution order, as report lines. */
-  checked: string[]
-}
-
-/**
- * Windows-only Git Bash resolution, mirroring packages/mpd-mcp-gitbash/dist/cli.js.
- * @param env - the env bag, kept for signature parity: this resolution reads no env of its own
- * @returns the resolved shell (or null) with the tier and the candidates consulted
- */
-function resolveWindowsBash(env: ResolverEnv): BashResolution {
-  /** The candidates consulted, in resolution order, with their outcome. */
-  const checked: string[] = []
-  for (const [candidate, source] of [["C:\\Program Files\\Git\\bin\\bash.exe", "program-files"], ["C:\\Program Files (x86)\\Git\\bin\\bash.exe", "program-files-x86"]]) {
-    checked.push(candidate + " (" + (isFile(candidate) ? "present" : "MISSING") + ")")
-    if (isFile(candidate)) return { path: candidate, source, checked }
-  }
-  /** `where bash` output, or "" when the lookup itself fails (no `where`, no PATH). */
-  let whereOutput = ""
-  try { whereOutput = execFileSync("where", ["bash"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: PROBE_TIMEOUT_MS }) } catch { whereOutput = "" }
-  for (const raw of whereOutput.split(/\r?\n/)) {
-    /** The trimmed `where` hit, skipped when the line is blank. */
-    const candidate = raw.trim()
-    if (candidate.length === 0) continue
-    checked.push("where bash -> " + candidate)
-    /** The hit with separators normalised, so the system32/WindowsApps filter matches either slash. */
-    const normalized = candidate.replaceAll("/", "\\").toLowerCase()
-    if (normalized.includes("\\windows\\system32\\") || normalized.includes("\\microsoft\\windowsapps\\")) continue
-    if (candidate.toLowerCase().endsWith("bash.exe") && isFile(candidate)) return { path: candidate, source: "path", checked }
-  }
-  return { path: null, source: "missing", checked }
 }
 
 /** One entry's full record: its outcome plus the static table fields it was resolved from. */
@@ -1220,7 +1182,7 @@ function buildFixture(root: string, options: FixtureOptions): Fixture {
   if (options.pathAstGrep) writeStub(stubPath(bin, "ast-grep"), versionStub("ast-grep 9.9.9"))
   if (options.foreignSg) writeStub(join(bin, "sg"), "#!/bin/sh\necho 'sg: shadow-utils look-alike, not ast-grep' >&2\nexit 1\n")
   for (const pkg of ["mpd-mcp-lsp", "mpd-mcp-gitbash"]) {
-    writeStub(join(bundle, "packages", pkg, "dist", "cli.js"), "// fixture row entrypoint: like the real CLIs it has no --version flag\nprocess.exit(2)\n")
+    writeStub(join(bundle, "packages", pkg, "dist", "launch.js"), "// fixture row entrypoint: like the real launchers it has no --version flag\nprocess.exit(2)\n")
     writeFileSync(join(bundle, "packages", pkg, "package.json"), JSON.stringify({ name: "@mpd-dsh/" + pkg, version: "9.9.9" }) + "\n")
   }
   return { home, bin, bundle }
@@ -1383,10 +1345,11 @@ const ARMS: ReadonlyArray<Arm> = [
     // shell:false), while comment-checker's plugin-owned order names its file literally, so a
     // stub there is unprobeable on win32 as well. Both are the platform's declared limit and
     // both must still be REPORTED - hence the per-platform expectation below.
-    // git-bash joins them for a different reason: whether Git Bash exists is a property of the
-    // HOST, not of the fixture, so the arm cannot demand it be ok - only that it is reported.
+    // git-bash is NOT in that set any more (de-omo wave B2): its two rows are platform-independent
+    // (`mcp-shell` runs `run_process` on every platform) and its arm reports `ok (not-required)` from
+    // the fixture's stub entrypoint alone, so the arm asserts the ok shape on both platforms.
     /** Entries a win32 host cannot fabricate as present, so the arm asserts they are reported instead. */
-    const win32Limited = ["ast-grep", "comment-checker", "git-bash"]
+    const win32Limited = ["ast-grep", "comment-checker"]
     /** The exit code this platform's fixture must produce. */
     const want = process.platform === "win32" ? EXIT.optionalMissing : EXIT.ok
     if (child.code !== want) return armFail("exit=" + child.code + " (want " + want + ")", child)
@@ -1477,17 +1440,16 @@ const ARMS: ReadonlyArray<Arm> = [
     if (!line.includes("MISSING ⇒ degrades: ")) return armFail("the absent ast-grep is not reported as MISSING ⇒ degrades:", child)
     if (/\[OPTIONAL\]: ok /.test(line)) return armFail("the absent ast-grep was reported ok", child)
     if (!line.includes(join(fx.bin, "sg"))) return armFail("the foreign `sg` look-alike on PATH is not named as a rejected candidate", child)
-    // Containment is asserted over the entries the FIXTURE builds. git-bash is a property of
-    // the host (Git Bash installed or not) that no fixture can control, so it is asserted to be
-    // REPORTED, not to be ok - and comment-checker's stub is unprobeable on win32.
+    // Containment is asserted over the entries the FIXTURE builds. comment-checker's stub is
+    // unprobeable on win32, so on that platform it is only asserted to be REPORTED.
     /** The entries the fixture fabricates, which the absent ast-grep must not disturb. */
     const mustBeOk = process.platform === "win32" ? ["node", "lsp", "codegraph"] : ["node", "lsp", "codegraph", "comment-checker"]
     for (const id of mustBeOk) {
       if (!/\[(REQUIRED|OPTIONAL)\]: ok /.test(entryLine(child.stdout, id))) return armFail("unrelated entry " + id + " was disturbed by the absent ast-grep", child)
     }
-    /** The host-dependent git-bash line, which must be REPORTED either way. */
+    /** The git-bash line, whose two disabled rows keep it `ok (not-required)` on every platform. */
     const bashLine = entryLine(child.stdout, "git-bash")
-    if (!(bashLine.includes(": ok ") || bashLine.includes("MISSING ⇒ degrades: "))) return armFail("the host-dependent git-bash entry was not reported at all", child)
+    if (!bashLine.includes(": ok ")) return armFail("the git-bash entry is not reported ok (both its rows ship disabled, which is a not-required ok, never a degrade)", child)
     return { ok: true, detail: "absent ast-grep NAMED with its degrade sentence; the foreign `sg` was rejected, exit 2" }
   }],
   // Arm 6: a probe that never answers is MISSING-with-reason, contained to its own entry.

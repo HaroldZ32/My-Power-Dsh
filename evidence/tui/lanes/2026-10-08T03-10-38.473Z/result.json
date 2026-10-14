@@ -1,0 +1,178 @@
+{
+  "lane": "tui-014-lanes",
+  "phase": "B — sandbox lanes against the INSTALLED 0.14.0 host",
+  "boardTask": "tui-014-lanes (T4)",
+  "frozenContract": ".mpd/plans/tui-014-adaptation.md",
+  "owner": "Deep Worker Lanes (evidence only; no product code written, no source edited, no git write command run)",
+  "freezeAnchor": {
+    "myOwnContentFingerprint": "b0e9e07377a953e6",
+    "myMeasurementMomentUtc": "2026-10-08T02:45:49Z",
+    "fingerprintCovers": "packages/mpd-tui-{plugin,adapter-plugin}/{src,test,dist}, skills/dsh-qa/scripts, docker, presets, dsh-plugin.json, dsh-distribution.json (path+size+mtime, sha256 of the sorted listing)",
+    "repoHead": "a129d7117751bcceaf53b833fba82a68a5fb033b",
+    "dirtyFiles": 37,
+    "captainDigestSuperseded": "7229210e93ebdd277e617add @ 02:45:30Z",
+    "captainDigestCurrent": "c0709c5cbd56e66ea1b597a0 @ 2026-10-08T02:47:07Z (the wave's single vendor re-pin; a captain step, outside this task's scope)",
+    "distRebuiltByCaptain": "packages/mpd-tui-plugin/dist/index.js + packages/mpd-tui-adapter-plugin/dist/index.js @ 2026-10-08T02:40:43Z; captain reports verify-dist-fresh 30/30"
+  },
+  "environment": {
+    "sandboxRoot": ".mpd/recon/qa/tui-lanes/tui-014b (a NEW root, so the lane boots a freshly installed host; the stale roots from 2026-09-29 were empty scaffolds)",
+    "installedHost": "@deepseek-harness-tui/dsh-tui@0.14.0 (MPD_E2E_TUI_VERSION=0.14.0)",
+    "isolationVerified": "sandbox HOME + sandbox DSH_HOME + sandbox workspace cwd; the mount lane reports sessionKeysCreated=['--root-...-tui-014b-ws--'] and sessionKeysInherited=[] -> isolationOffenders=0",
+    "realUserHomeTouched": false,
+    "userProfilePatchWritten": false,
+    "staleRealWorkspaceRecord": ".mpd/logs/mpd-tui-panels.json still carries the pre-fix `act0:team, act0:dag, act0:workmate` (v1, updatedAt 02:02:20Z) — READ ONLY, deliberately untouched, and NOT an input to any lane. The sandbox wrote its OWN record under the sandbox workspace."
+  },
+  "environmentDeviationDeclared": {
+    "what": "The lane runs export `pnpm_config_registry=https://repo.huaweicloud.com/repository/npm/` (this host's own configured registry, from /root/.npmrc).",
+    "why": "The sandbox HOME is deliberately empty, so it carries no .npmrc and pnpm falls back to registry.npmjs.org, which is functionally unreachable from this host (ETIMEDOUT/ECONNRESET; 36s/71s request stalls).",
+    "knobIsLoadBearing": "MEASURED with a bogus registry (https://127.0.0.1:1/): `npm_config_registry` is IGNORED by pnpm 11.23.0, `pnpm_config_registry` is HONORED, and a sandbox-HOME `.npmrc` is HONORED.",
+    "isolationUnaffected": "sandboxEnv() spreads process.env and pins only DSH_HOME/HOME/caches/XDG; no lane script was edited and no product code was touched.",
+    "declaredBound": "pnpm verifies each tarball against the dist.integrity of the packument the mirror serves, but that integrity could NOT be independently compared against npmjs.org's, because npmjs.org is not reliably reachable from this machine."
+  },
+  "lanes": [
+    {
+      "lane": "tui-mount",
+      "subject": "boot the REAL dsh-TUI with the bundle as the THIRD patch layer in a sandbox",
+      "command": "MPD_E2E_TUI_VERSION=0.14.0 pnpm_config_registry=<mirror> bun skills/dsh-qa/scripts/tui-mount.ts --sandbox-root .mpd/recon/qa/tui-lanes/tui-014b --install",
+      "exitCode": 0,
+      "verdict": "PASS",
+      "evidencePath": "evidence/tui/lanes/2026-10-08T03-02-56.630Z/",
+      "keyAssertions": {
+        "installAttempt": "hostExit=0 bundleExit=0",
+        "layering": "['@deepseek-ai/dsh-base','@deepseek-harness-tui/dsh-tui','@mpd-dsh/mpd'] ordered=true missing=[]",
+        "rowComposed": true,
+        "statusLine": true,
+        "counters": true,
+        "crashSignatures": [],
+        "preset": "mpd (session 92b4d858-602b-47ee-82bb-e7eb2271bf93)",
+        "isolationOffenders": 0,
+        "rendered": true
+      }
+    },
+    {
+      "lane": "tui-panels",
+      "subject": "drive the REAL TUI with send-keys and assert each activation-gated seam surface RENDERS",
+      "command": "MPD_E2E_TUI_VERSION=0.14.0 pnpm_config_registry=<mirror> bun skills/dsh-qa/scripts/tui-panels.ts --sandbox-root .mpd/recon/qa/tui-lanes/tui-014b",
+      "exitCode": 1,
+      "verdict": "FAIL",
+      "evidencePath": "evidence/tui/lanes/2026-10-08T03-04-51.787Z/",
+      "surfaces": {
+        "tuiStatus": "rendered",
+        "tuiCommandTrees": "rendered",
+        "commands": "rendered",
+        "tuiDialogs": "rendered",
+        "tuiPanels": "MISSING",
+        "tuiScenes": "MISSING",
+        "tuiRenderers": "MISSING",
+        "tuiSettingsSections": "MISSING"
+      },
+      "failingAssertions": [
+        {
+          "surface": "tuiPanels",
+          "step": "cmd-panel",
+          "keys": ["/mpd panel", "Enter"],
+          "expectedPattern": "侧栏面板：已打开|sidebar panel: opened",
+          "observedStoreText": "mpd 侧栏面板：宿主已接受 act1:team；若没有出现面板，请在 /settings → 侧栏里把 act1:team 加入面板列表，并按 Ctrl+B 展开（或开启“启动时展开侧栏”）",
+          "meaning": "The host ACCEPTED the panel open (`act1:team`); the sentence the lane matches on is not the sentence the plugin prints on 0.14.0. The lane's own `panel.bound` declares it cannot observe the panel BODY in a tmux capture."
+        },
+        {
+          "surface": "tuiScenes",
+          "step": "scene",
+          "keys": ["/mpd board", "Enter"],
+          "expectedPattern": "MPD board",
+          "observed": "the captured pane shows the sidebar panel titled `MPD` (carousel active tab `MPD`, frame `┌MPD──┐`, header `│MPD ⤢│`)",
+          "meaning": "The scene title the lane pins is no longer the title that renders; the wave's C3 merge titles the surviving panel `MPD`."
+        },
+        {
+          "surface": "tuiSettingsSections",
+          "step": "settings",
+          "keys": ["/settings", "Enter"],
+          "expectedPattern": "MPD 插件包|MPD bundle",
+          "observed": "MISSING"
+        },
+        {
+          "surface": "tuiRenderers",
+          "step": "renderer",
+          "expectedPattern": "board opened via",
+          "observed": "MISSING; rendererCrossCheck says 0 `mpd-tui/board-opened` events reached the sandbox store",
+          "preExisting": true
+        }
+      ],
+      "paneCaptureFact": "scene.pane.txt, cmd-panel.pane.txt, settings.pane.txt, renderer.pane.txt and dialog-pre.pane.txt are ALL byte-identical (md5 fe9c119b28a9d3751fce395212284727, 18241 bytes): the /mpd board, Escape and /settings steps produced NO visible screen change after the sidebar opened.",
+      "baselineComparison": {
+        "2026-10-06T14-02-20.539Z (0.13.0, pre-wave)": "tuiStatus/tuiCommandTrees/commands/tuiPanels(rendered=true)/tuiScenes(rendered=true)/tuiSettingsSections(rendered=true)/tuiDialogs rendered; ONLY tuiRenderers false -> ok=false",
+        "2026-10-08 (0.14.0, frozen)": "tuiPanels, tuiScenes, tuiSettingsSections additionally MISSING",
+        "preWaveRunsRed": ["2026-10-06T14-02-20.539Z", "2026-10-06T10-49-04.089Z", "2026-10-06T10-27-53.571Z", "2026-10-06T10-18-52.910Z", "2026-10-06T10-20-40.727Z", "2026-10-06T10-07-14.251Z"],
+        "reading": "The lane was ALREADY red before this wave (its tuiRenderers arm). Three further arms went missing under 0.14.0. Whether the load-bearing cause is the wave's own C3 merge (titles/patterns moved) or 0.14.0's rewritten PanelBar carousel (F4) is NOT determined by this evidence task; both are consistent with the captures. REPORTED, NOT REPAIRED."
+      }
+    },
+    {
+      "lane": "tui-team-surface",
+      "subject": "the plan-approval surface, mounted from the REAL plugin dist (arm1) and on the real host (arm2)",
+      "command": "MPD_E2E_TUI_VERSION=0.14.0 pnpm_config_registry=<mirror> bun skills/dsh-qa/scripts/tui-team-surface.ts --sandbox-root .mpd/recon/qa/tui-lanes/tui-014b",
+      "exitCode": 1,
+      "verdict": "FAIL",
+      "evidencePath": "evidence/tui/team-surface-verify/2026-10-08T03-05-56.134Z/",
+      "writeScopeNote": "This lane hardcodes EVIDENCE_ROOT=<repo>/evidence/tui/team-surface-verify (line ~98) and has NO --out override. The captain ruled option (b): run it, report the REAL path verbatim.",
+      "failingAssertionsVerbatim": [
+        { "id": "A2-plan-scene", "note": "registered scene \"mpd-tui-plan\" title \"MPD 计划审批\"" },
+        { "id": "A4-real-fixture-read", "note": "the surface rendered the record on disk: team" },
+        { "id": "A5-confirm-step-requested", "note": "verbatim instruction present, required phrase \"required\", echo at entry \"\"" },
+        { "id": "A6-echo-carries-phrase", "note": "the echo after typing is \"\"" },
+        { "id": "H4-real-mutation-via-the-adopted-runtime", "note": "no approval committed: phase=\"staged\" approvedAt=undefined; pane outcome: no-outcome-line" }
+      ],
+      "passingArms": ["A1-apply", "A3", "A7-approval-attempt", "A8-tool-result-rendered", "A9", "A10", "B1-B3 (negative controls)", "H1", "H2", "H3", "H5", "H6", "non-interference"],
+      "baselineComparison": {
+        "2026-09-30T02-40-18.003Z": "ok=false; failing = [H4-real-mutation-via-the-adopted-runtime] ONLY. A2 note then read: registered scene \"mpd-tui-plan\" title \"MPD plan approval\" (ENGLISH); A4 note then read: `team       Fixture Team (mpd-fixture-1) · phase staged · review -`",
+        "2026-09-30T02-36-31.686Z": "ok=false; failing = [H3-host-confirm-step, H4]",
+        "2026-10-08 (frozen, 0.14.0)": "ok=false; failing = [A2, A4, A5, A6, H4]",
+        "reading": "H4 is PRE-EXISTING (red on 2026-09-30 too). A2's REGISTERED title changed from the English \"MPD plan approval\" to the Chinese \"MPD 计划审批\" — the `zh` entry of the plugin's own i18n.ts `scene.plan`. A4's parsed team line collapsed from the full `team  Fixture Team (mpd-fixture-1) · phase staged · review -` to just `team`, and A5/A6's parsed phrase/echo came back empty/`required`. The lane compares against ENGLISH frozen literals, so it cannot match a surface that resolves `zh`; the lane script's own sha256 also differs from the 2026-09-30 runs (769700d2... vs d3819012.../fd4e2d84...), and skills/** was edited by the pins task today. REPORTED, NOT REPAIRED."
+      }
+    },
+    {
+      "lane": "tui-deps-ctrla",
+      "subject": "the dependency view, the Ctrl+A contact bound, and the panel control on the launched host copy",
+      "command": "MPD_E2E_TUI_VERSION=0.14.0 pnpm_config_registry=<mirror> bun skills/dsh-qa/scripts/tui-deps-ctrla.ts --sandbox-root .mpd/recon/qa/tui-lanes/tui-014b",
+      "exitCode": 1,
+      "verdict": "FAIL",
+      "evidencePath": "evidence/tui/lanes/2026-10-08T03-06-38.202Z/",
+      "passingFacts": [
+        "the panel seam is PRESENT on 0.14.0 (the host declares the dsh-tui-panels row and ships lib/types/dsh-adapter/panels.js) so the Ctrl+A CONTACT stays inert — frozen R4 holds",
+        "the host contact is bound to the LAUNCHED profile copy: <sandbox>/dshhome/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui",
+        "settings-ctrla arm ok=true"
+      ],
+      "failingAssertionsVerbatim": [
+        { "arm": "ctrla-team", "expectedPattern": "子代理面板|Subagent Dashboard", "observed": "NO match" },
+        { "arm": "ctrla-host", "expectedPattern": "子代理面板|Subagent Dashboard", "observed": "NO match" },
+        { "arm": "store /mpd panel", "expectedPattern": "侧栏面板：已打开|sidebar panel: opened", "observed": "the plugin's 'host accepted act1:team' sentence; the lane's id extraction picked the fragment \"或开启“启动时展开侧栏”\"" }
+      ],
+      "whatCtrlAActuallyOpened": "The carousel line reads `◀ ○ ○ ○ ○ 代理 ○ ○ ○ ○ ○ ▶ ⤢` and the body reads `当前会话暂无子代理` / `让主代理发起 Task 后，子代理会出现在这里`. So Ctrl+A DID open the HOST's own subagents surface — but on 0.14.0 that surface is a SIDEBAR CAROUSEL TAB titled `代理`, not an overlay titled `Subagent Dashboard`. The lane's title pattern cannot match it; the R4 invariant it exists to prove still holds.",
+      "baselineComparison": {
+        "2026-10-06T10-50-08.306Z": "ok=true; ctrla-team ok=true, ctrla-host ok=true, settings-ctrla ok=true",
+        "2026-10-07T12-16-17.645Z": "ok=false; ctrla-team ok=true, ctrla-host ok=true — the red was in storeArms only, with the SAME `侧栏面板：已打开` missing pattern",
+        "2026-10-08 (frozen, 0.14.0)": "ok=false; ctrla-team ok=false, ctrla-host ok=false, settings-ctrla ok=true",
+        "reading": "The two Ctrl+A arms regressed between 2026-10-07 and today, i.e. across the 0.13.0 -> 0.14.0 host move (F4's PanelBar carousel rewrite), not across the pins edit alone (the pins task only edits PREREQ/remedy strings). REPORTED, NOT REPAIRED."
+      }
+    },
+    {
+      "lane": "docker (real PTY)",
+      "command": "MPD_E2E_TUI_VERSION=0.14.0 node scripts/docker-e2e.ts --mode source --allow-rootful-docker",
+      "exitCode": null,
+      "verdict": "PENDING at the time this record was written",
+      "note": "Appended by the follow-up record in this same directory once the run lands."
+    }
+  ],
+  "clauseChecksFromTheCapturedPanes": {
+    "C3 exactly two MPD panels": "SATISFIED. The DISCOVERED record the adapter read back from the host (`tuiPanels.list`) is version 2, panelIds ['act1:team','act1:workmate'], slugs ['team','workmate'], provenance {hostVersion 0.14.0, readBack tuiPanels.list, activation act1}. The carousel line carries 9 dots + 1 title = 10 tabs = the 8 host builtins (todo, jobs, agents, info, trajectory, workspace, btw, companion) + exactly TWO MPD panels. NO third MPD page.",
+    "C3 rich appearance of the surviving MPD panel": "SATISFIED in the capture: bordered frame `┌MPD──┐`, panel header `│MPD … ⤢│`, the host's curated subagent rows ABOVE the drawing (`subagents 0 total · 0 running · 0 completed · 0 failed`, `⚪ No subagents in the current session`), the legend lines (`✓ completed · ◐ running · ○ open · ✗ failed · ⊘ cancelled` and the blocked=open variant), the edge legend (`▼/▸ blocker above → dependent below · ▶ focus lights its chain`) and the key-hint footer (`⤢ fullscreen · ↑↓/jk move · Enter pin · Esc unpin · ⇧↑↓/⇧←→ scroll`).",
+    "C5 the panel's ⤢ control": "PRESENT in the capture (`⤢` in the panel header and in the key-hint footer). COVERAGE GAP: none of the four lanes DRIVES it — `grep -l 'fullscreen|⤢|openFullscreen|expand'` matches NO lane script, so the full-screen surface was NOT exercised by this lane set and no evidence here claims it was.",
+    "F5 contrast (not a lane result)": "The SANDBOX profile shows the MPD panel without any config write, because its settings layer does not pin dsh-tui.sidePanel.panels. The user's REAL profile pins the 8 builtins and drops our ids — that durable write is the captain's step and was NOT performed or read by this task."
+  },
+  "honestBounds": [
+    "Every lane above ran against the frozen revision MY OWN fingerprint measured (b0e9e07377a953e6 @ 2026-10-08T02:45:49Z); I did not re-hash after the runs.",
+    "The four lanes' verdicts are the LANES' OWN; where a lane reddens on a pattern that no longer matches a surface that IS visible in the capture, I say so and still report the red as a red.",
+    "No fix was applied anywhere: not to a lane script, not to packages/**, not to the stale real-workspace .mpd/logs/mpd-tui-panels.json.",
+    "The 2026-10-08T02-46-35.178Z evidence directory is the FAILED first mount attempt (requested-host-install-refused); it carries install.log and lane.txt but NO result.json because the run died in provisioning. It is a diagnostic record, not a lane result."
+  ],
+  "verdict": "PHASE B: 1 PASS (tui-mount), 3 FAIL (tui-panels, tui-team-surface, tui-deps-ctrla), Docker lane pending. The user-facing clauses C3 (two MPD panels, rich appearance) are POSITIVELY demonstrated by the captures and the discovered panel-id record; the three reds are pattern/locale staleness against 0.14.0 plus one pre-existing red, all reported with exact assertions and baselines, none repaired."
+}

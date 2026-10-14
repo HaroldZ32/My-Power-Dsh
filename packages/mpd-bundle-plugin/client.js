@@ -4265,7 +4265,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
 // top-level section by w14/t83 at the user's request: "web的设置栏请单开一栏MPD设置，别混在插件栏里").
 //
 // WHERE THIS MOUNTS: its OWN top-level `MPD` section of the Web settings dialog. The same
-// mpd.jsonc knobs (thirteen scalar knobs plus the twelve team-model slot leaves) used to ride the
+// mpd.jsonc knobs (thirteen scalar knobs, the twelve team-model slot leaves and the thirty-three
+// agentRoutes route leaves) used to ride the
 // Plugins tab's keyed per-namespace item slot; this file no longer
 // registers anything there, so the Plugins tab shows no mpd card.
 //
@@ -4326,19 +4327,33 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
   const SECTION_ID = "mpd"
   /** After `general` 0, `models` 10 and `plugins` 15 — so no existing section moves. */
   const SECTION_ORDER = 20
-
-  /** The disclosure both front doors state (byte-identical to the TUI's BRIDGE_DISCLOSURE). */
-  const BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime"
   /**
-   * The HOST LIMITATION half of the truth (T-18), byte-identical to
-   * `packages/mpd-config-plugin/src/settings-schema.ts` `BRIDGE_RESTART_LIMIT` and rendered as the
-   * card's second disclosure paragraph: the file-derived base is fixed for the running process, so
-   * a hand edit of `.mpd/mpd.jsonc` applies at the next `dsh` boot and never mid-process, and only
-   * a change made through the settings document can reach a running plugin (where it subscribes).
-   * This is the honest replacement for the old "any settings edit wins from the next tick on"
-   * claim, which the host's mount-time base read does not support.
+   * The bundle's server route serving the CURRENT EFFECTIVE model config from the `mpdConfig`
+   * service (R3): the four slot routes (defaults materialised), the stored `agentRoutes` table and
+   * the configured `modelchain` chains. Registered by `packages/mpd-bundle-plugin/src/model-config-web.ts`
+   * on the host's web server; this card fetches it at mount, after card saves and on
+   * settings-scope updates, and degrades to the settings document alone when the route is absent
+   * (a webless profile).
    */
-  const BRIDGE_RESTART_LIMIT = "the file half is host-limited: a .mpd/mpd.jsonc edit is read once at plugin mount and stays fixed for the running process, so it applies at the next dsh boot and never mid-process; only a change made through this settings document can reach a running plugin, and only where the plugin subscribes to the host's settings-document update"
+  const MODEL_CONFIG_PATH = "/plugins/mpd/model-config"
+
+  /**
+   * The disclosure both front doors state (byte-identical to the TUI's BRIDGE_DISCLOSURE and to the
+   * shared schema's). REWORDED by wave fix/model-config-live-refresh: the config service now
+   * re-resolves on every settings save (entry-config subscription) and on a watched edit of the
+   * project file, and the model routes are read per use — so the old "takes effect … after a
+   * restart" claim is deleted, not softened; a hint that kept it would be a lie.
+   */
+  const BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect in the RUNNING process — no restart: the config service re-resolves on every settings save and on a watched edit of the project file, and the model routes (teamModels, agentRoutes, modelchain) are read per use, so the next spawn or resolve carries them"
+  /**
+   * The RESTART half of the truth (byte-identical to
+   * `packages/mpd-config-plugin/src/settings-schema.ts` `BRIDGE_RESTART_LIMIT`) and rendered as the
+   * card's second disclosure paragraph. What still waits for a boot after the live-refresh wave is
+   * exactly one class of knob — one some plugin CAPTURED at its own mount instead of reading the
+   * live config service per use — and the model routes this card edits are not such knobs; the
+   * sentence says so instead of claiming the blanket restart the old text did.
+   */
+  const BRIDGE_RESTART_LIMIT = "the restart wording now applies only to a knob some plugin captured at its own mount instead of reading the live config service per use — the model routes above are not such knobs; a captured knob keeps its captured value until the next dsh boot"
   /** The third disclosure paragraph: what a save means when no session is live. */
   const NO_WORKSPACE_NOTICE = "if no session is live, the save stays in settings — not written to any .mpd/mpd.jsonc"
   // The clause that keeps a settings-only save from reading as a lost one (same sentence the TUI
@@ -4572,6 +4587,36 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
                                
    
 
+  /** One slot's or member's effective route, as the see-before-you-edit block renders it (R3). */
+                            
+                                    
+                    
+                                 
+                 
+                                                                  
+                           
+   
+
+  /**
+   * The CURRENT EFFECTIVE model config the card renders above its rows (R3): the four slot routes
+   * with defaults materialised, the stored `agentRoutes` table, and the configured `modelchain`
+   * entries. Read from the LIVE surfaces only — the settings form value this card already binds,
+   * plus the `/plugins/mpd/model-config` route the bundle serves from the `mpdConfig` service when
+   * a web server is composed — never a re-parse of mpd.jsonc.
+   */
+                                  
+                                                                                                                            
+                                  
+                                                                 
+                                         
+                                                                                              
+                                                       
+                                                                                               
+                                                                          
+                                                                                  
+                  
+   
+
   /** The settings form's snapshot, as this card reads it. */
                            
                                              
@@ -4624,6 +4669,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
                           
                                               
                         
+                                                                                    
+                                   
    
 
   /** The store the card's hook reads (a minimal snapshot store, not the host's private one). */
@@ -4658,6 +4705,11 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
                     
                                                                   
                        
+       
+                                                                                                    
+                                                                                    
+       
+                                                           
                                    
                        
    
@@ -4707,15 +4759,23 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
                           
                                                            
                               
+       
+                                                                                              
+                                                                                                  
+                                                                                              
+                                                                                         
+       
+                                                 
    
 
   /**
-   * The twenty-two knobs — the SAME fields the TUI `/settings` section declares (the thirteen
-   * scalar knobs, then the twelve team-model slot leaves). The composed hint LEADS with the knob's
-   * human sentence (`semantics`/`semanticsZh`) and then states its mpd.jsonc key + the shared
-   * disclosure, exactly as the TUI builds it; a scalar knob keeps its declared metadata (the two
-   * watchdog rows carry the sentence they always had). The slot leaves take their option lists
-   * from the live catalog at render time instead.
+   * The fifty-nine knobs — the SAME fields the TUI `/settings` section declares (the thirteen
+   * scalar knobs, the twelve team-model slot leaves, the thirty-three agentRoutes leaves and the
+   * TUI surface's own knob). The composed hint LEADS with the knob's human sentence
+   * (`semantics`/`semanticsZh`) and then states its mpd.jsonc key, exactly as the TUI builds it; a
+   * scalar knob keeps its declared metadata (the two watchdog rows carry the sentence they always
+   * had). The slot and agentRoutes leaves take their option lists from the live catalog at render
+   * time instead.
    */
   /** The four team-model slots, in the order the card renders them. */
   const SLOT_SLOTS = ["slot1", "slot2", "slot3", "slot4"]
@@ -4763,8 +4823,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
         zh: "这一档的模型。必须选支持图像输入的模型：Vision Analyst 的全部价值在于读图，纯文本模型会让它的读图任务直接失败。改它的影响：下次建队生效。",
       },
       reasoningEffort: {
-        en: "This slot's reasoning effort (off / low / high / max). It sets how much Vision Analyst thinks while reading an image. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot.",
-        zh: "这一档的推理强度（off / low / high / max）。决定 Vision Analyst 读图时的思考深度。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。",
+        en: "This slot's reasoning effort (off / low / high / max). It sets how much Vision Analyst thinks while reading an image. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot. EXCEPTION: a model whose catalog entry declares no reasoning efforts at all is sent none — its call still runs.",
+        zh: "这一档的推理强度（off / low / high / max）。决定 Vision Analyst 读图时的思考深度。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。例外：若该模型的目录条目完全没有推理等级，则不发送任何等级——调用照常。",
       },
     },
   }
@@ -4790,8 +4850,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
       }
     }
     return {
-      en: `This slot's reasoning effort (off / low / high / max). It sets how much the ${group.en} (${group.members}) think when a team is created: max is the strongest, high the usual balance, low cheaper, off disables reasoning. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot.`,
-      zh: `这一档的推理强度（off / low / high / max）。它决定 ${group.zh}（${group.membersZh}）建队时的思考深度：max 最强、high 是常规平衡、low 更省、off 关闭思考。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。`,
+      en: `This slot's reasoning effort (off / low / high / max). It sets how much the ${group.en} (${group.members}) think when a team is created: max is the strongest, high the usual balance, low cheaper, off disables reasoning. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot. EXCEPTION: a model whose catalog entry declares no reasoning efforts at all is sent none — its call still runs.`,
+      zh: `这一档的推理强度（off / low / high / max）。它决定 ${group.zh}（${group.membersZh}）建队时的思考深度：max 最强、high 是常规平衡、low 更省、off 关闭思考。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。例外：若该模型的目录条目完全没有推理等级，则不发送任何等级——调用照常。`,
     }
   }
   /** The group heading a slot renders above its three rows, e.g. `Slot 2 — analysis members (…)`. */
@@ -4808,6 +4868,78 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
       path: ["teamModels", slot, leaf],
       label: `Slot ${index + 1} ${label} (${SLOT_GROUPS[slot].en})`,
       zh: `槽位 ${index + 1} ${zh}（${SLOT_GROUPS[slot].zh}）`,
+      kind: "select",
+      options,
+      semantics: sentence.en,
+      semanticsZh: sentence.zh,
+    }
+  }))
+
+  // ── the agentRoutes mirror (R2's front door, L4): thirty-three rows, one per roster member leaf ──
+  // The Web client must not reference the shared declaration's symbols (a QA gate pins the built
+  // client), so the member enumeration, the sentences and the headings are MIRRORS of
+  // `mpd-config-plugin/src/settings-schema.ts` (`AGENT_ROUTE_KNOBS`, `agentRouteLeafSentence`,
+  // `agentRouteGroupHeading`, `AGENT_ROUTE_IMPACT`), and the parity test compares the copies
+  // element by element — the same discipline the slot rows above follow.
+  /** The eleven roster member names, in the slots' own membership order (mirror of ROSTER_AGENT_NAMES). */
+  const ROSTER_MEMBERS           = SLOT_SLOTS.flatMap((slot) => SLOT_GROUPS[slot].members.split(", ").map((name) => name))
+  /** The leaf sentence templates of an agentRoutes row, mirroring AGENT_ROUTE_LEAF_TEMPLATES. */
+  const AGENT_ROUTE_TEMPLATES                                = {
+    provider: {
+      en: "The provider half of {name}'s OWN route override. An agentRoutes leaf outranks {name}'s team-model slot: it applies to {name} only, and LIVE — the member's next spawn or resolve carries it, no restart and no new team needed. An unset leaf falls through to the slot's provider; clearing every leaf returns {name} to the slot.",
+      zh: "{name} 专属路由覆盖的提供商。agentRoutes 的叶子优先于 {name} 的 team 模型槽位：只作用于 {name} 本人，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的提供商；清空全部叶子即恢复跟随槽位。",
+    },
+    model: {
+      en: "The model half of {name}'s OWN route override. It outranks the model of {name}'s team-model slot ({group}) and applies LIVE — the member's next spawn or resolve carries it, no restart and no new team needed. An unset leaf falls through to the slot's model; clearing every leaf returns {name} to the slot.",
+      zh: "{name} 专属路由覆盖的模型。优先于 {name} 所属槽位（{group}）的模型，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的模型；清空全部叶子即恢复跟随槽位。",
+    },
+    reasoningEffort: {
+      en: "The reasoning-effort half of {name}'s OWN route override (off / low / high / max). It outranks the effort of {name}'s team-model slot ({group}) and applies LIVE — the member's next spawn or resolve carries it. An unset leaf falls through to the slot's effort; an effort the chosen model does not support fails that member's spawn loudly, naming the member.",
+      zh: "{name} 专属路由覆盖的推理强度（off / low / high / max）。优先于 {name} 所属槽位（{group}）的推理强度，且即时生效——该成员下次生成/解析即携带新值。未设置的叶子回落到槽位的等级；该模型不支持的等级会让该成员的生成直接报错并点名。",
+    },
+  }
+  /** The slot one roster member belongs to, from the mirrored groups (mirror of agentRouteSlotOf). */
+  const slotOfMember = (member        )                                                 => {
+    for (const slot of SLOT_SLOTS) {
+      if (SLOT_GROUPS[slot].members.split(", ").includes(member)) return { slot, group: SLOT_GROUPS[slot] }
+    }
+    return undefined
+  }
+  /** One agentRoutes row's human sentence (mirror of the shared agentRouteLeafSentence). */
+  function agentRouteSentence(member        , leaf        )                {
+    /** The member's slot lookup, whose group name the template interpolates. */
+    const found = slotOfMember(member)
+    /** The EN sentence with `{name}`/`{group}` interpolated; unknown members keep a neutral placeholder. */
+    const en = AGENT_ROUTE_TEMPLATES[leaf].en.split("{name}").join(member).split("{group}").join(found === undefined ? "ungrouped" : found.group.en)
+    /** The zh sentence, interpolated the same way. */
+    const zh = AGENT_ROUTE_TEMPLATES[leaf].zh.split("{name}").join(member).split("{group}").join(found === undefined ? "未编组" : found.group.zh)
+    return { en, zh }
+  }
+  /** The group heading one member's three agentRoutes rows render under (mirror of agentRouteGroupHeading). */
+  function agentRouteHeading(member        )                {
+    /** The member's slot lookup, whose 1-based number and group name the heading interpolates. */
+    const found = slotOfMember(member)
+    if (found === undefined) return { en: `${member} — own route`, zh: `${member} —— 专属路由` }
+    /** The member's 1-based slot number, spelled the way the slot headings spell it. */
+    const index = SLOT_SLOTS.indexOf(found.slot) + 1
+    return {
+      en: `${member} — own route (overrides slot ${index} · ${found.group.en})`,
+      zh: `${member} —— 专属路由（覆盖槽位 ${index} · ${found.group.zh}）`,
+    }
+  }
+  /** The impact line under one member's agentRoutes heading (mirror of AGENT_ROUTE_IMPACT). */
+  const AGENT_ROUTE_IMPACT_LINE                         = {
+    en: "A leaf set here applies to this member only and LIVE — the next spawn or resolve carries it; an unset leaf falls through to the member's slot, and clearing every leaf returns the member to the slot.",
+    zh: "在这里设置的叶子只作用于该成员本人且即时生效——下次生成/解析即携带；未设置的叶子回落到该成员的槽位，清空全部叶子即恢复跟随槽位。",
+  }
+  /** The thirty-three agentRoutes rows: the eleven roster names × three route leaves (mirror of AGENT_ROUTE_KNOBS). */
+  const AGENT_ROUTE_FIELDS                    = ROSTER_MEMBERS.flatMap((member) => SLOT_LEAVES.map(({ leaf, label, zh, options }) => {
+    /** The member leaf's own human sentence, which the row's hint leads with. */
+    const sentence = agentRouteSentence(member, leaf)
+    return {
+      path: ["agentRoutes", member, leaf],
+      label: `${member} ${label} (own route)`,
+      zh: `${member} ${zh}（专属路由）`,
       kind: "select",
       options,
       semantics: sentence.en,
@@ -4838,6 +4970,10 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
     // the human sentences are built from SLOT_GROUPS below, so a slot's copy is stated once here
     // exactly as the shared declaration states it (a test compares the two element-wise).
     ...SLOT_FIELDS,
+    // The per-member route-table rows (R2's front door): thirty-three agentRoutes leaves, eleven
+    // roster names × provider/model/reasoning effort, enumerated from the mirrored member groups so
+    // a name is PICKED, never typed — the loud unknown-name rejection stays server-side.
+    ...AGENT_ROUTE_FIELDS,
     // The TUI surface's own knob (the Ctrl+A takeover toggle): mirrored from the ONE declaration,
     // whose `hint` is the semantics sentence — the card renders it as `semantics`, exactly like the
     // two watchdog rows above.
@@ -4870,6 +5006,180 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
   /** Walk a nested path into an untyped settings value (a missing or non-object step answers undefined). */
   const leafOf = (value         , path          )          => path.reduce         ((acc, part) => (acc === null || acc === undefined ? undefined : (acc                           )[part]), value)
 
+  /** Whether a value is a non-null, non-array object — the only shape a route table can be. */
+  const isTable = (value         )                                   => value !== null && typeof value === "object" && !Array.isArray(value)
+  /** One string leaf of a route block, read only when it is a non-empty string ("" otherwise). */
+  const routeLeaf = (block         , leaf        )         => {
+    /** The leaf's raw value, when the block carries one. */
+    const found = isTable(block) ? block[leaf] : undefined
+    return typeof found === "string" ? found : ""
+  }
+  /**
+   * The three declared slot DEFAULTS (mirror of `TEAM_MODEL_SLOT_DEFAULTS` in the shared schema):
+   * the floor an effective slot line falls back to when neither the live service nor the settings
+   * document states the slot — the same L0 layer a fresh workspace resolves to.
+   */
+  const SLOT_DEFAULTS                                 = {
+    slot1: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "max" },
+    slot2: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "high" },
+    slot3: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "high" },
+    slot4: { provider: "deepseek-official", model: "deepseek-v4-flash-vision-exp", reasoningEffort: "high" },
+  }
+  /**
+   * Project the CURRENT EFFECTIVE model config (R3) from the live surfaces only: the settings
+   * document this card binds, plus the `/plugins/mpd/model-config` body when the bundle's route
+   * answered. Precedence per piece: the SERVICE value (it sees the file layers and refreshes on
+   * every save and watched edit) over the DOCUMENT value (entry config only); the DECLARED slot
+   * default is the floor. Never re-parses mpd.jsonc.
+   * @param section - the settings form's namespace value (the surface the card binds).
+   * @param live - the live-service read: the route body (or undefined) and why it is absent.
+   * @returns the projection the card renders above its rows.
+   */
+  function effectiveModelConfigOf(section         , live                                   )                       {
+    /** The live body narrowed to the three members the route serves ({} when it did not answer). */
+    const body = isTable(live.body) ? live.body : {}
+    /** The four effective slot routes. */
+    const slots                                 = {}
+    for (const slot of SLOT_SLOTS) {
+      // PER-SLOT precedence: the service's slot block (the authoritative live read), else the
+      // document's, else nothing — the declared default below floors all three.
+      /** The service's block for this slot, when the route body carries one. */
+      const fromService = isTable(body.slots) ? body.slots[slot] : undefined
+      /** The block this slot projects from. */
+      const block = fromService !== undefined ? fromService : leafOf(section, ["teamModels", slot])
+      /** The route the block carries, over the declared default as the floor. */
+      const fallback = SLOT_DEFAULTS[slot]
+      /** The effective provider: the block's when it states one, else the declared default. */
+      const provider = routeLeaf(block, "provider") || fallback.provider
+      /** The effective model: the block's when it states one, else the declared default. */
+      const model = routeLeaf(block, "model") || fallback.model
+      /** The effective effort: the block's when it states one, else the declared default. */
+      const reasoningEffort = routeLeaf(block, "reasoningEffort") || fallback.reasoningEffort
+      slots[slot] = { provider, model, reasoningEffort }
+    }
+    /** The stored agentRoutes table: the service's (file layers included) over the document's. */
+    const rawRoutes = isTable(body.agentRoutes) ? body.agentRoutes : leafOf(section, ["agentRoutes"])
+    /** The table narrowed to member-name keys with string-leaf entries. */
+    const agentRoutes                                         = {}
+    if (isTable(rawRoutes)) {
+      for (const [name, entry] of Object.entries(rawRoutes)) {
+        if (!isTable(entry)) continue
+        /** This entry's SET string leaves only. */
+        const leaves                         = {}
+        for (const leaf of ["provider", "model", "reasoningEffort"]) {
+          if (routeLeaf(entry, leaf) !== "") leaves[leaf] = routeLeaf(entry, leaf)
+        }
+        if (Object.keys(leaves).length > 0) agentRoutes[name] = leaves
+      }
+    }
+    /** The configured modelchain chains, only ever from the service read (the document carries none). */
+    const modelchain                                                             = {}
+    if (isTable(body.modelchain)) {
+      for (const [key, chain] of Object.entries(body.modelchain)) {
+        if (!Array.isArray(chain)) continue
+        /** This key's usable chain entries, in configured order. */
+        const entries = chain
+          .filter((hop)                                             => isTable(hop) && typeof hop.provider === "string" && typeof hop.model === "string")
+          .map((hop) => ({ provider: hop.provider, model: hop.model }))
+        if (entries.length > 0) modelchain[key] = entries
+      }
+    }
+    return {
+      source: isTable(live.body) ? "service" : "document",
+      slots,
+      agentRoutes,
+      modelchain,
+      notice: isTable(live.body) ? "" : live.notice,
+    }
+  }
+
+  /** Substitute the `{name}` placeholders of one dictionary sentence with language-neutral fragments. */
+  function interpolate(text        , params                        )         {
+    /** The sentence, mutated once per placeholder. */
+    let out = text
+    for (const [name, value] of Object.entries(params)) out = out.split(`{${name}}`).join(value)
+    return out
+  }
+
+  /** One route as the language-neutral `provider / model / effort` fragment the effective lines render. */
+  function routeText(route                                                              )         {
+    return `${route.provider} / ${route.model} / ${route.reasoningEffort === "" ? "-" : route.reasoningEffort}`
+  }
+
+  /**
+   * The see-before-you-edit lines (R3): the four effective slot routes, one line per member
+   * override that is actually set, and the configured modelchain chains — every word localized
+   * through the dictionary, every value a neutral id.
+   * @param effective - the projection this render shows.
+   * @param t - the locale resolver the component renders through.
+   * @param createElement - the host's React createElement.
+   * @returns the block's child elements, in render order.
+   */
+  function effectiveChildrenOf(effective                      , t                         , createElement                               )            {
+    /** The block's lines, in render order. */
+    const lines            = []
+    for (const slot of SLOT_SLOTS) {
+      /** The slot's effective route (the declared default floor guarantees the three leaves). */
+      const route = effective.slots[slot] ?? { provider: "-", model: "-", reasoningEffort: "-" }
+      lines.push(createElement(
+        "p",
+        { key: "effective.slot." + slot, style: SKIN.helpText, "data-mpd-effective-slot": slot },
+        interpolate(t("effective.slot." + slot), { route: routeText(route) }),
+      ))
+    }
+    // The members whose agentRoutes entry is actually SET, in roster order — a member with no
+    // override follows its slot and would only repeat the slot line above.
+    /** The set overrides, in the mirrored roster order. */
+    const overridden = ROSTER_MEMBERS.filter((member) => effective.agentRoutes[member] !== undefined)
+    if (overridden.length === 0) {
+      lines.push(createElement("p", { key: "effective.no-routes", style: SKIN.helpText, "data-mpd-effective-routes": "none" }, t("effectiveNoRoutes")))
+    } else {
+      for (const member of overridden) {
+        /** This member's stored override leaves. */
+        const entry = effective.agentRoutes[member]
+        /** The leaf=value fragments, in leaf order. */
+        const leaves = ["provider", "model", "reasoningEffort"].filter((leaf) => entry[leaf] !== undefined).map((leaf) => `${leaf}=${entry[leaf]}`).join(", ")
+        /** The member's effective route: the entry's leaf over the slot's (the declared precedence). */
+        const slot = slotOfMember(member)
+        /** The slot route the unset leaves fall through to. */
+        const base = slot === undefined ? { provider: "-", model: "-", reasoningEffort: "-" } : (effective.slots[slot.slot] ?? { provider: "-", model: "-", reasoningEffort: "-" })
+        /** The member's effective route: the entry's set leaf over the slot's (the declared precedence). */
+        const route = { provider: entry.provider ?? base.provider, model: entry.model ?? base.model, reasoningEffort: entry.reasoningEffort ?? base.reasoningEffort }
+        lines.push(createElement(
+          "p",
+          { key: "effective.member." + member, style: SKIN.helpText, "data-mpd-effective-member": member },
+          interpolate(t("effective.member." + member), { leaves, route: routeText(route) }),
+        ))
+      }
+    }
+    // The configured modelchain chains, in the service's own key order (bounded to the first three
+    // hops per chain so one long chain cannot push the rest of the block off screen).
+    /** The configured chain keys. */
+    const chainKeys = Object.keys(effective.modelchain)
+    if (chainKeys.length === 0) {
+      lines.push(createElement("p", { key: "effective.no-chains", style: SKIN.helpText, "data-mpd-effective-chains": "none" }, t("effectiveNoChains")))
+    } else {
+      for (const key of chainKeys) {
+        /** This chain's hops as neutral `provider/model` fragments. */
+        const hops = effective.modelchain[key].slice(0, 3).map((hop) => `${hop.provider}/${hop.model}`).join(", ")
+        lines.push(createElement(
+          "p",
+          { key: "effective.chain." + key, style: SKIN.helpText, "data-mpd-effective-chain": key },
+          interpolate(t("effectiveChain"), { key, chain: hops }),
+        ))
+      }
+    }
+    // The source line: which live surface produced the block, and — on the document branch — why.
+    lines.push(createElement(
+      "p",
+      { key: "effective.source", style: SKIN.note, "data-mpd-effective-source": effective.source },
+      effective.source === "service"
+        ? t("effectiveSourceService")
+        : interpolate(t("effectiveSourceDocument"), { why: effective.notice === "" ? t("effectiveWhyUnknown") : effective.notice }),
+    ))
+    return lines
+  }
+
   /** Parse the control's text into a value for this field, or undefined when it is not one. */
   function parse(kind        , text         )                                        {
     if (kind === "number") {
@@ -4900,6 +5210,9 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
    * QA gate pins it), and the parity test compares the mirror with the real one.
    */
   const TEAM_MODEL_SLOT = "teamModels"
+
+  /** The per-member route table's namespace leaf, the prefix of every agentRoutes row path. */
+  const AGENT_ROUTES_PREFIX = "agentRoutes"
 
   /**
    * The session the catalog binds to, read from the client's OWN list snapshot.
@@ -5042,6 +5355,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
    * here — the hint is not part of the front-door parity contract (the parity pin compares the
    * declaration), so the suffix is a render-time addition only.
    */
+  /** The path prefix of every agentRoutes row, used by the block split and the effective block. */
   function slotFallbackMarker(info                         )         {
     /** The state to describe (the declared fallback when none was published yet). */
     const state = info ?? FALLBACK_CATALOG
@@ -5365,9 +5679,11 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
   function optionsFor(field                 , groups                , controls                                        )                {
     /** The knob's declared options, which every degrade path returns. */
     const declared = declaredOptions(field)
-    if (field.path[0] !== TEAM_MODEL_SLOT || groups.length === 0) return declared
-    /** The slot this row belongs to (`slot1`…`slot4`). */
-    const slot = field.path[1]
+    // BOTH route families — the team-model slots and the agentRoutes member rows — pick from the
+    // live catalog; every other knob keeps its declared list.
+    if ((field.path[0] !== TEAM_MODEL_SLOT && field.path[0] !== AGENT_ROUTES_PREFIX) || groups.length === 0) return declared
+    /** The route family's group key (`slot1`… for a slot row, the member NAME for an override row). */
+    const groupKey = field.path[1]
     /** The leaf this row edits. */
     const leaf = field.path[2]
     if (leaf === "provider") return groups.map((group) => ({ value: group.id, label: typeof group.name === "string" && group.name.length > 0 ? group.name : group.id }))
@@ -5379,14 +5695,14 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
       }
       return options.length > 0 ? options : declared
     }
-    /** The text of one control of this slot, which the effort list derives from. */
+    /** The text of one control of this route group, which the effort list derives from. */
     const textOf = (path          )                     => {
       /** The control the render is currently showing for that path. */
       const control = controls ? controls[path.join(".")] : undefined
       return control ? control.text : undefined
     }
-    /** The model the provider and model controls currently select. */
-    const model = findModel(groups, textOf([TEAM_MODEL_SLOT, slot, "provider"]), textOf([TEAM_MODEL_SLOT, slot, "model"]))
+    /** The model the provider and model controls of THIS row's group currently select. */
+    const model = findModel(groups, textOf([field.path[0], groupKey, "provider"]), textOf([field.path[0], groupKey, "model"]))
     /** The selected model's own efforts (an absent list counts as none). */
     const efforts = model && model.reasoning && Array.isArray(model.reasoning.efforts) ? model.reasoning.efforts : []
     /** Those efforts as rendered options. */
@@ -5458,7 +5774,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
    * `scope.mutate(ops, revision)` — nested paths included, which `scope.set(field, …)` cannot
    * express (it writes top-level fields only).
    */
-  function createMpdCardController(scope               , fields                    = FIELDS, disclosure             = { BRIDGE_DISCLOSURE, BRIDGE_RESTART_LIMIT, NO_WORKSPACE_NOTICE }, catalogInfo                    = () => FALLBACK_CATALOG)                 {
+  function createMpdCardController(scope               , fields                    = FIELDS, disclosure             = { BRIDGE_DISCLOSURE, BRIDGE_RESTART_LIMIT, NO_WORKSPACE_NOTICE }, catalogInfo                    = () => FALLBACK_CATALOG, afterSave             = () => {})                 {
     /** Every staged edit, keyed by the row's dotted knob key. */
     const staged = new Map                    ()
     // Declared BEFORE the first projection: `project()` reads all three, and a `let` below the
@@ -5469,6 +5785,12 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
     let failed = false
     /** The last failure's message. */
     let lastError = ""
+    /**
+     * The LIVE-SERVICE read behind the effective block (R3): the `/plugins/mpd/model-config` body
+     * once it answered, or undefined while the route has not (the projection then falls back to
+     * the settings document and says so through its `notice`).
+     */
+    let liveService                                    = { body: undefined, notice: "" }
     /** The card's own store, whose first projection is built from the bound scope. */
     const store = createStore(project())
 
@@ -5520,6 +5842,9 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
         // Which branch produced the slot option lists — LIVE (with counts) or the declared
         // fallback. It rides the card's OWN store, so a catalog change re-projects the card.
         catalog: catalogInfo() ?? FALLBACK_CATALOG,
+        // R3: the effective model config projected from the bound document plus the live-service
+        // read — rides the SAME store, so a save or a service refresh re-projects the block.
+        effective: effectiveModelConfigOf(section, liveService),
       }
     }
 
@@ -5579,6 +5904,9 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
       }
       saving = false
       publish()
+      // R3: a successful save is exactly when the effective model config CHANGED, so the mount
+      // re-reads the live service here (a failed save changes nothing and skips the read).
+      if (!failed) afterSave()
     }
 
     /** Stage one row's edit, clear the last failure and re-project. */
@@ -5611,6 +5939,14 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
       store,
       /** Re-project after an EXTERNAL change (the live catalog): the card's store is the channel. */
       refresh: ()       => {
+        publish()
+      },
+      /**
+       * Publish one live-service read (R3): the `/plugins/mpd/model-config` body when the route
+       * answered, or the notice for why it did not. Stored, then re-projected; never throws.
+       */
+      setLiveService: (body         , notice        )       => {
+        liveService = { body, notice }
         publish()
       },
       /** Release the bound scope. */
@@ -5845,9 +6181,10 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
         const control = state.controls[key] ?? { text: "" }
         /** The row's label. */
         const label = t(key)
-        // The twelve slot rows carry the fallback marker; the thirteen scalar rows are untouched.
-        /** The row's hint, with the slot rows carrying the fallback marker. */
-        const hint = t(key + ".hint") + (field.path[0] === TEAM_MODEL_SLOT ? slotFallbackMarker(catalog) : "")
+        // The twelve slot rows and the thirty-three agentRoutes rows carry the fallback marker; the
+        // scalar rows are untouched.
+        /** The row's hint, with the route rows carrying the fallback marker. */
+        const hint = t(key + ".hint") + (field.path[0] === TEAM_MODEL_SLOT || field.path[0] === AGENT_ROUTES_PREFIX ? slotFallbackMarker(catalog) : "")
         // HUMAN SENTENCE FIRST, at full readability; the row's dotted KEY sits BENEATH it, dimmer.
         // The bridge DISCLOSURE is not here at all any more — it is stated once at the top of the
         // card. Repeating it per row is what buried every row's own sentence (measured in a real
@@ -5899,16 +6236,22 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
           ),
         )
       })
-      // VISIBLE AT THE CONTROL: the four team-model pickers sit at the BOTTOM of the 25 rows,
+      // VISIBLE AT THE CONTROL: the four team-model pickers sit at the BOTTOM of the rows,
       // where the section's top notice is off-screen — so the SAME sentence renders again
       // immediately above the first slot row (between the 13 scalar rows and the twelve slot rows),
       // in BOTH states. It carries its own `data-mpd-catalog-state`; the top notice keeps its own.
       /** The index of the first slot row (-1 when the field list carries no slot leaf). */
       const slotStart = fields.findIndex((field) => field.path[0] === TEAM_MODEL_SLOT)
+      /** The index of the first agentRoutes row (-1 when the field list carries none). */
+      const agentStart = fields.findIndex((field) => field.path[0] === AGENT_ROUTES_PREFIX)
+      /** The end of the team-model slot rows (the agentRoutes block, or the tail when there is none). */
+      const slotEnd = agentStart >= 0 ? agentStart : fields.length
       /** The thirteen scalar rows. */
-      const scalarRows = slotStart < 0 ? rows : rows.slice(0, slotStart)
+      const scalarRows = slotStart < 0 ? (agentStart < 0 ? rows : rows.slice(0, agentStart)) : rows.slice(0, slotStart)
       /** The twelve slot rows. */
-      const slotRows = slotStart < 0 ? [] : rows.slice(slotStart)
+      const slotRows = slotStart < 0 ? [] : rows.slice(slotStart, slotEnd)
+      /** The agentRoutes rows plus every row after them (the TUI surface's own knob closes the card). */
+      const routeRows = agentStart < 0 ? [] : rows.slice(agentStart)
       /** The catalog line rendered immediately above the first slot row. */
       const slotLine = createElement(
         "p",
@@ -5938,6 +6281,32 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
           ))
         }
         slotChildren.push(slotRows[index])
+      }
+      // The agentRoutes block (R2's front door) plus the tail: one heading + the SHARED impact line
+      // per roster member (their three rows follow), then whatever rows trail the block (the TUI
+      // surface's own knob). Same direct-children shape as the slots above, for the same reason.
+      /** The agentRoutes rows and the tail, interleaved with one heading/impact pair per member. */
+      const routeChildren            = []
+      for (let index = 0; index < routeRows.length; index++) {
+        /** The field this row renders. */
+        const field = fields[agentStart + index]
+        /** The member this row belongs to ("" for a trailing non-agentRoutes row). */
+        const member = field.path[0] === AGENT_ROUTES_PREFIX ? String(field.path[1]) : ""
+        /** The member of the row above ("" at the first route row). */
+        const previous = index === 0 ? "" : (fields[agentStart + index - 1].path[0] === AGENT_ROUTES_PREFIX ? String(fields[agentStart + index - 1].path[1]) : "")
+        if (member !== "" && member !== previous) {
+          routeChildren.push(createElement(
+            "div",
+            { key: "group." + member, style: SKIN.groupHeading, "data-mpd-agent-group": member },
+            t("agentRoutes." + member + ".heading"),
+          ))
+          routeChildren.push(createElement(
+            "p",
+            { key: "impact." + member, style: SKIN.groupImpact, "data-mpd-agent-impact": member },
+            t("agentRoutes.impact"),
+          ))
+        }
+        routeChildren.push(routeRows[index])
       }
       /** Whether the save is blocked (a read-only page, no staged edit, or an invalid draft). */
       const saveBlocked = disabled || !state.dirty || state.invalid
@@ -5977,9 +6346,19 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
           createElement("p", { style: SKIN.helpText, "data-mpd-disclosure": "workspace" },
             state.disclosure?.NO_WORKSPACE_NOTICE ?? ""),
         ),
+        // THE SEE-BEFORE-YOU-EDIT BLOCK (R3): the CURRENT EFFECTIVE model config — the four slot
+        // routes, the member overrides that are set and the configured modelchain chains — stated
+        // ABOVE the rows it describes, so a reader sees what a change modifies before editing.
+        createElement(
+          "div",
+          { style: SKIN.help, "data-mpd-effective": "1" },
+          createElement("h4", { style: SKIN.groupHeading }, t("effectiveTitle")),
+          ...effectiveChildrenOf(state.effective, t, createElement),
+        ),
         ...scalarRows,
         slotLine,
         ...slotChildren,
+        ...routeChildren,
         createElement(
           "div",
           { style: SKIN.footer },
@@ -6000,7 +6379,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
     const en                         = {
       nav: "MPD",
       title: "MPD bundle",
-      intro: "The mpd.jsonc knobs this bundle's plugins read. namespace mpd · applies at the next dsh boot",
+      intro: "The mpd.jsonc knobs this bundle's plugins read. namespace mpd · live after save — the model routes resolve per use, no restart",
       // WHAT THIS BUNDLE'S PRESET IS — carried HERE because the preset picker cannot localize it.
       //
       // MEASURED on the installed harness (2026-10-06): a preset's `name`/`description` are plain
@@ -6024,7 +6403,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
     const zh                         = {
       nav: "MPD",
       title: "MPD 插件包",
-      intro: "本插件包读取的 mpd.jsonc 配置项。命名空间 mpd · 下次启动 dsh 时生效",
+      intro: "本插件包读取的 mpd.jsonc 配置项。命名空间 mpd · 保存后即时生效——模型路由按次读取，无需重启",
       // 这个 bundles 的 preset 是什么 —— 放在这里，是因为 preset 选择器无法本地化它。
       presetAbout:
         "「MPD (Main Working Agent)」是本插件包的主工作 agent：读取项目的 AGENT.md/AGENTS.md/CLAUDE.md，原生工作，通过 mpd_role_spawn 一次性咨询 11 位专家，并用官方 Agent Teams 插件跑团队。它在 preset 选择器里的说明由宿主以纯文本提供，无法本地化。",
@@ -6054,6 +6433,48 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
       en["teamModels." + slot + ".impact"] = impactOf(slot, "en")
       zh["teamModels." + slot + ".impact"] = impactOf(slot, "zh")
     }
+    // The same pair per roster member's agentRoutes group (R2's front door): the heading names the
+    // member and the slot its override sits on, so a reader sees WHOSE route a row modifies before
+    // touching it. The impact line is shared by every member (a one-member group needs no variant).
+    for (const member of ROSTER_MEMBERS) {
+      /** The member's group heading in both locales. */
+      const heading = agentRouteHeading(member)
+      en["agentRoutes." + member + ".heading"] = heading.en
+      zh["agentRoutes." + member + ".heading"] = heading.zh
+    }
+    en["agentRoutes.impact"] = AGENT_ROUTE_IMPACT_LINE.en
+    zh["agentRoutes.impact"] = AGENT_ROUTE_IMPACT_LINE.zh
+    // The see-before-you-edit block (R3): one composed line per effective slot route, per member
+    // override and per configured chain. The line bodies are language-neutral ids ({route},
+    // {leaves}, {key}, {chain}); every WORD — the label, the group name, the member's slot — is
+    // baked into these entries in the locale's own spelling, so both locales read the same routes
+    // under their own words and the render substitutes only the neutral fragments.
+    en.effectiveTitle = "Effective model config — what a change here modifies (read live, no restart)"
+    zh.effectiveTitle = "当前生效的模型配置——改之前先看（实时读取，无需重启）"
+    for (const [index, slot] of SLOT_SLOTS.entries()) {
+      en["effective.slot." + slot] = `slot ${index + 1} · ${SLOT_GROUPS[slot].en}: {route}`
+      zh["effective.slot." + slot] = `槽位 ${index + 1} · ${SLOT_GROUPS[slot].zh}：{route}`
+    }
+    for (const member of ROSTER_MEMBERS) {
+      /** The member's slot lookup, whose 1-based number the pre-baked sentence interpolates. */
+      const found = slotOfMember(member)
+      /** The member's slot number, spelled the way the slot headings spell it. */
+      const slotNo = found === undefined ? "?" : String(SLOT_SLOTS.indexOf(found.slot) + 1)
+      en["effective.member." + member] = `${member} — override {leaves}; effective {route} (unset leaves fall through from slot ${slotNo})`
+      zh["effective.member." + member] = `${member} —— 覆盖 {leaves}；生效 {route}（未设置的叶子回落自槽位 ${slotNo}）`
+    }
+    en.effectiveChain = "modelchain.{key} → {chain}"
+    zh.effectiveChain = "modelchain.{key} → {chain}"
+    en.effectiveNoRoutes = "agentRoutes: no member overrides set — every member follows its slot"
+    zh.effectiveNoRoutes = "agentRoutes：未设置任何成员覆盖——所有成员跟随各自槽位"
+    en.effectiveNoChains = "modelchain: no configured chains — the shipped defaults are in force"
+    zh.effectiveNoChains = "modelchain：未配置任何链——内置默认链生效"
+    en.effectiveSourceService = "read from the live config service — refreshed at mount, after card saves, and on settings-document updates"
+    zh.effectiveSourceService = "读取自实时配置服务——挂载时、卡片保存后与设置文档更新时刷新"
+    en.effectiveSourceDocument = "read from this settings document — the live service route is unavailable ({why}), so the modelchain half is not shown"
+    zh.effectiveSourceDocument = "读取自当前设置文档——实时配置路由不可用（{why}），因此未显示 modelchain 部分"
+    en.effectiveWhyUnknown = "reason unstated"
+    zh.effectiveWhyUnknown = "原因未知"
     return { en, zh }
   }
 
@@ -6118,6 +6539,11 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
                 /** The form's snapshot after the change that fired this line. */
                 const now = scope.getSnapshot?.()
                 console.log("[mpd] settings section: form updated status=" + String(now?.status) + " value=" + (now?.value === undefined ? "absent" : "present"))
+                // A settings-document change can come from ANOTHER front door (a TUI save, a hand
+                // edit), not only from this card's own save, so the live-service read is re-run on
+                // every scope update; the read's sequence guard keeps an older answer from clobbering
+                // the fresher one.
+                readLiveService()
               })
             } catch (error) {
               console.warn("[mpd] settings section: snapshot probe failed: " + String((error                         )?.message ?? error))
@@ -6127,10 +6553,51 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
             // render already carries the real list when the providers are up.
             /** The live catalog this card follows. */
             const catalog = createLiveCatalog(ctx)
+            /**
+             * The live-service re-reader for the effective block (R3); assigned right after the
+             * controller exists because the controller's SAVE HOOK must call it. Reads
+             * `/plugins/mpd/model-config` — the route the bundle's server half serves from the
+             * `mpdConfig` service — at mount, after every successful save and on every
+             * settings-scope update, through the ENTRY's injected reader (this card does no I/O of
+             * its own); without a reader the block degrades to the settings-document branch with a
+             * notice.
+             */
+            /** The entry's JSON reader, when this client provides one. */
+            const fetchJson = options.fetchJson
+            /** The live-service re-reader; assigned right below, once the controller it calls exists. */
+            let readLiveService             = ()       => {}
+            /**
+             * The number of the newest live-service read. Concurrent reads (a mount, a save and a
+             * settings-scope update can overlap) answer in arbitrary order, so each read takes a
+             * ticket and only the newest ticket's answer is applied — a stale answer landing late
+             * must not clobber a fresher projection.
+             */
+            let liveReadSeq = 0
             // An absent form is the probe path above (it renders its warning); the controller's own
             // guarded calls keep the same behaviour the untyped original had for that case.
-            /** The card's form controller, bound to the resolved scope. */
-            const controller = createMpdCardController(scope                 , fields, undefined, () => catalog.info())
+            /** The card's form controller, bound to the resolved scope and the save hook. */
+            const controller = createMpdCardController(scope                 , fields, undefined, () => catalog.info(), () => { readLiveService() })
+            readLiveService = ()       => {
+              if (typeof fetchJson !== "function") {
+                controller.setLiveService(undefined, "this runtime provides no reader for the live config route")
+                return
+              }
+              /** This read's ticket: its answer applies only while it is still the newest read. */
+              const seq = ++liveReadSeq
+              fetchJson(MODEL_CONFIG_PATH)
+                .then((body         ) => {
+                  if (seq !== liveReadSeq) return
+                  /** The body narrowed to the two fields the route serves. */
+                  const parsed = (body !== null && typeof body === "object" ? body : {})                                      
+                  if (parsed.ok === true) controller.setLiveService(body, "")
+                  else controller.setLiveService(undefined, typeof parsed.reason === "string" && parsed.reason !== "" ? parsed.reason : "the route answered without a body")
+                })
+                .catch((error         ) => {
+                  if (seq !== liveReadSeq) return
+                  controller.setLiveService(undefined, String((error                         )?.message ?? error))
+                })
+            }
+            readLiveService()
             /** The catalog subscription that re-projects the card. */
             const unsubscribeCatalog = catalog.subscribe(() => {
               controller.refresh()
@@ -6186,6 +6653,10 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
     optionsFor,
     optionElements,
     FIELDS,
+    AGENT_ROUTE_FIELDS,
+    effectiveModelConfigOf,
+    effectiveChildrenOf,
+    MODEL_CONFIG_PATH,
     SETTINGS_NS: NS,
     LOCALE_NS,
     SECTION_SLOT,
@@ -6432,8 +6903,13 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
 
   /** The settings card module's surface: the one method this entry calls on it. */
                                 
-                                                           
-                                                      
+       
+                                                                                         
+                                                                                               
+                                                                                               
+                                                                                                  
+       
+                                                                                                                   
    
 
   /** One teammate row of the shared board. */
@@ -6635,6 +7111,17 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
    * on screen from a task that genuinely has none, so the route is threaded rather than left out.
    */
   const TEAM_TASK_PATH = "/plugins/mpd-team/task"
+
+  /**
+   * The route the team view SUBSCRIBES to (lane W), beside the three it reads.
+   *
+   * Server-Sent Events, owned by `mpd-team-core-plugin`'s `TEAM_EVENTS_PATH`: the view opens an
+   * `EventSource` on it for the session it is showing and re-reads the routes above on every frame,
+   * while its interval keeps running as the fallback. The path is named here rather than imported
+   * because the browser artifact is assembled by SPLICING factory sources as text — a cross-package
+   * import inside one would not resolve — so the name is the same fact recorded on the client side.
+   */
+  const TEAM_EVENTS_PATH = "/plugins/mpd-team/events"
 
   /**
    * The team view's own copy, in English — the fallback AND the key list.
@@ -6905,8 +7392,11 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         statePath: TEAM_STATE_PATH,
         planPath: TEAM_PLAN_PATH,
         // The task route is what lets a pinned node quote its frozen contract; the translator is the
-        // view's only language source (it runs in a render path with no `ctx` of its own).
+        // view's only language source (it runs in a render path with no `ctx` of its own). The events
+        // route is what turns the poll into a push: the view subscribes per MOUNT, so the two sidebar
+        // hosts that render this component each own one stream.
         taskPath: TEAM_TASK_PATH,
+        eventsPath: TEAM_EVENTS_PATH,
         t: teamSay,
       })
       return teamView
@@ -7644,19 +8134,33 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   const SECTION_ID = "mpd"
   /** After `general` 0, `models` 10 and `plugins` 15 — so no existing section moves. */
   const SECTION_ORDER = 20
-
-  /** The disclosure both front doors state (byte-identical to the TUI's BRIDGE_DISCLOSURE). */
-  const BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime"
   /**
-   * The HOST LIMITATION half of the truth (T-18), byte-identical to
-   * `packages/mpd-config-plugin/src/settings-schema.ts` `BRIDGE_RESTART_LIMIT` and rendered as the
-   * card's second disclosure paragraph: the file-derived base is fixed for the running process, so
-   * a hand edit of `.mpd/mpd.jsonc` applies at the next `dsh` boot and never mid-process, and only
-   * a change made through the settings document can reach a running plugin (where it subscribes).
-   * This is the honest replacement for the old "any settings edit wins from the next tick on"
-   * claim, which the host's mount-time base read does not support.
+   * The bundle's server route serving the CURRENT EFFECTIVE model config from the `mpdConfig`
+   * service (R3): the four slot routes (defaults materialised), the stored `agentRoutes` table and
+   * the configured `modelchain` chains. Registered by `packages/mpd-bundle-plugin/src/model-config-web.ts`
+   * on the host's web server; this card fetches it at mount, after card saves and on
+   * settings-scope updates, and degrades to the settings document alone when the route is absent
+   * (a webless profile).
    */
-  const BRIDGE_RESTART_LIMIT = "the file half is host-limited: a .mpd/mpd.jsonc edit is read once at plugin mount and stays fixed for the running process, so it applies at the next dsh boot and never mid-process; only a change made through this settings document can reach a running plugin, and only where the plugin subscribes to the host's settings-document update"
+  const MODEL_CONFIG_PATH = "/plugins/mpd/model-config"
+
+  /**
+   * The disclosure both front doors state (byte-identical to the TUI's BRIDGE_DISCLOSURE and to the
+   * shared schema's). REWORDED by wave fix/model-config-live-refresh: the config service now
+   * re-resolves on every settings save (entry-config subscription) and on a watched edit of the
+   * project file, and the model routes are read per use — so the old "takes effect … after a
+   * restart" claim is deleted, not softened; a hint that kept it would be a lie.
+   */
+  const BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect in the RUNNING process — no restart: the config service re-resolves on every settings save and on a watched edit of the project file, and the model routes (teamModels, agentRoutes, modelchain) are read per use, so the next spawn or resolve carries them"
+  /**
+   * The RESTART half of the truth (byte-identical to
+   * `packages/mpd-config-plugin/src/settings-schema.ts` `BRIDGE_RESTART_LIMIT`) and rendered as the
+   * card's second disclosure paragraph. What still waits for a boot after the live-refresh wave is
+   * exactly one class of knob — one some plugin CAPTURED at its own mount instead of reading the
+   * live config service per use — and the model routes this card edits are not such knobs; the
+   * sentence says so instead of claiming the blanket restart the old text did.
+   */
+  const BRIDGE_RESTART_LIMIT = "the restart wording now applies only to a knob some plugin captured at its own mount instead of reading the live config service per use — the model routes above are not such knobs; a captured knob keeps its captured value until the next dsh boot"
   /** The third disclosure paragraph: what a save means when no session is live. */
   const NO_WORKSPACE_NOTICE = "if no session is live, the save stays in settings — not written to any .mpd/mpd.jsonc"
   // The clause that keeps a settings-only save from reading as a lost one (same sentence the TUI
@@ -7890,6 +8394,36 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
                                
    
 
+  /** One slot's or member's effective route, as the see-before-you-edit block renders it (R3). */
+                            
+                                    
+                    
+                                 
+                 
+                                                                  
+                           
+   
+
+  /**
+   * The CURRENT EFFECTIVE model config the card renders above its rows (R3): the four slot routes
+   * with defaults materialised, the stored `agentRoutes` table, and the configured `modelchain`
+   * entries. Read from the LIVE surfaces only — the settings form value this card already binds,
+   * plus the `/plugins/mpd/model-config` route the bundle serves from the `mpdConfig` service when
+   * a web server is composed — never a re-parse of mpd.jsonc.
+   */
+                                  
+                                                                                                                            
+                                  
+                                                                 
+                                         
+                                                                                              
+                                                       
+                                                                                               
+                                                                          
+                                                                                  
+                  
+   
+
   /** The settings form's snapshot, as this card reads it. */
                            
                                              
@@ -7942,6 +8476,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
                           
                                               
                         
+                                                                                    
+                                   
    
 
   /** The store the card's hook reads (a minimal snapshot store, not the host's private one). */
@@ -7976,6 +8512,11 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
                     
                                                                   
                        
+       
+                                                                                                    
+                                                                                    
+       
+                                                           
                                    
                        
    
@@ -8025,15 +8566,23 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
                           
                                                            
                               
+       
+                                                                                              
+                                                                                                  
+                                                                                              
+                                                                                         
+       
+                                                 
    
 
   /**
-   * The twenty-two knobs — the SAME fields the TUI `/settings` section declares (the thirteen
-   * scalar knobs, then the twelve team-model slot leaves). The composed hint LEADS with the knob's
-   * human sentence (`semantics`/`semanticsZh`) and then states its mpd.jsonc key + the shared
-   * disclosure, exactly as the TUI builds it; a scalar knob keeps its declared metadata (the two
-   * watchdog rows carry the sentence they always had). The slot leaves take their option lists
-   * from the live catalog at render time instead.
+   * The fifty-nine knobs — the SAME fields the TUI `/settings` section declares (the thirteen
+   * scalar knobs, the twelve team-model slot leaves, the thirty-three agentRoutes leaves and the
+   * TUI surface's own knob). The composed hint LEADS with the knob's human sentence
+   * (`semantics`/`semanticsZh`) and then states its mpd.jsonc key, exactly as the TUI builds it; a
+   * scalar knob keeps its declared metadata (the two watchdog rows carry the sentence they always
+   * had). The slot and agentRoutes leaves take their option lists from the live catalog at render
+   * time instead.
    */
   /** The four team-model slots, in the order the card renders them. */
   const SLOT_SLOTS = ["slot1", "slot2", "slot3", "slot4"]
@@ -8081,8 +8630,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         zh: "这一档的模型。必须选支持图像输入的模型：Vision Analyst 的全部价值在于读图，纯文本模型会让它的读图任务直接失败。改它的影响：下次建队生效。",
       },
       reasoningEffort: {
-        en: "This slot's reasoning effort (off / low / high / max). It sets how much Vision Analyst thinks while reading an image. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot.",
-        zh: "这一档的推理强度（off / low / high / max）。决定 Vision Analyst 读图时的思考深度。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。",
+        en: "This slot's reasoning effort (off / low / high / max). It sets how much Vision Analyst thinks while reading an image. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot. EXCEPTION: a model whose catalog entry declares no reasoning efforts at all is sent none — its call still runs.",
+        zh: "这一档的推理强度（off / low / high / max）。决定 Vision Analyst 读图时的思考深度。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。例外：若该模型的目录条目完全没有推理等级，则不发送任何等级——调用照常。",
       },
     },
   }
@@ -8108,8 +8657,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
       }
     }
     return {
-      en: `This slot's reasoning effort (off / low / high / max). It sets how much the ${group.en} (${group.members}) think when a team is created: max is the strongest, high the usual balance, low cheaper, off disables reasoning. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot.`,
-      zh: `这一档的推理强度（off / low / high / max）。它决定 ${group.zh}（${group.membersZh}）建队时的思考深度：max 最强、high 是常规平衡、low 更省、off 关闭思考。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。`,
+      en: `This slot's reasoning effort (off / low / high / max). It sets how much the ${group.en} (${group.members}) think when a team is created: max is the strongest, high the usual balance, low cheaper, off disables reasoning. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot. EXCEPTION: a model whose catalog entry declares no reasoning efforts at all is sent none — its call still runs.`,
+      zh: `这一档的推理强度（off / low / high / max）。它决定 ${group.zh}（${group.membersZh}）建队时的思考深度：max 最强、high 是常规平衡、low 更省、off 关闭思考。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。例外：若该模型的目录条目完全没有推理等级，则不发送任何等级——调用照常。`,
     }
   }
   /** The group heading a slot renders above its three rows, e.g. `Slot 2 — analysis members (…)`. */
@@ -8126,6 +8675,78 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
       path: ["teamModels", slot, leaf],
       label: `Slot ${index + 1} ${label} (${SLOT_GROUPS[slot].en})`,
       zh: `槽位 ${index + 1} ${zh}（${SLOT_GROUPS[slot].zh}）`,
+      kind: "select",
+      options,
+      semantics: sentence.en,
+      semanticsZh: sentence.zh,
+    }
+  }))
+
+  // ── the agentRoutes mirror (R2's front door, L4): thirty-three rows, one per roster member leaf ──
+  // The Web client must not reference the shared declaration's symbols (a QA gate pins the built
+  // client), so the member enumeration, the sentences and the headings are MIRRORS of
+  // `mpd-config-plugin/src/settings-schema.ts` (`AGENT_ROUTE_KNOBS`, `agentRouteLeafSentence`,
+  // `agentRouteGroupHeading`, `AGENT_ROUTE_IMPACT`), and the parity test compares the copies
+  // element by element — the same discipline the slot rows above follow.
+  /** The eleven roster member names, in the slots' own membership order (mirror of ROSTER_AGENT_NAMES). */
+  const ROSTER_MEMBERS           = SLOT_SLOTS.flatMap((slot) => SLOT_GROUPS[slot].members.split(", ").map((name) => name))
+  /** The leaf sentence templates of an agentRoutes row, mirroring AGENT_ROUTE_LEAF_TEMPLATES. */
+  const AGENT_ROUTE_TEMPLATES                                = {
+    provider: {
+      en: "The provider half of {name}'s OWN route override. An agentRoutes leaf outranks {name}'s team-model slot: it applies to {name} only, and LIVE — the member's next spawn or resolve carries it, no restart and no new team needed. An unset leaf falls through to the slot's provider; clearing every leaf returns {name} to the slot.",
+      zh: "{name} 专属路由覆盖的提供商。agentRoutes 的叶子优先于 {name} 的 team 模型槽位：只作用于 {name} 本人，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的提供商；清空全部叶子即恢复跟随槽位。",
+    },
+    model: {
+      en: "The model half of {name}'s OWN route override. It outranks the model of {name}'s team-model slot ({group}) and applies LIVE — the member's next spawn or resolve carries it, no restart and no new team needed. An unset leaf falls through to the slot's model; clearing every leaf returns {name} to the slot.",
+      zh: "{name} 专属路由覆盖的模型。优先于 {name} 所属槽位（{group}）的模型，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的模型；清空全部叶子即恢复跟随槽位。",
+    },
+    reasoningEffort: {
+      en: "The reasoning-effort half of {name}'s OWN route override (off / low / high / max). It outranks the effort of {name}'s team-model slot ({group}) and applies LIVE — the member's next spawn or resolve carries it. An unset leaf falls through to the slot's effort; an effort the chosen model does not support fails that member's spawn loudly, naming the member.",
+      zh: "{name} 专属路由覆盖的推理强度（off / low / high / max）。优先于 {name} 所属槽位（{group}）的推理强度，且即时生效——该成员下次生成/解析即携带新值。未设置的叶子回落到槽位的等级；该模型不支持的等级会让该成员的生成直接报错并点名。",
+    },
+  }
+  /** The slot one roster member belongs to, from the mirrored groups (mirror of agentRouteSlotOf). */
+  const slotOfMember = (member        )                                                 => {
+    for (const slot of SLOT_SLOTS) {
+      if (SLOT_GROUPS[slot].members.split(", ").includes(member)) return { slot, group: SLOT_GROUPS[slot] }
+    }
+    return undefined
+  }
+  /** One agentRoutes row's human sentence (mirror of the shared agentRouteLeafSentence). */
+  function agentRouteSentence(member        , leaf        )                {
+    /** The member's slot lookup, whose group name the template interpolates. */
+    const found = slotOfMember(member)
+    /** The EN sentence with `{name}`/`{group}` interpolated; unknown members keep a neutral placeholder. */
+    const en = AGENT_ROUTE_TEMPLATES[leaf].en.split("{name}").join(member).split("{group}").join(found === undefined ? "ungrouped" : found.group.en)
+    /** The zh sentence, interpolated the same way. */
+    const zh = AGENT_ROUTE_TEMPLATES[leaf].zh.split("{name}").join(member).split("{group}").join(found === undefined ? "未编组" : found.group.zh)
+    return { en, zh }
+  }
+  /** The group heading one member's three agentRoutes rows render under (mirror of agentRouteGroupHeading). */
+  function agentRouteHeading(member        )                {
+    /** The member's slot lookup, whose 1-based number and group name the heading interpolates. */
+    const found = slotOfMember(member)
+    if (found === undefined) return { en: `${member} — own route`, zh: `${member} —— 专属路由` }
+    /** The member's 1-based slot number, spelled the way the slot headings spell it. */
+    const index = SLOT_SLOTS.indexOf(found.slot) + 1
+    return {
+      en: `${member} — own route (overrides slot ${index} · ${found.group.en})`,
+      zh: `${member} —— 专属路由（覆盖槽位 ${index} · ${found.group.zh}）`,
+    }
+  }
+  /** The impact line under one member's agentRoutes heading (mirror of AGENT_ROUTE_IMPACT). */
+  const AGENT_ROUTE_IMPACT_LINE                         = {
+    en: "A leaf set here applies to this member only and LIVE — the next spawn or resolve carries it; an unset leaf falls through to the member's slot, and clearing every leaf returns the member to the slot.",
+    zh: "在这里设置的叶子只作用于该成员本人且即时生效——下次生成/解析即携带；未设置的叶子回落到该成员的槽位，清空全部叶子即恢复跟随槽位。",
+  }
+  /** The thirty-three agentRoutes rows: the eleven roster names × three route leaves (mirror of AGENT_ROUTE_KNOBS). */
+  const AGENT_ROUTE_FIELDS                    = ROSTER_MEMBERS.flatMap((member) => SLOT_LEAVES.map(({ leaf, label, zh, options }) => {
+    /** The member leaf's own human sentence, which the row's hint leads with. */
+    const sentence = agentRouteSentence(member, leaf)
+    return {
+      path: ["agentRoutes", member, leaf],
+      label: `${member} ${label} (own route)`,
+      zh: `${member} ${zh}（专属路由）`,
       kind: "select",
       options,
       semantics: sentence.en,
@@ -8156,6 +8777,10 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     // the human sentences are built from SLOT_GROUPS below, so a slot's copy is stated once here
     // exactly as the shared declaration states it (a test compares the two element-wise).
     ...SLOT_FIELDS,
+    // The per-member route-table rows (R2's front door): thirty-three agentRoutes leaves, eleven
+    // roster names × provider/model/reasoning effort, enumerated from the mirrored member groups so
+    // a name is PICKED, never typed — the loud unknown-name rejection stays server-side.
+    ...AGENT_ROUTE_FIELDS,
     // The TUI surface's own knob (the Ctrl+A takeover toggle): mirrored from the ONE declaration,
     // whose `hint` is the semantics sentence — the card renders it as `semantics`, exactly like the
     // two watchdog rows above.
@@ -8188,6 +8813,180 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   /** Walk a nested path into an untyped settings value (a missing or non-object step answers undefined). */
   const leafOf = (value         , path          )          => path.reduce         ((acc, part) => (acc === null || acc === undefined ? undefined : (acc                           )[part]), value)
 
+  /** Whether a value is a non-null, non-array object — the only shape a route table can be. */
+  const isTable = (value         )                                   => value !== null && typeof value === "object" && !Array.isArray(value)
+  /** One string leaf of a route block, read only when it is a non-empty string ("" otherwise). */
+  const routeLeaf = (block         , leaf        )         => {
+    /** The leaf's raw value, when the block carries one. */
+    const found = isTable(block) ? block[leaf] : undefined
+    return typeof found === "string" ? found : ""
+  }
+  /**
+   * The three declared slot DEFAULTS (mirror of `TEAM_MODEL_SLOT_DEFAULTS` in the shared schema):
+   * the floor an effective slot line falls back to when neither the live service nor the settings
+   * document states the slot — the same L0 layer a fresh workspace resolves to.
+   */
+  const SLOT_DEFAULTS                                 = {
+    slot1: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "max" },
+    slot2: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "high" },
+    slot3: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "high" },
+    slot4: { provider: "deepseek-official", model: "deepseek-v4-flash-vision-exp", reasoningEffort: "high" },
+  }
+  /**
+   * Project the CURRENT EFFECTIVE model config (R3) from the live surfaces only: the settings
+   * document this card binds, plus the `/plugins/mpd/model-config` body when the bundle's route
+   * answered. Precedence per piece: the SERVICE value (it sees the file layers and refreshes on
+   * every save and watched edit) over the DOCUMENT value (entry config only); the DECLARED slot
+   * default is the floor. Never re-parses mpd.jsonc.
+   * @param section - the settings form's namespace value (the surface the card binds).
+   * @param live - the live-service read: the route body (or undefined) and why it is absent.
+   * @returns the projection the card renders above its rows.
+   */
+  function effectiveModelConfigOf(section         , live                                   )                       {
+    /** The live body narrowed to the three members the route serves ({} when it did not answer). */
+    const body = isTable(live.body) ? live.body : {}
+    /** The four effective slot routes. */
+    const slots                                 = {}
+    for (const slot of SLOT_SLOTS) {
+      // PER-SLOT precedence: the service's slot block (the authoritative live read), else the
+      // document's, else nothing — the declared default below floors all three.
+      /** The service's block for this slot, when the route body carries one. */
+      const fromService = isTable(body.slots) ? body.slots[slot] : undefined
+      /** The block this slot projects from. */
+      const block = fromService !== undefined ? fromService : leafOf(section, ["teamModels", slot])
+      /** The route the block carries, over the declared default as the floor. */
+      const fallback = SLOT_DEFAULTS[slot]
+      /** The effective provider: the block's when it states one, else the declared default. */
+      const provider = routeLeaf(block, "provider") || fallback.provider
+      /** The effective model: the block's when it states one, else the declared default. */
+      const model = routeLeaf(block, "model") || fallback.model
+      /** The effective effort: the block's when it states one, else the declared default. */
+      const reasoningEffort = routeLeaf(block, "reasoningEffort") || fallback.reasoningEffort
+      slots[slot] = { provider, model, reasoningEffort }
+    }
+    /** The stored agentRoutes table: the service's (file layers included) over the document's. */
+    const rawRoutes = isTable(body.agentRoutes) ? body.agentRoutes : leafOf(section, ["agentRoutes"])
+    /** The table narrowed to member-name keys with string-leaf entries. */
+    const agentRoutes                                         = {}
+    if (isTable(rawRoutes)) {
+      for (const [name, entry] of Object.entries(rawRoutes)) {
+        if (!isTable(entry)) continue
+        /** This entry's SET string leaves only. */
+        const leaves                         = {}
+        for (const leaf of ["provider", "model", "reasoningEffort"]) {
+          if (routeLeaf(entry, leaf) !== "") leaves[leaf] = routeLeaf(entry, leaf)
+        }
+        if (Object.keys(leaves).length > 0) agentRoutes[name] = leaves
+      }
+    }
+    /** The configured modelchain chains, only ever from the service read (the document carries none). */
+    const modelchain                                                             = {}
+    if (isTable(body.modelchain)) {
+      for (const [key, chain] of Object.entries(body.modelchain)) {
+        if (!Array.isArray(chain)) continue
+        /** This key's usable chain entries, in configured order. */
+        const entries = chain
+          .filter((hop)                                             => isTable(hop) && typeof hop.provider === "string" && typeof hop.model === "string")
+          .map((hop) => ({ provider: hop.provider, model: hop.model }))
+        if (entries.length > 0) modelchain[key] = entries
+      }
+    }
+    return {
+      source: isTable(live.body) ? "service" : "document",
+      slots,
+      agentRoutes,
+      modelchain,
+      notice: isTable(live.body) ? "" : live.notice,
+    }
+  }
+
+  /** Substitute the `{name}` placeholders of one dictionary sentence with language-neutral fragments. */
+  function interpolate(text        , params                        )         {
+    /** The sentence, mutated once per placeholder. */
+    let out = text
+    for (const [name, value] of Object.entries(params)) out = out.split(`{${name}}`).join(value)
+    return out
+  }
+
+  /** One route as the language-neutral `provider / model / effort` fragment the effective lines render. */
+  function routeText(route                                                              )         {
+    return `${route.provider} / ${route.model} / ${route.reasoningEffort === "" ? "-" : route.reasoningEffort}`
+  }
+
+  /**
+   * The see-before-you-edit lines (R3): the four effective slot routes, one line per member
+   * override that is actually set, and the configured modelchain chains — every word localized
+   * through the dictionary, every value a neutral id.
+   * @param effective - the projection this render shows.
+   * @param t - the locale resolver the component renders through.
+   * @param createElement - the host's React createElement.
+   * @returns the block's child elements, in render order.
+   */
+  function effectiveChildrenOf(effective                      , t                         , createElement                               )            {
+    /** The block's lines, in render order. */
+    const lines            = []
+    for (const slot of SLOT_SLOTS) {
+      /** The slot's effective route (the declared default floor guarantees the three leaves). */
+      const route = effective.slots[slot] ?? { provider: "-", model: "-", reasoningEffort: "-" }
+      lines.push(createElement(
+        "p",
+        { key: "effective.slot." + slot, style: SKIN.helpText, "data-mpd-effective-slot": slot },
+        interpolate(t("effective.slot." + slot), { route: routeText(route) }),
+      ))
+    }
+    // The members whose agentRoutes entry is actually SET, in roster order — a member with no
+    // override follows its slot and would only repeat the slot line above.
+    /** The set overrides, in the mirrored roster order. */
+    const overridden = ROSTER_MEMBERS.filter((member) => effective.agentRoutes[member] !== undefined)
+    if (overridden.length === 0) {
+      lines.push(createElement("p", { key: "effective.no-routes", style: SKIN.helpText, "data-mpd-effective-routes": "none" }, t("effectiveNoRoutes")))
+    } else {
+      for (const member of overridden) {
+        /** This member's stored override leaves. */
+        const entry = effective.agentRoutes[member]
+        /** The leaf=value fragments, in leaf order. */
+        const leaves = ["provider", "model", "reasoningEffort"].filter((leaf) => entry[leaf] !== undefined).map((leaf) => `${leaf}=${entry[leaf]}`).join(", ")
+        /** The member's effective route: the entry's leaf over the slot's (the declared precedence). */
+        const slot = slotOfMember(member)
+        /** The slot route the unset leaves fall through to. */
+        const base = slot === undefined ? { provider: "-", model: "-", reasoningEffort: "-" } : (effective.slots[slot.slot] ?? { provider: "-", model: "-", reasoningEffort: "-" })
+        /** The member's effective route: the entry's set leaf over the slot's (the declared precedence). */
+        const route = { provider: entry.provider ?? base.provider, model: entry.model ?? base.model, reasoningEffort: entry.reasoningEffort ?? base.reasoningEffort }
+        lines.push(createElement(
+          "p",
+          { key: "effective.member." + member, style: SKIN.helpText, "data-mpd-effective-member": member },
+          interpolate(t("effective.member." + member), { leaves, route: routeText(route) }),
+        ))
+      }
+    }
+    // The configured modelchain chains, in the service's own key order (bounded to the first three
+    // hops per chain so one long chain cannot push the rest of the block off screen).
+    /** The configured chain keys. */
+    const chainKeys = Object.keys(effective.modelchain)
+    if (chainKeys.length === 0) {
+      lines.push(createElement("p", { key: "effective.no-chains", style: SKIN.helpText, "data-mpd-effective-chains": "none" }, t("effectiveNoChains")))
+    } else {
+      for (const key of chainKeys) {
+        /** This chain's hops as neutral `provider/model` fragments. */
+        const hops = effective.modelchain[key].slice(0, 3).map((hop) => `${hop.provider}/${hop.model}`).join(", ")
+        lines.push(createElement(
+          "p",
+          { key: "effective.chain." + key, style: SKIN.helpText, "data-mpd-effective-chain": key },
+          interpolate(t("effectiveChain"), { key, chain: hops }),
+        ))
+      }
+    }
+    // The source line: which live surface produced the block, and — on the document branch — why.
+    lines.push(createElement(
+      "p",
+      { key: "effective.source", style: SKIN.note, "data-mpd-effective-source": effective.source },
+      effective.source === "service"
+        ? t("effectiveSourceService")
+        : interpolate(t("effectiveSourceDocument"), { why: effective.notice === "" ? t("effectiveWhyUnknown") : effective.notice }),
+    ))
+    return lines
+  }
+
   /** Parse the control's text into a value for this field, or undefined when it is not one. */
   function parse(kind        , text         )                                        {
     if (kind === "number") {
@@ -8218,6 +9017,9 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
    * QA gate pins it), and the parity test compares the mirror with the real one.
    */
   const TEAM_MODEL_SLOT = "teamModels"
+
+  /** The per-member route table's namespace leaf, the prefix of every agentRoutes row path. */
+  const AGENT_ROUTES_PREFIX = "agentRoutes"
 
   /**
    * The session the catalog binds to, read from the client's OWN list snapshot.
@@ -8360,6 +9162,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
    * here — the hint is not part of the front-door parity contract (the parity pin compares the
    * declaration), so the suffix is a render-time addition only.
    */
+  /** The path prefix of every agentRoutes row, used by the block split and the effective block. */
   function slotFallbackMarker(info                         )         {
     /** The state to describe (the declared fallback when none was published yet). */
     const state = info ?? FALLBACK_CATALOG
@@ -8683,9 +9486,11 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   function optionsFor(field                 , groups                , controls                                        )                {
     /** The knob's declared options, which every degrade path returns. */
     const declared = declaredOptions(field)
-    if (field.path[0] !== TEAM_MODEL_SLOT || groups.length === 0) return declared
-    /** The slot this row belongs to (`slot1`…`slot4`). */
-    const slot = field.path[1]
+    // BOTH route families — the team-model slots and the agentRoutes member rows — pick from the
+    // live catalog; every other knob keeps its declared list.
+    if ((field.path[0] !== TEAM_MODEL_SLOT && field.path[0] !== AGENT_ROUTES_PREFIX) || groups.length === 0) return declared
+    /** The route family's group key (`slot1`… for a slot row, the member NAME for an override row). */
+    const groupKey = field.path[1]
     /** The leaf this row edits. */
     const leaf = field.path[2]
     if (leaf === "provider") return groups.map((group) => ({ value: group.id, label: typeof group.name === "string" && group.name.length > 0 ? group.name : group.id }))
@@ -8697,14 +9502,14 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
       }
       return options.length > 0 ? options : declared
     }
-    /** The text of one control of this slot, which the effort list derives from. */
+    /** The text of one control of this route group, which the effort list derives from. */
     const textOf = (path          )                     => {
       /** The control the render is currently showing for that path. */
       const control = controls ? controls[path.join(".")] : undefined
       return control ? control.text : undefined
     }
-    /** The model the provider and model controls currently select. */
-    const model = findModel(groups, textOf([TEAM_MODEL_SLOT, slot, "provider"]), textOf([TEAM_MODEL_SLOT, slot, "model"]))
+    /** The model the provider and model controls of THIS row's group currently select. */
+    const model = findModel(groups, textOf([field.path[0], groupKey, "provider"]), textOf([field.path[0], groupKey, "model"]))
     /** The selected model's own efforts (an absent list counts as none). */
     const efforts = model && model.reasoning && Array.isArray(model.reasoning.efforts) ? model.reasoning.efforts : []
     /** Those efforts as rendered options. */
@@ -8776,7 +9581,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
    * `scope.mutate(ops, revision)` — nested paths included, which `scope.set(field, …)` cannot
    * express (it writes top-level fields only).
    */
-  function createMpdCardController(scope               , fields                    = FIELDS, disclosure             = { BRIDGE_DISCLOSURE, BRIDGE_RESTART_LIMIT, NO_WORKSPACE_NOTICE }, catalogInfo                    = () => FALLBACK_CATALOG)                 {
+  function createMpdCardController(scope               , fields                    = FIELDS, disclosure             = { BRIDGE_DISCLOSURE, BRIDGE_RESTART_LIMIT, NO_WORKSPACE_NOTICE }, catalogInfo                    = () => FALLBACK_CATALOG, afterSave             = () => {})                 {
     /** Every staged edit, keyed by the row's dotted knob key. */
     const staged = new Map                    ()
     // Declared BEFORE the first projection: `project()` reads all three, and a `let` below the
@@ -8787,6 +9592,12 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     let failed = false
     /** The last failure's message. */
     let lastError = ""
+    /**
+     * The LIVE-SERVICE read behind the effective block (R3): the `/plugins/mpd/model-config` body
+     * once it answered, or undefined while the route has not (the projection then falls back to
+     * the settings document and says so through its `notice`).
+     */
+    let liveService                                    = { body: undefined, notice: "" }
     /** The card's own store, whose first projection is built from the bound scope. */
     const store = createStore(project())
 
@@ -8838,6 +9649,9 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         // Which branch produced the slot option lists — LIVE (with counts) or the declared
         // fallback. It rides the card's OWN store, so a catalog change re-projects the card.
         catalog: catalogInfo() ?? FALLBACK_CATALOG,
+        // R3: the effective model config projected from the bound document plus the live-service
+        // read — rides the SAME store, so a save or a service refresh re-projects the block.
+        effective: effectiveModelConfigOf(section, liveService),
       }
     }
 
@@ -8897,6 +9711,9 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
       }
       saving = false
       publish()
+      // R3: a successful save is exactly when the effective model config CHANGED, so the mount
+      // re-reads the live service here (a failed save changes nothing and skips the read).
+      if (!failed) afterSave()
     }
 
     /** Stage one row's edit, clear the last failure and re-project. */
@@ -8929,6 +9746,14 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
       store,
       /** Re-project after an EXTERNAL change (the live catalog): the card's store is the channel. */
       refresh: ()       => {
+        publish()
+      },
+      /**
+       * Publish one live-service read (R3): the `/plugins/mpd/model-config` body when the route
+       * answered, or the notice for why it did not. Stored, then re-projected; never throws.
+       */
+      setLiveService: (body         , notice        )       => {
+        liveService = { body, notice }
         publish()
       },
       /** Release the bound scope. */
@@ -9163,9 +9988,10 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         const control = state.controls[key] ?? { text: "" }
         /** The row's label. */
         const label = t(key)
-        // The twelve slot rows carry the fallback marker; the thirteen scalar rows are untouched.
-        /** The row's hint, with the slot rows carrying the fallback marker. */
-        const hint = t(key + ".hint") + (field.path[0] === TEAM_MODEL_SLOT ? slotFallbackMarker(catalog) : "")
+        // The twelve slot rows and the thirty-three agentRoutes rows carry the fallback marker; the
+        // scalar rows are untouched.
+        /** The row's hint, with the route rows carrying the fallback marker. */
+        const hint = t(key + ".hint") + (field.path[0] === TEAM_MODEL_SLOT || field.path[0] === AGENT_ROUTES_PREFIX ? slotFallbackMarker(catalog) : "")
         // HUMAN SENTENCE FIRST, at full readability; the row's dotted KEY sits BENEATH it, dimmer.
         // The bridge DISCLOSURE is not here at all any more — it is stated once at the top of the
         // card. Repeating it per row is what buried every row's own sentence (measured in a real
@@ -9217,16 +10043,22 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
           ),
         )
       })
-      // VISIBLE AT THE CONTROL: the four team-model pickers sit at the BOTTOM of the 25 rows,
+      // VISIBLE AT THE CONTROL: the four team-model pickers sit at the BOTTOM of the rows,
       // where the section's top notice is off-screen — so the SAME sentence renders again
       // immediately above the first slot row (between the 13 scalar rows and the twelve slot rows),
       // in BOTH states. It carries its own `data-mpd-catalog-state`; the top notice keeps its own.
       /** The index of the first slot row (-1 when the field list carries no slot leaf). */
       const slotStart = fields.findIndex((field) => field.path[0] === TEAM_MODEL_SLOT)
+      /** The index of the first agentRoutes row (-1 when the field list carries none). */
+      const agentStart = fields.findIndex((field) => field.path[0] === AGENT_ROUTES_PREFIX)
+      /** The end of the team-model slot rows (the agentRoutes block, or the tail when there is none). */
+      const slotEnd = agentStart >= 0 ? agentStart : fields.length
       /** The thirteen scalar rows. */
-      const scalarRows = slotStart < 0 ? rows : rows.slice(0, slotStart)
+      const scalarRows = slotStart < 0 ? (agentStart < 0 ? rows : rows.slice(0, agentStart)) : rows.slice(0, slotStart)
       /** The twelve slot rows. */
-      const slotRows = slotStart < 0 ? [] : rows.slice(slotStart)
+      const slotRows = slotStart < 0 ? [] : rows.slice(slotStart, slotEnd)
+      /** The agentRoutes rows plus every row after them (the TUI surface's own knob closes the card). */
+      const routeRows = agentStart < 0 ? [] : rows.slice(agentStart)
       /** The catalog line rendered immediately above the first slot row. */
       const slotLine = createElement(
         "p",
@@ -9256,6 +10088,32 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
           ))
         }
         slotChildren.push(slotRows[index])
+      }
+      // The agentRoutes block (R2's front door) plus the tail: one heading + the SHARED impact line
+      // per roster member (their three rows follow), then whatever rows trail the block (the TUI
+      // surface's own knob). Same direct-children shape as the slots above, for the same reason.
+      /** The agentRoutes rows and the tail, interleaved with one heading/impact pair per member. */
+      const routeChildren            = []
+      for (let index = 0; index < routeRows.length; index++) {
+        /** The field this row renders. */
+        const field = fields[agentStart + index]
+        /** The member this row belongs to ("" for a trailing non-agentRoutes row). */
+        const member = field.path[0] === AGENT_ROUTES_PREFIX ? String(field.path[1]) : ""
+        /** The member of the row above ("" at the first route row). */
+        const previous = index === 0 ? "" : (fields[agentStart + index - 1].path[0] === AGENT_ROUTES_PREFIX ? String(fields[agentStart + index - 1].path[1]) : "")
+        if (member !== "" && member !== previous) {
+          routeChildren.push(createElement(
+            "div",
+            { key: "group." + member, style: SKIN.groupHeading, "data-mpd-agent-group": member },
+            t("agentRoutes." + member + ".heading"),
+          ))
+          routeChildren.push(createElement(
+            "p",
+            { key: "impact." + member, style: SKIN.groupImpact, "data-mpd-agent-impact": member },
+            t("agentRoutes.impact"),
+          ))
+        }
+        routeChildren.push(routeRows[index])
       }
       /** Whether the save is blocked (a read-only page, no staged edit, or an invalid draft). */
       const saveBlocked = disabled || !state.dirty || state.invalid
@@ -9295,9 +10153,19 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
           createElement("p", { style: SKIN.helpText, "data-mpd-disclosure": "workspace" },
             state.disclosure?.NO_WORKSPACE_NOTICE ?? ""),
         ),
+        // THE SEE-BEFORE-YOU-EDIT BLOCK (R3): the CURRENT EFFECTIVE model config — the four slot
+        // routes, the member overrides that are set and the configured modelchain chains — stated
+        // ABOVE the rows it describes, so a reader sees what a change modifies before editing.
+        createElement(
+          "div",
+          { style: SKIN.help, "data-mpd-effective": "1" },
+          createElement("h4", { style: SKIN.groupHeading }, t("effectiveTitle")),
+          ...effectiveChildrenOf(state.effective, t, createElement),
+        ),
         ...scalarRows,
         slotLine,
         ...slotChildren,
+        ...routeChildren,
         createElement(
           "div",
           { style: SKIN.footer },
@@ -9318,7 +10186,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     const en                         = {
       nav: "MPD",
       title: "MPD bundle",
-      intro: "The mpd.jsonc knobs this bundle's plugins read. namespace mpd · applies at the next dsh boot",
+      intro: "The mpd.jsonc knobs this bundle's plugins read. namespace mpd · live after save — the model routes resolve per use, no restart",
       // WHAT THIS BUNDLE'S PRESET IS — carried HERE because the preset picker cannot localize it.
       //
       // MEASURED on the installed harness (2026-10-06): a preset's `name`/`description` are plain
@@ -9342,7 +10210,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     const zh                         = {
       nav: "MPD",
       title: "MPD 插件包",
-      intro: "本插件包读取的 mpd.jsonc 配置项。命名空间 mpd · 下次启动 dsh 时生效",
+      intro: "本插件包读取的 mpd.jsonc 配置项。命名空间 mpd · 保存后即时生效——模型路由按次读取，无需重启",
       // 这个 bundles 的 preset 是什么 —— 放在这里，是因为 preset 选择器无法本地化它。
       presetAbout:
         "「MPD (Main Working Agent)」是本插件包的主工作 agent：读取项目的 AGENT.md/AGENTS.md/CLAUDE.md，原生工作，通过 mpd_role_spawn 一次性咨询 11 位专家，并用官方 Agent Teams 插件跑团队。它在 preset 选择器里的说明由宿主以纯文本提供，无法本地化。",
@@ -9372,6 +10240,48 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
       en["teamModels." + slot + ".impact"] = impactOf(slot, "en")
       zh["teamModels." + slot + ".impact"] = impactOf(slot, "zh")
     }
+    // The same pair per roster member's agentRoutes group (R2's front door): the heading names the
+    // member and the slot its override sits on, so a reader sees WHOSE route a row modifies before
+    // touching it. The impact line is shared by every member (a one-member group needs no variant).
+    for (const member of ROSTER_MEMBERS) {
+      /** The member's group heading in both locales. */
+      const heading = agentRouteHeading(member)
+      en["agentRoutes." + member + ".heading"] = heading.en
+      zh["agentRoutes." + member + ".heading"] = heading.zh
+    }
+    en["agentRoutes.impact"] = AGENT_ROUTE_IMPACT_LINE.en
+    zh["agentRoutes.impact"] = AGENT_ROUTE_IMPACT_LINE.zh
+    // The see-before-you-edit block (R3): one composed line per effective slot route, per member
+    // override and per configured chain. The line bodies are language-neutral ids ({route},
+    // {leaves}, {key}, {chain}); every WORD — the label, the group name, the member's slot — is
+    // baked into these entries in the locale's own spelling, so both locales read the same routes
+    // under their own words and the render substitutes only the neutral fragments.
+    en.effectiveTitle = "Effective model config — what a change here modifies (read live, no restart)"
+    zh.effectiveTitle = "当前生效的模型配置——改之前先看（实时读取，无需重启）"
+    for (const [index, slot] of SLOT_SLOTS.entries()) {
+      en["effective.slot." + slot] = `slot ${index + 1} · ${SLOT_GROUPS[slot].en}: {route}`
+      zh["effective.slot." + slot] = `槽位 ${index + 1} · ${SLOT_GROUPS[slot].zh}：{route}`
+    }
+    for (const member of ROSTER_MEMBERS) {
+      /** The member's slot lookup, whose 1-based number the pre-baked sentence interpolates. */
+      const found = slotOfMember(member)
+      /** The member's slot number, spelled the way the slot headings spell it. */
+      const slotNo = found === undefined ? "?" : String(SLOT_SLOTS.indexOf(found.slot) + 1)
+      en["effective.member." + member] = `${member} — override {leaves}; effective {route} (unset leaves fall through from slot ${slotNo})`
+      zh["effective.member." + member] = `${member} —— 覆盖 {leaves}；生效 {route}（未设置的叶子回落自槽位 ${slotNo}）`
+    }
+    en.effectiveChain = "modelchain.{key} → {chain}"
+    zh.effectiveChain = "modelchain.{key} → {chain}"
+    en.effectiveNoRoutes = "agentRoutes: no member overrides set — every member follows its slot"
+    zh.effectiveNoRoutes = "agentRoutes：未设置任何成员覆盖——所有成员跟随各自槽位"
+    en.effectiveNoChains = "modelchain: no configured chains — the shipped defaults are in force"
+    zh.effectiveNoChains = "modelchain：未配置任何链——内置默认链生效"
+    en.effectiveSourceService = "read from the live config service — refreshed at mount, after card saves, and on settings-document updates"
+    zh.effectiveSourceService = "读取自实时配置服务——挂载时、卡片保存后与设置文档更新时刷新"
+    en.effectiveSourceDocument = "read from this settings document — the live service route is unavailable ({why}), so the modelchain half is not shown"
+    zh.effectiveSourceDocument = "读取自当前设置文档——实时配置路由不可用（{why}），因此未显示 modelchain 部分"
+    en.effectiveWhyUnknown = "reason unstated"
+    zh.effectiveWhyUnknown = "原因未知"
     return { en, zh }
   }
 
@@ -9436,6 +10346,11 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
                 /** The form's snapshot after the change that fired this line. */
                 const now = scope.getSnapshot?.()
                 console.log("[mpd] settings section: form updated status=" + String(now?.status) + " value=" + (now?.value === undefined ? "absent" : "present"))
+                // A settings-document change can come from ANOTHER front door (a TUI save, a hand
+                // edit), not only from this card's own save, so the live-service read is re-run on
+                // every scope update; the read's sequence guard keeps an older answer from clobbering
+                // the fresher one.
+                readLiveService()
               })
             } catch (error) {
               console.warn("[mpd] settings section: snapshot probe failed: " + String((error                         )?.message ?? error))
@@ -9445,10 +10360,51 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
             // render already carries the real list when the providers are up.
             /** The live catalog this card follows. */
             const catalog = createLiveCatalog(ctx)
+            /**
+             * The live-service re-reader for the effective block (R3); assigned right after the
+             * controller exists because the controller's SAVE HOOK must call it. Reads
+             * `/plugins/mpd/model-config` — the route the bundle's server half serves from the
+             * `mpdConfig` service — at mount, after every successful save and on every
+             * settings-scope update, through the ENTRY's injected reader (this card does no I/O of
+             * its own); without a reader the block degrades to the settings-document branch with a
+             * notice.
+             */
+            /** The entry's JSON reader, when this client provides one. */
+            const fetchJson = options.fetchJson
+            /** The live-service re-reader; assigned right below, once the controller it calls exists. */
+            let readLiveService             = ()       => {}
+            /**
+             * The number of the newest live-service read. Concurrent reads (a mount, a save and a
+             * settings-scope update can overlap) answer in arbitrary order, so each read takes a
+             * ticket and only the newest ticket's answer is applied — a stale answer landing late
+             * must not clobber a fresher projection.
+             */
+            let liveReadSeq = 0
             // An absent form is the probe path above (it renders its warning); the controller's own
             // guarded calls keep the same behaviour the untyped original had for that case.
-            /** The card's form controller, bound to the resolved scope. */
-            const controller = createMpdCardController(scope                 , fields, undefined, () => catalog.info())
+            /** The card's form controller, bound to the resolved scope and the save hook. */
+            const controller = createMpdCardController(scope                 , fields, undefined, () => catalog.info(), () => { readLiveService() })
+            readLiveService = ()       => {
+              if (typeof fetchJson !== "function") {
+                controller.setLiveService(undefined, "this runtime provides no reader for the live config route")
+                return
+              }
+              /** This read's ticket: its answer applies only while it is still the newest read. */
+              const seq = ++liveReadSeq
+              fetchJson(MODEL_CONFIG_PATH)
+                .then((body         ) => {
+                  if (seq !== liveReadSeq) return
+                  /** The body narrowed to the two fields the route serves. */
+                  const parsed = (body !== null && typeof body === "object" ? body : {})                                      
+                  if (parsed.ok === true) controller.setLiveService(body, "")
+                  else controller.setLiveService(undefined, typeof parsed.reason === "string" && parsed.reason !== "" ? parsed.reason : "the route answered without a body")
+                })
+                .catch((error         ) => {
+                  if (seq !== liveReadSeq) return
+                  controller.setLiveService(undefined, String((error                         )?.message ?? error))
+                })
+            }
+            readLiveService()
             /** The catalog subscription that re-projects the card. */
             const unsubscribeCatalog = catalog.subscribe(() => {
               controller.refresh()
@@ -9504,6 +10460,10 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     optionsFor,
     optionElements,
     FIELDS,
+    AGENT_ROUTE_FIELDS,
+    effectiveModelConfigOf,
+    effectiveChildrenOf,
+    MODEL_CONFIG_PATH,
     SETTINGS_NS: NS,
     LOCALE_NS,
     SECTION_SLOT,
@@ -9539,6 +10499,27 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
                         
                                                                                                   
                          
+   
+
+  /**
+   * The change stream the view subscribes to, narrowed to the TWO members it uses.
+   *
+   * DECLARED HERE RATHER THAN TAKEN FROM THE DOM LIB, so the factory compiles in the browser build
+   * and in the offline harness alike: the view installs ONE message hook and closes the stream on
+   * unmount, and reconnecting is the browser's own job (the route sends `retry: 1000`), so no other
+   * member of the real `EventSource` is ever touched.
+   */
+                          
+                                                                                  
+                                                
+                                                                                                    
+                     
+   
+
+  /** The constructor shape of the host's `EventSource`, read off the global at subscribe time. */
+                              
+                                                                                               
+                                   
    
 
   /** One member row, as the route serves it. */
@@ -10072,10 +11053,11 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     /**
      * Build the team view ONCE, so both sidebar hosts render the same component with the same
      * polling behaviour rather than two lookalikes that can drift.
-     * @param deps - the React surface, the routes, the poll interval and the host's translator.
+     * @param deps - the React surface, the routes (the change stream's included), the poll interval
+     *   and the host's translator.
      * @returns the view component, its poller and the DAG layout the panel draws with.
      */
-    createTeamView(deps                                                                                                                   )   
+    createTeamView(deps                                                                                                                                        )   
                                                                                                         
                                             
                                                                                     
@@ -10099,8 +11081,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
          
                                                                                                
       {
-      /** The dependencies this closure reads on every call, plus the plan and task routes when given. */
-      const { react, statePath, planPath, taskPath } = deps
+      /** The dependencies this closure reads on every call, plus the plan, task and events routes when given. */
+      const { react, statePath, planPath, taskPath, eventsPath } = deps
       /** How often the panel re-reads; the route is cheap and this is a status surface. */
       const pollMs = typeof deps.pollMs === "number" && deps.pollMs > 0 ? deps.pollMs : 2000
       /** The host's translator; absent in a bare mount, in which case the English literals below win. */
@@ -10158,9 +11140,88 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         }
       }
 
-      /** Poll until stopped; the interval is owned by the CALLER's effect. */
-      /** Start polling; the returned function stops it. */
-      /** Start polling; the returned function stops it. */
+      /**
+       * The change-stream constructor this host exposes, or undefined when it has none.
+       *
+       * GUARDED, never assumed: the offline harness, a non-browser host and a browser with the API
+       * unavailable all answer undefined here, and the interval below is then the whole story. The
+       * GLOBAL READ is guarded too, because a host that defines `EventSource` as a throwing getter
+       * must cost the push and nothing else.
+       * @returns a constructor usable with `new`, or undefined when none is reachable.
+       */
+      const streamCtor = ()                               => {
+        try {
+          /** The global scope as an untyped bag, so this factory needs no DOM lib to compile. */
+          const scope = globalThis                                        
+          /** Whatever the host exposes under that name. */
+          const candidate = scope.EventSource
+          return typeof candidate === "function" ? candidate                     : undefined
+        } catch {
+          return undefined
+        }
+      }
+
+      /**
+       * Open one session's change stream, or answer undefined when this host has none.
+       *
+       * The URL is the route `web-client.ts` threads in PLUS THE SAME `?sessionId=` the state read
+       * uses, so the stream can only ever follow the session the panel is showing. An absent
+       * `eventsPath` means the composition has no events route at all: the poll stays the story.
+       * @param sessionId - the session the panel addresses; "" asks for the workspace principal.
+       * @returns the open stream, or undefined when there is none to open.
+       */
+      const openChangeStream = (sessionId        )                           => {
+        if (eventsPath === undefined) return undefined
+        /** The constructor this host exposes, if any. */
+        const ctor = streamCtor()
+        if (ctor === undefined) return undefined
+        try {
+          return new ctor(eventsPath + queryOf(sessionId))
+        } catch {
+          // A host that refuses the URL (a relative-only shim, a policy block) loses the PUSH and
+          // keeps the poll: the panel is never a crash away from rendering.
+          return undefined
+        }
+      }
+
+      /**
+       * Subscribe one session's change stream to the EXISTING poll path.
+       *
+       * ONE READ PATH, which is the point: the frame handler calls the same `tick` the interval
+       * calls, so a pushed and a polled frame cannot be built by two code paths that disagree. The
+       * subscription lives exactly as long as the caller's effect — the disposer returned here
+       * closes the stream, so an unmounted panel leaves no connection open, and a session change
+       * closes the old stream before the new effect opens the next one.
+       * @param sessionId - the session whose changes are followed.
+       * @param onFrame - what each `data:` frame runs; the poller passes its own `tick`.
+       * @returns the disposer the effect owns; it always closes the stream it opened.
+       */
+      const subscribeChanges = (sessionId        , onFrame            )               => {
+        /** The stream for this session, or undefined when the push is unavailable here. */
+        const stream = openChangeStream(sessionId)
+        if (stream === undefined) return () => {}
+        stream.onmessage = onFrame
+        return () => {
+          try {
+            stream.close()
+          } catch {
+            // A close that throws must not break the unmount: the connection is the browser's to
+            // reclaim, and the panel's teardown is not allowed to fail because of it.
+          }
+        }
+      }
+
+      /**
+       * Start refreshing this panel: one immediate read, then the interval, then the change stream.
+       *
+       * THE INTERVAL IS THE FALLBACK AND IS UNCHANGED: a host without `EventSource`, a proxy that
+       * cuts the stream or a composition whose `eventsPath` is absent behaves exactly as it did
+       * before this feed existed. The push is an ADDITION — one extra read per frame, through the
+       * same `tick`, and the browser owns the reconnect (no loop of ours to leak).
+       * @param sessionId - the session to read; the stream follows the same one.
+       * @param publish - where each read lands; the effect hands the panel's own state setter.
+       * @returns the stop function the caller's effect owns; it clears the interval and the stream.
+       */
       const start = (sessionId        , publish                           )               => {
         /** Whether the caller still wants results; cleared by the returned stop function. */
         let live = true
@@ -10175,7 +11236,9 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         void tick()
         /** The interval the caller's effect stops; owned here, cleared on stop. */
         const timer = setInterval(() => { void tick() }, pollMs)
-        return () => { live = false; clearInterval(timer) }
+        /** The change subscription, if this host has a stream; disposed with the interval. */
+        const stopStream = subscribeChanges(sessionId, () => { void tick() })
+        return () => { live = false; clearInterval(timer); stopStream() }
       }
 
       /**
@@ -11830,9 +12893,14 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     // The settings section: the Web HALF of the same `mpd` namespace the TUI /settings section
     // edits, mounted as its OWN top-level `MPD` section of the settings dialog (w14) — it no longer
     // rides the Plugins tab. Its mount is deferred (the settings scope is a plugin-provided
-    // service, so it is awaited with ctx.inject, never declared here).
+    // service, so it is awaited with ctx.inject, never declared here). The ENTRY also hands the
+    // card its JSON reader (R3): the card does no I/O of its own, so THIS module — the one allowed
+    // to reach the network — lends it `request`, which the card uses for the live
+    // `/plugins/mpd/model-config` read behind its effective-value block.
     try {
-      loadSettingsCard().mountSettingsCard(ctx);
+      loadSettingsCard().mountSettingsCard(ctx, {
+        fetchJson: (url        )                   => request(url, { headers: { accept: "application/json" } }),
+      });
     } catch (error) {
       console.warn("[mpd] settings card mount failed: " + String(error));
     }
@@ -11911,7 +12979,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
 /** The spliced team-view global's shape: the ONE factory both sidebar hosts build their body from. */
                              
                                                                                              
-                                                                                                                                                                        
+                                                                                                                                                                                             
  
 
 /** The built team view. */

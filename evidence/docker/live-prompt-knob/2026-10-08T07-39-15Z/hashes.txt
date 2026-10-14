@@ -1,0 +1,7 @@
+measuredAt: 2026-10-08T07:42:40Z
+gitHead: 3e144c15
+131f4a1573cba6328a165f64a275d95adaea60116719eca4f15886e55ff1d390  docker/entrypoint.sh
+a4d8538884849420a0947e23d07fd0adbb59bcbee335c447a997bc543ca3d1ce  docker/docker-compose.yml
+c6d6f06ad1412b6bf56c14247da2fee5b698c0229fc67043e1be243a76ef6f8e  docker/README.md
+3570cab205705cfe14505f5abc2fa36db9b8f67c884a2674259056820501e993  docker/README.zh-CN.md
+3d4806cebbd3d3bd6abd4918ff01b409d57c080aa812683c5626efce07df29c5  scripts/docker-e2e.ts

@@ -18,7 +18,8 @@ we run on is a deliberate choice, not an accident of neglect.
 | Vendoring commit | `a4e4ed797` (2026-06-21) `feat(ultimate-browsing): vendor insane-search engine (junk-excluded)` |
 | De-personalization | `4743199a5` (2026-06-21) |
 | Pinned upstream baseline | upstream state as of 2026-06-21, **pre-0.7.0** (0.7.0 is dated 2026-06-22) |
-| Re-vendors since | none — every later change here is ours |
+| Re-vendors from `fivetaku/insane-search` since | none — every later change here is ours |
+| Re-sourced 2026-10-08 | five files rebuilt from `code-yeongyu/lazycodex` @ `6f08c77347a68eaa87f4e7656147e8d793c9a069` (**MIT**, `Copyright (c) 2026 Yeongyu Kim`): this `AGENTS.md`, `templates/package.json`, `templates/playwright_mobile_chrome.js`, `templates/playwright_real_chrome.js`, `tests/test_playwright_templates.py`. lazycodex carries a copy of this engine; the engine's OWN origin stays `fivetaku/insane-search` (MIT) — see `../ATTRIBUTION.md` §1/§2 |
 
 We intentionally track a **pinned baseline plus local divergence**, not upstream HEAD.
 There is no submodule and no automated drift check for this engine (unlike the
@@ -65,7 +66,9 @@ is a regression, not an upgrade:
 - **De-personalization** — no personal absolute paths, no personal auth token literals,
   no personal browser choice; enforced by `depersonalization-gate.test.ts`.
 - **Skill-level layering** — the engine is Tier 1 under a router that also owns Tier 1.5
-  (agent-reach) and Tier 2 (CloakBrowser + agent-browser). Upstream has no such tiering.
+  (agent-reach) and Tier 2 (a real browser driven with agent-browser from the shell — the owned engine
+  and the attached engine, documented in [`../references/chrome-stealth.md`](../references/chrome-stealth.md)).
+  Upstream has no such tiering.
 
 ### WANT — upstream improvements worth porting forward
 
@@ -176,4 +179,4 @@ python3 -m engine URL [--selector S] [--device auto|desktop|mobile]
 - `summary.py` emits an **R7 API-first hint** after >=3 challenge verdicts against a known WAF profile: look for `/api/`, `/graphql`, or `.json` endpoints, which usually carry weaker WAF protection than the HTML surface.
 - `templates/` holds the Playwright JS templates (`playwright_real_chrome.js`, `playwright_mobile_chrome.js`) the executor drives.
 - `url_transforms.py` transforms stay domain-agnostic (`mobile_subdomain`, `am_prefix`, `drop_www`).
-- Parent: [`packages/shared-skills/AGENTS.md`](../../../AGENTS.md).
+- Parent: [this repository's root `AGENTS.md`](../../../AGENTS.md).

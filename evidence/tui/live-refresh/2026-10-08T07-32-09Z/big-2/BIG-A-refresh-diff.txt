@@ -1,0 +1,3 @@
+BIG-A1-sidebar vs BIG-A3-sidebar-plus4s: changedLines=38
+        BIG-A1-sidebar: modeLine="" header=""
+        BIG-A3-sidebar-plus4s: modeLine="" header=""

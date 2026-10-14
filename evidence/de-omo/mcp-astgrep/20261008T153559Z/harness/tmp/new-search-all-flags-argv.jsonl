@@ -1,0 +1,2 @@
+{"scenario":"search-match","applying":false,"argv":["--version"]}
+{"scenario":"search-match","applying":false,"argv":["run","-p","foo($A)","--lang","typescript","--json=stream","--strictness","ast","--selector","call_expression","--globs","*.ts","--globs","!*.test.ts","--no-ignore","hidden","--follow","src"]}

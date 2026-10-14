@@ -1,0 +1,149 @@
+{
+  "wave": "coderabbit-config",
+  "recorded_utc": "2026-10-09T15:37:41Z",
+  "artifact": {
+    "path": ".coderabbit.yaml",
+    "bytes": 9216,
+    "lines": 164,
+    "sha256": "ef55f7394a88fe8f2491a832f551b39d85834bc8378ac90314b49da697cf5460",
+    "worktree_state": "untracked (the captain is the only git writer; this seat ran no git write command)"
+  },
+  "repo": {
+    "head": "1d1b09e266a0db0354f55ccb49bb852bd8bf48de",
+    "branch": "fix/restore-wave-acceptance"
+  },
+  "toolchain": {
+    "node": "v24.21.0",
+    "bun_pinned": "1.4.0 (.toolchain/node_modules/.bin/bun)",
+    "bun_on_path": "1.4.2 (NOT used: package.json buildToolchain pins bun@1.4.0, AGENTS §6 T16)",
+    "python3": "3.11+ with PyYAML 6.0.3"
+  },
+  "research": {
+    "schema_url_documented": "https://coderabbit.ai/integrations/schema.v2.json",
+    "schema_url_measured": "301 -> https://www.coderabbit.ai/integrations/schema.v2.json (200, 78992 bytes)",
+    "schema_local_copy": "research/coderabbit-schema.v2.json",
+    "schema_sha256": "cdfdfb7e7963e6731cc18bc1509d5fed6363aaf990ca81760f9bdb9d34f6ec0c",
+    "schema_top_level_keys": ["language", "tone_instructions", "early_access", "enable_free_tier", "inheritance", "reviews", "chat", "knowledge_base", "code_generation", "issue_enrichment"],
+    "schema_top_level_additionalProperties": false,
+    "docs_read": [
+      "https://docs.coderabbit.ai/reference/configuration (full key reference, generated from the schema, last updated 2026-10-07)",
+      "https://docs.coderabbit.ai/configuration/path-instructions (path_filters/path_instructions semantics)",
+      "https://docs.coderabbit.ai/tools/reference (59-tool registry with per-tool default enablement)",
+      "https://docs.coderabbit.ai/getting-started/yaml-configuration",
+      "https://docs.coderabbit.ai/guides/configuration-overview"
+    ],
+    "local_captures": [
+      "research/md-reference-configuration.md",
+      "research/md-configuration-path-instructions.md",
+      "research/md-tools-reference.md",
+      "research/md-getting-started-yaml-configuration.md",
+      "research/md-configuration-overview.md",
+      "research/md-configuration-yaml-validator.md"
+    ],
+    "key_findings": {
+      "profile_enum": ["quiet", "chill", "assertive"],
+      "review_language_enum_includes": "en-US, zh-CN, ...",
+      "auto_review_keys": ["enabled", "description_keyword", "auto_incremental_review", "auto_pause_after_reviewed_commits", "ignore_title_keywords", "labels", "drafts", "base_branches", "ignore_usernames"],
+      "path_instructions_entry": "{path: <glob string>, instructions: <string, max 20000>}",
+      "path_filters_semantics": "Exclusions (!) win; a pattern WITHOUT ! RESTRICTS review scope to what it matches; exclusions alone keep every other path eligible",
+      "tools_registry_count": 59,
+      "tool_keys_verified_present": ["actionlint", "gitleaks", "yamllint", "trufflehog", "markdownlint", "languagetool", "eslint", "biome", "oxc", "hadolint", "shellcheck", "zizmor", "skillspector", "semgrep", "checkov", "vale", "trivy", "osvScanner"],
+      "poem_default": false,
+      "in_progress_fortune_default": true,
+      "request_changes_workflow_default": false,
+      "gitleaks_key_engine": "Betterleaks v1.8.1 (the `gitleaks` key is still the current spelling)"
+    }
+  },
+  "commands": [
+    {
+      "cmd": "python3 -c 'import yaml; yaml.safe_load(open(\".coderabbit.yaml\"))'",
+      "exit": 0,
+      "observed": "parsed OK; top-level keys: language, reviews, chat, knowledge_base; 4 path_instructions entries"
+    },
+    {
+      "cmd": ".toolchain/node_modules/.bin/bun -e 'Bun.YAML.parse(fs.readFileSync(\".coderabbit.yaml\",\"utf8\"))'",
+      "exit": 0,
+      "observed": "Bun.YAML parsed OK; keys: language,reviews,chat,knowledge_base"
+    },
+    {
+      "cmd": "git check-ignore -v .coderabbit.yaml",
+      "exit": 1,
+      "observed": "no output; exit 1 means the file is NOT gitignored (it will be committable)"
+    },
+    {
+      "cmd": "NODE_PATH=/tmp/crverify/node_modules .toolchain/node_modules/.bin/bun evidence/restore/acceptance/sF/verify-coderabbit-config.cjs <repo>",
+      "exit": 0,
+      "observed": "42/42 checks passed (ajv 8.17.1 draft-2020-12 validation: no errors; key-existence walk: no unknown keys; filters: 22950/22950 evidence files excluded; scope 998 of 23981 eligible; every path_instructions glob matched real files)",
+      "log": "verify-coderabbit-config.log",
+      "deps": "ajv 8.17.1 + fast-uri 3.0.6 + minimatch 9.0.5 fetched from registry.npmjs.org into /tmp for the run; no repository file added"
+    },
+    {
+      "cmd": ".toolchain/node_modules/.bin/bun run verify:gates",
+      "exit": 0,
+      "observed": "8/8 member gate(s) green (vendor, dist-fresh, rows-parity, docs-parity, preset-conformance, plugin-manifest, comment-coverage, workflows)",
+      "log": "verify-gates.log"
+    },
+    {
+      "cmd": "node scripts/verify-workflows.ts",
+      "exit": 0,
+      "observed": "audited 2 workflow file(s) under .github/workflows; PASS - every workflow is loadable YAML with a sane job/step shape",
+      "log": "verify-workflows.log"
+    },
+    {
+      "cmd": "minimatch 9.0.5 glob probe (research/minimatch-glob-probe.log)",
+      "exit": 0,
+      "observed": "**/* does NOT match .github/workflows/gates.yml; dist/** does NOT match packages/<pkg>/dist/index.js; braces {a,b} expand"
+    }
+  ],
+  "decisions": [
+    {"key": "language", "value": "en-US", "reason": "agent-facing content (manual, code comments, QA logs, evidence) is English-only by binding policy; zh-CN files are a doc-pair artifact"},
+    {"key": "reviews.profile", "value": "assertive", "reason": "path_instructions encode binding rules no generic linter knows; request_changes_workflow=false means the extra comments cannot block anything"},
+    {"key": "reviews.request_changes_workflow", "value": false, "reason": "the repository's own gates decide merges; a bot must not block one"},
+    {"key": "reviews.auto_review.base_branches", "value": ["^dev$"], "reason": "PRs target dev; master only receives releases and is the repository default branch"},
+    {"key": "reviews.auto_review.drafts", "value": false, "reason": "a draft is a wave in flight; this repository's contract is a READY PR (bilingual description, gates run, evidence committed)"},
+    {"key": "reviews.path_filters", "value": ["!evidence/**", "!evidence/**/.*", "!evidence/**/.*/**", "!.mpd/**", "!dist/**", "!packages/*/dist/**", "!VENDOR_LOCK.json"], "reason": "exclusions only (documented way to keep everything else eligible); the two extra evidence patterns close the 92 dot-segment files minimatch's dot:false leaves behind; packages/*/dist/** added because dist/** is root-anchored"},
+    {"key": "reviews.path_instructions[0]", "value": "packages/*/src/**", "reason": "erasable syntax, .ts specifiers, import type, comment+signature contract (AGENTS §6 / verify:comments)"},
+    {"key": "reviews.path_instructions[1]", "value": "skills/**", "reason": "ONE re-pin per wave, in the same commit as the change that invalidated treeSha (AGENTS §9/§11)"},
+    {"key": "reviews.path_instructions[2]", "value": "{docs/**,README*.md,packages/*/README*.md,extensions/**/README*.md,templates/**/README*.md}", "reason": "bilingual pair, both halves in one commit, exactly the band verify:docs discovers"},
+    {"key": "reviews.path_instructions[3]", "value": "{docker/**,scripts/docker-e2e.ts,.github/workflows/**}", "reason": "exit-code contract: a SKIP exits 0, --require-docker turns a skip into exit 3"},
+    {"key": "reviews.tools.actionlint", "value": true, "reason": ".github/workflows/** gained a nightly real-machine lane"},
+    {"key": "reviews.tools.gitleaks", "value": true, "reason": "the evidence tree is COMMITTED, so a credential in a log is a release blocker"},
+    {"key": "reviews.tools disabled", "value": ["markdownlint", "languagetool", "eslint", "biome", "oxc"], "reason": "no in-repo config exists for any of them; this repository's docs and TypeScript are policed by its own gates, so their findings would be a foreign standard"},
+    {"key": "chat.auto_reply", "value": false, "reason": "PR threads carry human-to-human and captain-to-agent instructions; the bot still answers when mentioned"},
+    {"key": "knowledge_base.code_guidelines.filePatterns", "value": ["AGENTS.md", "CONTRIBUTING.md"], "reason": "AGENTS.md is the binding manual (named explicitly so a default change cannot drop it); CONTRIBUTING.md carries the branch/commit/PR contract"},
+    {"key": "reviews.in_progress_fortune", "value": false, "reason": "decorative walkthrough noise on a rules-driven review surface"}
+  ],
+  "scope_measurement": {
+    "tracked_files_total": 23981,
+    "eligible_for_review": 998,
+    "excluded": 22983,
+    "excluded_breakdown": {"evidence/": 22950, "packages/*/dist/": 32, "VENDOR_LOCK.json": 1},
+    "fully_eligible_trees": {
+      "skills/**": 365,
+      "packages/*/src/**": 140,
+      "packages/*/test/**": 109,
+      "docker/**": 70,
+      "docs/**": 66,
+      "scripts/**": 30,
+      "extensions/**": 7,
+      "templates/**": 7,
+      ".github/workflows/**": 2
+    }
+  },
+  "final_state_reverification": {
+    "note": "verify:gates was re-run AFTER every evidence artifact of this wave (including this file) was on disk, so the green result covers the frozen state and not an earlier one",
+    "cmd": ".toolchain/node_modules/.bin/bun run verify:gates",
+    "exit": 0,
+    "observed": "8/8 member gate(s) green",
+    "artifact_sha256_at_that_moment": "ef55f7394a88fe8f2491a832f551b39d85834bc8378ac90314b49da697cf5460",
+    "log": "verify-gates-final.log"
+  },
+  "bounds": [
+    "NOT VERIFIED: CodeRabbit's server-side acceptance. Nothing here proves the service reads this file, that the schema is the one it enforces, or that the path filters behave as minimatch does. The first real signal is the bot's response on PR #30 (base dev).",
+    "NOT VERIFIED: whether CodeRabbit matches path_filters/path_instructions with minimatch's default dot:false. The docs NAME minimatch; the dot risk was reasoned and defended against (an excludes-only filter plus explicit dot patterns), not observed on the service.",
+    "NOT VERIFIED: whether the secret scanner sees the evidence tree at all. path_filters exclude evidence/** from REVIEW, but the docs state tools 'may see a different file set' (sparse-checkout vs review matching), so gitleaks coverage of evidence/ is unknown in both directions. The standing grep -rlE rule remains the only measured coverage there.",
+    "NOT VERIFIED: pre_merge_checks.docstrings (default mode=warning, threshold=80) may post a coverage warning that overlaps, but is not defined like, this repository's verify:comments AST gate. Its semantics for TypeScript were not verified, so no key was written for it - reported as a watch item instead.",
+    "NOT VERIFIED: gitleaks/trufflehog detection quality on this repository's log formats; only the KEY NAMES were verified against the published schema.",
+    "The checker validates the config against the schema published at the URL above at the measured moment; CodeRabbit can change the schema at any time."
+  ]
+}

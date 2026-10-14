@@ -25,7 +25,7 @@
 // IDENTITY is the one thing the team service does not forward: `request` is `{ prompt, parent }` and
 // the member's name survives only as the descriptor LABEL (the teammate's `description`). See
 // `route.ts` for the matching rule and its conservatism.
-import { rowLogLine, DSH_SEAM_SUBAGENTS, dshSeamInject, type DshAdapter, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { rowLogLine, DSH_SEAM_SUBAGENTS, dshSeamInject, withSupportedEffort, type DshAdapter, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 // THE single declaration of which member a slot routes. Imported rather than restated: the slots'
 // membership is a contract shared with both settings front doors, and a second copy here is exactly
 // how a routing table drifts from the one the user edits.
@@ -115,6 +115,39 @@ export function apply(ctx: any, config: RosterProviderConfig = {}): void {
     }
   }
 
+  /**
+   * The member's route from the config service's FULL precedence chain (R2: `agentRoutes[name]` >
+   * `teamModels.slot{N}` > built-in defaults), resolved PER CALL.
+   *
+   * The service lookup alone is guarded: a `teamModelRouteOf` that THROWS (a malformed
+   * `agentRoutes` entry, an incomplete slot) must reach the captain unchanged — the spawn fails
+   * loudly naming the member, never silently substituted — which is the same registered contract
+   * `routeForMember` enforces on the slot-only path.
+   *
+   * @param member - the roster member's functional name.
+   * @returns the precedence-resolved route, or `undefined` when no config service is mounted (the
+   *   slot fallback below then stands, exactly as before this wave).
+   */
+  const liveRouteOf = (member: string): SlotRoute | undefined => {
+    /** The runtime config service, or undefined when the composition mounts none. */
+    let service: { teamModelRouteOf?: (m: string) => unknown } | undefined
+    try {
+      service = (typeof ctx?.get === "function" ? ctx.get("mpdConfig") : undefined) as { teamModelRouteOf?: (m: string) => unknown } | undefined
+    } catch {
+      // A config service that refuses the lookup reads as ABSENT, never as a boot failure.
+      return undefined
+    }
+    if (typeof service?.teamModelRouteOf !== "function") return undefined
+    // Deliberately NOT wrapped: the service's loud route errors propagate to the spawn.
+    const value = service.teamModelRouteOf(member) as { provider?: unknown; model?: unknown; reasoningEffort?: unknown } | undefined | null
+    if (value === undefined || value === null || typeof value !== "object") return undefined
+    return {
+      provider: String(value.provider ?? ""),
+      model: String(value.model ?? ""),
+      ...(typeof value.reasoningEffort === "string" && value.reasoningEffort !== "" ? { reasoningEffort: value.reasoningEffort } : {}),
+    }
+  }
+
   /** The names a label may match: the union of the slots' member lists. */
   const knownNames = (): string[] => Object.values(TEAM_MODEL_SLOT_GROUPS).flatMap((group) => [...group.members])
 
@@ -144,12 +177,18 @@ export function apply(ctx: any, config: RosterProviderConfig = {}): void {
    * The route one teammate takes, resolved from the descriptor label.
    *
    * A member the label does not name — or one the roster does not slot-route — inherits the Lead's
-   * route, which is the behaviour every teammate had before this row existed.
+   * route, which is the behaviour every teammate had before this row existed. A member the label
+   * DOES name resolves through the config service's precedence chain first (R2: `agentRoutes` >
+   * slot > defaults, PER CALL so a saved route reaches the NEXT teammate), and only falls back to
+   * the local slot read when no config service is mounted.
    */
   const routeFor = (request: RoutableRequest): SlotRoute | undefined => {
     /** The roster member the label names, or undefined when it names none. */
     const member = memberFromLabel(labelOf(request), knownNames())
     if (member === undefined) return undefined
+    /** The precedence-resolved route from the live config service, when it serves one. */
+    const live = liveRouteOf(member)
+    if (live !== undefined) return live
     return routeForMember(member, slotOf(member), slotsNow())
   }
 
@@ -170,7 +209,7 @@ export function apply(ctx: any, config: RosterProviderConfig = {}): void {
       return base.prepareContinuable(request)
     },
     /** Apply the member's route to the request, then start the run on the composition's provider. */
-    start(request: unknown): unknown {
+    async start(request: unknown): Promise<unknown> {
       /** The composition's own provider, resolved fresh so a late registration is still seen. */
       const base = baseProvider()
       if (base === undefined || typeof base.start !== "function") {
@@ -180,7 +219,16 @@ export function apply(ctx: any, config: RosterProviderConfig = {}): void {
       const routable = request as RoutableRequest
       // A route resolution that THROWS (an incomplete slot) must reach the captain unchanged: the
       // spawn fails loudly, naming the member and the slot, and nothing is silently substituted.
-      const routed = applyRoute(routable, routeFor(routable))
+      const resolved = routeFor(routable)
+      // THE MODEL-CAPABILITY ADAPTATION: a slot is read MATERIALISED over its schema defaults, so a
+      // teammate routed onto a model whose catalog entry declares no reasoning efforts at all would be
+      // handed a keyword the provider cannot accept and its own call would fail. `withSupportedEffort`
+      // drops exactly that keyword (logging it) and leaves every other route untouched — including an
+      // unsupported effort on a model that DOES declare efforts, which stays a visible config error.
+      /** The route as this teammate's run will actually send it. */
+      const route = await withSupportedEffort(dsh, resolved)
+      /** The request with that route applied; identity means "no route", i.e. inheritance. */
+      const routed = applyRoute(routable, route)
       if (routed !== routable) {
         /** The options the harness will actually run on, logged so a wrong label is visible at spawn time. */
         const options = routed.agentOptions ?? {}

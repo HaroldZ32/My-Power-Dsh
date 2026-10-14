@@ -11,6 +11,12 @@ over at the previous HEAD). The block below is reproduced VERBATIM — its byte 
 recorded in `evidence/gates/agents-budget/20261006T085805Z/result.json`. `AGENTS.md` §13 carries the BINDING rules and points
 here for the full body; where the two differ, the manual wins.
 
+**LIVE AMENDMENT (2026-10-13, team-model slot):** the verbatim block below still reproduces the
+2026-10-06 text, and its effort rule gained ONE adaptation afterwards — a slot whose model declares NO
+reasoning efforts at all in the live catalog is sent none (the adapter's `withSupportedEffort` drops
+the keyword and logs it), so a materialised slot default cannot fail a call no configuration error
+caused. `AGENTS.md` §13 carries the binding wording; the block below is history.
+
 ## The former §13 body (verbatim)
 
 ## 13. Glossary
@@ -30,13 +36,16 @@ here for the full body; where the two differ, the manual wins.
   (`spawn_teammate`, whose persona the captain takes from `mpd_role_persona`). The eleven members are
   addressed by NAME and described by what they do — Architect, Researcher, Planner, Deep Worker, Senior
   Engineer, Lead, Explorer, Reviewer, Plan Reviewer, Vision Analyst, Junior Engineer. The stable `id`
-  (chain key, `personas/<id>.md`, workmate `meta.baseId`) is INTERNAL: accepted for compatibility,
-  exposed by NO tool output, description, render, web route or GUI. The **read-only discipline is the exported deny list** —
-  exactly seven names, identical in `mpd-roles-plugin` and `mpd-workmate-plugin` (asserted equal by
+  (chain key, `personas/<id>.md`, workmate `meta.baseId`) is INTERNAL: **refused as tool INPUT** (the
+  tools accept a NAME spelling only; the internal `mpdRoles.get` service path still resolves the id for
+  chain lookup and legacy callers), and exposed by NO tool output, description, render, web route or GUI. The **read-only discipline is the exported deny list** —
+  exactly eight names, identical in `mpd-roles-plugin` and `mpd-workmate-plugin` (asserted equal by
   `roles.test.ts`): `write`, `edit`, `mpd_hashline_edit`, `bash`, `mcp__ast_grep__rewrite`,
-  `mcp__ast_grep__scan`, `mcp__lsp__rename`. `bash` is denied on purpose (a shell can write files);
-  `read`/`glob`/`grep` stay available. Enforced TWO ways that must keep agreeing: the one-shot path
-  passes it as `toolFilter.deny` to `mpd_role_spawn`, and a tool GUARD denies the same seven names for a
+  `mcp__ast_grep__scan`, `mcp__lsp__rename_symbol`, `mcp__lsp__rename_symbol_strict` (cclsp's own two
+  rename tools, which replaced the single `mcp__lsp__rename` in de-omo wave B2). `bash` is denied on
+  purpose (a shell can write files); `read`/`glob`/`grep` stay available. Enforced TWO ways that must
+  keep agreeing: the one-shot path passes it as `toolFilter.deny` to `mpd_role_spawn`, and a tool GUARD
+  denies the same eight names for a
   live Team teammate whose name normalises to a read-only roster member — the official `spawn_teammate`
   accepts no per-teammate tool filter. **Do NOT re-add
   `str_replace_editor` or `apply_patch`**: both
@@ -46,6 +55,27 @@ here for the full body; where the two differ, the manual wins.
   proof of runtime registration, and `dsh --dump-config` composes rows without mounting them). Do not
   filter the list with `dsh.hasTool` either: it reads the global tool view, where `write`/`edit`/`bash`
   answer false, so filtering would silently DROP the entries that are the guarantee.
+  **Since 2026-10-10 the harness's own validation is TOLERATED, not fatal (the F2 repair):** the list stays
+  canonical and is still never pre-filtered, but a spawn applies it through the adapter's
+  `restrictToolsTolerant` (`packages/mpd-dsh-adapter-plugin/src/index.ts`), which lets `tools.restrict()`
+  prune the names it reports as unknown (`names unknown global tools "…"`), retries EXACTLY ONCE with the
+  survivors and rethrows any second failure. Measured 2026-10-10 before the repair: the two
+  `mcp__lsp__*` entries made the harness reject the WHOLE list on a profile without `cclsp`, so every
+  read-only `mpd_role_spawn` died and the captain fell back to the official `subagent` tool — which the
+  new delegation gate (below, `delegation.gate`) now refuses. The one-shot path hands the CHILD the
+  PRUNED list as `toolFilter.deny`; a pruned name is reported once on the row's log.
+- delegation gate: the `tools.guard` rule that makes §5 rule 2's delegation discipline MECHANICAL —
+  `packages/mpd-roles-plugin/src/delegation-gate.ts` refuses a call to `subagent`, `subagent_fork` or
+  `workflow` and names the sanctioned routes (`mpd_role_spawn`, `mpd_workmate_match` +
+  `mpd_workmate_spawn`, Agent Teams, `send_message`). The knob is `delegation.gate` in `mpd.jsonc`:
+  `"deny"` (DEFAULT — the captain AND every member session), `"captain"` (the top-level session only) or
+  `"allow"`; anything else reads as `deny`, and the mode is read PER CALL. It is keyed on §5's preset-free
+  `sessionRank`, so it holds for any session in a workspace that mounts this bundle — the live top-level
+  session on this deployment runs a preset the bundle does not own (`cordis`), which is why preset-plane
+  omission is NOT the mechanism. Boot line: `delegationGate=<mode>` (or `delegationGate=absent reason=…`).
+  **Honest bound:** the guard reads the tool CALL at dispatch; it cannot stop a model from TRYING another
+  tool, and a profile without this bundle has no gate at all. Live evidence:
+  `evidence/roles/delegation-gate/`.
 - team-model slot: one of the four configurable default model routes of the ROSTER members —
   `teamModels.slot{1,2,3,4}.{provider,model,reasoningEffort}` in `mpd.jsonc` / the `mpd` settings
   namespace, whose defaults are `deepseek-official` / `deepseek-v4-flash` at `max`/`high`/`high`, plus
@@ -96,11 +126,20 @@ A seat is bound with `mpd_verify_seat {loop_id, role:"verifier"}`, which is idem
 and which REFUSES a caller that is the loop's own writer. From that moment:
 
 - **DENIED outright**: the shell (`bash`, `powershell`, `pwsh`); the source-returning tools
-  (`mcp__codegraph__codegraph_explore`, the whole `mcp__lsp__*` family, `mcp__ast_grep__rewrite`,
-  `mcp__ast_grep__scan`, `mcp__lsp__rename`); and every `agent_teams_*` / `mpd_*` board or team MUTATION —
+  (`mcp__codegraph__codegraph_explore`, cclsp's query family — `find_definition`, `find_references`,
+  `find_implementation`, `get_diagnostics`, `get_hover`, `find_workspace_symbols`,
+  `prepare_call_hierarchy`, `get_incoming_calls`, `get_outgoing_calls` — `mcp__ast_grep__rewrite`,
+  `mcp__ast_grep__scan`, and cclsp's two renames `mcp__lsp__rename_symbol` /
+  `mcp__lsp__rename_symbol_strict`); and every `agent_teams_*` / `mpd_*` board or team MUTATION —
   with `mpd_verify_*` explicitly exempt, because those five tools ARE the seat's job.
 - **PATH-SCOPED while BLIND**: `read` / `glob` / `grep` pass only under the loop's frozen `basis.docs[]`,
-  `<ws>/.mpd/plans/**`, `<ws>/docs/**`, `<ws>/agent-references/**` and `<ws>/.mpd/verify/**`. A BARE path
+  `<ws>/.mpd/plans/**`, `<ws>/docs/**`, `<ws>/agent-references/**`, `<ws>/.mpd/verify/**` and
+  `<ws>/evidence/**`. MEASURED 2026-10-08: the mounted guard's own bare-path refusal names `evidence/` in
+  the live band, and a `glob {path:"evidence", pattern:"…"}` is ANSWERED (it reports no matches, not a
+  refusal). An earlier revision of this line OMITTED `evidence/**`, and a bound seat concluded from the
+  omission that it could not read a writer's evidence packet at all — it retracted after re-measuring, but
+  the wrong conclusion had already been broadcast to writers and into a wave contract. Do not re-narrow
+  this list without re-measuring the guard. A BARE path
   argument is refused, because the tool's default path is the whole workspace and that includes the
   implementation.
 - **WRITE confined** to `<ws>/.mpd/verify/**`. A verifier never fixes what it found: the record tool writes

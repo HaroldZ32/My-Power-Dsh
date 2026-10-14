@@ -1,0 +1,9 @@
+### verify:comments
+scanned 376 TypeScript file(s) of 376 in the source set; inspected 32964 declaration(s); skipped 14761 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+exit=0
+### verify-dist-fresh
+  FRESH   packages/mpd-mcp-astgrep/dist/cli.js  sha ddf7111ed8a8… 18ms  <- packages/mpd-mcp-astgrep/src/cli.ts
+  FRESH   packages/mpd-mcp-astgrep/dist/launch.js  sha 8ebf954663eb… 15ms  <- packages/mpd-mcp-astgrep/src/launch.ts
+exit=0

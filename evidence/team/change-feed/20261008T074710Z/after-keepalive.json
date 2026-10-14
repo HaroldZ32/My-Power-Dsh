@@ -1,0 +1,55 @@
+{
+  "url": "http://127.0.0.1:3200/plugins/mpd-team/events?sessionId=sess-lane-s",
+  "how": "ONE boot on port 3200 serving the fixture workspace; three captures of the same route — the head by `curl -D`, a raw 22 s `curl -i -N`, and a live frame timeline",
+  "headerCapture": {
+    "file": "after-keepalive-headers.txt",
+    "curlExit": 28,
+    "curlExitNote": "exit 28 is the `--max-time 2` that ends a stream which never ends on its own",
+    "headers": {
+      "content-type": "text/event-stream; charset=utf-8",
+      "cache-control": "no-store, no-transform",
+      "connection": "keep-alive",
+      "x-accel-buffering": "no"
+    },
+    "allFourPresent": true,
+    "headBlock": "HTTP/1.1 200 OK\r\ncontent-type: text/event-stream; charset=utf-8\r\ncache-control: no-store, no-transform\r\nconnection: keep-alive\r\nx-accel-buffering: no\r\nDate: Thu, 08 Oct 2026 08:15:06 GMT\r\nTransfer-Encoding: chunked\r\n\r\n"
+  },
+  "rawCapture": {
+    "file": "after-keepalive-body.txt",
+    "curlExit": 28,
+    "elapsedMs": 22013,
+    "bytes": 269,
+    "carriesHead": true,
+    "carriesHello": true,
+    "carriesPing": true,
+    "pingLines": 1,
+    "idleSeconds": 22,
+    "over16s": true
+  },
+  "liveTimeline": {
+    "file": "after-keepalive-sse.txt",
+    "openedAt": 1791447330495,
+    "helloAt": 1791447330500,
+    "helloText": "event: hello\ndata: {\"rev\":0}\n\n",
+    "pingAt": 1791447345501,
+    "pingText": ": ping\n\n",
+    "idleGapMs": 15001,
+    "idleGapAtLeastPingInterval": true,
+    "framesBeforePing": 2,
+    "changeFramesBeforePing": 0,
+    "everyFrame": [
+      {
+        "offsetMs": 5,
+        "text": "retry: 1000\n\n"
+      },
+      {
+        "offsetMs": 5,
+        "text": "event: hello\ndata: {\"rev\":0}\n\n"
+      },
+      {
+        "offsetMs": 15006,
+        "text": ": ping\n\n"
+      }
+    ]
+  }
+}

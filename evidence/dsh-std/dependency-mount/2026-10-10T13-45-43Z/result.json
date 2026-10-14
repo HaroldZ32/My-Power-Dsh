@@ -1,0 +1,129 @@
+{
+  "wave": "dsh-std dependency v2 — `@dsh-std/sdk` declared, `@dsh-std/adapter-dsh` removed",
+  "contract": ".mpd/plans/dsh-std-dependency.md (v2 — the frozen acceptance spec)",
+  "branch": "feature/dsh-std-dependency",
+  "base_revision": "d76d3bec83213fde6aebb7e218dcba3c6aaf44c8",
+  "generated_at": "2026-10-10T14:25:00Z",
+  "verdict": "PASS on the wave's scope (8/8 named gates exit 0, all 7 acceptance criteria met); the Docker lane exits 3 for two causes OUTSIDE the wave and its subject assertion is GREEN",
+  "frozen_tree": {
+    "file": "frozen-tree.txt",
+    "last_write_utc": "2026-10-10T13:47:08Z",
+    "first_gate_utc": "2026-10-10T13:47:22Z",
+    "docker_run2_started_utc": "2026-10-10T14:10:18Z",
+    "note": "every gate and both Docker runs started after the last write to a tracked file"
+  },
+  "changed_files": [
+    { "path": "package.json", "sha256": "20f5fd6c2d9e69bada45001ef12aaaaa2ffdef87160554665a81ca0cd040f885", "diff": "+1 pin `@dsh-std/sdk@0.1.1-rc.2` in dependencies; the v1 `@dsh-std/adapter-dsh` pin is gone" },
+    { "path": "bun.lock", "sha256": "9bf36b0184bbe4131586b45e4983a8761f2a10b35c417b868f8764126074460c", "diff": "11 insertions, 0 deletions: the root pin + sdk/core/lifecycle/manifest/composition" },
+    { "path": "LICENSE-NOTICES.md", "sha256": "0190319224c359006efa6a81abb24ad40b590ce116f92c77f0093554e576005c", "diff": "the `## @dsh-std/*` section rewritten: sdk = the declared dependency; adapter = optional self-install, explicitly NOT a dependency" },
+    { "path": "docs/user-guide.md", "sha256": "cfb6805fe8869cb2662b2205fbddec073e5e18665c5f61a2914c65e52f234afc", "diff": "§14 row now names sdk as the one DSH-STD dependency; new §14.1 documents the adapter's optional self-install + the 0.2.0-rc.2 allow-version prerequisite" },
+    { "path": "docs/user-guide.zh-CN.md", "sha256": "28ceb158559fb8974ecc41e69e1b53e5deb25ef2e555403ec6c71be6af87e310", "diff": "the same two edits in 简体中文; heading tree identical to the English file" }
+  ],
+  "untouched_proof": {
+    "cordis.patch.yml": "git diff = 0 bytes (the v1 `dsh-std-adapter` insert block and its comment are gone; file back to 713 lines, ends at the mcp-grepapp row)",
+    "scripts/install-profile.ts": "git diff = 0 bytes (the captain's revert holds)",
+    "out_of_scope_clean": "git status shows NO modification under presets/, packages/, skills/, VENDOR_LOCK.json, scripts/",
+    "bun_stray_dir": ".bun/ removed (resolved path checked before rm); the orphan node_modules symlinks `@dsh-std/adapter-dsh` (top level and in the isolated store) removed; `bun pm ls` now lists only @dsh-std/sdk"
+  },
+  "gates": {
+    "verify:manifest": { "command": ".toolchain/node_modules/.bin/bun run verify:manifest", "exit": 0, "log": "verify-manifest.log", "observed": "VERDICT: PASS — the install-time rules and the packaging contract hold (npm pack --dry-run lists 952 files, 27 row module paths resolve)" },
+    "verify:rows": { "command": ".toolchain/node_modules/.bin/bun run verify:rows", "exit": 0, "log": "verify-rows.log", "observed": "ok: 35 row ids match the 2-file bundle patch layer (v1 was 36 — `dsh-std-adapter` is gone and the installer parity is green because scripts/install-profile.ts carries no adapter row)" },
+    "verify:docs": { "command": ".toolchain/node_modules/.bin/bun run verify:docs", "exit": 0, "log": "verify-docs.log", "observed": "root=… pairs=47 failed=0 violations=0 exempt=24 derived=3 links=430 dead=0 — PASS" },
+    "no-host-override": { "command": "node scripts/verify-no-host-override.ts", "exit": 0, "log": "no-host-override.log", "observed": "PASS: every id-target is bundle-owned (0 of 0 collide with the 205 host-declared row ids)" },
+    "preset-conformance-self-test": { "command": "node skills/dsh-qa/scripts/preset-conformance.ts --self-test", "exit": 0, "log": "preset-conformance-selftest.log", "observed": "ok: 32 harness rows conform against the installed schemas (6 declare no schema), persona prefix=true, mpd preset 28 child rows, row parity 26/25 (negative controls: 4/4 reddened)" },
+    "tests": { "command": ".toolchain/node_modules/.bin/bun test packages", "exit": 0, "log": "tests.log", "observed": "1767 pass, 3 skip, 0 fail, 23602 expect() calls — Ran 1770 tests across 111 files. [21.12s]" },
+    "typecheck": { "command": ".toolchain/node_modules/.bin/bun run typecheck", "exit": 0, "log": "typecheck.log", "observed": "$ tsgo --noEmit — no diagnostics" },
+    "dist-fresh": { "command": "node scripts/verify-dist-fresh.ts", "exit": 0, "log": "dist-fresh.log", "observed": "build toolchain: bun 1.4.0 from the repository toolchain; ok: 31/31 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED (the sha-pinned vendored codegraph server) — 632ms" }
+  },
+  "lock_regeneration": {
+    "command": "TMPDIR=$PWD/.bun-tmp/tmp BUN_TMPDIR=$PWD/.bun-tmp/tmp BUN_INSTALL_CACHE_DIR=$PWD/.bun-tmp/cache .toolchain/node_modules/.bin/bun install",
+    "exit": 0,
+    "observed": "bun install v1.4.0 (34cbb9a40) / Saved lockfile / 1 package removed [32.00ms]",
+    "log": "bun-install.log",
+    "coherence_recheck": { "command": ".toolchain/node_modules/.bin/bun install --frozen-lockfile --dry-run", "exit": 0, "log": "lock-frozen-check.log" },
+    "audit_file": "lock-audit.txt",
+    "adapter_occurrences": 0,
+    "forbidden_family_keys": [],
+    "remaining_dsh_std_keys": ["@dsh-std/composition", "@dsh-std/core", "@dsh-std/lifecycle", "@dsh-std/manifest", "@dsh-std/sdk"],
+    "zod": "ONE zod RESOLUTION entry remains (`zod@4.6.5`, line 1072) — and it is BYTE-IDENTICAL to the dev baseline (line 1061 of git show HEAD:bun.lock): a transitive dependency of the `@deepseek-ai/*` harness packages. ZERO zod references remain inside any `@dsh-std/*` row; the adapter row that carried `\"zod\": \"^4.4.3\"` left the lock with the adapter. This wave's whole lockfile diff is +11 lines and contains no zod line."
+  },
+  "composition_sanity": {
+    "command": "HOME=<sandbox>/userhome DSH_HOME=<sandbox>/home node scripts/dump-config.ts --profile web",
+    "sandbox": ".qa-reloc/dsh-std-dump-v2/ (rebuilt fresh; the v1 sandbox at .qa-reloc/dsh-std-dump/ is left untouched)",
+    "sandbox_installer": "node scripts/install-profile.ts --yes --profile web --dsh-home <sandbox>/home --skip-toolchain  -> exit 0, 35 rows, no adapter row",
+    "exit": 0,
+    "log": "dump-config-web.log",
+    "observed": "218 composed rows; ZERO rows named dsh-std-adapter and ZERO rows named @dsh-std/adapter-dsh; the only 'dsh-std' strings in the log are the sandbox path itself",
+    "corroboration": "git grep 'dsh-std-adapter' over the whole tracked tree -> NONE; `adapter-dsh` survives only as prose in LICENSE-NOTICES.md and the two user guides (adapter-residue-scan.txt)"
+  },
+  "docker_lane": {
+    "subject": "node scripts/docker-e2e.ts --mode source",
+    "verdict": "INSTALL REGRESSION PROVEN GONE — but the lane EXITS 3 on this machine for two causes outside the wave",
+    "finding_file": "docker-lane-finding.txt",
+    "run1": { "stamp": "evidence/docker/client-install/2026-10-10T13-48-39Z", "exit": 3, "failed": ["harness.version"], "cause": "STEP 05-dsh: `npm i -g @deepseek-ai/dsh@0.2.0-rc.2` KILLED BY THE 900s STEP BUDGET (exit=124) against the official registry; the harness never landed and nothing of this bundle was graded" },
+    "run2": {
+      "stamp": "evidence/docker/client-install/2026-10-10T14-10-18Z",
+      "invocation": "MPD_E2E_NPM_REGISTRY=https://repo.huaweicloud.com/repository/npm/ node scripts/docker-e2e.ts --mode source",
+      "why_the_knob": "documented in docker/docker-compose.yml for exactly the run-1 failure mode: the transport is not what the lane grades, the INSTALL is; a mirror cannot change what the install assertions measure and the entrypoint records the registry actually used",
+      "exit": 3,
+      "summary": { "total": 118, "passed": 74, "failed": 3, "null": 41 },
+      "wave_subject_GREEN": {
+        "harness.version": "PASS — npm i -g then 'dsh --version' printed the pin exactly",
+        "install.exit": "PASS — one command installed the bundle into the profile (v1: FAIL)",
+        "install.buildScripts": "PASS — 'the client install completed with NO unapproved build script: exit 0, no ERR_PNPM_IGNORED_BUILDS anywhere in the install output, no ignored-build-scripts warning, and the 2 installed closure root(s) were walked for manifests declaring preinstall/install/postinstall/prepare (0 found)' (v1: FAIL)",
+        "install.profileDep": "PASS — the profile links the checkout and keeps the box bundles",
+        "install.installedTree": "PASS — the installed bundle resolves inside the profile",
+        "compose.mpdRows": "PASS — mpd host rows compose as INSERTS, zero column-0 id-targets",
+        "boot.*": "PASS ×14 of 15 — a real MOUNT: adapter service + adapter tool call, mpd tools, MCP tools, agent-team tools, session-gate listener, TeamService, HTTP 200, agentPreset=mpd, no fatal signatures, workspace registered. The 15th (boot.llmTurn) is NULL by design: a live LLM turn needs credentials and the container stages none (AGENTS.md §10)",
+        "others": "PASS qa.readonlyDeny, qa.mcpCallEngine, boot.mcpLiveSearch"
+      },
+      "failed": {
+        "pack.licenceCoherence": "the pack artifact's LICENSE-NOTICES.md predates this wave's doc edit",
+        "pack.staticCoherence": "14 differing files — 11 of them belong to other work",
+        "pack.distFreshRebuild": "3 differing built entries, none of them touched by this wave; both sides under the declared bun@1.4.0"
+      },
+      "failed_cause": "all three grade the GITIGNORED local release artifact `dist/mpd-package/`, cut 2026-10-10 10:09 (before this wave). pack-staleness-audit.txt compares all 608 packed files against HEAD by git blob hash: 593 identical, 12 different — and 11 of those 12 are files this wave never touched (agent-references/glossary.md, agent-references/verification-flow.md, packages/mpd-bundle-plugin/client.js, packages/mpd-dsh-adapter-plugin/dist/index.js, packages/mpd-roles-plugin/README.md, packages/mpd-roles-plugin/README.zh-CN.md, packages/mpd-roles-plugin/dist/index.js, packages/mpd-workmate-plugin/dist/index.js, presets/mpd.patch.yml, skills/dsh-qa/SKILL.md, skills/dsh-qa/scripts/readonly-deny.ts). The lane was therefore ALREADY red here before this wave.",
+      "null_required_arms": {
+        "arms": ["ui.loads", "ui.workspaceSelected", "ui.composerPresent", "ui.promptSent", "ui.replyRendered", "ui.mpdSettingsSection", "ui.teamPanel", "ui.noConsoleErrors"],
+        "cause": "the Playwright browser download timed out against the CDN: 'Request to https://playwright.azureedge.net/builds/chromium/1148/chromium-linux.zip timed out after 30000ms' ... 'Failed to install browsers' -> 'the browser toolchain did not install (npm/npx exit 1)'",
+        "why_that_is_exit_3": "scripts/docker-e2e.ts:1132-1136 — the browser lane is REQUIRED unless `--no-browser` is passed, and a required-but-unmeasured arm is exit 3. docker-compose.yml forwards only the env vars it names (no PLAYWRIGHT_DOWNLOAD_HOST), so a Playwright mirror cannot be injected without editing docker/**."
+      }
+    },
+    "conclusion": "The lane's exit code cannot be 0 on this machine for causes outside the wave (blocked Playwright CDN; a stale gitignored release artifact dominated by other work). The assertion the wave exists to answer is GREEN. Refreshing dist/mpd-package would not have produced exit 0 either, and editing docker/** is out of scope — so this is reported, not absorbed."
+  },
+  "acceptance_criteria": {
+    "1_manifest_single_pin_patch_and_installer_clean_bun_gone": "MET",
+    "2_lock_coherent_adapter_and_family_gone": "MET (see lock_regeneration; the one remaining zod entry is a pre-existing harness transitive, byte-identical to the dev baseline)",
+    "3_attribution_and_adapter_self_install_in_all_three_docs_verify_docs_green": "MET",
+    "4_eight_named_gates_green": "MET (8/8 exit 0)",
+    "5_docker_install_regression_proven": "MET as to its SUBJECT (install.* and boot.* all PASS where v1 reddened); the lane's exit code is 3 for two out-of-scope causes documented above",
+    "6_composition_shows_no_adapter_row": "MET",
+    "7_evidence_under_evidence_dsh_std_dependency_mount": "MET — this directory"
+  },
+  "deviations": [
+    "The Docker lane was run TWICE and the second run sets MPD_E2E_NPM_REGISTRY (the documented knob). The bare invocation named by the contract is run 1, which is captured and reported as exit 3 with its cause.",
+    "Additional host-side cleanup beyond the letter of the scope: two ORPHAN node_modules symlinks for @dsh-std/adapter-dsh were removed after `bun install` pruned the lock entry but left the links behind. node_modules is gitignored and the change is visible in `bun pm ls` (now sdk only).",
+    "The v1 parenthetical noting that the published @dsh-std manifests spell their repository as github.com/Yan-Zero/dsh-std was DROPPED from the revised LICENSE-NOTICES section (it is still true — measured on the installed sdk manifest — but the v2 contract asks for the T-Auto upstream citation, and the notices now cite that one)."
+  ],
+  "not_proven": [
+    "The Docker lane does not exit 0 on this machine — see docker_lane. Nothing about this bundle's install or mount path is implicated by the three pack failures or the eight ui.* nulls.",
+    "dist/mpd-package/ was NOT re-packed: it is a gitignored release artifact whose staleness is 11/12 files of other work, and a re-pack could not have made the lane green.",
+    "No live LLM turn was exercised anywhere (no credentials staged — AGENTS.md §10), and the headless/live arms were null by design in both runs.",
+    "The one-click lane (`--mode oneclick`) was not run: it was not in this wave's contract.",
+    "bun.lock's `zod@4.6.5` entry was NOT removed, because it is not this wave's: it is byte-identical to the dev baseline and is pulled by the `@deepseek-ai/*` harness packages. If the captain's reading of 'no zod' is literal rather than 'no zod introduced', that is a separate change and would break the harness packages' own resolution."
+  ],
+  "evidence_dir": "evidence/dsh-std/dependency-mount/2026-10-10T13-45-43Z/",
+  "evidence_files": [
+    "result.json (this file)",
+    "diffs.txt — the full working-tree diff of the 5 in-scope files + the two empty-diff proofs",
+    "frozen-tree.txt — sha256 + mtime of every relevant file, HEAD, branch",
+    "verify-manifest.log/.exit, verify-rows.log/.exit, verify-docs.log/.exit, no-host-override.log/.exit, preset-conformance-selftest.log/.exit, tests.log/.exit, typecheck.log/.exit, dist-fresh.log/.exit",
+    "bun-install.log, bun-install.exit, lock-frozen-check.log/.exit, lock-audit.txt, sdk-closure-audit.txt",
+    "toolchain.txt — the pinned bun, node and the three redirected temp/cache paths",
+    "adapter-residue-scan.txt — git grep over the tracked tree",
+    "install-profile-sandbox.log — the fresh sandbox install (35 rows, no adapter)",
+    "dump-config-web.log/.exit — the composition sanity check",
+    "docker-e2e-source.log/.exit — run 1; docker-e2e-source.run2.log/.exit — run 2; docker-lane-finding.txt",
+    "pack-staleness-audit.txt — the 608-file pack-vs-HEAD blob comparison"
+  ]
+}

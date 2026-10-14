@@ -1,0 +1,10 @@
+--- evidence/tui/dsh-tui-015/pack-manifest-fix/.tmp-C1-red-cclsp-not-declared.orig	2026-10-15 00:07:46.396103216 +0800
++++ package.json	2026-10-15 00:07:46.416791999 +0800
+@@ -98,7 +98,6 @@
+   ],
+   "optionalDependencies": {
+     "@colbymchenry/codegraph": "1.5.0",
+-    "cclsp": "0.7.0",
+     "@cyanheads/git-mcp-server": "2.15.3",
+     "mcp-server-commands": "0.8.2"
+   },

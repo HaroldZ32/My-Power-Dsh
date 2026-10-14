@@ -1,4 +1,4 @@
-import type { DecodedImage, Hotspot, ImageDiffResult } from "./types.ts"
+import type { DecodedImage, Hotspot, ImageDiffResult } from "./types"
 
 /** Maximum cells per axis in the hotspot grid; smaller overlaps use fewer cells. */
 const GRID_SIZE = 8

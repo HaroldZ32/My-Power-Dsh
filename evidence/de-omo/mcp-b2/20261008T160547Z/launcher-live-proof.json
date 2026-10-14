@@ -1,0 +1,70 @@
+{
+  "producedAt": "2026-10-08T16:12:35.707Z",
+  "mechanism": "real MCP stdio handshake (initialize + tools/list [+ tools/call]) against each built launcher, with MPD_MCP_LOG_DIR pointed at the evidence workspace",
+  "lsp": {
+    "toolCount": 12,
+    "tools": [
+      "find_definition",
+      "find_implementation",
+      "find_references",
+      "find_workspace_symbols",
+      "get_diagnostics",
+      "get_hover",
+      "get_incoming_calls",
+      "get_outgoing_calls",
+      "prepare_call_hierarchy",
+      "rename_symbol",
+      "rename_symbol_strict",
+      "restart_server"
+    ],
+    "toolResultText": "No diagnostics found for /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/de-omo/mcp-b2/20261008T160547Z/launcher-ws/sample.ts. The file has no errors, warnings, or hints.",
+    "stderrBytes": 0
+  },
+  "git": {
+    "toolCount": 28,
+    "firstSix": [
+      "git_add",
+      "git_blame",
+      "git_branch",
+      "git_changelog_analyze",
+      "git_checkout",
+      "git_cherry_pick"
+    ],
+    "stderrBytes": 0
+  },
+  "shell": {
+    "toolCount": 1,
+    "tools": [
+      "run_process"
+    ],
+    "stderrBytes": 0
+  },
+  "generatedConfig": {
+    "servers": [
+      {
+        "extensions": [
+          "ts",
+          "tsx",
+          "js",
+          "jsx",
+          "mjs",
+          "cjs",
+          "mts",
+          "cts"
+        ],
+        "command": [
+          "/home/haroldzhao/.nvm/versions/node/v24.21.0/bin/node",
+          "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/node_modules/.pnpm/typescript-language-server@4.4.1/node_modules/typescript-language-server/lib/cli.mjs",
+          "--stdio"
+        ],
+        "rootDir": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/de-omo/mcp-b2/20261008T160547Z/launcher-ws"
+      }
+    ]
+  },
+  "logTail": [
+    "[2026-10-08T16:10:30.481Z] [mpd-mcp-lsp] starting cclsp@0.7.0 from /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/node_modules/.pnpm/cclsp@0.7.0_@types+node@26.6.4_typescript@5.9.3_zod@4.6.5/node_modules/cclsp/dist/index.js",
+    "[2026-10-08T16:10:30.482Z] [mpd-mcp-lsp] cclsp config: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/de-omo/mcp-b2/20261008T160547Z/launcher-ws/.mpd/lsp/cclsp.json (generated default: TypeScript/JavaScript)",
+    "[2026-10-08T16:10:30.508Z] Loading config from CCLSP_CONFIG_PATH: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/de-omo/mcp-b2/20261008T160547Z/launcher-ws/.mpd/lsp/cclsp.json",
+    "[2026-10-08T16:10:30.509Z] Loaded 1 server configurations from env"
+  ]
+}

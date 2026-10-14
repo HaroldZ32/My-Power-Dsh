@@ -6,9 +6,9 @@
 // captured, and the team-mutation seams THROW, so "a fired soft signal stages nothing" is
 // proven by the test failing loudly if the gate ever reached for one.
 import { describe, expect, test } from "bun:test"
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { dirname, join } from "node:path"
+import { basename, dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
 import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
@@ -47,7 +47,7 @@ import { installSessionGate } from "../src/session-gate.ts"
 import { installRosterSection, ROSTER_SECTION_NAME, rosterSectionText } from "../src/roster-section.ts"
 
 /** The sandbox workspace every fixture session reports as its cwd. */
-const WORKSPACE = "/tmp/mpd-team-plane-ws"
+const WORKSPACE = join(tmpdir(), "mpd-team-plane-ws")
 
 /** A qualifying mpd top-level session. */
 function mpdAgent(id: string = "lead-1", header: Record<string, unknown> = {}): {
@@ -181,9 +181,9 @@ const memberFixtures = ROLES.map((role) => ({ name: role.name, description: role
 const readonlyNames = ROLES.filter((role) => role.readonly).map((role) => role.name)
 
 describe("read-only discipline: the guard denies exactly the roster's read-only members", () => {
-  test("the guard's deny list IS the one-shot path's list (one constant, seven names)", () => {
-    expect(READONLY_DENY).toHaveLength(7)
-    expect(new Set(READONLY_DENY).size).toBe(7)
+  test("the guard's deny list IS the one-shot path's list (one constant, eight names)", () => {
+    expect(READONLY_DENY).toHaveLength(8)
+    expect(new Set(READONLY_DENY).size).toBe(8)
     /** The double, with a read-only Explorer teammate as the calling membership. */
     const harness = planeHarness({ membership: { teamId: "team-1", role: "teammate", name: "Explorer" } })
     /** The guard installation result, whose recorded guard is invoked below. */
@@ -430,22 +430,38 @@ describe("readBoulderGate: signal D's only input, repaired to an ACTIVE work", (
     /** The path the reader was asked for. */
     const seen: string[] = []
     await readBoulderGate("/ws", { boulderDir: "/elsewhere", readFile: async (path) => { seen.push(path); return topLevel } })
-    expect(seen[0]).toBe("/elsewhere/.mpd/boulder.json")
+    // The expectations are BUILT THE WAY PRODUCTION BUILDS THEM — with `join` — never spelled with a
+    // literal `/`. win32 joins with `\`, so a POSIX literal here asserted a path the code never
+    // produces (MEASURED 2026-10-12: the only reason these arms were red on win32).
+    expect(seen[0]).toBe(join("/elsewhere", ".mpd", "boulder.json"))
     await readBoulderGate("/ws", { readFile: async (path) => { seen.push(path); return topLevel } })
-    expect(seen[1]).toBe("/ws/.mpd/boulder.json")
+    expect(seen[1]).toBe(join("/ws", ".mpd", "boulder.json"))
   })
 
   test("this WORKSPACE's real ledger reads inactive (the measured D repair)", async () => {
     /** The repo root, derived from this test file's own location. */
     const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
-    // The repository's own `.mpd/boulder.json`: one COMPLETED work whose plan file still exists.
-    /** The real ledger text, read through the injected reader below. */
-    const real = readFileSync(join(repoRoot, ".mpd", "boulder.json"), "utf8")
-    /** The verdict for that ledger, which must NOT fire signal D any more. */
-    const read = await readBoulderGate("", { readFile: async () => real })
-    expect(read.active).toBe(false)
-    // And the same ledger read through the default `node:fs/promises` reader, from the real root.
-    expect((await readBoulderGate(repoRoot)).active).toBe(false)
+    /** The repository's own ledger path. `.mpd/` is GITIGNORED RUNTIME STATE, so it may be absent. */
+    const ledger = join(repoRoot, ".mpd", "boulder.json")
+    // THE CONTRACT IS ASSERTED FROM A FIXTURE, so the arm is never vacuous and never depends on this
+    // host's state: a COMPLETED work with its plan file present is exactly the shape the D repair was
+    // measured against, and it must not read as active. MEASURED 2026-10-12: the arm read the real
+    // ledger with an UNGUARDED `readFileSync`, and on a tree without `.mpd/boulder.json` (this win32
+    // host — and any fresh checkout, since the path is not tracked) that threw ENOENT before asserting
+    // anything about signal D.
+    /** One ledger whose only work is COMPLETED, which is the repair's subject. */
+    const completed = JSON.stringify({ active_work_id: "w", works: { w: { status: "completed", active_plan: ".mpd/plans/done.md" } } })
+    expect((await readBoulderGate("", { readFile: async () => completed })).active).toBe(false)
+    // When this workspace DOES carry a ledger, the same verdict must come out of both readers.
+    if (existsSync(ledger)) {
+      /** The real ledger text, read through the injected reader below. */
+      const real = readFileSync(ledger, "utf8")
+      /** The verdict for that ledger, which must NOT fire signal D any more. */
+      const read = await readBoulderGate("", { readFile: async () => real })
+      expect(read.active).toBe(false)
+      // And the same ledger read through the default `node:fs/promises` reader, from the real root.
+      expect((await readBoulderGate(repoRoot)).active).toBe(false)
+    }
   })
 })
 
@@ -737,7 +753,7 @@ describe("session-start gate: scope, one-shot settlement and the advisory inject
     const claimed = userMessage("fix the typo")
     /** The decision for the active-work case, carrying the D notice. */
     const decided: any = await active.steps[0].listener({ messages: [claimed], turn: 1, step: 1 }, { kind: "enter", messages: [claimed] })
-    expect(seen[0]).toBe(WORKSPACE + "/.mpd/boulder.json")
+    expect(seen[0]).toBe(join(WORKSPACE, ".mpd", "boulder.json"))
     expect(decided.messages[1].content[0].text).toContain("complexity signals D")
 
     // The `boulder.dir` override replaces the workspace as the STATE ROOT (resolved per call).
@@ -749,7 +765,7 @@ describe("session-start gate: scope, one-shot settlement and the advisory inject
       readFile: async (path) => { seen.push(path); return JSON.stringify({ active_work_id: "w", works: { w: { status: "active" } } }) },
     })
     await overridden.steps[0].listener({ messages: [claimed], turn: 1, step: 1 }, { kind: "enter", messages: [claimed] })
-    expect(seen[1]).toBe("/elsewhere/.mpd/boulder.json")
+    expect(seen[1]).toBe(join("/elsewhere", ".mpd", "boulder.json"))
 
     // A COMPLETED work (this workspace's real shape) leaves the gate silent — the repair's control.
     /** A double whose ledger's only work is completed. */
@@ -1201,8 +1217,12 @@ describe("C7: a session already LEADING a team is never sent to stage one", () =
       listed,
       readDir: async (path: string): Promise<readonly string[]> => { listed.push(path); return Object.keys(files) },
       readFile: async (path: string): Promise<string> => {
+        // `basename`, NOT `path.slice(path.lastIndexOf("/") + 1)` (win32 defect, MEASURED 2026-10-12):
+        // production builds this path with `join`, so on win32 it carries `\` and the `/` search missed
+        // (-1) — the "name" became the WHOLE path, every lookup threw ENOENT, and the C7 arms read a
+        // record that was present as one that answered nothing.
         /** The record file name this read asked for. */
-        const name = path.slice(path.lastIndexOf("/") + 1)
+        const name = basename(path)
         if (!(name in files)) throw new Error("ENOENT " + path)
         return files[name]
       },
@@ -1214,7 +1234,7 @@ describe("C7: a session already LEADING a team is never sent to stage one", () =
     const mine = seams({ "team-a.json": record("me", 3) })
     expect(await readLeadingTeam("/ws", "me", mine)).toEqual({ leading: true, teamId: "team-20261007102205", members: 3 })
     // The record directory resolves under the WORKSPACE, exactly like the boulder ledger's root.
-    expect(mine.listed[0]).toBe("/ws/.mpd/team/teams")
+    expect(mine.listed[0]).toBe(join("/ws", ".mpd", "team", "teams"))
     // The falsifiability twin: the SAME record, one `leadSessionId` field moved.
     expect(await readLeadingTeam("/ws", "someone-else", seams({ "team-a.json": record("me", 3) }))).toEqual({ leading: false, members: 0 })
   })

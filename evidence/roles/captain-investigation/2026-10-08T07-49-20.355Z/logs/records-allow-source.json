@@ -1,0 +1,55 @@
+[
+ {
+  "type": "tool/call",
+  "seq": 19,
+  "time": 1791445821929,
+  "data": {
+   "turn": 1,
+   "step": 1,
+   "callId": "call_00_Xd9PvAit1aGIe1jnW3qC5387",
+   "name": "read",
+   "arguments": "{\"file_path\": \"packages/probe/src/probe.ts\"}"
+  }
+ },
+ {
+  "type": "tool/result",
+  "seq": 20,
+  "time": 1791445821938,
+  "data": {
+   "turn": 1,
+   "step": 1,
+   "message": {
+    "role": "tool",
+    "source": {
+     "kind": "tool",
+     "callId": "call_00_Xd9PvAit1aGIe1jnW3qC5387"
+    },
+    "toolCallId": "call_00_Xd9PvAit1aGIe1jnW3qC5387",
+    "content": [
+     {
+      "type": "text",
+      "text": "<path>/tmp/mpd-captain-investigation-XTI89h/ws-allow/packages/probe/src/probe.ts</path>\n<type>file</type>\n<content>\n1: PROBE_SOURCE_MARKER\n\n(End of file - total 1 lines)\n</content>"
+     }
+    ],
+    "isError": false,
+    "id": "6fec03fb-3948-48ca-b4a7-4dfe39ab1e07"
+   },
+   "meta": {
+    "path": "/tmp/mpd-captain-investigation-XTI89h/ws-allow/packages/probe/src/probe.ts",
+    "offset": 1,
+    "lines": [
+     {
+      "number": 1,
+      "text": "PROBE_SOURCE_MARKER"
+     }
+    ],
+    "totalLines": 1,
+    "lang": "ts"
+   }
+  },
+  "sourceEventSeqs": [
+   19
+  ],
+  "surfaceOp": "append"
+ }
+]

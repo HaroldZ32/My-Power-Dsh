@@ -776,7 +776,7 @@ describe("the running mark breathes on a timer and freezes without one", () => {
 // ── the legend, composed by its two owners ──────────────────────────────────
 
 describe("the legend is composed, and it disambiguates the two states that share a glyph", () => {
-  test("the drawing's lines keep the drawing's key, and the contract's key follows them", () => {
+  test("the drawing's arrow line is forwarded, and the contract's ONE state key follows it", () => {
     /** A board with a dependency, so the drawing has an edge to explain. */
     const record = fixtureRecord([
       { id: "t1", subject: "root", status: "completed" },
@@ -791,20 +791,34 @@ describe("the legend is composed, and it disambiguates the two states that share
     for (const [component, budget] of [[components[TEAM_SCENE_ID], 96], [merged, 100]] as const) {
       kit.reset()
       render(kit, component, { subagents: [] })
-      /** The drawing's own lines for that budget. */
+      /** The drawing's own line for that budget. */
       const arrow = legendLines(budget)
       /** The composed legend: `legendLinesFor` appends the contract's six-state key. */
       const composed = legendLinesFor(budget, arrow)
+      // THE DRAWING CONTRIBUTES EXACTLY ITS OWN LINE — no state key: this module's five-state key was
+      // deleted with the redundant legend, so the drawing group is one row at any width with room.
+      expect(arrow).toHaveLength(1)
       expect(matchingKeys(kit.last(), LEGEND_ROW_KEY)).toHaveLength(arrow.length)
+      // THE STATE KEY IS THE COMPOSER'S ROWS, AND THERE IS ONLY EVER ONE GROUP OF THEM.
       expect(matchingKeys(kit.last(), STATE_KEY_ROW_KEY)).toHaveLength(composed.length - arrow.length)
       expect(composed.length).toBeGreaterThan(arrow.length)
-      // THE CONTRACT'S KEY NAMES EVERY STATE, AND NAMES A SHARED GLYPH'S TWIN — the whole reason it
-      // exists: `○ blocked` and `○ open` are the same character without it.
+      // THE CONTRACT'S KEY NAMES EVERY STATE EXACTLY ONCE, AND A SHARED MARK'S ENTRY NAMES EVERY
+      // CARRIER — the whole reason it exists: `○ blocked` and `○ open` are the same character, so the
+      // reader is told that one mark stands for both. The pre-fix key printed that pair twice, under
+      // an `=` that claimed the two states are each other.
       /** The contract's own key line, the last line the composer produced. */
       const stateKey = composed.at(-1) ?? ""
-      for (const state of DAG_STATE_TONES) expect(stateKey).toContain(state)
-      expect(stateKey).toContain(`${DAG_TONE_GLYPH.blocked ?? "?"} blocked=open`)
-      expect(stateKey).toContain(`${DAG_TONE_GLYPH.open ?? "?"} open=blocked`)
+      for (const state of DAG_STATE_TONES) {
+        /** How many times this key NAMES the state, counted as a whole word so `blocked` != `blocker`. */
+        const named = (stateKey.match(new RegExp(`\\b${state}\\b`, "g")) ?? []).length
+        expect(`${state} named=${named}`).toBe(`${state} named=1`)
+      }
+      /** The entries the key opens with the shared mark; one entry must name BOTH of its carriers. */
+      const sharedEntries = stateKey.split(" · ").filter((entry) => entry.startsWith(`${DAG_TONE_GLYPH.blocked ?? "?"} `))
+      expect(sharedEntries).toHaveLength(1)
+      expect(sharedEntries[0] ?? "").toContain("blocked")
+      expect(sharedEntries[0] ?? "").toContain("open")
+      expect(stateKey).not.toContain("=")
       for (const line of composed) expect(cellWidth(line)).toBeLessThanOrEqual(budget)
     }
   })

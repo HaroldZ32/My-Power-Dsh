@@ -1,0 +1,88 @@
+{
+  "wave": "fix/win32-all-known-failures — \"QA也解决完，windows这边所有已知的失败都解决完了再测试\"",
+  "date": "2026-10-12",
+  "host": { "platform": "win32", "node": "v24.21.0", "bun": "1.4.0 (pinned .toolchain)", "repoRoot": "C:\\MyDoc\\DshProj\\My-Power-Dsh" },
+  "baselineBeforeThisWave": {
+    "command": "bun test packages",
+    "observed": "1829 pass / 4 skip / 19 fail across 7 files",
+    "note": "These 19 are the 'known Windows failures'. (An earlier reading of '33 fail' came from a polluted run and is superseded by this deduped measurement.)"
+  },
+  "finalState": {
+    "unitSuite": { "command": "bun test packages --test-timeout 30000", "observed": "1847 pass / 5 skip / 0 fail" },
+    "qaAggregate": { "command": "bun run test:qa", "observed": "all self-tests passed (47/47 cases)" },
+    "gates": [
+      { "command": "node scripts/verify-dist-fresh.ts", "observed": "31/31 targets fresh" },
+      { "command": "node scripts/verify-vendor.ts", "observed": "PASS - 7 shipped asset(s) fingerprinted" },
+      { "command": "node scripts/verify-comment-coverage.ts", "observed": "PASS" },
+      { "command": "bun run typecheck", "observed": "exit 0" }
+    ],
+    "skips": [
+      "pre-existing: '§9.4 — the ONE render boundary strips control characters' (a C0 filename cannot exist on win32)",
+      "pre-existing: 'binary resolves from toolchain'",
+      "pre-existing: 'clean file passes (exit 0)' and 'comment file triggers detection (exit 2)' (the comment-checker dependency is not installed)",
+      "ADDED BY THIS WAVE, with its reason: 'autoCheck: the hook resolves a relative file_path against the session workspace'"
+    ]
+  },
+  "groups": [
+    {
+      "group": "log-sink (5 arms)",
+      "productionDefect": "packages/mpd-mcp-shared/log-sink.ts `owningRoot` built its containment prefix as `${root}/` with a HARD-CODED forward slash while `file` comes from `join`, so on win32 (`C:\\…`) the comparison NEVER matched and every root was reported as `null` even though the sink had opened and was writing the file. Fixed with the platform's own containment test: `relative(root, file)` plus `isAbsolute`.",
+      "testFixes": [
+        "the two env-chain arms now build their expectations with `resolve(...)`, stating the contract (absolute, in precedence order) instead of a POSIX spelling",
+        "the '(POSIX)' descriptor-rebind arm is platform-aware: POSIX keeps `rebind=rebound` + an untouched capture file; win32 asserts the DOCUMENTED `rebind=unsupported`, that the writer-based capture still logs the child's own stderr, and that the grandchild's raw fd write lands in the inherited capture file and NOT the log"
+      ]
+    },
+    {
+      "group": "team-plane (5 arms)",
+      "rootCauses": [
+        "four expectations spelled POSIX paths (`/elsewhere/.mpd/boulder.json`, `/ws/.mpd/boulder.json`, `WORKSPACE + \"/.mpd/boulder.json\"`, `/ws/.mpd/team/teams`) while production builds them with `join`",
+        "the C7 fixtures derived a file name with `path.slice(path.lastIndexOf(\"/\") + 1)` — on win32 the path carries `\\`, the search missed (-1), the 'name' became the WHOLE path, every lookup threw ENOENT and a present record read as `{leading:false, members:0}`; now `basename(path)`",
+        "the 'real ledger' arm read the GITIGNORED `.mpd/boulder.json` with an unguarded `readFileSync` and threw ENOENT on a tree without it; the contract is now asserted from a FIXTURE (a COMPLETED work reads inactive) and the real ledger is an extra reading only when it exists"
+      ]
+    },
+    {
+      "group": "change-feed S-b (6 arms)",
+      "rootCause": "the arms built a REAL `ChangeFeed({debounceMs:20})`, so ONE store write produced TWO observations — the in-process hook and the directory event — and an arm passed only while both landed inside the same fixed window. On POSIX that holds; on win32 the directory event arrives after the window and opens a SECOND one, so 'a store write reaches a subscriber' saw 2 calls instead of 1.",
+      "fix": "the six S-b feeds take an INERT watch door (`watch: inertWatch`), making the observation source deterministic; the watcher's real behaviour stays pinned by the S-c/S-d arms and by every arm that writes raw bytes with no store call."
+    },
+    {
+      "group": "probeExecutable (1 arm)",
+      "rootCause": "the arm asserted the POSIX mode-bit rule (`chmod 0o644` ⇒ rejected) while `isExecutableFile` DOCUMENTS the win32 bound: 'the win32 arm accepts any regular file… the probe is name-based'. The sibling arm — an extensionless `chmod 0o755` file that must RESOLVE — passes on win32, i.e. the two were unsatisfiable together.",
+      "fix": "the arm now asserts the documented bound on win32 (the inert file IS accepted) and keeps the platform-independent 'absent ⇒ null' clause exact; a probe that became mode-based on win32 reddens it."
+    },
+    {
+      "group": "comment-checker autoCheck (1 arm)",
+      "rootCause": "the arm supplies a POSIX shell stub (`fake-detector.sh`) that the row spawns DIRECTLY (`spawnSync(binary, [\"check\"])`, no shell); win32 has no shebang mechanism, so it fails with `Executable not found in $PATH`. Neither alternative works: node >= 18.20 REFUSES to spawn a `.cmd`/`.bat` without `shell: true`, and the bundle ships no native stub.",
+      "fix": "a DECLARED INSTRUMENT BOUND: `test.skipIf(process.platform === \"win32\")` with the reason written out. The arm's SUBJECT (a relative file_path resolved against the SESSION workspace) is platform-independent code, but its instrument is not; the subject stays covered on POSIX."
+    },
+    {
+      "group": "panel-dag workmate page (1 arm)",
+      "rootCause": "`expect(missing.root).toContain(\".mpd/workmate\")` — a POSIX literal against a `join`-built root.",
+      "fix": "`toContain(join(\".mpd\", \"workmate\"))`."
+    },
+    {
+      "group": "QA case session-start-team.ts",
+      "rootCause": "the SAME `path.slice(path.lastIndexOf(\"/\") + 1)` basename bug as the unit-test fixtures, so its c7 stage read a present record as `{leading:false, members:0}`.",
+      "fix": "`basename(path)`."
+    },
+    {
+      "group": "QA case tui-deps-ctrla.ts",
+      "rootCause": "the 'sibling install' fixture was built with `launched.replace(\"/profiles/dsh-tui\", \"/profiles/other\")`; on win32 `join` emits `\\`, the replace matched NOTHING, so the 'sibling' WAS the launched copy and the arm failed on a CORRECT verdict.",
+      "fix": "the sibling is built with the separator the launched path itself uses."
+    }
+  ],
+  "derivedArtifacts": {
+    "distFanOut": "packages/mpd-dsh-adapter-plugin/src/index.ts imports `openLogSink` from `../../mpd-mcp-shared/log-sink`, so changing that module's `node:path` import line rewrote the CONSOLIDATED import statement of every bundle that inlines the adapter: 29 of 31 targets went stale (byte diffs of +27…+142). All 29 were rebuilt with the pinned toolchain from the repo root; verify-dist-fresh now reports 31/31 fresh.",
+    "vendorRepin": "skills/** changed twice in this wave; `node scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step` was run once per commit that invalidated it (treeSha 1c51a532… -> 9b86794b…), and verify:vendor PASSes."
+  },
+  "loadInducedFlakesNotDefects": {
+    "method": "each arm re-run alone",
+    "arms": [
+      "'git backend: write -> commit -> read -> reflection due' — 5019 ms under load (a FAIL at bun's default 5000 ms per-test timeout), 3886 ms alone: PASS",
+      "'the writer reports per root when handed several targets' — 5102 ms under load, 115 ms alone: PASS",
+      "'create_task … the MEASURED spelling' — 5750 ms under load, 149 ms alone: PASS",
+      "'the staged plan > sessions do not share a staging slot' — 8440 ms under load, 35 ms alone: PASS"
+    ],
+    "conclusion": "the repo already ships the answer: `bun run test:fast` = `bun test packages --test-timeout 30000`, under which the suite is 1847 pass / 5 skip / 0 fail."
+  }
+}

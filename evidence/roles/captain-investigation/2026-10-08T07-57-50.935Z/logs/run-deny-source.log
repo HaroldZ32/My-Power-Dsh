@@ -1,0 +1,19 @@
+dsh: warning: 1 entry did not activate
+preset-mpd (@deepseek-ai/dsh-agent-preset): pending (waiting for service: agentPresets)
+dsh: reasoning:
+The user asks me to read a file exactly once with the read tool and reply with the exact text prefixed by RESULT:.
+
+Let me do that. The file path is "packages/probe/src/probe.ts" — relative to workspace. Let me read.
+
+I should comply. But wait — there may be a trap: the sandbox may deny access. The workspace name is "ws-deny". Let's just try.
+dsh: reasoning:
+The tool refused. The user asked me to reply with the exact text the tool returned, prefixed by RESULT:. So I should do that. But note there is a captain investigation rule blocking. I should report honestly the exact text returned.
+
+The instruction says reply with exact text the tool returned prefixed by RESULT:. I'll do that, and maybe note the delegation path. Keep it minimal — exact text.
+
+Should I attempt delegation to get the content? The user only asked to read once and reply with the exact text. The tool returned an error. Honest answer: report exactly.
+
+I'll prefix RESULT: and give the exact text.
+RESULT: Error: captain investigation rule: `read` on "packages/probe/src/probe.ts" is refused — the workspace's TOP-LEVEL session does not run reconnaissance, so its context stays small enough for very large projects. Delegate it: `mpd_role_spawn` with the `Explorer` role (find files and code) or the `Researcher` role (evidence-based search), or hand the search to a team member, and consume the REPORT. The documentation band stays open to you: `.mpd/**`, `docs/**`, `evidence/**`, `agent-references/**`, the root AGENTS.md / README*.md / CHANGELOG.md / LICENSE*.md — and `captain.investigation: "allow"` in mpd.jsonc restores full access.
+
+Note: the read was refused by the workspace's captain-investigation guard, so no file content was returned. I used the read tool exactly once, as instructed. If you want the file's contents, I can delegate it to an Explorer/Researcher role or a teammate and relay their report.

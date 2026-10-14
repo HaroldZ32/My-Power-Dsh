@@ -1,0 +1,40 @@
+$ git status --short
+ M LICENSE-NOTICES.md
+ M agent-references/glossary.md
+ M packages/mpd-hashline-plugin/dist/index.js
+ M packages/mpd-hashline-plugin/src/index.ts
+ M packages/mpd-hashline-plugin/src/vendor/edits.ts
+ M packages/mpd-hashline-plugin/src/vendor/index.ts
+ M packages/mpd-hashline-plugin/src/vendor/types.ts
+ M packages/mpd-mcp-lsp/README.md
+ M packages/mpd-mcp-lsp/README.zh-CN.md
+ M packages/mpd-mcp-lsp/dist/launch.js
+ M packages/mpd-mcp-lsp/src/launch.ts
+ M skills/dsh-qa/SKILL.md
+ M skills/dsh-qa/cases.json
+ M skills/review-work/ATTRIBUTION.md
+ M skills/review-work/SKILL.md
+?? evidence/restore/
+?? packages/mpd-hashline-plugin/test/repair.test.ts
+?? packages/mpd-mcp-lsp/src/cclsp-config.ts
+?? packages/mpd-mcp-lsp/src/server-catalog.ts
+?? packages/mpd-mcp-lsp/test/
+?? skills/dsh-qa/scripts/review-panel.ts
+
+$ git diff --stat
+ LICENSE-NOTICES.md                               |  14 +
+ agent-references/glossary.md                     |   8 +-
+ packages/mpd-hashline-plugin/dist/index.js       | 151 +++++-
+ packages/mpd-hashline-plugin/src/index.ts        |  37 +-
+ packages/mpd-hashline-plugin/src/vendor/edits.ts | 302 +++++++++++-
+ packages/mpd-hashline-plugin/src/vendor/index.ts |   2 +-
+ packages/mpd-hashline-plugin/src/vendor/types.ts |  20 +-
+ packages/mpd-mcp-lsp/README.md                   |  88 +++-
+ packages/mpd-mcp-lsp/README.zh-CN.md             |  81 +++-
+ packages/mpd-mcp-lsp/dist/launch.js              | 165 +++++--
+ packages/mpd-mcp-lsp/src/launch.ts               | 111 +++--
+ skills/dsh-qa/SKILL.md                           |   1 +
+ skills/dsh-qa/cases.json                         |   8 +
+ skills/review-work/ATTRIBUTION.md                |  32 +-
+ skills/review-work/SKILL.md                      | 560 +++++------------------
+ 15 files changed, 982 insertions(+), 598 deletions(-)

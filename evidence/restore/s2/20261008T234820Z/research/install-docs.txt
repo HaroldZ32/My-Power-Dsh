@@ -1,0 +1,149 @@
+===== rust https://rust-analyzer.github.io/book/installation.html
+  for use with rust-analyzer. If you are using an older toolchain or have
+  You will either need to update your toolchain or use an older version of
+  rust-analyzer that is compatible with your toolchain.
+  rust-analyzer to use the stable toolchain via the environment variable
+  RUSTUP_TOOLCHAIN . For example, with VS Code or coc-rust-analyzer:
+  { "rust-analyzer.server.extraEnv": { "RUSTUP_TOOLCHAIN": "stable" } }
+
+===== terraform https://raw.githubusercontent.com/hashicorp/terraform-ls/HEAD/docs/installation.md
+  brew install hashicorp/tap/terraform-ls
+  This tap only contains stable releases (i.e. no pre-releases).
+  As documented in the Guide linked above, pre-releases are available through test repos.
+  1. [Download for the latest version](https://releases.hashicorp.com/terraform-ls/)
+  which are part of the release (called `terraform-ls_ _SHA256SUMS`).
+
+===== markdown https://raw.githubusercontent.com/artempyanykh/marksman/HEAD/docs/install.md
+  brew install marksman
+  To install the latest stable release:
+  sudo snap install marksman
+  To install the edge release (from main branch):
+  sudo snap install --edge marksman
+  1. Go to [Releases](https://github.com/artempyanykh/marksman/releases) page: each release has pre-built binaries for
+  0. Install [Dotnet SDK](https://dotnet.microsoft.com/en-us/download) for your OS.
+  2. Inside `marksman` folder run `make install`
+
+===== haskell https://raw.githubusercontent.com/haskell/haskell-language-server/HEAD/docs/installation.md
+  sudo apt install libicu-dev libtinfo-dev libgmp-dev zlib1g-dev
+  sudo apt install libicu-dev libncurses-dev libgmp-dev zlib1g-dev
+  choco install haskell-language-server
+  There are pre-built binaries available from the [releases page](https://github.com/haskell/haskell-language-server/releases) for Linux, Windows and macOS.
+  brew install haskell-language-server
+
+===== lua https://raw.githubusercontent.com/LuaLS/lua-language-server/HEAD/doc/README.md
+  (unreachable)
+
+===== clojure https://raw.githubusercontent.com/clojure-lsp/clojure-lsp/master/docs/installation.md
+  brew install clojure-lsp/brew/clojure-lsp-native
+  Stable release:
+  In Github releases you will find a `clojure-lsp` file that runs a embedded jar. This should be removed soon, use GraalVM binaries instead.
+  - Grab the latest `clojure-lsp` from github [LATEST](https://github.com/clojure-lsp/clojure-lsp/releases/latest)
+
+===== kotlin https://raw.githubusercontent.com/Kotlin/kotlin-lsp/HEAD/README.md
+  [![GitHub Release](https://img.shields.io/github/v/release/Kotlin/kotlin-lsp)](https://github.com/Kotlin/kotlin-lsp/releases/latest)
+  For the latest release from the official VS Code Marketplace:
+  For manually downloaded builds from the [release page](https://github.com/Kotlin/kotlin-lsp/releases):
+  1. Download the required VSIX file from the corresponding release page
+  For Homebrew users: `brew install JetBrains/utils/kotlin-lsp`
+  1. Download the standalone zip from the [Releases Page](https://github.com/Kotlin/kotlin-lsp/releases)
+  * Support for Kotlin Multiplatform (KMP) projects is coming in the future releases.
+  Upcoming releases will focus on feature completeness and stability of the existing functionality.
+  Releases are generally tested with [Visual Studio Code](https://code.visualstudio.com/) and there is a community-maintained
+
+===== java https://raw.githubusercontent.com/eclipse-jdtls/eclipse.jdt.ls/HEAD/README.md
+
+
+===== ruby https://raw.githubusercontent.com/Shopify/ruby-lsp/HEAD/README.md
+
+
+===== swift https://raw.githubusercontent.com/swiftlang/sourcekit-lsp/HEAD/README.md
+
+
+===== dart https://raw.githubusercontent.com/dart-lang/sdk/HEAD/README.md
+  based on the stable release. (We also publish docs from our
+  [getting the source, preparing your machine to build the SDK, and building][building].
+  There are more documents in our repo at [docs](https://github.com/dart-lang/sdk/tree/main/docs).
+  [building]: https://github.com/dart-lang/sdk/blob/main/docs/Building.md
+  [contrib]: https://github.com/dart-lang/sdk/blob/main/CONTRIBUTING.md
+  [issues]: https://github.com/dart-lang/sdk/issues
+  [license]: https://github.com/dart-lang/sdk/blob/main/LICENSE
+  [patent_grant]: https://github.com/dart-lang/sdk/blob/main/PATENT_GRANT
+  [repo]: https://github.com/dart-lang/sdk
+
+===== zig https://raw.githubusercontent.com/zigtools/zls/HEAD/README.md
+
+
+===== scala https://raw.githubusercontent.com/scalameta/metals/HEAD/README.md
+
+
+===== powershell https://raw.githubusercontent.com/PowerShell/PowerShellEditorServices/HEAD/README.md
+  binaries that we include with releases of this project.
+
+===== elixir https://raw.githubusercontent.com/elixir-lsp/elixir-ls/HEAD/README.md
+  Emacs Installation Instructions
+  [latest release](https://github.com/elixir-lsp/elixir-ls/releases/latest) and unzip it into a
+  directory. (This is the directory referred to as the `"path-to-elixir-ls/release"`, below.)
+  (add-to-list 'exec-path "path-to-elixir-ls/release"))
+  (add-to-list 'eglot-server-programs '(elixir-mode "path-to-elixir-ls/release/language_server.sh"))
+  Older Elixir versions are no longer compatible with the current ElixirLS release. Pin to the last working tag if you cannot upgrade:
+  - If connecting to an OTP release, ensure that it is built with `strip_beams` set to `false`. Note that it defaults to `true`
+  elixirLS.languageServerOverridePath  Absolute path to an alternative ElixirLS release that will override the packaged release
+  There are two ways to build the release: `Mix.install`-based (recommended) and `.ez` archives (deprecated).
+  ### `Mix.install` based release
+  ELS_LOCAL  If set to  1 , this will make ElixirLS run a local release. If this is not set, a published release matching  VERSION  will be used (default).
+
+===== julia https://raw.githubusercontent.com/julia-vscode/LanguageServer.jl/HEAD/README.md
+  Pkg.add("LanguageServer")
+
+===== gleam https://raw.githubusercontent.com/gleam-lang/gleam/HEAD/README.md
+
+
+===== erlang https://raw.githubusercontent.com/erlang-ls/erlang_ls/HEAD/README.md
+  make install
+  PREFIX=/path/to/directory make install
+
+===== perl https://raw.githubusercontent.com/bscan/PerlNavigator/HEAD/README.md
+  brew install perlnavigator
+  sudo npm install -g perlnavigator-server
+  Alternatively you can download binary releases for Windows, Linux, and MacOS here: https://github.com/bscan/PerlNavigator/releases
+
+===== groovy https://raw.githubusercontent.com/GroovyLanguageServer/groovy-language-server/HEAD/README.md
+
+
+===== typst https://raw.githubusercontent.com/Myriad-Dreamin/tinymist/HEAD/README.md
+  ## Versioning and Release Cycle
+  The release cycle is as follows:
+  Note: if you don’t know what is a regular/nightly release, please don’t follow this section.
+  Besides published releases specific to each editor, you can also download the latest regular/nightly prebuilts from GitHub and install them manually.
+  - Regular prebuilts can be found in [GitHub Releases](https://github.com/Myriad-Dreamin/tinymist/releases).
+  curl -sSL https://github.com/hongjr03/tinymist-nightly-installer/releases/latest/download/run.sh | bash
+  iwr https://github.com/hongjr03/tinymist-nightly-installer/releases/latest/download/run.ps1 -UseBasicParsing | iex
+
+===== vhdl https://raw.githubusercontent.com/VHDL-LS/rust_hdl/HEAD/README.md
+  VHDL_LS release. The binary must be on the path and executable (if you can run
+  the [latest](https://github.com/VHDL-LS/rust_hdl/releases/latest) VHDL-LS release from GitHub.
+  VHDL-LS has frequent releases and the automatic update ensures minimal maintenance for the `lsp-client` developer as
+  1) Make sure that you have the [Rust toolchain](https://www.rust-lang.org/tools/install) installed.
+  This repository always follows the latest toolchain in the `stable` channel.
+  2) Run `cargo install --path vhdl_lang` to install the language frontend. Run instead `cargo install --path vhdl_ls`
+
+===== verilog https://raw.githubusercontent.com/chipsalliance/verible/HEAD/README.md
+  real compilers and toolchains require.
+  For simple installation, we provide regular [binary releases] for Linux and
+  choco install git winflexbison3
+  For simple installation, we provide regular [binary releases].
+  [binary releases]: https://github.com/chipsalliance/verible/releases
+
+===== systemverilog https://raw.githubusercontent.com/dalance/svls/HEAD/README.md
+  Download from [release page](https://github.com/dalance/svls/releases/latest), and extract to the directory in PATH.
+  sudo snap install svls
+  cargo install svls
+
+===== powershell_docs https://raw.githubusercontent.com/PowerShell/PowerShellEditorServices/HEAD/docs/installation.md
+  (unreachable)
+
+===== gopls https://raw.githubusercontent.com/golang/tools/HEAD/gopls/doc/user.md
+  (unreachable)
+
+===== terraform_ls https://raw.githubusercontent.com/hashicorp/terraform-ls/HEAD/README.md
+

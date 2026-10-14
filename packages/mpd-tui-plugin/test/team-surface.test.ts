@@ -29,6 +29,7 @@ import { join } from "node:path"
 import { createLog } from "../src/log"
 import { createTuiAdapter } from "../../mpd-tui-adapter-plugin/src/index.js"
 import { DAG_CHARS, DAG_CHROME } from "../src/dag-theme"
+import { setWheelInvertRead } from "../src/panel-core"
 import { cellWidth } from "../src/sanitize"
 import {
   BOARD_SCENE_ID,
@@ -1241,6 +1242,93 @@ describe("the team scene's focus", () => {
     // Back up, and the first row returns: the offset CLAMPS at zero rather than going negative.
     kit.pointer("onWheel", { deltaY: -1 })
     expect(render(kit, scene)).toBe(before)
+  })
+
+  test("with the `tui.wheelInvert` knob ON the SCENE's own wheel handler flips BOTH axes and still clamps", () => {
+    // WHY THIS ARM DRIVES THE RENDERED HANDLER RATHER THAN THE HELPER. `normalizeWheelDelta` and
+    // `scrollByWheel{,X}` each have their own arms above — but every one of them CALLS the helper
+    // itself, so a regression in the CALLER (the graph box's `onWheel` reading a raw delta, or dropping
+    // its `wheelInvertOn()` read) would leave all of them green while the knob did nothing on the real
+    // surface. This arm fires the handler the scene ACTUALLY declared, with the knob ON, on BOTH axes:
+    // the positive term is clamped at the near edge (inverted, "down"/"right" reads as "up"/"left"),
+    // the negative one moves that axis's window, and the inverted tick back returns the scene
+    // byte-for-byte — which is the same statement as "the sign was flipped", without asserting an
+    // offset the scene never exposes.
+    try {
+      // `true` IS the knob ON: this is the reader a mounted row installs, and `wheelInvertOn()` reads it
+      // per gesture — never once at mount, which is why the handler has to be the thing under test.
+      setWheelInvertRead((): boolean => true)
+      /** Everything after the graph's header, which is the drawing itself. */
+      const drawingOf = (value: string): string => value.slice(value.indexOf("task dependency graph") + "task dependency graph".length)
+      // ── the VERTICAL axis, on the chain the plain wheel arm above proves scrollable ──
+      /** This half's fixture workspace: the same three-task chain the sibling wheel arm uses. */
+      const chainWorkspace = teamFixture(chained())
+      /** This half's kit and the registered components. */
+      const chainMount = mountScenes(chainWorkspace)
+      /** The scene under test. */
+      const chainScene = chainMount.components[TEAM_SCENE_ID]
+      /** The scene before any wheel tick, at the top of the drawing. */
+      const atTop = render(chainMount.kit, chainScene)
+      // POSITIVE deltaY INVERTS TO "UP", and "up" from the top is the CLAMP — so the scene must not
+      // move at all. (Without the inversion this very gesture scrolls; the arm below is what proves the
+      // clamp is not simply a dead handler.)
+      expect(chainMount.kit.pointer("onWheel", { deltaY: 1 })).toBe(true)
+      expect(render(chainMount.kit, chainScene)).toBe(atTop)
+      // NEGATIVE deltaY INVERTS TO "DOWN": one tick moves the window and the first drawn row leaves it.
+      // The DIRECTION is asserted on the drawing's own corner glyph (the sibling arm's technique),
+      // because "the text changed" alone would also accept a scroll the wrong way.
+      chainMount.kit.pointer("onWheel", { deltaY: -1 })
+      /** The scene after the inverted tick down. */
+      const scrolled = render(chainMount.kit, chainScene)
+      expect(drawingOf(scrolled).startsWith(DAG_CHARS.vertical)).toBe(true)
+      // The inverted tick the other way returns it: the two signs act in OPPOSITE directions.
+      chainMount.kit.pointer("onWheel", { deltaY: 1 })
+      expect(render(chainMount.kit, chainScene)).toBe(atTop)
+      // ── the HORIZONTAL axis, on the one-rank fixture the narrow arm above proves overflows ──
+      // The premise is the WIDTH: the drawing must be wider than the 40-cell viewport, or there would be
+      // no horizontal window to pan and this half would pass vacuously.
+      /** A fixture whose four parallel tasks cannot fit a 44-column terminal. */
+      const wideWorkspace = teamFixture({
+        id: "wide-invert-1",
+        name: "Wide",
+        phase: "running",
+        members: [],
+        tasks: [
+          { id: "a", subject: "one", status: "pending", dependencies: [] },
+          { id: "b", subject: "two", status: "pending", dependencies: [] },
+          { id: "c", subject: "three", status: "pending", dependencies: [] },
+          { id: "d", subject: "four", status: "pending", dependencies: [] },
+        ],
+      })
+      /** This half's kit, narrow enough that the four boxes overflow sideways. */
+      const wideMount = mountScenes(wideWorkspace, { terminal: { columns: 44, rows: 24 } })
+      /** The scene under test. */
+      const wideScene = wideMount.components[TEAM_SCENE_ID]
+      /** The scene before any wheel tick, at the left edge of the drawing. */
+      const atLeft = render(wideMount.kit, wideScene)
+      /** The tree `atLeft` came from, so the pan is asserted on the DRAWING rather than the rail. */
+      const atLeftTree = wideMount.kit.last()
+      // ASSERTED, NOT ASSUMED: the rail is drawn only while the drawing is wider than the viewport, so
+      // its presence is what makes the horizontal half falsifiable.
+      expect(atLeft).toContain(DAG_CHROME.barFull)
+      // POSITIVE deltaX INVERTS TO "LEFT", and "left" from the left edge is the clamp.
+      expect(wideMount.kit.pointer("onWheel", { deltaX: 1 })).toBe(true)
+      expect(render(wideMount.kit, wideScene)).toBe(atLeft)
+      // NEGATIVE deltaX INVERTS TO "RIGHT": the WINDOW pans, so the graph box's own text moves — the
+      // rail under it is the scene's, not the drawing's, and must not be what carried this assertion.
+      wideMount.kit.pointer("onWheel", { deltaX: -1 })
+      /** The scene after the inverted tick right (re-rendered, so the tree read below is the new one). */
+      const panned = render(wideMount.kit, wideScene)
+      expect(panned).not.toBe(atLeft)
+      expect(graphText(wideMount.kit.last())).not.toBe(graphText(atLeftTree))
+      // And the inverted tick back returns the whole scene, exactly as the vertical half did.
+      wideMount.kit.pointer("onWheel", { deltaX: 1 })
+      expect(render(wideMount.kit, wideScene)).toBe(atLeft)
+    } finally {
+      // The documented default, restored whatever the assertions above did: an unmounted reader answers
+      // false, so every later arm in this file scrolls exactly as it did before this one ran.
+      setWheelInvertRead((): boolean => false)
+    }
   })
 
   test("a NARROW terminal draws the SAME boxes and windows them rather than clipping them", () => {

@@ -43,6 +43,16 @@ type MemoryReflectCompleteResult = {
   completed: boolean
 }
 
+/** A reflection record as persisted after the wave-F rename, narrowed to the fields the compat arm asserts on. */
+type PersistedReflection = {
+  /** Completed reflections, carried over from an older record's counter plus the one this arm completes. */
+  reflectionsCompleted: number
+  /** Writes since the last completed reflection, reset to zero by the completion. */
+  stepsSinceReflection: number
+  /** The claim record, or null when none was ever raised. */
+  pendingReflection: { due: boolean; at: string } | null
+}
+
 /**
  * A registered tool handle whose result the arm states itself: the adapter declares every tool result
  * `unknown`, so the handle names the one output schema the arm is about to assert on.
@@ -125,10 +135,10 @@ test("git backend: write -> commit -> read -> reflection due", async () => {
   restore()
 })
 
-// The reflection transition carries a PRECONDITION: a completion with nothing pending used to write a
-// reflection entry, bump `reflected_completed_steps`, zero `steps_since_last_successful_reflection`
-// and stamp `reservation: {status: "completed"}` — stranding a state machine that never triggered.
-test("mpd_memory_reflect_complete refuses when no reflection is due or reserved", async () => {
+// The reflection transition carries a PRECONDITION: a completion with nothing owed used to write a
+// reflection entry, bump `reflectionsCompleted`, zero `stepsSinceReflection`
+// and stamp `pendingReflection: {due:false}` — stranding a state machine that never triggered.
+test("mpd_memory_reflect_complete refuses when no reflection is due", async () => {
   /** The throwaway workspace this arm's memory store lives under. */
   const dir = mkdtempSync(join(tmpdir(), "mpd-mem-guard-"))
   /** The captured tools and the ambient-root restorer for this arm. */
@@ -252,4 +262,43 @@ test("svn backend wiring with fake svn CLIs", async () => {
   expect(res.committedTo).toEqual(["svn"])
   process.env.PATH = oldPath
   restore()
+})
+
+// THE PERSISTED-STATE BOUND: real records written before de-omo wave F carry the earlier draft's
+// field names, so the plugin must still READ them — and must never write them again. This arm seeds
+// such a record and drives one reflection through it.
+test("a reflection record persisted under the pre-wave-F names is read, then rewritten under the current ones", async () => {
+  /** The throwaway workspace whose state file was written by an older mpd-memory build. */
+  const dir = mkdtempSync(join(tmpdir(), "mpd-mem-legacy-"))
+  /** The runtime directory that state file lives in. */
+  const runtime = join(dir, ".mpd", "memory", "agents", "t5", "runtime")
+  mkdirSync(runtime, { recursive: true })
+  /** The legacy record, in which the ONLY due signal is the old claim object an older build wrote. */
+  const legacy = { steps: 3, reflected_completed_steps: 2, steps_since_last_successful_reflection: 4, reservation: { status: "pending", at: "2026-01-01T00:00:00.000Z" }, triggered: false }
+  writeFileSync(join(runtime, "reflection.json"), JSON.stringify(legacy, null, 2))
+  /** The captured tools and the ambient-root restorer for this arm. */
+  const { tools, restore } = makePlugin(dir, { vcs: "git", dir: ".mpd", agentSlug: "t5", reflectionEvery: 10 })
+  try {
+    // The two tools under test, cast under the same unconditional-registration contract as above.
+    const reflect = tools.find((t) => t.name === "mpd_memory_reflect") as MemoryTool<MemoryReflectResult>
+    // The state is reached through the compatibility path: the legacy claim alone makes this due.
+    expect((await reflect.execute({}, {})).due).toBe(true)
+    /** The completion tool, whose success proves the legacy record drove a legal transition. */
+    const complete = tools.find((t) => t.name === "mpd_memory_reflect_complete") as MemoryTool<MemoryReflectCompleteResult>
+    expect((await complete.execute({ content: "legacy state carried forward" }, {})).completed).toBe(true)
+    /** The bytes on disk after the completion, which must be the vocabulary this package writes today. */
+    const raw = readFileSync(join(runtime, "reflection.json"), "utf8")
+    /** The same bytes parsed; cast because `JSON.parse` answers `any` and this arm states its own shape. */
+    const now = JSON.parse(raw) as PersistedReflection
+    expect(now.reflectionsCompleted).toBe(3) // the legacy counter 2, plus the reflection just completed
+    expect(now.stepsSinceReflection).toBe(0)
+    expect(now.pendingReflection?.due).toBe(false)
+    // The legacy names are READ and never written: the completion persisted the current vocabulary only.
+    expect(raw).not.toContain("reflected_completed_steps")
+    expect(raw).not.toContain("steps_since_last_successful_reflection")
+    expect(raw).not.toContain("\"reservation\"")
+    expect((await reflect.execute({}, {})).due).toBe(false)
+  } finally {
+    restore()
+  }
 })

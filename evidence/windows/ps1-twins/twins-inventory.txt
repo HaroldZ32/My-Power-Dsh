@@ -1,0 +1,25 @@
+# Proves: each of the 5 Windows .ps1 twins of this wave exists on disk beside its .sh counterpart (same directory); both ls -l rows are shown per pair.
+
+[skills/data-scientist/scripts/setup-uv.ps1   <->   skills/data-scientist/scripts/setup-uv.sh]
+-rw-rw-r-- 1 haroldzhao haroldzhao 2990 Oct 11 22:30 skills/data-scientist/scripts/setup-uv.ps1
+-rw-rw-r-- 1 haroldzhao haroldzhao 1833 Oct  2 20:34 skills/data-scientist/scripts/setup-uv.sh
+
+[skills/data-scientist/scripts/ensure-js-deps.ps1   <->   skills/data-scientist/scripts/ensure-js-deps.sh]
+-rw------- 1 haroldzhao haroldzhao 2762 Oct 11 22:31 skills/data-scientist/scripts/ensure-js-deps.ps1
+-rwxrwxr-x 1 haroldzhao haroldzhao  983 Oct  8 23:01 skills/data-scientist/scripts/ensure-js-deps.sh
+
+[skills/data-scientist/scripts/ensure-py-deps.ps1   <->   skills/data-scientist/scripts/ensure-py-deps.sh]
+-rw------- 1 haroldzhao haroldzhao 3288 Oct 11 22:34 skills/data-scientist/scripts/ensure-py-deps.ps1
+-rwxrwxr-x 1 haroldzhao haroldzhao 1358 Oct  8 23:01 skills/data-scientist/scripts/ensure-py-deps.sh
+
+[skills/programming/scripts/go/check-no-excuse-rules.ps1   <->   skills/programming/scripts/go/check-no-excuse-rules.sh]
+-rw------- 1 haroldzhao haroldzhao 7313 Oct 11 22:31 skills/programming/scripts/go/check-no-excuse-rules.ps1
+-rwxrwxr-x 1 haroldzhao haroldzhao 7234 Oct  2 20:34 skills/programming/scripts/go/check-no-excuse-rules.sh
+
+[skills/programming/scripts/rust/check-no-excuse-rules.ps1   <->   skills/programming/scripts/rust/check-no-excuse-rules.sh]
+-rw------- 1 haroldzhao haroldzhao 10480 Oct 11 22:31 skills/programming/scripts/rust/check-no-excuse-rules.ps1
+-rwxrwxr-x 1 haroldzhao haroldzhao  7672 Oct  8 22:58 skills/programming/scripts/rust/check-no-excuse-rules.sh
+
+Scope note: the two pre-existing skills/ast-grep .ps1 files (install.ps1, tests/smoke.ps1) are tracked and unchanged in this wave, so they are not among the 5 twins:
+skills/ast-grep/install.ps1
+skills/ast-grep/tests/smoke.ps1

@@ -1,0 +1,2 @@
+{"scenario":"search-match","applying":false,"argv":["--version"]}
+{"scenario":"search-match","applying":false,"argv":["run","-p","a|b","--lang","typescript","--json=stream","--strictness","smart","src"]}

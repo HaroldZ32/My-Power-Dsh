@@ -44,13 +44,22 @@ Plan C / C7 —— 极简的 `mpd.jsonc` 运行时配置层。
   （服务端走适配器的 `llmCatalog()`，Web 侧走宿主自身的客户端目录），目录不可用或降级时回退到
   `TEAM_MODEL_FALLBACK_OPTIONS` —— 因此槽位永远是选择，不是自由输入。
 - **槽位损坏会大声失败：** 走槽位解析失败的成员（服务缺失、槽位缺失或不完整、模型未知、推理强度
-  不受支持）会让创建团队直接失败，并指名成员与槽位，且不写入任何团队状态；推理强度**永远不会**
-  被悄悄钳制。
+  不在该模型声明的等级之内）会让创建团队直接失败，并指名成员与槽位，且不写入任何团队状态；推理强度
+  **永远不会**被悄悄钳制。唯一的例外是模型能力适配：若某模型的目录条目**完全没有**推理等级，则该次调用
+  不发送任何等级、照常运行 —— 否则被物化的槽位默认值会让一个并非配置错误导致的调用失败。运行时通过
+  适配器的 `withSupportedEffort` 实现该适配。
 
 ## 服务 / 工具
 
 - 为其他 mpd 插件提供 `mpdConfig` 服务（`inject: ["mpdConfig"]`）：
-  `get(key?)`、`reload()`、`states()`。
+  `get(key?)`、`reload()`、`states()`、`teamModelRouteOf(member)`。
+- `teamModelRouteOf(member)` 是让**已保存**的 `teamModels` 槽位真正生效的那次读取：
+  它按成员解析其槽位（成员表来自两个设置入口共用的唯一声明），在物化默认值之上解析，
+  返回 `{ provider, model, reasoningEffort? }`；对该成员未被槽位路由的情况返回
+  `undefined`；当被槽位路由的成员其槽位缺少 provider 或 model 时**抛错**并点名成员与槽位。
+  花名册的一次性路径（`mpd_role_spawn`、`mpd_roles_list`、workmate 库与
+  `mpd_modelchain_resolve`）都经此服务读取，因此保存的槽位无需第二条跨包 import
+  即可抵达它们。
 - `mpd_config_get` / `mpd_config_reload` 工具。
 
 ## `/settings` 打通（回写）

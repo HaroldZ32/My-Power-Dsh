@@ -1,0 +1,150 @@
+{
+  "slug": "tui-deps-ctrla",
+  "ok": false,
+  "revision": {
+    "path": "packages/mpd-tui-plugin/dist/index.js",
+    "sha256": "1c52b169ea9e71a9392d259570ad23af3b3012f39ab075c62e8141494567f2ba",
+    "bytes": 379650,
+    "mtimeLocal": "2026-10-08T02:40:43.588Z",
+    "mtimeUtc": "2026-10-08T02:40:43.588Z"
+  },
+  "revisionDelta": {
+    "changed": false,
+    "before": "1c52b169ea9e71a9392d259570ad23af3b3012f39ab075c62e8141494567f2ba",
+    "after": "1c52b169ea9e71a9392d259570ad23af3b3012f39ab075c62e8141494567f2ba",
+    "reason": "unchanged across the run"
+  },
+  "revisionFile": "evidence/tui/lanes/2026-10-08T03-06-38.202Z/REVISION.json",
+  "panelSeam": {
+    "present": true,
+    "hostRoot": "/root/dshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/tui-014b/dshhome/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui",
+    "hostVersion": "0.14.0",
+    "rowDeclared": true,
+    "modulePresent": true,
+    "reason": "host 0.14.0 declares the dsh-tui-panels row and ships lib/types/dsh-adapter/panels.js — the panel seam is PRESENT, so the Ctrl+A contact must stay inert"
+  },
+  "panelSeamPresent": true,
+  "panelBodyBound": "on a host with the tuiPanels seam the merged view is the SIDEBAR panel: a host-accepted open changed ZERO bytes of the captured pane, and both MPD entry points route to it — so this lane proves the registration and the accepted open, and does NOT claim the panel body (or its arrow) renders",
+  "arms": [
+    {
+      "capture": "ctrla-team",
+      "label": "with a live team, Ctrl+A opened the HOST's own subagent dashboard — the MPD contact is INERT on a host that offers the panel seam (frozen R4)",
+      "missing": [
+        "/\\u5B50\\u4EE3\\u7406\\u9762\\u677F|Subagent Dashboard/"
+      ],
+      "missingLines": [],
+      "forbidden": [],
+      "chars": 10360,
+      "ok": false
+    },
+    {
+      "capture": "ctrla-host",
+      "label": "with no team in the workspace, Ctrl+A still opened the HOST subagent dashboard",
+      "missing": [
+        "/\\u5B50\\u4EE3\\u7406\\u9762\\u677F|Subagent Dashboard/"
+      ],
+      "missingLines": [],
+      "forbidden": [],
+      "chars": 10360,
+      "ok": false
+    },
+    {
+      "capture": "settings-ctrla",
+      "label": "with the host's settings screen open, Ctrl+A opened NEITHER panel (the host keeps its own exclusive surface)",
+      "missing": [],
+      "missingLines": [],
+      "forbidden": [],
+      "chars": 10142,
+      "ok": true
+    }
+  ],
+  "storeArms": [
+    {
+      "label": "on a host WITH the panel seam, `/mpd panel` reached the SIDEBAR panel: the host's list() read-back produced an id for OUR slug and accepted the open",
+      "missing": [
+        "/\\u4FA7\\u680F\\u9762\\u677F\\uFF1A\\u5DF2\\u6253\\u5F00|sidebar panel: opened/"
+      ],
+      "forbidden": [],
+      "text": "mpd 侧栏面板：宿主已接受 act1:team；若没有出现面板，请在 /settings → 侧栏里把 act1:team 加入面板列表，并按 Ctrl+B 展开（或开启“启动时展开侧栏”）",
+      "id": "或开启“启动时展开侧栏”",
+      "ok": false
+    }
+  ],
+  "hostContact": {
+    "ok": true,
+    "root": "/root/dshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/tui-014b/dshhome/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui",
+    "reason": "bound to the launched profile copy: /root/dshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/tui-014b/dshhome/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui"
+  },
+  "teamFixture": {
+    "file": ".mpd/recon/qa/tui-lanes/tui-014b/ws/.mpd/team/teams/mpd-fixture-1.json",
+    "sha256": "4cdc31dee8977e1ff7ddee277f56172b8b3bcc50b16e56d8cf5248fb78ba5697",
+    "recordsRemoved": [
+      ".mpd/recon/qa/tui-lanes/tui-014b/ws/.mpd/team/teams/team-20261008030619.json",
+      ".mpd/recon/qa/tui-lanes/tui-014b/ws/.mpd/team/teams/mpd-fixture-1.json"
+    ]
+  },
+  "negativeControl": {
+    "expected": "fail",
+    "observed": false,
+    "artifact": "negative/control.json"
+  },
+  "lifecycleFailures": [],
+  "panes": [
+    {
+      "name": "boot",
+      "file": "evidence/tui/lanes/2026-10-08T03-06-38.202Z/boot.pane.txt",
+      "chars": 1892
+    },
+    {
+      "name": "settle",
+      "file": "evidence/tui/lanes/2026-10-08T03-06-38.202Z/settle.pane.txt",
+      "chars": 2609
+    },
+    {
+      "name": "panel-command",
+      "file": "evidence/tui/lanes/2026-10-08T03-06-38.202Z/panel-command.pane.txt",
+      "chars": 10393
+    },
+    {
+      "name": "close-panel-command",
+      "file": "evidence/tui/lanes/2026-10-08T03-06-38.202Z/close-panel-command.pane.txt",
+      "chars": 10393
+    },
+    {
+      "name": "ctrla-team",
+      "file": "evidence/tui/lanes/2026-10-08T03-06-38.202Z/ctrla-team.pane.txt",
+      "chars": 10360
+    },
+    {
+      "name": "close-team",
+      "file": "evidence/tui/lanes/2026-10-08T03-06-38.202Z/close-team.pane.txt",
+      "chars": 10364
+    },
+    {
+      "name": "ctrla-host",
+      "file": "evidence/tui/lanes/2026-10-08T03-06-38.202Z/ctrla-host.pane.txt",
+      "chars": 10360
+    },
+    {
+      "name": "close-host",
+      "file": "evidence/tui/lanes/2026-10-08T03-06-38.202Z/close-host.pane.txt",
+      "chars": 10364
+    },
+    {
+      "name": "settings-open",
+      "file": "evidence/tui/lanes/2026-10-08T03-06-38.202Z/settings-open.pane.txt",
+      "chars": 10142
+    },
+    {
+      "name": "settings-ctrla",
+      "file": "evidence/tui/lanes/2026-10-08T03-06-38.202Z/settings-ctrla.pane.txt",
+      "chars": 10142
+    },
+    {
+      "name": "settings-close",
+      "file": "evidence/tui/lanes/2026-10-08T03-06-38.202Z/settings-close.pane.txt",
+      "chars": 10411
+    }
+  ],
+  "sandboxRoot": ".mpd/recon/qa/tui-lanes/tui-014b"
+}

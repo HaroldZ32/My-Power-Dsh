@@ -1,0 +1,59 @@
+{
+  "wave": "tui-015-adaptation",
+  "pass": "decision-fix",
+  "scope": ["packages/**"],
+  "host": "@deepseek-harness-tui/dsh-tui 0.15.0",
+  "sandboxRoot": ".mpd/recon/qa/tui-lanes/tui-015",
+  "gitWrites": 0,
+  "skillsBytesTouched": 0,
+  "changed": [
+    { "path": "packages/mpd-tui-plugin/src/log.ts", "symbol": "createLog/emit", "what": "file sink written first, host logger second; the early return after ctx.logger is gone; the DSH_TUI_DEBUG gate on debug is kept" },
+    { "path": "packages/mpd-tui-plugin/src/index.ts", "symbol": "apply", "what": "one line states the decision seam's aggregate outcome when it reads absent at apply time" },
+    { "path": "packages/mpd-tui-adapter-plugin/src/index.ts", "symbol": "TuiAdapter.requestDecisionEvent", "what": "host identity is the bound seam scope for grants.allows and subscribeDecision; options.identity ?? fallbackIdentity is no longer forwarded" },
+    { "path": "packages/mpd-tui-plugin/src/decisions.ts", "symbol": "attemptDecisionEvents", "what": "drops identity: ctx; module header records the measured refusal" },
+    { "path": "packages/mpd-tui-plugin/test/plugin.test.ts", "symbol": "2 new arms", "what": "the identity argument IS the bound seam scope; options.identity is NOT forwarded" },
+    { "path": "packages/mpd-tui-plugin/test/state.test.ts", "symbol": "2 new arms", "what": "the file sink is mirrored when a host logger exists; the debug gate opens for the file under DSH_TUI_DEBUG" }
+  ],
+  "gates": {
+    "node scripts/verify-dist-fresh.ts": { "exit": 0, "observed": "ok: 31/31 targets fresh (each rebuilt twice, byte-identical)" },
+    "bun test packages/mpd-tui-plugin packages/mpd-tui-adapter-plugin": { "observed": "560 pass, 0 fail, 13832 expect() calls" },
+    "bun run typecheck": { "exit": 0, "observed": "tsgo --noEmit" },
+    "bun run verify:comments": { "exit": 0, "observed": "VERDICT: PASS" },
+    "bun test packages": { "observed": "1939 tests, 3 skip, 0 fail" }
+  },
+  "negativeControls": {
+    "identity-arms": { "mutant": "host.subscribeDecision(options.identity ?? fallbackIdentity, ...)", "observed": "0 pass, 2 fail", "restored": "sha256sum -c OK for src + both dists" },
+    "log-arm": { "mutant": "sink reachable only without a host logger", "observed": "1 fail, Received: []", "restored": "log.ts hash matches the pre-mutation value" }
+  },
+  "lane": {
+    "command": "bun skills/dsh-qa/scripts/tui-admission.ts --sandbox-root .mpd/recon/qa/tui-lanes/tui-015",
+    "finalRun": {
+      "at": "2026-10-14T11:30:05.219Z",
+      "evidence": "lane-final.evidence/",
+      "pinnedArtifact": "packages/mpd-tui-plugin/dist/index.js",
+      "pinnedArtifactSha256": "9315076d2acebddb942bda5a0490adf178abe040c34f76f9b51fff14bba65352",
+      "arm3": false,
+      "arm3Line": "[tui-admission] arm3 attribution: attributed=0 decisionHandlerBinds(applied)=0 (ledger delta=20)",
+      "exit": 1
+    },
+    "identityDifferential": {
+      "preFixRun": { "at": "2026-10-14T11:32:32.360Z", "evidence": "lane-prefix-identity.evidence/", "refusal": "dsh-tui: mediated capability requires a non-root activation context from the host composition", "site": "plugin-host.js#subscribeDecision -> assertActivationContext" },
+      "fixedRun": { "at": "2026-10-14T11:30:05.219Z", "evidence": "lane-final.evidence/", "refusal": "the calling activation has no verified dsh-plugin.json Component identity", "site": "plugin-host.js#subscribeDecision -> requireComponentIdentity -> component-identity.js" }
+    },
+    "namedGate": "the host's Component ADMISSION (requireComponentIdentity): a WeakMap keyed by the activation's Cordis fiber, populated only by bindComponentIdentity. No identity argument a patch row can supply satisfies it.",
+    "arm3Flipped": false
+  },
+  "observability": {
+    "workspaceSink": ".mpd/recon/qa/tui-lanes/tui-015/ws/.mpd/logs/mpd-tui.log",
+    "mpdTuiLinesInFinalSnapshot": 36,
+    "mpdTuiAdapterLinesInFinalSnapshot": 132,
+    "preFixMpdTuiLines": 0,
+    "preFixMpdTuiLinesSource": "evidence/tui/dsh-tui-015/triage-reds/REPORT.md §3 (the Architect's measurement, not re-measured here)"
+  },
+  "bounds": [
+    "arm3 stays RED; the identity fix is necessary and provably load-bearing, not sufficient.",
+    "The pre/post differential ran on two different dist bytes; the final run's pinned artifact equals the committed dist at hand-off.",
+    "The apply-time line fires in every measured boot (late bind), not only in a never-binding one; its never-binds value is unproven by a live boot.",
+    "attemptDecisionEvents keeps an unused ctx parameter deliberately (source compatibility, mirroring the adapter's identity precedent)."
+  ]
+}

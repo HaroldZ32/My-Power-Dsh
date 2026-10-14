@@ -1,0 +1,39 @@
+{
+  "task": "Lane Q repair pass, wave tui-015-adaptation",
+  "scope": "skills/dsh-qa/** + evidence/tui/** (no packages/**)",
+  "step1": {
+    "what": "C7-4 case extension folded into skills/dsh-qa/scripts/team-dispatch-guard.ts per evidence/tui/dsh-tui-015/guard/case-draft/c74/HANDOFF.md",
+    "selfTest": { "command": "bun skills/dsh-qa/scripts/team-dispatch-guard.ts --self-test", "exit": 0, "arms": 17 },
+    "realLane": { "command": "bun skills/dsh-qa/scripts/team-dispatch-guard.ts --out <fresh>", "exit": 0, "arms": 21, "evidence": "evidence/tui/dsh-tui-015/guard/c74/lane-run-final-20261014T102620Z/" },
+    "testQa": { "command": "bun run test:qa", "exit": 0, "log": "evidence/tui/dsh-tui-015/q-run/repair/final-test-qa.log" }
+  },
+  "step2": {
+    "a_tui_mount": { "verdict": "PASS with AC-11 witness DECLARED (`not-materialized`)", "doc": "repair/2a-tui-mount.md" },
+    "b_tui_panels": { "verdict": "tuiSettingsSections now rendered (stale patterns + pane width 320->560)", "doc": "repair/2b-tui-panels.md" },
+    "c_tui_deps_ctrla": { "verdict": "DECLARED BOUND: expectation confirmed correct, this boot materializes no session store; 3 drive variants tried and falsified, drive left unchanged", "doc": "repair/2c-tui-deps-ctrla.md" },
+    "d_boot_wall": { "verdict": "admission: park-flood root-caused to the lane's DSH_TUI_DEBUG + stderr redirect + /plugins->/plugin rename (5/6 arms); team-surface: H1/H3 NEW red, cause narrowed to the plan scene's session->team resolution", "doc": "repair/2d-boot-wall.md" },
+    "e_settings_bridge": { "verdict": "PASS; T7 re-scoped to the package's OWN modules (fail-closed attribution)", "doc": "repair/2e-settings-bridge-t7.md" }
+  },
+  "step3": {
+    "driver": "evidence/tui/dsh-tui-015/q-run/run-lanes-step3-final.sh",
+    "log": "evidence/tui/dsh-tui-015/q-run/repair/step3-final-driver.log",
+    "lanes": {
+      "tui-mount": { "expected": "PASS", "observed": "PASS", "exit": 0, "matches": true },
+      "tui-deps-ctrla": { "expected": "PASS", "observed": "FAIL (store arm only)", "exit": 1, "matches": false, "cause": "declared bound, same red as T8, not new" },
+      "tui-panels": { "expected": "ok=false with tuiRenderers ONLY", "observed": "ok=false with tuiRenderers ONLY", "exit": 1, "matches": true },
+      "tui-team-surface": { "expected": "ok=false with H4 ONLY", "observed": "ok=false with H1, H3 and H4", "exit": 1, "matches": false, "cause": "H1/H3 NEW red -> packages lane" },
+      "tui-settings-bridge": { "expected": "PASS", "observed": "PASS (T1..T8 ok)", "exit": 0, "matches": true },
+      "tui-admission": { "expected": "PASS + six grant arms", "observed": "FAIL (arm3 only; arms 1,2,4,5 true, arm6 observed)", "exit": 1, "matches": false, "cause": "arm3 NEW red -> packages/host lane" },
+      "tui-distribution": { "expected": "SKIP acceptable", "observed": "SKIP absent-fixture", "exit": 0, "matches": true },
+      "tui-spec-conformance": { "expected": "env red declared", "observed": "SKIP absent-fixture", "exit": 0, "matches": true }
+    },
+    "score": "5 of 8 lanes match the frozen table (T8: 2 of 8)",
+    "noNewReds": "NOT satisfied: tui-team-surface H1/H3 and tui-admission arm3 are new, both outside this task's write scope",
+    "checkDrift": { "command": "node scripts/run-qa-lanes.ts --check-drift", "exit": 1, "unlisted": ["skills/dsh-qa/scripts/delegation-gate.ts", "skills/dsh-qa/scripts/model-config-live-refresh.ts"], "classification": "PRE-EXISTING (both tracked at HEAD, neither in HEAD cases.json); recorded bound, not repaired" }
+  },
+  "gates": {
+    "typecheck": { "command": "bun run typecheck", "exit": 0 },
+    "comments": { "command": "bun run verify:comments", "exit": 0 },
+    "testQa": { "command": "bun run test:qa", "exit": 0, "skips": 2 }
+  }
+}

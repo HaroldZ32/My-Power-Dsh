@@ -1,0 +1,18 @@
+# Shipped-artifact wiring check (what it PROVES and what it does NOT)
+#
+# PROVES: the committed dist bundle carries the guard's install site, its boot token and its
+#         refusal sentence — i.e. the artifact the loader mounts is the one the unit arms drove.
+# DOES NOT PROVE: that the harness ACCEPTED the registration (only a mounting boot can); see NOTES.md.
+# toolchain: .toolchain/node_modules/.bin/bun 1.4.0 (build), sha256 below
+
+$ sha256sum packages/mpd-roles-plugin/dist/index.js
+89bb6f94ebd368f90d8497798705e2780c9b5ff179f003d68fcaf280ef8d160b  packages/mpd-roles-plugin/dist/index.js
+
+$ grep -c 'ask_user_question is refused' packages/mpd-roles-plugin/dist/index.js
+1
+$ grep -c 'askUserQuestion=installed' packages/mpd-roles-plugin/dist/index.js
+1
+$ grep -c 'askUserQuestionDenial' packages/mpd-roles-plugin/dist/index.js
+2
+$ grep -c 'installAskUserQuestionGuard' packages/mpd-roles-plugin/dist/index.js
+2

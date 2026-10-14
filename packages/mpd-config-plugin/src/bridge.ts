@@ -8,7 +8,7 @@
 //     -> settings/document-updated(ns, revision) with source === 'update'
 //     -> changed leaves -> target set = DISTINCT live session roots (never process.cwd())
 //     -> per root: refuse-first surgical edit under compare-and-swap + atomic rename
-//     -> per-root report, `applies: 'restart'` recorded, every failure named
+//     -> per-root report, `applies: 'live'` recorded, every failure named
 //
 // REFUSE-FIRST (design §B): a target the editor cannot prove is left
 // BYTE-UNTOUCHED and reported with a named reason; the settings write is never
@@ -73,8 +73,15 @@ export interface BridgeReport {
   readonly skipped?: RefusalReason
   /** The candidate roots behind an `ambiguous-multi-root` refusal, in live order. */
   readonly candidates?: readonly string[]
-  /** The behaviour-change timing for the saved value (design §D.1). */
-  readonly applies: "restart"
+  /**
+   * The behaviour-change timing for the saved value (design §D.1), REWORDED by the
+   * model-config-live-refresh wave: the model-config knobs (`modelchain.*`, `teamModels.slot*`,
+   * `agentRoutes.*`) are read from the live config service per use, so a save reaches the next
+   * resolve or spawn with no restart, and a `.mpd/mpd.jsonc` edit reaches this process through the
+   * mount-armed watcher. A knob some plugin captured at its own mount keeps its captured value
+   * until the next `dsh` boot; that class is named per knob in the user guide's §9.1.
+   */
+  readonly applies: "live"
 }
 
 /** The writer's configurable knobs (row config `settingsBridge`). */
@@ -224,9 +231,9 @@ export function writeBackLeaves(
   leaves: readonly BridgeLeaf[],
   options: BridgeOptions = DEFAULT_BRIDGE_OPTIONS,
 ): BridgeReport {
-  if (!options.writeBack) return { writtenTo: [], results: [], skipped: "disabled", applies: "restart" }
-  if (leaves.length === 0) return { writtenTo: [], results: [], skipped: "no-changes", applies: "restart" }
-  if (targets.length === 0) return { writtenTo: [], results: [], skipped: "no-live-session", applies: "restart" }
+  if (!options.writeBack) return { writtenTo: [], results: [], skipped: "disabled", applies: "live" }
+  if (leaves.length === 0) return { writtenTo: [], results: [], skipped: "no-changes", applies: "live" }
+  if (targets.length === 0) return { writtenTo: [], results: [], skipped: "no-live-session", applies: "live" }
 
   // Per-root outcomes, appended in target order; one root's failure never hides another's success.
   const results: RootResult[] = []
@@ -349,7 +356,7 @@ export function writeBackLeaves(
       settled = true
     }
   }
-  return { writtenTo, results, applies: "restart" }
+  return { writtenTo, results, applies: "live" }
 }
 
 /** Flatten a settings user section into leaves (only the paths the section declares). */

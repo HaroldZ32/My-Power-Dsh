@@ -206,7 +206,26 @@ export const FROZEN_COUPLINGS: readonly string[] = [
   "packages/mpd-mcp-codegraph/src/launch.ts :: import { installTerminalSilence } from \"../../mpd-mcp-shared/log-sink.ts\"",
   "packages/mpd-mcp-codegraph/src/launch.ts :: import { resolveCodegraphBinary } from \"../../mpd-mcp-shared/bin-resolve.ts\"",
   "packages/mpd-mcp-gitbash/src/launch.ts :: import { installTerminalSilence } from \"../../mpd-mcp-shared/log-sink.ts\"",
-  "packages/mpd-mcp-lsp/src/launch.ts :: import { installTerminalSilence } from \"../../mpd-mcp-shared/log-sink.ts\"",
+  "packages/mpd-mcp-lsp/src/launch.ts :: import { installTerminalSilence, resolveLogRoots } from \"../../mpd-mcp-shared/log-sink.ts\"",
+  // THE TWO LAUNCHERS BECAME REAL THIN LAUNCHERS (de-omo wave B2, 2026-10-08): they no longer import
+  // a vendored `./cli.js` beside them, so they resolve their server through the SHARED dependency
+  // resolver, type their diagnostics channel on the SHARED sink interface, and degrade through the
+  // SHARED unavailable-server fallback. Six NEW edges, frozen here rather than discovered later —
+  // the R5 sink edge above was re-spelled in the same edit (it now also imports `resolveLogRoots`).
+  "packages/mpd-mcp-gitbash/src/launch.ts :: import { resolveDependencyEntry } from \"../../mpd-mcp-shared/dependency-entry.ts\"",
+  "packages/mpd-mcp-gitbash/src/launch.ts :: import type { LogSink } from \"../../mpd-mcp-shared/log-sink.ts\"",
+  "packages/mpd-mcp-gitbash/src/launch.ts :: import { serveUnavailable } from \"../../mpd-mcp-shared/unavailable-server.ts\"",
+  "packages/mpd-mcp-lsp/src/launch.ts :: import { resolveDependencyEntry } from \"../../mpd-mcp-shared/dependency-entry.ts\"",
+  "packages/mpd-mcp-lsp/src/launch.ts :: import type { LogSink } from \"../../mpd-mcp-shared/log-sink.ts\"",
+  "packages/mpd-mcp-lsp/src/launch.ts :: import { serveUnavailable } from \"../../mpd-mcp-shared/unavailable-server.ts\"",
+  // THE AST_GREP SERVER IS OURS NOW (de-omo wave B1, 2026-10-08): the vendored artifact inlined both
+  // shared modules, so these two edges are NEW to the scan even though the imports themselves only
+  // moved from a bundle into source. `cli.ts` routes the row's diagnostics through THE shared sink
+  // (R5) and `server.ts` resolves the engine through the shared binary resolver — the same pair the
+  // launchers above already carry. Frozen here by the registration repair, which owns this inventory
+  // this wave; the gate stays green instead of reddening on an edge that was written on purpose.
+  "packages/mpd-mcp-astgrep/src/cli.ts :: import { openLogSink } from \"../../mpd-mcp-shared/log-sink.ts\"",
+  "packages/mpd-mcp-astgrep/src/server.ts :: import { probeAstGrep, resolveAstGrepBinary } from \"../../mpd-mcp-shared/bin-resolve.ts\"",
   // THE DEBT IS REPAID, NOT DELETED (de-vendor wave): the four files below used to import the
   // schemastery tree vendored inside the adopted `packages/mpd-agent-teams-plugin`, which is why
   // docs/independence.md §4 carried them as a PINNED DEBT. That body is DELETED and the validator
@@ -238,7 +257,7 @@ export const FROZEN_COUPLINGS: readonly string[] = [
   // because they are still a source-level dependency on a sibling's internal module path.
   "packages/mpd-tui-plugin/src/index.ts :: import type { TeamRecord } from \"../../mpd-team-core-plugin/src/team-store.js\"",
   "packages/mpd-tui-plugin/src/scenes.ts :: import type { TeamRecord } from \"../../mpd-team-core-plugin/src/team-store.js\"",
-  "packages/mpd-tui-plugin/src/settings.ts :: import { BRIDGE_DISCLOSURE, BRIDGE_NOT_LOST, SettingsSchema, SETTINGS_KNOBS, SETTINGS_NS, TEAM_MODEL_FALLBACK_OPTIONS } from \"../../mpd-config-plugin/src/settings-schema\"",
+  "packages/mpd-tui-plugin/src/settings.ts :: import { BRIDGE_DISCLOSURE, BRIDGE_NOT_LOST, SettingsSchema, SETTINGS_KNOBS, SETTINGS_NS, TEAM_MODEL_FALLBACK_OPTIONS, markVolatile } from \"../../mpd-config-plugin/src/settings-schema\"",
   // mpd-tui -> mpd-config AGAIN, from the model menu this time, and for the same reason the entry
   // above is allowed: the four slots and their member groups have ONE declaration, and the /mpd-model
   // pick-list has to offer exactly the slots the settings rows expose. Restating them in
@@ -262,6 +281,13 @@ export const FROZEN_COUPLINGS: readonly string[] = [
   // reading of the knob, so the boulder row imports the gate's `resolveBoulderDir` instead of keeping a
   // second copy that could drift back apart. Same shape as the ULW entry above, same file, same reason.
   "packages/mpd-boulder-plugin/src/index.ts :: import { resolveBoulderDir } from \"../../mpd-roles-plugin/src/complexity-gate.ts\"",
+  // mpd-roles -> mpd-verify (the CAPTAIN INVESTIGATION guard, lane L, 2026-10-08): the top-level
+  // session no longer does reconnaissance, and the new rule reuses `readTargetPath` from the SAME law
+  // module the captain's write rule already reads rather than forking the argument-key list
+  // (`file_path`/`path`/`filePath`/`target`), which would let the two rules disagree about which
+  // spelling names a path. Same edge direction and same reasoning as the LANE D entries above; frozen
+  // here by lane L, whose own scope does not hold this file, on the captain's instruction.
+  "packages/mpd-roles-plugin/src/captain-investigation.ts :: import { readTargetPath } from \"../../mpd-verify-plugin/src/law.ts\"",
 ]
 
 /** Blank out comments while preserving BOTH the character count and every newline, so a

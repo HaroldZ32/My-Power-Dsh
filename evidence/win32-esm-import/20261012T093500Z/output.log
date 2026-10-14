@@ -1,0 +1,67 @@
+# Raw observed output — ERR_UNSUPPORTED_ESM_URL_SCHEME on win32 (2026-10-12)
+
+## 1. The user's report (verbatim)
+Error [ERR_UNSUPPORTED_ESM_URL_SCHEME]: Only URLs with a scheme in: file, data, and node are supported
+by the default ESM loader. On Windows, absolute paths must be valid file:// URLs. Received protocol 'c:'
+    at throwIfUnsupportedURLScheme (node:internal/modules/esm/load:193:11)
+    at defaultLoadSync (node:internal/modules/esm/load:146:3)
+    at #loadAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:806:12)
+    ...
+Node.js v24.21.0
+
+## 2. Reproduction against the CURRENT (unfixed) dist
+$ node packages/mpd-mcp-lsp/dist/launch.js
+exited with code 1
+== captured stderr ==
+node:internal/modules/esm/load:193
+    throw new ERR_UNSUPPORTED_ESM_URL_SCHEME(parsed, schemes);
+          ^
+Error [ERR_UNSUPPORTED_ESM_URL_SCHEME]: Only URLs with a scheme in: file, data, and node are supported by the default ESM loader. On Windows, absolute paths must be valid file:// URLs. Received protocol 'c:'
+    at throwIfUnsupportedURLScheme (node:internal/modules/esm/load:193:11)
+    ...
+== the log shows where it died ==
+[mpd-mcp-lsp] starting cclsp@0.7.0 from C:\MyDoc\DshProj\My-Power-Dsh\node_modules\.bun\cclsp@0.7.0+5b6b5129650ecc67\node_modules\cclsp\dist\index.js
+[mpd-mcp-lsp] cclsp config: C:\MyDoc\DshProj\My-Power-Dsh\.mpd\lsp\cclsp.json (generated, 1 language server(s), unchanged)
+... and the SAME pair repeats 6x inside 35 s (the host's crash-restart loop)
+
+## 3. The offending code (before)
+packages/mpd-mcp-lsp/src/launch.ts
+  /** The dependency's MCP server entry, resolved from the installed profile. */
+  const entry: string = dependency.entry
+  await import(entry)                       // <-- entry is an absolute path: C:\...\cclsp\dist\index.js
+packages/mpd-mcp-gitbash/src/launch.ts:86   // identical shape
+packages/mpd-mcp-shared/dependency-entry.ts:155
+  if (typeof manifest.bin === "string") return resolve(packageDir, manifest.bin)   // -> an absolute PATH
+(the two sibling launchers use RELATIVE specifiers and are unaffected:
+ mpd-mcp-astgrep/src/launch.ts:50 `await import("./cli.js")`,
+ mpd-mcp-codegraph/src/launch.ts:170 `await import("./serve.js")`)
+
+## 4. After the fix (dists rebuilt with the pinned bun 1.4.0)
+$ select-string packages\mpd-mcp-lsp\dist\launch.js    -> import(pathToFileURL(entry).href)  (line 1395)
+$ select-string packages\mpd-mcp-gitbash\dist\launch.js -> import(pathToFileURL(entry).href)  (line 436)
+
+$ node packages/mpd-mcp-lsp\dist\launch.js
+STILL ALIVE after 8s (a stdio MCP server waiting for input = healthy)
+== stderr (expect EMPTY) ==
+(nothing)
+== log tail ==
+[...] Preloading LSP server: C:\Program Files\nodejs\node.exe C:\...\typescript-language-server@4.4.1\...\lib\cli.mjs --stdio
+[...] [DEBUG startServer] Initialization timeout or failed for ... , proceeding anyway: Error: Initialization timeout
+[...] Successfully preloaded LSP server for extensions: ts, tsx, js, jsx, mjs, cjs, mts, cts
+[...] LSP server preloading completed
+
+## 5. The repo's OWN test pins it — fail before, pass after
+$ bun test packages/mpd-ext-plugin/test/mcp.test.ts -t "client completes initialize"
+== PRISTINE (fix stashed) ==
+(fail) the client completes initialize -> initialized -> tools/list against the repo's own stdio MCP server [476.91ms]
+ 0 pass / 1 fail
+== WITH the fix ==
+(pass) the client completes initialize -> initialized -> tools/list against the repo's own stdio MCP server [533.55ms]
+ 1 pass / 0 fail
+
+## 6. Gates
+$ node scripts/verify-dist-fresh.ts      -> ok: 31/31 targets fresh            exit=0
+$ node scripts/verify-comment-coverage.ts -> VERDICT: PASS                    exit=0
+$ bun run typecheck (tsgo --noEmit)       -> no diagnostics                    exit=0
+$ bun test packages                       -> with fix 40 failing arms / pristine 42 (each arm prints twice
+                                             => exactly ONE arm flipped, the MCP handshake above; none regressed)

@@ -1,7 +1,7 @@
 // packages/mpd-workmate-plugin/src/index.ts
 import { existsSync, lstatSync, mkdirSync as mkdirSync2, readFileSync, readdirSync, renameSync as renameSync2, rmSync as rmSync2, writeFileSync } from "node:fs";
 import { homedir, userInfo } from "node:os";
-import { join as join2, resolve as resolve3, sep } from "node:path";
+import { join as join2, resolve as resolve3, sep as sep2 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
@@ -15,7 +15,7 @@ function errorMessage(error) {
 // packages/mpd-mcp-shared/log-sink.ts
 import { closeSync, mkdirSync, openSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { isAbsolute, join, relative, resolve, sep } from "node:path";
 var LOG_SUBDIR = join(".mpd", "logs");
 var DEFAULT_MAX_BYTES = 1024 * 1024;
 var DEFAULT_MAX_LINE_BYTES = 8192;
@@ -63,7 +63,10 @@ function tryOpenRoot(root, name) {
 }
 function owningRoot(roots, file) {
   for (const root of roots) {
-    if (file === root || file.startsWith(root.endsWith("/") ? root : `${root}/`))
+    if (file === root)
+      return root;
+    const rel = relative(root, file);
+    if (rel !== "" && rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel))
       return root;
   }
   return null;
@@ -213,6 +216,31 @@ function dshSeamInject(...names) {
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
 var TEAM_TASK_METHODS = ["createTask", "getTask", "listTasks", "updateTask"];
+function modelDeclaresNoEffort(catalog, provider, model) {
+  const entry = catalog.providers.find((p) => p.id === provider)?.models.find((m) => m.id === model);
+  return entry !== undefined && Array.isArray(entry.efforts) && entry.efforts.length === 0;
+}
+async function withSupportedEffort(dsh, route) {
+  if (route === undefined)
+    return route;
+  const effort = typeof route.reasoningEffort === "string" ? route.reasoningEffort : "";
+  if (effort === "")
+    return route;
+  if (typeof dsh?.llmCatalog !== "function")
+    return route;
+  let catalog;
+  try {
+    catalog = await dsh.llmCatalog();
+  } catch {
+    return route;
+  }
+  if (!modelDeclaresNoEffort(catalog, route.provider, route.model))
+    return route;
+  const adapted = { ...route };
+  delete adapted.reasoningEffort;
+  rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${route.provider}/${route.model} declares no reasoning efforts — the "${effort}" effort is omitted (a keyword this model cannot take fails the call)`);
+  return adapted;
+}
 function textBlock(content) {
   return [{ type: "text", text: typeof content === "string" ? content : String(content ?? "") }];
 }
@@ -254,6 +282,37 @@ function rowLogLine(name, line) {
     }
     entry.sink.write(line);
   } catch {}
+}
+function unknownRestrictedNames(error) {
+  const message = error instanceof Error ? error.message : typeof error === "string" ? error : "";
+  if (!/names unknown global tool/.test(message))
+    return;
+  const head = message.split("; known global tools:")[0] ?? "";
+  const names = [...head.matchAll(/"([^"]+)"/g)].map((match) => String(match[1] ?? "")).filter((name) => name !== "");
+  return names.length > 0 ? names : undefined;
+}
+function restrictToolsTolerant(restrict, names) {
+  let candidate = [...names];
+  const pruned = [];
+  for (let attempt = 0;; attempt += 1) {
+    try {
+      const release = restrict(candidate);
+      if (typeof release === "function")
+        release();
+      return { applied: candidate, pruned };
+    } catch (error) {
+      if (attempt >= 1)
+        throw error;
+      const unknown = unknownRestrictedNames(error);
+      if (unknown === undefined)
+        throw error;
+      const next = candidate.filter((name) => !unknown.includes(name));
+      if (next.length === candidate.length)
+        throw error;
+      pruned.push(...candidate.filter((name) => unknown.includes(name)));
+      candidate = next;
+    }
+  }
 }
 function workspaceRootsOf(agents) {
   if (agents === undefined || agents === null || typeof agents.list !== "function")
@@ -1566,7 +1625,8 @@ var READONLY_DENY = [
   "bash",
   "mcp__ast_grep__rewrite",
   "mcp__ast_grep__scan",
-  "mcp__lsp__rename"
+  "mcp__lsp__rename_symbol",
+  "mcp__lsp__rename_symbol_strict"
 ];
 
 class WorkmateError extends Error {
@@ -1643,7 +1703,7 @@ function assertMutationSandboxed(operation) {
   const root = workmateRoot();
   const home = process.env.HOME;
   const realHome = realUserHome();
-  const inside = (h) => root === h || root.startsWith(h.endsWith(sep) ? h : h + sep);
+  const inside = (h) => root === h || root.startsWith(h.endsWith(sep2) ? h : h + sep2);
   if (home !== undefined && home !== "" && realHome !== undefined && resolve3(home) !== resolve3(realHome) && inside(resolve3(home)))
     return;
   throw new WorkmateError("real-home-refused", "mpd_workmate: refusing to " + operation + " inside the REAL library " + root + " while DSH_HOME=" + dshHome + " marks an isolated/QA boot — set HOME=<sandbox> (T-43), or set " + WORKMATE_ALLOW_REAL_HOME_ENV + "=1 to override deliberately" + (realHome === undefined ? " (the real home could not be determined on this host)" : ""), 403);
@@ -2050,6 +2110,53 @@ function apply(ctx) {
   function rolesService() {
     return ctx.get ? ctx.get("mpdRoles") : undefined;
   }
+  function configService() {
+    try {
+      return ctx.get ? ctx.get("mpdConfig") : undefined;
+    } catch {
+      return;
+    }
+  }
+  function spawnRouteOf(meta) {
+    const live = configService();
+    if (typeof live?.teamModelRouteOf === "function") {
+      const value = live.teamModelRouteOf(meta.baseName);
+      if (value !== undefined && value !== null && typeof value === "object") {
+        return {
+          provider: String(value.provider ?? ""),
+          model: String(value.model ?? ""),
+          ...typeof value.reasoningEffort === "string" && value.reasoningEffort !== "" ? { reasoningEffort: value.reasoningEffort } : {}
+        };
+      }
+    }
+    try {
+      const base = resolveBase(meta.baseName);
+      if (base.provider !== "" && base.model !== "")
+        return { provider: base.provider, model: base.model };
+    } catch {}
+    return { provider: meta.provider, model: meta.model };
+  }
+  function validatedReadonlyDeny(agent) {
+    const scope = dsh.agentScope(agent);
+    if (scope === undefined) {
+      reportPrunedNames("read-only workmate spawn: this agent exposes no scoped context, so the canonical deny list is sent unvalidated");
+      return [...READONLY_DENY];
+    }
+    const outcome = restrictToolsTolerant((names) => scope.tools.restrict({ deny: names }), READONLY_DENY);
+    if (outcome.pruned.length > 0) {
+      reportPrunedNames("read-only workmate spawn: pruned tool name(s) this profile does not register: " + outcome.pruned.join(", "));
+    }
+    return [...outcome.applied];
+  }
+  const reportedValidationLines = new Set;
+  function reportPrunedNames(line) {
+    if (reportedValidationLines.has(line))
+      return;
+    reportedValidationLines.add(line);
+    try {
+      rowLogLine("mpd-workmate", "[mpd-workmate] " + line);
+    } catch {}
+  }
   function normalizeBaseKey(s) {
     return String(s ?? "").trim().toLowerCase().replace(/[\s_-]+/g, "");
   }
@@ -2172,16 +2279,19 @@ Context:
 Work with the tools your role requires (read-only workmates must never modify anything).` + " BEFORE your final report, call mpd_workmate_reflect with a concise self-summary (task / outcome / what you learned / optional persona_delta / optional new note) so your workmate persona and memory evolve. Then end with ONLY the structured report (name/summary/recommendation/details/evidence).";
       noteSpawnStart(key);
       try {
+        const decided = spawnRouteOf(meta);
+        const route = await withSupportedEffort(dsh, decided) ?? decided;
         const result = await dsh.spawnAgent({
           label: key,
           prompt,
           parent: exec.agent,
           signal: exec.signal,
-          provider: meta.provider,
-          model: meta.model,
+          provider: route.provider,
+          model: route.model,
           persona,
           outputSchema: REPORT_SCHEMA,
-          ...meta.readonly ? { toolFilter: { deny: READONLY_DENY } } : {}
+          ...route.reasoningEffort === undefined ? {} : { agentOptions: { reasoningEffort: route.reasoningEffort } },
+          ...meta.readonly ? { toolFilter: { deny: validatedReadonlyDeny(exec.agent) } } : {}
         });
         const st = result.structured ?? {};
         return { name: key, status: "complete", summary: String(st.summary ?? ""), recommendation: String(st.recommendation ?? ""), details: String(st.details ?? ""), evidence: Array.isArray(st.evidence) ? st.evidence.map(String) : [], stopReason: result.stopReason ?? null };

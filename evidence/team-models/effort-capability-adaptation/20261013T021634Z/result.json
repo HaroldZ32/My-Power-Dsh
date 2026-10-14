@@ -1,0 +1,86 @@
+{
+  "wave": "fix/model-without-reasoning-effort — the reported defect: \"添加对在模型没有effort时的适配，目前模型没配置effort强塞一个effort会导致调用失败\"",
+  "date": "2026-10-13",
+  "host": { "platform": "win32", "node": "v24.21.0", "bun": "1.4.0 (pinned .toolchain/node_modules/.bin/bun.cmd)", "repoRoot": "C:\\MyDoc\\DshProj\\My-Power-Dsh" },
+  "defect": {
+    "reported": "Add adaptation for a model that has no reasoning effort: forcing one onto a model that supports none fails the call.",
+    "rootCause": "A `teamModels` slot is read MATERIALISED over its schema defaults (`TEAM_MODEL_SLOT_DEFAULTS` states an effort for every slot: slot1 `max`, slot2/3/4 `high`), so a workspace that changed only a slot's provider/model still carried an effort. BOTH runtime carriers of that effort passed it unconditionally: `mpd_role_spawn` (`agentOptions.reasoningEffort`) and the `mpd-roster` provider's delegating `start()` (`applyRoute`). Handing that keyword to a model whose live catalog entry declares NO reasoning efforts (`efforts: []`) is a value no provider can accept, and the call failed.",
+    "measuredEvidence": [
+      "the forced-keyword line the one-shot path carried: packages/mpd-roles-plugin/src/index.ts — \"The slot's OWN effort keyword rides along when it states one\"",
+      "the surface that ALREADY adapted, proving the capability data exists: the two settings front doors derive a slot's effort options from the SELECTED model's own efforts (packages/mpd-tui-plugin/src/settings.ts and packages/mpd-bundle-plugin/src/settings-card.ts, documented in packages/mpd-config-plugin/README.md: 'Their option lists come from the live model catalog') — the runtime was the only surface still forcing a value the model never offered",
+      "the catalog contract the fix reads: `DshAdapter.llmCatalog()` projects `efforts` ALWAYS as an array, `[]` for a model with no reasoning block (packages/mpd-dsh-adapter-plugin/src/index.ts)"
+    ],
+    "fix": [
+      "NEW, exported from packages/mpd-dsh-adapter-plugin/src/index.ts: `DshEffortRoute` (the three route fields), the PURE predicate `modelDeclaresNoEffort(catalog, provider, model)` (true only when the catalog lists BOTH the provider and the model with an EMPTY efforts array), and the async, never-throwing `withSupportedEffort(dsh, route)` — it returns the route BY IDENTITY when nothing is adapted, and a NEW copy without `reasoningEffort` when the model declares none, logging the drop.",
+      "packages/mpd-roles-plugin/src/index.ts (mpd_role_spawn): `const slotRoute = await withSupportedEffort(dsh, configuredRoute)` before the spawn's `agentOptions` are built.",
+      "packages/mpd-roster-provider-plugin/src/index.ts: `start()` is now async and passes the resolved slot route through `withSupportedEffort` before `applyRoute`, so a routed official `spawn_teammate` is covered too.",
+      "Both imports target a SANCTIONED adapter package, which the frozen cross-package coupling inventory exempts (allowed to grow).",
+      "User-facing copy (EN + ZH) updated in packages/mpd-config-plugin/src/settings-schema.ts and its byte-mirrored copy in packages/mpd-bundle-plugin/src/settings-card.ts, plus the pinned expectation in packages/mpd-config-plugin/test/team-models.test.ts.",
+      "Docs: the README pairs of mpd-dsh-adapter, mpd-roles, mpd-roster-provider and mpd-config; the docs/user-guide pair; the AGENTS.md §13 team-model-slot bullet; and a LIVE AMENDMENT note in agent-references/glossary.md's OWN header (its verbatim §13 block is left frozen, as it declares itself to be)."
+    ]
+  },
+  "tests": {
+    "new": [
+      "packages/mpd-dsh-adapter-plugin/test/effort-adaptation.test.ts — 6 arms (predicate truth table; identity pass-through for an absent route/effort WITHOUT reading the catalog; the defect arm; the declares-efforts control; unknown model / no seam / rejected read)",
+      "packages/mpd-roster-provider-plugin/test/effort-adaptation.test.ts — 3 arms driving the REAL delegating `start()` against a fake `mpdDsh` mount (drop; keep; no-member inheritance untouched)",
+      "packages/mpd-roles-plugin/test/team-models-routing.test.ts — 2 NEW arms driving the REAL `spawnAgent` with only `llmCatalog` replaced (drop; keep)"
+    ],
+    "targetedRun": { "command": "bun test <the three files>", "observed": "16 pass / 0 fail / 50 expect() calls" }
+  },
+  "gates": [
+    { "command": "bun run typecheck (tsgo --noEmit)", "exit": 0, "observed": "no diagnostics" },
+    { "command": "node scripts/verify-dist-fresh.ts", "exit": 0, "observed": "ok: 31/31 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED" },
+    { "command": "node scripts/build-mpd-client.ts", "exit": 0, "observed": "wrote packages/mpd-bundle-plugin/client.js (the script prints out.length=660947, a CHARACTER count; the FILE is 671838 raw bytes); the new copy appears 4x in the artifact" },
+    { "command": "bun run verify:comments", "exit": 0, "observed": "VERDICT: PASS — 391 files / 34378 declarations" },
+    { "command": "bun run verify:docs", "exit": 0, "observed": "pairs=47 failed=0 violations=0; links=436 checked=404 resolved=404 dead=0 — PASS" },
+    { "command": "node scripts/verify-manual-paths.ts", "exit": 0, "observed": "PASS resolved=163 over-report=79 under-report=89 declared=2" },
+    { "command": "node scripts/verify-vendor.ts", "exit": 0, "observed": "PASS - 7 shipped asset(s) fingerprinted, upstream identity not checked — AFTER the client.js re-pin; the FIRST push FAILED this member in CI, see vendorRepin" },
+    { "command": "bun run verify:gates", "exit": 0, "observed": "PASS - 8/8 member gate(s) green (vendor, dist-fresh, rows-parity, docs-parity, preset-conformance, plugin-manifest, comment-coverage, workflows); the workflows member needed MPD_WORKFLOW_JS_YAML pointed at the installed harness's js-yaml in this checkout (CI resolves it itself and reported it green)" },
+    { "command": "bun test packages --timeout 30000", "exit": 1, "observed": "1859 pass / 5 skip / 1 fail across 116 files — the ONE fail is PRE-EXISTING and unrelated (see preExistingFailures)" }
+  ],
+  "derivedArtifactsRebuilt": {
+    "dist": [
+      "packages/mpd-dsh-adapter-plugin/dist/index.js — the new exported helper",
+      "packages/mpd-roles-plugin/dist/index.js — inlines the adapter src",
+      "packages/mpd-roster-provider-plugin/dist/index.js — inlines the adapter src AND mpd-config's settings-schema",
+      "packages/mpd-config-plugin/dist/index.js — the settings-schema sentence",
+      "packages/mpd-tui-plugin/dist/index.js — inlines mpd-config's settings-schema (fan-out, no src edit here)"
+    ],
+    "client": "packages/mpd-bundle-plugin/client.js via `node scripts/build-mpd-client.ts` — the Web settings card ships ONLY through this artifact; `verify-dist-fresh` does NOT cover it, so it was rebuilt explicitly and the new copy verified inside it.",
+    "toolchain": "every build used the PINNED .toolchain bun 1.4.0 from the repo root with path-qualified args (T67/T16)."
+  },
+  "vendorRepin": {
+    "whatFailed": "CI's `Static gates` job on the FIRST push: `[verify-gates] member vendor: exit=1 FAIL` / `[verify-vendor] FAIL - asset packages/mpd-bundle-plugin/client.js sha256 mismatch`. The wave had skipped `verify:vendor` and wrongly recorded that no VENDOR_LOCK change was needed.",
+    "why": "`packages/mpd-bundle-plugin/client.js` is a SINGLE-FILE `sha256` asset of VENDOR_LOCK.json; rebuilding it (to ship the updated settings-card copy, which rides ONLY in this artifact) invalidated the fingerprint.",
+    "locked": "1d59f4c9d802848780a88635390736aeabb0d8d0da44b6fb78434e1fd2be3f8f (670950 raw bytes)",
+    "rebuilt": "485d63766ec764111a389d151071341b1477ef92e0c6f9224189c52a11c3e37d (671838 raw bytes)",
+    "valueRule": "the lock's single-file rule — sha256 over the file's RAW bytes, derived with node:crypto, exactly as evidence/de-omo/cores/20261008T162920Z/result.json's `why_a_hand_edit` records for this same asset",
+    "whyHandEdited": "`node scripts/repin-vendor.ts` refuses it by design: 'POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding the package that emits it, never by rewriting the lock', and its `RepinField` type is only `\"fileCount\" | \"treeSha\"` — the helper never writes `sha256`. The DOCUMENTED mechanism (that same evidence packet) is a scripted hand edit of the lock with the gate's own algorithm, PROVEN by the gate.",
+    "sameCommit": "the artifact rebuild and the lock re-pin ride in ONE commit (AGENTS.md §9's pairing rule), and the branch was amended + force-pushed with --force-with-lease because the first push was a pre-CI-red draft of the same wave.",
+    "proof": "node scripts/verify-vendor.ts -> PASS - 7 shipped asset(s) fingerprinted; and bun run verify:gates -> PASS - 8/8 member gate(s) green"
+  },
+  "bounds": {
+    "unsupported-but-declared-effort": "DELIBERATELY UNCHANGED: a model that DECLARES efforts but not the requested one still receives that keyword and the call still fails visibly. That is a configuration error, and the slot contract forbids substituting or clamping an effort (the settings front doors only offer a model's own efforts, so reaching this state means the config is stale).",
+    "no-knowledge-keeps-the-effort": "An unknown model, a composition without the `llmCatalog` seam, and a catalog read that rejects all keep the keyword: 'not listed' is not 'declares none'. The helper also never throws.",
+    "cost": "One extra async catalog read per effort-carrying spawn, and ONLY when the route states an effort (the adapter's catalog read iterates the live provider/model list). Nothing is cached, so a model-capability change needs no restart.",
+    "coverage": "The adaptation covers the two mpd surfaces that SET an effort. The team-core native executor forwards `request.agentOptions` verbatim and no mpd surface puts an effort there today; a future `spawnAgent` caller that adds one would need the same call. The single choke point `spawnAgent` was deliberately left a pure forwarder so the decision stays visible at each caller."
+  },
+  "preExistingFailures": {
+    "notCausedByThisChange": [
+      {
+        "arm": "packages/mpd-tui-plugin/test/team-surface.test.ts > package invariants > no source file in this package imports a filesystem WRITE primitive",
+        "observed": "received [\"index.ts: rm(\"]",
+        "rootCause": "the forbidden literal `rm(` matches INSIDE `volatileForm(schema)` at packages/mpd-tui-plugin/src/index.ts:152 — a substring false positive",
+        "proof": "that file is UNMODIFIED in this worktree (`git status --porcelain packages/mpd-tui-plugin` lists ONLY dist/index.js), and its last change was commit 880d43b6 (2026-10-13 09:25:05 +0800), which is NEWER than the repo's own known-failures record evidence/win32-all-known-failures/20261012T101500Z (final state 1847 pass / 5 skip / 0 fail)",
+        "action": "NOT FIXED here — out of this change's scope; recorded so the tree's redness is attributed correctly."
+      },
+      {
+        "arm": "load-induced 5 s timeouts under bun's default (`git backend: write -> commit -> read -> reflection due`, mpd-team-core arms)",
+        "observed": "FAIL at bun's 5000 ms default; PASS alone and PASS under --timeout 30000",
+        "proof": "the repo already ships this reading: evidence/win32-all-known-failures/20261012T101500Z records the git-backend arm at '5019 ms under load / 3886 ms alone: PASS'. Re-measured here: the arm passes alone (6 pass / 0 fail).",
+        "note": "`--test-timeout 30000` (the `test:fast` spelling) did NOT raise the bound on bun 1.4.0 in this session; `--timeout 30000` did."
+      }
+    ]
+  },
+  "verificationGate": "verifyGate=absent — the mounted guard did not refuse this top-level session's write/edit on a code path, so the A-writes/B-verifies loop could not be armed mechanically here. Compensating discipline: the verdict above rests on INDEPENDENT gates (verify-dist-fresh's own rebuild-and-diff, verify:comments' AST scan, verify:docs' link resolution) plus the repo's prior records, and every bound is stated rather than implied."
+}

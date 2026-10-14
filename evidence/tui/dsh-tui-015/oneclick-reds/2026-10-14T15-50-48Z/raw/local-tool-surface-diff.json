@@ -1,0 +1,112 @@
+{
+ "pre_fix_source_condition": {
+  "ok": true,
+  "toolCount": 107,
+  "writeCapableVisible": [
+   "write",
+   "edit",
+   "mpd_hashline_edit",
+   "bash",
+   "mcp__ast_grep__rewrite",
+   "mcp__ast_grep__scan",
+   "mcp__lsp__rename_symbol",
+   "mcp__lsp__rename_symbol_strict"
+  ],
+  "mcpTools": [
+   "mcp__ast_grep__rewrite",
+   "mcp__ast_grep__scan",
+   "mcp__ast_grep__search",
+   "mcp__codegraph__codegraph_explore",
+   "mcp__context7__query-docs",
+   "mcp__context7__resolve-library-id",
+   "mcp__grep_app__searchGitHub",
+   "mcp__lsp__find_definition",
+   "mcp__lsp__find_implementation",
+   "mcp__lsp__find_references",
+   "mcp__lsp__find_workspace_symbols",
+   "mcp__lsp__get_diagnostics",
+   "mcp__lsp__get_hover",
+   "mcp__lsp__get_incoming_calls",
+   "mcp__lsp__get_outgoing_calls",
+   "mcp__lsp__prepare_call_hierarchy",
+   "mcp__lsp__rename_symbol",
+   "mcp__lsp__rename_symbol_strict",
+   "mcp__lsp__restart_server"
+  ],
+  "parentSeesAllDenyNames": true,
+  "denyListMatchesTheEight": "true",
+  "lspDependency": null
+ },
+ "pre_fix_oneclick_condition": {
+  "ok": true,
+  "toolCount": 107,
+  "writeCapableVisible": [
+   "write",
+   "edit",
+   "mpd_hashline_edit",
+   "bash",
+   "mcp__ast_grep__rewrite",
+   "mcp__ast_grep__scan",
+   "mcp__lsp__rename_symbol",
+   "mcp__lsp__rename_symbol_strict"
+  ],
+  "mcpTools": [
+   "mcp__ast_grep__rewrite",
+   "mcp__ast_grep__scan",
+   "mcp__ast_grep__search",
+   "mcp__codegraph__codegraph_explore",
+   "mcp__context7__query-docs",
+   "mcp__context7__resolve-library-id",
+   "mcp__grep_app__searchGitHub",
+   "mcp__lsp__find_definition",
+   "mcp__lsp__find_implementation",
+   "mcp__lsp__find_references",
+   "mcp__lsp__find_workspace_symbols",
+   "mcp__lsp__get_diagnostics",
+   "mcp__lsp__get_hover",
+   "mcp__lsp__get_incoming_calls",
+   "mcp__lsp__get_outgoing_calls",
+   "mcp__lsp__prepare_call_hierarchy",
+   "mcp__lsp__rename_symbol",
+   "mcp__lsp__rename_symbol_strict",
+   "mcp__lsp__restart_server"
+  ],
+  "parentSeesAllDenyNames": true,
+  "denyListMatchesTheEight": "true",
+  "lspDependency": {
+   "ok": true,
+   "name": "cclsp",
+   "version": "0.7.0",
+   "positiveLane": {
+    "ok": true,
+    "source": "npm-install",
+    "detail": "npm install cclsp@0.7.0 --prefix /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-oneclick/tmp/FIX2-rd-sim-oc/mpd-rd-pos-dsh-7TkhnF/lsp-mcp"
+   },
+   "controlLane": {
+    "ok": true,
+    "source": "npm-install",
+    "detail": "npm install cclsp@0.7.0 --prefix /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-oneclick/tmp/FIX2-rd-sim-oc/mpd-rd-neg-dsh-cwWf0A/lsp-mcp"
+   },
+   "note": "the LSP row's launcher runs from a SANDBOX copy in each lane, with the dependency the published manifest declares staged into that copy's own node_modules \u2014 the shipped row is repointed only inside the sandbox patch, and the launcher's bytes are a byte copy of packages/mpd-mcp-lsp/dist/launch.js"
+  }
+ },
+ "tool_name_diff": {
+  "only_in_source": [],
+  "only_in_oneclick": []
+ },
+ "pre_fix_mcp_call_oneclick_condition": {
+  "ok": true,
+  "enum": {
+   "recordedToolCount": 107,
+   "hasAstGrep": true,
+   "hasLsp": true
+  },
+  "call": {
+   "called": true,
+   "succeeded": true,
+   "resultChars": 622,
+   "resultHasFixtureLine": true,
+   "resultHasBinaryNotFound": false
+  }
+ }
+}

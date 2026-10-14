@@ -1,0 +1,207 @@
+# tui-015 / oneclick reds — diagnosis, repair and local evidence
+
+Wave: tui-015-adaptation.  Subject: the two oneclick-only QA-case failures of the Docker ONECLICK lane
+at `evidence/docker/client-install-oneclick/2026-10-14T14-56-53Z` (118 assertions, 111 pass / 2 FAIL /
+5 NULL), whose SOURCE twin `evidence/docker/client-install/2026-10-14T14-47-47Z` (114/0/4, exit 0)
+passed the SAME two cases.  No Docker was available to this seat: everything below is measured against
+the container's own logs plus a local reproduction of the oneclick condition (see §5).
+
+## 1. The two reds, verbatim (container)
+
+`raw/container-oneclick-qa.mcpCall.log`:
+
+    [mcp-call] ok=false (enum recorded tools=95, ast_grep call recorded) -> /opt/mpd/evidence/dsh-qa/mcp-call/2026-10-14T15-05-22.483Z
+
+`raw/container-oneclick-qa.readonlyDeny.log` (the four decisive fields, the row truncated by the
+apparatus at 1500 chars):
+
+    positive:   {"exit":0,...,"toolCount":95,"writeCapableVisible":["write","edit","mpd_hashline_edit","bash","mcp__ast_grep__rewrite","mcp__ast_grep__scan"],...}
+    enforcement:{"ok":false,...,"parentSeesAllDenyNames":false,...}
+    positiveOk: {"ok":false,"note":"positive lane: exit=0, denyListMatchesTheEight=false, spawnDriven=true, restrictError=false, missingCredential=false, pruneRecordSeen=false, childRequests=1, childLeaksWriteCapable=[]"}
+    reinjectionControl:{"ok":false,...,"pruneRecorded":true,...}   # the CONTROL lane's own diagnostic
+
+The same two cases in the SOURCE lane (`raw/container-source-qa.*.log`):
+
+    [mcp-call] ok=true (enum recorded tools=105, ast_grep call recorded) -> ...
+    [readonly-deny] ok=true ... "toolCount":104,"writeCapableVisible":["write","edit","mpd_hashline_edit","bash","mcp__ast_grep__rewrite","mcp__ast_grep__scan","mcp__lsp__rename_symbol",...
+    enforcement:{"ok":true,...,"parentSeesAllDenyNames":true,...}
+    positiveOk: {"ok":true,"note":"positive lane: exit=0, denyListMatchesTheEight=true, ..."}
+
+`qa.mcpCallEngine` passed in the oneclick run itself
+(`raw/container-oneclick-assertion-rows.json`: `bin=/opt/mpd/dist/mpd-package/.toolchain/node_modules/.bin/ast-grep probe=ast-grep 0.50.0`),
+so the ast-grep binary is not the subject.
+
+## 2. Root cause (one cause, two manifestations)
+
+BOTH reds are the LSP MCP row's declared dependency being unresolvable from the tree the row's launcher
+lives in:
+
+* the row (`cordis.patch.yml` `- id: mcp-lsp`) runs `packages/mpd-mcp-lsp/dist/launch.js`, which resolves
+  the npm package `cclsp` from the `node_modules` chain ABOVE ITS OWN FILE
+  (`packages/mpd-mcp-shared/dependency-entry.ts`; the launcher's own header states tier 3 is a manual
+  `node_modules` walk from the launcher's directory);
+* without it the launcher takes its `serveUnavailable` branch
+  (`packages/mpd-mcp-shared/unavailable-server.ts`): the row stays ALIVE and answers `tools/list` with an
+  EMPTY list — "this row exposes NO tools until the dependency loads";
+* every failing clause is an LSP clause, and nothing else differs:
+  * `mcp-call`'s enum arm requires an `mcp__lsp__*` name (`hasLsp`), and its call arm was GREEN;
+  * `readonly-deny`'s canonical eight names include `mcp__lsp__rename_symbol` and
+    `mcp__lsp__rename_symbol_strict`, so the parent can only show 6 of 8, the roles row's tolerant
+    prune drops the two unregistered ones from the list it sends, and `denyListMatchesTheEight` is false.
+    (`pruneRecordSeen=false` is NOT evidence against that: `findPruneRecord()` matches the CONTROL lane's
+    verbatim line, which names `str_replace_editor, apply_patch`, not an LSP prune.)
+* WHY the oneclick container has no `node_modules` above the launcher, while the source lane does:
+  `docker/entrypoint.sh` SKIPS `bun install` (step 07) and the dist rebuild (step 08) in oneclick mode
+  (lines 764-782: "this lane's whole claim is that a user's install runs NO build"), and the owed cases
+  are run from that same checkout copy — `run_step 16c-owed-cases … --repo "$APP_DIR"` (line 2182-2183),
+  i.e. `/opt/mpd`, in BOTH modes. The container's oneclick failure is therefore the apparatus's
+  un-materialized dependency closure, not a statement about the published package: the PUBLISHED install
+  DOES carry `cclsp` (root `package.json` `optionalDependencies`) and its own boot registered the row —
+  `boot.mcpToolNaming=true … registered: ast_grep,codegraph,lsp`, and `restore.lspBootstrap=true` — both
+  read from the SAME oneclick run.
+
+The entrypoint already learned this lesson once, for the LSP arm:
+`LSP_TREE="$APP_DIR"; if [ -f "$PROFILE_DIR/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-lsp/dist/launch.js" ]; then LSP_TREE="$PROFILE_DIR/…"` — "the INSTALLED tree is preferred whenever the profile carries one:
+in source mode it is the same checkout through the `link:`, and in one-click mode it is the only tree
+that has its dependencies" (lines 2115-2125). The two QA cases were never given the equivalent.
+
+One extra measurement explains why the SOURCE lane passed `mcp-call`: the case stages the release pack
+with `npm install file:<pack>`, and **npm installs a directory `file:` dependency as a SYMLINK**
+(`raw/npm-file-dependency-is-a-symlink.txt`: `node_modules/fake-pkg -> ../../fake-pkg`), while node
+resolves a main module's REALPATH — so the pack's launcher resolved `cclsp` out of the CHECKOUT's own
+`node_modules`, i.e. out of `bun install`, not out of the tree the case had staged. That is the same
+"self-manufactured pass" the case's own header records for the ast-grep binary.
+
+## 3. Class per case
+
+* `qa.mcpCall` — **(b) a case/probe expectation that does not hold for the tree the case boots**: its
+  enum arm asserts a NAME LIST member (`mcp__lsp__*`) that the staged pack cannot supply (the pack's own
+  manifest does not declare `cclsp`, and nothing else in the tree under test does), and it passed in the
+  source lane only by inheriting the checkout's closure through npm's `file:` symlink. NOT a defect of
+  the published tree: the root manifest declares `cclsp@0.7.0` and the oneclick container's own install
+  registered the `lsp` row.
+* `qa.readonlyDeny` — **(b) same class**: the positive lane requires two of the canonical eight names to
+  be REGISTERED (its anti-vacuity guard for "the child lacks them"), which the case's own
+  `scripts/install-profile.ts` profile can only satisfy if the checkout carries the LSP dependency's
+  closure; the oneclick lane's checkout never does. The case had not declared or materialized that
+  prerequisite — its self-test even tolerates `cclsp` being absent from the checkout.
+* Neither is flakiness (c): the failure is deterministic in the oneclick tree and was reproduced
+  locally with byte-identical numbers (§5), and it is not model-dependent (both cases' non-LSP arms pass
+  in the same run).
+
+Separate finding, class (a), NOT the cause of these two reds (reported, not edited — see §7):
+the PACKED artifact's manifest drops three entries the published root manifest declares, `cclsp` among
+them, so an install that materializes the pack's declared dependency closure cannot register the LSP
+tool surface. `raw/pack-vs-root-manifest.txt`.
+
+## 4. Repair (case layer — `skills/dsh-qa/**`, the legitimate writer for class (b))
+
+New shared helper `skills/dsh-qa/scripts/lib/mcp-dependency.ts`: reads the version the PUBLISHED root
+manifest declares for an optional dependency and materializes it into a given tree, offline first —
+(1) already present, (2) copy from an ISOLATED checkout store (`node_modules/.bun/<pkg>@<ver>/node_modules`,
+2.2 MB / 7 entries for `cclsp@0.7.0`), (3) `npm install <name>@<version> --prefix <tree> --cache
+<tree>/.npm-cache`.
+
+* `skills/dsh-qa/scripts/mcp-call.ts`: the case now boots a SANDBOX COPY of the release pack (so the
+  launcher's realpath is sandbox-local and the checkout's closure can no longer leak in) and stages the
+  declared `cclsp` into that copy before the profile install; the staging tier is recorded in
+  `result.json` and on the printed verdict line, and a new self-test arm asserts the manifest still
+  declares the dependency and that the live arm still stages it.
+* `skills/dsh-qa/scripts/readonly-deny.ts`: each lane copies the SHIPPED launcher bytes into the sandbox
+  (`<dshHome>/lsp-mcp/launch.js`) with the declared dependency staged beside them, and repoints ONLY the
+  sandbox's `mcp-lsp` row at that copy; the ledger gains `mcpLspDependency` (tier + tree per lane), and
+  two self-test arms pin the declaration and the staging/repoint calls.
+* Assertion strength is unchanged: the eight-name list, `parentSeesAllDenyNames`, the child-restriction
+  assertion and the re-injection control all still have to hold, and the control lane still proves the
+  tolerant prune path on real data. Nothing was removed to obtain a pass.
+
+## 5. Local reproduction and re-run (no Docker)
+
+`/tmp` and `/dev/shm` are fresh per bash call (T-23) and bwrap cannot create namespaces here, so the
+oneclick condition was reproduced with two devices, both under the gitignored scratch root
+`.qa-oneclick/`: (a) `sim-src` / `sim-oc` — hardlink clones of the checkout, `sim-oc` without
+`node_modules`; (b) a manifest-only `cclsp` at the first ancestor `node_modules` whose entry EXISTs but
+serves zero tools (`raw/local-*`, `raw/local-run-matrix.json`), i.e. the launcher's own
+`serveUnavailable` state; (c) `TMPDIR` pointed into the scratch root so the case sandboxes survive the
+call.
+
+PRE-FIX, oneclick condition — the container's signature reproduced locally, byte for byte:
+
+    [mcp-call] ok=false (enum recorded tools=95, ast_grep call recorded) -> …
+      enum.hasLsp=false  enum.hasAstGrep=true  call.called=true  call.succeeded=true  call.resultHasFixtureLine=true
+    [readonly-deny] toolCount=95  writeCapableVisible=6 (no mcp__lsp__*)  parentSeesAllDenyNames=false
+                    denyListMatchesTheEight=false  pruneRecordSeen=false  exit=1
+
+PRE-FIX, source condition (same clone WITH `node_modules`): 107 tools, all eight write-capable names,
+`denyListMatchesTheEight=true`, PASS. The name-level diff between the two conditions is EXACTLY the
+cclsp family and nothing else (12 names):
+`mcp__lsp__{find_definition,find_implementation,find_references,find_workspace_symbols,get_diagnostics,get_hover,get_incoming_calls,get_outgoing_calls,prepare_call_hierarchy,rename_symbol,rename_symbol_strict,restart_server}`.
+
+POST-FIX (both cases, both conditions):
+
+| run | tree | command | observed |
+|---|---|---|---|
+| oneclick condition | `.qa-oneclick/sim-oc` (+ the zero-tool `cclsp` ancestor) | `node skills/dsh-qa/scripts/mcp-call.ts` | `ok=true (enum recorded tools=107, mcp__ast_grep__=true, mcp__lsp__=true, ast_grep call recorded, call result has the fixture line=true, lsp dependency staged from npm-install)`, `[mcp-call] PASS`, exit 0 |
+| oneclick condition | same | `node skills/dsh-qa/scripts/readonly-deny.ts` | `ok=true`, `parentSeesAllDenyNames=true`, `denyListMatchesTheEight=true`, `mcpLspDependency.ok=true source=npm-install`, `[readonly-deny] PASS`, exit 0 |
+| checkout (source) | the repository | `node skills/dsh-qa/scripts/mcp-call.ts` | `ok=true (… lsp dependency staged from checkout-store)`, `[mcp-call] PASS`, exit 0 |
+| checkout (source) | the repository | `node skills/dsh-qa/scripts/readonly-deny.ts` | `ok=true`, eight names intact, `mcpLspDependency.ok=true source=checkout-store`, `[readonly-deny] PASS`, exit 0 |
+
+Both tiers are therefore exercised: the oneclick condition takes the npm tier (its route inside the
+container), a normally installed checkout takes the offline store-copy tier.
+
+## 6. What the next oneclick run should show
+
+The same container, unchanged apparatus: `qa.mcpCall=true` and `qa.readonlyDeny=true`, i.e. 118
+assertions with **0 FAIL** and the same 5 declared oneclick-inapplicable NULLs, provided the container's
+npm reaches the registry (it already does: the case's own `npm install file:<pack>` resolves
+`dsh-better-sidebar` and the pack's optional deps from it). The two cases' own logs should carry
+`lsp dependency staged from npm-install` and `mcpLspDependency.source=npm-install`.
+
+## 7. Finding for the captain — class (a), NOT edited here
+
+`scripts/pack-mpd.ts` writes the packed manifest's `optionalDependencies` as a literal
+(`raw/pack-vs-root-manifest.txt`):
+
+    root package.json  optionalDependencies = {"@colbymchenry/codegraph":"1.5.0","@cyanheads/git-mcp-server":"2.15.3","cclsp":"0.7.0","mcp-server-commands":"0.8.2"}
+    pack package.json  optionalDependencies = {"@ast-grep/cli":"0.45.2","@colbymchenry/codegraph":"1.5.0","@code-yeongyu/comment-checker":"0.8.0"}
+    declared by the ROOT but ABSENT from the pack: ["@cyanheads/git-mcp-server","cclsp","mcp-server-commands"]
+
+`cclsp` is the LIVE `mcp-lsp` row's declared dependency (the `mcp-git`/`mcp-shell` rows that need the
+other two are `disabled: true`), so an install that materializes the pack's declared closure — the
+tarball path documented in AGENTS §8 — cannot register the 12-name LSP tool surface. Bounded proposal:
+(1) derive the packed `optionalDependencies` from the root manifest (union with the two toolchain entries
+the pack already adds) in `scripts/pack-mpd.ts`; (2) add a gate arm (`verify-pack-closure` or
+`verify-plugin-manifest --pack`) asserting every npm package a shipped row's launcher resolves is
+declared by the packed manifest; (3) re-run the pack and Docker lanes. Not applied here: `packages/**`,
+the manifest and the packer are outside this seat's write scope for this wave. Note this omission is NOT
+what reddened the two cases (the pack is staged by `npm file:`, which symlinks and consults no manifest
+closure) — it is an independent defect found while proving that.
+
+## 8. Gates run (final code state)
+
+| gate | command | observed |
+|---|---|---|
+| case self-tests | `node skills/dsh-qa/scripts/mcp-call.ts --self-test` | `ok: tool-name detection + composed ast_grep server name + fixture content + the declared LSP dependency (0.7.0) verified on fixtures`, exit 0 |
+| case self-tests | `node skills/dsh-qa/scripts/readonly-deny.ts --self-test` | `[readonly-deny self-test] ok: 42 checks`, exit 0 |
+| QA suite | `bun run test:qa` | `[test:qa] all self-tests passed`, exit 0 |
+| types | `bun run typecheck` | `tsgo --noEmit`, exit 0 |
+| comments | `bun run verify:comments` | `VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.`, exit 0 |
+| cases (real) | the four runs in §5 | all `PASS`, exit 0 |
+
+NOT run (no Docker in this seat): `node scripts/docker-e2e.ts --mode oneclick`; the Dockerfile/entrypoint
+are unchanged, so its verdict rests on the case-layer repair above.
+
+## 9. Bounds and side effects
+
+* The oneclick-condition reproduction is a LOCAL STAND-IN for the container's environment (the container
+  itself is the authority): the numbers it produced match the container's for both cases, but the
+  stand-in cannot prove the container's npm tier.
+* `npm install --prefix <tree> cclsp@0.7.0` needs the registry. A checkout that HAS `bun install`ed takes
+  the offline copy tier; the oneclick container reaches the registry already (its own case-install does).
+* Running the local matrix staged the ast-grep engine into `dist/mpd-package/.toolchain` (the container's
+  step 16b2, done here to give `mcp-call`'s call arm its binary) and it was REMOVED again afterwards;
+  `install-mcp.ts` also rewrote `~/.mpd/mcp.env`, its documented activation file.
+* `skills/**` changed, so `VENDOR_LOCK.json`'s corpus `treeSha` is invalidated: the wave's SINGLE re-pin
+  (AGENTS §9/§11) must land in the same commit as this change.
+* No git writes were made by this seat (files edited only); the evidence path is
+  `evidence/tui/dsh-tui-015/oneclick-reds/2026-10-14T15-50-48Z/`.

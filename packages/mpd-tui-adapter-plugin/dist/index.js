@@ -220,22 +220,88 @@ async function probeHostPrefs(candidates) {
       }
       const read = mod.getSidePanelPanels;
       const write = mod.applySidePanelPanels;
-      return { prefs: { getSidePanelPanels: () => read(), applySidePanelPanels: (value) => write(value) }, root };
+      const feed = typeof mod.subscribeSidePanelPanels === "function" ? mod.subscribeSidePanelPanels : undefined;
+      const hostDefault = normalizePanelCsv(typeof mod.DEFAULT_SIDE_PANEL_IDS === "string" ? mod.DEFAULT_SIDE_PANEL_IDS : "");
+      return {
+        prefs: {
+          getSidePanelPanels: () => read(),
+          applySidePanelPanels: (value) => write(value),
+          ...feed === undefined ? {} : { subscribeSidePanelPanels: (listener) => feed(listener) }
+        },
+        root,
+        hostVersion: readHostPackageVersion(root),
+        ...hostDefault === "" ? {} : { defaultIds: hostDefault }
+      };
     } catch (error) {
       skew = `${file}: ${String(error?.message ?? error)}`;
     }
   }
   return { detail: skew.length > 0 ? skew : `no candidate carried a readable ${HOST_PREFS_MODULE} (${candidates.length} probed)` };
 }
-function mergePanelEnableIds(existing, ours) {
+function panelSlugOf(id) {
+  const at = id.indexOf(":");
+  return at < 0 ? id : id.slice(at + 1);
+}
+var PANEL_ACT_ID_SHAPE = /^act\d+:/u;
+var PANEL_ID_HISTORY_LIMIT = 32;
+function panelHistoryAfter(current, past) {
+  const kept = [];
+  for (const id of past) {
+    if (!PANEL_ACT_ID_SHAPE.test(id) || current.includes(id) || kept.includes(id))
+      continue;
+    kept.push(id);
+  }
+  return kept.slice(-PANEL_ID_HISTORY_LIMIT);
+}
+function panelTokenIsStaleMine(token, ours, past) {
+  if (!PANEL_ACT_ID_SHAPE.test(token))
+    return false;
+  if (ours.includes(token))
+    return false;
+  return past.includes(token);
+}
+function normalizePanelCsv(value) {
   const tokens = [];
-  for (const token of (typeof existing === "string" ? existing : "").split(",")) {
+  for (const token of (typeof value === "string" ? value : "").split(",")) {
     const id = token.trim().toLowerCase();
     if (id !== "" && !tokens.includes(id))
       tokens.push(id);
   }
-  const added = ours.filter((id) => !tokens.includes(id));
-  return { csv: [...tokens, ...added].join(","), added, present: ours.filter((id) => tokens.includes(id)) };
+  return tokens.join(",");
+}
+var KNOWN_STALE_PANEL_DEFAULTS = ["todo,jobs,agents"];
+function stalePanelDefaultResidue(residue, hostDefault) {
+  if (hostDefault === undefined || hostDefault === "")
+    return "";
+  if (residue === "" || residue === hostDefault)
+    return "";
+  return KNOWN_STALE_PANEL_DEFAULTS.includes(residue) ? residue : "";
+}
+function mergePanelEnableIds(existing, ours, past, hostDefault) {
+  const tokens = normalizePanelCsv(existing).split(",").filter((id) => id !== "");
+  const pruned = tokens.filter((token) => panelTokenIsStaleMine(token, ours, past));
+  const kept = tokens.filter((token) => !pruned.includes(token));
+  const added = ours.filter((id) => !kept.includes(id));
+  const residue = normalizePanelCsv(kept.filter((token) => !ours.includes(token)).join(","));
+  const staleDefault = ours.length === 0 ? "" : stalePanelDefaultResidue(residue, hostDefault);
+  const defaultTokens = staleDefault === "" ? [] : (hostDefault ?? "").split(",").filter((id) => id !== "");
+  const csv = staleDefault === "" ? [...kept, ...added].join(",") : [...defaultTokens, ...ours.filter((id) => !defaultTokens.includes(id))].join(",");
+  return { csv, added, present: ours.filter((id) => kept.includes(id)), kept, pruned, staleDefault };
+}
+var PANEL_CSV_SELF_HEAL_SINCE = "0.15.0";
+function hostSelfHealsPanelCsv(version) {
+  const match = /^(\d+)\.(\d+)\.(\d+)/.exec(version.trim());
+  if (match === null)
+    return false;
+  const since = PANEL_CSV_SELF_HEAL_SINCE.split(".").map((part) => Number.parseInt(part, 10));
+  const parsed = [Number(match[1]), Number(match[2]), Number(match[3])];
+  for (let rank = 0;rank < 3; rank += 1) {
+    if (parsed[rank] > since[rank])
+      return true;
+    if (parsed[rank] < since[rank])
+      return false;
+  }
+  return true;
 }
 var PANEL_KEEPER_LADDER_MS = [1000, 2500, 5500, 9000, 16000, 25000];
 function createPanelEnableKeeper(options) {
@@ -245,8 +311,14 @@ function createPanelEnableKeeper(options) {
   let armed = false;
   let ticks = 0;
   let reasserted = 0;
+  let onFeed = false;
+  let releaseFeed;
+  let releaseBelt;
+  let writing = false;
   let state = "requested";
   let detail = "no panel registered yet";
+  let feedRefused = "";
+  let defaultNoted = false;
   const announce = () => {
     if (options.onChange === undefined)
       return;
@@ -256,37 +328,169 @@ function createPanelEnableKeeper(options) {
   };
   const settle = (next, nextDetail) => {
     state = next;
-    detail = nextDetail;
+    detail = feedRefused === "" ? nextDetail : `${nextDetail}; the change feed was refused: ${feedRefused}`;
     announce();
     if (ticks < ladder.length)
       return;
-    options.log?.(`mpd-tui panel enable keeper: ${next} — ${nextDetail}; ${String(reasserted)} write(s) over ${String(ticks)} tick(s); ids ${ours.join(",") || "(none)"}`);
+    options.log?.(`mpd-tui panel enable keeper: ${next} — ${detail}; ${String(reasserted)} write(s) over ${String(ticks)} tick(s); ids ${ours.join(",") || "(none)"}`);
+  };
+  const cancelLadder = () => {
+    for (const cancel of pending.splice(0)) {
+      try {
+        cancel();
+      } catch {}
+    }
+  };
+  const releaseFeedNow = () => {
+    const release = releaseFeed;
+    releaseFeed = undefined;
+    onFeed = false;
+    if (release === undefined)
+      return;
+    try {
+      release();
+    } catch {}
+  };
+  const writeList = (prefs, csv) => {
+    writing = true;
+    try {
+      prefs.applySidePanelPanels(csv);
+    } finally {
+      writing = false;
+    }
+    reasserted += 1;
+    const landed = normalizePanelCsv(prefs.getSidePanelPanels());
+    if (landed !== normalizePanelCsv(csv)) {
+      settle("refused", `the enable list read back as ${landed === "" ? "(empty)" : landed} instead of the ${csv} just written`);
+      return false;
+    }
+    return true;
+  };
+  const decide = (prefs, atArm, hostDefault) => {
+    if (writing)
+      return;
+    ticks += 1;
+    try {
+      let past = [];
+      try {
+        past = options.pastIds();
+      } catch {
+        past = [];
+      }
+      if ((hostDefault === undefined || hostDefault === "") && !defaultNoted) {
+        defaultNoted = true;
+        options.log?.(`mpd-tui panel enable keeper: the host exposes no readable DEFAULT_SIDE_PANEL_IDS, so the stale-default migration stays inert and the enable list is merged as before`);
+      }
+      const merge = mergePanelEnableIds(prefs.getSidePanelPanels(), ours, past, hostDefault);
+      if (merge.present.length > 0) {
+        if (merge.staleDefault !== "") {
+          if (!writeList(prefs, merge.csv))
+            return;
+          settle("confirmed", `migrated the stale default ${merge.staleDefault} to ${merge.csv} (the list also named ${merge.present.join(",")}, so nothing else was appended)`);
+          return;
+        }
+        let prunedNote = "";
+        if (merge.pruned.length > 0) {
+          const prunedCsv = merge.kept.join(",");
+          if (!writeList(prefs, prunedCsv))
+            return;
+          prunedNote = `pruned the stale ${merge.pruned.join(",")}, and appended nothing; `;
+        }
+        if (atArm) {
+          settle("confirmed", `${prunedNote}the enable list already names ${merge.present.join(",")}; the keeper now follows the host's own change feed instead of standing down on this read`);
+          return;
+        }
+        settle("confirmed", `${prunedNote}standing down: the enable list names ${merge.present.join(",")}, so the configuration has taken a position on this bundle`);
+        standDown();
+        return;
+      }
+      if (merge.added.length === 0 && merge.pruned.length === 0) {
+        settle("confirmed", "no id of ours is registered, so there is nothing to re-assert");
+        return;
+      }
+      if (!writeList(prefs, merge.csv))
+        return;
+      settle("confirmed", merge.staleDefault === "" ? `re-asserted ${merge.added.join(",")} (the list named none of our ids${merge.pruned.length === 0 ? "" : `; pruned the stale ${merge.pruned.join(",")}`})` : `migrated the stale default ${merge.staleDefault} to ${merge.csv} (the list named none of our ids, so the host's current default came back with ours)`);
+    } catch (error) {
+      settle("refused", String(error?.message ?? error));
+    }
+  };
+  const standDown = () => {
+    cancelLadder();
+    releaseFeedNow();
+    releaseBeltNow();
+  };
+  const releaseBeltNow = () => {
+    if (releaseBelt === undefined)
+      return;
+    const release = releaseBelt;
+    releaseBelt = undefined;
+    try {
+      release();
+    } catch {}
+  };
+  const standDownToHostUnion = (prefs, version) => {
+    ticks += 1;
+    settle("confirmed", `standing down: the host ${version} self-heals the enable CSV (>= ${PANEL_CSV_SELF_HEAL_SINCE}), so this keeper writes nothing and the host's own union is the only writer`);
+    cancelLadder();
+    options.log?.(`mpd-tui panel enable keeper: standing down on host ${version} — the host self-heals the sidebar enable CSV, so this keeper never writes`);
+    const subscribe = prefs.subscribeSidePanelPanels;
+    if (typeof subscribe !== "function")
+      return;
+    let said = false;
+    try {
+      const release = subscribe(() => {
+        if (said)
+          return;
+        said = true;
+        try {
+          const csvNow = normalizePanelCsv(prefs.getSidePanelPanels());
+          const kept = ours.filter((id) => csvNow.split(",").includes(id));
+          options.log?.(`mpd-tui panel enable keeper (observe-only): after the host's own apply the enable list is "${csvNow}"; ${kept.length === ours.length ? `it still carries every id of ours (${kept.join(",")})` : kept.length === 0 ? "it carries NONE of our ids — the host union did not re-add them" : `it carries only ${kept.join(",")} of our ids — the union did not re-add the rest`}`);
+        } catch {}
+        releaseBeltNow();
+      });
+      if (typeof release === "function") {
+        releaseBelt = release;
+        if (said)
+          releaseBeltNow();
+      }
+    } catch {}
+  };
+  const enterFeed = (prefs, hostDefault) => {
+    const subscribe = prefs.subscribeSidePanelPanels;
+    if (typeof subscribe !== "function")
+      return false;
+    let release;
+    try {
+      release = subscribe(() => decide(prefs, false, hostDefault));
+    } catch (error) {
+      feedRefused = String(error?.message ?? error);
+      settle("refused", "the host's change feed refused this keeper");
+      return false;
+    }
+    releaseFeed = typeof release === "function" ? release : undefined;
+    onFeed = true;
+    cancelLadder();
+    decide(prefs, true, hostDefault);
+    return true;
   };
   const runTick = () => {
-    ticks += 1;
     options.loadPrefs().then((probe) => {
       if (probe.prefs === undefined) {
+        ticks += 1;
         settle("absent", probe.detail ?? "the host exposes no side-panel enable store");
         return;
       }
-      const prefs = probe.prefs;
-      try {
-        const merge = mergePanelEnableIds(prefs.getSidePanelPanels(), ours);
-        if (merge.present.length > 0) {
-          settle("confirmed", `standing down: the enable list already names ${merge.present.join(",")}, so the configuration has taken a position on this bundle`);
-          return;
-        }
-        if (merge.added.length === 0) {
-          settle("confirmed", "no id of ours is registered, so there is nothing to re-assert");
-          return;
-        }
-        prefs.applySidePanelPanels(merge.csv);
-        reasserted += 1;
-        settle("confirmed", `re-asserted ${merge.added.join(",")} (none of our ids was present)`);
-      } catch (error) {
-        settle("refused", String(error?.message ?? error));
+      if (hostSelfHealsPanelCsv(probe.hostVersion ?? "")) {
+        standDownToHostUnion(probe.prefs, probe.hostVersion ?? "");
+        return;
       }
+      if (!onFeed && enterFeed(probe.prefs, probe.defaultIds))
+        return;
+      decide(probe.prefs, false, probe.defaultIds);
     }, (error) => {
+      ticks += 1;
       settle("absent", `the host store could not be read: ${String(error?.message ?? error)}`);
     });
   };
@@ -316,11 +520,7 @@ function createPanelEnableKeeper(options) {
       return { state, detail, ids: [...ours], reasserted, ticks };
     },
     stop() {
-      for (const cancel of pending.splice(0)) {
-        try {
-          cancel();
-        } catch {}
-      }
+      standDown();
     }
   };
 }
@@ -332,16 +532,67 @@ function defaultPanelKeeperSchedule(run, delayMs) {
   };
 }
 var PANEL_IDS_RECORD_NAME = "mpd-tui-panels.json";
-function recordPanelIds(outcome) {
+function readHostPackageVersion(root) {
+  try {
+    const manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+    return typeof manifest.version === "string" ? manifest.version : "";
+  } catch {
+    return "";
+  }
+}
+function panelRecordProvenance(host, readBack, ids) {
+  if (host === undefined || host.root.trim() === "" || host.version.trim() === "") {
+    return { refused: "no installed host package could be named (root and version), so the ids cannot be traced to a boot" };
+  }
+  if (readBack.trim() === "" || ids.length === 0) {
+    return { refused: "the ids did not come from a host read-back, so the record would name panels nothing verified" };
+  }
+  const activation = ids[0].slice(0, ids[0].indexOf(":"));
+  for (const id of ids) {
+    if (id.slice(0, id.indexOf(":")) !== activation) {
+      return { refused: `the ids do not share one activation (${activation} and ${id.slice(0, id.indexOf(":"))}), so they cannot have come from one registration` };
+    }
+  }
+  if (/^act0$/u.test(activation)) {
+    return { refused: `activation ${activation} is impossible: the host's pluginIdFor pre-increments its fallback counter, so the first composed activation is act1` };
+  }
+  return { provenance: { hostRoot: host.root, hostVersion: host.version, readBack, activation } };
+}
+function stringIdsOf(value) {
+  return Array.isArray(value) ? value.filter((entry) => typeof entry === "string" && entry.length > 0) : [];
+}
+function readPanelIdRecordPast(root = defaultLogRoot()) {
+  try {
+    const file = join(root, ".mpd", "logs", PANEL_IDS_RECORD_NAME);
+    const parsed = JSON.parse(readFileSync(file, "utf8"));
+    const ids = stringIdsOf(parsed.panelIds);
+    if (ids.length === 0)
+      return [];
+    const provenance = typeof parsed.provenance === "object" && parsed.provenance !== null ? parsed.provenance : {};
+    const proved = panelRecordProvenance(typeof provenance.hostRoot === "string" && typeof provenance.hostVersion === "string" ? { root: provenance.hostRoot, version: provenance.hostVersion } : undefined, typeof provenance.readBack === "string" ? provenance.readBack : "", ids);
+    if ("refused" in proved)
+      return [];
+    return panelHistoryAfter([], [...stringIdsOf(parsed.history), ...ids]);
+  } catch {
+    return [];
+  }
+}
+function recordPanelIds(outcome, host, readBack) {
+  const proved = panelRecordProvenance(host, readBack, outcome.ids);
+  if ("refused" in proved)
+    return;
   try {
     const file = join(defaultLogRoot(), ".mpd", "logs", PANEL_IDS_RECORD_NAME);
     mkdirSync(dirname(file), { recursive: true });
-    writeFileSync(file, `${JSON.stringify({
-      version: 1,
+    const record = {
+      version: 3,
       panelIds: [...outcome.ids],
-      slugs: outcome.ids.map((id) => id.slice(id.indexOf(":") + 1)),
-      updatedAt: new Date().toISOString()
-    }, null, 2)}
+      slugs: outcome.ids.map(panelSlugOf),
+      updatedAt: new Date().toISOString(),
+      provenance: proved.provenance,
+      history: panelHistoryAfter(outcome.ids, readPanelIdRecordPast(defaultLogRoot()))
+    };
+    writeFileSync(file, `${JSON.stringify(record, null, 2)}
 `);
   } catch {}
 }
@@ -445,18 +696,35 @@ function createTuiAdapter(ctx, options = {}) {
   let hostContact = options.hostInput;
   let hostState = options.hostInput !== undefined ? { state: "bound", kit: "probed", detail: "injected by the caller" } : options.probeHostContact === true ? { state: "pending" } : { state: "absent", detail: "this adapter did not probe for the host contact" };
   const hostWaiters = [];
+  let panelHostProvenance;
+  let panelIdReadBack = "";
   const panelKeeperOptions = {
-    loadPrefs: () => probeHostPrefs(hostRootCandidates()),
+    loadPrefs: async () => {
+      const probe = await probeHostPrefs(hostRootCandidates());
+      if (probe.root !== undefined)
+        panelHostProvenance = { root: probe.root, version: readHostPackageVersion(probe.root) };
+      return probe;
+    },
     schedule: defaultPanelKeeperSchedule,
+    pastIds: () => readPanelIdRecordPast(),
     ...options.panelEnableLadder === undefined ? {} : { ladder: options.panelEnableLadder },
     log: options.panelEnableLog ?? options.hostInputLog ?? defaultHostInputLog,
-    onChange: options.keepPanelEnable === true ? recordPanelIds : undefined
+    onChange: options.keepPanelEnable === true ? (outcome) => {
+      if (!panelKeeperOwned) {
+        panelKeeperOwned = true;
+        effectOn(ctx, () => {
+          panelKeeper.stop();
+        }, "mpd-tui panel enable keeper");
+      }
+      recordPanelIds(outcome, panelHostProvenance, panelIdReadBack);
+    } : undefined
   };
   const panelKeeper = options.keepPanelEnable === true ? createPanelEnableKeeper(panelKeeperOptions) : {
     observe: () => {},
     outcome: () => ({ state: "absent", detail: "this adapter did not keep the host panel enable list", ids: [], reasserted: 0, ticks: 0 }),
     stop: () => {}
   };
+  let panelKeeperOwned = false;
   let rememberedHook;
   const currentHostInput = () => rememberedHook === undefined ? hostContact : { useStdin: () => rememberedHook?.() };
   const wakeHostWaiters = () => {
@@ -832,8 +1100,10 @@ function createTuiAdapter(ctx, options = {}) {
             finalId = (readBack() ?? []).map((row) => row.id).find((id) => !before.has(id));
           }
           handle.record(finalId !== undefined ? { state: "confirmed", detail: `${finalId} registered` } : readBack !== undefined ? { state: "refused", detail: `${descriptor.id} refused (the host added no id to its own list() read-back)` } : { state: "requested", detail: `${descriptor.id} requested (the host exposes no panel read-back to prove it)` });
-          if (finalId !== undefined)
+          if (finalId !== undefined) {
+            panelIdReadBack = readBack !== undefined ? "tuiPanels.list" : "";
             panelKeeper.observe(finalId);
+          }
         } catch (error) {
           handle.record({ state: "refused", detail: String(error?.message ?? error) });
         }
@@ -869,7 +1139,6 @@ function createTuiAdapter(ctx, options = {}) {
       let outcome = { id: TUI_SEAMS.pluginHost, state: "absent", detail: `${TUI_SEAMS.pluginHost} was not injected` };
       whenBoundInternal("pluginHost", (service, scope) => {
         const host = service;
-        const identity = options2.identity ?? fallbackIdentity;
         if (typeof host?.subscribeDecision !== "function") {
           outcome = { id: TUI_SEAMS.pluginHost, state: "refused", detail: `${TUI_SEAMS.pluginHost}.subscribeDecision is missing` };
           return;
@@ -878,12 +1147,12 @@ function createTuiAdapter(ctx, options = {}) {
         try {
           const facade = host.grants;
           if (facade !== undefined && typeof facade.allows === "function")
-            granted = facade.allows(identity, event, options2.scope ?? event) === true;
+            granted = facade.allows(scope, event, options2.scope ?? event) === true;
         } catch {
           granted = undefined;
         }
         try {
-          const disposer = host.subscribeDecision(identity, event, listener, {
+          const disposer = host.subscribeDecision(scope, event, listener, {
             ...options2.scope === undefined ? {} : { scope: options2.scope },
             ...options2.order === undefined ? {} : { order: options2.order }
           });
@@ -1065,7 +1334,10 @@ export {
   HOST_PREFS_MODULE,
   HOST_ROOT_ENV,
   HOST_UI_MODULE,
+  KNOWN_STALE_PANEL_DEFAULTS,
+  PANEL_CSV_SELF_HEAL_SINCE,
   PANEL_IDS_RECORD_NAME,
+  PANEL_ID_HISTORY_LIMIT,
   PANEL_KEEPER_LADDER_MS,
   SERVICE_NAME,
   TUI_SEAMS,
@@ -1079,15 +1351,24 @@ export {
   describeOutcome,
   effectOn,
   hostRootCandidates,
+  hostSelfHealsPanelCsv,
   inject,
   mergePanelEnableIds,
   name,
+  normalizePanelCsv,
   onService,
+  panelHistoryAfter,
+  panelRecordProvenance,
+  panelSlugOf,
+  panelTokenIsStaleMine,
   probeHostInput,
   probeHostPrefs,
+  readHostPackageVersion,
   readHostStdinValue,
+  readPanelIdRecordPast,
   readableService,
   reportOutcomes,
   resolveTuiAdapter,
-  serviceOf
+  serviceOf,
+  stalePanelDefaultResidue
 };

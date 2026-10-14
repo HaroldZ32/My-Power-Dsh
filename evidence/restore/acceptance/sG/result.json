@@ -1,0 +1,88 @@
+{
+  "wave": "sG",
+  "task": "Make .github/workflows/docker-e2e.yml actually runnable, with the smallest correct change: add a pull_request trigger (dev-only, paths-filtered) to the existing on: block.",
+  "branch": "fix/restore-wave-acceptance",
+  "head": "33c4db16",
+  "scope": {
+    "changed": [".github/workflows/docker-e2e.yml"],
+    "diffNumstat": "34 added, 0 removed, 1 file",
+    "diffHunk": "@@ -71,6 +71,40 @@ on:",
+    "filesTouchedOutsideTheOnBlock": "none — zero deleted lines means every pre-existing byte of the file is intact; the single hunk begins at the blank line after the schedule cron entry",
+    "evidenceWritten": "evidence/restore/acceptance/sG/ (untracked, sanctioned by the task)"
+  },
+  "onBlock": {
+    "before": [
+      "on:",
+      "  workflow_dispatch:",
+      "    inputs:",
+      "      npm_registry:",
+      "        description: \"Registry to use INSTEAD of the official one (e.g. https://registry.npmmirror.com). Empty = let the lane probe the official registry and fall back to its own mirror.\"",
+      "        required: false",
+      "        default: \"\"",
+      "        type: string",
+      "  schedule:",
+      "    # Nightly at 03:41 UTC. The minute is off the hour ON PURPOSE: `:00` is where GitHub's scheduled",
+      "    # queue is most congested, and a congested schedule is delayed or dropped rather than queued.",
+      "    - cron: \"41 3 * * *\""
+    ],
+    "after": [
+      "on:",
+      "  workflow_dispatch:            # unchanged",
+      "    inputs:",
+      "      npm_registry:             # unchanged (description/required/default/type verbatim)",
+      "  schedule:                     # unchanged",
+      "    - cron: \"41 3 * * *\"         # unchanged",
+      "  pull_request:                 # ADDED",
+      "    branches: [dev]             # ADDED — AGENTS.md §5: PRs target dev",
+      "    paths:                      # ADDED — the 8 groups the lane actually grades",
+      "      - \"docker/**\"",
+      "      - \"scripts/docker-e2e.ts\"",
+      "      - \".github/workflows/docker-e2e.yml\"",
+      "      - \"skills/**\"",
+      "      - \"packages/**\"",
+      "      - \"presets/**\"",
+      "      - \"cordis.patch.yml\"",
+      "      - \"package.json\""
+    ],
+    "exactBeforeFile": "on-block.before.yml",
+    "exactAfterFile": "on-block.after.yml",
+    "rationaleCommentLandedInFile": "a comment block directly above pull_request: stating that schedule and the dispatch button both require the file on the DEFAULT branch, that master here takes release merges only (AGENTS.md §5), that the lane was therefore inert and never ran, and that a pull_request event reads the workflow file from the PR's HEAD branch — plus one bullet per paths group saying why that group is graded."
+  },
+  "concurrency": {
+    "decision": "DROPPED",
+    "reason": "The instruction was to verify the key name against the repository's existing workflow conventions and drop it if it does not fit. It does not fit: `grep -rn 'concurrency|cancel-in-progress' .github/` and `grep -rn 'concurrency|cancel-in-progress' scripts/` both return NO MATCHES, and gates.yml — this repository's only other workflow and the one that already runs on PRs — carries no concurrency: block. Adding one would introduce a new convention into a file whose brief is the smallest change; the captain can add it deliberately with `concurrency: { group: ${{ github.workflow }}-${{ github.ref }}, cancel-in-progress: true }` at the top level if the cancellation semantics are wanted.",
+    "verifiedBy": ["grep .github/ -> no matches", "grep scripts/ -> no matches", "read .github/workflows/gates.yml (no concurrency)"]
+  },
+  "commands": [
+    {
+      "command": "node scripts/verify-workflows.ts",
+      "exitCode": 0,
+      "observed": "[verify-workflows] audited 2 workflow file(s) under <repo>/.github/workflows; [verify-workflows] PASS - every workflow is loadable YAML with a sane job/step shape",
+      "log": "verify-workflows.log"
+    },
+    {
+      "command": "bun run verify:gates",
+      "exitCode": 0,
+      "observed": "8/8 member gate(s) green — vendor, dist-fresh, rows-parity, docs-parity, preset-conformance, plugin-manifest, comment-coverage, workflows (every member exit=0); the `workflows` member is the 8th and it exited 0",
+      "log": "verify-gates.log"
+    },
+    {
+      "command": "node evidence/restore/acceptance/sG/check-on-block.cjs <js-yaml from the installed harness> .github/workflows/docker-e2e.yml",
+      "exitCode": 0,
+      "observed": "17/17 assertions held — on: is a mapping with exactly [workflow_dispatch, schedule, pull_request]; pull_request.branches == [dev]; the 8 paths verbatim; schedule cron and the workflow_dispatch input unchanged; runs-on ubuntu-24.04; timeout-minutes 60; permissions contents:read; the lane step's name, timeout 50 and command `node scripts/docker-e2e.ts --mode source --require-docker --allow-rootful-docker --no-browser` unchanged; artifact upload actions/upload-artifact@v7, if: always(), name docker-e2e-stamp-${{ github.run_attempt }}, path evidence/docker/client-install*/, retention-days 14 unchanged",
+      "log": "check-on-block.log"
+    },
+    {
+      "command": "git diff --numstat -- .github/workflows/docker-e2e.yml",
+      "exitCode": 0,
+      "observed": "34\t0\t.github/workflows/docker-e2e.yml — additions only, no deletions, one hunk",
+      "log": "docker-e2e.diff"
+    }
+  ],
+  "honestBound": "I cannot make GitHub run this. Nothing run locally executes the workflow: the local gates prove the file is loadable YAML with the intended trigger block and that every pre-existing byte is intact. The first real signal is a new CI run appearing on PR #30 after the captain pushes this branch — and since a pull_request run reads the workflow from the PR's HEAD branch, that run is the trigger's own proof. Unverified locally: the branch/path filter behaviour, the runner's Docker, and the ~16-minute lane itself.",
+  "noticedNotTouched": [
+    "The header comment at the top of the file still reads `WHY IT IS *NOT* ON push/pull_request` and argues the lane runs NIGHTLY and ON DEMAND only. It now contradicts the trigger block. Left untouched because the task asked for a change confined to the on: block and for a statement that nothing else moved; the measured-cost argument inside it is still true and is exactly what the paths filter answers. The captain may want a one-line retitle, e.g. `WHY IT IS NOT ON push, AND WHY ITS pull_request HALF IS PATH-FILTERED — the measured cost decides it.`",
+    "paths width: the filter is exactly the task's stated minimum. `bun.lock` is NOT in it and is arguably the one candidate to widen to — the github runner performs no host install (checkout + setup-node only), but the container's own install runs from the checkout in --mode source, so a lock-only change could alter the install without firing this lane. Not added: the captain decides.",
+    "`docker-e2e` is absent from the default branch's /actions/workflows list (docs-parity and gates only), which is the measured consequence of this file existing only on a feature branch; a pull_request run does not depend on that listing, but the dispatch button and the nightly schedule will keep doing nothing until a release carries the file to master."
+  ]
+}

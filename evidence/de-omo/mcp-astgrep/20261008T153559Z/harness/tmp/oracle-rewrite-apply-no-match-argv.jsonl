@@ -1,0 +1,2 @@
+{"scenario":"search-none","applying":false,"argv":["--version"]}
+{"scenario":"search-none","applying":false,"argv":["run","-p","foo($A)","-r","qux($A)","--lang","typescript","--json=stream","--strictness","smart","src"]}

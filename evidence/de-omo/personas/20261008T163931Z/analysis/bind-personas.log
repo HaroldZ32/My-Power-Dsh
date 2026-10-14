@@ -1,0 +1,15 @@
+persona-path files : 12 (expect 12: 11 personas + ATTRIBUTION.md)
+seed prompt files  : 20 (expect 20)
+pre-wave-D texts   : 11 (expect 11)
+hashes START written at 2026-10-08T16:55:26Z (UTC) -> analysis/persona-hashes-start.tsv
+matrix written -> analysis/overlap-matrix.log
+settling 50s before the closing re-hash (AGENTS.md §7)
+hashes END written at 2026-10-08T16:56:24Z (UTC) -> analysis/persona-hashes-end.tsv
+# measurement binding — hash -> work -> re-hash (AGENTS.md §7)
+start read (UTC) : 2026-10-08T16:55:26Z
+end read (UTC)   : 2026-10-08T16:56:24Z
+settle window    : 50s
+subject          : 11 persona texts + ATTRIBUTION.md under packages/mpd-roles-plugin/personas
+verdict          : START == END — every hashed file is byte-identical across the measurement window
+BINDING OK
+EXIT=0

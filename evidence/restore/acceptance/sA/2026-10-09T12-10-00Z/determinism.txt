@@ -1,0 +1,33 @@
+### Determinism record — the FROZEN revision (§0), five consecutive runs
+
+$ node skills/dsh-qa/scripts/readonly-deny.ts   # run 1 of 5
+=== STARTED: 2026-10-09T12:17:34Z
+[readonly-deny] ok=true -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/workmate/roles-readonly/2026-10-09T12-17-34.323Z
+EXIT=0
+=== ENDED: 2026-10-09T12:18:06Z
+
+$ node skills/dsh-qa/scripts/readonly-deny.ts   # run 2 of 5
+=== STARTED: 2026-10-09T12:18:06Z
+[readonly-deny] ok=true -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/workmate/roles-readonly/2026-10-09T12-18-06.541Z
+EXIT=0
+=== ENDED: 2026-10-09T12:18:32Z
+
+$ node skills/dsh-qa/scripts/readonly-deny.ts   # run 3 of 5
+=== STARTED: 2026-10-09T12:18:32Z
+[readonly-deny] ok=true -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/workmate/roles-readonly/2026-10-09T12-18-32.905Z
+EXIT=0
+=== ENDED: 2026-10-09T12:19:34Z
+
+$ node skills/dsh-qa/scripts/readonly-deny.ts   # run 4 of 5
+=== STARTED: 2026-10-09T12:19:34Z
+[readonly-deny] ok=true -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/workmate/roles-readonly/2026-10-09T12-19-35.044Z
+EXIT=0
+=== ENDED: 2026-10-09T12:20:10Z
+
+$ node skills/dsh-qa/scripts/readonly-deny.ts   # run 5 of 5
+=== STARTED: 2026-10-09T12:20:10Z
+[readonly-deny] ok=true -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/workmate/roles-readonly/2026-10-09T12-20-10.831Z
+EXIT=0
+=== ENDED: 2026-10-09T12:20:55Z
+
+RESULT: 5/5 EXIT=0 (the whole log is in determinism-run<N>.log, verbatim)

@@ -32,6 +32,7 @@
 // already do, and `useTheme()` returns `[name, setter]`, a palette NAME rather than the keys. Calling
 // it would spend a hook slot (and a throw surface) for a value no surface here reads.
 import { cellWidth, clampCells, collapse, stripControl } from "./sanitize.js"
+import { sessionIdOf, type TeamFeedAccessor, type TeamFeedSubscribe } from "./team-state.js"
 import {
   DAG_ANIM,
   DAG_CHROME,
@@ -232,6 +233,22 @@ export function panelSnapshot(host: unknown): unknown {
   } catch {
     return undefined
   }
+}
+
+/**
+ * Read the CALLING session's id off the host snapshot a sidebar panel receives.
+ *
+ * THE PANEL'S OWN SESSION ID, and the reason the DAG page used to be session-blind: `panelSnapshot`
+ * was already called on every render and its value thrown away, so the page could not tell its own
+ * session's team from another's. The read goes through the SAME contained snapshot reader (a host
+ * without one, or one that throws, is "no session id"), and the field itself through `sessionIdOf`, so
+ * the panel and the scenes agree on what a usable session id is. An unavailable id is NOT an error: it
+ * selects the marked workspace-level fallback, which is the honest answer on an older host.
+ * @param host - the panel props' `host` field.
+ * @returns the session id, or undefined when this host does not carry one.
+ */
+export function panelSessionId(host: unknown): string | undefined {
+  return sessionIdOf(panelSnapshot(host))
 }
 
 /**
@@ -502,6 +519,68 @@ export interface PanelWheelEvent {
 }
 
 /**
+ * The ONE wheel-sign normalisation point.
+ *
+ * WHY A NORMALISATION POINT HAS TO EXIST (frozen contract D2, user mandate M1(b)). The host derives a
+ * wheel event's `deltaY` from the terminal's own wheelup/wheeldown bits, and which bit a wheel-up
+ * produces is a property of the TERMINAL, the multiplexer and sometimes the OS — so the same gesture
+ * arrives positive on one machine and negative on another, and a page that adds the delta to its offset
+ * scrolls the wrong way on exactly those machines. Before this helper every wheel path here applied the
+ * raw delta with its own fixed sign, so there was no single place to correct and no user-facing answer.
+ *
+ * THE CONVENTION THIS FUNCTION PRODUCES is the one the rest of this file was written against: a POSITIVE
+ * result moves the window toward LATER rows (down), a negative one toward earlier rows (up).
+ * @param delta - the raw delta exactly as the host reported it.
+ * @param invert - the user's `tui.wheelInvert` setting; true flips the sign.
+ * @returns the delta in this plugin's own convention.
+ */
+export function normalizeWheelDelta(delta: number, invert: boolean): number {
+  // A ZERO DELTA STAYS A PLAIN `0`, never `-0`. The two are `===` but not `Object.is`-equal, so a
+  // negated zero would read as "this gesture changed something" to any caller using a strict comparison
+  // — motion with no cause, on a page whose whole point is that a gesture which cannot scroll does nothing.
+  if (delta === 0) return 0
+  return invert ? -delta : delta
+}
+
+/**
+ * The wheel-direction reader in force for this process, installed once by the mounted row.
+ *
+ * WHY A READER RATHER THAN A VALUE. The knob lives in `<workspace>/.mpd/mpd.jsonc`, which the
+ * `mpdConfig` service resolves; that service is injected through a DEFERRED binder, so it can bind
+ * after this row applies. A one-shot read at mount would therefore sample `undefined` on a perfectly
+ * normal boot and the knob would look broken. Reading per gesture removes that ordering entirely — and
+ * it is the same shape `tui.dashboardKey` already uses (a per-press read, with the row config as floor).
+ *
+ * THE DEFAULT IS TODAY'S BEHAVIOUR: an unmounted reader answers false, so an adapter-less unit arm and
+ * a composition without `mpd-config` both scroll exactly as they did before this knob existed.
+ */
+let wheelInvertRead: () => boolean = (): boolean => false
+
+/**
+ * Install the wheel-direction reader; called once by the mounted row, never by a page.
+ * @param read - resolves the `tui.wheelInvert` setting right now; must never throw.
+ */
+export function setWheelInvertRead(read: () => boolean): void {
+  wheelInvertRead = read
+}
+
+/**
+ * The wheel-direction setting right now, through the installed reader.
+ *
+ * A reader that throws is contained here rather than at each of the four wheel paths: a broken config
+ * layer costs the user the knob, never the ability to scroll.
+ * @returns true when the wheel's sign must be inverted.
+ */
+export function wheelInvertOn(): boolean {
+  try {
+    return wheelInvertRead() === true
+  } catch {
+    // An unreadable setting layer leaves the default (today's behaviour) in force.
+    return false
+  }
+}
+
+/**
  * Clamp a desired scroll offset into the only band that can render.
  *
  * This is the ONE place the band is computed, so no page can render a blank panel by driving the offset
@@ -527,17 +606,19 @@ export function clampScroll(offset: number, contentRows: number, viewportRows: n
 /**
  * Apply one wheel event to a scroll offset.
  *
- * The host routes wheel events to `onWheel` handlers by hit test, and the SIGN CONVENTION is the one a
- * terminal reports: `deltaY > 0` is a wheel toward the user, which scrolls the content DOWN (later rows
- * come into view). A board that fits is a NO-OP — an offset that drifted on a page with nothing to
- * scroll would be a bug the user cannot even see, which is the worst kind.
+ * The host routes wheel events to `onWheel` handlers by hit test, and the SIGN is decided by the ONE
+ * helper {@link normalizeWheelDelta} so the user's `tui.wheelInvert` setting reaches this path too:
+ * `deltaY > 0` is a wheel toward the user, which scrolls the content DOWN (later rows come into view).
+ * A board that fits is a NO-OP — an offset that drifted on a page with nothing to scroll would be a bug
+ * the user cannot even see, which is the worst kind.
  * @param event - the wheel event, as the host delivered it.
  * @param offset - the current offset.
  * @param contentRows - how many rows the page has in total.
  * @param viewportRows - how many rows the panel can show at once.
+ * @param invert - the wheel-direction setting; omitted reads the live one (see {@link wheelInvertOn}).
  * @returns the clamped next offset.
  */
-export function scrollByWheel(event: unknown, offset: number, contentRows: number, viewportRows: number): number {
+export function scrollByWheel(event: unknown, offset: number, contentRows: number, viewportRows: number, invert: boolean = wheelInvertOn()): number {
   /** The band this page is in right now. */
   const band = clampScroll(offset, contentRows, viewportRows)
   if (!band.overflow) return band.offset
@@ -547,14 +628,15 @@ export function scrollByWheel(event: unknown, offset: number, contentRows: numbe
   // NOT A NUMBER IS NOT A GESTURE: a host that reports no delta, or a non-numeric one, must leave the
   // offset exactly where it was rather than snapping the page to the top.
   if (typeof raw.deltaY !== "number" || !Number.isFinite(raw.deltaY)) return band.offset
-  return clampScroll(band.offset + raw.deltaY, contentRows, viewportRows).offset
+  return clampScroll(band.offset + normalizeWheelDelta(raw.deltaY, invert), contentRows, viewportRows).offset
 }
 
 /**
  * Apply one HORIZONTAL wheel event to a column offset.
  *
  * The same discipline as {@link scrollByWheel}, on the axis the user's trackpad names `deltaX`: a page
- * that fits is a no-op, a non-numeric delta is not a gesture, and the result is clamped into the band
+ * that fits is a no-op, a non-numeric delta is not a gesture, the sign comes from the SAME
+ * {@link normalizeWheelDelta} (one user setting, both axes), and the result is clamped into the band
  * `clampScroll` computes from the drawing's own width. The two functions exist separately because the
  * DELTA they read is the axis (reading `deltaY` here would make a vertical wheel pan the picture
  * sideways, which is precisely the T4 defect in a different costume).
@@ -562,9 +644,10 @@ export function scrollByWheel(event: unknown, offset: number, contentRows: numbe
  * @param offset - the current column offset.
  * @param contentCols - how many columns the drawing has in total.
  * @param viewportCols - how many columns the window shows at once.
+ * @param invert - the wheel-direction setting; omitted reads the live one (see {@link wheelInvertOn}).
  * @returns the clamped next column offset.
  */
-export function scrollByWheelX(event: unknown, offset: number, contentCols: number, viewportCols: number): number {
+export function scrollByWheelX(event: unknown, offset: number, contentCols: number, viewportCols: number, invert: boolean = wheelInvertOn()): number {
   /** The band this drawing is in right now. */
   const band = clampScroll(offset, contentCols, viewportCols)
   if (!band.overflow) return band.offset
@@ -572,7 +655,7 @@ export function scrollByWheelX(event: unknown, offset: number, contentCols: numb
   /** The event, before its delta is trusted. */
   const raw = event as PanelWheelEvent
   if (typeof raw.deltaX !== "number" || !Number.isFinite(raw.deltaX)) return band.offset
-  return clampScroll(band.offset + raw.deltaX, contentCols, viewportCols).offset
+  return clampScroll(band.offset + normalizeWheelDelta(raw.deltaX, invert), contentCols, viewportCols).offset
 }
 
 /**
@@ -964,10 +1047,10 @@ export function usePanelViewport(
       /** The captured sizes, read once so the three numbers below belong to one generation. */
       const value = facts?.current
       if (value?.contentCols === undefined || value?.viewportCols === undefined) return
-      /** The delta this event carries on the horizontal axis; a non-numeric one is not a gesture. */
-      const raw = (event ?? {}) as PanelWheelEvent
-      if (typeof raw.deltaX !== "number" || !Number.isFinite(raw.deltaX)) return
-      commitCol(colPosition() + raw.deltaX)
+      // THROUGH THE SAME FUNCTION the standalone callers use, so the horizontal wheel cannot keep a
+      // second, private copy of the delta arithmetic — which is exactly how its sign would drift away
+      // from the one the user's `tui.wheelInvert` setting corrects.
+      commitCol(scrollByWheelX(event, colPosition(), value.contentCols, value.viewportCols))
     },
     /**
      * Kept for API compatibility, and now a NO-OP: the hook reads the page's sizes through `read()`, so
@@ -1353,6 +1436,111 @@ export function usePanelTick(kit: PanelKit, intervalMs: number, enabled: boolean
 }
 
 /**
+ * The React members the team-feed hook calls.
+ *
+ * Narrower than {@link PanelKit} ON PURPOSE: the hook has to be callable from a full-screen SCENE as
+ * well, whose kit is the scene's own structural type, and a hook that demanded the panel kit's `useRef`
+ * would be uncallable there. Both kits carry these two, so both surfaces share ONE subscription.
+ */
+export interface TeamFeedReactLike {
+  /** One state cell (the host React's own `useState`); the UPDATE is the whole re-render mechanism. */
+  useState(initial: unknown): [unknown, (next: unknown) => void]
+  /** One effect (the host React's own `useEffect`); its cleanup must dispose the subscription. */
+  useEffect(effect: () => unknown, deps?: readonly unknown[]): void
+  /**
+   * The host React's own `useRef`, when this build exposes it.
+   *
+   * OPTIONAL, and load-bearing when present: it is what keeps the LATEST `onNotify` callback reachable
+   * from a listener installed on the mount render, without re-subscribing on every render. Every host
+   * kit this package draws with carries one; the guard exists because a scene's kit type does not
+   * declare it (it is read off the same real React instance through a narrower interface), and a
+   * surface must degrade rather than throw when a field is absent.
+   */
+  useRef?(initial: unknown): { current: unknown }
+}
+
+/**
+ * Re-render this surface on every team-state PUSH, and dispose the subscription when it unmounts.
+ *
+ * WHY THIS EXISTS AT ALL. A sidebar panel and a scene are PASSIVE surfaces: nothing re-renders them
+ * unless the host has a reason to, so a page that re-reads its source per render only ever shows what
+ * was true when its tick last fired — measured at 1000 ms for the sidebar and 2000 ms for the scenes.
+ * The 1-2 s timers STAY (they are the fallback and they carry a composition with no `mpdTeams` row at
+ * all); this hook is the ADDITION that makes a change visible as soon as it happens.
+ *
+ * A NOTIFICATION RE-READS THE NEW RECORD, which takes one of two shapes depending on the surface: the
+ * sidebar page reads its source PER RENDER, so the state bump IS the re-read; a full-screen scene keeps
+ * its projection in a state cell, so it passes {@link onNotify} and re-reads there. Both happen on
+ * every notification.
+ *
+ * THE THREE DEGRADATIONS, each of which costs the push and never the page:
+ *   · no feed at all (no service, an older composition) → the effect returns immediately;
+ *   · an accessor that THROWS → the page still renders, and re-arms on its next render;
+ *   · a subscription call that throws → contained here, so the host's reconciler never sees it.
+ *
+ * THE SUBSCRIPTION IS DISPOSED ON UNMOUNT through the effect's own cleanup, and it is re-armed exactly
+ * once when the feed first appears: the accessor's returned function has a STABLE identity while the
+ * service is bound (it is built once in the composition root), so the effect's dependency does not
+ * change per render — a per-render identity would tear the subscription down and rebuild it on every
+ * frame, which is how a "push" becomes a 60 Hz re-subscribe loop.
+ * @param React - the host React instance (the panel kit's or the scene kit's).
+ * @param feed - resolves the live feed for the calling session's workspace, per render; undefined when
+ *   this composition has no feed to offer.
+ * @param onNotify - called after each notification, for a surface whose source read is not per-render;
+ *   omitted by a per-render reader, where the state bump below already carries the re-read.
+ */
+export function useTeamFeed(React: TeamFeedReactLike, feed: TeamFeedAccessor | undefined, onNotify?: () => void): void {
+  /** The state cell whose UPDATE is the whole mechanism: nothing reads its value. */
+  const tick = React.useState(0)
+  /** The cell's setter, proved callable before the effect is built. */
+  const set = tick[1] as (next: number | ((previous: number) => number)) => void
+  // THE NOTIFY CALLBACK TRAVELS IN A REF, exactly as `usePanelKeys` keeps its handler: the effect below
+  // depends on the SUBSCRIPTION alone, so a per-render callback identity must not re-register anything.
+  /** The ref holding the newest `onNotify`, or undefined on a host kit that exposes no `useRef`. */
+  const latest = typeof React.useRef === "function" ? React.useRef(onNotify) : undefined
+  if (latest !== undefined && latest !== null) latest.current = onNotify
+  /** The live subscription function for this render; undefined before the row binds or after a throw. */
+  let subscribe: TeamFeedSubscribe | undefined
+  try {
+    subscribe = feed === undefined ? undefined : feed()
+  } catch {
+    subscribe = undefined
+  }
+  React.useEffect(() => {
+    if (typeof subscribe !== "function") return undefined
+    try {
+      // THE LISTENER'S ONLY JOB IS A RE-READ: the state update re-renders a per-render reader, and the
+      // callback re-reads a state-cached one — this hook keeps no copy of the data either way.
+      /** The feed's own disposer, returned by the subscribe call. */
+      const dispose = subscribe(() => {
+        try {
+          set((previous: number) => previous + 1)
+        } catch {
+          // A setter that refuses (an unmounting surface) costs this one notification.
+        }
+        try {
+          /** The callback the newest render supplied, or the mount render's when there is no ref. */
+          const notify = latest === undefined || latest === null ? onNotify : (latest.current as (() => void) | undefined)
+          if (typeof notify === "function") notify()
+        } catch {
+          // A surface whose re-read throws keeps the re-render the bump above already asked for.
+        }
+      })
+      return () => {
+        try {
+          if (typeof dispose === "function") dispose()
+        } catch {
+          // The disposer is idempotent by contract; a second call must not escape into the reconciler.
+        }
+      }
+    } catch {
+      // A FEED THAT THROWS IS NOT A BROKEN PAGE: the tick still refreshes this surface.
+      return undefined
+    }
+  }, [subscribe])
+}
+
+/**
  * Whether a key event should reach a page's own handler at all.
  *
  * Pure, so the arming rule is assertable without a host: the page must hold the focus AND be on
@@ -1391,26 +1579,28 @@ export function panelKeyEvent(event: unknown): PanelKeyEventLike | undefined {
 }
 
 /**
- * The frame index a running node's breathing dot draws this render.
+ * The frame a running node's breathing mark draws this render.
  *
- * The animation is an ORBIT over the contract's own state glyph: the dot never becomes a glyph that
- * means something else (`DAG_TONE_GLYPH.running` stays at the head of the orbit, and the tail is the
- * already-anywhere `·`), so a running task cannot be misread as a task in another state.
+ * THE ORBIT IS THE CONTRACT'S TABLE (`DAG_ANIM.runningFrames`), never one assembled here by appending
+ * characters to the state glyph. This function used to return 1, 2, 1 and 3 cells across its cycle
+ * (`base`, `base·`, `base`, `base··`); because the node's label EMBEDS the frame, the label's width
+ * moved every tick and the box drawn around it was re-laid-out — the border visibly advanced and
+ * retreated, which is the user's report that the animation breaks the frame. Every frame is now
+ * exactly one cell, so a label cannot change width, while the frames still DIFFER, so a running task
+ * reads as alive rather than frozen. No frame is a mark another state owns (`✓ ✗ ○ ⊘`), so a running
+ * node can never be misread as a task in another state.
  * @param phase - the frame index from {@link useRunningPhase}.
- * @returns the glyph to draw for a running node.
+ * @returns the glyph to draw for a running node; one cell, at every phase.
  */
 export function runningGlyph(phase: number): string {
-  /** The contract's own running glyph; `◐` when the contract stops declaring one. */
-  const base = DAG_TONE_GLYPH.running ?? "◐"
-  // THE ORBIT BEGINS AT THE BASE GLYPH AND NEVER DROPS IT: every frame carries the state mark, so a
-  // frame can never read as "no state at all" — an earlier orbit whose last frame was a bare `·`
-  // measured as a running task that vanished for a quarter of the cycle. The dot count rises and falls
-  // from the base frame, which is what makes the cycle read as a breath rather than as a flicker.
-  /** The breathing orbit, indexed by the quantised frame. */
-  const orbit = [base, `${base}·`, base, `${base}··`]
-  /** The frame index, floored and wrapped so any number is drawable. */
-  const index = ((Math.floor(phase) % orbit.length) + orbit.length) % orbit.length
-  return orbit[index]
+  /** The contract's frames; an empty table leaves the state's own glyph as the only honest mark. */
+  const frames = DAG_ANIM.runningFrames
+  if (frames.length === 0) return DAG_TONE_GLYPH.running ?? "◐"
+  /** The frame index, floored and wrapped so any finite phase is drawable. */
+  const index = ((Math.floor(phase) % frames.length) + frames.length) % frames.length
+  // The `??` is the degradation path for a NON-FINITE phase: `frames[NaN]` is undefined, and the
+  // state's own glyph is the honest mark for a clock that names no frame.
+  return frames[index] ?? DAG_TONE_GLYPH.running ?? "◐"
 }
 
 /**
@@ -1442,14 +1632,16 @@ export function visualTone(visual: string): DagTone {
 /**
  * The LEGEND: what this page's marks mean (frozen clause R6).
  *
- * TWO SOURCES, DELIBERATELY. The arrow/focus sentence is `graph.ts`'s `legendLines` — the drawing
- * module owns what its own arrows mean, and the full-screen scene renders the same lines, so the two
- * surfaces cannot describe an edge differently. The STATE KEY is built here from
- * `dag-theme.ts` `DAG_STATE_TONES` + `DAG_TONE_GLYPH`, and it is the whole reason this legend exists:
- * `blocked` and `open` share the `○` glyph, and the drawing module's own key lists five states and
- * omits `blocked`, so a legend that merely forwarded it would leave the reader unable to tell the two
- * apart. NO GLYPH IS SPELLED HERE — every mark is interpolated from the contract, so the legend
- * cannot drift from the drawing.
+ * THE STATE KEY IS OWNED HERE, AND IT IS THE ONLY ONE. The arrow/focus sentence is `graph.ts`'s
+ * `legendLines` — the drawing module owns what its own arrows mean, and the full-screen scene renders
+ * the same line, so the two surfaces cannot describe an edge differently. The STATE KEY is built here
+ * from `dag-theme.ts` `DAG_STATE_TONES` + `DAG_TONE_GLYPH`, and it prints ONE ENTRY PER MARK, naming
+ * every state that carries that mark — `blocked` and `open` SHARE the `○` glyph by design, and naming
+ * them on one entry is what tells a reader the mark means either state rather than printing the same
+ * fact twice. The drawing module's own FIVE-state key was DELETED (user requirement: the DAG legend
+ * printed the state key twice): it omitted `blocked`, so it could not tell `○ blocked` from `○ open`,
+ * and printed under this key it was the same legend a second time. NO GLYPH IS SPELLED HERE — every
+ * mark is interpolated from the contract, so the legend cannot drift from the drawing.
  * @param cols - the cells available on the page's rows.
  * @param arrowLines - the drawing module's own arrow/focus lines, already sanitized by its owner.
  * @returns the legend lines, each inside `cols`, in print order.
@@ -1467,15 +1659,25 @@ export function legendLinesFor(cols: number, arrowLines: readonly string[]): str
   for (const line of arrowLines) push(line)
   // THE STATE KEY, widest wording first, DROPPED rather than cut: a legend that reads `✗ fai` is a
   // truncated falsehood, and dropping a whole line of a key is honest about what does not fit.
-  /** Each state's `glyph name` entry, read out of the contract. */
-  const entries: string[] = DAG_STATE_TONES.map((state) => {
+  //
+  // ONE ENTRY PER MARK, NOT PER STATE. Each entry used to be built per state with the FIRST other state
+  // carrying the same mark appended after `=`, and that lookup was evaluated independently per state —
+  // so BOTH directions fired and the key read `○ open=blocked · ○ blocked=open`: one fact printed
+  // twice, with an `=` asserting that the two states ARE each other, which is false; they share a MARK,
+  // not a meaning. The states are grouped by the mark the contract gives them instead, so a shared mark
+  // is printed ONCE and its entry names every state that carries it.
+  /** The marks, each carrying the states drawn as it, in the contract's own print order. */
+  const groups: Array<{ glyph: string; states: string[] }> = []
+  for (const state of DAG_STATE_TONES) {
     /** The state's own glyph, `?` when the contract stops declaring one. */
     const glyph = DAG_TONE_GLYPH[state] ?? "?"
-    /** The glyph of the FIRST state this one shares a mark with, when they share one. */
-    const twin = DAG_STATE_TONES.find((other) => other !== state && DAG_TONE_GLYPH[other] === DAG_TONE_GLYPH[state])
-    /** The name as printed: a shared glyph names its twin, which is how `blocked` and `open` are told apart. */
-    return twin === undefined ? `${glyph} ${state}` : `${glyph} ${state}=${twin}`
-  })
+    /** The group an EARLIER state already opened for this mark, when two states share one. */
+    const existing = groups.find((group) => group.glyph === glyph)
+    if (existing === undefined) groups.push({ glyph, states: [state] })
+    else existing.states.push(state)
+  }
+  /** Each mark's entry: its glyph, then EVERY state it stands for, in the contract's own order. */
+  const entries: string[] = groups.map((group) => `${group.glyph} ${group.states.join("/")}`)
   /** Every entry on one line; the widest wording of the key. */
   const oneLine = entries.join(" · ")
   if (cellWidth(oneLine) <= width) {
@@ -1515,4 +1717,129 @@ export function panelFloorColumns(which: "dag" | "workmate" | "merged"): number 
   // The merged page's descriptor and the DAG page's ask the host for the SAME width, so they share the
   // contract's value rather than a second constant that could drift from it.
   return DAG_PANEL_MIN_COLUMNS
+}
+
+// ── THE PAGE CHROME, SHARED BY EVERY MPD PAGE ─────────────────────────────────────────────────────
+// IT LIVES IN THE CORE, not in `panel.ts`, so a page that DRAWS it can import it without importing
+// the module that REGISTERS a page: the MPD panel needs the DAG page's renderer, and a page that had
+// to reach back into `panel.ts` for its own title row would make those two modules a cycle.
+/**
+ * The full-screen affordance every MPD page draws ITSELF: `⤢`, the host's own glyph for the gesture.
+ *
+ * WHY IT IS OURS — measured on the installed dsh-tui 0.13.0: `dsh-adapter/panels.js` freezes a plugin
+ * descriptor into a definition carrying `{id, title, icon, order, minColumns, source, pluginId,
+ * mountPolicy, component, compact}` — NO `capabilities` field — while
+ * `components/sidePanel/SidePanelColumn.js`'s `canExpand` reads `definition.capabilities?.fullscreen
+ * === true` and `Chat.js` maps BUILT-IN ids only. The host can therefore NEVER draw its own `⤢` for an
+ * MPD page, and declaring a `capabilities` field would be a promise the host silently drops. So the
+ * page draws the control in its own title row and gives it the host PanelBar's own treatment: the
+ * glyph is the panel's dim tone at rest and BOLD in the focus tone while the pointer is over it.
+ */
+export const PANEL_FULLSCREEN_GLYPH = "⤢"
+
+/** The cells the control reserves at the right of a page's title row: one gap plus the glyph itself. */
+export const PANEL_FULLSCREEN_CELLS = 2
+
+/** How many rows a page's title row costs: ONE, drawn OUTSIDE the page's scrolling window. */
+export const PANEL_TITLE_ROW_ROWS = 1
+
+/** What one page's title row needs to draw itself. */
+export interface PanelTitleRowOptions {
+  /** The row's React key, unique inside this page's child list. */
+  key: string
+  /** The page's own title, drawn at the left of the row. */
+  title: string
+  /** The cells the row may draw in — the page's measured content width. */
+  cols: number
+  /** Opens the page's full-screen scene. Absent when the caller has no full-screen surface to offer. */
+  open?: () => boolean
+}
+
+/**
+ * Stop one pointer event from also reaching the host's own click handling.
+ *
+ * The host's PanelBar does exactly this for its own `⤢` (`event.stopImmediatePropagation()`), and the
+ * same need exists here for the same reason: the panel column has a click-to-focus fallback, so a
+ * control that let the event bubble would both open the full-screen scene and re-focus the column.
+ * @param event - the host's pointer event, of unknown shape at this boundary.
+ */
+function swallowPointerEvent(event: unknown): void {
+  if (event === null || typeof event !== "object") return
+  /** The host event's own propagation stopper, when this build carries one. */
+  const stop = (event as { stopImmediatePropagation?: unknown }).stopImmediatePropagation
+  if (typeof stop === "function") (stop as () => void).call(event)
+}
+
+/**
+ * The page's own title row: the title at the left, MPD's `⤢` at the right.
+ *
+ * It is drawn OUTSIDE the page's scrolling window, so the control stays at the same cell no matter
+ * where the page is scrolled — a control that scrolls away is one the reader cannot find twice.
+ *
+ * THE ROW IS UNCONDITIONAL; only its HANDLER needs an opener. Every MPD page draws the same chrome —
+ * the user learns one affordance and finds it in the same cell on both surviving pages — and the one
+ * construction that has no full-screen surface to offer (a unit arm, never the registered page) draws
+ * the glyph without a click target rather than a page whose chrome silently differs. Registration
+ * always passes an opener, so the form the user meets is always the clickable one.
+ *
+ * A HELPER THAT OPENS A HOOK: it is called from a page's render body in the same position on every
+ * render, so the state cell it opens (the hover flag) is that page's own hook slot.
+ * @param kit - the proved host kit.
+ * @param options - the row's key, title, width and full-screen opener.
+ * @returns the title row element, one host row high.
+ */
+export function usePanelTitleRow(kit: PanelKit, options: PanelTitleRowOptions): unknown {
+  /** The control's hover flag (the host PanelBar's own feedback device). */
+  const hoverState = kit.React.useState(false)
+  /** Whether the pointer is over the control right now. */
+  const hovered = hoverState[0] === true
+  /** Sets the hover flag. */
+  const setHovered = hoverState[1] as (next: unknown) => void
+  // The title is clamped to what is LEFT of the two reserved cells: a long title must not push the
+  // control off the row's right edge, which is the one cell the control is reached by.
+  /** The title as this page may draw it. */
+  const title = panelText(options.title, Math.max(1, options.cols - PANEL_FULLSCREEN_CELLS))
+  return kit.React.createElement(
+    kit.ui.Box,
+    // THE ROW MUST NOT DECLARE `width: "100%"` — MEASURED, and this is the whole reason the control was
+    // invisible on a real terminal while every prop-recording double passed. The frame around this row
+    // is itself `width: "100%"` with a border, so a child asking for `100%` resolves to the frame's
+    // BORDER box (28 cells at the floor) rather than to its 26-cell interior: the row then lays out two
+    // cells too wide, the title's `flexGrow` eats the whole of it, and the control is pushed past the
+    // right border and CLIPPED. The headless probe
+    // (`evidence/tui/dag-highlight/chrome-layout/probe-row.ts`, the host's own ink) prints, at 28
+    // columns, `│MPD DAG                   │` for that shape against `│MPD DAG                  ⤢│` for
+    // this one. `justifyContent: "space-between"` with an auto width spreads the two children to the
+    // row's real edges, which is what "the control at the right of the title row" has to mean.
+    { key: options.key, flexDirection: "row", justifyContent: "space-between", flexShrink: 0 },
+    kit.React.createElement(
+      kit.ui.Box,
+      { key: `${options.key}-title`, flexShrink: 1, overflow: "hidden" },
+      kit.React.createElement(kit.ui.Text, { key: `${options.key}-text`, color: toneColor("dim") }, title),
+    ),
+    kit.React.createElement(
+      kit.ui.Box,
+      {
+        key: `${options.key}-fullscreen`,
+        flexShrink: 0,
+        // NO `marginLeft`: `space-between` owns the gap, and a margin here would be a second, invisible
+        // claim on the same two cells — the row has exactly one owner for its spacing.
+        onMouseEnter: (): void => setHovered(true),
+        onMouseLeave: (): void => setHovered(false),
+        ...(options.open === undefined
+          ? {}
+          : {
+              onClick: (event: unknown): void => {
+                swallowPointerEvent(event)
+                options.open?.()
+              },
+            }),
+      },
+      kit.React.createElement(
+        kit.ui.Text,
+        { key: `${options.key}-glyph`, bold: hovered, color: hovered ? toneColor("focus") : toneColor("dim") },
+        PANEL_FULLSCREEN_GLYPH,
+      ),
+    ),
+  )
 }

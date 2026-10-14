@@ -10,9 +10,11 @@
 // ADDRESSING CONTRACT: a role is addressed by its normal display NAME — the member
 // name in team mode, the label of a one-shot mpd_role_spawn, and what every
 // description/render lists. The stable `id` is an INTERNAL key (modelchain chain key,
-// `personas/<id>.md`, workmate meta.baseId) that legacy callers may still pass; it is
-// accepted for compatibility and never advertised: a role is described by what it does.
-// Keep the two vocabularies one word apart, never two spellings of the same thing.
+// `personas/<id>.md`, workmate meta.baseId): the TOOL surface REFUSES it (`roleOfToolInput`
+// accepts a NAME spelling only) while the internal `mpdRoles.get` path keeps resolving it
+// for chain lookup and legacy callers — and it is never advertised, because a role is
+// described by what it does. Keep the two vocabularies one word apart, never two
+// spellings of the same thing.
 // Persona texts are assets under personas/<id>.md resolved relative to this
 // plugin's package location.
 import { existsSync, readFileSync } from "node:fs"
@@ -20,11 +22,14 @@ import { join, resolve } from "node:path"
 import { ROLES, ROLE_BY_ID, type MpdRoleSpec } from "./roles.data.ts"
 import { installReadonlyGuard } from "./team-guard.ts"
 import { installVerifyGuard, type VerifyLawAccess } from "./verify-guard.ts"
+import { INVESTIGATION_CONFIG_KEY, installCaptainInvestigationGuard } from "./captain-investigation.ts"
+import { installAskUserQuestionGuard } from "./ask-user-guard.ts"
+import { DELEGATION_CONFIG_KEY, installDelegationGate } from "./delegation-gate.ts"
 import { VERIFY_SERVICE } from "../../mpd-verify-plugin/src/service.ts"
 import { installRosterSection } from "./roster-section.ts"
 import { installSessionGate } from "./session-gate.ts"
 import { BOULDER_DIR_CONFIG_KEY, GATE_CONFIG_KEY } from "./complexity-gate.ts"
-import { rowLogLine, DSH_SEAM_SUBAGENTS, DSH_SEAM_TOOLS, bundleRootOf, createLazyDshAdapter, dshAdapterIdentity, dshSeamInject, textBlock, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { rowLogLine, DSH_SEAM_SUBAGENTS, DSH_SEAM_TOOLS, bundleRootOf, createLazyDshAdapter, dshAdapterIdentity, dshSeamInject, restrictToolsTolerant, textBlock, withSupportedEffort, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /** The cordis plugin name, matched against this row's id in the bundle patch. */
 export const name = "mpd-roles"
@@ -34,12 +39,13 @@ export const inject = dshSeamInject(DSH_SEAM_TOOLS, DSH_SEAM_SUBAGENTS)
 /** The slice of a cordis context this row uses: the two seams, the `mpdRoles` provision and a logger. */
 type Ctx = { tools: any; subagents: any; provide: (n: string, v: any, check?: any) => void; get?: (k: string, strict?: boolean) => any; [k: string]: any }
 /**
- * The row config: the persona directory plus the two team-plane keys this row reads itself.
+ * The row config: the persona directory plus the four keys this row reads itself.
  *
- * `team.gate` (mechanical | advisory | off) and `boulder.dir` mirror their `.mpd/mpd.jsonc`
+ * `team.gate` (mechanical | advisory | off), `boulder.dir`, `captain.investigation`
+ * (deny | allow) and `delegation.gate` (deny | captain | allow) mirror their `.mpd/mpd.jsonc`
  * spellings, so a composition without the config row mounted can still pin them in the patch.
  */
-type Config = { personasDir?: string; team?: { gate?: unknown }; boulder?: { dir?: unknown } }
+type Config = { personasDir?: string; team?: { gate?: unknown }; boulder?: { dir?: unknown }; captain?: { investigation?: unknown }; delegation?: { gate?: unknown } }
 
 // Every entry must be a tool this profile actually registers: the harness
 // validates the WHOLE deny list at spawn time and rejects the child when any
@@ -57,7 +63,8 @@ export const READONLY_DENY = [
   "bash",
   "mcp__ast_grep__rewrite",
   "mcp__ast_grep__scan",
-  "mcp__lsp__rename",
+  "mcp__lsp__rename_symbol",
+  "mcp__lsp__rename_symbol_strict",
 ]
 
 /** Output schema of a one-shot specialist's structured report, so the tool result is validated. */
@@ -134,6 +141,41 @@ export function normalizeRoleKey(key: string): string | null {
   if (k === "sisyphusJunior") return "sisyphus-junior"
   if (k === "multimodalLooker") return "multimodal-looker"
   return ROLE_ID_BY_NAME_KEY[normalizeRoleNameKey(k)] ?? null
+}
+
+/**
+ * Resolve a role key as TOOL INPUT — the ACCEPTANCE side of the addressing contract.
+ *
+ * A tool accepts the roster's own NAME in any case, space, hyphen or underscore spelling and
+ * nothing else. The stable id (`oracle`), the legacy `mpd-<id>` preset form and the camelCase
+ * chain key (`sisyphusJunior`) are INTERNAL keys and are refused HERE — the internal
+ * `mpdRoles.get` path keeps resolving them through `normalizeRoleKey`, which stays PERMISSIVE on
+ * purpose because it also serves chain lookup and the workmate `baseId`; tightening the
+ * normalizer instead of gating the input would silently break that internal path.
+ *
+ * The refusal is not this function's (it answers `null`, and the caller phrases one that names
+ * only accepted names): repeating the rejected key would manufacture the very advertisement the
+ * alias guards scan every model-facing surface for.
+ *
+ * An extension-contributed role keeps its own documented contract (`mpd-ext-plugin/README.md`):
+ * its declared name in any spelling, or its namespaced `ext-<extension-id>-<slug>` id. That id is
+ * namespaced so it can never collide with a base key, and the upstream rule is about base ids.
+ *
+ * @param surface - the roster as THIS call sees it: base specialists plus extension roles.
+ * @param key - the raw tool argument, exactly as the caller spelled it.
+ * @returns the role that key NAMES, or `null` when it is not a name this surface answers to.
+ */
+export function roleOfToolInput(surface: RoleSurface, key: string): ResolvedRole | null {
+  /** The key in the roster's collapsed-name form; an empty key names nothing. */
+  const nameKey = normalizeRoleNameKey(key)
+  if (nameKey === "") return null
+  /** The BASE role whose NAME matches — a base id or a legacy alias can never reach this branch. */
+  const base = surface.roles.find((role) => role.extension === null && normalizeRoleNameKey(role.name) === nameKey)
+  if (base) return base
+  /** The key as written, trimmed: an extension role's namespaced id is matched exactly. */
+  const raw = String(key ?? "").trim()
+  /** The extension role: its namespaced id, or its declared name in the same collapsed form. */
+  return surface.roles.find((role) => role.extension !== null && (role.id === raw || normalizeRoleNameKey(role.name) === nameKey)) ?? null
 }
 
 /** The persona asset path: the configured directory, or this package's own `personas/`. */
@@ -459,19 +501,104 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     warn(line)
   }
 
+  /**
+   * The read-only deny list ONE spawn really sends, validated by the harness itself.
+   *
+   * WHY (measured defect F2, 2026-10-10): `tools.restrict()` rejects the WHOLE list when a single name
+   * is not registered in this profile, so the two `mcp__lsp__*` entries killed EVERY read-only spawn of
+   * the roster on a host without `cclsp` — which is what pushed the captain onto the official `subagent`
+   * tool this gate now refuses. The canonical `READONLY_DENY` is NOT changed and never pre-filtered with
+   * a `hasTool` probe (AGENTS.md §13): the restriction is applied to THIS agent's own scope and released
+   * in the same synchronous turn, so the harness's own verdict is the only pruner, and the pruned names
+   * are reported ONCE through this row's logger.
+   *
+   * @param agent - the spawning session's own agent handle, whose scope is the harness's validation site.
+   * @returns the list to hand the child as `toolFilter.deny`.
+   */
+  const validatedReadonlyDeny = (agent: unknown): string[] => {
+    /** The caller's own scope; without it the harness validates the list while composing the child. */
+    const scope = dsh.agentScope(agent)
+    if (scope === undefined) {
+      warnOnce("readonly-deny:no-scope", "read-only spawn: this agent exposes no scoped context, so the canonical deny list is sent unvalidated")
+      return [...READONLY_DENY]
+    }
+    /** The harness's verdict on the canonical list, with the contract's one permitted pruning round. */
+    const outcome = restrictToolsTolerant((names) => scope.tools.restrict({ deny: names }), READONLY_DENY)
+    if (outcome.pruned.length > 0) {
+      warnOnce("readonly-deny:pruned", "read-only spawn: pruned tool name(s) this profile does not register: " + outcome.pruned.join(", "))
+    }
+    return [...outcome.applied]
+  }
+
+  /**
+   * The `teamModels` slot route one roster member is configured to run on, read PER CALL.
+   *
+   * THE DEFECT THIS REPAIRS (measured on a real machine, 2026-10-12). Both live profiles carried a
+   * SAVED `teamModels` block in the `mpd-config` row config (`company-api` / `deepseek-flash`, written
+   * from the settings front doors), and `mpd-config-plugin` served it resolved — but the ONLY reader was
+   * `mpd-roster-provider-plugin`, which routes an OFFICIAL `spawn_teammate`. Every one-shot path kept
+   * the STATIC `roles.data.ts` chain, so `mpd_role_spawn` ran on the shipped `deepseek-official` route
+   * even when the user had configured a gateway provider: on that machine no key exists for
+   * `deepseek-official`, so the spawn died with `MISSING_CREDENTIAL` and the save looked inert on web,
+   * desktop and TUI alike. `mpd_role_spawn`'s OWN tool description and `roster-section.ts` both promise
+   * the opposite ("THIS path applies the role's teamModels slot route").
+   *
+   * The membership map stays in `mpd-config-plugin` — the ONE declaration the settings card, the TUI
+   * section and the roster provider already share — and is reached here as a SERVICE, never as an
+   * import: a new cross-package relative import would be a new entry in the frozen coupling inventory
+   * (`packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts`, which may only
+   * shrink).
+   *
+   * @param member - the roster member's functional name.
+   * @returns the configured route, or `undefined` when the roster does not slot-route this member (or no
+   *   config service is mounted) — the static roster chain then stands unchanged.
+   * @throws when the member IS slot-routed and its slot is incomplete; the service's own loud failure is
+   *   never swallowed here, because the registered contract is to name the member and the slot.
+   */
+  const teamModelRoute = (member: string): { provider: string; model: string; reasoningEffort?: string } | undefined => {
+    /** The live config service, absent until the `mpd-config` row has applied. */
+    const live = ((): { teamModelRouteOf?: (m: string) => unknown } | undefined => {
+      try {
+        return ctx.get?.(CONFIG_SERVICE, false) as { teamModelRouteOf?: (m: string) => unknown } | undefined
+      } catch {
+        // A config service that refuses the lookup reads as ABSENT, never as a boot failure.
+        return undefined
+      }
+    })()
+    if (typeof live?.teamModelRouteOf !== "function") return undefined
+    // Deliberately NOT wrapped: an incomplete configured slot must reach the caller as the loud error.
+    const value = live.teamModelRouteOf(member) as { provider?: unknown; model?: unknown; reasoningEffort?: unknown } | undefined | null
+    if (value === undefined || value === null || typeof value !== "object") return undefined
+    return {
+      provider: String(value.provider ?? ""),
+      model: String(value.model ?? ""),
+      ...(typeof value.reasoningEffort === "string" && value.reasoningEffort !== "" ? { reasoningEffort: value.reasoningEffort } : {}),
+    }
+  }
+
   /** The roster as THIS call sees it. Resolved per call (never an apply-time cache). */
   const roleSurface = (exec?: unknown): RoleSurface => {
     /** The base roster projected for THIS call, each persona already read. */
-    const base: ResolvedRole[] = ROLES.map((r) => ({
-      id: r.id,
-      name: r.name,
-      description: r.description,
-      readonly: r.readonly,
-      chain: r.chain.map((c) => ({ ...c })),
-      persona: readPersona(config, r),
-      personaFile: personaPath(config, r),
-      extension: null,
-    }))
+    const base: ResolvedRole[] = ROLES.map((r) => {
+      /** The static chain for this role, copied so no caller can mutate the roster table. */
+      const chain: Array<{ provider: string; model: string }> = r.chain.map((c) => ({ ...c }))
+      /** The slot route the user configured for this member, when the roster slot-routes it. */
+      const route = teamModelRoute(r.name)
+      // THE CONFIGURED SLOT IS AUTHORITATIVE for a member it routes: the chain becomes that ONE route,
+      // so `mpd_roles_list`, an `mpd_role_spawn`, a workmate initialized from this base AND
+      // `mpd_modelchain_resolve` (which prefers `spec.chain`) all report the value the user saved.
+      if (route !== undefined) chain.splice(0, chain.length, { provider: route.provider, model: route.model })
+      return {
+        id: r.id,
+        name: r.name,
+        description: r.description,
+        readonly: r.readonly,
+        chain,
+        persona: readPersona(config, r),
+        personaFile: personaPath(config, r),
+        extension: null,
+      }
+    })
     /** The extension plane's contributions and refusals for this call. */
     const contributed = extensionRoles(ctx, exec, (line) => warnOnce("lookup:" + line, line))
     for (const refusal of contributed.refused) {
@@ -483,7 +610,11 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   }
 
   /** Resolve one role key against a surface: the base ids/legacy aliases/names first, then an
-   *  extension role by its namespaced id or its declared name in any case/separator spelling. */
+   *  extension role by its namespaced id or its declared name in any case/separator spelling.
+   *
+   *  This is the INTERNAL (service) resolution and stays PERMISSIVE on purpose: `mpdRoles.get` is
+   *  what chain lookup and legacy callers read. The TOOL surface must NOT call it — a tool resolves
+   *  through `roleOfToolInput`, which accepts a NAME spelling only. */
   const roleOf = (surface: RoleSurface, key: string): ResolvedRole | null => {
     /** The key in its canonical internal form, when it resolved to one. */
     const id = normalizeRoleKey(key)
@@ -540,17 +671,26 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       /** The roster as this call sees it: base specialists plus extension roles. */
       const surface = roleSurface(exec)
       /** The resolved role, or null — in which case the error lists every addressable name. */
-      const spec = roleOf(surface, String(args?.role ?? ""))
-      if (spec === null) throw new Error("mpd_role_spawn: unknown role '" + String(args?.role) + "' — use a roster name: " + roleNameListOf(surface))
+      const spec = roleOfToolInput(surface, String(args?.role ?? ""))
+      if (spec === null) throw new Error("mpd_role_spawn: unknown role — use a roster NAME (see mpd_roles_list): " + roleNameListOf(surface))
       /** The task text; empty is a caller error and must not spawn an empty prompt. */
       const task = String(args?.task ?? "").trim()
       if (!task) throw new Error("mpd_role_spawn: task required")
       /** The role's persona text, sent both inside the prompt and as the subagent's persona. */
       const persona = spec.persona
+      /** The configured slot route for this member, when the roster slot-routes it (and any effort it states). */
+      const configuredRoute = teamModelRoute(spec.name)
+      // THE MODEL-CAPABILITY ADAPTATION: a slot is read MATERIALISED over its schema defaults, so a slot
+      // whose model declares no reasoning efforts at all would hand the provider a keyword it cannot
+      // accept and fail the whole spawn. `withSupportedEffort` drops exactly that keyword (logging it)
+      // and leaves every other route — including an unsupported effort on a model that DOES declare
+      // efforts — untouched, so a configuration error stays visible instead of being papered over.
+      /** The slot route as this spawn will actually send it. */
+      const slotRoute = await withSupportedEffort(dsh, configuredRoute)
       /** The primary route's provider, falling back to the deployment default. */
-      const provider = spec.chain[0]?.provider ?? "deepseek-official"
+      const provider = slotRoute?.provider ?? spec.chain[0]?.provider ?? "deepseek-official"
       /** The model for this spawn: the caller's override when given, else the role's primary. */
-      const model = typeof args?.model === "string" && args.model.trim() ? args.model.trim() : spec.chain[0]?.model
+      const model = typeof args?.model === "string" && args.model.trim() ? args.model.trim() : slotRoute?.model ?? spec.chain[0]?.model
       /** The assembled prompt: persona, task, optional context and the report instruction. */
       const prompt = persona + "\n\nTask: " + task + (args?.context ? "\n\nContext:\n" + String(args.context) : "") + "\n\nWork with the tools your role requires (read-only roles must never modify anything). End with ONLY the structured report (role/summary/recommendation/details/evidence)."
       /** The spawn result, whose structured report is echoed into this tool's output. */
@@ -563,7 +703,11 @@ export function apply(ctx: Ctx, config: Config = {}): void {
         model,
         persona,
         outputSchema: REPORT_SCHEMA,
-        ...(spec.readonly ? { toolFilter: { deny: READONLY_DENY } } : {})
+        // The slot's OWN effort keyword rides along when it states one — AFTER the catalog adaptation
+        // above dropped a keyword the target model cannot take. The contract still forbids clamping or
+        // inventing an effort, so an absent keyword passes nothing and the harness keeps its resolution.
+        ...(slotRoute?.reasoningEffort === undefined ? {} : { agentOptions: { reasoningEffort: slotRoute.reasoningEffort } }),
+        ...(spec.readonly ? { toolFilter: { deny: validatedReadonlyDeny(exec.agent) } } : {})
       })
       /** The structured report, or an empty object when the subagent answered none. */
       const st = result.structured ?? {}
@@ -580,8 +724,8 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       /** The roster as this call sees it: base specialists plus extension roles. */
       const surface = roleSurface(exec)
       /** The resolved role, or null — in which case the error lists every addressable name. */
-      const spec = roleOf(surface, String(args?.role ?? ""))
-      if (spec === null) throw new Error("mpd_role_persona: unknown role '" + String(args?.role) + "' — use a roster name: " + roleNameListOf(surface))
+      const spec = roleOfToolInput(surface, String(args?.role ?? ""))
+      if (spec === null) throw new Error("mpd_role_persona: unknown role — use a roster NAME (see mpd_roles_list): " + roleNameListOf(surface))
       return { role: spec.name, persona: spec.persona, chars: spec.persona.length }
     }
   })
@@ -627,6 +771,8 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     if (value !== undefined) return value
     if (key === GATE_CONFIG_KEY) return config.team?.gate
     if (key === BOULDER_DIR_CONFIG_KEY) return config.boulder?.dir
+    if (key === INVESTIGATION_CONFIG_KEY) return config.captain?.investigation
+    if (key === DELEGATION_CONFIG_KEY) return config.delegation?.gate
     return undefined
   }
   // The TEAM PLANE's boot signature: ONE line naming the three restored contracts and their
@@ -658,7 +804,11 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     }
     /** The guard's install outcome, reported on the team-plane boot signature below. */
     const verifyGuard = installVerifyGuard(dsh, {
-      presets: ["mpd"],
+      // NO PRESET KNOB HERE: the scope is decided per call inside the guard from the session header, not
+      // configured at install. Rule 1 (the write rule) is scoped to the `mpd` preset through
+      // `sessionIsMpdCaptain`; rule 3 (the one git writer) stays keyed on `sessionIsTopLevel` alone, so
+      // it follows the USER's preset too. The parent-session half of T-92 remains FIXED either way: a
+      // seeded fork whose depth the harness never recorded is the captain, not a child (F0, 2026-10-10).
       law: lawAccess,
       workspaceRootOf: (exec) => dsh.workspaceRoot(exec),
       configValue,
@@ -668,6 +818,64 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   } catch (error) {
     guardOutcome.push("verifyGate=absent reason=threw")
     warnOnce("verify-guard:threw", "the verification law's write guard could not be installed (" + errText(error) + ")")
+  }
+  // THE CAPTAIN INVESTIGATION GUARD, installed at this same site: the `mpd` preset's TOP-LEVEL session
+  // DELEGATES reconnaissance (finding files, reading source, grepping for symbols) instead of spending
+  // its own context on it. It is its OWN registration, so `captain.investigation` is the only switch and
+  // a `verify.mode` change cannot silently alter it. Read-only specialists, members, one-shot spawns and
+  // verifier seats are untouched, and so is any session running ANOTHER preset: the rule is scoped by
+  // `sessionIsMpdCaptain` — §5's top-level predicate AND the `mpd` preset.
+  try {
+    /** The guard's install outcome, whose MODE the team-plane boot signature reports below. */
+    const investigation = installCaptainInvestigationGuard(dsh, {
+      workspaceRootOf: (exec) => dsh.workspaceRoot(exec),
+      configValue,
+      warn: (line) => warnOnce("captain-investigation:" + line, line),
+    })
+    guardOutcome.push(investigation.installed
+      ? "captainInvestigation=" + investigation.mode
+      : "captainInvestigation=absent reason=" + String(investigation.reason))
+  } catch (error) {
+    guardOutcome.push("captainInvestigation=absent reason=threw")
+    warnOnce("captain-investigation:threw", "the captain investigation guard could not be installed (" + errText(error) + ")")
+  }
+  // THE ask_user_question BOUNDARY GUARD, installed at this same site: the HOST tool's schema marks
+  // `options` OPTIONAL per question, so a SCHEMA-LEGAL but semantically broken call (a question item with
+  // no `question`, a mis-keyed option list) reaches the TUI's question panel and renders as a card with
+  // neither text nor options (measured 2026-10-10). The render path is host-owned end to end — no bundle
+  // code participates and a same-name wrapper is impossible (the host registry refuses duplicate ids) — so
+  // PRE-DISPATCH is the only point this bundle can act on. Deny-only and always on: a broken question card
+  // is never a desired outcome, so there is no knob to turn it off.
+  try {
+    /** The guard's install outcome, reported on the team-plane boot signature below. */
+    const askUserGuard = installAskUserQuestionGuard(dsh, {
+      warn: (line) => warnOnce("ask-user-guard:" + line, line),
+    })
+    guardOutcome.push(askUserGuard.installed
+      ? "askUserQuestion=installed"
+      : "askUserQuestion=absent reason=" + String(askUserGuard.reason))
+  } catch (error) {
+    guardOutcome.push("askUserQuestion=absent reason=threw")
+    warnOnce("ask-user-guard:threw", "the ask_user_question boundary guard could not be installed (" + errText(error) + ")")
+  }
+  // THE DELEGATION GATE, installed at this same site: the harness's generic spawn tools (`subagent`,
+  // `subagent_fork`, `workflow`) are NOT this bundle's delegation path — §5 rule 2 names
+  // `mpd_role_spawn`, the workmate library and Agent Teams — so a call to one of them is refused for
+  // every session `delegation.gate` covers (default `deny`: the captain AND every member, because an
+  // escape hatch a member can still use is not a discipline). It is keyed on §5's PRESET-FREE session
+  // rank, so it holds whatever preset the profile assigned to the session.
+  try {
+    /** The gate's install outcome, whose MODE the team-plane boot signature reports below. */
+    const delegation = installDelegationGate(dsh, {
+      configValue,
+      warn: (line) => warnOnce("delegation-gate:" + line, line),
+    })
+    guardOutcome.push(delegation.installed
+      ? "delegationGate=" + delegation.mode
+      : "delegationGate=absent reason=" + String(delegation.reason))
+  } catch (error) {
+    guardOutcome.push("delegationGate=absent reason=threw")
+    warnOnce("delegation-gate:threw", "the delegation gate could not be installed (" + errText(error) + ")")
   }
   try {
     installRosterSection(dsh, {

@@ -1,0 +1,6 @@
+total 20
+drwxr-xr-x 5 root root 4096 Oct  8 08:41 .
+drwxr-xr-x 1 root root 4096 Oct  8 08:36 ..
+drwxr-xr-x 6 root root 4096 Oct  8 08:39 .mpd
+drwxr-xr-x 3 root root 4096 Oct  8 08:41 evidence
+drwxr-xr-x 2 root root 4096 Oct  8 08:39 snake

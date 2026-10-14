@@ -189,3 +189,91 @@ doc pairs, preset conformance) — one command for a patch/preset edit and for t
 expects a CLEAN tree: a dirty `skills/**` corpus legitimately reddens the vendor gate until the wave's
 single re-pin lands (§9/§11).
 
+## §5 rule 2 — the captain's reserved set
+
+The manual's §5 rule 2 is the binding statement; this section is its LONG FORM, moved out on 2026-10-08 by
+the instruction-budget rule (§3, MOVE-FIRST) when rule 2 gained the reconnaissance clause. The manual
+keeps the short definition plus the pointer that sent you here.
+
+**What the captain reserves.** §5 names the work the workspace's TOP-LEVEL session executes itself because
+no other agent may: the SINGLE GIT WRITER of the checkout (§5's one-writer rule; the user's own shell
+otherwise), CONTRACT AMENDMENTS, PLAN/ROSTER SHAPING, releasing a watchdog hold, and the FINAL
+INTEGRATION. It does that without framing it as "working solo" — sizing decides WHICH executor, never
+whether to delegate.
+
+**What is NOT reserved — RECONNAISSANCE.** The user's requirement (2026-10-08): the user-facing main agent
+must keep its context small enough to drive very large projects, and reconnaissance — finding files,
+reading source, grepping for symbols — is what inflates it. So it is DELEGATED: an `Explorer` (find files
+and code) or a `Researcher` (evidence-based search) through `mpd_role_spawn`, or a team member; the captain
+consumes the REPORT. This is MECHANICAL, not a reminder: `mpd-roles-plugin`'s captain investigation guard
+denies `read`, `grep` and `glob` on a SOURCE path for the top-level session, decided by the pure function
+`captainInvestigationDecision` (`packages/mpd-roles-plugin/src/captain-investigation.ts`) and installed
+through the adapter's `guardTool` seam beside the captain's write rule. Keyed on `sessionIsTopLevel` — §5's
+ONE captain predicate, never a preset name (T-92) — so members, one-shot specialists, workmate spawns and
+bound verifier seats keep their reconnaissance: the verifier's own envelope scopes ITS reads separately and
+must not be double-restricted.
+
+**The band that stays readable** (integration is impossible without it): `.mpd/**`, `docs/**`,
+`evidence/**`, `agent-references/**`, and at the workspace ROOT `AGENTS.md`, `AGENT.md`, `CLAUDE.md`,
+`README.md`, `README.zh-CN.md`, `CHANGELOG.md` and `LICENSE*.md`. Everything else — any source path under
+`packages/**`, `scripts/**`, `skills/**`, `presets/**`, `docker/**`, `extensions/**`, `templates/**`,
+`tests/**`, `vendor/**`, `node_modules/**` — is REFUSED, and a call with NO usable path argument is refused
+(fail-closed: a bare `grep`/`glob` searches the whole workspace, and a pattern's own directory prefix is
+not a path). A `..` segment is refused rather than resolved, so `docs/../packages/x/src/y.ts` cannot start
+inside a band and end outside it.
+
+**The knob.** `captain.investigation` in `mpd.jsonc`: `"deny"` (the DEFAULT) | `"allow"`; anything else
+reads as `deny` (fail-closed). It is read PER CALL through the existing config layer, so an edit is picked
+up live (T-18), and the row's boot line reports the mode it installed (`captainInvestigation=deny|allow` in
+`<workspace>/.mpd/logs/mpd-roles.log`). The refusal names the route out and the band that stays open.
+
+**Honest bounds, stated rather than implied.** (1) The guard reads a TOOL CALL's arguments: reaching a
+source path through `bash` (`cat`, `rg`) is NOT blocked — `bash` stays available to the captain for gates
+and git, exactly as §5 rule 5's command matcher has the same reading bound. (2) A path is judged by its
+SPELLING; a symlink is never resolved. (3) A composition with no `tools.guard` seam installs nothing and
+SAYS so (the boot line carries `captainInvestigation=absent reason=…`). Mount evidence:
+`evidence/roles/captain-investigation/`.
+
+**The sanctioned delegation is MECHANICAL too — the delegation gate (2026-10-10).** Rule 2 names the
+sanctioned delegation surfaces (`mpd_role_spawn`, the workmate library, Agent Teams), but the harness's
+generic spawn tools `subagent` / `subagent_fork` / `workflow` were undefended, so the discipline was advice
+and the escape cost nothing. `packages/mpd-roles-plugin/src/delegation-gate.ts` installs ONE `guardTool`
+callback beside the investigation guard; it refuses those three names and its sentence names the routes
+out. The knob is `delegation.gate` in `mpd.jsonc`: `"deny"` (DEFAULT — the captain AND every member
+session, because a hatch a member can still use is not a discipline) | `"captain"` (the top-level session
+only) | `"allow"`; anything else reads as `deny`, and the knob is read PER CALL. Keyed on §5's PRESET-FREE
+`sessionRank`, so it covers every session in a workspace that mounts the bundle, whatever preset the
+profile assigned — and preset-plane omission is deliberately NOT the mechanism, because the live top-level
+session runs a preset this bundle does not own (`cordis`). The boot line carries `delegationGate=<mode>`
+(or `delegationGate=absent reason=…` without the guard seam). **Honest bound:** the guard reads the TOOL
+CALL at dispatch, so it cannot stop a model from TRYING another tool, and a profile without this bundle
+has no gate at all. Live evidence: `evidence/roles/delegation-gate/`.
+
+**The captain predicate and the SEEDED FORK (F0, 2026-10-10).** `sessionRank` in the same package decides
+`captain` / `child` / `headerless` from the session HEADER alone: a session is a CHILD iff the harness
+recorded `origin === "subagent"` OR a `delegationDepth` of `1` or more; every other header is the CAPTAIN.
+The parent link is deliberately NOT the test — the user's real working session is a SEEDED FORK
+(`parentSession` + `isSeeded: true` + depth `0`, no subagent origin), and the old "any parent session is a
+child" rule classified THAT session as a member, which silently disarmed the captain write rule, the
+investigation guard and the one-git-writer rule on the one session they gate. An absent header still fails
+CLOSED (`headerless`, never the captain). `sessionQualifies` — the session-start gate's preset-scoped
+question — is untouched and must never be substituted here (T-92).
+
+**A read-only spawn survives an unregistered deny-list name (F2, 2026-10-10).** `tools.restrict()` rejects
+the WHOLE list when one name is not registered in the profile and offers no ignore-unknown option, so the
+two `mcp__lsp__*` deny entries killed EVERY read-only spawn on a host without `cclsp` — the broken front
+door that pushed the captain onto the generic `subagent` tool the delegation gate now refuses. The
+adapter's `restrictToolsTolerant` (`packages/mpd-dsh-adapter-plugin/src/index.ts`) applies the CANONICAL
+list to the calling agent's own scope and releases it in the same synchronous turn, so the harness's own
+verdict is the only pruner: the names it reports as unknown are pruned, exactly ONE retry is allowed, and
+any second failure is rethrown. The lists themselves are unchanged, still identical across the roles and
+workmate packages, and still never pre-filtered with a `hasTool` probe (the glossary rule).
+
+**The tool surface, and the two sentences rule 4 REPLACES** (moved here verbatim with the same MOVE-FIRST
+split). The verification law's tool surface is ONE row, `mpd-verify-plugin`: `mpd_verify_open` /
+`_escape` / `_seat` / `_evidence` / `_record`, and the verifier's envelope denies a bound seat the shell,
+the source-returning tools and every board mutation. **Two sentences this rule REPLACES**: "execute
+directly when it does not [help to delegate]" is no longer an option for code, and "verify everything a
+subagent claims yourself" is no longer how the main agent closes work — a claim is closed by a DIFFERENT
+agent's recorded verdict, and the main agent's own reading of a result is INTEGRATION, which is not
+verification.

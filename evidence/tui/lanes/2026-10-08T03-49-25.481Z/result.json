@@ -1,0 +1,135 @@
+{
+  "lane": "tui-014-lanes",
+  "phase": "C — re-run after the captain's post-Phase-B fixes (dist rebuilt + three lane scripts corrected)",
+  "boardTask": "tui-014-lanes (T4)",
+  "frozenContract": ".mpd/plans/tui-014-adaptation.md",
+  "owner": "Deep Worker Lanes (evidence only; no product code written, no lane script edited, no git write command run)",
+  "anchor": {
+    "myOwnContentFingerprint": "0917ba3c3345ae82",
+    "myMeasurementMomentUtc": "2026-10-08T03:38:36Z",
+    "fingerprintCovers": "packages/mpd-tui-{plugin,adapter-plugin}/{src,test,dist}, skills/dsh-qa/scripts, docker, presets, dsh-plugin.json, dsh-distribution.json",
+    "dirtyFiles": 51,
+    "captainReportedAtThatMoment": "packages/mpd-tui-plugin/dist/index.js rebuilt with the pinned toolchain after 3 code edits (command-trees.ts /mpd dag description, a panel.ts comment, deletion of the unread DAG_PANEL_SLUG); 3 lane scripts corrected for 0.14.0's host UI (tui-panels.ts, tui-deps-ctrla.ts, tui-team-surface.ts)",
+    "supersedes": "the Phase B anchor b0e9e07377a953e6 @ 2026-10-08T02:45:49Z"
+  },
+  "environment": {
+    "commandPrefix": "MPD_E2E_TUI_VERSION=0.14.0 pnpm_config_registry=https://repo.huaweicloud.com/repository/npm/",
+    "sandboxRoot": ".mpd/recon/qa/tui-lanes/tui-014b (warm; the same 0.14.0 host the mount lane installed)",
+    "mountLaneNotReRun": "tui-mount was GREEN in Phase B and nothing in it changed, so it was NOT re-run (the captain's instruction). Its evidence stands at evidence/tui/lanes/2026-10-08T03-02-56.630Z/ for the Phase B revision."
+  },
+  "lanes": [
+    {
+      "lane": "tui-panels",
+      "command": "MPD_E2E_TUI_VERSION=0.14.0 pnpm_config_registry=<mirror> bun skills/dsh-qa/scripts/tui-panels.ts --sandbox-root .mpd/recon/qa/tui-lanes/tui-014b",
+      "exitCode": 1,
+      "verdict": "FAIL — 2 arms",
+      "evidencePath": "evidence/tui/lanes/2026-10-08T03-46-19.971Z/",
+      "surfaces": {
+        "tuiStatus": "rendered",
+        "commands": "rendered",
+        "tuiPanels": "rendered (WAS MISSING in Phase B) — panel registration id=act1:team ok=true",
+        "tuiScenes": "rendered (WAS MISSING in Phase B)",
+        "tuiSettingsSections": "rendered (WAS MISSING in Phase B)",
+        "tuiCommandTrees": "MISSING (NEW RED)",
+        "tuiRenderers": "MISSING (pre-existing)",
+        "tuiDialogs": "rendered"
+      },
+      "failingAssertions": [
+        {
+          "surface": "tuiCommandTrees",
+          "step": "cmd-tree",
+          "keys": ["/mpd "],
+          "waitMs": 5000,
+          "expectedPattern": "列出 workmate|List the durable workmate library|打开 MPD 面板|Open the mpd board scene",
+          "observed": "MISSING — no completion line matched in a 1969-char judged pane",
+          "status": "NEW RED — this arm was GREEN in Phase B, so the change came from the revision delta between the two runs (the captain's dist rebuild + the three lane-script corrections), NOT from the host.",
+          "action": "REPORTED, NOT REPAIRED (a new red is a finding)."
+        },
+        {
+          "surface": "tuiRenderers",
+          "step": "renderer",
+          "expectedPattern": "board opened via",
+          "observed": "MISSING; but the store arm improved: `board-opened events in the sandbox store=1 scene-reported transcript rows=0` (Phase B read 0 store events)",
+          "status": "PRE-EXISTING — red in every recorded run since 2026-09-15 per the captain's own note; NOT this wave's regression."
+        }
+      ],
+      "greenControls": {
+        "panelRegistration": "id=act1:team ok=true",
+        "negativeControl": "ok=false (must be false) — the control still discriminates"
+      }
+    },
+    {
+      "lane": "tui-team-surface",
+      "command": "MPD_E2E_TUI_VERSION=0.14.0 pnpm_config_registry=<mirror> bun skills/dsh-qa/scripts/tui-team-surface.ts --sandbox-root .mpd/recon/qa/tui-lanes/tui-014b",
+      "exitCode": 1,
+      "verdict": "FAIL — 3 arms",
+      "evidencePath": "evidence/tui/team-surface-verify/2026-10-08T03-47-32.316Z/ (the lane's own hardcoded path; it has no --out — captain's option (b))",
+      "fixedSincePhaseB": {
+        "A2-plan-scene": "ok — registered scene \"mpd-tui-plan\" title \"MPD 计划审批\" (the lane now reads the plugin's own localized title)",
+        "A4-real-fixture-read": "ok — `team Fixture Team (mpd-fixture-1) · phase staged · review -`",
+        "A5-confirm-step-requested": "ok — required phrase \"approve plan-20261008T034632Z\"",
+        "A6-echo-carries-phrase": "ok — the echo after typing is \"approve plan-20261008T034632Z\""
+      },
+      "failingAssertions": [
+        { "id": "H1-host-renders-surface", "note": "the real host rendered the plan surface for the sandbox record: (no title line)", "status": "NEW RED — this arm reported ok in Phase B with the SAME parenthetical observation, so the arm's matcher (not the host) is what changed with the lane-script correction." },
+        { "id": "H3-host-confirm-step", "note": "the host rendered the confirmation step and echoed the typed phrase", "status": "NEW RED vs this morning's run (ok in Phase B); it was ALSO red on 2026-09-30T02-36-31.686Z, so it is flaky-by-revision rather than clean." },
+        { "id": "H4-real-mutation-via-the-adopted-runtime", "note": "no approval committed: phase=\"staged\" approvedAt=undefined; pane outcome: no-outcome-line", "status": "PRE-EXISTING — red on 2026-09-30 too." }
+      ],
+      "greenArms": ["A1-apply", "A3-entry-points", "A7-approval-attempt", "A8-tool-result-rendered", "A9-no-write-primitive", "A10-empty-state-no-throw", "B1-bypassed-runs-refuse", "B2-gate-is-what-refused", "B3-observation-discriminates", "H2-host-dialog-request", "H4b-outcome-reported-honestly", "H5-pane-and-record-agree", "H6-real-keystroke-drive"],
+      "nonInterference": "contract + VENDOR_LOCK unchanged=true; the workspace's OWN live team record changed during the run=false"
+    },
+    {
+      "lane": "tui-deps-ctrla",
+      "command": "MPD_E2E_TUI_VERSION=0.14.0 pnpm_config_registry=<mirror> bun skills/dsh-qa/scripts/tui-deps-ctrla.ts --sandbox-root .mpd/recon/qa/tui-lanes/tui-014b",
+      "exitCode": 0,
+      "verdict": "PASS (was FAIL in Phase B)",
+      "evidencePath": "evidence/tui/lanes/2026-10-08T03-48-12.424Z/",
+      "keyAssertions": {
+        "panelSeam": "host 0.14.0 declares the dsh-tui-panels row and ships lib/types/dsh-adapter/panels.js — the panel seam is PRESENT, so the Ctrl+A contact must stay inert",
+        "hostContact": "bound to the LAUNCHED profile copy: <sandbox>/dshhome/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui",
+        "storeArm": "ok=true id=act1:team",
+        "laneVerdict": "PASS: the host's Ctrl+A stayed INERT (its own dashboard opened) and /mpd panel proved the sidebar registration + accepted open"
+      }
+    },
+    {
+      "lane": "docker (real PTY, --mode source)",
+      "command": "MPD_E2E_TUI_VERSION=0.14.0 node scripts/docker-e2e.ts --mode source --allow-rootful-docker",
+      "exitCode": 0,
+      "verdict": "PASS — 64 passed / 0 failed / 30 null (all nulls are arms this invocation did not require)",
+      "evidencePath": "evidence/docker/client-install/2026-10-08T03-18-21Z/",
+      "driverRow": "docker mode: ROOTFUL — opted in with --allow-rootful-docker; image 417 MiB; browserEnabled=true; unmeasured=[]",
+      "greenAssertionsQuoted": [
+        "tui.hostInstall=true — the TUI host installs globally and lands on PATH",
+        "tui.pluginAddHost=true / tui.pluginAddBundle=true — this bundle installs into the dsh-tui profile as the third patch layer",
+        "tui.compose=true / tui.presetRow=true / tui.mpdTuiRow=true / tui.agentTeamRows=true",
+        "tui.teamSceneOpened=true — the /mpd team scene opened on a real terminal",
+        "tui.teamGraphDrawn=true — the LAYERED BOXES were drawn, one box per task, rounded-corner census equals the record's task count",
+        "tui.teamGraphEdges=true / tui.teamGraphContent=true — every task id in the lane's own record is drawn as a node label",
+        "tui.hostDashboardKeyIntact=true — Ctrl+A stayed the HOST's key (frozen R4) with and without a seeded team",
+        "tui.noDirectTuiSeam=true — the D6 gate passed on a byte-identical copy of the INSTALLED tree",
+        "tui.boot=true / tui.noFatalSignatures=true / tui.sessionPreset=true (agentPreset=mpd) / tui.laneExit=true"
+      ],
+      "honestNulls": [
+        "tui.mergedPanelOpens=null — the merged view's OPEN is not pane-observable on this host (a host-ACCEPTED open changes zero bytes of a tmux capture); the registration + accepted open ARE asserted store-backed by the sandbox lanes on the SAME host version",
+        "tui.mergedPanelOrder=null — the merged body's section order is not pane-observable; recording a pass would be a claim the pane does not carry"
+      ],
+      "revisionBound": {
+        "status": "NOT NAILED — declared, not hidden",
+        "detail": "The driver started 2026-10-08T03:18:21Z and the container's build context was copied during `docker compose build`. The captain's three src edits (command-trees.ts, panel.ts, dag-theme.ts) are timestamped 03:18:59Z — INSIDE that copy window. The container records only 28 hashes and they are all dist/index.js, which the container REBUILDS from src with its own toolchain (`--mode source`), so they cannot be compared with the repo's pinned-toolchain dist. Whether the copied tree carried the 03:18:59 edits is therefore UNRESOLVED by this evidence.",
+        "measuredComparison": "container-recorded packages/mpd-tui-plugin/dist/index.js sha256 1a19e45e141e789800bcf9c9ff010d6a7eb9cfa92e4eba79d91bb511197dbdc0 vs on-disk 32fe62b445929552e40a5bfbed7a1b11a3196bdbb8dbcec973a942fed54b5cfe — DIFFERENT, and expected to differ because the container rebuilds.",
+        "remedy": "a re-run on the FINAL revision, on the captain's word; I remain available and the lane is logged here as the wave's strongest evidence WITH this bound attached."
+      }
+    }
+  ],
+  "earlierAttemptsKeptAsDiagnostics": [
+    { "evidence": "evidence/tui/lanes/2026-10-08T02-46-35.178Z/", "what": "mount lane attempt 1 FAILED: requested-host-install-refused — pnpm pointed at registry.npmjs.org, unreachable here. install.log only, no result.json.", "fixedBy": "pnpm_config_registry (NOT npm_config_registry, which pnpm 11 ignores)" },
+    { "evidence": "evidence/docker/client-install/2026-10-08T03-10-30Z/", "what": "docker lane attempt 1 NOT-REACHED: build failed, `dial tcp 104.244.43.35:443: i/o timeout` pulling docker.io/library/node:24-bookworm.", "fixedBy": "docker pull docker.m.daocloud.io/library/node:24-bookworm && docker tag … node:24-bookworm (image digest sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0)" },
+    { "evidence": "evidence/docker/client-install/2026-10-08T03-14-56Z/", "what": "docker lane attempt 2 NOT-REACHED: build OK, container bailed at [step 04-pnpm]: `npm error code ETIMEDOUT … fetch https://registry.npmjs.org/pnpm: read ETIMEDOUT` -> toolchain.pnpm=false -> 78 assertions null. Intermittent egress.", "fixedBy": "retry (attempt 3 reached STEP 14-tui and passed)" }
+  ],
+  "declaredEnvironmentDeviations": {
+    "pnpmRegistry": "pnpm_config_registry=https://repo.huaweicloud.com/repository/npm/ (this host's own /root/.npmrc). Load-bearing: pnpm 11.23.0 IGNORES npm_config_registry and HONORS pnpm_config_registry (proved with a bogus 127.0.0.1:1 registry). sandboxEnv() spreads process.env, so isolation is untouched.",
+    "dockerBaseImage": "node:24-bookworm obtained from registry-1.docker.io is IMPOSSIBLE here (i/o timeout; `curl -sI https://registry-1.docker.io/v2/` -> timeout). I sourced it from the daocloud mirror this machine already uses (a daocloud ubuntu image was already in the local store) and retagged it. Bound: I could not compare that digest against docker.io's manifest because docker.io is unreachable."
+  },
+  "coverageGapUnchanged": "No lane drives the MPD panel's own `⤢` control: `grep -l 'fullscreen|⤢|openFullscreen|expand'` matches NONE of the four sandbox lane scripts. C5's full-screen surface is therefore NOT exercised by this lane set (the Docker lane's team-scene arms cover a different, full-screen TEAM surface).",
+  "verdict": "PHASE C: tui-deps-ctrla GREEN; tui-panels down to 2 arms (1 NEW RED: tuiCommandTrees; 1 pre-existing: tuiRenderers) with tuiPanels/tuiScenes/tuiSettingsSections now GREEN; tui-team-surface down to 3 arms (2 NEW RED: H1/H3; 1 pre-existing: H4) with A2/A4/A5/A6 now GREEN; Docker real-PTY PASS 64/0 with a declared revision bound. Every new red is reported with its exact assertion and NOT repaired."
+}

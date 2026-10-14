@@ -1,0 +1,59 @@
+### Code-shape evidence captured at UTC 2026-10-09T12:11:58Z
+
+## C4-A: the RETIRED wire object must be ABSENT from every touched case + the shared helper
+$ grep -rn "chat.completion.chunk" skills/dsh-qa/scripts/
+EXIT=1
+
+## C4-B: the POSITIVE replacement — the Messages emitters the cases use, with paths
+$ grep -n "writeMessagesSse\|messagesToolUseEvents\|messagesTextEvents\|readWireRequest" skills/dsh-qa/scripts/readonly-deny.ts skills/dsh-qa/scripts/software-smoke.ts skills/dsh-qa/scripts/extension-isolation.ts
+skills/dsh-qa/scripts/readonly-deny.ts:60:import { MESSAGES_EVENT_TYPES, messagesTextEvents, messagesToolUseEvents, readWireRequest, writeMessagesSse } from "./lib/messages-sse.ts"
+skills/dsh-qa/scripts/readonly-deny.ts:397:  const toolFrames = messagesToolUseEvents("call_probe_1", "mpd_role_spawn", { role: "Architect", task: "Reply OK" })
+skills/dsh-qa/scripts/readonly-deny.ts:399:  const textFrames = messagesTextEvents("probe-child-answered")
+skills/dsh-qa/scripts/readonly-deny.ts:414:  const messagesWire = readWireRequest(JSON.stringify({
+skills/dsh-qa/scripts/readonly-deny.ts:507:      const wire = readWireRequest(body)
+skills/dsh-qa/scripts/readonly-deny.ts:519:        writeMessagesSse(res, messagesToolUseEvents("call_probe_1", "mpd_role_spawn", { role: "Architect", task: "Reply OK" }))
+skills/dsh-qa/scripts/readonly-deny.ts:522:        writeMessagesSse(res, messagesTextEvents("probe-child-answered"))
+skills/dsh-qa/scripts/software-smoke.ts:39:import { MESSAGES_EVENT_TYPES, messagesTextEvents, messagesToolUseEvents, readWireRequest, writeMessagesSse } from "./lib/messages-sse.ts"
+skills/dsh-qa/scripts/software-smoke.ts:413:      const wire = readWireRequest(body)
+skills/dsh-qa/scripts/software-smoke.ts:420:      if (toolNames.length === 0) return writeMessagesSse(res, messagesTextEvents("software-smoke"))
+skills/dsh-qa/scripts/software-smoke.ts:421:      if (stage === "idle") { stage = "write-issued"; return writeMessagesSse(res, messagesToolUseEvents("call_write_1", "write", { file_path: "nim.mjs", content: gameSource })) }
+skills/dsh-qa/scripts/software-smoke.ts:422:      if (stage === "write-issued" && toolResults.length > 0) { stage = "bash-issued"; return writeMessagesSse(res, messagesToolUseEvents("call_bash_1", "bash", { command: BASH, description: "Run the deterministic game twice and probe positions" })) }
+skills/dsh-qa/scripts/software-smoke.ts:423:      return writeMessagesSse(res, messagesTextEvents("software-smoke-done"))
+skills/dsh-qa/scripts/extension-isolation.ts:34:import { messagesTextEvents, messagesToolUseEvents, readWireRequest, writeMessagesSse } from "./lib/messages-sse.ts"
+skills/dsh-qa/scripts/extension-isolation.ts:406:      const wire = readWireRequest(body)
+skills/dsh-qa/scripts/extension-isolation.ts:430:      if (decision.kind === "text") return writeMessagesSse(res, messagesTextEvents(decision.text))
+skills/dsh-qa/scripts/extension-isolation.ts:431:      return writeMessagesSse(res, messagesToolUseEvents("call_" + label + "_" + toolResults.length, decision.name, decision.args))
+EXIT=0
+
+## C4-C: the frame vocabulary the helper emits (skills/dsh-qa/scripts/lib/messages-sse.ts)
+$ sed -n "/export const MESSAGES_EVENT_TYPES/,/^]/p" skills/dsh-qa/scripts/lib/messages-sse.ts
+export const MESSAGES_EVENT_TYPES: readonly string[] = [
+  "message_start",
+  "content_block_start",
+  "content_block_delta",
+  "content_block_stop",
+  "message_delta",
+  "message_stop",
+]
+EXIT=0
+
+## C6-A: spawnDriven must key on the ADAPTER-PROBE filterSent
+$ grep -n "spawnDriven" skills/dsh-qa/scripts/readonly-deny.ts
+147:  readonly spawnDriven: boolean
+424:  checks.push(["spawnDriven keys on the ADAPTER-PROBE filterSent, never on the stub's call count", ownSource.includes("spawnDriven: filterSent !== null") && !ownSource.includes("stub.calls() >= " + "2")])
+698:        spawnDriven: filterSent !== null,
+774:        && steps.positive.spawnDriven
+EXIT=0
+
+## C6-B: the RETIRED predicate (a stub call count) must be ABSENT
+$ grep -n "stub.calls() >= 2" skills/dsh-qa/scripts/readonly-deny.ts
+EXIT=1
+
+## C6-C: where the probe line is read (the value spawnDriven keys on)
+$ grep -n "ADAPTER-PROBE" skills/dsh-qa/scripts/readonly-deny.ts
+146:  /** Whether the parent was driven into the spawn: the ADAPTER-PROBE line was seen (never a call count). */
+424:  checks.push(["spawnDriven keys on the ADAPTER-PROBE filterSent, never on the stub's call count", ownSource.includes("spawnDriven: filterSent !== null") && !ownSource.includes("stub.calls() >= " + "2")])
+610:          'console.error("[ADAPTER-PROBE] toolFilter=" + JSON.stringify(spec.toolFilter ?? null));\n      const run = await subagents.start(')
+665:        const m = /\[ADAPTER-PROBE\] toolFilter=([^\n]*)/.exec(out)
+695:        // Keyed on the ADAPTER-PROBE line, never on the stub's call count: the session-title side
+EXIT=0

@@ -40,18 +40,21 @@ solo `mpd_role_spawn` produces. Address a role by that name in any spelling —
 `Plan Reviewer` (case-, space-, hyphen- and underscore-insensitive). No surface
 advertises an upstream alias: a role is described by what it does.
 
-*Compatibility (internal, undocumented on any surface):* the roster also still accepts
-its stable internal keys — the chain keys used by `mpd-modelchain-plugin` and by
-`personas/<key>.md` (`oracle`, `sisyphus-junior`, …), the camelCase spellings
-(`sisyphusJunior`) and the legacy `mpd-<key>` form — so existing chains and callers keep
-working. They are never returned, listed or required. The **workmate library does not
-resolve a base this way**: `mpd_workmate_init` matches the functional NAME only (a stable
-id is refused with a names-only error), and `meta.baseId` is kept purely as internal
-provenance that no tool output, route or GUI exposes.
+*Internal keys (never tool input):* the stable internal keys — the chain keys used by
+`mpd-modelchain-plugin` and by `personas/<key>.md` (`oracle`, `sisyphus-junior`, …), the
+camelCase spellings (`sisyphusJunior`) and the legacy `mpd-<key>` form — stay resolvable on
+the **service path** (`ctx.get("mpdRoles").get(key)`), so existing chains and internal
+callers keep working. They are **refused as tool input**: `mpd_role_spawn`,
+`mpd_role_persona` and `mpd_modelchain_resolve` accept a NAME spelling only and answer a
+loud error that lists the roster names — it never repeats the rejected key, and an id is
+never returned, listed or required. The **workmate library behaves the same way**:
+`mpd_workmate_init` matches the functional NAME only (a stable id is refused with a
+names-only error), and `meta.baseId` is kept purely as internal provenance that no tool
+output, route or GUI exposes.
 
-`ctx.get("mpdRoles").get(key)` uses that same resolution, which is how
-`mpd_modelchain_resolve` and the roster tools address a role; the workmate library
-(`mpd_workmate_init base=...`) instead addresses it by functional NAME.
+`ctx.get("mpdRoles").get(key)` still uses that same resolution — it is the INTERNAL path.
+The tool-facing path accepts NAME spellings only, so `mpd_modelchain_resolve`, the roster
+tools and the workmate library (`mpd_workmate_init base=...`) all address a role by name.
 
 ## Extension-contributed roles
 
@@ -103,7 +106,10 @@ to `ctx.subagents.startContinuable` (`docs/plan-0.1.7-adaptation.md` §3), so a 
 inherits the Lead's route and no provider/persona/tool filter can be attached to it. The
 `teamModels.slot*` routes therefore apply to `mpd_role_spawn` / `mpd_workmate_spawn` (which
 pass explicit `agentOptions`), and the roster section says exactly that instead of promising
-a route the harness cannot deliver.
+a route the harness cannot deliver. The route's effort is additionally passed through the
+adapter's `withSupportedEffort` (`mpd-dsh-adapter-plugin`), so a slot whose model declares NO
+reasoning efforts at all is sent none — the spawn runs instead of failing on a keyword the
+provider cannot accept — while a model that declares efforts keeps the slot's keyword.
 
 ### A read-only teammate is denied mechanically
 
@@ -121,6 +127,45 @@ The seven-name deny list is enforced on BOTH paths, from ONE exported constant
 
 This closes the measured defect of the retired profile-carried `toolDeny`: a teammate staged
 as "Explorer" without the filter kept `write`/`edit`/`bash`.
+
+**The deny list is pruned by the HARNESS, once, before the spawn.** `tools.restrict()` rejects the
+WHOLE list when a single name is not registered in the profile, so one unregistered entry (the two
+`mcp__lsp__*` names on a host without `cclsp`) killed EVERY read-only spawn of both the roster and the
+workmate library — measured 2026-10-10, and that broken front door is what pushed the captain onto the
+harness's generic `subagent` tool. The adapter's `restrictToolsTolerant` applies the CANONICAL list to
+the calling agent's own scope and releases it in the same synchronous turn, so the harness's own
+verdict is the only pruner: the names it reports as unknown are pruned, exactly ONE retry is allowed,
+and any second failure is rethrown. `READONLY_DENY` itself is unchanged, the two packages' lists stay
+identical (asserted by `roles.test.ts`), and the list is still NEVER pre-filtered with a `hasTool`
+probe (AGENTS.md §13). A pruned name is reported once on the row's log.
+
+### The delegation gate (the official spawn tools are not the delegation path)
+
+`delegation-gate.ts` registers ONE `tools.guard` callback through the adapter: a call to `subagent`,
+`subagent_fork` or `workflow` is REFUSED with a sentence that names the sanctioned routes
+(`mpd_role_spawn`, `mpd_workmate_match` + `mpd_workmate_spawn`, Agent Teams, `send_message`). The knob
+is `delegation.gate` in `mpd.jsonc`:
+
+- **deny** (default) — the captain AND every member session are refused, because an escape hatch a
+  member can still use is not a discipline;
+- **captain** — only the workspace's TOP-LEVEL session is refused;
+- **allow** — the gate is released entirely.
+
+The gate is keyed on §5's PRESET-FREE session rank, so it holds for every session in a workspace that
+mounts this bundle, whatever preset the profile assigned. Preset-plane omission is deliberately NOT
+used: the live top-level session on this deployment runs a preset this bundle does not own (`cordis`),
+so a guard is the portable denial and mounting the bundle is the opt-in. The row's boot line reports
+`delegationGate=<mode>` (or `delegationGate=absent reason=…` when the harness exposes no `tools.guard`
+seam).
+
+**Honest bound:** the guard reads the TOOL CALL at dispatch, so a tool the roster never publishes is
+trivially covered, while a session on a profile WITHOUT this bundle mounted has no gate at all — and it
+cannot stop a model from TRYING another tool.
+
+The `mpd` preset's persona carries a short STANDING WORKING DISCIPLINE list (close a hypothesis
+repeated twice, inspection tool over speculation, next operation only, concurrent independent calls,
+ephemeral shell calls, verify against actual output, YAGNI/PDCA) adapted from `dsh-liangshen`
+(Apache-2.0) — ideas only, no upstream bytes ship.
 
 ### The session-start complexity gate (mechanical by default)
 

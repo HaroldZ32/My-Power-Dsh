@@ -1,0 +1,13 @@
+{
+  "note": "decoded header records from the sandbox session store",
+  "records": [
+    {
+      "sessionId": "92b4d858-602b-47ee-82bb-e7eb2271bf93",
+      "projectKey": "--root-dshProj-My-Power-Dsh-.mpd-recon-qa-tui-lanes-tui-014b-ws--",
+      "store": ".mpd/recon/qa/tui-lanes/tui-014b/dshhome/sessions/--root-dshProj-My-Power-Dsh-.mpd-recon-qa-tui-lanes-tui-014b-ws--/92b4d858-602b-47ee-82bb-e7eb2271bf93/session.v4.jsonl.zstd",
+      "storeSha256": "sha256:efbc359e9601c50852ba44a8d525566101825c1bc0540f18ac1c2efc44dba1f8",
+      "agentPreset": "mpd",
+      "cwd": "/root/dshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/tui-014b/ws"
+    }
+  ]
+}

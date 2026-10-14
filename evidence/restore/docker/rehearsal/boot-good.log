@@ -1,0 +1,8 @@
+[docker-probe] APPLIED=ok
+[docker-probe] MCP_TOOLS=3/3
+[docker-probe] MCP_TOOLS_MISSING=
+[docker-probe] MCP_REGISTERED=mcp__ast_grep__rewrite,mcp__ast_grep__scan,mcp__ast_grep__search,mcp__codegraph__codegraph_explore,mcp__lsp__find_definition,mcp__lsp__get_diagnostics
+[docker-probe] MCP_SERVER_COUNTS=ast_grep:3,codegraph:1,lsp:2
+[docker-probe] MCP_LIVE_SEARCH=ok:4
+[docker-probe] MCP_LIVE_SEARCH_CONTROL=ok:0
+[docker-probe] DONE=1

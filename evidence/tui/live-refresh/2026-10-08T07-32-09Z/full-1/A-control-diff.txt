@@ -1,0 +1,3 @@
+A2-sidebar-plus2s vs A5-sidebar-reopened: changedLines=0
+        A2-sidebar-plus2s: modeLine="view boxes · 8 tasks · ranks derived                              █" summary="tasks 4/8  members 5           █"
+        A5-sidebar-reopened: modeLine="view boxes · 8 tasks · ranks derived                              █" summary="tasks 4/8  members 5           █"

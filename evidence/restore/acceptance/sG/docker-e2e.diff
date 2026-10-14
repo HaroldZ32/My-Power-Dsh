@@ -1,0 +1,45 @@
+diff --git a/.github/workflows/docker-e2e.yml b/.github/workflows/docker-e2e.yml
+index da1d28ad..132b52fe 100644
+--- a/.github/workflows/docker-e2e.yml
++++ b/.github/workflows/docker-e2e.yml
+@@ -71,6 +71,40 @@ on:
+     # queue is most congested, and a congested schedule is delayed or dropped rather than queued.
+     - cron: "41 3 * * *"
+ 
++  # WHY A pull_request TRIGGER EXISTS HERE AT ALL — WITHOUT IT THIS FILE WAS INERT WHERE IT SITS. A
++  # `schedule` fires only from the DEFAULT branch's latest commit, and the dispatch button likewise
++  # requires the workflow to exist on the default branch; `master` in this repository takes release
++  # merges only (AGENTS.md §5), so the lane could not run — and did not — until a release carried the
++  # file there, which is how it was first shipped. A `pull_request` event runs the workflow file AS IT
++  # EXISTS IN THE PR'S HEAD BRANCH, and that is the ONE trigger that makes this lane runnable before
++  # the file reaches the default branch.
++  #
++  # WHY IT IS `dev`-ONLY AND PATH-FILTERED: a full source run is 16.1 min WITH a warm docker cache and
++  # a hosted runner starts cold (see the header above), so this cannot fire on every PR. `branches:
++  # [dev]` follows AGENTS.md §5 (PRs target `dev`). `paths:` names only what this lane GRADES — the
++  # packed bundle it installs and the skills corpus that bundle carries — so a PR touching none of it
++  # pays nothing:
++  #   * `docker/**`                        — the image, compose file and entrypoint the install runs;
++  #   * `scripts/docker-e2e.ts`            — the driver: the runner, the grading and the exit codes;
++  #   * `.github/workflows/docker-e2e.yml` — this file, so a trigger or filter edit re-tests itself;
++  #   * `skills/**`                        — the served skill corpus the packed bundle carries;
++  #   * `packages/**`                      — every plugin row (and committed `dist/`) the mount applies;
++  #   * `presets/**`                       — the `mpd` preset row the mount applies;
++  #   * `cordis.patch.yml`                 — the host-plane patch rows the mount applies;
++  #   * `package.json`                     — the manifest whose `files` allowlist and `dsh.bundle.patch`
++  #                                          decide what the packed install actually contains.
++  pull_request:
++    branches: [dev]
++    paths:
++      - "docker/**"
++      - "scripts/docker-e2e.ts"
++      - ".github/workflows/docker-e2e.yml"
++      - "skills/**"
++      - "packages/**"
++      - "presets/**"
++      - "cordis.patch.yml"
++      - "package.json"
++
+ # The lane reads the repository and nothing else — no push, no release, no secret. Same floor as
+ # `gates.yml`.
+ permissions:

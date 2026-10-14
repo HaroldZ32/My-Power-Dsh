@@ -1,0 +1,5 @@
+retry: 1000
+
+event: hello
+data: {"rev":0}
+

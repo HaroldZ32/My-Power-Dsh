@@ -28,6 +28,70 @@
 
 `/agent-teams <这支团队是干什么的>` 会按当前目标暂存一份计划。
 
+## 变更推送——不再轮询
+
+每一次团队改动都会**被推送**。`<workspace>/.mpd/team/teams/<teamId>.json` 是团队唯一的事实来源，现在它会自己宣告变化，
+于是各界面是在"真的发生了事情"时重读，而不是每 1000–2000 ms 读一次。
+
+### 服务（`mpdTeams`）
+
+| 成员 | 签名 | 契约 |
+|---|---|---|
+| `subscribe` | `(workspace: string, listener: () => void) => () => void` | 每个变更窗口最多回调一次，且**绝不在写入方的调用栈里**同步回调。返回的释放函数可重复调用。 |
+| `revision` | `(workspace: string) => number` | 本进程为该工作区**已观测**到的变更窗口数，单调递增。从未见过的工作区为 `0`。重连的客户端拿自己的号与流的 `hello` 帧比对，即可发现漏掉的通知。 |
+
+- **不论是谁写的。** 本进程自己的写入（`writeTeam`、`writeTeamsIndex`、`deleteTeam`）经 store 上的钩子通知；
+  **另一个进程**的写入——第二个会话、CLI、容器 lane——由 `<workspace>/.mpd/team`（索引）与
+  `<workspace>/.mpd/team/teams`（记录）上的**非递归** `fs.watch` 看到。两条来源汇入同一个按工作区的窗口。
+- **合并。** 一个窗口内的突发只回调**一次**，`revision` 数的是窗口而不是其中的写入次数。窗口是**固定**的
+  （默认 50 ms），不会因为迟到的观测而延长，所以持续繁忙的团队不会无限推迟自己的通知。突发的**第一笔**写入
+  自己就会触发通知：窗口正是它打开的。
+- **包容。** 抛异常的回调在该次调用中被吞掉并只报告一次；它无法破坏写入方、其他回调或启动过程。
+- **懒加载并会释放。** 某工作区的 watcher 在第一个订阅者出现时装载，在最后一个订阅者离开时关闭；所有 watcher、
+  定时器与钩子都在插件 dispose 时释放。
+- **降级而非失败。** 若 `fs.watch`（或工作区本身）拒绝，事件流**仍然**投递进程内通知，并且每个工作区只写**一行**
+  有界日志说明 watch 已关闭。被拒的装载会在下一个订阅者或下一次变更时重试，因此"后来才出现的目录"不会永远无人看守。
+
+### 路由（`GET /plugins/mpd-team/events`）
+
+Server-Sent Events，与四个 JSON 路由同属 `/plugins/mpd-team/*` 家族（宿主遇到重复的 exact 路由会抛错，
+而 `/plugins/events` 属于 harness 自己的 HMR 行）。工作区与会话**按请求**解析，与 JSON 路由的解析方式完全一致。
+
+```
+HTTP/1.1 200 OK
+content-type: text/event-stream; charset=utf-8
+cache-control: no-store, no-transform
+connection: keep-alive
+x-accel-buffering: no
+
+retry: 1000
+
+event: hello
+data: {"rev":7}
+
+data: {"rev":8}
+
+: ping
+```
+
+- 连接时：`retry: 1000`，随后一个携带当前 revision 的 `event: hello` 帧；响应头被显式 flush，所以客户端在
+  任何变更发生之前就已报 OPEN。
+- 每次 feed 变更：一个不带事件名的 `data:` 帧（浏览器 `EventSource` 默认的 `message` 事件）。
+- 每 15 s 一个 `: ping` 注释，避免代理丢弃空闲流。
+- `req.on("close")` 释放订阅并清掉定时器；客户端离开后不留下任何东西。
+- **没有 feed** 的组合会回 `503` 加一个 JSON 体，而不是把一条死流挂着。
+
+### 明说的边界
+
+- watch 是每个已装载工作区**两个非递归目录监听**：Linux inotify 没有递归模式，而记录是 `teams/` 的子项、
+  索引是 `.mpd/team` 的子项。
+- 订阅会**创建**这两个目录，这是有意的副作用（不存在的路径无法被监听），所以订阅某个工作区的界面可能会创建
+  空的 `<workspace>/.mpd/team/teams/`。
+- 在网络文件系统上，或内核 inotify watch 上限被耗尽时，watch 的降级方式与"工作区不可写"完全一样：
+  只有进程内通知，外加一行日志。
+- 事件流跟随的是**团队记录与 teams 索引**。sidecar 文件（暂存计划、契约、hold、信箱）不由它推送。
+- `revision` 是**按进程**的。两个进程服务同一个工作区时，各自数自己的窗口。
+
 ## 语义
 
 - **计划是评审点，不是队列。** `agent_teams_create` 只写计划就返回；唯一能造出队友的动作是 `agent_teams_approve`。

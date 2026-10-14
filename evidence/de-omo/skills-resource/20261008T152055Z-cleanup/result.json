@@ -1,0 +1,252 @@
+{
+  "task": "skills/** same-class cleanup — Codex/omo-only leftovers the previous repair pass left untouched",
+  "utc": "2026-10-08T15:20:55Z",
+  "scope": "skills/**, VENDOR_LOCK.json (through scripts/repin-vendor.ts only), evidence/de-omo/**",
+  "method": "every string located by its QUOTED CONTENT (no line numbers cited); new wording verified against a file that this repository actually ships",
+  "verified_against_sources": [
+    "skills/ultimate-browsing/references/chrome-stealth.md — the shipped Tier-2 mechanism: every agent-browser call is a shell/CLI line (`agent-browser --cdp 9242 open <url>`, `agent-browser --cdp 9242 eval '<js>'`, `agent-browser --cdp 9242 close`) and the attached engine is `scripts/extract_cookies.py --inject --cdp 9242`",
+    "skills/ultimate-browsing/engine/AGENTS.md — carries the already-correct statement \"Tier 2 (a real browser driven with agent-browser from the shell — the owned engine and the attached engine, documented in ../references/chrome-stealth.md)\"",
+    "skills/visual-qa/references/agent-browser-setup.md — the CLI-only agent-browser setup this repository ships",
+    "skills/ultimate-browsing/scripts/extract_cookies.py — exists on disk (verified)",
+    "skills/visual-qa/references/chrome-stealth.md path target skills/ultimate-browsing/references/chrome-stealth.md — exists on disk (verified)",
+    "ls packages/ — no `shared-skills` package exists; `skills/` is the corpus root",
+    "skills/ultimate-browsing/engine/AGENTS.md — the in-repo parent-label convention `[this repository's root `AGENTS.md`](../../../AGENTS.md)`",
+    "packages/mpd-roles-plugin/src/roles.data.ts — the roster NAMES `Deep Worker` and `Lead` are the shipped spellings"
+  ],
+  "items": [
+    {
+      "item": 1,
+      "class": "wrong parent label / path pointing at a tree this repository does not have",
+      "edits": [
+        {
+          "file": "skills/ast-grep/AGENTS.md",
+          "old": "- Parent: [`packages/shared-skills/AGENTS.md`](../../AGENTS.md).",
+          "new": "- Parent: [this repository's root `AGENTS.md`](../../AGENTS.md).",
+          "verified_against": "skills/ultimate-browsing/engine/AGENTS.md — same statement in its already-correct form; `../../AGENTS.md` from skills/ast-grep/ resolves to this repository's root AGENTS.md"
+        },
+        {
+          "file": "skills/ast-grep/AGENTS.md",
+          "old": "# from packages/shared-skills/skills/ast-grep/",
+          "new": "# from skills/ast-grep/",
+          "verified_against": "ls packages/ — no shared-skills; skills/ast-grep/ exists"
+        },
+        {
+          "file": "skills/ast-grep/AGENTS.md",
+          "old": "and a no-fork-drift upstream contract that has no analogue elsewhere in `shared-skills`.",
+          "new": "and a no-fork-drift upstream contract that has no analogue elsewhere in the skill corpus.",
+          "verified_against": "ls packages/ — no shared-skills package; the corpus root is skills/"
+        },
+        {
+          "file": "skills/visual-qa/AGENTS.md",
+          "old": "- Parent: [`packages/shared-skills/AGENTS.md`](../../AGENTS.md).",
+          "new": "- Parent: [this repository's root `AGENTS.md`](../../AGENTS.md).",
+          "verified_against": "skills/ultimate-browsing/engine/AGENTS.md — the in-repo parent-label convention"
+        },
+        {
+          "file": "skills/visual-qa/AGENTS.md",
+          "old": "# from packages/shared-skills/skills/visual-qa/",
+          "new": "# from skills/visual-qa/",
+          "verified_against": "ls packages/ — no shared-skills; skills/visual-qa/ exists"
+        }
+      ]
+    },
+    {
+      "item": 2,
+      "class": "leftover Codex-harness 'js eval' vocabulary — ALL 8 occurrences under skills/**, replaced by the DSH mechanism (the `bash` tool running the `agent-browser` CLI)",
+      "edits": [
+        {
+          "file": "skills/ultimate-browsing/SKILL.md",
+          "old": "**Tier 2 — a real browser** through agent-browser from js eval: 2a the owned engine",
+          "new": "**Tier 2 — a real browser** through the `agent-browser` CLI run from `bash`: 2a the owned engine",
+          "verified_against": "skills/ultimate-browsing/references/chrome-stealth.md + skills/ultimate-browsing/engine/AGENTS.md"
+        },
+        {
+          "file": "skills/ultimate-browsing/references/insane-search/README.md",
+          "old": "브라우저를 직접 제어할 때는 js eval에서 agent-browser를 쓴다(`browser` 스킬에 스테이징됨):",
+          "new": "브라우저를 직접 제어할 때는 `bash`에서 `agent-browser` CLI를 쓴다([`../chrome-stealth.md`](../chrome-stealth.md) 참고):",
+          "verified_against": "skills/ultimate-browsing/references/chrome-stealth.md (relative target exists)"
+        },
+        {
+          "file": "skills/ultimate-browsing/references/insane-search/README.md",
+          "old": "직접 띄우는 브라우저는 `connectPipe` / 스텔스는 `connectCloakProfile`(CloakBrowser),\n사용자가 로그인해 둔 브라우저는 `connectBrowserSkill`.",
+          "new": "직접 띄우는 브라우저는 `agent-browser --cdp <port>` 세션 / 스텔스는 CloakBrowser(스텔스 Chromium),\n사용자가 로그인해 둔 브라우저는 `../../scripts/extract_cookies.py` 쿠키 주입.",
+          "verified_against": "skills/ultimate-browsing/references/chrome-stealth.md (the three CLI forms) + skills/ultimate-browsing/scripts/extract_cookies.py (exists at the relative path)"
+        },
+        {
+          "file": "skills/ultimate-browsing/references/insane-search/playwright.md",
+          "old": "에이전트가 직접 여는 브라우저 세션은 js eval의 agent-browser(`browser` 스킬에 스테이징)로\n띄운다: 직접 소유 브라우저는 `connectPipe`, 스텔스는 `connectCloakProfile`, 사용자 로그인이\n필요하면 `connectBrowserSkill`.",
+          "new": "에이전트가 직접 여는 브라우저 세션은 `bash`에서 `agent-browser` CLI로\n띄운다([`../chrome-stealth.md`](../chrome-stealth.md)): 직접 소유 브라우저는 `agent-browser --cdp <port>` 세션, 스텔스는 CloakBrowser, 사용자 로그인이\n필요하면 `../../scripts/extract_cookies.py` 쿠키 주입.",
+          "verified_against": "skills/ultimate-browsing/references/chrome-stealth.md"
+        },
+        {
+          "file": "skills/ultimate-browsing/references/insane-search/playwright.md",
+          "old": "엔진 폴백이 아니라 에이전트가 직접 페이지를 조작해야 한다면 js eval에서 agent-browser(`browser` 스킬에 스테이징)를 쓴다. 지문이 고정된 스텔스 브라우저는 `connectCloakProfile({ profileDir })`, 모바일 뷰는 `emulate(page, \"iphone-14\")`, 사용자 로그인이 필요하면 `connectBrowserSkill()`이다.",
+          "new": "엔진 폴백이 아니라 에이전트가 직접 페이지를 조작해야 한다면 `bash`에서 `agent-browser` CLI를 쓴다([`../chrome-stealth.md`](../chrome-stealth.md)). 지문이 고정된 스텔스 브라우저는 CloakBrowser, 모바일 뷰는 iphone-14 디바이스 에뮬레이션, 사용자 로그인이 필요하면 `../../scripts/extract_cookies.py` 쿠키 주입이다.",
+          "verified_against": "skills/ultimate-browsing/references/chrome-stealth.md (CloakBrowser = the stealth engine; cookie injection via extract_cookies.py)",
+          "note": "`emulate(page, \"iphone-14\")` was a JS-API spelling with no verified CLI equivalent in this repository, so the CAPABILITY (iphone-14 mobile view) is kept and no command was invented."
+        },
+        {
+          "file": "skills/frontend/references/design/clone-from-url.md",
+          "old": "Drive a real browser with agent-browser from js eval (staged in the `browser` skill): `connectPipe` on a task-owned profile for a public page, `connectCloakProfile` when the source is bot-scored, `connectBrowserSkill()` when it needs the user's login — then `page.evaluate` / `session.evaluate` for `getComputedStyle`.",
+          "new": "Drive a real browser with the `agent-browser` CLI run from `bash` (see the `ultimate-browsing` skill's `references/chrome-stealth.md`): a local `agent-browser --cdp <port>` session on a task-owned profile for a public page, CloakBrowser when the source is bot-scored, `scripts/extract_cookies.py` cookie injection when it needs the user's login — then `agent-browser eval '<js>'` for `getComputedStyle`.",
+          "verified_against": "skills/ultimate-browsing/references/chrome-stealth.md — `agent-browser --cdp 9242 eval 'navigator.webdriver'` is the shipped eval form"
+        },
+        {
+          "file": "skills/frontend/SKILL.md",
+          "old": "| Driving a browser for the Design QA phase | `visual-qa` skill: agent-browser from js eval (owned engine for renders, attached engine for signed-in pages) |",
+          "new": "| Driving a browser for the Design QA phase | `visual-qa` skill: the `agent-browser` CLI run from `bash` (owned engine for renders, attached engine for signed-in pages) |",
+          "verified_against": "skills/visual-qa/references/agent-browser-setup.md — the CLI-only setup this repository ships"
+        },
+        {
+          "file": "skills/review-work/SKILL.md",
+          "old": "   - Web: agent-browser from js eval (staged in the `browser` skill) — the owned engine (`connectPipe` on a task-owned profile, or `connectCloakProfile` for bot-scored targets) for unauthenticated pages, the attached engine (`connectBrowserSkill()` in the user's signed-in browser) when the page needs their login; never a clone of or a launch against the live profile.",
+          "new": "   - Web: the `agent-browser` CLI run from `bash` (see the `ultimate-browsing` skill's `references/chrome-stealth.md`) — the owned engine (a local `agent-browser --cdp <port>` session on a task-owned profile, or CloakBrowser for bot-scored targets) for unauthenticated pages, the attached engine (the user's signed-in browser, reached through `scripts/extract_cookies.py` cookie injection) when the page needs their login; never a clone of or a launch against the live profile.",
+          "verified_against": "skills/ultimate-browsing/references/chrome-stealth.md"
+        },
+        {
+          "file": "skills/ulw-execute/SKILL.md",
+          "old": "   - Browser use: agent-browser from js eval (staged in the `browser` skill) — the owned engine (`connectPipe` on a task-owned profile, `connectCloakProfile` for bot-scored targets) for unauthenticated pages, the attached engine (`connectBrowserSkill()` in the user's signed-in browser) when the page needs their login; never a clone of or a launch against the live profile.",
+          "new": "   - Browser use: the `agent-browser` CLI run from `bash` (see the `ultimate-browsing` skill's `references/chrome-stealth.md`) — the owned engine (a local `agent-browser --cdp <port>` session on a task-owned profile, CloakBrowser for bot-scored targets) for unauthenticated pages, the attached engine (the user's signed-in browser, reached through `scripts/extract_cookies.py` cookie injection) when the page needs their login; never a clone of or a launch against the live profile.",
+          "verified_against": "skills/ultimate-browsing/references/chrome-stealth.md"
+        }
+      ],
+      "surviving_occurrences_of_js_eval": 0
+    },
+    {
+      "item": 3,
+      "class": "dangling capability claim — a `browser` skill that THIS repository does not ship",
+      "sibling_found": "skills/visual-qa named a `dev-browser` skill that is equally absent; fixed the same way (state the capability, name no absent skill).",
+      "edits": [
+        {
+          "file": "skills/ulw-research/SKILL.md",
+          "old": "evaluate its `source` in the rendered page through the `browser` skill's owned headless engine",
+          "new": "evaluate its `source` in the rendered page through the `agent-browser` CLI",
+          "verified_against": "skills/visual-qa/references/agent-browser-setup.md + skills/ultimate-browsing/references/chrome-stealth.md"
+        },
+        {
+          "file": "skills/ulw-research/SKILL.md",
+          "old": "the HTML through the browser skill at desktop and phone widths",
+          "new": "the HTML through the `agent-browser` CLI at desktop and phone widths",
+          "verified_against": "skills/ultimate-browsing/references/chrome-stealth.md"
+        },
+        {
+          "file": "skills/ulw-research/references/deliverable-phase.md",
+          "old": "evaluate it in the rendered page through the browser skill's owned headless engine",
+          "new": "evaluate it in the rendered page through the `agent-browser` CLI",
+          "verified_against": "skills/ultimate-browsing/references/chrome-stealth.md"
+        },
+        {
+          "file": "skills/ulw-research/references/deliverable-phase.md",
+          "old": "the HTML in the browser skill's engine at desktop and phone widths",
+          "new": "the HTML through the `agent-browser` CLI at desktop and phone widths",
+          "verified_against": "skills/ultimate-browsing/references/chrome-stealth.md"
+        },
+        {
+          "file": "skills/ulw-research/scripts/layout-probe.mjs",
+          "old": "// report through the browser skill's owned headless engine and writes the result to boxes.json;",
+          "new": "// report through the `agent-browser` CLI and writes the result to boxes.json;",
+          "verified_against": "skills/ultimate-browsing/references/chrome-stealth.md"
+        },
+        {
+          "file": "skills/ulw-research/scripts/format-extract.mjs",
+          "old": "// content client-side is the orchestrator's job: render it with the browser skill, save the",
+          "new": "// content client-side is the orchestrator's job: render it with the `agent-browser` CLI, save the",
+          "verified_against": "skills/ultimate-browsing/references/chrome-stealth.md"
+        },
+        {
+          "file": "skills/ulw-research/scripts/format-extract.mjs",
+          "old": "render it with the browser skill and pass the saved HTML",
+          "new": "render it with the `agent-browser` CLI and pass the saved HTML",
+          "verified_against": "skills/ultimate-browsing/references/chrome-stealth.md"
+        },
+        {
+          "file": "skills/visual-qa/SKILL.md",
+          "old": "with the project's configured browser tooling (the playwright, agent-browser, or dev-browser skill). Save as PNG.",
+          "new": "with the project's configured browser tooling (playwright, the agent-browser CLI, or another browser driver). Save as PNG.",
+          "verified_against": "skills/visual-qa/references/agent-browser-setup.md — the only browser driver this skill ships a setup for"
+        },
+        {
+          "file": "skills/visual-qa/references/agent-browser-setup.md",
+          "old": "capture path in Step 2 (no playwright / dev-browser skill, no usable headless browser).",
+          "new": "capture path in Step 2 (no playwright or other browser driver, no usable headless browser).",
+          "verified_against": "skills/visual-qa/references/agent-browser-setup.md itself (this file's own subject is the agent-browser CLI)"
+        }
+      ]
+    },
+    {
+      "item": 4,
+      "class": "omo/Codex-only roster ids presented as mpd-roles roster roles — the exact class the previous pass fixed as `hephaestus` -> `Deep Worker` and `oracle`/`momus` -> `Plan Reviewer`",
+      "edits": [
+        {
+          "file": "skills/refactor/SKILL.md",
+          "old": "- Both kinds run on the \\`hephaestus\\` implementation role (mpd-roles roster) in DSH; the label only routes a step to a mechanical or reasoning worker.",
+          "new": "- Both kinds run on the \\`Deep Worker\\` implementation role (mpd-roles roster) in DSH; the label only routes a step to a mechanical or reasoning worker.",
+          "verified_against": "packages/mpd-roles-plugin/src/roles.data.ts — \"name\": \"Deep Worker\" is the shipped roster NAME; `mpd_roles_list` ships no `hephaestus`"
+        },
+        {
+          "file": "skills/refactor/SKILL.md",
+          "old": "  \"lead\": { \"kind\": \"subagent_type\", \"subagent_type\": \"sisyphus\" },",
+          "new": "  \"lead\": { \"kind\": \"subagent_type\", \"subagent_type\": \"Lead\" },",
+          "verified_against": "packages/mpd-roles-plugin/src/roles.data.ts — \"name\": \"Lead\" is the shipped roster NAME and is the lead of a team"
+        }
+      ]
+    }
+  ],
+  "observed_left_unfixed": [
+    {
+      "file": "skills/refactor/SKILL.md",
+      "observation": "Phase 5.1-T still describes the retired agent-teams body: `team_list`, `team_send_message`, `team_task_update` and `.mpd/teams/refactor-squad/config.json`.",
+      "why_left": "This is not a rename: the retired tools have no one-to-one successor (the official Agent Teams surface is `spawn_teammate` + the shared board, and the record moved to .mpd/team/teams/<id>.json), so re-wording it would invent a capability and redesign the flow. Out of scope for a words-only cleanup."
+    },
+    {
+      "file": "skills/ulw-execute/SKILL.md",
+      "observation": "The heading \"### Sisyphus-style completion contract\" names an omo-only place-name.",
+      "why_left": "It is a PROVENANCE-flavoured label for a design pattern, not a claim that a tool/path/skill exists here; no shipped equivalent name exists to point at, so renaming would invent one."
+    },
+    {
+      "file": "skills/frontend/SKILL.md",
+      "observation": "Names an `open-design` skill (\"the local nexu-io/open-design library\") that this repository does not ship; skills/frontend/references/design/*.md are gitignored build-time materializations.",
+      "why_left": "Deciding what replaces that capability (ship it, drop the row, or point elsewhere) is a capability decision, not a word swap."
+    },
+    {
+      "file": "skills/visual-qa/scripts/visual-qa.mjs",
+      "observation": "bun-build path comments still read `packages/shared-skills/skills/visual-qa/scripts/*.ts`.",
+      "why_left": "Derived artifact: skills/visual-qa/AGENTS.md forbids hand-editing the bundle, and the path comment is emitted from the build CWD. Regenerating is a build action, not a text edit."
+    },
+    {
+      "file": "skills/lsp-setup/references/*/README.md",
+      "observation": "Cite `.codex/lsp-client.json` / `~/.codex/lsp-client.json` as the config locations.",
+      "why_left": "Codex/OpenCode LSP config is this skill's declared subject matter (the harness has no equivalent documented path here); replacing it would invent a DSH path."
+    },
+    {
+      "file": "skills/frontend/references/designpowers/{UPSTREAM.md,EVIDENCE.md,README.md} and skills/frontend/.gitignore",
+      "observation": "Cite `packages/shared-skills/upstreams/**` and `packages/shared-skills/scripts/*.mjs`, none of which exist here.",
+      "why_left": "Process/provenance records of a materialization lane that was re-sourced; whether that lane is restored or retired is a plan decision, and rewriting the recorded commands would falsify the record."
+    }
+  ],
+  "gates": [
+    {
+      "command": "node scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step",
+      "invocations": 1,
+      "observed": "WRITE : applied 1 field change(s); skills.treeSha 65762fafc2ef40d6a2c6faaea1179cbab1e7bb7b43119e2230cf0c111b99ca8f -> 282ef01885bdbb3e84340435462f12e0a333d494de09fe70ed308d8cb5f22a7f; linesChanged=1 bytes 4011 -> 4011",
+      "exit_code": "not captured (the log's EXIT line captured the pipeline's tee status); success is evidenced by the completed WRITE lines and by the --check run that follows"
+    },
+    {
+      "command": "node scripts/verify-vendor.ts",
+      "observed": "PASS - 6 shipped asset(s) fingerprinted, upstream identity not checked (asset OK: skills 371 files; vendor/mcp-src 459 files; 4 dist artifacts)",
+      "exit_code": 0
+    },
+    {
+      "command": "node scripts/repin-vendor.ts --check",
+      "observed": "CHECK : GREEN - lock matches the working tree (drift=0, problems=0)",
+      "exit_code": 0
+    }
+  ],
+  "post_checks": {
+    "grep_js_eval_under_skills": 0,
+    "grep_browser_skill_under_skills": 0,
+    "grep_packages_shared_skills_in_the_two_AGENTS_md": 0,
+    "node_check_format_extract_mjs": "OK",
+    "node_check_layout_probe_mjs": "OK"
+  }
+}

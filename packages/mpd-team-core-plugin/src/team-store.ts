@@ -41,6 +41,9 @@ export type TeamPhase = "staged" | "active" | "idle" | "ended"
  */
 export type TaskKind = "requirement" | "work" | "review" | "repair" | "integration"
 
+/** Every kind a task may carry, as a runtime list so a tool boundary can refuse an unknown one. */
+export const TASK_KINDS: readonly TaskKind[] = ["requirement", "work", "review", "repair", "integration"]
+
 /** A task's own state; `blocked` is DERIVED from `blockedBy` and never stored. */
 export type TaskStatus = "pending" | "claimed" | "in_progress" | "completed" | "failed" | "cancelled"
 
@@ -145,6 +148,15 @@ export interface TeamRecord {
   description: string
   /** The Lead session this team belongs to; a workspace may hold several teams at once. */
   leadSessionId: string
+  /**
+   * Every OTHER session id that has served as this team's Lead, oldest first — the C7-4 churn record.
+   *
+   * A captain session that FORKS or RESUMES gets a new id while the durable record keeps its original
+   * `leadSessionId`, so resolution used to break until a hand rebind rewrote both the record and
+   * `teams.json`. This list (written by the churn self-heal) is what lets the new session keep its
+   * captaincy instead. Bounded to the most recent few — it is an identity trail, not a log.
+   */
+  leadHistory?: string[]
   /** Where the team is in its lifecycle. */
   phase: TeamPhase
   /** ISO instant the record was created. */
@@ -153,6 +165,12 @@ export interface TeamRecord {
   approvedAt?: string
   /** ISO instant the team was explicitly ended; absent while it is live. */
   endedAt?: string
+  /**
+   * Why the record was marked terminal, written by the C7-3 consistency pass
+   * (`reapReapedTeams` in `team-lifecycle.ts`) when it reaped a ghost. Absent on a team that never
+   * needed reaping; informational only, never read by a gate.
+   */
+  archivedReason?: string
   /** The roster. */
   members: TeamMemberRecord[]
   /** The board. */
@@ -235,9 +253,72 @@ function writeJson(path: string, value: unknown): void {
   renameSync(temp, path)
 }
 
-/** A stable, sortable identity for one team, derived from the instant it was created. */
+/**
+ * Who wants to know that a workspace's team state moved — the `mpdTeams` change feed, in production.
+ *
+ * THE HOOK SITS ON THESE WRITERS, not on a poller, because the ONE thing every team mutation has in
+ * common is this module: {@link writeTeam}, {@link writeTeamsIndex} and {@link deleteTeam} are the
+ * choke point. It is a module-level registry rather than a parameter because those writers are called
+ * from ~40 places and threading a feed through every one of them would touch every call site to carry
+ * a value that exactly one consumer in the whole bundle reads.
+ */
+const teamStateObservers = new Set<(workspace: string) => void>()
+
+/**
+ * Subscribe to the team-state WRITES this process performs, in every workspace.
+ *
+ * An observer runs AFTER the bytes are in place, on the WRITER's stack, so it must be cheap and must
+ * be prepared to be called several times inside one change window — coalescing is the feed's job, not
+ * the writer's.
+ * @param observer - called with the workspace whose state was written.
+ * @returns the disposer; calling it twice is safe.
+ */
+export function onTeamStateWritten(observer: (workspace: string) => void): () => void {
+  teamStateObservers.add(observer)
+  return (): void => { teamStateObservers.delete(observer) }
+}
+
+/**
+ * Tell the observers that one workspace's team state moved.
+ *
+ * CONTAINMENT IS PART OF THE CONTRACT (change-feed §3.1.3): a throwing observer is swallowed for this
+ * call and never re-thrown into the writer, because a notification substrate must not be able to fail
+ * a team mutation. The list is snapshotted so an observer that unsubscribes from inside its own call
+ * cannot shorten the delivery for the rest.
+ * @param workspace - the workspace whose record or index was just written.
+ */
+function teamStateChanged(workspace: string): void {
+  for (const observer of [...teamStateObservers]) {
+    try { observer(workspace) } catch { /* a broken observer must not fail the write that fed it */ }
+  }
+}
+
+/**
+ * The per-process tag every mpd-minted id carries after its timestamp.
+ *
+ * WHY IT EXISTS (C7-4 F4). mpd ids used to be SECOND-precision, and the measured consequence was
+ * `.mpd/team/teams.json` carrying TWO session ids pointed at ONE `teamId` while one archive directory
+ * held two plans: two sessions minted inside the same second and the second write silently replaced the
+ * first. An in-process counter cannot see a second PROCESS, so the tag is randomised once per process
+ * and the monotonic counter below distinguishes two mints inside the same millisecond HERE.
+ */
+const PROCESS_ID_TAG = Math.random().toString(36).slice(2, 6)
+
+/** A monotonic per-process counter, so two mints in the SAME millisecond stay distinct. */
+let idCounter = 0
+
+/**
+ * The unique tail an mpd-minted id carries after its millisecond timestamp.
+ * @returns a short, path-safe suffix (`<process-tag>-<counter-base36>`).
+ */
+export function nextIdSuffix(): string {
+  idCounter += 1
+  return PROCESS_ID_TAG + "-" + idCounter.toString(36).padStart(3, "0")
+}
+
+/** A stable, sortable, COLLISION-RESISTANT identity for one team (millisecond timestamp + suffix). */
 export function newTeamId(now: Date): string {
-  return "team-" + now.toISOString().replace(/[-:.TZ]/g, "").slice(0, 14)
+  return "team-" + now.toISOString().replace(/[-:.TZ]/g, "").slice(0, 17) + "-" + nextIdSuffix()
 }
 
 /** The session key an index entry uses; a sessionless surface is keyed as `workspace`. */
@@ -260,6 +341,9 @@ export function readTeamsIndex(workspace: string): TeamsIndex {
 /** Persist the index. */
 export function writeTeamsIndex(workspace: string, index: TeamsIndex): void {
   writeJson(teamsIndexPath(workspace), index)
+  // The index is team state: `createTeam` binds the new team here, so a surface that only followed
+  // the records would miss "this session now has a team".
+  teamStateChanged(workspace)
 }
 
 /** The team id ACTIVE for one session, or `undefined` when that session has none. */
@@ -301,6 +385,7 @@ export function readTeam(workspace: string, teamId: string): TeamRecord | undefi
 /** Persist one team record. */
 export function writeTeam(workspace: string, record: TeamRecord): void {
   writeJson(teamRecordPath(workspace, record.teamId), record)
+  teamStateChanged(workspace)
 }
 
 /** Every readable team in this workspace, NEWEST FIRST (records carry no ordering of their own). */
@@ -329,6 +414,9 @@ export function deleteTeam(workspace: string, teamId: string): boolean {
   const path = teamRecordPath(workspace, teamId)
   if (!existsSync(path)) return false
   rmSync(path, { force: true })
+  // A DELETE is a change too, and it is the one a directory watch sees as a bare `rename` — which is
+  // why the feed is told here rather than being left to infer it from the record it can no longer read.
+  teamStateChanged(workspace)
   return true
 }
 
@@ -340,6 +428,13 @@ export interface NewTeamInput {
   description: string
   /** The Lead session that owns it. */
   leadSessionId: string
+  /**
+   * An explicit id to mint with, instead of {@link newTeamId}(now).
+   *
+   * A caller that already owns an id (a migration, a repair, or a test proving the collision guard)
+   * supplies it. An id already on disk is REFUSED rather than overwritten — see {@link createTeam}.
+   */
+  teamId?: string
 }
 
 /**
@@ -353,10 +448,18 @@ export interface NewTeamInput {
  * @returns the record as written.
  */
 export function createTeam(workspace: string, input: NewTeamInput, now: Date): TeamRecord {
+  /** The id this team is minted under: the caller's when given, else a fresh timestamp+suffix id. */
+  const teamId = input.teamId ?? newTeamId(now)
+  // F4 BACKSTOP: a second mint that lands on an existing id would OVERWRITE a live team's whole record
+  // (roster, board, verdicts). Refusing loudly is the difference between a silently lost team and a red
+  // gate; with the millisecond+suffix mint above this is unreachable in normal use, which is the point.
+  if (existsSync(teamRecordPath(workspace, teamId))) {
+    throw new Error(`team id "${teamId}" already exists in this workspace — refusing to overwrite a team record`)
+  }
   /** The record, assembled before it is persisted. */
   const record: TeamRecord = {
     version: 1,
-    teamId: newTeamId(now),
+    teamId,
     name: input.name,
     description: input.description,
     leadSessionId: sessionKey(input.leadSessionId),
@@ -734,15 +837,16 @@ export function casCloseTask(fresh: TeamRecord, input: {
   }
   /** Whether any of the caller's own spellings IS the recorded owner. */
   const isOwner = task.owner !== undefined && input.caller.some((candidate) => nameMatches(candidate, String(task.owner)))
-  // THE RECORD'S OWN LEAD (defect D5b). `input.lead` is the OFFICIAL membership read, and in a dsh-tui
-  // boot that service cannot mount — measured on a live session where the captain's own close answered
-  // `... is owned by "Plan Reviewer" and this caller is neither that owner nor this team's lead` while
-  // `leadSessionId` on the record being closed named that very session. The record is already the
-  // authority this gate decides against (`fresh`), so the Lead arm is derived from it here, through the
-  // SAME comparator the owner arm uses rather than a second one.
-  /** Whether any of the caller's own spellings IS this team's recorded Lead session. */
-  const isRecordLead = String(fresh.leadSessionId ?? "") !== ""
-    && input.caller.some((candidate) => candidate !== "" && nameMatches(candidate, String(fresh.leadSessionId)))
+  // THE RECORD'S OWN LEAD (defect D5b, widened by C7-4 F5). `input.lead` is the OFFICIAL membership
+  // read, and in a dsh-tui boot that service cannot mount — measured on a live session where the
+  // captain's own close answered `... is owned by "Plan Reviewer" and this caller is neither that owner
+  // nor this team's lead` while `leadSessionId` on the record being closed named that very session. The
+  // record is already the authority this gate decides against (`fresh`), so the Lead arm is derived from
+  // it here, through the SAME comparator the owner arm uses rather than a second one — and it reads the
+  // record's whole Lead identity (`leadSessionId` plus the churn `leadHistory`), so a forked or resumed
+  // captain still closes its own team's rows.
+  /** Whether any of the caller's own spellings IS this team's recorded Lead identity. */
+  const isRecordLead = recordNamesLead(fresh, input.caller)
   /** Whether the caller may override ownership: the roster's own lead role, or this team's Lead. */
   const isLead = input.lead || isRecordLead
   if (!isOwner && !isLead) {
@@ -804,6 +908,42 @@ function nameMatches(a: string, b: string): boolean {
 }
 
 /**
+ * Whether one DURABLE record names this caller as its LEAD.
+ *
+ * The arm matches the record's current `leadSessionId` OR ANY id in its `leadHistory` (C7-4 F5): a
+ * session that FORKED or RESUMED carries a new id while the record keeps the original, so without the
+ * history the captain lost its own board until a hand rebind rewrote the file. The comparison is
+ * {@link nameMatches}, the SAME comparator the owner arm uses, so a spelling difference resolves too.
+ * @param record - the record to ask.
+ * @param caller - every spelling that identifies the calling session.
+ * @returns true when the record's Lead identity (current or historical) is one of them.
+ */
+export function recordNamesLead(record: TeamRecord, caller: readonly string[]): boolean {
+  /** Every id this record has recorded as its Lead, current first. */
+  const recorded = [String(record.leadSessionId ?? ""), ...(record.leadHistory ?? [])].filter((value) => value !== "")
+  return recorded.some((spelling) => caller.some((candidate) => candidate !== "" && nameMatches(candidate, spelling)))
+}
+
+/**
+ * The member this caller's spellings name on the record's roster, or `undefined`.
+ *
+ * The ONE roster lookup: {@link recordNamesMember} is this predicate's boolean form, and the terminal
+ * verbs use the member OBJECT (C7-4 F2) so a session whose id IS the recorded `executorRef` closes its
+ * own row under the member's NAME. Two implementations would be free to disagree about who the caller is.
+ * @param record - the record to ask.
+ * @param caller - every spelling that identifies the calling session.
+ * @returns the one matching member, or undefined when the roster names the caller not at all.
+ */
+export function memberNamedBy(record: TeamRecord, caller: readonly string[]): TeamMemberRecord | undefined {
+  if (!Array.isArray(record.members)) return undefined
+  return record.members.find((member) => {
+    /** Every spelling this member can be addressed by on the durable record. */
+    const spellings = [member.name, member.executorRef ?? ""].filter((value) => value !== "")
+    return spellings.some((spelling) => caller.some((candidate) => candidate !== "" && nameMatches(candidate, spelling)))
+  })
+}
+
+/**
  * Whether one DURABLE record names this caller on its roster.
  *
  * WHY A RECORD CAN NAME A MEMBER AT ALL. The record is what a MEMBER session has to resolve its team
@@ -820,13 +960,36 @@ function nameMatches(a: string, b: string): boolean {
  * @returns true when the roster names the caller at least once.
  */
 export function recordNamesMember(record: TeamRecord, caller: readonly string[]): boolean {
-  /** Whether ONE member is named by any of the caller's spellings. */
-  const names = (member: TeamMemberRecord): boolean => {
-    /** Every spelling this member can be addressed by on the durable record. */
-    const spellings = [member.name, member.executorRef ?? ""].filter((value) => value !== "")
-    return spellings.some((spelling) => caller.some((candidate) => candidate !== "" && nameMatches(candidate, spelling)))
+  return memberNamedBy(record, caller) !== undefined
+}
+
+/** How many historical Lead sessions a record keeps before the oldest is dropped. */
+const LEAD_HISTORY_LIMIT = 8
+
+/**
+ * Record one or more session ids as this team's Lead without changing `leadSessionId` (C7-4 F5).
+ *
+ * `leadSessionId` is deliberately LEFT ALONE: it is the record's durable identity, and
+ * `team-lifecycle.ts#isLiveTeam` derives the archive key from it (`plan-archive` evidence is keyed by
+ * the session that STAGED the plan), so rewriting it would blind the C7-3 archive rule. The new id is
+ * appended to `leadHistory` instead, and resolution accepts either. Bounded to the most recent
+ * {@link LEAD_HISTORY_LIMIT}, and PURE: nothing is written here.
+ * @param record - the record to copy.
+ * @param sessionIds - the session ids to remember, newest last.
+ * @returns the new record, or the SAME record when no id was new.
+ */
+export function rememberLead(record: TeamRecord, sessionIds: readonly string[]): TeamRecord {
+  /** The current history, copied so the input record is untouched. */
+  const history = [...(record.leadHistory ?? [])]
+  /** Whether this call actually learned an id. */
+  let changed = false
+  for (const id of sessionIds) {
+    if (id === "" || id === record.leadSessionId || history.includes(id)) continue
+    history.push(id)
+    changed = true
   }
-  return Array.isArray(record.members) && record.members.some(names)
+  if (!changed) return record
+  return { ...record, leadHistory: history.slice(-LEAD_HISTORY_LIMIT) }
 }
 
 /** The fields {@link updateTeamMember} may change. */

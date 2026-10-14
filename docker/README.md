@@ -94,15 +94,19 @@ run produced no `result.json` at all, `3` the host has no usable docker.
 14. Records `boot.llmTurn` as **`null` with a reason** — see below.
 15. **Runs the DSH-TUI edition** (`docker/tui-lane.sh`) — the one profile a developer host cannot
     exercise, because the TUI host must be installed from npm into a writable global prefix and booted
-    on a real PTY. It installs `@deepseek-harness-tui/dsh-tui@0.13.0` — the dsh-tui release this
+    on a real PTY. It installs `@deepseek-harness-tui/dsh-tui@0.15.0` — the dsh-tui release this
     bundle now targets, whose peer ranges still cover the whole band this lane runs (`0.1.7-rc.2`,
     `0.2.0-rc.1` and `0.2.0-rc.2`; `0.11.2` stops at `0.2.0-rc.1`, and `dsh plugin --profile dsh-tui
-    add` is then REFUSED on peer ranges). `0.12.0` was the pin before it, kept as history. Override it
+    add` is then REFUSED on peer ranges). `0.14.0`, `0.13.0` and `0.12.0` were the pins before it,
+    kept as history. Override it
     with `MPD_E2E_TUI_VERSION`, and keep it in step with `MPD_E2E_DSH_VERSION`. It installs THIS bundle
     into the `dsh-tui` profile as the third
-    patch layer, and records fifteen assertions: host install, both `plugin add` calls, composition,
-    the **USER-level preset preference** (see below), the `preset-mpd` / `mpd-tui` /
-    official-team rows, the `/mpd team` scene drawing its graph on the real terminal, a real tmux PTY
+    patch layer, and records twenty-two `tui.*` assertions: host install, both `plugin add` calls,
+    composition, the **USER-level preset preference** (see below), the `preset-mpd` / `mpd-tui` /
+    official-team rows, the seeded board **bound to the session the TUI actually runs as** (both
+    spellings the product's own `createTeam` writes), a SIBLING session's board staying **invisible**
+    in a session that owns none — the product's own `no team in this session` empty state — the
+    `/mpd team` scene drawing its graph on the real terminal, a real tmux PTY
     boot reaching the chat screen, no fatal signature, and the preset the created session ACTUALLY
     ran — read from the harness's own session store (`agentPreset: "mpd"`), never from the pane.
     **The lane performs the documented user path itself**: before the TUI process starts it writes
@@ -162,8 +166,67 @@ Does NOT prove:
 - that the COMPOSED row list equals the MOUNTED row list. `--dump-config` composes rows and never
   executes plugin code (`AGENTS.md` §4); it is labelled composition-only in the evidence, and every
   mount claim comes from the boot (step 9) or from session creation (step 10).
-- a packed/tarball install (`dist/mpd-package`) or a relocation test;
+- a packed/tarball install (`dist/mpd-package`) **as a package** or a relocation test. Its coherence
+  and its freshness ARE graded (see the §7 arms below) — but the artifact is never installed, so the
+  tarball install path itself stays unproven;
 - offline operation: apt, nodejs.org, bun.sh, npm and the package registry are all used.
+
+## The §7 acceptance arms (restore-three-capabilities §7 — a SKIP IS NOT A PASS)
+
+`.mpd/plans/restore-three-capabilities.md` §7 makes this lane the place where every claim the developer
+host cannot settle is settled on a real machine. Five answers were added for that, each a DECLARED row
+in `docker/lib/report.ts`'s `EXPECTED` list, so a run that never reached one reports it as owed instead
+of dropping it.
+
+| Assertion | What it measures | How it REDDENS (the negative control) |
+|---|---|---|
+| `install.buildScripts` | the client install completed with NO unapproved dependency build script: exit 0, no `ERR_PNPM_IGNORED_BUILDS`, no `Ignored build scripts` warning — plus an inventory of every manifest in the installed closure that DECLARES `preinstall`/`install`/`postinstall`/`prepare` | a log line carrying the error class or the warning, or a non-zero exit. Rehearsed on the host: a log with a planted `ERR_PNPM_IGNORED_BUILDS` line records `false` with both lines quoted |
+| `pack.present`, `pack.licenceCoherence`, `pack.declarationCoherence`, `pack.staticCoherence`, `pack.distFreshRebuild` | the PACKED artifact `dist/mpd-package`: that it arrived at all; that its `LICENSE.md`/`LICENSE-NOTICES.md` are byte-identical to the tree it was cut from and its declared `license` still matches; that everything it declares about itself is true of it (the `files` allowlist resolves, the `dsh.bundle.patch` layers exist, every row module path its own patch names resolves inside it, no `evidence/`/`.git/`/`docker/`/`node_modules` travelled along); that it agrees byte for byte with the tree it was cut from, with exactly TWO declared generated exceptions (`package.json`, `packages/mpd-ext-plugin/dist/validator.js`); and that every built entry equals the container's OWN from-source rebuild | the second arm is LIVE, not hypothetical: the artifact carried today reddens `pack.staticCoherence` with 10 differing files (the tree moved on after the pack) and `pack.distFreshRebuild` with 2 — which is the measurement a host gate refuses to make (`verify-pack-closure.ts` disclaims freshness; `--pack` has no licence check). A missing artifact records all five as `false`, never as `null` |
+| `boot.mcpToolNaming` | the probe enumerates EVERY registered `mcp__*` name; the row grades the `mcp__<server>__<tool>` shape, that NO server outside the shipped patch's declared set registered, that every LOCAL row (`ast_grep`, `lsp`, `codegraph`) came up, and that the ast-grep row published its whole declared surface | a server segment the patch never declares reddens — a leaked `mcp__git__*`/`mcp__shell__*` from a disabled row, or a row renamed to a `serverName` nobody asserted; a LOCAL row that registered nothing reddens too. The two REMOTE rows the same patch mounts (`context7`, `grep_app`, streamable-http against public services) are graded as ALLOWED-to-be-present rather than unexpected — measured 2026-10-09, when this row called them a violation in the one run that reached them: it hard-coded three enabled servers, so it was green only while the network refused the public ones. Rehearsed against planted boot logs in both directions |
+| `boot.mcpLiveSearch` | a REAL `mcp__ast_grep__search` driven through the mounted adapter over the bundle's own sources, WITH a negative control (a pattern no source file can contain must match 0) | `BINARY_NOT_FOUND` (no engine) reddens, and so does a control that matches anything — a stub echoing the same answer twice cannot pass. Rehearsed in both directions against synthetic logs |
+| `restore.reviewPanelSelfTest`, `restore.reviewPanelCase`, `restore.lspBootstrap`, `restore.hashlineRepair`, `qa.mcpCall`, `qa.readonlyDeny` | the cases §7 owes, run IN the container: the three restored capabilities' own cases, and the two live QA cases that are red on the developer host for PRE-EXISTING reasons | a case that exits non-zero is `false`; a case that prints its own refusal marker (e.g. `[mcp-call] missing credentials`) is `null` WITH the marker quoted, NEVER `true`; a case the wave owes and the tree does not carry is `false`, not a skip |
+
+`restore.lspBootstrap` is a control PAIR, not a single check: the launcher is driven twice with a closed
+stdin, once in a scratch root with no config (it must GAIN `<root>/.mpd/lsp/cclsp.json`, parse it, and
+name at least one server covering the TypeScript family) and once in a scratch root carrying the user's
+own `cclsp.json` (which must survive byte for byte, and no generated file may appear beside it). A
+launcher that overwrote a user's file would pass a "was a config written" check while failing the
+capability the contract states.
+
+The engine the live search needs is staged by the repository's OWN installer, `node
+scripts/install-mcp.ts` (step 09d): `@ast-grep/cli` is no longer in the bundle's `dependencies`, and on
+many Linux hosts `/usr/bin/sg` is util-linux's `setgroups` helper rather than ast-grep — which is why
+the server's own `--version` probe, not PATH, decides.
+
+The apparatus lives beside the lane's other modules (`report.ts`, `rebuild.ts`, `live-verdict.ts`):
+`docker/lib/owed-install.ts`, `owed-pack.ts`, `owed-mcp.ts`, `owed-cases.ts`. It is QA-only
+instrumentation baked at `/opt/mpd-e2e/lib/`, never taken from the tree under test — a repository copy
+can supply its own plugins, never its own verdict.
+
+## The restore-wave acceptance arms (restore-acceptance-fix §4 S-B, 2026-10-09)
+
+The PR #28 wave shipped the three restored capabilities, but this lane's own acceptance run landed AFTER
+that merge and was never committed. Re-measuring it turned five of its rows into QA-apparatus defects
+rather than environment facts. The corrections below are all in this lane and its reporter:
+
+| Row | What changed |
+|---|---|
+| `toolchain.bunPinned` (new) | The container STAGES the compiler `package.json.buildToolchain` declares (`bun@1.4.0`) into a SEPARATE prefix (`$TOOLCHAIN_DIR/bun-pinned`) and asserts it reports exactly that version. It is never linked onto PATH, so `toolchain.bun` keeps measuring the machine's own bun. An exact version match, never a substring: the staging falls back to the npm route when the official script flake, and a failed stage records `false` rather than falling through silently |
+| `pack.distFreshRebuild` | Now a real STALENESS measurement: the rebuild runs under the staged pin, and the comparison is bytes only. The row's raw witness quotes the compiler that ACTUALLY produced the rebuild — read from the rebuild's own `--json` witness (`rebuildBun`, `rebuildBunVersion`), never from a PATH lookup made somewhere else. The previous version asked `bun --version` on PATH and tested `declaredPin.includes(containerBun)`, which reports `1.4.2` even when the pinned binary did the work and lets a two-part `1.4` match `bun@1.4.0` |
+| `pack.rebuildToolchain` (new) | The companion row: does the compiler that produced the rebuild equal the declared pin, by exact string equality against the rebuild's witness? With no rebuild (one-click mode) or no witness, it records `null`/`false` with the measured reason instead of a green that measures nothing |
+| `pack.distFreshRebuildControl` (new) | THE NEGATIVE CONTROL, run inside the same container: a copy of the artifact is mutated in one built entry and re-graded against the SAME rebuild. The row is `true` only when that copy flips the freshness row to `false` — so a green on the untouched artifact is a measurement, not a constant. Without this arm an equality test that always answers `true` is indistinguishable from a correct one |
+| `tui.mergedPanelOpens`, `tui.mergedPanelOrder` | MEASURED, not `null`. Both rows were recorded `null` on any host offering the 0.13.0 `ctx.tuiPanels` seam on the ground that "a host-ACCEPTED `open()` changes zero bytes of a tmux capture" — a ground measured on the PRE-0.13 full-screen scene and never re-measured after the merged view became a SIDEBAR PANEL. The authoritative run's own `tui-panes/pane-merged.txt` carries the whole panel body; the rows are graded by `docker/lib/tui-panel-body.ts`, which reads the panel chrome, the host's subagent section and MPD's team header/DAG footer, and **refuses to call it an open when the PRE-KEY capture already carries the body** (that is how the row reddens if the capture order or the keypress breaks) |
+| `qa.mcpCallEngine` (new) | The engine is staged into the tree the `mcp-call` launcher ACTUALLY reads: the case installs the packed artifact (`dist/mpd-package`) into a sandbox profile with `npm install file:`, and the MCP launcher resolves `sg` bundle-relatively — so `node scripts/install-mcp.ts --toolchain <APP>/dist/mpd-package/.toolchain` runs AFTER the pack refresh (which would otherwise delete it). Step 09d's staging covers the rows; this one covers the case |
+| the step budget and the npm transport | MEASURED 2026-10-09: a run sat **23 minutes** inside `npm i -g @deepseek-ai/dsh@0.2.0-rc.2` at 0.3% CPU with an idle container — a stalled fetch, not progress — and had to be killed by hand, taking the acceptance run with it. Every `run_step` is now bounded by `MPD_E2E_STEP_TIMEOUT` (default 900 s), whose kill is recorded as exit 124 with its own reason, and npm's per-request timeouts/retries are bounded too. The same session measured the official registry's SCOPED metadata endpoint (the one the harness pin resolves through) failing one probe and answering the next in 1.5 s, so step `01b` probes THAT endpoint before anything depends on it: the official registry is used when it answers, `MPD_E2E_NPM_MIRROR` only as a recorded fallback (`obs.npmRegistry` names which one served the install), and `MPD_E2E_NPM_REGISTRY` lets an operator name a registry outright. Since 2026-10-14 the same step also performs ONE bounded ranged GET on the pinned harness tarball itself, so a registry whose metadata answers while its tarballs blackhole now FAILS the probe (route `<label>-tarball-blackholed`, fact `obs.npmTarball`) instead of passing it and stalling the install; with no registry knob named the arm is skipped with its reason and costs zero requests |
+| the `EXPECTED` spine | One spine now covers BOTH modes: the union of the two modes' recorded names is 114 and the one-click set is a strict superset of the source set, so the four one-click-only rows are declared and recorded in SOURCE mode as `null` with the measured mode as the reason — never as the synthesized "not reached" a missing name would produce. The 13 rows the lanes recorded outside the old spine are declared too |
+
+The classifier is shared with the offline falsifier: `node scripts/docker-e2e.ts --self-test` drives
+`docker/lib/tui-panel-body.ts` over planted panes (panel body present → `OPENS=true`, an INVERTED section
+order → `ORDER=false`, a control that already carries the body → `false`, the pre-0.13 shape → still
+graded) and asserts that `docker/tui-lane.sh` really calls it. `--self-test` also drives the pack
+comparator over planted artifact/rebuild/witness trees, including the `1.4` vs `bun@1.4.0` substring trap
+and the mutated-artifact control, and drives `rebuild.ts` with a planted fake compiler so the witness is
+proven to be a measurement of the invoked binary.
 
 ## How the repository gets into the image
 
@@ -181,7 +244,7 @@ belongs to, so this repository needs no root-level `.dockerignore`. It excludes:
 |---|---|
 | `.git`, `.gitignore`, `.gitattributes` | an install must not need history |
 | `node_modules`, `**/node_modules` | `bun install` recreates them inside the container |
-| the **root** `dist/` | this repository's packed output, not a source input |
+| `dist/*` **except** `dist/mpd-package` | the packed output is not a source input — but §7 item 5 owes a measurement OF it, so exactly that one path travels in and `copy.contextFiltered` asserts nothing else under `dist/` did |
 | `evidence`, `.qa-*`, `.toolchain`, `.codegraph`, `.t18ev`, `.t28ev`, `.bun-tmp`, `.mpd` | host-local state |
 
 `packages/*/dist` is deliberately **kept**: the container rebuilds it from source, and the rebuild is
@@ -225,6 +288,35 @@ docker tag  docker.m.daocloud.io/library/node:24-bookworm node:24-bookworm
 
 `docker compose build` then resolves both `FROM` stages from the local store, and the lane runs
 unchanged.
+
+### The live-turn prompt knob (`MPD_E2E_LIVE_PROMPT`)
+
+Step 15 of the container (`docker/entrypoint.sh`) drives a real headless agent session, and by default
+its task is a **team-plane smoke prompt**. `MPD_E2E_LIVE_PROMPT` REPLACES that task: when it is set and
+non-empty, its value is used verbatim as the turn's prompt, so the lane can be asked for a different
+piece of work. When it is unset or empty, the built-in prompt runs unchanged **byte for byte** — the
+knob is additive, never a behaviour change.
+
+It only matters on a live run, so the invocation is the live one:
+
+```bash
+export DEEPSEEK_API_KEY=…                 # forwarded BY NAME, never echoed into the argv
+export MPD_E2E_LIVE=1                     # the live arms are opt-in
+export MPD_E2E_LIVE_PROMPT='Write a playable snake game to <path> …'
+node scripts/docker-e2e.ts --live
+```
+
+Without `MPD_E2E_LIVE=1` (or without a forwarded `DEEPSEEK_API_KEY`) the run never reaches step 15, and
+the driver refuses `--live` outright when it holds no key. The driver forwards the prompt with
+`-e MPD_E2E_LIVE_PROMPT` — **by name, not by value**, the same way the credential travels — and
+`docker/docker-compose.yml` names `${MPD_E2E_LIVE_PROMPT:-}` in BOTH services' `environment:` block,
+which is what makes the variable reachable from the host at all: compose forwards only what the compose
+file interpolates.
+
+Which prompt a turn actually ran with is part of the evidence: step 15 prints a
+`[live-prompt] promptSource=… bytes=… firstLine="…"` line, records the same note as the `livePrompt`
+fact in `result.json`, and carries it in the `boot.llmTurn` assertion's `raw` field. A long
+caller-supplied prompt is therefore identifiable without being dumped into the log as a blob.
 
 ## Isolation model
 

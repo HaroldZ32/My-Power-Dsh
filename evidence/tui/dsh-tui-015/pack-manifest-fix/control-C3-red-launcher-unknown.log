@@ -1,0 +1,4 @@
+[pack-mpd] validator: generated packages/mpd-ext-plugin/dist/validator.js (9 exports) from the shipped bundle
+[pack-mpd] staged 2 patch file(s): cordis.patch.yml, presets/mpd.patch.yml
+[pack-mpd] FAIL: the staged patch layers mount packages/mpd-mcp-codegraph/dist/launch.js and LAUNCHER_DEPENDENCIES has no entry for it — declare the npm package(s) that launcher resolves, so the packed manifest can be checked against them
+exit=1

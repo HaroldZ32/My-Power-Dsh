@@ -1,0 +1,51 @@
+# E2 live-run invocation — exactly what was executed, with the credential replaced by `<staged>`
+
+recorded-utc: 2026-10-08T08:06:2xZ (the driver printed its own start stamp: `===== Docker client-install E2E — 2026-10-08T08:06:33Z =====`)
+
+## The command, as run from the repository root
+
+```bash
+export MPD_E2E_LIVE=1
+export MPD_E2E_LIVE_PROMPT='Write a playable classic Snake game as ONE self-contained file at `snake/index.html` in the current directory: no build step, no network access, no dependencies. Arrow keys (or WASD) steer, the snake grows and the score increases when it eats, hitting a wall or itself ends the game with a visible game over message, and Enter (or R) restarts. Keep everything in that one file.'
+DEEPSEEK_API_KEY="<staged>" \
+  node scripts/docker-e2e.ts --mode source --live --require-docker
+```
+
+`<staged>` is not a placeholder for a literal: the real command extracted the value INLINE from the
+operator's credential store, straight into the child process's environment, and it was never written to
+any file, never echoed and never `printenv`'d:
+
+```bash
+DEEPSEEK_API_KEY="$(node -e 'const fs=require("node:fs");const t=fs.readFileSync(process.env.HOME+"/.dsh/.credentials.yaml","utf8");const m=t.match(/DEEPSEEK_API_KEY\s*:\s*["\x27]?([^"\x27\s]+)/);process.stdout.write(m[1])')" \
+  node scripts/docker-e2e.ts --mode source --live --require-docker
+```
+
+The only thing ever printed about it was its LENGTH, to prove the extraction worked before the run
+started: `key-length=35`. The prompt's length was printed the same way: `prompt-bytes=377`.
+
+## What the driver then composed, verbatim from its own console log
+
+```
+[driver] Docker version 29.8.2, build 7fc2dff / Docker Compose version v5.6.0
+[driver] docker mode: ROOTLESS (["name=seccomp,profile=builtin","name=rootless","name=cgroupns"])
+[driver] $ docker compose -f <repo>/docker/docker-compose.yml run --rm -T -e DEEPSEEK_API_KEY -e MPD_E2E_LIVE=1 -e MPD_E2E_LIVE_PROMPT -e MPD_E2E_BROWSER=1 mpd-client
+[driver] evidence -> evidence/docker/client-install/2026-10-08T08-06-30Z
+```
+
+Note the shape of the credential and the prompt on that argv: both travel **by NAME** (`-e VAR`), never
+by value, so the driver's echoed argv is safe to publish — which is the whole reason a live run is
+possible here at all without violating AGENTS.md §10.
+
+## Why this is the lane's PREFERRED path and not the contract's fallback
+
+`.mpd/plans/lane-e2-snake-verification.md` §4 prefers exactly this invocation once the E1 knob exists,
+and the knob is present in the working tree (`docker/docker-compose.yml` on both live-capable services,
+`docker/entrypoint.sh`, `scripts/docker-e2e.ts`). No fallback invocation was needed.
+
+## The container's own confirmation that the caller's prompt is the one that ran
+
+```
+[live-prompt] promptSource=caller (MPD_E2E_LIVE_PROMPT) bytes=377 firstLine="Write a playable classic Snake game as ONE self-contained file at `snake/index.html` in the current directory: no build step, no network access, no dependencies. Arrow keys (or WASD) steer, the snake grows and the score increases when it eats, hitting a wall or itself ends the game with a visible game over message, and Enter (or R) restarts. Keep everything in that one file."
+```
+
+Quoted verbatim (with its own snapshot and source hash) in `e1-d-live-prompt-observation.md`.

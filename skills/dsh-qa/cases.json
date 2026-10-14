@@ -184,6 +184,14 @@
       ]
     },
     {
+      "case": "review-panel",
+      "script": "skills/dsh-qa/scripts/review-panel.ts",
+      "suites": [
+        "all"
+      ],
+      "immutabilityGuard": "exempt: no caller-supplied output target — the evidence dir is derived internally from a <utc-stamp> path, so a caller cannot point this lane at an existing directory"
+    },
+    {
       "case": "session-start-team",
       "script": "skills/dsh-qa/scripts/session-start-team.ts",
       "suites": [
@@ -205,6 +213,13 @@
       "suites": [],
       "immutabilityGuard": "exempt: no caller-supplied output target — the evidence dir is derived internally from a <utc-stamp> path, so a caller cannot point this lane at an existing directory",
       "outsideSuites": "the verification law's boot-level falsifier (AGENTS.md §4/§5): a mounted `mpd-verify` row in an isolated DSH_HOME + sandbox HOME + sandbox workspace, heavier than the standing self-test sweep (which the glob already runs) — run it explicitly: node skills/dsh-qa/scripts/verify-law.ts"
+    },
+    {
+      "case": "ask-user-question-audit",
+      "script": "skills/dsh-qa/scripts/ask-user-question-audit.ts",
+      "suites": [],
+      "immutabilityGuard": "exempt: no caller-supplied output target — the script only READS a caller-supplied session log and prints its report to stdout, so there is no caller-supplied path for it to write (the evidence under evidence/ask-user-guard/audit/ is written by the wave's own capture.sh, never by this script)",
+      "outsideSuites": "a REPORTING tool, not a case: it has no lane mode (without an argument it prints the usage line and exits 2), and its only offline proof is its own `--self-test`, which the selfTest glob already runs — run it explicitly: node skills/dsh-qa/scripts/ask-user-question-audit.ts <session-log.jsonl.zstd>"
     },
     {
       "case": "skill-catalog-probe",
@@ -351,6 +366,18 @@
       "outsideSuites": "DSH-TUI edition lane: needs the dsh-tui binary, tmux and a TUI sandbox profile — run it explicitly: node scripts/run-qa-lanes.ts --only=tui-team-surface"
     },
     {
+        "case": "tui-keeper-standdown",
+        "script": "skills/dsh-qa/scripts/tui-keeper-standdown.ts",
+        "suites": [],
+        "immutabilityGuard": "exempt: no caller-supplied output target \u2014 the evidence dir is derived internally from a <utc-stamp> path, so a caller cannot point this lane at an existing directory",
+        "prereq": [
+            "absent-dsh-binary",
+            "absent-runtime",
+            "absent-fixture"
+        ],
+        "outsideSuites": "DSH-TUI edition lane: needs the dsh-tui binary, tmux and a TUI sandbox profile (drives /settings over a real TTY) \u2014 run it explicitly: node scripts/run-qa-lanes.ts --only=tui-keeper-standdown"
+    },
+    {
       "case": "ulw-command",
       "script": "skills/dsh-qa/scripts/ulw-command.ts",
       "suites": [
@@ -415,6 +442,14 @@
       "suites": [],
       "outsideSuites": "wave-2b lane D corpus arms: the six rows are asserted by their own --self-test and by a named run; the suite sweep is not where a corpus-property scan belongs.",
       "immutabilityGuard": "required"
+    },
+    {
+        "case": "team-dispatch-guard",
+        "script": "skills/dsh-qa/scripts/team-dispatch-guard.ts",
+        "suites": [
+            "all"
+        ],
+        "immutabilityGuard": "required"
     }
   ],
   "gates": [

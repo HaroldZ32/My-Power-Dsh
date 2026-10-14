@@ -9,7 +9,7 @@ import { existsSync, readFileSync, watch, writeFileSync } from "node:fs"
 import { homedir } from "node:os"
 import { basename, dirname, join, resolve } from "node:path"
 import { rowLogLine, DSH_SEAM_TOOLS, dshSeamInject, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
-import { SettingsSchema, SETTINGS_NS, TEAM_MODEL_SLOTS, TEAM_MODEL_SLOT_DEFAULTS } from "./settings-schema"
+import { SettingsSchema, SETTINGS_NS, TEAM_MODEL_SLOT_DEFAULTS, TEAM_MODEL_SLOTS, TEAM_MODEL_SLOT_GROUPS } from "./settings-schema"
 import { markVolatile } from "./settings-schema"
 import z from "../../mpd-schemastery"
 import {
@@ -52,6 +52,16 @@ type Config = {
 
 /** Re-exported so a consumer has ONE source for the namespace (see ./settings-schema). */
 export { SETTINGS_NS }
+/**
+ * The settings machinery's ENTRY ID for this row — the id the harness's settings editor addresses
+ * the row's own volatile Config by (`settings.describe()` reports it under `ns = "mpd-config"`).
+ *
+ * This is NOT the `mpd` namespace (SETTINGS_NS): in the retired-namespace world BOTH front doors
+ * (the Web card's `configForms.get("mpd-config")` and the TUI's `locateNamespace` default) read and
+ * write the ENTRY document, so the entry document — not the namespace document — is the path a
+ * settings save actually travels. R1's live refresh therefore hangs off THIS id.
+ */
+export const ENTRY_CONFIG_ID = "mpd-config"
 /** The in-namespace idempotence marker (design §6.3): never a config knob, never a side file. */
 const MARKER_PATH: readonly string[] = ["bridge", "migratedRevision"]
 
@@ -107,8 +117,13 @@ function parseJsonc(src: string): any {
   return JSON.parse(stripJsonc(src))
 }
 
-/** Whether the value is a non-null, non-array object — the only shape the merge walks into. */
-function isPlainObject(v: any): boolean {
+/**
+ * Whether the value is a non-null, non-array object — the only shape the merge walks into.
+ *
+ * A TYPE PREDICATE (not a plain boolean): the new `agentRoutes` read path narrows `unknown`
+ * config values through it, so the guard both checks and convinces the compiler.
+ */
+function isPlainObject(v: unknown): v is Record<string, any> {
   return v !== null && typeof v === "object" && !Array.isArray(v)
 }
 
@@ -196,8 +211,16 @@ function rowKnobLayer(config: Config): Record<string, unknown> {
  * resolved value: re-applying a resolved section's base and defaults would treat them as
  * explicitly set. The returned `files` list names only the layers that EXIST, which is what
  * the status surface and the reload tool report.
+ *
+ * @param config - the row config as `apply` received it; its knob half is the L4 layer unless
+ *   `rowKnobsOverride` replaces it (the entry-config live-refresh path does exactly that).
+ * @param root - the workspace root whose project file is the L2 layer.
+ * @param settingsSection - L3 verbatim, or undefined when the namespace is not served.
+ * @param rowKnobsOverride - the FRESH knob layer read from the entry-config document, used
+ *   instead of the apply-time row config after a settings save made that document newer.
+ * @returns the merged config plus the file/error state consumers assert on.
  */
-function loadConfig(config: Config, root: string, settingsSection?: unknown): { config: any; files: string[]; errors: string[]; settingsApplied: boolean } {
+function loadConfig(config: Config, root: string, settingsSection?: unknown, rowKnobsOverride?: Record<string, unknown>): { config: any; files: string[]; errors: string[]; settingsApplied: boolean } {
   // DSH home for the user layer: the env override first, else the per-user default.
   const dshHome = process.env.DSH_HOME ?? join(homedir(), ".dsh")
   // User layer file: an explicit row override wins, else `<DSH_HOME>/mpd.jsonc`.
@@ -222,8 +245,10 @@ function loadConfig(config: Config, root: string, settingsSection?: unknown): { 
   if (settingsApplied) merged = deepMerge(merged, section)
   // L4: the ROW CONFIG, i.e. what the settings form edits. It sits ON TOP of the file layers for the
   // same reason the retired settings document did — an explicit edit in a front door outranks a file
-  // the user may not remember writing.
-  const rowKnobs = rowKnobLayer(config)
+  // the user may not remember writing. An override REPLACES the apply-time knob half wholesale (never
+  // a spread merge, which would keep a leaf the entry document has since removed); undefined keeps
+  // the apply-time behaviour every pre-existing caller relies on.
+  const rowKnobs = rowKnobsOverride ?? rowKnobLayer(config)
   if (Object.keys(rowKnobs).length > 0) merged = deepMerge(merged, rowKnobs)
   return { config: merged, files: files.filter((f) => existsSync(f)), errors, settingsApplied }
 }
@@ -256,6 +281,139 @@ export function withTeamModelsDefaults(config: any): any {
     teamModels[slot] = { ...TEAM_MODEL_SLOT_DEFAULTS[slot], ...(isPlainObject(declared[slot]) ? declared[slot] : {}) }
   }
   return { ...raw, teamModels }
+}
+
+/**
+ * The `teamModels` slot that routes one roster member, from the slots' OWN membership declaration.
+ *
+ * The membership is declared ONCE (`TEAM_MODEL_SLOT_GROUPS`) and shared by both settings front doors,
+ * the roster provider and this read, so the member a slot drives cannot drift between the surface that
+ * shows it and the surface that routes it. Matching is case- and separator-insensitive on the member's
+ * functional NAME, which is the vocabulary the roster, the tool schemas and the settings card all use.
+ *
+ * @param member - the roster member's functional name, as a tool argument spells it.
+ * @returns the slot id that routes it, or `undefined` when the roster does not slot-route that member.
+ */
+export function teamModelSlotOfMember(member: string): string | undefined {
+  /** The member name collapsed to its letters and digits, the same key the settings front doors use. */
+  const key = String(member ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "")
+  if (key === "") return undefined
+  for (const slot of TEAM_MODEL_SLOTS) {
+    if (TEAM_MODEL_SLOT_GROUPS[slot].members.some((name) => name.toLowerCase().replace(/[^a-z0-9]+/g, "") === key)) return slot
+  }
+  return undefined
+}
+
+/** One member's resolved `teamModels` route: the provider, the model and the optional effort keyword. */
+export interface TeamModelRoute {
+  /** Provider id the member must run on, e.g. `deepseek-official` or a gateway id. */
+  readonly provider: string
+  /** Model id that provider must offer for this member. */
+  readonly model: string
+  /** The effort keyword the slot declares; ABSENT means the slot states none and no effort may be invented. */
+  readonly reasoningEffort?: string
+}
+
+/**
+ * The agentRoutes entry ONE member carries, read from the resolved config — the R2 read-path half
+ * of the table's loud validation.
+ *
+ * WHY a second validator at all: the `agentRoutes` SCHEMA ({@link AGENT_ROUTES_SCHEMA}) is what the
+ * row-config load and every settings save pass through, but a `.mpd/mpd.jsonc` hand edit never
+ * meets that schema — it is parsed raw and deep-merged. This guard is therefore what makes a
+ * malformed FILE entry loud too, at the only moment it could silently poison a route: the read
+ * that is about to use it.
+ *
+ * @param member - the roster member's functional name, as the routing consumers spell it.
+ * @param config - the resolved config to read; callers pass the live one so the value is never cached.
+ * @returns the entry's SET leaves only (an absent `agentRoutes` or an absent entry resolves to `{}`),
+ *   so a caller can tell "no table" from "an empty entry".
+ * @throws when this member's entry exists but is malformed — not an object, a non-string leaf, or a
+ *   leaf other than provider/model/reasoningEffort. The message names the member and the entry.
+ */
+export function agentRouteEntryOfMember(member: string, config: unknown): { provider?: string; model?: string; reasoningEffort?: string } {
+  /** The raw `agentRoutes` subtree; absent, non-object or empty means no entry for anyone. */
+  const table = (config as { agentRoutes?: unknown })?.agentRoutes
+  if (!isPlainObject(table)) return {}
+  /** This member's raw entry under the roster's own NAME spellings (case/separator-insensitive). */
+  const memberKey = String(member ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "")
+  /** The entry value the table holds under that name, or undefined when the table has none. */
+  const raw = Object.entries(table).find(([key]) => key.toLowerCase().replace(/[^a-z0-9]+/g, "") === memberKey)?.[1]
+  if (raw === undefined) return {}
+  if (!isPlainObject(raw)) {
+    throw new Error(`mpd-config: agentRoutes.${member} must be an object of optional provider/model/reasoningEffort strings, but it is ${JSON.stringify(raw)}`)
+  }
+  /** The entry under construction: only leaves the entry actually SET, trimmed of whitespace. */
+  const entry: { provider?: string; model?: string; reasoningEffort?: string } = {}
+  for (const [key, value] of Object.entries(raw)) {
+    if (key !== "provider" && key !== "model" && key !== "reasoningEffort") {
+      throw new Error(`mpd-config: agentRoutes.${member} carries an unknown leaf "${key}" — only provider, model and reasoningEffort are route leaves`)
+    }
+    if (value === undefined || value === null) continue
+    if (typeof value !== "string") {
+      throw new Error(`mpd-config: agentRoutes.${member}.${key} must be a string, but it is ${JSON.stringify(value)}`)
+    }
+    /** The trimmed leaf; an empty string counts as unset, exactly like a slot leaf. */
+    const trimmed = value.trim()
+    if (trimmed !== "") entry[key] = trimmed
+  }
+  return entry
+}
+
+/**
+ * The route one roster member is CONFIGURED to run on — the read that makes a saved slot take effect.
+ *
+ * WHY THIS IS A SERVICE METHOD. The four consumers of a roster route (the one-shot `mpd_role_spawn`,
+ * `mpd_roles_list`, the workmate library's base instance and `mpd_modelchain_resolve`) live in OTHER
+ * packages, and a cross-package relative import would be a NEW entry in the frozen coupling inventory
+ * (`packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts`, which may only
+ * shrink). They already resolve the `mpdConfig` service at runtime, so the ONE authoritative read of
+ * the slots belongs here, beside the declaration and the resolution it uses.
+ *
+ * The slots are read MATERIALISED over their schema defaults ({@link withTeamModelsDefaults}), which
+ * is what makes an unconfigured workspace behave exactly as the documented pre-slot default: a member
+ * a slot routes is routed by that slot, defaults included, never by a second copy of the route.
+ *
+ * PRECEDENCE (R2, per leaf): `agentRoutes[name]` > the member's `teamModels.slot{N}` leaf > the slot's
+ * built-in default (already materialised by {@link withTeamModelsDefaults}). Per LEAF, not per route:
+ * an entry that sets only `model` keeps the slot's provider and effort, which is why every entry leaf
+ * is optional — the schema and this read agree on that shape.
+ *
+ * @param member - the roster member's functional name.
+ * @param config - the resolved config to read; the caller passes the live one so the value is never cached.
+ * @returns the configured route, or `undefined` when the roster does not slot-route that member.
+ * @throws when the member IS slot-routed but its slot carries no provider or no model, or when its
+ *   `agentRoutes` entry is malformed ({@link agentRouteEntryOfMember}) — the registered contract
+ *   every routing path follows: fail LOUDLY naming the member and the layer, never substitute.
+ */
+export function teamModelRouteOfMember(member: string, config: unknown): TeamModelRoute | undefined {
+  /** The slot that routes this member, or none. */
+  const slot = teamModelSlotOfMember(member)
+  if (slot === undefined) return undefined
+  /** This member's `agentRoutes` entry (R2 precedence, validated loudly); `{}` when the table sets none. */
+  const agentEntry = agentRouteEntryOfMember(member, config)
+  /** The materialised slot block for this member's slot. */
+  const value = (withTeamModelsDefaults(config) as { teamModels?: Record<string, unknown> }).teamModels?.[slot] as Record<string, unknown> | undefined
+  /** The slot's provider id, trimmed; an empty string counts as unset, not as a route. */
+  const provider = typeof value?.provider === "string" ? value.provider.trim() : ""
+  /** The slot's model id, trimmed; an empty string counts as unset, not as a route. */
+  const model = typeof value?.model === "string" ? value.model.trim() : ""
+  /** The slot's optional effort keyword, trimmed; an empty string means the slot states no effort. */
+  const effort = typeof value?.reasoningEffort === "string" ? value.reasoningEffort.trim() : ""
+  if (provider === "" || model === "") {
+    throw new Error(
+      `mpd-config: ${member} is routed by ${slot}, but that slot is incomplete (provider=${provider === "" ? "unset" : provider}, model=${model === "" ? "unset" : model})`,
+    )
+  }
+  // R2, per leaf: an `agentRoutes` leaf that is SET replaces the slot's leaf; one that is unset
+  // falls through. The loud validation already happened in `agentRouteEntryOfMember`.
+  /** The effective provider: the entry's when it states one, else the slot's. */
+  const routedProvider = agentEntry.provider ?? provider
+  /** The effective model: the entry's when it states one, else the slot's. */
+  const routedModel = agentEntry.model ?? model
+  /** The effective effort: the entry's when it states one, else the slot's (empty = none stated). */
+  const routedEffort = agentEntry.reasoningEffort ?? effort
+  return { provider: routedProvider, model: routedModel, ...(routedEffort === "" ? {} : { reasoningEffort: routedEffort }) }
 }
 
 /**
@@ -427,10 +585,50 @@ export function apply(ctx: Ctx, config: Config = {}): void {
 
   // The resolved config for the LAST root read, refreshed by every reload and watcher tick.
   let state = loadConfig(config, dsh.workspaceRoot(), readSection())
+  /**
+   * The FRESH row-knob layer from the ENTRY-CONFIG document (L4), or undefined until a settings
+   * save has made that document newer than the apply-time row config.
+   *
+   * `reloadAt` and the entry listener thread this through `loadConfig`'s override so a save
+   * SURVIVES a later reload (a tool's `reload(exec)` must never revert the state to the stale
+   * apply-time config) while every pre-existing caller keeps the apply-time behaviour.
+   */
+  let entryKnobs: Record<string, unknown> | undefined
+
+  /**
+   * The entry-config document's SAVED OVERRIDE section — the row config a save actually put in the
+   * profile patch — read through the adapter's settings reader, or undefined while the entry is
+   * unserved or the host reports no override half.
+   *
+   * MEASURED (harness 0.1.7-rc.2, `evidence/model-config-live-refresh/2026-10-13T15-15-39-019Z/`):
+   * `describe().value` keeps projecting the APPLY-TIME fiber config after `settings/mutate`, so a
+   * layer composed from it re-imposed every materialised schema default as an override — it buried
+   * the save itself AND a lower-layer `<workspace>/.mpd/mpd.jsonc` edit under those defaults.
+   * `describe().user` is the entry's OVERRIDE layer (the host computes it as
+   * `projectForm(form, profilePatch.config ?? {})`), so it carries exactly the leaves a save set and
+   * is `{}` while nothing is saved; `describe().base` is the inherited layer BELOW that override and
+   * is likewise unchanged by a save. A materialised default therefore cannot enter this layer, and a
+   * file edit can never be shadowed by one.
+   *
+   * The reader is resolved PER CALL: the settings provider mounts after this row (the same
+   * measured race `whenSettingsAvailable` exists for), so a mount-time read would report "unserved"
+   * and mean nothing by the time a save fires.
+   */
+  const readEntryConfig = (): unknown => {
+    if (typeof dsh.settingsReader !== "function") return undefined
+    /** The entry document's descriptor, or undefined when the machinery does not serve this id. */
+    const described = dsh.settingsReader(ENTRY_CONFIG_ID)?.describe()
+    if (described === undefined) return undefined
+    // ONLY the override half may become the L4 layer: `value` (the frozen apply-time fiber config)
+    // and `base` (the inherited defaults) both carry materialised schema defaults, which must never
+    // sit above a file layer. A host that reports no override half yields undefined, and the last
+    // good knobs stand (the same transient-unserved rule the listener below already applies).
+    return isPlainObject(described.user) ? described.user : undefined
+  }
 
   /** Re-read every layer for ONE workspace root (used by the tools and by the file watcher). */
   const reloadAt = (root: string): any => {
-    state = loadConfig(config, root, readSection())
+    state = loadConfig(config, root, readSection(), entryKnobs)
     reconcile(root)
     return state.config
   }
@@ -538,7 +736,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     const options = bridgeOptions()
     if (!options.writeBack) {
       // The report for a disabled write-back: nothing written, and the edit still took effect.
-      const disabled: BridgeReport & { source?: string; revision?: number; at?: string } = { writtenTo: [], results: [], skipped: "disabled", applies: "restart", source, revision, at: new Date().toISOString() }
+      const disabled: BridgeReport & { source?: string; revision?: number; at?: string } = { writtenTo: [], results: [], skipped: "disabled", applies: "live", source, revision, at: new Date().toISOString() }
       bridge.report = disabled
       warnRefusal("disabled", [])
       warn(reportLine(disabled, "DISABLED"))
@@ -549,7 +747,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     const decision = resolveTargets(dsh.workspaceRootsAll(), projectFileOverride())
     if (decision.kind === "refuse") {
       // The report for a refusal: no target was written, and every candidate is named.
-      const refused: BridgeReport & { source?: string; revision?: number; at?: string } = { writtenTo: [], results: [], skipped: decision.reason, candidates: decision.candidates, applies: "restart", source, revision, at: new Date().toISOString() }
+      const refused: BridgeReport & { source?: string; revision?: number; at?: string } = { writtenTo: [], results: [], skipped: decision.reason, candidates: decision.candidates, applies: "live", source, revision, at: new Date().toISOString() }
       bridge.report = refused
       warnRefusal(decision.reason, decision.candidates)
       warn(reportLine(refused, decision.reason))
@@ -567,7 +765,14 @@ export function apply(ctx: Ctx, config: Config = {}): void {
         warn(`[mpd-config] settings bridge: ${note.detail}${note.lines === undefined ? "" : " (occurrence lines: " + note.lines.join(", ") + ")"} [${result.file}]`)
       }
       if (result.outcome === "written" || result.outcome === "created" || result.outcome === "unchanged") continue
-      warn(`[mpd-config] settings bridge: ${result.outcome} for ${result.file}${result.reason ? " (" + result.reason + ")" : ""}${result.detail ? " — " + result.detail : ""} — the file is byte-untouched and the settings value still applies; the mpd plugins need a restart to act on it.`)
+      // REWORDED by wave fix/model-config-live-refresh: the blanket "needs a restart" claim was
+      // true only before L1's entry-config subscription and mount-armed watcher. The settings
+      // value itself is live — the config service re-resolves on every settings save, and the
+      // model-config knobs (teamModels, agentRoutes, modelchain) are read PER USE — so the ONLY
+      // class still waiting for the next dsh boot is a knob some plugin captured at its own mount
+      // instead of reading the live config service per use (see `BRIDGE_RESTART_LIMIT`, which
+      // names that class per knob), and the warning says exactly that instead of a blanket restart.
+      warn(`[mpd-config] settings bridge: ${result.outcome} for ${result.file}${result.reason ? " (" + result.reason + ")" : ""}${result.detail ? " — " + result.detail : ""} — the file is byte-untouched and the settings value still applies in the RUNNING process (no restart: the config service re-resolves on every save, and the model-config knobs are read per use); only a knob some plugin captured at its own mount keeps its captured value until the next dsh boot.`)
     }
     warn(reportLine(bridge.report, report.writtenTo.length > 0 ? "WROTE" : "OK"))
     watchRoot(decision.targets[0].root)
@@ -701,6 +906,30 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     })
   }
 
+  // ── the ENTRY-CONFIG live refresh (R1; wave fix/model-config-live-refresh) ──────────
+  // The retired-namespace world saves through the ENTRY document (`mpd-config`), so the bridge
+  // below — keyed to the legacy `mpd` namespace — never fires for a front-door save and the knobs
+  // it edits stayed frozen at the apply-time row config. This subscription is the fix's other half:
+  // an entry-config document update re-loads `state` from the FRESH document, with no reload call.
+  // Deliberately NO file write-back on this path: the entry document is the host's own store, the
+  // SAVED override (`readEntryConfig`) is ALREADY the top layer (L4), and writing the document's
+  // materialised defaults into `.mpd/mpd.jsonc` would pollute the file — persistence of an entry
+  // save is the host's.
+  if (typeof dsh.onSettingsDocumentUpdated === "function") dsh.onSettingsDocumentUpdated(ENTRY_CONFIG_ID, () => {
+    // The entry document's SAVED override as of now; a transient unserved read (or a host that
+    // reports no override half) leaves the last good knobs standing.
+    const doc = readEntryConfig()
+    if (doc === undefined) return
+    entryKnobs = rowKnobLayer(doc as Config)
+    // L3 is NOT re-read here: this event is about the ENTRY document, and `readSection()` would
+    // refresh `bridge.section` — the baseline the legacy listener diffs ITS saves against — making
+    // a legacy save that lands in the same tick look unchanged and silently skip its file
+    // write-back (measured by the coexistence case of the live-refresh lane). The last-read
+    // section is exactly what L3 was when nothing about that document changed.
+    state = loadConfig(config, readRoot(), bridge.section, entryKnobs)
+    warn(`[mpd-config] entry-config update: state re-loaded from the "${ENTRY_CONFIG_ID}" document (${Object.keys(entryKnobs).length} knob(s) in force) — no restart needed`)
+  })
+
   if (typeof dsh.onSettingsDocumentUpdated !== "function") {
     // Same version-skew guard: without the subscription there is no write-back trigger,
     // so the row keeps serving config (and says so in `states()`) instead of throwing.
@@ -708,9 +937,10 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   } else dsh.onSettingsDocumentUpdated(SETTINGS_NS, (revision: number | undefined, source: string | undefined) => {
     // L3 as of BEFORE this event: the diff below is what the event actually changed.
     const previous = bridge.section
-    // L3 as of now; also the section the config is re-resolved against.
+    // L3 as of now; also the section the config is re-resolved against. The FRESH entry knobs
+    // thread through here too: a legacy-namespace save must never revert an entry-config save.
     const next = readSection()
-    state = loadConfig(config, readRoot(), next)
+    state = loadConfig(config, readRoot(), next, entryKnobs)
     // The bridge's OWN namespace writes need no guard here: the marker leaf is filtered
     // out below, and an UNSET (the §1.2 clearing rule) never produces a written leaf — so a
     // self-echo writes nothing by construction, while a real edit is never swallowed.
@@ -725,6 +955,15 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   })
 
   if (typeof dsh.settingsMutate !== "function" && bridge.degraded === undefined) bridge.degraded = "adapter has no settingsMutate seam (the §1.2 override clearing is unavailable)"
+
+  // ── the mount-time file watcher (R1; wave fix/model-config-live-refresh) ──────────
+  // A HAND edit of `<workspace>/.mpd/mpd.jsonc` is the other live-refresh path, and before this
+  // wave the watcher existed only as a write-back side effect (`watchRoot` inside `writeBack`),
+  // so a workspace nobody had saved through settings had NO watcher at all. Armed HERE, at mount,
+  // for the read root plus every live session root (one watcher per FILE — `watchRoot` dedups),
+  // a hand edit reaches `state` through the same 150 ms debounce a write-back echo uses.
+  watchRoot(readRoot())
+  for (const root of dsh.workspaceRootsAll()) watchRoot(root)
 
   /**
    * §10.1: THIS package registers the namespace, because only it can supply the file-derived
@@ -825,6 +1064,17 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       if (key === undefined) return state.config
       return key.split(".").reduce((acc: any, part: string) => (acc == null ? undefined : acc[part]), withTeamModelsDefaults(state.config))
     },
+    /**
+     * The configured `teamModels` route of one roster member, resolved PER CALL from the live state.
+     *
+     * This is the read a routing consumer (the roster's one-shot spawns, the workmate library, the
+     * model-chain resolver) calls so that a saved slot actually takes effect; see
+     * {@link teamModelRouteOfMember} for why it lives on the service rather than in an import.
+     * @param member - the roster member's functional name.
+     * @returns the configured route, or `undefined` when the roster does not slot-route that member.
+     * @throws when the member is slot-routed and its slot is incomplete.
+     */
+    teamModelRouteOf: (member: string): TeamModelRoute | undefined => teamModelRouteOfMember(member, state.config),
     reload,
     states: () => ({
       files: state.files,
@@ -836,13 +1086,15 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       writeback: bridge.report ?? null,
       migration: bridge.migration,
       cleared: bridge.cleared,
-      applies: "restart",
+      // The model-config knobs are live-refreshed (see `BridgeReport.applies`); a knob a plugin
+      // captured at its own mount still waits for the next `dsh` boot, named per knob in §9.1.
+      applies: "live",
     }),
   })
 
   dsh.registerTool({
     name: "mpd_config_get",
-    description: "Read the resolved mpd.jsonc runtime config (project .mpd/mpd.jsonc merged over user $DSH_HOME/mpd.jsonc). Consumed keys: memory.vcs/memory.dir/memory.agentSlug/memory.reflectionEvery, team.gate/team.stateDir, hashline.guardEditTools/hashline.maxDiffChars/hashline.registryFile, commentChecker.autoCheck/commentChecker.bin/commentChecker.timeoutMs/commentChecker.maxMessageChars, modelchain.<chainKey>, boulder.dir, ulw.maxRounds/ulw.planDir/ulw.stateDir/ulw.provider/ulw.model/ulw.reviewerModel/ulw.maxReReviews, goal.enabled/goal.autoAnchor/goal.autoRounds, teamModels.slot1|slot2|slot3|slot4.provider/model/reasoningEffort.",
+    description: "Read the resolved mpd.jsonc runtime config (project .mpd/mpd.jsonc merged over user $DSH_HOME/mpd.jsonc). Consumed keys: memory.vcs/memory.dir/memory.agentSlug/memory.reflectionEvery, team.gate/team.stateDir, hashline.guardEditTools/hashline.maxDiffChars/hashline.registryFile, commentChecker.autoCheck/commentChecker.bin/commentChecker.timeoutMs/commentChecker.maxMessageChars, modelchain.<chainKey>, boulder.dir, ulw.maxRounds/ulw.planDir/ulw.stateDir/ulw.provider/ulw.model/ulw.reviewerModel/ulw.maxReReviews, goal.enabled/goal.autoAnchor/goal.autoRounds, teamModels.slot1|slot2|slot3|slot4.provider/model/reasoningEffort, agentRoutes.<name>.provider/model/reasoningEffort.",
     parameters: { type: "object", properties: { key: { type: "string", description: "Optional dot-path to a single key, e.g. memory.vcs" } }, additionalProperties: false },
     output: { schema: { type: "object", properties: { config: { type: "object" }, key: { type: "string" }, value: {} }, required: ["config"] }, render: (_a: unknown, v: any) => textBlock(v.key ? "mpd config " + v.key + ": " + JSON.stringify(v.value, null, 1) : "mpd config: " + JSON.stringify(v.config, null, 1)) },
     execute: async (args: any, exec: any) => {

@@ -1,0 +1,8 @@
+{"consumed":false}                       <- escape, NO pin (pin=undefined)
+{"consumed":false}                       <- escape, raw byte, NO pin
+{"consumed":true,"pin":false}            <- escape, PINNED (pin=T1)
+{"consumed":true,"focus":"T1"}           <- j (down) from nothing focused
+{"consumed":true,"focus":"T2"}           <- k (up) with a pin held
+{"consumed":true,"pin":true}             <- Enter with T2 focused
+{"consumed":true}                        <- space with nothing focused
+{"consumed":false}                       <- x (unhandled) with a pin held

@@ -10,7 +10,7 @@
 # modules the host happened to have — a fake green. The entrypoint asserts the filtering held
 # (`copy.contextFiltered`) rather than trusting this file silently.
 #
-# Patterns are relative to the CONTEXT ROOT (the repository root). `dist` therefore matches the
+# Patterns are relative to the CONTEXT ROOT (the repository root). `dist/*` therefore matches the
 # repository's packed output at the root ONLY; `packages/*/dist` is deliberately kept, because the
 # container rebuilds every one of those entries from source and that rebuild is an assertion.
 
@@ -23,8 +23,15 @@
 node_modules
 **/node_modules
 
-# this repository's packed distribution (a source-tree test never consumes it)
-dist
+# this repository's packed distribution. ONE PATH IS DELIBERATELY KEPT: `dist/mpd-package` is the
+# SUBJECT of the §7 pack assertions (`pack.licenceCoherence`, `pack.declarationCoherence`,
+# `pack.staticCoherence`, `pack.distFreshRebuild`), which grade the artifact that travelled in against
+# the tree it was cut from AND against the container's own from-source rebuild — a subject that never
+# arrives can only be reported as unmeasured, and this gate owes the measurement. Everything else under
+# `dist/` stays out, and the entrypoint asserts that exactly this one path arrived
+# (`copy.contextFiltered`), so this rule and that assertion are two halves of one clause.
+dist/*
+!dist/mpd-package
 
 # host-local QA and toolchain state
 evidence

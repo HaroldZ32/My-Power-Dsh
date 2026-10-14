@@ -1,0 +1,13 @@
+[tui-admission] static result ok=true
+[tui-admission] negctl /plugins check -> state=undefined ok=false
+[tui-admission] negctl ledger delta=20 undeclared=0
+[tui-admission] grants file written -> .mpd/recon/qa/tui-lanes/tui-015/home/.dsh-tui/extension-grants.json component=com.mpd-dsh.mpd-tui rows=4
+[tui-admission] grants file revoked mid-session (arm 6)
+[tui-admission] grants tmux: the TUI did not reach the chat screen within 90000ms (readiness pattern /^(?![\s\S]*(?:\u6B63\u5728\u542F\u52A8 DSH|\u8FD8\u5728\u542F\u52A8|Starting DSH|still starting))[\s\S]*(?:\u276F|esc to interrupt|\u6309 Esc)/)
+[tui-admission] grants /plugins check -> state=undefined; /plugins list -> state=undefined
+[tui-admission] arm2 admission-loader line admitted com.mpd-dsh.mpd-tui: true
+[tui-admission] arm3 attribution: attributed=0 decisionHandlerBinds(applied)=0 (ledger delta=20)
+[tui-admission] arm4 real input submit rendered the turn: false
+[tui-admission] arm6 revocation re-check -> state=undefined flipped=false
+[tui-admission] ok=false -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/lanes/2026-10-14T09-18-37.321Z
+[tui-admission] FAIL: {"static":true,"staticGrants":true,"arm1":false,"arm2":true,"arm3":false,"arm4":false,"arm5":false,"revokedState":null}

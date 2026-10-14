@@ -1,0 +1,30 @@
+[reply-verdict] credential-free-transcript-is-a-bound=true
+[reply-verdict]   kind=credential-bound expected=credential-bound before=124 after=505 growth=381 done=false tool=false region=8 failure=yes preFixWouldGreen=true
+[reply-verdict]   detail=no reply rendered; the turn's own panel names the missing credential: "This turn failed llm-deepseek: no API key for provider route \"deepseek-official\"; store DEEPSEEK_API_KEY through the MISSING_CREDENTIAL credentials service (the web Models page writes it), or export DEEPSEEK_API_KEY in the launching environ"
+[reply-verdict] prompt-own-done-is-not-a-reply=true
+[reply-verdict]   kind=no-reply expected=no-reply before=124 after=222 growth=98 done=false tool=false region=8 failure=none preFixWouldGreen=true
+[reply-verdict]   detail=the transcript grew by 98 chars without a reply line and without a failure panel
+[reply-verdict] sidebar-echo-is-not-a-tool-render=true
+[reply-verdict]   kind=no-reply expected=no-reply before=124 after=164 growth=40 done=false tool=false region=8 failure=none preFixWouldGreen=false
+[reply-verdict]   detail=the transcript grew by 40 chars without a reply line and without a failure panel
+[reply-verdict] growth-alone-is-not-a-reply=true
+[reply-verdict]   kind=no-reply expected=no-reply before=124 after=269 growth=145 done=false tool=false region=9 failure=none preFixWouldGreen=true
+[reply-verdict]   detail=the transcript grew by 145 chars without a reply line and without a failure panel
+[reply-verdict] standalone-done-is-a-reply=true
+[reply-verdict]   kind=reply expected=reply before=124 after=227 growth=103 done=true tool=false region=9 failure=none preFixWouldGreen=true
+[reply-verdict]   detail=the reply region carries the answer as its own line: "DONE"
+[reply-verdict] tool-render-is-a-reply=true
+[reply-verdict]   kind=reply expected=reply before=124 after=254 growth=130 done=false tool=true region=9 failure=none preFixWouldGreen=true
+[reply-verdict]   detail=the reply region renders the tool the prompt asked for: "mpd_config_get {} → {\"ok\":true}"
+[reply-verdict] other-failure-is-not-a-bound=true
+[reply-verdict]   kind=no-reply expected=no-reply before=124 after=296 growth=172 done=false tool=false region=8 failure=yes preFixWouldGreen=true
+[reply-verdict]   detail=the turn failed for a reason that is NOT the missing credential: "This turn failed llm-deepseek: MALFORMED_RESPONSE after 3 attempts"
+[reply-verdict] a-pre-send-done-is-not-new=true
+[reply-verdict]   kind=no-reply expected=no-reply before=129 after=218 growth=89 done=false tool=false region=0 failure=none preFixWouldGreen=true
+[reply-verdict]   detail=the transcript grew by 89 chars without a reply line and without a failure panel
+[reply-verdict] reply-wins-over-a-panel=true
+[reply-verdict]   kind=reply expected=reply before=124 after=345 growth=221 done=true tool=false region=1 failure=yes preFixWouldGreen=true
+[reply-verdict]   detail=the reply region carries the answer as its own line: "DONE"
+[reply-verdict] PRE_FIX_GREENS_ON_CREDENTIAL_FREE_FIXTURE=true
+[reply-verdict] PRE_FIX_GREENS_ON_PROMPT_ECHO_ONLY=true
+[reply-verdict] ARMS=9 PASSED=9 FAILED=0

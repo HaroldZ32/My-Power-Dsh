@@ -49,9 +49,9 @@
 import type { TuiScenePropsLike } from "./types.js"
 import { clampCells, stripControl } from "./sanitize.js"
 import { layoutGraphNatural, legendLines, sliceSpans, type GraphTask, type GraphView } from "./graph.js"
-import { teamWorkflowLines, type TeamWorkflow } from "./team-state.js"
+import { NO_SESSION_TEAM_MARKER, sessionIdOf, teamWorkflowLines, WORKSPACE_SCOPE_MARKER, type TeamFeedAccessor, type TeamWorkflow } from "./team-state.js"
 import { t } from "./i18n.js"
-import { gutterCellsX, legendLinesFor, panelKit, textRow, toneColor, visualGlyph, type PanelKit } from "./panel-core.js"
+import { gutterCellsX, legendLinesFor, panelKit, textRow, toneColor, useTeamFeed, visualGlyph, type PanelKit } from "./panel-core.js"
 import { DAG_ANIM, DAG_CHROME, DAG_TONE_GLYPH, type DagTone } from "./dag-theme.js"
 
 // ── THE SHARED SURFACE VISUAL SYSTEM ────────────────────────────────────────
@@ -236,9 +236,11 @@ export function barCells(filled: number, total: number, cells: number): string {
  *
  * Frame {@link DAG_ANIM.staticPhase} IS the published `running` state glyph, so a host with no timer
  * draws exactly the character the legend says means `running` — the degraded frame is the static one,
- * never a stalled intermediate.
+ * never a stalled intermediate. The table is the CONTRACT's own (`DAG_ANIM.runningFrames`) because the
+ * DAG page's node label breathes through the same marks: a second copy here would be two animations of
+ * one state, and the first edit to either would leave the two surfaces breathing differently.
  */
-export const RUNNING_FRAMES: readonly string[] = Object.freeze([DAG_TONE_GLYPH.running ?? "◐", "◓", "◑", "◒"])
+export const RUNNING_FRAMES: readonly string[] = DAG_ANIM.runningFrames
 
 /**
  * The running marker at one phase, wrapping rather than going out of range.
@@ -376,16 +378,33 @@ export function surfaceBodyRow(kit: SurfaceKit, key: string, line: string, overr
 }
 
 /**
+ * The host kit a titled rule reads — deliberately NARROWER than {@link SurfaceKit}.
+ *
+ * WHY IT IS NOT `SurfaceKit`: the rule is drawn by BOTH planes, and their kits are structurally equal
+ * except for one timer member (`SurfaceKit`'s `useAnimationTime` answers a number, a PANEL kit's answers
+ * `unknown` because the panel feature-detects it at its own use site), so a rule typed against the
+ * scene's whole kit would be uncallable from `panel-dag.ts` without a cast. What the rule actually reads
+ * is stated here instead: one React instance and the column box. Both kits satisfy that structurally, so
+ * ONE divider primitive serves both — which is the point of sharing it.
+ */
+export interface SurfaceRuleKit {
+  /** The host's React instance; the rule creates exactly ONE element through it. */
+  React: { createElement(type: unknown, props?: Record<string, unknown> | null, ...children: unknown[]): unknown }
+  /** The host's ui kit, of which the rule reads ONLY the column box it draws the border on. */
+  ui: { Box: unknown }
+}
+
+/**
  * A horizontal rule, in the host's own divider craft: a one-row box carrying ONLY its top border, with
  * an optional section title embedded in it (the host's `SidePanelColumn` draws its separator the same
  * way, and its frame titles go through `borderText`).
- * @param kit - the host kit.
+ * @param kit - the host kit, as {@link SurfaceRuleKit} narrows it.
  * @param key - the React key.
  * @param title - the section title; omitted draws a bare rule.
  * @param tone - the tone the rule and its title draw in.
  * @returns the host element.
  */
-export function surfaceRule(kit: SurfaceKit, key: string, title?: string, tone: DagTone = "dim"): unknown {
+export function surfaceRule(kit: SurfaceRuleKit, key: string, title?: string, tone: DagTone = "dim"): unknown {
   return kit.React.createElement(kit.ui.Box, {
     key,
     height: 1,
@@ -1177,8 +1196,11 @@ export function takeSubagentDetailRequest(nowMs: number = Date.now()): string | 
 /**
  * Build the merged scene component.
  * @param readWorkflow - reads the MPD team projection for this session's workspace; the wiring in
- *   `scenes.ts` passes the same reader the team scene uses, so the two cannot drift. It is injected
- *   (rather than imported) so this file stays free of the scene-registration module.
+ *   `scenes.ts` passes the same reader the team scene uses, so the two cannot drift. It takes the
+ *   CALLING session's id — read off this scene's own live channel — because the team is session-scoped:
+ *   with an id it can only answer with THIS session's board, and with none it runs the marked
+ *   workspace-level fallback. It is injected (rather than imported) so this file stays free of the
+ *   scene-registration module.
  * @param onHostKit - receives the host's own `ui` kit on every render; the adapter keeps it because a
  *   SCENE is the only surface the host hands that object to, and its `useStdin` is the one that
  *   resolves the LIVE input context (measured, dsh-tui 0.12.0). Optional: the panel still renders
@@ -1187,12 +1209,15 @@ export function takeSubagentDetailRequest(nowMs: number = Date.now()): string | 
  *   reader is consulted EXACTLY ONCE, on the mount that opens the scene. Defaults to this module's own
  *   {@link takeSubagentDetailRequest}, which is how the DAG page's `openAgentPage` reaches a scene an
  *   earlier `scenes.ts` already constructed.
+ * @param subscribeTeams - resolves the LIVE team-state feed for the calling session's workspace, per
+ *   render; undefined keeps this scene on its 2000 ms tick alone.
  * @returns a component matching the host's `TuiSceneProps` contract.
  */
 export function createSubagentSceneComponent(
-  readWorkflow: () => TeamWorkflow | undefined,
+  readWorkflow: (sessionId?: string) => TeamWorkflow | undefined,
   onHostKit?: (ui: unknown) => unknown,
   takePendingDetail: () => string | undefined = takeSubagentDetailRequest,
+  subscribeTeams?: TeamFeedAccessor,
 ): unknown {
   // The props type is the ADAPTER's `TuiScenePropsLike` — the TUI plane's single declaration of the
   // host's scene contract — even though every field is still re-checked at runtime below: the type
@@ -1284,12 +1309,21 @@ export function createSubagentSceneComponent(
       /** The freshly read projection; undefined means unreadable. */
       let next: TeamWorkflow | undefined
       try {
-        next = readWorkflow()
+        // THE SESSION ID IS READ AT CALL TIME off the live channel: the timer and the feed
+        // notification both reach this closure long after the render that defined it, and the channel
+        // publishes its id later. This is the read that makes the merged panel draw ITS OWN session's
+        // team, which is the defect the user reported (a new session showing the old session's DAG).
+        next = readWorkflow(sessionIdOf(channel))
       } catch {
         next = undefined
       }
       setWorkflow(next)
     }
+
+    // THE PUSH (PART P): this scene keeps its projection in a state cell, so a notification re-READS
+    // it through `refresh` rather than merely re-rendering. The 2000 ms tick below stays as the
+    // fallback for a composition without the feed or without `mpd-team-core`.
+    useTeamFeed(React, subscribeTeams, refresh)
 
     React.useEffect(() => {
       refresh()
@@ -1642,12 +1676,13 @@ export function createSubagentSceneComponent(
         }
         // THE LEGEND sits directly under the DAG, in the SAME width budget the graph was laid out
         // for, so a line can never claim more cells than the drawing above it used. It is COMPOSED, not
-        // private: `graph.ts` owns the drawing's own sentences (the arrow/focus line and its own state
-        // key), and `panel-core.ts`'s `legendLinesFor` appends the CONTRACT's six-state key — the one
-        // that tells `○ blocked` from `○ open`, which the drawing module's own key cannot. Handing the
-        // drawing's lines to that helper is what keeps this scene's legend identical to the DAG page's.
+        // private: `graph.ts` owns the drawing's own arrow/focus sentence, and `panel-core.ts`'s
+        // `legendLinesFor` appends the CONTRACT's ONE state key — the six-state key that tells
+        // `○ blocked` from `○ open`, which the drawing module's DELETED five-state key could not.
+        // Handing the drawing's line to that helper is what keeps this scene's legend identical to the
+        // DAG page's, and it is why this scene prints the state key exactly once.
         // A drawing module that refuses costs the legend, never the surface (hence the contained call).
-        /** The drawing module's own lines: its arrow sentence and its own state key. */
+        /** The drawing module's own line: its arrow/focus sentence; the state key belongs to the composer. */
         let arrow: string[] = []
         try {
           arrow = legendLines(measured.cols)

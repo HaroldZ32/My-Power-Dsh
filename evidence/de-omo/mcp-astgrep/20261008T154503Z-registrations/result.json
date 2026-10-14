@@ -1,0 +1,84 @@
+{
+  "task": "de-omo wave B1 ast-grep — REGISTRATION REPAIR (frozen-set couples only)",
+  "producedAt": "2026-10-08T15:47Z",
+  "branch": "feature/de-omo-wave-b1-astgrep",
+  "scope": "registration only; NO server behaviour change, NO edit under packages/mpd-mcp-astgrep/**, scripts/build-mcp.ts, VENDOR_LOCK.json, package.json or skills/**",
+  "startingPoint": {
+    "source": "evidence/de-omo/mcp-astgrep/20261008T153559Z/result.json -> blockers[]",
+    "blockersUsed": [
+      "blockers[0] (no-terminal-writes EXEMPT_FILES, exactAmendmentText)",
+      "blockers[1] (FROZEN_COUPLINGS, exactAmendmentText + regenerateWith)"
+    ],
+    "blockerNotUsed": "blockers[2] (VENDOR_LOCK re-pin removal) — outside this task's scope, already applied by the wave B1 writer"
+  },
+
+  "failuresBefore": [
+    {
+      "assertion": "no new terminal writes in an MPD runtime path (R5)",
+      "file": "packages/mpd-dsh-adapter-plugin/test/no-terminal-writes.test.ts",
+      "observedVerbatim": "expect({ unfrozen: ... }).toEqual({ unfrozen: [], overCeiling: [], staleInventory: [], staleExempt: [] })  ->  received unfrozen: [ \"packages/mpd-mcp-astgrep/src/protocol.ts:69 process.stdout.write\" ]",
+      "why": "UNFROZEN TERMINAL WRITE: the new server's stdio JSON-RPC writer owns fd 1, which is the client pipe the row spawns it with — the same precedent the codegraph launcher already carries"
+    },
+    {
+      "assertion": "the cross-package coupling inventory is exactly the frozen set (independence gate)",
+      "file": "packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts",
+      "observedVerbatim": "expect({ unfrozen: result.unfrozen.map(identityOf), stale: result.stale }).toEqual({ unfrozen: [], stale: [] })  ->  received unfrozen: [ \"packages/mpd-mcp-astgrep/src/cli.ts :: import { openLogSink } from \\\"../../mpd-mcp-shared/log-sink.ts\\\"\", \"packages/mpd-mcp-astgrep/src/server.ts :: import { probeAstGrep, resolveAstGrepBinary } from \\\"../../mpd-mcp-shared/bin-resolve.ts\\\"\" ]",
+      "why": "the vendored artifact INLINED both shared modules; the new source IMPORTS them, so two compile-time cross-package edges are visible to the scan for the first time"
+    }
+  ],
+  "preReproduceCommand": { "command": "bun test packages/mpd-dsh-adapter-plugin", "exit": 1, "observed": "180 pass / 2 fail — 870 expect() calls, 182 tests across 10 files" },
+
+  "verifiedBeforeApplying": [
+    { "claim": "packages/mpd-mcp-astgrep/src/protocol.ts carries process.stdout.write", "checked": "grep — present, inside the `write(response)` helper of the JSON-RPC response loop (fd 1 = client channel, not a terminal)", "verdict": "TRUE" },
+    { "claim": "packages/mpd-mcp-astgrep/src/cli.ts imports openLogSink from ../../mpd-mcp-shared/log-sink.ts", "checked": "grep — `import { openLogSink } from \"../../mpd-mcp-shared/log-sink.ts\"`; used at `const sink = openLogSink(\"mpd-mcp-astgrep\")`", "verdict": "TRUE" },
+    { "claim": "packages/mpd-mcp-astgrep/src/server.ts imports probeAstGrep, resolveAstGrepBinary from ../../mpd-mcp-shared/bin-resolve.ts", "checked": "grep — exact specifier; both symbols called in the engine-resolution path", "verdict": "TRUE" },
+    { "claim": "codegraph precedent for a protocol writer exemption exists", "checked": "EXEMPT_FILES already carries packages/mpd-mcp-codegraph/src/launch.ts with the reason 'also carries the MCP protocol's own stdout writer for the unavailable-server fallback, which legitimately owns fd 1'", "verdict": "TRUE" }
+  ],
+
+  "applied": [
+    {
+      "n": 1,
+      "file": "packages/mpd-dsh-adapter-plugin/test/no-terminal-writes.test.ts",
+      "registry": "EXEMPT_FILES",
+      "text": "{ path: \"packages/mpd-mcp-astgrep/src/protocol.ts\", reason: \"the ast_grep MCP server's own protocol writer: this file IS the stdio JSON-RPC loop, so fd 1 is the client channel the row spawns it with, never a terminal\", requires: \"process.stdout.write\" },",
+      "placed": "immediately after the packages/mpd-mcp-astgrep/src/launch.ts entry, keeping the astgrep entries adjacent in the existing per-package order (shared sink -> astgrep -> codegraph -> gitbash -> lsp -> web client -> qa probe)",
+      "note": "SWEEP_INVENTORY untouched and still empty (0 files) — it may only shrink, and no separate inventory entry was needed"
+    },
+    {
+      "n": 2,
+      "file": "packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts",
+      "registry": "FROZEN_COUPLINGS",
+      "text": "\"packages/mpd-mcp-astgrep/src/cli.ts :: import { openLogSink } from \\\"../../mpd-mcp-shared/log-sink.ts\\\"\",",
+      "placed": "new commented block appended to the MCP band, after the four-launcher block (the launcher block's own header says 'THE FOUR MCP LAUNCHERS', so entries that are not launchers were kept out of it)"
+    },
+    {
+      "n": 3,
+      "file": "packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts",
+      "registry": "FROZEN_COUPLINGS",
+      "text": "\"packages/mpd-mcp-astgrep/src/server.ts :: import { probeAstGrep, resolveAstGrepBinary } from \\\"../../mpd-mcp-shared/bin-resolve.ts\\\"\",",
+      "placed": "same new block, second entry"
+    }
+  ],
+
+  "diffShape": "registration only: +5 lines in no-terminal-writes.test.ts (1 entry), +8 lines in cross-package-coupling-inventory.test.ts (6 comment + 2 entries). No other file touched by this task; the other modified paths in `git diff --stat` (VENDOR_LOCK.json, dist/cli.js, dist/BUILD.lock, package.json, scripts/build-mcp.ts) are the PRE-EXISTING wave B1 change already in the working tree.",
+
+  "gatesAfter": [
+    { "command": "bun test packages/mpd-dsh-adapter-plugin", "exit": 0, "observed": "182 pass / 0 fail, 870 expect() calls, 182 tests across 10 files (was 180 pass / 2 fail)" },
+    { "command": "bun test packages", "exit": 0, "observed": "1707 pass / 0 fail, 1710 tests across 105 files" },
+    { "command": "node packages/mpd-dsh-adapter-plugin/test/no-terminal-writes.test.ts --self-test", "exit": 0, "observed": "VERDICT: PASS (10/10 checks); the live band prints the new entry — 'packages/mpd-mcp-astgrep/src/protocol.ts (1 hit(s)) — the ast_grep MCP server's own protocol writer … [requires \"process.stdout.write\"]' — and 'VERDICT: PASS — every terminal write in the band is exempt, inventoried, or absent.'" },
+    { "command": "bun packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts --self-test", "exit": 0, "observed": "SELF-TEST: PASS (14/14 checks); the live scan reports no new couplings and no stale entries" }
+  ],
+
+  "residuals": [
+    "static gates only: no live dsh mount was run — this task registers couplings and was not asked to boot the row (the wave B1 evidence already carries the launch-path handshake).",
+    "the two FROZEN_COUPLINGS entries were transcribed from the blocker's exactAmendmentText verbatim; the gate's own identity comparison (`identityOf`) is what proves the transcription matches the scanner's bytes, since a mismatch would leave the entry stale and the run red.",
+    "no `--print-inventory` regeneration was needed: the blocked gate reports 0 new / 0 stale with the hand-applied text, which is the same assertion regeneration guards."
+  ],
+  "evidence": {
+    "dir": "evidence/de-omo/mcp-astgrep/20261008T154503Z-registrations/",
+    "files": {
+      "result.json": "this summary",
+      "output.log": "the four gate commands with their full observed transcripts and exit codes"
+    }
+  }
+}

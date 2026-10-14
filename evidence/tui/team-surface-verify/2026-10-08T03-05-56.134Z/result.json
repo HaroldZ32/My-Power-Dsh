@@ -1,0 +1,415 @@
+{
+  "slug": "tui-team-surface",
+  "task": "t3",
+  "ok": false,
+  "laneScript": {
+    "path": "skills/dsh-qa/scripts/tui-team-surface.ts",
+    "sha256": "769700d29b152f90f353ff544bbcb4ad8043ef86c9472f9b534757d9b48b6334",
+    "note": "the digest of the lane that produced this result, so the verdict can be tied to the exact bytes that measured it"
+  },
+  "revision": {
+    "path": "packages/mpd-tui-plugin/dist/index.js",
+    "sha256": "1c52b169ea9e71a9392d259570ad23af3b3012f39ab075c62e8141494567f2ba",
+    "bytes": 379650,
+    "mtimeLocal": "2026-10-08T02:40:43.588Z",
+    "mtimeUtc": "2026-10-08T02:40:43.588Z"
+  },
+  "revisionDelta": {
+    "changed": false,
+    "reason": "the dist did not move during the run"
+  },
+  "sandboxRoot": ".mpd/recon/qa/tui-lanes/tui-014b",
+  "sandboxNote": "QA scratch under the lane's standard root (AGENTS.md §7: workspace state must be sandboxed; .mpd/ is gitignored so no credential or scratch byte can be committed). The frozen contract and VENDOR_LOCK.json are hard-asserted unchanged; the workspace's own LIVE team record legitimately mutates while this lane runs and is recorded as an observation only.",
+  "protectedPaths": {
+    "before": [
+      {
+        "path": ".mpd/plans/tui-team-surface.md"
+      },
+      {
+        "path": "VENDOR_LOCK.json",
+        "sha256": "3a09715b0f21c2d971b51b39557b979c1231bf7a82a48ce7115378ea04b9764c"
+      }
+    ],
+    "after": [
+      {
+        "path": ".mpd/plans/tui-team-surface.md"
+      },
+      {
+        "path": "VENDOR_LOCK.json",
+        "sha256": "3a09715b0f21c2d971b51b39557b979c1231bf7a82a48ce7115378ea04b9764c"
+      }
+    ],
+    "changed": []
+  },
+  "observedPaths": {
+    "note": "the lane runs INSIDE a live team, so this record mutates as the team works; the lane never writes it",
+    "before": [
+      {
+        "path": ".mpd/team/mpd-default-8d65a2b2/team.json"
+      }
+    ],
+    "after": [
+      {
+        "path": ".mpd/team/mpd-default-8d65a2b2/team.json"
+      }
+    ],
+    "changed": []
+  },
+  "fixture": {
+    "file": ".mpd/recon/qa/tui-lanes/tui-014b/ws/.mpd/team/teams/mpd-fixture-1.json",
+    "sha256Before": "bc7a299fae1f1260c85efd9839ec71995baa56452e5b4e08b6553a037030bd14",
+    "sha256After": "bc7a299fae1f1260c85efd9839ec71995baa56452e5b4e08b6553a037030bd14",
+    "unchanged": true
+  },
+  "arm1": {
+    "items": [
+      {
+        "id": "A1-apply",
+        "ok": true,
+        "note": "the REAL plugin apply() registered mpd-tui-board,mpd-tui-team,mpd-tui-plan,mpd-tui-subagents"
+      },
+      {
+        "id": "A2-plan-scene",
+        "ok": false,
+        "note": "registered scene \"mpd-tui-plan\" title \"MPD 计划审批\""
+      },
+      {
+        "id": "A3-entry-points",
+        "ok": true,
+        "note": "command registrations: [\"mpd\",\"mpd-model\"]"
+      },
+      {
+        "id": "A4-real-fixture-read",
+        "ok": false,
+        "note": "the surface rendered the record on disk: team"
+      },
+      {
+        "id": "A5-confirm-step-requested",
+        "ok": false,
+        "note": "verbatim instruction present, required phrase \"required\", echo at entry \"\""
+      },
+      {
+        "id": "A6-echo-carries-phrase",
+        "ok": false,
+        "note": "the echo after typing is \"\""
+      },
+      {
+        "id": "A7-approval-attempt",
+        "ok": true,
+        "note": "boundary call {\"name\":\"agent_teams_plan\",\"confirmation\":\"approve plan-20261008T030456Z\",\"agentId\":\"fixture-captain-session\",\"callIdPresent\":true} (the harness boundary recorded 1 call(s) to agent_teams_plan)"
+      },
+      {
+        "id": "A8-tool-result-rendered",
+        "ok": true,
+        "note": "the scene rendered the tool's own structured result: \"approved: plan-20261008T030456Z running · members 2 · tasks 2\""
+      },
+      {
+        "id": "B1-bypassed-runs-refuse",
+        "ok": true,
+        "note": "every bypassed run failed the approval assertion (the required red): [{\"mode\":\"empty\",\"pass\":false,\"message\":\"confirmation does not match this team\"},{\"mode\":\"wrong-id\",\"pass\":false,\"message\":\"confirmation does not match this team\"},{\"mode\":\"cancelled\",\"pass\":false,\"message\":\"confirmation does not match this team\"}]"
+      },
+      {
+        "id": "B2-gate-is-what-refused",
+        "ok": true,
+        "note": "each bypassed run rendered the phrase-gate refusal: [\"confirmation does not match this team\",\"confirmation does not match this team\",\"confirmation does not match this team\"]"
+      },
+      {
+        "id": "B3-observation-discriminates",
+        "ok": true,
+        "note": "approvalHappened true with the phrase typed, false in all 3 bypassed runs"
+      },
+      {
+        "id": "A10-empty-state-no-throw",
+        "ok": true,
+        "note": "malformed / non-staged / absent records each rendered the empty state and threw nothing: [{\"name\":\"malformed-record\",\"emptyState\":\"no staged plan for team (none)\",\"title\":\"\"},{\"name\":\"non-staged-record\",\"emptyState\":\"no staged plan for team mpd-fixture-1 (phase idle)\",\"title\":\"\"},{\"name\":\"absent-record\",\"emptyState\":\"no staged plan for team (none)\",\"title\":\"\"}]"
+      },
+      {
+        "id": "A9-no-write-primitive-in-own-code",
+        "ok": true,
+        "note": "the fixture file is unchanged after every drive (sha256 bc7a299fae1f)"
+      }
+    ],
+    "registered": [
+      {
+        "id": "mpd-tui-board",
+        "title": "MPD 面板"
+      },
+      {
+        "id": "mpd-tui-team",
+        "title": "MPD 团队"
+      },
+      {
+        "id": "mpd-tui-plan",
+        "title": "MPD 计划审批"
+      },
+      {
+        "id": "mpd-tui-subagents",
+        "title": "MPD 子代理 · 团队"
+      }
+    ],
+    "emptyStateArms": [
+      {
+        "name": "malformed-record",
+        "emptyState": "no staged plan for team (none)",
+        "title": ""
+      },
+      {
+        "name": "non-staged-record",
+        "emptyState": "no staged plan for team mpd-fixture-1 (phase idle)",
+        "title": ""
+      },
+      {
+        "name": "absent-record",
+        "emptyState": "no staged plan for team (none)",
+        "title": ""
+      }
+    ],
+    "boundaryCalls": [
+      {
+        "name": "agent_teams_plan",
+        "confirmation": "approve plan-20261008T030456Z",
+        "agentId": "fixture-captain-session",
+        "callIdPresent": true
+      }
+    ]
+  },
+  "arm2": {
+    "skipped": false,
+    "seeded": {
+      "source": "already-present",
+      "seeded": false
+    },
+    "sandboxRoot": "/root/dshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/tui-014b",
+    "workspace": "/root/dshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/tui-014b/ws",
+    "steps": [
+      {
+        "name": "plan-open",
+        "keys": [
+          "/mpd plan",
+          "Enter"
+        ],
+        "waitMs": 9000
+      },
+      {
+        "name": "phrase-typed",
+        "keys": [
+          "approve plan-20261008T030456Z"
+        ],
+        "waitMs": 2500
+      },
+      {
+        "name": "approve-attempt",
+        "keys": [
+          "C-x"
+        ],
+        "waitMs": 9000
+      },
+      {
+        "name": "scene-closed",
+        "keys": [
+          "Escape"
+        ],
+        "waitMs": 3000
+      },
+      {
+        "name": "picker-open",
+        "keys": [
+          "/mpd",
+          "Enter"
+        ],
+        "waitMs": 7000
+      }
+    ],
+    "failures": [],
+    "record": {
+      "phase": "staged"
+    },
+    "recordSignature": false,
+    "outcome": "no-outcome-line",
+    "outcomeLines": {
+      "approved": "",
+      "refusal": "",
+      "preGateRefusal": false,
+      "postCommitEmptyState": false
+    },
+    "findings": [],
+    "panes": [
+      {
+        "name": "boot",
+        "chars": 2206,
+        "facts": {
+          "titleLine": "",
+          "teamLine": "",
+          "instruction": "",
+          "requiredLine": "",
+          "requiredPhrase": "",
+          "echoLine": "",
+          "confirmEcho": "",
+          "runnableLine": "",
+          "message": "",
+          "emptyState": ""
+        }
+      },
+      {
+        "name": "plan-open",
+        "chars": 10514,
+        "facts": {
+          "titleLine": "",
+          "teamLine": "",
+          "instruction": "",
+          "requiredLine": "",
+          "requiredPhrase": "",
+          "echoLine": "",
+          "confirmEcho": "",
+          "runnableLine": "",
+          "message": "",
+          "emptyState": ""
+        }
+      },
+      {
+        "name": "phrase-typed",
+        "chars": 10514,
+        "facts": {
+          "titleLine": "",
+          "teamLine": "",
+          "instruction": "",
+          "requiredLine": "",
+          "requiredPhrase": "",
+          "echoLine": "",
+          "confirmEcho": "",
+          "runnableLine": "",
+          "message": "",
+          "emptyState": ""
+        }
+      },
+      {
+        "name": "approve-attempt",
+        "chars": 10514,
+        "facts": {
+          "titleLine": "",
+          "teamLine": "",
+          "instruction": "",
+          "requiredLine": "",
+          "requiredPhrase": "",
+          "echoLine": "",
+          "confirmEcho": "",
+          "runnableLine": "",
+          "message": "",
+          "emptyState": ""
+        }
+      },
+      {
+        "name": "scene-closed",
+        "chars": 10463,
+        "facts": {
+          "titleLine": "",
+          "teamLine": "",
+          "instruction": "",
+          "requiredLine": "",
+          "requiredPhrase": "",
+          "echoLine": "",
+          "confirmEcho": "",
+          "runnableLine": "",
+          "message": "",
+          "emptyState": ""
+        }
+      },
+      {
+        "name": "picker-open",
+        "chars": 10459,
+        "facts": {
+          "titleLine": "",
+          "teamLine": "team workflow: phase, roster, task DAG",
+          "instruction": "",
+          "requiredLine": "",
+          "requiredPhrase": "",
+          "echoLine": "",
+          "confirmEcho": "",
+          "runnableLine": "",
+          "message": "",
+          "emptyState": ""
+        }
+      }
+    ],
+    "items": [
+      {
+        "id": "H1-host-renders-surface",
+        "ok": true,
+        "note": "the real host rendered the plan surface for the sandbox record: (no title line)"
+      },
+      {
+        "id": "H2-host-dialog-request",
+        "ok": true,
+        "note": "the bare /mpd managed dialog listed the Plan entry: Plan | review and approve a staged plan"
+      },
+      {
+        "id": "H3-host-confirm-step",
+        "ok": true,
+        "note": "the host rendered the confirmation step and echoed the typed phrase"
+      },
+      {
+        "id": "H4-real-mutation-via-the-adopted-runtime",
+        "ok": false,
+        "note": "no approval committed: phase=\"staged\" approvedAt=undefined; pane outcome: no-outcome-line"
+      },
+      {
+        "id": "H4b-outcome-reported-honestly",
+        "ok": true,
+        "note": "no approval committed and the pane said so: \"\""
+      },
+      {
+        "id": "H5-pane-and-record-agree",
+        "ok": true,
+        "note": "pane claims approved=false, refusal=false, post-commit empty state=false; record phase=\"staged\" approvedAt=undefined"
+      },
+      {
+        "id": "H6-real-keystroke-drive",
+        "ok": true,
+        "note": "tmux captured 6 panes for 5 driven steps (real keystrokes)"
+      }
+    ]
+  },
+  "negativeControl": {
+    "note": "the SAME drive and the SAME assertion (`assertApprovalHappened`) with the confirmation step bypassed — this run MUST fail",
+    "expected": "fail",
+    "observed": "fail",
+    "green": {
+      "mode": "typed",
+      "pass": true,
+      "reason": "the harness boundary recorded 1 call(s) to agent_teams_plan",
+      "message": "approved: plan-20261008T030456Z running · members 2 · tasks 2"
+    },
+    "reds": [
+      {
+        "mode": "empty",
+        "pass": false,
+        "reason": "no call to agent_teams_plan reached the harness boundary (calls=0)",
+        "message": "confirmation does not match this team"
+      },
+      {
+        "mode": "wrong-id",
+        "pass": false,
+        "reason": "no call to agent_teams_plan reached the harness boundary (calls=0)",
+        "message": "confirmation does not match this team"
+      },
+      {
+        "mode": "cancelled",
+        "pass": false,
+        "reason": "no call to agent_teams_plan reached the harness boundary (calls=0)",
+        "message": "confirmation does not match this team"
+      }
+    ],
+    "discriminatingPower": true
+  },
+  "findings": [],
+  "notClaimed": [
+    "ARM 1 does not execute the adopted agent_teams_approve runtime: the harness tool registry is a RECORDING DOUBLE that captures the boundary call (name, arguments, callId, agent) and answers the fixture's own counts. Arm 1 proves the in-scene confirmation GATE, the adapter forwarding of exec.agent, and that the scene reports the tool's own structured result — never that a team was approved by arm 1.",
+    "ARM 1 does not drive a real TTY: it renders the registered scene component with a host double (React/ui kit, effects after render, hooks index-keyed). Real keystrokes in a real host are arm 2's claim.",
+    "ARM 2 runs the real host with a REAL captain: the fixture's `captainSessionId` is set to the live session id the sandbox boot just produced, so the adopted `requireFreshCaptainTeam` check passes and the approval executes for real. It does NOT claim that this works when the record names a session that is not attached — that case was measured separately (evidence/tui/team-surface-verify/preboot-probe/: the pane refuses loudly with `the captain session <id> is not attached in this process` and the record is untouched).",
+    "NO VISIBLE-VERDICT CLAIM, and this one is a MEASURED DEVIATION, not a lane limitation: when an approval COMMITS, the lane claims the RECORD flip and the pane's post-commit state — never that the frozen §4.5 verdict line was rendered. It was NOT rendered (finding F1 below): after the post-call re-read the record is no longer staged, the action block is dropped and the user sees the precondition-failure state instead.",
+    "The captain model is not claimed to react to a TUI approval (contract §6.3 / NOT-CLAIMED #T3): the lane asserts the tool's own result and the record, not a subsequent model turn.",
+    "No parity claim: equal facts, not equal layout/styling/geometry/localization (contract §7.1).",
+    "`alt+t` is not exercised: it is best-effort by contract (§5.3)."
+  ],
+  "confirmStepInterpretation": "The frozen contract has NO host dialog for approve (§3.2/§4.2): the confirmation step is the in-scene echo + exact phrase + Ctrl+X chord. `confirm dialog request` is therefore asserted as that step (instruction line, required phrase, EMPTY echo at entry) plus the REAL managed dialog of the bare `/mpd` picker that carries the Plan entry (arm 2, H2)."
+}

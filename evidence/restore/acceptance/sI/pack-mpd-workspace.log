@@ -1,0 +1,6 @@
+$ node scripts/pack-mpd.ts --out /tmp/sI-e1   # working tree (dist/mpd-package absent under /tmp output)
+[pack-mpd] validator: generated packages/mpd-ext-plugin/dist/validator.js (9 exports) from the shipped bundle
+[pack-mpd] staged 2 patch file(s): cordis.patch.yml, presets/mpd.patch.yml
+[pack-mpd] modes normalized: 608 files (644: 592, 755: 16)
+[pack-mpd] staged package -> /tmp/sI-e1  (out-dir source: command line (--out /tmp/sI-e1))
+PACK_EXIT=0

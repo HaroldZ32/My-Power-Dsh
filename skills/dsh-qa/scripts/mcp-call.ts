@@ -23,6 +23,7 @@ import { assertSessionsSandboxed, sandboxWorkspace } from "./lib/workspace-isola
 import { readSessionEvents, findToolCall, recordedToolNames, type SessionStore, type ToolCallEvidence } from "./lib/session-evidence.ts"
 import { credentialEnv, seedSandboxCredentials, type Env } from "./lib/credentials.ts"
 import { DSH_MISSING, dshCommand, resolveDshLauncher } from "./lib/dsh-launcher.ts"
+import { declaredOptionalVersion, stageDeclaredMcpDependency, type DependencyStage } from "./lib/mcp-dependency.ts"
 
 /** The repository root, derived from this case's own URL (`<root>/skills/dsh-qa/scripts/`). */
 const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
@@ -31,9 +32,12 @@ const ENUM_JOB = "Do only one thing: list all available tool names in your curre
 /** The call arm's prompt: call the ast-grep search on the fixture and report the result verbatim. */
 const CALL_JOB = "The current directory has tests/mcp-fixtures/sample.c. Call the tool mcp__ast_grep__search to scan that file for the pattern return 0 (pass parameters per the tool schema), then report the tool's returned content verbatim. Do not use the bash tool."
 /** The two tool names the enum arm must find in the harness-recorded tool list (its self-test fixture). */
-const FIXTURE_LIST = "- mcp__ast_grep__search\n- mcp__lsp__status"
+const FIXTURE_LIST = "- mcp__ast_grep__search\n- mcp__lsp__get_diagnostics"
 /** The MCP tool the call arm must find a recorded call for. */
 const AST_TOOL = "mcp__ast_grep__search"
+/** The LSP MCP row's declared dependency: `packages/mpd-mcp-lsp/src/launch.ts` resolves this name, and
+ *  the row exposes ZERO tools without it, so the enum arm's `mcp__lsp__*` half rests on it. */
+const LSP_DEPENDENCY = "cclsp"
 /** The source line the fixture carries and the recorded tool result must therefore contain. */
 const FIXTURE_LINE = "return 0"
 
@@ -82,14 +86,16 @@ interface ArmRun {
   readonly sandbox: string
   /** The sandbox workspace the arm booted in; session evidence is keyed by it. */
   readonly ws: string
+  /** Where the arm's staged pack copy got the LSP row's declared dependency from. */
+  readonly lspStage: DependencyStage
 }
 
 /** The offline arm: proves the fixture list, the composed server name and the fixture's content line. */
 function selfTest(): void {
   /** Whether the fixture list names the ast-grep search tool the call arm asserts. */
   const hasAst = FIXTURE_LIST.includes("mcp__ast_grep__search")
-  /** Whether the fixture list names the LSP status tool the enum arm asserts. */
-  const hasLsp = FIXTURE_LIST.includes("mcp__lsp__status")
+  /** Whether the fixture list names the LSP diagnostics tool the enum arm asserts (cclsp's own name). */
+  const hasLsp = FIXTURE_LIST.includes("mcp__lsp__get_diagnostics")
   if (!hasAst || !hasLsp) { console.error("[mcp-call self-test] FAIL"); process.exit(1) }
   // The asserted tool name must be COMPOSED by the profile this case boots (bundle
   // patch rows declare serverName astgrep -> mcp__ast_grep__…), otherwise the case
@@ -99,12 +105,33 @@ function selfTest(): void {
   /** That row's own chunk of the patch, split on the `- id: ` separators. */
   const row = patch.split(/\n\s*- id: /).find((chunk) => chunk.startsWith("mcp-astgrep"))
   if (row === undefined || !row.includes("serverName: ast_grep")) { console.error("[mcp-call self-test] FAIL: the mcp-astgrep row does not declare serverName: ast_grep"); process.exit(1) }
+  // The LSP half of the same guard (de-omo wave B2): the row's serverName composes every mcp__lsp__*
+  // name the enum arm looks for, so a rename there (or a launcher that has grown a subcommand the row
+  // still passes) would silently make this case unfalsifiable.
+  /** The `mcp-lsp` row's own chunk of the patch. */
+  const lspRow = patch.split(/\n\s*- id: /).find((chunk) => chunk.startsWith("mcp-lsp"))
+  if (lspRow === undefined || !lspRow.includes("serverName: lsp")) { console.error("[mcp-call self-test] FAIL: the mcp-lsp row does not declare serverName: lsp"); process.exit(1) }
   if (AST_TOOL !== "mcp__ast_grep__search") { console.error("[mcp-call self-test] FAIL: the asserted tool name does not match the composed server name"); process.exit(1) }
   // The fixture content the call arm asserts on must exist, or the assertion is vacuous.
   /** The ast-grep fixture copied into the sandbox workspace; the result must quote its line. */
   const fixture = readFileSync(join(repoRoot, "tests", "mcp-fixtures", "sample.c"), "utf8")
   if (!fixture.includes(FIXTURE_LINE)) { console.error("[mcp-call self-test] FAIL: the fixture no longer contains " + JSON.stringify(FIXTURE_LINE)); process.exit(1) }
-  console.log("[mcp-call self-test] ok: tool-name detection + composed ast_grep server name + fixture content verified on fixtures")
+  // The enum arm's `mcp__lsp__*` half needs the LSP row's DECLARED dependency, and the pack's own
+  // manifest does not carry it: the published root manifest is the only declaration. Asserted here so a
+  // manifest edit that drops it reddens this OFFLINE arm instead of turning the live enum arm red (or,
+  // worse, silently unfalsifiable) inside a lane.
+  /** The version the published manifest declares for the LSP row's dependency. */
+  const declaredLsp = declaredOptionalVersion(repoRoot, LSP_DEPENDENCY)
+  if (declaredLsp === null) { console.error("[mcp-call self-test] FAIL: package.json does not declare optionalDependencies." + LSP_DEPENDENCY + ", which the enum arm's mcp__lsp__* assertion rests on"); process.exit(1) }
+  // The live arm must really stage that declaration into the tree it boots: this source check is the
+  // rot guard for the staging call, the same shape readonly-deny's self-test uses for its own rows.
+  /** This case's own source, read so a deleted staging call cannot leave the assertion unsupported. */
+  const ownSource = readFileSync(fileURLToPath(import.meta.url), "utf8")
+  if (!ownSource.includes("stageDeclaredMcpDependency({ repoRoot, targetTree: staged, name: LSP_DEPENDENCY")) {
+    console.error("[mcp-call self-test] FAIL: the live arm no longer stages the declared LSP dependency into the sandbox pack copy it boots")
+    process.exit(1)
+  }
+  console.log("[mcp-call self-test] ok: tool-name detection + composed ast_grep server name + fixture content + the declared LSP dependency (" + declaredLsp + ") verified on fixtures")
 }
 
 /** Read the harness-recorded tool list / tool call of one arm (never the model's prose). */
@@ -170,9 +197,30 @@ function realRun(job: string, timeoutMs: number = 600000): ArmRun {
     // The bundle patch references rows as @mpd-dsh/mpd/... (Plan D staged layout):
     // stage the package into the sandbox profile with npm (relocate-smoke pattern;
     // `dsh plugin add` uses pnpm whose store is not writable in this sandbox).
-    /** The staged pack the profile installs by `file:`; the patch's row paths resolve inside it. */
-    const staged = join(repoRoot, "dist", "mpd-package")
-    if (!existsSync(staged)) { console.error("[mcp-call] missing staged bundle; run node scripts/pack-mpd.ts first"); process.exit(1) }
+    /** The release pack the profile installs by `file:`; the patch's row paths resolve inside it. */
+    const packSource = join(repoRoot, "dist", "mpd-package")
+    if (!existsSync(packSource)) { console.error("[mcp-call] missing staged bundle; run node scripts/pack-mpd.ts first"); process.exit(1) }
+    // THE TREE UNDER TEST IS A SANDBOX COPY OF THE PACK, not the repository's artifact in place. npm
+    // installs a directory `file:` dependency as a SYMLINK (measured: a two-package scratch install
+    // left `node_modules/fake-pkg -> ../../fake-pkg`), and node resolves a main module's REALPATH, so a
+    // pack staged in place makes every launcher inside it resolve its dependencies from the CHECKOUT's
+    // own `node_modules`. The case then passes on the developer host's `bun install` rather than on the
+    // tree it staged — the same self-manufactured pass this file's header records for the ast-grep
+    // binary, which is why the copy exists instead of a comment.
+    /** The sandbox-local pack copy the profile installs; its launchers resolve from inside it. */
+    const staged = join(sandbox, "staged-pack")
+    cpSync(packSource, staged, { recursive: true })
+    // The LSP row's DECLARED dependency, staged into that copy. `packages/mpd-mcp-lsp/dist/launch.js`
+    // resolves `cclsp` from the `node_modules` chain above its own file; without it the row takes
+    // `serveUnavailable` and exposes ZERO tools, so the enum arm's `mcp__lsp__*` half could not hold
+    // and the pack's own manifest does not carry the entry (only the PUBLISHED root manifest declares
+    // it — the version read below IS that declaration).
+    /** The version the published manifest declares, which is what a user's install materializes. */
+    const lspVersion = declaredOptionalVersion(repoRoot, LSP_DEPENDENCY)
+    if (lspVersion === null) { console.error("[mcp-call] FAIL: package.json does not declare optionalDependencies." + LSP_DEPENDENCY + " — the enum arm's mcp__lsp__* assertion has no dependency to measure"); process.exit(1) }
+    /** Where the staged copy got the dependency from, recorded in this arm's evidence. */
+    const lspStage = stageDeclaredMcpDependency({ repoRoot, targetTree: staged, name: LSP_DEPENDENCY, version: lspVersion, env })
+    if (!lspStage.ok) { console.error("[mcp-call] FAIL: the LSP row's declared dependency " + LSP_DEPENDENCY + "@" + lspVersion + " could not be staged into the sandbox pack copy: " + lspStage.detail); process.exit(1) }
     /** The sandbox profile (`headless`) that holds the `file:` dependency on the staged pack. */
     const profileDir = join(sandbox, "profiles", "headless")
     mkdirSync(profileDir, { recursive: true })
@@ -187,7 +235,7 @@ function realRun(job: string, timeoutMs: number = 600000): ArmRun {
       env, cwd: ws, encoding: "utf8", timeout: timeoutMs, stdio: ["ignore", fd, fd]
     })
     assertSessionsSandboxed(sandbox, sandbox, { label: "mcp-call" })
-    return { out: readFileSync(logFile, "utf8"), exit: run.status, sandbox, ws }
+    return { out: readFileSync(logFile, "utf8"), exit: run.status, sandbox, ws, lspStage }
   } finally {
     closeSync(fd)
   }
@@ -222,6 +270,9 @@ function runReal(): void {
   writeFileSync(join(outDir, "result.json"), JSON.stringify({
     ok, durationMs: Date.now() - t0,
     assertion: "harness-recorded tool list (request/header.header.tools) + harness-recorded tool/call with a non-error result carrying the fixture line",
+    // WHERE THE ENUM ARM'S LSP HALF CAME FROM: the sandbox pack copy the arm booted, and the tier that
+    // staged the row's declared dependency into it. Recorded on the ENUM arm, whose assertion rests on it.
+    lspDependency: { name: LSP_DEPENDENCY, tree: "sandbox pack copy", ...enumRun.lspStage },
     enum: {
       exit: enumRun.exit,
       recordedToolCount: enumEv.names.length,
@@ -260,7 +311,15 @@ function runReal(): void {
       if (store.records.length > 0) writeFileSync(join(outDir, name + ".session.decoded.jsonl"), store.records.map((r) => JSON.stringify(r)).join("\n") + "\n")
     } catch { /* the arms already recorded the read error in result.json */ }
   }
-  console.log("[mcp-call] ok=" + ok + " (enum recorded tools=" + enumEv.names.length + ", ast_grep call " + (callEv.call?.succeeded ? "recorded" : "MISSING: " + callEv.call?.reason) + ") -> " + outDir)
+  // The printed line NAMES the failing clause: the oneclick lane's red (enum tools=95, call recorded)
+  // was diagnosable only because the container kept the case's own log, and an `ok=false` whose reason
+  // is not on this line costs a reader a second run.
+  console.log("[mcp-call] ok=" + ok + " (enum recorded tools=" + enumEv.names.length
+    + ", mcp__ast_grep__=" + enumEv.names.some((n) => n.startsWith("mcp__ast_grep__"))
+    + ", mcp__lsp__=" + enumEv.names.some((n) => n.startsWith("mcp__lsp__"))
+    + ", ast_grep call " + (callEv.call?.succeeded ? "recorded" : "MISSING: " + callEv.call?.reason)
+    + ", call result has the fixture line=" + callResult.includes(FIXTURE_LINE)
+    + ", lsp dependency staged from " + enumRun.lspStage.source + ") -> " + outDir)
   if (!ok) process.exit(1)
   console.log("[mcp-call] PASS")
 }

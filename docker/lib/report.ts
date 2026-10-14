@@ -166,6 +166,10 @@ const EXPECTED: readonly string[] = [
   "toolchain.apt",
   "toolchain.node",
   "toolchain.bun",
+  // The compiler the TREE declares (`package.json.buildToolchain`) versus the one this machine's PATH
+  // carries: staged separately by the entrypoint and matched EXACTLY, because a bun minor rewrites the
+  // emitted bytes (AGENTS §6 T16) and the freshness row below cannot be read without it.
+  "toolchain.bunPinned",
   "toolchain.pnpm",
   "harness.version",
   "copy.contextFiltered",
@@ -175,6 +179,47 @@ const EXPECTED: readonly string[] = [
   "install.exit",
   "install.profileDep",
   "install.installedTree",
+  // ── the §7 ACCEPTANCE ARMS (restore-three-capabilities §7: "a SKIP IS NOT A PASS") ────────────
+  // Declared HERE so a run that never reached one reports it as `null` "not reached" instead of
+  // dropping it: the whole point of the gate is that an owed measurement is visible as owed.
+  //   · the install closure (AGENTS §8): no unapproved dependency build script.
+  "install.buildScripts",
+  //   · the packed artifact: carried, licence-coherent, self-coherent, and FRESH (freshness is the
+  //     claim `verify-pack-closure.ts` explicitly refuses to certify from its exit code).
+  "pack.present",
+  "pack.licenceCoherence",
+  "pack.declarationCoherence",
+  "pack.staticCoherence",
+  "pack.distFreshRebuild",
+  //   · the compiler that produced the rebuild the row above compares against, and the FALSIFIABILITY of
+  //     that comparison: a mutated copy of the same artifact must flip the freshness row to FALSE.
+  "pack.rebuildToolchain",
+  "pack.distFreshRebuildControl",
+  //   · the MCP surface: the naming convention, the exact enabled server set, and a live call.
+  "boot.mcpToolNaming",
+  "boot.mcpLiveSearch",
+  //   · the three RESTORED capabilities.
+  "restore.reviewPanelSelfTest",
+  "restore.reviewPanelCase",
+  "restore.lspBootstrap",
+  "restore.hashlineRepair",
+  //   · the two live QA cases that are red on the developer host for PRE-EXISTING reasons: their REAL
+  //     in-container outcome is what these rows carry, and a refusal to run is `null`, never `true`.
+  "qa.mcpCall",
+  "qa.readonlyDeny",
+  //   · the engine the call arm's launcher resolves bundle-relatively (staged AFTER the re-pack, into the
+  //     packed tree the case installs): without it the row above can only answer BINARY_NOT_FOUND.
+  "qa.mcpCallEngine",
+  // ── the ONE-CLICK packaging rows ─────────────────────────────────────────────
+  // A SINGLE SPINE COVERS BOTH MODES (measured 2026-10-09: the one-click recorded set is a strict
+  // superset of the source set, 114 vs 110 names, and these four are the difference). They are declared
+  // here so no recorded row can vanish silently; in SOURCE mode the entrypoint records each of them
+  // `null` with a reason that names the measured mode, never the synthesized "not reached" a missing
+  // name would produce.
+  "oneclick.scratchRepo",
+  "oneclick.requiredPaths",
+  "oneclick.filesAllowlist",
+  "oneclick.distByteIdentical",
   "compose.dumpExit",
   "compose.mpdRows",
   "compose.presetRow",
@@ -217,6 +262,22 @@ const EXPECTED: readonly string[] = [
   "tui.boot",
   "tui.noFatalSignatures",
   "tui.sessionPreset",
+  // The TEAM-SCENE and TEAM-ROUTE rows docker/tui-lane.sh records: declared here for the same reason as
+  // the four one-click rows above — they were recorded OUTSIDE this list (13 in source mode, 17 in
+  // one-click), which is the shape in which a recorded row can vanish from the report unnoticed.
+  "team.route.state",
+  "team.route.plan",
+  "team.route.task",
+  "team.route.mail",
+  "team.routesAll",
+  "team.planLookup",
+  "tui.teamSceneOtherSessionInvisible",
+  "tui.teamFixtureBound",
+  "tui.teamSceneOpened",
+  "tui.teamGraphDrawn",
+  "tui.teamGraphEdges",
+  "tui.teamGraphContent",
+  "tui.laneExit",
   // ── the LIVE arms: one seven-name block per plane (docker/lib/live-verdict.ts) ────────────────
   // These are the rows that can only be produced by a REAL model turn, read from the harness's own
   // session store. They are declared HERE so a plane whose arm did not run is reported as `null`

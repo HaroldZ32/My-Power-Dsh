@@ -126,7 +126,7 @@ node scripts/install-profile.ts            # --dry-run 只打印计划，不写�
 
 | 你想做的事 | 工具 | 说明 |
 |---|---|---|
-| 探索代码库 | `mcp__ast_grep__*`（结构化检索/改写）、`mcp__lsp__*`（定义、引用、诊断、重命名）、`mcp__codegraph__*`（项目代码图） | MCP 工具服务器；它们的工具以 `mcp__<server>__<tool>` 形式出现。第四个家族 `mcp__git_bash__*` **默认不可用**：它的行自带 `disabled: true`（上游服务器仅支持原生 Windows），因此普通会话里不会出现这类工具 —— 想启用就在 `cordis.patch.yml` 中把该行的 `disabled:` 改成 `false`，然后重新安装 bundle。 |
+| 探索代码库 | `mcp__ast_grep__*`（结构化检索/改写）、`mcp__lsp__*`（cclsp：定义、引用、实现、诊断、悬停、工作区符号、调用层级、重命名）、`mcp__codegraph__*`（项目代码图） | MCP 工具服务器；它们的工具以 `mcp__<server>__<tool>` 形式出现。另外两个家族 **默认不可用**：`mcp__git__*`（git 工具箱，28 个工具）与 `mcp__shell__*`（`run_process`，裸 shell）。两行都自带 `disabled: true`，因此普通会话里不会出现这类工具 —— 想启用哪一个，就把该行的 `disabled:` 改成 `false`，然后重新安装 bundle。 |
 | 安全地修改 | 写入守卫与输出截断（无需配置）、`mpd_hashline_read/edit/format/restore`、`mpd_comment_check` | 哈希锚定编辑在锚点过期时会拒绝写入，而不是写到错误的行 |
 | 推进长任务 | `mpd_ulw`（轻量）/ `mpd_ultrawork`（完整纪律：计划关卡、执行轮次、验证关卡），或等价的 `/ulw <objective>` / `/ultrawork <objective>` 命令、`mpd_boulder_start/status/complete/task_timer/plan_progress/plans` | 两个命令会注入 ULW 自治指令 —— 该运行不向用户提问，并在工作确需团队时自行建队；`mpd_boulder_*` 跨会话跟踪某个计划 markdown 文件的进度 |
 | 让长任务跨轮继续 | `mpd_goal_status`、`mpd_goal_anchor`、`mpd_goal_finish`（以及宿主的 `/goal` 命令与它的 goal 轮次驱动器） | 见 §13.10：**持久化 goal** 是本 bundle 持续化执行的依据 —— heavy 档 ULW 运行或绑定 plan 的 boulder 工作会自动 anchor 一个（`goal.autoAnchor`），而当 turn 内引擎提前停下时它会保持启用 |
@@ -335,8 +335,9 @@ host，直到你选择 `mpd` 为止（TUI 的 `/preset mpd`、Web Settings 的 `
 
 ### 7.2 `/settings` 界面与 `mpd.jsonc` 桥接
 
-`/settings` 编辑真实的 `mpd.jsonc` 旋钮 —— 共 25 个（原有 13 个加十二个 `teamModels` 槽位叶子，
-后者是只可选择字段，选项来自实时模型目录，回退到声明列表），其中包括 `hashline.maxDiffChars`、
+`/settings` 编辑真实的 `mpd.jsonc` 旋钮 —— 共 59 个（原有 13 个、十二个 `teamModels` 槽位叶子与
+33 个 `agentRoutes` 叶子（十一名成员 × 三），再加 TUI 界面自身的一个旋钮；模型路由叶子是只可选择字段，
+选项来自实时模型目录，回退到声明列表），其中包括 `hashline.maxDiffChars`、
 `commentChecker.autoCheck`、`ulw.maxRounds`、`memory.vcs`、`team.stateDir`、`boulder.dir` —— 它们位于 harness settings 命名空间
 `mpd` 之下。该命名空间由 `packages/mpd-config-plugin` 提供，其 base 是工作区**文件**里的值，所以界面
 打开时显示的是你的文件值而不是 schema 默认值；保存会**写入 `<workspace>/.mpd/mpd.jsonc`**（针对当时
@@ -345,8 +346,11 @@ host，直到你选择 `mpd` 为止（TUI 的 `/preset mpd`、Web Settings 的 `
 
 在依赖它之前需要知道两件事：
 
-- **重启后才生效。** mpd 插件在挂载时读取配置（`applies: "restart"`），而宿主不提供注销一个已注册
-  命名空间的句柄，所以保存后的旋钮要等你重启会话后才被插件使用。界面上的提示就是这么写的。
+- **保存即在运行中的进程里生效。** 配置服务在每次设置保存时、以及监听到
+  `<workspace>/.mpd/mpd.jsonc` 被编辑时都会重新解析，而模型配置旋钮（`modelchain.*`、
+  `teamModels.slot*`、`agentRoutes.*`）是**每次使用**时读取的，因此保存后的改动会到达下一次
+  `mpd_config_get`、`mpd_modelchain_resolve` 或 spawn，**无需重启**（`mpd_config_reload` 可强制重读）。
+  其余旋钮仍适用挂载时捕获的规则 —— §9.1 逐个旋钮说明。界面上的提示就是这么写的。
 - **两个具名跳过场景。** settings 路径本身不携带工作区身份，所以写入目标是保存那一刻存活的会话工作区：
   没有任何存活会话时，保存只写入宿主 settings 文档并报告 `no-live-session`；有**多于一个**存活工作区时
   会被拒绝为 `ambiguous-multi-root`，并逐一列出候选。这两种情况下**不会改动任何文件**，而值**不会丢失**
@@ -410,7 +414,8 @@ host，直到你选择 `mpd` 为止（TUI 的 `/preset mpd`、Web Settings 的 `
 | `extensions.mcp.*` | mpd-ext | MCP 桥默认值：`enabled`、`connectTimeoutMs`、`toolCallTimeoutMs` |
 | `modelchain.*` | mpd-modelchain | 各名册角色的 provider/model 链 |
 | `team.stateDir` | 读取旧版团队记录的 mpd 插件（看门狗 web 路由、压缩、TUI 团队界面、workmate 在用检查） | 这些记录的位置（默认 `.mpd/team`）。官方团队插件不读它 |
-| `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate（经 mpd-config） | 四个**团队模型槽位**：每个槽位是 `{provider, model, reasoningEffort}`，默认 `deepseek-official` / `deepseek-v4-flash`，推理强度依次为 `max`/`high`/`high`（槽位 4 默认 `deepseek-official` / `deepseek-v4-flash-vision-exp` / `high`）。槽位 1 路由 Architect/Planner/Reviewer/Lead/Senior Engineer，槽位 2 路由 Researcher/Explorer/Plan Reviewer，槽位 3 路由 Deep Worker/Junior Engineer，槽位 4 路由 Vision Analyst —— 视觉成员，其槽位模型**必须支持图像输入**。它们由**一次性咨询**通道（`mpd_role_spawn`、`mpd_workmate_spawn`）解析，由这两条通道显式传入路由；而 `spawn_teammate` 创建的队友继承 Lead 的路由（§6）。槽位解析失败会让对应的 spawn **大声失败**（指名成员与槽位，不写入任何内容），且推理强度**永远不会**被悄悄钳制。可在 **设置 → MPD** 与 TUI 的 `/settings` 区块中作为只可选择字段编辑；保存后立即落到文件，插件在重启后生效。 |
+| `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate（经 mpd-config） | 四个**团队模型槽位**：每个槽位是 `{provider, model, reasoningEffort}`，默认 `deepseek-official` / `deepseek-v4-flash`，推理强度依次为 `max`/`high`/`high`（槽位 4 默认 `deepseek-official` / `deepseek-v4-flash-vision-exp` / `high`）。槽位 1 路由 Architect/Planner/Reviewer/Lead/Senior Engineer，槽位 2 路由 Researcher/Explorer/Plan Reviewer，槽位 3 路由 Deep Worker/Junior Engineer，槽位 4 路由 Vision Analyst —— 视觉成员，其槽位模型**必须支持图像输入**。它们由**一次性咨询**通道（`mpd_role_spawn`、`mpd_workmate_spawn`）解析，由这两条通道显式传入路由；而 `spawn_teammate` 创建的队友继承 Lead 的路由（§6）。槽位解析失败会让对应的 spawn **大声失败**（指名成员与槽位，不写入任何内容），且推理强度**永远不会**被悄悄钳制。唯一的例外是：若该模型在实时目录中完全没有推理等级，则不发送任何等级，spawn 照常运行（这正是设置选择器早已采用的适配的运行时一半）。可在 **设置 → MPD** 与 TUI 的 `/settings` 区块中作为只可选择字段编辑，界面会在编辑前显示当前生效值；保存后的改动在运行中的进程里被重新读取 —— 下一次 spawn 或解析即携带新值，无需重启（`mpd_config_reload` 可强制重读）。 |
+| `agentRoutes.<name>.*` | mpd-roles / mpd-workmate（经 mpd-config） | 按名册 base **名字**（`Architect`、`Researcher`、`Planner`、`Deep Worker`、`Senior Engineer`、`Lead`、`Explorer`、`Reviewer`、`Plan Reviewer`、`Vision Analyst`、`Junior Engineer`）映射到 `{provider?, model?, reasoningEffort?}`，每个叶子都可选。**优先级（逐叶子）：** `agentRoutes[<name>]` > 该成员的 `teamModels.slot{N}` > 内置默认值。workmate 每次 spawn 都会重新解析其 base 的路由（进行中的任务保留启动时的路由，下一个任务携带新值；冻结的 `meta.provider`/`meta.model` 只是来源记录）。未知成员名或格式错误的条目会**大声**校验失败，绝不静默忽略。可在 **设置 → MPD** 与 TUI 的 `/settings` 区块中编辑，界面会在编辑前显示当前生效值。 |
 
 `mpd-codegraph` 刻意不在上表中：它的 `autoInit`、`initTimeoutMs`、`cooldownMs` 与 `binary` 来自
 它的 **bundle-patch 行** 配置（在 apply 时读取），没有任何插件通过 `mpd.jsonc` 读取
@@ -420,14 +425,19 @@ host，直到你选择 `mpd` 为止（TUI 的 `/preset mpd`、Web Settings 的 `
 ### 9.1 保存的旋钮何时生效
 
 这是使用者最容易搞错的一点，所以逐个旋钮说清楚。总规则：消费方在 **挂载**（`apply()`）时通过
-`mpdConfig` 服务读取配置，因此一个变化了的值 —— 无论是手工编辑 `.mpd/mpd.jsonc` 或
-`$DSH_HOME/mpd.jsonc`，还是通过 **设置 → MPD** / TUI 的 `/settings` 界面保存 —— 要等
-**`dsh` 重启**之后才会改变插件的**行为**。
+`mpdConfig` 服务读取配置，因此对**大多数**旋钮而言，一个变化了的值 —— 无论是手工编辑 `.mpd/mpd.jsonc`
+或 `$DSH_HOME/mpd.jsonc`，还是通过 **设置 → MPD** / TUI 的 `/settings` 界面保存 —— 要等
+**`dsh` 重启**之后才会改变插件的**行为**。模型配置旋钮是例外。
 
-有两件事不必等这次重启，而且都很有用：
+有三件事不必等这次重启，而且都很有用：
 
+- **模型配置旋钮在进程内实时刷新。** 配置服务在每次设置保存时、以及监听到
+  `<workspace>/.mpd/mpd.jsonc` 被编辑时都会重新解析，而模型路由（`modelchain.*`、`teamModels.slot*`、
+  `agentRoutes.*`）是**每次使用**时读取的，因此下一次 `mpd_modelchain_resolve` 调用、或下一次一次性
+  spawn / workmate spawn / 队友启动都会携带新路由，无需重启。`mpd_config_reload` 仍是需要强制重读时的
+  手动兜底。
 - **回读永远是即时的。** `mpd_config_get` 与 `mpd_config_reload` 每次调用都重新读取各层并立刻报告
-  新的解析值 —— 这是你确认编辑确实落地的办法，即使已挂载的插件仍持有它挂载时捕获的值。
+  新的解析值 —— 这是你确认编辑确实落地的办法，即使已挂载的消费方仍持有它挂载时捕获的值。
 - **`watchdog.*` 是实时重读的。** 看门狗在挂载时、收到 settings 文档更新时、以及每个 tick 都会
   重新解析自己的旋钮，所以文件改动在**本进程内**即可生效、无需重启；
   `session-watchdog-status` 会打印每个旋钮的 LIVE vs FILE 取值以及 `restartRequired` 标志。
@@ -440,10 +450,11 @@ host，直到你选择 `mpd` 为止（TUI 的 `/preset mpd`、Web Settings 的 `
 | `goal.*` | mpd-goal | 挂载时 | 重启后 |
 | `memory.*` | mpd-memory | 挂载时 | 重启后 |
 | `boulder.dir` | mpd-boulder | 挂载时 | 重启后 |
-| `modelchain.*` | mpd-modelchain | 挂载时 | 重启后 |
+| `modelchain.*` | mpd-modelchain | 每次调用，从实时服务读取 | 实时生效 —— 无需重启：每次 `mpd_modelchain_resolve` 都会重读该 overlay，因此设置保存或文件编辑会改变下一次解析；`mpd_config_reload` 可强制重读 |
 | `extensions.enable` / `.disable` / `.mcp.*` | mpd-ext | 插件启动时（进程级） | 重启后 |
 | `team.stateDir` | 读取旧版团队记录的 mpd 插件，经实时服务解析 | 每次调用 | 服务重新读取文件之后立即生效（`mpd_config_reload`，或任意一次设置保存）。这些是**旧版**记录：官方团队插件把名册、邮箱与任务板保存在 Lead 的会话日志里，不在这里 |
-| `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate，在一次性咨询通道（`mpd_role_spawn`、`mpd_workmate_spawn`）解析 | spawn 时 | 下一次一次性 spawn：设置保存会建立文件监听并重新读取，因此无需重启；如果是手工编辑文件，先调用一次 `mpd_config_reload`（或重启）让解析读到新值。`spawn_teammate` 创建的队友**不**由这些槽位路由 |
+| `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate，在一次性咨询通道（`mpd_role_spawn`、`mpd_workmate_spawn`）解析 | spawn 时，从实时服务读取 | 下一次一次性 spawn：设置保存或手工编辑 `<workspace>/.mpd/mpd.jsonc` 都会在进程内被重新读取，因此无需重启；`mpd_config_reload` 可强制重读。`spawn_teammate` 创建的队友**不**由这些槽位路由 |
+| `agentRoutes.<name>.*` | mpd-roles / mpd-workmate，在同样的一次性咨询通道解析 | spawn 时，从实时服务读取 | 该成员的下一次一次性 spawn 或 workmate spawn：逐叶子而言，`agentRoutes[<name>]` 优先于该成员的 `teamModels.slot{N}` 叶子，后者又优先于内置默认值。未知成员名与格式错误的条目会大声校验失败 |
 | `watchdog.*` | mpd-team-watchdog | 挂载时、settings 更新时、每个 tick | 实时生效 —— 无需重启 |
 
 `mpd-codegraph` 的旋钮是反证这条规则的例外：它们是 patch 行选项（`autoInit`、`initTimeoutMs`、
@@ -547,17 +558,19 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp   # 从一个可工作的骨�
   → 已安装的 harness 改变了 `dsh-persona` 契约（它接受 `prefix`，而不是已退休的 `text`），于是
   拒绝挂载整个 preset。更新 bundle（`git pull`，然后 `dsh plugin --profile <p> add <repo>`）
   —— 这是 harness 版本兼容性修复，不是你这边配置的问题。
-- **缺少 `mcp__git_bash__*` 工具** → 这是预期行为而非故障：`mcp-gitbash` 行自带
-  `disabled: true`（上游服务器仅支持原生 Windows）。请改用 harness 自带的 `bash` 工具，或把该行
-  改成 `disabled: false` 并重新安装 bundle。
+- **缺少 `mcp__git__*` / `mcp__shell__*` 工具** → 这是预期行为而非故障：`mcp-git` 与 `mcp-shell`
+  两行都自带 `disabled: true`。请改用 harness 自带的 `bash` 工具与 git 命令，或把想要的那行改成
+  `disabled: false` 并重新安装 bundle。`mcp-git` 行还需要 `PATH` 上有 `git`。
 - **`mpd_comment_check` 报告二进制缺失** → 它是需要主动开启的检测器：把
   `@code-yeongyu/comment-checker` 装进 `.toolchain`（`--with-comment-checker`），或把
   `MPD_DSH_COMMENT_CHECKER_BIN` 设为绝对路径。
 - **CodeGraph 工具什么都不返回** → 运行 `/mpd-codegraph` 生成 `.codegraph/codegraph.db`，并安装
   `@colbymchenry/codegraph` 或设置 `MPD_DSH_CODEGRAPH_BIN`（它的主拼写 `MPD_CODEGRAPH_BIN`
   会先被读取）。
-- **保存的旋钮没有生效** → 插件在挂载时捕获配置：重启会话。`mpd_config_get` 显示新值**不等于**
-  正在运行的插件已经在按它行动（§9.1 说明了哪些旋钮是实时生效的）。
+- **保存的旋钮没有生效** → 模型配置旋钮（`modelchain.*`、`teamModels.slot*`、`agentRoutes.*`）是
+  实时刷新的：用 `mpd_config_get` / `mpd_modelchain_resolve` 重新读取，或用 `mpd_config_reload` 强制重读。
+  其余旋钮在挂载时捕获配置，需重启会话 —— 而且 `mpd_config_get` 显示新值**不等于**已挂载的插件已经在
+  按它行动（§9.1 说明了哪些旋钮是实时生效的）。
 - **升级后某个文档链接 404** → 本次发布**重命名**了设计文档（它原名 `architecture.md`，
   `docs/design.zh-CN.md` 是当前名称的中文版），因此旧版文档副本指向的文件已不存在。重新安装 bundle
   （`git pull`，然后 `dsh plugin --profile <p> add <repo>`）即可拿到重新指向后的文档对。
@@ -651,7 +664,8 @@ mpd_role_persona { "role": "Architect" }
 
 `role` 按功能**名字**应答（`Architect`、`deep worker`、`plan-reviewer`）。只读角色在 spawn 时会
 带上针对恰好 `write`、`edit`、`mpd_hashline_edit`、`bash`、`mcp__ast_grep__rewrite`、
-`mcp__ast_grep__scan`、`mcp__lsp__rename` 的禁用过滤 —— 这套纪律是机械强制的，不是口头约定。
+`mcp__ast_grep__scan`、`mcp__lsp__rename_symbol`、`mcp__lsp__rename_symbol_strict` 的禁用过滤
+—— 这套纪律是机械强制的，不是口头约定。
 
 ### 13.4 workmate 库
 
@@ -794,9 +808,9 @@ mcp__ast_grep__search { "pattern": "useEffect($$$)", "language": "tsx", "paths":
 mcp__ast_grep__rewrite { "pattern": "console.log($A)", "rewrite": "logger.info($A)", "language": "typescript", "paths": ["src"], "apply": false }
 
 # 语言服务器智能
-mcp__lsp__diagnostics { "filePath": "packages/mpd-roles-plugin/src/index.ts" }
+mcp__lsp__get_diagnostics { "filePath": "packages/mpd-roles-plugin/src/index.ts" }
 mcp__lsp__find_references { "filePath": "packages/mpd-roles-plugin/src/index.ts", "line": 42, "character": 9 }
-mcp__lsp__rename { "filePath": "packages/mpd-roles-plugin/src/index.ts", "line": 42, "character": 9, "newName": "resolvedConfig" }
+mcp__lsp__rename_symbol { "filePath": "packages/mpd-roles-plugin/src/index.ts", "line": 42, "character": 9, "newName": "resolvedConfig" }
 
 # 工程图 —— 提一个问题，拿回相关符号与调用路径
 mcp__codegraph__codegraph_explore { "query": "how does a task get claimed and updated?" }
@@ -806,9 +820,10 @@ mcp__context7__resolve-library-id { "libraryName": "zod", "query": "schema parsi
 mcp__grep_app__searchGitHub { "query": "registerTool({", "language": ["TypeScript"] }
 ```
 
-`mcp__lsp__rename` 与 `mcp__ast_grep__rewrite` / `mcp__ast_grep__scan` 会**写文件**：重写类调用先
-带 `apply: false` 跑一遍，读完 diff 再应用。`mcp__git_bash__*` 默认不启用（上游仅支持原生 Windows，
-§3）。两个远端行（`context7`、`grep_app`）是公共 HTTP 服务，需要网络；三个本地服务器需要各自的
+`mcp__lsp__rename_symbol`（以及它的 `rename_symbol_strict` 孪生工具）与 `mcp__ast_grep__rewrite` /
+`mcp__ast_grep__scan` 会**写文件**：重写类调用先
+带 `apply: false` 跑一遍，读完 diff 再应用。`mcp-git` / `mcp-shell` 两行默认不启用（§3）。两个远端
+行（`context7`、`grep_app`）是公共 HTTP 服务，需要网络；三个本地服务器需要各自的
 二进制（§11）。
 
 ## 14. 这些能力的来源
@@ -820,16 +835,38 @@ mcp__grep_app__searchGitHub { "query": "registerTool({", "language": ["TypeScrip
 |---|---|---|---|
 | 团队模式 —— `spawn_teammate`、`send_message`、`list_agents`、`wait_agent`、`interrupt_agent`、`team_task_*` 任务板与 Web 面板 | **官方** `@deepseek-ai/dsh-experimental-agent-team` / `-tool-agent-team` / `-client-ui-agent-team` 三个包，由本 bundle 的 `mpd-agent-team` / `mpd-tool-agent-team` / `mpd-ui-agent-team` 行挂载 | MIT（harness 包组）；声明在 `package.json` 的 `dependencies` | `cordis.patch.yml`；`README.md`（*这次安装挂载了哪些插件*） |
 | 被采纳（随后退役、再被**删除**）的内置 `agent-teams` 主体 | **dsh-agent-teams**，作者 程序员阿江（Relakkes）—— 曾被整体采纳并作为一等主代码 | MIT；采纳版本 `0.1.16-rc.3-mpd`（`0.1.14` 主体 + 回移的 `0.1.16-rc.3` 增量）；自 0.1.7-rc.2 起**没有任何行挂载它**，去 vendor 波（2026-10-07）又删除了 `packages/mpd-agent-teams-plugin/**` —— 仅有两块被迁移的产物以我们自己的代码形式存续：`packages/mpd-schemastery/**` 与位于 `packages/mpd-bundle-plugin/adopted/agent-teams-client.js` 的采纳浏览器 bundle | `LICENSE-NOTICES.md` 的 *dsh-agent-teams* 一节 |
-| 11 位专家名册、模型链词汇、队友 / workmate BASE 模板 | **oh-my-openagent**，作者 code-yeongyu，固定于提交 `8c57e46`（v5.0.0-beta.20） | SUL-1.0 —— 本仓库继承的许可证 | `LICENSE-NOTICES.md` §1；`VENDOR_LOCK.json` |
-| 随包服务的技能语料（19 个技能，含本仓库自有的 `dsh-qa` 与 `cordis-dev`） | 上游技能从 oh-my-openagent 整体搬运；`cordis-dev` 由本仓库撰写，改写自 DeepSeek Harness 的创造模式 preset skills（`@deepseek-ai/dsh-agent-preset`，MIT） | 语料为 SUL-1.0；MIT 材料为引用、不再分发 | `VENDOR_LOCK.json` `assets.skills`；`LICENSE-NOTICES.md` |
+| 11 位专家名册、模型链词汇、队友 / workmate BASE 模板 | **oh-my-openagent**，作者 code-yeongyu，固定于提交 `8c57e46`（v5.0.0-beta.20）—— 这里只是**名称与词汇**的历史来源；persona 文本已在 D 波改从宽松许可来源取材 | MIT（本仓库自己的作品）；名称所来自的那个上游当时是 SUL-1.0，仅作历史记录 | `LICENSE-NOTICES.md`；`VENDOR_LOCK.json` |
+| 随包服务的技能语料（19 个技能，含本仓库自有的 `dsh-qa` 与 `cordis-dev`） | 16 个移植技能改从 **lazycodex** 取材（同一作者对 oh-my-openagent 语料的 MIT 再许可）；`cordis-dev` 由本仓库撰写，改写自 DeepSeek Harness 的创造模式 preset skills（`@deepseek-ai/dsh-agent-preset`，MIT） | MIT —— 再取样的语料为 `Copyright (c) 2026 Yeongyu Kim`；引用的 harness 材料是 MIT 且不再分发 | `VENDOR_LOCK.json` `assets.skills`；`LICENSE-NOTICES.md` |
 | `mcp__ast_grep__*` | **ast-grep** —— 可选依赖 `@ast-grep/cli` | MIT；`0.45.2`；运行时解析，不再分发 | `package.json` 的 `optionalDependencies`；`MPD_AST_GREP_SG_PATH` / `MPD_AST_GREP_BIN_DIR` |
 | `mcp__codegraph__*` 与 `mpd-codegraph` 行 | **codegraph**，作者 Yeongyu Kim —— 可选依赖 `@colbymchenry/codegraph` | MIT；`1.5.0`；预构建服务器已搬运并做 sha256 固定 | `packages/mpd-mcp-codegraph/LICENSE` + `NOTICE`；`VENDOR_LOCK.json` |
 | `mpd_comment_check` | **comment-checker**，作者 code-yeongyu（`@code-yeongyu/comment-checker`） | MIT；`0.8.0`；**不**随包分发 —— 按需安装到 `.toolchain`（`--with-comment-checker`） | `LICENSE-NOTICES.md`；`MPD_DSH_COMMENT_CHECKER_BIN` |
+| DSH-STD 协议族 —— `@dsh-std/sdk` `0.1.1-rc.2`，本 bundle 唯一一个 DSH-STD **依赖**（adapter 属于可选的自装插件，见下文） | **dsh-std**（https://github.com/T-Auto/dsh-std）—— 声明式 npm 依赖，绝非搬运进来的代码 | MIT —— `Copyright (c) 2026 DSH Standard contributors`；安装时解析，不再分发 | `package.json` 的 `dependencies`；`LICENSE-NOTICES.md` |
 | 插件系统、工具 / 技能 / preset / agent 接缝、模型 provider、Web 外壳 | DeepSeek Harness —— **`@deepseek-ai/*`** 包 | MIT；仅作为依赖引用 | `LICENSE-NOTICES.md` |
 | Agent Teams Web 面板 | 官方客户端插件 `@deepseek-ai/dsh-experimental-client-ui-agent-team` | MIT（harness 包组） | 见上文 §8；patch 行 `mpd-ui-agent-team` |
 | Workmates 侧边栏标签页 | 由社区 bundle **`dsh-better-sidebar`** 承载，它是本 bundle 的**可选 peer**（外加一个 `devDependency`）：bundle 从不安装它，带守卫的 `mpd-better-sidebar` 行在它可解析时挂载它 | — | 见上文 §8；`package.json` 的 `peerDependencies` / `peerDependenciesMeta`；patch 行 `mpd-better-sidebar` |
-| DSH 接线（adapter、运行时插件、`mpd` preset、合并后的 Web 客户端）、TUI 版本、QA 套件、文档、扩展接口 | 本项目自己编写 | SUL-1.0 | `README.md`（鸣谢）；`LICENSE.md` |
+| DSH 接线（adapter、运行时插件、`mpd` preset、合并后的 Web 客户端）、TUI 版本、QA 套件、文档、扩展接口 | 本项目自己编写 | MIT | `README.md`（鸣谢）；`LICENSE.md` |
 
 有两条值得记住的结论：组件即使在 bundle 内也各自保留**自己的**许可证（采纳的浏览器 bundle 与迁移过来
-的 schemastery 校验器是 MIT，而本仓库是 SUL-1.0）；本 bundle 也从不配置你的 provider 凭据 ——
+的 schemastery 校验器是 MIT，本仓库自身也是 MIT）；本 bundle 也从不配置你的 provider 凭据 ——
 `MISSING_CREDENTIAL` 属于你的 DSH 凭据存储，而不是这些文档该负责的事。
+
+### 14.1 可选的 DSH-STD adapter（自行安装，不属于本 bundle）
+
+`@dsh-std/adapter-dsh` 是 DSH-STD 协议族自己的 adapter 插件。它**不是**本 bundle 的依赖，
+`cordis.patch.yml` 里也**没有**它的行，本 bundle 从不挂载它。需要它的 profile 拥有者，
+把它装进自己的 profile：
+
+```bash
+# 在 dsh 0.2.0-rc.2 基线上，先授予精确版本豁免：
+dsh plugin --profile web allow-version @dsh-std/adapter-dsh@0.1.1-rc.2 --dsh-version 0.2.0-rc.2 --accept-risk
+# 再执行 adapter 自己设计的这一条安装命令：
+dsh plugin --profile web add @dsh-std/adapter-dsh
+```
+
+本 bundle 之所以不随包提供它：adapter 的 peer 把宿主 `@deepseek-ai/dsh-*` 盯在 `0.1.2-alpha` 线上，
+而本 bundle 的基线是 dsh `0.2.0-rc.2`，于是豁免只能是 profile 拥有者对自己 profile 的显式风险决定；
+而把它随包提供也不是中立的替代方案：插件管理器在安装时做两次兼容检查 —— 先在 `pnpm` 运行之前，
+对显式指定的安装规格做预检；再在安装之后，对 profile 里已直接安装的依赖、以及被改动 bundle 的
+patch 行所点名的组件清单做后验 —— 从不递归扫描整个传递闭包。我们在本改动的一个 v1 变体上实测过
+后验（adapter 同时被声明为依赖并被 patch 行点名）：`dsh plugin add` 直接硬拒绝并回滚了整个
+bundle 的安装。

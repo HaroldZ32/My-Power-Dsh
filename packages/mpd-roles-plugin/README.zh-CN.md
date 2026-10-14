@@ -26,9 +26,9 @@
 
 **两个 surface 共用同一套命名（名称统一）。** 名称就是 role 的身份：它既是 team mode 下 agent-teams 为成员取的名称，也是单次 `mpd_role_spawn` 产生的 label。称呼时任意拼写均可：`Architect`、`architect`、`Deep Worker`、`deep-worker`、`deepworker`、`Plan Reviewer`（大小写、空格、连字符、下划线均不敏感）。**任何 surface 都不再展示沿袭自上游的别称** —— role 只用它做什么来描述。
 
-*兼容性（内部实现，任何 surface 都不展示）：* 名册仍接受其稳定的内部键 —— `mpd-modelchain-plugin` 与 `personas/<键>.md` 使用的 chain key（`oracle`、`sisyphus-junior` …）、camelCase 写法（`sisyphusJunior`）以及 legacy 的 `mpd-<键>` 形式 —— 以保证既有 chain 与调用方继续可用；它们永远不会被返回、列出或要求。**workmate library 不再通过这条路径解析 base**：`mpd_workmate_init` 只匹配功能名（稳定 id 会被拒绝，并给出只列名称的错误），`meta.baseId` 仅作为内部溯源保留，任何工具输出、路由或界面都不会暴露它。
+*内部键（永不作为工具输入）：* 稳定内部键 —— `mpd-modelchain-plugin` 与 `personas/<键>.md` 使用的 chain key（`oracle`、`sisyphus-junior` …）、camelCase 写法（`sisyphusJunior`）以及 legacy 的 `mpd-<键>` 形式 —— 在 **service 路径**（`ctx.get("mpdRoles").get(key)`）上仍可解析，因此既有 chain 与内部调用方继续可用；但它们**被工具输入拒绝**：`mpd_role_spawn`、`mpd_role_persona` 与 `mpd_modelchain_resolve` 只接受 NAME 拼写，并以只列名册名称的响亮错误作答 —— 错误中绝不重复被拒绝的键，id 也永远不会被返回、列出或要求。**workmate library 的行为一致**：`mpd_workmate_init` 只匹配功能名（稳定 id 会被拒绝，并给出只列名称的错误），`meta.baseId` 仅作为内部溯源保留，任何工具输出、路由或界面都不会暴露它。
 
-`ctx.get("mpdRoles").get(key)` 使用同一套解析，`mpd_modelchain_resolve` 与 roster 工具正是通过它称呼 role；而 workmate library（`mpd_workmate_init base=...`）则只按功能名称呼它。
+`ctx.get("mpdRoles").get(key)` 仍使用同一套解析 —— 这是**内部**路径。面向工具的路径只接受 NAME 拼写，因此 `mpd_modelchain_resolve`、名册工具与 workmate library（`mpd_workmate_init base=...`）都只按名称称呼 role。
 
 ## 由扩展贡献的 role
 
@@ -54,7 +54,7 @@
 | 只读 teammate 的纪律 | 一道 TOOL GUARD（见下），经适配器注册 |
 | session 启动复杂度闸门 | 一个 `agent/pre-step` 监听器，默认会 **stage** 一个可批准的 plan shell（见下） |
 
-**模型路由只保留在一次性路径上。** `TeamService` 只把 `{prompt, parent}` 转发给 `ctx.subagents.startContinuable`（`docs/plan-0.1.7-adaptation.md` §3），因此 teammate 继承 Lead 的路由，无法为其附加 provider/persona/tool filter。`teamModels.slot*` 路由因此只作用于 `mpd_role_spawn` / `mpd_workmate_spawn`（它们会传入显式的 `agentOptions`）；名册段落如实说明这一点，而不是承诺 Harness 无法兑现的路由。
+**模型路由只保留在一次性路径上。** `TeamService` 只把 `{prompt, parent}` 转发给 `ctx.subagents.startContinuable`（`docs/plan-0.1.7-adaptation.md` §3），因此 teammate 继承 Lead 的路由，无法为其附加 provider/persona/tool filter。`teamModels.slot*` 路由因此只作用于 `mpd_role_spawn` / `mpd_workmate_spawn`（它们会传入显式的 `agentOptions`）；名册段落如实说明这一点，而不是承诺 Harness 无法兑现的路由。路由中的推理强度还会经过适配器的 `withSupportedEffort`（`mpd-dsh-adapter-plugin`）：若槽位的模型**完全没有**推理等级，则不发送任何等级 —— spawn 照常运行，而不是因 provider 无法接受的关键字失败；而声明了推理等级的模型则保留槽位的等级。
 
 ### 只读 teammate 会被机械地拒绝
 
@@ -64,6 +64,22 @@
 - **team 路径** —— 一道 tool guard 经适配器解析**调用方** agent 的团队身份（`dsh.teamMembership(exec.agent)`）：当身份为 `teammate`，且其面向模型的名号经归一化（小写、每段非字母数字 → `-`，可选一个尾部 `-<数字>` 团队唯一后缀）后命中某个**只读**名册成员时，清单中的任何工具名都会被拒绝。拒绝信息会点名该成员与规则，并指向 Lead 或某个 worker 成员。Lead、worker 成员、非团队 agent 以及无法解析的身份一律放行；该 guard 从不抛错、从不改动状态、也从不放宽。
 
 这修掉了已退役、由 profile 携带 `toolDeny` 的实测缺陷：以 "Explorer" 身份 stage 却未带过滤器的 teammate 会保留 `write`/`edit`/`bash`。
+
+**拒绝清单由 Harness 自己在 spawn 之前裁定一次。** 只要其中一个名字未在本 profile 注册，`tools.restrict()` 就会拒绝**整份**清单，因此一个未注册条目（无 `cclsp` 主机上的两个 `mcp__lsp__*` 名称）会让名册与 workmate 库的**每一次**只读 spawn 全部失败 —— 2026-10-10 实测，而正是这扇被砖死的正门把 captain 推向了 Harness 自带的 `subagent` 工具。适配器的 `restrictToolsTolerant` 把**规范**清单应用到调用方自己的 scope 并在同一同步轮次内释放，因此唯一裁定者是 Harness 自己：它报告为未知的名字会被剪除，**只允许一次**重试，第二次失败一律抛出。`READONLY_DENY` 本身未变，两个包的清单保持完全一致（由 `roles.test.ts` 断言），且该清单**绝不**用 `hasTool` 预过滤（AGENTS.md §13）。被剪除的名字会在该行日志中报告一次。
+
+### 委派闸门（官方 spawn 工具不是本 bundle 的委派路径）
+
+`delegation-gate.ts` 经适配器注册**一道** `tools.guard` 回调：对 `subagent`、`subagent_fork`、`workflow` 的调用会被**拒绝**，拒绝文本点名获准路径（`mpd_role_spawn`、`mpd_workmate_match` + `mpd_workmate_spawn`、Agent Teams、`send_message`）。开关是 `mpd.jsonc` 的 `delegation.gate`：
+
+- **deny**（默认）—— captain **与**所有 member session 一律被拒：成员仍能使用的逃生门不构成纪律；
+- **captain** —— 只拒本工作区的**顶层** session；
+- **allow** —— 完全释放该闸门。
+
+闸门以 §5 的**与 preset 无关**的 session 等级为键，因此在任何挂载本 bundle 的工作区里，无论 profile 给 session 指派了哪个 preset，它都生效。这里**刻意不用**"不在 preset 平面组合该行"的做法：本部署的实时顶层 session 运行的是本 bundle 并不拥有的 preset（`cordis`），所以 guard 才是可移植的拒绝，挂载本 bundle 即是 opt-in。该行的 boot 行会报告 `delegationGate=<mode>`（Harness 没有 `tools.guard` seam 时报告 `delegationGate=absent reason=…`）。
+
+**诚实边界：** 该 guard 在派发时读取**工具调用**，因此名册从不发布的工具天然被覆盖，而未挂载本 bundle 的 profile 上的 session 根本没有闸门；它也拦不住模型去**尝试**别的工具。
+
+`mpd` preset 的 persona 携带一段简短的 STANDING WORKING DISCIPLINE 清单（同一假设重复两次即关闭、用检视工具代替猜测、只想下一步具体操作、一轮内并发发出相互独立的调用、shell 调用是短暂的、以真实输出而非预期校验、YAGNI/PDCA），改编自 `dsh-liangshen`（Apache-2.0）—— 仅取理念，不携带上游任何字节。
 
 ### session 启动复杂度闸门（默认机械执行）
 

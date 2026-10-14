@@ -1,0 +1,52 @@
+== pre-start (the page is on its start screen) ==
+--- frame A: samples=5184 distinct=9 ---
+  key=1092 #081020 x4600 (88.7%, cum 88.7%)
+  key=2149 #101828 x544 (10.5%, cum 99.2%)
+  key=3206 #182030 x16 (0.3%, cum 99.5%)
+  key=16341 #78f0a8 x8 (0.2%, cum 99.7%)
+  key=4749 #20a068 x6 (0.1%, cum 99.8%)
+  key=3562 #187850 x4 (0.1%, cum 99.9%)
+  key=32107 #f85858 x3 (0.1%, cum 99.9%)
+  key=6277 #302028 x2 (0.0%, cum 100.0%)
+  key=29002 #e05050 x1 (0.0%, cum 100.0%)
+--- frame B (after the first key): samples=5184 distinct=12 ---
+  key=1092 #081020 x4595 (88.6%, cum 88.6%)
+  key=2149 #101828 x542 (10.5%, cum 99.1%)
+  key=3206 #182030 x16 (0.3%, cum 99.4%)
+  key=6277 #302028 x7 (0.1%, cum 99.5%)
+  key=3562 #187850 x6 (0.1%, cum 99.7%)
+  key=16341 #78f0a8 x5 (0.1%, cum 99.7%)
+  key=32107 #f85858 x4 (0.1%, cum 99.8%)
+  key=4749 #20a068 x4 (0.1%, cum 99.9%)
+  key=7302 #382030 x2 (0.0%, cum 99.9%)
+  key=2213 #102828 x1 (0.0%, cum 100.0%)
+  key=11952 #58a880 x1 (0.0%, cum 100.0%)
+  key=1058 #080810 x1 (0.0%, cum 100.0%)
+--- round 0: changed=42 ---
+  new #081020 x21
+  new #78f0a8 x5
+  new #187850 x4
+  new #20a068 x4
+  new #101828 x2
+  new #181820 x2
+  new #e85058 x1
+  new #489070 x1
+  new #60c890 x1
+  new #080810 x1
+--- round 1: changed=39 ---
+  new #081020 x16
+  new #78f0a8 x8
+  new #20a068 x6
+  new #187850 x4
+  new #302028 x2
+  new #201828 x1
+  new #f85858 x1
+  new #101020 x1
+--- round 2: changed=5 ---
+  new #382030 x2
+  new #302028 x2
+  new #201820 x1
+--- round 3: changed=8 ---
+  new #081020 x5
+  new #101828 x2
+  new #e05050 x1

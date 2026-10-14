@@ -1,0 +1,89 @@
+{
+  "case": "review-panel",
+  "stamp": "2026-10-08T23-48-22-418Z",
+  "ok": true,
+  "skill": "skills/review-work/SKILL.md",
+  "rolesSource": "packages/mpd-roles-plugin/src/roles.data.ts",
+  "checks": [
+    {
+      "id": "prose-lane-count",
+      "ok": true,
+      "detail": "prose declares 4 lane(s)"
+    },
+    {
+      "id": "panel-lane-table",
+      "ok": true,
+      "detail": "1 table(s) carry both 'Roster role' and 'Lane discipline'"
+    },
+    {
+      "id": "panel-table-count-equals-prose",
+      "ok": true,
+      "detail": "panel table rows=4 prose=4"
+    },
+    {
+      "id": "lane-roles-in-ROLES",
+      "ok": true,
+      "detail": "Architect=in-ROLES Reviewer=in-ROLES Explorer=in-ROLES"
+    },
+    {
+      "id": "read-only-lanes",
+      "ok": true,
+      "detail": "3 lane(s) carry 'read-only findings'"
+    },
+    {
+      "id": "roster-readonly-per-lane",
+      "ok": true,
+      "detail": "Architect=roster-readonly Reviewer=findings-only-by-description Explorer=roster-readonly"
+    },
+    {
+      "id": "merge-table-single",
+      "ok": true,
+      "detail": "1 table(s) carry both 'Lane' and 'Verdict'"
+    },
+    {
+      "id": "merge-table-lanes-match",
+      "ok": true,
+      "detail": "merge=[Manual QA, Quality & architecture, Correctness & risk, Missed context] panel=[Manual QA, Quality & architecture, Correctness & risk, Missed context]"
+    },
+    {
+      "id": "merge-table-count-equals-prose",
+      "ok": true,
+      "detail": "merge rows=4 prose=4"
+    },
+    {
+      "id": "verdict-tokens",
+      "ok": true,
+      "detail": "PASS FAIL INCONCLUSIVE all declared"
+    },
+    {
+      "id": "degrade-matrix",
+      "ok": true,
+      "detail": "mpd_role_spawn panel=advisory INCONCLUSIVE all written down"
+    },
+    {
+      "id": "no-stale-all-N-verdict",
+      "ok": true,
+      "detail": "no hard-coded lane/agent count"
+    },
+    {
+      "id": "no-retired-spelling",
+      "ok": true,
+      "detail": "no retired spelling"
+    },
+    {
+      "id": "tree-no-retired-spelling",
+      "ok": true,
+      "detail": "2 file(s) scanned; no retired spelling"
+    },
+    {
+      "id": "tree-no-stale-all-N-verdict",
+      "ok": true,
+      "detail": "2 file(s) scanned; no hard-coded lane/agent count"
+    }
+  ],
+  "treeScan": {
+    "files": 2,
+    "retired": [],
+    "stale": []
+  }
+}

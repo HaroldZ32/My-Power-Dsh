@@ -1,0 +1,9 @@
+$ bun run verify:rows
+# bun 1.4.0 / node v24.21.0 / 2026-10-10T13:09:20Z
+$ node scripts/verify-rows-parity.ts
+[verify-rows-parity] FAIL - installer vs bundle patch row ids differ
+  bundle patch files (2): /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/cordis.patch.yml, /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/presets/mpd.patch.yml
+  bundle patch rows  (36): mpd-better-sidebar, mcp-astgrep, mcp-git, mcp-shell, mcp-lsp, mcp-codegraph, mpd-web-compat, mpd-dsh-adapter, mpd-config, mpd-goal, mpd-team-watchdog, mpd-tools, mpd-modelchain, mpd-ext, mpd-roles, mpd-verify, mpd-ulw, mpd-hashline, mpd-boulder, mpd-comment-checker, mpd-codegraph, mpd-memory, mpd-workmate, mpd-team-core, mpd-team-compact, mpd-bootstrap, mpd-tui-adapter, mpd-tui, mpd-agent-team, mpd-roster-provider, mpd-tool-agent-team, mpd-ui-agent-team, mcp-context7, mcp-grepapp, dsh-std-adapter, preset-mpd
+  installer rows     (35): preset-mpd, mpd-web-compat, mpd-better-sidebar, mcp-astgrep, mcp-git, mcp-shell, mcp-lsp, mcp-codegraph, mcp-context7, mcp-grepapp, mpd-codegraph, mpd-tools, mpd-modelchain, mpd-ulw, mpd-hashline, mpd-boulder, mpd-dsh-adapter, mpd-config, mpd-goal, mpd-comment-checker, mpd-memory, mpd-ext, mpd-roles, mpd-verify, mpd-workmate, mpd-roster-provider, mpd-team-core, mpd-team-compact, mpd-team-watchdog, mpd-bootstrap, mpd-tui-adapter, mpd-tui, mpd-agent-team, mpd-tool-agent-team, mpd-ui-agent-team
+  MISSING from scripts/install-profile.ts: dsh-std-adapter
+error: script "verify:rows" exited with code 1

@@ -1,0 +1,88 @@
+{
+  "wave": "ask-user-question-guard",
+  "deliverables": [
+    "D1 — boundary guard (packages/mpd-roles-plugin)",
+    "D2 — prompt hardening (presets/mpd.patch.yml)"
+  ],
+  "branch": "feature/ask-user-question-guard",
+  "toolchain": ".toolchain/node_modules/.bin/bun (buildToolchain bun@1.4.0)",
+  "gates": [
+    {
+      "gate": "bun-test",
+      "command": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun test packages/mpd-roles-plugin",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+      "exitCode": 0,
+      "startedAtUtc": "2026-10-11T09:12:48Z",
+      "endedAtUtc": "2026-10-11T09:12:48Z",
+      "logPath": "output.log",
+      "logBytes": 21731,
+      "logSha256": "f22e5c0ff173fd0a84924a7aede842042abdc81896e356a0be2b61f0c19bc9dc",
+      "headline": "Ran 144 tests across 8 files. [299.00ms]"
+    },
+    {
+      "gate": "preset-conformance",
+      "command": "node skills/dsh-qa/scripts/preset-conformance.ts --self-test",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+      "exitCode": 0,
+      "startedAtUtc": "2026-10-11T09:12:50Z",
+      "endedAtUtc": "2026-10-11T09:12:51Z",
+      "logPath": "output.log",
+      "logBytes": 1265,
+      "logSha256": "f16be43a14298ccb9b1250756ea9e4ce9bc7f8d4732e6faee04fb736688565ad",
+      "headline": "[preset-conformance self-test] ok: 32 harness rows conform against the installed schemas (6 row(s) declare no schema), persona prefix=true, mpd preset 28 child rows, row parity 26/25 (negative controls: 4/4 reddened)"
+    },
+    {
+      "gate": "typecheck",
+      "command": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun run typecheck",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+      "exitCode": 0,
+      "startedAtUtc": "2026-10-11T09:12:48Z",
+      "endedAtUtc": "2026-10-11T09:12:48Z",
+      "logPath": "output.log",
+      "logBytes": 16,
+      "logSha256": "ae47736bb2a9401aa9743893f2f64b9a605e65a99d78cd991a8021e0f7722d87",
+      "headline": "$ tsgo --noEmit"
+    },
+    {
+      "gate": "verify-comments",
+      "command": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun run verify:comments",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+      "exitCode": 0,
+      "startedAtUtc": "2026-10-11T09:12:48Z",
+      "endedAtUtc": "2026-10-11T09:12:50Z",
+      "logPath": "output.log",
+      "logBytes": 307,
+      "logSha256": "ec3f713017d6c4a93583f4e2a94431bfabbf2375fe2d126a9cdce6781bf26778",
+      "headline": "VERDICT: PASS — every declaration in the family carries a precise comment and a full signature."
+    },
+    {
+      "gate": "verify-dist-fresh",
+      "command": "node scripts/verify-dist-fresh.ts",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+      "exitCode": 0,
+      "startedAtUtc": "2026-10-11T09:12:51Z",
+      "endedAtUtc": "2026-10-11T09:12:51Z",
+      "logPath": "output.log",
+      "logBytes": 4559,
+      "logSha256": "7481919a2095a831ce1c166a6d10600cc6bcfc0dd8562efb5c6bae202596ff5b",
+      "headline": "[verify-dist-fresh] ok: 31/31 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 648ms"
+    },
+    {
+      "gate": "verify-rows",
+      "command": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun run verify:rows",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+      "exitCode": 0,
+      "startedAtUtc": "2026-10-11T09:12:50Z",
+      "endedAtUtc": "2026-10-11T09:12:50Z",
+      "logPath": "output.log",
+      "logBytes": 608,
+      "logSha256": "4be1bcebab209813067ab4167cea4af06ae7a277d056bf388d94fe8e6016091f",
+      "headline": "[verify-rows-parity] ok: 35 row ids match the 2-file bundle patch layer (mcp-astgrep, mcp-codegraph, mcp-context7, mcp-git, mcp-grepapp, mcp-lsp, mcp-shell, mpd-agent-team, mpd-better-sidebar, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-goal, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-roster-provider, mpd-team-compact, mpd-team-core, mpd-team-watchdog, mpd-tool-agent-team, mpd-tools, mpd-tui, mpd-tui-adapter, mpd-ui-agent-team, mpd-ulw, mpd-verify, mpd-web-compat, mpd-workmate, preset-mpd)"
+    }
+  ],
+  "summary": {
+    "total": 6,
+    "passed": 6,
+    "failed": []
+  }
+}

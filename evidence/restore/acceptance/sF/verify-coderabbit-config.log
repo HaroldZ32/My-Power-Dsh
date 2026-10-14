@@ -1,0 +1,47 @@
+PASS  config parses as YAML  ::  top-level keys: language, reviews, chat, knowledge_base
+PASS  validates against the published JSON schema (ajv, draft 2020-12)  ::  no errors
+PASS  every key in the YAML exists in the published schema  ::  no unknown keys
+PASS  evidence/** is fully excluded  ::  22950/22950 tracked files excluded
+PASS  packages/*/dist/** is excluded  ::  packages/mpd-config-plugin/dist/index.js in scope? false
+PASS  VENDOR_LOCK.json is excluded  ::  VENDOR_LOCK.json
+PASS  .mpd/** has no tracked files (runtime state)  ::  0 tracked files under .mpd/
+PASS  skills/** stays fully in review scope  ::  365/365 tracked files eligible (floor 300)
+PASS  packages/*/src/** stays fully in review scope  ::  140/140 tracked files eligible (floor 100)
+PASS  packages/*/test/** stays fully in review scope  ::  109/109 tracked files eligible (floor 100)
+PASS  docker/** stays fully in review scope  ::  70/70 tracked files eligible (floor 50)
+PASS  docs/** stays fully in review scope  ::  66/66 tracked files eligible (floor 50)
+PASS  scripts/** stays fully in review scope  ::  30/30 tracked files eligible (floor 10)
+PASS  .github/workflows/** stays fully in review scope  ::  2/2 tracked files eligible (floor 2)
+PASS  extensions/** stays fully in review scope  ::  7/7 tracked files eligible (floor 1)
+PASS  templates/** stays fully in review scope  ::  7/7 tracked files eligible (floor 1)
+
+SCOPE: 998 of 23981 tracked files eligible; 22983 excluded
+  top excluded trees: evidence/=22950, packages/*/dist=32
+PASS  path_instructions[0] glob matches real files  ::  path="packages/*/src/**" -> 140 tracked files, e.g. packages/mpd-better-sidebar-host/src/index.ts, packages/mpd-bootstrap-plugin/src/index.ts
+PASS  path_instructions[0] binds packages/mpd-config-plugin/src/index.ts  ::  pattern=packages/*/src/**
+PASS  path_instructions[0] does NOT bind AGENTS.md  ::  pattern=packages/*/src/**
+PASS  path_instructions[1] glob matches real files  ::  path="skills/**" -> 365 tracked files, e.g. skills/ast-grep/AGENTS.md, skills/ast-grep/ATTRIBUTION.md
+PASS  path_instructions[1] binds skills/dsh-qa/SKILL.md  ::  pattern=skills/**
+PASS  path_instructions[1] does NOT bind docs/index.md  ::  pattern=skills/**
+PASS  path_instructions[2] glob matches real files  ::  path="{docs/**,README*.md,packages/*/README*.md,extensions/**/README*.md,templates/**/README*.md}" -> 134 tracked files, e.g. README.md, README.zh-CN.md
+PASS  path_instructions[2] binds docs/index.md  ::  pattern={docs/**,README*.md,packages/*/README*.md,extensions/**/README*.md,templates/**/README*.md}
+PASS  path_instructions[2] does NOT bind AGENTS.md  ::  pattern={docs/**,README*.md,packages/*/README*.md,extensions/**/README*.md,templates/**/README*.md}
+PASS  path_instructions[3] glob matches real files  ::  path="{docker/**,scripts/docker-e2e.ts,.github/workflows/**}" -> 73 tracked files, e.g. .github/workflows/docker-e2e.yml, .github/workflows/gates.yml
+PASS  path_instructions[3] binds docker/Dockerfile  ::  pattern={docker/**,scripts/docker-e2e.ts,.github/workflows/**}
+PASS  path_instructions[3] does NOT bind docs/index.md  ::  pattern={docker/**,scripts/docker-e2e.ts,.github/workflows/**}
+PASS  docs band covers docs/index.md  ::  pattern={docs/**,README*.md,packages/*/README*.md,extensions/**/README*.md,templates/**/README*.md}
+PASS  docs band covers docs/deep/nested/doc.md  ::  pattern={docs/**,README*.md,packages/*/README*.md,extensions/**/README*.md,templates/**/README*.md}
+PASS  docs band covers README.md  ::  pattern={docs/**,README*.md,packages/*/README*.md,extensions/**/README*.md,templates/**/README*.md}
+PASS  docs band covers README.zh-CN.md  ::  pattern={docs/**,README*.md,packages/*/README*.md,extensions/**/README*.md,templates/**/README*.md}
+PASS  docs band covers packages/mpd-config-plugin/README.md  ::  pattern={docs/**,README*.md,packages/*/README*.md,extensions/**/README*.md,templates/**/README*.md}
+PASS  docs band covers extensions/mpd-ext-example/README.md  ::  pattern={docs/**,README*.md,packages/*/README*.md,extensions/**/README*.md,templates/**/README*.md}
+PASS  docs band covers templates/x/README.md  ::  pattern={docs/**,README*.md,packages/*/README*.md,extensions/**/README*.md,templates/**/README*.md}
+PASS  tool "actionlint" exists in the schema registry (59 tools)  ::  enabled=true
+PASS  tool "gitleaks" exists in the schema registry (59 tools)  ::  enabled=true
+PASS  tool "markdownlint" exists in the schema registry (59 tools)  ::  enabled=false
+PASS  tool "languagetool" exists in the schema registry (59 tools)  ::  enabled=false
+PASS  tool "eslint" exists in the schema registry (59 tools)  ::  enabled=false
+PASS  tool "biome" exists in the schema registry (59 tools)  ::  enabled=false
+PASS  tool "oxc" exists in the schema registry (59 tools)  ::  enabled=false
+
+===== 42/42 checks passed =====

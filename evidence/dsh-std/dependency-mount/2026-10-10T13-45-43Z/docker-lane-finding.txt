@@ -1,0 +1,90 @@
+# Install-regression lane — what it PROVED, and why it cannot exit 0 on this machine
+# Wave: dsh-std dependency v2 (sdk in `dependencies`, adapter removed)
+# Frozen tree: see frozen-tree.txt (last write 2026-10-10T13:47:08Z; both runs started after it)
+
+--------------------------------------------------------------------------------
+## RUN 1 — evidence/docker/client-install/2026-10-10T13-48-39Z   exit 3
+    node scripts/docker-e2e.ts --mode source
+  failed=1 (harness.version)  passed=6  null=111   duration 1269 s
+  CAUSE (environment, not the wave): STEP 05-dsh ran
+    npm i -g @deepseek-ai/dsh@0.2.0-rc.2 (timeout 900s)
+  and was KILLED BY THE 900 s STEP BUDGET (exit=124) against registry.npmjs.org, so the
+  harness never landed and 'dsh --version' answered 'command not found'. Nothing of this
+  bundle had been installed or graded yet.
+  The failure mode and its remedy are DOCUMENTED BY THIS REPO in docker/docker-compose.yml
+  ("the official registry's scoped-metadata endpoint answered in 1.5 s once and FAILED on the
+  next probe, and npm retried a failure like that for 23 minutes ... until the run had to be
+  killed") which names the knob MPD_E2E_NPM_REGISTRY for exactly this.
+
+--------------------------------------------------------------------------------
+## RUN 2 — evidence/docker/client-install/2026-10-10T14-10-18Z   exit 3
+    MPD_E2E_NPM_REGISTRY=https://repo.huaweicloud.com/repository/npm/ \
+      node scripts/docker-e2e.ts --mode source
+  passed=74  failed=3  null=41   duration 639 s
+  (the mirror is the same host this repo's own bun.lock resolves through; the entrypoint
+   records the registry it actually used as obs.npmRegistry)
+
+### THE WAVE'S SUBJECT IS PROVEN — the v1 install failure is GONE
+  PASS harness.version      — npm i -g then 'dsh --version' printed the pin exactly
+  PASS install.exit         — one command installed the bundle into the profile      [v1: FAIL]
+  PASS install.buildScripts — no ERR_PNPM_IGNORED_BUILDS, exit 0, 2 closure pkgs      [v1: FAIL]
+  PASS install.profileDep   — the profile links the checkout and keeps the box bundles
+  PASS install.installedTree— the installed bundle resolves inside the profile
+  PASS compose.mpdRows      — mpd host rows compose as INSERTS; zero column-0 id-targets
+  PASS boot.* (14 of 15)    — a real MOUNT: adapter service + adapter tool call, mpd tools, MCP
+                              tools, agent-team tools, session-gate listener, TeamService,
+                              HTTP 200, agentPreset=mpd, no fatal signatures, workspace
+                              registered. The 15th (boot.llmTurn) is NULL by design: a live
+                              LLM turn needs credentials and no container stages any.
+  PASS qa.readonlyDeny, qa.mcpCallEngine, boot.mcpLiveSearch
+  => a bare ubuntu:24.04 installs this bundle with ONE command while `@dsh-std/sdk` sits in
+     `dependencies`. The v1 red was the ADAPTER, and it is gone with the adapter.
+
+### THE 3 FAILURES ARE THE LOCAL, GITIGNORED RELEASE ARTIFACT — PRE-EXISTING
+  pack.licenceCoherence  drifted=LICENSE-NOTICES.md (artifactLicense=MIT sourceLicense=MIT)
+  pack.staticCoherence   "the artifact does NOT agree with the tree it was cut from ... 14 differing"
+  pack.distFreshRebuild  3 differing built entries, both sides under the declared bun@1.4.0
+
+  All three grade `dist/mpd-package/` — a GITIGNORED local artifact cut at 2026-10-10 10:09,
+  i.e. BEFORE this wave. Measured (pack-staleness-audit.txt, git-blob comparison of all 608
+  packed files against HEAD):
+    · 593 packed files identical to HEAD
+    ·  12 differ from HEAD, and 11 of them are files this wave NEVER TOUCHED:
+         agent-references/glossary.md, agent-references/verification-flow.md,
+         packages/mpd-bundle-plugin/client.js, packages/mpd-dsh-adapter-plugin/dist/index.js,
+         packages/mpd-roles-plugin/README.md, packages/mpd-roles-plugin/README.zh-CN.md,
+         packages/mpd-roles-plugin/dist/index.js, packages/mpd-workmate-plugin/dist/index.js,
+         presets/mpd.patch.yml, skills/dsh-qa/SKILL.md, skills/dsh-qa/scripts/readonly-deny.ts
+         (the 12th is the root package.json, which the packer REWRITES by design)
+  The wave's own three doc edits (LICENSE-NOTICES.md, docs/user-guide.md, docs/user-guide.zh-CN.md)
+  drift for the ordinary reason: the pack equals HEAD and the working tree is ahead of it. Any
+  wave that edits a packed file shows the same until the RELEASE re-pack (`npm run pack`) runs.
+  => the lane was ALREADY red on this machine before this wave (11 stale files + 3 stale dist
+     entries), and a re-pack could not make the lane green anyway (see the next block).
+
+### THE 8 NULL `ui.*` ARMS ARE A BLOCKED CDN, AND THE BROWSER LANE IS ON BY DEFAULT
+  ui.loads, ui.workspaceSelected, ui.composerPresent, ui.promptSent, ui.replyRendered,
+  ui.mpdSettingsPanel/section, ui.teamPanel, ui.noConsoleErrors  -> null -> exit 3
+  CAUSE: the Playwright browser download timed out against the CDN, from inside the container:
+    "Request to https://playwright.azureedge.net/builds/chromium/1148/chromium-linux.zip
+     timed out after 30000ms" ... "Failed to download FFMPEG playwright build v1010" ...
+     "Failed to install browsers"  -> "[record] ui.*=null — the browser toolchain did not
+     install (npm/npx exit 1)"
+  scripts/docker-e2e.ts:1132-1136 — the browser lane is REQUIRED unless `--no-browser` is
+  passed ("--require-browser names a requirement that is ON by default"), and the driver turns
+  a required-but-unmeasured arm into exit 3. docker/docker-compose.yml forwards only the env
+  vars it names (no PLAYWRIGHT_DOWNLOAD_HOST), so a mirror cannot be injected from the host
+  without editing docker/** — outside this wave's scope.
+
+--------------------------------------------------------------------------------
+## VERDICT OF THIS LANE
+  The acceptance question it exists to answer — "does the one-command install succeed with
+  @dsh-std/sdk in dependencies?" — is answered YES with 74 passing assertions, including every
+  install.* and boot.* arm that v1 reddened.
+  Its EXIT CODE is 3, and on this machine it cannot be 0:
+    (a) the Playwright CDN is unreachable (required ui.* arms are unmeasurable), and
+    (b) the graded dist/mpd-package artifact is stale for 11 files that belong to other work.
+  Both causes are outside this wave's declared scope (`package.json`, `cordis.patch.yml`,
+  `bun.lock`, `LICENSE-NOTICES.md`, the two user guides, `evidence/dsh-std/**`). Reported,
+  not absorbed: refreshing `dist/mpd-package` (a gitignored RELEASE artifact) or editing
+  docker/** would be work this wave was not given.

@@ -1,0 +1,648 @@
+{
+  "wave": "E — LICENCE SWAP + SWEEP (the final wave of the de-omo program)",
+  "repo": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "branch": "feature/de-omo-wave-e-licence",
+  "writer": "Senior Engineer — SINGLE WRITER for wave E",
+  "timestamp_utc": "2026-10-08T17:19:34Z",
+  "git_writes_performed": "NONE (no add/commit/branch/checkout/reset/stash/merge/tag; read-only status/log/show only)",
+  "licence_text": {
+    "path": "LICENSE.md",
+    "old": "n8n 'Sustainable Use License' 1.0, reproduced verbatim, with the vendor token left as 'oh-my-opencode'; 82 lines; names NO licensor and NO copyright holder",
+    "new": "MIT License, Copyright (c) 2026 HaroldZ32",
+    "bytes": 1066,
+    "sha256": "554aaeac2c653dec4a52a6e846be8fcd6de8e724a7cc339e160382a4d38d72f5",
+    "byte_identical_to_the_captains_specified_text": true,
+    "method": "replaced WHOLESALE via mpd_hashline_edit (range replace of all 82 lines); NOT appended"
+  },
+  "carrier_summary": {
+    "total_carriers_audited": 46,
+    "changed": 39,
+    "kept_as_history": 7,
+    "classes": {
+      "1 licence-text": 1,
+      "2 manifest": 7,
+      "3 public-pair (README EN+zh)": 8,
+      "4 manual + agent-references": 7,
+      "5 doc-pairs (user-guide, tui) EN+zh": 7,
+      "6 contributing EN+zh": 4,
+      "7 process records": 9
+    },
+    "changed_files_in_the_tree": 24,
+    "changed_file_list": [
+      "AGENTS.md",
+      "CONTRIBUTING.md",
+      "CONTRIBUTING.zh-CN.md",
+      "LICENSE-NOTICES.md",
+      "LICENSE.md",
+      "PLAN.md",
+      "README.md",
+      "README.zh-CN.md",
+      "VENDOR_LOCK.json",
+      "agent-references/index.md",
+      "agent-references/overview-and-provenance.md",
+      "docs/tui.md",
+      "docs/tui.zh-CN.md",
+      "docs/user-guide.md",
+      "docs/user-guide.zh-CN.md",
+      "dsh-plugin.json",
+      "package.json",
+      "packages/mpd-team-watchdog-plugin/package.json",
+      "packages/mpd-tui-adapter-plugin/package.json",
+      "packages/mpd-tui-plugin/README.md",
+      "packages/mpd-tui-plugin/README.zh-CN.md",
+      "packages/mpd-tui-plugin/package.json",
+      "scripts/pack-mpd.ts",
+      "agent-references/repository-layout.md",
+      "evidence/de-omo/licence/"
+    ]
+  },
+  "carriers": [
+    {
+      "path": "LICENSE.md",
+      "class": "1 licence-text",
+      "old_declaration": "# License / Portions of this software are licensed as follows: ... Content outside of the above mentioned files or restrictions is available under the \"Sustainable Use License\" as defined below. / ## Sustainable Use License / Version 1.0 ... (82 lines)",
+      "new_declaration": "MIT License / Copyright (c) 2026 HaroldZ32 / Permission is hereby granted, free of charge, ... OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. (21 lines)",
+      "changed": true,
+      "note": "REPLACED wholesale; byte-identical to the Captain's specified text; 1066 B; sha256 554aaeac2c653dec4a52a6e846be8fcd6de8e724a7cc339e160382a4d38d72f5"
+    },
+    {
+      "path": "package.json",
+      "class": "2 manifest",
+      "old_declaration": "\"license\": \"SEE LICENSE IN LICENSE.md\",",
+      "new_declaration": "\"license\": \"MIT\",",
+      "changed": true,
+      "note": ""
+    },
+    {
+      "path": "dsh-plugin.json",
+      "class": "2 manifest",
+      "old_declaration": "\"license\": \"SUL-1.0\",  (an invalid SPDX spelling)",
+      "new_declaration": "\"license\": \"MIT\",",
+      "changed": true,
+      "note": ""
+    },
+    {
+      "path": "dsh-plugin.json#x-mpd-tui-surfaces.identityDeviation",
+      "class": "2 manifest",
+      "old_declaration": "This bundle deliberately follows NONE of those three: ... the licence stays SUL-1.0 (this repository's own LICENSE.md, inherited from upstream), and there is exactly ONE bundle-level dsh-plugin.json",
+      "new_declaration": "This bundle NOW follows the licence element (MIT, this repository's own LICENSE.md) and deviates on the other TWO: ... and there is exactly ONE bundle-level dsh-plugin.json",
+      "changed": true,
+      "note": "the deviation count drops from THREE to TWO: the ecosystem MIT convention is now followed"
+    },
+    {
+      "path": "packages/mpd-team-watchdog-plugin/package.json",
+      "class": "2 manifest",
+      "old_declaration": "\"license\": \"SEE LICENSE IN ../../LICENSE.md\"",
+      "new_declaration": "\"license\": \"MIT\"",
+      "changed": true,
+      "note": ""
+    },
+    {
+      "path": "packages/mpd-tui-adapter-plugin/package.json",
+      "class": "2 manifest",
+      "old_declaration": "\"license\": \"SEE LICENSE IN ../../LICENSE.md\"",
+      "new_declaration": "\"license\": \"MIT\"",
+      "changed": true,
+      "note": ""
+    },
+    {
+      "path": "packages/mpd-tui-plugin/package.json",
+      "class": "2 manifest",
+      "old_declaration": "\"license\": \"SEE LICENSE IN ../../LICENSE.md\"",
+      "new_declaration": "\"license\": \"MIT\"",
+      "changed": true,
+      "note": ""
+    },
+    {
+      "path": "scripts/pack-mpd.ts",
+      "class": "2 manifest (packed)",
+      "old_declaration": "license: \"SEE LICENSE IN LICENSE.md\",  + PackedManifest doc: \"A pointer into the shipped licence file rather than an SPDX id.\"",
+      "new_declaration": "license: \"MIT\",  + PackedManifest doc: \"The SPDX id the packed artifact declares, kept in step with the root manifest and `LICENSE.md`.\"",
+      "changed": true,
+      "note": "the packer writes the packed manifest; dist/mpd-package/package.json now reads \"license\": \"MIT\""
+    },
+    {
+      "path": "dsh-distribution.json",
+      "class": "2 manifest (DECISION)",
+      "old_declaration": "(no licence field; only distribution.version = 0.12.0)",
+      "new_declaration": "(no licence field ADDED - deliberate; see decisions[0])",
+      "changed": false,
+      "note": "NOT a defect: silence cannot contradict LICENSE.md, and the descriptor belongs to an external schema"
+    },
+    {
+      "path": "README.md#badge",
+      "class": "3 public-pair EN",
+      "old_declaration": "[![License: SUL-1.0](https://img.shields.io/badge/license-SUL--1.0-orange.svg)](./LICENSE.md)",
+      "new_declaration": "[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE.md)",
+      "changed": true,
+      "note": ""
+    },
+    {
+      "path": "README.md#honest-limits",
+      "class": "3 public-pair EN",
+      "old_declaration": "- **License: source-available, not open-source.** SUL-1.0 permits internal and personal use and free non-commercial distribution; it is not an OSI license.",
+      "new_declaration": "- **License: MIT.** This repository's own code is MIT (`LICENSE.md`, Copyright (c) 2026 HaroldZ32); third-party material keeps its own licence, recorded per component in `LICENSE-NOTICES.md`.",
+      "changed": true,
+      "note": ""
+    },
+    {
+      "path": "README.md#acknowledgements",
+      "class": "3 public-pair EN",
+      "old_declaration": "The specialist roster, the model-chain vocabulary and the roster's stable ids are adapted from ... (v5.0.0-beta.20), recorded as historical provenance ... no gate fails when it is unreachable.",
+      "new_declaration": "The specialist roster's names and stable ids and the model-chain vocabulary are adapted from ... The content that record once described no longer travels with it: the served skill corpus is MIT, re-sourced from the same author's `lazycodex`; the eleven persona texts were re-sourced ...; and the vendored cores, the MCP servers and the adopted agent-teams body were replaced or deleted outright.",
+      "changed": true,
+      "note": ""
+    },
+    {
+      "path": "README.md#license-section",
+      "class": "3 public-pair EN",
+      "old_declaration": "**SUL-1.0** — see [`LICENSE.md`](./LICENSE.md). Internal and personal use; distribution is free and non-commercial only.",
+      "new_declaration": "**MIT** — see [`LICENSE.md`](./LICENSE.md), Copyright (c) 2026 HaroldZ32. Third-party components keep their own licences; the complete notices are in [`LICENSE-NOTICES.md`](./LICENSE-NOTICES.md).",
+      "changed": true,
+      "note": ""
+    },
+    {
+      "path": "README.zh-CN.md#badge",
+      "class": "3 public-pair zh",
+      "old_declaration": "[![许可证：SUL-1.0](https://img.shields.io/badge/license-SUL--1.0-orange.svg)](./LICENSE.md)",
+      "new_declaration": "[![许可证：MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE.md)",
+      "changed": true,
+      "note": ""
+    },
+    {
+      "path": "README.zh-CN.md#honest-limits",
+      "class": "3 public-pair zh",
+      "old_declaration": "- **许可证：源码可见，但非开源。** SUL-1.0 允许内部与个人使用、以及免费的非商业分发；它不是 OSI 许可证。",
+      "new_declaration": "- **许可证：MIT。** 本仓库自己的代码是 MIT（`LICENSE.md`，Copyright (c) 2026 HaroldZ32）；第三方材料保留各自的许可证，逐组件记录在 `LICENSE-NOTICES.md`。",
+      "changed": true,
+      "note": ""
+    },
+    {
+      "path": "README.zh-CN.md#acknowledgements",
+      "class": "3 public-pair zh",
+      "old_declaration": "专家名册、模型链词汇以及名册的稳定 id 改编自 ... 它挂掉也不会让任何一个关卡变红。",
+      "new_declaration": "专家名册的名称与稳定 id、以及模型链词汇，改编自 ... 那份记录当初描述的内容已不再随行：随包服务的技能语料是 MIT（改从同一作者的 `lazycodex` 取材），11 份 persona 文本改从 ... 取材，内置内核、MCP 服务器与被采纳的 agent-teams 主体则被替换或直接删除。",
+      "changed": true,
+      "note": ""
+    },
+    {
+      "path": "README.zh-CN.md#license-section",
+      "class": "3 public-pair zh",
+      "old_declaration": "**SUL-1.0** —— 见 [`LICENSE.md`](./LICENSE.md)。允许内部与个人使用；分发免费且仅限非商业。",
+      "new_declaration": "**MIT** —— 见 [`LICENSE.md`](./LICENSE.md)，Copyright (c) 2026 HaroldZ32。第三方组件保留各自的许可证；完整声明在 [`LICENSE-NOTICES.md`](./LICENSE-NOTICES.md)。",
+      "changed": true,
+      "note": ""
+    },
+    {
+      "path": "AGENTS.md#1",
+      "class": "4 manual",
+      "old_declaration": "License: SUL-1.0 (`LICENSE.md`), inherited from upstream; attribution is declared in `README.md` and `LICENSE-NOTICES.md`.",
+      "new_declaration": "License: **MIT** (`LICENSE.md`, Copyright (c) 2026 HaroldZ32); third-party components keep their own licences, declared per component in `LICENSE-NOTICES.md`.",
+      "changed": true,
+      "note": "the same edit corrected the provenance paragraph: 'whose 11 specialists ship as adapted teammate templates' -> the CONTENT no longer travels with the record (waves A-F)"
+    },
+    {
+      "path": "AGENTS.md#10",
+      "class": "4 manual",
+      "old_declaration": "- License: SUL-1.0 (LICENSE.md): internal/personal use; distribution free & non-commercial only.",
+      "new_declaration": "- License: MIT (LICENSE.md, Copyright (c) 2026 HaroldZ32); third-party components keep their own licences (LICENSE-NOTICES.md).",
+      "changed": true,
+      "note": ""
+    },
+    {
+      "path": "AGENTS.md#3",
+      "class": "4 manual (budget move)",
+      "old_declaration": "the fenced repository-layout tree, 5692 B, lines 159-217 of the manual",
+      "new_declaration": "a 790 B short definition + an exact pointer to agent-references/repository-layout.md",
+      "changed": true,
+      "note": "the tree moved VERBATIM; the moved block is byte-identical (sha256 d4842e77de2d44f52f56b3e11494d708e92503d88566667e18c7cd926c77d2b1)"
+    },
+    {
+      "path": "AGENTS.md#9",
+      "class": "4 manual (defect repair)",
+      "old_declaration": "its `VENDOR_LOCK` asset and `scripts/build-mcp.ts` are gone",
+      "new_declaration": "its `VENDOR_LOCK` asset and the retired MCP build script under `scripts/` are gone",
+      "changed": true,
+      "note": "PRE-EXISTING red: verify-manual-paths exited 1 on this dangling path token; byte-identical at HEAD:AGENTS.md; repaired here"
+    },
+    {
+      "path": "AGENTS.md#ReferenceIndex",
+      "class": "4 manual",
+      "old_declaration": "(+ no repository-layout row; 64996 B on 2026-10-07)",
+      "new_declaration": "(+ `agent-references/repository-layout.md` row; 60456 B on 2026-10-08)",
+      "changed": true,
+      "note": ""
+    },
+    {
+      "path": "AGENTS.md#3-budget-paragraph",
+      "class": "4 manual",
+      "old_declaration": "This manual measured **64996 bytes** on 2026-10-07 — only 540 B of margin, which is NOT headroom.",
+      "new_declaration": "Wave E re-measured it on 2026-10-08 at **60456 bytes** — 5080 B of margin, restored by moving §1's long forms into `agent-references/overview-and-provenance.md` and §3's layout tree into `agent-references/repository-layout.md`.",
+      "changed": true,
+      "note": ""
+    },
+    {
+      "path": "agent-references/repository-layout.md",
+      "class": "4 reference (NEW FILE)",
+      "old_declaration": "(did not exist)",
+      "new_declaration": "the §3 layout tree, moved VERBATIM, plus a provenance header (6637 B)",
+      "changed": true,
+      "note": ""
+    },
+    {
+      "path": "agent-references/overview-and-provenance.md",
+      "class": "4 reference",
+      "old_declaration": "License: SUL-1.0 (`LICENSE.md`), inherited from upstream; inheritance and attribution are declared in `README.md` and `LICENSE-NOTICES.md`. (inside \"The former §1 body (verbatim)\")",
+      "new_declaration": "**LICENCE STATE (current ...): this repository is MIT** (`LICENSE.md`, `Copyright (c) 2026 HaroldZ32`). The block below is a VERBATIM reproduction of `AGENTS.md` §1 as it stood on 2026-10-06, so it still reads `SUL-1.0` in places; those sentences are HISTORY and are superseded ... Never quote the verbatim block as the repository's present terms.",
+      "changed": true,
+      "note": "the verbatim 2026-10-06 snapshot is KEPT (history not erased); a supersession banner was added ABOVE it and a full LICENCE STATE section BELOW it; the five current §1 long forms were appended here"
+    },
+    {
+      "path": "agent-references/index.md",
+      "class": "4 reference (register)",
+      "old_declaration": "(no repository-layout.md row)",
+      "new_declaration": "(+ `repository-layout.md` row)",
+      "changed": true,
+      "note": ""
+    },
+    {
+      "path": "docs/user-guide.md#roster-row",
+      "class": "5 doc-pair EN",
+      "old_declaration": "| SUL-1.0 — the licence this repository inherits | `LICENSE-NOTICES.md` §1; `VENDOR_LOCK.json` |",
+      "new_declaration": "| MIT (this repository's own work); the upstream those names came from was SUL-1.0, recorded as history only | `LICENSE-NOTICES.md`; `VENDOR_LOCK.json` |",
+      "changed": true,
+      "note": ""
+    },
+    {
+      "path": "docs/user-guide.md#corpus-row",
+      "class": "5 doc-pair EN",
+      "old_declaration": "| the upstream skills are vendored from **oh-my-openagent**; ... | SUL-1.0 for the corpus; MIT material referenced, not redistributed |",
+      "new_declaration": "| the 16 ported skills are re-sourced from **lazycodex** ... | MIT — `Copyright (c) 2026 Yeongyu Kim` for the re-sourced corpus; the referenced harness material is MIT and not redistributed |",
+      "changed": true,
+      "note": ""
+    },
+    {
+      "path": "docs/user-guide.md#plumbing-row",
+      "class": "5 doc-pair EN",
+      "old_declaration": "| written here | SUL-1.0 | `README.md` (Acknowledgements); `LICENSE.md` |",
+      "new_declaration": "| written here | MIT | `README.md` (Acknowledgements); `LICENSE.md` |",
+      "changed": true,
+      "note": ""
+    },
+    {
+      "path": "docs/user-guide.md#consequence",
+      "class": "5 doc-pair EN",
+      "old_declaration": "(... are MIT while the repository is SUL-1.0)",
+      "new_declaration": "(... are MIT, as is this repository)",
+      "changed": true,
+      "note": ""
+    },
+    {
+      "path": "docs/user-guide.zh-CN.md#3 rows + consequence",
+      "class": "5 doc-pair zh",
+      "old_declaration": "| SUL-1.0 —— 本仓库继承的许可证 | ... 语料为 SUL-1.0 ... | SUL-1.0 | ... 而本仓库是 SUL-1.0）",
+      "new_declaration": "| MIT（本仓库自己的作品）；名称所来自的那个上游当时是 SUL-1.0，仅作历史记录 | ... 再取样的语料为 Copyright (c) 2026 Yeongyu Kim | MIT | ... 本仓库自身也是 MIT）",
+      "changed": true,
+      "note": ""
+    },
+    {
+      "path": "docs/tui.md#7",
+      "class": "5 doc-pair EN",
+      "old_declaration": "| Licence | SUL-1.0 (`LICENSE.md`) | Unchanged by this edition; no artifact claims a licence change. |  (a row of the \"Deliberate deviations from ecosystem convention\" table)",
+      "new_declaration": "the row is REMOVED; the section now opens \"One former deviation is CLOSED. The DSH-TUI ecosystem convention ... includes an **MIT** licence, and since the de-omo wave E licence swap this bundle carries that same MIT licence ... so the licence is no longer a deviation\"",
+      "changed": true,
+      "note": ""
+    },
+    {
+      "path": "docs/tui.zh-CN.md#7",
+      "class": "5 doc-pair zh",
+      "old_declaration": "| 许可证 | SUL-1.0（`LICENSE.md`） | 本版本未改动；任何产物都不得声明许可证变更。 |",
+      "new_declaration": "the row is REMOVED; the section now opens \"有一项曾经的偏离已**关闭**：DSH-TUI 生态对第三方插件的惯例之一就是 **MIT** 许可 ... 因此许可证不再是偏离项\"",
+      "changed": true,
+      "note": ""
+    },
+    {
+      "path": "CONTRIBUTING.md#by-contributing",
+      "class": "6 contributing EN",
+      "old_declaration": "distributed under the repository's licence, **SUL-1.0** ([`LICENSE.md`](./LICENSE.md)).",
+      "new_declaration": "distributed under the repository's licence, **MIT** ([`LICENSE.md`](./LICENSE.md), `Copyright (c) 2026 HaroldZ32`).",
+      "changed": true,
+      "note": ""
+    },
+    {
+      "path": "CONTRIBUTING.md#licence-section",
+      "class": "6 contributing EN",
+      "old_declaration": "The repository is licensed under **SUL-1.0** ...; the adopted `agent-teams` component keeps its own MIT licence, which covers that component only.",
+      "new_declaration": "The repository is licensed under **MIT** ...; third-party components keep their own licences, which cover those components only.",
+      "changed": true,
+      "note": ""
+    },
+    {
+      "path": "CONTRIBUTING.zh-CN.md#by-contributing",
+      "class": "6 contributing zh",
+      "old_declaration": "你贡献的内容将按本仓库的许可 **SUL-1.0**（[`LICENSE.md`](./LICENSE.md)）分发。",
+      "new_declaration": "你贡献的内容将按本仓库的许可 **MIT**（[`LICENSE.md`](./LICENSE.md)，`Copyright (c) 2026 HaroldZ32`）分发。",
+      "changed": true,
+      "note": ""
+    },
+    {
+      "path": "CONTRIBUTING.zh-CN.md#licence-section",
+      "class": "6 contributing zh",
+      "old_declaration": "本仓库采用 **SUL-1.0** 许可 ...；采纳的 `agent-teams` 组件保留其自身的 MIT 许可证，该授权仅覆盖该组件本身。",
+      "new_declaration": "本仓库采用 **MIT** 许可 ...；第三方组件保留各自的许可证，该授权仅覆盖那些组件本身。",
+      "changed": true,
+      "note": ""
+    },
+    {
+      "path": "PLAN.md#layout-line",
+      "class": "7 record",
+      "old_declaration": "# SUL-1.0 compliance notice + third-party notices",
+      "new_declaration": "# third-party notices; the SUL-1.0 compliance notice it was created with is MIT since de-omo wave E",
+      "changed": true,
+      "note": ""
+    },
+    {
+      "path": "PLAN.md#bootstrap-step",
+      "class": "7 record",
+      "old_declaration": "(SUL-1.0 compliance notice).",
+      "new_declaration": "(the compliance notice it carried then was SUL-1.0; MIT since de-omo wave E).",
+      "changed": true,
+      "note": ""
+    },
+    {
+      "path": "PLAN.md#R6",
+      "class": "7 record",
+      "old_declaration": "| R6 | SUL-1.0 license restriction | Low/Medium | internal use only; keep all notices; no external release |",
+      "new_declaration": "| R6 | SUL-1.0 license restriction | **CLOSED** | de-omo wave E: the derived content was purged and replaced across waves A-F, so the repository is now MIT ... |",
+      "changed": true,
+      "note": ""
+    },
+    {
+      "path": "docs/plan-c.md",
+      "class": "7 record (KEPT as history)",
+      "old_declaration": "vendored `hashline-core` (upstream commit 8c57e46; ... SUL-1.0 fork terms cover it)",
+      "new_declaration": "vendored `hashline-core` (upstream commit 8c57e46; ... SUL-1.0 fork terms cover it)",
+      "changed": false,
+      "note": "explicitly HISTORICAL: past tense, naming the wave that replaced it; kept because a licence record that erases its own past is defective"
+    },
+    {
+      "path": "docs/plan-tui-edition.md",
+      "class": "7 record (KEPT as history)",
+      "old_declaration": "**D5** — \"license stays SUL-1.0\"",
+      "new_declaration": "**D5** — \"license stays SUL-1.0\"",
+      "changed": false,
+      "note": "explicitly HISTORICAL: past tense, naming the wave that replaced it; kept because a licence record that erases its own past is defective"
+    },
+    {
+      "path": "docs/track-a-report.md",
+      "class": "7 record (KEPT as history)",
+      "old_declaration": "| S6 | License compliance | Achieved | LICENSE-NOTICES (SUL-1.0 internal-use statement) |",
+      "new_declaration": "| S6 | License compliance | Achieved | LICENSE-NOTICES (SUL-1.0 internal-use statement) |",
+      "changed": false,
+      "note": "explicitly HISTORICAL: past tense, naming the wave that replaced it; kept because a licence record that erases its own past is defective"
+    },
+    {
+      "path": "docs/design.md",
+      "class": "7 record (KEPT as history)",
+      "old_declaration": "(wave B2 replaced the vendored SUL-1.0 server)",
+      "new_declaration": "(wave B2 replaced the vendored SUL-1.0 server)",
+      "changed": false,
+      "note": "explicitly HISTORICAL: past tense, naming the wave that replaced it; kept because a licence record that erases its own past is defective"
+    },
+    {
+      "path": "docs/design.zh-CN.md",
+      "class": "7 record (KEPT as history)",
+      "old_declaration": "（B2 波替换掉了 vendored 的 SUL-1.0 服务器）",
+      "new_declaration": "（B2 波替换掉了 vendored 的 SUL-1.0 服务器）",
+      "changed": false,
+      "note": "explicitly HISTORICAL: past tense, naming the wave that replaced it; kept because a licence record that erases its own past is defective"
+    },
+    {
+      "path": "cordis.patch.yml",
+      "class": "7 record (KEPT as history)",
+      "old_declaration": "`mcp-gitbash` started one vendored SUL-1.0 server whose tools were a raw shell runner ... / the vendored lsp-daemon (SUL-1.0) was replaced by the declared npm dependency `cclsp` (MIT)",
+      "new_declaration": "`mcp-gitbash` started one vendored SUL-1.0 server whose tools were a raw shell runner ... / the vendored lsp-daemon (SUL-1.0) was replaced by the declared npm dependency `cclsp` (MIT)",
+      "changed": false,
+      "note": "explicitly HISTORICAL: past tense, naming the wave that replaced it; kept because a licence record that erases its own past is defective"
+    }
+  ],
+  "also_swept_not_in_the_carrier_table": {
+    "scripts/verify-vendor.ts": "CHECKED, licence-free — its attribution banner reads '[verify-vendor] * upstream attribution lives in LICENSE-NOTICES.md, README.md and README.zh-CN.md, where no gate owns it.' and states no licence; left UNCHANGED (minimal diff). FINDING (outside this wave's scope, not fixed): its header comment still says the asset half covers 'the in-repo MCP source snapshot', which wave B2 deleted.",
+    "scripts/repin-vendor.ts": "CHECKED, licence-free — the only 'authority' strings are AUTHORITY_TOKENS, seven algorithmic tokens (.replace(/\\r\\n?/g,...), the node_modules/cpython skip lines, the tree-fold update calls) re-read from scripts/verify-vendor.ts by assertAuthorityShape(); no licence string exists, left UNCHANGED",
+    "skills/*/ATTRIBUTION.md (16)": "KEPT — each states 'Until wave A ... the corpus was ported from code-yeongyu/oh-my-openagent (SUL-1.0); it is now sourced from the same author's MIT re-license' and 'This file records provenance only - it does not change this repository's own licence.' Explicitly historical.",
+    "packages/mpd-{comment-checker,hashline,mcp-gitbash,mcp-lsp,memory}-plugin/README[.zh-CN].md + packages/mpd-mcp-{gitbash,lsp}/src/launch.ts": "KEPT — each is past-tense or a negative ('carries no SUL-1.0 source', 'the SUL-1.0 ... build ... is gone')",
+    "packages/mpd-roles-plugin/personas/ATTRIBUTION.md": "KEPT — 'the historical SUL-1.0 text is a role-name opening or a repository path'"
+  },
+  "agents_md_measurement": {
+    "budget_bytes": 65536,
+    "before_bytes": 64986,
+    "before_margin_bytes": 550,
+    "after_bytes": 60456,
+    "after_margin_bytes": 5080,
+    "target_le_65024": true,
+    "margin_above_2KB_required": true,
+    "move_first_action": "the §3 repository-layout tree (5692 B) was moved VERBATIM into agent-references/repository-layout.md, leaving a 790 B short definition + an exact pointer; §1's five long-form bullets were compressed to short definitions + exact pointers after their long forms were appended to agent-references/overview-and-provenance.md",
+    "moved_block_sha256": "d4842e77de2d44f52f56b3e11494d708e92503d88566667e18c7cd926c77d2b1",
+    "moved_block_byte_identical": true,
+    "verify_manual_paths": "exit 0 (PASS resolved=167)",
+    "note": "the manual's own Instruction-budget paragraph was re-measured and now reads 60456 bytes / 5080 B of margin"
+  },
+  "packed_tree_check": {
+    "packer": "node scripts/pack-mpd.ts",
+    "packer_exit": 0,
+    "artifact": "dist/mpd-package",
+    "files": 608,
+    "packed_manifest_license": "MIT",
+    "packed_LICENSE_md_sha256": "554aaeac2c653dec4a52a6e846be8fcd6de8e724a7cc339e160382a4d38d72f5",
+    "root_LICENSE_md_sha256": "554aaeac2c653dec4a52a6e846be8fcd6de8e724a7cc339e160382a4d38d72f5",
+    "packed_LICENSE_md_identical_to_root": true,
+    "stale_files_before_the_repack": [
+      "README.md",
+      "README.zh-CN.md",
+      "LICENSE.md",
+      "LICENSE-NOTICES.md",
+      "cordis.patch.yml",
+      "CONTRIBUTING.md",
+      "CONTRIBUTING.zh-CN.md",
+      "package.json",
+      "docs/**",
+      "agent-references/**",
+      "packages/*/README*",
+      "skills/*/ATTRIBUTION.md"
+    ],
+    "current_tense_licence_signature_check": {
+      "patterns": [
+        "badge/license-SUL",
+        "License: SUL-1.0",
+        "license-SUL--1.0",
+        "\"license\": \"SUL",
+        "internal/personal use",
+        "non-commercial only",
+        "SEE LICENSE IN"
+      ],
+      "hits": 1,
+      "hit": "dist/mpd-package/agent-references/overview-and-provenance.md — inside 'The former §1 body (verbatim)', an explicitly historical 2026-10-06 snapshot. A LICENCE STATE banner now sits ABOVE that block and a full LICENCE STATE (current) section BELOW it; both declare MIT.",
+      "verdict": "NO current-tense SUL-1.0 declaration remains in the packed tree"
+    },
+    "remaining_SUL_mentions_by_class": {
+      "LICENSE-NOTICES.md": "historical (header declares MIT; every SUL mention is past-tense 'what was removed')",
+      "skills/*/ATTRIBUTION.md + personas/ATTRIBUTION.md (17 files)": "historical (pre-wave-A provenance, explicitly labelled)",
+      "package READMEs (comment-checker, hashline, mcp-gitbash, mcp-lsp, memory)": "historical / negative ('no SUL-1.0 source')",
+      "docs/design{,.zh-CN}.md + cordis.patch.yml": "historical (past tense, naming the wave that replaced the server)",
+      "docs/plan-c.md, docs/plan-tui-edition.md, docs/track-a-report.md": "thin process records (plan / prior-phase report)",
+      "agent-references/overview-and-provenance.md": "historical, supersession-banner-guarded",
+      "docs/user-guide{,.zh-CN}.md": "historical ('the upstream those names came from was SUL-1.0, recorded as history only')"
+    }
+  },
+  "vendor_lock": {
+    "path": "VENDOR_LOCK.json",
+    "subject": "the _note ONLY",
+    "old": "HISTORICAL REFERENCE ONLY - the upstream project oh-my-openagent (..., v5.0.0-beta.20, SUL-1.0) is NOT a checked baseline. De-vendored 2026-10-07 ... The commit is recorded here as attribution only ... This file's real subject is the `assets` half: the bytes THIS repository ships.",
+    "new": "HISTORICAL REFERENCE ONLY - ... whose own content was SUL-1.0 ... is NOT a checked baseline, and the IDENTITY HALF HAS NO CONSUMER: no gate resolves, fetches, copies from, fingerprints or audits that checkout, this file carries no upstream identity field ... The de-omo program (waves A-F, 2026-10-08) purged and replaced every derived byte, which is what makes the assets below THIS repository's own work, licensed MIT ... This file's real subject is the `assets` half: the fingerprints of the bytes THIS repository SHIPS, which is what scripts/verify-vendor.ts checks and what still reddens on a corrupted byte.",
+    "fingerprint_body_sha256_before": "eb089ea8a92afa2308e24661f178e9b56496a698028ec05f0d0be19eb583821c",
+    "fingerprint_body_sha256_after": "eb089ea8a92afa2308e24661f178e9b56496a698028ec05f0d0be19eb583821c",
+    "fingerprints_unchanged": true,
+    "method": "everything except _note was re-serialised (sorted keys, compact separators) and hashed before and after the edit"
+  },
+  "licence_notices": {
+    "path": "LICENSE-NOTICES.md",
+    "old_header": "- This repository is derived from the upstream project oh-my-openagent (...).\\n- License: Sustainable Use License 1.0 (SUL-1.0). See LICENSE.md for the full text.",
+    "new_header": "- **This repository's own code is MIT** — LICENSE.md, Copyright (c) 2026 HaroldZ32. It is **not** under the Sustainable Use License any more ...\\n- **Read this file as a RECORD, not as a claim.** ... every `SUL-1.0` / \"Sustainable Use\" mention below is HISTORY ...",
+    "tense_fixes": [
+      "the MCP-servers section: 'the Sustainable Use License 1.0, the same licence this repository inherits' -> 'the UPSTREAM's terms, never this repository's current licence'"
+    ],
+    "notice_added": "## codegraph (MIT) — the `mpd-codegraph` row and `mcp__codegraph__*`: NO codegraph notice existed in this file at all, although the prebuilt server packages/mpd-mcp-codegraph/dist/serve.js is VENDORED and sha256-pinned. Added, pointing at the in-tree LICENSE/NOTICE/NODE-RUNTIME-LICENSES.md.",
+    "notices_verified_present": [
+      "schemastery/cosmokit/cordis — Shigma",
+      "DeepSeek harness (@deepseek-ai/dsh-*)",
+      "the relocated adopted client bundle",
+      "codegraph (ADDED)",
+      "cclsp (MIT)",
+      "@cyanheads/git-mcp-server (Apache-2.0)",
+      "mcp-server-commands (MIT)",
+      "lazycodex corpus (MIT, (c) 2026 Yeongyu Kim) + the three pi-edit copyright lines (Mario Zechner, Can Bölük, Stencil Labs, Inc.)",
+      "insane-search / fivetaku (MIT)",
+      "ast-grep skill carriers",
+      "Open Design + taste-skill/ui-ux-db/designpowers (the design sources)",
+      "dsh-agent-teams (MIT, DELETED)",
+      "@code-yeongyu/comment-checker (MIT)",
+      "DeepSeek Harness 创造模式 skills (MIT)"
+    ],
+    "history_kept": "every 'what was removed' section survives with its measurements (wave B1/B2/C/D/F records)"
+  },
+  "decisions": [
+    {
+      "id": "D-distribution-licence",
+      "question": "dsh-distribution.json carries NO licence field — add one?",
+      "decision": "DO NOT ADD",
+      "rationale": [
+        "the file declares apiVersion distribution.dsh.dev/v1alpha1 / kind DistributionDescriptor — a descriptor belonging to an EXTERNAL meta-protocol, validated by that protocol's OWN conformance CLI (QA case `tui-distribution`)",
+        "scripts/verify-plugin-manifest.ts reads exactly ONE path from it, [\"distribution\",\"version\"], and no licence member — so verify:manifest coherence comes from the descriptor making NO licence claim: silence cannot contradict LICENSE.md, while an invented key could contradict the external schema",
+        "the protocol checkout that would validate an added key is NOT obtainable in this environment (the QA case's PROTOCOL_PROBE is a dsh-ecosystem-spec checkout at vendor/meta-protocols/dsh-distribution; a filesystem probe found no such tree), so an added field could be verified NEITHER way"
+      ],
+      "kept_coherence": "distribution.version stays 0.12.0, in step with package.json and dsh-plugin.json; verify:manifest PASSES"
+    },
+    {
+      "id": "D-agent-references-verbatim-block",
+      "question": "agent-references/overview-and-provenance.md holds a VERBATIM 2026-10-06 snapshot of §1 whose licence sentence reads SUL-1.0. Rewrite it, or keep it?",
+      "decision": "KEEP the verbatim bytes; add a supersession banner ABOVE and a LICENCE STATE (current) section BELOW",
+      "rationale": [
+        "the block is explicitly labelled a historical reproduction whose byte count and sha256 are recorded in evidence/gates/agents-budget/ — rewriting it would falsify that record AND the 'VERBATIM' claim",
+        "the task's own rule: a licence record that erases its own past is defective — keep the history, fix the tense"
+      ]
+    },
+    {
+      "id": "D-kept-historical-mentions",
+      "question": "what happens to the remaining SUL-1.0 mentions?",
+      "decision": "KEPT, classified, and reported",
+      "rationale": [
+        "each is past tense and/or names the wave that removed the thing it describes",
+        "the packed-tree rule allows them: 'EXCEPT inside records that are explicitly historical'"
+      ]
+    }
+  ],
+  "bounds_could_not_prove": [
+    "GIT HISTORY still contains every old byte (LICENSE.md's SUL text, the SUL badges, the manifests). Removing it would require a history rewrite, which this wave is FORBIDDEN to do and which the task states is expected. The bound: the purge is of the WORKING TREE and the PACKED ARTIFACT, not of the log.",
+    "The external dsh-distribution conformance CLI was NOT run (its protocol checkout is absent from this machine), so the DECISION not to add a licence field is argued from the schema's ownership + the gate's read path, not from a conformance run.",
+    "No real MOUNT / Docker lane was run — not requested for this wave. A licence string cannot be falsified by a boot, but the claim 'the one-command install still works' is NOT made here.",
+    "`evidence/**` and `.mpd/**` still contain SUL-1.0 bytes BY DESIGN (historical records and wave plans). A tree-wide grep that includes them will show hits; that is not a defect.",
+    "`packages/mpd-mcp-codegraph/NODE-RUNTIME-LICENSES.md`'s completeness for the embedded Node runtime was NOT re-derived — the added notice POINTS AT it rather than restating it.",
+    "FINDING (reported, not absorbed): scripts/verify-vendor.ts's header comment still names 'the in-repo MCP source snapshot' among the asset half's subjects, which wave B2 deleted; the gate passes, so the comment is stale prose, not a false gate. Left unchanged to keep this wave's diff minimal.",
+    "The doc-level SUL mentions kept as history (docs/design.md pair, cordis.patch.yml, the three thin process records) may be classified differently by a verifier; the classification criteria used here are stated in carrier_classification_rule."
+  ],
+  "carrier_classification_rule": "CHANGED = the sentence asserts this repository's CURRENT licence, terms or convention. KEPT = the sentence is past tense and/or names the wave that removed the thing it describes (an explicitly historical record).",
+  "gates": [
+    {
+      "gate": "verify:docs",
+      "command": "bun run verify:docs",
+      "exit": 0,
+      "observed": "[verify-docs-parity] root=... pairs=47 failed=0 violations=0 exempt=24 derived=3 links=428 dead=0 — PASS"
+    },
+    {
+      "gate": "verify:manifest",
+      "command": "bun run verify:manifest",
+      "exit": 0,
+      "observed": "ok files-allowlist: 27 pattern(s); 0 required path(s) not admitted / ok evidence-excluded: the frozen evidence/ tree stays out of the published package / ok packed-content: npm pack --dry-run lists 936 file(s); 0 required path(s) absent / VERDICT: PASS"
+    },
+    {
+      "gate": "verify:rows",
+      "command": "bun run verify:rows",
+      "exit": 0,
+      "observed": "[verify-rows-parity] ok: 35 row ids match the 2-file bundle patch layer"
+    },
+    {
+      "gate": "verify-vendor",
+      "command": "node scripts/verify-vendor.ts",
+      "exit": 0,
+      "observed": "[verify-vendor] PASS - 7 shipped asset(s) fingerprinted, upstream identity not checked"
+    },
+    {
+      "gate": "verify:comments",
+      "command": "bun run verify:comments",
+      "exit": 0,
+      "observed": "scanned 364 TypeScript file(s) of 364; inspected 32738 declaration(s); skipped 14706 inline callback(s) / VERDICT: PASS"
+    },
+    {
+      "gate": "verify-dist-fresh",
+      "command": "node scripts/verify-dist-fresh.ts",
+      "exit": 0,
+      "observed": "[verify-dist-fresh] ok: 31/31 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 651ms   (NOT COVERED = packages/mpd-mcp-codegraph/dist/serve.js, the declared sha-pinned prebuilt)"
+    },
+    {
+      "gate": "typecheck",
+      "command": "bun run typecheck",
+      "exit": 0,
+      "observed": "tsgo --noEmit  (no output, exit 0)"
+    },
+    {
+      "gate": "test-packages",
+      "command": "bun test packages",
+      "exit": 0,
+      "observed": "1708 pass, 3 skip, 0 fail, 22317 expect() calls; Ran 1711 tests across 105 files [20.31s]"
+    },
+    {
+      "gate": "verify-pack-closure",
+      "command": "node scripts/verify-pack-closure.ts",
+      "exit": 0,
+      "observed": "content bytes: 594 file(s) compared, 594 identical, 0 drift, 0 expected-after-pack; completeness: 495 declared source file(s) compared, 494 present, 1 declared exemption(s), 0 absent; pack stamp 2026-10-08T17:19:30.438Z"
+    },
+    {
+      "gate": "verify-manual-paths",
+      "command": "node scripts/verify-manual-paths.ts",
+      "exit": 0,
+      "observed": "[verify-manual-paths] PASS resolved=167 over-report=78 under-report=89 declared=2 (every audited path exists)"
+    },
+    {
+      "gate": "verify-no-host-override",
+      "command": "node scripts/verify-no-host-override.ts",
+      "exit": 0,
+      "observed": "[verify-no-host-override] PASS: every id-target is bundle-owned (0 of 0 collide with the 205 host-declared row ids)"
+    }
+  ],
+  "gates_all_green": true,
+  "evidence_paths": {
+    "result.json": "evidence/de-omo/licence/20261008T171934Z/result.json",
+    "output.log": "evidence/de-omo/licence/20261008T171934Z/output.log",
+    "exitcodes.txt": "evidence/de-omo/licence/20261008T171934Z/exitcodes.txt"
+  }
+}

@@ -14,7 +14,7 @@ function errorMessage(error) {
 // packages/mpd-mcp-shared/log-sink.ts
 import { closeSync, mkdirSync, openSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { isAbsolute, join, relative, resolve, sep } from "node:path";
 var LOG_SUBDIR = join(".mpd", "logs");
 var DEFAULT_MAX_BYTES = 1024 * 1024;
 var DEFAULT_MAX_LINE_BYTES = 8192;
@@ -62,7 +62,10 @@ function tryOpenRoot(root, name) {
 }
 function owningRoot(roots, file) {
   for (const root of roots) {
-    if (file === root || file.startsWith(root.endsWith("/") ? root : `${root}/`))
+    if (file === root)
+      return root;
+    const rel = relative(root, file);
+    if (rel !== "" && rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel))
       return root;
   }
   return null;
@@ -1606,6 +1609,9 @@ var LEGACY_CHAIN_KEYS = {
 function toKebabKey(role) {
   return String(role ?? "").replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
 }
+function roleNameKey(role) {
+  return String(role ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
 function resolveRole(role, chains) {
   const key = toKebabKey(role);
   let chain = chains[key] ?? DEFAULT_CHAINS[key] ?? DEFAULT_CHAINS.sisyphus;
@@ -1624,21 +1630,34 @@ function loadMemory(p) {
     return {};
   }
 }
+function configServiceOf(ctx) {
+  try {
+    return ctx.get?.("mpdConfig");
+  } catch {
+    return;
+  }
+}
+function isChainArray(value) {
+  return Array.isArray(value) && value.length > 0 && value.every((c) => c && typeof c.provider === "string" && typeof c.model === "string");
+}
+function overlayNow(ctx) {
+  const mpdConfig = configServiceOf(ctx);
+  if (typeof mpdConfig?.get !== "function")
+    return {};
+  const overlay = {};
+  for (const key of Object.keys(DEFAULT_CHAINS)) {
+    const legacy = LEGACY_CHAIN_KEYS[key];
+    const v = mpdConfig.get("modelchain." + key) ?? (legacy ? mpdConfig.get("modelchain." + legacy) : undefined);
+    if (isChainArray(v))
+      overlay[key] = v;
+  }
+  return overlay;
+}
+function chainsNow(ctx, config) {
+  return { ...config?.chains ?? DEFAULT_CHAINS, ...overlayNow(ctx) };
+}
 function apply(ctx, config = {}) {
   const dsh = resolveDshAdapter(ctx);
-  const mpdConfig = ctx.get?.("mpdConfig");
-  let chains = config?.chains ?? DEFAULT_CHAINS;
-  if (mpdConfig?.get) {
-    const overlay = {};
-    for (const key of Object.keys(DEFAULT_CHAINS)) {
-      const legacy = LEGACY_CHAIN_KEYS[key];
-      const v = mpdConfig.get("modelchain." + key) ?? (legacy ? mpdConfig.get("modelchain." + legacy) : undefined);
-      if (Array.isArray(v) && v.length > 0 && v.every((c) => c && typeof c.provider === "string" && typeof c.model === "string"))
-        overlay[key] = v;
-    }
-    if (Object.keys(overlay).length > 0)
-      chains = { ...DEFAULT_CHAINS, ...overlay };
-  }
   dsh.registerTool({
     name: "mpd_modelchain_resolve",
     description: "Resolve the DeepSeek provider/model route for a roster role, addressed by its name (Architect, Researcher, Planner, Deep Worker, Senior Engineer, Lead, Explorer, Reviewer, Plan Reviewer, Vision Analyst, Junior Engineer) — the same names team mode uses. Chains come from the mpd-roles roster, with the adapted fallback chains behind them.",
@@ -1648,13 +1667,21 @@ function apply(ctx, config = {}) {
       render: (_args, value) => [{ type: "text", text: "role=" + _args?.role + " -> " + value.provider + "/" + value.model + " (chain " + value.chain.length + " entries)" }]
     },
     execute: async (args) => {
-      const role = String(args?.role ?? "sisyphus");
+      const role = String(args?.role ?? "").trim();
       const rolesService = ctx.get?.("mpdRoles");
+      const names = (rolesService?.list?.() ?? []).map((r) => String(r?.name ?? "")).filter((n) => n !== "");
       const spec = rolesService?.get?.(role);
-      if (spec && Array.isArray(spec.chain) && spec.chain.length > 0) {
+      if (spec === undefined || spec === null || roleNameKey(role) !== roleNameKey(String(spec.name ?? ""))) {
+        throw new Error("mpd_modelchain_resolve: unknown role — use a roster NAME from mpd_roles_list" + (names.length > 0 ? " (" + names.join(", ") + ")" : " (the mpdRoles roster service answered no names — is the mpd-roles row mounted?)"));
+      }
+      const configured = overlayNow(ctx)[String(spec.id)];
+      if (isChainArray(configured)) {
+        return { provider: configured[0].provider, model: configured[0].model, chain: configured.map((c) => ({ ...c })) };
+      }
+      if (Array.isArray(spec.chain) && spec.chain.length > 0) {
         return { provider: spec.chain[0].provider, model: spec.chain[0].model, chain: spec.chain.map((c) => ({ ...c })) };
       }
-      return resolveRole(role, chains);
+      return resolveRole(String(spec.id), chainsNow(ctx, config));
     }
   });
   dsh.registerTool({
@@ -1687,7 +1714,9 @@ function apply(ctx, config = {}) {
 export {
   DEFAULT_CHAINS,
   apply,
+  chainsNow,
   inject,
   name,
+  overlayNow,
   resolveRole
 };

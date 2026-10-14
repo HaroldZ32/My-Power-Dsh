@@ -1,0 +1,46 @@
+# Proves: PR #36 CodeRabbit repair pass R1-R4 final state, captured 2026-10-11T15:21:56Z, after the last skills/** write.
+
+## File fingerprints
+df26d8d7bf7522fcb2acc92e45e0a65469769f095d8873390d2ce39dd4e7e484  skills/data-scientist/references/uv-setup.md
+7172ae7680cbb13fc9f901f7324aa74d014314d16d52331a2355dd005202db44  skills/data-scientist/references/execution-surfaces.md
+dfcbaa5b04e03dca27c0742dd9e67bb41d1170764dd493b1c6dbf19e22965a0a  skills/data-scientist/references/polars-lane.md
+3b04c788134b8a16ae66462f81c18fd7c55415d487d69d6afed4309fabf718f4  skills/data-scientist/scripts/ensure-py-deps.ps1
+7605f01546bb8f6e45a129e04ca3044ebc785dcac2bd651b66bb996393342bb9  skills/data-scientist/SKILL.md
+97523902e3dd6960ca15a80476e280fca725b8fa6ef47924c097e0dd0d0f8061  skills/programming/SKILL.md
+
+## R1: uv-setup.md Unix row offers bash only; Windows row keeps ps1
+9:| macOS / Linux / WSL / Git Bash | `bash scripts/setup-uv.sh` |
+10:| Windows (PowerShell) | `pwsh scripts/setup-uv.ps1` # or: `powershell -ExecutionPolicy Bypass -File scripts/setup-uv.ps1` |
+52:- uses: astral-sh/setup-uv@v5
+
+## R2: no (Get-Command python).Source; kernel sys.executable guidance present
+grep Get-Command exit=1 (1 = absent, good)
+skills/data-scientist/scripts/ensure-py-deps.ps1:13:  Pass the interpreter the kernel actually runs (for a kernel, its sys.executable):
+skills/data-scientist/scripts/ensure-py-deps.ps1:25:  # In the kernel: python -c "import sys; print(sys.executable)"
+skills/data-scientist/scripts/ensure-py-deps.sh:5:# (default: python3); pass the kernel's sys.executable for kernel use.
+skills/data-scientist/references/execution-surfaces.md:43:site = subprocess.run(["bash", "scripts/ensure-py-deps.sh", sys.executable],
+skills/data-scientist/references/execution-surfaces.md:46:#   kernel with `python -c "import sys; print(sys.executable)"`, never `(Get-Command
+skills/data-scientist/references/polars-lane.md:11:site = subprocess.run(["bash", "scripts/ensure-py-deps.sh", sys.executable],
+skills/data-scientist/references/polars-lane.md:14:#   kernel with `python -c "import sys; print(sys.executable)"`, never `(Get-Command
+skills/data-scientist/SKILL.md:25:   `pwsh scripts/ensure-py-deps.ps1 -PythonBin <kernel sys.executable>`), which installs
+grep sys.executable exit=0 (0 = present, good)
+
+## R3: ensure-py-deps.ps1 defaults PythonBin to 'python'; docs pass -PythonBin
+21:.PARAMETER PythonBin
+26:  $site = & scripts/ensure-py-deps.ps1 -PythonBin <that path>
+35:    [string]$PythonBin = 'python'
+44:function Test-PythonBin([string]$Candidate) {
+55:if (-not (Test-PythonBin $PythonBin)) {
+56:    Write-Log "python executable not found: $PythonBin; on a python3-only host pass -PythonBin python3"
+60:$tag = & $PythonBin -c 'import sys; print(f"cp{sys.version_info[0]}{sys.version_info[1]}")'
+62:    Write-Log "not a working python interpreter: $PythonBin"
+83:    $uvOutput = & uv pip install --python $PythonBin --target $siteDir polars pyarrow
+25:   `pwsh scripts/ensure-py-deps.ps1 -PythonBin <kernel sys.executable>`), which installs
+43:  (`pwsh scripts/ensure-py-deps.ps1 -PythonBin <kernel sys.executable>` on Windows).
+
+## R4: stock-Windows 5.1 launcher documented next to pwsh mentions
+skills/programming/SKILL.md:258:#     (Windows PowerShell 5.1: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/rust/check-no-excuse-rules.ps1 <changed paths>)
+skills/programming/SKILL.md:262:#     (Windows PowerShell 5.1: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/go/check-no-excuse-rules.ps1 <changed paths>)
+skills/data-scientist/SKILL.md:22:   (Windows PowerShell 5.1: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/ensure-js-deps.ps1`)
+skills/data-scientist/references/execution-surfaces.md:13:#     (Windows PowerShell 5.1: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/ensure-js-deps.ps1)
+grep 5.1-launcher exit=0 (0 = present, good)

@@ -1,0 +1,103 @@
+{
+  "schema": "dist-rebuild markers (content-free: hashes, sizes, symbol NAMES and counts only)",
+  "generatedAtUtc": "2026-10-14T10:30:40.391Z",
+  "toolchain": {
+    "pinnedBinary": ".toolchain/node_modules/.bin/bun",
+    "version": "1.4.0",
+    "recordedBuildToolchain": "bun@1.4.0"
+  },
+  "gate": {
+    "command": "node scripts/verify-dist-fresh.ts",
+    "baseline": {
+      "exit": 1,
+      "verdict": "2 of 31 targets not fresh (STALE: 2)",
+      "stale": [
+        "packages/mpd-tui-adapter-plugin/dist/index.js",
+        "packages/mpd-tui-plugin/dist/index.js"
+      ]
+    },
+    "final": {
+      "exit": 0,
+      "verdict": "ok: 31/31 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed",
+      "notCovered": [
+        "packages/mpd-mcp-codegraph/dist/serve.js"
+      ]
+    }
+  },
+  "targets": [
+    {
+      "dist": "packages/mpd-tui-adapter-plugin/dist/index.js",
+      "bytes": 51702,
+      "sha256": "52cbbf2bbd6ae010f0f4c00bf20cdddd95a18edf61bbd8452ed35dae87a5a8bc",
+      "src": "packages/mpd-tui-adapter-plugin/src/index.ts",
+      "srcSha256": "6c6cd5c06acda45999528a1d885c7aea91658a9b3d423d2354fe43935a08d0ab",
+      "modulesBundled": 1
+    },
+    {
+      "dist": "packages/mpd-tui-plugin/dist/index.js",
+      "bytes": 413053,
+      "sha256": "8639a39b2c7c9ace6d4c509825f25c053d4e72b358b02994d1e7c229c6a240b1",
+      "src": "packages/mpd-tui-plugin/src/index.ts",
+      "srcSha256": "9552ca8d4dc07f84f6525a6b511442a38fe9c48a20c1ba62c1002452f1d92bfc",
+      "modulesBundled": 34
+    }
+  ],
+  "writeSymbolMarkers": {
+    "apis": [
+      "writeFileSync",
+      "appendFileSync",
+      "mkdirSync",
+      "cpSync",
+      "rmSync",
+      "unlinkSync",
+      "createWriteStream"
+    ],
+    "rawWholeDistPresence": {
+      "writeFileSync": 3,
+      "appendFileSync": 2,
+      "mkdirSync": 6,
+      "cpSync": 0,
+      "rmSync": 2,
+      "unlinkSync": 0,
+      "createWriteStream": 0
+    },
+    "attributionRule": "bun build prints `// packages/<path>` above every bundled module; an occurrence is attributed to the banner segment it sits in",
+    "attribution": {
+      "perSegment": {
+        "packages/mpd-mcp-shared/log-sink.ts": {
+          "mkdirSync": 2,
+          "rmSync": 2
+        },
+        "packages/mpd-tui-adapter-plugin/src/index.ts": {
+          "writeFileSync": 3,
+          "appendFileSync": 2,
+          "mkdirSync": 4
+        }
+      },
+      "ownModuleOffenders": [],
+      "unattributedOccurrences": 0,
+      "bundledModuleBannerLines": 36,
+      "distinctBundledModules": 33
+    },
+    "laneFunctionCheck": {
+      "function": "ownModuleWriteOffenders(dist) from skills/dsh-qa/scripts/lib/settings-bridge-lane.ts",
+      "result": []
+    },
+    "adapterDistOwnModulePresence": {
+      "writeFileSync": 3,
+      "appendFileSync": 2,
+      "mkdirSync": 3,
+      "cpSync": 0,
+      "rmSync": 0,
+      "unlinkSync": 0,
+      "createWriteStream": 0
+    },
+    "teamCoreInlinedInTuiDist": false,
+    "identityChecks": {
+      "noticePresent": true,
+      "disclosurePresent": true,
+      "adapterBannerPresent": true,
+      "logSinkBannerPresent": true
+    }
+  }
+}

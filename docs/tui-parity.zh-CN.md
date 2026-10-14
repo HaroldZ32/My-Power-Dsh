@@ -85,7 +85,7 @@
 | `plan-add-task` | `lib/index.ts:443`（`add_task`） | absent | — | — | NOT-CLAIMED #2 |
 | `plan-remove-task` | `lib/index.ts:458`（`remove_task`） | absent | — | — | NOT-CLAIMED #2 |
 | `plan-pre-approval editing / merge` | `lib/index.ts:405-475`（编辑器动作块）；`lib/tools.ts:759`（该插件的 edit-plan 工具） | absent | — | — | NOT-CLAIMED #2；契约中该行标签 `merge-autonomous-plan` 在采用的客户端字节里找不到可定位锚点——见偏差 D2。（Web 一列来自那个已删除的插件；而计划批准族本身已回到本 bundle 自己的平台上 —— 见顶部横幅与 `docs/tui.zh-CN.md` §3.2。） |
-| `activity-panel/archived-teams view (?archived=1)` | `lib/index.ts:255-272`；`lib/client.js:360-367` | absent | — | — | 实测：TUI 只读活动状态根目录，并只选取一条最新记录（`packages/mpd-tui-plugin/src/state.ts:107-109`）；归档团队不被投影 |
+| `activity-panel/archived-teams view (?archived=1)` | `lib/index.ts:255-272`；`lib/client.js:360-367` | absent | — | — | 实测：TUI 只读活动状态根目录，并且只解析**一条**记录 —— 自本会话波次起是本**会话自己**的那一条，只有读不到会话 id 时才退到带 `workspace-level` 标记的兜底（`packages/mpd-tui-plugin/src/team-state.ts` 的 `readScopedWorkflow`，见 `docs/tui.zh-CN.md` §3.4）；归档团队不被投影 |
 | `activity-panel/panel-geometry + drag/resize` | `lib/client/panel-geometry.ts:121` | not-applicable | — | — | 终端场景没有浮动几何（§7.1） |
 | `activity-panel/localization (t())` | `lib/client/locales.ts` | not-applicable | 注入的 `tuiCommandTrees` 携带 `descriptions.zh`（`src/command-trees.ts:18-25`）；场景文案保持英文 | E4（`16-command-completion.pane.txt`） | §5.1 与 §7.1 —— 不声称任何场景文案本地化 |
 | `activity-panel/member-artwork (assets route)` | `lib/index.ts:492`（`/plugins/dsh-agent-teams/assets`） | not-applicable | — | — | 终端场景渲染文本 |
@@ -102,7 +102,7 @@
 
 **`plan-continue`（第 10 行）、四个计划编辑器（第 11–14 行）与批准前编辑（第 15 行）。** 这六行是同一个决定：除批准与丢弃外，TUI 的计划界面是只读的。想在 TUI 里改掉一处主题笔误的用户必须去问 captain——这一后果写在契约的 NOT-CLAIMED #2 里而不是被藏起来；而 `continue` 还额外没有可采用的工具界面（NOT-CLAIMED #3），所以即使 TUI 想接也无处可接。
 
-**归档团队（第 16 行）。** TUI 每个工作区只解析一条最新的活动记录（`state.ts:107-109`，即面板自身的规则），这样面板与团队场景永远不会对「哪一个是当前团队」产生分歧。归档团队是 Web 侧的浏览便利；TUI 没有第二个状态根可读。
+**归档团队（第 16 行）。** TUI 只解析**一条**活动记录——自本会话波次起，那是本**会话自己**的那一条，只有读不到会话 id 时才退到带 `workspace-level` 标记的兜底（`team-state.ts` 的 `readScopedWorkflow`）——这样面板与团队场景永远不会对「哪一个是当前团队」产生分歧。归档团队是 Web 侧的浏览便利；TUI 没有第二个状态根可读。
 
 **面板几何（第 17 行）、本地化（第 18 行）、成员插图（第 19 行）。** 不移植，因为目标媒介没有等价物：终端场景没有可拖拽的浮动窗口、没有图片资源，而它的场景文案与所有其他 TUI 界面一样只有英文——mpd TUI 中真正本地化的是命令树的 `descriptions.zh`，那是另一种机制，而不是这些面板的翻译。
 

@@ -1,0 +1,107 @@
+############ FINAL VERIFICATION RUN — 2026-10-14T14:26:26Z ############
+
+=== sha256 of every file this repair touched (measured at this instant) ===
+afa53ad0faaccc9fc07094a5ce8932e8a6ef5d7bfe36f843aaf16be8b3e93cd2  docker/entrypoint.sh
+3fb2f0ec5f9d54d62a22567fd72b9a955e713dc46890f750c1d82440b067b8bb  docker/lib/browser-lane.ts
+d7c20454ef5ae7ff2271fe5f1265f2504c5e88120cba3ea88c20959d5cdb0405  docker/lib/reply-verdict.ts
+  (docker/tui-lane.sh is the PREVIOUS repair's file, untouched by this one)
+
+=== bash -n over every docker/*.sh ===
+  OK bash -n docker/entrypoint.sh (exit 0)
+  OK bash -n docker/tui-lane.sh (exit 0)
+
+=== F2 arms (docker/entrypoint.sh backticks) ===
+  --- negative control: the SAME block with the pre-fix (unescaped) bytes, and a stub 'dsh' on PATH ---
+  FACT obs.npmrc = registry=https://registry.example.invalid/ (a SANDBOX-home .npmrc; pnpm — and therefore every  — resolves through the FILE, not the environment, measured 2026-10-09)
+  stderr: STUB-DSH-INVOKED argv=[plugin]
+  OK (control): the pre-fix text loses the words, so the arm above is falsifiable
+  OK (control): a real command ran in the substitution's place
+
+=== arm 4: the obs.caseEngineTree line, EXTRACTED from docker/entrypoint.sh, run with a stub fact() ===
+  exit=0 stderrBytes=0
+  FACT obs.caseEngineTree = /work/dist/mpd-package (the bundle root the mcp-call launcher resolves bundle-relatively: the case installs that packed tree with npm `file:` into its sandbox profile)
+  OK: the words survive
+
+F2 ARMS: ALL PASS
+  f2-arms exit=0
+
+=== F1 arms (ui.replyRendered) ===
+
+=== arm 3: negative control — the same copy WITHOUT reply-verdict.ts must fail to load ===
+  node:internal/modules/esm/resolve:272
+      throw new ERR_MODULE_NOT_FOUND(
+            ^
+  lane exit=1
+  OK (control): the import is real, so the entrypoint's cp line is load-bearing
+
+=== arm 4: the pre-fix predicate is gone from the lane ===
+  OK: the old 'transcript did not change' growth test is gone
+  OK: the lane no longer decides the row on /\bDONE\b/ over the whole transcript
+  OK: the row is judged by the shared classifier
+
+=== arm 5: bash -n docker/entrypoint.sh (the new cp line) ===
+  OK exit 0
+
+=== arm 6: what a DECLARED BOUND does to the driver's verdict (shipped pure functions) ===
+  browser lane ON (the default): unmeasured=["ui.replyRendered"] finalExit=3
+  --no-browser:                  unmeasured=[] finalExit=0
+  (this is the CONSEQUENCE the report states: a null ui arm is a MISSING PREREQUISITE under the browser lane's required prefix, so the next credential-free run exits 3, not 0)
+
+F1 ARMS: ALL PASS
+  f1-arms exit=0
+
+=== F1 classifier self-test (full) ===
+[reply-verdict] reply-wins-over-a-panel=true
+[reply-verdict]   kind=reply expected=reply before=124 after=345 growth=221 done=true tool=false region=1 failure=yes preFixWouldGreen=true
+[reply-verdict]   detail=the reply region carries the answer as its own line: "DONE"
+[reply-verdict] PRE_FIX_GREENS_ON_CREDENTIAL_FREE_FIXTURE=true
+[reply-verdict] PRE_FIX_GREENS_ON_PROMPT_ECHO_ONLY=true
+[reply-verdict] ARMS=9 PASSED=9 FAILED=0
+
+=== F3 arms (01b tarball range) ===
+[f3] D-exit-1=true — exit=1
+[f3] D-route-mirror-tarball-blackholed=true — route=mirror-tarball-blackholed
+[f3] D-reading-says-failed=true — tarball=TypeError: fetch failed ms=0 FAILED (the FALLBACK mirror answered METADATA and not its TARBALL, so the probe FAILS here instead of stalling later)
+[f3] D-tarball-request-went-to-the-mirror=true — tarball={"http://mirror.invalid":1}
+[f3] E-route-both-unreachable=true — route=both-unreachable
+[f3] E-no-tarball-request=true — tarball={} (a probe only runs where metadata answered)
+[f3] FAILED=0
+[f3] workdir=/tmp/f3-arms-FLu30I
+  f3 exit=0
+
+=== driver --self-test, FULL log (the lane's own offline gate) ===
+  driver self-test exit=0
+  ok arms=191 failed arms=0
+  [self-test] ok   the lane probes the SCOPED registry endpoint the harness pin resolves through
+  [self-test] ok   the selected registry is ALSO written to the sandbox home's .npmrc (what pnpm reads)
+  [self-test] ok   compose interpolates the npm transport knobs (a knob only the entrypoint reads is unreachable)
+
+=== RE-HASH after every check above (the sandwich: the bytes did not move) ===
+afa53ad0faaccc9fc07094a5ce8932e8a6ef5d7bfe36f843aaf16be8b3e93cd2  docker/entrypoint.sh
+3fb2f0ec5f9d54d62a22567fd72b9a955e713dc46890f750c1d82440b067b8bb  docker/lib/browser-lane.ts
+d7c20454ef5ae7ff2271fe5f1265f2504c5e88120cba3ea88c20959d5cdb0405  docker/lib/reply-verdict.ts
+
+=== provenance: docker/tui-lane.sh is UNTOUCHED by this repair, and its hash must equal the previous repair's final revision ===
+cabadd63efacbc72581d0f3be9948c216221dbfb4a4b9b34108991b9062c4943  docker/tui-lane.sh
+  the previous repair's report records: cabadd63efacbc72581d0f3be9948c216221dbfb4a4b9b34108991b9062c4943  docker/tui-lane.sh
+  the previous repair's report records its entrypoint.sh as fc579e0e21e2e1972eb7081a011a4da05c2df206875cd9169598ff9b3669ee8e — i.e. the bytes this repair STARTED from (before its own 3 hunks)
+
+=== FINAL RE-HASH after refreshing all four suites (2026-10-14T14:28:55Z) ===
+afa53ad0faaccc9fc07094a5ce8932e8a6ef5d7bfe36f843aaf16be8b3e93cd2  docker/entrypoint.sh
+3fb2f0ec5f9d54d62a22567fd72b9a955e713dc46890f750c1d82440b067b8bb  docker/lib/browser-lane.ts
+d7c20454ef5ae7ff2271fe5f1265f2504c5e88120cba3ea88c20959d5cdb0405  docker/lib/reply-verdict.ts
+=== suite exits: f2=0 f1=0 classifier=0 f3=0 ; evidence mtimes ===
+-rw-rw-r-- 1 haroldzhao haroldzhao  2198 Oct 14 22:28 f1-arms.txt
+-rw-rw-r-- 1 haroldzhao haroldzhao  3145 Oct 14 22:28 f1-reply-verdict-selftest.txt
+-rw------- 1 haroldzhao haroldzhao  5791 Oct 14 22:14 f2-arms.sh
+-rw-rw-r-- 1 haroldzhao haroldzhao  2361 Oct 14 22:28 f2-arms.txt
+-rw-rw-r-- 1 haroldzhao haroldzhao  6121 Oct 14 22:11 f2-backticks.txt
+-rw------- 1 haroldzhao haroldzhao  5359 Oct 14 22:14 f2-shell-backtick-scan.mjs
+-rw-rw-r-- 1 haroldzhao haroldzhao  3340 Oct 14 22:28 f3-arms.txt
+-rw------- 1 haroldzhao haroldzhao  3654 Oct 14 22:23 f3-fetch-shim.mjs
+-rw------- 1 haroldzhao haroldzhao 12001 Oct 14 22:25 f3-registry-arms.mjs
+-rw-rw-r-- 1 haroldzhao haroldzhao  5472 Oct 14 22:28 final-verification.txt
+-rw-rw-r-- 1 haroldzhao haroldzhao   281 Oct 14 22:25 gate-comments.txt
+-rw-rw-r-- 1 haroldzhao haroldzhao 13618 Oct 14 22:27 gate-driver-selftest.txt
+-rw-rw-r-- 1 haroldzhao haroldzhao    17 Oct 14 22:25 gate-typecheck.txt
+-rw------- 1 haroldzhao haroldzhao 19188 Oct 14 22:28 report.md

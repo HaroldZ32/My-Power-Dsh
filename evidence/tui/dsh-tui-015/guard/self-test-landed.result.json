@@ -1,0 +1,39 @@
+{
+  "case": "team-dispatch-guard",
+  "run": "bun skills/dsh-qa/scripts/team-dispatch-guard.ts --self-test",
+  "exitCode": 0,
+  "verdict": "PASS",
+  "arms": "17 arms: 4 C7-1..C7-3 seam assertions + 13 C7-4 arms incl. their negative controls",
+  "logFile": "evidence/tui/dsh-tui-015/guard/self-test-landed.log",
+  "logSha256": "7cfde8431390e6c56e139e82de911228d52b2f06631e6ba56ef2b340de06a2b1",
+  "logBytes": 3037,
+  "tail": "SELF-TEST: PASS (17 arms: 4 C7-1..C7-3 seam assertions + 13 C7-4 arms incl. their negative controls)",
+  "landedScript": {
+    "path": "skills/dsh-qa/scripts/team-dispatch-guard.ts",
+    "sha256": "b1ecb33b5bc7b65f2ff83708db89f291a295e9cf2bba987a99f1715e201d1dcf",
+    "mtime": "2026-10-14T09:44:51.735Z"
+  },
+  "registration": {
+    "casesJson": {
+      "path": "skills/dsh-qa/cases.json",
+      "sha256": "93eaf2aebd79990e75cad29086d10090995415f2c9794ee79c876b727139b482",
+      "mtime": "2026-10-14T08:42:06.056Z",
+      "lanesLength": 46,
+      "row": {
+        "case": "team-dispatch-guard",
+        "script": "skills/dsh-qa/scripts/team-dispatch-guard.ts",
+        "suites": [
+          "all"
+        ],
+        "immutabilityGuard": "required"
+      }
+    },
+    "skillMd": {
+      "path": "skills/dsh-qa/SKILL.md",
+      "sha256": "bdac438bc9f0117a8ac9317c8a038b68338fccc322d417fa3de7dee28cfa2095",
+      "rowLine": 131,
+      "rowPresent": true
+    }
+  },
+  "measuredAtUtc": "2026-10-14T11:00:43.352Z"
+}

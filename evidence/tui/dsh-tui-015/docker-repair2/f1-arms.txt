@@ -1,0 +1,43 @@
+=== arm 1: node docker/lib/reply-verdict.ts --self-test ===
+[reply-verdict]   detail=the reply region carries the answer as its own line: "DONE"
+[reply-verdict] PRE_FIX_GREENS_ON_CREDENTIAL_FREE_FIXTURE=true
+[reply-verdict] PRE_FIX_GREENS_ON_PROMPT_ECHO_ONLY=true
+[reply-verdict] ARMS=9 PASSED=9 FAILED=0
+  OK exit 0
+
+=== arm 2: the lane loads from a COPIED pair (the container's own layout) ===
+  copied: browser-lane.ts reply-verdict.ts 
+  [record] ui.loads=null — not attempted: offline arm, no container
+  [record] ui.workspaceSelected=null — not attempted: offline arm, no container
+  [record] ui.composerPresent=null — not attempted: offline arm, no container
+  [record] ui.promptSent=null — not attempted: offline arm, no container
+  [record] ui.replyRendered=null — not attempted: offline arm, no container
+  [record] ui.mpdSettingsSection=null — not attempted: offline arm, no container
+  [record] ui.teamPanel=null — not attempted: offline arm, no container
+  [record] ui.noConsoleErrors=null — not attempted: offline arm, no container
+  lane exit=0
+  OK: the lane loaded and recorded ui.replyRendered as null
+  OK: exit 0
+  rows recorded: 8
+
+=== arm 3: negative control — the same copy WITHOUT reply-verdict.ts must fail to load ===
+  node:internal/modules/esm/resolve:272
+      throw new ERR_MODULE_NOT_FOUND(
+            ^
+  lane exit=1
+  OK (control): the import is real, so the entrypoint's cp line is load-bearing
+
+=== arm 4: the pre-fix predicate is gone from the lane ===
+  OK: the old 'transcript did not change' growth test is gone
+  OK: the lane no longer decides the row on /\bDONE\b/ over the whole transcript
+  OK: the row is judged by the shared classifier
+
+=== arm 5: bash -n docker/entrypoint.sh (the new cp line) ===
+  OK exit 0
+
+=== arm 6: what a DECLARED BOUND does to the driver's verdict (shipped pure functions) ===
+  browser lane ON (the default): unmeasured=["ui.replyRendered"] finalExit=3
+  --no-browser:                  unmeasured=[] finalExit=0
+  (this is the CONSEQUENCE the report states: a null ui arm is a MISSING PREREQUISITE under the browser lane's required prefix, so the next credential-free run exits 3, not 0)
+
+F1 ARMS: ALL PASS

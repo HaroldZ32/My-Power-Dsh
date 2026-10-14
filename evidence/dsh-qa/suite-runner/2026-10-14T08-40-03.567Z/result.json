@@ -1,0 +1,115 @@
+{
+  "runner": "scripts/run-qa-lanes.ts",
+  "root": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "manifest": "skills/dsh-qa/cases.json",
+  "manifestSha256": "972fe4d06b30b20fa51d50223ae272673cccebb372984318b6a4eef68173db6d",
+  "suite": "all",
+  "selected": 33,
+  "startedAt": "2026-10-14T08:40:03.568Z",
+  "finishedAt": null,
+  "durationMs": null,
+  "complete": false,
+  "exitCodes": {
+    "allGreen": 0,
+    "someUnavailable": 2,
+    "someFailed": 1,
+    "runnerError": 3
+  },
+  "drift": {
+    "unlistedScripts": [
+      "skills/dsh-qa/scripts/delegation-gate.ts",
+      "skills/dsh-qa/scripts/model-config-live-refresh.ts",
+      "skills/dsh-qa/scripts/tui-keeper-standdown.ts"
+    ],
+    "missingScripts": [],
+    "countDrift": {
+      "discovered": 48,
+      "allTsEntries": 48,
+      "listed": 45,
+      "unlisted": 3,
+      "outsideSuites": 18,
+      "excludedUnderscore": [],
+      "unexpectedDrop": [],
+      "partition": {
+        "discoveredPlusExcludedEqualsAllTs": true,
+        "ok": true
+      },
+      "problems": []
+    },
+    "guard": {
+      "required": [
+        "team-dispatch-guard",
+        "team-watchdog-boot",
+        "team-watchdog-config",
+        "team-watchdog-heartbeat",
+        "team-watchdog-notify",
+        "tui-settings-bridge",
+        "watchdog-redesign",
+        "wave2b-lane-d",
+        "web-settings-bridge"
+      ],
+      "exemptCount": 36,
+      "undeclared": [],
+      "malformed": [],
+      "missingImports": [],
+      "empty": false
+    }
+  },
+  "lanes": [
+    {
+      "case": "bundle-lifecycle",
+      "kind": "lane",
+      "verdict": "fail",
+      "reason": "exit-1",
+      "note": null,
+      "exitCode": 1,
+      "signal": null,
+      "durationMs": 10691,
+      "command": "bun skills/dsh-qa/scripts/bundle-lifecycle.ts --no-skip",
+      "script": "skills/dsh-qa/scripts/bundle-lifecycle.ts",
+      "marker": null,
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [],
+      "evidencePath": null,
+      "logPath": "evidence/dsh-qa/suite-runner/2026-10-14T08-40-03.567Z/lanes/bundle-lifecycle.log",
+      "outputTail": [
+        "      code: 'UND_ERR_CONNECT_TIMEOUT'",
+        "    }",
+        "  }",
+        "}",
+        "Node.js v24.21.0",
+        "dsh: plugin command failed; diagnostics: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-reloc/bundle-lifecycle-2026-10-14T08-40-03.580Z/home/profiles/w/.plugin-manager/logs/operation-YaQIH5/pnpm.log"
+      ],
+      "suite": "all"
+    },
+    {
+      "case": "codegraph-smoke",
+      "kind": "lane",
+      "verdict": "fail",
+      "reason": "exit-1",
+      "note": null,
+      "exitCode": 1,
+      "signal": null,
+      "durationMs": 25372,
+      "command": "bun skills/dsh-qa/scripts/codegraph-smoke.ts --no-skip",
+      "script": "skills/dsh-qa/scripts/codegraph-smoke.ts",
+      "marker": null,
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [],
+      "evidencePath": "evidence/dsh-qa/codegraph/2026-10-14T08-40-39.630Z",
+      "logPath": "evidence/dsh-qa/suite-runner/2026-10-14T08-40-03.567Z/lanes/codegraph-smoke.log",
+      "outputTail": [
+        "[codegraph-smoke] ok=false (tool recorded, result 502 chars) -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/dsh-qa/codegraph/2026-10-14T08-40-39.630Z"
+      ],
+      "suite": "all"
+    }
+  ],
+  "counts": {
+    "pass": 0,
+    "unavailable": 0,
+    "fail": 2
+  },
+  "exitCode": 1
+}

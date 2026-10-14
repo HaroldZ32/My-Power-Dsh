@@ -9,14 +9,17 @@
 // everywhere and a script moved one directory deeper cannot silently resolve to the wrong
 // root or read a file with a half-stated encoding.
 //
-// WHAT DELIBERATELY DOES NOT LIVE HERE: the vendored-corpus fingerprint helpers
-// (`readBytes` / `listFiles` / the tree fold). `scripts/repin-vendor.mjs` MIRRORS the
-// algorithm in `scripts/verify-vendor.mjs` and re-checks that mirror against the
-// authority's own bytes (`assertAuthorityShape()`, token list `AUTHORITY_TOKENS`), so
-// hoisting those bodies into a shared module would break the check that exists to keep
-// the two implementations from drifting. That duplication is a contract, not an
-// oversight — and the same reasoning keeps each script's flag table and exit-code map
-// local, because those are per-command contracts rather than shared logic.
+// WHAT DELIBERATELY DOES NOT LIVE HERE: the vendored-corpus fingerprint helpers. The ONE rule that
+// decides which files an asset ships (tracked-file enumeration with a filesystem-walk fallback) and
+// the LF-normalizing reader live in the SIBLING module `scripts/lib/asset-files.ts`, imported by BOTH
+// `scripts/verify-vendor.ts` and `scripts/repin-vendor.ts`, because two private copies of that rule
+// are exactly what let the two sides drift (measured 2026-10-09: the working-tree walk pinned a
+// 373-file corpus while CI counted 371, so the lock could never reproduce). The TREE FOLD stays
+// mirrored in `scripts/repin-vendor.ts` on purpose and is re-checked against the authority's own bytes
+// (`assertAuthorityShape()`, token lists `AUTHORITY_MARKERS` / `SHARED_TOKENS` / `AUTHORITY_TOKENS`), so
+// the mirror keeps a falsifiable guard; each script's flag table and exit-code map stay local too,
+// because those are per-command contracts rather than shared logic. What belongs HERE is only the
+// primitive every script needs whatever its subject: the repository root and one JSON reading shape.
 import { readFileSync } from "node:fs"
 import { dirname } from "node:path"
 import { fileURLToPath } from "node:url"

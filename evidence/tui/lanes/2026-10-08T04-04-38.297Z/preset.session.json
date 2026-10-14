@@ -1,0 +1,125 @@
+{
+  "note": "decoded header records from the sandbox session store",
+  "records": [
+    {
+      "sessionId": "205fe65c-0ebf-4501-bc7c-2908035d2896",
+      "projectKey": "--root-dshProj-My-Power-Dsh-.mpd-recon-qa-tui-lanes-tui-014b-ws--",
+      "store": ".mpd/recon/qa/tui-lanes/tui-014b/dshhome/sessions/--root-dshProj-My-Power-Dsh-.mpd-recon-qa-tui-lanes-tui-014b-ws--/205fe65c-0ebf-4501-bc7c-2908035d2896/session.v4.jsonl.zstd",
+      "storeSha256": "sha256:d5b0b397ee22be05823370ace984f281da2d2d353eb0ab7ffdc3645c6cf0a9b9",
+      "agentPreset": "mpd",
+      "cwd": "/root/dshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/tui-014b/ws"
+    },
+    {
+      "sessionId": "d277c87c-0ab1-4fae-ba04-17a4b646bde3",
+      "projectKey": "--root-dshProj-My-Power-Dsh-.mpd-recon-qa-tui-lanes-tui-014b-ws--",
+      "store": ".mpd/recon/qa/tui-lanes/tui-014b/dshhome/sessions/--root-dshProj-My-Power-Dsh-.mpd-recon-qa-tui-lanes-tui-014b-ws--/d277c87c-0ab1-4fae-ba04-17a4b646bde3/session.v4.jsonl.zstd",
+      "storeSha256": "sha256:6d51f5c1822668fc736adc5e071188560983edcd1b13558dfba383eab0945c46",
+      "agentPreset": "mpd",
+      "cwd": "/root/dshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/tui-014b/ws"
+    },
+    {
+      "sessionId": "064ae59f-d3e3-446d-931c-978a5940aa22",
+      "projectKey": "--root-dshProj-My-Power-Dsh-.mpd-recon-qa-tui-lanes-tui-014b-ws--",
+      "store": ".mpd/recon/qa/tui-lanes/tui-014b/dshhome/sessions/--root-dshProj-My-Power-Dsh-.mpd-recon-qa-tui-lanes-tui-014b-ws--/064ae59f-d3e3-446d-931c-978a5940aa22/session.v4.jsonl.zstd",
+      "storeSha256": "sha256:cd20655ae34bc4ea6a3d891663927116fcf5eced1b214f3a6c73cf96ab18d66b",
+      "agentPreset": "mpd",
+      "cwd": "/root/dshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/tui-014b/ws"
+    },
+    {
+      "sessionId": "cc113767-eaf3-40b2-883e-b805bb101a8a",
+      "projectKey": "--root-dshProj-My-Power-Dsh-.mpd-recon-qa-tui-lanes-tui-014b-ws--",
+      "store": ".mpd/recon/qa/tui-lanes/tui-014b/dshhome/sessions/--root-dshProj-My-Power-Dsh-.mpd-recon-qa-tui-lanes-tui-014b-ws--/cc113767-eaf3-40b2-883e-b805bb101a8a/session.v4.jsonl.zstd",
+      "storeSha256": "sha256:802abcaaa0d706fe522c0c3e62dbbc49bf48881aaad6dcdbf9a4be3c8fe80ccc",
+      "agentPreset": "mpd",
+      "cwd": "/root/dshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/tui-014b/ws"
+    },
+    {
+      "sessionId": "b6b3ba67-0981-47b5-828e-2bd6595a0c48",
+      "projectKey": "--root-dshProj-My-Power-Dsh-.mpd-recon-qa-tui-lanes-tui-014b-ws--",
+      "store": ".mpd/recon/qa/tui-lanes/tui-014b/dshhome/sessions/--root-dshProj-My-Power-Dsh-.mpd-recon-qa-tui-lanes-tui-014b-ws--/b6b3ba67-0981-47b5-828e-2bd6595a0c48/session.v4.jsonl.zstd",
+      "storeSha256": "sha256:cc53e87e633735ea053568b38fc02816da1812891b4e31ea0a848f5ddf26184a",
+      "agentPreset": "mpd",
+      "cwd": "/root/dshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/tui-014b/ws"
+    },
+    {
+      "sessionId": "d5e66796-6479-4609-b831-85423047e4e8",
+      "projectKey": "--root-dshProj-My-Power-Dsh-.mpd-recon-qa-tui-lanes-tui-014b-ws--",
+      "store": ".mpd/recon/qa/tui-lanes/tui-014b/dshhome/sessions/--root-dshProj-My-Power-Dsh-.mpd-recon-qa-tui-lanes-tui-014b-ws--/d5e66796-6479-4609-b831-85423047e4e8/session.v4.jsonl.zstd",
+      "storeSha256": "sha256:e5942b2dfdf210fc9b287da806b12c42cc0b39237b0051bff0c54c7443ec4bd1",
+      "agentPreset": "mpd",
+      "cwd": "/root/dshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/tui-014b/ws"
+    },
+    {
+      "sessionId": "36f2f977-3620-41a5-8fdc-a8873842073c",
+      "projectKey": "--root-dshProj-My-Power-Dsh-.mpd-recon-qa-tui-lanes-tui-014b-ws--",
+      "store": ".mpd/recon/qa/tui-lanes/tui-014b/dshhome/sessions/--root-dshProj-My-Power-Dsh-.mpd-recon-qa-tui-lanes-tui-014b-ws--/36f2f977-3620-41a5-8fdc-a8873842073c/session.v4.jsonl.zstd",
+      "storeSha256": "sha256:3e391c058752c3909008770901500bc12ac6e02bf8a9fedc94cd699e7b255354",
+      "agentPreset": "mpd",
+      "cwd": "/root/dshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/tui-014b/ws"
+    },
+    {
+      "sessionId": "bd22bdb5-9beb-4f31-8908-25f7fe9d5b7e",
+      "projectKey": "--root-dshProj-My-Power-Dsh-.mpd-recon-qa-tui-lanes-tui-014b-ws--",
+      "store": ".mpd/recon/qa/tui-lanes/tui-014b/dshhome/sessions/--root-dshProj-My-Power-Dsh-.mpd-recon-qa-tui-lanes-tui-014b-ws--/bd22bdb5-9beb-4f31-8908-25f7fe9d5b7e/session.v4.jsonl.zstd",
+      "storeSha256": "sha256:2be8cb9e29dbc7bdb86d212568cc1df098991fcd52471ac4c5b4adea14db011a",
+      "agentPreset": "mpd",
+      "cwd": "/root/dshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/tui-014b/ws"
+    },
+    {
+      "sessionId": "9ae63e4c-e02c-43ba-b00c-6f5fbce3ab2a",
+      "projectKey": "--root-dshProj-My-Power-Dsh-.mpd-recon-qa-tui-lanes-tui-014b-ws--",
+      "store": ".mpd/recon/qa/tui-lanes/tui-014b/dshhome/sessions/--root-dshProj-My-Power-Dsh-.mpd-recon-qa-tui-lanes-tui-014b-ws--/9ae63e4c-e02c-43ba-b00c-6f5fbce3ab2a/session.v4.jsonl.zstd",
+      "storeSha256": "sha256:17273052f5bb93cec1ad7195ed3f9145a43dd88122242bff442914fabee22060",
+      "agentPreset": "mpd",
+      "cwd": "/root/dshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/tui-014b/ws"
+    },
+    {
+      "sessionId": "92b4d858-602b-47ee-82bb-e7eb2271bf93",
+      "projectKey": "--root-dshProj-My-Power-Dsh-.mpd-recon-qa-tui-lanes-tui-014b-ws--",
+      "store": ".mpd/recon/qa/tui-lanes/tui-014b/dshhome/sessions/--root-dshProj-My-Power-Dsh-.mpd-recon-qa-tui-lanes-tui-014b-ws--/92b4d858-602b-47ee-82bb-e7eb2271bf93/session.v4.jsonl.zstd",
+      "storeSha256": "sha256:efbc359e9601c50852ba44a8d525566101825c1bc0540f18ac1c2efc44dba1f8",
+      "agentPreset": "mpd",
+      "cwd": "/root/dshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/tui-014b/ws"
+    },
+    {
+      "sessionId": "1da3987c-d86c-4364-848b-c51603331060",
+      "projectKey": "--root-dshProj-My-Power-Dsh-.mpd-recon-qa-tui-lanes-tui-014b-ws--",
+      "store": ".mpd/recon/qa/tui-lanes/tui-014b/dshhome/sessions/--root-dshProj-My-Power-Dsh-.mpd-recon-qa-tui-lanes-tui-014b-ws--/1da3987c-d86c-4364-848b-c51603331060/session.v4.jsonl.zstd",
+      "storeSha256": "sha256:9918d6d98466bb93bc22a68e0e6be9249be0a8f6123c67c493ed200a9ffafd7c",
+      "agentPreset": "mpd",
+      "cwd": "/root/dshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/tui-014b/ws"
+    },
+    {
+      "sessionId": "b40ec9e6-317d-4b7e-8a4b-25622fcb9e59",
+      "projectKey": "--root-dshProj-My-Power-Dsh-.mpd-recon-qa-tui-lanes-tui-014b-ws--",
+      "store": ".mpd/recon/qa/tui-lanes/tui-014b/dshhome/sessions/--root-dshProj-My-Power-Dsh-.mpd-recon-qa-tui-lanes-tui-014b-ws--/b40ec9e6-317d-4b7e-8a4b-25622fcb9e59/session.v4.jsonl.zstd",
+      "storeSha256": "sha256:6b33a23fcf4b0a4b0565e5686f81c889bdd4aece4109db7e402fe6dba74fa566",
+      "agentPreset": "mpd",
+      "cwd": "/root/dshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/tui-014b/ws"
+    },
+    {
+      "sessionId": "fbf59d8f-56fe-4121-818e-e323b321502e",
+      "projectKey": "--root-dshProj-My-Power-Dsh-.mpd-recon-qa-tui-lanes-tui-014b-ws--",
+      "store": ".mpd/recon/qa/tui-lanes/tui-014b/dshhome/sessions/--root-dshProj-My-Power-Dsh-.mpd-recon-qa-tui-lanes-tui-014b-ws--/fbf59d8f-56fe-4121-818e-e323b321502e/session.v4.jsonl.zstd",
+      "storeSha256": "sha256:c2c6e273f1e2de2a46ab1e0af17a47d9aee584f8416303a925f0e09bff5ba918",
+      "agentPreset": "mpd",
+      "cwd": "/root/dshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/tui-014b/ws"
+    },
+    {
+      "sessionId": "1aaa0c6c-0a7b-4e89-81a6-9fc96e7412c7",
+      "projectKey": "--root-dshProj-My-Power-Dsh-.mpd-recon-qa-tui-lanes-tui-014b-ws--",
+      "store": ".mpd/recon/qa/tui-lanes/tui-014b/dshhome/sessions/--root-dshProj-My-Power-Dsh-.mpd-recon-qa-tui-lanes-tui-014b-ws--/1aaa0c6c-0a7b-4e89-81a6-9fc96e7412c7/session.v4.jsonl.zstd",
+      "storeSha256": "sha256:61d8cdccbf7e2233d0c8d8aaa83d4ef76528754b13564d691eb3027fd026b1fa",
+      "agentPreset": "mpd",
+      "cwd": "/root/dshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/tui-014b/ws"
+    },
+    {
+      "sessionId": "da2f3269-865a-43f5-8fce-6b7ddd178c4b",
+      "projectKey": "--root-dshProj-My-Power-Dsh-.mpd-recon-qa-tui-lanes-tui-014b-ws--",
+      "store": ".mpd/recon/qa/tui-lanes/tui-014b/dshhome/sessions/--root-dshProj-My-Power-Dsh-.mpd-recon-qa-tui-lanes-tui-014b-ws--/da2f3269-865a-43f5-8fce-6b7ddd178c4b/session.v4.jsonl.zstd",
+      "storeSha256": "sha256:4eae5d1ecab9024bb3294cf6f37f73cf2bfb4309c156284134258faf946cddf6",
+      "agentPreset": "mpd",
+      "cwd": "/root/dshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/tui-014b/ws"
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+=== bash -n docker/entrypoint.sh ===
+SYNTAX-OK
+=== bash -n on the extracted probe scripts ===
+SYNTAX-OK
+=== shellcheck present? ===
+shellcheck: not installed (bound stated, not implied)

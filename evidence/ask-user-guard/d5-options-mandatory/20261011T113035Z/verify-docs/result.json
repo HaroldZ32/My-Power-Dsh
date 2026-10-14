@@ -1,0 +1,12 @@
+{
+  "gate": "verify-docs",
+  "command": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun run verify:docs",
+  "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "exitCode": 0,
+  "startedAtUtc": "2026-10-11T11:34:12Z",
+  "endedAtUtc": "2026-10-11T11:34:12Z",
+  "logPath": "output.log",
+  "logBytes": 5512,
+  "logSha256": "d4440ad11880ad04c9983d2ab4573bf62a8e9d89190ae07533da6d257585ffe7",
+  "headline": "[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=47 failed=0 violations=0 exempt=24 derived=3 links=436 dead=0 — PASS"
+}

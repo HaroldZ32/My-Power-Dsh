@@ -1,0 +1,52 @@
+# Raw observed output — the residual removed (2026-10-13, win32)
+
+## The boundary that was removed
+The previous wave repaired a leaf naming NONE of the host's builtins AUTOMATICALLY, and documented the
+residual: "a user who deliberately removes EVERY builtin is repaired once more." The two states are the
+SAME BYTES, so that rule had to guess. It is gone: the automatic path now NEVER overrules an existing
+list, and the repair is an explicit flag.
+
+## 1. AUTOMATIC path over a leaf naming NONE of the builtins (sandbox) — must LEAVE IT ALONE
+$ node scripts/mpd-tui-panels.ts --dsh-home %TEMP%/mpd-panels-probe/dshhome --ids act1:team
+[mpd-tui-panels] panel ids (--ids): act1:team
+[mpd-tui-panels] already enabled, and no stale id of ours to prune: act1:team
+                                              ^^^^^ the deliberate removal IS respected; nothing written
+
+## 2. EXPLICIT --restore-builtins over the same leaf (sandbox) — must RESTORE
+$ node scripts/mpd-tui-panels.ts --dsh-home %TEMP%/mpd-panels-probe/dshhome --ids act1:team --restore-builtins
+[mpd-tui-panels] --restore-builtins: restoring todo,jobs,agents,info,trajectory,workspace,btw,companion ahead of the tokens the leaf already carries
+[mpd-tui-panels] panels (before): act1:team
+[mpd-tui-panels] panels (after):  todo,jobs,agents,info,trajectory,workspace,btw,companion,act1:team
+[mpd-tui-panels] added: (none); pruned: (none); kept: todo,jobs,agents,info,trajectory,workspace,btw,companion,act1:team
+[mpd-tui-panels] DRY RUN — nothing written. Re-run with --apply to write …
+
+## 3. The explicit restore with --apply — must LAND (the early exit must not swallow it)
+$ node scripts/mpd-tui-panels.ts --dsh-home … --ids act1:team --restore-builtins --apply
+[mpd-tui-panels] WROTE …\cordis.patch.yml (backup: cordis.patch.yml.bak-17577700); read back: todo,jobs,agents,info,trajectory,workspace,btw,companion,act1:team
+$ Select-String … sandbox cordis.patch.yml -Pattern panels:
+      panels: "todo,jobs,agents,info,trajectory,workspace,btw,companion,act1:team"          # landed
+
+## 4. The REAL profile — a healthy list is a no-op, plain run AND with the flag
+$ node scripts/mpd-tui-panels.ts
+[mpd-tui-panels] already enabled, and no stale id of ours to prune: todo,jobs,agents,info,trajectory,workspace,btw,companion,act1:team,act1:workmate
+
+$ node scripts/mpd-tui-panels.ts --restore-builtins
+[mpd-tui-panels] --restore-builtins: every builtin the host ships is already enabled — nothing to restore
+[mpd-tui-panels] already enabled, and no stale id of ours to prune: todo,jobs,agents,info,trajectory,workspace,btw,companion,act1:team,act1:workmate
+
+## 5. The script's own suite
+$ node scripts/mpd-tui-panels.ts --self-test
+  ok   (a) a leaf naming NONE of the builtins is left BYTE-FOR-BYTE by the automatic path
+  ok   (a) so the merge writes nothing at all for it (a deliberate removal is respected)
+  ok   (a) --restore-builtins puts the whole default back AHEAD of the leaf's own tokens
+  ok   (a) --restore-builtins on a HEALTHY list is a no-op that restores nothing
+  ok   (a) --restore-builtins completes a PARTIAL selection, in the host's own order
+  ok   (a) --restore-builtins REFUSES when the host default cannot be read
+  ok   (a) all EIGHT builtins survive every path (absent leaf, explicit restore, healthy list)
+  ok   (a) a FULLY repaired list (all eight + ours) is a NO-OP, not a rewrite
+  ok   (a) and its AUTOMATIC SEED is that same list untouched — nothing is restored
+[mpd-tui-panels] SELF-TEST PASS (all arms held)
+
+## Gates
+$ node scripts/verify-comment-coverage.ts  -> VERDICT: PASS      exit=0
+$ bun run typecheck (tsgo --noEmit)        -> no diagnostics      exit=0

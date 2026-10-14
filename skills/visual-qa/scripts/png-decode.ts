@@ -2,7 +2,7 @@ import { Buffer } from "node:buffer"
 import { inflateSync } from "node:zlib"
 
 import { PNG_SIGNATURE } from "./png-crc.ts"
-import type { DecodedImage } from "./types.ts"
+import type { DecodedImage } from "./types"
 
 /** Raised for structurally invalid input and for PNG variants this decoder does not support. */
 export class PngDecodeError extends Error {

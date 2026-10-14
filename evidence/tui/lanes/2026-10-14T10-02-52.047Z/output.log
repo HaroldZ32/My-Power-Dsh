@@ -1,0 +1,12 @@
+static admission: ok=true parse=ok validatePlugin=ok controls=["brokenSyntax","optionalWithoutFallback","unknownPermission"]
+static result ok=true
+negctl /plugin check -> state=waiting_authorization ok=true
+negctl ledger delta=20 undeclared=0
+grants file written -> .mpd/recon/qa/tui-lanes/tui-015/home/.dsh-tui/extension-grants.json component=com.mpd-dsh.mpd-tui rows=4
+grants file revoked mid-session (arm 6)
+grants /plugin check -> state=compatible; /plugin list -> state=undefined
+arm2 admission-loader line admitted com.mpd-dsh.mpd-tui: true (stderr=evidence/tui/lanes/2026-10-14T10-02-52.047Z/grants/host-stderr.log 923122B)
+granted boot debug stream: 9226 park frame(s), redirected off the pane (grants/host-stderr.log)
+arm3 attribution: attributed=0 decisionHandlerBinds(applied)=0 (ledger delta=20)
+arm4 real input submit rendered the turn: true
+arm6 revocation re-check -> state=waiting_authorization flipped=true

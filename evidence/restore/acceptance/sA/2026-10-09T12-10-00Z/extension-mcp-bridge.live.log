@@ -1,0 +1,13 @@
+=== COMMAND: node skills/dsh-qa/scripts/extension-mcp-bridge.ts
+=== STARTED: 2026-10-09T12:12:43Z
+[extension-mcp-bridge] ok=true -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/extensions/extension-mcp-bridge/2026-10-09T12-12-43.292Z
+  install: {"ok":true,"exit":0}
+  live: {"ok":true,"offered":true,"called":true,"succeeded":true,"reason":"","resultHead":"Error: The \"paths[0]\" argument must be of type string. Received undefined"}
+  dead: {"vacuous":false,"ok":true,"offeredNoTool":true,"headerSawNoTool":true,"reported":true,"stateText":"extension qa-mcp-dead [user/directory] enabled\nroot: /tmp/mpd-extension-mcp-bridge-kTv3q2/run-home/.mpd/extensions/qa-mcp-dead\nsource: /tmp/mpd-extension-mcp-bridge-kTv3q2/run-home/.mpd/extensions/q
+  hang: {"vacuous":false,"ok":true,"connectTimeoutMs":1500,"durationMs":12736,"offeredNoTool":true,"reported":true,"stateText":"extension qa-mcp-hang [user/directory] enabled\nroot: /tmp/mpd-extension-mcp-bridge-kTv3q2/run-home/.mpd/extensions/qa-mcp-hang\nsource: /tmp/mpd-extension-mcp-bridge-kTv3q2/run-ho
+  schema: {"vacuous":false,"ok":true,"goodToolOffered":true,"badInputSkipped":true,"badOutputOffered":true,"badOutputSchemaDropped":true,"reportedReason":true,"stateText":"extension qa-mcp-schema [user/directory] enabled\nroot: /tmp/mpd-extension-mcp-bridge-kTv3q2/run-home/.mpd/extensions/qa-mcp-schema\nsourc
+  dup: {"vacuous":false,"ok":true,"zeroTools":true,"headerZeroTools":true,"stateText":"extension qa-mcp-dup [user/directory] enabled\nroot: /tmp/mpd-extension-mcp-bridge-kTv3q2/run-home/.mpd/extensions/qa-mcp-dup\nsource: /tmp/mpd-extension-mcp-bridge-kTv3q2/run-home/.mpd/extensions/qa-mcp-dup/mpd-ext.json
+  stderr: {"vacuous":false,"ok":true,"cap":2000,"floodLength":3053,"reportedTailLength":2000,"headDropped":true,"tailKept":true,"reported":true,"tailHead":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","stateHead":"extension qa-mcp-stderr [user/directory] enabled\nroot: /tm
+  containment: {"ok":true,"exit":0,"control":{"liveToolOffered":true,"liveCallSucceeded":true},"showCallOrder":["qa-mcp-dead","qa-mcp-schema","qa-mcp-dup","qa-mcp-hang","qa-mcp-stderr"],"crashSignatures":[],"offeredMcp":["mcp__ast_grep__rewrite","mcp__ast_grep__scan","mcp__ast_grep__search","mcp__codegraph__codegr
+EXIT=0
+=== ENDED: 2026-10-09T12:12:56Z

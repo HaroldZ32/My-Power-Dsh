@@ -1,0 +1,6 @@
+112fdedb42bf61ad1f99e92c6c60701d7b799b44e019071b313fcef8e1c43aef  packages/mpd-hashline-plugin/src/vendor/types.ts
+ddf1535787525cf54556721815b66a8404a784062d32b2c5eeb5e4b940071350  packages/mpd-hashline-plugin/src/vendor/edits.ts
+4ac0d5cee9d32957538706b6c3409d79dc17585dbd853f941cca487c7ed1deae  packages/mpd-hashline-plugin/src/vendor/index.ts
+0f072b816465de1da4375094cd2c4a32f29aa1c6c7a429f316e34129da4df5c9  packages/mpd-hashline-plugin/src/index.ts
+c7c40d3524b61c3bffeee2d8c63eb2aab3ae987bf13156a8d53912155af0a7a3  packages/mpd-hashline-plugin/dist/index.js
+6e36eb1c30de3fb279ddc2ee2226a22f725acc5941624a97352ed28971f38f2e  packages/mpd-hashline-plugin/test/repair.test.ts

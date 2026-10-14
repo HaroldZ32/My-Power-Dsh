@@ -1,0 +1,22 @@
+[PASS] snake.driverStarted: chromium launched and the page opened in a real engine :: browser=131.0.6778.33 page=file:///out/negative-control/index.html | note=deliberately inert control page (contract §3.4)
+[PASS] snake.scoreVisible: a score-labelled number is visible on the page :: labelled=0 numbers=[0] chars=43 | note=deliberately inert control page (contract §3.4)
+[sensor] the board has been frozen for 10 frames; asking for a restart
+[sensor] the board has been frozen for 10 frames; asking for a restart
+[sensor] the board has been frozen for 10 frames; asking for a restart
+[sensor] the board has been frozen for 10 frames; asking for a restart
+[sensor] the board has been frozen for 10 frames; asking for a restart
+[sensor] the board has been frozen for 10 frames; asking for a restart
+[sensor] the board has been frozen for 10 frames; asking for a restart
+[sensor] the board has been frozen for 10 frames; asking for a restart
+[sensor] the board has been frozen for 10 frames; asking for a restart
+[sensor] the board has been frozen for 10 frames; asking for a restart
+[sensor] steps=100 blind=10 sensor=canvas palette=bg=3205 snake=12113 food=12113 scoreGrew=false
+[drive] attempt=1 pattern=0 legMs=620 restarts=10 legs=9 at=25041ms
+[FAIL] snake.scoreIncreased: the score never grew in 25000ms of driving — the snake never reached its own food :: from=0 to=0 restarts=10 attempts=1 sensor=canvas sensorSteps=100 sensorBlind=10 palette=bg=3205 snake=12113 food=12113 | note=deliberately inert control page (contract §3.4)
+[FAIL] snake.visuallyMoved: the rendered viewport is IDENTICAL before and after a real key press — the picture never moved :: start=b1947cdf945426b8/10267B after=b1947cdf945426b8/10267B | note=deliberately inert control page (contract §3.4)
+[FAIL] snake.gameOverOrRestart: after steering into the wall the page neither announced a game over nor stopped the score with a restart affordance :: branch=none overSeen=false scoreStopped=true restartAffordance=false wallChars=43 beforeWall=10267B | note=deliberately inert control page (contract §3.4)
+[PASS] snake.noPageError: no uncaught page error and no console error over the whole run :: pageErrors=0 consoleErrors=0 first= | note=deliberately inert control page (contract §3.4)
+[PASS] snake.selfContained: the page requested nothing but local file/data URLs — no network fetch, no external file :: requests=1 external=0 first= | note=deliberately inert control page (contract §3.4)
+[PASS] snake.screenshots: the three mandated moments were captured (start / after eating or after the first key / final state) :: /out/negative-control-01-start.png , /out/negative-control-02-after-first-key.png , /out/negative-control-05-final.png | note=deliberately inert control page (contract §3.4)
+[snake-driver] label=negative-control rows=8 failed=3
+driver-exit=1

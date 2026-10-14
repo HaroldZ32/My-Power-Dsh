@@ -1,0 +1,120 @@
+{
+  "wave": "restore-three-capabilities",
+  "stream": "S1",
+  "task": "T2",
+  "agent": "panel-writer (Senior Engineer)",
+  "stamp": "2026-10-08T23-49-42Z",
+  "when": "2026-10-08T23:49Z..2026-10-09T00:0xZ (UTC)",
+  "deliverables": [
+    "skills/review-work/SKILL.md (the four-lane panel)",
+    "skills/review-work/ATTRIBUTION.md (provenance split)",
+    "skills/dsh-qa/scripts/review-panel.ts (new QA case)",
+    "skills/dsh-qa/cases.json (lane registration)",
+    "skills/dsh-qa/SKILL.md (case-table registration)",
+    "LICENSE-NOTICES.md (the S1 paragraph)"
+  ],
+  "commands": [
+    {
+      "cmd": "node skills/dsh-qa/scripts/review-panel.ts",
+      "exit": 0,
+      "log": "case-real-node.log"
+    },
+    {
+      "cmd": "node skills/dsh-qa/scripts/review-panel.ts --self-test",
+      "exit": 0,
+      "log": "case-selftest-node.log"
+    },
+    {
+      "cmd": "bun skills/dsh-qa/scripts/review-panel.ts  (+ --self-test)  -> exits 0 0",
+      "exit": 0,
+      "log": "case-bun.log"
+    },
+    {
+      "cmd": "node scripts/run-qa-lanes.ts --check-drift  (+ --list)",
+      "exit": 0,
+      "log": "drift.log"
+    },
+    {
+      "cmd": "node scripts/verify-comment-coverage.ts",
+      "exit": 0,
+      "log": "comments.log"
+    },
+    {
+      "cmd": "bun run typecheck",
+      "exit": 1,
+      "log": "typecheck.log",
+      "note": "RED at packet time and NOT from this lane: every reported error is in packages/mpd-mcp-lsp/test/cclsp-config.test.ts (stream S2, in flight); no error names a file of S1, and the same command was exit 0 minutes earlier on the S1 state alone"
+    },
+    {
+      "cmd": "bun run test:qa",
+      "exit": 0,
+      "log": "test-qa.log",
+      "note": "all 43 self-tests incl. this one: [test:qa] all self-tests passed"
+    },
+    {
+      "cmd": "node scripts/verify-vendor.ts (BEFORE the wave re-pin)",
+      "exit": 1,
+      "log": "vendor-before-repin.log",
+      "note": "RED by design pre-re-pin: skills count 372 vs 371, skills treeSha, hashline vendor treeSha"
+    },
+    {
+      "cmd": "node scripts/repin-vendor.ts (dry run)",
+      "exit": 0,
+      "log": "repin-dryrun.log",
+      "note": "2 assets would be re-pinned: skills (S1) + packages/mpd-hashline-plugin/src/vendor (S3)"
+    }
+  ],
+  "case": {
+    "checks": 15,
+    "selfTestArms": 11,
+    "laneRolesAssertion": "  ok   panel-table-count-equals-prose — panel table rows=4 prose=4\n  ok   lane-roles-in-ROLES — Architect=in-ROLES Reviewer=in-ROLES Explorer=in-ROLES\n  ok   read-only-lanes — 3 lane(s) carry 'read-only findings'\n  ok   roster-readonly-per-lane — Architect=roster-readonly Reviewer=findings-only-by-description Explorer=roster-readonly\n  ok   merge-table-lanes-match — merge=[Manual QA, Quality & architecture, Correctness & risk, Missed context] panel=[Manual QA, Quality & architecture, Correctness & risk, Missed context]\n\nroster source: packages/mpd-roles-plugin/src/roles.data.ts\n31:    \"name\": \"Architect\",\n98:    \"name\": \"Explorer\",\n109:    \"name\": \"Reviewer\",\n109:    \"name\": \"Reviewer\",\n110-    \"description\": \"Deep reviewer: correctness and risk findings with evidence, no fixes.\",\n111-    \"readonly\": false,\n"
+  },
+  "registration": {
+    "file": "skills/dsh-qa/cases.json",
+    "entry": "review-panel lane, suites [\"all\"], script skills/dsh-qa/scripts/review-panel.ts, immutabilityGuard exempt (internal <utc-stamp> evidence dir)",
+    "diff": "registration.diff",
+    "drift": "manifest and disk agree (49 entries, 43 lane script(s) discovered)"
+  },
+  "vendor": {
+    "before": "RED - skills count 372 vs 371, skills treeSha mismatch, hashline vendor treeSha mismatch",
+    "repin": "DEFERRED by design: ONE re-pin per wave, and the hashline lane was still writing its vendor tree at packet time; the S1 writer owns the single re-pin"
+  },
+  "notProven": [
+    "the panel was never RUN end-to-end as a live four-lane review (no spawn_teammate round happened in this lane): the case asserts the DECLARATION, and the live flow is exercised only when a real review runs",
+    "the Reviewer lane is read-only by discipline + roster description, NOT by the mechanical write guard (roles.data.ts marks Reviewer readonly:false); reported per lane by the case",
+    "bun run typecheck is RED from packages/mpd-mcp-lsp/test/cclsp-config.test.ts (S2, in flight) - S1 files contribute no error, but S1 has no green typecheck exit code of its own to cite"
+  ],
+  "crossLane": {
+    "typecheck": "STILL RED on the frozen state (2026-10-08T23:53Z): 4 TS1005 parse errors, ALL in packages/mpd-mcp-lsp/test/cclsp-config.test.ts:227 (stream S2). Zero errors name an S1 file. Outside S1 scope, reported not fixed.",
+    "hashlineVendor": "packages/mpd-hashline-plugin/src/vendor mtime kept advancing during this packet build (stream S3 in flight), which is why the single re-pin is deferred"
+  },
+  "repin": {
+    "ranAt": "2026-10-08T23:51Z (ONCE)",
+    "command": "node scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step",
+    "exit": 0,
+    "log": "repin-write.log",
+    "delta": "VENDOR_LOCK.json only, 3 lines: skills fileCount 371->372, skills treeSha 1169952b->cd156171, mpd-hashline-plugin/src/vendor treeSha 7c38d4f1->7e6a28e2",
+    "gated_on": "board T4 (hashline-writer) reported completed 2026-10-08T23:49:57Z - the re-pin waited for the second invalidated asset to stop moving",
+    "verifiedAfter": {
+      "command": "node scripts/verify-vendor.ts",
+      "exit": 0,
+      "log": "vendor-after-repin.log",
+      "verdict": "PASS - 7 shipped asset(s) fingerprinted"
+    },
+    "bound": "the lock holds while the skills corpus and the S3 vendor tree stay frozen; a post-verdict skills/** repair re-pins with it"
+  },
+  "gates": {
+    "docs": {
+      "command": "node scripts/verify-docs-parity.ts",
+      "exit": 0,
+      "log": "docs.log",
+      "verdict": "pairs=47 failed=0 violations=0 dead=0 - PASS"
+    },
+    "confirmOnFrozenState": {
+      "log": "confirm.log",
+      "caseRealExit": 0,
+      "driftExit": 0,
+      "typecheckLog": "confirm-typecheck.log"
+    }
+  }
+}

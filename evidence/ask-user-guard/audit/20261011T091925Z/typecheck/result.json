@@ -1,0 +1,12 @@
+{
+  "gate": "typecheck",
+  "command": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun run typecheck",
+  "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "exitCode": 0,
+  "startedAtUtc": "2026-10-11T09:20:06Z",
+  "endedAtUtc": "2026-10-11T09:20:07Z",
+  "logPath": "output.log",
+  "logBytes": 16,
+  "logSha256": "ae47736bb2a9401aa9743893f2f64b9a605e65a99d78cd991a8021e0f7722d87",
+  "headline": "$ tsgo --noEmit"
+}

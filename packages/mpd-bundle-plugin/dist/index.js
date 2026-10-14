@@ -1,3 +1,38 @@
+// packages/mpd-bundle-plugin/src/model-config-web.ts
+var MODEL_CONFIG_PATH = "/plugins/mpd/model-config";
+function buildModelConfigBody(config) {
+  if (config === undefined || config === null || typeof config.get !== "function") {
+    return { ok: false, reason: "the mpdConfig service is not composed in this profile" };
+  }
+  try {
+    return {
+      ok: true,
+      slots: config.get("teamModels") ?? {},
+      agentRoutes: config.get("agentRoutes") ?? {},
+      modelchain: config.get("modelchain") ?? {}
+    };
+  } catch (error) {
+    return { ok: false, reason: `the config read threw (${String(error?.message ?? error)})` };
+  }
+}
+function registerModelConfigRoute(webServer, deps) {
+  let registered = false;
+  try {
+    deps.effect(() => webServer.register({
+      kind: "exact",
+      path: MODEL_CONFIG_PATH,
+      handler: (_req, res) => {
+        const out = res;
+        const body = buildModelConfigBody(deps.config());
+        out.writeHead(body.ok ? 200 : 503, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
+        out.end(JSON.stringify(body));
+      }
+    }), "mpd-bundle: model-config web route");
+    registered = true;
+  } catch {}
+  return registered;
+}
+
 // packages/mpd-bundle-plugin/src/watchdog-web.ts
 import { existsSync, mkdirSync as mkdirSync2, readFileSync, readdirSync, renameSync as renameSync2, writeFileSync } from "node:fs";
 import { basename, dirname, join as join2 } from "node:path";
@@ -14,7 +49,7 @@ function errorMessage(error) {
 // packages/mpd-mcp-shared/log-sink.ts
 import { closeSync, mkdirSync, openSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { isAbsolute, join, relative, resolve, sep } from "node:path";
 var LOG_SUBDIR = join(".mpd", "logs");
 var DEFAULT_MAX_BYTES = 1024 * 1024;
 var DEFAULT_MAX_LINE_BYTES = 8192;
@@ -62,7 +97,10 @@ function tryOpenRoot(root, name) {
 }
 function owningRoot(roots, file) {
   for (const root of roots) {
-    if (file === root || file.startsWith(root.endsWith("/") ? root : `${root}/`))
+    if (file === root)
+      return root;
+    const rel = relative(root, file);
+    if (rel !== "" && rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel))
       return root;
   }
   return null;
@@ -1871,6 +1909,19 @@ function apply(ctx) {
       rowLogLine("mpd-bundle", "[mpd] the web server refused the watchdog routes — the stuck-team banner has no data source");
       return false;
     }
+    const modelConfig = registerModelConfigRoute(webServer, {
+      config: () => {
+        try {
+          const service = typeof ctx?.get === "function" ? ctx.get("mpdConfig", false) : undefined;
+          return service !== null && typeof service === "object" ? service : undefined;
+        } catch {
+          return;
+        }
+      },
+      effect: (fn, label) => ctx.effect(fn, label)
+    });
+    if (!modelConfig)
+      rowLogLine("mpd-bundle", "[mpd] the web server refused the model-config route — the settings card shows the document values only");
     registered = true;
     return true;
   };

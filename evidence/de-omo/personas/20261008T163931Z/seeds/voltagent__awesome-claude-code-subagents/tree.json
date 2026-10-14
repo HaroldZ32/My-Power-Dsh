@@ -1,0 +1,1764 @@
+{
+  "sha": "721e9734670bfaf7283194e234ebb88e94c82dcd",
+  "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/trees/721e9734670bfaf7283194e234ebb88e94c82dcd",
+  "tree": [
+    {
+      "path": ".claude-plugin",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "7ffdb64950dd7f1ab16e61c4bd6db33b3fbf2844",
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/trees/7ffdb64950dd7f1ab16e61c4bd6db33b3fbf2844"
+    },
+    {
+      "path": ".claude-plugin/marketplace.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "503add3a922caf264a0dc1f41fbae7d3cbbb90c1",
+      "size": 4369,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/503add3a922caf264a0dc1f41fbae7d3cbbb90c1"
+    },
+    {
+      "path": ".claude",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "6efb4a2e83009100636bfb63fa01331419be1f7c",
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/trees/6efb4a2e83009100636bfb63fa01331419be1f7c"
+    },
+    {
+      "path": ".claude/settings.local.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ef09ece79a3e8781c276ca0ad0bba6d907caa0fd",
+      "size": 238,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/ef09ece79a3e8781c276ca0ad0bba6d907caa0fd"
+    },
+    {
+      "path": ".github",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "4820283abdf3a4c6e89de12fc571916c90b80e8f",
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/trees/4820283abdf3a4c6e89de12fc571916c90b80e8f"
+    },
+    {
+      "path": ".github/workflows",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "b06607f8b20658ada946bb8e91f2cd82522336fc",
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/trees/b06607f8b20658ada946bb8e91f2cd82522336fc"
+    },
+    {
+      "path": ".github/workflows/enforce-plugin-version-bump.yml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3203fc269dc650567531e2036903a5c09e14a509",
+      "size": 3166,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/3203fc269dc650567531e2036903a5c09e14a509"
+    },
+    {
+      "path": ".gitignore",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c300be0fe39e711e1d49ac32a18ccc94f520acd5",
+      "size": 159,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/c300be0fe39e711e1d49ac32a18ccc94f520acd5"
+    },
+    {
+      "path": "CLAUDE.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8f61ca15e2de4ead1d6456675872baa05e75090c",
+      "size": 2488,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/8f61ca15e2de4ead1d6456675872baa05e75090c"
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3769e451e671eded22006bc5c5cd9bc9b7918813",
+      "size": 4067,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/3769e451e671eded22006bc5c5cd9bc9b7918813"
+    },
+    {
+      "path": "LICENSE",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d0d77b4b2054f2e2ac448150dc1ac6acc4112281",
+      "size": 1065,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/d0d77b4b2054f2e2ac448150dc1ac6acc4112281"
+    },
+    {
+      "path": "README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c86fe368f43fdd7ce6201cb0868c809f372b3e3f",
+      "size": 35358,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/c86fe368f43fdd7ce6201cb0868c809f372b3e3f"
+    },
+    {
+      "path": "categories",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "18b31108c07a47e24127d38a575551a2bf7a0674",
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/trees/18b31108c07a47e24127d38a575551a2bf7a0674"
+    },
+    {
+      "path": "categories/01-core-development",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "b4bde5eab2285c4e4411fbe5369cdefb4d2a102c",
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/trees/b4bde5eab2285c4e4411fbe5369cdefb4d2a102c"
+    },
+    {
+      "path": "categories/01-core-development/.claude-plugin",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "911677502d67fc464f623a949fd2b1538a7b2c00",
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/trees/911677502d67fc464f623a949fd2b1538a7b2c00"
+    },
+    {
+      "path": "categories/01-core-development/.claude-plugin/plugin.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cfd8d8285203fd19c93d172de976dc9a59e35805",
+      "size": 788,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/cfd8d8285203fd19c93d172de976dc9a59e35805"
+    },
+    {
+      "path": "categories/01-core-development/README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7690e9b5908f5a66b94fcdbb077ee28940add567",
+      "size": 10658,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/7690e9b5908f5a66b94fcdbb077ee28940add567"
+    },
+    {
+      "path": "categories/01-core-development/api-designer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "46a05f5e73c57c1b258de54331beebd5c982a3ed",
+      "size": 6115,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/46a05f5e73c57c1b258de54331beebd5c982a3ed"
+    },
+    {
+      "path": "categories/01-core-development/auth-integration-engineer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a7b36f03423c355b817415bd317900dd0f0f0603",
+      "size": 9739,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/a7b36f03423c355b817415bd317900dd0f0f0603"
+    },
+    {
+      "path": "categories/01-core-development/backend-developer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "be68307f14dde3bf5bdac54e260e152c88a69aa8",
+      "size": 6682,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/be68307f14dde3bf5bdac54e260e152c88a69aa8"
+    },
+    {
+      "path": "categories/01-core-development/design-bridge.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a7d0de7381356cc74cb3d3cfab1fe335424d8ccc",
+      "size": 4544,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/a7d0de7381356cc74cb3d3cfab1fe335424d8ccc"
+    },
+    {
+      "path": "categories/01-core-development/electron-pro.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4282a4556aee78182231fcb315126f9fef81ef93",
+      "size": 6389,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/4282a4556aee78182231fcb315126f9fef81ef93"
+    },
+    {
+      "path": "categories/01-core-development/frontend-developer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7e6a8b0d465a6996292448c66872b37cf34d637a",
+      "size": 4540,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/7e6a8b0d465a6996292448c66872b37cf34d637a"
+    },
+    {
+      "path": "categories/01-core-development/fullstack-developer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e393fe056109e8cceb5de78f2fe3b099df4cfd0d",
+      "size": 7190,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/e393fe056109e8cceb5de78f2fe3b099df4cfd0d"
+    },
+    {
+      "path": "categories/01-core-development/graphql-architect.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ea7dc0c9846c36ed57b1c22b507a5f08911f4d57",
+      "size": 6553,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/ea7dc0c9846c36ed57b1c22b507a5f08911f4d57"
+    },
+    {
+      "path": "categories/01-core-development/microservices-architect.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e4bae4a9092ca1f0eab1624ff359a75c7e998e00",
+      "size": 6384,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/e4bae4a9092ca1f0eab1624ff359a75c7e998e00"
+    },
+    {
+      "path": "categories/01-core-development/mobile-developer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e6da4edd5b8d819d3601dd8e3101c31a610e55d1",
+      "size": 11067,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/e6da4edd5b8d819d3601dd8e3101c31a610e55d1"
+    },
+    {
+      "path": "categories/01-core-development/ui-designer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b378dfc0562b9a273a791b0453e532964fa8b6e0",
+      "size": 5048,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/b378dfc0562b9a273a791b0453e532964fa8b6e0"
+    },
+    {
+      "path": "categories/01-core-development/webhook-engineer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b1c22dcae9aa1d7e457b7149eadaff0ba6bb5486",
+      "size": 9135,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/b1c22dcae9aa1d7e457b7149eadaff0ba6bb5486"
+    },
+    {
+      "path": "categories/01-core-development/websocket-engineer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8885cdcd6eff4ba3c48ddef18ee5fe2a7c10298d",
+      "size": 4299,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/8885cdcd6eff4ba3c48ddef18ee5fe2a7c10298d"
+    },
+    {
+      "path": "categories/02-language-specialists",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "122f6a3c3a92af5734e9e38700b8b002d4a0614c",
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/trees/122f6a3c3a92af5734e9e38700b8b002d4a0614c"
+    },
+    {
+      "path": "categories/02-language-specialists/.claude-plugin",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "fc665fcf4eb9f10da84e3dc952fc27e63d266c37",
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/trees/fc665fcf4eb9f10da84e3dc952fc27e63d266c37"
+    },
+    {
+      "path": "categories/02-language-specialists/.claude-plugin/plugin.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9c591c83d6ad13deed51f68ed9da52911d910cc7",
+      "size": 1236,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/9c591c83d6ad13deed51f68ed9da52911d910cc7"
+    },
+    {
+      "path": "categories/02-language-specialists/README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0cc5b4a3efc1f15a22596bfbd64fda0317bf48b3",
+      "size": 17661,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/0cc5b4a3efc1f15a22596bfbd64fda0317bf48b3"
+    },
+    {
+      "path": "categories/02-language-specialists/angular-architect.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1da0dde068306afb923ba9c7f8cef21d8e9b09dc",
+      "size": 6656,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/1da0dde068306afb923ba9c7f8cef21d8e9b09dc"
+    },
+    {
+      "path": "categories/02-language-specialists/cpp-pro.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "10b2796719930c5f0ad4d3f3584fe69f02601bc2",
+      "size": 7539,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/10b2796719930c5f0ad4d3f3584fe69f02601bc2"
+    },
+    {
+      "path": "categories/02-language-specialists/csharp-developer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1d4a029d869ec4c8c514bd7253027e09d8548c49",
+      "size": 7221,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/1d4a029d869ec4c8c514bd7253027e09d8548c49"
+    },
+    {
+      "path": "categories/02-language-specialists/django-developer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e6f1aab90634383aedcc0fa334bd01e39818a088",
+      "size": 6432,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/e6f1aab90634383aedcc0fa334bd01e39818a088"
+    },
+    {
+      "path": "categories/02-language-specialists/dotnet-core-expert.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "696362f11ccecccc18f6577a0b4bba1e5f06c7a7",
+      "size": 6438,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/696362f11ccecccc18f6577a0b4bba1e5f06c7a7"
+    },
+    {
+      "path": "categories/02-language-specialists/dotnet-framework-4.8-expert.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b84994993ee2e47cfcd10071cfc7d0419f020082",
+      "size": 7565,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/b84994993ee2e47cfcd10071cfc7d0419f020082"
+    },
+    {
+      "path": "categories/02-language-specialists/elixir-expert.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4ddbc906241404bd5e57f64b0311950ff5e72266",
+      "size": 8134,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/4ddbc906241404bd5e57f64b0311950ff5e72266"
+    },
+    {
+      "path": "categories/02-language-specialists/expo-react-native-expert.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "33d81a1189ebb0c00bc8d61e92ffb931c7196987",
+      "size": 9735,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/33d81a1189ebb0c00bc8d61e92ffb931c7196987"
+    },
+    {
+      "path": "categories/02-language-specialists/fastapi-developer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6a6da354c42985d7e0fd9339920540470629c07e",
+      "size": 6886,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/6a6da354c42985d7e0fd9339920540470629c07e"
+    },
+    {
+      "path": "categories/02-language-specialists/flutter-expert.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8d806a4a80e5436cd81105aa3143d9efe443b938",
+      "size": 6533,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/8d806a4a80e5436cd81105aa3143d9efe443b938"
+    },
+    {
+      "path": "categories/02-language-specialists/golang-pro.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3b20424b19def4285cffc315822c84f4f7dcc20e",
+      "size": 7896,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/3b20424b19def4285cffc315822c84f4f7dcc20e"
+    },
+    {
+      "path": "categories/02-language-specialists/java-architect.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "841484ed681ce6d14879f2b9dc1892f33b2e50b4",
+      "size": 7653,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/841484ed681ce6d14879f2b9dc1892f33b2e50b4"
+    },
+    {
+      "path": "categories/02-language-specialists/javascript-pro.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2f45e056186769739764f3ca534a6afeec206168",
+      "size": 7369,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/2f45e056186769739764f3ca534a6afeec206168"
+    },
+    {
+      "path": "categories/02-language-specialists/kotlin-specialist.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ad33bb366cdf4985fb7c395a514457b97aae3162",
+      "size": 7347,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/ad33bb366cdf4985fb7c395a514457b97aae3162"
+    },
+    {
+      "path": "categories/02-language-specialists/laravel-specialist.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c806dd0022f5c8c95f11ee2eaf8bef105de9c53d",
+      "size": 6172,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/c806dd0022f5c8c95f11ee2eaf8bef105de9c53d"
+    },
+    {
+      "path": "categories/02-language-specialists/nextjs-developer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "18958c3ec304047b218a95539c6fa1eca357e986",
+      "size": 6626,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/18958c3ec304047b218a95539c6fa1eca357e986"
+    },
+    {
+      "path": "categories/02-language-specialists/node-specialist.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d8face0a57d666aa4cacc9584a9d41913de7940a",
+      "size": 3753,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/d8face0a57d666aa4cacc9584a9d41913de7940a"
+    },
+    {
+      "path": "categories/02-language-specialists/php-pro.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9b72dea21161b4c952b8fe2913ee8712d102786a",
+      "size": 7030,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/9b72dea21161b4c952b8fe2913ee8712d102786a"
+    },
+    {
+      "path": "categories/02-language-specialists/powershell-5.1-expert.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d841e4b1fd00e92a29625ce7082598a4b6fc7946",
+      "size": 2485,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/d841e4b1fd00e92a29625ce7082598a4b6fc7946"
+    },
+    {
+      "path": "categories/02-language-specialists/powershell-7-expert.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f1d0afbb70806e780f60a154c12b239ada3c4381",
+      "size": 2329,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/f1d0afbb70806e780f60a154c12b239ada3c4381"
+    },
+    {
+      "path": "categories/02-language-specialists/python-pro.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7a6ee971aceb0f92dfeacdb01e7ddf47a117d962",
+      "size": 8536,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/7a6ee971aceb0f92dfeacdb01e7ddf47a117d962"
+    },
+    {
+      "path": "categories/02-language-specialists/rails-expert.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d5976cb3f5ed1d71beefd561e4f967adeeb6b026",
+      "size": 13459,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/d5976cb3f5ed1d71beefd561e4f967adeeb6b026"
+    },
+    {
+      "path": "categories/02-language-specialists/react-specialist.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bdebc80535acced326b4d9fa2f35200256d25078",
+      "size": 6730,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/bdebc80535acced326b4d9fa2f35200256d25078"
+    },
+    {
+      "path": "categories/02-language-specialists/rust-engineer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d4a6c562e17fc09694dd0cad417f65b01a914efd",
+      "size": 7626,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/d4a6c562e17fc09694dd0cad417f65b01a914efd"
+    },
+    {
+      "path": "categories/02-language-specialists/spring-boot-engineer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "728eddb80ab9b8dd8ed14b5f2144bfaa22f53c07",
+      "size": 6590,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/728eddb80ab9b8dd8ed14b5f2144bfaa22f53c07"
+    },
+    {
+      "path": "categories/02-language-specialists/sql-pro.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2b5502800366172c36303037416488ddacc5adcb",
+      "size": 7410,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/2b5502800366172c36303037416488ddacc5adcb"
+    },
+    {
+      "path": "categories/02-language-specialists/swift-expert.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "be9e08f746a8248d959c4562941d2f2563056c00",
+      "size": 7451,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/be9e08f746a8248d959c4562941d2f2563056c00"
+    },
+    {
+      "path": "categories/02-language-specialists/symfony-specialist.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "93664cc2820fe5b1ad342bdc29808e0f737ea633",
+      "size": 10663,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/93664cc2820fe5b1ad342bdc29808e0f737ea633"
+    },
+    {
+      "path": "categories/02-language-specialists/typescript-pro.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "dc87923e16fdcbadea1a04de97b6ce1bb3a06735",
+      "size": 7381,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/dc87923e16fdcbadea1a04de97b6ce1bb3a06735"
+    },
+    {
+      "path": "categories/02-language-specialists/vue-expert.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9d8fff8b5bed4bf0bfbefd4880474589812817ae",
+      "size": 6502,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/9d8fff8b5bed4bf0bfbefd4880474589812817ae"
+    },
+    {
+      "path": "categories/03-infrastructure",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "8df64edacb3dc5a8fdde19a6d645d42e2ecd0240",
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/trees/8df64edacb3dc5a8fdde19a6d645d42e2ecd0240"
+    },
+    {
+      "path": "categories/03-infrastructure/.claude-plugin",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "d01b7ad43099b79b9adbf6dac3d02c40b47b31a5",
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/trees/d01b7ad43099b79b9adbf6dac3d02c40b47b31a5"
+    },
+    {
+      "path": "categories/03-infrastructure/.claude-plugin/plugin.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8694e21fe89c8aa88f58972e0cc562d5f9e8a4f9",
+      "size": 870,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/8694e21fe89c8aa88f58972e0cc562d5f9e8a4f9"
+    },
+    {
+      "path": "categories/03-infrastructure/README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "04c2bd484a7663583c80ee0e558797bc823784a9",
+      "size": 11180,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/04c2bd484a7663583c80ee0e558797bc823784a9"
+    },
+    {
+      "path": "categories/03-infrastructure/azure-infra-engineer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "be9698d7c6aee57912a259acd08ac643c4955ff9",
+      "size": 1950,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/be9698d7c6aee57912a259acd08ac643c4955ff9"
+    },
+    {
+      "path": "categories/03-infrastructure/cloud-architect.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f434a6b0617a68c71d0d29c978b10b0495e9ab98",
+      "size": 7092,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/f434a6b0617a68c71d0d29c978b10b0495e9ab98"
+    },
+    {
+      "path": "categories/03-infrastructure/database-administrator.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "37fc0dc7c9ca6bc267f9d275aeb02eb449bc5dbc",
+      "size": 7333,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/37fc0dc7c9ca6bc267f9d275aeb02eb449bc5dbc"
+    },
+    {
+      "path": "categories/03-infrastructure/deployment-engineer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5f06e9d0227d99e77e45e01ef42cc9d583b8eda2",
+      "size": 6876,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/5f06e9d0227d99e77e45e01ef42cc9d583b8eda2"
+    },
+    {
+      "path": "categories/03-infrastructure/devops-engineer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fab183831e480e253aba789a51e2683f838bf354",
+      "size": 6948,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/fab183831e480e253aba789a51e2683f838bf354"
+    },
+    {
+      "path": "categories/03-infrastructure/devops-incident-responder.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a01cbd67a20776545f9200a2fa87e3d2a42c1c3f",
+      "size": 6801,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/a01cbd67a20776545f9200a2fa87e3d2a42c1c3f"
+    },
+    {
+      "path": "categories/03-infrastructure/docker-expert.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d7fbd50da86fdd13ff761be8082cc9a29b92b702",
+      "size": 8150,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/d7fbd50da86fdd13ff761be8082cc9a29b92b702"
+    },
+    {
+      "path": "categories/03-infrastructure/incident-responder.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8333571e89f615c223d79790a67f1c8d92473a35",
+      "size": 7042,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/8333571e89f615c223d79790a67f1c8d92473a35"
+    },
+    {
+      "path": "categories/03-infrastructure/kubernetes-specialist.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b3492e85fdf7ec83b3bc58ce03e8dc3e23793a99",
+      "size": 6912,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/b3492e85fdf7ec83b3bc58ce03e8dc3e23793a99"
+    },
+    {
+      "path": "categories/03-infrastructure/network-engineer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3d8617e41af2eaa50cf092b3ea35e70d15abb3f9",
+      "size": 6827,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/3d8617e41af2eaa50cf092b3ea35e70d15abb3f9"
+    },
+    {
+      "path": "categories/03-infrastructure/platform-engineer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0a46647792aa1a1bf561373d26f37f6defcefaf0",
+      "size": 7555,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/0a46647792aa1a1bf561373d26f37f6defcefaf0"
+    },
+    {
+      "path": "categories/03-infrastructure/security-engineer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1bdc340162d6d073e9c402b367fe806bfbfdf92c",
+      "size": 7888,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/1bdc340162d6d073e9c402b367fe806bfbfdf92c"
+    },
+    {
+      "path": "categories/03-infrastructure/sre-engineer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5439eab6062a8c48256185355caf320240c22f32",
+      "size": 6943,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/5439eab6062a8c48256185355caf320240c22f32"
+    },
+    {
+      "path": "categories/03-infrastructure/terraform-engineer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0e07309a6a9eec2127282edc2f4bb08d47f0d669",
+      "size": 6898,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/0e07309a6a9eec2127282edc2f4bb08d47f0d669"
+    },
+    {
+      "path": "categories/03-infrastructure/terragrunt-expert.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "dee9ee3fc9ec792cb570d5d1e13508b6c665c45e",
+      "size": 8226,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/dee9ee3fc9ec792cb570d5d1e13508b6c665c45e"
+    },
+    {
+      "path": "categories/03-infrastructure/windows-infra-admin.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "78973aebfd3ac271ca89127584e84306e948ce6f",
+      "size": 1987,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/78973aebfd3ac271ca89127584e84306e948ce6f"
+    },
+    {
+      "path": "categories/04-quality-security",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "711d3594643df30ded7865f5a7d79107d7a2deac",
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/trees/711d3594643df30ded7865f5a7d79107d7a2deac"
+    },
+    {
+      "path": "categories/04-quality-security/.claude-plugin",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "8067a911f23b3ca7f9f7aa0ac5cc76eb18925b0c",
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/trees/8067a911f23b3ca7f9f7aa0ac5cc76eb18925b0c"
+    },
+    {
+      "path": "categories/04-quality-security/.claude-plugin/plugin.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7eb3d61c87063dc73e0ffa5c66dafb7ad3dbdafb",
+      "size": 908,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/7eb3d61c87063dc73e0ffa5c66dafb7ad3dbdafb"
+    },
+    {
+      "path": "categories/04-quality-security/README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9fbe937d540bd11391279cb3c9915b23fb586229",
+      "size": 11656,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/9fbe937d540bd11391279cb3c9915b23fb586229"
+    },
+    {
+      "path": "categories/04-quality-security/accessibility-tester.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9e5f5b96ff93e14bcc530ac8ff366242d24cdf1a",
+      "size": 7056,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/9e5f5b96ff93e14bcc530ac8ff366242d24cdf1a"
+    },
+    {
+      "path": "categories/04-quality-security/ad-security-reviewer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b08671ac54669e26f741b623b6dc330260a4c653",
+      "size": 2369,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/b08671ac54669e26f741b623b6dc330260a4c653"
+    },
+    {
+      "path": "categories/04-quality-security/ai-writing-auditor.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "00a90fed046ea74be4fed05db2a9315ffe255e52",
+      "size": 4235,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/00a90fed046ea74be4fed05db2a9315ffe255e52"
+    },
+    {
+      "path": "categories/04-quality-security/architect-reviewer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c80495c0501689952697179e1ae0c7a5c07a2c24",
+      "size": 6990,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/c80495c0501689952697179e1ae0c7a5c07a2c24"
+    },
+    {
+      "path": "categories/04-quality-security/chaos-engineer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "84137ca6336288008a012b903ed1bec0540a839b",
+      "size": 6515,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/84137ca6336288008a012b903ed1bec0540a839b"
+    },
+    {
+      "path": "categories/04-quality-security/code-reviewer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0d3fcfac32a98dc292ba164d041e068cb1a46baa",
+      "size": 6607,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/0d3fcfac32a98dc292ba164d041e068cb1a46baa"
+    },
+    {
+      "path": "categories/04-quality-security/compliance-auditor.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b398cd118824800b4dd3e1cdbe3608bb94a04bb4",
+      "size": 6868,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/b398cd118824800b4dd3e1cdbe3608bb94a04bb4"
+    },
+    {
+      "path": "categories/04-quality-security/debugger.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f7449e056662441e4c1698c4af8bf1cca0ba41f6",
+      "size": 6577,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/f7449e056662441e4c1698c4af8bf1cca0ba41f6"
+    },
+    {
+      "path": "categories/04-quality-security/error-detective.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c5399f38a6b1fca21acc804f35fbe5dc4935b9e7",
+      "size": 6748,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/c5399f38a6b1fca21acc804f35fbe5dc4935b9e7"
+    },
+    {
+      "path": "categories/04-quality-security/gdpr-ccpa-compliance.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7c27228f2f2dec240a1cb6fe23e3cbb1ddb9ab96",
+      "size": 4683,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/7c27228f2f2dec240a1cb6fe23e3cbb1ddb9ab96"
+    },
+    {
+      "path": "categories/04-quality-security/penetration-tester.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f2d60c959595e48777756f724a5ca55452ba95d1",
+      "size": 6737,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/f2d60c959595e48777756f724a5ca55452ba95d1"
+    },
+    {
+      "path": "categories/04-quality-security/performance-engineer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0629612bcdaa4a1434435746330d4b117499d519",
+      "size": 6853,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/0629612bcdaa4a1434435746330d4b117499d519"
+    },
+    {
+      "path": "categories/04-quality-security/powershell-security-hardening.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "818a6f333df023e601c4b9c55f1c5cc1615d79d4",
+      "size": 2484,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/818a6f333df023e601c4b9c55f1c5cc1615d79d4"
+    },
+    {
+      "path": "categories/04-quality-security/qa-expert.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b98c9ac57a7a1ea1c8883329887359f2b711d3a0",
+      "size": 6689,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/b98c9ac57a7a1ea1c8883329887359f2b711d3a0"
+    },
+    {
+      "path": "categories/04-quality-security/security-auditor.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6e83d981c8a525358908c1e86cc23fe7d7477a02",
+      "size": 6781,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/6e83d981c8a525358908c1e86cc23fe7d7477a02"
+    },
+    {
+      "path": "categories/04-quality-security/test-automator.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4ab4275a937ecaf565c7e3ee484b363bcd1e3df7",
+      "size": 6469,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/4ab4275a937ecaf565c7e3ee484b363bcd1e3df7"
+    },
+    {
+      "path": "categories/04-quality-security/ui-ux-tester.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "56e7d013d8f23f08e64cf1e7f859a9c6115043ea",
+      "size": 6946,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/56e7d013d8f23f08e64cf1e7f859a9c6115043ea"
+    },
+    {
+      "path": "categories/05-data-ai",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "45acc4216bc7a8df7d98df4afaedc7ee59ee9e70",
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/trees/45acc4216bc7a8df7d98df4afaedc7ee59ee9e70"
+    },
+    {
+      "path": "categories/05-data-ai/.claude-plugin",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "53cdabe31c8fea5f72cc66cd34322596cad533bc",
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/trees/53cdabe31c8fea5f72cc66cd34322596cad533bc"
+    },
+    {
+      "path": "categories/05-data-ai/.claude-plugin/plugin.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "27124ca17f28bbce0b0a8b0a03f0aa3150cf0488",
+      "size": 752,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/27124ca17f28bbce0b0a8b0a03f0aa3150cf0488"
+    },
+    {
+      "path": "categories/05-data-ai/README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f8439ce3977d996e4d7c2f6c0e66426d891fe769",
+      "size": 8953,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/f8439ce3977d996e4d7c2f6c0e66426d891fe769"
+    },
+    {
+      "path": "categories/05-data-ai/ai-engineer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "13287a7c17085bfab5364d60a7e49344fa1fbc0b",
+      "size": 6732,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/13287a7c17085bfab5364d60a7e49344fa1fbc0b"
+    },
+    {
+      "path": "categories/05-data-ai/data-analyst.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5462ee681d75cdc49fdcd78dcbae839a5ec14dc9",
+      "size": 6876,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/5462ee681d75cdc49fdcd78dcbae839a5ec14dc9"
+    },
+    {
+      "path": "categories/05-data-ai/data-engineer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "91a5b1813264237b0f87139b494112bdd19b94bf",
+      "size": 6548,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/91a5b1813264237b0f87139b494112bdd19b94bf"
+    },
+    {
+      "path": "categories/05-data-ai/data-scientist.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "27c5d26c6eb5a57d6c86df7aa829fae4d3fd650a",
+      "size": 6876,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/27c5d26c6eb5a57d6c86df7aa829fae4d3fd650a"
+    },
+    {
+      "path": "categories/05-data-ai/database-optimizer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "134222013193563c12470cba17a6ca80fcade6f5",
+      "size": 6553,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/134222013193563c12470cba17a6ca80fcade6f5"
+    },
+    {
+      "path": "categories/05-data-ai/llm-architect.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b9e75e246d2ec5bf63b9de38620018edcbfa6c96",
+      "size": 6520,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/b9e75e246d2ec5bf63b9de38620018edcbfa6c96"
+    },
+    {
+      "path": "categories/05-data-ai/machine-learning-engineer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5cebc61860daf78c0cb1e7bf1eb28b3d68640f32",
+      "size": 6502,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/5cebc61860daf78c0cb1e7bf1eb28b3d68640f32"
+    },
+    {
+      "path": "categories/05-data-ai/ml-engineer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e07cdc91bd95d25b3cbd924e673907b783128c23",
+      "size": 6463,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/e07cdc91bd95d25b3cbd924e673907b783128c23"
+    },
+    {
+      "path": "categories/05-data-ai/mlops-engineer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0c673e1d8d2b525b93f40732f67bae88f8325a29",
+      "size": 6767,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/0c673e1d8d2b525b93f40732f67bae88f8325a29"
+    },
+    {
+      "path": "categories/05-data-ai/nlp-engineer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "331afaca5bdabf6dd43884a3e813f8ff4dbd8943",
+      "size": 6635,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/331afaca5bdabf6dd43884a3e813f8ff4dbd8943"
+    },
+    {
+      "path": "categories/05-data-ai/postgres-pro.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8ef81a3e2ffcef67abe8faebdc31b9fd22eaf236",
+      "size": 6537,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/8ef81a3e2ffcef67abe8faebdc31b9fd22eaf236"
+    },
+    {
+      "path": "categories/05-data-ai/prompt-engineer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2f06f4c29d9850b27caa16cfc0c4b43346e06732",
+      "size": 6417,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/2f06f4c29d9850b27caa16cfc0c4b43346e06732"
+    },
+    {
+      "path": "categories/05-data-ai/reinforcement-learning-engineer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "962093b39858f008febb9c5b93fe67636c7087aa",
+      "size": 7162,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/962093b39858f008febb9c5b93fe67636c7087aa"
+    },
+    {
+      "path": "categories/06-developer-experience",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "d19afd6c65c59a4f1995c9421fb4eb4bfd2163d3",
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/trees/d19afd6c65c59a4f1995c9421fb4eb4bfd2163d3"
+    },
+    {
+      "path": "categories/06-developer-experience/.claude-plugin",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "d55aa8c0e7c43a24647934de309f919cf153c178",
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/trees/d55aa8c0e7c43a24647934de309f919cf153c178"
+    },
+    {
+      "path": "categories/06-developer-experience/.claude-plugin/plugin.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "be469fcf206484bed7d6c6873d479711416bc709",
+      "size": 860,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/be469fcf206484bed7d6c6873d479711416bc709"
+    },
+    {
+      "path": "categories/06-developer-experience/README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cd8e26ca33b5bb853058a55488394f24bf6f5228",
+      "size": 11082,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/cd8e26ca33b5bb853058a55488394f24bf6f5228"
+    },
+    {
+      "path": "categories/06-developer-experience/build-engineer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0db9fa2fde2b52f86607381e73089df1cce2525d",
+      "size": 6855,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/0db9fa2fde2b52f86607381e73089df1cce2525d"
+    },
+    {
+      "path": "categories/06-developer-experience/cli-developer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fe131ed2edb627e660e6a11acc42f073a2609bc3",
+      "size": 6641,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/fe131ed2edb627e660e6a11acc42f073a2609bc3"
+    },
+    {
+      "path": "categories/06-developer-experience/dependency-manager.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "515d03cd845527f5d767a157a140d0da36181e87",
+      "size": 6870,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/515d03cd845527f5d767a157a140d0da36181e87"
+    },
+    {
+      "path": "categories/06-developer-experience/docs-drift-editor.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "582cbcbdb5f74a178a970e19386426f5e71b50d2",
+      "size": 4590,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/582cbcbdb5f74a178a970e19386426f5e71b50d2"
+    },
+    {
+      "path": "categories/06-developer-experience/documentation-engineer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "74a88379dd33380c83214bcc3e1f48aa32c0b0ce",
+      "size": 6749,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/74a88379dd33380c83214bcc3e1f48aa32c0b0ce"
+    },
+    {
+      "path": "categories/06-developer-experience/dx-optimizer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a34f3c075220264c83be13d39a562bb0ab7328c2",
+      "size": 6593,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/a34f3c075220264c83be13d39a562bb0ab7328c2"
+    },
+    {
+      "path": "categories/06-developer-experience/git-workflow-manager.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "38f2bcb8ab4dbe673f90ef62baf055a4e9fd42b4",
+      "size": 6681,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/38f2bcb8ab4dbe673f90ef62baf055a4e9fd42b4"
+    },
+    {
+      "path": "categories/06-developer-experience/legacy-modernizer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "26ad491c58209165eaf3bd607cfd7e3a4dc2fa64",
+      "size": 6782,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/26ad491c58209165eaf3bd607cfd7e3a4dc2fa64"
+    },
+    {
+      "path": "categories/06-developer-experience/mcp-developer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "045c70714c50437cd19c2b4fd085bf3a9fe46dd8",
+      "size": 6940,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/045c70714c50437cd19c2b4fd085bf3a9fe46dd8"
+    },
+    {
+      "path": "categories/06-developer-experience/powershell-module-architect.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "436959fc169ddb053b849fc658c3040ff1e8fac7",
+      "size": 2166,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/436959fc169ddb053b849fc658c3040ff1e8fac7"
+    },
+    {
+      "path": "categories/06-developer-experience/powershell-ui-architect.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8e1a4f756041daadda726211adbdee1472d26eb0",
+      "size": 5621,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/8e1a4f756041daadda726211adbdee1472d26eb0"
+    },
+    {
+      "path": "categories/06-developer-experience/readme-generator.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "64d01cdc31c14bb7b705b7824eae4a50de3c9e89",
+      "size": 6749,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/64d01cdc31c14bb7b705b7824eae4a50de3c9e89"
+    },
+    {
+      "path": "categories/06-developer-experience/refactoring-specialist.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c8c4fdeec17dfe0e8f312cf1afac9801416c1fcc",
+      "size": 6939,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/c8c4fdeec17dfe0e8f312cf1afac9801416c1fcc"
+    },
+    {
+      "path": "categories/06-developer-experience/slack-expert.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ae57e0fc4c6cf8a02e52c9745a56d5abc8a6a89e",
+      "size": 6608,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/ae57e0fc4c6cf8a02e52c9745a56d5abc8a6a89e"
+    },
+    {
+      "path": "categories/06-developer-experience/tooling-engineer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8e485362fcbcd815804ea88100ffe52fee4ba1c8",
+      "size": 6428,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/8e485362fcbcd815804ea88100ffe52fee4ba1c8"
+    },
+    {
+      "path": "categories/06-developer-experience/visual-asset-generator.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "03f356b1b8b4007b91773728d4d7831100d2af4b",
+      "size": 1902,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/03f356b1b8b4007b91773728d4d7831100d2af4b"
+    },
+    {
+      "path": "categories/07-specialized-domains",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "2c4eb9a1f5b2a9c24394dd8b77e1da5ffe6471b1",
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/trees/2c4eb9a1f5b2a9c24394dd8b77e1da5ffe6471b1"
+    },
+    {
+      "path": "categories/07-specialized-domains/.claude-plugin",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "ebbb4cc5777082a0f1f952a483af19a30a813017",
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/trees/ebbb4cc5777082a0f1f952a483af19a30a813017"
+    },
+    {
+      "path": "categories/07-specialized-domains/.claude-plugin/plugin.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8aee14e975c9622fce8abb565e4f107db1b481da",
+      "size": 850,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/8aee14e975c9622fce8abb565e4f107db1b481da"
+    },
+    {
+      "path": "categories/07-specialized-domains/README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8e27b963839d04709d5bb19b07c9dc8532998e33",
+      "size": 11263,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/8e27b963839d04709d5bb19b07c9dc8532998e33"
+    },
+    {
+      "path": "categories/07-specialized-domains/api-documenter.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2190f31e6cc71d40fa2e6397d83e7ee6c62f771a",
+      "size": 6328,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/2190f31e6cc71d40fa2e6397d83e7ee6c62f771a"
+    },
+    {
+      "path": "categories/07-specialized-domains/blockchain-developer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b284e96585050e2a58658dd3ed918486f718d6f0",
+      "size": 6358,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/b284e96585050e2a58658dd3ed918486f718d6f0"
+    },
+    {
+      "path": "categories/07-specialized-domains/email-deliverability-engineer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f8fd46a831d848c4b5074af57d43065a9689e27c",
+      "size": 7474,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/f8fd46a831d848c4b5074af57d43065a9689e27c"
+    },
+    {
+      "path": "categories/07-specialized-domains/embedded-systems.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8e05ae892c7af9830fdd412e45b39443de5247fc",
+      "size": 6398,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/8e05ae892c7af9830fdd412e45b39443de5247fc"
+    },
+    {
+      "path": "categories/07-specialized-domains/fintech-engineer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "146bf8ec45818d141dbcb116142de38549a8ac84",
+      "size": 6861,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/146bf8ec45818d141dbcb116142de38549a8ac84"
+    },
+    {
+      "path": "categories/07-specialized-domains/game-developer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9a62a32b6ce9b03b6a9d7054398b8b38957fc042",
+      "size": 6431,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/9a62a32b6ce9b03b6a9d7054398b8b38957fc042"
+    },
+    {
+      "path": "categories/07-specialized-domains/healthcare-admin.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7a556d3d5d1d53d7b90ed99383c49aa8bb8cc406",
+      "size": 7896,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/7a556d3d5d1d53d7b90ed99383c49aa8bb8cc406"
+    },
+    {
+      "path": "categories/07-specialized-domains/hipaa-compliance.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6295b2caac8dc554b2de6d99f0bd0f69e98e1ddd",
+      "size": 4987,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/6295b2caac8dc554b2de6d99f0bd0f69e98e1ddd"
+    },
+    {
+      "path": "categories/07-specialized-domains/iot-engineer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6f16fc1441d01cd7c7b1aa7a56835f1a26979e01",
+      "size": 6363,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/6f16fc1441d01cd7c7b1aa7a56835f1a26979e01"
+    },
+    {
+      "path": "categories/07-specialized-domains/m365-admin.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3fb9b5a9364f4c3dac2da4a1afeba269d99c3415",
+      "size": 1849,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/3fb9b5a9364f4c3dac2da4a1afeba269d99c3415"
+    },
+    {
+      "path": "categories/07-specialized-domains/mobile-app-developer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "63f0b81c95a131b715f23af6d9a46dcccbdbc276",
+      "size": 6674,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/63f0b81c95a131b715f23af6d9a46dcccbdbc276"
+    },
+    {
+      "path": "categories/07-specialized-domains/payment-integration.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5cd9f9c69134f496dc1d5604f6f0a5ae06692084",
+      "size": 6744,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/5cd9f9c69134f496dc1d5604f6f0a5ae06692084"
+    },
+    {
+      "path": "categories/07-specialized-domains/quant-analyst.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a943756462fd68e4fdcd076780671c01e75344c8",
+      "size": 6838,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/a943756462fd68e4fdcd076780671c01e75344c8"
+    },
+    {
+      "path": "categories/07-specialized-domains/risk-manager.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "748895c62f88ee662fd38a7a598eb6297d69bdbc",
+      "size": 6622,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/748895c62f88ee662fd38a7a598eb6297d69bdbc"
+    },
+    {
+      "path": "categories/07-specialized-domains/seo-specialist.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7952ba6715b6fc8333acbaf38b335258117d9ba2",
+      "size": 5296,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/7952ba6715b6fc8333acbaf38b335258117d9ba2"
+    },
+    {
+      "path": "categories/07-specialized-domains/x-api-integration.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2d3aab59c8eaf7802157039a7b396da6226729e4",
+      "size": 6172,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/2d3aab59c8eaf7802157039a7b396da6226729e4"
+    },
+    {
+      "path": "categories/08-business-product",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "f897abf205874c61e79396db7f38c6580710a12a",
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/trees/f897abf205874c61e79396db7f38c6580710a12a"
+    },
+    {
+      "path": "categories/08-business-product/.claude-plugin",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "c2406d9163f0366aaa77508f5bb3f7039d10a306",
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/trees/c2406d9163f0366aaa77508f5bb3f7039d10a306"
+    },
+    {
+      "path": "categories/08-business-product/.claude-plugin/plugin.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4baa0a422c63792260b845dbba901fc191fecb92",
+      "size": 886,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/4baa0a422c63792260b845dbba901fc191fecb92"
+    },
+    {
+      "path": "categories/08-business-product/README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "44c4341b9bf11d2915f777822b2beda69ee2fd1e",
+      "size": 10237,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/44c4341b9bf11d2915f777822b2beda69ee2fd1e"
+    },
+    {
+      "path": "categories/08-business-product/assumption-mapping.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d68fb642d9b5874c2255c43eab4e642d6040d853",
+      "size": 3029,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/d68fb642d9b5874c2255c43eab4e642d6040d853"
+    },
+    {
+      "path": "categories/08-business-product/backlog-grooming.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6eea3e5f49c2804cf2a89f7e789b117658efd338",
+      "size": 3391,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/6eea3e5f49c2804cf2a89f7e789b117658efd338"
+    },
+    {
+      "path": "categories/08-business-product/business-analyst.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6453a32f9d512d2886d8c85c0d76752e7ab6dd2d",
+      "size": 6705,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/6453a32f9d512d2886d8c85c0d76752e7ab6dd2d"
+    },
+    {
+      "path": "categories/08-business-product/content-marketer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bb5e043dadf6ef343406d2cc4f7fb82db955d118",
+      "size": 6420,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/bb5e043dadf6ef343406d2cc4f7fb82db955d118"
+    },
+    {
+      "path": "categories/08-business-product/content-quality-editor.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "20371ccb73c3c348af8e7a2fdd99af40b4443bd2",
+      "size": 2202,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/20371ccb73c3c348af8e7a2fdd99af40b4443bd2"
+    },
+    {
+      "path": "categories/08-business-product/customer-success-manager.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "004b0dd557ad2d92c1f399df245c6afccfd283f8",
+      "size": 6908,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/004b0dd557ad2d92c1f399df245c6afccfd283f8"
+    },
+    {
+      "path": "categories/08-business-product/growth-loops.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "94e592eb95b46249b69e143402b40d481e6c9330",
+      "size": 3853,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/94e592eb95b46249b69e143402b40d481e6c9330"
+    },
+    {
+      "path": "categories/08-business-product/landing-page-copywriter.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b15eebbcd3191da478801208a0d5176ac2a8e8c8",
+      "size": 7199,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/b15eebbcd3191da478801208a0d5176ac2a8e8c8"
+    },
+    {
+      "path": "categories/08-business-product/legal-advisor.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a2f4dec5451341f9e409d788a977e2f152b63326",
+      "size": 6646,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/a2f4dec5451341f9e409d788a977e2f152b63326"
+    },
+    {
+      "path": "categories/08-business-product/license-engineer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f2a9d204094ababfb25f420bb8144f99ee8abcf4",
+      "size": 8366,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/f2a9d204094ababfb25f420bb8144f99ee8abcf4"
+    },
+    {
+      "path": "categories/08-business-product/product-manager.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "56a95bcfb0a7b8e6ca70539fd8138eb142d33f4a",
+      "size": 6541,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/56a95bcfb0a7b8e6ca70539fd8138eb142d33f4a"
+    },
+    {
+      "path": "categories/08-business-product/project-manager.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e2f0d71f1550f587a109e63b0fb55f65cc12f39d",
+      "size": 6504,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/e2f0d71f1550f587a109e63b0fb55f65cc12f39d"
+    },
+    {
+      "path": "categories/08-business-product/sales-engineer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "91a6177c589ed309a6d9eb96d665190f55f4fc9f",
+      "size": 6990,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/91a6177c589ed309a6d9eb96d665190f55f4fc9f"
+    },
+    {
+      "path": "categories/08-business-product/scrum-master.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2020808d17fe005851ec4d6fa701ba1bdee579fa",
+      "size": 6751,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/2020808d17fe005851ec4d6fa701ba1bdee579fa"
+    },
+    {
+      "path": "categories/08-business-product/technical-writer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9cf3240e1dd87993b8b14ff3e661e9498e786b5e",
+      "size": 6520,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/9cf3240e1dd87993b8b14ff3e661e9498e786b5e"
+    },
+    {
+      "path": "categories/08-business-product/ux-researcher.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "43b798df2cdfb1017acc9814b7a8f579a4cfc962",
+      "size": 6807,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/43b798df2cdfb1017acc9814b7a8f579a4cfc962"
+    },
+    {
+      "path": "categories/08-business-product/wordpress-master.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1c329edc31d51404fcbfa223a591cba71f384746",
+      "size": 7559,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/1c329edc31d51404fcbfa223a591cba71f384746"
+    },
+    {
+      "path": "categories/09-meta-orchestration",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "d254b33fca5c4701372ac8f30d9aaf24a336b865",
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/trees/d254b33fca5c4701372ac8f30d9aaf24a336b865"
+    },
+    {
+      "path": "categories/09-meta-orchestration/.claude-plugin",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "3617576d1e75d14e49b59d3f05aa0d2749a95f7b",
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/trees/3617576d1e75d14e49b59d3f05aa0d2749a95f7b"
+    },
+    {
+      "path": "categories/09-meta-orchestration/.claude-plugin/plugin.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "87b410d9d2b05a925f6159bf541492e7c0f598d4",
+      "size": 828,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/87b410d9d2b05a925f6159bf541492e7c0f598d4"
+    },
+    {
+      "path": "categories/09-meta-orchestration/README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "76e0a2001758dffd9dcc0a0dfc4e7598a2d04e53",
+      "size": 9780,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/76e0a2001758dffd9dcc0a0dfc4e7598a2d04e53"
+    },
+    {
+      "path": "categories/09-meta-orchestration/agent-installer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7b9dc1023863408876bdc8074b74e472cc8827d2",
+      "size": 3559,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/7b9dc1023863408876bdc8074b74e472cc8827d2"
+    },
+    {
+      "path": "categories/09-meta-orchestration/agent-organizer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0bda250d55c461b5714e8f6d5452bd64bfe858c6",
+      "size": 5631,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/0bda250d55c461b5714e8f6d5452bd64bfe858c6"
+    },
+    {
+      "path": "categories/09-meta-orchestration/codebase-orchestrator.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b9bb9ae348d8e8e7cff3f3c3cc066d2f08416ffe",
+      "size": 6958,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/b9bb9ae348d8e8e7cff3f3c3cc066d2f08416ffe"
+    },
+    {
+      "path": "categories/09-meta-orchestration/context-manager.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "14d7a3b21170800e5e1218b15b904a9485d7070d",
+      "size": 5293,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/14d7a3b21170800e5e1218b15b904a9485d7070d"
+    },
+    {
+      "path": "categories/09-meta-orchestration/error-coordinator.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6c5ac731460f7451df9320275c8cc9c4a7271cf2",
+      "size": 6563,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/6c5ac731460f7451df9320275c8cc9c4a7271cf2"
+    },
+    {
+      "path": "categories/09-meta-orchestration/it-ops-orchestrator.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5f2273e42ea9f5e5bc2673571fb287ce0b5bdcf6",
+      "size": 2607,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/5f2273e42ea9f5e5bc2673571fb287ce0b5bdcf6"
+    },
+    {
+      "path": "categories/09-meta-orchestration/knowledge-synthesizer.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "45849df9630aa47b7316d59cb1041cd68f9206ba",
+      "size": 4697,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/45849df9630aa47b7316d59cb1041cd68f9206ba"
+    },
+    {
+      "path": "categories/09-meta-orchestration/memory-curator.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f4ef0e1b5ac77e7eab4525daf6f111fe5405c0dc",
+      "size": 5474,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/f4ef0e1b5ac77e7eab4525daf6f111fe5405c0dc"
+    },
+    {
+      "path": "categories/09-meta-orchestration/multi-agent-coordinator.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3f4ceb29ecd4a1869c41b2e43782484459e4fe69",
+      "size": 5457,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/3f4ceb29ecd4a1869c41b2e43782484459e4fe69"
+    },
+    {
+      "path": "categories/09-meta-orchestration/performance-monitor.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6cd2312a37861e00118d68278d8191bc28c8ba03",
+      "size": 6044,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/6cd2312a37861e00118d68278d8191bc28c8ba03"
+    },
+    {
+      "path": "categories/09-meta-orchestration/task-distributor.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "32b55ac2890f26ef0d1b37362087e9c75e5649f2",
+      "size": 5223,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/32b55ac2890f26ef0d1b37362087e9c75e5649f2"
+    },
+    {
+      "path": "categories/09-meta-orchestration/workflow-orchestrator.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d0095491a2cf4950f3b6a0979f59d90497875ac7",
+      "size": 5429,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/d0095491a2cf4950f3b6a0979f59d90497875ac7"
+    },
+    {
+      "path": "categories/10-research-analysis",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "58a075df7dc713bfef5826cdfc7d7f7890dbedec",
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/trees/58a075df7dc713bfef5826cdfc7d7f7890dbedec"
+    },
+    {
+      "path": "categories/10-research-analysis/.claude-plugin",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "78a2166780fe2129a94f5f98b873b5956cdca13c",
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/trees/78a2166780fe2129a94f5f98b873b5956cdca13c"
+    },
+    {
+      "path": "categories/10-research-analysis/.claude-plugin/plugin.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "043d102b5027fb02939b673ba5870812024e048b",
+      "size": 762,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/043d102b5027fb02939b673ba5870812024e048b"
+    },
+    {
+      "path": "categories/10-research-analysis/README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "979fd1fa5ee51d0f8ec76271ea3b7455aef0d589",
+      "size": 9032,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/979fd1fa5ee51d0f8ec76271ea3b7455aef0d589"
+    },
+    {
+      "path": "categories/10-research-analysis/ab-test-analysis.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1b6a450bf43503b3e542aaec09b25c8b37f85ef9",
+      "size": 4347,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/1b6a450bf43503b3e542aaec09b25c8b37f85ef9"
+    },
+    {
+      "path": "categories/10-research-analysis/cohort-analysis.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "296551e78d62e0c963cb732a1ef908f6fafdbaa9",
+      "size": 3929,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/296551e78d62e0c963cb732a1ef908f6fafdbaa9"
+    },
+    {
+      "path": "categories/10-research-analysis/competitive-analyst.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9f8998317d22a8048288c2c2d06eb323e0fe6add",
+      "size": 6914,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/9f8998317d22a8048288c2c2d06eb323e0fe6add"
+    },
+    {
+      "path": "categories/10-research-analysis/data-researcher.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8678d8d4e260b7b1fdff601a258d67764ba9d753",
+      "size": 6741,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/8678d8d4e260b7b1fdff601a258d67764ba9d753"
+    },
+    {
+      "path": "categories/10-research-analysis/first-principles-thinking.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "92827c1fe2de6c93f865fc0ae2753975a7022cca",
+      "size": 4216,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/92827c1fe2de6c93f865fc0ae2753975a7022cca"
+    },
+    {
+      "path": "categories/10-research-analysis/market-researcher.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "024cb9280d8ba894856f8c5522e94a41895b43d5",
+      "size": 6758,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/024cb9280d8ba894856f8c5522e94a41895b43d5"
+    },
+    {
+      "path": "categories/10-research-analysis/project-idea-validator.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "30cf90794d623176261465d1d5cb80b463d1bff2",
+      "size": 6880,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/30cf90794d623176261465d1d5cb80b463d1bff2"
+    },
+    {
+      "path": "categories/10-research-analysis/research-analyst.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b30efa27f6f0a6fc5c57767fed265c14a4dc59a9",
+      "size": 6751,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/b30efa27f6f0a6fc5c57767fed265c14a4dc59a9"
+    },
+    {
+      "path": "categories/10-research-analysis/scientific-literature-researcher.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "754bb720f30b3327fe8ea0819f1de080d652e24a",
+      "size": 5250,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/754bb720f30b3327fe8ea0819f1de080d652e24a"
+    },
+    {
+      "path": "categories/10-research-analysis/search-specialist.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2fec689f8fe724d633c433c05b27eed5a99246e0",
+      "size": 6786,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/2fec689f8fe724d633c433c05b27eed5a99246e0"
+    },
+    {
+      "path": "categories/10-research-analysis/trend-analyst.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cc069549b202a6b9e897ec30c6b0f222df091bd6",
+      "size": 6697,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/cc069549b202a6b9e897ec30c6b0f222df091bd6"
+    },
+    {
+      "path": "install-agents.sh",
+      "mode": "100755",
+      "type": "blob",
+      "sha": "d7838c6e940a21e35cf73c84de537c819edf030b",
+      "size": 18077,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/d7838c6e940a21e35cf73c84de537c819edf030b"
+    },
+    {
+      "path": "tools",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "29dee1574e2a32c836b63b924ed1bb3265ac36ba",
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/trees/29dee1574e2a32c836b63b924ed1bb3265ac36ba"
+    },
+    {
+      "path": "tools/subagent-catalog",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "5d9e6bec614cad30ecb9dc5621300ec8a7518a9d",
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/trees/5d9e6bec614cad30ecb9dc5621300ec8a7518a9d"
+    },
+    {
+      "path": "tools/subagent-catalog/README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bb79871debe4b0f082bb760c478542240d6cad4c",
+      "size": 1629,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/bb79871debe4b0f082bb760c478542240d6cad4c"
+    },
+    {
+      "path": "tools/subagent-catalog/config.sh",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "64a5b3d67c58cd73bc0ac35fa471dc0025f0a704",
+      "size": 2938,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/64a5b3d67c58cd73bc0ac35fa471dc0025f0a704"
+    },
+    {
+      "path": "tools/subagent-catalog/fetch.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d14d0a91e541da76730bfd06bcc6bbd72fe8034c",
+      "size": 1800,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/d14d0a91e541da76730bfd06bcc6bbd72fe8034c"
+    },
+    {
+      "path": "tools/subagent-catalog/invalidate.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a6e2261fbed80a7e04a63a7ffc72e16967978f74",
+      "size": 1214,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/a6e2261fbed80a7e04a63a7ffc72e16967978f74"
+    },
+    {
+      "path": "tools/subagent-catalog/list.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "078cef2095587ccbbd28637cf63a911b95ca3f23",
+      "size": 1265,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/078cef2095587ccbbd28637cf63a911b95ca3f23"
+    },
+    {
+      "path": "tools/subagent-catalog/search.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2af5e5d586eb8a92faaf1a72ee15433eee143b15",
+      "size": 1718,
+      "url": "https://api.github.com/repos/VoltAgent/awesome-claude-code-subagents/git/blobs/2af5e5d586eb8a92faaf1a72ee15433eee143b15"
+    }
+  ],
+  "truncated": false
+}

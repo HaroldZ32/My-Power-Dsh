@@ -1,0 +1,124 @@
+{
+  "lane": "tui-014-lanes",
+  "phase": "D — closing lane set on the FINAL revision (the captain's last write)",
+  "boardTask": "tui-014-lanes (T4)",
+  "frozenContract": ".mpd/plans/tui-014-adaptation.md",
+  "owner": "Deep Worker Lanes (evidence only; no product code written, no lane script edited, no git write command run)",
+  "anchor": {
+    "myOwnContentFingerprint": "d79a9b11300fefc7",
+    "measuredAtUtc": ["2026-10-08T04:01:52Z", "2026-10-08T04:05:06Z", "2026-10-08T04:10:07Z", "2026-10-08T04:36:20Z"],
+    "fingerprintConstantAcrossAllFourReads": true,
+    "repoTreeDigest": "e1e56acdceff12d9a8d435eba067bd42 (all tracked+untracked files excluding .git/.mpd/.qa-*/evidence; sha256 of the sorted sha256 listing)",
+    "repoTreeDigestConstant": true,
+    "newestWatchedFileMtime": "VENDOR_LOCK.json @ 2026-10-08T04:01:26Z — BEFORE the sandbox lane set and 3m40s before the first Docker attempt",
+    "dirtyFiles": 55,
+    "captainReported": "final vendor re-pin skills.treeSha 73a7311adfe2240cb742a21f5d3a53400210a03a9672f106bf273953198d356d; dist/mpd-package pack stamp 2026-10-08T04:01:32.720Z; verify-dist-fresh 30/30; verify-pack-closure 553/553 identical",
+    "supersedes": ["b0e9e07377a953e6 @ 2026-10-08T02:45:49Z (Phase B)", "0917ba3c3345ae82 @ 2026-10-08T03:38:36Z (Phase C)"]
+  },
+  "environment": {
+    "commandPrefix": "MPD_E2E_TUI_VERSION=0.14.0 pnpm_config_registry=https://repo.huaweicloud.com/repository/npm/",
+    "sandboxRoot": ".mpd/recon/qa/tui-lanes/tui-014b (warm; the 0.14.0 host installed by the mount lane)",
+    "dockerBaseImageDeviation": "docker.io is unreachable; node:24-bookworm was sourced from docker.m.daocloud.io and retagged (digest sha256:3d27e5c11e5786e309ec3e03f93ae536eb36e6e5eb3714d5eb3300a36157add0). NOT comparable against docker.io's manifest because docker.io is unreachable. Declared, kept with the Docker row."
+  },
+  "lanes": [
+    {
+      "lane": "tui-mount",
+      "command": "MPD_E2E_TUI_VERSION=0.14.0 pnpm_config_registry=<mirror> bun skills/dsh-qa/scripts/tui-mount.ts --sandbox-root .mpd/recon/qa/tui-lanes/tui-014b",
+      "exitCode": 0,
+      "verdict": "PASS",
+      "evidencePath": "evidence/tui/lanes/2026-10-08T04-04-38.297Z/",
+      "keyAssertions": {
+        "installAttempt": "not re-run (the profile was WARM, so no network reinstall was needed — this was cheap, hence re-run as the captain offered)",
+        "layering": "['@deepseek-ai/dsh-base','@deepseek-harness-tui/dsh-tui','@mpd-dsh/mpd'] ordered, dump-config exit=0, rowComposed=true",
+        "statusLine": true,
+        "counters": true,
+        "crashSignatures": [],
+        "preset": "mpd (session b40ec9e6-317d-4b7e-8a4b-25622fcb9e59)",
+        "isolationOffenders": 0,
+        "sessionKeys": "created=[] inherited=['--root-...-tui-014b-ws--'] — the sandbox workspace key already existed from earlier runs in the WARM root (expected); the isolated-workspace assertion still reports 0 offenders",
+        "laneVerdict": "PASS: third layer mounted, 15 session record(s) decoded, zero apply-crash signatures"
+      }
+    },
+    {
+      "lane": "tui-panels",
+      "command": "MPD_E2E_TUI_VERSION=0.14.0 pnpm_config_registry=<mirror> bun skills/dsh-qa/scripts/tui-panels.ts --sandbox-root .mpd/recon/qa/tui-lanes/tui-014b",
+      "exitCode": 1,
+      "verdict": "FAIL — ONE red, and it is the declared PRE-EXISTING one",
+      "evidencePath": "evidence/tui/lanes/2026-10-08T04-01-59.682Z/",
+      "surfaces": {
+        "tuiStatus": "rendered", "tuiCommandTrees": "rendered (the Phase C NEW RED is FIXED)",
+        "commands": "rendered", "tuiPanels": "rendered", "tuiScenes": "rendered",
+        "tuiSettingsSections": "rendered", "tuiDialogs": "rendered",
+        "tuiRenderers": "MISSING — the ONLY red"
+      },
+      "replayFixObserved": "`dropped the previous run's watchdog replay state: <root>/ws/.mpd/team/watchdog/incidents.jsonl, <root>/ws/.mpd/team/watchdog/read-watermark.json` — clearWatchdogReplay() ran, and the three modal-caused reds (tuiCommandTrees, H1, H3) are gone across the two lanes.",
+      "onlyFailingAssertion": {
+        "surface": "tuiRenderers",
+        "step": "renderer",
+        "expectedPattern": "board opened via",
+        "observed": "MISSING; the store side reads `board-opened events in the sandbox store=2 scene-reported transcript rows=0` (Phase B: 0 events, Phase C: 1 event)",
+        "status": "PRE-EXISTING — red in every recorded run since 2026-09-15 per the captain; NOT this wave's regression, and NOT loosened by me."
+      },
+      "greenControls": { "panelRegistration": "id=act1:team ok=true", "negativeControl": "ok=false (must be false)" }
+    },
+    {
+      "lane": "tui-team-surface",
+      "command": "MPD_E2E_TUI_VERSION=0.14.0 pnpm_config_registry=<mirror> bun skills/dsh-qa/scripts/tui-team-surface.ts --sandbox-root .mpd/recon/qa/tui-lanes/tui-014b",
+      "exitCode": 1,
+      "verdict": "FAIL — ONE red, and it is the declared PRE-EXISTING one",
+      "evidencePath": "evidence/tui/team-surface-verify/2026-10-08T04-03-10.020Z/ (the lane's own hardcoded path; no --out — captain's option (b))",
+      "arm1": "A1-apply ok; A2-plan-scene ok (`registered scene \"mpd-tui-plan\" title \"MPD 计划审批\"`); A3 ok; A4-real-fixture-read ok (`team Fixture Team (mpd-fixture-1) · phase staged · review -`); A5 ok (phrase `approve plan-20261008T040210Z`); A6 ok (echo `approve plan-20261008T040210Z`); A7 ok; A8 ok; A9 ok; A10 ok; B1/B2/B3 ok (all three negative controls hold)",
+      "arm2": "H1-host-renders-surface OK — the dictionary-based matcher now reads the painted title: `┌? MPD plan approval · 216x48────…┐`; H2 ok; H3-host-confirm-step OK (the Phase C new red is FIXED); H4 FAIL; H4b ok; H5 ok; H6 ok",
+      "onlyFailingAssertion": {
+        "id": "H4-real-mutation-via-the-adopted-runtime",
+        "note": "no approval committed: phase=\"staged\" approvedAt=undefined; pane outcome: no-outcome-line",
+        "status": "PRE-EXISTING — red on 2026-09-30T02-40-18.003Z as well (it was the ONLY red there too)."
+      }
+    },
+    {
+      "lane": "tui-deps-ctrla",
+      "command": "MPD_E2E_TUI_VERSION=0.14.0 pnpm_config_registry=<mirror> bun skills/dsh-qa/scripts/tui-deps-ctrla.ts --sandbox-root .mpd/recon/qa/tui-lanes/tui-014b",
+      "exitCode": 0,
+      "verdict": "PASS",
+      "evidencePath": "evidence/tui/lanes/2026-10-08T04-03-50.072Z/",
+      "keyAssertions": {
+        "panelSeam": "host 0.14.0 declares the dsh-tui-panels row and ships lib/types/dsh-adapter/panels.js — the panel seam is PRESENT, so the Ctrl+A contact must stay inert",
+        "storeArm": "ok=true id=act1:team",
+        "laneVerdict": "PASS: the host's Ctrl+A stayed INERT (its own dashboard opened) and /mpd panel proved the sidebar registration + accepted open"
+      }
+    },
+    {
+      "lane": "docker (real PTY, --mode source) ON THE FINAL REVISION",
+      "command": "MPD_E2E_TUI_VERSION=0.14.0 node scripts/docker-e2e.ts --mode source --allow-rootful-docker",
+      "attemptsOnFinalRevision": 5,
+      "exitCodes": [3, 3, 3, 3, 3],
+      "verdict": "NOT REACHED (5/5) — CONTAINER EGRESS IS THE BINDING CONSTRAINT, not the revision, not the code",
+      "revisionActuallyExercised": "NONE — no attempt reached the reporter, so there is nothing to certify. The revision was nevertheless ROCK-STABLE across the whole window: fingerprint d79a9b11300fefc7 and repo tree digest e1e56acdceff12d9a8d435eba067bd42 at 04:05:06Z (T_start) and 04:36:20Z (T_end), with the newest watched file mtime (VENDOR_LOCK.json @ 04:01:26Z) predating T_start. Had any attempt succeeded, its revision would have been unambiguous.",
+      "failureInventory": [
+        { "evidence": "evidence/docker/client-install/2026-10-08T04-05-33Z/", "record": "ok=false passed=4 failed=1 null=78 FAILED=[toolchain.pnpm]", "printed": "`npm error code ETIMEDOUT … fetch https://registry.npmjs.org/pnpm: read ETIMEDOUT` → `[record] toolchain.pnpm=false` → `[bail] pnpm missing — remaining assertions are reported as null+\"not reached\"`" },
+        { "evidence": "evidence/docker/client-install/2026-10-08T04-10-21Z/", "record": "ok=false passed=3 failed=1 null=79 FAILED=[toolchain.bun]", "printed": "`curl: (28) Failed to connect to github.com port 443 after 134797 ms` → `error: Failed to download bun from \"https://github.com/oven-sh/bun/releases/latest/download/bun-linux-x64.zip\"`; the npm fallback DID run (`npm i -g --allow-scripts=bun bun` → added 2 packages) but `[record] toolchain.bun=false — bun did not install / did not report a 1.x version (routes tried: official-script, npm)`" },
+        { "evidence": "evidence/docker/client-install/2026-10-08T04-14-48Z/", "record": "ok=false passed=3 failed=1 null=79 FAILED=[toolchain.bun]", "printed": "same GitHub-connect failure as above" },
+        { "evidence": "evidence/docker/client-install/2026-10-08T04-20-37Z/", "record": "ok=false passed=4 failed=1 null=78 FAILED=[toolchain.pnpm]", "printed": "npm ETIMEDOUT on registry.npmjs.org" },
+        { "evidence": "evidence/docker/client-install/2026-10-08T04-28-36Z/", "record": "ok=false passed=4 failed=1 null=78 FAILED=[toolchain.pnpm]", "printed": "npm ETIMEDOUT on registry.npmjs.org" }
+      ],
+      "environmentBound": "Every failure is a NETWORK fetch inside the container failing: registry.npmjs.org (npm metadata) and github.com (bun binary, and the npm bun package's own binary download). The lane needs SEVERAL such fetches in sequence (bun binary + pnpm + node + the host + this bundle), so its success probability is the product of several flaky events. It succeeded ONCE in 6 attempts (1 of 3 that got past the image build). Nothing in this failure is a property of the bundle.",
+      "debugNoteForAFutureRun": "No registry/proxy knob exists on the container path: docker/docker-compose.yml interpolates only MPD_E2E_DSH_VERSION, MPD_E2E_TUI_VERSION and MPD_DOCKER_OUT, and the driver adds only -e MPD_E2E_BROWSER=1, so a registry override would require a REPO edit — outside an evidence task's scope, and the entrypoint deliberately asserts the build context carries no .npmrc (`copy.contextFiltered`)."
+    },
+    {
+      "lane": "docker (real PTY) — the ONE PASS, at an EARLIER revision",
+      "command": "MPD_E2E_TUI_VERSION=0.14.0 node scripts/docker-e2e.ts --mode source --allow-rootful-docker",
+      "exitCode": 0,
+      "verdict": "PASS — passed=64 failed=0 null=30, unmeasured=[]",
+      "evidencePath": "evidence/docker/client-install/2026-10-08T03-18-21Z/",
+      "revisionBound": "The build context was copied during a build that started 03:18:21Z; the captain's three src edits are stamped 03:18:59Z, INSIDE that window. The container records only 28 hashes and `--mode source` REBUILDS dist inside the container, so they cannot arbitrate (measured: recorded packages/mpd-tui-plugin/dist/index.js 1a19e45e… vs on-disk 32fe62b4… — differently built, as expected). UNRESOLVED, declared.",
+      "greenAssertionsQuoted": [
+        "tui.hostInstall / tui.pluginAddHost / tui.pluginAddBundle = true (this bundle installs as the third patch layer)",
+        "tui.teamSceneOpened=true — the /mpd team scene opened on a real terminal",
+        "tui.teamGraphDrawn / tui.teamGraphEdges / tui.teamGraphContent = true",
+        "tui.hostDashboardKeyIntact=true (frozen R4), tui.noDirectTuiSeam=true (D6), tui.boot=true, tui.sessionPreset=true (agentPreset=mpd), tui.laneExit=true"
+      ]
+    }
+  ],
+  "coverageGapUnchanged": "No lane drives the MPD panel's own `⤢`: `grep -l 'fullscreen|⤢|openFullscreen|expand'` matches NONE of the four sandbox lane scripts. C5's full-screen surface is NOT exercised by this lane set.",
+  "verdict": "PHASE D sandbox set is CLEAN versus the declared expectations: tui-mount PASS, tui-deps-ctrla PASS, tui-panels red on tuiRenderers ONLY (pre-existing), tui-team-surface red on H4 ONLY (pre-existing) — the watchdog-replay modal cause was removed and the three Phase C new reds are gone. The Docker lane on the final revision is NOT REACHED for an environment reason (5/5 container-egress failures on registry.npmjs.org and github.com), so the final revision's strongest evidence remains the earlier PASS at 2026-10-08T03-18-21Z with its declared revision bound."
+}

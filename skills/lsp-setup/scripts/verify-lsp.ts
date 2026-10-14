@@ -2,7 +2,7 @@
 // verify-lsp.ts <file> [--timeout=ms] — perform a real LSP diagnostics roundtrip
 // for <file> through the lsp-tools-mcp engine and report ok/fail with error text.
 // The engine source is located by walking up from this script and the cwd, so
-// run it inside the upstream checkout/worktree (where packages/lsp-tools-mcp/src exists).
+// run it inside the upstream checkout/worktree (where the LSP engine source exists).
 
 import { existsSync, statSync } from "node:fs"
 import { dirname, isAbsolute, join, resolve } from "node:path"

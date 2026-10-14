@@ -13,6 +13,12 @@
 // projected. The route serves the mpd record, which carries `kind`, `attempt`, `round` and `verdict`
 // — fields the official board has no column for.
 //
+// THE CHANGE FEED IS AN ADDITION, NOT A REPLACEMENT (lane W, 2026-10-08). The panel still polls
+// (`pollMs`), and it ALSO subscribes to the team record's change stream when the composition threads
+// a route in (`eventsPath`): every `data:` frame runs the SAME `tick` the interval runs, so the
+// pushed and the polled frame can never disagree, and a host without `EventSource` — or a proxy that
+// cuts the stream — keeps exactly the behaviour it had before. See `start` for the lifecycle.
+//
 // THE PANELS (the wave's R1 contract, docs/plan-webui-tui-i18n.md §3): a header carrying the
 // team-level figures, a progress bar, one PLAIN card per member, the task-dependency DAG (rank
 // columns, one drawn edge per `blockedBy`, a hover focus chain, a click-to-pin detail body) and an
@@ -45,6 +51,27 @@
   interface Translator {
     /** Resolve one key to the active language; the host answers the key itself when it misses. */
     (key: string): string
+  }
+
+  /**
+   * The change stream the view subscribes to, narrowed to the TWO members it uses.
+   *
+   * DECLARED HERE RATHER THAN TAKEN FROM THE DOM LIB, so the factory compiles in the browser build
+   * and in the offline harness alike: the view installs ONE message hook and closes the stream on
+   * unmount, and reconnecting is the browser's own job (the route sends `retry: 1000`), so no other
+   * member of the real `EventSource` is ever touched.
+   */
+  interface ChangeStream {
+    /** The hook the view installs; the stream calls it once per `data:` frame. */
+    onmessage: ((event: unknown) => void) | null
+    /** Close the connection; the view calls it once, when the effect that opened it is disposed. */
+    close: () => void
+  }
+
+  /** The constructor shape of the host's `EventSource`, read off the global at subscribe time. */
+  interface ChangeStreamCtor {
+    /** Open a stream on one URL; the browser reconnects on its own after a transport error. */
+    new (url: string): ChangeStream
   }
 
   /** One member row, as the route serves it. */
@@ -578,10 +605,11 @@
     /**
      * Build the team view ONCE, so both sidebar hosts render the same component with the same
      * polling behaviour rather than two lookalikes that can drift.
-     * @param deps - the React surface, the routes, the poll interval and the host's translator.
+     * @param deps - the React surface, the routes (the change stream's included), the poll interval
+     *   and the host's translator.
      * @returns the view component, its poller and the DAG layout the panel draws with.
      */
-    createTeamView(deps: { react: ReactSurface; statePath: string; planPath?: string; taskPath?: string; pollMs?: number; t?: Translator }): {
+    createTeamView(deps: { react: ReactSurface; statePath: string; planPath?: string; taskPath?: string; eventsPath?: string; pollMs?: number; t?: Translator }): {
       /** The component; the host calls it with ITS own props, which this view ignores but tolerates. */
       TeamView: (props?: unknown) => unknown
       /** Start polling for one session; returns a stop function the caller owns. */
@@ -605,8 +633,8 @@
        */
       curveOf: (waypoints: CurvePoint[], radius: number) => { d: string; points: CurvePoint[] }
     } {
-      /** The dependencies this closure reads on every call, plus the plan and task routes when given. */
-      const { react, statePath, planPath, taskPath } = deps
+      /** The dependencies this closure reads on every call, plus the plan, task and events routes when given. */
+      const { react, statePath, planPath, taskPath, eventsPath } = deps
       /** How often the panel re-reads; the route is cheap and this is a status surface. */
       const pollMs = typeof deps.pollMs === "number" && deps.pollMs > 0 ? deps.pollMs : 2000
       /** The host's translator; absent in a bare mount, in which case the English literals below win. */
@@ -664,9 +692,88 @@
         }
       }
 
-      /** Poll until stopped; the interval is owned by the CALLER's effect. */
-      /** Start polling; the returned function stops it. */
-      /** Start polling; the returned function stops it. */
+      /**
+       * The change-stream constructor this host exposes, or undefined when it has none.
+       *
+       * GUARDED, never assumed: the offline harness, a non-browser host and a browser with the API
+       * unavailable all answer undefined here, and the interval below is then the whole story. The
+       * GLOBAL READ is guarded too, because a host that defines `EventSource` as a throwing getter
+       * must cost the push and nothing else.
+       * @returns a constructor usable with `new`, or undefined when none is reachable.
+       */
+      const streamCtor = (): ChangeStreamCtor | undefined => {
+        try {
+          /** The global scope as an untyped bag, so this factory needs no DOM lib to compile. */
+          const scope = globalThis as unknown as { EventSource?: unknown }
+          /** Whatever the host exposes under that name. */
+          const candidate = scope.EventSource
+          return typeof candidate === "function" ? candidate as ChangeStreamCtor : undefined
+        } catch {
+          return undefined
+        }
+      }
+
+      /**
+       * Open one session's change stream, or answer undefined when this host has none.
+       *
+       * The URL is the route `web-client.ts` threads in PLUS THE SAME `?sessionId=` the state read
+       * uses, so the stream can only ever follow the session the panel is showing. An absent
+       * `eventsPath` means the composition has no events route at all: the poll stays the story.
+       * @param sessionId - the session the panel addresses; "" asks for the workspace principal.
+       * @returns the open stream, or undefined when there is none to open.
+       */
+      const openChangeStream = (sessionId: string): ChangeStream | undefined => {
+        if (eventsPath === undefined) return undefined
+        /** The constructor this host exposes, if any. */
+        const ctor = streamCtor()
+        if (ctor === undefined) return undefined
+        try {
+          return new ctor(eventsPath + queryOf(sessionId))
+        } catch {
+          // A host that refuses the URL (a relative-only shim, a policy block) loses the PUSH and
+          // keeps the poll: the panel is never a crash away from rendering.
+          return undefined
+        }
+      }
+
+      /**
+       * Subscribe one session's change stream to the EXISTING poll path.
+       *
+       * ONE READ PATH, which is the point: the frame handler calls the same `tick` the interval
+       * calls, so a pushed and a polled frame cannot be built by two code paths that disagree. The
+       * subscription lives exactly as long as the caller's effect — the disposer returned here
+       * closes the stream, so an unmounted panel leaves no connection open, and a session change
+       * closes the old stream before the new effect opens the next one.
+       * @param sessionId - the session whose changes are followed.
+       * @param onFrame - what each `data:` frame runs; the poller passes its own `tick`.
+       * @returns the disposer the effect owns; it always closes the stream it opened.
+       */
+      const subscribeChanges = (sessionId: string, onFrame: () => void): (() => void) => {
+        /** The stream for this session, or undefined when the push is unavailable here. */
+        const stream = openChangeStream(sessionId)
+        if (stream === undefined) return () => {}
+        stream.onmessage = onFrame
+        return () => {
+          try {
+            stream.close()
+          } catch {
+            // A close that throws must not break the unmount: the connection is the browser's to
+            // reclaim, and the panel's teardown is not allowed to fail because of it.
+          }
+        }
+      }
+
+      /**
+       * Start refreshing this panel: one immediate read, then the interval, then the change stream.
+       *
+       * THE INTERVAL IS THE FALLBACK AND IS UNCHANGED: a host without `EventSource`, a proxy that
+       * cuts the stream or a composition whose `eventsPath` is absent behaves exactly as it did
+       * before this feed existed. The push is an ADDITION — one extra read per frame, through the
+       * same `tick`, and the browser owns the reconnect (no loop of ours to leak).
+       * @param sessionId - the session to read; the stream follows the same one.
+       * @param publish - where each read lands; the effect hands the panel's own state setter.
+       * @returns the stop function the caller's effect owns; it clears the interval and the stream.
+       */
       const start = (sessionId: string, publish: (next: TeamStore) => void): (() => void) => {
         /** Whether the caller still wants results; cleared by the returned stop function. */
         let live = true
@@ -681,7 +788,9 @@
         void tick()
         /** The interval the caller's effect stops; owned here, cleared on stop. */
         const timer = setInterval(() => { void tick() }, pollMs)
-        return () => { live = false; clearInterval(timer) }
+        /** The change subscription, if this host has a stream; disposed with the interval. */
+        const stopStream = subscribeChanges(sessionId, () => { void tick() })
+        return () => { live = false; clearInterval(timer); stopStream() }
       }
 
       /**

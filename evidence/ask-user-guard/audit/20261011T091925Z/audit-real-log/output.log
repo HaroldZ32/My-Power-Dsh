@@ -1,0 +1,13 @@
+[ask-user-question-audit] file: /home/haroldzhao/.dsh/sessions/--home-haroldzhao-MyProj-DshProj-My-Power-Dsh--/7072e2c7-1257-4420-a933-6e414b20eab2/session.v4.jsonl.zstd
+[ask-user-question-audit] decoded: 159 zstd frame(s), 302 record(s), 0 non-record line(s), torn tail: none
+[ask-user-question-audit] occurrences: 3 ask_user_question call(s)
+#    callId                  verdict                rule                      q   options       answer                  
+1    tool_AmPBssp2zdg3OFyn~  structurally-broken    question-id-missing +1    5   0/0/0/0/0     result ok 303c          
+2    tool_9FeQ0HNadiazkDl7~  ok                     -                         4   2/2/3/2       result ok 202c          
+3    tool_0J9CGYKeNFnouSB2~  ok                     -                         1   4             result ok 56c           
+  [1] tool_AmPBssp2zdg3OFynmBuu4jph  structurally-broken
+      - question-id-missing at questions[4].id: '' (empty)
+      - question-text-missing at questions[4].question: '' (empty)
+[ask-user-question-audit] summary: 3 call(s) — ok 2, structurally-broken 1, unparseable-arguments 0
+[ask-user-question-audit] rules: question-id-missing 1, question-text-missing 1
+[ask-user-question-audit] answers: paired 3/3 (tool-result 3, user-message 0, errors 0)

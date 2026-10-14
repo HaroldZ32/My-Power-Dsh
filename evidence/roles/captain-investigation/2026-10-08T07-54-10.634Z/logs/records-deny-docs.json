@@ -1,0 +1,55 @@
+[
+ {
+  "type": "tool/call",
+  "seq": 19,
+  "time": 1791446070108,
+  "data": {
+   "turn": 1,
+   "step": 1,
+   "callId": "call_00_G1Loj31rpEGKyQGnEiiZ4351",
+   "name": "read",
+   "arguments": "{\"file_path\": \"docs/probe.md\"}"
+  }
+ },
+ {
+  "type": "tool/result",
+  "seq": 20,
+  "time": 1791446070116,
+  "data": {
+   "turn": 1,
+   "step": 1,
+   "message": {
+    "role": "tool",
+    "source": {
+     "kind": "tool",
+     "callId": "call_00_G1Loj31rpEGKyQGnEiiZ4351"
+    },
+    "toolCallId": "call_00_G1Loj31rpEGKyQGnEiiZ4351",
+    "content": [
+     {
+      "type": "text",
+      "text": "<path>/tmp/mpd-captain-investigation-kYLEUT/ws-docs/docs/probe.md</path>\n<type>file</type>\n<content>\n1: PROBE_DOC_MARKER\n\n(End of file - total 1 lines)\n</content>"
+     }
+    ],
+    "isError": false,
+    "id": "f3d72b64-6e14-4048-bc68-8516adb5a101"
+   },
+   "meta": {
+    "path": "/tmp/mpd-captain-investigation-kYLEUT/ws-docs/docs/probe.md",
+    "offset": 1,
+    "lines": [
+     {
+      "number": 1,
+      "text": "PROBE_DOC_MARKER"
+     }
+    ],
+    "totalLines": 1,
+    "lang": "md"
+   }
+  },
+  "sourceEventSeqs": [
+   19
+  ],
+  "surfaceOp": "append"
+ }
+]

@@ -1,6 +1,6 @@
 // packages/mpd-tools-plugin/src/index.ts
 import { existsSync, readFileSync } from "node:fs";
-import { isAbsolute, resolve as resolve3 } from "node:path";
+import { isAbsolute as isAbsolute2, resolve as resolve3 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
@@ -14,7 +14,7 @@ function errorMessage(error) {
 // packages/mpd-mcp-shared/log-sink.ts
 import { closeSync, mkdirSync, openSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { isAbsolute, join, relative, resolve, sep } from "node:path";
 var LOG_SUBDIR = join(".mpd", "logs");
 var DEFAULT_MAX_BYTES = 1024 * 1024;
 var DEFAULT_MAX_LINE_BYTES = 8192;
@@ -62,7 +62,10 @@ function tryOpenRoot(root, name) {
 }
 function owningRoot(roots, file) {
   for (const root of roots) {
-    if (file === root || file.startsWith(root.endsWith("/") ? root : `${root}/`))
+    if (file === root)
+      return root;
+    const rel = relative(root, file);
+    if (rel !== "" && rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel))
       return root;
   }
   return null;
@@ -1554,7 +1557,7 @@ function probeMpdDsh(ctx, strict) {
 var name = "mpd-tools";
 var inject = dshSeamInject(DSH_SEAM_TOOLS);
 function sessionTarget(target, dsh, exec) {
-  return isAbsolute(target) ? resolve3(target) : resolve3(dsh.workspaceRoot(exec), target);
+  return isAbsolute2(target) ? resolve3(target) : resolve3(dsh.workspaceRoot(exec), target);
 }
 function apply(ctx, config = {}) {
   const dsh = resolveDshAdapter(ctx);

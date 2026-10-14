@@ -1,0 +1,11 @@
+--- evidence/tui/dsh-tui-015/pack-manifest-fix/.tmp-C2-red-pack-only-key-dropped.orig	2026-10-15 00:07:46.578961839 +0800
++++ scripts/pack-mpd.ts	2026-10-15 00:07:46.600801078 +0800
+@@ -662,7 +662,7 @@
+  * packed ast-grep row's engine probe takes its own BINARY_NOT_FOUND path while `mpd_comment_check`
+  * reports no detector binary at all.
+  */
+-const PACK_ONLY_OPTIONAL_DEPENDENCIES: Readonly<Record<string, string>> = { "@ast-grep/cli": "0.45.2", "@code-yeongyu/comment-checker": "0.8.0" }
++const PACK_ONLY_OPTIONAL_DEPENDENCIES: Readonly<Record<string, string>> = { "@code-yeongyu/comment-checker": "0.8.0" }
+ 
+ /** One shipped MCP launcher and every npm package it resolves once its row starts it. */
+ interface LauncherDependencies {

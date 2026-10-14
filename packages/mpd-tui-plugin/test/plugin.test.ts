@@ -13,6 +13,8 @@ import { t } from "../src/i18n"
 //   * refusals return NO-OP disposers (renderers/shortcuts) exactly like the host,
 //     so a test can prove the plugin does not mistake one for a registration.
 import { describe, expect, test } from "bun:test"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import * as mod from "../src/index"
 import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import type { DshLlmCatalog } from "../../mpd-dsh-adapter-plugin/src/index.js"
@@ -24,16 +26,17 @@ import { Context, Service } from "../../mpd-schemastery/harness/cordis/lib/index
 import { SETTINGS_KNOBS, TEAM_MODEL_FALLBACK_OPTIONS, TEAM_MODEL_SLOT_GROUPS, teamModelMembers } from "../../mpd-config-plugin/src/settings-schema"
 import { TRANSCRIPT_TYPES } from "../src/renderers"
 import { PANEL_ICON } from "../src/panel"
-import { DAG_PANEL_ICON } from "../src/panel-dag"
 import { WORKMATE_PANEL_ICON } from "../src/panel-workmate"
 import { COMMAND_ACTIONS, MODEL_COMMAND } from "../src/command-trees"
-import { BRIDGE_DISCLOSURE, BRIDGE_NO_WORKSPACE_NOTICE, BRIDGE_NOT_LOST, registerSettingsSection, SECTION_NOTICE, SETTINGS_FIELDS, SETTINGS_SECTION, teamModelOptionLists } from "../src/settings"
+import { BRIDGE_DISCLOSURE, BRIDGE_NO_WORKSPACE_NOTICE, BRIDGE_NOT_LOST, effectiveModelSummary, registerSettingsSection, SECTION_NOTICE, SETTINGS_FIELDS, SETTINGS_SECTION, teamModelOptionLists } from "../src/settings"
 import { createLog } from "../src/log"
 import { AMBIGUOUS_MULTI_ROOT_NOTICE, NO_LIVE_SESSION_NOTICE, readBoardState, statusLine } from "../src/state"
 import { SHORTCUT_BINDINGS } from "../src/shortcuts"
 import { STATUS_KEY } from "../src/status"
-import { registerScene } from "../src/scenes"
+import { TEAM_SCENE_ID, registerScene } from "../src/scenes"
+import { SUBAGENT_SCENE_ID } from "../src/subagent-scene"
 import { DECISION_EVENTS } from "../src/decisions"
+import { setWheelInvertRead, wheelInvertOn } from "../src/panel-core"
 
 /** What a registration returns: a cleanup, or nothing at all. */
 type Disposer = () => void | undefined
@@ -332,13 +335,30 @@ describe("plugin contract", () => {
       // The dsh-tui 0.13.0 sidebar panel surface: contributed by default, and routed to by
       // `alt+a` / `/mpd panel` (with the full-screen scene as the declared fallback).
       panel: true,
+      // The workmate page's OWN knob: independent of `panel`, so the two sidebar pages toggle apart.
+      workmate: true,
       // The Ctrl+A takeover's FLOOR: the row config default. A saved `tui.dashboardKey` (the /settings
       // row) outranks it per press, so this stays true for every composition that never saves one.
       dashboardKey: true,
+      // The wheel-direction FLOOR: TODAY'S BEHAVIOUR is the default, so a composition that never
+      // configures the knob scrolls exactly as it did before the knob existed. A saved
+      // `tui.wheelInvert` in `<workspace>/.mpd/mpd.jsonc` outranks this value.
+      wheelInvert: false,
       sessionEvents: true,
       decisionEvents: true,
       logPrefix: "mpd-tui",
     })
+  })
+
+  test("the row config is VOLATILE, which is what lists its knobs in the harness settings dialog", () => {
+    // THE CHECKBOX ARMS EXISTENCE, not decoration: the harness's `volatileForm(schema)` walks
+    // `schema.meta.volatile` (measured out of the installed `dsh-settings@0.1.7-rc.2`) and an entry whose
+    // schema carries NO volatile node is not listed in the dialog AT ALL — so this single flag is what
+    // turns `panel` and `workmate` into the two checkboxes the user asked for. A row that dropped the
+    // flag would still pass every behavioural arm while showing the user nothing to click.
+    /** The schema node as the editor's own walk sees it: plain data on the schema object. */
+    const node = mod.Config as unknown as { meta?: { volatile?: boolean } }
+    expect(node.meta?.volatile).toBe(true)
   })
 
   test("the schema rejects a wrong type instead of silently dropping it", () => {
@@ -411,12 +431,14 @@ describe("full composition (every service injected)", () => {
       expect(injected).toContain(id)
     }
 
-    // tuiPanels (dsh-tui 0.13.0): THREE sidebar panels — the merged view PLUS the two independent
-    // pages (frozen R1/R12) — each with the FROZEN descriptor of its own module, and each final id
-    // DISCOVERED from the host's own `list()` read-back (never composed on this side). The host
-    // budgets a plugin at four (`MAX_PANELS_PER_PLUGIN`), so three is the composition's own ceiling
-    // and the assertion below is what keeps a fourth registration from being added unnoticed.
-    expect(calls.panels).toHaveLength(3)
+    // tuiPanels: exactly TWO sidebar panels (frozen clause C3) — the MPD panel, which RENDERS the DAG
+    // page, and the workmate page — each with the frozen descriptor of its own module, and each final id
+    // DISCOVERED from the host's own `list()` read-back (never composed on this side). THE COUNT IS THE
+    // CLAUSE: the standalone merged page and the standalone DAG page do not both survive, so a third
+    // registration here would be the "both survive" the clause forbids. The host budgets a plugin at four
+    // (`MAX_PANELS_PER_PLUGIN`), so two is well inside it and this assertion is what keeps a third from
+    // being added unnoticed.
+    expect(calls.panels).toHaveLength(2)
     expect(calls.panels[0].apiVersion).toBe(1)
     expect(calls.panels[0].id).toBe("team")
     expect(calls.panels[0].title).toBe("MPD")
@@ -430,29 +452,28 @@ describe("full composition (every service injected)", () => {
     expect(typeof calls.panels[0].component).toBe("function")
     expect(outcomeOf(report, "panel").state).toBe("confirmed")
     expect(String(outcomeOf(report, "panel").detail)).toContain("act0:team")
-    // The DAG page: its own slug, its own title, a one-cell icon and the host's own 28-column floor
-    // (a floor above it would get the page's BODY replaced by the host's `panel-too-narrow` notice).
+    // AMENDED (wave `tui-014-adaptation`, clause C3) — THE DAG PAGE NO LONGER REGISTERS ONE OF ITS OWN.
+    // It merged into the panel above: slug, descriptor and ordered position collapsed, and the page's
+    // RENDERER is what the surviving slot now draws (asserted through `panel.ts`'s own arm, which renders
+    // the component and reads the rich chrome out of it). The absence is the clause, so it is asserted
+    // rather than merely removed: a `dag` slug reappearing here would be "both survive" again.
+    expect(calls.panels.map((entry) => entry.id)).not.toContain("dag")
+    expect(calls.panels.map((entry) => entry.id)).not.toContain("team-dag")
+    // No outcome entry names a DAG page any more either — the aggregate would otherwise report a surface
+    // the host was never offered.
+    expect(report.outcomes.some((entry) => String(entry.id).includes("dag"))).toBe(false)
+    // The workmate page: the SECOND surviving surface, and the only other registration.
     expect(calls.panels[1].apiVersion).toBe(1)
-    expect(calls.panels[1].id).toBe("dag")
-    expect(calls.panels[1].title).toBe("MPD DAG")
-    expect(calls.panels[1].icon).toBe(DAG_PANEL_ICON)
-    expect(calls.panels[1].minColumns).toBe(28)
-    expect(calls.panels[1].order).toBe(11)
-    expect(typeof calls.panels[1].component).toBe("function")
-    expect(outcomeOf(report, "dagPanel").state).toBe("confirmed")
-    expect(String(outcomeOf(report, "dagPanel").detail)).toContain("act0:dag")
-    // The workmate page: the third independent surface, ordered after both.
-    expect(calls.panels[2].apiVersion).toBe(1)
-    expect(calls.panels[2].id).toBe("workmate")
-    expect(calls.panels[2].title).toBe("MPD workmate")
+    expect(calls.panels[1].id).toBe("workmate")
+    expect(calls.panels[1].title).toBe("MPD workmate")
     // AMENDED (wave `tui-dag-highlight`, AC8) — the workmate page's icon CHANGED from the pin marker
     // `◆` (U+25C6), which is byte-identical to the host's own `agents` tab, to its own glyph. Asserted
-    // symbolically: three panels, three glyphs, none of them borrowed from the host's panel bar.
-    expect(calls.panels[2].icon).toBe(WORKMATE_PANEL_ICON)
-    expect(new Set([calls.panels[0].icon, calls.panels[1].icon, calls.panels[2].icon]).size).toBe(3)
-    expect(calls.panels[2].minColumns).toBe(28)
-    expect(calls.panels[2].order).toBe(12)
-    expect(typeof calls.panels[2].component).toBe("function")
+    // symbolically: two panels, two glyphs, neither borrowed from the host's panel bar.
+    expect(calls.panels[1].icon).toBe(WORKMATE_PANEL_ICON)
+    expect(new Set([calls.panels[0].icon, calls.panels[1].icon]).size).toBe(2)
+    expect(calls.panels[1].minColumns).toBe(28)
+    expect(calls.panels[1].order).toBe(12)
+    expect(typeof calls.panels[1].component).toBe("function")
     expect(outcomeOf(report, "workmatePanel").state).toBe("confirmed")
     expect(String(outcomeOf(report, "workmatePanel").detail)).toContain("act0:workmate")
 
@@ -479,12 +500,14 @@ describe("full composition (every service injected)", () => {
     // The section is keyed by the ENTRY the settings machinery serves it under, not by the retired
     // namespace name: measured on a live boot, values resolved for "mpd-config" and never for "mpd".
     expect(calls.sections[0].ns).toBe("mpd-config")
-    // 26 = the ONE shared declaration's knob count (SETTINGS_KNOBS in mpd-config-plugin): the
+    // 59 = the ONE shared declaration's knob count (SETTINGS_KNOBS in mpd-config-plugin): the
     // thirteen original mpd knobs, the twelve team-model slot leaves (4 slots x provider / model /
-    // reasoningEffort) and the TUI surface's own `tui.dashboardKey` (the Ctrl+A takeover toggle,
-    // which this section renders through the SAME declaredField path as every other row). The
-    // per-field assertions below are the other half of the no-drift pair.
-    expect(calls.sections[0].fields).toHaveLength(26)
+    // reasoningEffort), the thirty-three agentRoutes leaves (11 roster members x the same three,
+    // R2's front door — enumerated from the declaration, never free-typed) and the TUI surface's
+    // own `tui.dashboardKey` (the Ctrl+A takeover toggle, which this section renders through the
+    // SAME declaredField path as every other row). The per-field assertions below are the other
+    // half of the no-drift pair.
+    expect(calls.sections[0].fields).toHaveLength(59)
     for (const field of calls.sections[0].fields) {
       expect(field.hint).toContain("mpd.jsonc")
       // The disclosure is stated ONCE on the surface (the section's own description), never per row.
@@ -957,14 +980,15 @@ describe("the Ctrl+A takeover wiring (W2)", () => {
     expect(String(skipped.detail)).toContain("dashboardKey: false")
   })
 
-  test("with the panel surface off, no panel is registered and both entry points keep the scene path", async () => {
+  test("with the MPD panel off, only that page is skipped and both entry points keep the scene path", async () => {
     /** The recording services and the call log. */
     const { services, calls } = allServices()
     /** A host double with every service composed. */
     const host = hostDouble(services)
-    /** The report of a composition that disabled the panel surface. */
+    /** The report of a composition that disabled the MPD page. */
     const report = mod.apply(host.ctx as never, { statusIntervalMs: 0, panel: false })
-    expect(calls.panels).toHaveLength(0)
+    // THE TWO PAGES TOGGLE APART: exactly ONE panel is registered, and it is the workmate page.
+    expect(calls.panels).toHaveLength(1)
     /** The skip's own record: `absent`, naming the knob. */
     const skipped = outcomeOf(report, "panel")
     expect(skipped.state).toBe("absent")
@@ -974,6 +998,21 @@ describe("the Ctrl+A takeover wiring (W2)", () => {
     const handler = calls.commands[0].handler as (invocation: unknown) => Promise<{ kind: string; text?: string }>
     expect((await handler({ rawInput: "panel" })).kind).toBe("success")
     expect(calls.scenes.some((entry: { open?: string }) => entry.open === "mpd-tui-subagents")).toBe(true)
+  })
+
+  test("with the WORKMATE panel off, only that page is skipped — the MPD page stays", async () => {
+    /** The recording services and the call log. */
+    const { services, calls } = allServices()
+    /** A host double with every service composed. */
+    const host = hostDouble(services)
+    /** The report of a composition that disabled the workmate page. */
+    const report = mod.apply(host.ctx as never, { statusIntervalMs: 0, workmate: false })
+    // THE MIRROR of the arm above: this is what makes "independent" falsifiable rather than decorative.
+    expect(calls.panels).toHaveLength(1)
+    /** The skip's own record: `absent`, naming the WORKMATE knob and not the MPD one. */
+    const skipped = outcomeOf(report, "workmatePanel")
+    expect(skipped.state).toBe("absent")
+    expect(String(skipped.detail)).toContain("workmate: false")
   })
 
   test("every registered SCENE reports the host kit it received (the contact's arming path)", () => {
@@ -1010,8 +1049,8 @@ describe("the Ctrl+A takeover wiring (W2)", () => {
       {} as never,
       tui as never,
       log,
-      () => "/tmp/mpd-scenes",
-      () => "/tmp/mpd-home",
+      () => join(tmpdir(), "mpd-scenes"),
+      () => join(tmpdir(), "mpd-home"),
       () => [],
       undefined,
       undefined,
@@ -1132,6 +1171,30 @@ describe("honest outcomes (no disposer-type inference)", () => {
     expect(calls.scenes.some((entry: { open?: string }) => entry.open === "mpd-tui-subagents")).toBe(true)
   })
 
+  test("C5: `/mpd dag` reaches the RICH scene — the one that draws the pin — not the bare one", async () => {
+    // FROZEN CLAUSE C5, as an arm. The page's own `⤢` and the `/mpd dag` route must land the reader on a
+    // surface with the SAME rich appearance as the page (frame/legend/keys/PIN). The two candidates differ
+    // in exactly one of those four: `mpd-tui-team` draws the focused task's detail pane — the pin's
+    // full-screen form — while `mpd-tui-subagents` draws the HOST's rows and no pin at all. A page whose
+    // central gesture is click-to-pin must therefore open the former, and this arm pins which one it is
+    // so a later re-aim cannot quietly hand the reader the poorer surface.
+    /** The recording services and the call log. */
+    const { services, calls } = allServices()
+    /** A host with NO panel seam at all: the route then lands on the page's own full-screen surface. */
+    const host = hostDouble({ ...services, tuiPanels: undefined })
+    mod.apply(host.ctx as never, { statusIntervalMs: 0 })
+    /** The registered command handler. */
+    const handler = calls.commands[0].handler as (invocation: unknown) => Promise<{ kind: string; text?: string }>
+    /** The `/mpd dag` answer. */
+    expect((await handler({ rawInput: "dag" })).kind).toBe("success")
+    /** Every scene id this invocation opened. */
+    const opened = calls.scenes.map((entry: { open?: string }) => entry.open)
+    expect(opened).toContain(TEAM_SCENE_ID)
+    // THE NEGATIVE HALF: the surface WITHOUT the pin is not what this route reaches. Without this the arm
+    // would pass for a route that opened both scenes, which is a different defect.
+    expect(opened).not.toContain(SUBAGENT_SCENE_ID)
+  })
+
   test("an accepted panel OPEN prints the panel status line with the discovered id", async () => {
     /** The recording services and the call log. */
     const { services, calls } = allServices()
@@ -1192,6 +1255,79 @@ describe("honest outcomes (no disposer-type inference)", () => {
     const report = mod.apply(host.ctx as never, {})
     expect(outcomeOf(report, "decisionEvents").state).toBe("confirmed")
     expect(host.warnings.filter((line) => line.includes("ready but NOT activated"))).toHaveLength(0)
+  })
+
+  test("the decision identity IS the bound seam scope, never the consumer ctx", () => {
+    // THE FALSIFIER FOR THE 0.15.0 REFUSAL. `subscribeDecision`'s first argument is the activation
+    // the host asserts against the caller it resolved for THIS subscription
+    // (`plugin-host.js#subscribeDecision` → `assertCallerContext`), so handing it the consumer's ctx
+    // throws BEFORE either ledger record site. This arm pins the argument to the object the DEFERRED
+    // INJECT handed the binder — the one object that can resolve the service — and away from the ctx
+    // `apply` was called with.
+    /** Every identity argument the host's `subscribeDecision` received, in call order. */
+    const identities: unknown[] = []
+    /** Every intercept point the host was asked to subscribe, in call order. */
+    const events: string[] = []
+    /** One mediated host whose `subscribeDecision` records the identity it is handed. */
+    const services = {
+      tuiPluginHost: {
+        grants: { allows: () => true },
+        /** Records the identity argument and answers a real disposer. */
+        subscribeDecision(identity: unknown, event: string): () => boolean {
+          identities.push(identity)
+          events.push(event)
+          return () => true
+        },
+      },
+    }
+    /** The host double for that service set. */
+    const host = hostDouble(services)
+    mod.apply(host.ctx as never, {})
+
+    // All four intercept points were attempted, in declaration order …
+    expect(events).toEqual(DECISION_EVENTS.map((entry) => entry.event))
+    expect(identities).toHaveLength(DECISION_EVENTS.length)
+    /** The identity the host was handed, narrowed to the scope surface this arm asserts on. */
+    const identity = identities[0] as { get?: (name: string) => unknown } | undefined
+    // … carrying the BOUND SCOPE, which is the only object that resolves the mediated host …
+    expect(identity?.get?.("tuiPluginHost")).toBe(services.tuiPluginHost)
+    // … and never the consumer ctx, which cannot see the service at all (the inject-free
+    // invisibility this double models). ONE scope served all four intercept points.
+    expect(identity).not.toBe(host.ctx)
+    expect(host.ctx.get("tuiPluginHost")).toBeUndefined()
+    expect(identities.every((candidate) => candidate === identity)).toBe(true)
+  })
+
+  test("a consumer-supplied options.identity is NOT forwarded: the bound scope wins", () => {
+    // The adapter-side half of the same rule (`setStatus`'s precedent): the `identity` option is kept
+    // for source compatibility and deliberately NOT forwarded, so a caller cannot smuggle its own
+    // ctx past the host's caller assertion.
+    /** Every identity argument the host's `subscribeDecision` received, in call order. */
+    const identities: unknown[] = []
+    /** One mediated host whose `subscribeDecision` records the identity it is handed. */
+    const services = {
+      tuiPluginHost: {
+        grants: { allows: () => true },
+        /** Records the identity argument and answers a real disposer. */
+        subscribeDecision(identity: unknown): () => boolean {
+          identities.push(identity)
+          return () => true
+        },
+      },
+    }
+    /** The host double for that service set. */
+    const host = hostDouble(services)
+    /** The row-private adapter over that ctx: the composition a consumer registration reaches. */
+    const tui = createTuiAdapter(host.ctx as never)
+    /** The identity a caller could once have forwarded — deliberately not an activation scope. */
+    const sentinel = { not: "the calling activation" }
+    tui.requestDecisionEvent("tui/input", () => undefined, { scope: "tui/input", order: "mpd-tui", identity: sentinel })
+
+    expect(identities).toHaveLength(1)
+    /** The identity the host was handed, narrowed to the scope surface this arm asserts on. */
+    const identity = identities[0] as { get?: (name: string) => unknown } | undefined
+    expect(identity).not.toBe(sentinel)
+    expect(identity?.get?.("tuiPluginHost")).toBe(services.tuiPluginHost)
   })
 
   test("without tuiPluginHost the seam is absent and no refusal is claimed", () => {
@@ -1329,9 +1465,11 @@ describe("settings section disclosure (t21)", () => {
     expect(String(slotFields[3].hint)).toContain("analysis members (Researcher, Explorer, Plan Reviewer)")
     expect(String(slotFields[3].hint)).not.toContain("Architect")
     expect(String(slotFields[3].hint)).toContain("Vision Analyst")
-    // the thirteen scalar rows carry their key alone (they have no invented copy), and — having no
+    // the scalar rows carry their key alone (they have no invented copy), and — having no
     // zh sentence to translate — no `hintDescriptions` either: the host falls back to the base.
-    for (const field of SETTINGS_FIELDS.filter((candidate) => candidate.path[0] !== "teamModels")) {
+    // The agentRoutes rows are NOT in this family: like the slot leaves they carry a declared
+    // human sentence (which member the row overrides and what setting it does).
+    for (const field of SETTINGS_FIELDS.filter((candidate) => candidate.path[0] !== "teamModels" && candidate.path[0] !== "agentRoutes")) {
       expect(field.hint).toBe(`mpd.jsonc ${field.path.join(".")}`)
       expect(field.hintDescriptions).toBeUndefined()
     }
@@ -1367,7 +1505,60 @@ describe("settings section disclosure (t21)", () => {
     expect(String(SETTINGS_SECTION.descriptions!.en).startsWith(SETTINGS_SECTION.title)).toBe(true)
   })
 
-  test("the registered section's 22 rows mirror the declaration: labels, zh, and human-first hints", async () => {
+  test("R3: the registered section's description carries the EFFECTIVE model config from the mpdConfig service", async () => {
+    // The see-before-you-edit half of the TUI surface (AC5): the section's own description — the
+    // one prose surface a TUI section has — states the four effective slot routes, the agentRoutes
+    // overrides that are set and the configured modelchain chains, read from the LIVE service at
+    // section-request time. The disclosure constants ride the same line, ahead of the summary.
+    /** The recording services and the call log. */
+    const { services, calls } = allServices()
+    /** A host double with every service composed. */
+    const host = hostDouble(services)
+    host.ctx.get = (name: string): unknown =>
+      name === "mpdDsh"
+        ? { llmCatalog: async () => TWO_PROVIDER_CATALOG }
+        : name === "mpdConfig"
+          ? {
+              /** The keyed config reads the summary projects (defaults materialised, as the service does). */
+              get: (key?: string): unknown =>
+                key === "teamModels"
+                  ? { slot1: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "max" }, slot2: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "high" }, slot3: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "high" }, slot4: { provider: "deepseek-official", model: "deepseek-v4-flash-vision-exp", reasoningEffort: "high" } }
+                  : key === "agentRoutes"
+                    ? { "Deep Worker": { model: "deepseek-v4-pro" } }
+                    : key === "modelchain"
+                      ? { sisyphus: [{ provider: "deepseek-official", model: "deepseek-v4-pro" }, { provider: "deepseek-official", model: "deepseek-v4-flash" }] }
+                      : undefined,
+            }
+          : undefined
+    mod.apply(host.ctx as never, { statusIntervalMs: 0 })
+    await settle()
+    /** The one registered section. */
+    const section = calls.sections[0]
+    /** The section's EN description, which carries disclosure plus summary. */
+    const en = String(section.descriptions?.en)
+    expect(en).toContain(BRIDGE_DISCLOSURE)
+    expect(en).toContain("effective now — slots slot1:deepseek-official/deepseek-v4-flash/max")
+    expect(en).toContain("agentRoutes: Deep Worker(model=deepseek-v4-pro)")
+    expect(en).toContain("modelchain: sisyphus→deepseek-official/deepseek-v4-pro (+1)")
+    // The zh half carries the same values under its own words.
+    expect(String(section.descriptions?.zh)).toContain("当前生效")
+    expect(String(section.descriptions?.zh)).toContain("Deep Worker(model=deepseek-v4-pro)")
+  })
+
+  test("R3: the effective summary degrades honestly when no config service is composed", () => {
+    // The guarded-fallback world (no `mpd-config` row): the summary says so in BOTH languages
+    // instead of inventing values — and a service whose read THROWS answers the same sentence.
+    const absent = effectiveModelSummary(undefined)
+    expect(absent.en).toContain("effective values unavailable")
+    expect(absent.zh).toContain("生效值不可用")
+    /** A service whose every read throws, answered the same honest way. */
+    const broken = effectiveModelSummary({ get: () => { throw new Error("boom") } })
+    expect(broken.en).toContain("slots unreadable")
+    expect(broken.en).toContain("agentRoutes: none set")
+    expect(broken.en).toContain("modelchain: none configured")
+  })
+
+  test("the registered section's rows mirror the declaration: labels, zh, and human-first hints", async () => {
     /** The call log, after the catalog read settled. */
     const { calls } = await applyWithAdapter(async () => ({ providers: [], degraded: true }))
     /** The one registered section. */
@@ -1387,11 +1578,15 @@ describe("settings section disclosure (t21)", () => {
     }
   })
 
-  test("the marker itself says the save does not rewrite the config file", () => {
-    // t35 reword: the claim is now the BRIDGE plus the restart, and the old false claim
-    // ("not bridged: a save here does not rewrite .mpd/mpd.jsonc") is DELETED, not softened.
+  test("the marker itself states the bridge write and the LIVE effect — the restart claim is gone", () => {
+    // Reworded by wave fix/model-config-live-refresh (L1 landed the live refresh): the marker keeps
+    // the BRIDGE half (a save writes the workspace file) and now states the LIVE half (the model
+    // routes resolve per use, no restart). The old "takes effect … after a restart" claim is
+    // DELETED, not softened — a hint that kept it would be a lie.
     expect(BRIDGE_DISCLOSURE).toContain("a save writes <workspace>/.mpd/mpd.jsonc")
-    expect(BRIDGE_DISCLOSURE).toContain("takes effect for the mpd plugins after a restart")
+    expect(BRIDGE_DISCLOSURE).toContain("takes effect in the RUNNING process — no restart")
+    expect(BRIDGE_DISCLOSURE).toContain("read per use")
+    expect(BRIDGE_DISCLOSURE).not.toContain("after a restart")
     expect(BRIDGE_DISCLOSURE).not.toContain("not bridged")
     expect(BRIDGE_DISCLOSURE).not.toContain("does not rewrite")
     expect(BRIDGE_NO_WORKSPACE_NOTICE).toBe("saved to settings — not yet written to any .mpd/mpd.jsonc (no live session)")
@@ -1441,5 +1636,32 @@ describe("the §D.2 runtime notice (a save with no live session workspace)", () 
     /** The contributions published after a successful write-back. */
     const clearedPublished = cleared.calls.statusSet.filter((entry: any) => entry.key === STATUS_KEY)
     expect(String(clearedPublished.at(-1).text)).not.toContain("no live session")
+  })
+})
+
+// ── R1.5 (repair round R1, CodeRabbit PR #35): the reader keeps the ROW CONFIG when the layer throws ──
+//
+// THE DEFECT: the row installs ONE reader over the live config layer, and the reader's own value is the
+// FLOOR the row config declared. `wheelInvertOn()` contains a throw by clamping to `false` (today's
+// behaviour), so a config layer that throws on `get()` silently disabled a knob the row config — or a
+// saved `tui.wheelInvert` — had turned ON. The throw is therefore caught INSIDE the reader, where the
+// row's `resolved.wheelInvert` is in scope.
+describe("R1.5 · the wheel-invert reader falls back to the row config when the config layer throws", () => {
+  test("a throwing `mpdConfig.get()` + row config `wheelInvert: true` still scrolls inverted", () => {
+    /** Every service, with a config layer whose `get()` throws as a broken bridge does. */
+    const host = allServices({
+      mpdConfig: {
+        get: (): never => { throw new Error("config layer down") },
+      },
+    })
+    // The row is applied with the knob ON in its own config: that value is the floor the reader must keep.
+    mod.apply(hostDouble(host.services).ctx as never, { wheelInvert: true })
+    try {
+      expect(wheelInvertOn()).toBe(true)
+    } finally {
+      // THE READER IS PROCESS STATE, so this arm puts the shipped default back rather than leaving a
+      // throwing layer installed for whatever runs after it.
+      setWheelInvertRead((): boolean => false)
+    }
   })
 })

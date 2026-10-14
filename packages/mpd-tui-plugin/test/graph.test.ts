@@ -370,24 +370,33 @@ describe("the list view", () => {
 })
 
 describe("the legend", () => {
-  test("names both directional marks, the five states and the focus marker, in two lines", () => {
+  test("names both directional marks and the focus marker in ONE line, and prints no state key of its own", () => {
     /** The legend at a width the team scene actually gets. */
     const lines = legendLines(100)
-    expect(lines.length).toBe(2)
+    // ONE LINE, AND IT IS THE ARROW SENTENCE. The drawing owns which way an edge runs, so that
+    // sentence stays here; the STATE KEY is `panel-core.ts`'s `legendLinesFor`, which composes the
+    // contract's SIX-state key. This module used to print a second, five-state key under it, which is
+    // exactly the two-row legend the user reported — hence the count, pinned at one.
+    expect(lines.length).toBe(1)
     // The arrow sentence, pinned: it names BOTH marks — the boxes `▼` and the rail `▸` — because
     // which view draws is a fact about the WIDTH, so a rail reader must not meet an undescribed
     // marker. The focus marker rides on the same line.
     expect(lines[0]).toBe("▼/▸ blocker above → dependent below · ▶ focus lights its chain")
-    // The state key, read out of the GLYPH table — the drawing's own marks, not a second spelling.
-    for (const pair of ["✓ completed", "◐ running", "○ open", "✗ failed", "⊘ cancelled"]) expect(lines[1]).toContain(pair)
+    // AND NO STATE ENTRY. The deleted key omitted `blocked`, so it could not tell `○ blocked` from
+    // `○ open` — the one thing a state key exists for — and printing it under the contract's key was
+    // the same legend twice. Asserting the ABSENCE keeps the redundancy from creeping back in.
+    for (const state of ["completed", "running", "open", "failed", "cancelled"]) expect(lines[0]).not.toContain(state)
+    for (const glyph of ["✓", "◐", "○", "✗", "⊘"]) expect(lines[0]).not.toContain(glyph)
   })
 
-  test("shortens rather than cutting a sentence, naming BOTH marks on every rung", () => {
-    for (const cols of [12, 20, 40, 60, 70, 100]) {
+  test("shortens rather than cutting a sentence, naming BOTH marks on every rung, and never exceeds one line", () => {
+    for (const cols of [12, 20, 40, 60, 70, 100, 200]) {
       /** The legend at this width. */
       const lines = legendLines(cols)
       expect(lines.length).toBeGreaterThan(0)
-      expect(lines.length).toBeLessThanOrEqual(2)
+      // THE UPPER BOUND IS THE CONTRACT'S: the drawing contributes at most ONE line, because the
+      // state key it used to append is `legendLinesFor`'s job now.
+      expect(lines.length).toBeLessThanOrEqual(1)
       // Whichever rung this width selected, the arrow line still names the boxes arrow AND the rail
       // marker: the rail is the view a 24-cell scene actually draws.
       expect(lines[0]).toContain("▼")
@@ -402,6 +411,7 @@ describe("the legend", () => {
     // at all, because a lone mark would be a riddle rather than a key.
     expect(legendLines(9)[0]).toBe("▼/▸ arrow")
     expect(legendLines(8)).toEqual([])
+    expect(legendLines(7)).toEqual([])
     expect(legendLines(4)).toEqual([])
     expect(legendLines(0)).toEqual([])
     expect(legendLines(Number.NaN)).toEqual([])

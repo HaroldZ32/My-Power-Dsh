@@ -3,7 +3,15 @@
 
 Plan C / C6 — 基于 git/svn 的记忆引擎，带一个 reflection（反思）状态机。
 
-改编自上游包 `memory-core` 的语义（base 8c57e46；依 SUL-1.0 授权）：markdown 记忆文件带 frontmatter（`description`/`kind`/`aliases`/`read_only`）、journal + facts 队列、reflection reducer（step-count / manual / dream 触发、reservation 状态），以及一个同时支持 git 与 svn 后端的 VCS 抽象。
+**本包是 mpd 自有代码。** 引擎的语义——markdown 记忆文件带 frontmatter（`description`/`kind`/`aliases`/`read_only`）、journal 加 facts 队列（属于已记录的存储布局；目前没有工具写入它）、以及一个按步数计数的 reflection reducer——是依据上游包 `memory-core` 的**已记录行为**（base 8c57e46，SUL-1.0）在此**重新表达**的。没有翻译任何上游源码，也没有复制任何上游提示词或文本。
+
+**VCS 抽象与 svn 后端是我们自己的，不属于上游。** 上游 `memory-core` 是**仅 Git** 的（`GitMemoryRepo`；并不存在 `SvnMemoryRepo`），因此 `git | svn | both` 模式及其 svn 一侧的全部实现都是本包自己的工作——绝不可把这套框架说成源自上游。
+
+*历史。* reducer 的早期草稿沿用了上游的状态机词汇（`reflected_completed_steps`、`steps_since_last_successful_reflection`、`reservation`，以及某个工具描述里的 `completeTransition`）。**de-omo wave F 已用本包自己的词汇替换之**：`reflectionsCompleted`、`stepsSinceReflection`、`pendingReflection`。
+
+## 持久化状态
+
+状态文件是 `<runtime>/reflection.json`，它是真实的用户数据：wave F 之前写入的记录带有旧字段名，因此读取端**仍然接受**它们并映射为当前字段（`adoptLegacyState`）。该映射只读——下一次 reflection 更新只会持久化当前字段名，不残留任何旧键，因此不需要单独的迁移步骤。仓库中没有其他地方读取这些字段：`skills/dsh-qa` 的 memory smoke 用例只读写入计数器 `steps`。
 
 ## VCS 后端（`memory.vcs`: git | svn | both）
 

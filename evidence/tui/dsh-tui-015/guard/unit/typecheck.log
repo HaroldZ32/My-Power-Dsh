@@ -1,0 +1,4 @@
+$ tsgo --noEmit
+skills/dsh-qa/scripts/tui-admission.ts(890,98): error TS2339: Property 'grants' does not exist on type 'StaticAdmission'.
+  Property 'grants' does not exist on type 'HostAdmissionMissing'.
+error: script "typecheck" exited with code 1

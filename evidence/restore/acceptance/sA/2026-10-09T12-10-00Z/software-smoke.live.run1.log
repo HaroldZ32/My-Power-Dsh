@@ -1,0 +1,9 @@
+=== COMMAND: node skills/dsh-qa/scripts/software-smoke.ts
+=== STARTED: 2026-10-09T12:12:29Z
+[software-smoke] ok=false -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/dsh-qa/software-smoke/2026-10-09T12-12-29.110Z
+  install: {"ok":true,"exit":0,"tail":"ental-tool-agent-team\"\n    config:\n      freshProvider: \"spawn\"\n      forkProvider: \"fork\"\n  - id: mpd-ui-agent-team\n    name: \"@deepseek-ai/dsh-experimental-client-ui-agent-team\"\n[install-profile] wrote profile/ + home patch (35 rows incl. preset-mpd) + web-
+  session: {"ok":false,"exit":0,"stubCalls":4,"writeToolOffered":true,"bashToolOffered":true,"writeResultOk":false,"missingCredential":false,"authFailed":false}
+  artifact: {"ok":false,"exists":false,"contentMatches":false,"deterministic":true,"optimal":false,"oracle":{"winner":null,"plies":0,"problems":["unparsable transcript line: \"node:internal/modules/cjs/loader:1568\"","unparsable transcript line: \"throw err;\"","unparsable transcript line: \"^\"","unparsable tr
+  isolation: {"ok":true,"checked":1,"keys":["--tmp-mpd-software-smoke-65LeZu-ws--"]}
+EXIT=1
+=== ENDED: 2026-10-09T12:12:43Z

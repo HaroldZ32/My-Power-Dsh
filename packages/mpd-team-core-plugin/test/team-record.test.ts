@@ -542,8 +542,9 @@ describe("the watchdog hold stops a dispatch pass", () => {
     await h.call("agent_teams_plan", { action: "approve" })
     /** The record the pass must dispatch. */
     const record = listTeams(h.workspace)[0]
-    // The id is OURS (`team-<stamp>`), never a session id — that is the whole point of the split.
-    expect(record.teamId).toMatch(/^team-\d{14}$/)
+    // The id is OURS (`team-<ms stamp>-<suffix>`), never a session id — that is the whole point of the
+    // split. The suffix is the C7-4 F4 collision guard: second precision let two sessions mint ONE id.
+    expect(record.teamId).toMatch(/^team-\d{17}-[a-z0-9]{4}-[a-z0-9]{1,}$/)
     await h.call("agent_teams_dispatch", { action: "run" })
     expect(h.holdQueries).toEqual([{ teamId: record.teamId, workspace: h.workspace }])
   })

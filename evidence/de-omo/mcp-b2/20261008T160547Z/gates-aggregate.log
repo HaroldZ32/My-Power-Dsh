@@ -1,0 +1,165 @@
+### bun run verify:gates (final aggregate)
+$ node ./scripts/verify-gates.ts
+[verify-gates] running 8 member gate(s) (declared table)
+[verify-gates] member vendor :: node ./scripts/verify-vendor.ts
+[verify-gates] vendor out| [verify-vendor] upstream identity: NOT CHECKED - no upstream subject exists (the pinned oh-my-openagent checkout is retired; see VENDOR_LOCK.json `_note`)
+[verify-gates] vendor out| [verify-vendor] asset OK: skills 371 files
+[verify-gates] vendor out| [verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-gates] vendor out| [verify-vendor] PASS - 2 shipped asset(s) fingerprinted, upstream identity not checked
+[verify-gates] member vendor: exit=0 PASS - 91ms
+[verify-gates] member dist-fresh :: node ./scripts/verify-dist-fresh.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-better-sidebar-host/dist/index.js  sha 251ae4c4d210… 22ms  <- packages/mpd-better-sidebar-host/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-bootstrap-plugin/dist/index.js  sha df52fc4dfb8b… 24ms  <- packages/mpd-bootstrap-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-boulder-plugin/dist/index.js  sha 65f7ffc12dd4… 20ms  <- packages/mpd-boulder-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-bundle-plugin/dist/index.js  sha f8d222874b75… 22ms  <- packages/mpd-bundle-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-codegraph-plugin/dist/index.js  sha 456594271401… 25ms  <- packages/mpd-codegraph-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-comment-checker-plugin/dist/index.js  sha ab353f7cb6d8… 23ms  <- packages/mpd-comment-checker-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-config-plugin/dist/index.js  sha ef1e1d06b960… 23ms  <- packages/mpd-config-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-dsh-adapter-plugin/dist/index.js  sha f8778fb4544b… 21ms  <- packages/mpd-dsh-adapter-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-ext-plugin/dist/index.js  sha 52890183af7d… 21ms  <- packages/mpd-ext-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-ext-plugin/dist/sdk.js  sha 7c68358d2560… 15ms  <- packages/mpd-ext-plugin/src/sdk.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-goal-plugin/dist/index.js  sha 6c9b0dbdf9e3… 22ms  <- packages/mpd-goal-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-hashline-plugin/dist/index.js  sha 88fcd2d2463b… 20ms  <- packages/mpd-hashline-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-mcp-astgrep/dist/cli.js  sha ddf7111ed8a8… 19ms  <- packages/mpd-mcp-astgrep/src/cli.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-mcp-astgrep/dist/launch.js  sha 8ebf954663eb… 17ms  <- packages/mpd-mcp-astgrep/src/launch.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-mcp-codegraph/dist/launch.js  sha f2da0d34b049… 15ms  <- packages/mpd-mcp-codegraph/src/launch.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-mcp-gitbash/dist/launch.js  sha c0ed386abc2f… 14ms  <- packages/mpd-mcp-gitbash/src/launch.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-mcp-lsp/dist/launch.js  sha 826375393891… 15ms  <- packages/mpd-mcp-lsp/src/launch.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-memory-plugin/dist/index.js  sha 620e622eda56… 25ms  <- packages/mpd-memory-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-modelchain-plugin/dist/index.js  sha b783ae2c8784… 22ms  <- packages/mpd-modelchain-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-qa-roles-probe/dist/index.js  sha d213a106bc5d… 22ms  <- packages/mpd-qa-roles-probe/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-roles-plugin/dist/index.js  sha 2b965eea718b… 24ms  <- packages/mpd-roles-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-roster-provider-plugin/dist/index.js  sha bc90875cb896… 23ms  <- packages/mpd-roster-provider-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-team-compact-plugin/dist/index.js  sha 631bde7d805b… 24ms  <- packages/mpd-team-compact-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-team-core-plugin/dist/index.js  sha f1e744d10de6… 24ms  <- packages/mpd-team-core-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-team-watchdog-plugin/dist/index.js  sha d74198b51a1b… 22ms  <- packages/mpd-team-watchdog-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-tools-plugin/dist/index.js  sha a2949cdeeeaf… 24ms  <- packages/mpd-tools-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-tui-adapter-plugin/dist/index.js  sha c5bb01ab355d… 20ms  <- packages/mpd-tui-adapter-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-tui-plugin/dist/index.js  sha 45f00df2cefe… 27ms  <- packages/mpd-tui-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-ulw-plugin/dist/index.js  sha eeee5bbbd60a… 24ms  <- packages/mpd-ulw-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-verify-plugin/dist/index.js  sha d5f36cd46def… 20ms  <- packages/mpd-verify-plugin/src/index.ts
+[verify-gates] dist-fresh out|   FRESH   packages/mpd-workmate-plugin/dist/index.js  sha 5445cc734de7… 23ms  <- packages/mpd-workmate-plugin/src/index.ts
+[verify-gates] dist-fresh out| [verify-dist-fresh] root: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh  (build: bun build <src> --target node --format esm --outfile <tmp>/<entry>.js)
+[verify-gates] dist-fresh out| [verify-dist-fresh] build toolchain: bun 1.4.0 from the repository toolchain (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun) · recorded buildToolchain bun@1.4.0
+[verify-gates] dist-fresh out| [verify-dist-fresh] NOT COVERED (1) — committed dist files no target maps to, listed so nothing is silently skipped:
+[verify-gates] dist-fresh out|   packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+[verify-gates] dist-fresh out| [verify-dist-fresh] ok: 31/31 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 692ms
+[verify-gates] member dist-fresh: exit=0 PASS - 770ms
+[verify-gates] member rows-parity :: node ./scripts/verify-rows-parity.ts
+[verify-gates] rows-parity out| [verify-rows-parity] ok: 35 row ids match the 2-file bundle patch layer (mcp-astgrep, mcp-codegraph, mcp-context7, mcp-git, mcp-grepapp, mcp-lsp, mcp-shell, mpd-agent-team, mpd-better-sidebar, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-goal, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-roster-provider, mpd-team-compact, mpd-team-core, mpd-team-watchdog, mpd-tool-agent-team, mpd-tools, mpd-tui, mpd-tui-adapter, mpd-ui-agent-team, mpd-ulw, mpd-verify, mpd-web-compat, mpd-workmate, preset-mpd)
+[verify-gates] member rows-parity: exit=0 PASS - 122ms
+[verify-gates] member docs-parity :: node ./scripts/verify-docs-parity.ts
+[verify-gates] docs-parity out| ok   README.md
+[verify-gates] docs-parity out| ok   docs/design.md
+[verify-gates] docs-parity out| ok   docs/development.md
+[verify-gates] docs-parity out| ok   docs/extension-adaptation-report.md
+[verify-gates] docs-parity out| ok   docs/extension-authoring-guide.md
+[verify-gates] docs-parity out| ok   docs/extensions.md
+[verify-gates] docs-parity out| ok   docs/feature-audit.md
+[verify-gates] docs-parity out| ok   docs/independence.md
+[verify-gates] docs-parity out| ok   docs/index.md
+[verify-gates] docs-parity out| ok   docs/preset-default.md
+[verify-gates] docs-parity out| ok   docs/tui-parity.md
+[verify-gates] docs-parity out| ok   docs/tui.md
+[verify-gates] docs-parity out| ok   docs/upstream-parity-ledger.md
+[verify-gates] docs-parity out| ok   docs/user-guide.md
+[verify-gates] docs-parity out| ok   extensions/README.md
+[verify-gates] docs-parity out| ok   templates/mpd-extension/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-better-sidebar-host/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-bootstrap-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-boulder-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-bundle/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-bundle-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-codegraph-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-comment-checker-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-config-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-dsh-adapter-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-ext-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-goal-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-hashline-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-mcp-astgrep/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-mcp-codegraph/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-mcp-gitbash/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-mcp-lsp/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-memory-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-modelchain-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-qa-roles-probe/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-roles-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-roster-provider-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-schemastery/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-team-compact-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-team-core-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-team-watchdog-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-tools-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-tui-adapter-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-tui-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-ulw-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-verify-plugin/README.md
+[verify-gates] docs-parity out| ok   packages/mpd-workmate-plugin/README.md
+[verify-gates] docs-parity out| skip docs/bline-report.md — EXEMPT: prior-phase report (AGENTS.md §3)
+[verify-gates] docs-parity out| skip docs/decisions.md — EXEMPT: process record (AGENTS.md §3)
+[verify-gates] docs-parity out| skip docs/omo-parity-gap.md — EXEMPT: prior-phase report (AGENTS.md §3)
+[verify-gates] docs-parity out| skip docs/plan-0.1.7-adaptation.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+[verify-gates] docs-parity out| skip docs/plan-c.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+[verify-gates] docs-parity out| skip docs/plan-d.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+[verify-gates] docs-parity out| skip docs/plan-e.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+[verify-gates] docs-parity out| skip docs/plan-f.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+[verify-gates] docs-parity out| skip docs/plan-live-session-wave.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+[verify-gates] docs-parity out| skip docs/plan-team-plane-split.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+[verify-gates] docs-parity out| skip docs/plan-team-watchdog-report.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+[verify-gates] docs-parity out| skip docs/plan-team-watchdog.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+[verify-gates] docs-parity out| skip docs/plan-tui-edition.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+[verify-gates] docs-parity out| skip docs/plan-tui-team-surface.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+[verify-gates] docs-parity out| skip docs/plan-ui-team-gui.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+[verify-gates] docs-parity out| skip docs/plan-webui-tui-i18n.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+[verify-gates] docs-parity out| skip docs/review-p0-p3.md — EXEMPT: prior-phase report (AGENTS.md §3)
+[verify-gates] docs-parity out| skip docs/track-a-report.md — EXEMPT: prior-phase report (AGENTS.md §3)
+[verify-gates] docs-parity out| skip docs/tui-edition-report.md — EXEMPT: prior-phase report (the TUI edition delivery report) — named in the AGENTS.md Language-policy enumeration of exempt prior-phase reports (captain ruling on T60-F1)
+[verify-gates] docs-parity out| skip docs/ulw-deepseek-optimization.md — EXEMPT: prior-phase report (AGENTS.md §3)
+[verify-gates] docs-parity out| skip docs/verification/2026-10-08T1203Z/verdict.md — EXEMPT: verification record (process record, AGENTS.md §3)
+[verify-gates] docs-parity out| skip packages/mpd-mcp-shared — EXEMPT: ships source and tests only; its README pair is a recorded follow-up
+[verify-gates] docs-parity out| skip docs/adder4.md — EXEMPT: internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source [ANTICIPATORY — not a live path]
+[verify-gates] docs-parity out| skip docs/cnt8.md — EXEMPT: internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source [ANTICIPATORY — not a live path]
+[verify-gates] docs-parity out| note AGENTS.md — DERIVED: delta-range claims NOT adjudicated (agent-references/agent-teams-deltas.md is absent — the artifact the pointer NAMES cannot be read) — this root does not ship the artifact the pointer names, so the claim is neither confirmed nor contradicted here
+[verify-gates] docs-parity out| note agent-references/index.md — DERIVED: delta-range claims NOT adjudicated (agent-references/agent-teams-deltas.md is absent — the artifact the pointer NAMES cannot be read) — this root does not ship the artifact the pointer names, so the claim is neither confirmed nor contradicted here
+[verify-gates] docs-parity out| note agent-references/agent-teams-deltas.md — DERIVED: region-count claim skipped AND its registry (packages/mpd-agent-teams-plugin/lib/mpd-deltas.ts) is equally absent — both were deleted with the adopted agent-teams body (de-vendor wave), so the derived-value rule is VACUOUS in this root: it is exercised only by this script's --self-test fixtures, never by the live tree
+[verify-gates] docs-parity out| [verify-docs-parity] links=424 checked=396 resolved=396 dead=0 exemptProvenance=0 absentSite=0 ignoredExternal=24 ignoredAnchorOnly=4 files=115
+[verify-gates] docs-parity out| 
+[verify-gates] docs-parity out| [verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=47 failed=0 violations=0 exempt=24 derived=3 links=424 dead=0 — PASS
+[verify-gates] member docs-parity: exit=0 PASS - 100ms
+[verify-gates] member preset-conformance :: node ./skills/dsh-qa/scripts/preset-conformance.ts --self-test
+[verify-gates] preset-conformance out| [preset-conformance self-test] PASS - (i) retired `text:` persona form -> problems name the persona row :: /tmp/mpd-preset-conformance-rS96BN/persona-text.patch.yml :: persona (@deepseek-ai/dsh-persona): $.prefix missing required value | /tmp/mpd-preset-conformance-rS96BN/persona-text.patch.yml :: the persona row has no `pref
+[verify-gates] preset-conformance out| [preset-conformance self-test] PASS - (ii) renamed required row -> the unmutated copy is clean and the mutated one names tool-fs AND tool-fs-renamed :: control problems=0; mutated: the mpd preset does not mount active row(s) the installed standard preset mounts: tool-fs | the mpd preset declares row(s) the installed standard preset does not declare at all: tool-fs-renam
+[verify-gates] preset-conformance out| [preset-conformance self-test] PASS - (iii) the renamed copy really changed the document it audits :: bytes differ
+[verify-gates] preset-conformance out| [preset-conformance self-test] PASS - (iv) hermetic: temp fixtures only; the live preset patch bytes + mtime are unchanged :: fixture root /tmp/mpd-preset-conformance-rS96BN (temp); live mtime 1791465701763.0144 -> 1791465701763.0144
+[verify-gates] preset-conformance out| [preset-conformance self-test] ok: 32 harness rows conform against the installed schemas (6 row(s) declare no schema), persona prefix=true, mpd preset 28 child rows, row parity 26/25 (negative controls: 4/4 reddened)
+[verify-gates] member preset-conformance: exit=0 PASS - 281ms
+[verify-gates] member plugin-manifest :: node ./scripts/verify-plugin-manifest.ts --pack
+[verify-gates] plugin-manifest out| # verify-plugin-manifest — repository manifest
+[verify-gates] plugin-manifest out| 
+[verify-gates] plugin-manifest out| ok    cordis-dependency: 8 declared dependency name(s) across dependencies/peerDependencies/optionalDependencies, none of them cordis
+[verify-gates] plugin-manifest out| ok    cordis-devDependency-note: devDependencies declare no cordis package
+[verify-gates] plugin-manifest out| ok    lifecycle-script: 19 script name(s), none carrying preinstall/install/postinstall/prepare
+[verify-gates] plugin-manifest out| ok    version:dsh-plugin.json: version = 0.12.0
+[verify-gates] plugin-manifest out| ok    version:dsh-distribution.json: distribution.version = 0.12.0
+[verify-gates] plugin-manifest out| ok    bundle-patch-files: 2 patch file(s) declared, 0 missing
+[verify-gates] plugin-manifest out| ok    row-module-paths: 27 module path(s) named by the patch files, 0 missing, 0 patch file(s) unreadable
+[verify-gates] plugin-manifest out| ok    files-allowlist: 27 pattern(s); 0 required path(s) not admitted
+[verify-gates] plugin-manifest out| ok    evidence-excluded: the frozen evidence/ tree stays out of the published package
+[verify-gates] plugin-manifest out| ok    packed-content: npm pack --dry-run lists 945 file(s); 0 required path(s) absent
+[verify-gates] plugin-manifest out| 
+[verify-gates] plugin-manifest out| VERDICT: PASS — the install-time rules and the packaging contract hold.
+[verify-gates] member plugin-manifest: exit=0 PASS - 1988ms
+[verify-gates] member comment-coverage :: node ./scripts/verify-comment-coverage.ts
+[verify-gates] comment-coverage out| # verify-comment-coverage
+[verify-gates] comment-coverage out| 
+[verify-gates] comment-coverage out| scanned 375 TypeScript file(s) of 375 in the source set; inspected 32934 declaration(s); skipped 14758 inline callback(s) as out of family
+[verify-gates] comment-coverage out| 
+[verify-gates] comment-coverage out| VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+[verify-gates] member comment-coverage: exit=0 PASS - 1935ms
+[verify-gates] member workflows :: node ./scripts/verify-workflows.ts
+[verify-gates] workflows out| [verify-workflows] audited 1 workflow file(s) under /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.github/workflows
+[verify-gates] workflows out| [verify-workflows] PASS - every workflow is loadable YAML with a sane job/step shape
+[verify-gates] member workflows: exit=0 PASS - 72ms
+[verify-gates] PASS - 8/8 member gate(s) green
+EXIT=0

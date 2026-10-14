@@ -1,0 +1,115 @@
+{
+  "lane": "lane-focus-escape-release",
+  "loopId": "loop-20261008T083221-4c7b3a",
+  "contract": ".mpd/plans/lane-focus-escape-release.md",
+  "utc": "2026-10-08T08:44:05Z",
+  "package": "packages/mpd-tui-plugin",
+  "distSha256": "7d2f5d2a7d9437cd7c09e20cdf3d90e031b941992ae55e87fd72a539c103d2be",
+
+  "part1_theEscapeDefect": {
+    "defect": "`dagPanelKeyAction`'s Escape branch returned `{ consumed: true, pin: false }` UNCONDITIONALLY. The host's plugin-panel dispatcher turns any `preventDefault()` into `consumed = true` (`lib/types/components/sidePanel/pluginPanelAdapter.js`: `preventDefault: () => { consumed = true }`, `return consumed`), and a consumed press never reaches the host's own fallback (`lib/types/components/sidePanel/useSidePanel.js`: `if (key.escape === true) { setFocus('chat'); stop(); return true }`). Opening `/mpd panel` therefore took the keyboard with no keyboard way back.",
+    "fix": "The keymap now takes the PIN as a fourth argument (`pinned: string | undefined = undefined`) and consumes Escape ONLY while a task is pinned: `return pinned === undefined ? { consumed: false } : { consumed: true, pin: false }`. The page handler passes the same live cell the pin itself uses (`dagPanelKeyAction(bare, order, cursorNow(), pinnedNow())`), so a press delivered in one event-loop turn sees what the previous press asked for. Nothing else in the keymap moved: the arrows, the pin keys and every scroll key keep their consumption rules and their values.",
+    "f_a_observedValues": [
+      "escape, NO pin (pin=undefined)            -> {\"consumed\":false}",
+      "escape, raw byte, NO pin                  -> {\"consumed\":false}",
+      "escape, PINNED (pin=T1)                   -> {\"consumed\":true,\"pin\":false}",
+      "j (down) from nothing focused             -> {\"consumed\":true,\"focus\":\"T1\"}",
+      "k (up) with a pin held                    -> {\"consumed\":true,\"focus\":\"T2\"}",
+      "Enter with T2 focused                     -> {\"consumed\":true,\"pin\":true}",
+      "space with nothing focused                -> {\"consumed\":true}",
+      "x (unhandled) with a pin held             -> {\"consumed\":false}"
+    ],
+    "f_a_where": "printed from the real function into `f-a-observed.txt`; asserted by two arms in `test/panel-dag.test.ts` (`F-a the keymap's OWN values…`, `F-a ON A MOUNTED PAGE…`), the second of which drives the REAL host listener shape (`{input, key, preventDefault}`) and shows 0 consumptions with no pin, 1 with a pin, and the pin body gone after the release."
+  },
+
+  "keyConsumptionTable": [
+    { "keys": "↑ / k / K (bare)", "consumed": true, "why": "Moves the task focus one row EARLIER in drawing order. The page's primary interaction; the host's own panel tail gives these keys no plugin-panel meaning, so consuming them steals nothing." },
+    { "keys": "↓ / j / J (bare)", "consumed": true, "why": "Same walk, one row LATER. Same reason." },
+    { "keys": "Enter / \\r / \\n / space", "consumed": true, "why": "The page's PIN key (space is the host's other pin spelling). Consumed with or without a focused task; the rule is FROZEN by contract PART 1 clause 2, and the host's tail swallows a plain key while a panel is focused anyway, so the consumption takes nothing from the host." },
+    { "keys": "Escape (flag) / \\u001b (byte)", "consumed": "ONLY while a task is pinned", "why": "With a pin: releases it (the pin is a mode, and this is its exit). Without a pin: LEFT UNCONSUMED so the host's own `setFocus('chat')` fallback runs — this lane's fix." },
+    { "keys": "PgUp / PgDn (flags or \\u001b[5~ / \\u001b[6~; +Shift)", "consumed": true, "why": "Vertical page scroll, horizontal (colPage) with Shift. No host meaning while a panel is focused." },
+    { "keys": "Home / End", "consumed": true, "why": "Jump to the band's vertical ends (scope: content scroll). No host meaning while a panel is focused." },
+    { "keys": "⇧↑ / ⇧↓ / ⇧← / ⇧→ (and J/K/H/L with Shift)", "consumed": true, "why": "Horizontal column scroll of the DRAWING (clause T5). Bare ←/→ are deliberately NOT consumed — they are the host's own panel navigation." },
+    { "keys": "Ctrl+A / Ctrl+E", "consumed": "unreachable on this host generation", "why": "`panelScrollGesture` maps them to top/bottom, an emacs-style alias; dsh-tui 0.14.0 returns early for every Ctrl/Alt combo while a panel is focused (`if (key.ctrl === true || ...) return false`), so they never reach the page here. Declared rather than removed: the helper is shared with the other pages and the contract freezes consumption rules outside Escape." },
+    { "keys": "← / → / [ / ]", "consumed": false, "why": "The host's own panel cycling. The page keeps them (the bare arrows return `undone`/unconsumed from both the scroll gesture and the keymap)." },
+    { "keys": "z, +, =, -, _, 1-9", "consumed": false, "why": "The host's own panel chrome (zoom, resize, panel selection). The page never claims them." },
+    { "keys": "any other key", "consumed": false, "why": "`{ consumed: false }` — the audit's rule: a key the page does not handle is left to the host, never swallowed 'just in case'." },
+    { "keys": "the WORKMATE page's keys", "consumed": "PgUp/PgDn/Home/End + ↑↓/jk only", "why": "`panel-workmate.ts` never claims Escape at all, so it needs no fix; recorded because the contract asked for the whole keymap, not one file's." }
+  ],
+
+  "partS_theStatusRow": {
+    "option": "(b) MARK — and the choice is forced, not preferred",
+    "why_option_b": "NO session id is reachable on that seam, and the host's own signature is the proof. `lib/types/dsh-adapter/status.d.ts` (dsh-tui 0.14.0): `set(key: string, text: string | number | boolean | undefined, identity?: Context): () => void` — a SCALAR, whose trailing `identity` is the plugin's own ctx and 'only feeds the effect ledger's pluginId'; and the rich companion `registerView(descriptor: TuiStatusViewDescriptor, identity?: Context)` where `TuiStatusViewDescriptor.component: React.ComponentType<TuiStatusViewProps>` and `TuiStatusViewProps = { readonly React: typeof React; readonly ui: TuiStatusViewUi }`. The host's own header states it: 'It deliberately receives no input, channel, or raw-terminal capability.' Our `TuiStatusView.render(): string | number | boolean | undefined` takes NO arguments and the adapter hands it nothing (`packages/mpd-tui-adapter-plugin/src/index.ts`), and `registerStatus`'s call site passes only `workspaceRoot`/`home`/readouts (`packages/mpd-tui-plugin/src/index.ts`). The only ambient session source in the composition is `adapter.liveAgents()` — ALL live sessions, which cannot identify the READER (the sidebar page gets its id from `host.snapshot().sessionId`; a status view receives no `host`). So (a) is unprovable here and (b) is the honest behaviour.",
+    "fix": "`state.ts :: statusLine` appends the contract vocabulary to the TEAM part when a team is shown: `team OTHERBOARD 1·0/4 (workspace-level)`. Parenthesised and attached to that one part so it reads as a qualifier, never as a counter; `plans`/`workmates`/progress keep their exact meaning and stay unmarked (they are workspace facts by definition). A row that finds NO team is NOT marked — a workspace-level read that resolves nothing means the workspace holds no team at all, so there is nothing that could belong to another session. Reusing `WORKSPACE_SCOPE_MARKER` (`team-state.ts`) keeps ONE token across surfaces.",
+    "pre_fix_frame": "evidence/tui/session-scope-and-push/2026-10-08T08-22-12Z/pty/P1-sidebar-other-session.txt:37 — `mpd: team OTHERBOARD 1·0/4 · plans 0 · workmates 0`, in the SAME frame whose panel body said `no team in this session`.",
+    "post_fix_frame": "evidence/tui/focus-release/2026-10-08T08-41-29Z/pty/run.log:47 — `mpd: team OTHERBOARD 1·0/4 (workspace-level) · plans 0 · workmates 0`, in a frame whose panel body still says `no team in this session`.",
+    "ctrl_a_contact_S_c": "SAME decision, and it was already the marked one BY CONSTRUCTION: the contact's read is wired as `readDashboardWorkflow(workspaceRoot, holds, teamViews, teamRecords)` with NO session id (`packages/mpd-tui-plugin/src/index.ts`), so `readScopedWorkflow` takes its `sessionId === undefined` branch and marks the projection `scope: \"workspace\"` (`team-state.ts`), and the merged scene the contact opens renders `scope      workspace-level (no session id on this surface)` above the board. This is now ASSERTED rather than asserted-by-comment: `test/dashboard-key.test.ts` ('the team reader') pins `source.scope === \"workspace\"` for the contact-shaped call and the marker in `teamWorkflowLines(workflow)`. No behaviour change was needed or made there.",
+    "unchanged_meaning": "The `plans`/`workmates`/progress numbers are untouched; only the team part gained the parenthetical."
+  },
+
+  "orthogonalScopeMarkers_addition1": {
+    "finding": "the token `workspace-level` appeared in TWO of the three states: the state-2 informational count row was prefixed with it, so a frame scan keyed on the token matched both `none` and `workspace`.",
+    "fix": "the `workspace-level:` prefix was DROPPED from the state-2 count row in both renderers (`panel-dag.ts` and `scenes.ts`); the sentence keeps its meaning (`this workspace holds N team(s), none bound to this session`) and state 2's unique marker stays `no team in this session`. The token now belongs to the `workspace` state alone.",
+    "arms_updated": "`test/session-scope-and-push.test.ts` T-D2 INVERTED its expectation (`toContain(WORKSPACE_SCOPE_MARKER)` -> `not.toContain(...)`) with the reason in-file: that arm was the false positive the verifier measured. `nothing was deleted`; the count and marker assertions both survive.",
+    "readme_pair": "`README.md` + `README.zh-CN.md` now say the state-2 count row carries NO token and that `workspace-level` names the no-session-id state alone, and document the two un-scopable surfaces (status row + Ctrl+A) and the new Escape rule.",
+    "pty_proof": "pty/run.log:64 — `P4 state-2 rows : marker=1 count=1 scope-token=0`, i.e. the real scene frame carries `no team in this session` and the count, and ZERO `workspace-level` occurrences."
+  },
+
+  "deadCodeClause_addition3": {
+    "clause": ".mpd/plans/lane-td-session-scope-and-push.md PART P.5 — `panel.ts`'s `PANEL_REFRESH_MS` and its unused `usePanelTick` import.",
+    "finding": "ALREADY REMOVED by Lane TD; nothing left to remove and no live call site exists in that file. `grep -n 'PANEL_REFRESH_MS' packages/mpd-tui-plugin/src/panel.ts` matches only a COMMENT cross-referencing `DAG_PANEL_REFRESH_MS`, and `grep -n usePanelTick` matches only the explanatory comment left in place of the import (lines 48-52: 'Removal, not a comment, is the honest fix'). The hook itself is LIVE elsewhere — `panel-dag.ts` (DAG_PANEL_REFRESH_MS = 1000) and `panel-workmate.ts:399` (WORKMATE_PANEL_REFRESH_MS = 2000) — so the import was dead in `panel.ts` alone.",
+    "verdict": "CLAUSE SATISFIED — confirmed by inspection, no change needed."
+  },
+
+  "evidenceGap_addition2": {
+    "file": "evidence/tui/session-scope-and-push/2026-10-08T08-22-12Z/result.json",
+    "what": "ONE line appended to the existing `warning` string recording the DISCARDED latency iteration: pty-latency/run.log lines 1-21, utc 08:25:50Z -> 08:26:35Z, sandbox /tmp/mpd-lat-yLFXrt, live session id 6e2e14bc-09c2-4579-abbf-63dc87703bab, trial 1 = 85 ms but trials 2-6 = NEVER SEEN, so latency.jsonl carries only the successful 08:26:59Z run and no claim rests on the discarded one.",
+    "scope_note": "The captain authorized this one field on the previous lane's file; nothing else in that lane was touched and no claim of it was rewritten. The file re-validates as JSON."
+  },
+
+  "filesChanged": [
+    "packages/mpd-tui-plugin/src/panel-dag.ts",
+    "packages/mpd-tui-plugin/src/state.ts",
+    "packages/mpd-tui-plugin/src/scenes.ts",
+    "packages/mpd-tui-plugin/test/panel-dag.test.ts",
+    "packages/mpd-tui-plugin/test/state.test.ts",
+    "packages/mpd-tui-plugin/test/dashboard-key.test.ts",
+    "packages/mpd-tui-plugin/test/session-scope-and-push.test.ts",
+    "packages/mpd-tui-plugin/README.md",
+    "packages/mpd-tui-plugin/README.zh-CN.md",
+    "packages/mpd-tui-plugin/dist/index.js",
+    "evidence/tui/focus-release/2026-10-08T08-41-29Z/**",
+    "evidence/tui/session-scope-and-push/2026-10-08T08-22-12Z/result.json (one `warning` line, captain-authorized)"
+  ],
+
+  "gates": [
+    { "command": ".toolchain/node_modules/.bin/bun test packages/mpd-tui-plugin", "result": "447 pass / 0 fail / 12694 expect() calls across 20 files" },
+    { "command": ".toolchain/node_modules/.bin/bun run typecheck", "result": "exit 0, no diagnostics" },
+    { "command": "node scripts/verify-comment-coverage.ts", "result": "PASS — 367 files, 32405 declarations, every one commented and fully typed" },
+    { "command": ".toolchain/node_modules/.bin/bun build packages/mpd-tui-plugin/src/index.ts --target node --format esm --outfile packages/mpd-tui-plugin/dist/index.js", "result": "Bundled 34 modules; dist sha256 7d2f5d2a7d9437cd7c09e20cdf3d90e031b941992ae55e87fd72a539c103d2be (pinned bun 1.4.0, repo root, path-qualified args)" },
+    { "command": "node scripts/verify-dist-fresh.ts", "result": "ok: 30/30 targets fresh (each rebuilt twice, byte-identical); tui target FRESH sha 7d2f5d2a7d94…" },
+    { "command": "node packages/mpd-tui-adapter-plugin/test/no-direct-tui-access.test.ts", "result": "PASS (0 findings) — no `ctx.tui*` name outside the adapter" },
+    { "command": "bun run verify:docs", "result": "PASS — pairs=47 failed=0 violations=0 links=424 dead=0" }
+  ],
+
+  "acceptance": {
+    "F-a": { "ok": true, "where": "f-a-observed.txt + 2 arms in panel-dag.test.ts", "values": "no pin -> {consumed:false}; pinned -> {consumed:true,pin:false}; mounted arm: 0 consumptions with no pin, 1 with a pin, pin body gone after the release" },
+    "F-b": { "ok": true, "where": "evidence/tui/focus-release/2026-10-08T08-41-29Z/pty/ (real PTY, host 0.14.0)", "values": "composer echoed `/mpd team` at 08:43:57 (P3b-composer-echo.txt) and the registry answered at 08:43:58 (the full-screen scene, P4-command-reached.txt); the focus precondition held at 08:43:53 (a panel key was swallowed with the composer empty)" },
+    "F-c": { "ok": true, "where": "the gates list above" },
+    "F-d": { "ok": true, "where": "keyConsumptionTable" },
+    "S-a": { "ok": true, "where": "the previous lane's P1 frame, quoted in frames-quoted.txt" },
+    "S-b": { "ok": true, "where": "pty/run.log:47 — the row names the workspace's team AND carries `(workspace-level)`; state-2 panel body unchanged (`no team in this session`)" },
+    "S-c": { "ok": true, "where": "dashboard-key.test.ts 'the team reader' arm — scope `workspace` + the marker in the rendered body; no behaviour change" },
+    "S-d": { "ok": true, "where": "gates + the README pair" }
+  },
+
+  "honestBounds": [
+    "The pre-fix behaviour of the STATUS ROW is quoted from the previous lane's capture, not re-captured here: my single PTY boot runs the FIXED dist, so it can witness the post-fix frame only. The pre-fix frame is cited verbatim and is on disk.",
+    "The status row cannot be SCOPED, only MARKED: the seam hands no host and no channel (host `TuiStatusViewProps {React, ui}`). A reader who wants this session's board must look at the panel, which IS scoped and says `no team in this session` when that is the truth.",
+    "`(workspace-level)` therefore appears on the status row whenever the workspace holds a team, including in a frame whose panel body is in state 2 — the row is honestly describing ITS OWN read (a workspace-level summary), not claiming a state. A frame scan that wants to classify the PANEL must key on the panel's body rows; the token is orthogonal inside each surface, not across two surfaces with different scopes.",
+    "The `Ctrl+A` contact is inert on dsh-tui 0.13.0+ by the version gate, so its marked read was evidenced at the code level (an arm over `readDashboardWorkflow` + `teamWorkflowLines`), not on a PTY: no PTY can reach it on this host.",
+    "The real-PTY run's first attempt (08:42) reported a FALSE FAIL because its marker (`task dependency graph`) only exists on a board-drawing scene; this session has no team of its own, so the scene it correctly opened renders the session-empty state. The marker was corrected and the arm re-run; BOTH runs and both log sections stay in the evidence directory, and no assertion rests on attempt 1. (This box's `date` is uutils coreutils 0.10.0, whose `%3N` is not offset by the fractional second — no latency claim is made here, so no timing depends on it; the log uses whole-second UTC stamps only.)",
+    "Test count moved 443 -> 447 (four new arms: two keymap arms, one no-team status arm, one real-seam status arm); the dashboard-key and session-scope arms were EXTENDED/INVERTED, never deleted.",
+    "No latency or throughput claim is made by this lane: the PTY evidence is a behavioural walk, and every frame's timestamp is the capture instant tmux recorded (whole-second UTC, written next to the frame as `<name>.at`)."
+  ]
+}

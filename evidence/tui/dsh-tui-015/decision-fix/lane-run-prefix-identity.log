@@ -1,0 +1,15 @@
+[tui-admission] static result ok=true
+[tui-admission] negctl /plugin check -> state=waiting_authorization ok=true
+[tui-admission] negctl ledger delta=20 undeclared=0
+[tui-admission] grants file written -> .mpd/recon/qa/tui-lanes/tui-015/home/.dsh-tui/extension-grants.json component=com.mpd-dsh.mpd-tui rows=4
+[tui-admission] grants file revoked mid-session (arm 6)
+[tui-admission] grants /plugin check -> state=compatible; /plugin list -> state=compatible
+[tui-admission] arm2 admission-loader line admitted com.mpd-dsh.mpd-tui: true (stderr=evidence/tui/lanes/2026-10-14T11-32-32.360Z/grants/host-stderr.log 918690B)
+[tui-admission] granted boot debug stream: 9126 park frame(s), redirected off the pane (grants/host-stderr.log)
+[tui-admission] arm3 attribution: attributed=0 decisionHandlerBinds(applied)=0 (ledger delta=20)
+[tui-admission] arm3 host wiring: `decision-handler` binds are wired by plugin-host.js#subscribeDecision but none fired
+[tui-admission] arm3 identity differential: admission loader admitted=61 refused=0 (this boot) vs admitted=0 refused=61 (negctl)
+[tui-admission] arm4 real input submit rendered the turn: true
+[tui-admission] arm6 revocation re-check -> state=compatible flipped=false
+[tui-admission] ok=false -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/lanes/2026-10-14T11-32-32.360Z
+[tui-admission] FAIL: {"static":true,"staticGrants":true,"arm1":true,"arm2":true,"arm3":false,"arm4":true,"arm5":true,"revokedState":"compatible"}

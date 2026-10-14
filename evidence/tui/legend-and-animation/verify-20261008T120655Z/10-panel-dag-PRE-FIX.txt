@@ -1,0 +1,130 @@
+bun test v1.4.0 (34cbb9a40)
+
+test/panel-dag.test.ts:
+(pass) the DAG page's identity after the merge (clause C3) > its title IS the surviving MPD panel's title — one name, one surface [0.03ms]
+(pass) the DAG page's identity after the merge (clause C3) > the surviving registration carries this page's component and reaches the host read-back [0.56ms]
+597 |     // design, so that mark must be printed ONCE and its entry must name BOTH states — the pre-fix key
+598 |     // printed `○ open=blocked · ○ blocked=open`, which is one fact twice with a false equivalence in it.
+599 |     expect(DAG_TONE_GLYPH.blocked).toBe(DAG_TONE_GLYPH.open)
+600 |     /** The shared mark's own entries: every entry the legend opens with that mark. */
+601 |     const sharedEntries = joined.split(" · ").filter((entry) => entry.startsWith(`${DAG_TONE_GLYPH.blocked ?? "?"} `))
+602 |     expect(sharedEntries).toHaveLength(1)
+                                ^
+error: expect(received).toHaveLength(expected)
+
+Expected length: 1
+Received length: 2
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/legend-and-animation/verify-20261008T120655Z/harness/prefix2/packages/mpd-tui-plugin/test/panel-dag.test.ts:602:27)
+(fail) the legend > covers EVERY state the contract knows, with the glyph the contract declares [0.50ms]
+(pass) the legend > fits the width it is given, and drops a line rather than cutting one [0.43ms]
+641 |       const key = lines.slice(drawing.length).join(" · ")
+642 |       for (const state of DAG_STATE_TONES) {
+643 |         /** How many times the key NAMES this state, counted as whole words so `blocked` != `blocker`. */
+644 |         const named = (key.match(new RegExp(`\\b${state}\\b`, "g")) ?? []).length
+645 |         // EXACTLY ONCE, at every width: wrapping a key is allowed, naming a state twice is not.
+646 |         expect(`${cols} ${state} named=${named}`).toBe(`${cols} ${state} named=1`)
+                                                        ^
+error: expect(received).toBe(expected)
+
+Expected: "28 open named=1"
+Received: "28 open named=2"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/legend-and-animation/verify-20261008T120655Z/harness/prefix2/packages/mpd-tui-plugin/test/panel-dag.test.ts:646:51)
+(fail) the legend > the state key is composed ONCE at every width — no state is ever named twice [0.31ms]
+(pass) the DAG page's layout choice > at the host's own 28-column floor the page still draws, and reads [3.62ms]
+(pass) the DAG page's layout choice > a busy narrow board reaches the dense list, which had no caller before this page [0.56ms]
+(pass) the DAG page's layout choice > EVERY drawn row fits the panel, wide glyphs included [5.21ms]
+(pass) the DAG page's layout choice > a boxed CJK line ends on its own right border column [0.22ms]
+(pass) the DAG page's layout choice > an empty board still lays out without throwing [0.22ms]
+(pass) the DAG page's layout choice > boxes are drawn ONLY when the widest label fits: a label is never cut [1.29ms]
+(pass) the DAG page's layout choice > A REAL BOARD STILL DRAWS BOXES: the natural width cap holds a realistic label whole [1.70ms]
+(pass) the DAG page's layout choice > A MID-LENGTH LABEL IS NOT CUT, and the overflow flag agrees with the truncation [0.21ms]
+(pass) the DAG page's layout choice > C3: THE PINNED DETAIL BODY CARRIES THE ORIGINAL SUBJECT AND DESCRIPTION, CHINESE INCLUDED [0.32ms]
+(pass) the DAG page's layout choice > R18: an unresolved blocker is SURFACED, and the rank source is reported [2.86ms]
+984 |     expect(orbit[DAG_ANIM.staticPhase]).toBe(DAG_TONE_GLYPH.running as string)
+985 |     // THE WIDTH INVARIANT, which is the whole of the reported defect: the label EMBEDS this mark, so one
+986 |     // cell per frame is what keeps the label's width still across the cycle. The orbit this replaced
+987 |     // returned 1, 2, 1 and 3 cells (`base`, `base·`, `base`, `base··`), so the box around the label was
+988 |     // re-laid-out on every tick and its right border advanced and retreated.
+989 |     for (const glyph of orbit) expect(cellWidth(glyph)).toBe(1)
+                                                              ^
+error: expect(received).toBe(expected)
+
+Expected: 1
+Received: 2
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/legend-and-animation/verify-20261008T120655Z/harness/prefix2/packages/mpd-tui-plugin/test/panel-dag.test.ts:989:57)
+(fail) the running-node animation and its degradation > every frame is ONE CELL, the frames DIFFER, and the static frame is the orbit's head [0.38ms]
+1010 |     /** The page the panel registers, over the fixture board. */
+1011 |     const page = createDagPanelComponent(() => workflowFixture()) as (props: unknown) => unknown
+1012 |     /** The contract's own running glyph: the orbit's head, and the mark the label row carries at it. */
+1013 |     const headMark = DAG_TONE_GLYPH.running ?? "◐"
+1014 |     /** One reading per frame: the frame index, its glyph, the label row, that row's cells, the page. */
+1015 |     const measured = DAG_ANIM.runningFrames.map((_frame, phase) => {
+                                     ^
+TypeError: undefined is not an object (evaluating 'DAG_ANIM.runningFrames.map')
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/legend-and-animation/verify-20261008T120655Z/harness/prefix2/packages/mpd-tui-plugin/test/panel-dag.test.ts:1015:31)
+(fail) the running-node animation and its degradation > the DRAWN running label keeps ONE width across every frame of the cycle [0.22ms]
+1089 |     const timed = makeKit({ columns: 80, animation: "value" })
+1090 |     /** The breathed render's rows. */
+1091 |     const animated = timed.rows(render(page, timed, makeHost()))
+1092 |     /** The frame the kit's default clock selects, read through the contract so this arm cannot be stale. */
+1093 |     const breath = runningGlyph(2)
+1094 |     expect(breath).not.toBe(DAG_TONE_GLYPH.running as string)
+                              ^
+error: expect(received).not.toBe(expected)
+
+Expected: not "◐"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/legend-and-animation/verify-20261008T120655Z/harness/prefix2/packages/mpd-tui-plugin/test/panel-dag.test.ts:1094:24)
+(fail) the running-node animation and its degradation > a host with NO timer draws the static frame instead of throwing [2.18ms]
+(pass) the running-node animation and its degradation > a NON-FINITE timer degrades to the static frame [0.74ms]
+(pass) the running-node animation and its degradation > no props, no kit, no snapshot: the page renders null instead of throwing [0.51ms]
+(pass) click-to-pin and the keyboard > a click pins a task and the detail body carries all ten facts [3.02ms]
+(pass) click-to-pin and the keyboard > the keymap walks the drawing and does not steal the host's own keys [0.86ms]
+(pass) click-to-pin and the keyboard > F-a the keymap's OWN values: no pin → NOT consumed; pinned → consumed and unpinned [0.04ms]
+(pass) click-to-pin and the keyboard > F-a ON A MOUNTED PAGE: no pin → Escape is NOT consumed; pinned → consumed AND the pin is released [2.36ms]
+(pass) AC4: a click resolves through the row's own rectangle, COLUMN included > POSITIVE CONTROL: clicking the SECOND box of a two-box rank pins the SECOND task [0.89ms]
+(pass) AC4: a click resolves through the row's own rectangle, COLUMN included > the row-band fallback still pins without a column, and a column-aware MISS CLEARS the pin [1.23ms]
+(pass) AC4: a click resolves through the row's own rectangle, COLUMN included > dagRowClick reports WHICH rule resolved a row, and resolves nothing for a row with no box [0.16ms]
+(pass) AC6: clicking the ALREADY-PINNED task opens its owner's agent page > resolves the owner through the host's subagent rows and calls the row's opener [1.84ms]
+(pass) AC6: clicking the ALREADY-PINNED task opens its owner's agent page > an unmatched owner, an absent opener and a refusal each SPEAK through the host's toast [2.12ms]
+(pass) AC6: clicking the ALREADY-PINNED task opens its owner's agent page > a second click on the SAME handler — before the host re-rendered — still opens the page [0.46ms]
+(pass) AC6: clicking the ALREADY-PINNED task opens its owner's agent page > agentIdForOwner matches the owner NAME against the host's own descriptions [0.12ms]
+(pass) R1: non-empty board vs empty workspace > a board WITH tasks paints its rows (plus the header, the mode row and the legend) [0.76ms]
+(pass) R1: non-empty board vs empty workspace > a workspace with NO team prints the empty state that names the call which fills it [0.22ms]
+(pass) the viewport hook > every read is clamped against the CURRENT page, from ANY render's closure [0.60ms]
+(pass) the scrollbar and the self-windowed viewport > the rendered window NEVER exceeds the viewport, for a one-row and a 400-row board [54.45ms]
+(pass) the scrollbar and the self-windowed viewport > the offset clamps to [0, max(0, content - viewport)] and never renders a blank page [63.47ms]
+(pass) the scrollbar and the self-windowed viewport > the thumb's LENGTH and POSITION are monotone in the offset, and it never leaves the gutter [0.36ms]
+(pass) the scrollbar and the self-windowed viewport > when the content FITS there is no gutter, and no column is reserved [2.05ms]
+(pass) the scrollbar and the self-windowed viewport > FOCUS AUTO-SCROLL: the focused task is inside the rendered window at both ends of an overflowing board [4.62ms]
+(pass) the scrollbar and the self-windowed viewport > the wheel scrolls down on a positive delta, up on a negative one, and does nothing when it fits [0.15ms]
+(pass) the scrollbar and the self-windowed viewport > the WHEEL HANDLER IS BOUND ONCE, on the page's own window [1.98ms]
+(pass) R6: the frame's border title is a structured value, not a string > every page's frame carries { content, position: 'top', align } — and a bare string FAILS [2.22ms]
+(pass) R6: the frame's border title is a structured value, not a string > POSITIVE CONTROL: a bare string is NOT acceptable, and the check can tell [0.04ms]
+(pass) FINDING 11: every emitted row fits the frame interior > no row exceeds the interior at ANY width, and the whole page respects it [2.64ms]
+(pass) FINDING 11: every emitted row fits the frame interior > POSITIVE CONTROL: a deliberately over-long row FAILS the same check [0.06ms]
+(pass) FINDING 11: every emitted row fits the frame interior > the frame's interior helper subtracts exactly the two border cells [0.02ms]
+(pass) the badge ladder > failed outranks blocked outranks running, and an idle board clears it [0.08ms]
+(pass) the badge ladder > the page publishes the badge through the host API, once per change [1.10ms]
+(pass) the workmate page > carries its own descriptor, with a one-cell icon [0.05ms]
+(pass) the workmate page > the EMPTY state names the call that fills the shelf [0.11ms]
+(pass) the workmate page > an unreadable home renders the empty state rather than throwing [0.22ms]
+(pass) the workmate page > a populated shelf shows the key, the base and the note [0.10ms]
+(pass) the workmate page > the reader tolerates a missing library and never throws [0.19ms]
+(pass) AC8b · the page draws its own `⤢`, and the dep the row received reaches it > a click on the control reaches the `openFullscreenScreen` dep the surviving registration forwards [0.79ms]
+(pass) AC8b · the page draws its own `⤢`, and the dep the row received reaches it > a row given no opener still draws the row, but its glyph carries no click handler [0.51ms]
+
+5 tests failed:
+(fail) the legend > covers EVERY state the contract knows, with the glyph the contract declares [0.50ms]
+(fail) the legend > the state key is composed ONCE at every width — no state is ever named twice [0.31ms]
+(fail) the running-node animation and its degradation > every frame is ONE CELL, the frames DIFFER, and the static frame is the orbit's head [0.38ms]
+(fail) the running-node animation and its degradation > the DRAWN running label keeps ONE width across every frame of the cycle [0.22ms]
+(fail) the running-node animation and its degradation > a host with NO timer draws the static frame instead of throwing [2.18ms]
+
+ 50 pass
+ 5 fail
+ 3416 expect() calls
+Ran 55 tests across 1 file. [191.00ms]

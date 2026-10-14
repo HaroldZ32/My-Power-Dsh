@@ -23,6 +23,16 @@
 //   [docker-probe] ADAPTER_SERVICE=present|absent
 //   [docker-probe] ADAPTER_CAPS=<csv>
 //   [docker-probe] ADAPTER_TOOL_CALL=ok|fail:<reason>
+//   [docker-probe] MCP_TOOLS=<present>/<total>
+//   [docker-probe] MCP_TOOLS_MISSING=<csv|empty>
+//   [docker-probe] MCP_REGISTERED=<csv of every mcp__<server>__<tool> name in the root registry>
+//   [docker-probe] MCP_SERVER_COUNTS=<server>:<count>,…          (the server SET, not one name each)
+//   [docker-probe] MCP_LIVE_SEARCH=ok:<n>|fail:<reason>          (a REAL mcp__ast_grep__search call)
+//   [docker-probe] MCP_LIVE_SEARCH_CONTROL=ok:<n>|fail:<reason>  (negative control: 0 matches expected)
+//   [docker-probe] MCP_LIVE_SEARCH_SHAPE=<keys/ok/isError/value keys>  (the envelope itself, so a
+//                                                                     verdict is read from a
+//                                                                     MEASURED shape rather than a
+//                                                                     guess about one)
 //   [docker-probe] AGENT_TEAMS=MOUNTED|ABSENT serviceName=<class>
 //   [docker-probe] AGENT_TEAMS_METHODS=<csv>
 //   [docker-probe] DONE=1
@@ -104,13 +114,37 @@ const CORE_TOOLS: readonly string[] = [
 // server exposes. The row's `serverName` is the MIDDLE segment of its tool names
 // (`mcp__<serverName>__<tool>`), so these three are the row→capability proof: a server whose child
 // process fails to spawn leaves the session without the tool while every composition assertion stays
-// green, which is the gap this arm closes. `mcp-gitbash` is deliberately absent: that row ships
-// `disabled: true` because its upstream is Windows-only.
+// green, which is the gap this arm closes. `mcp-git`/`mcp-shell` are deliberately absent: those rows
+// ship `disabled: true`, so they register no tools.
 const MCP_TOOLS: readonly string[] = [
   "mcp__ast_grep__search",
-  "mcp__lsp__status",
+  "mcp__lsp__get_diagnostics",
   "mcp__codegraph__codegraph_explore",
 ]
+
+// The three ENABLED `@deepseek-ai/dsh-mcp-client` rows, by the `serverName` that becomes the MIDDLE
+// segment of every tool they publish (`mcp__<serverName>__<tool>`). The naming arm below grades the
+// WHOLE registered `mcp__*` surface against this set, which is what turns "three names answered" into
+// "the row set that is switched on is exactly the row set that registered" — a disabled row that
+// leaked tools (or an enabled one that registered under a different server name) is invisible to a
+// presence check but not to this comparison.
+const MCP_SERVERS: readonly string[] = ["ast_grep", "lsp", "codegraph"]
+
+// The tool names the ast-grep server itself declares (`AST_GREP_MCP_TOOLS`), used to grade the
+// smallest enabled surface exactly rather than by a count.
+const AST_GREP_TOOLS: readonly string[] = ["search", "rewrite", "scan"]
+
+// The pattern the LIVE search (§7 item 5) must find in the bundle's own ast-grep sources, and the
+// negative control that must find NOTHING. The live arm exists because registering a name is not
+// running a server: the engine (`sg`) is resolved PER CALL, so only a real call can prove the
+// `BINARY_NOT_FOUND` class is closed on this machine.
+const LIVE_SEARCH_PATTERN: string = "export const SEARCH_TOOL_NAME"
+// A pattern no C-family source can contain, so a server that answered the same way twice is a stub.
+const LIVE_SEARCH_CONTROL: string = "zzzNoSuchSymbolZzzMpdE2e"
+// The language of the searched sources; `paths` has no implicit "." default, so it is always explicit.
+const LIVE_SEARCH_LANGUAGE: string = "typescript"
+// The env key the entrypoint fills with the directory to search; absent, the boot's cwd is used.
+const LIVE_SEARCH_DIR_ENV: string = "MPD_E2E_PROBE_SEARCH_DIR"
 
 // The OFFICIAL agent-team tool surface (docs/plan-0.1.7-adaptation.md §2.2), mounted by the
 // `mpd-tool-agent-team` row (§4 D3).
@@ -187,6 +221,158 @@ function toolLookup(ctx: ProbeContext): (n: string) => ToolAnswer {
 }
 
 /**
+ * Every registered `mcp__<server>__<tool>` name, read from the registry's own model-facing schema
+ * projection (`schemas()`, the same accessor `AGENT_VISIBLE_TOOLS` counts).
+ *
+ * @param ctx - The booted ctx whose root tool registry is read.
+ * @returns The sorted `mcp__*` names, or `[]` when the host offers no enumeration seam — an empty
+ *   answer is reported as a missing read by the entrypoint, never mistaken for "no MCP row".
+ */
+function mcpRegisteredNames(ctx: ProbeContext): readonly string[] {
+  /** The root-plane registry; without an enumeration seam there is nothing to list. */
+  const tools = ctx.tools
+  if (tools === undefined || tools === null || typeof tools.schemas !== "function") return []
+  // The projection, or `[]` when the accessor throws: an enumeration failure must not take the boot
+  // down, because the entrypoint grades this line and a crash would hide the real state.
+  let schemas: readonly unknown[] = []
+  try { schemas = tools.schemas() ?? [] } catch { return [] }
+  return schemas
+    .map((entry) => asRecord(entry)?.name)
+    .filter((name): name is string => typeof name === "string" && name.startsWith("mcp__"))
+    .sort()
+}
+
+/**
+ * The `<server>:<count>` pairs of a registered-name list, so the entrypoint can compare the SERVER
+ * SET against the rows that ship enabled instead of trusting one name per server.
+ *
+ * @param names - The registered `mcp__<server>__<tool>` names.
+ * @returns Comma-joined `server:count` pairs, sorted by server name.
+ */
+function mcpServerCounts(names: readonly string[]): string {
+  /** How many tools each server publishes, keyed by its `serverName` segment. */
+  const counts = new Map<string, number>()
+  for (const name of names) {
+    // `mcp__<server>__<tool>`: the middle segment is the row's `serverName` (a tool part may itself
+    // contain underscores, which is why the split takes the segment by INDEX rather than the tail).
+    const server = name.split("__")[1] ?? "?"
+    counts.set(server, (counts.get(server) ?? 0) + 1)
+  }
+  return [...counts.entries()].sort().map(([server, count]) => server + ":" + count).join(",")
+}
+
+/**
+ * The outcome of one `mcp__ast_grep__search` call: either a readable match count or the classified
+ * reason it produced none.
+ *
+ * THE ORDER IS THE POINT, and it was arrived at by being wrong twice. A match LIST is positive evidence
+ * that the server answered, so it wins over every marker — including `isError`, which the first version
+ * of this arm believed was a pure failure flag and which the second version therefore let overrule a
+ * perfectly readable result (measured: the source lane regressed from `ok:1` to `unreadable-result` the
+ * moment that assumption entered the code). Only when no match list is readable does a classified
+ * `error` object decide, because an MCP-level failure travels INSIDE a successful tool call as
+ * `{"ok":false,"error":{"code":"BINARY_NOT_FOUND"}}` — the shape the very first version printed as
+ * `unreadable-result`, hiding the one word a reader needs. `MCP_LIVE_SHAPE` is printed beside this
+ * verdict so the next reader MEASURES the envelope instead of inferring it.
+ *
+ * @param call - The `executeTool` result to read.
+ * @returns `{count}` on a readable match list, otherwise `{failure}` naming the classified cause.
+ */
+function searchOutcome(call: unknown): { readonly count: number } | { readonly failure: string } {
+  /** The call result viewed as a bag, so the adapter's own markers can be read. */
+  const bag = asRecord(call)
+  /** The MCP payload, from the projected `value` or from the raw content part it travels in. */
+  const payload = mcpPayload(bag)
+  /** The payload's match list, when it carried one. */
+  const matches = payload?.matches
+  // A readable match list is the strongest evidence available and is accepted FIRST: whatever a marker
+  // says, a server that returned matches ran.
+  if (Array.isArray(matches)) return { count: matches.length }
+  /** The classified error object a failed ast-grep call publishes. */
+  const error = asRecord(payload?.error)
+  if (error !== undefined) return { failure: failureText(error) }
+  if (bag?.ok !== true || bag?.isError === true) return { failure: failureText(bag?.error) }
+  return { failure: "unreadable-result" }
+}
+
+/**
+ * A bounded, key-level description of a tool-call result: which members carried what, so a reader can
+ * see the ENVELOPE the verdict came from without a raw dump of the payload.
+ *
+ * @param call - The `executeTool` result to describe.
+ * @returns A one-line shape report, e.g. `keys=ok,isError,value,raw valueKeys=matches,truncated`.
+ */
+function callShape(call: unknown): string {
+  /** The call result viewed as a bag; a non-object is named by its type. */
+  const bag = asRecord(call)
+  if (bag === undefined) return "type=" + typeof call
+  /** The members actually present on the result itself. */
+  const keys = Object.keys(bag).sort().join(",")
+  /** The projected value viewed as a bag, when the adapter projected one. */
+  const value = asRecord(bag.value)
+  /** The shape of the projected value, or its own type when it is not an object. */
+  const valueShape = value === undefined ? "type=" + typeof bag.value : "keys=" + Object.keys(value).sort().join(",") + " matches=" + (Array.isArray(value.matches) ? value.matches.length : "none")
+  return "keys=" + keys + " ok=" + String(bag.ok) + " isError=" + String(bag.isError) + " value(" + valueShape + ")"
+}
+
+/**
+ * The MCP payload of a tool-call result: the adapter's projected `value`, the MCP envelope nested in
+ * that value, or the JSON document inside a content part of either the raw result or the value.
+ *
+ * @param bag - The call result viewed as a bag.
+ * @returns The payload as a bag, or `undefined` when no shape carried one.
+ */
+function mcpPayload(bag: Record<string, unknown> | undefined): Record<string, unknown> | undefined {
+  /** The projected value, when the adapter parsed the payload for us. */
+  const projected = asRecord(bag?.value)
+  // A payload that already carries `matches` is the searched document itself.
+  if (projected !== undefined && Array.isArray(projected.matches)) return projected
+  // THREE MORE PLACES THE DOCUMENT CAN SIT, tried rather than assumed: the MCP envelope nested in the
+  // projected `value`, the harness's own raw result, and the raw result's nested `value`. The search
+  // document is a JSON TEXT part in every one of them.
+  /** Every content array this result could carry, outermost first. */
+  const contentArrays: readonly unknown[] = [projected?.content, asRecord(bag?.raw)?.content, asRecord(asRecord(bag?.raw)?.value)?.content]
+  for (const content of contentArrays) {
+    if (!Array.isArray(content)) continue
+    for (const part of content) {
+      /** The text of one content part, the only member an MCP payload travels in. */
+      const text = asRecord(part)?.text
+      if (typeof text !== "string") continue
+      try {
+        /** The parsed payload, still untyped until the bag check below. */
+        const parsed = asRecord(JSON.parse(text))
+        if (parsed !== undefined) return parsed
+      } catch {
+        // A non-JSON content part is not the payload this arm reads; the next part is tried.
+      }
+    }
+  }
+  // Last resort: the projected value itself, even without a `matches` list — a classified `error`
+  // object arrives exactly this way, and that is the branch a missing engine needs to be readable in.
+  return projected
+}
+
+/**
+ * The most informative text a failure value carries: a classified `{code, message}` object is named
+ * by BOTH, because `String({code:"BINARY_NOT_FOUND"})` is `[object Object]` and loses the only part a
+ * reader can act on.
+ *
+ * @param failure - The `error` member of a tool-call result.
+ * @returns The classification and message, or `String(failure)` for a primitive.
+ */
+function failureText(failure: unknown): string {
+  /** The failure viewed as a bag; a primitive is reported by `String()` below. */
+  const bag = asRecord(failure)
+  if (bag === undefined) return String(failure)
+  /** The classified error code the ast-grep server publishes (`BINARY_NOT_FOUND`, …). */
+  const code = typeof bag.code === "string" ? bag.code : ""
+  /** The server's own message, which names what the code means for this machine. */
+  const message = typeof bag.message === "string" ? bag.message : ""
+  if (code !== "" || message !== "") return [code, message].filter((part) => part !== "").join(": ")
+  return String(failure)
+}
+
+/**
  * Poll for a tool set instead of racing the loader: rows apply concurrently, so a sibling plugin
  * may register its tools after this one runs. A single immediate read would make the
  * instrumentation flaky — and therefore worthless as evidence.
@@ -226,6 +412,14 @@ export async function apply(ctx: ProbeContext): Promise<void> {
     const mcp = await settle(has, MCP_TOOLS, 60000)
     console.log("[docker-probe] MCP_TOOLS=" + mcp.present + "/" + mcp.total)
     console.log("[docker-probe] MCP_TOOLS_MISSING=" + mcp.missing.join(","))
+
+    // THE NAMING SURFACE (§7 item 2). Every registered `mcp__*` name is listed so the entrypoint can
+    // grade the SHAPE (`mcp__<server>__<tool>`) and the SERVER SET (exactly the enabled rows) — a
+    // check no presence probe can make, because it asks what the registry holds rather than whether
+    // three names it already knew about answered.
+    const registered = mcpRegisteredNames(ctx)
+    console.log("[docker-probe] MCP_REGISTERED=" + registered.join(","))
+    console.log("[docker-probe] MCP_SERVER_COUNTS=" + mcpServerCounts(registered))
 
     // The ROOT-plane read of the team tools, reported as an OBSERVATION: the official plugin
     // registers them per agent, so 0/9 here is the documented shape, not a failure.
@@ -307,12 +501,14 @@ export async function apply(ctx: ProbeContext): Promise<void> {
       let caps: Record<string, unknown> = {}
       try { caps = typeof capabilityAccess.capabilities === "function" ? asRecord(capabilityAccess.capabilities()) ?? {} : {} } catch { caps = {} }
       console.log("[docker-probe] ADAPTER_CAPS=" + Object.entries(caps).filter(([, v]) => v === true).map(([k]) => k).join(","))
+      // The internal tool call, UNGUARDED on purpose: a service without `executeTool` must throw
+      // into the catch below exactly as the previous expression did. The cast is unavoidable —
+      // the adapter service has no static type inside this image — and the call keeps the service
+      // as its receiver, so `this`-dependent adapters are unaffected. It is declared OUTSIDE the try
+      // so the live-MCP arm below drives the same receiver through one binding.
+      /** The adapter viewed as the one member both tool arms call. */
+      const callable = service as { executeTool: (input: { name: string; arguments: Record<string, unknown>; timeoutMs?: number }) => Promise<unknown> }
       try {
-        // The internal tool call, UNGUARDED on purpose: a service without `executeTool` must throw
-        // into the catch below exactly as the previous expression did. The cast is unavoidable —
-        // the adapter service has no static type inside this image — and the call keeps the service
-        // as its receiver, so `this`-dependent adapters are unaffected.
-        const callable = service as { executeTool: (input: { name: string; arguments: Record<string, unknown> }) => Promise<unknown> }
         // The adapter's own `{ok, error}` envelope: only those two members are read below.
         const call = await callable.executeTool({ name: "mpd_config_get", arguments: {} })
         // The envelope viewed as a bag, or `undefined` when the call produced no object at all.
@@ -321,9 +517,42 @@ export async function apply(ctx: ProbeContext): Promise<void> {
       } catch (error) {
         console.log("[docker-probe] ADAPTER_TOOL_CALL=fail:" + messageOf(error))
       }
+      // THE LIVE MCP CALL (§7 item 5). The naming arm proves a NAME is registered; THIS arm proves
+      // the SERVER runs. ast-grep resolves its `sg` engine PER CALL, so a registered name with no
+      // engine answers `BINARY_NOT_FOUND` — the class the developer host cannot settle because it
+      // has no `sg` binary. Two calls are made: the graded one over the copy of the bundle's own
+      // ast-grep sources, and a NEGATIVE control whose pattern no source file can contain, so a
+      // server that echoed the same answer twice is reported as broken rather than as green.
+      /** The tree the graded search runs over, set by the entrypoint before the boot. */
+      const searchDir = process.env[LIVE_SEARCH_DIR_ENV] ?? process.cwd()
+      /** Run one search and print its classified outcome under `label`. */
+      const runSearch = async (pattern: string, label: string): Promise<void> => {
+        try {
+          /** The adapter's answer for this pattern, read for both its verdict and its match count. */
+          const answer = await callable.executeTool({
+            name: "mcp__ast_grep__search",
+            arguments: { pattern, language: LIVE_SEARCH_LANGUAGE, paths: [searchDir] },
+            timeoutMs: 120000,
+          })
+          // The one reader that decides between a match count and a classified failure.
+          const outcome = searchOutcome(answer)
+          if ("count" in outcome) console.log("[docker-probe] " + label + "=ok:" + outcome.count)
+          else console.log("[docker-probe] " + label + "=fail:" + outcome.failure)
+          // THE ENVELOPE, printed beside the verdict: this arm has been wrong twice about the shape a
+          // result takes, and a reader who can see the members cannot repeat that.
+          console.log("[docker-probe] " + label + "_SHAPE=" + callShape(answer))
+        } catch (error) {
+          console.log("[docker-probe] " + label + "=fail:" + messageOf(error))
+        }
+      }
+      await runSearch(LIVE_SEARCH_PATTERN, "MCP_LIVE_SEARCH")
+      await runSearch(LIVE_SEARCH_CONTROL, "MCP_LIVE_SEARCH_CONTROL")
     } else {
       console.log("[docker-probe] ADAPTER_CAPS=")
       console.log("[docker-probe] ADAPTER_TOOL_CALL=fail:adapter-service-absent")
+      console.log("[docker-probe] MCP_LIVE_SEARCH=fail:adapter-service-absent")
+      console.log("[docker-probe] MCP_LIVE_SEARCH_CONTROL=fail:adapter-service-absent")
+      console.log("[docker-probe] MCP_LIVE_SEARCH_SHAPE=adapter-service-absent")
     }
 
     // THE OFFICIAL AGENT-TEAMS SERVICE. `mpd-agent-team` mounts

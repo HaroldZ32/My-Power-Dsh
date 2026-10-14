@@ -4,10 +4,10 @@
 
 Plan C / C4 — comment/docstring detection on the DSH tool seam (opt-in binary).
 
-Vendored parser: the upstream project `packages/comment-checker-core` (base
-8c57e46; SUL-1.0, inherited from upstream; `isRecord` inlined). Check binary:
-`@code-yeongyu/comment-checker` 0.8.0 (MIT,
-github.com/code-yeongyu/go-claude-code-comment-checker) — native tree-sitter
+No vendored parser: this plugin VENDORS NOTHING and carries no SUL-1.0 source — detection
+runs in the on-demand npm binary `@code-yeongyu/comment-checker` 0.8.0 (MIT,
+github.com/code-yeongyu/go-claude-code-comment-checker), which the plugin resolves and spawns
+per check. Native tree-sitter
 binary: used UNMODIFIED and declared as an optionalDependency of the `@mpd-dsh/mpd`
 bundle (policy: third-party packages are dependencies, never vendored copies).
 Resolution order: dependency (package-relative via createRequire) ->

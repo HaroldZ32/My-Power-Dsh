@@ -2,7 +2,8 @@
 //
 // Everything here drives REAL child processes: the shared fixture server below,
 // and — for the framing/naming acceptance — the repo's own stdio MCP server
-// (packages/mpd-mcp-lsp/dist/cli.js). No assertion is satisfied by a mock of the
+// (packages/mpd-mcp-lsp/dist/launch.js, the thin launcher that starts the declared
+// cclsp dependency). No assertion is satisfied by a mock of the
 // wire: the fixture IS the server, and the harness registry is the fake.
 //
 // Home isolation: the user plane is always redirected to a temp HOME, so a run
@@ -27,8 +28,8 @@ import { projectSchema, schemaViolations } from "../src/schema-sanitize.ts"
 
 /** Repository root, derived from this test file's own URL (`packages/mpd-ext-plugin/test/`). */
 const REPO = fileURLToPath(new URL("../../../", import.meta.url))
-/** The repo's OWN built stdio MCP server; the framing acceptance runs against this real artifact instead of the fixture. */
-const LSP_SERVER = join(REPO, "packages", "mpd-mcp-lsp", "dist", "cli.js")
+/** The repo's OWN built stdio MCP server; the framing acceptance runs against this real artifact instead of the fixture. It is the thin LAUNCHER (de-omo wave B2), which resolves the declared `cclsp` dependency from the installed profile and takes no subcommand. */
+const LSP_SERVER = join(REPO, "packages", "mpd-mcp-lsp", "dist", "launch.js")
 
 // ── sandbox ─────────────────────────────────────────────────────────────────
 
@@ -351,7 +352,7 @@ async function withRealLspServer<T>(work: (client: McpStdioClient) => Promise<T>
   const client = new McpStdioClient({
     serverName: "lsp",
     command: "node",
-    args: [LSP_SERVER, "mcp"],
+    args: [LSP_SERVER],
     env: { HOME: process.env.HOME as string },
   })
   try {
@@ -365,7 +366,7 @@ async function withRealLspServer<T>(work: (client: McpStdioClient) => Promise<T>
 // ── naming: the harness publicToolName algorithm, replicated exactly ────────
 
 test("publicToolName replicates the harness algorithm: verbatim, sanitized+hashed, truncated+hashed", () => {
-  expect(publicToolName("lsp", "status")).toBe("mcp__lsp__status")
+  expect(publicToolName("lsp", "get_diagnostics")).toBe("mcp__lsp__get_diagnostics")
   // "!" sanitizes to "_", then the lossy marker appends "_<hash>" — exactly two
   // underscores at that seam, which is the harness's own behaviour.
   expect(publicToolName("srv", "weird name!")).toMatch(/^mcp__srv__weird_name__[0-9a-f]{12}$/)
@@ -426,11 +427,11 @@ test("the client completes initialize -> initialized -> tools/list against the r
   const tools = await withRealLspServer(async (client) => client.listTools(15000))
   // The advertised raw names, sorted so the assertion never depends on the server's listing order.
   const names = tools.map((tool) => tool.name).sort()
-  expect(names).toContain("status")
-  expect(names).toContain("diagnostics")
-  expect(names.length).toBeGreaterThanOrEqual(8)
-  // Newline-delimited JSON framing is what made this succeed: the repo server
-  // answers in line mode (packages/mpd-mcp-lsp/dist/cli.js:85-105) and the
+  expect(names).toContain("restart_server")
+  expect(names).toContain("get_diagnostics")
+  expect(names.length).toBeGreaterThanOrEqual(12)
+  // Newline-delimited JSON framing is what made this succeed: cclsp answers in line
+  // mode, and the
   // handshake echoes the requested protocol version.
   for (const tool of tools) expect(schemaViolations(tool.inputSchema ?? {}).length === 0).toBe(true)
 })

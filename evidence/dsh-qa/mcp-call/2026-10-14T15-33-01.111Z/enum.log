@@ -1,0 +1,55 @@
+dsh: warning: 3 entries did not activate
+authorization (@deepseek-ai/dsh-authorization): pending (waiting for service: credentials)
+deepseek-account (@deepseek-ai/dsh-deepseek-account-platform): pending (waiting for services: credentials, authorization)
+credentials (@deepseek-ai/dsh-credentials-local): Error: credentials-local: invalid document at /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-oneclick/tmp/FIX-mc-checkout/mpd-dsh-qa-O6UMpt/.credentials.yaml: DUPLICATE_KEY at line 22, column 3
+    at parseCredentialsDocument (file:///home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-credentials-local/lib/index.js:141:40)
+    at LocalCredentialProvider.loadInitial (file:///home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-credentials-local/lib/index.js:657:20)
+    at async [cordis.init] (file:///home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-credentials-local/lib/index.js:446:3)
+    at file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-oneclick/tmp/FIX-mc-checkout/mpd-dsh-qa-O6UMpt/profiles/headless/#credentials
+    at file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-oneclick/tmp/FIX-mc-checkout/mpd-dsh-qa-O6UMpt/profiles/headless/#include
+dsh: reasoning:
+The user asks: list all available tool names in current session that start with `mcp__` prefix, one per line, do not call any tools.
+
+From the function list:
+- mcp__ast_grep__rewrite
+- mcp__ast_grep__scan
+- mcp__ast_grep__search
+- mcp__codegraph__codegraph_explore
+- mcp__context7__query-docs
+- mcp__context7__resolve-library-id
+- mcp__grep_app__searchGitHub
+- mcp__lsp__find_definition
+- mcp__lsp__find_implementation
+- mcp__lsp__find_references
+- mcp__lsp__find_workspace_symbols
+- mcp__lsp__get_diagnostics
+- mcp__lsp__get_hover
+- mcp__lsp__get_incoming_calls
+- mcp__lsp__get_outgoing_calls
+- mcp__lsp__prepare_call_hierarchy
+- mcp__lsp__rename_symbol
+- mcp__lsp__rename_symbol_strict
+- mcp__lsp__restart_server
+
+List them alphabetically? Just one per line.
+
+Count: 19.
+mcp__ast_grep__rewrite
+mcp__ast_grep__scan
+mcp__ast_grep__search
+mcp__codegraph__codegraph_explore
+mcp__context7__query-docs
+mcp__context7__resolve-library-id
+mcp__grep_app__searchGitHub
+mcp__lsp__find_definition
+mcp__lsp__find_implementation
+mcp__lsp__find_references
+mcp__lsp__find_workspace_symbols
+mcp__lsp__get_diagnostics
+mcp__lsp__get_hover
+mcp__lsp__get_incoming_calls
+mcp__lsp__get_outgoing_calls
+mcp__lsp__prepare_call_hierarchy
+mcp__lsp__rename_symbol
+mcp__lsp__rename_symbol_strict
+mcp__lsp__restart_server

@@ -1,0 +1,11 @@
+{
+  "arm": "D5 red arm — a question item with MISSING options must be denied",
+  "command": ".toolchain/node_modules/.bin/bun test ./packages/mpd-roles-plugin/test/ask-user-guard.test.ts",
+  "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "exitCode": 1,
+  "observed": "5 fail / 20 pass — the four new missing-options arms plus the install-seam arm, all on the shipped validator",
+  "note": "Captured BEFORE the guard edit; the file at this moment already carries the new arms and the OLD validator.",
+  "logPath": "_red/output.log",
+  "logBytes": 7222,
+  "logSha256": "fb89ede9108fc400a42298d0def193a2a15f953a47749786fa440210f03ee4d5"
+}

@@ -1,0 +1,77 @@
+{
+  "wave": "fix/team-models-routing + win32-sidebar-lane",
+  "date": "2026-10-12",
+  "host": {
+    "platform": "win32",
+    "repoRoot": "C:\\MyDoc\\DshProj\\My-Power-Dsh",
+    "branch": "dev",
+    "node": "v24.21.0",
+    "buildToolchain": "bun 1.4.0 (.toolchain/node_modules/.bin/bun)",
+    "installedDshTui": "0.14.0 (global npm: %APPDATA%\\npm\\node_modules\\@deepseek-harness-tui\\dsh-tui; profile copy: ~/.dsh/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui)"
+  },
+  "defects": [
+    {
+      "id": "D2",
+      "reported": "修复MPD角色模型配置保存不生效问题（不论web、desktop还是tui）",
+      "rootCause": "The saved `teamModels.slot{1..4}` knobs were persisted (profile `cordis.patch.yml` row config of `mpd-config`) and served resolved by `mpdConfig.get(\"teamModels\")`, but the ONLY reader was `mpd-roster-provider-plugin` (official `spawn_teammate`). Every one-shot path used the STATIC `roles.data.ts` chains, while `mpd_role_spawn`'s own description and `roster-section.ts` both promised the slots apply there.",
+      "measuredEvidence": [
+        "~/.dsh/profiles/dsh-tui/cordis.patch.yml lines 14-32: mpd-config row config carries teamModels.slot1..4 = { provider: company-api, model: deepseek-flash, reasoningEffort: max } — the SAVE persisted.",
+        "~/.dsh/profiles/desktop/cordis.patch.yml lines 61-76: mpd-config row config carries the same block with provider `companyapi`.",
+        "A real one-shot spawn on this machine died instantly: child session 8281f350-8cc0-4e32-a07f-6a354f46b7bf recorded `subagent/descriptor {provider:\"spawn\",label:\"Deep Worker\"}` then `assistant/attempt finish reason=error failure.message=\"llm-deepseek: no API key for provider route \\\"deepseek-official\\\"; ... code: MISSING_CREDENTIAL\"` — i.e. the static shipped route, NOT the saved `company-api` slot route.",
+        "The tool call returned `role: Deep Worker, status: complete, summary: \"\"`: the failure was swallowed as an empty report."
+      ],
+      "fix": [
+        "packages/mpd-config-plugin/src/index.ts: new exported `teamModelSlotOfMember(member)` and `teamModelRouteOfMember(member, config)` (membership from the ONE `TEAM_MODEL_SLOT_GROUPS` declaration, resolved over `withTeamModelsDefaults`), plus the new `mpdConfig` service member `teamModelRouteOf(member)`. Reached as a SERVICE, so NO new cross-package import was added (the frozen coupling inventory stays untouched).",
+        "packages/mpd-roles-plugin/src/index.ts: `roleSurface` overlays the base role's chain with the configured slot route (per call, never cached), which is the ONE read every consumer shares — `mpd_roles_list`, `mpd_role_spawn`, the workmate library (via `mpdRoles`) and `mpd_modelchain_resolve` (which prefers `spec.chain`). `mpd_role_spawn` also passes the slot's `reasoningEffort` through `agentOptions`.",
+        "packages/mpd-dsh-adapter-plugin/src/index.ts: `DshSpawnSpec.agentOptions` widened to carry `reasoningEffort` — the same file's own doc already described the harness-shaped options as provider/model/reasoningEffort and `spawnAgent` forwards the object verbatim, so the type was incomplete.",
+        "packages/mpd-config-plugin/README.md + README.zh-CN.md: the service list gains `teamModelRouteOf(member)` (bilingual pair updated together)."
+      ],
+      "tests": {
+        "new": "packages/mpd-roles-plugin/test/team-models-routing.test.ts — 5 arms + a NEGATIVE CONTROL (no `mpdConfig` mounted => the static chain and no effort stand, so a hard-coded route would redden).",
+        "observed": "5 pass / 0 fail / 20 expect() calls"
+      }
+    },
+    {
+      "id": "D1",
+      "reported": "修复在windows端dsh-TUI调用时侧边栏完全不显示问题",
+      "rootCause": "The host-backed sidebar lane could not RUN on win32 at all, so no Windows regression in this area was observable. Four suites resolved the installed host root POSIX-only: `Bun.which(\"dsh-tui\")` -> `readlink -f` -> `dirname(dirname(real))`, which assumes `<root>/bin/dsh-tui.js` behind a symlink. On win32 the launcher is the shim `%APPDATA%\\npm\\dsh-tui.ps1`, so the root resolved to `%APPDATA%\\Roaming`.",
+      "measuredEvidence": [
+        "BEFORE: `bun test packages/mpd-tui-plugin/test/panel-visibility.test.ts` -> `error: Cannot find module 'C:\\Users\\zhao.yinan\\AppData\\Roaming\\lib\\types\\tuiDisplayPrefs.js' from ...panel-visibility.test.ts'`; 0 pass / 1 fail / exit 1.",
+        "AFTER: the same command -> 66 pass / 0 fail across panel-visibility + panel-enable-migration, including `the adapter DOES append a registered id to the CSV`, `the host REWRITES the CSV from configuration, which is how a registered panel disappears`, `a sidebar splits only at CHAT_MIN + PANEL_MIN + DIVIDER`, and R13d `the host's OWN append does NOT stand the keeper down, and the mirror's rewrite IS repaired`.",
+        "The panel registration itself was already proven on this machine by the adapter's own record `.mpd/logs/mpd-tui-panels.json` (version 3, provenance readBack `tuiPanels.list`, host 0.14.0, ids `act1:team`, `act1:workmate`).",
+        "The production prefs machinery was probed directly on win32 and WORKS: `probeHostPrefs(hostRootCandidates())` bound `~/.dsh/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui`, read `DEFAULT_SIDE_PANEL_IDS = todo,jobs,agents,info,trajectory,workspace,btw,companion`, the live CSV equal to that default, `subscribeSidePanelPanels` present, and `applySidePanelPanels(<csv> + \",act1:team\")` returned the CSV with the id appended."
+      ],
+      "fix": [
+        "packages/mpd-tui-plugin/test/lib/host-root.ts: NEW shared `installedHostRoot(launcher)` — tries the POSIX symlink resolution first, then walks UP from the launcher's own directory looking for `node_modules/@deepseek-harness-tui/dsh-tui`, and VALIDATES every candidate by the host files it must carry (`lib/types/tuiDisplayPrefs.js`); unresolvable launchers THROW naming every path tried, so the lane can never pass vacuously.",
+        "packages/mpd-tui-plugin/test/panel-visibility.test.ts, panel-legend-mount.test.ts, session-scope-and-push.test.ts: use it (the local POSIX-only `hostRoot()` bodies removed).",
+        "packages/mpd-tui-adapter-plugin/test/panel-enable-migration.test.ts: same portable resolution, self-contained (no cross-package test import)."
+      ],
+      "residualBound": "The reported SYMPTOM (no sidebar on screen) is gated by TWO host-side switches this bundle does not own and cannot read without a further counted host-internals contact: the side panel starts CLOSED (`sidePanel.open: false` schema default; the user must open it with the host's own key) and it only splits at >= 93 columns (`CHAT_MIN_COLUMNS 64 + PANEL_MIN_COLUMNS 28 + DIVIDER 1`), which an 80-column Windows console never reaches. The bundle's own automation (register + enable-list keeper/feed) was verified working on this host. The user-runnable remedy for a profile whose settings layer carries no panel ids remains `node scripts/mpd-tui-panels.ts` (dry-run by default, `--apply` to write)."
+    }
+  ],
+  "gates": [
+    { "command": "node scripts/verify-comment-coverage.ts", "exit": 0, "observed": "VERDICT: PASS — every declaration in the family carries a precise comment and a full signature." },
+    { "command": "bun run typecheck (tsgo --noEmit)", "exit": 0, "observed": "no diagnostics" },
+    { "command": "node scripts/verify-dist-fresh.ts", "exit": 0, "observed": "ok: 31/31 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED (packages/mpd-mcp-codegraph/dist/serve.js, documented vendored)" },
+    { "command": "node scripts/verify-rows-parity.ts", "exit": 0, "observed": "ok: 35 row ids match the 2-file bundle patch layer" },
+    { "command": "node scripts/verify-docs-parity.ts", "exit": 0, "observed": "pairs=47 failed=0 violations=0 links=436 dead=0 — PASS" },
+    { "command": "bun test packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts test/no-direct-tui-access.test.ts", "exit": 0, "observed": "2 pass / 0 fail (no new coupling edge)" },
+    { "command": "bun test packages/mpd-config-plugin packages/mpd-roles-plugin packages/mpd-modelchain-plugin packages/mpd-roster-provider-plugin", "exit": 1, "observed": "260 pass / 5 fail — all 5 are PRE-EXISTING workspace-state arms (see preExistingFailures)" },
+    { "command": "bun test packages/mpd-tui-plugin packages/mpd-bundle-plugin", "exit": 1, "observed": "635 pass / 1 fail — PRE-EXISTING (see preExistingFailures)" },
+    { "command": "bun test packages/mpd-roles-plugin/test/team-models-routing.test.ts", "exit": 0, "observed": "5 pass / 0 fail" }
+  ],
+  "preExistingFailures": {
+    "method": "`git stash push -u`, re-run the same suites on the PRISTINE tree, then `git stash pop`. The identical arms failed identically before and after this wave.",
+    "arms": [
+      "packages/mpd-roles-plugin/test/team-plane.test.ts: 46 pass / 5 fail BOTH with and without the wave (readBoulderGate signal-D x2, session-start signal-D, C7 leading-team x2) — workspace runtime state (.mpd/team/watchdog/heartbeat/session-*.jsonl present, .mpd/boulder.json absent).",
+      "packages/mpd-tui-plugin/test/panel-dag.test.ts: 64 pass / 1 fail BOTH with and without the wave (`the workmate page > the reader tolerates a missing library and never throws`) — the real HOME carries a workmate library."
+    ]
+  },
+  "notRun": [
+    "bun run test:qa (QA self-tests) — the QA scripts were not touched; not run in this wave.",
+    "bun run verify:manifest --pack — no manifest / patch / row / file-layout / version change.",
+    "bun run verify:vendor — no skills/** or asset change.",
+    "node scripts/docker-e2e.ts — the real-machine lane needs a rootless Docker on a Linux host; the Windows lane above is this wave's machine evidence.",
+    "No PR was opened: the fix branch is local and the push/PR step is the human's."
+  ]
+}

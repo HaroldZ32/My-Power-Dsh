@@ -1,0 +1,113 @@
+{
+  "wave": "ask-user-question-guard",
+  "deliverables": [
+    "D3 — occurrence diagnostics (skills/dsh-qa/scripts/ask-user-question-audit.ts)"
+  ],
+  "branch": "feature/ask-user-question-guard",
+  "toolchain": ".toolchain/node_modules/.bin/bun first on PATH (buildToolchain bun@1.4.0)",
+  "gates": [
+    {
+      "gate": "audit-real-log",
+      "command": "node skills/dsh-qa/scripts/ask-user-question-audit.ts /home/haroldzhao/.dsh/sessions/--home-haroldzhao-MyProj-DshProj-My-Power-Dsh--/7072e2c7-1257-4420-a933-6e414b20eab2/session.v4.jsonl.zstd",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+      "exitCode": 0,
+      "startedAtUtc": "2026-10-11T09:20:06Z",
+      "endedAtUtc": "2026-10-11T09:20:06Z",
+      "logPath": "output.log",
+      "logBytes": 1281,
+      "logSha256": "5ed710a9bbde0efabaf12a1c3750081ac203aba3156292c7768b33d31ad9d56e",
+      "headline": "[ask-user-question-audit] answers: paired 3/3 (tool-result 3, user-message 0, errors 0)"
+    },
+    {
+      "gate": "audit-selftest",
+      "command": "node skills/dsh-qa/scripts/ask-user-question-audit.ts --self-test",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+      "exitCode": 0,
+      "startedAtUtc": "2026-10-11T09:20:06Z",
+      "endedAtUtc": "2026-10-11T09:20:06Z",
+      "logPath": "output.log",
+      "logBytes": 204,
+      "logSha256": "fcfb7c165260f64ac1ceb46a2659973f506867d0851ba743b11729ecac388dc5",
+      "headline": "[ask-user-question-audit self-test] ok: 4 concatenated zstd frame(s), 18 record(s), 11 occurrence(s), every rule of the local restatement, both answer pairings and the CLI exit codes are verified offline"
+    },
+    {
+      "gate": "audit-selftest-mutant",
+      "command": "bash -c \n  set -u\n  REPO=\"$1\"\n  tmp=\"$(mktemp -d)\"\n  trap \"rm -rf \\\"$tmp\\\"\" EXIT\n  cp \"$REPO/skills/dsh-qa/scripts/ask-user-question-audit.ts\" \"$tmp/\"\n  cp -r \"$REPO/skills/dsh-qa/scripts/lib\" \"$tmp/lib\"\n  sed -i \"s|report.occurrences.length === 11|report.occurrences.length === 12|\" \"$tmp/ask-user-question-audit.ts\"\n  node \"$tmp/ask-user-question-audit.ts\" --self-test\n  code=$?\n  echo \"[mutant] the mutated copy exited $code (1 = the assertion really fired, as intended)\"\n  if [ \"$code\" -eq 1 ]; then exit 0; fi\n  echo \"[mutant] FAIL: a mutated assertion did NOT redden the self-test\"\n  exit 1\n bash /home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+      "exitCode": 0,
+      "startedAtUtc": "2026-10-11T09:20:06Z",
+      "endedAtUtc": "2026-10-11T09:20:06Z",
+      "logPath": "output.log",
+      "logBytes": 155,
+      "logSha256": "1e197886f3a0273c73ddb9103969d77ec2faffb137c84424b3a9ce3df7ff96e7",
+      "headline": "[mutant] the mutated copy exited 1 (1 = the assertion really fired, as intended)"
+    },
+    {
+      "gate": "qa-lane-drift",
+      "command": "node scripts/run-qa-lanes.ts --check-drift",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+      "exitCode": 1,
+      "startedAtUtc": "2026-10-11T09:20:15Z",
+      "endedAtUtc": "2026-10-11T09:20:15Z",
+      "logPath": "output.log",
+      "logBytes": 466,
+      "logSha256": "5d1e32311c680735db3d7767fd0733ae848a424c70f8ef4c2810f3adbbaa5011",
+      "headline": "[run-qa-lanes] immutability required=8: team-watchdog-boot, team-watchdog-config, team-watchdog-heartbeat, team-watchdog-notify, tui-settings-bridge, watchdog-redesign, wave2b-lane-d, web-settings-bridge exempt=36"
+    },
+    {
+      "gate": "test-qa",
+      "command": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun run test:qa",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+      "exitCode": 0,
+      "startedAtUtc": "2026-10-11T09:20:07Z",
+      "endedAtUtc": "2026-10-11T09:20:13Z",
+      "logPath": "output.log",
+      "logBytes": 26925,
+      "logSha256": "2da0241b335f04c2f1639fecc1fd48ea6046fcdfdf42cee9a23b76b87dc2949e",
+      "headline": "[test:qa] all self-tests passed"
+    },
+    {
+      "gate": "typecheck",
+      "command": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun run typecheck",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+      "exitCode": 0,
+      "startedAtUtc": "2026-10-11T09:20:06Z",
+      "endedAtUtc": "2026-10-11T09:20:07Z",
+      "logPath": "output.log",
+      "logBytes": 16,
+      "logSha256": "ae47736bb2a9401aa9743893f2f64b9a605e65a99d78cd991a8021e0f7722d87",
+      "headline": "$ tsgo --noEmit"
+    },
+    {
+      "gate": "verify-comments",
+      "command": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun run verify:comments",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+      "exitCode": 0,
+      "startedAtUtc": "2026-10-11T09:20:13Z",
+      "endedAtUtc": "2026-10-11T09:20:15Z",
+      "logPath": "output.log",
+      "logBytes": 307,
+      "logSha256": "0297008b232d8ec2a06a752ede83b27be35865b19ef46a07aeeea9345713894e",
+      "headline": "VERDICT: PASS — every declaration in the family carries a precise comment and a full signature."
+    },
+    {
+      "gate": "verify-docs",
+      "command": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun run verify:docs",
+      "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+      "exitCode": 0,
+      "startedAtUtc": "2026-10-11T09:20:13Z",
+      "endedAtUtc": "2026-10-11T09:20:13Z",
+      "logPath": "output.log",
+      "logBytes": 5512,
+      "logSha256": "bfa0a3807b501d03d0426ae0d122517355b8334974e14b45b6e8194338c29805",
+      "headline": "[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=47 failed=0 violations=0 exempt=24 derived=3 links=430 dead=0 — PASS"
+    }
+  ],
+  "summary": {
+    "total": 8,
+    "passed": 7,
+    "failed": [
+      "qa-lane-drift"
+    ]
+  }
+}

@@ -1,0 +1,44 @@
+############################## GATE SWEEP — 2026-10-08T08:30:51Z ##############################
+### 0. dist rebuilt with the PINNED toolchain from the repo root
+476b539fb9a9e6a213c7473bec390449d7335a0d5afbb54aa96dfcf67bbeb19d  packages/mpd-tui-plugin/dist/index.js
+387845 bytes  mtime=2026-10-08 16:30:51.949798182 +0800
+
+### 1. bun test packages/mpd-tui-plugin
+(pass) AC8b · the page draws its own `⤢`, and the dep the row received reaches it > a row given no opener still draws the row, but its glyph carries no click handler [0.44ms]
+
+ 443 pass
+ 0 fail
+ 12669 expect() calls
+Ran 443 tests across 20 files. [8.34s]
+
+### 2. bun run typecheck
+$ tsgo --noEmit
+typecheck-exit=0
+
+### 3. node scripts/verify-comment-coverage.ts
+
+scanned 367 TypeScript file(s) of 367 in the source set; inspected 32382 declaration(s); skipped 14581 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+
+### 4. node scripts/verify-dist-fresh.ts
+  FRESH   packages/mpd-tui-plugin/dist/index.js  sha 476b539fb9a9… 25ms  <- packages/mpd-tui-plugin/src/index.ts
+[verify-dist-fresh] ok: 30/30 targets fresh (each rebuilt twice, byte-identical) — 7 NOT COVERED files listed — 628ms
+
+### 5. no-direct-tui-access gate
+
+ 3 pass
+ 0 fail
+ 19 expect() calls
+Ran 3 tests across 1 file. [1321.00ms]
+
+### 6. bun test packages/mpd-bundle-plugin (the T-D4 web arm, unmodified package)
+ 166 pass
+ 0 fail
+ 3110 expect() calls
+Ran 166 tests across 8 files. [2.97s]
+
+### 7. bun run verify:docs (the README pair)
+
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=47 failed=0 violations=0 exempt=22 derived=3 links=424 dead=0 — PASS
+############################## END OF SWEEP ##############################

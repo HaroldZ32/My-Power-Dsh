@@ -1,0 +1,4 @@
+$ node scripts/verify-workflows.ts
+[verify-workflows] audited 2 workflow file(s) under /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.github/workflows
+[verify-workflows] PASS - every workflow is loadable YAML with a sane job/step shape
+VERIFY_WORKFLOWS_EXIT=0

@@ -1,0 +1,43 @@
+[
+ {
+  "type": "tool/call",
+  "seq": 19,
+  "time": 1791617938749,
+  "data": {
+   "turn": 1,
+   "step": 1,
+   "callId": "call_00_HLmGGydIu2NFn5gIVWOL2201",
+   "name": "subagent",
+   "arguments": "{\"description\": \"gate-probe\", \"prompt\": \"reply with the single word ok\", \"run_in_background\": false}"
+  }
+ },
+ {
+  "type": "tool/result",
+  "seq": 20,
+  "time": 1791617938755,
+  "data": {
+   "turn": 1,
+   "step": 1,
+   "message": {
+    "role": "tool",
+    "source": {
+     "kind": "tool",
+     "callId": "call_00_HLmGGydIu2NFn5gIVWOL2201"
+    },
+    "toolCallId": "call_00_HLmGGydIu2NFn5gIVWOL2201",
+    "content": [
+     {
+      "type": "text",
+      "text": "Error: delegation gate: `subagent` is refused — the official spawn tools are not the delegation path under the MPD discipline. Delegate instead: `mpd_role_spawn` (one-shot roster specialist), `mpd_workmate_match` + `mpd_workmate_spawn` (durable instance), or Agent Teams for multi-member work (`agent_teams_plan`, persona from `mpd_role_persona`); `send_message` continues an existing continuable child. The gate covers the captain and every member session. `delegation.gate` in mpd.jsonc: \"captain\" limits it to the top-level session, \"allow\" releases it entirely."
+     }
+    ],
+    "isError": true,
+    "id": "8dc12a5a-c912-4c3f-a758-29b70cf9b4cc"
+   }
+  },
+  "sourceEventSeqs": [
+   19
+  ],
+  "surfaceOp": "append"
+ }
+]

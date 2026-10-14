@@ -1,0 +1,34 @@
+# The counts — every number below is a real command run with this directory as cwd, output pasted verbatim
+$ grep -c 'abort=exit-' console.log
+0
+
+$ grep -c 'net=EXIT-trap' console.log
+0
+
+$ grep -c 'the TUI lane aborted' console.log
+0
+
+$ grep -c 'tui.laneExit=false' console.log
+1
+
+$ grep -c 'abort=exit-' result.json
+0
+
+$ grep -c 'net=EXIT-trap' result.json
+0
+
+$ grep -c 'abort=' result.json
+0
+
+$ grep -c '"name":"tui.laneExit"' raw-state/assertions.ndjson
+1
+
+$ grep -c '"ok":false' raw-state/assertions.ndjson
+5
+
+$ sha256sum ../../../../docker/tui-lane.sh
+226cdb1c84b9eff09a3260aa9aec33abe40bacb87358c833dcb5db9557094b00  ../../../../docker/tui-lane.sh
+
+$ find ../../../../vendor/mcp-src -type f | wc -l
+459
+

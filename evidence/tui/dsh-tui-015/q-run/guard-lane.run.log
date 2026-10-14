@@ -1,0 +1,8 @@
+[mpd-qa:(only)] runner start manifest=skills/dsh-qa/cases.json sha256=93eaf2aebd79 lanes=1 evidence=evidence/tui/dsh-tui-015/q-run/guard-lane
+[mpd-qa:(only)] drift unlistedScripts=2 (run --list --check-drift for detail)
+[mpd-qa:(only)] discovery=48 lane script(s) (.ts entries 48, underscore-excluded 0, unlisted 2, outside-suite 19)
+[mpd-qa:(only)] immutability required=9: team-dispatch-guard, team-watchdog-boot, team-watchdog-config, team-watchdog-heartbeat, team-watchdog-notify, tui-settings-bridge, watchdog-redesign, wave2b-lane-d, web-settings-bridge exempt=37
+[mpd-qa:(only)] PASS case=team-dispatch-guard evidence=evidence/dsh-qa/team-dispatch-guard/2026-10-14T09-13-48-695Z log=evidence/tui/dsh-tui-015/q-run/guard-lane/lanes/team-dispatch-guard.log ms=13
+[mpd-qa:(only)] summary selected=1 pass=1 unavailable=0 fail=0
+[mpd-qa:(only)] evidence -> evidence/tui/dsh-tui-015/q-run/guard-lane
+[mpd-qa:(only)] exit 0 (0=all green, 2=some unavailable, 1=some failed, 3=runner error)

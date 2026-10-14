@@ -1,0 +1,8 @@
+OPENED (hello expected, watch refused):
+[+5ms] "retry: 1000\n\n"
+[+5ms] "event: hello\ndata: {\"rev\":0}\n\n"
+
+AFTER THE RE-ARM (a change frame expected):
+[+5ms] "retry: 1000\n\n"
+[+5ms] "event: hello\ndata: {\"rev\":0}\n\n"
+[+75ms] "data: {\"rev\":1}\n\n"

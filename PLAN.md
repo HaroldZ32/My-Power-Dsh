@@ -82,7 +82,7 @@ so the original repo's git status stays completely clean, while the new repo has
     mpd-dsh/
     ├── PLAN.md                  # this file
     ├── README.md
-    ├── LICENSE-NOTICES.md       # SUL-1.0 compliance notice + third-party notices
+    ├── LICENSE-NOTICES.md       # third-party notices; the SUL-1.0 compliance notice it was created with is MIT since de-omo wave E
     ├── VENDOR_LOCK.json         # locks upstream commit sha + file-count/loc verification values
     ├── AGENTS.md                # this repo's gates (aligned with the discipline spirit of upstream's root AGENTS.md)
     ├── package.json             # root scripts mirror upstream: typecheck / test / test:fast / test:qa
@@ -131,7 +131,7 @@ so the original repo's git status stays completely clean, while the new repo has
 **Goal**: new repo usable, baseline locked, norms complete, gate skeleton in place.
 
 **Tasks**
-1. git init + first commit; README / PLAN / LICENSE-NOTICES / VENDOR_LOCK (SUL-1.0 compliance notice).
+1. git init + first commit; README / PLAN / LICENSE-NOTICES / VENDOR_LOCK (the compliance notice it carried then was SUL-1.0; MIT since de-omo wave E).
 2. **Gate docs**: write this repo's AGENTS.md, codifying §5's test/QA gates into rules (aligned with the gate spirit of upstream's root AGENTS.md).
 3. Generate VENDOR_LOCK.json: upstream commit sha + find/wc verification values; write scripts/verify-vendor.ts.
 4. Root scripts mirror upstream: typecheck (tsgo --noEmit per package), test (bun test), test:fast, test:qa; bootstrap.ts reproducibly builds the bundle.
@@ -290,7 +290,7 @@ Supplementary rules:
 | R3 | no-network build of lsp-daemon (npm ci) | High/Medium | decision D2: publish package / defer / reuse remote prebuilt |
 | R4 | upstream version drift (HEAD 8c57e46 ≠ historical snapshot f3642fc) | High/Medium | VENDOR_LOCK lock + verification script, don't chase updates |
 | R5 | DSH rc updates break bundle compatibility | Medium/Medium | pin dependency versions + --dump-config regression |
-| R6 | SUL-1.0 license restriction | Low/Medium | internal use only; keep all notices; no external release |
+| R6 | SUL-1.0 license restriction | **CLOSED** | de-omo wave E: the derived content was purged and replaced across waves A–F, so the repository is now MIT (`LICENSE.md`, `Copyright (c) 2026 HaroldZ32`); every still-true third-party notice is kept in `LICENSE-NOTICES.md` |
 | R7 | original repo polluted / accidental push | Low/High | repo in .mpd/port (already ignored); git status before each stage; no remote configured |
 | R8 | plugin scoping (agent-plane/host-plane/realm isolation) misused causing registration conflicts or missing capabilities | Medium/Medium | use DSH built-in preset's agent.cordis.yml comments as template; dsh-qa asserts registration result |
 | R9 | QA isolation failure pollutes the user's real ~/.dsh | Low/High | QA scripts force DSH_HOME=temp dir and assert in-script (T4) |

@@ -1,0 +1,4 @@
+[2026-10-10T07:39:02.713Z] [mpd-roles] team plane: readOnlyGuard=installed deny=8 verifyGate=installed captainInvestigation=deny delegationGate=allow rosterSection=agent-scoped order=605 sessionGate=mechanical
+[2026-10-10T07:39:02.713Z] [mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+[2026-10-10T07:39:04.480Z] [mpd-roles] roster section registered for agent "session-77045ca9-7f6f-4760-9417-955773ff8d59" agentPreset=none — mpd:roster order=605
+[2026-10-10T07:39:04.481Z] [mpd-roles] session gate listener registered for agent "session-77045ca9-7f6f-4760-9417-955773ff8d59" agentPreset=none

@@ -1,0 +1,2 @@
+{"type":"session","data":{"id":"d5-fixture"}}
+{"type":"tool/call","data":{"callId":"call-d5-missing-options","name":"ask_user_question","arguments":"{\"questions\":[{\"id\":\"q1\",\"question\":\"Describe the format?\"}]}"}}

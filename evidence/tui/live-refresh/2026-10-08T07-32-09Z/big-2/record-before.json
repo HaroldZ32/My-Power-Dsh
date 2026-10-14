@@ -1,0 +1,456 @@
+{
+  "version": 1,
+  "teamId": "team-2026-10-08T07-00-00.000Z",
+  "name": "big-board",
+  "description": "26 tasks across 16 ranks: the fallback ladder probe",
+  "leadSessionId": "sess-live-refresh",
+  "phase": "active",
+  "createdAt": "2026-10-08T07:00:00.000Z",
+  "approvedAt": "2026-10-08T07:00:00.000Z",
+  "members": [
+    {
+      "id": "M1",
+      "name": "lead",
+      "description": "Lead on this wave",
+      "role": "Lead",
+      "route": "deepseek-official/deepseek-v4-pro",
+      "status": "running",
+      "spawnedAt": "2026-10-08T07:00:00.000Z",
+      "executorRef": "teammate-lead"
+    },
+    {
+      "id": "M2",
+      "name": "core-worker",
+      "description": "Senior Engineer on this wave",
+      "role": "Senior Engineer",
+      "route": "deepseek-official/deepseek-flash",
+      "status": "running",
+      "spawnedAt": "2026-10-08T07:00:00.000Z",
+      "executorRef": "teammate-core-worker"
+    },
+    {
+      "id": "M3",
+      "name": "ui-worker",
+      "description": "Senior Engineer on this wave",
+      "role": "Senior Engineer",
+      "route": "deepseek-official/deepseek-flash",
+      "status": "inactive",
+      "spawnedAt": "2026-10-08T07:00:00.000Z",
+      "executorRef": "teammate-ui-worker"
+    },
+    {
+      "id": "M4",
+      "name": "qa-reviewer",
+      "description": "Reviewer on this wave",
+      "role": "Reviewer",
+      "route": "deepseek-official/deepseek-v4-pro",
+      "status": "inactive",
+      "spawnedAt": "2026-10-08T07:00:00.000Z",
+      "executorRef": "teammate-qa-reviewer"
+    },
+    {
+      "id": "M5",
+      "name": "deep-worker",
+      "description": "Deep Worker on this wave",
+      "role": "Deep Worker",
+      "route": "deepseek-official/deepseek-flash",
+      "status": "inactive",
+      "spawnedAt": "2026-10-08T07:00:00.000Z",
+      "executorRef": "teammate-deep-worker"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "B01",
+      "subject": "Chain step 01: freeze the contract",
+      "description": "Acceptance: chain step 01",
+      "kind": "requirement",
+      "status": "completed",
+      "blockedBy": [],
+      "writeScopes": [],
+      "createdAt": "2026-10-08T07:00:00.000Z",
+      "updatedAt": "2026-10-08T07:00:00.000Z",
+      "revision": 1,
+      "owner": "ui-worker"
+    },
+    {
+      "id": "B02",
+      "subject": "Chain step 02: build the layer",
+      "description": "Acceptance: chain step 02",
+      "kind": "requirement",
+      "status": "completed",
+      "blockedBy": [
+        "B01"
+      ],
+      "writeScopes": [],
+      "createdAt": "2026-10-08T07:00:00.000Z",
+      "updatedAt": "2026-10-08T07:00:00.000Z",
+      "revision": 1,
+      "owner": "qa-reviewer"
+    },
+    {
+      "id": "B03",
+      "subject": "Chain step 03: build the layer",
+      "description": "Acceptance: chain step 03",
+      "kind": "work",
+      "status": "completed",
+      "blockedBy": [
+        "B02"
+      ],
+      "writeScopes": [],
+      "createdAt": "2026-10-08T07:00:00.000Z",
+      "updatedAt": "2026-10-08T07:00:00.000Z",
+      "revision": 1,
+      "owner": "deep-worker"
+    },
+    {
+      "id": "B04",
+      "subject": "Chain step 04: build the layer",
+      "description": "Acceptance: chain step 04",
+      "kind": "work",
+      "status": "completed",
+      "blockedBy": [
+        "B03"
+      ],
+      "writeScopes": [],
+      "createdAt": "2026-10-08T07:00:00.000Z",
+      "updatedAt": "2026-10-08T07:00:00.000Z",
+      "revision": 1,
+      "owner": "core-worker"
+    },
+    {
+      "id": "B05",
+      "subject": "Chain step 05: build the layer",
+      "description": "Acceptance: chain step 05",
+      "kind": "work",
+      "status": "completed",
+      "blockedBy": [
+        "B04"
+      ],
+      "writeScopes": [],
+      "createdAt": "2026-10-08T07:00:00.000Z",
+      "updatedAt": "2026-10-08T07:00:00.000Z",
+      "revision": 1,
+      "owner": "ui-worker"
+    },
+    {
+      "id": "B06",
+      "subject": "Chain step 06: integrate the layer",
+      "description": "Acceptance: chain step 06",
+      "kind": "work",
+      "status": "in_progress",
+      "blockedBy": [
+        "B05"
+      ],
+      "writeScopes": [],
+      "createdAt": "2026-10-08T07:00:00.000Z",
+      "updatedAt": "2026-10-08T07:00:00.000Z",
+      "revision": 1,
+      "owner": "qa-reviewer"
+    },
+    {
+      "id": "B07",
+      "subject": "Chain step 07: integrate the layer",
+      "description": "Acceptance: chain step 07",
+      "kind": "review",
+      "status": "failed",
+      "blockedBy": [
+        "B06"
+      ],
+      "writeScopes": [],
+      "createdAt": "2026-10-08T07:00:00.000Z",
+      "updatedAt": "2026-10-08T07:00:00.000Z",
+      "revision": 1,
+      "owner": "deep-worker",
+      "attempt": 1,
+      "round": 1
+    },
+    {
+      "id": "B08",
+      "subject": "Chain step 08: integrate the layer",
+      "description": "Acceptance: chain step 08",
+      "kind": "work",
+      "status": "pending",
+      "blockedBy": [
+        "B07"
+      ],
+      "writeScopes": [],
+      "createdAt": "2026-10-08T07:00:00.000Z",
+      "updatedAt": "2026-10-08T07:00:00.000Z",
+      "revision": 1,
+      "owner": "core-worker"
+    },
+    {
+      "id": "B09",
+      "subject": "Chain step 09: integrate the layer",
+      "description": "Acceptance: chain step 09",
+      "kind": "work",
+      "status": "pending",
+      "blockedBy": [
+        "B08"
+      ],
+      "writeScopes": [],
+      "createdAt": "2026-10-08T07:00:00.000Z",
+      "updatedAt": "2026-10-08T07:00:00.000Z",
+      "revision": 1,
+      "owner": "ui-worker"
+    },
+    {
+      "id": "B10",
+      "subject": "Chain step 10: integrate the layer",
+      "description": "Acceptance: chain step 10",
+      "kind": "work",
+      "status": "pending",
+      "blockedBy": [
+        "B09"
+      ],
+      "writeScopes": [],
+      "createdAt": "2026-10-08T07:00:00.000Z",
+      "updatedAt": "2026-10-08T07:00:00.000Z",
+      "revision": 1,
+      "owner": "qa-reviewer"
+    },
+    {
+      "id": "B11",
+      "subject": "Chain step 11: integrate the layer",
+      "description": "Acceptance: chain step 11",
+      "kind": "work",
+      "status": "pending",
+      "blockedBy": [
+        "B10"
+      ],
+      "writeScopes": [],
+      "createdAt": "2026-10-08T07:00:00.000Z",
+      "updatedAt": "2026-10-08T07:00:00.000Z",
+      "revision": 1,
+      "owner": "deep-worker"
+    },
+    {
+      "id": "B12",
+      "subject": "Chain step 12: integrate the layer",
+      "description": "Acceptance: chain step 12",
+      "kind": "work",
+      "status": "pending",
+      "blockedBy": [
+        "B11"
+      ],
+      "writeScopes": [],
+      "createdAt": "2026-10-08T07:00:00.000Z",
+      "updatedAt": "2026-10-08T07:00:00.000Z",
+      "revision": 1,
+      "owner": "core-worker"
+    },
+    {
+      "id": "B13",
+      "subject": "Chain step 13: integrate the layer",
+      "description": "Acceptance: chain step 13",
+      "kind": "work",
+      "status": "pending",
+      "blockedBy": [
+        "B12"
+      ],
+      "writeScopes": [],
+      "createdAt": "2026-10-08T07:00:00.000Z",
+      "updatedAt": "2026-10-08T07:00:00.000Z",
+      "revision": 1,
+      "owner": "ui-worker"
+    },
+    {
+      "id": "B14",
+      "subject": "Chain step 14: integrate the layer",
+      "description": "Acceptance: chain step 14",
+      "kind": "work",
+      "status": "pending",
+      "blockedBy": [
+        "B13"
+      ],
+      "writeScopes": [],
+      "createdAt": "2026-10-08T07:00:00.000Z",
+      "updatedAt": "2026-10-08T07:00:00.000Z",
+      "revision": 1,
+      "owner": "qa-reviewer"
+    },
+    {
+      "id": "B15",
+      "subject": "Chain step 15: integrate the layer",
+      "description": "Acceptance: chain step 15",
+      "kind": "work",
+      "status": "pending",
+      "blockedBy": [
+        "B14"
+      ],
+      "writeScopes": [],
+      "createdAt": "2026-10-08T07:00:00.000Z",
+      "updatedAt": "2026-10-08T07:00:00.000Z",
+      "revision": 1,
+      "owner": "deep-worker"
+    },
+    {
+      "id": "B16",
+      "subject": "Chain step 16: integrate the layer",
+      "description": "Acceptance: chain step 16",
+      "kind": "work",
+      "status": "pending",
+      "blockedBy": [
+        "B15"
+      ],
+      "writeScopes": [],
+      "createdAt": "2026-10-08T07:00:00.000Z",
+      "updatedAt": "2026-10-08T07:00:00.000Z",
+      "revision": 1,
+      "owner": "core-worker"
+    },
+    {
+      "id": "F01",
+      "subject": "Fan task 01 on B01",
+      "description": "Acceptance: fan task 01",
+      "kind": "work",
+      "status": "completed",
+      "blockedBy": [
+        "B01"
+      ],
+      "writeScopes": [],
+      "createdAt": "2026-10-08T07:00:00.000Z",
+      "updatedAt": "2026-10-08T07:00:00.000Z",
+      "revision": 1,
+      "owner": "ui-worker"
+    },
+    {
+      "id": "F02",
+      "subject": "Fan task 02 on B01",
+      "description": "Acceptance: fan task 02",
+      "kind": "work",
+      "status": "in_progress",
+      "blockedBy": [
+        "B01"
+      ],
+      "writeScopes": [],
+      "createdAt": "2026-10-08T07:00:00.000Z",
+      "updatedAt": "2026-10-08T07:00:00.000Z",
+      "revision": 1,
+      "owner": "qa-reviewer"
+    },
+    {
+      "id": "F03",
+      "subject": "Fan task 03 on B01",
+      "description": "Acceptance: fan task 03",
+      "kind": "work",
+      "status": "pending",
+      "blockedBy": [
+        "B01"
+      ],
+      "writeScopes": [],
+      "createdAt": "2026-10-08T07:00:00.000Z",
+      "updatedAt": "2026-10-08T07:00:00.000Z",
+      "revision": 1,
+      "owner": "deep-worker"
+    },
+    {
+      "id": "F04",
+      "subject": "Fan task 04 on B01",
+      "description": "Acceptance: fan task 04",
+      "kind": "work",
+      "status": "pending",
+      "blockedBy": [
+        "B01"
+      ],
+      "writeScopes": [],
+      "createdAt": "2026-10-08T07:00:00.000Z",
+      "updatedAt": "2026-10-08T07:00:00.000Z",
+      "revision": 1,
+      "owner": "core-worker"
+    },
+    {
+      "id": "F05",
+      "subject": "Fan task 05 on B01",
+      "description": "Acceptance: fan task 05",
+      "kind": "work",
+      "status": "pending",
+      "blockedBy": [
+        "B01"
+      ],
+      "writeScopes": [],
+      "createdAt": "2026-10-08T07:00:00.000Z",
+      "updatedAt": "2026-10-08T07:00:00.000Z",
+      "revision": 1,
+      "owner": "ui-worker"
+    },
+    {
+      "id": "F06",
+      "subject": "Fan task 06 on B02",
+      "description": "Acceptance: fan task 06",
+      "kind": "work",
+      "status": "pending",
+      "blockedBy": [
+        "B02"
+      ],
+      "writeScopes": [],
+      "createdAt": "2026-10-08T07:00:00.000Z",
+      "updatedAt": "2026-10-08T07:00:00.000Z",
+      "revision": 1,
+      "owner": "qa-reviewer"
+    },
+    {
+      "id": "F07",
+      "subject": "Fan task 07 on B02",
+      "description": "Acceptance: fan task 07",
+      "kind": "work",
+      "status": "pending",
+      "blockedBy": [
+        "B02"
+      ],
+      "writeScopes": [],
+      "createdAt": "2026-10-08T07:00:00.000Z",
+      "updatedAt": "2026-10-08T07:00:00.000Z",
+      "revision": 1,
+      "owner": "deep-worker"
+    },
+    {
+      "id": "F08",
+      "subject": "Fan task 08 on B02",
+      "description": "Acceptance: fan task 08",
+      "kind": "work",
+      "status": "pending",
+      "blockedBy": [
+        "B02"
+      ],
+      "writeScopes": [],
+      "createdAt": "2026-10-08T07:00:00.000Z",
+      "updatedAt": "2026-10-08T07:00:00.000Z",
+      "revision": 1,
+      "owner": "core-worker"
+    },
+    {
+      "id": "F09",
+      "subject": "Fan task 09 on B02",
+      "description": "Acceptance: fan task 09",
+      "kind": "work",
+      "status": "pending",
+      "blockedBy": [
+        "B02"
+      ],
+      "writeScopes": [],
+      "createdAt": "2026-10-08T07:00:00.000Z",
+      "updatedAt": "2026-10-08T07:00:00.000Z",
+      "revision": 1,
+      "owner": "ui-worker"
+    },
+    {
+      "id": "F10",
+      "subject": "Fan task 10 on B02",
+      "description": "Acceptance: fan task 10",
+      "kind": "work",
+      "status": "pending",
+      "blockedBy": [
+        "B02"
+      ],
+      "writeScopes": [],
+      "createdAt": "2026-10-08T07:00:00.000Z",
+      "updatedAt": "2026-10-08T07:00:00.000Z",
+      "revision": 1,
+      "owner": "qa-reviewer"
+    }
+  ],
+  "nextMemberNumber": 6,
+  "nextTaskNumber": 40
+}

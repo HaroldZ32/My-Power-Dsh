@@ -244,7 +244,6 @@ describe("the mpd-verify row", () => {
     const law = h.services.get(VERIFY_SERVICE)
     /** The guard's install, against the same stub registry. */
     const installed = installVerifyGuard(h.stub as never, {
-      presets: ["mpd"],
       law: () => law as never,
       workspaceRootOf: () => workspace,
       configValue: () => undefined,
@@ -261,7 +260,8 @@ describe("the mpd-verify row", () => {
     // THE OTHER DIRECTION, on the SAME guard: a documentation write is never gated.
     expect(guard?.({ name: "write", arguments: { file_path: "docs/index.md" }, agent })).toBeUndefined()
     // A CHILD session is never the captain.
-    expect(guard?.({ name: "write", arguments: { file_path: "packages/a/src/index.ts" }, agent: { session: { id: "member", header: { cwd: workspace, agentPreset: "mpd", parentSession: "captain-session" } } } })).toBeUndefined()
+    // A child is a RECORDED delegation fact — `origin: "subagent"` or depth >= 1 — so a seeded fork with only a parent link stays the captain.
+    expect(guard?.({ name: "write", arguments: { file_path: "packages/a/src/index.ts" }, agent: { session: { id: "member", header: { cwd: workspace, agentPreset: "mpd", parentSession: "captain-session", origin: "subagent", delegationDepth: 1 } } } })).toBeUndefined()
     // ARM A LOOP through the tool the row registered, then the SAME write is allowed.
     /** The `mpd_verify_open` tool. */
     const open = h.tools.find((tool) => tool.name === "mpd_verify_open")
@@ -280,19 +280,33 @@ describe("the mpd-verify row", () => {
     const h = harness(workspace)
     apply(h.ctx as never, { mode: "hard" })
     installVerifyGuard(h.stub as never, {
-      presets: ["mpd"], law: () => h.services.get(VERIFY_SERVICE) as never, workspaceRootOf: () => workspace,
+      law: () => h.services.get(VERIFY_SERVICE) as never, workspaceRootOf: () => workspace,
       configValue: () => undefined, warn: () => { /* the arms assert decisions, not warnings */ },
     })
     /** The installed guard. */
     const guard = h.guards.at(-1)
     // A MEMBER is a child session (`parentSession` set), so it is not the captain.
-    const member = { session: { id: "member-session", header: { cwd: workspace, agentPreset: "mpd", parentSession: "captain-session" } } }
+    // A child is a RECORDED delegation fact — `origin: "subagent"` or depth >= 1 — so a seeded fork with only a parent link stays the captain.
+    const member = { session: { id: "member-session", header: { cwd: workspace, agentPreset: "mpd", parentSession: "captain-session", origin: "subagent", delegationDepth: 1 } } }
     expect(String(guard?.({ name: "bash", arguments: { command: "git commit -m x" }, agent: member }) ?? "")).toContain("one-git-writer rule")
     // READ-ONLY GIT STAYS OPEN — the other direction on the same tool.
     expect(guard?.({ name: "bash", arguments: { command: "git status --short" }, agent: member })).toBeUndefined()
     // THE CAPTAIN MAY COMMIT: §5 makes the captain the ONE git writer, so the rule must not touch it.
     const captain = { session: { id: "captain-session", header: { cwd: workspace, agentPreset: "mpd" } } }
     expect(guard?.({ name: "bash", arguments: { command: "git commit -m x" }, agent: captain })).toBeUndefined()
+    // THE MEASURED DEPLOYMENT (T-92): the user's own top-level session records `agentPreset: "cordis"`
+    // and depth 0. The ONE-GIT-WRITER rule is NOT preset-scoped, so that session may still commit — and
+    // the CAPTAIN'S WRITE RULE is scoped to the `mpd` preset, so it is NOT gated either: a user working
+    // in another preset must not be refused its own code writes by a contract that preset never asked
+    // for. (Before the preset scope landed, the write WAS refused here; that is the defect this pins.)
+    const cordisCaptain = { session: { id: "user-session", header: { cwd: workspace, agentPreset: "cordis", delegationDepth: 0 } } }
+    expect(guard?.({ name: "bash", arguments: { command: "git commit -m x" }, agent: cordisCaptain })).toBeUndefined()
+    expect(guard?.({ name: "write", arguments: { file_path: "packages/a/src/index.ts" }, agent: cordisCaptain })).toBeUndefined()
+    // AND THE RULE STILL BITES AN `mpd` TOP-LEVEL SESSION: the scope narrowed, it did not disappear.
+    expect(String(guard?.({ name: "write", arguments: { file_path: "packages/a/src/index.ts" }, agent: captain }) ?? "")).toContain("verification law")
+    // AND THE RULE STILL BITES A CHILD under that same preset: the classification is position, not name.
+    const cordisChild = { session: { id: "child-session", header: { cwd: workspace, agentPreset: "cordis", delegationDepth: 1 } } }
+    expect(String(guard?.({ name: "bash", arguments: { command: "git commit -m x" }, agent: cordisChild }) ?? "")).toContain("one-git-writer rule")
     rmSync(workspace, { recursive: true, force: true })
   })
 
@@ -320,7 +334,7 @@ describe("the mpd-verify row", () => {
     /** The law's runtime. */
     const law = h.services.get(VERIFY_SERVICE)
     installVerifyGuard(h.stub as never, {
-      presets: ["mpd"], law: () => law as never, workspaceRootOf: () => workspace,
+      law: () => law as never, workspaceRootOf: () => workspace,
       configValue: () => undefined, warn: () => { /* not asserted here */ },
     })
     /** The installed guard. */
@@ -480,7 +494,7 @@ describe("the mpd-verify row", () => {
     // THE REAL GUARD, installed exactly as the roles row installs it: the refused attempt below must be a
     // refusal the SHIPPED envelope produced, not one this arm wrote down.
     installVerifyGuard(h.stub as never, {
-      presets: ["mpd"], law: () => h.services.get(VERIFY_SERVICE) as never, workspaceRootOf: () => workspace,
+      law: () => h.services.get(VERIFY_SERVICE) as never, workspaceRootOf: () => workspace,
       configValue: () => undefined, warn: () => { /* the arms assert decisions, not warnings */ },
     })
     /** The installed guard. */

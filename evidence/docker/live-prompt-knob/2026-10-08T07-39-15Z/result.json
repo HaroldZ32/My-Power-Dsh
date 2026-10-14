@@ -1,0 +1,87 @@
+{
+  "lane": "E1 — the Docker acceptance lane runs a CALLER-SUPPLIED live prompt (MPD_E2E_LIVE_PROMPT)",
+  "loopId": "loop-20261008T073704-c53c82",
+  "contract": ".mpd/plans/lane-e1-live-prompt-knob.md",
+  "gitHead": "3e144c15",
+  "measuredAt": "2026-10-08T07:42:13Z",
+  "writer": "Junior Engineer (lane E1)",
+  "filesChanged": [
+    {
+      "path": "docker/docker-compose.yml",
+      "sha256": "a4d8538884849420a0947e23d07fd0adbb59bcbee335c447a997bc543ca3d1ce",
+      "what": "MPD_E2E_LIVE_PROMPT: ${MPD_E2E_LIVE_PROMPT:-} in BOTH services' environment block, with the comment naming the measured reason (compose forwards only what this file interpolates)"
+    },
+    {
+      "path": "scripts/docker-e2e.ts",
+      "sha256": "3d4806cebbd3d3bd6abd4918ff01b409d57c080aa812683c5626efce07df29c5",
+      "what": "pure livePromptOverride(live, prompt) helper; -e MPD_E2E_LIVE_PROMPT added beside the live -e pair by NAME; three self-test arms (compose interpolation x2 services, the pure override decision, entrypoint reads the knob)"
+    },
+    {
+      "path": "docker/entrypoint.sh",
+      "sha256": "131f4a1573cba6328a165f64a275d95adaea60116719eca4f15886e55ff1d390",
+      "what": "live_prompt_select(fallback, override) helper; step 15 keeps the default literal as LIVE_PROMPT_DEFAULT and substitutes only a non-empty MPD_E2E_LIVE_PROMPT; [live-prompt] log line + livePrompt fact (source/bytes/firstLine); the same note in the boot.llmTurn raw and in the 15-headless-live step row"
+    },
+    {
+      "path": "docker/README.md",
+      "sha256": "c6d6f06ad1412b6bf56c14247da2fee5b698c0229fc67043e1be243a76ef6f8e",
+      "what": "new Environment subsection documenting the knob, the exact live invocation (MPD_E2E_LIVE=1 + forwarded DEEPSEEK_API_KEY), the by-name forwarding and the evidence line"
+    },
+    {
+      "path": "docker/README.zh-CN.md",
+      "sha256": "3570cab205705cfe14505f5abc2fa36db9b8f67c884a2674259056820501e993",
+      "what": "the same subsection in 简体中文 (doc pair moved in one change)"
+    }
+  ],
+  "results": [
+    {
+      "name": "E1-a",
+      "ok": true,
+      "reason": "docker compose config (compose v5.6.0, docker 29.8.2) shows the knob in BOTH services, empty when unset and the marker verbatim when set",
+      "raw": "UNSET -> mpd-client: `MPD_E2E_LIVE_PROMPT: \"\"` ; mpd-oneclick: `MPD_E2E_LIVE_PROMPT: \"\"` (compose-without.txt, exit 0). SET MPD_E2E_LIVE_PROMPT='E1-MARKER: write a playable snake game to /out/snake.html' -> mpd-client: `MPD_E2E_LIVE_PROMPT: 'E1-MARKER: write a playable snake game to /out/snake.html'` ; mpd-oneclick: the same (compose-with.txt, exit 0)"
+    },
+    {
+      "name": "E1-b",
+      "ok": true,
+      "reason": "node scripts/docker-e2e.ts --self-test exit 0 with 94 arms; the new compose arm asserts the interpolation FORM ${MPD_E2E_LIVE_PROMPT:-} once per service, and both new arms are falsifiable",
+      "raw": "[self-test] ok   both services interpolate the optional live prompt knob / [self-test] ok   the live prompt is forwarded only for a live run with a non-empty value / [self-test] ok   entrypoint reads the optional live prompt knob / [self-test] all arms passed (offline: no docker, no network). Negative control (selftest-arm-control.log): shipped compose passes=true; `:-` removed -> passes=false; named on ONE service -> passes=false"
+    },
+    {
+      "name": "E1-c",
+      "ok": true,
+      "reason": "the entrypoint's OWN selection expression and note block were EXTRACTED by line range and executed: unset -> the default, empty -> the default, marker -> verbatim; the default is also proven byte-identical to HEAD's prompt",
+      "raw": "case 1 UNSET: selected bytes=424 sha256=b9828b0fd730e077dd0f4585e2ce30718295036326ef49082da254a168f4c007 (== the default). case 2 EMPTY: identical to case 1. case 3 MARKER 'E1-MARKER: write a playable snake game to /out/snake.html': selected bytes=57 sha256=9d0ba11b0a6c58bae93895cac979455eed02c044231c0a49658dacaef0fbb9dc (== the marker, != the default = negative control). Note block, case marker: promptSource=caller (MPD_E2E_LIVE_PROMPT) bytes=57 firstLine=\"E1-MARKER: write a playable snake game to /out/snake.html\"; case unset: promptSource=default bytes=424 firstLine=\"Do these steps in order: (1) call mpd_config_get once with no arguments; …\". Byte identity vs HEAD (default-prompt-identity.log): eval(HEAD)=424 bytes sha256=b9828b0f…, eval(working tree LIVE_PROMPT_DEFAULT)=424 bytes sha256=b9828b0f… -> byte-identical"
+    },
+    {
+      "name": "E1-d",
+      "ok": null,
+      "reason": "NOT RUN: this environment holds no forwarded DEEPSEEK_API_KEY (measured `DEEPSEEK_API_KEY: absent`), and scripts/docker-e2e.ts refuses `--live` without one (it exits 3 BEFORE the build), so the container's step-15 log cannot be produced here. The knob is proven by E1-a..E1-c plus E1-e alone, and this arm stays null rather than being claimed.",
+      "raw": "DEEPSEEK_API_KEY: absent / MPD_E2E_LIVE: unset / docker daemon present and rootless, but the live arm is gated on the credential by contract, not by the daemon"
+    },
+    {
+      "name": "E1-e",
+      "ok": true,
+      "reason": "bun run typecheck (tsgo --noEmit) exit 0; node scripts/verify-comment-coverage.ts PASS over 362 files / 31794 declarations; bun run verify:docs PASS; bash -n on the edited entrypoint and on the probe script",
+      "raw": "TYPECHECK-EXIT=0 ($ tsgo --noEmit). VERDICT: PASS — every declaration in the family carries a precise comment and a full signature. COMMENTS-EXIT=0. [verify-docs-parity] pairs=47 failed=0 violations=0 … PASS. SYNTAX-OK for docker/entrypoint.sh"
+    }
+  ],
+  "artifacts": {
+    "compose-without": "evidence/docker/live-prompt-knob/2026-10-08T07-39-15Z/compose-without.txt",
+    "compose-with": "evidence/docker/live-prompt-knob/2026-10-08T07-39-15Z/compose-with.txt",
+    "selectionProbeLog": "evidence/docker/live-prompt-knob/2026-10-08T07-39-15Z/selection-probe.log",
+    "selectionProbeScript": "evidence/docker/live-prompt-knob/2026-10-08T07-39-15Z/selection-probe.sh",
+    "selfTestLog": "evidence/docker/live-prompt-knob/2026-10-08T07-39-15Z/self-test.log",
+    "selfTestArmControl": "evidence/docker/live-prompt-knob/2026-10-08T07-39-15Z/selftest-arm-control.log",
+    "defaultPromptIdentity": "evidence/docker/live-prompt-knob/2026-10-08T07-39-15Z/default-prompt-identity.log",
+    "typecheck": "evidence/docker/live-prompt-knob/2026-10-08T07-39-15Z/typecheck.log",
+    "comments": "evidence/docker/live-prompt-knob/2026-10-08T07-39-15Z/verify-comments.log",
+    "docs": "evidence/docker/live-prompt-knob/2026-10-08T07-39-15Z/verify-docs.log",
+    "bashSyntax": "evidence/docker/live-prompt-knob/2026-10-08T07-39-15Z/bash-syntax.log",
+    "hashes": "evidence/docker/live-prompt-knob/2026-10-08T07-39-15Z/hashes.txt"
+  },
+  "bounds": [
+    "E1-d (a real container's step-15 log) could not be run: no forwarded DEEPSEEK_API_KEY is present here and the driver refuses --live without one, so the prompt's arrival INSIDE a live container is unmeasured. The three layers are proven separately: compose interpolation (E1-a), the driver's forward-by-name decision (self-test arm + the line itself), the entrypoint's substitution and its evidence line (E1-c, executed from the shipped text).",
+    "The compose proofs use `docker compose config` (the effective rendered config), not a container environment dump — they prove what compose renders, which is the layer E1-a names.",
+    "shellcheck is not installed in this environment, so the shell edit was checked with `bash -n` only (syntax, not lint); the selection and note blocks were executed from the file's own bytes by the probe.",
+    "No mutating git command was run by this lane; the working tree under evidence/ and the five files above are the deliverable for the captain to commit."
+  ]
+}

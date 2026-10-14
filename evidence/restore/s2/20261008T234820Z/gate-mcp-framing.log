@@ -1,0 +1,30 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-ext-plugin/test/mcp.test.ts:
+(pass) publicToolName replicates the harness algorithm: verbatim, sanitized+hashed, truncated+hashed [0.55ms]
+(pass) childEnv inherits only the SDK safe list and never a credential-shaped parent variable [0.25ms]
+(pass) the client completes initialize -> initialized -> tools/list against the repo's own stdio MCP server [92.47ms]
+(pass) the client reports a non-JSON stdout line as a protocol error instead of dying [45.29ms]
+(pass) apply connects declared servers, publishes their tools before activation completes, and mpd_ext_show reports the state [27.95ms]
+(pass) apply keeps the extension's pending line truthful while a server is disconnected [83.05ms]
+(pass) startup failure is contained: a dead server is unavailable with its stderr tail while its sibling still connects [112.92ms]
+(pass) a hanging server is time-boxed and the others still publish in parallel [459.87ms]
+(pass) a later tool-list change is swapped in, and a mid-list conflict rolls back to ZERO tools [45.51ms]
+(pass) a server-initiated tools/list_changed notification triggers a re-sync [65.82ms]
+(pass) a foreign inputSchema is projected for parameters while the wire schema stays untouched [47.17ms]
+(pass) an unsupported outputSchema drops the SCHEMA and keeps the tool, while an unprojectable inputSchema skips its tool [44.58ms]
+(pass) a non-object-rooted inputSchema is normalized onto an object root instead of being passed through [44.90ms]
+(pass) a public-name collision with an existing tool skips that tool and is recorded [43.99ms]
+(pass) tools/call maps content, structured content and isError onto the harness result contract [44.48ms]
+(pass) a tools/call slower than the server's budget is rejected naming that budget [295.64ms]
+(pass) the child env carries no credential-shaped variable inherited from the parent, and the child is reaped on dispose [44.35ms]
+(pass) a disabled extension never spawns a child and reports state disabled [0.70ms]
+(pass) extensions.mcp.enabled=false connects nothing even for an enabled extension [0.25ms]
+(pass) a server's relative args and cwd resolve against the EXTENSION ROOT, not the dsh process cwd [42.92ms]
+(pass) the shipped example's stdio MCP server starts, lists its tool and answers a real call [86.47ms]
+(pass) the shipped example extension is discoverable, disabled, and contributes all four kinds [0.74ms]
+
+ 22 pass
+ 0 fail
+ 134 expect() calls
+Ran 22 tests across 1 file. [1.79s]

@@ -4,8 +4,13 @@
 
 This page describes the **DSH-TUI edition** of the my-power-dsh bundle: what it ships, how to
 install it, what the per-package compatibility measurement found, and what it explicitly does
-**not** claim. It targets `@deepseek-harness-tui/dsh-tui` **0.13.0** and its built-in admission
-profile. 0.13.0 is the release that **adds the sidebar panel seam** — host row `dsh-tui-panels`,
+**not** claim. It targets `@deepseek-harness-tui/dsh-tui` **0.14.0** and its built-in admission
+profile — the release that adds the **Claude backend peer** (`@anthropic-ai/claude-agent-sdk`
+0.3.287) and the `ws` runtime dependency, an **eighth** builtin sidebar panel (`btw`) and a
+**carousel** `PanelBar` that draws the active tab's title plus `○`/`●` dots and no longer paints a
+plugin's declared icon. §11.6 is this wave's amendment; it names the carriers the move touched.
+**The pin before it was 0.13.0, and that statement stays readable as history**: 0.13.0 is the release
+that **adds the sidebar panel seam** — host row `dsh-tui-panels`,
 export `@deepseek-harness-tui/dsh-tui/panels` — and that renames the host's own `dsh-ecosystem-spec/`
 directory to `tui-profile/`; this edition adopted the new seam as its **fifteenth** `tui*` seam
 (§3, §3.3). **The pin before it was 0.12.0, and that statement stays readable as history**: 0.12.0 is
@@ -14,10 +19,12 @@ lists run through `0.1.7-rc.2`, `0.2.0-rc.1` and `0.2.0-rc.2`, where 0.11.2 stop
 (0.10.1 and 0.10.2 stop at `0.1.5-rc.1`), so it was the first pin that could boot against the harness
 this bundle targets; 0.13.0's own `peerDependencies` still end at `0.2.0-rc.2` (read from the
 installed package). **The move touched every carrier in one wave**: the global package and the
-`dsh-tui` profile, the distribution descriptor's `host-tui` ref (`dsh-distribution.json` now carries
-`pkg:npm/@deepseek-harness-tui/dsh-tui@0.13.0`), and the QA host spec (`docker/tui-lane.sh`,
-`docker/entrypoint.sh`, `skills/dsh-qa/scripts/tui-mount.ts`'s `TUI_HOST_SPEC` and
-`skills/dsh-qa/scripts/install-dependencies.ts`'s remedy all default to `0.13.0`). The compatibility
+`dsh-tui` profile, the distribution descriptor's `host-tui` ref (`dsh-distribution.json` carried
+`pkg:npm/@deepseek-harness-tui/dsh-tui@0.13.0` while 0.13.0 was the pin), and the QA host spec
+(`docker/tui-lane.sh`, `docker/entrypoint.sh`, `skills/dsh-qa/scripts/tui-mount.ts`'s `TUI_HOST_SPEC`
+and `skills/dsh-qa/scripts/install-dependencies.ts`'s remedy all defaulted to `0.13.0` then). **Both
+those carriers moved again in the 0.14.0 wave: that paragraph — not this one — states the values in
+force today (§11.6).** The compatibility
 work below was measured on 0.10.1 and is re-verified in the Docker end-to-end test
 (`docker/tui-lane.sh`), which is the only place the TUI profile can be exercised end to end.
 
@@ -32,7 +39,7 @@ work below was measured on 0.10.1 and is re-verified in the Docker end-to-end te
 
 | Artifact | Path | What it is |
 |---|---|---|
-| TUI surface package | `packages/mpd-tui-plugin/` | The TUI-native surfaces: the **sidebar team panel** (`src/panel.ts` — the primary entry point for the merged view on 0.13.0, §3.3), status line, `/settings` section, full-screen board scene, `/mpd` command tree, keyboard shortcuts, mediated dialogs, a transcript-renderer **registration the host does not project** (NOT-CLAIMED #10), and the decision-event seam built ready-but-not-activated. |
+| TUI surface package | `packages/mpd-tui-plugin/` | The TUI-native surfaces: the **two sidebar pages** (`src/panel.ts` — title `MPD`, the primary entry point and, since the 0.14.0 wave, the rich DAG page itself, §3.3/§3.4 — and `src/panel-workmate.ts`), status line, `/settings` section, full-screen scenes, `/mpd` command tree, keyboard shortcuts, mediated dialogs, a transcript-renderer **registration the host does not project** (NOT-CLAIMED #10), and the decision-event seam built ready-but-not-activated. |
 | Admission manifest | `dsh-plugin.json` (repo root) | ONE bundle-level Community v0.15 manifest for the whole bundle — a deliberate deviation (see §7). |
 | Environment descriptor | `dsh-distribution.json` (repo root) | A `DistributionDescriptor` for the dsh-distribution meta-protocol (Draft). |
 | TUI composition | `cordis.patch.yml` | Adds the `mpd-tui` row and the `dsh-tui` roster default so a TUI session starts on the **mpd** preset. |
@@ -73,10 +80,10 @@ The bundle's former web-only faces have TUI **equivalents**, not parity:
 
 | Web surface | TUI equivalent | Backed at |
 |---|---|---|
-| Agent Teams panel (conversation header) | the **`tuiPanels` sidebar panel** — the primary entry point on 0.13.0 (§3.3) — with the `tuiScenes` full-screen board as its FALLBACK, plus the `tuiStatus` keyed status line | registration + a host-ACCEPTED open measured on 0.13.0 — `evidence/tui/lanes/2026-10-06T10-27-53.571Z/` and `…/2026-10-06T10-28-57.807Z/`, where the id discovered from the host's own read-back is `act1:team`; the full-screen scene rendered in the 0.10.1-era live lane `evidence/tui/live/20260915T063140Z/result.json` (t8; 6 of 7 surfaces) |
+| Agent Teams panel (conversation header) | the **`tuiPanels` sidebar panel** — the primary entry point (§3.3) — with the `tuiScenes` full-screen surfaces as its FALLBACK (the rich `mpd-tui-team` scene for the page's own `⤢`, the merged subagents scene for the routed open), plus the `tuiStatus` keyed status line | registration + a host-ACCEPTED open measured on 0.13.0 — `evidence/tui/lanes/2026-10-06T10-27-53.571Z/` and `…/2026-10-06T10-28-57.807Z/`, where the id discovered from the host's own read-back is `act1:team`; the full-screen scene rendered in the 0.10.1-era live lane `evidence/tui/live/20260915T063140Z/result.json` (t8; 6 of 7 surfaces) |
 | Workmate library tab | `tuiCommandTrees` (`/mpd …`) + `tuiDialogs` | same lane evidence |
 | — | `tuiStatus` status line; the `tuiRenderers` transcript row is **not projected by the host** | status line rendered; renderer row **does not render** — see NOT-CLAIMED #10 |
-| — | `tuiSettingsSections` (`/settings` section for the mpd.jsonc knobs) | rendered — same lane evidence; the section states the **bridge** to `<workspace>/.mpd/mpd.jsonc`, its restart caveat and the never-lost clause (§6.2), and the lane asserts that disclosure text (`allPatterns`) |
+| — | `tuiSettingsSections` (`/settings` section for the mpd.jsonc knobs) | rendered — same lane evidence; the section states the **bridge** to `<workspace>/.mpd/mpd.jsonc`, the live-refresh truth for the model routes with a captured knob still waiting for a boot, and the never-lost clause (§6.2), and the lane asserts that disclosure text (`allPatterns`) |
 | — | `tuiShortcuts` | rendered — same lane evidence |
 | Team workflow (roster with member phases, shared task board) | `mpd-tui-team` scene — `/mpd team` | the scene is registered by the TUI command tree (`packages/mpd-tui-plugin/src/command-trees.ts`); the surface contract and the evidence level of every row are in the parity ledger `docs/tui-parity.md` (§3.2 below for the openers) |
 | — | `mpd-tui-plan` scene — `/mpd plan` | a TUI scene; the staged-plan APPROVAL semantics it was built around belonged to the retired vendored plugin and no longer exist (§3.2) |
@@ -97,10 +104,19 @@ ONE deferred `ctx.inject([id], …)` per seam, `ctx.get(id, false)` as the probe
 binds reported `absent` instead of failing the boot. The "thirteen" paragraph above is the record of
 the first wave's scope and stays as written.
 
+**0.14.0 changes none of the fifteen.** The plugin-facing seam modules under the host's
+`lib/types/dsh-adapter/` — `panels`, `scenes`, `status`, `renderers`, `settings-sections`,
+`shortcuts`, `dialogs`, `command-trees`, `plugin-host`, `toast`, `themes`, `plugin-storage`,
+`message-observer`, `effect-ledger`, `workspaces`, each `.js` + `.d.ts` — are **byte-identical**
+between 0.13.0 and 0.14.0, there is no sixteenth seam, and the harness `peerDependencies` range is
+unchanged (it still ends at `0.2.0-rc.2`), so `MPD_E2E_DSH_VERSION` does not move: **no adapter code
+change was needed for the seam surface**. §11.6 records what 0.14.0 does change.
+
 ### 3.1 The Web GUI settings UI (Settings → MPD)
 
-The same 25 knobs — the original 13 plus the twelve `teamModels` slot leaves, the latter rendered as
-dependent model + effort pickers — are editable in the Web GUI: **Settings → MPD**, its own top-level section of
+The same 59 knobs — the original 13, the twelve `teamModels` slot leaves and the 33 `agentRoutes`
+leaves (eleven members × three), the route leaves rendered as dependent model + effort pickers, plus
+the TUI surface's own switch — are editable in the Web GUI: **Settings → MPD**, its own top-level section of
 the settings dialog — it no longer lives inside the Plugins tab. The section registers the way the
 host's own sections do (`ctx.slots.inject("settings.section", …)` →
 `ctx.slots.register({ name: "settings.section", id: "mpd", order: 20, label: () => t("nav"), locale, inject }, Section)`,
@@ -127,7 +143,7 @@ authenticated settings API (`web-settings-bridge.ts` W1–W13).
 live page) and a **click-driven save**. No browser binary exists in this environment; the lane records
 `cardClaim.W3.witnessed === false` with the reason, and this page repeats that instead of implying
 otherwise. To see it yourself: start `dsh web`, open the GUI, go to **Settings → MPD**, expect the
-`mpd` section with the 25 knobs (the twelve team-model slots offer catalog-derived selections), change
+`mpd` section with the 59 knobs (the team-model slots and the per-member routes offer catalog-derived selections), change
 one and Save — with exactly one live
 session the workspace's `<workspace>/.mpd/mpd.jsonc` changes with comments intact; otherwise the bridge
 refuses loudly (`no-live-session` / `ambiguous-multi-root`) and states that the value is not lost.
@@ -199,23 +215,34 @@ own live readout, wait-for-change and teammate messaging — fails with the adap
 could not resolve. A TUI session cannot spawn a teammate today through the official plane — that is the
 limit, not a configuration mistake.
 
-### 3.3 The sidebar panel seam — the primary entry point on 0.13.0, and its honest bound
+### 3.3 The sidebar panel seam — the primary entry point, and its honest bound
 
-`packages/mpd-tui-plugin/` registers **THREE** right-sidebar pages through the `ctx.tuiPanels` seam —
-`src/panel.ts` (slug `team`, title `MPD`, `order` 10) with the **merged** body (the host's own curated
-subagent snapshot rows first, then the MPD dependency DAG for the current workspace's team),
-`src/panel-dag.ts` (slug `dag`, title `MPD DAG`, one-cell icon `◈`, `order` 11) and
-`src/panel-workmate.ts` (slug `workmate`, title `MPD workmate`, icon `⬢`, `order` 12), with the last two
-described in §3.4. All three are `apiVersion` 1, all three declare **no `compact`** — 0.13.0 validates
-and stores a descriptor's `compact` slot but does not mount its render slot, so declaring one would claim
-a surface that cannot render — and all three ask for **`minColumns` 28**, the host's own floor. The final
-panel id is **discovered from the host's own `list()` read-back**, never composed: `<pluginId>:<slug>`,
-measured `act1:team`, `act1:dag` and `act1:workmate` on the real host, where that plain loader row the
-host prefixes carries no Component identity.
+`packages/mpd-tui-plugin/` registers **TWO** right-sidebar pages through the `ctx.tuiPanels` seam —
+`src/panel.ts` (slug `team`, title `MPD`, one-cell icon `❖`, `order` 10) with the **rich merged** body
+(the host's own curated subagent snapshot rows ABOVE the MPD dependency DAG for the calling session's
+own team (§3.4), inside the DAG page's own frame, header + progress, legend, key-hint footer and
+click-to-pin detail body) and `src/panel-workmate.ts` (slug `workmate`, title `MPD workmate`, icon `⬢`, `order` 12,
+described in §3.4). **The third page this section used to describe — `src/panel-dag.ts`'s standalone
+`dag` page — was RETIRED by the 0.14.0 wave and merged INTO the MPD panel** (the user's clause
+「DAG页作为MPD面板」, recorded in §11.6): ONE descriptor, ONE slug and ONE ordered position collapsed out
+of the two, and the DAG page's rendering is what the surviving slot renders. **Nothing a user can reach
+became a dead end**: `/mpd dag` re-aims onto the MPD panel — the DAG page IS that panel — while
+`/mpd panel`, `/mpd subagents` and `alt+a` already routed through the same slot (the legacy `Ctrl+A`
+host-input contact is INERT on a host that offers this seam, and where it does arm — an old host — it
+opens the merged subagents scene exactly as before).
+Both surviving pages are `apiVersion` 1, both declare **no `compact`** — the host validates and stores a
+descriptor's `compact` slot but does not mount its render slot, so declaring one would claim a surface
+that cannot render — and both ask for **`minColumns` 28**, the host's own floor. The final panel id is
+**discovered from the host's own `list()` read-back**, never composed: `<pluginId>:<slug>`, measured on
+the real host before the merge as `act1:team`, `act1:dag` and `act1:workmate`, where that plain loader row
+the host prefixes carries no Component identity. The recorded set is what ACTUALLY registered, so it now
+carries the two surviving ids and no third one.
 
 **The reachability rule — the two host switches, which the bundle cannot set.** A registered page is not
 a visible page. On the installed host the enable list lives in the host's OWN row config
-(`dsh-tui.sidePanel.panels`, default `todo,jobs,agents`) and a well-formed id no panel claims yet stays
+(`dsh-tui.sidePanel.panels` — `todo,jobs,agents` on 0.13.0, and
+`todo,jobs,agents,info,trajectory,workspace,btw,companion` on the 0.14.0 target, §11.6) and a
+well-formed id no panel claims yet stays
 in that list for a plugin that registers it later, while the sidebar itself starts CLOSED
 (`sidePanel.open` default `false`). Both are host-owned, and a bundle patch row may never id-target a
 host-owned row, so the remedy is user steps, documented and printed by the command itself:
@@ -233,42 +260,125 @@ with the three builtin tabs. (Note what the reset actually does: it restores **w
 which is `todo,jobs,agents` only while the user layer is unset — a profile whose list names the page ids
 settles WITH those ids and without the builtins.) Two independent routes now hold the list:
 
-* **bounded, in the plugin** — `packages/mpd-tui-adapter-plugin`'s settle keeper re-asserts only the ids
-  the host's own `list()` read-back produced, and only when the list names **NONE** of them: it appends
-  the whole set after the user's list and never removes or reorders a token. A list naming **ANY** of
-  ours is a configuration that has taken a position on the bundle — enabled in `/settings`, written by
-  the script below, or a deliberate partial removal — and the keeper **stands down**, so it never puts
-  back a page the user meant to drop. It walks six ticks over ~25 s and stops for good. That is the
+* **bounded, in the plugin, and since the 0.14.0 wave FOLLOWING the host's own change feed** —
+  `packages/mpd-tui-adapter-plugin`'s settle keeper re-asserts only the ids the host's own `list()`
+  read-back produced, and only when the list names **NONE** of them: it appends the whole set after the
+  user's list, never reorders a token, and **prunes exactly ONE class of token** — this bundle's OWN panel
+  ids from an EARLIER boot. **Since repair round R1 (CodeRabbit PR #35) that class is recognised by
+  PROVENANCE, never by a slug**: a token is prunable only when its FULL id is in the bounded history of
+  registrations the panel-id record proves this bundle made in earlier boots, and it is not one of the ids
+  live now (the keeper's `list()` read-back). The host renumbers the `<pluginId>` half on every boot, so
+  those dead ids accumulate in the list while the host's `SidePanelColumn` keeps building a tab and a dot
+  for each one with no panel behind it (the reported mismatch, D1); the prune is what removes them.
+  **Nothing else is ever removed**: a host builtin and any id this bundle has never heard of come back
+  byte-for-byte. The two limits the old slug rule had are both gone with it: a **foreign** panel that
+  merely SHARES one of our slugs (the host can produce `act9:team` beside our `act7:team`) is not in our
+  recorded history and is therefore never pruned, and a token whose page was **retired or renamed** IS in
+  that history, so its orphaned tab is cleaned up like any other dead id. One bound remains and is named
+  rather than hidden: a **foreign DEAD** id lingering in the list is not ours to clean, so it stays. The
+  write is then **READ BACK**
+  through the host's own reader and compared with the list the keeper intended; a store that did not carry
+  the write settles as `refused` and names both lists, instead of reporting a success the sidebar does not
+  have. A list naming **ANY** of ours is a configuration
+  that has taken a position on the bundle — enabled in `/settings`, written by the script below, or a
+  deliberate partial removal — and the keeper **stands down**, so it never puts back a page the user
+  meant to drop. **Standing down does not protect a dead token (R1.3)**: when such a list also carries an
+  id from the recorded history that is not live, the keeper **prunes that id first and appends nothing**,
+  then stands down — the user's SELECTION is what is respected, and a token no panel can answer is not
+  part of any selection. **The 0.14.0 wave replaced the bounded tick ladder with the host's OWN
+  subscription**
+  (`subscribeSidePanelPanels`, the live-setting store's change feed): the keeper now repairs a wipe the
+  moment the host re-applies its config instead of losing the race after ~25 s, and the ladder survives
+  only as the degrade path for a host that exposes no feed. The subscription is released with the
+  injected scope (a hot reload leaves no listener), never throws on a host without the module, and the
+  stand-down rule is unchanged: **our own write contains our ids, which is what ends it**. That is the
   adapter's SECOND host-internals contact, alongside the `Ctrl+A` `useStdin` reach (AGENTS.md §6 counts
   this class, so both are named in that file), and the ids it discovered are recorded to
-  `<workspace>/.mpd/logs/mpd-tui-panels.json`. Residual, named rather than hidden: removing **ALL** of
+  `<workspace>/.mpd/logs/mpd-tui-panels.json` — schema **3**, which adds the bounded `history` field
+  (the last 32 past registration ids, newest last) that the provenance-owned prune reads; a record that
+  cannot be proved contributes no history at all, so a polluted file cannot widen what may be deleted.
+  Residual, named rather than hidden: removing **ALL** of
   ours on purpose leaves a list indistinguishable from a fresh profile's, so the set is re-added once per
   boot; separating those cases needs the configured value itself, i.e. a third host-internals contact,
   which is a §6 count decision this wave deliberately does not take;
-* **durable, one command** — `node scripts/mpd-tui-panels.ts` writes `dsh-tui.sidePanel.panels` into the
+* **never drops a builtin, and never overrules a list** — the row's `sidePanel.panels` REPLACES the
+  host's default rather than extending it, so `scripts/mpd-tui-panels.ts` seeds an ABSENT leaf from the
+  host's own current `DEFAULT_SIDE_PANEL_IDS` (read from the installed module; the run REFUSES rather
+  than guessing "none" when that cannot be read) and leaves an EXISTING leaf BYTE-FOR-BYTE — including
+  one that names none of the builtins, because "every builtin is missing" and "the user removed every
+  builtin deliberately" are the same bytes. Putting missing builtins back is therefore an explicit act:
+  `--restore-builtins` restores exactly what is missing, prints what it restored, and is a no-op on a
+  healthy list;
+* **durable, one command** — `node scripts/mpd-tui-panels.ts --apply` writes `dsh-tui.sidePanel.panels`
+  into the
   profile's patch file, which IS the settings user layer (`dsh-config-editor`'s `documentPath` returns
   `profileContext.patchPath`; `dsh-app-boot` builds it as `<profileDir>/cordis.patch.yml`). Both readings
   come from the installed sources and the script refuses to write when it cannot prove the path; dry run
-  by default, `--apply` to write, `.bak` kept, only missing ids added.
+  by default, `--apply` to write, `.bak-<stamp>` kept, only missing ids added **and the same stale-id
+  prune applied** (one rule, restated in `scripts/mpd-tui-panels.ts` because a standalone Node entry point
+  cannot import a bundled package's source — and since repair round R1 that rule is the PROVENANCE one:
+  the script prunes a token only when the record's `history` proves the bundle registered it and this run
+  does not enable it, so a foreign `act9:team` is never deleted). A run whose only change is the prune is
+  a run, not a no-op.
+  `--apply` also **reads the document back** after the atomic rename and compares the leaf with the CSV it
+  intended: a mismatch exits 1 and names the backup, so a write that did not land is never announced as a
+  success. It writes the USER's
+  profile patch and nothing in this repository, so it is not part of any gate sweep — the wave that has
+  to re-pin the vendored skill corpus is the one that edits `skills/**`, whose `treeSha` in
+  `VENDOR_LOCK.json` lands with exactly ONE re-pin in the same commit (AGENTS.md §9); this command never
+  touches either.
+
+**THE RECORD IS ONLY AS TRUSTWORTHY AS ITS PROVENANCE — and that was a MEASURED defect, not a worry.**
+`.mpd/logs/mpd-tui-panels.json` was overwritten on 2026-10-08 with `act0:team,act0:dag,act0:workmate`,
+ids the installed host cannot compose: its `pluginIdFor` fallback counter PRE-increments, so the first
+bare activation is `act1` and `act0` is impossible in a real boot. A UNIT TEST run (whose panel-seam
+double labels its registrations `act0`) had driven the real recorder, and the remedy script reads that
+file to offer a write into the user's settings layer — so a test run could make the remedy name panels no
+boot can ever serve. The 0.14.0 wave fixed the WRITE side: the record carries
+`provenance {hostRoot, hostVersion, readBack, activation}` and the recorder REFUSES to build one it
+cannot trace to an installed host package and a host read-back (measured: a full
+`bun test ./packages/mpd-tui-plugin ./packages/mpd-tui-adapter-plugin` run leaves the file's sha256
+unchanged). **Repair round R1 (CodeRabbit PR #35) made that provenance load-bearing for the PRUNE too, and
+grew the record to schema 3**: alongside `panelIds` it now carries `history` — the bounded list (last 32,
+newest last) of ids this bundle provably registered in earlier boots, which is the ownership evidence both
+writers prune by. The fold is read-side guarded as well: the previous record's history and its own ids are
+carried forward only when that record passes the provenance rules, so a polluted file contributes NO
+history instead of propagating ids a real boot cannot compose. A blank field counts as absent on BOTH
+sides of the file. **The READER guards the same proof, so a polluted record cannot reach a user's profile
+patch:** `scripts/mpd-tui-panels.ts` REFUSES — the dry run and `--apply` alike, exit 1 — a record that
+carries no `provenance`, a blank `provenance.hostRoot`, a blank `provenance.hostVersion`, no
+`provenance.readBack`, or the impossible
+`provenance.activation === "act0"`, naming the field that failed and telling the reader to boot the TUI
+once or to pass `--ids <a,b,c>`. A refused record contributes no past ids either, so it cannot widen the
+prune. Measured on the polluted version-1 record: the dry run prints
+``REFUSED: … it carries no `provenance` block (a version-1 record, whose ids cannot be traced to a boot)``
+and exits 1, the record's sha256 is unchanged by the run, `--ids act1:team,act1:workmate` is accepted (the
+escape still works), and the script's own `--self-test` passes with one arm per refusal shape plus a
+well-formed record accepted. A dry run prints the ids it read, their file and the past ids the prune would
+use, so the user sees what would be written before `--apply` writes anything.
 
 Measured without them: the bar reads `‹ 待办 › ▸ ◆` and the host's live enable list is
-`toggle, focus, zoom, todo, jobs, agents`. Measured with them, at 120 columns: the bar carries
-`‹ MPD ›`, `‹ MPD DAG ›` and `‹ MPD workmate ›` and the page body renders
-(`evidence/tui/dag-port/verification/pty/frozen/`). The panel column exists only where the host splits —
-the same capture reports `split=false` at 80 and 48 columns, so no page can be visible there whatever
-the list says.
+`toggle, focus, zoom, todo, jobs, agents`. Measured with them, at 120 columns, on the THREE-page set this
+wave replaced: the bar carried `‹ MPD ›`, `‹ MPD DAG ›` and `‹ MPD workmate ›` and the page body renders
+(`evidence/tui/dag-port/verification/pty/frozen/`). **After the merge the bar carries TWO MPD tabs** —
+`‹ MPD ›` and `‹ MPD workmate ›` — and both routes above still resolve (see §11.6 for the wave's own
+record). The panel column exists only where the host splits — the same capture reports `split=false` at 80
+and 48 columns, so no page can be visible there whatever the list says.
 
-`alt+a` and **`/mpd panel`** route the MERGED page through `tuiPanels.open()` while the seam is bound,
-and **`/mpd dag`** / **`/mpd workmate`** route their own pages the same way. On **any** refusal — the
-one-open-per-plugin-per-5000 ms rate limit, an id the host no longer owns, or no live panel consumer —
-each falls back to ITS OWN full-screen surface (`mpd-tui-subagents` for `team` and `dag`, the board for
-`workmate`) and the printed line names the surface actually reached; nothing on that path is a silent
-no-op.
+`alt+a`, **`/mpd panel`** and **`/mpd subagents`** route the MPD panel through `tuiPanels.open()` while
+the seam is bound, **`/mpd dag`** re-aims onto that SAME panel (the DAG page is what it renders), and
+**`/mpd workmate`** routes the workmate page. On **any** refusal — the one-open-per-plugin-per-5000 ms
+rate limit, an id the host no longer owns, or no live panel consumer — each route falls back to a
+full-screen surface and the printed line names the surface actually reached; nothing on that path is a
+silent no-op. The fallbacks are per route and deliberately not one scene: the MPD panel's own `⤢` opens
+the **rich team scene** (`mpd-tui-team` — frame, legend, the focused task's detail pane, key hints) so a
+reader never falls from a rich page into a bare one, while the MPD panel's ROUTED fallback stays the
+merged subagents scene (`mpd-tui-subagents`), which is the honest surface for the host's own rows.
 
-**Backed at `Observed`:** the registration of all three pages, the ids discovered from the host's
-read-back, and the host-ACCEPTED open, recorded on a real PTY by
-`evidence/tui/dag-port/verification/pty/frozen/` (the three MPD tabs in the bar at 120 columns, with the
-`split=false` arms at 80/48) and by the earlier 0.13.0 lanes
+**Backed at `Observed`:** the registration, the ids discovered from the host's read-back, and the
+host-ACCEPTED open, recorded on a real PTY by
+`evidence/tui/dag-port/verification/pty/frozen/` (the three MPD tabs of the PRE-merge set in the bar at
+120 columns, with the `split=false` arms at 80/48) and by the earlier 0.13.0 lanes
 (`evidence/tui/lanes/2026-10-06T10-27-53.571Z/` and `…/2026-10-06T10-28-57.807Z/`), each with its own
 negative control red as required.
 
@@ -280,11 +390,50 @@ host accepted {id}; if no panel appeared, add {id} to the panel list in /setting
 press Ctrl+B (or turn on \"Side panel starts open\")"* — instead of claiming an open. The page BODIES
 are asserted by the unit suites and by the pinned real-PTY capture, never by the plugin's own branch.
 
-### 3.4 The DAG page and the workmate page — the two independent sidebar pages
+### 3.4 The MPD panel — the rich DAG page — and the workmate page
 
-The DAG page renders the current workspace's team dependency DAG on its own, with chrome the merged page
-cannot afford: a bordered frame, a header naming the team and its progress, the drawing, an explicit
-legend, a footer naming the keys it handles, a status badge and a pinned detail body.
+The MPD panel renders the CALLING SESSION's own team dependency DAG — never the workspace's latest one
+(the session-scope bullet below) — with the host's curated subagent rows ABOVE the drawing, inside ONE
+rich frame the pre-merge merged page could not afford: a bordered frame, a header naming the team and
+its progress, the drawing, an explicit legend, a footer naming the keys it handles, a status badge and a
+pinned detail body. (Until the 0.14.0 wave this was the standalone `dag` page beside a plainer merged
+page; the two are ONE page now, §11.6.)
+
+**This panel's `⤢` opens the rich team scene, not a bare one.** The page's own control calls the
+`mpd-tui-team` scene — the same frame, legend, focused-task detail pane (the pin's full-screen form) and
+key hints the page draws with — which is the user's clause 「全屏出来的MPD也要有这种富外观」 made
+concrete. The host's own `⤢` is still unreachable for a plugin panel (§11.6's re-measured bound), so this
+control is MPD's and it is declared on the page itself.
+
+- **The drawing is THIS SESSION's team — the workspace's latest one is never substituted for it.** The
+  defect the user reported (「我new了一个session，老session的DAG图还摆在那儿」) was that a surface picked
+  the newest not-ended team of the WORKSPACE; it is fixed. Every surface that draws team state (this
+  page, the team scene, the merged scene, the plan scene) reads its OWN session id — the page off
+  `host.snapshot().sessionId`, the field it used to read and discard, the scenes off
+  `props.channel.sessionId` — and resolves through `mpdTeams.active(workspace, sessionId)`, with the
+  record's own `leadSessionId` as the degradation when the service exposes no `active`. The reader
+  reports WHICH of THREE states it answered with (`TeamWorkflow.source.scope`), and the renderer draws
+  that state rather than a guess: **`session`** — a session id was readable AND a team resolved for it,
+  so that team's DAG and nothing else; **`none`** — a session id was readable and this session has NO
+  team, drawn as the marker `no team in this session` plus how many teams the workspace holds, **never
+  another session's board**; and **`workspace`** — NO session id was readable (an older host, a
+  keypress-time read), which keeps the old workspace-principal rule but marks it `workspace-level`, so
+  a reader can tell it is not necessarily their own board. Both markers are constants in
+  `src/team-state.ts` (`NO_SESSION_TEAM_MARKER`, `WORKSPACE_SCOPE_MARKER`). The WEB tab was already
+  session-scoped (`?sessionId=`) and lists the workspace's teams when the session has none; only the
+  legacy `Ctrl+A` status view cannot be scoped — a status view receives no `host` and no `channel` — so
+  it keeps the marked workspace-level behaviour by construction.
+- **The surfaces update by PUSH, and the timers stay as the fallback.** Every surface that draws team
+  state subscribes to the workspace's team feed — `mpdTeams.subscribe(workspace, listener)`, the
+  substrate `mpd-team-core` also serves over the SSE route `/plugins/mpd-team/events` — and disposes it
+  on unmount. Measured on a real dsh-tui 0.14.0 PTY: a record rewrite under an OPEN, untouched sidebar
+  reached the terminal in **76–85 ms** across six trials
+  (`evidence/tui/session-scope-and-push/2026-10-08T08-22-12Z/pty-latency/`), against a fallback tick of
+  **1000 ms** (`DAG_PANEL_REFRESH_MS`) — six samples inside a 9 ms band at ~80 ms is not tick sampling.
+  The feed watches the teams directory, so a change made by this session's agent or by ANOTHER PROCESS
+  is seen; the 1000 ms sidebar tick and the 2000 ms scene tick stay, unchanged, as the fallback for a
+  composition without a feed. No `mpdTeams` row, no `subscribe`, or a throwing one costs the push and
+  never the page.
 
 - **Vertical and adaptive.** Rank is the VERTICAL axis (top→bottom) and every size is computed from the
   panel the host measured — there is no fixed pixel or cell constant deciding the layout, which was the
@@ -304,6 +453,20 @@ legend, a footer naming the keys it handles, a status badge and a pinned detail 
   (`id`, `kind`, `visual`, `verdict`, `failedBy`, `owner`, `attempt`, `round`, `blockedBy`,
   `dependents`), and `↑↓/jk`, `Enter`, `Esc` move, pin and unpin. **Hover is deliberately absent** — a
   terminal has no pointer-move and the user dropped it.
+  **There is ONE state key now, and it is this legend's own (user requirement
+  「删除TUI DAG界面的多余图例（目前有两行）」).** `panel-core.ts`'s `legendLinesFor` composes it from the
+  frozen six-state contract (`DAG_STATE_TONES` + `DAG_TONE_GLYPH`) and names all six states, so
+  `blocked` and `open` are told apart by the twin each entry carries; `graph.ts` carries no state key of
+  its own — its own five-state key (`LEGEND_STATES` / `LEGEND_SHORT` / `LEGEND_KEY`) was DELETED with
+  the redundant row, because it omitted `blocked` and printed under the contract's key it was the same
+  legend a second time.
+  **The accumulating-legend defect (user report 「越点越多直到撑爆屏幕」) was a duplicate React KEY, and it
+  is fixed and pinned (§11.6).** The legend's rows were keyed `legend-${line.slice(0, 24)}`, and the
+  drawing's own state-key line — the one deleted with the redundant row — and the legend's first
+  wrapped line both started `✓ completed · ◐ running` — so two children shared one key, and React
+  rendered the collided row once more on EVERY re-render. Measured on a mounted instance: **4 legend
+  rows after mount, 7 after seven clicks**. The key is a position now, and the arm that keeps it fixed
+  asserts the legend ROW COUNT is stable across N clicks rather than that a legend exists.
 - **A node reads `<marker> <id>` and nothing else** (`✓ T3`, and `▶ T3` for the task in focus). The
   subject is NOT in the drawing; it is verbatim in the pinned detail body, where a Chinese sentence
   reads as a Chinese sentence instead of being squeezed into printable ASCII. Removing it is also what
@@ -325,13 +488,17 @@ legend, a footer naming the keys it handles, a status badge and a pinned detail 
 - **Both scrollbars drag.** The vertical gutter and the horizontal rail scrub under a mouse drag
   through the SAME absolute track arithmetic a click uses (no grabbed-thumb offset). Click, wheel and
   keyboard gestures keep working; a host that ignores the drag props simply does not drag.
-- **Each MPD page draws its own chrome: a distinct one-cell icon and a clickable `⤢`.** The three icons
-  are `❖` (the merged page, which used to declare NO icon and fall back to the letter `M`), `◈` (the DAG
-  page) and `⬢` (the workmate page, which used to wear `◆` — byte-identical to the host's own `agents`
-  tab, so it was not a distinct symbol at all). Each icon measures exactly one cell under both this
+- **Each MPD page draws its own chrome: a distinct one-cell icon and a clickable `⤢`.** The TWO
+  surviving icons are `❖` (the MPD panel, which used to declare NO icon and fall back to the letter `M`)
+  and `⬢` (the workmate page, which used to wear `◆` — byte-identical to the host's own `agents` tab, so
+  it was not a distinct symbol at all). The retired DAG page's `◈` is declared by nothing now. Each icon
+  measures exactly one cell under both this
   bundle's `cellWidth` and the host's `stringWidth`, because the host REFUSES a registration whose icon
-  is not one cell. The `⤢` opens that page's existing full-screen scene, and it is MPD's own control
-  because the host cannot draw one for a plugin panel — §11.5 records the measured reason, and the
+  is not one cell. **The icon is still REQUIRED and still declared even though 0.14.0's carousel
+  `PanelBar` no longer paints it** (§11.6) — dropping it would turn a silent host change into a refused
+  registration. The `⤢` opens that page's own full-screen scene, and it is MPD's own control
+  because the host cannot draw one for a plugin panel — §11.5 records the measured reason and §11.6
+  re-measures it on 0.14.0, and the
   real-terminal capture in `evidence/tui/dag-highlight/` shows the glyph on the page's title row.
 - **OPT-1 (user decision, 2026-09-13): a FAILED dependency does NOT block its dependents.** They stay
   `open` and dispatchable, and the failure is reported BESIDE the state (`failedBy`), never folded into
@@ -464,7 +631,7 @@ documented in the research record (`.mpd/recon/UPSTREAM-RESEARCH.md`).
 Related: `trusted-in-process` is a **compatibility/audit label, not a security boundary**. A
 SHA-256 digest proves byte identity only — never publisher identity.
 
-### 6.2 The `/settings` section IS bridged to `<workspace>/.mpd/mpd.jsonc` — with a restart and two named skip cases
+### 6.2 The `/settings` section IS bridged to `<workspace>/.mpd/mpd.jsonc` — live for the model routes, with two named skip cases
 
 The section declares the real mpd.jsonc knobs (`hashline.maxDiffChars`, `commentChecker.autoCheck`,
 `ulw.maxRounds`, `memory.vcs`, `team.stateDir`, `boulder.dir` and the twelve
@@ -484,12 +651,14 @@ under a cardinality rule:
 | **more than one** | **no file base is invented**: `base: undefined`, reason `ambiguous-multi-root`, a warn naming every candidate, surfaced by `states()`. The namespace shows the schema defaults until exactly one workspace is live; a save in that state is REFUSED (below), so the ambiguity cannot reach disk |
 
 **The base is fixed for the process lifetime** — the host exposes **no disposal handle** for a live
-registration, and its own settings installers keep their base fixed the same way. That is exactly why
-the shipped sentence is "takes effect for the mpd plugins **after a restart**": it is the honest
-consequence, not a hedge. What the plugins actually use is the **resolved value** plus the config
-layer's **per-call file reads**: the L1/L2 file layers are re-read on every resolution, so the
-**per-workspace read-in still resolves each session's own file** even while the base is frozen. No
-sentence on this page promises a live-refreshed base.
+registration, and its own settings installers keep their base fixed the same way. That fix no longer
+implies a restart for the mpd model configuration: the shipped sentence now says the save **takes effect
+in the RUNNING process — no restart** (the config service re-resolves on every settings save and on a
+watched edit of the project file, and the model routes are read per use). What the plugins actually use
+is the **resolved value** plus the config layer's **per-call file reads**: the L1/L2 file layers are
+re-read on every resolution, so the **per-workspace read-in still resolves each session's own file**
+even while the base is frozen. No sentence on this page promises a live-refreshed **base** — only a
+live-resolved **value**.
 
 - **Read-in precedence** — L0 schema defaults < L1 `$DSH_HOME/mpd.jsonc` < L2
   `<workspace>/.mpd/mpd.jsonc` < **L3 the settings user section**, which is authoritative at runtime; a
@@ -508,11 +677,36 @@ sentence on this page promises a live-refreshed base.
   changed** and the edit is **not lost**: it is stored in the host-global settings document and the
   config layer applies it to every workspace immediately — only the FILE WRITE waits for exactly one
   live session. The TUI status line and the Web card both carry that clause.
-- **Timing** — the mpd consumers capture their config at plugin `apply()` (`applies: 'restart'`), so a
-  saved edit **takes effect for the plugins after a restart**; the on-screen hint says exactly that.
+- **Timing** — the model-config consumers resolve through the live `mpdConfig` service per use
+  (`mpd_modelchain_resolve` per call; slot/`agentRoutes` routing at spawn), and the service re-resolves
+  on every settings save and on a watched edit of the project file, so a saved edit **reaches the next
+  resolve or spawn with no restart** (`mpd_config_reload` forces a re-read). Consumers that still
+  capture at plugin `apply()` are the exception the bridge report's `applies: 'live'` documents, and
+  are named per knob in the user guide's §9.1. The
+  on-screen hint says exactly this.
 - **Degenerate targets are loud** — missing (created with a header comment), read-only (`denied` + path +
   errno, the settings edit still succeeds), concurrent (retry ×3 then `conflict`, the human's file left
   untouched), unparsable (`unparsable`, never repaired).
+
+**One mpd.jsonc knob is read but NOT yet rendered in `/settings`: `tui.wheelInvert`.** It is a boolean,
+default `false` (= today's behaviour), and it flips the wheel's vertical sign on every panel and scene this
+bundle draws. The host derives a wheel event's `deltaY` from the terminal's own wheelup/wheeldown bits, so
+which direction a wheel reports is a property of the terminal / multiplexer / OS and arrives reversed on
+some installations; before this knob every wheel path applied the raw delta with its own fixed sign, and
+there was no single place to correct and no user-facing answer. The value is read through the **same
+`mpdConfig` service and the same layer stack** as every knob above: write
+`{ "tui": { "wheelInvert": true } }` into `<workspace>/.mpd/mpd.jsonc`, or set the `mpd-tui` row's own
+`wheelInvert: true`, which is the **floor** of the toggle (a saved leaf wins when it is a boolean; a junk
+value can never arm it). The plugin reads the leaf **per wheel gesture** rather than sampling it at
+mount, so a save through `/settings` **and** a FILE edit both reach it in the running process — the
+config service re-resolves on a settings save and on a watched edit of the project file, and the L1/L2
+layers are re-read on every resolution (above) — while a mount-time sample would have read `undefined`
+on any boot where the deferred `mpdConfig` binding lands after this row applies. **Honest bound:** unlike `tui.dashboardKey` this leaf is
+not yet carried by `SETTINGS_KNOBS` / `SettingsSchema` in
+`packages/mpd-config-plugin/src/settings-schema.ts`, so it has **no row in the `/settings` form**; the file
+layer works because `mpd-config`'s `loadConfig` returns the RAW merged layers and strips no undeclared key.
+Declaring the leaf in that shared schema is the follow-up that adds the row — the read path above does not
+change when it lands.
 
 **Evidence level:** `Observed` — two real boots in the sandbox (ok: true) at
 `evidence/mpd-bridge/implementation/20260915T080138Z/`, plus the lane
@@ -588,10 +782,14 @@ converges.* This is the one place where the two doors can legitimately disagree 
 
 ## 7. Deliberate deviations from ecosystem convention
 
+One former deviation is CLOSED. The DSH-TUI ecosystem convention for third-party plugins includes an
+**MIT** licence, and since the de-omo wave E licence swap this bundle carries that same MIT licence
+(`LICENSE.md`, `Copyright (c) 2026 HaroldZ32`) — so the licence is no longer a deviation and is not
+listed below. The deviations that remain are these.
+
 | Deviation | Value | Why it is deliberate |
 |---|---|---|
 | Package name | `@mpd-dsh/mpd-tui` | Keeps this bundle's namespace; the ecosystem uses its own naming. |
-| Licence | SUL-1.0 (`LICENSE.md`) | Unchanged by this edition; no artifact claims a licence change. |
 | Manifests | **ONE** bundle-level `dsh-plugin.json`, never 25 per-package manifests | The bundle installs as one unit; the manifest's host facet points at the one TUI plugin module. |
 | Host input bus | ONE counted contact outside the seams, and since 0.13.0 a **VERSION-GATED** one: the adapter resolves the INSTALLED host root and dynamic-imports `<hostRoot>/lib/types/ui.js` **by file URL** to obtain the host's own `useStdin`. **What the gate covers is INTERCEPTION, not that load**: the probe still runs in every composition (the 0.13.0 lane's own adapter log carries the `host contact bound: … (lib/types/ui.js)` line), and what is version-gated is how `Ctrl+A` is handled | `Ctrl+A` is a host built-in action that no contribution kind can reach, so on a pre-0.13.0 host the alternative was dropping the requirement. **The gate:** on a host that OFFERS the panel seam (0.13.0+) the contact stays **INERT** — `Ctrl+A` keeps the host's own dashboard meaning and the merged view opens through `alt+a` / `/mpd panel` (§3.3), which the 0.13.0 real-PTY lane measured (`evidence/tui/lanes/2026-10-06T10-28-57.807Z/`: the host's own dashboard opened, and `/mpd panel` proved the sidebar registration + accepted open); on a host WITHOUT the seam (0.12.0) the old behaviour is unchanged — the contact arms when `tui.dashboardKey` is on and the workspace's team projection holds a team with at least one task. `tui.dashboardKey` therefore stays in the config schema and the `/settings` row, documented as meaningful on OLD hosts only. The per-press rule lives in ONE function, `takeoverArmed` in `packages/mpd-tui-plugin/src/panel.ts` (the seam WINS over every config layer; only without the seam does the saved value, else the row config's floor, decide), and the adapter's `panelSeamBound()` is read PER PRESS, not only at apply time. **History (measured on 0.12.0, kept as the record it is):** that import is a FOREIGN instance whose `useStdin()` answers nothing, so the adapter also stores the live kit a SCENE render receives and prefers it — which is why the take-over arms after the session has rendered any MPD panel or scene, and stays inert before that. Two further host rules are obeyed inside the adapter: a status registration's identity must be the CALLING ACTIVATION (the injected scope), and no DSH-TUI file is written. **Bound:** no 0.12.0 PTY arm was obtained in this wave (§11.3), so the old-host arming path rests on unit arms rather than on a pane capture. |
 
@@ -635,9 +833,9 @@ as a current capability.
 | `mpd-tui-plugin` | the TUI-native surface package (this edition) | usable | composed row `mpd-tui` → `@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js` |
 | `mpd-agent-teams-plugin` | the vendored AgentTeams plugin (tools + Web panel) — **RETIRED from the composition in 0.1.7-rc.2; this row is the historical 2026-09-15 measurement** | usable then | 17 team tools |
 | `mpd-mcp-astgrep` | ast-grep MCP server (stdio launcher) | usable | 3 `mcp__ast_grep__*` tools |
-| `mpd-mcp-lsp` | LSP MCP server (stdio launcher) | usable | 8 `mcp__lsp__*` tools |
+| `mpd-mcp-lsp` | LSP MCP server (stdio launcher for the declared `cclsp` dependency) | usable | 12 `mcp__lsp__*` tools (cclsp's own names) |
 | `mpd-mcp-codegraph` | codegraph MCP server (stdio launcher) | usable | server alive in-process; 0 tools **in that sandbox** because the CodeGraph policy excludes a project path containing `.mpd` (a sandbox artifact, not a TUI limitation) |
-| `mpd-mcp-gitbash` | git-bash MCP server (Windows-only upstream) | inert | row composed `disabled: true` under every profile |
+| `mpd-mcp-gitbash` | ONE launcher for the git toolbox and the raw shell runner (declared npm dependencies) | inert | rows `mcp-git` (28 `mcp__git__git_*` tools) and `mcp-shell` (`mcp__shell__run_process`) are both composed `disabled: true` under every profile |
 | `mpd-mcp-shared` | shared binary resolver used by the MCP launchers | usable | support library, no row/tool of its own; witnessed by the MCP children that launched |
 | `mpd-bundle-plugin` | bundle web-compat package (browser client + no-op main) | **web-only** | no TUI rendering face; TUI equivalents are the §3 surfaces |
 | `mpd-qa-roles-probe` | QA-only probe package | inert | no row in the bundle patch (mounted only by a QA overlay) |
@@ -789,7 +987,7 @@ same step that wrote this block — never derived, never remembered:
 | §11 revision binding, entry digest | `packages/mpd-tui-plugin/dist/index.js` sha256 `5dce2563…`, 98883 bytes | sha256 `cf4b3813a344c9d5…`, **105305 bytes** — the bridge wave reworded the `/settings` disclosure, so the package was rebuilt. `dsh-plugin.json` sha256 `84ed4a5d…` is unchanged (8088 bytes), and the two artifacts that wave adds are `packages/mpd-config-plugin/dist/index.js` sha256 `15733c1e…` (99868 bytes) and `packages/mpd-bundle-plugin/client.js` sha256 `dd9c8893…` (282453 bytes) |
 | §11 R3 row | `bun run test:qa` "fails by design" until the captain's single `VENDOR_LOCK` re-pin lands | **PASSES** — the single re-pin landed (`VENDOR_LOCK.json` `assets/skills`: 307 files, treeSha `ba0c3922…`) and the suite reports all self-tests passed, exit 0 |
 | NOT-CLAIMED #9 (it led with the `/settings` bridge) | "the `/settings` bridge, the package-local skill asset, and the deliberate deviations" | the **bridge is a claimed, evidenced capability** (§6.2, `Observed`, two real boots); #9 now covers the package-local skill asset and the deliberate deviations (§6.3, §7) |
-| §3 settings row | "with the limitation in §6.2" | a bridged behaviour with a restart caveat and two named skip cases (§6.2), the duplicate-key rule (§6.5) and the Web card's evidence level (§3.1) |
+| §3 settings row | "with the limitation in §6.2" | a bridged behaviour that is live for the model routes (a mount-captured knob still waits for a boot) with two named skip cases (§6.2), the duplicate-key rule (§6.5) and the Web card's evidence level (§3.1) |
 
 The earlier statements were not rewritten — they are superseded here, in place, under this heading.
 
@@ -913,3 +1111,221 @@ host that ignores the drag props simply does not drag; no gesture is lost, becau
 keyboard stay bound. (c) The DAG drawing is unchanged in every other respect: the rank derivation, the
 unresolved-blocker and cycle reporting, the arrowheads, the legend and the six-state palette are the
 §11.4 ones. (d) The WEB dependency view was NOT touched by this wave.
+
+### 11.6 Amendment after the DSH-TUI 0.14.0 adaptation wave (2026-10-08)
+
+The rows above stay as written for the revision and the host they measured. This wave moved the target
+host one release on, and **every plugin-facing seam came through the move unchanged**, so the
+adaptation is a re-measurement of the host shape plus the sidebar's own page set and the full-screen
+control. The following supersedes them:
+
+| Superseded statement | Was | Is (measured 2026-10-08) |
+|---|---|---|
+| This page's target host (§ preamble) | `@deepseek-harness-tui/dsh-tui` **0.13.0** and its built-in admission profile | **0.14.0** (read from the installed package: `version` 0.14.0). The release's own additions: a **Claude backend peer** — `@anthropic-ai/claude-agent-sdk` at exactly `0.3.287`, the one peer the release adds — the **`ws` runtime dependency** (`^8.21.3`, absent at 0.13.0), an **eighth** builtin sidebar panel (`btw`) and the rewritten `PanelBar` below. `MPD_E2E_DSH_VERSION` does NOT move, because the harness peer range is unchanged |
+| §3 seam inventory | fifteen `tui*` seams, the set dsh-tui has exposed since 0.13.0 | **still fifteen, and every one is byte-identical to 0.13.0** — the fifteen seam modules and their declarations under the host's `lib/types/dsh-adapter/` (`panels`, `scenes`, `status`, `renderers`, `settings-sections`, `shortcuts`, `dialogs`, `command-trees`, `plugin-host`, `toast`, `themes`, `plugin-storage`, `message-observer`, `effect-ledger`, `workspaces`, each `.js` + `.d.ts`) have not moved, there is no sixteenth seam, and the `peerDependencies` lists still end at `0.2.0-rc.2`. **No adapter code change was needed for the seam surface** |
+| §3.3 — the enable list's default, and the arm that pins it | the host's default CSV is `todo,jobs,agents` (three builtins) | **`todo,jobs,agents,info,trajectory,workspace,btw,companion` — eight builtins; `btw` is the new one** (`DEFAULT_SIDE_PANEL_IDS`, read from the installed host's `lib/types/tuiDisplayPrefs.js`). The bundle's own test now asserts the **INVARIANT** instead of a three-id literal — the literal is what reddened when the host grew, while the file's premise is that it re-judges itself when the **installed** host changes. All THREE sub-assertions the clause names execute and are green: the default names builtins only and contains nothing of ours, every id in it passes the host's own `SIDE_PANEL_ID_PATTERN`, and the normalizer is **idempotent** over it — the idempotence carrier is the arm *"the host REWRITES the CSV from configuration, which is how a registered panel disappears"* in `packages/mpd-tui-plugin/test/panel-visibility.test.ts`, whose `const once = prefs.normalizeSidePanelPanels(prefs.DEFAULT_SIDE_PANEL_IDS)` is followed by `expect(prefs.normalizeSidePanelPanels(once)).toBe(once)`. **That assertion RUNS and PASSES inside that arm** — it is part of the 469-pass / 0-fail suite reading above, confirmed by a direct read of the file rather than inferred from the arm's title |
+| §3.4 — the `⤢` control and the host's own one | each MPD page draws its own `⤢` because the host cannot draw one for a plugin panel | **re-measured on 0.14.0 and still true, as a bound rather than a wish**: `dsh-adapter/panels.js` still freezes a plugin definition to `{id, title, icon, order, minColumns, source, pluginId, mountPolicy, component, compact}` with **no `capabilities`**, while `components/sidePanel/SidePanelColumn.js`'s `canExpand` reads `activeEntry?.definition.capabilities?.fullscreen === true` — so the host's own `⤢` is unreachable for a plugin panel and `capabilities` stays undeclared (a dead button is not shipped). MPD's own control opens an MPD-registered full-screen surface with the page's SAME rich appearance (§3.4) |
+| §3.4 — the legend under the drawing | a per-drawing block of legend lines | **the accumulating-legend defect is FIXED, and its cause is measured**: the legend's rows were keyed `legend-${line.slice(0, 24)}` and the drawing's state-key line and the legend's first wrapped line both started `✓ completed · ◐ running`, so two React children shared ONE key and the collided row was rendered again on every re-render (measured on a mounted instance: 4 legend rows after mount, 7 after seven clicks). The key is the row's position now, and the arm that keeps it green asserts the legend ROW COUNT is STABLE across N clicks |
+| §3.3 / §7 — the pin carriers | the global package, the `dsh-tui` profile, the distribution ref and the QA host spec all named `0.13.0` | **`0.14.0` in this wave's carriers**: `docker/**` (both `MPD_E2E_TUI_VERSION` defaults in `docker-compose.yml`, the same key in `docker/ui/docker-compose.yml`, `docker/entrypoint.sh`'s `TUI_VERSION`, `docker/ui/entrypoint.sh`'s two `MPD_UI_TUI_VERSION` defaults, `docker/tui-lane.sh`'s `TUI_VERSION` and its `PREF_WRITER` probe string), the distribution descriptor's `host-tui` ref (`dsh-distribution.json` now carries `pkg:npm/@deepseek-harness-tui/dsh-tui@0.14.0`) and the seven QA carriers under `skills/dsh-qa/scripts/**` (`tui-mount.ts`'s `TUI_HOST_SPEC` and PREREQ lines, the PREREQ/remedy strings in `tui-panels.ts`, `tui-deps-ctrla.ts`, `tui-team-surface.ts` and `tui-admission.ts`, `lib/tui-lane.ts`, `install-dependencies.ts`), plus `scripts/mpd-tui-panels.ts`'s header prose, which now
+names 0.14.0 as the release this bundle targets while the paragraph above it stays the 0.13.0
+measurement it was. **TWO deliberate non-moves:** `MPD_E2E_DSH_VERSION` keeps its `0.2.0-rc.2` default, because the harness peer range did not change (F2's reading); and `dsh-plugin.json`'s `compat.hosts` stays at `@deepseek-harness-tui/dsh-tui@0.10.1` because the field records the **0.10.1 admission measurement** this bundle was admitted against — not the TUI edition it targets — so moving it would falsify a measurement rather than record a target |
+
+**The two-panel sidebar (user clause 「把MPD与Workmate两个panel扔到侧边栏上去」).** The wave collapsed
+three MPD pages into **TWO** — the rich page `team`/`MPD` (`❖`, order 10) and `workmate`/`MPD workmate`
+(`⬢`, order 12) — both `minColumns` 28, both `apiVersion` 1, neither declaring `compact`. The standalone
+`dag` page's REGISTRATION is gone: `src/panel-dag.ts`'s rendering is what the surviving slot renders (the
+host's curated subagent rows above the drawing, inside the DAG page's own frame, header + progress,
+legend, key-footer, badge and pin body), the separate merged renderer is deleted rather than kept beside
+it, and the module's `◈` icon is declared by nothing. **Every user-visible entry point still resolves to a
+live surface**, which is the clause's own test: `/mpd dag` re-aims onto the MPD panel's discovered id (the
+fallback for that route is the rich team scene), `/mpd panel`, `/mpd subagents` and `alt+a` were already
+routed through the same slot, `/mpd workmate` keeps its page, and the adapter's recorded id set is
+DISCOVERED from what actually registered — so it carries the two surviving ids, never a composed three.
+
+**The full-screen counterpart (user clause 「全屏出来的MPD也要有这种富外观」).** The MPD page's own `⤢`
+opens the **rich team scene** (`mpd-tui-team`), not the merged subagents scene: the team scene draws the
+same grammar the page draws with (frame, legend, the focused task's detail pane — the pin's full-screen
+form — and the key hints), so the reader does not fall from a rich page into a bare one. The ROUTED
+fallback of `/mpd panel` and `alt+a` stays the merged subagents scene (`mpd-tui-subagents`), because that
+route's question is "which surface carries the host's rows" — the two are separate answers by design and
+`registerPanelSurface` takes them as two options.
+
+**The enable list now follows the host's own change feed.** The bounded tick ladder (six ticks over
+~25 s, then stop for good) is replaced as the PRIMARY repair by the host's own
+`subscribeSidePanelPanels` subscription on the live-setting store: a wipe is repaired as the host
+re-applies its config instead of being lost after the ladder ends — which is the durable form of the
+user's 「侧边栏挂掉了」. The ladder survives ONLY as the degrade path for a host that exposes no feed;
+the subscription is released with the injected scope, never throws on a host without the module, and the
+STAND-DOWN rule holds (**the moment the CSV names ANY of our ids, a configuration has taken a position on
+this bundle and the keeper stops for good**, so a page the user removed on purpose is never
+put back, and our own write ends the loop because it contains our ids) — with ONE addition from repair
+round R1: a provably-dead past id sitting in that same list is pruned in a prune-only write BEFORE the
+keeper stands down, and nothing is appended in that pass.
+
+**The recorded panel-id set now carries PROVENANCE, because a test run poisoned it (measured).**
+`.mpd/logs/mpd-tui-panels.json` was overwritten on 2026-10-08 with `act0:team,act0:dag,act0:workmate` —
+ids the installed host cannot compose, since its `pluginIdFor` fallback counter pre-increments and the
+first bare activation is `act1` — by a UNIT TEST run whose panel-seam double labels registrations `act0`.
+The record is now schema version 3 (version 2 added `provenance`, version 3 the bounded `history`) and
+carries `provenance {hostRoot, hostVersion, readBack, activation}`;
+the recorder REFUSES to write a record it cannot trace to an installed host package and a host read-back,
+and the `act0` shape is refused by name. Measured: a full
+`bun test ./packages/mpd-tui-plugin ./packages/mpd-tui-adapter-plugin` run leaves the record's sha256
+unchanged. **The same proof is guarded on the READ side**, so a polluted record can no longer reach a
+user's profile patch: `scripts/mpd-tui-panels.ts` REFUSES (dry run and `--apply` alike, exit 1) a record
+with no `provenance`, a blank `provenance.hostRoot` or `provenance.hostVersion`, no `provenance.readBack`,
+or `provenance.activation === "act0"`, naming the failed field and pointing at `--ids <a,b,c>` — measured
+on the polluted version-1 record: ``REFUSED: … it carries no `provenance` block …``, exit 1, the record's
+sha256 unchanged, `--ids act1:team,act1:workmate` accepted, and the script's `--self-test` green with one
+arm per refusal shape plus a well-formed record accepted. It is also the guard the PRUNE reads through, so
+a refused record contributes no past ids at all (repair round R1). **The file ON DISK is still the
+polluted version-1 record until a real boot of the host rewrites it** — which is precisely why the
+remedy refuses it today, and why `--ids` is the documented escape.
+
+**0.14.0's `PanelBar` no longer paints a plugin's icon, and that is a HOST fact rather than a bundle
+change.** `components/sidePanel/PanelBar.js` is now a CAROUSEL: the ACTIVE tab's title is drawn centred
+(`ActiveTitle` — bold, `wrap: "truncate-end"`), every other tab is a single `○` dot — `●` when the tab
+carries a badge — placed by a computed pitch, and overflow is windowed. Measured on the installed tree:
+`grep -c icon lib/types/components/sidePanel/PanelBar.js` is **0**. A descriptor's `icon` is still
+REQUIRED by the host's validator and is still declared by every MPD page (an icon that is not exactly
+one cell is a refusal); it is simply no longer painted. The collision set the bundle's icon arm reads
+from the host's own `builtinPanels.js` therefore grew from seven icons to **eight** —
+`≡ ▸ ◆ ⓘ ∿ ⌗ ? ♥`, the new one being `?` for `btw`.
+
+**Evidence of this wave, and what each reading is worth.** The host readings above were taken from the
+installed tree (`/root/.dsh/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui`, `version`
+0.14.0) in the same step that wrote this block — `DEFAULT_SIDE_PANEL_IDS`, `SIDE_PANEL_ID_PATTERN`, the
+frozen descriptor literal, `canExpand`'s source, `PanelBar.js`'s icon-free body and the eight
+`builtinPanels.js` icons are read from those files rather than remembered. The seam byte-identity is the
+wave's own comparison of the two installed trees. The legend defect is pinned by a MOUNTED-instance arm
+that imports the host's real React/ink (`packages/mpd-tui-plugin/test/panel-legend-mount.test.ts`) and
+walks the click sequence — the pre-fix row count walked `[4,5,5,5,6,6,6,7,7]` and the fixed code is `4`
+at every step — and by the measured suite: `bun test ./packages/mpd-tui-plugin
+./packages/mpd-tui-adapter-plugin` = **469 pass / 0 fail** (the frozen revision's reading: the pre-wave
+454 grew to 469 — the restored 44-test file plus 15 new arms). REPO-WIDE, the wave's verification record
+`rec-20261008T030715-f1a2ad` reads
+**1632 pass / 3 skip / 2 fail** — the two reds are the DECLARED environment defects, against the
+contract's pre-wave 1615 / 3 / 4 — and this page quotes that record rather than re-deriving it. The
+record-integrity bound is measured the
+same way: the file's sha256 before and after that suite run is **unchanged**. **The two readings of the
+remedy are not in conflict — they are the same command before and after its own repair, and both are
+kept here on purpose.** BEFORE the reader guard landed (measured 2026-10-08, earlier in this same wave)
+a dry run of `node scripts/mpd-tui-panels.ts` against the polluted record PRINTED the `act0:*` ids it
+would offer — that is the demonstration of the defect, and it is why the guard exists. AFTER that repair
+it is the CURRENT, MEASURED behaviour that the same command prints
+``REFUSED: … it carries no `provenance` block (a version-1 record, whose ids cannot be traced to a boot)
+… or pass --ids <a,b,c>`` and exits 1 (see §3.3 and the provenance paragraph above); the pre-repair line
+is history, not a description of the shipped script. The
+sandbox and real-PTY lanes of this wave (mount, panels, surfaces, deps/`Ctrl+A`, team surface, admission)
+are recorded under `evidence/tui/lanes/**`, and the Docker lane carries a NOTICE
+rather than a pass on a rootful daemon — a SKIP is not a pass, and this page will not call it one.
+
+**Bounds (the bounds are part of the claim).** (a) MPD still cannot observe a RENDER: the host's
+`TuiPanelEvent` set is `registered|unregistered|badge|error|disabled` and `open()` answers DELIVERY, so
+the plugin prints what it knows and the page bodies are asserted by unit arms and the pinned PTY
+captures, never by the plugin's own branch. (b) The host's own `⤢` stays unreachable for a plugin panel
+and `capabilities` therefore stays undeclared — a dead button is not shipped, and that is a bound rather
+than a TODO. (c) The record's provenance is enforced on BOTH sides (the writer refuses an unprovable
+record, and the reader refuses one by name), and `--ids` is the documented escape when a user knows the
+ids. (d) The `PanelBar` change is a HOST fact: this page describes
+what 0.14.0 does, and a future host that paints icons again is contradicted by no MPD claim — every
+descriptor still declares one.
+
+### 11.7 Amendment after the DSH-TUI 0.15.0 adaptation wave (2026-10-15)
+
+The rows above stay as written for the revision and the host they measured. This wave moved the target
+host one release on again (0.15.0, published 2026-10-13), and **every plugin-facing seam came through
+unchanged for the second time** — the adaptation is a carrier move plus three user-mandated functional
+clauses (the keeper re-spec, the decision-events grant flow, the 0-task DAG fix). The following
+supersedes §11.6:
+
+| Superseded statement | Was | Is (measured 2026-10-15) |
+|---|---|---|
+| This page's target host (§ preamble) | `@deepseek-harness-tui/dsh-tui` **0.14.0** | **0.15.0** (npm `latest`; the wave's frozen measurement basis is `evidence/tui/dsh-tui-015/host-diff/FACTS.md`, both tarballs unpacked beside it). Host-internal additions that need NO bundle reaction: new OPTIONAL harness peers (`@deepseek-ai/dsh-plugin-manager`, `dsh-app-boot`/`dsh-cmdline`/`dsh-http-proxy`/`dsh-launch-environment` pinned optional) and a `zod@^4.4.3` runtime dep. `MPD_E2E_DSH_VERSION` does NOT move — the harness peer range is unchanged (every `dsh-*` peer still ends at `0.2.0-rc.2`) |
+| §3 seam inventory | fifteen `tui*` seams, byte-identical 0.13.0→0.14.0 | **still fifteen, additive-only**: `panels.d.ts` gains `applyConfiguredSidePanelPanels()` + `applySidePanelPanelsFromSettings()` (the host-side CSV merge helpers behind C2 below), `plugin-host.d.ts` gains `probeBackendAdmission()`; every other seam `.d.ts` is byte-identical, there is no sixteenth seam, and a raw-grep hit on `tuiChannel` is the KERNEL-CHANNEL protocol id, not a seam (no `Service` registers it, nothing to inject — stated in `agent-references/seam-adapters.md`). **No adapter seam change** |
+| §3.3 — the enable list's default | `todo,jobs,agents,info,trajectory,workspace,btw,companion` (eight builtins, 0.14.0) | **UNCHANGED on 0.15.0** — same `DEFAULT_SIDE_PANEL_IDS`, same eight builtin icons (`≡ ▸ ◆ ⓘ ∿ ⌗ ? ♥`), so the invariant arms stay green. The RULE beneath it changed: see the keeper row below |
+| §11.6 — the `PanelBar` no longer paints an icon | `grep -c icon …/PanelBar.js` = 0 on 0.14.0; inactive tabs are `○`/`●` dots | **0.15.0 PAINTS ICONS AGAIN**: inactive tabs draw `tab.icon ?? <first character of the title> ?? '?'` plus the unread count (`tabLabel()` in the re-measured `PanelBar.js`). The bundle's declared one-cell icons (`❖` MPD, `⬢` workmate) are painted again; nothing in the bundle changed — every descriptor still declares exactly-one-cell icons, as the host's validator requires |
+| §3.4 — the `⤢` bound | `dsh-adapter/panels.js` freezes plugin descriptors without `capabilities` → the host's own `⤢` is unreachable | **re-measured on 0.15.0 and still true**: `grep -c capabilities …/dsh-adapter/panels.js` = 0, `SidePanelColumn`'s `canExpand` still reads `definition.capabilities?.fullscreen === true`. MPD's own `⤢` control stays the one full-screen escape |
+| §3.3 / §7 — the pin carriers | `0.14.0` in every carrier that names the release | **`0.15.0` in this wave's carriers**: `docker/**` (both `MPD_E2E_TUI_VERSION` defaults, `docker/ui/docker-compose.yml`, `docker/entrypoint.sh`'s `TUI_VERSION`, `docker/ui/entrypoint.sh`'s two `MPD_UI_TUI_VERSION` defaults, `docker/tui-lane.sh`), `dsh-distribution.json`'s `host-tui` ref (`pkg:npm/@deepseek-harness-tui/dsh-tui@0.15.0`), the seven QA carriers under `skills/dsh-qa/scripts/**`, `scripts/mpd-tui-panels.ts`'s header prose and both `docker/README*.md`. The non-moves stand: `MPD_E2E_DSH_VERSION` stays `0.2.0-rc.2`; `dsh-plugin.json`'s `compat.hosts` stays `@deepseek-harness-tui/dsh-tui@0.10.1` (the admission measurement, not the target); the registry's `0.15` version string stays (ecosystem-spec number, the repo's known false-positive) |
+| §11.6 — the enable-list keeper | FEED-FIRST on every host: `subscribeSidePanelPanels` repairs a config-mirror wipe, the ladder is the degrade, the stand-down rule holds | **RE-SPECED (C2, user-mandated): on a host that self-heals — every `>= 0.15.0` — the keeper JOINS the native self-heal and STANDS DOWN; on older hosts the 0.14 behaviour is preserved byte-for-byte.** See the keeper paragraph below |
+
+**The host now self-heals the sidebar enable CSV, and the keeper stands down to it (C2).** Measured on
+the 0.15.0 tree: `TuiPanelRuntime.register()` feeds `registeredPanelIds` through
+`enablePanelIdInStore`; the boot/mirror apply `applyConfiguredSidePanelPanels(config.sidePanel?.panels)`
+**unions registered ids back** unless they were explicitly removed; a `/settings` live edit runs through
+`applySidePanelPanelsFromSettings`, which records removals session-wide (`removedPanelIds`); the only
+CSV writer left is that settings-apply hop. MPD's answer: the enable-list keeper detects the host
+version through the adapter's already-proven `readHostPackageVersion` (the value the probe stamps as
+`hostVersion` on the SAME probe answer the keeper decides from — no new host contact), and on a
+`>= 0.15.0` reading it **stands down before any write path: it never arms the feed, never walks the
+ladder, writes nothing, and cannot race the host's own union or re-add a panel the user explicitly
+removed**. One line in the adapter's log says so (`standing down on host 0.15.0 — the host self-heals
+the sidebar enable CSV, so this keeper never writes`), and an observe-only belt subscribes the store's
+own feed ONCE to log whether the host union actually kept our ids — a behaviour assertion with no
+writes. An empty, unparseable or `< 0.15.0` version keeps the full 0.14 keeper (feed-first, the bounded
+ladder, the stand-down rule, the prune-only dead-id pass) byte-for-byte — the gate can only ever stand
+the keeper DOWN on a version it could actually read.
+
+**The decision-events grant flow, user-facing (C3').** The decision seam this page has carried as
+ready-but-not-activated since §6.1 is now ACTIVATABLE through the host's own documented grant flow, and
+the four `session.*.intercept` declarations in `dsh-plugin.json` (`tui/input`, `tui/rewind-prompt`,
+`tui/session-switch`, `tui/compact`) are exactly what it grants. **How to grant**: write the host's own
+`<DATA_DIR>/extension-grants.json` (under `~/.dsh-tui`) with a row keyed `com.mpd-dsh.mpd-tui` naming
+the four permissions at their scopes — exactly the hint the host's own `/plugins` pane prints —
+{"grants":{"com.mpd-dsh.mpd-tui":[{"name":"session.input.intercept","scope":"tui/input"},…]}}. **What it
+enables**: admission flips from `waiting_authorization` to `compatible`, the component identity binds
+(the effect ledger attributes `com.mpd-dsh.mpd-tui` instead of `undeclared`), and the four decision
+subscriptions activate — input, rewind-prompt, session-switch and compact interception, the surfaces
+§6.1 describes. **Security posture**: the file is fail-CLOSED — a legacy bare-string rule never
+authorizes, a malformed file reads as EMPTY tables (corrupt ≠ absent), the host re-reads it per
+operation and polls (admission retries every 200 ms for ~20 s, so a grant present at boot or within the
+window flips admission without a restart; after a settled refusal a reload is needed); revoking the row
+disables the interception again. Without a grant nothing changes: the written fallback in
+`dsh-plugin.json`'s DecisionEvents requirement holds and the bundle stays fully usable.
+
+**A live team with ZERO tasks renders as a team, not as "no team" (C6, the user-reported defect).**
+`dagPageOf` used to discard a resolved team's identity the moment its board was empty, so a live
+six-member team painted one dim "no team in this workspace" line. The projection now keeps the page
+whenever the record's `team` head resolved (`tasks: []` is legal; the honest no-team projection still
+renders the empty states), and the MPD panel's 0-task render draws the header facts (team, phase,
+`tasks 0/0`, members) plus a one-line roster in the scene's own discipline plus the hint that names the
+call which fills the board — for the session's own team and for the marked workspace fallback alike.
+
+**Team dispatch now says why it refused (C7, one user-visible sentence).** The team plane's dispatch
+pass refuses cross-team pairings and write-task-on-read-only-member pairings in the pure decision, and
+the refusal sentences are user-visible in the dispatch report (`refused a CROSS-TEAM pairing: task …
+belongs to … while member … belongs to …`; a guard-passed owner is reported as `was passed over by a
+dispatch guard (…)`), so a skipped task always carries its reason instead of silently falling back.
+
+**Declined adoption candidates (user-declined after two converging Researcher evaluations — recorded so
+no later wave re-litigates them).** Every new 0.15.0 capability is host-internal or diagnostic-only:
+`probeBackendAdmission()` — callable on a bound `tuiPluginHost`, but it diagnoses a Backend contribution
+family this bundle does not ship and whose install chain is not wired upstream (declined); the
+`backend-v1alpha1` Backend family — deferred non-goal; `plugin-completions`, `plugin-declaration`,
+`plugin-manager`, `entry-slot`, `session-seed`, `session-list-metadata`, `tui-settings`, `fresh-agent` —
+host-internal subsystems, not plugin-facing seams. The admission registry's changed
+`registry-0.15.json` and the new `backend-v1alpha1` contract make the `tui-admission` lane re-run
+load-bearing for this wave.
+
+**Evidence of this wave, and what each reading is worth.** The host readings above come from the wave's
+frozen measurement basis (`evidence/tui/dsh-tui-015/host-diff/FACTS.md`, with both npm tarballs
+unpacked at `a/` 0.14.0 and `b/` 0.15.0 beside it — the seam additive-only diff, the union/removal
+mechanics, the `PanelBar` icon re-measure and the unchanged defaults are read from those trees, not
+remembered). The unit band at the code-revision of this section reads: `bun test
+packages/mpd-tui-adapter-plugin` = **74 pass / 0 fail** (five new C2 arms: the version predicate table,
+the writes-nothing arm with the observe-only belt, the /settings-removal-stays arm, the explicit-0.14
+repair arm, the absent-version legacy arm) and `bun test packages/mpd-tui-plugin` = **482 pass / 0
+fail** (three new C6 arms; the version-aware split of the "host re-applies the configured CSV" arm).
+The sandbox lanes on the installed 0.15.0 host, the real-PTY arms and the Docker dual-mode lane are the
+wave's verification record under `evidence/tui/**` — this section quotes the host-diff and unit
+readings it was written against and does not pre-claim lane numbers; a SKIP is never a pass.
+
+**Bounds (the bounds are part of the claim).** (a) The keeper stand-down rests on the host's own
+self-heal being present — a host that reports `>= 0.15.0` but lost the union helpers would leave MPD
+panels enable-list-less, and the observe-only belt's one line is the visible symptom to look for. (b)
+The grant flow's liveness numbers (per-operation re-read, 200 ms ×100 retries) are the host's measured
+behaviour, not a bundle promise; revocation semantics are the host's. (c) The `PanelBar` icon return is
+a HOST fact re-measured on 0.15.0: a future host that stops painting icons again contradicts no MPD
+claim — every descriptor still declares one. (d) The C6 live-PTY eyeball is a named manual observation
+(the captain's own session is the repro); the unit arms carry the regression weight.
+

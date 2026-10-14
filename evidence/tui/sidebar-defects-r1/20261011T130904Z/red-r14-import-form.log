@@ -1,0 +1,12 @@
+# R1.4 red measurement — the form the changed imports carry BEFORE the repair
+packages/mpd-tui-plugin/src/index.ts:58:import { setWheelInvertRead } from "./panel-core.js"
+packages/mpd-tui-plugin/src/scenes.ts:52:import { gutterCellsX, legendLinesFor, normalizeWheelDelta, toneColor, useTeamFeed, visualTone, wheelInvertOn } from "./panel-core.js"
+
+# sibling relative specifiers in the SAME two files (the convention, measured):
+      4 from "./team-state.js"
+      3 from "./types.js"
+      3 from "../../mpd-dsh-adapter-plugin/src/index.js"
+      2 from "./subagent-scene.js"
+      2 from "./status.js"
+
+# repo-wide under packages/*/src: js-ext=200 ts-ext=72

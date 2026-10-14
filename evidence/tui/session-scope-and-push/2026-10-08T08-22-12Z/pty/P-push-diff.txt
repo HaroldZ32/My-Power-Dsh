@@ -1,0 +1,9 @@
+P2-sidebar-live-session vs P3-sidebar-live-v2: changedLines=8
+        <                                                                                               ││team LIVEBOARD  phase active  tasks 0/4  │
+        >                                                                                               ││team LIVEBOARD2  phase active  tasks 0/5 │
+        <   █   █   █   █   █  █    █  ██   █           █       █                                       ││██████████████████████████████████░░░░░░░│
+        <   █   █   █   █   █   █   █   █   █████   ████    ████                                        ││view boxes · 4 tasks · ranks derived     │
+        >   █   █   █   █   █  █    █  ██   █           █       █                                       ││███████████████████████████░░░░░░░░░░░░░░│
+        >   █   █   █   █   █   █   █   █   █████   ████    ████                                        ││view boxes · 5 tasks · ranks derived     │
+        <   mpd: team OTHERBOARD 1·0/4 · plans 0 · workmates 0                                          ││                                         │
+        >   mpd: team LIVEBOARD2 1·0/5 · plans 0 · workmates 0                                          ││                                         │

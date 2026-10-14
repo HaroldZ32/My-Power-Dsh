@@ -1,0 +1,160 @@
+{
+  "lane": "lane-s-change-feed",
+  "loopId": "loop-20261008T073859-86e940",
+  "contract": ".mpd/plans/lane-s-change-feed.md",
+  "stamp": "20261008T074710Z",
+  "subject": "mpd-team-core-plugin publishes team-record changes: mpdTeams.subscribe/revision + the SSE route /plugins/mpd-team/events",
+  "repair": {
+    "task": ".mpd/plans/repair-r-s-change-feed-evidence.md",
+    "writer": "a NEW writer (repair R-S); the lane's writer had finished",
+    "why": "the blind verifier of this loop CONFIRMED the lane's substance and FAILED it on three EVIDENCE defects: an un-reproducible parity hash (R-S1), an unevidenced 15 s keep-alive and header claim (R-S2), and a live `?token=…` in a boot log (R-S3). Nothing in the confirmed substance was redone.",
+    "items": {
+      "R-S1": "state-parity.ts now NORMALIZES this run's `mkdtemp` workspace path out of the two /state bodies (the path is the only run-varying value in the payload) and EMITS the hashes itself into state-parity.json. The values in S-e below are that artifact's, re-hashed AFTER the final run; sha256sum of the two artifacts agrees with them. Reproduce: `bun evidence/team/change-feed/20261008T074710Z/state-parity.ts` then `sha256sum evidence/team/change-feed/20261008T074710Z/parity-before-state.json evidence/team/change-feed/20261008T074710Z/parity-after-state.json` — the SAME hash comes back (measured over four runs, each with a different temp path and a different raw hash).",
+      "R-S2": "a new `--phase keepalive` arm of sse-boot.ts boots the same row on port 3200 and captures the keep-alive and the head: after-keepalive-body.txt (a RAW 22013 ms `curl -i -N`, curl's own bytes, head block AND `: ping` in one file), after-keepalive-headers.txt (the head block alone, written by `curl -D`), after-keepalive-sse.txt (a live frame timeline) and after-keepalive.json.",
+      "R-S3": "boot-after.log line 1 is redacted to `dsh web: http://127.0.0.1:3198/?token=<redacted>` (whole value removed, shape kept), and sse-boot.ts now sweeps every `*.log` after EVERY phase and re-reads the bytes to prove none survived (`--phase sweep` re-runs the sweep standalone). The whole lane evidence dir was scanned — see `secretScan`."
+    },
+    "alsoRepaired": "a representation nit found while cross-checking every recorded value against its artifact: `helloFrame` and `changeFrame` were DOUBLE-escaped in the JSON source, so they decoded to the two characters `\\n` (backslash, n) rather than to the newline bytes the artifacts hold. They now decode to exactly what after-latency.json and after-sse.txt carry — no claim changed, only its spelling.",
+    "crossCheck": "every value this file records that is a hash, a stamp or a frame was re-read against its artifact: `result.json.arms.\"S-e\".beforeSha256/afterSha256` == `sha256sum` of the two parity bodies == `state-parity.json`'s run-emitted hashes; `rawSha256Before` == the final run's raw hash; `dist.sha256` == `sha256sum` of the dist this lane ships; writeAt/frameAt/delta/helloFrame/changeFrame == after-latency.json; the re-arm stamps == after-refused.json; the gate output == output.log."
+  },
+  "secretScan": {
+    "why": "AGENTS.md §10 — evidence logs must not carry secret material; this lane's boot-after.log did (the harness prints its own web URL, token included, into the log the driver opened)",
+    "commands": [
+      "grep -rn '<the 43-char value the pre-repair boot-after.log carried>' evidence/team/change-feed/  →  no match (exit 1). The value is deliberately NOT reproduced in this file: writing it here would recreate the leak the item removes.",
+      "grep -rInE '(token|access_token|api[_-]?key|apikey|secret|passwd|password|bearer|authorization|private[_-]?key|xox[baprs]-|gh[pousr]_[A-Za-z0-9]{20,})' evidence/team/change-feed/  →  24 hits when run last, and every one of them is one of three harmless kinds: (a) the driver's own source — the redaction regexes and the comments around them, (b) one of the two REDACTED log lines `dsh web: http://127.0.0.1:<port>/?token=<redacted>`, or (c) a line of this repair's own prose (this file and output.log) that NAMES the parameter and carries no value. The count is sensitive to that prose, so it is the CLASSIFICATION that carries the claim: no hit holds a live value.",
+      "grep -rIohE '[A-Za-z0-9_+/-]{32,}={0,2}' evidence/team/change-feed/ | sort | uniq -c  →  the 32-char-plus runs are artifact sha256 digests, repo/module paths, sandbox paths and an npm error code; no credential-shaped string.",
+      "grep -rl '<that same 43-char value>' .  →  no file under the whole repository, sandbox included"
+    ],
+    "redaction": "boot-after.log line 1 → `dsh web: http://127.0.0.1:3198/?token=<redacted>`; the replaced value is not recoverable from any file in the tree, and the lane's evidence directory is UNTRACKED in git (`git status --porcelain evidence/team/change-feed/` → `?? evidence/team/change-feed/`), so no committed revision holds it either. Bound: a filesystem-level recovery of the file's freed blocks is outside what an artifact redaction can address.",
+    "sweep": "sse-boot.ts redacts every `*.log` in this directory at the end of EVERY phase and re-reads it; the standalone `--phase sweep` reports `0 value(s) in 0 distinct form(s) redacted across 0 log(s); re-read clean: true` on an already-clean directory (idempotent), and the keepalive run that wrote the second leaking log reported `2 value(s) … re-read clean: true` after the fix."
+  },
+  "dist": {
+    "path": "packages/mpd-team-core-plugin/dist/index.js",
+    "sha256": "f1e744d10de641a9b2f171ca2d10bc02c6d02bdb2b38fd504ad00976105d3e7a",
+    "builtWith": ".toolchain/node_modules/.bin/bun build packages/mpd-team-core-plugin/src/index.ts --target node --format esm --outfile packages/mpd-team-core-plugin/dist/index.js (repo root; pinned bun 1.4.0)",
+    "distFresh": "FRESH packages/mpd-team-core-plugin/dist/index.js sha f1e744d10de6… <- packages/mpd-team-core-plugin/src/index.ts; gate: 30/30 targets fresh"
+  },
+  "arms": {
+    "S-a": {
+      "ok": true,
+      "how": "REAL isolated boot: fresh DSH_HOME + sandbox HOME + sandbox workspace (.qa-change-feed/20261008T074710Z), the bundle installed into profile w through `dsh plugin --profile w add` (profile mechanism), the web app booted with cwd = the sandbox workspace, then `curl -N` against the mounted route.",
+      "streamUrl": "http://127.0.0.1:3198/plugins/mpd-team/events?sessionId=sess-lane-s",
+      "helloFrame": "event: hello\ndata: {\"rev\":0}\n\n",
+      "changeFrame": "data: {\"rev\":1}\n\n",
+      "writeAtEpochMs": 1791446554255,
+      "writeAtIso": "2026-10-08T08:02:34.255Z",
+      "frameAtEpochMs": 1791446554305,
+      "frameAtIso": "2026-10-08T08:02:34.305Z",
+      "deltaMs": 50,
+      "under200": true,
+      "writer": "a SEPARATE node process (spawnSync node -e) that writes <workspace>/.mpd/team/teams/team-lane-s-external.json with the store's own temp-file + rename shape",
+      "routeFamily": "state=200 plan=200 task=200 mail=200 events=200",
+      "keepAlive": {
+        "ok": true,
+        "how": "a SECOND real boot (`node sse-boot.ts --phase keepalive`, port 3200, same profile and same sandbox workspace), captured three ways — the 15 s comment cannot be witnessed by a short arm, which is what this item was failed for",
+        "rawIdleCapture": "after-keepalive-body.txt — `curl -i -N --max-time 22` with curl's stdout landed in the file untouched: 269 B over 22013 ms, carrying the head block, `retry: 1000`, `event: hello`/`data: {\"rev\":0}`, then `: ping`; 1 ping line, no other frame",
+        "headerCapture": "after-keepalive-headers.txt — the response-head block written by `curl -D -` (verbatim: `HTTP/1.1 200 OK` + the four headers + `Date` + `Transfer-Encoding: chunked`)",
+        "liveTimeline": "after-keepalive-sse.txt — `retry: 1000` and `event: hello` at +5 ms, `: ping` at +15006 ms, 0 change frames in between; `idleGapMs` 15001",
+        "headers": {
+          "content-type": "text/event-stream; charset=utf-8",
+          "cache-control": "no-store, no-transform",
+          "connection": "keep-alive",
+          "x-accel-buffering": "no"
+        },
+        "captureExceeds16s": "the raw capture ran 22013 ms, so the ping at ~15 s is inside a window longer than the interval it proves — not an artefact of a short read",
+        "curlExit": "both captures exit 28: the stream has no end of its own, so `--max-time` ends it (recorded in after-keepalive.json rather than smoothed over)",
+        "hostExtras": "the host also sends `Date` and `Transfer-Encoding: chunked`; curl de-chunks, so the capture shows the frames and not the chunk-size lines"
+      },
+      "evidence": ["after-sse.txt", "after-latency.json", "after-routes.txt", "after-state.json", "boot-after.log", "after-isolation.txt", "after-keepalive-body.txt", "after-keepalive-headers.txt", "after-keepalive-sse.txt", "after-keepalive.json", "boot-keepalive.log", "after-keepalive-isolation.txt"]
+    },
+    "S-b": {
+      "ok": true,
+      "how": "14 unit arms in packages/mpd-team-core-plugin/test/change-feed.test.ts, real filesystem work in temp dirs",
+      "pinned": "listener fires on a store write and NOT inside the writer's stack; the FIRST write of a burst notifies on its own (the window is opened by it, never by a second write); a burst inside one window coalesces into ONE call and ONE revision; separated writes are separate changes with a monotonic revision; a throwing listener is contained once and its siblings still run; the disposer is idempotent and a disposed subscription stops notifying"
+    },
+    "S-c": {
+      "ok": true,
+      "how": "an injected WatchFactory counts arming and closure; a second accessor-free arm runs 25 subscribe→dispose cycles",
+      "pinned": "two watches per workspace armed on the FIRST subscriber and shared by the second; the first disposer closes nothing; the LAST disposer closes both; 25 cycles leave 0 live handles; a workspace with no .mpd at all is subscribed, armed and then SEEN (a raw write outside the store)"
+    },
+    "S-d": {
+      "ok": true,
+      "hermeticArm": "a WatchFactory whose every call throws (the shape of an unwritable workspace or an exhausted inotify watch limit): subscribe does not throw, the watcher count is 0, in-process changes still arrive, and exactly ONE bounded line per workspace is written (a second change adds no line)",
+      "realArm": "a SECOND real boot whose workspace has `.mpd/team` as a FILE, so the REAL mkdirSync refuses (EEXIST for the root, ENOTDIR for teams/) and the real fs.watch is never reached: the boot came up (state=200), the events route still answered its hello frame, and the row log carries exactly ONE watch-off line for that boot",
+      "watchOffLines": 1,
+      "watchOffLine": "[2026-10-08T08:02:38.454Z] [mpd-team-core] team change feed: no filesystem watch for <ws-b>/.mpd/team/teams (ENOTDIR: not a directory) — in-process notifications only, a write from ANOTHER process will not be seen",
+      "reArm": {
+        "proven": true,
+        "how": "after the refusal the file standing where the directory belongs was removed FROM ANOTHER process and a record written; a SECOND connection to the same workspace retried the arming (the row log records 'watch armed'), and then a write from another process produced a frame",
+        "writeAtEpochMs": 1791446558628,
+        "frameAtEpochMs": 1791446558677,
+        "deltaMs": 49,
+        "under200": true
+      },
+      "evidence": ["after-refused.json", "refused-sse.txt", "boot-refused.log", "test/change-feed.test.ts"]
+    },
+    "S-e": {
+      "ok": true,
+      "how": "state-parity.ts unpacks the ENTIRE packages/mpd-team-core-plugin/src tree as `git show HEAD:` has it and mounts BOTH implementations (committed vs working tree) on the same route double against the same fixture workspace; it then normalizes the run's own temp path out of both bodies and emits the hashes itself (repair R-S1 — the recorded values are the run's, re-hashed after the final run, not remembered from an earlier one)",
+      "runWith": "`bun evidence/team/change-feed/20261008T074710Z/state-parity.ts` — MEASURED: node is not an option here, because the HEAD copy holds the committed extensionless specifiers (`./team-store`) and node's ESM resolver refuses them (ERR_MODULE_NOT_FOUND); rewriting them on unpack would mean testing code that is not the committed code",
+      "identical": true,
+      "identicalNormalized": true,
+      "sha256Of": "the body as written to parity-before-state.json / parity-after-state.json: this run's mkdtemp workspace path replaced by the literal <workspace>, every other byte untouched (state-parity.json states the same)",
+      "beforeSha256": "cf1cf0755da57dc314df3d517d3dc7bf9c99847c8df144b421aa6baa4a949099",
+      "afterSha256": "cf1cf0755da57dc314df3d517d3dc7bf9c99847c8df144b421aa6baa4a949099",
+      "rawSha256Of": "the exact bytes the route answered, workspace path included; equal to each other within one run and different in the next one — which is precisely why the hash above is taken after normalization",
+      "rawSha256Before": "26f9e1f799034b3cfb5e4888f2236b9be74791b1356b11512e7173cf1b8cb49e",
+      "rawSha256After": "26f9e1f799034b3cfb5e4888f2236b9be74791b1356b11512e7173cf1b8cb49e",
+      "hashesEmittedBy": "state-parity.json, written by the run itself; the values here were copied from it after the FINAL run and then re-hashed independently with `sha256sum` (both artifacts agreed)",
+      "reproducedAcrossRuns": "four runs, four different mkdtemp paths, four different raw hashes (…819c63ac, …cd9b645b, …26f9e1f7), ONE normalized hash: cf1cf075…",
+      "bytes": 582,
+      "normalizedBytes": 564,
+      "routesBefore": ["/plugins/mpd-team/state", "/plugins/mpd-team/plan", "/plugins/mpd-team/task", "/plugins/mpd-team/mail"],
+      "routesAfter": ["/plugins/mpd-team/state", "/plugins/mpd-team/plan", "/plugins/mpd-team/task", "/plugins/mpd-team/mail", "/plugins/mpd-team/events"],
+      "mountedStateWitness": "the mounted row's own /state body is in after-state.json (team + member + task + counts + executor), served from the REAL route",
+      "bound": "the parity comparison feeds BOTH implementations the same fixed executor double, so the executor string is not part of what it compares; the mounted body shows the real row's executor sentence",
+      "evidence": ["state-parity.json", "parity-before-state.json", "parity-after-state.json", "after-state.json"]
+    },
+    "gates": {
+      "atTheLanesOwnRun": {
+        "bun test packages/mpd-team-core-plugin": "176 pass / 0 fail / 786 expect() calls / 13 files",
+        "bun run typecheck": "exit 0 (tsgo --noEmit, no diagnostics)",
+        "node scripts/verify-comment-coverage.ts": "VERDICT: PASS — 366 files scanned, 32206 declarations inspected",
+        "node scripts/verify-dist-fresh.ts": "ok: 30/30 targets fresh (each rebuilt twice, byte-identical), mpd-team-core-plugin FRESH",
+        "bun run verify:docs": "pairs=47 failed=0 violations=0 links=424 dead=0 — PASS (exit 0)"
+      },
+      "repairReRun": {
+        "when": "2026-10-08, by the repair writer R-S, after the repair's last write; recorded verbatim in output.log under `# REPAIR R-S — gate re-run`",
+        "note": "THREE of the four commands redden on a file OUTSIDE this lane — `packages/mpd-tui-plugin/src/index.ts`, which another lane is mid-edit in. That red is named and left alone (the repair contract forbids touching it); every gate reads GREEN on this lane's own subject.",
+        "bun test packages/mpd-team-core-plugin": "exit 0 — 176 pass / 0 fail / 786 expect() calls / 13 files",
+        "bun run typecheck": "exit 1 — FOREIGN: `packages/mpd-tui-plugin/src/index.ts(471,20) error TS2304: Cannot find name 'TeamFeedSubscribe'` (+476, +487, +502). No diagnostic anywhere in packages/mpd-team-core-plugin.",
+        "node scripts/verify-comment-coverage.ts": "exit 1 — FOREIGN: `VERDICT: FAIL — 1 violation(s) across 1 file(s)`: `packages/mpd-tui-plugin/src/index.ts 476: return-type — <anonymous>`. 366 files scanned, 32271 declarations inspected; `evidence/**` is outside that source set, so the repaired drivers are not subjects of it.",
+        "node scripts/verify-dist-fresh.ts": "exit 1 — FOREIGN: `FAIL - 1 of 30 targets not fresh (STALE: 1)`, the stale one being `packages/mpd-tui-plugin/dist/index.js`. This lane's target reads `FRESH packages/mpd-team-core-plugin/dist/index.js sha f1e744d10de6…` under the pinned toolchain (bun 1.4.0) and is byte-identical to the committed one."
+      }
+    }
+  },
+  "isolation": {
+    "freshDshHome": ".qa-change-feed/20261008T074710Z/dsh-home",
+    "sandboxHome": ".qa-change-feed/20261008T074710Z/home",
+    "sandboxWorkspace": [".qa-change-feed/20261008T074710Z/ws-a", ".qa-change-feed/20261008T074710Z/ws-b"],
+    "sessionsSandboxedVerdict": "ok:true, checked:0 (the boot created no session at all, so there is no session-store key to escape — a WEAK form of the isolation assertion, stated rather than implied)",
+    "strongerWitness": "every record the arms wrote landed under .qa-change-feed/**: the repo's own <repo>/.mpd/team/teams was not touched (its two files predate this lane, dated 2026-10-02)",
+    "realHomeUntouched": "the real ~/.dsh was only READ once, to copy credentials/settings into the sandbox"
+  },
+  "bounds": [
+    "The watch is TWO NON-RECURSIVE directory watches per armed workspace (<ws>/.mpd/team for the index, <ws>/.mpd/team/teams for the records). Linux inotify has no recursive mode, so this is the portable shape, not a limitation that was worked around.",
+    "Subscribing CREATES those directories (a watch cannot be armed on a path that does not exist), so a surface that subscribes may create empty <workspace>/.mpd/team/teams/. Without it the FIRST record of a fresh session — written by an approval, possibly in another process — would be invisible to every subscriber.",
+    "On a network filesystem, or a kernel whose inotify watch limit is exhausted, the watch degrades exactly as an unwritable workspace does: in-process notifications only, ONE bounded log line. Neither condition was reproduced here (they are machine-dependent); the refusal path was exercised with (a) an injected throwing factory and (b) a real EEXIST/ENOTDIR refusal in a mounted boot.",
+    "The feed follows the TEAM RECORD and the TEAMS INDEX. The sidecar files (staged plan, contracts, hold, mailbox) are deliberately NOT published: the contract's §3.1 enumerates records + index, and widening it would change an interface two other lanes are being written against.",
+    "revision is PER PROCESS and per workspace. Two processes serving one workspace count their own windows; the number is a change detector between a client and its own server, not a global sequence.",
+    "The window is FIXED at 50 ms (never extended by a late arrival), so a continuously busy team is notified once per 50 ms window instead of postponing its own notification. Measured worst case on the wire: 50 ms write-to-frame.",
+    "The keep-alive is a 15 s `: ping`, CAPTURED rather than asserted (repair R-S2): a 22013 ms raw `curl -i -N` whose 269 B are in after-keepalive-body.txt carries the head block, `retry: 1000`, `event: hello`, then `: ping` — with no other frame over the whole window; the live timeline (after-keepalive-sse.txt) puts the comment at +15006 ms after the connect frame and counts 0 change frames in between. A client that disconnects leaves no timer and no listener (asserted in an arm).",
+    "The SSE handler flushes the head explicitly (`flushHeaders`) and sets `x-accel-buffering: no` as well as `cache-control: no-store, no-transform`; the host's own gzip filter already skips `text/event-stream`, so no compression layer is in the path — the 50 ms measurement was taken through the real host server. The head is CAPTURED verbatim in after-keepalive-headers.txt (all four headers present); the same capture shows the host adding `Date` and `Transfer-Encoding: chunked`, and curl de-chunks the body transparently."
+  ],
+  "notes": [
+    "This driver MUST run with `node`, not bun: `dshAppSpec` spawns the harness app with `process.execPath`, and a bun-hosted driver makes the harness app die (bun tempdir EROFS, or a V8-symbol load failure).",
+    "`state-parity.ts` is the MIRROR IMAGE and must run with `bun`: it imports the HEAD copy of `src/**` verbatim, whose specifiers are the committed extensionless ones, and node's ESM resolver refuses them (MEASURED: `ERR_MODULE_NOT_FOUND … /src-at-head/team-store`).",
+    "EVERY `sse-boot.ts` PHASE NOW ENDS WITH A CREDENTIAL SWEEP (`redactEvidenceLogs`): the harness prints `dsh web: http://127.0.0.1:<port>/?token=…` into the boot log the driver opened, so the logs are redacted and re-read before the phase returns. `--phase sweep` runs the sweep alone and is idempotent — the repaired lane reports `re-read clean: true`.",
+    "The install needs XDG_RUNTIME_DIR pointed INSIDE the sandbox: pnpm puts its store operation lock at $XDG_RUNTIME_DIR/pnpm-store-operation-locks-<uid>, and /run/user/<uid> is mounted READ-ONLY inside a workspace-write file sandbox (ERR_PNPM_STORE_DIR_OPEN_OPERATION_LOCK).",
+    "Arming a fresh workspace must CREATE both directories BEFORE arming either watch: creating teams/ inside a watched team root is observed by that watch and was measured as a `hello` frame carrying rev:1 on a workspace that had never been written to."
+  ]
+}

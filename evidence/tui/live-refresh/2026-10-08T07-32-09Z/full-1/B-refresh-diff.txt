@@ -1,0 +1,9 @@
+B1-scene-open vs B4-scene-plus8s: changedLines=24
+        <   ┌✗ MPD team — webui-tui-i18n · 216x48──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+        <   │ ✗ MPD team — webui-tui-i18n (team-2026-10-05T22-30-00.000Z) · 216x48                                                                                                                                                 │
+        <   │ █████░░░░░░░░░░░ 2/6 · active · 6 task(s) · 2 done · 1 running · 2 pending · 1 failed · 4 link(s)                                                                                                                    │
+        <   │ roster  ◐lead 0/0 · ◐web-team-gui 1/2 · ○web-settings-card 0/1 · ○tui-model-i18n 1/1 · ○ui-reviewer 0/1                                                                                                              │
+        >   ┌○ MPD team — webui-tui-i18n · 216x48──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+        >   │ ○ MPD team — webui-tui-i18n (team-2026-10-05T22-30-00.000Z) · 216x48                                                                                                                                                 │
+        B1-scene-open: modeLine="" summary=""
+        B4-scene-plus8s: modeLine="" summary=""

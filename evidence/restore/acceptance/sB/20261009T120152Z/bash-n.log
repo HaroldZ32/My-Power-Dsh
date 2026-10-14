@@ -1,0 +1,2 @@
+docker/entrypoint.sh: bash -n OK (exit 0)
+docker/tui-lane.sh: bash -n OK (exit 0)

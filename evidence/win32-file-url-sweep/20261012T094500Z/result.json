@@ -1,0 +1,81 @@
+{
+  "wave": "fix/win32-file-url-sweep — the same-class sweep the user asked for (\"都修了\")",
+  "date": "2026-10-12",
+  "scope": "EVERY live (non-evidence) site in this repository that handed a bare path to node's ESM loader, or hand-built a `file://` URL by concatenation. The two production MCP launchers were fixed in the previous commit (184fb1b9); this one covers the QA/tooling band.",
+  "fixed": [
+    {
+      "file": "skills/dsh-qa/scripts/verify-law.ts",
+      "sites": 4,
+      "what": "`await import(join(QA_LIB, \"credentials.ts\"|\"dsh-launcher.ts\"|\"workspace-isolation.ts\"|\"session-evidence.ts\"))` -> `await import(pathToFileURL(join(QA_LIB, \"…\")).href)`; `pathToFileURL` added to the existing `node:url` import.",
+      "whyItMattered": "This is the AGENTS.md §4 verification-law falsifier, run as `node skills/dsh-qa/scripts/verify-law.ts`. Its four top-level `await import`s execute BEFORE any arm, so on Windows the whole gate died with ERR_UNSUPPORTED_ESM_URL_SCHEME."
+    },
+    {
+      "file": "packages/mpd-verify-plugin/qa/verify-law.ts",
+      "sites": 4,
+      "what": "The AUTHORED twin of the file above, synced byte-for-byte from the registered copy.",
+      "whyItMattered": "The case body exists TWICE and the self-test has an ANTI-DRIFT arm comparing `fileURLToPath(import.meta.url)` with the registered copy. That arm is vacuous when run from the registered copy (same path) and only bites when run from the AUTHORED copy — which is exactly how editing only the skills copy would have shipped a drifted pair. Both copies are now byte-identical (verified by hash) and the authored-side arm passes."
+    },
+    {
+      "file": "skills/dsh-qa/scripts/team-watchdog-boot.ts",
+      "sites": 1,
+      "what": "`await import(join(REPO, \"packages/mpd-schemastery/harness/cordis/lib/index.ts\"))` -> `pathToFileURL(...).href`; `pathToFileURL` added to the `node:url` import."
+    },
+    {
+      "file": "skills/dsh-qa/scripts/team-watchdog-notify.ts",
+      "sites": 3,
+      "what": "`await import(PATHS.webRoute)`, `PATHS.webHarness`, `PATHS.tuiWatchdog`. `PATHS.*` are BARE PATHS (`join(REPO, …)` in `./lib/watchdog-lane.ts`), so all three are now wrapped in `pathToFileURL(...)`; `node:url` imported."
+    },
+    {
+      "file": "skills/dsh-qa/scripts/tui-admission.ts",
+      "sites": 1,
+      "what": "`const url = (relative) => \"file://\" + join(hostRoot, relative)` -> `pathToFileURL(join(hostRoot, relative)).href` (`pathToFileURL` was already imported).",
+      "whyItMattered": "A HAND-BUILT file URL: `\"file://\" + join(root, …)` is correct only on POSIX, where the joined path starts with `/` (giving `file:///…`). On win32 it yields `file://C:\\…`, whose HOST is the string `C:\\…` and whose path is empty — so all three `await import(url(...))` calls below it could never resolve a module."
+    },
+    {
+      "file": "skills/dsh-qa/scripts/tui-spec-conformance.ts",
+      "sites": 1,
+      "what": "`await import(\"file://\" + join(hostRoot as string, \"node_modules\", \"@dsh-std\", \"manifest\", \"lib\", \"index.js\"))` -> `pathToFileURL(join(...)).href` (already imported).",
+      "whyItMattered": "The same hand-built-URL defect; this one loads the HOST's own pinned manifest parser, so on Windows the lane could not evaluate its manifest arm at all."
+    }
+  ],
+  "checkedAndDeliberatelyNotChanged": [
+    {
+      "file": "scripts/mpd-bg.ts",
+      "line": 155,
+      "why": "NOT a defect: `lib` is already `pathToFileURL(join(REPO, …)).href` (line 152) — the pattern is correct there."
+    },
+    {
+      "file": "packages/mpd-memory-plugin/src/index.ts",
+      "line": 106,
+      "why": "`const url = \"file://\" + svnRepo` — the SAME smell but a DIFFERENT mechanism: this string is an **svn CLI argument**, not an ESM specifier, so it throws no ESM error. On Windows svn would want `file:///C:/…`. It was NOT changed because it cannot be verified on this machine (no svn host / no SVN backend to exercise) and a wrong edit would silently break the plugin's `memory.vcs=svn` mode. FLAGGED for a host that can test it."
+    },
+    {
+      "pattern": "evidence/** and packages/mpd-memory-plugin/test/memory.test.ts",
+      "why": "Historical records and a test fixture; evidence files are provenance and must stay byte-verbatim, and the test's `file://` is likewise an svn argument."
+    },
+    {
+      "pattern": "packages/**/test/**",
+      "why": "Those run under BUN (`bun test`), whose resolver accepts an absolute Windows path in `import()`; only NODE rejects it. They are left as-is (and three of them were already made win32-portable for the host-root reason in commit 9c14c15e)."
+    }
+  ],
+  "vendorRepin": {
+    "why": "§9: every `skills/**` edit invalidates the corpus `treeSha`, and exactly ONE re-pin per wave must land in the SAME commit as the change that invalidated it.",
+    "command": "node scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step",
+    "observed": "VENDOR_LOCK.json skills.treeSha fe1e163fa4915349498384847dcd74d1e34ea670b2407196669ea0fe252d4e0b -> 1c51a5320553b61a651e2d1a4a8958e26a0cb8f8a7d4e41213e8f1d0ae2635eb; verify:vendor then PASS - 7 shipped asset(s) fingerprinted"
+  },
+  "gates": [
+    { "command": "node skills/dsh-qa/scripts/verify-law.ts --self-test", "exit": 0, "observed": "ok: the registered copy is byte-identical; ok: patch row + dist symbols + refusal vocabulary + decision/row arms" },
+    { "command": "node packages/mpd-verify-plugin/qa/verify-law.ts --self-test", "exit": 0, "observed": "the AUTHORED side of the anti-drift arm also passes (this is the side that actually compares the two copies)" },
+    { "command": "node scripts/verify-vendor.ts", "exit": 0, "observed": "PASS after the re-pin" },
+    { "command": "bun run test:qa", "exit": 1, "observed": "45 of 47 case(s) passed, INCLUDING every lane edited here; 2 failed (session-start-team.ts, tui-deps-ctrla.ts) — proven PRE-EXISTING, see preExisting" },
+    { "command": "node scripts/verify-comment-coverage.ts", "exit": 0, "observed": "VERDICT: PASS" },
+    { "command": "bun run typecheck (tsgo --noEmit)", "exit": 0, "observed": "no diagnostics" }
+  ],
+  "preExisting": {
+    "method": "`git stash push -u` (everything, so the pristine tree is self-consistent), re-run the same two cases, then `git stash pop`",
+    "arms": [
+      "skills/dsh-qa/scripts/session-start-team.ts --self-test: exit 1 WITH the sweep and exit 1 PRISTINE; its own failure line is `c7: a record led by THIS session with 7 members must read leading, got {\"leading\":false,\"members\":0}` — it reads this workspace's LIVE `.mpd/team` records.",
+      "skills/dsh-qa/scripts/tui-deps-ctrla.ts --self-test: exit 1 WITH the sweep and exit 1 PRISTINE; failure line `a sibling install must fail the contact verdict`."
+    ]
+  }
+}

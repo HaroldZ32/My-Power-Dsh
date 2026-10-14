@@ -101,11 +101,16 @@ describe("A3 — twelve knobs in the ONE declaration, in slot order", () => {
   const slotKnobs = SETTINGS_KNOBS.filter((knob) => knob.path[0] === "teamModels")
 
   test("exactly twelve new rows, after the original thirteen", () => {
-    // 26 = the thirteen original knobs + the twelve slot leaves + the TUI surface's own
-    // `tui.dashboardKey` (declared LAST, so every index-keyed assertion in this file keeps its
-    // meaning). Updated deliberately with that one shared-schema addition — see the W2 lane report.
-    expect(SETTINGS_KNOBS).toHaveLength(26)
+    // 59 = the thirteen original knobs + the twelve slot leaves + the thirty-three agentRoutes
+    // leaves (eleven roster members × provider/model/reasoningEffort, L4's front door) + the TUI
+    // surface's own `tui.dashboardKey` (declared LAST, so every index-keyed assertion in this file
+    // keeps its meaning). Updated deliberately with that one shared-schema addition — see the W2
+    // lane report, and the L4 lane report for the agentRoutes rows.
+    expect(SETTINGS_KNOBS).toHaveLength(59)
     expect(slotKnobs).toHaveLength(12)
+    // The agentRoutes rows: eleven members, three leaves each, enumerated from the slots' own
+    // membership (R2's no-free-typing front door) and placed AFTER the slot rows, BEFORE the TUI knob.
+    expect(SETTINGS_KNOBS.filter((knob) => knob.path[0] === "agentRoutes")).toHaveLength(33)
     expect(SETTINGS_KNOBS.slice(0, 13).map((knob) => [...knob.path])).toEqual([
       ["hashline", "maxDiffChars"],
       ["commentChecker", "autoCheck"],
@@ -230,13 +235,13 @@ describe("A3b — the vision slot carries its own copy, verbatim, in both langua
   const VISION_SENTENCES_EN = [
     "The provider half of this slot. It drives Vision Analyst only (the one member that reads images, diagrams and screenshots). What changing it does: effective at the next team creation; an unusable value fails team creation loudly, naming the member and the slot. The model here must be a vision model that accepts image input (for example deepseek-v4-flash-vision-exp) — a text-only model breaks image analysis.",
     "This slot's model. It MUST accept image input: Vision Analyst's whole value is reading images, and a text-only model makes its image tasks fail. What changing it does: effective at the next team creation.",
-    "This slot's reasoning effort (off / low / high / max). It sets how much Vision Analyst thinks while reading an image. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot.",
+    "This slot's reasoning effort (off / low / high / max). It sets how much Vision Analyst thinks while reading an image. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot. EXCEPTION: a model whose catalog entry declares no reasoning efforts at all is sent none — its call still runs.",
   ]
   // The same three sentences in Chinese; a translation drift reddens here instead of shipping silently.
   const VISION_SENTENCES_ZH = [
     "这一档的提供商。它只驱动 Vision Analyst（唯一负责看图/读图/分析截图的成员）。改它的影响：下次建队生效；填成不可用会让建队直接失败并点名成员与槽位。注意本档的模型必须是支持图像输入的视觉模型（例如 deepseek-v4-flash-vision-exp），换成纯文本模型会让看图任务失败。",
     "这一档的模型。必须选支持图像输入的模型：Vision Analyst 的全部价值在于读图，纯文本模型会让它的读图任务直接失败。改它的影响：下次建队生效。",
-    "这一档的推理强度（off / low / high / max）。决定 Vision Analyst 读图时的思考深度。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。",
+    "这一档的推理强度（off / low / high / max）。决定 Vision Analyst 读图时的思考深度。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。例外：若该模型的目录条目完全没有推理等级，则不发送任何等级——调用照常。",
   ]
 
   test("exactly three slot-4 rows, in leaf order, with the declared sentences", () => {

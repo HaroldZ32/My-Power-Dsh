@@ -21,6 +21,9 @@ Size interview depth: **Trivial** (single file, obvious) - one or two confirms, 
 ## Phase 1 - Ground (explore before asking)
 Eliminate unknowns by discovering facts, not by asking. Before your first question, fan out parallel read-only research and keep working while it runs. Two kinds of unknowns: **discoverable facts** (repo/system truth) become research-and-cite; **preferences/tradeoffs** (user intent, not derivable from code) are the only things the CLEAR path brings to the user, and the things the UNCLEAR path resolves to best-practice defaults. Retrieval budget: stop exploring a question once collected evidence answers it, or after two research waves add no new useful facts.
 
+### Define the ideal state (before any question or brief)
+From the request and the evidence, name who this output touches - a customer, another programmer, a program or agent consuming it, often more than one - and how each uses it today and will use it after. Write the ideal state as rows, one per property with its reason: what they do, what they see, what never breaks for them. Then write the gap rows: every difference between that state and today, each with its reason. Record both in the draft's `## Affected user and ideal state` ledger. Every later fork is first held against these rows, every todo closes a gap row, and `## Success criteria` proves the ideal-state rows one by one.
+
 ### Dynamic workflow for architecture and bootstrap planning
 When the request is architecture-scale, references Discord / external repos, or is invoked by `$ulw-execute` because no selectable plan exists, run **dynamic adversarial workflow phases** before synthesis. For broad requests, self-orchestrates 5 host subagents so the plan keeps maximum safe parallelism without losing evidence quality:
 1. **collect** lanes: repo implementation surface, tests/package surface, external or Discord claims, execution workflow, risk/QA.
@@ -154,14 +157,14 @@ No Metis, no plan file, no execution until the user approves. The UNCLEAR path a
 ## Commit strategy
 ## Success criteria
 ```
-> Target 5-8 todos per wave; fewer than 3 (except the final) means under-splitting. Implementation + Test = ONE todo. Each todo carries: exhaustive References (the executor has no interview context), agent-executable Acceptance criteria, happy + failure QA scenarios each with an evidence path, a Commit line, and a `Recommended task executor category:` line - the routing verdict the executor follows, with a one-line reason, in the upstream category vocabulary: `quick` (mechanical / single-file - the default for every splittable piece), `unspecified-low` (small misc), `unspecified-high` (standard multi-file feature), `visual-engineering` (frontend/UI), `writing` (docs), `git` (git ops), `deep` (hairy debugging or cross-module reasoning), `ultrabrain` (ONE genuinely hard cohesive problem, delegated whole). Prefer many small `quick`-routable todos spread across parallel waves; when splitting would sever shared reasoning, keep ONE todo routed to `deep`/`ultrabrain` - never force-split work whose parts share one insight. Harnesses without categories map by difficulty: quick/unspecified-low/writing/git = low, unspecified-high/visual-engineering = medium, deep/ultrabrain = high.
+> `## Scope` opens with `### Affected user and ideal state` - the user, how they use the result, then the IS-n and GAP-n rows from the draft ledger - before Must have / Must NOT have; `## Success criteria` is the table mapping every IS row to its delivering todo(s), proving QA scenario, and evidence path. Target 5-8 todos per wave; fewer than 3 (except the final) means under-splitting. Implementation + Test = ONE todo. Each todo carries: exhaustive References (the executor has no interview context), agent-executable Acceptance criteria, happy + failure QA scenarios each with an evidence path, a Commit line, and a `Recommended task executor category:` line - the routing verdict the executor follows, with a one-line reason, in the omo category vocabulary: `quick` (mechanical / single-file - the default for every splittable piece), `unspecified-low` (small misc), `unspecified-high` (standard multi-file feature), `visual-engineering` (frontend/UI), `writing` (docs), `git` (git ops), `deep-low` (hairy debugging or cross-module reasoning the worker can settle from what it reads), `deep-high` (the same, when the central decision cannot be settled from evidence: a trade-off, a cross-package contract, or correctness argued from invariants), `ultrabrain` (ONE genuinely hard cohesive problem, delegated whole). Prefer many small `quick`-routable todos spread across parallel waves; when splitting would sever shared reasoning, keep ONE todo routed to `deep`/`ultrabrain` - never force-split work whose parts share one insight. Harnesses without categories map by difficulty: quick/unspecified-low/writing/git = low, unspecified-high/visual-engineering = medium, deep/ultrabrain = high.
 
 ## Plan artifact producer contract
 
 When producing the plan, encode every executable item as a column-zero Markdown task row: implementation rows MUST match `- [ ] N. <title>` (where `N` is a positive decimal integer), and final-verifier rows MUST match `- [ ] F<number>. <title>`. Prose headings, numbered paragraphs, and ordinary bullets are not task substitutes and MUST NOT be counted as implementation or final-verifier tasks. Before handoff, run a structural self-check over the plan: verify that every implementation row and final-verifier row is column-zero, matches its required grammar, and appears in the intended `## Todos` or `## Final verification wave` section; verify that no prose heading or bullet is being used as a task; verify that every implementation row carries a nested `Recommended task executor category:` line (final-verifier rows default to `unspecified-high` when unannotated); and repair the plan before handoff if any check fails.
 
 ### Final verification wave (after ALL todos)
-Runs in parallel; ALL must APPROVE; surface results and wait for the user's explicit okay before declaring complete: F1 plan compliance audit, F2 code quality review, F3 real manual QA, F4 scope fidelity.
+Runs in parallel; ALL must APPROVE; surface results and wait for the user's explicit okay before declaring complete: F1 plan compliance audit, F2 code quality review, F3 real manual QA, F4 ideal-state fidelity - the delivered behavior against every IS row, 1:1; a shortfall becomes new `- [ ] N.` rows, never a note.
 
 ## Phase 4 - Deliver
 - CLEAR with `review_required: false`: present the plan summary, then ask ONE question and stop - start work now, or run a high-accuracy review first? Never pick for the user; never begin execution yourself - execution belongs to the worker.
@@ -223,7 +226,8 @@ Review rounds are capped at 5 (unlimited only on explicit user request), and an 
     "existing_failing_regression",
     "reproducible_broken_flow",
     "concrete_security_data_loss_or_compatibility_risk",
-    "external_api_provider_or_release_contract_conflict"
+    "external_api_provider_or_release_contract_conflict",
+    "ideal_state_row_unmapped_or_unreachable_for_the_affected_user"
   ],
   "ineligible_finding_disposition": "non_blocking_note",
   "approval_with_notes_counts_as_approval": true,

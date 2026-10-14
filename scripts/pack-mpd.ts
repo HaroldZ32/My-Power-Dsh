@@ -26,6 +26,12 @@ interface RootManifest {
       readonly patch?: string | string[]
     }
   }
+  /**
+   * The dependency closure shipped rows resolve their npm packages from. COPIED into the packed
+   * manifest verbatim; the packer only ever ADDS to it (see PACK_ONLY_OPTIONAL_DEPENDENCIES), so a
+   * package declared here can never be dropped from the artifact again.
+   */
+  readonly optionalDependencies?: Record<string, string>
 }
 
 /** One patch file the root manifest declares, in the two spellings the packer needs. */
@@ -76,7 +82,7 @@ interface PackedManifest {
   type: "module"
   /** The root bundle description; `undefined` when the root manifest omits it. */
   description: string | undefined
-  /** A pointer into the shipped licence file rather than an SPDX id. */
+  /** The SPDX id the packed artifact declares, kept in step with the root manifest and `LICENSE.md`. */
   license: string
   /** The packed entry point the `@mpd-dsh/mpd` specifier resolves. */
   main: string
@@ -353,8 +359,6 @@ const ROOT_FILES: readonly string[] = [
   "CONTRIBUTING.md",
   "CONTRIBUTING.zh-CN.md",
   "CHANGELOG.md",
-  "SECURITY.md",
-  "SECURITY.zh-CN.md",
   "EXTENSIONS-FOR-AGENTS.md",
 ]
 
@@ -397,7 +401,7 @@ function cpDist(): void {
     cpSync(src, join(outDir, "packages", p, "dist"), { recursive: true })
   }
   if (missing.length > 0) {
-    console.error("[pack-mpd] FAIL: missing dist for " + missing.join(", ") + " — run bun build / scripts/build-mcp.ts first; a bundle must never ship without a plugin")
+    console.error("[pack-mpd] FAIL: missing dist for " + missing.join(", ") + " — run the package's build script (bun build / scripts.build) first; a bundle must never ship without a plugin")
     process.exit(1)
   }
 }
@@ -631,6 +635,118 @@ function decouplePatch(srcPatch: string): string {
   return t
 }
 
+/**
+ * The packer's OWN policy additions to the packed manifest's `dependencies`.
+ *
+ * `dsh-better-sidebar` is the sidebar HOST the bundle's two GUI pages register into. The ROOT manifest
+ * declares it as a devDependency plus an OPTIONAL peer — its `node-pty` postinstall is the build script
+ * pnpm 11 refuses to run without an approval channel (`ERR_PNPM_IGNORED_BUILDS`, AGENTS.md §8) — so it
+ * is absent from the root's runtime closure by design, while the packed artifact must still pull it in.
+ * This table is where that policy decision is stated, and it is why the packed `dependencies` field
+ * legitimately differs from the root's: the packer only ever ADDS. A dependency declared only here,
+ * with no row, mounts nothing.
+ */
+const PACK_THIRD_PARTY_DEPENDENCIES: Readonly<Record<string, string>> = { "dsh-better-sidebar": "0.24.1" }
+
+/**
+ * The packer's OWN policy additions to the packed manifest's `optionalDependencies`, on TOP of the full
+ * copy of the ROOT manifest's declaration — which is the declaration of record.
+ *
+ * These two keys are pack-ONLY on purpose, and that is a measured decision, not an oversight: the root
+ * manifest declares neither, while the artifact this packer stages carries no `.toolchain/node_modules/.bin`
+ * (writeManifest copies no `.toolchain/`, and the packed tree holds none), so the profile's own
+ * `node_modules` is the only route left — `packages/mpd-mcp-astgrep/dist/launch.js` resolves
+ * `@ast-grep/cli` there (packages/mpd-mcp-shared/bin-resolve.ts, the `@ast-grep/cli/package.json`
+ * `require` tier, then its `ast-grep --version` probe) and `packages/mpd-comment-checker-plugin`
+ * resolves `@code-yeongyu/comment-checker` there (its own `createRequire` tier). Drop either key and the
+ * packed ast-grep row's engine probe takes its own BINARY_NOT_FOUND path while `mpd_comment_check`
+ * reports no detector binary at all.
+ */
+const PACK_ONLY_OPTIONAL_DEPENDENCIES: Readonly<Record<string, string>> = { "@ast-grep/cli": "0.45.2", "@code-yeongyu/comment-checker": "0.8.0" }
+
+/** One shipped MCP launcher and every npm package it resolves once its row starts it. */
+interface LauncherDependencies {
+  /** Packed-relative path of the launcher module, spelled as a shipped row's `args` names it. */
+  readonly launcher: string
+  /** Every npm package that launcher resolves from the installed profile at start-up. */
+  readonly dependencies: readonly string[]
+}
+
+/**
+ * The DECLARED npm needs of every MCP launcher this bundle ships.
+ *
+ * WHY THIS TABLE EXISTS, and why it is not derived from the launcher sources: the launchers ask for
+ * their packages INDIRECTLY (`resolveDependencyEntry(import.meta.url, DEPENDENCY, …)`, a `SERVERS` table
+ * keyed by the row's argv word, and the shared bin-resolve tiers), so a source scan cannot tell a
+ * declared dependency from a deliberately-undeclared SUB-dependency — `typescript-language-server`
+ * arrives inside `cclsp` and must never be declared here. The table is therefore the declaration, and
+ * `verifyLauncherDependencies` below keeps it from rotting in both directions: a launcher a shipped row
+ * names but this table omits is a hard FAIL, and a package it lists but the packed manifest does not
+ * declare is a hard FAIL.
+ *
+ * Evidence for the entries (wave tui-015): `cclsp` -> packages/mpd-mcp-lsp/src/launch.ts DEPENDENCY;
+ * `@cyanheads/git-mcp-server` + `mcp-server-commands` -> packages/mpd-mcp-gitbash/src/launch.ts SERVERS
+ * (one per row word, `git` / `shell`); `@ast-grep/cli` + `@colbymchenry/codegraph` ->
+ * packages/mpd-mcp-shared/bin-resolve.ts, the two `packageJsonFor` call sites.
+ */
+const LAUNCHER_DEPENDENCIES: readonly LauncherDependencies[] = [
+  { launcher: "packages/mpd-mcp-astgrep/dist/launch.js", dependencies: ["@ast-grep/cli"] },
+  { launcher: "packages/mpd-mcp-codegraph/dist/launch.js", dependencies: ["@colbymchenry/codegraph"] },
+  { launcher: "packages/mpd-mcp-gitbash/dist/launch.js", dependencies: ["@cyanheads/git-mcp-server", "mcp-server-commands"] },
+  { launcher: "packages/mpd-mcp-lsp/dist/launch.js", dependencies: ["cclsp"] }
+]
+
+/**
+ * Assert that every npm package a SHIPPED row's launcher resolves is declared in the packed manifest.
+ *
+ * WHY A PACK-TIME ARM: the divergence this closes was invisible to every existing gate — the packer
+ * exited 0, the packed tree was complete, and only a real install showed the mcp-lsp row starting with
+ * ZERO tools (its launcher takes the `serveUnavailable` branch and stays alive): the Docker oneclick
+ * condition registered 95 tools where the source condition saw 107, and the 12 names it lacked were
+ * exactly the `mcp__lsp__*` family (evidence/tui/dsh-tui-015/oneclick-reds/raw/local-run-matrix.json,
+ * `H_tool_name_diff_source_vs_oneclick`). The subject here is the DECLARATION, so the check runs at the
+ * moment the declaration is written.
+ *
+ * WHAT "SHIPPED" MEANS: a row is shipped when its text is in a staged patch layer, whether it mounts by
+ * default or carries `disabled: true` (the two git/shell rows do, and the user enables them with
+ * `disabled: false`), because the launcher ships either way and would then start with no dependency.
+ *
+ * WHAT THIS ARM DOES NOT CLAIM: it does not verify that the packages are INSTALLABLE or installed (that
+ * is the install lane's subject), and it does not re-check that the launcher file itself is present in
+ * the packed tree (`scripts/verify-pack-closure.ts` owns packed-tree completeness).
+ *
+ * @param manifest The packed manifest document this run just wrote to `<packed>/package.json`.
+ */
+function verifyLauncherDependencies(manifest: PackedManifest): void {
+  /** Every dependency name the packed manifest declares, from the two fields it writes. */
+  const declared: ReadonlySet<string> = new Set<string>([...Object.keys(manifest.dependencies), ...Object.keys(manifest.optionalDependencies)])
+  /** The staged patch bytes, concatenated: the ONE place a shipped row names its launcher module. */
+  const patchText: string = PATCHES.entries.map((entry: DeclaredPatch): string => readFileSync(join(outDir, packedPatchRel(entry)), "utf8")).join("\n")
+  /** Every launcher module path a shipped row names, deduplicated in first-seen order. */
+  const shipped: readonly string[] = [...new Set([...patchText.matchAll(/packages\/[A-Za-z0-9._-]+\/dist\/launch\.js/g)].map((match: RegExpMatchArray): string => match[0]))]
+  if (shipped.length === 0) {
+    console.error("[pack-mpd] FAIL: no shipped launcher row was found in the staged patch layers — this arm is BLIND, not green (the scan reads `packages/<pkg>/dist/launch.js` out of the packed patches)")
+    process.exit(1)
+  }
+  /** Every npm package the shipped launchers resolve, deduplicated across launchers. */
+  const resolved: Set<string> = new Set<string>()
+  for (const launcher of shipped) {
+    /** The declared npm needs of this launcher, or undefined when the table does not know it. */
+    const known: LauncherDependencies | undefined = LAUNCHER_DEPENDENCIES.find((entry: LauncherDependencies): boolean => entry.launcher === launcher)
+    if (known === undefined) {
+      console.error("[pack-mpd] FAIL: the staged patch layers mount " + launcher + " and LAUNCHER_DEPENDENCIES has no entry for it — declare the npm package(s) that launcher resolves, so the packed manifest can be checked against them")
+      process.exit(1)
+    }
+    for (const name of known.dependencies) {
+      resolved.add(name)
+      if (declared.has(name)) continue
+      console.error("[pack-mpd] FAIL: the shipped row launcher " + launcher + " resolves " + name + " at start-up, but the packed manifest declares it in neither `dependencies` nor `optionalDependencies` — a packed install would start that row degraded (zero tools / no binary). Declare it in the ROOT package.json `optionalDependencies` (the packed set is copied from there) or, when it is pack-only policy, in PACK_ONLY_OPTIONAL_DEPENDENCIES")
+      process.exit(1)
+    }
+  }
+  console.log("[pack-mpd] launcher dependencies: " + shipped.length + " shipped launcher(s) resolve " + resolved.size + " npm package(s), every one declared in the packed manifest")
+}
+
 /** Write `<packed>/package.json`: the manifest an installer reads, mirroring the root declaration. */
 function writeManifest(): void {
   /** The root manifest, the source of the packed identity fields. */
@@ -647,7 +763,7 @@ function writeManifest(): void {
     private: true,
     type: "module",
     description: root.description,
-    license: "SEE LICENSE IN LICENSE.md",
+    license: "MIT",
     main: "packages/mpd-bundle-plugin/dist/index.js",
     exports: {
       ".": "./packages/mpd-bundle-plugin/dist/index.js",
@@ -719,12 +835,29 @@ function writeManifest(): void {
     // repro is a manifest/relocation check (version: null, min 0.1.13), not a
     // proof about pnpm's linking, and the boot-time fallback above is the missing
     // half. A dependency declared only here, with no row, mounts nothing.
-    dependencies: { "dsh-better-sidebar": "0.24.1" },
-    // Toolchain binaries stay as optionalDependencies (installed separately):
-    //  - @ast-grep/cli / @colbymchenry/codegraph / @code-yeongyu/comment-checker
-    optionalDependencies: { "@ast-grep/cli": "0.45.2", "@colbymchenry/codegraph": "1.5.0", "@code-yeongyu/comment-checker": "0.8.0" }
+    //
+    // BOTH FIELDS ARE DERIVED FROM THE ROOT MANIFEST, NEVER RE-TYPED (defect fixed in
+    // wave tui-015). The root manifest is the declaration of record: every
+    // `optionalDependencies` entry it declares is copied into the packed manifest, and the
+    // packer's own policy tables add to that copy without ever replacing it. The former
+    // hand-written `optionalDependencies` literal silently DROPPED three packages the root
+    // declares and shipped rows' launchers resolve — `cclsp` (the mcp-lsp row),
+    // `@cyanheads/git-mcp-server` (mcp-git) and `mcp-server-commands` (mcp-shell) — so a
+    // packed install started the mcp-lsp row with ZERO tools: its launcher takes the
+    // `serveUnavailable` branch and the row stays alive, which is why no gate and no exit
+    // code noticed. Measured on a real machine:
+    // evidence/tui/dsh-tui-015/oneclick-reds/raw/pack-vs-root-manifest.txt (the divergence)
+    // and raw/local-tool-surface-diff.json (95 registered tools, the 12 `mcp__lsp__*` names
+    // missing). `verifyLauncherDependencies` below is the arm that keeps this closed.
+    dependencies: { ...PACK_THIRD_PARTY_DEPENDENCIES },
+    // Toolchain binaries: the packer's pack-only additions ON TOP of the root's own declaration
+    // (PACK_ONLY_OPTIONAL_DEPENDENCIES states why these two are not in the root manifest).
+    optionalDependencies: { ...(root.optionalDependencies ?? {}), ...PACK_ONLY_OPTIONAL_DEPENDENCIES }
   }
   writeFileSync(join(outDir, "package.json"), JSON.stringify(manifest, null, 2) + "\n")
+  // The arm runs AFTER the write on purpose: it reads the packed manifest back off the same fields
+  // that were just serialized, so what it checks is the DECLARATION THE INSTALLER WILL READ.
+  verifyLauncherDependencies(manifest)
 }
 
 /**

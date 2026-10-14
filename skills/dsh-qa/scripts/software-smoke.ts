@@ -9,7 +9,7 @@
 //
 // WHAT CARRIES THE PROOF (and what does not):
 //   1. a REAL dsh process (mpd-headless, sandboxed DSH_HOME/HOME/workspace) whose model step is
-//      answered by a local OpenAI-shaped stub (throwaway key, no provider credential). The stub
+//      answered by a local DeepSeek Messages stub (throwaway key, no provider credential). The stub
 //      issues a real `write` tool call and then a real `bash` tool call, so the game is created
 //      and executed by the SESSION's own tools, not by the case process.
 //   2. the bash tool's REAL result (the transcript the program printed) is replayed through the
@@ -26,7 +26,6 @@
 import { spawn, spawnSync } from "node:child_process"
 import type { SpawnSyncReturns } from "node:child_process"
 import { createServer } from "node:http"
-import type { ServerResponse } from "node:http"
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs"
 import { homedir, tmpdir } from "node:os"
 import { dirname, join } from "node:path"
@@ -37,6 +36,7 @@ import { sandboxWorkspace, assertSessionsSandboxed } from "./lib/workspace-isola
 import { credentialEnv } from "./lib/credentials.ts"
 import { DSH_MISSING, dshCommand } from "./lib/dsh-launcher.ts"
 import type { Env } from "./lib/dsh-launcher.ts"
+import { MESSAGES_EVENT_TYPES, messagesTextEvents, messagesToolUseEvents, readWireRequest, writeMessagesSse } from "./lib/messages-sse.ts"
 
 /** The case's slug, used in its banners and in its evidence directory name. */
 const SLUG: string = "software-smoke"
@@ -240,11 +240,11 @@ function replay(transcript: string, startPiles: readonly number[]): ReplayVerdic
 // mutation, i.e. the assertion set is proven falsifiable before any lane depends on it.
 // ---------------------------------------------------------------------------
 /**
- * The offline arm: the fixture's own semantics, the oracle green on it, and the oracle red on the
- * mutated fixture.
- * @returns Nothing; the process exits non-zero at the first failure.
+ * The offline arm: the fixture's own semantics, the oracle green on it, the oracle red on the mutated
+ * fixture, and the stub's own wire protocol.
+ * @returns A promise resolving after the verdict line; the process exits non-zero at the first failure.
  */
-function selfTest(): void {
+async function selfTest(): Promise<void> {
   // Reports one failure and stops the self-test with a non-zero exit code.
   const fail = (msg: string): void => { console.error("[" + SLUG + " self-test] FAIL: " + msg); process.exit(1) }
   // The temp directory both fixture copies are written into.
@@ -305,7 +305,56 @@ function selfTest(): void {
   const negCheck = checkMove(parseState(PROBES[0]), negParsed ? [Number(negParsed[1]), Number(negParsed[2])] : null)
   if (!negCheck.problems.some((p) => p.includes("non-optimal move"))) fail("control failed for the `move` lane: the mutated fixture was accepted")
 
-  console.log("[" + SLUG + " self-test] ok: fixture semantics + deterministic self-play (winner P" + live.winner + ", " + live.plies + " plies) + " + PROBES.length + " oracle probes green, mutation control RED (" + neg.problems.length + " violation(s))")
+  // ---------------------------------------------------------------------------
+  // STUB PROTOCOL (2026-10-09): the pinned provider is Messages-only, so the stub's own wire shape is
+  // asserted OFFLINE here — a regression to an OpenAI chunk frame then reddens this arm instead of only
+  // surfacing as `MALFORMED_RESPONSE` inside a live boot. The forbidden needle is assembled from parts
+  // on purpose: written out whole it would appear in this file's own bytes and make the absence check
+  // below vacuous.
+  const OPENAI_CHUNK_NEEDLE = "chat" + ".completion" + ".chunk"
+  // The stub the protocol probe drives, staged exactly as the live lane stages it.
+  const stub = makeStub(GAME_SRC)
+  // The stub's ephemeral loopback port.
+  const port = await stub.listen()
+  /**
+   * Send one Messages-shaped request to the self-test stub.
+   * @param messages The conversation to send.
+   * @param tools The tool list to offer.
+   * @returns The stub's raw SSE body.
+   */
+  const askOnce = async (messages: readonly unknown[], tools: readonly unknown[]): Promise<string> => {
+    // The stub's response to this request.
+    const response = await fetch("http://127.0.0.1:" + port + "/v1/messages", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ model: "probe", stream: true, messages, tools }),
+    })
+    return await response.text()
+  }
+  // The FIRST step: the `write` call, which must travel in the provider's own frames.
+  const firstWire = await askOnce([{ role: "user", content: "go" }], [{ name: "write" }, { name: "bash" }])
+  if (firstWire.includes(OPENAI_CHUNK_NEEDLE)) fail("the stub answered with an OpenAI streaming-object frame")
+  if (!firstWire.includes('"input_json_delta"')) fail("the stub's tool call must travel as input_json_delta")
+  if (!firstWire.includes("write")) fail("the stub did not answer the first step with the write tool call")
+  if (!firstWire.includes("message_stop")) fail("a Messages turn must settle with message_stop")
+  // The event types that turn emitted, in wire order.
+  const emittedTypes = [...firstWire.matchAll(/^data: \{"type":"([a-z_]+)"/gm)].map((m) => m[1])
+  if (JSON.stringify(emittedTypes) !== JSON.stringify(MESSAGES_EVENT_TYPES)) fail("the stub's first turn must emit the six Messages events in order, saw " + JSON.stringify(emittedTypes))
+  // The SECOND step, whose conversation carries a `tool_result` BLOCK — the shape the provider sends
+  // back — which must advance the staged conversation to the bash call.
+  const secondWire = await askOnce([
+    { role: "user", content: "go" },
+    { role: "assistant", content: [{ type: "tool_use", id: "c1", name: "write", input: {} }] },
+    { role: "user", content: [{ type: "tool_result", tool_use_id: "c1", content: [{ type: "text", text: "written" }] }] },
+  ], [{ name: "write" }, { name: "bash" }])
+  if (!secondWire.includes("bash")) fail("the stub did not advance to the bash call after a tool_result block")
+  // The THIRD step, which must settle the conversation with assistant TEXT.
+  const thirdWire = await askOnce([{ role: "user", content: "go" }], [{ name: "bash" }])
+  if (!thirdWire.includes('"text_delta"')) fail("an assistant text turn must travel as a text_delta")
+  if (thirdWire.includes(OPENAI_CHUNK_NEEDLE)) fail("the stub's text turn carried an OpenAI streaming-object frame")
+  stub.close()
+
+  console.log("[" + SLUG + " self-test] ok: fixture semantics + deterministic self-play (winner P" + live.winner + ", " + live.plies + " plies) + " + PROBES.length + " oracle probes green, mutation control RED (" + neg.problems.length + " violation(s)) + 3-step Messages stub protocol")
 }
 
 // ---------------------------------------------------------------------------
@@ -327,31 +376,7 @@ interface StubTrace {
   readonly toolResults: string[]
 }
 
-/** One tool entry of an OpenAI-shaped request body. */
-interface WireTool {
-  /** The nested `function` object the provider's wire shape carries the tool name in. */
-  readonly function?: { readonly name?: unknown }
-  /** The flat spelling of the same name, which some provider builds use instead. */
-  readonly name?: unknown
-}
-
-/** One conversation message of an OpenAI-shaped request body. */
-interface WireMessage {
-  /** The message's role, which decides whether it is a tool result. */
-  readonly role?: unknown
-  /** The message's payload: a string for a tool result, a list for anything else. */
-  readonly content?: unknown
-}
-
-/** The slice of an OpenAI-shaped request body this stub reads. */
-interface WireRequest {
-  /** The tool list the request offered. */
-  readonly tools?: WireTool[]
-  /** The conversation the request carried. */
-  readonly messages?: WireMessage[]
-}
-
-/** The local OpenAI-shaped stub: its recorded request trace and its lifecycle handles. */
+/** The local stub in the pinned provider's protocol: its recorded request trace and its lifecycle handles. */
 interface ModelStub {
   /** One entry per model request, in arrival order. */
   readonly trace: StubTrace[]
@@ -371,17 +396,6 @@ function makeStub(gameSource: string): ModelStub {
   const trace: StubTrace[] = []
   // Which step of the write → execute conversation the stub answers next.
   let stage: string = "idle"
-  // Answers one request with a single server-sent event carrying the payload.
-  const sse = (res: ServerResponse, payload: unknown): void => {
-    res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-store" })
-    res.write(`data: ${JSON.stringify(payload)}\n\n`)
-    res.write("data: [DONE]\n\n")
-    res.end()
-  }
-  // One streaming chat-completion chunk in the provider's wire shape.
-  const chunk = (delta: Record<string, unknown>, finish?: string): Record<string, unknown> => ({ id: "chatcmpl-software-smoke", object: "chat.completion.chunk", created: 1, model: "probe", choices: [{ index: 0, delta, finish_reason: finish ?? null }] })
-  // One streaming chunk whose delta carries a tool call.
-  const toolCall = (id: string, name: string, args: Record<string, unknown>): Record<string, unknown> => chunk({ role: "assistant", tool_calls: [{ index: 0, id, type: "function", function: { name, arguments: JSON.stringify(args) } }] })
   // The single `bash` command that runs the game twice, diffs the runs and probes four positions.
   const BASH = [
     "node nim.mjs play --seed 7 > play-a.txt 2>&1; node nim.mjs play --seed 7 > play-b.txt 2>&1;",
@@ -389,28 +403,24 @@ function makeStub(gameSource: string): ModelStub {
     'echo "--- play ---"; cat play-a.txt; echo "--- probes ---";',
     'for p in 3,4,5 1,2,3 7,5,3 2,2,0; do echo "PROBE $p"; node nim.mjs move --piles $p --seed 7; done',
   ].join(" ")
-  // The one-shot OpenAI-shaped server the session's model steps are answered by.
+  // One-shot server the session's model steps are answered by, in the pinned provider's protocol.
   const server = createServer((req, res) => {
     // The request body accumulated from the chunks node hands the listener.
     let body = ""
     req.on("data", (c) => { body += c })
     req.on("end", () => {
-      // The parsed request, `{}` while the body is not JSON.
-      let parsed: WireRequest = {}
-      try { parsed = JSON.parse(body) } catch { /* keep {} */ }
-      // The tool list the request offered.
-      const tools = Array.isArray(parsed.tools) ? parsed.tools : []
-      // The names of those tools, from either wire spelling.
-      const toolNames = tools.map((t) => t?.function?.name ?? t?.name).filter((n) => typeof n === "string")
-      // The conversation the request carried.
-      const messages = Array.isArray(parsed.messages) ? parsed.messages : []
-      // The tool results that conversation already carries, as text.
-      const toolResults = messages.filter((m) => m.role === "tool" || m.role === "tool_result").map((m) => (typeof m.content === "string" ? m.content : JSON.stringify(m.content)))
+      // The request read in whichever wire shape the client used (tool names + tool results).
+      const wire = readWireRequest(body)
+      // The names of the tools the request offered.
+      const toolNames = wire.toolNames
+      // The tool results the conversation already carries, which advance the staged conversation.
+      const toolResults = wire.toolResults
       trace.push({ stage, toolCount: toolNames.length, hasWrite: toolNames.includes("write"), hasBash: toolNames.includes("bash"), toolResultCount: toolResults.length, toolResults })
-      if (tools.length === 0) return sse(res, chunk({ role: "assistant", content: "software-smoke" }))
-      if (stage === "idle") { stage = "write-issued"; return sse(res, toolCall("call_write_1", "write", { file_path: "nim.mjs", content: gameSource })) }
-      if (stage === "write-issued" && toolResults.length > 0) { stage = "bash-issued"; return sse(res, toolCall("call_bash_1", "bash", { command: BASH, description: "Run the deterministic game twice and probe positions" })) }
-      return sse(res, chunk({ role: "assistant", content: "software-smoke-done" }, "stop"))
+      // A tool-less request is the session-title side step: answer it with text and move nothing on.
+      if (toolNames.length === 0) return writeMessagesSse(res, messagesTextEvents("software-smoke"))
+      if (stage === "idle") { stage = "write-issued"; return writeMessagesSse(res, messagesToolUseEvents("call_write_1", "write", { file_path: "nim.mjs", content: gameSource })) }
+      if (stage === "write-issued" && toolResults.length > 0) { stage = "bash-issued"; return writeMessagesSse(res, messagesToolUseEvents("call_bash_1", "bash", { command: BASH, description: "Run the deterministic game twice and probe positions" })) }
+      return writeMessagesSse(res, messagesTextEvents("software-smoke-done"))
     })
   })
   return {
@@ -488,6 +498,10 @@ interface SessionStep {
   bashToolOffered: boolean
   /** Whether the write tool's own result names the created file. */
   writeResultOk: boolean
+  /** The recorded write result as far as it matched, so a refusal is quotable in the evidence. */
+  writeResultHead: string
+  /** The first recorded tool results, so a red names its own cause instead of needing a re-run. */
+  toolResultHeads: string[]
   /** Whether the session reported a missing credential. */
   missingCredential: boolean
   /** Whether the session reported an authentication failure. */
@@ -598,6 +612,11 @@ function runReal(): Promise<void> {
       writeToolOffered: stub.trace.some((c) => c.hasWrite),
       bashToolOffered: stub.trace.some((c) => c.hasBash),
       writeResultOk: /Created file/.test(writeResult),
+      // WHY a write or bash step failed belongs IN the evidence: without the recorded result heads a
+      // red can only be explained by re-running the case (measured 2026-10-09 — the first red after the
+      // wire fix carried `writeResultOk:false` and nothing else, so the cause was not on the record).
+      writeResultHead: writeResult.slice(0, 400),
+      toolResultHeads: toolMsgs.slice(0, 4).map((t) => t.slice(0, 300)),
       missingCredential: run.out.includes("MISSING_CREDENTIAL"),
       authFailed: /AUTH:|Authentication Fails/.test(run.out),
     }
@@ -665,5 +684,5 @@ function finish(steps: SmokeSteps, outDir: string, sandbox: string, fullOutput: 
 
 // The command-line arguments, which decide between the offline self-test and the live lane.
 const argv = process.argv.slice(2)
-if (argv.includes("--self-test")) selfTest()
+if (argv.includes("--self-test")) await selfTest()
 else runReal()

@@ -1,0 +1,82 @@
+# sE — GitHub Actions workflow for the Docker REAL-MACHINE acceptance lane
+
+DELIVERABLE: `.github/workflows/docker-e2e.yml` — added, NOT committed (the captain is the only git writer).
+Nothing under `docker/**`, `scripts/**` or `skills/**` was touched.
+
+## What the workflow does
+
+`workflow_dispatch` (optional `npm_registry` input) + nightly `schedule` ("41 3 * * *") → one job on
+`ubuntu-24.04`, job timeout 60 min, lane step timeout 50 min:
+
+    node scripts/docker-e2e.ts --mode source --require-docker --allow-rootful-docker --no-browser
+
+then `actions/upload-artifact@v7` of `evidence/docker/client-install*/` under `if: always()`, then a step
+that prints every stamp directory (newest first), the driver's flags, and every FAIL / NULL row with the
+lane's own reason — to the log and to `$GITHUB_STEP_SUMMARY`.
+
+## Why each flag (each traced to the driver's own code or to a measured run)
+
+| flag | the fact behind it |
+|---|---|
+| `--mode source` | builds from the checkout; no pushed ref needed, so it is the CI-correct mode |
+| `--allow-rootful-docker` | `decideDockerUse`: a ROOTFUL daemon is SKIPPED, and a skip EXITS 0 — without this the job is green having run no container |
+| `--require-docker` | the same function turns any remaining skip (no daemon / unusable) into exit 3 and names the overrides |
+| `--no-browser` | `browserEnabled = argv.includes("--require-browser") \|\| !argv.includes("--no-browser")`, and a browser-enabled run adds `ui.` to `requiredPrefixes`; `finalExit = unmeasuredRequired(...) > 0 ? 3 : exitCode`. A runner has no browser → without the flag the `ui.*` nulls are exit 3 |
+| no `--live` / `--require-live` | `liveRequested` adds `live.`+`boot.llmTurn` to `requiredPrefixes` AND refuses to run without `DEEPSEEK_API_KEY`; omitting them is what makes this lane credential-free. Nulls are recorded with their reasons (`decideExit` looks only at `ok`, so nulls never fail) |
+
+Verified against the driver, not trusted from the brief:
+`evidence/docker/client-install/2026-10-09T14-53-52Z/driver.json` — a credential-free source run that
+passed 106 rows with 0 failures still exited **3**, with `requiredPrefixes=["live.","boot.llmTurn","ui."]`
+and 8 `ui.*` rows in `unmeasured`. `node scripts/docker-e2e.ts --self-test` → exit 0, all arms passed.
+
+## The npm registry is OPTIONAL and DECLARED, never hard-coded
+
+`MPD_E2E_NPM_REGISTRY: ${{ inputs.npm_registry }}` at job level, input default `""`. Empty is the healthy
+default: `docker/entrypoint.sh` step 01b probes the registry's scoped endpoint and falls back to its own
+mirror only when the probe does not answer, recording the transport as `obs.npmRegistry`. A dispatch can
+name a registry INSTEAD (the measured mirror run: pnpm 313 s → 5 s, lane to its last step in ~15 min). A
+repository-variable route was deliberately NOT added — the dispatch input is the smaller surface.
+
+## Gates run on the frozen bytes (sha256 f6585c599ab5c298f9d05753dd16d3e66772f59f0313e5b9df24ebd33a8f3e7d)
+
+| command | observed |
+|---|---|
+| `bun run verify:gates` | **exit 0** — `PASS - 8/8 member gate(s) green`, `workflows: exit=0 PASS - 74ms` (`verify-gates.log`) |
+| `node scripts/verify-workflows.ts` | **exit 0** — `audited 2 workflow file(s)`, `PASS - every workflow is loadable YAML with a sane job/step shape` (`verify-workflows.log`) |
+| `node evidence/restore/acceptance/sE/validate-workflow.mjs` | **exit 0** — 5 steps, every assertion held: triggers, no push/PR/`pull_request_target`, `contents: read`, both timeouts, all four flags, no `--live`, artifact path/name/retention (`validate-workflow.log`) |
+| `bash -e rehearse-print-step.sh` ×3 branches | **exit 0 / 0 / 0** (`rehearse-case{1,2,3}.log`) |
+
+The aggregate's clean-tree expectation was a non-issue: the tree carried pre-existing untracked files
+(`.bun/`, six `evidence/**` stamp dirs) and all 8 members were still green, so no member had to be run
+"instead of" the aggregate.
+
+The structured audit is mine, so it is not the authority: it RE-EXTRACTS the last step's `run:` body from
+the YAML and the rehearsal executes those exact bytes. Its two findings were real and both were fixed in
+the workflow, not in the check:
+
+1. the summary globbed the two CASE directories (`client-install*/`), so the newest mtime won — an
+   interrupted run's EMPTY stamp dir beat the run that actually held 118 rows;
+2. `STAMPS="$(ls … 2>/dev/null)"` under GitHub's default `bash -e {0}`: with no stamp directory `ls`
+   exits 2, the assignment kills the step, and the guard never prints. Measured: `bash script.sh` → guard
+   + exit 0; `bash -e script.sh` → **exit 2, no output**. Fixed with `|| true` (the comment says so).
+
+## What was NOT verified (bounds)
+
+* **The workflow has never run.** GitHub Actions cannot be executed from here. Unproven: that
+  `actions/checkout@v7` / `actions/setup-node@v7` / `actions/upload-artifact@v7` tags resolve (they match
+  the majors `gates.yml` already uses; v7 for upload-artifact is corroborated externally, not queried);
+  that `inputs.npm_registry` renders as `""` on a scheduled run; that `ubuntu-24.04` behaves as expected.
+* **A hosted runner's Docker was not re-measured** — ROOTFUL is the brief's measured fact, and the flags
+  are the driver's own contract for it.
+* **What CI cannot measure by construction**: the `ui.*` (8) and `live.*`/`boot.llmTurn` (28) rows are
+  nulls without a browser and a key, `qa.mcpCall` with them, and the `oneclick.*` rows (4) are null in
+  `--mode source` — ~41 of 118 rows. From the measured credential-free runs, the expected CI shape is
+  **0 failed, ~77 passed, ~41 null, exit 0**; the exact set is in the uploaded artifact, not in this file.
+* Docker is rootless on this host, so the rootful path was exercised only through the driver's pure
+  `decideDockerUse` (`--self-test`), never live.
+
+## Evidence files (this directory)
+
+`workflow.sha256` (hash before and re-checked after the pass) · `verify-gates.log` · `verify-workflows.log`
+· `validate-workflow.mjs` + `validate-workflow.log` · `rehearse-print-step.sh` (extracted from the YAML) ·
+`rehearse-case{1,2,3}.log` · `no-credential-check.log` · `fixture/` (the negative-control tree for cases 2–3).

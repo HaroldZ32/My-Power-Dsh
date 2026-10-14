@@ -1,0 +1,55 @@
+# COMMANDS + OBSERVED RESULTS — triage of the three tui-015 reds
+# repo root: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh   utc: 2026-10-14T10:53:35Z
+
+## [1] the two-arm materialization probe (arms A/C/D/E), sandbox .mpd/recon/qa/tui-lanes/tui-015
+$ XDG_RUNTIME_DIR=…/run PATH=…/profiles/dsh-tui/node_modules/.bin:$PATH bun evidence/tui/dsh-tui-015/triage-reds/probe-store-materialization.ts .mpd/recon/qa/tui-lanes/tui-015 <arm>
+--- arm A-panel-only:      NEW session dirs: (none) | command/run: []   (exit 0)
+--- arm C-board-first:     NEW session dirs: e09b6c01-23b2-498c-95bf-76b805109f87 | command/run: [{mpd, " board"}]   (exit 0)
+--- arm D-status-only:     NEW session dirs: (none) | command/run: []   (exit 0)
+--- arm E-board-then-panel:NEW session dirs: 5bdd8a98-4ace-4b43-8e47-942780450efb | command/run: [{mpd, " board"}, {mpd, " panel"}]   (exit 0)
+--- arm B-panel-then-board:NEW session dirs: (none) | command/run: []   (exit 0; the open sidebar panel swallowed the board keystrokes)
+
+## [2] granted decision-seam probe
+$ bun evidence/tui/dsh-tui-015/triage-reds/probe-decision-seam.ts
+grant file written: .mpd/recon/qa/tui-lanes/tui-015/home/.dsh-tui/extension-grants.json
+lifecycle failures: (none)
+--- lines carrying our [mpd-tui] prefix: 0
+--- admission loader: admitted= 61 refused= 0
+--- ledger delta: 20
+    command/create/host x20
+--- any record naming our component: 0
+--- any decision-handler record: 0
+
+## [3] the whole sandbox ledger, histogram (node one-liner over home/.dsh-tui/effect-ledger.jsonl)
+records 928
+kinds { command: 920, status: 8 }
+ops { create: 920, replace: 8 }
+plugin|result { 'host|applied': 920, 'undeclared|applied': 8 }
+$ grep -c decision-handler effect-ledger.jsonl  ->  0
+
+## [4] the lane's own two boots (evidence/tui/lanes/2026-10-14T10-20-06.555Z)
+$ grep -ac 'admission loader admitted' negctl/host-stderr.log  ->  0
+$ grep -ac 'admission loader refused'  negctl/host-stderr.log  ->  61
+$ grep -ac 'admission loader admitted' grants/host-stderr.log  ->  61
+$ grep -ac 'admission loader refused'  grants/host-stderr.log  ->  0
+
+## [5] the team-surface fixture carried a previous boot's session
+evidence/tui/team-surface-verify/2026-10-14T10-19-18.554Z/output.log:
+  host: fixture captainSessionId := "10c46e83-3b00-4300-ab55-1c63d62ee39e"
+  (10c46e83's projcache createdAt = 1791973094309 = 2026-10-14T10:18:14Z, inside the tui-panels window)
+  this boot's own session = 37ce7af8-4124-484f-92c5-9f8f476459dd (projcache mtime 18:20:04 local = 10:20:04Z)
+
+## [6] the sidebar panel proves the channel session id is NON-EMPTY
+evidence/tui/dsh-tui-015/triage-reds/probe/B-panel-then-board/panel-command.pane.txt:
+  no team in this session — `agent_teams_plan` binds one here
+  this workspace holds 1 team(s), none bound to this session
+  (teamWorkflowLines' scope-"none" arm — reachable only with a non-empty session id)
+
+## [7] the host's own last-run stamp (benign, not a live id)
+home/.dsh-tui/last-run.json after a probe boot: {"backendId":"dsh","sessionId":"","cwd":"…/ws",…}
+home/.dsh-tui/session-mounts.json: owners[0].sessionIds = ["cd228151-681b-4604-87cb-17d49101c10a"] (that boot's live id)
+
+## [8] gates after the docstring scoping edit
+$ bun run verify:comments   ->  VERDICT: PASS …  exit=0
+$ node scripts/verify-dist-fresh.ts  ->  ok: 31/31 targets fresh … 1 NOT COVERED …  exit=0
+$ grep -c 'THE KEEPER WRITES NOTHING' packages/mpd-tui-adapter-plugin/dist/index.js  ->  0 (the docstring never reaches dist)

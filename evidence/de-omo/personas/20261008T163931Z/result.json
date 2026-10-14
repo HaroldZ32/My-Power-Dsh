@@ -1,0 +1,216 @@
+{
+  "wave": "D — personas (de-omo decoupling)",
+  "what": "Replaced the 11 roster persona texts (adapted from code-yeongyu/oh-my-openagent, SUL-1.0) with texts this repository owns, modelled on permissively licensed public agent prompts; two written from scratch.",
+  "branch": "feature/de-omo-wave-d-personas",
+  "baseCommit": "16dbeb211afe8501e8df6f133033504ffb513399",
+  "toolchain": { "bun": "1.4.0 (.toolchain/node_modules/.bin/bun)", "node": "v22 (see output.log)" },
+  "scope": {
+    "written": [
+      "packages/mpd-roles-plugin/personas/*.md (11 files)",
+      "packages/mpd-roles-plugin/personas/ATTRIBUTION.md (new)",
+      "LICENSE-NOTICES.md (new section: Roster persona texts)"
+    ],
+    "untouched": [
+      "packages/mpd-roles-plugin/src/** (roles.data.ts ids/names/readonly/chains/personaFile, index.ts readPersona loader)",
+      "packages/mpd-roles-plugin/README.md + README.zh-CN.md (document the mechanism, not the text)",
+      "VENDOR_LOCK.json"
+    ]
+  },
+  "seedsPinned": {
+    "anthropics/claude-plugins-official": "f713a7c59b729741282f9c2d9a04e28e2abbd20c (Apache-2.0)",
+    "VoltAgent/awesome-claude-code-subagents": "721e9734670bfaf7283194e234ebb88e94c82dcd (MIT)",
+    "gsd-build/gsd-2": "33c00aaffa56e5d394bccce1c8df59fb842e84c5 (MIT)",
+    "jayminwest/overstory": "ff38f3f76f084abcc34f519bcaa69580f6e53cf1 (MIT)",
+    "obra/superpowers": "8ca22dba9a94f28898bbce59f2537ff4d87c747d (MIT)",
+    "VeryGoodOpenSource/vgv-wingspan": "19e0695accb8b9db0be0235ecdfb7fcb23106820 (MIT)",
+    "inspectedNotUsed": [
+      "wesammustafa/opencode-primer fe71432a721ea423939193e667d510725477b79a (MIT)",
+      "davepoon/buildwithclaude 10bfc43d4d53c9589f28a3a41bc240dc1585f044 (MIT)"
+    ]
+  },
+  "personas": [
+    {
+      "role": "Architect",
+      "file": "packages/mpd-roles-plugin/personas/oracle.md",
+      "seed": { "repo": "anthropics/claude-plugins-official", "path": "plugins/code-modernization/agents/architecture-critic.md", "sha": "f713a7c59b729741282f9c2d9a04e28e2abbd20c", "licence": "Apache-2.0", "copyright": "no copyright line and no NOTICE file at that revision; LICENSE read verbatim" },
+      "change": "read-only advisory role: adversarial review lens (simplest design, one traced failure path, claim-vs-behaviour), ranked findings by path+symbol, honest 'unverified' bound; keeps 'the Architect' and 'read-only' literals the tests assert."
+    },
+    {
+      "role": "Researcher",
+      "file": "packages/mpd-roles-plugin/personas/librarian.md",
+      "seed": { "repo": "VoltAgent/awesome-claude-code-subagents", "path": "categories/10-research-analysis/research-analyst.md", "sha": "721e9734670bfaf7283194e234ebb88e94c82dcd", "licence": "MIT", "copyright": "Copyright (c) 2025 VoltAgent" },
+      "change": "read-only evidence collector: question-first tool choice (structural/symbol/code-graph/file/web), primary sources, cross-check, URL+revision citations, observed-vs-inferred separation."
+    },
+    {
+      "role": "Planner",
+      "file": "packages/mpd-roles-plugin/personas/prometheus.md",
+      "seed": { "repo": "gsd-build/gsd-2", "path": "src/resources/agents/planner.md", "sha": "33c00aaffa56e5d394bccce1c8df59fb842e84c5", "licence": "MIT", "copyright": "Copyright (c) 2026 Lex Christopherson" },
+      "change": "read-only planner: plan-file contract (.mpd/plans/<slug>.md via the caller), reference-bearing steps, explicit dependencies, per-step check, trade-offs/risks, no claim that a check ran."
+    },
+    {
+      "role": "Deep Worker",
+      "file": "packages/mpd-roles-plugin/personas/hephaestus.md",
+      "seed": { "repo": "gsd-build/gsd-2", "path": "src/resources/agents/worker.md", "sha": "33c00aaffa56e5d394bccce1c8df59fb842e84c5", "licence": "MIT", "copyright": "Copyright (c) 2026 Lex Christopherson" },
+      "change": "write-capable end-to-end executor: minimal diff, baseline-then-change, verify with the repo's gates and quote output/exit code, no gate weakening; team-member board discipline and context briefing kept in own words."
+    },
+    {
+      "role": "Senior Engineer",
+      "file": "packages/mpd-roles-plugin/personas/sisyphus.md",
+      "seed": { "repo": "VoltAgent/awesome-claude-code-subagents", "path": "categories/01-core-development/fullstack-developer.md", "sha": "721e9734670bfaf7283194e234ebb88e94c82dcd", "licence": "MIT", "copyright": "Copyright (c) 2025 VoltAgent" },
+      "change": "write-capable primary engineer: one-line intent per change, contract-first reading, pinned toolchain from the repo root, verification by re-run with quoted results, delegation + anti-duplication + consultant-first rules in own words."
+    },
+    {
+      "role": "Lead",
+      "file": "packages/mpd-roles-plugin/personas/atlas.md",
+      "seed": { "repo": "VoltAgent/awesome-claude-code-subagents", "path": "categories/09-meta-orchestration/multi-agent-coordinator.md", "sha": "721e9734670bfaf7283194e234ebb88e94c82dcd", "licence": "MIT", "copyright": "Copyright (c) 2025 VoltAgent" },
+      "change": "orchestrator: spawn_teammate + mpd_role_persona staging with NAME-based slot routing, requirement/work/review lanes on team_task_create, parallel fan-out with blocked_by, per-lane evidence, different-agent verification, own integration."
+    },
+    {
+      "role": "Explorer",
+      "file": "packages/mpd-roles-plugin/personas/explore.md",
+      "seed": { "repo": "jayminwest/overstory", "path": "agents/scout.md", "sha": "ff38f3f76f084abcc34f519bcaa69580f6e53cf1", "licence": "MIT", "copyright": "Copyright (c) 2026 Jaymin West" },
+      "change": "strictly read-only reconnaissance: parallel first lookups, section-level reading, absolute paths, path+symbol citations, stable report shape, explicit gap list; never edits anything."
+    },
+    {
+      "role": "Reviewer",
+      "file": "packages/mpd-roles-plugin/personas/metis.md",
+      "seed": { "repo": "obra/superpowers", "path": "skills/requesting-code-review/code-reviewer.md", "sha": "8ca22dba9a94f28898bbce59f2537ff4d87c747d", "licence": "MIT", "copyright": "Copyright (c) 2025 Jesse Vincent" },
+      "change": "findings-only reviewer: judges the frozen requirement, traces callers/data/edge cases, declined-to-judge list, Blocker/High/Medium/Nit with credential masking, verdict + bounds; the verifier-never-fixes law is stated."
+    },
+    {
+      "role": "Plan Reviewer",
+      "file": "packages/mpd-roles-plugin/personas/momus.md",
+      "seed": { "repo": "VeryGoodOpenSource/vgv-wingspan", "path": "skills/shared/references/plan-review.md", "sha": "19e0695accb8b9db0be0235ecdfb7fcb23106820", "licence": "MIT", "copyright": "Copyright (c) 2026 Very Good Ventures" },
+      "change": "read-only plan gate: reference verification, executability, contract fit, scope seam, honesty; approve by default, at most three true blockers with the clearing change."
+    },
+    {
+      "role": "Vision Analyst",
+      "file": "packages/mpd-roles-plugin/personas/multimodal-looker.md",
+      "seed": null,
+      "change": "WRITTEN HERE, no upstream model: analyse the attached artifact directly, inventory-then-detail reading, exact transcription of text/labels/values, observation vs interpretation, region citations, explicit unreadable bound."
+    },
+    {
+      "role": "Junior Engineer",
+      "file": "packages/mpd-roles-plugin/personas/sisyphus-junior.md",
+      "seed": null,
+      "change": "WRITTEN HERE, no upstream model: one mechanical well-scoped change, no refactor/redesign, todo discipline, narrowest real check run once with quoted result, hands back work that needs design judgement."
+    }
+  ],
+  "contractsProvedIntact": [
+    "11 roster NAMES and 11 internal stable ids unchanged (roles.data.ts untouched)",
+    "read-only deny list unchanged: 8 names, identical in mpd-roles-plugin and mpd-workmate-plugin (asserted by roles.test.ts)",
+    "teamModels slot groups untouched (roles.data.ts chains untouched)",
+    "mpdRoles service surface + tool surface untouched (src/** untouched)",
+    "persona loading contract intact: personas/<id>.md read via readPersona, trimmed non-empty else description; new ATTRIBUTION.md is inert (never read by a loader)",
+    "no persona text contains a role's internal id as a whole word (the alias guard masks persona JSON but renders the text, and the suite passes)",
+    "dist/ unchanged: personas are runtime-read assets, not bundle inputs (verify-dist-fresh 31/31 fresh)"
+  ],
+  "gates": [
+    { "command": ".toolchain/node_modules/.bin/bun test packages/mpd-roles-plugin", "exitCode": 0, "observed": "111 pass, 0 fail, 1005 expect() calls, ran 111 tests across 6 files [309.00ms]" },
+    { "command": "bun run verify:comments", "exitCode": 0, "observed": "VERDICT: PASS — every declaration in the family carries a precise comment and a full signature." },
+    { "command": "node scripts/verify-dist-fresh.ts", "exitCode": 0, "observed": "ok: 31/31 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 645ms; toolchain bun 1.4.0 from the repository toolchain" },
+    { "command": "bun run verify:docs", "exitCode": 0, "observed": "pairs=47 failed=0 violations=0 exempt=24 derived=3 links=424 dead=0 — PASS" },
+    { "command": "bun run verify:rows", "exitCode": 0, "observed": "ok: 35 row ids match the 2-file bundle patch layer" },
+    { "command": "node scripts/verify-vendor.ts", "exitCode": 0, "observed": "PASS - 7 shipped asset(s) fingerprinted, upstream identity not checked (none of them is packages/mpd-roles-plugin/**)" },
+    { "command": "bun run typecheck", "exitCode": 0, "observed": "tsgo --noEmit, no output" }
+  ],
+  "gatesRerun": {
+    "why": "D-VER-1/D-VER-2 documentary repair: the two gates the wave's claim rests on, re-run after the packet edits, with nothing under packages/** touched by the repair (the persona bytes hashed in analysis/persona-hashes-start.tsv are the bytes those runs read).",
+    "whenUtc": "2026-10-08T16:53:25Z",
+    "toolchain": ".toolchain/node_modules/.bin/bun 1.4.0 — the pinned binary the wave's original sweep used",
+    "log": "analysis/gate-rerun.log (verbatim, with exit codes)",
+    "runs": [
+      { "command": "node scripts/verify-vendor.ts", "exitCode": 0, "observed": "[verify-vendor] PASS - 7 shipped asset(s) fingerprinted, upstream identity not checked", "delta": "identical to the wave's original run (exit 0, the same 7 assets, the same message)" },
+      { "command": ".toolchain/node_modules/.bin/bun test packages/mpd-roles-plugin", "exitCode": 0, "observed": "111 pass, 0 fail, 1005 expect() calls, Ran 111 tests across 6 files. [341.00ms]", "delta": "identical counts to the wave's original run (111 pass / 0 fail / 1005 expect() calls across 6 files); only the wall time differs (341 ms vs 309 ms), which asserts nothing" }
+    ]
+  },
+  "documentaryRepair": {
+    "whenUtc": "2026-10-08T16:53Z–16:56Z",
+    "answers": "D-VER-1 (the absence claim was not bound to the delivered revision), D-VER-2 (two logs omitted from evidence.files, no draft->final narration), D-VER-3 (\"against any seed\" overstated a 9-pair comparison), D-VER-6 (a probe file NAMED NOTICE). No persona text and nothing under packages/** was touched.",
+    "narrative": "analysis/SEQUENCE.md — which draft carried the 14-/15-word pre-wave-D runs, what changed, and the final numbers on the pinned hashes",
+    "measurementBinding": {
+      "discipline": "AGENTS.md §7 — hash -> work -> re-hash, start == end after a settle window",
+      "subject": "the 11 persona texts + packages/mpd-roles-plugin/personas/ATTRIBUTION.md (12 files)",
+      "startReadUtc": "2026-10-08T16:55:26Z",
+      "endReadUtc": "2026-10-08T16:56:24Z",
+      "settleSeconds": 50,
+      "startEqualsEnd": true,
+      "diffBytes": 0,
+      "instrument": { "path": "analysis/overlap.mjs", "sha256": "2c67d2083f8a7ad0a216d4d765b1025d78dd7cac81112848a2836b1b688aebbb" },
+      "exactCommand": "node evidence/de-omo/personas/20261008T163931Z/analysis/overlap.mjs <PERSONA> <REFERENCE> — run once per pair: 240 delivered-file x fetched-seed pairs + 11 pre-wave-D pairs",
+      "logs": {
+        "start": "analysis/persona-hashes-start.tsv",
+        "end": "analysis/persona-hashes-end.tsv",
+        "verdict": "analysis/persona-hash-verdict.txt",
+        "diff": "analysis/persona-hash-diff.txt (empty)",
+        "matrix": "analysis/overlap-matrix.log",
+        "transcript": "analysis/bind-personas.log (exit 0)",
+        "reproduction": "analysis/reproduce-final-log.sh + analysis/overlap-final-vs-matrix.diff (empty)",
+        "originalsIntact": "analysis/original-logs.sha256"
+      },
+      "sha256": {
+        "packages/mpd-roles-plugin/personas/atlas.md": "69e6ed07b74c69dfc564b4f756218db3ed1c80ab710bccedb469b869347d4781",
+        "packages/mpd-roles-plugin/personas/ATTRIBUTION.md": "c8ab71bd8af7c1b5f5946c00d75a528e4f7f6904502335a376814d6b72ef4025",
+        "packages/mpd-roles-plugin/personas/explore.md": "653075775436e5585857f797ed005dee1f1917cae6b51bd6653cdaa7f452d8e1",
+        "packages/mpd-roles-plugin/personas/hephaestus.md": "ed0f0e9d1c740622571a2a26c92e1a1676475a11a7608251b394964cc5b3359b",
+        "packages/mpd-roles-plugin/personas/librarian.md": "4d44f2fde3a9d3744e1fb9691ae8db601651dd27595e4ae848e6e20115a55da5",
+        "packages/mpd-roles-plugin/personas/metis.md": "50b81acb95cea4c2ae8705ecc0c48951dabf5107048c50b38ad3a112bc892de0",
+        "packages/mpd-roles-plugin/personas/momus.md": "713d251e0fb9bcaa49cfcebd9cd0c86038674e3c44ff9aa19ff6edec314c808e",
+        "packages/mpd-roles-plugin/personas/multimodal-looker.md": "8908b5c6f9638055598577879c1e0a5694bcaa87fa3ac78be90b58f977678bad",
+        "packages/mpd-roles-plugin/personas/oracle.md": "6a7bb2e4e9f4ca1536e66583aa5698352c41e09fa6159e7dfb90a032cfe304bd",
+        "packages/mpd-roles-plugin/personas/prometheus.md": "e8ff575dcb5b0fe28b96d232edaa6cd536d8cd2ace47ef734e25d0f2f3a0ed48",
+        "packages/mpd-roles-plugin/personas/sisyphus-junior.md": "b18e01cc56e51e588c43ef0a178724a21c37c67b368aebfb297d99f19cbc2161",
+        "packages/mpd-roles-plugin/personas/sisyphus.md": "0ea947deac439cb62ba7f81646b5f8b292c7e7a4730ea9c46752fa230aa99505"
+      },
+      "baselineChecks": [
+        "the 20 fetched seed files re-hash byte-identical to seed-manifest.txt (20 matched, 0 mismatched)",
+        "the 11 analysis/old-*.md baselines are byte-identical to `git show HEAD:packages/mpd-roles-plugin/personas/<n>.md` at 16dbeb211afe8501e8df6f133033504ffb513399 (11/11, read-only check)",
+        "the DELIVERED bytes reproduce analysis/overlap-final.log: all 20 of its pairs re-measured identical, analysis/overlap-final-vs-matrix.diff is empty",
+        "the two early logs measured text that is NOT the delivered text: 10 of the 11 persona files were written after 2026-10-08T16:44:12Z (only explore.md predates it), and only overlap-final.log postdates the last persona write (16:44:44Z)"
+      ],
+      "instrumentCap": "overlap.mjs builds substrings of at most 24 words, so a reported 24 means \">= 24\". No pair in this run reports 24 (the global maximum is 7), so no reported number is truncated."
+    },
+    "claimRestated": {
+      "withdraws": "The verifier-flagged phrasing \"against any seed\" is withdrawn: it overstated a 9-pair comparison, and 11 of the 20 fetched seed files had never been compared.",
+      "declaredPairs": "Against every DECLARED seed pair (9 of the 11 personas — Vision Analyst and Junior Engineer have no seed): the longest contiguous word run shared with the declared seed is at most 4 generic words.",
+      "allFetchedSeeds": "Against ALL 20 fetched seed files (240 pairs, now measured): the longest run anywhere is 7 words — metis.md vs anthropics/claude-plugins-official/plugins/code-modernization/agents/architecture-critic.md, a seed the Reviewer was NOT modelled on — and the shared text is generic connective prose (\"with what where why it matters and\"). Second tier: 5 words, \"you are read only the\", four files vs jayminwest/overstory/agents/scout.md. Seven of the nine declared-pair files exceed their declared value somewhere in the wider matrix; the three files with no declared pair have none to compare.",
+      "preWaveD": "Against the pre-wave-D SUL-1.0 texts (11 matched pairs): at most 6 words — sisyphus.md \"you are the senior engineer the\" (a role-name opening); prometheus.md 5 words is the .mpd/plans/<slug>.md path convention. The 14- and 15-word runs of the intermediate draft are gone.",
+      "notClaimed": "A lexical word-run comparison over the 20 FETCHED seed files is not an audit of the eight repositories, and it is not a licence opinion; the number 4 holds for the 9 DECLARED pairs only."
+    },
+    "noticeRecord": {
+      "renamed": "seeds/anthropics__claude-plugins-official/NOTICE -> seeds/anthropics__claude-plugins-official/NOTICE-ABSENT-404.txt",
+      "means": "no NOTICE file exists at revision f713a7c59b729741282f9c2d9a04e28e2abbd20c: the 14-byte body is the fetch's own string `404: Not Found`. It is a record of an ABSENCE and must never be read as an Apache-2.0 §4(d) notice."
+    }
+  },
+  "vendorLock": {
+    "touched": false,
+    "reason": "VENDOR_LOCK.json fingerprints 7 assets: skills, mpd-mcp-codegraph/dist/serve.js, mpd-hashline-plugin/src/vendor, mpd-boulder-plugin/src/vendor, mpd-schemastery, mpd-bundle-plugin/adopted, mpd-bundle-plugin/client.js. packages/mpd-roles-plugin/** is NOT fingerprinted and no fingerprinted asset changed in this wave (verify-vendor exit 0, unchanged hashes)."
+  },
+  "notProved": [
+    "No live LLM boot was run: the persona texts were not exercised inside a real teammate/subagent session, so their effect on model behaviour is unverified (the roster's own suite and the six static/type gates are what is proved).",
+    "The pre-wave-D texts' SUL lineage is asserted from the plan record and the AGENTS.md provenance note, not re-derived from a checkout of oh-my-openagent; the claim proved here is the negative one — the new texts share no more than a role-name opening or a path with the old ones.",
+    "seed-text licence facts were read from the fetched LICENSE bytes at the pinned revisions (sha256 recorded); no per-file licence header inside each seed prompt was independently audited.",
+    "verify:comments proves declarations in its TypeScript source set; it does not parse .md personas.",
+    "bun run verify:docs polices the human-facing band, which does not include packages/*/personas/*.md; ATTRIBUTION.md is therefore unguarded by that gate (it is agent-facing English-only content)."
+  ],
+  "evidence": {
+    "root": "evidence/de-omo/personas/20261008T163931Z",
+    "files": [
+      "result.json (this file)",
+      "output.log (the 7 gates, verbatim, with exit codes)",
+      "analysis/gate-rerun.log (the post-repair re-run of node scripts/verify-vendor.ts and bun test packages/mpd-roles-plugin, verbatim, with exit codes)",
+      "pins.tsv (repo -> HEAD sha)",
+      "seed-manifest.txt (per-repo LICENSE sha256, copyright lines, per-file seed sha256; all 20 re-verified byte-identical in analysis/overlap-matrix.log)",
+      "seeds/<owner>__<repo>/ (verbatim fetched LICENSE + seed prompts + tree.json). The anthropics/claude-plugins-official probe file is analysis-free evidence of an ABSENCE and is named NOTICE-ABSENT-404.txt: its 14-byte body is the string `404: Not Found`, i.e. no NOTICE file exists at that revision — do not read it as an Apache-2.0 §4(d) notice (D-VER-6)",
+      "analysis/overlap.mjs (the instrument, sha256 2c67d2083f8a7ad0a216d4d765b1025d78dd7cac81112848a2836b1b688aebbb) + analysis/overlap-final.log (9 declared seed pairs + 11 pre-wave-D pairs — the numbers the DELIVERED bytes reproduce, see analysis/overlap-final-vs-matrix.diff)",
+      "analysis/overlap-seeds.log (D-VER-2: the declared-seed section as first written at 2026-10-08T16:44:12Z, BEFORE the 16:44:37 rewrite batch — prometheus 5, metis 6, superseded by the delivered 3 and 4)",
+      "analysis/overlap-previous.log (D-VER-2: the pre-wave-D section as first written at 2026-10-08T16:44:12Z against an INTERMEDIATE draft — hephaestus 14, sisyphus 15, superseded by the delivered 5 and 6)",
+      "analysis/SEQUENCE.md (the draft -> final narrative: which draft carried the 14-/15-word runs, what changed, and the final numbers on the pinned hashes)",
+      "analysis/bind-personas.sh + analysis/bind-personas.log (the binding run: sha256 at both ends -> 240 delivered-file x seed pairs + 11 pre-wave-D pairs -> 50 s settle -> re-hash)",
+      "analysis/persona-hashes-start.tsv + analysis/persona-hashes-end.tsv + analysis/persona-hash-diff.txt (empty) + analysis/persona-hash-verdict.txt (sha256 of the 11 persona texts + ATTRIBUTION.md at both ends of the window)",
+      "analysis/overlap-matrix.log (every pair measured against the pinned bytes, plus the seed re-verification and the final per-file maxima)",
+      "analysis/reproduce-final-log.sh + analysis/reproduced-final-pairs.txt + analysis/overlap-final-vs-matrix.diff (empty: the delivered bytes reproduce all 20 pairs of overlap-final.log)",
+      "analysis/old-*.md (the pre-wave-D texts, read from git HEAD — re-verified byte-identical to `git show HEAD:packages/mpd-roles-plugin/personas/<n>.md` at 16dbeb211afe8501e8df6f133033504ffb513399, 11/11)"
+    ]
+  }
+}

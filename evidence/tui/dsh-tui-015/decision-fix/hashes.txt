@@ -1,0 +1,14 @@
+4eecd7ffd1879a1b7faffe202e95a335e9dd611c0d5792b253581dc99a9bff58  packages/mpd-tui-plugin/src/log.ts
+5b51c4060c92d65d71a3778a5f271431a88cc6d34d1e4d2a342058d0ead198fb  packages/mpd-tui-plugin/src/index.ts
+5d777baea6ef48865b2caad9343183a45bf2584ca10d96a34684cb47dc4cedad  packages/mpd-tui-plugin/src/decisions.ts
+1e4a018de242f8ed5cc695bb5e9e6620260a644002bc5c5d72ac769649336491  packages/mpd-tui-adapter-plugin/src/index.ts
+bb9268aa6543168f15f1e8f1e6ba58325e4f9b0b98591dd9d213212e2ad9c7f9  packages/mpd-tui-plugin/test/plugin.test.ts
+c64e2e74e246d45efacf86ab95ff6309f502fe0986a0b8e1fcc1e142cd57ad8d  packages/mpd-tui-plugin/test/state.test.ts
+9315076d2acebddb942bda5a0490adf178abe040c34f76f9b51fff14bba65352  packages/mpd-tui-plugin/dist/index.js
+c9d76265dfa2298e9cf3463839dd05ead6b71ce27565b0fc4237bc38890cfdcc  packages/mpd-tui-adapter-plugin/dist/index.js
+
+# read at 2026-10-14T11:37:11Z (UTC)
+# NOTE: log.ts + decisions.ts changed AFTER the lane run by COMMENT-ONLY edits; the byte the lane
+#       PINS as its artifact is packages/mpd-tui-plugin/dist/index.js (see
+#       lane-final.evidence/result.json .revision.path/.sha256) and it is UNCHANGED by comments
+#       (bun build strips them — proved by verify-dist-fresh staying 31/31 fresh, NO rebuild).

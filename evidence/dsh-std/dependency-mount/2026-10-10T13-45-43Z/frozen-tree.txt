@@ -1,0 +1,23 @@
+# FROZEN-TREE fingerprint — 2026-10-10T14:22:01Z
+# Every gate below ran on these bytes. The gates started 2026-10-10T13:46Z; no tracked file
+# was written after the wave's last edit (mtimes below are all BEFORE the first gate).
+
+package.json                   sha256=20f5fd6c2d9e69bada45001ef12aaaaa2ffdef87160554665a81ca0cd040f885  mtime=2026-10-10T13:45:31Z
+cordis.patch.yml               sha256=1d39c8f31af8b151652b6e1488be9a0f4d28e002aed1981d1f43377a2c24b0d1  mtime=2026-10-10T13:45:36Z
+bun.lock                       sha256=9bf36b0184bbe4131586b45e4983a8761f2a10b35c417b868f8764126074460c  mtime=2026-10-10T13:46:06Z
+LICENSE-NOTICES.md             sha256=0190319224c359006efa6a81abb24ad40b590ce116f92c77f0093554e576005c  mtime=2026-10-10T13:46:44Z
+docs/user-guide.md             sha256=cfb6805fe8869cb2662b2205fbddec073e5e18665c5f61a2914c65e52f234afc  mtime=2026-10-10T13:47:00Z
+docs/user-guide.zh-CN.md       sha256=28ceb158559fb8974ecc41e69e1b53e5deb25ef2e555403ec6c71be6af87e310  mtime=2026-10-10T13:47:08Z
+scripts/install-profile.ts     sha256=ccdd2341192dd974f38851ec9e1f2a1b6140be1a402fecca0cd2f27f47e90ef9  mtime=2026-10-10T13:40:05Z
+
+## git status (tracked)
+ M LICENSE-NOTICES.md
+ M bun.lock
+ M docs/user-guide.md
+ M docs/user-guide.zh-CN.md
+ M package.json
+## HEAD
+d76d3bec83213fde6aebb7e218dcba3c6aaf44c8
+feature/dsh-std-dependency
+## cordis.patch.yml diff bytes: 0
+## scripts/install-profile.ts diff bytes: 0

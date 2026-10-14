@@ -1,0 +1,53 @@
+registry in force: https://registry.npmmirror.com (file: /tmp/tarball-home/.npmrc)
+=== container toolchain (measured, not assumed) ===
+v24.21.0
+11.19.0
+pnpm install exit=0
+11.23.0
+dsh install exit=0
+0.2.0-rc.2
+
+=== the PACKED artifact's own declared closure ===
+dependencies        = {"dsh-better-sidebar":"0.24.1"}
+optionalDependencies = {"@ast-grep/cli":"0.45.2","@colbymchenry/codegraph":"1.5.0","@code-yeongyu/comment-checker":"0.8.0"}
+pack manifest sha256: 06540fd8ef6f56b7be54aa4401bdf0660baa506f654d09b8d0ec50ee128f160c
+pack file count: 608
+
+=== A. dsh plugin --profile web add /pack   (the TARBALL path) ===
+TARBALL_EXIT=0
+--- the class we are measuring, quoted from the install's own output ---
+(NO ignored-build-scripts class in the tarball install output)
+--- tail of that output ---
+dsh: initialized profile web at /tmp/tarball-dsh/profiles/web
+
+dependencies:
++ @mpd-dsh/mpd link:/pack
+
+Already up to date
+Done in 337ms using pnpm v11.23.0
+
+   ╭──────────────────────────────────────────╮
+   │                                          │
+   │   Update available! 11.23.0 → 12.10.1.   │
+   │   Changelog: https://pnpm.io/v/12.10.1   │
+   │     To update, run: pnpm add -g pnpm     │
+   │                                          │
+   ╰──────────────────────────────────────────╯
+
+TARBALL_EXIT=0
+
+=== B. dsh plugin --profile webroot add /root  (the ROOT-manifest path the one-click lane grades) ===
+ROOT_EXIT=1
+(NO ignored-build-scripts class in the root-manifest install output)
+    at resolveBundleDir (file:///usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:906:8)
+    at bundleManifest (file:///usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-plugin-manager/lib/types/operations.js:32:24)
+    at reconcile (file:///usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-plugin-manager/lib/types/operations.js:57:26)
+    at runProfilePnpm (file:///usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-plugin-manager/lib/types/operations.js:504:23)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async withFileLock (file:///usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-atomic-write/lib/index.js:211:10)
+    at async runPlugin (file:///usr/local/lib/node_modules/@deepseek-ai/dsh/lib/plugin-BGnVfe_D.js:93:25)
+    at async runCli (file:///usr/local/lib/node_modules/@deepseek-ai/dsh/lib/bin.js:236:17)
+    at async file:///usr/local/lib/node_modules/@deepseek-ai/dsh/lib/bin.js:252:23
+
+Node.js v24.21.0
+ROOT_EXIT=1

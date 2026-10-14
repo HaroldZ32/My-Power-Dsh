@@ -1,0 +1,19 @@
+# the DRAWN page, one reading per frame of the contract's orbit (bun test, pinned toolchain)
+# run at 2026-10-08T12:07:50Z UTC
+# command: .toolchain/node_modules/.bin/bun test test/panel-dag.test.ts -t 'DRAWN running label'
+
+bun test v1.4.0 (34cbb9a40)
+
+test/panel-dag.test.ts:
+frame 0 glyph ◐ cells 6 row "│ ◐ T2"
+frame 1 glyph ◓ cells 6 row "│ ◓ T2"
+frame 2 glyph ◑ cells 6 row "│ ◑ T2"
+frame 3 glyph ◒ cells 6 row "│ ◒ T2"
+frames 0 and 1: 1 of 145 drawn rows differ, all label rows, none by a cell
+(pass) the running-node animation and its degradation > the DRAWN running label keeps ONE width across every frame of the cycle [13.10ms]
+
+ 1 pass
+ 54 filtered out
+ 0 fail
+ 10 expect() calls
+Ran 1 test across 1 file. [36.00ms]

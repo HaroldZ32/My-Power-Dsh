@@ -1,0 +1,44 @@
+
+                                                                                              │ ◀    ○      ○    MPD     ○      ○     ▶
+  ✦ dsh-TUI  v0.14.0                                                                          ├───────────────────────────────────────────
+  ████   █████  █████  ████    ████  █████  █████  █   █                                      │┌MPD──────────────────────────────────────┐
+  █   █  █      █      █   █  █      █      █      █  █                                       ││MPD                                     ⤢│
+  █   █  ████   ████   ████    ███   ████   ████   ███                                        ││subagents  0 total · 0 running · 0 comple│
+  █   █  █      █      █          █  █      █      █  █                                       ││⚪ No subagents in the current session   │
+  ████   █████  █████  █      ████   █████  █████  █   █                                      ││  Subagents appear here once the main age│
+                                                                                              ││team LIVEBOARD6  phase active  tasks 0/4 │
+  █   █    ███    ████    █   █   █████    ████    ████                                       ││╭────────╮   ╭────────╮   ╭────────╮   ╭─│
+  █   █   █   █   █   █   ██  █   █       █       █                                           │││ ○ T1   │   │ ○ T2   │   │ ○ T3   │   │ │
+  █████   █████   ████    █ █ █   ████     ███     ███                                        ││╰────────╯   ╰────────╯   ╰────────╯   ╰─│
+  █   █   █   █   █  █    █  ██   █           █       █                                       ││██████████████████████████████████░░░░░░░│
+  █   █   █   █   █   █   █   █   █████   ████    ████                                        ││view boxes · 4 tasks · ranks derived     │
+  deepseek-flash · Max effort                                                                 ││▼/▸ blocker → dependent · ▶ focus        │
+  /tmp/mpd-lat-RsBaY1/ws                                                                      ││✓ completed · ◐ running · ○ open=blocked │
+  Tip: Goals/Todos appear automatically when the model writes them · /tips more tips          ││✗ failed · ○ blocked=open · ⊘ cancelled  │
+                                                                                              ││⤢ fullscreen · ↑↓/jk move · Enter pin · E│
+    Explore the uncharted!                                                                    ││                                         │
+                                                                                              ││                                         │
+                                                                                              ││                                         │
+   ▶ （Ctrl+P to expand） Context loaded · System prompt 19 sections · Runtime context 2 ite… ││                                         │
+                                                                                              ││                                         │
+                                                                                              ││                                         │
+                                                                                              ││                                         │
+                                                                                              ││                                         │
+                                                                                              ││                                         │
+                                                                                              ││                                         │
+                                                                                              ││                                         │
+                                                                                              ││                                         │
+                                                                                              ││                                         │
+                                                                                              ││                                         │
+                                                                                              ││                                         │
+                                                                                              ││                                         │
+                                                                                              ││                                         │
+                                                                                              ││                                         │
+  mpd: team LIVEBOARD4 1·0/4 · plans 0 · workmates 0                                          ││                                         │
+                                                                                              ││                                         │
+  ╭──────────────────────────────────────────────────────────────────────────────────────────╮││                                         │
+  ⌸ ❯                                                                                        ⛶││                                         │
+  ╰──────────────────────────────────────────────────────────────────────────────────────────╯│└─────────────────────────────────────────┘
+   deepseek-flash · max · ws                                                                  ├───────────────────────────────────────────
+                                                                                              │ Esc chat · ←/→ panels · z zoom · +/- wid…
+

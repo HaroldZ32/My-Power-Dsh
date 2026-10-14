@@ -1,91 +1,99 @@
-/** Root shape of the persisted ledger `.mpd/boulder.json`: the active work mirrored at the top level plus the full `works` map. */
+// Boulder core: the persisted data contract of the durable work ledger.
+//
+// Written here for wave de-omo C against the shape the shipped ledger already stores, so an existing
+// `.mpd/boulder.json` keeps resuming. Every field a writer emits is declared here; the reader also
+// TOLERATES the absence of the optional halves, because a record on disk may predate this writer.
+
+/** The whole ledger file `.mpd/boulder.json`: a `works` map plus the top-level mirror of its active entry. */
 export interface BoulderState {
-  /** Discriminator for the multi-work shape; written as 2 on every mutation and never read back by this bundle. */
+  /** Shape discriminator; writers stamp `2`, and a pre-`works` record may omit it entirely. */
   schema_version?: 2
-  /** Work whose fields the top-level mirror reflects; absent on a ledger written before `works`, where the read path then selects the newest one. */
+  /** Id of the work the top-level mirror reflects; absent on a legacy record, where the reader picks the newest instead. */
   active_work_id?: string
-  /** Every recorded work keyed by `work_id`, so a plan can be resumed after another one took over the mirror. */
+  /** Every work of this workspace keyed by `work_id`, which is what lets a second plan resume after another took the mirror. */
   works?: Record<string, BoulderWorkState>
-  /** Plan file of the mirrored work, recorded exactly as the caller passed it (usually workspace-relative). */
+  /** Plan file of the mirrored work, stored exactly as the caller passed it (usually workspace-relative). */
   active_plan: string
-  /** ISO-8601 instant the mirrored work started; the baseline `elapsed_ms` is measured from. */
+  /** ISO-8601 instant the mirrored work started; the baseline every `elapsed_ms` is measured from. */
   started_at: string
-  /** ISO-8601 instant the mirrored work was completed; absent while it is still running. */
+  /** ISO-8601 instant the mirrored work finished; absent while it is still running. */
   ended_at?: string
-  /** Wall-clock duration in milliseconds of the mirrored work, computed from `started_at`/`ended_at` on completion. */
+  /** Wall-clock duration of the mirrored work in milliseconds, derived from its two instants on completion. */
   elapsed_ms?: number
-  /** Lifecycle of the mirrored work; a work built from this mirror is reported as `active` when the value is missing or unknown. */
+  /** Lifecycle of the mirrored work; a missing or unknown value is reported as `active`. */
   status?: BoulderWorkStatus
   /** ISO-8601 instant of the mirrored work's last mutation; resume ordering falls back to `started_at`. */
   updated_at?: string
-  /** Sessions that ever touched the mirrored work, each normalized to a `platform:`-prefixed id. */
+  /** Sessions that ever touched the mirrored work, each in `platform:`-prefixed form. */
   session_ids: string[]
-  /** How each listed session joined, keyed by the normalized session id, so an inheriting session is distinguishable. */
+  /** How each of those sessions joined, keyed by the normalized session id. */
   session_origins?: Record<string, "direct" | "appended">
-  /** Slug of the mirrored work's plan file name; the work's display name and work-id prefix. */
+  /** Slug of the mirrored work's plan file name; doubles as its display name and its work-id prefix. */
   plan_name: string
-  /** Agent that started the mirrored work, when the caller supplied one. */
+  /** Agent that started the mirrored work, when the caller named one. */
   agent?: string
   /** Git worktree the mirrored work's plan resolves against, when it was started in one. */
   worktree_path?: string
-  /** Per-task timers of the mirrored work, keyed by the plan's top-level task key (`1`, `F1`, …). */
+  /** Per-task timers of the mirrored work, keyed by the plan's task key (`1`, `F1`, …). */
   task_sessions?: Record<string, TaskSessionState>
 }
 
-/** How a session id entered a work: `direct` (the default) for the session that recorded itself, `appended` for one a caller marks as joining a work that already existed. */
+/** How a session entered a work: `direct` for the session that recorded itself, `appended` for one a caller attaches to an existing work. */
 export type BoulderSessionOrigin = "direct" | "appended"
-/** Work lifecycle: `active`/`paused` are resumable and listed as resume options, `completed`/`abandoned` are terminal. */
+
+/** Work lifecycle; `active` and `paused` stay resumable, `completed` and `abandoned` are terminal. */
 export type BoulderWorkStatus = "active" | "completed" | "paused" | "abandoned"
-/** Per-task timer lifecycle: `startTaskTimer` writes `running`, `endTaskTimer` writes `completed`, and this bundle never writes `cancelled`. */
+
+/** Per-task timer lifecycle; starting writes `running`, ending writes `completed`, and nothing here writes `cancelled`. */
 export type BoulderTaskStatus = "running" | "completed" | "cancelled"
 
-/** One entry of `BoulderState.works`, carrying its own sessions and timers so parallel plan runs stay independent. */
+/** One entry of the ledger's `works` map, carrying its own sessions and timers so parallel plan runs stay independent. */
 export interface BoulderWorkState {
-  /** Stable key of this work inside `works`: the plan slug plus a random hex suffix, or `<slug>-legacy` for a work synthesized from a pre-`works` ledger. */
+  /** Stable key of this work inside `works`: a generated `<slug>-<hex>`, or `<slug>-legacy` for one synthesized from a pre-`works` record. */
   work_id: string
-  /** Plan file this work is bound to, exactly as the caller passed it. */
+  /** Plan file this work is bound to, as the caller passed it. */
   active_plan: string
-  /** Slug of the plan file name, used as the work's display name and as the `work_id` prefix. */
+  /** Slug of that plan file's name; the work's display name and its work-id prefix. */
   plan_name: string
-  /** Lifecycle of this work; undefined counts as still active in the active/resume filters. */
+  /** Lifecycle of this work; absent and unknown both count as still active in the resume filters. */
   status?: BoulderWorkStatus
-  /** ISO-8601 instant this work started; the baseline `elapsed_ms` is measured from. */
+  /** ISO-8601 instant this work started; the baseline its `elapsed_ms` is measured from. */
   started_at: string
-  /** ISO-8601 instant this work was completed; absent while it is still running. */
+  /** ISO-8601 instant this work finished; absent while it is still running. */
   ended_at?: string
-  /** Wall-clock duration in milliseconds of this work, computed from `started_at`/`ended_at` on completion. */
+  /** Wall-clock duration of this work in milliseconds, derived from its two instants on completion. */
   elapsed_ms?: number
   /** ISO-8601 instant of this work's last mutation; "newest work" selection falls back to `started_at`. */
   updated_at?: string
-  /** Sessions attached to this work, deduplicated and normalized to `platform:`-prefixed ids. */
+  /** Sessions attached to this work, deduplicated and each in `platform:`-prefixed form. */
   session_ids: string[]
   /** How each attached session joined, keyed by the normalized session id. */
   session_origins?: Record<string, BoulderSessionOrigin>
-  /** Agent that started this work, when the caller supplied one. */
+  /** Agent that started this work, when the caller named one. */
   agent?: string
   /** Git worktree this work's plan resolves against, when it was started in one. */
   worktree_path?: string
-  /** Per-task timers of this work, keyed by the plan's top-level task key (`1`, `F1`, …). */
+  /** Per-task timers of this work, keyed by the plan's task key (`1`, `F1`, …). */
   task_sessions?: Record<string, TaskSessionState>
 }
 
-/** Checklist counts of one plan file, derived from its markdown on every read and never persisted. */
+/** Checklist counts of one plan file, recomputed from its markdown on every read and never persisted. */
 export interface PlanProgress {
   /** Checkbox items the parser recognized; zero for a missing, unreadable or checkbox-less plan. */
   total: number
-  /** Recognized items whose checkbox is ticked; `total - completed` is the work left. */
+  /** Recognized items whose box is ticked. */
   completed: number
-  /** True only for a plan with at least one recognized item and no unticked one, so an empty plan is never "complete". */
+  /** True only for a plan holding at least one recognized item and no unticked one, so an empty plan is never "complete". */
   isComplete: boolean
 }
 
-/** Checklist view that also names the next actionable item, the value the status tool shows for a resumed plan. */
+/** Checklist view that also names the next actionable item, which is what the status tool shows for a resumed plan. */
 export interface PlanChecklist {
   /** Checkbox items the parser recognized; zero for a missing, unreadable or checkbox-less plan. */
   total: number
-  /** Recognized items whose checkbox is ticked. */
+  /** Recognized items whose box is ticked. */
   completed: number
-  /** Recognized items that are still unticked; `completed + remaining === total` always holds. */
+  /** Recognized items still unticked; `completed + remaining === total` holds by construction. */
   remaining: number
   /** Label of the first unticked item in document order, or null when every item is ticked or none was recognized. */
   nextTaskLabel: string | null
@@ -93,27 +101,27 @@ export interface PlanChecklist {
 
 /** One per-task timer: which plan task it is, which session holds it, and how long that session ran. */
 export interface TaskSessionState {
-  /** Plan task key this timer belongs to: the TODO number (`1`) or the final-wave id (`F1`). */
+  /** Plan task this timer belongs to: the TODO number (`1`) or the final-wave id (`F1`). */
   task_key: string
-  /** Task label as recorded, i.e. the plan's `F1. Audit the diff` form when it came from the plan parser. */
+  /** Task label as recorded, i.e. the plan's `F1. Audit the diff` form when the plan parser produced it. */
   task_label: string
-  /** Task title as recorded, with the plan's `N. ` / `F<n>. ` id prefix stripped when parsed from the plan. */
+  /** Task title as recorded, with the plan's `N. ` / `F<n>. ` id prefix stripped when parsed from a plan. */
   task_title: string
-  /** Normalized, `platform:`-prefixed session id of the timer's current holder. */
+  /** Normalized, `platform:`-prefixed id of the session currently holding the timer. */
   session_id: string
-  /** Agent that holds the timer; not carried over by an upsert that omits it, so the value can be lost on re-upsert. */
+  /** Agent holding the timer; an upsert that omits it does not carry the stored value over. */
   agent?: string
-  /** Free-form grouping supplied by the caller; not carried over by an upsert that omits it. */
+  /** Free-form grouping supplied by the caller; an upsert that omits it does not carry the stored value over. */
   category?: string
-  /** ISO-8601 instant the timer was started; absent on a record created by an upsert that never started it. */
+  /** ISO-8601 instant the timer was started; absent on a record an upsert never started. */
   started_at?: string
   /** ISO-8601 instant the timer was ended; absent while it is still running. */
   ended_at?: string
-  /** Wall-clock duration in milliseconds between `started_at` and `ended_at`, computed only when the timer ends. */
+  /** Wall-clock duration in milliseconds between the two instants above, written only when the timer ends. */
   elapsed_ms?: number
-  /** Timer lifecycle; `running` after start and `completed` after end. */
+  /** Timer lifecycle; `running` after a start and `completed` after an end. */
   status?: BoulderTaskStatus
-  /** ISO-8601 instant of this record's last upsert, refreshed on every timer mutation. */
+  /** ISO-8601 instant of this record's last upsert, refreshed by every timer mutation. */
   updated_at: string
 }
 
@@ -121,7 +129,7 @@ export interface TaskSessionState {
 export interface BoulderWorkResumeOption {
   /** Stable key of the work inside the ledger. */
   work_id: string
-  /** Display name of the work (the plan file's slug). */
+  /** Display name of the work, i.e. its plan file's slug. */
   plan_name: string
   /** Plan file the work is bound to, as recorded at start. */
   active_plan: string
@@ -133,15 +141,15 @@ export interface BoulderWorkResumeOption {
   started_at: string
   /** ISO-8601 instant of the work's last mutation, falling back to `started_at` when none was recorded. */
   updated_at: string
-  /** ISO-8601 instant the work was completed; absent while it is still running. */
+  /** ISO-8601 instant the work finished; absent while it is still running. */
   ended_at?: string
-  /** Wall-clock duration in milliseconds of the work, once it has finished. */
+  /** Wall-clock duration of the work in milliseconds, once it has finished. */
   elapsed_ms?: number
-  /** How many sessions have been attached to the work (`session_ids.length`). */
+  /** How many sessions are attached to the work (`session_ids.length`). */
   session_count: number
-  /** Checklist progress read from the work's plan file when this option was built. */
+  /** Checklist progress read from the work's plan file while this option was built. */
   progress: PlanProgress
-  /** True when this work is the one the top-level mirror of the ledger currently reflects. */
+  /** True when this work is the one the ledger's top-level mirror currently reflects. */
   is_current_mirror: boolean
 }
 
@@ -149,10 +157,10 @@ export interface BoulderWorkResumeOption {
 export interface TopLevelTaskRef {
   /** Stable identity `<section>:<lowercased id>`, e.g. `todo:1` or `final-wave:f1`. */
   key: string
-  /** Plan section the task was found under, which is what the two checkbox grammars are chosen by. */
+  /** Plan section the task was found under, which is what chose its checkbox grammar. */
   section: "todo" | "final-wave"
-  /** Plan-local id as written in the plan: `1`, `2`, … for TODOs and `F1`/`f1` for final-wave items (case preserved). */
+  /** Plan-local id as written in the plan: `1`, `2`, … for TODOs and `F1`/`f1` for final-wave items, case preserved. */
   label: string
-  /** Task text with the id prefix stripped. */
+  /** Task text with its id prefix stripped. */
   title: string
 }

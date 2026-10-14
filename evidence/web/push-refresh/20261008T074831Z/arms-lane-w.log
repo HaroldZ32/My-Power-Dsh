@@ -1,0 +1,25 @@
+=== bun test packages/mpd-bundle-plugin/test/team-view-push.test.ts ===
+bun test v1.4.2 (744846f84)
+
+packages/mpd-bundle-plugin/test/team-view-push.test.ts:
+[W-a] {"readsBefore":1,"readsAfter":2,"elapsedMs":3,"pushBudgetMs":200,"intervalMs":2000,"intervalFired":0,"streamUrl":"/plugins/mpd-team/events?sessionId=s1","refreshedOnScreen":true,"staleTagGone":true}
+(pass) W-a — one data frame refreshes the panel on the BUILT artifact > one frame re-reads the routes while the fallback interval never fires [18.87ms]
+[mpd] team sidebar session: s1
+[W-a:mounts] {"betterSidebar":["/plugins/mpd-team/events?sessionId=s1"],"harnessRightSidebar":["/plugins/mpd-team/events?sessionId=s1"],"openTotal":2}
+(pass) W-a — one data frame refreshes the panel on the BUILT artifact > each MOUNT owns its own stream: both sidebar hosts, mounted together, hold one each [13.27ms]
+[W-b:absent] {"streamsOpened":0,"intervalMs":2000,"intervalFired":1,"readsBeforeTick":1,"readsAfterTick":2,"frameBefore":"Lane W active team-w approved 2026-10-08T07:00:00.000Z workspace lane-w 1 running · 1 ready · 0 blocked 0/1 complete · 1 running / 1 ready Progress 0% native executor MEMBERS (1) push-alpha Senior Eng","frameAfter":"Lane W active team-w approved 2026-10-08T07:00:00.000Z workspace lane-w 1 running · 1 ready · 0 blocked 0/1 complete · 1 running / 1 ready Progress 0% native executor MEMBERS (1) fallback-beta Senior "}
+(pass) W-b — the fallback: no stream, and a stream that errors > with no EventSource global the panel renders and the interval still refreshes it [15.56ms]
+[W-b:error] {"errorHookInstalled":false,"closedByError":false,"frameAfterError":"Lane W active team-w approved 2026-10-08T07:00:00.000Z workspace lane-w 1 running · 1 ready · 0 blocked 0/1 complete · 1 running / 1 ready Progress 0% native executor MEMBERS (1) push-alpha Senior Eng","frameAfterTick":"Lane W active team-w approved 2026-10-08T07:00:00.000Z workspace lane-w 1 running · 1 ready · 0 blocked 0/1 complete · 1 running / 1 ready Progress 0% native executor MEMBERS (1) error-beta Senior Eng","frameAfterFrame":"Lane W active team-w approved 2026-10-08T07:00:00.000Z workspace lane-w 1 running · 1 ready · 0 blocked 0/1 complete · 1 running / 1 ready Progress 0% native executor MEMBERS (1) error-gamma Senior En"}
+(pass) W-b — the fallback: no stream, and a stream that errors > a stream error costs the push and nothing else [19.72ms]
+[W-c:unmount] {"opened":1,"openAfterUnmount":0,"closeCalls":1,"registeredTimers":[15000,2000],"clearedTimers":[2000]}
+(pass) W-c — lifecycle: unmount and session change > unmounting the panel closes the stream and clears the interval [7.00ms]
+[W-c:session-change] {"opened":["/plugins/mpd-team/events?sessionId=s1","/plugins/mpd-team/events?sessionId=s2"],"closedFlags":[true,false],"openAfterChange":1}
+(pass) W-c — lifecycle: unmount and session change > a session change closes the old stream before the next one opens [99.03ms]
+[W-c:no-route] {"opened":0}
+(pass) W-c — lifecycle: unmount and session change > no events route means no stream: the composition is left exactly as it was [37.26ms]
+
+ 7 pass
+ 0 fail
+ 42 expect() calls
+Ran 7 tests across 1 file. [379.00ms]
+ARMS_EXIT=0

@@ -417,7 +417,12 @@ async function real(): Promise<void> {
   let projected: unknown
   try {
     // The host's own pinned parser and projector, loaded from the installed payload.
-    const { parseManifest, projectManifest } = await import("file://" + join(hostRoot as string, "node_modules", "@dsh-std", "manifest", "lib", "index.js"))
+    // The host's own pinned parser and projector, loaded from the installed payload AS A FILE URL.
+    // `pathToFileURL` and NOT `"file://" + join(…)` (win32 defect, MEASURED 2026-10-12): the
+    // concatenation is correct only on POSIX, where `join` starts with `/` and yields `file:///…`; on
+    // win32 it yields `file://C:\…`, a URL whose host is the string `C:\…` and whose path is empty —
+    // never the module. `pathToFileURL` is the contract every other lane in this tree already uses.
+    const { parseManifest, projectManifest } = await import(pathToFileURL(join(hostRoot as string, "node_modules", "@dsh-std", "manifest", "lib", "index.js")).href)
     // The parsed manifest document the projector consumes.
     const parsed = parseManifest(readFileSync(MANIFEST, "utf8"), { source: MANIFEST })
     projected = projectManifest(parsed)

@@ -1,0 +1,171 @@
+{
+  "version": 1,
+  "recordId": "rec-20261008T061038-a66ee9",
+  "loopId": "loop-20261008T055942-e51e88",
+  "taskId": null,
+  "workspace": "/root/dshProj/My-Power-Dsh",
+  "writerId": "delegate:pending",
+  "verifierId": "15e7e9f3-f3d5-4479-93ea-7f8e1adff3b1",
+  "basis": {
+    "kind": "blind",
+    "frozenContract": {
+      "path": ".mpd/plans/captain-test-fix.md",
+      "sha256": "06c1110e000373fc4cf0efd3f11db953ea29d1d2a8d1ae474df29c3274973234"
+    },
+    "docs": [
+      {
+        "path": ".mpd/plans/captain-test-fix.md",
+        "sha256": "06c1110e000373fc4cf0efd3f11db953ea29d1d2a8d1ae474df29c3274973234"
+      }
+    ],
+    "probe": [
+      {
+        "path": ".mpd/plans/captain-test-fix.md",
+        "bytes": 5226,
+        "sha256": "06c1110e000373fc4cf0efd3f11db953ea29d1d2a8d1ae474df29c3274973234",
+        "mtime": "2026-10-08T05:49:51.927Z"
+      },
+      {
+        "path": "AGENTS.md",
+        "bytes": 64793,
+        "sha256": "9cc85e8905ded169da50a63c4cafef73f6a2b1dc0bbf1d15af2945becb674cd0",
+        "mtime": "2026-10-08T05:50:50.971Z"
+      },
+      {
+        "path": "agent-references/troubleshooting.md",
+        "bytes": 66259,
+        "sha256": "7dd41e5523f6ae340fd25f2c265d0cc4955002ea0139b1826fe157321fca42d8",
+        "mtime": "2026-10-08T05:51:03.662Z"
+      },
+      {
+        "path": ".mpd/verify/evidence/ev-20261008T060851-71fa11.log",
+        "bytes": 268191,
+        "sha256": "67cb6ddf5c7e96906e48dc2ff872b363edef6be7f310444594e093af183c566e",
+        "mtime": "2026-10-08T06:09:19.254Z"
+      },
+      {
+        "path": ".mpd/verify/evidence/ev-20261008T060922-942fd5.log",
+        "bytes": 16,
+        "sha256": "ae47736bb2a9401aa9743893f2f64b9a605e65a99d78cd991a8021e0f7722d87",
+        "mtime": "2026-10-08T06:09:24.029Z"
+      },
+      {
+        "path": ".mpd/verify/evidence/ev-20261008T060924-aa21cb.log",
+        "bytes": 307,
+        "sha256": "4c77b4940b4ff081b90bca4d6e2d7f585d7fefd2247673fa733a18546af2da81",
+        "mtime": "2026-10-08T06:09:27.870Z"
+      },
+      {
+        "path": ".mpd/verify/evidence/ev-20261008T060930-b58511.log",
+        "bytes": 5046,
+        "sha256": "06a2432d5a8bec0ce33bd380eb868f84a7843d348c3747ec581774e24aaef863",
+        "mtime": "2026-10-08T06:09:31.593Z"
+      },
+      {
+        "path": ".mpd/boulder.json",
+        "bytes": 0,
+        "sha256": "",
+        "mtime": ""
+      },
+      {
+        "path": "packages/mpd-roles-plugin/test/verify-guard.test.ts",
+        "bytes": 10275,
+        "sha256": "78c425697dc23cb9a108c6891ea96c8895d0888b6ce3760c0b40e44760459887",
+        "mtime": "2026-10-08T06:06:01.835Z"
+      },
+      {
+        "path": "packages/mpd-roles-plugin/src/verify-guard.ts",
+        "bytes": 13609,
+        "sha256": "fcfb20d76c33260b97ed389e989301b75aaccda110d277cc1ee03438f00f6eaf",
+        "mtime": "2026-10-08T06:03:53.486Z"
+      },
+      {
+        "path": "packages/mpd-roles-plugin/src/complexity-gate.ts",
+        "bytes": 43081,
+        "sha256": "829b296f946c20462f785eaf591f2c0db1132f95d3d8600841b57fb54cab37dc",
+        "mtime": "2026-10-08T06:03:30.065Z"
+      },
+      {
+        "path": "packages/mpd-mcp-shared/log-sink.test.ts",
+        "bytes": 10809,
+        "sha256": "d1ad6bbf45c3eb640289ce9059d1c064802debc07cc73741b2c2418529da41d6",
+        "mtime": "2026-10-08T01:15:23.827Z"
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": ".mpd/plans/captain-test-fix.md",
+      "sha256": "06c1110e000373fc4cf0efd3f11db953ea29d1d2a8d1ae474df29c3274973234"
+    },
+    {
+      "path": "AGENTS.md",
+      "sha256": "9cc85e8905ded169da50a63c4cafef73f6a2b1dc0bbf1d15af2945becb674cd0"
+    },
+    {
+      "path": "agent-references/troubleshooting.md",
+      "sha256": "7dd41e5523f6ae340fd25f2c265d0cc4955002ea0139b1826fe157321fca42d8"
+    }
+  ],
+  "gateEvidence": [
+    {
+      "evidenceId": "ev-20261008T060851-71fa11",
+      "cmd": "bun test packages",
+      "exit": 1,
+      "logPath": ".mpd/verify/evidence/ev-20261008T060851-71fa11.log",
+      "logSha256": "67cb6ddf5c7e96906e48dc2ff872b363edef6be7f310444594e093af183c566e"
+    },
+    {
+      "evidenceId": "ev-20261008T060922-942fd5",
+      "cmd": "bun run typecheck",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261008T060922-942fd5.log",
+      "logSha256": "ae47736bb2a9401aa9743893f2f64b9a605e65a99d78cd991a8021e0f7722d87"
+    },
+    {
+      "evidenceId": "ev-20261008T060924-aa21cb",
+      "cmd": "bun run verify:comments",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261008T060924-aa21cb.log",
+      "logSha256": "4c77b4940b4ff081b90bca4d6e2d7f585d7fefd2247673fa733a18546af2da81"
+    },
+    {
+      "evidenceId": "ev-20261008T060930-b58511",
+      "cmd": "node scripts/verify-dist-fresh.ts",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261008T060930-b58511.log",
+      "logSha256": "06a2432d5a8bec0ce33bd380eb868f84a7843d348c3747ec581774e24aaef863"
+    },
+    {
+      "evidenceId": "ev-20261008T061017-99405e",
+      "cmd": "bun run verify:rows",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261008T061017-99405e.log",
+      "logSha256": "cd40237b1f7c5f09670ed14d3f011f740f1371bfcf5c8de8f9d44c1cc3e844da"
+    },
+    {
+      "evidenceId": "ev-20261008T061018-7c7540",
+      "cmd": "bun run verify:gates",
+      "exit": 0,
+      "logPath": ".mpd/verify/evidence/ev-20261008T061018-7c7540.log",
+      "logSha256": "92f21d79103930805f62727f977481a961c4728af0b44d6ab27d217402260597"
+    }
+  ],
+  "verdict": "PASS",
+  "findings": [],
+  "unlockedReads": [],
+  "createdAt": "2026-10-08T06:10:38.741Z",
+  "notes": [
+    "BASIS: blind. No packages/** source or test was read before this record; the only files read were the frozen contract, AGENTS.md§5 as delivered by the session manual injection, and the T-92 row of agent-references/troubleshooting.md. All clause judgements rest on the black-box gate logs, not on the writer's summary.",
+    "F1 VERIFIED. tests log arms pass verbatim: 'F1 - sessionIsTopLevel ... a header with no parent session and delegation depth 0 (or absent) IS top-level, whatever preset' / 'a parent session or a non-zero delegation depth is a CHILD, even under the `mpd` preset' / 'NO header is refused (fail-closed), and the class is reported' (ev-20261008T060851-71fa11).",
+    "F2 VERIFIED. The same log carries 'F2/F5 - the guard's two rules read that ONE predicate > F5-1: a TOP-LEVEL `cordis` session may run a git write, and rule 4 still gates its code writes' and F5-2 (top-level mpd allowed, no regression), plus 'F5-3: a CHILD session is STILL DENIED the git write under either preset - the rule survives'. The installed-guard arm 'the mpd-verify row > §5's one-git-writer rule through the INSTALLED guard: member denied, captain allowed' passes. The row/preset plane is green independently: gate rows ev-20261008T061017-99405e exit 0 and gate gates ev-20261008T061018-7c7540 exit 0.",
+    "F3 VERIFIED (behaviour preserved + the doc states it is NOT the captain test, as an executed arm): 'session-start gate ... scope: child sessions and other presets never get the gate; mpd and preset-less sessions do' (pass), 'roster section ... registered ONCE per qualifying live agent, and only for mpd top-level sessions' (pass), and 'F1 - sessionIsTopLevel ... F3 - the session-start gate keeps its preset scope: it is NOT the captain test' (pass).",
+    "F4 VERIFIED: 'the one-git-writer rule (§5, made mechanical) > the DENIAL states the class the predicate decided, and names the user's own shell' (pass) and '> the captain-write denial makes no claim about top-levelness either' (pass), with the test-side arm 'F5-5: the denial states the class decided and names the route - with NO claim about top-levelness' (pass). I did not read the sentence text itself (blind); the assertion that it carries no top-levelness claim is a passing executed arm, not my paraphrase.",
+    "F5 VERIFIED - all five enumerated arms exist as tests and pass: F5-1 cordis top-level allowed; F5-2 mpd top-level allowed; F5-3 child under either preset still denied; F5-4 no header refused (fail-closed); F5-5 denial sentence carries no top-levelness claim.",
+    "F6 PARTIAL. Manual half VERIFIED directly: the AGENTS.md text delivered to this session carries §5's 'WHO THE CAPTAIN IS: the workspace's top-level session (no parent session, delegation depth 0) - NOT a preset name. verify-guard.ts uses that predicate for this rule and for rule 4; the preset-keyed variant ... is T-92'. A bare read of AGENTS.md was DENIED by the envelope as an implementation read while blind (verification law), so the manual half is judged from the session's own manual injection and its bytes are anchored content-free by the probe. F6 CODE-COMMENT HALF IS NOT DECIDABLE IN THIS ENVELOPE - it is an UNRESOLVED SUB-CLAUSE, not an assumed one: reading packages/mpd-roles-plugin/src/{complexity-gate,verify-guard}.ts is exactly what blindness forbids, and the green comments gate (ev-20261008T060924-aa21cb, exit 0) proves only that declarations carry precise comments per its own rules, NOT that those comments state the top-level classification. Reported as a declared bound to the delegator, not as a pass.",
+    "BOUND - ONE GATE IS RED, and it is named here rather than absorbed: gate tests ev-20261008T060851-71fa11 exited 1. Verbatim summary: '1643 pass / 3 skip / 2 fail / 21902 expect() calls / Ran 1648 tests across 101 files. [27.86s]'. The two failures, verbatim: '(fail) the descriptor rebind (POSIX) > a GRANDCHILD's inherited stderr lands in the log, and zero bytes reach the parent's file' - expect(received).toContain('rebind=rebound'), received 'rebind=not-lowest', at packages/mpd-mcp-shared/log-sink.test.ts:209; and '(fail) readBoulderGate: signal D's only input, repaired to an ACTIVE work > this WORKSPACE's real ledger reads inactive (the measured D repair)' - ENOENT: no such file or directory, open '/root/dshProj/My-Power-Dsh/.mpd/boulder.json', at packages/mpd-roles-plugin/test/team-plane.test.ts:443.",
+    "WHY THE RED GATE DOES NOT FAIL THE CLAUSES: neither failure is any clause of the contract. The first is a POSIX fd-inheritance/environment arm in a package the contract never mentions (it reports an fd that is 'not-lowest', i.e. a launch-environment condition, not a guard decision). The second ENOENTs on a missing WORKSPACE STATE file (.mpd/boulder.json) that the arm hard-reads as a fixture; its sibling arms in the SAME file pass ('an ACTIVE work reads active and carries its plan path', 'a COMPLETED work is silent', 'the fallback shape mirrors the vendor, and boulder.dir overrides the workspace'), so the behaviour under test is exercised and only the real-file fixture is absent. F3 of the contract makes signal D and the gate's firing rule an explicit NON-GOAL of this wave. PRE-EXISTENCE IS NOT PROVABLE FROM INSIDE THIS ENVELOPE (no shell, no git, no blame) - I do not claim these two failures predate the writer; I claim only that they are outside the clause set and that no clause of the contract requires a green whole-repo suite.",
+    "BOUND - NO LIVE END-TO-END WITNESS. The envelope denies the shell, so I could not attempt a live 'top-level cordis session actually runs git branch', and the contract itself declares that the fix cannot take effect in the running host process (T-21, no plugin hot reload: 'the fix is observable only after dsh restarts'). I did not attempt it; the falsifier arms are the executable evidence, which is what F5 asks for.",
+    "Citation discipline: this wave's own T-92 row says to cite code by SYMBOL, never by line number (T-55); the two line numbers above are quoted only where the gate's own stack trace printed them as failure coordinates, which is evidence text, not my anchor."
+  ]
+}

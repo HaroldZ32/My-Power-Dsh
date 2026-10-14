@@ -1,0 +1,13 @@
+# Proof: the evidence:mount npm script value is quote-free (no shell metacharacters), so it runs identically under cmd.exe, PowerShell and POSIX sh.
+$ npm pkg get scripts.evidence:mount
+"node scripts/evidence-mount.ts"
+
+# Proof: the script executes and the mount-assert case passes.
+$ npm run evidence:mount
+
+> @mpd-dsh/mpd@0.12.0 evidence:mount
+> node scripts/evidence-mount.ts
+
+[mount-assert] evidence -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/dsh-qa/mount-assert/2026-10-11T14-53-17.077Z
+[mount-assert] PASS: 1 expectation(s) satisfied
+EXIT=0

@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "dsh-better-sidebar": "0.24.1"
+  },
+  "optionalDependencies": {
+    "@ast-grep/cli": "0.45.2",
+    "@colbymchenry/codegraph": "1.5.0",
+    "@code-yeongyu/comment-checker": "0.8.0"
+  }
+}

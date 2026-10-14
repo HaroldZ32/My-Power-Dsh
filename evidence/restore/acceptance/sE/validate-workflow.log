@@ -1,0 +1,42 @@
+ok   the workflow is named docker-e2e
+ok   workflow_dispatch is declared (on demand)
+ok   a nightly schedule is declared at 03:41 UTC
+ok   NO push trigger (the lane is tens of minutes)
+ok   NO pull_request trigger
+ok   NO pull_request_target trigger
+ok   the npm_registry input defaults to EMPTY (no registry forced)
+ok   MPD_E2E_NPM_REGISTRY is declared from the input, never hard-coded
+ok   permissions are contents:read (the lane reads the repo and nothing else)
+ok   the runner is the pinned ubuntu-24.04 label
+ok   the JOB carries a 60-minute timeout
+ok   the LANE STEP carries a 50-minute timeout
+ok   a step runs scripts/docker-e2e.ts
+ok   --mode source (builds from the checkout, needs no pushed ref)
+ok   --require-docker (a skip becomes exit 3)
+ok   --allow-rootful-docker (a hosted runner's daemon is ROOTFUL, and the default is to SKIP it at exit 0)
+ok   --no-browser (the ui. arms are REQUIRED by default, and a null in a required arm is exit 3)
+ok   no --live (no API key is involved)
+ok   no --require-live
+ok   the lane is invoked as the repository documents it
+ok   the artifact action matches this repository's v7 action pins
+ok   the stamp directory is uploaded even when the lane is RED
+ok   the uploaded path is the lane's own stamp directory (both case slugs)
+ok   the artifact name carries run_attempt (immutable artifacts collide on a re-run)
+ok   the artifact keeps a bounded retention window
+ok   the row summary runs even when the lane is red
+ok   the summary also reaches the run page's step summary
+ok   the summary globs the STAMP directories, not the case directories above them
+ok   step[0] carries exactly one of uses/run
+ok   step[0] name is a string
+ok   step[1] carries exactly one of uses/run
+ok   step[1] name is a string
+ok   step[2] carries exactly one of uses/run
+ok   step[2] name is a string
+ok   step[3] carries exactly one of uses/run
+ok   step[3] name is a string
+ok   step[4] carries exactly one of uses/run
+ok   step[4] name is a string
+
+extracted 36 line(s) of the print step to /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/restore/acceptance/sE/rehearse-print-step.sh
+
+PASS - 5 step(s) audited, every assertion held

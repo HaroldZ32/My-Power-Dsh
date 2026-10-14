@@ -1,0 +1,16 @@
+=== POST-FIX GATE SWEEP ===
+--- bash -n entrypoint ---
+exit=0
+--- docker-e2e --self-test ---
+[self-test] all arms passed (offline: no docker, no network)
+exit=0
+--- verify:comments ---
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+--- typecheck ---
+$ tsgo --noEmit
+typecheck_exit=0
+--- owed-cases lsp rehearsal (regression) ---
+[owed-cases] restore.lspBootstrap=true — the launcher generated a valid .mpd/lsp/cclsp.json with 2 well-formed language server(s), 1 of them serving the TypeScript family, and left a pre-existing user cclsp.json byte-identical (the negative control)
+--- compose config ---
+exit=0

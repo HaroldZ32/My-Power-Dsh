@@ -1,0 +1,33 @@
+# Proves: this wave modifies no .sh file under skills/ — Windows support landed as new .ps1 twins plus docs, leaving every existing .sh counterpart untouched.
+--- git status --porcelain skills/ ---
+ M skills/data-scientist/SKILL.md
+ M skills/data-scientist/references/execution-surfaces.md
+ M skills/data-scientist/references/polars-lane.md
+ M skills/data-scientist/references/uv-setup.md
+ M skills/data-scientist/scripts/setup-uv.ps1
+ M skills/programming/SKILL.md
+?? skills/data-scientist/scripts/ensure-js-deps.ps1
+?? skills/data-scientist/scripts/ensure-py-deps.ps1
+?? skills/programming/scripts/go/check-no-excuse-rules.ps1
+?? skills/programming/scripts/rust/check-no-excuse-rules.ps1
+--- git diff --name-only HEAD -- skills/ ---
+skills/data-scientist/SKILL.md
+skills/data-scientist/references/execution-surfaces.md
+skills/data-scientist/references/polars-lane.md
+skills/data-scientist/references/uv-setup.md
+skills/data-scientist/scripts/setup-uv.ps1
+skills/programming/SKILL.md
+--- git diff --name-only HEAD -- skills/ | grep '\.sh$' ---
+NO .sh CHANGES
+grep exit code: 1 (1 = no match, i.e. no .sh file differs from HEAD)
+--- full git status --porcelain skills/ (required by the NO .sh CHANGES case) ---
+ M skills/data-scientist/SKILL.md
+ M skills/data-scientist/references/execution-surfaces.md
+ M skills/data-scientist/references/polars-lane.md
+ M skills/data-scientist/references/uv-setup.md
+ M skills/data-scientist/scripts/setup-uv.ps1
+ M skills/programming/SKILL.md
+?? skills/data-scientist/scripts/ensure-js-deps.ps1
+?? skills/data-scientist/scripts/ensure-py-deps.ps1
+?? skills/programming/scripts/go/check-no-excuse-rules.ps1
+?? skills/programming/scripts/rust/check-no-excuse-rules.ps1

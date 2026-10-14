@@ -10,7 +10,7 @@ function errorMessage(error) {
 // packages/mpd-mcp-shared/log-sink.ts
 import { closeSync, mkdirSync, openSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { isAbsolute, join, relative, resolve, sep } from "node:path";
 var LOG_SUBDIR = join(".mpd", "logs");
 var DEFAULT_MAX_BYTES = 1024 * 1024;
 var DEFAULT_MAX_LINE_BYTES = 8192;
@@ -58,7 +58,10 @@ function tryOpenRoot(root, name) {
 }
 function owningRoot(roots, file) {
   for (const root of roots) {
-    if (file === root || file.startsWith(root.endsWith("/") ? root : `${root}/`))
+    if (file === root)
+      return root;
+    const rel = relative(root, file);
+    if (rel !== "" && rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel))
       return root;
   }
   return null;
@@ -207,6 +210,31 @@ function dshSeamInject(...names) {
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
 var TEAM_TASK_METHODS = ["createTask", "getTask", "listTasks", "updateTask"];
+function modelDeclaresNoEffort(catalog, provider, model) {
+  const entry = catalog.providers.find((p) => p.id === provider)?.models.find((m) => m.id === model);
+  return entry !== undefined && Array.isArray(entry.efforts) && entry.efforts.length === 0;
+}
+async function withSupportedEffort(dsh, route) {
+  if (route === undefined)
+    return route;
+  const effort = typeof route.reasoningEffort === "string" ? route.reasoningEffort : "";
+  if (effort === "")
+    return route;
+  if (typeof dsh?.llmCatalog !== "function")
+    return route;
+  let catalog;
+  try {
+    catalog = await dsh.llmCatalog();
+  } catch {
+    return route;
+  }
+  if (!modelDeclaresNoEffort(catalog, route.provider, route.model))
+    return route;
+  const adapted = { ...route };
+  delete adapted.reasoningEffort;
+  rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${route.provider}/${route.model} declares no reasoning efforts — the "${effort}" effort is omitted (a keyword this model cannot take fails the call)`);
+  return adapted;
+}
 function textBlock(content) {
   return [{ type: "text", text: typeof content === "string" ? content : String(content ?? "") }];
 }
@@ -2481,6 +2509,19 @@ function teamModelSlotSchema(slot) {
     reasoningEffort: Schema.string().default(slot.reasoningEffort)
   });
 }
+var TEAM_MODEL_SLOT_GROUPS = {
+  slot1: { zh: "重推理成员", en: "heavy members", members: ["Architect", "Planner", "Reviewer", "Lead", "Senior Engineer"] },
+  slot2: { zh: "分析型成员", en: "analysis members", members: ["Researcher", "Explorer", "Plan Reviewer"] },
+  slot3: { zh: "执行型成员", en: "execution members", members: ["Deep Worker", "Junior Engineer"] },
+  slot4: { zh: "视觉成员", en: "vision member", members: ["Vision Analyst"] }
+};
+var ROSTER_AGENT_NAMES = Object.values(TEAM_MODEL_SLOT_GROUPS).flatMap((group) => [...group.members]);
+var AGENT_ROUTE_SCHEMA = Schema.object({
+  provider: Schema.string().required(false),
+  model: Schema.string().required(false),
+  reasoningEffort: Schema.string().required(false)
+});
+var AGENT_ROUTES_SCHEMA = Schema.dict(AGENT_ROUTE_SCHEMA, Schema.union(ROSTER_AGENT_NAMES.map((name) => Schema.const(name))));
 var SettingsSchema = Schema.object({
   hashline: Schema.object({ maxDiffChars: Schema.number().default(20000) }),
   commentChecker: Schema.object({ autoCheck: Schema.boolean().default(true) }),
@@ -2494,6 +2535,7 @@ var SettingsSchema = Schema.object({
     slot3: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot3),
     slot4: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot4)
   }),
+  agentRoutes: AGENT_ROUTES_SCHEMA,
   watchdog: Schema.object({
     enabled: Schema.boolean().default(true),
     warnSilenceMs: Schema.number().default(600000),
@@ -2505,19 +2547,13 @@ var SettingsSchema = Schema.object({
   }),
   tui: Schema.object({ dashboardKey: Schema.boolean().default(true) })
 });
-var BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime";
+var BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect in the RUNNING process — no restart: the config service re-resolves on every settings save and on a watched edit of the project file, and the model routes (teamModels, agentRoutes, modelchain) are read per use, so the next spawn or resolve carries them";
 var BRIDGE_NOT_LOST = "the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session";
 function knobHint(key, semantics) {
   const pointer = `mpd.jsonc ${key}`;
   return semantics === undefined || semantics.length === 0 ? pointer : `${semantics} (${pointer})`;
 }
 var BRIDGE_SECTION_NOTICE = `${BRIDGE_DISCLOSURE} ${BRIDGE_NOT_LOST}`;
-var TEAM_MODEL_SLOT_GROUPS = {
-  slot1: { zh: "重推理成员", en: "heavy members", members: ["Architect", "Planner", "Reviewer", "Lead", "Senior Engineer"] },
-  slot2: { zh: "分析型成员", en: "analysis members", members: ["Researcher", "Explorer", "Plan Reviewer"] },
-  slot3: { zh: "执行型成员", en: "execution members", members: ["Deep Worker", "Junior Engineer"] },
-  slot4: { zh: "视觉成员", en: "vision member", members: ["Vision Analyst"] }
-};
 var TEAM_MODEL_LEAF_TEMPLATES = {
   provider: {
     en: "The provider half of this slot. The slots are the default model route of team members: when a team is created, the {group} ({members}) start on this slot's provider + model + reasoning effort. What changing it does: those members take the new route at the next team creation, and an unusable value makes team creation FAIL loudly, naming the member and the slot — it never silently substitutes another model. Vision Analyst is the vision member: slot 4 drives it.",
@@ -2528,8 +2564,8 @@ var TEAM_MODEL_LEAF_TEMPLATES = {
     zh: "这一档的模型。与上面的提供商共同决定 {group}（{members}）建队时使用的模型。改它的影响：同上，下次建队生效；模型与提供商不匹配、或该提供商没有这个模型时，建队会点名失败。"
   },
   reasoningEffort: {
-    en: "This slot's reasoning effort (off / low / high / max). It sets how much the {group} ({members}) think when a team is created: max is the strongest, high the usual balance, low cheaper, off disables reasoning. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot.",
-    zh: "这一档的推理强度（off / low / high / max）。它决定 {group}（{members}）建队时的思考深度：max 最强、high 是常规平衡、low 更省、off 关闭思考。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。"
+    en: "This slot's reasoning effort (off / low / high / max). It sets how much the {group} ({members}) think when a team is created: max is the strongest, high the usual balance, low cheaper, off disables reasoning. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot. EXCEPTION: a model whose catalog entry declares no reasoning efforts at all is sent none — its call still runs.",
+    zh: "这一档的推理强度（off / low / high / max）。它决定 {group}（{members}）建队时的思考深度：max 最强、high 是常规平衡、low 更省、off 关闭思考。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。例外：若该模型的目录条目完全没有推理等级，则不发送任何等级——调用照常。"
   }
 };
 var TEAM_MODEL_SLOT_LEAF_OVERRIDES = {
@@ -2543,8 +2579,8 @@ var TEAM_MODEL_SLOT_LEAF_OVERRIDES = {
       zh: "这一档的模型。必须选支持图像输入的模型：Vision Analyst 的全部价值在于读图，纯文本模型会让它的读图任务直接失败。改它的影响：下次建队生效。"
     },
     reasoningEffort: {
-      en: "This slot's reasoning effort (off / low / high / max). It sets how much Vision Analyst thinks while reading an image. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot.",
-      zh: "这一档的推理强度（off / low / high / max）。决定 Vision Analyst 读图时的思考深度。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。"
+      en: "This slot's reasoning effort (off / low / high / max). It sets how much Vision Analyst thinks while reading an image. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot. EXCEPTION: a model whose catalog entry declares no reasoning efforts at all is sent none — its call still runs.",
+      zh: "这一档的推理强度（off / low / high / max）。决定 Vision Analyst 读图时的思考深度。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。例外：若该模型的目录条目完全没有推理等级，则不发送任何等级——调用照常。"
     }
   }
 };
@@ -2576,6 +2612,45 @@ var TEAM_MODEL_KNOBS = TEAM_MODEL_SLOTS.flatMap((slot) => {
     hint: knobHint(`teamModels.${slot}.${leaf}`, teamModelLeafSentence(slot, leaf, "en"))
   }));
 });
+var AGENT_ROUTE_LEAF_TEMPLATES = {
+  provider: {
+    en: "The provider half of {name}'s OWN route override. An agentRoutes leaf outranks {name}'s team-model slot: it applies to {name} only, and LIVE — the member's next spawn or resolve carries it, no restart and no new team needed. An unset leaf falls through to the slot's provider; clearing every leaf returns {name} to the slot.",
+    zh: "{name} 专属路由覆盖的提供商。agentRoutes 的叶子优先于 {name} 的 team 模型槽位：只作用于 {name} 本人，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的提供商；清空全部叶子即恢复跟随槽位。"
+  },
+  model: {
+    en: "The model half of {name}'s OWN route override. It outranks the model of {name}'s team-model slot ({group}) and applies LIVE — the member's next spawn or resolve carries it, no restart and no new team needed. An unset leaf falls through to the slot's model; clearing every leaf returns {name} to the slot.",
+    zh: "{name} 专属路由覆盖的模型。优先于 {name} 所属槽位（{group}）的模型，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的模型；清空全部叶子即恢复跟随槽位。"
+  },
+  reasoningEffort: {
+    en: "The reasoning-effort half of {name}'s OWN route override (off / low / high / max). It outranks the effort of {name}'s team-model slot ({group}) and applies LIVE — the member's next spawn or resolve carries it. An unset leaf falls through to the slot's effort; an effort the chosen model does not support fails that member's spawn loudly, naming the member.",
+    zh: "{name} 专属路由覆盖的推理强度（off / low / high / max）。优先于 {name} 所属槽位（{group}）的推理强度，且即时生效——该成员下次生成/解析即携带新值。未设置的叶子回落到槽位的等级；该模型不支持的等级会让该成员的生成直接报错并点名。"
+  }
+};
+function agentRouteSlotOf(name) {
+  return TEAM_MODEL_SLOTS.find((slot) => TEAM_MODEL_SLOT_GROUPS[slot].members.includes(name));
+}
+function agentRouteLeafSentence(name, leaf, lang) {
+  const slot = agentRouteSlotOf(name);
+  const group = slot === undefined ? lang === "zh" ? "未编组" : "ungrouped" : TEAM_MODEL_SLOT_GROUPS[slot][lang];
+  return AGENT_ROUTE_LEAF_TEMPLATES[leaf][lang].split("{name}").join(name).split("{group}").join(group);
+}
+var AGENT_ROUTE_KNOBS = TEAM_MODEL_SLOTS.flatMap((slot) => TEAM_MODEL_SLOT_GROUPS[slot].members.flatMap((member) => {
+  const leaves = [
+    { leaf: "provider", label: "provider", zh: "提供商" },
+    { leaf: "model", label: "model", zh: "模型" },
+    { leaf: "reasoningEffort", label: "reasoning effort", zh: "推理强度" }
+  ];
+  return leaves.map(({ leaf, label, zh }) => ({
+    path: ["agentRoutes", member, leaf],
+    label: `${member} ${label} (own route)`,
+    zh: `${member} ${zh}（专属路由）`,
+    kind: "select",
+    options: TEAM_MODEL_FALLBACK_OPTIONS[leaf],
+    semantics: agentRouteLeafSentence(member, leaf, "en"),
+    semanticsZh: agentRouteLeafSentence(member, leaf, "zh"),
+    hint: knobHint(`agentRoutes.${member}.${leaf}`, agentRouteLeafSentence(member, leaf, "en"))
+  }));
+}));
 var SETTINGS_KNOBS = [
   { path: ["hashline", "maxDiffChars"], label: "Inline diff limit", zh: "行内 diff 上限", kind: "number" },
   { path: ["commentChecker", "autoCheck"], label: "Comment checker", zh: "注释检查", kind: "boolean" },
@@ -2591,6 +2666,7 @@ var SETTINGS_KNOBS = [
   { path: ["watchdog", "toolInFlightMaxMs"], label: "Tool-in-flight bound (ms, 0 = no bound)", zh: "工具在飞上限（毫秒，0 表示不设上限）", kind: "number", hint: "how long ONE tool call may run before it stops explaining a silent member: past this bound the call is reported ONCE as a `tool-expired` incident (a warning — never a scene, never a hold, never an escalation), and `0` disables the bound" },
   { path: ["watchdog", "holdTtlMs"], label: "Hold TTL (ms, 0 = no expiry)", zh: "暂停持有有效期（毫秒，0 表示不设有效期）", kind: "number", hint: "how long a watchdog hold may stay latched before it auto-releases: past this bound the hold releases itself and changes ZERO team bytes, and activity newer than the hold releases it sooner — `0` disables the expiry" },
   ...TEAM_MODEL_KNOBS,
+  ...AGENT_ROUTE_KNOBS,
   { path: ["tui", "dashboardKey"], label: "Ctrl+A dependency view (old dsh-tui builds)", zh: "Ctrl+A 依赖视图（旧版 dsh-tui）", kind: "boolean", hint: "applies to hosts WITHOUT the sidebar panel seam (dsh-tui before 0.13.0) only: while MPD's team projection has a team with at least one task, Ctrl+A opens MPD's merged dependency view instead of the host's subagent dashboard, and with no team Ctrl+A keeps opening the host dashboard — on a host that offers the panel seam, Ctrl+A always keeps its host dashboard meaning and the merged view opens through alt+a and /mpd panel" }
 ];
 
@@ -2657,6 +2733,24 @@ function apply(ctx, config = {}) {
       return;
     }
   };
+  const liveRouteOf = (member) => {
+    let service;
+    try {
+      service = typeof ctx?.get === "function" ? ctx.get("mpdConfig") : undefined;
+    } catch {
+      return;
+    }
+    if (typeof service?.teamModelRouteOf !== "function")
+      return;
+    const value = service.teamModelRouteOf(member);
+    if (value === undefined || value === null || typeof value !== "object")
+      return;
+    return {
+      provider: String(value.provider ?? ""),
+      model: String(value.model ?? ""),
+      ...typeof value.reasoningEffort === "string" && value.reasoningEffort !== "" ? { reasoningEffort: value.reasoningEffort } : {}
+    };
+  };
   const knownNames = () => Object.values(TEAM_MODEL_SLOT_GROUPS).flatMap((group) => [...group.members]);
   const configBaseName = typeof config.baseProvider === "string" && config.baseProvider !== "" ? config.baseProvider : "spawn";
   const baseProvider = () => {
@@ -2672,6 +2766,9 @@ function apply(ctx, config = {}) {
     const member = memberFromLabel(labelOf(request), knownNames());
     if (member === undefined)
       return;
+    const live = liveRouteOf(member);
+    if (live !== undefined)
+      return live;
     return routeForMember(member, slotOf(member), slotsNow());
   };
   const provider = {
@@ -2685,13 +2782,15 @@ function apply(ctx, config = {}) {
       }
       return base.prepareContinuable(request);
     },
-    start(request) {
+    async start(request) {
       const base = baseProvider();
       if (base === undefined || typeof base.start !== "function") {
         throw new Error(`mpd-roster: the "${configBaseName}" provider is not registered in this composition, so no teammate can be started through ${PROVIDER_NAME}`);
       }
       const routable = request;
-      const routed = applyRoute(routable, routeFor(routable));
+      const resolved = routeFor(routable);
+      const route = await withSupportedEffort(dsh, resolved);
+      const routed = applyRoute(routable, route);
       if (routed !== routable) {
         const options = routed.agentOptions ?? {};
         rowLogLine("mpd-roster", `[mpd-roster] routed teammate "${String(labelOf(routable) ?? "")}" -> ${String(options.provider)}/${String(options.model)}${options.reasoningEffort === undefined ? "" : " @ " + String(options.reasoningEffort)}`);

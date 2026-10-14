@@ -1,0 +1,24 @@
+dsh: initialized profile webroot at /tmp/tarball-dsh/profiles/webroot
+
+dependencies:
++ root link:/root
+
+Already up to date
+Done in 314ms using pnpm v11.23.0
+file:///usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:906
+	throw new Error(`${binName}: cannot resolve profile bundle ${JSON.stringify(packageName)} from the dsh installation or ${profileDir}; run 'dsh plugin --profile ${basename(profileDir)} install' if its dependency is not installed`);
+	      ^
+
+Error: dsh: cannot resolve profile bundle "root" from the dsh installation or /tmp/tarball-dsh/profiles/webroot; run 'dsh plugin --profile webroot install' if its dependency is not installed
+    at resolveBundleDir (file:///usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:906:8)
+    at bundleManifest (file:///usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-plugin-manager/lib/types/operations.js:32:24)
+    at reconcile (file:///usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-plugin-manager/lib/types/operations.js:57:26)
+    at runProfilePnpm (file:///usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-plugin-manager/lib/types/operations.js:504:23)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async withFileLock (file:///usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-atomic-write/lib/index.js:211:10)
+    at async runPlugin (file:///usr/local/lib/node_modules/@deepseek-ai/dsh/lib/plugin-BGnVfe_D.js:93:25)
+    at async runCli (file:///usr/local/lib/node_modules/@deepseek-ai/dsh/lib/bin.js:236:17)
+    at async file:///usr/local/lib/node_modules/@deepseek-ai/dsh/lib/bin.js:252:23
+
+Node.js v24.21.0
+ROOT_EXIT=1

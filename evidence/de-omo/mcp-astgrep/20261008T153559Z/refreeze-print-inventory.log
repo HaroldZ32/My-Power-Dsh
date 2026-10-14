@@ -1,0 +1,9 @@
+### terminal-writes --print-inventory
+export const SWEEP_INVENTORY: Readonly<Record<string, number>> = {
+  "packages/mpd-mcp-astgrep/src/cli.ts": 1,
+  "packages/mpd-mcp-astgrep/src/protocol.ts": 1,
+}
+### coupling --print-inventory
+10:  "packages/mpd-mcp-astgrep/src/launch.ts :: import { installTerminalSilence } from \"../../mpd-mcp-shared/log-sink.ts\"",
+11:  "packages/mpd-mcp-astgrep/src/launch.ts :: import { resolveAstGrepBinary } from \"../../mpd-mcp-shared/bin-resolve.ts\"",
+12:  "packages/mpd-mcp-astgrep/src/server.ts :: import { probeAstGrep, resolveAstGrepBinary } from \"../../mpd-mcp-shared/bin-resolve.ts\"",

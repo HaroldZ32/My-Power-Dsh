@@ -1,6 +1,6 @@
 import { hasAnsi, stripAnsi } from "./ansi.ts"
 import { charWidth, stringWidth } from "./east-asian-width.ts"
-import type { OverflowLine, TuiCheckResult } from "./types.ts"
+import type { OverflowLine, TuiCheckResult } from "./types"
 
 /** First code point of the Unicode box-drawing block (U+2500). */
 const BOX_DRAWING_START = 0x2500

@@ -1,0 +1,6 @@
+[mpd-qa:all] runner start manifest=skills/dsh-qa/cases.json sha256=972fe4d06b30 lanes=33 evidence=evidence/dsh-qa/suite-runner/2026-10-14T08-40-03.567Z
+[mpd-qa:all] drift unlistedScripts=3 (run --list --check-drift for detail)
+[mpd-qa:all] discovery=48 lane script(s) (.ts entries 48, underscore-excluded 0, unlisted 3, outside-suite 18)
+[mpd-qa:all] immutability required=9: team-dispatch-guard, team-watchdog-boot, team-watchdog-config, team-watchdog-heartbeat, team-watchdog-notify, tui-settings-bridge, watchdog-redesign, wave2b-lane-d, web-settings-bridge exempt=36
+[mpd-qa:all] FAIL case=bundle-lifecycle reason=exit-1 exit=1 log=evidence/dsh-qa/suite-runner/2026-10-14T08-40-03.567Z/lanes/bundle-lifecycle.log ms=10691
+[mpd-qa:all] FAIL case=codegraph-smoke reason=exit-1 exit=1 evidence=evidence/dsh-qa/codegraph/2026-10-14T08-40-39.630Z log=evidence/dsh-qa/suite-runner/2026-10-14T08-40-03.567Z/lanes/codegraph-smoke.log ms=25372

@@ -1047,7 +1047,7 @@ function errorMessage(error) {
 // packages/mpd-mcp-shared/log-sink.ts
 import { closeSync, mkdirSync, openSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join as join2, resolve as resolve2 } from "node:path";
+import { isAbsolute, join as join2, relative, resolve as resolve2, sep } from "node:path";
 var LOG_SUBDIR = join2(".mpd", "logs");
 var DEFAULT_MAX_BYTES = 1024 * 1024;
 var DEFAULT_MAX_LINE_BYTES = 8192;
@@ -1095,7 +1095,10 @@ function tryOpenRoot(root, name) {
 }
 function owningRoot(roots, file) {
   for (const root of roots) {
-    if (file === root || file.startsWith(root.endsWith("/") ? root : `${root}/`))
+    if (file === root)
+      return root;
+    const rel = relative(root, file);
+    if (rel !== "" && rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel))
       return root;
   }
   return null;
@@ -2557,20 +2560,16 @@ function createLog(logger, prefix, env = process.env, sink) {
   let fallback;
   const emit = (level, message) => {
     const text = `[${prefix}] ${message}`;
+    if (sink !== undefined && !(level === "debug" && env.DSH_TUI_DEBUG === undefined)) {
+      try {
+        fallback ??= sink();
+        fallback.write(text);
+      } catch {}
+    }
     try {
       const hostSink = logger?.[level];
-      if (typeof hostSink === "function") {
+      if (typeof hostSink === "function")
         hostSink.call(logger, text);
-        return;
-      }
-    } catch {}
-    if (level === "debug" && env.DSH_TUI_DEBUG === undefined)
-      return;
-    if (sink === undefined)
-      return;
-    try {
-      fallback ??= sink();
-      fallback.write(text);
     } catch {}
   };
   return {
@@ -2800,22 +2799,88 @@ async function probeHostPrefs(candidates) {
       }
       const read = mod.getSidePanelPanels;
       const write = mod.applySidePanelPanels;
-      return { prefs: { getSidePanelPanels: () => read(), applySidePanelPanels: (value) => write(value) }, root };
+      const feed = typeof mod.subscribeSidePanelPanels === "function" ? mod.subscribeSidePanelPanels : undefined;
+      const hostDefault = normalizePanelCsv(typeof mod.DEFAULT_SIDE_PANEL_IDS === "string" ? mod.DEFAULT_SIDE_PANEL_IDS : "");
+      return {
+        prefs: {
+          getSidePanelPanels: () => read(),
+          applySidePanelPanels: (value) => write(value),
+          ...feed === undefined ? {} : { subscribeSidePanelPanels: (listener) => feed(listener) }
+        },
+        root,
+        hostVersion: readHostPackageVersion(root),
+        ...hostDefault === "" ? {} : { defaultIds: hostDefault }
+      };
     } catch (error) {
       skew = `${file}: ${String(error?.message ?? error)}`;
     }
   }
   return { detail: skew.length > 0 ? skew : `no candidate carried a readable ${HOST_PREFS_MODULE} (${candidates.length} probed)` };
 }
-function mergePanelEnableIds(existing, ours) {
+function panelSlugOf(id) {
+  const at = id.indexOf(":");
+  return at < 0 ? id : id.slice(at + 1);
+}
+var PANEL_ACT_ID_SHAPE = /^act\d+:/u;
+var PANEL_ID_HISTORY_LIMIT = 32;
+function panelHistoryAfter(current, past) {
+  const kept = [];
+  for (const id of past) {
+    if (!PANEL_ACT_ID_SHAPE.test(id) || current.includes(id) || kept.includes(id))
+      continue;
+    kept.push(id);
+  }
+  return kept.slice(-PANEL_ID_HISTORY_LIMIT);
+}
+function panelTokenIsStaleMine(token, ours, past) {
+  if (!PANEL_ACT_ID_SHAPE.test(token))
+    return false;
+  if (ours.includes(token))
+    return false;
+  return past.includes(token);
+}
+function normalizePanelCsv(value) {
   const tokens = [];
-  for (const token of (typeof existing === "string" ? existing : "").split(",")) {
+  for (const token of (typeof value === "string" ? value : "").split(",")) {
     const id = token.trim().toLowerCase();
     if (id !== "" && !tokens.includes(id))
       tokens.push(id);
   }
-  const added = ours.filter((id) => !tokens.includes(id));
-  return { csv: [...tokens, ...added].join(","), added, present: ours.filter((id) => tokens.includes(id)) };
+  return tokens.join(",");
+}
+var KNOWN_STALE_PANEL_DEFAULTS = ["todo,jobs,agents"];
+function stalePanelDefaultResidue(residue, hostDefault) {
+  if (hostDefault === undefined || hostDefault === "")
+    return "";
+  if (residue === "" || residue === hostDefault)
+    return "";
+  return KNOWN_STALE_PANEL_DEFAULTS.includes(residue) ? residue : "";
+}
+function mergePanelEnableIds(existing, ours, past, hostDefault) {
+  const tokens = normalizePanelCsv(existing).split(",").filter((id) => id !== "");
+  const pruned = tokens.filter((token) => panelTokenIsStaleMine(token, ours, past));
+  const kept = tokens.filter((token) => !pruned.includes(token));
+  const added = ours.filter((id) => !kept.includes(id));
+  const residue = normalizePanelCsv(kept.filter((token) => !ours.includes(token)).join(","));
+  const staleDefault = ours.length === 0 ? "" : stalePanelDefaultResidue(residue, hostDefault);
+  const defaultTokens = staleDefault === "" ? [] : (hostDefault ?? "").split(",").filter((id) => id !== "");
+  const csv = staleDefault === "" ? [...kept, ...added].join(",") : [...defaultTokens, ...ours.filter((id) => !defaultTokens.includes(id))].join(",");
+  return { csv, added, present: ours.filter((id) => kept.includes(id)), kept, pruned, staleDefault };
+}
+var PANEL_CSV_SELF_HEAL_SINCE = "0.15.0";
+function hostSelfHealsPanelCsv(version) {
+  const match = /^(\d+)\.(\d+)\.(\d+)/.exec(version.trim());
+  if (match === null)
+    return false;
+  const since = PANEL_CSV_SELF_HEAL_SINCE.split(".").map((part) => Number.parseInt(part, 10));
+  const parsed = [Number(match[1]), Number(match[2]), Number(match[3])];
+  for (let rank = 0;rank < 3; rank += 1) {
+    if (parsed[rank] > since[rank])
+      return true;
+    if (parsed[rank] < since[rank])
+      return false;
+  }
+  return true;
 }
 var PANEL_KEEPER_LADDER_MS = [1000, 2500, 5500, 9000, 16000, 25000];
 function createPanelEnableKeeper(options) {
@@ -2825,8 +2890,14 @@ function createPanelEnableKeeper(options) {
   let armed = false;
   let ticks = 0;
   let reasserted = 0;
+  let onFeed = false;
+  let releaseFeed;
+  let releaseBelt;
+  let writing = false;
   let state = "requested";
   let detail = "no panel registered yet";
+  let feedRefused = "";
+  let defaultNoted = false;
   const announce = () => {
     if (options.onChange === undefined)
       return;
@@ -2836,37 +2907,169 @@ function createPanelEnableKeeper(options) {
   };
   const settle = (next, nextDetail) => {
     state = next;
-    detail = nextDetail;
+    detail = feedRefused === "" ? nextDetail : `${nextDetail}; the change feed was refused: ${feedRefused}`;
     announce();
     if (ticks < ladder.length)
       return;
-    options.log?.(`mpd-tui panel enable keeper: ${next} — ${nextDetail}; ${String(reasserted)} write(s) over ${String(ticks)} tick(s); ids ${ours.join(",") || "(none)"}`);
+    options.log?.(`mpd-tui panel enable keeper: ${next} — ${detail}; ${String(reasserted)} write(s) over ${String(ticks)} tick(s); ids ${ours.join(",") || "(none)"}`);
+  };
+  const cancelLadder = () => {
+    for (const cancel of pending.splice(0)) {
+      try {
+        cancel();
+      } catch {}
+    }
+  };
+  const releaseFeedNow = () => {
+    const release = releaseFeed;
+    releaseFeed = undefined;
+    onFeed = false;
+    if (release === undefined)
+      return;
+    try {
+      release();
+    } catch {}
+  };
+  const writeList = (prefs, csv) => {
+    writing = true;
+    try {
+      prefs.applySidePanelPanels(csv);
+    } finally {
+      writing = false;
+    }
+    reasserted += 1;
+    const landed = normalizePanelCsv(prefs.getSidePanelPanels());
+    if (landed !== normalizePanelCsv(csv)) {
+      settle("refused", `the enable list read back as ${landed === "" ? "(empty)" : landed} instead of the ${csv} just written`);
+      return false;
+    }
+    return true;
+  };
+  const decide = (prefs, atArm, hostDefault) => {
+    if (writing)
+      return;
+    ticks += 1;
+    try {
+      let past = [];
+      try {
+        past = options.pastIds();
+      } catch {
+        past = [];
+      }
+      if ((hostDefault === undefined || hostDefault === "") && !defaultNoted) {
+        defaultNoted = true;
+        options.log?.(`mpd-tui panel enable keeper: the host exposes no readable DEFAULT_SIDE_PANEL_IDS, so the stale-default migration stays inert and the enable list is merged as before`);
+      }
+      const merge2 = mergePanelEnableIds(prefs.getSidePanelPanels(), ours, past, hostDefault);
+      if (merge2.present.length > 0) {
+        if (merge2.staleDefault !== "") {
+          if (!writeList(prefs, merge2.csv))
+            return;
+          settle("confirmed", `migrated the stale default ${merge2.staleDefault} to ${merge2.csv} (the list also named ${merge2.present.join(",")}, so nothing else was appended)`);
+          return;
+        }
+        let prunedNote = "";
+        if (merge2.pruned.length > 0) {
+          const prunedCsv = merge2.kept.join(",");
+          if (!writeList(prefs, prunedCsv))
+            return;
+          prunedNote = `pruned the stale ${merge2.pruned.join(",")}, and appended nothing; `;
+        }
+        if (atArm) {
+          settle("confirmed", `${prunedNote}the enable list already names ${merge2.present.join(",")}; the keeper now follows the host's own change feed instead of standing down on this read`);
+          return;
+        }
+        settle("confirmed", `${prunedNote}standing down: the enable list names ${merge2.present.join(",")}, so the configuration has taken a position on this bundle`);
+        standDown();
+        return;
+      }
+      if (merge2.added.length === 0 && merge2.pruned.length === 0) {
+        settle("confirmed", "no id of ours is registered, so there is nothing to re-assert");
+        return;
+      }
+      if (!writeList(prefs, merge2.csv))
+        return;
+      settle("confirmed", merge2.staleDefault === "" ? `re-asserted ${merge2.added.join(",")} (the list named none of our ids${merge2.pruned.length === 0 ? "" : `; pruned the stale ${merge2.pruned.join(",")}`})` : `migrated the stale default ${merge2.staleDefault} to ${merge2.csv} (the list named none of our ids, so the host's current default came back with ours)`);
+    } catch (error) {
+      settle("refused", String(error?.message ?? error));
+    }
+  };
+  const standDown = () => {
+    cancelLadder();
+    releaseFeedNow();
+    releaseBeltNow();
+  };
+  const releaseBeltNow = () => {
+    if (releaseBelt === undefined)
+      return;
+    const release = releaseBelt;
+    releaseBelt = undefined;
+    try {
+      release();
+    } catch {}
+  };
+  const standDownToHostUnion = (prefs, version) => {
+    ticks += 1;
+    settle("confirmed", `standing down: the host ${version} self-heals the enable CSV (>= ${PANEL_CSV_SELF_HEAL_SINCE}), so this keeper writes nothing and the host's own union is the only writer`);
+    cancelLadder();
+    options.log?.(`mpd-tui panel enable keeper: standing down on host ${version} — the host self-heals the sidebar enable CSV, so this keeper never writes`);
+    const subscribe = prefs.subscribeSidePanelPanels;
+    if (typeof subscribe !== "function")
+      return;
+    let said = false;
+    try {
+      const release = subscribe(() => {
+        if (said)
+          return;
+        said = true;
+        try {
+          const csvNow = normalizePanelCsv(prefs.getSidePanelPanels());
+          const kept = ours.filter((id) => csvNow.split(",").includes(id));
+          options.log?.(`mpd-tui panel enable keeper (observe-only): after the host's own apply the enable list is "${csvNow}"; ${kept.length === ours.length ? `it still carries every id of ours (${kept.join(",")})` : kept.length === 0 ? "it carries NONE of our ids — the host union did not re-add them" : `it carries only ${kept.join(",")} of our ids — the union did not re-add the rest`}`);
+        } catch {}
+        releaseBeltNow();
+      });
+      if (typeof release === "function") {
+        releaseBelt = release;
+        if (said)
+          releaseBeltNow();
+      }
+    } catch {}
+  };
+  const enterFeed = (prefs, hostDefault) => {
+    const subscribe = prefs.subscribeSidePanelPanels;
+    if (typeof subscribe !== "function")
+      return false;
+    let release;
+    try {
+      release = subscribe(() => decide(prefs, false, hostDefault));
+    } catch (error) {
+      feedRefused = String(error?.message ?? error);
+      settle("refused", "the host's change feed refused this keeper");
+      return false;
+    }
+    releaseFeed = typeof release === "function" ? release : undefined;
+    onFeed = true;
+    cancelLadder();
+    decide(prefs, true, hostDefault);
+    return true;
   };
   const runTick = () => {
-    ticks += 1;
     options.loadPrefs().then((probe) => {
       if (probe.prefs === undefined) {
+        ticks += 1;
         settle("absent", probe.detail ?? "the host exposes no side-panel enable store");
         return;
       }
-      const prefs = probe.prefs;
-      try {
-        const merge2 = mergePanelEnableIds(prefs.getSidePanelPanels(), ours);
-        if (merge2.present.length > 0) {
-          settle("confirmed", `standing down: the enable list already names ${merge2.present.join(",")}, so the configuration has taken a position on this bundle`);
-          return;
-        }
-        if (merge2.added.length === 0) {
-          settle("confirmed", "no id of ours is registered, so there is nothing to re-assert");
-          return;
-        }
-        prefs.applySidePanelPanels(merge2.csv);
-        reasserted += 1;
-        settle("confirmed", `re-asserted ${merge2.added.join(",")} (none of our ids was present)`);
-      } catch (error) {
-        settle("refused", String(error?.message ?? error));
+      if (hostSelfHealsPanelCsv(probe.hostVersion ?? "")) {
+        standDownToHostUnion(probe.prefs, probe.hostVersion ?? "");
+        return;
       }
+      if (!onFeed && enterFeed(probe.prefs, probe.defaultIds))
+        return;
+      decide(probe.prefs, false, probe.defaultIds);
     }, (error) => {
+      ticks += 1;
       settle("absent", `the host store could not be read: ${String(error?.message ?? error)}`);
     });
   };
@@ -2896,11 +3099,7 @@ function createPanelEnableKeeper(options) {
       return { state, detail, ids: [...ours], reasserted, ticks };
     },
     stop() {
-      for (const cancel of pending.splice(0)) {
-        try {
-          cancel();
-        } catch {}
-      }
+      standDown();
     }
   };
 }
@@ -2912,16 +3111,67 @@ function defaultPanelKeeperSchedule(run, delayMs) {
   };
 }
 var PANEL_IDS_RECORD_NAME = "mpd-tui-panels.json";
-function recordPanelIds(outcome) {
+function readHostPackageVersion(root) {
+  try {
+    const manifest = JSON.parse(readFileSync2(join3(root, "package.json"), "utf8"));
+    return typeof manifest.version === "string" ? manifest.version : "";
+  } catch {
+    return "";
+  }
+}
+function panelRecordProvenance(host, readBack, ids) {
+  if (host === undefined || host.root.trim() === "" || host.version.trim() === "") {
+    return { refused: "no installed host package could be named (root and version), so the ids cannot be traced to a boot" };
+  }
+  if (readBack.trim() === "" || ids.length === 0) {
+    return { refused: "the ids did not come from a host read-back, so the record would name panels nothing verified" };
+  }
+  const activation = ids[0].slice(0, ids[0].indexOf(":"));
+  for (const id of ids) {
+    if (id.slice(0, id.indexOf(":")) !== activation) {
+      return { refused: `the ids do not share one activation (${activation} and ${id.slice(0, id.indexOf(":"))}), so they cannot have come from one registration` };
+    }
+  }
+  if (/^act0$/u.test(activation)) {
+    return { refused: `activation ${activation} is impossible: the host's pluginIdFor pre-increments its fallback counter, so the first composed activation is act1` };
+  }
+  return { provenance: { hostRoot: host.root, hostVersion: host.version, readBack, activation } };
+}
+function stringIdsOf(value) {
+  return Array.isArray(value) ? value.filter((entry) => typeof entry === "string" && entry.length > 0) : [];
+}
+function readPanelIdRecordPast(root = defaultLogRoot()) {
+  try {
+    const file = join3(root, ".mpd", "logs", PANEL_IDS_RECORD_NAME);
+    const parsed = JSON.parse(readFileSync2(file, "utf8"));
+    const ids = stringIdsOf(parsed.panelIds);
+    if (ids.length === 0)
+      return [];
+    const provenance = typeof parsed.provenance === "object" && parsed.provenance !== null ? parsed.provenance : {};
+    const proved = panelRecordProvenance(typeof provenance.hostRoot === "string" && typeof provenance.hostVersion === "string" ? { root: provenance.hostRoot, version: provenance.hostVersion } : undefined, typeof provenance.readBack === "string" ? provenance.readBack : "", ids);
+    if ("refused" in proved)
+      return [];
+    return panelHistoryAfter([], [...stringIdsOf(parsed.history), ...ids]);
+  } catch {
+    return [];
+  }
+}
+function recordPanelIds(outcome, host, readBack) {
+  const proved = panelRecordProvenance(host, readBack, outcome.ids);
+  if ("refused" in proved)
+    return;
   try {
     const file = join3(defaultLogRoot(), ".mpd", "logs", PANEL_IDS_RECORD_NAME);
     mkdirSync2(dirname(file), { recursive: true });
-    writeFileSync(file, `${JSON.stringify({
-      version: 1,
+    const record = {
+      version: 3,
       panelIds: [...outcome.ids],
-      slugs: outcome.ids.map((id) => id.slice(id.indexOf(":") + 1)),
-      updatedAt: new Date().toISOString()
-    }, null, 2)}
+      slugs: outcome.ids.map(panelSlugOf),
+      updatedAt: new Date().toISOString(),
+      provenance: proved.provenance,
+      history: panelHistoryAfter(outcome.ids, readPanelIdRecordPast(defaultLogRoot()))
+    };
+    writeFileSync(file, `${JSON.stringify(record, null, 2)}
 `);
   } catch {}
 }
@@ -3025,18 +3275,35 @@ function createTuiAdapter(ctx, options = {}) {
   let hostContact = options.hostInput;
   let hostState = options.hostInput !== undefined ? { state: "bound", kit: "probed", detail: "injected by the caller" } : options.probeHostContact === true ? { state: "pending" } : { state: "absent", detail: "this adapter did not probe for the host contact" };
   const hostWaiters = [];
+  let panelHostProvenance;
+  let panelIdReadBack = "";
   const panelKeeperOptions = {
-    loadPrefs: () => probeHostPrefs(hostRootCandidates()),
+    loadPrefs: async () => {
+      const probe = await probeHostPrefs(hostRootCandidates());
+      if (probe.root !== undefined)
+        panelHostProvenance = { root: probe.root, version: readHostPackageVersion(probe.root) };
+      return probe;
+    },
     schedule: defaultPanelKeeperSchedule,
+    pastIds: () => readPanelIdRecordPast(),
     ...options.panelEnableLadder === undefined ? {} : { ladder: options.panelEnableLadder },
     log: options.panelEnableLog ?? options.hostInputLog ?? defaultHostInputLog,
-    onChange: options.keepPanelEnable === true ? recordPanelIds : undefined
+    onChange: options.keepPanelEnable === true ? (outcome) => {
+      if (!panelKeeperOwned) {
+        panelKeeperOwned = true;
+        effectOn(ctx, () => {
+          panelKeeper.stop();
+        }, "mpd-tui panel enable keeper");
+      }
+      recordPanelIds(outcome, panelHostProvenance, panelIdReadBack);
+    } : undefined
   };
   const panelKeeper = options.keepPanelEnable === true ? createPanelEnableKeeper(panelKeeperOptions) : {
     observe: () => {},
     outcome: () => ({ state: "absent", detail: "this adapter did not keep the host panel enable list", ids: [], reasserted: 0, ticks: 0 }),
     stop: () => {}
   };
+  let panelKeeperOwned = false;
   let rememberedHook;
   const currentHostInput = () => rememberedHook === undefined ? hostContact : { useStdin: () => rememberedHook?.() };
   const wakeHostWaiters = () => {
@@ -3412,8 +3679,10 @@ function createTuiAdapter(ctx, options = {}) {
             finalId = (readBack() ?? []).map((row) => row.id).find((id) => !before.has(id));
           }
           handle.record(finalId !== undefined ? { state: "confirmed", detail: `${finalId} registered` } : readBack !== undefined ? { state: "refused", detail: `${descriptor.id} refused (the host added no id to its own list() read-back)` } : { state: "requested", detail: `${descriptor.id} requested (the host exposes no panel read-back to prove it)` });
-          if (finalId !== undefined)
+          if (finalId !== undefined) {
+            panelIdReadBack = readBack !== undefined ? "tuiPanels.list" : "";
             panelKeeper.observe(finalId);
+          }
         } catch (error) {
           handle.record({ state: "refused", detail: String(error?.message ?? error) });
         }
@@ -3449,7 +3718,6 @@ function createTuiAdapter(ctx, options = {}) {
       let outcome = { id: TUI_SEAMS.pluginHost, state: "absent", detail: `${TUI_SEAMS.pluginHost} was not injected` };
       whenBoundInternal("pluginHost", (service, scope) => {
         const host = service;
-        const identity = options2.identity ?? fallbackIdentity;
         if (typeof host?.subscribeDecision !== "function") {
           outcome = { id: TUI_SEAMS.pluginHost, state: "refused", detail: `${TUI_SEAMS.pluginHost}.subscribeDecision is missing` };
           return;
@@ -3458,12 +3726,12 @@ function createTuiAdapter(ctx, options = {}) {
         try {
           const facade = host.grants;
           if (facade !== undefined && typeof facade.allows === "function")
-            granted = facade.allows(identity, event, options2.scope ?? event) === true;
+            granted = facade.allows(scope, event, options2.scope ?? event) === true;
         } catch {
           granted = undefined;
         }
         try {
-          const disposer = host.subscribeDecision(identity, event, listener, {
+          const disposer = host.subscribeDecision(scope, event, listener, {
             ...options2.scope === undefined ? {} : { scope: options2.scope },
             ...options2.order === undefined ? {} : { order: options2.order }
           });
@@ -3674,11 +3942,573 @@ function field(payload, key, maxCells = 200) {
   return scalarText(payload[key], maxCells);
 }
 
-// packages/mpd-tui-plugin/src/state.ts
+// packages/mpd-tui-plugin/src/team-state.ts
 var MAX_TEAMS = 20;
-var MAX_WORKMATES = 200;
 var MAX_TASKS = 5000;
 var MAX_PROBLEMS = 5;
+var NO_SESSION_TEAM_MARKER = "no team in this session";
+var WORKSPACE_SCOPE_MARKER = "workspace-level";
+function asString(value) {
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+function asText(value, maxCells) {
+  return scalarText(value, maxCells);
+}
+function optional(key, value) {
+  return value === undefined ? {} : { [key]: value };
+}
+function blockingDependencies(tasks, dependencies) {
+  const byId = new Map(tasks.map((task) => [task.id, task]));
+  const blocking = [];
+  const failed = [];
+  for (const id of dependencies) {
+    const status = byId.get(id)?.status;
+    if (status === "completed" || status === "cancelled")
+      continue;
+    if (status === "failed")
+      failed.push(id);
+    else
+      blocking.push(id);
+  }
+  return { blocking, failed };
+}
+function taskVisualState(status, tasks, dependencies) {
+  if (status === "completed")
+    return "completed";
+  if (status === "failed")
+    return "failed";
+  if (status === "cancelled")
+    return "cancelled";
+  if (status === "in_progress")
+    return "running";
+  return blockingDependencies(tasks, dependencies).blocking.length > 0 ? "blocked" : "open";
+}
+function taskDepths(tasks) {
+  const byId = new Map(tasks.map((task) => [task.id, task]));
+  const depths = new Map;
+  const visiting = new Set;
+  const depthOf = (taskId) => {
+    const cached = depths.get(taskId);
+    if (cached !== undefined)
+      return cached;
+    if (visiting.has(taskId))
+      return 0;
+    const task = byId.get(taskId);
+    if (task === undefined)
+      return 0;
+    visiting.add(taskId);
+    const dependencies = [...task.dependencies].filter((id) => byId.has(id)).sort();
+    const depth = dependencies.length === 0 ? 0 : 1 + Math.max(...dependencies.map(depthOf));
+    visiting.delete(taskId);
+    depths.set(taskId, depth);
+    return depth;
+  };
+  for (const task of tasks)
+    depthOf(task.id);
+  return depths;
+}
+function cycleIds(tasks) {
+  const byId = new Map(tasks.map((task) => [task.id, task]));
+  const done = new Set;
+  const stack = [];
+  const inStack = new Set;
+  const cyclic = new Set;
+  const visit = (id) => {
+    if (done.has(id))
+      return;
+    if (inStack.has(id)) {
+      for (const entry of stack.slice(stack.indexOf(id)))
+        cyclic.add(entry);
+      return;
+    }
+    const task = byId.get(id);
+    if (task === undefined)
+      return;
+    inStack.add(id);
+    stack.push(id);
+    for (const dependency of task.dependencies)
+      if (byId.has(dependency))
+        visit(dependency);
+    stack.pop();
+    inStack.delete(id);
+    done.add(id);
+  };
+  for (const task of tasks)
+    visit(task.id);
+  return [...cyclic].sort();
+}
+function currentTaskOf(memberName, tasks) {
+  for (const task of tasks) {
+    if (task.status === "in_progress" && task.assignee === memberName)
+      return task.id;
+  }
+  return;
+}
+function emptyWorkflow(workspace, problems, holds, source) {
+  return {
+    workspace,
+    ...source === undefined ? {} : { source },
+    members: [],
+    tasks: [],
+    counts: { total: 0, completed: 0, inProgress: 0, pending: 0, claimed: 0, failed: 0, cancelled: 0, other: 0 },
+    mail: { unread: null, captainInbox: [] },
+    holds,
+    problems
+  };
+}
+function liveTeamViews(dsh, workspace) {
+  let views;
+  try {
+    views = dsh.teamLiveTeams() ?? [];
+  } catch {
+    return [];
+  }
+  let agents = [];
+  try {
+    agents = dsh.liveAgents() ?? [];
+  } catch {
+    agents = [];
+  }
+  if (agents.length === 0 || workspace === "")
+    return views.slice(0, MAX_TEAMS);
+  const cwdOf = new Map;
+  for (const entry of agents) {
+    const agent = entry;
+    const id = typeof agent?.id === "string" ? agent.id : "";
+    const cwd = agent?.session?.header?.cwd;
+    if (id !== "" && typeof cwd === "string")
+      cwdOf.set(id, cwd);
+  }
+  const own = views.filter((view) => cwdOf.get(String(view.leadSessionId ?? "")) === workspace);
+  return (own.length > 0 ? own : views).slice(0, MAX_TEAMS);
+}
+function memberStatus(view, index) {
+  const rows = Array.isArray(view.members) ? view.members : [];
+  const row = rows[index];
+  return typeof row?.status === "string" ? row.status : "unknown";
+}
+function teamActive(view) {
+  const rows = Array.isArray(view.members) ? view.members : [];
+  return rows.some((member) => member.role === "teammate" && (member.status === "running" || member.status === "provisioning"));
+}
+function principalView(views) {
+  let best;
+  for (const view of views) {
+    const tasks = Array.isArray(view.tasks) ? view.tasks.length : 0;
+    if (best === undefined || tasks > (Array.isArray(best.tasks) ? best.tasks.length : 0))
+      best = view;
+  }
+  return best;
+}
+function readTeamWorkflow(workspace, holds = [], views = [], source) {
+  const problems = [];
+  const view = principalView(views.slice(0, MAX_TEAMS));
+  if (view === undefined)
+    return emptyWorkflow(workspace, problems, holds, source);
+  const rawTasks = Array.isArray(view.tasks) ? view.tasks.slice(0, MAX_TASKS) : [];
+  const tasks = [];
+  for (const raw of rawTasks) {
+    if (raw === null || typeof raw !== "object")
+      continue;
+    const id = asText(raw.id, 40);
+    if (id === undefined)
+      continue;
+    const dependencies = (Array.isArray(raw.blockedBy) ? raw.blockedBy : []).map((entry) => asText(entry, 40)).filter((entry) => entry !== undefined);
+    tasks.push({
+      id,
+      subject: asText(raw.subject, 160) ?? "",
+      status: asText(raw.status, 40) ?? "pending",
+      visual: "open",
+      ...optional("assignee", asText(raw.ownerName, 80)),
+      dependencies,
+      failedDependencies: [],
+      depth: 0
+    });
+  }
+  const depths = taskDepths(tasks);
+  for (const task of tasks) {
+    task.depth = depths.get(task.id) ?? 0;
+    task.failedDependencies = blockingDependencies(tasks, task.dependencies).failed;
+    task.visual = taskVisualState(task.status, tasks, task.dependencies);
+  }
+  const creationIndex = new Map(tasks.map((task, index) => [task.id, index]));
+  tasks.sort((left, right) => left.depth - right.depth || (creationIndex.get(left.id) ?? 0) - (creationIndex.get(right.id) ?? 0));
+  const cycle = cycleIds(tasks);
+  if (cycle.length > 0)
+    problems.push(`cycle ${cycle.join(",")}`);
+  const counts = { total: 0, completed: 0, inProgress: 0, pending: 0, claimed: 0, failed: 0, cancelled: 0, other: 0 };
+  for (const task of tasks) {
+    counts.total += 1;
+    switch (task.status) {
+      case "completed":
+        counts.completed += 1;
+        break;
+      case "in_progress":
+        counts.inProgress += 1;
+        break;
+      case "pending":
+        counts.pending += 1;
+        break;
+      case "claimed":
+        counts.claimed += 1;
+        break;
+      case "failed":
+        counts.failed += 1;
+        break;
+      case "cancelled":
+        counts.cancelled += 1;
+        break;
+      default:
+        counts.other += 1;
+    }
+  }
+  const memberRows = Array.isArray(view.members) ? view.members : [];
+  const members = [];
+  memberRows.forEach((raw, index) => {
+    if (raw === null || typeof raw !== "object")
+      return;
+    if (raw.role === "lead")
+      return;
+    if (raw.status === "removed")
+      return;
+    const name = asText(raw.name, 80) ?? "?";
+    const status = memberStatus(view, index);
+    const provider = asString(raw.provider)?.trim() ?? "";
+    const model = asString(raw.model)?.trim() ?? "";
+    const route = provider !== "" && model !== "" ? `${provider}/${model}` : model !== "" ? model : undefined;
+    const owned = tasks.filter((task) => task.assignee === name);
+    const done = owned.filter((task) => task.status === "completed").length;
+    members.push({
+      name,
+      ...optional("role", asText(raw.description, 120)),
+      ...optional("route", route),
+      status,
+      done,
+      total: owned.length,
+      progress: owned.length === 0 ? 0 : Math.round(done / owned.length * 100),
+      ...optional("currentTask", currentTaskOf(name, tasks)),
+      unread: null
+    });
+  });
+  const phase = teamActive(view) ? "active" : "idle";
+  const links = tasks.reduce((sum, task) => sum + task.dependencies.length, 0);
+  const runnable = members.length > 0 && tasks.length > 0;
+  return {
+    workspace,
+    ...source === undefined ? {} : { source },
+    team: {
+      id: asText(view.teamId, 60) ?? "?",
+      name: asText(view.leadName, 80) ?? "?",
+      phase,
+      ...optional("captainSessionId", asText(view.leadSessionId, 80)),
+      staged: false,
+      runnable,
+      links
+    },
+    members,
+    tasks,
+    counts,
+    mail: { unread: null, captainInbox: [] },
+    holds,
+    problems: problems.slice(0, MAX_PROBLEMS)
+  };
+}
+function approvalPhrase(teamId) {
+  return `approve ${teamId}`;
+}
+function readPlanView(teams, workspace, sessionId) {
+  if (teams === undefined || typeof teams.planFor !== "function" || sessionId === undefined || sessionId === "")
+    return;
+  try {
+    return teams.planFor(workspace, sessionId)?.plan ?? undefined;
+  } catch {
+    return;
+  }
+}
+function principalRecord(records) {
+  return records.find((record) => record.endedAt === undefined) ?? records[0];
+}
+function mpdTeamRecords(teams, workspace) {
+  try {
+    const list = teams?.list;
+    if (typeof list !== "function" || workspace === "")
+      return [];
+    return list(workspace) ?? [];
+  } catch {
+    return [];
+  }
+}
+function sessionIdOf(carrier) {
+  if (carrier === null || carrier === undefined || typeof carrier !== "object")
+    return;
+  const id = carrier.sessionId;
+  return typeof id === "string" && id !== "" ? id : undefined;
+}
+function sessionRecord(teams, workspace, sessionId, records) {
+  const active = teams?.active;
+  if (typeof active === "function") {
+    try {
+      return active(workspace, sessionId) ?? undefined;
+    } catch {}
+  }
+  return records.find((record) => record.leadSessionId === sessionId);
+}
+function sessionViewsOf(views, sessionId) {
+  return views.filter((view) => scalarText(view.leadSessionId, 80) === sessionId);
+}
+function readScopedWorkflow(read) {
+  const sessionId = typeof read.sessionId === "string" && read.sessionId !== "" ? read.sessionId : undefined;
+  try {
+    if (sessionId === undefined) {
+      const principal = principalRecord(read.records);
+      if (principal !== undefined)
+        return readRecordWorkflow(read.workspace, read.holds, principal, { scope: "workspace" });
+      return readTeamWorkflow(read.workspace, read.holds, read.views, { scope: "workspace" });
+    }
+    const record = sessionRecord(read.teams, read.workspace, sessionId, read.records);
+    if (record !== undefined)
+      return readRecordWorkflow(read.workspace, read.holds, record, { scope: "session", sessionId });
+    const mine = sessionViewsOf(read.views, sessionId);
+    if (mine.length > 0)
+      return readTeamWorkflow(read.workspace, read.holds, mine, { scope: "session", sessionId });
+    return emptyWorkflow(read.workspace, [], read.holds, { scope: "none", sessionId, workspaceTeams: read.records.length });
+  } catch (error) {
+    const note = `the team read failed: ${String(error?.message ?? error)}`.slice(0, 200);
+    return emptyWorkflow(read.workspace, [note], read.holds, {
+      scope: sessionId === undefined ? "workspace" : "none",
+      ...sessionId === undefined ? {} : { sessionId }
+    });
+  }
+}
+function readRecordWorkflow(workspace, holds, record, source) {
+  const problems = [];
+  const board = record.tasks.slice(0, MAX_TASKS);
+  const tasks = board.map((task) => ({
+    id: scalarText(task.id, 40) ?? "",
+    subject: scalarText(task.subject, 160) ?? "",
+    description: scalarText(task.description, 400),
+    kind: scalarText(task.kind, 24),
+    status: scalarText(task.status, 40) ?? "pending",
+    visual: "open",
+    assignee: scalarText(task.owner, 80),
+    attempt: typeof task.attempt === "number" ? task.attempt : undefined,
+    round: typeof task.round === "number" ? task.round : undefined,
+    verdict: scalarText(task.verdict, 40),
+    dependencies: task.blockedBy.map((id) => scalarText(id, 40)).filter((id) => id !== undefined),
+    failedDependencies: [],
+    depth: 0
+  }));
+  const depths = taskDepths(tasks);
+  for (const task of tasks) {
+    task.depth = depths.get(task.id) ?? 0;
+    task.failedDependencies = blockingDependencies(tasks, task.dependencies).failed;
+    task.visual = taskVisualState(task.status, tasks, task.dependencies);
+  }
+  const order = new Map(tasks.map((task, index) => [task.id, index]));
+  tasks.sort((left, right) => left.depth - right.depth || (order.get(left.id) ?? 0) - (order.get(right.id) ?? 0));
+  const cycle = cycleIds(tasks);
+  if (cycle.length > 0)
+    problems.push(`cycle ${cycle.join(",")}`);
+  const counts = { total: 0, completed: 0, inProgress: 0, pending: 0, claimed: 0, failed: 0, cancelled: 0, other: 0 };
+  for (const task of tasks) {
+    counts.total += 1;
+    switch (task.status) {
+      case "completed":
+        counts.completed += 1;
+        break;
+      case "in_progress":
+        counts.inProgress += 1;
+        break;
+      case "pending":
+        counts.pending += 1;
+        break;
+      case "claimed":
+        counts.claimed += 1;
+        break;
+      case "failed":
+        counts.failed += 1;
+        break;
+      case "cancelled":
+        counts.cancelled += 1;
+        break;
+      default:
+        counts.other += 1;
+    }
+  }
+  const members = record.members.map((member) => {
+    const name = scalarText(member.name, 80) ?? "?";
+    const owned = tasks.filter((task) => task.assignee === name);
+    const done = owned.filter((task) => task.status === "completed").length;
+    const current = owned.find((task) => task.status === "in_progress" || task.status === "claimed");
+    return {
+      name,
+      role: scalarText(member.role ?? member.description, 120),
+      route: scalarText(member.route, 80),
+      status: scalarText(member.status, 40) ?? "unknown",
+      done,
+      total: owned.length,
+      progress: owned.length === 0 ? 0 : Math.round(done / owned.length * 100),
+      currentTask: current?.id,
+      unread: null
+    };
+  });
+  const active = record.members.some((member) => member.status === "running" || member.status === "provisioning") || record.tasks.some((task) => task.status === "in_progress" || task.status === "claimed");
+  const links = tasks.reduce((sum, task) => sum + task.dependencies.length, 0);
+  return {
+    workspace,
+    ...source === undefined ? {} : { source },
+    team: {
+      id: scalarText(record.teamId, 60) ?? "?",
+      name: scalarText(record.name, 80) ?? "?",
+      phase: record.endedAt !== undefined ? "ended" : record.approvedAt === undefined ? "staged" : active ? "active" : "idle",
+      description: scalarText(record.description, 200),
+      captainSessionId: scalarText(record.leadSessionId, 80),
+      stagedAt: scalarText(record.approvedAt ?? record.createdAt, 40),
+      staged: record.approvedAt === undefined,
+      runnable: members.length > 0 && tasks.length > 0,
+      links
+    },
+    members,
+    tasks,
+    counts,
+    mail: { unread: null, captainInbox: [] },
+    holds,
+    problems: problems.slice(0, MAX_PROBLEMS)
+  };
+}
+function teamWorkflowLines(workflow) {
+  const scope = workflow.source?.scope;
+  const held = workflow.source?.workspaceTeams;
+  if (workflow.team === undefined) {
+    const empty = [];
+    if (scope === "none") {
+      empty.push(`team       ${NO_SESSION_TEAM_MARKER}`);
+      if (typeof held === "number" && held > 0)
+        empty.push(`workspace  ${held} team(s) here, none bound to this session`);
+      return empty;
+    }
+    return [scope === "workspace" ? `team       ${WORKSPACE_SCOPE_MARKER} (none in this workspace)` : "team       (none in this workspace)"];
+  }
+  const team = workflow.team;
+  const lines = [];
+  if (scope === "workspace")
+    lines.push(`scope      ${WORKSPACE_SCOPE_MARKER} (no session id on this surface)`);
+  lines.push(`team       ${team.name} (${team.id})`);
+  lines.push(`phase      ${team.phase}`);
+  if (team.staged && team.planReviewState !== undefined)
+    lines.push(`plan       ${team.planReviewState}`);
+  if (team.captainSessionId !== undefined)
+    lines.push(`captain    ${team.captainSessionId}`);
+  if (team.staged && team.stagedAt !== undefined)
+    lines.push(`staged     ${team.stagedAt}`);
+  if (workflow.holds.includes(team.id))
+    lines.push(`watchdog   HELD (${workflow.holds.join(", ")})`);
+  lines.push("");
+  lines.push("roster");
+  if (workflow.members.length === 0)
+    lines.push("  (no members)");
+  for (const member of workflow.members) {
+    const parts = [member.name];
+    if (member.role !== undefined)
+      parts.push(member.role);
+    if (member.route !== undefined)
+      parts.push(member.route);
+    parts.push(member.status);
+    let row = `  ${parts.join(" · ")}`;
+    row += ` · ${member.done}/${member.total}`;
+    if (member.currentTask !== undefined)
+      row += ` · ${member.currentTask}`;
+    if (member.unread !== null && member.unread > 0)
+      row += ` · ${member.unread} unread`;
+    lines.push(row);
+  }
+  lines.push("");
+  lines.push("tasks");
+  if (workflow.tasks.length === 0)
+    lines.push("  (no tasks)");
+  for (const task of workflow.tasks) {
+    const indent = "  ".repeat(Math.min(task.depth, 12));
+    let row = `${indent}${task.id} [${task.kind ?? "-"}] ${task.subject} · ${task.status}`;
+    if (task.assignee !== undefined)
+      row += ` @${task.assignee}`;
+    if (task.attempt !== undefined)
+      row += ` attempt ${task.attempt}`;
+    if (task.round !== undefined)
+      row += ` r${task.round}`;
+    if (task.verdict !== undefined)
+      row += ` verdict ${task.verdict}`;
+    if (task.dependencies.length > 0)
+      row += ` deps=${task.dependencies.join(",")}`;
+    for (const failed of task.failedDependencies)
+      row += ` failed-dep=${failed}`;
+    if (task.visual === "blocked")
+      row += " BLOCKED";
+    lines.push(row);
+  }
+  lines.push("");
+  const tasks = workflow.counts;
+  lines.push(`tasks      ${tasks.total} total · ${tasks.completed} completed · ${tasks.inProgress} in progress · ${tasks.pending} pending · ${tasks.claimed} claimed · ${tasks.failed} failed`);
+  lines.push(workflow.mail.unread === null ? "mail       (not observable on the official team plane)" : `mail       ${workflow.mail.unread} unread`);
+  for (const message of workflow.mail.captainInbox)
+    lines.push(`  ${message.from}: ${message.content}`);
+  if (workflow.problems.length > 0) {
+    lines.push("");
+    for (const problem of workflow.problems)
+      lines.push(`note       ${problem}`);
+  }
+  return lines;
+}
+function planProjectionLines(workflow) {
+  const scope = workflow.source?.scope;
+  if (workflow.team === undefined) {
+    if (scope === "none")
+      return ["no staged plan for team (none)", `${NO_SESSION_TEAM_MARKER} — no DAG to draw here`];
+    return ["no staged plan for team (none)"];
+  }
+  const team = workflow.team;
+  const lines = [];
+  if (scope === "workspace")
+    lines.push(`scope      ${WORKSPACE_SCOPE_MARKER} (no session id on this surface)`);
+  lines.push(`team       ${team.name} (${team.id}) · phase ${team.phase} · review ${team.planReviewState ?? "-"}`);
+  lines.push(`members    ${workflow.members.length} · tasks ${workflow.tasks.length} · links ${team.links}`);
+  lines.push(`runnable   ${team.runnable ? "yes" : "no"}`);
+  lines.push("edits      none (the TUI has no inline plan editors)");
+  lines.push("");
+  lines.push("roster");
+  if (workflow.members.length === 0)
+    lines.push("  (no members)");
+  for (const member of workflow.members) {
+    const parts = [member.name];
+    if (member.role !== undefined)
+      parts.push(member.role);
+    if (member.route !== undefined)
+      parts.push(member.route);
+    parts.push(member.status);
+    lines.push(`  ${parts.join(" · ")} · ${member.done}/${member.total}`);
+  }
+  lines.push("");
+  lines.push("tasks");
+  if (workflow.tasks.length === 0)
+    lines.push("  (no tasks)");
+  for (const task of workflow.tasks) {
+    const indent = "  ".repeat(Math.min(task.depth, 12));
+    let row = `${indent}${task.id} [${task.kind ?? "-"}] ${task.subject} · ${task.status}`;
+    if (task.assignee !== undefined)
+      row += ` @${task.assignee}`;
+    if (task.dependencies.length > 0)
+      row += ` deps=${task.dependencies.join(",")}`;
+    if (task.visual === "blocked")
+      row += " BLOCKED";
+    lines.push(row);
+  }
+  return lines;
+}
+
+// packages/mpd-tui-plugin/src/state.ts
+var MAX_TEAMS2 = 20;
+var MAX_WORKMATES = 200;
+var MAX_TASKS2 = 5000;
+var MAX_PROBLEMS2 = 5;
 function readJson(path) {
   return JSON.parse(readFileSync3(path, "utf8"));
 }
@@ -3687,7 +4517,7 @@ function asArray(value) {
 }
 function readTeam(views, problems) {
   let best;
-  for (const view of views.slice(0, MAX_TEAMS)) {
+  for (const view of views.slice(0, MAX_TEAMS2)) {
     const tasks = Array.isArray(view.tasks) ? view.tasks.length : 0;
     if (best === undefined || tasks > (Array.isArray(best.tasks) ? best.tasks.length : 0))
       best = view;
@@ -3698,7 +4528,7 @@ function readTeam(views, problems) {
   if (rows.length === 0 && (Array.isArray(best.tasks) ? best.tasks.length : 0) === 0)
     return;
   const counts = { total: 0, completed: 0, inProgress: 0, pending: 0, failed: 0, claimed: 0, cancelled: 0, other: 0 };
-  for (const task of (Array.isArray(best.tasks) ? best.tasks : []).slice(0, MAX_TASKS)) {
+  for (const task of (Array.isArray(best.tasks) ? best.tasks : []).slice(0, MAX_TASKS2)) {
     if (!isRecord(task))
       continue;
     counts.total += 1;
@@ -3727,8 +4557,8 @@ function readTeam(views, problems) {
   }
   const teammates = rows.filter((member) => isRecord(member) && member.role !== "lead");
   const active = teammates.some((member) => member.status === "running" || member.status === "provisioning");
-  if (views.length > MAX_TEAMS)
-    problems.push(`team readout truncated to ${MAX_TEAMS} entries`);
+  if (views.length > MAX_TEAMS2)
+    problems.push(`team readout truncated to ${MAX_TEAMS2} entries`);
   return {
     id: scalarText(best.teamId, 60) ?? "?",
     name: scalarText(best.leadName, 80) ?? "?",
@@ -3739,7 +4569,7 @@ function readTeam(views, problems) {
 }
 function readRecordTeam(record) {
   const counts = { total: 0, completed: 0, inProgress: 0, pending: 0, failed: 0, claimed: 0, cancelled: 0, other: 0 };
-  for (const task of record.tasks.slice(0, MAX_TASKS)) {
+  for (const task of record.tasks.slice(0, MAX_TASKS2)) {
     counts.total += 1;
     switch (task.status) {
       case "completed":
@@ -3854,8 +4684,8 @@ function readBoardState(workspace, home = homedir3(), views = [], records = []) 
   } catch {
     problems.push("boulder state unreadable");
   }
-  if (problems.length > MAX_PROBLEMS)
-    problems.length = MAX_PROBLEMS;
+  if (problems.length > MAX_PROBLEMS2)
+    problems.length = MAX_PROBLEMS2;
   return state;
 }
 var NO_LIVE_SESSION_NOTICE = "saved to settings — not yet written to any .mpd/mpd.jsonc (no live session)";
@@ -3865,7 +4695,7 @@ function statusLine(state, notice) {
   if (state.team !== undefined) {
     const done = state.team.tasks.completed;
     const total = state.team.tasks.total;
-    parts.push(t("status.teamRow", { name: state.team.name, members: state.team.members, done: String(done), total: String(total) }));
+    parts.push(`${t("status.teamRow", { name: state.team.name, members: state.team.members, done: String(done), total: String(total) })} (${WORKSPACE_SCOPE_MARKER})`);
     if (state.team.tasks.failed > 0)
       parts.push(t("status.failed", { n: String(state.team.tasks.failed) }));
   } else {
@@ -3995,12 +4825,13 @@ var DAG_CHROME = Object.freeze({
   barFull: "█",
   barEmpty: "░"
 });
+var RUNNING_FRAMES = Object.freeze([DAG_TONE_GLYPH.running ?? "◐", "◓", "◑", "◒"]);
 var DAG_ANIM = Object.freeze({
   intervalMs: 125,
-  frames: 4,
-  staticPhase: 0
+  frames: RUNNING_FRAMES.length,
+  staticPhase: 0,
+  runningFrames: RUNNING_FRAMES
 });
-var DAG_PANEL_SLUG = "dag";
 var WORKMATE_PANEL_SLUG = "workmate";
 var DAG_PANEL_MIN_COLUMNS = 28;
 var WORKMATE_PANEL_MIN_COLUMNS = 28;
@@ -4058,6 +4889,9 @@ function panelSnapshot(host) {
   } catch {
     return;
   }
+}
+function panelSessionId(host) {
+  return sessionIdOf(panelSnapshot(host));
 }
 function panelText(value, maxCells = PANEL_ROW_MAX_CELLS) {
   try {
@@ -4143,6 +4977,22 @@ function panelContentWidth(measuredColumns) {
   return Math.max(1, columns - 2);
 }
 var PANEL_CHROME_ROWS = 2;
+function normalizeWheelDelta(delta, invert) {
+  if (delta === 0)
+    return 0;
+  return invert ? -delta : delta;
+}
+var wheelInvertRead = () => false;
+function setWheelInvertRead(read) {
+  wheelInvertRead = read;
+}
+function wheelInvertOn() {
+  try {
+    return wheelInvertRead() === true;
+  } catch {
+    return false;
+  }
+}
 function clampScroll(offset, contentRows, viewportRows) {
   const viewport = Math.max(1, Math.floor(Number.isFinite(viewportRows) ? viewportRows : 1));
   const content = Math.max(0, Math.floor(Number.isFinite(contentRows) ? contentRows : 0));
@@ -4150,7 +5000,7 @@ function clampScroll(offset, contentRows, viewportRows) {
   const wanted = Math.floor(Number.isFinite(offset) ? offset : 0);
   return { offset: Math.min(max, Math.max(0, wanted)), max, overflow: max > 0 };
 }
-function scrollByWheel(event, offset, contentRows, viewportRows) {
+function scrollByWheel(event, offset, contentRows, viewportRows, invert = wheelInvertOn()) {
   const band = clampScroll(offset, contentRows, viewportRows);
   if (!band.overflow)
     return band.offset;
@@ -4159,7 +5009,18 @@ function scrollByWheel(event, offset, contentRows, viewportRows) {
   const raw = event;
   if (typeof raw.deltaY !== "number" || !Number.isFinite(raw.deltaY))
     return band.offset;
-  return clampScroll(band.offset + raw.deltaY, contentRows, viewportRows).offset;
+  return clampScroll(band.offset + normalizeWheelDelta(raw.deltaY, invert), contentRows, viewportRows).offset;
+}
+function scrollByWheelX(event, offset, contentCols, viewportCols, invert = wheelInvertOn()) {
+  const band = clampScroll(offset, contentCols, viewportCols);
+  if (!band.overflow)
+    return band.offset;
+  if (event === null || event === undefined || typeof event !== "object")
+    return band.offset;
+  const raw = event;
+  if (typeof raw.deltaX !== "number" || !Number.isFinite(raw.deltaX))
+    return band.offset;
+  return clampScroll(band.offset + normalizeWheelDelta(raw.deltaX, invert), contentCols, viewportCols).offset;
 }
 function gutterCells(offset, contentRows, viewportRows) {
   const band = clampScroll(offset, contentRows, viewportRows);
@@ -4311,10 +5172,7 @@ function usePanelViewport(kit, read, initialOffset = 0) {
       const value = facts?.current;
       if (value?.contentCols === undefined || value?.viewportCols === undefined)
         return;
-      const raw = event ?? {};
-      if (typeof raw.deltaX !== "number" || !Number.isFinite(raw.deltaX))
-        return;
-      commitCol(colPosition() + raw.deltaX);
+      commitCol(scrollByWheelX(event, colPosition(), value.contentCols, value.viewportCols));
     },
     sync() {
       return handle;
@@ -4465,6 +5323,43 @@ function usePanelTick(kit, intervalMs, enabled = true) {
     }
   }, [enabled, intervalMs]);
 }
+function useTeamFeed(React, feed, onNotify) {
+  const tick = React.useState(0);
+  const set2 = tick[1];
+  const latest = typeof React.useRef === "function" ? React.useRef(onNotify) : undefined;
+  if (latest !== undefined && latest !== null)
+    latest.current = onNotify;
+  let subscribe;
+  try {
+    subscribe = feed === undefined ? undefined : feed();
+  } catch {
+    subscribe = undefined;
+  }
+  React.useEffect(() => {
+    if (typeof subscribe !== "function")
+      return;
+    try {
+      const dispose = subscribe(() => {
+        try {
+          set2((previous) => previous + 1);
+        } catch {}
+        try {
+          const notify = latest === undefined || latest === null ? onNotify : latest.current;
+          if (typeof notify === "function")
+            notify();
+        } catch {}
+      });
+      return () => {
+        try {
+          if (typeof dispose === "function")
+            dispose();
+        } catch {}
+      };
+    } catch {
+      return;
+    }
+  }, [subscribe]);
+}
 function panelKeysArmed(focused, visible, host) {
   if (focused !== true || visible !== true)
     return false;
@@ -4484,10 +5379,11 @@ function panelKeyEvent(event) {
   };
 }
 function runningGlyph(phase) {
-  const base = DAG_TONE_GLYPH.running ?? "◐";
-  const orbit = [base, `${base}·`, base, `${base}··`];
-  const index = (Math.floor(phase) % orbit.length + orbit.length) % orbit.length;
-  return orbit[index];
+  const frames = DAG_ANIM.runningFrames;
+  if (frames.length === 0)
+    return DAG_TONE_GLYPH.running ?? "◐";
+  const index = (Math.floor(phase) % frames.length + frames.length) % frames.length;
+  return frames[index] ?? DAG_TONE_GLYPH.running ?? "◐";
 }
 function visualGlyph(visual) {
   return DAG_TONE_GLYPH[visual] ?? "?";
@@ -4506,11 +5402,16 @@ function legendLinesFor(cols, arrowLines) {
   };
   for (const line of arrowLines)
     push2(line);
-  const entries = DAG_STATE_TONES.map((state) => {
+  const groups = [];
+  for (const state of DAG_STATE_TONES) {
     const glyph = DAG_TONE_GLYPH[state] ?? "?";
-    const twin = DAG_STATE_TONES.find((other) => other !== state && DAG_TONE_GLYPH[other] === DAG_TONE_GLYPH[state]);
-    return twin === undefined ? `${glyph} ${state}` : `${glyph} ${state}=${twin}`;
-  });
+    const existing = groups.find((group) => group.glyph === glyph);
+    if (existing === undefined)
+      groups.push({ glyph, states: [state] });
+    else
+      existing.states.push(state);
+  }
+  const entries = groups.map((group) => `${group.glyph} ${group.states.join("/")}`);
   const oneLine = entries.join(" · ");
   if (cellWidth(oneLine) <= width) {
     push2(oneLine);
@@ -4535,6 +5436,34 @@ function panelFloorColumns(which) {
   if (which === "workmate")
     return WORKMATE_PANEL_MIN_COLUMNS;
   return DAG_PANEL_MIN_COLUMNS;
+}
+var PANEL_FULLSCREEN_GLYPH = "⤢";
+var PANEL_FULLSCREEN_CELLS = 2;
+var PANEL_TITLE_ROW_ROWS = 1;
+function swallowPointerEvent(event) {
+  if (event === null || typeof event !== "object")
+    return;
+  const stop = event.stopImmediatePropagation;
+  if (typeof stop === "function")
+    stop.call(event);
+}
+function usePanelTitleRow(kit, options) {
+  const hoverState = kit.React.useState(false);
+  const hovered = hoverState[0] === true;
+  const setHovered = hoverState[1];
+  const title = panelText(options.title, Math.max(1, options.cols - PANEL_FULLSCREEN_CELLS));
+  return kit.React.createElement(kit.ui.Box, { key: options.key, flexDirection: "row", justifyContent: "space-between", flexShrink: 0 }, kit.React.createElement(kit.ui.Box, { key: `${options.key}-title`, flexShrink: 1, overflow: "hidden" }, kit.React.createElement(kit.ui.Text, { key: `${options.key}-text`, color: toneColor("dim") }, title)), kit.React.createElement(kit.ui.Box, {
+    key: `${options.key}-fullscreen`,
+    flexShrink: 0,
+    onMouseEnter: () => setHovered(true),
+    onMouseLeave: () => setHovered(false),
+    ...options.open === undefined ? {} : {
+      onClick: (event) => {
+        swallowPointerEvent(event);
+        options.open?.();
+      }
+    }
+  }, kit.React.createElement(kit.ui.Text, { key: `${options.key}-glyph`, bold: hovered, color: hovered ? toneColor("focus") : toneColor("dim") }, PANEL_FULLSCREEN_GLYPH)));
 }
 
 // packages/mpd-tui-plugin/src/graph.ts
@@ -4561,31 +5490,13 @@ var LEGEND_ENTRY = Object.freeze([
   `${ARROW_DOWN}/${ARROW_RIGHT} arrow · ${FOCUS_MARKER} focus`,
   `${ARROW_DOWN}/${ARROW_RIGHT} arrow`
 ]);
-var LEGEND_STATES = Object.freeze(["completed", "running", "open", "failed", "cancelled"]);
-var LEGEND_SHORT = Object.freeze({
-  completed: "done",
-  running: "run",
-  open: "open",
-  failed: "fail",
-  cancelled: "cancel"
-});
-var LEGEND_KEY = Object.freeze([
-  LEGEND_STATES.map((state) => `${GLYPH[state] ?? "?"} ${state}`).join(" · "),
-  LEGEND_STATES.map((state) => `${GLYPH[state] ?? "?"} ${LEGEND_SHORT[state] ?? state}`).join(" · ")
-]);
-var LEGEND_LINES = Object.freeze([LEGEND_ENTRY, LEGEND_KEY]);
 var MIN_LEGEND_COLS = 8;
 function legendLines(cols) {
   const width = Number.isFinite(cols) ? Math.floor(cols) : 0;
   if (width < MIN_LEGEND_COLS)
     return [];
-  const lines = [];
-  for (const variants of LEGEND_LINES) {
-    const wording = variants.find((variant) => cellWidth(variant) <= width);
-    if (wording !== undefined)
-      lines.push(clampCells(wording, width));
-  }
-  return lines;
+  const wording = LEGEND_ENTRY.find((variant) => cellWidth(variant) <= width);
+  return wording === undefined ? [] : [clampCells(wording, width)];
 }
 var NATURAL_RAIL_FALLBACK_COLS = 80;
 var NODE_GAP = 3;
@@ -4764,7 +5675,7 @@ function rankPlan(tasks) {
   const derived = deriveRanks(tasks, byId);
   return { ranks: bucketRanks(tasks, (task) => derived.get(task.id) ?? 0), rankOf: derived, derived: true, unresolved };
 }
-function cycleIds(tasks) {
+function cycleIds2(tasks) {
   const byId = new Map(tasks.map((task) => [task.id, task]));
   const done = new Set;
   const stack = [];
@@ -4949,7 +5860,7 @@ function drawBoxes(tasks, ranks, widest, nodeWidth, form, focus, plan, widestLab
   while (lines.length > 0 && lines[lines.length - 1].every((span) => span.text.trim() === ""))
     lines.pop();
   const chainList = chain === undefined ? [] : [...chain].sort();
-  const view = { lines, hits, width, mode: "boxes", cycles: cycleIds(tasks), chain: chainList, ranksDerived: plan.derived, unresolved: plan.unresolved, boxRows: form };
+  const view = { lines, hits, width, mode: "boxes", cycles: cycleIds2(tasks), chain: chainList, ranksDerived: plan.derived, unresolved: plan.unresolved, boxRows: form };
   if (focus !== undefined)
     view.focus = focus;
   if (widestLabel !== undefined)
@@ -5010,7 +5921,7 @@ function layoutRail(tasks, cols, focus) {
     hits.push({ taskId: entry.task.id, row: index, rowEnd: index, col: 0, colEnd: Math.max(0, cols - 1) });
   });
   const chainList = chain === undefined ? [] : [...chain].sort();
-  const view = { lines, hits, width: cols, mode: "rail", cycles: cycleIds(tasks), chain: chainList, ranksDerived: plan.derived, unresolved: plan.unresolved, boxRows: 3 };
+  const view = { lines, hits, width: cols, mode: "rail", cycles: cycleIds2(tasks), chain: chainList, ranksDerived: plan.derived, unresolved: plan.unresolved, boxRows: 3 };
   if (focus !== undefined)
     view.focus = focus;
   return view;
@@ -5035,7 +5946,7 @@ function layoutList(tasks, cols, focus) {
     }
   }
   const chainList = chain === undefined ? [] : [...chain].sort();
-  const view = { lines, hits, width: cols, mode: "list", cycles: cycleIds(tasks), chain: chainList, ranksDerived: plan.derived, unresolved: plan.unresolved, boxRows: 3 };
+  const view = { lines, hits, width: cols, mode: "list", cycles: cycleIds2(tasks), chain: chainList, ranksDerived: plan.derived, unresolved: plan.unresolved, boxRows: 3 };
   if (focus !== undefined)
     view.focus = focus;
   return view;
@@ -5049,503 +5960,6 @@ function hitTest(view, row, col) {
       return hit.taskId;
   }
   return;
-}
-
-// packages/mpd-tui-plugin/src/team-state.ts
-var MAX_TEAMS2 = 20;
-var MAX_TASKS2 = 5000;
-var MAX_PROBLEMS2 = 5;
-function asString(value) {
-  return typeof value === "string" && value.length > 0 ? value : undefined;
-}
-function asText(value, maxCells) {
-  return scalarText(value, maxCells);
-}
-function optional(key, value) {
-  return value === undefined ? {} : { [key]: value };
-}
-function blockingDependencies(tasks, dependencies) {
-  const byId = new Map(tasks.map((task) => [task.id, task]));
-  const blocking = [];
-  const failed = [];
-  for (const id of dependencies) {
-    const status = byId.get(id)?.status;
-    if (status === "completed" || status === "cancelled")
-      continue;
-    if (status === "failed")
-      failed.push(id);
-    else
-      blocking.push(id);
-  }
-  return { blocking, failed };
-}
-function taskVisualState(status, tasks, dependencies) {
-  if (status === "completed")
-    return "completed";
-  if (status === "failed")
-    return "failed";
-  if (status === "cancelled")
-    return "cancelled";
-  if (status === "in_progress")
-    return "running";
-  return blockingDependencies(tasks, dependencies).blocking.length > 0 ? "blocked" : "open";
-}
-function taskDepths(tasks) {
-  const byId = new Map(tasks.map((task) => [task.id, task]));
-  const depths = new Map;
-  const visiting = new Set;
-  const depthOf = (taskId) => {
-    const cached = depths.get(taskId);
-    if (cached !== undefined)
-      return cached;
-    if (visiting.has(taskId))
-      return 0;
-    const task = byId.get(taskId);
-    if (task === undefined)
-      return 0;
-    visiting.add(taskId);
-    const dependencies = [...task.dependencies].filter((id) => byId.has(id)).sort();
-    const depth = dependencies.length === 0 ? 0 : 1 + Math.max(...dependencies.map(depthOf));
-    visiting.delete(taskId);
-    depths.set(taskId, depth);
-    return depth;
-  };
-  for (const task of tasks)
-    depthOf(task.id);
-  return depths;
-}
-function cycleIds2(tasks) {
-  const byId = new Map(tasks.map((task) => [task.id, task]));
-  const done = new Set;
-  const stack = [];
-  const inStack = new Set;
-  const cyclic = new Set;
-  const visit = (id) => {
-    if (done.has(id))
-      return;
-    if (inStack.has(id)) {
-      for (const entry of stack.slice(stack.indexOf(id)))
-        cyclic.add(entry);
-      return;
-    }
-    const task = byId.get(id);
-    if (task === undefined)
-      return;
-    inStack.add(id);
-    stack.push(id);
-    for (const dependency of task.dependencies)
-      if (byId.has(dependency))
-        visit(dependency);
-    stack.pop();
-    inStack.delete(id);
-    done.add(id);
-  };
-  for (const task of tasks)
-    visit(task.id);
-  return [...cyclic].sort();
-}
-function currentTaskOf(memberName, tasks) {
-  for (const task of tasks) {
-    if (task.status === "in_progress" && task.assignee === memberName)
-      return task.id;
-  }
-  return;
-}
-function emptyWorkflow(workspace, problems, holds) {
-  return {
-    workspace,
-    members: [],
-    tasks: [],
-    counts: { total: 0, completed: 0, inProgress: 0, pending: 0, claimed: 0, failed: 0, cancelled: 0, other: 0 },
-    mail: { unread: null, captainInbox: [] },
-    holds,
-    problems
-  };
-}
-function liveTeamViews(dsh, workspace) {
-  let views;
-  try {
-    views = dsh.teamLiveTeams() ?? [];
-  } catch {
-    return [];
-  }
-  let agents = [];
-  try {
-    agents = dsh.liveAgents() ?? [];
-  } catch {
-    agents = [];
-  }
-  if (agents.length === 0 || workspace === "")
-    return views.slice(0, MAX_TEAMS2);
-  const cwdOf = new Map;
-  for (const entry of agents) {
-    const agent = entry;
-    const id = typeof agent?.id === "string" ? agent.id : "";
-    const cwd = agent?.session?.header?.cwd;
-    if (id !== "" && typeof cwd === "string")
-      cwdOf.set(id, cwd);
-  }
-  const own = views.filter((view) => cwdOf.get(String(view.leadSessionId ?? "")) === workspace);
-  return (own.length > 0 ? own : views).slice(0, MAX_TEAMS2);
-}
-function memberStatus(view, index) {
-  const rows = Array.isArray(view.members) ? view.members : [];
-  const row = rows[index];
-  return typeof row?.status === "string" ? row.status : "unknown";
-}
-function teamActive(view) {
-  const rows = Array.isArray(view.members) ? view.members : [];
-  return rows.some((member) => member.role === "teammate" && (member.status === "running" || member.status === "provisioning"));
-}
-function principalView(views) {
-  let best;
-  for (const view of views) {
-    const tasks = Array.isArray(view.tasks) ? view.tasks.length : 0;
-    if (best === undefined || tasks > (Array.isArray(best.tasks) ? best.tasks.length : 0))
-      best = view;
-  }
-  return best;
-}
-function readTeamWorkflow(workspace, holds = [], views = []) {
-  const problems = [];
-  const view = principalView(views.slice(0, MAX_TEAMS2));
-  if (view === undefined)
-    return emptyWorkflow(workspace, problems, holds);
-  const rawTasks = Array.isArray(view.tasks) ? view.tasks.slice(0, MAX_TASKS2) : [];
-  const tasks = [];
-  for (const raw of rawTasks) {
-    if (raw === null || typeof raw !== "object")
-      continue;
-    const id = asText(raw.id, 40);
-    if (id === undefined)
-      continue;
-    const dependencies = (Array.isArray(raw.blockedBy) ? raw.blockedBy : []).map((entry) => asText(entry, 40)).filter((entry) => entry !== undefined);
-    tasks.push({
-      id,
-      subject: asText(raw.subject, 160) ?? "",
-      status: asText(raw.status, 40) ?? "pending",
-      visual: "open",
-      ...optional("assignee", asText(raw.ownerName, 80)),
-      dependencies,
-      failedDependencies: [],
-      depth: 0
-    });
-  }
-  const depths = taskDepths(tasks);
-  for (const task of tasks) {
-    task.depth = depths.get(task.id) ?? 0;
-    task.failedDependencies = blockingDependencies(tasks, task.dependencies).failed;
-    task.visual = taskVisualState(task.status, tasks, task.dependencies);
-  }
-  const creationIndex = new Map(tasks.map((task, index) => [task.id, index]));
-  tasks.sort((left, right) => left.depth - right.depth || (creationIndex.get(left.id) ?? 0) - (creationIndex.get(right.id) ?? 0));
-  const cycle = cycleIds2(tasks);
-  if (cycle.length > 0)
-    problems.push(`cycle ${cycle.join(",")}`);
-  const counts = { total: 0, completed: 0, inProgress: 0, pending: 0, claimed: 0, failed: 0, cancelled: 0, other: 0 };
-  for (const task of tasks) {
-    counts.total += 1;
-    switch (task.status) {
-      case "completed":
-        counts.completed += 1;
-        break;
-      case "in_progress":
-        counts.inProgress += 1;
-        break;
-      case "pending":
-        counts.pending += 1;
-        break;
-      case "claimed":
-        counts.claimed += 1;
-        break;
-      case "failed":
-        counts.failed += 1;
-        break;
-      case "cancelled":
-        counts.cancelled += 1;
-        break;
-      default:
-        counts.other += 1;
-    }
-  }
-  const memberRows = Array.isArray(view.members) ? view.members : [];
-  const members = [];
-  memberRows.forEach((raw, index) => {
-    if (raw === null || typeof raw !== "object")
-      return;
-    if (raw.role === "lead")
-      return;
-    if (raw.status === "removed")
-      return;
-    const name = asText(raw.name, 80) ?? "?";
-    const status = memberStatus(view, index);
-    const provider = asString(raw.provider)?.trim() ?? "";
-    const model = asString(raw.model)?.trim() ?? "";
-    const route = provider !== "" && model !== "" ? `${provider}/${model}` : model !== "" ? model : undefined;
-    const owned = tasks.filter((task) => task.assignee === name);
-    const done = owned.filter((task) => task.status === "completed").length;
-    members.push({
-      name,
-      ...optional("role", asText(raw.description, 120)),
-      ...optional("route", route),
-      status,
-      done,
-      total: owned.length,
-      progress: owned.length === 0 ? 0 : Math.round(done / owned.length * 100),
-      ...optional("currentTask", currentTaskOf(name, tasks)),
-      unread: null
-    });
-  });
-  const phase = teamActive(view) ? "active" : "idle";
-  const links = tasks.reduce((sum, task) => sum + task.dependencies.length, 0);
-  const runnable = members.length > 0 && tasks.length > 0;
-  return {
-    workspace,
-    team: {
-      id: asText(view.teamId, 60) ?? "?",
-      name: asText(view.leadName, 80) ?? "?",
-      phase,
-      ...optional("captainSessionId", asText(view.leadSessionId, 80)),
-      staged: false,
-      runnable,
-      links
-    },
-    members,
-    tasks,
-    counts,
-    mail: { unread: null, captainInbox: [] },
-    holds,
-    problems: problems.slice(0, MAX_PROBLEMS2)
-  };
-}
-function approvalPhrase(teamId) {
-  return `approve ${teamId}`;
-}
-function readPlanView(teams, workspace, sessionId) {
-  if (teams === undefined || typeof teams.planFor !== "function" || sessionId === undefined || sessionId === "")
-    return;
-  try {
-    return teams.planFor(workspace, sessionId)?.plan ?? undefined;
-  } catch {
-    return;
-  }
-}
-function principalRecord(records) {
-  return records.find((record) => record.endedAt === undefined) ?? records[0];
-}
-function mpdTeamRecords(teams, workspace) {
-  try {
-    const list = teams?.list;
-    if (typeof list !== "function" || workspace === "")
-      return [];
-    return list(workspace) ?? [];
-  } catch {
-    return [];
-  }
-}
-function readRecordWorkflow(workspace, holds, record) {
-  const problems = [];
-  const board = record.tasks.slice(0, MAX_TASKS2);
-  const tasks = board.map((task) => ({
-    id: scalarText(task.id, 40) ?? "",
-    subject: scalarText(task.subject, 160) ?? "",
-    description: scalarText(task.description, 400),
-    kind: scalarText(task.kind, 24),
-    status: scalarText(task.status, 40) ?? "pending",
-    visual: "open",
-    assignee: scalarText(task.owner, 80),
-    attempt: typeof task.attempt === "number" ? task.attempt : undefined,
-    round: typeof task.round === "number" ? task.round : undefined,
-    verdict: scalarText(task.verdict, 40),
-    dependencies: task.blockedBy.map((id) => scalarText(id, 40)).filter((id) => id !== undefined),
-    failedDependencies: [],
-    depth: 0
-  }));
-  const depths = taskDepths(tasks);
-  for (const task of tasks) {
-    task.depth = depths.get(task.id) ?? 0;
-    task.failedDependencies = blockingDependencies(tasks, task.dependencies).failed;
-    task.visual = taskVisualState(task.status, tasks, task.dependencies);
-  }
-  const order = new Map(tasks.map((task, index) => [task.id, index]));
-  tasks.sort((left, right) => left.depth - right.depth || (order.get(left.id) ?? 0) - (order.get(right.id) ?? 0));
-  const cycle = cycleIds2(tasks);
-  if (cycle.length > 0)
-    problems.push(`cycle ${cycle.join(",")}`);
-  const counts = { total: 0, completed: 0, inProgress: 0, pending: 0, claimed: 0, failed: 0, cancelled: 0, other: 0 };
-  for (const task of tasks) {
-    counts.total += 1;
-    switch (task.status) {
-      case "completed":
-        counts.completed += 1;
-        break;
-      case "in_progress":
-        counts.inProgress += 1;
-        break;
-      case "pending":
-        counts.pending += 1;
-        break;
-      case "claimed":
-        counts.claimed += 1;
-        break;
-      case "failed":
-        counts.failed += 1;
-        break;
-      case "cancelled":
-        counts.cancelled += 1;
-        break;
-      default:
-        counts.other += 1;
-    }
-  }
-  const members = record.members.map((member) => {
-    const name = scalarText(member.name, 80) ?? "?";
-    const owned = tasks.filter((task) => task.assignee === name);
-    const done = owned.filter((task) => task.status === "completed").length;
-    const current = owned.find((task) => task.status === "in_progress" || task.status === "claimed");
-    return {
-      name,
-      role: scalarText(member.role ?? member.description, 120),
-      route: scalarText(member.route, 80),
-      status: scalarText(member.status, 40) ?? "unknown",
-      done,
-      total: owned.length,
-      progress: owned.length === 0 ? 0 : Math.round(done / owned.length * 100),
-      currentTask: current?.id,
-      unread: null
-    };
-  });
-  const active = record.members.some((member) => member.status === "running" || member.status === "provisioning") || record.tasks.some((task) => task.status === "in_progress" || task.status === "claimed");
-  const links = tasks.reduce((sum, task) => sum + task.dependencies.length, 0);
-  return {
-    workspace,
-    team: {
-      id: scalarText(record.teamId, 60) ?? "?",
-      name: scalarText(record.name, 80) ?? "?",
-      phase: record.endedAt !== undefined ? "ended" : record.approvedAt === undefined ? "staged" : active ? "active" : "idle",
-      description: scalarText(record.description, 200),
-      captainSessionId: scalarText(record.leadSessionId, 80),
-      stagedAt: scalarText(record.approvedAt ?? record.createdAt, 40),
-      staged: record.approvedAt === undefined,
-      runnable: members.length > 0 && tasks.length > 0,
-      links
-    },
-    members,
-    tasks,
-    counts,
-    mail: { unread: null, captainInbox: [] },
-    holds,
-    problems: problems.slice(0, MAX_PROBLEMS2)
-  };
-}
-function teamWorkflowLines(workflow) {
-  if (workflow.team === undefined)
-    return ["team       (none in this workspace)"];
-  const team = workflow.team;
-  const lines = [];
-  lines.push(`team       ${team.name} (${team.id})`);
-  lines.push(`phase      ${team.phase}`);
-  if (team.staged && team.planReviewState !== undefined)
-    lines.push(`plan       ${team.planReviewState}`);
-  if (team.captainSessionId !== undefined)
-    lines.push(`captain    ${team.captainSessionId}`);
-  if (team.staged && team.stagedAt !== undefined)
-    lines.push(`staged     ${team.stagedAt}`);
-  if (workflow.holds.includes(team.id))
-    lines.push(`watchdog   HELD (${workflow.holds.join(", ")})`);
-  lines.push("");
-  lines.push("roster");
-  if (workflow.members.length === 0)
-    lines.push("  (no members)");
-  for (const member of workflow.members) {
-    const parts = [member.name];
-    if (member.role !== undefined)
-      parts.push(member.role);
-    if (member.route !== undefined)
-      parts.push(member.route);
-    parts.push(member.status);
-    let row = `  ${parts.join(" · ")}`;
-    row += ` · ${member.done}/${member.total}`;
-    if (member.currentTask !== undefined)
-      row += ` · ${member.currentTask}`;
-    if (member.unread !== null && member.unread > 0)
-      row += ` · ${member.unread} unread`;
-    lines.push(row);
-  }
-  lines.push("");
-  lines.push("tasks");
-  if (workflow.tasks.length === 0)
-    lines.push("  (no tasks)");
-  for (const task of workflow.tasks) {
-    const indent = "  ".repeat(Math.min(task.depth, 12));
-    let row = `${indent}${task.id} [${task.kind ?? "-"}] ${task.subject} · ${task.status}`;
-    if (task.assignee !== undefined)
-      row += ` @${task.assignee}`;
-    if (task.attempt !== undefined)
-      row += ` attempt ${task.attempt}`;
-    if (task.round !== undefined)
-      row += ` r${task.round}`;
-    if (task.verdict !== undefined)
-      row += ` verdict ${task.verdict}`;
-    if (task.dependencies.length > 0)
-      row += ` deps=${task.dependencies.join(",")}`;
-    for (const failed of task.failedDependencies)
-      row += ` failed-dep=${failed}`;
-    if (task.visual === "blocked")
-      row += " BLOCKED";
-    lines.push(row);
-  }
-  lines.push("");
-  const tasks = workflow.counts;
-  lines.push(`tasks      ${tasks.total} total · ${tasks.completed} completed · ${tasks.inProgress} in progress · ${tasks.pending} pending · ${tasks.claimed} claimed · ${tasks.failed} failed`);
-  lines.push(workflow.mail.unread === null ? "mail       (not observable on the official team plane)" : `mail       ${workflow.mail.unread} unread`);
-  for (const message of workflow.mail.captainInbox)
-    lines.push(`  ${message.from}: ${message.content}`);
-  if (workflow.problems.length > 0) {
-    lines.push("");
-    for (const problem of workflow.problems)
-      lines.push(`note       ${problem}`);
-  }
-  return lines;
-}
-function planProjectionLines(workflow) {
-  if (workflow.team === undefined)
-    return ["no staged plan for team (none)"];
-  const team = workflow.team;
-  const lines = [];
-  lines.push(`team       ${team.name} (${team.id}) · phase ${team.phase} · review ${team.planReviewState ?? "-"}`);
-  lines.push(`members    ${workflow.members.length} · tasks ${workflow.tasks.length} · links ${team.links}`);
-  lines.push(`runnable   ${team.runnable ? "yes" : "no"}`);
-  lines.push("edits      none (the TUI has no inline plan editors)");
-  lines.push("");
-  lines.push("roster");
-  if (workflow.members.length === 0)
-    lines.push("  (no members)");
-  for (const member of workflow.members) {
-    const parts = [member.name];
-    if (member.role !== undefined)
-      parts.push(member.role);
-    if (member.route !== undefined)
-      parts.push(member.route);
-    parts.push(member.status);
-    lines.push(`  ${parts.join(" · ")} · ${member.done}/${member.total}`);
-  }
-  lines.push("");
-  lines.push("tasks");
-  if (workflow.tasks.length === 0)
-    lines.push("  (no tasks)");
-  for (const task of workflow.tasks) {
-    const indent = "  ".repeat(Math.min(task.depth, 12));
-    let row = `${indent}${task.id} [${task.kind ?? "-"}] ${task.subject} · ${task.status}`;
-    if (task.assignee !== undefined)
-      row += ` @${task.assignee}`;
-    if (task.dependencies.length > 0)
-      row += ` deps=${task.dependencies.join(",")}`;
-    if (task.visual === "blocked")
-      row += " BLOCKED";
-    lines.push(row);
-  }
-  return lines;
 }
 
 // packages/mpd-tui-plugin/src/subagent-scene.ts
@@ -5625,10 +6039,10 @@ function barCells(filled, total, cells) {
   const lit = whole === 0 ? 0 : Math.min(width, Math.max(part > 0 ? 1 : 0, Math.round(part / whole * width)));
   return DAG_CHROME.barFull.repeat(lit) + DAG_CHROME.barEmpty.repeat(width - lit);
 }
-var RUNNING_FRAMES = Object.freeze([DAG_TONE_GLYPH.running ?? "◐", "◓", "◑", "◒"]);
+var RUNNING_FRAMES2 = DAG_ANIM.runningFrames;
 function runningMarker(phase) {
-  const index = Number.isFinite(phase) ? (Math.floor(phase) % RUNNING_FRAMES.length + RUNNING_FRAMES.length) % RUNNING_FRAMES.length : DAG_ANIM.staticPhase;
-  return RUNNING_FRAMES[index] ?? DAG_TONE_GLYPH.running ?? "◐";
+  const index = Number.isFinite(phase) ? (Math.floor(phase) % RUNNING_FRAMES2.length + RUNNING_FRAMES2.length) % RUNNING_FRAMES2.length : DAG_ANIM.staticPhase;
+  return RUNNING_FRAMES2[index] ?? DAG_TONE_GLYPH.running ?? "◐";
 }
 function animPhase(timeMs) {
   if (!Number.isFinite(timeMs) || timeMs <= 0)
@@ -5997,7 +6411,7 @@ function takeSubagentDetailRequest(nowMs = Date.now()) {
     return;
   return request.agentId;
 }
-function createSubagentSceneComponent(readWorkflow, onHostKit, takePendingDetail = takeSubagentDetailRequest) {
+function createSubagentSceneComponent(readWorkflow, onHostKit, takePendingDetail = takeSubagentDetailRequest, subscribeTeams) {
   return function MpdTuiSubagents(props) {
     const kit = hostKit(props?.React, props?.ui);
     if (kit === undefined) {
@@ -6034,12 +6448,13 @@ function createSubagentSceneComponent(readWorkflow, onHostKit, takePendingDetail
     const refresh = () => {
       let next;
       try {
-        next = readWorkflow();
+        next = readWorkflow(sessionIdOf(channel));
       } catch {
         next = undefined;
       }
       setWorkflow(next);
     };
+    useTeamFeed(React, subscribeTeams, refresh);
     React.useEffect(() => {
       refresh();
       let timer;
@@ -6532,6 +6947,19 @@ function teamModelSlotSchema(slot) {
     reasoningEffort: Schema.string().default(slot.reasoningEffort)
   });
 }
+var TEAM_MODEL_SLOT_GROUPS = {
+  slot1: { zh: "重推理成员", en: "heavy members", members: ["Architect", "Planner", "Reviewer", "Lead", "Senior Engineer"] },
+  slot2: { zh: "分析型成员", en: "analysis members", members: ["Researcher", "Explorer", "Plan Reviewer"] },
+  slot3: { zh: "执行型成员", en: "execution members", members: ["Deep Worker", "Junior Engineer"] },
+  slot4: { zh: "视觉成员", en: "vision member", members: ["Vision Analyst"] }
+};
+var ROSTER_AGENT_NAMES = Object.values(TEAM_MODEL_SLOT_GROUPS).flatMap((group) => [...group.members]);
+var AGENT_ROUTE_SCHEMA = Schema.object({
+  provider: Schema.string().required(false),
+  model: Schema.string().required(false),
+  reasoningEffort: Schema.string().required(false)
+});
+var AGENT_ROUTES_SCHEMA = Schema.dict(AGENT_ROUTE_SCHEMA, Schema.union(ROSTER_AGENT_NAMES.map((name) => Schema.const(name))));
 var SettingsSchema = Schema.object({
   hashline: Schema.object({ maxDiffChars: Schema.number().default(20000) }),
   commentChecker: Schema.object({ autoCheck: Schema.boolean().default(true) }),
@@ -6545,6 +6973,7 @@ var SettingsSchema = Schema.object({
     slot3: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot3),
     slot4: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot4)
   }),
+  agentRoutes: AGENT_ROUTES_SCHEMA,
   watchdog: Schema.object({
     enabled: Schema.boolean().default(true),
     warnSilenceMs: Schema.number().default(600000),
@@ -6556,19 +6985,31 @@ var SettingsSchema = Schema.object({
   }),
   tui: Schema.object({ dashboardKey: Schema.boolean().default(true) })
 });
-var BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) — it applies at the next dsh boot, because the file-derived base is fixed for the running process's lifetime";
+var BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect in the RUNNING process — no restart: the config service re-resolves on every settings save and on a watched edit of the project file, and the model routes (teamModels, agentRoutes, modelchain) are read per use, so the next spawn or resolve carries them";
 var BRIDGE_NOT_LOST = "the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session";
+function markVolatile(schema) {
+  const node = schema;
+  const kind = typeof node;
+  if (node === null || kind !== "object" && kind !== "function")
+    return schema;
+  try {
+    node.meta = { ...node.meta ?? {}, volatile: true };
+  } catch {}
+  if (node.dict !== undefined && typeof node.dict === "object")
+    for (const child of Object.values(node.dict))
+      markVolatile(child);
+  if (node.inner !== undefined)
+    markVolatile(node.inner);
+  if (Array.isArray(node.list))
+    for (const child of node.list)
+      markVolatile(child);
+  return schema;
+}
 function knobHint(key, semantics) {
   const pointer = `mpd.jsonc ${key}`;
   return semantics === undefined || semantics.length === 0 ? pointer : `${semantics} (${pointer})`;
 }
 var BRIDGE_SECTION_NOTICE = `${BRIDGE_DISCLOSURE} ${BRIDGE_NOT_LOST}`;
-var TEAM_MODEL_SLOT_GROUPS = {
-  slot1: { zh: "重推理成员", en: "heavy members", members: ["Architect", "Planner", "Reviewer", "Lead", "Senior Engineer"] },
-  slot2: { zh: "分析型成员", en: "analysis members", members: ["Researcher", "Explorer", "Plan Reviewer"] },
-  slot3: { zh: "执行型成员", en: "execution members", members: ["Deep Worker", "Junior Engineer"] },
-  slot4: { zh: "视觉成员", en: "vision member", members: ["Vision Analyst"] }
-};
 var TEAM_MODEL_LEAF_TEMPLATES = {
   provider: {
     en: "The provider half of this slot. The slots are the default model route of team members: when a team is created, the {group} ({members}) start on this slot's provider + model + reasoning effort. What changing it does: those members take the new route at the next team creation, and an unusable value makes team creation FAIL loudly, naming the member and the slot — it never silently substitutes another model. Vision Analyst is the vision member: slot 4 drives it.",
@@ -6579,8 +7020,8 @@ var TEAM_MODEL_LEAF_TEMPLATES = {
     zh: "这一档的模型。与上面的提供商共同决定 {group}（{members}）建队时使用的模型。改它的影响：同上，下次建队生效；模型与提供商不匹配、或该提供商没有这个模型时，建队会点名失败。"
   },
   reasoningEffort: {
-    en: "This slot's reasoning effort (off / low / high / max). It sets how much the {group} ({members}) think when a team is created: max is the strongest, high the usual balance, low cheaper, off disables reasoning. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot.",
-    zh: "这一档的推理强度（off / low / high / max）。它决定 {group}（{members}）建队时的思考深度：max 最强、high 是常规平衡、low 更省、off 关闭思考。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。"
+    en: "This slot's reasoning effort (off / low / high / max). It sets how much the {group} ({members}) think when a team is created: max is the strongest, high the usual balance, low cheaper, off disables reasoning. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot. EXCEPTION: a model whose catalog entry declares no reasoning efforts at all is sent none — its call still runs.",
+    zh: "这一档的推理强度（off / low / high / max）。它决定 {group}（{members}）建队时的思考深度：max 最强、high 是常规平衡、low 更省、off 关闭思考。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。例外：若该模型的目录条目完全没有推理等级，则不发送任何等级——调用照常。"
   }
 };
 var TEAM_MODEL_SLOT_LEAF_OVERRIDES = {
@@ -6594,8 +7035,8 @@ var TEAM_MODEL_SLOT_LEAF_OVERRIDES = {
       zh: "这一档的模型。必须选支持图像输入的模型：Vision Analyst 的全部价值在于读图，纯文本模型会让它的读图任务直接失败。改它的影响：下次建队生效。"
     },
     reasoningEffort: {
-      en: "This slot's reasoning effort (off / low / high / max). It sets how much Vision Analyst thinks while reading an image. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot.",
-      zh: "这一档的推理强度（off / low / high / max）。决定 Vision Analyst 读图时的思考深度。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。"
+      en: "This slot's reasoning effort (off / low / high / max). It sets how much Vision Analyst thinks while reading an image. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot. EXCEPTION: a model whose catalog entry declares no reasoning efforts at all is sent none — its call still runs.",
+      zh: "这一档的推理强度（off / low / high / max）。决定 Vision Analyst 读图时的思考深度。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。例外：若该模型的目录条目完全没有推理等级，则不发送任何等级——调用照常。"
     }
   }
 };
@@ -6627,6 +7068,45 @@ var TEAM_MODEL_KNOBS = TEAM_MODEL_SLOTS.flatMap((slot) => {
     hint: knobHint(`teamModels.${slot}.${leaf}`, teamModelLeafSentence(slot, leaf, "en"))
   }));
 });
+var AGENT_ROUTE_LEAF_TEMPLATES = {
+  provider: {
+    en: "The provider half of {name}'s OWN route override. An agentRoutes leaf outranks {name}'s team-model slot: it applies to {name} only, and LIVE — the member's next spawn or resolve carries it, no restart and no new team needed. An unset leaf falls through to the slot's provider; clearing every leaf returns {name} to the slot.",
+    zh: "{name} 专属路由覆盖的提供商。agentRoutes 的叶子优先于 {name} 的 team 模型槽位：只作用于 {name} 本人，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的提供商；清空全部叶子即恢复跟随槽位。"
+  },
+  model: {
+    en: "The model half of {name}'s OWN route override. It outranks the model of {name}'s team-model slot ({group}) and applies LIVE — the member's next spawn or resolve carries it, no restart and no new team needed. An unset leaf falls through to the slot's model; clearing every leaf returns {name} to the slot.",
+    zh: "{name} 专属路由覆盖的模型。优先于 {name} 所属槽位（{group}）的模型，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的模型；清空全部叶子即恢复跟随槽位。"
+  },
+  reasoningEffort: {
+    en: "The reasoning-effort half of {name}'s OWN route override (off / low / high / max). It outranks the effort of {name}'s team-model slot ({group}) and applies LIVE — the member's next spawn or resolve carries it. An unset leaf falls through to the slot's effort; an effort the chosen model does not support fails that member's spawn loudly, naming the member.",
+    zh: "{name} 专属路由覆盖的推理强度（off / low / high / max）。优先于 {name} 所属槽位（{group}）的推理强度，且即时生效——该成员下次生成/解析即携带新值。未设置的叶子回落到槽位的等级；该模型不支持的等级会让该成员的生成直接报错并点名。"
+  }
+};
+function agentRouteSlotOf(name) {
+  return TEAM_MODEL_SLOTS.find((slot) => TEAM_MODEL_SLOT_GROUPS[slot].members.includes(name));
+}
+function agentRouteLeafSentence(name, leaf, lang) {
+  const slot = agentRouteSlotOf(name);
+  const group = slot === undefined ? lang === "zh" ? "未编组" : "ungrouped" : TEAM_MODEL_SLOT_GROUPS[slot][lang];
+  return AGENT_ROUTE_LEAF_TEMPLATES[leaf][lang].split("{name}").join(name).split("{group}").join(group);
+}
+var AGENT_ROUTE_KNOBS = TEAM_MODEL_SLOTS.flatMap((slot) => TEAM_MODEL_SLOT_GROUPS[slot].members.flatMap((member) => {
+  const leaves = [
+    { leaf: "provider", label: "provider", zh: "提供商" },
+    { leaf: "model", label: "model", zh: "模型" },
+    { leaf: "reasoningEffort", label: "reasoning effort", zh: "推理强度" }
+  ];
+  return leaves.map(({ leaf, label, zh }) => ({
+    path: ["agentRoutes", member, leaf],
+    label: `${member} ${label} (own route)`,
+    zh: `${member} ${zh}（专属路由）`,
+    kind: "select",
+    options: TEAM_MODEL_FALLBACK_OPTIONS[leaf],
+    semantics: agentRouteLeafSentence(member, leaf, "en"),
+    semanticsZh: agentRouteLeafSentence(member, leaf, "zh"),
+    hint: knobHint(`agentRoutes.${member}.${leaf}`, agentRouteLeafSentence(member, leaf, "en"))
+  }));
+}));
 var SETTINGS_KNOBS = [
   { path: ["hashline", "maxDiffChars"], label: "Inline diff limit", zh: "行内 diff 上限", kind: "number" },
   { path: ["commentChecker", "autoCheck"], label: "Comment checker", zh: "注释检查", kind: "boolean" },
@@ -6642,6 +7122,7 @@ var SETTINGS_KNOBS = [
   { path: ["watchdog", "toolInFlightMaxMs"], label: "Tool-in-flight bound (ms, 0 = no bound)", zh: "工具在飞上限（毫秒，0 表示不设上限）", kind: "number", hint: "how long ONE tool call may run before it stops explaining a silent member: past this bound the call is reported ONCE as a `tool-expired` incident (a warning — never a scene, never a hold, never an escalation), and `0` disables the bound" },
   { path: ["watchdog", "holdTtlMs"], label: "Hold TTL (ms, 0 = no expiry)", zh: "暂停持有有效期（毫秒，0 表示不设有效期）", kind: "number", hint: "how long a watchdog hold may stay latched before it auto-releases: past this bound the hold releases itself and changes ZERO team bytes, and activity newer than the hold releases it sooner — `0` disables the expiry" },
   ...TEAM_MODEL_KNOBS,
+  ...AGENT_ROUTE_KNOBS,
   { path: ["tui", "dashboardKey"], label: "Ctrl+A dependency view (old dsh-tui builds)", zh: "Ctrl+A 依赖视图（旧版 dsh-tui）", kind: "boolean", hint: "applies to hosts WITHOUT the sidebar panel seam (dsh-tui before 0.13.0) only: while MPD's team projection has a team with at least one task, Ctrl+A opens MPD's merged dependency view instead of the host's subagent dashboard, and with no team Ctrl+A keeps opening the host dashboard — on a host that offers the panel seam, Ctrl+A always keeps its host dashboard meaning and the merged view opens through alt+a and /mpd panel" }
 ];
 
@@ -6716,6 +7197,9 @@ function slotLeafOf(path) {
   const leaf = path[2];
   return TEAM_MODEL_LEAVES.find((candidate) => candidate === leaf);
 }
+function routeLeafOf(path) {
+  return slotLeafOf(path) ?? (path[0] === "agentRoutes" ? TEAM_MODEL_LEAVES.find((candidate) => candidate === path[2]) : undefined);
+}
 function isServed(provider) {
   try {
     if (typeof provider.describe === "function") {
@@ -6737,6 +7221,72 @@ function configPluginPresent(ctx) {
     return false;
   }
 }
+function configServiceOf(ctx) {
+  try {
+    const service = typeof ctx.get === "function" ? ctx.get("mpdConfig") : undefined;
+    return service !== null && typeof service === "object" ? service : undefined;
+  } catch {
+    return;
+  }
+}
+function isPlainTable(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function summaryLeaf(block, leaf) {
+  const found = isPlainTable(block) ? block[leaf] : undefined;
+  return typeof found === "string" && found.length > 0 ? found : "";
+}
+function effectiveModelSummary(config) {
+  if (config === undefined || config === null || typeof config.get !== "function") {
+    return {
+      en: "effective values unavailable (no mpdConfig service in this composition)",
+      zh: "生效值不可用（该组合没有 mpdConfig 服务）"
+    };
+  }
+  const slotFragments = [];
+  try {
+    const slots = config.get("teamModels");
+    for (const slot of ["slot1", "slot2", "slot3", "slot4"]) {
+      const block = isPlainTable(slots) ? slots[slot] : undefined;
+      slotFragments.push(`${slot}:${summaryLeaf(block, "provider")}/${summaryLeaf(block, "model")}/${summaryLeaf(block, "reasoningEffort") || "-"}`);
+    }
+  } catch {
+    slotFragments.length = 0;
+  }
+  const overrideFragments = [];
+  try {
+    const routes = config.get("agentRoutes");
+    if (isPlainTable(routes)) {
+      for (const [name, entry] of Object.entries(routes)) {
+        if (!isPlainTable(entry))
+          continue;
+        const leaves = ["provider", "model", "reasoningEffort"].filter((leaf) => summaryLeaf(entry, leaf) !== "").map((leaf) => `${leaf}=${summaryLeaf(entry, leaf)}`);
+        if (leaves.length > 0)
+          overrideFragments.push(`${name}(${leaves.join(", ")})`);
+      }
+    }
+  } catch {}
+  const chainFragments = [];
+  try {
+    const chains = config.get("modelchain");
+    if (isPlainTable(chains)) {
+      for (const [key, chain] of Object.entries(chains)) {
+        if (!Array.isArray(chain) || chain.length === 0)
+          continue;
+        const first = isPlainTable(chain[0]) && typeof chain[0].provider === "string" && typeof chain[0].model === "string" ? `${chain[0].provider}/${chain[0].model}` : "";
+        if (first !== "")
+          chainFragments.push(`${key}→${first}${chain.length > 1 ? ` (+${String(chain.length - 1)})` : ""}`);
+      }
+    }
+  } catch {}
+  const slotsText = slotFragments.length > 0 ? `slots ${slotFragments.join(" · ")}` : "slots unreadable";
+  const routesText = overrideFragments.length > 0 ? overrideFragments.join(" · ") : "none set";
+  const chainsText = chainFragments.length > 0 ? chainFragments.join(" · ") : "none configured (shipped defaults in force)";
+  return {
+    en: `effective now — ${slotsText}; agentRoutes: ${routesText}; modelchain: ${chainsText}`,
+    zh: `当前生效 —— ${slotsText}；agentRoutes：${routesText}；modelchain：${chainsText}`
+  };
+}
 function declaredField(knob) {
   const hints = knobHintPair(knob);
   return {
@@ -6750,10 +7300,15 @@ function declaredField(knob) {
   };
 }
 var DASHBOARD_TAKEOVER_KNOB = "tui.dashboardKey";
+function wheelInvertFrom(config, floor) {
+  const tui = typeof config === "object" && config !== null ? config.tui : undefined;
+  const leaf = typeof tui === "object" && tui !== null ? tui.wheelInvert : undefined;
+  return typeof leaf === "boolean" ? leaf : floor;
+}
 var SETTINGS_FIELDS = SETTINGS_KNOBS.map(declaredField);
 function settingsFields(lists) {
   return SETTINGS_KNOBS.map((knob) => {
-    const leaf = slotLeafOf(knob.path);
+    const leaf = routeLeafOf(knob.path);
     const field2 = declaredField(knob);
     return leaf === undefined ? field2 : { ...field2, options: lists[leaf] };
   });
@@ -6811,9 +7366,14 @@ function registerSettingsSection(ctx, tui, log, adapterOverride) {
       catalog = undefined;
     }
     const lists = teamModelOptionLists(catalog);
+    const summary = effectiveModelSummary(configServiceOf(ctx));
     log.info(`settings section ${SETTINGS_NS} slot options: provider=${lists.source.provider}(${lists.provider.length})` + ` model=${lists.source.model}(${lists.model.length})` + ` reasoningEffort=${lists.source.reasoningEffort}(${lists.reasoningEffort.length})` + ` catalog=${catalog === undefined ? "unavailable" : catalog.degraded === true ? "degraded" : "live"}`);
     section = { state: "requested", detail: `section ${SETTINGS_NS} requested (no host read-back; slot options ${lists.source.provider}/${lists.source.model}/${lists.source.reasoningEffort})` };
-    return { ...SETTINGS_SECTION, fields: settingsFields(lists) };
+    return {
+      ...SETTINGS_SECTION,
+      fields: settingsFields(lists),
+      descriptions: { zh: `MPD 插件包 · ${SECTION_NOTICE} · ${summary.zh}`, en: `MPD bundle · ${SECTION_NOTICE} · ${summary.en}` }
+    };
   }, ctx);
   return {
     outcome: () => {
@@ -6876,7 +7436,7 @@ function interceptDashboardKey(event, deps) {
   deps.log.debug(`Ctrl+A takeover: ${opened ? "opened" : "FAILED to open"} ${SUBAGENT_SCENE_ID} (${workflow.tasks.length} task(s))`);
   return true;
 }
-function readDashboardWorkflow(workspaceRoot, holds, teamViews, teamRecords) {
+function readDashboardWorkflow(workspaceRoot, holds, teamViews, teamRecords, teams, sessionId) {
   try {
     let holdIds = [];
     try {
@@ -6890,16 +7450,26 @@ function readDashboardWorkflow(workspaceRoot, holds, teamViews, teamRecords) {
     } catch {
       records = [];
     }
-    const principal = principalRecord(records);
-    if (principal !== undefined)
-      return readRecordWorkflow(workspaceRoot(), holdIds, principal);
     let views = [];
     try {
       views = teamViews?.() ?? [];
     } catch {
       views = [];
     }
-    return readTeamWorkflow(workspaceRoot(), holdIds, views);
+    let service;
+    try {
+      service = teams?.();
+    } catch {
+      service = undefined;
+    }
+    return readScopedWorkflow({
+      workspace: workspaceRoot(),
+      ...sessionId === undefined || sessionId === "" ? {} : { sessionId },
+      holds: holdIds,
+      ...service === undefined ? {} : { teams: service },
+      records,
+      views
+    });
   } catch {
     return;
   }
@@ -6957,288 +7527,15 @@ function registerDashboardKey(ctx, tui, deps) {
   return { outcome: () => view.outcome() };
 }
 
-// packages/mpd-tui-plugin/src/panel.ts
-var PANEL_SLUG = "team";
-var PANEL_TITLE = "MPD";
-var PANEL_ICON = "❖";
-var PANEL_MIN_COLUMNS = 28;
-var PANEL_ORDER = 10;
-var PANEL_REFRESH_MS = 1000;
-var MERGED_FALLBACK_ROWS = 24;
-var PANEL_DESCRIPTOR_FROZEN = {
-  apiVersion: 1,
-  id: PANEL_SLUG,
-  title: PANEL_TITLE,
-  icon: PANEL_ICON,
-  minColumns: PANEL_MIN_COLUMNS,
-  order: PANEL_ORDER
-};
-var PANEL_FULLSCREEN_GLYPH = "⤢";
-var PANEL_FULLSCREEN_CELLS = 2;
-var PANEL_TITLE_ROW_ROWS = 1;
-function swallowPointerEvent(event) {
-  if (event === null || typeof event !== "object")
-    return;
-  const stop = event.stopImmediatePropagation;
-  if (typeof stop === "function")
-    stop.call(event);
-}
-function usePanelTitleRow(kit, options) {
-  const hoverState = kit.React.useState(false);
-  const hovered = hoverState[0] === true;
-  const setHovered = hoverState[1];
-  const title = panelText(options.title, Math.max(1, options.cols - PANEL_FULLSCREEN_CELLS));
-  return kit.React.createElement(kit.ui.Box, { key: options.key, flexDirection: "row", justifyContent: "space-between", flexShrink: 0 }, kit.React.createElement(kit.ui.Box, { key: `${options.key}-title`, flexShrink: 1, overflow: "hidden" }, kit.React.createElement(kit.ui.Text, { key: `${options.key}-text`, color: toneColor("dim") }, title)), kit.React.createElement(kit.ui.Box, {
-    key: `${options.key}-fullscreen`,
-    flexShrink: 0,
-    onMouseEnter: () => setHovered(true),
-    onMouseLeave: () => setHovered(false),
-    ...options.open === undefined ? {} : {
-      onClick: (event) => {
-        swallowPointerEvent(event);
-        options.open?.();
-      }
-    }
-  }, kit.React.createElement(kit.ui.Text, { key: `${options.key}-glyph`, bold: hovered, color: hovered ? toneColor("focus") : toneColor("dim") }, PANEL_FULLSCREEN_GLYPH)));
-}
-function takeoverArmed(seamBound, savedKnob, floor) {
-  if (seamBound)
-    return false;
-  return typeof savedKnob === "boolean" ? savedKnob : floor;
-}
-function wrapPanelLines(text, cols) {
-  const width = Math.max(8, Math.floor(Number.isFinite(cols) ? cols : 8));
-  const flat = panelText(text);
-  if (flat === "")
-    return [""];
-  const lines = [];
-  let current = "";
-  for (const word of flat.split(" ")) {
-    if (word === "")
-      continue;
-    const candidate = current === "" ? word : `${current} ${word}`;
-    if (current !== "" && cellWidth(candidate) + 1 > width) {
-      lines.push(current);
-      current = word;
-      continue;
-    }
-    current = candidate;
-  }
-  if (current !== "")
-    lines.push(current);
-  return lines;
-}
-function createPanelComponent(readWorkflow, options) {
-  return function MpdTuiPanel(props) {
-    const kit = panelKit(props?.React, props?.ui);
-    if (kit === undefined) {
-      return null;
-    }
-    const React = kit.React;
-    const ui = kit.ui;
-    const measured = usePanelSize(ui, panelFloorColumns("merged"));
-    const contentCols = panelContentWidth(measured.cols);
-    const width = Math.max(1, contentCols);
-    const snapshot = panelSnapshot(props?.host);
-    let workflow;
-    try {
-      workflow = readWorkflow();
-    } catch {
-      workflow = undefined;
-    }
-    const pinned = React.useState(undefined);
-    const pinnedId = typeof pinned[0] === "string" ? pinned[0] : undefined;
-    const setPinned = pinned[1];
-    usePanelTick(kit, PANEL_REFRESH_MS, true);
-    const view = teamGraphView(workflow, width);
-    const dependentsOf = (id) => (workflow?.tasks ?? []).filter((task) => task.dependencies.includes(id)).map((task) => task.id);
-    const pinnedTask = pinnedId === undefined ? undefined : (workflow?.tasks ?? []).find((task) => task.id === pinnedId);
-    const keysArmed = panelKeysArmed(props?.focused, props?.visible, props?.host);
-    const sizes = { contentRows: 1, viewportRows: 1 };
-    sizes.contentCols = view === undefined ? width : view.width;
-    sizes.viewportCols = width;
-    const windowRows = Math.max(1, (measured.rows ?? MERGED_FALLBACK_ROWS) - PANEL_CHROME_ROWS - PANEL_TITLE_ROW_ROWS);
-    const viewport = usePanelViewport(kit, () => sizes);
-    const drawnLines = view === undefined ? [] : view.lines;
-    usePanelKeys(kit, props?.host, keysArmed, (event) => {
-      const bare = panelKeyEvent(event);
-      if (bare === undefined)
-        return;
-      const flags = bare.key ?? {};
-      const gesture = panelScrollKey(bare);
-      const input = bare.input;
-      const down = flags.downArrow === true || input === "j" || input === "J";
-      const up = flags.upArrow === true || input === "k" || input === "K";
-      const both = panelScrollGesture(bare);
-      if (flags.shift === true && (both === "colLeft" || both === "colRight" || both === "colUp" || both === "colDown")) {
-        if (bare.preventDefault !== undefined)
-          bare.preventDefault();
-        viewport.scrollColBy(both === "colLeft" || both === "colUp" ? -1 : 1);
-        return;
-      }
-      if (flags.shift === true && (both === "colPageUp" || both === "colPageDown")) {
-        if (bare.preventDefault !== undefined)
-          bare.preventDefault();
-        viewport.scrollColBy(both === "colPageUp" ? -width : width);
-        return;
-      }
-      if (gesture !== undefined || down || up) {
-        if (bare.preventDefault !== undefined)
-          bare.preventDefault();
-        if (gesture === "top")
-          viewport.scrollTo(0);
-        else if (gesture === "bottom")
-          viewport.scrollTo(Number.MAX_SAFE_INTEGER);
-        else if (gesture === "pageUp")
-          viewport.scrollBy(-viewport.viewportRows);
-        else if (gesture === "pageDown")
-          viewport.scrollBy(viewport.viewportRows);
-        else
-          viewport.scrollBy(down ? 1 : -1);
-        return;
-      }
-      const escape = flags.escape === true || input === "\x1B";
-      if (!escape)
-        return;
-      if (pinnedId === undefined)
-        return;
-      if (bare.preventDefault !== undefined)
-        bare.preventDefault();
-      setPinned(undefined);
-    });
-    const children = [];
-    const section = subagentSectionRows(snapshot);
-    for (let index = 0;index < section.length; index += 1) {
-      const row = section[index];
-      children.push(React.createElement(ui.Text, {
-        key: `sub-${index}`,
-        ...row.header === true ? { bold: true } : {},
-        ...row.dim === true ? { dimColor: true } : {}
-      }, panelText(row.text)));
-    }
-    if (typeof ui.Divider === "function")
-      children.push(React.createElement(ui.Divider, { key: "sep" }));
-    else
-      children.push(React.createElement(ui.Text, { key: "sep", dimColor: true }, panelText("─")));
-    if (view === undefined) {
-      const empty = wrapPanelLines("task dependency graph: no team in this workspace — `agent_teams_plan` stages one", width);
-      for (let index = 0;index < empty.length; index += 1) {
-        children.push(textRow(kit, empty[index], { key: `graphhead-${index}`, dim: true, maxCells: width, joinNext: index < empty.length - 1 }));
-      }
-    } else {
-      children.push(textRow(kit, `task dependency graph${view.mode === "rail" ? " (rail)" : ""}`, { key: "graphhead", dim: true, maxCells: width }));
-      for (let index = 0;index < view.lines.length; index += 1) {
-        const spans = sliceSpans(view.lines[index], viewport.colOffset, width);
-        const hit = view.hits.find((candidate) => index >= candidate.row && index <= candidate.rowEnd);
-        children.push(hit === undefined ? graphRow(kit, spans, { key: `graph-${index}`, cols: width }) : graphRow(kit, spans, {
-          key: `graph-${index}`,
-          cols: width,
-          onClick: () => {
-            setPinned(hit.taskId);
-          }
-        }));
-      }
-      if (viewport.colOverflow) {
-        children.push(textRow(kit, gutterCellsX(viewport.colOffset, sizes.contentCols ?? width, width), { key: "hrail", tone: "edge", maxCells: width }));
-      }
-      if (pinnedTask !== undefined) {
-        children.push(textRow(kit, `◆ ${pinnedTask.id}`, { key: "pin-head", tone: "focus", bold: true, maxCells: width }));
-        const facts = [
-          ["id", pinnedTask.id],
-          ["kind", pinnedTask.kind ?? "—"],
-          ["visual", pinnedTask.visual],
-          ["verdict", pinnedTask.verdict ?? "—"],
-          ["failedBy", pinnedTask.failedDependencies.length === 0 ? "—" : pinnedTask.failedDependencies.join(",")],
-          ["owner", pinnedTask.assignee ?? "—"],
-          ["attempt", pinnedTask.attempt === undefined ? "—" : String(pinnedTask.attempt)],
-          ["round", pinnedTask.round === undefined ? "—" : String(pinnedTask.round)],
-          ["blockedBy", pinnedTask.dependencies.length === 0 ? "—" : pinnedTask.dependencies.join(",")],
-          ["dependents", dependentsOf(pinnedTask.id).join(",") === "" ? "—" : dependentsOf(pinnedTask.id).join(",")]
-        ];
-        for (const [label, value] of facts)
-          children.push(textRow(kit, `${label} ${value}`, { key: `pin-${label}`, dim: true, maxCells: width }));
-      }
-    }
-    let arrow = [];
-    try {
-      arrow = legendLines(width);
-    } catch {
-      arrow = [];
-    }
-    const legend = legendLinesFor(width, arrow);
-    for (let index = 0;index < legend.length; index += 1) {
-      children.push(textRow(kit, legend[index], { key: `legend-${index}`, dim: true, maxCells: width }));
-    }
-    children.push(textRow(kit, `${PANEL_FULLSCREEN_GLYPH} fullscreen · /mpd panel`, { key: "keys", dim: true, maxCells: width }));
-    const contentRows = Math.max(children.length, 1);
-    const band = clampScroll(viewport.offset, contentRows, viewport.viewportRows);
-    sizes.contentRows = contentRows;
-    sizes.viewportRows = windowRows;
-    const scroller = viewport;
-    const wheelBound = (boundKit, rows) => boundKit.React.createElement(boundKit.ui.Box, { key: "scroll", flexDirection: "column", onWheel: (event) => scroller.onWheel(event) }, ...rows);
-    const body = panelViewportBody(kit, children, scroller, true, wheelBound);
-    const titleRow = usePanelTitleRow(kit, { key: "title", title: PANEL_TITLE, cols: width, ...options?.openFullscreen === undefined ? {} : { open: options.openFullscreen } });
-    return panelFrame(kit, PANEL_TITLE, [titleRow, ...body]);
-  };
-}
-function registerPanelSurface(tui, deps) {
-  const panel = deps.enabled ? tui.registerPanel({
-    ...PANEL_DESCRIPTOR_FROZEN,
-    component: createPanelComponent(deps.readWorkflow, { openFullscreen: () => deps.openMergedScene() })
-  }) : undefined;
-  return {
-    panel,
-    registered: () => panel !== undefined && panel.id() !== undefined,
-    id: () => panel?.id(),
-    outcome: () => {
-      if (panel !== undefined)
-        return panel.outcome();
-      return tui.skipped("panels", "the sidebar panel is disabled by the mpd-tui row config (panel: false)").outcome();
-    },
-    openOrScene: () => {
-      const id = panel?.id();
-      if (!tui.panelSeamBound() || id === undefined) {
-        const refused = panel !== undefined && tui.panelSeamBound() && panel.outcome().state === "refused";
-        return { outcome: refused ? "refused" : "unavailable", sceneOpened: deps.openMergedScene() };
-      }
-      if (typeof tui.panels()?.open !== "function") {
-        deps.log.debug(`the bound panel seam exposes no open() member; using the full-screen merged scene`);
-        return { outcome: "unavailable", sceneOpened: deps.openMergedScene() };
-      }
-      const result = tui.openPanel(id);
-      if (result.opened() === true)
-        return { outcome: "opened", sceneOpened: false };
-      deps.log.debug(`panel open(${id}) refused; falling back to the full-screen merged scene`);
-      return { outcome: "fallback", sceneOpened: deps.openMergedScene() };
-    }
-  };
-}
-function panelStatusLine(outcome, id) {
-  if (outcome === "opened")
-    return t("panel.opened", { id: id ?? "?" });
-  if (outcome === "fallback")
-    return t("panel.fallback", { id: id ?? "?" });
-  if (outcome === "refused")
-    return t("panel.refused");
-  return t("panel.unavailable");
-}
-
 // packages/mpd-tui-plugin/src/panel-dag.ts
-var DAG_PANEL_ID = DAG_PANEL_SLUG;
-var DAG_PANEL_TITLE = "MPD DAG";
-var DAG_PANEL_ICON = "◈";
-var DAG_PANEL_ORDER = 11;
+var DAG_PANEL_TITLE = "MPD";
+var DAG_SECTION_HOST_TITLE = "Host subagents";
+var DAG_SECTION_DAG_TITLE = "MPD team DAG";
 var DAG_PANEL_REFRESH_MS = 1000;
-var DAG_PANEL_DESCRIPTOR_FROZEN = {
-  apiVersion: 1,
-  id: DAG_PANEL_ID,
-  title: DAG_PANEL_TITLE,
-  icon: DAG_PANEL_ICON,
-  minColumns: DAG_PANEL_MIN_COLUMNS,
-  order: DAG_PANEL_ORDER
-};
 function dagPageOf(workflow) {
-  if (workflow === undefined || !Array.isArray(workflow.tasks) || workflow.tasks.length === 0)
+  if (workflow === undefined || !Array.isArray(workflow.tasks))
+    return;
+  if (workflow.tasks.length === 0 && workflow.team === undefined)
     return;
   const tasks = [];
   for (const task of workflow.tasks) {
@@ -7260,8 +7557,19 @@ function dagPageOf(workflow) {
       ...task.verdict === undefined ? {} : { verdict: panelField(task.verdict, 60) ?? "" }
     });
   }
-  if (tasks.length === 0)
+  if (tasks.length === 0 && workflow.team === undefined)
     return;
+  const roster = [];
+  if (Array.isArray(workflow.members)) {
+    for (const member of workflow.members) {
+      roster.push({
+        name: panelField(member.name, 40) ?? "?",
+        status: panelField(member.status, 20) ?? "unknown",
+        done: typeof member.done === "number" ? member.done : 0,
+        total: typeof member.total === "number" ? member.total : 0
+      });
+    }
+  }
   return {
     tasks,
     workspace: panelField(workflow.workspace, 200) ?? "",
@@ -7269,7 +7577,8 @@ function dagPageOf(workflow) {
     phase: panelField(workflow.team?.phase, 20) ?? "unknown",
     completed: typeof workflow.counts?.completed === "number" ? workflow.counts.completed : 0,
     total: typeof workflow.counts?.total === "number" ? workflow.counts.total : tasks.length,
-    members: Array.isArray(workflow.members) ? workflow.members.length : 0,
+    members: roster.length,
+    roster: roster.length === 0 ? "roster  (no members)" : "roster  " + roster.map((member) => `${member.status === "running" ? "◐" : "○"}${member.name} ${member.done}/${member.total}`).join(" · "),
     problems: (Array.isArray(workflow.problems) ? workflow.problems : []).map((problem) => panelField(problem, 120) ?? "").filter((problem) => problem !== "")
   };
 }
@@ -7337,7 +7646,7 @@ function pinnedDetailLines(task, tasks, cols) {
   ];
   return facts.map(([label, value]) => panelText(`${label} ${value}`, cols));
 }
-function dagPanelKeyAction(event, order, focus) {
+function dagPanelKeyAction(event, order, focus, pinned = undefined) {
   if (event === undefined)
     return { consumed: false };
   const flags = event.key ?? {};
@@ -7349,8 +7658,9 @@ function dagPanelKeyAction(event, order, focus) {
 `;
     if (enter || input === " ")
       return { consumed: true, ...focus === undefined ? {} : { pin: true } };
-    if (flags.escape === true || input === "\x1B")
-      return { consumed: true, pin: false };
+    if (flags.escape === true || input === "\x1B") {
+      return pinned === undefined ? { consumed: false } : { consumed: true, pin: false };
+    }
     return { consumed: false };
   }
   if (order.length === 0)
@@ -7476,13 +7786,20 @@ function createDagPanelComponent(readWorkflow, options) {
     }
     const measured = usePanelSize(kit.ui, panelFloorColumns("dag"));
     const contentCols = panelContentWidth(measured.cols);
+    const sessionId = panelSessionId(props?.host);
+    let workflow;
+    try {
+      workflow = readWorkflow(sessionId);
+    } catch {
+      workflow = undefined;
+    }
     let page;
     try {
-      page = dagPageOf(readWorkflow());
+      page = dagPageOf(workflow);
     } catch {
       page = undefined;
     }
-    panelSnapshot(props?.host);
+    useTeamFeed(kit.React, options?.subscribeTeams);
     const keysArmed = panelKeysArmed(props?.focused, props?.visible, props?.host);
     const focused = kit.React.useState(undefined);
     const cursor = kit.React.useState(undefined);
@@ -7539,7 +7856,7 @@ function createDagPanelComponent(readWorkflow, options) {
           viewport.scrollColBy((gesture === "colPageUp" ? -1 : 1) * contentCols);
         return;
       }
-      const action = dagPanelKeyAction(bare, order, cursorNow());
+      const action = dagPanelKeyAction(bare, order, cursorNow(), pinnedNow());
       if (!action.consumed)
         return;
       if (bare?.preventDefault !== undefined)
@@ -7556,15 +7873,50 @@ function createDagPanelComponent(readWorkflow, options) {
         movePin(undefined);
     });
     const children = [];
+    let section = [];
+    try {
+      section = subagentSectionRows(panelSnapshot(props?.host));
+    } catch {
+      section = [];
+    }
+    children.push(surfaceRule(kit, "section-host", DAG_SECTION_HOST_TITLE));
+    for (let index = 0;index < section.length; index += 1) {
+      const row = section[index];
+      if (row === undefined)
+        continue;
+      children.push(textRow(kit, row.text, {
+        key: `sub-${index}`,
+        ...row.header === true ? { bold: true } : {},
+        ...row.dim === true ? { dim: true } : {},
+        maxCells: contentCols
+      }));
+    }
+    children.push(surfaceRule(kit, "section-dag", DAG_SECTION_DAG_TITLE));
     const viewport = usePanelViewport(kit, () => sizes);
     const header = page === undefined ? undefined : headerFacts(page, contentCols);
-    if (header !== undefined) {
+    const scope = workflow?.source?.scope;
+    if (header === undefined && scope === "none") {
+      children.push(textRow(kit, `${NO_SESSION_TEAM_MARKER} — \`agent_teams_plan\` binds one here`, { key: "empty-session", dim: true, maxCells: contentCols }));
+      const held = workflow?.source?.workspaceTeams;
+      if (typeof held === "number" && held > 0) {
+        children.push(textRow(kit, `this workspace holds ${held} team(s), none bound to this session`, { key: "empty-session-count", dim: true, maxCells: contentCols }));
+      }
+    } else if (header !== undefined) {
       const spans = [];
       for (const fact of header.facts)
         spans.push({ text: `${fact.label} `, tone: "dim" }, { text: `${fact.value}  `, tone: fact.tone });
       if (header.bar !== "")
         spans.push({ text: header.bar, tone: "completed" });
       children.push(graphRow(kit, spans.map((span) => ({ text: panelText(span.text, contentCols), tone: span.tone })), { key: "header", cols: contentCols }));
+      if (scope === "workspace") {
+        children.push(textRow(kit, `${WORKSPACE_SCOPE_MARKER}: no session id on this surface, showing the workspace's newest team`, { key: "scope", dim: true, maxCells: contentCols }));
+      }
+      if (page !== undefined && page.tasks.length === 0) {
+        children.push(textRow(kit, page.roster, { key: "roster", dim: true, maxCells: contentCols }));
+        children.push(textRow(kit, scope === "session" ? "this session's team has no tasks yet — `agent_teams_plan` posts them" : "the workspace's team has no tasks yet — `agent_teams_plan` posts them", { key: "empty-board", dim: true, maxCells: contentCols }));
+      }
+    } else if (scope === "session") {
+      children.push(textRow(kit, "this session's team has no tasks yet — `agent_teams_plan` posts them", { key: "empty-session-board", dim: true, maxCells: contentCols }));
     } else {
       children.push(textRow(kit, "no team in this workspace — `agent_teams_plan` stages one", { key: "empty", dim: true, maxCells: contentCols }));
     }
@@ -7616,8 +7968,10 @@ function createDagPanelComponent(readWorkflow, options) {
     const pinnedTask = pinned === undefined ? undefined : page?.tasks.find((task) => task.id === pinned);
     if (pinnedTask !== undefined) {
       children.push(textRow(kit, `${DAG_CHROME.pinMarker} ${pinnedTask.id}`, { key: "pin-head", tone: "focus", bold: true, maxCells: contentCols }));
+      let detailRow = 0;
       for (const line of pinnedDetailLines(pinnedTask, page?.tasks ?? [], contentCols)) {
-        children.push(textRow(kit, line, { key: `pin-${line.slice(0, 24)}`, dim: true, maxCells: contentCols }));
+        children.push(textRow(kit, line, { key: `pin-${detailRow}`, dim: true, maxCells: contentCols }));
+        detailRow += 1;
       }
     }
     let arrow = [];
@@ -7626,8 +7980,10 @@ function createDagPanelComponent(readWorkflow, options) {
     } catch {
       arrow = [];
     }
+    let legendRow = 0;
     for (const line of legendLinesFor(contentCols, arrow)) {
-      children.push(textRow(kit, line, { key: `legend-${line.slice(0, 24)}`, dim: true, maxCells: contentCols }));
+      children.push(textRow(kit, line, { key: `legend-${legendRow}`, dim: true, maxCells: contentCols }));
+      legendRow += 1;
     }
     const contentRows = Math.max(children.length, 1);
     sizes.contentRows = contentRows;
@@ -7640,10 +7996,41 @@ function createDagPanelComponent(readWorkflow, options) {
     return panelFrame(kit, DAG_PANEL_TITLE, [titleRow, ...body, footer]);
   };
 }
-function registerDagPanel(tui, deps) {
+
+// packages/mpd-tui-plugin/src/panel.ts
+var PANEL_SLUG = "team";
+var PANEL_TITLE = "MPD";
+var PANEL_ICON = "❖";
+var PANEL_MIN_COLUMNS = 28;
+var PANEL_ORDER = 10;
+var PANEL_DESCRIPTOR_FROZEN = {
+  apiVersion: 1,
+  id: PANEL_SLUG,
+  title: PANEL_TITLE,
+  icon: PANEL_ICON,
+  minColumns: PANEL_MIN_COLUMNS,
+  order: PANEL_ORDER
+};
+function takeoverArmed(seamBound, savedKnob, floor) {
+  if (seamBound)
+    return false;
+  return typeof savedKnob === "boolean" ? savedKnob : floor;
+}
+function createPanelComponent(readWorkflow, options) {
+  return createDagPanelComponent(readWorkflow, {
+    ...options?.openFullscreen === undefined ? {} : { openFullscreen: options.openFullscreen },
+    ...options?.openAgentPage === undefined ? {} : { openAgentPage: options.openAgentPage },
+    ...options?.subscribeTeams === undefined ? {} : { subscribeTeams: options.subscribeTeams }
+  });
+}
+function registerPanelSurface(tui, deps) {
   const panel = deps.enabled ? tui.registerPanel({
-    ...DAG_PANEL_DESCRIPTOR_FROZEN,
-    component: createDagPanelComponent(deps.readWorkflow, { openAgentPage: deps.openAgentPage, openFullscreen: deps.openFullscreen })
+    ...PANEL_DESCRIPTOR_FROZEN,
+    component: createPanelComponent(deps.readWorkflow, {
+      openFullscreen: deps.openFullscreenScene ?? (() => deps.openMergedScene()),
+      ...deps.openAgentPage === undefined ? {} : { openAgentPage: deps.openAgentPage },
+      ...deps.subscribeTeams === undefined ? {} : { subscribeTeams: deps.subscribeTeams }
+    })
   }) : undefined;
   return {
     panel,
@@ -7652,10 +8039,34 @@ function registerDagPanel(tui, deps) {
     outcome: () => {
       if (panel !== undefined)
         return panel.outcome();
-      return tui.skipped("panels", "the DAG sidebar page is disabled by the mpd-tui row config (panel: false)").outcome();
+      return tui.skipped("panels", "the sidebar panel is disabled by the mpd-tui row config (panel: false)").outcome();
     },
-    openScene: () => deps.openScene()
+    openOrScene: () => {
+      const id = panel?.id();
+      if (!tui.panelSeamBound() || id === undefined) {
+        const refused = panel !== undefined && tui.panelSeamBound() && panel.outcome().state === "refused";
+        return { outcome: refused ? "refused" : "unavailable", sceneOpened: deps.openMergedScene() };
+      }
+      if (typeof tui.panels()?.open !== "function") {
+        deps.log.debug(`the bound panel seam exposes no open() member; using the full-screen merged scene`);
+        return { outcome: "unavailable", sceneOpened: deps.openMergedScene() };
+      }
+      const result = tui.openPanel(id);
+      if (result.opened() === true)
+        return { outcome: "opened", sceneOpened: false };
+      deps.log.debug(`panel open(${id}) refused; falling back to the full-screen merged scene`);
+      return { outcome: "fallback", sceneOpened: deps.openMergedScene() };
+    }
   };
+}
+function panelStatusLine(outcome, id) {
+  if (outcome === "opened")
+    return t("panel.opened", { id: id ?? "?" });
+  if (outcome === "fallback")
+    return t("panel.fallback", { id: id ?? "?" });
+  if (outcome === "refused")
+    return t("panel.refused");
+  return t("panel.unavailable");
 }
 
 // packages/mpd-tui-plugin/src/panel-workmate.ts
@@ -7875,8 +8286,11 @@ function createWorkmatePanelComponent(readLibrary, options) {
         }
         children.push(kit.React.createElement(kit.ui.Text, { key: `${entry.key}-gap` }, ""));
       }
-      for (const problem of library.problems)
-        children.push(textRow(kit, problem, { key: `p-${problem.slice(0, 24)}`, tone: "failed", maxCells: contentCols }));
+      let problemRow = 0;
+      for (const problem of library.problems) {
+        children.push(textRow(kit, problem, { key: `p-${problemRow}`, tone: "failed", maxCells: contentCols }));
+        problemRow += 1;
+      }
     }
     const contentRows = Math.max(children.length, 1);
     const band = clampScroll(viewport.offset, contentRows, viewport.viewportRows);
@@ -7902,7 +8316,7 @@ function registerWorkmatePanel(tui, deps) {
     outcome: () => {
       if (panel !== undefined)
         return panel.outcome();
-      return tui.skipped("panels", "the workmate sidebar page is disabled by the mpd-tui row config (panel: false)").outcome();
+      return tui.skipped("panels", "the workmate sidebar page is disabled by the mpd-tui row config (workmate: false)").outcome();
     },
     openScene: () => deps.openScene()
   };
@@ -7934,7 +8348,20 @@ function usableKit(React, ui) {
 function surfaceKit(React, ui) {
   return { React, ui };
 }
-function readWorkflow(workspaceRoot, holds, teamViews, teamRecords) {
+function channelSessionOf(props) {
+  return sessionIdOf(props?.channel);
+}
+function scopedRecordsFor(teamDeps, workspace, sessionId, records) {
+  let service;
+  try {
+    service = teamDeps?.teams?.();
+  } catch {
+    service = undefined;
+  }
+  const mine = sessionRecord(service, workspace, sessionId, records);
+  return mine === undefined ? [] : [mine];
+}
+function readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teams, sessionId) {
   try {
     let holdIds = [];
     try {
@@ -7954,10 +8381,20 @@ function readWorkflow(workspaceRoot, holds, teamViews, teamRecords) {
     } catch {
       records = [];
     }
-    const principal = records.find((record) => record.endedAt === undefined) ?? records[0];
-    if (principal !== undefined)
-      return readRecordWorkflow(workspaceRoot(), holdIds, principal);
-    return readTeamWorkflow(workspaceRoot(), holdIds, views);
+    let service;
+    try {
+      service = teams?.();
+    } catch {
+      service = undefined;
+    }
+    return readScopedWorkflow({
+      workspace: workspaceRoot(),
+      ...sessionId === undefined || sessionId === "" ? {} : { sessionId },
+      holds: holdIds,
+      ...service === undefined ? {} : { teams: service },
+      records,
+      views
+    });
   } catch {
     return;
   }
@@ -7996,7 +8433,7 @@ function measureTerminal2(ui) {
     window: Number.isFinite(terminalRows) && terminalRows > 8 ? terminalRows - 6 : 20
   };
 }
-function createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamViews, teamRecords, onHostKit) {
+function createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamViews, teamRecords, onHostKit, teamDeps) {
   return function MpdTuiBoard(props) {
     const React = props?.React;
     const ui = props?.ui;
@@ -8008,7 +8445,10 @@ function createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamVi
     const surface = surfaceKit(React, ui);
     const read = () => {
       try {
-        const state2 = readBoardState(workspaceRoot(), home(), teamViews?.() ?? [], teamRecords?.() ?? []);
+        const sessionId = channelSessionOf(props);
+        const scopedRecords = sessionId === undefined ? teamRecords?.() ?? [] : scopedRecordsFor(teamDeps, workspaceRoot(), sessionId, teamRecords?.() ?? []);
+        const scopedViews = teamViews?.() ?? [];
+        const state2 = readBoardState(workspaceRoot(), home(), sessionId === undefined ? scopedViews : sessionViewsOf(scopedViews, sessionId), scopedRecords);
         return { rows: boardLines(state2, holds()), state: state2 };
       } catch {
         return { rows: ["board state unreadable"] };
@@ -8018,6 +8458,7 @@ function createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamVi
     const board = state[0];
     const rows = board.rows;
     const setBoard = state[1];
+    useTeamFeed(React, teamDeps?.subscribeTeams, () => setBoard(read()));
     React.useEffect(() => {
       setBoard(read());
       let timer;
@@ -8077,7 +8518,7 @@ function createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamVi
     return surfaceFrame(surface, "frame", borderTitle, children, tone, clock.ref);
   };
 }
-function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, teamRecords, onHostKit) {
+function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, teamRecords, onHostKit, teamDeps) {
   return function MpdTuiTeam(props) {
     const React = props?.React;
     const ui = props?.ui;
@@ -8111,7 +8552,7 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
     const refresh = () => {
       let next;
       try {
-        next = readWorkflow(workspaceRoot, holds, teamViews, teamRecords);
+        next = readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, channelSessionOf(props));
       } catch {
         next = undefined;
       }
@@ -8120,6 +8561,7 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
         latestRef.current = { staged: next?.team?.staged === true, ...next?.team?.id === undefined ? {} : { teamId: next.team.id } };
       }
     };
+    useTeamFeed(React, teamDeps?.subscribeTeams, refresh);
     React.useEffect(() => {
       refresh();
       let timer;
@@ -8222,10 +8664,23 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
       bold: true,
       tone
     }));
+    if (workflow?.source?.scope === "workspace") {
+      children.push(surfaceBodyRow(surface, "scope", `scope      ${WORKSPACE_SCOPE_MARKER} (no session id on this surface)`));
+    }
     if (workflow === undefined) {
       children.push(surfaceText(surface, "unreadable", "team state unreadable", { tone: "failed" }));
     } else if (head === undefined) {
-      children.push(surfaceText(surface, "none", "no team in this workspace — stage one with agent_teams_plan, then approve it", { dim: true }));
+      if (workflow.source?.scope === "none") {
+        children.push(surfaceText(surface, "none-session", `${NO_SESSION_TEAM_MARKER} — stage one with agent_teams_plan, then approve it`, { dim: true }));
+        const held = workflow.source?.workspaceTeams;
+        if (typeof held === "number" && held > 0) {
+          children.push(surfaceText(surface, "none-session-count", `this workspace holds ${held} team(s), none bound to this session`, { dim: true }));
+        }
+      } else if (workflow.source?.scope === "workspace") {
+        children.push(surfaceText(surface, "none", `${WORKSPACE_SCOPE_MARKER} (no session id on this surface) — no team in this workspace; stage one with agent_teams_plan, then approve it`, { dim: true }));
+      } else {
+        children.push(surfaceText(surface, "none", "no team in this workspace — stage one with agent_teams_plan, then approve it", { dim: true }));
+      }
     } else {
       const counts = workflow.counts;
       children.push(surfaceText(surface, "phase", chromeTitle([
@@ -8267,10 +8722,10 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
           setHover(under);
         },
         onWheel: (event) => {
-          const deltaY = Number(event?.deltaY ?? 0);
+          const deltaY = normalizeWheelDelta(Number(event?.deltaY ?? 0), wheelInvertOn());
           if (deltaY !== 0)
             setScroll(Math.max(0, scroll + (deltaY > 0 ? 1 : -1)));
-          const deltaX = Number(event?.deltaX ?? 0);
+          const deltaX = normalizeWheelDelta(Number(event?.deltaX ?? 0), wheelInvertOn());
           if (deltaX !== 0)
             setScrollX(Math.max(0, Math.min(scrollXMax, scrollXAt + (deltaX > 0 ? 1 : -1))));
         }
@@ -8331,7 +8786,7 @@ function planActionLines(workflow, echo, armed, message, servedPhrase = "") {
   rows.push("Ctrl+X approve · Ctrl+D discard ×2 · Ctrl+R re-read · esc back");
   return rows;
 }
-function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, planFor, teamViews, teamRecords, onHostKit) {
+function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, planFor, teamViews, teamRecords, onHostKit, teamDeps) {
   return function MpdTuiPlan(props) {
     const React = props?.React;
     const ui = props?.ui;
@@ -8342,11 +8797,7 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, plan
     const surface = surfaceKit(React, ui);
     const clock = useSurfaceClock(ui);
     const phase = animPhase(clock.time);
-    const channelSession = () => {
-      const live = props?.channel;
-      const id = typeof live?.sessionId === "string" ? live.sessionId : undefined;
-      return id === undefined || id === "" ? undefined : id;
-    };
+    const channelSession = () => channelSessionOf(props);
     const targetState = React.useState(() => ({ teamId: nav.planTeamId, fromTeam: nav.planFromTeam }));
     const target = targetState[0];
     const viewState = React.useState(undefined);
@@ -8368,17 +8819,18 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, plan
     const scroll = scrollState[0];
     const setScroll = scrollState[1];
     const refresh = () => {
-      setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords));
+      setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, channelSession()));
       setEcho("");
       setArmedAt(0);
       setScroll(0);
     };
+    useTeamFeed(React, teamDeps?.subscribeTeams, () => setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, channelSession())));
     React.useEffect(() => {
       refresh();
       let timer;
       try {
         timer = setInterval(() => {
-          setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords));
+          setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, channelSession()));
         }, BOARD_REFRESH_MS);
       } catch {
         timer = undefined;
@@ -8458,7 +8910,7 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, plan
         setMessage(`approve failed: ${String(error?.message ?? error)}`);
       } finally {
         setBusy(false);
-        setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords));
+        setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, channelSession()));
       }
     };
     const runDiscard = async () => {
@@ -8487,7 +8939,7 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, plan
         setMessage(`discard failed: ${String(error?.message ?? error)}`);
       } finally {
         setBusy(false);
-        setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords));
+        setView(readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, channelSession()));
       }
     };
     if (typeof ui.useInput === "function") {
@@ -8573,7 +9025,7 @@ function createPlanComponent(workspaceRoot, holds, nav, openScene, actions, plan
     return surfaceFrame(surface, "frame", clampCells(chromeTitle([`${stateMarker(tone, phase)} MPD plan approval`, size]), Math.max(8, measured.cols - 6)), children, tone, clock.ref);
   };
 }
-function registerScene(ctx, tui, log, workspaceRoot, home, holds = () => [], planActions = UNAVAILABLE_PLAN_ACTIONS, planReader, teamViews, teamRecords, onHostKit) {
+function registerScene(ctx, tui, log, workspaceRoot, home, holds = () => [], planActions = UNAVAILABLE_PLAN_ACTIONS, planReader, teamViews, teamRecords, onHostKit, teamDeps) {
   const nav = { planFromTeam: false };
   const openScene = (id) => {
     if (!tui.openScene(id)) {
@@ -8589,13 +9041,13 @@ function registerScene(ctx, tui, log, workspaceRoot, home, holds = () => [], pla
       return;
     }
     try {
-      tui.registerScene({ id: BOARD_SCENE_ID, title: t("scene.board"), component: createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamViews, teamRecords, onHostKit) }, ctx);
-      tui.registerScene({ id: TEAM_SCENE_ID, title: t("scene.team"), component: createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, teamRecords, onHostKit) }, ctx);
-      tui.registerScene({ id: PLAN_SCENE_ID, title: t("scene.plan"), component: createPlanComponent(workspaceRoot, holds, nav, openScene, planActions, planReader, teamViews, teamRecords, onHostKit) }, ctx);
+      tui.registerScene({ id: BOARD_SCENE_ID, title: t("scene.board"), component: createBoardComponent(workspaceRoot, home, holds, nav, openScene, teamViews, teamRecords, onHostKit, teamDeps) }, ctx);
+      tui.registerScene({ id: TEAM_SCENE_ID, title: t("scene.team"), component: createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, teamRecords, onHostKit, teamDeps) }, ctx);
+      tui.registerScene({ id: PLAN_SCENE_ID, title: t("scene.plan"), component: createPlanComponent(workspaceRoot, holds, nav, openScene, planActions, planReader, teamViews, teamRecords, onHostKit, teamDeps) }, ctx);
       tui.registerScene({
         id: SUBAGENT_SCENE_ID,
         title: t("scene.subagents"),
-        component: createSubagentSceneComponent(() => readWorkflow(workspaceRoot, holds, teamViews, teamRecords), onHostKit)
+        component: createSubagentSceneComponent((sessionId) => readWorkflow(workspaceRoot, holds, teamViews, teamRecords, teamDeps?.teams, sessionId), onHostKit, undefined, teamDeps?.subscribeTeams)
       }, ctx);
       handle.record({ state: "requested", detail: `${BOARD_SCENE_ID}, ${TEAM_SCENE_ID}, ${PLAN_SCENE_ID}, ${SUBAGENT_SCENE_ID} requested (no host read-back)` });
     } catch (error) {
@@ -8641,7 +9093,7 @@ var COMMAND_CHILDREN = [
   { name: "plan", description: "Review and approve a staged plan", descriptions: { zh: "审阅并批准待定计划", en: "Review and approve a staged plan" } },
   { name: "subagents", description: "Open the subagents + team panel", descriptions: { zh: "打开子代理与团队合并面板", en: "Open the subagents + team panel" } },
   { name: "panel", description: "Open the sidebar panel, or the full-screen merged panel where the host has no panel seam", descriptions: { zh: "打开侧栏面板；宿主无面板接缝时使用全屏合并面板", en: "Open the sidebar panel, or the full-screen merged panel where the host has no panel seam" } },
-  { name: "dag", description: "Open the dependency DAG page (its own sidebar panel), or the full-screen fallback", descriptions: { zh: "打开依赖 DAG 页面（独立侧栏面板）；无接缝时使用全屏回退", en: "Open the dependency DAG page (its own sidebar panel), or the full-screen fallback" } },
+  { name: "dag", description: "Open the MPD panel on its dependency DAG, or the full-screen DAG scene", descriptions: { zh: "打开 MPD 面板的依赖 DAG 视图；无接缝时使用全屏 DAG 场景", en: "Open the MPD panel on its dependency DAG, or the full-screen DAG scene" } },
   { name: "workmate", description: "Open the workmate page (its own sidebar panel), or the full-screen fallback", descriptions: { zh: "打开 workmate 页面（独立侧栏面板）；无接缝时使用全屏回退", en: "Open the workmate page (its own sidebar panel), or the full-screen fallback" } },
   { name: "workmates", description: "List the durable workmate library", descriptions: { zh: "列出 workmate 库", en: "List the durable workmate library" } },
   { name: "status", description: "Print the mpd status line", descriptions: { zh: "输出 MPD 状态行", en: "Print the mpd status line" } }
@@ -8896,7 +9348,7 @@ function attemptDecisionEvents(ctx, tui, log) {
     permission,
     sub: tui.requestDecisionEvent(event, () => {
       return;
-    }, { scope: event, order: DECISION_ORDER, identity: ctx })
+    }, { scope: event, order: DECISION_ORDER })
   }));
   const unsupported = () => subs.find(({ sub }) => sub.outcome().state !== "absent" && !sub.supported());
   const unbound = () => subs.every(({ sub }) => sub.outcome().state === "absent");
@@ -9041,6 +9493,36 @@ var MENU_TEXT = {
   providerHint: { zh: "该槽位的提供商；模型列表来自它", en: "this slot's provider; the model list comes from it" },
   modelHint: { zh: "该槽位的模型", en: "this slot's model" },
   effortHint: { zh: "该槽位的推理强度", en: "this slot's reasoning effort" },
+  titleTarget: { zh: "应用到哪个范围", en: "apply to which scope" },
+  targetSlotLabel: { zh: "整个槽位", en: "the whole slot" },
+  targetClearLabel: { zh: "清除成员覆盖", en: "clear member overrides" },
+  targetSlotHint: {
+    zh: "整个槽位——该组的所有成员（写入 teamModels，作为这组成员的默认路由）",
+    en: "the whole slot — every member of the group (writes teamModels, the group's default route)"
+  },
+  targetMemberHint: {
+    zh: "仅该成员（写入 agentRoutes，优先于槽位）。当前生效：{route}",
+    en: "this member only (writes agentRoutes, over the slot). effective now: {route}"
+  },
+  targetRouteUnreadable: { zh: "（存储值不可读）", en: " (stored values unreadable)" },
+  targetClearHint: {
+    zh: "清除本组成员的专属覆盖（删除 agentRoutes 条目，成员恢复跟随槽位）",
+    en: "clear this group's member overrides (removes their agentRoutes entries; the members fall back to the slot)"
+  },
+  memberWrote: {
+    zh: "mpd-model: 成员 {name} 的专属路由已设置 提供商 {provider} · 模型 {model} · 推理强度 {effort}；{disclosure}。{notLost}",
+    en: "mpd-model: member {name} own route set to provider {provider} · model {model} · reasoning effort {effort}; {disclosure}. {notLost}"
+  },
+  clearedWrote: {
+    zh: "mpd-model: 已清除 {count} 个成员覆盖叶子（{names}）——这些成员恢复跟随各自槽位",
+    en: "mpd-model: cleared {count} override leaf/leaves ({names}) — those members follow their slots again"
+  },
+  clearedNone: {
+    zh: "mpd-model: 该组成员没有可清除的专属覆盖，未写入任何设置",
+    en: "mpd-model: this group's members carry no overrides to clear — nothing was written"
+  },
+  sealedByCancelTarget: { zh: "mpd-model: 已取消范围选择，未写入任何设置", en: "mpd-model: the scope panel was cancelled — nothing was written" },
+  sealedByNoMember: { zh: "mpd-model: 未知成员“{member}”，未写入任何设置", en: 'mpd-model: unknown member "{member}" — nothing was written' },
   sealedByDialogs: {
     zh: "mpd-model: 该组合没有对话框接缝（无界面嵌入），未打开菜单，也未写入任何设置",
     en: "mpd-model: this composition has no dialogs seam (a headless embedder) — no menu was opened and nothing was written"
@@ -9196,6 +9678,33 @@ async function openModelMenu(tui, log, options = {}) {
     return { kind: "error", text: say("sealedByCancelSlot", lang) };
   if (!TEAM_MODEL_SLOTS.includes(slot))
     return { kind: "error", text: say("sealedByNoSlot", lang, { slot: short(slot) }) };
+  const tables = readRouteTables(adapter);
+  const scope = await dialogs.select(say("titleTarget", lang), targetPanelOptions(slot, tables, lang), PANEL_TIMEOUT_MS);
+  if (scope === undefined)
+    return { kind: "error", text: say("sealedByCancelTarget", lang) };
+  const scopeGroup = TEAM_MODEL_SLOT_GROUPS[slot];
+  const member = scope === TARGET_SLOT || scope === TARGET_CLEAR ? undefined : String(scope);
+  if (member !== undefined && !scopeGroup.members.includes(member)) {
+    return { kind: "error", text: say("sealedByNoMember", lang, { member: short(member) }) };
+  }
+  if (scope === TARGET_CLEAR) {
+    if (typeof adapter.settingsMutate !== "function")
+      return { kind: "error", text: say("sealedByNoNamespace", lang) };
+    const clearOps = scopeGroup.members.flatMap((name) => ["provider", "model", "reasoningEffort"].filter((leaf) => tables.agentRoutes[name]?.[leaf] !== undefined).map((leaf) => ({ op: "unset", path: ["agentRoutes", name, leaf] })));
+    if (clearOps.length === 0)
+      return { kind: "success", text: say("clearedNone", lang) };
+    let entryRevision;
+    try {
+      entryRevision = adapter.settingsReader?.(SETTINGS_ENTRY)?.describe()?.revision;
+    } catch {}
+    const cleared = await adapter.settingsMutate(SETTINGS_ENTRY, clearOps, entryRevision);
+    if (!cleared.ok)
+      return { kind: "error", text: say("sealedByRefused", lang, { error: short(cleared.error) }) };
+    const clearedNames = [...new Set(clearOps.map((op) => op.path[1]))].join(", ");
+    log.info(`/${MODEL_COMMAND} cleared agentRoutes for ${clearedNames} (${String(clearOps.length)} leaf/leaves)`);
+    return { kind: "success", text: say("clearedWrote", lang, { count: String(clearOps.length), names: clearedNames }) };
+  }
+  const writePrefix = member === undefined ? [TEAM_MODELS_PREFIX, slot] : ["agentRoutes", member];
   const provider = await dialogs.select(say("titleProvider", lang), lists.provider.map((option) => ({ id: option.value, label: option.label, description: say("providerHint", lang) })), PANEL_TIMEOUT_MS);
   if (provider === undefined)
     return { kind: "error", text: say("sealedByCancelProvider", lang) };
@@ -9207,23 +9716,30 @@ async function openModelMenu(tui, log, options = {}) {
   const effort = await dialogs.select(say("titleEffort", lang), efforts.map((option) => ({ id: option.value, label: option.label, description: say("effortHint", lang) })), PANEL_TIMEOUT_MS);
   if (effort === undefined)
     return { kind: "error", text: say("sealedByCancelEffort", lang) };
-  const target = locateNamespace(adapter, slot);
+  const target = member === undefined ? locateNamespace(adapter, slot) : { namespace: SETTINGS_ENTRY, revision: (() => {
+    try {
+      return adapter.settingsReader?.(SETTINGS_ENTRY)?.describe()?.revision;
+    } catch {
+      return;
+    }
+  })() };
   if (typeof adapter.settingsMutate !== "function")
     return { kind: "error", text: say("sealedByNoNamespace", lang) };
   const ops = ["provider", "model", "reasoningEffort"].map((leaf) => ({
     op: "set",
-    path: [TEAM_MODELS_PREFIX, slot, leaf],
+    path: [...writePrefix, leaf],
     value: leaf === "provider" ? provider : leaf === "model" ? model : effort
   }));
   const written = await adapter.settingsMutate(target.namespace, ops, target.revision);
   if (!written.ok)
     return { kind: "error", text: say("sealedByRefused", lang, { error: short(written.error) }) };
-  log.info(`/${MODEL_COMMAND} wrote ${target.namespace}.${TEAM_MODELS_PREFIX}.${slot} = ${provider}/${model}/${effort}`);
+  log.info(`/${MODEL_COMMAND} wrote ${target.namespace}.${writePrefix.join(".")} = ${provider}/${model}/${effort}`);
   const fallback = catalogWhy === undefined ? "" : ` · ${say("catalogFallback", lang, { why: catalogWhy })}`;
   return {
     kind: "success",
-    text: `${say("wrote", lang, {
+    text: `${say(member === undefined ? "wrote" : "memberWrote", lang, {
       slot,
+      name: member ?? "",
       provider: short(provider),
       model: short(model),
       effort: short(effort),
@@ -9232,10 +9748,80 @@ async function openModelMenu(tui, log, options = {}) {
     })}${fallback}`
   };
 }
+function readRouteTables(adapter) {
+  let value;
+  for (const namespace of [SETTINGS_ENTRY, MODEL_NAMESPACE]) {
+    const reader = adapter.settingsReader?.(namespace);
+    if (reader === undefined)
+      continue;
+    try {
+      value = reader.get();
+    } catch {
+      value = undefined;
+    }
+    if (value !== undefined)
+      break;
+  }
+  const slots = {};
+  for (const slot of TEAM_MODEL_SLOTS)
+    slots[slot] = storedSlot(value, slot);
+  const agentRoutes = {};
+  for (const candidate of [value, isRecord2(value) ? value.user : undefined, isRecord2(value) ? value.value : undefined]) {
+    if (!isRecord2(candidate))
+      continue;
+    const table = candidate["agentRoutes"];
+    if (!isRecord2(table))
+      continue;
+    for (const [name, entry] of Object.entries(table)) {
+      if (agentRoutes[name] !== undefined)
+        continue;
+      if (!isRecord2(entry))
+        continue;
+      const leaves = {};
+      for (const leaf of ["provider", "model", "reasoningEffort"]) {
+        const found = entry[leaf];
+        if (typeof found === "string" && found.length > 0)
+          leaves[leaf] = found;
+      }
+      if (Object.keys(leaves).length > 0)
+        agentRoutes[name] = leaves;
+    }
+  }
+  return { slots, agentRoutes };
+}
+function memberRouteText(tables, member, slot) {
+  const base = tables.slots[slot] ?? {};
+  const entry = tables.agentRoutes[member] ?? {};
+  const route = (leaf) => entry[leaf] ?? base[leaf] ?? "";
+  return `${route("provider") || "-"} / ${route("model") || "-"} / ${route("reasoningEffort") || "-"}`;
+}
+var TARGET_SLOT = "slot";
+var TARGET_CLEAR = "clear";
+function targetPanelOptions(slot, tables, lang) {
+  const group = TEAM_MODEL_SLOT_GROUPS[slot];
+  if (group === undefined)
+    return [];
+  const options = [
+    { id: TARGET_SLOT, label: `1. ${pick(MENU_TEXT.targetSlotLabel, lang)}`, description: say("targetSlotHint", lang) }
+  ];
+  for (const [index, member] of group.members.entries()) {
+    options.push({
+      id: member,
+      label: `${index + 2}. ${member}`,
+      description: say("targetMemberHint", lang, { route: memberRouteText(tables, member, slot) })
+    });
+  }
+  options.push({
+    id: TARGET_CLEAR,
+    label: `${group.members.length + 2}. ${pick(MENU_TEXT.targetClearLabel, lang)}`,
+    description: say("targetClearHint", lang)
+  });
+  return options;
+}
 
 // packages/mpd-tui-plugin/src/index.ts
 var name = "mpd-tui";
-var Config = Schema.object({
+var Config = markVolatile(Schema.object({
   statusLine: Schema.boolean().default(true),
   statusIntervalMs: Schema.number().default(3000),
   renderers: Schema.boolean().default(true),
@@ -9246,11 +9832,13 @@ var Config = Schema.object({
   shortcuts: Schema.boolean().default(true),
   dialogs: Schema.boolean().default(true),
   panel: Schema.boolean().default(true),
+  workmate: Schema.boolean().default(true),
   dashboardKey: Schema.boolean().default(true),
+  wheelInvert: Schema.boolean().default(false),
   sessionEvents: Schema.boolean().default(true),
   decisionEvents: Schema.boolean().default(true),
   logPrefix: Schema.string().default("mpd-tui")
-});
+}));
 function resolveConfig(config = {}) {
   const bool = (value, fallback) => typeof value === "boolean" ? value : fallback;
   const valid = typeof config.statusIntervalMs === "number" && Number.isFinite(config.statusIntervalMs) && config.statusIntervalMs >= 0;
@@ -9265,7 +9853,9 @@ function resolveConfig(config = {}) {
     shortcuts: bool(config.shortcuts, true),
     dialogs: bool(config.dialogs, true),
     panel: bool(config.panel, true),
+    workmate: bool(config.workmate, true),
     dashboardKey: bool(config.dashboardKey, true),
+    wheelInvert: bool(config.wheelInvert, false),
     sessionEvents: bool(config.sessionEvents, true),
     decisionEvents: bool(config.decisionEvents, true),
     logPrefix: typeof config.logPrefix === "string" && config.logPrefix.length > 0 ? config.logPrefix : "mpd-tui"
@@ -9376,6 +9966,32 @@ function apply(ctx, config = {}) {
     teamsService = service;
   });
   const teamRecords = () => mpdTeamRecords(teamsService, workspaceRoot());
+  let feedClosure;
+  let feedClosureFor;
+  const teamFeed = () => {
+    const bound = teamsService !== undefined && typeof teamsService.subscribe === "function";
+    if (!bound) {
+      feedClosure = undefined;
+      feedClosureFor = undefined;
+      return;
+    }
+    if (feedClosure === undefined || feedClosureFor !== teamsService) {
+      const service = teamsService;
+      feedClosure = (listener) => {
+        try {
+          return service.subscribe(workspaceRoot(), listener) ?? (() => {});
+        } catch {
+          return () => {};
+        }
+      };
+      feedClosureFor = teamsService;
+    }
+    return feedClosure;
+  };
+  const sceneTeamDeps = {
+    teams: () => teamsService,
+    subscribeTeams: teamFeed
+  };
   const planReader = (sessionId) => readPlanView(teamsService, workspaceRoot(), sessionId);
   const sessionEventTypeKnown = resolved.sessionEvents ? registerLogOnlyEventType(BOARD_OPENED_EVENT, log) : false;
   const outcomes = [];
@@ -9400,6 +10016,13 @@ function apply(ctx, config = {}) {
   onService(ctx, "mpdConfig", (_scoped, service) => {
     configHandle = service;
   });
+  setWheelInvertRead(() => {
+    try {
+      return wheelInvertFrom(configHandle?.get?.(), resolved.wheelInvert);
+    } catch {
+      return resolved.wheelInvert;
+    }
+  });
   const dialogs = createDialogs(tui, log);
   let status = {
     ...tui.skipped("status", "not wired yet"),
@@ -9412,7 +10035,7 @@ function apply(ctx, config = {}) {
   });
   const noticeRead = () => composeNotices(bridgeRead(), watchdogFrontDoor.notice());
   status = resolved.statusLine ? registerStatus(ctx, tui, log, workspaceRoot, home, resolved.statusIntervalMs, noticeRead, teamViews, teamRecords) : { ...skipped("status", "disabled by config"), refresh: () => {} };
-  const scene = resolved.scene ? registerScene(ctx, tui, log, workspaceRoot, home, () => watchdogFrontDoor.view().holds, createPlanActions(adapter, log), planReader, teamViews, teamRecords, (ui) => tui.rememberHostKit(ui)) : {
+  const scene = resolved.scene ? registerScene(ctx, tui, log, workspaceRoot, home, () => watchdogFrontDoor.view().holds, createPlanActions(adapter, log), planReader, teamViews, teamRecords, (ui) => tui.rememberHostKit(ui), sceneTeamDeps) : {
     ...skipped("scenes", "disabled by config"),
     open: () => false,
     openScene: () => false,
@@ -9422,8 +10045,11 @@ function apply(ctx, config = {}) {
   };
   const panel = registerPanelSurface(tui, {
     enabled: resolved.panel,
-    readWorkflow: () => readDashboardWorkflow(workspaceRoot, () => watchdogFrontDoor.view().holds, teamViews, teamRecords),
+    readWorkflow: (sessionId) => readDashboardWorkflow(workspaceRoot, () => watchdogFrontDoor.view().holds, teamViews, teamRecords, () => teamsService, sessionId),
+    subscribeTeams: teamFeed,
     openMergedScene: () => scene.openSubagents(),
+    openFullscreenScene: () => scene.openTeam(),
+    openAgentPage: (agentId) => openAgentPage(agentId),
     log
   });
   const openAgentPage = (agentId) => {
@@ -9434,16 +10060,8 @@ function apply(ctx, config = {}) {
     log.debug(`openAgentPage(${agentId}): no subagent scene is reachable here; the request was cleared`);
     return false;
   };
-  const dagPanel = registerDagPanel(tui, {
-    enabled: resolved.panel,
-    readWorkflow: () => readDashboardWorkflow(workspaceRoot, () => watchdogFrontDoor.view().holds, teamViews, teamRecords),
-    openScene: () => scene.openSubagents(),
-    openFullscreen: () => scene.openSubagents(),
-    openAgentPage,
-    log
-  });
   const workmatePanel = registerWorkmatePanel(tui, {
-    enabled: resolved.panel,
+    enabled: resolved.workmate,
     home,
     openScene: () => scene.open(),
     log
@@ -9508,7 +10126,7 @@ function apply(ctx, config = {}) {
       return { outcome: route.outcome, id: route.id };
     },
     openDag: () => {
-      const route = openPage(dagPanel);
+      const route = openPage({ id: () => panel.id(), openScene: () => scene.openTeam() });
       return { outcome: route.outcome, id: route.id };
     },
     openWorkmate: () => {
@@ -9529,14 +10147,16 @@ function apply(ctx, config = {}) {
     }
   }) : skipped("commands", "disabled by config");
   const decisions = resolved.decisionEvents ? attemptDecisionEvents(ctx, tui, log) : { ...skipped("pluginHost", "disabled by config"), attempts: () => [] };
+  const decisionOutcome = decisions.outcome();
+  if (decisionOutcome.state === "absent") {
+    log.info(`decision-event seam: no intercept point attempted — ${decisionOutcome.detail ?? "the mediated plugin host was not injected"} ` + "(read at apply time; the seam discloses its own verdict once it binds)");
+  }
   record(status);
   record(renderers);
   record(settings);
   record(scene);
   outcomes.push({ id: "panel", outcome: panel.outcome() });
   log.debug(`sidebar panel id: ${panel.id() ?? "(not discovered)"}`);
-  outcomes.push({ id: "dagPanel", outcome: dagPanel.outcome() });
-  log.debug(`sidebar DAG page id: ${dagPanel.id() ?? "(not discovered)"}`);
   outcomes.push({ id: "workmatePanel", outcome: workmatePanel.outcome() });
   log.debug(`sidebar workmate page id: ${workmatePanel.id() ?? "(not discovered)"}`);
   outcomes.push({ id: "dashboardKey", outcome: dashboardKey.outcome() });

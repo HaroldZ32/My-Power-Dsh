@@ -1,0 +1,4 @@
+=== tree=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-oneclick/sim-oc case=mcp-call.ts started=2026-10-14T15:27:10Z
+[mcp-call] ok=false (enum recorded tools=95, ast_grep call recorded) -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-oneclick/sim-oc/evidence/dsh-qa/mcp-call/2026-10-14T15-27-31.283Z
+exit=1
+=== finished=2026-10-14T15:27:31Z

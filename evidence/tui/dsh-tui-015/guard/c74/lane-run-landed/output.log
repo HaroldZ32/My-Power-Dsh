@@ -1,0 +1,1 @@
+team-dispatch-guard refusing to overwrite the existing evidence dir: evidence/tui/dsh-tui-015/guard/c74/lane-run-landed — evidence is immutable by default (T-53); pass a fresh --out directory

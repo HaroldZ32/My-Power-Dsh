@@ -1,0 +1,21 @@
+### The five --self-test runs at UTC 2026-10-09T12:17:37Z
+
+$ node skills/dsh-qa/scripts/lib/messages-sse.ts --self-test
+[messages-sse self-test] ok: both turn builders emit the six Messages events in order, the retired OpenAI shape and the `[DONE]` sentinel are absent (with the no-top-level-`type` control that proves that check is falsifiable), the tool arguments parse as a JSON object, and the request reader reads BOTH wire shapes
+EXIT=0
+
+$ node skills/dsh-qa/scripts/lib/session-evidence.ts --self-test
+[session-evidence self-test] ok: v3 + v4 result shapes (v4 payload text non-empty, v4 isError:true refused), multi-frame + plain stores, torn-frame reporting, call/result pairing, and every negative control verified
+EXIT=0
+
+$ node skills/dsh-qa/scripts/readonly-deny.ts --self-test
+[readonly-deny self-test] ok: 34 checks
+EXIT=0
+
+$ node skills/dsh-qa/scripts/software-smoke.ts --self-test
+[software-smoke self-test] ok: fixture semantics + deterministic self-play (winner P1, 11 plies) + 4 oracle probes green, mutation control RED (9 violation(s)) + 3-step Messages stub protocol
+EXIT=0
+
+$ node skills/dsh-qa/scripts/extension-isolation.ts --self-test
+[extension-isolation self-test] ok: stub protocol (tool call, advance, child marker, no-tools text) + descriptor contract + shipped example + boot recipe verified
+EXIT=0

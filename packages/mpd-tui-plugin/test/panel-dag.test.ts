@@ -14,6 +14,11 @@
 // assertions are INVARIANT-shaped (every row inside the measured width, the mode a fact about the
 // width) and never byte-frozen grids.
 import { describe, expect, test } from "bun:test"
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+import { loadConfig } from "../../mpd-config-plugin/src/index.js"
+import { wheelInvertFrom } from "../src/settings"
 import {
   DAG_ANIM,
   DAG_CHARS,
@@ -23,26 +28,24 @@ import {
   DAG_TONE_GLYPH,
 } from "../src/dag-theme"
 import { cellWidth, clampCells } from "../src/sanitize"
-import { PANEL_FULLSCREEN_GLYPH } from "../src/panel"
-import { layoutBoxesNatural, layoutRail, sliceSpans, widestLabelCells } from "../src/graph"
+import { PANEL_FULLSCREEN_GLYPH, PANEL_TITLE, registerPanelSurface } from "../src/panel"
+import { layoutBoxesNatural, layoutRail, legendLines, sliceSpans, widestLabelCells } from "../src/graph"
 import { createTuiAdapter } from "../../mpd-tui-adapter-plugin/src/index.js"
 import {
   agentIdForOwner,
   createDagPanelComponent,
   dagBadge,
   dagPageOf,
+  dagPanelKeyAction,
   dagPanelLayout,
   dagRowClick,
-  DAG_PANEL_DESCRIPTOR_FROZEN,
-  DAG_PANEL_ICON,
-  DAG_PANEL_ID,
-  DAG_PANEL_ORDER,
   DAG_PANEL_TITLE,
+  DAG_SECTION_DAG_TITLE,
+  DAG_SECTION_HOST_TITLE,
   pinnedDetailLines,
-  registerDagPanel,
   type DagPanelTask,
 } from "../src/panel-dag"
-import { clampScroll, gutterCells, legendLinesFor, PANEL_CHROME_ROWS, panelContentWidth, panelKeysArmed, panelScrollKey, runningGlyph, scrollByWheel, usePanelViewport } from "../src/panel-core"
+import { clampScroll, gutterCells, legendLinesFor, normalizeWheelDelta, PANEL_CHROME_ROWS, panelContentWidth, panelKeysArmed, panelScrollKey, runningGlyph, scrollByWheel, scrollByWheelX, usePanelViewport } from "../src/panel-core"
 import {
   createWorkmatePanelComponent,
   readWorkmateLibrary,
@@ -54,6 +57,7 @@ import {
   type WorkmateLibrary,
 } from "../src/panel-workmate"
 import type { TeamWorkflow } from "../src/team-state"
+import { NO_SESSION_TEAM_MARKER, WORKSPACE_SCOPE_MARKER } from "../src/team-state"
 
 // ── fixtures ────────────────────────────────────────────────────────────────
 
@@ -112,7 +116,7 @@ function fanInTasks(): DagPanelTask[] {
  */
 function workflowFixture(): TeamWorkflow {
   return {
-    workspace: "/tmp/mpd-dag-panel-fixture",
+    workspace: join(tmpdir(), "mpd-dag-panel-fixture"),
     team: { id: "team-20261007120000", name: "dag-port", phase: "active", staged: false, runnable: true, links: 2 },
     members: [
       { name: "Panel Engineer", role: "Senior Engineer", status: "running", done: 1, total: 2, progress: 50, unread: null },
@@ -141,7 +145,7 @@ function workflowFixture(): TeamWorkflow {
 /** One workmate library read with a single instance, for the populated arm. */
 function libraryFixture(): WorkmateLibrary {
   return {
-    root: "/tmp/home/.mpd/workmate",
+    root: join(tmpdir(), "home", ".mpd", "workmate"),
     archived: 1,
     problems: [],
     entries: [
@@ -275,7 +279,7 @@ interface Kit {
  * @param options - the panel width, and whether this host exposes the animation timer at all.
  * @returns the kit.
  */
-function makeKit(options: { columns?: number; rows?: number; animation?: "absent" | "value" | "nan" } = {}): Kit {
+function makeKit(options: { columns?: number; rows?: number; animation?: "absent" | "value" | "nan"; clock?: number } = {}): Kit {
   /** The width this panel reports. */
   const columns = options.columns ?? 80
   /** Hook state, keyed by hook position, as React keys its own cells. */
@@ -336,8 +340,12 @@ function makeKit(options: { columns?: number; rows?: number; animation?: "absent
     useTerminalSize: (): { columns: number; rows: number } => ({ columns, rows: options.rows ?? 40 }),
   }
   if (options.animation !== "absent") {
+    // `clock` PINS THE FRAME: the phase is `floor(clock / intervalMs) % frames`, so a caller that wants
+    // a specific frame of the cycle passes `DAG_ANIM.intervalMs * frame` and gets exactly that frame —
+    // which is what lets an arm measure the drawing at EVERY phase instead of at whichever one the
+    // default clock happens to select.
     ui.useAnimationTime = (intervalMs: number | null): number =>
-      options.animation === "nan" ? Number.NaN : intervalMs === null ? 0 : DAG_ANIM.intervalMs * 2
+      options.animation === "nan" ? Number.NaN : intervalMs === null ? 0 : options.clock ?? DAG_ANIM.intervalMs * 2
   }
 
   /** Every character inside one node, symbols joined with nothing. */
@@ -494,36 +502,41 @@ function render(component: (props: unknown) => unknown, kit: Kit, host: HostReco
 
 // ── the descriptor (frozen clause R1/R9) ────────────────────────────────────
 
-describe("the DAG page descriptor", () => {
-  test("carries the frozen shape, the one-cell icon and its own slug", () => {
-    expect(DAG_PANEL_DESCRIPTOR_FROZEN).toEqual({
-      apiVersion: 1,
-      id: DAG_PANEL_ID,
-      title: DAG_PANEL_TITLE,
-      icon: DAG_PANEL_ICON,
-      minColumns: DAG_PANEL_MIN_COLUMNS,
-      order: DAG_PANEL_ORDER,
-    })
-    // THE ICON IS EXACTLY ONE CELL, which is the host's own hard requirement. `"◈".length === 1` would
-    // not prove it (a wide glyph is one code point and two cells), so the measurement is the assertion.
-    expect(cellWidth(DAG_PANEL_ICON)).toBe(1)
-    // The page is its OWN slug: registering the merged panel's id twice would be the host's duplicate
-    // contribution error, and the whole point of R1 is that this is a second, independent page.
-    expect(DAG_PANEL_ID).toBe("dag")
-    // THE FLOOR IS THE HOST'S OWN (captain's ruling, 2026-10-13; the reasoning is in `dag-theme.ts`).
-    // `PanelHost.js` swaps the page's BODY for a `panel-too-narrow` notice when `width < minColumns`,
-    // so a floor above the host's own 28 opens a width band where the tab exists and the user sees a
-    // refusal instead of a graph. Readability at 28 is the PAGE's job, not the descriptor's.
+// ── the page's identity AFTER the merge (frozen clause C3) ──────────────────
+//
+// THE DESCRIPTOR IS GONE FROM THIS FILE, and that is the clause rather than a tidy-up: "ONE descriptor,
+// ONE slug, ONE ordered position collapse out of the two". The DAG page IS the MPD panel now, so its
+// slug `dag`, its title `MPD DAG` and its order 11 no longer exist as a second registration, and the
+// surviving descriptor (`panel.ts`'s `PANEL_DESCRIPTOR_FROZEN`, slug `team`, title `MPD`, icon `❖`,
+// order 10) is the only one the host ever receives. What this file still owns is what the PAGE knows
+// about itself, and what it must agree with the survivor about.
+
+describe("the DAG page's identity after the merge (clause C3)", () => {
+  test("its title IS the surviving MPD panel's title — one name, one surface", () => {
+    // The page draws this title in its own chrome row, and the host draws the descriptor's title in its
+    // panel bar: two spellings of one name that could drift silently. This is the arm that stops it.
+    expect(DAG_PANEL_TITLE).toBe(PANEL_TITLE)
+    expect(DAG_PANEL_TITLE).toBe("MPD")
+    // The title the page draws is non-empty and clamps to something a reader can see, which is the shape
+    // the host's own descriptor validator requires of whatever it is registered as.
+    expect(DAG_PANEL_TITLE.length).toBeGreaterThan(0)
+    // THE FLOOR THE PAGE LAYS OUT FOR IS STILL THE HOST'S OWN (captain's ruling, 2026-10-13; the reasoning
+    // is in `dag-theme.ts`). `PanelHost.js` swaps the page's BODY for a `panel-too-narrow` notice when
+    // `width < minColumns`, so a floor above the host's own 28 opens a width band where the tab exists and
+    // the user sees a refusal instead of a graph. Readability at 28 is the PAGE's job, not the panel's.
     expect(DAG_PANEL_MIN_COLUMNS).toBe(28)
   })
 
-  test("registers through the adapter and reports the host's own read-back id", () => {
+  test("the surviving registration carries this page's component and reaches the host read-back", () => {
+    // THE CHAIN THE MERGE HAD TO KEEP: the ONE registration still hands the host a callable component
+    // (this page's), and its final id is still DISCOVERED from the host's own `list()` read-back rather
+    // than composed on this side. A merge that registered the right descriptor with the wrong component,
+    // or predicted the id, would pass every descriptor arm and fail this one.
     /** The registration the host received. */
     const registered: Record<string, unknown>[] = []
     /** The host's own read-back rows; a registration APPENDS one, as the host composes the id itself. */
     const rows: Array<{ id: string; title: string; source: string }> = []
-    /** The host's panel registry double: `list()` reflects what was registered, which is the read-back
-     * the adapter discovers the final id from (the `<pluginId>` half is the HOST's, never predicted). */
+    /** The host's panel registry double. */
     const registry = {
       register: (descriptor: Record<string, unknown>): (() => void) => {
         registered.push(descriptor)
@@ -555,21 +568,21 @@ describe("the DAG page descriptor", () => {
     }
     /** The real adapter over that host. */
     const tui = createTuiAdapter(build() as never)
-    /** The registered page. */
-    const seam = registerDagPanel(tui as never, {
+    /** The registered MPD panel, wired the way `index.ts` wires it. */
+    const seam = registerPanelSurface(tui as never, {
       enabled: true,
       readWorkflow: () => workflowFixture(),
-      openScene: () => true,
+      openMergedScene: () => true,
       log: { info: () => {}, warn: () => {}, debug: () => {}, error: () => {} } as never,
     })
     expect(registered).toHaveLength(1)
-    expect(registered[0]?.id).toBe("dag")
-    expect(registered[0]?.icon).toBe(DAG_PANEL_ICON)
+    expect(registered[0]?.id).toBe("team")
+    expect(registered[0]?.title).toBe(PANEL_TITLE)
     // The compact slot is NOT declared: the host stores it and never mounts it, so claiming one would
     // promise a surface this build cannot render.
     expect(registered[0]?.compact).toBeUndefined()
     expect(typeof registered[0]?.component).toBe("function")
-    expect(seam.id()).toBe("act3:dag")
+    expect(seam.id()).toBe("act3:team")
     expect(seam.registered()).toBe(true)
   })
 })
@@ -587,14 +600,20 @@ describe("the legend", () => {
       // single thing a legend exists to prevent.
       expect(joined).toContain(DAG_TONE_GLYPH[state] as string)
       expect(joined).toContain(state)
-      expect(joined).toContain(`${DAG_TONE_GLYPH[state]} ${state}`)
     }
-    // THE DISAMBIGUATION. `blocked` and `open` share the `○` glyph by design, and the drawing module's
-    // own legend omits `blocked` entirely — so this legend must name the TIE, or the reader has no way
-    // to tell a waiting task from one that is merely not started.
+    // ONE ENTRY PER MARK, AND EVERY CARRIER NAMED ON IT. `blocked` and `open` share the `○` glyph by
+    // design, so that mark must be printed ONCE and its entry must name BOTH states — the pre-fix key
+    // printed `○ open=blocked · ○ blocked=open`, which is one fact twice with a false equivalence in it.
     expect(DAG_TONE_GLYPH.blocked).toBe(DAG_TONE_GLYPH.open)
-    expect(joined).toContain(`○ blocked=open`)
-    expect(joined).toContain(`○ open=blocked`)
+    /** The shared mark's own entries: every entry the legend opens with that mark. */
+    const sharedEntries = joined.split(" · ").filter((entry) => entry.startsWith(`${DAG_TONE_GLYPH.blocked ?? "?"} `))
+    expect(sharedEntries).toHaveLength(1)
+    expect(sharedEntries[0] ?? "").toContain("blocked")
+    expect(sharedEntries[0] ?? "").toContain("open")
+    // NO EQUIVALENCE CLAIM SURVIVES: `=` said the two states ARE each other, which is not what a shared
+    // mark means. This also catches the shortcut that drops the `=` but still prints the pair twice (the
+    // length arm above), so the two arms fail together on exactly the defect the user reported.
+    expect(joined).not.toContain("=")
     // The drawing's own arrow sentence is forwarded, not re-invented: `graph.ts` owns what its arrows
     // mean, and the full-screen scene renders the same line.
     expect(lines[0]).toContain("arrow")
@@ -610,6 +629,31 @@ describe("the legend", () => {
       if (cols < 24) expect(lines.some((line) => line.includes("arrow") || line.includes("▶"))).toBe(false)
     }
     expect(legendLinesFor(0, ["x"])).toEqual([])
+  })
+
+  test("the state key is composed ONCE at every width — no state is ever named twice", () => {
+    // THE DEFECT THIS PINS. The drawing module's own FIVE-state key used to be composed UNDER this
+    // six-state one, so every one of its entries was printed twice — and the drawing's copy could not
+    // name `blocked` at all, which is exactly the ambiguity this key exists to resolve. It counts
+    // NAMED STATES rather than matched substrings: the pre-fix key named `open` and `blocked` twice
+    // EACH (once as `open=blocked`, once as `blocked=open`), and that count is what has to stay at one.
+    for (const cols of [28, 40, 58, 78, 98, 154, 200]) {
+      /** The composed legend at this width: the drawing's arrow sentence, then this key. */
+      const lines = legendLinesFor(cols, legendLines(cols))
+      /** The drawing module's own lines at this width, if any. */
+      const drawing = legendLines(cols)
+      // The drawing contributes AT MOST the arrow/focus sentence; every other row is this key's.
+      expect(`${cols} drawing rows at most one: ${drawing.length <= 1}`).toBe(`${cols} drawing rows at most one: true`)
+      // The key's own rows only: the arrow sentence is excluded so a word in it cannot be miscounted.
+      /** Every composed row after the drawing's own, joined so a WRAPPED key reads as one text. */
+      const key = lines.slice(drawing.length).join(" · ")
+      for (const state of DAG_STATE_TONES) {
+        /** How many times the key NAMES this state, counted as whole words so `blocked` != `blocker`. */
+        const named = (key.match(new RegExp(`\\b${state}\\b`, "g")) ?? []).length
+        // EXACTLY ONCE, at every width: wrapping a key is allowed, naming a state twice is not.
+        expect(`${cols} ${state} named=${named}`).toBe(`${cols} ${state} named=1`)
+      }
+    }
   })
 })
 
@@ -938,20 +982,94 @@ describe("the DAG page's layout choice", () => {
 // ── the animation (frozen clause R8) ────────────────────────────────────────
 
 describe("the running-node animation and its degradation", () => {
-  test("the host timer drives the breath, and the static frame is the orbit's head", () => {
-    // THE ORBIT is a small, closed set: whatever the timer answers, the glyph is one of these, and the
-    // STATIC frame is the FIRST of them — so a degraded panel draws a glyph the animated one also uses
-    // on half its frames, and a running task is never mistaken for a task in another state.
+  test("every frame is ONE CELL, the frames DIFFER, and the static frame is the orbit's head", () => {
+    // THE ORBIT IS THE CONTRACT'S OWN TABLE (`DAG_ANIM.runningFrames`), so whatever the timer answers
+    // the drawn mark is a published frame. The STATIC frame is the table's head — the contract's own
+    // `running` glyph — so a degraded panel draws the character the legend names for this state.
     /** Every glyph the orbit can produce, in frame order. */
     const orbit = [0, 1, 2, 3].map((phase) => runningGlyph(phase))
     expect(runningGlyph(DAG_ANIM.staticPhase)).toBe(DAG_TONE_GLYPH.running as string)
-    for (const glyph of orbit) expect(glyph.length).toBeGreaterThan(0)
-    // The contract's own running glyph is at the head of the orbit and returns every other frame; the
-    // orbit's other marks are the same glyph plus a dot, never a glyph that means a DIFFERENT state.
-    expect(orbit.filter((glyph) => glyph === (DAG_TONE_GLYPH.running as string)).length).toBeGreaterThanOrEqual(2)
-    for (const glyph of orbit) expect(glyph.slice(0, 1)).toBe(DAG_TONE_GLYPH.running as string)
+    expect(orbit[DAG_ANIM.staticPhase]).toBe(DAG_TONE_GLYPH.running as string)
+    // THE WIDTH INVARIANT, which is the whole of the reported defect: the label EMBEDS this mark, so one
+    // cell per frame is what keeps the label's width still across the cycle. The orbit this replaced
+    // returned 1, 2, 1 and 3 cells (`base`, `base·`, `base`, `base··`), so the box around the label was
+    // re-laid-out on every tick and its right border advanced and retreated.
+    for (const glyph of orbit) expect(cellWidth(glyph)).toBe(1)
+    // THE ANIMATION IS KEPT: one static frame would satisfy the width above and violate the ruling.
+    expect(new Set(orbit).size).toBe(DAG_ANIM.frames)
+    // NO FRAME IS ANOTHER STATE'S MARK: a running task must never read as blocked, open, failed or
+    // cancelled, so the orbit keeps out of every mark the contract publishes for another state. A bare
+    // space or a lone dot is out too — that reads as "no state" rather than as "alive".
+    /** The marks the contract publishes for every state OTHER than `running`. */
+    const foreign = DAG_STATE_TONES.filter((state) => state !== "running").map((state) => DAG_TONE_GLYPH[state])
+    for (const glyph of orbit) expect(foreign).not.toContain(glyph)
+    for (const glyph of orbit) expect(glyph.trim()).not.toBe("")
     // The quantisation is the contract's own frame count: the orbit closes after `DAG_ANIM.frames` steps.
     expect(runningGlyph(DAG_ANIM.frames)).toBe(runningGlyph(0))
+  })
+
+  test("the DRAWN running label keeps ONE width across every frame of the cycle", () => {
+    // THE MEASUREMENT THE WIDTH FIX RESTS ON, read off the DRAWN ROWS rather than off the glyph helper:
+    // the layout sizes the node box from the label, and the page substitutes the frame into that label
+    // AFTER the layout, so a frame of a different width spills past the box and drags its border. The
+    // host clock is pinned per frame, so EVERY phase of the contract's orbit is drawn once and measured.
+    /** The running task's id, which is how its label row is found among the drawn rows. */
+    const runningId = chainTasks().find((task) => task.visual === "running")?.id as string
+    /** The page the panel registers, over the fixture board. */
+    const page = createDagPanelComponent(() => workflowFixture()) as (props: unknown) => unknown
+    /** The contract's own running glyph: the orbit's head, and the mark the label row carries at it. */
+    const headMark = DAG_TONE_GLYPH.running ?? "◐"
+    /** One reading per frame: the frame index, its glyph, the label row, that row's cells, the page. */
+    const measured = DAG_ANIM.runningFrames.map((_frame, phase) => {
+      /** A host double whose clock answers EXACTLY this frame: phase = `floor(clock / intervalMs)`. */
+      const kit = makeKit({ columns: 80, animation: "value", clock: DAG_ANIM.intervalMs * phase })
+      /** Every row this frame drew, in draw order. */
+      const frameRows = kit.rows(render(page, kit, makeHost()))
+      /** The drawn row carrying the running task's label, or "" when no row carries it. */
+      const row = frameRows.find((candidate) => candidate.includes(runningId)) ?? ""
+      return { phase, glyph: runningGlyph(phase), row, cells: cellWidth(row), frameRows }
+    })
+    // THE READING ITSELF, printed so the report can quote it as a measurement rather than a restatement.
+    for (const item of measured) console.log(`frame ${item.phase} glyph ${item.glyph} cells ${item.cells} row ${JSON.stringify(item.row)}`)
+    // EVERY FRAME DRAWS AT THE SAME WIDTH — the falsifier for the reported defect. The pre-fix orbit drew
+    // one and two cells MORE on its second and fourth frames, so this set held two or three widths.
+    expect(new Set(measured.map((item) => item.cells)).size).toBe(1)
+    // AND THE DRAWING REALLY BREATHED: four identical readings would make the width claim vacuous.
+    expect(new Set(measured.map((item) => item.glyph)).size).toBe(DAG_ANIM.frames)
+    // The measured row really IS the running node's label: an arm that measured "" would prove nothing.
+    expect(measured.every((item) => item.row.includes(runningId) && item.cells > 0)).toBe(true)
+    // NOTHING ELSE ON THE PAGE MOVED, which is the part a label-width reading alone cannot claim: the
+    // head frame and the frame one step into the cycle are compared ROW BY ROW over the WHOLE page. Only
+    // the node's own label rows may differ, and each may differ only in its mark — same cell count — so
+    // every box column, border cell, pad and box-drawing character is byte-identical between the frames.
+    /** The frame drawn at the orbit's head. */
+    const headFrame = measured[DAG_ANIM.staticPhase]?.frameRows ?? []
+    /** The frame drawn one step into the cycle, which draws a DIFFERENT mark. */
+    const nextFrame = measured[DAG_ANIM.staticPhase + 1]?.frameRows ?? []
+    expect(headFrame.length).toBeGreaterThan(0)
+    expect(nextFrame).toHaveLength(headFrame.length)
+    /** Every row index whose drawn content differs between those two frames. */
+    const moved = headFrame.map((text, index) => (text === nextFrame[index] ? -1 : index)).filter((index) => index >= 0)
+    // The breath is VISIBLE in the drawing (a page that did not change at all would make the reading
+    // above vacuous), and every row it touched is a label row of the running node.
+    expect(moved.length).toBeGreaterThan(0)
+    for (const index of moved) {
+      expect(headFrame[index] ?? "").toContain(headMark)
+      expect(cellWidth(headFrame[index] ?? "")).toBe(cellWidth(nextFrame[index] ?? ""))
+    }
+    console.log(`frames ${DAG_ANIM.staticPhase} and ${DAG_ANIM.staticPhase + 1}: ${moved.length} of ${headFrame.length} drawn rows differ, all label rows, none by a cell`)
+    // POSITIVE CONTROL — THE INSTRUMENT CAN SEE THE DEFECT. The pre-fix orbit is rebuilt here from its
+    // own mechanism (the state glyph, then the same glyph with one and two dots appended) and pushed
+    // through the SAME reading; its widths must VARY, or a constant reading above would be evidence of
+    // a blind instrument rather than of a still frame.
+    /** The label row as drawn at the orbit's head, the string the frames are substituted into. */
+    const headRow = measured[DAG_ANIM.staticPhase]?.row ?? ""
+    /** The orbit this fix replaced, rebuilt verbatim: `base`, `base·`, `base`, `base··`. */
+    const preFixFrames = [headMark, `${headMark}·`, headMark, `${headMark}··`]
+    /** The widths that mechanism would have measured off the same row. */
+    const preFixCells = preFixFrames.map((frame) => cellWidth(headRow.replace(headMark, frame)))
+    expect(preFixCells).toEqual([6, 7, 6, 8])
+    expect(new Set(preFixCells).size).toBeGreaterThan(1)
   })
 
   test("a host with NO timer draws the static frame instead of throwing", () => {
@@ -970,12 +1088,19 @@ describe("the running-node animation and its degradation", () => {
     // The running task is still drawn, and its glyph is the CONTRACT's — the drawing is unaffected by
     // the missing timer, which is exactly the promise (a lost animation must not lose the panel).
     expect(rows.join("\n")).toContain("◐")
-    // NEGATIVE CONTROL: the same panel on a host WITH the timer draws the breathed glyph.
+    // NEGATIVE CONTROL: the same panel on a host WITH the timer draws the BREATHED frame. The kit's
+    // clock is phase 2 (`makeKit`'s default, two ticks), and that frame is a mark the legend NEVER
+    // prints — so finding it in the rows can only mean the node's label itself was advanced, which is
+    // what keeps this control non-vacuous. Asserting the head glyph here would now pass on the legend
+    // alone, and the arm would prove nothing about the drawing.
     /** The kit of a host with the timer. */
     const timed = makeKit({ columns: 80, animation: "value" })
     /** The breathed render's rows. */
     const animated = timed.rows(render(page, timed, makeHost()))
-    expect(animated.join("\n")).toContain(DAG_TONE_GLYPH.running as string)
+    /** The frame the kit's default clock selects, read through the contract so this arm cannot be stale. */
+    const breath = runningGlyph(2)
+    expect(breath).not.toBe(DAG_TONE_GLYPH.running as string)
+    expect(animated.join("\n")).toContain(breath)
     expect(tasks.some((task) => task.visual === "running")).toBe(true)
   })
 
@@ -1077,6 +1202,85 @@ describe("click-to-pin and the keyboard", () => {
       consumed.push(true)
     } })
     expect(consumed).toEqual([true])
+  })
+
+  // ── F-a (frozen PART 1): ESCAPE IS CONSUMED ONLY WHEN THERE IS SOMETHING TO RELEASE ──────────
+  // The two arms below are the acceptance pair. The pure arm quotes the keymap's own values; the
+  // mounted arm is the one that proves the HOST-visible fact — a `preventDefault()` is what the
+  // plugin-panel dispatcher turns into `consumed = true`, and a consumed press never reaches the
+  // host's own `key.escape === true → setFocus('chat')` fallback.
+  test("F-a the keymap's OWN values: no pin → NOT consumed; pinned → consumed and unpinned", () => {
+    /** The drawing order the presses walk. */
+    const order = ["T1", "T2"]
+    /** The host's lone-ESC event, in the flag spelling this page reads. */
+    const escape = { input: "\u001b", key: { escape: true } }
+    /** The same press in the raw-byte spelling — the branch's other guard. */
+    const byteOnly = { input: "\u001b", key: {} }
+    // NOTHING PINNED: `consumed: false`, so the press reaches the host's fallback and the keyboard
+    // goes back to the chat. This is the value the defect got wrong (it returned `consumed: true`).
+    expect(dagPanelKeyAction(escape, order, "T1", undefined)).toEqual({ consumed: false })
+    expect(dagPanelKeyAction(byteOnly, order, "T1", undefined)).toEqual({ consumed: false })
+    // A TASK IS PINNED: the page releases it and consumes the press, exactly as it did before.
+    expect(dagPanelKeyAction(escape, order, "T1", "T1")).toEqual({ consumed: true, pin: false })
+    expect(dagPanelKeyAction(byteOnly, order, "T2", "T1")).toEqual({ consumed: true, pin: false })
+    // THE REST OF THE KEYMAP IS UNTOUCHED, and this is asserted rather than assumed: the arrows still
+    // walk and consume, Enter still pins the focused task, and an unhandled key is still left alone
+    // even while something is pinned (a pin never turns the page into a key sink).
+    expect(dagPanelKeyAction({ input: "j", key: {} }, order, undefined, undefined)).toEqual({ consumed: true, focus: "T1" })
+    expect(dagPanelKeyAction({ input: "k", key: {} }, order, undefined, "T1")).toEqual({ consumed: true, focus: "T2" })
+    expect(dagPanelKeyAction({ input: "\r", key: {} }, order, "T2", undefined)).toEqual({ consumed: true, pin: true })
+    expect(dagPanelKeyAction({ input: "x", key: {} }, order, "T1", "T1")).toEqual({ consumed: false })
+  })
+
+  test("F-a ON A MOUNTED PAGE: no pin → Escape is NOT consumed; pinned → consumed AND the pin is released", () => {
+    /** The kit, tall enough that the pin body fits. */
+    const kit = makeKit({ columns: 80, rows: 200 })
+    /** The host double, focused and visible. */
+    const host = makeHost()
+    /** The page under the host's own key dispatcher. */
+    const page = createDagPanelComponent(() => workflowFixture()) as (props: unknown) => unknown
+    render(page, kit, host)
+    kit.runEffects()
+    /** How many Escape presses the page consumed (one `preventDefault()` each). */
+    let escapeConsumed = 0
+    /** Sends one Escape press through the host's own dispatch shape. */
+    const pressEscape = (): void =>
+      host.listeners[0]({ input: "\u001b", key: { escape: true }, preventDefault: (): void => {
+        escapeConsumed += 1
+      } })
+    // NO PIN YET: the page must leave the press for the host, whose fallback returns the focus to the
+    // chat. Pre-fix this press was consumed and the user was stuck in the panel.
+    pressEscape()
+    expect(escapeConsumed).toBe(0)
+    // THE CLICK PINS a task, through the same row closure the host's Box invokes.
+    /** Every clickable row element in the tree. */
+    const clickable: Array<(event: unknown) => void> = []
+    /** Collects the `onClick` handlers off the tree. */
+    const walk = (node: unknown): void => {
+      if (node === null || node === undefined || typeof node !== "object") return
+      if (Array.isArray(node)) {
+        for (const child of node) walk(child)
+        return
+      }
+      /** This node as an element. */
+      const element = node as Element
+      if (typeof element.props?.onClick === "function") clickable.push(element.props.onClick as (event: unknown) => void)
+      walk(element.props?.children)
+      walk(element.children)
+    }
+    walk(render(page, kit, host))
+    expect(clickable.length).toBeGreaterThan(0)
+    clickable[0]({ localRow: 0, localCol: 0 })
+    /** The render the pinned state produced, from which both the pin and its release are read. */
+    const reRender = (): string => kit.text(render(page, kit, host))
+    expect(reRender()).toContain(DAG_CHROME.pinMarker)
+    // WITH A PIN the press is the page's: consumed, and the pin is gone on the next render.
+    pressEscape()
+    expect(escapeConsumed).toBe(1)
+    expect(reRender()).not.toContain(DAG_CHROME.pinMarker)
+    // AND THE PAGE IS STILL AWAKE: a second Escape with nothing pinned goes back to the host.
+    pressEscape()
+    expect(escapeConsumed).toBe(1)
   })
 })
 
@@ -1484,6 +1688,93 @@ describe("R1: non-empty board vs empty workspace", () => {
     }) as (props: unknown) => unknown
     expect(kit.text(render(broken, kit, makeHost()))).toContain("agent_teams_plan")
   })
+
+  test("C6: the projection keeps a RESOLVED team's identity when its board is empty, and stays undefined for no team", () => {
+    // THE DEFECT'S ROOT (H1): `dagPageOf` used to return undefined for `tasks.length === 0`, so a
+    // live team lost name/phase/roster and the page painted the no-team state. The fix projects the
+    // page whenever the record's own `team` head resolved.
+    /** The chain fixture with its board emptied but its team, roster and counts left intact. */
+    const empty = workflowFixture()
+    // The second member is made idle so the arm pins BOTH glyphs of the scene's roster discipline.
+    empty.members = empty.members.map((member, index) => (index === 1 ? { ...member, status: "inactive" } : member))
+    empty.tasks = []
+    empty.counts = { total: 0, completed: 0, inProgress: 0, pending: 0, claimed: 0, failed: 0, cancelled: 0, other: 0 }
+    /** The projection of that team. */
+    const page = dagPageOf(empty)
+    expect(page?.teamName).toBe("dag-port")
+    expect(page?.tasks).toEqual([])
+    expect(page?.members).toBe(2)
+    // The roster line follows the scene's own discipline: the label, the running glyph, name and
+    // done/total — the first fixture member is running, the second is not.
+    expect(page?.roster).toContain("roster")
+    expect(page?.roster).toContain("◐Panel Engineer 1/2")
+    expect(page?.roster).toContain("○Geometry Engineer 0/1")
+    // THE HONEST NO-TEAM PROJECTION (no `team` head — `emptyWorkflow`, the `none` scope's carrier)
+    // still yields undefined, so the render's session marker keeps drawing for a team-less session.
+    const none: TeamWorkflow = { ...empty, team: undefined }
+    expect(dagPageOf(none)).toBeUndefined()
+  })
+
+  test("C6: a live member-only team (0 tasks) renders identity and roster — NOT a no-team state", () => {
+    // THE USER'S OWN REPRO: a live six-member team whose board is still empty painted one dim
+    // empty-state line. The page must draw the header facts, the one-line roster and the hint row.
+    /** The fixture as a freshly staged team reads: six members, an empty board, this session's own. */
+    const staged = workflowFixture()
+    staged.members = ["Architect", "Researcher", "Planner", "Senior Engineer", "Reviewer", "Explorer"].map((name, index) => ({
+      name,
+      status: index === 0 ? "running" : "inactive",
+      done: 0,
+      total: 0,
+      progress: 0,
+      unread: null,
+    }))
+    staged.tasks = []
+    staged.counts = { total: 0, completed: 0, inProgress: 0, pending: 0, claimed: 0, failed: 0, cancelled: 0, other: 0 }
+    staged.source = { scope: "session", sessionId: "sess-b" }
+    /** The page over that team. */
+    const page = createDagPanelComponent(() => staged) as (props: unknown) => unknown
+    /** A wide panel, so the one-line roster is not the thing under test — truncation is not the defect. */
+    const kit = makeKit({ columns: 120, rows: 60 })
+    /** The rendered text. */
+    const text = kit.text(render(page, kit, makeHost()))
+    // THE IDENTITY THE OLD PROJECTION DISCARDED: the team's own name and its member count.
+    expect(text).toContain("dag-port")
+    expect(text).toContain("members 6")
+    // THE ROSTER, one line, the running member glyphed exactly as the scene draws it.
+    expect(text).toContain("roster")
+    expect(text).toContain("◐Architect 0/0")
+    expect(text).toContain("○Explorer 0/0")
+    // The hint row keeps naming the call which fills the board.
+    expect(text).toContain("this session's team has no tasks yet")
+    expect(text).toContain("agent_teams_plan")
+    // NEGATIVE CONTROL (the session-scope pattern): a resolved team paints NEITHER no-team state —
+    // not the session marker, not the false workspace row.
+    expect(text).not.toContain(NO_SESSION_TEAM_MARKER)
+    expect(text).not.toContain("no team in this workspace")
+  })
+
+  test("C6: the workspace fallback with ZERO tasks keeps its marker — not the false 'no team in this workspace' row", () => {
+    // THE LADDER'S MISSING ARM (H2): scope `workspace` + 0 tasks used to fall through to the false
+    // workspace-empty row. The 0-task arm above the ladder now owns it, marker and all.
+    /** The fixture as the marked fallback reads: no session id on the surface, an empty board. */
+    const fallback = workflowFixture()
+    fallback.tasks = []
+    fallback.counts = { total: 0, completed: 0, inProgress: 0, pending: 0, claimed: 0, failed: 0, cancelled: 0, other: 0 }
+    fallback.source = { scope: "workspace" }
+    /** The page over that team. */
+    const page = createDagPanelComponent(() => fallback) as (props: unknown) => unknown
+    /** The kit. */
+    const kit = makeKit({ columns: 80, rows: 40 })
+    /** The rendered text. */
+    const text = kit.text(render(page, kit, makeHost()))
+    // The marker, the identity and the workspace's own hint sentence.
+    expect(text).toContain(WORKSPACE_SCOPE_MARKER)
+    expect(text).toContain("dag-port")
+    expect(text).toContain("the workspace's team has no tasks yet")
+    // NEGATIVE CONTROLS: neither no-team row may paint for a resolved team.
+    expect(text).not.toContain("no team in this workspace")
+    expect(text).not.toContain(NO_SESSION_TEAM_MARKER)
+  })
 })
 
 // ── the scrollbar and the self-windowed viewport ───────────────────────────
@@ -1760,11 +2051,80 @@ describe("the scrollbar and the self-windowed viewport", () => {
 // The defect this locks, CONFIRMED on a real terminal: `panelFrame` passed `borderText` as a BARE STRING,
 // and the host's `render-border.js` embeds a title only when `style.borderText?.position === 'top'` — a
 // string has no `position`, so it took the plain-border branch and every page drew a bare top border. The
-// interim PTY capture is the BEFORE shot (all three pages title-less); this is the AFTER.
+// interim PTY capture is the BEFORE shot (all three pages title-less at the time — three was the
+// inventory before this wave's clause C3 merge; this file now exercises the two that survive); this is
+// the AFTER.
 //
 // WHY THE ASSERTION IS ABOUT SHAPE: 327 passing tests did not catch it because they asserted the prop was
 // PRESENT. Presence is satisfied by the wrong VALUE, so the check must reject a bare string explicitly —
 // the negative control below is the point of the arm, not a courtesy.
+// ── D2 (fix/sidebar-defects): ONE wheel-sign normalisation point and the `tui.wheelInvert` knob ──
+//
+// THE DEFECT (contract D2, user mandate M1(b)): every wheel path applied `offset + deltaY` with a FIXED
+// sign, and the host derives `deltaY` from the terminal's own wheelup/wheeldown bits — so the direction
+// a machine reports is machine-dependent (measured reversed on some installations) while this bundle
+// offered neither a normalisation point nor a user knob. The arms below are the contract's own: with the
+// knob OFF the behaviour is EXACTLY today's, with it ON both directions invert, and the value is read
+// from the merged `<workspace>/.mpd/mpd.jsonc` layer through the same layer the other mpd knobs use.
+describe("D2 · wheel direction: ONE normalisation point and the `tui.wheelInvert` knob", () => {
+  test("the knob OFF is today's behaviour on BOTH directions, and it is the default", () => {
+    expect(scrollByWheel({ deltaY: 3 }, 10, 400, 20, false)).toBe(13)
+    expect(scrollByWheel({ deltaY: -3 }, 10, 400, 20, false)).toBe(7)
+    // The FOUR-argument form every existing caller uses keeps the same answer: default = today's behaviour.
+    expect(scrollByWheel({ deltaY: 3 }, 10, 400, 20)).toBe(13)
+    expect(scrollByWheel({ deltaY: -3 }, 10, 400, 20)).toBe(7)
+  })
+
+  test("the knob ON inverts BOTH directions", () => {
+    expect(scrollByWheel({ deltaY: 3 }, 10, 400, 20, true)).toBe(7)
+    expect(scrollByWheel({ deltaY: -3 }, 10, 400, 20, true)).toBe(13)
+  })
+
+  test("the HORIZONTAL axis consumes the same helper, and only the axis it names", () => {
+    expect(scrollByWheelX({ deltaX: 3 }, 10, 400, 20, false)).toBe(13)
+    expect(scrollByWheelX({ deltaX: 3 }, 10, 400, 20, true)).toBe(7)
+    // A VERTICAL wheel is not a horizontal gesture, on either setting: the axis split this pair exists for.
+    expect(scrollByWheelX({ deltaY: 9 }, 10, 400, 20, true)).toBe(10)
+    expect(scrollByWheelX({ deltaX: -9 }, 10, 400, 20, true)).toBe(19)
+  })
+
+  test("`normalizeWheelDelta` is the ONE sign decision, and a zero delta stays a zero", () => {
+    expect(normalizeWheelDelta(3, false)).toBe(3)
+    expect(normalizeWheelDelta(3, true)).toBe(-3)
+    expect(normalizeWheelDelta(-3, true)).toBe(3)
+    // A ZERO DELTA STAYS A PLAIN ZERO. `-0` is `===` to `0` but not `Object.is`-equal to it, so a caller
+    // reading "did this gesture change anything?" off a strict comparison would see motion that never
+    // happened — which is exactly the class of invisible bug `clampScroll`'s no-op rule exists to stop.
+    expect(normalizeWheelDelta(0, true)).toBe(0)
+  })
+
+  test("the knob resolves from `<workspace>/.mpd/mpd.jsonc` through the REAL mpd-config layer", () => {
+    /** A throwaway workspace whose project layer is the only file this arm writes. */
+    const root = mkdtempSync(join(tmpdir(), "mpd-wheel-knob-"))
+    try {
+      /** The project layer path the plugin's own resolution reads. */
+      const projectFile = join(root, ".mpd", "mpd.jsonc")
+      mkdirSync(join(root, ".mpd"), { recursive: true })
+      // The USER layer is pointed at a file that does not exist, so this arm can never read the real home
+      // layer of the machine it runs on — an unisolated read would make the arm pass or fail by accident.
+      /** The row config the resolution is driven with: an explicit, absent user layer. */
+      const rowConfig = { userFile: join(root, "no-such-user-layer.jsonc") }
+      writeFileSync(projectFile, '{ "tui": { "wheelInvert": true } }')
+      expect(wheelInvertFrom(loadConfig(rowConfig, root).config, false)).toBe(true)
+      // A file that says nothing about the knob keeps the row config's own floor — today's behaviour.
+      writeFileSync(projectFile, '{ "tui": { "dashboardKey": false } }')
+      expect(wheelInvertFrom(loadConfig(rowConfig, root).config, false)).toBe(false)
+      expect(wheelInvertFrom(loadConfig(rowConfig, root).config, true)).toBe(true)
+      // A non-boolean value can never arm it, and neither can an absent config layer at all.
+      writeFileSync(projectFile, '{ "tui": { "wheelInvert": "yes" } }')
+      expect(wheelInvertFrom(loadConfig(rowConfig, root).config, false)).toBe(false)
+      expect(wheelInvertFrom(undefined, false)).toBe(false)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+})
+
 describe("R6: the frame's border title is a structured value, not a string", () => {
   /** The frame element of one rendered page. */
   function frameOf(page: (props: unknown) => unknown, kit: ReturnType<typeof makeKit>): Element | undefined {
@@ -1772,7 +2132,7 @@ describe("R6: the frame's border title is a structured value, not a string", () 
   }
 
   test("every page's frame carries { content, position: 'top', align } — and a bare string FAILS", () => {
-    /** The three pages, each with its own title. */
+    /** The surviving pages, each with its own title — the MPD page and the workmate page. */
     const pages: Array<{ name: string; page: (props: unknown) => unknown }> = [
       { name: "dag", page: createDagPanelComponent(() => workflowFixture()) as (props: unknown) => unknown },
       { name: "workmate", page: createWorkmatePanelComponent(() => libraryFixture()) as (props: unknown) => unknown },
@@ -1927,9 +2287,11 @@ describe("the workmate page", () => {
     })
     expect(WORKMATE_PANEL_ID).toBe("workmate")
     expect(cellWidth(WORKMATE_PANEL_ICON)).toBe(1)
-    // The three pages have three DISTINCT slugs, which is what makes them three pages rather than one
-    // panel registered three times (the host refuses a duplicate contribution id).
-    expect(new Set([WORKMATE_PANEL_ID, DAG_PANEL_ID, "team"]).size).toBe(3)
+    // AMENDED (clause C3) — TWO panels with two DISTINCT slugs, not three: the DAG page's own slug
+    // collapsed into the MPD panel's, so the pair that must stay distinct is this one. The host refuses a
+    // duplicate contribution id, so distinctness is what makes these two surfaces rather than one
+    // registered twice.
+    expect(new Set([WORKMATE_PANEL_ID, "team"]).size).toBe(2)
   })
 
   test("the EMPTY state names the call that fills the shelf", () => {
@@ -1938,7 +2300,7 @@ describe("the workmate page", () => {
     /** The host double. */
     const host = makeHost()
     /** The page, over an empty library (the normal state before the first init). */
-    const page = createWorkmatePanelComponent(() => ({ entries: [], archived: 0, root: "/tmp/home/.mpd/workmate", problems: [] })) as (props: unknown) => unknown
+    const page = createWorkmatePanelComponent(() => ({ entries: [], archived: 0, root: join(tmpdir(), "home", ".mpd", "workmate"), problems: [] })) as (props: unknown) => unknown
     /** The rendered text. */
     const text = kit.text(render(page, kit, host))
     expect(text).toContain("no workmates yet")
@@ -1975,11 +2337,13 @@ describe("the workmate page", () => {
 
   test("the reader tolerates a missing library and never throws", () => {
     /** A home whose library does not exist. */
-    const missing = readWorkmateLibrary("/tmp/mpd-workmate-fixture-does-not-exist")
+    const missing = readWorkmateLibrary(join(tmpdir(), "mpd-workmate-fixture-does-not-exist"))
     expect(missing.entries).toEqual([])
     expect(missing.archived).toBe(0)
-    // The root is still reported, so the empty page can say WHERE it looked.
-    expect(missing.root).toContain(".mpd/workmate")
+    // The root is still reported, so the empty page can say WHERE it looked. The expectation is BUILT
+    // with `join`, not spelled `.mpd/workmate` (win32 defect, MEASURED 2026-10-12): win32 joins with
+    // `\`, so the POSIX literal was the only reason this arm was red there.
+    expect(missing.root).toContain(join(".mpd", "workmate"))
   })
 })
 
@@ -1990,12 +2354,12 @@ describe("the workmate page", () => {
 // while `SidePanelColumn.js`'s `canExpand` reads `definition.capabilities?.fullscreen === true`), so
 // this page draws its own. A `⤢` in the text proves only that something was painted; what the reader
 // actually needs is that the control REACHES the row's full-screen surface — and the seam between the
-// two is `registerDagPanel`'s forward, which is exactly where a dep can stop without any test of the
+// two is the surviving registration's forward, which is exactly where a dep can stop without any test of the
 // component noticing. So the arm walks the whole chain: registration -> captured component -> render
 // -> click -> the dep the ROW was given, counted.
 
 describe("AC8b · the page draws its own `⤢`, and the dep the row received reaches it", () => {
-  test("a click on the control reaches the `openFullscreen` dep forwarded by `registerDagPanel`", () => {
+  test("a click on the control reaches the `openFullscreenScreen` dep the surviving registration forwards", () => {
     /** The registration the host received. */
     const registered: Record<string, unknown>[] = []
     /** The host's own read-back rows, appended by a registration exactly as the host composes them. */
@@ -2034,12 +2398,14 @@ describe("AC8b · the page draws its own `⤢`, and the dep the row received rea
     const tui = createTuiAdapter(build() as never)
     /** How many times the row's own full-screen opener ran. */
     let opened = 0
-    /** The registered page, wired the way `index.ts` wires it. */
-    registerDagPanel(tui as never, {
+    /** The registered MPD panel, wired the way `index.ts` wires it after the merge (clause C3). */
+    registerPanelSurface(tui as never, {
       enabled: true,
       readWorkflow: () => workflowFixture(),
-      openScene: () => true,
-      openFullscreen: () => {
+      openMergedScene: () => true,
+      // THE DEP THAT CARRIES THE `⤢` AFTER THE MERGE: the page this slot renders draws the control, and
+      // this is the opener the row hands it. Before the merge it lived on the DAG page's own seam.
+      openFullscreenScene: () => {
         opened += 1
         return true
       },
@@ -2100,5 +2466,159 @@ describe("AC8b · the page draws its own `⤢`, and the dep the row received rea
     const control = elementByKey(tree, "title-fullscreen")
     expect(control).toBeDefined()
     expect(control?.props?.onClick).toBeUndefined()
+  })
+})
+
+// ── T2 (fix/sidebar-panel-trio): the TWO SECTIONS of the panel body, and the rule between them ─────
+//
+// THE DEFECT THIS LOCKS: the page pushed the host's curated subagent rows and then the DAG drawing into
+// ONE frame with nothing between them, so a reader could not tell where one section ended and the other
+// began. The fix is the scene's own `surfaceRule`, titled in English — no second divider primitive — and
+// these arms pin the SHAPE of that rule, the ORDER of the two sections around it, and the empty state.
+
+/**
+ * Every React key in a tree, in DEPTH-FIRST draw order.
+ *
+ * Read off the rendered tree rather than off the row texts because the divider's title lives in the
+ * host's `borderText` prop, which this suite's flattener does not print as a row: the keys are what a
+ * page controls, and their order is the draw order a reader sees.
+ * @param tree - the rendered tree.
+ * @returns the keys present, in the order the page emitted them.
+ */
+function keyOrder(tree: unknown): string[] {
+  /** The keys collected so far, in draw order. */
+  const keys: string[] = []
+  /** Walk one node, recording its key before descending into its children. */
+  const walk = (node: unknown): void => {
+    if (node === null || node === undefined || typeof node !== "object") return
+    if (Array.isArray(node)) {
+      for (const child of node) walk(child)
+      return
+    }
+    /** This node as an element. */
+    const element = node as Element
+    if (typeof element.props?.key === "string") keys.push(element.props.key)
+    walk(element.props?.children)
+    walk(element.children)
+  }
+  walk(tree)
+  return keys
+}
+
+/**
+ * The rows the page actually drew into its window, as `{ key, props }` pairs in draw order.
+ *
+ * The scroll column's children ARE the visible slice (see `panelViewportBody`), so this is the one
+ * window the reader sees rather than the page's whole content list.
+ * @param tree - the rendered tree.
+ * @returns the visible rows, in draw order.
+ */
+function drawnRows(tree: unknown): Element[] {
+  return childElements(elementByKey(tree, "scroll"))
+}
+
+describe("T2 · the panel body names both sections and draws a rule between them", () => {
+  test("the labels are the contract's own ENGLISH names", () => {
+    expect(DAG_SECTION_HOST_TITLE).toBe("Host subagents")
+    expect(DAG_SECTION_DAG_TITLE).toBe("MPD team DAG")
+  })
+
+  test("each rule is the host's own titled-divider shape, drawn by the SHARED `surfaceRule`", () => {
+    /** The page under test, with a board that draws. */
+    const page = createDagPanelComponent(() => workflowFixture()) as (props: unknown) => unknown
+    /** The host kit double. */
+    const kit = makeKit({ columns: 80, rows: 40 })
+    /** The host API double, carrying the subagent rows the section is about. */
+    const tree = render(page, kit, makeHost({ subagents: [{ id: "s1", description: "Panel Engineer", status: "running" }] }))
+    for (const [key, title] of [["section-host", DAG_SECTION_HOST_TITLE], ["section-dag", DAG_SECTION_DAG_TITLE]] as const) {
+      /** The rule element itself. */
+      const rule = elementByKey(tree, key)
+      expect(rule).toBeDefined()
+      // ONE ROW TALL, TOP BORDER ONLY: the host's own divider craft, which is what `surfaceRule` draws.
+      expect(rule?.props?.height).toBe(1)
+      expect(rule?.props?.borderTop).toBe(true)
+      expect(rule?.props?.borderBottom).toBe(false)
+      expect(rule?.props?.borderLeft).toBe(false)
+      expect(rule?.props?.borderRight).toBe(false)
+      // THE TITLE GOES IN THE STRUCTURED FORM the host's border renderer reads, never a bare string.
+      /** The rule's border title, as the host's renderer would read it. */
+      const borderText = rule?.props?.borderText as { content?: unknown; position?: unknown; align?: unknown } | undefined
+      expect(typeof borderText).toBe("object")
+      expect(borderText?.position).toBe("top")
+      expect(borderText?.align).toBe("start")
+      expect(borderText?.content).toBe(title)
+      expect(cellWidth(String(borderText?.content))).toBeLessThanOrEqual(80)
+    }
+  })
+
+  test("the rule sits BETWEEN the sections: host rows, then the DAG rule, then the drawing", () => {
+    /** The page under test. */
+    const page = createDagPanelComponent(() => workflowFixture()) as (props: unknown) => unknown
+    /** The host kit double, wide and tall enough that nothing here depends on scrolling. */
+    const kit = makeKit({ columns: 80, rows: 40 })
+    /** The rendered page, with one host subagent row for the section to carry. */
+    const tree = render(page, kit, makeHost({ subagents: [{ id: "s1", description: "Panel Engineer", status: "running" }] }))
+    /** Every key in draw order, which is what the ordering assertions below read. */
+    const order = keyOrder(tree)
+    /** The host section's title rule. */
+    const hostRule = order.indexOf("section-host")
+    /** The DAG section's title rule. */
+    const dagRule = order.indexOf("section-dag")
+    /** The host's own first row, the count line the section carries under its rule. */
+    const hostRow = order.indexOf("sub-0")
+    // THE DRAWING'S OWN FIRST ROW is the `graphRow`-keyed header (`graphRow` prefixes its own key with
+    // `t-`), which is the first row of the DAG section whatever layout the width selects.
+    /** The drawing's header row, the first row of the DAG section. */
+    const dagRow = order.indexOf("t-header")
+    /** Every host row's draw position, whatever count the section produced. */
+    const hostRows = order.map((key, at) => (key.startsWith("sub-") ? at : -1)).filter((at) => at >= 0)
+    expect(hostRule).toBeGreaterThanOrEqual(0)
+    expect(hostRow).toBeGreaterThan(hostRule)
+    // EVERY host row sits above the DAG rule, and the drawing opens below it: the separation itself.
+    expect(hostRows.length).toBeGreaterThan(0)
+    expect(Math.max(...hostRows)).toBeLessThan(dagRule)
+    expect(dagRow).toBeGreaterThan(dagRule)
+    // …and the two rules are IN the scrolled body, so they travel with the sections they name.
+    /** The keys of the rows the window actually draws. */
+    const visible = drawnRows(tree).map((row) => row.props?.key)
+    expect(visible).toContain("section-host")
+    expect(visible).toContain("section-dag")
+    // The drawing's own rows are the ones BELOW the divider, and its task ids are drawn there.
+    expect(kit.text(tree)).toContain("T1")
+  })
+
+  test("an UNREADABLE host snapshot still yields BOTH named sections, the DAG one included", () => {
+    // The contract's empty-state clause: "a missing host section still leaves the DAG section labelled".
+    // A host whose snapshot throws is that missing case — `panelSnapshot` contains the throw, so the
+    // section falls back to the host's OWN empty state — and both rules are still drawn, which is what
+    // keeps the two sections readable on a page with nothing to show for either of them.
+    /** The page under test. */
+    const page = createDagPanelComponent(() => workflowFixture()) as (props: unknown) => unknown
+    /** The host kit double. */
+    const kit = makeKit({ columns: 80, rows: 40 })
+    /** The rendered page, whose host snapshot throws. */
+    const tree = render(page, kit, makeHost({ snapshotThrows: true }))
+    expect(elementByKey(tree, "section-host")).toBeDefined()
+    expect(elementByKey(tree, "section-dag")).toBeDefined()
+    expect((elementByKey(tree, "section-dag")?.props?.borderText as { content?: string } | undefined)?.content).toBe(DAG_SECTION_DAG_TITLE)
+    // …and the host's OWN empty state sits between the two rules, so a reader is told why it is bare.
+    expect(kit.text(tree)).toContain("No subagents in the current se")
+  })
+
+  test("a host section that renders only its EMPTY STATE is still named and still separated", () => {
+    /** The page under test. */
+    const page = createDagPanelComponent(() => undefined) as (props: unknown) => unknown
+    /** The host kit double. */
+    const kit = makeKit({ columns: 80, rows: 40 })
+    /** The rendered page: no team, and no subagents in the host's snapshot. */
+    const tree = render(page, kit, makeHost())
+    expect(elementByKey(tree, "section-host")).toBeDefined()
+    /** Every key in draw order. */
+    const order = keyOrder(tree)
+    expect(order.indexOf("section-dag")).toBeGreaterThan(order.indexOf("section-host"))
+    expect(order.indexOf("empty")).toBeGreaterThan(order.indexOf("section-dag"))
+    // The TWO empty states are both drawn: the host's own sentence above the rule, the page's below it.
+    expect(kit.text(tree)).toContain("No subagents in the current se")
+    expect(kit.text(tree)).toContain("no team in this workspace")
   })
 })

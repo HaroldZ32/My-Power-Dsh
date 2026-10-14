@@ -1,0 +1,252 @@
+{
+  "wave": "tui-015-adaptation",
+  "task": "lane-repair2: apply HANDOFF-skills E1a/E1b/E2/E3, land the guard run record, re-run the 8 lanes + test:qa",
+  "sandboxRoot": ".mpd/recon/qa/tui-lanes/tui-015",
+  "host": "@deepseek-harness-tui/dsh-tui@0.15.0",
+  "revision": {
+    "file": "packages/mpd-tui-plugin/dist/index.js",
+    "sha256": "8639a39b2c7c9ace6d4c509825f25c053d4e72b358b02994d1e7c229c6a240b1",
+    "settled": true
+  },
+  "invocation": "bun skills/dsh-qa/scripts/<lane>.ts --sandbox-root .mpd/recon/qa/tui-lanes/tui-015 (tui-settings-bridge takes --out under lane-repair2/step3/); env: XDG_RUNTIME_DIR=<sandbox>/run, pnpm_config_registry=https://registry.npmmirror.com, PATH prepended with <sandbox>/dshhome/profiles/dsh-tui/node_modules/.bin",
+  "driver": "run-lanes-repair2.sh (q-run/run-lanes-step3-final.sh with OUT moved to lane-repair2/step3/)",
+  "edits": [
+    {
+      "id": "E1a",
+      "file": "skills/dsh-qa/scripts/tui-team-surface.ts",
+      "symbol": "armHost() steps",
+      "sha256": "397953fa52b2815c23bd7930c170b62f4c71ab8f5b5b7d222c6457d748fa8488"
+    },
+    {
+      "id": "E1b",
+      "file": "skills/dsh-qa/scripts/tui-team-surface.ts",
+      "symbol": "armHost() baselineSessions + plan-open before hook",
+      "sha256": "397953fa52b2815c23bd7930c170b62f4c71ab8f5b5b7d222c6457d748fa8488"
+    },
+    {
+      "id": "E2",
+      "file": "skills/dsh-qa/scripts/tui-deps-ctrla.ts",
+      "symbol": "driveSteps() panelCommand",
+      "sha256": "efb20367ac48516036a90afee8acb78c3291c6b7d94020666ab711ad9c2efa7a"
+    },
+    {
+      "id": "E3-lane",
+      "file": "skills/dsh-qa/scripts/tui-admission.ts",
+      "symbol": "real() arm3 wording",
+      "sha256": "601791172273eada1d77fa9e1426c35281ab52ec5fb84adb8b36a9b180f17fac",
+      "assertionUnchanged": true
+    },
+    {
+      "id": "E3-evidence",
+      "file": "evidence/tui/dsh-tui-015/q-run/repair/2d-boot-wall.md",
+      "sha256": "e94593b1ce6681a77a75430e4671bac193e1bb24483d0069814d787faba1cc31"
+    }
+  ],
+  "acceptance": "frozen expected-status table after the edits",
+  "result": "MET: 8 of 8 lanes match (step3-final was 5 of 8)",
+  "lanes": [
+    {
+      "case": "tui-mount",
+      "expected": "PASS",
+      "observed": "PASS",
+      "exit": 0,
+      "match": true,
+      "evidence": "tui-mount.evidence/ (evidence/tui/lanes/2026-10-14T11-01-23.930Z/)",
+      "note": "witness=not-materialized, isolationOffenders=0; AC-11 bound declared (freshSandboxSessions=0, warm root carries 17)"
+    },
+    {
+      "case": "tui-deps-ctrla",
+      "expected": "PASS",
+      "observed": "PASS",
+      "exit": 0,
+      "match": true,
+      "evidence": "tui-deps-ctrla.evidence/ (evidence/tui/lanes/2026-10-14T11-01-41.143Z/)",
+      "arms": {
+        "pane": [
+          {
+            "capture": "ctrla-team",
+            "ok": true
+          },
+          {
+            "capture": "ctrla-host",
+            "ok": true
+          },
+          {
+            "capture": "settings-ctrla",
+            "ok": true
+          }
+        ],
+        "store": [
+          {
+            "id": "act1:team",
+            "ok": true
+          }
+        ]
+      },
+      "note": "E2 board-first materializer: store arm green (id=act1:team); negativeControl observed=false (red as required); revisionDelta=false"
+    },
+    {
+      "case": "tui-panels",
+      "expected": "red with tuiRenderers ONLY (7 of 8)",
+      "observed": "red with tuiRenderers ONLY",
+      "exit": 1,
+      "match": true,
+      "evidence": "tui-panels.evidence/ (evidence/tui/lanes/2026-10-14T11-02-49.362Z/)",
+      "note": "surfaces: tuiRenderers=MISSING; all other 7 rendered; negative control ok=false"
+    },
+    {
+      "case": "tui-team-surface",
+      "expected": "red with H4 ONLY (19 of 20)",
+      "observed": "red with H4 ONLY",
+      "exit": 1,
+      "match": true,
+      "evidence": "tui-team-surface.evidence/ (evidence/tui/team-surface-verify/2026-10-14T11-04-07.657Z/)",
+      "arms": {
+        "H1-host-renders-surface": true,
+        "H2-host-dialog-request": true,
+        "H3-host-confirm-step": true,
+        "H4-real-mutation-via-the-adopted-runtime": false,
+        "H4b-outcome-reported-honestly": true,
+        "H5-pane-and-record-agree": true,
+        "H6-real-keystroke-drive": true
+      },
+      "note": "E1a/E1b: fixture captainSessionId=ad1979c5-5254-4c2e-9e37-9172a237bc76 (created by THIS run); H1/H3 flipped green, H4 remains (packages-side)"
+    },
+    {
+      "case": "tui-settings-bridge",
+      "expected": "PASS (built bytes + status-line notice)",
+      "observed": "PASS",
+      "exit": 0,
+      "match": true,
+      "evidence": "step3/settings-bridge.evidence.20261014T110507Z/",
+      "arms": {
+        "T1": true,
+        "T2": true,
+        "T3": true,
+        "T4": true,
+        "T5": true,
+        "T6": true,
+        "T8": true,
+        "T7": true
+      },
+      "note": "T1..T8 all ok"
+    },
+    {
+      "case": "tui-admission",
+      "expected": "red on arm3 ONLY (declared packages gap)",
+      "observed": "red on arm3 ONLY",
+      "exit": 1,
+      "match": true,
+      "evidence": "tui-admission.evidence/ (evidence/tui/lanes/2026-10-14T11-05-07.673Z/)",
+      "arms": {
+        "paneCompatible": true,
+        "loaderAdmitted": true,
+        "ledgerAttribution": false,
+        "decisionFired": true,
+        "negativeControl": true,
+        "revocation": {
+          "state": "compatible",
+          "flipped": false
+        }
+      },
+      "identityDifferential": {
+        "granted": {
+          "admitted": 61,
+          "refused": 0
+        },
+        "negctl": {
+          "admitted": 0,
+          "refused": 61
+        }
+      },
+      "note": "assertion unchanged; corrected CAUSE wording added (host DOES wire decision-handler); arm6 observed state=compatible flipped=false (optional, not gated)"
+    },
+    {
+      "case": "tui-distribution",
+      "expected": "declared/expected status",
+      "observed": "SKIP absent-fixture",
+      "exit": 0,
+      "match": true,
+      "evidence": "(no evidence dir written by a SKIP)",
+      "marker": "[mpd-qa] SKIP case=tui-distribution lane=real reason=absent-fixture prereq=vendor/meta-protocols/dsh-distribution"
+    },
+    {
+      "case": "tui-spec-conformance",
+      "expected": "declared/expected status",
+      "observed": "SKIP absent-fixture",
+      "exit": 0,
+      "match": true,
+      "evidence": "(no evidence dir written by a SKIP)",
+      "marker": "[mpd-qa] SKIP case=tui-spec-conformance lane=real reason=absent-fixture prereq=dsh-ecosystem-spec with conformance/requirements-v0.15.json"
+    }
+  ],
+  "guard": {
+    "case": "team-dispatch-guard",
+    "registeredOnDisk": {
+      "casesJson": {
+        "path": "skills/dsh-qa/cases.json",
+        "sha256": "93eaf2aebd79990e75cad29086d10090995415f2c9794ee79c876b727139b482",
+        "lanesLength": 46,
+        "rowPresent": true
+      },
+      "skillMd": {
+        "path": "skills/dsh-qa/SKILL.md",
+        "sha256": "bdac438bc9f0117a8ac9317c8a038b68338fccc322d417fa3de7dee28cfa2095",
+        "rowLine": 131,
+        "rowPresent": true
+      }
+    },
+    "landedSelfTest": {
+      "command": "bun skills/dsh-qa/scripts/team-dispatch-guard.ts --self-test",
+      "exit": 0,
+      "verdict": "PASS",
+      "arms": 17,
+      "log": "evidence/tui/dsh-tui-015/guard/self-test-landed.log",
+      "result": "evidence/tui/dsh-tui-015/guard/self-test-landed.result.json"
+    }
+  },
+  "gates": {
+    "testQa": {
+      "command": "bun run test:qa",
+      "exit": 0,
+      "summary": "[test:qa] all self-tests passed",
+      "guardRanAtLogLine": 84,
+      "skips": 2,
+      "log": "evidence/tui/dsh-tui-015/lane-repair2/test-qa.log"
+    },
+    "typecheck": {
+      "command": "bun run typecheck",
+      "exit": 0,
+      "log": "evidence/tui/dsh-tui-015/lane-repair2/typecheck.log"
+    },
+    "comments": {
+      "command": "bun run verify:comments",
+      "exit": 0,
+      "verdict": "PASS",
+      "log": "evidence/tui/dsh-tui-015/lane-repair2/comments.log"
+    },
+    "selfTests": {
+      "command": "bun skills/dsh-qa/scripts/{tui-team-surface,tui-deps-ctrla,tui-admission}.ts --self-test",
+      "exit": 0,
+      "log": "evidence/tui/dsh-tui-015/lane-repair2/self-tests.log"
+    },
+    "laneDrift": {
+      "command": "node scripts/run-qa-lanes.ts --check-drift",
+      "exit": 1,
+      "preExisting": true,
+      "unlisted": [
+        "skills/dsh-qa/scripts/delegation-gate.ts",
+        "skills/dsh-qa/scripts/model-config-live-refresh.ts"
+      ],
+      "log": "evidence/tui/dsh-tui-015/lane-repair2/check-drift.log"
+    }
+  },
+  "honestBounds": [
+    "VENDOR_LOCK.json is NOT re-pinned here; every skills/** byte above invalidates the corpus treeSha and the wave single re-pin is the captain integration step.",
+    "tui-admission arm6 is OPTIONAL/observed: this run read state=compatible flipped=false where step3-final read waiting_authorization; the verdict gate is only state!==undefined, so arm3 remains the only red.",
+    "tui-admission arm4 (submitPane.includes(DECISION_SUBMIT_TEXT)) is satisfied by the lane own keystrokes and cannot discriminate a live handler; not used to weaken arm3.",
+    "tui-team-surface H4 and tui-panels tuiRenderers are packages-side reds, reported and named, outside this task write scope.",
+    "2d-boot-wall.md: only the false arm3 CAUSE sentence was corrected; its later H1/H3 section is superseded by this report and was deliberately left untouched."
+  ],
+  "measuredAtUtc": "2026-10-14T11:08:38.558Z"
+}

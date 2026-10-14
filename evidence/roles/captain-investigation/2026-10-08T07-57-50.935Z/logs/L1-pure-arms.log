@@ -1,0 +1,21 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-roles-plugin/test/captain-investigation.test.ts:
+(pass) L1 — the decision function's behaviour table, path by path > a SOURCE path is refused, and the sentence teaches the route [0.33ms]
+(pass) L1 — the decision function's behaviour table, path by path > the documentation band is allowed: .mpd/**, docs/**, evidence/**, agent-references/** [0.05ms]
+(pass) L1 — the decision function's behaviour table, path by path > the root instruction/overview files are allowed, and only at the root [0.15ms]
+(pass) L1 — the decision function's behaviour table, path by path > a call with NO usable path is refused (fail-closed), for every reconnaissance tool [0.04ms]
+(pass) L1 — the decision function's behaviour table, path by path > grep/glob are judged by the SAME rule on their path argument [0.03ms]
+(pass) L1 — the decision function's behaviour table, path by path > a path outside the workspace, or one spelled out of a band, is refused [0.12ms]
+(pass) L1 — the decision function's behaviour table, path by path > a NON-top-level session keeps reconnaissance — members, spawns and verifier seats [0.06ms]
+(pass) L1 — the decision function's behaviour table, path by path > the rule touches NO tool but the three reconnaissance tools [0.02ms]
+(pass) L1/L3 — the mode resolver and the mode's own arms > only the exact spelling `allow` opts out; everything else is the fail-closed default [0.03ms]
+(pass) L1/L3 — the mode resolver and the mode's own arms > mode `allow` restores today's freedom exactly, for the captain on a source path
+(pass) L1/L3 — the mode resolver and the mode's own arms > the band test is total for a primitive path argument [0.01ms]
+(pass) L2 — the INSTALL is the decision the arms above proved, with a reported mode > the guard reaches the seam and the reported mode follows the knob [0.21ms]
+(pass) L2 — the INSTALL is the decision the arms above proved, with a reported mode > a composition without the guard seam reports the absence instead of installing nothing silently [0.04ms]
+
+ 13 pass
+ 0 fail
+ 64 expect() calls
+Ran 13 tests across 1 file. [82.00ms]

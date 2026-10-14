@@ -1,0 +1,10 @@
+--- evidence/tui/dsh-tui-015/pack-manifest-fix/.tmp-C3-red-launcher-unknown.orig	2026-10-15 00:07:46.753452795 +0800
++++ scripts/pack-mpd.ts	2026-10-15 00:07:46.771809516 +0800
+@@ -691,7 +691,6 @@
+  */
+ const LAUNCHER_DEPENDENCIES: readonly LauncherDependencies[] = [
+   { launcher: "packages/mpd-mcp-astgrep/dist/launch.js", dependencies: ["@ast-grep/cli"] },
+-  { launcher: "packages/mpd-mcp-codegraph/dist/launch.js", dependencies: ["@colbymchenry/codegraph"] },
+   { launcher: "packages/mpd-mcp-gitbash/dist/launch.js", dependencies: ["@cyanheads/git-mcp-server", "mcp-server-commands"] },
+   { launcher: "packages/mpd-mcp-lsp/dist/launch.js", dependencies: ["cclsp"] }
+ ]

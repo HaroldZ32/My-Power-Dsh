@@ -1,0 +1,24 @@
+npm pack exit=0
+tarball=/tmp/mpd-dsh-mpd-0.12.0.tgz feb1be9e0c12899a
+=== dsh plugin --profile webtgz add <the real .tgz> ===
+TGZ_EXIT=1
+28:[ERR_PNPM_IGNORED_BUILDS] Ignored build scripts: @ast-grep/cli@0.45.2, @code-yeongyu/comment-checker@0.8.0
+30:Run "pnpm approve-builds" to pick which dependencies should be allowed to run scripts.
++ @mpd-dsh/mpd file:/tmp/mpd-dsh-mpd-0.12.0.tgz
+
+Packages: +173
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Packages are hard linked from the content-addressable store to the virtual store.
+  Content-addressable store is at: /tmp/tarball-home2/.local/share/pnpm/store/v11
+  Virtual store is at:             node_modules/.pnpm
+Progress: resolved 182, reused 0, downloaded 29, added 24
+Progress: resolved 182, reused 0, downloaded 167, added 167
+Progress: resolved 182, reused 0, downloaded 168, added 168
+Progress: resolved 182, reused 0, downloaded 170, added 170
+Progress: resolved 182, reused 0, downloaded 172, added 172
+Progress: resolved 182, reused 0, downloaded 173, added 173, done
+[ERR_PNPM_IGNORED_BUILDS] Ignored build scripts: @ast-grep/cli@0.45.2, @code-yeongyu/comment-checker@0.8.0
+
+Run "pnpm approve-builds" to pick which dependencies should be allowed to run scripts.
+dsh: plugin command failed; diagnostics: /tmp/tarball-dsh2/profiles/webtgz/.plugin-manager/logs/operation-AG04PE/pnpm.log
+TGZ_EXIT=1

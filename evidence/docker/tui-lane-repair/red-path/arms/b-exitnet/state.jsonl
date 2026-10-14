@@ -1,0 +1,22 @@
+{"name":"tui.hostInstall","ok":true,"reason":"arm seed: this lane arm ran and recorded through the lane own record helper","raw":"seed=red-path-harness"}
+{"name":"tui.pluginAddHost","ok":true,"reason":"arm seed: this lane arm ran and recorded through the lane own record helper","raw":"seed=red-path-harness"}
+{"name":"tui.pluginAddBundle","ok":true,"reason":"arm seed: this lane arm ran and recorded through the lane own record helper","raw":"seed=red-path-harness"}
+{"name":"tui.compose","ok":true,"reason":"arm seed: this lane arm ran and recorded through the lane own record helper","raw":"seed=red-path-harness"}
+{"name":"tui.presetPreference","ok":true,"reason":"arm seed: this lane arm ran and recorded through the lane own record helper","raw":"seed=red-path-harness"}
+{"name":"tui.presetRow","ok":true,"reason":"arm seed: this lane arm ran and recorded through the lane own record helper","raw":"seed=red-path-harness"}
+{"name":"tui.mpdTuiRow","ok":true,"reason":"arm seed: this lane arm ran and recorded through the lane own record helper","raw":"seed=red-path-harness"}
+{"name":"tui.agentTeamRows","ok":true,"reason":"arm seed: this lane arm ran and recorded through the lane own record helper","raw":"seed=red-path-harness"}
+{"name":"tui.teamFixtureBound","ok":true,"reason":"arm seed: this lane arm ran and recorded through the lane own record helper","raw":"seed=red-path-harness"}
+{"name":"tui.teamSceneOtherSessionInvisible","ok":true,"reason":"arm seed: this lane arm ran and recorded through the lane own record helper","raw":"seed=red-path-harness"}
+{"name":"tui.teamSceneOpened","ok":true,"reason":"arm seed: this lane arm ran and recorded through the lane own record helper","raw":"seed=red-path-harness"}
+{"name":"tui.teamGraphDrawn","ok":true,"reason":"arm seed: this lane arm ran and recorded through the lane own record helper","raw":"seed=red-path-harness"}
+{"name":"tui.teamGraphEdges","ok":true,"reason":"arm seed: this lane arm ran and recorded through the lane own record helper","raw":"seed=red-path-harness"}
+{"name":"tui.teamGraphContent","ok":true,"reason":"arm seed: this lane arm ran and recorded through the lane own record helper","raw":"seed=red-path-harness"}
+{"name":"tui.mergedPanelOpens","ok":true,"reason":"arm seed: this lane arm ran and recorded through the lane own record helper","raw":"seed=red-path-harness"}
+{"name":"tui.mergedPanelOrder","ok":true,"reason":"arm seed: this lane arm ran and recorded through the lane own record helper","raw":"seed=red-path-harness"}
+{"name":"tui.hostDashboardKeyIntact","ok":true,"reason":"arm seed: this lane arm ran and recorded through the lane own record helper","raw":"seed=red-path-harness"}
+{"name":"tui.noDirectTuiSeam","ok":true,"reason":"arm seed: this lane arm ran and recorded through the lane own record helper","raw":"seed=red-path-harness"}
+{"name":"tui.boot","ok":true,"reason":"arm seed: this lane arm ran and recorded through the lane own record helper","raw":"seed=red-path-harness"}
+{"name":"tui.noFatalSignatures","ok":true,"reason":"arm seed: this lane arm ran and recorded through the lane own record helper","raw":"seed=red-path-harness"}
+{"name":"tui.sessionPreset","ok":true,"reason":"arm seed: this lane arm ran and recorded through the lane own record helper","raw":"seed=red-path-harness"}
+{"name":"tui.laneExit","ok":false,"reason":"the TUI lane exited with 1 without the ERR trap seeing it (an immediate abort such as a set -u unbound variable) — earlier tui.* records are the assertions that had already run, and every arm after this point reads as 'not reached'","raw":"abort=exit-1 net=EXIT-trap"}

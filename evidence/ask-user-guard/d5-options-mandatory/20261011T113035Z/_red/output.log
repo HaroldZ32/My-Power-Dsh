@@ -1,0 +1,98 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-roles-plugin/test/ask-user-guard.test.ts:
+(pass) D5 — allow: every shape the rule set does NOT deny stays dispatchable > a fully-formed call with options is allowed [0.12ms]
+(pass) D5 — allow: every shape the rule set does NOT deny stays dispatchable > an `options` entry may carry extra fields — only `label` is the rule's subject [0.03ms]
+(pass) D5 — allow: every shape the rule set does NOT deny stays dispatchable > a multi-question call is allowed when EVERY item carries a non-empty options list [0.01ms]
+(pass) D5 — allow: every shape the rule set does NOT deny stays dispatchable > the validator never mutates the call it was handed [0.10ms]
+73 | })
+74 | 
+75 | describe("D5 — deny: a question item with MISSING `options` (the 2026-10-11 occurrence)", () => {
+76 |   test("a question with no `options` key at all is refused, naming the offending item", () => {
+77 |     expect(String(askUserQuestionDenial(MISSING_OPTIONS)))
+78 |       .toContain("question item 1 carries no `options` array")
+            ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "question item 1 carries no `options` array"
+Received: "undefined"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-roles-plugin/test/ask-user-guard.test.ts:78:8)
+(fail) D5 — deny: a question item with MISSING `options` (the 2026-10-11 occurrence) > a question with no `options` key at all is refused, naming the offending item [0.21ms]
+78 |       .toContain("question item 1 carries no `options` array")
+79 |   })
+80 | 
+81 |   test("`options: undefined` is refused exactly like a missing key", () => {
+82 |     expect(String(askUserQuestionDenial({ questions: [{ id: "q1", question: "Q?", options: undefined }] })))
+83 |       .toContain("question item 1 carries no `options` array")
+            ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "question item 1 carries no `options` array"
+Received: "undefined"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-roles-plugin/test/ask-user-guard.test.ts:83:8)
+(fail) D5 — deny: a question item with MISSING `options` (the 2026-10-11 occurrence) > `options: undefined` is refused exactly like a missing key [0.05ms]
+87 |     expect(String(askUserQuestionDenial({
+88 |       questions: [
+89 |         { id: "a", question: "Choose", options: [{ label: "one" }] },
+90 |         { id: "b", question: "Explain" },
+91 |       ],
+92 |     }))).toContain("question item 2 carries no `options` array")
+              ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "question item 2 carries no `options` array"
+Received: "undefined"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-roles-plugin/test/ask-user-guard.test.ts:92:10)
+(fail) D5 — deny: a question item with MISSING `options` (the 2026-10-11 occurrence) > a mixed call is refused at the FIRST item that lacks `options`, and the sentence names it [0.04ms]
+93 |   })
+94 | 
+95 |   test("the refusal tells the model to re-issue with an options array on every item", () => {
+96 |     /** The denial for the omission shape — the sentence the model reads back. */
+97 |     const denial = String(askUserQuestionDenial(MISSING_OPTIONS))
+98 |     expect(denial).toContain("ask_user_question is refused")
+                        ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "ask_user_question is refused"
+Received: "undefined"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-roles-plugin/test/ask-user-guard.test.ts:98:20)
+(fail) D5 — deny: a question item with MISSING `options` (the 2026-10-11 occurrence) > the refusal tells the model to re-issue with an options array on every item [0.04ms]
+(pass) D5 — deny: `arguments` is not an object > a non-object call is refused, naming the received shape [0.07ms]
+(pass) D5 — deny: `questions` missing, not an array, or empty > a missing `questions` field is refused [0.06ms]
+(pass) D5 — deny: `questions` missing, not an array, or empty > a non-array `questions` value is refused and names the shape [0.02ms]
+(pass) D5 — deny: `questions` missing, not an array, or empty > an EMPTY `questions` array is refused — a call with no question renders nothing [0.01ms]
+(pass) D5 — deny: a question item lacks a non-empty string `id` or `question` > a non-object item is refused, naming its position [0.01ms]
+(pass) D5 — deny: a question item lacks a non-empty string `id` or `question` > a missing, empty or non-string `id` is refused [0.04ms]
+(pass) D5 — deny: a question item lacks a non-empty string `id` or `question` > a missing or empty `question` is refused — THE measured defect (a card with no text) [0.06ms]
+(pass) D5 — deny: a question item lacks a non-empty string `id` or `question` > the denial names the OFFENDING item, so a 4-item call points at item 4 [0.02ms]
+(pass) D5 — deny: `options` present and malformed > `options` that is not an array is refused [0.04ms]
+(pass) D5 — deny: `options` present and malformed > an EMPTY `options` array is refused — a choice card with no option is the broken card [0.02ms]
+(pass) D5 — deny: `options` present and malformed > an option without a non-empty string `label` is refused, naming its position [0.06ms]
+(pass) D5 — the name test: only `ask_user_question` is this guard's subject > a non-target tool name passes untouched, whatever its arguments [0.03ms]
+(pass) D5 — the name test: only `ask_user_question` is this guard's subject > the target name is decided by the validator, and the constant is the host's own spelling [0.06ms]
+(pass) D5 — the name test: only `ask_user_question` is this guard's subject > a headless or unreadable execution is a pass-through — a guard never takes a tool call down [0.11ms]
+267 |     // The callback the ROW installed decides: a broken call is denied, a good call and a foreign tool pass.
+268 |     expect(String(guards[0]?.({ name: "ask_user_question", arguments: { questions: [] } }) ?? ""))
+269 |       .toContain("ask_user_question is refused")
+270 |     // The 2026-10-11 shape travels the REAL seam too: a question item that omits `options` is denied.
+271 |     expect(String(guards[0]?.({ name: "ask_user_question", arguments: MISSING_OPTIONS }) ?? ""))
+272 |       .toContain("ask_user_question is refused")
+             ^
+error: expect(received).toContain(expected)
+
+Expected to contain: "ask_user_question is refused"
+Received: ""
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-roles-plugin/test/ask-user-guard.test.ts:272:8)
+(fail) D5 — the install reaches the seam and reports its outcome > with the seam present the row installs exactly one guard, and it decides both ways [0.19ms]
+(pass) D5 — the install reaches the seam and reports its outcome > a composition without the guard seam reports the absence instead of installing nothing silently [0.05ms]
+(pass) D5 — the install reaches the seam and reports its outcome > a throwing guard seam is reported as an install failure, not an abort [0.05ms]
+
+ 20 pass
+ 5 fail
+ 71 expect() calls
+Ran 25 tests across 1 file. [6.00ms]

@@ -1,0 +1,23 @@
+### CASE 1: the real evidence tree (stamp dirs from this project's own lane runs)
+stamp directories found (newest first): evidence/docker/client-install-oneclick/2026-10-09T15-10-21Z evidence/docker/client-install/2026-10-09T14-53-52Z evidenc
+stamp directory: evidence/docker/client-install-oneclick/2026-10-09T15-10-21Z/
+driver: exit=1 liveRequested=true browserEnabled=false requiredPrefixes=[live.,boot.llmTurn] containerExit=1 imageMiB=438
+rows: total=118 passed=101 failed=4 null=13
+FAIL boot.mcpToolNaming — the registered MCP surface is not the declared row set: malformed=none undeclaredServers=none silentLocalServers=codegraph missingAstG
+FAIL qa.mcpCall — the live mcp-call case (a real model turn that must record a mcp__ast_grep__search call) did NOT pass in this run (exit=1); this is the case's
+FAIL qa.readonlyDeny — the live readonly-deny case (a read-only spawn whose child must really be restricted) did NOT pass in this run (exit=1); this is the case
+FAIL boot.mcpTools — an MCP tool is missing from the live registry — its stdio server did not come up
+NULL build.bunInstall — not applicable in one-click mode: the published package carries its own dependencies and the install materializes them
+NULL build.dists — not applicable in one-click mode: the published package ships its built dist entries, and the mount below is what judges them
+NULL pack.distFreshRebuild — not measured in this mode: no from-source rebuild of the tree was produced here, so there is nothing to compare the artifact agains
+NULL pack.rebuildToolchain — not measured in this mode: no from-source rebuild was produced, so no compiler produced the bytes this row would match against the 
+NULL pack.distFreshRebuildControl — not applicable in mode=oneclick: the control mutates the packed artifact and re-grades it against a from-source rebuild, and
+NULL ui.loads — not attempted: the browser lane is opt-in (MPD_E2E_BROWSER=1) because it downloads Chromium; the HTTP assertions above are the browser-free maxi
+NULL ui.workspaceSelected — not attempted: the browser lane is opt-in (MPD_E2E_BROWSER=1) because it downloads Chromium; the HTTP assertions above are the brows
+NULL ui.composerPresent — not attempted: the browser lane is opt-in (MPD_E2E_BROWSER=1) because it downloads Chromium; the HTTP assertions above are the browser
+NULL ui.promptSent — not attempted: the browser lane is opt-in (MPD_E2E_BROWSER=1) because it downloads Chromium; the HTTP assertions above are the browser-free
+NULL ui.replyRendered — not attempted: the browser lane is opt-in (MPD_E2E_BROWSER=1) because it downloads Chromium; the HTTP assertions above are the browser-f
+NULL ui.mpdSettingsSection — not attempted: the browser lane is opt-in (MPD_E2E_BROWSER=1) because it downloads Chromium; the HTTP assertions above are the brow
+NULL ui.teamPanel — not attempted: the browser lane is opt-in (MPD_E2E_BROWSER=1) because it downloads Chromium; the HTTP assertions above are the browser-free 
+NULL ui.noConsoleErrors — not attempted: the browser lane is opt-in (MPD_E2E_BROWSER=1) because it downloads Chromium; the HTTP assertions above are the browser
+---case1 exit:0

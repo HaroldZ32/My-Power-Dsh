@@ -1,0 +1,5 @@
+toolchain: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun
+1.4.0
+TMPDIR=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.bun-tmp/tmp
+BUN_TMPDIR=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.bun-tmp/tmp
+BUN_INSTALL_CACHE_DIR=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.bun-tmp/cache

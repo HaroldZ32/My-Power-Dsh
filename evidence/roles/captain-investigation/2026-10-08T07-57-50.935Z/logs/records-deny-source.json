@@ -1,0 +1,43 @@
+[
+ {
+  "type": "tool/call",
+  "seq": 19,
+  "time": 1791446287583,
+  "data": {
+   "turn": 1,
+   "step": 1,
+   "callId": "call_00_8mpgLNEUgej4nVdsg66s1908",
+   "name": "read",
+   "arguments": "{\"file_path\": \"packages/probe/src/probe.ts\"}"
+  }
+ },
+ {
+  "type": "tool/result",
+  "seq": 20,
+  "time": 1791446287586,
+  "data": {
+   "turn": 1,
+   "step": 1,
+   "message": {
+    "role": "tool",
+    "source": {
+     "kind": "tool",
+     "callId": "call_00_8mpgLNEUgej4nVdsg66s1908"
+    },
+    "toolCallId": "call_00_8mpgLNEUgej4nVdsg66s1908",
+    "content": [
+     {
+      "type": "text",
+      "text": "Error: captain investigation rule: `read` on \"packages/probe/src/probe.ts\" is refused — the workspace's TOP-LEVEL session does not run reconnaissance, so its context stays small enough for very large projects. Delegate it: `mpd_role_spawn` with the `Explorer` role (find files and code) or the `Researcher` role (evidence-based search), or hand the search to a team member, and consume the REPORT. The documentation band stays open to you: `.mpd/**`, `docs/**`, `evidence/**`, `agent-references/**`, the root AGENTS.md / README*.md / CHANGELOG.md / LICENSE*.md — and `captain.investigation: \"allow\"` in mpd.jsonc restores full access."
+     }
+    ],
+    "isError": true,
+    "id": "1bdb14b3-0277-4077-a61e-dd91c696c36f"
+   }
+  },
+  "sourceEventSeqs": [
+   19
+  ],
+  "surfaceOp": "append"
+ }
+]

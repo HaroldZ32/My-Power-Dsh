@@ -1,0 +1,51 @@
+[07:43:30] === attempt=big-2 utc-start=2026-10-08T07:43:30Z
+[07:43:30] sandbox=/tmp/mpd-lr-gFfPOS
+[07:43:31] sandbox host version=0.14.0
+big board team-2026-10-08T07-00-00.000Z: tasks=26 ranks>=2 completed=6 failed=1
+[07:43:31] record: /tmp/mpd-lr-gFfPOS/ws/.mpd/team/teams/team-2026-10-08T07-00-00.000Z.json (12125 bytes)
+tasks=26 ranks=16 statuses=completed,in_progress,failed,pending
+[07:43:31] tmux grid: 220x50
+[07:43:31] waiting for the chat frame ...
+[07:43:48] CAPTURE 00-chat @ 2026-10-08T07:43:48.564Z
+[07:43:48] chat status row: mpd: team big-board 5·6/26 · failed 1 · plans 0 · workmates 0                                                                                     
+[07:43:48] --- [B] /mpd team  (full-screen scene, KEY PRESS)
+[07:43:49] B marker SEEN
+[07:43:52] CAPTURE BIG-B1-scene @ 2026-10-08T07:43:52.613Z
+[07:43:52] BIG-B1 header: '│ task dependency graph (rail)                                                                                                                                                                                         │'
+[07:43:52] --- [B] mutate the big board on disk (big1), NO KEY PRESS from here
+[07:43:52] mutation: big1: tasks=27
+[07:43:54] CAPTURE BIG-B2-scene-plus2s @ 2026-10-08T07:43:54.666Z
+[07:43:54]    t+2022ms
+[07:43:56] CAPTURE BIG-B3-scene-plus4s @ 2026-10-08T07:43:56.691Z
+[07:43:56]    t+4046ms
+BIG-B1-scene vs BIG-B3-scene-plus4s: changedLines=38
+        BIG-B1-scene: modeLine="" header="│ task dependency graph (rail)                                                                                                                                                                                         │"
+        BIG-B3-scene-plus4s: modeLine="" header="│ task dependency graph (rail)                                                                                                                                                                                         │"
+[07:43:56] --- [B] CONTROL: Escape, then re-open the scene (key presses resume)
+[07:43:58] CAPTURE BIG-B4-after-escape @ 2026-10-08T07:43:58.740Z
+[07:44:02] CAPTURE BIG-B5-scene-reopened @ 2026-10-08T07:44:02.761Z
+[07:44:02] BIG-B5 header: '│ task dependency graph (rail)                                                                                                                                                                                         │'
+BIG-B2-scene-plus2s vs BIG-B5-scene-reopened: changedLines=0
+        BIG-B2-scene-plus2s: modeLine="" header="│ task dependency graph (rail)                                                                                                                                                                                         │"
+        BIG-B5-scene-reopened: modeLine="" header="│ task dependency graph (rail)                                                                                                                                                                                         │"
+[07:44:04] --- [A] /mpd panel  (MPD sidebar page, KEY PRESS)
+[07:45:05] A mode line NOT seen in 60s
+[07:45:09] CAPTURE BIG-A1-sidebar @ 2026-10-08T07:45:09.286Z
+[07:45:09] BIG-A1 mode line: ''
+[07:45:09] --- [A] mutate the big board on disk (big2), NO KEY PRESS from here
+[07:45:09] mutation: big2: tasks=28
+[07:45:11] CAPTURE BIG-A2-sidebar-plus2s @ 2026-10-08T07:45:11.341Z
+[07:45:11]    t+2020ms
+[07:45:13] CAPTURE BIG-A3-sidebar-plus4s @ 2026-10-08T07:45:13.364Z
+[07:45:13]    t+4043ms
+BIG-A1-sidebar vs BIG-A3-sidebar-plus4s: changedLines=38
+        BIG-A1-sidebar: modeLine="" header=""
+        BIG-A3-sidebar-plus4s: modeLine="" header=""
+[07:45:13] --- [A] CONTROL: re-open the sidebar page
+[07:45:17] CAPTURE BIG-A4-sidebar-reopened @ 2026-10-08T07:45:17.413Z
+[07:45:17] BIG-A4 mode line: ''
+BIG-A2-sidebar-plus2s vs BIG-A4-sidebar-reopened: changedLines=28
+        BIG-A2-sidebar-plus2s: modeLine="" header=""
+        BIG-A4-sidebar-reopened: modeLine="" header=""
+[07:45:17] === utc-end=2026-10-08T07:45:17Z sandbox=/tmp/mpd-lr-gFfPOS evidence=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/live-refresh/2026-10-08T07-32-09Z/big-2
+[07:45:17] tmux server stopped

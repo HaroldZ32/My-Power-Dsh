@@ -1,0 +1,32 @@
+[WARN] The package @mpd-dsh/mpd, which you have just pnpm linked, has the following peerDependencies specified in its package.json:
+
+  - dsh-better-sidebar@>=0.24.1 <0.25.0
+
+The linked in dependency will not resolve the peer dependencies from the target node_modules.
+This might cause issues in your project. To resolve this, you may use the "file:" protocol to reference the local dependency.
+✓ Lockfile passes supply-chain policies (verified 15s ago)
+Packages: -26
+--------------------------
+Progress: resolved 78, reused 78, downloaded 0, added 0, done
+[WARN] Issues with peer dependencies found. Run "pnpm peers check" to list them.
+
+dependencies:
++ @mpd-dsh/mpd <- ../../../../../../../..
+
+Done in 79ms using pnpm v12.11.2
+[WARN] The package @mpd-dsh/mpd, which you have just pnpm linked, has the following peerDependencies specified in its package.json:
+
+  - dsh-better-sidebar@>=0.24.1 <0.25.0
+
+The linked in dependency will not resolve the peer dependencies from the target node_modules.
+This might cause issues in your project. To resolve this, you may use the "file:" protocol to reference the local dependency.
+✓ Lockfile passes supply-chain policies (verified 201ms ago)
+Packages: -26
+--------------------------
+Progress: resolved 78, reused 78, downloaded 0, added 0, done
+[WARN] Issues with peer dependencies found. Run "pnpm peers check" to list them.
+
+dependencies:
++ @mpd-dsh/mpd link:/home/haroldzhao/MyProj/DshProj/My-Power-Dsh
+
+Done in 75ms using pnpm v12.11.2

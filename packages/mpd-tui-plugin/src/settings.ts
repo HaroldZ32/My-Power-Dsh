@@ -6,29 +6,28 @@
 // this screen writes to: the section declares and edits those knobs under the
 // harness settings namespace `mpd`, and the two are BRIDGED (t35): `mpd-config`
 // observes the namespace through the adapter's settings seam and rewrites the value
-// into `<workspace>/.mpd/mpd.jsonc` with comments and key order preserved. The
-// settings value is visible to the config layer immediately, while a RUNNING
-// session's plugin behaviour changes only after a restart — every knob in this
-// section is captured at plugin mount (design §D.1).
+// into `<workspace>/.mpd/mpd.jsonc` with comments and key order preserved.
 //
-// T-18 HOST LIMITATION (the honest half, also rendered by the Web card as its second
-// disclosure paragraph and exported as `BRIDGE_RESTART_LIMIT` from the shared schema):
-// the FILE-derived base is read once at plugin mount and stays fixed for the process
-// lifetime, so a hand edit of `.mpd/mpd.jsonc` applies at the next dsh boot and never
-// mid-process. Only a change made through the settings document can reach a RUNNING
-// plugin, and only where the plugin subscribes to the host's settings-document update
-// (the watchdog engine does, `engine.ts` `onSettingsDocumentUpdated`); this change does
-// not prove that seam is exposed on the installed host, so no surface claims a live
-// reload — the per-field hints state the restart truth, and `BRIDGE_RESTART_LIMIT` carries
-// the limitation on the Web card (this pane keeps its one-line hints free of it so the
-// restart disclosure and the "never lost" clause stay legible).
+// LIVE REFRESH (wave fix/model-config-live-refresh, L1): the old "a RUNNING session's
+// plugin behaviour changes only after a restart" claim is DELETED, not softened — the
+// config row now arms a file watcher at mount AND subscribes to the entry-config
+// document, so its `state` re-resolves on every settings save and on a watched edit of
+// the project file. The model routes this section edits (`teamModels`, `agentRoutes`,
+// `modelchain`) are read PER USE (L2/L3), so the next spawn or resolve carries them —
+// no restart. What still waits for a boot is one class only: a knob some plugin
+// CAPTURED at its own mount instead of reading the live config service per use
+// (`BRIDGE_RESTART_LIMIT` carries that sentence, and neither front door claims more).
+//
+// SEE BEFORE YOU EDIT (R3): the section's own description carries
+// `effectiveModelSummary` — the four effective slot routes, the `agentRoutes`
+// overrides that are set and the configured `modelchain` chains — read from the
+// `mpdConfig` service AT SECTION-REQUEST TIME, so every `/settings` open shows the
+// effective config as of now.
 //
 // The disclosure is not only in this header and the READMEs — it is carried by
-// the RENDERED METADATA too (t21): every field hint names its mpd.jsonc key and
-// then states the marker, so a user reading `/settings` learns it at the point of
-// use. The marker is a single exported constant and the hints are built by one
-// helper, so it cannot be dropped from a field silently (test/plugin.test.ts
-// asserts it on the registered section).
+// the RENDERED METADATA too (t21): every field hint names its mpd.jsonc key, and
+// the hints are built by one helper so the disclosure half cannot be dropped from a
+// field silently (test/plugin.test.ts asserts it on the registered section).
 //
 // The namespace registration exists so the screen treats the section as
 // available (an unregistered namespace is rendered as unavailable by design).
@@ -38,7 +37,11 @@ import type { PluginContextLike, SeamOutcome, SeamState, SettingsProviderLike, T
 // ONE source for the namespace schema, the twenty-two knobs and the disclosure: `mpd-config-plugin`
 // owns the namespace (design §10.1) and exports them; this package consumes them for its
 // guarded FALLBACK registration and for the section it declares.
-import { BRIDGE_DISCLOSURE, BRIDGE_NOT_LOST, SettingsSchema, SETTINGS_KNOBS, SETTINGS_NS, TEAM_MODEL_FALLBACK_OPTIONS } from "../../mpd-config-plugin/src/settings-schema"
+import { BRIDGE_DISCLOSURE, BRIDGE_NOT_LOST, SettingsSchema, SETTINGS_KNOBS, SETTINGS_NS, TEAM_MODEL_FALLBACK_OPTIONS, markVolatile } from "../../mpd-config-plugin/src/settings-schema"
+
+// RE-EXPORTED so this row marks its OWN config volatile WITHOUT adding a second cross-package import
+// edge (the coupling inventory pins ONE edge per file, and it may only shrink).
+export { markVolatile }
 import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import type { DshAdapter, DshLlmCatalog } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import type { Log } from "./log.js"
@@ -78,16 +81,15 @@ export const BRIDGE_NO_WORKSPACE_NOTICE = "saved to settings — not yet written
 
 /**
  * One field hint, HUMAN SENTENCE FIRST: the knob's own human sentence (what it is and what
- * configuring it does) leads, then the real mpd.jsonc key PLUS both on-screen statements — the
- * bridge+restart truth AND the clause that keeps a settings-only save from reading as a lost one
- * (captain's ruling 1: with 0 or N live roots the value persists in the host settings document and
- * the read-in layer applies it to every workspace immediately). A knob with no human sentence
- * (every knob but the twelve team-model slot leaves) keeps the disclosure-only hint byte-for-byte.
+ * configuring it does) leads, then the real mpd.jsonc key — the pointer the reader looks up in the
+ * file. The long disclosure (live-refresh truth plus the not-lost clause) is stated ONCE by the
+ * section's own description, never per row. A knob with no human sentence keeps the pointer-only
+ * hint byte-for-byte.
  */
 function knobHint(key: string, semantics?: string): string {
   // The ROW hint is the knob's own sentence plus its dotted key. The bridge disclosure is stated
   // ONCE, in the section's own description (see SETTINGS_SECTION below) — inlining it per row is
-  // what made 25 rows read as the same four lines (measured in docker/ui, `05b-mpd-section.png`).
+  // what made the rows read as the same four lines (measured in docker/ui, `05b-mpd-section.png`).
   /** The dotted `.mpd/mpd.jsonc` key the row edits; the same pointer in both languages. */
   const pointer = `mpd.jsonc ${key}`
   return semantics === undefined || semantics.length === 0 ? pointer : `${semantics} (${pointer})`
@@ -236,6 +238,15 @@ function slotLeafOf(path: readonly string[]): TeamModelLeaf | undefined {
 }
 
 /**
+ * The route leaf a knob path addresses — a team-model slot leaf OR an agentRoutes member leaf —
+ * or undefined for every other knob. Both row families share the same three leaves and therefore
+ * the same option projection, so one matcher feeds both.
+ */
+function routeLeafOf(path: readonly string[]): TeamModelLeaf | undefined {
+  return slotLeafOf(path) ?? (path[0] === "agentRoutes" ? TEAM_MODEL_LEAVES.find((candidate) => candidate === path[2]) : undefined)
+}
+
+/**
  * Is the namespace already served? Probed through the provider's own read surface: `describe()`
  * is the documented way to enumerate served namespaces, with `get()` as the fallback for a
  * provider that answers only reads.
@@ -263,6 +274,108 @@ function configPluginPresent(ctx: PluginContextLike): boolean {
     return typeof ctx.get === "function" && ctx.get("mpdConfig") !== undefined
   } catch {
     return false
+  }
+}
+
+/**
+ * The `mpdConfig` service the effective summary reads, or undefined when this composition mounts
+ * no config row (the guarded-fallback world) or the lookup refuses. Probed PER CALL — the row's
+ * fiber may activate after this one, the same race `configPluginPresent` tolerates.
+ */
+function configServiceOf(ctx: PluginContextLike): { get?: (key?: string) => unknown } | undefined {
+  try {
+    /** The service double, read only for its `get` member below. */
+    const service = typeof ctx.get === "function" ? ctx.get("mpdConfig") : undefined
+    return service !== null && typeof service === "object" ? (service as { get?: (key?: string) => unknown }) : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/** Whether a value is a non-null, non-array object — the only shape a route table can be. */
+function isPlainTable(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+}
+
+/** One string leaf of a route block, "" when the block carries no non-empty string there. */
+function summaryLeaf(block: unknown, leaf: string): string {
+  /** The leaf's raw value, when the block carries one. */
+  const found = isPlainTable(block) ? block[leaf] : undefined
+  return typeof found === "string" && found.length > 0 ? found : ""
+}
+
+/**
+ * The SEE-BEFORE-YOU-EDIT summary (R3): the current effective model config in one bounded line per
+ * language — the four slot routes (defaults materialised by the service's keyed read), the
+ * `agentRoutes` overrides that are actually set, and the configured `modelchain` chains. Read from
+ * the LIVE `mpdConfig` service only (never a re-parse of mpd.jsonc), so it reflects every save and
+ * watched edit the service has refreshed from.
+ * @param config - the `mpdConfig` service double, or undefined when no config row is composed.
+ * @returns the `{ en, zh }` pair the section's description carries; an explicit unavailability
+ *   sentence when the service is absent.
+ */
+export function effectiveModelSummary(config: { get?: (key?: string) => unknown } | undefined): { en: string; zh: string } {
+  if (config === undefined || config === null || typeof config.get !== "function") {
+    return {
+      en: "effective values unavailable (no mpdConfig service in this composition)",
+      zh: "生效值不可用（该组合没有 mpdConfig 服务）",
+    }
+  }
+  /** The slot routes, one `p/m/e` fragment per slot in slot order. */
+  const slotFragments: string[] = []
+  try {
+    /** The four slot blocks, defaults materialised by the keyed read. */
+    const slots = config.get("teamModels")
+    for (const slot of ["slot1", "slot2", "slot3", "slot4"]) {
+      /** This slot's block. */
+      const block = isPlainTable(slots) ? slots[slot] : undefined
+      slotFragments.push(`${slot}:${summaryLeaf(block, "provider")}/${summaryLeaf(block, "model")}/${summaryLeaf(block, "reasoningEffort") || "-"}`)
+    }
+  } catch {
+    // An unreadable slot half renders as an explicit gap rather than a wrong route.
+    slotFragments.length = 0
+  }
+  /** The set overrides as `Name(leaf=value, …)` fragments, in the table's own key order. */
+  const overrideFragments: string[] = []
+  try {
+    /** The stored agentRoutes table. */
+    const routes = config.get("agentRoutes")
+    if (isPlainTable(routes)) {
+      for (const [name, entry] of Object.entries(routes)) {
+        if (!isPlainTable(entry)) continue
+        /** This entry's SET leaves, in leaf order. */
+        const leaves = ["provider", "model", "reasoningEffort"].filter((leaf) => summaryLeaf(entry, leaf) !== "").map((leaf) => `${leaf}=${summaryLeaf(entry, leaf)}`)
+        if (leaves.length > 0) overrideFragments.push(`${name}(${leaves.join(", ")})`)
+      }
+    }
+  } catch {
+    // An unreadable overrides half renders as none-set rather than as a wrong claim.
+  }
+  /** The configured chains as `key→provider/model` fragments (the first hop, plus a +N marker). */
+  const chainFragments: string[] = []
+  try {
+    /** The configured modelchain table. */
+    const chains = config.get("modelchain")
+    if (isPlainTable(chains)) {
+      for (const [key, chain] of Object.entries(chains)) {
+        if (!Array.isArray(chain) || chain.length === 0) continue
+        /** The first hop, when it carries a provider and a model. */
+        const first = isPlainTable(chain[0]) && typeof chain[0].provider === "string" && typeof chain[0].model === "string" ? `${chain[0].provider as string}/${chain[0].model as string}` : ""
+        if (first !== "") chainFragments.push(`${key}→${first}${chain.length > 1 ? ` (+${String(chain.length - 1)})` : ""}`)
+      }
+    }
+  } catch {
+    // An unreadable chains half renders as none-configured rather than as a wrong claim.
+  }
+  /** The slot half of the sentence; an explicit gap when the read failed. */
+  const slotsText = slotFragments.length > 0 ? `slots ${slotFragments.join(" · ")}` : "slots unreadable"
+  /** The overrides half of the sentence. */
+  const routesText = overrideFragments.length > 0 ? overrideFragments.join(" · ") : "none set"
+  /** The chains half of the sentence. */
+  const chainsText = chainFragments.length > 0 ? chainFragments.join(" · ") : "none configured (shipped defaults in force)"
+  return {
+    en: `effective now — ${slotsText}; agentRoutes: ${routesText}; modelchain: ${chainsText}`,
+    zh: `当前生效 —— ${slotsText}；agentRoutes：${routesText}；modelchain：${chainsText}`,
   }
 }
 
@@ -311,19 +424,64 @@ function declaredField(knob: (typeof SETTINGS_KNOBS)[number]): TuiSettingsFieldL
 /** The mpd.jsonc key of the Ctrl+A takeover toggle, in its dotted form (the shared knob's own path). */
 export const DASHBOARD_TAKEOVER_KNOB = "tui.dashboardKey"
 
+// ── the wheel-direction knob (contract D2, wave fix/sidebar-defects) ─────────────────────────────
+//
+// THE KNOB IS READ THROUGH THE SAME `mpdConfig` SERVICE the Ctrl+A toggle above uses, from the SAME
+// resolved layer stack — the USER layer `$DSH_HOME/mpd.jsonc` under the PROJECT layer
+// `<workspace>/.mpd/mpd.jsonc` — so an edit in the workspace file is what turns it on, exactly like
+// every other mpd.jsonc knob.
+//
+// DECLARED SHAPE: unlike `tui.dashboardKey` this leaf is NOT yet carried by `SETTINGS_KNOBS` /
+// `SettingsSchema` in `mpd-config-plugin/src/settings-schema.ts` — that package is OUTSIDE this lane's
+// write scope (contract §"Lanes and scopes") — so the knob has no row in the `/settings` form and the
+// bound is stated in `docs/tui.md` §6.2 rather than papered over. It is still a real mpd.jsonc knob: the
+// resolution that matters (`mpd-config-plugin`'s `loadConfig`) returns the RAW merged layers and never
+// strips an undeclared key, so `{ "tui": { "wheelInvert": true } }` in the workspace file reaches this
+// reader and inverts the wheel. Declaring the leaf in the shared schema is the follow-up that adds the
+// settings row; nothing here has to change when it lands.
+
+/** The mpd.jsonc key of the wheel-direction toggle, in its dotted form (the layer path it is read at). */
+export const WHEEL_INVERT_KNOB = "tui.wheelInvert"
+
+/**
+ * Resolve the wheel-direction setting from one resolved mpd config value.
+ *
+ * THE RULE, and it is the same one the Ctrl+A toggle follows: the SAVED leaf wins when it is a boolean,
+ * and the row config's own value is the FLOOR when it is absent or not a boolean. A junk value (`"yes"`,
+ * `1`, an object) therefore leaves today's behaviour in force instead of arming the inversion by
+ * accident — the knob can only ever be turned on deliberately.
+ *
+ * WHY IT TAKES THE WHOLE CONFIG RATHER THAN THE LEAF: `mpdConfig.get()` with no key answers the RAW
+ * merged layer stack, which is the value this function can be handed in a test without a live service —
+ * so the arm that proves "the knob resolves from `<workspace>/.mpd/mpd.jsonc`" drives the REAL layer
+ * resolution instead of restating this function's own dotted walk.
+ * @param config - one resolved mpd config value, as `mpdConfig.get()` returns it.
+ * @param floor - the row config's own value, used when the file layer says nothing usable.
+ * @returns true when the wheel's sign must be inverted.
+ */
+export function wheelInvertFrom(config: unknown, floor: boolean): boolean {
+  /** The `tui` section of the resolved layers, when the value is a plain object. */
+  const tui = typeof config === "object" && config !== null ? (config as Record<string, unknown>).tui : undefined
+  /** The leaf itself, when the section is a plain object. */
+  const leaf = typeof tui === "object" && tui !== null ? (tui as Record<string, unknown>).wheelInvert : undefined
+  return typeof leaf === "boolean" ? leaf : floor
+}
+
 /** The declared field list: every knob with its declared options (the pre-catalog baseline). */
 export const SETTINGS_FIELDS: readonly TuiSettingsFieldLike[] = SETTINGS_KNOBS.map(declaredField)
 
 /**
  * The field list the section is REGISTERED with: {@link declaredField} for every knob,
- * with the three leaves of each team-model slot replaced by {@link teamModelOptionLists}.
- * A slot field is therefore always a `select` with a non-empty option list.
+ * with the three leaves of each team-model slot AND of each agentRoutes member replaced by
+ * {@link teamModelOptionLists}. A route field is therefore always a `select` with a non-empty
+ * option list — the eleven member names arrive as ROWS (enumerated from the shared declaration),
+ * never as a free-typed key.
  */
 export function settingsFields(lists: TeamModelOptionLists): readonly TuiSettingsFieldLike[] {
   return SETTINGS_KNOBS.map((knob) => {
-    /** The slot leaf this knob addresses, undefined for the thirteen non-slot knobs. */
-    const leaf = slotLeafOf(knob.path)
-    /** The knob's declared field, before any slot options are applied. */
+    /** The route leaf this knob addresses, undefined for the non-route knobs. */
+    const leaf = routeLeafOf(knob.path)
+    /** The knob's declared field, before any route options are applied. */
     const field = declaredField(knob)
     return leaf === undefined ? field : { ...field, options: lists[leaf] }
   })
@@ -332,12 +490,12 @@ export function settingsFields(lists: TeamModelOptionLists): readonly TuiSetting
 /**
  * The section this plugin declares.
  *
- * Every `hint` is built by {@link knobHint} and therefore carries
- * {@link BRIDGE_DISCLOSURE}: the user reading `/settings` learns at the point of
- * use that an edit here is written to the workspace file AND that its behaviour
- * change waits for a restart. The twelve team-model slot hints additionally LEAD with the
- * knob's own human sentence (which member group the slot routes and what configuring it
- * does) from the shared declaration (`knob.semantics`); the label carries the group name.
+ * Every `hint` is built by {@link knobHint} and names its mpd.jsonc key; the user reading
+ * `/settings` learns at the point of use what an edit writes. The twelve team-model slot hints
+ * and the thirty-three agentRoutes hints LEAD with the knob's own human sentence from the shared
+ * declaration (`knob.semantics`); the label carries the group or member name. The long disclosure
+ * is stated ONCE by the section's own description (which also carries the R3 effective summary at
+ * registration time), never per row.
  *
  * This is the DECLARED shape (cloned per registration, with the slot options replaced by
  * the catalog projection). It is exported so the declared baseline stays inspectable.
@@ -487,13 +645,24 @@ export function registerSettingsSection(
     }
     /** The projected option lists, plus which branch produced each leaf. */
     const lists = teamModelOptionLists(catalog)
+    // The see-before-you-edit summary (R3): read from the LIVE `mpdConfig` service AT REQUEST TIME,
+    // so every `/settings` open shows the effective routes as of now — after a save, after a
+    // watched file edit — and never a stale mount-time copy.
+    /** The effective-model-config summary carried by this request's section description. */
+    const summary = effectiveModelSummary(configServiceOf(ctx))
     // The A4 measurement line: WHICH branch produced each leaf's option list.
     log.info(`settings section ${SETTINGS_NS} slot options: provider=${lists.source.provider}(${lists.provider.length})`
       + ` model=${lists.source.model}(${lists.model.length})`
       + ` reasoningEffort=${lists.source.reasoningEffort}(${lists.reasoningEffort.length})`
       + ` catalog=${catalog === undefined ? "unavailable" : catalog.degraded === true ? "degraded" : "live"}`)
     section = { state: "requested", detail: `section ${SETTINGS_NS} requested (no host read-back; slot options ${lists.source.provider}/${lists.source.model}/${lists.source.reasoningEffort})` }
-    return { ...SETTINGS_SECTION, fields: settingsFields(lists) }
+    return {
+      ...SETTINGS_SECTION,
+      fields: settingsFields(lists),
+      // The section's own description: the disclosure BOTH front doors state, PLUS the effective
+      // summary — the one prose surface a TUI section has, so it is where R3's values render.
+      descriptions: { zh: `MPD 插件包 · ${SECTION_NOTICE} · ${summary.zh}`, en: `MPD bundle · ${SECTION_NOTICE} · ${summary.en}` },
+    }
   }, ctx)
 
   return {

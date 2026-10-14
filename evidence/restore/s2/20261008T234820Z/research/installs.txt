@@ -1,0 +1,382 @@
+typescript
+  readme: https://raw.githubusercontent.com/typescript-language-server/typescript-language-server/HEAD/README.md
+  npm: typescript-language-server@6.0.1 license=Apache-2.0
+    - [Installing](#installing)
+    npm install -g typescript-language-server typescript@6
+
+python
+  readme: https://raw.githubusercontent.com/microsoft/pyright/HEAD/README.md
+  npm: pyright@1.1.414 license=MIT
+    Refer to [the documentation](https://microsoft.github.io/pyright) for installation, configuration, and usage details.
+
+go
+  readme: https://raw.githubusercontent.com/golang/tools/HEAD/README.md
+  npm: (not on npm)
+    go install golang.org/x/tools/cmd/goimports@latest
+
+rust
+  readme: https://raw.githubusercontent.com/rust-lang/rust-analyzer/HEAD/README.md
+  npm: (not on npm)
+    https://rust-analyzer.github.io/book/installation.html
+
+c-cpp
+  readme: https://raw.githubusercontent.com/llvm/llvm-project/HEAD/README.md
+  npm: (not on npm)
+
+
+objective-c
+  readme: https://raw.githubusercontent.com/llvm/llvm-project/HEAD/README.md
+  npm: (not on npm)
+
+
+java
+  readme: https://raw.githubusercontent.com/eclipse-jdtls/eclipse.jdt.ls/HEAD/README.md
+  npm: (not on npm)
+    There are several options to install eclipse.jdt.ls:
+
+kotlin
+  readme: https://raw.githubusercontent.com/Kotlin/kotlin-lsp/HEAD/README.md
+  npm: (not on npm)
+    > When you install a newer `jetbrains.kotlin-server`, a dialog will offer to uninstall an older `jetbrains.kotlin` extensions.
+    For Homebrew users: `brew install JetBrains/utils/kotlin-lsp`
+    Manual installation:
+
+csharp
+  readme: https://raw.githubusercontent.com/razzmatazz/csharp-language-server/HEAD/README.md
+  npm: (not on npm)
+    csharp-ls requires the .NET 10 SDK or later to be installed on your machine.
+    The server can be installed as [csharp-ls dotnet tool](https://www.nuget.org/packages/csharp-ls/):
+    dotnet tool install --global csharp-ls
+    Once installed, your editor's LSP client should automatically detect and start
+
+razor
+  readme: https://raw.githubusercontent.com/dotnet/roslyn/HEAD/README.md
+  npm: (not on npm)
+
+
+swift
+  readme: https://raw.githubusercontent.com/swiftlang/sourcekit-lsp/HEAD/README.md
+  npm: (not on npm)
+
+
+ruby
+  readme: https://raw.githubusercontent.com/Shopify/ruby-lsp/HEAD/README.md
+  npm: (not on npm)
+
+
+php
+  readme: https://raw.githubusercontent.com/bmewburn/vscode-intelephense/HEAD/README.md
+  npm: intelephense@1.18.5 license=SEE LICENSE IN LICENSE.txt
+
+
+dart
+  readme: https://raw.githubusercontent.com/dart-lang/sdk/HEAD/README.md
+  npm: (not on npm)
+
+
+elixir
+  readme: https://raw.githubusercontent.com/elixir-lsp/elixir-ls/HEAD/README.md
+  npm: (not on npm)
+    The installation process for ElixirLS depends on your editor.
+    Please install the extension via the following link: https://marketplace.visualstudio.com/items?itemName=JakeBecker.elixir-ls
+    - Make sure you have `hex` and `git` installed.
+    There are two ways to build the release: `Mix.install`-based (recommended) and `.ez` archives (deprecated).
+    ### `Mix.install` based release
+
+zig
+  readme: https://raw.githubusercontent.com/zigtools/zls/HEAD/README.md
+  npm: (not on npm)
+
+
+lua
+  readme: https://raw.githubusercontent.com/LuaLS/lua-language-server/HEAD/README.md
+  npm: (not on npm)
+    See [installation instructions on our website](https://luals.github.io/#install).
+    The install methods below are maintained by community members.
+
+bash
+  readme: https://raw.githubusercontent.com/bash-lsp/bash-language-server/HEAD/README.md
+  npm: bash-language-server@5.8.1 license=MIT
+    As a dependency, we recommend that you first install [shellcheck][shellcheck] to enable linting:
+    https://github.com/koalaman/shellcheck#installing . If `shellcheck` is installed,
+    If you want your shell scripts to be formatted consistently, you can install [shfmt][shfmt]. If
+    `shfmt` is installed then your documents will be formatted whenever you take the 'format document'
+    Usually you want to install a client for your editor (see the section below).
+    dnf install -y nodejs-bash-language-server
+    sudo snap install bash-language-server --classic
+    If you encounter installation errors, ensure you have node version 20 or newer (`node --version`).
+
+yaml
+  readme: https://raw.githubusercontent.com/redhat-developer/yaml-language-server/HEAD/README.md
+  npm: yaml-language-server@1.24.0 license=MIT
+    npm install -g yaml-language-server
+    npm install
+    Fork and clone this repository, then install dependencies:
+    npm install
+
+json
+  readme: https://raw.githubusercontent.com/hrsh7th/vscode-langservers-extracted/HEAD/README.md
+  npm: vscode-langservers-extracted@4.10.0 license=MIT
+    You can install this via `npm i -g vscode-langservers-extracted`.
+    You should install yarn for the building vscode.
+
+markdown
+  readme: https://raw.githubusercontent.com/artempyanykh/marksman/HEAD/README.md
+  npm: (not on npm)
+    * via [mason.nvim][mason-nvim] (automatic server installation) (requires [mason-lspconfig.nvim][mason-nvim-lsp-config])
+    * via [LSP Mode](https://emacs-lsp.github.io/lsp-mode/page/lsp-marksman/) (automatic server installation).
+    installation).
+    ## How to install
+    See the [installation instructions](/docs/install.md).
+
+dockerfile
+  readme: https://raw.githubusercontent.com/rcjsuen/dockerfile-language-server/HEAD/README.md
+  npm: dockerfile-language-server-nodejs@0.15.0 license=MIT
+    npm install
+    To install this language server onto your computer, please install the
+    The `-g` flag will install the npm module globally onto your computer.
+    npm install -g dockerfile-language-server-nodejs
+    After the installation has completed, you can start the language
+
+terraform
+  readme: https://raw.githubusercontent.com/hashicorp/terraform-ls/HEAD/README.md
+  npm: (not on npm)
+    Read the [installation page](./docs/installation.md) for installation instructions.
+
+haskell
+  readme: https://raw.githubusercontent.com/haskell/haskell-language-server/HEAD/README.md
+  npm: (not on npm)
+    - [Installation](https://haskell-language-server.readthedocs.io/en/latest/installation.html)
+
+julia
+  readme: https://raw.githubusercontent.com/julia-vscode/LanguageServer.jl/HEAD/README.md
+  npm: (not on npm)
+    To install LanguageServer.jl into the current environment:
+
+toml
+  readme: https://raw.githubusercontent.com/tamasfe/taplo/HEAD/README.md
+  npm: @taplo/cli@0.7.0 license=MIT
+
+
+vue
+  readme: https://raw.githubusercontent.com/vuejs/language-tools/HEAD/README.md
+  npm: @vue/language-server@3.3.12 license=MIT
+    npm install vue-tsc typescript --save-dev
+    🔎 Note that you will need pnpm - you can download it here: https://pnpm.io/installation.
+    pnpm install
+
+svelte
+  readme: https://raw.githubusercontent.com/sveltejs/language-tools/HEAD/README.md
+  npm: svelte-language-server@0.18.4 license=MIT
+
+
+graphql
+  readme: https://raw.githubusercontent.com/graphql/graphql-language-service/HEAD/README.md
+  npm: graphql-language-service-cli@3.5.0 license=MIT
+
+
+sql
+  readme: https://raw.githubusercontent.com/joe-re/sql-language-server/HEAD/README.md
+  npm: sql-language-server@1.7.1 license=MIT
+    brew install joe-re/tap/sql-language-server
+    $ pnpm install
+    $ pnpm install
+
+cmake
+  readme: https://raw.githubusercontent.com/regen100/cmake-language-server/HEAD/README.md
+  npm: undefined@undefined license=undefined
+    $ pip install cmake-language-server
+
+protobuf
+  readme: https://raw.githubusercontent.com/coder3101/protols/HEAD/README.md
+  npm: (not on npm)
+    - [Installation](#-installation)
+    cargo install protols
+    - [Docker](https://docker.com) installed and running.
+    [WSL2](https://learn.microsoft.com/en-us/windows/wsl/install) must be enabled.
+
+nix
+  readme: https://raw.githubusercontent.com/oxalica/nil/HEAD/README.md
+  npm: (not on npm)
+    - If you use `nix profile`, run `nix profile install nixpkgs#nil`
+    1. Build and install via `cargo install --git https://github.com/oxalica/nil nil`
+    To install, run `nix profile install github:oxalica/nil`. Alternatively,
+
+clojure
+  readme: https://raw.githubusercontent.com/clojure-lsp/clojure-lsp/HEAD/README.md
+  npm: (not on npm)
+    <a href="https://clojure-lsp.io/installation/"><strong>installation</strong></a> •
+
+erlang
+  readme: https://raw.githubusercontent.com/erlang-ls/erlang_ls/HEAD/README.md
+  npm: (not on npm)
+    To install the produced `erlang_ls` escript in `/usr/local/bin`:
+    make install
+    To install to a different directory set the `PREFIX` environment variable:
+    PREFIX=/path/to/directory make install
+
+gleam
+  readme: https://raw.githubusercontent.com/gleam-lang/gleam/HEAD/README.md
+  npm: (not on npm)
+
+
+r
+  readme: https://raw.githubusercontent.com/REditorSupport/languageserver/HEAD/README.md
+  npm: (not on npm)
+    - [Installation](#installation)
+    apt install --assume-yes --no-install-recommends build-essential libcurl4-openssl-dev libssl-dev libxml2-dev libuv1-dev r-base
+    `languageserver` is released on CRAN and can be easily installed by
+    install.packages("languageserver")
+    install.packages("languageserver", repos = c(
+    Or install the latest development version from our GitHub repository:
+    # install.packages("remotes")
+    remotes::install_github("REditorSupport/languageserver")
+
+scala
+  readme: https://raw.githubusercontent.com/scalameta/metals/HEAD/README.md
+  npm: (not on npm)
+
+
+ocaml
+  readme: https://raw.githubusercontent.com/ocaml/ocaml-lsp/HEAD/README.md
+  npm: (not on npm)
+    > what packages need to be installed, how to configure your project and get
+    - [Installation](#installation)
+    - [Installing with package managers](#installing-with-package-managers)
+    - [Installing from sources](#installing-from-sources)
+    - [Additional package installations](#additional-package-installations)
+    To install the language server in the currently used opam [switch](https://opam.ocaml.org/doc/Manual.html#Switches):
+    $ opam install ocaml-lsp-server
+    _Note:_ you will need to install `ocaml-lsp-server` in every switch where you
+
+verilog
+  readme: https://raw.githubusercontent.com/chipsalliance/verible/HEAD/README.md
+  npm: (not on npm)
+    For simple installation, we provide regular [binary releases] for Linux and
+    If you prefer to build and install the binaries locally yourself, see
+    [bazel install][bazel-install] if not already on your system) and a
+    Use your package manager to install the dependencies; on a system with
+    See [Installation](#installation-1) for install.
+    # Also append the option '--//bazel:use_local_flex_bison' to test/install commands
+    choco install git winflexbison3
+    For simple installation, we provide regular [binary releases].
+
+systemverilog
+  readme: https://raw.githubusercontent.com/dalance/svls/HEAD/README.md
+  npm: (not on npm)
+    You can install from [snapcraft](https://snapcraft.io/svls)
+    sudo snap install svls
+    You can install by [cargo](https://crates.io/crates/svls).
+    cargo install svls
+    Please install [svls-vscode](https://marketplace.visualstudio.com/items?itemName=dalance.svls-vscode) extension from marketplace.
+    ;; install LSP company backend for LSP-driven completion
+
+powershell
+  readme: https://raw.githubusercontent.com/PowerShell/PowerShellEditorServices/HEAD/README.md
+  npm: (not on npm)
+
+
+fortran
+  readme: https://raw.githubusercontent.com/fortran-lang/fortls/HEAD/README.md
+  npm: (not on npm)
+    pip install fortls
+    conda install -c conda-forge fortls
+    for more information about the Anaconda installation [see](https://github.com/conda-forge/fortls-feedstock#about-fortls)
+    ### Common installation problems
+    simultaneously installed, since they use the same executable name. If you are having trouble
+    getting `fortls` to work try uninstalling `fortran-language-server` and reinstalling `fortls`.
+    pip uninstall fortran-language-server
+    pip install fortls --upgrade
+
+tex
+  readme: https://raw.githubusercontent.com/latex-lsp/texlab/HEAD/README.md
+  npm: (not on npm)
+    If your editor extension like does not install the TexLab server automatically,
+    you will need to install it manually.
+    Alternatively, you can build TexLab from source or install it using your package manager.
+    You will need to install the following dependencies to compile the server:
+    Avoid installing `texlab` from [crates.io](https://crates.io/crates/texlab)
+    cargo install --git https://github.com/latex-lsp/texlab --locked --tag <insert version here>
+
+elm
+  readme: https://raw.githubusercontent.com/elm-tooling/elm-language-server/HEAD/README.md
+  npm: @elm-tooling/elm-language-server@2.10.0 license=MIT
+    - [Installation](#installation)
+    - [Alternative: Compile and install from source](#alternative-compile-and-install-from-source)
+    - [Alternative: Install with Nix](#alternative-install-with-nix)
+    The server can be installed via `npm` (or from source).
+    npm install -g @elm-tooling/elm-language-server
+    ### Alternative: Compile and install from source
+    npm install
+    npm install -g elm elm-test elm-format
+
+ansible
+  readme: https://raw.githubusercontent.com/ansible/vscode-ansible/HEAD/README.md
+  npm: @ansible/ansible-language-server@26.6.0 license=MIT
+    for any instructions about installation, configuration and usage, including on
+
+solidity
+  readme: https://raw.githubusercontent.com/NomicFoundation/hardhat-vscode/HEAD/README.md
+  npm: @nomicfoundation/solidity-language-server@0.9.3 license=MIT
+
+
+tailwind
+  readme: https://raw.githubusercontent.com/tailwindlabs/tailwindcss-intellisense/HEAD/README.md
+  npm: @tailwindcss/language-server@0.16.0 license=MIT
+
+
+prisma
+  readme: https://raw.githubusercontent.com/prisma/language-tools/HEAD/README.md
+  npm: @prisma/language-server@31.12.15 license=Apache-2.0
+    pnpm install
+
+typst
+  readme: https://raw.githubusercontent.com/Myriad-Dreamin/tinymist/HEAD/README.md
+  npm: (not on npm)
+    curl -sSL https://github.com/hongjr03/tinymist-nightly-installer/releases/latest/download/run.sh | bash
+    iwr https://github.com/hongjr03/tinymist-nightly-installer/releases/latest/download/run.ps1 -UseBasicParsing | iex
+
+perl
+  readme: https://raw.githubusercontent.com/bscan/PerlNavigator/HEAD/README.md
+  npm: (not on npm)
+    * Code Navigation ("Go To Definition") anywhere, including to installed modules and compile-time dependencies
+    If you have a nonstandard install of Perl, please set the setting `perlnavigator.perlPath`.
+    brew install perlnavigator
+    sudo npm install -g perlnavigator-server
+    Sublime Text requires the following minimum settings under LSP settings (modify depending on your install location and editor)
+    install Perl Navigator.
+    A configuration with a number of options set looks some like the following. The depends if you installed globally or not.
+    A simple configuration to enable PerlNavigator, after installing coc-perl (`:CocInstall coc-perl`), looks like:
+
+groovy
+  readme: https://raw.githubusercontent.com/GroovyLanguageServer/groovy-language-server/HEAD/README.md
+  npm: (not on npm)
+
+
+vhdl
+  readme: https://raw.githubusercontent.com/VHDL-LS/rust_hdl/HEAD/README.md
+  npm: (not on npm)
+    When installing the VHDL_LS from [crates.io](https://crates.io/crates/vhdl_ls) the required
+    [vhdl_libraries](https://github.com/VHDL-LS/rust_hdl/tree/master/vhdl_libraries) directory will not be installed
+    It can be set up automatically by installing the package
+    You can install `rust_hdl` automatically in Neovim using [`:Mason`](https://github.com/williamboman/mason.nvim). Within
+    Mason, the package is called `rust_hdl`. If you don't have `:Mason`, you can simply install the binary as previously
+    1) Make sure that you have the [Rust toolchain](https://www.rust-lang.org/tools/install) installed.
+    2) Run `cargo install --path vhdl_lang` to install the language frontend. Run instead `cargo install --path vhdl_ls`
+    to install the language server.
+
+nickel
+  readme: https://raw.githubusercontent.com/tweag/nickel/HEAD/README.md
+  npm: (not on npm)
+    - Again with flake-enabled Nix, you can install Nickel in your profile with
+    `nix profile install nixpkgs#nickel`. The `nickel` command is then in your
+    - If you're running macOS you can use Homebrew to install the Nickel binary
+    with `brew install nickel`.
+    [rust-guide]: https://doc.rust-lang.org/cargo/getting-started/installation.html
+    - **With Nix**: If you have [Nix](https://nixos.org/nix) installed:
+    - **Without Nix**: otherwise, follow [this guide][rust-guide] to install Rust
+
+erlang-otp
+  readme: (none)
+  npm: (not on npm)
+

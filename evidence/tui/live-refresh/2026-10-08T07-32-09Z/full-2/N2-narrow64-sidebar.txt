@@ -1,0 +1,32 @@
+
+
+  ✦ dsh-TUI  v0.14.0
+  ████   █████  █████  ████    ████  █████  █████  █   █
+  █   █  █      █      █   █  █      █      █      █  █
+  █   █  ████   ████   ████    ███   ████   ████   ███
+  █   █  █      █      █          █  █      █      █  █
+  ████   █████  █████  █      ████   █████  █████  █   █
+
+  █   █    ███    ████    █   █   █████    ████    ████
+  █   █   █   █   █   █   ██  █   █       █       █
+  █████   █████   ████    █ █ █   ████     ███     ███
+  █   █   █   █   █  █    █  ██   █           █       █
+  █   █   █   █   █   █   █   █   █████   ████    ████
+  deepseek-flash · Max effort
+  /tmp/mpd-lr-lP1EpU/ws
+  Tip: Ctrl+R searches input history; / searches the transcript…
+
+    Explore the uncharted!
+
+
+   ▶ （Ctrl+P to expand） Context loaded · System prompt 19 se…
+
+
+  mpd: team webui-tui-i18n 5·3/8 · plans 0 · workmates 0
+
+  ╭──────────────────────────────────────────────────────────╮
+  ⌸ ❯                                                        ⛶
+  ╰──────────────────────────────────────────────────────────╯
+   deepseek-flash · max · ws
+
+

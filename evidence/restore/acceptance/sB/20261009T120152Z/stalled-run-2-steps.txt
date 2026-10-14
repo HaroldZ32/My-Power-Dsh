@@ -1,0 +1,3 @@
+[install-mcp] installing npm toolchain: @ast-grep/cli + @colbymchenry/codegraph@1.5.0
+--- 14-tui.log ---
+--- install-host.log (the stalled npm) ---

@@ -22,6 +22,7 @@
 // Evidence -> evidence/team-watchdog/lanes/<timestamp>-notify-<surface>/{result.json,output.log,raw/}
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
+import { pathToFileURL } from "node:url"
 import {
   PATHS, captureStdout, evidenceDir, finish, hashTree, read, sandboxWorkspace, say, selfTest, sha256, storePaths, writeEvidence,
 } from "./lib/watchdog-lane.ts"
@@ -509,7 +510,11 @@ function appendIncident(ws: string, record: Record<string, unknown>): void {
 async function runWebArm(ws: string, dir: string): Promise<WebArmObservation> {
   // The REAL route module, loaded by absolute path (a runtime path TS cannot resolve), so the
   // cast below names the two entries this arm consumes.
-  const { buildWatchdogState, registerWatchdogRoutes } = await import(PATHS.webRoute) as WebRouteModule
+  // `PATHS.*` are BARE PATHS (`join(REPO, …)` in `./lib/watchdog-lane.ts`), so each one is handed to
+  // the loader as a FILE URL (win32 defect, MEASURED 2026-10-12): node's ESM loader parses an absolute
+  // Windows path's drive letter as a URL scheme and throws
+  // `ERR_UNSUPPORTED_ESM_URL_SCHEME … Received protocol 'c:'`, which made this lane unable to run there.
+  const { buildWatchdogState, registerWatchdogRoutes } = await import(pathToFileURL(PATHS.webRoute).href) as WebRouteModule
   // The route table the registrar fills: path -> handler.
   const routes = new Map<string, RouteHandler>()
   // Which of the two routes registered (kept for the record; both are exercised below).
@@ -547,7 +552,7 @@ async function runWebArm(ws: string, dir: string): Promise<WebArmObservation> {
 
   // The REAL built client, served by the payload the route just produced.
   // The offline hook harness module, loaded like the route; the cast names its two entries.
-  const { createHarness, loadBundleClient } = await import(PATHS.webHarness) as WebHarnessModule
+  const { createHarness, loadBundleClient } = await import(pathToFileURL(PATHS.webHarness).href) as WebHarnessModule
   // The built client's registration factories.
   const { factories } = loadBundleClient()
   // The canned responses the harness serves: the state route answers with the payload just produced.
@@ -642,7 +647,7 @@ async function runWebArm(ws: string, dir: string): Promise<WebArmObservation> {
 async function runTuiArm(ws: string, dir: string, mounted: MountedWatchdog): Promise<TuiArmObservation> {
   // The REAL TUI module, loaded by absolute path (a runtime path TS cannot resolve), so the
   // cast below names the consumed surface.
-  const tui = await import(PATHS.tuiWatchdog) as TuiWatchdogModule
+  const tui = await import(pathToFileURL(PATHS.tuiWatchdog).href) as TuiWatchdogModule
   // The `mpdWatchdog` service the mounted row published.
   const service = mounted.services.get("mpdWatchdog")
   // The reader key this front door owns.

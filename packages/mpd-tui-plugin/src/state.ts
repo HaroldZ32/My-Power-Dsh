@@ -15,6 +15,7 @@ import { join } from "node:path"
 import { isRecord } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import type { DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import { scalarText } from "./sanitize.js"
+import { WORKSPACE_SCOPE_MARKER } from "./team-state.js"
 import type { TeamRecord } from "../../mpd-team-core-plugin/src/team-store.js"
 
 /** Bounded caps so one pathological state directory cannot stall a render. */
@@ -330,6 +331,25 @@ export const AMBIGUOUS_MULTI_ROOT_NOTICE = "saved to settings — not written to
 
 /**
  * Renders the one-line status contribution.
+ *
+ * THE TEAM PART CARRIES THE WORKSPACE-LEVEL MARKER, AND THAT IS A MEASURED CONCESSION (frozen PART S):
+ * this seam can carry no session id, so the team it names is the WORKSPACE's, and the row must not
+ * present another session's team as the reader's own. The status seam is
+ * `TuiStatusRuntime.set(key, text, identity?)` — a SCALAR — and the rich companion's component is
+ * handed `TuiStatusViewProps { React, ui }` and nothing else (the host's own words: "It deliberately
+ * receives no input, channel, or raw-terminal capability"), so `registerStatus`'s render path receives
+ * no props, no host and no channel. The panel page can read `host.snapshot().sessionId` and IS scoped;
+ * this row cannot, and it therefore says so, in the exact vocabulary the surfaces use
+ * ({@link WORKSPACE_SCOPE_MARKER}).
+ *
+ * THE MARKER IS NOT LOCALIZED: it is contract vocabulary a reader must recognize across surfaces, and
+ * it is attached to the team row IN PARENTHESES so it qualifies that row rather than reading as a
+ * counter. The `plans`/`workmates`/progress numbers keep their present meaning and are NOT marked —
+ * they are workspace facts by definition, not another session's board.
+ *
+ * NO TEAM IS NOT MARKED, and that is exact rather than an omission: the team part is a workspace-level
+ * read, so `team -` can only mean the workspace holds NO team — there is no other session's team for it
+ * to be confused with.
  * @param state - the board projection to summarize.
  * @param notice - the settings-bridge notice to append last, when one applies.
  * @returns the `mpd: …` line, contributions joined by ` · `.
@@ -345,7 +365,7 @@ export function statusLine(state: BoardState, notice?: string): string {
     // The status string has NO localized contribution field on this host (a status entry carries
     // one `text`), so it is resolved through MPD's own dictionary. The line is rebuilt on every
     // publish, so a `/lang` switch reaches it at the next refresh.
-    parts.push(t("status.teamRow", { name: state.team.name, members: state.team.members, done: String(done), total: String(total) }))
+    parts.push(`${t("status.teamRow", { name: state.team.name, members: state.team.members, done: String(done), total: String(total) })} (${WORKSPACE_SCOPE_MARKER})`)
     if (state.team.tasks.failed > 0) parts.push(t("status.failed", { n: String(state.team.tasks.failed) }))
   } else {
     parts.push(t("status.teamNone"))

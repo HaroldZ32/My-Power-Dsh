@@ -1,0 +1,18 @@
+{
+  "helloArrivedWithTheWatchRefused": true,
+  "openedHelloText": "event: hello\ndata: {\"rev\":0}\n\n",
+  "reArmHelloAt": 1791446558607,
+  "rowLogPath": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-change-feed/20261008T074710Z/ws-b/.mpd/logs/mpd-team-core.log",
+  "watchOffLines": [
+    "[2026-10-08T08:02:38.454Z] [mpd-team-core] team change feed: no filesystem watch for /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-change-feed/20261008T074710Z/ws-b/.mpd/team/teams (ENOTDIR: not a directory, watch '/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-change-feed/20261008T074710Z/ws-b/.mpd/team/teams') — in-process notifications only, a write from ANOTHER process will not be seen"
+  ],
+  "watchOffLineCount": 1,
+  "armedLines": [
+    "[2026-10-08T08:02:38.607Z] [mpd-team-core] team change feed: watch armed for /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-change-feed/20261008T074710Z/ws-b/.mpd/team"
+  ],
+  "writeAt": 1791446558628,
+  "frameAt": 1791446558677,
+  "frameText": "data: {\"rev\":1}\n\n",
+  "deltaMs": 49,
+  "reArmProven": true
+}

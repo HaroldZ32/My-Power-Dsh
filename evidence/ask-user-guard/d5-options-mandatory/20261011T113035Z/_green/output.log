@@ -1,0 +1,33 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-roles-plugin/test/ask-user-guard.test.ts:
+(pass) D5 — allow: every shape the rule set does NOT deny stays dispatchable > a fully-formed call with options is allowed [0.13ms]
+(pass) D5 — allow: every shape the rule set does NOT deny stays dispatchable > an `options` entry may carry extra fields — only `label` is the rule's subject [0.01ms]
+(pass) D5 — allow: every shape the rule set does NOT deny stays dispatchable > a multi-question call is allowed when EVERY item carries a non-empty options list [0.01ms]
+(pass) D5 — allow: every shape the rule set does NOT deny stays dispatchable > the validator never mutates the call it was handed [0.10ms]
+(pass) D5 — deny: a question item with MISSING `options` (the 2026-10-11 occurrence) > a question with no `options` key at all is refused, naming the offending item [0.02ms]
+(pass) D5 — deny: a question item with MISSING `options` (the 2026-10-11 occurrence) > `options: undefined` is refused exactly like a missing key [0.01ms]
+(pass) D5 — deny: a question item with MISSING `options` (the 2026-10-11 occurrence) > a mixed call is refused at the FIRST item that lacks `options`, and the sentence names it [0.01ms]
+(pass) D5 — deny: a question item with MISSING `options` (the 2026-10-11 occurrence) > the refusal tells the model to re-issue with an options array on every item [0.01ms]
+(pass) D5 — deny: `arguments` is not an object > a non-object call is refused, naming the received shape [0.05ms]
+(pass) D5 — deny: `questions` missing, not an array, or empty > a missing `questions` field is refused [0.06ms]
+(pass) D5 — deny: `questions` missing, not an array, or empty > a non-array `questions` value is refused and names the shape [0.02ms]
+(pass) D5 — deny: `questions` missing, not an array, or empty > an EMPTY `questions` array is refused — a call with no question renders nothing [0.01ms]
+(pass) D5 — deny: a question item lacks a non-empty string `id` or `question` > a non-object item is refused, naming its position [0.01ms]
+(pass) D5 — deny: a question item lacks a non-empty string `id` or `question` > a missing, empty or non-string `id` is refused [0.04ms]
+(pass) D5 — deny: a question item lacks a non-empty string `id` or `question` > a missing or empty `question` is refused — THE measured defect (a card with no text) [0.07ms]
+(pass) D5 — deny: a question item lacks a non-empty string `id` or `question` > the denial names the OFFENDING item, so a 4-item call points at item 4 [0.02ms]
+(pass) D5 — deny: `options` present and malformed > `options` that is not an array is refused [0.02ms]
+(pass) D5 — deny: `options` present and malformed > an EMPTY `options` array is refused — a choice card with no option is the broken card [0.02ms]
+(pass) D5 — deny: `options` present and malformed > an option without a non-empty string `label` is refused, naming its position [0.09ms]
+(pass) D5 — the name test: only `ask_user_question` is this guard's subject > a non-target tool name passes untouched, whatever its arguments [0.03ms]
+(pass) D5 — the name test: only `ask_user_question` is this guard's subject > the target name is decided by the validator, and the constant is the host's own spelling [0.06ms]
+(pass) D5 — the name test: only `ask_user_question` is this guard's subject > a headless or unreadable execution is a pass-through — a guard never takes a tool call down [0.16ms]
+(pass) D5 — the install reaches the seam and reports its outcome > with the seam present the row installs exactly one guard, and it decides both ways [0.12ms]
+(pass) D5 — the install reaches the seam and reports its outcome > a composition without the guard seam reports the absence instead of installing nothing silently [0.04ms]
+(pass) D5 — the install reaches the seam and reports its outcome > a throwing guard seam is reported as an install failure, not an abort [0.06ms]
+
+ 25 pass
+ 0 fail
+ 75 expect() calls
+Ran 25 tests across 1 file. [6.00ms]

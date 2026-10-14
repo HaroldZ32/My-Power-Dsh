@@ -1,0 +1,95 @@
+# Negative control: the STALE composition (describe().value) temporarily restored into
+# packages/mpd-config-plugin/src/index.ts, then the live-refresh suite re-run. Expect RED.
+bun test v1.4.2 (744846f84)
+
+packages/mpd-config-plugin/test/live-refresh.test.ts:
+169 |     // THE SAVE: both front doors write the ENTRY document (`configForms.get("mpd-config")`, the
+170 |     // TUI's `locateNamespace` default) — this is the path the retired-namespace world travels.
+171 |     h.saveEntry({ teamModels: { slot3: { provider: "deepseek-official", model: "deepseek-v4-pro", reasoningEffort: "low" } } })
+172 |     h.emitEntry()
+173 |     // AC1: the new value is live WITHOUT any `mpd_config_reload` call — the subscription re-loaded state.
+174 |     expect(service.get("teamModels.slot3.model")).toBe("deepseek-v4-pro")
+                                                        ^
+error: expect(received).toBe(expected)
+
+Expected: "deepseek-v4-pro"
+Received: "deepseek-v4-flash"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-config-plugin/test/live-refresh.test.ts:174:51)
+(fail) AC1 — an entry-config save refreshes state with NO reload call (R1) > a save to the mpd-config entry document is what the NEXT service read answers [1.96ms]
+187 |     const service = h.provided.mpdConfig
+188 |     expect(service.teamModelRouteOf("Deep Worker")).toEqual({ provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "high" })
+189 |     // The save: an `agentRoutes` entry for Deep Worker through the ENTRY document.
+190 |     h.saveEntry({ agentRoutes: { "Deep Worker": { provider: "gateway", model: "deepseek-v4-pro" } } })
+191 |     h.emitEntry()
+192 |     expect(service.teamModelRouteOf("Deep Worker")).toEqual({ provider: "gateway", model: "deepseek-v4-pro", reasoningEffort: "high" })
+                                                          ^
+error: expect(received).toEqual(expected)
+
+  {
+-   "model": "deepseek-v4-pro",
+-   "provider": "gateway",
++   "model": "deepseek-v4-flash",
++   "provider": "deepseek-official",
+    "reasoningEffort": "high",
+  }
+
+- Expected  - 2
++ Received  + 2
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-config-plugin/test/live-refresh.test.ts:192:53)
+(fail) AC1 — an entry-config save refreshes state with NO reload call (R1) > an agentRoutes save through the entry document routes the member on the NEXT read [0.47ms]
+199 |     /** Fake adapter whose entry document starts UNSET. */
+200 |     const h = harness({ roots: [root] })
+201 |     apply(h.ctx)
+202 |     h.saveEntry({ ulw: { maxRounds: 9 } })
+203 |     h.emitEntry()
+204 |     expect(h.provided.mpdConfig.get("ulw.maxRounds")).toBe(9)
+                                                            ^
+error: expect(received).toBe(expected)
+
+Expected: 9
+Received: 3
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-config-plugin/test/live-refresh.test.ts:204:55)
+(fail) AC1 — an entry-config save refreshes state with NO reload call (R1) > the entry refresh SURVIVES a later tool reload (the override is not reverted to the apply-time config) [0.54ms]
+218 |     // write-back) — the two subscriptions coexist, each on its own document.
+219 |     h.setLegacyUser({ ulw: { maxRounds: 3 } })
+220 |     h.saveEntry({ ulw: { maxRounds: 9 } })
+221 |     h.emitEntry()
+222 |     h.emitLegacy("update")
+223 |     expect(h.provided.mpdConfig.get("ulw.maxRounds")).toBe(9)
+                                                            ^
+error: expect(received).toBe(expected)
+
+Expected: 9
+Received: 3
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-config-plugin/test/live-refresh.test.ts:223:55)
+(fail) AC1 — an entry-config save refreshes state with NO reload call (R1) > the legacy mpd-namespace listener still fires beside the entry one (extend, not replace) [1.79ms]
+(pass) AC1 — an entry-config save refreshes state with NO reload call (R1) > R1's file half: a HAND edit of .mpd/mpd.jsonc reaches state through the MOUNT-ARMED watcher [400.85ms]
+261 |     // A hand edit moves the file, then the entry event re-reads the document: a composition that took
+262 |     // `value` (9) or `base` (7) would bury BOTH file values; only the empty override leaves 42.
+263 |     writeFileSync(file, `{ "ulw": { "maxRounds": 42 } }\n`)
+264 |     await wait(WATCH_SETTLE_MS)
+265 |     h.emitEntry()
+266 |     expect(h.provided.mpdConfig.get("ulw.maxRounds")).toBe(42)
+                                                            ^
+error: expect(received).toBe(expected)
+
+Expected: 42
+Received: 9
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-config-plugin/test/live-refresh.test.ts:266:55)
+(fail) AC1 — an entry-config save refreshes state with NO reload call (R1) > a MATERIALISED default in the entry document never becomes L4: a file edit still wins (measured host) [401.95ms]
+(pass) AC3 — agentRoutes beats the slot beats the default; validation is loud (R2) > the vocabulary is the roster's eleven base names, derived from the slot groups [0.11ms]
+(pass) AC3 — agentRoutes beats the slot beats the default; validation is loud (R2) > agentRoutes[name] beats teamModels.slot{N} beats the built-in default, per leaf [0.24ms]
+(pass) AC3 — agentRoutes beats the slot beats the default; validation is loud (R2) > a malformed entry fails the read LOUDLY, naming the member (hand-edited files have no schema) [0.26ms]
+(pass) AC3 — agentRoutes beats the slot beats the default; validation is loud (R2) > the SCHEMA rejects an unknown agent name loudly — namespace and row config both [1.52ms]
+(pass) AC3 — agentRoutes beats the slot beats the default; validation is loud (R2) > the mpd_config_get tool's consumed-keys disclosure names agentRoutes [0.63ms]
+
+ 6 pass
+ 5 fail
+ 35 expect() calls
+Ran 11 tests across 1 file. [900.00ms]
+NEGCTL_TEST_EXIT=1

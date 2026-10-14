@@ -1,0 +1,43 @@
+# Every command this pass ran, in order. Repo root = /home/haroldzhao/MyProj/DshProj/My-Power-Dsh
+# No git write was made (read-only `git diff`/`git status` only); no skills/** byte was touched.
+
+# ── 1. unit arms (sandbox-free) ───────────────────────────────────────────────
+.toolchain/node_modules/.bin/bun test packages/mpd-tui-plugin/test/plugin.test.ts
+.toolchain/node_modules/.bin/bun test packages/mpd-tui-plugin/test/state.test.ts
+.toolchain/node_modules/.bin/bun test packages/mpd-tui-plugin packages/mpd-tui-adapter-plugin
+
+# ── 2. negative controls (source mutated, arm MUST fail, source restored) ─────
+# 2a: identity arm — restore the pre-fix rule, run the two new arms, restore the fix.
+#     mutant:  host.subscribeDecision(options.identity ?? fallbackIdentity, event, listener, …)
+#     fixed:   host.subscribeDecision(scope, event, listener, …)
+.toolchain/node_modules/.bin/bun test packages/mpd-tui-plugin/test/plugin.test.ts -t "identity"
+# 2b: log arm — make the sink reachable only without a host logger (the old `return`), run, restore.
+.toolchain/node_modules/.bin/bun test packages/mpd-tui-plugin/test/state.test.ts -t "FILE sink"
+
+# ── 3. dist rebuild (pinned toolchain, repo root, path-qualified) ─────────────
+.toolchain/node_modules/.bin/bun build packages/mpd-tui-adapter-plugin/src/index.ts --target node --format esm --outfile packages/mpd-tui-adapter-plugin/dist/index.js
+.toolchain/node_modules/.bin/bun build packages/mpd-tui-plugin/src/index.ts --target node --format esm --outfile packages/mpd-tui-plugin/dist/index.js
+
+# ── 4. gates on the final bytes (see gates-final.log) ─────────────────────────
+node scripts/verify-dist-fresh.ts
+.toolchain/node_modules/.bin/bun test packages/mpd-tui-plugin packages/mpd-tui-adapter-plugin
+.toolchain/node_modules/.bin/bun run typecheck
+.toolchain/node_modules/.bin/bun run verify:comments
+.toolchain/node_modules/.bin/bun test packages
+
+# ── 5. the live lane (recipe: XDG_RUNTIME_DIR inside the sandbox, the npmmirror
+#        registry, and the sandbox profile's own 0.15.0 launcher on PATH) ──────
+# env, identical for both runs below:
+#   XDG_RUNTIME_DIR=<repo>/.mpd/recon/qa/tui-lanes/tui-015/run
+#   pnpm_config_registry=https://registry.npmmirror.com
+#   PATH=<repo>/.mpd/recon/qa/tui-lanes/tui-015/dshhome/profiles/dsh-tui/node_modules/.bin:$PATH
+#   bun 1.4.2 (PATH) — the lane script only; the host launcher is 0.15.0's own node script
+bun skills/dsh-qa/scripts/tui-admission.ts --sandbox-root .mpd/recon/qa/tui-lanes/tui-015   # FINAL bytes  -> 11-30-05.219Z
+bun skills/dsh-qa/scripts/tui-admission.ts --sandbox-root .mpd/recon/qa/tui-lanes/tui-015   # PRE-FIX identity (mutant) -> 11-32-32.360Z
+
+# snapshot of the workspace sink after each boot (the file the fix made readable):
+cp .mpd/recon/qa/tui-lanes/tui-015/ws/.mpd/logs/mpd-tui.log evidence/tui/dsh-tui-015/decision-fix/final-bytes-mpd-tui.log
+cp .mpd/recon/qa/tui-lanes/tui-015/ws/.mpd/logs/mpd-tui.log evidence/tui/dsh-tui-015/decision-fix/prefix-identity-mpd-tui.log
+
+# ── 6. restore the fix and prove the restore is byte-exact ───────────────────
+sha256sum -c evidence/tui/dsh-tui-015/decision-fix/pre-differential-hashes.txt

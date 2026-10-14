@@ -1,0 +1,11 @@
+dsh: reasoning:
+I need to scan a C file using ast-grep with the pattern `return 0` and report the results. The ast-grep skill is available, but the user gave me explicit instructions to call the tool directly and report the content verbatim, so I should proceed with that approach rather than loading the skill separately. Let me construct the tool call with the required parameters: the pattern, language, and file path.
+dsh: reasoning:
+The tool failed with BINARY_NOT_FOUND, so the user asked me to report the returned content verbatim. I should report exactly what came back without using bash for this task.
+I called `mcp__ast_grep__search` exactly as instructed (no bash). It did not return matches — it failed at preflight. Returned content, verbatim:
+
+```
+Error: {"schemaVersion":1,"ok":false,"error":{"code":"BINARY_NOT_FOUND","message":"ast-grep executable not found: no candidate passed the --version probe, and no ast-grep this bundle can link","retryable":false,"phase":"preflight","details":{"hints":["Install the MIT engine with `npm install -g @ast-grep/cli`, or set MPD_AST_GREP_SG_PATH to the absolute path of the ast-grep executable.","In a checkout, `node scripts/install-mcp.ts` installs it into <bundle>/.toolchain, which this server resolves automatically."]}}}
+```
+
+Summary: the tool reached the server but the underlying `ast-grep` binary is not installed/reachable, so no scan of `tests/mcp-fixtures/sample.c` occurred. Fix by installing `@ast-grep/cli` (or pointing `MPD_AST_GREP_SG_PATH` at the executable), then re-running the same call.

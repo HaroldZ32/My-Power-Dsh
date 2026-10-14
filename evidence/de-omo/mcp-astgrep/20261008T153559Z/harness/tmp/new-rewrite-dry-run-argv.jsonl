@@ -1,0 +1,2 @@
+{"scenario":"rewrite-dry","applying":false,"argv":["--version"]}
+{"scenario":"rewrite-dry","applying":false,"argv":["run","-p","foo($A)","-r","qux($A)","--lang","typescript","--json=stream","--strictness","smart","src"]}

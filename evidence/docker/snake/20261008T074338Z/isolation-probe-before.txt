@@ -1,0 +1,25 @@
+=== ISOLATION PROBE — the operator's real home, read ONLY ===
+recorded-utc: 2026-10-08T08:12:03Z
+--- ~/.dsh top level (name, size, mtime) ---
+total 40
+drwx------  8 haroldzhao haroldzhao 4096 2026-10-06 21:34:23.435253825 +0800 .
+drwxr-x--- 30 haroldzhao haroldzhao 4096 2026-10-08 07:04:01.566601685 +0800 ..
+-rw-rw-r--  1 haroldzhao haroldzhao   37 2026-10-02 20:58:30.042967234 +0800 .anonymous-user-id
+-rw-------  1 haroldzhao haroldzhao  540 2026-10-05 22:15:49.272246604 +0800 .credentials.yaml
+drwx------  3 haroldzhao haroldzhao 4096 2026-10-04 01:08:19.562850857 +0800 attachments
+drwx------  3 haroldzhao haroldzhao 4096 2026-10-05 22:20:11.549005468 +0800 cache
+drwx------  2 haroldzhao haroldzhao 4096 2026-10-08 16:11:54.934831377 +0800 llm-deepseek
+drwxrwxr-x  4 haroldzhao haroldzhao 4096 2026-10-02 20:58:29.316939199 +0800 profiles
+drwx------  5 haroldzhao haroldzhao 4096 2026-10-07 17:51:08.717452801 +0800 sessions
+drwx------  3 haroldzhao haroldzhao 4096 2026-10-08 15:09:51.108346300 +0800 storages
+--- ~/.dsh/sessions entry count + newest mtime ---
+sessions-projects=3
+newest-session-mtime=--home-haroldzhao-MyProj-DshProj-My-Power-Dsh--
+--- ~/.mpd present? ---
+total 12
+drwxrwxr-x  3 haroldzhao haroldzhao 4096 Oct  8 15:09 .
+drwxr-x--- 30 haroldzhao haroldzhao 4096 Oct  8 07:04 ..
+drwxrwxr-x  3 haroldzhao haroldzhao 4096 Oct  6 19:40 lsp-daemon
+--- mounts of the driver container (proves no home bind) ---
+--- docker volume used by the driver (the project's own UI-lane volume) ---
+ui_ui-data /home/haroldzhao/.local/share/docker/volumes/ui_ui-data/_data

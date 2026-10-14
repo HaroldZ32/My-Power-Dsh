@@ -1,0 +1,1 @@
+[ask-user-question-audit self-test] FAIL: a call whose question omits `options` must classify structurally-broken, got ok

@@ -1,0 +1,87 @@
+===== B1 FINAL GATE SWEEP 2026-10-08T15:41:06Z =====
+
+$ node scripts/verify-vendor.ts
+[verify-vendor] asset OK: skills 371 files
+[verify-vendor] asset OK: vendor/mcp-src 459 files
+[verify-vendor] asset OK: packages/mpd-mcp-gitbash/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-lsp/dist/cli.js 1 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] PASS - 5 shipped asset(s) fingerprinted, upstream identity not checked
+exit=0
+
+$ node scripts/repin-vendor.ts --check
+
+[repin-vendor] _note: POLICY (not a failure) - underscore-prefixed metadata key: the vendor gate skips these too, so this helper does not re-pin it
+[repin-vendor] packages/mpd-mcp-gitbash/dist/cli.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] packages/mpd-mcp-lsp/dist/cli.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] packages/mpd-mcp-codegraph/dist/serve.js: POLICY (not a failure) - single-file sha256 asset - a build artifact, so re-pin it by rebuilding (scripts/build-mcp.ts), never by rewriting the lock
+[repin-vendor] CHECK     : GREEN - lock matches the working tree (drift=0, problems=0)
+exit=0
+
+$ bun run verify:comments
+$ node scripts/verify-comment-coverage.ts
+# verify-comment-coverage
+
+scanned 376 TypeScript file(s) of 376 in the source set; inspected 32964 declaration(s); skipped 14761 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+exit=0
+
+$ node scripts/verify-dist-fresh.ts
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+  packages/mpd-mcp-gitbash/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-gitbash/dist/cli.js — built offline by scripts/build-mcp.ts from the upstream checkout — no local src/
+  packages/mpd-mcp-lsp/dist/BUILD.lock — build metadata, not a bun build artifact
+  packages/mpd-mcp-lsp/dist/cli.js — built offline by scripts/build-mcp.ts from the upstream checkout — no local src/
+[verify-dist-fresh] ok: 31/31 targets fresh (each rebuilt twice, byte-identical) — 5 NOT COVERED files listed — 684ms
+exit=0
+
+$ bun run verify:manifest
+ok    row-module-paths: 27 module path(s) named by the patch files, 0 missing, 0 patch file(s) unreadable
+ok    files-allowlist: 27 pattern(s); 0 required path(s) not admitted
+ok    evidence-excluded: the frozen evidence/ tree stays out of the published package
+ok    packed-content: npm pack --dry-run lists 950 file(s); 0 required path(s) absent
+
+VERDICT: PASS — the install-time rules and the packaging contract hold.
+exit=0
+
+$ node scripts/verify-pack-closure.ts
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-research/scripts/outcome.mjs: source mtime 2026-10-08T15:00:18.567Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-research/scripts/repair-tracker.mjs: source mtime 2026-10-08T15:00:18.567Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-research/scripts/report-tools-commands.mjs: source mtime 2026-10-08T15:00:18.567Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/ulw-research/scripts/report-tools.mjs: source mtime 2026-10-08T15:00:18.567Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - skills/visual-qa/ATTRIBUTION.md: source mtime 2026-10-08T15:01:46.416Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+[verify-pack-closure] CONTENT-DRIFT-EXPECTED (expected, provenance-named, NOT a closure violation) - docs/verification/2026-10-08T1203Z/verdict.md: source mtime 2026-10-08T13:21:41.697Z is AFTER the artifact stamp 2026-10-08T08:51:48.162Z (anchor: inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)) - a writer landed after the pack, so this is an EXPECTED reading, not a closure violation
+exit=1
+
+$ bun test packages/mpd-mcp-shared
+(pass) REAL toolchain probe: ast-grep passes, the deprecated sg wrapper fails [0.09ms]
+
+ 27 pass
+ 0 fail
+ 72 expect() calls
+Ran 27 tests across 2 files. [137.00ms]
+exit=0
+
+$ bun test packages/mpd-dsh-adapter-plugin
+(fail) the cross-package coupling inventory is exactly the frozen set (independence gate) [83.80ms]
+
+ 180 pass
+ 2 fail
+ 870 expect() calls
+Ran 182 tests across 10 files. [1.97s]
+exit=1
+
+$ bun package s/mpd-dsh-adapter-plugin/test/no-terminal-writes.test.ts --self-test
+error: Cannot run "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/package.json"
+note: Bun cannot run json files directly
+exit=1
+
+$ bun run typecheck (B1 scope check: errors outside packages/mpd-mcp-astgrep are pre-existing wave-A)
+
+$ bun run typecheck
+$ tsgo --noEmit
+skills/programming/scripts/typescript/check-no-excuse-rules.ts(87,1): error TS1135: Argument expression expected.
+skills/programming/scripts/typescript/check-no-excuse-rules.ts(431,1): error TS1005: '}' expected.
+error: script "typecheck" exited with code 1
+exit=1

@@ -7,6 +7,16 @@
 // needs an unexported production token, `getHostAdmission*` has no production
 // caller), so the identity assertion throws before any policy question.
 //
+// MEASURED on dsh-tui 0.15.0 (lane `tui-admission`, evidence
+// `evidence/tui/dsh-tui-015/decision-fix/`): with the BOUND SEAM SCOPE as the
+// caller — the only defensible identity, and the one the refusal differential
+// proves is now accepted as a live non-root activation — the refusal string is
+// `the calling activation has no verified dsh-plugin.json Component identity`,
+// raised by `component-identity.js#requireComponentIdentity` from
+// `plugin-host.js#subscribeDecision`. The gate is therefore the host's Component
+// ADMISSION, which a patch row's activation never receives: no identity argument
+// this row can supply satisfies it.
+//
 // HONESTY (T10-F1, reviewer direction): registration is NEVER inferred from the
 // disposer's type. The host answers a missing GRANT with a NO-OP disposer
 // (`decision-guard.ts:280-286`, stated at :531-534), which is indistinguishable
@@ -63,7 +73,13 @@ export interface DecisionSeam {
  * seam: the host answers a refusal with a no-op disposer, so a returned function is not proof.
  * The attempts are recomputed on read, so the seam reports the truth whether the host bound before
  * or after this row applied.
- * @param ctx - the plugin context; the host records it as each subscription's identity.
+ * @param ctx - retained for source compatibility and deliberately NOT forwarded: the ADAPTER owns
+ *   the subscription identity, and it supplies the BOUND SEAM SCOPE (the calling activation) for
+ *   every mediated registration, exactly as it does for `setStatus`. A consumer context handed to
+ *   the host here is a guaranteed refusal — the host's `assertCallerContext` compares the identity
+ *   against the caller it resolved for THIS activation (MEASURED, lane
+ *   `evidence/tui/dsh-tui-015/decision-fix/`: every subscription threw before either ledger record
+ *   site).
  * @param tui - the DSH-TUI seam adapter (this file names no seam id of its own).
  * @param log - diagnostics.
  * @returns the seam handle; `attempts()` carries the per-event verdict.
@@ -73,7 +89,7 @@ export function attemptDecisionEvents(ctx: PluginContextLike, tui: TuiAdapter, l
   const subs: { event: string; permission: string; sub: TuiDecisionSubscription }[] = DECISION_EVENTS.map(({ event, permission }) => ({
     event,
     permission,
-    sub: tui.requestDecisionEvent(event, () => undefined, { scope: event, order: DECISION_ORDER, identity: ctx }),
+    sub: tui.requestDecisionEvent(event, () => undefined, { scope: event, order: DECISION_ORDER }),
   }))
 
   /** The intercept point whose mediated member the host does not carry, when there is one. */
@@ -143,7 +159,8 @@ export function attemptDecisionEvents(ctx: PluginContextLike, tui: TuiAdapter, l
   }
   // The disclosure is emitted when the seam BINDS (immediately, when the host was already
   // composed), which is exactly when the original activation ran it. A seam that never binds
-  // discloses nothing, because nothing was attempted.
+  // cannot reach this callback, so `apply` states that one case from `outcome()` instead — the
+  // unbound verdict must not be silent (T16-OBS).
   tui.whenBound("pluginHost", () => {
     disclose()
   })

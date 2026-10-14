@@ -1,0 +1,18 @@
+PASS on is a mapping (not the YAML 1.1 boolean true)
+PASS on: has exactly these three triggers, in file order
+PASS pull_request: branches
+PASS pull_request: paths
+PASS schedule: cron unchanged
+PASS workflow_dispatch: npm_registry input unchanged
+PASS job: runs-on unchanged
+PASS job: timeout-minutes unchanged
+PASS job: permissions unchanged
+PASS lane step: name unchanged
+PASS lane step: timeout-minutes unchanged
+PASS lane step: command and flags unchanged
+PASS artifact upload: action unchanged
+PASS artifact upload: condition unchanged
+PASS artifact upload: name unchanged
+PASS artifact upload: path unchanged
+PASS artifact upload: retention-days unchanged
+[check-on-block] 17/17 assertions held

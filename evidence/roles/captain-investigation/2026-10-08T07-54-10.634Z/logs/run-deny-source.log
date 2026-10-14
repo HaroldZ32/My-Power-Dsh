@@ -1,0 +1,7 @@
+dsh: warning: 1 entry did not activate
+preset-mpd (@deepseek-ai/dsh-agent-preset): pending (waiting for service: agentPresets)
+dsh: reasoning:
+The user asks me to read a file exactly once with the read tool, then reply with exactly what it returned, prefixed by RESULT:. This is a simple instruction. But note the sandbox policy: workspace-write, and the path is `packages/probe/src/probe.ts` relative to workspace. Hmm, the workspace is `/tmp/mpd-captain-investigation-kYLEUT/ws-deny`. The name "ws-deny" suggests denying? Let me just try the read tool once.
+
+The instruction says use read tool exactly once. Let's do it.
+RESULT: Error: captain investigation rule: `read` on "packages/probe/src/probe.ts" is refused — the workspace's TOP-LEVEL session does not run reconnaissance, so its context stays small enough for very large projects. Delegate it: `mpd_role_spawn` with the `Explorer` role (find files and code) or the `Researcher` role (evidence-based search), or hand the search to a team member, and consume the REPORT. The documentation band stays open to you: `.mpd/**`, `docs/**`, `evidence/**`, `agent-references/**`, the root AGENTS.md / README*.md / CHANGELOG.md / LICENSE*.md — and `captain.investigation: "allow"` in mpd.jsonc restores full access.

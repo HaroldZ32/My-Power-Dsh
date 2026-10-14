@@ -1,0 +1,11 @@
+### FINAL REVISION ANCHOR (settled)
+UTC=2026-10-09T12:21:36Z
+HEAD=5ff70951c4211c766d3e0cfc6d63c9c1462363d3
+lane-sha256=cdf2a7f4a8cd22415db8303c845cc4fbaa2eb11916bf0fdd52398e5791c05965
+  8c8ec7243a6bbfed  VENDOR_LOCK.json
+  b2d1f9c7c25137a3  skills/dsh-qa/SKILL.md
+  db70dec12ed4543f  skills/dsh-qa/scripts/extension-isolation.ts
+  e5c4e83ce78f189b  skills/dsh-qa/scripts/lib/messages-sse.ts
+  8ed4e2d22ea06dd4  skills/dsh-qa/scripts/lib/session-evidence.ts
+  71a907fdb7ac2ef5  skills/dsh-qa/scripts/readonly-deny.ts
+  f340027a321223ac  skills/dsh-qa/scripts/software-smoke.ts

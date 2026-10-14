@@ -1,0 +1,14 @@
+# minimatch glob-semantics probe (run 2026-10-09T15:34:39Z)
+# purpose: does an explicit include like **/* keep dot-paths (.github/**) eligible?
+minimatch version: 9.0.5 | defaults: {}
+NO MATCH  pattern=**/*                    path=.github/workflows/gates.yml
+MATCH     pattern=**/*                    path=packages/mpd-config-plugin/src/index.ts
+MATCH     pattern=**/*                    path=README.md
+MATCH     pattern=.github/workflows/**    path=.github/workflows/gates.yml
+NO MATCH  pattern=!evidence/**            path=evidence/foo/bar.log
+MATCH     pattern=packages/*/dist/**      path=packages/mpd-config-plugin/dist/index.js
+NO MATCH  pattern=dist/**                 path=packages/mpd-config-plugin/dist/index.js
+MATCH     pattern={docs/**,README*.md}    path=docs/index.md
+MATCH     pattern={docs/**,README*.md}    path=README.zh-CN.md
+NO MATCH  pattern={docs/**,README*.md}    path=docker/README.md
+MATCH     pattern=skills/**               path=skills/dsh-qa/SKILL.md

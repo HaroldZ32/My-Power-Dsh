@@ -598,7 +598,7 @@ test("t48 plugin: apply() registers both tools and subscribes to BOTH triggers",
   const dsh: Partial<DshAdapter> = {
     registerTool: (definition) => { registered.push(definition.name); return () => {} },
     onEvent: (event) => { subscribed.push(event); return () => {} },
-    workspaceRoot: () => "/tmp/none",
+    workspaceRoot: () => join(tmpdir(), "none"),
   }
   /** The cordis ctx `apply` receives; `logger` is a no-op and `on` only records. */
   const ctx = { get: (key: string) => (key === "mpdDsh" ? dsh : undefined), logger: { warn: () => {}, info: () => {} }, on: (e: string) => { listeners.push(e) } }
@@ -617,7 +617,7 @@ test("t48 TURN BOUNDARY: the serial-dispatch listener is non-bailing and non-thr
   const dsh: Partial<DshAdapter> = {
     registerTool: () => () => {},
     onEvent: (event, handler) => { handlers.set(event, handler); return () => {} },
-    workspaceRoot: () => "/tmp/none",
+    workspaceRoot: () => join(tmpdir(), "none"),
     liveAgents: () => [{ id: "session-a" }],
   }
   /** The warning lines the row's logger produced (one hostile-payload report is expected). */
@@ -631,7 +631,7 @@ test("t48 TURN BOUNDARY: the serial-dispatch listener is non-bailing and non-thr
   // SERIAL dispatch: a returned value BAILS the chain and a returned promise is awaited, so the
   // listener must answer `undefined` for EVERY payload — including a hostile one. Same rule the
   // pre-step waterfall defect taught (AGENTS.md §12).
-  expect(turnStopping({ agent: { session: { id: "not-a-member", header: { cwd: "/tmp/none" } } } })).toBeUndefined()
+  expect(turnStopping({ agent: { session: { id: "not-a-member", header: { cwd: join(tmpdir(), "none") } } } })).toBeUndefined()
   expect(turnStopping({})).toBeUndefined()
   expect(turnStopping({
     /** A hostile payload whose `agent` read throws, so the listener must degrade, not bail. */
@@ -656,7 +656,7 @@ test("t48 plugin: every registered tool declares an OBJECT-ROOTED parameters sch
   const dsh: Partial<DshAdapter> = {
     registerTool: (definition) => { registered.push(definition); return () => {} },
     onEvent: () => () => {},
-    workspaceRoot: () => "/tmp/none",
+    workspaceRoot: () => join(tmpdir(), "none"),
   }
   /** The cordis ctx `apply` receives; `logger` is a no-op and `on` records nothing. */
   const ctx = { get: (key: string) => (key === "mpdDsh" ? dsh : undefined), logger: { warn: () => {}, info: () => {} }, on: () => () => {} }

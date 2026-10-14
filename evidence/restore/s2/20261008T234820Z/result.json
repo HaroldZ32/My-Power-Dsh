@@ -1,0 +1,57 @@
+{
+  "wave": "restore-three-capabilities",
+  "stream": "S2 — LSP language bootstrap (packages/mpd-mcp-lsp)",
+  "writer": "Deep Worker (S2 lane)",
+  "contract": ".mpd/plans/restore-three-capabilities.md (§0, §1 decision 3, §2 decision 2.2, §3 S2)",
+  "state": "COMPLETE — all five S2 acceptance criteria are met and the whole gate set is green on the settled tree; the matrix was RECONCILED (see matrix-reconciliation.md), never duplicated",
+  "artifacts": {
+    "dataModule": "packages/mpd-mcp-lsp/src/server-catalog.ts — LanguageServerEntry (11 fields incl. `verification`), REQUIRED_ENTRY_FIELDS, UNVERIFIED_MARKER, validateServerCatalog, NON_PERMISSIVE_SERVERS (8), LICENCE_DISPUTES, NPM_TRAPS, LANGUAGE_SERVERS (59 rows), findLanguageServer",
+    "configModule": "packages/mpd-mcp-lsp/src/cclsp-config.ts — CclspServerConfig, CclspConfigDocument, probeExecutable, buildConfigDocument (probe-filtered + argv-merged), ensureConfigPath, GENERATED_CONFIG_RELATIVE_PATH",
+    "launcher": "packages/mpd-mcp-lsp/src/launch.ts — generatedConfig, publishConfigPath, describeSource",
+    "tests": [
+      "packages/mpd-mcp-lsp/test/server-catalog.test.ts — field discipline + 12 negative controls",
+      "packages/mpd-mcp-lsp/test/cclsp-config.test.ts — acceptance (c) asserted (5 cases incl. one-binary merge)",
+      "packages/mpd-mcp-lsp/test/language-coverage.test.ts — acceptance (a), the 8-entry guard, the disputes, the npm traps"
+    ],
+    "docs": [
+      "packages/mpd-mcp-lsp/README.md + README.zh-CN.md (flow, install guide, npm traps, 8 non-permissive servers)",
+      "packages/mpd-mcp-lsp/references/verilog/README.md + README.zh-CN.md (NEW — makes the lsp-setup skill's .v route live)",
+      "packages/mpd-mcp-lsp/references/systemverilog/README.md + README.zh-CN.md (NEW — same for .sv)"
+    ],
+    "dist": "packages/mpd-mcp-lsp/dist/launch.js (rebuilt with the pinned toolchain .toolchain/node_modules/.bin/bun)"
+  },
+  "acceptance": {
+    "a_data_module_ge_40_entries": "DONE — 59 rows (45 primary / 16 unverified). Coverage arm GREEN BY DATA.",
+    "b_test_reddens_on_missing_field_or_empty_licence": "DONE — 12 negative-control arms over the real catalog: empty licence, whitespace-only licence, each of the five required fields deleted in turn, non-boolean npm flag, dotted extension, duplicate extension, duplicate language id, empty citations, empty argv, whole-table licence loss. Plus a coherence rule (npmInstallable must agree with the install command) and one for the UNVERIFIED marker.",
+    "c_launcher_generates_only_when_none_and_leaves_user_file_untouched": "DONE — asserted at unit level (5 cases: builder never invoked for a user file, sha256 equality, mtime equality, no .mpd dir, env wins) AND live on the built artifact (3 cases; sha256 32f63fab0c… identical before/after the run)",
+    "d_bilingual_readme_pair": "DONE — package README pair + two NEW reference pairs; verify:docs PASS (pairs=47, dead=0)",
+    "e_no_new_install_script_in_the_dependency_closure": "DONE — no manifest edit at all; verify:manifest (--pack) PASS"
+  },
+  "gates": {
+    "bun test packages/mpd-mcp-lsp": "exit 0 — 33 pass / 0 fail (3 files)",
+    "bun run typecheck": "exit 0",
+    "node scripts/verify-comment-coverage.ts": "exit 0 — VERDICT: PASS",
+    "node scripts/verify-dist-fresh.ts --only mpd-mcp-lsp": "exit 0 — 1/1 targets fresh (rebuilt twice, byte-identical)",
+    "bun run verify:docs": "exit 0 — pairs=47 failed=0 violations=0 links=434 dead=0",
+    "bun run verify:manifest": "exit 0 — VERDICT: PASS",
+    "node skills/dsh-qa/scripts/readonly-deny.ts --self-test": "exit 0 — 24 checks",
+    ".toolchain/node_modules/.bin/bun test packages/mpd-ext-plugin/test/mcp.test.ts": "exit 0 — 22 pass (this suite starts the real launcher)"
+  },
+  "liveProof": {
+    "harness": "the BUILT artifact packages/mpd-mcp-lsp/dist/launch.js run with node in scratch workspaces, DSH_WORKSPACE_ROOT pointed at them",
+    "caseA_no_config": "launcher exit 0; <ws>/.mpd/lsp/cclsp.json created; cclsp itself accepted it ('Loaded 1 server configurations from env', 'CCLSP Server running on stdio'); stderr EMPTY (R5 holds)",
+    "caseB_user_config": "launcher exit 0; sha256 32f63fab0cb4e33c0c8026591f38bceee082c81e8ab699b96f869d53fc356355 identical before and after; no <ws>/.mpd/lsp directory created; log '(workspace root, left untouched)'",
+    "caseC_env_config": "launcher exit 0; log '(from CCLSP_CONFIG_PATH)'; nothing generated",
+    "caseD_installed_servers_are_wired (ws-live-matrix)": "with two catalog executables placed in <ws>/node_modules/.bin (marksman, gopls) the generated config carried FOUR rows — the TS/JS row from the declared cclsp dependency, Go (workspace-local absolute path), Rust (the REAL rust-analyzer at ~/.cargo/bin/rust-analyzer found on PATH), and Markdown (workspace-local absolute path with its `server` subcommand appended) — and cclsp read it back: 'Loaded 4 server configurations from env'. stderr 0 bytes.",
+    "caseE_merged_argv": "covered by unit case: two catalog rows sharing one argv (clangd for c-cpp and objective-c) produce ONE config row carrying the union of extensions"
+  },
+  "changedFilesSha256": "changed-files.sha256 (in this directory)",
+  "notProven": [
+    "The 16 `unverified` rows keep an unverified install command or argv; each caveat OPENS with `UNVERIFIED` and names the weak part, the validator reddens if that marker is missing, and the README states the split (45 primary / 16 unverified). No literal was invented to close a gap.",
+    "The generated config was proven to be ACCEPTED by cclsp (4 servers on a real host) but no language server was driven through a real LSP request in this stream — that is the Docker lane's `mcp-call` step, not this lane's.",
+    "The three `unverified` rows whose executable name is a convention rather than a quoted value (jdtls, dart, PowerShell) will simply not enter a generated config until that name resolves on PATH; the probe makes a wrong name harmless rather than fatal.",
+    "Windows: probeExecutable accepts any regular file, so a `.cmd` shim whose name differs from the package's is not found (declared bound, documented in the README).",
+    "Nothing here has been verified by a different agent yet — the S2 verifier seat records its own verdict from the contract."
+  ],
+  "licenseNoticesParagraphForS1": "S2 adds NO new third-party component and NO vendored bytes: the language→server catalog, the config assembler and the HDL reference pages are our own MIT code. The only server this repository is wired to remains `typescript-language-server` (Apache-2.0), which arrives as a dependency of the already-declared `cclsp` (MIT) — and nothing else is redistributed, because the bundle only SPAWNS a user-installed server. The catalog now records the licence of every server it names, of which EIGHT are not permissive (Eclipse JDT LS EPL-2.0 · terraform-ls MPL-2.0 · Intelephense server proprietary · C# Dev Kit language server proprietary · lemminx EPL-2.0 · nixd LGPL-3.0 · vhdl_ls MPL-2.0 · texlab GPL-3.0), plus the Roslyn nuance (Roslyn the compiler and the standalone `roslyn-language-server` NuGet package are MIT; the shipped C# Dev Kit server is proprietary) and the `protols` dispute. LICENSE-NOTICES.md is the S1 writer's file and was NOT touched."
+}

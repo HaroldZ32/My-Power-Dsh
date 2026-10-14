@@ -228,8 +228,9 @@ COMPOSITION ONLY — it never executes plugin code, so it is never load evidence
 | Row id | Package | Composition | Purpose | Tools / service | Key config |
 |---|---|---|---|---|---|
 | `mcp-astgrep` | dsh-mcp-client | web + dsh-tui | local ast-grep stdio server; `launch.ts` resolves the binary bundle-relatively (env pin → `$MPD_AST_GREP_BIN_DIR` → createRequire of the optional dependency → `<bundle>/.toolchain/node_modules/.bin` → `<bundle>/node_modules/.bin`, every candidate expanded into the spellings the host can EXECUTE: win32 resolves `.exe`/`.com` and never a `.cmd` shim the shell-less runner cannot start) | `mcp__ast_grep__*` (search / rewrite / scan) | `serverName: ast_grep`, `toolCallTimeoutMs: 60000` |
-| `mcp-gitbash` | dsh-mcp-client | web + dsh-tui, **disabled by default** | local git-bash stdio server; upstream designs it as Windows-only, so the row ships `disabled: true` | `mcp__git_bash__*` once enabled | flip `disabled: false` to enable |
-| `mcp-lsp` | dsh-mcp-client | web + dsh-tui | local LSP bridge (`…/mpd-mcp-lsp/dist/cli.js mcp`) | `mcp__lsp__*` | `serverName: lsp`, `toolCallTimeoutMs: 60000` |
+| `mcp-git` | dsh-mcp-client | web + dsh-tui, **disabled by default** | local git stdio server: the thin `mpd-mcp-gitbash/dist/launch.js` launcher resolves the declared `@cyanheads/git-mcp-server` dependency from the installed profile (wave B2 replaced the vendored SUL-1.0 server) | `mcp__git__git_*` (28 tools) once enabled | flip `disabled: false` to enable; needs `git` on `PATH` |
+| `mcp-shell` | dsh-mcp-client | web + dsh-tui, **disabled by default** | the same launcher with the `shell` word: resolves the declared `mcp-server-commands` dependency | `mcp__shell__run_process` once enabled | flip `disabled: false` to enable; replaces the retired `git_bash` raw-shell tools |
+| `mcp-lsp` | dsh-mcp-client | web + dsh-tui | local LSP stdio server: the thin `mpd-mcp-lsp/dist/launch.js` launcher resolves the declared `cclsp` dependency and points its config at the bundled `typescript-language-server` (wave B2 replaced the vendored SUL-1.0 daemon) | `mcp__lsp__*` (cclsp's 12 tools) | `serverName: lsp`, `toolCallTimeoutMs: 60000` |
 | `mcp-codegraph` | dsh-mcp-client | web + dsh-tui | local codegraph stdio server; `launch.ts` resolves the binary bundle-relatively and sets `MPD_CODEGRAPH_BIN` only when the caller left it unset | `mcp__codegraph__*` | `serverName: codegraph`, `toolCallTimeoutMs: 60000` |
 | `mcp-context7` | dsh-mcp-client | web + dsh-tui (network) | remote streamable-http MCP server (public service, optional per use) | `mcp__context7__*` | `url: https://mcp.context7.com/mcp` |
 | `mcp-grepapp` | dsh-mcp-client | web + dsh-tui (network) | remote streamable-http MCP server (public service, optional per use) | `mcp__grep_app__*` | `url: https://mcp.grep.app` |
@@ -642,7 +643,8 @@ document should carry, stated rather than left to be discovered:
   Teams panel is the
   exception by construction: the official client plugin renders it in the CONVERSATION HEADER, not
   in the sidebar.
-- **Two rows are inert or degraded by design.** `mcp-gitbash` ships disabled (Windows-only upstream)
+- **Three rows are inert or degraded by design.** `mcp-git` and `mcp-shell` ship disabled (their
+  capabilities are optional, and `mcp-git` additionally needs `git` on `PATH`)
   and `mpd-tui` degrades warn-once in a composition with no TUI seams, so "the row is composed" and
   "the capability is present" are different statements (§4).
 - **The vendored skill corpus is a pinned snapshot.** `skills/**` is fingerprinted in

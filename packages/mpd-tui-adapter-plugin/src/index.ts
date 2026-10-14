@@ -590,12 +590,23 @@ function defaultHostInputLog(line: string): void {
 /** The host module owning the live side-panel enable CSV, relative to a host package root. */
 export const HOST_PREFS_MODULE = "lib/types/tuiDisplayPrefs.js"
 
-/** The host's live display-preference store, as the keeper uses it (one read, one write). */
+/** The host's live display-preference store, as the keeper uses it (one read, one write, one feed). */
 export interface TuiHostPrefsLike {
   /** The enable CSV as it stands right now; anything at all, narrowed by the merge. */
   getSidePanelPanels(): unknown
   /** Applies one CSV and returns the value the store ended up holding. */
   applySidePanelPanels(value: unknown): unknown
+  /**
+   * The store's OWN change feed, when this host build exposes one.
+   *
+   * OPTIONAL BY MEASUREMENT, not by taste: the host's live setting notifies its listeners only when an
+   * apply CHANGES the value, which is exactly the signal this bundle needs — a rewrite by the host's own
+   * configuration mirror is observable here and nowhere in the seam surface. A build without the feed
+   * keeps the bounded ladder below, so no composition loses the repair.
+   * @param listener - called with no arguments whenever the stored CSV changes.
+   * @returns the host's own unsubscribe, or undefined when the store returns none.
+   */
+  subscribeSidePanelPanels?(listener: () => void): unknown
 }
 
 /** What one enable-list contact probe found. */
@@ -604,6 +615,22 @@ export interface HostPrefsProbeResult {
   prefs?: TuiHostPrefsLike
   /** The host root the store was loaded from. */
   root?: string
+  /**
+   * The installed host package's own version, read from the SAME root the store bound ({@link
+   * readHostPackageVersion}), for the C2 self-heal gate: a host at or past
+   * {@link PANEL_CSV_SELF_HEAL_SINCE} unions registered ids back into the enable CSV itself, so the
+   * enable-list keeper stands down instead of racing it. ABSENT (or empty, or unparseable) leaves the
+   * keeper in its legacy behaviour — the degrade-safe half of the pair, never a guess.
+   */
+  hostVersion?: string
+  /**
+   * The host's CURRENT default enable list, read from the SAME module contact and normalized.
+   *
+   * It is the target the stale-default migration ({@link mergePanelEnableIds}) is defined against, so
+   * it is read live and never hardcoded. ABSENT means this host build exposes no usable
+   * `DEFAULT_SIDE_PANEL_IDS`; the migration is then inert and the plain merge path is unchanged.
+   */
+  defaultIds?: string
   /** The ONE reason no contact bound, when none did. */
   detail?: string
 }
@@ -634,7 +661,7 @@ export async function probeHostPrefs(candidates: readonly string[]): Promise<Hos
     }
     try {
       /** The host module namespace, loaded from this candidate by absolute file URL. */
-      const mod = (await import(pathToFileURL(file).href)) as { getSidePanelPanels?: unknown; applySidePanelPanels?: unknown }
+      const mod = (await import(pathToFileURL(file).href)) as { getSidePanelPanels?: unknown; applySidePanelPanels?: unknown; subscribeSidePanelPanels?: unknown; DEFAULT_SIDE_PANEL_IDS?: unknown }
       if (typeof mod.getSidePanelPanels !== "function" || typeof mod.applySidePanelPanels !== "function") {
         skew = `${file} carries no getSidePanelPanels/applySidePanelPanels pair`
         continue
@@ -643,7 +670,30 @@ export async function probeHostPrefs(candidates: readonly string[]): Promise<Hos
       const read = mod.getSidePanelPanels as () => unknown
       /** The host's writer, called the same way. */
       const write = mod.applySidePanelPanels as (value: unknown) => unknown
-      return { prefs: { getSidePanelPanels: (): unknown => read(), applySidePanelPanels: (value: unknown): unknown => write(value) }, root }
+      /** The host's change feed, when this build exports one. */
+      const feed = typeof mod.subscribeSidePanelPanels === "function" ? (mod.subscribeSidePanelPanels as (listener: () => void) => unknown) : undefined
+      // THE HOST'S OWN CURRENT DEFAULT comes from the SAME module contact as the store, never from a
+      // constant in this bundle: it is the migration's target, so a host release that moves its default
+      // must move this rule with it or the rule would restore a list the host no longer ships. A build
+      // whose export is missing, of another type, or empty leaves the field ABSENT — the migration is
+      // then inert, which is the safe half of the pair (see {@link stalePanelDefaultResidue}).
+      /** The host's current default enable list, normalized and in the host's own order. */
+      const hostDefault = normalizePanelCsv(typeof mod.DEFAULT_SIDE_PANEL_IDS === "string" ? mod.DEFAULT_SIDE_PANEL_IDS : "")
+      return {
+        prefs: {
+          getSidePanelPanels: (): unknown => read(),
+          applySidePanelPanels: (value: unknown): unknown => write(value),
+          // Wrapped rather than forwarded: the host's `subscribe` returns a bare unsubscribe closure,
+          // and a build that returned something else must degrade to "no way to unsubscribe" instead of
+          // handing the keeper a value it would try to call.
+          ...(feed === undefined ? {} : { subscribeSidePanelPanels: (listener: () => void): unknown => feed(listener) }),
+        },
+        root,
+        // C2: the version rides the SAME probe answer the keeper decides from, so the gate is a fact
+        // about the very host the store bound — not a second read that could name another candidate.
+        hostVersion: readHostPackageVersion(root),
+        ...(hostDefault === "" ? {} : { defaultIds: hostDefault }),
+      }
     } catch (error) {
       skew = `${file}: ${String((error as Error)?.message ?? error)}`
     }
@@ -653,54 +703,303 @@ export async function probeHostPrefs(candidates: readonly string[]): Promise<Hos
 
 /** One merge of the host's live enable CSV with the ids this activation registered. */
 export interface PanelEnableMerge {
-  /** The CSV to apply: the user's list in its ORIGINAL order, then every missing id, in OUR order. */
+  /**
+   * The CSV to apply: the user's list in its ORIGINAL order, then every missing id, in OUR order.
+   *
+   * ON A MIGRATION IT IS THE MIGRATION TARGET INSTEAD — the host's current default in the host's own
+   * order, then our ids in registration order — because the list it replaces is a stale schema default
+   * rather than a position anybody took; see {@link staleDefault}.
+   */
   csv: string
-  /** The ids that were missing and are therefore appended; empty means "nothing to write". */
+  /** The ids that were missing and are therefore appended; empty means "nothing to append". */
   added: readonly string[]
   /** The ids that were already enabled. */
   present: readonly string[]
+  /** The user's tokens this merge KEEPS, in their original order — {@link csv} minus {@link added}. */
+  kept: readonly string[]
+  /**
+   * The tokens dropped because they name one of OUR panels from an EARLIER boot.
+   *
+   * The host renumbers the `<pluginId>` half of a row-registered panel on every boot (`act1:team` this
+   * boot, `act7:team` the next), so a list left behind by an earlier session names ids nothing can
+   * answer — and the host's `SidePanelColumn` still builds a tab and draws a dot for each one. These are
+   * the ONLY tokens this merge ever removes, and since repair round R1 they are recognised by PROVENANCE
+   * ({@link panelTokenIsStaleMine}) rather than by a shared slug.
+   */
+  pruned: readonly string[]
+  /**
+   * The stale historical default this list was EXACTLY the residue of, when the migration ran.
+   *
+   * Empty on every other merge, which is the common case: the write target is then the ordinary
+   * `kept ∪ added`. A non-empty value means {@link csv} is the host's current default ∪ our ids, and
+   * that the entry named here is the stale default the user's list consisted of.
+   */
+  staleDefault: string
 }
 
 /**
- * Merge this activation's panel ids into the host's live enable CSV.
+ * The `<slug>` half of one composed panel id: everything after the FIRST colon.
  *
- * THE INVARIANTS THIS PURE FUNCTION EXISTS TO HOLD. It NEVER removes a token and NEVER reorders one:
- * the user's list — including panels of other plugins and ids this bundle does not own — comes back
- * in its original order, and our ids are APPENDED after it. Duplicates collapse the way the host's
- * own `normalizeSidePanelPanels` collapses them (trim + lowercase + first-wins), so a merge never
- * fights the host's normalizer into a second, different list. Removal is deliberately NOT offered:
- * a user who turns one of our panels off in `/settings` loses nothing to this function, because the
- * merge only ever finds the id missing and appends it — which is what lets the caller's bounded
- * ladder end without ever having to undo a removal.
- * @param existing - the host's current CSV; anything at all (a non-string reads as the empty list).
- * @param ours - the ids this activation registered, in registration order.
- * @returns the CSV to apply, plus what was added and what was already there.
+ * The host composes a loader row's panel id as `<pluginId>:<slug>` and validates it against its own
+ * grammar (`/^[a-z][a-z0-9_-]*(:[a-z][a-z0-9_-]*)*$/`), so the slug is what identifies OUR page while
+ * the activation half is the host's to renumber. An id with no colon is its own slug — the host's
+ * builtins are spelled that way.
+ * @param id - one normalized panel id.
+ * @returns the slug half.
  */
-export function mergePanelEnableIds(existing: unknown, ours: readonly string[]): PanelEnableMerge {
-  /** The user's tokens, normalized and deduped exactly as the host normalizes them. */
+export function panelSlugOf(id: string): string {
+  /** Where the activation half ends; -1 when the id carries none. */
+  const at = id.indexOf(":")
+  return at < 0 ? id : id.slice(at + 1)
+}
+
+/** The id shape the host composes for a loader row's panel: `<pluginId>:<slug>` with its `act<N>` fallback. */
+const PANEL_ACT_ID_SHAPE = /^act\d+:/u
+
+/**
+ * How many PAST registration ids the panel-id record keeps: the LAST N, the oldest evicted.
+ *
+ * WHY A CAP IS PART OF THE RULE. The history is the ownership evidence the prune rests on, and the record
+ * is rewritten on every boot, so an UNCAPPED list would grow for the life of the workspace while the ids
+ * it can still match are only ever the last few boots' worth: the host renumbers the activation half on
+ * EVERY boot, so a token from further back cannot be in a live CSV unless the file was hand-edited. 32
+ * entries is roughly ten boots of slack — a bound that is STATED here rather than left to grow.
+ */
+export const PANEL_ID_HISTORY_LIMIT = 32
+
+/**
+ * The bounded history a record written NOW must carry: the previous history plus the previous boot's own
+ * ids, minus everything live in this one, newest last.
+ *
+ * THE SHAPE FILTER IS LOAD-BEARING, and it is the same one {@link panelTokenIsStaleMine} applies: only an
+ * id the host composes for a loader row (`act<N>:<slug>`) can ever be ours, so neither a foreign id nor a
+ * value a hand edit put in the file can enter the history and make the prune delete a live panel.
+ * @param current - the ids THIS activation registered, in registration order.
+ * @param past - the previous record's history AND its current ids, oldest first.
+ * @returns the bounded past registrations, oldest first.
+ */
+export function panelHistoryAfter(current: readonly string[], past: readonly string[]): string[] {
+  /** The past ids that are ours, dead now, deduped and in the order they were first recorded. */
+  const kept: string[] = []
+  for (const id of past) {
+    if (!PANEL_ACT_ID_SHAPE.test(id) || current.includes(id) || kept.includes(id)) continue
+    kept.push(id)
+  }
+  return kept.slice(-PANEL_ID_HISTORY_LIMIT)
+}
+
+/**
+ * Whether one token is a panel of OURS from an EARLIER boot — the only kind of token we may prune.
+ *
+ * OWNERSHIP IS PROVENANCE, NEVER A SLUG (repair round R1, CodeRabbit PR #35). The slug rule this
+ * replaced was wrong in BOTH directions at once: a foreign plugin's live `act9:team` shares our `team`
+ * slug and was pruned out of the user's sidebar, while one of our OWN dead ids whose page was retired or
+ * renamed matched no live slug and was never pruned at all. THE THREE CONDITIONS:
+ *   * the id has the shape the host composes for a loader row (`act<N>:<slug>`) — the only shape this
+ *     bundle's own panels ever take, because a patch row has no Component identity;
+ *   * the FULL id is in the record's bounded history ({@link panelHistoryAfter}), i.e. this bundle
+ *     provably registered it in an earlier boot — the record's provenance rules are what make
+ *     "provably" true;
+ *   * the full id is NOT live right now. A current id is a live panel and is never removed.
+ * A foreign id fails the second condition and is therefore never pruned — even one that shares our slug,
+ * and even one shaped like an `act<N>` id (the counter is the host's, not ours). ACCEPTED BOUND, stated
+ * rather than hidden: a foreign DEAD id lingering in the list is not ours to clean, so it stays.
+ * @param token - one normalized token from the host's CSV.
+ * @param ours - the ids this activation registered, in registration order.
+ * @param past - the recorded past registrations, as {@link panelHistoryAfter} bounded them.
+ * @returns true when the token is ours, stale, and therefore prunable.
+ */
+export function panelTokenIsStaleMine(token: string, ours: readonly string[], past: readonly string[]): boolean {
+  if (!PANEL_ACT_ID_SHAPE.test(token)) return false
+  if (ours.includes(token)) return false
+  return past.includes(token)
+}
+
+/**
+ * Normalize one CSV the way the host's own `normalizeSidePanelPanels` does for the parts this bundle
+ * depends on: trim, lowercase and first-wins dedupe. Used by {@link mergePanelEnableIds} for its input
+ * AND by the keeper for its post-write read-back, so the two sides of that comparison can never
+ * disagree about what "the same list" means.
+ * @param value - the CSV, or anything else at all (a non-string reads as the empty list).
+ * @returns the normalized comma-joined list.
+ */
+export function normalizePanelCsv(value: unknown): string {
+  /** The tokens, in first-seen order. */
   const tokens: string[] = []
-  for (const token of (typeof existing === "string" ? existing : "").split(",")) {
+  for (const token of (typeof value === "string" ? value : "").split(",")) {
     /** One normalized token; the empty string is dropped so a trailing comma adds no slot. */
     const id = token.trim().toLowerCase()
     if (id !== "" && !tokens.includes(id)) tokens.push(id)
   }
-  /** The registered ids the CSV does not carry yet, in registration order. */
-  const added = ours.filter((id) => !tokens.includes(id))
-  return { csv: [...tokens, ...added].join(","), added, present: ours.filter((id) => tokens.includes(id)) }
+  return tokens.join(",")
 }
 
 /**
- * The settle ladder's delays, in milliseconds FROM ARMING, which is the first observed registration.
+ * The historical side-panel enable lists this bundle KNOWS to be a stale schema default.
  *
- * MEASURED, not guessed. On the installed 0.13.0 host the `dsh-tui` row re-applies its config at
- * +5403 ms from ITS boot, while panels register at about +1056 ms, so the losing write lands roughly
- * 4.3 s after arming. The ladder therefore does NOT stop at the first clean read — a read taken
- * before +4.3 s legitimately finds nothing missing and would report success while the panel was
- * about to disappear. It keeps sampling past that instant, and the sixth tick is the LAST one: the
- * keeper then stops FOR GOOD, so a panel a user removes in `/settings` afterwards stays removed.
- * A tick that finds ANY of our ids already present WRITES NOTHING and stands down (see
- * {@link createPanelEnableKeeper}), so the bounded window only ever repairs a list that names none
- * of us — the fresh-profile case — and never overrules a configured choice.
+ * WHY A LIST AND NOT A SINGLE VALUE: the rule is "a residue that is EXACTLY a default an older host
+ * shipped", and an older host may have shipped more than one — so the constant is a set, and the ONLY
+ * entry is the one that was measured against a real profile. `todo,jobs,agents` is dsh-tui 0.13.0's
+ * default: a user layer that a 0.13.0-era `/settings` save materialized keeps those three and none of
+ * the five builtins 0.14.0 added, and a user layer BEATS the schema default, so those five vanish from
+ * the sidebar the moment any panel activity makes the list visible (the reported defect).
+ *
+ * EVERY ENTRY IS ALREADY NORMALIZED (see {@link normalizePanelCsv}): the comparison is against a
+ * normalized residue, so an entry with a space or a capital could never match and would be dead weight.
+ */
+export const KNOWN_STALE_PANEL_DEFAULTS: readonly string[] = ["todo,jobs,agents"]
+
+/**
+ * The known stale default one residue is EXACTLY, when the stale-default migration applies.
+ *
+ * THE PREDICATE, in full (T1 of the frozen contract): the caller passes the current CSV with OUR ids
+ * removed, and the answer is non-empty only when that residue is exactly a
+ * {@link KNOWN_STALE_PANEL_DEFAULTS} entry AND that entry differs from the host's own current
+ * {@link HostPrefsProbeResult.defaultIds}. The second half is what makes a 0.13.0 host — whose current
+ * default IS the stale entry — byte-identical to before this rule existed: there the residue is the
+ * host's own default and there is nothing to restore.
+ *
+ * AN UNREADABLE OR EMPTY HOST DEFAULT IS INERT, never a wildcard: without a target there is no list to
+ * migrate TO, and a rule that guessed one would rewrite a user's sidebar on the strength of a missing
+ * export. The keeper says so in ONE log line and otherwise behaves exactly as before.
+ * @param residue - the user's own enable tokens, normalized, with our ids removed.
+ * @param hostDefault - the host's current default, normalized; undefined when unreadable.
+ * @returns the stale default matched, or the empty string when the migration must not run.
+ */
+export function stalePanelDefaultResidue(residue: string, hostDefault: string | undefined): string {
+  if (hostDefault === undefined || hostDefault === "") return ""
+  if (residue === "" || residue === hostDefault) return ""
+  return KNOWN_STALE_PANEL_DEFAULTS.includes(residue) ? residue : ""
+}
+
+/**
+ * Merge this activation's panel ids into the host's live enable CSV, pruning OUR OWN stale ids.
+ *
+ * THE INVARIANTS THIS PURE FUNCTION EXISTS TO HOLD. It NEVER reorders a token and NEVER removes one it
+ * does not own: the user's list — panels of other plugins, the host's builtins, and ids this bundle has
+ * never heard of — comes back in its original order, and our ids are APPENDED after it. The ONE removal
+ * is a token that satisfies every condition of {@link panelTokenIsStaleMine}: an id of OURS that an
+ * earlier boot composed under a different host activation, which no panel can answer any more, and which
+ * the host's sidebar nevertheless draws a tab and a dot for (the reported mismatch, D1). Duplicates
+ * collapse the way the host's own `normalizeSidePanelPanels` collapses them (trim + lowercase +
+ * first-wins), so a merge never fights the host's normalizer into a second, different list.
+ *
+ * THE ONE EXCEPTION TO "NEVER REORDERS": the stale-default migration below. A list that consists of a
+ * historical schema default (with or without our own ids in it) is not a position anybody took — a user
+ * layer carrying it outranks the schema default, so five builtins the CURRENT host ships are silently
+ * absent from the sidebar — and the merge answers it with the host's current default ∪ our ids, in the
+ * host's own order, which is the axis the sidebar's tab order and its dots are read along. Every other
+ * list, including a deliberate custom one, keeps its exact order and contents.
+ *
+ * A MIGRATION IS SELF-TERMINATING: once written, the residue IS the host's current default, so the very
+ * next decision finds no stale default and takes the ordinary path (for a list that names any of ours,
+ * that is the stand-down). It is deliberately NOT a one-shot latch: on a host whose configuration mirror
+ * rewrites the CSV from the user layer later in the boot, the rewrite re-presents the stale default and
+ * is migrated again — which is the whole repair, not a repeat of it.
+ *
+ * WHY THE PRUNE IS PART OF THE MERGE RATHER THAN A SECOND PASS: the keeper writes at most a handful of
+ * times, and a repair that appended the current ids without removing the stale ones would leave the list
+ * strictly WORSE — two ids per page, one of them dead. Removal is otherwise still not offered: a user who
+ * turns one of our panels off in `/settings` loses nothing here, because the merge only ever finds the
+ * id missing and appends it.
+ * @param existing - the host's current CSV; anything at all (a non-string reads as the empty list).
+ * @param ours - the ids this activation registered, in registration order.
+ * @param past - the record's bounded past registrations, from {@link panelHistoryAfter}.
+ * @param hostDefault - the host's current default, normalized, from {@link HostPrefsProbeResult}; omitted
+ *   or empty leaves the stale-default migration inert and the target is then `kept ∪ added` as before.
+ * @returns the CSV to apply, plus what was added, what was already there and what was pruned.
+ */
+export function mergePanelEnableIds(existing: unknown, ours: readonly string[], past: readonly string[], hostDefault?: string): PanelEnableMerge {
+  /** The user's tokens, normalized and deduped exactly as the host normalizes them. */
+  const tokens = normalizePanelCsv(existing).split(",").filter((id) => id !== "")
+  /** Our tokens from an earlier boot; see {@link panelTokenIsStaleMine} for why only these may go. */
+  const pruned = tokens.filter((token) => panelTokenIsStaleMine(token, ours, past))
+  /** The user's list with only those tokens removed, in its original order. */
+  const kept = tokens.filter((token) => !pruned.includes(token))
+  /** The registered ids the kept list does not carry yet, in registration order. */
+  const added = ours.filter((id) => !kept.includes(id))
+  // THE MIGRATION PREDICATE reads the CURRENT list with OUR ids removed — the live ones and the
+  // provably-dead ones alike, because both are ours and neither is part of anybody's position on which
+  // builtins the sidebar should carry. What remains is the user's own list in the contract's words, and
+  // it is compared to the host's current default by {@link stalePanelDefaultResidue}.
+  /** The user's own list: the kept tokens that name none of our panels, normalized. */
+  const residue = normalizePanelCsv(kept.filter((token) => !ours.includes(token)).join(","))
+  // THE MIGRATION NEEDS SOMETHING OF OURS TO CARRY: its target is the host's default ∪ OUR ids, so with
+  // nothing registered it would rewrite the user's list for no charter at all. The keeper arms on its
+  // first registration and therefore never reaches this state, and the guard keeps that accident-proof:
+  // an empty registration set behaves exactly as it did before the migration existed.
+  /** The stale default this list consisted of, or the empty string when it is not a stale default. */
+  const staleDefault = ours.length === 0 ? "" : stalePanelDefaultResidue(residue, hostDefault)
+  /** The host's current default, as tokens; empty only when the migration did not run. */
+  const defaultTokens = staleDefault === "" ? [] : (hostDefault ?? "").split(",").filter((id) => id !== "")
+  /** The CSV this merge asks for: the host's default ∪ ours on a migration, `kept ∪ added` otherwise. */
+  const csv = staleDefault === ""
+    ? [...kept, ...added].join(",")
+    : [...defaultTokens, ...ours.filter((id) => !defaultTokens.includes(id))].join(",")
+  return { csv, added, present: ours.filter((id) => kept.includes(id)), kept, pruned, staleDefault }
+}
+
+/**
+ * The first dsh-tui release whose host SELF-HEALS the sidebar enable CSV (measured,
+ * `evidence/tui/dsh-tui-015/host-diff/FACTS.md`, V1/V3).
+ *
+ * From 0.15.0 on, `TuiPanelRuntime.register()` feeds `registeredPanelIds`, the boot/mirror apply
+ * (`applyConfiguredSidePanelPanels`) unions registered ids back unless explicitly removed, `/settings`
+ * live edits record removals session-wide (`applySidePanelPanelsFromSettings` + `removedPanelIds`),
+ * and the only CSV writer left is that settings-apply hop. The enable-list keeper's charter — repair
+ * the append the host's own re-apply dropped — therefore no longer exists there, and C2 re-specs it:
+ * on these hosts the keeper STANDS DOWN and writes nothing, so it can never race (or undo) the host's
+ * own union or re-add a panel the user explicitly removed.
+ */
+export const PANEL_CSV_SELF_HEAL_SINCE = "0.15.0"
+
+/**
+ * Whether one host version self-heals the sidebar enable CSV, i.e. whether the enable-list keeper
+ * must stand down (clause C2).
+ *
+ * DEGRADE-SAFE BY CONSTRUCTION: an empty, absent or unparseable version answers FALSE, so the keeper
+ * keeps its full legacy behaviour on exactly the hosts whose behaviour it pinned — the gate can only
+ * ever STAND THE KEEPER DOWN on a version it could actually read and compare.
+ * @param version - the installed host package's version, from {@link readHostPackageVersion}; "" or
+ *   garbage reads as "does not self-heal".
+ * @returns true only when the version parses and is at or past {@link PANEL_CSV_SELF_HEAL_SINCE}.
+ */
+export function hostSelfHealsPanelCsv(version: string): boolean {
+  /** The leading `major.minor.patch` of the version, when it carries a readable one. */
+  const match = /^(\d+)\.(\d+)\.(\d+)/.exec(version.trim())
+  if (match === null) return false
+  /** The first host release that self-heals, pre-split once so the comparison reads as a rank. */
+  const since = PANEL_CSV_SELF_HEAL_SINCE.split(".").map((part) => Number.parseInt(part, 10))
+  /** The parsed version, in the same rank order. */
+  const parsed = [Number(match[1]), Number(match[2]), Number(match[3])]
+  for (let rank = 0; rank < 3; rank += 1) {
+    if (parsed[rank] > since[rank]) return true
+    if (parsed[rank] < since[rank]) return false
+  }
+  return true
+}
+
+/**
+ * The settle ladder's delays, in milliseconds FROM ARMING — the DEGRADATION, used only on a host whose
+ * live setting exposes no change feed.
+ *
+ * WHY THE FEED IS THE PRIMARY REPAIR AND THIS LADDER IS THE FALLBACK (this REPLACES the 0.13.0-era
+ * decision, and the reason is measured rather than stylistic). The old code asserted that a bounded
+ * ladder beats a subscription "because a subscription has to reason about every rewrite, including the
+ * ones that ARE the user's decision". That reasoning had a hole, and the hole is the user's own defect
+ * (「侧边栏挂掉了」, F5): the host's OWN `tuiPanels.register` appends every registered id to the CSV at
+ * about +1056 ms, and this keeper ARMED on that registration — so its first tick, at +1000 ms after
+ * arming, read a list that already named us and STOOD DOWN. The host's configuration mirror then
+ * rewrote the CSV at about +5403 ms (`applySidePanelPanels(config.sidePanel?.panels)`, reached through
+ * `Fiber._reload`), and the ladder was already finished, so MPD's panels left the sidebar and never
+ * came back for the rest of the session. A read taken at arm time cannot tell "the host's own append"
+ * from "the user enabled us", and that is exactly what the ladder decided on.
+ *
+ * The host's live setting DOES expose the distinction: `apply()` notifies its listeners only when an
+ * apply CHANGES the value, so a rewrite by the configuration mirror is a signal, and our own write's
+ * echo is recognisable (the keeper guards it). The change feed is therefore the repair, and this ladder
+ * remains for a build that exposes no feed — it is still bounded, still stands down on a list that
+ * names any of our ids, and still writes only ids its own activation registered.
  */
 export const PANEL_KEEPER_LADDER_MS: readonly number[] = [1000, 2500, 5500, 9000, 16000, 25000]
 
@@ -718,12 +1017,24 @@ export interface PanelEnableOutcome {
   ticks: number
 }
 
-/** Everything {@link createPanelEnableKeeper} needs, with the clock and the store injectable. */
+/** Everything {@link createPanelEnableKeeper} needs, with the clock, the store and the record injectable. */
 export interface PanelEnableKeeperOptions {
   /** Loads the host store; retried on every tick, because a host may expose it late. */
   loadPrefs: () => Promise<HostPrefsProbeResult>
   /** Schedules one tick and returns its canceller (injectable so a test owns the clock). */
   schedule: (run: () => void, delayMs: number) => () => void
+  /**
+   * The ids this bundle registered in EARLIER boots — the ownership evidence the prune rests on.
+   *
+   * REQUIRED rather than defaulted, and read PER DECISION rather than cached: the mounted row passes
+   * {@link readPanelIdRecordPast} (the record is rewritten on every boot, so a value sampled at
+   * construction could already be a boot stale), while a unit arm states its own past explicitly — a
+   * default would silently read the machine's real record and make an arm pass or fail by accident.
+   * Callers must never throw: the keeper contains a throwing reader as "no proven past", which disables
+   * the prune instead of guessing.
+   * @returns the bounded past registrations, oldest first.
+   */
+  pastIds: () => readonly string[]
   /** Receives the ONE settle line; omitted means the keeper is silent. */
   log?: (line: string) => void
   /** The ladder to walk; defaults to {@link PANEL_KEEPER_LADDER_MS}. */
@@ -747,7 +1058,10 @@ export interface PanelEnableKeeper {
   observe(id: string): void
   /** The keeper's state right now, sampled. */
   outcome(): PanelEnableOutcome
-  /** Cancels every pending tick; the keeper then never writes again. */
+  /**
+   * Retires the keeper for good: no pending ladder tick runs and the host's change feed (when one was
+   * installed) is unsubscribed. Called on scope disposal, so a hot reload leaves no listener behind.
+   */
   stop(): void
 }
 
@@ -763,8 +1077,14 @@ export interface PanelEnableKeeper {
  * fresh profile's schema default looks like after the host re-applies it — and the ladder stops for
  * good after its last tick, so nothing here reopens a settled question later in the session.
  *
+ * STANDING DOWN NO LONGER PROTECTS A DEAD TOKEN (repair round R1, CodeRabbit PR #35): a list that names
+ * one of ours AND one of our provably-dead past ids is pruned of the dead id first, and only then the
+ * keeper stands down without appending anything. See {@link PanelEnableKeeperOptions.pastIds} for the
+ * ownership evidence that makes "provably dead" true, and {@link panelTokenIsStaleMine} for why a slug
+ * is not evidence.
+ *
  * Nothing here ever throws — a tick is contained, and a failure is recorded as the outcome.
- * @param options - the store loader, the clock and the ladder.
+ * @param options - the store loader, the clock, the ladder and the recorded past ids.
  * @returns the keeper.
  */
 export function createPanelEnableKeeper(options: PanelEnableKeeperOptions): PanelEnableKeeper {
@@ -780,10 +1100,36 @@ export function createPanelEnableKeeper(options: PanelEnableKeeperOptions): Pane
   let ticks = 0
   /** How many ticks actually wrote the CSV. */
   let reasserted = 0
+  /** Whether the host's own change feed is this keeper's repair path. */
+  let onFeed = false
+  /** The host's unsubscribe, once the change feed is in force. */
+  let releaseFeed: (() => void) | undefined
+  /** The observe-only belt's unsubscribe, once the C2 self-heal stand-down installed one. */
+  let releaseBelt: (() => void) | undefined
+  /**
+   * Set while this keeper's own write is in flight.
+   *
+   * The host's live setting notifies on every apply that CHANGES the value, so our own write is heard
+   * back immediately. This flag makes that echo a non-event, which is what bounds the repair: without it
+   * a store that notifies synchronously would re-enter this decision from inside the write.
+   */
+  let writing = false
   /** The measured state; `requested` until the keeper has something to say. */
   let state: SeamState = "requested"
   /** The measured detail behind {@link state}. */
   let detail = "no panel registered yet"
+  /** The ONE reason the host's change feed could not be installed, when it refused one. */
+  let feedRefused = ""
+  /**
+   * Whether the ONE line about an unreadable host default has already been written.
+   *
+   * The stale-default migration needs the host's CURRENT default as its target, and a host build that
+   * exposes no usable `DEFAULT_SIDE_PANEL_IDS` leaves the migration inert. That is a degrade, not an
+   * event, so it is said ONCE per keeper — a ladder would otherwise repeat the same sentence on every
+   * tick, and the sink is a file a reader has to scan. It goes to the adapter's own sink and never to a
+   * terminal (requirement R5).
+   */
+  let defaultNoted = false
 
   /**
    * Record one tick's verdict and emit the ONE settle line when the ladder is exhausted.
@@ -807,61 +1153,364 @@ export function createPanelEnableKeeper(options: PanelEnableKeeperOptions): Pane
    */
   const settle = (next: SeamState, nextDetail: string): void => {
     state = next
-    detail = nextDetail
+    // A REFUSED FEED IS NEVER LOST: the tick that found it still takes its ladder decision, and its own
+    // sentence would otherwise overwrite the one reason the feed is not the repair path here. The note is
+    // appended in ONE place so no settle site can forget it.
+    detail = feedRefused === "" ? nextDetail : `${nextDetail}; the change feed was refused: ${feedRefused}`
     announce()
     if (ticks < ladder.length) return
-    options.log?.(`mpd-tui panel enable keeper: ${next} — ${nextDetail}; ${String(reasserted)} write(s) over ${String(ticks)} tick(s); ids ${ours.join(",") || "(none)"}`)
+    options.log?.(`mpd-tui panel enable keeper: ${next} — ${detail}; ${String(reasserted)} write(s) over ${String(ticks)} tick(s); ids ${ours.join(",") || "(none)"}`)
   }
 
   /**
-   * Run one tick: read the CSV, and re-assert the whole set only when the configuration has clearly
-   * NOT taken a position on this bundle.
+   * Cancel every pending ladder tick, leaving the change feed (if one is in force) untouched.
+   *
+   * Split from {@link standDown} because the two are reached at different moments: the ladder is
+   * cancelled the instant the feed takes over, while the keeper is still very much alive.
+   */
+  const cancelLadder = (): void => {
+    for (const cancel of pending.splice(0)) {
+      try {
+        cancel()
+      } catch {
+        // A canceller that throws must not break an unload or a hand-off.
+      }
+    }
+  }
+
+  /**
+   * Run the host's unsubscribe, once, tolerating a host that refused to return one.
+   *
+   * A store that returns nothing to call is not an error: the listener stays attached for the life of
+   * the process, which is what the keeper did before feed support existed and is strictly better than
+   * throwing during a scope disposal.
+   */
+  const releaseFeedNow = (): void => {
+    /** The release in force, taken so a throwing one cannot be run twice. */
+    const release = releaseFeed
+    releaseFeed = undefined
+    onFeed = false
+    if (release === undefined) return
+    try {
+      release()
+    } catch {
+      // A host unsubscribe that throws must not break an unload.
+    }
+  }
+
+  /**
+   * Write ONE CSV into the host's live enable list and prove it landed.
+   *
+   * THE POST-WRITE READ-BACK (contract D1). Until the host's OWN reader answers the list this keeper
+   * asked for, the write is a request and not a fact — and a keeper that reported success on a store
+   * which dropped it would leave the sidebar showing whatever it had before, silently. The comparison
+   * runs through the SAME normalizer the merge used, so a host that reorders or re-cases the tokens
+   * is not mistaken for a host that refused them.
+   *
+   * It is ONE function because repair round R1 gave the keeper a SECOND write shape (a prune-only write
+   * on the stand-down path): two copies of the echo guard and the read-back is how the two paths drift.
+   * A write that LANDS settles nothing here — the CALLER owns the one line that describes the decision,
+   * so a tick still announces exactly once (and the record is therefore written once per tick).
+   * @param prefs - the bound host store.
+   * @param csv - the exact list to apply.
+   * @returns true when the list came back exactly; false when it did not (already settled as refused).
+   */
+  const writeList = (prefs: TuiHostPrefsLike, csv: string): boolean => {
+    // THE GUARD IS WHAT MAKES THE ECHO FINITE: see {@link decide}'s own first line. The flag is set
+    // around the write so the store's synchronous notification is a non-event, not a second repair.
+    writing = true
+    try {
+      prefs.applySidePanelPanels(csv)
+    } finally {
+      writing = false
+    }
+    reasserted += 1
+    /** What the host's reader answers AFTER the write, normalized the way the merge normalizes. */
+    const landed = normalizePanelCsv(prefs.getSidePanelPanels())
+    if (landed !== normalizePanelCsv(csv)) {
+      settle("refused", `the enable list read back as ${landed === "" ? "(empty)" : landed} instead of the ${csv} just written`)
+      return false
+    }
+    return true
+  }
+
+  /**
+   * Decide once, from ONE read of the host's CSV — the single place both the change feed and the ladder
+   * take their decision, so the two paths cannot drift into two different rules.
    *
    * THE CONDITION IS THE WHOLE CONTRACT, and it is what keeps the keeper from overruling its user:
-   *   * NONE of our ids present — the host's own config re-apply has just restored a list that does
-   *     not mention us at all (`todo,jobs,agents` on a fresh profile). That is the reported defect, and
-   *     the whole set is appended in one write.
-   *   * ANY of our ids present — the configuration NAMES US. Either the user enabled us through
-   *     `/settings` or `scripts/mpd-tui-panels.ts`, or the user deliberately removed some of us and the
-   *     rest survived the re-apply. Either way the user's position is READABLE from the CSV, and the
-   *     keeper STANDS DOWN. It therefore never re-adds an id a user removed on purpose, WITHOUT needing
-   *     a third host-internals contact to ask for the configured value.
+   *   * NONE of our ids present — the host's own config mirror has restored a list that does not
+   *     mention us at all (`todo,jobs,agents,info,…` on a fresh profile). That is the reported defect,
+   *     and the whole set is appended in one write (with any provably-dead id of ours pruned in the same
+   *     write).
+   *   * ANY of our ids present, on a read the HOST asked for — the configuration NAMES US. Either the
+   *     user enabled us through `/settings` or `scripts/mpd-tui-panels.ts`, or the user deliberately
+   *     removed some of us and the rest survived the rewrite. Either way the user's position is READABLE
+   *     from the CSV, so NOTHING IS APPENDED and the keeper STANDS DOWN for good. It therefore never
+   *     re-adds an id a user removed on purpose, WITHOUT a third host-internals contact to ask for the
+   *     configured value. A provably-dead past id in that same list IS still pruned first (repair round
+   *     R1): standing down protects the user's SELECTION, and a token no panel can answer is not part of
+   *     any selection — leaving it would keep drawing the orphaned tab this wave exists to remove.
+   *   * THE STALE-DEFAULT RESIDUE IS THE ONE EXCEPTION to both branches (T1 of the frozen contract), and
+   *     it is decided by {@link PanelEnableMerge.staleDefault}: when the list with our ids removed is
+   *     EXACTLY a historical schema default that differs from the host's current one, the write target is
+   *     the host's current default ∪ our ids instead of the list on the wire. That residue is not a
+   *     position — it is a default an older host materialized — so it is migrated whether or not it also
+   *     names us, and the migration does NOT retire the keeper: its own write leaves the host's default
+   *     as the residue, so the NEXT read stands down by the ordinary rule, while a configuration mirror
+   *     that rewrites the stale default later in the boot is migrated again rather than abandoned.
    *   * A partial write is never performed: the ids go in as a set, so a half-applied list cannot make
-   *     the next tick read "the configuration names one of us" and stand down mid-repair.
+   *     the next read say "the configuration names one of us" and stand down mid-repair.
+   *
+   * ARM TIME IS THE ONE READ THAT CANNOT STAND DOWN, and that is the measured defect stated as code:
+   * the host's own `tuiPanels.register` appends our ids at about +1056 ms, which is the SAME moment this
+   * keeper arms, so a stand-down here is a stand-down on the host's own append — it would retire the
+   * keeper about 4.3 s before the configuration mirror rewrites the CSV at about +5403 ms, which is
+   * exactly how the panels left the sidebar and never returned (F5). At arm time the read may therefore
+   * only REPAIR a list that names none of us (plus the same prune of provably-dead ids, which is not a
+   * statement about anyone's selection); a list that names us is simply the state we are watching — and
+   * a stale-default residue is migrated here too, because that repair restores builtins the CURRENT host
+   * ships rather than overruling anything.
    *
    * NAMED RESIDUAL, not papered over: a user who removes ALL of ours on purpose leaves a CSV that is
-   * INDISTINGUISHABLE from a fresh profile's, so this tick re-adds the set once per boot. Only the
-   * CONFIGURED value can separate those two cases, and reading it would mean a third host-internals
-   * contact — a §6 count decision deliberately NOT taken in this wave.
+   * INDISTINGUISHABLE from a fresh profile's, so a rewrite is repaired once more. Only the CONFIGURED
+   * value can separate those two cases, and reading it would mean a third host-internals contact — a §6
+   * count decision deliberately NOT taken in this wave. A user who deliberately configures EXACTLY a
+   * {@link KNOWN_STALE_PANEL_DEFAULTS} list on a host whose own default differs is the second, smaller
+   * residual: that state cannot be told from the stale pin, and the migration restores the host's
+   * builtins. Both bounds are stated rather than hidden.
+   * @param prefs - the bound host store.
+   * @param atArm - true for the single read taken when the feed is installed.
+   * @param hostDefault - the host's current default, normalized; undefined when the host build exposes
+   *   none, which leaves the migration inert and the decision byte-identical to before it existed.
+   */
+  const decide = (prefs: TuiHostPrefsLike, atArm: boolean, hostDefault: string | undefined): void => {
+    // OUR OWN WRITE'S ECHO IS NOT A NEW FACT. The store notifies synchronously from inside
+    // `applySidePanelPanels`, so this read would otherwise re-decide on the value this keeper had just
+    // written — and the read would find our own ids and stand the keeper down. Dropping the echo is what
+    // bounds the repair without needing our own write to end the keeper.
+    if (writing) return
+    ticks += 1
+    try {
+      // THE OWNERSHIP EVIDENCE IS READ PER DECISION, never cached: the record is rewritten on every boot,
+      // and a value sampled at construction could already be a boot stale. A throwing reader is "no proven
+      // past", which disables the prune rather than guessing.
+      /** The ids this bundle provably registered in earlier boots. */
+      let past: readonly string[] = []
+      try {
+        past = options.pastIds()
+      } catch {
+        past = []
+      }
+      // THE DEGRADE IS SAID ONCE. Without the host's own default there is no migration target, so the
+      // rule stays inert; one line records why, on the same file sink every other keeper line uses.
+      if ((hostDefault === undefined || hostDefault === "") && !defaultNoted) {
+        defaultNoted = true
+        options.log?.(`mpd-tui panel enable keeper: the host exposes no readable DEFAULT_SIDE_PANEL_IDS, so the stale-default migration stays inert and the enable list is merged as before`)
+      }
+      /** What this read measured, before any decision is taken. */
+      const merge = mergePanelEnableIds(prefs.getSidePanelPanels(), ours, past, hostDefault)
+      if (merge.present.length > 0) {
+        // THE STALE-DEFAULT RESIDUE OUTRANKS THE STAND-DOWN (T1). The list names us, but with our ids
+        // removed what is left is a schema default an older host shipped — the shape a 0.13.0-era user
+        // layer plus the host's own registration append produces — and nothing here is a position on this
+        // bundle. It is migrated and the keeper keeps watching.
+        if (merge.staleDefault !== "") {
+          if (!writeList(prefs, merge.csv)) return
+          settle("confirmed", `migrated the stale default ${merge.staleDefault} to ${merge.csv} (the list also named ${merge.present.join(",")}, so nothing else was appended)`)
+          return
+        }
+        // R1.3: THE DEAD TOKEN GOES FIRST. The list names one of ours, so nothing is ever APPENDED here —
+        // the deliberate partial selection stands — but a token in the record's history that is not live
+        // is provably dead, and the prune-only write below is the ONE write this branch may make.
+        /** What a prune did, for the ONE settle line below; empty when there was nothing to prune. */
+        let prunedNote = ""
+        if (merge.pruned.length > 0) {
+          /** The list a prune-only write lands: the user's kept tokens, with no id of ours appended. */
+          const prunedCsv = merge.kept.join(",")
+          if (!writeList(prefs, prunedCsv)) return
+          prunedNote = `pruned the stale ${merge.pruned.join(",")}, and appended nothing; `
+        }
+        if (atArm) {
+          settle("confirmed", `${prunedNote}the enable list already names ${merge.present.join(",")}; the keeper now follows the host's own change feed instead of standing down on this read`)
+          return
+        }
+        settle("confirmed", `${prunedNote}standing down: the enable list names ${merge.present.join(",")}, so the configuration has taken a position on this bundle`)
+        standDown()
+        return
+      }
+      if (merge.added.length === 0 && merge.pruned.length === 0) {
+        // No id of ours is registered yet: there is nothing this keeper may write.
+        settle("confirmed", "no id of ours is registered, so there is nothing to re-assert")
+        return
+      }
+      if (!writeList(prefs, merge.csv)) return
+      settle("confirmed", merge.staleDefault === ""
+        ? `re-asserted ${merge.added.join(",")} (the list named none of our ids${merge.pruned.length === 0 ? "" : `; pruned the stale ${merge.pruned.join(",")}`})`
+        : `migrated the stale default ${merge.staleDefault} to ${merge.csv} (the list named none of our ids, so the host's current default came back with ours)`)
+    } catch (error) {
+      settle("refused", String((error as Error)?.message ?? error))
+    }
+  }
+
+  /**
+   * Retire the keeper for good: no further ladder tick and no further feed notification.
+   *
+   * Called when a read the host asked for proves the configuration has taken a position on this
+   * bundle, and from {@link PanelEnableKeeper.stop} on scope disposal.
+   */
+  const standDown = (): void => {
+    cancelLadder()
+    releaseFeedNow()
+    releaseBeltNow()
+  }
+
+  /**
+   * Release the observe-only belt's subscription, when one was installed.
+   *
+   * The belt is NOT the repair feed: it exists only to say, once, whether the host's own union
+   * actually re-added our ids on a self-healing host (clause C2's optional belt). It unsubscribes
+   * itself after its first line, so this is usually already a no-op — `standDown()` calls it so a
+   * scope disposal never leaks a listener on a host whose feed never fired.
+   */
+  const releaseBeltNow = (): void => {
+    if (releaseBelt === undefined) return
+    /** The belt's unsubscribe, taken and cleared so a second call is a no-op. */
+    const release = releaseBelt
+    releaseBelt = undefined
+    try {
+      release()
+    } catch {
+      // Same tolerance as the repair feed: a host unsubscribe that throws never breaks a stop.
+    }
+  }
+
+  /**
+   * Stand the keeper down because the HOST itself self-heals the enable CSV (clause C2).
+   *
+   * THE KEEPER WRITES NOTHING TO THE ENABLE-LIST CSV on this path — not on this tick, not on a later
+   * feed notification, not ever: the host's own `applyConfiguredSidePanelPanels` union is the only
+   * writer our ids need, an explicit `/settings` removal is recorded by the host session-wide, and a
+   * repair from here could only race the host's own merge or undo a removal the user asked for. The
+   * ladder is cancelled and the ONE line says why the keeper is silent. The optional belt below then
+   * observes the FIRST host apply through the store's own feed and logs whether our ids survived it — a
+   * behaviour assertion with no writes to that CSV, so a union that silently failed is at least VISIBLE
+   * in the log.
+   *
+   * THE SCOPE OF "NOTHING" IS THE CSV, NOT THE FILESYSTEM, and the difference is observable rather than
+   * rhetorical: this path still calls {@link settle}, whose `announce()` hands the outcome to the mounted
+   * row's own `onChange` consumer, and THAT consumer writes the discovered-ids record
+   * (`<root>/.mpd/logs/` + {@link PANEL_IDS_RECORD_NAME}) through {@link recordPanelIds}. So a reader
+   * checking "did the stood-down keeper leave no file behind" would be looking at the wrong artifact:
+   * the record is written on every settle, including this stand-down, and the CSV is the ONE thing this
+   * path never touches.
+   * @param prefs - the bound host store, from the probe answer that carried the version.
+   * @param version - the host version the gate parsed; carried into the line so a log reader can
+   *   tell WHICH host release stood the keeper down.
+   */
+  const standDownToHostUnion = (prefs: TuiHostPrefsLike, version: string): void => {
+    ticks += 1
+    settle("confirmed", `standing down: the host ${version} self-heals the enable CSV (>= ${PANEL_CSV_SELF_HEAL_SINCE}), so this keeper writes nothing and the host's own union is the only writer`)
+    cancelLadder()
+    options.log?.(`mpd-tui panel enable keeper: standing down on host ${version} — the host self-heals the sidebar enable CSV, so this keeper never writes`)
+    // THE OBSERVE-ONLY BELT: subscribe through the store's OWN feed, read the FIRST change, say ONE
+    // line about whether the host union kept our ids, and leave. No write path exists here — the
+    // belt's listener reads `getSidePanelPanels` and nothing else.
+    /** The store's subscribe member, narrowed once; absent on a feed-less build, which costs the belt only. */
+    const subscribe = prefs.subscribeSidePanelPanels
+    if (typeof subscribe !== "function") return
+    /** Whether the belt has said its one line; a feed that fires again stays silent. */
+    let said = false
+    try {
+      /** The host's unsubscribe for the belt, when it returned one. */
+      const release = subscribe((): void => {
+        if (said) return
+        said = true
+        try {
+          /** The list as the host's own apply left it, normalized exactly as the merge reads it. */
+          const csvNow = normalizePanelCsv(prefs.getSidePanelPanels())
+          /** Which of our ids the host's union kept. */
+          const kept = ours.filter((id) => csvNow.split(",").includes(id))
+          options.log?.(`mpd-tui panel enable keeper (observe-only): after the host's own apply the enable list is "${csvNow}"; ${kept.length === ours.length ? `it still carries every id of ours (${kept.join(",")})` : kept.length === 0 ? "it carries NONE of our ids — the host union did not re-add them" : `it carries only ${kept.join(",")} of our ids — the union did not re-add the rest`}`)
+        } catch {
+          // The belt is diagnostic: a throwing read costs its one line, never the boot.
+        }
+        releaseBeltNow()
+      })
+      if (typeof release === "function") {
+        releaseBelt = release as () => void
+        // A store that fired SYNCHRONOUSLY during the subscribe already said the line — release now.
+        if (said) releaseBeltNow()
+      }
+    } catch {
+      // A feed that refuses the belt costs the belt only — the stand-down above already stands.
+    }
+  }
+
+  /**
+   * Install the host's own change feed as this keeper's repair path.
+   *
+   * Read again only when the store refuses the subscription: a store that throws here is a store whose
+   * read cannot be trusted either, so the refusal is recorded and the ladder below stays the path.
+   * @param prefs - the bound host store, proved to expose the feed.
+   * @param hostDefault - the host's current default the probe read from the SAME contact, held for every
+   *   later feed notification: the feed is the repair path that must migrate the stale default when the
+   *   configuration mirror rewrites the CSV, and the target cannot be re-derived from the store itself.
+   * @returns true when the feed is in force.
+   */
+  const enterFeed = (prefs: TuiHostPrefsLike, hostDefault: string | undefined): boolean => {
+    /** The host's subscribe member, narrowed once. */
+    const subscribe = prefs.subscribeSidePanelPanels
+    if (typeof subscribe !== "function") return false
+    /** The host's own unsubscribe, when it returned one. */
+    let release: unknown
+    try {
+      release = subscribe((): void => decide(prefs, false, hostDefault))
+    } catch (error) {
+      // RECORDED, NOT SWALLOWED, and the ladder keeps its ticks: a feed that refuses costs this keeper
+      // the feed, never the repair.
+      feedRefused = String((error as Error)?.message ?? error)
+      settle("refused", "the host's change feed refused this keeper")
+      return false
+    }
+    releaseFeed = typeof release === "function" ? (release as () => void) : undefined
+    onFeed = true
+    // THE LADDER IS DONE the moment the feed is in force: two repair paths racing one CSV is how a
+    // half-applied list appears, and the feed is the one that observes the rewrite.
+    cancelLadder()
+    decide(prefs, true, hostDefault)
+    return true
+  }
+
+  /**
+   * Run one LADDER tick — the degradation for a host whose live setting exposes no change feed.
+   *
+   * The first tick is also where the feed is detected, so a host that has one never spends a ladder:
+   * the probe is the same call either way. Every tick takes its host default from ITS OWN probe answer,
+   * which is what puts the migration on this path as well as on the feed's.
    */
   const runTick = (): void => {
-    ticks += 1
     void options.loadPrefs().then((probe) => {
       if (probe.prefs === undefined) {
+        ticks += 1
         settle("absent", probe.detail ?? "the host exposes no side-panel enable store")
         return
       }
-      /** The store, narrowed once so the two calls below share one receiver. */
-      const prefs = probe.prefs
-      try {
-        /** What this tick measured, before any decision is taken. */
-        const merge = mergePanelEnableIds(prefs.getSidePanelPanels(), ours)
-        if (merge.present.length > 0) {
-          settle("confirmed", `standing down: the enable list already names ${merge.present.join(",")}, so the configuration has taken a position on this bundle`)
-          return
-        }
-        if (merge.added.length === 0) {
-          // No id of ours is registered yet: there is nothing this keeper may write.
-          settle("confirmed", "no id of ours is registered, so there is nothing to re-assert")
-          return
-        }
-        prefs.applySidePanelPanels(merge.csv)
-        reasserted += 1
-        settle("confirmed", `re-asserted ${merge.added.join(",")} (none of our ids was present)`)
-      } catch (error) {
-        settle("refused", String((error as Error)?.message ?? error))
+      // C2 — THE HOST VERSION GATE comes BEFORE either repair path: a host at or past
+      // PANEL_CSV_SELF_HEAL_SINCE unions our registered ids back itself (and records explicit
+      // `/settings` removals session-wide), so every write this keeper could still make is a race
+      // against the host's own merge — or the undo of a removal the user asked for. An unreadable,
+      // empty or older version falls through to the legacy behaviour untouched, byte for byte.
+      if (hostSelfHealsPanelCsv(probe.hostVersion ?? "")) {
+        standDownToHostUnion(probe.prefs, probe.hostVersion ?? "")
+        return
       }
+      // THE FEED OUTRANKS THE LADDER, and the hand-off is attempted on EVERY tick until it lands: a host
+      // may expose the store late, and a store that gains the member later is still worth following.
+      if (!onFeed && enterFeed(probe.prefs, probe.defaultIds)) return
+      decide(probe.prefs, false, probe.defaultIds)
     }, (error: unknown) => {
+      ticks += 1
       settle("absent", `the host store could not be read: ${String((error as Error)?.message ?? error)}`)
     })
   }
@@ -894,15 +1543,9 @@ export function createPanelEnableKeeper(options: PanelEnableKeeperOptions): Pane
     outcome(): PanelEnableOutcome {
       return { state, detail, ids: [...ours], reasserted, ticks }
     },
-    /** Cancels every pending tick; see {@link PanelEnableKeeper.stop}. */
+    /** Cancels every pending tick and detaches the change feed; see {@link PanelEnableKeeper.stop}. */
     stop(): void {
-      for (const cancel of pending.splice(0)) {
-        try {
-          cancel()
-        } catch {
-          // A canceller that throws must not break an unload.
-        }
-      }
+      standDown()
     },
   }
 }
@@ -934,25 +1577,201 @@ function defaultPanelKeeperSchedule(run: () => void, delayMs: number): () => voi
 export const PANEL_IDS_RECORD_NAME = "mpd-tui-panels.json"
 
 /**
+ * Where the recorded panel ids were READ FROM — the provenance every record now carries.
+ *
+ * WHY THE RECORD NEEDS PROVENANCE AT ALL, MEASURED. `.mpd/logs/mpd-tui-panels.json` was overwritten on
+ * 2026-10-08 with `act0:team,act0:dag,act0:workmate` — ids the INSTALLED host cannot compose, because
+ * its `pluginIdFor` fallback counter PRE-INCREMENTS and the first bare activation is therefore `act1`.
+ * A unit test run (its panel seam double labels its registrations `act0`) had driven the real recorder,
+ * and `scripts/mpd-tui-panels.ts` reads that file to offer a write into the USER's settings layer — so a
+ * test run could make the remedy name panels no boot can ever serve. The ids alone cannot say where they
+ * came from; this block is what can.
+ */
+export interface PanelIdsRecordProvenance {
+  /** Absolute path of the installed DSH-TUI package the enable store was bound from. */
+  hostRoot: string
+  /** That package's own `version`, read from its `package.json`. */
+  hostVersion: string
+  /** The host read-back the ids came from, e.g. `tuiPanels.list`; empty when none was used. */
+  readBack: string
+  /** The `<pluginId>` half every id shares, e.g. `act1`; empty when the ids do not agree. */
+  activation: string
+}
+
+/** The on-disk record of the panel ids this activation discovered, as the remedy script reads it. */
+export interface PanelIdsRecord {
+  /** The record's own schema version; 2 added {@link PanelIdsRecordProvenance}, 3 added {@link history}. */
+  version: number
+  /** The final host panel ids, in registration order. */
+  panelIds: string[]
+  /** Each id's `<slug>` half, for a reader that wants the page rather than the activation. */
+  slugs: string[]
+  /** When the record was last written, ISO-8601. */
+  updatedAt: string
+  /** Where those ids were read from; the reader refuses a record it cannot prove is a real boot. */
+  provenance: PanelIdsRecordProvenance
+  /**
+   * The ids this bundle registered in EARLIER boots — the ownership evidence both writers prune by.
+   *
+   * Bounded by construction ({@link PANEL_ID_HISTORY_LIMIT}, newest last) and never carrying a currently
+   * live id: the writer folds the previous record's history and its own `panelIds` forward through
+   * {@link panelHistoryAfter} on every boot. An absent field (a version-1/2 record) is simply "no proven
+   * past", which disables the prune rather than guessing.
+   */
+  history: string[]
+}
+
+/**
+ * Read the installed host package's own version.
+ *
+ * Never throws: an unreadable or version-less package is the EMPTY STRING, which the record's own guard
+ * treats as "this record cannot be proved", so a missing version refuses the write instead of stamping a
+ * blank field a reader would accept.
+ * @param root - the host package root.
+ * @returns the version, or "" when it could not be read.
+ */
+export function readHostPackageVersion(root: string): string {
+  try {
+    /** The host package's manifest. */
+    const manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8")) as { version?: unknown }
+    return typeof manifest.version === "string" ? manifest.version : ""
+  } catch {
+    return ""
+  }
+}
+
+/**
+ * Build the provenance of one keeper outcome, refusing anything it cannot prove.
+ *
+ * THE TWO REFUSALS ARE BOTH MEASURED, and they are the whole reason this function exists rather than the
+ * caller stamping fields by hand:
+ *   * no host root or no host version — the ids cannot be traced to an installed package, so the record
+ *     would be a claim a reader has no way to check. A WHITESPACE-ONLY field counts as absent, which is
+ *     the rule the consumer side (`scripts/mpd-tui-panels.ts`) already applies: the two sides of this
+ *     file must agree on what a provable record is, or the writer and the reader disagree about the same
+ *     bytes;
+ *   * an `act0` activation — the installed host's `pluginIdFor` PRE-INCREMENTS its fallback counter, so
+ *     the first bare activation it can compose is `act1` and `act0` is impossible in a real boot. That
+ *     is exactly the shape a test double produced while driving the real recorder.
+ * @param host - the host package the enable store was bound from, or undefined when none bound.
+ * @param readBack - the host read-back the ids came from; empty when none was used.
+ * @param ids - the ids this outcome carries.
+ * @returns the provenance, or the ONE reason it cannot be proved.
+ */
+export function panelRecordProvenance(
+  host: { root: string; version: string } | undefined,
+  readBack: string,
+  ids: readonly string[],
+): { provenance: PanelIdsRecordProvenance } | { refused: string } {
+  if (host === undefined || host.root.trim() === "" || host.version.trim() === "") {
+    return { refused: "no installed host package could be named (root and version), so the ids cannot be traced to a boot" }
+  }
+  if (readBack.trim() === "" || ids.length === 0) {
+    return { refused: "the ids did not come from a host read-back, so the record would name panels nothing verified" }
+  }
+  /** The `<pluginId>` half of the FIRST id; every other id must agree with it. */
+  const activation = ids[0]!.slice(0, ids[0]!.indexOf(":"))
+  for (const id of ids) {
+    if (id.slice(0, id.indexOf(":")) !== activation) {
+      return { refused: `the ids do not share one activation (${activation} and ${id.slice(0, id.indexOf(":"))}), so they cannot have come from one registration` }
+    }
+  }
+  // THE HOST'S OWN COUNTER PRE-INCREMENTS, so `act0` is a value no real boot can produce; a record that
+  // carries it would send the remedy script after panels the sidebar can never serve.
+  if (/^act0$/u.test(activation)) {
+    return { refused: `activation ${activation} is impossible: the host's pluginIdFor pre-increments its fallback counter, so the first composed activation is act1` }
+  }
+  return { provenance: { hostRoot: host.root, hostVersion: host.version, readBack, activation } }
+}
+
+/**
+ * The non-empty strings of one unknown JSON field, in order.
+ *
+ * A record is DATA: every field is narrowed at the boundary rather than trusted, so a hand edit or an
+ * older schema degrades to "nothing to read" instead of reaching a prune decision as a non-string.
+ * @param value - the parsed field.
+ * @returns its string entries, or the empty list for anything else.
+ */
+function stringIdsOf(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string" && entry.length > 0) : []
+}
+
+/**
+ * Read the panel-id record's PROVABLE past registrations for one workspace root.
+ *
+ * The ownership evidence the prune rests on, so this reader enforces the WRITER's own refusals instead of
+ * trusting the file: no `provenance` block, a blank `hostVersion`, no `readBack` or an `act0` activation
+ * is "no proven past" ({@link panelRecordProvenance} is run over the record's current ids, so the two
+ * sides of the file cannot disagree about what a provable record is). The record's CURRENT ids are
+ * offered as past too — they were a previous boot's live set — and the `not live now` half of the rule
+ * discards the ones that are still live. On top of that every candidate is filtered to the shape the host
+ * composes for a loader row and capped, so neither a foreign id nor a hand edit can widen the prune.
+ *
+ * Never throws: an absent, unreadable or unprovable record means "no proven past", which disables the
+ * prune rather than guessing — the keeper then behaves exactly as it did before this evidence existed.
+ * @param root - the workspace root the record lives under; defaults to {@link defaultLogRoot}.
+ * @returns the bounded past registrations, oldest first.
+ */
+export function readPanelIdRecordPast(root: string = defaultLogRoot()): string[] {
+  try {
+    /** The record's absolute path: the same `<root>/.mpd/logs/<name>` {@link recordPanelIds} writes. */
+    const file = join(root, ".mpd", "logs", PANEL_IDS_RECORD_NAME)
+    /** The parsed record; every field below is narrowed rather than trusted. */
+    const parsed = JSON.parse(readFileSync(file, "utf8")) as { panelIds?: unknown; history?: unknown; provenance?: unknown }
+    /** The record's current ids, which are also the set the provenance rules are checked against. */
+    const ids = stringIdsOf(parsed.panelIds)
+    if (ids.length === 0) return []
+    /** The record's own provenance block, read as fields rather than as a typed object. */
+    const provenance = (typeof parsed.provenance === "object" && parsed.provenance !== null ? parsed.provenance : {}) as Partial<PanelIdsRecordProvenance>
+    /** The ONE reason these ids cannot be traced to a boot; a refusal means no proven past at all. */
+    const proved = panelRecordProvenance(
+      typeof provenance.hostRoot === "string" && typeof provenance.hostVersion === "string" ? { root: provenance.hostRoot, version: provenance.hostVersion } : undefined,
+      typeof provenance.readBack === "string" ? provenance.readBack : "",
+      ids,
+    )
+    if ("refused" in proved) return []
+    return panelHistoryAfter([], [...stringIdsOf(parsed.history), ...ids])
+  } catch {
+    return []
+  }
+}
+
+/**
  * Write the discovered panel ids under the workspace, for the remedy script to read.
  *
- * Never throws: a record that cannot be written is a missing convenience, never a failed boot, and
- * the keeper's outcome is what the boot line reports either way.
+ * Never throws: a record that cannot be written is a missing convenience, never a failed boot, and the
+ * keeper's outcome is what the boot line reports either way. A record it cannot PROVE is not written at
+ * all — see {@link panelRecordProvenance} — because the file's only reader offers to write its ids into
+ * the user's settings layer.
+ *
+ * WHAT THIS WRITE ADDS (repair round R1): the record now carries the bundle's bounded PAST registrations
+ * as well as its current ids, because that history is the only evidence that makes an earlier boot's
+ * token provably ours. The history is folded through {@link panelHistoryAfter} — the previous record's
+ * history plus its own current ids, minus everything live now, capped — and it is read back through
+ * {@link readPanelIdRecordPast}, so a polluted record contributes NOTHING to it instead of propagating
+ * ids a real boot cannot compose.
  * @param outcome - the keeper's state at the change.
+ * @param host - the host package the enable store was bound from, or undefined when none bound.
+ * @param readBack - the host read-back the ids came from; empty when none was used.
  */
-function recordPanelIds(outcome: PanelEnableOutcome): void {
+function recordPanelIds(outcome: PanelEnableOutcome, host: { root: string; version: string } | undefined, readBack: string): void {
+  /** What this record can prove about where its ids came from. */
+  const proved = panelRecordProvenance(host, readBack, outcome.ids)
+  if ("refused" in proved) return
   try {
     /** The record's absolute path: `<root>/.mpd/logs/<name>`. */
     const file = join(defaultLogRoot(), ".mpd", "logs", PANEL_IDS_RECORD_NAME)
     mkdirSync(dirname(file), { recursive: true })
-    writeFileSync(file, `${JSON.stringify({
-      version: 1,
-      // The ids ONLY: the record exists so a settings value can name real panels, and every other
-      // field would be a claim a reader could find nowhere else to check.
+    /** The record, as ONE object so its shape and its writer cannot disagree. */
+    const record: PanelIdsRecord = {
+      version: 3,
       panelIds: [...outcome.ids],
-      slugs: outcome.ids.map((id) => id.slice(id.indexOf(":") + 1)),
+      slugs: outcome.ids.map(panelSlugOf),
       updatedAt: new Date().toISOString(),
-    }, null, 2)}\n`)
+      provenance: proved.provenance,
+      history: panelHistoryAfter(outcome.ids, readPanelIdRecordPast(defaultLogRoot())),
+    }
+    writeFileSync(file, `${JSON.stringify(record, null, 2)}\n`)
   } catch {
     // Never a failed boot for a convenience file.
   }
@@ -1653,7 +2472,13 @@ export interface TuiDecisionOptions {
   scope?: string
   /** The listener order the host applies. */
   order?: string
-  /** The consumer context handed to the host as the registration identity. */
+  /**
+   * Retained for source compatibility and deliberately NOT forwarded: a mediated decision
+   * subscription's identity must be the CALLING ACTIVATION, which this adapter supplies from the
+   * bound injected scope (the same rule as {@link TuiAdapter.setStatus}). The host's
+   * `assertCallerContext` compares the identity against the caller it resolved for THIS activation
+   * and refuses anything else, so a consumer-supplied ctx here is a guaranteed refusal.
+   */
   identity?: unknown
 }
 
@@ -1924,15 +2749,45 @@ export function createTuiAdapter(ctx: PluginContextLike, options: TuiAdapterOpti
   // The keeper is created for EVERY adapter but ARMS only when the mounted row opted in, so a
   // row-private fallback adapter schedules nothing and touches no sidebar. Its ONE settle line goes
   // to the same file sink the host-contact probe uses (never a terminal — requirement R5).
+  /** The host package the enable store was last bound from, with its own version, for the record. */
+  let panelHostProvenance: { root: string; version: string } | undefined
+  /** The host read-back this activation's ids came from; empty until the host's own list produced one. */
+  let panelIdReadBack = ""
   /** The ladder's clock; a caller-supplied one lets a unit test own the timing. */
   const panelKeeperOptions: PanelEnableKeeperOptions = {
-    loadPrefs: (): Promise<HostPrefsProbeResult> => probeHostPrefs(hostRootCandidates()),
+    // The probe's own root is REMEMBERED, not re-derived: the record has to name the package the ids
+    // were actually read from, and a second probe could bind a different candidate.
+    loadPrefs: async (): Promise<HostPrefsProbeResult> => {
+      /** This tick's probe answer. */
+      const probe = await probeHostPrefs(hostRootCandidates())
+      if (probe.root !== undefined) panelHostProvenance = { root: probe.root, version: readHostPackageVersion(probe.root) }
+      return probe
+    },
     schedule: defaultPanelKeeperSchedule,
+    // THE OWNERSHIP EVIDENCE (repair round R1): the ids this bundle registered in earlier boots, read
+    // from the record ON EVERY DECISION — the record is rewritten by this same boot, and a value sampled
+    // once at construction could already be a boot stale. The reader never throws; a missing or
+    // unprovable record means "no proven past", so the keeper simply never prunes.
+    pastIds: (): readonly string[] => readPanelIdRecordPast(),
     ...(options.panelEnableLadder === undefined ? {} : { ladder: options.panelEnableLadder }),
     log: options.panelEnableLog ?? options.hostInputLog ?? defaultHostInputLog,
     // The DISCOVERED ids leave the host process through this record; the mounted row is the only
-    // adapter that writes it, so a unit test never touches the workspace.
-    onChange: options.keepPanelEnable === true ? recordPanelIds : undefined,
+    // adapter that writes it, so a unit test never touches the workspace. The record is additionally
+    // gated on PROVENANCE (see `recordPanelIds`): ids it cannot trace to an installed host package and a
+    // real read-back are not written at all, because the file's only reader offers to write them into the
+    // user's settings layer.
+    onChange: options.keepPanelEnable === true
+      ? (outcome): void => {
+        // THE SCOPE CLEANUP IS INSTALLED ON THE FIRST OBSERVED ID, not at adapter construction: a
+        // composition that never registers a panel has nothing to release, and an effect installed
+        // anyway would be one durable registration a seam-less boot must not own.
+        if (!panelKeeperOwned) {
+          panelKeeperOwned = true
+          effectOn(ctx, () => { panelKeeper.stop() }, "mpd-tui panel enable keeper")
+        }
+        recordPanelIds(outcome, panelHostProvenance, panelIdReadBack)
+      }
+      : undefined,
   }
   /** The bounded re-assert of the ids this activation registered; see {@link createPanelEnableKeeper}. */
   const panelKeeper: PanelEnableKeeper = options.keepPanelEnable === true
@@ -1945,6 +2800,8 @@ export function createTuiAdapter(ctx: PluginContextLike, options: TuiAdapterOpti
       outcome: (): PanelEnableOutcome => ({ state: "absent", detail: "this adapter did not keep the host panel enable list", ids: [], reasserted: 0, ticks: 0 }),
       stop: (): void => {},
     }
+  /** Whether the keeper's own scope cleanup was installed; it is installed on the first observed id. */
+  let panelKeeperOwned = false
   /**
    * The `useStdin` hook of the host kit a SCENE render handed us (see `rememberHostKit`).
    *
@@ -2505,7 +3362,12 @@ export function createTuiAdapter(ctx: PluginContextLike, options: TuiAdapterOpti
           // ONLY an id the host's own read-back produced is handed to the keeper. A descriptor whose
           // registration was refused (or a host without a read-back) contributes nothing, so the
           // keeper can never write an id this activation does not actually own.
-          if (finalId !== undefined) panelKeeper.observe(finalId)
+          if (finalId !== undefined) {
+            // THE READ-BACK IS NAMED, not merely used: the record carries where its ids came from, and
+            // this is the one place that knows a host list answered rather than a component identity.
+            panelIdReadBack = readBack !== undefined ? "tuiPanels.list" : ""
+            panelKeeper.observe(finalId)
+          }
         } catch (error) {
           handle.record({ state: "refused", detail: String((error as Error)?.message ?? error) })
         }
@@ -2567,26 +3429,32 @@ export function createTuiAdapter(ctx: PluginContextLike, options: TuiAdapterOpti
       whenBoundInternal("pluginHost", (service, scope) => {
         /** The bound mediated host, before any of its members is trusted. */
         const host = service as TuiPluginHostLike
-        /** The consumer context handed to the host as the activation identity. */
-        const identity = options.identity ?? fallbackIdentity
         if (typeof host?.subscribeDecision !== "function") {
           outcome = { id: TUI_SEAMS.pluginHost, state: "refused", detail: `${TUI_SEAMS.pluginHost}.subscribeDecision is missing` }
           return
         }
         supported = true
+        // THE IDENTITY IS THE CALLING ACTIVATION (the bound injected scope), never the consumer's
+        // ctx: the host's `assertCallerContext(caller, …)` compares the identity against the caller
+        // it resolved for THIS activation and refuses anything else, which is why every mediated
+        // decision subscription threw before either ledger record site (MEASURED 2026-10-11, lane
+        // `evidence/tui/dsh-tui-015/decision-fix/`: the ledger carried zero decision records while
+        // STATUS records did carry the plugin id). Same rule as `setStatus` above: the `identity`
+        // field of {@link TuiDecisionOptions} is kept for source compatibility only and is
+        // deliberately NOT forwarded.
         // The grant facade is the honest authorization state and is read FIRST, exactly as the
         // caller-facing contract states it; undefined means the host cannot be asked, in which
         // case nothing may be reported as confirmed.
         try {
           /** The caller-safe grant facade, when the host exposes one. */
           const facade = host.grants
-          if (facade !== undefined && typeof facade.allows === "function") granted = facade.allows(identity, event, options.scope ?? event) === true
+          if (facade !== undefined && typeof facade.allows === "function") granted = facade.allows(scope, event, options.scope ?? event) === true
         } catch {
           granted = undefined
         }
         try {
           /** The host's handle; a refusal returns a no-op disposer, never called as a probe. */
-          const disposer = host.subscribeDecision(identity, event, listener, {
+          const disposer = host.subscribeDecision(scope, event, listener, {
             ...(options.scope === undefined ? {} : { scope: options.scope }),
             ...(options.order === undefined ? {} : { order: options.order }),
           })
@@ -2756,7 +3624,8 @@ export function resolveTuiAdapter(ctx: PluginContextLike): TuiAdapter {
   // the loader applies sibling rows without a guaranteed order, so the consumer row can reach this
   // function BEFORE the adapter row's `apply()` has provided the service. It then keeps its OWN
   // adapter — and every registration lands on THAT instance, which is why the mounted adapter's id
-  // record stayed 0 bytes while the host's `PanelStore` carried the three registered ids. Opting in
+  // record stayed 0 bytes while the host's `PanelStore` carried the three registered ids (three at the
+  // time of that measurement, before this wave's clause C3 merge left two). Opting in
   // HERE as well as in `apply()` means the keeper runs on whichever instance actually registers,
   // instead of silently depending on a race. Only `createTuiAdapter` called DIRECTLY (a unit test, an
   // embedder) stays inert.

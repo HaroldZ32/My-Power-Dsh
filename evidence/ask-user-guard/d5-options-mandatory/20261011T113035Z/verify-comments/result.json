@@ -1,0 +1,12 @@
+{
+  "gate": "verify-comments",
+  "command": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun run verify:comments",
+  "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "exitCode": 0,
+  "startedAtUtc": "2026-10-11T11:34:02Z",
+  "endedAtUtc": "2026-10-11T11:34:03Z",
+  "logPath": "output.log",
+  "logBytes": 307,
+  "logSha256": "000959a3b0e7951cbed8fabda173f57515006ef369a43bd12476a45ab3be4eef",
+  "headline": "VERDICT: PASS — every declaration in the family carries a precise comment and a full signature."
+}

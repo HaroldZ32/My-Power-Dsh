@@ -1,0 +1,125 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-tui-plugin/test/panel-visibility.test.ts:
+(pass) R13 · the host's panel enablement rule (read from the installed host) > the default enabled CSV names BUILTINS ONLY and NOTHING of ours [32.10ms]
+(pass) R13 · the host's panel enablement rule (read from the installed host) > the id GRAMMAR is not the blocker: a composed plugin id round-trips [0.04ms]
+(pass) R13 · the host's panel enablement rule (read from the installed host) > the adapter DOES append a registered id to the CSV — so the mechanism exists and can be undone [0.09ms]
+(pass) R13 · the host's panel enablement rule (read from the installed host) > the host REWRITES the CSV from configuration, which is how a registered panel disappears [0.96ms]
+(pass) R13 · the width band in which the panel cannot be seen at all > a sidebar splits only at CHAT_MIN + PANEL_MIN + DIVIDER, and no lower [0.07ms]
+(pass) R13 · the width band in which the panel cannot be seen at all > AT the split threshold the panel column is exactly the host's own floor — so a wider floor is a trap [0.06ms]
+(pass) R13 · the width band in which the panel cannot be seen at all > the descriptor this bundle registers is the shape the host accepts [0.02ms]
+(pass) R13b · the composed panel id (read from the installed host) > the host composes `<pluginId>:<slug>`, and `<pluginId>` comes from the caller's identity [0.79ms]
+(pass) R13b · the composed panel id (read from the installed host) > a Component identity exists only for an ADMITTED Component, which a patch row never is [0.19ms]
+(pass) R13c · the enable-list keeper (this bundle's bounded re-assert) > it appends ONLY its own registered ids, preserving the user's list exactly [0.51ms]
+(pass) R13c · the enable-list keeper (this bundle's bounded re-assert) > it KEEPS sampling past the first clean read — the measured loss lands after it [0.16ms]
+(pass) R13c · the enable-list keeper (this bundle's bounded re-assert) > it STANDS DOWN when the configuration already names ANY of ours [0.10ms]
+(pass) R13c · the enable-list keeper (this bundle's bounded re-assert) > the whole set goes in at once, so a partial write can never make the next tick stand down mid-repair [0.09ms]
+(pass) R13c · the enable-list keeper (this bundle's bounded re-assert) > the ladder is the WHOLE budget, and `stop()` releases every pending tick [0.05ms]
+(pass) R13c · the enable-list keeper (this bundle's bounded re-assert) > NEGATIVE CONTROL: an ABSENT host store is reported as `absent`, never thrown, and writes nothing [0.06ms]
+(pass) R13c · the enable-list keeper (this bundle's bounded re-assert) > NEGATIVE CONTROL: a store that throws is recorded as `refused` and takes no boot down [0.13ms]
+(pass) R13c · the enable-list keeper (this bundle's bounded re-assert) > the CONTACT itself binds the installed host and refuses an absent one [0.38ms]
+(pass) R13d · the enable-list keeper's CHANGE FEED (the durable repair) > the host's OWN append does NOT stand the keeper down, and the mirror's rewrite IS repaired [0.19ms]
+(pass) R13d · the enable-list keeper's CHANGE FEED (the durable repair) > our OWN write cannot re-enter the decision — one rewrite, exactly one repair [0.10ms]
+(pass) R13d · the enable-list keeper's CHANGE FEED (the durable repair) > a list that NAMES one of ours ends the keeper for good — and a later rewrite is left alone [0.15ms]
+(pass) R13d · the enable-list keeper's CHANGE FEED (the durable repair) > `stop()` releases the host's feed with the scope — and a retired keeper never writes again [0.10ms]
+(pass) R13d · the enable-list keeper's CHANGE FEED (the durable repair) > NEGATIVE CONTROL: a store with NO feed keeps the ladder, and a THROWING feed degrades to it [0.16ms]
+(pass) D1/D3 · the enable-list keeper prunes only OUR stale ids and reads its own write back > a stale `act*` token of ours is pruned, and every id we do NOT own survives byte-for-byte [0.11ms]
+(pass) D1/D3 · the enable-list keeper prunes only OUR stale ids and reads its own write back > a FOREIGN id that also looks like `act<N>:<slug>` is NOT ours and is never dropped [0.09ms]
+(pass) D1/D3 · the enable-list keeper prunes only OUR stale ids and reads its own write back > D3 · all eight host builtins survive a keeper pass [0.16ms]
+(pass) D1/D3 · the enable-list keeper prunes only OUR stale ids and reads its own write back > D3 · the SAME rule holds in `scripts/mpd-tui-panels.ts --apply`: the eight builtins survive [0.14ms]
+(pass) D1/D3 · the enable-list keeper prunes only OUR stale ids and reads its own write back > a write the host did not carry back is LOUD, never silent drift [0.10ms]
+812 |     /** The keeper under test: `act1:team` is a RECORDED past id of ours, `act9:team` is NOT ours. */
+813 |     const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: store }), schedule: clock.schedule, pastIds: () => ["act1:team"] })
+814 |     keeper.observe("act7:team")
+815 |     await clock.runNext()
+816 |     // THE FOREIGN PANEL IS STILL THERE, byte-for-byte, and ours is appended after it.
+817 |     expect(written).toEqual(["todo,jobs,act9:team,act7:team"])
+                          ^
+error: expect(received).toEqual(expected)
+
+  [
+-   "todo,jobs,act9:team,act7:team",
++   "todo,jobs,act7:team",
+  ]
+
+- Expected  - 1
++ Received  + 1
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/test/panel-visibility.test.ts:817:21)
+(fail) R1 · the stale-id prune is owned by the RECORD's provenance, never by a slug > R1.1 a LIVE FOREIGN `act9:team` is not pruned on the keeper's WRITE path [0.31ms]
+(pass) R1 · the stale-id prune is owned by the RECORD's provenance, never by a slug > R1.1/R1.3 · a LIVE FOREIGN `act9:team` survives the STAND-DOWN prune path too [0.10ms]
+845 |   test("R1.1/R1.2 · the DOCUMENT-side writer applies the same provenance rule", () => {
+846 |     // The script is the SECOND writer (finding R1.1 names both), so its pure merge is driven here with
+847 |     // the same three-way input: a foreign id sharing our slug, one of our dead ids, one of our live ids.
+848 |     /** The merge over a list an earlier boot left behind. */
+849 |     const merged = mergePanelIds("todo,act9:team,act1:team,act7:team", ["act7:team"], ["act1:team"])
+850 |     expect(merged.csv).toBe("todo,act9:team,act7:team")
+                             ^
+error: expect(received).toBe(expected)
+
+Expected: "todo,act9:team,act7:team"
+Received: "todo,act7:team"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/test/panel-visibility.test.ts:850:24)
+(fail) R1 · the stale-id prune is owned by the RECORD's provenance, never by a slug > R1.1/R1.2 · the DOCUMENT-side writer applies the same provenance rule [0.10ms]
+869 |     const clock = fakeClock()
+870 |     /** The keeper under test: only `team` registers now; `act7:dag` is a RECORDED past registration. */
+871 |     const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: store }), schedule: clock.schedule, pastIds: () => ["act7:dag"] })
+872 |     keeper.observe("act1:team")
+873 |     await clock.runNext()
+874 |     expect(written).toEqual(["todo,act1:team"])
+                          ^
+error: expect(received).toEqual(expected)
+
+  [
+-   "todo,act1:team",
++   "todo,act7:dag,act1:team",
+  ]
+
+- Expected  - 1
++ Received  + 1
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/test/panel-visibility.test.ts:874:21)
+(fail) R1 · the stale-id prune is owned by the RECORD's provenance, never by a slug > R1.2 · a RETIRED page's id (in the record's history, slug no longer registered) is pruned [0.16ms]
+892 |     keeper.observe("act7:team")
+893 |     keeper.observe("act7:dag")
+894 |     await clock.runNext()
+895 |     // THE DEAD TOKEN GOES, THE LIVE ONE STAYS, AND NOTHING IS APPENDED: `dag` was removed on purpose, so
+896 |     // a write that re-added it would overrule the user — the stand-down rule's own reason, kept.
+897 |     expect(written).toEqual(["todo,act7:team"])
+                          ^
+error: expect(received).toEqual(expected)
+
+- [
+-   "todo,act7:team",
+- ]
++ []
+
+- Expected  - 3
++ Received  + 1
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/test/panel-visibility.test.ts:897:21)
+(fail) R1 · the stale-id prune is owned by the RECORD's provenance, never by a slug > R1.3 · a CURRENT id of ours no longer protects a provably-dead past id [0.16ms]
+(pass) R1 · the stale-id prune is owned by the RECORD's provenance, never by a slug > R1.3 · a list of CURRENT ids only still stands down with NOTHING written and NOTHING pruned [0.11ms]
+(pass) AC8 · each MPD page carries its OWN one-cell icon, and none borrows the host's > the TWO surviving icons measure ONE cell under BOTH measures — ours and the host's own [5.66ms]
+(pass) AC8 · each MPD page carries its OWN one-cell icon, and none borrows the host's > the host's built-in icons are read from the host, and neither surviving MPD page wears one [0.13ms]
+(pass) AC8 · each MPD page carries its OWN one-cell icon, and none borrows the host's > BOTH surviving descriptors DECLARE their icon — neither falls back to its title's first letter [0.02ms]
+(pass) AC8 · each MPD page carries its OWN one-cell icon, and none borrows the host's > NO MPD descriptor declares `capabilities` — the host drops the field, so it would be a dead promise [0.07ms]
+(pass) AC8b · MPD's own `⤢` control, drawn in each page's title row > the merged page draws the control, and a click opens ITS full-screen scene [1.47ms]
+(pass) AC8b · MPD's own `⤢` control, drawn in each page's title row > the workmate page draws its own control, wired to the board scene [0.31ms]
+(pass) AC8b · MPD's own `⤢` control, drawn in each page's title row > the hover treatment is the host PanelBar's own: bold and accent over the pointer, dim at rest [0.89ms]
+(pass) AC8b · MPD's own `⤢` control, drawn in each page's title row > the title row is drawn ABOVE the body and outside the page's own window [0.15ms]
+(pass) AC8b · MPD's own `⤢` control, drawn in each page's title row > AT THE 28-COLUMN FLOOR the `⤢` hint SURVIVES — measured, with the pre-fix ordering as the negative control [0.16ms]
+(pass) AC8b · the control OCCUPIES CELLS under the host's real layout engine > each SURVIVING MPD page draws `⤢` at the RIGHT EDGE of its title row — at 28 and at 40 columns [499.14ms]
+(pass) AC8b · the control OCCUPIES CELLS under the host's real layout engine > NEGATIVE CONTROL: the pre-fix row shape LOSES the glyph at the same width — this is what the double could not see [164.53ms]
+
+4 tests failed:
+(fail) R1 · the stale-id prune is owned by the RECORD's provenance, never by a slug > R1.1 a LIVE FOREIGN `act9:team` is not pruned on the keeper's WRITE path [0.31ms]
+(fail) R1 · the stale-id prune is owned by the RECORD's provenance, never by a slug > R1.1/R1.2 · the DOCUMENT-side writer applies the same provenance rule [0.10ms]
+(fail) R1 · the stale-id prune is owned by the RECORD's provenance, never by a slug > R1.2 · a RETIRED page's id (in the record's history, slug no longer registered) is pruned [0.16ms]
+(fail) R1 · the stale-id prune is owned by the RECORD's provenance, never by a slug > R1.3 · a CURRENT id of ours no longer protects a provably-dead past id [0.16ms]
+
+ 40 pass
+ 4 fail
+ 240 expect() calls
+Ran 44 tests across 1 file. [845.00ms]

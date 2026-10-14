@@ -1,0 +1,8 @@
+# settled source hashes (sha256), first read 2026-10-08T12:06:12Z, re-read at 2026-10-08T12:08:07Z
+eee4848cc0b0c845a4e4252793f91a70e652b185fc15bd594de960856b597616  packages/mpd-tui-plugin/src/dag-theme.ts
+cc8bef85a8810c3cec2aa617335f763c07186f2a5e5e853a744d26769310ce2f  packages/mpd-tui-plugin/src/panel-core.ts
+5350459d347701c4123d4ab241e3c3f52893485b289728962cdbdfdc327b1f40  packages/mpd-tui-plugin/src/subagent-scene.ts
+633f68a09661363b66c1b320a5c32ddbbc2a0d9dc3212951d49920bdbde1662b  packages/mpd-tui-plugin/test/panel-dag.test.ts
+b69dea39b268a74dcb19d46baf1689d1bdbc2ddb4f52c84aa3ba4e875e15d817  packages/mpd-tui-plugin/test/panel-legend-mount.test.ts
+9a5e500fd1bd8a4e4f1e97bfd5de29e0e9c50071b27486bfd8345ff0a9316bda  packages/mpd-tui-plugin/test/scene-visuals.test.ts
+45f00df2cefe19fd0273068fc67029332607ae29f2110337b59a8bd6704a2bb7  packages/mpd-tui-plugin/dist/index.js

@@ -1,0 +1,107 @@
+{
+  "task": "SMALL, WELL-SCOPED GATE REPAIR — root typecheck RED with 2 errors in skills/programming/scripts/typescript/check-no-excuse-rules.ts",
+  "role": "Junior Engineer",
+  "repo": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "branch": "feature/de-omo-wave-a-skills",
+  "revisionAtRepro": "15468dae006a967d314c06da286f1e0c26c5c957",
+  "timestampUtc": "2026-10-08T15:43:06Z",
+  "route": {
+    "chosen": 1,
+    "statement": "Fixed the CODE. No assertion was weakened, stubbed or deleted; nothing was excluded from the type program; no tsconfig/config file was touched. Route 2 was not needed: the file IS part of this repository's compilation unit (tsconfig.json includes skills/*/scripts/**/*.ts) and is a script this repository ships inside the served skill corpus.",
+    "why": "The re-source commit 15468dae truncated a shipped script and swapped two SyntaxKind comparisons for TS7 predicate names that the installed type surface does not export. Restoring the pre-re-source spelling preserves the check's original intent (#1: the parent of an `any` keyword is a parameter / property signature => report `no-any-annotation`) and is at least as strict as the predicate spelling (a kind comparison matches every such node, including a binding-pattern name the is* predicate would skip)."
+  },
+  "repro": {
+    "command": "bun run typecheck",
+    "exit": 1,
+    "errorsVerbatim": [
+      "skills/programming/scripts/typescript/check-no-excuse-rules.ts(87,1): error TS1135: Argument expression expected.",
+      "skills/programming/scripts/typescript/check-no-excuse-rules.ts(431,1): error TS1005: '}' expected."
+    ],
+    "alsoObserved": "error: script \"typecheck\" exited with code 1",
+    "cause": "Commit 15468dae (chore(skills): re-source the served skill corpus) dropped the last three lines of loadTypescriptFromCaller — the closing `)`, the `process.exit(2)` its JSDoc declares, and the function's `}`. Diff against the pre-re-source revision 940f5b99 shows exactly those three lines removed."
+  },
+  "fix": {
+    "file": "skills/programming/scripts/typescript/check-no-excuse-rules.ts",
+    "changes": [
+      "loadTypescriptFromCaller: restored the closing `)`, `process.exit(2)` and `}` so the function exits 2 with its caller-resolution message when none of TS7_PACKAGES answers the API (the contract its JSDoc and the script's documented exit code 2 declare).",
+      "analyzeFile / no-any-annotation: restored `parent.kind === ts.SyntaxKind.Parameter` and `parent.kind === ts.SyntaxKind.PropertySignature`, replacing the re-source's `ts.isParameter(parent)` / `ts.isPropertySignature(parent)`, which do not exist on the surface this repo typechecks against (`@typescript/native-preview/unstable/ast`, mapped by skills/programming/scripts/typescript/typescript-unstable.d.ts)."
+    ],
+    "maskedSecondPair": {
+      "note": "Repairing the parse error unmasked a second, real pair from the same commit; it is fixed in the same file and the same rule.",
+      "errorsVerbatim": [
+        "skills/programming/scripts/typescript/check-no-excuse-rules.ts(303,14): error TS2339: Property 'isParameter' does not exist on type 'typeof import(\"typescript/unstable/ast\")'.",
+        "skills/programming/scripts/typescript/check-no-excuse-rules.ts(306,14): error TS2551: Property 'isPropertySignature' does not exist on type 'typeof import(\"typescript/unstable/ast\")'. Did you mean 'isPropertyName'?"
+      ],
+      "runtimeProbe": "require('@typescript/native-preview/unstable/ast'): isParameter undefined, isPropertySignature undefined, isVariableDeclaration function, isPropertyDeclaration function, SyntaxKind.Parameter 170, SyntaxKind.PropertySignature 172"
+    },
+    "diffVsPreReSourceRevision": "With the fix applied, `git diff 940f5b99 -- <file>` shows ZERO semantic difference; the only remaining line is a cosmetic indentation drift of one doc comment introduced by the re-source (left untouched per 'do not reformat anything else' — it is outside the type program and affects no rule).",
+    "filesChanged": [
+      "skills/programming/scripts/typescript/check-no-excuse-rules.ts"
+    ],
+    "sha256AfterFix": "cf77053f7d840411045aabf20df4c8384ba15f5aee6dc3c03634cf5ec1ccc1e2",
+    "noWeakening": "Every rule id, every rule body and every assertion is intact; the twelve rules and the 0/1/2 exit-code contract are unchanged."
+  },
+  "gates": [
+    {
+      "cmd": "bun run typecheck",
+      "exit": 0,
+      "observed": "$ tsgo --noEmit — no diagnostics"
+    },
+    {
+      "cmd": "bun run verify:comments",
+      "exit": 0,
+      "observed": "scanned 367 TypeScript file(s) of 367 in the source set; inspected 32439 declaration(s); skipped 14642 inline callback(s) as out of family — VERDICT: PASS"
+    },
+    {
+      "cmd": "node scripts/verify-vendor.ts",
+      "exit": 1,
+      "observed": "[verify-vendor] FAIL - asset skills treeSha mismatch (expected BEFORE the re-pin; all four build-artifact assets OK, vendor/mcp-src 459 files OK)",
+      "ordering": "run BEFORE the mandated re-pin, in the mandated order (fix -> gates -> re-pin); after the re-pin the lock matches, see repin.check"
+    },
+    {
+      "cmd": "bun test packages/mpd-bootstrap-plugin/test/",
+      "exit": 0,
+      "observed": "6 pass, 0 fail, 183 expect() calls across 1 file"
+    }
+  ],
+  "repin": {
+    "write": {
+      "cmd": "node scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step",
+      "invocations": 1,
+      "exit": 0,
+      "observed": "WRITE: applied 1 field change(s) to VENDOR_LOCK.json — skills.treeSha 282ef01885bdbb3e84340435462f12e0a333d494de09fe70ed308d8cb5f22a7f -> 34fe50c4a7892f803df6ee5db3180011523721b312bf8018c351c87a3cf8f773 (fileCount=371, linesChanged=1, 4011 -> 4011 bytes); vendor/mcp-src in sync, no change"
+    },
+    "check": {
+      "cmd": "node scripts/repin-vendor.ts --check",
+      "exit": 0,
+      "observed": "CHECK: GREEN - lock matches the working tree (drift=0, problems=0)"
+    }
+  },
+  "newSkillsTreeSha": "34fe50c4a7892f803df6ee5db3180011523721b312bf8018c351c87a3cf8f773",
+  "skillsTreeShaPrevious": "282ef01885bdbb3e84340435462f12e0a333d494de09fe70ed308d8cb5f22a7f",
+  "skillsFileCount": 371,
+  "workingTree": {
+    "modified": [
+      "skills/programming/scripts/typescript/check-no-excuse-rules.ts",
+      "VENDOR_LOCK.json"
+    ],
+    "untracked": [
+      "evidence/de-omo/skills-resource/2026-10-08T15-43-06Z-typecheck-fix/",
+      "evidence/workmate/roles-readonly/2026-10-08T15-38-41.801Z/ (pre-existing, not created by this task)"
+    ],
+    "gitWriteCommands": "none — no commit/add/checkout/branch was run (AGENTS.md §5 one-git-writer rule)"
+  },
+  "residual": [
+    "One doc comment inside the repaired if/else-if chain still sits at the indentation the re-source gave it (it is one level shallower than the declaration it documents). It is cosmetic, outside the type program and affects no rule; left untouched per the 'do not reformat anything else' bound and reported here instead.",
+    "node scripts/verify-vendor.ts was run once BEFORE the re-pin and once implicitly by `repin-vendor --check` (GREEN); it was not re-run as a third status check."
+  ],
+  "evidence": {
+    "dir": "evidence/de-omo/skills-resource/2026-10-08T15-43-06Z-typecheck-fix/",
+    "resultJson": "evidence/de-omo/skills-resource/2026-10-08T15-43-06Z-typecheck-fix/result.json",
+    "outputLog": "evidence/de-omo/skills-resource/2026-10-08T15-43-06Z-typecheck-fix/output.log",
+    "supportingLogs": [
+      "evidence/de-omo/skills-resource/2026-10-08T15-43-06Z-typecheck-fix/gates-final.log",
+      "evidence/de-omo/skills-resource/2026-10-08T15-43-06Z-typecheck-fix/repin.log"
+    ]
+  }
+}

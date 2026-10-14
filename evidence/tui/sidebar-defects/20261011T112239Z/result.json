@@ -1,0 +1,98 @@
+{
+  "wave": "fix/sidebar-defects",
+  "lane": "Writer A — Senior Engineer (D1, D2, D3)",
+  "branch": "fix/sidebar-defects",
+  "headAtStart": "2bf951f9",
+  "contract": ".mpd/plans/fix-sidebar-defects.md",
+  "writtenAtUtc": "2026-10-11T11:28:37Z",
+  "writeScopesTouched": [
+    "packages/mpd-tui-adapter-plugin/**",
+    "packages/mpd-tui-plugin/**",
+    "scripts/mpd-tui-panels.ts",
+    "docs/tui.md",
+    "docs/tui.zh-CN.md",
+    "evidence/tui/**"
+  ],
+  "gitWrites": "none — read-only `git status`/`diff`/`rev-parse` only; the captain is the single git writer",
+  "artifacts": {
+    "packages/mpd-tui-adapter-plugin/dist/index.js": "17ea578907f40fdfc9ff8f4aab09f7f61df0543df4c568d052e9ec4a0d03abfa",
+    "packages/mpd-tui-plugin/dist/index.js": "5ae84fd3f78b259dac8a7ab8980a3c16c03aa21a81b2693d16effc56fbfeed24",
+    "packages/mpd-tui-plugin/src/panel-core.ts": "ad230cb501d04735330b3eaa73058f2a8a94a216496692ed2dabd660bdf4cffc",
+    "packages/mpd-tui-adapter-plugin/src/index.ts": "6f33301f60b6694a39ed5ff75f88859cbe108aa4ae4617732fe07361b416de1f",
+    "scripts/mpd-tui-panels.ts": "1facf302e037e5115035dd8db617170bb212da57a07a1dd23d42e05269a43d24",
+    "docs/tui.md": "abda51adb7e4924111ab1a9841f688687f02c8cadc21048e3f79faf40b233acb",
+    "docs/tui.zh-CN.md": "df33573cef2a7674c960b2207f1f835c71c57ddec98a00490786163bbbe5f55a"
+  },
+  "defects": {
+    "D1": {
+      "title": "stale host-composed `act<N>:<slug>` panel ids are never pruned, so the host's SidePanelColumn draws tabs+dots with no panel behind them",
+      "rootCause": "`mergePanelEnableIds` (packages/mpd-tui-adapter-plugin/src/index.ts) only ever APPENDED: it normalized the existing CSV, appended the missing ids and removed nothing. Because the host renumbers the `<pluginId>` half of a row-registered panel on every boot (a patch row has no Component identity, so the host composes its own `act<N>` fallback), a list left behind by an earlier boot keeps naming dead ids. The keeper's stand-down rule made it worse rather than better in one shape: `merge.present` counted a STALE `act<N>:<our-slug>` token as 'the configuration names us', so the keeper retired instead of replacing it.",
+      "redObserved": [
+        "bun test → 5 failing arms, exit 1",
+        "(fail) D1/D3 · … > a stale `act*` token of ours is pruned, and every id we do NOT own survives byte-for-byte",
+        "Expected: \"todo,jobs,agents,info,trajectory,workspace,btw,companion,someone:else,act1:team,act1:dag\"",
+        "Received: \"todo,jobs,agents,info,trajectory,workspace,btw,companion,someone:else,act7:team,act7:dag,act1:team,act1:dag\"",
+        "(fail) D1/D3 · … > a write the host did not carry back is LOUD, never silent drift",
+        "Expected: \"refused\" / Received: \"confirmed\"",
+        "(fail) D1/D3 · … > D3 · the SAME rule holds in `scripts/mpd-tui-panels.ts --apply`: the eight builtins survive",
+        "Expected: \"todo,jobs,agents,info,trajectory,workspace,btw,companion,act1:workmate\"",
+        "Received: \"todo,jobs,agents,info,trajectory,workspace,btw,companion,act7:workmate,act1:workmate\""
+      ],
+      "fix": [
+        "`panelSlugOf` — the `<slug>` half of one composed id (new, exported).",
+        "`panelTokenIsStaleMine(token, ours, ourSlugs)` — the ONE prune predicate: `^act\\d+:` shape AND slug ∈ our just-registered slugs AND the full id is not currently ours. The slug condition is what keeps a FOREIGN plugin's `act<N>:<their-slug>` panel in the list (contract D3: 'never drop what they don't own').",
+        "`normalizePanelCsv` — the ONE CSV normalizer, used by the merge AND by the post-write read-back so both sides of that comparison agree.",
+        "`mergePanelEnableIds` now returns `{csv, added, present, kept, pruned}`; `present` is computed over the KEPT tokens, so a stale token no longer stands the keeper down.",
+        "`createPanelEnableKeeper.decide` — writes when `added.length > 0 || pruned.length > 0`, then READS THE WRITE BACK through the host's own reader and settles `refused` naming both lists on a mismatch (no silent drift).",
+        "`scripts/mpd-tui-panels.ts` — `PanelMerge` gains `kept`/`pruned`, `mergePanelIds` applies the same rule, the `added.length === 0` early return became `added.length === 0 && pruned.length === 0` (a prune-only run is a run), `--apply` reads the DOCUMENT back after the atomic rename and exits 1 naming the `.bak` on a mismatch, and `blockPanelCsv` is the ONE leaf reader the merge's input and the read-back share."
+      ],
+      "standDownRuleUnchanged": "yes — a list naming a CURRENT id of ours still stands the keeper down (arm `it STANDS DOWN when the configuration already names ANY of ours` stays green); only tokens that are OURS-and-STALE stopped counting as 'ours'.",
+      "subscriptionRepairUnchanged": "yes — the feed-first keeper behaviour and the ladder degradation are untouched; every existing R13d feed arm stays green."
+    },
+    "D2": {
+      "title": "wheel direction is machine-dependent and had no normalization point and no user knob",
+      "rootCause": "Every wheel path applied the raw host delta with its own fixed sign: `scrollByWheel`/`scrollByWheelX` (panel-core.ts) added `raw.deltaY`/`raw.deltaX`, `usePanelViewport.onWheelX` inlined `colPosition() + raw.deltaX`, and `scenes.ts`'s graph handler inlined `deltaY > 0 ? 1 : -1`. The host derives `deltaY` from the terminal's own wheelup/wheeldown bits, so the effective direction is a property of the terminal/multiplexer/OS.",
+      "redObserved": [
+        "bun test → the D2 arms could not run at all, exit 1:",
+        "SyntaxError: Export named 'wheelInvertFrom' not found in module '…/packages/mpd-tui-plugin/src/settings.ts'.",
+        "(the same module-load failure covered `normalizeWheelDelta` and `scrollByWheelX`'s new 5th parameter)"
+      ],
+      "fix": [
+        "`normalizeWheelDelta(delta, invert)` — ONE exported sign decision in panel-core.ts, in this plugin's convention (positive = toward later rows). A zero delta stays a plain `0`, never `-0` (`-0` is `===` to `0` but not `Object.is`-equal, so a strict assertion would read motion that never happened).",
+        "`setWheelInvertRead` + `wheelInvertOn` — the process-wide reader the mounted row installs; default `() => false` = today's behaviour.",
+        "`scrollByWheel(..., invert = wheelInvertOn())` and `scrollByWheelX(..., invert = wheelInvertOn())` consume it; `usePanelViewport.onWheelX` now routes through `scrollByWheelX` instead of keeping a private copy of the delta arithmetic; `scenes.ts` normalizes BOTH axes through the same helper.",
+        "`WHEEL_INVERT_KNOB = \"tui.wheelInvert\"` + `wheelInvertFrom(config, floor)` in settings.ts — the saved boolean wins, the row config is the floor, a junk value can never arm it.",
+        "`packages/mpd-tui-plugin/src/index.ts` — new row-config key `wheelInvert` (schema default `false`, `ResolvedConfig` field, `resolveConfig` floor) and the reader installed at apply as `setWheelInvertRead(() => wheelInvertFrom(configHandle?.get?.(), resolved.wheelInvert))`."
+      ]
+    },
+    "D3": {
+      "title": "the CSV writers must never drop ids they do not own",
+      "rootCause": "Covered by D1: both writers rewrote the whole list, and the fix had to introduce a removal, so the removal predicate is the load-bearing part.",
+      "fix": "The prune predicate is restricted to OUR slug (see D1). Verified by dedicated arms on BOTH writers: a foreign non-act id and a FOREIGN act-shaped id (`act9:somebodyelse`) survive; all eight host builtins (`todo,jobs,agents,info,trajectory,workspace,btw,companion`, read from the installed host's own DEFAULT_SIDE_PANEL_IDS rather than spelled) survive byte-for-byte and in order."
+    }
+  },
+  "gates": [
+    { "command": "bun test packages/mpd-tui-plugin packages/mpd-tui-adapter-plugin", "exit": 0, "tail": "502 pass / 0 fail / 12971 expect() calls / Ran 502 tests across 22 files. [9.82s]", "log": "bun-test.log" },
+    { "command": "bun run typecheck", "exit": 0, "tail": "$ tsgo --noEmit (no diagnostics)", "log": "typecheck.log" },
+    { "command": "bun run verify:comments", "exit": 0, "tail": "scanned 385 TypeScript file(s) … VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.", "log": "verify-comments.log" },
+    { "command": ".toolchain/node_modules/.bin/bun build packages/<pkg>/src/index.ts --target node --format esm --outfile packages/<pkg>/dist/index.js (both packages, from the repo root)", "exit": 0, "tail": "index.js 45.34 KB (entry point) / index.js 0.39 MB (entry point)", "log": null },
+    { "command": "node scripts/verify-dist-fresh.ts", "exit": 0, "tail": "build toolchain: bun 1.4.0 from the repository toolchain … ok: 31/31 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 636ms", "log": "verify-dist-fresh.log" },
+    { "command": "bun run verify:docs", "exit": 0, "tail": "[verify-docs-parity] pairs=47 failed=0 violations=0 exempt=24 derived=3 links=436 dead=0 — PASS", "log": "verify-docs.log" },
+    { "command": "bun run verify:rows", "exit": 0, "tail": "[verify-rows-parity] ok: 35 row ids match the 2-file bundle patch layer", "log": "verify-rows.log" },
+    { "command": "node skills/dsh-qa/scripts/preset-conformance.ts --self-test", "exit": 0, "tail": "ok: 32 harness rows conform against the installed schemas (6 row(s) declare no schema), persona prefix=true, mpd preset 28 child rows, row parity 26/25 (negative controls: 4/4 reddened)", "log": "preset-conformance-selftest.log" },
+    { "command": "node scripts/mpd-tui-panels.ts --self-test", "exit": 0, "tail": "[mpd-tui-panels] SELF-TEST PASS (all arms held) — 10 new D1/D3 arms included", "log": "mpd-tui-panels-selftest.log" },
+    { "command": "node skills/dsh-qa/scripts/tui-panels.ts --self-test", "exit": 0, "tail": "[tui-panels self-test] ok: 8 surfaces asserted, negative controls fail as required", "log": "tui-panels-qa-selftest.log" },
+    { "command": "node skills/dsh-qa/scripts/tui-panels.ts", "exit": 0, "verdict": "SKIP — NOT A PASS", "tail": "[mpd-qa] SKIP case=tui-panels lane=real reason=absent-fixture prereq=tui profile in the sandbox root remedy=\"bun skills/dsh-qa/scripts/tui-mount.ts --sandbox-root <root> --install\"", "log": "tui-panels-qa-lane.log" },
+    { "command": "bun skills/dsh-qa/scripts/tui-mount.ts --sandbox-root .mpd/recon/qa/tui-lanes/tui-panels --install (fixture provisioning attempt, run twice incl. an explicit npm_config_store_dir)", "exit": 1, "tail": "ERR_PNPM_STORE_DIR_OPEN_OPERATION_LOCK / Failed to open the store operation lock at \"pnpm-store-operation-locks\": Read-only file system (os error 30)", "log": "tui-mount-install-attempt.log" }
+  ],
+  "bounds": [
+    "The real QA lane `node skills/dsh-qa/scripts/tui-panels.ts` did NOT run: it SKIPs (`reason=absent-fixture`, exit 0) because the sandbox profile is not installed, and the documented remedy `tui-mount.ts --sandbox-root … --install` FAILS in this session's file sandbox with ERR_PNPM_STORE_DIR_OPEN_OPERATION_LOCK / 'Read-only file system (os error 30)' — an ENVIRONMENT bound, reproduced twice (also with an explicit writable npm_config_store_dir). A SKIP is not a pass: no live TUI of this revision was driven for this wave by Writer A.",
+    "The host's PanelBar carousel ORDER (tabs.length - 1 dots, alternating right/left ring around the centred active title) is HOST-owned and unpatchable from this repo. D1 removes the tabs/dots that have NO panel behind them (the stale-id half of the reported mismatch); if a residual mismatch is observed on a real boot it must be the HOST's carousel order, not a stale id — that half is NOT fixed by this lane.",
+    "The top panel-switching wheel is handled inside the host's own PanelBar; nothing in this repo routes it. The wheel paths corrected here are the ones that DO route through this bundle: the panel body rows (panel-dag.ts / panel-workmate.ts via `usePanelViewport.onWheel`), the horizontal page pan (`onWheelX`), and the DAG scene's graph wheel (both axes).",
+    "`tui.wheelInvert` is read from `<workspace>/.mpd/mpd.jsonc` (and the `mpd-tui` row config as floor) through the same `mpdConfig` service `tui.dashboardKey` uses, but it is NOT declared in `SETTINGS_KNOBS` / `SettingsSchema` in `packages/mpd-config-plugin/src/settings-schema.ts` — that package is OUTSIDE Writer A's write scope — so the knob has no row in the `/settings` form. It works from the file layer because `mpd-config`'s `loadConfig` returns the RAW merged layers and strips no undeclared key (verified by an arm that drives the real `loadConfig` over a temp `<workspace>/.mpd/mpd.jsonc`). Declaring the leaf there is the follow-up that adds the settings row; the read path does not change when it lands. This bound is stated in docs/tui.md §6.2 and docs/tui.zh-CN.md §6.2.",
+    "The prune is scoped by OUR slug, not by 'looks like an act id'. The contract's sentence 'ids matching the `act<N>:` pattern that are NOT in the host's current registered panel list' is read together with its own closing clause 'must preserve every id it does not own (host builtins, foreign ids)' and with D3's title: a FOREIGN `act<N>:<their-slug>` token is an id we do not own, so it is preserved. Pruning it would remove another plugin's working panel — the same harm M1(c) reports. Both readings agree on every arm the contract names (our stale `act*` goes, builtins/foreign stay, the current `act*` is present).",
+    "A list that names a CURRENT id of ours AND carries stale ones is still left alone: the stand-down rule is explicitly unchanged by the contract, so the keeper writes nothing there. `node scripts/mpd-tui-panels.ts --apply` is the surface that cleans that shape.",
+    "The M4 Docker real-machine lane is the captain's step (contract §Gates) and was NOT run by Writer A."
+  ],
+  "evidenceDir": "evidence/tui/sidebar-defects/20261011T112239Z/"
+}

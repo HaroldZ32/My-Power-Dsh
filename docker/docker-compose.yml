@@ -58,10 +58,29 @@ services:
       # to move with them — a mixed pair installs but declares unmet peers.
       MPD_E2E_DSH_VERSION: ${MPD_E2E_DSH_VERSION:-0.2.0-rc.2}
       # Which DSH-TUI host the TUI lane installs. It MUST accept the harness pin's peer range:
-      # 0.13.0 covers 0.1.7-rc.1 through 0.2.0-rc.2 (0.12.0, the earlier pin, did too), while 0.11.2 stops at 0.2.0-rc.1 — measured
+      # 0.15.0 covers 0.1.7-rc.1 through 0.2.0-rc.2 (0.14.0, 0.13.0 and 0.12.0, the earlier pins, did too), while 0.11.2 stops at 0.2.0-rc.1 — measured
       # 2026-10-02: a TUI pin whose peer range excludes the harness pin is REFUSED by
       # `dsh plugin --profile dsh-tui add`, so these two knobs move together.
-      MPD_E2E_TUI_VERSION: ${MPD_E2E_TUI_VERSION:-0.13.0}
+      MPD_E2E_TUI_VERSION: ${MPD_E2E_TUI_VERSION:-0.15.0}
+      # THE TASK THE LIVE TURN RUNS (docker/entrypoint.sh step 15). OPTIONAL and empty by default:
+      # an empty string is what makes the entrypoint keep its own default team-plane prompt
+      # byte-for-byte, so every existing live arm keeps its present meaning. It MUST be interpolated
+      # HERE for the same measured reason as the pin above — compose forwards only what this file
+      # names, so a knob read solely by the entrypoint is unreachable from the host. The `:-` form is
+      # load-bearing: without it compose would warn about an unset variable and hand the container
+      # NOTHING, which would look identical to the default while proving nothing.
+      MPD_E2E_LIVE_PROMPT: ${MPD_E2E_LIVE_PROMPT:-}
+      # THE NPM TRANSPORT (2026-10-09, measured: the official registry's scoped-metadata endpoint
+      # answered in 1.5 s once and FAILED on the next probe, and npm retried a failure like that for 23
+      # minutes at 0.3% CPU until the run had to be killed). `MPD_E2E_NPM_REGISTRY` names a registry to
+      # use INSTEAD of the official one; left empty, the entrypoint probes the official registry's
+      # scoped endpoint and falls back to `MPD_E2E_NPM_MIRROR` only when it does not answer, recording
+      # the registry it actually used as `obs.npmRegistry`. Both must be interpolated HERE: compose
+      # forwards only what this file names, and a knob the entrypoint alone reads is unreachable.
+      MPD_E2E_NPM_REGISTRY: ${MPD_E2E_NPM_REGISTRY:-}
+      MPD_E2E_NPM_MIRROR: ${MPD_E2E_NPM_MIRROR:-}
+      # The budget for ONE `run_step`, so a stalled network command fails fast instead of costing the run.
+      MPD_E2E_STEP_TIMEOUT: ${MPD_E2E_STEP_TIMEOUT:-}
     volumes:
       # The driver points this at evidence/docker/client-install/<stamp>/; the default keeps
       # `docker compose run` usable by hand and writes ./docker/out.
@@ -86,6 +105,21 @@ services:
       MPD_E2E_INSTALL_SPEC: ${MPD_ONECLICK_SPEC:-git+file:///opt/oneclick.git}
       MPD_E2E_OUT: /out
       MPD_E2E_DSH_VERSION: ${MPD_E2E_DSH_VERSION:-0.2.0-rc.2}
-      MPD_E2E_TUI_VERSION: ${MPD_E2E_TUI_VERSION:-0.13.0}
+      MPD_E2E_TUI_VERSION: ${MPD_E2E_TUI_VERSION:-0.15.0}
+      # Same optional live-turn prompt as `mpd-client` (see the comment there): both services run the
+      # SAME entrypoint and therefore share step 15, so a knob named on only one of them would make
+      # the prompt depend on which service the operator drove.
+      MPD_E2E_LIVE_PROMPT: ${MPD_E2E_LIVE_PROMPT:-}
+      # THE NPM TRANSPORT (2026-10-09, measured: the official registry's scoped-metadata endpoint
+      # answered in 1.5 s once and FAILED on the next probe, and npm retried a failure like that for 23
+      # minutes at 0.3% CPU until the run had to be killed). `MPD_E2E_NPM_REGISTRY` names a registry to
+      # use INSTEAD of the official one; left empty, the entrypoint probes the official registry's
+      # scoped endpoint and falls back to `MPD_E2E_NPM_MIRROR` only when it does not answer, recording
+      # the registry it actually used as `obs.npmRegistry`. Both must be interpolated HERE: compose
+      # forwards only what this file names, and a knob the entrypoint alone reads is unreachable.
+      MPD_E2E_NPM_REGISTRY: ${MPD_E2E_NPM_REGISTRY:-}
+      MPD_E2E_NPM_MIRROR: ${MPD_E2E_NPM_MIRROR:-}
+      # The budget for ONE `run_step`, so a stalled network command fails fast instead of costing the run.
+      MPD_E2E_STEP_TIMEOUT: ${MPD_E2E_STEP_TIMEOUT:-}
     volumes:
       - ${MPD_DOCKER_OUT:-./out}:/out

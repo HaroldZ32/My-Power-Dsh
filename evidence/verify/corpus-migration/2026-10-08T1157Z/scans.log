@@ -1,0 +1,109 @@
+# Corpus migration — raw black-box scans (2026-10-08T1157Z UTC, session 4ee18be6-5798-4395-8b9b-8bbd53e1c873)
+
+## git state
+ M VENDOR_LOCK.json
+ M agent-references/troubleshooting.md
+ M docker/tui-lane.sh
+ M docs/development.md
+ M docs/development.zh-CN.md
+ M docs/feature-audit.md
+ M docs/feature-audit.zh-CN.md
+ M packages/mpd-modelchain-plugin/dist/index.js
+ M packages/mpd-modelchain-plugin/src/index.ts
+ M packages/mpd-modelchain-plugin/test/modelchain.test.ts
+ M packages/mpd-roles-plugin/dist/index.js
+ M packages/mpd-roles-plugin/src/index.ts
+ M packages/mpd-roles-plugin/test/roles.test.ts
+ M skills/debugging/references/methodology/02-investigate.md
+ M skills/dsh-qa/scripts/readonly-deny.ts
+ M skills/dsh-qa/scripts/web-client-adapt.ts
+ M skills/dsh-qa/scripts/workmate-library.ts
+ M skills/init-deep/SKILL.md
+ M skills/refactor/SKILL.md
+ M skills/remove-ai-slops/SKILL.md
+ M skills/review-work/SKILL.md
+ M skills/ulw-plan/SKILL.md
+ M skills/ulw-research/SKILL.md
+ M skills/visual-qa/SKILL.md
+?? evidence/docker/client-install/2026-10-08T08-52-23Z/
+?? evidence/docker/client-install/2026-10-08T11-56-41Z/
+?? evidence/docker/tui-lane-repair/
+?? evidence/docker/tui-lane-verify/
+?? evidence/verify/corpus-migration/
+
+## diff --numstat skills/ VENDOR_LOCK.json
+1	1	VENDOR_LOCK.json
+7	7	skills/debugging/references/methodology/02-investigate.md
+2	2	skills/dsh-qa/scripts/readonly-deny.ts
+1	1	skills/dsh-qa/scripts/web-client-adapt.ts
+4	3	skills/dsh-qa/scripts/workmate-library.ts
+1	1	skills/init-deep/SKILL.md
+11	11	skills/refactor/SKILL.md
+1	1	skills/remove-ai-slops/SKILL.md
+3	3	skills/review-work/SKILL.md
+2	2	skills/ulw-plan/SKILL.md
+2	2	skills/ulw-research/SKILL.md
+5	5	skills/visual-qa/SKILL.md
+
+## VENDOR_LOCK.json re-pin (one field)
+diff --git a/VENDOR_LOCK.json b/VENDOR_LOCK.json
+index 067fa6a3..9f65fae0 100644
+--- a/VENDOR_LOCK.json
++++ b/VENDOR_LOCK.json
+@@ -5,7 +5,7 @@
+     "skills": {
+       "fileCount": 331,
+       "source": "skill corpus at repo root (ported upstream skills + dsh-qa + svn-master + bundle-lifecycle, agent-teams-dispatch, agent-teams-sidebar, extension-isolation, extension-lifecycle, extension-mcp-bridge, extension-template, workmate-library, workmate-team-member and readonly-deny QA cases + the dsh-qa scripts/lib/workspace-isolation.mjs QA sandbox helper + the dsh-qa scripts/lib/gate-probe.mjs two-sided complexity-gate probe + the five TUI lanes and their shared harness: scripts/tui-mount.mjs, tui-panels.mjs, tui-admission.mjs, tui-distribution.mjs, tui-spec-conformance.mjs, lib/tui-lane.mjs + the settings-bridge lanes and their shared engine: scripts/tui-settings-bridge.mjs, web-settings-bridge.mjs, lib/settings-bridge-lane.mjs + the six team-watchdog lanes and their shared harness: scripts/team-watchdog-{heartbeat,fault,scene,config,notify,boot}.mjs, lib/watchdog-lane.mjs + the real-dsh boot lane); whole-dir refresh from upstream, keep provenance links",
+-      "treeSha": "73a7311adfe2240cb742a21f5d3a53400210a03a9672f106bf273953198d356d"
++      "treeSha": "7db998a5003ea819896ab016ec13360cae7db18641be298cdc13e33cac4d531f"
+     },
+     "vendor/mcp-src": {
+       "fileCount": 459,
+
+## SCAN A: role/base assignment carrying an upstream id (whole corpus)
+skills/dsh-qa/scripts/tui-panels.ts:467:  writeFileSync(join(dir, "meta.json"), JSON.stringify({ name: "qa-tui-probe", base: "explorer" }, null, 2) + "\n")
+
+## SCAN B: ids rewritten, per file (HEAD -> worktree)
+ 11 ->  4   skills/debugging/references/methodology/02-investigate.md  delta=7
+  2 ->  0   skills/dsh-qa/scripts/readonly-deny.ts  delta=2
+  1 ->  0   skills/dsh-qa/scripts/web-client-adapt.ts  delta=1
+  1 ->  0   skills/dsh-qa/scripts/workmate-library.ts  delta=1
+ 10 ->  9   skills/init-deep/SKILL.md  delta=1
+ 25 -> 14   skills/refactor/SKILL.md  delta=11
+  1 ->  0   skills/remove-ai-slops/SKILL.md  delta=1
+ 13 ->  9   skills/review-work/SKILL.md  delta=4
+ 13 ->  5   skills/ulw-plan/SKILL.md  delta=8
+ 15 -> 12   skills/ulw-research/SKILL.md  delta=3
+ 13 ->  8   skills/visual-qa/SKILL.md  delta=5
+TOTAL: 105 -> 61 (removed 44)
+
+## SCAN C: residual quoted-id occurrences anywhere in skills/
+skills/debugging/references/methodology/02-investigate.md:73:"explore"
+skills/debugging/references/methodology/02-investigate.md:76:"explore"
+skills/debugging/references/methodology/04-oracle-triple.md:40:"oracle"
+skills/debugging/references/methodology/04-oracle-triple.md:54:"oracle"
+skills/debugging/references/methodology/04-oracle-triple.md:70:"oracle"
+skills/debugging/references/methodology/partial-runtime-evidence.md:161:"oracle"
+skills/dsh-qa/scripts/preset-register.ts:135:"multimodal-looker"
+skills/dsh-qa/scripts/preset-register.ts:135:"oracle"
+skills/review-work/SKILL.md:12:"librarian"
+skills/review-work/SKILL.md:140:"oracle"
+skills/review-work/SKILL.md:14:"oracle"
+skills/review-work/SKILL.md:331:"oracle"
+skills/review-work/SKILL.md:407:"oracle"
+skills/ulw-plan/references/full-workflow.md:183:"oracle"
+skills/ulw-plan/references/full-workflow.md:190:"oracle"
+skills/ulw-plan/references/full-workflow.md:191:"momus"
+skills/ulw-plan/references/full-workflow.md:59:"momus"
+skills/ulw-plan/references/full-workflow.md:82:"momus"
+skills/ulw-research/SKILL.md:175:"explore"
+skills/ulw-research/SKILL.md:191:"librarian"
+skills/visual-qa/SKILL.md:107:"oracle"
+skills/visual-qa/SKILL.md:118:"oracle"
+skills/visual-qa/SKILL.md:169:"oracle"
+skills/visual-qa/SKILL.md:276:"oracle"
+
+## SCAN D: three cited self-tests, re-run by the verifier
+readonly-deny      [readonly-deny self-test] ok: 23 checks
+web-client-adapt   [web-client-adapt self-test] ok: 14 checks
+workmate-library   [workmate-library self-test] ok: 19 checks

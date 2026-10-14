@@ -1,0 +1,6 @@
+$ .toolchain/node_modules/.bin/bun run verify:comments
+
+scanned 398 TypeScript file(s) of 398 in the source set; inspected 35091 declaration(s); skipped 15877 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+[exit=0]

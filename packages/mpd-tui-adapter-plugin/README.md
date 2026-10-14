@@ -18,6 +18,14 @@ the FIFTEEN `tui*` services — the fourteen dsh-tui has exposed since 0.12.0 pl
 sidebar registry 0.13.0 added — beside `tuiPrompt` (host-unavailable on every measured build) and the
 harness `commands` registry and `settings` provider.
 
+**Re-measured for the DSH-TUI 0.14.0 adaptation (2026-10-08): the table did not move.** The fifteen
+modules and their declarations under the host's `lib/types/dsh-adapter/` are **byte-identical**
+between 0.13.0 and 0.14.0, there is no sixteenth seam, and the harness `peerDependencies` range still
+ends at `0.2.0-rc.2` — so **no adapter code change was needed for the seam surface** in that wave, and
+`MPD_E2E_DSH_VERSION` does not move. What 0.14.0 does change sits outside these seams (a Claude backend
+peer, the `ws` runtime dependency, an eighth builtin sidebar panel and a carousel `PanelBar`);
+`docs/tui.md` §11.6 carries that table, and §3 the details.
+
 | Seam key | Service | Typed member | Registration |
 |---|---|---|---|
 | `scenes` | `tuiScenes` | `scenes()` | `registerScene(descriptor, identity?)` → handle with `openScene(id)` / `closeScene(id)`; `openScene(id)` / `closeScene(id)` on the adapter |

@@ -150,7 +150,13 @@ export const GATE_PLAN_NAME_MAX = 60
 export const GATE_PLAN_EXCERPT_MAX = 500
 /** The shell name used when the goal's first line collapses to nothing (a whitespace-only turn). */
 export const GATE_PLAN_NAME_FALLBACK = "session-start complexity gate team"
-/** The presets whose top-level sessions the gate covers. */
+/**
+ * The presets whose top-level sessions the SESSION-START GATE covers — this gate's scope, nothing else.
+ *
+ * It is NOT the captain test: §5's captain is the workspace's TOP-LEVEL session — not a delegated
+ * child (`origin: "subagent"` or a recorded depth of `1`+) and never a preset name — whatever preset
+ * it carries; {@link sessionIsTopLevel} decides that, and a preset-keyed substitute is the T-92 defect.
+ */
 export const DEFAULT_GATE_PRESETS: readonly string[] = ["mpd"]
 
 /** Distinct matches of one global pattern (`matchAll` needs the `g` flag). */
@@ -615,8 +621,15 @@ export function consumeFlagFromMessage(message: unknown, source: string): unknow
 }
 
 /**
- * Whether one agent's SESSION is covered by the gate: a top-level session of one of the
- * configured presets.
+ * Whether one agent's SESSION is covered by the SESSION-START GATE: a top-level session whose
+ * `agentPreset` is on the covered list, or a session with no preset at all.
+ *
+ * WHAT IT IS NOT — read this before reusing it: this is NOT the captain test. It answers "does the
+ * complexity gate apply to this session", and its preset conjunct is deliberate gate scoping
+ * (whether a `cordis`-preset top-level session should ALSO get the gate is a separate question).
+ * The workspace's captain — the ONE git writer of §5 and the only session rule 4 gates — is
+ * {@link sessionIsTopLevel}, a PRESET-FREE classification; the two must never be swapped for one
+ * another, which is exactly the defect T-92 records.
  *
  * A child session (subagent, teammate, workflow worker, ralph round) already belongs to a
  * parent's team — it must never be told to stage one of its own. A session that names a
@@ -636,4 +649,103 @@ export function sessionQualifies(agent: unknown, presets: readonly string[] = DE
   const preset = header.agentPreset
   if (preset === undefined) return true
   return presets.includes(String(preset))
+}
+
+/**
+ * How one agent's session sits in the delegation tree, as §5's captain rule classifies it:
+ * `captain` is the workspace's TOP-LEVEL session (anything that is not provably a delegated child);
+ * `child` is a member/child session (a subagent origin, or a delegation depth of `1` or more);
+ * `headerless` is an agent whose session header is missing, which is never read as the captain —
+ * the classification fails CLOSED.
+ *
+ * PRESET-FREE BY CONSTRUCTION; see {@link sessionIsTopLevel}.
+ */
+export type SessionRank = "captain" | "child" | "headerless"
+
+/**
+ * Classify one agent's session for §5: the captain is the workspace's TOP-LEVEL session — NOT a
+ * delegated child and NOT a preset name.
+ *
+ * WHY `agentPreset` IS NEVER READ: every top-level session on this deployment records
+ * `agentPreset: "cordis"`, so a preset-keyed test made the captain branch UNREACHABLE and refused
+ * the user's own session its git writes while claiming a fact it never tested (T-92). The manual's
+ * definition is the session's position in the delegation tree; this implements exactly that.
+ *
+ * WHY A PARENT LINK ALONE IS NOT CHILDHOOD (the seeded-fork repair, 2026-10-10): the user's real
+ * working session is a SEEDED FORK — its header carries `parentSession`, `isSeeded: true` and
+ * `delegationDepth: 0`, with NO `origin: "subagent"` — so the old "any parent session is a child"
+ * test classified the CAPTAIN as a child and every captain-scoped rule (the write rule, the
+ * investigation guard, the one-git-writer rule) silently stopped applying to it. A session is a
+ * child IFF the harness RECORDED one of the two delegation facts: `origin === "subagent"` or
+ * `delegationDepth >= 1`. Everything else — including a fork whose depth the harness never recorded
+ * — is the captain, which is the CONSERVATIVE direction: captain rules apply, while the delegation
+ * gate's default mode denies captains AND children alike, so only the investigation/write rules'
+ * scope is widened.
+ *
+ * A header that is absent still fails closed (`headerless`, never the captain), and a
+ * `delegationDepth` that is not a number is not ">= 1", so an unreadable depth reads as the captain
+ * — the same conservative direction as the fork case.
+ *
+ * @param agent - the live agent handle whose session header is classified.
+ * @returns the session's class.
+ */
+export function sessionRank(agent: unknown): SessionRank {
+  /** The agent's session header, which carries the origin, the parent link and the delegation depth. */
+  const header = (agent as { session?: { header?: Record<string, unknown> } } | undefined)?.session?.header
+  if (header === undefined || header === null) return "headerless"
+  if (header.origin === "subagent") return "child"
+  /** The session's delegation depth; absent on a session the harness never recorded a depth for. */
+  const depth = Number(header.delegationDepth)
+  return depth >= 1 ? "child" : "captain"
+}
+
+/**
+ * Whether one agent's session IS this workspace's top-level session — the captain of §5's
+ * ONE-GIT-WRITER rule, and the only session rule 4 gates.
+ *
+ * The ONE predicate both rules read, so they can never disagree about who is the captain. It does
+ * NOT consult `agentPreset`, and it is NOT {@link sessionQualifies}: that one answers the
+ * session-start GATE's preset-scoped question and must never be substituted here.
+ *
+ * @param agent - the live agent handle whose session header is classified.
+ * @returns whether this session is the workspace's top-level session.
+ */
+export function sessionIsTopLevel(agent: unknown): boolean {
+  return sessionRank(agent) === "captain"
+}
+
+/** The ONE preset whose top-level session carries the CAPTAIN's behavioural rules. */
+export const MPD_CAPTAIN_PRESET = "mpd"
+
+/**
+ * Whether one agent's session is the CAPTAIN OF THE `mpd` PRESET — the top-level session (§5), AND a
+ * session whose `agentPreset` really is {@link MPD_CAPTAIN_PRESET}.
+ *
+ * WHY THIS EXISTS, and why it is not {@link sessionIsTopLevel}. The captain's BEHAVIOURAL rules — the
+ * verification law's write rule (`./verify-guard.ts`) and the reconnaissance rule
+ * (`./captain-investigation.ts`) — are part of what the `mpd` preset MEANS. Both install through the
+ * ONE process-wide `tools.guard` seam, so a bare {@link sessionIsTopLevel} test made them bite EVERY
+ * top-level session of the deployment, whatever preset it was running: a user working in the DEFAULT
+ * preset (`cordis`) was refused its own code writes and its own reconnaissance by a captain contract
+ * that preset never asked for. This predicate scopes those two rules back to the preset that owns
+ * them.
+ *
+ * DIRECTION OF THE PRESET TEST: the gate opens ONLY on the exact preset name. A session with no
+ * `agentPreset` at all is therefore NOT gated. That is deliberate and is the OPPOSITE of
+ * {@link sessionQualifies}, which reads a preset-less session as covered: there the conservative
+ * direction protects a bundle-less deployment, while here it would re-impose the very rule this
+ * predicate exists to scope. `mpd` sessions always record the preset — the bundle's own integration
+ * boots assert `agentPreset=mpd` on the row's boot line.
+ *
+ * NOT FOR §5's ONE-GIT-WRITER RULE: that rule protects the single `.git/HEAD` of a shared checkout, so
+ * it stays keyed on {@link sessionIsTopLevel} alone and follows whichever preset the user runs.
+ *
+ * @param agent - the live agent handle whose session header is classified.
+ * @returns whether this session is the top-level session of the `mpd` preset.
+ */
+export function sessionIsMpdCaptain(agent: unknown): boolean {
+  if (!sessionIsTopLevel(agent)) return false
+  /** The agent's session header, which carries the preset this rule is scoped to. */
+  const header = (agent as { session?: { header?: Record<string, unknown> } } | undefined)?.session?.header
+  return header?.agentPreset === MPD_CAPTAIN_PRESET
 }

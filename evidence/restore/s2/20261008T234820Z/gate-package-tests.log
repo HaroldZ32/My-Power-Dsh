@@ -1,0 +1,45 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-mcp-lsp/test/language-coverage.test.ts:
+(pass) language coverage (acceptance (a)) > the catalog carries at least the full ~40-language set [0.02ms]
+(pass) language coverage (acceptance (a)) > the catalog is still well-formed at this size [0.54ms]
+(pass) language coverage (acceptance (a)) > every language id and every claimed extension is unique [0.15ms]
+(pass) language coverage (acceptance (a)) > every row is marked primary or unverified, and no row is silently weak [0.04ms]
+(pass) non-permissive servers (the guide must never call them MIT) > the contract's four servers are PRESENT, each with its real licence [0.10ms]
+(pass) non-permissive servers (the guide must never call them MIT) > every guarded keyword this catalog wires is labelled correctly, and the list is not a dead letter [0.10ms]
+(pass) non-permissive servers (the guide must never call them MIT) > every recorded LICENCE DISPUTE names its row and speaks in the caveat [0.06ms]
+(pass) non-permissive servers (the guide must never call them MIT) > no install command points at an npm TRAP [0.24ms]
+
+packages/mpd-mcp-lsp/test/server-catalog.test.ts:
+(pass) the shipped catalog > is well-formed, and the check is not vacuous [0.10ms]
+(pass) the shipped catalog > carries the five required fields on every row [0.13ms]
+(pass) the shipped catalog > declares npm-eligibility consistently with the install command [0.05ms]
+(pass) the validator reddens > on an EMPTY licence string [0.13ms]
+(pass) the validator reddens > on a WHITESPACE-ONLY licence string [0.09ms]
+(pass) the validator reddens > on EVERY one of the five required fields when it is missing [0.38ms]
+(pass) the validator reddens > on a non-boolean npm-eligibility [0.08ms]
+(pass) the validator reddens > on a DOTTED extension, because cclsp matches bare ones [0.09ms]
+(pass) the validator reddens > on an extension two rows both claim, because routing would be ambiguous [0.09ms]
+(pass) the validator reddens > on a duplicated language id [0.06ms]
+(pass) the validator reddens > on a row with no citation, which could not be re-checked [0.06ms]
+(pass) the validator reddens > on an empty argv [0.06ms]
+(pass) the validator reddens > on EVERY row when the whole table loses its licences [0.07ms]
+(pass) the non-permissive servers > are never described as MIT, and the guard is not vacuous [0.08ms]
+
+packages/mpd-mcp-lsp/test/cclsp-config.test.ts:
+(pass) ensureConfigPath generates only when the user has none > writes <root>/.mpd/lsp/cclsp.json and publishes it [0.49ms]
+(pass) ensureConfigPath generates only when the user has none > rewrites nothing when its bytes would not change [0.25ms]
+(pass) ensureConfigPath generates only when the user has none > leaves an existing <root>/cclsp.json BYTE-UNTOUCHED and never generates [0.12ms]
+(pass) ensureConfigPath generates only when the user has none > reports a user file that already exists BEFORE the caller-set environment variable [0.07ms]
+(pass) buildConfigDocument > puts the TS/JS row first and includes a catalog row only when its executable resolves [0.17ms]
+(pass) buildConfigDocument > omits the TS/JS row when the bundled server could not be located [0.05ms]
+(pass) buildConfigDocument > merges two languages served by ONE binary into a single row [0.07ms]
+(pass) buildConfigDocument > writes rows cclsp can read: three keys, BARE extensions [2.28ms]
+(pass) probeExecutable > prefers the workspace's own node_modules/.bin and returns an absolute path [0.19ms]
+(pass) probeExecutable > rejects a candidate that is not executable, and reports an absent one as null [0.18ms]
+(pass) probeExecutable > accepts an absolute path that exists [0.07ms]
+
+ 33 pass
+ 0 fail
+ 1094 expect() calls
+Ran 33 tests across 3 files. [187.00ms]

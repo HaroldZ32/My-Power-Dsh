@@ -1,0 +1,53 @@
+{
+  "ok": true,
+  "repo": "/opt/mpd",
+  "entries": 30,
+  "built": [
+    "packages/mpd-better-sidebar-host/dist/index.js",
+    "packages/mpd-bootstrap-plugin/dist/index.js",
+    "packages/mpd-boulder-plugin/dist/index.js",
+    "packages/mpd-bundle-plugin/dist/index.js",
+    "packages/mpd-codegraph-plugin/dist/index.js",
+    "packages/mpd-comment-checker-plugin/dist/index.js",
+    "packages/mpd-config-plugin/dist/index.js",
+    "packages/mpd-dsh-adapter-plugin/dist/index.js",
+    "packages/mpd-ext-plugin/dist/index.js",
+    "packages/mpd-ext-plugin/dist/sdk.js",
+    "packages/mpd-goal-plugin/dist/index.js",
+    "packages/mpd-hashline-plugin/dist/index.js",
+    "packages/mpd-mcp-astgrep/dist/launch.js",
+    "packages/mpd-mcp-codegraph/dist/launch.js",
+    "packages/mpd-mcp-gitbash/dist/launch.js",
+    "packages/mpd-mcp-lsp/dist/launch.js",
+    "packages/mpd-memory-plugin/dist/index.js",
+    "packages/mpd-modelchain-plugin/dist/index.js",
+    "packages/mpd-qa-roles-probe/dist/index.js",
+    "packages/mpd-roles-plugin/dist/index.js",
+    "packages/mpd-roster-provider-plugin/dist/index.js",
+    "packages/mpd-team-compact-plugin/dist/index.js",
+    "packages/mpd-team-core-plugin/dist/index.js",
+    "packages/mpd-team-watchdog-plugin/dist/index.js",
+    "packages/mpd-tools-plugin/dist/index.js",
+    "packages/mpd-tui-adapter-plugin/dist/index.js",
+    "packages/mpd-tui-plugin/dist/index.js",
+    "packages/mpd-ulw-plugin/dist/index.js",
+    "packages/mpd-verify-plugin/dist/index.js",
+    "packages/mpd-workmate-plugin/dist/index.js"
+  ],
+  "failed": [],
+  "noSrc": [
+    {
+      "pkg": "mpd-bundle",
+      "reason": "package has no src/ directory (dist is the only committed artifact)"
+    },
+    {
+      "pkg": "mpd-mcp-shared",
+      "reason": "built offline by scripts/build-mcp.ts from the upstream checkout (no local src/)"
+    },
+    {
+      "pkg": "mpd-schemastery",
+      "reason": "package has no src/ directory (dist is the only committed artifact)"
+    }
+  ],
+  "skipped": []
+}

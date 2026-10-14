@@ -1,0 +1,12 @@
+{
+  "gate": "audit-real-log",
+  "command": "node skills/dsh-qa/scripts/ask-user-question-audit.ts /home/haroldzhao/.dsh/sessions/--home-haroldzhao-MyProj-DshProj-My-Power-Dsh--/7072e2c7-1257-4420-a933-6e414b20eab2/session.v4.jsonl.zstd",
+  "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "exitCode": 0,
+  "startedAtUtc": "2026-10-11T09:20:06Z",
+  "endedAtUtc": "2026-10-11T09:20:06Z",
+  "logPath": "output.log",
+  "logBytes": 1281,
+  "logSha256": "5ed710a9bbde0efabaf12a1c3750081ac203aba3156292c7768b33d31ad9d56e",
+  "headline": "[ask-user-question-audit] answers: paired 3/3 (tool-result 3, user-message 0, errors 0)"
+}

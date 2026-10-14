@@ -1,0 +1,117 @@
+{
+  "task": "de-omo wave A closing repair — 5 false statements + 2 cosmetic leftovers in skills/**",
+  "agent": "Junior Engineer",
+  "utc": "2026-10-08T15:15:0xZ (edits) / 2026-10-08T15:17:00Z (gates)",
+  "repo": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "branch": "dev",
+  "scope_touched": [
+    "skills/**",
+    "VENDOR_LOCK.json (via scripts/repin-vendor.ts --write only)",
+    "evidence/de-omo/**"
+  ],
+  "git_writes": "none (no add/commit/checkout; read-only status/diff/show only)",
+  "items": [
+    {
+      "id": 1,
+      "file": "skills/ast-grep/README.md",
+      "old": "- [`omo` (oh-my-opencode)](https://github.com/code-yeongyu/oh-my-opencode) — `src/tools/ast-grep/` is the original tool implementation; this skill is a port of its pattern-hint detection and two-pass-write strategy.",
+      "new": "- **Historical origin of the technique** (origin, NOT this repository's source): [`omo` (oh-my-opencode)](https://github.com/code-yeongyu/oh-my-opencode) — `src/tools/ast-grep/` is the original tool implementation this skill's pattern-hint detection and two-pass-write strategy come from. The content this repository carries is re-sourced from [`code-yeongyu/lazycodex`](https://github.com/code-yeongyu/lazycodex) @ `6f08c77347a68eaa87f4e7656147e8d793c9a069` — **MIT**, `Copyright (c) 2026 Yeongyu Kim`; see [`ATTRIBUTION.md`](./ATTRIBUTION.md).",
+      "source_of_truth": "skills/ast-grep/ATTRIBUTION.md '## Source' (repo + pin + MIT (c) 2026 Yeongyu Kim); LICENSE inside .mpd/scratch/lazycodex-6f08c77347a68eaa87f4e7656147e8d793c9a069.tar.gz = 'MIT License / Copyright (c) 2026 Yeongyu Kim'"
+    },
+    {
+      "id": 2,
+      "file": "skills/ast-grep/AGENTS.md",
+      "old": "Nothing in-repo imports it; docs and skills invoke it by path. the upstream omo CLI locates this skill dir to install the binary.",
+      "new": "Nothing in-repo imports it; docs and skills invoke it by path. In this bundle the corpus is SERVED BY REFERENCE — the `mpd-bootstrap` row registers a skills provider over `<bundle>/skills` — so no copy of this directory is installed into a home, and the `sg` binary is resolved at runtime by the helper and the installers themselves through `MPD_AST_GREP_SG_PATH` (explicit binary) and `MPD_AST_GREP_BIN_DIR` (cached-binary directory).",
+      "source_of_truth": "packages/mpd-bootstrap-plugin/src/index.ts (registers the skills provider over <bundle>/skills, no $DSH_HOME/skills copy); env names read in the skill's OWN files: MPD_AST_GREP_SG_PATH (scripts/ast_grep_helper.py, tests/smoke.sh), MPD_AST_GREP_BIN_DIR (install.sh, install.ps1)"
+    },
+    {
+      "id": 3,
+      "file": "skills/lsp-setup/SKILL.md",
+      "old": "`SKIP` = the engine source could not be located; run from inside the omo\nrepo/worktree, or call the `lsp` MCP `diagnostics` tool directly.",
+      "new": "`SKIP` = the engine source could not be located: the script walks up from its own\ndirectory and from the cwd for `packages/lsp-tools-mcp/src/**`, a layout this\nrepository does not carry (its LSP engine snapshot is `vendor/mcp-src/lsp-core/**`,\nthe build input for `packages/mpd-mcp-lsp/**`), so call the `lsp` MCP `diagnostics` tool\ndirectly.",
+      "source_of_truth": "skills/lsp-setup/scripts/verify-lsp.ts (ENGINE_TOOLS/ENGINE_CONTEXT/ENGINE_MANAGER constants + findUp walks script dir and cwd) — OBSERVED: `node skills/lsp-setup/scripts/verify-lsp.ts skills/lsp-setup/scripts/detect-lsp.ts` -> 'SKIP: lsp-tools-mcp engine not found (looked for packages/lsp-tools-mcp/src/tools.ts)', exit 3; engine modules exist at vendor/mcp-src/lsp-core/src/{tools,request-context}.ts; vendor/mcp-src/README.md ('BUILD INPUT for scripts/build-mcp.ts'); packages/mpd-mcp-lsp/README.md"
+    },
+    {
+      "id": 4,
+      "file": "skills/ultimate-browsing/ATTRIBUTION.md (§1)",
+      "old": "- **Fixed by NOTICE only.** This is a documentation fix: no engine file was re-vendored,\n  re-licensed, or modified in this change.",
+      "new": "- **Fixed by NOTICE only (2026-10-08).** The missing-notice defect was fixed by documentation:\n  this file carries the upstream MIT notice text, and no LICENSE/NOTICE carrier under `engine/**`\n  was added or changed. SEPARATELY, the same wave's lazycodex re-source rebuilt five `engine/**`\n  files from the pinned bytes (licensing in §2): `engine/AGENTS.md`,\n  `engine/templates/package.json`, `engine/templates/playwright_mobile_chrome.js`,\n  `engine/templates/playwright_real_chrome.js`, `engine/tests/test_playwright_templates.py`.",
+      "source_of_truth": "`git status --short -- skills/ultimate-browsing/engine` = EXACTLY those five files modified; `find skills/ultimate-browsing/engine -iname 'LICENSE*' -o -iname 'NOTICE*'` = no match (so no licence carrier was added/changed)"
+    },
+    {
+      "id": 5,
+      "file": "skills/ultimate-browsing/ATTRIBUTION.md (§2)",
+      "old": "## 2. Upstream first-party content (no third-party source vendored)\n\nThe following is the **upstream author's own first-party content**, not third-party\nmaterial, so it carries no third-party license obligation. It is **not** work written in\nthis repository:",
+      "new": "## 2. Upstream first-party content (no third-party source vendored here, except `engine/**` — §1)\n\nThe following is the **upstream author's own first-party content**, not third-party\nmaterial, so it carries no third-party license obligation — with ONE exception, the\n`engine/**` entry below, whose origin IS third-party (§1). It is **not** work written in\nthis repository:\n\n(+ new bullet) - `engine/**` — the exception above: five files rebuilt from the same pinned revision on\n  2026-10-08 — `engine/AGENTS.md`, `engine/templates/package.json`,\n  `engine/templates/playwright_mobile_chrome.js`, `engine/templates/playwright_real_chrome.js`\n  and `engine/tests/test_playwright_templates.py`. Those rebuilt bytes travel under\n  lazycodex's **MIT** grant (`Copyright (c) 2026 Yeongyu Kim`, top of this file), while the\n  engine's OWN origin is unchanged — **`fivetaku/insane-search`, MIT** (§1), which stays in\n  force for the rest of `engine/**`.",
+      "source_of_truth": "pinned tarball .mpd/scratch/lazycodex-6f08c77347a68eaa87f4e7656147e8d793c9a069.tar.gz contains all five engine files AND LICENSE='MIT License / Copyright (c) 2026 Yeongyu Kim'; §1 of this same file + .mpd/scratch/insane-search-LICENSE.txt = fivetaku/insane-search MIT. Heading qualified because §2 now holds a third-party-ORIGIN entry; no inbound anchor links existed (grep for 'first-party content' / 'ATTRIBUTION.md#2')"
+    },
+    {
+      "id": 6,
+      "file": "skills/ultimate-browsing/engine/AGENTS.md (a)",
+      "old": "| Re-vendors since | none — every later change here is ours |",
+      "new": "| Re-vendors from `fivetaku/insane-search` since | none — every later change here is ours |\n| Re-sourced 2026-10-08 | five files rebuilt from `code-yeongyu/lazycodex` @ `6f08c77347a68eaa87f4e7656147e8d793c9a069` (**MIT**, `Copyright (c) 2026 Yeongyu Kim`): this `AGENTS.md`, `templates/package.json`, `templates/playwright_mobile_chrome.js`, `templates/playwright_real_chrome.js`, `tests/test_playwright_templates.py`. lazycodex carries a copy of this engine; the engine's OWN origin stays `fivetaku/insane-search` (MIT) — see `../ATTRIBUTION.md` §1/§2 |",
+      "source_of_truth": "same pinned tarball (carries plugins/omo/skills/ultimate-browsing/engine/** + the lazycodex MIT LICENSE); fivetaku origin from the file's own pin table and ../ATTRIBUTION.md §1"
+    },
+    {
+      "id": 7,
+      "file": "skills/ultimate-browsing/engine/AGENTS.md (b)",
+      "old": "- Parent: [`packages/shared-skills/AGENTS.md`](../../../AGENTS.md).",
+      "new": "- Parent: [this repository's root `AGENTS.md`](../../../AGENTS.md).",
+      "source_of_truth": "skills/ultimate-browsing/engine/ -> ../../../ = repo root; AGENTS.md exists there (the relative target was already correct, only its LABEL was stale, referencing a path this repository does not have)"
+    },
+    {
+      "id": 8,
+      "file": "skills/ultimate-browsing/engine/AGENTS.md (c)",
+      "old": "  (agent-reach) and Tier 2 (agent-browser from js eval: owned and attached engines via the `browser` skill).",
+      "new": "  (agent-reach) and Tier 2 (a real browser driven with agent-browser from the shell — the owned engine\n  and the attached engine, documented in [`../references/chrome-stealth.md`](../references/chrome-stealth.md)).",
+      "source_of_truth": "skills/ultimate-browsing/references/chrome-stealth.md (drives agent-browser through shell commands) and skills/ultimate-browsing/SKILL.md Tier-2 rows ('2a owned engine -> 2b attached engine'); NO skills/browser exists in this repository (ls skills/)"
+    },
+    {
+      "id": 9,
+      "file": "skills/ultimate-browsing/engine/templates/package.json",
+      "old": "\"description\": \"Script-only dependencies for local Chrome templates driven from js eval; Chrome must already be installed.\",",
+      "new": "\"description\": \"Script-only dependencies for local Chrome templates driven from the shell; Chrome must already be installed.\",",
+      "source_of_truth": "the template's own usage header ('echo {json} | node playwright_real_chrome.js') and engine/executor.py (selects playwright_real_chrome.js / playwright_mobile_chrome.js) — wording only, no behaviour change"
+    },
+    {
+      "id": 10,
+      "file": "skills/ultimate-browsing/engine/templates/playwright_real_chrome.js",
+      "old": " * Execute this script from js eval; profileDir must be task-owned or a CLONED profile.",
+      "new": " * Execute this script from the shell; profileDir must be task-owned or a CLONED profile.",
+      "source_of_truth": "same file's Usage line (shell pipeline into `node playwright_real_chrome.js`) and engine/executor.py — comment wording only, no behaviour change"
+    }
+  ],
+  "gates": [
+    {
+      "cmd": "node scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step",
+      "exit": 0,
+      "observed": "WRITE applied 1 field change to VENDOR_LOCK.json — skills.treeSha c3d30d48e8915e1f7fa24c5f252c806e4958bb04606aa954c9891d0647bf0b00 -> 65762fafc2ef40d6a2c6faaea1179cbab1e7bb7b43119e2230cf0c111b99ca8f (fileCount 371)",
+      "note": "ran exactly ONCE in this closing pass; `git diff VENDOR_LOCK.json` vs HEAD = 2 lines (fileCount + treeSha) = ONE lock change for the whole wave"
+    },
+    {
+      "cmd": "node scripts/verify-vendor.ts",
+      "exit": 0,
+      "observed": "PASS - 6 shipped asset(s) fingerprinted, upstream identity not checked; asset OK: skills 371 files"
+    },
+    {
+      "cmd": "node scripts/repin-vendor.ts --check",
+      "exit": 0,
+      "observed": "CHECK : GREEN - lock matches the working tree (drift=0, problems=0)"
+    }
+  ],
+  "self_review": {
+    "method": "re-read every edited span in the file (not the diff alone) and checked each assertion against a named file/flag",
+    "adjustments_made_to_avoid_a_new_false_claim": [
+      "ast-grep/README.md: dropped 'first appeared' (unverifiable offline) for the source's own wording 'is the original tool implementation ... come from'",
+      "ATTRIBUTION.md §1: 'the fix re-licensed and modified no engine file' replaced by the verifiable form 'no LICENSE/NOTICE carrier under engine/** was added or changed'; 'a different change in the same wave' dropped (change identity not verifiable)",
+      "ATTRIBUTION.md §2: heading qualified because the section now carries a third-party-ORIGIN entry",
+      "lsp-setup/SKILL.md: 'shipped by packages/mpd-mcp-lsp/**' narrowed to 'the build input for packages/mpd-mcp-lsp/**' (vendor/mcp-src is explicitly NOT packed)"
+    ]
+  },
+  "not_verified": [
+    "The lazycodex pin commit hash was NOT re-derived from a lazycodex git checkout: no lazycodex clone exists locally (.mpd/scratch/lazycodex turns out to be a clone of THIS repository, so its git objects do not hold the pin). The pin/licence is taken from the wave's recorded provenance (skills/*/ATTRIBUTION.md '## Source') and corroborated by the locally present pinned tarball .mpd/scratch/lazycodex-6f08c77347a68eaa87f4e7656147e8d793c9a069.tar.gz (its filename carries the pin; its LICENSE is MIT (c) 2026 Yeongyu Kim; it carries all five rebuilt engine files).",
+      "Of the five rebuilt engine files, playwright_mobile_chrome.js is byte-identical to the pin; the other four differ only by recorded local adaptations (agent-browser naming in AGENTS.md, an extra `use() {},` line in the python test) plus this closing repair's own wording edits. No byte-level re-derivation of the pin was attempted beyond that diff.",
+    "Two UNLISTED leftovers of the same class remain in scope-adjacent files and were deliberately NOT touched (out of the assigned list): skills/ast-grep/AGENTS.md still labels its parent 'packages/shared-skills/AGENTS.md' for the target ../../AGENTS.md (the same stale-label defect as item 6b), and 'js eval' still appears in skills/ultimate-browsing/SKILL.md, skills/ultimate-browsing/references/insane-search/{README.md,playwright.md} (Korean refs that also cite a `browser` skill this repository does not have), skills/frontend/SKILL.md, skills/frontend/references/design/clone-from-url.md, skills/review-work/SKILL.md and skills/ulw-execute/SKILL.md (see output.log grep)."
+  ]
+}

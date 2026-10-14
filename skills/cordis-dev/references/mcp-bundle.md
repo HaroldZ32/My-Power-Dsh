@@ -31,12 +31,21 @@ on failure instead of creating duplicates.
 
 MCP servers here are ordinary packages under `packages/mpd-mcp-*`, launched as child processes:
 
-- `packages/mpd-mcp-astgrep`, `mpd-mcp-codegraph`, `mpd-mcp-gitbash`, `mpd-mcp-lsp` each ship a
-  `src/launch.ts` entry (committed `dist/launch.js`), a `dist/cli.js` built OFFLINE by
-  `scripts/build-mcp.ts` (sha-pinned in `VENDOR_LOCK.json`), and a row in `cordis.patch.yml`.
+- Every one of them ships a `src/launch.ts` entry with its committed `dist/launch.js` (built by that
+  package's own `scripts.build`) and a row in `cordis.patch.yml`. Since de-omo wave B2 there is **no
+  vendored server and no offline build step**: `mpd-mcp-astgrep` is our own server, and
+  `mpd-mcp-lsp` / `mpd-mcp-gitbash` are THIN LAUNCHERS that resolve a DECLARED npm dependency
+  (`cclsp`, `@cyanheads/git-mcp-server`, `mcp-server-commands`) from the installed profile through
+  `packages/mpd-mcp-shared/dependency-entry.ts`, take the terminal writers away from the terminal,
+  and import the dependency's `bin` entry in-process. `mpd-mcp-codegraph` still ships a sha-pinned
+  prebuilt. The historical `vendor/mcp-src/**` snapshot and `scripts/build-mcp.ts` are gone.
+- One launcher can serve TWO rows: `mpd-mcp-gitbash/dist/launch.js` reads `argv[2]` (`git` | `shell`)
+  and starts the matching dependency, so `mcp-git` and `mcp-shell` share one R5 terminal-silence file.
 - Launcher resolution is by environment pin first (`MPD_AST_GREP_SG_PATH`, `MPD_CODEGRAPH_BIN`,
   `MPD_DSH_*_CLI`), then `PATH`/`.toolchain`. A caller-set pin WINS and can therefore mask a broken
-  operand — a QA lane that means to exercise the real resolution chain must not pre-set one.
+  operand — a QA lane that means to exercise the real resolution chain must not pre-set one. An absent
+  declared dependency is NOT fatal: `packages/mpd-mcp-shared/unavailable-server.ts` keeps the row alive
+  with zero tools and records the reason in the launcher's log.
 - **A long-lived MCP child inherits file descriptors**: never pipe `dsh` to it. Run with stdio to
   FILES (the `spawnSync` with `stdio: ['ignore', fd, fd]` shape) or as a managed background job
   (`node scripts/mpd-bg.ts run --log <workspace-path> -- <cmd>`), never `nohup` and never a pipe.

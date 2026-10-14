@@ -1,0 +1,1 @@
+tasks=26 ranks=16 statuses=completed,in_progress,failed,pending

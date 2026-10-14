@@ -1,0 +1,35 @@
+== throwaway copy: /tmp/mpd-sh-planted-bHwpv0   (real tree untouched: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh)
+== the copy is a real work tree with the SAME index: tracked=371, on disk=373 (the 2 gitignored files came along)
+
+--- (1) INTACT tracked tree (373 files on disk, 371 shipped) ---
+[verify-vendor] upstream identity: NOT CHECKED - no upstream subject exists (the pinned oh-my-openagent checkout is retired; see VENDOR_LOCK.json `_note`)
+[verify-vendor] asset OK: skills 371 files
+[verify-vendor] PASS - 1 shipped asset(s) fingerprinted, upstream identity not checked
+EXIT=0
+
+--- (2) PLANTED: one byte appended to the TRACKED file skills/dsh-qa/SKILL.md ---
+sha256 now     : 1b378ebf78b1d3b2dade387fc96f06c80f5d2137b1d20610b78ca1ec4b3caa3f
+sha256 pristine: b2d1f9c7c25137a3f05b664e139d6a2e8b42ef74458f49b13b804ffe82426889
+[verify-vendor] upstream identity: NOT CHECKED - no upstream subject exists (the pinned oh-my-openagent checkout is retired; see VENDOR_LOCK.json `_note`)
+[verify-vendor] FAIL - asset skills treeSha mismatch
+EXIT=1
+
+--- (3) RESTORED byte-for-byte ---
+[verify-vendor] upstream identity: NOT CHECKED - no upstream subject exists (the pinned oh-my-openagent checkout is retired; see VENDOR_LOCK.json `_note`)
+[verify-vendor] asset OK: skills 371 files
+[verify-vendor] PASS - 1 shipped asset(s) fingerprinted, upstream identity not checked
+EXIT=0
+
+--- (4) PLANTED: the same TRACKED file DELETED from the tree ---
+tracked=371 on disk=372
+[verify-vendor] upstream identity: NOT CHECKED - no upstream subject exists (the pinned oh-my-openagent checkout is retired; see VENDOR_LOCK.json `_note`)
+[verify-vendor] FAIL - asset skills tracked file(s) missing from the tree: skills/dsh-qa/SKILL.md
+[verify-vendor] FAIL - asset skills treeSha mismatch
+EXIT=1
+
+--- (5) file restored from the pristine copy ---
+[verify-vendor] upstream identity: NOT CHECKED - no upstream subject exists (the pinned oh-my-openagent checkout is retired; see VENDOR_LOCK.json `_note`)
+[verify-vendor] asset OK: skills 371 files
+[verify-vendor] PASS - 1 shipped asset(s) fingerprinted, upstream identity not checked
+EXIT=0
+== throwaway copy removed: /tmp/mpd-sh-planted-bHwpv0 (exists? no)

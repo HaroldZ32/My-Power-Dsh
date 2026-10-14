@@ -38,8 +38,20 @@ export const TEAM_TASK_PATH = "/plugins/mpd-team/task"
 /** The route serving the mailbox fold. */
 export const TEAM_MAIL_PATH = "/plugins/mpd-team/mail"
 
+/**
+ * The route that STREAMS team-state changes instead of being polled.
+ *
+ * A Server-Sent-Events stream rather than a WebSocket, because every surface this bundle has — a
+ * browser tab, a TUI page, a `curl` in a QA lane — can consume one over plain HTTP with no handshake,
+ * no extra dependency and no second server; and because the payload is a bare revision, so a client
+ * that misses a frame reconnects and re-reads the routes it already knows rather than needing a
+ * replayable log. Under the `/plugins/mpd-team/*` family deliberately: a duplicate EXACT route makes
+ * the host throw, so the family prefix is what keeps this path from ever colliding with another row's.
+ */
+export const TEAM_EVENTS_PATH = "/plugins/mpd-team/events"
+
 /** Every route this module registers, so a reader and a test can enumerate them from one place. */
-export const TEAM_ROUTES: readonly string[] = [TEAM_STATE_PATH, TEAM_PLAN_PATH, TEAM_TASK_PATH, TEAM_MAIL_PATH]
+export const TEAM_ROUTES: readonly string[] = [TEAM_STATE_PATH, TEAM_PLAN_PATH, TEAM_TASK_PATH, TEAM_MAIL_PATH, TEAM_EVENTS_PATH]
 
 /**
  * The exact phrase an approval gate demands for one staged plan.
@@ -518,13 +530,46 @@ interface RouteResponse {
 }
 
 /**
+ * The response surface a STREAMING handler may rely on, structurally typed.
+ *
+ * `RouteResponse` is deliberately NOT widened: a one-shot JSON route has no business calling `write`,
+ * and a stream has no business calling `end(body)`. This is a SECOND, narrower surface for the second
+ * kind of route. It is not a new adapter seam — the host's own route type owns the whole response
+ * lifecycle and names SSE as a supported use of it ("may hold the response open, e.g. SSE"), so
+ * `write` and the lifetime callbacks are part of the contract this module is handed.
+ */
+interface EventResponse {
+  /** Write the status line and the headers. */
+  writeHead: (status: number, headers: Record<string, string>) => void
+  /** Write one frame; a stream is never compressed, so each call reaches the socket. */
+  write: (frame: string) => unknown
+  /** Close the stream. */
+  end: () => void
+  /** Push the head out before the first frame, when the host's response object offers it. */
+  flushHeaders?: () => void
+  /** Register a lifetime callback; the stream's teardown hangs off `close`. */
+  on?: (event: string, listener: () => void) => unknown
+}
+
+/** The request surface a streaming handler may rely on: the URL it was asked, and its close event. */
+interface EventRequest {
+  /** The request URL, which carries the session query parameter like every other route here. */
+  url?: unknown
+  /** Register a lifetime callback; `close` fires when the client goes away. */
+  on?: (event: string, listener: () => void) => unknown
+}
+
+/** The interval between keep-alive comments, short enough that no ordinary proxy drops an idle stream. */
+const SSE_PING_MS = 15000
+
+/**
  * Register the team state route on the host's web server.
  *
  * The caller owns the server probe and the lifetime (`ctx.effect`); this function only tolerates a
  * server that cannot register, and answers `{ ok: false, error }` rather than throwing inside a
  * request — a route that throws takes the whole panel down with it.
  * @param webServer - the host's web server, or undefined when this composition has none.
- * @param deps - the record lookup, the executor read, and the lifetime seam.
+ * @param deps - the record lookup, the executor read, the change feed and the lifetime seam.
  * @returns whether the route was registered.
  */
 export function registerTeamRoutes(
@@ -540,6 +585,10 @@ export function registerTeamRoutes(
     effect: (fn: () => unknown, label: string) => unknown
     /** A bounded diagnostic sink. */
     warn: (line: string) => void
+    /** The change feed's subscription door; absent in a composition that never built a feed. */
+    subscribe?: (workspace: string, listener: () => void) => () => void
+    /** The change feed's counter; a stream is refused unless BOTH it and `subscribe` are present. */
+    revision?: (workspace: string) => number
   },
 ): boolean {
   if (webServer === undefined || typeof webServer.register !== "function") return false
@@ -584,7 +633,135 @@ export function registerTeamRoutes(
   }
   /** Whether every route registered; the caller logs one line per run, not per route. */
   let all = true
-  // THE FOUR ROUTES ARE ONE FAMILY, registered together so a panel cannot find one and miss another.
+  /**
+   * Register one exact STREAMING route, whose handler owns the response for the client's whole session.
+   *
+   * A separate helper from {@link mount} on purpose: `mount` answers once and closes, this one answers
+   * and then KEEPS the response open, so it needs its own response surface and its own failure
+   * containment — an uncaught throw in here is an uncaught throw inside the host's request listener.
+   * @param path - the exact route path to register.
+   * @param handler - the streaming handler; it owns everything after `writeHead`.
+   * @returns whether the route was registered.
+   */
+  const mountStream = (path: string, handler: (req: unknown, res: unknown) => void): boolean => {
+    try {
+      deps.effect(() => (webServer as { register: (route: unknown) => unknown }).register({
+        kind: "exact",
+        path,
+        handler: (req: unknown, res: unknown) => {
+          try {
+            handler(req, res)
+          } catch (error) {
+            deps.warn(`the ${path} stream failed: ${String((error as Error)?.message ?? error)}`)
+          }
+        },
+      }), `mpd-team-core: web route ${path}`)
+      return true
+    } catch (error) {
+      deps.warn(`registering ${path} failed: ${String((error as Error)?.message ?? error)}`)
+      return false
+    }
+  }
+  /**
+   * Answer one Server-Sent-Events stream of team-state revisions.
+   *
+   * THE FRAMES ARE THE CONTRACT and the client is deliberately dumb: `retry: 1000` then an
+   * `event: hello` frame carrying the current revision, then one unnamed `data:` frame per change,
+   * then nothing but `: ping` comments while the team is quiet. A revision is all a client needs —
+   * every surface already knows which routes to re-read, so the stream carries no team payload and
+   * cannot go stale between frames.
+   * @param req - the request, whose `close` event is the teardown trigger.
+   * @param res - the response, held open for the lifetime of the stream.
+   */
+  const events = (req: unknown, res: unknown): void => {
+    /** The subscription door; absent in a composition that mounted this module without a feed. */
+    const subscribe = deps.subscribe
+    /** The counter; a stream needs BOTH doors, so a half-wired feed is refused rather than half-served. */
+    const revision = deps.revision
+    // A REFUSAL THAT ANSWERS. A stream that cannot be served must be a normal error response: never a
+    // throw inside a request, and never a response held open with nothing ever written to it, which is
+    // what a client cannot tell apart from a healthy idle stream.
+    if (subscribe === undefined || revision === undefined) {
+      json(res, 503, { ok: false, error: "mpd-team-core: the team change feed is unavailable in this composition" })
+      return
+    }
+    /** The response, narrowed to the streaming surface this handler uses. */
+    const out = res as EventResponse
+    // PER REQUEST, never cached across requests: one host serves many sessions with different
+    // workspaces, and each panel asks about its own. `deps.workspace()` is the same impure edge the
+    // JSON routes read, and the session comes from the SAME query parameter they use.
+    /** The workspace this stream follows. */
+    const workspace = deps.workspace()
+    /** The session the request names, recorded on the open line so a log can tell one panel from another. */
+    const sessionId = sessionOf(req)
+    /** The revision reader, contained: a broken counter must refuse the stream, not redden the host. */
+    const revisionNow = (): number => {
+      try { return revision(workspace) } catch { return 0 }
+    }
+    try {
+      out.writeHead(200, {
+        "content-type": "text/event-stream; charset=utf-8",
+        // `no-transform` is the half that matters for a stream: it forbids a proxy from re-encoding or
+        // coalescing the body, which is exactly how a buffering middlebox turns SSE into a freeze.
+        "cache-control": "no-store, no-transform",
+        "connection": "keep-alive",
+        // Named explicitly even though the host's own compression filter already skips
+        // `text/event-stream`: a reverse proxy in front of the host honours THIS header, and the two
+        // layers must agree to leave the stream alone.
+        "x-accel-buffering": "no",
+      })
+      // THE HEAD IS FLUSHED EXPLICITLY, so the client's `EventSource` reports OPEN — and a QA lane's
+      // `curl -N` prints the first bytes — before any change has happened. The host does not compress
+      // this content type, so `write` itself is unbuffered; this call is about the head, which
+      // `writeHead` alone may hold until the first body byte.
+      if (typeof out.flushHeaders === "function") out.flushHeaders()
+      out.write("retry: 1000\n\n")
+      out.write(`event: hello\ndata: ${JSON.stringify({ rev: revisionNow() })}\n\n`)
+    } catch (error) {
+      deps.warn(`opening the events stream failed: ${String((error as Error)?.message ?? error)}`)
+      try { out.end() } catch { /* the socket is already gone */ }
+      return
+    }
+    /** The keep-alive interval: a comment every 15 s, which is what keeps an idle stream a stream. */
+    const ping = setInterval((): void => {
+      try { out.write(": ping\n\n") } catch { /* the teardown below owns the handle */ }
+    }, SSE_PING_MS)
+    // A keep-alive timer must never be the reason the server stays up once every client is gone.
+    /** The timer handle's optional `unref`, absent on some runtimes. */
+    const unref = (ping as { unref?: unknown }).unref
+    if (typeof unref === "function") (unref as () => void).call(ping)
+    /** The subscription, or a no-op when subscribing itself was refused. */
+    let unsubscribe: () => void = (): void => {}
+    try {
+      unsubscribe = subscribe(workspace, (): void => {
+        // Read at FLUSH time, so a burst coalesced into one call still carries the newest revision.
+        try { out.write(`data: ${JSON.stringify({ rev: revisionNow() })}\n\n`) } catch { /* closed */ }
+      })
+    } catch (error) {
+      deps.warn(`subscribing the events stream failed: ${String((error as Error)?.message ?? error)}`)
+    }
+    /** Whether this stream has been torn down, so the two close events release its resources once. */
+    let closed = false
+    /** Release the interval and the subscription; idempotent, and safe to call from any callback. */
+    const close = (): void => {
+      if (closed) return
+      closed = true
+      clearInterval(ping)
+      try { unsubscribe() } catch { /* a broken disposer must not escape the teardown */ }
+    }
+    // CLEANUP HANGS OFF THE LIFETIME OF THE REQUEST *AND* THE RESPONSE, because either can be the one
+    // a host reports. Without it every page visit would leave a listener in the feed and an interval
+    // on the event loop — the leak that turns a notification substrate into a slow one.
+    if (typeof (req as EventRequest).on === "function") (req as EventRequest).on?.("close", close)
+    if (typeof out.on === "function") out.on("close", close)
+    deps.warn(`the events stream opened for ${workspace} (session=${sessionId === "" ? "none" : sessionId})`)
+  }
+  // THE FIVE ROUTES ARE ONE FAMILY, registered together so a panel cannot find one and miss another.
+  // `/state` serves the mpd RECORD (what exists after approval); `/plan` serves the STAGED PLAN (what
+  // exists before one, keyed by `planId`); `/task` and `/mail` serve the contract/hold and the mailbox
+  // fold; `/events` STREAMS the changes those four would otherwise be polled for. Splitting them is
+  // deliberate: a surface that reads only records cannot show a staged plan, which is exactly the
+  // confusion that made the TUI plan panel claim no approval was possible.
   // `/state` serves the mpd RECORD (what exists after approval); `/plan` serves the STAGED PLAN (what
   // exists before one, keyed by `planId`); `/task` and `/mail` serve the contract/hold and the mailbox
   // fold. Splitting them is deliberate: a surface that reads only records cannot show a staged plan,
@@ -608,5 +785,8 @@ export function registerTeamRoutes(
   }) && all
   all = mount(TEAM_TASK_PATH, () => buildTeamTasks(deps.workspace())) && all
   all = mount(TEAM_MAIL_PATH, () => buildTeamMail(deps.workspace())) && all
+  // LAST, and streaming: it is the only route whose handler does not return a body, so it registers
+  // through its own helper rather than through `mount`'s one-shot shape.
+  all = mountStream(TEAM_EVENTS_PATH, events) && all
   return all
 }

@@ -1,0 +1,23 @@
+{
+  "case": "docker-client-install",
+  "ok": false,
+  "complete": false,
+  "driver": {
+    "synthesized": true,
+    "reason": "docker compose build exited 1"
+  },
+  "summary": {
+    "total": 0,
+    "passed": 0,
+    "failed": 0,
+    "null": 0,
+    "failedNames": [],
+    "nullNames": []
+  },
+  "assertions": [],
+  "observations": {},
+  "facts": {},
+  "hashes": [],
+  "steps": [],
+  "outputLog": "output.log"
+}

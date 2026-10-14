@@ -1,0 +1,4 @@
+[run-qa-lanes] drift: 2 lane script(s) on disk in no manifest entry: skills/dsh-qa/scripts/delegation-gate.ts, skills/dsh-qa/scripts/model-config-live-refresh.ts
+[run-qa-lanes] discovery: 48 lane script(s) discovered (46 listed, 2 unlisted, 19 outside every suite); .ts entries 48, underscore-excluded 0
+[run-qa-lanes] immutability required=9: team-dispatch-guard, team-watchdog-boot, team-watchdog-config, team-watchdog-heartbeat, team-watchdog-notify, tui-settings-bridge, watchdog-redesign, wave2b-lane-d, web-settings-bridge exempt=37
+drift_exit=1

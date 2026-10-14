@@ -317,7 +317,7 @@ export interface DshSpawnSpec {
   /** Model id for the child, merged after the flat provider/model keys. */
   model?: string
   /** Harness-shaped route object; its keys are merged after the flat ones. */
-  agentOptions?: { provider?: string; model?: string }
+  agentOptions?: { provider?: string; model?: string; reasoningEffort?: string }
   /** Persona text the host injects into the child's system prompt. */
   persona?: string
   /** Tool filter forwarded verbatim; the host validates every name in it. */
@@ -1118,6 +1118,93 @@ export interface DshLlmCatalog {
   providers: DshLlmCatalogProvider[]
   /** True when any part of the catalog could not be read (missing seam, rejecting provider/model). */
   degraded: boolean
+}
+
+/**
+ * The route fields one child run is described by, as an effort-carrying caller states them.
+ *
+ * This is the shape `mpd-roles-plugin` resolves a `teamModels` slot into and the shape
+ * `mpd-roster-provider-plugin` resolves from a teammate's descriptor label; both hand it to
+ * {@link withSupportedEffort} before the provider ever sees it.
+ */
+export interface DshEffortRoute {
+  /** Provider id the child run will use; one half of the catalog key. */
+  provider: string
+  /** Model id the child run will use; the other half of the catalog key. */
+  model: string
+  /** The effort the caller WANTS sent; dropped when the catalog says the model declares none. */
+  reasoningEffort?: string
+}
+
+/**
+ * Whether the host catalog lists this provider/model with NO reasoning efforts at all.
+ *
+ * The distinction this module rests on: `true` means the host itself listed the model and its effort
+ * array is EMPTY — the model is known and declares no reasoning support, so ANY effort keyword handed
+ * to it is a value the provider cannot accept and the call fails. `false` is ALSO the honest "no
+ * knowledge" answer (the provider or model is not listed at all, or the read was degraded): an
+ * incapability nobody measured is never inferred.
+ *
+ * @param catalog - the catalog `DshAdapter.llmCatalog()` projected.
+ * @param provider - provider id the run will use.
+ * @param model - model id the run will use.
+ * @returns true only when both the provider AND the model are listed with an empty `efforts` array.
+ */
+export function modelDeclaresNoEffort(catalog: DshLlmCatalog, provider: string, model: string): boolean {
+  /** The catalog's own entry for this model, or undefined when the read did not list it. */
+  const entry = catalog.providers.find((p) => p.id === provider)?.models.find((m) => m.id === model)
+  return entry !== undefined && Array.isArray(entry.efforts) && entry.efforts.length === 0
+}
+
+/**
+ * The route to actually SEND: the caller's own, or a copy with `reasoningEffort` removed when the
+ * catalog says the model declares no reasoning efforts at all.
+ *
+ * WHY THIS EXISTS. A `teamModels` slot is read MATERIALISED over its schema defaults, so a workspace
+ * that changed only a slot's provider/model still carries the slot's default effort (`max`/`high`).
+ * Handing that keyword to a model the host lists with an EMPTY effort array fails the whole call —
+ * the reported defect, on `mpd_role_spawn`, `mpd_workmate_spawn` and a slot-routed `spawn_teammate`
+ * alike. Both settings front doors already DERIVE the effort list from the selected model's own
+ * `efforts`; this is the runtime half of the same adaptation.
+ *
+ * The rule is deliberately narrow, and it is NOT clamping:
+ *   * a model listed with NO efforts loses the keyword — the run proceeds on the model's own default
+ *     reasoning behaviour, and the drop is logged so an adapted call is never silent;
+ *   * a model that DOES declare efforts keeps the caller's keyword UNCHANGED, supported or not: an
+ *     unsupported keyword there is a configuration error that must stay visible, never be swapped for
+ *     another value;
+ *   * an unknown model, a composition without the catalog seam and a rejected catalog read keep the
+ *     keyword too, because "not listed" is not "declares none".
+ *
+ * NEVER throws: the catalog read is contained, so a degraded host cannot fail a spawn here.
+ *
+ * @param dsh - the adapter (or a double) carrying the catalog read; a missing seam adapts nothing.
+ * @param route - the caller's route, or `undefined` when the caller routes nothing.
+ * @returns the SAME route object when nothing is adapted, and a NEW copy without `reasoningEffort`
+ *   when the model declares none — object identity tells the two apart.
+ */
+export async function withSupportedEffort(
+  dsh: { llmCatalog?: (() => Promise<DshLlmCatalog>) | undefined } | undefined,
+  route: DshEffortRoute | undefined,
+): Promise<DshEffortRoute | undefined> {
+  if (route === undefined) return route
+  /** The requested keyword; an absent or empty one is nothing to adapt. */
+  const effort = typeof route.reasoningEffort === "string" ? route.reasoningEffort : ""
+  if (effort === "") return route
+  if (typeof dsh?.llmCatalog !== "function") return route
+  /** The catalog as the host projects it; a rejecting read is contained and adapts nothing. */
+  let catalog: DshLlmCatalog
+  try {
+    catalog = await dsh.llmCatalog()
+  } catch {
+    return route
+  }
+  if (!modelDeclaresNoEffort(catalog, route.provider, route.model)) return route
+  /** The route with the unusable keyword removed; every other field survives untouched. */
+  const adapted: DshEffortRoute = { ...route }
+  delete adapted.reasoningEffort
+  rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${route.provider}/${route.model} declares no reasoning efforts — the "${effort}" effort is omitted (a keyword this model cannot take fails the call)`)
+  return adapted
 }
 
 /**
@@ -1968,6 +2055,91 @@ export function rowLogLine(name: string, line: string): void {
     entry.sink.write(line)
   } catch {
     // Never throw and never print: a diagnostic must not take a boot down.
+  }
+}
+
+/**
+ * One attempt at applying a tool-name list through the harness's OWN validation.
+ *
+ * The callback is handed the CURRENT candidate list and either applies it (returning the restriction's
+ * disposer, which the helper releases before it returns) or throws the harness's own error.
+ */
+export type RestrictAttempt = (names: readonly string[]) => (() => void) | undefined
+
+/** What one tolerant restriction produced: the list the harness ACCEPTED and the names it rejected. */
+export interface RestrictToolsOutcome {
+  /** The names that survived the harness's validation — the list a caller may really pass on. */
+  applied: readonly string[]
+  /** The names the harness reported as unknown, pruned in the order it named them. */
+  pruned: readonly string[]
+}
+
+/**
+ * Extract the tool names a `tools.restrict()` rejection named as unknown.
+ *
+ * The message shape is the harness's own (`dsh-tools`):
+ * `tools.restrict() names unknown global tool[s] "a", "b"; known global tools: …` — the QUOTED names
+ * are the unknown ones, so parsing stops at `; known global tools:` and never reads the known list as
+ * a verdict. A message that carries no quoted name is not a parsable rejection.
+ *
+ * @param error - the thrown value from one restrict attempt.
+ * @returns the unknown names, or `undefined` when this is not the unknown-names rejection.
+ */
+function unknownRestrictedNames(error: unknown): string[] | undefined {
+  /** The thrown message, read defensively: a non-Error rejection carries no `.message`. */
+  const message = error instanceof Error ? error.message : typeof error === "string" ? error : ""
+  if (!/names unknown global tool/.test(message)) return undefined
+  /** Everything before the known-tools tail, which is the only part that names the rejections. */
+  const head = message.split("; known global tools:")[0] ?? ""
+  /** Every quoted token in that head, in the order the harness printed them. */
+  const names = [...head.matchAll(/"([^"]+)"/g)].map((match) => String(match[1] ?? "")).filter((name) => name !== "")
+  return names.length > 0 ? names : undefined
+}
+
+/**
+ * Apply a canonical tool-name list through the harness's own validation, pruning what it rejects.
+ *
+ * WHY THIS EXISTS (measured defect F2, 2026-10-10): a read-only spawn's deny list must name tools the
+ * PROFILE really registers, because `tools.restrict()` rejects the WHOLE list when one name is unknown
+ * (`names unknown global tools …`) and the harness offers no ignore-unknown option — so one unregistered
+ * name (the two `mcp__lsp__*` names on a profile without `cclsp`) killed EVERY read-only spawn of both
+ * the roster and the workmate library, which is exactly what pushed the captain onto the official
+ * `subagent` tool. The harness's own validation stays the ONLY pruner: this helper never probes the
+ * registry with `hasTool` (the glossary rule — the canonical list is never pre-filtered), it calls the
+ * real `restrict` and reads the verdict out of the rejection.
+ *
+ * EXACTLY ONE RETRY: the second failure — whatever it is — is rethrown, so a harness that rejects the
+ * pruned list too, or that fails for another reason, still reddens loudly instead of silently dropping
+ * the read-only guarantee.
+ *
+ * @param restrict - one attempt at applying a list (the harness's own `tools.restrict`, bound).
+ * @param names - the CANONICAL list, which is never mutated.
+ * @returns the accepted list and the pruned names.
+ */
+export function restrictToolsTolerant(restrict: RestrictAttempt, names: readonly string[]): RestrictToolsOutcome {
+  /** The candidate list, narrowed by at most one pruning round. */
+  let candidate: readonly string[] = [...names]
+  /** The names the harness rejected, in the order it named them. */
+  const pruned: string[] = []
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      /** The restriction this attempt applied, released at once: a probe must not linger. */
+      const release = restrict(candidate)
+      if (typeof release === "function") release()
+      return { applied: candidate, pruned }
+    } catch (error) {
+      // The cap is the contract: a second failure of ANY kind is rethrown, never retried again.
+      if (attempt >= 1) throw error
+      /** The names the harness itself reported as unknown, or `undefined` for any other failure. */
+      const unknown = unknownRestrictedNames(error)
+      if (unknown === undefined) throw error
+      /** The candidate minus the rejected names, keeping the canonical order of the survivors. */
+      const next = candidate.filter((name) => !unknown.includes(name))
+      // Nothing to prune means the retry would repeat the same call; the rejection stands.
+      if (next.length === candidate.length) throw error
+      pruned.push(...candidate.filter((name) => unknown.includes(name)))
+      candidate = next
+    }
   }
 }
 

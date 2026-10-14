@@ -26,7 +26,7 @@ import {
 import type { ArmedLoopView, EnvelopeDecision, VerifierSeatView } from "../src/law.ts"
 import { buildRecord, REFUSAL, validateVerificationRecord } from "../src/record.ts"
 import type { ValidationContext, VerificationRecord } from "../src/record.ts"
-import { appendEscape, readEscapes, readLoops, writeLoop, writeSeats, readSeats, mintId, sha256File, verifyRoot } from "../src/ledger.ts"
+import { appendEscape, hashDoc, readEscapes, readLoops, writeLoop, writeSeats, readSeats, mintId, sha256File, toPosixRelative, verifyRoot } from "../src/ledger.ts"
 import { GATE_TABLE, gateById, probeArtifacts } from "../src/gates.ts"
 import { DEFAULT_LOOP_TTL_MS, readBootMarker, writeBootMarker } from "../src/tools.ts"
 
@@ -249,7 +249,7 @@ describe("the verifier's envelope", () => {
     expect(verifierEnvelopeDecision({ toolName: "bash", args: {}, workspaceRoot: ws, seat: undefined }).deny).toBeUndefined()
   })
   test("bash and the source-returning tools are DENIED outright", () => {
-    for (const toolName of ["bash", "powershell", "pwsh", "mcp__ast_grep__rewrite", "mcp__ast_grep__scan", "mcp__lsp__rename", "mcp__codegraph__codegraph_explore"]) {
+    for (const toolName of ["bash", "powershell", "pwsh", "mcp__ast_grep__rewrite", "mcp__ast_grep__scan", "mcp__lsp__rename_symbol", "mcp__lsp__rename_symbol_strict", "mcp__lsp__get_diagnostics", "mcp__lsp__find_definition", "mcp__codegraph__codegraph_explore"]) {
       expect(verifierEnvelopeDecision({ toolName, args: {}, workspaceRoot: ws, seat: seat(false) }).deny).toBeDefined()
     }
   })
@@ -525,6 +525,41 @@ describe("the ledger and the gates", () => {
     expect(readings[1].exists).toBe(false)
     rmSync(ws, { recursive: true, force: true })
   })
+  test("a hashed document INSIDE the workspace is spelled workspace-relative POSIX on every platform", () => {
+    // THE PROPERTY AC-D2 asserts end to end, pinned here per platform: `basis.docs[].path` must be the
+    // spelling `normalizeContractPath` writes, so a record's `frozenContract.path` and its
+    // `basis.docs[].path` agree. The win32 defect made the containment test answer with the ABSOLUTE,
+    // machine-specific path; `relative()` is the platform's own answer and needs no prefix guessing.
+    /** The sandbox workspace. */
+    const ws = sandbox()
+    mkdirSync(join(ws, ".mpd", "plans"), { recursive: true })
+    writeFileSync(join(ws, ".mpd/plans/wave.md"), "# contract\n", "utf8")
+    expect(hashDoc(ws, join(ws, ".mpd", "plans", "wave.md"))?.path).toBe(".mpd/plans/wave.md")
+    // THE NEGATIVE HALF, so this arm cannot pass by always answering a relative path: a document OUTSIDE
+    // the workspace keeps the caller's own spelling.
+    /** A document in a SIBLING directory, which is not inside the workspace. */
+    const outside = join(ws, "..", "mpd-verify-outside.md")
+    writeFileSync(outside, "# elsewhere\n", "utf8")
+    expect(hashDoc(ws, outside)?.path).toBe(outside)
+    rmSync(outside, { force: true })
+    rmSync(ws, { recursive: true, force: true })
+  })
+  test("the separator translation keeps a POSIX filename's backslash and translates only win32's (PR #38 review)", () => {
+    // THE INVARIANT A REVIEWER MUST BE ABLE TO FALSIFY: a backslash is a LEGAL FILENAME character on
+    // POSIX, so translating separators unconditionally would store a path that no longer identifies the
+    // file that was hashed. The separator is taken as an ARGUMENT, so BOTH branches are executable on
+    // every platform — an arm written against the filesystem could only be skipped on win32, and a
+    // skipped arm proves nothing.
+    expect(toPosixRelative("a\\b.md", "/")).toBe("a\\b.md")
+    expect(toPosixRelative("a\\b.md", "\\")).toBe("a/b.md")
+    // The ordinary shapes, both ways: a nested path, the root-level file, and the idempotent case.
+    expect(toPosixRelative(join("packages", "a", "src", "b.ts"), "\\")).toBe("packages/a/src/b.ts")
+    expect(toPosixRelative("a.ts", "\\")).toBe("a.ts")
+    expect(toPosixRelative("packages/a/b.ts", "/")).toBe("packages/a/b.ts")
+    // The DEFAULT is this platform's own separator, which is what `hashDoc` relies on — so the two
+    // explicitly-passed arms above cannot drift from the shipped call.
+    expect(toPosixRelative(join("x", "y"))).toBe("x/y")
+  })
 })
 
 describe("config and identity", () => {
@@ -558,6 +593,37 @@ describe("the one-git-writer rule (§5, made mechanical)", () => {
       // THE OTHER DIRECTION on the SAME command: §5 binds everybody EXCEPT the captain.
       expect(gitWriterDecision({ command, topLevelCaptain: true })).toBeUndefined()
     }
+  })
+  test("the DENIAL states the class the predicate decided, and names the user's own shell", () => {
+    /** The denial a member/child session receives. */
+    const child = gitWriterDecision({ command: "git commit -m x", topLevelCaptain: false, callerClass: "child" })
+    expect(child).toContain("member/child session of this workspace")
+    expect(child).toContain("parent session")
+    expect(child).toContain("user's OWN shell")
+    /** The denial a caller the predicate could NOT classify receives — the fail-closed case. */
+    const headerless = gitWriterDecision({ command: "git commit -m x", topLevelCaptain: false, callerClass: "headerless" })
+    expect(headerless).toContain("no session header")
+    // IT IS NOT CALLED A MEMBER: the sentence states the class that was really decided, never a guess.
+    expect(headerless).not.toContain("member/child session")
+    // NEITHER SENTENCE ASSERTS TOP-LEVELNESS — the old one claimed "NOT the workspace's top-level captain"
+    // after testing only a preset name, which is the defect T-92 records.
+    expect(child).not.toContain("top-level")
+    expect(headerless).not.toContain("top-level")
+  })
+  test("the captain-write denial makes no claim about top-levelness either", () => {
+    /** The sandbox workspace. */
+    const ws = sandbox()
+    /** The refusal a gated code write receives. */
+    const decision = captainWriteDecision({
+      toolName: "write", args: { file_path: "packages/a/src/index.ts" }, workspaceRoot: ws,
+      sessionId: "captain-session", topLevel: true, loops: [], escapeUses: 0, now: new Date(),
+    })
+    expect(decision.deny).toBeDefined()
+    expect(String(decision.deny)).not.toContain("top-level")
+    // The routes it must still name, so the sentence is informative rather than merely honest.
+    expect(String(decision.deny)).toContain("DELEGATE")
+    expect(String(decision.deny)).toContain("mpd_verify_open")
+    rmSync(ws, { recursive: true, force: true })
   })
   test("read-only git stays open to everyone", () => {
     for (const command of ["git status", "git log --oneline -3", "git diff HEAD", "git show HEAD:x", "git grep guard", "git rev-parse HEAD", "git blame AGENTS.md"]) {

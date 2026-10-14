@@ -55,6 +55,7 @@ code, scripts and docs still resolves. The register is `agent-references/index.m
 | File | Holds | Open it when |
 |---|---|---|
 | `agent-references/troubleshooting.md` | the full symptom → cause/fix table (the former body of §12, moved verbatim 2026-09-17 by the T-22 instruction-budget split) | a boot, gate, tool or team behaviour is wrong — look the symptom up before inventing a fix |
+| `agent-references/repository-layout.md` | the map of §3: every root entry, every `packages/<dir>` and what each one owns (the tree moved there VERBATIM 2026-10-08 by the wave E instruction-budget split) | you need to know where a file, a package or a gate lives before opening paths at random |
 | `agent-references/verification-flow.md` | the ordered verification flow behind §4/§11 — AND the former §4 body verbatim (the full gate table with every per-row measurement): what each gate is worth, why the Docker lane is the LAST step, and the measured rootless / skip / `--require-docker` policy | you run a verification pass, or a Docker step skipped and you need to know why |
 | `agent-references/seam-adapters.md` | the TWO contact surfaces in detail (§6): the harness adapter and the DSH-TUI adapter, the fifteen `tui*` seams (the fourteen dsh-tui has exposed since 0.12.0, plus the `tuiPanels` sidebar registry 0.13.0 added) with their binder/probe/degrade discipline, the R5 "no terminal writes" rule and its gates, the declared WEB-plane residual, and the upstream panel-seam ask (ANSWERED for the sidebar by 0.13.0, still open for the dashboard) | you touch a `ctx.tui*` seam, an MPD log sink, an MCP launcher's stdio, or you are about to add a THIRD contact surface |
 | `agent-references/overview-and-provenance.md` | the full §1 body: what the bundle carries from upstream, the adopted-then-retired agent-teams body, the declared-dependency mount mechanism, the ULW/GOAL detail and the session-start gate's softer signals | you need the provenance or the composition history behind §1 before restating it |
@@ -67,16 +68,20 @@ code, scripts and docs still resolves. The register is `agent-references/index.m
 
 ## 1. Overview & Provenance
 
-**my-power-dsh** is a DeepSeek Harness (DSH) plugin bundle. **From upstream**: the roster, the
-model-chain vocabulary and the roster's stable ids, plus a pinned capability baseline —
+**my-power-dsh** is a DeepSeek Harness (DSH) plugin bundle. **From upstream**: the roster's names and
+stable ids, the model-chain vocabulary and a pinned capability baseline —
 `code-yeongyu/oh-my-openagent` (base commit `8c57e46`, v5.0.0-beta.20, recorded in `VENDOR_LOCK.json` as
-HISTORICAL provenance) whose 11 specialists ship as adapted teammate templates and workmate BASE
-templates. **That upstream is a REFERENCE, not a dependency**: nothing in this tree reads, copies,
+HISTORICAL provenance) — a record of where that vocabulary came from. **That upstream is a REFERENCE,
+not a dependency**: nothing in this tree reads, copies,
 patches, fingerprints or audits its sources, nothing needs a checkout of it, and no gate fails when it is
-unreachable — the pin is a record of where the adaptation came from. **Ours**: the DSH plumbing, the plugin set, the `mpd` preset and the QA suite. Upstream spec
+unreachable. **Ours**: the DSH plumbing, the plugin set, the `mpd` preset and the QA suite. Upstream spec
 parity (see `docs/feature-audit.md`) is an engineering reference, not an identity label — describe this
-repository by what it ships, never by what it is not. License: SUL-1.0 (`LICENSE.md`), inherited from
-upstream; attribution is declared in `README.md` and `LICENSE-NOTICES.md`. The full composition and
+repository by what it ships, never by what it is not. The CONTENT behind that vocabulary no longer
+travels with it: the skill corpus is MIT (re-sourced from the same author's `lazycodex`), the 11 persona
+texts were re-sourced from permissively licensed public agent prompts, and the vendored cores, the MCP
+servers and the adopted agent-teams body were replaced or deleted (de-omo waves A–F). License: **MIT**
+(`LICENSE.md`, Copyright (c) 2026 HaroldZ32); third-party components keep their own licences, declared
+per component in `LICENSE-NOTICES.md`. The full composition and
 provenance narrative is in `agent-references/overview-and-provenance.md`.
 
 - **Naming.** Our prefix is **`mpd`** (packages, plugin ids, tool names `mpd_*`, preset id `mpd`, env
@@ -89,45 +94,42 @@ provenance narrative is in `agent-references/overview-and-provenance.md`.
   never by their internal stable `id`. One-shot consult goes through `mpd-roles-plugin`; team work uses
   the **official Agent Teams plugin** (this bundle's `mpd-agent-team` / `mpd-tool-agent-team` /
   `mpd-ui-agent-team` rows); durable instances come from the **workmate library**
-  (`mpd-workmate-plugin`). §13 defines roster, stable id, workmate and team-model slot precisely — read
-  §13 before touching any of them.
+  (`mpd-workmate-plugin`). §13 defines roster, stable id, workmate and team-model slot — read §13 before
+  touching any of them.
 - **THE TEAM RECORD IS OURS (team-plane split, 2026-09-30).** `mpd-team-core-plugin` owns the team
   (roster, board, DAG, `kind`/`attempt`/`round`/`verdict`) in `.mpd/team/teams/<id>.json`, served as
-  **`mpdTeams`** and over the host route `/plugins/mpd-team/state`; `mpd-dsh-adapter` mediates the ONE
-  execution seam, **`TeamExecutor`**, whose **native** backend (over `ctx.subagents.startContinuable`)
-  is the DEFAULT and the official `dsh.team*` calls the FALLBACK. No mpd surface reads
-  `dsh.teamLiveTeams()` any more. See `docs/plan-team-plane-split.md`.
-- **The vendored `agent-teams` body is RETIRED (2026-09-27) AND REMOVED (2026-10-07)**: harness
-  0.1.7-rc.2's official Agent Teams plugin replaced it, no loader row ever mounted it after the
-  retirement, and the de-vendor wave deleted the tree outright. Its `agent_teams_*` tools, its
-  `<workspace>/.mpd/team` record and its `mpd-delta` registry are NOT part of any shipped session, and
-  no file here reads, copies, patches or fingerprints anything outside this repository. What SURVIVED
-  the deletion was relocated into mpd-owned homes as our own code: the schemastery validator now lives
-  in `packages/mpd-schemastery/**` (four shipped plugins import it) and the prebuilt browser client
-  bundle in the web package, with the upstream MIT acknowledgement carried in `LICENSE-NOTICES.md`.
-- **A dependency a bundle DECLARES is mounted by a row that needs it**: the three official Agent Teams
-  packages are declared in `dependencies` and materialized by `dsh-app-boot`'s
-  `healProfileModuleFallback` before the loader runs.
+  **`mpdTeams`** and over `/plugins/mpd-team/state`; `mpd-dsh-adapter` mediates the ONE execution seam,
+  **`TeamExecutor`** — its **native** backend (over `ctx.subagents.startContinuable`) is the DEFAULT and
+  the official `dsh.team*` calls the FALLBACK — and NO mpd surface reads `dsh.teamLiveTeams()` any more.
+  **Long form: `agent-references/overview-and-provenance.md`.**
+- **The vendored `agent-teams` body is RETIRED (2026-09-27) AND REMOVED (2026-10-07)** — harness
+  0.1.7-rc.2's official Agent Teams plugin replaced it and the de-vendor wave deleted the tree, so its
+  `agent_teams_*` tools and its `mpd-delta` registry belong to no shipped session, and nothing here
+  reads, copies, patches or fingerprints anything outside this repository. `packages/mpd-schemastery/**`
+  and the prebuilt browser client bundle SURVIVED as our own code. **Long form:
+  `agent-references/overview-and-provenance.md`.**
+- **A dependency a bundle DECLARES is mounted by a row that needs it** — the official Agent Teams
+  packages are declared in `dependencies`, materialized by `dsh-app-boot`'s `healProfileModuleFallback`
+  before the loader runs.
 - **The persisted GOAL and ULW.** `mpd-goal-plugin` bridges the harness goal domain (`mpd_goal_status` /
   `mpd_goal_anchor` / `mpd_goal_finish` plus the `goal.*` auto-anchor contract); a run that ends
-  `max-rounds` deliberately LEAVES ITS GOAL ARMED — the handoff to the harness's round driver — and goal
-  mutations go through the harness goal TOOLS, never `ctx.goals`. `mpd-ulw-plugin` (C2 ultrawork v2)
-  answers `/ulw <objective>` and `/ultrawork <objective>` by submitting the ULW activation directive as
-  the invoking agent's OWN next user turn, so the run actually starts. Detail and evidence:
-  `agent-references/overview-and-provenance.md`.
+  `max-rounds` deliberately LEAVES ITS GOAL ARMED, and goal mutations go through the harness goal TOOLS,
+  never `ctx.goals`. `mpd-ulw-plugin` (C2 ultrawork v2) answers `/ulw <objective>` and `/ultrawork
+  <objective>` by submitting the ULW activation directive as the invoking agent's OWN next user turn, so
+  the run actually starts. **Long form: `agent-references/overview-and-provenance.md`.**
 - **The session-start complexity gate is MECHANICAL — it stages an APPROVABLE PLAN SHELL, never a
   team.** The frozen predicate `trigger = explicit flag OR (matchedSignals >= 1)` runs at the session's
-  first pre-step and the notice keeps the marker `[AgentTeams] Session-start team rule`; on a trigger the
-  gate STAGES a 0-member, 0-task plan shell through the `agent_teams_plan` tool and injects ONE notice
-  naming the returned plan id — NOTHING is spawned, and the shell is INERT until the captain extends it
-  (`add_member` / `create_task`) and approves it with `agent_teams_plan {action:"approve"}`. An explicit
-  `team:` / `!team` request ALSO stages the shell (signal A) and has its marker CONSUMED from the goal
-  text. `team.gate` in `mpd.jsonc` selects `mechanical` (the default) | `advisory` | `off`: without the
-  tool mounted, or under `advisory`, the ONE notice is advisory and says `NO team was staged`, and the
-  captain stages a team itself when the work warrants one — or continues solo and says so. Signal D is an
-  ACTIVE boulder work for this workspace (`status: "active"` in `.mpd/boulder.json`) — a plan FILE alone
-  is NOT a signal (repaired 2026-10-07). Softer signals and the retired path:
-  `agent-references/overview-and-provenance.md`.
+  first pre-step under the marker `[AgentTeams] Session-start team rule`; on a trigger the gate STAGES a
+  0-member, 0-task plan shell through the `agent_teams_plan` tool — NOTHING is spawned, and the shell is
+  INERT until the captain extends it (`add_member` / `create_task`) and approves it with
+  `agent_teams_plan {action:"approve"}`. An explicit `team:` / `!team` request ALSO stages the shell
+  (signal A) and has its marker CONSUMED from the goal text. `team.gate` in `mpd.jsonc` selects
+  `mechanical` (the default) | `advisory` | `off`; with the tool unmounted or under `advisory` the ONE
+  notice says `NO team was staged` and the captain stages a team itself when the work warrants one — or
+  continues solo and says so. Signal D is an ACTIVE boulder work for this workspace (`status: "active"`
+  in `<workspace>/.mpd/boulder.json`, gitignored RUNTIME STATE, not a shipped repo path) — a plan FILE
+  alone is NOT a signal (repaired 2026-10-07). **Long form — every softer signal and the retired path:
+  `agent-references/overview-and-provenance.md`.**
 - **The ONLY shipped preset is `mpd`** — the main working agent — which also carries the
   project-instruction convention: every session MUST attempt to read `AGENT.md` (falling back to
   `AGENTS.md`, then `CLAUDE.md`) via `dsh-agent-instructions`.
@@ -155,73 +157,24 @@ provenance narrative is in `agent-references/overview-and-provenance.md`.
 
 ## 3. Repository Layout
 
-```
-mpd-dsh/
-├── AGENTS.md                     # this manual
-├── README.md / README.zh-CN.md   # public overview, bilingual pair (inheritance declared in README)
-├── PLAN.md                       # port plan (Track A/B)
-├── LICENSE.md / LICENSE-NOTICES.md
-├── VENDOR_LOCK.json              # vendored asset fingerprints (+ the upstream recorded as a _note historical reference)
-├── package.json                  # THE BUNDLE MANIFEST (name @mpd-dsh/mpd): dsh.bundle.patch
-│                                 #   (an ARRAY of the bundle patch + the preset patch) + dsh.client
-│                                 #   + exports -> `dsh plugin add .` is the whole install
-├── cordis.patch.yml              # THE host-plane patch layer, at the package ROOT (standard layout)
-├── tsconfig.json                 # root tsgo config (covers packages/*/src/**/*.ts)
-├── presets/                      # mpd.patch.yml: the `preset-mpd` row (@deepseek-ai/dsh-agent-preset,
-│                                 #   inline plugin list). The retired directory form is gone.
-├── scripts/                      # gates, packer, installer, extension CLI, vendor + delta appliers
-│                                 #   + lib/repo.ts: the shared primitives every script imports
-├── packages/                     # one dir per plugin package (src/ + dist/ + README.md each);
-│   ├── mpd-dsh-adapter-plugin/   # THE single contact surface with harness seams (§6)
-│   ├── mpd-roles-plugin/         # the specialist roster + mpd_roles_* + the mpdRoles service
-│   ├── mpd-verify-plugin/        # THE VERIFICATION LAW (§5): the ledger under .mpd/verify/, the five
-│   │                             #   mpd_verify_* tools, the record validator and the receipt probe
-│   ├── mpd-workmate-plugin/      # durable evolving agent library (~/.mpd/workmate)
-│   ├── mpd-ulw-plugin/           # C2 ultrawork v2 engine: mpd_ultrawork + /ulw, /ultrawork
-│   ├── mpd-mcp-astgrep / mpd-mcp-codegraph / mpd-mcp-gitbash / mpd-mcp-lsp / mpd-mcp-shared /
-│   │                             # the MCP servers: AST search, code graph, git-bash, LSP, shared libs
-│   ├── mpd-tools-plugin/         # B1: write guard, output truncation, edit-error recovery
-│   ├── mpd-hashline-plugin/      # C3: anchored edit discipline (vendored hashline-core)
-│   ├── mpd-boulder-plugin/       # C5: durable work ledger (vendored boulder-state); anchors a goal
-│   ├── mpd-goal-plugin/          # C8: the persisted-GOAL bridge — mpd_goal_* + the `mpdGoal` service
-│   │                             #   ULW/boulder auto-anchor from (`goal.*`, the anchors sidecar)
-│   ├── mpd-config-plugin/        # C7: the mpd.jsonc runtime config layer (read by the plugins above)
-│   ├── mpd-memory-plugin/        # C6: git/svn-backed memory + the reflection state machine
-│   ├── mpd-comment-checker-plugin/ # C4: comment/docstring detection (opt-in binary)
-│   ├── mpd-modelchain-plugin/    # B4: mpd_modelchain_resolve + mpd_memory_save/recall
-│   ├── mpd-codegraph-plugin/     # binary resolve + project init + the mpd-codegraph command
-│   ├── mpd-bootstrap-plugin/     # serves <bundle>/skills by reference; cleans legacy (<=0.2.6) copies
-│   ├── mpd-team-watchdog-plugin/ # stall detection: the member record-stream fold, heartbeat store,
-│   │                             #   WARN->ESCALATE ladder, preserving hold (NEW DISPATCH only)
-│   ├── mpd-team-compact-plugin/  # compacts FINISHED teams (never the captain); ledger in .mpd/team-compact
-│   ├── mpd-team-core-plugin/     # THE TEAM RECORD + WORKFLOW + the `mpdTeams` service (W1)
-│   ├── mpd-roster-provider-plugin/ # per-member model routing for OFFICIAL teammates: registers
-│   │                             #   the `mpd-roster` subagent provider the team tool row points at
-│   ├── mpd-ext-plugin/           # the extension interface (row `mpd-ext`, service `mpdExtensions`)
-│   ├── mpd-tui-adapter-plugin/   # THE MPD<->DSH-TUI contact surface (`mpdTui`): the ONE file that may
-│   │                             #   name a `ctx.tui*` seam, plus the R5 file log sink
-│   ├── mpd-tui-plugin/           # the DSH-TUI edition's surface package (never names a `ctx.tui*` seam)
-│   ├── mpd-bundle-plugin/        # bundle web-compat: the @mpd-dsh/mpd no-op main + the combined web client
-│   └── mpd-qa-roles-probe/       # QA-only probe: mpd preset resolve + mpdRoles roster
-├── extensions/                   # <bundle>/extensions/*/mpd-ext.json + the DISABLED mpd-ext-example
-├── skills/                       # dsh-qa + our own cordis-dev + 16 ported upstream skills + svn-master
-│                                 #   (SERVED by reference; cordis-dev adapts the harness's 创造模式 skills)
-├── templates/                    # plugin/extension scaffolds shipped by the packer
-├── tests/                        # overlays/ (keep empty when rows live in the bundle) + golden/
-├── docs/                         # human-facing docs (BILINGUAL EN + zh-CN); hub is docs/index.md
-│                                 #   plan records + internal QA/golden docs are EXEMPT from the
-│                                 #   bilingual rule (the §3 policy the gate cites)
-├── agent-references/             # ON-DEMAND agent-facing reference (never auto-injected)
-└── evidence/                     # QA evidence: <domain>/<slug>/<timestamp>/ (records, language as produced)
-```
+**The full map — every root entry, every package directory and what each one owns — is in
+`agent-references/repository-layout.md` (on demand; the tree moved there VERBATIM on 2026-10-08 by the
+instruction-budget split).** The root IS the bundle package `@mpd-dsh/mpd`: `package.json` carries
+`dsh.bundle.patch` (the patch ARRAY) and `dsh.client`, `cordis.patch.yml` is the host-plane patch layer,
+`presets/` holds the `mpd` preset row, `packages/` holds one plugin package per directory, `skills/` is
+the served skill corpus, `scripts/` holds the gates / packer / installer, `templates/` and `extensions/`
+are the author-facing scaffolds and the extension root, and `docs/` / `agent-references/` / `evidence/`
+are the human-facing docs, the on-demand agent reference and the QA records.
 
 Each `packages/<pkg>/README.md` holds that plugin's own contract — this tree is a map, not a
 specification.
 
 **Instruction budget (binding):** this manual is INJECTED into every session and the budget is
 **65536 bytes**; a longer file is silently TRUNCATED, so a section past the cut stops binding unnoticed
-(measured 2026-10-07: 65923 → `truncated … to 65244`, losing most of §13). This manual measured **64996 bytes** on 2026-10-07 —
-only 540 B of margin, which is NOT headroom. The rule is therefore MOVE-FIRST: before adding to this
+(measured 2026-10-07: 65923 → `truncated … to 65244`, losing most of §13). Wave E re-measured it on
+2026-10-08 at **60456 bytes** — 5080 B of margin, restored by moving §1's long forms into
+`agent-references/overview-and-provenance.md` and §3's layout tree into
+`agent-references/repository-layout.md`. The rule is therefore MOVE-FIRST: before adding to this
 file, move a LONG FORM of comparable or larger size into `agent-references/` and leave a SHORT definition
 **plus an exact pointer** — never drop the term — then re-measure and restore a margin above **2 KB**
 (target **≤ 63.5 KiB / 65024 B**). A truncated manual is one whose tail silently stops binding, and a
@@ -298,6 +251,9 @@ lands (§9/§11).
   gates and writes evidence, and the **captain alone** commits and branches — or the captain serializes
   ONE delegated writer and freezes everyone else first. Read-only `status`/`log`/`diff`/`show`/`grep`
   stay open to all. Tag `backup/<branch>-<sha>` before any history-writing step.
+  **WHO THE CAPTAIN IS:** the workspace's **top-level session** (no parent session, delegation depth
+  `0`) — NOT a preset name. `verify-guard.ts` uses that predicate for this rule and for rule 4; the
+  preset-keyed variant that made the captain branch unreachable here is `T-92` in the reference table.
 - **Every change lands through a BRANCH + a PULL REQUEST — binding (user-set, 2026-10-06).** Nothing is
   committed straight to `dev` or `master`: cut a `feature/<slug>` or `fix/<slug>` branch, commit the wave
   there, push it, and open a PR against `dev`. **A PR DESCRIPTION IS BILINGUAL**: it carries BOTH an
@@ -321,7 +277,14 @@ lands (§9/§11).
      a Senior Engineer or Deep Worker, an evidence question to a Researcher or Explorer, a verdict
      to a Reviewer. The captain executes only what must not be delegated by rule — the single git
      writer, contract amendments and plan/roster shaping, releasing a watchdog hold, and the final
-     integration — and does so without framing it as "working solo".
+     integration — and does so without framing it as "working solo". RECONNAISSANCE is not in that set:
+     `read`/`grep`/`glob` on a SOURCE path are REFUSED for the top-level session (while the documentation
+     band `.mpd/**`, `docs/**`, `evidence/**`, `agent-references/**` and the root `*.md` stays readable),
+     so finding files and reading code are DELEGATED. **The sanctioned delegation is MECHANICAL too:** the
+     row refuses `subagent` / `subagent_fork` / `workflow` for every session the `delegation.gate` knob
+     covers (`deny` default — captain AND members; `captain`; `allow`). **Long form — the reserved set, the
+     readable band and the `captain.investigation` knob: `agent-references/verification-flow.md`, "§5 rule 2 —
+     the captain's reserved set".**
   3. **Keep requirement / task / review SEPARATE.** A dispatched piece of work gets a requirement
      task (the frozen acceptance contract), a work task and a review task rather than one lumped
      implementation task; finding-driven work uses `kind=repair` + `sourceTaskId`/
@@ -337,13 +300,9 @@ lands (§9/§11).
      A PASS with no cited documents or no gate evidence is REFUSED by the record validator, and a FAIL
      bounces the work back to a writer as a `kind=repair` task rather than being quietly fixed. Where
      the law cannot be mechanical (a composition with no `tools.guard` seam), the bound is STATED —
-     the boot line says `verifyGate=absent` — never implied. The tool surface is one row,
-     `mpd-verify-plugin`: `mpd_verify_open` / `_escape` / `_seat` / `_evidence` / `_record`, and the
-     envelope denies a bound verifier the shell, the source-returning tools and every board mutation.
-     **Two sentences this rule REPLACES**: "execute directly when it does not [help to delegate]" is no
-     longer an option for code, and "verify everything a subagent claims yourself" is no longer how the
-     main agent closes work — a claim is closed by a DIFFERENT agent's recorded verdict, and the main
-     agent's own reading of a result is INTEGRATION, which is not verification.
+     the boot line says `verifyGate=absent` — never implied. **Long form — the tool surface (the five
+     `mpd_verify_*` tools) and the two sentences this rule REPLACES: `agent-references/verification-flow.md`,
+     "§5 rule 2 — the captain's reserved set".**
   5. **The board has terminal verbs, and dispatch honours the declared owner.** `agent_teams_task`
      carries `complete`/`fail` (owner-only, optional `note`, optional `expected_revision`
      compare-and-set; a FAIL releases its dependents per OPT-1) — without them a dependency edge could
@@ -354,7 +313,10 @@ lands (§9/§11).
      `apply`, `am`, `update-index`, `worktree`, `init`, `clone`) is denied for any session that is NOT
      the top-level captain — rule 1 above is now MECHANICAL for member sessions too, with the same
      honest bound: the matcher reads a command STRING, so an obfuscated invocation can evade it. It is
-     a speed bump that makes the rule real for ordinary use, not a sandbox.
+     a speed bump that makes the rule real for ordinary use, not a sandbox. **The captain predicate
+     recognises the SEEDED FORK:** a session is a child only when the harness RECORDED a subagent origin
+     or a delegation depth ≥ 1, so the user's own session (`parentSession` + `isSeeded`, depth `0`, no
+     `origin: "subagent"`) is the CAPTAIN and its rules apply to it.
 
 ---
 
@@ -483,10 +445,9 @@ bound and the conformance failure modes — is in `agent-references/qa-disciplin
   `evidence/dsh-qa/codegraph/`). The store is a CONCATENATED-ZSTD-FRAME container, so decode frame by
   frame (a naive single `zstdDecompressSync` sees the header frame only and reports "no tool call").
 - Evidence path: `evidence/<domain>/<slug>/<timestamp>/{result.json, output.log}`.
-- **Durable anchors (T-90): an ARTIFACT PATH is the anchor — a mailbox id is not a link.** A line
-  pointer rots by an EDIT (T-55) and a mailbox id rots by a MAILBOX CLEARING, so the artifact is the
-  primary anchor, the relay is secondary, and the id is provenance, not an anchor; a seat that must cite
-  an EXCHANGE copies the quoted bytes into its own artifact. This is a CLASS rule, not a pattern hunt.
+- **Durable anchors (T-90): an ARTIFACT PATH is the anchor — a mailbox id is not a link.** A line pointer
+  rots by an EDIT (T-55), a mailbox id by a MAILBOX CLEARING; a seat citing an EXCHANGE copies the quoted
+  bytes into its own artifact. **Long form — `agent-references/qa-discipline.md`.**
 - **Derived surfaces are declared at PLAN time (T-88): `packages/*/dist/**`, `dist/mpd-package/**`,
   `VENDOR_LOCK.json` and `.mpd/plans/**` belong to the INTEGRATION task's `inScope` at CREATION.** A
   LANE must not declare a `dist/**` pattern for itself (the platform's `inScope overlaps` validator
@@ -578,9 +539,10 @@ user's own `~/.mpd/workmate`. A capability that arrives by any other route is a 
   `fileCount` + `sha256` (single file) or `treeSha` (dir, sorted relpath + per-file sha256). **The
   FINGERPRINTS are blocking; the identity half is a record.** Since the de-vendor wave (2026-10-07)
   nothing reads, copies, patches or audits the upstream repositories, so the gate needs no checkout and
-  no network, and the MCP servers' sources are snapshotted in-repo (`vendor/mcp-src/**`) as a build-time
-  input — a PACKED install ships the built `dist/` and not the ability to rebuild it from source, which
-  is a declared bound rather than an omission.
+  no network. **Nor is anything built from an in-repo snapshot any more** (wave B2, 2026-10-08): the MCP
+  servers are our own code or DECLARED npm dependencies started by thin launchers — `vendor/mcp-src/**`,
+  its `VENDOR_LOCK` asset and the retired MCP build script under `scripts/` are gone
+  (`agent-references/overview-and-provenance.md`).
 - Update policy: never chase upstream; a baseline change requires a deliberate branch + evidence.
 - Vendored skill corpus: refresh as whole-dir replacements from upstream, keep provenance links.
 - **`skills/**` has ONE writer per wave (single-skills-writer rule).** Every `skills/**` edit
@@ -597,7 +559,7 @@ user's own `~/.mpd/workmate`. A capability that arrives by any other route is a 
 
 - Credentials: only ever copied into an ephemeral QA sandbox; never committed, logged, or echoed.
 - Evidence logs must not contain secret material (api key values, tokens).
-- License: SUL-1.0 (LICENSE.md): internal/personal use; distribution free & non-commercial only.
+- License: MIT (LICENSE.md, Copyright (c) 2026 HaroldZ32); third-party components keep their own licences (LICENSE-NOTICES.md).
 
 ---
 
@@ -636,30 +598,21 @@ agent-teams dispatch defects, the failed-dependency pinning trap, the `inScope o
 profile-row loss after an unrelated install.
 
 **Harness-owned frictions — CLOSED by a rule plus a helper** (user decision 2026-09-17). Each is DSH
-behaviour or deliberate design that we do not fight; each is now "known, with a one-command fallback",
-and the detail lives in `agent-references/troubleshooting.md`:
+behaviour we do not fight; the detail and the measurements are in `agent-references/troubleshooting.md`.
 
-- **T-21 — no plugin-module hot reload.** ESM caches a module at session start, so an edit is invisible
-  until `dsh` restarts. Ask instead of guessing: `node scripts/mpd-bg.ts reload-check <module-path>`
-  → `RESTART-REQUIRED` / `FRESH` / `NO-LIVE-SESSION`.
-- **T-23 — fresh `/tmp` per bash call + `bwrap --die-with-parent`.** Long work MUST be a managed
-  background job (the bash tool's `run_in_background`), never `nohup`; start it through
-  `node scripts/mpd-bg.ts run --log <workspace-path> -- <cmd>` so the output lands in a file.
-- **T-24 — MCP children inherit fds.** Never pipe a long-lived `dsh`: `mpd-bg run` always hands the
-  child a FILE as stdout+stderr, and `node scripts/mpd-bg.ts probe <pidfile>` is a kernel-only
-  liveness check that cannot self-match a pattern.
-- **T-26 — the file sandbox is workspace-write.** `node scripts/mpd-bg.ts check-write <path>` answers
-  before a write is attempted; cross-area work needs a declared extra-write root.
-- **T-43 — the workmate library lives under `HOME`.** QA/verification MUST boot with `HOME=<sandbox>`;
-  the plugin refuses a mutation that would write the REAL `~/.mpd/workmate` (`403 real-home-refused`)
-  unless `MPD_DSH_WORKMATE_ALLOW_REAL_HOME=1` is set deliberately. A normal session is unaffected.
-- **T-54 — a sandboxed profile copy must sit at the SAME directory depth** as the installed profile
-  (the bundle dependency is a RELATIVE symlink of `..` segments); copy siblings at that depth.
-- **T-55 — cite code by SYMBOL, never by line number** (a line pointer rots: one drifted from off-by-3
-  to off-by-15 before a review caught it).
+- **T-21** no plugin-module hot reload -> ask with `node scripts/mpd-bg.ts reload-check <module-path>`.
+- **T-23** fresh `/tmp` per bash call + `bwrap --die-with-parent` -> long work is a managed background
+  job (`run_in_background`), started through `node scripts/mpd-bg.ts run --log <file> -- <cmd>`.
+- **T-24** MCP children inherit fds -> never pipe a long-lived `dsh`; probe liveness with
+  `node scripts/mpd-bg.ts probe <pidfile>`.
+- **T-26** the file sandbox is workspace-write -> `node scripts/mpd-bg.ts check-write <path>` first.
+- **T-43** the workmate library lives under `HOME` -> QA must boot with `HOME=<sandbox>`.
+- **T-54** a sandboxed profile copy sits at the SAME directory depth as the installed profile.
+- **T-55** cite code by SYMBOL, never by line number.
+- **T-92** `sessionQualifies` must not decide "is this the captain" by PRESET NAME (see §5).
 
-All seven are verified by `node scripts/mpd-bg.ts --self-test` (13 arms) plus the two sandbox cases in
-`evidence/platform/harness-close/`.
+All seven of T-21..T-55 are verified by `node scripts/mpd-bg.ts --self-test` (13 arms) plus the two
+sandbox cases in `evidence/platform/harness-close/`.
 
 ---
 
@@ -673,20 +626,27 @@ slot, workmate) stay here.
   `mpd_role_persona`) as teammate instantiation templates for the OFFICIAL Agent Teams plugin
   (`spawn_teammate`, whose persona the captain takes from `mpd_role_persona`). The eleven members are
   addressed by NAME: Architect, Researcher, Planner, Deep Worker, Senior Engineer, Lead, Explorer,
-  Reviewer, Plan Reviewer, Vision Analyst, Junior Engineer. The stable `id` is INTERNAL — exposed by NO
-  tool output, render, web route or GUI. The **read-only discipline is the exported deny list**, exactly
-  seven names, identical in `mpd-roles-plugin` and `mpd-workmate-plugin` (asserted by `roles.test.ts`):
+  Reviewer, Plan Reviewer, Vision Analyst, Junior Engineer. The stable `id` is INTERNAL — refused as TOOL
+  INPUT (a NAME spelling only; the `mpdRoles.get` service path still resolves it) and exposed by NO tool
+  output, render, web route or GUI. The **read-only discipline is the exported deny list**, exactly
+  eight names, identical in `mpd-roles-plugin` and `mpd-workmate-plugin` (asserted by `roles.test.ts`):
   `write`, `edit`, `mpd_hashline_edit`, `bash`, `mcp__ast_grep__rewrite`, `mcp__ast_grep__scan`,
-  `mcp__lsp__rename` (a shell writes files, so `bash` stays denied; `read`/`glob`/`grep` stay available).
+  `mcp__lsp__rename_symbol`, `mcp__lsp__rename_symbol_strict` (cclsp's own names, wave B2).
   **Do NOT re-add `str_replace_editor` / `apply_patch`, and do not filter the list with `dsh.hasTool`** —
-  the harness validates the WHOLE list at spawn time, so one dead entry breaks every read-only spawn.
+  the harness validates the WHOLE list at spawn time, so one dead entry breaks every read-only spawn;
+  since 2026-10-10 that validation is TOLERATED instead of fatal (`restrictToolsTolerant` prunes the
+  names the harness itself reports as unknown, with exactly ONE logged retry — the canonical list is
+  unchanged and is still never pre-filtered).
   Full form, including the two enforcement surfaces: `agent-references/glossary.md`.
 - **team-model slot**: one of the FOUR configurable default model routes of the ROSTER members —
   `teamModels.slot{1,2,3,4}.{provider,model,reasoningEffort}` in `mpd.jsonc` / the `mpd` settings
   namespace. Slot 1 routes Architect/Planner/Reviewer/Lead/Senior Engineer, slot 2 Researcher/Explorer/
   Plan Reviewer, slot 3 Deep Worker/Junior Engineer, slot 4 Vision Analyst (the vision member — its model
   MUST accept image input). A slot that cannot be resolved fails the spawn LOUDLY, naming the member and
-  the slot, writes no state and NEVER clamps an effort. Slots apply to the ONE-SHOT paths AND to an
+  the slot, writes no state and NEVER clamps an effort. ONE ADAPTATION: a slot whose model declares NO
+  reasoning efforts at all in the live catalog is sent none (the adapter's `withSupportedEffort` drops
+  the keyword, logging it), so a materialised default cannot fail a call no configuration error caused.
+  Slots apply to the ONE-SHOT paths AND to an
   official `spawn_teammate` (routed through `mpd-roster-provider-plugin`); because the team service does
   not forward identity, **a teammate `description` that NAMES a roster member routes that member — one
   that does not inherits the Lead's route**. **Long form — the default models, the effort defaults and the

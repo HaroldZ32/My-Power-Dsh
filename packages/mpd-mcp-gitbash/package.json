@@ -3,8 +3,9 @@
   "private": true,
   "version": "0.2.3",
   "type": "module",
-  "description": "git-bash MCP integration plugin (P3)",
+  "description": "git-bash MCP integration plugin (P3): two rows, the git toolbox and the raw shell runner",
   "scripts": {
-    "test": "bun test"
+    "test": "bun test",
+    "build": "cd \"$(git rev-parse --show-toplevel)\" && bun build packages/mpd-mcp-gitbash/src/launch.ts --target node --format esm --outfile packages/mpd-mcp-gitbash/dist/launch.js"
   }
 }

@@ -1,0 +1,12 @@
+{
+  "gate": "test-qa",
+  "command": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun run test:qa",
+  "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "exitCode": 0,
+  "startedAtUtc": "2026-10-11T11:34:05Z",
+  "endedAtUtc": "2026-10-11T11:34:11Z",
+  "logPath": "output.log",
+  "logBytes": 27002,
+  "logSha256": "3552140782f9b8274247bb64a14bdd62cf722c7bb7efce1155c7fa0fa624568b",
+  "headline": "[test:qa] all self-tests passed"
+}

@@ -1,0 +1,71 @@
+[08:41:46] === F-b/S-b real-PTY arm utc-start=2026-10-08T08:41:46Z
+[08:41:46] sandbox=/tmp/mpd-fr-t6CdxU workspace=/tmp/mpd-fr-t6CdxU/ws
+[08:41:47] sandbox host version=0.14.0
+[08:41:47] bundle dist sha256=7d2f5d2a7d9437cd7c09e20cdf3d90e031b941992ae55e87fd72a539c103d2be
+[08:41:47] seed OTHER: seeded team-other-session (OTHERBOARD) for sess-other: 4 tasks
+[08:41:47] tmux grid: 140x44
+[08:41:47] waiting for the chat frame ...
+[08:42:04] CAPTURE A0-chat @ 2026-10-08T08:42:04Z
+[08:42:04] --- [1] /mpd panel (the OTHER session's board is the only one on disk)
+[08:42:05] panel rendered
+[08:42:09] CAPTURE P1-panel-open @ 2026-10-08T08:42:09Z
+[08:42:09] P1 panel-body marker : 1 occurrence(s)
+[08:42:09] P1 status row        : mpd: team OTHERBOARD 1·0/4 (workspace-level) · plans 0 · workmates 0                        ││                                         │
+[08:42:09] P1 status marker     : 1 occurrence(s) on the row
+[08:42:09] --- [2] pressing a panel key ('j') with the page open: the composer must NOT echo it
+[08:42:11] CAPTURE P2-panel-key-j @ 2026-10-08T08:42:11Z
+[08:42:11] P2 composer row      : ⌸ ❯                                                                                        ⛶││                                         │
+[08:42:11] P2 PRECONDITION HELD: 'j' was consumed by the page; the composer is still empty
+[08:42:11] --- [3] Escape with nothing pinned, then '/mpd team' typed from the composer
+[08:42:13] CAPTURE P3-after-escape @ 2026-10-08T08:42:13Z
+[08:42:13] P3 status row        : mpd: team OTHERBOARD 1·0/4 (workspace-level) · plans 0 · workmates 0                        ││                                         │
+[08:42:13] typing the command @ 2026-10-08T08:42:13Z
+[08:42:58] F-b FAIL: the scene did NOT render in 45s — the command was swallowed again
+[08:43:02] CAPTURE P4-command-reached @ 2026-10-08T08:43:01Z
+[08:43:02] P4 scene marker      : 0 occurrence(s)
+[08:43:02] P4 status row        : 
+[08:43:02] P4 other-name count  : 0 occurrence(s)
+[08:43:02] --- [4] Escape from the scene, then a second typed command
+[08:43:04] CAPTURE P5-scene-after-escape @ 2026-10-08T08:43:04Z
+[08:43:04] STEP 4 PASS: '/mpd status' answered — the keyboard is back on the chat composer
+[08:43:06] CAPTURE P6-status-command @ 2026-10-08T08:43:06Z
+[08:43:06] P6 status row        : mpd: team OTHERBOARD 1·0/4 (workspace-level) · plans 0 · workmates 0 ○ ││                                         │
+[08:43:06] === utc-end=2026-10-08T08:43:06Z sandbox=/tmp/mpd-fr-t6CdxU evidence=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/focus-release/2026-10-08T08-41-29Z/pty
+[08:43:06] tmux server stopped
+[08:43:32] === F-b/S-b real-PTY arm utc-start=2026-10-08T08:43:32Z
+[08:43:32] sandbox=/tmp/mpd-fr-ntpoXn workspace=/tmp/mpd-fr-ntpoXn/ws
+[08:43:33] sandbox host version=0.14.0
+[08:43:33] bundle dist sha256=7d2f5d2a7d9437cd7c09e20cdf3d90e031b941992ae55e87fd72a539c103d2be
+[08:43:33] seed OTHER: seeded team-other-session (OTHERBOARD) for sess-other: 4 tasks
+[08:43:33] tmux grid: 140x44
+[08:43:33] waiting for the chat frame ...
+[08:43:46] CAPTURE A0-chat @ 2026-10-08T08:43:46Z
+[08:43:46] --- [1] /mpd panel (the OTHER session's board is the only one on disk)
+[08:43:47] panel rendered
+[08:43:51] CAPTURE P1-panel-open @ 2026-10-08T08:43:51Z
+[08:43:51] P1 panel-body marker : 1 occurrence(s)
+[08:43:51] P1 status row        : mpd: team OTHERBOARD 1·0/4 (workspace-level) · plans 0 · workmates 0                        ││                                         │
+[08:43:51] P1 status marker     : 1 occurrence(s) on the row
+[08:43:51] --- [2] pressing a panel key ('j') with the page open: the composer must NOT echo it
+[08:43:53] CAPTURE P2-panel-key-j @ 2026-10-08T08:43:53Z
+[08:43:53] P2 composer row      : ⌸ ❯                                                                                        ⛶││                                         │
+[08:43:53] P2 PRECONDITION HELD: 'j' was consumed by the page; the composer is still empty
+[08:43:53] --- [3] Escape with nothing pinned, then '/mpd team' typed from the composer
+[08:43:55] CAPTURE P3-after-escape @ 2026-10-08T08:43:55Z
+[08:43:55] P3 status row        : mpd: team OTHERBOARD 1·0/4 (workspace-level) · plans 0 · workmates 0                        ││                                         │
+[08:43:57] CAPTURE P3b-composer-echo @ 2026-10-08T08:43:57Z
+[08:43:57] P3b composer row     : ⌸ ❯ /mpd team                                                                              ⛶││                                         │
+[08:43:57] F-b HALF 1 PASS: the typed text appears in the CHAT composer — the keyboard is back
+[08:43:57] submitting the command @ 2026-10-08T08:43:57Z
+[08:43:58] F-b HALF 2 PASS: the command REGISTRY answered — the full-screen scene rendered
+[08:44:01] CAPTURE P4-command-reached @ 2026-10-08T08:44:01Z
+[08:44:01] P4 scene marker      : 1 occurrence(s)
+[08:44:01] P4 other-name count  : 0 occurrence(s)
+[08:44:01] P4 state-2 rows      : marker=1 count=1 scope-token=0
+[08:44:01] --- [4] Escape from the scene, then a second typed command
+[08:44:03] CAPTURE P5-scene-after-escape @ 2026-10-08T08:44:03Z
+[08:44:03] STEP 4 PASS: '/mpd status' answered with the MARKED row — the keyboard is back on the composer
+[08:44:05] CAPTURE P6-status-command @ 2026-10-08T08:44:05Z
+[08:44:05] P6 status output     : mpd: team OTHERBOARD 1·0/4 (workspace-level) · plans 0 · workmates 0 ○ ││                                         │
+[08:44:05] === utc-end=2026-10-08T08:44:05Z sandbox=/tmp/mpd-fr-ntpoXn evidence=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/focus-release/2026-10-08T08-41-29Z/pty
+[08:44:05] tmux server stopped

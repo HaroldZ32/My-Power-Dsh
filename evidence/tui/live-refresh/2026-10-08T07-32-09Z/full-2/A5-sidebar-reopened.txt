@@ -1,0 +1,40 @@
+
+                                                                                              │ ◀    ○      ○    MPD     ○      ○     ▶
+  ✦ dsh-TUI  v0.14.0                                                                          ├───────────────────────────────────────────
+  ████   █████  █████  ████    ████  █████  █████  █   █                                      │┌MPD──────────────────────────────────────┐
+  █   █  █      █      █   █  █      █      █      █  █                                       ││MPD                                     ⤢│
+  █   █  ████   ████   ████    ███   ████   ████   ███                                        ││⚪ No subagents in the current sessionple│
+  █   █  █      █      █          █  █      █      █  █                                       ││  Subagents appear here once the main age│
+  ████   █████  █████  █      ████   █████  █████  █   █                                      ││team webui-tui-i18n  phase active  tasks │
+                                                                                              ││                                         │
+  █   █    ███    ████    █   █   █████    ████    ████                                       ││╭────────╮   ╭────────╮   ╭────────╮   ╭─│
+  █   █   █   █   █   █   ██  █   █       █       █                                           │││ ✓ T1   │   │ ◐ T2   │   │ ✓ T3   │   │ │
+  █████   █████   ████    █ █ █   ████     ███     ███                                        ││╰───┬────╯   ╰────────╯   ╰───┬────╯   ╰─│
+  █   █   █   █   █  █    █  ██   █           █       █                                       ││    │                         │          │
+  █   █   █   █   █   █   █   █   █████   ████    ████                                        ││    ├─────────────────────────╯          │
+  deepseek-flash · Max effort                                                                 ││    ▼                                    │
+  /tmp/mpd-lr-lP1EpU/ws                                                                       ││╭───┴────╮                               │
+  Tip: Ctrl+R searches input history; / searches the transcript · /tips more tips             │││ ✓ T4   │                               │
+                                                                                              ││╰───┬────╯                               │
+    Explore the uncharted!                                                                    ││    │                                    │
+                                                                                              ││    │                                    │
+                                                                                              ││    ▼                                    │
+   ▶ （Ctrl+P to expand） Context loaded · System prompt 19 sections · Runtime context 2 ite… │││ ○ T5   │                               │
+                                                                                              ││╰───┬────╯                               │
+                                                                                              ││    │                                    │
+                                                                                              ││    │                                    │
+                                                                                              ││    ▼                                    │
+                                                                                              ││╭───┴────╮                               │
+                                                                                              │││ ◐ T6   │                               │
+                                                                                              ││╰────────╯                               │
+                                                                                              ││██████████████████████████████████░░░░░░░│
+                                                                                              ││view boxes · 7 tasks · ranks derived     │
+                                                                                              ││unresolved blockers: T7                  │
+  mpd: team webui-tui-i18n 5·3/7 · plans 0 · workmates 0                                      ││▼/▸ blocker → dependent · ▶ focus        │
+                                                                                              ││✓ completed · ◐ running · ○ open=blocked │
+  ╭──────────────────────────────────────────────────────────────────────────────────────────╮││✗ failed · ○ blocked=open · ⊘ cancelled  │
+  ⌸ ❯                                                                                        ⛶││⤢ fullscreen · ↑↓/jk move · Enter pin · E│
+  ╰──────────────────────────────────────────────────────────────────────────────────────────╯│└─────────────────────────────────────────┘
+   deepseek-flash · max · ws                                                                  ├───────────────────────────────────────────
+                                                                                              │ Esc chat · ←/→ panels · z zoom · +/- wid…
+

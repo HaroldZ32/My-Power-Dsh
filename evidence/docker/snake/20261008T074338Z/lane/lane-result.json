@@ -1,0 +1,1220 @@
+{
+  "case": "docker-client-install",
+  "title": "a clean ubuntu:24.04 container installs and boots @mpd-dsh/mpd from a copy of this checkout",
+  "ok": false,
+  "complete": false,
+  "image": "mpd-docker-e2e:local",
+  "startedAt": "2026-10-08T08:06:33.000Z",
+  "finishedAt": "2026-10-08T08:44:25.577Z",
+  "durationSeconds": 2273,
+  "harness": {
+    "installed": "0.2.0-rc.2",
+    "expected": "0.2.0-rc.2",
+    "assertion": "harness.version",
+    "node": "v24.21.0 (npm 11.19.0)",
+    "bun": "1.4.2 (route=official-script, BUN_INSTALL=/opt/toolchain/bun)",
+    "pnpm": "11.23.0",
+    "ubuntu": "ubuntu 24.04 (Ubuntu 24.04.5 LTS)"
+  },
+  "proves": [
+    "node 24 + bun + pnpm + @deepseek-ai/dsh install inside a bare ubuntu:24.04 container",
+    "the bundle installs with ONE command from a copy of the checkout (dsh plugin --profile web add .)",
+    "every packages/*/dist entry rebuilds from source with the canonical repo-root bun build",
+    "a MOUNTING boot in an isolated HOME/DSH_HOME applies the plugin tree and registers the mpd tools",
+    "the official TeamService (@deepseek-ai/dsh-experimental-agent-team) is mounted in that process",
+    "the mpd session gate LISTENER is registered for a real mpd session (liveness, not composition) — read from the row's own file log, <workspace>/.mpd/logs/mpd-roles.log (R5)",
+    "the mpd preset really mounts: POST /api/session/create answers ok with agentPreset=mpd",
+    "the TUI session resolves `mpd` through the DOCUMENTED USER-level preference (dsh-tui's own <HOME>/.dsh-tui/agent-preset.json), while the host preset-registry row stays untouched by the bundle"
+  ],
+  "provesCompositionOnly": [
+    "the composed profile carries the mpd rows, the preset-mpd row and the three official agent-team rows",
+    "the bundle is ADDITIVE-ONLY: both shipped patch layers carry zero column-0 id-targets, so no host row is overridden (the retired `default: mpd` id-targets are the class this catches)"
+  ],
+  "doesNotProve": [
+    "any live LLM turn or model routing: no credentials are staged (AGENTS.md §10)",
+    "that mpd is the deployment default for a user who never set the preference: the bundle ships the preset but selects nothing (strict zero-override)",
+    "`--dump-config` output is COMPOSITION evidence and is never cited here as a plugin load",
+    "a packed/tarball install from dist/mpd-package",
+    "a machine without network access: apt, nodejs.org, bun.sh, npm and the registry are all used"
+  ],
+  "summary": {
+    "total": 94,
+    "passed": 88,
+    "failed": 3,
+    "null": 3,
+    "failedNames": [
+      "build.bunInstall",
+      "boot.mcpTools",
+      "live.teamRecord"
+    ],
+    "nullNames": [
+      "tui.mergedPanelOpens",
+      "tui.mergedPanelOrder",
+      "live.nativeExecutor"
+    ]
+  },
+  "assertions": [
+    {
+      "name": "ubuntu.version",
+      "ok": true,
+      "reason": "the base image is ubuntu:24.04",
+      "raw": "ubuntu 24.04"
+    },
+    {
+      "name": "toolchain.apt",
+      "ok": true,
+      "reason": "apt-get update + install curl git ca-certificates unzip xz-utils tmux",
+      "raw": "exit=0/0"
+    },
+    {
+      "name": "toolchain.node",
+      "ok": true,
+      "reason": "node v24.21.0 and npm 11.19.0 come from the OFFICIAL node:24-bookworm image (docker/Dockerfile stage), so this lane no longer depends on nodejs.org",
+      "raw": "v24.21.0 npm=11.19.0"
+    },
+    {
+      "name": "toolchain.bun",
+      "ok": true,
+      "reason": "bun 1.4.2 on PATH, installed via official-script",
+      "raw": "1.4.2"
+    },
+    {
+      "name": "toolchain.pnpm",
+      "ok": true,
+      "reason": "required by 'dsh plugin' (it forwards to pnpm), available on PATH",
+      "raw": "11.23.0"
+    },
+    {
+      "name": "harness.version",
+      "ok": true,
+      "reason": "npm i -g then 'dsh --version' printed the pin exactly",
+      "raw": "0.2.0-rc.2"
+    },
+    {
+      "name": "copy.contextFiltered",
+      "ok": true,
+      "reason": "the build context carries no host state and no install-affecting config, so nothing can pass for a dependency the container should have installed",
+      "raw": "absent: node_modules .git evidence .toolchain dist pnpm-workspace.yaml pnpm-lock.yaml .npmrc .pnpmfile.cjs"
+    },
+    {
+      "name": "copy.repo",
+      "ok": true,
+      "reason": "package.json is @mpd-dsh/mpd and packages/, skills/, presets/ are present",
+      "raw": "name=@mpd-dsh/mpd"
+    },
+    {
+      "name": "build.bunInstall",
+      "ok": false,
+      "reason": "bun install failed (exit=1)",
+      "raw": "2:error: Package \"@mpd-dsh/mpd\" is not linked 10:error: @mpd-dsh/mpd@link:/home/haroldzhao/MyProj/DshProj/My-Power-Dsh failed to resolve "
+    },
+    {
+      "name": "build.dists",
+      "ok": true,
+      "reason": "every discovered packages/*/dist entry rebuilt with exit 0 and a non-empty artifact",
+      "raw": "BUILD_OK=30/30"
+    },
+    {
+      "name": "install.exit",
+      "ok": true,
+      "reason": "one command installed the bundle into the profile",
+      "raw": "exit=0 spec=."
+    },
+    {
+      "name": "install.profileDep",
+      "ok": true,
+      "reason": "the profile links the checkout and keeps the box bundles",
+      "raw": "dep=link:/opt/mpd bundles=@deepseek-ai/dsh-base,@deepseek-ai/dsh-web-app,@mpd-dsh/mpd"
+    },
+    {
+      "name": "install.installedTree",
+      "ok": true,
+      "reason": "the installed bundle resolves inside the profile",
+      "raw": "/root/sandbox-dsh/profiles/web/node_modules/@mpd-dsh/mpd"
+    },
+    {
+      "name": "compose.dumpExit",
+      "ok": true,
+      "reason": "the sanctioned composer exited 0",
+      "raw": "exit=0"
+    },
+    {
+      "name": "compose.mpdRows",
+      "ok": true,
+      "reason": "the mpd host rows compose as INSERTS (additive-only) and the SHIPPED patch layers carry ZERO column-0 id-targets, i.e. no host row is overridden — the strict zero-override contract; the preset default is the USER's setting, not the bundle's",
+      "raw": "rows=mpd-dsh-adapter,mpd-bootstrap,mpd-web-compat,mpd-roles,mpd-workmate layers=2 idTargets=0 defaultMpdLines=0 gate exit=0 subject=byte-identical [verify-no-host-override] PASS: every id-target is bundle-owned (0 of 0 collide with the 185 host-declared row ids) "
+    },
+    {
+      "name": "compose.presetRow",
+      "ok": true,
+      "reason": "the mpd preset is declared as a @deepseek-ai/dsh-agent-preset row (§4 D1)",
+      "raw": "- id: preset-mpd"
+    },
+    {
+      "name": "compose.agentTeamRows",
+      "ok": true,
+      "reason": "the official agent-team rows compose under the mpd-owned ids (§4 D3)",
+      "raw": "ids=mpd-agent-team,mpd-tool-agent-team,mpd-ui-agent-team"
+    },
+    {
+      "name": "boot.probeApplied",
+      "ok": true,
+      "reason": "the probe plugin's apply() ran inside the booted harness — a real MOUNT, not a composition",
+      "raw": "[docker-probe] APPLIED=ok"
+    },
+    {
+      "name": "boot.adapterService",
+      "ok": true,
+      "reason": "the mpd-dsh-adapter row applied and provided the mpdDsh service — witnessed in the row's OWN file log <workspace>/.mpd/logs/mpd-dsh-adapter.log (R5: MPD diagnostics never touch the terminal)",
+      "raw": "[mpd-dsh-adapter] mpdDsh provided (file=/work/.mpd/logs/mpd-dsh-adapter.log)"
+    },
+    {
+      "name": "boot.adapterToolCall",
+      "ok": true,
+      "reason": "an internal tool call through the adapter answered ok",
+      "raw": "[docker-probe] ADAPTER_TOOL_CALL=ok"
+    },
+    {
+      "name": "boot.mpdTools",
+      "ok": true,
+      "reason": "every core mpd tool answered from the live registry",
+      "raw": "CORE_TOOLS=6/6"
+    },
+    {
+      "name": "boot.mcpTools",
+      "ok": false,
+      "reason": "an MCP tool is missing from the live registry — its stdio server did not come up",
+      "raw": "MCP_TOOLS=2/3 MISSING=mcp__codegraph__codegraph_explore"
+    },
+    {
+      "name": "boot.agentTeamTools",
+      "ok": true,
+      "reason": "every official agent-team tool answered from an EXACT AGENT SCOPE after session creation (the plane the official plugin registers them in)",
+      "raw": "[docker-probe] AGENT_TEAM_TOOLS=9/9 agent=session-0ce51639-b463-4a31-a597-1ea59c58"
+    },
+    {
+      "name": "boot.sessionGateListener",
+      "ok": true,
+      "reason": "the mpd session gate listener is REGISTERED for the created session — witnessed in the row's OWN file log <workspace>/.mpd/logs/mpd-roles.log (R5), liveness not composition (the contract that was silently dead in v0.10.0)",
+      "raw": "[mpd-roles] session gate listener registered for agent \"session-0ce51639-b463-4a31-a597-1ea59c5839c7\" agentPreset=mpd (file=/work/.mpd/logs/mpd-roles.log)"
+    },
+    {
+      "name": "boot.agentTeamService",
+      "ok": true,
+      "reason": "the official TeamService is mounted in the booted process (its class name is the witness)",
+      "raw": "[docker-probe] AGENT_TEAMS=MOUNTED serviceName=TeamService methods=listMembers,spawnTeammate,sendMessage,createTask,getTask,listTasks,updateTask,waitForChange,interrupt,tryMembership"
+    },
+    {
+      "name": "boot.servesHttp",
+      "ok": true,
+      "reason": "the booted Web app answered 200",
+      "raw": "/plugins/mpd-workmate/list -> 200"
+    },
+    {
+      "name": "boot.presetMount",
+      "ok": true,
+      "reason": "the gateway created a session with agentPreset=mpd — every row of the mpd preset activated (it refuses on an inactive row)",
+      "raw": "POST /api/session/create -> {\"type\":\"server-response\",\"rpcId\":\"rpc-1-1791447441-11333\",\"result\":{\"ok\":true,\"value\":{\"sessionId\":\"session-0ce51639-b463-4a31-a597-1ea59c5839c7\",\"agentPreset\":\"mpd\"}}}"
+    },
+    {
+      "name": "boot.noFatalSignatures",
+      "ok": true,
+      "reason": "no fatal apply/module signature in the boot log",
+      "raw": "0 matches"
+    },
+    {
+      "name": "isolation.home",
+      "ok": true,
+      "reason": "HOME and DSH_HOME stay on the sandbox paths for every harness command",
+      "raw": "HOME=/root/sandbox-home DSH_HOME=/root/sandbox-dsh"
+    },
+    {
+      "name": "isolation.realHome",
+      "ok": true,
+      "reason": "no harness/toolchain marker under the real home (/root)",
+      "raw": "absent: .dsh .mpd .npm .bun"
+    },
+    {
+      "name": "isolation.noCredentials",
+      "ok": true,
+      "reason": "the ONLY credential-bearing file is the one this run staged into the SANDBOX home for the live arm (scoped by live.credentialScoped, deleted before the report); no other file carries secret-shaped content and nothing was staged into the real home",
+      "raw": "inventory=.credentials.yaml(223B), staged=/root/sandbox-dsh/.credentials.yaml"
+    },
+    {
+      "name": "tui.hostInstall",
+      "ok": true,
+      "reason": "the TUI host installs globally and lands on PATH",
+      "raw": "version=0.14.0 bin=/usr/local/bin/dsh-tui"
+    },
+    {
+      "name": "tui.pluginAddHost",
+      "ok": true,
+      "reason": "the TUI host bundle installs into the dsh-tui profile",
+      "raw": "exit=0"
+    },
+    {
+      "name": "tui.pluginAddBundle",
+      "ok": true,
+      "reason": "THIS bundle installs into the dsh-tui profile as the third patch layer",
+      "raw": "exit=0"
+    },
+    {
+      "name": "tui.compose",
+      "ok": true,
+      "reason": "dsh --profile dsh-tui --dump-config composes (COMPOSITION ONLY, never a load proof)",
+      "raw": "exit=0"
+    },
+    {
+      "name": "tui.presetPreference",
+      "ok": true,
+      "reason": "the lane performed the DOCUMENTED USER path: <HOME>/.dsh-tui/agent-preset.json written byte-exactly (21 bytes, no trailing newline) and dsh-tui@0.14.0 lib/types/presetPrefs.js#writePresetPref — AND the host registry row is UNTOUCHED by the bundle (its own default reads 'standard', no bundle-forced 'mpd', and the shipped layers id-target it nowhere). tui.sessionPreset is the arm that proves the preference is what resolved mpd",
+      "raw": "pref=/root/sandbox-home/.dsh-tui/agent-preset.json hex=7b0a202022707265736574223a20226d7064220a7d writerParity=identical hostRowDefault=standard bundleForcedMpdLines=0 shippedIdTargets=<none> layers=2/2"
+    },
+    {
+      "name": "tui.presetRow",
+      "ok": true,
+      "reason": "the mpd preset row is composed in the TUI plane",
+      "raw": "id=preset-mpd"
+    },
+    {
+      "name": "tui.mpdTuiRow",
+      "ok": true,
+      "reason": "the bundle's mpd-tui row is composed in the TUI plane",
+      "raw": "id=mpd-tui"
+    },
+    {
+      "name": "tui.agentTeamRows",
+      "ok": true,
+      "reason": "all three official Agent Teams rows are composed in the TUI plane",
+      "raw": "ids=mpd-agent-team,mpd-tool-agent-team,mpd-ui-agent-team"
+    },
+    {
+      "name": "tui.mergedPanelOpens",
+      "ok": null,
+      "reason": "the merged view's OPEN is not pane-observable on this host: with the 0.13.0 panel seam present it is a sidebar panel, a host-ACCEPTED open() changes zero bytes of a tmux capture, and the routed command's printed line does not reach the transcript either. The panel registration + accepted open ARE asserted, store-backed, by the sandbox lanes on the SAME host version (tui-panels, tui-deps-ctrla). Full-screen surfaces that this lane CAN see on this host are covered by the team-scene arms above",
+      "raw": "panelSeam=present rowHits=1 module=present proofOwner=skills/dsh-qa/scripts/tui-panels.ts,tui-deps-ctrla.ts"
+    },
+    {
+      "name": "tui.mergedPanelOrder",
+      "ok": null,
+      "reason": "the merged body's section order is NOT observable on this host: with the panel seam present the merged view is a sidebar panel and its rows do not reach a tmux capture, so this arm is not attempted here (the order is covered by the plugin's unit arms). Recording it as a pass would be a claim the pane does not carry",
+      "raw": "panelSeam=present orderCoveredBy=packages/mpd-tui-plugin/test/panel.test.ts subagentMarker=line 7 [the host's own empty-state line (this session carries NO host subagent row)] teamMarker=line 0 header=line 6 emptyState=line 7 pane=pane-merged.txt"
+    },
+    {
+      "name": "tui.hostDashboardKeyIntact",
+      "ok": true,
+      "reason": "Ctrl+A stayed the HOST's key on this host, as frozen R4 requires wherever the panel seam is present: with the seeded team present it did NOT open MPD's merged panel, and after the team record was removed it still did not. The panel is reached through MPD's own entry points instead (tui.mergedPanelOpens above proves /mpd panel)",
+      "raw": "panelSeam=present phaseA=no-mpd-panel mpdTitleHits=0 hostDashboardTitleHits=0 phaseB=team-record-removed mpdTitleHits=0 hostDashboardTitleHits=0"
+    },
+    {
+      "name": "tui.noDirectTuiSeam",
+      "ok": true,
+      "reason": "the D6 gate (no file outside mpd-tui-adapter-plugin names a ctx.tui* seam) passed on a byte-identical copy of the INSTALLED tree, executed where node can strip types",
+      "raw": "gate exit=0 subject=byte-identical (cmp over every copied .ts and the gate file itself) source=/root/sandbox-dsh/profiles/dsh-tui/node_modules/@mpd-dsh/mpd scanned: 28 package(s), 139 .ts file(s) RESULT: PASS (0 findings)"
+    },
+    {
+      "name": "tui.boot",
+      "ok": true,
+      "reason": "the REAL TUI booted on a real PTY and reached its CHAT screen (the composer is drawn and no 0.13.0 landing marker is on screen)",
+      "raw": "tmux=new-session-ok ready=chat-screen noLaunchpad=1 onboardingHex=7b0a202022636f6d… landingMarkerHits=0"
+    },
+    {
+      "name": "tui.noFatalSignatures",
+      "ok": true,
+      "reason": "no fatal apply/module/preset signature in the TUI pane or log",
+      "raw": "scanned=pane+pane-log"
+    },
+    {
+      "name": "tui.sessionPreset",
+      "ok": true,
+      "reason": "the session the TUI created records agentPreset=mpd (the D10 default, read from the harness's own store)",
+      "raw": "{\"found\":true,\"sessionId\":\"51cb0386-0379-491e-9e10-cf39cfe86282\",\"agentPreset\":\"mpd\",\"bytes\":128576}"
+    },
+    {
+      "name": "live.credentialStaged",
+      "ok": true,
+      "reason": "the provider credential was staged ONCE into the SANDBOX home (mode 0600) so every plane can run a real turn; the value is never recorded",
+      "raw": "path=/root/sandbox-dsh/.credentials.yaml scope=sandbox"
+    },
+    {
+      "name": "live.credentialScoped",
+      "ok": true,
+      "reason": "the staged credential sits under the SANDBOX dsh home, is mode 0600, and carries the version:1/refs shape the harness reader demands",
+      "raw": "mode=600 path=/root/sandbox-dsh/.credentials.yaml"
+    },
+    {
+      "name": "live.credentialRemoved",
+      "ok": true,
+      "reason": "the staged credential was deleted before the report was written",
+      "raw": "path=/root/sandbox-dsh/.credentials.yaml"
+    },
+    {
+      "name": "live.web.turnStarted",
+      "ok": true,
+      "reason": "the web plane started a real turn",
+      "raw": "session=session-0ce51639-b463-4a31-a597-1ea59c5839c7 turns=1 completed=1 errors=0 tools=1/1parsed malformed=0 texts=1 names=[mpd_config_get]"
+    },
+    {
+      "name": "live.web.turnCompleted",
+      "ok": true,
+      "reason": "the web turn reached turn/end reason=completed",
+      "raw": "session=session-0ce51639-b463-4a31-a597-1ea59c5839c7 turns=1 completed=1 errors=0 tools=1/1parsed malformed=0 texts=1 names=[mpd_config_get]"
+    },
+    {
+      "name": "live.web.noErrorTurns",
+      "ok": true,
+      "reason": "no web turn ended in an error",
+      "raw": "session=session-0ce51639-b463-4a31-a597-1ea59c5839c7 turns=1 completed=1 errors=0 tools=1/1parsed malformed=0 texts=1 names=[mpd_config_get] errors=[]"
+    },
+    {
+      "name": "live.web.noMalformedToolJson",
+      "ok": true,
+      "reason": "every web tool-call payload the model emitted parsed as JSON",
+      "raw": "session=session-0ce51639-b463-4a31-a597-1ea59c5839c7 turns=1 completed=1 errors=0 tools=1/1parsed malformed=0 texts=1 names=[mpd_config_get] malformed=[]"
+    },
+    {
+      "name": "live.web.toolCallsParsed",
+      "ok": true,
+      "reason": "all 1 web tool call(s) parsed (1/1)",
+      "raw": "session=session-0ce51639-b463-4a31-a597-1ea59c5839c7 turns=1 completed=1 errors=0 tools=1/1parsed malformed=0 texts=1 names=[mpd_config_get]"
+    },
+    {
+      "name": "live.web.mpdToolCalled",
+      "ok": true,
+      "reason": "an MPD tool ran under a live web turn",
+      "raw": "session=session-0ce51639-b463-4a31-a597-1ea59c5839c7 turns=1 completed=1 errors=0 tools=1/1parsed malformed=0 texts=1 names=[mpd_config_get]"
+    },
+    {
+      "name": "live.web.assistantReplied",
+      "ok": true,
+      "reason": "the web assistant produced visible text",
+      "raw": "session=session-0ce51639-b463-4a31-a597-1ea59c5839c7 turns=1 completed=1 errors=0 tools=1/1parsed malformed=0 texts=1 names=[mpd_config_get]"
+    },
+    {
+      "name": "live.tui.turnStarted",
+      "ok": true,
+      "reason": "the tui plane started a real turn",
+      "raw": "session=51cb0386-0379-491e-9e10-cf39cfe86282 turns=1 completed=1 errors=0 tools=1/1parsed malformed=0 texts=2 names=[mpd_config_get]"
+    },
+    {
+      "name": "live.tui.turnCompleted",
+      "ok": true,
+      "reason": "the tui turn reached turn/end reason=completed",
+      "raw": "session=51cb0386-0379-491e-9e10-cf39cfe86282 turns=1 completed=1 errors=0 tools=1/1parsed malformed=0 texts=2 names=[mpd_config_get]"
+    },
+    {
+      "name": "live.tui.noErrorTurns",
+      "ok": true,
+      "reason": "no tui turn ended in an error",
+      "raw": "session=51cb0386-0379-491e-9e10-cf39cfe86282 turns=1 completed=1 errors=0 tools=1/1parsed malformed=0 texts=2 names=[mpd_config_get] errors=[]"
+    },
+    {
+      "name": "live.tui.noMalformedToolJson",
+      "ok": true,
+      "reason": "every tui tool-call payload the model emitted parsed as JSON",
+      "raw": "session=51cb0386-0379-491e-9e10-cf39cfe86282 turns=1 completed=1 errors=0 tools=1/1parsed malformed=0 texts=2 names=[mpd_config_get] malformed=[]"
+    },
+    {
+      "name": "live.tui.toolCallsParsed",
+      "ok": true,
+      "reason": "all 1 tui tool call(s) parsed (1/1)",
+      "raw": "session=51cb0386-0379-491e-9e10-cf39cfe86282 turns=1 completed=1 errors=0 tools=1/1parsed malformed=0 texts=2 names=[mpd_config_get]"
+    },
+    {
+      "name": "live.tui.mpdToolCalled",
+      "ok": true,
+      "reason": "an MPD tool ran under a live tui turn",
+      "raw": "session=51cb0386-0379-491e-9e10-cf39cfe86282 turns=1 completed=1 errors=0 tools=1/1parsed malformed=0 texts=2 names=[mpd_config_get]"
+    },
+    {
+      "name": "live.tui.assistantReplied",
+      "ok": true,
+      "reason": "the tui assistant produced visible text",
+      "raw": "session=51cb0386-0379-491e-9e10-cf39cfe86282 turns=1 completed=1 errors=0 tools=1/1parsed malformed=0 texts=2 names=[mpd_config_get]"
+    },
+    {
+      "name": "live.headless.turnStarted",
+      "ok": true,
+      "reason": "the headless plane started a real turn",
+      "raw": "session=session-1dc0484e-19a4-4d0e-b153-5f5f7c81d7ca turns=1 completed=1 errors=0 tools=18/18parsed malformed=0 texts=9 names=[bash,write,mpd_verify_open,mpd_role_persona,spawn_teammate,list_agents,wait_agent]"
+    },
+    {
+      "name": "live.headless.turnCompleted",
+      "ok": true,
+      "reason": "the headless turn reached turn/end reason=completed",
+      "raw": "session=session-1dc0484e-19a4-4d0e-b153-5f5f7c81d7ca turns=1 completed=1 errors=0 tools=18/18parsed malformed=0 texts=9 names=[bash,write,mpd_verify_open,mpd_role_persona,spawn_teammate,list_agents,wait_agent]"
+    },
+    {
+      "name": "live.headless.noErrorTurns",
+      "ok": true,
+      "reason": "no headless turn ended in an error",
+      "raw": "session=session-1dc0484e-19a4-4d0e-b153-5f5f7c81d7ca turns=1 completed=1 errors=0 tools=18/18parsed malformed=0 texts=9 names=[bash,write,mpd_verify_open,mpd_role_persona,spawn_teammate,list_agents,wait_agent] errors=[]"
+    },
+    {
+      "name": "live.headless.noMalformedToolJson",
+      "ok": true,
+      "reason": "every headless tool-call payload the model emitted parsed as JSON",
+      "raw": "session=session-1dc0484e-19a4-4d0e-b153-5f5f7c81d7ca turns=1 completed=1 errors=0 tools=18/18parsed malformed=0 texts=9 names=[bash,write,mpd_verify_open,mpd_role_persona,spawn_teammate,list_agents,wait_agent] malformed=[]"
+    },
+    {
+      "name": "live.headless.toolCallsParsed",
+      "ok": true,
+      "reason": "all 18 headless tool call(s) parsed (18/18)",
+      "raw": "session=session-1dc0484e-19a4-4d0e-b153-5f5f7c81d7ca turns=1 completed=1 errors=0 tools=18/18parsed malformed=0 texts=9 names=[bash,write,mpd_verify_open,mpd_role_persona,spawn_teammate,list_agents,wait_agent]"
+    },
+    {
+      "name": "live.headless.mpdToolCalled",
+      "ok": true,
+      "reason": "an MPD tool ran under a live headless turn",
+      "raw": "session=session-1dc0484e-19a4-4d0e-b153-5f5f7c81d7ca turns=1 completed=1 errors=0 tools=18/18parsed malformed=0 texts=9 names=[bash,write,mpd_verify_open,mpd_role_persona,spawn_teammate,list_agents,wait_agent]"
+    },
+    {
+      "name": "live.headless.assistantReplied",
+      "ok": true,
+      "reason": "the headless assistant produced visible text",
+      "raw": "session=session-1dc0484e-19a4-4d0e-b153-5f5f7c81d7ca turns=1 completed=1 errors=0 tools=18/18parsed malformed=0 texts=9 names=[bash,write,mpd_verify_open,mpd_role_persona,spawn_teammate,list_agents,wait_agent]"
+    },
+    {
+      "name": "live.teamRecord",
+      "ok": false,
+      "reason": "no team record exists at /work/ws/.mpd/team/teams after the live turn — the model did not reach agent_teams_plan approve (exit 0)",
+      "raw": "see 15-headless-live.log"
+    },
+    {
+      "name": "live.nativeExecutor",
+      "ok": null,
+      "reason": "not measured: no team record exists, so no executor handle could be read",
+      "raw": "dir=/work/ws/.mpd/team/teams"
+    },
+    {
+      "name": "live.headlessPresetRow",
+      "ok": true,
+      "reason": "preset-mpd pends because the HEADLESS composition declares no agent-presets registry (a harness-plane fact: only dsh-web-app declares @deepseek-ai/dsh-agent-preset-registry); the mpd HOST rows still mount, which the live turn proves",
+      "raw": "pending=preset-mpd (@deepseek-ai/dsh-agent-preset): pending (waiting for service: agentPresets) registryRows=0"
+    },
+    {
+      "name": "boot.llmTurn",
+      "ok": true,
+      "reason": "a live headless turn ran to turn/end reason=completed (read from the harness's own session store)",
+      "raw": "see live.headless.* rows; promptSource=caller (MPD_E2E_LIVE_PROMPT) bytes=377 firstLine=\"Write a playable classic Snake game as ONE self-contained file at `snake/index.html` in the current directory: no build step, no network access, no dependencies. Arrow keys (or WASD) steer, the snake grows and the score increases when it eats, hitting a wall or itself ends the game with a visible game over message, and Enter (or R) restarts. Keep everything in that one file.\""
+    },
+    {
+      "name": "boot.workspaceRegistered",
+      "ok": true,
+      "reason": "the scratch workspace was registered in the harness's own store BEFORE the boot, so the Web GUI renders a usable composer instead of the disabled landing state",
+      "raw": "id=ws-mpd-e2e path=/work/ws"
+    },
+    {
+      "name": "ui.loads",
+      "ok": true,
+      "reason": "the Web GUI loaded and rendered visible text in a real browser",
+      "raw": "chars=211"
+    },
+    {
+      "name": "ui.workspaceSelected",
+      "ok": true,
+      "reason": "a workspace is selected in the GUI, so the session composer is live",
+      "raw": "placeholders=Describe what you want to build | Add files or run commands"
+    },
+    {
+      "name": "ui.composerPresent",
+      "ok": true,
+      "reason": "the prompt composer exists and is editable — the entry point of every turn",
+      "raw": "placeholders=Describe what you want to build | Add files or run commands"
+    },
+    {
+      "name": "ui.promptSent",
+      "ok": true,
+      "reason": "a prompt was typed into the composer and sent through the real UI",
+      "raw": "promptChars=88"
+    },
+    {
+      "name": "ui.replyRendered",
+      "ok": true,
+      "reason": "the transcript changed after the send and shows the turn's own output",
+      "raw": "before=235 after=463 done=true"
+    },
+    {
+      "name": "ui.mpdSettingsSection",
+      "ok": true,
+      "reason": "the MPD settings section registers and renders its card in Settings",
+      "raw": "chars=4000"
+    },
+    {
+      "name": "ui.teamPanel",
+      "ok": true,
+      "reason": "the right sidebar opens on the Agent Teams panel with its roster and board",
+      "raw": "chars=549 teamTab=1"
+    },
+    {
+      "name": "ui.noConsoleErrors",
+      "ok": true,
+      "reason": "the browser reported no console errors and no uncaught page errors",
+      "raw": "console=0 page=0"
+    },
+    {
+      "name": "team.route.state",
+      "ok": true,
+      "reason": "the mpd team route answered a JSON payload from a REAL mounted row",
+      "raw": "HTTP 200 keys=workspace,sessionId,workspaceTeams,team,counts,members,tasks,cycles,executor,problems"
+    },
+    {
+      "name": "team.route.plan",
+      "ok": true,
+      "reason": "the mpd team route answered a JSON payload from a REAL mounted row",
+      "raw": "HTTP 200 keys=workspace,sessionId,plan"
+    },
+    {
+      "name": "team.route.task",
+      "ok": true,
+      "reason": "the mpd team route answered a JSON payload from a REAL mounted row",
+      "raw": "HTTP 200 keys=workspace,contracts,hold"
+    },
+    {
+      "name": "team.route.mail",
+      "ok": true,
+      "reason": "the mpd team route answered a JSON payload from a REAL mounted row",
+      "raw": "HTTP 200 keys=workspace,messages,records"
+    },
+    {
+      "name": "team.routesAll",
+      "ok": true,
+      "reason": "all four /plugins/mpd-team routes are registered by the mounted row and answer ok:true",
+      "raw": "green=4/4"
+    },
+    {
+      "name": "team.planLookup",
+      "ok": true,
+      "reason": "the plan route answered a plan SHAPE for the live session (null when nothing is staged, which is the honest pre-approval answer)",
+      "raw": "plan=null session=session-0ce51639-b463-4a31-a597-1ea59c5839c7"
+    },
+    {
+      "name": "tui.teamSceneOpened",
+      "ok": true,
+      "reason": "the /mpd team scene opened on a real terminal",
+      "raw": "chars=11741"
+    },
+    {
+      "name": "tui.teamGraphDrawn",
+      "ok": true,
+      "reason": "the LAYERED BOXES were drawn: the ROUNDED corner census equals the record's own task count, one box per task, which a dropped box reddens (the square corners the old arm matched belong to the scene FRAME; the subjects are NOT claimed here, because clause AC1 moved them to the pinned detail body that tui.teamGraphContent asserts)",
+      "raw": "corners=╭3 ╮3 ╰3 ╯3 tasksFromRecord=3 ids=T1,T2,T3 pane=pane-team.txt"
+    },
+    {
+      "name": "tui.teamGraphEdges",
+      "ok": true,
+      "reason": "the dependency EDGES were drawn with box-drawing junctions",
+      "raw": "junctions=46"
+    },
+    {
+      "name": "tui.teamGraphContent",
+      "ok": true,
+      "reason": "every task id the lane's OWN record carries is drawn as a node label AND the record's own subject is reachable one keystroke away in the pinned detail body, where clause AC1 moved it (a literal id would keep passing after a dropped task)",
+      "raw": "ids=T1,T2,T3 fromRecord=3 labelsExpected=3 missing=[none] pane=pane-team.txt chars=11741 pinnedFocus=T1 detail=[T1 · requirement · freeze the contract] pinnedPane=pane-teamPinned.txt"
+    },
+    {
+      "name": "tui.laneExit",
+      "ok": true,
+      "reason": "the TUI lane ran to completion with every assertion green",
+      "raw": "records=19"
+    }
+  ],
+  "observations": {
+    "rebuildNoSrc": "NO_SRC=mpd-bundle=package has no src/ directory (dist is the only committed artifact),mpd-mcp-shared=built offline by scripts/build-mcp.ts from the upstream checkout (no local src/),mpd-schemastery=package has no src/ directory (dist is the only committed artifact)",
+    "installSpec": ".",
+    "installTail": "+ @mpd-dsh/mpd link:/opt/mpd  Already up to date Done in 334ms using pnpm v11.23.0 ",
+    "dumpMpdRowIds": "mpd-agent-team,mpd-better-sidebar,mpd-bootstrap,mpd-boulder,mpd-codegraph,mpd-comment-checker,mpd-config,mpd-dsh-adapter,mpd-ext,mpd-goal,mpd-hashline,mpd-memory,mpd-modelchain,mpd-roles,mpd-roster-provider,mpd-team-compact,mpd-team-core,mpd-team-watchdog,mpd-tool-agent-team,mpd-tools,mpd-tui,mpd-tui-adapter,mpd-ui-agent-team,mpd-ulw,mpd-verify,mpd-web-compat,mpd-workmate,",
+    "dumpDefaultMpdLines": "0 (expected 0: the bundle ships no preset override)",
+    "dumpAgentTeamRows": "mpd-agent-team,mpd-tool-agent-team,mpd-ui-agent-team,",
+    "retiredToolsPresent": "<probe did not report>",
+    "teamToolPlane": "root-plane read=0/9 (0/9 is the documented shape: @deepseek-ai/dsh-experimental-tool-agent-team registers scoped.tools on agent.ctx per agent); the graded read is AGENT_TEAM_TOOLS below",
+    "uiTeamRow": "package NOT resolvable in the profile OR the bundle's node_modules; only the composed row is evidenced, so this row's load is NOT witnessed by this run",
+    "sessionCreate": "http=200 type=server-response rpcIdEcho=match ok=true agentPreset=mpd",
+    "realHomeMarkers": ".bashrc,.profile,sandbox-dsh,sandbox-home,",
+    "credentialFiles": ".credentials.yaml(223B), (sizes only; the CONTENT of a credential-shaped file is deliberately never copied into the evidence — the check is a secret-shape match, not a dump)"
+  },
+  "facts": {
+    "stamp": "2026-10-08T08:06:33Z",
+    "entrypoint": "docker/entrypoint.sh",
+    "image": "mpd-docker-e2e:local",
+    "ubuntuImage": "ubuntu 24.04 (Ubuntu 24.04.5 LTS)",
+    "pins": "nodePin=24.19.0 dsh=0.2.0-rc.2 pnpm=11.23.0",
+    "home": "/root/sandbox-home",
+    "dshHome": "/root/sandbox-dsh",
+    "aptSeconds": "135",
+    "nodeArch": "amd64 -> linux-x64",
+    "nodeSource": "image (node:24-bookworm /usr/local)",
+    "node": "v24.21.0 (npm 11.19.0)",
+    "bunPath": "/opt/toolchain/bun/bin/bun",
+    "bun": "1.4.2 (route=official-script, BUN_INSTALL=/opt/toolchain/bun)",
+    "pnpm": "11.23.0",
+    "dsh": "0.2.0-rc.2 (/usr/local/bin/dsh)",
+    "harnessVersion": "0.2.0-rc.2",
+    "harnessVersionExpected": "0.2.0-rc.2",
+    "copyManifest": "@mpd-dsh/mpd",
+    "rebuildEntries": "ENTRIES=30",
+    "profileDep": "link:/opt/mpd",
+    "profileBundles": "@deepseek-ai/dsh-base,@deepseek-ai/dsh-web-app,@mpd-dsh/mpd",
+    "bootCoreTools": "6/6",
+    "bootTeamToolsRootPlane": "0/9",
+    "bootAdapterCaps": "tools,toolsRegister,toolsGuard,toolsGet,toolsExecute,toolsPreExecute,toolsPostExecute,subagents,subagentsSpawn,skills,skillsProvider,agentPresets,commands,commandsRegister,agents,events,llmCatalog,toolsRegisterHost,subagentsProvider,subagentsContinuable,teamExecutorNative,subagentsInterrupt,llmListModels,llmResolveCallConfig,systemPromptSection,agentPreStep,team,teamTasks,teamMessages,subagentsProviderRegister,goals",
+    "bootAgentTeamsMethods": "listMembers,spawnTeammate,sendMessage,createTask,getTask,listTasks,updateTask,waitForChange,interrupt,tryMembership",
+    "bootCookieJarLines": "4",
+    "bootCookieExchange": "http=303 tokenPresent=yes",
+    "bootHttp": "/plugins/mpd-workmate/list -> 200",
+    "bootAgentTeamToolsScoped": "[docker-probe] AGENT_TEAM_TOOLS=9/9 agent=session-0ce51639-b463-4a31-a597-1ea59c58",
+    "bootSessionGate": "[mpd-roles] session gate listener registered for agent \"session-0ce51639-b463-4a31-a597-1ea59c5839c7\" agentPreset=mpd (file=/work/.mpd/logs/mpd-roles.log)",
+    "teamRoutesSession": "session-0ce51639-b463-4a31-a597-1ea59c5839c7",
+    "teamRoutes": " state=200/true plan=200/true task=200/true mail=200/true",
+    "liveCredentialStaged": "refs:DEEPSEEK_API_KEY was staged in the SANDBOX home before the boot (mode 0600); the value is never recorded",
+    "livePrompt": "promptSource=caller (MPD_E2E_LIVE_PROMPT) bytes=377 firstLine=\"Write a playable classic Snake game as ONE self-contained file at `snake/index.html` in the current directory: no build step, no network access, no dependencies. Arrow keys (or WASD) steer, the snake grows and the score increases when it eats, hitting a wall or itself ends the game with a visible game over message, and Enter (or R) restarts. Keep everything in that one file.\"",
+    "hashesMeasuredAt": "2026-10-08T08:44:25Z",
+    "finishedAt": "2026-10-08T08:44:25Z"
+  },
+  "hashes": [
+    {
+      "sha256": "47533638bd48b531ba528234f23971fb5e20d5d4f8b52b73e4098170c52f8788",
+      "path": "/opt/mpd/package.json"
+    },
+    {
+      "sha256": "28a7a2570f2d7d926caf234a0721e7414cdc2d2ef1e5a01ab956e64ddeb19bc3",
+      "path": "/opt/mpd/cordis.patch.yml"
+    },
+    {
+      "sha256": "79d0e7b50734b0190baad96ab8fb1c16c93f44031a9946c0810c5ff851101fcd",
+      "path": "/opt/mpd/presets/mpd.patch.yml"
+    },
+    {
+      "sha256": "251ae4c4d2106f9b48c01bc1f5ecf2f55eb2dec1cc299cce77128532f12e16c2",
+      "path": "packages/mpd-better-sidebar-host/dist/index.js"
+    },
+    {
+      "sha256": "8bcf76bc5daf18092a131069af87e3b1416479acff3960f0ebeb0035f52af3c0",
+      "path": "packages/mpd-bootstrap-plugin/dist/index.js"
+    },
+    {
+      "sha256": "60e5801126f8ff43e53372790e1b9043cc383bf40377c7750a5f1ad5eb9cec8b",
+      "path": "packages/mpd-boulder-plugin/dist/index.js"
+    },
+    {
+      "sha256": "794269c64ae7537a0973f28ee3aead7fce173ae8af53c2e8c9f6454c3dfc02d3",
+      "path": "packages/mpd-bundle-plugin/dist/index.js"
+    },
+    {
+      "sha256": "1434cea5c37166e423987a00b1507ab3894d1f3298cefd07b5ed2fbe5347a8f3",
+      "path": "packages/mpd-codegraph-plugin/dist/index.js"
+    },
+    {
+      "sha256": "2df26f00b7b221f8b707b1be93c0b35b74d239e3ed34aefd0fa8e72a2325327b",
+      "path": "packages/mpd-comment-checker-plugin/dist/index.js"
+    },
+    {
+      "sha256": "60656acd6005aee803d1abfa769ee20eef8597d57ec1fc3a83fa4bb9f9192ef1",
+      "path": "packages/mpd-config-plugin/dist/index.js"
+    },
+    {
+      "sha256": "e23ab7918a2c0a9f2d1608bbd2ca4199c72cfd004b916ce905bcfa13ec485b79",
+      "path": "packages/mpd-dsh-adapter-plugin/dist/index.js"
+    },
+    {
+      "sha256": "eea43bcc2194036a0bbc8ea7da8804a3c60fbdec1fe27ffdb12e3618fe4c7908",
+      "path": "packages/mpd-ext-plugin/dist/index.js"
+    },
+    {
+      "sha256": "d1d38ecec180d0c730671b82e629f8bb45994334de55503a8eb6b5355344cccb",
+      "path": "packages/mpd-goal-plugin/dist/index.js"
+    },
+    {
+      "sha256": "0e00e1571939aea173ba86339d1c70d0fdbac293ab0e969dcc752dd8d9bd589f",
+      "path": "packages/mpd-hashline-plugin/dist/index.js"
+    },
+    {
+      "sha256": "48868376579ee9cab6e074291a54798f644707fc3ff800c0f0d9fa1a1fe7dbb7",
+      "path": "packages/mpd-memory-plugin/dist/index.js"
+    },
+    {
+      "sha256": "d8d9bcfc541de6a324f4c71c3e34db28e9f783a5a0c7297b4e36eafbdecaaca1",
+      "path": "packages/mpd-modelchain-plugin/dist/index.js"
+    },
+    {
+      "sha256": "b97948d4618b4b632f4ff1c0256581546dc35f963014ffe16aca012c9c6fba7b",
+      "path": "packages/mpd-qa-roles-probe/dist/index.js"
+    },
+    {
+      "sha256": "ecf24535ade101d50e2f5c2902d3cd4970cea7f3e06549c94f52a815d8b925b9",
+      "path": "packages/mpd-roles-plugin/dist/index.js"
+    },
+    {
+      "sha256": "26120695e75fc79af25c63a46c6e3c9287b7f77d557062f16fc32baff9327c36",
+      "path": "packages/mpd-roster-provider-plugin/dist/index.js"
+    },
+    {
+      "sha256": "c5d98d7ebfb3ffe617aba3180b470a8477a058ddcbf95d42bb599eafd9bd3ebb",
+      "path": "packages/mpd-team-compact-plugin/dist/index.js"
+    },
+    {
+      "sha256": "77735c8b400883031db3153894e2e1f2591c35a429d9be8362de41b479fe0d36",
+      "path": "packages/mpd-team-core-plugin/dist/index.js"
+    },
+    {
+      "sha256": "c2145621c56e1099314dd48e0a50ec5a9a87837004eb3bb22a2ac249a1c61d9d",
+      "path": "packages/mpd-team-watchdog-plugin/dist/index.js"
+    },
+    {
+      "sha256": "ae6515291a3b4a9440f01395fbf326d51c04d7fba91816ae2e6f8e46b61db633",
+      "path": "packages/mpd-tools-plugin/dist/index.js"
+    },
+    {
+      "sha256": "78f251f613b0cb954390b46ef03225ba0d9b7511c9376d4445a2cfcf904441fb",
+      "path": "packages/mpd-tui-adapter-plugin/dist/index.js"
+    },
+    {
+      "sha256": "fc014609cf93f0623d9c6a67859e889ed99d05acc3e234ccfde0c363a1a2db90",
+      "path": "packages/mpd-tui-plugin/dist/index.js"
+    },
+    {
+      "sha256": "31b0d23dee90b27c04cdd5bfdbc7916585db7703f997a1a8b621bb39aabbacc9",
+      "path": "packages/mpd-ulw-plugin/dist/index.js"
+    },
+    {
+      "sha256": "cadf05c61da5eae91e78ba23e34f38194b6e6c2226eb88c0fbaac76e7a74196b",
+      "path": "packages/mpd-verify-plugin/dist/index.js"
+    },
+    {
+      "sha256": "56a4472a508bb320493bcdd2e50f404ff01196c0ed8091330a165d295bb58215",
+      "path": "packages/mpd-workmate-plugin/dist/index.js"
+    }
+  ],
+  "steps": [
+    {
+      "id": "01-apt-update",
+      "exit": 0,
+      "seconds": 107,
+      "cmd": "apt-get update ",
+      "logFile": "01-apt-update.log",
+      "logBytes": 1639,
+      "tail": [
+        "Get:1 http://archive.ubuntu.com/ubuntu noble InRelease [256 kB]",
+        "Get:2 http://security.ubuntu.com/ubuntu noble-security InRelease [126 kB]",
+        "Get:3 http://security.ubuntu.com/ubuntu noble-security/restricted amd64 Packages [1943 kB]",
+        "Get:4 http://archive.ubuntu.com/ubuntu noble-updates InRelease [126 kB]",
+        "Get:5 http://archive.ubuntu.com/ubuntu noble-backports InRelease [126 kB]",
+        "Get:6 http://archive.ubuntu.com/ubuntu noble/restricted amd64 Packages [117 kB]",
+        "Get:7 http://archive.ubuntu.com/ubuntu noble/universe amd64 Packages [19.3 MB]",
+        "Get:8 http://security.ubuntu.com/ubuntu noble-security/multiverse amd64 Packages [50.0 kB]",
+        "Get:9 http://security.ubuntu.com/ubuntu noble-security/main amd64 Packages [1323 kB]",
+        "Get:10 http://security.ubuntu.com/ubuntu noble-security/universe amd64 Packages [1545 kB]",
+        "Get:11 http://archive.ubuntu.com/ubuntu noble/multiverse amd64 Packages [331 kB]",
+        "Get:12 http://archive.ubuntu.com/ubuntu noble/main amd64 Packages [1808 kB]",
+        "Get:13 http://archive.ubuntu.com/ubuntu noble-updates/universe amd64 Packages [2166 kB]",
+        "Get:14 http://archive.ubuntu.com/ubuntu noble-updates/multiverse amd64 Packages [67.4 kB]",
+        "Get:15 http://archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Packages [2177 kB]",
+        "Get:16 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [1701 kB]",
+        "Get:17 http://archive.ubuntu.com/ubuntu noble-backports/multiverse amd64 Packages [671 B]",
+        "Get:18 http://archive.ubuntu.com/ubuntu noble-backports/main amd64 Packages [49.0 kB]",
+        "Get:19 http://archive.ubuntu.com/ubuntu noble-backports/universe amd64 Packages [36.0 kB]",
+        "Fetched 33.3 MB in 1min 47s (312 kB/s)",
+        "Reading package lists...",
+        ""
+      ]
+    },
+    {
+      "id": "01-apt-install",
+      "exit": 0,
+      "seconds": 28,
+      "cmd": "env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends curl git ca-certificates unzip xz-utils tmux ",
+      "logFile": "01-apt-install.log",
+      "logBytes": 16425,
+      "tail": [
+        "Setting up perl-modules-5.38 (5.38.2-3.2ubuntu0.6) ...\r",
+        "Setting up libk5crypto3:amd64 (1.20.1-6ubuntu2.10) ...\r",
+        "Setting up libsasl2-2:amd64 (2.1.28+dfsg1-5ubuntu3.1) ...\r",
+        "Setting up libutempter0:amd64 (1.2.1-3build1) ...\r",
+        "Setting up git-man (1:2.43.0-1ubuntu7.3) ...\r",
+        "Setting up libkrb5-3:amd64 (1.20.1-6ubuntu2.10) ...\r",
+        "Setting up libevent-core-2.1-7t64:amd64 (2.1.12-stable-9ubuntu2.2) ...\r",
+        "Setting up libperl5.38t64:amd64 (5.38.2-3.2ubuntu0.6) ...\r",
+        "Setting up openssl (3.0.13-0ubuntu3.16) ...\r",
+        "Setting up tmux (3.4-1ubuntu0.1) ...\r",
+        "Setting up libldap2:amd64 (2.6.10+dfsg-0ubuntu0.24.04.1) ...\r",
+        "Setting up ca-certificates (20260601~24.04.1) ...\r",
+        "Updating certificates in /etc/ssl/certs...\r",
+        "121 added, 0 removed; done.\r",
+        "Setting up perl (5.38.2-3.2ubuntu0.6) ...\r",
+        "Setting up libgssapi-krb5-2:amd64 (1.20.1-6ubuntu2.10) ...\r",
+        "Setting up libssh-4:amd64 (0.10.6-2ubuntu0.5) ...\r",
+        "Setting up libcurl4t64:amd64 (8.5.0-2ubuntu10.15) ...\r",
+        "Setting up libcurl3t64-gnutls:amd64 (8.5.0-2ubuntu10.15) ...\r",
+        "Setting up liberror-perl (0.17029-2) ...\r",
+        "Setting up git (1:2.43.0-1ubuntu7.3) ...\r",
+        "Setting up curl (8.5.0-2ubuntu10.15) ...\r",
+        "Processing triggers for debianutils (5.17build1) ...\r",
+        "Processing triggers for libc-bin (2.39-0ubuntu8.9) ...\r",
+        "Processing triggers for ca-certificates (20260601~24.04.1) ...\r",
+        "Updating certificates in /etc/ssl/certs...\r",
+        "0 added, 0 removed; done.\r",
+        "Running hooks in /etc/ca-certificates/update.d...\r",
+        "done.\r",
+        ""
+      ]
+    },
+    {
+      "id": "03-bun",
+      "exit": 0,
+      "seconds": 83,
+      "cmd": "bash -c set -euo pipefail; curl -fsSL --retry 8 --retry-delay 2 --retry-all-errors --connect-timeout 20 https://bun.sh/install | bash ",
+      "logFile": "03-bun.log",
+      "logBytes": 23295,
+      "tail": [
+        "#=#=#                                                                          \r##O#-#                                                                         \r##O=#  #                                                                       \r#=#=-#  #                                                                      \r-#O#- #   #                                                                    \r-=#=#   #   #                                                                  \r-=O#-#   #   #                                                                 \r-=O=#  #   #   #                                                               \r-=O=-#  #    #   #                                                             \r-=O=- #   #   #    #                                                           \r-=O=-   #   #   #     #                                                        \r-=O=-    #   #    #     #                                                      \r-=O=-      #   #     #    #                                                    \r-=O=-        #   #     #    #                                                  \r-=O=-         #    #     #     #                                               \r-=O=-           #     #    #     #                                             \r-=O=-             #     #     #     #                                          \r-=O=-                #    #     #     #                                        \r\r                                                                           0.0%\r                                                                           0.1%\r                                                                           0.2%\r                                                                           0.4%\r                                                                           0.7%\r                                                                           0.9%\r                                                                           1.3%\r#                                                                          1.7%\r#                                                                          2.2%\r#                                                                          2.3%\r##                                                                         2.8%\r##                                                                         3.2%\r##                                                                         3.8%\r###                                                                        4.2%\r###                                                                        5.1%\r###                                                                        5.5%\r####                                                                       5.9%\r####                                                                       5.9%\r#####                                                                      7.0%\r#####                                                                      7.4%\r#####                                                                      7.7%\r#####                                                                      8.2%\r#####                                                                      8.3%\r######                                                                     8.9%\r######                                                                     9.0%\r######                                                                     9.2%\r#######                                                                    9.8%\r#######                                                                   10.0%\r#######                                                                   10.2%\r#######                                                                   10.4%\r#######                                                                   10.5%\r#######                                                                   10.8%\r#######                                                                   11.0%\r########                                                                  11.2%\r########                                                                  11.4%\r########                                                                  11.6%\r########                                                                  11.8%\r########                                                                  12.0%\r########                                                                  12.2%\r########                                                                  12.5%\r#########                                                                 12.6%\r#########                                                                 12.9%\r#########                                                                 13.1%\r#########                                                                 13.3%\r#########                                                                 13.6%\r#########                                                                 13.8%\r##########                                                                14.0%\r##########                                                                14.2%\r##########                                                                14.4%\r##########                                                                14.6%\r##########                                                                14.8%\r##########                                                                15.1%\r###########                                                               15.3%\r###########                                                               15.5%\r###########                                                               15.8%\r###########                                                               16.0%\r###########                                                               16.2%\r###########                                                               16.4%\r############                                                              16.7%\r############                                                              16.9%\r############                                                              17.2%\r############                                                              17.6%\r############                                                              17.7%\r############                                                              17.9%\r#############                                                             18.2%\r#############                                                             18.5%\r#############                                                             18.7%\r#############                                                             19.0%\r#############                                                             19.2%\r##############                                                            19.5%\r##############                                                            19.8%\r##############                                                            20.1%\r##############                                                            20.3%\r##############                                                            20.5%\r##############                                                            20.8%\r###############                                                           21.2%\r###############                                                           21.4%\r###############                                                           21.6%\r###############                                                           21.9%\r################                                                          22.3%\r################                                                          22.5%\r################                                                          22.7%\r################                                                          23.1%\r################                                                          23.3%\r################                                                          23.5%\r#################                                                         23.9%\r#################                                                         24.1%\r#################                                                         24.4%\r#################                                                         24.7%\r#################                                                         24.9%\r##################                                                        25.2%\r##################                                                        25.6%\r##################                                                        25.9%\r##################                                                        26.1%\r###################                                                       26.5%\r###################                                                       26.7%\r###################                                                       26.9%\r###################                                                       27.3%\r###################                                                       27.5%\r####################                                                      27.8%\r####################                                                      28.1%\r####################                                                      28.4%\r####################                                                      28.7%\r####################                                                      29.0%\r#####################                                                     29.3%\r#####################                                                     29.6%\r#####################                                                     29.8%\r#####################                                                     30.1%\r#####################                                                     30.5%\r######################                                                    30.6%\r######################                                                    30.8%\r######################                                                    31.3%\r######################                                                    31.8%\r#######################                                                   32.0%\r#######################                                                   32.2%\r#######################                                                   32.5%\r#######################                                                   32.9%\r#######################                                                   33.2%\r########################                                                  33.4%\r########################                                                  33.7%\r########################                                                  34.1%\r########################                                                  34.4%\r########################                                                  34.7%\r#########################                                                 35.0%\r#########################                                                 35.4%\r#########################                                                 35.6%\r#########################                                                 36.0%\r##########################                                                36.2%\r##########################                                                36.6%\r##########################                                                37.0%\r##########################                                                37.2%\r###########################                                               37.5%\r###########################                                               37.8%\r###########################                                               38.1%\r###########################                                               38.6%\r############################                                              38.9%\r############################                                              39.1%\r############################                                              39.4%\r############################                                              39.7%\r############################                                              40.0%\r#############################                                             40.4%\r#############################                                             40.7%\r#############################                                             41.1%\r#############################                                             41.3%\r#############################                                             41.6%\r##############################                                            42.0%\r##############################                                            42.4%\r##############################                                            42.8%\r##############################                                            43.0%\r###############################                                           43.5%\r###############################                                           43.7%\r###############################                                           43.9%\r###############################                                           44.2%\r################################                                          44.6%\r################################                                          44.9%\r################################                                          45.3%\r################################                                          45.6%\r#################################                                         45.9%\r#################################                                         46.2%\r#################################                                         46.6%\r#################################                                         46.9%\r#################################                                         47.1%\r##################################                                        47.5%\r##################################                                        47.8%\r##################################                                        48.0%\r##################################                                        48.3%\r###################################                                       48.7%\r###################################                                       49.1%\r###################################                                       49.3%\r###################################                                       49.6%\r###################################                                       50.0%\r####################################                                      50.4%\r####################################                                      50.6%\r####################################                                      51.1%\r#####################################                                     51.4%\r#####################################                                     51.8%\r#####################################                                     52.2%\r#####################################                                     52.5%\r######################################                                    52.9%\r######################################                                    53.3%\r######################################                                    53.6%\r######################################                                    54.0%\r######################################                                    54.1%\r#######################################                                   54.5%\r#######################################                                   54.8%\r#######################################                                   55.1%\r#######################################                                   55.4%\r########################################                                  55.7%\r########################################                                  56.1%\r########################################                                  56.5%\r########################################                                  56.8%\r#########################################                                 57.3%\r#########################################                                 57.6%\r#########################################                                 58.0%\r##########################################                                58.5%\r##########################################                                58.8%\r##########################################                                59.1%\r##########################################                                59.4%\r###########################################                               59.8%\r###########################################                               60.2%\r###########################################                               60.6%\r###########################################                               60.8%\r############################################                              61.1%\r############################################                              61.5%\r############################################                              61.9%\r#############################################                             62.5%\r#############################################                             62.5%\r#############################################                             62.6%\r##############################################                            64.0%\r##############################################                            64.7%\r###############################################                           66.2%\r################################################                          67.0%\r################################################                          67.6%\r##################################################                        70.2%\r##################################################                        70.2%\r###################################################                       71.5%\r####################################################                      72.9%\r#####################################################                     74.5%\r#####################################################                     74.6%\r######################################################                    76.0%\r######################################################                    76.1%\r#######################################################                   76.7%\r#######################################################                   77.6%\r########################################################                  78.3%\r########################################################                  79.0%\r########################################################                  79.1%\r########################################################                  79.1%\r##########################################################                80.6%\r##########################################################                80.8%\r###########################################################               82.1%\r###########################################################               82.6%\r############################################################              83.4%\r############################################################              83.5%\r############################################################              83.9%\r############################################################              84.5%\r#############################################################             84.9%\r#############################################################             85.7%\r#############################################################             85.7%\r##############################################################            87.3%\r##############################################################            87.4%\r###############################################################           87.9%\r###############################################################           88.1%\r###############################################################           88.1%\r###############################################################           88.2%\r###############################################################           88.6%\r###############################################################           88.7%\r################################################################          89.0%\r################################################################          89.4%\r################################################################          90.2%\r#################################################################         90.7%\r#################################################################         91.3%\r##################################################################        92.4%\r##################################################################        92.9%\r###################################################################       93.4%\r###################################################################       94.0%\r###################################################################       94.0%\r###################################################################       94.2%\r####################################################################      94.7%\r####################################################################      95.3%\r####################################################################      95.4%\r####################################################################      95.7%\r#####################################################################     96.4%\r#####################################################################     96.6%\r#####################################################################     96.9%\r#####################################################################     97.2%\r######################################################################    97.8%\r######################################################################    98.2%\r#######################################################################   98.7%\r#######################################################################   98.7%\r#######################################################################   99.3%\r#######################################################################   99.3%\r######################################################################## 100.0%",
+        "bun was installed successfully to /opt/toolchain/bun/bin/bun ",
+        "Run 'bun --help' to get started",
+        ""
+      ]
+    },
+    {
+      "id": "04-pnpm",
+      "exit": 0,
+      "seconds": 9,
+      "cmd": "npm i -g pnpm@11.23.0 ",
+      "logFile": "04-pnpm.log",
+      "logBytes": 86,
+      "tail": [
+        "",
+        "added 1 package in 9s",
+        "",
+        "1 package is looking for funding",
+        "  run `npm fund` for details",
+        ""
+      ]
+    },
+    {
+      "id": "05-dsh",
+      "exit": 0,
+      "seconds": 297,
+      "cmd": "npm i -g @deepseek-ai/dsh@0.2.0-rc.2 ",
+      "logFile": "05-dsh.log",
+      "logBytes": 1178,
+      "tail": [
+        "npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead",
+        "",
+        "added 538 packages in 5m",
+        "",
+        "63 packages are looking for funding",
+        "  run `npm fund` for details",
+        "npm warn install-scripts 5 packages have install scripts not yet covered by allowScripts:",
+        "npm warn install-scripts   @deepseek-ai/dsh-subprocess-local@0.2.0-rc.2 (postinstall: node scripts/ensure-spawn-helper.mjs)",
+        "npm warn install-scripts   koffi@3.1.1 (install: node ./cnoke.cjs -P . -D src/koffi --prebuild --release)",
+        "npm warn install-scripts   node-pty@1.2.0-beta.15 (install: node scripts/prebuild.js || node-gyp rebuild; postinstall: node scripts/post-install.js)",
+        "npm warn install-scripts   @google/genai@2.21.0 (preinstall: echo 'preinstall: no-op')",
+        "npm warn install-scripts   protobufjs@7.6.6 (postinstall: node scripts/postinstall)",
+        "npm warn install-scripts",
+        "npm warn install-scripts Run `npm install -g --allow-scripts=@deepseek-ai/dsh-subprocess-local,koffi,node-pty,@google/genai,protobufjs` to allow these scripts once, or `npm config set allow-scripts=@deepseek-ai/dsh-subprocess-local,koffi,node-pty,@google/genai,protobufjs --location=user` to allow them for all global installs.",
+        ""
+      ]
+    },
+    {
+      "id": "06-copy",
+      "exit": 0,
+      "seconds": 0,
+      "cmd": "cp -a /src/. /opt/mpd/ ",
+      "logFile": "06-copy.log",
+      "logBytes": 0,
+      "tail": [
+        ""
+      ]
+    },
+    {
+      "id": "07-bun-install",
+      "exit": 1,
+      "seconds": 0,
+      "cmd": "bash -c cd '/opt/mpd' && bun install ",
+      "logFile": "07-bun-install.log",
+      "logBytes": 321,
+      "tail": [
+        "bun install v1.4.2 (744846f84)",
+        "error: Package \"@mpd-dsh/mpd\" is not linked",
+        "",
+        "To install a linked package:",
+        "   bun link my-pkg-name-from-package-json",
+        "",
+        "Tip: the package name is from package.json, which can differ from the folder name.",
+        "",
+        "",
+        "error: @mpd-dsh/mpd@link:/home/haroldzhao/MyProj/DshProj/My-Power-Dsh failed to resolve",
+        ""
+      ]
+    },
+    {
+      "id": "08-rebuild",
+      "exit": 0,
+      "seconds": 1,
+      "cmd": "node /opt/mpd-e2e/lib/rebuild.ts --repo /opt/mpd --json /work/rebuild.json ",
+      "logFile": "08-rebuild.log",
+      "logBytes": 4078,
+      "tail": [
+        "[rebuild] OK   packages/mpd-dsh-adapter-plugin/src/index.ts -> packages/mpd-dsh-adapter-plugin/dist/index.js (exit=0 bytes=66844)",
+        "[rebuild] OK   packages/mpd-ext-plugin/src/index.ts -> packages/mpd-ext-plugin/dist/index.js (exit=0 bytes=197236)",
+        "[rebuild] OK   packages/mpd-ext-plugin/src/sdk.ts -> packages/mpd-ext-plugin/dist/sdk.js (exit=0 bytes=1708)",
+        "[rebuild] OK   packages/mpd-goal-plugin/src/index.ts -> packages/mpd-goal-plugin/dist/index.js (exit=0 bytes=75617)",
+        "[rebuild] OK   packages/mpd-hashline-plugin/src/index.ts -> packages/mpd-hashline-plugin/dist/index.js (exit=0 bytes=102936)",
+        "[rebuild] OK   packages/mpd-mcp-astgrep/src/launch.ts -> packages/mpd-mcp-astgrep/dist/launch.js (exit=0 bytes=11231)",
+        "[rebuild] OK   packages/mpd-mcp-codegraph/src/launch.ts -> packages/mpd-mcp-codegraph/dist/launch.js (exit=0 bytes=15956)",
+        "[rebuild] OK   packages/mpd-mcp-gitbash/src/launch.ts -> packages/mpd-mcp-gitbash/dist/launch.js (exit=0 bytes=7284)",
+        "[rebuild] OK   packages/mpd-mcp-lsp/src/launch.ts -> packages/mpd-mcp-lsp/dist/launch.js (exit=0 bytes=7276)",
+        "[rebuild] OK   packages/mpd-memory-plugin/src/index.ts -> packages/mpd-memory-plugin/dist/index.js (exit=0 bytes=77688)",
+        "[rebuild] OK   packages/mpd-modelchain-plugin/src/index.ts -> packages/mpd-modelchain-plugin/dist/index.js (exit=0 bytes=70008)",
+        "[rebuild] OK   packages/mpd-qa-roles-probe/src/index.ts -> packages/mpd-qa-roles-probe/dist/index.js (exit=0 bytes=71614)",
+        "[rebuild] OK   packages/mpd-roles-plugin/src/index.ts -> packages/mpd-roles-plugin/dist/index.js (exit=0 bytes=137748)",
+        "[rebuild] OK   packages/mpd-roster-provider-plugin/src/index.ts -> packages/mpd-roster-provider-plugin/dist/index.js (exit=0 bytes=111361)",
+        "[rebuild] OK   packages/mpd-team-compact-plugin/src/index.ts -> packages/mpd-team-compact-plugin/dist/index.js (exit=0 bytes=82933)",
+        "[rebuild] OK   packages/mpd-team-core-plugin/src/index.ts -> packages/mpd-team-core-plugin/dist/index.js (exit=0 bytes=153082)",
+        "[rebuild] OK   packages/mpd-team-watchdog-plugin/src/index.ts -> packages/mpd-team-watchdog-plugin/dist/index.js (exit=0 bytes=194528)",
+        "[rebuild] OK   packages/mpd-tools-plugin/src/index.ts -> packages/mpd-tools-plugin/dist/index.js (exit=0 bytes=66337)",
+        "[rebuild] OK   packages/mpd-tui-adapter-plugin/src/index.ts -> packages/mpd-tui-adapter-plugin/dist/index.js (exit=0 bytes=44213)",
+        "[rebuild] OK   packages/mpd-tui-plugin/src/index.ts -> packages/mpd-tui-plugin/dist/index.js (exit=0 bytes=380622)",
+        "[rebuild] OK   packages/mpd-ulw-plugin/src/index.ts -> packages/mpd-ulw-plugin/dist/index.js (exit=0 bytes=107163)",
+        "[rebuild] OK   packages/mpd-verify-plugin/src/index.ts -> packages/mpd-verify-plugin/dist/index.js (exit=0 bytes=118938)",
+        "[rebuild] OK   packages/mpd-workmate-plugin/src/index.ts -> packages/mpd-workmate-plugin/dist/index.js (exit=0 bytes=104266)",
+        "[rebuild] ENTRIES=30",
+        "[rebuild] BUILD_OK=30/30",
+        "[rebuild] BUILD_FAILED=",
+        "[rebuild] NO_SRC=mpd-bundle=package has no src/ directory (dist is the only committed artifact),mpd-mcp-shared=built offline by scripts/build-mcp.ts from the upstream checkout (no local src/),mpd-schemastery=package has no src/ directory (dist is the only committed artifact)",
+        "[rebuild] SKIPPED_SRC=",
+        "[rebuild] OK=true",
+        ""
+      ]
+    },
+    {
+      "id": "09-install",
+      "exit": 0,
+      "seconds": 0,
+      "cmd": "bash -c cd '/opt/mpd' && dsh plugin --profile web add '.' ",
+      "logFile": "09-install.log",
+      "logBytes": 161,
+      "tail": [
+        "dsh: initialized profile web at /root/sandbox-dsh/profiles/web",
+        "",
+        "dependencies:",
+        "+ @mpd-dsh/mpd link:/opt/mpd",
+        "",
+        "Already up to date",
+        "Done in 334ms using pnpm v11.23.0",
+        ""
+      ]
+    },
+    {
+      "id": "10-dump",
+      "exit": 0,
+      "seconds": 0,
+      "cmd": "node /opt/mpd/scripts/dump-config.ts --profile web ",
+      "logFile": "10-dump.log",
+      "logBytes": 86844,
+      "tail": [
+        "              provider: claude-code",
+        "              toolName: subagent_claude_code",
+        "              backgroundMode: one-shot",
+        "              maxDepth: provider-managed",
+        "          - id: workflow-ptc",
+        "            name: '@deepseek-ai/dsh-workflow-ptc'",
+        "            config:",
+        "              provider: spawn",
+        "          - id: tool-workflow",
+        "            name: '@deepseek-ai/dsh-tool-workflow'",
+        "          - id: tool-ralph",
+        "            name: '@deepseek-ai/dsh-tool-ralph'",
+        "            config:",
+        "              subagentProvider: spawn",
+        "              maxRounds: 64",
+        "      - id: tool-ask-user",
+        "        name: '@deepseek-ai/dsh-tool-ask-user'",
+        "      - id: tool-todo",
+        "        name: '@deepseek-ai/dsh-tool-todo'",
+        "        config:",
+        "          allowParallelInProgress: true",
+        "      - id: tool-web",
+        "        name: '@deepseek-ai/dsh-tool-web'",
+        "        config:",
+        "          fetch: false",
+        "          searchTimeoutMs: 60000",
+        "      - id: present",
+        "        name: '@deepseek-ai/dsh-tool-present'",
+        "[dump-config] COMPOSITION ONLY (recap) — rows above prove COMPOSITION, never a plugin load; for a load proof run a mounting boot (AGENTS.md §4).",
+        ""
+      ]
+    },
+    {
+      "id": "11-boot",
+      "exit": -1,
+      "seconds": 122,
+      "cmd": "dsh --profile web --patch probe.yml --port 3197 --no-open (background; terminated by the harness after the assertions)",
+      "logFile": "11-boot.log",
+      "logBytes": 1504,
+      "tail": [
+        "[docker-probe] APPLIED=ok",
+        "[docker-probe] CORE_TOOLS=6/6",
+        "[docker-probe] CORE_TOOLS_MISSING=",
+        "[docker-probe] MCP_TOOLS=2/3",
+        "[docker-probe] MCP_TOOLS_MISSING=mcp__codegraph__codegraph_explore",
+        "[docker-probe] TEAM_TOOLS_ROOT=0/9",
+        "[docker-probe] AGENTS_AT_APPLY=0",
+        "[docker-probe] RETIRED_TOOLS_PRESENT=",
+        "[docker-probe] ADAPTER_SERVICE=present",
+        "[docker-probe] ADAPTER_CAPS=tools,toolsRegister,toolsGuard,toolsGet,toolsExecute,toolsPreExecute,toolsPostExecute,subagents,subagentsSpawn,skills,skillsProvider,agentPresets,commands,commandsRegister,agents,events,llmCatalog,toolsRegisterHost,subagentsProvider,subagentsContinuable,teamExecutorNative,subagentsInterrupt,llmListModels,llmResolveCallConfig,systemPromptSection,agentPreStep,team,teamTasks,teamMessages,subagentsProviderRegister,goals",
+        "[docker-probe] ADAPTER_TOOL_CALL=ok",
+        "[docker-probe] AGENT_TEAMS=MOUNTED serviceName=TeamService",
+        "[docker-probe] AGENT_TEAMS_METHODS=listMembers,spawnTeammate,sendMessage,createTask,getTask,listTasks,updateTask,waitForChange,interrupt,tryMembership",
+        "[docker-probe] DONE=1",
+        "dsh web: http://127.0.0.1:3197/?token=<redacted>",
+        "[docker-probe] AGENT_TEAM_TOOLS=9/9 agent=session-0ce51639-b463-4a31-a597-1ea59c58 scopelessRead=0/9",
+        "[docker-probe] AGENT_VISIBLE_TOOLS=104 agent=session-0ce51639-b463-4a31-a597-1ea59c58",
+        "[docker-probe] AGENT_TEAM_TOOLS=9/9 agent=session-37fa06b4-8860-4c11-8733-e9a70885 scopelessRead=0/9",
+        "[docker-probe] AGENT_VISIBLE_TOOLS=104 agent=session-37fa06b4-8860-4c11-8733-e9a70885",
+        ""
+      ]
+    },
+    {
+      "id": "12-web-live",
+      "exit": 0,
+      "seconds": 0,
+      "cmd": "POST /api/session/prompt + docker/lib/live-verdict.ts (label=web)",
+      "logFile": "12-web-live.log",
+      "logBytes": 1001,
+      "tail": [
+        "session=session-0ce51639-b463-4a31-a597-1ea59c5839c7 http=200",
+        "prompt=Call the mpd_config_get tool once (it takes no arguments), then reply with exactly: DONE",
+        "{\"type\":\"server-response\",\"rpcId\":\"req-1-1791447441-32478\",\"result\":{\"ok\":true,\"value\":{\"accepted\":true}}}",
+        "[live-verdict] wait=300000ms landed=true session=/root/sandbox-dsh/sessions/--work-ws--/session-0ce51639-b463-4a31-a597-1ea59c5839c7/session.v4.jsonl.zstd",
+        "[record] live.web.turnStarted=true — the web plane started a real turn",
+        "[record] live.web.turnCompleted=true — the web turn reached turn/end reason=completed",
+        "[record] live.web.noErrorTurns=true — no web turn ended in an error",
+        "[record] live.web.noMalformedToolJson=true — every web tool-call payload the model emitted parsed as JSON",
+        "[record] live.web.toolCallsParsed=true — all 1 web tool call(s) parsed (1/1)",
+        "[record] live.web.mpdToolCalled=true — an MPD tool ran under a live web turn",
+        "[record] live.web.assistantReplied=true — the web assistant produced visible text",
+        ""
+      ]
+    },
+    {
+      "id": "13-browser",
+      "exit": 0,
+      "seconds": 0,
+      "cmd": "node browser-lane.ts (Chromium drives the real Web GUI)",
+      "logFile": "13-browser.log",
+      "logBytes": 47823,
+      "tail": [
+        "|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                        |  50% of 2.3 MiB",
+        "|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                |  60% of 2.3 MiB",
+        "|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                        |  70% of 2.3 MiB",
+        "|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                |  80% of 2.3 MiB",
+        "|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■        |  90% of 2.3 MiB",
+        "|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■| 100% of 2.3 MiB",
+        "FFMPEG playwright build v1010 downloaded to /work/pw-browsers/ffmpeg-1010",
+        "Downloading Chromium Headless Shell 131.0.6778.33 (playwright build v1148) from https://playwright.azureedge.net/builds/chromium/1148/chromium-headless-shell-linux.zip",
+        "|                                                                                |   0% of 100.9 MiB",
+        "|■■■■■■■■                                                                        |  10% of 100.9 MiB",
+        "|■■■■■■■■■■■■■■■■                                                                |  20% of 100.9 MiB",
+        "|■■■■■■■■■■■■■■■■■■■■■■■■                                                        |  30% of 100.9 MiB",
+        "|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                                |  40% of 100.9 MiB",
+        "|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                        |  50% of 100.9 MiB",
+        "|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                |  60% of 100.9 MiB",
+        "|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                        |  70% of 100.9 MiB",
+        "|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                |  80% of 100.9 MiB",
+        "|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■        |  90% of 100.9 MiB",
+        "|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■| 100% of 100.9 MiB",
+        "Chromium Headless Shell 131.0.6778.33 (playwright build v1148) downloaded to /work/pw-browsers/chromium_headless_shell-1148",
+        "[record] ui.loads=true — the Web GUI loaded and rendered visible text in a real browser",
+        "[record] ui.workspaceSelected=true — a workspace is selected in the GUI, so the session composer is live",
+        "[record] ui.composerPresent=true — the prompt composer exists and is editable — the entry point of every turn",
+        "[record] ui.promptSent=true — a prompt was typed into the composer and sent through the real UI",
+        "[record] ui.replyRendered=true — the transcript changed after the send and shows the turn's own output",
+        "[record] ui.teamPanel=true — the right sidebar opens on the Agent Teams panel with its roster and board",
+        "[record] ui.mpdSettingsSection=true — the MPD settings section registers and renders its card in Settings",
+        "[record] ui.noConsoleErrors=true — the browser reported no console errors and no uncaught page errors",
+        "[browser-lane] rows=8 failed=0 shots=/out/ui-shots",
+        ""
+      ]
+    },
+    {
+      "id": "14-tui",
+      "exit": 0,
+      "seconds": 0,
+      "cmd": "bash docker/tui-lane.sh",
+      "logFile": "14-tui.log",
+      "logBytes": 4643,
+      "tail": [
+        "[record] tui.hostInstall=true — the TUI host installs globally and lands on PATH",
+        "[record] tui.pluginAddHost=true — the TUI host bundle installs into the dsh-tui profile",
+        "[record] tui.pluginAddBundle=true — THIS bundle installs into the dsh-tui profile as the third patch layer",
+        "[record] tui.compose=true — dsh --profile dsh-tui --dump-config composes (COMPOSITION ONLY, never a load proof)",
+        "[record] tui.presetPreference=true — the lane performed the DOCUMENTED USER path: <HOME>/.dsh-tui/agent-preset.json written byte-exactly (21 bytes, no trailing newline) and dsh-tui@0.14.0 lib/types/presetPrefs.js#writePresetPref — AND the host registry row is UNTOUCHED by the bundle (its own default reads 'standard', no bundle-forced 'mpd', and the shipped layers id-target it nowhere). tui.sessionPreset is the arm that proves the preference is what resolved mpd",
+        "[record] tui.presetRow=true — the mpd preset row is composed in the TUI plane",
+        "[record] tui.mpdTuiRow=true — the bundle's mpd-tui row is composed in the TUI plane",
+        "[record] tui.agentTeamRows=true — all three official Agent Teams rows are composed in the TUI plane",
+        "[record] tui.teamSceneOpened=true — the /mpd team scene opened on a real terminal",
+        "[record] tui.teamGraphDrawn=true — the LAYERED BOXES were drawn: the ROUNDED corner census equals the record's own task count, one box per task, which a dropped box reddens (the square corners the old arm matched belong to the scene FRAME; the subjects are NOT claimed here, because clause AC1 moved them to the pinned detail body that tui.teamGraphContent asserts)",
+        "[record] tui.teamGraphEdges=true — the dependency EDGES were drawn with box-drawing junctions",
+        "[record] tui.teamGraphContent=true — every task id the lane's OWN record carries is drawn as a node label AND the record's own subject is reachable one keystroke away in the pinned detail body, where clause AC1 moved it (a literal id would keep passing after a dropped task)",
+        "[record] tui.mergedPanelOpens=null — the merged view's OPEN is not pane-observable on this host: with the 0.13.0 panel seam present it is a sidebar panel, a host-ACCEPTED open() changes zero bytes of a tmux capture, and the routed command's printed line does not reach the transcript either. The panel registration + accepted open ARE asserted, store-backed, by the sandbox lanes on the SAME host version (tui-panels, tui-deps-ctrla). Full-screen surfaces that this lane CAN see on this host are covered by the team-scene arms above",
+        "[record] tui.mergedPanelOrder=null — the merged body's section order is NOT observable on this host: with the panel seam present the merged view is a sidebar panel and its rows do not reach a tmux capture, so this arm is not attempted here (the order is covered by the plugin's unit arms). Recording it as a pass would be a claim the pane does not carry",
+        "[record] tui.hostDashboardKeyIntact=true — Ctrl+A stayed the HOST's key on this host, as frozen R4 requires wherever the panel seam is present: with the seeded team present it did NOT open MPD's merged panel, and after the team record was removed it still did not. The panel is reached through MPD's own entry points instead (tui.mergedPanelOpens above proves /mpd panel)",
+        "[record] tui.noDirectTuiSeam=true — the D6 gate (no file outside mpd-tui-adapter-plugin names a ctx.tui* seam) passed on a byte-identical copy of the INSTALLED tree, executed where node can strip types",
+        "[live-verdict] wait=300000ms landed=true session=/root/sandbox-dsh/sessions/--work-ws--/51cb0386-0379-491e-9e10-cf39cfe86282/session.v4.jsonl.zstd",
+        "[record] live.tui.turnStarted=true — the tui plane started a real turn",
+        "[record] live.tui.turnCompleted=true — the tui turn reached turn/end reason=completed",
+        "[record] live.tui.noErrorTurns=true — no tui turn ended in an error",
+        "[record] live.tui.noMalformedToolJson=true — every tui tool-call payload the model emitted parsed as JSON",
+        "[record] live.tui.toolCallsParsed=true — all 1 tui tool call(s) parsed (1/1)",
+        "[record] live.tui.mpdToolCalled=true — an MPD tool ran under a live tui turn",
+        "[record] live.tui.assistantReplied=true — the tui assistant produced visible text",
+        "[record] tui.boot=true — the REAL TUI booted on a real PTY and reached its CHAT screen (the composer is drawn and no 0.13.0 landing marker is on screen)",
+        "[record] tui.noFatalSignatures=true — no fatal apply/module/preset signature in the TUI pane or log",
+        "[record] tui.sessionPreset=true — the session the TUI created records agentPreset=mpd (the D10 default, read from the harness's own store)",
+        "[record] tui.laneExit=true — the TUI lane ran to completion with every assertion green",
+        ""
+      ]
+    },
+    {
+      "id": "15-headless-live",
+      "exit": 0,
+      "seconds": 0,
+      "cmd": "dsh --profile headless <live prompt: promptSource=caller (MPD_E2E_LIVE_PROMPT) bytes=377 firstLine=\"Write a playable classic Snake game as ONE self-contained file at `snake/index.html` in the current directory: no build step, no network access, no dependencies. Arrow keys (or WASD) steer, the snake grows and the score increases when it eats, hitting a wall or itself ends the game with a visible game over message, and Enter (or R) restarts. Keep everything in that one file.\">",
+      "logFile": "15-headless-live.log",
+      "logBytes": 50982,
+      "tail": [
+        "",
+        "## Deliverable",
+        "",
+        "**`/work/ws/snake/index.html`** — 11,241 bytes, one file, sha256 `578a7993…b1a61a5d`. Open it directly in a browser (`file://` works, no server needed).",
+        "",
+        "What's in it:",
+        "",
+        "| Requirement | Implementation |",
+        "|---|---|",
+        "| Steering | Arrow keys **and** WASD, case-insensitive; direct reversal rejected via a 2-deep input queue so fast double-taps can't kill you |",
+        "| Growth + score | Head-to-food adds exactly one segment and +10 score; food respawns only on free cells |",
+        "| Game over | Wall or self collision stops the snake and shows a visible **\"Game Over\"** overlay with the reason (\"You hit the wall.\" / \"You ran into yourself.\") |",
+        "| Restart | **Enter** or **R** resets score, length and overlay; immediately playable |",
+        "| Self-contained | All CSS in one `<style>`, all JS in one inline `<script>`; zero external refs, no build step, no dependencies |",
+        "",
+        "Small extras beyond the ask (classic-quality-of-life, reviewer flagged as LOW scope creep): Space to pause + auto-pause on window blur, a `localStorage` best score (try/catch guarded so `file://` can't break it), a gentle speed ramp, and rounded-segment/eyes rendering.",
+        "",
+        "## Verification — independent, not self-reported",
+        "",
+        "The environment gates code writes behind a verification law, so I opened a self-writer loop with a frozen contract (`.mpd/plans/snake-v1.md`) and a **different agent** as verifier:",
+        "",
+        "- A Review-writer teammate built a black-box harness (`evidence/snake/verify.mjs`) that stubs the DOM/Canvas, evaluates the *actual* inline script, and observes only DOM text plus recorded draw calls: **40/40 assertions pass, exit 0** (R3 4/4, R4 11/11, R5 5/5, R6 6/6, R7 5/5, R8 9/9) — covering growth-by-exactly-one, wall/self collision, frozen snake after game over, and both Enter and R restarts.",
+        "- I re-ran that harness myself as the Lead's final acceptance test: **40/40, exit 0**.",
+        "- A **fresh blind verifier** (which never read the artifact before binding) landed the official record `rec-20261008T084406-23ffe6`: **PASS**, `basis.kind=\"blind\"`, sources pinned to artifact sha256 `578a7993…b1a61a5d`.",
+        "",
+        "Honesty notes, so nothing is oversold:",
+        "- The official record's `gateEvidence` is the harness's canonical `tests` gate, which exits **1** here because this workspace has no test suite — the plugin's fixed gate table has no applicable entry. It's disclosed in the record notes; the substantive proof is the green black-box harness above, not that gate.",
+        "- An earlier, superseded PASS record `rec-20261008T084350-48f43a` (placeholder note) remains on disk alongside the final one; both cite the same artifact hash. I left both rather than mutate the verification ledger.",
+        "- No browser or `python3` is installed, so rendering was not visually inspected — the canvas was verified structurally through recorded draw operations.",
+        ""
+      ]
+    }
+  ],
+  "outputLog": "output.log",
+  "evidenceScrubbed": true
+}

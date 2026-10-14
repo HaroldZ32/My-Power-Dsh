@@ -1,0 +1,215 @@
+// FALSIFIERS FOR THE CAPTAIN TEST (contract `.mpd/plans/captain-test-fix.md`, clauses F1/F2/F5).
+//
+// THE DEFECT THE FIRST WAVE LOCKED OUT (T-92): the guard decided "is this the workspace's captain" with
+// `sessionQualifies(agent, ["mpd"])`, a PRESET-keyed test. Every top-level session on this deployment
+// records `agentPreset: "cordis"`, so the captain branch was unreachable and the user's own session was
+// refused its git writes with a sentence claiming a fact the code never tested. The captain is the
+// workspace's TOP-LEVEL session — a header, no parent session, delegation depth 0.
+//
+// THE SECOND DEFECT, LOCKED OUT HERE (2026-10-12): with the preset removed from the CLASSIFICATION, the
+// captain's two BEHAVIOURAL rules (#4's write rule and the reconnaissance guard) began to bite every
+// top-level session of the deployment, whatever preset it ran — so a user working in the default
+// `cordis` preset was refused its own code writes by a captain contract that preset never asked for.
+// The two questions are now SEPARATE and each has its own predicate:
+//   • WHO is the captain — `sessionIsTopLevel`, PRESET-FREE, answers it (the T-92 repair, unchanged);
+//   • WHICH behavioural rules that captain carries — `sessionIsMpdCaptain`, the SAME test AND
+//     `agentPreset === "mpd"`, scopes the write rule and the reconnaissance guard to the preset that
+//     owns them. §5's one-git-writer rule stays on `sessionIsTopLevel` alone: it protects the single
+//     `.git/HEAD` of a shared checkout, so it follows the USER's preset too.
+//
+// The guard is driven through its real exported function (`verifyGuardDecision`) with a law double, so
+// what is asserted is the decision the shipped hook makes, not a re-implementation of it.
+import { describe, expect, test } from "bun:test"
+
+import { sessionIsMpdCaptain, sessionIsTopLevel, sessionQualifies, sessionRank } from "../src/complexity-gate.ts"
+import { verifyGuardDecision } from "../src/verify-guard.ts"
+import type { VerifyLawAccess } from "../src/verify-guard.ts"
+
+/** The workspace root every arm resolves against; a string only, because classification never touches disk. */
+const WORKSPACE = "/ws-captain-test"
+
+/**
+ * The law's runtime double for the guard: the two rules under test read only the loop list, the escape
+ * count and the seat, so those answer the EMPTY case and the remaining methods are inert.
+ *
+ * @returns a law accessor whose workspace has no seat, no armed loop and no escape left.
+ */
+function lawDouble(): VerifyLawAccess {
+  return {
+    keyOf: () => "session-under-test",
+    noteCall: () => { /* the arms assert decisions, not the observation log */ },
+    escapeUses: () => 0,
+    consumeEscape: () => false,
+    countRead: () => { /* nothing in these arms is inside a diagnosis window */ },
+    armedLoops: () => [],
+    seatFor: () => undefined,
+  }
+}
+
+/**
+ * Run one call through the real guard decision, in `hard` mode, with the shared double.
+ *
+ * @param exec - the harness call shape under test: `name`, `arguments` and the `agent` double.
+ * @returns the denial the guard would hand the harness, or `undefined` when the call is allowed.
+ */
+function decide(exec: Record<string, unknown>): string | undefined {
+  return verifyGuardDecision(exec, {
+    law: lawDouble(),
+    mode: "hard",
+    workspaceRoot: WORKSPACE,
+    now: new Date(),
+    warn: () => { /* the arms assert decisions, not warnings */ },
+  })
+}
+
+/**
+ * One agent double: an id, and a session header exactly as the arm spells it.
+ *
+ * @param header - the session header fields under test; `undefined` builds an agent with NO session.
+ * @param id - the session id the law's key reader sees.
+ * @returns the agent double.
+ */
+function agentDouble(header: Record<string, unknown> | undefined, id: string = "captain-session"): Record<string, unknown> {
+  return header === undefined ? { id } : { id, session: { id, header } }
+}
+
+/** A `git commit` through the `bash` tool — the §5 write the one-git-writer rule covers. */
+const GIT_WRITE: Record<string, unknown> = { name: "bash", arguments: { command: "git commit -m x" } }
+
+/** A code write through the `write` tool — the call rule 4 (the captain's write rule) covers. */
+const CODE_WRITE: Record<string, unknown> = { name: "write", arguments: { file_path: "packages/a/src/index.ts" } }
+
+describe("F1 — sessionIsTopLevel: the workspace's top-level session, never a preset", () => {
+  test("a header with no parent session and delegation depth 0 (or absent) IS top-level, whatever preset", () => {
+    // THE MEASURED DEPLOYMENT: the user's own top-level session records `cordis`.
+    expect(sessionIsTopLevel(agentDouble({ agentPreset: "cordis", delegationDepth: 0 }))).toBe(true)
+    expect(sessionIsTopLevel(agentDouble({ agentPreset: "mpd", delegationDepth: 0 }))).toBe(true)
+    // `delegationDepth` ABSENT is a top-level session too (a header the harness never recorded a depth for).
+    expect(sessionIsTopLevel(agentDouble({ agentPreset: "cordis" }))).toBe(true)
+    expect(sessionIsTopLevel(agentDouble({}))).toBe(true)
+    // THE PRESET IS NOT CONSULTED: a name the gate would never cover is still the captain.
+    expect(sessionIsTopLevel(agentDouble({ agentPreset: "anything-weird" }))).toBe(true)
+    expect(sessionIsTopLevel(agentDouble({ agentPreset: undefined }))).toBe(true)
+  })
+
+  test("a SUBAGENT ORIGIN or a recorded depth of 1+ is a CHILD — a parent link alone is NOT (the seeded-fork repair)", () => {
+    expect(sessionIsTopLevel(agentDouble({ origin: "subagent" }))).toBe(false)
+    expect(sessionIsTopLevel(agentDouble({ delegationDepth: 1 }))).toBe(false)
+    expect(sessionIsTopLevel(agentDouble({ agentPreset: "mpd", delegationDepth: 1 }))).toBe(false)
+    // BOTH delegation facts at once, and the preset still does not rescue it.
+    expect(sessionIsTopLevel(agentDouble({ agentPreset: "mpd", origin: "subagent", delegationDepth: 1 }))).toBe(false)
+    // THE SEEDED FORK (F0, measured 2026-10-10): the user's own top-level session records
+    // `parentSession` + `isSeeded: true` + `delegationDepth: 0` and NO subagent origin. The old
+    // parent-link test classified THAT session as a child, which disarmed every captain-scoped rule
+    // (the write rule, the investigation guard, the one-git-writer rule) on the one session they gate.
+    expect(sessionIsTopLevel(agentDouble({ agentPreset: "cordis", parentSession: "seed-root", isSeeded: true, delegationDepth: 0 }))).toBe(true)
+    // A parent link with NO recorded depth is the captain too — the conservative direction: captain
+    // rules apply, while the delegation gate's default mode refuses captains AND children alike.
+    expect(sessionIsTopLevel(agentDouble({ parentSession: "parent-session" }))).toBe(true)
+  })
+
+  test("NO header is refused (fail-closed), and the class is reported", () => {
+    expect(sessionIsTopLevel({ id: "no-session" })).toBe(false)
+    expect(sessionIsTopLevel({ id: "empty-header", session: { header: undefined } })).toBe(false)
+    expect(sessionIsTopLevel(undefined)).toBe(false)
+    expect(sessionRank({ id: "no-session" })).toBe("headerless")
+    expect(sessionRank(agentDouble({ delegationDepth: 2 }))).toBe("child")
+    expect(sessionRank(agentDouble({ origin: "subagent" }))).toBe("child")
+    expect(sessionRank(agentDouble({ agentPreset: "cordis" }))).toBe("captain")
+    // The seeded fork, in the rank vocabulary the delegation gate reads.
+    expect(sessionRank(agentDouble({ parentSession: "seed-root", isSeeded: true, delegationDepth: 0 }))).toBe("captain")
+  })
+
+  test("F3 — the session-start gate keeps its preset scope: it is NOT the captain test", () => {
+    // UNCHANGED ON PURPOSE: whether the complexity gate should ALSO fire for a `cordis`-preset top-level
+    // session is a separate question the captain puts to the user. This arm documents the split.
+    expect(sessionQualifies(agentDouble({ agentPreset: "mpd" }))).toBe(true)
+    expect(sessionQualifies(agentDouble({ agentPreset: "cordis" }))).toBe(false)
+    // THE SPLIT, ON THE SAME DOUBLE: the gate says no, the captain test says yes.
+    expect(sessionIsTopLevel(agentDouble({ agentPreset: "cordis" }))).toBe(true)
+  })
+
+  test("F6 — sessionIsMpdCaptain: the `mpd` preset's top-level session, the ONE the behavioural rules gate", () => {
+    /** The session the write rule and the reconnaissance guard are scoped to. */
+    const mpdCaptain = agentDouble({ agentPreset: "mpd", delegationDepth: 0 })
+    // THE ONE TRUE CASE, with the depth recorded and with it absent (a header the harness never filled).
+    expect(sessionIsMpdCaptain(mpdCaptain)).toBe(true)
+    expect(sessionIsMpdCaptain(agentDouble({ agentPreset: "mpd" }))).toBe(true)
+    expect(sessionIsMpdCaptain(agentDouble({ agentPreset: "mpd", parentSession: "seed-root", isSeeded: true, delegationDepth: 0 }))).toBe(true)
+    // ANOTHER PRESET'S TOP-LEVEL SESSION IS NOT THE `mpd` CAPTAIN: the deployment default is `cordis`, and
+    // a session that never asked for the bundle's preset must not carry its captain contracts.
+    expect(sessionIsMpdCaptain(agentDouble({ agentPreset: "cordis", delegationDepth: 0 }))).toBe(false)
+    expect(sessionIsMpdCaptain(agentDouble({ agentPreset: "anything-weird" }))).toBe(false)
+    // A PRESET-LESS SESSION IS NOT GATED: the test opens ONLY on the exact name. Deliberately the OPPOSITE
+    // of `sessionQualifies`, which reads a preset-less session as covered (there it protects a
+    // bundle-less deployment; here it would re-impose the very rule this predicate exists to scope).
+    expect(sessionIsMpdCaptain(agentDouble({ delegationDepth: 0 }))).toBe(false)
+    expect(sessionIsMpdCaptain(agentDouble({ agentPreset: undefined }))).toBe(false)
+    // A CHILD UNDER `mpd` IS NEVER THE CAPTAIN: position decides that half, and it is checked first.
+    expect(sessionIsMpdCaptain(agentDouble({ agentPreset: "mpd", origin: "subagent", delegationDepth: 1 }))).toBe(false)
+    expect(sessionIsMpdCaptain(agentDouble({ agentPreset: "mpd", delegationDepth: 1 }))).toBe(false)
+    // NO HEADER AT ALL still fails closed, as it does for the captain test it builds on.
+    expect(sessionIsMpdCaptain({ id: "no-session" })).toBe(false)
+  })
+})
+
+describe("F2/F5 — the guard's two rules read that ONE predicate", () => {
+  test("F5-1: a TOP-LEVEL `cordis` session may run a git write AND keeps its own code writes", () => {
+    /** The user's own top-level session, as this deployment measures it. */
+    const cordisCaptain = agentDouble({ cwd: WORKSPACE, agentPreset: "cordis", delegationDepth: 0 })
+    // THE FIRST DEFECT, FIXED (T-92): §5 used to refuse this session its `git commit`.
+    expect(decide({ ...GIT_WRITE, agent: cordisCaptain })).toBeUndefined()
+    // READ-ONLY GIT was never the point, and still is not: the same caller stays open on it.
+    expect(decide({ name: "bash", arguments: { command: "git status --short" }, agent: cordisCaptain })).toBeUndefined()
+    // THE SECOND DEFECT, FIXED (2026-10-12): the write rule is scoped to the `mpd` preset, so a session
+    // running the deployment's DEFAULT preset is not refused its own code writes by a captain contract
+    // that preset never asked for. Before the scope landed, THIS line expected a "verification law" denial.
+    expect(decide({ ...CODE_WRITE, agent: cordisCaptain })).toBeUndefined()
+    // NOT VACUOUS — the same call is still refused for the preset that owns the rule.
+    expect(String(decide({ ...CODE_WRITE, agent: agentDouble({ cwd: WORKSPACE, agentPreset: "mpd" }) }) ?? "")).toContain("verification law")
+  })
+
+  test("F5-2: a TOP-LEVEL `mpd` session is allowed the same git write — no regression for that deployment", () => {
+    /** A top-level session that DOES carry the bundle's preset. */
+    const mpdCaptain = agentDouble({ cwd: WORKSPACE, agentPreset: "mpd" })
+    expect(decide({ ...GIT_WRITE, agent: mpdCaptain })).toBeUndefined()
+    expect(String(decide({ ...CODE_WRITE, agent: mpdCaptain }) ?? "")).toContain("verification law")
+  })
+
+  test("F5-3: a CHILD session is STILL DENIED the git write under either preset — the rule survives", () => {
+    /** A teammate/subagent of this workspace, carrying the bundle preset and the recorded origin. */
+    const mpdChild = agentDouble({ cwd: WORKSPACE, agentPreset: "mpd", origin: "subagent", parentSession: "captain-session", delegationDepth: 1 }, "member-mpd")
+    /** The same shape of child, carrying this deployment's top-level preset. */
+    const cordisChild = agentDouble({ cwd: WORKSPACE, agentPreset: "cordis", delegationDepth: 1 }, "member-cordis")
+    expect(String(decide({ ...GIT_WRITE, agent: mpdChild }) ?? "")).toContain("one-git-writer rule")
+    expect(String(decide({ ...GIT_WRITE, agent: cordisChild }) ?? "")).toContain("one-git-writer rule")
+    // AND RULE 4 STILL LETS A MEMBER WRITE — a child session is exactly who the captain hands code to.
+    expect(decide({ ...CODE_WRITE, agent: mpdChild })).toBeUndefined()
+    expect(decide({ ...CODE_WRITE, agent: cordisChild })).toBeUndefined()
+  })
+
+  test("F5-4: a session with NO header is refused the git write (fail-closed)", () => {
+    /** An agent the guard cannot classify at all. */
+    const headerless = agentDouble(undefined, "unclassifiable-session")
+    expect(String(decide({ ...GIT_WRITE, agent: headerless }) ?? "")).toContain("one-git-writer rule")
+    // FAIL-CLOSED, and honest about WHICH case it is: the sentence does not call this session a member.
+    expect(String(decide({ ...GIT_WRITE, agent: headerless }) ?? "")).toContain("no session header")
+    expect(String(decide({ ...GIT_WRITE, agent: headerless }) ?? "")).not.toContain("member/child session")
+  })
+
+  test("F5-5: the denial states the class decided and names the route — with NO claim about top-levelness", () => {
+    /** The denial a child session receives (the harness recorded its subagent origin). */
+    const childDenial = String(decide({ ...GIT_WRITE, agent: agentDouble({ agentPreset: "mpd", origin: "subagent", parentSession: "p" }) }) ?? "")
+    expect(childDenial).toContain("member/child session of this workspace")
+    expect(childDenial).toContain("parent session")
+    // THE LEGITIMATE ROUTE, named: the user's own shell.
+    expect(childDenial).toContain("user's OWN shell")
+    // NEITHER SENTENCE ASSERTS TOP-LEVELNESS: the old one claimed the session was "NOT the workspace's
+    // top-level captain" after testing only a preset name. This is the arm that locks the defect out.
+    expect(childDenial).not.toContain("top-level")
+    /** The denial the guard's captain-write rule produces for the `mpd` preset's top-level session. */
+    const writeDenial = String(decide({ ...CODE_WRITE, agent: agentDouble({ agentPreset: "mpd" }) }) ?? "")
+    expect(writeDenial).toContain("verification law")
+    expect(writeDenial).not.toContain("top-level")
+  })
+})

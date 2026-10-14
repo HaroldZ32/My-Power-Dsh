@@ -32,7 +32,7 @@ import { createHash } from "node:crypto"
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs"
 import { homedir, tmpdir } from "node:os"
 import { dirname, join } from "node:path"
-import { fileURLToPath } from "node:url"
+import { fileURLToPath, pathToFileURL } from "node:url"
 
 /** The repository root, derived from this script's own URL (four directories up). */
 const repoRoot: string = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
@@ -56,28 +56,32 @@ const REAL_MARKER: string = join(repoRoot, ".mpd", "verify", "boot.json")
 /** The QA library directory, derived from the repository root. */
 const QA_LIB: string = join(repoRoot, "skills", "dsh-qa", "scripts", "lib")
 /** The credentials helpers (`credentialEnv`, `seedSandboxCredentials`). */
-const credentialsLib = await import(join(QA_LIB, "credentials.ts")) as {
+// EVERY import below is a FILE URL, never the bare path (win32 defect, MEASURED 2026-10-12): node's
+// ESM loader refuses an absolute Windows path — it parses the drive letter as a URL scheme and dies
+// with `ERR_UNSUPPORTED_ESM_URL_SCHEME … Received protocol 'c:'` before this script runs a single arm,
+// so the whole law falsifier was unavailable on win32. `pathToFileURL` is the conversion.
+const credentialsLib = await import(pathToFileURL(join(QA_LIB, "credentials.ts")).href) as {
   /** Resolve the credential key for a child environment. */
   credentialEnv: (env: Record<string, string | undefined>) => Record<string, string | undefined>
   /** Copy the real credentials into an isolated home. */
   seedSandboxCredentials: (sandbox: string, options: { credentialsFile: string }) => void
 }
 /** The launcher resolver, so a win32 `.cmd` shim is handled rather than ENOENT. */
-const launcherLib = await import(join(QA_LIB, "dsh-launcher.ts")) as {
+const launcherLib = await import(pathToFileURL(join(QA_LIB, "dsh-launcher.ts")).href) as {
   /** The actionable sentence a lane reports when no launcher resolves. */
   DSH_MISSING: string
   /** The `{command, args}` pair for one `dsh` invocation, or `null` when nothing resolves. */
   dshCommand: (args: string[], env: Env) => { command: string; args: string[] } | null
 }
 /** The three-layer isolation helpers (§7). */
-const isolationLib = await import(join(QA_LIB, "workspace-isolation.ts")) as {
+const isolationLib = await import(pathToFileURL(join(QA_LIB, "workspace-isolation.ts")).href) as {
   /** Create (and return) the sandbox workspace directory inside one sandbox. */
   sandboxWorkspace: (sandbox: string, name?: string) => string
   /** Assert that no session was keyed on a real cwd. */
   assertSessionsSandboxed: (dshHome: string, sandboxRoot: string, options?: { label?: string }) => unknown
 }
 /** The session-log decoder: the ONLY accepted source of a tool-call proof (§7). */
-const evidenceLib = await import(join(QA_LIB, "session-evidence.ts")) as {
+const evidenceLib = await import(pathToFileURL(join(QA_LIB, "session-evidence.ts")).href) as {
   /** Read and decode one sandbox's session records. */
   readSessionEvents: (dshHome: string, options?: { workspace?: string }) => unknown
   /** Pair the recorded calls of one tool name with their results. */

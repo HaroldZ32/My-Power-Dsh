@@ -1,0 +1,161 @@
+{
+  "wave": "loop-20261011T142220-8ad060",
+  "task": "Replace hard-coded /tmp paths in test fixtures under packages/ so the test suite can run on win32",
+  "scopeHonoured": "packages/**/test/** only; packages/*/src has ZERO /tmp hits (verified) so the src escape clause was never needed; nothing outside packages/ was written by this wave",
+  "toolchain": {
+    "pinnedBun": ".toolchain/node_modules/.bin/bun (1.4.0)",
+    "pathBunDeliberatelyNotUsed": "/home/haroldzhao/.bun/bin/bun (1.4.2) — AGENTS.md §6 measured trap",
+    "node": "used for scripts/gates"
+  },
+  "inventory": {
+    "grepCommand": "grep -rn '\"/tmp' packages --include='*.ts'",
+    "hitsBefore": 32,
+    "hitsAfter": 5,
+    "replaced": 27,
+    "deliberatelyKept": 5
+  },
+  "replacementForm": {
+    "expression": "join(tmpdir(), \"<name>\")",
+    "mkdtempSyncUsed": false,
+    "whyNotMkdtempSync": "NOT ONE of the 27 sites is a created/written sandbox. Two are read-only probe roots that the arms REQUIRE to be ABSENT (mkdtempSync would create exactly what the arm asserts is missing), and the other 25 are opaque labels/scope values that are never dereferenced (mkdtempSync would leak a directory per site with no cleanup, changing the isolation semantics the task said to keep identical). join(tmpdir(), name) is the repo's own platform-correct helper and creates nothing.",
+    "identityProof": "On this host TMPDIR is unset so tmpdir() === \"/tmp\": all 16 DISTINCT replacement expressions evaluate BYTE-IDENTICAL to the literals they replaced (16/16). The change is therefore a semantic NO-OP on Linux and diverges ONLY where tmpdir() diverges (win32, redirected TMPDIR).",
+    "win32Mechanism": "path.win32.join(\"/tmp/mpd-home\", \".mpd\", \"workmate\") === \"\\\\tmp\\\\mpd-home\\\\.mpd\\\\workmate\" — resolved against the CURRENT DRIVE ROOT, not a temp directory."
+  },
+  "classification": {
+    "dereferencedOnDisk": [
+      {
+        "file": "packages/mpd-tui-plugin/test/plugin.test.ts",
+        "lines": [1019, 1020],
+        "before": ["\"/tmp/mpd-scenes\"", "\"/tmp/mpd-home\""],
+        "consumer": "registerScene's workspaceRoot/home thunks -> scenes.ts readBoardState() -> readPlans()/readWorkmates() -> readdirSync; the arm renders every scene once, so the read is real"
+      },
+      {
+        "file": "packages/mpd-tui-plugin/test/panel-dag.test.ts",
+        "lines": [2250],
+        "before": "\"/tmp/mpd-workmate-fixture-does-not-exist\"",
+        "consumer": "readWorkmateLibrary() -> readdirSync; the arm asserts the library is ABSENT, so the path must NOT be created"
+      },
+      {
+        "file": "packages/mpd-roles-plugin/test/team-plane.test.ts",
+        "lines": [50],
+        "before": "\"/tmp/mpd-team-plane-ws\"",
+        "consumer": "the adapter double's workspaceRoot() seam feeds installSessionGate(); 20+ arms install the gate WITHOUT an injected readFile, so the default reader resolves <WORKSPACE>/.mpd/boulder.json for real"
+      }
+    ],
+    "opaqueLabelsNeverDereferenced": {
+      "count": 24,
+      "files": {
+        "packages/mpd-team-compact-plugin/test/compaction.test.ts": [601, 620, 634, 659],
+        "packages/mpd-tui-plugin/test/subagent-scene.test.ts": [94],
+        "packages/mpd-tui-plugin/test/dashboard-key.test.ts": [56, 70, 542, 548, 551, 554],
+        "packages/mpd-tui-plugin/test/panel-legend-mount.test.ts": [251, 278],
+        "packages/mpd-tui-plugin/test/panel.test.ts": [59],
+        "packages/mpd-tui-plugin/test/session-scope-and-push.test.ts": [46],
+        "packages/mpd-tui-plugin/test/panel-visibility.test.ts": [1282, 1487],
+        "packages/mpd-tui-plugin/test/panel-dag.test.ts": [116, 145, 2213],
+        "packages/mpd-roles-plugin/test/boulder-dir.test.ts": [16],
+        "packages/mpd-comment-checker-plugin/test/comment-checker.test.ts": [23, 30]
+      },
+      "note": "Converted for uniformity and to remove the win32 lie; each is a string field of a render/route fixture, a stub-adapter return value, or a payload label. dashboard-key.ts uses its workspaceRoot thunk ONLY as the `workspace` label (line 261); hookInputFor() carries the file CONTENT inline and the detector reads it from stdin."
+    }
+  },
+  "deliberatelyKept": [
+    {
+      "file": "packages/mpd-team-core-plugin/test/plan-store.test.ts",
+      "line": 214,
+      "text": "// FIVE `..` climb from `<ws>/.mpd/team/archive` to the filesystem root, then down into /tmp.",
+      "reason": "prose in a comment explaining a traversal fixture; not a path value"
+    },
+    {
+      "file": "packages/mpd-team-core-plugin/test/plan-store.test.ts",
+      "line": 220,
+      "text": "archivePathFor(sandbox, \"../../../../../tmp/x\")",
+      "reason": "the SUBJECT is the separator guard: a RELATIVE traversal target, and the assertion is that it throws /path separator/. The POSIX spelling is incidental and the guard fires on `/` on every platform."
+    },
+    {
+      "file": "packages/mpd-ext-plugin/test/core.test.ts",
+      "line": 52,
+      "text": "// ... `tmpdir()` is consulted rather than a literal /tmp because TMPDIR may redirect it.",
+      "reason": "prose in a comment that DOCUMENTS the correct pattern; not a path value"
+    },
+    {
+      "file": "packages/mpd-roles-plugin/test/captain-investigation-evidence.ts",
+      "line": 292,
+      "text": "// ... it lives in the SANDBOX workspace, which a fresh `/tmp` discards",
+      "reason": "prose in a comment; not a path value"
+    },
+    {
+      "file": "packages/mpd-workmate-plugin/test/rename-delete.test.ts",
+      "line": 777,
+      "text": "expect(r.body.error.includes(\"/tmp/\")).toBe(false)",
+      "reason": "a SEARCH STRING, not a fixture path: the arm asserts an error body never leaks an absolute POSIX temp path. It cannot be false on win32, so it is harmless there; rewriting it would change what the arm asserts."
+    }
+  ],
+  "gates": [
+    {
+      "command": ".toolchain/node_modules/.bin/bun test packages",
+      "when": "baseline, BEFORE any edit",
+      "observed": "1813 pass, 3 skip, 0 fail, 23765 expect() calls, 1816 tests across 112 files",
+      "exit": 0,
+      "log": "evidence/win32-tmp-paths/baseline.log"
+    },
+    {
+      "command": ".toolchain/node_modules/.bin/bun test packages",
+      "when": "AFTER all edits",
+      "observed": "1813 pass, 3 skip, 0 fail, 23765 expect() calls, 1816 tests across 112 files",
+      "exit": 0,
+      "deltaVsBaseline": "IDENTICAL — 0 new failures, 0 new skips",
+      "log": "evidence/win32-tmp-paths/after.log"
+    },
+    {
+      "command": "node scripts/verify-comment-coverage.ts",
+      "when": "after all edits",
+      "observed": "scanned 386 TypeScript file(s); inspected 34140 declaration(s); skipped 15246 inline callback(s); VERDICT: PASS",
+      "exit": 0,
+      "note": "counts identical to the pre-edit run: the wave adds no declaration, only calls inside existing ones",
+      "log": "evidence/win32-tmp-paths/verify-comments.log"
+    },
+    {
+      "command": ".toolchain/node_modules/.bin/bun run typecheck (tsgo --noEmit)",
+      "when": "after all edits",
+      "observed": "$ tsgo --noEmit (no diagnostics)",
+      "exit": 0,
+      "log": "evidence/win32-tmp-paths/typecheck.log"
+    },
+    {
+      "command": "TMPDIR=<sandbox> .toolchain/node_modules/.bin/bun test <the 12 touched files>",
+      "when": "after all edits (falsifiability check)",
+      "observed": "313 pass, 3 skip, 0 fail, 5815 expect() calls, 316 tests across 12 files",
+      "exit": 0,
+      "why": "with TMPDIR redirected the fixture strings CHANGE; the run proves no arm asserts on the literal `/tmp/...` text",
+      "log": "evidence/win32-tmp-paths/redirected-tmpdir.log"
+    }
+  ],
+  "sweepCompleteness": {
+    "packagesStarsrc": "0 hits for /tmp in packages/*/src/**/*.ts — no test helper lives there, so the conditional scope clause was not exercised",
+    "nonTypeScriptFiles": "the only /tmp strings outside *.ts are N recorded lines in generated runtime logs under packages/{mpd-config,mpd-goal,mpd-hashline}-plugin/.mpd/ — generated state, not fixtures; not touched",
+    "gitWorktree": "the tree already carried UNCOMMITTED changes outside this wave (package.json evidence:mount retarget, skills/** PowerShell/uv files, scripts/evidence-mount.ts). They are NOT this wave's work; the baseline was taken with them present, so the before/after comparison is valid."
+  },
+  "findingsNotFixed": [
+    {
+      "file": "packages/mpd-bundle-plugin/test/team-view.test.ts",
+      "line": 32,
+      "text": "const WORKSPACE = \"/home/harold/MyProj/DshProj/My-Power-Dsh\"",
+      "severity": "portability / machine-specific",
+      "evidence": "used only as a display/scope value in route-double bodies (lines 75, 93, 288, 473, 512, 558, 583, 606, 1015); the file's one real read is readFileSync(join(ROOT, ...)) with ROOT derived from import.meta.url, so it is NOT a win32 blocker",
+      "whyNotFixed": "outside this wave's brief (a /tmp sweep) and outside the packages/**/test fixture-path class the task named; reported instead of absorbed"
+    },
+    {
+      "file": "packages/mpd-workmate-plugin/test/rename-delete.test.ts",
+      "line": 776,
+      "text": "expect(r.body.error.includes(process.env.HOME as string)).toBe(false)",
+      "severity": "latent vacuous assertion on win32",
+      "evidence": "HOME is typically unset on win32; String.includes(undefined) searches for the literal \"undefined\", so the leak assertion silently stops meaning anything there",
+      "whyNotFixed": "pre-existing, unrelated to /tmp, and rewriting it would change what the arm asserts; reported, not absorbed"
+    }
+  ],
+  "notProven": [
+    "No win32 host was available in this session: the suite was NOT executed on Windows. The claim is 'the /tmp literals that a win32 run could not have resolved are gone', evidenced by the 16/16 string-identity proof on Linux, the win32 path-semantics demonstration, and the untouched green Linux suite — NOT by a green Windows run.",
+    "The two arms behind test.skipIf(SKIP) in mpd-comment-checker-plugin never executed here (the ~51MB detector binary is absent), so their converted payload labels are covered by the source edit and the typecheck, not by an observed run."
+  ]
+}

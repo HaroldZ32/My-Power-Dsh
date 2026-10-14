@@ -1,0 +1,15 @@
+$ node skills/dsh-qa/scripts/review-panel.ts --self-test
+[review-panel self-test] ok: positive control passes all 13 checks
+[review-panel self-test] ok: a lane renamed to a non-roster role reddens lane-roles-in-ROLES
+[review-panel self-test] ok: a prose count that disagrees with the tables reddens merge-table-count-equals-prose
+[review-panel self-test] ok: a merge table missing a lane reddens merge-table-lanes-match
+[review-panel self-test] ok: a lane that stops declaring read-only findings reddens read-only-lanes
+[review-panel self-test] ok: a second merge table reddens merge-table-single
+[review-panel self-test] ok: a missing degrade anchor reddens degrade-matrix
+[review-panel self-test] ok: a missing verdict token reddens verdict-tokens
+[review-panel self-test] ok: a stale hard-coded lane count reddens no-stale-all-N-verdict
+[review-panel self-test] ok: a retired spelling reddens no-retired-spelling
+[review-panel self-test] ok: tree scan finds both retired spellings and the stale count, and only in the poisoned file (../../../../../tmp/review-panel-selftest-tree/poisoned.md:4, ../../../../../tmp/review-panel-selftest-tree/poisoned.md:4)
+[review-panel self-test] ok: a clean tree scans clean (negative control holds in both directions)
+[review-panel self-test] all arms passed
+exit=0

@@ -1,0 +1,131 @@
+{
+  "wave": "win32 captain-preset scope + EOL/path repairs",
+  "recordedAt": "2026-10-12T07:42:53Z",
+  "host": {
+    "platform": "win32-x64",
+    "node": "v24.21.0",
+    "bunOnPath": "1.4.2",
+    "bunPinned": "1.4.0 (installed into .toolchain/node_modules/{bun/bin/bun.exe, .bin/bun.exe})",
+    "repo": "C:\\MyDoc\\DshProj\\My-Power-Dsh",
+    "branch": "dev (work left staged/uncommitted by this wave)"
+  },
+
+  "userReported": [
+    "1. On Windows the sidebar is not displayed.",
+    "2. The captain's constraints must not affect the other (default) presets."
+  ],
+
+  "changes": [
+    {
+      "id": "FIX-1",
+      "subject": "the captain's BEHAVIOURAL rules are scoped to the `mpd` preset",
+      "why": "The two rules install through the ONE process-wide `tools.guard` seam and read `sessionIsTopLevel`, a PRESET-FREE classification, so they bit EVERY top-level session of the deployment — a user working in the default `cordis` preset was refused its own code writes and its own reconnaissance. AGENTS.md §5 rule 4 already scopes the rule in prose (line 294: \"The workspace's TOP-LEVEL `mpd` agent may not `write`/`edit` a code path unless a delegation+verification loop is armed\"), so this is the implementation catching up with the documented contract.",
+      "files": [
+        "packages/mpd-roles-plugin/src/complexity-gate.ts (NEW `MPD_CAPTAIN_PRESET` + `sessionIsMpdCaptain`; `sessionIsTopLevel`/`sessionRank`/`sessionQualifies` UNCHANGED)",
+        "packages/mpd-roles-plugin/src/verify-guard.ts (rule 1 reads `sessionIsMpdCaptain`; rule 3 the one-git-writer rule stays on `sessionRank`/`sessionIsTopLevel` ALONE, so it still follows the USER's preset)",
+        "packages/mpd-roles-plugin/src/captain-investigation.ts (reads `sessionIsMpdCaptain`)",
+        "packages/mpd-roles-plugin/src/index.ts (install-site comments; no preset KNOB added)",
+        "packages/mpd-roles-plugin/dist/index.js (rebuilt)"
+      ],
+      "predicateContract": {
+        "captain": "sessionRank(agent) === \"captain\"",
+        "mpdCaptain": "sessionRank(agent) === \"captain\" AND header.agentPreset === \"mpd\"",
+        "directionOnUnknownPreset": "NOT gated (opens only on the exact name). Deliberately the OPPOSITE of `sessionQualifies`, which reads a preset-less session as covered; there that protects a bundle-less deployment, here it would re-impose the very rule this predicate exists to scope.",
+        "unchanged": "sessionIsTopLevel stays preset-free (T-92 NOT reintroduced): the parent-session half of that repair — a seeded fork whose depth the harness never recorded remains the captain — is untouched."
+      },
+      "tests": [
+        "packages/mpd-roles-plugin/test/verify-guard.test.ts: F5-1 rewritten (a top-level `cordis` session now keeps BOTH its git write and its code write, with the `mpd` arm beside it so the assertion is not vacuous); F5-5 reads the `mpd` preset; NEW F6 arm covers `sessionIsMpdCaptain` in both directions plus the preset-less and child cases.",
+        "packages/mpd-roles-plugin/test/captain-investigation.test.ts: the CAPTAIN double is now `agentPreset: \"mpd\"`; the `decide` helper drives the real predicate; NEW arm asserts a top-level `cordis` session keeps reconnaissance.",
+        "packages/mpd-verify-plugin/test/row.test.ts: the shipped-install arm asserts the `cordis` top-level session's code write is ALLOWED and the `mpd` one is still REFUSED."
+      ]
+    },
+    {
+      "id": "FIX-2",
+      "subject": "win32: `hashDoc` / `sourceDoc` spell workspace-relative docs POSIX-style on every platform",
+      "why": "MEASURED DEFECT, pre-existing and red on the Windows baseline: `packages/mpd-verify-plugin/test/row.test.ts` AC-D2 failed on a PRISTINE tree (evidence below). `ledger.ts#hashDoc` relativized with `path.startsWith(workspace + \"/\")` — a POSIX-shaped test — so on win32, where both sides carry `\\`, the prefix never matched and a document INSIDE the workspace was stored with its absolute, machine-specific path. `tools.ts#sourceDoc` carried the same class of assumption in `path.startsWith(\"/\")`. The record's `basis.frozenContract.path` is workspace-relative POSIX, so on win32 the two halves of ONE record disagreed.",
+      "files": [
+        "packages/mpd-verify-plugin/src/ledger.ts (both sides normalized to POSIX before the containment test; an outside path keeps the caller's own spelling)",
+        "packages/mpd-verify-plugin/src/tools.ts (`isAbsolute(path)` replaces the POSIX-shaped test)",
+        "packages/mpd-verify-plugin/dist/index.js (rebuilt)"
+      ],
+      "note": "The two OTHER `startsWith(x + \"/\")` sites (`law.ts`, `captain-investigation.ts`) operate on text already normalized with `.replace(/\\\\/g, \"/\")`, so they are correct and were left alone."
+    },
+    {
+      "id": "FIX-3",
+      "subject": "win32: the checkout forces LF for every text file, so the BYTE-reading gates mean something on Windows",
+      "why": "MEASURED DEFECT, pre-existing: `.gitattributes` declared `* text=auto` and listed only `*.md`/`*.ts`/`*.yml` as `eol=lf`, while the repository's `core.autocrlf=true`. Every other text file — `*.js` above all, i.e. every `packages/*/dist/*.js` — therefore landed on disk with CRLF, while the BLOB and a fresh `bun build` are both LF. Three byte-reading subjects answered red with nothing wrong in the tree: `verify-dist-fresh` reported 31 of 31 targets stale, `verify-vendor` reported `sha256 mismatch` for two fingerprint-pinned `.js` assets, and the per-package `F1 shipped artifact` arms reddened. Measured on the smallest target: committed working-tree file 1702 B with 50 CR bytes (one per line) vs a fresh build AND the git blob at 1652 B / 0 CR.",
+      "files": [
+        ".gitattributes (`* text=auto eol=lf`; `text=auto` still decides WHICH files are text, so binary assets are untouched)",
+        "the working tree was re-normalized: the 16,139 tracked files whose `git ls-files --eol` reported `w/crlf` were removed and re-checked-out from the index under the new attribute (blob content is unchanged, so nothing was lost); 0 remain"
+      ],
+      "blastRadius": "no committed byte changes: the blobs were already LF. The change makes the WORKING TREE agree with the blobs and the bundler on every platform, and it prevents every future Windows checkout from re-reddening the three subjects above."
+    }
+  ],
+
+  "gatesObserved": {
+    "verify:gates": "PASS - 8/8 member gate(s) green (workflows needed the documented MPD_WORKFLOW_JS_YAML override: no js-yaml is resolvable from the repository, and harnessRoot() resolved nothing here)",
+    "verify:dist-fresh": "PASS - 31/31 targets fresh (each rebuilt twice, byte-identical), toolchain bun 1.4.0 from the repository toolchain; 1 NOT COVERED file listed (packages/mpd-mcp-codegraph/dist/serve.js, sha-pinned prebuilt)",
+    "verify:vendor": "PASS - 7 shipped asset(s) fingerprinted, upstream identity not checked",
+    "verify:comments": "PASS - 387 TS files, 34246 declarations",
+    "verify:rows": "PASS - 35 row ids match the 2-file patch layer",
+    "verify:docs": "PASS - pairs=47 failed=0 violations=0 links=436 dead=0",
+    "verify:manifest": "PASS (exit 0) - the install-time rules and the packaging contract hold; the non-blocking `packed-content` sub-row reports `npm pack --dry-run` UNREADABLE (pre-existing, exit stays 0)",
+    "typecheck": "PASS - tsgo --noEmit, no diagnostics",
+    "bun test packages/mpd-verify-plugin": "PASS - 56 pass / 0 fail (AC-D2, previously RED on the pristine tree, now green)",
+    "bun test packages/mpd-roles-plugin": "144 pass / 5 fail - all 5 PRE-EXISTING and environment-dependent (identical, and one MORE, on the pristine tree): readBoulderGate x2, session-start signal D x1, C7 leading x2",
+    "bun test packages (full)": "1753 pass / 26 fail / 3 errors across 1783 tests. PRISTINE BASELINE, same machine: 1750 pass / 27 fail / 3 errors across 1781 tests (+2 tests are the arms this wave added). The two arms this wave fixes (`F1 shipped artifact`, `AC-D2`) are RED on the baseline and GREEN here; the surviving 26 are the same pre-existing environment/load-dependent set (the two `mpd-config-plugin` write-back arms that appear only under full-suite load PASS 94/94 in isolation, so they are flake, not regression)",
+    "test:qa": "45 of 47 pass. The 2 failures (`session-start-team.ts` c7, `tui-deps-ctrla.ts` sibling-install verdict) are PRE-EXISTING: both reproduce with byte-identical output on the pristine tree, and both read machine state (this workspace's real team records / the globally installed @deepseek-harness-tui)"
+  },
+
+  "baselineEvidence": {
+    "row.test.ts AC-D2 (my changes stashed)": "expected \".mpd/plans/verify-law-defects.md\", received [\"C:\\\\Users\\\\ZHAO~1.YIN\\\\AppData\\\\Local\\\\Temp\\\\mpd-verify-contract-VGEfwR\\\\.mpd\\\\plans\\\\verify-law-defects.md\"] - 0 pass, 7 filtered out, 1 fail",
+    "mpd-roles-plugin suite (my changes stashed)": "141 pass / 6 fail - the six include `F1 shipped artifact` and the five that survive this wave",
+    "test:qa (my changes stashed)": "session-start-team.ts exit 1, tui-deps-ctrla.ts exit 1 - identical messages"
+  },
+
+  "issue1SidebarDiagnosis": {
+    "status": "NOT a plugin code defect. Diagnosed with evidence; the runtime repair is an INSTALL action outside this repository (stated below).",
+    "guardDecision": "The shipped mount guard logged `[mpd-better-sidebar] mount guard: DISABLED - dsh-better-sidebar is resolvable from neither the profile node_modules nor the bundle` in .mpd/logs/mpd-patch-guards.log, and evaluating the SHIPPED `!!js` expression against the real profiles reproduces it: web -> DISABLED=false (ENABLED) after the checkout was installed; desktop -> DISABLED=true.",
+    "measuredFacts": [
+      "The GUI on 127.0.0.1:19387 is `DeepSeek Harness.exe` running the `desktop` profile (C:\\Users\\zhao.yinan\\.dsh\\profiles\\desktop). `scripts/dump-config.ts --profile desktop` refuses: `profile \"desktop\" is managed exclusively by the Electron application`.",
+      "This checkout had NO node_modules at all: `dsh-better-sidebar` is a devDependency + optional peer, so the bundle's own copy was absent. `bun install` materialized it (441 packages, dsh-better-sidebar@0.24.1), and the `web` profile's guard then answers ENABLED.",
+      "The `desktop` profile's <profile>/node_modules/@mpd-dsh/mpd is a JUNCTION whose target is `C:\\MyDoc\\my-power-dsh` - a path that does NOT exist (the checkout is `C:\\MyDoc\\DshProj\\My-Power-Dsh`). Its plugin-manager log records the stale link verbatim: `@mpd-dsh/mpd link:C:/MyDoc/my-power-dsh`.",
+      "`dsh-better-sidebar` exists NOWHERE in the desktop profile, and no profile declares `@mpd-dsh/mpd` in `dsh.profile.bundles`. `@linxin666/dsh-web-all` - the aggregate the desktop profile DOES carry - does not depend on the sidebar host either."
+    ],
+    "designBoundRecordedNotChanged": "`npm pack --dry-run` lists 944 files and ZERO node_modules entries, so the DOCUMENTED one-command install ships no sidebar host; and because the host is a devDependency + optional peer it is not installed as a dependency, so clause 1 of the mount guard disables the row there too. AGENTS.md §8 records this as DELIBERATE (pnpm 11 hard-exits on node-pty's postinstall and `dsh plugin add` has no approval channel), so this wave did NOT change the dependency declaration - that is a captain/user decision, and it cannot be verified here without a real install.",
+    "repairForTheUserMachine": [
+      "The checkout now has node_modules (this wave ran `bun install`), so the `web` profile is repaired by that alone.",
+      "For the running `desktop` profile: re-install the bundle from the CURRENT checkout path so the junction points at it, e.g. `dsh plugin --profile desktop add C:\\MyDoc\\DshProj\\My-Power-Dsh`, then restart the app. The stale `C:\\MyDoc\\my-power-dsh` target cannot resolve anywhere."
+    ]
+  },
+
+  "ciReadings": {
+    "note": "The repository's own CI on PR #38 (branch fix/captain-preset-scope-and-win32-eol -> dev). These are the AUTHORITATIVE readings for the lane this Windows host cannot run. TWO runs were read: the first push (f1ad49f4) and the review-fix head (04db53ea, the state this record describes); the second is the one that counts, and it REPRODUCED every reading below — 8/8 static gates and `rows: total=118 passed=77 failed=0 null=41` again.",
+    "staticGates": "PASS — 8/8 member gate(s) green on ubuntu-latest (57s). The `workflows` member passed there WITHOUT the MPD_WORKFLOW_JS_YAML override this host needed, because CI installs the harness globally and resolves its own js-yaml — which confirms the local override was an environment workaround, not a code subject.",
+    "dockerRealMachine": "PASS (3m37s). Job `Docker real-machine acceptance` ran `node scripts/docker-e2e.ts --mode source --require-docker --allow-rootful-docker --no-browser` on ubuntu-24.04 with the packed bundle staged first. The lane's own row summary: stamp `evidence/docker/client-install/2026-10-12T07-59-27Z/`, `rows: total=118 passed=77 failed=0 null=41`. Zero FAILURES, so the INSTALL and the MOUNT on a machine nobody configured is proven for source mode.",
+    "coderabbit": "COMMENTED — one finding, addressed in this wave (see reviewFollowUp). It later reported `pass / Review completed`."
+  },
+
+  "reviewFollowUp": {
+    "source": "CodeRabbit review on PR #38, packages/mpd-verify-plugin/src/ledger.ts (Data Integrity, Minor).",
+    "finding": "The win32 containment repair normalized BOTH sides with `.replace(/\\\\/g, \"/\")`, which is LOSSY on POSIX: a backslash is a legal FILENAME character there, so a document named `a\\b.md` was stored as `a/b.md` — a path that no longer identifies the file that was hashed.",
+    "verdict": "VALID, and it is a defect this wave INTRODUCED. Fixed rather than waived.",
+    "fix": [
+      "containment now uses the platform's own `relative(workspace, path)` plus `isAbsolute` (no prefix guessing at all), which also makes the comparison CASE-INSENSITIVE on win32 and collapses `.`/`..` the way the OS does",
+      "the separator translation moved into `toPosixRelative(rel, separator = sep)` and happens ONLY where a backslash is a separator"
+    ],
+    "whyTheSeparatorIsAParameter": "The invariant to falsify is \"a POSIX filename may contain a backslash and keeps it\". On win32 that filename cannot exist, so an arm written against the FILESYSTEM could only be skipped on the platform most development happens on — and a skipped arm proves nothing. Taking the separator as an argument makes both branches executable everywhere. (The CI `gates` job runs NO unit tests, so a skipped arm would not have been exercised by CI either.)",
+    "arms": [
+      "packages/mpd-verify-plugin/test/law.test.ts: a hashDoc arm asserts a document INSIDE the workspace is stored workspace-relative POSIX while one OUTSIDE keeps the caller's spelling (both halves, so the arm cannot pass by always answering a relative path)",
+      "packages/mpd-verify-plugin/test/law.test.ts: a toPosixRelative arm asserts `/` keeps a backslash in the filename while `\\` translates it, plus the nested/root/idempotent shapes and the platform default"
+    ],
+    "readings": "packages/mpd-verify-plugin 58 pass / 0 fail / 0 skip (AC-D2 still green); verify:gates 8/8; verify-dist-fresh 31/31; typecheck and verify:comments PASS."
+  },
+
+  "honestBounds": [
+    "The Docker lane ran in CI, NOT locally (this is a Windows host and the lane is Linux-only): the PR's `Docker real-machine acceptance` job ran source mode with `--require-docker --allow-rootful-docker --no-browser` and graded 118 rows with ZERO failures, which covers the INSTALL and the MOUNT this wave could not measure here. `--mode oneclick --require-docker` is STILL OWED: every `oneclick.*` row is null in a source run, and the lane says so itself (\"the one-click lane carries the measurement\"). The credential-shaped rows (`live.*`, `qa.mcpCall`, `boot.llmTurn`) are null because a credential-free run cannot drive them.",
+    "The two guards are INSTALLED through `tools.guard`; in the desktop profile the harness reports no such seam (`verifyGate=absent reason=no-guard-seam`), so these rules were never mechanically active there. The preset scoping is nonetheless the correct contract for every composition that DOES expose the seam.",
+    "`dsh-better-sidebar` being a devDependency means the sidebar host is present only after `bun install`; the packed install ships none. That bound is recorded above rather than silently changed.",
+    "Pre-existing red subjects were NOT fixed by this wave and are listed so they are not mistaken for regressions: the environment-dependent unit arms (readBoulderGate, session-start signal D, C7), the two load-flaky mpd-config write-back arms, the two pre-existing test:qa cases, and the non-blocking `packed-content` sub-row of verify:manifest."
+  ]
+}

@@ -33,7 +33,19 @@ An activated ULW run asks the user nothing:
 6. **Close out on proof** — done only after the verification gate and the quality-gate
    ledger both approve.
 
-## Policy (adapted from upstream ultrawork, base 8c57e46)
+## Policy — upstream shape, our wording
+
+The discipline's SHAPE is upstream's: it is re-expressed from the **documented** upstream ultrawork
+discipline (base 8c57e46). The WORDING shipped here is this package's own — **no upstream prompt,
+policy or error text was found or copied**, and the clauses below name things that exist only in this
+bundle (the `mpd` toolbox, the five `agent_teams_*` tools this harness has, `.mpd/ulw`, the
+`mpdConfig` keys).
+
+**Un-diffed residual, stated rather than smoothed over:** four clauses could NOT be compared against
+any upstream text — the ladder `PIN → RED → GREEN → SURFACE → CLEAN`, the
+stop-after-2-fruitless-discovery-waves rule, the subagent barrier, and evidence-never-suppressed.
+They are OURS in wording; that they are upstream's in intent is unproven, and this note does not
+claim it.
 
 - Discovery waves: fresh child per round; bounded waves of independent work
   concurrent; stop after 2 fruitless discovery waves.
@@ -44,7 +56,8 @@ An activated ULW run asks the user nothing:
   exists AND (tier=heavy OR strictReview OR plan review failed).
 - Final quality gate: gate reviewer stamps per-lane ledger (`.mpd/ulw/<id>/ledger.jsonl`:
   code quality, hands-on QA, goal verification); any FAIL blocks completion.
-- Subagent barrier and evidence-never-suppressed rules are part of the fixed directive.
+- Subagent barrier and evidence-never-suppressed rules are part of this package's fixed directive —
+  two of the four clauses with no upstream text to diff them against.
 - Optional hyperplan wave: 5 adversarial category reviewers (unspecified-low/high,
   deep, ultrabrain, artistry) → insight bundle → planner.
 

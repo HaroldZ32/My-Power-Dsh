@@ -12,7 +12,7 @@
 //   * a route never throws into a response — an unreadable record is a payload, not a 500 storm.
 import { describe, expect, test } from "bun:test"
 
-import { TEAM_PLAN_PATH, TEAM_ROUTES, TEAM_STATE_PATH, approvalPhraseFor, buildTeamMail, buildTeamPlan, buildTeamState, buildTeamTasks, buildWorkspaceTeams, planForSession, registerTeamRoutes } from "../src/team-web"
+import { TEAM_EVENTS_PATH, TEAM_PLAN_PATH, TEAM_ROUTES, TEAM_STATE_PATH, approvalPhraseFor, buildTeamMail, buildTeamPlan, buildTeamState, buildTeamTasks, buildWorkspaceTeams, planForSession, registerTeamRoutes } from "../src/team-web"
 import { appendRecord } from "../src/mailbox-store"
 import { addMember, addTask, stagePlan, writePlan } from "../src/plan-store"
 import { addTeamMember, addTeamTask, createTeam, updateTeamTask, writeTeam, type TeamRecord } from "../src/team-store"
@@ -403,10 +403,14 @@ describe("the route family", () => {
     })
     expect(ok).toBe(true)
     expect(routes.sort()).toEqual([...TEAM_ROUTES].sort())
-    // The four paths are ONE family, declared in one place, so a panel cannot find one and miss
+    // The five paths are ONE family, declared in one place, so a panel cannot find one and miss
     // another — and the client's constants come from the same list.
-    expect(TEAM_ROUTES.length).toBe(4)
+    expect(TEAM_ROUTES.length).toBe(5)
     expect(TEAM_ROUTES).toContain(TEAM_PLAN_PATH)
+    expect(TEAM_ROUTES).toContain(TEAM_EVENTS_PATH)
+    // Under the `/plugins/mpd-team/*` family on purpose: the host THROWS on a duplicate exact route, and
+    // `/plugins/events` is already taken by the harness's own HMR row.
+    expect(TEAM_EVENTS_PATH).toBe("/plugins/mpd-team/events")
   })
 })
 
@@ -462,5 +466,156 @@ describe("the shared approval phrase", () => {
       { writeHead: () => {}, end: (text: string) => { captured.body = JSON.parse(text) } },
     )
     expect(captured.body).toEqual(planForSession(workspace, "s1"))
+  })
+})
+
+// ── the EVENTS route: the family's one STREAMING member ──────────────────────
+//
+// The four JSON routes are answers; this one is a subscription. The arms below drive it the way the
+// browser (`new EventSource`) and a QA lane (`curl -N`) do — through the headers, the frames and the
+// teardown — because the two failure modes that matter here are invisible in a unit assertion about
+// the payload: a stream that never writes its head, and a stream that outlives its client.
+describe("the events route", () => {
+  /** What a response double captured: the head, the frames, and the lifetime registrations. */
+  interface StreamCapture {
+    /** The status line `writeHead` was called with, or 0 before it was. */
+    status: number
+    /** The headers `writeHead` was called with. */
+    headers: Record<string, string>
+    /** Every frame `write` was called with, in order. */
+    frames: string[]
+    /** How many times the head was flushed explicitly. */
+    flushed: number
+    /** Every `on(event, …)` registration the response was asked for. */
+    events: string[]
+    /** The bodies `end` was called with. */
+    ended: string[]
+  }
+
+  /** A response double recording everything a streaming handler may do to a real response. */
+  function streamDouble(): { res: unknown; captured: StreamCapture } {
+    /** The captured state, handed back so an arm reads exactly what the handler produced. */
+    const captured: StreamCapture = { status: 0, headers: {}, frames: [], flushed: 0, events: [], ended: [] }
+    return {
+      captured,
+      res: {
+        writeHead: (status: number, headers: Record<string, string>): void => { captured.status = status; captured.headers = headers },
+        flushHeaders: (): void => { captured.flushed += 1 },
+        write: (frame: string): void => { captured.frames.push(frame) },
+        end: (text: string): void => { captured.ended.push(String(text ?? "")) },
+        on: (event: string): void => { captured.events.push(event) },
+      },
+    }
+  }
+
+  test("on connect it writes the SSE head, `retry: 1000` and ONE `event: hello` frame carrying the revision", () => {
+    /** The response double and what it captured. */
+    const { res, captured } = streamDouble()
+    /** The request double; its `on` is what the teardown hangs off. */
+    const closeHandlers: Record<string, () => void> = {}
+    /** The route double's captured handler. */
+    let handler: ((req: unknown, res: unknown) => void) | undefined
+    registerTeamRoutes({ register: (route: { path: string; handler: (req: unknown, res: unknown) => void }) => { handler = route.handler; return () => {} } }, {
+      recordFor: () => undefined,
+      // The workspace is resolved PER REQUEST: this is the impure edge the stream must read like every
+      // other route here, which is why it is a callback and not a value.
+      workspace: () => "/ws",
+      executor: () => EXECUTOR,
+      effect: (fn: () => unknown) => fn(),
+      warn: () => {},
+      subscribe: () => () => {},
+      revision: () => 7,
+    })
+    handler?.({ url: `${TEAM_EVENTS_PATH}?sessionId=sess-1`, on: (event: string, listener: () => void): void => { closeHandlers[event] = listener } }, res)
+    expect(captured.status).toBe(200)
+    expect(captured.headers["content-type"]).toBe("text/event-stream; charset=utf-8")
+    expect(captured.headers["cache-control"]).toBe("no-store, no-transform")
+    expect(captured.headers.connection).toBe("keep-alive")
+    // The explicit head flush is what makes a client report OPEN before the first change exists.
+    expect(captured.flushed).toBe(1)
+    expect(captured.frames[0]).toBe("retry: 1000\n\n")
+    expect(captured.frames[1]).toBe(`event: hello\ndata: {"rev":7}\n\n`)
+    expect(closeHandlers.close).toBeDefined()
+    // Both lifetime doors are used: the request's close is the client leaving, and the response's is
+    // the one a host may report instead.
+    expect(captured.events).toContain("close")
+  })
+
+  test("a change writes ONE `data:` frame carrying the CURRENT revision", () => {
+    /** The subscription the route took, so the arm can fire it like a change would. */
+    let notify: (() => void) | undefined
+    /** How many times the route unsubscribed. */
+    let unsubscribed = 0
+    /** The revision the feed reports, moved by the arm between frames. */
+    let rev = 1
+    /** The response double and what it captured. */
+    const { res, captured } = streamDouble()
+    /** The route double's captured handler. */
+    let handler: ((req: unknown, res: unknown) => void) | undefined
+    registerTeamRoutes({ register: (route: { path: string; handler: (req: unknown, res: unknown) => void }) => { handler = route.handler; return () => {} } }, {
+      recordFor: () => undefined, workspace: () => "/ws", executor: () => EXECUTOR, effect: (fn: () => unknown) => fn(), warn: () => {},
+      subscribe: (_workspace: string, listener: () => void) => { notify = listener; return (): void => { unsubscribed += 1 } },
+      revision: () => rev,
+    })
+    handler?.({ url: TEAM_EVENTS_PATH }, res)
+    expect(captured.frames[1]).toBe(`event: hello\ndata: {"rev":1}\n\n`)
+    rev = 2
+    notify?.()
+    // An UNNAMED data frame: the client's default `message` event, which is what a browser's
+    // `EventSource` listens to without an `addEventListener` name.
+    expect(captured.frames[2]).toBe(`data: {"rev":2}\n\n`)
+    // The revision is read at FLUSH time, so a burst coalesced into one call still carries the newest
+    // number rather than the one that opened the window.
+    expect(captured.frames.length).toBe(3)
+    expect(unsubscribed).toBe(0)
+  })
+
+  test("the client going away disposes the subscription, and no frame follows", () => {
+    /** The subscription the route took. */
+    let notify: (() => void) | undefined
+    /** How many times the route unsubscribed. */
+    let unsubscribed = 0
+    /** The request double's registered close handlers, keyed by event. */
+    const closeHandlers: Record<string, () => void> = {}
+    /** The response double and what it captured. */
+    const { res, captured } = streamDouble()
+    /** The route double's captured handler. */
+    let handler: ((req: unknown, res: unknown) => void) | undefined
+    registerTeamRoutes({ register: (route: { path: string; handler: (req: unknown, res: unknown) => void }) => { handler = route.handler; return () => {} } }, {
+      recordFor: () => undefined, workspace: () => "/ws", executor: () => EXECUTOR, effect: (fn: () => unknown) => fn(), warn: () => {},
+      subscribe: (_workspace: string, listener: () => void) => {
+        notify = listener
+        // A REAL disposer forgets the listener, which is what makes "no frame follows" a real claim
+        // rather than a statement about a bare counter.
+        return (): void => { unsubscribed += 1; notify = undefined }
+      },
+      revision: () => 3,
+    })
+    handler?.({ url: TEAM_EVENTS_PATH, on: (event: string, listener: () => void): void => { closeHandlers[event] = listener } }, res)
+    /** The frames written before the client left. */
+    const before = captured.frames.length
+    closeHandlers.close?.()
+    // The disposer runs ONCE even though the request and the response both report a close.
+    closeHandlers.close?.()
+    expect(unsubscribed).toBe(1)
+    notify?.()
+    expect(captured.frames.length).toBe(before)
+  })
+
+  test("a composition with NO feed answers 503 instead of holding a dead stream open", () => {
+    /** The response double and what it captured. */
+    const { res, captured } = streamDouble()
+    /** The route double's captured handler. */
+    let handler: ((req: unknown, res: unknown) => void) | undefined
+    registerTeamRoutes({ register: (route: { path: string; handler: (req: unknown, res: unknown) => void }) => { handler = route.handler; return () => {} } }, {
+      recordFor: () => undefined, workspace: () => "/ws", executor: () => EXECUTOR, effect: (fn: () => unknown) => fn(), warn: () => {},
+    })
+    handler?.({ url: TEAM_EVENTS_PATH }, res)
+    // A REFUSAL THAT ANSWERS: a client must be told the stream does not exist rather than be left
+    // waiting on a connection that will never carry a frame.
+    expect(captured.status).toBe(503)
+    expect(JSON.parse(captured.ended[0])).toEqual({ ok: false, error: "mpd-team-core: the team change feed is unavailable in this composition" })
+    // NOTHING was streamed: no `retry`, no `hello`, and no keep-alive left running behind the refusal.
+    expect(captured.frames).toEqual([])
   })
 })

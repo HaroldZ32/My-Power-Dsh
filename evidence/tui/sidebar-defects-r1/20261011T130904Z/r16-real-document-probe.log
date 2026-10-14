@@ -1,0 +1,7 @@
+real document: /home/haroldzhao/.dsh/profiles/dsh-tui/cordis.patch.yml
+real leaf: todo,jobs,agents
+decoy leaf (must equal the real leaf): todo,jobs,agents
+decoy probe: PASS — the decoy was skipped
+merge: csv=todo,jobs,agents,act7:team,act7:dag pruned=(none) added=act7:team,act7:dag
+read-back: PASS — the write landed in the leaf that was read
+decoy section untouched: PASS

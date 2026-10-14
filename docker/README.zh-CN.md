@@ -81,13 +81,15 @@ node、没有 bun、没有 pnpm、也没有 dsh），运行 `mpd-client` compose
     让任何 token 形状残留其中（`evidenceScrubbed`；一旦泄漏即判定为红，并用定向清洗重写两个文件）。
 14. 把 `boot.llmTurn` 记为 **`null` 并附原因**——见下。
 15. **跑一遍 DSH-TUI 版本**（`docker/tui-lane.sh`）——这是开发机唯一无法演练的 profile：TUI 宿主必须从 npm
-    装进一个可写的全局前缀，并在真正的 PTY 上启动。该步安装 `@deepseek-harness-tui/dsh-tui@0.13.0`
+    装进一个可写的全局前缀，并在真正的 PTY 上启动。该步安装 `@deepseek-harness-tui/dsh-tui@0.15.0`
     —— 即本 bundle 现在对标的 dsh-tui 版本，其 peer 范围仍覆盖本 lane 会跑的整段区间（`0.1.7-rc.2`、
     `0.2.0-rc.1` 与 `0.2.0-rc.2`）；`0.11.2` 只到 `0.2.0-rc.1`，对上 `0.2.0-rc.2` 时
-    `dsh plugin --profile dsh-tui add` 会因 peer 范围被拒。此前的 `0.12.0` 仅作历史保留。
+    `dsh plugin --profile dsh-tui add` 会因 peer 范围被拒。此前的 `0.14.0`（以及更早的 `0.13.0`、`0.12.0`）仅作历史保留。
     可用 `MPD_E2E_TUI_VERSION` 覆盖，并与 `MPD_E2E_DSH_VERSION` 保持配套。它把本 bundle 作为第三层 patch 装进 `dsh-tui`
-    profile，并记下十五条断言：宿主安装、两次 `plugin add`、组合、**用户级预设偏好**（见下）、
-    `preset-mpd` / `mpd-tui` / 官方团队行、`/mpd team` 场景在真实终端上画出依赖图、真实 tmux PTY 启动并到达聊天界面、无致命签名，
+    profile，并记下二十二条 `tui.*` 断言：宿主安装、两次 `plugin add`、组合、**用户级预设偏好**（见下）、
+    `preset-mpd` / `mpd-tui` / 官方团队行、种子看板**绑定到 TUI 实际运行的那个会话**（产品自身 `createTeam` 的两种写法都写上）、
+    无主会话中**看不见**兄弟会话的看板——即产品自身的 `no team in this session` 空态、`/mpd team` 场景在真实终端上画出依赖图、
+    真实 tmux PTY 启动并到达聊天界面、无致命签名，
     以及所创建会话**实际**运行的预设——从 harness 自己的会话存储读出（`agentPreset: "mpd"`），绝不从界面文本
     推断。**本 lane 自己执行了官方文档里的用户路径**：在 TUI 进程启动之前，它按 dsh-tui 自己的 `writePresetPref`
     的字节形状写入 `<HOME>/.dsh-tui/agent-preset.json`（当安装好的那个写入器可定位时，直接与它的输出比对），
@@ -132,8 +134,58 @@ node、没有 bun、没有 pnpm、也没有 dsh），运行 `mpd-client` compose
   模型请求。该断言以 `null` 加原因记录——绝不记为通过。
 - 组合出的行列表与挂载的行列表完全一致。`--dump-config` 只组合行、从不执行插件代码（`AGENTS.md` §4）；证据中
   它被标注为仅组合，所有挂载主张都来自第 9 步的启动或第 10 步的会话创建。
-- 打包/tarball 安装（`dist/mpd-package`）或迁移安装；
+- 把 `dist/mpd-package` **作为安装包**的打包/tarball 安装，以及迁移安装。它的一致性与新鲜度**确实被评测**
+  （见下文 §7 各项）——但该产物从未被安装，因此 tarball 安装这条路径仍未得到证明；
 - 离线运行：apt、nodejs.org、bun.sh、npm 与包注册表都会被使用。
+
+## §7 验收项（restore-three-capabilities §7——跳过不等于通过）
+
+`.mpd/plans/restore-three-capabilities.md` §7 规定：凡是开发宿主机无法判定的主张，都由本 lane 在真实机器上判定。
+为此新增了五项答案，每一项都是 `docker/lib/report.ts` 的 `EXPECTED` 清单中**已声明**的一行——因此从未执行到的
+项会被报告为"应做而未做"，而不是被悄悄丢掉。
+
+| 断言 | 它测量什么 | 它如何变红（负向对照） |
+|---|---|---|
+| `install.buildScripts` | 客户端安装以"没有任何未批准的依赖构建脚本"完成：退出码 0、输出中没有 `ERR_PNPM_IGNORED_BUILDS`、没有 `Ignored build scripts` 警告——并附带对已安装闭包中**声明**了 `preinstall`/`install`/`postinstall`/`prepare` 的每一个 manifest 的清单 | 日志里出现该错误类或该警告，或退出码非 0。已在宿主机演练：日志中被植入 `ERR_PNPM_IGNORED_BUILDS` 时记为 `false`，并引用两处原文 |
+| `pack.present`、`pack.licenceCoherence`、`pack.declarationCoherence`、`pack.staticCoherence`、`pack.distFreshRebuild` | 打包产物 `dist/mpd-package`：它究竟有没有被带进来；它的 `LICENSE.md`/`LICENSE-NOTICES.md` 是否与切出它的那棵树逐字节相同、声明的 `license` 是否仍然一致；它对自己做出的每一项声明是否都成立（`files` 白名单可解析、`dsh.bundle.patch` 层存在、它自己的 patch 里点名的每个行模块路径都能在包内解析、没有把 `evidence/`/`.git/`/`docker/`/`node_modules` 带进来）；它与切出它的那棵树是否逐字节一致（且只有**两个已声明**的生成路径例外：`package.json`、`packages/mpd-ext-plugin/dist/validator.js`）；以及每个已构建条目是否等于容器自己从源码重建出的那份 | 第二项是**正在生效的**对照而不是假设：今天携带的产物就在 `pack.staticCoherence` 上以 10 个不同文件变红（打包之后那棵树又前进了），并在 `pack.distFreshRebuild` 上以 2 个变红——这正是宿主机门禁拒绝做出的测量（`verify-pack-closure.ts` 明示不证明新鲜度；`--pack` 没有许可证检查）。产物缺失时五项全部记为 `false`，绝不用 `null` |
+| `boot.mcpToolNaming` | 探针枚举**所有**已注册的 `mcp__*` 名称；该行判定 `mcp__<server>__<tool>` 形状、**没有**任何超出所发布 patch 声明的服务端注册、每个**本地**行（`ast_grep`、`lsp`、`codegraph`）都起来了，以及 ast-grep 行发布了其声明的完整工具面 | patch 从未声明的服务端段会变红——例如某个 `disabled: true` 的行仍然注册（`mcp__git__*`/`mcp__shell__*`），或某行被改成了无人声明的 `serverName`；某个本地行什么都没注册也会变红。同一个 patch 挂载的**两个远程行**（`context7`、`grep_app`，面向公共服务器的 streamable-http）被判定为「允许出现」，而**不是**异常——这是 2026-10-09 实测得出的：该行原本硬编码「三个启用服务端」，因此只有当网络**拒绝**这些公共服务时才绿，而那一次真正连上它们的运行被它判成了违规。用植入的启动日志做双向演练 |
+| `boot.mcpLiveSearch` | 通过已挂载的 adapter **真实调用**一次 `mcp__ast_grep__search`，搜索本 bundle 自己的源码，并**附带负向对照**（任何源码文件都不可能匹配的模式必须命中 0 次） | 返回 `BINARY_NOT_FOUND`（没有引擎）会变红，对照项命中任何东西也会变红——一个对两次调用回同样答案的桩无法通过。已用合成日志双向演练 |
+| `restore.reviewPanelSelfTest`、`restore.reviewPanelCase`、`restore.lspBootstrap`、`restore.hashlineRepair`、`qa.mcpCall`、`qa.readonlyDeny` | §7 应做的各用例，**在容器内**运行：三个被恢复能力各自的用例，以及在开发宿主机上因**既存原因**变红的那两个 live QA 用例 | 用例退出码非 0 记为 `false`；用例打印出自己的拒绝标记（如 `[mcp-call] missing credentials`）时记为 `null` 并引用该标记，**绝不记为 `true`**；本 wave 应做而树里没有的用例记为 `false`，不是跳过 |
+
+`restore.lspBootstrap` 是一**对**对照，而不是单点检查：launcher 会在 stdin 关闭的情况下被驱动两次——一次在没有配置
+的空目录（它必须**生成** `<root>/.mpd/lsp/cclsp.json`、能解析、并至少有一个覆盖 TypeScript 族的服务端），一次在
+携带用户自有 `cclsp.json` 的目录（后者必须逐字节存活，且旁边不得出现任何生成文件）。一个会覆盖用户文件的
+launcher 能通过"是否写出了配置"的检查，却违背契约所述的能力。
+
+live 搜索所需的引擎由本仓库**自己的**安装脚本 `node scripts/install-mcp.ts` 落地（第 09d 步）：
+`@ast-grep/cli` 已不在 bundle 的 `dependencies` 中，而在许多 Linux 主机上 `/usr/bin/sg` 是 util-linux 的
+`setgroups`，并非 ast-grep——因此最终判定的是服务端自己的 `--version` 探测，而不是 PATH。
+
+这些仪器与本 lane 的其他模块（`report.ts`、`rebuild.ts`、`live-verdict.ts`）放在一起：
+`docker/lib/owed-install.ts`、`owed-pack.ts`、`owed-mcp.ts`、`owed-cases.ts`。它们是仅用于 QA 的仪器，被固化在
+`/opt/mpd-e2e/lib/`，绝不取自被测树——仓库副本可以提供自己的插件，但永远不能提供自己的判决。
+
+## restore wave 的验收项（restore-acceptance-fix §4 S-B，2026-10-09）
+
+PR #28 已合并三项被恢复的能力，但本 lane 自己的验收运行发生在该合并**之后**且从未提交。重新测量后，它的五行
+不是环境事实，而是 QA 仪器的缺陷。以下修正全部落在本 lane 与其 reporter 内：
+
+| 行 | 变更内容 |
+|---|---|
+| `toolchain.bunPinned`（新增） | 容器把 `package.json.buildToolchain` 声明的编译器（`bun@1.4.0`）落地到**独立**前缀（`$TOOLCHAIN_DIR/bun-pinned`），并断言它报告的版本与之完全一致。它绝不链接进 PATH，因此 `toolchain.bun` 仍测量机器自带的 bun。版本比较是**精确相等**、不是子串：官方脚本抖动时回退到 npm 路径，落地失败会记为 `false` 而不是静默穿过 |
+| `pack.distFreshRebuild` | 现在是一次真正的**陈旧性**测量：重建在落地后的 pin 下运行，比较只看字节。该行的 raw 见证引用**实际产出**此次重建的编译器——取自重建自身的 `--json` 见证（`rebuildBun`、`rebuildBunVersion`），而不是别处做的 PATH 查找。旧版本在 PATH 上问 `bun --version` 并用 `declaredPin.includes(containerBun)` 判断，于是即使干活的是 pin 二进制也会报 `1.4.2`，且两段式 `1.4` 也能匹配 `bun@1.4.0` |
+| `pack.rebuildToolchain`（新增） | 配套行：产出重建的编译器是否**精确**等于声明的 pin（与重建见证做字符串相等比较）。没有重建（one-click 模式）或没有见证时，它带着实测原因记 `null`/`false`，而不是一个什么都没测的绿灯 |
+| `pack.distFreshRebuildControl`（新增） | **反向对照**，在同一容器内运行：复制一份产物，改动其中一个已构建条目，再对**同一次**重建重新判定。仅当该副本把陈旧性行翻成 `false` 时此行才为 `true`——因此未改动产物上的绿灯是一次测量，而不是常量。没有这一项，一个永远回答 `true` 的相等测试与正确的测试无法区分 |
+| `tui.mergedPanelOpens`、`tui.mergedPanelOrder` | **实测**，不再是 `null`。在提供 0.13.0 `ctx.tuiPanels` seam 的主机上，这两行曾以"主机**接受**的 `open()` 改变 tmux 捕获的零个字节"为由记为 `null`——而该依据是在 0.13.0 **之前**的全屏场景上测得的，在合并视图变成**侧栏面板**之后再未复测。权威运行自己的 `tui-panes/pane-merged.txt` 携带完整面板正文；两行由 `docker/lib/tui-panel-body.ts` 判定，它读取面板外框、主机自带的 subagent 区块与 MPD 的团队头部/DAG 页脚，并且**当按键前的捕获已经携带面板正文时拒绝称之为"打开"**（这正是捕获顺序或按键失效时该行变红的方式） |
+| `qa.mcpCallEngine`（新增） | 引擎被落地到 `mcp-call` launcher **实际读取**的那棵树：该用例用 `npm install file:` 把打包产物（`dist/mpd-package`）装入沙箱 profile，而 MCP launcher 以 bundle 相对路径解析 `sg`——因此 `node scripts/install-mcp.ts --toolchain <APP>/dist/mpd-package/.toolchain` 在打包刷新**之后**运行（否则那一步会把它删掉）。第 09d 步的落地覆盖各行；这一步覆盖该用例 |
+| 分步预算与 npm 传输 | 2026-10-09 实测：一次运行在 `npm i -g @deepseek-ai/dsh@0.2.0-rc.2` 里卡了 **23 分钟**、CPU 0.3%、容器空闲——是取包卡死而非进行中——只能人工杀掉，整场验收运行随之报废。现在每个 `run_step` 都由 `MPD_E2E_STEP_TIMEOUT`（默认 900 秒）限时，被杀的步骤记为退出码 124 并带自己的原因；npm 的单请求超时与重试也一并限界。同一次测量还发现官方源**作用域**元数据端点（harness pin 正是经它解析）一次探测失败、下一次 1.5 秒成功，因此第 `01b` 步会先探测该端点：能应答就用官方源，`MPD_E2E_NPM_MIRROR` 只作为**记录在案**的回退（`obs.npmRegistry` 写明实际用的是哪个源），`MPD_E2E_NPM_REGISTRY` 则允许操作者直接指定源。自 2026-10-14 起，同一步还会对 harness pin 自身的 tarball 做**一次**限定范围的 ranged GET：元数据能应答但 tarball 黑洞的源，现在会让探测**失败**（路由 `<label>-tarball-blackholed`，观测项 `obs.npmTarball`），而不是通过探测、再卡死安装；未指定任何源旋钮时该臂按原因跳过、零请求 |
+| `EXPECTED` 主脊 | 现在一条主脊覆盖**两种**模式：两种模式已记录名称的并集是 114，且 one-click 集合是 source 集合的严格超集，因此四个仅 one-click 的行被声明，并在 source 模式下以**实测模式**为原因记为 `null`——绝不用缺失名称会合成出的"not reached"。旧主脊之外被记录的那 13 行也已声明 |
+
+该分类器与离线证伪器**共用同一份代码**：`node scripts/docker-e2e.ts --self-test` 会用植入的 pane 驱动
+`docker/lib/tui-panel-body.ts`（面板正文存在 → `OPENS=true`；区块顺序**颠倒** → `ORDER=false`；对照捕获已携带正文
+→ `false`；0.13.0 之前的形态 → 仍然判定），并断言 `docker/tui-lane.sh` 确实在调用它。`--self-test` 还会在植入的
+产物/重建/见证三棵树上驱动打包比较器（含 `1.4` 对 `bun@1.4.0` 的子串陷阱与改动产物的对照），并用一个植入的假
+编译器驱动 `rebuild.ts`，以证明见证确实来自被调用的二进制。
 
 ## 仓库是如何进入镜像的
 
@@ -150,7 +202,7 @@ Dockerfile 把该上下文复制到 `/src`。**磁盘上不存在任何暂存目
 |---|---|
 | `.git`、`.gitignore`、`.gitattributes` | 安装不应依赖历史 |
 | `node_modules`、`**/node_modules` | `bun install` 会在容器内重建 |
-| **根级** `dist/` | 本仓库的打包产物，不是源码输入 |
+| `dist/*`，**但 `dist/mpd-package` 除外** | 打包产物不是源码输入——然而 §7 第 5 项正是要**对它**做测量，因此恰好这一个路径会进镜像，并由 `copy.contextFiltered` 断言 `dist/` 下没有别的东西跟进 |
 | `evidence`、`.qa-*`、`.toolchain`、`.codegraph`、`.t18ev`、`.t28ev`、`.bun-tmp`、`.mpd` | 宿主机本地状态 |
 
 `packages/*/dist` 是**刻意保留**的：容器会从源码重建它们，而这次重建本身就是一个断言，不是走过场。过滤结果还会
@@ -188,6 +240,33 @@ docker tag  docker.m.daocloud.io/library/node:24-bookworm node:24-bookworm
 ```
 
 此后 `docker compose build` 会直接从本地镜像库解析两个 `FROM` 阶段，lane 无需任何改动即可运行。
+
+### 实时回合的提示词开关（`MPD_E2E_LIVE_PROMPT`）
+
+容器的第 15 步（`docker/entrypoint.sh`）会驱动一次真实的 headless agent 会话，其任务默认是一段
+**团队平面冒烟提示词**。`MPD_E2E_LIVE_PROMPT` 会**替换**该任务：当它被设置且非空时，其值原样作为该回合的
+提示词，因此可以要求本 lane 去做另一件事。未设置或为空时，内置提示词**逐字节**保持不变——该开关只做增量，
+绝不改变行为。
+
+它只在实时运行中才有意义，因此调用方式就是实时的那一套：
+
+```bash
+export DEEPSEEK_API_KEY=…                 # 按“名字”转发，绝不写进 argv 被回显
+export MPD_E2E_LIVE=1                     # 实时类断言是可选开启的
+export MPD_E2E_LIVE_PROMPT='把一个可玩的贪吃蛇游戏写到 <路径> …'
+node scripts/docker-e2e.ts --live
+```
+
+没有 `MPD_E2E_LIVE=1`（或没有转发 `DEEPSEEK_API_KEY`）时，运行根本到不了第 15 步；而驱动在手里没有密钥时会
+直接拒绝 `--live`。驱动用 `-e MPD_E2E_LIVE_PROMPT` 转发该提示词——**按名字转发，而不是按值**，与凭据的传递
+方式一致——并且 `docker/docker-compose.yml` 在**两个**服务的 `environment:` 块里都写了
+`${MPD_E2E_LIVE_PROMPT:-}`，这正是该变量能从宿主机送达容器的原因：compose 只转发 compose 文件自己插值过的
+变量。
+
+某一回合实际用的是哪条提示词，本身就是证据的一部分：第 15 步会打印
+`[live-prompt] promptSource=… bytes=… firstLine="…"` 这一行，把同样的说明记录为 `result.json` 中的
+`livePrompt` 事实，并写入 `boot.llmTurn` 断言的 `raw` 字段。因此，即使调用方给的提示词很长，也能被识别出来，
+而不会被当作一团无法阅读的文本倾倒进日志。
 
 ## 隔离模型
 

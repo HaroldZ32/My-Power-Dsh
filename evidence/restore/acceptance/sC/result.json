@@ -1,0 +1,90 @@
+{
+  "stream": "S-C",
+  "title": "the doc debt — the dispatch-table trap row",
+  "writer": "docs-writer (Junior Engineer)",
+  "contract": ".mpd/plans/restore-acceptance-fix.md §4 S-C",
+  "verificationLoop": "loop-20261009T115806-6f91f7",
+  "branch": "fix/restore-wave-acceptance",
+  "writtenAt": "2026-10-09T11:59:45Z",
+  "artifacts": [
+    {
+      "path": "agent-references/troubleshooting.md",
+      "sha256": "5a1c619298e85f8bcc8965fac0a40d94697cfd1ca1fdda9cc9185b0f7901fb08",
+      "change": "one table row added (line 84 of 149): the dispatch-ledger trap"
+    }
+  ],
+  "criteria": [
+    {
+      "id": 1,
+      "requirement": "troubleshooting.md gains the dispatch-table trap row: dispatch.json is keyed by TASK ID across teams, so a new team reusing T1..Tn inherits a stale pairing and a task is undispatchable — release the stale id first",
+      "status": "met",
+      "how": "The row's symptom is the live skip string and its cause/fix names the keying, the shared path, the prune rule that fails to clear it, the recorded instance and the release remedy.",
+      "evidence": "evidence/restore/acceptance/sC/output.log — the row is at agent-references/troubleshooting.md line 84; every mechanism sentence in it is quoted from the source in the same log"
+    },
+    {
+      "id": 2,
+      "requirement": "bun run verify:docs stays green (this tree is English-only; no *.zh-CN.md twin is expected)",
+      "status": "met",
+      "how": "bun run verify:docs → exit 0, `pairs=47 failed=0 violations=0 exempt=24 derived=3 links=434 dead=0 — PASS`",
+      "evidence": "evidence/restore/acceptance/sC/output.log"
+    },
+    {
+      "id": 3,
+      "requirement": "If AGENTS.md is edited: the instruction budget is re-measured and stays under the 2 KB margin",
+      "status": "not-applicable — AGENTS.md is NOT edited",
+      "how": "No manual sentence is contradicted by the measurement. AGENTS.md §12's own summary already lists `agent-teams dispatch defects` among the topics the table covers (line 592), so the new row makes that sentence MORE true; §5 rule 5's `agent_teams_dispatch` sentence says only that a ready task is paired with its declared owner, which the trap does not contradict. No budget re-measure is therefore owed."
+    }
+  ],
+  "commands": [
+    {
+      "command": "bun run verify:docs",
+      "exitCode": 0,
+      "reading": "[verify-docs-parity] root=<repo> pairs=47 failed=0 violations=0 exempt=24 derived=3 links=434 dead=0 — PASS"
+    },
+    {
+      "command": "awk 'NR>=83 && NR<=86 { n=gsub(/\\|/,\"|\"); printf \"line %d: pipes=%d len=%d\\n\", NR, n, length($0) }' agent-references/troubleshooting.md",
+      "exitCode": 0,
+      "reading": "lines 83/84/85/86 each report pipes=3 — the inserted row keeps the 2-cell shape of its neighbours (leading pipe, cell separator, trailing pipe)"
+    },
+    {
+      "command": "git diff --stat -- agent-references/troubleshooting.md",
+      "exitCode": 0,
+      "reading": "agent-references/troubleshooting.md | 1 + ; 1 file changed, 1 insertion(+) — the diff is ONE added row, no other line touched"
+    },
+    {
+      "command": "grep -n \"export type DispatchLedger\" packages/mpd-team-core-plugin/src/dispatch.ts",
+      "exitCode": 0,
+      "reading": "84:export type DispatchLedger = Record<string, DispatchAssignment> — keyed by id alone, no team dimension"
+    },
+    {
+      "command": "grep -n \"already dispatched to\" packages/mpd-team-core-plugin/src/dispatch.ts",
+      "exitCode": 0,
+      "reading": "181: plan.skipped.push({ … reason: `already dispatched to ${input.ledger[task.id]?.memberName ?? \"a member\"}` }) — the symptom string the row quotes"
+    },
+    {
+      "command": "sed -n '229,257p' packages/mpd-team-core-plugin/src/dispatch.ts",
+      "exitCode": 0,
+      "reading": "assign() writes `[pair.taskId]`; release() deletes `next[taskId]` and returns `{released:false}` when the key is absent — both keyed by taskId alone"
+    },
+    {
+      "command": "sed -n '258,275p' packages/mpd-team-core-plugin/src/dispatch.ts",
+      "exitCode": 0,
+      "reading": "reconcile() drops an entry only when `task === undefined || task.status === \"completed\"` on the board it is handed — a live non-terminal T1 on the NEW board keeps the stale entry"
+    },
+    {
+      "command": "grep -n \"const pruned = reconcile(readLedger\" packages/mpd-team-core-plugin/src/index.ts",
+      "exitCode": 0,
+      "reading": "1093: const pruned = reconcile(readLedger(workspace), tasks) — the prune runs at dispatch time against the CURRENT board"
+    },
+    {
+      "command": "grep -n \"dispatchPath = \" packages/mpd-team-core-plugin/src/index.ts",
+      "exitCode": 0,
+      "reading": "187: const dispatchPath = (workspace: string): string => join(workspace, \".mpd\", \"team\", \"dispatch.json\") — one WORKSPACE-level file, no team in the path"
+    }
+  ],
+  "declaredBounds": [
+    "verify:docs does NOT discover agent-references/** by policy (AGENTS.md §3: the agent-facing band is deliberately out of the bilingual band), so the gate cannot redden on a defect in this row. It is recorded because the contract asks for it; the row's real checks are the table-shape assertion and the source reads above, both in output.log.",
+    "The row's 'recorded instance' clause cites the previous wave's artifacts (.mpd/plans/restore-three-capabilities.md Platform traps item 1; carried forward in .mpd/plans/restore-acceptance-fix.md §9 item 1) rather than a measurement made by this writer.",
+    "No git write command was run by this writer (AGENTS.md §5: the captain is the only git writer)."
+  ]
+}

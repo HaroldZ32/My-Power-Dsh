@@ -1,0 +1,108 @@
+[07:36:32] === attempt=full-2 utc-start=2026-10-08T07:36:32Z
+[07:36:32] sandbox=/tmp/mpd-lr-lP1EpU
+[07:36:33] sandbox host version=0.14.0
+[07:36:33] fixture: seeded team-2026-10-05T22-30-00.000Z (board=normal) for session sess-live-refresh: 6 tasks, 5 members
+[07:36:33] tmux grid: 140x40
+[07:36:33] waiting for the chat frame ...
+[07:36:50] CAPTURE 00-chat @ 2026-10-08T07:36:50.235Z
+[07:36:50] chat status row: mpd: team webui-tui-i18n 5·2/6 · failed 1 · plans 0 · workmates 0                           
+[07:36:50] --- [A] opening the sidebar page: /mpd panel  (KEY PRESS)
+[07:36:51] A mode line SEEN
+[07:36:55] CAPTURE A1-sidebar-open @ 2026-10-08T07:36:55.280Z
+[07:36:55] A1 mode line: view boxes · 6 tasks · ranks derived     
+[07:36:55] A1 summary:   
+                                                                                                  │ ◀    ○      ○    MPD     ○      ○     ▶
+      ████   █████  █████  ████    ████  █████  █████  █   █                                      │┌MPD──────────────────────────────────────┐
+      █   █  █      █      █   █  █      █      █      █  █                                       ││MPD                                     ⤢│
+                                                                                                  ││team webui-tui-i18n  phase active  tasks │
+[07:36:55] --- [A] mutating the record (mutate mode=panel), NO KEY PRESS from here
+[07:36:55] mutation: panel: tasks=7 T1:completed T2:in_progress T3:completed T4:completed T5:pending T6:in_progress T8:pending
+[07:36:57] CAPTURE A2-sidebar-plus2s @ 2026-10-08T07:36:57.350Z
+[07:36:57]    t+2020ms
+[07:36:59] CAPTURE A3-sidebar-plus4s @ 2026-10-08T07:36:59.377Z
+[07:36:59]    t+4050ms
+[07:37:03] CAPTURE A4-sidebar-plus8s @ 2026-10-08T07:37:03.404Z
+[07:37:03]    t+8077ms
+A1-sidebar-open vs A4-sidebar-plus8s: changedLines=32
+        <   █   █  ████   ████   ████    ███   ████   ████   ███                                        ││subagents  0 total · 0 running · 0 comple│
+        <   █   █  █      █      █          █  █      █      █  █                                       ││⚪ No subagents in the current session   │
+        <   ████   █████  █████  █      ████   █████  █████  █   █                                      ││  Subagents appear here once the main age│
+        <                                                                                               ││team webui-tui-i18n  phase active  tasks │
+        <   █   █    ███    ████    █   █   █████    ████    ████                                       ││╭────────╮   ╭────────╮   ╭────────╮     │
+        >   █   █  ████   ████   ████    ███   ████   ████   ███                                        ││⚪ No subagents in the current sessionple│
+        A1-sidebar-open: modeLine="view boxes · 6 tasks · ranks derived     " summary=""
+        A4-sidebar-plus8s: modeLine="view boxes · 7 tasks · ranks derived     " summary=""
+[07:37:03] --- [A] CONTROL: re-open the sidebar page (key presses resume) and see whether the new state is read
+[07:37:07] CAPTURE A5-sidebar-reopened @ 2026-10-08T07:37:07.457Z
+[07:37:07] A5 mode line: view boxes · 7 tasks · ranks derived     
+[07:37:07] A5 summary:   
+A2-sidebar-plus2s vs A5-sidebar-reopened: changedLines=4
+        <   █   █   █   █   █   █   ██  █   █       █       █                                           │││ ✓ T1   │   │ ◐·· T2   │   │ ✓ T3   │   │
+        >   █   █   █   █   █   █   ██  █   █       █       █                                           │││ ✓ T1   │   │ ◐ T2   │   │ ✓ T3   │   │ │
+        <                                                                                               │││ ◐·· T6   │                             │
+        >                                                                                               │││ ◐ T6   │                               │
+        A2-sidebar-plus2s: modeLine="view boxes · 7 tasks · ranks derived     " summary=""
+        A5-sidebar-reopened: modeLine="view boxes · 7 tasks · ranks derived     " summary=""
+[07:37:09] --- [B] opening the full-screen scene: /mpd team  (KEY PRESS)
+[07:38:40] B marker NOT seen in 90s
+[07:38:43] CAPTURE B1-scene-open @ 2026-10-08T07:38:43.226Z
+[07:38:43] B1 header: 
+[07:38:43] B1 summary: 
+[07:38:43] --- [B] mutating the record (mutate mode=scene), NO KEY PRESS from here
+[07:38:43] mutation: scene: tasks=8 T1:completed T2:completed T3:completed T4:pending T5:pending T6:in_progress T8:pending T7:pending
+[07:38:45] CAPTURE B2-scene-plus2s @ 2026-10-08T07:38:45.287Z
+[07:38:45]    t+2022ms
+[07:38:47] CAPTURE B3-scene-plus4s @ 2026-10-08T07:38:47.312Z
+[07:38:47]    t+4048ms
+[07:38:51] CAPTURE B4-scene-plus8s @ 2026-10-08T07:38:51.338Z
+[07:38:51]    t+8072ms
+B1-scene-open vs B4-scene-plus8s: changedLines=60
+        <   █   █  ████   ████   ████    ███   ████   ████   ███                                        ││⚪ No subagents in the current sessionple│
+        <   █   █  █      █      █          █  █      █      █  █                                       ││  Subagents appear here once the main age│
+        <   ████   █████  █████  █      ████   █████  █████  █   █                                      ││team webui-tui-i18n  phase active  tasks │
+        <                                                                                               ││                                         │
+        <   █   █    ███    ████    █   █   █████    ████    ████                                       ││╭────────╮   ╭────────╮   ╭────────╮   ╭─│
+        <   █   █   █   █   █   █   ██  █   █       █       █                                           │││ ✓ T1   │   │ ◐ T2   │   │ ✓ T3   │   │ │
+        B1-scene-open: modeLine="view boxes · 7 tasks · ranks derived     " summary=""
+        B4-scene-plus8s: modeLine="" summary=""
+[07:38:51] --- [B] CONTROL: close (Escape) and RE-OPEN the scene (key presses resume)
+[07:38:53] CAPTURE B5-after-escape @ 2026-10-08T07:38:53.388Z
+[07:38:53] B5 header after escape: ''
+[07:38:57] CAPTURE B6-scene-reopened @ 2026-10-08T07:38:57.415Z
+[07:38:57] B6 header: 
+[07:38:57] B6 summary: 
+B1-scene-open vs B6-scene-reopened: changedLines=60
+        <   █   █  ████   ████   ████    ███   ████   ████   ███                                        ││⚪ No subagents in the current sessionple│
+        <   █   █  █      █      █          █  █      █      █  █                                       ││  Subagents appear here once the main age│
+        <   ████   █████  █████  █      ████   █████  █████  █   █                                      ││team webui-tui-i18n  phase active  tasks │
+        <                                                                                               ││                                         │
+        <   █   █    ███    ████    █   █   █████    ████    ████                                       ││╭────────╮   ╭────────╮   ╭────────╮   ╭─│
+        <   █   █   █   █   █   █   ██  █   █       █       █                                           │││ ✓ T1   │   │ ◐ T2   │   │ ✓ T3   │   │ │
+        B1-scene-open: modeLine="view boxes · 7 tasks · ranks derived     " summary=""
+        B6-scene-reopened: modeLine="" summary=""
+[07:38:57] --- [N] narrow-geometry probe: resize the pane and re-open the surfaces (key presses allowed here)
+[07:39:04] CAPTURE N1-narrow92-sidebar @ 2026-10-08T07:39:04.486Z
+[07:39:04] N1 mode line: 
+[07:39:10] CAPTURE N2-narrow64-sidebar @ 2026-10-08T07:39:10.523Z
+[07:39:10] N2 mode line: 
+[07:39:10] N2 grid: 64x32
+[07:39:15] CAPTURE N3-narrow64-scene @ 2026-10-08T07:39:15.566Z
+[07:39:15] N3 header: │ task dependency graph                                    │
+A1-sidebar-open.txt {"roundedCorners":29,"boxGlyphsT":4,"square":2,"verticals":118,"densTag":false,"railTag":false,"boxesTag":true,"listTag":false,"railViewTag":false}
+A2-sidebar-plus2s.txt {"roundedCorners":29,"boxGlyphsT":4,"square":2,"verticals":118,"densTag":false,"railTag":false,"boxesTag":true,"listTag":false,"railViewTag":false}
+A3-sidebar-plus4s.txt {"roundedCorners":29,"boxGlyphsT":4,"square":2,"verticals":118,"densTag":false,"railTag":false,"boxesTag":true,"listTag":false,"railViewTag":false}
+A4-sidebar-plus8s.txt {"roundedCorners":29,"boxGlyphsT":4,"square":2,"verticals":118,"densTag":false,"railTag":false,"boxesTag":true,"listTag":false,"railViewTag":false}
+A5-sidebar-reopened.txt {"roundedCorners":29,"boxGlyphsT":4,"square":2,"verticals":119,"densTag":false,"railTag":false,"boxesTag":true,"listTag":false,"railViewTag":false}
+A-control-diff.txt {"roundedCorners":0,"boxGlyphsT":0,"square":0,"verticals":29,"densTag":false,"railTag":false,"boxesTag":true,"listTag":false,"railViewTag":false}
+A-refresh-diff.txt {"roundedCorners":6,"boxGlyphsT":0,"square":0,"verticals":18,"densTag":false,"railTag":false,"boxesTag":true,"listTag":false,"railViewTag":false}
+B1-scene-open.txt {"roundedCorners":29,"boxGlyphsT":4,"square":2,"verticals":119,"densTag":false,"railTag":false,"boxesTag":true,"listTag":false,"railViewTag":false}
+B2-scene-plus2s.txt {"roundedCorners":25,"boxGlyphsT":5,"square":2,"verticals":120,"densTag":false,"railTag":false,"boxesTag":false,"listTag":false,"railViewTag":false}
+B3-scene-plus4s.txt {"roundedCorners":25,"boxGlyphsT":5,"square":2,"verticals":120,"densTag":false,"railTag":false,"boxesTag":false,"listTag":false,"railViewTag":false}
+B4-scene-plus8s.txt {"roundedCorners":25,"boxGlyphsT":5,"square":2,"verticals":120,"densTag":false,"railTag":false,"boxesTag":false,"listTag":false,"railViewTag":false}
+B5-after-escape.txt {"roundedCorners":25,"boxGlyphsT":5,"square":2,"verticals":120,"densTag":false,"railTag":false,"boxesTag":false,"listTag":false,"railViewTag":false}
+B6-scene-reopened.txt {"roundedCorners":25,"boxGlyphsT":5,"square":2,"verticals":120,"densTag":false,"railTag":false,"boxesTag":false,"listTag":false,"railViewTag":false}
+B-control-diff.txt {"roundedCorners":7,"boxGlyphsT":0,"square":0,"verticals":25,"densTag":false,"railTag":false,"boxesTag":true,"listTag":false,"railViewTag":false}
+B-refresh-diff.txt {"roundedCorners":7,"boxGlyphsT":0,"square":0,"verticals":25,"densTag":false,"railTag":false,"boxesTag":true,"listTag":false,"railViewTag":false}
+[07:39:15] record final: T1:completed T2:completed T3:completed T4:pending T5:pending T6:in_progress T8:pending T7:pending
+[07:39:15] === utc-end=2026-10-08T07:39:15Z sandbox=/tmp/mpd-lr-lP1EpU evidence=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/live-refresh/2026-10-08T07-32-09Z/full-2
+[07:39:15] tmux server stopped

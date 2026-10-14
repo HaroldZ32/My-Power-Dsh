@@ -18,7 +18,7 @@ function bundleRootOf(moduleUrl) {
 // packages/mpd-mcp-shared/log-sink.ts
 import { closeSync, mkdirSync, openSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { isAbsolute, join, relative, resolve, sep } from "node:path";
 var LOG_SUBDIR = join(".mpd", "logs");
 var DEFAULT_MAX_BYTES = 1024 * 1024;
 var DEFAULT_MAX_LINE_BYTES = 8192;
@@ -66,7 +66,10 @@ function tryOpenRoot(root, name) {
 }
 function owningRoot(roots, file) {
   for (const root of roots) {
-    if (file === root || file.startsWith(root.endsWith("/") ? root : `${root}/`))
+    if (file === root)
+      return root;
+    const rel = relative(root, file);
+    if (rel !== "" && rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel))
       return root;
   }
   return null;
@@ -237,6 +240,31 @@ function dshSeamInject(...names) {
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
 var TEAM_TASK_METHODS = ["createTask", "getTask", "listTasks", "updateTask"];
+function modelDeclaresNoEffort(catalog, provider, model) {
+  const entry = catalog.providers.find((p) => p.id === provider)?.models.find((m) => m.id === model);
+  return entry !== undefined && Array.isArray(entry.efforts) && entry.efforts.length === 0;
+}
+async function withSupportedEffort(dsh, route) {
+  if (route === undefined)
+    return route;
+  const effort = typeof route.reasoningEffort === "string" ? route.reasoningEffort : "";
+  if (effort === "")
+    return route;
+  if (typeof dsh?.llmCatalog !== "function")
+    return route;
+  let catalog;
+  try {
+    catalog = await dsh.llmCatalog();
+  } catch {
+    return route;
+  }
+  if (!modelDeclaresNoEffort(catalog, route.provider, route.model))
+    return route;
+  const adapted = { ...route };
+  delete adapted.reasoningEffort;
+  rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${route.provider}/${route.model} declares no reasoning efforts — the "${effort}" effort is omitted (a keyword this model cannot take fails the call)`);
+  return adapted;
+}
 function textBlock(content) {
   return [{ type: "text", text: typeof content === "string" ? content : String(content ?? "") }];
 }
@@ -282,6 +310,37 @@ function rowLogLine(name2, line) {
     }
     entry.sink.write(line);
   } catch {}
+}
+function unknownRestrictedNames(error) {
+  const message = error instanceof Error ? error.message : typeof error === "string" ? error : "";
+  if (!/names unknown global tool/.test(message))
+    return;
+  const head = message.split("; known global tools:")[0] ?? "";
+  const names = [...head.matchAll(/"([^"]+)"/g)].map((match) => String(match[1] ?? "")).filter((name2) => name2 !== "");
+  return names.length > 0 ? names : undefined;
+}
+function restrictToolsTolerant(restrict, names) {
+  let candidate = [...names];
+  const pruned = [];
+  for (let attempt = 0;; attempt += 1) {
+    try {
+      const release = restrict(candidate);
+      if (typeof release === "function")
+        release();
+      return { applied: candidate, pruned };
+    } catch (error) {
+      if (attempt >= 1)
+        throw error;
+      const unknown = unknownRestrictedNames(error);
+      if (unknown === undefined)
+        throw error;
+      const next = candidate.filter((name2) => !unknown.includes(name2));
+      if (next.length === candidate.length)
+        throw error;
+      pruned.push(...candidate.filter((name2) => unknown.includes(name2)));
+      candidate = next;
+    }
+  }
 }
 function workspaceRootsOf(agents) {
   if (agents === undefined || agents === null || typeof agents.list !== "function")
@@ -1664,11 +1723,14 @@ export {
   errorMessage,
   inject,
   isRecord,
+  modelDeclaresNoEffort,
   name,
   resolveDshAdapter,
+  restrictToolsTolerant,
   rowLogLine,
   textBlock,
   userMessage,
+  withSupportedEffort,
   workspaceRootOf,
   workspaceRootsOf
 };

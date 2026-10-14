@@ -1,0 +1,959 @@
+[
+  {
+    "key": "typescript",
+    "npm": {
+      "url": "https://registry.npmjs.org/typescript-language-server/latest",
+      "name": "typescript-language-server",
+      "version": "6.0.1",
+      "license": "Apache-2.0",
+      "repository": "git+https://github.com/typescript-language-server/typescript-language-server.git",
+      "homepage": "https://github.com/typescript-language-server/typescript-language-server#readme"
+    },
+    "repo": {
+      "repo": "typescript-language-server/typescript-language-server",
+      "licenceUrl": "https://raw.githubusercontent.com/typescript-language-server/typescript-language-server/HEAD/LICENSE",
+      "licenceHead": "Parts of the code copied from the https://github.com/microsoft/vscode repository are licensed under the following license: BEGIN LICENSE ---------------------------------------------------------------- MIT License",
+      "spdx": "Apache-2.0",
+      "readmeUrl": "https://raw.githubusercontent.com/typescript-language-server/typescript-language-server/HEAD/README.md",
+      "installLines": [
+        "- [Installing](#installing)",
+        "npm install -g typescript-language-server typescript@6"
+      ]
+    }
+  },
+  {
+    "key": "python",
+    "npm": {
+      "url": "https://registry.npmjs.org/pyright/latest",
+      "name": "pyright",
+      "version": "1.1.414",
+      "license": "MIT",
+      "repository": "git+https://github.com/Microsoft/pyright.git",
+      "homepage": "https://github.com/Microsoft/pyright#readme"
+    },
+    "repo": {
+      "repo": "microsoft/pyright",
+      "licenceUrl": "https://raw.githubusercontent.com/microsoft/pyright/HEAD/LICENSE.txt",
+      "licenceHead": "MIT License Pyright - A static type checker for the Python language Copyright (c) Microsoft Corporation. All rights reserved. Permission is hereby granted, free of charge, to any person obtaining a copy",
+      "spdx": "MIT",
+      "readmeUrl": "https://raw.githubusercontent.com/microsoft/pyright/HEAD/README.md",
+      "installLines": [
+        "Refer to [the documentation](https://microsoft.github.io/pyright) for installation, configuration, and usage details."
+      ]
+    }
+  },
+  {
+    "key": "go",
+    "repo": {
+      "repo": "golang/tools",
+      "licenceUrl": "https://raw.githubusercontent.com/golang/tools/HEAD/LICENSE",
+      "licenceHead": "Copyright 2009 The Go Authors. Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:",
+      "spdx": "BSD (clause count unread)",
+      "readmeUrl": "https://raw.githubusercontent.com/golang/tools/HEAD/README.md",
+      "installLines": [
+        "go install golang.org/x/tools/cmd/goimports@latest"
+      ]
+    },
+    "npm": null
+  },
+  {
+    "key": "rust",
+    "repo": {
+      "repo": "rust-lang/rust-analyzer",
+      "licenceUrl": "https://raw.githubusercontent.com/rust-lang/rust-analyzer/HEAD/LICENSE-APACHE",
+      "licenceHead": "Apache License Version 2.0, January 2004 http://www.apache.org/licenses/ TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION",
+      "spdx": "Apache-2.0",
+      "readmeUrl": "https://raw.githubusercontent.com/rust-lang/rust-analyzer/HEAD/README.md",
+      "installLines": [
+        "https://rust-analyzer.github.io/book/installation.html"
+      ]
+    },
+    "npm": null
+  },
+  {
+    "key": "c-cpp",
+    "repo": {
+      "repo": "llvm/llvm-project",
+      "licenceUrl": null,
+      "licenceHead": null,
+      "spdx": null,
+      "readmeUrl": "https://raw.githubusercontent.com/llvm/llvm-project/HEAD/README.md",
+      "installLines": []
+    },
+    "npm": null
+  },
+  {
+    "key": "objective-c",
+    "repo": {
+      "repo": "llvm/llvm-project",
+      "licenceUrl": null,
+      "licenceHead": null,
+      "spdx": null,
+      "readmeUrl": "https://raw.githubusercontent.com/llvm/llvm-project/HEAD/README.md",
+      "installLines": []
+    },
+    "npm": null
+  },
+  {
+    "key": "java",
+    "repo": {
+      "repo": "eclipse-jdtls/eclipse.jdt.ls",
+      "licenceUrl": "https://raw.githubusercontent.com/eclipse-jdtls/eclipse.jdt.ls/HEAD/LICENSE",
+      "licenceHead": "Eclipse Public License - v 2.0 THE ACCOMPANYING PROGRAM IS PROVIDED UNDER THE TERMS OF THIS ECLIPSE PUBLIC LICENSE (\"AGREEMENT\"). ANY USE, REPRODUCTION OR DISTRIBUTION OF THE PROGRAM CONSTITUTES RECIPIENT'S ACCEPTANCE OF",
+      "spdx": "EPL-2.0",
+      "readmeUrl": "https://raw.githubusercontent.com/eclipse-jdtls/eclipse.jdt.ls/HEAD/README.md",
+      "installLines": [
+        "There are several options to install eclipse.jdt.ls:"
+      ]
+    },
+    "npm": null
+  },
+  {
+    "key": "kotlin",
+    "repo": {
+      "repo": "Kotlin/kotlin-lsp",
+      "licenceUrl": "https://raw.githubusercontent.com/Kotlin/kotlin-lsp/HEAD/LICENSE.txt",
+      "licenceHead": "Apache License Version 2.0, January 2004 http://www.apache.org/licenses/ TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION",
+      "spdx": "Apache-2.0",
+      "readmeUrl": "https://raw.githubusercontent.com/Kotlin/kotlin-lsp/HEAD/README.md",
+      "installLines": [
+        "> When you install a newer `jetbrains.kotlin-server`, a dialog will offer to uninstall an older `jetbrains.kotlin` extensions.",
+        "For Homebrew users: `brew install JetBrains/utils/kotlin-lsp`",
+        "Manual installation:"
+      ]
+    },
+    "npm": null
+  },
+  {
+    "key": "csharp",
+    "repo": {
+      "repo": "razzmatazz/csharp-language-server",
+      "licenceUrl": "https://raw.githubusercontent.com/razzmatazz/csharp-language-server/HEAD/LICENSE",
+      "licenceHead": "The MIT License (MIT) Copyright (c) 2020-2021 Saulius Menkevičius All rights reserved. Permission is hereby granted, free of charge, to any person obtaining a copy",
+      "spdx": "MIT",
+      "readmeUrl": "https://raw.githubusercontent.com/razzmatazz/csharp-language-server/HEAD/README.md",
+      "installLines": [
+        "csharp-ls requires the .NET 10 SDK or later to be installed on your machine.",
+        "The server can be installed as [csharp-ls dotnet tool](https://www.nuget.org/packages/csharp-ls/):",
+        "dotnet tool install --global csharp-ls",
+        "Once installed, your editor's LSP client should automatically detect and start"
+      ]
+    },
+    "npm": null
+  },
+  {
+    "key": "razor",
+    "repo": {
+      "repo": "dotnet/roslyn",
+      "licenceUrl": null,
+      "licenceHead": null,
+      "spdx": null,
+      "readmeUrl": "https://raw.githubusercontent.com/dotnet/roslyn/HEAD/README.md",
+      "installLines": []
+    },
+    "npm": null
+  },
+  {
+    "key": "swift",
+    "repo": {
+      "repo": "swiftlang/sourcekit-lsp",
+      "licenceUrl": "https://raw.githubusercontent.com/swiftlang/sourcekit-lsp/HEAD/LICENSE.txt",
+      "licenceHead": "Apache License Version 2.0, January 2004 http://www.apache.org/licenses/ TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION",
+      "spdx": "Apache-2.0",
+      "readmeUrl": "https://raw.githubusercontent.com/swiftlang/sourcekit-lsp/HEAD/README.md",
+      "installLines": []
+    },
+    "npm": null
+  },
+  {
+    "key": "ruby",
+    "repo": {
+      "repo": "Shopify/ruby-lsp",
+      "licenceUrl": "https://raw.githubusercontent.com/Shopify/ruby-lsp/HEAD/LICENSE.txt",
+      "licenceHead": "The MIT License (MIT) Copyright (c) 2022-present, Shopify Inc. Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal",
+      "spdx": "MIT",
+      "readmeUrl": "https://raw.githubusercontent.com/Shopify/ruby-lsp/HEAD/README.md",
+      "installLines": []
+    },
+    "npm": null
+  },
+  {
+    "key": "php",
+    "npm": {
+      "url": "https://registry.npmjs.org/intelephense/latest",
+      "name": "intelephense",
+      "version": "1.18.5",
+      "license": "SEE LICENSE IN LICENSE.txt",
+      "repository": "git+https://github.com/bmewburn/intelephense-docs.git",
+      "homepage": "https://intelephense.com/"
+    },
+    "repo": {
+      "repo": "bmewburn/vscode-intelephense",
+      "licenceUrl": "https://raw.githubusercontent.com/bmewburn/vscode-intelephense/HEAD/LICENSE.txt",
+      "licenceHead": "vscode-intelephense (client application) MIT License Copyright (c) 2017 - present Ben Robert Mewburn <ben@mewburn.id.au>",
+      "spdx": "MIT",
+      "readmeUrl": "https://raw.githubusercontent.com/bmewburn/vscode-intelephense/HEAD/README.md",
+      "installLines": []
+    }
+  },
+  {
+    "key": "dart",
+    "repo": {
+      "repo": "dart-lang/sdk",
+      "licenceUrl": "https://raw.githubusercontent.com/dart-lang/sdk/HEAD/LICENSE",
+      "licenceHead": "Copyright 2012, the Dart project authors. Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met: * Redistributions of source code mu",
+      "spdx": "BSD (clause count unread)",
+      "readmeUrl": "https://raw.githubusercontent.com/dart-lang/sdk/HEAD/README.md",
+      "installLines": []
+    },
+    "npm": null
+  },
+  {
+    "key": "elixir",
+    "repo": {
+      "repo": "elixir-lsp/elixir-ls",
+      "licenceUrl": "https://raw.githubusercontent.com/elixir-lsp/elixir-ls/HEAD/LICENSE",
+      "licenceHead": "Apache License Version 2.0, January 2004 http://www.apache.org/licenses/ TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION",
+      "spdx": "Apache-2.0",
+      "readmeUrl": "https://raw.githubusercontent.com/elixir-lsp/elixir-ls/HEAD/README.md",
+      "installLines": [
+        "The installation process for ElixirLS depends on your editor.",
+        "Please install the extension via the following link: https://marketplace.visualstudio.com/items?itemName=JakeBecker.elixir-ls",
+        "- Make sure you have `hex` and `git` installed.",
+        "There are two ways to build the release: `Mix.install`-based (recommended) and `.ez` archives (deprecated).",
+        "### `Mix.install` based release"
+      ]
+    },
+    "npm": null
+  },
+  {
+    "key": "zig",
+    "repo": {
+      "repo": "zigtools/zls",
+      "licenceUrl": "https://raw.githubusercontent.com/zigtools/zls/HEAD/LICENSE",
+      "licenceHead": "MIT License Copyright (c) ZLS contributors Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal",
+      "spdx": "MIT",
+      "readmeUrl": "https://raw.githubusercontent.com/zigtools/zls/HEAD/README.md",
+      "installLines": []
+    },
+    "npm": null
+  },
+  {
+    "key": "lua",
+    "repo": {
+      "repo": "LuaLS/lua-language-server",
+      "licenceUrl": "https://raw.githubusercontent.com/LuaLS/lua-language-server/HEAD/LICENSE",
+      "licenceHead": "MIT License Copyright (c) 2018 最萌小汐 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal",
+      "spdx": "MIT",
+      "readmeUrl": "https://raw.githubusercontent.com/LuaLS/lua-language-server/HEAD/README.md",
+      "installLines": [
+        "See [installation instructions on our website](https://luals.github.io/#install).",
+        "The install methods below are maintained by community members."
+      ]
+    },
+    "npm": null
+  },
+  {
+    "key": "bash",
+    "npm": {
+      "url": "https://registry.npmjs.org/bash-language-server/latest",
+      "name": "bash-language-server",
+      "version": "5.8.1",
+      "license": "MIT",
+      "repository": "git+https://github.com/bash-lsp/bash-language-server.git",
+      "homepage": "https://github.com/bash-lsp/bash-language-server#readme"
+    },
+    "repo": {
+      "repo": "bash-lsp/bash-language-server",
+      "licenceUrl": "https://raw.githubusercontent.com/bash-lsp/bash-language-server/HEAD/LICENSE",
+      "licenceHead": "MIT License Copyright (c) 2018 Mads Hartmann Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal",
+      "spdx": "MIT",
+      "readmeUrl": "https://raw.githubusercontent.com/bash-lsp/bash-language-server/HEAD/README.md",
+      "installLines": [
+        "As a dependency, we recommend that you first install [shellcheck][shellcheck] to enable linting:",
+        "https://github.com/koalaman/shellcheck#installing . If `shellcheck` is installed,",
+        "If you want your shell scripts to be formatted consistently, you can install [shfmt][shfmt]. If",
+        "`shfmt` is installed then your documents will be formatted whenever you take the 'format document'",
+        "Usually you want to install a client for your editor (see the section below).",
+        "dnf install -y nodejs-bash-language-server",
+        "sudo snap install bash-language-server --classic",
+        "If you encounter installation errors, ensure you have node version 20 or newer (`node --version`)."
+      ]
+    }
+  },
+  {
+    "key": "yaml",
+    "npm": {
+      "url": "https://registry.npmjs.org/yaml-language-server/latest",
+      "name": "yaml-language-server",
+      "version": "1.24.0",
+      "license": "MIT",
+      "repository": "git+https://github.com/redhat-developer/yaml-language-server.git",
+      "homepage": "https://github.com/redhat-developer/yaml-language-server#readme"
+    },
+    "repo": {
+      "repo": "redhat-developer/yaml-language-server",
+      "licenceUrl": "https://raw.githubusercontent.com/redhat-developer/yaml-language-server/HEAD/LICENSE",
+      "licenceHead": "MIT License Copyright (c) 2017 Red Hat Inc. and others. Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal",
+      "spdx": "MIT",
+      "readmeUrl": "https://raw.githubusercontent.com/redhat-developer/yaml-language-server/HEAD/README.md",
+      "installLines": [
+        "npm install -g yaml-language-server",
+        "npm install",
+        "Fork and clone this repository, then install dependencies:",
+        "npm install"
+      ]
+    }
+  },
+  {
+    "key": "json",
+    "npm": {
+      "url": "https://registry.npmjs.org/vscode-langservers-extracted/latest",
+      "name": "vscode-langservers-extracted",
+      "version": "4.10.0",
+      "license": "MIT",
+      "repository": "git+https://github.com/hrsh7th/vscode-langservers-extracted.git",
+      "homepage": "https://github.com/hrsh7th/vscode-langservers-extracted#readme"
+    },
+    "repo": {
+      "repo": "hrsh7th/vscode-langservers-extracted",
+      "licenceUrl": "https://raw.githubusercontent.com/hrsh7th/vscode-langservers-extracted/HEAD/LICENSE",
+      "licenceHead": "MIT License Copyright (c) 2020 hrsh7th Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal",
+      "spdx": "MIT",
+      "readmeUrl": "https://raw.githubusercontent.com/hrsh7th/vscode-langservers-extracted/HEAD/README.md",
+      "installLines": [
+        "You can install this via `npm i -g vscode-langservers-extracted`.",
+        "You should install yarn for the building vscode."
+      ]
+    }
+  },
+  {
+    "key": "markdown",
+    "repo": {
+      "repo": "artempyanykh/marksman",
+      "licenceUrl": "https://raw.githubusercontent.com/artempyanykh/marksman/HEAD/LICENSE",
+      "licenceHead": "Copyright (c) 2021 Artem Pyanykh Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal in the Software without restrict",
+      "spdx": "MIT",
+      "readmeUrl": "https://raw.githubusercontent.com/artempyanykh/marksman/HEAD/README.md",
+      "installLines": [
+        "    * via [mason.nvim][mason-nvim] (automatic server installation) (requires [mason-lspconfig.nvim][mason-nvim-lsp-config])",
+        "    * via [LSP Mode](https://emacs-lsp.github.io/lsp-mode/page/lsp-marksman/) (automatic server installation).",
+        "  installation).",
+        "## How to install",
+        "See the [installation instructions](/docs/install.md)."
+      ]
+    },
+    "npm": null
+  },
+  {
+    "key": "dockerfile",
+    "npm": {
+      "url": "https://registry.npmjs.org/dockerfile-language-server-nodejs/latest",
+      "name": "dockerfile-language-server-nodejs",
+      "version": "0.15.0",
+      "license": "MIT",
+      "repository": "git+https://github.com/rcjsuen/dockerfile-language-server-nodejs.git",
+      "homepage": "https://github.com/rcjsuen/dockerfile-language-server-nodejs#readme"
+    },
+    "repo": {
+      "repo": "rcjsuen/dockerfile-language-server",
+      "licenceUrl": null,
+      "licenceHead": null,
+      "spdx": null,
+      "readmeUrl": "https://raw.githubusercontent.com/rcjsuen/dockerfile-language-server/HEAD/README.md",
+      "installLines": [
+        "npm install",
+        "To install this language server onto your computer, please install the",
+        "The `-g` flag will install the npm module globally onto your computer.",
+        "npm install -g dockerfile-language-server-nodejs",
+        "After the installation has completed, you can start the language"
+      ]
+    }
+  },
+  {
+    "key": "terraform",
+    "repo": {
+      "repo": "hashicorp/terraform-ls",
+      "licenceUrl": "https://raw.githubusercontent.com/hashicorp/terraform-ls/HEAD/LICENSE",
+      "licenceHead": "Copyright IBM Corp. 2020, 2026 Mozilla Public License, version 2.0 1. Definitions",
+      "spdx": "MPL-2.0",
+      "readmeUrl": "https://raw.githubusercontent.com/hashicorp/terraform-ls/HEAD/README.md",
+      "installLines": [
+        "Read the [installation page](./docs/installation.md) for installation instructions."
+      ]
+    },
+    "npm": null
+  },
+  {
+    "key": "haskell",
+    "repo": {
+      "repo": "haskell/haskell-language-server",
+      "licenceUrl": "https://raw.githubusercontent.com/haskell/haskell-language-server/HEAD/LICENSE",
+      "licenceHead": "Apache License Version 2.0, January 2004 http://www.apache.org/licenses/ TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION",
+      "spdx": "Apache-2.0",
+      "readmeUrl": "https://raw.githubusercontent.com/haskell/haskell-language-server/HEAD/README.md",
+      "installLines": [
+        "- [Installation](https://haskell-language-server.readthedocs.io/en/latest/installation.html)"
+      ]
+    },
+    "npm": null
+  },
+  {
+    "key": "julia",
+    "repo": {
+      "repo": "julia-vscode/LanguageServer.jl",
+      "licenceUrl": "https://raw.githubusercontent.com/julia-vscode/LanguageServer.jl/HEAD/LICENSE.md",
+      "licenceHead": "The LanguageServer.jl package is licensed under the MIT \"Expat\" License: Copyright (c) 2016-2020: David Anthoff, Zac Nugent and other contributors: https://github.com/julia-vscode/LanguageServer.jl/contributors Permissio",
+      "spdx": "MIT",
+      "readmeUrl": "https://raw.githubusercontent.com/julia-vscode/LanguageServer.jl/HEAD/README.md",
+      "installLines": [
+        "To install LanguageServer.jl into the current environment:"
+      ]
+    },
+    "npm": null
+  },
+  {
+    "key": "toml",
+    "npm": {
+      "url": "https://registry.npmjs.org/@taplo%2fcli/latest",
+      "name": "@taplo/cli",
+      "version": "0.7.0",
+      "license": "MIT",
+      "repository": "git+https://github.com/tamasfe/taplo.git",
+      "homepage": "https://taplo.tamasfe.dev"
+    },
+    "repo": {
+      "repo": "tamasfe/taplo",
+      "licenceUrl": "https://raw.githubusercontent.com/tamasfe/taplo/HEAD/LICENSE",
+      "licenceHead": "MIT License Copyright (c) 2020 Ferenc Tamás Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal",
+      "spdx": "MIT",
+      "readmeUrl": "https://raw.githubusercontent.com/tamasfe/taplo/HEAD/README.md",
+      "installLines": []
+    }
+  },
+  {
+    "key": "vue",
+    "npm": {
+      "url": "https://registry.npmjs.org/@vue%2flanguage-server/latest",
+      "name": "@vue/language-server",
+      "version": "3.3.12",
+      "license": "MIT",
+      "repository": "git+https://github.com/vuejs/language-tools.git",
+      "homepage": "https://github.com/vuejs/language-tools#readme"
+    },
+    "repo": {
+      "repo": "vuejs/language-tools",
+      "licenceUrl": "https://raw.githubusercontent.com/vuejs/language-tools/HEAD/LICENSE",
+      "licenceHead": "MIT License Copyright (c) 2021-present Johnson Chu Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal",
+      "spdx": "MIT",
+      "readmeUrl": "https://raw.githubusercontent.com/vuejs/language-tools/HEAD/README.md",
+      "installLines": [
+        "npm install vue-tsc typescript --save-dev",
+        "🔎 Note that you will need pnpm - you can download it here: https://pnpm.io/installation.",
+        "pnpm install"
+      ]
+    }
+  },
+  {
+    "key": "svelte",
+    "npm": {
+      "url": "https://registry.npmjs.org/svelte-language-server/latest",
+      "name": "svelte-language-server",
+      "version": "0.18.4",
+      "license": "MIT",
+      "repository": "git+https://github.com/sveltejs/language-tools.git",
+      "homepage": "https://github.com/sveltejs/language-tools#readme"
+    },
+    "repo": {
+      "repo": "sveltejs/language-tools",
+      "licenceUrl": "https://raw.githubusercontent.com/sveltejs/language-tools/HEAD/LICENSE",
+      "licenceHead": "Copyright (c) 2020-Present [these people](https://github.com/sveltejs/language-tools/graphs/contributors) Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated docum",
+      "spdx": "MIT",
+      "readmeUrl": "https://raw.githubusercontent.com/sveltejs/language-tools/HEAD/README.md",
+      "installLines": []
+    }
+  },
+  {
+    "key": "graphql",
+    "npm": {
+      "url": "https://registry.npmjs.org/graphql-language-service-cli/latest",
+      "name": "graphql-language-service-cli",
+      "version": "3.5.0",
+      "license": "MIT",
+      "repository": "git+ssh://git@github.com/graphql/graphiql.git",
+      "homepage": "https://github.com/graphql/graphiql/tree/main/packages/graphql-language-service-cli#readme"
+    },
+    "repo": {
+      "repo": "graphql/graphql-language-service",
+      "licenceUrl": null,
+      "licenceHead": null,
+      "spdx": null,
+      "readmeUrl": "https://raw.githubusercontent.com/graphql/graphql-language-service/HEAD/README.md",
+      "installLines": []
+    }
+  },
+  {
+    "key": "sql",
+    "npm": {
+      "url": "https://registry.npmjs.org/sql-language-server/latest",
+      "name": "sql-language-server",
+      "version": "1.7.1",
+      "license": "MIT",
+      "repository": "git+https://github.com/joe-re/sql-language-server.git",
+      "homepage": "https://github.com/joe-re/sql-language-server#readme"
+    },
+    "repo": {
+      "repo": "joe-re/sql-language-server",
+      "licenceUrl": "https://raw.githubusercontent.com/joe-re/sql-language-server/HEAD/LICENSE",
+      "licenceHead": "MIT License Copyright (c) 2020 joe-re Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal",
+      "spdx": "MIT",
+      "readmeUrl": "https://raw.githubusercontent.com/joe-re/sql-language-server/HEAD/README.md",
+      "installLines": [
+        "  brew install joe-re/tap/sql-language-server",
+        "$ pnpm install",
+        "$ pnpm install"
+      ]
+    }
+  },
+  {
+    "key": "cmake",
+    "npm": {
+      "url": "https://registry.npmjs.org/cmake-language-server/latest",
+      "error": "unreachable"
+    },
+    "repo": {
+      "repo": "regen100/cmake-language-server",
+      "licenceUrl": "https://raw.githubusercontent.com/regen100/cmake-language-server/HEAD/LICENSE",
+      "licenceHead": "MIT License Copyright (c) 2019 Regen Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal",
+      "spdx": "MIT",
+      "readmeUrl": "https://raw.githubusercontent.com/regen100/cmake-language-server/HEAD/README.md",
+      "installLines": [
+        "$ pip install cmake-language-server"
+      ]
+    }
+  },
+  {
+    "key": "protobuf",
+    "repo": {
+      "repo": "coder3101/protols",
+      "licenceUrl": "https://raw.githubusercontent.com/coder3101/protols/HEAD/LICENSE",
+      "licenceHead": "MIT License Copyright (c) 2024 Ashar Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal",
+      "spdx": "MIT",
+      "readmeUrl": "https://raw.githubusercontent.com/coder3101/protols/HEAD/README.md",
+      "installLines": [
+        "- [Installation](#-installation)",
+        "cargo install protols",
+        "- [Docker](https://docker.com) installed and running.",
+        "  [WSL2](https://learn.microsoft.com/en-us/windows/wsl/install) must be enabled."
+      ]
+    },
+    "npm": null
+  },
+  {
+    "key": "nix",
+    "repo": {
+      "repo": "oxalica/nil",
+      "licenceUrl": "https://raw.githubusercontent.com/oxalica/nil/HEAD/LICENSE-APACHE",
+      "licenceHead": "Apache License Version 2.0, January 2004 http://www.apache.org/licenses/ TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION",
+      "spdx": "Apache-2.0",
+      "readmeUrl": "https://raw.githubusercontent.com/oxalica/nil/HEAD/README.md",
+      "installLines": [
+        "- If you use `nix profile`, run `nix profile install nixpkgs#nil`",
+        "  1. Build and install via `cargo install --git https://github.com/oxalica/nil nil`",
+        "To install, run `nix profile install github:oxalica/nil`. Alternatively,"
+      ]
+    },
+    "npm": null
+  },
+  {
+    "key": "clojure",
+    "repo": {
+      "repo": "clojure-lsp/clojure-lsp",
+      "licenceUrl": "https://raw.githubusercontent.com/clojure-lsp/clojure-lsp/HEAD/LICENSE",
+      "licenceHead": "MIT License Copyright (c) 2022 clojure-lsp maintainers Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal",
+      "spdx": "MIT",
+      "readmeUrl": "https://raw.githubusercontent.com/clojure-lsp/clojure-lsp/HEAD/README.md",
+      "installLines": [
+        "  <a href=\"https://clojure-lsp.io/installation/\"><strong>installation</strong></a> •"
+      ]
+    },
+    "npm": null
+  },
+  {
+    "key": "erlang",
+    "repo": {
+      "repo": "erlang-ls/erlang_ls",
+      "licenceUrl": "https://raw.githubusercontent.com/erlang-ls/erlang_ls/HEAD/LICENSE",
+      "licenceHead": "Apache License Version 2.0, January 2004 http://www.apache.org/licenses/ TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION",
+      "spdx": "Apache-2.0",
+      "readmeUrl": "https://raw.githubusercontent.com/erlang-ls/erlang_ls/HEAD/README.md",
+      "installLines": [
+        "To install the produced `erlang_ls` escript in `/usr/local/bin`:",
+        "    make install",
+        "To install to a different directory set the `PREFIX` environment variable:",
+        "    PREFIX=/path/to/directory make install"
+      ]
+    },
+    "npm": null
+  },
+  {
+    "key": "gleam",
+    "repo": {
+      "repo": "gleam-lang/gleam",
+      "licenceUrl": "https://raw.githubusercontent.com/gleam-lang/gleam/HEAD/LICENCE",
+      "licenceHead": "Apache License Version 2.0, January 2004 http://www.apache.org/licenses/ TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION",
+      "spdx": "Apache-2.0",
+      "readmeUrl": "https://raw.githubusercontent.com/gleam-lang/gleam/HEAD/README.md",
+      "installLines": []
+    },
+    "npm": null
+  },
+  {
+    "key": "r",
+    "repo": {
+      "repo": "REditorSupport/languageserver",
+      "licenceUrl": "https://raw.githubusercontent.com/REditorSupport/languageserver/HEAD/LICENSE",
+      "licenceHead": "YEAR: 2018 COPYRIGHT HOLDER: Randy Lai",
+      "spdx": null,
+      "readmeUrl": "https://raw.githubusercontent.com/REditorSupport/languageserver/HEAD/README.md",
+      "installLines": [
+        "- [Installation](#installation)",
+        "apt install --assume-yes --no-install-recommends build-essential libcurl4-openssl-dev libssl-dev libxml2-dev libuv1-dev r-base",
+        "`languageserver` is released on CRAN and can be easily installed by",
+        "install.packages(\"languageserver\")",
+        "install.packages(\"languageserver\", repos = c(",
+        "Or install the latest development version from our GitHub repository:",
+        "# install.packages(\"remotes\")",
+        "remotes::install_github(\"REditorSupport/languageserver\")"
+      ]
+    },
+    "npm": null
+  },
+  {
+    "key": "scala",
+    "repo": {
+      "repo": "scalameta/metals",
+      "licenceUrl": "https://raw.githubusercontent.com/scalameta/metals/HEAD/LICENSE",
+      "licenceHead": "Apache License Version 2.0, January 2004 http://www.apache.org/licenses/ TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION",
+      "spdx": "Apache-2.0",
+      "readmeUrl": "https://raw.githubusercontent.com/scalameta/metals/HEAD/README.md",
+      "installLines": []
+    },
+    "npm": null
+  },
+  {
+    "key": "ocaml",
+    "repo": {
+      "repo": "ocaml/ocaml-lsp",
+      "licenceUrl": "https://raw.githubusercontent.com/ocaml/ocaml-lsp/HEAD/LICENSE.md",
+      "licenceHead": "ISC License Copyright (X) 2018-2019, the [ocaml-lsp contributors](https://github.com/ocaml/ocaml-lsp/graphs/contributors) Permission to use, copy, modify, and distribute this software for any",
+      "spdx": "ISC",
+      "readmeUrl": "https://raw.githubusercontent.com/ocaml/ocaml-lsp/HEAD/README.md",
+      "installLines": [
+        "> what packages need to be installed, how to configure your project and get",
+        "- [Installation](#installation)",
+        "  - [Installing with package managers](#installing-with-package-managers)",
+        "  - [Installing from sources](#installing-from-sources)",
+        "  - [Additional package installations](#additional-package-installations)",
+        "To install the language server in the currently used opam [switch](https://opam.ocaml.org/doc/Manual.html#Switches):",
+        "$ opam install ocaml-lsp-server",
+        "_Note:_ you will need to install `ocaml-lsp-server` in every switch where you"
+      ]
+    },
+    "npm": null
+  },
+  {
+    "key": "verilog",
+    "repo": {
+      "repo": "chipsalliance/verible",
+      "licenceUrl": "https://raw.githubusercontent.com/chipsalliance/verible/HEAD/LICENSE",
+      "licenceHead": "Files: * Apache License Version 2.0, January 2004 http://www.apache.org/licenses/",
+      "spdx": "Apache-2.0",
+      "readmeUrl": "https://raw.githubusercontent.com/chipsalliance/verible/HEAD/README.md",
+      "installLines": [
+        "For simple installation, we provide regular [binary releases] for Linux and",
+        "If you prefer to build and install the binaries locally yourself, see",
+        "[bazel install][bazel-install] if not already on your system) and a",
+        "Use your package manager to install the dependencies; on a system with",
+        "See [Installation](#installation-1) for install.",
+        "# Also append the option '--//bazel:use_local_flex_bison' to test/install commands",
+        "choco install git winflexbison3",
+        "For simple installation, we provide regular [binary releases]."
+      ]
+    },
+    "npm": null
+  },
+  {
+    "key": "systemverilog",
+    "repo": {
+      "repo": "dalance/svls",
+      "licenceUrl": "https://raw.githubusercontent.com/dalance/svls/HEAD/LICENSE",
+      "licenceHead": "MIT License Copyright (c) 2019 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal",
+      "spdx": "MIT",
+      "readmeUrl": "https://raw.githubusercontent.com/dalance/svls/HEAD/README.md",
+      "installLines": [
+        "You can install from [snapcraft](https://snapcraft.io/svls)",
+        "sudo snap install svls",
+        "You can install by [cargo](https://crates.io/crates/svls).",
+        "cargo install svls",
+        "Please install [svls-vscode](https://marketplace.visualstudio.com/items?itemName=dalance.svls-vscode) extension from marketplace.",
+        "  ;; install LSP company backend for LSP-driven completion"
+      ]
+    },
+    "npm": null
+  },
+  {
+    "key": "powershell",
+    "repo": {
+      "repo": "PowerShell/PowerShellEditorServices",
+      "licenceUrl": "https://raw.githubusercontent.com/PowerShell/PowerShellEditorServices/HEAD/LICENSE",
+      "licenceHead": "The MIT License (MIT) Copyright (c) Microsoft Corporation. Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal",
+      "spdx": "MIT",
+      "readmeUrl": "https://raw.githubusercontent.com/PowerShell/PowerShellEditorServices/HEAD/README.md",
+      "installLines": []
+    },
+    "npm": null
+  },
+  {
+    "key": "fortran",
+    "repo": {
+      "repo": "fortran-lang/fortls",
+      "licenceUrl": "https://raw.githubusercontent.com/fortran-lang/fortls/HEAD/LICENSE",
+      "licenceHead": "The MIT License (MIT) Copyright 2017-2019 Chris Hansen Copyright 2021-2022 Giannis Nikiteas",
+      "spdx": "MIT",
+      "readmeUrl": "https://raw.githubusercontent.com/fortran-lang/fortls/HEAD/README.md",
+      "installLines": [
+        "pip install fortls",
+        "conda install -c conda-forge fortls",
+        "for more information about the Anaconda installation [see](https://github.com/conda-forge/fortls-feedstock#about-fortls)",
+        "### Common installation problems",
+        "simultaneously installed, since they use the same executable name. If you are having trouble",
+        "getting `fortls` to work try uninstalling `fortran-language-server` and reinstalling `fortls`.",
+        "pip uninstall fortran-language-server",
+        "pip install fortls --upgrade"
+      ]
+    },
+    "npm": null
+  },
+  {
+    "key": "tex",
+    "repo": {
+      "repo": "latex-lsp/texlab",
+      "licenceUrl": "https://raw.githubusercontent.com/latex-lsp/texlab/HEAD/LICENSE",
+      "licenceHead": "GNU GENERAL PUBLIC LICENSE Version 3, 29 June 2007 Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/> Everyone is permitted to copy and distribute verbatim copies of this license document, but changing ",
+      "spdx": "GPL",
+      "readmeUrl": "https://raw.githubusercontent.com/latex-lsp/texlab/HEAD/README.md",
+      "installLines": [
+        "If your editor extension like does not install the TexLab server automatically,",
+        "you will need to install it manually.",
+        "Alternatively, you can build TexLab from source or install it using your package manager.",
+        "You will need to install the following dependencies to compile the server:",
+        "Avoid installing `texlab` from [crates.io](https://crates.io/crates/texlab)",
+        "cargo install --git https://github.com/latex-lsp/texlab --locked --tag <insert version here>"
+      ]
+    },
+    "npm": null
+  },
+  {
+    "key": "elm",
+    "npm": {
+      "url": "https://registry.npmjs.org/@elm-tooling%2felm-language-server/latest",
+      "name": "@elm-tooling/elm-language-server",
+      "version": "2.10.0",
+      "license": "MIT",
+      "repository": "git+https://github.com/elm-tooling/elm-language-server.git",
+      "homepage": "https://github.com/elm-tooling/elm-language-server#readme"
+    },
+    "repo": {
+      "repo": "elm-tooling/elm-language-server",
+      "licenceUrl": "https://raw.githubusercontent.com/elm-tooling/elm-language-server/HEAD/LICENSE",
+      "licenceHead": "MIT License Copyright (c) 2019 Kolja Lampe Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal",
+      "spdx": "MIT",
+      "readmeUrl": "https://raw.githubusercontent.com/elm-tooling/elm-language-server/HEAD/README.md",
+      "installLines": [
+        "- [Installation](#installation)",
+        "  - [Alternative: Compile and install from source](#alternative-compile-and-install-from-source)",
+        "  - [Alternative: Install with Nix](#alternative-install-with-nix)",
+        "The server can be installed via `npm` (or from source).",
+        "npm install -g @elm-tooling/elm-language-server",
+        "### Alternative: Compile and install from source",
+        "npm install",
+        "npm install -g elm elm-test elm-format"
+      ]
+    }
+  },
+  {
+    "key": "ansible",
+    "npm": {
+      "url": "https://registry.npmjs.org/@ansible%2fansible-language-server/latest",
+      "name": "@ansible/ansible-language-server",
+      "version": "26.6.0",
+      "license": "MIT",
+      "repository": "git+https://github.com/ansible/vscode-ansible.git",
+      "homepage": "https://github.com/ansible/vscode-ansible#readme"
+    },
+    "repo": {
+      "repo": "ansible/vscode-ansible",
+      "licenceUrl": "https://raw.githubusercontent.com/ansible/vscode-ansible/HEAD/LICENSE",
+      "licenceHead": "MIT License Copyright (c) 2021 Red Hat Inc. and others. Copyright (c) 2021 Tomasz Maciążek Permission is hereby granted, free of charge, to any person obtaining a copy",
+      "spdx": "MIT",
+      "readmeUrl": "https://raw.githubusercontent.com/ansible/vscode-ansible/HEAD/README.md",
+      "installLines": [
+        "for any instructions about installation, configuration and usage, including on"
+      ]
+    }
+  },
+  {
+    "key": "solidity",
+    "npm": {
+      "url": "https://registry.npmjs.org/@nomicfoundation%2fsolidity-language-server/latest",
+      "name": "@nomicfoundation/solidity-language-server",
+      "version": "0.9.3",
+      "license": "MIT",
+      "repository": "git+https://github.com/NomicFoundation/hardhat-vscode.git",
+      "homepage": "https://github.com/NomicFoundation/hardhat-vscode#readme"
+    },
+    "repo": {
+      "repo": "NomicFoundation/hardhat-vscode",
+      "licenceUrl": "https://raw.githubusercontent.com/NomicFoundation/hardhat-vscode/HEAD/LICENSE",
+      "licenceHead": "MIT License Copyright (c) 2022 Nomic Labs LLC Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal",
+      "spdx": "MIT",
+      "readmeUrl": "https://raw.githubusercontent.com/NomicFoundation/hardhat-vscode/HEAD/README.md",
+      "installLines": []
+    }
+  },
+  {
+    "key": "tailwind",
+    "npm": {
+      "url": "https://registry.npmjs.org/@tailwindcss%2flanguage-server/latest",
+      "name": "@tailwindcss/language-server",
+      "version": "0.16.0",
+      "license": "MIT",
+      "repository": "git+https://github.com/tailwindlabs/tailwindcss-intellisense.git",
+      "homepage": "https://github.com/tailwindlabs/tailwindcss-intellisense/tree/HEAD/packages/tailwindcss-language-server#readme"
+    },
+    "repo": {
+      "repo": "tailwindlabs/tailwindcss-intellisense",
+      "licenceUrl": null,
+      "licenceHead": null,
+      "spdx": null,
+      "readmeUrl": "https://raw.githubusercontent.com/tailwindlabs/tailwindcss-intellisense/HEAD/README.md",
+      "installLines": []
+    }
+  },
+  {
+    "key": "prisma",
+    "npm": {
+      "url": "https://registry.npmjs.org/@prisma%2flanguage-server/latest",
+      "name": "@prisma/language-server",
+      "version": "31.12.15",
+      "license": "Apache-2.0",
+      "repository": "https://github.com/prisma/language-tools.git",
+      "homepage": null
+    },
+    "repo": {
+      "repo": "prisma/language-tools",
+      "licenceUrl": "https://raw.githubusercontent.com/prisma/language-tools/HEAD/LICENSE",
+      "licenceHead": "Apache License Version 2.0, January 2004 http://www.apache.org/licenses/ TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION",
+      "spdx": "Apache-2.0",
+      "readmeUrl": "https://raw.githubusercontent.com/prisma/language-tools/HEAD/README.md",
+      "installLines": [
+        "pnpm install"
+      ]
+    }
+  },
+  {
+    "key": "typst",
+    "repo": {
+      "repo": "Myriad-Dreamin/tinymist",
+      "licenceUrl": "https://raw.githubusercontent.com/Myriad-Dreamin/tinymist/HEAD/LICENSE",
+      "licenceHead": "Apache License Version 2.0, January 2004 http://www.apache.org/licenses/ TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION",
+      "spdx": "Apache-2.0",
+      "readmeUrl": "https://raw.githubusercontent.com/Myriad-Dreamin/tinymist/HEAD/README.md",
+      "installLines": [
+        "      curl -sSL https://github.com/hongjr03/tinymist-nightly-installer/releases/latest/download/run.sh | bash",
+        "      iwr https://github.com/hongjr03/tinymist-nightly-installer/releases/latest/download/run.ps1 -UseBasicParsing | iex"
+      ]
+    },
+    "npm": null
+  },
+  {
+    "key": "perl",
+    "repo": {
+      "repo": "bscan/PerlNavigator",
+      "licenceUrl": "https://raw.githubusercontent.com/bscan/PerlNavigator/HEAD/LICENSE",
+      "licenceHead": "MIT License Copyright (c) 2022 bscan Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal",
+      "spdx": "MIT",
+      "readmeUrl": "https://raw.githubusercontent.com/bscan/PerlNavigator/HEAD/README.md",
+      "installLines": [
+        "* Code Navigation (\"Go To Definition\") anywhere, including to installed modules and compile-time dependencies",
+        "If you have a nonstandard install of Perl, please set the setting `perlnavigator.perlPath`.",
+        "brew install perlnavigator",
+        "sudo npm install -g perlnavigator-server",
+        "Sublime Text requires the following minimum settings under LSP settings (modify depending on your install location and editor)",
+        "install Perl Navigator.",
+        "A configuration with a number of options set looks some like the following. The depends if you installed globally or not.",
+        "A simple configuration to enable PerlNavigator, after installing coc-perl (`:CocInstall coc-perl`), looks like:"
+      ]
+    },
+    "npm": null
+  },
+  {
+    "key": "groovy",
+    "repo": {
+      "repo": "GroovyLanguageServer/groovy-language-server",
+      "licenceUrl": "https://raw.githubusercontent.com/GroovyLanguageServer/groovy-language-server/HEAD/LICENSE",
+      "licenceHead": "Apache License Version 2.0, January 2004 http://www.apache.org/licenses/ TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION",
+      "spdx": "Apache-2.0",
+      "readmeUrl": "https://raw.githubusercontent.com/GroovyLanguageServer/groovy-language-server/HEAD/README.md",
+      "installLines": []
+    },
+    "npm": null
+  },
+  {
+    "key": "vhdl",
+    "repo": {
+      "repo": "VHDL-LS/rust_hdl",
+      "licenceUrl": "https://raw.githubusercontent.com/VHDL-LS/rust_hdl/HEAD/LICENSE.txt",
+      "licenceHead": "This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the MPL was not distributed with this file, You can obtain one at http://mozilla.org/MPL/2.0/. Copyright (c) 2018, Olof Kr",
+      "spdx": null,
+      "readmeUrl": "https://raw.githubusercontent.com/VHDL-LS/rust_hdl/HEAD/README.md",
+      "installLines": [
+        "When installing the VHDL_LS from [crates.io](https://crates.io/crates/vhdl_ls) the required  ",
+        "[vhdl_libraries](https://github.com/VHDL-LS/rust_hdl/tree/master/vhdl_libraries) directory will not be installed",
+        "It can be set up automatically by installing the package",
+        "You can install `rust_hdl` automatically in Neovim using [`:Mason`](https://github.com/williamboman/mason.nvim). Within",
+        "Mason, the package is called `rust_hdl`. If you don't have `:Mason`, you can simply install the binary as previously",
+        "1) Make sure that you have the [Rust toolchain](https://www.rust-lang.org/tools/install) installed.",
+        "2) Run `cargo install --path vhdl_lang` to install the language frontend. Run instead `cargo install --path vhdl_ls`",
+        "   to install the language server."
+      ]
+    },
+    "npm": null
+  },
+  {
+    "key": "nickel",
+    "repo": {
+      "repo": "tweag/nickel",
+      "licenceUrl": "https://raw.githubusercontent.com/tweag/nickel/HEAD/LICENSE",
+      "licenceHead": "MIT License Copyright (c) Modus Create LLC and its affiliates. Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal",
+      "spdx": "MIT",
+      "readmeUrl": "https://raw.githubusercontent.com/tweag/nickel/HEAD/README.md",
+      "installLines": [
+        "   - Again with flake-enabled Nix, you can install Nickel in your profile with",
+        "     `nix profile install nixpkgs#nickel`. The `nickel` command is then in your",
+        "   - If you're running macOS you can use Homebrew to install the Nickel binary",
+        "     with `brew install nickel`.",
+        "[rust-guide]: https://doc.rust-lang.org/cargo/getting-started/installation.html",
+        "   - **With Nix**: If you have [Nix](https://nixos.org/nix) installed:",
+        "   - **Without Nix**: otherwise, follow [this guide][rust-guide] to install Rust"
+      ]
+    },
+    "npm": null
+  },
+  {
+    "key": "erlang-otp",
+    "npm": null,
+    "repo": null
+  }
+]

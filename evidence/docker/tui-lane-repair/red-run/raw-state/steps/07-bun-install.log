@@ -1,0 +1,12 @@
+bun install v1.4.2 (744846f84)
+
++ @typescript/native-preview@7.0.0-dev.20260707.2
++ bun-types@1.4.0
++ dsh-better-sidebar@0.24.1
++ typescript5@5.9.3
++ @colbymchenry/codegraph@1.5.0
++ @deepseek-ai/dsh-experimental-agent-team@0.2.0-rc.2
++ @deepseek-ai/dsh-experimental-client-ui-agent-team@0.2.0-rc.2
++ @deepseek-ai/dsh-experimental-tool-agent-team@0.2.0-rc.2
+
+289 packages installed [13.40s]

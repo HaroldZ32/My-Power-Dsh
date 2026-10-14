@@ -1,0 +1,167 @@
+{
+  "lane": "lane-td",
+  "loopId": "loop-20261008T075920-d026f8",
+  "contract": ".mpd/plans/lane-td-session-scope-and-push.md",
+  "consumedInterface": ".mpd/plans/lane-s-change-feed.md §3.1 (mpdTeams.subscribe(workspace, listener) => disposer)",
+  "utc": "2026-10-08T08:30:00Z",
+  "package": "packages/mpd-tui-plugin",
+  "warning": "The FIRST PTY run's latency figures (517 ms, then a NEGATIVE 343 ms) are VOID: this box's `date` is uutils coreutils 0.10.0, whose `%3N` is not offset by the fractional second, so two calls inside one second are unordered. That run is kept verbatim under pty/; every latency claim below comes from pty-latency/, which uses bash's own $EPOCHREALTIME. A THIRD, PARTIALLY-FAILED ITERATION was also discarded and is recorded here so a reader of this file alone can see it: pty-latency/run.log lines 1-21, utc 08:25:50Z -> 08:26:35Z, sandbox /tmp/mpd-lat-yLFXrt, live session id 6e2e14bc-09c2-4579-abbf-63dc87703bab; its trial 1 read 85 ms but trials 2-6 read NEVER SEEN (the seeded rewrite was not picked up), so its trials were dropped and pty-latency/latency.jsonl carries only the successful 08:26:59Z run. No claim in this file rests on the discarded iteration.",
+
+  "filesChanged": [
+    "packages/mpd-tui-plugin/src/team-state.ts",
+    "packages/mpd-tui-plugin/src/panel-core.ts",
+    "packages/mpd-tui-plugin/src/panel-dag.ts",
+    "packages/mpd-tui-plugin/src/panel.ts",
+    "packages/mpd-tui-plugin/src/scenes.ts",
+    "packages/mpd-tui-plugin/src/subagent-scene.ts",
+    "packages/mpd-tui-plugin/src/dashboard-key.ts",
+    "packages/mpd-tui-plugin/src/index.ts",
+    "packages/mpd-tui-plugin/test/session-scope-and-push.test.ts",
+    "packages/mpd-tui-plugin/dist/index.js",
+    "packages/mpd-tui-plugin/README.md",
+    "packages/mpd-tui-plugin/README.zh-CN.md"
+  ],
+
+  "sessionScopingRule": {
+    "resolver": "packages/mpd-tui-plugin/src/team-state.ts :: readScopedWorkflow(ScopedTeamRead)",
+    "sessionIdRead": {
+      "panel": "panel-core.ts :: panelSessionId(props.host) -> panelSnapshot(host).sessionId  (the value panel-dag.ts already read and discarded)",
+      "scenes": "scenes.ts :: channelSessionOf(props) / subagent-scene.ts :: sessionIdOf(props.channel)",
+      "shared": "team-state.ts :: sessionIdOf(carrier) — one reader for both carriers"
+    },
+    "recordResolution": "team-state.ts :: sessionRecord() -> mpdTeams.active(workspace, sessionId) FIRST; on a throwing or absent `active`, the durable scan records.find(leadSessionId === sessionId). Never `principalRecord` when a session id exists.",
+    "officialFallback": "team-state.ts :: sessionViewsOf() — an official view is drawn only when its own leadSessionId === the calling session",
+    "workspaceResolution": "per call, inside every accessor (index.ts's teamFeed resolves workspaceRoot() at subscribe time); nothing cached module-level",
+    "markers": {
+      "noSessionTeam": "no team in this session",
+      "workspaceLevel": "workspace-level",
+      "constants": "team-state.ts :: NO_SESSION_TEAM_MARKER / WORKSPACE_SCOPE_MARKER",
+      "machineDetectable": "TeamWorkflow.source.scope ∈ {session, workspace, none}; absent source = an unlabelled fixture, rendered with today's bytes"
+    }
+  },
+
+  "acceptance": [
+    {
+      "id": "T-D1",
+      "claim": "The defect is REPRODUCED: with session A's un-ended record on disk and session B asking, the surface draws A's team.",
+      "ok": true,
+      "how": "The SAME mounted page, same fixture, same mpdTeams double; the reader is wired as the defect did (handed a session id and DROPPING it, = `() => readDashboardWorkflow(workspaceRoot, …)`).",
+      "observed": "mounted frame contains 'wave-a' and NOT the marker; unit arm: principalRecord([A]) -> 'team-a' with no session argument at all",
+      "where": "packages/mpd-tui-plugin/test/session-scope-and-push.test.ts :: 'T-D1 REPRODUCTION (pre-fix rule)' + 'T-D1 REPRODUCTION: a mounted page wired with the pre-fix reader draws A's DAG for session B'"
+    },
+    {
+      "id": "T-D2",
+      "claim": "Post-fix: B gets the marked empty state; a session WITH a record gets its own drawing; an UNAVAILABLE id gets the marked workspace-level fallback; an arm with no `active` member leaks nothing either.",
+      "ok": true,
+      "how": "4 unit arms + 4 mounted-page arms",
+      "observed": {
+        "session-empty": "source.scope='none', team=undefined, workspaceTeams=1, frame carries NO_SESSION_TEAM_MARKER and not 'wave-a'",
+        "own-record": "source.scope='session', team='team-b' for sess-B and 'team-a' for sess-A; frame carries 'wave-b' and not 'wave-a'",
+        "unavailable": "source.scope='workspace', team='team-a', frame carries WORKSPACE_SCOPE_MARKER + 'no session id on this surface'",
+        "durable-scan": "with a face carrying only `list`, an unknown session gets scope='none' and never the newest board"
+      },
+      "where": "packages/mpd-tui-plugin/test/session-scope-and-push.test.ts :: T-D2a..T-D2d + the mounted arms",
+      "extra": "a session-resolved record with an EMPTY board is reported as `this session's team has no tasks yet`, never as `no team in this workspace`"
+    },
+    {
+      "id": "T-D3",
+      "claim": "A REAL-PTY arm on the installed dsh-tui shows the panel/scene drawing the CALLING session's record, and never another session's.",
+      "ok": true,
+      "how": "tmux + a sandboxed DSH_HOME/HOME/workspace + the installed dsh-tui 0.14.0; a board for `sess-other` is seeded BEFORE boot; the live session's id is then read from the harness's own store `<DSH_HOME>/sessions/<key>/<id>/`.",
+      "observed": {
+        "sidebar, other session's board on disk": "frame pty/P1-sidebar-other-session.txt carries `no team in this session — \\`agent_teams_pl…` and NOT the other board's DAG",
+        "team scene, other session's board on disk": "frame pty/S1-scene-other-session.txt carries `no team in this session — stage one with agent_teams_plan, then approve it`",
+        "team scene, after binding to the live session": "frame pty/S2-scene-live-session.txt carries `team LIVEBOARD2  phase active  tasks 0/5`, 0 occurrences of the other board",
+        "hidden pre-fix surface": "pty/S1 + pty/P1 show NO drawing of `OTHERBOARD` in the panel body — the defect frame itself is the mounted T-D1 arm, because the pre-fix wiring is a code path, not a flag"
+      },
+      "artifacts": "evidence/tui/session-scope-and-push/2026-10-08T08-22-12Z/pty/ (run-pty.sh + 12 frames)"
+    },
+    {
+      "id": "T-D3 · FINDING (out of the contract's enumerated scope)",
+      "claim": "The legacy keyed STATUS ROW is still workspace-level and NAMES another session's team.",
+      "ok": false,
+      "observed": "pty/P1-sidebar-other-session.txt carries `mpd: team OTHERBOARD 1·0/4 · plans 0 · workmates 0` in the SAME frame whose panel body correctly says `no team in this session`.",
+      "cause": "status.ts :: registerStatus renders through `readBoardState(workspaceRoot(), home(), views, records)` — the workspace-principal rule — and its render path receives NO props at all (no host, no channel), so no session id is reachable there.",
+      "contractReference": "PART D.2.1 enumerates THREE surfaces (sidebar DAG page, team scene, merged scene); the status row is none of them, and D.2.2's third state (no session id readable) explicitly keeps today's behaviour.",
+      "recommendation": "a follow-up lane: expose a session id to the status seam, or mark the row `workspace-level` (the row is a one-line summary, not a DAG)."
+    },
+    {
+      "id": "T-D4",
+      "claim": "The WEB plane needs no change and is proven session-scoped by probing its artifacts only.",
+      "ok": true,
+      "how": "web-probe.ts drives the route's OWN pure projection (mpd-team-core-plugin/src/team-web.ts :: buildTeamState) and probes the shipped bytes; mpd-bundle-plugin was NOT edited.",
+      "observed": {
+        "session with a record": "sessionId=sess-A team=team-a tasks=1",
+        "session without a record": "sessionId=sess-B team=null tasks=0 workspaceTeams=1",
+        "no session id at all": "sessionId=\"\" team=null workspaceTeams=1 — NO principal team",
+        "artifacts": "mpd-bundle-plugin/client.js sha256=1d59f4c9d802… carries \"?sessionId=\"; mpd-team-core-plugin/dist/index.js sha256=f1e744d10de6… carries \"team: null\""
+      },
+      "artifacts": "evidence/tui/session-scope-and-push/2026-10-08T08-22-12Z/web-probe.log"
+    },
+    {
+      "id": "T-P1",
+      "claim": "Invoking the service's listener re-renders with the NEW content, the frame BEFORE the notification carries the old content, and the 1000 ms timer did not fire.",
+      "ok": true,
+      "how": "mounted page (real dsh-tui React + ink) over a MUTABLE record list and a feed double",
+      "observed": "frame shows 'wave-b' -> record rewritten to 'wave-b-NEW' -> frame STILL shows 'wave-b' (no re-read) -> teams.notify() -> settle -> frame shows 'wave-b-NEW' and no longer 'wave-b  phase'; elapsed < 1000 ms so the tick cannot have fired; subscribeCalls=1, disposals=0",
+      "where": "test/session-scope-and-push.test.ts :: T-P1"
+    },
+    {
+      "id": "T-P2",
+      "claim": "The fallback arms: subscribe absent -> renders + tick refreshes; subscribe throwing -> renders; unmount -> the disposer ran.",
+      "ok": true,
+      "observed": {
+        "absent": "subscribeCalls=0, frame renders 'wave-b', and after a 1200 ms wait the frame shows 'wave-b-ticked' (the 1000 ms tick did the refresh)",
+        "throwing": "subscribeCalls=0, the page still renders 'wave-b'",
+        "unmount": "subscribeCalls=1, disposals=0 -> unmount -> disposals=1; a notify() afterwards reaches nobody and disposals stays 1"
+      },
+      "where": "test/session-scope-and-push.test.ts :: T-P2a/T-P2b/T-P2c"
+    },
+    {
+      "id": "T-P3",
+      "claim": "REAL-machine latency: with the surface open and no key press, an on-disk record change is visible in the captured pane < 200 ms after the write.",
+      "ok": true,
+      "how": "sandboxed dsh-tui 0.14.0 on a tmux PTY (140x44); the sidebar opened with `/mpd panel`; SIX consecutive record rewrites, no key press after the panel opened. Clock = bash $EPOCHREALTIME (microseconds); first terminal write detected by watching the `tmux pipe-pane` stream's size, each trial guarded by a 150 ms IDLE check; each trial's frame captured afterwards and asserted to carry that trial's name.",
+      "observed": {
+        "latencies_ms": [85, 76, 79, 77, 78, 82],
+        "idle_guard": "true for all six trials",
+        "frame_verification": "team LIVEBOARD1..6 respectively, one capture per trial",
+        "baseline": "the page's fallback tick is DAG_PANEL_REFRESH_MS = 1000 ms: a tick-only surface samples a change at a uniform latency in [0,1000) ms, so six samples inside a 9 ms band at ~80 ms is not tick sampling"
+      },
+      "artifacts": "evidence/tui/session-scope-and-push/2026-10-08T08-22-12Z/pty-latency/ (run-pty-latency.sh, latency.jsonl, 8 frames)"
+    },
+    {
+      "id": "T-G",
+      "claim": "Gates green.",
+      "ok": true,
+      "observed": {
+        "bun test packages/mpd-tui-plugin": "443 pass / 0 fail (20 files; 427 pre-existing + 16 new) — 12669 expect() calls",
+        "bun run typecheck": "exit 0 (proved LIVE: a seeded type error in packages/mpd-tui-plugin/src was reported, so a silent pass is excluded)",
+        "node scripts/verify-comment-coverage.ts": "PASS — 367 files, 32376 declarations",
+        "node scripts/verify-dist-fresh.ts": "ok: 30/30 targets fresh (bun 1.4.0 from the pinned repository toolchain); the target line reads FRESH packages/mpd-tui-plugin/dist/index.js sha 476b539fb9a9…; NO foreign staleness in this run",
+        "no-direct-tui-access": "3 pass / 0 fail (the TUI lane names no ctx.tui* service; mpdTeams is MPD-owned)",
+        "bun test packages/mpd-bundle-plugin": "166 pass / 0 fail (the T-D4 arm, package unmodified)",
+        "bun run verify:docs": "PASS — 47 pairs, 0 violations, 0 dead links"
+      },
+      "artifacts": "evidence/tui/session-scope-and-push/2026-10-08T08-22-12Z/output.log"
+    }
+  ],
+
+  "dist": {
+    "path": "packages/mpd-tui-plugin/dist/index.js",
+    "sha256": "476b539fb9a9e6a213c7473bec390449d7335a0d5afbb54aa96dfcf67bbeb19d",
+    "bytes": 387845,
+    "builtWith": ".toolchain/node_modules/.bin/bun build packages/mpd-tui-plugin/src/index.ts --target node --format esm --outfile packages/mpd-tui-plugin/dist/index.js (from the repo root)",
+    "toolchain": "bun 1.4.0 (the repository toolchain, NOT the PATH bun)"
+  },
+
+  "honestBounds": [
+    "The legacy Ctrl+A contact (dashboard-key.ts) and the keyed status row cannot be session-scoped: neither receives a host snapshot nor a channel, so both draw the MARKED workspace-level fallback (the Ctrl+A path reads it through readDashboardWorkflow with no id). The status row is the one surface that still NAMES another session's team on screen — measured, quoted above as a FINDING.",
+    "The durable scan (no `active` member on the service face) resolves the leadSessionId case ONLY; the single-member case is the service's own roster write path and is not reproduced here.",
+    "The real-PTY arm's latency is a FIRST-WRITE measurement of the terminal stream, not a visual-diff of a specific cell: it proves the host wrote the update then, and the per-trial capture proves the frame carried that trial's name.",
+    "The PTY arm drives the SIDEBAR and the TEAM SCENE. The merged scene and the plan scene are covered by mounted arms and by the shared reader, not by a separate PTY drive.",
+    "The board scene's team SUMMARY is scoped through the same resolver (filtered arrays into readBoardState), but it carries no scope MARKER: it is not one of the three surfaces D.2.1 enumerates.",
+    "`mpdTeams.subscribe` was consumed as a TEST DOUBLE in every in-process arm; the real implementation was exercised only through the PTY run (Lane S owns it).",
+    "verify-dist-fresh printed NO foreign staleness on this run, so there is no other lane's red to attribute here."
+  ]
+}

@@ -4,9 +4,9 @@
 
 Plan C / C4 —— 在 DSH 工具接缝上的注释/docstring 检测（opt-in 二进制）。
 
-Vendored 解析器：上游项目 `packages/comment-checker-core`（base 8c57e46；依 SUL-1.0
-授权；`isRecord` 已内联）。检查二进制：`@code-yeongyu/comment-checker` 0.8.0
-（MIT，github.com/code-yeongyu/go-claude-code-comment-checker）——原生 tree-sitter
+无 vendored 解析器：本插件**不 vendored 任何东西**，也不含 SUL-1.0 源码——检测在按需 npm 二进制
+`@code-yeongyu/comment-checker` 0.8.0（MIT，github.com/code-yeongyu/go-claude-code-comment-checker）
+中运行，插件负责解析它并在每次检查时 spawn。原生 tree-sitter
 二进制：按原样使用（UNMODIFIED）并声明为 `@mpd-dsh/mpd` bundle 的 optionalDependency
 （策略：第三方包是依赖，绝不 vendored 复制）。解析顺序：依赖（通过 createRequire
 按包相对定位）-> `MPD_DSH_COMMENT_CHECKER_BIN` -> 本地 checkout QA 的 dev-toolchain

@@ -1,0 +1,2 @@
+{"scenario":"errornode","applying":false,"argv":["--version"]}
+{"scenario":"errornode","applying":false,"argv":["run","-p","foo($A)","--lang","typescript","--json=stream","--strictness","smart","src"]}

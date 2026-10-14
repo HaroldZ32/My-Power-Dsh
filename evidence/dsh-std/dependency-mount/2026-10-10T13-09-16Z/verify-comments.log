@@ -1,0 +1,8 @@
+$ bun run verify:comments
+# bun 1.4.0 / node v24.21.0 / 2026-10-10T13:10:21Z
+$ node scripts/verify-comment-coverage.ts
+# verify-comment-coverage
+
+scanned 382 TypeScript file(s) of 382 in the source set; inspected 33784 declaration(s); skipped 15067 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.

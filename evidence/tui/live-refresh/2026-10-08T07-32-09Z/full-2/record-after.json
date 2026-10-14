@@ -1,0 +1,186 @@
+{
+  "version": 1,
+  "teamId": "team-2026-10-05T22-30-00.000Z",
+  "name": "webui-tui-i18n",
+  "description": "Team GUI, rounded settings, TUI model menu, bilingual surfaces",
+  "leadSessionId": "sess-live-refresh",
+  "phase": "active",
+  "createdAt": "2026-10-05T22:30:00.000Z",
+  "approvedAt": "2026-10-05T22:30:00.000Z",
+  "members": [
+    {
+      "id": "M1",
+      "name": "lead",
+      "description": "Lead on this wave",
+      "role": "Lead",
+      "route": "deepseek-official/deepseek-v4-pro",
+      "status": "running",
+      "spawnedAt": "2026-10-05T22:30:00.000Z",
+      "executorRef": "teammate-lead"
+    },
+    {
+      "id": "M2",
+      "name": "web-team-gui",
+      "description": "Senior Engineer on this wave",
+      "role": "Senior Engineer",
+      "route": "deepseek-official/deepseek-flash",
+      "status": "running",
+      "spawnedAt": "2026-10-05T22:30:00.000Z",
+      "executorRef": "teammate-web-team-gui"
+    },
+    {
+      "id": "M3",
+      "name": "web-settings-card",
+      "description": "Senior Engineer on this wave",
+      "role": "Senior Engineer",
+      "route": "deepseek-official/deepseek-flash",
+      "status": "inactive",
+      "spawnedAt": "2026-10-05T22:30:00.000Z",
+      "executorRef": "teammate-web-settings-card"
+    },
+    {
+      "id": "M4",
+      "name": "tui-model-i18n",
+      "description": "Senior Engineer on this wave",
+      "role": "Senior Engineer",
+      "route": "deepseek-official/deepseek-flash",
+      "status": "inactive",
+      "spawnedAt": "2026-10-05T22:30:00.000Z",
+      "executorRef": "teammate-tui-model-i18n"
+    },
+    {
+      "id": "M5",
+      "name": "ui-reviewer",
+      "description": "Reviewer on this wave",
+      "role": "Reviewer",
+      "route": "deepseek-official/deepseek-v4-pro",
+      "status": "inactive",
+      "spawnedAt": "2026-10-05T22:30:00.000Z",
+      "executorRef": "teammate-ui-reviewer"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "T1",
+      "subject": "Web: rebuild the team panel body on the payload projection",
+      "description": "Acceptance: Web: rebuild the team panel body on the payload projection",
+      "kind": "requirement",
+      "status": "completed",
+      "blockedBy": [],
+      "writeScopes": [],
+      "createdAt": "2026-10-05T22:30:00.000Z",
+      "updatedAt": "2026-10-05T22:30:00.000Z",
+      "revision": 1,
+      "owner": "web-team-gui",
+      "coverageOf": "R1"
+    },
+    {
+      "id": "T2",
+      "subject": "Web: restyle the settings card on the official design tokens",
+      "description": "Acceptance: Web: restyle the settings card on the official design tokens",
+      "kind": "work",
+      "status": "completed",
+      "blockedBy": [],
+      "writeScopes": [],
+      "createdAt": "2026-10-05T22:30:00.000Z",
+      "updatedAt": "2026-10-08T07:38:43.272Z",
+      "revision": 2,
+      "owner": "web-settings-card",
+      "coverageOf": "R2",
+      "attempt": 1
+    },
+    {
+      "id": "T3",
+      "subject": "TUI: /mpd-model pick-list over the live catalog",
+      "description": "Acceptance: TUI: /mpd-model pick-list over the live catalog",
+      "kind": "work",
+      "status": "completed",
+      "blockedBy": [],
+      "writeScopes": [],
+      "createdAt": "2026-10-05T22:30:00.000Z",
+      "updatedAt": "2026-10-05T22:30:00.000Z",
+      "revision": 1,
+      "owner": "tui-model-i18n",
+      "coverageOf": "R3"
+    },
+    {
+      "id": "T4",
+      "subject": "Review the integrated diff against the frozen contracts",
+      "description": "Acceptance: Review the integrated diff against the frozen contracts",
+      "kind": "review",
+      "status": "pending",
+      "blockedBy": [
+        "T1",
+        "T3"
+      ],
+      "writeScopes": [],
+      "createdAt": "2026-10-05T22:30:00.000Z",
+      "updatedAt": "2026-10-08T07:38:43.272Z",
+      "revision": 3,
+      "owner": "ui-reviewer",
+      "round": 1
+    },
+    {
+      "id": "T5",
+      "subject": "Repair the findings the review raised",
+      "description": "Acceptance: Repair the findings the review raised",
+      "kind": "repair",
+      "status": "pending",
+      "blockedBy": [
+        "T4"
+      ],
+      "writeScopes": [],
+      "createdAt": "2026-10-05T22:30:00.000Z",
+      "updatedAt": "2026-10-05T22:30:00.000Z",
+      "revision": 1,
+      "owner": "web-team-gui",
+      "sourceTaskId": "T4"
+    },
+    {
+      "id": "T6",
+      "subject": "Integrate: thread the translator, rebuild dists, capture evidence",
+      "description": "Acceptance: Integrate: thread the translator, rebuild dists, capture evidence",
+      "kind": "integration",
+      "status": "in_progress",
+      "blockedBy": [
+        "T5"
+      ],
+      "writeScopes": [],
+      "createdAt": "2026-10-05T22:30:00.000Z",
+      "updatedAt": "2026-10-08T07:36:55.332Z",
+      "revision": 2,
+      "owner": "web-team-gui"
+    },
+    {
+      "id": "T8",
+      "subject": "LiveProbe: appended while the SIDEBAR was open",
+      "description": "Acceptance: LiveProbe: appended while the SIDEBAR was open",
+      "kind": "integration",
+      "status": "pending",
+      "blockedBy": [
+        "T7"
+      ],
+      "writeScopes": [],
+      "createdAt": "2026-10-08T07:36:55.332Z",
+      "updatedAt": "2026-10-08T07:36:55.332Z",
+      "revision": 1
+    },
+    {
+      "id": "T7",
+      "subject": "LiveProbe: appended while the SCENE was open",
+      "description": "Acceptance: LiveProbe: appended while the SCENE was open",
+      "kind": "work",
+      "status": "pending",
+      "blockedBy": [
+        "T6"
+      ],
+      "writeScopes": [],
+      "createdAt": "2026-10-08T07:38:43.272Z",
+      "updatedAt": "2026-10-08T07:38:43.272Z",
+      "revision": 1,
+      "owner": "ui-reviewer"
+    }
+  ],
+  "nextMemberNumber": 6,
+  "nextTaskNumber": 20
+}

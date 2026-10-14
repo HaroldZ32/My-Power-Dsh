@@ -1,0 +1,68 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-tui-plugin/test/panel-dag.test.ts:
+(pass) the DAG page's identity after the merge (clause C3) > its title IS the surviving MPD panel's title — one name, one surface [0.03ms]
+(pass) the DAG page's identity after the merge (clause C3) > the surviving registration carries this page's component and reaches the host read-back [0.60ms]
+(pass) the legend > covers EVERY state the contract knows, with the glyph the contract declares [0.26ms]
+(pass) the legend > fits the width it is given, and drops a line rather than cutting one [0.34ms]
+(pass) the legend > the state key is composed ONCE at every width — no state is ever named twice [0.41ms]
+(pass) the DAG page's layout choice > at the host's own 28-column floor the page still draws, and reads [3.47ms]
+(pass) the DAG page's layout choice > a busy narrow board reaches the dense list, which had no caller before this page [0.50ms]
+(pass) the DAG page's layout choice > EVERY drawn row fits the panel, wide glyphs included [4.88ms]
+(pass) the DAG page's layout choice > a boxed CJK line ends on its own right border column [0.15ms]
+(pass) the DAG page's layout choice > an empty board still lays out without throwing [0.14ms]
+(pass) the DAG page's layout choice > boxes are drawn ONLY when the widest label fits: a label is never cut [1.12ms]
+(pass) the DAG page's layout choice > A REAL BOARD STILL DRAWS BOXES: the natural width cap holds a realistic label whole [1.71ms]
+(pass) the DAG page's layout choice > A MID-LENGTH LABEL IS NOT CUT, and the overflow flag agrees with the truncation [0.38ms]
+(pass) the DAG page's layout choice > C3: THE PINNED DETAIL BODY CARRIES THE ORIGINAL SUBJECT AND DESCRIPTION, CHINESE INCLUDED [0.56ms]
+(pass) the DAG page's layout choice > R18: an unresolved blocker is SURFACED, and the rank source is reported [3.13ms]
+(pass) the running-node animation and its degradation > every frame is ONE CELL, the frames DIFFER, and the static frame is the orbit's head [0.09ms]
+frame 0 glyph ◐ cells 6 row "│ ◐ T2"
+frame 1 glyph ◓ cells 6 row "│ ◓ T2"
+frame 2 glyph ◑ cells 6 row "│ ◑ T2"
+frame 3 glyph ◒ cells 6 row "│ ◒ T2"
+frames 0 and 1: 1 of 145 drawn rows differ, all label rows, none by a cell
+(pass) the running-node animation and its degradation > the DRAWN running label keeps ONE width across every frame of the cycle [4.73ms]
+(pass) the running-node animation and its degradation > a host with NO timer draws the static frame instead of throwing [1.25ms]
+(pass) the running-node animation and its degradation > a NON-FINITE timer degrades to the static frame [0.57ms]
+(pass) the running-node animation and its degradation > no props, no kit, no snapshot: the page renders null instead of throwing [0.49ms]
+(pass) click-to-pin and the keyboard > a click pins a task and the detail body carries all ten facts [1.65ms]
+(pass) click-to-pin and the keyboard > the keymap walks the drawing and does not steal the host's own keys [0.96ms]
+(pass) click-to-pin and the keyboard > F-a the keymap's OWN values: no pin → NOT consumed; pinned → consumed and unpinned [0.05ms]
+(pass) click-to-pin and the keyboard > F-a ON A MOUNTED PAGE: no pin → Escape is NOT consumed; pinned → consumed AND the pin is released [2.63ms]
+(pass) AC4: a click resolves through the row's own rectangle, COLUMN included > POSITIVE CONTROL: clicking the SECOND box of a two-box rank pins the SECOND task [1.65ms]
+(pass) AC4: a click resolves through the row's own rectangle, COLUMN included > the row-band fallback still pins without a column, and a column-aware MISS CLEARS the pin [1.89ms]
+(pass) AC4: a click resolves through the row's own rectangle, COLUMN included > dagRowClick reports WHICH rule resolved a row, and resolves nothing for a row with no box [0.32ms]
+(pass) AC6: clicking the ALREADY-PINNED task opens its owner's agent page > resolves the owner through the host's subagent rows and calls the row's opener [2.96ms]
+(pass) AC6: clicking the ALREADY-PINNED task opens its owner's agent page > an unmatched owner, an absent opener and a refusal each SPEAK through the host's toast [2.29ms]
+(pass) AC6: clicking the ALREADY-PINNED task opens its owner's agent page > a second click on the SAME handler — before the host re-rendered — still opens the page [0.50ms]
+(pass) AC6: clicking the ALREADY-PINNED task opens its owner's agent page > agentIdForOwner matches the owner NAME against the host's own descriptions [0.13ms]
+(pass) R1: non-empty board vs empty workspace > a board WITH tasks paints its rows (plus the header, the mode row and the legend) [2.83ms]
+(pass) R1: non-empty board vs empty workspace > a workspace with NO team prints the empty state that names the call which fills it [0.39ms]
+(pass) the viewport hook > every read is clamped against the CURRENT page, from ANY render's closure [0.64ms]
+(pass) the scrollbar and the self-windowed viewport > the rendered window NEVER exceeds the viewport, for a one-row and a 400-row board [51.14ms]
+(pass) the scrollbar and the self-windowed viewport > the offset clamps to [0, max(0, content - viewport)] and never renders a blank page [57.37ms]
+(pass) the scrollbar and the self-windowed viewport > the thumb's LENGTH and POSITION are monotone in the offset, and it never leaves the gutter [0.47ms]
+(pass) the scrollbar and the self-windowed viewport > when the content FITS there is no gutter, and no column is reserved [2.59ms]
+(pass) the scrollbar and the self-windowed viewport > FOCUS AUTO-SCROLL: the focused task is inside the rendered window at both ends of an overflowing board [4.84ms]
+(pass) the scrollbar and the self-windowed viewport > the wheel scrolls down on a positive delta, up on a negative one, and does nothing when it fits [0.26ms]
+(pass) the scrollbar and the self-windowed viewport > the WHEEL HANDLER IS BOUND ONCE, on the page's own window [2.75ms]
+(pass) R6: the frame's border title is a structured value, not a string > every page's frame carries { content, position: 'top', align } — and a bare string FAILS [1.60ms]
+(pass) R6: the frame's border title is a structured value, not a string > POSITIVE CONTROL: a bare string is NOT acceptable, and the check can tell [0.06ms]
+(pass) FINDING 11: every emitted row fits the frame interior > no row exceeds the interior at ANY width, and the whole page respects it [3.81ms]
+(pass) FINDING 11: every emitted row fits the frame interior > POSITIVE CONTROL: a deliberately over-long row FAILS the same check [0.07ms]
+(pass) FINDING 11: every emitted row fits the frame interior > the frame's interior helper subtracts exactly the two border cells [0.02ms]
+(pass) the badge ladder > failed outranks blocked outranks running, and an idle board clears it [0.11ms]
+(pass) the badge ladder > the page publishes the badge through the host API, once per change [1.08ms]
+(pass) the workmate page > carries its own descriptor, with a one-cell icon [0.07ms]
+(pass) the workmate page > the EMPTY state names the call that fills the shelf [0.16ms]
+(pass) the workmate page > an unreadable home renders the empty state rather than throwing [0.27ms]
+(pass) the workmate page > a populated shelf shows the key, the base and the note [0.15ms]
+(pass) the workmate page > the reader tolerates a missing library and never throws [0.22ms]
+(pass) AC8b · the page draws its own `⤢`, and the dep the row received reaches it > a click on the control reaches the `openFullscreenScreen` dep the surviving registration forwards [1.06ms]
+(pass) AC8b · the page draws its own `⤢`, and the dep the row received reaches it > a row given no opener still draws the row, but its glyph carries no click handler [1.23ms]
+
+ 55 pass
+ 0 fail
+ 3484 expect() calls
+Ran 55 tests across 1 file. [364.00ms]

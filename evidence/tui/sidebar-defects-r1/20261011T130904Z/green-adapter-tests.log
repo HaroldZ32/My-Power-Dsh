@@ -1,0 +1,76 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-tui-adapter-plugin/test/adapter-hosts.test.ts:
+(pass) host shape 1: reachable by ctx.get only (the mediated plugin host) > the probe binds the plugin host, and ONLY that seam [0.45ms]
+(pass) host shape 1: reachable by ctx.get only (the mediated plugin host) > a probe that answers is NOT a binding channel when the ctx cannot inject [0.11ms]
+(pass) host shape 2: reachable only inside the deferred inject callback > one inject per seam, never a batch [0.44ms]
+(pass) host shape 2: reachable only inside the deferred inject callback > a registration made BEFORE the seam binds is queued and drained at the bind [0.23ms]
+(pass) host shape 2: reachable only inside the deferred inject callback > every host handle goes to the injected scope's effect, and the cleanup clears the status key [0.18ms]
+(pass) host shape 3: absent (a web or headless composition) > nothing binds, nothing throws, and exactly ONE aggregate warning is printed [0.15ms]
+(pass) host shape 3: absent (a web or headless composition) > a composition with ONE seam reports the info line instead, never the warning [0.12ms]
+(pass) resolution and diagnostics > resolveTuiAdapter prefers the mounted service and falls back to a row-private adapter [0.14ms]
+(pass) resolution and diagnostics > a broken ctx.get never escapes resolveTuiAdapter [0.08ms]
+(pass) resolution and diagnostics > createLazyTuiAdapter warns exactly once per row [0.19ms]
+(pass) resolution and diagnostics > describeOutcome renders the vocabulary consumers already read [0.02ms]
+(pass) resolution and diagnostics > the file sink appends under .mpd/logs and caps its own size [0.85ms]
+(pass) host contact resolver > a host install carrying useStdin resolves, and the hook is the module's own [0.74ms]
+(pass) host contact resolver > a candidate without lib/types/ui.js is skipped, and no candidate at all reports one reason [0.18ms]
+(pass) host contact resolver > a version-skew host (no useStdin export) and a module that throws both degrade to undefined [0.81ms]
+(pass) host contact resolver > a pinned root is exclusive, and without a pin every installed profile is probed [0.42ms]
+(pass) host contact on the adapter > an injected contact is reported bound and wakes a subscriber immediately [0.12ms]
+(pass) host contact on the adapter > an adapter that did not probe reports absent, and a subscriber still answers once [0.05ms]
+(pass) host contact on the adapter > a probe against a staged install binds the contact and writes ONE line [0.58ms]
+(pass) host contact on the adapter > a probe with no reachable host degrades to absent with ONE line and no throw [0.22ms]
+(pass) host contact on the adapter > a subscriber registered while the probe is pending runs at the settle [0.43ms]
+(pass) live stdin context classification > a value carrying internal_querier is the LIVE provider's and yields its bus [0.05ms]
+(pass) live stdin context classification > the context DEFAULT is refused with ONE reason, never attached to [0.01ms]
+(pass) live stdin context classification > a missing marker, a dead shape, a throwing read and a nullish value are all refusals [0.06ms]
+(pass) the status identity rule and the remembered host kit > a status registration carries the CALLING ACTIVATION, never the consumer's ctx [0.19ms]
+(pass) the status identity rule and the remembered host kit > a remembered kit is preferred over the probed module, and the capability names the source [0.16ms]
+(pass) the status identity rule and the remembered host kit > a kit without a callable useStdin is refused, and the previous contact stands [0.04ms]
+(pass) the status identity rule and the remembered host kit > a kit arriving AFTER the probe settled wakes a waiting subscriber exactly once [0.46ms]
+(pass) rich status view registration > a bound status service registers the view and reports it as requested [0.09ms]
+(pass) rich status view registration > a host refusal (undefined) and a host without registerView are both reported refused [0.05ms]
+(pass) the panels seam > a registration the host accepts is CONFIRMED with the id read back from its own list() [0.17ms]
+(pass) the panels seam > a REFUSED registration is refused, not 'requested' (the host returns undefined and adds no id) [0.06ms]
+(pass) the panels seam > a host with no list() read-back is honestly 'requested' — never claimed as registered [0.05ms]
+(pass) the panels seam > a seam-less host degrades: absent, no id, and opening reports absent rather than refused [0.05ms]
+(pass) the panels seam > a bound seam WITHOUT open() answers false, so the caller can fall back instead of waiting [0.06ms]
+(pass) the panels seam > an accepted open is confirmed; a refused one is refused with the rate-limit/no-consumer reason [0.06ms]
+(pass) the panel-id record's provenance (a record the remedy can trust) > REFUSES a record that cannot name the installed host package [0.06ms]
+(pass) the panel-id record's provenance (a record the remedy can trust) > REFUSES a record whose ids did not come from a host read-back [0.01ms]
+(pass) the panel-id record's provenance (a record the remedy can trust) > REFUSES `act0` — the ONE activation the installed host cannot compose, with the measured reason [0.04ms]
+(pass) the panel-id record's provenance (a record the remedy can trust) > NEGATIVE CONTROL: a read-back id from a named host is ACCEPTED, and carries all four facts [0.02ms]
+(pass) the panel-id record's provenance (a record the remedy can trust) > the INSTALLED host's own version is readable — the provenance is a measurement, not a literal [0.30ms]
+(pass) the panel-id record's bounded history (the prune's ownership evidence) > panelHistoryAfter folds the previous boot's ids in, drops the live ones, and keeps the NEWEST [0.16ms]
+(pass) the panel-id record's bounded history (the prune's ownership evidence) > readPanelIdRecordPast answers the record's history PLUS its current ids, shape-filtered and deduped [0.29ms]
+(pass) the panel-id record's bounded history (the prune's ownership evidence) > a record the provenance rules REFUSE contributes no past at all — and a missing one is not an error [0.23ms]
+
+packages/mpd-tui-adapter-plugin/test/no-direct-tui-access.test.ts:
+NO-DIRECT-TUI-ACCESS — D6 static gate for the DSH-TUI plane (.mpd/plans/mpd-seam-convergence.md A2.2)
+band: packages/mpd-*/src/**/*.ts, minus packages/mpd-tui-adapter-plugin (the ONE sanctioned route)
+scanned: 28 package(s), 141 .ts file(s)
+declared out-of-band: every non-.ts file under a scanned src/ (currently the .gitkeep placeholders) — printed, never failed
+RESULT: PASS (0 findings)
+NO-DIRECT-TUI-ACCESS — D6 static gate for the DSH-TUI plane (.mpd/plans/mpd-seam-convergence.md A2.2)
+band: packages/mpd-*/src/**/*.ts, minus packages/mpd-tui-adapter-plugin (the ONE sanctioned route)
+scanned: 28 package(s), 141 .ts file(s)
+declared out-of-band: every non-.ts file under a scanned src/ (currently the .gitkeep placeholders) — printed, never failed
+RESULT: PASS (0 findings)
+(pass) no direct DSH-TUI seam access outside the TUI adapter (A2.2) [731.17ms]
+SELF-TEST — no-direct-tui-access (negative control over a seeded fixture tree)
+  ok   the seeded band yields exactly the five seeded violations
+  ok   the comment-only mention is not a finding
+  ok   the aliased receiver is caught (an alias is not a different seam)
+  ok   the string forms are caught (get / inject / serviceOf)
+  ok   the adapter package is excluded by identity
+  ok   the non-.ts fixture file is reported out of band, never as a finding
+  ok   the scan covers the adapter package's siblings
+SELF-TEST: PASS (7/7 checks)
+(pass) the gate reddens on a seeded violation (negative control) [0.89ms]
+(pass) the forbidden list tracks the adapter's seam table [0.17ms]
+
+ 47 pass
+ 0 fail
+ 236 expect() calls
+Ran 47 tests across 2 files. [1.59s]

@@ -1,0 +1,15 @@
+# reading: the legend the composer prints, and the frame table it breathes through
+# read at 2026-10-08T12:06:19Z UTC
+# command: bun -e '<script below>'  (bun 1.4.2 on PATH; the package src is bun-resolved in both toolchains)
+
+arrow line (graph.ts, forwarded verbatim):
+  "▼/▸ blocker above → dependent below · ▶ focus lights its chain"
+composed legend line(s) (legendLinesFor):
+  "▼/▸ blocker above → dependent below · ▶ focus lights its chain"   cells=62
+  "✓ completed · ◐ running · ○ open/blocked · ✗ failed · ⊘ cancelled"   cells=65
+DAG_ANIM.frames = 4  runningFrames = ["◐","◓","◑","◒"]
+every mark another state owns: ["✓","✗","○","⊘","○"]
+  phase 0 glyph "◐" cells=1
+  phase 1 glyph "◓" cells=1
+  phase 2 glyph "◑" cells=1
+  phase 3 glyph "◒" cells=1

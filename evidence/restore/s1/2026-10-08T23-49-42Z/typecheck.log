@@ -1,0 +1,8 @@
+$ bun run typecheck
+$ tsgo --noEmit
+packages/mpd-mcp-lsp/test/cclsp-config.test.ts(227,32): error TS1005: '=>' expected.
+packages/mpd-mcp-lsp/test/cclsp-config.test.ts(227,41): error TS1005: ',' expected.
+packages/mpd-mcp-lsp/test/cclsp-config.test.ts(227,48): error TS1005: ';' expected.
+packages/mpd-mcp-lsp/test/cclsp-config.test.ts(227,65): error TS1005: ';' expected.
+error: script "typecheck" exited with code 1
+exit=1

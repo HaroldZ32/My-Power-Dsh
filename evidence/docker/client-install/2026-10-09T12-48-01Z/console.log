@@ -1,0 +1,101 @@
+ Image mpd-docker-e2e:local Building 
+ Image mpd-docker-e2e:local Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 1.05kB done
+#1 DONE 0.0s
+
+#2 [mpd-oneclick internal] load build definition from Dockerfile
+#2 transferring dockerfile: 6.95kB done
+#2 DONE 0.0s
+
+#3 [mpd-client internal] load metadata for docker.io/library/ubuntu:24.04
+#3 DONE 0.0s
+
+#4 [mpd-oneclick internal] load metadata for docker.io/library/node:24-bookworm
+#4 DONE 0.0s
+
+#5 [mpd-client stage-1  1/12] FROM docker.io/library/ubuntu:24.04@sha256:a853f94d226358a79c740cfc7bce0c289748f3fe3488d921d038ccd752c61b60
+#5 resolve docker.io/library/ubuntu:24.04@sha256:a853f94d226358a79c740cfc7bce0c289748f3fe3488d921d038ccd752c61b60 0.0s done
+#5 DONE 0.0s
+
+#6 [mpd-client node-runtime 1/1] FROM docker.io/library/node:24-bookworm@sha256:64af3819f9275802414d7cdc38c27e9d82bd564dec4d4da87d008255d36c63b4
+#6 resolve docker.io/library/node:24-bookworm@sha256:64af3819f9275802414d7cdc38c27e9d82bd564dec4d4da87d008255d36c63b4 0.0s done
+#6 DONE 0.0s
+
+#7 [mpd-client internal] load build context
+#7 transferring context: 23.46MB 0.1s
+#7 transferring context: 42.36MB 0.2s done
+#7 DONE 0.2s
+
+#8 [mpd-client stage-1  2/12] COPY --from=node-runtime /usr/local /usr/local
+#8 CACHED
+
+#9 [mpd-client stage-1  3/12] COPY . /src/
+#9 DONE 0.2s
+
+#10 [mpd-oneclick stage-1  4/12] COPY docker/entrypoint.sh /opt/mpd-e2e/entrypoint.sh
+#10 DONE 0.1s
+
+#11 [mpd-client stage-1  5/12] COPY docker/probe.ts /opt/mpd-e2e/probe.ts
+#11 DONE 0.1s
+
+#12 [mpd-oneclick stage-1  6/12] COPY docker/lib/ /opt/mpd-e2e/lib/
+#12 DONE 0.1s
+
+#13 [mpd-oneclick stage-1  7/12] COPY docker/tui-lane.sh /opt/mpd-e2e/tui-lane.sh
+#13 DONE 0.1s
+
+#14 [mpd-client stage-1  8/12] COPY docker/ui/entrypoint.sh /opt/mpd-e2e/ui-entrypoint.sh
+#14 DONE 0.1s
+
+#15 [mpd-oneclick stage-1  9/12] COPY docker/ui/capture.mts /opt/mpd-e2e/capture.mts
+#15 DONE 0.0s
+
+#16 [mpd-oneclick stage-1 10/12] COPY docker/ui/run-capture.sh /opt/mpd-e2e/run-capture.sh
+#16 DONE 0.1s
+
+#17 [mpd-oneclick stage-1 11/12] RUN chmod 0755 /opt/mpd-e2e/entrypoint.sh /opt/mpd-e2e/tui-lane.sh /opt/mpd-e2e/ui-entrypoint.sh  && chmod 0755 /opt/mpd-e2e/capture.mts /opt/mpd-e2e/run-capture.sh  && mkdir -p /work /out /data /src
+#17 DONE 0.2s
+
+#18 [mpd-oneclick stage-1 12/12] WORKDIR /work
+#18 DONE 0.1s
+
+#19 [mpd-client] exporting to image
+#19 exporting layers
+#19 exporting layers 1.4s done
+#19 exporting manifest sha256:5cd3c78b9267c98bc8b5fdfdb03f856bb62be45fb997862b918727a3fd38ffe9 0.0s done
+#19 exporting config sha256:4bf1d39750258708461a501f04f89cd4e560bd455b15992aa3424aa9f3152caf 0.0s done
+#19 exporting attestation manifest sha256:86b4362410aab53c8323ca9577848a8706d2805cc5e2994f60fbae0c6b0b729b 0.0s done
+#19 exporting manifest list sha256:f8c113b731548f6af40f7cb7b4102e1652c05b87424df6e29c94dd2d7ab308e8
+#19 exporting manifest list sha256:f8c113b731548f6af40f7cb7b4102e1652c05b87424df6e29c94dd2d7ab308e8 0.0s done
+#19 naming to docker.io/library/mpd-docker-e2e:local done
+#19 unpacking to docker.io/library/mpd-docker-e2e:local
+#19 unpacking to docker.io/library/mpd-docker-e2e:local 0.7s done
+#19 DONE 2.2s
+
+#20 [mpd-oneclick] exporting to image
+#20 exporting layers 1.4s done
+#20 exporting manifest sha256:962852f7f4991e681f640b5e04dcecb0b4e5327d0fe005b1b34fe5cd54477857 0.0s done
+#20 exporting config sha256:9a495ec8ad6cfd21a317db57b48041a518c6585244f33e14dfe58f83b9bf7a65 0.0s done
+#20 exporting attestation manifest sha256:67b32eba7dc9a1ebef06e30c7406353db28254e79c93e0db52111ac1c4496b08 0.0s done
+#20 exporting manifest list sha256:a3ffa7ac6a8f51e55e3811a5a3cdd367dd3f84ac2f3e51586b82ababb9c2f4ad 0.0s done
+#20 naming to docker.io/library/mpd-docker-e2e:local done
+#20 unpacking to docker.io/library/mpd-docker-e2e:local 0.7s done
+#20 DONE 2.2s
+
+#21 [mpd-client] resolving provenance for metadata file
+#21 DONE 0.0s
+
+#22 [mpd-oneclick] resolving provenance for metadata file
+#22 DONE 0.0s
+ Image mpd-docker-e2e:local Built 
+ Image mpd-docker-e2e:local Built 
+ Container docker-mpd-client-run-a09d9af1b078 Creating 
+ Container docker-mpd-client-run-a09d9af1b078 Created 
+===== Docker client-install E2E — 2026-10-09T12:48:05Z =====
+ubuntu image : ubuntu 24.04
+app dir      : /opt/mpd   (copy of /src)
+HOME         : /root/sandbox-home
+DSH_HOME     : /root/sandbox-dsh
+pins         : nodePin=24.19.0 dsh=0.2.0-rc.2 pnpm=11.23.0
+[record] ubuntu.version=true — the base image is ubuntu:24.04

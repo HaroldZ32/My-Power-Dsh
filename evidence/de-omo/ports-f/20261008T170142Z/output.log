@@ -1,0 +1,466 @@
+# de-omo wave F — observed gate output (ports-f)
+#
+# THIS LOG HOLDS TWO PASSES, in order:
+#   1. the first pass over four gates and then over docs/rows/vendor/manifest, which ended in a
+#      FAILED `bun run typecheck` (exit 1, TS2367 on the new refusal message) — kept, not hidden;
+#   2. the final sweep (THE AUTHORITATIVE ONE), marked by the ###### banner, run AFTER the fix and AFTER rebuilding
+#      packages/mpd-memory-plugin/dist/index.js with the pinned toolchain (.toolchain/.../bun 1.4.0).
+#
+# Every command is introduced by "### CMD:" and followed by its own "### EXIT:" line; a nonzero exit
+# is therefore visible in place. The banner "# FINAL SWEEP" appears EXACTLY ONCE, and only the
+#
+### CMD: bun test packages/mpd-memory-plugin
+$ bun test packages/mpd-memory-plugin
+bun test v1.4.2 (744846f84)
+
+packages/mpd-memory-plugin/test/memory.test.ts:
+(pass) git backend: write -> commit -> read -> reflection due [21.82ms]
+(pass) mpd_memory_reflect_complete refuses when no reflection is due [0.92ms]
+(pass) svn backend REAL svn CLI: repo create, checkout, commit, log [0.40ms]
+(pass) both vcs: commits to git and svn [0.15ms]
+(pass) svn backend wiring with fake svn CLIs [11.04ms]
+(pass) a reflection record persisted under the pre-wave-F names is read, then rewritten under the current ones [13.40ms]
+
+ 6 pass
+ 0 fail
+ 28 expect() calls
+Ran 6 tests across 1 file. [133.00ms]
+### EXIT: 0
+### CMD: bun test packages/mpd-ulw-plugin
+$ bun test packages/mpd-ulw-plugin
+bun test v1.4.2 (744846f84)
+
+packages/mpd-ulw-plugin/test/engine.test.ts:
+(pass) engine policy: plan -> round -> verify -> quality gate with ledger [2.66ms]
+(pass) quality gate: a FAIL lane blocks completion and stamps the ledger row [0.38ms]
+(pass) engine alias and 2-fruitless-waves stop [0.23ms]
+(pass) DeepSeek V4 / DSH contract: role text in prompt (no persona field), pro for planner/reviewer, compact handoff [0.38ms]
+(pass) the DECLARED mpd_ultrawork output schema accepts the engine's own plan=false AND plan=true results [1.50ms]
+(pass) the mpd_ulw alias path (hardcoded plan=false) is exercised and its result matches its DECLARED schema [0.49ms]
+
+packages/mpd-ulw-plugin/test/commands.test.ts:
+(pass) both /ulw and /ultrawork are registered through the adapter seam (bare names, identical behaviour) [0.79ms]
+(pass) empty input returns usage naming the objective form and starts nothing [0.16ms]
+(pass) a non-empty invocation submits the activation directive as the invoking agent's next user turn [0.18ms]
+(pass) the activation directive carries the six autonomy behaviours in order [0.12ms]
+(pass) the QA case's c3.2 probe still matches and the c3.3 probe it needs is the one this text matches [0.05ms]
+(pass) the frozen head is byte-stable across objectives AND verdicts (prefix-cache discipline) [0.15ms]
+(pass) the gate is MECHANICAL: a tripping objective stages EXACTLY ONE plan and the directive names the returned id [1.38ms]
+(pass) the gesture path runs the SAME mechanical gate with the agent the payload carries [0.66ms]
+(pass) mode advisory and mode off stage nothing and say so [0.38ms]
+(pass) an already-staged plan is never re-staged, and the directive names the existing one [0.25ms]
+(pass) a composition without the staging tool degrades honestly — no throw, no claimed team [0.30ms]
+(pass) a REFUSING staging call degrades without throwing: the run starts and the block says so [0.26ms]
+(pass) a tripping objective that carries the explicit `team:` marker has the marker CONSUMED [0.36ms]
+(pass) the pre-step gesture boundary injects the same directive and delegates to next() [0.50ms]
+(pass) the gesture fires in the REAL composition shape — the prompt FOLLOWED BY user-role notices (t15 regression) [0.32ms]
+(pass) the gesture boundary leaves every non-gesture step untouched [0.20ms]
+(pass) the plugin reaches the seams only through the adapter (no direct command service, event bus or host import) [0.26ms]
+(pass) apply degrades safely when the composition has no command registry and no event bus [0.09ms]
+
+ 24 pass
+ 0 fail
+ 209 expect() calls
+Ran 24 tests across 2 files. [106.00ms]
+### EXIT: 0
+### CMD: bun run verify:comments
+$ bun run verify:comments
+$ node scripts/verify-comment-coverage.ts
+# verify-comment-coverage
+
+scanned 364 TypeScript file(s) of 364 in the source set; inspected 32738 declaration(s); skipped 14706 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+### EXIT: 0
+### CMD: node scripts/verify-dist-fresh.ts
+$ node scripts/verify-dist-fresh.ts
+  FRESH   packages/mpd-better-sidebar-host/dist/index.js  sha 251ae4c4d210… 22ms  <- packages/mpd-better-sidebar-host/src/index.ts
+  FRESH   packages/mpd-bootstrap-plugin/dist/index.js  sha df52fc4dfb8b… 21ms  <- packages/mpd-bootstrap-plugin/src/index.ts
+  FRESH   packages/mpd-boulder-plugin/dist/index.js  sha a4b4a8f93530… 21ms  <- packages/mpd-boulder-plugin/src/index.ts
+  FRESH   packages/mpd-bundle-plugin/dist/index.js  sha f8d222874b75… 22ms  <- packages/mpd-bundle-plugin/src/index.ts
+  FRESH   packages/mpd-codegraph-plugin/dist/index.js  sha 456594271401… 21ms  <- packages/mpd-codegraph-plugin/src/index.ts
+  FRESH   packages/mpd-comment-checker-plugin/dist/index.js  sha ab353f7cb6d8… 20ms  <- packages/mpd-comment-checker-plugin/src/index.ts
+  FRESH   packages/mpd-config-plugin/dist/index.js  sha ef1e1d06b960… 18ms  <- packages/mpd-config-plugin/src/index.ts
+  FRESH   packages/mpd-dsh-adapter-plugin/dist/index.js  sha f8778fb4544b… 18ms  <- packages/mpd-dsh-adapter-plugin/src/index.ts
+  FRESH   packages/mpd-ext-plugin/dist/index.js  sha 52890183af7d… 21ms  <- packages/mpd-ext-plugin/src/index.ts
+  FRESH   packages/mpd-ext-plugin/dist/sdk.js  sha 7c68358d2560… 14ms  <- packages/mpd-ext-plugin/src/sdk.ts
+  FRESH   packages/mpd-goal-plugin/dist/index.js  sha 6c9b0dbdf9e3… 21ms  <- packages/mpd-goal-plugin/src/index.ts
+  FRESH   packages/mpd-hashline-plugin/dist/index.js  sha 0724f8aaf417… 20ms  <- packages/mpd-hashline-plugin/src/index.ts
+  FRESH   packages/mpd-mcp-astgrep/dist/cli.js  sha ddf7111ed8a8… 17ms  <- packages/mpd-mcp-astgrep/src/cli.ts
+  FRESH   packages/mpd-mcp-astgrep/dist/launch.js  sha 8ebf954663eb… 15ms  <- packages/mpd-mcp-astgrep/src/launch.ts
+  FRESH   packages/mpd-mcp-codegraph/dist/launch.js  sha f2da0d34b049… 14ms  <- packages/mpd-mcp-codegraph/src/launch.ts
+  FRESH   packages/mpd-mcp-gitbash/dist/launch.js  sha c0ed386abc2f… 15ms  <- packages/mpd-mcp-gitbash/src/launch.ts
+  FRESH   packages/mpd-mcp-lsp/dist/launch.js  sha 826375393891… 14ms  <- packages/mpd-mcp-lsp/src/launch.ts
+  FRESH   packages/mpd-memory-plugin/dist/index.js  sha 6b88d29a20b9… 22ms  <- packages/mpd-memory-plugin/src/index.ts
+  FRESH   packages/mpd-modelchain-plugin/dist/index.js  sha b783ae2c8784… 20ms  <- packages/mpd-modelchain-plugin/src/index.ts
+  FRESH   packages/mpd-qa-roles-probe/dist/index.js  sha d213a106bc5d… 22ms  <- packages/mpd-qa-roles-probe/src/index.ts
+  FRESH   packages/mpd-roles-plugin/dist/index.js  sha 2b965eea718b… 22ms  <- packages/mpd-roles-plugin/src/index.ts
+  FRESH   packages/mpd-roster-provider-plugin/dist/index.js  sha bc90875cb896… 24ms  <- packages/mpd-roster-provider-plugin/src/index.ts
+  FRESH   packages/mpd-team-compact-plugin/dist/index.js  sha 631bde7d805b… 21ms  <- packages/mpd-team-compact-plugin/src/index.ts
+  FRESH   packages/mpd-team-core-plugin/dist/index.js  sha f1e744d10de6… 25ms  <- packages/mpd-team-core-plugin/src/index.ts
+  FRESH   packages/mpd-team-watchdog-plugin/dist/index.js  sha d74198b51a1b… 21ms  <- packages/mpd-team-watchdog-plugin/src/index.ts
+  FRESH   packages/mpd-tools-plugin/dist/index.js  sha a2949cdeeeaf… 21ms  <- packages/mpd-tools-plugin/src/index.ts
+  FRESH   packages/mpd-tui-adapter-plugin/dist/index.js  sha c5bb01ab355d… 20ms  <- packages/mpd-tui-adapter-plugin/src/index.ts
+  FRESH   packages/mpd-tui-plugin/dist/index.js  sha 45f00df2cefe… 24ms  <- packages/mpd-tui-plugin/src/index.ts
+  FRESH   packages/mpd-ulw-plugin/dist/index.js  sha eeee5bbbd60a… 23ms  <- packages/mpd-ulw-plugin/src/index.ts
+  FRESH   packages/mpd-verify-plugin/dist/index.js  sha d5f36cd46def… 20ms  <- packages/mpd-verify-plugin/src/index.ts
+  FRESH   packages/mpd-workmate-plugin/dist/index.js  sha 5445cc734de7… 23ms  <- packages/mpd-workmate-plugin/src/index.ts
+[verify-dist-fresh] root: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh  (build: bun build <src> --target node --format esm --outfile <tmp>/<entry>.js)
+[verify-dist-fresh] build toolchain: bun 1.4.0 from the repository toolchain (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun) · recorded buildToolchain bun@1.4.0
+[verify-dist-fresh] NOT COVERED (1) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+[verify-dist-fresh] ok: 31/31 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 648ms
+### EXIT: 0
+### CMD: bun run verify:docs
+$ bun run verify:docs
+$ node scripts/verify-docs-parity.ts
+ok   README.md
+ok   docs/design.md
+ok   docs/development.md
+ok   docs/extension-adaptation-report.md
+ok   docs/extension-authoring-guide.md
+ok   docs/extensions.md
+ok   docs/feature-audit.md
+ok   docs/independence.md
+ok   docs/index.md
+ok   docs/preset-default.md
+ok   docs/tui-parity.md
+ok   docs/tui.md
+ok   docs/upstream-parity-ledger.md
+ok   docs/user-guide.md
+ok   extensions/README.md
+ok   templates/mpd-extension/README.md
+ok   packages/mpd-better-sidebar-host/README.md
+ok   packages/mpd-bootstrap-plugin/README.md
+ok   packages/mpd-boulder-plugin/README.md
+ok   packages/mpd-bundle/README.md
+ok   packages/mpd-bundle-plugin/README.md
+ok   packages/mpd-codegraph-plugin/README.md
+ok   packages/mpd-comment-checker-plugin/README.md
+ok   packages/mpd-config-plugin/README.md
+ok   packages/mpd-dsh-adapter-plugin/README.md
+ok   packages/mpd-ext-plugin/README.md
+ok   packages/mpd-goal-plugin/README.md
+ok   packages/mpd-hashline-plugin/README.md
+ok   packages/mpd-mcp-astgrep/README.md
+ok   packages/mpd-mcp-codegraph/README.md
+ok   packages/mpd-mcp-gitbash/README.md
+ok   packages/mpd-mcp-lsp/README.md
+ok   packages/mpd-memory-plugin/README.md
+ok   packages/mpd-modelchain-plugin/README.md
+ok   packages/mpd-qa-roles-probe/README.md
+ok   packages/mpd-roles-plugin/README.md
+ok   packages/mpd-roster-provider-plugin/README.md
+ok   packages/mpd-schemastery/README.md
+ok   packages/mpd-team-compact-plugin/README.md
+ok   packages/mpd-team-core-plugin/README.md
+ok   packages/mpd-team-watchdog-plugin/README.md
+ok   packages/mpd-tools-plugin/README.md
+ok   packages/mpd-tui-adapter-plugin/README.md
+ok   packages/mpd-tui-plugin/README.md
+ok   packages/mpd-ulw-plugin/README.md
+ok   packages/mpd-verify-plugin/README.md
+ok   packages/mpd-workmate-plugin/README.md
+skip docs/bline-report.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/decisions.md — EXEMPT: process record (AGENTS.md §3)
+skip docs/omo-parity-gap.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/plan-0.1.7-adaptation.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-c.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-d.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-e.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-f.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-live-session-wave.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-team-plane-split.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-team-watchdog-report.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-team-watchdog.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-tui-edition.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-tui-team-surface.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-ui-team-gui.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-webui-tui-i18n.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/review-p0-p3.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/track-a-report.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/tui-edition-report.md — EXEMPT: prior-phase report (the TUI edition delivery report) — named in the AGENTS.md Language-policy enumeration of exempt prior-phase reports (captain ruling on T60-F1)
+skip docs/ulw-deepseek-optimization.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/verification/2026-10-08T1203Z/verdict.md — EXEMPT: verification record (process record, AGENTS.md §3)
+skip packages/mpd-mcp-shared — EXEMPT: ships source and tests only; its README pair is a recorded follow-up
+skip docs/adder4.md — EXEMPT: internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source [ANTICIPATORY — not a live path]
+skip docs/cnt8.md — EXEMPT: internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source [ANTICIPATORY — not a live path]
+note AGENTS.md — DERIVED: delta-range claims NOT adjudicated (agent-references/agent-teams-deltas.md is absent — the artifact the pointer NAMES cannot be read) — this root does not ship the artifact the pointer names, so the claim is neither confirmed nor contradicted here
+note agent-references/index.md — DERIVED: delta-range claims NOT adjudicated (agent-references/agent-teams-deltas.md is absent — the artifact the pointer NAMES cannot be read) — this root does not ship the artifact the pointer names, so the claim is neither confirmed nor contradicted here
+note agent-references/agent-teams-deltas.md — DERIVED: region-count claim skipped AND its registry (packages/mpd-agent-teams-plugin/lib/mpd-deltas.ts) is equally absent — both were deleted with the adopted agent-teams body (de-vendor wave), so the derived-value rule is VACUOUS in this root: it is exercised only by this script's --self-test fixtures, never by the live tree
+[verify-docs-parity] links=424 checked=396 resolved=396 dead=0 exemptProvenance=0 absentSite=0 ignoredExternal=24 ignoredAnchorOnly=4 files=115
+
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=47 failed=0 violations=0 exempt=24 derived=3 links=424 dead=0 — PASS
+### EXIT: 0
+### CMD: bun run verify:rows
+$ bun run verify:rows
+$ node scripts/verify-rows-parity.ts
+[verify-rows-parity] ok: 35 row ids match the 2-file bundle patch layer (mcp-astgrep, mcp-codegraph, mcp-context7, mcp-git, mcp-grepapp, mcp-lsp, mcp-shell, mpd-agent-team, mpd-better-sidebar, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-goal, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-roster-provider, mpd-team-compact, mpd-team-core, mpd-team-watchdog, mpd-tool-agent-team, mpd-tools, mpd-tui, mpd-tui-adapter, mpd-ui-agent-team, mpd-ulw, mpd-verify, mpd-web-compat, mpd-workmate, preset-mpd)
+### EXIT: 0
+### CMD: node scripts/verify-vendor.ts
+$ node scripts/verify-vendor.ts
+[verify-vendor] upstream identity: NOT CHECKED - no upstream subject exists (the pinned oh-my-openagent checkout is retired; see VENDOR_LOCK.json `_note`)
+[verify-vendor] asset OK: skills 371 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] asset OK: packages/mpd-hashline-plugin/src/vendor 8 files
+[verify-vendor] asset OK: packages/mpd-boulder-plugin/src/vendor 13 files
+[verify-vendor] asset OK: packages/mpd-schemastery 19 files
+[verify-vendor] asset OK: packages/mpd-bundle-plugin/adopted 2 files
+[verify-vendor] asset OK: packages/mpd-bundle-plugin/client.js 1 files
+[verify-vendor] PASS - 7 shipped asset(s) fingerprinted, upstream identity not checked
+### EXIT: 0
+### CMD: bun run verify:manifest
+$ bun run verify:manifest
+$ node scripts/verify-plugin-manifest.ts --pack
+# verify-plugin-manifest — repository manifest
+
+ok    cordis-dependency: 8 declared dependency name(s) across dependencies/peerDependencies/optionalDependencies, none of them cordis
+ok    cordis-devDependency-note: devDependencies declare no cordis package
+ok    lifecycle-script: 19 script name(s), none carrying preinstall/install/postinstall/prepare
+ok    version:dsh-plugin.json: version = 0.12.0
+ok    version:dsh-distribution.json: distribution.version = 0.12.0
+ok    bundle-patch-files: 2 patch file(s) declared, 0 missing
+ok    row-module-paths: 27 module path(s) named by the patch files, 0 missing, 0 patch file(s) unreadable
+ok    files-allowlist: 27 pattern(s); 0 required path(s) not admitted
+ok    evidence-excluded: the frozen evidence/ tree stays out of the published package
+ok    packed-content: npm pack --dry-run lists 935 file(s); 0 required path(s) absent
+
+VERDICT: PASS — the install-time rules and the packaging contract hold.
+### EXIT: 0
+### CMD: bun run typecheck
+$ bun run typecheck
+$ tsgo --noEmit
+packages/mpd-memory-plugin/src/index.ts(380,104): error TS2367: This comparison appears to be unintentional because the types 'false' and 'true' have no overlap.
+packages/mpd-memory-plugin/src/index.ts(380,160): error TS2367: This comparison appears to be unintentional because the types 'false | undefined' and 'true' have no overlap.
+error: script "typecheck" exited with code 1
+### EXIT: 1
+Bundled 4 modules in 7ms
+
+  index.js  78.22 KB  (entry point)
+
+
+################################################################
+# FINAL SWEEP — after the tsgo narrowing fix (commit-epoch) and the rebuild with the pinned toolchain
+################################################################
+### CMD: bun test packages/mpd-memory-plugin
+$ bun test packages/mpd-memory-plugin
+bun test v1.4.2 (744846f84)
+
+packages/mpd-memory-plugin/test/memory.test.ts:
+(pass) git backend: write -> commit -> read -> reflection due [22.96ms]
+(pass) mpd_memory_reflect_complete refuses when no reflection is due [0.89ms]
+(pass) svn backend REAL svn CLI: repo create, checkout, commit, log [0.52ms]
+(pass) both vcs: commits to git and svn [0.16ms]
+(pass) svn backend wiring with fake svn CLIs [10.84ms]
+(pass) a reflection record persisted under the pre-wave-F names is read, then rewritten under the current ones [12.54ms]
+
+ 6 pass
+ 0 fail
+ 28 expect() calls
+Ran 6 tests across 1 file. [134.00ms]
+### EXIT: 0
+### CMD: bun test packages/mpd-ulw-plugin
+$ bun test packages/mpd-ulw-plugin
+bun test v1.4.2 (744846f84)
+
+packages/mpd-ulw-plugin/test/engine.test.ts:
+(pass) engine policy: plan -> round -> verify -> quality gate with ledger [2.53ms]
+(pass) quality gate: a FAIL lane blocks completion and stamps the ledger row [0.36ms]
+(pass) engine alias and 2-fruitless-waves stop [0.23ms]
+(pass) DeepSeek V4 / DSH contract: role text in prompt (no persona field), pro for planner/reviewer, compact handoff [0.34ms]
+(pass) the DECLARED mpd_ultrawork output schema accepts the engine's own plan=false AND plan=true results [1.45ms]
+(pass) the mpd_ulw alias path (hardcoded plan=false) is exercised and its result matches its DECLARED schema [0.54ms]
+
+packages/mpd-ulw-plugin/test/commands.test.ts:
+(pass) both /ulw and /ultrawork are registered through the adapter seam (bare names, identical behaviour) [0.76ms]
+(pass) empty input returns usage naming the objective form and starts nothing [0.15ms]
+(pass) a non-empty invocation submits the activation directive as the invoking agent's next user turn [0.16ms]
+(pass) the activation directive carries the six autonomy behaviours in order [0.09ms]
+(pass) the QA case's c3.2 probe still matches and the c3.3 probe it needs is the one this text matches [0.05ms]
+(pass) the frozen head is byte-stable across objectives AND verdicts (prefix-cache discipline) [0.13ms]
+(pass) the gate is MECHANICAL: a tripping objective stages EXACTLY ONE plan and the directive names the returned id [1.21ms]
+(pass) the gesture path runs the SAME mechanical gate with the agent the payload carries [0.57ms]
+(pass) mode advisory and mode off stage nothing and say so [0.36ms]
+(pass) an already-staged plan is never re-staged, and the directive names the existing one [0.27ms]
+(pass) a composition without the staging tool degrades honestly — no throw, no claimed team [0.29ms]
+(pass) a REFUSING staging call degrades without throwing: the run starts and the block says so [0.34ms]
+(pass) a tripping objective that carries the explicit `team:` marker has the marker CONSUMED [0.32ms]
+(pass) the pre-step gesture boundary injects the same directive and delegates to next() [0.24ms]
+(pass) the gesture fires in the REAL composition shape — the prompt FOLLOWED BY user-role notices (t15 regression) [0.28ms]
+(pass) the gesture boundary leaves every non-gesture step untouched [0.18ms]
+(pass) the plugin reaches the seams only through the adapter (no direct command service, event bus or host import) [0.22ms]
+(pass) apply degrades safely when the composition has no command registry and no event bus [0.08ms]
+
+ 24 pass
+ 0 fail
+ 209 expect() calls
+Ran 24 tests across 2 files. [106.00ms]
+### EXIT: 0
+### CMD: bun run verify:comments
+$ bun run verify:comments
+$ node scripts/verify-comment-coverage.ts
+# verify-comment-coverage
+
+scanned 364 TypeScript file(s) of 364 in the source set; inspected 32738 declaration(s); skipped 14706 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+### EXIT: 0
+### CMD: node scripts/verify-dist-fresh.ts
+$ node scripts/verify-dist-fresh.ts
+  FRESH   packages/mpd-better-sidebar-host/dist/index.js  sha 251ae4c4d210… 20ms  <- packages/mpd-better-sidebar-host/src/index.ts
+  FRESH   packages/mpd-bootstrap-plugin/dist/index.js  sha df52fc4dfb8b… 21ms  <- packages/mpd-bootstrap-plugin/src/index.ts
+  FRESH   packages/mpd-boulder-plugin/dist/index.js  sha a4b4a8f93530… 20ms  <- packages/mpd-boulder-plugin/src/index.ts
+  FRESH   packages/mpd-bundle-plugin/dist/index.js  sha f8d222874b75… 21ms  <- packages/mpd-bundle-plugin/src/index.ts
+  FRESH   packages/mpd-codegraph-plugin/dist/index.js  sha 456594271401… 19ms  <- packages/mpd-codegraph-plugin/src/index.ts
+  FRESH   packages/mpd-comment-checker-plugin/dist/index.js  sha ab353f7cb6d8… 21ms  <- packages/mpd-comment-checker-plugin/src/index.ts
+  FRESH   packages/mpd-config-plugin/dist/index.js  sha ef1e1d06b960… 20ms  <- packages/mpd-config-plugin/src/index.ts
+  FRESH   packages/mpd-dsh-adapter-plugin/dist/index.js  sha f8778fb4544b… 21ms  <- packages/mpd-dsh-adapter-plugin/src/index.ts
+  FRESH   packages/mpd-ext-plugin/dist/index.js  sha 52890183af7d… 19ms  <- packages/mpd-ext-plugin/src/index.ts
+  FRESH   packages/mpd-ext-plugin/dist/sdk.js  sha 7c68358d2560… 14ms  <- packages/mpd-ext-plugin/src/sdk.ts
+  FRESH   packages/mpd-goal-plugin/dist/index.js  sha 6c9b0dbdf9e3… 21ms  <- packages/mpd-goal-plugin/src/index.ts
+  FRESH   packages/mpd-hashline-plugin/dist/index.js  sha 0724f8aaf417… 18ms  <- packages/mpd-hashline-plugin/src/index.ts
+  FRESH   packages/mpd-mcp-astgrep/dist/cli.js  sha ddf7111ed8a8… 18ms  <- packages/mpd-mcp-astgrep/src/cli.ts
+  FRESH   packages/mpd-mcp-astgrep/dist/launch.js  sha 8ebf954663eb… 15ms  <- packages/mpd-mcp-astgrep/src/launch.ts
+  FRESH   packages/mpd-mcp-codegraph/dist/launch.js  sha f2da0d34b049… 15ms  <- packages/mpd-mcp-codegraph/src/launch.ts
+  FRESH   packages/mpd-mcp-gitbash/dist/launch.js  sha c0ed386abc2f… 14ms  <- packages/mpd-mcp-gitbash/src/launch.ts
+  FRESH   packages/mpd-mcp-lsp/dist/launch.js  sha 826375393891… 15ms  <- packages/mpd-mcp-lsp/src/launch.ts
+  FRESH   packages/mpd-memory-plugin/dist/index.js  sha e2cbb4f16dac… 22ms  <- packages/mpd-memory-plugin/src/index.ts
+  FRESH   packages/mpd-modelchain-plugin/dist/index.js  sha b783ae2c8784… 20ms  <- packages/mpd-modelchain-plugin/src/index.ts
+  FRESH   packages/mpd-qa-roles-probe/dist/index.js  sha d213a106bc5d… 23ms  <- packages/mpd-qa-roles-probe/src/index.ts
+  FRESH   packages/mpd-roles-plugin/dist/index.js  sha 2b965eea718b… 17ms  <- packages/mpd-roles-plugin/src/index.ts
+  FRESH   packages/mpd-roster-provider-plugin/dist/index.js  sha bc90875cb896… 21ms  <- packages/mpd-roster-provider-plugin/src/index.ts
+  FRESH   packages/mpd-team-compact-plugin/dist/index.js  sha 631bde7d805b… 22ms  <- packages/mpd-team-compact-plugin/src/index.ts
+  FRESH   packages/mpd-team-core-plugin/dist/index.js  sha f1e744d10de6… 23ms  <- packages/mpd-team-core-plugin/src/index.ts
+  FRESH   packages/mpd-team-watchdog-plugin/dist/index.js  sha d74198b51a1b… 18ms  <- packages/mpd-team-watchdog-plugin/src/index.ts
+  FRESH   packages/mpd-tools-plugin/dist/index.js  sha a2949cdeeeaf… 21ms  <- packages/mpd-tools-plugin/src/index.ts
+  FRESH   packages/mpd-tui-adapter-plugin/dist/index.js  sha c5bb01ab355d… 19ms  <- packages/mpd-tui-adapter-plugin/src/index.ts
+  FRESH   packages/mpd-tui-plugin/dist/index.js  sha 45f00df2cefe… 24ms  <- packages/mpd-tui-plugin/src/index.ts
+  FRESH   packages/mpd-ulw-plugin/dist/index.js  sha eeee5bbbd60a… 23ms  <- packages/mpd-ulw-plugin/src/index.ts
+  FRESH   packages/mpd-verify-plugin/dist/index.js  sha d5f36cd46def… 18ms  <- packages/mpd-verify-plugin/src/index.ts
+  FRESH   packages/mpd-workmate-plugin/dist/index.js  sha 5445cc734de7… 25ms  <- packages/mpd-workmate-plugin/src/index.ts
+[verify-dist-fresh] root: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh  (build: bun build <src> --target node --format esm --outfile <tmp>/<entry>.js)
+[verify-dist-fresh] build toolchain: bun 1.4.0 from the repository toolchain (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun) · recorded buildToolchain bun@1.4.0
+[verify-dist-fresh] NOT COVERED (1) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+[verify-dist-fresh] ok: 31/31 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 638ms
+### EXIT: 0
+### CMD: bun run verify:docs
+$ bun run verify:docs
+$ node scripts/verify-docs-parity.ts
+ok   README.md
+ok   docs/design.md
+ok   docs/development.md
+ok   docs/extension-adaptation-report.md
+ok   docs/extension-authoring-guide.md
+ok   docs/extensions.md
+ok   docs/feature-audit.md
+ok   docs/independence.md
+ok   docs/index.md
+ok   docs/preset-default.md
+ok   docs/tui-parity.md
+ok   docs/tui.md
+ok   docs/upstream-parity-ledger.md
+ok   docs/user-guide.md
+ok   extensions/README.md
+ok   templates/mpd-extension/README.md
+ok   packages/mpd-better-sidebar-host/README.md
+ok   packages/mpd-bootstrap-plugin/README.md
+ok   packages/mpd-boulder-plugin/README.md
+ok   packages/mpd-bundle/README.md
+ok   packages/mpd-bundle-plugin/README.md
+ok   packages/mpd-codegraph-plugin/README.md
+ok   packages/mpd-comment-checker-plugin/README.md
+ok   packages/mpd-config-plugin/README.md
+ok   packages/mpd-dsh-adapter-plugin/README.md
+ok   packages/mpd-ext-plugin/README.md
+ok   packages/mpd-goal-plugin/README.md
+ok   packages/mpd-hashline-plugin/README.md
+ok   packages/mpd-mcp-astgrep/README.md
+ok   packages/mpd-mcp-codegraph/README.md
+ok   packages/mpd-mcp-gitbash/README.md
+ok   packages/mpd-mcp-lsp/README.md
+ok   packages/mpd-memory-plugin/README.md
+ok   packages/mpd-modelchain-plugin/README.md
+ok   packages/mpd-qa-roles-probe/README.md
+ok   packages/mpd-roles-plugin/README.md
+ok   packages/mpd-roster-provider-plugin/README.md
+ok   packages/mpd-schemastery/README.md
+ok   packages/mpd-team-compact-plugin/README.md
+ok   packages/mpd-team-core-plugin/README.md
+ok   packages/mpd-team-watchdog-plugin/README.md
+ok   packages/mpd-tools-plugin/README.md
+ok   packages/mpd-tui-adapter-plugin/README.md
+ok   packages/mpd-tui-plugin/README.md
+ok   packages/mpd-ulw-plugin/README.md
+ok   packages/mpd-verify-plugin/README.md
+ok   packages/mpd-workmate-plugin/README.md
+skip docs/bline-report.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/decisions.md — EXEMPT: process record (AGENTS.md §3)
+skip docs/omo-parity-gap.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/plan-0.1.7-adaptation.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-c.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-d.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-e.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-f.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-live-session-wave.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-team-plane-split.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-team-watchdog-report.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-team-watchdog.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-tui-edition.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-tui-team-surface.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-ui-team-gui.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-webui-tui-i18n.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/review-p0-p3.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/track-a-report.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/tui-edition-report.md — EXEMPT: prior-phase report (the TUI edition delivery report) — named in the AGENTS.md Language-policy enumeration of exempt prior-phase reports (captain ruling on T60-F1)
+skip docs/ulw-deepseek-optimization.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/verification/2026-10-08T1203Z/verdict.md — EXEMPT: verification record (process record, AGENTS.md §3)
+skip packages/mpd-mcp-shared — EXEMPT: ships source and tests only; its README pair is a recorded follow-up
+skip docs/adder4.md — EXEMPT: internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source [ANTICIPATORY — not a live path]
+skip docs/cnt8.md — EXEMPT: internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source [ANTICIPATORY — not a live path]
+note AGENTS.md — DERIVED: delta-range claims NOT adjudicated (agent-references/agent-teams-deltas.md is absent — the artifact the pointer NAMES cannot be read) — this root does not ship the artifact the pointer names, so the claim is neither confirmed nor contradicted here
+note agent-references/index.md — DERIVED: delta-range claims NOT adjudicated (agent-references/agent-teams-deltas.md is absent — the artifact the pointer NAMES cannot be read) — this root does not ship the artifact the pointer names, so the claim is neither confirmed nor contradicted here
+note agent-references/agent-teams-deltas.md — DERIVED: region-count claim skipped AND its registry (packages/mpd-agent-teams-plugin/lib/mpd-deltas.ts) is equally absent — both were deleted with the adopted agent-teams body (de-vendor wave), so the derived-value rule is VACUOUS in this root: it is exercised only by this script's --self-test fixtures, never by the live tree
+[verify-docs-parity] links=424 checked=396 resolved=396 dead=0 exemptProvenance=0 absentSite=0 ignoredExternal=24 ignoredAnchorOnly=4 files=115
+
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=47 failed=0 violations=0 exempt=24 derived=3 links=424 dead=0 — PASS
+### EXIT: 0
+### CMD: bun run verify:rows
+$ bun run verify:rows
+$ node scripts/verify-rows-parity.ts
+[verify-rows-parity] ok: 35 row ids match the 2-file bundle patch layer (mcp-astgrep, mcp-codegraph, mcp-context7, mcp-git, mcp-grepapp, mcp-lsp, mcp-shell, mpd-agent-team, mpd-better-sidebar, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-goal, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-roster-provider, mpd-team-compact, mpd-team-core, mpd-team-watchdog, mpd-tool-agent-team, mpd-tools, mpd-tui, mpd-tui-adapter, mpd-ui-agent-team, mpd-ulw, mpd-verify, mpd-web-compat, mpd-workmate, preset-mpd)
+### EXIT: 0
+### CMD: node scripts/verify-vendor.ts
+$ node scripts/verify-vendor.ts
+[verify-vendor] upstream identity: NOT CHECKED - no upstream subject exists (the pinned oh-my-openagent checkout is retired; see VENDOR_LOCK.json `_note`)
+[verify-vendor] asset OK: skills 371 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] asset OK: packages/mpd-hashline-plugin/src/vendor 8 files
+[verify-vendor] asset OK: packages/mpd-boulder-plugin/src/vendor 13 files
+[verify-vendor] asset OK: packages/mpd-schemastery 19 files
+[verify-vendor] asset OK: packages/mpd-bundle-plugin/adopted 2 files
+[verify-vendor] asset OK: packages/mpd-bundle-plugin/client.js 1 files
+[verify-vendor] PASS - 7 shipped asset(s) fingerprinted, upstream identity not checked
+### EXIT: 0
+### CMD: bun run typecheck
+$ bun run typecheck
+$ tsgo --noEmit
+### EXIT: 0
+### CMD: bun run verify:manifest
+$ bun run verify:manifest
+$ node scripts/verify-plugin-manifest.ts --pack
+# verify-plugin-manifest — repository manifest
+
+ok    cordis-dependency: 8 declared dependency name(s) across dependencies/peerDependencies/optionalDependencies, none of them cordis
+ok    cordis-devDependency-note: devDependencies declare no cordis package
+ok    lifecycle-script: 19 script name(s), none carrying preinstall/install/postinstall/prepare
+ok    version:dsh-plugin.json: version = 0.12.0
+ok    version:dsh-distribution.json: distribution.version = 0.12.0
+ok    bundle-patch-files: 2 patch file(s) declared, 0 missing
+ok    row-module-paths: 27 module path(s) named by the patch files, 0 missing, 0 patch file(s) unreadable
+ok    files-allowlist: 27 pattern(s); 0 required path(s) not admitted
+ok    evidence-excluded: the frozen evidence/ tree stays out of the published package
+ok    packed-content: npm pack --dry-run lists 935 file(s); 0 required path(s) absent
+
+VERDICT: PASS — the install-time rules and the packaging contract hold.
+### EXIT: 0

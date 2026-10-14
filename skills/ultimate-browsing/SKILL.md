@@ -5,9 +5,9 @@ description: "Escalation skill for blocked or hard-to-reach web access — load 
 
 # Ultimate Browsing
 
-Escalation web access for tasks a normal browse or fetch cannot complete. Reach for this skill the moment a page is blocked (WAF / 403 / Cloudflare), needs JS rendering, hides behind a login, or lives on a platform a generic fetcher cannot read. Escalate only when the cheaper tier cannot do the job:
+Web access for everything a plain fetch cannot finish: a page that renders in JS, a click or a form, a screenshot, a login that must persist across pages, or a host that blocks generic fetchers (WAF / 403 / Cloudflare). Start at the cheapest tier that can do the job and climb only when it cannot:
 
-**Tier 1 — insane-search** (headless extraction + WAF bypass) -> **Tier 1.5 — agent-reach** (platform-native APIs, esp. Chinese platforms) -> **Tier 2 — Chrome stealth** (real interaction via CloakBrowser + agent-browser).
+**Tier 1 — insane-search** (headless extraction + WAF bypass) -> **Tier 1.5 — agent-reach** (platform-native APIs, esp. Chinese platforms) -> **Tier 2 — a real browser** through the `agent-browser` CLI run from `bash`: 2a the owned engine (a browser your code launches, CloakBrowser for stealth), 2b the attached engine (the user's own signed-in browser).
 
 ## PHASE 0 — ROUTE FIRST (MANDATORY)
 
@@ -23,11 +23,11 @@ User request
   +- podcast transcript / stock forum ----------------- TIER 1.5 agent-reach
   +- Twitter feed / LinkedIn profile / GitHub via CLI - TIER 1.5 agent-reach
   |
-  +- Tier 1/1.5 returned empty or partial ------------- TIER 2  Chrome stealth
-  +- click / fill form / scroll / interact ------------ TIER 2  Chrome stealth
-  +- screenshot / render / play video ----------------- TIER 2  Chrome stealth
-  +- login session across pages / inject cookies ------ TIER 2  Chrome stealth
-  +- test web app / QA / dogfood ---------------------- TIER 2  Chrome stealth
+  +- Tier 1/1.5 returned empty or partial ------------- TIER 2  2a owned engine -> 2b attached engine
+  +- click / fill form / scroll / interact ------------ TIER 2  2a owned engine -> 2b attached engine
+  +- screenshot / render / play video ----------------- TIER 2  2a owned engine -> 2b attached engine
+  +- login session across pages / the user's account --- TIER 2  2b attached engine (their browser)
+  +- test web app / QA / dogfood ---------------------- TIER 2  2a owned engine -> 2b attached engine
   |
   +- simple search query ------------------------------ NOT this skill (use web-search)
 ```
@@ -119,14 +119,11 @@ Cookie export files are written with owner-only `0600` permissions. Do not place
 |------|-------------|
 | [references/insane-search/README.md](references/insane-search/README.md) | Tier-1 engine harness (R1-R7, Phase 0 API index, no-site-name rule) + its `*.md` deep-dives |
 | [references/agent-reach/README.md](references/agent-reach/README.md) | Tier-1.5 routing table, platform auth, per-category `*.md` |
-| [references/chrome-stealth.md](references/chrome-stealth.md) | Tier-2 CloakBrowser + agent-browser install, CDP flow, version pins, cookie login |
+| [references/chrome-stealth.md](references/chrome-stealth.md) | Tier-2 stealth through agent-browser + CloakBrowser, cookie login limits |
 
 ## Environment variables
 
 ```bash
-CLOAK_CDP_PORT=9242              # CloakBrowser CDP port (default 9242)
-AGENT_BROWSER_USER_AGENT="..."   # override UA to hide HeadlessChrome
-AGENT_BROWSER_HEADED=1           # show the browser window
 # agent-reach auth: set the channel-specific env vars from each tool's docs only if you have access
 # insane-search needs no env vars — it auto-installs deps on first run
 ```
@@ -134,9 +131,7 @@ AGENT_BROWSER_HEADED=1           # show the browser window
 ## Anti-patterns
 
 - Do NOT launch Chrome stealth for plain text extraction — use Tier 1.
-- Do NOT pass an `--init-script` for the webdriver flag — CloakBrowser already patches it at source; the only required override is `--user-agent`.
-- Do NOT run agent-browser before creating the first tab via `curl -X PUT .../json/new` — CloakBrowser launches tabless.
-- Do NOT use vanilla Chrome when stealth is needed — always CloakBrowser.
-- Do NOT forget to `close` the session when done.
+- Use stealth plugins only in an explicitly installed script environment, not injected into WebView.
+- Close every WebView/browser context when done and remove only task-owned profile clones.
 - Do NOT inject cookies without reloading the page.
 - Do NOT hardcode site domains/selectors into `engine/**` or `waf_profiles.yaml` — runtime hints only (see the no-site-name rule in the insane-search reference).

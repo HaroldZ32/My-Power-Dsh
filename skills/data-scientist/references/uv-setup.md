@@ -1,13 +1,13 @@
 # uv Setup — Per-Platform
 
-This skill runs every data operation through `uv run --with ...`. If `uv --version` fails, set uv up with the automated scripts or the manual commands below, then verify.
+This skill's uv lane (kernel-less harnesses, isolated one-shots) runs through `uv run --with ...`, and `scripts/ensure-py-deps.sh` uses uv as its installer. If `uv --version` fails, set uv up with the automated scripts or the manual commands below, then verify.
 
 ## Automated (recommended)
 
 | Platform | Command |
 |---|---|
 | macOS / Linux / WSL / Git Bash | `bash scripts/setup-uv.sh` |
-| Windows (PowerShell) | `powershell -ExecutionPolicy Bypass -File scripts/setup-uv.ps1` |
+| Windows (PowerShell) | `pwsh scripts/setup-uv.ps1` # or: `powershell -ExecutionPolicy Bypass -File scripts/setup-uv.ps1` |
 
 Both scripts: detect OS + architecture → install uv to the latest release when missing → upgrade it when present (`uv self update`) → make it resolvable for the current shell → verify with `uv --version`. They are idempotent — safe to re-run any time.
 

@@ -1,0 +1,164 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+#
+# CodeRabbit configuration for my-power-dsh — a DeepSeek Harness plugin bundle.
+#
+# Every key below was read out of CodeRabbit's published schema
+# (https://coderabbit.ai/integrations/schema.v2.json, fetched 2026-10-09) and every path
+# below is a path this repository actually has. The rules the reviewer is asked to judge
+# against are the binding ones in AGENTS.md (the repository manual), cited by section.
+
+# en-US, deliberately: this repository's AGENT-FACING content — AGENTS.md, code comments,
+# QA scripts and logs, evidence under evidence/ — is English-only by binding policy. The
+# 简体中文 files are a DOC artifact (every human-facing doc ships a paired *.zh-CN.md twin),
+# not a second review language. Reviewing in Chinese would produce prose the agent-facing
+# band is forbidden to carry.
+language: "en-US"
+
+reviews:
+  # assertive: the path_instructions below encode rules no generic linter knows — erasable-
+  # syntax TypeScript, the single vendor re-pin per wave, the bilingual doc pair, the docker
+  # lane's skip-exits-0 contract. Missing one of those costs a whole gate cycle and a
+  # re-review, while the excluded trees (below) keep the noise floor low. A quiet profile
+  # would trade a real defect for a little less reading.
+  profile: "assertive"
+
+  # A bot never blocks a merge here. Every change lands through a branch + PR into `dev` and
+  # merges only after this repository's own gates pass and their evidence is committed with
+  # the change (AGENTS §4/§5). CodeRabbit is advisory input to that decision, not a gate.
+  request_changes_workflow: false
+
+  # The review surface is the walkthrough and the inline comments, not a fortune cookie.
+  in_progress_fortune: false
+
+  auto_review:
+    enabled: true
+    # PRs target `dev`; `master` receives release merges only and is never committed to
+    # directly (AGENTS §5). `master` is this repository's default branch, so the base branch
+    # must be named explicitly or every review would run against the wrong target.
+    base_branches:
+      - "^dev$"
+    # Draft PRs are NOT reviewed. A draft is a wave still in flight, while this repository's
+    # contract is that a PR is opened READY: bilingual description, gates run, evidence
+    # committed (AGENTS §5). Reviewing a draft spends the review on work that will change.
+    drafts: false
+
+  # EXCLUSIONS ONLY — and that is the documented way to keep everything else eligible:
+  # "A pattern without `!` limits review to files matching an include. Use exclusions alone
+  # to keep other files eligible" (docs.coderabbit.ai/configuration/path-instructions).
+  # An allowlist here would silently hide whatever it forgets, and a leading `**/` include
+  # does not even match dot-paths — `**/*` fails to match `.github/workflows/gates.yml`
+  # under minimatch 9.0.5, the matcher CodeRabbit's docs name (measured 2026-10-09).
+  # With exclusions alone skills/**, packages/*/src/**, docker/**, docs/**, scripts/** and
+  # .github/** all stay in scope.
+  path_filters:
+    # 22,950 of this repository's 23,981 tracked files are evidence logs and stamps
+    # (measured 2026-10-09). A reviewer that reads them reviews nothing else.
+    - "!evidence/**"
+    # `**` does not cross a path segment that STARTS WITH A DOT (minimatch's default
+    # `dot: false`), so `!evidence/**` alone still let 92 tracked evidence files through —
+    # 86 dot-files (.t5-mutants.ts, .debug-*.png, ...) and 6 paths inside dot-directories
+    # (.agent-presets/, .dsh-tui/). Measured against the real tree, 2026-10-09.
+    - "!evidence/**/.*"
+    - "!evidence/**/.*/**"
+    # Workspace runtime state (gitignored, never a review subject).
+    - "!.mpd/**"
+    # Built artifacts: `bun build` output that verify-dist-fresh reproduces byte-for-byte.
+    # `dist/**` alone is not enough — it is root-anchored and does NOT match the 30+
+    # generated package bundles, so `packages/*/dist/**` is excluded too (measured against
+    # minimatch 9.0.5: pattern `dist/**` does not match `packages/<pkg>/dist/index.js`).
+    - "!dist/**"
+    - "!packages/*/dist/**"
+    # Machine-generated fingerprints, re-pinned by script, never reviewed by eye.
+    - "!VENDOR_LOCK.json"
+
+  path_instructions:
+    # AGENTS §6, enforced in CI by `bun run verify:comments` and `bun run typecheck`.
+    - path: "packages/*/src/**"
+      instructions: |
+        - TypeScript is the ONLY source language and runs directly under Node with type
+          stripping: erasable syntax only — no `enum`, no `namespace`, no parameter
+          properties, no decorators.
+        - Every relative specifier carries the explicit `.ts` extension; type-only imports
+          use `import type`; there is no tsconfig `paths` mapping.
+        - Every declaration carries a precise comment — the contract, unit, invariant or
+          reason, never a restatement of the name — and every named function writes down its
+          parameter and return types. `bun run verify:comments` is an AST check that holds
+          this line: do not propose deleting or rewording a comment to satisfy a generic
+          style, and do not propose a linter this repository does not run.
+        - `packages/*/src` is the source of record; `packages/*/dist` is generated from it by
+          the pinned toolchain and is not hand-edited.
+
+    # AGENTS §9 (single-skills-writer rule) and §11 (the re-pin pairing rule).
+    - path: "skills/**"
+      instructions: |
+        - ONE writer per wave. Any `skills/**` edit invalidates the corpus `treeSha` in
+          VENDOR_LOCK.json, and the re-pin must land in the SAME commit as the change that
+          invalidated it (AGENTS §9/§11).
+        - Flag a `skills/**` change whose commit does not update VENDOR_LOCK.json, and flag a
+          wave that re-pins more than once: exactly ONE re-pin per wave is the invariant.
+
+    # The band `bun run verify:docs` discovers (AGENTS "Language policy"), so the reviewer
+    # judges the same files the gate does.
+    - path: "{docs/**,README*.md,packages/*/README*.md,extensions/**/README*.md,templates/**/README*.md}"
+      instructions: |
+        - Bilingual pair: every human-facing doc ships an English file AND a 简体中文
+          `*.zh-CN.md` twin, each carrying its language switch link directly under the title.
+        - Both halves change in the SAME commit. `bun run verify:docs` enforces the pair, the
+          switch link, the heading tree and the resolution of relative link targets — a
+          zh-CN doc with no EN twin, or a stale switch link, is a defect rather than a nit.
+        - Agent-facing documents (AGENTS.md, agent-references/**) are English-only BY POLICY
+          and must NOT be asked for a Chinese twin.
+
+    # The docker lane's exit-code contract matters more than its style — AGENTS §4, last row.
+    - path: "{docker/**,scripts/docker-e2e.ts,.github/workflows/**}"
+      instructions: |
+        - Judge the EXIT-CODE CONTRACT, not formatting. A machine without rootless Docker
+          makes this lane print a notice and SKIP with exit 0, so a green job can mean nothing
+          ran; `--require-docker` turns any skip into exit 3. A skip is never a pass.
+        - The lane asserts the INSTALL then the MOUNT (rows activating, tools registering, the
+          TUI on a real PTY, agentPreset=mpd) — "exit 0" alone proves none of that.
+        - The nightly workflow is credential-free on purpose; do not suggest injecting secrets
+          into it.
+
+  tools:
+    # Kept ON, with reasons — both names verified in the current schema's tool registry
+    # (59 tools) before being written here.
+    actionlint:
+      # .github/workflows/** gained a nightly real-machine lane; a broken workflow file is
+      # invisible until the night it should have run.
+      enabled: true
+    gitleaks:
+      # Secret scanner (the schema's `gitleaks` key, engine Betterleaks v1.8.1). This
+      # repository COMMITS its evidence tree, so a credential inside a committed log is a
+      # release blocker under the standing `grep -rlE "sk-[A-Za-z0-9]{24,}"` hygiene rule.
+      enabled: true
+
+    # Turned OFF as noise — each would report a foreign standard this repository does not use.
+    markdownlint:
+      enabled: false
+    languagetool:
+      enabled: false
+    eslint:
+      enabled: false
+    biome:
+      enabled: false
+    oxc:
+      enabled: false
+
+chat:
+  # false, deliberately: this repository's PR threads carry human-to-human and
+  # captain-to-agent instructions, not questions addressed to the bot. Replying to every
+  # comment would insert the bot into conversations it was not asked about; with auto_reply
+  # off it still answers whenever it is explicitly mentioned.
+  auto_reply: false
+
+knowledge_base:
+  code_guidelines:
+    enabled: true
+    # AGENTS.md is already in CodeRabbit's default guideline patterns; it is named here so
+    # the binding manual cannot be lost to a default change. CONTRIBUTING.md carries the
+    # branch model, the commit format and the bilingual PR-description contract a reviewer
+    # of a PR needs.
+    filePatterns:
+      - "AGENTS.md"
+      - "CONTRIBUTING.md"

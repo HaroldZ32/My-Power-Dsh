@@ -1,0 +1,47 @@
+dsh: reasoning:
+The user wants a list of all available tool names starting with "mcp__" prefix, one per line, without calling any tools.
+
+Let me enumerate from the tool list:
+
+- mcp__ast_grep__rewrite
+- mcp__ast_grep__scan
+- mcp__ast_grep__search
+- mcp__codegraph__codegraph_explore
+- mcp__context7__query-docs
+- mcp__context7__resolve-library-id
+- mcp__grep_app__searchGitHub
+- mcp__lsp__find_definition
+- mcp__lsp__find_implementation
+- mcp__lsp__find_references
+- mcp__lsp__find_workspace_symbols
+- mcp__lsp__get_diagnostics
+- mcp__lsp__get_hover
+- mcp__lsp__get_incoming_calls
+- mcp__lsp__get_outgoing_calls
+- mcp__lsp__prepare_call_hierarchy
+- mcp__lsp__rename_symbol
+- mcp__lsp__rename_symbol_strict
+- mcp__lsp__restart_server
+
+The tool names in the schema appear as "mcp__ast_grep__rewrite" etc. Note the actual tool names use double underscores between segments. Let me list them precisely.
+
+Order: ast_grep (3), codegraph (1), context7 (2), grep_app (1), lsp (12). Total 19.
+mcp__ast_grep__rewrite
+mcp__ast_grep__scan
+mcp__ast_grep__search
+mcp__codegraph__codegraph_explore
+mcp__context7__query-docs
+mcp__context7__resolve-library-id
+mcp__grep_app__searchGitHub
+mcp__lsp__find_definition
+mcp__lsp__find_implementation
+mcp__lsp__find_references
+mcp__lsp__find_workspace_symbols
+mcp__lsp__get_diagnostics
+mcp__lsp__get_hover
+mcp__lsp__get_incoming_calls
+mcp__lsp__get_outgoing_calls
+mcp__lsp__prepare_call_hierarchy
+mcp__lsp__rename_symbol
+mcp__lsp__rename_symbol_strict
+mcp__lsp__restart_server
