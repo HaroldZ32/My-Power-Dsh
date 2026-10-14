@@ -14,7 +14,7 @@
 import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs"
 import { homedir, userInfo } from "node:os"
 import { join, resolve, sep } from "node:path"
-import { DSH_SEAM_SUBAGENTS, DSH_SEAM_TOOLS, dshSeamInject, restrictToolsTolerant, rowLogLine, workspaceRootOf, type DshAdapter, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { DSH_SEAM_SUBAGENTS, DSH_SEAM_TOOLS, dshSeamInject, restrictToolsTolerant, rowLogLine, withSupportedEffort, workspaceRootOf, type DshAdapter, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /** The cordis plugin name, matched against this row's id in the bundle patch. */
 export const name = "mpd-workmate"
@@ -738,6 +738,61 @@ export function apply(ctx: Ctx): void {
   }
 
   /**
+   * The runtime `mpdConfig` service, read PER SPAWN and never cached at apply — the same
+   * lazy-sibling pattern as {@link rolesService}.
+   *
+   * @returns the service double, or undefined when it is absent or refuses the lookup.
+   */
+  function configService(): { teamModelRouteOf?: (m: string) => unknown } | undefined {
+    try {
+      return ctx.get ? (ctx.get("mpdConfig") as { teamModelRouteOf?: (m: string) => unknown } | undefined) : undefined
+    } catch {
+      // An agent-scoped cordis ctx is a proxy that THROWS on any key missing from `inject`.
+      return undefined
+    }
+  }
+
+  /**
+   * The route ONE spawn runs on, re-resolved from the LIVE config (R2/AC4): the base's precedence
+   * chain first (`agentRoutes[base]` > `teamModels.slot{N}` > defaults, served by the config row),
+   * then the roster base's CURRENT chain head (already slot-spliced per call by the roles row),
+   * then the frozen `meta` values — which are PROVENANCE ONLY from this wave on (an init-time
+   * snapshot, never the routing decision).
+   *
+   * The config-service CALL is deliberately unguarded: a `teamModelRouteOf` that THROWS (a
+   * malformed `agentRoutes` entry, an incomplete slot) fails the spawn LOUDLY naming the member —
+   * the registered contract every routing path follows. The roster-base fallback IS guarded: a
+   * composition without the roles row must still spawn on the provenance route.
+   *
+   * @param meta - the instance's metadata, whose `baseName` addresses the base and whose frozen
+   *   `provider`/`model` are the last-resort provenance.
+   * @returns the route this spawn is sent on.
+   */
+  function spawnRouteOf(meta: Meta): { provider: string; model: string; reasoningEffort?: string } {
+    /** The live config service, absent until the `mpd-config` row has applied. */
+    const live = configService()
+    if (typeof live?.teamModelRouteOf === "function") {
+      // NOT wrapped: the service's loud route errors propagate to the spawn (the registered contract).
+      const value = live.teamModelRouteOf(meta.baseName) as { provider?: unknown; model?: unknown; reasoningEffort?: unknown } | undefined | null
+      if (value !== undefined && value !== null && typeof value === "object") {
+        return {
+          provider: String(value.provider ?? ""),
+          model: String(value.model ?? ""),
+          ...(typeof value.reasoningEffort === "string" && value.reasoningEffort !== "" ? { reasoningEffort: value.reasoningEffort } : {}),
+        }
+      }
+    }
+    try {
+      /** The base as the roster sees it NOW — its chain head already carries the configured slot. */
+      const base = resolveBase(meta.baseName)
+      if (base.provider !== "" && base.model !== "") return { provider: base.provider, model: base.model }
+    } catch {
+      // No roster row (or an unreadable one): the provenance route below is the honest fallback.
+    }
+    return { provider: meta.provider, model: meta.model }
+  }
+
+  /**
    * The read-only deny list ONE workmate spawn really sends, validated by the harness itself.
    *
    * WHY (measured defect F2, 2026-10-10): `tools.restrict()` rejects the WHOLE list when a single name
@@ -921,6 +976,16 @@ export function apply(ctx: Ctx): void {
       // mutation block on this workmate.
       noteSpawnStart(key)
       try {
+        // R2/AC4: the route is re-resolved from the LIVE config PER SPAWN (agentRoutes > slot >
+        // defaults > roster chain > provenance meta), so a config saved between two spawns is what
+        // the SECOND spawn runs on — an in-flight task keeps its route; the NEXT spawn picks the
+        // change. The frozen meta.provider/model are provenance, never the routing decision.
+        /** The route as the precedence chain decided it — always defined, by construction. */
+        const decided = spawnRouteOf(meta)
+        /** The decided route after the model-capability adaptation dropped an effort keyword the
+         *  target model cannot take (same adaptation `mpd_role_spawn` applies); the `??` only
+         *  restores totality — the adaptation preserves the definedness of its input. */
+        const route = (await withSupportedEffort(dsh, decided)) ?? decided
         /** The spawn result, whose structured report is echoed into this tool's output. */
         const result = await dsh.spawnAgent({
           // Name unification: the workmate's OWN name is the label — the same word a
@@ -931,10 +996,13 @@ export function apply(ctx: Ctx): void {
           prompt,
           parent: exec.agent,
           signal: exec.signal,
-          provider: meta.provider,
-          model: meta.model,
+          provider: route.provider,
+          model: route.model,
           persona,
           outputSchema: REPORT_SCHEMA,
+          // The route's OWN effort keyword rides along when it states one — AFTER the catalog
+          // adaptation above. An absent keyword passes nothing and the harness keeps its resolution.
+          ...(route.reasoningEffort === undefined ? {} : { agentOptions: { reasoningEffort: route.reasoningEffort } }),
           ...(meta.readonly ? { toolFilter: { deny: validatedReadonlyDeny(exec.agent) } } : {})
         })
         /** The structured report, or an empty object when the subagent answered none. */

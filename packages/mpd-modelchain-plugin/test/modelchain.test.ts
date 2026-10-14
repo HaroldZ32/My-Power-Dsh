@@ -1,4 +1,4 @@
-import { test, expect } from "bun:test"
+import { describe, test, expect } from "bun:test"
 import { DEFAULT_CHAINS, resolveRole, apply } from "../src/index.ts"
 
 test("DEFAULT_CHAINS uses kebab-case keys and only deepseek-official providers", () => {
@@ -111,4 +111,77 @@ test("modelchain.sisyphus-junior config key is resolved through the mpdConfig se
   const res = await tool.execute({ role: "Junior Engineer" })
   expect(res.provider).toBe("deepseek-official")
   expect(res.model).toBe("deepseek-v4-pro")
+})
+
+// AC2 of the model-config-live-refresh wave (fix/model-config-live-refresh): the `modelchain.<key>`
+// overlay is re-read PER CALL, so a change made in-process — no restart, no re-apply — is what the
+// NEXT resolution answers. Pre-wave this file froze the overlay into a closure at apply().
+describe("AC2 — the overlay is re-read per call (R1)", () => {
+  test("a changed overlay changes the NEXT resolution in-process", async () => {
+    /** Every tool definition the plugin registered, in registration order. */
+    const tools: any[] = []
+    /** The MUTABLE config document: the case flips its chain BETWEEN two calls of one mount. */
+    const cfg: any = { modelchain: { sisyphus: [{ provider: "deepseek-official", model: "deepseek-v4-pro" }] } }
+    /** The config service double over the mutable document. */
+    const mpdConfig = {
+      get: (k?: string) => (k === undefined ? cfg : k.split(".").reduce((a: any, p: string) => (a == null ? undefined : a[p]), cfg)),
+    }
+    /** The roster double: the role carries a chain of its own, so the case also proves the overlay
+     *  OUTRANKS the roster's static chain — otherwise a role with a chain could never be re-routed. */
+    const roster = rosterDouble([{ id: "sisyphus", name: "Senior Engineer", chain: [{ provider: "deepseek-official", model: "deepseek-v4-flash" }] }])
+    /** The row context: a `register` sink plus a `get` that answers `mpdConfig` and `mpdRoles`. */
+    const ctx: any = {
+      tools: {
+        /** Keep the definition the plugin registers, so the test can call its `execute`. */
+        register(d: any): void { tools.push(d) }
+      },
+      /** Answer the two service lookups with their doubles and every other one with undefined. */
+      get: (n: string) => (n === "mpdConfig" ? mpdConfig : n === "mpdRoles" ? roster : undefined)
+    }
+    apply(ctx, {})
+    /** The route-resolver tool the plugin registered. */
+    const tool = tools.find((t) => t.name === "mpd_modelchain_resolve")
+    /** The FIRST resolution: the overlay (v4-pro) beats the roster's own chain (v4-flash). */
+    const first = await tool.execute({ role: "Senior Engineer" })
+    expect(first.model).toBe("deepseek-v4-pro")
+    // The in-process change — a save through the config layer, or an mpd.jsonc edit the watcher
+    // picked up. No re-apply, no restart: the next call must answer with the NEW overlay.
+    cfg.modelchain.sisyphus = [{ provider: "deepseek-official", model: "deepseek-flash" }]
+    /** The SECOND resolution against the same mount: the changed overlay is what answers. */
+    const second = await tool.execute({ role: "Senior Engineer" })
+    expect(second.model).toBe("deepseek-flash")
+    // Removing the overlay entirely falls back to the roster's own chain, per-call as well.
+    delete cfg.modelchain.sisyphus
+    /** The THIRD resolution: no overlay, so the roster chain answers again. */
+    const third = await tool.execute({ role: "Senior Engineer" })
+    expect(third.model).toBe("deepseek-v4-flash")
+  })
+
+  test("a config service that appears AFTER apply is still honoured (the sibling-visibility fix)", async () => {
+    /** Every tool definition the plugin registered, in registration order. */
+    const tools: any[] = []
+    /** The config service, NOT mounted at apply time — rows apply concurrently, so a sibling
+     *  provider that starts later was invisible to the frozen-closure code FOREVER. */
+    let mpdConfig: any = undefined
+    /** The roster double whose role carries no chain, so the fallback table answers. */
+    const roster = rosterDouble([{ id: "oracle", name: "Architect" }])
+    /** The row context whose `mpdConfig` lookup answers whatever the variable holds. */
+    const ctx: any = {
+      tools: {
+        /** Keep the definition the plugin registers, so the test can call its `execute`. */
+        register(d: any): void { tools.push(d) }
+      },
+      /** Answer the roster always, and the config service only once it has "applied". */
+      get: (n: string) => (n === "mpdConfig" ? mpdConfig : n === "mpdRoles" ? roster : undefined)
+    }
+    apply(ctx, {})
+    /** The route-resolver tool the plugin registered. */
+    const tool = tools.find((t) => t.name === "mpd_modelchain_resolve")
+    // Before the config row applies, the shipped default answers (oracle's default chain head).
+    expect((await tool.execute({ role: "Architect" })).model).toBe("deepseek-v4-pro")
+    // The sibling applies LATE: from this call on, its overlay is what answers.
+    const cfg: any = { modelchain: { oracle: [{ provider: "deepseek-official", model: "deepseek-flash" }] } }
+    mpdConfig = { get: (k?: string) => (k === undefined ? cfg : k.split(".").reduce((a: any, p: string) => (a == null ? undefined : a[p]), cfg)) }
+    expect((await tool.execute({ role: "Architect" })).model).toBe("deepseek-flash")
+  })
 })

@@ -1,0 +1,63 @@
+{
+ "staticS": [
+  {
+   "id": "S1",
+   "ok": true,
+   "detail": "the built TUI bytes carry the bridge disclosure"
+  },
+  {
+   "id": "S2",
+   "ok": true,
+   "detail": "the built TUI bytes carry the LIVE half of the disclosure (wave fix/model-config-live-refresh: a save is served in-process, never 'after a restart')"
+  },
+  {
+   "id": "S3",
+   "ok": true,
+   "detail": "the old 'not bridged' claim is DELETED from the built TUI bytes"
+  }
+ ],
+ "staticOk": true,
+ "tui": [
+  {
+   "id": "T1",
+   "ok": true,
+   "detail": "the built bytes carry the bridge disclosure"
+  },
+  {
+   "id": "T2",
+   "ok": true,
+   "detail": "the built bytes carry the LIVE half of the disclosure (a save is served in-process, never 'after a restart')"
+  },
+  {
+   "id": "T3",
+   "ok": true,
+   "detail": "the old 'not bridged' claim is DELETED from the built bytes"
+  },
+  {
+   "id": "T4",
+   "ok": true,
+   "detail": "the built bytes carry the §D.2 no-live-session runtime notice"
+  },
+  {
+   "id": "T5",
+   "ok": true,
+   "detail": "the notice is WIRED into the status-line composition, not merely defined"
+  },
+  {
+   "id": "T6",
+   "ok": true,
+   "detail": "the notice is a single exported constant in the source (one source of truth)"
+  },
+  {
+   "id": "T8",
+   "ok": true,
+   "detail": "the hint carries the \"never lost\" clause (a settings-only save is not a lost save)"
+  },
+  {
+   "id": "T7",
+   "ok": false,
+   "detail": "the TUI dist performs ZERO filesystem writes (offenders: [\"writeFileSync\",\"appendFileSync\",\"mkdirSync\",\"rmSync\"])"
+  }
+ ],
+ "tuiOk": false
+}

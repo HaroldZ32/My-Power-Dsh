@@ -309,7 +309,12 @@ export function evaluateBridge(observed: BridgeObserved): LaneVerdict {
     const wrote = structured.find((report) => Array.isArray(report.writtenTo) && report.writtenTo.length > 0)
     add("W7", wrote !== undefined, "the boot log carries a bridge report naming the file it wrote (F1: silence would hide a dead bridge)")
     add("W8", structured.some((report) => report.source === "update"), "the write-back was triggered by an `update`, not a provider echo (design §2.1)")
-    add("W9", structured.every((report) => report.applies === "restart"), "every report carries applies:'restart' (design §D.1 honesty)")
+    // W9 (reworded by wave fix/model-config-live-refresh): `BridgeReport.applies` is now the
+    // literal "live" (packages/mpd-config-plugin/src/bridge.ts), because the model-config knobs
+    // are re-read per use after L1's entry-config subscription and mount-armed watcher — a knob a
+    // plugin captured at its own mount is the ONLY class that still waits for a boot, and that
+    // class is disclosed per knob (BRIDGE_RESTART_LIMIT), never through this report field.
+    add("W9", structured.every((report) => report.applies === "live"), "every report carries applies:'live' (the model-config knobs take effect in the RUNNING process)")
     // The documented `writtenTo` field viewed as the path list it is: a cast, because a JSON
     // field of unknown type cannot be indexed as an array by narrowing alone.
     add("W10", (((wrote?.writtenTo) as readonly unknown[] | undefined) ?? []).some((file) => String(file).includes(".mpd/mpd.jsonc")), "the report names a .mpd/mpd.jsonc path")
@@ -372,7 +377,7 @@ export function evaluateBridge(observed: BridgeObserved): LaneVerdict {
     // The built TUI bytes, empty when the caller measured none.
     const dist = String(observed.tuiDist ?? "")
     add("S1", dist.includes("a save writes <workspace>/.mpd/mpd.jsonc"), "the built TUI bytes carry the bridge disclosure")
-    add("S2", dist.includes("after a restart"), "the built TUI bytes carry the restart half of the disclosure")
+    add("S2", dist.includes("takes effect in the RUNNING process"), "the built TUI bytes carry the LIVE half of the disclosure (wave fix/model-config-live-refresh: a save is served in-process, never 'after a restart')")
     add("S3", !dist.includes("not bridged: a save here does not rewrite"), "the old 'not bridged' claim is DELETED from the built TUI bytes")
   }
 
@@ -727,8 +732,8 @@ export function evaluateTuiSurface(observed: TuiSurfaceObserved): LaneVerdict {
   const checks: LaneCheck[] = []
   // Record one check: `ok` is coerced, `detail` stringified, so a judge cannot push a non-boolean.
   const add = (id: string, ok: boolean, detail: string): number => checks.push({ id, ok: Boolean(ok), detail: String(detail) })
-  add("T1", dist.includes("a save writes <workspace>/.mpd/mpd.jsonc"), "the built bytes carry the bridge+restart disclosure")
-  add("T2", dist.includes("after a restart"), "the built bytes carry the restart half of the disclosure")
+  add("T1", dist.includes("a save writes <workspace>/.mpd/mpd.jsonc"), "the built bytes carry the bridge disclosure")
+  add("T2", dist.includes("takes effect in the RUNNING process"), "the built bytes carry the LIVE half of the disclosure (a save is served in-process, never 'after a restart')")
   add("T3", !dist.includes("not bridged: a save here does not rewrite"), "the old 'not bridged' claim is DELETED from the built bytes")
   add("T4", dist.includes(notice), "the built bytes carry the §D.2 no-live-session runtime notice")
   add("T5", dist.includes("NO_LIVE_SESSION_NOTICE") && dist.includes("statusLine("), "the notice is WIRED into the status-line composition, not merely defined")
@@ -781,7 +786,8 @@ export interface TuiArmEvidence extends EvidenceBase {
 
 /**
  * The TUI arm: what can be witnessed about the TUI half WITHOUT a keystroke drive.
- *   1. the built TUI bytes carry the bridge+restart disclosure and NOT the old claim;
+ *   1. the built TUI bytes carry the bridge disclosure AND the LIVE-refresh half (never the retired
+ *      `after a restart` claim) and NOT the old `not bridged` claim;
  *   2. the built TUI bytes carry the §D.2 `no-live-session` runtime notice AND the code that
  *      publishes it on the status line (the notice must be reachable, not just defined);
  *   3. the TUI package still performs zero filesystem writes (the invariant the captain
@@ -992,23 +998,23 @@ export function selfTest(arm: string = "web"): void {
       describedBase: VALUE_INITIAL,
       fileBefore: fixture(VALUE_INITIAL),
       fileAfter: fixture(VALUE_WRITE),
-      log: 'x\n[mpd-config] settings bridge WROTE: {"writtenTo":["/ws/.mpd/mpd.jsonc"],"skipped":null,"candidates":[],"results":[{"root":"/ws","file":"/ws/.mpd/mpd.jsonc","outcome":"written"}],"applies":"restart","source":"update","revision":3}\n',
+      log: 'x\n[mpd-config] settings bridge WROTE: {"writtenTo":["/ws/.mpd/mpd.jsonc"],"skipped":null,"candidates":[],"results":[{"root":"/ws","file":"/ws/.mpd/mpd.jsonc","outcome":"written"}],"applies":"live","source":"update","revision":3}\n',
     },
     disabled: {
       mode: "disabled",
       mutate: { ok: true, detail: "status 200 revision 4" },
       fileBefore: fixture(VALUE_INITIAL),
       fileAfter: fixture(VALUE_INITIAL),
-      log: '[mpd-config] settings bridge: write-back is DISABLED by config (settingsBridge.writeBack=false or MPD_DSH_TUI_SETTINGS_BRIDGE=off) — the settings value took effect, no file was written.\n[mpd-config] settings bridge DISABLED: {"writtenTo":[],"skipped":"disabled","candidates":[],"results":[],"applies":"restart","source":"update","revision":4}\n',
+      log: '[mpd-config] settings bridge: write-back is DISABLED by config (settingsBridge.writeBack=false or MPD_DSH_TUI_SETTINGS_BRIDGE=off) — the settings value took effect, no file was written.\n[mpd-config] settings bridge DISABLED: {"writtenTo":[],"skipped":"disabled","candidates":[],"results":[],"applies":"live","source":"update","revision":4}\n',
     },
     ambiguous: {
       mode: "ambiguous",
       mutate: { ok: true, detail: "status 200 revision 5" },
       roots: ["/ws1", "/ws2"],
       files: [{ before: fixture(VALUE_WRITE), after: fixture(VALUE_WRITE) }, { before: fixture(VALUE_INITIAL), after: fixture(VALUE_INITIAL) }],
-      log: '[mpd-config] settings bridge: saved to settings — NOT written to any file: 2 live workspaces, so the target is ambiguous. Candidates: /ws1, /ws2. Keep one session live, or edit that workspace\'s .mpd/mpd.jsonc directly.\n[mpd-config] settings bridge ambiguous-multi-root: {"writtenTo":[],"skipped":"ambiguous-multi-root","candidates":["/ws1","/ws2"],"results":[],"applies":"restart","source":"update","revision":5}\n',
+      log: '[mpd-config] settings bridge: saved to settings — NOT written to any file: 2 live workspaces, so the target is ambiguous. Candidates: /ws1, /ws2. Keep one session live, or edit that workspace\'s .mpd/mpd.jsonc directly.\n[mpd-config] settings bridge ambiguous-multi-root: {"writtenTo":[],"skipped":"ambiguous-multi-root","candidates":["/ws1","/ws2"],"results":[],"applies":"live","source":"update","revision":5}\n',
     },
-    static: { mode: "static", tuiDist: "var BRIDGE_DISCLOSURE = \"a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount)\";" },
+    static: { mode: "static", tuiDist: "var BRIDGE_DISCLOSURE = \"a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect in the RUNNING process — no restart: the config service re-resolves on every settings save and on a watched edit of the project file, and the model routes (teamModels, agentRoutes, modelchain) are read per use, so the next spawn or resolve carries them\";" },
   }
   // One green artifact per mode, in the object's own insertion order.
   for (const [name, observed] of Object.entries(green)) {
@@ -1023,7 +1029,9 @@ export function selfTest(arm: string = "web"): void {
     ["W4", "write", (copy) => { copy.fileAfter = copy.fileAfter.replace("// human comment: must survive the write-back", "// gone") }, "a lost comment (F2)"],
     ["W7", "write", (copy) => { copy.log = "no bridge report here at all" }, "a boot log with no bridge report"],
     ["W8", "write", (copy) => { copy.log = copy.log.replace('"source":"update"', '"source":"provider"') }, "a provider echo doing the write-back"],
-    ["W9", "write", (copy) => { copy.log = copy.log.replace('"applies":"restart"', '"applies":"immediate"') }, "a wrong applies timing"],
+    // The W9 fault now re-injects the RETIRED timing — the stale-contract regression this control
+    // exists to catch: a report that claims "restart" for knobs the running process already serves.
+    ["W9", "write", (copy) => { copy.log = copy.log.replace('"applies":"live"', '"applies":"restart"') }, "a wrong applies timing (the retired restart claim)"],
     ["W11", "write", (copy) => { copy.mutate.resolved = 20000 }, "a resolved value the config layer never saw (the file changed but the value did not)"],
     ["W12", "write", (copy) => { copy.mutate.user = undefined }, "an empty user section (nothing for the L3 layer to merge)"],
     ["W15", "write", (copy) => { copy.describedValue = 20000 }, "a describe surface that disagrees with the written value"],
@@ -1036,6 +1044,7 @@ export function selfTest(arm: string = "web"): void {
     ["A4", "ambiguous", (copy) => { copy.log = copy.log.replaceAll('"/ws2"', '"/ws-x"') }, "a structured refusal that omits a candidate"],
     ["A5", "ambiguous", (copy) => { copy.log = copy.log.replaceAll("/ws2", "/ws-x") }, "a diagnostic that does not name every candidate"],
     ["S3", "static", (copy) => { copy.tuiDist = "not bridged: a save here does not rewrite .mpd/mpd.jsonc" }, "the stale 'not bridged' claim in the built TUI bytes"],
+    ["S2", "static", (copy) => { copy.tuiDist = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s)" }, "a built TUI that dropped the LIVE half of the disclosure (the retired restart-only text)"],
     ["S1", "static", (copy) => { copy.tuiDist = "nothing to see" }, "a built TUI without the bridge disclosure"],
   ]
   // One fault at a time, each starting from its own deep copy of a green artifact.
@@ -1053,13 +1062,14 @@ export function selfTest(arm: string = "web"): void {
   }
   // The TUI arm's pure evaluator, falsified with its own injected faults.
   // The synthetic GREEN TUI surface: the built bytes carrying every required sentence.
-  const greenTui: TuiSurfaceObserved = { dist: "NO_LIVE_SESSION_NOTICE " + TUI_NOTICE + " a save writes <workspace>/.mpd/mpd.jsonc after a restart never lost applies it to every workspace immediately statusLine( ", src: TUI_NOTICE, notice: TUI_NOTICE }
+  const greenTui: TuiSurfaceObserved = { dist: "NO_LIVE_SESSION_NOTICE " + TUI_NOTICE + " a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect in the RUNNING process — no restart never lost applies it to every workspace immediately statusLine( ", src: TUI_NOTICE, notice: TUI_NOTICE }
   // The verdict the synthetic green TUI surface must pass.
   const tuiVerdict = evaluateTuiSurface(greenTui)
   if (!tuiVerdict.ok) problems.push("self-test: the synthetic GREEN TUI surface must pass, failed: " + JSON.stringify(tuiVerdict.checks.filter((check) => !check.ok)))
   // The TUI-arm faults: the check id each must flip, its mutation and its label.
   const tuiFaults: readonly TuiFault[] = [
     ["T1", (copy) => { copy.dist = copy.dist.replace("a save writes <workspace>/.mpd/mpd.jsonc", "nothing") }, "a dist without the disclosure"],
+    ["T2", (copy) => { copy.dist = copy.dist.replace("takes effect in the RUNNING process", "waits for a restart") }, "a dist that dropped the live-refresh half of the disclosure"],
     ["T3", (copy) => { copy.dist = copy.dist + " not bridged: a save here does not rewrite" }, "the stale claim back in the dist"],
     ["T4", (copy) => { copy.dist = copy.dist.replace(TUI_NOTICE, "") }, "a dist without the §D.2 notice"],
     ["T5", (copy) => { copy.dist = copy.dist.replace("statusLine(", "") }, "a notice that is defined but never wired into the status line"],
@@ -1484,7 +1494,7 @@ export async function runWebArm(argv: string[]): Promise<number> {
   const allVerdicts = [result.verdicts.write, result.verdicts.ambiguous, result.verdicts.disabled, staticVerdict]
   result.ok = allVerdicts.every((verdict) => verdict.ok) && w2Checks.every((check) => check.ok) && result.controls.verdictGoesRed === true && sectionShapeControl.verdictGoesRed === true && result.isolation.sessionsSandboxed === true
   result.elapsedMs = Date.now() - started
-  result.notes.push("A green run proves: the front door accepted the write, the ONE live workspace file changed with comments/order intact, the log reported writtenTo + applies:'restart', two live roots refused with both candidates and wrote nothing, and the writeBack:false composition left the file byte-identical.")
+  result.notes.push("A green run proves: the front door accepted the write, the ONE live workspace file changed with comments/order intact, the log reported writtenTo + applies:'live', two live roots refused with both candidates and wrote nothing, and the writeBack:false composition left the file byte-identical.")
   result.notes.push("It does NOT prove: the TUI keystroke path (not driven here — no TTY) or the RENDERED web surface (no browser; W3 NOT-CLAIMED). It DOES prove W2: the built/served client mounts its own top-level `settings.section` LIST slot (id \"mpd\", order 20, locale \"mpdSettings\") for namespace `mpd`, with the mount deferred behind ctx.inject, and the pre-move `settings.plugin.item` card slot is GONE.")
   result.notes.push("The W2 checks carry their own measured negative control: the PRE-MOVE card registration is re-injected into the REAL built bytes and W2a/W2b must redden (controls.sectionShape.redChecks); a mutation that does not land is recorded as void and fails the run.")
   // The RAW lane stdout and the raw control reading, next to result.json + output.log.

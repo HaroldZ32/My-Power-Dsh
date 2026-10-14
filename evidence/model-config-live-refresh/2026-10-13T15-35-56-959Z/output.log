@@ -1,0 +1,10 @@
+[model-config-live-refresh] start 2026-10-13T15:35:56.959Z -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/model-config-live-refresh/2026-10-13T15-35-56-959Z
+[model-config-live-refresh] sandbox /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-model-config-live-refresh-3 web=127.0.0.1:40835 stub=127.0.0.1:33323
+[model-config-live-refresh] boot served (pid 19)
+[model-config-live-refresh] baseline: spawn ok=true child model="deepseek-v4-flash" (child log: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-model-config-live-refresh-3/home/sessions/--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.qa-model-config-live-refresh-3-ws--/69c595cf-c6f0-4838-9721-39f9a66936b1/session.v4.jsonl.zstd)
+[model-config-live-refresh] save: status 200 resolved slot3.model="deepseek-v4-flash" user="deepseek-v4-pro" base="deepseek-v4-flash"
+[model-config-live-refresh] after-save: spawn ok=true child model="deepseek-v4-pro" (child log: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-model-config-live-refresh-3/home/sessions/--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.qa-model-config-live-refresh-3-ws--/4cc0cc6c-f01b-496f-8475-3a5b41ab4e07/session.v4.jsonl.zstd)
+[model-config-live-refresh] file-edit: spawn ok=true child model="deepseek-v4-pro" (child log: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-model-config-live-refresh-3/home/sessions/--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.qa-model-config-live-refresh-3-ws--/0c47f47b-062f-47d2-98dc-0c93da870dfd/session.v4.jsonl.zstd)
+
+== boot.log tail (token lines redacted) ==
+

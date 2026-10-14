@@ -1,0 +1,262 @@
+{
+  "case": "model-config-live-refresh",
+  "startedAt": "2026-10-13T15:15:39.019Z",
+  "ok": false,
+  "boot": {
+    "pid": 21,
+    "port": 41953,
+    "stubPort": 34829,
+    "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-model-config-live-refresh-4/ws"
+  },
+  "phases": {
+    "baseline": {
+      "marker": "ac6-baseline-4",
+      "parentLog": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-model-config-live-refresh-4/home/sessions/--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.qa-model-config-live-refresh-4-ws--/session-cbf68983-da19-4d2d-b810-23e1859ee9a2/session.v4.jsonl.zstd",
+      "spawnCalledAndOk": true,
+      "spawnArgs": "{\"role\":\"Junior Engineer\",\"task\":\"Say only 'phase done'. Marker ac6-baseline-4\"}",
+      "childLog": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-model-config-live-refresh-4/home/sessions/--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.qa-model-config-live-refresh-4-ws--/a1f6503f-f09e-4576-830f-589ab8a4014f/session.v4.jsonl.zstd",
+      "childConfig": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash",
+        "reasoningEffort": "high",
+        "maxTokens": 256000
+      },
+      "stubModels": [
+        "deepseek-flash",
+        "deepseek-flash",
+        "deepseek-v4-flash",
+        "deepseek-flash"
+      ],
+      "childModel": "deepseek-v4-flash"
+    },
+    "afterSave": {
+      "marker": "ac6-after-save-4",
+      "parentLog": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-model-config-live-refresh-4/home/sessions/--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.qa-model-config-live-refresh-4-ws--/session-b8a97272-6ea1-40ba-a485-0a21051a34d8/session.v4.jsonl.zstd",
+      "spawnCalledAndOk": true,
+      "spawnArgs": "{\"role\":\"Junior Engineer\",\"task\":\"Say only 'phase done'. Marker ac6-after-save-4\"}",
+      "childLog": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-model-config-live-refresh-4/home/sessions/--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.qa-model-config-live-refresh-4-ws--/de7d81b2-b0b5-4832-8f3a-89100681fe2a/session.v4.jsonl.zstd",
+      "childConfig": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash",
+        "reasoningEffort": "high",
+        "maxTokens": 256000
+      },
+      "stubModels": [
+        "deepseek-flash",
+        "deepseek-flash",
+        "deepseek-v4-flash",
+        "deepseek-flash"
+      ],
+      "childModel": "deepseek-v4-flash"
+    },
+    "fileEdit": {
+      "marker": "ac6-file-edit-4",
+      "parentLog": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-model-config-live-refresh-4/home/sessions/--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.qa-model-config-live-refresh-4-ws--/session-55bab7f0-7692-4e66-b011-05e76c6f6f7e/session.v4.jsonl.zstd",
+      "spawnCalledAndOk": true,
+      "spawnArgs": "{\"role\":\"Junior Engineer\",\"task\":\"Say only 'phase done'. Marker ac6-file-edit-4\"}",
+      "childLog": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-model-config-live-refresh-4/home/sessions/--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.qa-model-config-live-refresh-4-ws--/eaad1669-3e26-4df0-ad0b-e4316f9dddf7/session.v4.jsonl.zstd",
+      "childConfig": {
+        "provider": "deepseek-official",
+        "model": "deepseek-v4-flash",
+        "reasoningEffort": "high",
+        "maxTokens": 256000
+      },
+      "stubModels": [
+        "deepseek-flash",
+        "deepseek-flash",
+        "deepseek-v4-flash",
+        "deepseek-flash"
+      ],
+      "childModel": "deepseek-v4-flash",
+      "file": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-model-config-live-refresh-4/.mpd/mpd.jsonc"
+    }
+  },
+  "save": {
+    "status": 200,
+    "error": null,
+    "resolved": "deepseek-v4-flash",
+    "revision": 1
+  },
+  "rowLog": [
+    "[2026-10-13T15:15:39.834Z] [mpd-config] settings bridge: the namespace-registry model is RETIRED in this harness — the mpd knobs are served as this row's config (entry \"mpd-config\") and edited through the harness's own form. The legacy file write-back and override clearing are dormant.",
+    "[2026-10-13T15:15:39.932Z] [mpd-config] entry-config update: state re-loaded from the \"mpd-config\" document (10 knob(s) in force) — no restart needed",
+    "[2026-10-13T15:15:48.171Z] [mpd-config] entry-config update: state re-loaded from the \"mpd-config\" document (10 knob(s) in force) — no restart needed",
+    ""
+  ],
+  "quotes": {
+    "baselineChildHeader": {
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "high",
+      "maxTokens": 256000
+    },
+    "afterSaveChildHeader": {
+      "provider": "deepseek-official",
+      "model": "deepseek-v4-flash",
+      "reasoningEffort": "high",
+      "maxTokens": 256000
+    },
+    "spawnArgsBaseline": "{\"role\":\"Junior Engineer\",\"task\":\"Say only 'phase done'. Marker ac6-baseline-4\"}",
+    "spawnArgsAfterSave": "{\"role\":\"Junior Engineer\",\"task\":\"Say only 'phase done'. Marker ac6-after-save-4\"}"
+  },
+  "diagnosis": "harness 0.1.7-rc.2: settings/mutate(ns=mpd-config) persists to the profile patch and fires settings/document-updated, but the entry document's resolved VALUE keeps projecting the apply-time fiber config (describe revision stays 0), so the re-loaded L4 row-knob layer freezes the old materialised defaults above the file layers — no in-process consumer can see the save until the next boot",
+  "stubTrace": [
+    {
+      "model": "deepseek-flash",
+      "tools": 0,
+      "results": 0,
+      "spawn": false
+    },
+    {
+      "model": "deepseek-flash",
+      "tools": 109,
+      "results": 0,
+      "spawn": true
+    },
+    {
+      "model": "deepseek-v4-flash",
+      "tools": 110,
+      "results": 0,
+      "spawn": false
+    },
+    {
+      "model": "deepseek-flash",
+      "tools": 109,
+      "results": 1,
+      "spawn": false
+    },
+    {
+      "model": "deepseek-flash",
+      "tools": 109,
+      "results": 0,
+      "spawn": true
+    },
+    {
+      "model": "deepseek-flash",
+      "tools": 0,
+      "results": 0,
+      "spawn": false
+    },
+    {
+      "model": "deepseek-v4-flash",
+      "tools": 110,
+      "results": 0,
+      "spawn": false
+    },
+    {
+      "model": "deepseek-flash",
+      "tools": 109,
+      "results": 1,
+      "spawn": false
+    },
+    {
+      "model": "deepseek-flash",
+      "tools": 0,
+      "results": 0,
+      "spawn": false
+    },
+    {
+      "model": "deepseek-flash",
+      "tools": 109,
+      "results": 0,
+      "spawn": true
+    },
+    {
+      "model": "deepseek-v4-flash",
+      "tools": 110,
+      "results": 0,
+      "spawn": false
+    },
+    {
+      "model": "deepseek-flash",
+      "tools": 109,
+      "results": 1,
+      "spawn": false
+    }
+  ],
+  "isolation": {
+    "ok": true,
+    "checked": 1,
+    "keys": [
+      "--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.qa-model-config-live-refresh-4-ws--"
+    ]
+  },
+  "checks": [
+    {
+      "name": "baseline: the parent log carries the spawn call + non-error result",
+      "ok": true,
+      "detail": "the harness must record the tool call AND its non-error result (parent log /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-model-config-live-refresh-4/home/sessions/--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.qa-model-config-live-refresh-4-ws--/session-cbf68983-da19-4d2d-b810-23e1859ee9a2/session.v4.jsonl.zstd)"
+    },
+    {
+      "name": "baseline: the child log was found by its phase marker",
+      "ok": true,
+      "detail": "a session log under /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-model-config-live-refresh-4/ws must carry the marker ac6-baseline-4"
+    },
+    {
+      "name": "baseline (negative): the child ran on the slot DEFAULT model before any save",
+      "ok": true,
+      "detail": "decoded child request config.model=\"deepseek-v4-flash\", expected \"deepseek-v4-flash\""
+    },
+    {
+      "name": "save: the entry-config mutate was accepted",
+      "ok": true,
+      "detail": "settings/mutate(ns=mpd-config) status 200 error undefined"
+    },
+    {
+      "name": "save: the descriptor's RESOLVED slot3.model is the saved model",
+      "ok": false,
+      "detail": "resolved=\"deepseek-v4-flash\", expected \"deepseek-v4-pro\""
+    },
+    {
+      "name": "no restart: the boot pid is the SAME process across baseline and after-save",
+      "ok": true,
+      "detail": "pid at baseline 21 vs at after-save 21"
+    },
+    {
+      "name": "after-save: the parent log carries the spawn call + non-error result",
+      "ok": true,
+      "detail": "the harness must record the tool call AND its non-error result (parent log /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-model-config-live-refresh-4/home/sessions/--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.qa-model-config-live-refresh-4-ws--/session-b8a97272-6ea1-40ba-a485-0a21051a34d8/session.v4.jsonl.zstd)"
+    },
+    {
+      "name": "after-save: the child log was found by its phase marker",
+      "ok": true,
+      "detail": "a session log under /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-model-config-live-refresh-4/ws must carry the marker ac6-after-save-4"
+    },
+    {
+      "name": "after-save: the child ran on the SAVED model, no restart",
+      "ok": false,
+      "detail": "decoded child request config.model=\"deepseek-v4-flash\", expected \"deepseek-v4-pro\""
+    },
+    {
+      "name": "after-save: the child's provider is the slot provider",
+      "ok": true,
+      "detail": "decoded child request config.provider=\"deepseek-official\""
+    },
+    {
+      "name": "isolation: every session-store key stayed inside the sandbox",
+      "ok": true,
+      "detail": "assertSessionsSandboxed checked 1 key(s)"
+    },
+    {
+      "name": "provider-side: the stub served a request for the saved model after the save",
+      "ok": false,
+      "detail": "stub models after the save: [\"deepseek-flash\",\"deepseek-flash\",\"deepseek-v4-flash\",\"deepseek-flash\"]"
+    },
+    {
+      "name": "file-edit (control): the child ran on the FILE-EDITED model, no restart",
+      "ok": false,
+      "detail": "decoded child request config.model=\"deepseek-v4-flash\", expected \"deepseek-v4-pro\" — a red here with a red C-phase names the ONE root cause: the stale entry VALUE re-loaded as the L4 row-knob layer overrides the file edit too"
+    },
+    {
+      "name": "no restart across every phase (baseline → save → file-edit)",
+      "ok": true,
+      "detail": "pid at baseline 21 vs at file-edit 21"
+    },
+    {
+      "name": "the entry-config subscription FIRED (its heartbeat is on the row log)",
+      "ok": true,
+      "detail": "row log tail: [\"[2026-10-13T15:15:39.932Z] [mpd-config] entry-config update: state re-loaded from the \\\"mpd-config\\\" document (10 knob(s) in force) — no restart needed\",\"[2026-10-13T15:15:48.171Z] [mpd-config] entry-config update: state re-loaded from the \\\"mpd-config\\\" document (10 knob(s) in force) — no restart needed\",\"\"]"
+    }
+  ],
+  "elapsedMs": 16248
+}

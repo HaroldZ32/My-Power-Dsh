@@ -230,8 +230,13 @@
 
   /** The settings card module's surface: the one method this entry calls on it. */
   interface SettingsCardModule {
-    /** Mount the card's own top-level settings section. */
-    mountSettingsCard: (ctx: ClientContext) => unknown
+    /**
+     * Mount the card's own top-level settings section. The options mirror the card's own
+     * `MountOptions`; the one member this entry provides is `fetchJson` — the ENTRY-owned JSON
+     * reader the card's effective-value block reads the live `/plugins/mpd/model-config` route
+     * through (the card itself does no I/O; this module is the one allowed to reach the network).
+     */
+    mountSettingsCard: (ctx: ClientContext, options?: { fetchJson?: (url: string) => Promise<unknown> }) => unknown
   }
 
   /** One teammate row of the shared board. */
@@ -1840,9 +1845,14 @@
     // The settings section: the Web HALF of the same `mpd` namespace the TUI /settings section
     // edits, mounted as its OWN top-level `MPD` section of the settings dialog (w14) — it no longer
     // rides the Plugins tab. Its mount is deferred (the settings scope is a plugin-provided
-    // service, so it is awaited with ctx.inject, never declared here).
+    // service, so it is awaited with ctx.inject, never declared here). The ENTRY also hands the
+    // card its JSON reader (R3): the card does no I/O of its own, so THIS module — the one allowed
+    // to reach the network — lends it `request`, which the card uses for the live
+    // `/plugins/mpd/model-config` read behind its effective-value block.
     try {
-      loadSettingsCard().mountSettingsCard(ctx);
+      loadSettingsCard().mountSettingsCard(ctx, {
+        fetchJson: (url: string): Promise<unknown> => request(url, { headers: { accept: "application/json" } }),
+      });
     } catch (error) {
       console.warn("[mpd] settings card mount failed: " + String(error));
     }

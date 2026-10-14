@@ -328,7 +328,7 @@ describe("read-in precedence (design §1.1/§10.4, U12)", () => {
     apply(h.ctx)
     expect(h.provided.mpdConfig.get("bridge")).toBeUndefined()
     expect(h.provided.mpdConfig.get()).toEqual({ ulw: { maxRounds: 9 } })
-    expect(h.provided.mpdConfig.states().applies).toBe("restart") // U17
+    expect(h.provided.mpdConfig.states().applies).toBe("live") // U17
   })
 
   test("with the namespace unserved the file layers still resolve (degraded, not fatal)", () => {
@@ -364,7 +364,7 @@ describe("the write-back target rules (design §A.1/§10.5)", () => {
     const report = h.provided.mpdConfig.states().writeback
     expect(report.writtenTo).toEqual([file])
     expect(report.results[0].outcome).toBe("written")
-    expect(report.applies).toBe("restart")
+    expect(report.applies).toBe("live")
     expect(report.source).toBe("update")
     expect(bridgeLines(h.logs).at(-1)?.message).toContain("WROTE")
   })

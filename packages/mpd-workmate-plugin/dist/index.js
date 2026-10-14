@@ -216,6 +216,31 @@ function dshSeamInject(...names) {
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
 var TEAM_TASK_METHODS = ["createTask", "getTask", "listTasks", "updateTask"];
+function modelDeclaresNoEffort(catalog, provider, model) {
+  const entry = catalog.providers.find((p) => p.id === provider)?.models.find((m) => m.id === model);
+  return entry !== undefined && Array.isArray(entry.efforts) && entry.efforts.length === 0;
+}
+async function withSupportedEffort(dsh, route) {
+  if (route === undefined)
+    return route;
+  const effort = typeof route.reasoningEffort === "string" ? route.reasoningEffort : "";
+  if (effort === "")
+    return route;
+  if (typeof dsh?.llmCatalog !== "function")
+    return route;
+  let catalog;
+  try {
+    catalog = await dsh.llmCatalog();
+  } catch {
+    return route;
+  }
+  if (!modelDeclaresNoEffort(catalog, route.provider, route.model))
+    return route;
+  const adapted = { ...route };
+  delete adapted.reasoningEffort;
+  rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${route.provider}/${route.model} declares no reasoning efforts — the "${effort}" effort is omitted (a keyword this model cannot take fails the call)`);
+  return adapted;
+}
 function textBlock(content) {
   return [{ type: "text", text: typeof content === "string" ? content : String(content ?? "") }];
 }
@@ -2085,6 +2110,32 @@ function apply(ctx) {
   function rolesService() {
     return ctx.get ? ctx.get("mpdRoles") : undefined;
   }
+  function configService() {
+    try {
+      return ctx.get ? ctx.get("mpdConfig") : undefined;
+    } catch {
+      return;
+    }
+  }
+  function spawnRouteOf(meta) {
+    const live = configService();
+    if (typeof live?.teamModelRouteOf === "function") {
+      const value = live.teamModelRouteOf(meta.baseName);
+      if (value !== undefined && value !== null && typeof value === "object") {
+        return {
+          provider: String(value.provider ?? ""),
+          model: String(value.model ?? ""),
+          ...typeof value.reasoningEffort === "string" && value.reasoningEffort !== "" ? { reasoningEffort: value.reasoningEffort } : {}
+        };
+      }
+    }
+    try {
+      const base = resolveBase(meta.baseName);
+      if (base.provider !== "" && base.model !== "")
+        return { provider: base.provider, model: base.model };
+    } catch {}
+    return { provider: meta.provider, model: meta.model };
+  }
   function validatedReadonlyDeny(agent) {
     const scope = dsh.agentScope(agent);
     if (scope === undefined) {
@@ -2228,15 +2279,18 @@ Context:
 Work with the tools your role requires (read-only workmates must never modify anything).` + " BEFORE your final report, call mpd_workmate_reflect with a concise self-summary (task / outcome / what you learned / optional persona_delta / optional new note) so your workmate persona and memory evolve. Then end with ONLY the structured report (name/summary/recommendation/details/evidence).";
       noteSpawnStart(key);
       try {
+        const decided = spawnRouteOf(meta);
+        const route = await withSupportedEffort(dsh, decided) ?? decided;
         const result = await dsh.spawnAgent({
           label: key,
           prompt,
           parent: exec.agent,
           signal: exec.signal,
-          provider: meta.provider,
-          model: meta.model,
+          provider: route.provider,
+          model: route.model,
           persona,
           outputSchema: REPORT_SCHEMA,
+          ...route.reasoningEffort === undefined ? {} : { agentOptions: { reasoningEffort: route.reasoningEffort } },
           ...meta.readonly ? { toolFilter: { deny: validatedReadonlyDeny(exec.agent) } } : {}
         });
         const st = result.structured ?? {};

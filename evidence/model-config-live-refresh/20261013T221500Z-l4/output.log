@@ -1,0 +1,18 @@
+== lane L4 gate tails (bun, repo root) ==
+-- bun test packages (full) --
+ 3 skip
+ 0 fail
+ 25127 expect() calls
+Ran 1896 tests across 119 files. [21.11s]
+-- bun run typecheck --
+$ tsgo --noEmit
+exit=0
+-- bun run verify:comments --
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+-- node scripts/verify-dist-fresh.ts --
+[verify-dist-fresh] ok: 31/31 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 653ms
+-- bun run verify:docs --
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=47 failed=0 violations=0 exempt=24 derived=3 links=436 dead=0 — PASS
+-- bun run verify:manifest --
+VERDICT: PASS — the install-time rules and the packaging contract hold.

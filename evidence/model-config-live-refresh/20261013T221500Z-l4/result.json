@@ -1,0 +1,43 @@
+{
+  "lane": "L4",
+  "wave": "fix/model-config-live-refresh",
+  "contract": ".mpd/plans/model-config-live-refresh.md",
+  "summary": "R3 see-before-you-edit display + R2 agentRoutes front door in the web settings card and the TUI settings//model menu; corrected restart disclosures; the pre-existing volatileForm comment-gate fix.",
+  "filesChanged": [
+    "packages/mpd-bundle-plugin/src/settings-card.ts",
+    "packages/mpd-bundle-plugin/src/web-client.ts",
+    "packages/mpd-bundle-plugin/src/model-config-web.ts (new)",
+    "packages/mpd-bundle-plugin/src/index.ts",
+    "packages/mpd-bundle-plugin/test/settings-card.test.ts",
+    "packages/mpd-bundle-plugin/test/model-config-route.test.ts (new)",
+    "packages/mpd-bundle-plugin/test/watchdog-routes-boot.test.ts",
+    "packages/mpd-bundle-plugin/client.js",
+    "packages/mpd-tui-plugin/src/settings.ts",
+    "packages/mpd-tui-plugin/src/model-menu.ts",
+    "packages/mpd-tui-plugin/src/index.ts",
+    "packages/mpd-tui-plugin/test/plugin.test.ts",
+    "packages/mpd-tui-plugin/test/model-menu.test.ts",
+    "packages/mpd-config-plugin/src/settings-schema.ts",
+    "packages/mpd-config-plugin/test/team-models.test.ts",
+    "dist rebuilt: mpd-config-plugin, mpd-tui-plugin, mpd-bundle-plugin, mpd-roster-provider-plugin (fan-out), client.js"
+  ],
+  "crossLaneTouches": [
+    "packages/mpd-config-plugin/src/settings-schema.ts — the front-door knob list (SETTINGS_KNOBS +33 agentRoutes rows) and the two disclosure constants both front doors render; the L1-landed comment at the agentRoutes schema key reserved the front-door rows for L4 ('the editing surface is L4's lane').",
+    "packages/mpd-bundle-plugin/src/web-client.ts — one wiring line: the client ENTRY hands the card its fetchJson reader (the card's own isolation pin forbids any I/O in the card source).",
+    "packages/mpd-bundle-plugin/src/index.ts + watchdog-routes-boot.test.ts — the model-config route registers beside the watchdog routes on the same rebind-retried path.",
+    "packages/mpd-roster-provider-plugin/dist/index.js — derived-only rebuild (it inlines settings-schema); no source change."
+  ],
+  "gates": {
+    "bun test packages": "1893 pass / 0 fail (3 skip)",
+    "bun run typecheck": "exit 0",
+    "bun run verify:comments": "PASS",
+    "node scripts/verify-dist-fresh.ts": "31/31 targets fresh (pinned bun 1.4.0)",
+    "bun run verify:docs": "PASS",
+    "bun run verify:manifest": "PASS",
+    "bun run verify:rows": "PASS"
+  },
+  "notClaimed": [
+    "No browser rendered the web card (no browser in this environment) — the card-side assertions run in the offline hook runtime, the same bound stated by the file's own header.",
+    "The bridge.ts `applies: 'restart'` structured report field (mpd-config-plugin, L1's surface) still says restart; left for the integrator, reported as a finding."
+  ]
+}

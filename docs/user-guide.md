@@ -368,9 +368,10 @@ transcript line is claimed. The full list is §10 NOT-CLAIMED of [`tui.md`](tui.
 
 ### 7.2 The `/settings` screen and the `mpd.jsonc` bridge
 
-`/settings` edits the real `mpd.jsonc` knobs — 25 in all (the original 13 plus the twelve
-`teamModels` slot leaves, which are selection-only fields whose options come from the live model
-catalog, with the declared lists as fallback), among them `hashline.maxDiffChars`,
+`/settings` edits the real `mpd.jsonc` knobs — 59 in all (the original 13, the twelve
+`teamModels` slot leaves and the 33 `agentRoutes` leaves — eleven members × three — plus the TUI
+surface's own knob; the model-route leaves are selection-only fields whose options come from the live
+model catalog, with the declared lists as fallback), among them `hashline.maxDiffChars`,
 `commentChecker.autoCheck`, `ulw.maxRounds`, `memory.vcs`, `team.stateDir` and `boulder.dir` — under the
 harness settings namespace `mpd`. That namespace is served by `packages/mpd-config-plugin`, whose base
 is the workspace FILE value, so the screen opens on your file rather than on a schema default; a save
@@ -379,10 +380,12 @@ and trailing commas — the same write-back the Web GUI card triggers (§3.1 of 
 
 Two things to know before you rely on it:
 
-- **It takes effect after a restart.** The mpd plugins capture their configuration when they mount
-  (`applies: "restart"`), and the host exposes no disposal handle for a live namespace registration, so
-  a saved knob is used by the plugins after you restart the session. The on-screen hint says exactly
-  that.
+- **A save lands in the running process.** The config service re-resolves on every settings save and on
+  a watched edit of `<workspace>/.mpd/mpd.jsonc`, and the model-config knobs (`modelchain.*`,
+  `teamModels.slot*`, `agentRoutes.*`) are resolved per use, so a saved change reaches the next
+  `mpd_config_get`, `mpd_modelchain_resolve` or spawn with **no restart** (`mpd_config_reload` forces a
+  re-read). The other knobs still follow the mount-time capture — §9.1 states it per knob. The
+  on-screen hint says exactly this.
 - **Two named skip cases.** The settings path carries no workspace identity, so the write target is
   the live session workspaces at the moment of the save: with **no** live session the save is stored in
   the host settings document and reported as `no-live-session`; with **more than one** live workspace it
@@ -457,7 +460,8 @@ strings, the state scopes and the explicit NOT-CLAIMED list, read [`tui.md`](tui
 | `extensions.mcp.*` | mpd-ext | MCP bridge defaults: `enabled`, `connectTimeoutMs`, `toolCallTimeoutMs` |
 | `modelchain.*` | mpd-modelchain | provider/model chains per roster role |
 | `team.stateDir` | the mpd plugins that read legacy team records (watchdog web routes, compaction, the TUI team scene, the workmate in-use check) | where those records live (defaults to `.mpd/team`). The official team plugin does not read it |
-| `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate (via mpd-config) | the four **team-model slots**: `{provider, model, reasoningEffort}` per slot, defaulting to `deepseek-official` / `deepseek-v4-flash` at `max`/`high`/`high` (slot 4: `deepseek-official` / `deepseek-v4-flash-vision-exp` at `high`). Slot 1 routes Architect/Planner/Reviewer/Lead/Senior Engineer, slot 2 Researcher/Explorer/Plan Reviewer, slot 3 Deep Worker/Junior Engineer, slot 4 Vision Analyst — the vision member, whose slot model MUST accept image input. They are resolved by the ONE-SHOT consult paths (`mpd_role_spawn`, `mpd_workmate_spawn`), which pass the route explicitly; a teammate created by `spawn_teammate` inherits the Lead's route instead (§6). A slot that cannot be resolved fails the corresponding spawn **loudly** (the member and the slot are named, nothing is written) and an effort is never silently clamped; the ONE exception is a model whose live catalog entry declares NO reasoning efforts at all — it is sent none, so the spawn still runs (the runtime half of the adaptation the settings pickers already make). Editable as selection-only fields in **Settings → MPD** and the TUI `/settings` section; a saved change reaches the file immediately and the plugins after a restart. |
+| `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate (via mpd-config) | the four **team-model slots**: `{provider, model, reasoningEffort}` per slot, defaulting to `deepseek-official` / `deepseek-v4-flash` at `max`/`high`/`high` (slot 4: `deepseek-official` / `deepseek-v4-flash-vision-exp` at `high`). Slot 1 routes Architect/Planner/Reviewer/Lead/Senior Engineer, slot 2 Researcher/Explorer/Plan Reviewer, slot 3 Deep Worker/Junior Engineer, slot 4 Vision Analyst — the vision member, whose slot model MUST accept image input. They are resolved by the ONE-SHOT consult paths (`mpd_role_spawn`, `mpd_workmate_spawn`), which pass the route explicitly; a teammate created by `spawn_teammate` inherits the Lead's route instead (§6). A slot that cannot be resolved fails the corresponding spawn **loudly** (the member and the slot are named, nothing is written) and an effort is never silently clamped; the ONE exception is a model whose live catalog entry declares NO reasoning efforts at all — it is sent none, so the spawn still runs (the runtime half of the adaptation the settings pickers already make). Editable as selection-only fields in **Settings → MPD** and the TUI `/settings` section, which show the current effective value before you edit it; a saved change is re-read in the running process — the next spawn or resolve carries it, no restart (`mpd_config_reload` forces it). |
+| `agentRoutes.<name>.*` | mpd-roles / mpd-workmate (via mpd-config) | per roster base NAME (`Architect`, `Researcher`, `Planner`, `Deep Worker`, `Senior Engineer`, `Lead`, `Explorer`, `Reviewer`, `Plan Reviewer`, `Vision Analyst`, `Junior Engineer`) → `{provider?, model?, reasoningEffort?}`, each leaf optional. **Precedence, per leaf:** `agentRoutes[<name>]` > that member's `teamModels.slot{N}` > the built-in default. A workmate re-resolves its base's route on every spawn (an in-flight task keeps the route it started with; the next task carries the change; the frozen `meta.provider`/`meta.model` is provenance only). An unknown member name or a malformed entry fails validation **loudly** — it is never silently ignored. Editable in **Settings → MPD** and the TUI `/settings` section, which show the current effective value before you edit it. |
 
 `mpd-codegraph` is deliberately absent from this table: it takes `autoInit`, `initTimeoutMs`,
 `cooldownMs` and `binary` from its **bundle-patch row** options (read at apply time), and no plugin
@@ -467,15 +471,22 @@ reads a `codegraph.*` key through `mpd.jsonc`. Its row ships `autoInit: true` an
 ### 9.1 When a saved knob takes effect
 
 This is the part users get wrong, so it is stated per knob. The general rule: a consumer reads its
-configuration through the `mpdConfig` service when it **mounts** (`apply()`), so a value that changed
-— hand-edited in `.mpd/mpd.jsonc` or `$DSH_HOME/mpd.jsonc`, or saved through **Settings → MPD** /
-the TUI `/settings` screen — changes plugin **behaviour** after a **`dsh` restart**.
+configuration through the `mpdConfig` service when it **mounts** (`apply()`), so for most knobs a value
+that changed — hand-edited in `.mpd/mpd.jsonc` or `$DSH_HOME/mpd.jsonc`, or saved through
+**Settings → MPD** / the TUI `/settings` screen — changes plugin **behaviour** after a **`dsh`
+restart**. The model-config knobs are the exception.
 
-Two things do not wait for that restart, and both are useful:
+Three things do not wait for that restart, and all are useful:
 
+- **The model-config knobs are live-refreshed in-process.** The config service re-resolves on every
+  settings save and on a watched edit of `<workspace>/.mpd/mpd.jsonc`, and the model routes
+  (`modelchain.*`, `teamModels.slot*`, `agentRoutes.*`) are read per use, so the next
+  `mpd_modelchain_resolve` call or the next one-shot spawn / workmate spawn / teammate start carries the
+  new route with no restart. `mpd_config_reload` remains the manual fallback when you want to force a
+  re-read.
 - **The read-back is always immediate.** `mpd_config_get` and `mpd_config_reload` re-read the layers
   on every call and report the new resolved value right away. That is how you verify an edit landed,
-  even while the already-mounted plugin still holds its captured value.
+  even while an already-mounted consumer still holds its captured value.
 - **`watchdog.*` is re-read live.** The watchdog re-resolves its knobs at mount, on a settings-document
   update and once per tick, so a file edit reaches it in THIS process with no restart;
   `session-watchdog-status` prints the per-knob LIVE vs FILE value with its `restartRequired` flag.
@@ -488,10 +499,11 @@ Two things do not wait for that restart, and both are useful:
 | `goal.*` | mpd-goal | at mount | after a restart |
 | `memory.*` | mpd-memory | at mount | after a restart |
 | `boulder.dir` | mpd-boulder | at mount | after a restart |
-| `modelchain.*` | mpd-modelchain | at mount | after a restart |
+| `modelchain.*` | mpd-modelchain | per call, from the live service | live — no restart: every `mpd_modelchain_resolve` re-reads the overlay, so a settings save or a file edit changes the next resolution; `mpd_config_reload` forces a re-read |
 | `extensions.enable` / `.disable` / `.mcp.*` | mpd-ext | when the plugin starts (process-level) | after a restart |
 | `team.stateDir` | the mpd plugins that read legacy team records, through the live service | per call | right after the service re-reads the file (`mpd_config_reload`, or any settings save). These are LEGACY records: the official team plugin keeps its roster, mailbox and board in the Lead's session log, not here |
-| `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate, resolved at the one-shot consult paths (`mpd_role_spawn`, `mpd_workmate_spawn`) | at spawn | the next one-shot spawn: a settings save establishes the file watcher and re-reads, so no restart is needed; after a hand edit, call `mpd_config_reload` once (or restart) so the resolve reads the new value. A `spawn_teammate` teammate is NOT routed by these slots |
+| `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate, resolved at the one-shot consult paths (`mpd_role_spawn`, `mpd_workmate_spawn`) | at spawn, from the live service | the next one-shot spawn: a settings save or a hand edit of `<workspace>/.mpd/mpd.jsonc` is re-read in-process, so no restart is needed; `mpd_config_reload` forces a re-read. A `spawn_teammate` teammate is NOT routed by these slots |
+| `agentRoutes.<name>.*` | mpd-roles / mpd-workmate, resolved at the same one-shot consult paths | at spawn, from the live service | the next one-shot spawn or workmate spawn for that member: `agentRoutes[<name>]` outranks the member's `teamModels.slot{N}` leaf, which outranks the built-in default, per leaf. Unknown member names and malformed entries fail validation loudly |
 | `watchdog.*` | mpd-team-watchdog | at mount, on a settings update, and every tick | live — no restart |
 
 `mpd-codegraph`'s knobs are the exception that proves the rule: they are patch-row options
@@ -618,9 +630,11 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp   # start from a working skele
 - **CodeGraph tools answer nothing** → run `/mpd-codegraph` to build `.codegraph/codegraph.db`, and
   install `@colbymchenry/codegraph` or set `MPD_DSH_CODEGRAPH_BIN` (its primary spelling
   `MPD_CODEGRAPH_BIN` is read first).
-- **A knob you saved does not apply** → the plugins capture their configuration at mount: restart the
-  session. `mpd_config_get` proving the new value is NOT proof that the running plugin acts on it
-  (§9.1 says which knobs are live instead).
+- **A knob you saved does not apply** → the model-config knobs (`modelchain.*`, `teamModels.slot*`,
+  `agentRoutes.*`) are live-refreshed: re-read with `mpd_config_get` / `mpd_modelchain_resolve`, or force
+  it with `mpd_config_reload`. Every other knob is captured at mount, so restart the session — and
+  `mpd_config_get` proving the new value is NOT proof that a mount-captured plugin acts on it (§9.1
+  lists which knobs are live instead).
 - **A document link 404s after an upgrade** → the design document was RENAMED in this release (it used
   to be `architecture.md`, and `docs/design.zh-CN.md` is the Chinese twin of the current name), so an
   older copy of these docs points at a file that no longer exists. Reinstall the bundle (`git pull`,
