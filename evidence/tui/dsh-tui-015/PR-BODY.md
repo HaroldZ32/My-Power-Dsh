@@ -39,7 +39,8 @@ user-agreed clauses:
   re-measure that 0.15.0's `PanelBar` PAINTS plugin icons again — the 0.14 reading is superseded), and
   ONE `CHANGELOG.md` v0.13.0 entry covering the full 0.12.0 delta.
 
-**Measured evidence** (all under `evidence/tui/dsh-tui-015/`):
+**Measured evidence** (all under `evidence/tui/dsh-tui-015/`; the C1 residual `0.14.0` survivors are
+enumerated by class in `c1-residual-classes.md`):
 
 | Record | Path |
 |---|---|
@@ -85,9 +86,10 @@ blind verifier (rec-20261014T162338-8813c6, finding B-1).
 
 - **C1 载波** — 全部发布载波改名为 `0.15.0`（docker 四件套与 compose 双默认值、`docker/tui-lane.sh`、
   `docker/ui/**`、`dsh-distribution.json` 的 `host-tui` 引用、`skills/dsh-qa/scripts/` 七处载波、
-  `scripts/mpd-tui-panels.ts` 头部与 docker 双语 README）。**刻意的非移动项**照旧重申：
+  `scripts/mpd-tui-panels.ts` 头部与 docker 双语 README）。**刻意的非移动项（四项全列）**照旧重申：
   `MPD_E2E_DSH_VERSION` 保持 `0.2.0-rc.2`（harness peer 范围未变）、`compat.hosts` 保持 0.10.1
-  准入实测记录、生态规范号 `0.15` 永不移动、带日期的历史语句保持可读。
+  准入实测记录、生态规范号 `0.15` 永不移动、带日期的历史语句保持可读；宿主新增的可选 peers 与其
+  `zod` 依赖属宿主内部，本包零反应。
 - **C2 面板保持器改道** — 侧边栏启用列表保持器**并入宿主原生自愈**：宿主自愈（`hostVersion >=
   0.15.0`，复用既有探针，不新增宿主触点）时保持器退位、零写入；旧宿主上 0.14 行为逐字节保留。
   用户在 /settings 里显式移除两个 MPD 面板后，本会话内保持移除、保持器不修复。
@@ -104,7 +106,8 @@ blind verifier (rec-20261014T162338-8813c6, finding B-1).
   澄清句、`packages/mpd-tui-plugin` 双语 README（含重测结论：0.15.0 的 PanelBar **重新绘制插件图标**，
   0.14 的测量被取代）、`CHANGELOG.md` 一条覆盖 0.12.0 全量增量的 v0.13.0 条目。
 
-**实测证据**（均在 `evidence/tui/dsh-tui-015/`）：宿主差异冻结基准 `host-diff/FACTS.md`；8 车道
+**实测证据**（均在 `evidence/tui/dsh-tui-015/`；C1 残留 `0.14.0` 已按类清点于
+`c1-residual-classes.md`）：宿主差异冻结基准 `host-diff/FACTS.md`；8 车道
 对照表 `lane-repair2/step3-lanes.md`；C2 真 PTY 臂 `lane-Q/c2-real-pty/`；C7 守卫与硬闸门 `guard/`；
 决策缝修复与具名宿主闸门 `decision-fix/REPORT.md` + `triage-reds/REPORT.md`；dist 重建与零写入归属
 `dist-rebuild/`。

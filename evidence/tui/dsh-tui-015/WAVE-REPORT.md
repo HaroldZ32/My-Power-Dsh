@@ -48,14 +48,14 @@ are `docs/tui.md` + `docs/tui.zh-CN.md` §11.7, the README pairs and `CHANGELOG.
   forked/resumed captain keeps captaincy via lead history. **Hard gate**: `team-dispatch-guard` (17
   self-test arms + a 21-arm real lane) inside `bun run test:qa`.
 - **C4/C5** — §11.7 bilingual, the `tuiChannel` sentence, the README pair refresh, ONE CHANGELOG
-  v0.13.0 entry covering the full 0.12.0 delta; `VENDOR_LOCK` re-pins as recorded in §5.9 (a
+  v0.13.0 entry covering the full 0.12.0 delta; `VENDOR_LOCK` re-pins as recorded in §5 item 9 (a
   declared deviation from the one-re-pin shape).
 
 ## 3. Gates and real-machine evidence
 
 | Evidence | Result |
 |---|---|
-| Static gates at the committed revision | typecheck exit 0 · docs PASS (47 pairs / 0 violations / 0 dead links) · rows 35 ids · comments PASS (**403** files / **35658** declarations, measured at HEAD) · manifest PASS (**982** packed files, 0 required absent, measured at HEAD) · dist 31/31 fresh (pinned bun 1.4.0) · vendor — see §5.9: STALE at the wave's own commits (the second-seat verifier found it red at HEAD, B-1) and PASS only after the follow-up re-pin on the settled tree (381 files, treeSha 6605124694cd…) · verify:gates 8/8 after that repair · test:qa all self-tests passed · `bun test packages` 1939 / 3 skip / 0 fail |
+| Static gates at the committed revision | typecheck exit 0 · docs PASS (47 pairs / 0 violations / 0 dead links) · rows 35 ids · comments PASS (**403** files / **35658** declarations, measured at HEAD) · manifest PASS (**982** packed files, 0 required absent, measured at HEAD) · dist 31/31 fresh (pinned bun 1.4.0) · vendor — see §5 item 9: STALE at the wave's own commits (the second-seat verifier found it red at HEAD, B-1) and PASS only after the follow-up re-pin on the settled tree (381 files, treeSha 6605124694cd…) · verify:gates 8/8 after that repair · test:qa all self-tests passed · `bun test packages` 1939 / 3 skip / 0 fail |
 | Pack closure | FINAL (re-pack as the LAST write, closure immediately after, log persisted at `evidence/tui/dsh-tui-015/pack-closure.log`): **606 files compared, 606 identical, 0 drift, 0 expected-after-pack**, pack stamp **`2026-10-14T16:43:47.875Z`** — the log is the anchor. (An earlier closure, 605/605 at `2026-10-14T11:38:16.076Z`, describes an earlier tree; the FINAL figures below are the committed revision's.) |
 | Sandbox TUI lanes (installed 0.15.0) | **8 of 8 match the frozen expected-status table**: tui-mount PASS · tui-deps-ctrla PASS · tui-panels red with `tuiRenderers` ONLY · tui-settings-bridge PASS · tui-team-surface red with `H4` ONLY · tui-admission red on arm3 ONLY (declared host gate) · tui-distribution SKIP absent-fixture · tui-spec-conformance SKIP absent-fixture |
 | Docker source lane (real machine, `--require-docker`) | `evidence/docker/client-install/2026-10-14T13-51-46Z`: 118 assertions, **85 pass / 0 FAIL / 33 NULL**, driver exit 0, container exit 0 — all 22 `tui.*` records true (install → mount → real PTY: merged panel, team scene, graph edges/content, Ctrl+A intact), browser lane green. (A superseded 85/0/33-era claim is NOT reused: see §6 for the four final rows.) |
@@ -97,14 +97,14 @@ own union is the writer). Evidence: `evidence/tui/dsh-tui-015/lane-Q/c2-real-pty
    backtick command substitutions, F3 a metadata-only registry probe that a tarball-blackholed registry
    could pass); the browser prerequisite was a Playwright CDN transport issue fixed by pin + mirror.
 
-7. **`VENDOR_LOCK.json` needed THREE writes, not one.** The first two re-pins each UNDERCOUNTED their
+9. **`VENDOR_LOCK.json` needed THREE writes, not one.** The first two re-pins each UNDERCOUNTED their
    own commit's `skills/` tree (378 locked vs 380 tracked at `4401234a`; 380 locked vs 381 at
    `e2938953`), so `verify:vendor` was RED at HEAD; the second-seat verifier caught it (record
    `rec-20261014T162338-8813c6`, finding B-1) and the follow-up re-pin on the settled tree (381
    files, `treeSha 6605124694cd…`) turned `verify:vendor` PASS and `verify:gates` 8/8. The
    one-re-pin-per-wave shape broke because a post-integration oneclick repair added `skills/**`
    bytes; this is a declared deviation, and §3's earlier claim was corrected rather than smoothed.
-8. **A second-seat Loop B FAIL was recorded and its findings acted on**: B-1 (the stale lock, above),
+10. **A second-seat Loop B FAIL was recorded and its findings acted on**: B-1 (the stale lock, above),
    B-2 (documents asserting a green the revision did not carry — corrected here and in the PR body),
    B-3 (the packed-manifest fix's runtime proof — satisfied by the oneclick run below), B-4 (loop
    independence — a fresh sealed seat records Loop A's PASS and re-verifies Loop B).
