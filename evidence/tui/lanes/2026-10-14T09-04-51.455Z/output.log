@@ -1,0 +1,27 @@
+dsh-tui home fixture=.mpd/recon/qa/tui-lanes/tui-015/home/.dsh-tui/onboarding.json, .mpd/recon/qa/tui-lanes/tui-015/home/.dsh-tui/agent-preset.json preset=mpd
+user layer wiped for a clean pre-state: .mpd/recon/qa/tui-lanes/tui-015/home/.dsh-tui/settings.json
+hunt[root/side-panel-group] round 1: target visible=false focus=3
+hunt[root/side-panel-group] round 2: target visible=false focus=9
+hunt[root/side-panel-group] round 3: target visible=false focus=15
+hunt[root/side-panel-group] round 4: target visible=false focus=21
+hunt[root/side-panel-group] round 5: target visible=false focus=27
+hunt[root/side-panel-group] round 6: target visible=false focus=33
+hunt[root/side-panel-group] round 7: target visible=false focus=39
+hunt[root/side-panel-group] round 8: target visible=false focus=45
+hunt[root/side-panel-group] round 9: target visible=false focus=45
+hunt[root/side-panel-group] round 10: target visible=false focus=45
+hunt[root/side-panel-group] round 11: target visible=false focus=45
+hunt[root/side-panel-group] round 12: target visible=false focus=45
+hunt[root/side-panel-group] round 13: target visible=false focus=45
+hunt[root/side-panel-group] round 14: target visible=false focus=45
+hunt[root/side-panel-group] round 15: target visible=false focus=45
+side-panel group hop: opened=false
+pane after first untick: rows=0 checked=0
+pane after second untick: rows=0 checked=0
+settle[0] csv=undefined actTokens=[]
+settle[1] csv=undefined actTokens=[]
+settle[2] csv=undefined actTokens=[]
+settle[3] csv=undefined actTokens=[]
+settle[4] csv=undefined actTokens=[]
+builtin re-apply trigger fired twice: false
+negative control: reddened=true restored=true

@@ -429,4 +429,43 @@ describe("logging", () => {
     withLogger.info("hello")
     expect(seen).toEqual(["[tag] hello"])
   })
+
+  test("the FILE sink is mirrored even when the host logger takes the line", () => {
+    // THE T16-OBS FIX, pinned. `emit` used to RETURN after the host logger call, so MEASURED in the
+    // dsh-tui 0.15.0 lane the workspace's `mpd-tui.log` carried only `[mpd-tui-adapter]` lines and 0
+    // `[mpd-tui]` ones: this package's own diagnostics — including the decision seam's disclosure —
+    // were unobservable exactly when they were needed. A regression here is silent, which is why the
+    // arm asserts the SINK, not the logger.
+    /** The lines the host logger received, in call order. */
+    const hostLines: string[] = []
+    /** The lines the FILE sink received, in call order. */
+    const fileLines: string[] = []
+    /** The composition a real dsh-tui boot has: a host logger AND a workspace file sink. */
+    const log = createLog(
+      { info: (m: string) => hostLines.push(m), warn: (m: string) => hostLines.push(m), debug: (m: string) => hostLines.push(m) },
+      "mpd-tui",
+      {},
+      () => ({ write: (line: string) => fileLines.push(line) }),
+    )
+    log.info("a normal line")
+    log.warn("a refusal")
+    log.debug("a wiring detail")
+    // The host logger still takes every line at every level …
+    expect(hostLines).toEqual(["[mpd-tui] a normal line", "[mpd-tui] a refusal", "[mpd-tui] a wiring detail"])
+    // … and the FILE carries info/warn. `debug` stays gated by `DSH_TUI_DEBUG` even here, exactly as
+    // the module header documents: the file is a record of what a user would otherwise have been told.
+    expect(fileLines).toEqual(["[mpd-tui] a normal line", "[mpd-tui] a refusal"])
+  })
+
+  test("the debug gate opens for the FILE sink too when DSH_TUI_DEBUG is set", () => {
+    // The other half of the same contract: in the diagnostic mode a QA lane boots in
+    // (`DSH_TUI_DEBUG=1`) a debug line DOES reach the file, which is what makes the seam's own
+    // wiring details readable on disk.
+    /** The lines the FILE sink received with the debug gate open. */
+    const fileLines: string[] = []
+    /** A sink-only logger with the diagnostic env var set. */
+    const log = createLog(undefined, "mpd-tui", { DSH_TUI_DEBUG: "1" }, () => ({ write: (line: string) => fileLines.push(line) }))
+    log.debug("a wiring detail")
+    expect(fileLines).toEqual(["[mpd-tui] a wiring detail"])
+  })
 })

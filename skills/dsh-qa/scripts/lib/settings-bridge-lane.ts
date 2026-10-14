@@ -716,6 +716,48 @@ export interface TuiSurfaceObserved {
 /** The §D.2 runtime notice the TUI prints when a settings save has no live session to write to. */
 export const TUI_NOTICE = "saved to settings — not yet written to any .mpd/mpd.jsonc (no live session)"
 
+/** The filesystem-writing API names the TUI package's OWN modules must never carry (check `T7`). */
+export const TUI_WRITE_APIS: readonly string[] = ["writeFileSync", "appendFileSync", "mkdirSync", "cpSync", "rmSync", "unlinkSync", "createWriteStream"]
+
+/** The path comment `bun build` prints above every bundled module, e.g. `// packages/<pkg>/src/x.ts`. */
+const BUNDLED_MODULE_HEADER: RegExp = /^\/\/ (packages\/\S+\.(?:ts|tsx|js|mjs|cjs|cts|mts))$/
+
+/**
+ * Attribute every write-API occurrence in the built dist to the bundled module it SITS IN, and return
+ * only the ones inside THIS package's own modules.
+ *
+ * `bun build` INLINES every imported module, and this entry imports the modules whose very job is to
+ * write files: `mpd-tui-adapter-plugin` (the ONE owner of the diagnostics file sink and of
+ * `.mpd/logs/mpd-tui-panels.json`) and `mpd-mcp-shared/log-sink.ts` (the rotating sink). A whole-bundle
+ * grep therefore reddens on BORROWED bytes — measured 2026-10-14 on the built dist: 12 occurrences, all
+ * inside those two dependency segments and NONE under `packages/mpd-tui-plugin/src/`, which is the
+ * invariant `src/log.ts` states ("this package's built dist must carry no filesystem writer of its own").
+ *
+ * FAIL-CLOSED: an occurrence in no segment at all — a dist that stopped emitting path comments, or text
+ * appended after the last one — is an OFFENDER, so the check can never pass by LOSING its attribution.
+ * @param dist - the built `packages/mpd-tui-plugin/dist/index.js` text.
+ * @returns the offending API names in {@link TUI_WRITE_APIS} order, `[]` when the package's own modules write nothing.
+ */
+export function ownModuleWriteOffenders(dist: string): string[] {
+  /** The offenders found, so a name repeated across modules is reported once. */
+  const offenders = new Set<string>()
+  /** The bundled module the line being read belongs to; `""` before the first path comment. */
+  let owner = ""
+  for (const line of dist.split("\n")) {
+    /** The path comment this line is, or `null` when it is ordinary bundled code. */
+    const header = BUNDLED_MODULE_HEADER.exec(line)
+    if (header !== null) {
+      owner = header[1]
+      continue
+    }
+    /** True when the line sits in a DEPENDENCY module, whose bytes the bundle merely carries. */
+    const borrowed = owner.startsWith("packages/") && !owner.startsWith("packages/mpd-tui-plugin/src/")
+    if (borrowed) continue
+    for (const api of TUI_WRITE_APIS) if (line.includes(api)) offenders.add(api)
+  }
+  return TUI_WRITE_APIS.filter((api) => offenders.has(api))
+}
+
 /**
  * Judge the TUI surface from the built bytes alone (pure, so the self-test can falsify it).
  * @param observed - the built dist text, the source text and the notice sentence.
@@ -739,11 +781,10 @@ export function evaluateTuiSurface(observed: TuiSurfaceObserved): LaneVerdict {
   add("T5", dist.includes("NO_LIVE_SESSION_NOTICE") && dist.includes("statusLine("), "the notice is WIRED into the status-line composition, not merely defined")
   add("T6", src.includes(notice), "the notice is a single exported constant in the source (one source of truth)")
   add("T8", dist.includes("never lost") && dist.includes("applies it to every workspace immediately"), "the hint carries the \"never lost\" clause (a settings-only save is not a lost save)")
-  // The filesystem-writing APIs the TUI dist must NOT contain (the zero-write invariant).
-  const writeApis: readonly string[] = ["writeFileSync", "appendFileSync", "mkdirSync", "cpSync", "rmSync", "unlinkSync", "createWriteStream"]
-  // The APIs actually present in the built bytes; a non-empty list reddens T7.
-  const offenders = writeApis.filter((api) => dist.includes(api))
-  add("T7", offenders.length === 0, "the TUI dist performs ZERO filesystem writes (offenders: " + JSON.stringify(offenders) + ")")
+  // The write APIs THIS package's own inlined modules carry; inlined DEPENDENCY writers are attributed
+  // and excused (see {@link ownModuleWriteOffenders} — the adapter owns the file sink by design).
+  const offenders = ownModuleWriteOffenders(dist)
+  add("T7", offenders.length === 0, "the TUI package's OWN modules in the built dist perform ZERO filesystem writes (inlined dependency modules, e.g. the adapter's sink, are attributed and excused; offenders: " + JSON.stringify(offenders) + ")")
   return { ok: checks.every((check) => check.ok), checks }
 }
 
@@ -1090,6 +1131,16 @@ export function selfTest(arm: string = "web"): void {
     else if (check.ok) problems.push("self-test: injected TUI fault is INVISIBLE — " + label + " did not flip " + id)
     if (verdict.ok) problems.push("self-test: injected TUI fault left the verdict GREEN — " + label)
   }
+  // THE T7 ATTRIBUTION control. `bun build` INLINES dependency modules, so a writer BORROWED from
+  // another `packages/…` module is excused while the SAME line under our own path comment reddens —
+  // and an UNATTRIBUTED writer reddens too, which is what keeps the check fail-closed.
+  /** A dist whose only writer sits in an inlined dependency module (excused). */
+  const borrowedWriter = "// packages/mpd-tui-adapter-plugin/src/index.ts\nwriteFileSync(p, x)\n"
+  /** The same writer under THIS package's own path comment (an offender). */
+  const ownWriter = "// packages/mpd-tui-plugin/src/index.ts\nwriteFileSync(p, x)\n"
+  if (ownModuleWriteOffenders(borrowedWriter).length !== 0) problems.push("self-test: an inlined DEPENDENCY writer must be excused from T7 (the adapter owns the file sink)")
+  if (ownModuleWriteOffenders(ownWriter).join(",") !== "writeFileSync") problems.push("self-test: a writer in the package's OWN module must redden T7")
+  if (ownModuleWriteOffenders("writeFileSync(").length === 0) problems.push("self-test: an UNATTRIBUTED writer must redden T7 (the attribution is fail-closed)")
   // The W2 arm's own evaluator, falsified against a synthetic GREEN built-client fixture: every
   // injected fault must flip its own check. W2a/W2b are the two checks that were stale (they read
   // the PRE-MOVE `settings.plugin.item` card shape); W2f is the absence half of the same claim.

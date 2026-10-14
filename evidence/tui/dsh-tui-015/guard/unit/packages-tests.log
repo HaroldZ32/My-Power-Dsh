@@ -1,0 +1,8 @@
+$ .toolchain/node_modules/.bin/bun test packages/mpd-team-core-plugin packages/mpd-roles-plugin packages/mpd-dsh-adapter-plugin
+(pass) S3: the EAGER resolver is as loud about its fallback as the lazy twin > a mounted adapter is used as-is, with NO fallback line at all (negative control) [0.02ms]
+
+ 538 pass
+ 0 fail
+ 3013 expect() calls
+Ran 538 tests across 35 files. [2.97s]
+[exit=0]

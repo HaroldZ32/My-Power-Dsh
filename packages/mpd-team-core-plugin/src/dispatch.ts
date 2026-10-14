@@ -15,6 +15,14 @@
 //
 // A teammate that finishes its task reports it; the ledger entry is what says a task is in flight, so
 // `releaseTask` is the one call that frees a pairing again.
+//
+// The two C7 guards (plan amendment 2026-10-14) live HERE, in the pure decision, because this is the
+// ONE place a task×member pairing is decided: `agent_teams_dispatch` hands this function one team's
+// board and roster, and every pairing it returns is what the pass then delivers and records.
+//
+// The read-only classification is NOT a local copy of the roster: {@link readonlyMemberKeys} indexes the
+// rows mpd-roles-plugin's OWN service publishes (`mpdRoles.list()`, whose `readonly` flag is the same
+// flag that decides whether a spawn passes `READONLY_DENY`), and the tool reads that service per call.
 
 /** One shared task, as the board reports it. */
 export interface DispatchTask {
@@ -39,6 +47,20 @@ export interface DispatchTask {
    * exactly the independence the verification law rests on.
    */
   ownerName?: string
+  /**
+   * The team this task belongs to, when the caller knows it.
+   *
+   * C7-1: a pairing may never cross teams. ABSENT means "not declared" and is treated as compatible
+   * (fail-open), so a caller that does not tag its board keeps its previous behaviour exactly.
+   */
+  teamId?: string
+  /**
+   * The paths this task is expected to WRITE.
+   *
+   * C7-2: a task whose `writeScopes` is non-empty may not be paired with a read-only specialist — its
+   * whole discipline denies `write`/`edit`/`bash`, so the attempt could only end in a failed row.
+   */
+  writeScopes?: readonly string[]
 }
 
 /**
@@ -58,6 +80,56 @@ export function dispatchNameKey(name: string): string {
     .replace(/^-+|-+$/g, "")
 }
 
+/** One roster row as the read-only classification needs it — the shape `mpdRoles.list()` publishes. */
+export interface RosterRow {
+  /** The roster's MODEL-FACING display name (the name a Lead addresses the member by). */
+  name: string
+  /** True for the members the read-only discipline protects (the flag that also gates `READONLY_DENY`). */
+  readonly?: boolean
+}
+
+/**
+ * Index the READ-ONLY rows of a roster into the key set {@link isReadonlyMemberName} matches.
+ *
+ * The rows come from mpd-roles-plugin's OWN published service (`mpdRoles.list()`), so the dispatch guard
+ * reads the roster rather than copying its membership — the `readonly` flag is exactly the one that
+ * decides whether a spawn passes `READONLY_DENY`, and the two surfaces therefore cannot drift.
+ * @param rows - the roster rows, from whichever roster surface the caller reads.
+ * @returns the normalised keys of every read-only row.
+ */
+export function readonlyMemberKeys(rows: readonly RosterRow[]): ReadonlySet<string> {
+  /** The accumulated read-only keys. */
+  const keys = new Set<string>()
+  for (const row of rows) {
+    if (row?.readonly !== true) continue
+    /** This row's normalised key; an empty one addresses nothing and is skipped. */
+    const key = dispatchNameKey(row.name)
+    if (key !== "") keys.add(key)
+  }
+  return keys
+}
+
+/**
+ * Whether a team-member spelling addresses a READ-ONLY member of the given roster key set.
+ *
+ * Two spellings address a member: the exact normalised name (`"Plan Reviewer"` / `"plan-reviewer"`), and
+ * that name with ONE trailing numeric suffix (`"explorer-2"`), the spelling a Lead may use when it stages
+ * the same member twice. Without the suffix clause the C7-2 guard would be bypassable by appending a
+ * digit — the same defect class the team-path tool guard closes.
+ * @param name - the member spelling to classify.
+ * @param keys - the read-only key set ({@link readonlyMemberKeys}).
+ * @returns true for a read-only member, false for a worker, an unknown name or an empty spelling.
+ */
+export function isReadonlyMemberName(name: string, keys: ReadonlySet<string>): boolean {
+  /** The caller's normalised name. */
+  const key = dispatchNameKey(name)
+  if (key === "") return false
+  if (keys.has(key)) return true
+  /** The name with one trailing numeric suffix removed — the second accepted spelling. */
+  const withoutSuffix = key.replace(/-\d+$/, "")
+  return withoutSuffix !== key && withoutSuffix !== "" && keys.has(withoutSuffix)
+}
+
 /** One team member, as the roster reports it. */
 export interface DispatchMember {
   /** The member's session id, which is what a pairing actually records. */
@@ -66,6 +138,50 @@ export interface DispatchMember {
   name: string
   /** Roster status; only `inactive` makes a member a dispatch candidate. */
   status: string
+  /**
+   * The team this member belongs to, when the caller knows it.
+   *
+   * C7-1: compared against the task's own `teamId`; ABSENT means "not declared" and is compatible.
+   */
+  teamId?: string
+  /**
+   * True when this member is one of the roster's READ-ONLY specialists.
+   *
+   * C7-2: never paired with a task carrying write scopes. `undefined` means "not declared" and is
+   * treated as write-capable (fail-open), so an untagged roster keeps its previous behaviour.
+   */
+  readonly?: boolean
+}
+
+/**
+ * Refuse ONE task×member pairing, or return `undefined` when the pairing is allowed.
+ *
+ * Pure and total: it reads only the task and the member, never the ledger, and it never throws. The two
+ * MEASURED defects it closes (plan amendment C7, 2026-10-14):
+ *
+ *   * C7-1 CROSS-TEAM — the workspace-wide idle pool carried stale members of OTHER, terminal teams, so
+ *     a task was handed to a member that belonged to a different team. BOTH ids are named in the refusal
+ *     so a reader can see which teams collided.
+ *   * C7-2 READ-ONLY — a task with non-empty `writeScopes` was paired with a read-only specialist (Plan
+ *     Reviewer), whose whole discipline denies `write`/`edit`/`bash`. A write task on a read-only member
+ *     can only end in a failed attempt.
+ *
+ * FAIL-OPEN on missing evidence, deliberately: an absent `teamId` on either side or an absent `readonly`
+ * flag is NOT a reason to refuse, so a caller that has not declared either keeps the pairing behaviour
+ * it had before this guard existed — the gate may not over-block (the negative-control arm).
+ *
+ * @param task - the ready task under consideration.
+ * @param member - the free member the pairing would record.
+ * @returns the refusal sentence, or `undefined` when the pairing is allowed.
+ */
+export function pairingRefusal(task: DispatchTask, member: DispatchMember): string | undefined {
+  if (task.teamId !== undefined && member.teamId !== undefined && task.teamId !== member.teamId) {
+    return `refused a CROSS-TEAM pairing: task ${task.id} belongs to ${task.teamId} while member ${JSON.stringify(member.name)} belongs to ${member.teamId}`
+  }
+  if (task.writeScopes !== undefined && task.writeScopes.length > 0 && member.readonly === true) {
+    return `refused a WRITE-TASK-ON-READ-ONLY pairing: task ${task.id} has write scopes (${task.writeScopes.join(", ")}) while member ${JSON.stringify(member.name)} is a read-only specialist`
+  }
+  return undefined
 }
 
 /** One recorded pairing: which member is working which task, since when. */
@@ -190,22 +306,33 @@ export function planDispatch(input: {
       plan.skipped.push({ taskId: task.id, subject: task.subject, reason: "no idle member is free" })
       continue
     }
+    // THE C7 GUARDS (plan amendment 2026-10-14). A member a guard refuses never enters THIS task's pool,
+    // and when the guards refuse every free member the task is REPORTED with the reason — the fallback
+    // must never "grab a wrong-but-free member".
+    /** The free members this task may legally pair with: same team, and write-capable for a write task. */
+    const eligible = available.filter((candidate) => pairingRefusal(task, candidate) === undefined)
+    if (eligible.length === 0) {
+      plan.skipped.push({ taskId: task.id, subject: task.subject, reason: refusalSummary(task, available) })
+      continue
+    }
     /** The task's declared owner, normalised; the empty string means the board credited none. */
     const ownerKey = dispatchNameKey(task.ownerName ?? "")
-    /** Where the declared owner sits in the free pool, or -1 when it is not free. */
-    const ownerIndex = ownerKey === "" ? -1 : available.findIndex((candidate) => dispatchNameKey(candidate.name) === ownerKey)
+    /** Where the declared owner sits in the ELIGIBLE pool, or -1 when it is neither free nor eligible. */
+    const ownerIndex = ownerKey === "" ? -1 : eligible.findIndex((candidate) => dispatchNameKey(candidate.name) === ownerKey)
     // OWNER-FIRST, POSITIONAL ONLY AS A FALLBACK (captain ruling, 2026-10-07). A declared owner is
     // PREFERRED: the board's `owner` is the captain's own dispatch decision, and re-deciding it here
-    // is what put a review task on a writer. The fallback to roster order is kept because a busy or
-    // absent owner must never stall a ready task — but it is REPORTED on the pairing, so a wrong
-    // pairing can never read as a right one.
-    /** The position this task takes in the free pool: the owner's when it is free, else the first. */
+    // is what put a review task on a writer. The fallback to roster order is kept because a busy,
+    // absent or GUARD-REFUSED owner must never stall a ready task — but it is REPORTED on the pairing,
+    // so a wrong pairing can never read as a right one.
+    /** The position this task takes in the eligible pool: the owner's when it is free and eligible, else the first. */
     const memberIndex = ownerIndex >= 0 ? ownerIndex : 0
     /** The member this task is paired with. */
-    const member = available[memberIndex]
-    available = available.filter((_candidate, index) => index !== memberIndex)
+    const member = eligible[memberIndex]
+    available = available.filter((candidate) => candidate !== member)
     /** The board's roster entry for the declared owner, used only to spell a fallback reason. */
     const declaredOwner = ownerKey === "" ? undefined : input.members.find((candidate) => dispatchNameKey(candidate.name) === ownerKey)
+    /** Why the declared owner was passed over by a GUARD, when it was — reported distinctly from busy/absent. */
+    const ownerRefusal = declaredOwner === undefined ? undefined : pairingRefusal(task, declaredOwner)
     plan.pairs.push({
       taskId: task.id,
       subject: task.subject,
@@ -213,16 +340,39 @@ export function planDispatch(input: {
       memberName: member.name,
       ...(ownerIndex >= 0 || ownerKey === "" ? {} : {
         note: "declared owner " + JSON.stringify(String(task.ownerName ?? "")) + " "
-          + (declaredOwner === undefined
-            ? "is not on this team's roster"
-            : busy.has(declaredOwner.id)
-              ? "is already working another task"
-              : "is not idle (status " + JSON.stringify(declaredOwner.status) + ")")
-          + "; paired the next free member " + JSON.stringify(member.name) + " instead",
+          + (ownerRefusal !== undefined
+            ? "was passed over by a dispatch guard (" + ownerRefusal + ")"
+            : declaredOwner === undefined
+              ? "is not on this team's roster"
+              : busy.has(declaredOwner.id)
+                ? "is already working another task"
+                : "is not idle (status " + JSON.stringify(declaredOwner.status) + ")")
+          + "; paired the next eligible member " + JSON.stringify(member.name) + " instead",
       }),
     })
   }
   return plan
+}
+
+/**
+ * The ONE skip sentence for a task whose every free member a guard refused.
+ *
+ * Only guard refusals can reach here: a non-empty pool with no refusal at all yields an eligible member
+ * and never calls this. The sentence is the deduplicated union of those refusals, in roster order, so the
+ * reason is REPORTED rather than a wrong-but-free member being grabbed.
+ * @param task - the task that could not be paired.
+ * @param members - the free members, every one of which a guard refused.
+ * @returns the refusal sentence(s), deduplicated and joined with `"; "`.
+ */
+function refusalSummary(task: DispatchTask, members: readonly DispatchMember[]): string {
+  /** The distinct refusals, in the order the roster listed them. */
+  const reasons = new Set<string>()
+  for (const member of members) {
+    /** This member's refusal; every member here has one, but the guard is total and may answer `undefined`. */
+    const refusal = pairingRefusal(task, member)
+    if (refusal !== undefined) reasons.add(refusal)
+  }
+  return [...reasons].join("; ")
 }
 
 /** Record one pairing. Returns a NEW ledger; the caller owns persisting it. */

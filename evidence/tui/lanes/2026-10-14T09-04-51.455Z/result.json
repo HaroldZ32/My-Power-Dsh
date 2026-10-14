@@ -1,0 +1,48 @@
+{
+  "slug": "tui-keeper-standdown",
+  "ok": false,
+  "revision": {
+    "path": "packages/mpd-tui-plugin/dist/index.js",
+    "sha256": "529b2eb7363d94311ed43515c96a519dabac2f5656bfd05712b256e7b188e26e",
+    "bytes": 410643,
+    "mtimeLocal": "2026-10-14T08:20:27.165Z",
+    "mtimeUtc": "2026-10-14T08:20:27.165Z"
+  },
+  "revisionDelta": {
+    "changed": false,
+    "before": "529b2eb7363d94311ed43515c96a519dabac2f5656bfd05712b256e7b188e26e",
+    "after": "529b2eb7363d94311ed43515c96a519dabac2f5656bfd05712b256e7b188e26e",
+    "reason": "unchanged across the run"
+  },
+  "manifestDigest": "935d94b78a134af3c12fe1b516b7883935cc874f41a94ddd6e4105ee3d36eab8",
+  "arms": {
+    "sidePanelGroupOpened": false,
+    "rowsReached": false,
+    "untickedInPane": false,
+    "removed": false,
+    "staysRemoved": false,
+    "builtinTriggerDone": false,
+    "controlReddened": true,
+    "controlRestored": true
+  },
+  "controlToken": "act1:team",
+  "observations": [
+    {
+      "actTokens": []
+    },
+    {
+      "actTokens": []
+    },
+    {
+      "actTokens": []
+    },
+    {
+      "actTokens": []
+    },
+    {
+      "actTokens": []
+    }
+  ],
+  "sandboxRoot": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/tui-015",
+  "settingsFile": ".mpd/recon/qa/tui-lanes/tui-015/home/.dsh-tui/settings.json"
+}

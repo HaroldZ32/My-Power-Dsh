@@ -1,0 +1,50 @@
+
+    @mpd-dsh/mpd 0.12.0 · 已启用 · TUI 贡献：compatible                                            
+    详情：/plugin info <名字>；安装源：/plugin registries；完整诊断：无参 /plugin。                                        
+                                                                                                     
+  ❯ mpd admission lane decision arm                                                                                        
+                                                                                                                                                    
+  ● I'll start by checking the workspace and any lane documentation, since my own source reads are restricted but the documentation band stays open.
+                                                                                                   
+  • Bash(pwd; echo '---'; ls -la; echo '--- parent ---'; ls -la ..) · 0s                          
+   ⎿ /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/tui-015/ws                                       
+     ---                                                                                                                                            
+     total 16                                                                                                              
+     … +23 行（ctrl+o 展开）                                                                         
+                                                                                                                                                    
+  • Mpd_boulder_status({}) · 0s                                                                                       
+   ⎿ boulder status: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/tui-015/ws/.mpd/boulder.json     
+     active works: []                                                                                
+     resume: []                                        
+                                                                                    
+  ⚓ 思考 （ctrl+o 展开）                                                                                             
+                                                                                                                                                                                                                          
+  • Bash(cd /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/tui-015; echo '=== ws/.mpd tree ==='; find ws/.mpd -maxdepth 4 -printf '%y %10s %p\n' 2>/dev/null | head -60; echo; echo '===          · 
+        lane-Q-logs ==='; ls -la lane-Q-logs; echo; echo '=== ws-absent-record ==='; find ws-absent-record -maxdepth 4 -printf '%y %10s %p\n' | head -20; echo; echo '=== ws-malformed-record ==='; find               0s
+        ws-malformed-record -maxdepth 4 -printf '%y %10s %p\n' | head -20; echo; echo '=== ws-non-staged-record ==='; find ws-non-staged-record -maxdepth 4 -printf '%y %10s %p\n' | head -20)
+   ⎿ === ws/.mpd tree ===                                               
+     d       4096 ws/.mpd                                                                                                                                                                                                 
+     d       4096 ws/.mpd/verify                                                                                                                                                                                         
+     … +83 行（ctrl+o 展开）                                                                                                                                                                  
+                                                                                                                                                                                                                          
+  • Bash(cd /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/tui-015; echo '=== state ==='; ls -la state; echo; echo '=== config ==='; ls -la config; echo; echo '=== data ==='; ls -la data; echo; · 
+        echo '=== run ==='; find run -maxdepth 3 -printf '%y %10s %p\n' | head -30)                                                                                                                                    0s
+   ⎿ === state ===                                                                                                    
+     total 8                                                                                                          
+     drwxrwxr-x  2 haroldzhao haroldzhao 4096 Oct 14 14:53 .                                                                                                                                                              
+     … +17 行（ctrl+o 展开）                                                                                                                                                                                             
+                                                                                                                                                                                                                          
+  ⚓ 思考 （ctrl+o 展开）                                                                                                                                                                                                   
+                                                                                                                                                              
+  ●                                          
+
+  🌕 ✓ 敲回车 cd /home/haroldzhao/MyProj/DshProj/My-P… · 51ms · ↑ 45k · ↓ 48 tokens                                            
+  mpd: 团队 Fixture Team 2·1/2 (workspace-level) · 计划 0 · workmate 1
+                                                                      
+  ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+  ⌸ ❯                                                                                                                                                                                                                    ⛶
+  ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+                                                                                                                                                                                                            47k/1.0M 4.7% 
+   deepseek-flash · max · 缓存 98.1% · ≈¥0.01 谷 · ws                                                                                                                                                 ctx 4.7% (47k/1.0m)
+   esc 中断
+

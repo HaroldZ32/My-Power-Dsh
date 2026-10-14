@@ -1,0 +1,31 @@
+[tui-keeper-standdown] dsh-tui home fixture=.mpd/recon/qa/tui-lanes/tui-015/home/.dsh-tui/onboarding.json, .mpd/recon/qa/tui-lanes/tui-015/home/.dsh-tui/agent-preset.json preset=mpd
+[tui-keeper-standdown] user layer seeded with both MPD panels enabled: act1:team,act1:workmate
+[tui-keeper-standdown] hunt[root/side-panel-group] round 1: target visible=false focus=3
+[tui-keeper-standdown] hunt[root/side-panel-group] round 2: target visible=false focus=9
+[tui-keeper-standdown] hunt[root/side-panel-group] round 3: target visible=false focus=15
+[tui-keeper-standdown] hunt[root/side-panel-group] round 4: target visible=false focus=21
+[tui-keeper-standdown] hunt[root/side-panel-group] round 5: target visible=false focus=27
+[tui-keeper-standdown] hunt[root/side-panel-group] round 6: target visible=false focus=33
+[tui-keeper-standdown] hunt[root/side-panel-group] round 7: target visible=false focus=39
+[tui-keeper-standdown] hunt[root/side-panel-group] round 8: target visible=false focus=45
+[tui-keeper-standdown] hunt[root/side-panel-group] round 9: target visible=false focus=45
+[tui-keeper-standdown] hunt[root/side-panel-group] round 10: target visible=false focus=45
+[tui-keeper-standdown] hunt[root/side-panel-group] round 11: target visible=false focus=45
+[tui-keeper-standdown] hunt[root/side-panel-group] round 12: target visible=false focus=45
+[tui-keeper-standdown] hunt[root/side-panel-group] round 13: target visible=false focus=45
+[tui-keeper-standdown] hunt[root/side-panel-group] round 14: target visible=false focus=45
+[tui-keeper-standdown] hunt[root/side-panel-group] round 15: target visible=false focus=45
+[tui-keeper-standdown] side-panel group hop: opened=true
+[tui-keeper-standdown] pre-state picker rows=2 checked=2
+[tui-keeper-standdown] pane after first untick: rows=2 checked=1
+[tui-keeper-standdown] pane after second untick: rows=2 checked=0
+[tui-keeper-standdown] settle[0] csv="todo,jobs,agents,info,trajectory,workspace,btw,companion" actTokens=[]
+[tui-keeper-standdown] settle[1] csv="todo,jobs,agents,info,trajectory,workspace,btw,companion" actTokens=[]
+[tui-keeper-standdown] settle[2] csv="todo,jobs,agents,info,trajectory,workspace,btw,companion" actTokens=[]
+[tui-keeper-standdown] settle[3] csv="todo,jobs,agents,info,trajectory,workspace,btw,companion" actTokens=[]
+[tui-keeper-standdown] settle[4] csv="todo,jobs,agents,info,trajectory,workspace,btw,companion" actTokens=[]
+[tui-keeper-standdown] builtin re-apply trigger fired twice: true
+[tui-keeper-standdown] negative control: reddened=true restored=true
+[tui-keeper-standdown] ok=true -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/lanes/2026-10-14T09-23-17.895Z
+[tui-keeper-standdown] PASS: both panels unticked via /settings, removal stayed through 5 polls and the control reddened
+EXIT=0

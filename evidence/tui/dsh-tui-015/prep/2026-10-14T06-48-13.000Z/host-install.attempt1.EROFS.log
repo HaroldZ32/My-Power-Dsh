@@ -1,0 +1,8 @@
+dsh: initialized profile dsh-tui at /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/tui-015/dshhome/profiles/dsh-tui
+Error: ERR_PNPM_STORE_DIR_OPEN_OPERATION_LOCK
+
+  × adding a new package
+  ╰─▶ Failed to open the store operation lock at "pnpm-store-operation-locks":
+      Read-only file system (os error 30)
+
+dsh: plugin command failed; diagnostics: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/tui-015/dshhome/profiles/dsh-tui/.plugin-manager/logs/operation-tQ3XR7/pnpm.log

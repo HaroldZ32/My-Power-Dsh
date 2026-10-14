@@ -1,0 +1,71 @@
+dsh-tui home fixture=.mpd/recon/qa/tui-lanes/tui-015/home/.dsh-tui/onboarding.json, .mpd/recon/qa/tui-lanes/tui-015/home/.dsh-tui/agent-preset.json preset=mpd
+user layer wiped for a clean pre-state: .mpd/recon/qa/tui-lanes/tui-015/home/.dsh-tui/settings.json
+hunt round 1: target visible=false focus=undefined
+hunt round 2: target visible=false focus=undefined
+hunt round 3: target visible=false focus=undefined
+hunt round 4: target visible=false focus=undefined
+hunt round 5: target visible=false focus=undefined
+hunt round 6: target visible=false focus=undefined
+hunt round 7: target visible=false focus=undefined
+hunt round 8: target visible=false focus=undefined
+hunt round 9: target visible=false focus=undefined
+hunt round 10: target visible=false focus=undefined
+hunt round 11: target visible=false focus=undefined
+hunt round 12: target visible=false focus=undefined
+hunt round 13: target visible=false focus=undefined
+hunt round 14: target visible=false focus=undefined
+hunt round 15: target visible=false focus=undefined
+hunt round 16: target visible=false focus=undefined
+hunt round 17: target visible=false focus=undefined
+hunt round 18: target visible=false focus=undefined
+hunt round 19: target visible=false focus=undefined
+hunt round 20: target visible=false focus=undefined
+hunt round 21: target visible=false focus=undefined
+hunt round 22: target visible=false focus=undefined
+hunt round 23: target visible=false focus=undefined
+hunt round 24: target visible=false focus=undefined
+hunt round 25: target visible=false focus=undefined
+hunt round 26: target visible=false focus=undefined
+hunt round 27: target visible=false focus=undefined
+hunt round 28: target visible=false focus=undefined
+hunt round 29: target visible=false focus=undefined
+hunt round 30: target visible=false focus=undefined
+hunt round 1: target visible=true focus=undefined
+hunt round 2: target visible=true focus=undefined
+hunt round 3: target visible=true focus=undefined
+hunt round 4: target visible=true focus=undefined
+hunt round 5: target visible=true focus=undefined
+hunt round 6: target visible=true focus=undefined
+hunt round 7: target visible=true focus=undefined
+hunt round 8: target visible=true focus=undefined
+hunt round 9: target visible=true focus=undefined
+hunt round 10: target visible=true focus=undefined
+hunt round 11: target visible=true focus=undefined
+hunt round 12: target visible=true focus=undefined
+hunt round 13: target visible=true focus=undefined
+hunt round 14: target visible=true focus=undefined
+hunt round 15: target visible=true focus=undefined
+hunt round 16: target visible=true focus=undefined
+hunt round 17: target visible=true focus=undefined
+hunt round 18: target visible=true focus=undefined
+hunt round 19: target visible=true focus=undefined
+hunt round 20: target visible=true focus=undefined
+hunt round 21: target visible=false focus=undefined
+hunt round 22: target visible=false focus=undefined
+hunt round 23: target visible=false focus=undefined
+hunt round 24: target visible=false focus=undefined
+hunt round 25: target visible=false focus=undefined
+hunt round 26: target visible=false focus=undefined
+hunt round 27: target visible=false focus=undefined
+hunt round 28: target visible=false focus=undefined
+hunt round 29: target visible=true focus=undefined
+hunt round 30: target visible=true focus=undefined
+pane after first untick: rows=0 checked=0
+pane after second untick: rows=0 checked=0
+settle[0] csv=undefined actTokens=[]
+settle[1] csv=undefined actTokens=[]
+settle[2] csv=undefined actTokens=[]
+settle[3] csv=undefined actTokens=[]
+settle[4] csv=undefined actTokens=[]
+builtin re-apply trigger fired twice: false
+negative control: reddened=true restored=true

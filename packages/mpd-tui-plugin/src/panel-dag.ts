@@ -164,6 +164,13 @@ export interface DagPage {
   total: number
   /** The roster size. */
   members: number
+  /**
+   * The roster as ONE line, composed in the scene's own discipline (`scenes.ts`): the explicit
+   * `(no members)` row, or every member as `glyph name done/total` joined with `·` — the running
+   * glyph exactly as the scene draws it. Clause C6's 0-task render draws this line so a live
+   * member-only team keeps a body beside its header facts.
+   */
+  roster: string
   /** Bounded notes about what could not be read or had to be cut. */
   problems: readonly string[]
 }
@@ -181,7 +188,12 @@ export function dagPageOf(workflow: TeamWorkflow | undefined): DagPage | undefin
   // The projection is the ONE place the page touches the record, so the arrays are proved here rather
   // than trusted: `team-state.ts` always builds them, but this function is also called from tests and
   // from any future reader, and a non-array must cost the drawing instead of a `TypeError`.
-  if (workflow === undefined || !Array.isArray(workflow.tasks) || workflow.tasks.length === 0) return undefined
+  if (workflow === undefined || !Array.isArray(workflow.tasks)) return undefined
+  // C6: AN EMPTY BOARD PROJECTS ONLY WHEN A TEAM ACTUALLY RESOLVED. The record's own `team` head is
+  // the signal — every reader that resolved one sets it, and `emptyWorkflow` (the honest no-team
+  // projection, the `none` scope's carrier) omits it — so a live team with zero tasks keeps its page
+  // while the no-team projection keeps yielding undefined for the render's marker row below.
+  if (workflow.tasks.length === 0 && workflow.team === undefined) return undefined
   /** The tasks, projected once. */
   const tasks: DagPanelTask[] = []
   for (const task of workflow.tasks) {
@@ -203,7 +215,26 @@ export function dagPageOf(workflow: TeamWorkflow | undefined): DagPage | undefin
       ...(task.verdict === undefined ? {} : { verdict: panelField(task.verdict, 60) ?? "" }),
     })
   }
-  if (tasks.length === 0) return undefined
+  // The SAME C6 rule, one guard later: a board whose every row failed to project is still a resolved
+  // team when the head exists (it draws as the 0-task render), and still no team at all when it does
+  // not — the shape without a head keeps the pre-C6 bail-out so no fixture changes meaning.
+  if (tasks.length === 0 && workflow.team === undefined) return undefined
+  // The roster, projected once in the SCENE'S OWN DISCIPLINE (`scenes.ts`): every member with its
+  // status glyph and its done/total, sanitised here because the record came from a file. The page's
+  // 0-task render draws it as one line (clause C6), so the projection — not the render — owns the
+  // field reads, exactly as it does for the board above.
+  /** The roster rows, sanitised; `done`/`total` default to 0 when the row carries no number. */
+  const roster: Array<{ name: string; status: string; done: number; total: number }> = []
+  if (Array.isArray(workflow.members)) {
+    for (const member of workflow.members) {
+      roster.push({
+        name: panelField(member.name, 40) ?? "?",
+        status: panelField(member.status, 20) ?? "unknown",
+        done: typeof member.done === "number" ? member.done : 0,
+        total: typeof member.total === "number" ? member.total : 0,
+      })
+    }
+  }
   return {
     tasks,
     workspace: panelField(workflow.workspace, 200) ?? "",
@@ -211,7 +242,10 @@ export function dagPageOf(workflow: TeamWorkflow | undefined): DagPage | undefin
     phase: panelField(workflow.team?.phase, 20) ?? "unknown",
     completed: typeof workflow.counts?.completed === "number" ? workflow.counts.completed : 0,
     total: typeof workflow.counts?.total === "number" ? workflow.counts.total : tasks.length,
-    members: Array.isArray(workflow.members) ? workflow.members.length : 0,
+    members: roster.length,
+    roster: roster.length === 0
+      ? "roster  (no members)"
+      : "roster  " + roster.map((member) => `${member.status === "running" ? "◐" : "○"}${member.name} ${member.done}/${member.total}`).join(" · "),
     problems: (Array.isArray(workflow.problems) ? workflow.problems : []).map((problem) => panelField(problem, 120) ?? "").filter((problem) => problem !== ""),
   }
 }
@@ -1000,6 +1034,17 @@ export function createDagPanelComponent(readWorkflow: (sessionId?: string) => Te
       // board is not necessarily their own session's.
       if (scope === "workspace") {
         children.push(textRow(kit, `${WORKSPACE_SCOPE_MARKER}: no session id on this surface, showing the workspace's newest team`, { key: "scope", dim: true, maxCells: contentCols }))
+      }
+      // C6 — A TEAM WITH AN EMPTY BOARD IS NOT "NO TEAM" (the live 0-task defect). The header above
+      // already carries the identity the old projection discarded; these two rows give the page a
+      // body: the roster in the scene's own one-line discipline, and the hint that names the call
+      // which fills the board. The session arm keeps the sentence the mounted suite pins, and the
+      // workspace arm — the one the ladder used to lose to the false "no team in this workspace" row
+      // — states whose team it is. An unlabelled projection reads as the workspace fallback, exactly
+      // as `TeamWorkflow.source`'s own contract spells it.
+      if (page !== undefined && page.tasks.length === 0) {
+        children.push(textRow(kit, page.roster, { key: "roster", dim: true, maxCells: contentCols }))
+        children.push(textRow(kit, scope === "session" ? "this session's team has no tasks yet — `agent_teams_plan` posts them" : "the workspace's team has no tasks yet — `agent_teams_plan` posts them", { key: "empty-board", dim: true, maxCells: contentCols }))
       }
     } else if (scope === "session") {
       // A TEAM OF THIS SESSION WITH NO TASKS IS NOT "NO TEAM IN THIS WORKSPACE": the record resolved,

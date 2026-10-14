@@ -1,0 +1,26 @@
+{
+  "measuredBy": "Lead (t26)",
+  "artifact": {
+    "path": "packages/mpd-tui-plugin/dist/index.js",
+    "sha256": "8639a39b2c7c9ace6d4c509825f25c053d4e72b358b02994d1e7c229c6a240b1",
+    "bytes": 413053,
+    "mtimeLocal": "2026-10-14T10:29:27.459Z",
+    "mtimeUtc": "2026-10-14T10:29:27.459Z"
+  },
+  "proofThisIsWhatTheLaneRan": [
+    "the recorded mtime precedes this run's evidence timestamp",
+    "the digest was re-measured at evidence-write time and matches the start-of-run measurement"
+  ],
+  "composition": {
+    "sandboxRoot": ".mpd/recon/qa/tui-lanes/tui-015",
+    "profile": "dsh-tui",
+    "arms": 3,
+    "panelSeamPresent": true
+  },
+  "delta": {
+    "changed": false,
+    "before": "8639a39b2c7c9ace6d4c509825f25c053d4e72b358b02994d1e7c229c6a240b1",
+    "after": "8639a39b2c7c9ace6d4c509825f25c053d4e72b358b02994d1e7c229c6a240b1",
+    "reason": "unchanged across the run"
+  }
+}

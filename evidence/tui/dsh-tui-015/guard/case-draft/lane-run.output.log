@@ -1,0 +1,9 @@
+ok   (a) cross-team pairing REFUSED, naming both team ids — refused a CROSS-TEAM pairing: task T1 belongs to team-a while member "qa-reader-writer" belongs to team-b
+ok   (b) write task × read-only member REFUSED, reason reported — refused a WRITE-TASK-ON-READ-ONLY pairing: task T5 has write scopes (packages/x) while member "Plan Reviewer" is a read-only specialist
+ok   (c) terminal/archived team SKIPPED, live team resolves, none when only a ghost — resolved=team-live onlyGhost=(none)
+ok   (d) NEGATIVE CONTROL: a valid same-team write-capable pairing still SUCCEEDS — [["T2","m-w"]]
+ok   (b-real) REAL store: the write task is refused the read-only member, reason reported — refused a WRITE-TASK-ON-READ-ONLY pairing: task T1 has write scopes (packages/x) while member "Plan Reviewer" is a read-only specialist
+ok   (d-real) REAL store NEGATIVE CONTROL: the same task pairs with the write-capable member — ["sess-w"]
+ok   (c-real) REAL store: the bound phantom resolves NOTHING and is marked terminal with a reason — resolved=(none) reaped=["team-phantom"] phase=ended
+ok   (registry-real) REAL store: the terminal team's OWN bound lead no longer resolves it — bound=team-phantom resolved=(none)
+evidence -> evidence/tui/dsh-tui-015/guard/case-draft/lane-run

@@ -1,0 +1,106 @@
+# Commands and observed results — dist rebuild + zero-write triage (wave tui-015)
+
+Every command below was run from the REPOSITORY ROOT
+(`/home/haroldzhao/MyProj/DshProj/My-Power-Dsh`), with the PINNED toolchain
+`.toolchain/node_modules/.bin/bun` (= `bun 1.4.0`), on branch `dev`, no git write performed.
+Times are local (+0800) unless the command prints UTC.
+
+## 1. Pre-state
+
+```
+$ .toolchain/node_modules/.bin/bun --version
+1.4.0
+
+$ sha256sum <the five paths>            # see pre-rebuild-hashes.txt, UTC stamp 2026-10-14T10:27:28Z
+6c6cd5c0…  packages/mpd-tui-adapter-plugin/src/index.ts      199605 B
+bea550ab…  packages/mpd-tui-adapter-plugin/dist/index.js      49238 B   (STALE)
+9552ca8d…  packages/mpd-tui-plugin/src/index.ts               62052 B
+a8bf8bbd…  packages/mpd-tui-plugin/src/panel-dag.ts           80857 B
+529b2eb7…  packages/mpd-tui-plugin/dist/index.js             410643 B   (STALE)
+```
+
+## 2. Baseline gate (BEFORE the rebuild)
+
+```
+$ node scripts/verify-dist-fresh.ts > baseline-verify-dist-fresh.log 2>&1 ; echo "EXIT=$?"
+EXIT=1
+
+[verify-dist-fresh] build toolchain: bun 1.4.0 from the repository toolchain (…/.toolchain/node_modules/.bin/bun) · recorded buildToolchain bun@1.4.0
+  STALE   packages/mpd-tui-adapter-plugin/dist/index.js  <- packages/mpd-tui-adapter-plugin/src/index.ts
+  STALE   packages/mpd-tui-plugin/dist/index.js          <- packages/mpd-tui-plugin/src/index.ts
+  STALE: packages/mpd-tui-adapter-plugin/dist/index.js — committed 49238 B, bea550ab918a59cb… != fresh build of packages/mpd-tui-adapter-plugin/src/index.ts (51702 B, 52cbbf2bbd6ae010…) — rebuild from the repository root …: bun build packages/mpd-tui-adapter-plugin/src/index.ts --target node --format esm --outfile packages/mpd-tui-adapter-plugin/dist/index.js
+  STALE: packages/mpd-tui-plugin/dist/index.js — committed 410643 B, 529b2eb7363d9431… != fresh build of packages/mpd-tui-plugin/src/index.ts (413053 B, 8639a39b2c7c9ace…) — rebuild from the repository root …: bun build packages/mpd-tui-plugin/src/index.ts --target node --format esm --outfile packages/mpd-tui-plugin/dist/index.js
+[verify-dist-fresh] NOT COVERED (1): packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time — no local src/
+[verify-dist-fresh] FAIL - 2 of 31 targets not fresh (STALE: 2) — 665ms
+```
+
+## 3. Rebuild (exactly the two canonical commands, adapter FIRST — the tui-plugin inlines it)
+
+```
+$ .toolchain/node_modules/.bin/bun build packages/mpd-tui-adapter-plugin/src/index.ts --target node --format esm --outfile packages/mpd-tui-adapter-plugin/dist/index.js
+Bundled 1 module in 5ms
+  index.js  51.70 KB  (entry point)
+exit=0
+
+$ .toolchain/node_modules/.bin/bun build packages/mpd-tui-plugin/src/index.ts --target node --format esm --outfile packages/mpd-tui-plugin/dist/index.js
+Bundled 34 modules in 8ms
+  index.js  0.41 MB  (entry point)
+exit=0
+```
+(`rebuild.log` holds the tee'd re-run of the same two commands, exit=0 both, followed by
+`sha256sum -c` over every pre/post hash — all `OK`, i.e. the build is byte-deterministic.)
+
+New bytes (see `post-rebuild-hashes.txt`, UTC stamp 2026-10-14T10:27:37Z):
+```
+52cbbf2bbd6ae010f0f4c00bf20cdddd95a18edf61bbd8452ed35dae87a5a8bc  packages/mpd-tui-adapter-plugin/dist/index.js  51702 B
+8639a39b2c7c9ace6d4c509825f25c053d4e72b358b02994d1e7c229c6a240b1  packages/mpd-tui-plugin/dist/index.js         413053 B
+```
+Both hashes equal the ones the BASELINE gate had already predicted for a fresh build
+(`52cbbf2bbd6ae010…`, `8639a39b2c7c9ace…`) — independent confirmation, not a self-report.
+
+## 4. Gate after the rebuild, re-run after the LAST dist write
+
+```
+$ node scripts/verify-dist-fresh.ts > post-rebuild-verify-dist-fresh.log 2>&1 ; echo "EXIT=$?"
+EXIT=0
+  FRESH   packages/mpd-tui-adapter-plugin/dist/index.js  sha 52cbbf2bbd6a… 18ms  <- packages/mpd-tui-adapter-plugin/src/index.ts
+  FRESH   packages/mpd-tui-plugin/dist/index.js          sha 8639a39b2c7c… 26ms  <- packages/mpd-tui-plugin/src/index.ts
+[verify-dist-fresh] ok: 31/31 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 650ms
+
+$ node scripts/verify-dist-fresh.ts > final-verify-dist-fresh.log 2>&1 ; echo "FINAL_GATE_EXIT=$?"
+FINAL_GATE_EXIT=0
+[verify-dist-fresh] ok: 31/31 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 656ms
+```
+No STALE / MISSING / NONDETERMINISTIC / BUILD_FAILED / TIMEOUT / UNREADABLE / NO_TARGETS finding
+remains. The ONE NOT COVERED entry is unchanged and structural (`packages/mpd-mcp-codegraph/dist/serve.js`,
+a sha-pinned prebuilt with no local `src/`).
+
+## 5. Zero-write attribution
+
+```
+$ node --input-type=module -e "import {ownModuleWriteOffenders,TUI_WRITE_APIS} from './skills/dsh-qa/scripts/lib/settings-bridge-lane.ts'; …"
+ownModuleWriteOffenders = []            # the lane's OWN exported judge, run on the rebuilt bytes
+raw whole-dist occurrence counts = {"writeFileSync":3,"appendFileSync":2,"mkdirSync":6,"cpSync":0,"rmSync":2,"unlinkSync":0,"createWriteStream":0}
+module banner count = 36
+
+$ awk '<attribute each occurrence to its // packages/<path> banner segment>' … > attribution-check.log
+packages/mpd-mcp-shared/log-sink.ts                 mkdirSync=2 rmSync=2                    [BORROWED(inlined dep)]
+packages/mpd-tui-adapter-plugin/src/index.ts        writeFileSync=3 appendFileSync=2 mkdirSync=4 [BORROWED(inlined dep)]
+OWN-module offenders (packages/mpd-tui-plugin/src/** segments only) = []
+attributed occurrences (all segments) = 13   ==  raw whole-dist total 13   (0 unattributed)
+```
+Earlier grep-free evidence for the same claim: `grep -rn 'from "node:fs"' packages/mpd-tui-plugin/src/`
+returns ONLY read APIs — `readFileSync` (i18n.ts, state.ts, panel-workmate.ts), `readdirSync`
+(state.ts, registration.ts, panel-workmate.ts), `statSync` (state.ts), `lstatSync` (panel-workmate.ts).
+
+## 6. Artifact identity / provenance checks
+
+```
+notice present = true ; disclosure present = true ; adapter banner present = true
+team-core inlined in the tui dist = false        # `import type { TeamRecord }` is erased by the bundler
+
+$ git log --reverse -S 'packages/mpd-tui-adapter-plugin/src/index.ts' -- packages/mpd-tui-plugin/dist/index.js
+9e91beb3 2026-10-03 feat(seams)!: one adapter per plane, zero host overrides, R5 terminal silence
+⇒ the borrowed writers entered this dist on 2026-10-03, i.e. the zero-write premise of the lane's
+  earlier green runs (2026-09-16) predates the adapter being inlined into this entry.
+```

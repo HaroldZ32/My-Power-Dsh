@@ -1,0 +1,12 @@
+# git status --porcelain for the two STALE dist targets (other lanes' in-flight src, NOT this task)
+ M packages/mpd-tui-adapter-plugin/src/index.ts
+ M packages/mpd-tui-adapter-plugin/test/panel-enable-migration.test.ts
+ M packages/mpd-tui-plugin/README.md
+ M packages/mpd-tui-plugin/README.zh-CN.md
+ M packages/mpd-tui-plugin/dist/index.js
+ M packages/mpd-tui-plugin/src/panel-dag.ts
+ M packages/mpd-tui-plugin/test/panel-dag.test.ts
+ M packages/mpd-tui-plugin/test/panel-visibility.test.ts
+# type-only imports from mpd-team-core-plugin in those packages (erased at build, so team-core edits cannot change their emitted bytes):
+packages/mpd-tui-plugin/src/dashboard-key.ts:44: * The record type is NOT imported from `mpd-team-core-plugin` here: `team-state.ts` already carries
+packages/mpd-tui-plugin/src/team-state.ts:304: * pending, hence blocking. `mpd-team-core-plugin/src/team-store.ts` carries the same rule on the

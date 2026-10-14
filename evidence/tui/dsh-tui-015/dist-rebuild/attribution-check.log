@@ -1,0 +1,12 @@
+=== write-API occurrences attributed to each bundled module segment ===
+(attribution rule: the // packages/<path> comment bun build prints above every module)
+MODULE                                                     NON-ZERO WRITE-API OCCURRENCES
+packages/mpd-mcp-shared/log-sink.ts                        mkdirSync=2 rmSync=2  [BORROWED(inlined dep)]
+packages/mpd-tui-adapter-plugin/src/index.ts               writeFileSync=3 appendFileSync=2 mkdirSync=4  [BORROWED(inlined dep)]
+
+=== OWN-module offenders (packages/mpd-tui-plugin/src/** segments only) ===
+offenders = []
+
+=== totals ===
+attributed occurrences (all segments) = 13
+bundled module segments = 36

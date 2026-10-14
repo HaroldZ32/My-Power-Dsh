@@ -25,7 +25,7 @@
 //
 // The arms are read from ONE lifecycle, so they cannot disagree about which revision ran.
 //
-// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.14.0"
+// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.15.0"
 // PREREQ: absent-runtime tmux "install tmux; the TUI requires a real TTY"
 // PREREQ: absent-fixture tui profile in the sandbox root "bun skills/dsh-qa/scripts/tui-mount.ts --sandbox-root <root> --install"
 //
@@ -449,7 +449,17 @@ export function driveSteps(workspace: string, removed: string[], seamPresent: bo
   ]
   // On a host with the seam the entry-point half rides `/mpd panel`, whose printed sentence the store
   // arm reads; it precedes the Ctrl+A arms so the team record is still present for the team arm.
+  //
+  // THE MATERIALIZER (measured 2026-10-14, 0.15.0): this store arm reads the HARNESS's session store,
+  // and the harness writes that store only once the session APPENDS an event. `/mpd panel` appends
+  // nothing; `/mpd board` appends our log-only `mpd-tui/board-opened` record (the ONE append this
+  // composition performs), which materializes the store carrying the whole session history — including
+  // the `/mpd panel` `command/run` + `command/done` pair this arm asserts. It is driven FIRST and
+  // CLOSED, because a board command typed at an already-open sidebar panel is swallowed by that panel
+  // (measured: probe arm B produced no store, arm E produced one carrying both pairs).
   const panelCommand: TuiStep[] = [
+    { name: "board-materialize", keys: ["/mpd board", "Enter"], waitMs: 9000 },
+    { name: "board-materialize-close", keys: ["Escape"], waitMs: 3000 },
     { name: "panel-command", keys: ["/mpd panel", "Enter"], waitMs: 7000 },
     { name: "close-panel-command", keys: ["Escape"], waitMs: 2500 },
   ]

@@ -1,0 +1,93 @@
+{
+  "wave": "tui-015-adaptation",
+  "task": "T8 lane-Q-run: the 8 registered TUI lanes on the installed 0.15.0 host",
+  "sandboxRoot": ".mpd/recon/qa/tui-lanes/tui-015",
+  "host": "@deepseek-harness-tui/dsh-tui@0.15.0",
+  "invocation": "bun skills/dsh-qa/scripts/<lane>.ts --sandbox-root .mpd/recon/qa/tui-lanes/tui-015 (tui-settings-bridge takes no sandbox-root); env: XDG_RUNTIME_DIR=<sandbox>/run, pnpm_config_registry=https://registry.npmmirror.com, PATH prepended with <sandbox>/dshhome/profiles/dsh-tui/node_modules/.bin",
+  "driver": "run-lanes.sh (sequential; each lane's merged stdout/stderr + exit code recorded beside it)",
+  "acceptance": "frozen expected-status table, NO NEW REDS",
+  "result": "NOT MET: 2 of 8 lanes match the table; 6 are red",
+  "lanes": [
+    {
+      "case": "tui-mount",
+      "expected": "PASS",
+      "observed": "FAIL",
+      "exit": 1,
+      "evidence": "tui-mount.evidence/ (evidence/tui/lanes/2026-10-14T09-15-19.730Z/)",
+      "arms": { "layering": true, "statusLine": true, "counters": true, "rendered": true, "rowComposed": true, "presetSessionId": null, "presetAgentPreset": null, "sandboxSessions": 0 },
+      "rootCause": "the only failing assertion is the AC-11 preset witness, read from <DSH_HOME>/sessions/<key>/<id>/session.vN.jsonl.zstd. A blank session (no turn sent) is NOT materialized by this host: the jsonl backend persists only on append or on an explicit flush (dsh-session-persistence-jsonl lib/index.js flush comment), and this lane drives no keys. statusLine/counters/rendering now read true after the shared readiness fix; before it they read false."
+    },
+    {
+      "case": "tui-deps-ctrla",
+      "expected": "PASS (Ctrl+A INERT on a seam host; R4 holds)",
+      "observed": "FAIL",
+      "exit": 1,
+      "evidence": "tui-deps-ctrla.evidence/ (evidence/tui/lanes/2026-10-14T09-15-36.933Z/)",
+      "arms": { "storeArm": { "ok": false, "id": null, "missing": ["no command/run with name=mpd args=/panel/"] } },
+      "rootCause": "the store arm found no `/mpd panel` command record for this boot. The panel-seam probe itself read correct (host 0.15.0 declares the dsh-tui-panels row and ships panels.js)."
+    },
+    {
+      "case": "tui-panels",
+      "expected": "ok=false with tuiRenderers ONLY (7 of 8 surfaces)",
+      "observed": "ok=false with tuiRenderers AND tuiSettingsSections",
+      "exit": 1,
+      "evidence": "tui-panels.evidence/ (evidence/tui/lanes/2026-10-14T09-16-33.116Z/)",
+      "arms": { "tuiStatus": "rendered", "tuiCommandTrees": "rendered", "commands": "rendered", "tuiPanels": "rendered", "tuiScenes": "rendered", "tuiRenderers": "MISSING (expected red)", "tuiSettingsSections": "MISSING (NEW RED)", "tuiDialogs": "rendered", "panelRegistration": "act1:team ok=true" },
+      "rootCause": "tuiSettingsSections asserts the OLD disclosure wording `/takes effect for the mpd plugins after a restart/`; commit cc5387e0 (2026-10-13, fix/model-config-live-refresh) changed packages/mpd-tui-plugin/src/settings.ts SECTION_NOTICE to 'takes effect in the RUNNING process - no restart' and did NOT update this lane's frozen patterns. Pre-existing staleness at HEAD, surfaced by this run."
+    },
+    {
+      "case": "tui-team-surface",
+      "expected": "ok=false with H4 ONLY (19 of 20 arms)",
+      "observed": "ok=false with H1, H3 and H4",
+      "exit": 1,
+      "evidence": "tui-team-surface.evidence/ (evidence/tui/team-surface-verify/2026-10-14T09-17-49.352Z/)",
+      "arms": { "H1-renders-surface": false, "H3-confirm-step": false, "H4-real-mutation": false, "nonInterference": true },
+      "rootCause": "the live plan-approval drive did not reach the confirmation step; pane outcome 'no-outcome-line', record stayed phase=staged approvedAt=undefined. H4 was the declared pre-existing red; H1/H3 are new to this run."
+    },
+    {
+      "case": "tui-settings-bridge",
+      "expected": "PASS (drives the BUILT BYTES + status-line notice)",
+      "observed": "FAIL on T7",
+      "exit": 1,
+      "evidence": "tui-settings-bridge.evidence/ (evidence/mpd-bridge/tui-settings-bridge/20261014T091837Z/)",
+      "arms": { "T1": "ok", "T2": "ok", "T3": "ok", "T4": "ok", "T5": "ok", "T6": "ok", "T8": "ok", "T7": "FAIL: the TUI dist performs ZERO filesystem writes (offenders: [\"writeFileSync\",\"appendFileSync\",\"mkdirSync\",\"rmSync\"])" },
+      "rootCause": "the rebuilt packages/mpd-tui-plugin/dist/index.js contains filesystem-write API names. packages/** is OUTSIDE this task's write scope (other lanes own it)."
+    },
+    {
+      "case": "tui-admission",
+      "expected": "PASS, EXTENDED by C3's six grant arms",
+      "observed": "FAIL: static ok=true and staticGrants=true; grant arms 1,3,4,5 false; arm2 true",
+      "exit": 1,
+      "evidence": "tui-admission.evidence/ (evidence/tui/lanes/2026-10-14T09-18-37.321Z/)",
+      "arms": { "static": true, "staticGrants": true, "arm1-compatible-pane": false, "arm2-loader-line": true, "arm3-ledger-attribution": false, "arm4-real-interception": false, "arm5-negative-control": false, "revocation": null },
+      "rootCause": "the GRANTED boot never reached the chat screen: `grants tmux: the TUI did not reach the chat screen within 90000ms`; the pane stream repeated `park target=6,44 decl=true rect=true moved=false` warnings. Every pane-reading arm therefore read state=undefined. The static C3' arms are green."
+    },
+    {
+      "case": "tui-distribution",
+      "expected": "SKIP acceptable ONLY if honestly re-attempted",
+      "observed": "SKIP absent-fixture",
+      "exit": 0,
+      "evidence": "tui-distribution.log",
+      "marker": "[mpd-qa] SKIP case=tui-distribution lane=real reason=absent-fixture prereq=vendor/meta-protocols/dsh-distribution in a mounted dsh-ecosystem-spec checkout remedy=\"check out the host repo with its submodules initialised, or set MPD_TUI_SPEC_ROOT\"",
+      "rootCause": "the pinned dsh-ecosystem-spec checkout is absent on this box (declared in the prep evidence prereqProbes.dshEcosystemSpecCheckout)."
+    },
+    {
+      "case": "tui-spec-conformance",
+      "expected": "env red declared UNLESS DSH_TUI_ROOT is honestly provided",
+      "observed": "SKIP absent-fixture",
+      "exit": 0,
+      "evidence": "tui-spec-conformance.log",
+      "marker": "[mpd-qa] SKIP case=tui-spec-conformance lane=real reason=absent-fixture prereq=dsh-ecosystem-spec with conformance/requirements-v0.15.json remedy=\"check out the host repo with its submodules initialised, or set MPD_TUI_SPEC_ROOT\"",
+      "rootCause": "same absent checkout."
+    }
+  ],
+  "unitBand": {
+    "command": "bun test packages/mpd-tui-plugin packages/mpd-tui-adapter-plugin",
+    "note": "recorded separately in the final report"
+  },
+  "honestBounds": [
+    "the readiness predicate fix (lib/tui-lane.ts TUI_READY_PATTERN) is a real correctness fix and is green on every --self-test, typecheck and verify:comments",
+    "the 6 red lanes are NOT caused by the T6 C2-arm work; tui-settings-bridge's T7 and tui-panels' tuiSettingsSections are attributable to packages/** changes and commit cc5387e0 respectively",
+    "only 2 of 8 lanes match the frozen table; the wave's NO-NEW-REDS acceptance is not satisfied on this box"
+  ]
+}

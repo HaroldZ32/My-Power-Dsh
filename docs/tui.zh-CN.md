@@ -1019,3 +1019,76 @@ rootful 守护进程上给出的是 NOTICE 而不是通过——**SKIP 不是通
 记录在案的逃生口。（d）`PanelBar` 的这次
 变化是**宿主**的事实：本页描述的是 0.14.0 的行为，将来若某个宿主重新绘制图标，也不会与本页任何 MPD 主张
 相矛盾——每个描述符仍然声明图标。
+
+### 11.7 DSH-TUI 0.15.0 适配波次之后的修订（2026-10-15）
+
+上表各行为其测量的版本与宿主保持原样。本波次把对标宿主再往前移一个版本（0.15.0，2026-10-13 发布），
+而**插件可见接缝连续第二次原样通过**——这次适配是一次载体搬移，加上三条用户指定的功能条款（守卫重规约、
+决策事件授权流、0 任务 DAG 缺陷）。以下各条取代 §11.6：
+
+| 被取代的陈述 | 原为 | 现为（2026-10-15 实测） |
+|---|---|---|
+| 本页对标宿主（§ 前言） | `@deepseek-harness-tui/dsh-tui` **0.14.0** | **0.15.0**（npm `latest`；本波次冻结的测量基准是 `evidence/tui/dsh-tui-015/host-diff/FACTS.md`，两份 tarball 就在其旁解开）。宿主内部新增、无需本 bundle 反应：新的**可选** harness peer（`@deepseek-ai/dsh-plugin-manager`、`dsh-app-boot`/`dsh-cmdline`/`dsh-http-proxy`/`dsh-launch-environment` 改为可选定版）与 `zod@^4.4.3` 运行时依赖。`MPD_E2E_DSH_VERSION` **不动**——harness peer 范围未变（每个 `dsh-*` peer 仍止于 `0.2.0-rc.2`） |
+| §3 接缝清单 | 十五个 `tui*` 接缝，0.13.0→0.14.0 逐字节相同 | **仍是十五个，只增不改**：`panels.d.ts` 新增 `applyConfiguredSidePanelPanels()` 与 `applySidePanelPanelsFromSettings()`（即 C2 所依据的宿主侧 CSV 合并助手），`plugin-host.d.ts` 新增 `probeBackendAdmission()`；其余接缝 `.d.ts` 逐字节相同，没有第十六个接缝，而裸 grep 撞到的 `tuiChannel` 是**内核通道协议 id**，不是接缝（没有 `Service` 注册它、无可注入——已写入 `agent-references/seam-adapters.md`）。**适配器接缝面零改动** |
+| §3.3 —— 启用清单默认值 | `todo,jobs,agents,info,trajectory,workspace,btw,companion`（八个内置，0.14.0） | **0.15.0 上不变**——同一个 `DEFAULT_SIDE_PANEL_IDS`、同样八个内置图标（`≡ ▸ ◆ ⓘ ∿ ⌗ ? ♥`），不变量臂保持绿色。其下的**规则**变了：见下方守卫一行 |
+| §11.6 —— `PanelBar` 不再绘制图标 | 0.14.0 上 `grep -c icon …/PanelBar.js` = 0；非活动标签是 `○`/`●` 圆点 | **0.15.0 重新绘制图标**：非活动标签画 `tab.icon ?? <标题首字符> ?? '?'` 外加未读数（重新实测的 `PanelBar.js` 中的 `tabLabel()`）。本 bundle 声明的单格图标（`❖` MPD、`⬢` workmate）重新被画出来；bundle 侧无任何改动——每个描述符仍按宿主校验器的要求声明恰好一格的图标 |
+| §3.4 —— `⤢` 边界 | `dsh-adapter/panels.js` 冻结的插件描述符无 `capabilities` → 宿主自己的 `⤢` 不可达 | **在 0.15.0 上重新实测，仍成立**：`grep -c capabilities …/dsh-adapter/panels.js` = 0，`SidePanelColumn` 的 `canExpand` 仍读 `definition.capabilities?.fullscreen === true`。MPD 自己的 `⤢` 控件仍是唯一的全屏入口 |
+| §3.3 / §7 —— 版本钉住载体 | 每个点名该版本的载体都是 `0.14.0` | **本波次载体为 `0.15.0`**：`docker/**`（两处 `MPD_E2E_TUI_VERSION` 默认值、`docker/ui/docker-compose.yml`、`docker/entrypoint.sh` 的 `TUI_VERSION`、`docker/ui/entrypoint.sh` 的两处 `MPD_UI_TUI_VERSION` 默认值、`docker/tui-lane.sh`）、`dsh-distribution.json` 的 `host-tui` 引用（`pkg:npm/@deepseek-harness-tui/dsh-tui@0.15.0`）、`skills/dsh-qa/scripts/**` 下的七个 QA 载体、`scripts/mpd-tui-panels.ts` 的头部叙述与两份 `docker/README*`。不搬项维持原样：`MPD_E2E_DSH_VERSION` 保持 `0.2.0-rc.2`；`dsh-plugin.json` 的 `compat.hosts` 保持 `@deepseek-harness-tui/dsh-tui@0.10.1`（准入**测量**，不是对标版本）；注册表的 `0.15` 版本串保持（生态规范号，本仓库已知误报） |
+| §11.6 —— 启用清单守卫 | 每个宿主上都"订阅优先"：`subscribeSidePanelPanels` 修复配置镜像的清空，阶梯是降级路径，退位规则不变 | **重规约（C2，用户指定）：在会自愈的宿主——一切 `>= 0.15.0`——上，守卫加入宿主的原生自愈并退位；在更旧宿主上 0.14 行为逐字节保留。**见下方守卫一段 |
+
+**宿主现在会自愈侧栏启用 CSV，守卫向它退位（C2）。** 在 0.15.0 树上实测：`TuiPanelRuntime.register()` 经
+`enablePanelIdInStore` 喂入 `registeredPanelIds`；启动/镜像的应用 `applyConfiguredSidePanelPanels(config.sidePanel?.panels)`
+会把已注册的 id **并回**清单，除非被显式移除；`/settings` 的实时编辑走 `applySidePanelPanelsFromSettings`，
+它把移除记录为**会话级**（`removedPanelIds`）；剩下的唯一 CSV 写入者就是那条 settings 应用路径。MPD 的回答：
+启用清单守卫经适配器已被证明的 `readHostPackageVersion` 探测宿主版本（该值由探针作为 `hostVersion` 盖章在**同一个**
+守卫据以决策的探针答案上——不新增宿主接触点），读到 `>= 0.15.0` 就**在任何写入路径之前退位：不装订阅、不走阶梯、
+一个字节都不写**，既不与宿主自己的合并赛跑，也绝不把用户显式移除的面板加回来。适配器日志里有一行说明
+（`standing down on host 0.15.0 — the host self-heals the sidebar enable CSV, so this keeper never writes`），
+另有一条只观察不写入的"腰带"：经存储自己的订阅看**一次**宿主合并是否真的保住了我们的 id。版本为空、不可解析或
+`< 0.15.0` 时，0.14 守卫（订阅优先、有界阶梯、退位规则、仅修剪死 id 的一次写）**逐字节保留**——该门只会在
+真正读出版本时让守卫退位。
+
+**决策事件授权流，面向用户（C3'）。** 本页自 §6.1 起记载的"就绪但未激活"决策接缝，现在可以通过宿主自己的
+文档化授权流**激活**，`dsh-plugin.json` 里那四条 `session.*.intercept` 声明（`tui/input`、`tui/rewind-prompt`、
+`tui/session-switch`、`tui/compact`）正是它授权的对象。**如何授权**：在宿主自己的 `<DATA_DIR>/extension-grants.json`
+（位于 `~/.dsh-tui` 下）写一条以 `com.mpd-dsh.mpd-tui` 为键的行，按作用域点名这四条权限——与宿主 `/plugins`
+面板自己打印的提示完全一致——{"grants":{"com.mpd-dsh.mpd-tui":[{"name":"session.input.intercept","scope":"tui/input"},…]}}。
+**激活了什么**：准入从 `waiting_authorization` 翻为 `compatible`，组件身份绑定（效果台账归属 `com.mpd-dsh.mpd-tui`
+而不是 `undeclared`），四条决策订阅生效——输入、回退提示、会话切换与压缩拦截，即 §6.1 描述的那些面。**安全姿态**：
+该文件**默认拒绝**——旧式裸字符串规则永不授权，损坏的文件按**空表**读（损坏 ≠ 不存在）；宿主每次操作都重读并轮询
+（准入每 200 ms 重试一次、约 20 s 窗口，因此开机时或窗口内出现的授权无需重启即生效；已结算的拒绝需要重新加载）；
+撤销该行则拦截再次停用。没有授权时一切照旧：`dsh-plugin.json` DecisionEvents 依赖里写好的回退仍然成立，本 bundle
+照常可用。
+
+**有零任务的活动团队按"团队"渲染，而不是"没有团队"（C6，用户上报的缺陷）。** `dagPageOf` 过去在看板为空时
+丢掉已解析团队的身份，于是一个六人在线团队只画出一行暗色的"本工作区没有团队"。现在只要记录的 `team` 头解析了，
+投影就保留页面（`tasks: []` 合法；诚实的无团队投影仍走各空态），MPD 面板的 0 任务渲染画出表头事实（团队、阶段、
+`tasks 0/0`、成员数）、一行按场景自身规范排布的花名册，以及点名"哪个调用能填上看板"的提示——本会话自己的团队与
+带标记的工作区回退一视同仁。
+
+**团队派发现在会说明拒绝原因（C7，一句面向用户的话）。** 团队面的派发过程在纯决策里拒绝跨团队配对与
+"只读成员接写任务"配对，而拒绝语句在派发报告里**用户可见**（`refused a CROSS-TEAM pairing: task … belongs to …
+while member … belongs to …`；被守卫跳过的属主报告为 `was passed over by a dispatch guard (…)`）——被跳过的任务
+永远带着原因，而不是悄悄回退。
+
+**谢绝的采纳候选（两轮趋同的研究评估后由用户谢绝——记录在此，免得后续波次重新争论）。** 0.15.0 的每个新能力
+都是宿主内部或仅诊断用途：`probeBackendAdmission()`——可在绑定的 `tuiPluginHost` 上调用，但它诊断的是本 bundle
+并未发布、且上游未接通安装链的 Backend 贡献族（谢绝）；`backend-v1alpha1` Backend 族——延后的非目标；
+`plugin-completions`、`plugin-declaration`、`plugin-manager`、`entry-slot`、`session-seed`、
+`session-list-metadata`、`tui-settings`、`fresh-agent`——宿主内部子系统，不是插件可见接缝。准入注册表变更的
+`registry-0.15.json` 与新的 `backend-v1alpha1` 契约使 `tui-admission` 通道的本波次重跑成为关键载荷。
+
+**本波次证据，以及每个读数的分量。** 上面的宿主读数来自本波次冻结的测量基准
+（`evidence/tui/dsh-tui-015/host-diff/FACTS.md`，两份 npm tarball 在其旁解开为 `a/` 0.14.0 与 `b/` 0.15.0——
+接缝"只增不改"的 diff、合并/移除机制、`PanelBar` 图标复测与不变的默认值都读自这两棵树，而非凭记忆）。本节所在
+代码版本上的单元带读数为：`bun test packages/mpd-tui-adapter-plugin` = **74 通过 / 0 失败**（五条新 C2 臂：版本
+判定表、零写入臂与只观察腰带、/settings 移除保持臂、显式 0.14 修复臂、无版本走旧径臂），以及
+`bun test packages/mpd-tui-plugin` = **482 通过 / 0 失败**（三条新 C6 臂；"宿主重应用配置 CSV"臂的版本感知拆分）。
+安装好的 0.15.0 宿主上的沙箱通道、真机 PTY 臂与 Docker 双模通道是本波次在 `evidence/tui/**` 下的验证记录——
+本节只引用它写作时所依据的 host-diff 与单元读数，不预支通道数字；**SKIP 不是通过**。
+
+**边界（边界是主张的一部分）。**（a）守卫退位依赖宿主自愈确实存在——一个自称 `>= 0.15.0` 却丢失合并助手的宿主
+会让 MPD 面板不在启用清单里，而只观察腰带的那一行就是该症状的可见线索。（b）授权流的活跃度数字（每次操作重读、
+200 ms ×100 重试）是宿主的实测行为，不是本 bundle 的承诺；撤销语义同样属于宿主。（c）`PanelBar` 图标回归是
+**宿主**在 0.15.0 上的实测事实：将来某个宿主再次停画图标，也不会与本页任何 MPD 主张矛盾——每个描述符仍声明一个。
+（d）C6 的真机 PTY 目验是一次**点名的人工观察**（船长自己的会话即复现源）；回归重量由单元臂承担。

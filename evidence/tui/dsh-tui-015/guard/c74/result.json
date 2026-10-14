@@ -1,0 +1,76 @@
+{
+  "task": "T15 — C7-4 implementation (F1..F5) + unit arms + a case-arm DRAFT",
+  "contract": ".mpd/plans/tui-015-adaptation.md § \"Plan amendment 2 (2026-10-14, user-reported): C7-4\"",
+  "scope": "packages/mpd-team-core-plugin/** ONLY; skills/** NOT written (case arms drafted under evidence/)",
+  "changed": {
+    "src/index.ts": {
+      "symbols": [
+        "sessionIdOf (unchanged) + NEW sessionLineageOf, sessionIsDelegatedChild",
+        "where (now returns lineage; empty for a delegation child)",
+        "stagedPlan (replaces requirePlan; keeps the approved-plan refusal sentence)",
+        "healLeadBinding + resolveForWrite (NEW)",
+        "resolveTeam / recordFor / readWatchdogHold (accept + forward lineage)",
+        "agent_teams_plan: add_member / create_task — NEW live-team append arm (F1); kind/coverageOf/sourceTaskId parsed inside `task`",
+        "agent_teams_task: complete/fail — caller spellings now include the member name read by executorRef/title (F2)",
+        "agent_teams_mail: summary — team-scoped + `scope` label (F3)",
+        "agent_teams_dispatch: resolveTeam/recordFor carry lineage (F5)"
+      ],
+      "sha256": "2acc49266fd08b2f33643c0418ba86946490defee965ad824fc2e2a507893976"
+    },
+    "src/team-store.ts": {
+      "symbols": [
+        "nextIdSuffix + newTeamId (ms + suffix, F4)",
+        "TeamRecord.leadHistory (NEW, F5)",
+        "createTeam (optional explicit teamId; refuses an existing id, F4)",
+        "TASK_KINDS (NEW runtime list)",
+        "recordNamesLead (NEW), memberNamedBy (NEW), recordNamesMember (now delegates)",
+        "rememberLead (NEW), casCloseTask lead arm through recordNamesLead (F5)"
+      ],
+      "sha256": "9abe41cd866d7fc70c152c310058ebfe4b5ca277b337d8e501628d6227dd6016"
+    },
+    "src/plan-store.ts": {
+      "symbols": ["newPlanId (ms + suffix, F4)", "archivePlan (refuses an existing archive, F4)"],
+      "sha256": "bf39d8356597b11007d709c6fce8da6588cf29c8d7581129c22f4132bcc77f7f"
+    },
+    "src/team-lifecycle.ts": {
+      "symbols": ["TeamResolutionInput.alsoSessions (NEW)", "resolveTeamRecord (lead via recordNamesLead; alsoSessions on lead+member arms)"],
+      "sha256": "078483eecdbc81cb2d92f6f8c34e293b522d7e84c5915be7c5e4669276cb4862"
+    },
+    "dist/index.js": {
+      "rebuilt": ".toolchain/node_modules/.bin/bun build packages/mpd-team-core-plugin/src/index.ts --target node --format esm --outfile packages/mpd-team-core-plugin/dist/index.js (repo root, pinned bun 1.4.0)",
+      "sha256": "75b278693bc8604f2373018c3f1f96eda130d70bd9830cf563388a50360bf12c"
+    },
+    "test/c74-midrun-and-binding.test.ts": {
+      "new": "16 arms: F1 (2 positives + 2 negatives), F2 (1+1), F3 (1+1), F4 (2 positives + 2 negatives), F5 (2 positives + 2 negatives)",
+      "sha256": "41f2b244bfd54a9d5b53d2c9e8110b53414c8ceaf49d451707b75221129a04fc"
+    },
+    "test/plan-store.test.ts, test/team-store.test.ts, test/team-record.test.ts": {
+      "why": "assert the NEW ms+suffix id shape and keep the sortable-stamp ordering arm (the old second-precision exact-value assertions)",
+      "note": "strengthened, not weakened: they now also pin the ms stamp and uniqueness"
+    }
+  },
+  "gates": [
+    { "command": ".toolchain/node_modules/.bin/bun test packages/mpd-team-core-plugin", "result": "202 pass / 0 fail, 889 expect(), 15 files — exit 0", "log": "logs/unit.log" },
+    { "command": ".toolchain/node_modules/.bin/bun test packages", "result": "1932 pass / 3 skip / 0 fail, 25302 expect(), 121 files — exit 0", "log": "logs/all-packages.log" },
+    { "command": "bun run typecheck", "result": "tsgo --noEmit — exit 0", "log": "logs/typecheck.log" },
+    { "command": "bun run verify:comments", "result": "401 files, 35408 declarations, VERDICT PASS — exit 0", "log": "logs/comments.log" },
+    { "command": "node scripts/verify-dist-fresh.ts", "result": "mpd-team-core-plugin FRESH (sha 75b278693bc8…); 2 of 31 targets STALE = packages/mpd-tui-adapter-plugin/dist/index.js + packages/mpd-tui-plugin/dist/index.js — exit 1", "log": "logs/dist-fresh.log" },
+    { "command": "context-budget probe (the tool-surface test's own formula, pinned bun)", "result": "surface 4936 chars incl. command*96, budget 5000, margin 64", "log": "logs/context-budget.log" },
+    { "command": ".toolchain/node_modules/.bin/bun evidence/tui/dsh-tui-015/guard/case-draft/c74/run-c74.ts --out evidence/tui/dsh-tui-015/guard/c74/case-draft-run", "result": "SELF-TEST: PASS (13 arms: 5 fixes with their negative controls) — exit 0", "log": "case-draft-run.log", "result_file": "case-draft-run/result.json" }
+  ],
+  "baseline": {
+    "command": ".toolchain/node_modules/.bin/bun test packages/mpd-team-core-plugin (before any edit)",
+    "result": "186 pass / 0 fail — exit 0",
+    "typecheck": "bun run typecheck — exit 0"
+  },
+  "honest_bounds": [
+    "The 2 STALE dist targets are OTHER lanes' in-flight work, present before this task: git status already showed packages/mpd-tui-adapter-plugin/src/index.ts and packages/mpd-tui-plugin/src/panel-dag.ts modified in the shared working tree, and BOTH packages import mpd-team-core-plugin only as `import type` (erased at build), so a team-core src edit cannot change their emitted bytes. My package's own dist target is FRESH. Provenance: logs/stale-target-provenance.log. They are outside this task's write scope.",
+    "F5's acceptance for a RESUMED (non-forked) session is only as good as the harness link available: a session whose header records NO parent and whose id is in neither leadHistory nor teams.json is still refused (the arm states this). The fix bridges a churn the harness records (parentSession — the seeded-fork shape this repo's own captain rule recognises).",
+    "F5's heal is invoked from WRITE paths only (claim / complete / fail and the F1 append). A read-only render (status, mail, dispatch resolution) never writes the team state; dispatch/status/mail resolve WITH lineage but do not heal.",
+    "Lineage is deliberately EMPTY for a recorded delegation child (origin:\"subagent\" or delegationDepth>=1), so a teammate or a captain's subagent cannot inherit the lead arm. This is a NARROWING relative to a naive lineage read and is pinned by a negative control.",
+    "kind/coverageOf/sourceTaskId are accepted INSIDE `task`; they are NOT declared as top-level aliases (owner/blocked_by are). The tool-parameter context budget is the reason. The `task` description names all eight keys.",
+    "No real dsh session was spawned in these arms: they drive the registered tools in-process against a stub executor — the same surface the C7-3 real-lane arms and the unit arms already use.",
+    "The case-arm DRAFT is NOT landed: skills/** was not written (single-skills-writer rule). The writer must rewrite the import prefix and make the case's selfTest()/main() async; the fold is spelled out in the draft header and HANDOFF.md."
+  ],
+  "handoff_to_skills_writer": "evidence/tui/dsh-tui-015/guard/case-draft/c74/HANDOFF.md — fold c74-arms.ts into skills/dsh-qa/scripts/team-dispatch-guard.ts: rewrite the import prefix 6 levels -> 3, make selfTest()/main() async with `...(await c74Arms())`, and land it as part of the wave's SINGLE skills/** write."
+}

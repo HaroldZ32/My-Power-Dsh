@@ -1257,6 +1257,79 @@ describe("honest outcomes (no disposer-type inference)", () => {
     expect(host.warnings.filter((line) => line.includes("ready but NOT activated"))).toHaveLength(0)
   })
 
+  test("the decision identity IS the bound seam scope, never the consumer ctx", () => {
+    // THE FALSIFIER FOR THE 0.15.0 REFUSAL. `subscribeDecision`'s first argument is the activation
+    // the host asserts against the caller it resolved for THIS subscription
+    // (`plugin-host.js#subscribeDecision` → `assertCallerContext`), so handing it the consumer's ctx
+    // throws BEFORE either ledger record site. This arm pins the argument to the object the DEFERRED
+    // INJECT handed the binder — the one object that can resolve the service — and away from the ctx
+    // `apply` was called with.
+    /** Every identity argument the host's `subscribeDecision` received, in call order. */
+    const identities: unknown[] = []
+    /** Every intercept point the host was asked to subscribe, in call order. */
+    const events: string[] = []
+    /** One mediated host whose `subscribeDecision` records the identity it is handed. */
+    const services = {
+      tuiPluginHost: {
+        grants: { allows: () => true },
+        /** Records the identity argument and answers a real disposer. */
+        subscribeDecision(identity: unknown, event: string): () => boolean {
+          identities.push(identity)
+          events.push(event)
+          return () => true
+        },
+      },
+    }
+    /** The host double for that service set. */
+    const host = hostDouble(services)
+    mod.apply(host.ctx as never, {})
+
+    // All four intercept points were attempted, in declaration order …
+    expect(events).toEqual(DECISION_EVENTS.map((entry) => entry.event))
+    expect(identities).toHaveLength(DECISION_EVENTS.length)
+    /** The identity the host was handed, narrowed to the scope surface this arm asserts on. */
+    const identity = identities[0] as { get?: (name: string) => unknown } | undefined
+    // … carrying the BOUND SCOPE, which is the only object that resolves the mediated host …
+    expect(identity?.get?.("tuiPluginHost")).toBe(services.tuiPluginHost)
+    // … and never the consumer ctx, which cannot see the service at all (the inject-free
+    // invisibility this double models). ONE scope served all four intercept points.
+    expect(identity).not.toBe(host.ctx)
+    expect(host.ctx.get("tuiPluginHost")).toBeUndefined()
+    expect(identities.every((candidate) => candidate === identity)).toBe(true)
+  })
+
+  test("a consumer-supplied options.identity is NOT forwarded: the bound scope wins", () => {
+    // The adapter-side half of the same rule (`setStatus`'s precedent): the `identity` option is kept
+    // for source compatibility and deliberately NOT forwarded, so a caller cannot smuggle its own
+    // ctx past the host's caller assertion.
+    /** Every identity argument the host's `subscribeDecision` received, in call order. */
+    const identities: unknown[] = []
+    /** One mediated host whose `subscribeDecision` records the identity it is handed. */
+    const services = {
+      tuiPluginHost: {
+        grants: { allows: () => true },
+        /** Records the identity argument and answers a real disposer. */
+        subscribeDecision(identity: unknown): () => boolean {
+          identities.push(identity)
+          return () => true
+        },
+      },
+    }
+    /** The host double for that service set. */
+    const host = hostDouble(services)
+    /** The row-private adapter over that ctx: the composition a consumer registration reaches. */
+    const tui = createTuiAdapter(host.ctx as never)
+    /** The identity a caller could once have forwarded — deliberately not an activation scope. */
+    const sentinel = { not: "the calling activation" }
+    tui.requestDecisionEvent("tui/input", () => undefined, { scope: "tui/input", order: "mpd-tui", identity: sentinel })
+
+    expect(identities).toHaveLength(1)
+    /** The identity the host was handed, narrowed to the scope surface this arm asserts on. */
+    const identity = identities[0] as { get?: (name: string) => unknown } | undefined
+    expect(identity).not.toBe(sentinel)
+    expect(identity?.get?.("tuiPluginHost")).toBe(services.tuiPluginHost)
+  })
+
   test("without tuiPluginHost the seam is absent and no refusal is claimed", () => {
     /** A host with a status service and no `tuiPluginHost` at all. */
     const services = { tuiStatus: allServices().services.tuiStatus }

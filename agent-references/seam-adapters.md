@@ -38,6 +38,22 @@ runtime dependency (`^8.21.3`), an eighth builtin sidebar panel (`btw`) and a re
 `PanelBar` that no longer paints a descriptor's `icon` (the field stays required and declared). The
 reader-facing table is `docs/tui.md` §11.6.
 
+**The 0.15.0 reading (measured 2026-10-15, wave `tui-015-adaptation`, from
+`evidence/tui/dsh-tui-015/host-diff/`): the seam surface did not move again.** The same fifteen
+plugin-facing seam service ids, additive-only declaration changes (`panels.d.ts` gains
+`applyConfiguredSidePanelPanels()` + `applySidePanelPanelsFromSettings()`, `plugin-host.d.ts` gains
+`probeBackendAdmission()`; every other seam `.d.ts` byte-identical), the harness `peerDependencies`
+still ending at `0.2.0-rc.2`, and the builtin sidebar default (`DEFAULT_SIDE_PANEL_IDS`) unchanged —
+so again **no adapter seam change**, and `MPD_E2E_DSH_VERSION` does not move. One clarifying
+sentence so a raw grep never miscounts the seams: **`tuiChannel` is NOT a seam** — it is the
+KERNEL-CHANNEL protocol id (the probe-evidence labels in `adapter/upstream/channel-driver.js` and the
+`tui-profile/protocols/tui-channel.*` capability definition); no `Service` subclass registers it, no
+Context augmentation exists, and a plugin has nothing to inject, which is why it is excluded from the
+fifteen. What 0.15.0 does change sits outside the seams: the host now SELF-HEALS the sidebar enable
+CSV (registration unions ids back; the only CSV writer left is the `/settings` apply hop — the C2
+keeper stand-down rests on it) and the `PanelBar` paints a descriptor's `icon` on inactive tabs again.
+The reader-facing table is `docs/tui.md` §11.7.
+
 The plugin-facing seams are exactly: `tuiScenes`, `tuiStatus`, `tuiRenderers`, `tuiSettingsSections`,
 `tuiShortcuts`, `tuiDialogs`, `tuiCommandTrees`, `tuiPluginHost`, `tuiToast`, `tuiThemes`,
 `tuiPluginStorage`, `tuiMessageObserver`, `tuiEffectLedger`, `tuiWorkspaces` (plus `tuiPrompt`, which

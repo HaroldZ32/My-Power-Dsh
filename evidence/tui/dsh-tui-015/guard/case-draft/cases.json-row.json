@@ -1,0 +1,8 @@
+{
+  "case": "team-dispatch-guard",
+  "script": "skills/dsh-qa/scripts/team-dispatch-guard.ts",
+  "suites": [
+    "all"
+  ],
+  "immutabilityGuard": "required"
+}

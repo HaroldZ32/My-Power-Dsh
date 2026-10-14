@@ -27,7 +27,7 @@ would duplicate a loader entry id (the loader rejects duplicates outright).
 | Command tree | `ctx.tuiCommandTrees` | `/mpd board`, `/mpd team`, `/mpd plan`, `/mpd status`, `/mpd panel`, `/mpd dag`, `/mpd workmate`, `/mpd workmates` completion, plus the `/mpd-model` root — both roots and every child carry BOTH languages in `descriptions`, resolved by the host with its own active `/lang` |
 | Model menu (R3) | `ctx.tuiDialogs` + the shared catalog/settings seam | **`/mpd-model`** — a real pick-list that walks slot → provider → model → reasoning effort and writes the picked route into the `mpd-config` entry the `/settings` section edits. The options are the section's OWN projection (`teamModelOptionLists`) over the same live catalog, so the menu and the rows cannot disagree; the outcome carries the same disclosure sentence the section carries. Cancelling any panel writes nothing |
 | Shortcuts | `ctx.tuiShortcuts` | `alt+m` board · `alt+a` the subagents + team panel · `alt+t` team workflow · `alt+w` workmate picker · `alt+r` refresh the status line |
-| Sidebar pages (dsh-tui 0.13.0+, adapted to 0.14.0) | `ctx.tuiPanels` (through the adapter) | **TWO** pages since the 0.14.0 wave — `team` (`MPD`, `❖`, `order` 10, the merged RICH view: the host's curated subagent rows above the DAG page's frame/legend/keys/pin body) and `workmate` (`MPD workmate`, `⬢`, `order` 12). The standalone `dag` page is RETIRED and merged into `MPD` (user clause 「DAG页作为MPD面板」), so `/mpd dag` re-aims onto the `MPD` panel with the rich team scene as its fallback — no route, picker entry or `⤢` became a dead end. Both pages declare an icon (distinct from the host's eight builtin tabs) and no `compact`, and both ask `minColumns` 28. `alt+a`, `/mpd panel` and `/mpd subagents` route the MPD panel through `tuiPanels.open()` when the seam is bound; `/mpd dag` re-aims onto that same panel, and `/mpd workmate` routes its own page. EVERY refusal FALLS BACK to a full-screen surface (`mpd-tui-subagents` for the routed open, the RICH `mpd-tui-team` scene for the MPD page's own `⤢`, the board for `workmate`) — never a silent no-op — and each command prints a bilingual status line naming the surface and the final id it reached. See the reachability paragraph below: the host's own two switches are what put a page on screen |
+| Sidebar pages (dsh-tui 0.13.0+, adapted to 0.15.0) | `ctx.tuiPanels` (through the adapter) | **TWO** pages since the 0.14.0 wave — `team` (`MPD`, `❖`, `order` 10, the merged RICH view: the host's curated subagent rows above the DAG page's frame/legend/keys/pin body) and `workmate` (`MPD workmate`, `⬢`, `order` 12). The standalone `dag` page is RETIRED and merged into `MPD` (user clause 「DAG页作为MPD面板」), so `/mpd dag` re-aims onto the `MPD` panel with the rich team scene as its fallback — no route, picker entry or `⤢` became a dead end. Both pages declare an icon (distinct from the host's eight builtin tabs) and no `compact`, and both ask `minColumns` 28. `alt+a`, `/mpd panel` and `/mpd subagents` route the MPD panel through `tuiPanels.open()` when the seam is bound; `/mpd dag` re-aims onto that same panel, and `/mpd workmate` routes its own page. EVERY refusal FALLS BACK to a full-screen surface (`mpd-tui-subagents` for the routed open, the RICH `mpd-tui-team` scene for the MPD page's own `⤢`, the board for `workmate`) — never a silent no-op — and each command prints a bilingual status line naming the surface and the final id it reached. See the reachability paragraph below: the host's own two switches are what put a page on screen |
 | Merged panel | `ctx.tuiScenes` | `mpd-tui-subagents` — the host's own subagent rows (with its running/completed/failed counts), the team body, and the task DAG whose every drawn edge ends in a directional `▼` with a legend under it: this is the FALLBACK surface — `alt+a` and `/mpd panel` land here when the host has no panel seam or refuses the open — and on a pre-0.13.0 host **`Ctrl+A`** reaches it whenever the workspace holds a team (the take-over below). `enter` opens the selected subagent's detail, `i` interrupts the selected live run, a click selects a row |
 | `Ctrl+A` take-over | a `ctx.tuiStatus` view + the adapter's host-input contact | `Ctrl+A` opens the merged panel instead of the host's own dashboard while the team projection holds a team with at least one task; with no team — or on a host whose input bus the adapter cannot reach — the key behaves exactly as before (`tui.dashboardKey`, default `true`; see NOT CLAIMED 7-9) |
 | Dialogs | `ctx.tuiDialogs` | the mediated workmate picker (`select`) |
@@ -59,15 +59,17 @@ that route's fallback), while `/mpd panel`, `/mpd subagents` and `alt+a` already
 slot. The `◈` icon the retired page declared is declared by nothing now.
 
 **Every icon must be DISTINCT from the host's own tab icons** — `≡` (its `todo` panel), `▸` (jobs),
-`◆` (agents), `ⓘ` (info), `∿` (trajectory), `⌗` (workspace), `?` (`btw`, the eighth builtin 0.14.0 adds),
+`◆` (agents), `ⓘ` (info), `∿` (trajectory), `⌗` (workspace), `?` (`btw`, the eighth builtin 0.14.0 added),
 `♥` (companion) — and exactly one cell under
 BOTH this package's `sanitize.cellWidth` and the host's `stringWidth`, because the host REJECTS a
 registration whose icon is not exactly one cell. The merged page used to declare no icon and the host
 therefore drew the fallback letter `M`; the workmate page used to declare `◆`, which is byte-identical
 to the host's own `agents` tab and so was not a distinct symbol at all. Both are fixed here, and the
-whole set is asserted by the package suite — **against the host's own registry, not a literal list**,
-because 0.14.0's `PanelBar` no longer PAINTS an icon: the field stays required and declared, it is simply
-not drawn (`grep -c icon …/PanelBar.js` is 0 on the installed 0.14.0).
+whole set is asserted by the package suite — **against the host's own registry, not a literal list**.
+Whether the icon is PAINTED is a host fact that moved twice: 0.14.0's carousel `PanelBar` drew `○`/`●`
+dots instead (`grep -c icon …/PanelBar.js` was 0 on the installed 0.14.0), and **0.15.0 paints icons
+again** — an inactive tab draws `tab.icon ?? <the title's first character> ?? '?'` plus the unread
+count, so this bundle's `❖` and `⬢` are back on the bar with no bundle-side change.
 
 Every page is `apiVersion` 1 (the only accepted value) and declares **no `compact`**: the host
 validates and stores that row slot but does not mount its render slot, so declaring one would claim a
@@ -125,7 +127,13 @@ Two INDEPENDENT routes now hold the list:
   happens instead of after the fact, and the bounded tick ladder (six ticks over ~25 s, then stop for
   good) survives only as the degrade path for a host that exposes no such feed. The subscription is
   released with the injected scope, never throws on a host without that module, and our own write ends
-  the loop because it contains our ids. The ids it discovered are recorded to
+  the loop because it contains our ids. **Since 0.15.0 the keeper STANDS DOWN on self-healing hosts
+  (C2)**: from that release the host unions registered ids back into the enable CSV itself and records
+  explicit `/settings` removals session-wide, so the keeper detects the host version (the adapter's
+  `readHostPackageVersion`, stamped on the same probe answer) and on `>= 0.15.0` it writes NOTHING —
+  no feed, no ladder, no repair that could race the host's own union or undo a removal you asked for;
+  one log line says so, and an observe-only belt watches the FIRST host apply to report whether our ids
+  survived it. An empty, unparseable or older version keeps the feed-first behaviour above unchanged. The ids it discovered are recorded to
   `<workspace>/.mpd/logs/mpd-tui-panels.json`, because no source constant can
   know them — **and the record now carries PROVENANCE** (`{hostRoot, hostVersion, readBack,
   activation}`, record schema version 2): a unit test run had driven the real recorder with the
@@ -296,7 +304,12 @@ could not afford: a bordered frame, a header naming the team and its progress, t
 a footer naming the keys this page really handles. **Since the 0.14.0 wave it is what the `MPD` sidebar
 panel RENDERS** (the user's clause 「DAG页作为MPD面板」): the module keeps its rendering and loses only
 its own registration, and the host's curated subagent rows are drawn above it inside the same frame.
-Everything below is unchanged by that merge.
+Everything below is unchanged by that merge. **A team with ZERO tasks renders as a TEAM (fixed in the
+0.15.0 wave)**: the projection used to collapse a resolved team into the "no team" empty state the moment
+its board was empty — a live six-member team painted one dim line. Now the header facts (team, phase,
+`tasks 0/0`, members), a one-line roster in the scene's own discipline and the `agent_teams_plan` hint row
+draw for every resolved team, session-scoped and workspace-fallback alike; only a genuinely team-less
+workspace keeps the empty states.
 
 - **Vertical and adaptive, with no fixed size anywhere.** Rank is the VERTICAL axis (top→bottom), and
   the drawing is REUSED from `graph.ts` rather than re-implemented: `layoutBoxes` (one bordered box per

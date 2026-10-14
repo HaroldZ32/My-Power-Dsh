@@ -57,6 +57,7 @@ import {
   type WorkmateLibrary,
 } from "../src/panel-workmate"
 import type { TeamWorkflow } from "../src/team-state"
+import { NO_SESSION_TEAM_MARKER, WORKSPACE_SCOPE_MARKER } from "../src/team-state"
 
 // ── fixtures ────────────────────────────────────────────────────────────────
 
@@ -1686,6 +1687,93 @@ describe("R1: non-empty board vs empty workspace", () => {
       throw new Error("record unreadable")
     }) as (props: unknown) => unknown
     expect(kit.text(render(broken, kit, makeHost()))).toContain("agent_teams_plan")
+  })
+
+  test("C6: the projection keeps a RESOLVED team's identity when its board is empty, and stays undefined for no team", () => {
+    // THE DEFECT'S ROOT (H1): `dagPageOf` used to return undefined for `tasks.length === 0`, so a
+    // live team lost name/phase/roster and the page painted the no-team state. The fix projects the
+    // page whenever the record's own `team` head resolved.
+    /** The chain fixture with its board emptied but its team, roster and counts left intact. */
+    const empty = workflowFixture()
+    // The second member is made idle so the arm pins BOTH glyphs of the scene's roster discipline.
+    empty.members = empty.members.map((member, index) => (index === 1 ? { ...member, status: "inactive" } : member))
+    empty.tasks = []
+    empty.counts = { total: 0, completed: 0, inProgress: 0, pending: 0, claimed: 0, failed: 0, cancelled: 0, other: 0 }
+    /** The projection of that team. */
+    const page = dagPageOf(empty)
+    expect(page?.teamName).toBe("dag-port")
+    expect(page?.tasks).toEqual([])
+    expect(page?.members).toBe(2)
+    // The roster line follows the scene's own discipline: the label, the running glyph, name and
+    // done/total — the first fixture member is running, the second is not.
+    expect(page?.roster).toContain("roster")
+    expect(page?.roster).toContain("◐Panel Engineer 1/2")
+    expect(page?.roster).toContain("○Geometry Engineer 0/1")
+    // THE HONEST NO-TEAM PROJECTION (no `team` head — `emptyWorkflow`, the `none` scope's carrier)
+    // still yields undefined, so the render's session marker keeps drawing for a team-less session.
+    const none: TeamWorkflow = { ...empty, team: undefined }
+    expect(dagPageOf(none)).toBeUndefined()
+  })
+
+  test("C6: a live member-only team (0 tasks) renders identity and roster — NOT a no-team state", () => {
+    // THE USER'S OWN REPRO: a live six-member team whose board is still empty painted one dim
+    // empty-state line. The page must draw the header facts, the one-line roster and the hint row.
+    /** The fixture as a freshly staged team reads: six members, an empty board, this session's own. */
+    const staged = workflowFixture()
+    staged.members = ["Architect", "Researcher", "Planner", "Senior Engineer", "Reviewer", "Explorer"].map((name, index) => ({
+      name,
+      status: index === 0 ? "running" : "inactive",
+      done: 0,
+      total: 0,
+      progress: 0,
+      unread: null,
+    }))
+    staged.tasks = []
+    staged.counts = { total: 0, completed: 0, inProgress: 0, pending: 0, claimed: 0, failed: 0, cancelled: 0, other: 0 }
+    staged.source = { scope: "session", sessionId: "sess-b" }
+    /** The page over that team. */
+    const page = createDagPanelComponent(() => staged) as (props: unknown) => unknown
+    /** A wide panel, so the one-line roster is not the thing under test — truncation is not the defect. */
+    const kit = makeKit({ columns: 120, rows: 60 })
+    /** The rendered text. */
+    const text = kit.text(render(page, kit, makeHost()))
+    // THE IDENTITY THE OLD PROJECTION DISCARDED: the team's own name and its member count.
+    expect(text).toContain("dag-port")
+    expect(text).toContain("members 6")
+    // THE ROSTER, one line, the running member glyphed exactly as the scene draws it.
+    expect(text).toContain("roster")
+    expect(text).toContain("◐Architect 0/0")
+    expect(text).toContain("○Explorer 0/0")
+    // The hint row keeps naming the call which fills the board.
+    expect(text).toContain("this session's team has no tasks yet")
+    expect(text).toContain("agent_teams_plan")
+    // NEGATIVE CONTROL (the session-scope pattern): a resolved team paints NEITHER no-team state —
+    // not the session marker, not the false workspace row.
+    expect(text).not.toContain(NO_SESSION_TEAM_MARKER)
+    expect(text).not.toContain("no team in this workspace")
+  })
+
+  test("C6: the workspace fallback with ZERO tasks keeps its marker — not the false 'no team in this workspace' row", () => {
+    // THE LADDER'S MISSING ARM (H2): scope `workspace` + 0 tasks used to fall through to the false
+    // workspace-empty row. The 0-task arm above the ladder now owns it, marker and all.
+    /** The fixture as the marked fallback reads: no session id on the surface, an empty board. */
+    const fallback = workflowFixture()
+    fallback.tasks = []
+    fallback.counts = { total: 0, completed: 0, inProgress: 0, pending: 0, claimed: 0, failed: 0, cancelled: 0, other: 0 }
+    fallback.source = { scope: "workspace" }
+    /** The page over that team. */
+    const page = createDagPanelComponent(() => fallback) as (props: unknown) => unknown
+    /** The kit. */
+    const kit = makeKit({ columns: 80, rows: 40 })
+    /** The rendered text. */
+    const text = kit.text(render(page, kit, makeHost()))
+    // The marker, the identity and the workspace's own hint sentence.
+    expect(text).toContain(WORKSPACE_SCOPE_MARKER)
+    expect(text).toContain("dag-port")
+    expect(text).toContain("the workspace's team has no tasks yet")
+    // NEGATIVE CONTROLS: neither no-team row may paint for a resolved team.
+    expect(text).not.toContain("no team in this workspace")
+    expect(text).not.toContain(NO_SESSION_TEAM_MARKER)
   })
 })
 

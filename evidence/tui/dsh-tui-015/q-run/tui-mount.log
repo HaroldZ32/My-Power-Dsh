@@ -1,0 +1,10 @@
+[tui-mount] sandbox root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/tui-015 explicit=true warm=true fresh=false
+[tui-mount] dsh-tui home fixture=.mpd/recon/qa/tui-lanes/tui-015/home/.dsh-tui/onboarding.json, .mpd/recon/qa/tui-lanes/tui-015/home/.dsh-tui/agent-preset.json preset=mpd
+[tui-mount] launchpad gate DSH_TUI_NO_LAUNCHPAD=1
+[tui-mount] profile bundles=["@deepseek-ai/dsh-base","@deepseek-harness-tui/dsh-tui","@mpd-dsh/mpd"] (dump-config carries 0 row(s))
+[tui-mount] dump-config exit=0 bundles=["@deepseek-ai/dsh-base","@deepseek-harness-tui/dsh-tui","@mpd-dsh/mpd"] rowComposed=true
+[tui-mount] statusLine=true counters=true crashes=[]
+[tui-mount] session keys created=[] inherited=[]
+[tui-mount] preset=undefined session=undefined isolationOffenders=0
+[tui-mount] ok=false -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/lanes/2026-10-14T09-15-19.730Z
+[tui-mount] FAIL: {"face":{"ok":false,"layering":{"ok":true,"missing":[],"ordered":true,"bundles":["@deepseek-ai/dsh-base","@deepseek-harness-tui/dsh-tui","@mpd-dsh/mpd"],"reason":"triple layer in order"},"crashSignatures":[],"statusLine":true,"counters":true,"rendered":true,"rowComposed":true,"homeFixture":{"onboarding":{"completed":true,"version":1},"preset":"mpd","evidence":[".mpd/recon/qa/tui-lanes/tui-015/home/.dsh-tui/onboarding.json",".mpd/recon/qa/tui-lanes/tui-015/home/.dsh-tui/agent-preset.json"]},"launchpadGate":{"key":"DSH_TUI_NO_LAUNCHPAD","value":"1"},"isolationOffenders":[],"sessionKeysCreated":[],"sessionKeysInherited":[],"expectedProjectKey":"--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-.mpd-recon-qa-tui-lanes-tui-015-ws--","sandboxSessions":0,"sandboxRoot":"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/tui-015","layeringEvidence":"dump-config.txt","paneEvidence":"boot.pane.txt + tui-pane.log","presetEvidence":"preset.pane.txt + preset.session.json + evidence/tui/lanes/2026-10-14T09-15-19.730Z/preset.session.json"},"rowComposed":true,"isolation":[]}

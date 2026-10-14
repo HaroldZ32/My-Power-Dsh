@@ -1,0 +1,50 @@
+ {"level":"warn"}
+[dsh-tui] [stderr] [dsh-tui] park target=6,45 decl=true rect=true moved=false
+ {"level":"warn"}
+[dsh-tui] [stderr] [dsh-tui] park target=6,45 decl=true rect=true moved=false
+ {"level":"warn"}
+[dsh-tui] [stderr] [dsh-tui] park target=6,45 decl=true rect=true moved=false
+ {"level":"warn"}
+[dsh-tui] [stderr] [dsh-tui] park target=6,45 decl=true rect=true moved=false
+ {"level":"warn"}
+[dsh-tui] [stderr] [dsh-tui] park target=6,45 decl=true rect=true moved=false
+ {"level":"warn"}
+[dsh-tui] [stderr] [dsh-tui] park target=6,45 decl=true rect=true moved=false
+ {"level":"warn"}
+[dsh-tui] [stderr] [dsh-tui] park target=6,45 decl=true rect=true moved=false
+ {"level":"warn"}
+[dsh-tui] [stderr] [dsh-tui] park target=6,45 decl=true rect=true moved=false
+ {"level":"warn"}
+[dsh-tui] [stderr] [dsh-tui] park target=6,45 decl=true rect=true moved=false
+ {"level":"warn"}
+[dsh-tui] [stderr] [dsh-tui] park target=6,45 decl=true rect=true moved=false
+ {"level":"warn"}
+[dsh-tui] [stderr] [dsh-tui] park target=6,45 decl=true rect=true moved=false
+ {"level":"warn"}
+[dsh-tui] [stderr] [dsh-tui] park target=6,45 decl=true rect=true moved=false
+ {"level":"warn"}
+[dsh-tui] [stderr] [dsh-tui] park target=6,45 decl=true rect=true moved=false
+ {"level":"warn"}
+[dsh-tui] [stderr] [dsh-tui] park target=6,45 decl=true rect=true moved=false
+ {"level":"warn"}
+[dsh-tui] [stderr] [dsh-tui] park target=6,45 decl=true rect=true moved=false
+ {"level":"warn"}
+[dsh-tui] [stderr] [dsh-tui] park target=6,45 decl=true rect=true moved=false
+ {"level":"warn"}
+[dsh-tui] [stderr] [dsh-tui] park target=6,45 decl=true rect=true moved=false
+ {"level":"warn"}
+[dsh-tui] [stderr] [dsh-tui] park target=6,45 decl=true rect=true moved=false
+ {"level":"warn"}
+[dsh-tui] [stderr] [dsh-tui] park target=6,45 decl=true rect=true moved=false
+ {"level":"warn"}
+[dsh-tui] [stderr] [dsh-tui] park target=6,45 decl=true rect=true moved=false
+ {"level":"warn"}
+[dsh-tui] [stderr] [dsh-tui] park target=6,45 decl=true rect=true moved=false
+ {"level":"warn"}
+[dsh-tui] [stderr] [dsh-tui] park target=6,45 decl=true rect=true moved=false
+ {"level":"warn"}
+[dsh-tui] [stderr] [dsh-tui] park target=6,45 decl=true rect=true moved=false
+ {"level":"warn"}
+[dsh-tui] [stderr] [dsh-tui] park target=6,45 decl=true rect=true moved=false
+ {"level":"warn"}
+

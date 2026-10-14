@@ -109,3 +109,10 @@ docker/ui/pw/
 # capture report are the evidence; a live token is not, and AGENTS.md §10 keeps secret-shaped
 # strings out of committed artifacts (the same rule the QA lanes apply when they redact it).
 docker/ui/out/*.log
+
+# Wave-local host payloads: the unpacked dsh-tui 0.14.0/0.15.0 package trees and their
+# tarballs are third-party bytes used only to MEASURE the delta; FACTS.md is the record.
+# Reproduce with the download commands recorded in host-diff/FACTS.md.
+evidence/tui/dsh-tui-015/host-diff/a/
+evidence/tui/dsh-tui-015/host-diff/b/
+evidence/tui/dsh-tui-015/host-diff/*.tgz

@@ -1,0 +1,25 @@
+{
+  "slug": "tui-admission",
+  "ok": false,
+  "revision": {
+    "path": "packages/mpd-tui-plugin/dist/index.js",
+    "sha256": "529b2eb7363d94311ed43515c96a519dabac2f5656bfd05712b256e7b188e26e",
+    "bytes": 410643,
+    "mtimeLocal": "2026-10-14T08:20:27.165Z",
+    "mtimeUtc": "2026-10-14T08:20:27.165Z"
+  },
+  "revisionDelta": {
+    "changed": false,
+    "before": "529b2eb7363d94311ed43515c96a519dabac2f5656bfd05712b256e7b188e26e",
+    "after": "529b2eb7363d94311ed43515c96a519dabac2f5656bfd05712b256e7b188e26e",
+    "reason": "unchanged across the run"
+  },
+  "manifestDigest": "b70ef77acf33ebfef15a08f8a951b367e815c825f6e49ebadc1dd345b6a6b2c1",
+  "steps": {
+    "static": {
+      "ok": false,
+      "reason": "no spec-data root with registry/registry-0.15.json (installed payload or the d248c267 checkout)"
+    }
+  },
+  "sandboxRoot": "not used (--static-only)"
+}

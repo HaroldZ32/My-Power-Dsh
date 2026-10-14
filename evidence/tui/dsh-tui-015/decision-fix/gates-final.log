@@ -1,0 +1,32 @@
+# gate sweep on the FINAL bytes — 2026-10-14T11:34:47Z
+
+$ node scripts/verify-dist-fresh.ts
+[verify-dist-fresh] build toolchain: bun 1.4.0 from the repository toolchain (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun) · recorded buildToolchain bun@1.4.0
+[verify-dist-fresh] NOT COVERED (1) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+[verify-dist-fresh] ok: 31/31 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 655ms
+exit=0
+
+$ .toolchain/node_modules/.bin/bun test packages/mpd-tui-plugin packages/mpd-tui-adapter-plugin
+
+ 560 pass
+ 0 fail
+ 13832 expect() calls
+Ran 560 tests across 23 files. [10.33s]
+
+$ .toolchain/node_modules/.bin/bun run typecheck
+$ tsgo --noEmit
+exit=0
+
+$ .toolchain/node_modules/.bin/bun run verify:comments
+
+scanned 401 TypeScript file(s) of 401 in the source set; inspected 35524 declaration(s); skipped 16120 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+exit=0
+
+$ .toolchain/node_modules/.bin/bun test packages   (whole repo)
+ 3 skip
+ 0 fail
+ 25314 expect() calls
+Ran 1939 tests across 121 files. [22.28s]

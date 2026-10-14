@@ -1,0 +1,9 @@
+2026-10-14T11:01:23Z exit=0 lane=tui-mount evidence=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/lanes/2026-10-14T11-01-23.930Z/
+2026-10-14T11:01:41Z exit=0 lane=tui-deps-ctrla evidence=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/lanes/2026-10-14T11-01-41.143Z/
+2026-10-14T11:02:49Z exit=1 lane=tui-panels evidence=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/lanes/2026-10-14T11-02-49.362Z/
+2026-10-14T11:04:07Z exit=1 lane=tui-team-surface evidence=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/team-surface-verify/2026-10-14T11-04-07.657Z/
+2026-10-14T11:05:07Z exit=0 lane=tui-settings-bridge evidence=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/mpd-bridge/tui-settings-bridge/20261014T091837Z/
+2026-10-14T11:05:07Z exit=1 lane=tui-admission evidence=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/lanes/2026-10-14T11-05-07.673Z/
+2026-10-14T11:07:08Z exit=0 lane=tui-distribution evidence=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/lanes/2026-10-14T11-05-07.673Z/
+2026-10-14T11:07:08Z exit=0 lane=tui-spec-conformance evidence=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/lanes/2026-10-14T11-05-07.673Z/
+DRIVER_EXIT=0

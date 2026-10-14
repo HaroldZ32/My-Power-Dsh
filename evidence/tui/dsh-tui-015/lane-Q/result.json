@@ -1,0 +1,65 @@
+{
+  "wave": "tui-015-adaptation",
+  "task": "T6 lane-Q (SINGLE skills/** writer): the seven QA carriers + the C2 real-PTY arm + the C3' grant arms",
+  "status": "T6 (a) and (b) complete and green; T6 (c) static arms green, live grant arms blocked (see q-run/summary.json)",
+  "carriers": {
+    "moved": ["skills/dsh-qa/scripts/tui-mount.ts", "skills/dsh-qa/scripts/tui-deps-ctrla.ts", "skills/dsh-qa/scripts/tui-panels.ts", "skills/dsh-qa/scripts/tui-team-surface.ts", "skills/dsh-qa/scripts/tui-admission.ts", "skills/dsh-qa/scripts/lib/tui-lane.ts", "skills/dsh-qa/scripts/install-dependencies.ts"],
+    "residual0140": [
+      { "path": "skills/dsh-qa/scripts/tui-mount.ts", "lines": "146,153", "class": "provenance MOVED sentence" },
+      { "path": "skills/dsh-qa/scripts/lib/tui-lane.ts", "lines": "525,526", "class": "dated measurement sentence" },
+      { "path": "skills/dsh-qa/scripts/tui-deps-ctrla.ts", "lines": "56", "class": "dated measurement prose" },
+      { "path": "skills/dsh-qa/scripts/tui-deps-ctrla.ts", "lines": "647,651", "class": "STAY class: the probe-mechanism fixture (captain-ruled)" }
+    ]
+  },
+  "c2Arm": {
+    "script": "skills/dsh-qa/scripts/tui-keeper-standdown.ts",
+    "registered": ["skills/dsh-qa/cases.json lanes entry", "skills/dsh-qa/SKILL.md case table row"],
+    "selfTest": "exit 0 (--self-test: csv detector, user-layer reader/writer, row matcher, pointer finder and readiness pattern are two-sided)",
+    "realLane": "PASS exit 0",
+    "command": "bun skills/dsh-qa/scripts/tui-keeper-standdown.ts --sandbox-root .mpd/recon/qa/tui-lanes/tui-015",
+    "env": "XDG_RUNTIME_DIR=<sandbox>/run; PATH prepended with <sandbox>/dshhome/profiles/dsh-tui/node_modules/.bin",
+    "evidence": "evidence/tui/dsh-tui-015/lane-Q/c2-real-pty/ (copy of evidence/tui/lanes/2026-10-14T09-23-17.895Z/)",
+    "arms": {
+      "sidePanelGroupOpened": true,
+      "preStateChecked": true,
+      "rowsReached": true,
+      "untickedInPane": true,
+      "removed": true,
+      "staysRemoved": true,
+      "builtinTriggerDone": true,
+      "controlReddened": true,
+      "controlRestored": true
+    },
+    "observations": "5 polls, every one csv=\"todo,jobs,agents,info,trajectory,workspace,btw,companion\" actTokens=[]",
+    "paneProof": {
+      "group-page": "both rows checked: `[✓ ] ❖ MPD 插件面板（act1）` / `[✓ ] ⬢ MPD workmate 插件面板（act1）`; the 高级 row showed `...,act1:team,act1:workmate`",
+      "after-untick-1": "first row unchecked",
+      "after-untick-2": "both rows unchecked"
+    },
+    "implementationNotes": [
+      "provisionTuiHome(root) added: without the `mpd` agent preset the host runs `standard` and no plugin row renders",
+      "the side-panel picker lives on the `side-panel` group SUBPAGE (host GroupRow + SETTINGS_GROUPS); the drive navigates 侧栏 … › first",
+      "the host resolves sidePanel.panels for the picker from the settings DOCUMENT, so the fixture seeds {version,values:{sidePanel:{panels}}} with both act ids enabled (a wiped layer renders both rows UNCHECKED and there is nothing to remove)",
+      "keys are sent ONE AT A TIME (KEY_GAP_MS): keys batched into one tmux send land in one Ink tick and the screen's setFocusIndex(effFocus+1) reads a stale closure, so a burst of N moves exactly one row"
+    ]
+  },
+  "c3Arms": {
+    "static": "green — tui-admission static result ok=true, staticGrants=true (q-run/tui-admission.log)",
+    "live": "blocked — the granted boot never reached the chat screen within 90000ms (q-run/tui-admission.log)"
+  },
+  "gates": [
+    { "command": "bun run test:qa", "observed": "all self-tests passed", "exit": 0, "log": "self-tests.log" },
+    { "command": "bun run typecheck", "observed": "clean", "exit": 0, "log": "typecheck.log" },
+    { "command": "bun run verify:comments", "observed": "PASS - 400 files / 35265 declarations", "exit": 0, "log": "comments.log" }
+  ],
+  "sharedFix": {
+    "path": "skills/dsh-qa/scripts/lib/tui-lane.ts",
+    "symbol": "TUI_READY_PATTERN (used as runTuiSession's default readyPattern)",
+    "why": "the old default /❯|esc to interrupt|按 Esc/ matched the SPLASH, which paints the prompt box's ❯ before the session is ready; measured on the sandbox 0.15.0 payload, tui-mount's boot pane carried 正在启动 DSH… and its status-line/counter assertions read absent"
+  },
+  "honestBounds": [
+    "the C2 arm is green on the FINAL bytes; its evidence was produced after the last edit to that script",
+    "the shared readiness fix is a real improvement but does not by itself satisfy the frozen lane table (see q-run/summary.json)",
+    "C3' live grant arms are NOT proven on this box"
+  ]
+}

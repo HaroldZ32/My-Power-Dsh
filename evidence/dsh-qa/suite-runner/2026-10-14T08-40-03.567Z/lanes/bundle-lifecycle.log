@@ -1,0 +1,19 @@
+[bundle-lifecycle] FAIL: install step failed: tchLatestStableVersion (/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/corepack/dist/lib/corepack.cjs:13108:20)
+    at async fetchLatestStableVersion2 (/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/corepack/dist/lib/corepack.cjs:13262:14)
+    at async Engine.getDefaultVersion (/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/corepack/dist/lib/corepack.cjs:13976:23)
+    at async Engine.findProjectSpec (/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/corepack/dist/lib/corepack.cjs:14051:40)
+    at async Engine.executePackageManagerRequest (/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/corepack/dist/lib/corepack.cjs:14105:24)
+    at async Object.runMain (/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/corepack/dist/lib/corepack.cjs:14838:7) {
+  [cause]: [TypeError: fetch failed] {
+    [cause]: ConnectTimeoutError: Connect Timeout Error (attempted addresses: 2606:4700::6810:922:443, 104.16.3.34:443, timeout: 10000ms)
+        at onConnectTimeout (node:internal/deps/undici/undici:1991:23)
+        at Immediate._onImmediate (node:internal/deps/undici/undici:1972:11)
+        at process.processImmediate (node:internal/timers:574:21) {
+      code: 'UND_ERR_CONNECT_TIMEOUT'
+    }
+  }
+}
+
+Node.js v24.21.0
+dsh: plugin command failed; diagnostics: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-reloc/bundle-lifecycle-2026-10-14T08-40-03.580Z/home/profiles/w/.plugin-manager/logs/operation-YaQIH5/pnpm.log
+

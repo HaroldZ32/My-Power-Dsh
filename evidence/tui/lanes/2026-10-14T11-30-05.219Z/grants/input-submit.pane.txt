@@ -1,0 +1,50 @@
+
+                                                                                                       
+  ! /plugin                                                                         
+    插件与宿主同进程运行：授权是行为约束而非安全隔离；通过校验 ≠ 插件安全（C-070）。               
+    协商结果：compatible                                                                          
+                                                                                                
+  ! /plugin                                                                                       
+    插件与宿主同进程运行：授权是行为约束而非安全隔离；通过校验 ≠ 插件安全（C-070）。               
+    你装的额外插件（1）：                              
+    @mpd-dsh/mpd 0.12.0 · 已启用 · TUI 贡献：compatible                                           
+    详情：/plugin info <名字>；安装源：/plugin registries；完整诊断：无参 /plugin。           
+                                                                                                  
+  ❯ mpd admission lane decision arm                                                               
+                                                                                                  
+  ⚓ 思考 · 2s （ctrl+o 展开）                                                     
+                                                                                                                           
+  ● I'll start by reading the workspace and lane context before deciding anything.                     
+                                                                                                                          
+  • Bash(pwd; echo "--- ws ---"; ls -la; echo "--- lane root ---"; ls -la ..; echo "--- tui-lanes ---"; ls -la ../..) · 0s
+   ⎿ /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/tui-015/ws
+     --- ws ---                                                                   
+     total 16                                                                               
+     … +33 行（ctrl+o 展开）                                                                                              
+                                                                                    
+  ✗ Glob **/AGENT*.md · 0s                                                                                                                                                                                                
+   ⎿ Error: captain investigation rule: `glob` on (no path argument — a bare call searches the whole workspace) is refused — the `mpd` preset's TOP-LEVEL session does not run reconnaissance, so its context stays small 
+     enough for very large projects. Delegate it: `mpd_role_spawn` with the `Explorer` role (find files and code) or the `Researcher` role (evidence-based search), or hand the search to a team member, and consume the  
+     REPORT. The documentation band stays open to you: `.mpd/**`, `docs/**`, `evidence/**`, `agent-references/**`, the root AGENTS.md / README*.md / CHANGELOG.md / LICENSE*.md — and `captain.investigation: "allow"` in 
+     mpd.jsonc restores full access.                   
+                                                                                                                                                                                                                          
+  ✗ Glob **/*.md · 0s                                                                                                                                                                                                     
+   ⎿ Error: captain investigation rule: `glob` on (no path argument — a bare call searches the whole workspace) is refused — the `mpd` preset's TOP-LEVEL session does not run reconnaissance, so its context stays small 
+     enough for very large projects. Delegate it: `mpd_role_spawn` with the `Explorer` role (find files and code) or the `Researcher` role (evidence-based search), or hand the search to a team member, and consume the  
+     REPORT. The documentation band stays open to you: `.mpd/**`, `docs/**`, `evidence/**`, `agent-references/**`, the root AGENTS.md / README*.md / CHANGELOG.md / LICENSE*.md — and `captain.investigation: "allow"` in 
+     mpd.jsonc restores full access.                                                                                                                                                                                        
+                                                                                                                                                                                                                          
+  ⚓ 思考 · 1s （ctrl+o 展开）                                                                                                                                                                                              
+                                                                                                                                                                                                                          
+  ●                                                                                                                                                                                                                
+
+  🌕 ✓ 找啊找 **/*.md · 2ms · ↑ 44.1k · ↓ 32 tokens                                                                                          
+  mpd: 团队 Fixture Team 2·0/2 (workspace-level) · 计划 0 · workmate 1                                                                                                                                                    
+                                                                                                                                                                                                                          
+  ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+  ⌸ ❯                                                                                                                                                                                                                    ⛶
+  ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+                                                                                                                                                                                                            46k/1.0M 4.6% 
+   deepseek-flash · max · 缓存 99.5% · ≈¥0.00 谷 · ws                                                                                                                                                 ctx 4.6% (46k/1.0m)
+   esc 中断
+

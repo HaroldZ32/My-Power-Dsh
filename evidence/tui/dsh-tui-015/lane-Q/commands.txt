@@ -1,0 +1,8 @@
+# T6 (lane-Q) C2 real-PTY arm — exact invocation, observed 2026-10-14
+cd /home/haroldzhao/MyProj/DshProj/My-Power-Dsh
+export XDG_RUNTIME_DIR=$PWD/.mpd/recon/qa/tui-lanes/tui-015/run
+export PATH=$PWD/.mpd/recon/qa/tui-lanes/tui-015/dshhome/profiles/dsh-tui/node_modules/.bin:$PATH
+bun skills/dsh-qa/scripts/tui-keeper-standdown.ts --sandbox-root .mpd/recon/qa/tui-lanes/tui-015
+# exit 0  (PASS: both panels unticked via /settings, removal stayed through 5 polls and the control reddened)
+# offline falsifier:
+bun skills/dsh-qa/scripts/tui-keeper-standdown.ts --self-test   # exit 0

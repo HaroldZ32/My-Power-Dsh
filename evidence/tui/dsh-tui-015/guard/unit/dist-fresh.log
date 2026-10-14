@@ -1,0 +1,5 @@
+$ node scripts/verify-dist-fresh.ts
+[verify-dist-fresh] NOT COVERED (1) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+[verify-dist-fresh] FAIL - 2 of 31 targets not fresh (STALE: 2) — 636ms
+[exit=0]
