@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="768" viewBox="0 0 1180 768" role="img" aria-labelledby="title desc">
+  <title id="title">The ULW (ultrawork) loop</title>
+  <desc id="desc">Flowchart of an ultrawork run: entry command, triage, optional plan, round-by-round execution with a five-step per-criterion cycle, verification gate and quality gate, with a feedback path from a red gate back into execution.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8"/>
+    </marker>
+    <marker id="arrowfb" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#f59e0b"/>
+    </marker>
+    <style>
+      .h1 { font: 700 24px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #0f172a; }
+      .sub { font: 400 13.5px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #64748b; }
+      .step { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.5; }
+      .step-h { font: 700 14.5px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #0f172a; }
+      .step-s { font: 400 12px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #475569; }
+      .entry { fill: #eef2ff; stroke: #818cf8; stroke-width: 1.5; }
+      .entry-h { font: 700 14.5px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #3730a3; }
+      .entry-s { font: 400 12px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #4f46e5; }
+      .cycle { fill: #f1f5f9; stroke: #e2e8f0; stroke-width: 1; }
+      .cycle-h { font: 600 12.5px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #1e293b; }
+      .arrow { font: 700 16px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #94a3b8; }
+      .mono { font: 600 11.5px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: #334155; }
+      .note { font: 400 11.5px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #64748b; }
+      .fb { font: 600 11.5px ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #b45309; }
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1180" height="768" fill="#ffffff"/>
+  <text class="h1" x="40" y="44">The ULW loop (ultrawork v2)</text>
+  <text class="sub" x="40" y="68">One objective: triaged first, planned when it warrants a plan, executed in rounds, and gated before it is reported done.</text>
+
+  <!-- Entry -->
+  <rect class="entry" x="240" y="96" width="620" height="64" rx="12"/>
+  <text class="entry-h" x="262" y="122">Entry</text>
+  <text class="entry-s" x="262" y="144">/ulw &lt;objective&gt; · /ultrawork &lt;objective&gt; · mpd_ulw · mpd_ultrawork — the two commands are equivalent</text>
+
+  <path d="M550 160 L550 184" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- 1 Triage -->
+  <rect class="step" x="240" y="188" width="620" height="64" rx="12"/>
+  <text class="step-h" x="262" y="214">1 · Triage</text>
+  <text class="step-s" x="262" y="236">An unclear or investigate-first objective is triaged before any work starts.</text>
+
+  <path d="M550 252 L550 276" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- 2 Plan -->
+  <rect class="step" x="240" y="280" width="620" height="64" rx="12"/>
+  <text class="step-h" x="262" y="306">2 · Plan — only when the work warrants one</text>
+  <text class="step-s" x="262" y="328">mpd_ultrawork { plan: true } and { hyperplan: true } force the planning step.</text>
+
+  <path d="M550 344 L550 368" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- 3 Execute -->
+  <rect class="step" x="240" y="372" width="620" height="150" rx="12"/>
+  <text class="step-h" x="262" y="398">3 · Execute, round by round</text>
+  <text class="step-s" x="262" y="418">Each round runs a per-criterion cycle:</text>
+  <rect class="cycle" x="262" y="430" width="90" height="36" rx="8"/>
+  <text class="cycle-h" x="288" y="453">pin</text>
+  <text class="arrow" x="357" y="455">→</text>
+  <rect class="cycle" x="378" y="430" width="90" height="36" rx="8"/>
+  <text class="cycle-h" x="400" y="453">red</text>
+  <text class="arrow" x="473" y="455">→</text>
+  <rect class="cycle" x="494" y="430" width="90" height="36" rx="8"/>
+  <text class="cycle-h" x="512" y="453">green</text>
+  <text class="arrow" x="589" y="455">→</text>
+  <rect class="cycle" x="610" y="430" width="90" height="36" rx="8"/>
+  <text class="cycle-h" x="624" y="453">surface</text>
+  <text class="arrow" x="705" y="455">→</text>
+  <rect class="cycle" x="726" y="430" width="90" height="36" rx="8"/>
+  <text class="cycle-h" x="744" y="453">clean</text>
+  <text class="note" x="262" y="492">Rounds are bounded by maxRounds (default 6); a defect found on the way is fixed on sight.</text>
+
+  <path d="M550 522 L550 546" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- 4 Verification -->
+  <rect class="step" x="240" y="550" width="620" height="64" rx="12"/>
+  <text class="step-h" x="262" y="576">4 · Verification gate</text>
+  <text class="step-s" x="262" y="598">A separate pass. A heavy tier or strictReview forces it even for small work.</text>
+
+  <path d="M550 614 L550 638" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- 5 Quality -->
+  <rect class="step" x="240" y="642" width="620" height="64" rx="12"/>
+  <text class="step-h" x="262" y="668">5 · Quality gate, then report done</text>
+  <text class="step-s" x="262" y="690">A final gate with a per-lane ledger. Passing it is what "done" means.</text>
+
+  <!-- feedback path -->
+  <path d="M860 674 H930 V435 H860" fill="none" stroke="#f59e0b" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrowfb)"/>
+  <text class="fb" transform="rotate(-90 952 555)" x="952" y="555" text-anchor="middle">gate red → fix on sight → re-enter the round</text>
+
+  <text class="note" x="40" y="734">Run state and the per-lane ledger live under</text>
+  <text class="mono" x="288" y="734">&lt;workspace&gt;/.mpd/ulw/&lt;id&gt;/</text>
+  <text class="note" x="466" y="734">— a run survives a restart because that state is on disk.</text>
+</svg>

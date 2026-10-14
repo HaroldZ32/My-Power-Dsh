@@ -1,0 +1,10 @@
+npm install of a DIRECTORY 'file:' dependency, measured 2026-10-14T15:51:24Z
+command: npm install --no-audit --no-fund --ignore-scripts   (app depends on "fake-pkg": "file:../fake-pkg")
+result:
+total 4
+drwxrwxr-x 2 haroldzhao haroldzhao  80 Oct 14 23:51 .
+drwxrwxr-x 3 haroldzhao haroldzhao 100 Oct 14 23:51 ..
+-rw-rw-r-- 1 haroldzhao haroldzhao 227 Oct 14 23:51 .package-lock.json
+lrwxrwxrwx 1 haroldzhao haroldzhao  14 Oct 14 23:51 fake-pkg -> ../../fake-pkg
+is node_modules/fake-pkg a symlink: YES
+readlink: ../../fake-pkg

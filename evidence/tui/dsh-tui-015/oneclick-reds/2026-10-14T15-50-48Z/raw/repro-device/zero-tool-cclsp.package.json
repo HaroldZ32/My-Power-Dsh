@@ -1,0 +1,1 @@
+{"name":"cclsp","version":"0.0.0-simulation","description":"SIMULATION DEVICE (scratch, never shipped): the declared MCP dependency is not installed; the row therefore exposes NO tools, exactly as the oneclick container behaves.","bin":{"cclsp":"dist/index.js"}}

@@ -1,0 +1,4 @@
+[pack-mpd] validator: generated packages/mpd-ext-plugin/dist/validator.js (9 exports) from the shipped bundle
+[pack-mpd] staged 2 patch file(s): cordis.patch.yml, presets/mpd.patch.yml
+[pack-mpd] FAIL: the shipped row launcher packages/mpd-mcp-astgrep/dist/launch.js resolves @ast-grep/cli at start-up, but the packed manifest declares it in neither `dependencies` nor `optionalDependencies` — a packed install would start that row degraded (zero tools / no binary). Declare it in the ROOT package.json `optionalDependencies` (the packed set is copied from there) or, when it is pack-only policy, in PACK_ONLY_OPTIONAL_DEPENDENCIES
+exit=1

@@ -1,0 +1,246 @@
+# Development Guide
+
+**English** | [中文](development.zh-CN.md)
+
+How to build, test, QA, pack and release this repository.
+
+## 1. Repo layout
+
+```
+├── AGENTS.md              binding manual (read FIRST)
+├── README.md / docs/      public overview + this documentation set (docs/index.md is the hub)
+├── package.json           root scripts (workspaces: packages/*)
+├── tsconfig.json          root tsgo config (covers packages/*/src/**/*.ts)
+├── VENDOR_LOCK.json       upstream commit/version/stats + asset fingerprints
+├── scripts/
+│   ├── pack-mpd.ts       assemble dist/mpd-package/ (Plan D bundle)
+│   ├── build-mpd-client.ts  compose the combined web client (client.js)
+│   ├── build-mcp.ts      offline build of the ast-grep/git-bash/lsp MCP servers
+│   ├── repin-vendor.ts   re-derive the VENDOR_LOCK asset fingerprints (dry-run default; --check asserts, --write applies)
+│   ├── install-profile.ts    legacy installer (default dry-run; --dsh-home for QA)
+│   ├── mpd-ext.ts        extension developer CLI: validate / scaffold / list / --self-test
+│   ├── bootstrap.ts      preflight + vendor check (P0-era, kept as checks)
+│   ├── verify-vendor.ts  blocking vendor gate
+│   └── lib/repo.ts       shared primitives (repoRootFrom, readJson) every script imports
+├── packages/              one package per plugin (src/ + dist/ + README.md)
+├── extensions/            the bundle-shipped extension discovery root + the disabled reference extension
+├── skills/                ported skill corpus + dsh-qa (QA skill)
+├── tests/                 QA overlays + golden fixtures
+└── evidence/              <domain>/<slug>/<timestamp>/{result.json, output.log}
+```
+
+## 2. Build
+
+Per plugin (zero runtime deps preferred):
+
+```bash
+bun build packages/<pkg>/src/index.ts --target node --format esm --outfile packages/<pkg>/dist/index.js
+```
+
+The committed `dist/` bytes ARE a build product: `bun run verify:dist` rebuilds every
+`packages/*/src` entry twice into a temp dir and compares the result byte-for-byte with the
+committed file, so a source change and its rebuild belong in the SAME commit. The build
+toolchain is recorded by the `buildToolchain` field in `package.json` (`bun@1.4.0`), because a different
+bun minor rewrites the injected helper preamble and the minifier's variable names - the
+rebuild is byte-identical on the pinned version and reddens `verify:dist` plus the F1 arms of
+`packages/mpd-ext-plugin/test/adapter-identity.test.ts` and
+`packages/mpd-roles-plugin/test/adapter-identity.test.ts` on a drifted one, with no semantic
+change to ship.
+Then, for the bundle:
+
+```bash
+node scripts/build-mpd-client.ts   # regenerate packages/mpd-bundle-plugin/client.js (after agent-teams client changes)
+node scripts/pack-mpd.ts          # RELEASE only: regenerate the relocatable dist/mpd-package/
+```
+
+A local install needs no pack step: the repo root manifest IS the bundle package, so
+`dsh plugin add .` (in the repo root) installs everything; after a code change rebuild the
+touched `dist/` and restart dsh. Materialize the repository's dependencies first (`bun install`):
+the manifest declares one external runtime dependency, `dsh-better-sidebar` — the community
+sidebar host for the two mpd tabs — and a checkout install reads this repository. Where
+`node-gyp` is unavailable, `bun add dsh-better-sidebar@0.24.1 --ignore-scripts` installs it without
+build scripts (only the sidebar's terminal panel degrades; the transitive `node-pty` this flag used to
+be needed for is gone from `0.24.1`, measured 2026-10-02). A packed install gets it from pnpm.
+
+MCP servers are built by `node scripts/build-mcp.ts` (offline from in-repo sources).
+
+**Extension assets need no build.** `packages/mpd-ext-plugin` is an ordinary plugin package
+(rebuild its `dist/` after a source change like any other), while the packages that *use* the
+interface ship as plain directories under `extensions/<id>/` with an `mpd-ext.json` manifest and
+their assets — no compilation step, and the developer CLI runs straight from the TypeScript
+sources (`bun scripts/mpd-ext.ts …`), so the CLI can never validate a stale copy of the rules.
+Inside a **packed** artifact there are no sources, so the CLI falls back to the compiled validator
+entry the packer emits (`packages/mpd-ext-plugin/dist/validator.js`): `validate`, `scaffold`,
+`list`, `--self-test` and `--validator` all run from `dist/mpd-package/` (bun or plain node), and
+`--validator` prints which entry a run actually loaded (T-51).
+A NEW plugin package must also be added to the `PLUGIN_PKGS` allowlist inside
+`scripts/pack-mpd.ts`, or a packed install ships without it and dies at boot with
+`ERR_MODULE_NOT_FOUND`.
+
+**Harness seams (binding, AGENTS.md §6):** a plugin row must not call `ctx.tools`,
+`ctx.subagents`, `ctx.skills` or `ctx.agentPresets` directly. Every row goes through
+`packages/mpd-dsh-adapter-plugin` (`const dsh = resolveDshAdapter(ctx)`; the adapter also carries the
+bundle's pure shared helpers in `src/shared.ts`),
+so a harness release that reshapes a seam is fixed in that one package: edit
+`packages/mpd-dsh-adapter-plugin/src/index.ts`, rebuild it, re-pack — consumers pick the
+new mounted instance up without changes. Its unit tests
+(`packages/mpd-dsh-adapter-plugin/test/adapter.test.ts`) fake both a full and an empty
+harness, which is the fastest way to add a seam.
+
+## 3. Tests
+
+```bash
+bun run typecheck                        # root tsgo --noEmit (covers all packages)
+bun test packages                        # per-package unit tests (mock ctx drives tools)
+bun test packages/<pkg>                  # one package
+```
+
+Test convention (see `packages/mpd-roles-plugin/test/roles.test.ts`,
+`packages/mpd-workmate-plugin/test/workmate.test.ts`): a `makePlugin()` builds a mock
+`ctx` (`tools.register` captures definitions, `subagents.start` returns a stub result,
+`provide` records services, `get` returns fixtures) and drives `apply(ctx)` — pure
+offline, no DSH binary, no model. State-touching tests set `process.env.HOME` to a
+temp dir (bun caches `os.homedir()`, so plugins read `$HOME` directly).
+
+## 4. QA (real DSH boots, strictly isolated)
+
+The QA skill is `skills/dsh-qa` (`SKILL.md`). Every case script ships `--self-test`
+(offline) plus a real isolated boot; evidence goes to
+`evidence/<domain>/<slug>/<timestamp>/`.
+
+| Case | Proves | How to run (from an approved permission context) |
+|---|---|---|
+| `mount-assert` | bundle rows present/absent in `--dump-config` | `bun run test:qa` (all self-tests) |
+| `preset-register` | the mpd preset resolves from the bundle's own `presets/mpd.patch.yml` PRESET ROW (no `$DSH_HOME/.agent-presets` copy) + roster serves 11 roles | `node skills/dsh-qa/scripts/preset-register.ts` |
+| `bundle-lifecycle` | ONE command from the checkout (`dsh plugin add <repo root>`, no pack step) installs the whole unit → real boot serves preset + skills from the installed bundle and proves the harness adapter (`ADAPTER_SEAMS`, `ADAPTER_TOOL_CALL=ok`) → `dsh plugin remove` leaves no residue | `node skills/dsh-qa/scripts/bundle-lifecycle.ts` |
+| `skill-catalog-probe` | installed bundle serves the skill catalog (18 bundled skills, fixture loads) with no `$DSH_HOME/skills` copy | `node skills/dsh-qa/scripts/skill-catalog-probe.ts` |
+| `relocate-smoke` | relocated bundle serves preset + corpus, no dev-path leak, no home copy | `node skills/dsh-qa/scripts/relocate-smoke.ts` |
+| `workmate-library` | init→list→spawn→reflect→match against a sandbox HOME; the self-test also pins the rename/delete host routes, the service surface and the §D reason matrix | `node skills/dsh-qa/scripts/workmate-library.ts` |
+| `workmate-team-member` | a workmate instance taking part in a real headless team run + its own `mpd_workmate_reflect` afterwards. NOTE: a workmate's persona/memory reaches a teammate only through the `spawn_teammate` PROMPT — the automatic `memberPersona` injection this case was written against belonged to the retired vendored plugin | `node skills/dsh-qa/scripts/workmate-team-member.ts` |
+| `web-client-adapt` | the `@mpd-dsh/mpd` boot-graph client entry + client.js ids + workmate host routes (incl. the client's rename/delete URLs) | `node skills/dsh-qa/scripts/web-client-adapt.ts` |
+| `preset-conformance` | every harness-owned row config (preset + bundle patch + QA overlays) conforms to the INSTALLED harness schemas, the `mpd` preset's row set equals the installed `standard` preset's, and a real session created with `agentPreset: "mpd"` MOUNTS — with a negative control that must fail | `node skills/dsh-qa/scripts/preset-conformance.ts` |
+| `software-smoke` | software dev flow: a REAL headless mpd session (local OpenAI-shaped stub, throwaway key — no provider credential) writes a tiny deterministic game with the `write` tool and runs it with the `bash` tool in a SANDBOX workspace; the case replays the REAL transcript through its own oracle (legality, optimality, winner, determinism) and requires the mutation control to go RED | `node skills/dsh-qa/scripts/software-smoke.ts` |
+| `tui-mount` | the REAL dsh-TUI boot: the bundle as the third patch layer (`dsh.profile.bundles` = [dsh-base, dsh-tui, @mpd-dsh/mpd]), the `mpd-tui` row composed, ZERO apply-crash signatures in the raw log, the status line rendered, and the boot's own session record carrying `agentPreset: "mpd"` | `bun skills/dsh-qa/scripts/tui-mount.ts` |
+| `tui-panels` | each of the seven activation-gated TUI surfaces really RENDERS (status line, `/mpd status`, the `/mpd` completion tree, the board scene, the renderer row, the `/settings` section with its bridge+restart disclosure, and the managed dialog) — a surface that renders nothing FAILS the lane; the lane also proves `/mpd` never reached the model, and re-runs its engine on a deliberately impossible expectation as a negative control | `bun skills/dsh-qa/scripts/tui-panels.ts` |
+| `tui-admission` | the HOST's own pinned admission algorithm against the bundle-level `dsh-plugin.json`: vendored `@dsh-std/manifest` parse + projection + the host's `validatePlugin` + five-state `negotiate`, then the host's `/plugins check` driven inside a live TUI; the spec-data root must RESOLVE first, and three negative controls are recorded | `bun skills/dsh-qa/scripts/tui-admission.ts` |
+| `tui-distribution` | `dsh-distribution.json` validated by the dsh-distribution protocol's OWN conformance CLI from an in-sandbox copy of the protocol repo; when its build cannot complete, the exact blocker is recorded and the descriptor is marked NOT fully validated rather than approximated as a pass | `bun skills/dsh-qa/scripts/tui-distribution.ts` |
+| `tui-spec-conformance` | the HOST's own pinned conformance suite against our manifest and a captured host descriptor, with the suite revision and every input digest recorded, and the three-way sha256 identity of the payload re-measured | `bun skills/dsh-qa/scripts/tui-spec-conformance.ts` |
+| `tui-settings-bridge` | the TUI arm of the settings bridge, judged against the BUILT bytes: every `/settings` hint carries the post-bridge disclosure (`a save writes <workspace>/.mpd/mpd.jsonc … after a restart`), the pre-bridge "not bridged" sentence is DELETED, the `no-live-session` runtime notice is present AND wired into the status-line composition, and the TUI dist performs ZERO filesystem writes | `bun skills/dsh-qa/scripts/tui-settings-bridge.ts` |
+| `ask-user-question-audit` (**new**) | a REPORTING tool, not a lane: it decodes one dsh session log (concatenated zstd frames, frame by frame through `lib/session-evidence.ts`) and enumerates every `ask_user_question` `tool/call`, classifying each as `ok`, `structurally-broken` (every broken clause named, e.g. `question-text-missing` / `options-not-array`) or `unparseable-arguments`, then pairs the call with the record that closed it (a `tool/result` carrying its call id in either session shape, and/or a continued question's `user-question-reply` user message). The rules are a LOCAL restatement of the D1 guard — never an import of plugin code — and results whose call id could not be read are counted, so "unpaired" is never silently read as "never answered". It exits 0 after reporting, 2 on a usage error and 1 on an undecodable log; `--self-test` is offline (synthetic concatenated-zstd frames, one assertion per rule, both result shapes, both answer pairings, both CLI exit codes) | `node skills/dsh-qa/scripts/ask-user-question-audit.ts <session-log.jsonl.zstd>` (or `--self-test`) |
+
+| `extension-lifecycle` (**new**) | the extension interface on a REAL mounted boot (sandboxed `DSH_HOME` + `HOME` + session cwd; the rows are composed from THIS checkout, and the model step is answered by a local OpenAI-shaped stub, so no provider credential is needed): a data-plane extension in `<sandbox-ws>/.mpd/extensions/` appears in `mpd_ext_list`, its flow loads, its role spawns, a broken extension of each kind leaves the good ones working, and two sessions with different cwds on one host see only their own project extensions | `bun skills/dsh-qa/scripts/extension-lifecycle.ts` |
+| `extension-mcp-bridge` (**new**) | the runtime stdio MCP bridge on the same REAL mounted boot + stub recipe: a declared server publishes `mcp__<server>__<tool>` in both tool-list readings and a real tool call succeeds, while the dead/hang/schema/dup arms prove one failing server never breaks the others | `bun skills/dsh-qa/scripts/extension-mcp-bridge.ts` |
+
+Both cases import ONE shared proof helper, `skills/dsh-qa/scripts/extension-isolation.ts` — the local OpenAI-shaped stub model, the sandbox/boot recipe, the session-evidence readers and the multi-session isolation arm. It is deliberately **not a case row** (verbatim in `skills/dsh-qa/SKILL.md`): it has **no lane mode** — invoked without `--self-test` it does nothing and exits 0 — and its only offline proof is its own `--self-test`, `bun skills/dsh-qa/scripts/extension-isolation.ts --self-test`, which checks the stub protocol, the descriptor contract, the shipped example and the boot recipe without booting a session. That is also why it is not enumerated as a case in `package.json`'s `test:qa:all`.
+
+Two npm scripts, two lanes (t8): `bun run test:qa` runs EVERY case's offline `--self-test`;
+`bun run test:qa:all` runs the REAL lane of the heavy/live subset, enumerated by name in
+`package.json` (criterion: the case needs a real headless dsh boot and/or a live provider).
+The allowlist is explicit so a new case is never silently treated as heavy.
+
+**Running the live lanes inside a sandbox.** Two environment facts decide whether a lane tests
+anything at all. (1) `BUN_TMPDIR` must point INSIDE the workspace (`BUN_TMPDIR="$PWD/.bun-tmp"`): a
+lane that spawns `bun` dies instantly with `EROFS accessing temporary directory` when `$BUN_INSTALL`
+(`~/.bun`) is outside the sandbox's writable set, so the case reports FAIL a few milliseconds in —
+which is what a run that never reached an assertion looks like. (2) A case that COPIES a script or a
+plugin `src/` into a scratch tree must stage the shared modules that copy imports (`scripts/lib/`, or
+the sibling `packages/mpd-dsh-adapter-plugin/src/`), or the arm reddens with
+`ERR_MODULE_NOT_FOUND` for a reason it is not about.
+
+**TUI lanes and the TUI packaging path.** The six DSH-TUI cases above ship the usual offline
+`--self-test`, but their LIVE legs need a real terminal: `dsh-tui` refuses to boot when stdout is not a
+TTY, so they drive the UI inside tmux and capture panes — which is why they are not part of
+`bun run test:qa`'s self-test sweep (`docs/tui.md` §2). The packaging step ships the TUI flavor too:
+`node scripts/pack-mpd.ts` writes `packages/mpd-tui-plugin/{dist/**, README.md, README.zh-CN.md,
+themes/mpd-tui.json, skills/mpd-tui/SKILL.md}` into `dist/mpd-package/` and keeps the packed patch's
+`mpd-tui` row as the resolvable specifier `@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js`; the
+install is the ordinary one (`dsh plugin --profile dsh-tui add <repo | dist/mpd-package>`).
+
+**NOT-CLAIMED discipline for the TUI edition.** With no TTY and no browser in this environment the
+render-acceptance criteria are recorded as **not-claimed**, never as "passed": `docs/tui.md` §10 carries
+the list, and each lane records the limitation it could not drive (a keystroke leg, a browser render)
+instead of substituting a proxy. Passing format or parser validation is not a safety or behaviour
+verdict — keep compatibility, verification level and restrictions as separate statements.
+
+**QA hard rules** (AGENTS.md §7): sandbox `DSH_HOME=<mktemp>`; copy credentials once;
+assert the sandbox path; never touch the real `~/.dsh`; workmate cases additionally
+sandbox `HOME` (`~/.mpd/workmate` is a user-approved HOME-scoped exception).
+
+**Live-model steps need the configured provider route** — QA boots with the machine's
+DSH credentials. Locally that means running the real cases with `DEEPSEEK_API_KEY`
+present in the process environment (the running DSH host has it from `~/.bashrc`;
+shell subprocesses do not — export it explicitly in the case command).
+
+**Web cases**: use the manual-copy flow (copy `dist/mpd-package/` into a sandbox
+profile `node_modules/@mpd-dsh/mpd`) when pnpm store access is unavailable; the packed
+`dsh plugin add` flow is the primary one.
+
+## 5. Gates (AGENTS.md §4)
+
+| Gate | Command |
+|---|---|
+| Vendor | `node scripts/verify-vendor.ts` (fingerprints the assets this repo ships; resolves NO upstream checkout) |
+| Tests | `bun test packages` + `bun run typecheck` |
+| QA self-tests | `bun run test:qa` + each case `--self-test` |
+| QA real cases | `node skills/dsh-qa/scripts/<case>.mjs` |
+| Installer | `node scripts/install-profile.ts --dry-run` / `--self-test` |
+| Boot check (MOUNT) | a boot that really applies the rows in an isolated `DSH_HOME` + sandbox `HOME`: `bun skills/dsh-qa/scripts/bundle-lifecycle.ts` (host rows) / `node skills/dsh-qa/scripts/preset-conformance.ts` (the `mpd` preset's standing mount). `node scripts/dump-config.ts --profile <p>` (the repo wrapper, which prints that warning itself) composes rows only and is NOT this gate (AGENTS.md §4) |
+| Extension CLI | `bun scripts/mpd-ext.ts --self-test` (offline) + `bun scripts/mpd-ext.ts validate extensions/mpd-ext-example` (exit 0; a deliberately broken extension must exit 1 with per-item errors) |
+
+No evidence on disk for a gate = the change is not complete.
+
+## 6. Release flow
+
+1. Land the release's changes on `dev` first — `feature/<slug>` / `fix/<slug>` branches, each with
+   its evidence committed. `master` only ever receives release merges.
+2. Branch `release/vX.Y.Z` from `dev`; bump the version in `package.json` (and any version
+   reference in this documentation set) and write the changelog note.
+3. Full gate sweep, all green and on disk: `node scripts/verify-vendor.ts`, `bun run typecheck`,
+   `bun test packages`, `bun run test:qa` (every case's offline `--self-test`), the real-lane
+   subset `bun run test:qa:all`, and the boot check (§5: `preset-conformance` plus the mount
+   proof — never `--dump-config` alone).
+4. **`VENDOR_LOCK.json` pairing rule**: a `skills/**` change invalidates the corpus `treeSha`, and
+   the re-pin lands in the SAME commit as that change. `skills/**` has ONE writer per wave, so a
+   wave has exactly one re-pin — verify it is present, and that no `skills/**` change is committed
+   without it.
+5. Packaging: `npm run pack` (`node scripts/pack-mpd.ts`) assembles the relocatable
+   `dist/mpd-package/`. Check the packed tree actually contains every plugin dist, the
+   `extensions/` assets, the scaffold `templates/`, the `docs/` pairs (`node scripts/verify-docs-parity.ts
+   --root dist/mpd-package`) and `scripts/mpd-ext.ts` (a missing `PLUGIN_PKGS` entry is a silent
+   exit-0 with a broken boot). Since the 2026-09-17 packaging change this is checked, not eyeballed:
+   `node scripts/verify-pack-closure.ts` asserts the packer's root-asset table and, when the
+   artifact exists, that every declared asset arrived, `docs/`+`templates/`+`agent-references/`
+   match the source file for file, the two named reference files (`index.md`,
+   `troubleshooting.md`) are present, the packed manifest's
+   `files`/`exports` agree with what is on disk, and the CLI's compiled validator entry is present.
+6. Merge `--no-ff` into `master` with a `release: vX.Y.Z …` message, create the annotated tag
+   (`git tag -a vX.Y.Z`), and push `master` + the tag (and `dev`).
+
+## 7. Git model
+
+`master` (release, merge-only) ← `dev` (integration) ← `feature/<slug>` / `fix/<slug>`.
+Commits: `<type>(<scope>): <summary>`; merges `--no-ff` with a descriptive message;
+never rebase published branches; fixes cite the defect and land with reproduction
+evidence.
+
+## 8. Vendoring & baseline
+
+- `scripts/repin-vendor.ts` re-derives the asset fingerprints `VENDOR_LOCK.json` carries: `--check`
+  asserts, `--write` applies, and it refuses this repository's own lock without
+  `--i-know-this-is-the-captains-step`, because a wave's single re-pin is the captain's
+  commit-time step (AGENTS.md §9/§11). The MCP servers' sources are snapshotted in-repo at
+  `vendor/mcp-src/**` as the build-time input for `node scripts/build-mcp.ts`.
+- `VENDOR_LOCK.json` pins the upstream commit/version + asset fingerprints;
+  `verify-vendor.ts` blocks on mismatch. Upstream is never chased — a baseline change
+  needs a deliberate branch + evidence.
+
+## 9. Common pitfalls (from real incidents)
+
+| Pitfall | Fix |
+|---|---|
+| Bundle client never appears in the web GUI | the patch must contain the `mpd-web-compat` self-row (`name: '@mpd-dsh/mpd'`) AND the manifest must have `main`/`exports["."]` → mpd-bundle-plugin. Regenerate with `node scripts/build-mpd-client.ts && node scripts/pack-mpd.ts` |
+| `mpd_workmate_*` / `mpd_modelchain_resolve` miss `mpdRoles` | read the service lazily inside tool execute (not at apply time) |
+| QA boots fail `ERR_SQLITE_ERROR unable to open database file` | pnpm store lives outside the workspace; use the manual-copy web flow or run with the approved wider access |
+| `os.homedir()` ignores a test's `HOME` | bun caches it; read `process.env.HOME` first in plugins |
+| QA evidence with secrets | scan evidence logs for key material before committing |
+| Workmate written to the real HOME in QA | always boot web/headless QA with `HOME=<sandbox>` |

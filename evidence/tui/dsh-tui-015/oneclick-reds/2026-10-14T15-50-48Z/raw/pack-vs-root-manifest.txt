@@ -1,0 +1,7 @@
+packed-artifact manifest vs the PUBLISHED root manifest (scripts/pack-mpd.ts writes the pack's optionalDependencies as a literal)
+root package.json  optionalDependencies = {"@colbymchenry/codegraph": "1.5.0", "@cyanheads/git-mcp-server": "2.15.3", "cclsp": "0.7.0", "mcp-server-commands": "0.8.2"}
+pack package.json  optionalDependencies = {"@ast-grep/cli": "0.45.2", "@code-yeongyu/comment-checker": "0.8.0", "@colbymchenry/codegraph": "1.5.0"}
+declared by the ROOT but ABSENT from the pack: ["@cyanheads/git-mcp-server", "cclsp", "mcp-server-commands"]
+declared by the PACK but absent from the root: ["@ast-grep/cli", "@code-yeongyu/comment-checker"]
+live row that needs the missing entry: cordis.patch.yml `- id: mcp-lsp` -> packages/mpd-mcp-lsp/dist/launch.js -> DEPENDENCY 'cclsp' (the mcp-git/mcp-shell rows that need the other two are `disabled: true`)
+written by: scripts/pack-mpd.ts (the literal at the end of writeManifest()), read back from the working tree at 2026-10-14T15:51:24.246313Z

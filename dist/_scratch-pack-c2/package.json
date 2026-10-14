@@ -1,0 +1,63 @@
+{
+  "name": "@mpd-dsh/mpd",
+  "version": "0.12.0",
+  "private": true,
+  "type": "module",
+  "description": "my-power-dsh: a DeepSeek Harness plugin bundle (@mpd-dsh/mpd) carrying the specialist roster and the model-chain vocabulary on DSH-native plumbing (upstream reference: oh-my-openagent 8c57e46 — historical, no synchronisation owed)",
+  "license": "MIT",
+  "main": "packages/mpd-bundle-plugin/dist/index.js",
+  "exports": {
+    ".": "./packages/mpd-bundle-plugin/dist/index.js",
+    "./package.json": "./package.json",
+    "./packages/*": "./packages/*",
+    "./skills/*": "./skills/*",
+    "./presets/*": "./presets/*",
+    "./extensions/*": "./extensions/*",
+    "./templates/*": "./templates/*",
+    "./docs/*": "./docs/*",
+    "./agent-references/*": "./agent-references/*",
+    "./client": "./packages/mpd-bundle-plugin/client.js"
+  },
+  "files": [
+    "packages/**",
+    "skills/**",
+    "presets/**",
+    "extensions/**",
+    "templates/**",
+    "docs/**",
+    "agent-references/**",
+    "scripts/**",
+    "cordis.patch.yml",
+    "presets/mpd.patch.yml",
+    "LICENSE.md",
+    "LICENSE-NOTICES.md",
+    "README.md",
+    "README.zh-CN.md",
+    "CONTRIBUTING.md",
+    "CONTRIBUTING.zh-CN.md",
+    "CHANGELOG.md",
+    "EXTENSIONS-FOR-AGENTS.md"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": [
+        "./cordis.patch.yml",
+        "./presets/mpd.patch.yml"
+      ]
+    },
+    "client": {
+      "inject": [],
+      "platform": "web"
+    }
+  },
+  "dependencies": {
+    "dsh-better-sidebar": "0.24.1"
+  },
+  "optionalDependencies": {
+    "@colbymchenry/codegraph": "1.5.0",
+    "cclsp": "0.7.0",
+    "@cyanheads/git-mcp-server": "2.15.3",
+    "mcp-server-commands": "0.8.2",
+    "@code-yeongyu/comment-checker": "0.8.0"
+  }
+}

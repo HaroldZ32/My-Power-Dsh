@@ -71,6 +71,7 @@ import { fileURLToPath } from "node:url"
 import type { Env } from "./lib/credentials.ts"
 import { seedSandboxCredentials } from "./lib/credentials.ts"
 import { DSH_MISSING, dshCommand } from "./lib/dsh-launcher.ts"
+import { declaredOptionalVersion, stageDeclaredMcpDependency, type DependencyStage } from "./lib/mcp-dependency.ts"
 import { MESSAGES_EVENT_TYPES, messagesTextEvents, messagesToolUseEvents, readWireRequest, writeMessagesSse } from "./lib/messages-sse.ts"
 import { readMpdPresetSource } from "./lib/preset-source.ts"
 import { findToolCall, readSessionEvents } from "./lib/session-evidence.ts"
@@ -82,6 +83,13 @@ const SLUG: string = "readonly-deny"
 
 // The eight names every deny list must carry: live-registered AND write-capable.
 const EXPECTED_DENY: readonly string[] = ["write", "edit", "mpd_hashline_edit", "bash", "mcp__ast_grep__rewrite", "mcp__ast_grep__scan", "mcp__lsp__rename_symbol", "mcp__lsp__rename_symbol_strict"]
+// The LSP row's DECLARED dependency (`packages/mpd-mcp-lsp/src/launch.ts` resolves this name). Two of
+// the eight names above are cclsp's own tools, and the row exposes ZERO tools without it, so the
+// positive lane's `denyListMatchesTheEight` can only hold while this dependency resolves from the tree
+// the row's launcher lives in. Measured (wave tui-015): the oneclick lane's checkout is never
+// `bun install`ed, the row degraded to zero tools there, and this case reddened with
+// `parentSeesAllDenyNames=false` / `denyListMatchesTheEight=false` — a red of the TREE, not of the row.
+const LSP_DEPENDENCY: string = "cclsp"
 // Aliased for readability at the enforcement assertions: these are exactly the tools a read-only child
 // must NOT be able to see. Denying more than these would be a different (also valid) policy, but the
 // enforcement check below is about these eight, because they are what the deny list names.
@@ -201,6 +209,8 @@ interface ProbeRun {
   readonly pruneRecord: PruneRecord
   /** The child output's tail, kept whole so a misbehaving lane stays diagnosable. */
   readonly fullOutput: string
+  /** Where this lane's sandbox LSP tree got the row's declared dependency from. */
+  readonly lspDependency?: DependencyStage
   /** Why the lane could not be prepared, absent on a completed run. */
   readonly reason?: string
 }
@@ -418,6 +428,19 @@ function selfTest(): void {
   checks.push(["ast_grep MCP exposes rewrite", /var REWRITE_TOOL_NAME = "rewrite"/.test(astgrep)])
   checks.push(["ast_grep MCP exposes scan", /var SCAN_TOOL_NAME = "scan"/.test(astgrep)])
   checks.push(["the lsp row starts the DECLARED cclsp dependency and no vendored cli.js", /DEPENDENCY: string = "cclsp"/.test(lspLauncher) && !lspLauncher.includes('"./cli.js"')])
+  // THE DEPENDENCY THIS CASE NOW STAGES (wave tui-015). Two of the canonical eight names are cclsp's
+  // own tools, so the live lane must materialize the version the PUBLISHED manifest declares — asserted
+  // here, offline, so a manifest edit that drops the entry reddens THIS arm instead of turning the live
+  // lane red (or, worse, silently unfalsifiable) inside a lane that cannot `bun install`.
+  /** The version the published manifest declares for the LSP row's dependency. */
+  const declaredLsp = declaredOptionalVersion(repoRoot, LSP_DEPENDENCY)
+  checks.push(["package.json declares the optional dependency the canonical eight need", typeof declaredLsp === "string" && declaredLsp !== ""])
+  // The live arm must really stage that declaration into the sandbox tree it boots: this source check is
+  // the rot guard, so deleting the staging call cannot leave the assertion silently unsupported.
+  /** This case's own source, read so the staging call and the row repoint cannot vanish unnoticed. */
+  const ownStagingSource = readFileSync(fileURLToPath(import.meta.url), "utf8")
+  checks.push(["the live lane stages the declared dependency into a sandbox LSP tree", ownStagingSource.includes("stageDeclaredMcpDependency({ repoRoot, targetTree: lspTree, name: LSP_DEPENDENCY")])
+  checks.push(["the live lane repoints only the SANDBOX mcp-lsp row at that tree", ownStagingSource.includes('lspRow[0].replace(lspLauncher, join(lspTree, "launch.js"))')])
   // The two rename names are cclsp's OWN, so the assertion follows the dependency: against the
   // INSTALLED package when this checkout has it, and otherwise against the package README that
   // documents the same twelve names. Both branches assert something real; neither passes vacuously.
@@ -710,6 +733,33 @@ function runReal(): Promise<void> {
       if (!/mpd-workmate-plugin\/dist\/index\.js/.test(patch)) {
         return { ok: false, reason: "the sandbox profile does not compose the mpd-workmate row; this case measures the REAL profile" }
       }
+      // THE LSP ROW GETS ITS DECLARED DEPENDENCY IN THE SANDBOX (measured defect, wave tui-015). The
+      // generated row launches `<checkout>/packages/mpd-mcp-lsp/dist/launch.js`, and that launcher
+      // resolves `cclsp` from the `node_modules` chain above its OWN file. A checkout that was never
+      // `bun install`ed (the oneclick Docker lane skips steps 07/08 by design) has no such chain, so the
+      // launcher takes `serveUnavailable` — the row stays alive and exposes NO tools — and two of the
+      // canonical eight names above stop being registered, which makes this case's positive lane red for
+      // a reason that is the TREE's, not the row's. The same launcher BYTES therefore run from a sandbox
+      // copy whose own `node_modules` carries the version the PUBLISHED manifest declares, and only the
+      // sandbox copy of the row is repointed (the shipped row is never touched).
+      /** The shipped LSP launcher, whose bytes the sandbox copy must reproduce exactly. */
+      const lspLauncher = join(repoRoot, "packages", "mpd-mcp-lsp", "dist", "launch.js")
+      /** The sandbox tree the LSP row's launcher runs from, with the dependency staged beside it. */
+      const lspTree = join(dshHome, "lsp-mcp")
+      mkdirSync(lspTree, { recursive: true })
+      cpSync(lspLauncher, join(lspTree, "launch.js"))
+      /** The version the published manifest declares, which is what a user's install materializes. */
+      const lspVersion = declaredOptionalVersion(repoRoot, LSP_DEPENDENCY)
+      if (lspVersion === null) return { ok: false, reason: "package.json does not declare optionalDependencies." + LSP_DEPENDENCY + ", which two of the canonical eight deny names rest on" }
+      /** Where the sandbox LSP tree got its dependency from, recorded in this lane's evidence. */
+      const lspDependency = stageDeclaredMcpDependency({ repoRoot, targetTree: lspTree, name: LSP_DEPENDENCY, version: lspVersion, env })
+      if (!lspDependency.ok) return { ok: false, reason: "the LSP row's declared dependency " + LSP_DEPENDENCY + "@" + lspVersion + " could not be staged into the sandbox: " + lspDependency.detail }
+      /** The generated LSP row, whose args must name the launcher this case prepared a tree for. */
+      const lspRow = patch.match(/^ {2}- id: mcp-lsp\n(?: {4,}[^\n]*\n)*/m)
+      if (!lspRow || !lspRow[0].includes(lspLauncher)) {
+        return { ok: false, reason: "the sandbox profile does not compose the mcp-lsp row pointed at " + lspLauncher + "; this case measures the REAL row" }
+      }
+      patch = patch.replace(lspRow[0], lspRow[0].replace(lspLauncher, join(lspTree, "launch.js")))
       // Instrument a COPY of the adapter so the exact restriction handed to the harness is on the
       // record — this is what turns "the child ran" into "this list reached tools.restrict()".
       // The instrumented adapter copy's path inside the sandbox.
@@ -857,6 +907,7 @@ function runReal(): Promise<void> {
         // Full output, not a sample: when a probe lane misbehaves the log is the only way to tell
         // "the control fired" apart from "the control never ran".
         fullOutput: out.slice(-20000),
+        lspDependency,
       }
       stub.close()
       return res
@@ -1032,6 +1083,22 @@ function runReal(): Promise<void> {
       ok: JSON.stringify(fpTree(realWm)) === JSON.stringify(realFpBefore),
       realWorkmateUntouched: JSON.stringify(fpTree(realWm)) === JSON.stringify(realFpBefore),
       realWm,
+    }
+    // WHERE THE CANONICAL EIGHT'S TWO LSP NAMES CAME FROM. A red on `denyListMatchesTheEight` is
+    // otherwise indistinguishable between "the row dropped a guarantee" and "the tree under test had no
+    // LSP server to register": this entry names the tier that staged the row's declared dependency and
+    // the sandbox tree it was staged into, for BOTH lanes.
+    /** The positive lane's completed run, which this entry reads its staging from. */
+    const positiveLane = steps.positive as ProbeRun
+    /** The control lane's completed run, which this entry reads its staging from. */
+    const controlLane = steps.reinjectionDiagnostic as ProbeRun
+    steps.mcpLspDependency = {
+      ok: positiveLane.lspDependency?.ok === true && controlLane.lspDependency?.ok === true,
+      name: LSP_DEPENDENCY,
+      version: declaredOptionalVersion(repoRoot, LSP_DEPENDENCY),
+      positiveLane: positiveLane.lspDependency ?? null,
+      controlLane: controlLane.lspDependency ?? null,
+      note: "the LSP row's launcher runs from a SANDBOX copy in each lane, with the dependency the published manifest declares staged into that copy's own node_modules — the shipped row is repointed only inside the sandbox patch, and the launcher's bytes are a byte copy of packages/mpd-mcp-lsp/dist/launch.js",
     }
 
     // The run's single verdict: no ledger entry may report a failed step.

@@ -1,0 +1,13 @@
+{
+  "dependencies": {
+    "dsh-better-sidebar": "0.24.1"
+  },
+  "optionalDependencies": {
+    "@colbymchenry/codegraph": "1.5.0",
+    "cclsp": "0.7.0",
+    "@cyanheads/git-mcp-server": "2.15.3",
+    "mcp-server-commands": "0.8.2",
+    "@ast-grep/cli": "0.45.2",
+    "@code-yeongyu/comment-checker": "0.8.0"
+  }
+}

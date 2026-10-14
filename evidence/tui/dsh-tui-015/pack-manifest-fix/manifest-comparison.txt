@@ -1,0 +1,41 @@
+packed manifest vs the ROOT manifest — before/after the wave tui-015 packer fix
+subject: dist/mpd-package/package.json, the manifest a packed install reads
+        (scripts/pack-mpd.ts writeManifest(); the two dependency fields only)
+
+BEFORE (REPRODUCED from the committed packer: `git show HEAD:scripts/pack-mpd.ts > scripts/_tmp-before-pack-mpd.ts`
+        (sha256 f69c177837cb9a1aaea3f2fcb8a50b332ef93f66b141a216557f5fcb5aa90c0e) then
+        `node scripts/_tmp-before-pack-mpd.ts --out dist/_scratch-pack-before` -> exit 0, log before-pack.log;
+        the same numbers were on disk in the pre-fix dist/mpd-package/package.json, mtime 2026-10-14T19:38Z)
+  dependencies         = {"dsh-better-sidebar": "0.24.1"}
+  optionalDependencies = {"@ast-grep/cli": "0.45.2", "@colbymchenry/codegraph": "1.5.0", "@code-yeongyu/comment-checker": "0.8.0"}
+
+AFTER (the fixed packer: `node scripts/pack-mpd.ts` -> exit 0, pack.log; artifact stamp 2026-10-14T16:07:50.348Z)
+  dependencies         = {"dsh-better-sidebar": "0.24.1"}
+  optionalDependencies = {"@colbymchenry/codegraph": "1.5.0", "cclsp": "0.7.0", "@cyanheads/git-mcp-server": "2.15.3",
+                          "mcp-server-commands": "0.8.2", "@ast-grep/cli": "0.45.2", "@code-yeongyu/comment-checker": "0.8.0"}
+
+THE THREE PACKAGES THE OLD LITERAL DROPPED (each is the npm package a SHIPPED row's launcher resolves)
+  cclsp                     mcp-lsp   -> packages/mpd-mcp-lsp/dist/launch.js         (DEPENDENCY, cordis.patch.yml `- id: mcp-lsp`)
+                                      BEFORE: absent from the packed manifest -> the launcher takes its serveUnavailable
+                                      branch and the row exposes ZERO tools. AFTER: declared 0.7.0 (root's own pin).
+  @cyanheads/git-mcp-server mcp-git   -> packages/mpd-mcp-gitbash/dist/launch.js     (SERVERS.git, row ships disabled: true)
+                                      BEFORE: absent. AFTER: declared 2.15.3 (root's own pin).
+  mcp-server-commands       mcp-shell -> packages/mpd-mcp-gitbash/dist/launch.js     (SERVERS.shell, row ships disabled: true)
+                                      BEFORE: absent. AFTER: declared 0.8.2 (root's own pin).
+
+ROOT package.json (the declaration of record, unchanged by this wave)
+  optionalDependencies = {"@colbymchenry/codegraph": "1.5.0", "cclsp": "0.7.0", "@cyanheads/git-mcp-server": "2.15.3", "mcp-server-commands": "0.8.2"}
+
+EVERY KEY THAT LEGITIMATELY DIFFERS, and why (kept explicit in the packer, not silently derived)
+  @ast-grep/cli            packed only — root declares none; a packed artifact carries no
+                           .toolchain/node_modules/.bin (this packer stages no .toolchain/), so the ast-grep
+                           launcher can only resolve it through the profile's node_modules.
+  @code-yeongyu/comment-checker  packed only, same reason, for the mpd-comment-checker row's detector binary.
+  dsh-better-sidebar       promoted from root's devDependency + OPTIONAL peer into the packed `dependencies`
+                           (its node-pty postinstall is the build script pnpm 11 refuses without an approval
+                           channel, AGENTS.md §8), so the sidebar host still materializes for a packed install.
+  @colbymchenry/codegraph  in BOTH, identical pin (root's declaration is what the packed set now copies).
+
+WHAT THE PACKER NO LONGER DOES: it never re-types the set. `optionalDependencies` is a COPY of the root
+declaration plus the two documented pack-only keys, and `dependencies` is the packer's own policy table.
+A root-declared package can no longer be dropped from the artifact by an edit in the packer's own literal.

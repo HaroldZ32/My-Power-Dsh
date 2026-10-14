@@ -1,0 +1,278 @@
+{
+ "A_pre_fix_source_condition_readonlyDeny": {
+  "result_json": ".qa-oneclick/sim-src/evidence/workmate/roles-readonly/2026-10-14T15-22-33.148Z/result.json",
+  "ok": true,
+  "toolCount": 107,
+  "writeCapableVisible": [
+   "write",
+   "edit",
+   "mpd_hashline_edit",
+   "bash",
+   "mcp__ast_grep__rewrite",
+   "mcp__ast_grep__scan",
+   "mcp__lsp__rename_symbol",
+   "mcp__lsp__rename_symbol_strict"
+  ],
+  "mcpTools": [
+   "mcp__ast_grep__rewrite",
+   "mcp__ast_grep__scan",
+   "mcp__ast_grep__search",
+   "mcp__codegraph__codegraph_explore",
+   "mcp__context7__query-docs",
+   "mcp__context7__resolve-library-id",
+   "mcp__grep_app__searchGitHub",
+   "mcp__lsp__find_definition",
+   "mcp__lsp__find_implementation",
+   "mcp__lsp__find_references",
+   "mcp__lsp__find_workspace_symbols",
+   "mcp__lsp__get_diagnostics",
+   "mcp__lsp__get_hover",
+   "mcp__lsp__get_incoming_calls",
+   "mcp__lsp__get_outgoing_calls",
+   "mcp__lsp__prepare_call_hierarchy",
+   "mcp__lsp__rename_symbol",
+   "mcp__lsp__rename_symbol_strict",
+   "mcp__lsp__restart_server"
+  ],
+  "parentSeesAllDenyNames": true,
+  "denyListMatchesTheEight": "true",
+  "pruneRecordSeen": "false",
+  "mcpLspDependency": null
+ },
+ "B_pre_fix_oneclick_condition_readonlyDeny": {
+  "result_json": ".qa-oneclick/sim-oc/evidence/workmate/roles-readonly/2026-10-14T15-26-36.588Z/result.json",
+  "ok": false,
+  "toolCount": 95,
+  "writeCapableVisible": [
+   "write",
+   "edit",
+   "mpd_hashline_edit",
+   "bash",
+   "mcp__ast_grep__rewrite",
+   "mcp__ast_grep__scan"
+  ],
+  "mcpTools": [
+   "mcp__ast_grep__rewrite",
+   "mcp__ast_grep__scan",
+   "mcp__ast_grep__search",
+   "mcp__codegraph__codegraph_explore",
+   "mcp__context7__query-docs",
+   "mcp__context7__resolve-library-id",
+   "mcp__grep_app__searchGitHub"
+  ],
+  "parentSeesAllDenyNames": false,
+  "denyListMatchesTheEight": "false",
+  "pruneRecordSeen": "false",
+  "mcpLspDependency": null
+ },
+ "C_pre_fix_oneclick_condition_mcpCall": {
+  "result_json": ".qa-oneclick/sim-oc/evidence/dsh-qa/mcp-call/2026-10-14T15-27-31.283Z/result.json",
+  "ok": false,
+  "lspDependency": null,
+  "enum": {
+   "recordedToolCount": 95,
+   "hasAstGrep": true,
+   "hasLsp": false
+  },
+  "call": {
+   "called": true,
+   "succeeded": true,
+   "resultChars": 622,
+   "resultHasFixtureLine": true,
+   "resultHasBinaryNotFound": false
+  }
+ },
+ "D_post_fix_oneclick_condition_readonlyDeny": {
+  "result_json": ".qa-oneclick/sim-oc/evidence/workmate/roles-readonly/2026-10-14T15-48-56.003Z/result.json",
+  "ok": true,
+  "toolCount": 107,
+  "writeCapableVisible": [
+   "write",
+   "edit",
+   "mpd_hashline_edit",
+   "bash",
+   "mcp__ast_grep__rewrite",
+   "mcp__ast_grep__scan",
+   "mcp__lsp__rename_symbol",
+   "mcp__lsp__rename_symbol_strict"
+  ],
+  "mcpTools": [
+   "mcp__ast_grep__rewrite",
+   "mcp__ast_grep__scan",
+   "mcp__ast_grep__search",
+   "mcp__codegraph__codegraph_explore",
+   "mcp__context7__query-docs",
+   "mcp__context7__resolve-library-id",
+   "mcp__grep_app__searchGitHub",
+   "mcp__lsp__find_definition",
+   "mcp__lsp__find_implementation",
+   "mcp__lsp__find_references",
+   "mcp__lsp__find_workspace_symbols",
+   "mcp__lsp__get_diagnostics",
+   "mcp__lsp__get_hover",
+   "mcp__lsp__get_incoming_calls",
+   "mcp__lsp__get_outgoing_calls",
+   "mcp__lsp__prepare_call_hierarchy",
+   "mcp__lsp__rename_symbol",
+   "mcp__lsp__rename_symbol_strict",
+   "mcp__lsp__restart_server"
+  ],
+  "parentSeesAllDenyNames": true,
+  "denyListMatchesTheEight": "true",
+  "pruneRecordSeen": "false",
+  "mcpLspDependency": {
+   "ok": true,
+   "name": "cclsp",
+   "version": "0.7.0",
+   "positiveLane": {
+    "ok": true,
+    "source": "npm-install",
+    "detail": "npm install cclsp@0.7.0 --prefix /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-oneclick/tmp/FIX2-rd-sim-oc/mpd-rd-pos-dsh-7TkhnF/lsp-mcp"
+   },
+   "controlLane": {
+    "ok": true,
+    "source": "npm-install",
+    "detail": "npm install cclsp@0.7.0 --prefix /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-oneclick/tmp/FIX2-rd-sim-oc/mpd-rd-neg-dsh-cwWf0A/lsp-mcp"
+   },
+   "note": "the LSP row's launcher runs from a SANDBOX copy in each lane, with the dependency the published manifest declares staged into that copy's own node_modules \u2014 the shipped row is repointed only inside the sandbox patch, and the launcher's bytes are a byte copy of packages/mpd-mcp-lsp/dist/launch.js"
+  }
+ },
+ "E_post_fix_oneclick_condition_mcpCall": {
+  "result_json": ".qa-oneclick/sim-oc/evidence/dsh-qa/mcp-call/2026-10-14T15-48-55.868Z/result.json",
+  "ok": true,
+  "lspDependency": {
+   "name": "cclsp",
+   "tree": "sandbox pack copy",
+   "ok": true,
+   "source": "npm-install",
+   "detail": "npm install cclsp@0.7.0 --prefix /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-oneclick/tmp/FIX2-mc-sim-oc/mpd-dsh-qa-7OnZYk/staged-pack"
+  },
+  "enum": {
+   "recordedToolCount": 107,
+   "hasAstGrep": true,
+   "hasLsp": true
+  },
+  "call": {
+   "called": true,
+   "succeeded": true,
+   "resultChars": 622,
+   "resultHasFixtureLine": true,
+   "resultHasBinaryNotFound": false
+  }
+ },
+ "F_post_fix_checkout_readonlyDeny": {
+  "result_json": "evidence/workmate/roles-readonly/2026-10-14T15-50-28.693Z/result.json",
+  "ok": true,
+  "toolCount": 107,
+  "writeCapableVisible": [
+   "write",
+   "edit",
+   "mpd_hashline_edit",
+   "bash",
+   "mcp__ast_grep__rewrite",
+   "mcp__ast_grep__scan",
+   "mcp__lsp__rename_symbol",
+   "mcp__lsp__rename_symbol_strict"
+  ],
+  "mcpTools": [
+   "mcp__ast_grep__rewrite",
+   "mcp__ast_grep__scan",
+   "mcp__ast_grep__search",
+   "mcp__codegraph__codegraph_explore",
+   "mcp__context7__query-docs",
+   "mcp__context7__resolve-library-id",
+   "mcp__grep_app__searchGitHub",
+   "mcp__lsp__find_definition",
+   "mcp__lsp__find_implementation",
+   "mcp__lsp__find_references",
+   "mcp__lsp__find_workspace_symbols",
+   "mcp__lsp__get_diagnostics",
+   "mcp__lsp__get_hover",
+   "mcp__lsp__get_incoming_calls",
+   "mcp__lsp__get_outgoing_calls",
+   "mcp__lsp__prepare_call_hierarchy",
+   "mcp__lsp__rename_symbol",
+   "mcp__lsp__rename_symbol_strict",
+   "mcp__lsp__restart_server"
+  ],
+  "parentSeesAllDenyNames": true,
+  "denyListMatchesTheEight": "true",
+  "pruneRecordSeen": "false",
+  "mcpLspDependency": {
+   "ok": true,
+   "name": "cclsp",
+   "version": "0.7.0",
+   "positiveLane": {
+    "ok": true,
+    "source": "checkout-store",
+    "detail": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/node_modules/.bun/cclsp@0.7.0+5b6b5129650ecc67/node_modules -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-oneclick/tmp/FIX2-rd-checkout/mpd-rd-pos-dsh-ywM9Iu/lsp-mcp/node_modules"
+   },
+   "controlLane": {
+    "ok": true,
+    "source": "checkout-store",
+    "detail": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/node_modules/.bun/cclsp@0.7.0+5b6b5129650ecc67/node_modules -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-oneclick/tmp/FIX2-rd-checkout/mpd-rd-neg-dsh-tSEViK/lsp-mcp/node_modules"
+   },
+   "note": "the LSP row's launcher runs from a SANDBOX copy in each lane, with the dependency the published manifest declares staged into that copy's own node_modules \u2014 the shipped row is repointed only inside the sandbox patch, and the launcher's bytes are a byte copy of packages/mpd-mcp-lsp/dist/launch.js"
+  }
+ },
+ "G_post_fix_checkout_mcpCall": {
+  "result_json": "evidence/dsh-qa/mcp-call/2026-10-14T15-50-28.570Z/result.json",
+  "ok": true,
+  "lspDependency": {
+   "name": "cclsp",
+   "tree": "sandbox pack copy",
+   "ok": true,
+   "source": "checkout-store",
+   "detail": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/node_modules/.bun/cclsp@0.7.0+5b6b5129650ecc67/node_modules -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-oneclick/tmp/FIX2-mc-checkout/mpd-dsh-qa-y4d98o/staged-pack/node_modules"
+  },
+  "enum": {
+   "recordedToolCount": 107,
+   "hasAstGrep": true,
+   "hasLsp": true
+  },
+  "call": {
+   "called": true,
+   "succeeded": true,
+   "resultChars": 623,
+   "resultHasFixtureLine": true,
+   "resultHasBinaryNotFound": false
+  }
+ },
+ "H_tool_name_diff_source_vs_oneclick": {
+  "only_in_source": [
+   "mcp__lsp__find_definition",
+   "mcp__lsp__find_implementation",
+   "mcp__lsp__find_references",
+   "mcp__lsp__find_workspace_symbols",
+   "mcp__lsp__get_diagnostics",
+   "mcp__lsp__get_hover",
+   "mcp__lsp__get_incoming_calls",
+   "mcp__lsp__get_outgoing_calls",
+   "mcp__lsp__prepare_call_hierarchy",
+   "mcp__lsp__rename_symbol",
+   "mcp__lsp__rename_symbol_strict",
+   "mcp__lsp__restart_server"
+  ],
+  "only_in_oneclick": [],
+  "source_tool_count": 107,
+  "oneclick_tool_count": 95,
+  "source_write_capable": [
+   "write",
+   "edit",
+   "mpd_hashline_edit",
+   "bash",
+   "mcp__ast_grep__rewrite",
+   "mcp__ast_grep__scan",
+   "mcp__lsp__rename_symbol",
+   "mcp__lsp__rename_symbol_strict"
+  ],
+  "oneclick_write_capable": [
+   "write",
+   "edit",
+   "mpd_hashline_edit",
+   "bash",
+   "mcp__ast_grep__rewrite",
+   "mcp__ast_grep__scan"
+  ]
+ }
+}
