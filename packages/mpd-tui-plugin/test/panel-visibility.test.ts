@@ -12,7 +12,8 @@
 //      three builtins — no plugin panel is in it until something adds it;
 //   2. the panels adapter DOES append a successfully registered plugin id to that CSV;
 //   3. the CSV is an in-memory live setting, and the host's settings-apply path REWRITES it from
-//      configuration — so the append is transient;
+//      configuration — so the append is transient (on >= 0.15.0 the rewrite UNIONS registered ids
+//      back and only an explicit `/settings` removal lasts; the rewrite arm is version-split);
 //   4. a sidebar splits only at or above `CHAT_MIN + PANEL_MIN + DIVIDER`, and at that exact width
 //      the panel column is `PANEL_MIN` cells wide — so a plugin that declares a WIDER floor than the
 //      host's own minimum gets the host's "too narrow" notice in the band between the two.
@@ -24,7 +25,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { installedHostRoot } from "./lib/host-root"
 
-import { PANEL_KEEPER_LADDER_MS, createPanelEnableKeeper, probeHostPrefs, type TuiHostPrefsLike } from "../../mpd-tui-adapter-plugin/src/index.js"
+import { PANEL_KEEPER_LADDER_MS, createPanelEnableKeeper, hostSelfHealsPanelCsv, probeHostPrefs, readHostPackageVersion, type TuiHostPrefsLike } from "../../mpd-tui-adapter-plugin/src/index.js"
 import {
   createPanelComponent,
   PANEL_DESCRIPTOR_FROZEN,
@@ -186,16 +187,33 @@ describe("R13 · the host's panel enablement rule (read from the installed host)
     expect(factory).not.toContain("readFileSync")
   })
 
-  test("the host REWRITES the CSV from configuration, which is how a registered panel disappears", () => {
+  test("the host re-applies the configured CSV — a rewrite that on < 0.15.0 DROPS a registered id, and on >= 0.15.0 UNIONS registered ids back", () => {
+    // VERSION-AWARE SPLIT (clause C2 of `tui-015-adaptation`): the premise this arm was born on — the
+    // host's own settings-apply rewrite is how a registered panel DISAPPEARS — is true of every host
+    // before 0.15.0 and of no host after it. Both branches stay in the file so an upgrade re-judges
+    // the arm instead of silently sliding past a literal the new build no longer carries.
     /** The settings adapter's source: the apply path that mirrors configuration into the live stores. */
     const source = readFileSync(PLUGIN_PATH, "utf8")
-    expect(source).toContain("applySidePanelPanels(config.sidePanel?.panels)")
-    // The configured value's own default is the schema default, so an unedited config re-applies a
-    // builtins-only list and drops any id a plugin appended. THE VALUE IS ASSERTED AS AN INVARIANT —
-    // idempotence — rather than as a CSV literal: a hard-coded list, old or new, is a defect, because it
-    // makes this file's claim about the version of the host it was written against instead of about the
-    // rule. Normalizing an already-normalized CSV is a no-op, so whatever the host re-applies is stable
-    // across every re-apply the session performs.
+    /** The panels adapter's source, where the 0.15.0 union machinery lives when there is one. */
+    const panels = readFileSync(PANELS_PATH, "utf8")
+    if (hostSelfHealsPanelCsv(readHostPackageVersion(HOST))) {
+      // A SELF-HEALING HOST (>= 0.15.0): the mirror apply runs through the union helper, and a
+      // `/settings` edit records removals session-wide — the disappearance now lasts only when the
+      // user asked for it, which is exactly why the keeper stands down there.
+      expect(source).toContain("applyConfiguredSidePanelPanels(config.sidePanel?.panels)")
+      expect(source).toContain("applySidePanelPanelsFromSettings(")
+      expect(panels).toContain("registeredPanelIds")
+      expect(panels).toContain("removedPanelIds")
+    } else {
+      // A PRE-0.15.0 HOST: the literal mirror apply exists, an unedited config re-applies a
+      // builtins-only list, and any id a plugin appended is dropped — the 0.14 defect, pinned.
+      expect(source).toContain("applySidePanelPanels(config.sidePanel?.panels)")
+    }
+    // BOTH ERAS: the configured value's own default is the schema default — THE VALUE IS ASSERTED AS
+    // AN INVARIANT — idempotence — rather than as a CSV literal: a hard-coded list, old or new, is a
+    // defect, because it makes this file's claim about the version of the host it was written against
+    // instead of about the rule. Normalizing an already-normalized CSV is a no-op, so whatever the
+    // host re-applies is stable across every re-apply the session performs.
     expect(source).toContain("DEFAULT_SIDE_PANEL_IDS")
     /** The default CSV after the host's own normalization — what a config re-apply actually writes. */
     const once = prefs.normalizeSidePanelPanels(prefs.DEFAULT_SIDE_PANEL_IDS)

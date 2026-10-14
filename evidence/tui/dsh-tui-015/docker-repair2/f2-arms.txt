@@ -1,0 +1,39 @@
+=== arm 1: command-substitution backticks left in docker/*.sh (quote-aware scan) ===
+--- docker/entrypoint.sh
+--- docker/tui-lane.sh
+TOTAL_SUBSTITUTION_SITES=0
+  (a hit is a backtick the SHELL executes: outside single quotes, unescaped. Backticks inside single-quoted node -e arguments are literal and are not reported.)
+
+=== arm 1b: the scanner's own control — planted pre-fix bytes + a single-quoted JS template literal ===
+    fact obs.npmrc "every `dsh plugin` resolves"
+    node -e 'const s = `x ok`; console.log(s)'
+  --- /tmp/tmp.da5dvvWV0a/planted.sh
+    SUBSTITUTION /tmp/tmp.da5dvvWV0a/planted.sh:1: fact obs.npmrc "every `dsh plugin` resolves"
+    SUBSTITUTION /tmp/tmp.da5dvvWV0a/planted.sh:1: fact obs.npmrc "every `dsh plugin` resolves"
+  TOTAL_SUBSTITUTION_SITES=2
+  scanner exit=1 (expected 1: the planted pair is two executed backticks)
+  OK: both planted backticks are caught
+  OK: the single-quoted node -e argument is inert and is NOT reported
+
+=== arm 2: bash -n over every docker/*.sh ===
+  OK bash -n docker/entrypoint.sh (exit 0)
+  OK bash -n docker/tui-lane.sh (exit 0)
+
+=== arm 3: the obs.npmrc block, EXTRACTED from docker/entrypoint.sh, run with a stub fact() ===
+  extracted lines 466..475
+  exit=0 stderrBytes=0
+  FACT obs.npmrc = registry=https://registry.example.invalid/ (a SANDBOX-home .npmrc; pnpm — and therefore every `dsh plugin` — resolves through the FILE, not the environment, measured 2026-10-09)
+  OK: the words survive, quoted as code spans
+  OK: nothing on stderr
+  --- negative control: the SAME block with the pre-fix (unescaped) bytes, and a stub 'dsh' on PATH ---
+  FACT obs.npmrc = registry=https://registry.example.invalid/ (a SANDBOX-home .npmrc; pnpm — and therefore every  — resolves through the FILE, not the environment, measured 2026-10-09)
+  stderr: STUB-DSH-INVOKED argv=[plugin]
+  OK (control): the pre-fix text loses the words, so the arm above is falsifiable
+  OK (control): a real command ran in the substitution's place
+
+=== arm 4: the obs.caseEngineTree line, EXTRACTED from docker/entrypoint.sh, run with a stub fact() ===
+  exit=0 stderrBytes=0
+  FACT obs.caseEngineTree = /work/dist/mpd-package (the bundle root the mcp-call launcher resolves bundle-relatively: the case installs that packed tree with npm `file:` into its sandbox profile)
+  OK: the words survive
+
+F2 ARMS: ALL PASS

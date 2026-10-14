@@ -937,6 +937,28 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
     ? attemptDecisionEvents(ctx, tui, log)
     : { ...skipped("pluginHost", "disabled by config"), attempts: () => [] }
 
+  // ── the one outcome the seam itself CANNOT disclose ───────────────────────
+  // `decisions.ts` states its verdict from inside `tui.whenBound("pluginHost", …)`, which by
+  // construction never runs when the mediated host is absent — so the unbound case was SILENT
+  // (T16-OBS: no mpd-tui line named it at all). It is stated here, ONCE, from the aggregate the
+  // seam itself computed.
+  //
+  // THE WORDING IS AN OBSERVATION, NOT A VERDICT, and here is the measurement that forces it
+  // (lane `tui-admission`, 0.15.0, `ws/.mpd/logs/mpd-tui.log`): the row applies BEFORE the
+  // adapter's deferred `ctx.inject(["tuiPluginHost"], …)` callback runs, so `absent` here means
+  // "not bound YET" in a healthy boot — the very next lines carry the seam's own disclosure once
+  // the host binds. Claiming `ABSENT` would be the same trap the triage report flagged for
+  // `TUI_SEAMS=(none composed)`: a synchronous read inside `apply` cannot see a later bind. A host
+  // that NEVER binds leaves exactly this line, which is the case it exists for.
+  /** The decision seam's aggregate verdict, read once so the line below cannot quote two reads. */
+  const decisionOutcome = decisions.outcome()
+  if (decisionOutcome.state === "absent") {
+    log.info(
+      `decision-event seam: no intercept point attempted — ${decisionOutcome.detail ?? "the mediated plugin host was not injected"} ` +
+        "(read at apply time; the seam discloses its own verdict once it binds)",
+    )
+  }
+
   record(status)
   record(renderers)
   record(settings)

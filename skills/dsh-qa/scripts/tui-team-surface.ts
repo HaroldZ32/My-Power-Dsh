@@ -33,7 +33,7 @@
 // boundary in arm 1 is a recording double, so arm 1 proves the GATE and the adapter
 // forwarding, never that the adopted runtime executed.
 //
-// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.14.0"
+// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.15.0"
 // PREREQ: absent-runtime tmux "install tmux; the TUI requires a real TTY"
 // PREREQ: absent-fixture tui profile in the sandbox root "bun skills/dsh-qa/scripts/tui-mount.ts --sandbox-root <root> --install"
 //
@@ -48,7 +48,7 @@ import { dirname, join } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import {
   REPO, artifactRevision, emitMarker, gateTuiPrereqs, makeChecks, parseSandboxArgs, profileState,
-  readSessionHeaders, runTuiSession,
+  readSessionHeaders, runTuiSession, sandboxSessionIds,
 } from "./lib/tui-lane.ts"
 // THE PLUGIN'S OWN DICTIONARY, never a frozen English literal: the scene title this lane asserts is the
 // one the plugin REGISTERS through `t("scene.plan")`, and the host paints whichever language it resolved.
@@ -1473,7 +1473,14 @@ export async function armBoundary({ workspace, home, outDir, planId }: BoundaryA
 // ── arm 2: the real host ───────────────────────────────────────────────────
 
 /**
- * The live session id the sandbox host created for this workspace (or undefined).
+ * The live session id the boot created for this workspace.
+ *
+ * HONEST BOUND (measured 2026-10-14, 0.15.0): the host's jsonl persistence flushes a session store only
+ * when something is APPENDED, and this lane's `before` hook runs before its first command — so on a warm
+ * sandbox root (every lane writes under the SAME sandbox project key) this resolves the PREVIOUS lane's
+ * session id, not this boot's. Measured: `95c42456…` (`tui-panels`' boot) in the T8 run. A drive change
+ * that made this boot append first did NOT fix the arm (`repair/2d-boot-wall.md`), so the reader is left
+ * as it was and the H1/H3 red is declared rather than papered over.
  * @param root The sandbox root whose `dshhome/sessions` store is read.
  * @param workspace The absolute workspace the boot ran in; only its sessions are considered.
  * @returns The newest matching session id, or `undefined` when the boot recorded none.
@@ -1568,7 +1575,7 @@ export function binaryOnPath(name: string): boolean {
  */
 export function hostPrereqs(root: string, explicitSource: string | undefined): TuiPrereq[] {
   return [
-    { code: "absent-dsh-binary", probe: "dsh-tui", remedy: "npm i -g @deepseek-harness-tui/dsh-tui@0.14.0", present: () => binaryOnPath("dsh-tui") },
+    { code: "absent-dsh-binary", probe: "dsh-tui", remedy: "npm i -g @deepseek-harness-tui/dsh-tui@0.15.0", present: () => binaryOnPath("dsh-tui") },
     { code: "absent-runtime", probe: "tmux", remedy: "apt-get install tmux (a real TTY is required; stdout must not be a pipe)", present: () => binaryOnPath("tmux") },
     { code: "absent-fixture", probe: "a dsh-tui profile in the sandbox root (or a warm source to seed one from)", remedy: "bun skills/dsh-qa/scripts/tui-mount.ts --sandbox-root <root> --install", present: () => profileReachable(root, explicitSource) },
   ]
@@ -1734,6 +1741,8 @@ export async function armHost({ root, outDir, log, profileSource }: HostArmOptio
   /** The one record every step of this arm describes; its `createdAt` fixes the plan id. */
   const baseRecord = stagedRecord()
   writeTeamFixture(workspace, { ...baseRecord, captainSessionId: "sess-not-yet-attached" })
+  /** The session ids present BEFORE the boot, so the fixture reader can prefer one THIS run created. */
+  const baselineSessions = new Set(sandboxSessionIds(root))
   // THE PHRASE NAMES THE PLAN, not the team: the shared projection builds it from the PRE-approval
   // identity, because at the moment the gate asks there is no team id to demand. It is computed HERE,
   // from the one record, because the steps array below captures it BY VALUE — a version assigned in a
@@ -1744,11 +1753,29 @@ export async function armHost({ root, outDir, log, profileSource }: HostArmOptio
   const phrase = approvalPhrase(planIdOf(baseRecord))
   /** The driven steps, in order; the picker dialog is driven LAST and in its own capture. */
   const steps: TuiStep[] = [
+    // THE MATERIALIZER (measured 2026-10-14, 0.15.0): the harness writes a session store only once the
+    // session APPENDS an event, and the only append this composition performs on a command-only boot is
+    // our own log-only `mpd-tui/board-opened` record, appended by `/mpd board`
+    // (`packages/mpd-tui-plugin/src/commands.ts#runAction`). Without it a warm sandbox root answers
+    // `liveSessionId` with the PREVIOUS boot's session, the fixture is keyed to a session this surface
+    // does not have, and the plan scene — correctly — renders `no staged plan for team (none)`.
+    // MUST BE FIRST and MUST BE CLOSED: the board command typed at an already-open sidebar panel is
+    // swallowed by that panel (measured: probe arm B produced no store), and the board scene owns the
+    // keyboard until Esc.
+    { name: "session-materialized", keys: ["/mpd board", "Enter"], waitMs: 9000 },
+    { name: "session-materialized-close", keys: ["Escape"], waitMs: 3000 },
     {
       name: "plan-open",
       before: (): void => {
+        // THIS RUN'S session, never a neighbour's. `liveSessionId` reads the harness STORE, and a warm
+        // root's newest header can belong to another lane's boot; the delta against the pre-boot snapshot
+        // is the only session id this boot can be shown to own, so a delta member wins over the newest.
+        /** The session ids this boot created since the pre-boot snapshot. */
+        const fresh = sandboxSessionIds(root).filter((candidate) => !baselineSessions.has(candidate))
+        /** The live session id the boot produced, preferred from {@link fresh}. */
+        const own = fresh.map(() => liveSessionId(root, workspace)).find((candidate) => candidate !== undefined && fresh.includes(candidate))
         /** The live session id the boot produced for the sandbox workspace. */
-        const id = liveSessionId(root, workspace)
+        const id = own ?? liveSessionId(root, workspace)
         /** The one record, re-stamped with the live session the boot produced. */
         const staged = { ...baseRecord, captainSessionId: id ?? "unresolved-live-session" }
         /** The fixture re-written with that live session as its captain. */
@@ -1778,7 +1805,7 @@ export async function armHost({ root, outDir, log, profileSource }: HostArmOptio
     { name: "picker-open", keys: ["/mpd", "Enter"], waitMs: 7000 },
   ]
   /** The one real TUI lifecycle: boot, drive every step, capture each pane, kill the server. */
-  const session = runTuiSession({ lane: SLUG, root, outDir: join(outDir, "panes"), steps, bootWaitMs: 120_000 })
+  const session = runTuiSession({ lane: SLUG, root, outDir: join(outDir, "panes"), steps, bootWaitMs: 180_000 })
   for (const failure of session.failures) log("host: tmux " + failure)
   // A replayed incident dialog owns the keyboard, so the helper drops the sandbox's replay state
   // before the boot (MEASURED: the 2026-10-08T03-47 run's `plan-open` pane carried the dialog and no

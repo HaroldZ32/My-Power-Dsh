@@ -1,0 +1,52 @@
+{
+  "wave": "tui-015-adaptation",
+  "amendment": "C7 — team-plane dispatch/lifecycle guards + hard gates",
+  "author": "Guard Engineer (Deep Worker persona)",
+  "scope": [
+    "packages/mpd-team-core-plugin/src/dispatch.ts",
+    "packages/mpd-team-core-plugin/src/team-lifecycle.ts",
+    "packages/mpd-team-core-plugin/src/team-store.ts",
+    "packages/mpd-team-core-plugin/src/index.ts",
+    "packages/mpd-team-core-plugin/test/dispatch-guard.test.ts",
+    "packages/mpd-team-core-plugin/dist/index.js",
+    "packages/mpd-tui-plugin/dist/index.js"
+  ],
+  "seam": {
+    "what": "the mpd-native `agent_teams_dispatch` tool (packages/mpd-team-core-plugin/src/index.ts) and the PURE pairing decision it calls (planDispatch / pairingRefusal in src/dispatch.ts), plus team resolution (resolveTeam -> team-lifecycle.ts#resolveTeamRecord)",
+    "why_it_is_ours": "the official @deepseek-ai/dsh-experimental-tool-agent-team (0.2.0-rc.2, installed) registers team_task_create|list|get|update and spawn_teammate/send_message/list_agents/wait_agent/interrupt_agent and NO pairing tool; the `agent_teams_*` names are registered solely by mpd-team-core",
+    "host_owned_bound": "the mpd-native pass builds BOTH the board and the roster from ONE team record, so a cross-team task x member pool is NOT constructible through the tool; C7-1 is therefore proven at the pairing SEAM (pure function), not through a live cross-team pool"
+  },
+  "fixes": {
+    "C7-1": "pairingRefusal refuses a task/member teamId mismatch, naming both ids; the tool tags both sides with the resolved record's teamId",
+    "C7-2": "pairingRefusal refuses a task with non-empty writeScopes against member.readonly === true; the readonly classification is read PER CALL from mpd-roles-plugin's OWN `mpdRoles` service (list() -> readonly), never a copied list; the tool reports the refusal instead of grabbing another member",
+    "C7-3": "resolveTeamRecord filters candidates through isLiveTeam (endedAt, non-live phase incl. the hand-patched `archived`, or an archived plan that was never approved) and falls through to the next candidate or none; reapReapedTeams marks a reaped record `ended` + endedAt + archivedReason, called on the agent_teams_dispatch run path (also under dry_run) and reported as `reaped`"
+  },
+  "gates": [
+    { "command": ".toolchain/node_modules/.bin/bun test packages/mpd-team-core-plugin packages/mpd-roles-plugin packages/mpd-dsh-adapter-plugin", "observed": "538 pass, 0 fail, 3013 expect() calls, 35 files", "exit": 0, "log": "unit/packages-tests.log" },
+    { "command": "bun run typecheck", "observed": "RED at whole-program level, attributable to a CONCURRENT member's in-flight edits outside this scope: skills/dsh-qa/scripts/tui-admission.ts(890,98) TS2339 'grants' + packages/mpd-tui-adapter-plugin/src/index.ts", "exit": 1, "log": "unit/typecheck.log" },
+    { "command": "./node_modules/.bin/tsgo --noEmit -p evidence/tui/dsh-tui-015/guard/unit/tsconfig.c7.json", "observed": "scoped typecheck of the touched packages (team-core src+test, roles src): clean", "exit": 0, "log": "unit/scoped-typecheck.log" },
+    { "command": "bun run verify:comments", "observed": "PASS — every declaration commented; 398 files / 35091 declarations", "exit": 0, "log": "unit/comments.log" },
+    { "command": "node scripts/verify-dist-fresh.ts", "observed": "my targets FRESH (team-core sha 9610157942f1, roles sha 446fff781102); 2 STALE targets belong to a concurrent member's in-flight edits (packages/mpd-tui-adapter-plugin/src/index.ts, packages/mpd-tui-plugin/src/panel-dag.ts)", "exit": 0, "log": "unit/dist-fresh.log" },
+    { "command": "bun run verify:rows", "observed": "ok: 35 row ids match the 2-file bundle patch layer", "exit": 0, "log": "unit/rows.log" },
+    { "command": ".toolchain/node_modules/.bin/bun test (root, informational)", "observed": "2313 pass / 3 skip / 18 fail / 13 errors; every failure is a `skills/visual-qa/scripts/cli.test.ts` COPY under evidence/** or an evidence pack-closure fixture missing the `typescript` module — none in this scope (the root run is not the repo gate; the gate is per-package)", "exit": 1, "log": "unit/root-bun-test.full.log" }
+  ],
+  "live_state_evidence": {
+    "script": "phantom-live/reap-phantom.ts",
+    "log": "phantom-live/output.log",
+    "command": ".toolchain/node_modules/.bin/bun run evidence/tui/dsh-tui-015/guard/phantom-live/reap-phantom.ts",
+    "observed": "over a COPY of this workspace's real .mpd/team: team-20261014064212 (phase `archived`) live=false, a resolution BOUND to it resolves (none), the live execution team still resolves, and the consistency pass reaps exactly [team-20261014064212] -> phase ended, reason 'record phase \"archived\" is not a live team phase (staged | active | idle)'"
+  },
+  "case_draft": {
+    "dir": "case-draft/",
+    "files": ["team-dispatch-guard.ts", "cases.json-row.json", "SKILL.md-row.md", "HANDOFF.md"],
+    "validated": "the draft was run from a scratch tree at the same depth as skills/dsh-qa/scripts: --self-test 4/4 PASS and the real lane 8/8 PASS (case-draft/lane-run.output.log); the scratch tree was removed",
+    "not_landed": "skills/** is the wave's single-writer band; Deep Worker lands these bytes"
+  },
+  "honest_bounds": [
+    "C7-1 is a MECHANICAL invariant at the pairing seam; the mpd-native tool cannot itself construct a cross-team pool, so no live cross-team reproduction exists (recorded, never implied as a host-side fix)",
+    "the archive arm of C7-3 is an UNAPPROVED archived plan (discarded/replaced), because approval archives the staged plan for EVERY team — treating any archived plan as terminal would skip every approved team including the live one (measured: 21 plan directories in this workspace's archive, every live team among them)",
+    "13 legacy team records with phase `active` + an APPROVED archived plan remain live=true; the phase/archive rules cannot decide them from state alone and the consistency pass does not guess",
+    "the whole-program typecheck is RED at the moment of this report because of another member's in-flight edits; the scoped typecheck of the touched packages is clean",
+    "the root `bun test` run is informational; every failure in it is pre-existing/environmental (visual-qa cli.test.ts copies under evidence/**, an evidence pack-closure fixture) and none is in this scope"
+  ]
+}

@@ -19,7 +19,9 @@ import { pathToFileURL } from "node:url"
 import {
   HOST_PREFS_MODULE,
   KNOWN_STALE_PANEL_DEFAULTS,
+  PANEL_CSV_SELF_HEAL_SINCE,
   createPanelEnableKeeper,
+  hostSelfHealsPanelCsv,
   mergePanelEnableIds,
   probeHostPrefs,
   stalePanelDefaultResidue,
@@ -467,5 +469,131 @@ describe("T1 · the keeper migrates the stale pin on BOTH repair paths", () => {
     await clock.runNext()
     expect(fake.csv()).toBe(`${STALE_PIN},act1:team`)
     expect(keeper.outcome().detail).toContain("re-asserted act1:team")
+  })
+})
+
+describe("C2 · the keeper stands down on a self-healing host (>= 0.15.0)", () => {
+  test("the version predicate: 0.15.0 and later self-heal; older, empty and unparseable versions do not", () => {
+    expect(hostSelfHealsPanelCsv(PANEL_CSV_SELF_HEAL_SINCE)).toBe(true)
+    expect(hostSelfHealsPanelCsv("0.15.1")).toBe(true)
+    expect(hostSelfHealsPanelCsv("0.16.0")).toBe(true)
+    expect(hostSelfHealsPanelCsv("1.0.0")).toBe(true)
+    // DEGRADE-SAFE: everything the gate cannot read as at-least-0.15.0 keeps the legacy keeper.
+    expect(hostSelfHealsPanelCsv("0.14.0")).toBe(false)
+    expect(hostSelfHealsPanelCsv("0.13.0")).toBe(false)
+    expect(hostSelfHealsPanelCsv("0.14.0-rc.1")).toBe(false)
+    expect(hostSelfHealsPanelCsv("")).toBe(false)
+    expect(hostSelfHealsPanelCsv("not-a-version")).toBe(false)
+  })
+
+  test("(a) on a 0.15.0 host the keeper writes NOTHING: a mirror rewrite is not repaired, and the belt observes it once", async () => {
+    // THE 0.14 DEFECT'S TRIGGER, replayed on a self-healing host: the configuration mirror rewrites
+    // the CSV to a list that names none of ours. The 0.14 keeper repaired that; the C2 keeper must
+    // not even try — the host's own union is the writer now, and this arm asserts OUR side of that
+    // hand-off: zero writes, ever.
+    /** The store with the feed exposed, as every 0.14.0+ build does. */
+    const fake = fakeStore(HOST_DEFAULT, true)
+    /** Every line the keeper logged. */
+    const logged: string[] = []
+    /** The controllable clock. */
+    const clock = fakeClock()
+    /** The keeper under test, whose probe answer names a self-healing host. */
+    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: fake.store, hostVersion: "0.15.0" }), schedule: clock.schedule, pastIds: () => [], log: (line: string): void => { logged.push(line) } })
+    keeper.observe("act1:team")
+    keeper.observe("act1:workmate")
+    await clock.runNext()
+    // STOOD DOWN on the FIRST tick: no write happened, the state is confirmed, the detail names the reason.
+    expect(fake.applied).toEqual([])
+    expect(keeper.outcome().reasserted).toBe(0)
+    expect(keeper.outcome().state).toBe("confirmed")
+    expect(keeper.outcome().detail).toContain("self-heals")
+    // THE MIRROR REWRITE: the host writes a builtins-only list and the keeper DOES NOT REPAIR IT —
+    // the applied log carries the host's write and nothing else.
+    fake.hostApply("todo,jobs,agents")
+    expect(fake.applied).toEqual(["todo,jobs,agents"])
+    expect(keeper.outcome().reasserted).toBe(0)
+    // THE BELT: exactly one stand-down line and one observe-only line, and the belt then LEFT (no
+    // listener remains, and a second host apply says nothing more).
+    expect(logged.some((line) => line.includes("standing down on host 0.15.0"))).toBe(true)
+    expect(logged.filter((line) => line.includes("observe-only")).length).toBe(1)
+    expect(logged.some((line) => line.includes("NONE of our ids"))).toBe(true)
+    expect(fake.listeners()).toBe(0)
+    fake.hostApply("todo,jobs")
+    expect(logged.filter((line) => line.includes("observe-only")).length).toBe(1)
+    // NO LATER LADDER TICK WRITES EITHER — the stand-down cancelled the ladder.
+    await clock.runNext()
+    await clock.runNext()
+    expect(fake.applied).toEqual(["todo,jobs,agents", "todo,jobs"])
+  })
+
+  test("(a) an explicit /settings removal of BOTH panels STAYS removed on a 0.15.0 host — the belt reports the union keeping them, then silence", async () => {
+    // THE R1 RESIDUAL THE RE-SPEC EXISTS FOR: the host records a `/settings` removal session-wide, and
+    // a keeper that still "repaired" the list would re-add panels the user explicitly turned off. The
+    // realistic sequence: the registration append put our ids in, then the user removes both.
+    /** The store with the feed exposed. */
+    const fake = fakeStore(HOST_DEFAULT, true)
+    /** Every line the keeper logged. */
+    const logged: string[] = []
+    /** The controllable clock. */
+    const clock = fakeClock()
+    /** The keeper under test, whose probe answer names a self-healing host. */
+    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: fake.store, hostVersion: "0.15.0" }), schedule: clock.schedule, pastIds: () => [], log: (line: string): void => { logged.push(line) } })
+    keeper.observe("act1:team")
+    keeper.observe("act1:workmate")
+    await clock.runNext()
+    // THE HOST'S OWN REGISTRATION APPEND (the union's doing, not ours): the belt sees our ids carried.
+    fake.hostApply(`${HOST_DEFAULT},${OURS.join(",")}`)
+    expect(logged.filter((line) => line.includes("observe-only")).length).toBe(1)
+    expect(logged.some((line) => line.includes("still carries every id of ours"))).toBe(true)
+    expect(fake.applied).toEqual([`${HOST_DEFAULT},${OURS.join(",")}`])
+    // THE USER REMOVES BOTH via `/settings`: the list drops every id of ours and the keeper NEVER
+    // writes them back — not on the removal itself, and not on any later tick.
+    fake.hostApply(HOST_DEFAULT)
+    await clock.runNext()
+    await clock.runNext()
+    await clock.runNext()
+    expect(fake.applied).toEqual([`${HOST_DEFAULT},${OURS.join(",")}`, HOST_DEFAULT])
+    expect(fake.csv()).toBe(HOST_DEFAULT)
+    expect(keeper.outcome().reasserted).toBe(0)
+    expect(logged.filter((line) => line.includes("observe-only")).length).toBe(1)
+  })
+
+  test("(b) a 0.14.0 host keeps the legacy keeper byte-for-byte: the mirror rewrite IS repaired, version explicit", async () => {
+    /** The store with the feed exposed, seeded with the current default. */
+    const fake = fakeStore(HOST_DEFAULT, true)
+    /** The controllable clock. */
+    const clock = fakeClock()
+    /** The keeper under test, whose probe answer names a legacy host. */
+    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: fake.store, hostVersion: "0.14.0" }), schedule: clock.schedule, pastIds: () => [] })
+    keeper.observe("act1:team")
+    await clock.runNext()
+    // FIRST TICK: the feed hands over, the list names none of ours, and the keeper RE-ASSERTS — the
+    // exact 0.14 behaviour, now guarded by an explicit version.
+    expect(fake.applied).toEqual([`${HOST_DEFAULT},act1:team`])
+    expect(keeper.outcome().reasserted).toBe(1)
+    // THE MIRROR REWRITE: the host drops our id and the keeper REPAIRS it through the feed — the
+    // 0.14 repair this clause preserves on exactly these hosts.
+    fake.hostApply("todo,jobs,agents")
+    for (let turn = 0; turn < 8; turn += 1) await Promise.resolve()
+    expect(fake.applied).toEqual([`${HOST_DEFAULT},act1:team`, "todo,jobs,agents", "todo,jobs,agents,act1:team"])
+    expect(keeper.outcome().reasserted).toBe(2)
+  })
+
+  test("(b) an ABSENT version — the pre-C2 probe shape — keeps the legacy keeper: no gate fires", async () => {
+    // DEGRADE-SAFE, pinned: every probe answer that carries no version (the shape all 22 arms above
+    // were written against) takes the legacy path, so the gate can never stand a keeper down on a
+    // host it failed to read.
+    /** The store, seeded with the stale pin so the migration is the observable. */
+    const fake = fakeStore(STALE_PIN)
+    /** The controllable clock. */
+    const clock = fakeClock()
+    /** The keeper under test, whose probe answer carries NO version at all. */
+    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: fake.store, defaultIds: HOST_DEFAULT }), schedule: clock.schedule, pastIds: () => [] })
+    keeper.observe("act1:team")
+    await clock.runNext()
+    // The FULL legacy machinery runs — the stale-default migration included, which is the strongest
+    // "byte-preserved" witness available on one tick: the pin migrated to the host default ∪ ours.
+    expect(fake.csv()).toBe(`${HOST_DEFAULT},act1:team`)
+    expect(keeper.outcome().detail).toContain("migrated the stale default")
   })
 })

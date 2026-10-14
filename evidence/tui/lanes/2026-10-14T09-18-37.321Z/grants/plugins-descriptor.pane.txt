@@ -1,0 +1,50 @@
+ {"level":"warn"}
+[dsh-tui] [stderr] [dsh-tui] park target=6,44 decl=true rect=true moved=false
+ {"level":"warn"}
+[dsh-tui] [stderr] [dsh-tui] park target=6,44 decl=true rect=true moved=false
+ {"le🌑l":"warn"}
+[dsh-tui] [stderr] [dsh-tui] park target=6,44 decl=true rect=true moved=false
+ {"level":"warn"}
+[dsh-tui] [stderr] [dsh-tui] park target=6,44 decl=true rect=true moved=false
+ {"level":"warn"}
+[dsh-tui] [stderr] [dsh-tui] park target=6,44 decl=true rect=true moved=false
+ {"level":"warn"}
+[dsh-tui] [stderr] [dsh-tui] park target=6,44 decl=true rect=true moved=false
+ {"level":"warn"}
+[dsh-tui] [stderr] [dsh-tui] park target=6,44 decl=true rect=true moved=false
+ {"lev[dsh-tui] [stderr] [dsh-tui] park target=6,44 decl=true rect=true moved=false
+ {"level":"warn"}] [dsh-tui] park target=6,44 decl=true rect=true moved=false
+[dsh-tui] [stderr] [dsh-tui] park target=6,44 decl=true rect=true moved=false
+ {"level":"warn"}] [dsh-tui] park target=6,44 decl=true rect=true moved=false
+[dsh-tui] [stderr] [dsh-tui] park target=6,44 decl=true rect=true moved=false
+ {"level":"warn"}
+[dsh-tui] [stderr] [dsh-tui] park target=6,44 decl=true rect=true moved=false
+ {"level":"warn"}
+[dsh-tui] [stderr] [dsh-tui] park target=6,44 decl=true rect=true moved=false
+ {"le🌒l":"warn"}
+[dsh-tui] [stderr] [dsh-tui] park target=6,44 decl=true rect=true moved=false
+ {"level                                         
+[dsh-tuiThe `packages/mpd-tui-plugin/**` glob returned nothing, which is surprising — verifying the package tree directly.
+ {"levelSo                                                                                                                
+[dsh-tui] [stderr] [dsh-tui] park target=6,44 decl=true rect=true moved=false
+ {"level":"warn"}
+[d h-tui] [stderr] [dsh-tui] park target=6,44 decl=true rect=true moved=false
+ {"level":"warn7}
+[dsh-🌓i] [stderr] [dsh-tui] park target=6,44 decl=true rect=true moved=false
+ {"le🌔dsh-tui] [stderr] [dsh-tui] park target=6744 decl=true rect=true moved=false
+ {"le🌕l":"warn"}] [dsh-tui] park target=6,44 decl=true rect=true moved=false
+[dsh-tui] [stderr] [dsh-tui] park target=6,44 decl=true rect=true moved=false
+ {"level": the files DO exist — the glob tool got no results for `packages/*/package.json` and `packages/mpd
+[dsh-tui] [stderr] [dsh-tui] park target=6,44 decl=true rect=true moved=false                               -tui-plugin/**/*`, which is odd. Probably glob is subject to an ignore file (glob says "including hidden and ig…
+ {"level":"warn"}
+[dsh-tui] [stderr] [dsh-tui] park target=6,44 decl=true rect=true moved=false
+ {"level":"warn"}
+[dsh-tui] [stderr] [dsh-tui] park target=6,44 decl=true rect=true moved=false
+ {"lev[dsh-tui] [stderr] [dsh-tui] park target=6,44 decl=true rect=true moved=false
+ {"lev[dsh-tui] [stderr] [dsh-tui] park target=6,44 decl=true rect=true moved=false
+ {"lev[dsh-tui] [stderr] [dsh-tui] park target=6,44 decl=true rect=true moved=false
+ {"level":"warn"}] [dsh-tui] park target=6,44 decl=true rect=true moved=false
+[dsh-tui] [stderr] [dsh-tui] park target=6,44 decl=true rect=true moved=false
+ {"level":"warn"}] [dsh-tui] park target=6,44 decl=true rect=true moved=false
+ {"level":"warn"}
+

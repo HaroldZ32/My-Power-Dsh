@@ -1,0 +1,27 @@
+? Verifying lockfile against supply-chain policies (104 entries)...
+✓ Lockfile passes supply-chain policies (104 entries in 543ms)
+Lockfile is up to date, resolution step is skipped
+Done in 564ms using pnpm v12.11.2
+Progress: resolved 0, reused 1, downloaded 0, added 0
+Packages: +79
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Progress: resolved 78, reused 81, downloaded 0, added 79, done
+[WARN] Issues with peer dependencies found. Run "pnpm peers check" to list them.
+
+dependencies:
++ @deepseek-harness-tui/dsh-tui 0.15.0
+
+Done in 108ms using pnpm v12.11.2
+Progress: resolved 0, reused 1, downloaded 0, added 0
+Packages are hard linked from the content-addressable store to the virtual store.
+  Content-addressable store is at: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/tui-015/pnpm-home/store/v11
+  Virtual store is at:             node_modules/.pnpm
+Packages: +79
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Progress: resolved 78, reused 81, downloaded 0, added 79, done
+[WARN] Issues with peer dependencies found. Run "pnpm peers check" to list them.
+
+dependencies:
++ @deepseek-harness-tui/dsh-tui 0.15.0
+
+Done in 104ms using pnpm v12.11.2

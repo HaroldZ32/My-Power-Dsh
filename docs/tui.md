@@ -1231,3 +1231,101 @@ ids. (d) The `PanelBar` change is a HOST fact: this page describes
 what 0.14.0 does, and a future host that paints icons again is contradicted by no MPD claim — every
 descriptor still declares one.
 
+### 11.7 Amendment after the DSH-TUI 0.15.0 adaptation wave (2026-10-15)
+
+The rows above stay as written for the revision and the host they measured. This wave moved the target
+host one release on again (0.15.0, published 2026-10-13), and **every plugin-facing seam came through
+unchanged for the second time** — the adaptation is a carrier move plus three user-mandated functional
+clauses (the keeper re-spec, the decision-events grant flow, the 0-task DAG fix). The following
+supersedes §11.6:
+
+| Superseded statement | Was | Is (measured 2026-10-15) |
+|---|---|---|
+| This page's target host (§ preamble) | `@deepseek-harness-tui/dsh-tui` **0.14.0** | **0.15.0** (npm `latest`; the wave's frozen measurement basis is `evidence/tui/dsh-tui-015/host-diff/FACTS.md`, both tarballs unpacked beside it). Host-internal additions that need NO bundle reaction: new OPTIONAL harness peers (`@deepseek-ai/dsh-plugin-manager`, `dsh-app-boot`/`dsh-cmdline`/`dsh-http-proxy`/`dsh-launch-environment` pinned optional) and a `zod@^4.4.3` runtime dep. `MPD_E2E_DSH_VERSION` does NOT move — the harness peer range is unchanged (every `dsh-*` peer still ends at `0.2.0-rc.2`) |
+| §3 seam inventory | fifteen `tui*` seams, byte-identical 0.13.0→0.14.0 | **still fifteen, additive-only**: `panels.d.ts` gains `applyConfiguredSidePanelPanels()` + `applySidePanelPanelsFromSettings()` (the host-side CSV merge helpers behind C2 below), `plugin-host.d.ts` gains `probeBackendAdmission()`; every other seam `.d.ts` is byte-identical, there is no sixteenth seam, and a raw-grep hit on `tuiChannel` is the KERNEL-CHANNEL protocol id, not a seam (no `Service` registers it, nothing to inject — stated in `agent-references/seam-adapters.md`). **No adapter seam change** |
+| §3.3 — the enable list's default | `todo,jobs,agents,info,trajectory,workspace,btw,companion` (eight builtins, 0.14.0) | **UNCHANGED on 0.15.0** — same `DEFAULT_SIDE_PANEL_IDS`, same eight builtin icons (`≡ ▸ ◆ ⓘ ∿ ⌗ ? ♥`), so the invariant arms stay green. The RULE beneath it changed: see the keeper row below |
+| §11.6 — the `PanelBar` no longer paints an icon | `grep -c icon …/PanelBar.js` = 0 on 0.14.0; inactive tabs are `○`/`●` dots | **0.15.0 PAINTS ICONS AGAIN**: inactive tabs draw `tab.icon ?? <first character of the title> ?? '?'` plus the unread count (`tabLabel()` in the re-measured `PanelBar.js`). The bundle's declared one-cell icons (`❖` MPD, `⬢` workmate) are painted again; nothing in the bundle changed — every descriptor still declares exactly-one-cell icons, as the host's validator requires |
+| §3.4 — the `⤢` bound | `dsh-adapter/panels.js` freezes plugin descriptors without `capabilities` → the host's own `⤢` is unreachable | **re-measured on 0.15.0 and still true**: `grep -c capabilities …/dsh-adapter/panels.js` = 0, `SidePanelColumn`'s `canExpand` still reads `definition.capabilities?.fullscreen === true`. MPD's own `⤢` control stays the one full-screen escape |
+| §3.3 / §7 — the pin carriers | `0.14.0` in every carrier that names the release | **`0.15.0` in this wave's carriers**: `docker/**` (both `MPD_E2E_TUI_VERSION` defaults, `docker/ui/docker-compose.yml`, `docker/entrypoint.sh`'s `TUI_VERSION`, `docker/ui/entrypoint.sh`'s two `MPD_UI_TUI_VERSION` defaults, `docker/tui-lane.sh`), `dsh-distribution.json`'s `host-tui` ref (`pkg:npm/@deepseek-harness-tui/dsh-tui@0.15.0`), the seven QA carriers under `skills/dsh-qa/scripts/**`, `scripts/mpd-tui-panels.ts`'s header prose and both `docker/README*.md`. The non-moves stand: `MPD_E2E_DSH_VERSION` stays `0.2.0-rc.2`; `dsh-plugin.json`'s `compat.hosts` stays `@deepseek-harness-tui/dsh-tui@0.10.1` (the admission measurement, not the target); the registry's `0.15` version string stays (ecosystem-spec number, the repo's known false-positive) |
+| §11.6 — the enable-list keeper | FEED-FIRST on every host: `subscribeSidePanelPanels` repairs a config-mirror wipe, the ladder is the degrade, the stand-down rule holds | **RE-SPECED (C2, user-mandated): on a host that self-heals — every `>= 0.15.0` — the keeper JOINS the native self-heal and STANDS DOWN; on older hosts the 0.14 behaviour is preserved byte-for-byte.** See the keeper paragraph below |
+
+**The host now self-heals the sidebar enable CSV, and the keeper stands down to it (C2).** Measured on
+the 0.15.0 tree: `TuiPanelRuntime.register()` feeds `registeredPanelIds` through
+`enablePanelIdInStore`; the boot/mirror apply `applyConfiguredSidePanelPanels(config.sidePanel?.panels)`
+**unions registered ids back** unless they were explicitly removed; a `/settings` live edit runs through
+`applySidePanelPanelsFromSettings`, which records removals session-wide (`removedPanelIds`); the only
+CSV writer left is that settings-apply hop. MPD's answer: the enable-list keeper detects the host
+version through the adapter's already-proven `readHostPackageVersion` (the value the probe stamps as
+`hostVersion` on the SAME probe answer the keeper decides from — no new host contact), and on a
+`>= 0.15.0` reading it **stands down before any write path: it never arms the feed, never walks the
+ladder, writes nothing, and cannot race the host's own union or re-add a panel the user explicitly
+removed**. One line in the adapter's log says so (`standing down on host 0.15.0 — the host self-heals
+the sidebar enable CSV, so this keeper never writes`), and an observe-only belt subscribes the store's
+own feed ONCE to log whether the host union actually kept our ids — a behaviour assertion with no
+writes. An empty, unparseable or `< 0.15.0` version keeps the full 0.14 keeper (feed-first, the bounded
+ladder, the stand-down rule, the prune-only dead-id pass) byte-for-byte — the gate can only ever stand
+the keeper DOWN on a version it could actually read.
+
+**The decision-events grant flow, user-facing (C3').** The decision seam this page has carried as
+ready-but-not-activated since §6.1 is now ACTIVATABLE through the host's own documented grant flow, and
+the four `session.*.intercept` declarations in `dsh-plugin.json` (`tui/input`, `tui/rewind-prompt`,
+`tui/session-switch`, `tui/compact`) are exactly what it grants. **How to grant**: write the host's own
+`<DATA_DIR>/extension-grants.json` (under `~/.dsh-tui`) with a row keyed `com.mpd-dsh.mpd-tui` naming
+the four permissions at their scopes — exactly the hint the host's own `/plugins` pane prints —
+{"grants":{"com.mpd-dsh.mpd-tui":[{"name":"session.input.intercept","scope":"tui/input"},…]}}. **What it
+enables**: admission flips from `waiting_authorization` to `compatible`, the component identity binds
+(the effect ledger attributes `com.mpd-dsh.mpd-tui` instead of `undeclared`), and the four decision
+subscriptions activate — input, rewind-prompt, session-switch and compact interception, the surfaces
+§6.1 describes. **Security posture**: the file is fail-CLOSED — a legacy bare-string rule never
+authorizes, a malformed file reads as EMPTY tables (corrupt ≠ absent), the host re-reads it per
+operation and polls (admission retries every 200 ms for ~20 s, so a grant present at boot or within the
+window flips admission without a restart; after a settled refusal a reload is needed); revoking the row
+disables the interception again. Without a grant nothing changes: the written fallback in
+`dsh-plugin.json`'s DecisionEvents requirement holds and the bundle stays fully usable.
+
+**A live team with ZERO tasks renders as a team, not as "no team" (C6, the user-reported defect).**
+`dagPageOf` used to discard a resolved team's identity the moment its board was empty, so a live
+six-member team painted one dim "no team in this workspace" line. The projection now keeps the page
+whenever the record's `team` head resolved (`tasks: []` is legal; the honest no-team projection still
+renders the empty states), and the MPD panel's 0-task render draws the header facts (team, phase,
+`tasks 0/0`, members) plus a one-line roster in the scene's own discipline plus the hint that names the
+call which fills the board — for the session's own team and for the marked workspace fallback alike.
+
+**Team dispatch now says why it refused (C7, one user-visible sentence).** The team plane's dispatch
+pass refuses cross-team pairings and write-task-on-read-only-member pairings in the pure decision, and
+the refusal sentences are user-visible in the dispatch report (`refused a CROSS-TEAM pairing: task …
+belongs to … while member … belongs to …`; a guard-passed owner is reported as `was passed over by a
+dispatch guard (…)`), so a skipped task always carries its reason instead of silently falling back.
+
+**Declined adoption candidates (user-declined after two converging Researcher evaluations — recorded so
+no later wave re-litigates them).** Every new 0.15.0 capability is host-internal or diagnostic-only:
+`probeBackendAdmission()` — callable on a bound `tuiPluginHost`, but it diagnoses a Backend contribution
+family this bundle does not ship and whose install chain is not wired upstream (declined); the
+`backend-v1alpha1` Backend family — deferred non-goal; `plugin-completions`, `plugin-declaration`,
+`plugin-manager`, `entry-slot`, `session-seed`, `session-list-metadata`, `tui-settings`, `fresh-agent` —
+host-internal subsystems, not plugin-facing seams. The admission registry's changed
+`registry-0.15.json` and the new `backend-v1alpha1` contract make the `tui-admission` lane re-run
+load-bearing for this wave.
+
+**Evidence of this wave, and what each reading is worth.** The host readings above come from the wave's
+frozen measurement basis (`evidence/tui/dsh-tui-015/host-diff/FACTS.md`, with both npm tarballs
+unpacked at `a/` 0.14.0 and `b/` 0.15.0 beside it — the seam additive-only diff, the union/removal
+mechanics, the `PanelBar` icon re-measure and the unchanged defaults are read from those trees, not
+remembered). The unit band at the code-revision of this section reads: `bun test
+packages/mpd-tui-adapter-plugin` = **74 pass / 0 fail** (five new C2 arms: the version predicate table,
+the writes-nothing arm with the observe-only belt, the /settings-removal-stays arm, the explicit-0.14
+repair arm, the absent-version legacy arm) and `bun test packages/mpd-tui-plugin` = **482 pass / 0
+fail** (three new C6 arms; the version-aware split of the "host re-applies the configured CSV" arm).
+The sandbox lanes on the installed 0.15.0 host, the real-PTY arms and the Docker dual-mode lane are the
+wave's verification record under `evidence/tui/**` — this section quotes the host-diff and unit
+readings it was written against and does not pre-claim lane numbers; a SKIP is never a pass.
+
+**Bounds (the bounds are part of the claim).** (a) The keeper stand-down rests on the host's own
+self-heal being present — a host that reports `>= 0.15.0` but lost the union helpers would leave MPD
+panels enable-list-less, and the observe-only belt's one line is the visible symptom to look for. (b)
+The grant flow's liveness numbers (per-operation re-read, 200 ms ×100 retries) are the host's measured
+behaviour, not a bundle promise; revocation semantics are the host's. (c) The `PanelBar` icon return is
+a HOST fact re-measured on 0.15.0: a future host that stops painting icons again contradicts no MPD
+claim — every descriptor still declares one. (d) The C6 live-PTY eyeball is a named manual observation
+(the captain's own session is the repro); the unit arms carry the regression weight.
+

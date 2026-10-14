@@ -1,0 +1,54 @@
+{
+  "case": "team-dispatch-guard",
+  "ok": true,
+  "arms": [
+    {
+      "id": "a",
+      "claim": "cross-team pairing REFUSED, naming both team ids",
+      "ok": true,
+      "observed": "refused a CROSS-TEAM pairing: task T1 belongs to team-a while member \"qa-reader-writer\" belongs to team-b"
+    },
+    {
+      "id": "b",
+      "claim": "write task × read-only member REFUSED, reason reported",
+      "ok": true,
+      "observed": "refused a WRITE-TASK-ON-READ-ONLY pairing: task T5 has write scopes (packages/x) while member \"Plan Reviewer\" is a read-only specialist"
+    },
+    {
+      "id": "c",
+      "claim": "terminal/archived team SKIPPED, live team resolves, none when only a ghost",
+      "ok": true,
+      "observed": "resolved=team-live onlyGhost=(none)"
+    },
+    {
+      "id": "d",
+      "claim": "NEGATIVE CONTROL: a valid same-team write-capable pairing still SUCCEEDS",
+      "ok": true,
+      "observed": "[[\"T2\",\"m-w\"]]"
+    },
+    {
+      "id": "b-real",
+      "claim": "REAL store: the write task is refused the read-only member, reason reported",
+      "ok": true,
+      "observed": "refused a WRITE-TASK-ON-READ-ONLY pairing: task T1 has write scopes (packages/x) while member \"Plan Reviewer\" is a read-only specialist"
+    },
+    {
+      "id": "d-real",
+      "claim": "REAL store NEGATIVE CONTROL: the same task pairs with the write-capable member",
+      "ok": true,
+      "observed": "[\"sess-w\"]"
+    },
+    {
+      "id": "c-real",
+      "claim": "REAL store: the bound phantom resolves NOTHING and is marked terminal with a reason",
+      "ok": true,
+      "observed": "resolved=(none) reaped=[\"team-phantom\"] phase=ended"
+    },
+    {
+      "id": "registry-real",
+      "claim": "REAL store: the terminal team's OWN bound lead no longer resolves it",
+      "ok": true,
+      "observed": "bound=team-phantom resolved=(none)"
+    }
+  ]
+}

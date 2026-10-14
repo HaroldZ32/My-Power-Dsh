@@ -14,6 +14,129 @@ Further reading:
 - [`VENDOR_LOCK.json`](./VENDOR_LOCK.json) — the pinned upstream baseline each release is measured
   against.
 
+## v0.13.0 — two host adaptations and a leaner captain: dsh-tui 0.15.0, live team surfaces, the MIT re-source, the win32 band, and the keeper that knows when to stand down
+
+This entry covers the FULL delta since v0.12.0 (user-mandated): two DSH-TUI adaptation waves (0.14.0
+then 0.15.0), the de-vendor/re-source chapter, the delegation and question-guard hardware, the win32
+compatibility band, the live team surfaces, the model-route repairs, and this wave's three functional
+clauses (the keeper re-spec, the decision-events grant flow, the 0-task DAG fix) plus the team
+dispatch guards.
+
+**Changed — the DSH-TUI edition moved two host releases, and both were carrier moves plus
+user-visible repairs.**
+
+- **Adapted to `@deepseek-harness-tui/dsh-tui` 0.14.0, then 0.15.0.** Both moves left the fifteen
+  plugin-facing `ctx.tui*` seams untouched (0.14.0: byte-identical; 0.15.0: additive-only `.d.ts`
+  declarations — `applyConfiguredSidePanelPanels`/`applySidePanelPanelsFromSettings` on `panels`,
+  `probeBackendAdmission` on `plugin-host`), so neither needed an adapter seam change. 0.14.0 brought
+  the eighth builtin panel (`btw`) and a carousel `PanelBar` that stopped painting icons; **0.15.0
+  paints icons again** (an inactive tab draws `tab.icon ?? <title's first character> ?? '?'` plus the
+  unread count — re-measured, see `docs/tui.md` §11.7). The version pin moved in every carrier both
+  times (`docker/**`, `dsh-distribution.json`'s `host-tui` ref, the seven QA carriers, the remedy
+  header, both `docker/README*`); `MPD_E2E_DSH_VERSION` never moved (the harness peer range is
+  unchanged), and `dsh-plugin.json`'s `compat.hosts` keeps the 0.10.1 admission measurement.
+- **The sidebar collapsed to TWO MPD pages** (0.14.0 wave, user clauses 「DAG页作为MPD面板」 and
+  「把MPD与Workmate两个panel扔到侧边栏上去」): the rich `MPD` page (`❖`, the host's curated subagent
+  rows above the DAG page's own frame) and `MPD workmate` (`⬢`); the standalone `dag` page's
+  registration is gone with no route, picker entry or `⤢` left as a dead end, and the page's own `⤢`
+  opens the RICH team scene. The two pages later gained **independent on/off switches** and then
+  **`/settings` CHECKBOXES** bridged to `<workspace>/.mpd/mpd.jsonc`.
+- **The enable-list keeper evolved twice.** The 0.14.0 wave made it FEED-FIRST (the host's own
+  `subscribeSidePanelPanels` subscription repairs a config-mirror wipe as it happens; the bounded
+  ladder survives as the degrade path; a provably-dead past id is pruned in a prune-only write before
+  the stand-down). **This wave re-specs it onto the host's native self-heal (C2, user-mandated)**:
+  from 0.15.0 the host itself unions registered ids back into the enable CSV and records explicit
+  `/settings` removals session-wide, so the keeper now detects the host version through the adapter's
+  `readHostPackageVersion` and on `>= 0.15.0` **stands down before any write path — no feed, no
+  ladder, zero writes**, with one log line and an observe-only belt that watches the first host apply;
+  an empty, unparseable or older version keeps the 0.14 behaviour byte-for-byte.
+- **The recorded panel-id set carries PROVENANCE on both sides** (a unit-test run had poisoned it with
+  impossible `act0:*` ids): the recorder refuses a record it cannot trace to an installed host package
+  and a read-back, and `scripts/mpd-tui-panels.ts` refuses a provenance-less record by name, never
+  drops the host's builtins, never guesses a residual, and restores only what the user asked for.
+- **The corpus, the personas and the cores are OURS now (the MIT re-source + de-vendor waves).** The
+  served skill corpus is re-sourced from the same author's `lazycodex` under MIT; the 11 roster
+  personas are re-sourced from permissively licensed public agent prompts; the last vendored cores and
+  MCP servers are replaced — `ast-grep` is our own MCP server, the language-server bootstrap for ~40
+  languages is restored as our code, the remaining servers are declared npm dependencies behind thin
+  launchers — and the vendored `agent-teams` body is deleted outright (harness 0.1.7's official Agent
+  Teams plugin replaced it). The repository is **MIT** (`LICENSE.md`, `LICENSE-NOTICES.md` carries the
+  per-component declarations), and `VENDOR_LOCK.json` now fingerprints the bytes this repository SHIPS
+  (historical provenance recorded, never re-fetched).
+- **The model-route plumbing.** The saved `teamModels` route reaches the one-shot spawn paths; **a
+  model that declares no reasoning effort is sent none** instead of failing; the model config
+  **live-refreshes in-process** and a per-agent route table (`agentRoutes`) landed with it.
+- **A team with ZERO tasks renders as a team (C6, the user-reported defect).** `dagPageOf` used to
+  discard a resolved team's identity the moment its board was empty, so a live six-member team painted
+  one dim "no team" line; the MPD panel now draws the header facts, a one-line roster and the
+  `agent_teams_plan` hint for every resolved team, session-scoped and workspace-fallback alike.
+
+**Added.**
+
+- **Live team surfaces.** `mpd-team-core` publishes team changes (subscribe + SSE); the Web team view
+  follows the feed; the TUI draws **THIS session's** team live (session scoping with the three-state
+  honesty rule — `no team in this session`, the marked `workspace-level` fallback — and the change
+  feed as the re-render). The Docker lane accepts a caller-supplied live prompt, and a nightly
+  key-less real-machine CI lane runs the acceptance grading.
+- **Delegation became hardware.** A mechanical gate denies bare `subagent`/`subagent_fork`/`workflow`
+  for the sessions a knob covers; the captain predicate recognises the SEEDED FORK (the user's own
+  session is the captain, never a preset name); read-only spawns tolerate harness-rejected deny names
+  (pruning exactly the names the harness reports unknown, one logged retry); and reconnaissance is
+  DELEGATED from the captain (source reads are an Explorer/Researcher job).
+- **The `ask_user_question` guard.** A pre-dispatch guard plus a prompt-construction rule plus an
+  occurrence audit: every question item carries a non-empty id and a non-empty options array whose
+  every entry carries a label — no free-text question reaches the panel.
+- **Team dispatch guards (C7, this wave).** The team plane's dispatch pass refuses cross-team pairings
+  and write-task-on-read-only-member pairings in the pure decision, and the refusal sentences are
+  user-visible in the dispatch report (`refused a CROSS-TEAM pairing: …`, `was passed over by a
+  dispatch guard (…)`) — a skipped task always carries its reason. Pinned by
+  `packages/mpd-team-core-plugin/test/dispatch-guard.test.ts`.
+- **The decision-events grant flow, documented and activatable (C3', this wave).** The four
+  `session.*.intercept` declarations in `dsh-plugin.json` map one-to-one onto the host's
+  `~/.dsh-tui/extension-grants.json` grant rows; `docs/tui.md` §11.7 documents how to grant, what it
+  enables and the fail-closed posture (a malformed file reads as empty, a legacy bare-string rule
+  never authorizes, admission re-reads per operation).
+- **Restored capabilities that the vendored era lost**: the four-lane review panel skill
+  (`review-work`), the hashline conservative fuzzy-repair pass (our own implementation), and the
+  language-server bootstrap above.
+- **Windows-first polish**: PowerShell twins for the `data-scientist` and `programming` skill scripts,
+  a shell-portable `evidence:mount`, `tmpdir()` fixtures instead of hard-coded `/tmp` paths, and
+  long-path-safe evidence naming.
+- `@dsh-std/sdk` is a declared dependency (documented adapter-dsh self-install), and the distribution
+  READMEs point at `dsh-distribution.json`.
+
+**Fixed.**
+
+- **The win32 band (19 arms, one production defect).** Every ESM import in the swept band hands the
+  loader a file URL; the MCP launchers stop passing absolute Windows paths to `node`; the side-panel
+  remedy runs on win32; doc-path spelling stays POSIX with backslashes preserved; checkout forces LF
+  so the byte gates hold; the sidebar lane runs on Windows.
+- **Sidebar defects**: the accumulating-legend defect (two React children shared one key, rendering
+  one extra legend row per click — the key is the row's position now); the dots/scroll/panels
+  lifecycle; the stale `sidePanel` pin heals and the MPD panel's sections are labelled; wheel
+  direction has ONE normalisation point behind the `tui.wheelInvert` knob.
+- **Captain scope**: the captain's behavioural rules are scoped to the `mpd` preset (a seeded fork
+  with a different preset no longer inherits them by name), and the closed-hypothesis bullet respects
+  the reconnaissance guard.
+- **QA honesty**: the evidence reader decodes session-store v4 and honours `isError`; the model stub
+  speaks DeepSeek Messages; the acceptance lane's rows became measurements with working negative
+  controls, stages the pinned toolchain, and its registry selection actually takes effect.
+
+**Removed.**
+
+- The vendored `agent-teams` body (with its adapter facade, counted bypass inventory and `mpd-delta`
+  registry), the vendored MCP servers, the SUL-annotated cores, and the pre-vendoring snapshot trees
+  — nothing in the live tree reads, copies or fingerprints anything outside this repository.
+- The **Security Policy** and every reference to it (the private-reporting guidance that points at
+  GitHub's Security tab stays), and the tautological rank tests in the delegation-gate suite.
+
+**Evidence.** This wave's host measurements are frozen at
+[`evidence/tui/dsh-tui-015/host-diff/`](./evidence/tui/dsh-tui-015/host-diff/) (both npm tarballs
+unpacked beside `FACTS.md`); the unit band at the docs revision reads 74 pass / 0 fail
+(`packages/mpd-tui-adapter-plugin`) and 482 pass / 0 fail (`packages/mpd-tui-plugin`); the sandbox
+lanes and the Docker dual-mode lane land under `evidence/tui/**` with the release sweep. Per-wave
+records for the merged intermediate waves live under `evidence/**` where each PR cited them.
+
 ## v0.12.0 — the product page, and one bundle on two surfaces
 
 ### `README.md` becomes a product page, and the manual moves to the user guide

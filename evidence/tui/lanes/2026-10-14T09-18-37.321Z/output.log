@@ -1,0 +1,12 @@
+static admission: ok=true parse=ok validatePlugin=ok controls=["brokenSyntax","optionalWithoutFallback","unknownPermission"]
+static result ok=true
+negctl /plugins check -> state=undefined ok=false
+negctl ledger delta=20 undeclared=0
+grants file written -> .mpd/recon/qa/tui-lanes/tui-015/home/.dsh-tui/extension-grants.json component=com.mpd-dsh.mpd-tui rows=4
+grants file revoked mid-session (arm 6)
+grants tmux: the TUI did not reach the chat screen within 90000ms (readiness pattern /^(?![\s\S]*(?:\u6B63\u5728\u542F\u52A8 DSH|\u8FD8\u5728\u542F\u52A8|Starting DSH|still starting))[\s\S]*(?:\u276F|esc to interrupt|\u6309 Esc)/)
+grants /plugins check -> state=undefined; /plugins list -> state=undefined
+arm2 admission-loader line admitted com.mpd-dsh.mpd-tui: true
+arm3 attribution: attributed=0 decisionHandlerBinds(applied)=0 (ledger delta=20)
+arm4 real input submit rendered the turn: false
+arm6 revocation re-check -> state=undefined flipped=false

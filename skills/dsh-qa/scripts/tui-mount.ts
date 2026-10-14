@@ -14,7 +14,7 @@
 // so the boot happens inside tmux and this process owns the whole lifecycle; the
 // profile is WARM in the sandbox root and is never silently reinstalled.
 //
-// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.14.0"
+// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.15.0"
 // PREREQ: absent-runtime tmux "install tmux; the TUI requires a real TTY"
 // PREREQ: absent-fixture tui profile in the sandbox root "bun skills/dsh-qa/scripts/tui-mount.ts --sandbox-root <root> --install"
 //
@@ -29,7 +29,7 @@ import { pathToFileURL } from "node:url"
 import {
   REPO, artifactRevision, classifyAdmissionPane, crashSignatures, dumpConfig, extractBundles, gateTuiPrereqs,
   laneEvidenceDir, makeChecks, manifestDigest, parseSandboxArgs, profileState, provisionTuiHome, readSessionHeaders, runInSandbox,
-  runTuiSession, sandboxEnv, sandboxProjectKey, sessionStoreKeys, sha256File, tuiPrereqs, writeLaneEvidence, writeRevisionFile,
+  runTuiSession, sandboxEnv, sandboxProjectKey, sandboxSessionIds, sessionStoreKeys, sha256File, tuiPrereqs, writeLaneEvidence, writeRevisionFile,
   writeSessionExcerpt,
 } from "./lib/tui-lane.ts"
 
@@ -108,6 +108,12 @@ export interface BootFace {
   counters: boolean
   /** True when the captured pane is not blank, i.e. the TUI really painted something. */
   rendered: boolean
+  /**
+   * How the AC-11 preset witness was settled: `asserted` (a decoded session header ran `mpd`),
+   * `missing` (a store EXISTS for this run but none ran `mpd` — the red case) or `not-materialized`
+   * (this run flushed NO store at all, so the witness is a DECLARED BOUND rather than a failure).
+   */
+  presetWitness: "asserted" | "missing" | "not-materialized"
   /** Session id of the boot that ran the `mpd` preset, `undefined` when none did. */
   presetSessionId?: unknown
   /** The preset that session ran, echoed into the evidence file. */
@@ -124,6 +130,8 @@ export interface BootFace {
   expectedProjectKey?: string
   /** Set by the live arm: how many decoded session records carried the sandbox key. */
   sandboxSessions?: number
+  /** Set by the live arm: how many of those THIS boot created (0 ⇒ the `not-materialized` bound). */
+  freshSandboxSessions?: number
   /** Set by the live arm: absolute sandbox root the boot ran inside. */
   sandboxRoot?: string
   /** Set by the live arm: the artifact holding the layering witness. */
@@ -142,6 +150,13 @@ import type { TuiHomeFixture } from "./lib/tui-lane.ts"
 
 /**
  * The dsh-tui host this lane installs into the sandbox profile.
+ *
+ * MOVED 0.14.0 -> 0.15.0 (2026-10-15): the carrier move of the tui-015-adaptation wave. The fifteen
+ * plugin-facing `ctx.tui*` seams are IDENTICAL and the seam declarations are additive-only
+ * (`panels.d.ts` gains `applyConfiguredSidePanelPanels()` + `applySidePanelPanelsFromSettings()`,
+ * `plugin-host.d.ts` gains `probeBackendAdmission()`), the harness peer range is unchanged and
+ * `DEFAULT_SIDE_PANEL_IDS` is unchanged — so the fixture keeps the same seam and the wave is a
+ * carrier move + verification, not an adapter wave (evidence/tui/dsh-tui-015/host-diff/FACTS.md).
  *
  * MOVED 0.13.0 -> 0.14.0 (2026-10-08): the wave that adapts the bundle to 0.14.0 re-measures here.
  * Its peer ranges are unchanged (still `|| 0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2`) and its
@@ -168,7 +183,7 @@ import type { TuiHomeFixture } from "./lib/tui-lane.ts"
  *
  * The env override matches the Docker lane's knob, so one variable moves both.
  */
-const TUI_HOST_SPEC: string = "@deepseek-harness-tui/dsh-tui@" + (process.env.MPD_E2E_TUI_VERSION ?? "0.14.0")
+const TUI_HOST_SPEC: string = "@deepseek-harness-tui/dsh-tui@" + (process.env.MPD_E2E_TUI_VERSION ?? "0.15.0")
 
 /** What the `--install` arm attempted, and where it recorded the attempt. */
 interface InstallAttempt {
@@ -221,13 +236,20 @@ export function assertBootFace({ pane, log, bundles, sessions }: BootFaceInput):
   const rendered = pane.trim().length > 0
   // The first session header that ran the mpd preset; the preset witness of AC-11.
   const preset = sessions.find((entry) => entry.agentPreset === "mpd")
+  // THE WITNESS IS BOUNDED, NOT ASSUMED (measured 2026-10-14 on 0.15.0). The host's jsonl persistence
+  // flushes a store only when something is APPENDED, and this lane deliberately drives NO keystroke,
+  // command or turn — a ready boot therefore leaves `freshSandboxSessions=0` and `sessionKeysCreated=[]`.
+  // An EMPTY store is a declared bound (`not-materialized`), never a missing preset; a store that DOES
+  // exist and ran another preset is still red, which is the arm's falsifiable half.
+  const presetWitness: BootFace["presetWitness"] = sessions.length === 0 ? "not-materialized" : preset === undefined ? "missing" : "asserted"
   return {
-    ok: layering.ok && crashes.length === 0 && statusLine && counters && rendered && preset !== undefined,
+    ok: layering.ok && crashes.length === 0 && statusLine && counters && rendered && presetWitness !== "missing",
     layering,
     crashSignatures: crashes,
     statusLine,
     counters,
     rendered,
+    presetWitness,
     presetSessionId: preset?.sessionId,
     presetAgentPreset: preset?.agentPreset,
   }
@@ -263,6 +285,13 @@ function selfTest(): void {
   check(!assertBootFace({ ...good, bundles: ["@deepseek-ai/dsh-base"] }).ok, "a NEGATIVE CONTROL failed: a missing layer must fail the boot face")
   check(!assertBootFace({ ...good, log: "plugin tree failed to load" }).ok, "a NEGATIVE CONTROL failed: a crash signature must fail the boot face")
   check(!assertBootFace({ ...good, sessions: [{ sessionId: "s", agentPreset: "standard" }] }).ok, "a NEGATIVE CONTROL failed: a non-mpd preset must fail the boot face")
+  // THE DECLARED BOUND and its own control: an EMPTY store is `not-materialized` (the jsonl backend
+  // flushed nothing for a keystroke-free boot), while a store that EXISTS and ran another preset is
+  // still red — so the bound cannot be reached by a boot that really chose the wrong preset.
+  const unmaterialized = assertBootFace({ ...good, sessions: [] })
+  check(unmaterialized.ok && unmaterialized.presetWitness === "not-materialized", "an EMPTY session store must be a declared bound, not a missing preset")
+  check(assertBootFace(good).presetWitness === "asserted", "a decoded mpd header must settle the witness as `asserted`")
+  check(!assertBootFace({ ...good, sessions: [{ sessionId: "s", agentPreset: "standard" }] }).ok && assertBootFace({ ...good, sessions: [{ sessionId: "s", agentPreset: "standard" }] }).presetWitness === "missing", "a NON-EMPTY store without an mpd header must still redden")
   check(!assertBootFace({ ...good, pane: "no pane" }).ok, "a NEGATIVE CONTROL failed: a pane without the status line must fail")
 
   // THE LOCALIZED ARM. The sandbox host renders Chinese, so the SAME boot face with the plugin's own
@@ -396,6 +425,12 @@ function real(): void {
   say("launchpad gate " + launchpadGate.key + "=" + launchpadGate.value)
   // The session-store project keys present BEFORE the boot, so the run's own delta is isolable.
   const before = sessionStoreKeys(root)
+  // The SESSION IDS present BEFORE the boot. The preset witness must be a session THIS run created:
+  // the project key alone is not enough, because every lane of a wave writes under the SAME sandbox
+  // key, so a warm root would answer with the PREVIOUS lane's header and report `asserted` for a
+  // session this boot never made (measured 2026-10-14: the witness resolved to `b27acb78…`, tui-panels'
+  // session, while this boot had flushed nothing).
+  const sessionsBeforeBoot = new Set(sandboxSessionIds(root))
   // The composition dump; COMPOSITION only, never a load proof (see AGENTS.md §4).
   const dump = dumpConfig(root)
   writeFileSync(join(outDir, "dump-config.txt"), dump.stdout + dump.stderr)
@@ -423,15 +458,17 @@ function real(): void {
   // The preset witness must come from a session THIS run created (the sandbox-keyed
   // store), never from an earlier run inherited in a warm root.
   const expectedProjectKey = sandboxProjectKey(root)
-  // Prefer the NEWEST sandbox-keyed record: the witness must be the session THIS run
-  // created, not whichever one readdir happened to return first.
+  // Prefer the NEWEST record THIS RUN created: the witness must be this boot's own session, not
+  // whichever sandbox-keyed session an earlier lane left behind.
   const sessions = allSessions
-    .filter((entry) => entry.projectKey === expectedProjectKey)
+    .filter((entry) => entry.projectKey === expectedProjectKey && !sessionsBeforeBoot.has(entry.sessionId))
     .sort((a, b) => (b.mtimeMs ?? 0) - (a.mtimeMs ?? 0))
   // Repo-relative path of the session excerpt written as the preset witness.
   const presetFile = writeSessionExcerpt(outDir, "preset.session.json", allSessions)
-  // The sandbox-keyed records, counted for the evidence file.
+  // The sandbox-keyed records, counted for the evidence file: the whole key (warm root included).
   const sandboxSessions = allSessions.filter((entry) => entry.projectKey === expectedProjectKey)
+  // The sandbox-keyed records THIS boot created; empty is the `not-materialized` bound.
+  const freshSandboxSessions = sandboxSessions.filter((entry) => !sessionsBeforeBoot.has(entry.sessionId))
   // Isolation is asserted on the DELTA this run created — a warm shared root may
   // legitimately carry earlier runs' stores, and those are reported separately.
   const after = sessionStoreKeys(root)
@@ -450,6 +487,7 @@ function real(): void {
   face.sessionKeysInherited = after.filter((key) => before.includes(key))
   face.expectedProjectKey = expectedProjectKey
   face.sandboxSessions = sandboxSessions.length
+  face.freshSandboxSessions = freshSandboxSessions.length
   face.sandboxRoot = root
   face.layeringEvidence = "dump-config.txt"
   face.paneEvidence = "boot.pane.txt + tui-pane.log"
@@ -459,7 +497,10 @@ function real(): void {
 
   say("statusLine=" + face.statusLine + " counters=" + face.counters + " crashes=" + JSON.stringify(face.crashSignatures))
   say("session keys created=" + JSON.stringify(created) + " inherited=" + JSON.stringify(face.sessionKeysInherited))
-  say("preset=" + String(face.presetAgentPreset) + " session=" + String(face.presetSessionId) + " isolationOffenders=" + isolation.length)
+  say("preset=" + String(face.presetAgentPreset) + " session=" + String(face.presetSessionId) + " witness=" + face.presetWitness + " isolationOffenders=" + isolation.length)
+  if (face.presetWitness === "not-materialized") {
+    say("AC-11 DECLARED BOUND: this boot flushed NO session store (`freshSandboxSessions=" + freshSandboxSessions.length + "`, warm root carries " + sandboxSessions.length + "), so the preset witness cannot be produced without driving a turn — the lane keeps its keystroke-free isolation and closes the arm on the other six assertions")
+  }
   // The artifact revision re-measured after the boot, compared against `revisionBefore`.
   const revisionAfter = artifactRevision()
   // The digest comparison this run records; a change between the two readings invalidates the result.

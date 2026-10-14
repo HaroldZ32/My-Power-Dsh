@@ -18,7 +18,7 @@
 // engine is re-run against the SAME captured panes with one expectation injected that
 // cannot appear — if that does not fail, the lane cannot fail and the run is void.
 //
-// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.14.0"
+// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.15.0"
 // PREREQ: absent-runtime tmux "install tmux; the TUI requires a real TTY"
 // PREREQ: absent-fixture tui profile in the sandbox root "bun skills/dsh-qa/scripts/tui-mount.ts --sandbox-root <root> --install"
 //
@@ -45,16 +45,22 @@ const SLUG = "tui-panels"
 /**
  * The tmux pane geometry this lane drives.
  *
- * WIDENED 220 -> 320 (measured 2026-10-06, 0.13.0). The `/settings` section renders its ONE long
- * English disclosure hint on a single line, and at 220 columns the host truncates it in the pane
- * (`… ` before the `╮` border), so the clause `never lost` — the last phrase of the four the surface
- * asserts — is simply not painted. At 320 columns the SAME boot paints the hint as a 315-character
- * line ending `… the value is never lost… ─╮`, and all four frozen phrases match. WIDENING was chosen
- * over weakening the expectation: the four-clause disclosure stays asserted VERBATIM, so a regression
- * that dropped a clause still reddens, whereas accepting a prefix plus a truncation marker would let
- * exactly that regression through.
+ * WIDENED 220 -> 320 (measured 2026-10-06, 0.13.0) and 320 -> 560 (measured 2026-10-14, 0.15.0).
+ * The `/settings` section renders its ONE long disclosure hint on a single line and the host
+ * ellipsizes it to the pane width (`… ` before the `╮` border), so a clause past the cut is simply
+ * not painted. The disclosure was 315 columns when the 320-wide pane was chosen; commit cc5387e0
+ * (`fix(model-config): live-refresh model routes in-process …`) rewrote `SECTION_NOTICE` to
+ * "… takes effect in the RUNNING process — no restart: the config service re-resolves on every
+ * settings save and on a watched edit of the project file, and the model routes (teamModels,
+ * agentRoutes, modelchain) are read per use, so the next spawn or resolve carries them …", which is
+ * ~520 columns with the knob prefix — at 320 the visible line still ended at `are read pe…` and the
+ * last clause (`never lost`) was BEYOND the cut (measured: the arm's only missing pattern was
+ * `/never lost/`). At 560 the whole disclosure fits and all four frozen phrases match. WIDENING is
+ * chosen over weakening the expectation: the four-clause disclosure stays asserted VERBATIM, so a
+ * regression that dropped a clause still reddens, whereas accepting a prefix plus a truncation marker
+ * would let exactly that regression through.
  */
-const PANE_WIDTH = 320
+const PANE_WIDTH = 560
 /** The pane height, kept at the lane's original 50 rows so the number of visible transcript rows is unchanged. */
 const PANE_HEIGHT = 50
 
@@ -286,10 +292,10 @@ export const SURFACES: readonly SurfaceSpec[] = [
     allPatterns: [
       /MPD 插件包|MPD bundle/,
       /a save writes <workspace>\/\.mpd\/mpd\.jsonc for the live session workspace\(s\)/,
-      /takes effect for the mpd plugins after a restart/,
+      /takes effect in the RUNNING process — no restart/,
       /never lost/,
     ],
-    label: "the /settings section rendered WITH its bridge+restart+never-lost disclosure (pane widened to 320 so the hint is not cut)",
+    label: "the /settings section rendered WITH its bridge+no-restart+never-lost disclosure (pane widened to 320 so the hint is not cut)",
   },
   { surface: "tuiDialogs", step: "dialog", source: "pane", pre: ["Escape"], keys: ["M-w"], waitMs: 8000, pattern: /mpd workmates/, label: "the managed select dialog appeared" },
 ]
@@ -484,7 +490,7 @@ function fixturePanes(): PaneText[] {
     { name: "cmd-panel", text: "> /mpd panel\n" },
     { name: "scene", text: "MPD board\n team: none\n q/Esc to close\n" },
     { name: "renderer", text: "mpd board\n board opened via command at 2026-09-15T00:00:00.000Z\n" },
-    { name: "settings", text: "插件设置\n ╭─ MPD 插件包 (mpd) ─╮\n │ ❯ 行内 diff 上限  20000 │\n  mpd.jsonc hashline.maxDiffChars — a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin mount) the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session   Enter\n" },
+    { name: "settings", text: "插件设置\n ╭─ MPD 插件包 (mpd) ─╮\n │ ❯ 行内 diff 上限  20000 │\n  mpd.jsonc hashline.maxDiffChars — a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect in the RUNNING process — no restart: the config service re-resolves on every settings save and on a watched edit of the project file, and the model routes (teamModels, agentRoutes, modelchain) are read per use, so the next spawn or resolve carries them the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session   Enter\n" },
     { name: "dialog", text: "mpd workmates\n qa-tui-probe\n" },
   ]
 }
@@ -740,7 +746,7 @@ function real(): void {
     noModelEcho: modelEcho,
     panel,
     homeFixture,
-    pane: { width: PANE_WIDTH, height: PANE_HEIGHT, why: "widened from 220 so the /settings disclosure hint is not truncated in the pane" },
+    pane: { width: PANE_WIDTH, height: PANE_HEIGHT, why: "widened from 220 (2026-10-06) and from 320 (2026-10-14, after cc5387e0 lengthened SECTION_NOTICE) so the whole /settings disclosure hint renders un-truncated in the pane" },
     rendererCrossCheck,
     sandboxRoot: root,
     sessions: readSessionHeaders(root).length,

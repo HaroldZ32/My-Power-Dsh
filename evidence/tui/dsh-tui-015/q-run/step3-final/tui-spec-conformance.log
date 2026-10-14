@@ -1,0 +1,1 @@
+[mpd-qa] SKIP case=tui-spec-conformance lane=real reason=absent-fixture prereq=dsh-ecosystem-spec with conformance/requirements-v0.15.json remedy="check out the host repo with its submodules initialised, or set MPD_TUI_SPEC_ROOT"

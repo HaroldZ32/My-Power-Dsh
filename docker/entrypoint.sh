@@ -63,14 +63,14 @@ ONE_CLICK_REPO="${MPD_E2E_ONECLICK_REPO:-/opt/oneclick.git}"
 NODE_VERSION="${MPD_E2E_NODE_VERSION:-24.19.0}"
 DSH_VERSION="${MPD_E2E_DSH_VERSION:-0.2.0-rc.2}"
 PNPM_VERSION="${MPD_E2E_PNPM_VERSION:-11.23.0}"
-# The DSH-TUI host. 0.14.0 is the dsh-tui release this bundle targets, and its peer ranges still
+# The DSH-TUI host. 0.15.0 is the dsh-tui release this bundle targets, and its peer ranges still
 # cover the WHOLE band this lane is
 # expected to run — its lists end with `|| 0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2` — so ONE default
-# serves the pinned baseline and any older adaptation run. (0.13.0 was the pin before it, 0.12.0 the one before that.) 0.11.2 stopped at 0.2.0-rc.1, and a
+# serves the pinned baseline and any older adaptation run. (0.14.0 was the pin before it, 0.13.0 and 0.12.0 the ones before that.) 0.11.2 stopped at 0.2.0-rc.1, and a
 # `dsh plugin --profile dsh-tui add` against a 0.2.0-rc.2 harness is then REFUSED on peer ranges: the
 # same failure mode measured 2026-09-29 on the 0.11.1/0.2.0-rc.1 pair, which aborted this lane
 # (evidence/docker/client-install/2026-09-29T07-07-01Z).
-TUI_VERSION="${MPD_E2E_TUI_VERSION:-0.14.0}"
+TUI_VERSION="${MPD_E2E_TUI_VERSION:-0.15.0}"
 export TUI_VERSION
 PORT="${MPD_E2E_PORT:-3197}"
 BOOT_BUDGET="${MPD_E2E_BOOT_BUDGET:-300}"
@@ -335,6 +335,16 @@ NPM_MIRROR="${MPD_E2E_NPM_MIRROR:-https://registry.npmmirror.com}"
 NPM_REGISTRY="${MPD_E2E_NPM_REGISTRY:-https://registry.npmjs.org}"
 # The scoped endpoint the harness pin resolves through: the one that was measured unreachable here.
 NPM_PROBE_URL="${NPM_REGISTRY}/@deepseek-ai%2fdsh"
+# THE TARBALL ARM (FINDING F3, 2026-10-14). Metadata answering is NOT the same fact as the TARBALL being
+# servable, and the difference is a lost run: measured, this environment's step 01b greened on the scoped
+# METADATA endpoint and the very next `npm i -g pnpm@11.23.0` then sat at 0.2% CPU with ~0 B/s for 3.5
+# minutes (`rerun-aborted-registry-blackhole.log`). The probe below therefore fetches a byte RANGE of the
+# SAME artifact it already asks about, in npm's canonical tarball layout (`/<name>/-/<name>-<version>.tgz`,
+# scoped packages included), and a registry whose metadata answers while that range blackholes now FAILS
+# the probe instead of passing it. It is bounded twice — by the same 20 s abort every probe here uses, and
+# by reading ONE stream chunk — so a server that ignores the Range header cannot make this step download a
+# whole tarball. OFF by default and skipped WITH ITS REASON: see the `no-registry-knob` branch below.
+NPM_TARBALL_PATH="/@deepseek-ai/dsh/-/dsh-${DSH_VERSION}.tgz"
 # `operator-set` when the caller named a registry, otherwise the official one is on trial.
 NPM_REGISTRY_LABEL="official-registry"
 [ -n "${MPD_E2E_NPM_REGISTRY:-}" ] && NPM_REGISTRY_LABEL="operator-set"
@@ -343,7 +353,8 @@ NPM_REGISTRY_LABEL="official-registry"
 # (progress-bar output, a padded redirect), and GNU grep answers `binary file matches` for such a file
 # INSTEAD of printing the matching line — so the parse came back empty, the shell silently kept the
 # DEFAULT registry, and the run went on stalling against the very endpoint this step exists to avoid.
-# A two-line text file has no such failure mode: line 1 is the registry, line 2 the route.
+# A three-line text file has no such failure mode: line 1 is the registry, line 2 the route, line 3 the
+# tarball arm's own reading (added by FINDING F3; a skipped arm writes its reason there too).
 NPM_SELECTION_FILE="$WORK_DIR/npm-registry.txt"
 rm -f "$NPM_SELECTION_FILE" 2>/dev/null || true
 run_step 01b-npm-registry node -e '
@@ -352,6 +363,8 @@ run_step 01b-npm-registry node -e '
   const mirror = process.argv[3]
   const label = process.argv[4]
   const out = process.argv[5]
+  const tarballPath = process.argv[6]
+  const knob = process.argv[7]
   const fs = await import("node:fs")
   const probe = async (target) => {
     const started = Date.now()
@@ -367,25 +380,69 @@ run_step 01b-npm-registry node -e '
       return { ok: false, ms: Date.now() - started, status: String(error).slice(0, 80) }
     }
   }
-  const first = await probe(probeUrl)
-  const settle = (chosen, route, detail) => {
-    fs.writeFileSync(out, chosen + "\n" + route + "\n")
-    console.log("REGISTRY=" + chosen + " ROUTE=" + route + " " + detail)
+  // ONE RANGED GET of the artifact the install will really fetch. `206` is the answer a registry that
+  // honours Range gives; `200` with bytes is accepted too, because some mirrors stream the whole object
+  // to a Range request — and in that case the reader below still takes a SINGLE chunk and cancels, so
+  // the cost stays a chunk rather than a tarball. A body of 0 bytes is a failure, never a pass.
+  const tarballProbe = async (base) => {
+    const started = Date.now()
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 20000)
+    try {
+      const response = await fetch(base + tarballPath, { signal: controller.signal, headers: { Range: "bytes=0-1023" } })
+      const reader = response.body === null ? null : response.body.getReader()
+      const chunk = reader === null ? null : await reader.read()
+      if (reader !== null) await reader.cancel()
+      const bytes = chunk !== null && chunk.value !== undefined ? chunk.value.byteLength : 0
+      clearTimeout(timer)
+      return { ok: (response.status === 206 || response.status === 200) && bytes > 0, ms: Date.now() - started, status: "http=" + response.status + " bytes=" + bytes }
+    } catch (error) {
+      clearTimeout(timer)
+      return { ok: false, ms: Date.now() - started, status: String(error).slice(0, 80) }
+    }
   }
-  if (first.ok) { settle(registry, label + "-ok", "probeMs=" + first.ms); process.exit(0) }
-  const second = await probe(mirror + "/@deepseek-ai%2fdsh")
-  if (second.ok) {
-    settle(mirror, "mirror-fallback", "officialProbe=" + first.status + " officialProbeMs=" + first.ms + " mirrorMs=" + second.ms)
+  const tarballRead = async (base) => {
+    if (knob === "") return { ok: true, skipped: true, reading: "skipped reason=no-registry-knob (the operator named no registry with MPD_E2E_NPM_REGISTRY, so the scoped METADATA probe above is the whole transport decision; the ranged GET is opt-in and this run paid no network for it)" }
+    const reading = await tarballProbe(base)
+    return { ok: reading.ok, skipped: false, reading: reading.status + " ms=" + reading.ms + (reading.ok ? "" : " FAILED") }
+  }
+  const settle = (chosen, route, detail, tarball) => {
+    fs.writeFileSync(out, chosen + "\n" + route + "\n" + tarball + "\n")
+    console.log("REGISTRY=" + chosen + " ROUTE=" + route + " " + detail)
+    console.log("TARBALL=" + tarball)
+  }
+  const first = await probe(probeUrl)
+  if (first.ok) {
+    const arm = await tarballRead(registry)
+    if (!arm.ok) {
+      settle(registry, label + "-tarball-blackholed", "probeMs=" + first.ms + " tarball=" + arm.reading, arm.reading + " (the METADATA endpoint answered and the TARBALL did not: a registry in this state stalls the install, so the probe FAILS here instead)")
+      process.exit(1)
+    }
+    settle(registry, label + "-ok", "probeMs=" + first.ms + " tarball=" + arm.reading, arm.reading)
     process.exit(0)
   }
-  settle(registry, "both-unreachable", "officialProbe=" + first.status + " mirrorProbe=" + second.status)
-' "$NPM_REGISTRY" "$NPM_PROBE_URL" "$NPM_MIRROR" "$NPM_REGISTRY_LABEL" "$NPM_SELECTION_FILE" || true
+  const second = await probe(mirror + "/@deepseek-ai%2fdsh")
+  if (second.ok) {
+    const arm = await tarballRead(mirror)
+    if (!arm.ok) {
+      settle(mirror, "mirror-tarball-blackholed", "officialProbe=" + first.status + " mirrorMs=" + second.ms + " tarball=" + arm.reading, arm.reading + " (the FALLBACK mirror answered METADATA and not its TARBALL, so the probe FAILS here instead of stalling later)")
+      process.exit(1)
+    }
+    settle(mirror, "mirror-fallback", "officialProbe=" + first.status + " officialProbeMs=" + first.ms + " mirrorMs=" + second.ms + " tarball=" + arm.reading, arm.reading)
+    process.exit(0)
+  }
+  settle(registry, "both-unreachable", "officialProbe=" + first.status + " mirrorProbe=" + second.status, "not reached: no registry answered METADATA")
+' "$NPM_REGISTRY" "$NPM_PROBE_URL" "$NPM_MIRROR" "$NPM_REGISTRY_LABEL" "$NPM_SELECTION_FILE" "$NPM_TARBALL_PATH" "${MPD_E2E_NPM_REGISTRY:-}" || true
 if [ -s "$NPM_SELECTION_FILE" ]; then
   NPM_REGISTRY="$(sed -n '1p' "$NPM_SELECTION_FILE" | tr -d '\r')"
   NPM_REGISTRY_ROUTE="$(sed -n '2p' "$NPM_SELECTION_FILE" | tr -d '\r')"
+  NPM_TARBALL_RESULT="$(sed -n '3p' "$NPM_SELECTION_FILE" | tr -d '\r')"
 fi
 NPM_REGISTRY_ROUTE="${NPM_REGISTRY_ROUTE:-probe-unreadable}"
 NPM_REGISTRY="${NPM_REGISTRY:-https://registry.npmjs.org}"
+# The tarball arm's reading, with the same honest default: a probe that wrote no third line is named as
+# such rather than reported as a pass (the fact below reads it, and `set -u` is in force).
+NPM_TARBALL_RESULT="${NPM_TARBALL_RESULT:-probe-unreadable}"
 # The log carries the same line for a reader; the FACT carries the decision. `grep -a` everywhere below
 # because this file may hold a NUL frame and a plain grep would then report nothing at all.
 export NPM_CONFIG_REGISTRY="$NPM_REGISTRY"
@@ -407,12 +464,21 @@ if [ -n "${NPM_REGISTRY:-}" ]; then
   printf 'registry=%s\n' "$NPM_REGISTRY" > "$HOME/.npmrc" 2>/dev/null || true
 fi
 if [ -s "$HOME/.npmrc" ]; then
-  fact obs.npmrc "$(head -n 1 "$HOME/.npmrc") (a SANDBOX-home .npmrc; pnpm — and therefore every `dsh plugin` — resolves through the FILE, not the environment, measured 2026-10-09)"
+  # THE BACKTICKS ARE ESCAPED, and that is a MEASURED repair (2026-10-14): inside a double-quoted string
+  # a backtick pair is COMMAND SUBSTITUTION, so this row made every run print
+  # `entrypoint.sh: line 410: dsh: command not found` and the observation lost the very words it exists
+  # to name — `npmrc = registry=… (a SANDBOX-home .npmrc; pnpm — and therefore every  — resolves …)`,
+  # `evidence/docker/client-install/2026-10-14T11-58-50Z/output.log:56`. `\`` prints a literal backtick.
+  fact obs.npmrc "$(head -n 1 "$HOME/.npmrc") (a SANDBOX-home .npmrc; pnpm — and therefore every \`dsh plugin\` — resolves through the FILE, not the environment, measured 2026-10-09)"
 else
   fact obs.npmrc "<not written: HOME=$HOME is not writable>"
 fi
 fact obs.npmRegistry "$NPM_REGISTRY (route=$NPM_REGISTRY_ROUTE; the scoped-metadata endpoint was probed because npm hangs silently on an unreachable one)"
+# THE TARBALL ARM'S OWN READING, recorded as a fact so a reader sees it in result.json without opening
+# the step log — and so a FAILED arm is visible next to the registry it rejected (FINDING F3).
+fact obs.npmTarball "$NPM_REGISTRY$NPM_TARBALL_PATH ($NPM_TARBALL_RESULT; a byte RANGE of the harness pin's OWN tarball, fetched after the metadata probe answered, because a registry can serve METADATA and blackhole TARBALLS — which stalled a run here for 3.5 minutes at 0 B/s)"
 grep -a -m1 '^REGISTRY=' "$STEPS_DIR/01b-npm-registry.log" 2>/dev/null || cat "$STEPS_DIR/01b-npm-registry.log"
+grep -a -m1 '^TARBALL=' "$STEPS_DIR/01b-npm-registry.log" 2>/dev/null || true
 
 # ── 02. apt: the distribution's own prerequisites ─────────────────────────────
 log ""
@@ -1617,9 +1683,49 @@ if [ "${MPD_E2E_BROWSER:-0}" = "1" ]; then
   # install put the browsers under one HOME and the run looked under another, and the capture died
   # with "browser not found" (the trap docker/ui/entrypoint.sh documents).
   export PLAYWRIGHT_BROWSERS_PATH="$WORK_DIR/pw-browsers"
+  # ── THE BROWSER TRANSPORT: the CHROMIUM BINARY travels on its own CDN ────────
+  # WHY THIS EXISTS (measured 2026-10-14). `npm i playwright` SUCCEEDED on the authoritative run and this
+  # step still exited 1: `npx playwright install` fetches the browser from Playwright's OWN CDN
+  # (`playwright.azureedge.net`, redirecting to `playwright.download.prss.microsoft.com`) — a transport
+  # the npm-registry knob above does NOT cover. All THREE of Playwright's fallback hosts timed out after
+  # 30000 ms each, the step exited 1, and all eight `ui.*` arms went NULL while the report blamed
+  # "npm/npx exit 1" (`evidence/docker/client-install/2026-10-14T11-58-50Z/output.log:3163-3203`).
+  # THE PROBE MUST GRADE THE ARTIFACT, NOT THE HOST — that distinction is MEASURED, not stylistic. The
+  # first version of this step probed the CDN ROOT and chose the OFFICIAL host on `http=400`, and the
+  # download then timed out exactly as before: `PLAYWRIGHT_HOST=https://playwright.azureedge.net
+  # ROUTE=official-host-ok probeMs=3677 http=400`, then three `timed out after 30000ms` on
+  # `/builds/chromium/1148/chromium-linux.zip`. A CDN root answers while the artifact path blackholes, so
+  # the probe now asks PLAYWRIGHT ITSELF which URL it will fetch (`npx playwright install --dry-run
+  # chromium`) and fetches a byte RANGE of THAT URL on each transport. Measured inside this container at
+  # one moment: the official artifact path fails, and
+  # `https://cdn.npmmirror.com/binaries/playwright/builds/chromium/1148/chromium-linux.zip` answers
+  # HTTP 206 in 129 ms.
+  # THE ORDER IS LOAD-BEARING: the artifact URL is only knowable once playwright-core is on disk, so the
+  # PACKAGE install (which travels on the npm transport step 01b already selected) comes FIRST, then this
+  # probe, then the BROWSER install.
+  # A CALLER WHO KNOWS WHICH TRANSPORT HOLDS CAN PIN IT: `MPD_E2E_PLAYWRIGHT_HOST` overrides the probe.
+  # BOTH CDNs measured from this container are INTERMITTENT — the official host answered a root probe and
+  # failed the very artifact fetch minutes later — and a probe only ever measures ONE moment.
+  PLAYWRIGHT_HOST_OFFICIAL="https://playwright.azureedge.net"
+  PLAYWRIGHT_MIRROR="${MPD_E2E_PLAYWRIGHT_MIRROR:-https://cdn.npmmirror.com/binaries/playwright}"
+  PW_SELECTION_FILE="$WORK_DIR/playwright-host.txt"
+  rm -f "$PW_SELECTION_FILE" 2>/dev/null || true
+  PLAYWRIGHT_HOST="$PLAYWRIGHT_HOST_OFFICIAL"
+  PLAYWRIGHT_HOST_ROUTE="not-probed"
   BROWSER_STEP=0
   BROWSER_INSTALL=0
   if [ "${MPD_E2E_BROWSER_SKIP_INSTALL:-0}" != "1" ]; then
+    # THE PLAYWRIGHT PIN IS 1.48.2 BECAUSE THE REACHABLE TRANSPORT CARRIES ITS WHOLE ARTIFACT SET.
+    # 1.49 split `chromium` into TWO downloads — `chromium-linux.zip` AND `chromium-headless-shell-linux.zip`
+    # — and the mirror that is reachable from here carries the first for EVERY revision probed (1148, 1140,
+    # 1134, 1129, 1124, 1117) and the second for NONE of them (`NoSuchKey` on the OSS bucket, measured
+    # 2026-10-14). `install chromium` therefore could not complete on the only transport this container can
+    # reach, and all eight `ui.*` arms stayed NULL for a reason that had nothing to do with the GUI.
+    # 1.48.2's own `--dry-run` lists ONE artifact — `builds/chromium/1140/chromium-linux.zip`, no headless
+    # shell and no ffmpeg — and the mirror serves it. The pin is a property of the DOWNLOAD, not of the
+    # lane's subject: this lane drives the shipped Web GUI, and it drives it with whatever Chromium the
+    # reachable transport can deliver. On a machine whose official CDN answers, the probe below still picks
+    # the official host and the pin is served from there.
     # `npm pkg set type=module` IS LOAD-BEARING, not tidiness. Node decides a `.ts` file's module
     # system from the nearest package.json: with NO package.json it falls back to syntax detection and
     # the ESM lane loads, but `npm init -y` writes one WITHOUT `"type"`, which pins the directory to
@@ -1627,16 +1733,99 @@ if [ "${MPD_E2E_BROWSER:-0}" = "1" ]; then
     # \"type\": \"module\"" before recording a single assertion (measured 2026-10-03).
     ( cd "$UI_DIR" && npm init -y >/dev/null 2>&1 \
       && npm pkg set type=module >>"$BROWSER_LOG" 2>&1 \
-      && npm i playwright@1.49.1 >>"$BROWSER_LOG" 2>&1 \
-      && npx playwright install --with-deps chromium >>"$BROWSER_LOG" 2>&1 ) || BROWSER_INSTALL=$?
+      && npm i playwright@1.48.2 >>"$BROWSER_LOG" 2>&1 ) || BROWSER_INSTALL=$?
+    if [ "$BROWSER_INSTALL" = "0" ]; then
+      run_step 13-browser-host node -e '
+        const [uiDir, official, mirror, pin, out] = process.argv.slice(1)
+        const fs = await import("node:fs")
+        const { execFileSync } = await import("node:child_process")
+        const settle = (host, route, detail) => {
+          fs.writeFileSync(out, host + "\n" + route + "\n")
+          console.log("PLAYWRIGHT_HOST=" + host + " ROUTE=" + route + " " + detail)
+        }
+        if (pin !== "") { settle(pin, "operator-set", "MPD_E2E_PLAYWRIGHT_HOST"); process.exit(0) }
+        // THE URLS PLAYWRIGHT ITSELF REPORTS, so the probe grades the ARTIFACTS and not a CDN root.
+        // EVERY reported url must answer on the candidate transport, not merely the first: measured
+        // 2026-10-14, the mirror answered `chromium-linux.zip` with HTTP 206 and then 404d
+        // `chromium-headless-shell-linux.zip` (`NoSuchKey`), so a first-url-only probe would have chosen a
+        // transport that cannot finish the install. (Spelled without apostrophes on purpose: this script
+        // travels inside the single-quoted argument of a `node -e` invocation, and one would terminate it.)
+        let artifacts = []
+        try {
+          const dry = execFileSync("npx", ["playwright", "install", "--dry-run", "chromium"], { cwd: uiDir, encoding: "utf8", timeout: 120000, stdio: ["ignore", "pipe", "ignore"] })
+          artifacts = dry.split("\n").map((line) => /^\s*Download url:\s*(\S+)\s*$/.exec(line)).filter((match) => match !== null).map((match) => match[1])
+        } catch { artifacts = [] }
+        const paths = artifacts.length === 0
+          ? ["/builds/chromium/"]
+          : artifacts.map((url) => (url.includes("/builds/") ? "/builds/" + url.split("/builds/")[1] : url))
+        const candidates = [
+          { host: official, route: "official-artifact-ok", urls: artifacts.length === 0 ? [official + paths[0]] : artifacts },
+          { host: mirror, route: "mirror-artifact-ok", urls: paths.map((path) => mirror + path) },
+        ]
+        const reachable = async (url) => {
+          const started = Date.now()
+          try {
+            const response = await fetch(url, { method: "GET", headers: { Range: "bytes=0-4095" }, signal: AbortSignal.timeout(25000) })
+            await response.arrayBuffer()
+            return { ok: response.status >= 200 && response.status < 300, ms: Date.now() - started, status: "http=" + response.status }
+          } catch (error) {
+            return { ok: false, ms: Date.now() - started, status: String(error).slice(0, 80) }
+          }
+        }
+        const seen = []
+        for (const candidate of candidates) {
+          const results = []
+          let complete = true
+          for (const url of candidate.urls) {
+            const result = await reachable(url)
+            results.push(url.replace(candidate.host, "") + "=" + result.status + "(" + result.ms + "ms)")
+            if (!result.ok) { complete = false; break }
+          }
+          seen.push(candidate.host + "[" + results.join(" ") + "]")
+          if (complete) { settle(candidate.host, candidate.route, "artifacts=" + candidate.urls.length + " " + seen.join(" ")); process.exit(0) }
+        }
+        settle(official, "both-artifacts-unreachable", "artifacts=" + artifacts.length + " " + seen.join(" "))
+      ' "$UI_DIR" "$PLAYWRIGHT_HOST_OFFICIAL" "$PLAYWRIGHT_MIRROR" "${MPD_E2E_PLAYWRIGHT_HOST:-}" "$PW_SELECTION_FILE" || true
+      if [ -s "$PW_SELECTION_FILE" ]; then
+        PLAYWRIGHT_HOST="$(sed -n '1p' "$PW_SELECTION_FILE" | tr -d '\r')"
+        PLAYWRIGHT_HOST_ROUTE="$(sed -n '2p' "$PW_SELECTION_FILE" | tr -d '\r')"
+      fi
+      # Playwright reads this env var NAMED EXACTLY THIS (`playwright-core/lib/server/registry/index.js`,
+      # `getDownloadHost`): it replaces the CDN prefix while keeping Playwright's own `/builds/<browser>/…`
+      # path, which is why the mirror's `binaries/playwright` prefix — not its root — is the value.
+      export PLAYWRIGHT_DOWNLOAD_HOST="$PLAYWRIGHT_HOST"
+      ( cd "$UI_DIR" && npx playwright install --with-deps chromium >>"$BROWSER_LOG" 2>&1 ) || BROWSER_INSTALL=$?
+      # ONE RETRY ON THE OTHER TRANSPORT. Both browser CDNs measured from this container are intermittent,
+      # and the browser is a ~170 MB artifact fetched from ONE host: without this, the whole `ui.*` cluster
+      # goes NULL on a network MOMENT rather than on anything about the GUI. The retry happens only when
+      # the first attempt failed AND it was not already the mirror, and the route it records names itself,
+      # so no reader can mistake a retried download for the probed one.
+      if [ "$BROWSER_INSTALL" != "0" ] && [ "$PLAYWRIGHT_HOST" != "$PLAYWRIGHT_MIRROR" ]; then
+        echo "[browser] the install failed on $PLAYWRIGHT_HOST (exit $BROWSER_INSTALL); retrying on $PLAYWRIGHT_MIRROR" >>"$BROWSER_LOG"
+        PLAYWRIGHT_HOST="$PLAYWRIGHT_MIRROR"
+        PLAYWRIGHT_HOST_ROUTE="mirror-retry-after-failure"
+        export PLAYWRIGHT_DOWNLOAD_HOST="$PLAYWRIGHT_HOST"
+        ( cd "$UI_DIR" && npx playwright install --with-deps chromium >>"$BROWSER_LOG" 2>&1 ) || BROWSER_INSTALL=$?
+      fi
+    fi
   fi
+  fact obs.playwrightHost "$PLAYWRIGHT_HOST (route=$PLAYWRIGHT_HOST_ROUTE; the CHROMIUM binary travels on its own CDN, which the npm registry knob does NOT cover — the artifact URL is read out of Playwright itself and fetched as a byte RANGE on each transport, because a CDN ROOT answers while the artifact path blackholes)"
   # The lane is COPIED beside its node_modules: a bare `import("playwright")` resolves from the
   # IMPORTING FILE's directory, so a script run straight out of /opt/mpd-e2e/lib would look in
   # /opt/mpd-e2e/lib/node_modules and never find the install under /work/ui.
   cp "$LIB_DIR/browser-lane.ts" "$UI_DIR/browser-lane.ts" 2>/dev/null || true
+  # ITS IMPORTS TRAVEL WITH IT, for the same reason: `ui.replyRendered` is judged by the shared
+  # classifier (`docker/lib/reply-verdict.ts`, FINDING F1), and a relative `.ts` specifier resolves from
+  # the IMPORTING file's directory — so the copy above alone would make the lane fail to LOAD.
+  cp "$LIB_DIR/reply-verdict.ts" "$UI_DIR/reply-verdict.ts" 2>/dev/null || true
   if [ "$BROWSER_INSTALL" != "0" ]; then
+    # THE REASON NAMES THE TRANSPORT THAT FAILED, not merely "npm/npx exit 1". Measured 2026-10-14: that
+    # sentence sent a reader looking for a registry fault while the registry had served every package and
+    # only the BROWSER CDN was unreachable. The first error line the install log carries is quoted into
+    # the record, so the arm's NULL carries its own cause instead of an absence a reader must explain.
+    BROWSER_INSTALL_WHY="$(grep -a -m1 -E 'Error: |npm error ' "$BROWSER_LOG" 2>/dev/null | tr '\n\t' '  ' | cut -c1-240 || true)"
     node "$LIB_DIR/browser-lane.ts" --state "$STATE_FILE" --out "$OUT_DIR/ui-shots" \
-      --unavailable "the browser toolchain did not install (npm/npx exit $BROWSER_INSTALL), so the GUI was never driven" >>"$BROWSER_LOG" 2>&1 || true
+      --unavailable "the browser toolchain did not install (npm/npx exit $BROWSER_INSTALL) from host $PLAYWRIGHT_HOST (route=$PLAYWRIGHT_HOST_ROUTE): ${BROWSER_INSTALL_WHY:-the install log carries no error line — see 13-browser.log}, so the GUI was never driven" >>"$BROWSER_LOG" 2>&1 || true
     BROWSER_STEP=$BROWSER_INSTALL
   else
     node "$UI_DIR/browser-lane.ts" --base "http://127.0.0.1:$PORT" --token "$TOKEN" \
@@ -1959,7 +2148,10 @@ run_step 16b-pack-refresh node "$APP_DIR/scripts/pack-mpd.ts"
 # staged inside it earlier. Both container modes reach this line, so the call arm is exercised for real
 # in BOTH (in one-click mode `$APP_DIR` is the checkout copy the case is run from, exactly as above).
 CASE_ENGINE_TREE="$APP_DIR/dist/mpd-package"
-fact obs.caseEngineTree "$CASE_ENGINE_TREE (the bundle root the mcp-call launcher resolves bundle-relatively: the case installs that packed tree with npm `file:` into its sandbox profile)"
+# THE SAME DEFECT CLASS AS `obs.npmrc` ABOVE, found by scanning this file for backticks in EXECUTABLE
+# lines (2026-10-14): `file:` was a command substitution too, so this row printed
+# `file:: command not found` and lost the words. Escaped the same way.
+fact obs.caseEngineTree "$CASE_ENGINE_TREE (the bundle root the mcp-call launcher resolves bundle-relatively: the case installs that packed tree with npm \`file:\` into its sandbox profile)"
 run_step 16b2-case-engine node "$ENGINE_SCRIPT" --toolchain "$CASE_ENGINE_TREE/.toolchain"
 # THE PROBE IS THE RESOLVER'S OWN, and getting it wrong cost a false red once (measured 2026-10-09):
 # the engine is staged as BOTH `ast-grep` and `sg`, but the `sg` shim prints a deprecation WARNING to

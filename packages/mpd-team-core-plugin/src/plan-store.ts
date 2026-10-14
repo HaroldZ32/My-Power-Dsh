@@ -13,7 +13,7 @@
 // without a ctx, a harness or a model.
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
-import { sanitizeId } from "./team-store"
+import { sanitizeId, nextIdSuffix } from "./team-store"
 
 /** One member the plan wants. The prompt is what the team executor hands the teammate on approval. */
 export interface StagedMember {
@@ -183,9 +183,15 @@ function writeJson(path: string, value: unknown): void {
   writeFileSync(path, JSON.stringify(value, null, 2) + "\n")
 }
 
-/** A stable, sortable identity for one staged plan. */
+/**
+ * A stable, sortable, COLLISION-RESISTANT identity for one staged plan.
+ *
+ * Second precision was the measured defect (C7-4 F4): two plans staged inside the same second shared a
+ * `planId`, so approval archived them into ONE `.mpd/team/archive/<planId>/` directory and the first was
+ * lost. The millisecond timestamp keeps the id sortable; the suffix keeps two mints distinct.
+ */
 export function newPlanId(now: Date): string {
-  return "plan-" + now.toISOString().replace(/[-:.TZ]/g, "").slice(0, 14)
+  return "plan-" + now.toISOString().replace(/[-:.TZ]/g, "").slice(0, 17) + "-" + nextIdSuffix()
 }
 
 /** The plan staged for one session, or `undefined` when nothing is staged. */
@@ -288,6 +294,12 @@ export function archivePlan(workspace: string, plan: StagedPlan): string {
   // from a staging FILE on the `stagePlan` path, and joining it verbatim here is the same T5 class.
   /** The archive directory this plan lands in. */
   const target = archivePathFor(workspace, plan.planId)
+  // F4 BACKSTOP: two plans sharing a `planId` used to land in ONE directory and the second write replaced
+  // the first — the measured "one archive dir for two plans". Refusing loudly turns a silently lost plan
+  // into a red gate; with the millisecond+suffix mint above this is unreachable in normal use.
+  if (existsSync(join(target, "plan.json"))) {
+    throw new Error(`plan id "${plan.planId}" is already archived in this workspace — refusing to overwrite an archived plan`)
+  }
   mkdirSync(target, { recursive: true })
   writeJson(join(target, "plan.json"), plan)
   /** The session's staging slot, removed so the plan is no longer staged. */

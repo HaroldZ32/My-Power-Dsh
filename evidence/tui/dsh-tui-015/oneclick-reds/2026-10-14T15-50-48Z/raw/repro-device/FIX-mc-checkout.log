@@ -1,0 +1,5 @@
+=== tree=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh case=mcp-call.ts started=2026-10-14T15:32:27Z
+[mcp-call] ok=true (enum recorded tools=107, mcp__ast_grep__=true, mcp__lsp__=true, ast_grep call recorded, call result has the fixture line=true, lsp dependency staged from checkout-store) -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/dsh-qa/mcp-call/2026-10-14T15-33-01.111Z
+[mcp-call] PASS
+exit=0
+=== finished=2026-10-14T15:33:01Z

@@ -1,0 +1,50 @@
+
+                                                                                                                            
+  • Bash(pwd; echo "---"; ls -la 2>&1 | head -30; echo "--- boulder ---"; cat .mpd/boulder.json 2>/dev/null | head -40) · 0s
+   ⎿ /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/tui-015/ws                                                                                     
+     ---                                                                                                              
+     total 16                                                                                     
+     … +5 行（ctrl+o 展开）                                                                                                 
+                                                                                                   
+  ⚓ 思考 · 3s （ctrl+o 展开）                                                                    
+                                                                                                                                      
+  ● The file exists and there's a standing user-mandated gate for exactly this (verify:manifest). Let me run the authoritative checks.
+                                                                                                          
+  • Bash(node scripts/verify-plugin-manifest.ts --pack 2>&1 | tail -60; echo "EXIT=${PIPESTATUS[0]}") · 1s                 
+   ⎿ # verify-plugin-manifest — repository manifest                                                        
+                                                                                                                                          
+     ok    cordis-dependency: 9 declared dependency name(s) across dependencies/peerDependencies/optionalDependencies, none of them cordis
+     … +12 行（ctrl+o 展开）                                                                               
+                                                                                                                                         
+  • Bash(node -e '                                                                                                                   · 0s
+        const fs=require("fs");                                                                                                           
+        const m=JSON.parse(fs.readFileSync("dsh-plugin.json","utf8"));         
+        const p=JSON.parse(fs.readFileSync("package.json","utf8"));                                                                                                      
+        const d=JSON.parse(fs.readFileSync("dsh-distribution.json","utf8"));                                                              
+        console.log("plugin keys:", Object.keys(m).join(", "));                                                                                                          
+        console.log("id:", m.id, "| name:", m.name, "| version:", m.version);                                                                                            
+        console.log("package.json version:", p.version, "| name:", p.name);                                           
+        console.log("distribution version:", d.version, "| name:", d.name);                                   
+        console.log("version coherence:", m.version===p.version && m.version===d.version ? "OK" : "MISMATCH");                      
+        const deps={...(p.dependencies||{}),...(p.devDependencies||{}),...(p.peerDependencies||{}),...(p.optionalDependencies||{})};
+        console.log("cordis in dep fields:", Object.keys(deps).filter(k=>/cordis/.test(k)));                                
+        ' 2>&1)                                                                                                                                                      
+   ⎿ plugin keys: $schema, manifestVersion, id, name, version, facets, requires, permissions, contributes, subscriptions, license, source, compat, x-mpd-tui-surfaces
+     id: com.mpd-dsh.mpd-tui | name: @mpd-dsh/mpd | version: 0.12.0                                                                 
+     package.json version: 0.12.0 | name: @mpd-dsh/mpd                                      
+     … +3 行（ctrl+o 展开）                                                                                   
+                                                                                                                                                                     
+  ⚓ 思考 · 7s （ctrl+o 展开）                                                                                                                                                                                              
+                                                                                                                                                                                                                            
+  ● The gate PASSED, but two things need a closer look before I report: one FAIL row inside a PASS verdi                                                                                                                    
+
+  🌕 等下，有画面了 · 总19s · ↑ 44.8k · ↓ 125 tokens                                                                            
+  mpd: 团队 Fixture Team 2·1/2 (workspace-level) · 计划 0 · workmate 1
+                                                                      
+  ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+  ⌸ ❯                                                                                                                                                                                                                    ⛶
+  ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+                                                                                                                                                                                                            52k/1.0M 5.2% 
+   deepseek-flash · max · 缓存 95.9% · ≈¥0.05 谷 · ws                                                                                                                                                 ctx 5.2% (52k/1.0m)
+   esc 中断
+

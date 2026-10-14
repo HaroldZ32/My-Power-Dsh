@@ -1,0 +1,46 @@
+sandbox workspace: /tmp/mpd-c7-phantom-Xeoctq
+real state source : /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/team
+
+— every team record, classified by the C7-3 rules —
+team-20261014080623	phase=active	live=true	name=tui-015-execution
+team-20261014064212	phase=archived	live=false	name=tui-015-adaptation
+team-20261009115756	phase=active	live=true	name=restore-wave-acceptance
+team-20261008233921	phase=active	live=true	name=restore-three-capabilities
+team-20261008115931	phase=active	live=true	name=tui-legend-and-animation-fix
+team-20261008114854	phase=active	live=true	name=legacy-fix-wave
+team-20261007132339	phase=active	live=true	name=verify-law-defects
+team-20261007120516	phase=active	live=true	name=tui-dag-highlight
+team-20261007102205	phase=active	live=true	name=de-vendor-and-verify-law
+team-20261006145331	phase=active	live=true	name=dag-edges-scroll
+team-20261006135108	phase=active	live=true	name=tui-dag-port
+team-20261005072738	phase=active	live=true	name=mpd-tui-dep-view
+team-20261002152519	phase=active	live=true	name=mpd-seam-wave2b-terminal-silence
+team-20261002152009	phase=active	live=true	name=mpd-seam-wave2
+team-20261002150828	phase=active	live=true	name=mpd-seam-wave1
+
+— the measured phantom —
+ghost record present: true phase: archived live: false
+resolution BOUND to the ghost -> (none)
+
+— the registry bindings that still exist —
+lead 400cd1d4 bound=team-20261014080623 resolved=team-20261014080623
+lead f1cd0104 bound=team-20261014080623 resolved=team-20261014080623
+lead c7059838 bound=team-20261009115756 resolved=team-20261009115756
+lead 5326b6c0 bound=team-20261008233921 resolved=team-20261008233921
+lead 8d18e3c7 bound=team-20261008115931 resolved=team-20261008115931
+lead 8d18e3c7 bound=team-20261008115931 resolved=team-20261008115931
+lead 189641fd bound=team-20261007132339 resolved=team-20261007132339
+lead 189641fd bound=team-20261007132339 resolved=team-20261007132339
+lead 48289c1b bound=team-20261007102205 resolved=team-20261007102205
+lead af761421 bound=team-20261006145331 resolved=team-20261006145331
+lead 3e63ddb8 bound=team-20261006135108 resolved=team-20261006135108
+lead 59220c5e bound=team-20261005072738 resolved=team-20261005072738
+lead b6963085 bound=team-20261002152519 resolved=team-20261002152519
+lead b6963085 bound=team-20261002152519 resolved=team-20261002152519
+lead b6963085 bound=team-20261002152519 resolved=team-20261002152519
+
+— the consistency pass, on the COPY —
+reaped: ["team-20261014064212"]
+after team-20261014064212	phase=ended	reason=record phase "archived" is not a live team phase (staged | active | idle)
+
+sandbox removed: /tmp/mpd-c7-phantom-Xeoctq

@@ -1,0 +1,3 @@
+$ ./node_modules/.bin/tsgo --noEmit -p evidence/tui/dsh-tui-015/guard/unit/tsconfig.c7.json
+(include: packages/mpd-team-core-plugin/{src,test}/**/*.ts + packages/mpd-roles-plugin/src/**/*.ts)
+[exit=0]

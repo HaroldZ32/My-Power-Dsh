@@ -1,0 +1,22 @@
+dsh: warning: 3 entries did not activate
+authorization (@deepseek-ai/dsh-authorization): pending (waiting for service: credentials)
+deepseek-account (@deepseek-ai/dsh-deepseek-account-platform): pending (waiting for services: credentials, authorization)
+credentials (@deepseek-ai/dsh-credentials-local): Error: credentials-local: invalid document at /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-oneclick/tmp/FIX2-mc-checkout/mpd-dsh-qa-nOkmOr/.credentials.yaml: DUPLICATE_KEY at line 22, column 3
+    at parseCredentialsDocument (file:///home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-credentials-local/lib/index.js:141:40)
+    at LocalCredentialProvider.loadInitial (file:///home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-credentials-local/lib/index.js:657:20)
+    at async [cordis.init] (file:///home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-credentials-local/lib/index.js:446:3)
+    at file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-oneclick/tmp/FIX2-mc-checkout/mpd-dsh-qa-nOkmOr/profiles/headless/#credentials
+    at file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-oneclick/tmp/FIX2-mc-checkout/mpd-dsh-qa-nOkmOr/profiles/headless/#include
+dsh: reasoning:
+The user asks me to use the MCP tool mcp__ast_grep__search on tests/mcp-fixtures/sample.c for pattern "return 0", then report the returned content verbatim. Do not use bash. This is a trivial one-step task. No need for teammates.
+
+Let me call the tool. Pattern "return 0" — as code pattern in C language. Path: "tests/mcp-fixtures/sample.c". Let me include workdir maybe default. Paths are required.
+
+Should I read the file first? Not required. Just call the tool.
+The tool returned this content verbatim:
+
+```json
+{"schemaVersion":1,"ok":true,"kind":"search","workdir":"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-oneclick/tmp/FIX2-mc-checkout/mpd-dsh-qa-nOkmOr/ws","matches":[{"path":"tests/mcp-fixtures/sample.c","language":"c","text":"return 0;","range":{"start":{"line":1,"column":17,"byteOffset":17},"end":{"line":1,"column":26,"byteOffset":26}},"metavariables":{"single":{},"multi":{}}}],"counts":{"returnedMatches":1,"returnedFiles":1,"totalMatches":1,"totalFiles":1,"atLeastMatches":1},"truncation":{"truncated":false,"reason":null,"maxMatches":50,"maxPayloadBytes":4194304,"salvagedRecords":0},"warnings":[],"durationMs":7}
+```
+
+Summary: one match of `return 0;` found in `tests/mcp-fixtures/sample.c` at line 1, columns 17–26; no truncation, no warnings.

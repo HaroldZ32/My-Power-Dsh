@@ -1,0 +1,10 @@
+[tui-deps-ctrla] panel seam: host 0.15.0 declares the dsh-tui-panels row and ships lib/types/dsh-adapter/panels.js — the panel seam is PRESENT, so the Ctrl+A contact must stay inert
+[tui-deps-ctrla] dsh-tui home fixture=.mpd/recon/qa/tui-lanes/tui-015/home/.dsh-tui/onboarding.json, .mpd/recon/qa/tui-lanes/tui-015/home/.dsh-tui/agent-preset.json preset=mpd
+[tui-deps-ctrla] seeded team fixture at .mpd/recon/qa/tui-lanes/tui-015/ws/.mpd/team/teams/mpd-fixture-1.json
+[tui-deps-ctrla] records removed for the control arm: .mpd/recon/qa/tui-lanes/tui-015/ws/.mpd/team/teams/mpd-fixture-1.json
+[tui-deps-ctrla] host contact: bound to the launched profile copy: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/recon/qa/tui-lanes/tui-015/dshhome/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui
+[tui-deps-ctrla] store arm: ok=false id=undefined
+[tui-deps-ctrla] panel body bound: on a host with the tuiPanels seam the merged view is the SIDEBAR panel: a host-accepted open changed ZERO bytes of the captured pane, and both MPD entry points route to it — so this lane proves the registration and the accepted open, and does NOT claim the panel body (or its arrow) renders
+[tui-deps-ctrla] ok=false -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/tui/lanes/2026-10-14T10-15-04.213Z
+[tui-deps-ctrla] FAIL: {"arms":[],"storeArms":[{"label":"on a host WITH the panel seam, `/mpd panel` reached the SIDEBAR panel: the host's list() read-back produced an id for OUR slug and accepted the open","missing":["no command/run with name=mpd args=/panel/"],"forbidden":[],"text":"","ok":false}]}
+EXIT=1

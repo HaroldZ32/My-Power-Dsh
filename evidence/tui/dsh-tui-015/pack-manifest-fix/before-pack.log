@@ -1,0 +1,5 @@
+[pack-mpd] validator: generated packages/mpd-ext-plugin/dist/validator.js (9 exports) from the shipped bundle
+[pack-mpd] staged 2 patch file(s): cordis.patch.yml, presets/mpd.patch.yml
+[pack-mpd] modes normalized: 618 files (644: 602, 755: 16)
+[pack-mpd] staged package -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/dist/_scratch-pack-before  (out-dir source: command line (--out dist/_scratch-pack-before))
+BEFORE_PACK_EXIT=0

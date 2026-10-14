@@ -40,7 +40,7 @@ describe("the staged plan", () => {
   test("a fresh stage writes a plan under .mpd/team/staging and nothing else", () => {
     /** The freshly staged plan, which must carry no approval yet. */
     const plan = stagePlan(sandbox, "session-1", { name: "wave", description: "ship it", approval: "required" }, NOW)
-    expect(plan.planId).toBe("plan-20260927100000")
+    expect(plan.planId).toMatch(/^plan-20260927100000000-[a-z0-9]{4}-[a-z0-9]{1,}$/)
     expect(plan.approvedAt).toBeUndefined()
     expect(existsSync(join(teamRoot(sandbox), "staging", "session-1.json"))).toBe(true)
     // Staging is not creating: no member, no task, no archive.
@@ -165,8 +165,13 @@ describe("the halt", () => {
 
 describe("plan identity", () => {
   test("a plan id is stable, sortable and derived from the clock", () => {
-    expect(newPlanId(new Date("2026-01-02T03:04:05.000Z"))).toBe("plan-20260102030405")
-    expect(newPlanId(new Date("2026-01-02T03:04:06.000Z")) > newPlanId(new Date("2026-01-02T03:04:05.000Z"))).toBe(true)
+    /** The earlier id, whose millisecond stamp and suffix an arm pins separately. */
+    const early = newPlanId(new Date("2026-01-02T03:04:05.000Z"))
+    /** The later id, one second on. */
+    const late = newPlanId(new Date("2026-01-02T03:04:06.000Z"))
+    expect(early).toMatch(/^plan-20260102030405000-[a-z0-9]{4}-[a-z0-9]{1,}$/)
+    // The millisecond stamp keeps the id SORTABLE even after the C7-4 F4 suffix was added.
+    expect(late > early).toBe(true)
   })
 })
 

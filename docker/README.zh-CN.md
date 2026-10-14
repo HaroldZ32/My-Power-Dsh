@@ -81,10 +81,10 @@ node、没有 bun、没有 pnpm、也没有 dsh），运行 `mpd-client` compose
     让任何 token 形状残留其中（`evidenceScrubbed`；一旦泄漏即判定为红，并用定向清洗重写两个文件）。
 14. 把 `boot.llmTurn` 记为 **`null` 并附原因**——见下。
 15. **跑一遍 DSH-TUI 版本**（`docker/tui-lane.sh`）——这是开发机唯一无法演练的 profile：TUI 宿主必须从 npm
-    装进一个可写的全局前缀，并在真正的 PTY 上启动。该步安装 `@deepseek-harness-tui/dsh-tui@0.14.0`
+    装进一个可写的全局前缀，并在真正的 PTY 上启动。该步安装 `@deepseek-harness-tui/dsh-tui@0.15.0`
     —— 即本 bundle 现在对标的 dsh-tui 版本，其 peer 范围仍覆盖本 lane 会跑的整段区间（`0.1.7-rc.2`、
     `0.2.0-rc.1` 与 `0.2.0-rc.2`）；`0.11.2` 只到 `0.2.0-rc.1`，对上 `0.2.0-rc.2` 时
-    `dsh plugin --profile dsh-tui add` 会因 peer 范围被拒。此前的 `0.13.0`（以及更早的 `0.12.0`）仅作历史保留。
+    `dsh plugin --profile dsh-tui add` 会因 peer 范围被拒。此前的 `0.14.0`（以及更早的 `0.13.0`、`0.12.0`）仅作历史保留。
     可用 `MPD_E2E_TUI_VERSION` 覆盖，并与 `MPD_E2E_DSH_VERSION` 保持配套。它把本 bundle 作为第三层 patch 装进 `dsh-tui`
     profile，并记下二十二条 `tui.*` 断言：宿主安装、两次 `plugin add`、组合、**用户级预设偏好**（见下）、
     `preset-mpd` / `mpd-tui` / 官方团队行、种子看板**绑定到 TUI 实际运行的那个会话**（产品自身 `createTeam` 的两种写法都写上）、
@@ -178,7 +178,7 @@ PR #28 已合并三项被恢复的能力，但本 lane 自己的验收运行发�
 | `pack.distFreshRebuildControl`（新增） | **反向对照**，在同一容器内运行：复制一份产物，改动其中一个已构建条目，再对**同一次**重建重新判定。仅当该副本把陈旧性行翻成 `false` 时此行才为 `true`——因此未改动产物上的绿灯是一次测量，而不是常量。没有这一项，一个永远回答 `true` 的相等测试与正确的测试无法区分 |
 | `tui.mergedPanelOpens`、`tui.mergedPanelOrder` | **实测**，不再是 `null`。在提供 0.13.0 `ctx.tuiPanels` seam 的主机上，这两行曾以"主机**接受**的 `open()` 改变 tmux 捕获的零个字节"为由记为 `null`——而该依据是在 0.13.0 **之前**的全屏场景上测得的，在合并视图变成**侧栏面板**之后再未复测。权威运行自己的 `tui-panes/pane-merged.txt` 携带完整面板正文；两行由 `docker/lib/tui-panel-body.ts` 判定，它读取面板外框、主机自带的 subagent 区块与 MPD 的团队头部/DAG 页脚，并且**当按键前的捕获已经携带面板正文时拒绝称之为"打开"**（这正是捕获顺序或按键失效时该行变红的方式） |
 | `qa.mcpCallEngine`（新增） | 引擎被落地到 `mcp-call` launcher **实际读取**的那棵树：该用例用 `npm install file:` 把打包产物（`dist/mpd-package`）装入沙箱 profile，而 MCP launcher 以 bundle 相对路径解析 `sg`——因此 `node scripts/install-mcp.ts --toolchain <APP>/dist/mpd-package/.toolchain` 在打包刷新**之后**运行（否则那一步会把它删掉）。第 09d 步的落地覆盖各行；这一步覆盖该用例 |
-| 分步预算与 npm 传输 | 2026-10-09 实测：一次运行在 `npm i -g @deepseek-ai/dsh@0.2.0-rc.2` 里卡了 **23 分钟**、CPU 0.3%、容器空闲——是取包卡死而非进行中——只能人工杀掉，整场验收运行随之报废。现在每个 `run_step` 都由 `MPD_E2E_STEP_TIMEOUT`（默认 900 秒）限时，被杀的步骤记为退出码 124 并带自己的原因；npm 的单请求超时与重试也一并限界。同一次测量还发现官方源**作用域**元数据端点（harness pin 正是经它解析）一次探测失败、下一次 1.5 秒成功，因此第 `01b` 步会先探测该端点：能应答就用官方源，`MPD_E2E_NPM_MIRROR` 只作为**记录在案**的回退（`obs.npmRegistry` 写明实际用的是哪个源），`MPD_E2E_NPM_REGISTRY` 则允许操作者直接指定源 |
+| 分步预算与 npm 传输 | 2026-10-09 实测：一次运行在 `npm i -g @deepseek-ai/dsh@0.2.0-rc.2` 里卡了 **23 分钟**、CPU 0.3%、容器空闲——是取包卡死而非进行中——只能人工杀掉，整场验收运行随之报废。现在每个 `run_step` 都由 `MPD_E2E_STEP_TIMEOUT`（默认 900 秒）限时，被杀的步骤记为退出码 124 并带自己的原因；npm 的单请求超时与重试也一并限界。同一次测量还发现官方源**作用域**元数据端点（harness pin 正是经它解析）一次探测失败、下一次 1.5 秒成功，因此第 `01b` 步会先探测该端点：能应答就用官方源，`MPD_E2E_NPM_MIRROR` 只作为**记录在案**的回退（`obs.npmRegistry` 写明实际用的是哪个源），`MPD_E2E_NPM_REGISTRY` 则允许操作者直接指定源。自 2026-10-14 起，同一步还会对 harness pin 自身的 tarball 做**一次**限定范围的 ranged GET：元数据能应答但 tarball 黑洞的源，现在会让探测**失败**（路由 `<label>-tarball-blackholed`，观测项 `obs.npmTarball`），而不是通过探测、再卡死安装；未指定任何源旋钮时该臂按原因跳过、零请求 |
 | `EXPECTED` 主脊 | 现在一条主脊覆盖**两种**模式：两种模式已记录名称的并集是 114，且 one-click 集合是 source 集合的严格超集，因此四个仅 one-click 的行被声明，并在 source 模式下以**实测模式**为原因记为 `null`——绝不用缺失名称会合成出的"not reached"。旧主脊之外被记录的那 13 行也已声明 |
 
 该分类器与离线证伪器**共用同一份代码**：`node scripts/docker-e2e.ts --self-test` 会用植入的 pane 驱动

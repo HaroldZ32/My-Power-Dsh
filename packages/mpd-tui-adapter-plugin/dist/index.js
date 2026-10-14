@@ -229,6 +229,7 @@ async function probeHostPrefs(candidates) {
           ...feed === undefined ? {} : { subscribeSidePanelPanels: (listener) => feed(listener) }
         },
         root,
+        hostVersion: readHostPackageVersion(root),
         ...hostDefault === "" ? {} : { defaultIds: hostDefault }
       };
     } catch (error) {
@@ -287,6 +288,21 @@ function mergePanelEnableIds(existing, ours, past, hostDefault) {
   const csv = staleDefault === "" ? [...kept, ...added].join(",") : [...defaultTokens, ...ours.filter((id) => !defaultTokens.includes(id))].join(",");
   return { csv, added, present: ours.filter((id) => kept.includes(id)), kept, pruned, staleDefault };
 }
+var PANEL_CSV_SELF_HEAL_SINCE = "0.15.0";
+function hostSelfHealsPanelCsv(version) {
+  const match = /^(\d+)\.(\d+)\.(\d+)/.exec(version.trim());
+  if (match === null)
+    return false;
+  const since = PANEL_CSV_SELF_HEAL_SINCE.split(".").map((part) => Number.parseInt(part, 10));
+  const parsed = [Number(match[1]), Number(match[2]), Number(match[3])];
+  for (let rank = 0;rank < 3; rank += 1) {
+    if (parsed[rank] > since[rank])
+      return true;
+    if (parsed[rank] < since[rank])
+      return false;
+  }
+  return true;
+}
 var PANEL_KEEPER_LADDER_MS = [1000, 2500, 5500, 9000, 16000, 25000];
 function createPanelEnableKeeper(options) {
   const ours = [];
@@ -297,6 +313,7 @@ function createPanelEnableKeeper(options) {
   let reasserted = 0;
   let onFeed = false;
   let releaseFeed;
+  let releaseBelt;
   let writing = false;
   let state = "requested";
   let detail = "no panel registered yet";
@@ -401,6 +418,44 @@ function createPanelEnableKeeper(options) {
   const standDown = () => {
     cancelLadder();
     releaseFeedNow();
+    releaseBeltNow();
+  };
+  const releaseBeltNow = () => {
+    if (releaseBelt === undefined)
+      return;
+    const release = releaseBelt;
+    releaseBelt = undefined;
+    try {
+      release();
+    } catch {}
+  };
+  const standDownToHostUnion = (prefs, version) => {
+    ticks += 1;
+    settle("confirmed", `standing down: the host ${version} self-heals the enable CSV (>= ${PANEL_CSV_SELF_HEAL_SINCE}), so this keeper writes nothing and the host's own union is the only writer`);
+    cancelLadder();
+    options.log?.(`mpd-tui panel enable keeper: standing down on host ${version} — the host self-heals the sidebar enable CSV, so this keeper never writes`);
+    const subscribe = prefs.subscribeSidePanelPanels;
+    if (typeof subscribe !== "function")
+      return;
+    let said = false;
+    try {
+      const release = subscribe(() => {
+        if (said)
+          return;
+        said = true;
+        try {
+          const csvNow = normalizePanelCsv(prefs.getSidePanelPanels());
+          const kept = ours.filter((id) => csvNow.split(",").includes(id));
+          options.log?.(`mpd-tui panel enable keeper (observe-only): after the host's own apply the enable list is "${csvNow}"; ${kept.length === ours.length ? `it still carries every id of ours (${kept.join(",")})` : kept.length === 0 ? "it carries NONE of our ids — the host union did not re-add them" : `it carries only ${kept.join(",")} of our ids — the union did not re-add the rest`}`);
+        } catch {}
+        releaseBeltNow();
+      });
+      if (typeof release === "function") {
+        releaseBelt = release;
+        if (said)
+          releaseBeltNow();
+      }
+    } catch {}
   };
   const enterFeed = (prefs, hostDefault) => {
     const subscribe = prefs.subscribeSidePanelPanels;
@@ -425,6 +480,10 @@ function createPanelEnableKeeper(options) {
       if (probe.prefs === undefined) {
         ticks += 1;
         settle("absent", probe.detail ?? "the host exposes no side-panel enable store");
+        return;
+      }
+      if (hostSelfHealsPanelCsv(probe.hostVersion ?? "")) {
+        standDownToHostUnion(probe.prefs, probe.hostVersion ?? "");
         return;
       }
       if (!onFeed && enterFeed(probe.prefs, probe.defaultIds))
@@ -1080,7 +1139,6 @@ function createTuiAdapter(ctx, options = {}) {
       let outcome = { id: TUI_SEAMS.pluginHost, state: "absent", detail: `${TUI_SEAMS.pluginHost} was not injected` };
       whenBoundInternal("pluginHost", (service, scope) => {
         const host = service;
-        const identity = options2.identity ?? fallbackIdentity;
         if (typeof host?.subscribeDecision !== "function") {
           outcome = { id: TUI_SEAMS.pluginHost, state: "refused", detail: `${TUI_SEAMS.pluginHost}.subscribeDecision is missing` };
           return;
@@ -1089,12 +1147,12 @@ function createTuiAdapter(ctx, options = {}) {
         try {
           const facade = host.grants;
           if (facade !== undefined && typeof facade.allows === "function")
-            granted = facade.allows(identity, event, options2.scope ?? event) === true;
+            granted = facade.allows(scope, event, options2.scope ?? event) === true;
         } catch {
           granted = undefined;
         }
         try {
-          const disposer = host.subscribeDecision(identity, event, listener, {
+          const disposer = host.subscribeDecision(scope, event, listener, {
             ...options2.scope === undefined ? {} : { scope: options2.scope },
             ...options2.order === undefined ? {} : { order: options2.order }
           });
@@ -1277,6 +1335,7 @@ export {
   HOST_ROOT_ENV,
   HOST_UI_MODULE,
   KNOWN_STALE_PANEL_DEFAULTS,
+  PANEL_CSV_SELF_HEAL_SINCE,
   PANEL_IDS_RECORD_NAME,
   PANEL_ID_HISTORY_LIMIT,
   PANEL_KEEPER_LADDER_MS,
@@ -1292,6 +1351,7 @@ export {
   describeOutcome,
   effectOn,
   hostRootCandidates,
+  hostSelfHealsPanelCsv,
   inject,
   mergePanelEnableIds,
   name,

@@ -65,7 +65,8 @@ describe("the team record", () => {
   test("creating a team writes one record and binds it ACTIVE for its Lead session", () => {
     /** The freshly created record. */
     const record = createTeam(sandbox, { name: "wave-3", description: "why", leadSessionId: "sess-1" }, NOW)
-    expect(record.teamId).toBe("team-20260930091500")
+    // The id is the millisecond stamp plus the C7-4 F4 suffix, so two mints in one second never collide.
+    expect(record.teamId).toMatch(/^team-20260930091500000-[a-z0-9]{4}-[a-z0-9]{1,}$/)
     expect(record.phase).toBe("staged")
     expect(record.approvedAt).toBeUndefined()
     expect(existsSync(teamRecordPath(sandbox, record.teamId))).toBe(true)

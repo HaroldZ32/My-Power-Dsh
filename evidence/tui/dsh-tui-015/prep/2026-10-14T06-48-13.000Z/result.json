@@ -1,0 +1,19 @@
+{
+  "slug": "tui-015-prep",
+  "ok": true,
+  "stamp": "2026-10-14T06-48-13.000Z",
+  "sandboxRoot": ".mpd/recon/qa/tui-lanes/tui-015",
+  "host": { "spec": "@deepseek-harness-tui/dsh-tui@0.15.0", "installedVersion": "0.15.0", "bundleOrder": ["@deepseek-ai/dsh-base", "@deepseek-harness-tui/dsh-tui", "@mpd-dsh/mpd"] },
+  "bundle": { "spec": "link:checkout", "version": "0.12.0" },
+  "credentials": { "source": "~/.dsh/.credentials.yaml", "copied": ".credentials.yaml (mode 600, value never logged)", "settingsYaml": "absent at source" },
+  "declaredDeviations": [
+    "pnpm_config_registry=https://registry.npmmirror.com (npmjs.org unreachable here; 0.14-wave precedent §5.4)",
+    "XDG_RUNTIME_DIR=<sandboxRoot>/run — MEASURED 2026-10-14: corepack pnpm (v12.11.2) writes its store-operation lock to /run/user/1000/pnpm-store-operation-locks-1000, which is EROFS in this session's file sandbox (strace: mkdir returned EROFS); without the override every pnpm add fails ERR_PNPM_STORE_DIR_OPEN_OPERATION_LOCK. The lane lib sandboxEnv does not set XDG_RUNTIME_DIR; lane runs must export it so it propagates via process.env.",
+    "npm cache pinned to <sandboxRoot>/npm-cache (lane default) because ~/.npm is EROFS here"
+  ],
+  "behaviorNotes": [
+    "dsh plugin add is a NO-OP for the bundle-list append when the dependency is already present in the profile manifest (my manual pnpm add pre-installed the host; the re-run appended nothing). Recovery: dsh plugin remove then re-add, in dependency order (host first, bundle second) to keep the asserted layer order.",
+    "global dsh-tui on PATH stays 0.14.0 (isolation: never touched); the 0.15.0 host lives only inside the sandbox profile. Lanes resolve the lane-level binary prereq via PATH (0.14.0 launcher present) and boot the sandbox-profile 0.15.0 payload. NOTE: tui-lane.ts:885-890 documents a launcher/profile version-mismatch refusal — watch for it at boot; the 0.14 wave booted 0.14 profile with 0.14 launcher, so a 0.14-launcher/0.15-profile mix is UNMEASURED."
+  ],
+  "prereqProbes": { "tmux": "/usr/bin/tmux", "docker": "rootless server 29.8.2 (client 29.9.0)", "dockerImages": ["ubuntu:24.04 (mirror-retagged)", "node:24-bookworm (mirror-retagged)"], "dshEcosystemSpecCheckout": "ABSENT on this machine (tui-spec-conformance will be environment-bound)", "mirrorReachable": "HTTP 200 in 0.42s" }
+}

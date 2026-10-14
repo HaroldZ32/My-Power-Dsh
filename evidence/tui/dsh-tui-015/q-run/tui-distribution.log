@@ -1,0 +1,1 @@
+[mpd-qa] SKIP case=tui-distribution lane=real reason=absent-fixture prereq=vendor/meta-protocols/dsh-distribution in a mounted dsh-ecosystem-spec checkout remedy="check out the host repo with its submodules initialised, or set MPD_TUI_SPEC_ROOT"

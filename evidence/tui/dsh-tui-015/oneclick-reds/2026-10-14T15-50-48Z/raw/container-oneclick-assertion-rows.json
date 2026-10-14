@@ -1,0 +1,20 @@
+[
+ {
+  "name": "qa.mcpCall",
+  "ok": false,
+  "reason": "the live mcp-call case (a real model turn that must record a mcp__ast_grep__search call) did NOT pass in this run (exit=1); this is the case's real outcome, not the host's excuse",
+  "raw": "cmd=node skills/dsh-qa/scripts/mcp-call.ts exit=1 log=/out/owed/owed-logs/qa.mcpCall.log tail=[mcp-call] ok=false (enum recorded tools=95, ast_grep call recorded) -> /opt/mpd/evidence/dsh-qa/mcp-call/2026-10-14T15-05-22.483Z"
+ },
+ {
+  "name": "qa.readonlyDeny",
+  "ok": false,
+  "reason": "the live readonly-deny case (a read-only spawn whose child must really be restricted) did NOT pass in this run (exit=1); this is the case's real outcome, not the host's excuse",
+  "raw": "cmd=node skills/dsh-qa/scripts/readonly-deny.ts exit=1 log=/out/owed/owed-logs/qa.readonlyDeny.log tail=  enforcement: {\"ok\":false,\"childRequests\":1,\"parentRequests\":3,\"childLeaksWriteCapable\":[],\"childHasStructuredOutput\":true,\"parentSeesAllDenyNames\":false,\"note\":\"read-only authority is ENFORCED: the child's own requests cannot see any of the eight write-capable tools, while the parent's sees all of them\"} |   positiveOk: {\"ok\":false,\"note\":\"positive lane: exit=0, denyListMatchesTheEight=false, spawnDriven=true, restrictError=false, missingCredential=false, pruneRecordSeen=false, childRequests=1, childLeaksWriteCapable=[]\"} |   reinjectionDiagnostic: {\"exit\":0,\"restrictError\":false,\"missingCredential\":false,\"authFailed\":false,\"stubCalls\":4,\"stubTrace\":[{\"call\":1,\"hasTools\":true,\"bytes\":214585,\"toolCount\":95,\"writeCapableVisible\":[\"write\",\"edit\",\"mpd_hashline_edit\",\"bash\",\"mcp__ast_grep__rewrite\",\"mcp__ast_grep__scan\"],\"_toolNames\":[\"agent_teams_ |   reinjectionControl: {\"ok\":false,\"mutationLoaded\":true,\"injectedNamesSeenByAdapter\":[\"str_replace_editor\",\"apply_patch\"],\"pruneRecorded\":true,\"pruneRecordLine\":\"[LOGGER-PROBE] {\\\"type\\\":\\\"warn\\\",\\\"name\\\":\\\"mpd-roles\\\",\\\"args\\\":[\\\"[mpd-roles] read-only spawn: pruned tool name(s) this profile does not register: str_replac |   reinjectionNo"
+ },
+ {
+  "name": "qa.mcpCallEngine",
+  "ok": true,
+  "reason": "the ast-grep engine the call arm's launcher resolves (bundle-relative, inside the packed tree the case installs) is staged and its own --version probe reports ast-grep, so qa.mcpCall below measures the CASE rather than a missing binary",
+  "raw": "bin=/opt/mpd/dist/mpd-package/.toolchain/node_modules/.bin/ast-grep probe=ast-grep 0.50.0"
+ }
+]

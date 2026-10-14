@@ -1,0 +1,22 @@
+ok   (a) cross-team pairing REFUSED, naming both team ids — refused a CROSS-TEAM pairing: task T1 belongs to team-a while member "qa-reader-writer" belongs to team-b
+ok   (b) write task × read-only member REFUSED, reason reported — refused a WRITE-TASK-ON-READ-ONLY pairing: task T5 has write scopes (packages/x) while member "Plan Reviewer" is a read-only specialist
+ok   (c) terminal/archived team SKIPPED, live team resolves, none when only a ghost — resolved=team-live onlyGhost=(none)
+ok   (d) NEGATIVE CONTROL: a valid same-team write-capable pairing still SUCCEEDS — [["T2","m-w"]]
+ok   (b-real) REAL store: the write task is refused the read-only member, reason reported — refused a WRITE-TASK-ON-READ-ONLY pairing: task T1 has write scopes (packages/x) while member "Plan Reviewer" is a read-only specialist
+ok   (d-real) REAL store NEGATIVE CONTROL: the same task pairs with the write-capable member — ["sess-w"]
+ok   (c-real) REAL store: the bound phantom resolves NOTHING and is marked terminal with a reason — resolved=(none) reaped=["team-phantom"] phase=ended
+ok   (registry-real) REAL store: the terminal team's OWN bound lead no longer resolves it — bound=team-phantom resolved=(none)
+ok   (f1) mid-run create_task appends to the LIVE APPROVED record with kind/coverageOf/sourceTaskId — appended=task T3 "the repair" appended to the live team team-20261014102620342-7sb8-002 kind=repair coverageOf=C7-4 F1 sourceTaskId=T1
+ok   (f1-neg-staged-approved) NEGATIVE CONTROL: a staged-but-approved plan still refuses — plan plan-stranded-1 is already approved; stage a new one to change the team
+ok   (f1-neg-no-team) NEGATIVE CONTROL: no staged plan and no live team keeps the standing sentence — no team is staged in this session — call agent_teams_create first
+ok   (f2) a member session whose id IS the executorRef closes a row owned by its NAME — refused=(none) closedBy=owner status=completed
+ok   (f2-neg) NEGATIVE CONTROL: a roster member still cannot close a row it does not own — task T1 is owned by "Senior Engineer" and this caller is neither that owner nor this team's lead
+ok   (f3) mailbox summary is FILTERED to the resolved team and labelled scope:team — scope=team ids=["M1"]
+ok   (f3-neg) NEGATIVE CONTROL: no resolved team answers scope:workspace and the WHOLE fold — scope=workspace ids=["foreign-sess"]
+ok   (f4) two mints in the SAME millisecond differ (team and plan) — teamA=team-20261014120000000-7sb8-00b teamB=team-20261014120000000-7sb8-00c planA=plan-20261014120000000-7sb8-00d planB=plan-20261014120000000-7sb8-00e
+ok   (f4-neg-team) NEGATIVE CONTROL: a colliding TEAM id reddens (createTeam refuses an existing id) — team id "team-fixed-1" already exists in this workspace — refusing to overwrite a team record
+ok   (f4-neg-plan) NEGATIVE CONTROL: a colliding PLAN id reddens (archivePlan refuses an existing archive) — plan id "plan-20261014120000000-7sb8-00f" is already archived in this workspace — refusing to overwrite an archived plan
+ok   (f5) a forked lead session resolves and closes as lead, and the heal PERSISTS (history + registry) — closedBy=lead history=["lead-fork-2"] bound=team-20261014102620351-7sb8-00h
+ok   (f5-neg-unbound) NEGATIVE CONTROL: an unbound session with no history is still refused — no team record in this workspace — approve a plan first
+ok   (f5-neg-child) NEGATIVE CONTROL: a delegation CHILD of the lead is NOT healed into the lead history — no team record in this workspace — approve a plan first; history=["lead-fork-2"]
+evidence -> evidence/tui/dsh-tui-015/guard/c74/lane-run-final-20261014T102620Z

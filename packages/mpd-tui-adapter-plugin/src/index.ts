@@ -616,6 +616,14 @@ export interface HostPrefsProbeResult {
   /** The host root the store was loaded from. */
   root?: string
   /**
+   * The installed host package's own version, read from the SAME root the store bound ({@link
+   * readHostPackageVersion}), for the C2 self-heal gate: a host at or past
+   * {@link PANEL_CSV_SELF_HEAL_SINCE} unions registered ids back into the enable CSV itself, so the
+   * enable-list keeper stands down instead of racing it. ABSENT (or empty, or unparseable) leaves the
+   * keeper in its legacy behaviour — the degrade-safe half of the pair, never a guess.
+   */
+  hostVersion?: string
+  /**
    * The host's CURRENT default enable list, read from the SAME module contact and normalized.
    *
    * It is the target the stale-default migration ({@link mergePanelEnableIds}) is defined against, so
@@ -681,6 +689,9 @@ export async function probeHostPrefs(candidates: readonly string[]): Promise<Hos
           ...(feed === undefined ? {} : { subscribeSidePanelPanels: (listener: () => void): unknown => feed(listener) }),
         },
         root,
+        // C2: the version rides the SAME probe answer the keeper decides from, so the gate is a fact
+        // about the very host the store bound — not a second read that could name another candidate.
+        hostVersion: readHostPackageVersion(root),
         ...(hostDefault === "" ? {} : { defaultIds: hostDefault }),
       }
     } catch (error) {
@@ -929,6 +940,46 @@ export function mergePanelEnableIds(existing: unknown, ours: readonly string[], 
 }
 
 /**
+ * The first dsh-tui release whose host SELF-HEALS the sidebar enable CSV (measured,
+ * `evidence/tui/dsh-tui-015/host-diff/FACTS.md`, V1/V3).
+ *
+ * From 0.15.0 on, `TuiPanelRuntime.register()` feeds `registeredPanelIds`, the boot/mirror apply
+ * (`applyConfiguredSidePanelPanels`) unions registered ids back unless explicitly removed, `/settings`
+ * live edits record removals session-wide (`applySidePanelPanelsFromSettings` + `removedPanelIds`),
+ * and the only CSV writer left is that settings-apply hop. The enable-list keeper's charter — repair
+ * the append the host's own re-apply dropped — therefore no longer exists there, and C2 re-specs it:
+ * on these hosts the keeper STANDS DOWN and writes nothing, so it can never race (or undo) the host's
+ * own union or re-add a panel the user explicitly removed.
+ */
+export const PANEL_CSV_SELF_HEAL_SINCE = "0.15.0"
+
+/**
+ * Whether one host version self-heals the sidebar enable CSV, i.e. whether the enable-list keeper
+ * must stand down (clause C2).
+ *
+ * DEGRADE-SAFE BY CONSTRUCTION: an empty, absent or unparseable version answers FALSE, so the keeper
+ * keeps its full legacy behaviour on exactly the hosts whose behaviour it pinned — the gate can only
+ * ever STAND THE KEEPER DOWN on a version it could actually read and compare.
+ * @param version - the installed host package's version, from {@link readHostPackageVersion}; "" or
+ *   garbage reads as "does not self-heal".
+ * @returns true only when the version parses and is at or past {@link PANEL_CSV_SELF_HEAL_SINCE}.
+ */
+export function hostSelfHealsPanelCsv(version: string): boolean {
+  /** The leading `major.minor.patch` of the version, when it carries a readable one. */
+  const match = /^(\d+)\.(\d+)\.(\d+)/.exec(version.trim())
+  if (match === null) return false
+  /** The first host release that self-heals, pre-split once so the comparison reads as a rank. */
+  const since = PANEL_CSV_SELF_HEAL_SINCE.split(".").map((part) => Number.parseInt(part, 10))
+  /** The parsed version, in the same rank order. */
+  const parsed = [Number(match[1]), Number(match[2]), Number(match[3])]
+  for (let rank = 0; rank < 3; rank += 1) {
+    if (parsed[rank] > since[rank]) return true
+    if (parsed[rank] < since[rank]) return false
+  }
+  return true
+}
+
+/**
  * The settle ladder's delays, in milliseconds FROM ARMING — the DEGRADATION, used only on a host whose
  * live setting exposes no change feed.
  *
@@ -1053,6 +1104,8 @@ export function createPanelEnableKeeper(options: PanelEnableKeeperOptions): Pane
   let onFeed = false
   /** The host's unsubscribe, once the change feed is in force. */
   let releaseFeed: (() => void) | undefined
+  /** The observe-only belt's unsubscribe, once the C2 self-heal stand-down installed one. */
+  let releaseBelt: (() => void) | undefined
   /**
    * Set while this keeper's own write is in flight.
    *
@@ -1309,6 +1362,89 @@ export function createPanelEnableKeeper(options: PanelEnableKeeperOptions): Pane
   const standDown = (): void => {
     cancelLadder()
     releaseFeedNow()
+    releaseBeltNow()
+  }
+
+  /**
+   * Release the observe-only belt's subscription, when one was installed.
+   *
+   * The belt is NOT the repair feed: it exists only to say, once, whether the host's own union
+   * actually re-added our ids on a self-healing host (clause C2's optional belt). It unsubscribes
+   * itself after its first line, so this is usually already a no-op — `standDown()` calls it so a
+   * scope disposal never leaks a listener on a host whose feed never fired.
+   */
+  const releaseBeltNow = (): void => {
+    if (releaseBelt === undefined) return
+    /** The belt's unsubscribe, taken and cleared so a second call is a no-op. */
+    const release = releaseBelt
+    releaseBelt = undefined
+    try {
+      release()
+    } catch {
+      // Same tolerance as the repair feed: a host unsubscribe that throws never breaks a stop.
+    }
+  }
+
+  /**
+   * Stand the keeper down because the HOST itself self-heals the enable CSV (clause C2).
+   *
+   * THE KEEPER WRITES NOTHING TO THE ENABLE-LIST CSV on this path — not on this tick, not on a later
+   * feed notification, not ever: the host's own `applyConfiguredSidePanelPanels` union is the only
+   * writer our ids need, an explicit `/settings` removal is recorded by the host session-wide, and a
+   * repair from here could only race the host's own merge or undo a removal the user asked for. The
+   * ladder is cancelled and the ONE line says why the keeper is silent. The optional belt below then
+   * observes the FIRST host apply through the store's own feed and logs whether our ids survived it — a
+   * behaviour assertion with no writes to that CSV, so a union that silently failed is at least VISIBLE
+   * in the log.
+   *
+   * THE SCOPE OF "NOTHING" IS THE CSV, NOT THE FILESYSTEM, and the difference is observable rather than
+   * rhetorical: this path still calls {@link settle}, whose `announce()` hands the outcome to the mounted
+   * row's own `onChange` consumer, and THAT consumer writes the discovered-ids record
+   * (`<root>/.mpd/logs/` + {@link PANEL_IDS_RECORD_NAME}) through {@link recordPanelIds}. So a reader
+   * checking "did the stood-down keeper leave no file behind" would be looking at the wrong artifact:
+   * the record is written on every settle, including this stand-down, and the CSV is the ONE thing this
+   * path never touches.
+   * @param prefs - the bound host store, from the probe answer that carried the version.
+   * @param version - the host version the gate parsed; carried into the line so a log reader can
+   *   tell WHICH host release stood the keeper down.
+   */
+  const standDownToHostUnion = (prefs: TuiHostPrefsLike, version: string): void => {
+    ticks += 1
+    settle("confirmed", `standing down: the host ${version} self-heals the enable CSV (>= ${PANEL_CSV_SELF_HEAL_SINCE}), so this keeper writes nothing and the host's own union is the only writer`)
+    cancelLadder()
+    options.log?.(`mpd-tui panel enable keeper: standing down on host ${version} — the host self-heals the sidebar enable CSV, so this keeper never writes`)
+    // THE OBSERVE-ONLY BELT: subscribe through the store's OWN feed, read the FIRST change, say ONE
+    // line about whether the host union kept our ids, and leave. No write path exists here — the
+    // belt's listener reads `getSidePanelPanels` and nothing else.
+    /** The store's subscribe member, narrowed once; absent on a feed-less build, which costs the belt only. */
+    const subscribe = prefs.subscribeSidePanelPanels
+    if (typeof subscribe !== "function") return
+    /** Whether the belt has said its one line; a feed that fires again stays silent. */
+    let said = false
+    try {
+      /** The host's unsubscribe for the belt, when it returned one. */
+      const release = subscribe((): void => {
+        if (said) return
+        said = true
+        try {
+          /** The list as the host's own apply left it, normalized exactly as the merge reads it. */
+          const csvNow = normalizePanelCsv(prefs.getSidePanelPanels())
+          /** Which of our ids the host's union kept. */
+          const kept = ours.filter((id) => csvNow.split(",").includes(id))
+          options.log?.(`mpd-tui panel enable keeper (observe-only): after the host's own apply the enable list is "${csvNow}"; ${kept.length === ours.length ? `it still carries every id of ours (${kept.join(",")})` : kept.length === 0 ? "it carries NONE of our ids — the host union did not re-add them" : `it carries only ${kept.join(",")} of our ids — the union did not re-add the rest`}`)
+        } catch {
+          // The belt is diagnostic: a throwing read costs its one line, never the boot.
+        }
+        releaseBeltNow()
+      })
+      if (typeof release === "function") {
+        releaseBelt = release as () => void
+        // A store that fired SYNCHRONOUSLY during the subscribe already said the line — release now.
+        if (said) releaseBeltNow()
+      }
+    } catch {
+      // A feed that refuses the belt costs the belt only — the stand-down above already stands.
+    }
   }
 
   /**
@@ -1358,6 +1494,15 @@ export function createPanelEnableKeeper(options: PanelEnableKeeperOptions): Pane
       if (probe.prefs === undefined) {
         ticks += 1
         settle("absent", probe.detail ?? "the host exposes no side-panel enable store")
+        return
+      }
+      // C2 — THE HOST VERSION GATE comes BEFORE either repair path: a host at or past
+      // PANEL_CSV_SELF_HEAL_SINCE unions our registered ids back itself (and records explicit
+      // `/settings` removals session-wide), so every write this keeper could still make is a race
+      // against the host's own merge — or the undo of a removal the user asked for. An unreadable,
+      // empty or older version falls through to the legacy behaviour untouched, byte for byte.
+      if (hostSelfHealsPanelCsv(probe.hostVersion ?? "")) {
+        standDownToHostUnion(probe.prefs, probe.hostVersion ?? "")
         return
       }
       // THE FEED OUTRANKS THE LADDER, and the hand-off is attempted on EVERY tick until it lands: a host
@@ -2327,7 +2472,13 @@ export interface TuiDecisionOptions {
   scope?: string
   /** The listener order the host applies. */
   order?: string
-  /** The consumer context handed to the host as the registration identity. */
+  /**
+   * Retained for source compatibility and deliberately NOT forwarded: a mediated decision
+   * subscription's identity must be the CALLING ACTIVATION, which this adapter supplies from the
+   * bound injected scope (the same rule as {@link TuiAdapter.setStatus}). The host's
+   * `assertCallerContext` compares the identity against the caller it resolved for THIS activation
+   * and refuses anything else, so a consumer-supplied ctx here is a guaranteed refusal.
+   */
   identity?: unknown
 }
 
@@ -3278,26 +3429,32 @@ export function createTuiAdapter(ctx: PluginContextLike, options: TuiAdapterOpti
       whenBoundInternal("pluginHost", (service, scope) => {
         /** The bound mediated host, before any of its members is trusted. */
         const host = service as TuiPluginHostLike
-        /** The consumer context handed to the host as the activation identity. */
-        const identity = options.identity ?? fallbackIdentity
         if (typeof host?.subscribeDecision !== "function") {
           outcome = { id: TUI_SEAMS.pluginHost, state: "refused", detail: `${TUI_SEAMS.pluginHost}.subscribeDecision is missing` }
           return
         }
         supported = true
+        // THE IDENTITY IS THE CALLING ACTIVATION (the bound injected scope), never the consumer's
+        // ctx: the host's `assertCallerContext(caller, …)` compares the identity against the caller
+        // it resolved for THIS activation and refuses anything else, which is why every mediated
+        // decision subscription threw before either ledger record site (MEASURED 2026-10-11, lane
+        // `evidence/tui/dsh-tui-015/decision-fix/`: the ledger carried zero decision records while
+        // STATUS records did carry the plugin id). Same rule as `setStatus` above: the `identity`
+        // field of {@link TuiDecisionOptions} is kept for source compatibility only and is
+        // deliberately NOT forwarded.
         // The grant facade is the honest authorization state and is read FIRST, exactly as the
         // caller-facing contract states it; undefined means the host cannot be asked, in which
         // case nothing may be reported as confirmed.
         try {
           /** The caller-safe grant facade, when the host exposes one. */
           const facade = host.grants
-          if (facade !== undefined && typeof facade.allows === "function") granted = facade.allows(identity, event, options.scope ?? event) === true
+          if (facade !== undefined && typeof facade.allows === "function") granted = facade.allows(scope, event, options.scope ?? event) === true
         } catch {
           granted = undefined
         }
         try {
           /** The host's handle; a refusal returns a no-op disposer, never called as a probe. */
-          const disposer = host.subscribeDecision(identity, event, listener, {
+          const disposer = host.subscribeDecision(scope, event, listener, {
             ...(options.scope === undefined ? {} : { scope: options.scope }),
             ...(options.order === undefined ? {} : { order: options.order }),
           })

@@ -1,0 +1,85 @@
+{
+  "runner": "scripts/run-qa-lanes.ts",
+  "root": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "manifest": "skills/dsh-qa/cases.json",
+  "manifestSha256": "93eaf2aebd79990e75cad29086d10090995415f2c9794ee79c876b727139b482",
+  "suite": "(only)",
+  "selected": 1,
+  "startedAt": "2026-10-14T09:13:48.682Z",
+  "finishedAt": "2026-10-14T09:13:48.697Z",
+  "durationMs": 15,
+  "complete": true,
+  "exitCodes": {
+    "allGreen": 0,
+    "someUnavailable": 2,
+    "someFailed": 1,
+    "runnerError": 3
+  },
+  "drift": {
+    "unlistedScripts": [
+      "skills/dsh-qa/scripts/delegation-gate.ts",
+      "skills/dsh-qa/scripts/model-config-live-refresh.ts"
+    ],
+    "missingScripts": [],
+    "countDrift": {
+      "discovered": 48,
+      "allTsEntries": 48,
+      "listed": 46,
+      "unlisted": 2,
+      "outsideSuites": 19,
+      "excludedUnderscore": [],
+      "unexpectedDrop": [],
+      "partition": {
+        "discoveredPlusExcludedEqualsAllTs": true,
+        "ok": true
+      },
+      "problems": []
+    },
+    "guard": {
+      "required": [
+        "team-dispatch-guard",
+        "team-watchdog-boot",
+        "team-watchdog-config",
+        "team-watchdog-heartbeat",
+        "team-watchdog-notify",
+        "tui-settings-bridge",
+        "watchdog-redesign",
+        "wave2b-lane-d",
+        "web-settings-bridge"
+      ],
+      "exemptCount": 37,
+      "undeclared": [],
+      "malformed": [],
+      "missingImports": [],
+      "empty": false
+    }
+  },
+  "lanes": [
+    {
+      "case": "team-dispatch-guard",
+      "kind": "lane",
+      "verdict": "pass",
+      "reason": null,
+      "note": null,
+      "exitCode": 0,
+      "signal": null,
+      "durationMs": 13,
+      "command": "bun skills/dsh-qa/scripts/team-dispatch-guard.ts --no-skip",
+      "script": "skills/dsh-qa/scripts/team-dispatch-guard.ts",
+      "marker": null,
+      "signature": null,
+      "alsoDetected": [],
+      "declaredPrereq": [],
+      "evidencePath": "evidence/dsh-qa/team-dispatch-guard/2026-10-14T09-13-48-695Z",
+      "logPath": "evidence/tui/dsh-tui-015/q-run/guard-lane/lanes/team-dispatch-guard.log",
+      "outputTail": [],
+      "suite": "(only)"
+    }
+  ],
+  "counts": {
+    "pass": 1,
+    "unavailable": 0,
+    "fail": 0
+  },
+  "exitCode": 0
+}

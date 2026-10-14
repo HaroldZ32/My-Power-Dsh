@@ -1,0 +1,3 @@
+1e4a018de242f8ed5cc695bb5e9e6620260a644002bc5c5d72ac769649336491  packages/mpd-tui-adapter-plugin/src/index.ts
+c9d76265dfa2298e9cf3463839dd05ead6b71ce27565b0fc4237bc38890cfdcc  packages/mpd-tui-adapter-plugin/dist/index.js
+9315076d2acebddb942bda5a0490adf178abe040c34f76f9b51fff14bba65352  packages/mpd-tui-plugin/dist/index.js

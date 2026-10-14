@@ -9,10 +9,14 @@
 // default `todo,jobs,agents` while the user layer is unset, so the appended ids are dropped and the
 // sidebar paints the host's three builtins only — the reported symptom 「只有任务/待办/代理」.
 //
-// THE RELEASE THIS BUNDLE NOW TARGETS IS 0.14.0, and the defect is unchanged there: the MEASURED
-// 0.14.0 boot appended the same ids (`act1:team,act1:dag,act1:workmate`) and the host's own re-apply
-// dropped them again (frozen contract `F5`, `.mpd/plans/tui-014-adaptation.md`), so this remedy is
-// still the user path on the installed host. The paragraph above stays the 0.13.0 measurement it was.
+// THE RELEASE THIS BUNDLE NOW TARGETS IS 0.15.0, where the host SELF-HEALS the sidebar CSV: a
+// successful registration unions its panel id back into `dsh-tui.sidePanel.panels`, and the only CSV
+// writer left is the `/settings` apply hop (measured,
+// `evidence/tui/dsh-tui-015/host-diff/FACTS.md`), so the remedy below is the LEGACY-HOST path.
+// On 0.14.0 and older the defect stood: the MEASURED 0.14.0 boot appended the same ids
+// (`act1:team,act1:dag,act1:workmate`) and the host's own re-apply dropped them again (frozen
+// contract `F5`, `.mpd/plans/tui-014-adaptation.md`). The paragraph above stays the 0.13.0
+// measurement it was.
 //
 // WHAT IT WRITES, AND WHERE — the SETTINGS USER LAYER, which is the profile's own patch file. That
 // is the host's own resolution, not a guess: `dsh-config-editor`'s `ConfigEditor` answers

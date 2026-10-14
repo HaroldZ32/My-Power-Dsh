@@ -1,0 +1,35 @@
+{
+  "ok": false,
+  "durationMs": 20283,
+  "assertion": "harness-recorded tool list (request/header.header.tools) + harness-recorded tool/call with a non-error result carrying the fixture line",
+  "enum": {
+    "exit": 0,
+    "recordedToolCount": 95,
+    "recordedMcpTools": [
+      "mcp__ast_grep__rewrite",
+      "mcp__ast_grep__scan",
+      "mcp__ast_grep__search",
+      "mcp__codegraph__codegraph_explore",
+      "mcp__context7__query-docs",
+      "mcp__context7__resolve-library-id",
+      "mcp__grep_app__searchGitHub"
+    ],
+    "hasAstGrep": true,
+    "hasLsp": false,
+    "sessionError": null,
+    "proseListedBoth": false
+  },
+  "call": {
+    "exit": 0,
+    "tool": "mcp__ast_grep__search",
+    "called": true,
+    "succeeded": true,
+    "resultChars": 622,
+    "resultHasFixtureLine": true,
+    "resultHasBinaryNotFound": false,
+    "reason": null,
+    "sessionError": null,
+    "proseHasAstGrepWord": true,
+    "proseHasBinaryNotFound": false
+  }
+}

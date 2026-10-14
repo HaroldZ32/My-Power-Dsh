@@ -7,7 +7,7 @@
 //     plus a `pipe-pane` raw ANSI log;
 //   • a tmux server does not survive across shell invocations, so ONE process owns
 //     the whole lifecycle (spawn, drive, capture, kill);
-//   • `dsh plugin --profile dsh-tui add @deepseek-harness-tui/dsh-tui@0.14.0` needs
+//   • `dsh plugin --profile dsh-tui add @deepseek-harness-tui/dsh-tui@0.15.0` needs
 //     network on first run, so the lanes take an EXPLICIT sandbox/cache root
 //     (`--sandbox-root`, recorded in every result) and reuse a warm profile instead
 //     of reinstalling: a verification run that is handed a different root proves it
@@ -415,6 +415,70 @@ export function tmuxPresent(): boolean {
   return onPath("tmux") !== null
 }
 
+/** The host's DATA_DIR inside a sandbox root: the host resolves it as `homeDir()/.dsh-tui`, and `homeDir()` honours `$HOME`, which every lane boot pins to `<root>/home`. */
+export function sandboxDataDir(root: string): string {
+  return join(root, "home", ".dsh-tui")
+}
+
+/** The host's extension-grants.json path inside a sandbox root — the decision-events grant file the host re-reads on every authorize operation. */
+export function sandboxGrantFile(root: string): string {
+  return join(sandboxDataDir(root), "extension-grants.json")
+}
+
+/** The host's append-only effect ledger inside a sandbox root (JSONL, one record per line; attribution rides each record's `pluginId`). */
+export function sandboxEffectLedgerFile(root: string): string {
+  return join(sandboxDataDir(root), "effect-ledger.jsonl")
+}
+
+/** One parsed effect-ledger record: the attribution fields the lanes assert on, with every further field kept verbatim. */
+export interface LedgerRecord {
+  /** The verified Component identity the record is attributed to (`'undeclared'` without one). */
+  readonly pluginId?: unknown
+  /** The recorded operation (`bind`, `release`, …). */
+  readonly operation?: unknown
+  /** The resource the operation touched, carrying `kind` and `id`. */
+  readonly resource?: { readonly kind?: unknown; readonly id?: unknown }
+  /** The recorded result (`applied`, `failed`, …). */
+  readonly result?: unknown
+  /** The error code a failed record carries (`PERMISSION_NOT_GRANTED`, …). */
+  readonly errorCode?: unknown
+  /** Any further field the host wrote; the readers never inspect it. */
+  readonly [key: string]: unknown
+}
+
+/** Read the effect ledger tolerantly: one JSON record per non-empty line, corrupt lines skipped — the same posture the host's own diagnostics readers take. */
+export function readLedgerRecords(file: string): LedgerRecord[] {
+  /** The records parsed so far; a corrupt line contributes nothing. */
+  const records: LedgerRecord[] = []
+  if (!existsSync(file)) return records
+  for (const line of readFileSync(file, "utf8").split("\n")) {
+    if (line.trim() === "") continue
+    try {
+      /** The parsed line, kept only when it is an object. */
+      const parsed: unknown = JSON.parse(line)
+      if (parsed !== null && typeof parsed === "object") records.push(parsed as LedgerRecord)
+    } catch {
+      // A corrupt line is skipped, never fatal — the ledger is observability, not a gate.
+    }
+  }
+  return records
+}
+
+/** One grant row of the host's extension-grants.json object schema: `{name, scope}` (a legacy bare-string row NEVER authorizes). */
+export interface GrantFileRow {
+  /** The permission name being granted, e.g. `session.input.intercept`. */
+  readonly name: string
+  /** The scope the permission is granted at, e.g. `tui/input`. */
+  readonly scope: string
+}
+
+/** Write the fail-closed object-schema grants document for one component id, creating the DATA_DIR when absent. */
+export function writeExtensionGrants(file: string, componentId: string, rows: readonly GrantFileRow[]): void {
+  mkdirSync(dirname(file), { recursive: true })
+  writeFileSync(file, JSON.stringify({ grants: { [componentId]: rows } }, null, 2) + "\n")
+}
+
+
 /**
  * The path of the host's own `dsh-ecosystem-spec` CHECKOUT, when this host can have one.
  *
@@ -456,6 +520,14 @@ export interface SpecDataRootCandidate {
  */
 export function specDataRootCandidates(hostRoot: string | undefined): SpecDataRootCandidate[] {
   return [
+    // THE PAYLOAD'S OWN `tui-profile/` IS FIRST because that is the location the running host
+    // itself resolves — its `locateSpecDir()` (lib/types/adapter/standard/registry.js, identical in
+    // 0.14.0 and 0.15.0) walks up from its module until `<pkgRoot>/tui-profile/registry/registry-0.15.json`
+    // exists. MEASURED 2026-10-14 on this machine: neither the 0.14.0 global payload nor the 0.15.0
+    // sandbox payload ships a `dsh-ecosystem-spec/` directory, so without this candidate the static
+    // admission arm cannot resolve the spec data at all once the operator checkout is absent — the
+    // historical runs resolved through `user-checkout` on a machine that had one.
+    { kind: "installed-payload", dir: hostRoot === undefined ? undefined : join(hostRoot, "tui-profile") },
     { kind: "installed-payload", dir: hostRoot === undefined ? undefined : join(hostRoot, "dsh-ecosystem-spec") },
     { kind: "user-checkout", dir: resolveSpecCheckout() },
   ].filter((candidate): candidate is SpecDataRootCandidate => candidate.dir !== undefined)
@@ -875,7 +947,10 @@ export interface TuiSessionOptions {
   readonly steps?: readonly TuiStep[]
   /** How long the first boot may take before the chat screen must appear, in milliseconds. */
   readonly bootWaitMs?: number
-  /** Pattern marking the CHAT screen as ready; the default accepts the English and Chinese prompts. */
+  /**
+   * Pattern marking the CHAT screen as ready; the default ({@link TUI_READY_PATTERN}) accepts the
+   * English and Chinese prompts only once the host's boot overlay is gone.
+   */
   readonly readyPattern?: RegExp
   /** tmux pane width in columns; defaults to 220. A wider pane is what makes a long host hint fit. */
   readonly paneWidth?: number
@@ -890,6 +965,24 @@ export interface TuiSessionOptions {
    * exits 1, and the pane never paints. The old host's OWN `bin/dsh-tui.js` accepts its own version.
    */
   readonly bootCommand?: string
+  /**
+   * Redirect the booted host's STDERR into this file instead of leaving it on the pane's terminal.
+   *
+   * On harness 0.15.0 the host's `logForDebugging` writes a `park target=…` trace to stderr on EVERY
+   * frame while `DSH_TUI_DEBUG` is set (host `lib/types/utils/debug.js`), and a lane that enables the
+   * debug line writes ~15k diagnostic lines INTO the pane: the chat screen never paints, the readiness
+   * poll times out and every pane-reading arm measures the flood instead of the surface. Redirecting
+   * fd 2 keeps the diagnostic stream (the admission-loader line arm 2 reads) while the pane keeps the
+   * rendered frame. The file is the caller's to read; it must live inside the sandbox evidence dir.
+   */
+  readonly stderrFile?: string
+  /**
+   * Extra environment keys layered onto the `env -i` boot list, e.g. `DSH_TUI_DEBUG=1` so the host's
+   * admission-loader debug lines reach the pane stream. The explicit-list discipline is kept: a key
+   * named here is APPENDED after the defaults, so an extra can override a default value but can never
+   * smuggle in an ambient key the list did not name.
+   */
+  readonly extraEnv?: Env
 }
 
 /** One captured tmux pane. */
@@ -955,20 +1048,44 @@ export function clearWatchdogReplay(workspace: string): string[] {
   return removed
 }
 
+/** The private tmux socket path a lane's `runTuiSession` lifecycle owns — single-sourced so an interactive step-hook talks to the SAME server the lifecycle drives. */
+export function laneSocket(root: string, lane: string): string {
+  return join(root, lane + ".sock")
+}
+
+/** Capture the CURRENT pane text of a running `runTuiSession` lifecycle (joined lines, no file write) — the interactive drivers' read primitive between key presses. */
+export function captureTuiPane(root: string, lane: string): string {
+  return tmux(laneSocket(root, lane), ["capture-pane", "-p", "-J", "-t", "tui"]).stdout
+}
+
+/**
+ * The readiness pattern {@link runTuiSession} boots every lane with by default.
+ *
+ * The original `/❯|esc to interrupt|按 Esc/` was FALSIFIED by the host: the SPLASH already draws the
+ * prompt box's `❯`, so the pattern matched before the session existed and the lane judged a boot
+ * overlay. MEASURED 2026-10-14 on the sandbox 0.15.0 payload: `tui-mount`'s boot pane carried
+ * `正在启动 DSH…` and its status-line/counter/session assertions all read absent, while the same boot
+ * reaches a real chat screen ~30-60 s in. The negative lookahead keeps the prompt-box alternatives
+ * and adds the ABSENCE of the host's two boot markers (host `i18n.js`: `status-starting`
+ * `正在启动 {{backend}}…` / `Starting …`, `startup-not-ready` `… 还在启动——就绪后按 Enter 发送` /
+ * `… is still starting …`), so the pattern means "the chat screen is ready", not "a `❯` is painted".
+ */
+export const TUI_READY_PATTERN = /^(?![\s\S]*(?:正在启动 DSH|还在启动|Starting DSH|still starting))[\s\S]*(?:❯|esc to interrupt|按 Esc)/
+
 /**
  * Boot the real TUI inside tmux, drive it, capture, kill — inside THIS process.
  *
  * @param options.lane - lane slug (socket name + evidence labels).
  * @param options.root - sandbox root (recorded in the result).
  * @param options.outDir - evidence directory for the panes/log.
- * @param options.steps - `{ name, keys: string[], waitMs }`; `keys` are tmux
+ * @param options.steps - `{ name, keys: string[] waitMs }`; `keys` are tmux
  *   `send-keys` arguments (a literal string, or `Enter`/`Escape`/`M-w`).
  * @param options.bootWaitMs - how long the first boot may take.
  */
-export function runTuiSession({ lane, root, outDir, steps = [], bootWaitMs = 90_000, readyPattern = /❯|esc to interrupt|按 Esc/, paneWidth = 220, paneHeight = 50, bootCommand = "dsh-tui" }: TuiSessionOptions): TuiSessionResult {
+export function runTuiSession({ lane, root, outDir, steps = [], bootWaitMs = 90_000, readyPattern = TUI_READY_PATTERN, paneWidth = 220, paneHeight = 50, bootCommand = "dsh-tui", extraEnv = {}, stderrFile }: TuiSessionOptions): TuiSessionResult {
   mkdirSync(outDir, { recursive: true })
-  /** The private tmux socket for this lane; `-S` keeps the server off the operator's own socket. */
-  const socket = join(root, lane + ".sock")
+  /** The private tmux socket for this lane; `-S` keeps the server off the operator's own socket (single-sourced in {@link laneSocket}). */
+  const socket = laneSocket(root, lane)
   /** The raw ANSI log `pipe-pane` writes and the reviewer reads. */
   const logFile = join(outDir, "tui-pane.log")
   /** Captures in drive order — the evidence every pane assertion reads. */
@@ -999,9 +1116,15 @@ export function runTuiSession({ lane, root, outDir, steps = [], bootWaitMs = 90_
     // The launchpad gate is an ENV key, so it must ride the explicit list above: `env -i` drops every
     // ambient key, and a lane booted without it never reaches the chat screen on 0.13.0.
     "DSH_TUI_NO_LAUNCHPAD=" + String(env.DSH_TUI_NO_LAUNCHPAD ?? "1"),
-    "TERM=xterm-256color"]
+    "TERM=xterm-256color",
+    // Caller-named extras ride AFTER the defaults (see TuiSessionOptions.extraEnv): the env -i list
+    // stays explicit — nothing ambient leaks in — while a lane can still name one more key on purpose.
+    ...Object.entries(extraEnv).filter((entry): entry is [string, string] => entry[1] !== undefined).map(([key, value]) => key + "=" + value)]
   /** The whole `env -i … <bootCommand>` command line typed into the pane. */
   const boot = "env -i " + envArgs.map((entry) => "'" + entry + "'").join(" ") + " " + bootCommand
+    // A caller-named stderr sink is appended as a SHELL redirection: the pane's terminal then carries
+    // the rendered frame only, while the diagnostic stream lands in the file (see {@link TuiSessionOptions.stderrFile}).
+    + (stderrFile === undefined ? "" : " 2> '" + stderrFile + "'")
   // BEFORE the boot: a replayed incident dialog would own the keyboard for the whole drive (see
   // {@link clearWatchdogReplay}), so the sandbox's own replay history is dropped first.
   const replayStateCleared = clearWatchdogReplay(join(root, "ws"))
@@ -1159,7 +1282,7 @@ export interface TuiPrereqOptions {
 /** Declared prerequisites, in check order. */
 export function tuiPrereqs({ sandboxPresent, hostInstallRefusal }: TuiPrereqOptions): TuiPrereq[] {
   return [
-    { code: "absent-dsh-binary", probe: "dsh-tui", remedy: "npm i -g @deepseek-harness-tui/dsh-tui@0.14.0", present: tuiBinaryPresent },
+    { code: "absent-dsh-binary", probe: "dsh-tui", remedy: "npm i -g @deepseek-harness-tui/dsh-tui@0.15.0", present: tuiBinaryPresent },
     { code: "absent-runtime", probe: "tmux", remedy: "apt-get install tmux (a real TTY is required; stdout must not be a pipe)", present: tmuxPresent },
     // CHECKED BEFORE `absent-fixture`, and it exists because that one LIED. When `--install` ran and
     // the harness REFUSED the host on peer ranges, the run fell through to `requested-absent-fixture`

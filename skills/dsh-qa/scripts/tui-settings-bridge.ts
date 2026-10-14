@@ -4,8 +4,8 @@
 // It asserts the TUI SURFACE against the built bytes, which is what this environment can
 // witness without a TTY:
 //   • every `/settings` hint carries the true post-bridge disclosure (a save writes
-//     `<workspace>/.mpd/mpd.jsonc` for the live session workspace(s) and takes effect for the
-//     mpd plugins after a restart) and the pre-t35 "not bridged" sentence is DELETED;
+//     `<workspace>/.mpd/mpd.jsonc` for the live session workspace(s) and takes effect in the
+//     RUNNING process — no restart) and the pre-t35 "not bridged" sentence is DELETED;
 //   • the §D.2 `no-live-session` RUNTIME NOTICE is present in the built bytes AND wired into
 //     the status-line composition (a notice merely defined would be invisible on screen);
 //   • the TUI package still performs ZERO filesystem writes.
