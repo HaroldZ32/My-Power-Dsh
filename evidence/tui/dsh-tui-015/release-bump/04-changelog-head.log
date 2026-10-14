@@ -1,0 +1,44 @@
+$ head -n 40 CHANGELOG.md
+
+# Changelog
+
+Human-readable release notes for **my-power-dsh** (`@mpd-dsh/mpd`). Newest first, one section per
+released version, the changes grouped by kind (`Added`, `Changed`, `Fixed`, `Removed`). This file is
+English-only and is NOT part of the bilingual docs band (AGENTS.md Language policy polices `docs/**`,
+`packages/*/README.md`, `extensions/**`, `templates/**` and the root `README`).
+
+Further reading:
+
+- [`README.md`](./README.md) — what the bundle is, and how to install it;
+- [`CONTRIBUTING.md`](./CONTRIBUTING.md) — development setup, gates and the git model;
+- [`docs/index.md`](./docs/index.md) — the documentation hub;
+- [Releases](https://github.com/HaroldZ32/My-Power-Dsh/releases) — the annotated tags, newest first;
+- [`VENDOR_LOCK.json`](./VENDOR_LOCK.json) — the pinned upstream baseline each release is measured
+  against.
+
+## v0.13.0 — two host adaptations and a leaner captain: dsh-tui 0.15.0, live team surfaces, the MIT re-source, the win32 band, and the keeper that knows when to stand down
+
+This entry covers the FULL delta since v0.12.0 (user-mandated): two DSH-TUI adaptation waves (0.14.0
+then 0.15.0), the de-vendor/re-source chapter, the delegation and question-guard hardware, the win32
+compatibility band, the live team surfaces, the model-route repairs, and this wave's three functional
+clauses (the keeper re-spec, the decision-events grant flow, the 0-task DAG fix) plus the team
+dispatch guards.
+
+**Changed — the DSH-TUI edition moved two host releases, and both were carrier moves plus
+user-visible repairs.**
+
+- **Adapted to `@deepseek-harness-tui/dsh-tui` 0.14.0, then 0.15.0.** Both moves left the fifteen
+  plugin-facing `ctx.tui*` seams untouched (0.14.0: byte-identical; 0.15.0: additive-only `.d.ts`
+  declarations — `applyConfiguredSidePanelPanels`/`applySidePanelPanelsFromSettings` on `panels`,
+  `probeBackendAdmission` on `plugin-host`), so neither needed an adapter seam change. 0.14.0 brought
+  the eighth builtin panel (`btw`) and a carousel `PanelBar` that stopped painting icons; **0.15.0
+  paints icons again** (an inactive tab draws `tab.icon ?? <title's first character> ?? '?'` plus the
+  unread count — re-measured, see `docs/tui.md` §11.7). The version pin moved in every carrier both
+  times (`docker/**`, `dsh-distribution.json`'s `host-tui` ref, the seven QA carriers, the remedy
+  header, both `docker/README*`); `MPD_E2E_DSH_VERSION` never moved (the harness peer range is
+  unchanged), and `dsh-plugin.json`'s `compat.hosts` keeps the 0.10.1 admission measurement.
+- **The sidebar collapsed to TWO MPD pages** (0.14.0 wave, user clauses 「DAG页作为MPD面板」 and
+  「把MPD与Workmate两个panel扔到侧边栏上去」): the rich `MPD` page (`❖`, the host's curated subagent
+  rows above the DAG page's own frame) and `MPD workmate` (`⬢`); the standalone `dag` page's
+
+[exit code: 0]

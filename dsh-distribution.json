@@ -3,7 +3,7 @@
   "kind": "DistributionDescriptor",
   "distribution": {
     "id": "urn:dsh:distribution:mpd:my-power-dsh",
-    "version": "0.12.0"
+    "version": "0.13.0"
   },
   "displayName": "my-power-dsh — DSH plugin bundle (web edition + dsh-tui edition)",
   "protocols": [

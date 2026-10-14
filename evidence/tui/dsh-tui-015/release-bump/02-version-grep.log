@@ -1,0 +1,6 @@
+$ grep -n '"version"' package.json dsh-plugin.json dsh-distribution.json
+package.json:6:  "version": "0.13.0",
+dsh-plugin.json:6:  "version": "0.13.0",
+dsh-distribution.json:6:    "version": "0.13.0"
+
+[exit code: 0]
