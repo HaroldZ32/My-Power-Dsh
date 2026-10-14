@@ -12,9 +12,12 @@
 // screenshotted into the evidence tree, and EVERY stage records an assertion row in the same NDJSON
 // shape the entrypoint's `record()` writes, so a broken GUI reddens the run instead of decorating it.
 //
-// The verdict is never the model's prose: `ui.replyRendered` asks whether the TRANSCRIPT changed
-// after the send, and the companion `live.web.*` rows (docker/lib/live-verdict.ts) read the session
-// store for what the agent actually did.
+// The verdict is never the model's prose: `ui.replyRendered` asks whether the TRANSCRIPT rendered the
+// turn's OWN output — the answer the prompt asked for as a line of its own, or a rendered call of the
+// tool it asked for — judged by `docker/lib/reply-verdict.ts`, which also refuses the prompt's own
+// `DONE` and the turn's failure panel (FINDING F1, 2026-10-14: the pre-fix predicate greened on both).
+// The companion `live.web.*` rows (docker/lib/live-verdict.ts) read the session store for what the
+// agent actually did.
 //
 // USAGE (inside the container, from a directory where `playwright` resolves)
 //   node browser-lane.ts --base http://127.0.0.1:3080 --token <token> --workspace /work/ws
@@ -23,6 +26,8 @@
 // Exit code: 0 when every recorded row is true, 1 when any is false, 2 when the browser never started.
 import { appendFileSync, mkdirSync } from "node:fs"
 import { join } from "node:path"
+import { judgeReply } from "./reply-verdict.ts"
+import type { ReplyVerdict } from "./reply-verdict.ts"
 
 /** The assertion names this lane owns, in emission order. */
 const UI_ASSERTIONS: readonly string[] = [
@@ -191,12 +196,18 @@ function record(row: UiRow): void {
   console.log(`[record] ${row.name}=${row.ok === null ? "null" : row.ok} — ${row.reason}`)
 }
 
+/** One stage's outcome: a pass observation, or a DECLARED BOUND the run must report as `null`. */
+type StageResult = string | { readonly bound: string; readonly raw: string }
+
 /** Run one stage, turning a throw into a FAILED row instead of an aborted lane. */
-async function stage(name: string, reason: string, fn: () => Promise<string>): Promise<void> {
+async function stage(name: string, reason: string, fn: () => Promise<StageResult>): Promise<void> {
   try {
-    /** The stage's return value, quoted as the pass row's observation. */
+    /** The stage's return value: a pass observation, or a declared bound with its own reason. */
     const raw = await fn()
-    record({ name, ok: true, reason, raw })
+    // A BOUND IS NOT A PASS (`null` with its reason, the shape the credential-free `live.*` rows use):
+    // the stage measured that the prerequisite is missing, which is neither a green nor a bundle defect.
+    if (typeof raw === "string") record({ name, ok: true, reason, raw })
+    else record({ name, ok: null, reason: raw.bound, raw: raw.raw })
   } catch (error) {
     record({ name, ok: false, reason, raw: messageOf(error).slice(0, 300) })
   }
@@ -410,25 +421,37 @@ await stage("ui.promptSent", "a prompt was typed into the composer and sent thro
   })
 
 // ── stage 5: the answer renders — a turn really ran through the GUI ───────────
-await stage("ui.replyRendered", "the transcript changed after the send and shows the turn's own output",
-  async () => {
+await stage("ui.replyRendered", "the transcript rendered the turn's OWN output — the answer the prompt asked for as a line of its own, or a rendered call of the tool it asked for",
+  async (): Promise<StageResult> => {
     if (!composerFound) throw new Error("no composer was found, so no turn could be driven")
     /** The instant the wait for a rendered reply gives up. */
     const deadline = Date.now() + BUDGET_MS
     /** The last text seen, so the failure report quotes what the screen really said. */
     let seen = ""
+    /** The verdict this stage's row is recorded from, re-read from the LATEST capture every round. */
+    let verdict: ReplyVerdict = judgeReply({ before: beforeSend, after: seen, prompt: PROMPT })
     while (Date.now() < deadline) {
       seen = await bodyText(8000)
-      // The reply is the model's own `DONE` (the prompt asks for exactly that) OR a rendered tool
-      // call for the tool we asked it to use. Either is proof the turn ran IN THE GUI.
-      if (/\bDONE\b/.test(seen) || /mpd_config_get[\s\S]{0,200}(result|ok)/i.test(seen)) break
+      verdict = judgeReply({ before: beforeSend, after: seen, prompt: PROMPT })
+      // TWO terminal states, and BOTH end the wait: a rendered turn output (judged by the shared
+      // classifier), and the turn's failure panel — the GUI paints that when the turn has ENDED, so
+      // waiting out the budget cannot produce a reply after it. The PROMPT's own `DONE` is not one of
+      // them: it is echoed into the user's bubble the moment the message is sent, which is the exact
+      // false green FINDING F1 reports (`before=225 after=619 done=true`, `ui-02`/`ui-03` byte-identical).
+      if (verdict.kind === "reply" || verdict.failure !== "") break
       await page.waitForTimeout(2500)
     }
     await shot("ui-03-reply")
-    /** Whether the transcript grew enough to count as a rendered turn. */
-    const grew = seen.length > beforeSend.length + 40
-    if (!/\bDONE\b/.test(seen) && !grew) throw new Error(`the transcript did not change after the send (before=${beforeSend.length} after=${seen.length} chars)`)
-    return `before=${beforeSend.length} after=${seen.length} done=${/\bDONE\b/.test(seen)}`
+    if (verdict.kind === "reply") return verdict.raw
+    if (verdict.kind === "credential-bound") {
+      // THE HONEST OUTCOME IN A CREDENTIAL-FREE CONTAINER: no reply rendered, and the panel names the
+      // missing prerequisite — so the row is a DECLARED BOUND (`null` with this reason), never a green.
+      return {
+        bound: `DECLARED BOUND — no reply was rendered: the turn's failure panel names the missing credential (${verdict.credential}) and this container stages none, so no model turn could run. ${verdict.detail}`,
+        raw: verdict.raw,
+      }
+    }
+    throw new Error(`no reply was rendered: ${verdict.detail} (${verdict.raw})`)
   })
 
 // ── stage 6: the Agent Teams sidebar panel (still on the session view) ────────
