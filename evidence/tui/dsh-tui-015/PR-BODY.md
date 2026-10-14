@@ -52,11 +52,11 @@ user-agreed clauses:
 
 **Gates run (observed at the committed revision)**: `bun run typecheck` exit 0 · `bun run verify:docs`
 PASS (47 pairs / 0 violations / 0 dead links) · `bun run verify:rows` ok (35 row ids) ·
-`bun run verify:comments` PASS (401 files / 35524 declarations) · `bun run verify:manifest` PASS (981
+`bun run verify:comments` PASS (403 files / 35658 declarations) · `bun run verify:manifest` PASS (982
 packed files, 0 required absent) · `node scripts/verify-dist-fresh.ts` 31/31 fresh (pinned bun 1.4.0) ·
 `bun run verify:vendor` — STALE at the wave commits and PASS only after the follow-up re-pin (see the honest bounds; `verify:gates` 8/8 after it) · `bun run test:qa` all
-self-tests passed · `bun test packages` 1939 tests / 3 skip / 0 fail · pack closure 605/605 identical,
-0 drift at pack stamp `2026-10-14T11:38:16.076Z` · the 8 sandbox TUI lanes: **8 of 8 match the frozen
+self-tests passed · `bun test packages` 1939 tests / 3 skip / 0 fail · pack closure 606/606 identical,
+0 drift at pack stamp `2026-10-14T16:43:47.875Z` (re-packed as the LAST write, closure immediately after) · the 8 sandbox TUI lanes: **8 of 8 match the frozen
 expected-status table** (tui-mount PASS, tui-deps-ctrla PASS, tui-panels red with tuiRenderers ONLY,
 tui-settings-bridge PASS, tui-team-surface red with H4 ONLY, tui-admission red on arm3 ONLY,
 tui-distribution + tui-spec-conformance SKIP absent-fixture).
@@ -110,10 +110,10 @@ blind verifier (rec-20261014T162338-8813c6, finding B-1).
 `dist-rebuild/`。
 
 **跑过的门（提交修订上实测）**：typecheck 退出 0 · docs PASS（47 对 / 0 违规 / 0 死链）· rows ok（35
-行 id）· comments PASS（401 文件 / 35524 声明）· manifest PASS（981 打包文件、必需路径 0 缺失）·
+行 id）· comments PASS（403 文件 / 35658 声明）· manifest PASS（982 打包文件、必需路径 0 缺失）·
 verify-dist-fresh 31/31 新鲜（钉版 bun 1.4.0）· vendor 在波提交上曾为陈旧、经补钉后 PASS（详见诚实边界）·
-test:qa 全自测通过 · `bun test packages` 1939 通过 / 3 跳过 / 0 失败 · 打包闭包 605/605 一致、0 漂移
-（pack stamp `2026-10-14T11:38:16.076Z`）· 8 条沙箱 TUI 车道**8/8 对齐冻结预期表**。
+test:qa 全自测通过 · `bun test packages` 1939 通过 / 3 跳过 / 0 失败 · 打包闭包 606/606 一致、0 漂移
+（pack stamp `2026-10-14T16:43:47.875Z`，最后一次写入后立即重跑）· 8 条沙箱 TUI 车道**8/8 对齐冻结预期表**。
 
 **诚实边界**：(1) C3' 账本归属仍红，且**已具名到宿主侧**——补丁行激活拿不到
 `bindComponentIdentity` 写入的 Component 身份，我们的身份修复承重但不足，缝保持"备好未激活"，新增的
