@@ -54,7 +54,7 @@ user-agreed clauses:
 PASS (47 pairs / 0 violations / 0 dead links) · `bun run verify:rows` ok (35 row ids) ·
 `bun run verify:comments` PASS (401 files / 35524 declarations) · `bun run verify:manifest` PASS (981
 packed files, 0 required absent) · `node scripts/verify-dist-fresh.ts` 31/31 fresh (pinned bun 1.4.0) ·
-`bun run verify:vendor` PASS (after the wave's SINGLE re-pin in this commit) · `bun run test:qa` all
+`bun run verify:vendor` — STALE at the wave commits and PASS only after the follow-up re-pin (see the honest bounds; `verify:gates` 8/8 after it) · `bun run test:qa` all
 self-tests passed · `bun test packages` 1939 tests / 3 skip / 0 fail · pack closure 605/605 identical,
 0 drift at pack stamp `2026-10-14T11:38:16.076Z` · the 8 sandbox TUI lanes: **8 of 8 match the frozen
 expected-status table** (tui-mount PASS, tui-deps-ctrla PASS, tui-panels red with tuiRenderers ONLY,
@@ -65,13 +65,17 @@ tui-distribution + tui-spec-conformance SKIP absent-fixture).
 reaches `requireComponentIdentity`, a WeakMap only `bindComponentIdentity` populates, so a patch row's
 activation cannot satisfy it — our identity fix is provably load-bearing (it moved the refusal from the
 caller-activation assertion to the admission gate) but not sufficient; the seam remains built ready,
-NOT activated, and the readable disclosure line now says so. (2) The Docker real-machine lane runs
-after this PR's branch is available to the driver; its stamps will be cited in the wave report and the
-release sweep. (3) `tui-distribution` and `tui-spec-conformance` SKIP for a declared environment
+NOT activated, and the readable disclosure line now says so. (2) The Docker real-machine lanes ran after this
+PR's branch was pushed: source credential-free 85/0/33 exit 0, source LIVE 114/0/4 exit 0, oneclick LIVE
+113/0/5 exit 0 — evidence under `evidence/docker/client-install*/2026-10-14T*`. (3) `tui-distribution` and `tui-spec-conformance` SKIP for a declared environment
 reason (absent fixture / no `dsh-ecosystem-spec` checkout on this box). (4) `tui-panels`' `tuiRenderers`
 red and `tui-team-surface`'s `H4` red are PRE-EXISTING, declared in the frozen table, and not repaired
 by this wave. (5) The `tests` gate ran under the PATH bun 1.4.2 while the BUILD pin is proven at 1.4.0;
-no frozen clause constrains the test runner.
+no frozen clause constrains the test runner. (6) `VENDOR_LOCK.json` was re-pinned THREE times: the first
+two locks UNDERCOUNTED their own commits' `skills/` trees (378 vs 380; 380 vs 381), so `verify:vendor`
+was RED at the wave's commits until the follow-up re-pin (381 files, treeSha 6605124694cd…) made it
+PASS and `verify:gates` 8/8 — a declared deviation from the one-re-pin shape, found by a second-seat
+blind verifier (rec-20261014T162338-8813c6, finding B-1).
 
 ---
 
@@ -107,7 +111,7 @@ no frozen clause constrains the test runner.
 
 **跑过的门（提交修订上实测）**：typecheck 退出 0 · docs PASS（47 对 / 0 违规 / 0 死链）· rows ok（35
 行 id）· comments PASS（401 文件 / 35524 声明）· manifest PASS（981 打包文件、必需路径 0 缺失）·
-verify-dist-fresh 31/31 新鲜（钉版 bun 1.4.0）· vendor PASS（本提交内含全波唯一一次 re-pin）·
+verify-dist-fresh 31/31 新鲜（钉版 bun 1.4.0）· vendor 在波提交上曾为陈旧、经补钉后 PASS（详见诚实边界）·
 test:qa 全自测通过 · `bun test packages` 1939 通过 / 3 跳过 / 0 失败 · 打包闭包 605/605 一致、0 漂移
 （pack stamp `2026-10-14T11:38:16.076Z`）· 8 条沙箱 TUI 车道**8/8 对齐冻结预期表**。
 

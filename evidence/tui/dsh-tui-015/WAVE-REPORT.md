@@ -48,14 +48,14 @@ are `docs/tui.md` + `docs/tui.zh-CN.md` §11.7, the README pairs and `CHANGELOG.
   forked/resumed captain keeps captaincy via lead history. **Hard gate**: `team-dispatch-guard` (17
   self-test arms + a 21-arm real lane) inside `bun run test:qa`.
 - **C4/C5** — §11.7 bilingual, the `tuiChannel` sentence, the README pair refresh, ONE CHANGELOG
-  v0.13.0 entry covering the full 0.12.0 delta; the wave's SINGLE `VENDOR_LOCK` re-pin in its own
-  commit.
+  v0.13.0 entry covering the full 0.12.0 delta; `VENDOR_LOCK` re-pins as recorded in §5.9 (a
+  declared deviation from the one-re-pin shape).
 
 ## 3. Gates and real-machine evidence
 
 | Evidence | Result |
 |---|---|
-| Static gates at the committed revision | typecheck exit 0 · docs PASS (47 pairs / 0 violations / 0 dead links) · rows 35 ids · comments PASS (401 files / 35524 declarations) · manifest PASS (981 packed files, 0 required absent) · dist 31/31 fresh (pinned bun 1.4.0) · vendor PASS after the single re-pin · test:qa all self-tests passed · `bun test packages` 1939 / 3 skip / 0 fail |
+| Static gates at the committed revision | typecheck exit 0 · docs PASS (47 pairs / 0 violations / 0 dead links) · rows 35 ids · comments PASS (401 files / 35524 declarations) · manifest PASS (981 packed files, 0 required absent) · dist 31/31 fresh (pinned bun 1.4.0) · vendor — see §5.9: STALE at the wave's own commits (the second-seat verifier found it red at HEAD, B-1) and PASS only after the follow-up re-pin on the settled tree (381 files, treeSha 6605124694cd…) · verify:gates 8/8 after that repair · test:qa all self-tests passed · `bun test packages` 1939 / 3 skip / 0 fail |
 | Pack closure | 605 files compared, 605 identical, 0 drift, 0 expected-after-pack; pack stamp `2026-10-14T11:38:16.076Z` (the log is the anchor) |
 | Sandbox TUI lanes (installed 0.15.0) | **8 of 8 match the frozen expected-status table**: tui-mount PASS · tui-deps-ctrla PASS · tui-panels red with `tuiRenderers` ONLY · tui-settings-bridge PASS · tui-team-surface red with `H4` ONLY · tui-admission red on arm3 ONLY (declared host gate) · tui-distribution SKIP absent-fixture · tui-spec-conformance SKIP absent-fixture |
 | Docker source lane (real machine, `--require-docker`) | `evidence/docker/client-install/2026-10-14T13-51-46Z`: 118 assertions, **85 pass / 0 FAIL / 33 NULL**, driver exit 0, container exit 0 — all 22 `tui.*` records true (install → mount → real PTY: merged panel, team scene, graph edges/content, Ctrl+A intact), browser lane green |
@@ -97,9 +97,23 @@ own union is the writer). Evidence: `evidence/tui/dsh-tui-015/lane-Q/c2-real-pty
    backtick command substitutions, F3 a metadata-only registry probe that a tarball-blackholed registry
    could pass); the browser prerequisite was a Playwright CDN transport issue fixed by pin + mirror.
 
-## 6. Docker closing rows (appended as the runs land)
+7. **`VENDOR_LOCK.json` needed THREE writes, not one.** The first two re-pins each UNDERCOUNTED their
+   own commit's `skills/` tree (378 locked vs 380 tracked at `4401234a`; 380 locked vs 381 at
+   `e2938953`), so `verify:vendor` was RED at HEAD; the second-seat verifier caught it (record
+   `rec-20261014T162338-8813c6`, finding B-1) and the follow-up re-pin on the settled tree (381
+   files, `treeSha 6605124694cd…`) turned `verify:vendor` PASS and `verify:gates` 8/8. The
+   one-re-pin-per-wave shape broke because a post-integration oneclick repair added `skills/**`
+   bytes; this is a declared deviation, and §3's earlier claim was corrected rather than smoothed.
+8. **A second-seat Loop B FAIL was recorded and its findings acted on**: B-1 (the stale lock, above),
+   B-2 (documents asserting a green the revision did not carry — corrected here and in the PR body),
+   B-3 (the packed-manifest fix's runtime proof — satisfied by the oneclick run below), B-4 (loop
+   independence — a fresh sealed seat records Loop A's PASS and re-verifies Loop B).
 
-- source `--require-docker`: `2026-10-14T13-51-46Z` — 85/0/33, exit 0 (credential-free maximum).
-- source `--require-docker --require-live`: `2026-10-14T14-31-41Z` — 110/3/5, exit 3, the 3 reds being
-  headless prompt-defect arms (see §5.4); re-run pending with a tool-driving prompt.
-- oneclick `--require-docker [--require-live]`: pending (`--spec github:HaroldZ32/My-Power-Dsh#feature/tui-015-adaptation`).
+## 6. Docker closing rows (the real machine, both modes, `--require-docker`)
+
+| Row | Run | Result |
+|---|---|---|
+| source, credential-free | `evidence/docker/client-install/2026-10-14T13-51-46Z` | 118 assertions, 85 pass / 0 FAIL / 33 NULL, exit 0 |
+| source, LIVE (real credential, real turns, real team creation) | `evidence/docker/client-install/2026-10-14T14-47-47Z` | 118 assertions, **114 pass / 0 FAIL / 4 NULL**, exit 0 |
+| oneclick, LIVE (`--spec github:HaroldZ32/My-Power-Dsh#feature/tui-015-adaptation`) | `evidence/docker/client-install-oneclick/2026-10-14T16-10-19Z` | 118 assertions, **113 pass / 0 FAIL / 5 NULL**, exit 0 — the packed install's mcp-lsp row is back to its full surface after the packed-manifest fix |
+| oneclick, pre-fix (the run that EXPOSED the two reds) | `evidence/docker/client-install-oneclick/2026-10-14T14-56-53Z` | 111 pass / 2 FAIL / 5 NULL, exit 1 — kept as the defect's own record |
