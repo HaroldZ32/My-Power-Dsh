@@ -1,0 +1,10 @@
+== control exit=0
+   [mcp-call self-test] ok: tool-name detection + composed ast_grep server name + fixture content + the declared LSP dependency (0.7.0) verified on fixtures
+== m1 exit=1
+   [mcp-call self-test] FAIL: the live arm's pack install no longer passes the measured flag set (--install-links --legacy-peer-deps --prefer-offline), so it is no longer the install the lane measured: non-linked, with the pack's PEERS left to the host instead of auto-installed into the profile, and cache-first
+== m2 exit=1
+   [mcp-call self-test] FAIL: a per-arm npm cache is back in the live arm, so each arm pays its own COLD closure install again
+== m3 exit=1
+   [mcp-call self-test] FAIL: the live arm no longer runs both arms against ONE shared npm cache (runArmsWithSharedCache / --cache npmCache)
+== m4 exit=1
+   [mcp-call self-test] FAIL: the live arm no longer runs both arms against ONE shared npm cache (runArmsWithSharedCache / --cache npmCache)

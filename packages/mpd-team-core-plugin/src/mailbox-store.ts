@@ -26,7 +26,7 @@ import { join } from "node:path"
 
 /** One line of the log. `send` opens a message; `delivered` and `read` move it along. */
 export type MailboxRecord =
-  | { t: "send"; id: string; fromId: string; fromName: string; toId: string; toName: string; subject: string; body: string; at: string }
+  | { t: "send"; id: string; fromId: string; fromName: string; toId: string; toName: string; subject: string; body: string; at: string; teamId?: string }
   | { t: "delivered"; id: string; at: string }
   | { t: "read"; id: string; at: string }
 
@@ -52,6 +52,16 @@ export interface MailMessage {
   deliveredAt?: string
   /** ISO instant the RECIPIENT acknowledged it — the transition only this mailbox records. */
   readAt?: string
+  /**
+   * The team this message was sent FOR, stamped at `send` time (PR #42 review F-C).
+   *
+   * WHY A STAMP, when the recipient id is already recorded: every team mints its members from `M1`
+   * upward, so `toId`/`toName` repeat across teams and a row from a wave that ended days ago matches a
+   * NEW team's `M1`. Only the team identity distinguishes them. ABSENT on a row written before this
+   * field existed: no team can CLAIM such a row, and the mailbox summary says how many it left out
+   * rather than guessing which team they belong to.
+   */
+  teamId?: string
 }
 
 /** The folded state: messages in insertion order. */
@@ -86,6 +96,9 @@ export function fold(records: readonly unknown[]): MailboxState {
         subject: String(send.subject ?? ""),
         body: String(send.body ?? ""),
         sentAt: String(send.at ?? ""),
+        // The team stamp survives the fold VERBATIM when the line carries one. A line without it stays
+        // `undefined` — the honest "no team recorded", never an empty-string stand-in that could match.
+        ...(typeof send.teamId === "string" && send.teamId !== "" ? { teamId: send.teamId } : {}),
       })
       continue
     }
@@ -217,6 +230,12 @@ export interface SendInput {
   body: string
   /** The live roster: a message goes to a MEMBER, never to an id nobody serves. */
   memberIds: readonly string[]
+  /**
+   * The team this send belongs to, stamped onto the message so a later summary can scope by IDENTITY
+   * rather than by the per-team member ids (`M1`, `M2`, …) that every team reuses (PR #42 review F-C).
+   * Absent only for a caller that resolved no team at all.
+   */
+  teamId?: string
   /** The bound on a member's undelivered backlog, absorbed from the official `TEAM_MAILBOX_FULL`. */
   maxUndelivered?: number
 }
@@ -257,6 +276,7 @@ export function send(workspace: string, input: SendInput, now: Date): SendResult
     subject: input.subject,
     body: input.body,
     sentAt: at,
+    ...(input.teamId === undefined || input.teamId === "" ? {} : { teamId: input.teamId }),
   }
   appendRecord(workspace, { t: "send", ...message, at })
   return { ok: true, message }

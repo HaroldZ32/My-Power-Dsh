@@ -415,6 +415,20 @@ run_step 01b-npm-registry node -e '
   if (first.ok) {
     const arm = await tarballRead(registry)
     if (!arm.ok) {
+      // THE FALLBACK COMES BEFORE THE VERDICT (CodeRabbit finding on PR #42, 2026-10-15): this branch
+      // used to settle on the OFFICIAL/OPERATOR registry and exit 1, and the caller ignores that status
+      // with `|| true` — so every later install kept resolving through the very registry whose tarball
+      // blackholed. Metadata answering proves NOTHING about tarballs, so the MIRROR is probed for BOTH
+      // before the probe settles: when its metadata AND its ranged GET both answer, the install travels
+      // on the mirror; when the mirror fails too, the failure behaviour below is unchanged.
+      const fallback = await probe(mirror + "/@deepseek-ai%2fdsh")
+      if (fallback.ok) {
+        const mirrorArm = await tarballRead(mirror)
+        if (mirrorArm.ok) {
+          settle(mirror, "mirror-fallback-after-tarball-blackhole", "officialProbe=" + first.status + " officialTarball=" + arm.reading + " mirrorMs=" + fallback.ms + " mirrorTarball=" + mirrorArm.reading, mirrorArm.reading + " (the " + label + " registry answered METADATA while its TARBALL blackholed, so the install travels on the fallback mirror instead of stalling)")
+          process.exit(0)
+        }
+      }
       settle(registry, label + "-tarball-blackholed", "probeMs=" + first.ms + " tarball=" + arm.reading, arm.reading + " (the METADATA endpoint answered and the TARBALL did not: a registry in this state stalls the install, so the probe FAILS here instead)")
       process.exit(1)
     }
@@ -1805,6 +1819,13 @@ if [ "${MPD_E2E_BROWSER:-0}" = "1" ]; then
         PLAYWRIGHT_HOST="$PLAYWRIGHT_MIRROR"
         PLAYWRIGHT_HOST_ROUTE="mirror-retry-after-failure"
         export PLAYWRIGHT_DOWNLOAD_HOST="$PLAYWRIGHT_HOST"
+        # THE RESET IS LOAD-BEARING (CodeRabbit finding on PR #42, 2026-10-15): `|| BROWSER_INSTALL=$?`
+        # only ever ASSIGNS on failure, so without this line a retry that SUCCEEDED left the FIRST
+        # attempt's exit code in place — all eight `ui.*` arms were then reported unavailable with
+        # `route=mirror-retry-after-failure` although the browser had installed, and the lane's real
+        # subject, the GUI, was never driven. The first failure is not lost: the echo above quotes it
+        # with its own exit code, and a retry that also fails still records ITS code here.
+        BROWSER_INSTALL=0
         ( cd "$UI_DIR" && npx playwright install --with-deps chromium >>"$BROWSER_LOG" 2>&1 ) || BROWSER_INSTALL=$?
       fi
     fi
@@ -2178,6 +2199,35 @@ if [ -n "$QA_HOME" ] && [ -f "$QA_HOME/.dsh/.credentials.yaml" ]; then
   fact obs.qaHomeMirrorPresent true
 else
   fact obs.qaHomeMirrorPresent false
+fi
+# THE STEP'S BUDGET MUST EXCEED THE BUDGET OF THE CASE IT ENCLOSES, and this step carried the 900 s
+# default while its own case carried 1800 s (measured 2026-10-15). The case is
+# `skills/dsh-qa/scripts/mcp-call.ts`, whose staged pack install is deliberately NON-LINKED
+# (`npm install --install-links`): a linked `file:` pack never materializes its OWN dependencies, so
+# `@ast-grep/cli` — declared by the PACK's manifest, not the root's — stayed unresolved and the call
+# arm's launcher answered BINARY_NOT_FOUND. THAT closure install is the SLOW-LINK case: it MEASURED
+# 1037 s on this box's DEFAULT registry link
+# (evidence/tui/dsh-tui-015/coderabbit/skills/install-links-duration.log), which is why the case's own
+# budget for it is `INSTALL_TIMEOUT_MS` = 1800000 ms (1800 s) in that file — TWICE this step's budget.
+# The ORDERING, not the number, is the point: an OUTER budget smaller than the INNER budget it encloses
+# turns the inner one into decoration, because this step's SIGTERM (exit 124) would decide the verdict
+# before the case's own ceiling could ever be reached. On the registry route this lane selects the case
+# is now far cheaper, because its two arms share ONE warm npm cache: MEASURED 2026-10-15 as a
+# 70.8–113.1 s range end to end over three green runs (70.8 s, 79.0 s, 113.1 s)
+# (evidence/tui/dsh-tui-015/coderabbit/skills3/lane-mirror.log, lane-frozen.log, lane-final.log — the
+# last byte-identical to docker3/lane-final.log). So 3600 s = 2x the case's own install budget is a
+# CEILING for the SLOW-LINK case, never the expected duration: the lane probes the registry first and
+# travels on the MIRROR when it answers (`mirror-fallback-after-tarball-blackhole`), and a genuinely
+# stalled case still dies at 3600 s with exit 124 recorded like any other failure.
+# `MPD_E2E_STEP_TIMEOUT` still wins when an operator sets it LARGER: this is a FLOOR, and the raise is
+# logged with the value it replaced. BOUND: the STEP only — the runner's own per-case ceiling
+# (`LIVE_CASE_TIMEOUT_MS` = 2400 s in `docker/lib/owed-cases.ts`) can still cut two arms that each
+# approach their own ceilings. 16c is the last `run_step` in this file, so the floor is not restored: a
+# step added later could only inherit a LARGER budget.
+OWED_CASES_TIMEOUT=3600
+if [ "$STEP_TIMEOUT" -lt "$OWED_CASES_TIMEOUT" ]; then
+  log "[step 16c-owed-cases] budget raised from ${STEP_TIMEOUT}s to ${OWED_CASES_TIMEOUT}s (the case's own install budget is 1800 s; see the comment above)"
+  STEP_TIMEOUT="$OWED_CASES_TIMEOUT"
 fi
 run_step 16c-owed-cases node "$LIB_DIR/owed-cases.ts" \
   --kind cases --repo "$APP_DIR" --work "$OUT_DIR/owed" --qa-home "$QA_HOME" --state "$STATE_FILE"

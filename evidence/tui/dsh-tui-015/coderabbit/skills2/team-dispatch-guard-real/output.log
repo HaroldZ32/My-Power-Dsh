@@ -1,0 +1,1 @@
+team-dispatch-guard refusing to overwrite the existing evidence dir: evidence/tui/dsh-tui-015/coderabbit/skills2/team-dispatch-guard-real — evidence is immutable by default (T-53); pass a fresh --out directory

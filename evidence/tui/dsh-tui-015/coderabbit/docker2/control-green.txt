@@ -1,0 +1,20 @@
+[16c-budget] workdir=/tmp/16c-budget-control.zbTXqn
+[16c-budget] entrypoint=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/docker/entrypoint.sh sha256=8457a5f985b9b722d4fc59916e62dfb0fee17d766550198b1beb2f00cec090b0
+[16c-budget] case-budget-source=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/skills/dsh-qa/scripts/mcp-call.ts sha256=b242f6645062ee926c602fddb32116537eef999a3971e90f19ccda04e55676d3
+[16c-budget] pre-fix-bytes=git show HEAD:docker/entrypoint.sh sha256=afa53ad0faaccc9fc07094a5ce8932e8a6ef5d7bfe36f843aaf16be8b3e93cd2
+[16c-budget] G1-shipped-carries-the-raised-budget=true — verbatim: OWED_CASES_TIMEOUT=3600 (entrypoint lines 2225..2229)
+[16c-budget] G2-shipped-hands-3600-to-timeout=true — recorded timeout argv index 1 = 3600
+[16c-budget]   G2-timeout-argv=0	--kill-after=15|1	3600|2	node|3	/opt/mpd-e2e/lib/owed-cases.ts|4	--kind|5	cases|6	--repo|7	/opt/app|8	--work|9	/tmp/16c-budget-control.zbTXqn/out/owed|10	--qa-home|11	/tmp/16c-budget-control.zbTXqn/qa-home|12	--state|13	/tmp/16c-budget-control.zbTXqn/state.ndjson
+[16c-budget]   G2-harness-log=[step 16c-owed-cases] budget raised from 900s to 3600s (the case's own install budget is 1800 s; see the comment above)
+[16c-budget] G3-step-exceeds-the-cases-own-budget=true — step=3600s vs case=1800s (INSTALL_TIMEOUT_MS=1800000 ms read from mcp-call.ts)
+[16c-budget] G4-raise-is-logged-with-the-old-value=true — observed: [step 16c-owed-cases] budget raised from 900s to 3600s (the case's own install budget is 1800 s; see the comment above)
+[16c-budget] G5-operators-larger-budget-still-wins=true — MPD_E2E_STEP_TIMEOUT=5000 -> recorded timeout budget=5000s
+[16c-budget] G6-driver-pinned-literals-survive=true — run_step still carries `timeout --kill-after=15 "$STEP_TIMEOUT"` and `KILLED BY THE ${STEP_TIMEOUT}s STEP TIMEOUT` (the two literals scripts/docker-e2e.ts --self-test pins, checks 8c.5)
+[16c-budget] R1-red-numeric-effective-budget-is-the-old-value=true — 3600->900 in the prelude -> recorded timeout budget=900s (the value the shipped bytes produced before the fix)
+[16c-budget] R1-red-numeric-fails-the-ordering-arm=true — with 900s the G3 ordering arm reads false against the case's 1800s budget
+[16c-budget] R2-red-prefix-effective-budget-is-the-old-value=true — git show HEAD:docker/entrypoint.sh (no prelude) -> the default applies -> recorded timeout budget=900s
+[16c-budget] R2-red-prefix-logs-no-raise=true — the pre-fix bytes log no raise (there is nothing to raise)
+[16c-budget] R3-red-touches-nothing-but-the-number=true — numeric-red == shipped with the single 3600->900 substitution (diff lines=0)
+[16c-budget] FAILED=0
+[16c-budget] workdir-kept=/tmp/16c-budget-control.zbTXqn
+CONTROL_EXIT=0

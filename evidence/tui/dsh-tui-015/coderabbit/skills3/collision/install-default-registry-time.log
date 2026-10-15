@@ -1,0 +1,28 @@
+npm warn install-scripts 2 packages have install scripts not yet covered by allowScripts:
+npm warn install-scripts   @ast-grep/cli@0.45.2 (postinstall: node postinstall.js)
+npm warn install-scripts   @code-yeongyu/comment-checker@0.8.0 (postinstall: node postinstall.js)
+npm warn install-scripts
+npm warn install-scripts Run `npm install-scripts ls` to review, or `npm install-scripts approve <pkg>` to allow.
+	Command being timed: "npm install --prefix /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-mcp-repro/inst/profiles/headless --install-links --no-audit --no-fund --registry https://registry.npmmirror.com --cache /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-mcp-repro/npmcache"
+	User time (seconds): 18.42
+	System time (seconds): 5.60
+	Percent of CPU this job got: 94%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:25.37
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 489196
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 190849
+	Voluntary context switches: 484500
+	Involuntary context switches: 930
+	Swaps: 0
+	File system inputs: 208
+	File system outputs: 2734616
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

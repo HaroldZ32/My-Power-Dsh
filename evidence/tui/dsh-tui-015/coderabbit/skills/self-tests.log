@@ -1,0 +1,20 @@
+### bun skills/dsh-qa/scripts/mcp-call.ts --self-test
+[mcp-call self-test] ok: tool-name detection + composed ast_grep server name + fixture content + the declared LSP dependency (0.7.0) verified on fixtures
+exit=0
+
+### bun skills/dsh-qa/scripts/tui-admission.ts --self-test
+[tui-admission self-test] ok: structural rules, pane classification and spec-root resolution are two-sided
+exit=0
+
+### bun skills/dsh-qa/scripts/tui-keeper-standdown.ts --self-test
+[tui-keeper-standdown self-test] ok: csv detector, user-layer reader/writer, row matcher, pointer finder and readiness pattern are two-sided
+exit=0
+
+### bun skills/dsh-qa/scripts/tui-panels.ts --self-test
+[tui-panels self-test] ok: 8 surfaces asserted, negative controls fail as required
+exit=0
+
+### bun skills/dsh-qa/scripts/tui-team-surface.ts --self-test
+[tui-team-surface self-test] ok: fixture, parser, assertion falsifiability and the dist invariants all hold
+exit=0
+

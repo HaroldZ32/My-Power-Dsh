@@ -148,10 +148,10 @@ describe("C7-3 — resolution skips a terminal/archived team", () => {
     /** The temp workspace whose team store and archive the arm drives. */
     const ws = mkdtempSync(join(tmpdir(), "mpd-c7-reap-"))
     try {
-      /** The ghost: its phase still reads live, but its plan was archived WITHOUT approval. */
-      writeTeam(ws, record({ teamId: "team-ghost", name: "wave-x", leadSessionId: "lead-x", phase: "active" }))
+      /** The ghost: its phase still reads live, but its OWN plan was archived WITHOUT approval. */
+      writeTeam(ws, record({ teamId: "team-ghost", name: "wave-x", leadSessionId: "lead-x", phase: "active", planId: "plan-1" }))
       /** The LIVE control: its plan was archived WITH approval — the normal state of an approved team. */
-      writeTeam(ws, record({ teamId: "team-live", name: "wave-y", leadSessionId: "lead-y", phase: "active" }))
+      writeTeam(ws, record({ teamId: "team-live", name: "wave-y", leadSessionId: "lead-y", phase: "active", planId: "plan-2" }))
       /** A second ghost whose phase is the hand-patched, non-schema `archived` spelling. */
       writeTeam(ws, record({ teamId: "team-phase", name: "wave-z", leadSessionId: "lead-z", phase: "archived" as TeamPhase }))
       mkdirSync(join(ws, ".mpd", "team", "archive", "plan-1"), { recursive: true })
@@ -174,7 +174,7 @@ describe("C7-3 — resolution skips a terminal/archived team", () => {
       /** The phase ghost: repaired by the phase rule, naming the offending spelling. */
       expect(readTeam(ws, "team-phase")!.archivedReason).toContain("not a live team phase")
       /** THE NEGATIVE CONTROL for the archive arm: the approved team is left byte-identical. */
-      expect(readTeam(ws, "team-live")).toEqual(record({ teamId: "team-live", name: "wave-y", leadSessionId: "lead-y", phase: "active" }))
+      expect(readTeam(ws, "team-live")).toEqual(record({ teamId: "team-live", name: "wave-y", leadSessionId: "lead-y", phase: "active", planId: "plan-2" }))
       // And a second pass is a no-op: an already-terminal record is not rewritten again.
       expect(reapReapedTeams(ws, new Date("2026-10-14T11:00:00.000Z"))).toEqual([])
     } finally {

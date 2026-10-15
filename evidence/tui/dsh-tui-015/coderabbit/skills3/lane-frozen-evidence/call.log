@@ -1,0 +1,15 @@
+dsh: reasoning:
+The user wants me to call the ast_grep search tool on tests/mcp-fixtures/sample.c with pattern "return 0". Let me do that.
+
+The tool schema requires pattern, language, paths. Language: c. Path: the file. Workdir maybe the workspace.
+
+Let me call it.
+dsh: reasoning:
+Report the returned content verbatim.
+The tool returned (verbatim):
+
+```json
+{"schemaVersion":1,"ok":true,"kind":"search","workdir":"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-mcp-repro/tmp-c/mpd-dsh-qa-uPcunr/ws","matches":[{"path":"tests/mcp-fixtures/sample.c","language":"c","text":"return 0;","range":{"start":{"line":1,"column":17,"byteOffset":17},"end":{"line":1,"column":26,"byteOffset":26}},"metavariables":{"single":{},"multi":{}}}],"counts":{"returnedMatches":1,"returnedFiles":1,"totalMatches":1,"totalFiles":1,"atLeastMatches":1},"truncation":{"truncated":false,"reason":null,"maxMatches":50,"maxPayloadBytes":4194304,"salvagedRecords":0},"warnings":[],"durationMs":8}
+```
+
+Parameters used: `pattern: "return 0"`, `language: "c"`, `paths: ["tests/mcp-fixtures/sample.c"]`. Result: 1 match — `return 0;` at line 1, columns 17–26.

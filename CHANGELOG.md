@@ -131,8 +131,10 @@ user-visible repairs.**
   GitHub's Security tab stays), and the tautological rank tests in the delegation-gate suite.
 
 **Evidence.** This wave's host measurements are frozen at
-[`evidence/tui/dsh-tui-015/host-diff/`](./evidence/tui/dsh-tui-015/host-diff/) (both npm tarballs
-unpacked beside `FACTS.md`); the unit band at the docs revision reads 74 pass / 0 fail
+[`evidence/tui/dsh-tui-015/host-diff/`](./evidence/tui/dsh-tui-015/host-diff/) (`FACTS.md` is the
+committed record; the two npm tarballs it measures are third-party bytes and are NOT committed — its
+header carries the download and unpack commands that reproduce `a/` (0.14.0) and `b/` (0.15.0) beside
+it); the unit band at the docs revision reads 74 pass / 0 fail
 (`packages/mpd-tui-adapter-plugin`) and 482 pass / 0 fail (`packages/mpd-tui-plugin`); the sandbox
 lanes and the Docker dual-mode lane land under `evidence/tui/**` with the release sweep. Per-wave
 records for the merged intermediate waves live under `evidence/**` where each PR cited them.

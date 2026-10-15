@@ -1,0 +1,7 @@
+# launcher-relative resolution from the --legacy-peer-deps install (2026-10-15T06:18:16Z)
+inst packSymlink=false
+inst @ast-grep/cli -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-mcp-repro/inst/profiles/headless/node_modules/@ast-grep/cli/package.json
+inst cclsp         -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-mcp-repro/inst/profiles/headless/node_modules/cclsp/package.json
+lpd packSymlink=false
+lpd @ast-grep/cli -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-mcp-repro/lpd/profiles/headless/node_modules/@ast-grep/cli/package.json
+lpd cclsp         -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-mcp-repro/lpd/profiles/headless/node_modules/cclsp/package.json

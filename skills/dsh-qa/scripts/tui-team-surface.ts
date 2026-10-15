@@ -53,7 +53,7 @@ import {
 // THE PLUGIN'S OWN DICTIONARY, never a frozen English literal: the scene title this lane asserts is the
 // one the plugin REGISTERS through `t("scene.plan")`, and the host paints whichever language it resolved.
 import { TUI_TEXT, pick as pickText } from "../../../packages/mpd-tui-plugin/src/i18n.ts"
-import type { TuiPrereq, TuiStep } from "./lib/tui-lane.ts"
+import type { SessionHeaderRecord, TuiPrereq, TuiStep } from "./lib/tui-lane.ts"
 
 /** The case slug: names the evidence dir, the tmux socket and every marker/output line. */
 export const SLUG: string = "tui-team-surface"
@@ -1492,6 +1492,27 @@ export function liveSessionId(root: string, workspace: string): string | undefin
   return headers.sort((a, b) => b.mtimeMs - a.mtimeMs)[0].sessionId
 }
 
+/**
+ * Pick THIS run's session id from its fresh delta, by store mtime.
+ *
+ * MEASURED (2026-10-15, `--self-test` arm `fresh-delta-preference`): {@link liveSessionId} answers the
+ * NEWEST workspace-matching header, and the pre-fix selection (`fresh.map(() => liveSessionId(...))`)
+ * could therefore only ever return the NEWEST id — never a fresh one that is not also the newest. On a
+ * warm shared sandbox root a previous lane's store is newest while this run's own fresh session exists,
+ * so the fixture was keyed to a neighbour and the plan scene rendered its empty state. Selecting among
+ * the FRESH ids fixes it; the newest-overall reader stays as the caller's fallback.
+ *
+ * @param headers The session header records to select among (any workspace).
+ * @param fresh The session ids this run created since its pre-boot snapshot.
+ * @param workspace The boot's workspace; a header outside it is never this run's.
+ * @returns The newest fresh session id for the workspace, or `undefined` when this run created none.
+ */
+export function preferFreshSessionId(headers: readonly SessionHeaderRecord[], fresh: readonly string[], workspace: string): string | undefined {
+  /** The delta as a set, so membership is a lookup rather than a scan per header. */
+  const delta = new Set(fresh)
+  return headers.filter((entry) => entry.cwd === workspace && delta.has(entry.sessionId)).sort((a, b) => b.mtimeMs - a.mtimeMs)[0]?.sessionId
+}
+
 /** The outcome of seeding a sandbox `dsh-tui` profile from a warm root. */
 export interface SeedProfileResult {
   /** The source root used (repo-relative when it is inside the repo), `undefined` when none was found. */
@@ -1767,14 +1788,16 @@ export async function armHost({ root, outDir, log, profileSource }: HostArmOptio
     {
       name: "plan-open",
       before: (): void => {
-        // THIS RUN'S session, never a neighbour's. `liveSessionId` reads the harness STORE, and a warm
-        // root's newest header can belong to another lane's boot; the delta against the pre-boot snapshot
-        // is the only session id this boot can be shown to own, so a delta member wins over the newest.
+        // THIS RUN'S session, never a neighbour's. `liveSessionId` reads the harness STORE and answers the
+        // NEWEST workspace-matching header, and on a warm root that header can be another lane's boot; the
+        // delta against the pre-boot snapshot is the only session id this boot can be shown to own, so the
+        // selection is made FROM the delta (see `preferFreshSessionId`) and the newest-overall reader is
+        // only the fallback for a run that recorded no fresh session at all.
         /** The session ids this boot created since the pre-boot snapshot. */
         const fresh = sandboxSessionIds(root).filter((candidate) => !baselineSessions.has(candidate))
-        /** The live session id the boot produced, preferred from {@link fresh}. */
-        const own = fresh.map(() => liveSessionId(root, workspace)).find((candidate) => candidate !== undefined && fresh.includes(candidate))
-        /** The live session id the boot produced for the sandbox workspace. */
+        /** THIS run's live session id, selected from the fresh delta; `undefined` when the boot created none. */
+        const own = preferFreshSessionId(readSessionHeaders(root), fresh, workspace)
+        /** The live session id the boot produced for the sandbox workspace; the newest-overall reader is the fallback. */
         const id = own ?? liveSessionId(root, workspace)
         /** The one record, re-stamped with the live session the boot produced. */
         const staged = { ...baseRecord, captainSessionId: id ?? "unresolved-live-session" }
@@ -2032,6 +2055,38 @@ function selfTest(): void {
     "a root with no profile and no warm source must report absent-fixture")
   check(binaryOnPath("definitely-not-a-binary-xyz") === false && typeof binaryOnPath("node") === "boolean",
     "the PATH probe must be positive-only")
+
+  // THE FRESH-DELTA SELECTION (the "does not prefer THIS run's session" finding). The pre-fix expression
+  // could only ever return the NEWEST id: `fresh.map(() => liveSessionId(...))` calls the SAME reader N
+  // times, so `.find(...)` saw N copies of the newest and answered `undefined` unless the newest was
+  // itself fresh — on a warm root the fixture was then keyed to a neighbour. This arm reproduces the old
+  // expression beside the new one on the same synthetic headers, so the difference is MEASURED.
+  /** The workspace the synthetic headers are keyed to. */
+  const freshWorkspace = "/qa/sandbox/ws"
+  /** Build one synthetic session header; only the fields both selections read carry meaning. */
+  const freshHeader = (sessionId: string, mtimeMs: number, cwd: string): SessionHeaderRecord => ({ projectKey: "--qa-", sessionId, file: "/qa/" + sessionId, sha256: "sha256:0", mtimeMs, agentPreset: "mpd", cwd })
+  /** THIS run's fresh session, OLDER than the neighbour's warm one. */
+  const ownFresh = freshHeader("own-fresh", 2_000, freshWorkspace)
+  /** A previous lane's session for the same workspace, NEWER than this run's. */
+  const neighbourWarm = freshHeader("neighbour-warm", 3_000, freshWorkspace)
+  /** The pre-fix selection, reproduced verbatim against a newest-overall reader. */
+  const preFixSelect = (headers: readonly SessionHeaderRecord[], fresh: readonly string[]): string | undefined => {
+    /** The newest workspace-matching id, which is what `liveSessionId` answers. */
+    const newest = headers.filter((entry) => entry.cwd === freshWorkspace).sort((a, b) => b.mtimeMs - a.mtimeMs)[0]?.sessionId
+    return fresh.map(() => newest).find((candidate) => candidate !== undefined && fresh.includes(candidate))
+  }
+  check(preFixSelect([ownFresh, neighbourWarm], ["own-fresh"]) === undefined,
+    "the PRE-FIX selection must fail on a fresh session that is not the newest (the measured defect)")
+  check(preferFreshSessionId([ownFresh, neighbourWarm], ["own-fresh"], freshWorkspace) === "own-fresh",
+    "the fresh-delta selection must return THIS run's session over the newer neighbour")
+  check(preferFreshSessionId([ownFresh, neighbourWarm], [], freshWorkspace) === undefined,
+    "the fresh-delta selection must answer undefined when this run created no session (the caller's newest fallback)")
+  /** A second fresh session, newer than the first, which must win the ordering. */
+  const secondFresh = freshHeader("own-fresh-2", 2_500, freshWorkspace)
+  check(preferFreshSessionId([ownFresh, secondFresh, neighbourWarm], ["own-fresh", "own-fresh-2"], freshWorkspace) === "own-fresh-2",
+    "the newest FRESH session must win the ordering")
+  check(preferFreshSessionId([freshHeader("other-ws", 4_000, "/somewhere/else")], ["other-ws"], freshWorkspace) === undefined,
+    "a header outside the boot workspace must never be selected")
 
   /** Absolute path of the skill's case table, which must list this lane. */
   const skill = join(REPO, "skills", "dsh-qa", "SKILL.md")

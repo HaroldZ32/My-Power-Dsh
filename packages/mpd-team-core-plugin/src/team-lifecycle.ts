@@ -9,7 +9,8 @@
 //   1. a record is LIVE only while its phase is one of {@link LIVE_TEAM_PHASES} and it carries no
 //      `endedAt` — the hand-patched `archived` spelling is therefore NOT live, without a schema edit;
 //   2. a team whose staged plan was archived WITHOUT approval (discarded or replaced) is not live
-//      either — `.mpd/team/archive/` is the evidence, read once per pass ({@link readArchivedPlanIndex});
+//      either — `.mpd/team/archive/` is the evidence, read once per pass ({@link readArchivedPlanIndex})
+//      and keyed by the PLAN ID the record stamps at approval (PR #42 review F-D; {@link isLiveTeam});
 //   3. {@link reapReapedTeams} rewrites such a record to `ended` WITH a reason, so a ghost cannot
 //      survive on disk and `derivePhase` agrees with it afterwards.
 //
@@ -17,7 +18,8 @@
 // plan for EVERY team (`agent_teams_plan {action:"approve"}` calls `archivePlan`), so an APPROVED
 // archived plan is the normal state of a live team. Treating "an archived plan exists" as terminal would
 // skip every approved team, including the live one — measured on this workspace's own archive (21 plan
-// directories, every live team's plan among them). Only an UNAPPROVED archived plan is terminal evidence.
+// directories, every live team's plan among them). Only an UNAPPROVED archived plan is terminal evidence
+// — and only for the plan it IS, never for another plan that merely shares a Lead and a team name.
 import { readFileSync, readdirSync } from "node:fs"
 import { join } from "node:path"
 import { listTeams, recordNamesLead, recordNamesMember, teamRoot, writeTeam, type TeamRecord } from "./team-store"
@@ -37,39 +39,30 @@ export function isLiveTeamPhase(phase: string): boolean {
   return LIVE_TEAM_PHASES.includes(phase)
 }
 
-/** The identity an archived plan and a team record share: the lead session and the team name. */
-const ARCHIVED_PLAN_KEY_SEPARATOR = "\u0000"
-
-/**
- * The archive index key for one plan identity.
- * @param sessionId - the plan's staging session (the team's lead session).
- * @param name - the plan's team name.
- * @returns the composite key, with a NUL separator so no name can be confused with a session id.
- */
-function archivedPlanKey(sessionId: unknown, name: unknown): string {
-  return String(sessionId ?? "") + ARCHIVED_PLAN_KEY_SEPARATOR + String(name ?? "")
-}
-
-/** What `.mpd/team/archive/` says, indexed by the plan identity a team record also carries. */
+/** What `.mpd/team/archive/` says, indexed by the PLAN IDENTITY a team record also carries. */
 export interface ArchivedPlanIndex {
-  /** Identities of archived plans that WERE approved — the normal archive of a live team. */
+  /** Plan ids archived WITH approval — the normal archive of a live team. */
   approved: ReadonlySet<string>
-  /** Identities of archived plans that were NEVER approved — discarded or replaced, hence terminal. */
+  /** Plan ids archived WITHOUT approval — discarded or replaced, hence terminal for THEIR OWN team. */
   unapproved: ReadonlySet<string>
 }
 
 /**
  * Read `.mpd/team/archive/` once and classify every archived plan by its approval state.
  *
+ * KEYED BY THE PLAN'S OWN ID, never by Lead session + team name (PR #42 review F-D): a discarded RETRY
+ * plan shares both of those with the live team's approved plan, and keying by them made the retry's
+ * unapproved archive look like evidence about a team it never built.
+ *
  * Never throws: an absent archive, a directory without a readable `plan.json` or invalid JSON all read as
  * "no evidence", so a caller's resolution is never taken down by a broken archive.
  * @param workspace - the workspace whose team archive is read.
- * @returns the approved and unapproved identity sets; both empty when nothing is archived.
+ * @returns the approved and unapproved plan-id sets; both empty when nothing is archived.
  */
 export function readArchivedPlanIndex(workspace: string): ArchivedPlanIndex {
-  /** Identities of archived plans carrying an `approvedAt`. */
+  /** Plan ids of archived plans carrying an `approvedAt`. */
   const approved = new Set<string>()
-  /** Identities of archived plans carrying no `approvedAt`. */
+  /** Plan ids of archived plans carrying no `approvedAt`. */
   const unapproved = new Set<string>()
   /** The archive's directory entries, or none when the archive does not exist. */
   let entries: string[] = []
@@ -82,10 +75,11 @@ export function readArchivedPlanIndex(workspace: string): ArchivedPlanIndex {
     try {
       /** The archived plan's raw JSON text. */
       const raw = readFileSync(join(teamRoot(workspace), "archive", entry, "plan.json"), "utf8")
-      /** The parsed plan, read structurally: only the three fields this index classifies. */
-      const plan = JSON.parse(raw) as { sessionId?: unknown; name?: unknown; approvedAt?: unknown }
-      /** The identity this plan archives. */
-      const key = archivedPlanKey(plan.sessionId, plan.name)
+      /** The parsed plan, read structurally: only the two fields this index classifies. */
+      const plan = JSON.parse(raw) as { planId?: unknown; approvedAt?: unknown }
+      /** The identity this plan archives. A plan.json without an id is evidence of nothing. */
+      const key = String(plan.planId ?? "")
+      if (key === "") continue
       ;(plan.approvedAt === undefined ? unapproved : approved).add(key)
     } catch {
       // A missing or malformed archived plan is evidence of nothing; it never blocks a resolution.
@@ -96,6 +90,20 @@ export function readArchivedPlanIndex(workspace: string): ArchivedPlanIndex {
 
 /**
  * Whether a team record is still LIVE, by the two C7-3 rules plus the archive evidence.
+ *
+ * THE ARCHIVE ARM IS KEYED BY THE RECORD'S OWN PLAN ID (PR #42 review F-D). It used to key the evidence
+ * by Lead session + team name, so a discarded RETRY plan — staged with `replace:true` after an approval
+ * stopped partway, then deleted — archived an unapproved plan under the same lead+name and made the
+ * genuinely LIVE team terminal at the next dispatch or reap, with no approved archive for that key.
+ * Only the record's OWN plan can now be evidence about it.
+ *
+ * THE MIGRATION RULE for a record that predates `planId` (stated, not implied): the archive cannot
+ * IDENTIFY its plan, so such a record is NEVER archive-reaped — `true` here, and `reapReapedTeams`
+ * leaves it byte-identical. It is still reaped by the two rules that need no plan identity: a terminal
+ * `phase` (the hand-patched `archived` spelling included) or a stamped `endedAt`. Every record minted
+ * by an approval from this build onward carries the field, so the archive arm is fully armed for them;
+ * the bound is that a LEGACY record whose plan was discarded keeps resolving until something stamps a
+ * phase or an `endedAt`.
  * @param record - the record to classify.
  * @param index - the archive index for this workspace ({@link readArchivedPlanIndex}).
  * @returns true when the team may still resolve; false for a reaped/terminal ghost.
@@ -103,8 +111,9 @@ export function readArchivedPlanIndex(workspace: string): ArchivedPlanIndex {
 export function isLiveTeam(record: TeamRecord, index: ArchivedPlanIndex): boolean {
   if (record.endedAt !== undefined) return false
   if (!isLiveTeamPhase(record.phase)) return false
-  /** This record's plan identity, as the archive index keys it. */
-  const key = archivedPlanKey(record.leadSessionId, record.name)
+  /** This record's plan identity, or the empty string when it predates the field. */
+  const key = String(record.planId ?? "")
+  if (key === "") return true
   return !(index.unapproved.has(key) && !index.approved.has(key))
 }
 
@@ -191,7 +200,7 @@ export function reapReapedTeams(workspace: string, now: Date): string[] {
     /** Why this record is not live, naming the rule that caught it. */
     const reason = !isLiveTeamPhase(record.phase)
       ? `record phase ${JSON.stringify(record.phase)} is not a live team phase (${LIVE_TEAM_PHASES.join(" | ")})`
-      : `the plan for lead ${record.leadSessionId} / ${JSON.stringify(record.name)} is archived without approval (discarded or replaced)`
+      : `the plan ${String(record.planId ?? "")} of team ${record.teamId} is archived without approval (discarded or replaced)`
     writeTeam(workspace, { ...record, phase: "ended", endedAt: now.toISOString(), archivedReason: reason })
     reaped.push(record.teamId)
   }

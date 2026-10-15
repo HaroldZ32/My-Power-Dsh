@@ -1,0 +1,236 @@
+diff --git a/skills/dsh-qa/scripts/mcp-call.ts b/skills/dsh-qa/scripts/mcp-call.ts
+index 7e717d76..493fa5a6 100644
+--- a/skills/dsh-qa/scripts/mcp-call.ts
++++ b/skills/dsh-qa/scripts/mcp-call.ts
+@@ -15,7 +15,7 @@
+ //                  `tool/result` carrying the fixture's matched source line.
+ // The prose checks remain in result.json as informational fields only.
+ import { spawnSync } from "node:child_process"
+-import { closeSync, cpSync, existsSync, mkdtempSync, mkdirSync, openSync, readFileSync, writeFileSync } from "node:fs"
++import { closeSync, cpSync, existsSync, mkdtempSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+ import { tmpdir, homedir } from "node:os"
+ import { dirname, join } from "node:path"
+ import { fileURLToPath } from "node:url"
+@@ -23,7 +23,7 @@ import { assertSessionsSandboxed, sandboxWorkspace } from "./lib/workspace-isola
+ import { readSessionEvents, findToolCall, recordedToolNames, type SessionStore, type ToolCallEvidence } from "./lib/session-evidence.ts"
+ import { credentialEnv, seedSandboxCredentials, type Env } from "./lib/credentials.ts"
+ import { DSH_MISSING, dshCommand, resolveDshLauncher } from "./lib/dsh-launcher.ts"
+-import { declaredOptionalVersion, stageDeclaredMcpDependency, type DependencyStage } from "./lib/mcp-dependency.ts"
++import { declaredOptionalVersion, copyMatchesDeclaration, installedPackageVersion, stageDeclaredMcpDependency, type DependencyStage } from "./lib/mcp-dependency.ts"
+ 
+ /** The repository root, derived from this case's own URL (`<root>/skills/dsh-qa/scripts/`). */
+ const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
+@@ -40,6 +40,18 @@ const AST_TOOL = "mcp__ast_grep__search"
+ const LSP_DEPENDENCY = "cclsp"
+ /** The source line the fixture carries and the recorded tool result must therefore contain. */
+ const FIXTURE_LINE = "return 0"
++/**
++ * The staged pack install's wall-clock budget, in ms.
++ *
++ * MEASURED 2026-10-15 on this box: the NON-LINKED closure install (the `--install-links` install below,
++ * which makes npm materialize the pack's own `@ast-grep/cli` + `cclsp` trees instead of symlinking the
++ * pack) took 1037 s — the previous 600000 ms refused it purely on THROUGHPUT, so the real lane was red
++ * here while it passed on a faster registry link, with nothing declaring that difference. 1800000 ms is
++ * ~1.74x the measurement. BOUND: this is a ceiling for a cold cache over a slow registry link, never a
++ * correctness claim — an install that genuinely hangs still fails, and a machine that needs longer still
++ * reddens rather than passing.
++ */
++const INSTALL_TIMEOUT_MS = 1800000
+ 
+ /** The call-arm evidence before a successful read: no call id or recorded call list is known yet,
+  *  which is why this is narrower than `ToolCallEvidence` rather than the same type. */
+@@ -131,6 +143,73 @@ function selfTest(): void {
+     console.error("[mcp-call self-test] FAIL: the live arm no longer stages the declared LSP dependency into the sandbox pack copy it boots")
+     process.exit(1)
+   }
++  // The pack install must stay NON-LINKED (a `file:` install without `--install-links` symlinks the pack
++  // and never installs its OWN declared dependencies, so `@ast-grep/cli` stays unmaterialized and the
++  // launcher falls back to the checkout's `node_modules` — the self-manufactured pass this arm forbids),
++  // must keep npm from AUTO-INSTALLING the pack's peer closure (`--legacy-peer-deps`: that closure is a
++  // SECOND copy of the harness core, measured 2026-10-15 to be boot-FATAL — see the flag comment), and
++  // must stay cache-first (`--prefer-offline`). EVERY needle below is ASSEMBLED from two pieces: a single
++  // literal also appears in this guard's own text, and a rot guard that matches itself can never redden
++  // (measured 2026-10-15 — the earlier spelling of this guard had exactly that defect and passed on a
++  // mutant that dropped the flags).
++  /** The measured install argv the live arm must keep, as one string. */
++  const measuredInstallArgv = '["install", "--prefix", profileDir, "--install-links", "--legacy-peer-deps"' + ', "--prefer-offline"'
++  if (!ownSource.includes(measuredInstallArgv)) {
++    console.error("[mcp-call self-test] FAIL: the live arm's pack install no longer passes the measured flag set (--install-links --legacy-peer-deps --prefer-offline), so it is no longer the install the lane measured: non-linked, with the pack's PEERS left to the host instead of auto-installed into the profile, and cache-first")
++    process.exit(1)
++  }
++  // The staged install's THROUGHPUT budget must not silently revert to the value the measurement
++  // falsified (the real lane was RED here purely on throughput: 1037 s measured against the old
++  // 600000 ms). The source check keeps the constant WIRED into the install; the value check keeps it
++  // above the measurement. Offline rot guard for the disposition, not for npm.
++  if (!ownSource.includes("timeout: INSTALL_TIMEOUT_MS")) {
++    console.error("[mcp-call self-test] FAIL: the staged install no longer passes INSTALL_TIMEOUT_MS, so the measured install budget is unenforced (" + INSTALL_TIMEOUT_MS + " ms)")
++    process.exit(1)
++  }
++  if (INSTALL_TIMEOUT_MS < 1037000) {
++    console.error("[mcp-call self-test] FAIL: INSTALL_TIMEOUT_MS (" + INSTALL_TIMEOUT_MS + " ms) is below the 1037 s the non-linked install MEASURED on this box — the real lane would be red purely on throughput")
++    process.exit(1)
++  }
++  // The two arms must SHARE one npm cache: each arm used to pass `--cache <its own sandbox>/.npm-cache`,
++  // so BOTH paid a cold closure install (measured 2026-10-15: 2647 s of wall clock for the pair). The
++  // per-arm path is asserted GONE and the shared runner asserted PRESENT, because a revert of either
++  // half silently restores the doubled cost the measurement removed.
++  /** The per-arm cache call this guard forbids. */
++  const perArmCacheCall = '"--cache", join(' + 'sandbox'
++  if (ownSource.includes(perArmCacheCall)) {
++    console.error("[mcp-call self-test] FAIL: a per-arm npm cache is back in the live arm, so each arm pays its own COLD closure install again")
++    process.exit(1)
++  }
++  /** The shared-cache argument the live install must still receive. */
++  const sharedCacheArg = '"--cache", ' + 'npmCache'
++  /** The runner both arms must still go through, and the function that owns the shared cache. */
++  const sharedCacheCall = "= runArmsWithShared" + "Cache()"
++  if (!ownSource.includes(sharedCacheArg) || !ownSource.includes(sharedCacheCall) || !ownSource.includes("function runArmsWithShared" + "Cache(")) {
++    console.error("[mcp-call self-test] FAIL: the live arm no longer runs both arms against ONE shared npm cache (runArmsWithSharedCache / --cache npmCache)")
++    process.exit(1)
++  }
++  // The staging tier's VERSION gate (finding: the tier accepted an already-installed dependency without
++  // checking its version). Offline, on a synthetic tree: the reader must answer a version and `null` for
++  // every unusable manifest, and the gate must accept a MATCHING copy while refusing a STALE one — the
++  // two directions the old existence-only check could not tell apart.
++  /** A scratch tree for the version-gate arm; removed at the end of this block. */
++  const versionScratch = mkdtempSync(join(tmpdir(), "mcp-call-version-"))
++  try {
++    /** The manifest path of a copy at the declared version. */
++    const matching = join(versionScratch, "node_modules", LSP_DEPENDENCY, "package.json")
++    mkdirSync(dirname(matching), { recursive: true })
++    writeFileSync(matching, JSON.stringify({ name: LSP_DEPENDENCY, version: declaredLsp }))
++    /** The manifest path of a copy at ANOTHER version. */
++    const stale = join(versionScratch, "stale", "node_modules", LSP_DEPENDENCY, "package.json")
++    mkdirSync(dirname(stale), { recursive: true })
++    writeFileSync(stale, JSON.stringify({ name: LSP_DEPENDENCY, version: "0.0.0-not-" + declaredLsp }))
++    if (installedPackageVersion(join(versionScratch, "absent", "package.json")) !== null) { console.error("[mcp-call self-test] FAIL: a missing manifest must read as no version"); process.exit(1) }
++    if (installedPackageVersion(matching) !== declaredLsp) { console.error("[mcp-call self-test] FAIL: the installed-version reader must return the recorded version"); process.exit(1) }
++    if (!copyMatchesDeclaration(matching, declaredLsp)) { console.error("[mcp-call self-test] FAIL: a copy at the declared version must be accepted"); process.exit(1) }
++    if (copyMatchesDeclaration(stale, declaredLsp)) { console.error("[mcp-call self-test] FAIL: a STALE copy must NOT satisfy the declared version"); process.exit(1) }
++  } finally {
++    rmSync(versionScratch, { recursive: true, force: true })
++  }
+   console.log("[mcp-call self-test] ok: tool-name detection + composed ast_grep server name + fixture content + the declared LSP dependency (" + declaredLsp + ") verified on fixtures")
+ }
+ 
+@@ -145,8 +224,16 @@ function sessionEvidence(sandbox: string, ws: string, toolName: string | null):
+   return { store, names, call }
+ }
+ 
+-/** Run one headless arm in its own sandbox and return what the evidence pass needs from it. */
+-function realRun(job: string, timeoutMs: number = 600000): ArmRun {
++/**
++ * Run one headless arm in its own sandbox and return what the evidence pass needs from it.
++ * @param job The prompt the arm submits (the enum job or the call job).
++ * @param timeoutMs The budget for the arm's own headless boot.
++ * @param npmCache The npm cache DIRECTORY both arms share — owned by the caller, never created here,
++ *   so the second arm travels on what the first one filled instead of paying a cold closure.
++ * @returns The arm's captured output, exit status, its still-live sandbox, its sandbox workspace and
++ *   where its staged copy got the LSP row's declared dependency from.
++ */
++function realRun(job: string, timeoutMs: number, npmCache: string): ArmRun {
+   /** The real home's credential file, copied ONCE into the sandbox and never read again. */
+   const creds = join(homedir(), ".dsh", ".credentials.yaml")
+   if (!existsSync(creds)) { console.error("[mcp-call] missing credentials"); process.exit(1) }
+@@ -200,13 +287,45 @@ function realRun(job: string, timeoutMs: number = 600000): ArmRun {
+     /** The release pack the profile installs by `file:`; the patch's row paths resolve inside it. */
+     const packSource = join(repoRoot, "dist", "mpd-package")
+     if (!existsSync(packSource)) { console.error("[mcp-call] missing staged bundle; run node scripts/pack-mpd.ts first"); process.exit(1) }
+-    // THE TREE UNDER TEST IS A SANDBOX COPY OF THE PACK, not the repository's artifact in place. npm
+-    // installs a directory `file:` dependency as a SYMLINK (measured: a two-package scratch install
++    // THE TREE UNDER TEST IS A SANDBOX COPY OF THE PACK, not the repository's artifact in place. npm's
++    // default for a directory `file:` dependency is a SYMLINK (measured: a two-package scratch install
+     // left `node_modules/fake-pkg -> ../../fake-pkg`), and node resolves a main module's REALPATH, so a
+-    // pack staged in place makes every launcher inside it resolve its dependencies from the CHECKOUT's
+-    // own `node_modules`. The case then passes on the developer host's `bun install` rather than on the
+-    // tree it staged — the same self-manufactured pass this file's header records for the ast-grep
+-    // binary, which is why the copy exists instead of a comment.
++    // pack symlinked from the repository makes every launcher inside it resolve its dependencies from
++    // the CHECKOUT's own `node_modules`. The case then passes on the developer host's `bun install`
++    // rather than on the tree it staged — the same self-manufactured pass this file's header records for
++    // the ast-grep binary, which is why the copy exists instead of a comment. THE INSTALL IS NON-LINKED
++    // for the second half of that defect: the link is not merely a resolution path, a linked pack never
++    // gets its OWN dependencies installed, so `@ast-grep/cli` (declared by the PACK's manifest, absent
++    // from the root manifest) would stay unmaterialized and the launcher would fail BINARY_NOT_FOUND.
++    // `--install-links` below installs the copy as a regular package and materializes that closure.
++    //
++    // `--legacy-peer-deps` IS THE BOOT FIX, not a convenience (MEASURED 2026-10-15 on this box). With
++    // npm's DEFAULT peer auto-install the closure grew to 249 top-level packages / 1.1 GB and carried a
++    // SECOND copy of the harness core into `<profile>/node_modules/@deepseek-ai/*` (peers of the PACK's
++    // own `dsh-better-sidebar` dependency: dsh-agent, dsh-scope, dsh-tools, …). The boot then died
++    // before any model turn with `dsh: tool "send_message" is already registered (for a per-agent
++    // variant, register through that agent's `agent.ctx` instead)`. MECHANISM, captured from the
++    // harness's own stack (evidence …/skills3/collision/): `@deepseek-ai/dsh-scope` keys the calling
++    // context's scope by a MODULE-LOCAL symbol (`const kScope = Symbol("dsh.scope")`; `scopeOf(ctx) =
++    // ctx[kScope]`), so a scope marker written by one loaded copy is INVISIBLE to another copy. The
++    // `mpd-tool-agent-team` row (`@deepseek-ai/dsh-experimental-tool-agent-team`, whose `install()`
++    // registers `send_message` through `agent.ctx`) therefore fell through to the GLOBAL tool layer,
++    // where the base row `tool-subagent-control` had already registered a global `send_message`
++    // (`@deepseek-ai/dsh-tool-subagent-control`): duplicate insertion, fatal boot. Falsified along the
++    // way: the leading hypothesis that the profile's own `dsh.bundle.patch` and this case's `--patch`
++    // are two paths the loader fails to dedupe — the composition carries each mpd row EXACTLY ONCE and
++    // a real-copy install boots fine with that same `--patch`. `--legacy-peer-deps` restores the peer
++    // semantics a real dsh profile has (`dsh plugin add` forwards to pnpm, which does NOT auto-install
++    // peers; the installation provides them), keeps `dsh-better-sidebar` and `@ast-grep/cli` + `cclsp`
++    // installed — the pack's OWN closure, which is what this arm measures — and removes the duplicate
++    // harness copy. It is NOT a product verdict: the harness's module-local scope symbol stays a
++    // reported finding for the host owner, with this repro.
++    //
++    // `--prefer-offline` + `npmCache` are the THROUGHPUT fix: the caller hands BOTH arms ONE cache, so
++    // only the first pays the cold closure and the second reuses it instead of re-resolving the same
++    // tree over a link that can be ~200x slower than a mirror (MEASURED 2026-10-15 on this box: the same
++    // packument answered in 18.8 s from registry.npmjs.org and 0.095 s from the mirror; a cold per-arm
++    // cache cost 1037 s per arm).
+     /** The sandbox-local pack copy the profile installs; its launchers resolve from inside it. */
+     const staged = join(sandbox, "staged-pack")
+     cpSync(packSource, staged, { recursive: true })
+@@ -225,8 +344,8 @@ function realRun(job: string, timeoutMs: number = 600000): ArmRun {
+     const profileDir = join(sandbox, "profiles", "headless")
+     mkdirSync(profileDir, { recursive: true })
+     writeFileSync(join(profileDir, "package.json"), JSON.stringify({ name: "dsh-profile-headless", private: true, dependencies: { ["@mpd-dsh/mpd"]: "file:" + staged }, dsh: { profile: { bundles: ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-headless"] } } }, null, 2) + "\n")
+-    /** The `npm install` of the staged pack into the sandbox profile. */
+-    const inst = spawnSync("npm", ["install", "--prefix", profileDir, "--no-audit", "--no-fund", "--cache", join(sandbox, ".npm-cache")], { env, encoding: "utf8", timeout: 600000, maxBuffer: 32 * 1024 * 1024 })
++    /** The `npm install` of the staged pack into the sandbox profile; `--install-links` materializes the pack's own declared dependencies, `--legacy-peer-deps` keeps npm from auto-installing a second harness copy (the boot fix — see the flag comment above), `--prefer-offline` lets the second arm travel on `npmCache`, and `INSTALL_TIMEOUT_MS` is the measured-justified throughput budget (see its declaration). */
++    const inst = spawnSync("npm", ["install", "--prefix", profileDir, "--install-links", "--legacy-peer-deps", "--prefer-offline", "--no-audit", "--no-fund", "--cache", npmCache], { env, encoding: "utf8", timeout: INSTALL_TIMEOUT_MS, maxBuffer: 32 * 1024 * 1024 })
+     if (inst.status !== 0) { console.error("[mcp-call] FAIL: staged install\n" + (inst.stdout || "") + (inst.stderr || "")); process.exit(1) }
+     /** The resolved `dsh` launcher invocation for the arm's prompt, or `null` when none is on PATH. */
+     const runSpec = dshCommand(["--profile", "headless", "--patch", join(repoRoot, "cordis.patch.yml"), job], env)
+@@ -241,14 +360,34 @@ function realRun(job: string, timeoutMs: number = 600000): ArmRun {
+   }
+ }
+ 
++/**
++ * Run both live arms against ONE npm cache, created here and released before the evidence pass reads
++ * either arm's sandbox.
++ *
++ * WHY SHARED: the two arms install the SAME pack and the SAME declared closure, so a per-arm cache made
++ * the lane pay two COLD closure installs (measured 2026-10-15 on this box: 2647 s for the pair, one cold
++ * install per arm; a single cold closure measured 1037 s). The cache lives here — outside both arm
++ * sandboxes, which is the only place both arms can reach — and is removed in `finally` so a lane leaves
++ * no multi-hundred-MB residue behind; the arms' own sandboxes stay alive, because the evidence pass
++ * re-reads their session stores.
++ * @returns The two arms in order: the enum arm, then the call arm.
++ */
++function runArmsWithSharedCache(): readonly [ArmRun, ArmRun] {
++  /** The ONE npm cache both arms share; deleted once both arms have finished. */
++  const npmCache = mkdtempSync(join(tmpdir(), "mpd-dsh-qa-npmcache-"))
++  try {
++    return [realRun(ENUM_JOB, 600000, npmCache), realRun(CALL_JOB, 600000, npmCache)]
++  } finally {
++    rmSync(npmCache, { recursive: true, force: true })
++  }
++}
++
+ /** The live arm: run both prompts headless and decide on the harness-recorded evidence they left. */
+ function runReal(): void {
+   /** Start of the run, so `result.json` carries its wall-clock duration. */
+   const t0 = Date.now()
+-  /** The enum arm: the tool list the harness actually showed the model. */
+-  const enumRun = realRun(ENUM_JOB)
+-  /** The call arm: a real ast-grep search call on the copied fixture. */
+-  const callRun = realRun(CALL_JOB)
++  /** Both arms, run against one shared npm cache; destructured so the evidence pass reads each by name. */
++  const [enumRun, callRun] = runArmsWithSharedCache()
+   /** The evidence directory this run writes both arms' logs and session artifacts into. */
+   const outDir = join(repoRoot, "evidence", "dsh-qa", "mcp-call", new Date().toISOString().replaceAll(":", "-"))
+   mkdirSync(outDir, { recursive: true })

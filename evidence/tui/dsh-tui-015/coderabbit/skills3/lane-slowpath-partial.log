@@ -1,0 +1,4 @@
+# slow-path (default registry) partial observation, killed at 20 min
+2026-10-15T06:32:02Z
+START 2026-10-15T06:11:49Z
+cache size at kill: 37M after 20 min — the FIRST arm's closure install had not finished; a full closure needs ~100 MB of cache on this route

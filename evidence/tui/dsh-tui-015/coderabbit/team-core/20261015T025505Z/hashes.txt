@@ -1,0 +1,9 @@
+# sha256 of every path this wave changed (read at 2026-10-15T02:55:45Z)
+532d65ba47ba8c5f658cfe65742328bccc02d9593ac96510bd1c70574d17c17b  packages/mpd-team-core-plugin/src/index.ts
+74d6c35de1d3bf6abec4999bab8bb13b0dae50f6f5d1479a0fe5f32ceead9a5a  packages/mpd-team-core-plugin/src/team-lifecycle.ts
+f2f32c9d3a9dda0b66aa5797bb202d204e177a096d165cabd0d97e0976b64d00  packages/mpd-team-core-plugin/src/team-store.ts
+43fd8c763f3a945e84327e5a4a53fca9cdb9ffa56ed3a724a2339e7f7b778b95  packages/mpd-team-core-plugin/src/mailbox-store.ts
+8a53d67475425c8d09c4ea858577d6aecdca85c8c005e652e6e5f2fcd845e326  packages/mpd-team-core-plugin/src/plan-store.ts
+9de951a818c6b8b0f1114f259e6fa7a40cf963a84a3c17316414c7f1db6fcb77  packages/mpd-team-core-plugin/test/pr42-review-repairs.test.ts
+46a14f9154d3dae61699f1646f7db752904aa800b9421d826f7ebd31e17991e3  packages/mpd-team-core-plugin/test/dispatch-guard.test.ts
+c7383813baf3d7c1ba2b9d22beb91744453f8928eee804338f153fc3d9667071  packages/mpd-team-core-plugin/dist/index.js
