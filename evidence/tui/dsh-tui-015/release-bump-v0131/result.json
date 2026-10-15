@@ -1,0 +1,47 @@
+{
+  "task": "version bump 0.13.0 -> 0.13.1 in exactly three carriers",
+  "wave": "v0.13.1 patch release",
+  "branch": "release/v0.13.1",
+  "head": "80391dcf5ba1b586f000365b5fa8da2a76da8807",
+  "capturedAtUtc": "2026-10-15T07:20:55Z",
+  "author": "Junior Engineer (member session; no git writes performed)",
+  "edits": [
+    { "path": "package.json", "line": 6, "from": "0.12.0", "to": "0.13.1" },
+    { "path": "dsh-plugin.json", "line": 6, "from": "0.12.0", "to": "0.13.1" },
+    { "path": "dsh-distribution.json", "line": 6, "from": "0.12.0", "to": "0.13.1" }
+  ],
+  "diffStatThreeCarriers": "dsh-distribution.json | 2 +-\ndsh-plugin.json | 2 +-\npackage.json | 2 +-\n3 files changed, 3 insertions(+), 3 deletions(-)",
+  "diffStatWholeTree": "CHANGELOG.md | 56 ++++\ndsh-distribution.json | 2 +-\ndsh-plugin.json | 2 +-\npackage.json | 2 +-\n4 files changed, 59 insertions(+), 3 deletions(-)",
+  "changelogTopEntry": {
+    "heading": "## v0.13.1 — the review pass: team-plane authorization, docker lane honesty, and the QA install path",
+    "line": 17,
+    "matchesBumpedVersion": true
+  },
+  "gates": [
+    {
+      "command": "bun run verify:manifest",
+      "exitCode": 0,
+      "verdict": "PASS — the install-time rules and the packaging contract hold.",
+      "versionCoherence": [
+        "ok version:dsh-plugin.json: version = 0.13.1",
+        "ok version:dsh-distribution.json: distribution.version = 0.13.1"
+      ],
+      "log": "evidence/tui/dsh-tui-015/release-bump-v0131/verify-manifest.log"
+    }
+  ],
+  "integrity": {
+    "trailingNewline": "present in all three after the edit",
+    "jsonParse": "ok in all three",
+    "indentationPreserved": true,
+    "keyOrderPreserved": true,
+    "payloadLinesChanged": 3
+  },
+  "premiseDiscrepancy": {
+    "taskStated": "the three carriers are at 0.13.0 and must move to 0.13.1",
+    "observed": "all three carriers were at 0.12.0 at HEAD 80391dcf (release/v0.13.1), not 0.13.0",
+    "evidence": "git show 80391dcf:package.json -> \"version\": \"0.12.0\"; baseline bun run verify:manifest exited 0 with version = 0.12.0 in all carriers, so no partial bump existed",
+    "reference": "v0.13.0 tag (d8e87a50) and master both carry 0.13.0; v0.13.0 is NOT an ancestor of HEAD, so release/v0.13.1 branches from a base that never received the 0.13.0 carrier bump",
+    "handling": "landed the stated END STATE (all three carriers -> 0.13.1) since it is unambiguous and satisfies both verify:manifest and the CHANGELOG; the starting point is reported, not reconciled",
+    "impact": "none on the final artifact; branch-base provenance is the captain's call"
+  }
+}

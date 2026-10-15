@@ -14,6 +14,62 @@ Further reading:
 - [`VENDOR_LOCK.json`](./VENDOR_LOCK.json) — the pinned upstream baseline each release is measured
   against.
 
+## v0.13.1 — the review pass: team-plane authorization, docker lane honesty, and the QA install path
+
+Patch release answering all fifteen CodeRabbit findings on the v0.13.0 PR (#42), blind-verified PASS at
+the fix revision (`rec-20261015T071509-834da8`). Triage and lane reports:
+`evidence/tui/dsh-tui-015/coderabbit/`.
+
+**Fixed — security / authorization (four Major, CWE-862 / CWE-863 plus two integrity defects).**
+
+- **The live append verbs now require Lead authorization.** `agent_teams_plan`'s `add_member` and
+  `create_task` append to a LIVE approved record only for the team's Lead; a roster member's attempt is
+  refused with a reason and leaves the record byte-unchanged (the review's literal
+  `recordNamesLead(sessionId, …lineage)` patch would have stayed bypassable through the lineage shape —
+  the shipped guard narrows the ancestry, and an arm proves that shape is refused).
+- **Lineage no longer identifies a roster member.** A member whose `parentSession` is the Lead can no
+  longer inherit the Lead's close override; a forked/resumed captain still heals, and a delegation child
+  is still refused.
+- **The mailbox summary is scoped by team identity.** `send` stamps the resolved `teamId` on each mail
+  record and the summary filters on that stamp, instead of member ids/names that repeat across teams
+  (every team mints `M1`, `M2`, …); unstamped legacy rows are excluded from `scope:"team"` and reported
+  as a count.
+- **The archive/reap rule is keyed by the record's own `planId`**, stamped at approval, instead of
+  Lead + name — a discarded retry plan can no longer reap a LIVE team. Records that predate the field
+  are never archive-reaped (stated migration rule).
+
+**Fixed — the Docker lane's own honesty.**
+
+- `BROWSER_INSTALL` is reset before the mirror retry, so a SUCCESSFUL retry is no longer reported as
+  unavailable (the retry used to keep the first attempt's exit code).
+- The reply verdict subtracts the pre-send capture, so a STALE failure panel can no longer bind a
+  credential bound before the current turn renders; two self-test arms pin both directions.
+- Step 01b's tarball probe falls back to the mirror's metadata AND tarball before settling, so a
+  registry whose metadata answers while its tarballs blackhole no longer passes the probe and stalls
+  the install.
+- The owed-cases step's budget story is stated with the shipped numbers (warm-cache 70.8–113.1 s over
+  three green runs, the case's 1800 s install budget, the runner's 2400 s per-case ceiling).
+
+**Fixed — the QA lane's staged install.**
+
+- The `mcp-call` case installs the staged pack NON-LINKED (`--install-links` plus `--legacy-peer-deps`,
+  the peer semantics a real profile has): a linked `file:` dependency never materialized the pack's OWN
+  closure, so the ast-grep launcher resolved neither `@ast-grep/cli` nor `cclsp`. Both arms now share
+  one warm npm cache (measured 70.8–113.1 s, from 1037 s cold) and the lane passes.
+- Six smaller findings in the TUI QA cases (stale headers, an unrestored negative control, a stale pane
+  width, fresh-session preference, dependency version gating) are fixed.
+
+**Reported, not fixed here — a host-side product finding.** Any profile whose `node_modules` carries a
+second copy of the harness core is boot-fatal through a duplicate `send_message` tool registration,
+because `@deepseek-ai/dsh-scope` keys scopes by a module-local `Symbol`. Reproduced with the stack at
+`evidence/tui/dsh-tui-015/coderabbit/skills3/collision/`; the lane avoids it by keeping peer
+auto-install off, which is what a real dsh profile does.
+
+**Bounds.** The five NITs the verifying seat recorded (an evidence-prose miscount, two QA self-test
+summary/arm-name clarity items, the `agent_teams_mail` tool description not yet naming the team scope,
+and a coverage note on the boot-fatal peer configuration) are recorded as follow-up candidates rather
+than edited after the verdict, so the verified revision is the merged revision.
+
 ## v0.13.0 — two host adaptations and a leaner captain: dsh-tui 0.15.0, live team surfaces, the MIT re-source, the win32 band, and the keeper that knows when to stand down
 
 This entry covers the FULL delta since v0.12.0 (user-mandated): two DSH-TUI adaptation waves (0.14.0
