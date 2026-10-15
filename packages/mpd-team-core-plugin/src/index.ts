@@ -87,6 +87,7 @@ import {
   memberProgress,
   onTeamStateWritten,
   readTeam,
+  recordNamesLead,
   recordNamesMember,
   rememberLead,
   summariseTeam,
@@ -99,6 +100,7 @@ import {
   writeTeam,
   TASK_KINDS,
   type TaskKind,
+  type TeamMemberRecord,
   type TeamRecord,
   type TeamTaskRecord,
 } from "./team-store"
@@ -342,6 +344,47 @@ function sessionIsDelegatedChild(exec: DshToolExec | undefined): boolean {
   /** The recorded depth, non-numeric when the harness never set one. */
   const depth = Number(header?.delegationDepth)
   return Number.isFinite(depth) && depth >= 1
+}
+
+/** The session TITLE the harness gives a caller (the persona prompt prefix), or `""`. */
+function sessionTitleOf(exec: DshToolExec | undefined): string {
+  return String((exec?.agent as any)?.session?.header?.title ?? "")
+}
+
+/** Who a caller's own identity says it is on one team record — see {@link callerIdentity}. */
+interface CallerIdentity {
+  /** The roster row this caller IS, or undefined when the durable roster does not name it. */
+  ownMember?: TeamMemberRecord
+  /**
+   * The recorded ancestors this caller may present as its own identity.
+   *
+   * NON-EMPTY only for a caller the roster does not name; see {@link callerIdentity}.
+   */
+  ancestry: readonly string[]
+}
+
+/**
+ * The identity a caller may present on ONE record: its own member row, and the ancestors it may borrow.
+ *
+ * WHY THE NARROWING EXISTS (PR #42 review, F-B/CWE-863). `lineage` is the CAPTAIN-continuity link
+ * (C7-4 F5): a forked or resumed Lead gets a fresh session id while the record keeps the original, and
+ * the harness-recorded `parentSession` is the one durable way back. But a SPAWNED MEMBER's session
+ * names the Lead as its parent too, so adding the ancestors unconditionally let a roster member
+ * inherit the Lead's spelling — and with it the Lead close override on another member's row (F-B) and
+ * the live-append authorization (F-A, CWE-862). A member is therefore identified by its OWN id, then
+ * by the session title the record's roster names, and borrows NO ancestry; a caller the roster does
+ * not name (the ordinary Lead, the forked captain) keeps the C7-4 behaviour unchanged.
+ * @param record - the record the caller's membership is decided against.
+ * @param sessionId - the caller's own session id.
+ * @param title - the session title the harness gave the caller (the persona prompt prefix).
+ * @param lineage - the ancestors the harness recorded for this caller.
+ * @returns the caller's member row (when the roster names it) and the ancestry it may present.
+ */
+function callerIdentity(record: TeamRecord, sessionId: string, title: string, lineage: readonly string[]): CallerIdentity {
+  /** The member this session is: its own id first, then a roster name the session title contains. */
+  const ownMember = memberNamedBy(record, [sessionId])
+    ?? (Array.isArray(record.members) ? record.members : []).find((member) => member.name !== "" && title.includes(member.name))
+  return ownMember === undefined ? { ancestry: lineage } : { ownMember, ancestry: [] }
 }
 
 /** Row entry point: build the adapter once, then register the five tools and the `/agent-teams` command. */
@@ -790,6 +833,15 @@ export function apply(ctx: any): void {
         /** The caller's live team, or the sentence saying why none unambiguous resolved. */
         const resolved = resolveForWrite(workspace, sessionId, lineage, delegated)
         if (resolved.record === undefined) throw new Error(resolved.refusal ?? "no team is staged in this session — call agent_teams_create first")
+        // ── LEAD AUTHORIZATION ON THE LIVE ROSTER (PR #42 review F-A, CWE-862) ──
+        // The staged-plan arm above is the caller's OWN staging file; this arm writes a LIVE team every
+        // surface already reads, so it is the Lead's to change. `agent_teams_plan` is NOT on the
+        // read-only deny list, so without this check a member could raise a write-capable teammate onto
+        // the roster. The ancestry is the NARROWED one (`callerIdentity`): a member that carries the
+        // Lead as its `parentSession` must not inherit the Lead's spelling here either.
+        if (!recordNamesLead(resolved.record, [sessionId, ...callerIdentity(resolved.record, sessionId, sessionTitleOf(exec), lineage).ancestry])) {
+          throw new Error(`only the Lead of team ${resolved.record.teamId} may append to its live roster or board`)
+        }
         /** The trimmed name, which is both the duplicate key and the stored value. */
         const name = input.name.trim()
         if (name === "") throw new Error("a teammate needs a non-empty name")
@@ -847,13 +899,21 @@ export function apply(ctx: any): void {
         /** The staged, not-yet-approved plan this call appends to, when one exists. */
         const plan = stagedPlan(workspace, sessionId)
         if (plan !== undefined) {
+          // THE STAGED ARM CARRIES THE SAME THREE FIELDS AS THE LIVE ONE (PR #42 review F-J). It used to
+          // parse `kind` and drop it together with `coverageOf`/`sourceTaskId`, so `approve` wrote
+          // `kind: "work"` for every staged task and a `repair` row reached the board as a plain work row
+          // with no warning anywhere. Carried rather than refused: staging a `repair` row BEFORE approval
+          // is the documented requirement-chain flow this field pair exists for.
           /** The plan with the task appended (trimmed by the store). */
           const next = addTask(plan, {
             subject: String(raw.subject ?? ""),
             description: String(raw.description ?? ""),
+            ...(kind === undefined ? {} : { kind }),
             ...(blockedBy === undefined ? {} : { blockedBy }),
             ...(writeScopes === undefined ? {} : { writeScopes }),
             ...(owner === undefined ? {} : { owner: String(owner) }),
+            ...(coverageOf === undefined ? {} : { coverageOf: String(coverageOf) }),
+            ...(sourceTaskId === undefined ? {} : { sourceTaskId: String(sourceTaskId) }),
           })
           writePlan(workspace, next)
           // SAID AT WRITE TIME (R21): each reference is classified against the plan AS IT NOW STANDS, so
@@ -869,6 +929,12 @@ export function apply(ctx: any): void {
         /** The caller's live team, or the sentence saying why none unambiguous resolved. */
         const resolved = resolveForWrite(workspace, sessionId, lineage, delegated)
         if (resolved.record === undefined) throw new Error(resolved.refusal ?? "no team is staged in this session — call agent_teams_create first")
+        // ── LEAD AUTHORIZATION ON THE LIVE BOARD (PR #42 review F-A, CWE-862) ──
+        // Same rule as the live roster arm: a member must not assign arbitrary ownership or
+        // `write_scopes` on a running team's board. See that arm's comment for the narrowing.
+        if (!recordNamesLead(resolved.record, [sessionId, ...callerIdentity(resolved.record, sessionId, sessionTitleOf(exec), lineage).ancestry])) {
+          throw new Error(`only the Lead of team ${resolved.record.teamId} may append to its live roster or board`)
+        }
         if (String(raw.subject ?? "").trim() === "") throw new Error("a task needs a non-empty subject")
         /** The live record with the task appended (blockers split and reported by the store). */
         const next = addTeamTask(resolved.record, {
@@ -969,7 +1035,7 @@ export function apply(ctx: any): void {
         // naming exactly what was attempted instead of nothing at all, and why an executor swap
         // (W2) changes no id any surface has already shown.
         /** The mpd record this approval builds; persisted at the end, and on failure too. */
-        let record = createTeam(workspace, { name: plan.name, description: plan.description, leadSessionId: sessionId }, now())
+        let record = createTeam(workspace, { name: plan.name, description: plan.description, leadSessionId: sessionId, planId: plan.planId }, now())
         for (const member of plan.members) {
           record = addTeamMember(record, { name: member.name, description: member.description, ...(member.role === undefined ? {} : { role: member.role }) }, now())
         }
@@ -984,10 +1050,14 @@ export function apply(ctx: any): void {
           record = addTeamTask(record, {
             subject: task.subject,
             description: task.description,
-            kind: "work",
+            // THE STAGED KIND IS THE BOARD KIND (PR #42 review F-J): `work` remains the default for a
+            // plan that never named one, which is exactly what every staged task used to become.
+            kind: task.kind ?? "work",
             ...(task.blockedBy === undefined ? {} : { blockedBy: task.blockedBy }),
             ...(task.writeScopes === undefined ? {} : { writeScopes: task.writeScopes }),
             ...(task.owner === undefined ? {} : { owner: task.owner }),
+            ...(task.coverageOf === undefined ? {} : { coverageOf: task.coverageOf }),
+            ...(task.sourceTaskId === undefined ? {} : { sourceTaskId: task.sourceTaskId }),
           }, now())
         }
         /** The plan's own references → the board ids this approval minted, in plan order. */
@@ -1196,11 +1266,15 @@ export function apply(ctx: any): void {
         // record ALREADY knows which member this session is: match it by the recorded handle, then fall
         // back to a member name the title CONTAINS, and add that name to the caller's spellings.
         /** The member this session is, as the resolved record names it. */
-        const ownMember = memberNamedBy(record, [sessionId, ...lineage])
-          ?? record.members.find((member) => member.name !== "" && title.includes(member.name))
+        // THE ROSTER NAMES THE CALLER BY ITS OWN ID ONLY (PR #42 review F-B, CWE-863): a member's
+        // session carries the Lead as its `parentSession`, so searching the roster with the lineage
+        // would let a member match the LEAD's spelling and take the Lead close override below.
+        /** Who this call's own identity says it is: its member row, and the ancestry it may borrow. */
+        const identity = callerIdentity(record, sessionId, title, lineage)
         // THE CALLER'S OWN SPELLINGS, never a name the caller TYPES: `claimant` is deliberately NOT read
-        // here, because accepting it would let any agent close any row by naming its owner.
-        const caller = [sessionId, title, String(membership?.name ?? ""), ...(ownMember === undefined ? [] : [ownMember.name]), ...lineage].filter((value) => value !== "")
+        // here, because accepting it would let any agent close any row by naming its owner. `ancestry`
+        // is EMPTY for a roster member and is the C7-4 F5 captain-continuity link for everyone else.
+        const caller = [sessionId, title, String(membership?.name ?? ""), ...(identity.ownMember === undefined ? [] : [identity.ownMember.name]), ...identity.ancestry].filter((value) => value !== "")
         // RE-READ IMMEDIATELY BEFORE THE CAS, the dispatch pass's own discipline: the record was opened
         // before this branch and a concurrent write may have moved it.
         const fresh = readTeam(workspace, record.teamId) ?? record
@@ -1478,14 +1552,16 @@ export function apply(ctx: any): void {
       additionalProperties: false,
     },
     output: {
-      schema: { type: "object", properties: { message: { type: "object" }, messages: { type: "array", items: { type: "object" } }, summary: { type: "array", items: { type: "object" } }, scope: { type: "string" }, moved: { type: "array", items: { type: "string" } }, refused: { type: "string" } } },
+      schema: { type: "object", properties: { message: { type: "object" }, messages: { type: "array", items: { type: "object" } }, summary: { type: "array", items: { type: "object" } }, scope: { type: "string" }, legacyUnstamped: { type: "number" }, moved: { type: "array", items: { type: "string" } }, refused: { type: "string" } } },
       render: (_args: any, value: any) =>
         text(
           value?.refused !== undefined ? `refused: ${value.refused}`
             : value?.message !== undefined ? `sent ${value.message.id} to ${value.message.toName}`
             : value?.moved !== undefined ? `acknowledged ${value.moved.length} message(s)`
             // C7-4 F3: the scope is printed, so a workspace-global fold is never mistaken for this team's.
-            : value?.summary !== undefined ? (value.summary.length === 0 ? `no mail (${value.scope ?? "workspace"} scope)` : value.summary.map((row: any) => `${row.memberName}: ${row.unread} unread / ${row.total} total`).join("\n") + ` (${value.scope ?? "workspace"} scope)`)
+            // F-C adds the counted legacy note: an unstamped row is left out of a team-scoped answer, and
+            // the caller reads HOW MANY rather than a silently smaller total.
+            : value?.summary !== undefined ? (value.summary.length === 0 ? `no mail (${value.scope ?? "workspace"} scope)` : value.summary.map((row: any) => `${row.memberName}: ${row.unread} unread / ${row.total} total`).join("\n") + ` (${value.scope ?? "workspace"} scope)`) + (typeof value?.legacyUnstamped === "number" ? ` · ${value.legacyUnstamped} unstamped row(s) excluded (sent before team stamping)` : "")
             : (value?.messages?.length ?? 0) === 0 ? "nothing unread"
             : value.messages.map((mail: any) => `${mail.id} from ${mail.fromName}: ${mail.subject}`).join("\n"),
         ),
@@ -1521,6 +1597,9 @@ export function apply(ctx: any): void {
           subject: String(args?.subject ?? ""),
           body: String(args?.body ?? ""),
           memberIds: roster.map((member) => member.id),
+          // THE TEAM STAMP (PR #42 review F-C): `toId` is a per-team id every team reuses, so the row's
+          // team identity is recorded HERE, at the one moment the sending team is known.
+          ...(mailTeam === undefined ? {} : { teamId: mailTeam.teamId }),
         }, now())
         if (!result.ok) return { refused: result.detail }
         // The transport carries it; a delivery failure does NOT lose the record — the message stays
@@ -1542,23 +1621,27 @@ export function apply(ctx: any): void {
       }
 
       if (args?.action === "summary") {
-        /** The whole folded ledger's per-member summary. */
-        const rows = summarise(readMailbox(workspace))
-        // ── C7-4 F3: THE SCOPE IS STATED ──────────────────────────────────────
+        /** The folded ledger, read ONCE so every count below describes the same read. */
+        const state = readMailbox(workspace)
+        /** The whole fold's per-member summary — what a caller with no resolved team reads. */
+        const rows = summarise(state)
+        // ── C7-4 F3 + PR #42 review F-C: THE SCOPE IS TEAM IDENTITY, NOT MEMBER IDS ──
         // The fold is WORKSPACE-GLOBAL, so a brand-new team read a stale roster from a wave that ended
-        // days earlier. With a resolved team the rows are FILTERED to that team's members (id, name and
-        // recorded handle all match a row's recipient), and the answer says `scope:"team"`. With no team
-        // resolved the whole fold is returned and LABELLED `scope:"workspace"` — the honest degrade, never
-        // a silent one.
+        // days earlier (C7-4 F3). The first fix filtered on member ids, names and handles — but every
+        // team mints its members from `M1` upward, so a stale row addressed to the OLD `M1` matched the
+        // NEW team's `M1` and was still counted under `scope:"team"` (F-C). A row of this team is now
+        // the row whose `teamId` stamp IS this team's — the identity, never a reusable id.
         if (mailTeam === undefined) return { summary: rows, scope: "workspace" }
-        /** Every identity a row of THIS team's mailbox can carry. */
-        const keys = new Set<string>()
-        for (const member of mailTeam.members) {
-          keys.add(member.id)
-          keys.add(member.name)
-          if (member.executorRef !== undefined && member.executorRef !== "") keys.add(member.executorRef)
-        }
-        return { summary: rows.filter((row) => keys.has(row.memberId) || keys.has(row.memberName)), scope: "team" }
+        /** The messages stamped with THIS team's identity — the only rows this team can claim. */
+        const mine = state.messages.filter((message) => message.teamId === mailTeam.teamId)
+        // THE LEGACY RULE, stated rather than guessed: a row with NO stamp predates the field, so no team
+        // can PROVE it owns it — it is EXCLUDED and COUNTED in the answer. Claiming every unstamped row
+        // that merely matches this team's member ids is the defect itself; the `createdAt` fallback
+        // cannot close it either, because an OLDER team that is still live mints the same `M1` and its
+        // rows would be admitted whenever they were sent after this team's `createdAt`.
+        /** Unstamped rows this scoped answer left out, so the exclusion is visible and never silent. */
+        const legacyUnstamped = state.messages.length - state.messages.filter((message) => message.teamId !== undefined).length
+        return { summary: summarise({ messages: mine }), scope: "team", ...(legacyUnstamped === 0 ? {} : { legacyUnstamped }) }
       }
 
       /** The folded mailbox, read once so the unread/undelivered/total counts agree. */

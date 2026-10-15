@@ -1,0 +1,28 @@
+START 2026-10-15T04:16:48Z
+[mcp-call] ok=false (enum recorded tools=0, mcp__ast_grep__=false, mcp__lsp__=false, ast_grep call MISSING: the harness recorded no tool/call for mcp__ast_grep__search (answer-only narration is not tool evidence), call result has the fixture line=false, lsp dependency staged from checkout-store) -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/dsh-qa/mcp-call/2026-10-15T05-00-55.745Z
+Command exited with non-zero status 1
+	Command being timed: "node skills/dsh-qa/scripts/mcp-call.ts"
+	User time (seconds): 48.72
+	System time (seconds): 11.79
+	Percent of CPU this job got: 2%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 44:07.09
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 412272
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 1
+	Minor (reclaiming a frame) page faults: 882880
+	Voluntary context switches: 975929
+	Involuntary context switches: 3233
+	Swaps: 0
+	File system inputs: 18224
+	File system outputs: 88
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 1
+EXIT=1
+END 2026-10-15T05:00:55Z

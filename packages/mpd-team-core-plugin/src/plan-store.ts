@@ -13,7 +13,7 @@
 // without a ctx, a harness or a model.
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
-import { sanitizeId, nextIdSuffix } from "./team-store"
+import { sanitizeId, nextIdSuffix, type TaskKind } from "./team-store"
 
 /** One member the plan wants. The prompt is what the team executor hands the teammate on approval. */
 export interface StagedMember {
@@ -52,6 +52,16 @@ export interface StagedTask {
   writeScopes?: string[]
   /** Teammate name the captain wants to own it; the board resolves that name to a session. */
   owner?: string
+  /**
+   * What kind of row this is on the requirement chain (C7-4 F1, carried from the staged path by the
+   * PR #42 review): `work` when the plan does not say, because that is what every staged task used to
+   * become. Without the field a `repair` staged before approval silently reached the board as `work`.
+   */
+  kind?: TaskKind
+  /** The user clause this task serves, carried to the board unchanged (same defect as {@link kind}). */
+  coverageOf?: string
+  /** The task a repair row was opened from, carried to the board unchanged (same defect). */
+  sourceTaskId?: string
 }
 
 /** The whole staged plan for one session. */

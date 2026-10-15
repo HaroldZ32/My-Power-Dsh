@@ -1,0 +1,11 @@
+PRESENT: warm-cache range 70.8-113.1 s
+PRESENT: three warm runs enumerated
+PRESENT: non-linked rationale kept
+PRESENT: 1037 s labelled SLOW-LINK
+PRESENT: cold-link measurement 1037 s
+PRESENT: case install budget 1800000 ms
+PRESENT: runner per-case ceiling 2400 s + source
+PRESENT: ordering rule sentence
+PRESENT: step floor 3600 s
+PRESENT: mirror fallback context
+stale_hits=0

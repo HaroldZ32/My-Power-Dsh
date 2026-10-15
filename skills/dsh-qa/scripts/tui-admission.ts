@@ -18,7 +18,7 @@
 // C3' GRANT ARMS (tui-015-adaptation, six arms over TWO boots; the host re-reads
 // `~/.dsh-tui/extension-grants.json` on EVERY authorize operation, so a grant is a
 // file write, not a restart):
-//   (1) GRANTED BOOT — `/plugin` and `/plugin check` both advertise `compatible`;
+//   (1) GRANTED BOOT — `/plugin list` and `/plugin check` both advertise `compatible`;
 //       (0.15.0 RENAMED THE HOST COMMAND `/plugins` -> `/plugin`: measured 2026-10-14, the old
 //        spelling is not registered any more, so the line was submitted as CHAT TEXT and the model
 //        answered it — the pane carried a thinking indicator and tool calls, never a verdict);

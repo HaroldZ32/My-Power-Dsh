@@ -19,6 +19,12 @@
 // own, or a rendered mention of the tool the prompt asked the model to call. Growth alone is never a
 // reply, and the prompt's own `DONE` never is.
 //
+// THE PANEL IS READ THE SAME WAY (CodeRabbit finding on PR #42, 2026-10-15): the failure panel that
+// counts is the one the CURRENT turn painted — a line whose normalized form was NOT already on screen
+// before the send. Scanning the whole post-send capture let a panel the previous turn had left there end
+// the lane's wait at `ui.replyRendered` and record a credential bound before the current reply rendered.
+// A panel the current turn really painted still binds, and the row's `raw` names a stale one as such.
+//
 // THE THIRD ANSWER IS THE HONEST ONE FOR A CREDENTIAL-FREE CONTAINER: when no reply rendered AND the
 // panel names the missing credential, this is a DECLARED BOUND (the lane records `null` with that
 // reason), not a pass and not a bundle defect. A failure that does NOT name the credential stays red —
@@ -159,15 +165,31 @@ function replyRegion(before: string, after: string, prompt: string): readonly st
   })
 }
 
-/** The failure panel's own sentence (quoted, bounded), or its bare label, or "" when there is none. */
-function failureText(after: string): string {
-  /** Every line of the post-send capture. */
-  const lines = linesOf(after)
+/**
+ * The failure panel's own text that is NEW since the pre-send capture, or "" when the post-send capture
+ * carries none.
+ *
+ * THE PRE-SEND SUBTRACTION IS LOAD-BEARING (CodeRabbit finding on PR #42, 2026-10-15). Scanning every
+ * post-send line read a panel the PREVIOUS turn had left on screen as if the current turn had just
+ * painted it, so a stale panel terminated the lane's wait at `ui.replyRendered` and recorded a
+ * `credential-bound` row before the current reply could render. A line is the current turn's only when
+ * its normalized form is NOT already in the pre-send capture — the same subtraction `replyRegion` does,
+ * which keeps this module's two judgements consistent.
+ *
+ * @param before - The pre-send body text (the capture the stale panel would already be in).
+ * @param after - The post-send body text.
+ * @returns The new panel's sentence (preferred, because it names the cause), else its bare label, else "".
+ */
+function failureText(before: string, after: string): string {
+  /** The comparable form of every line already on screen before the send. */
+  const alreadySeen = new Set(linesOf(before).map((line) => normalize(line)))
+  /** The post-send lines the current turn really added. */
+  const fresh = linesOf(after).filter((line) => !alreadySeen.has(normalize(line)))
   /** The panel's sentence, preferred because it names the cause. */
-  const body = lines.find((line) => FAILURE_PANEL.test(line))
+  const body = fresh.find((line) => FAILURE_PANEL.test(line))
   if (body !== undefined) return body.slice(0, QUOTE_MAX)
   /** The bare section label, used only when the sentence is absent. */
-  const label = lines.find((line) => FAILURE_LABEL.test(line))
+  const label = fresh.find((line) => FAILURE_LABEL.test(line))
   return label === undefined ? "" : label.slice(0, QUOTE_MAX)
 }
 
@@ -203,12 +225,14 @@ function judgeReply(input: ReplyInput): ReplyVerdict {
   const answer = doneLine(region)
   /** The rendered tool mention, when the reply region carries one. */
   const tool = toolLine(region)
-  /** The failure panel's text, or "". */
-  const failure = failureText(input.after)
+  /** The failure panel's text the CURRENT turn added, or "". */
+  const failure = failureText(input.before, input.after)
+  /** The panel already on screen before the send, which is stale and binds nothing. */
+  const stale = failureText("", input.before)
   /** The credential label the panel names, or "". */
   const credential = credentialOf(failure)
   /** The row's `raw` observation. */
-  const raw = `before=${input.before.length} after=${input.after.length} growth=${input.after.length - input.before.length} done=${answer !== undefined} tool=${tool !== undefined} region=${region.length} failure=${failure === "" ? "none" : "yes"}`
+  const raw = `before=${input.before.length} after=${input.after.length} growth=${input.after.length - input.before.length} done=${answer !== undefined} tool=${tool !== undefined} region=${region.length} failure=${failure === "" ? "none" : "yes"} staleFailure=${stale === "" ? "none" : "yes"}`
   if (answer !== undefined) {
     return { kind: "reply", done: true, tool: tool !== undefined, failure, credential, raw, detail: `the reply region carries the answer as its own line: ${JSON.stringify(answer)}` }
   }
@@ -220,7 +244,7 @@ function judgeReply(input: ReplyInput): ReplyVerdict {
   }
   /** Why nothing rendered: a non-credential failure, or growth that carried no turn output at all. */
   const why = failure === ""
-    ? `the transcript grew by ${input.after.length - input.before.length} chars without a reply line and without a failure panel`
+    ? `the transcript grew by ${input.after.length - input.before.length} chars without a reply line and without a NEW failure panel${stale === "" ? "" : " (a failure panel was already on screen before the send and is stale, so it bound nothing)"}`
     : `the turn failed for a reason that is NOT the missing credential: ${JSON.stringify(failure)}`
   return { kind: "no-reply", done: false, tool: false, failure, credential, raw, detail: why }
 }
@@ -310,6 +334,11 @@ function selfTest(): number {
     arm("other-failure-is-not-a-bound", { before: BEFORE_SEND, after: page([PROMPT_BUBBLE], CHROME, OTHER_FAILURE_LINES), prompt: PROMPT_TEXT }, "no-reply", false, false),
     arm("a-pre-send-done-is-not-new", { before: page([BEFORE_SEND], ["DONE"]), after: page([BEFORE_SEND], ["DONE"], [PROMPT_BUBBLE]), prompt: PROMPT_TEXT }, "no-reply", false, false),
     arm("reply-wins-over-a-panel", { before: BEFORE_SEND, after: page([PROMPT_BUBBLE], FAILURE_LINES, ["DONE"]), prompt: PROMPT_TEXT }, "reply", true, false),
+    // THE PRE-SEND SUBTRACTION'S TWO ARMS (CodeRabbit finding on PR #42). The pair is deliberate: the
+    // first is the defect the subtraction repairs (a STALE panel must bind nothing), the second is the
+    // behaviour the subtraction must NOT lose (a panel the current turn painted still binds).
+    arm("stale-failure-line-alone-does-not-bind", { before: page([BEFORE_SEND], FAILURE_LINES), after: page([BEFORE_SEND], FAILURE_LINES, [PROMPT_BUBBLE]), prompt: PROMPT_TEXT }, "no-reply", false, false),
+    arm("new-failure-line-does-bind", { before: BEFORE_SEND, after: page([PROMPT_BUBBLE], FAILURE_LINES), prompt: PROMPT_TEXT }, "credential-bound", false, false),
   ]
   /** How many arms disagreed with their expectation. */
   let failed = 0

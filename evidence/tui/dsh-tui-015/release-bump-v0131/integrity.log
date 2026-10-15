@@ -1,0 +1,7 @@
+### trailing-newline + JSON-parse + key-order integrity
+package.json             trailing-newline=PRESENT  parse:OK  version=0.13.1
+dsh-plugin.json          trailing-newline=PRESENT  parse:OK  version=0.13.1
+dsh-distribution.json    trailing-newline=PRESENT  parse:OK  version=0.13.1
+
+### HEAD sha re-read AFTER the edit (settle check)
+80391dcf5ba1b586f000365b5fa8da2a76da8807

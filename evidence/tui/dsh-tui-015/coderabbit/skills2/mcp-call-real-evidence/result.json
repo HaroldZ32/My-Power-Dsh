@@ -1,0 +1,34 @@
+{
+  "ok": false,
+  "durationMs": 2647033,
+  "assertion": "harness-recorded tool list (request/header.header.tools) + harness-recorded tool/call with a non-error result carrying the fixture line",
+  "lspDependency": {
+    "name": "cclsp",
+    "tree": "sandbox pack copy",
+    "ok": true,
+    "source": "checkout-store",
+    "detail": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/node_modules/.bun/cclsp@0.7.0+5b6b5129650ecc67/node_modules -> /tmp/mpd-dsh-qa-3gpLcz/staged-pack/node_modules (version 0.7.0)"
+  },
+  "enum": {
+    "exit": 1,
+    "recordedToolCount": 0,
+    "recordedMcpTools": [],
+    "hasAstGrep": false,
+    "hasLsp": false,
+    "sessionError": null,
+    "proseListedBoth": false
+  },
+  "call": {
+    "exit": 1,
+    "tool": "mcp__ast_grep__search",
+    "called": false,
+    "succeeded": false,
+    "resultChars": 0,
+    "resultHasFixtureLine": false,
+    "resultHasBinaryNotFound": false,
+    "reason": "the harness recorded no tool/call for mcp__ast_grep__search (answer-only narration is not tool evidence)",
+    "sessionError": null,
+    "proseHasAstGrepWord": false,
+    "proseHasBinaryNotFound": false
+  }
+}

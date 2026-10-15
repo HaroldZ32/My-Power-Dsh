@@ -1,0 +1,13 @@
+[f2] shipped-self-test-exit-0=true — exit=0 ARMS=11 PASSED=11 FAILED=0
+[f2] shipped-arms-count=true — ARMS=11 PASSED=11 FAILED=0
+[f2] shipped-stale-arm-green=true — stale-failure-line-alone-does-not-bind=true
+[f2] shipped-new-arm-green=true — new-failure-line-does-bind=true
+[f2] shipped-reads-the-pre-send-capture=true — call site: failureText(input.before, input.after)
+[f2] shipped-stale-arm-raw-names-the-stale-panel=true — raw carries failure=none staleFailure=yes
+[f2] revert-applied-exactly-once=true — changedLines=2 ["-  const failure = failureText(input.before, input.after)","+  const failure = failureText(\"\", input.after)"]
+[f2] control-exit-1=true — exit=1 ARMS=11 PASSED=10 FAILED=1
+[f2] control-stale-arm-RED=true — stale-failure-line-alone-does-not-bind=false (the stale panel binds again, which is the defect)
+[f2] control-new-arm-still-GREEN=true — new-failure-line-does-bind=true (the revert reddens the stale arm ONLY, so the arm is specific)
+[f2] control-stale-arm-binds-on-the-stale-panel=true — the reverted classifier reads the PRE-SEND panel as a fresh credential bound
+[f2] FAILED=0
+[f2] scratch=/tmp/f2-arms-UIBWOr

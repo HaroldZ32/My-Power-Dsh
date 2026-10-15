@@ -1,0 +1,9 @@
+warm root: newest is the neighbour, this run has one fresh session
+  pre-fix selection  = (none)
+  fixed selection    = own-fresh
+two fresh sessions of this run (newest fresh must win)
+  pre-fix selection  = (none)
+  fixed selection    = own-fresh-2
+no fresh session this run (caller's newest fallback owns the result)
+  pre-fix selection  = (none)
+  fixed selection    = (none)

@@ -13,8 +13,9 @@
 //   (b) C7-2 READ-ONLY: through the REAL tool, a task carrying `write_scopes` is never paired with a
 //       read-only specialist (its `readonly` flag comes from mpd-roles-plugin's OWN `mpdRoles` service),
 //       and the refusal is REPORTED rather than a wrong-but-free member being grabbed.
-//   (c) C7-3 PHANTOM TEAM: a team record whose phase is terminal/archived (or whose plan was archived
-//       without approval) is SKIPPED by resolution and marked terminal by the consistency pass.
+//   (c) C7-3 PHANTOM TEAM: a team record whose phase is terminal/archived (or whose OWN plan, keyed by
+//       the record's `planId`, was archived without approval) is SKIPPED by resolution and marked
+//       terminal by the consistency pass.
 //   (d) THE NEGATIVE CONTROL: a valid same-team, write-capable pairing still SUCCEEDS. The gate must not
 //       over-block, so every refusal arm is paired with the positive one.
 //   (e) C7-4 ADAPTATION ARMS (thirteen, driven through the REAL registered tools over a stub
@@ -116,9 +117,25 @@ function arms(): Arm[] {
   const resolved = resolveTeamRecord({ teams: [ghost, live], sessionId: "lead-1", index: EMPTY_INDEX })
   /** The resolution when ONLY the ghost exists. */
   const none = resolveTeamRecord({ teams: [ghost], sessionId: "lead-1", index: EMPTY_INDEX })
-  /** The archive arm: a live phase whose plan was archived WITHOUT approval is not live either. */
-  const unapproved = isLiveTeam(record({ teamId: "team-x", phase: "active" }), { approved: new Set<string>(), unapproved: new Set<string>(["lead-1\u0000wave"]) })
-  out.push({ id: "c", claim: "terminal/archived team SKIPPED, live team resolves, none when only a ghost", ok: resolved.record?.teamId === "team-live" && none.record === undefined && isLiveTeamPhase("active") && !isLiveTeamPhase("archived") && unapproved === false, observed: `resolved=${resolved.record?.teamId ?? "(none)"} onlyGhost=${none.record?.teamId ?? "(none)"}` })
+  // The archive arm keys by the RECORD'S OWN plan id, exactly as the shipped reader builds the index
+  // (PR #42 review F-D): a legacy `lead\0name` key is not evidence about any record, so a fixture that
+  // keys by it asserts a rule the shipped code no longer has. Three directions, so the alignment cannot
+  // trade assertion power for green: the record whose OWN plan was discarded is NOT live; the record
+  // whose OWN plan was archived WITH approval STAYS live (the normal archive of an approved team); and
+  // the legacy-keyed index is IGNORED for a record that carries a plan id.
+  /** The ghost record whose OWN plan was archived WITHOUT approval. */
+  const archiveGhost = record({ teamId: "team-x", phase: "active", planId: "plan-ghost" })
+  /** The live record whose OWN plan was archived WITH approval. */
+  const archiveLive = record({ teamId: "team-y", phase: "active", planId: "plan-live" })
+  /** The index exactly as `readArchivedPlanIndex` builds it: keyed by each plan's own id. */
+  const archiveIndex: ArchivedPlanIndex = { approved: new Set<string>(["plan-live"]), unapproved: new Set<string>(["plan-ghost"]) }
+  /** Whether the discarded plan's own team is NOT live. */
+  const archiveReaped = isLiveTeam(archiveGhost, archiveIndex)
+  /** Whether the approved plan's own team stays live. */
+  const archiveLiveKept = isLiveTeam(archiveLive, archiveIndex)
+  /** Whether a LEGACY `lead\0name` index is ignored for a record carrying a plan id. */
+  const legacyKeyIgnored = isLiveTeam(archiveGhost, { approved: new Set<string>(), unapproved: new Set<string>(["lead-1\u0000wave"]) })
+  out.push({ id: "c", claim: "terminal/archived team SKIPPED, live team resolves, none when only a ghost, and the archive arm keys by the record's OWN plan id", ok: resolved.record?.teamId === "team-live" && none.record === undefined && isLiveTeamPhase("active") && !isLiveTeamPhase("archived") && archiveReaped === false && archiveLiveKept === true && legacyKeyIgnored === true, observed: `resolved=${resolved.record?.teamId ?? "(none)"} onlyGhost=${none.record?.teamId ?? "(none)"} archiveReaped=${archiveReaped} archiveLiveKept=${archiveLiveKept} legacyKeyIgnored=${legacyKeyIgnored}` })
   /** (d) THE NEGATIVE CONTROL: a valid same-team, write-capable pairing still succeeds. */
   const valid = planDispatch({ tasks: [task("T2", { teamId: "team-a", writeScopes: ["packages/x"] })], members: [member("m-w", "Senior Engineer", { teamId: "team-a", readonly: isReadonlyMemberName("Senior Engineer", READONLY_KEYS) })], ledger: {} })
   out.push({ id: "d", claim: "NEGATIVE CONTROL: a valid same-team write-capable pairing still SUCCEEDS", ok: valid.pairs.length === 1 && valid.pairs[0]?.memberId === "m-w" && valid.skipped.length === 0, observed: JSON.stringify(valid.pairs.map((pair) => [pair.taskId, pair.memberId])) })

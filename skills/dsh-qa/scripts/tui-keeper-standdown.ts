@@ -405,6 +405,18 @@ function selfTest(): void {
     /** The document as written, viewed for its host-shaped keys. */
     const written = JSON.parse(readFileSync(tempFile, "utf8")) as { version?: unknown; values?: { sidePanel?: { panels?: unknown } } }
     check(written.version === 1 && written.values?.sidePanel?.panels === "todo,jobs", "the writer must produce the host's `{version, values:{sidePanel:{panels}}}` shape")
+    // The control's RESTORE now puts back the exact pre-control bytes. This arm falsifies the two
+    // failure modes the old CSV-restore had: a sibling key the CSV write preserves must survive, and
+    // the restored panels string must be the PRE-CONTROL one (a builtin-only fallback would erase it).
+    writeFileSync(tempFile, JSON.stringify({ version: 1, values: { sidePanel: { panels: "todo,jobs,act1:team" }, other: "keep-me" } }) + "\n")
+    /** The exact pre-control bytes the live control snapshots. */
+    const snapshot = readFileSync(tempFile, "utf8")
+    writeUserLayerPanelsCsv(tempFile, "todo,jobs," + CONTROL_TOKEN)
+    writeFileSync(tempFile, snapshot)
+    /** The document the exact-bytes restore put back. */
+    const reverted = JSON.parse(readFileSync(tempFile, "utf8")) as { values?: { sidePanel?: { panels?: unknown }; other?: unknown } }
+    check(reverted.values?.sidePanel?.panels === "todo,jobs,act1:team" && reverted.values?.other === "keep-me",
+      "the exact-bytes restore must put the pre-control document back, sibling keys and the pre-control panels string included")
   } finally {
     rmSync(tempFile, { force: true })
   }
@@ -548,18 +560,26 @@ async function real(): Promise<void> {
   // ARM (d) — the NEGATIVE CONTROL: a hand write of the exact token a repairing keeper would add
   // MUST flip the SAME detector; the restore MUST flip it back. A control that cannot redden
   // makes the whole stay-removed observation void.
-  /** The pruned CSV to restore after the control, taken from the last observation. */
+  //
+  // THE RESTORE PUTS BACK THE FILE'S EXACT PRE-CONTROL BYTES. Restoring the last observation's CSV
+  // would fabricate a user layer whenever that observation carried none (the `?? …` fallback below is a
+  // builtin-only list the host never stored), and an unprotected restore left `act1:team` in the real
+  // settings file when the control threw. The byte snapshot plus the `finally` fixes both.
+  /** The settings file's exact bytes before the control; `undefined` when the file did not exist. */
+  const beforeControl = existsSync(settingsFile) ? readFileSync(settingsFile, "utf8") : undefined
+  /** The CSV the control writes: the last observation as a base for the hand write, never the restore unit. */
   const prunedCsv = observations[observations.length - 1]?.csv ?? "todo,jobs,agents,info,trajectory,workspace,btw,companion"
-  writeUserLayerPanelsCsv(settingsFile, prunedCsv + "," + CONTROL_TOKEN)
-  /** The detector's answer with the control token in place. */
-  const controlObservation = observe()
   /** True when the hand-written control token flipped the detector to present — the control's red half. */
-  const controlReddened = controlObservation.actTokens.includes(CONTROL_TOKEN)
-  writeUserLayerPanelsCsv(settingsFile, prunedCsv)
-  /** The detector's answer after the restore. */
-  const restoredObservation = observe()
-  /** True when the detector flipped back to absent — the control's green half. */
-  const controlRestored = restoredObservation.actTokens.length === 0
+  let controlReddened = false
+  try {
+    writeUserLayerPanelsCsv(settingsFile, prunedCsv + "," + CONTROL_TOKEN)
+    controlReddened = observe().actTokens.includes(CONTROL_TOKEN)
+  } finally {
+    if (beforeControl === undefined) rmSync(settingsFile, { force: true })
+    else writeFileSync(settingsFile, beforeControl)
+  }
+  /** True when the detector flipped back to absent after the exact-bytes restore — the control's green half. */
+  const controlRestored = observe().actTokens.length === 0
   say("negative control: reddened=" + controlReddened + " restored=" + controlRestored)
 
   /** The lane verdict: a clean lifecycle, the checked pre-state, both rows unticked, the removal landed, stayed, and the control reddened and restored. */

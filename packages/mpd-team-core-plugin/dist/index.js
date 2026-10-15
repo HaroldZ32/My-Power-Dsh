@@ -1551,7 +1551,8 @@ function fold(records) {
         toName: String(send.toName ?? ""),
         subject: String(send.subject ?? ""),
         body: String(send.body ?? ""),
-        sentAt: String(send.at ?? "")
+        sentAt: String(send.at ?? ""),
+        ...typeof send.teamId === "string" && send.teamId !== "" ? { teamId: send.teamId } : {}
       });
       continue;
     }
@@ -1650,7 +1651,8 @@ function send(workspace, input, now) {
     toName: input.toName,
     subject: input.subject,
     body: input.body,
-    sentAt: at
+    sentAt: at,
+    ...input.teamId === undefined || input.teamId === "" ? {} : { teamId: input.teamId }
   };
   appendRecord(workspace, { t: "send", ...message, at });
   return { ok: true, message };
@@ -1943,6 +1945,7 @@ function createTeam(workspace, input, now) {
     name: input.name,
     description: input.description,
     leadSessionId: sessionKey(input.leadSessionId),
+    ...input.planId === undefined || input.planId === "" ? {} : { planId: input.planId },
     phase: "staged",
     createdAt: now.toISOString(),
     members: [],
@@ -2959,10 +2962,6 @@ var LIVE_TEAM_PHASES = ["staged", "active", "idle"];
 function isLiveTeamPhase(phase) {
   return LIVE_TEAM_PHASES.includes(phase);
 }
-var ARCHIVED_PLAN_KEY_SEPARATOR = "\x00";
-function archivedPlanKey(sessionId, name) {
-  return String(sessionId ?? "") + ARCHIVED_PLAN_KEY_SEPARATOR + String(name ?? "");
-}
 function readArchivedPlanIndex(workspace) {
   const approved = new Set;
   const unapproved = new Set;
@@ -2976,7 +2975,9 @@ function readArchivedPlanIndex(workspace) {
     try {
       const raw = readFileSync4(join5(teamRoot(workspace), "archive", entry, "plan.json"), "utf8");
       const plan = JSON.parse(raw);
-      const key = archivedPlanKey(plan.sessionId, plan.name);
+      const key = String(plan.planId ?? "");
+      if (key === "")
+        continue;
       (plan.approvedAt === undefined ? unapproved : approved).add(key);
     } catch {}
   }
@@ -2987,7 +2988,9 @@ function isLiveTeam(record, index) {
     return false;
   if (!isLiveTeamPhase(record.phase))
     return false;
-  const key = archivedPlanKey(record.leadSessionId, record.name);
+  const key = String(record.planId ?? "");
+  if (key === "")
+    return true;
   return !(index.unapproved.has(key) && !index.approved.has(key));
 }
 function resolveTeamRecord(input) {
@@ -3014,7 +3017,7 @@ function reapReapedTeams(workspace, now) {
       continue;
     if (record.endedAt !== undefined)
       continue;
-    const reason = !isLiveTeamPhase(record.phase) ? `record phase ${JSON.stringify(record.phase)} is not a live team phase (${LIVE_TEAM_PHASES.join(" | ")})` : `the plan for lead ${record.leadSessionId} / ${JSON.stringify(record.name)} is archived without approval (discarded or replaced)`;
+    const reason = !isLiveTeamPhase(record.phase) ? `record phase ${JSON.stringify(record.phase)} is not a live team phase (${LIVE_TEAM_PHASES.join(" | ")})` : `the plan ${String(record.planId ?? "")} of team ${record.teamId} is archived without approval (discarded or replaced)`;
     writeTeam(workspace, { ...record, phase: "ended", endedAt: now.toISOString(), archivedReason: reason });
     reaped.push(record.teamId);
   }
@@ -3093,6 +3096,13 @@ function sessionIsDelegatedChild(exec) {
     return true;
   const depth = Number(header?.delegationDepth);
   return Number.isFinite(depth) && depth >= 1;
+}
+function sessionTitleOf(exec) {
+  return String(exec?.agent?.session?.header?.title ?? "");
+}
+function callerIdentity(record, sessionId, title, lineage) {
+  const ownMember = memberNamedBy(record, [sessionId]) ?? (Array.isArray(record.members) ? record.members : []).find((member) => member.name !== "" && title.includes(member.name));
+  return ownMember === undefined ? { ancestry: lineage } : { ownMember, ancestry: [] };
 }
 function apply(ctx) {
   const dsh = adapterFor(ctx);
@@ -3341,6 +3351,9 @@ function apply(ctx) {
         const resolved = resolveForWrite(workspace, sessionId, lineage, delegated);
         if (resolved.record === undefined)
           throw new Error(resolved.refusal ?? "no team is staged in this session — call agent_teams_create first");
+        if (!recordNamesLead(resolved.record, [sessionId, ...callerIdentity(resolved.record, sessionId, sessionTitleOf(exec), lineage).ancestry])) {
+          throw new Error(`only the Lead of team ${resolved.record.teamId} may append to its live roster or board`);
+        }
         const name2 = input.name.trim();
         if (name2 === "")
           throw new Error("a teammate needs a non-empty name");
@@ -3380,9 +3393,12 @@ function apply(ctx) {
           const next2 = addTask(plan, {
             subject: String(raw.subject ?? ""),
             description: String(raw.description ?? ""),
+            ...kind === undefined ? {} : { kind },
             ...blockedBy === undefined ? {} : { blockedBy },
             ...writeScopes === undefined ? {} : { writeScopes },
-            ...owner === undefined ? {} : { owner: String(owner) }
+            ...owner === undefined ? {} : { owner: String(owner) },
+            ...coverageOf === undefined ? {} : { coverageOf: String(coverageOf) },
+            ...sourceTaskId === undefined ? {} : { sourceTaskId: String(sourceTaskId) }
           });
           writePlan(workspace, next2);
           return { plan: next2, ...blockedBy === undefined ? {} : { blockers: blockerReading(next2, blockedBy) } };
@@ -3390,6 +3406,9 @@ function apply(ctx) {
         const resolved = resolveForWrite(workspace, sessionId, lineage, delegated);
         if (resolved.record === undefined)
           throw new Error(resolved.refusal ?? "no team is staged in this session — call agent_teams_create first");
+        if (!recordNamesLead(resolved.record, [sessionId, ...callerIdentity(resolved.record, sessionId, sessionTitleOf(exec), lineage).ancestry])) {
+          throw new Error(`only the Lead of team ${resolved.record.teamId} may append to its live roster or board`);
+        }
         if (String(raw.subject ?? "").trim() === "")
           throw new Error("a task needs a non-empty subject");
         const next = addTeamTask(resolved.record, {
@@ -3464,7 +3483,7 @@ function apply(ctx) {
         if (args?.dry_run === true) {
           return { plan, created: { members: plan.members.map((m) => ({ name: m.name, id: "" })), tasks: plan.tasks.map((t) => ({ subject: t.subject, id: "" })) } };
         }
-        let record = createTeam(workspace, { name: plan.name, description: plan.description, leadSessionId: sessionId }, now());
+        let record = createTeam(workspace, { name: plan.name, description: plan.description, leadSessionId: sessionId, planId: plan.planId }, now());
         for (const member of plan.members) {
           record = addTeamMember(record, { name: member.name, description: member.description, ...member.role === undefined ? {} : { role: member.role } }, now());
         }
@@ -3472,10 +3491,12 @@ function apply(ctx) {
           record = addTeamTask(record, {
             subject: task.subject,
             description: task.description,
-            kind: "work",
+            kind: task.kind ?? "work",
             ...task.blockedBy === undefined ? {} : { blockedBy: task.blockedBy },
             ...task.writeScopes === undefined ? {} : { writeScopes: task.writeScopes },
-            ...task.owner === undefined ? {} : { owner: task.owner }
+            ...task.owner === undefined ? {} : { owner: task.owner },
+            ...task.coverageOf === undefined ? {} : { coverageOf: task.coverageOf },
+            ...task.sourceTaskId === undefined ? {} : { sourceTaskId: task.sourceTaskId }
           }, now());
         }
         const planAlias = new Map;
@@ -3612,8 +3633,8 @@ function apply(ctx) {
           }
         })();
         const title = String(self?.session?.header?.title ?? "");
-        const ownMember = memberNamedBy(record, [sessionId, ...lineage]) ?? record.members.find((member) => member.name !== "" && title.includes(member.name));
-        const caller = [sessionId, title, String(membership?.name ?? ""), ...ownMember === undefined ? [] : [ownMember.name], ...lineage].filter((value) => value !== "");
+        const identity = callerIdentity(record, sessionId, title, lineage);
+        const caller = [sessionId, title, String(membership?.name ?? ""), ...identity.ownMember === undefined ? [] : [identity.ownMember.name], ...identity.ancestry].filter((value) => value !== "");
         const fresh = readTeam(workspace, record.teamId) ?? record;
         const outcome = casCloseTask(fresh, {
           taskId,
@@ -3787,9 +3808,9 @@ function apply(ctx) {
       additionalProperties: false
     },
     output: {
-      schema: { type: "object", properties: { message: { type: "object" }, messages: { type: "array", items: { type: "object" } }, summary: { type: "array", items: { type: "object" } }, scope: { type: "string" }, moved: { type: "array", items: { type: "string" } }, refused: { type: "string" } } },
-      render: (_args, value) => text(value?.refused !== undefined ? `refused: ${value.refused}` : value?.message !== undefined ? `sent ${value.message.id} to ${value.message.toName}` : value?.moved !== undefined ? `acknowledged ${value.moved.length} message(s)` : value?.summary !== undefined ? value.summary.length === 0 ? `no mail (${value.scope ?? "workspace"} scope)` : value.summary.map((row) => `${row.memberName}: ${row.unread} unread / ${row.total} total`).join(`
-`) + ` (${value.scope ?? "workspace"} scope)` : (value?.messages?.length ?? 0) === 0 ? "nothing unread" : value.messages.map((mail) => `${mail.id} from ${mail.fromName}: ${mail.subject}`).join(`
+      schema: { type: "object", properties: { message: { type: "object" }, messages: { type: "array", items: { type: "object" } }, summary: { type: "array", items: { type: "object" } }, scope: { type: "string" }, legacyUnstamped: { type: "number" }, moved: { type: "array", items: { type: "string" } }, refused: { type: "string" } } },
+      render: (_args, value) => text(value?.refused !== undefined ? `refused: ${value.refused}` : value?.message !== undefined ? `sent ${value.message.id} to ${value.message.toName}` : value?.moved !== undefined ? `acknowledged ${value.moved.length} message(s)` : value?.summary !== undefined ? (value.summary.length === 0 ? `no mail (${value.scope ?? "workspace"} scope)` : value.summary.map((row) => `${row.memberName}: ${row.unread} unread / ${row.total} total`).join(`
+`) + ` (${value.scope ?? "workspace"} scope)`) + (typeof value?.legacyUnstamped === "number" ? ` · ${value.legacyUnstamped} unstamped row(s) excluded (sent before team stamping)` : "") : (value?.messages?.length ?? 0) === 0 ? "nothing unread" : value.messages.map((mail) => `${mail.id} from ${mail.fromName}: ${mail.subject}`).join(`
 `))
     },
     execute: async (args, exec) => {
@@ -3811,7 +3832,8 @@ function apply(ctx) {
           toName: target.name,
           subject: String(args?.subject ?? ""),
           body: String(args?.body ?? ""),
-          memberIds: roster.map((member) => member.id)
+          memberIds: roster.map((member) => member.id),
+          ...mailTeam === undefined ? {} : { teamId: mailTeam.teamId }
         }, now());
         if (!result.ok)
           return { refused: result.detail };
@@ -3831,17 +3853,13 @@ ${result.message.body}`, exec.signal);
         return { moved: markRead(workspace, Array.isArray(args?.ids) ? args.ids.map(String) : [], now()) };
       }
       if (args?.action === "summary") {
-        const rows = summarise(readMailbox(workspace));
+        const state2 = readMailbox(workspace);
+        const rows = summarise(state2);
         if (mailTeam === undefined)
           return { summary: rows, scope: "workspace" };
-        const keys = new Set;
-        for (const member of mailTeam.members) {
-          keys.add(member.id);
-          keys.add(member.name);
-          if (member.executorRef !== undefined && member.executorRef !== "")
-            keys.add(member.executorRef);
-        }
-        return { summary: rows.filter((row) => keys.has(row.memberId) || keys.has(row.memberName)), scope: "team" };
+        const mine = state2.messages.filter((message) => message.teamId === mailTeam.teamId);
+        const legacyUnstamped = state2.messages.length - state2.messages.filter((message) => message.teamId !== undefined).length;
+        return { summary: summarise({ messages: mine }), scope: "team", ...legacyUnstamped === 0 ? {} : { legacyUnstamped } };
       }
       const state = readMailbox(workspace);
       const wanted = args?.member === undefined ? undefined : resolve3(String(args.member));

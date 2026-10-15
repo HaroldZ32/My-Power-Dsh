@@ -14,7 +14,8 @@
 // WHAT IT DOES. Reads the version the PUBLISHED manifest declares (`package.json`'s
 // `optionalDependencies[name]`) and materializes that dependency into `<targetTree>/node_modules`, so
 // the launcher finds it on the first tier of its own walk. Three tiers, offline first:
-//   1. ALREADY PRESENT — nothing to do;
+//   1. ALREADY PRESENT AT THE DECLARED VERSION — nothing to do; a copy recording ANOTHER version is
+//      refused and falls through, so a stale tree is never reported as the manifest's declaration;
 //   2. an ISOLATED checkout store (bun's `node_modules/.bun/<pkg>@<version>[+hash]/node_modules`,
 //      pnpm's `node_modules/.pnpm/<pkg>@<version>/node_modules`) carries the package AND its whole
 //      closure in ONE directory, so that directory is copied — bounded and hermetic (measured:
@@ -113,10 +114,46 @@ export function isolatedStoreDir(repoRoot: string, name: string): string | null 
 }
 
 /**
+ * Read the `version` an installed copy records in its own `package.json`.
+ *
+ * The recorded version is the only evidence of WHICH bytes a tree already carries, so it is what the
+ * staging tiers compare against the manifest declaration.
+ *
+ * @param manifestPath Absolute path of the installed package's `package.json`.
+ * @returns The recorded version string, or `null` when the file is unreadable or carries none.
+ */
+export function installedPackageVersion(manifestPath: string): string | null {
+  try {
+    /** The installed package's own manifest, which names the version its bytes came from. */
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as { version?: unknown }
+    return typeof manifest.version === "string" && manifest.version !== "" ? manifest.version : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * The rule the staging tiers apply to a copy already on disk: its recorded version must BE the
+ * manifest's declaration.
+ *
+ * Split out so the decision is falsifiable offline, without an npm tier ever running.
+ *
+ * @param manifestPath Absolute path of the installed copy's `package.json`.
+ * @param declaredVersion The version the repository manifest declares.
+ * @returns True only when the copy records exactly the declared version.
+ */
+export function copyMatchesDeclaration(manifestPath: string, declaredVersion: string): boolean {
+  return installedPackageVersion(manifestPath) === declaredVersion
+}
+
+/**
  * Materialize a manifest-declared optional dependency into a target tree's own `node_modules`.
  *
  * Never throws: every failure is reported as `{ ok: false, source: "failed" }` with the diagnosis in
- * `detail`, so a caller decides whether that is a case failure or a skip.
+ * `detail`, so a caller decides whether that is a case failure or a skip. A copy that is already
+ * present or is copied from the checkout store is accepted only when its own `package.json` records
+ * EXACTLY `options.version`; on any mismatch the next tier runs, and the npm tier installs
+ * `name@version` from the registry, so the staged tree always carries the manifest's declaration.
  *
  * @param options The repository root, the tree under test, the package name and its declared version.
  * @returns The staging verdict with the tier that answered.
@@ -124,13 +161,16 @@ export function isolatedStoreDir(repoRoot: string, name: string): string | null 
 export function stageDeclaredMcpDependency(options: DependencyStageOptions): DependencyStage {
   /** The manifest path a successful staging must have produced. */
   const installed = join(options.targetTree, "node_modules", options.name, "package.json")
-  if (existsSync(installed)) return { ok: true, source: "already-present", detail: installed }
+  // THE VERSION IS CHECKED, NOT THE EXISTENCE (measured finding, wave fix/coderabbit-pr42): a warm tree
+  // carries earlier runs' copies, and accepting one blind attributes this run's tool surface to a
+  // version the manifest no longer declares.
+  if (existsSync(installed) && copyMatchesDeclaration(installed, options.version)) return { ok: true, source: "already-present", detail: installed + " (version " + options.version + ")" }
   /** The isolated store to copy from, or `null` when this checkout has no such layout. */
   const store = isolatedStoreDir(options.repoRoot, options.name)
   if (store !== null) {
     try {
       cpSync(store, join(options.targetTree, "node_modules"), { recursive: true, dereference: true })
-      if (existsSync(installed)) return { ok: true, source: "checkout-store", detail: store + " -> " + join(options.targetTree, "node_modules") }
+      if (existsSync(installed) && copyMatchesDeclaration(installed, options.version)) return { ok: true, source: "checkout-store", detail: store + " -> " + join(options.targetTree, "node_modules") + " (version " + options.version + ")" }
     } catch {
       // A partially copied store falls through to the npm tier, which is the authoritative closure.
     }

@@ -295,7 +295,7 @@ export const SURFACES: readonly SurfaceSpec[] = [
       /takes effect in the RUNNING process — no restart/,
       /never lost/,
     ],
-    label: "the /settings section rendered WITH its bridge+no-restart+never-lost disclosure (pane widened to 320 so the hint is not cut)",
+    label: `the /settings section rendered WITH its bridge+no-restart+never-lost disclosure (pane widened to ${PANE_WIDTH} so the hint is not cut)`,
   },
   { surface: "tuiDialogs", step: "dialog", source: "pane", pre: ["Escape"], keys: ["M-w"], waitMs: 8000, pattern: /mpd workmates/, label: "the managed select dialog appeared" },
 ]
