@@ -1,0 +1,33 @@
+{
+  "startedAt": "2026-10-15T07:47:06.999Z",
+  "finishedAt": "2026-10-15T08:02:02.698Z",
+  "docker": "Docker version 29.9.0, build f415da8",
+  "compose": "Docker Compose version v5.6.0",
+  "image": "mpd-docker-e2e:local",
+  "imageMiB": 442,
+  "buildxConfig": "/tmp/mpd-docker-e2e-buildx-YHx1EP",
+  "liveRequested": true,
+  "browserEnabled": true,
+  "requiredPrefixes": [
+    "live.",
+    "boot.llmTurn",
+    "ui."
+  ],
+  "unmeasured": [],
+  "steps": [
+    {
+      "id": "driver-build",
+      "cmd": "docker compose -f /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/docker/docker-compose.yml build",
+      "status": 0
+    },
+    {
+      "id": "driver-run",
+      "cmd": "docker compose -f /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/docker/docker-compose.yml run --rm -T -e MPD_E2E_INSTALL_MODE=oneclick -e MPD_E2E_INSTALL_SPEC=github:HaroldZ32/My-Power-Dsh#release/v0.13.1 -e DEEPSEEK_API_KEY -e MPD_E2E_LIVE=1 -e MPD_E2E_LIVE_PROMPT -e MPD_E2E_BROWSER=1 mpd-oneclick",
+      "status": 0,
+      "signal": null
+    }
+  ],
+  "containerExit": 0,
+  "verdict": "ok=true complete=false passed=113 failed=0 null=5 NULL=[build.bunInstall,build.dists,pack.distFreshRebuild,pack.rebuildToolchain,pack.distFreshRebuildControl]",
+  "exitCode": 0
+}

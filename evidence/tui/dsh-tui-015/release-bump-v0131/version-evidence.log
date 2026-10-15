@@ -1,0 +1,97 @@
+=== date (UTC) ===
+2026-10-15T07:20:55Z
+
+### 2. grep -n '"version"' package.json dsh-plugin.json dsh-distribution.json
+package.json:6:  "version": "0.13.1",
+dsh-plugin.json:6:  "version": "0.13.1",
+dsh-distribution.json:6:    "version": "0.13.1"
+[grep exit code: 0]
+
+### 3. git diff --stat
+ CHANGELOG.md          | 56 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ dsh-distribution.json |  2 +-
+ dsh-plugin.json       |  2 +-
+ package.json          |  2 +-
+ 4 files changed, 59 insertions(+), 3 deletions(-)
+
+### 3b. git diff --stat -- the three carriers only
+ dsh-distribution.json | 2 +-
+ dsh-plugin.json       | 2 +-
+ package.json          | 2 +-
+ 3 files changed, 3 insertions(+), 3 deletions(-)
+
+### 3c. full diff of the three carriers (payload = 3 lines)
+diff --git a/dsh-distribution.json b/dsh-distribution.json
+index 05d4815d..dd7218f6 100644
+--- a/dsh-distribution.json
++++ b/dsh-distribution.json
+@@ -3,7 +3,7 @@
+   "kind": "DistributionDescriptor",
+   "distribution": {
+     "id": "urn:dsh:distribution:mpd:my-power-dsh",
+-    "version": "0.12.0"
++    "version": "0.13.1"
+   },
+   "displayName": "my-power-dsh — DSH plugin bundle (web edition + dsh-tui edition)",
+   "protocols": [
+diff --git a/dsh-plugin.json b/dsh-plugin.json
+index d8a7bdab..41d924fa 100644
+--- a/dsh-plugin.json
++++ b/dsh-plugin.json
+@@ -3,7 +3,7 @@
+   "manifestVersion": "0.15",
+   "id": "com.mpd-dsh.mpd-tui",
+   "name": "@mpd-dsh/mpd",
+-  "version": "0.12.0",
++  "version": "0.13.1",
+   "facets": {
+     "host": {
+       "entry": "packages/mpd-tui-plugin/dist/index.js",
+diff --git a/package.json b/package.json
+index 6e4062b3..e8cccc70 100644
+--- a/package.json
++++ b/package.json
+@@ -3,7 +3,7 @@
+   "private": false,
+   "type": "module",
+   "buildToolchain": "bun@1.4.0",
+-  "version": "0.12.0",
++  "version": "0.13.1",
+   "description": "my-power-dsh: a DeepSeek Harness plugin bundle (@mpd-dsh/mpd) carrying the specialist roster and the model-chain vocabulary on DSH-native plumbing (upstream reference: oh-my-openagent 8c57e46 — historical, no synchronisation owed)",
+   "main": "packages/mpd-bundle-plugin/dist/index.js",
+   "icon": "./icon.svg",
+
+### 3d. CHANGELOG.md status (captain-written, NOT touched by me)
+ M CHANGELOG.md
+
+### 4. CHANGELOG.md first 25 lines
+# Changelog
+
+Human-readable release notes for **my-power-dsh** (`@mpd-dsh/mpd`). Newest first, one section per
+released version, the changes grouped by kind (`Added`, `Changed`, `Fixed`, `Removed`). This file is
+English-only and is NOT part of the bilingual docs band (AGENTS.md Language policy polices `docs/**`,
+`packages/*/README.md`, `extensions/**`, `templates/**` and the root `README`).
+
+Further reading:
+
+- [`README.md`](./README.md) — what the bundle is, and how to install it;
+- [`CONTRIBUTING.md`](./CONTRIBUTING.md) — development setup, gates and the git model;
+- [`docs/index.md`](./docs/index.md) — the documentation hub;
+- [Releases](https://github.com/HaroldZ32/My-Power-Dsh/releases) — the annotated tags, newest first;
+- [`VENDOR_LOCK.json`](./VENDOR_LOCK.json) — the pinned upstream baseline each release is measured
+  against.
+
+## v0.13.1 — the review pass: team-plane authorization, docker lane honesty, and the QA install path
+
+Patch release answering all fifteen CodeRabbit findings on the v0.13.0 PR (#42), blind-verified PASS at
+the fix revision (`rec-20261015T071509-834da8`). Triage and lane reports:
+`evidence/tui/dsh-tui-015/coderabbit/`.
+
+**Fixed — security / authorization (four Major, CWE-862 / CWE-863 plus two integrity defects).**
+
+- **The live append verbs now require Lead authorization.** `agent_teams_plan`'s `add_member` and
+
+### 4b. top version heading
+17:## v0.13.1 — the review pass: team-plane authorization, docker lane honesty, and the QA install path
+73:## v0.13.0 — two host adaptations and a leaner captain: dsh-tui 0.15.0, live team surfaces, the MIT re-source, the win32 band, and the keeper that knows when to stand down
+198:## v0.12.0 — the product page, and one bundle on two surfaces
