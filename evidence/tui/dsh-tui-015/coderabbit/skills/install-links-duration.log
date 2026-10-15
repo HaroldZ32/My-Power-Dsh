@@ -1,0 +1,4 @@
+install-links duration_seconds=1037 exit=0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0
+npm notice To update run: npm install -g npm@12.2.0
+npm notice

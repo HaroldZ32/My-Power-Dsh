@@ -1,0 +1,8 @@
+ packages/mpd-team-core-plugin/dist/index.js        |  74 +++++++-----
+ packages/mpd-team-core-plugin/src/index.ts         | 129 +++++++++++++++++----
+ packages/mpd-team-core-plugin/src/mailbox-store.ts |  22 +++-
+ packages/mpd-team-core-plugin/src/plan-store.ts    |  12 +-
+ .../mpd-team-core-plugin/src/team-lifecycle.ts     |  65 ++++++-----
+ packages/mpd-team-core-plugin/src/team-store.ts    |  20 ++++
+ .../test/dispatch-guard.test.ts                    |   8 +-
+ 7 files changed, 245 insertions(+), 85 deletions(-)

@@ -1,0 +1,49 @@
+[f3] shipped-program-has-no-single-quote=true — the shell single-quotes this argument, so one quote would terminate it early
+[f3] shipped-program-carries-the-tarball-arm=true — the ranged GET and its log line are in the shipped program
+[f3] shipped-program-carries-the-mirror-fallback=true — route=mirror-fallback-after-tarball-blackhole
+[f3] version-pin-read=true — DSH_VERSION=0.2.0-rc.2 tarballPath=/@deepseek-ai/dsh/-/dsh-0.2.0-rc.2.tgz
+[f3] pre-fix-program-extracted=true — git show HEAD:docker/entrypoint.sh
+[f3] pre-fix-program-is-the-metadata-plus-tarball-probe=true — the control really is the pre-repair program: tarball arm yes, mirror fallback no
+[f3] shipped-differs-from-pre-fix=true — shippedChars=5444 preFixChars=4241
+[f3] A-exit-0=true — exit=0
+[f3] A-route-ok=true — route=operator-set-ok
+[f3] A-tarball-range-read=true — tarball=http=206 bytes=1024 ms=0
+[f3] A-selection-file-has-3-lines=true — lines=["http://official.invalid","operator-set-ok","http=206 bytes=1024 ms=0",""]
+[f3] A-one-meta-one-tarball-request=true — meta={"http://official.invalid":1} tarball={"http://official.invalid":1}
+[f3] A2-exit-0=true — exit=0
+[f3] A2-accepts-200-with-bytes=true — tarball=http=200 bytes=65536 ms=0
+[f3] A3-exit-1=true — exit=1
+[f3] A3-route-blackholed=true — route=operator-set-tarball-blackholed
+[f3] A3-reading-says-zero-bytes=true — tarball=http=200 bytes=0 ms=1 FAILED (the METADATA endpoint answered and the TARBALL did not: a registry in this state stalls the install, so the probe FAILS here instead)
+[f3] NEW1-exit-0=true — exit=0
+[f3] NEW1-selects-the-MIRROR=true — selected=http://mirror.invalid
+[f3] NEW1-route-names-the-fallback=true — route=mirror-fallback-after-tarball-blackhole
+[f3] NEW1-reading-is-the-mirrors-tarball=true — tarball=http=206 bytes=1024 ms=1 (the operator-set registry answered METADATA while its TARBALL blackholed, so the install travels on the fallback mirror instead of stalling)
+[f3] NEW1-probes-both-registries-metadata=true — meta={"http://official.invalid":1,"http://mirror.invalid":1}
+[f3] NEW1-ranges-both-tarballs=true — tarball={"http://official.invalid":1,"http://mirror.invalid":1}
+[f3] NEW1-stdout-names-the-fallback=true — REGISTRY=http://mirror.invalid ROUTE=mirror-fallback-after-tarball-blackhole officialProbe=http=200 officialTarball=Error: This operation was aborted ms=20000 FAILED mirrorMs=0 mirrorTarball=http=206 bytes=1024 ms=1 | TARBALL=http=206 bytes=1024 ms=1 (the operator-set registry answered METADATA while its TARBALL blackholed, so the install travels on the fallback mirror instead of stalling)
+[f3] NEW1-control-pre-fix-FAILS=true — exit=1 selected=http://official.invalid route=operator-set-tarball-blackholed
+[f3] NEW1-control-never-probes-the-mirror-tarball=true — tarball={"http://official.invalid":1} (the fallback is what changes the outcome)
+[f3] NEW2-exit-1=true — exit=1
+[f3] NEW2-settles-on-the-probed-registry=true — selected=http://official.invalid
+[f3] NEW2-route-is-the-existing-blackholed-route=true — route=operator-set-tarball-blackholed
+[f3] NEW2-reading-says-failed=true — tarball=Error: This operation was aborted ms=20002 FAILED (the METADATA endpoint answered and the TARBALL did not: a registry in this state stalls the install, so the probe FAILS here instead)
+[f3] NEW2-probes-the-mirror-before-settling=true — tarball={"http://official.invalid":1,"http://mirror.invalid":1} (metadata AND tarball are both probed on the mirror)
+[f3] NEW2-control-settles-identically=true — exit=1 selected=http://official.invalid route=operator-set-tarball-blackholed
+[f3] NEW3-exit-1=true — exit=1
+[f3] NEW3-route-is-the-existing-blackholed-route=true — route=operator-set-tarball-blackholed
+[f3] NEW3-mirror-metadata-was-probed=true — meta={"http://official.invalid":1,"http://mirror.invalid":1}
+[f3] NEW3-mirror-tarball-was-NOT-probed=true — tarball={"http://official.invalid":1} (the fallback is metadata AND tarball, never either alone)
+[f3] D-exit-1=true — exit=1
+[f3] D-route-mirror-tarball-blackholed=true — route=mirror-tarball-blackholed
+[f3] D-tarball-request-went-to-the-mirror=true — tarball={"http://mirror.invalid":1}
+[f3] D2-exit-0=true — exit=0
+[f3] D2-route-mirror-fallback=true — route=mirror-fallback (the pre-existing route and its wording are untouched)
+[f3] E-route-both-unreachable=true — route=both-unreachable
+[f3] E-no-tarball-request=true — tarball={} (a tarball probe only runs where metadata answered)
+[f3] C-exit-0=true — exit=0
+[f3] C-route-official-ok=true — route=official-registry-ok
+[f3] C-tarball-skipped-with-reason=true — tarball=skipped reason=no-registry-knob (the operator named no registry with MPD_E2E_NPM_REGISTRY, so the scoped METADATA probe above is the whole transport decision; the ranged GET is opt-in and this run paid no network for it)
+[f3] C-zero-tarball-requests=true — tarball={} (offline-safe: nothing extra is paid without the knob)
+[f3] FAILED=0
+[f3] workdir=/tmp/f3-arms-PlOZDc

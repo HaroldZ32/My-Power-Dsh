@@ -1,0 +1,114 @@
+{
+  "wave": "fix/coderabbit-pr42 (follow-up to PR #42 / v0.13.0)",
+  "scope": "packages/mpd-team-core-plugin/** ONLY",
+  "branch": "fix/coderabbit-pr42",
+  "git_writes": "none (no commit, add, checkout, stash, tag)",
+  "measured_at": "2026-10-15T02:55:45Z",
+  "review_payload": "evidence/tui/dsh-tui-015/coderabbit/pr42-review-comments.json (read as DATA; every finding re-verified against the code)",
+  "corrections_to_the_review": [
+    "F-A: the review's proposed guard `recordNamesLead(record, [sessionId, ...lineage])` is NOT sufficient by itself — a member whose `parentSession` is the Lead carries the Lead in `lineage`, so the literal patch would still authorize it. The shipped guard uses the NARROWED ancestry from F-B (`callerIdentity`), which is what makes the F-A arm pass for that shape.",
+    "F-C: the review's weaker option (drop rows sent before the team's createdAt) was rejected — an older team still live mints the same `M1` and its rows would be admitted whenever they were sent after this team's createdAt. Chosen rule: an unstamped (legacy) row is EXCLUDED from `scope:\"team\"` and COUNTED in the answer as `legacyUnstamped`."
+  ],
+  "findings": [
+    {
+      "id": "F-A",
+      "cwe": "CWE-862 Missing Authorization",
+      "changed": [
+        "src/index.ts: callerIdentity() (module helper, new) — the caller's own member row + the ancestry it may borrow",
+        "src/index.ts: agent_teams_plan execute, add_member LIVE arm — Lead guard added",
+        "src/index.ts: agent_teams_plan execute, create_task LIVE arm — Lead guard added",
+        "src/index.ts: imports recordNamesLead, type TeamMemberRecord"
+      ],
+      "behaviour": "The staged-plan arm is unchanged (the caller's own staging file). Both LIVE append arms now throw `only the Lead of team <teamId> may append to its live roster or board` unless the record names the caller (own id, or the ancestry a NON-member may borrow) as Lead.",
+      "arms": [
+        "spawned MEMBER (origin:subagent, depth 1) create_task -> REFUSED with the exact sentence, record byte-identical, board still 2 rows",
+        "member whose parentSession IS the Lead, add_member -> REFUSED, roster still [Senior Engineer, Reviewer], record byte-identical",
+        "CONTROL: the Lead's own add_member AND create_task still land on the record (owner + writeScopes reach the board)"
+      ]
+    },
+    {
+      "id": "F-B",
+      "cwe": "CWE-863 Incorrect Authorization",
+      "changed": ["src/index.ts: agent_teams_task complete/fail branch — the roster lookup uses the caller's OWN id; `caller` carries ancestry only when the roster does not name the caller"],
+      "behaviour": "A roster member never borrows its parent session's (the Lead's) spelling, so it cannot take the Lead close override; a caller the roster does not name (the forked captain) keeps the C7-4 F5 lineage behaviour.",
+      "arms": [
+        "member with parentSession=Lead closing ANOTHER member's row -> refused with the ownership sentence, row stays pending",
+        "the same member closes its OWN row -> completed, closedBy=owner",
+        "CONTROL: forked captain (no roster row, parentSession=Lead) closes as lead AND the heal (leadHistory + teams.json) sticks",
+        "CONTROL: a member whose recorded parent is NOT the Lead is still refused another member's row"
+      ]
+    },
+    {
+      "id": "F-C",
+      "changed": [
+        "src/mailbox-store.ts: MailboxRecord send variant, MailMessage, fold(), SendInput, send() — `teamId` stamp",
+        "src/index.ts: agent_teams_mail send — stamps mailTeam.teamId",
+        "src/index.ts: agent_teams_mail summary — filters by team identity, not member ids/names; reports legacyUnstamped",
+        "src/index.ts: agent_teams_mail output schema + render — `legacyUnstamped` counted note"
+      ],
+      "behaviour": "A row belongs to a team iff its `teamId` stamp equals the resolved team's id. A LEGACY row with no stamp is excluded and counted (`legacyUnstamped`), because no team can prove it owns one.",
+      "arms": [
+        "a stale row stamped with ANOTHER team and toId M1 is EXCLUDED (M1 total 1, not 2)",
+        "CONTROL: a row stamped with THIS team's id is INCLUDED",
+        "a legacy unstamped row is EXCLUDED and counted (legacyUnstamped=1)",
+        "CONTROL: with no team resolved, scope:workspace still returns the WHOLE fold including the legacy row"
+      ]
+    },
+    {
+      "id": "F-D",
+      "changed": [
+        "src/team-store.ts: TeamRecord.planId (new optional field) + NewTeamInput.planId, stamped in createTeam()",
+        "src/index.ts: approve passes planId: plan.planId to createTeam",
+        "src/team-lifecycle.ts: readArchivedPlanIndex() keys by the archived plan's OWN planId; isLiveTeam() uses record.planId; reap reason names the plan id",
+        "test/dispatch-guard.test.ts: the C7-2 archive fixture now stamps planId (same assertions)"
+      ],
+      "behaviour": "Archive evidence is keyed by PLAN IDENTITY. Migration rule for a record without `planId`: it is NEVER archive-reaped (isLiveTeam true), because the archive cannot identify its plan; it is still reaped by a terminal `phase` or a stamped `endedAt`. Every record minted by an approval from this build on carries the field.",
+      "arms": [
+        "repro (partial approve -> retry create+replace -> delete the retry -> agent_teams_dispatch run) leaves the team LIVE: not in `reaped`, record byte-identical, phase active, binding intact",
+        "CONTROL: a genuinely discarded plan (record planId == the unapproved archive's planId) is still reaped, reason names the plan id",
+        "a legacy record without the field (unapproved archive under the old lead+name key) stays LIVE and byte-identical; a legacy PHASE ghost is still reaped"
+      ],
+      "bounds": "For a LEGACY record (no planId) the archive arm is disarmed: a discarded plan's ghost from BEFORE this build keeps resolving until something stamps a phase or endedAt. This is the fail-safe direction chosen by the review (never terminate a live team on evidence that does not identify it); records created from this build on are fully armed."
+    },
+    {
+      "id": "F-J",
+      "severity": "Minor",
+      "changed": [
+        "src/plan-store.ts: StagedTask.kind / coverageOf / sourceTaskId (new optional fields; addTask already carried extra keys)",
+        "src/index.ts: staged create_task arm forwards the three fields; approve forwards them to addTeamTask (kind defaults to \"work\")"
+      ],
+      "behaviour": "CARRIED, not refused: staging a `repair` row before approval is the documented requirement-chain flow (C7-4 F1). Default stays `work` for a plan that names no kind.",
+      "arms": [
+        "a staged repair row carries kind/coverageOf/sourceTaskId in the STAGED plan and on the BOARD after approve",
+        "CONTROL: a staged task with no kind still becomes `work` with no coverageOf/sourceTaskId"
+      ]
+    }
+  ],
+  "gates": [
+    { "command": ".toolchain/node_modules/.bin/bun --version", "exit": 0, "observed": "1.4.0 (the repository's pinned toolchain)" },
+    { "command": ".toolchain/node_modules/.bin/bun test packages/mpd-team-core-plugin", "exit": 0, "observed": "218 pass / 0 fail, 962 expect() calls, 16 files" },
+    { "command": ".toolchain/node_modules/.bin/bun test packages/mpd-team-core-plugin/test/pr42-review-repairs.test.ts", "exit": 0, "observed": "16 pass / 0 fail, 73 expect() calls" },
+    { "command": ".toolchain/node_modules/.bin/bun run typecheck", "exit": 0, "observed": "tsgo --noEmit, no output" },
+    { "command": ".toolchain/node_modules/.bin/bun run verify:comments", "exit": 0, "observed": "VERDICT: PASS — 404 files scanned, 35776 declarations inspected" },
+    { "command": ".toolchain/node_modules/.bin/bun build packages/mpd-team-core-plugin/src/index.ts --target node --format esm --outfile packages/mpd-team-core-plugin/dist/index.js", "exit": 0, "observed": "Bundled 11 modules in 7ms (repo root, path-qualified, pinned bun 1.4.0)" },
+    { "command": "node scripts/verify-dist-fresh.ts", "exit": 0, "observed": "31/31 targets fresh (each rebuilt twice, byte-identical); 1 NOT COVERED pre-existing vendored file" }
+  ],
+  "falsifiability": {
+    "command": ".toolchain/node_modules/.bin/bun test ./.qa-tmp/pr42-baseline/packages/mpd-team-core-plugin/test/pr42-review-repairs.test.ts  # the same arms against `git show HEAD:` sources",
+    "exit": 1,
+    "observed": "8 of 16 arms FAIL on the pre-fix sources (both F-A arms, the F-B defect arm, both new F-C arms, the F-D repro + its archive control, the F-J staged arm); 42 expect() calls. The 8 controls pass on both revisions.",
+    "note": "The temp baseline tree lived under the gitignored .qa-tmp/ and was deleted after the run; the log is kept as evidence."
+  },
+  "not_run": [
+    "bun run verify:docs (no human-facing doc touched; README.md and README.zh-CN.md are unchanged and no rule in them became false)",
+    "pack closure / boot-mount / Docker lanes (outside this scoped repair; the wave's release sweep owns them)",
+    "the QA case `team-dispatch-guard` real lane (skills/** is out of scope for this task)"
+  ],
+  "bounds": [
+    "F-A: a caller the roster does NOT name whose recorded parentSession is the Lead is still treated as a forked Lead (C7-4 F5 by design). The repair closes the roster-member paths; it does not re-litigate the heal, which refuses `delegated` callers and any session the record names as a member.",
+    "F-B: the member identification is (own id) then (roster name contained in the session title). A member session the roster cannot identify at all is indistinguishable from a forked captain on the available evidence and keeps the F5 behaviour.",
+    "F-C: the legacy rule drops unstamped rows from team scope; the count is reported, but their unread state is no longer visible in a team-scoped answer (it stays visible under scope:workspace).",
+    "F-D: see the migration bound above — legacy records are never archive-reaped.",
+    "Verification limit: unit arms + the four named gates only; no live boot or Docker run was performed in this scoped task."
+  ]
+}

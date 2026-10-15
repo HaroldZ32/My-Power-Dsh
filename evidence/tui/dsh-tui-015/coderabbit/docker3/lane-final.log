@@ -1,0 +1,28 @@
+START 2026-10-15T06:40:55Z (FINAL bytes, registry=mirror)
+[mcp-call] ok=true (enum recorded tools=104, mcp__ast_grep__=true, mcp__lsp__=true, ast_grep call recorded, call result has the fixture line=true, lsp dependency staged from checkout-store) -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/dsh-qa/mcp-call/2026-10-15T06-42-48.587Z
+[mcp-call] PASS
+	Command being timed: "node skills/dsh-qa/scripts/mcp-call.ts"
+	User time (seconds): 30.45
+	System time (seconds): 11.41
+	Percent of CPU this job got: 37%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 1:53.09
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 1331008
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 1091123
+	Voluntary context switches: 806973
+	Involuntary context switches: 1597
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 4659824
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
+LANE_EXIT=0
+END 2026-10-15T06:42:48Z

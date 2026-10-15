@@ -1,0 +1,4 @@
+{"type":"session","version":4,"id":"session-dff7d43e-525c-46c1-ae56-c73fc16a946b","createdAt":1792040445583,"cwd":"/tmp/mpd-dsh-qa-DoPF9k/ws","isSeeded":false,"delegationDepth":0}
+{"type":"permission/preset","seq":0,"time":1792040445586,"data":{"preset":"workspace-write"}}
+{"type":"sandbox/mode","seq":1,"time":1792040445588,"data":{"mode":"workspace-write"}}
+{"type":"approval/policy","seq":2,"time":1792040445588,"data":{"policy":"ask"}}

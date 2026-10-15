@@ -1,0 +1,14 @@
+
+[hook] DUPLICATE-TOOL-REGISTRATION stack:
+Error: tool "send_message" is already registered (for a per-agent variant, register through that agent's `agent.ctx` instead)
+    at NamedEntries.duplicateError (file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-mcp-repro/inst/profiles/headless/node_modules/@deepseek-ai/dsh-tools/lib/index.js:2634:59)
+    at NamedEntries.insert (file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-mcp-repro/inst/profiles/headless/node_modules/@deepseek-ai/dsh-scope/lib/index.js:29:34)
+    at layers.effect.label (file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-mcp-repro/inst/profiles/headless/node_modules/@deepseek-ai/dsh-tools/lib/index.js:2886:62)
+    at ScopedLayers.<anonymous> (file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-mcp-repro/inst/profiles/headless/node_modules/@deepseek-ai/dsh-scope/lib/index.js:206:12)
+    at Generator.next (<anonymous>)
+    at file:///home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1150:26
+    at composeError (file:///home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:199:18)
+    at Fiber._execute (file:///home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1137:10)
+    at Fiber.effect (file:///home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/cordis/lib/index.js:1250:16)
+    at ScopedLayers.effect (file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-mcp-repro/inst/profiles/headless/node_modules/@deepseek-ai/dsh-scope/lib/index.js:192:14)
+dsh: tool "send_message" is already registered (for a per-agent variant, register through that agent's `agent.ctx` instead)

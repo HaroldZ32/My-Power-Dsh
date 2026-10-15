@@ -1,0 +1,45 @@
+dsh: reasoning:
+The user wants a list of all available tool names starting with `mcp__` prefix. I should not call tools. Just list them from the function definitions.
+
+Let me enumerate the mcp__ tools from the available functions:
+
+- mcp__ast_grep__rewrite
+- mcp__ast_grep__scan
+- mcp__ast_grep__search
+- mcp__codegraph__codegraph_explore
+- mcp__context7__query-docs
+- mcp__context7__resolve-library-id
+- mcp__lsp__find_definition
+- mcp__lsp__find_implementation
+- mcp__lsp__find_references
+- mcp__lsp__find_workspace_symbols
+- mcp__lsp__get_diagnostics
+- mcp__lsp__get_hover
+- mcp__lsp__get_incoming_calls
+- mcp__lsp__get_outgoing_calls
+- mcp__lsp__prepare_call_hierarchy
+- mcp__lsp__rename_symbol
+- mcp__lsp__rename_symbol_strict
+- mcp__lsp__restart_server
+
+That's 18. Also there was a mention of mcp__grep_app in the MCP resource servers list but no tools defined with that prefix. Only tools that are actually available as functions.
+
+One per line.
+mcp__ast_grep__rewrite
+mcp__ast_grep__scan
+mcp__ast_grep__search
+mcp__codegraph__codegraph_explore
+mcp__context7__query-docs
+mcp__context7__resolve-library-id
+mcp__lsp__find_definition
+mcp__lsp__find_implementation
+mcp__lsp__find_references
+mcp__lsp__find_workspace_symbols
+mcp__lsp__get_diagnostics
+mcp__lsp__get_hover
+mcp__lsp__get_incoming_calls
+mcp__lsp__get_outgoing_calls
+mcp__lsp__prepare_call_hierarchy
+mcp__lsp__rename_symbol
+mcp__lsp__rename_symbol_strict
+mcp__lsp__restart_server

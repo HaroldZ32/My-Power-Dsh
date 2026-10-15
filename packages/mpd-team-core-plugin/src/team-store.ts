@@ -163,6 +163,17 @@ export interface TeamRecord {
   createdAt: string
   /** ISO instant the plan was approved (the moment anything could be spawned). */
   approvedAt?: string
+  /**
+   * The identity of the PLAN this record was approved from (PR #42 review F-D).
+   *
+   * WHY IT EXISTS. `team-lifecycle.ts#isLiveTeam` treats an archived-but-never-approved plan as proof
+   * the team is terminal, and it used to key that evidence by Lead session + team NAME — so a discarded
+   * RETRY plan (staged with `replace:true` after an approval stopped partway, then deleted) archived an
+   * unapproved plan under the same lead+name and made the genuinely LIVE team terminal at the next
+   * dispatch or reap. The archive evidence is therefore keyed by the plan id this record records, and a
+   * record that predates the field is never archive-reaped (see `isLiveTeam`).
+   */
+  planId?: string
   /** ISO instant the team was explicitly ended; absent while it is live. */
   endedAt?: string
   /**
@@ -435,6 +446,11 @@ export interface NewTeamInput {
    * supplies it. An id already on disk is REFUSED rather than overwritten — see {@link createTeam}.
    */
   teamId?: string
+  /**
+   * The plan this team is being approved from, recorded so the lifecycle rules can key archive
+   * evidence by PLAN identity rather than by Lead + name (PR #42 review F-D).
+   */
+  planId?: string
 }
 
 /**
@@ -463,6 +479,10 @@ export function createTeam(workspace: string, input: NewTeamInput, now: Date): T
     name: input.name,
     description: input.description,
     leadSessionId: sessionKey(input.leadSessionId),
+    // THE APPROVING PLAN'S IDENTITY (PR #42 review F-D): an approval is the one moment a record is born
+    // from a plan, so it is the one moment the link can be stamped. Omitted when the caller has no plan
+    // (a hand-built or migrated record), which `isLiveTeam` reads as "archive evidence cannot identify".
+    ...(input.planId === undefined || input.planId === "" ? {} : { planId: input.planId }),
     phase: "staged",
     createdAt: now.toISOString(),
     members: [],

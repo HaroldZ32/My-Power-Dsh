@@ -29,8 +29,33 @@ import { join, resolve } from "node:path"
 
 /** How long the review-panel case and the hashline suite may take before the arm gives up. */
 const CASE_TIMEOUT_MS: number = 900000
-/** How long a QA case that drives a real model turn may take (the two live cases install a profile). */
-const LIVE_CASE_TIMEOUT_MS: number = 1800000
+/**
+ * How long a QA case that drives a real model turn may take (the two live cases install a profile).
+ *
+ * WHY 2400 s, AND WHY A PER-CASE CEILING MUST EXCEED THE CASE'S OWN MEASURED WALL CLOCK: this ceiling
+ * is the OUTER budget of a case that carries INNER budgets of its own, and an outer budget that is
+ * smaller than the inner one it encloses turns the inner one into DECORATION — this arm's SIGTERM
+ * decides the verdict before the case's own ceiling could ever be reached. The case that made this
+ * binding is `qa.mcpCall` (`skills/dsh-qa/scripts/mcp-call.ts`): it installs the packed artifact TWICE,
+ * once per arm, under `INSTALL_TIMEOUT_MS` = 1800 s PER INSTALL, and it measured 2647 s for its two arms
+ * while each paid its own cold closure install
+ * (evidence/tui/dsh-tui-015/coderabbit/skills2/mcp-call-real.log) — i.e. the OLD 1800 s ceiling here cut
+ * a lane the case itself would have called legal, and it was the runner, not the measurement, that
+ * decided. 2400 s = ONE install AT the case's own ceiling (1800 s) PLUS one full boot budget (600 s,
+ * the case's own per-arm boot timeout), so a lane whose first install is merely slow-but-legal can no
+ * longer be cut by this arm; it stays BELOW the 3600 s floor step 16c raises for the WHOLE owed-case
+ * table (`docker/entrypoint.sh`), so a genuinely pathological case is still timed out BY THIS RUNNER
+ * with its own row instead of consuming the step and the other owed cases with it. The case also became
+ * cheaper in the same change (the two arms now share ONE warm npm cache and npm's peer auto-install is
+ * off), MEASURED 2026-10-15 across three green runs on the registry route the container selects:
+ * 70.8 s, 79.0 s and 113.1 s end to end (evidence/tui/dsh-tui-015/coderabbit/skills3/lane-mirror.log,
+ * lane-frozen.log, lane-final.log), and on this host's slow DEFAULT registry one cold closure install
+ * alone measured 1037 s (evidence/tui/dsh-tui-015/coderabbit/skills/install-links-duration.log),
+ * against which the ceiling still leaves the second arm and both boots room. BOUND: a ceiling for a
+ * cold cache over a slow registry link, never a correctness claim — a case that genuinely hangs still
+ * reddens here.
+ */
+const LIVE_CASE_TIMEOUT_MS: number = 2400000
 /** How long the LSP launcher gets to write its config before the control reads the scratch root. */
 const LSP_WRITE_BUDGET_MS: number = 30000
 /** The shortest wait the negative half ever makes, so a fast positive half cannot shorten it to nothing. */

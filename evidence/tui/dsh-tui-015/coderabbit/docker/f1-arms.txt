@@ -1,0 +1,24 @@
+[f1] extracted-block-is-nonempty=true — lines=21
+[f1] extracted-block-carries-the-retry-route=true — the shipped block is the retry block
+[f1] extracted-block-carries-the-reset=true — the shipped block resets BROWSER_INSTALL before the retry
+[f1] control-differs-by-exactly-the-reset-line=true — shipped=21 control=20 lines
+[f1] entrypoint-carries-the-downstream-predicate=true — verbatim: if [ "$BROWSER_INSTALL" != "0" ]; then
+[f1] A-install-0=true — install=0 (a successful retry CLEARS the failure)
+[f1] A-host-is-the-mirror=true — host=https://mirror.invalid
+[f1] A-route-names-the-retry=true — route=mirror-retry-after-failure
+[f1] A-two-npx-attempts=true — calls=2
+[f1] A-downstream-branch-is-the-lane=true — DOWNSTREAM=lane-driven (the browser lane runs instead of marking all ui.* arms unavailable)
+[f1] B-install-is-the-retry-code=true — install=9 (the reset does not swallow the retry's failure)
+[f1] B-first-failure-is-quoted=true — [browser] the install failed on https://official.invalid (exit 7); retrying on https://mirror.invalid
+[f1] B-downstream-branch-is-unavailable=true — DOWNSTREAM=unavailable-branch (the existing failure reporting is kept)
+[f1] C-install-is-the-STALE-code=true — install=7 (a SUCCESSFUL retry still reads as failed — the reported defect)
+[f1] C-downstream-branch-is-unavailable=true — DOWNSTREAM=unavailable-branch (all ui.* arms would be reported unavailable with route=mirror-retry-after-failure)
+[f1] HEAD-block-extracted=true — git show HEAD:docker/entrypoint.sh (read-only)
+[f1] HEAD-block-carries-NO-reset=true — the pre-fix block never reset BROWSER_INSTALL
+[f1] C2-install-is-the-STALE-code=true — install=7 (the authentic pre-fix bytes reproduce the defect)
+[f1] C2-downstream-branch-is-unavailable=true — DOWNSTREAM=unavailable-branch
+[f1] D-install-is-the-first-code=true — install=7
+[f1] D-no-second-attempt=true — calls=1 (the retry gate still requires a DIFFERENT transport)
+[f1] D-route-untouched=true — route=mirror-probe-ok
+[f1] FAILED=0
+[f1] workdir=/tmp/f1-browser-arms.HJW23j

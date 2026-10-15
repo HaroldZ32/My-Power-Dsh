@@ -1,0 +1,17 @@
+dsh: reasoning:
+The user wants me to call mcp__ast_grep__search with pattern "return 0" on tests/mcp-fixtures/sample.c, and report verbatim. Do not use bash tool.
+
+Let me just call the tool. Language: c. Paths: tests/mcp-fixtures/sample.c.
+
+But the pattern must be a single AST node. "return 0" — in C, `return 0;` would be a statement. The instruction says pattern "return 0". Hmm, per schema pattern should parse as one AST node. `return 0` without semicolon might parse... ast-grep typically accepts `return 0` as a statement pattern? Actually it might need the semicolon. The user explicitly said pattern `return 0` (pass parameters per the tool schema). Let me try exactly "return 0". If it errors, I'll note it.
+
+Let me call it.
+dsh: reasoning:
+Report verbatim.
+Called `mcp__ast_grep__search` (pattern `return 0`, language `c`, path `tests/mcp-fixtures/sample.c`). Returned content, verbatim:
+
+```json
+{"schemaVersion":1,"ok":true,"kind":"search","workdir":"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-mcp-repro/tmp-d/mpd-dsh-qa-YI9cIZ/ws","matches":[{"path":"tests/mcp-fixtures/sample.c","language":"c","text":"return 0;","range":{"start":{"line":1,"column":17,"byteOffset":17},"end":{"line":1,"column":26,"byteOffset":26}},"metavariables":{"single":{},"multi":{}}}],"counts":{"returnedMatches":1,"returnedFiles":1,"totalMatches":1,"totalFiles":1,"atLeastMatches":1},"truncation":{"truncated":false,"reason":null,"maxMatches":50,"maxPayloadBytes":4194304,"salvagedRecords":0},"warnings":[],"durationMs":8}
+```
+
+Summary of what it reported: one match in `tests/mcp-fixtures/sample.c` — the text `return 0;` at line 1, column 17 (byte offset 17–26), with no metavariables captured, no truncation, no warnings, 8 ms duration. No shell tools were used.

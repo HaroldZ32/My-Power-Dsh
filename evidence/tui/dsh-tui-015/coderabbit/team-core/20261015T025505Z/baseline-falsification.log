@@ -1,0 +1,131 @@
+# The SAME 16 arms run against the PRE-FIX sources (git show HEAD:packages/mpd-team-core-plugin/src/*) — the falsifiability control: a test that passes both before and after proves nothing.
+$ .toolchain/node_modules/.bin/bun test ./.qa-tmp/pr42-baseline/packages/mpd-team-core-plugin/test/pr42-review-repairs.test.ts
+bun test v1.4.0 (34cbb9a40)
+
+.qa-tmp/pr42-baseline/packages/mpd-team-core-plugin/test/pr42-review-repairs.test.ts:
+258 |     const member = handleOf(h.workspace, teamId, "Senior Engineer")
+259 |     /** The record's bytes BEFORE the refused call. */
+260 |     const before = recordBytes(h.workspace, teamId)
+261 |     /** The thrown refusal, captured so the arm can quote the sentence. */
+262 |     const failure = await h.call("agent_teams_plan", { action: "create_task", task: { subject: "sneak", description: "d", owner: "Reviewer", writeScopes: ["packages/**"] } }, member, { origin: "subagent", delegationDepth: 1 }).then(() => undefined, (error: unknown) => error)
+263 |     expect(failure).toBeInstanceOf(Error)
+                          ^
+error: expect(received).toBeInstanceOf(expected)
+
+Expected constructor: [class Error]
+Received value: undefined
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/pr42-baseline/packages/mpd-team-core-plugin/test/pr42-review-repairs.test.ts:263:21)
+(fail) F-A (CWE-862) — the live append arms require the LEAD > a spawned MEMBER's live create_task is REFUSED with the reason, and the record is untouched [4.92ms]
+276 |     const member = handleOf(h.workspace, teamId, "Reviewer")
+277 |     /** The record's bytes BEFORE the refused call. */
+278 |     const before = recordBytes(h.workspace, teamId)
+279 |     /** The thrown refusal for the roster append. */
+280 |     const failure = await h.call("agent_teams_plan", { action: "add_member", member: { name: "Guard", description: "writes", prompt: "You write." } }, member, { parentSession: LEAD }).then(() => undefined, (error: unknown) => error)
+281 |     expect(failure).toBeInstanceOf(Error)
+                          ^
+error: expect(received).toBeInstanceOf(expected)
+
+Expected constructor: [class Error]
+Received value: undefined
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/pr42-baseline/packages/mpd-team-core-plugin/test/pr42-review-repairs.test.ts:281:21)
+(fail) F-A (CWE-862) — the live append arms require the LEAD > a member that also records the LEAD as parentSession is refused all the same [1.09ms]
+(pass) F-A (CWE-862) — the live append arms require the LEAD > NEGATIVE CONTROL: the LEAD's own live appends still land on the record [1.17ms]
+315 |     const teamId = await approveTeam(h)
+316 |     /** The Reviewer's own session, with the Lead recorded as its parent — the F-B shape. */
+317 |     const reviewer = handleOf(h.workspace, teamId, "Reviewer")
+318 |     /** The tool's own answer. */
+319 |     const answer = await h.call("agent_teams_task", { action: "complete", task_id: "T1" }, reviewer, { parentSession: LEAD }) as { refused?: string; closedBy?: string }
+320 |     expect(answer.refused).toBe('task T1 is owned by "Senior Engineer" and this caller is neither that owner nor this team\'s lead')
+                                 ^
+error: expect(received).toBe(expected)
+
+Expected: "task T1 is owned by \"Senior Engineer\" and this caller is neither that owner nor this team's lead"
+Received: undefined
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/pr42-baseline/packages/mpd-team-core-plugin/test/pr42-review-repairs.test.ts:320:28)
+(fail) F-B (CWE-863) — lineage is not a member's identity > a member whose parentSession IS the Lead cannot close ANOTHER member's row as the Lead [1.49ms]
+(pass) F-B (CWE-863) — lineage is not a member's identity > the same member still closes its OWN row [1.12ms]
+(pass) F-B (CWE-863) — lineage is not a member's identity > NEGATIVE CONTROL: a forked captain that is NOT on the roster still closes as the lead, and the heal sticks [1.24ms]
+(pass) F-B (CWE-863) — lineage is not a member's identity > NEGATIVE CONTROL: a member of ANOTHER name borrowing a stranger's lineage is still refused [0.96ms]
+382 |     const answer = await h.call("agent_teams_mail", { action: "summary" }, LEAD) as { scope?: string; summary?: Array<{ memberId?: string; total?: number; unread?: number }>; legacyUnstamped?: number }
+383 |     expect(answer.scope).toBe("team")
+384 |     /** The scoped rows, indexed by member id. */
+385 |     const rows = new Map((answer.summary ?? []).map((row) => [String(row.memberId), row]))
+386 |     // ONLY the tool's own send counts: the other team's row to the same M1 is gone.
+387 |     expect(rows.get(m1)?.total).toBe(1)
+                                      ^
+error: expect(received).toBe(expected)
+
+Expected: 1
+Received: 2
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/pr42-baseline/packages/mpd-team-core-plugin/test/pr42-review-repairs.test.ts:387:33)
+(fail) F-C — the mailbox summary scopes by team IDENTITY > a stale row addressed to ANOTHER team's M1 is excluded; this team's own rows are kept [1.88ms]
+(pass) F-C — the mailbox summary scopes by team IDENTITY > NEGATIVE CONTROL: a row stamped with THIS team's id is included, even without the tool's send [0.98ms]
+416 |     // A row written BEFORE the stamp existed: no team can prove it owns it.
+417 |     sendRawMail(h.workspace, { fromId: "x", fromName: "old wave", toId: m1, toName: "Senior Engineer", subject: "legacy", body: "b", memberIds: [m1] }, NOW)
+418 |     /** The tool's own answer. */
+419 |     const answer = await h.call("agent_teams_mail", { action: "summary" }, LEAD) as { scope?: string; summary?: Array<{ memberId?: string; total?: number }>; legacyUnstamped?: number }
+420 |     expect(answer.scope).toBe("team")
+421 |     expect(answer.summary?.find((row) => row.memberId === m1)?.total).toBe(1)
+                                                                            ^
+error: expect(received).toBe(expected)
+
+Expected: 1
+Received: 2
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/pr42-baseline/packages/mpd-team-core-plugin/test/pr42-review-repairs.test.ts:421:71)
+(fail) F-C — the mailbox summary scopes by team IDENTITY > a LEGACY unstamped row follows the stated rule: excluded from the team scope and COUNTED [1.16ms]
+(pass) F-C — the mailbox summary scopes by team IDENTITY > NEGATIVE CONTROL: with no team resolved the WHOLE fold is returned, legacy row included [0.28ms]
+449 |     expect(approval.stoppedAt).toContain("Reviewer")
+450 |     /** The plan the approval came from, still in the staging slot because it was never archived. */
+451 |     const planA = readPlan(h.workspace, LEAD)?.planId
+452 |     expect(planA).toBeTruthy()
+453 |     // THE FIX ITSELF: the record carries the plan it was approved from.
+454 |     expect(approval.team?.planId).toBe(planA)
+                                        ^
+error: expect(received).toBe(expected)
+
+Expected: "plan-20261015025538733-0dxm-00l"
+Received: undefined
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/pr42-baseline/packages/mpd-team-core-plugin/test/pr42-review-repairs.test.ts:454:35)
+(fail) F-D — archive evidence is keyed by the record's OWN plan > the repro: partial approve -> retry create+replace -> delete the retry -> dispatch leaves the team LIVE [1.34ms]
+483 |     const ws = sandbox()
+484 |     writeTeam(ws, record({ teamId: "team-ghost", name: "wave-x", leadSessionId: "lead-x", planId: "plan-ghost" }))
+485 |     plantArchivedPlan(ws, "plan-ghost", false)
+486 |     /** The archive index the rules read. */
+487 |     const index = readArchivedPlanIndex(ws)
+488 |     expect(isLiveTeam(readTeam(ws, "team-ghost")!, index)).toBe(false)
+                                                                 ^
+error: expect(received).toBe(expected)
+
+Expected: false
+Received: true
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/pr42-baseline/packages/mpd-team-core-plugin/test/pr42-review-repairs.test.ts:488:60)
+(fail) F-D — archive evidence is keyed by the record's OWN plan > NEGATIVE CONTROL: a genuinely discarded plan is still reaped, with its plan id in the reason [0.62ms]
+(pass) F-D — archive evidence is keyed by the record's OWN plan > an old record WITHOUT the field follows the migration rule: never archive-reaped, still phase-reaped [1.07ms]
+522 |     await h.call("agent_teams_plan", { action: "create", name: "the wave", description: "one wave" }, LEAD)
+523 |     await h.call("agent_teams_plan", { action: "add_member", member: { name: "Reviewer", description: "judges", prompt: "You review." } }, LEAD)
+524 |     await h.call("agent_teams_plan", { action: "create_task", task: { subject: "the repair", description: "fix it", kind: "repair", coverageOf: "C7-4 F1", sourceTaskId: "T1", owner: "Reviewer" } }, LEAD)
+525 |     /** The staged plan read back through the tool, before any approval. */
+526 |     const staged = await h.call("agent_teams_plan", { action: "edit" }, LEAD) as { plan?: { tasks?: Array<{ kind?: string; coverageOf?: string; sourceTaskId?: string }> } }
+527 |     expect(staged.plan?.tasks?.[0]?.kind).toBe("repair")
+                                                ^
+error: expect(received).toBe(expected)
+
+Expected: "repair"
+Received: undefined
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-tmp/pr42-baseline/packages/mpd-team-core-plugin/test/pr42-review-repairs.test.ts:527:43)
+(fail) F-J — the staged arm carries kind/coverageOf/sourceTaskId > a staged repair row reaches the STAGED plan and the BOARD with all three fields [0.43ms]
+(pass) F-J — the staged arm carries kind/coverageOf/sourceTaskId > NEGATIVE CONTROL: a staged task that names NO kind still becomes `work` [0.92ms]
+
+ 8 pass
+ 8 fail
+ 42 expect() calls
+Ran 16 tests across 1 file. [41.00ms]
+exit: 1

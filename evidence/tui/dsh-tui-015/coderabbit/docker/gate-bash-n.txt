@@ -1,0 +1,14 @@
+hash-before read at 2026-10-15T03:12:52Z
+fc594126555442241dfd344f4385493cf7fba62da8b4591fd989515fceb80717  docker/entrypoint.sh
+4472e213aedb90649582bb59f1b885714d8886afeb6f322543074b2fa5c5510e  docker/lib/reply-verdict.ts
+3fb2f0ec5f9d54d62a22567fd72b9a955e713dc46890f750c1d82440b067b8bb  docker/lib/browser-lane.ts
+cabadd63efacbc72581d0f3be9948c216221dbfb4a4b9b34108991b9062c4943  docker/tui-lane.sh
+451d4ae5801b675717ce12b0cab5244c42ce82a90c6391b0d8a9962e31d376ff  docker/README.md
+404e7326d9628f77ba0f5322082e5a46d846f6b65fa4dcd9ad06ef4cb7577c8d  docker/README.zh-CN.md
+
+$ bash -n docker/entrypoint.sh  (findings 1 and 3)
+exit=0
+$ bash -n docker/tui-lane.sh  (sibling lane script, UNTOUCHED)
+exit=0
+$ bash -n docker/ui/entrypoint.sh  (inspection container, UNTOUCHED)
+exit=0

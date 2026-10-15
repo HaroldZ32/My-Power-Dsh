@@ -1,0 +1,5 @@
+# registry probe, 2026-10-15T06:14:52Z
+--- https://registry.npmjs.org/@ast-grep/cli
+http=200 time=18.820696s size=349777
+--- https://registry.npmmirror.com/@ast-grep/cli
+http=200 time=0.095344s size=375181

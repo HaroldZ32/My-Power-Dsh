@@ -1,0 +1,120 @@
+hash-before read at 2026-10-15T03:12:52Z
+fc594126555442241dfd344f4385493cf7fba62da8b4591fd989515fceb80717  docker/entrypoint.sh
+4472e213aedb90649582bb59f1b885714d8886afeb6f322543074b2fa5c5510e  docker/lib/reply-verdict.ts
+3fb2f0ec5f9d54d62a22567fd72b9a955e713dc46890f750c1d82440b067b8bb  docker/lib/browser-lane.ts
+cabadd63efacbc72581d0f3be9948c216221dbfb4a4b9b34108991b9062c4943  docker/tui-lane.sh
+451d4ae5801b675717ce12b0cab5244c42ce82a90c6391b0d8a9962e31d376ff  docker/README.md
+404e7326d9628f77ba0f5322082e5a46d846f6b65fa4dcd9ad06ef4cb7577c8d  docker/README.zh-CN.md
+
+$ bash -n docker/entrypoint.sh  (findings 1 and 3)
+exit=0
+$ bash -n docker/tui-lane.sh  (sibling lane script, UNTOUCHED)
+exit=0
+$ bash -n docker/ui/entrypoint.sh  (inspection container, UNTOUCHED)
+exit=0
+
+hash-after re-read at 2026-10-15T03:13:16Z
+fc594126555442241dfd344f4385493cf7fba62da8b4591fd989515fceb80717  docker/entrypoint.sh
+4472e213aedb90649582bb59f1b885714d8886afeb6f322543074b2fa5c5510e  docker/lib/reply-verdict.ts
+3fb2f0ec5f9d54d62a22567fd72b9a955e713dc46890f750c1d82440b067b8bb  docker/lib/browser-lane.ts
+cabadd63efacbc72581d0f3be9948c216221dbfb4a4b9b34108991b9062c4943  docker/tui-lane.sh
+451d4ae5801b675717ce12b0cab5244c42ce82a90c6391b0d8a9962e31d376ff  docker/README.md
+404e7326d9628f77ba0f5322082e5a46d846f6b65fa4dcd9ad06ef4cb7577c8d  docker/README.zh-CN.md
+
+== control suites (frozen after the last write) ==
+-- f1-browser-retry-arms.sh exit 0
+[f1] extracted-block-is-nonempty=true — lines=21
+[f1] extracted-block-carries-the-retry-route=true — the shipped block is the retry block
+[f1] extracted-block-carries-the-reset=true — the shipped block resets BROWSER_INSTALL before the retry
+[f1] control-differs-by-exactly-the-reset-line=true — shipped=21 control=20 lines
+[f1] entrypoint-carries-the-downstream-predicate=true — verbatim: if [ "$BROWSER_INSTALL" != "0" ]; then
+[f1] A-install-0=true — install=0 (a successful retry CLEARS the failure)
+[f1] A-host-is-the-mirror=true — host=https://mirror.invalid
+[f1] A-route-names-the-retry=true — route=mirror-retry-after-failure
+[f1] A-two-npx-attempts=true — calls=2
+[f1] A-downstream-branch-is-the-lane=true — DOWNSTREAM=lane-driven (the browser lane runs instead of marking all ui.* arms unavailable)
+[f1] B-install-is-the-retry-code=true — install=9 (the reset does not swallow the retry's failure)
+[f1] B-first-failure-is-quoted=true — [browser] the install failed on https://official.invalid (exit 7); retrying on https://mirror.invalid
+[f1] B-downstream-branch-is-unavailable=true — DOWNSTREAM=unavailable-branch (the existing failure reporting is kept)
+[f1] C-install-is-the-STALE-code=true — install=7 (a SUCCESSFUL retry still reads as failed — the reported defect)
+[f1] C-downstream-branch-is-unavailable=true — DOWNSTREAM=unavailable-branch (all ui.* arms would be reported unavailable with route=mirror-retry-after-failure)
+[f1] HEAD-block-extracted=true — git show HEAD:docker/entrypoint.sh (read-only)
+[f1] HEAD-block-carries-NO-reset=true — the pre-fix block never reset BROWSER_INSTALL
+[f1] C2-install-is-the-STALE-code=true — install=7 (the authentic pre-fix bytes reproduce the defect)
+[f1] C2-downstream-branch-is-unavailable=true — DOWNSTREAM=unavailable-branch
+[f1] D-install-is-the-first-code=true — install=7
+[f1] D-no-second-attempt=true — calls=1 (the retry gate still requires a DIFFERENT transport)
+[f1] D-route-untouched=true — route=mirror-probe-ok
+[f1] FAILED=0
+[f1] workdir=/tmp/f1-browser-arms.HJW23j
+
+-- f2-reply-verdict-arms.mjs exit 0
+[f2] shipped-self-test-exit-0=true — exit=0 ARMS=11 PASSED=11 FAILED=0
+[f2] shipped-arms-count=true — ARMS=11 PASSED=11 FAILED=0
+[f2] shipped-stale-arm-green=true — stale-failure-line-alone-does-not-bind=true
+[f2] shipped-new-arm-green=true — new-failure-line-does-bind=true
+[f2] shipped-reads-the-pre-send-capture=true — call site: failureText(input.before, input.after)
+[f2] shipped-stale-arm-raw-names-the-stale-panel=true — raw carries failure=none staleFailure=yes
+[f2] revert-applied-exactly-once=true — changedLines=2 ["-  const failure = failureText(input.before, input.after)","+  const failure = failureText(\"\", input.after)"]
+[f2] control-exit-1=true — exit=1 ARMS=11 PASSED=10 FAILED=1
+[f2] control-stale-arm-RED=true — stale-failure-line-alone-does-not-bind=false (the stale panel binds again, which is the defect)
+[f2] control-new-arm-still-GREEN=true — new-failure-line-does-bind=true (the revert reddens the stale arm ONLY, so the arm is specific)
+[f2] control-stale-arm-binds-on-the-stale-panel=true — the reverted classifier reads the PRE-SEND panel as a fresh credential bound
+[f2] FAILED=0
+[f2] scratch=/tmp/f2-arms-UIBWOr
+
+-- f3-registry-arms.mjs exit 0
+[f3] shipped-program-has-no-single-quote=true — the shell single-quotes this argument, so one quote would terminate it early
+[f3] shipped-program-carries-the-tarball-arm=true — the ranged GET and its log line are in the shipped program
+[f3] shipped-program-carries-the-mirror-fallback=true — route=mirror-fallback-after-tarball-blackhole
+[f3] version-pin-read=true — DSH_VERSION=0.2.0-rc.2 tarballPath=/@deepseek-ai/dsh/-/dsh-0.2.0-rc.2.tgz
+[f3] pre-fix-program-extracted=true — git show HEAD:docker/entrypoint.sh
+[f3] pre-fix-program-is-the-metadata-plus-tarball-probe=true — the control really is the pre-repair program: tarball arm yes, mirror fallback no
+[f3] shipped-differs-from-pre-fix=true — shippedChars=5444 preFixChars=4241
+[f3] A-exit-0=true — exit=0
+[f3] A-route-ok=true — route=operator-set-ok
+[f3] A-tarball-range-read=true — tarball=http=206 bytes=1024 ms=0
+[f3] A-selection-file-has-3-lines=true — lines=["http://official.invalid","operator-set-ok","http=206 bytes=1024 ms=0",""]
+[f3] A-one-meta-one-tarball-request=true — meta={"http://official.invalid":1} tarball={"http://official.invalid":1}
+…
+[f3] NEW1-exit-0=true — exit=0
+[f3] NEW1-selects-the-MIRROR=true — selected=http://mirror.invalid
+[f3] NEW1-route-names-the-fallback=true — route=mirror-fallback-after-tarball-blackhole
+[f3] NEW1-reading-is-the-mirrors-tarball=true — tarball=http=206 bytes=1024 ms=1 (the operator-set registry answered METADATA while its TARBALL blackholed, so the install travels on the fallback mirror instead of stalling)
+[f3] NEW1-probes-both-registries-metadata=true — meta={"http://official.invalid":1,"http://mirror.invalid":1}
+[f3] NEW1-ranges-both-tarballs=true — tarball={"http://official.invalid":1,"http://mirror.invalid":1}
+[f3] NEW1-stdout-names-the-fallback=true — REGISTRY=http://mirror.invalid ROUTE=mirror-fallback-after-tarball-blackhole officialProbe=http=200 officialTarball=Error: This operation was aborted ms=20000 FAILED mirrorMs=0 mirrorTarball=http=206 bytes=1024 ms=1 | TARBALL=http=206 bytes=1024 ms=1 (the operator-set registry answered METADATA while its TARBALL blackholed, so the install travels on the fallback mirror instead of stalling)
+[f3] NEW1-control-pre-fix-FAILS=true — exit=1 selected=http://official.invalid route=operator-set-tarball-blackholed
+[f3] NEW1-control-never-probes-the-mirror-tarball=true — tarball={"http://official.invalid":1} (the fallback is what changes the outcome)
+[f3] NEW2-exit-1=true — exit=1
+[f3] NEW2-settles-on-the-probed-registry=true — selected=http://official.invalid
+[f3] NEW2-route-is-the-existing-blackholed-route=true — route=operator-set-tarball-blackholed
+[f3] NEW2-reading-says-failed=true — tarball=Error: This operation was aborted ms=20002 FAILED (the METADATA endpoint answered and the TARBALL did not: a registry in this state stalls the install, so the probe FAILS here instead)
+[f3] NEW2-probes-the-mirror-before-settling=true — tarball={"http://official.invalid":1,"http://mirror.invalid":1} (metadata AND tarball are both probed on the mirror)
+[f3] NEW2-control-settles-identically=true — exit=1 selected=http://official.invalid route=operator-set-tarball-blackholed
+[f3] NEW3-exit-1=true — exit=1
+[f3] NEW3-route-is-the-existing-blackholed-route=true — route=operator-set-tarball-blackholed
+[f3] NEW3-mirror-metadata-was-probed=true — meta={"http://official.invalid":1,"http://mirror.invalid":1}
+[f3] NEW3-mirror-tarball-was-NOT-probed=true — tarball={"http://official.invalid":1} (the fallback is metadata AND tarball, never either alone)
+[f3] D-exit-1=true — exit=1
+[f3] D-route-mirror-tarball-blackholed=true — route=mirror-tarball-blackholed
+[f3] D-tarball-request-went-to-the-mirror=true — tarball={"http://mirror.invalid":1}
+[f3] D2-exit-0=true — exit=0
+[f3] D2-route-mirror-fallback=true — route=mirror-fallback (the pre-existing route and its wording are untouched)
+[f3] E-route-both-unreachable=true — route=both-unreachable
+[f3] E-no-tarball-request=true — tarball={} (a tarball probe only runs where metadata answered)
+[f3] C-exit-0=true — exit=0
+[f3] C-route-official-ok=true — route=official-registry-ok
+[f3] C-tarball-skipped-with-reason=true — tarball=skipped reason=no-registry-knob (the operator named no registry with MPD_E2E_NPM_REGISTRY, so the scoped METADATA probe above is the whole transport decision; the ranged GET is opt-in and this run paid no network for it)
+[f3] C-zero-tarball-requests=true — tarball={} (offline-safe: nothing extra is paid without the knob)
+[f3] FAILED=0
+
+== gates ==
+scanned 404 TypeScript file(s) of 404 in the source set; inspected 35778 declaration(s); skipped 16244 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+[self-test] ok   a clean report carries evidenceScrubbed: true
+[self-test] ok   a clean report exits 0
+[self-test] all arms passed (offline: no docker, no network)
+$ tsgo --noEmit
+typecheck exit 0
