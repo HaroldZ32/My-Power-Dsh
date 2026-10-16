@@ -766,3 +766,150 @@ describe("S1 · the stale-default migration re-arms on a self-healing host", () 
     expect(keeper.outcome().reasserted).toBe(2)
   })
 })
+
+// R2 of `fix/sidebar-015-keeper-migration` (CodeRabbit PR #44): the wave's OWN new code — the
+// self-healer migration path — made three promises the arms below pin: its errors are CONTAINED as
+// recorded refusals (never unhandled rejections), a `stop()` that races a pending probe retires the
+// keeper for good (no migration, no belt, no late write), and a host that drops the migration write
+// settles REFUSED (never a `confirmed` hiding the stale list that remains).
+describe("R2 · the self-healer migration is contained, disposal-safe and honest", () => {
+  test("(R2.1) a store whose apply throws settles a recorded refusal — zero unhandled rejections", async () => {
+    /** Every unhandled rejection observed during the arm; the contract is that it stays EMPTY. */
+    const unhandled: unknown[] = []
+    /** The collector, attached for the arm's duration only and detached in the finally below. */
+    const collect = (reason: unknown): void => { unhandled.push(reason) }
+    process.on("unhandledRejection", collect)
+    try {
+      /** The store whose apply throws — the exact host defect the finding names. */
+      const store: TuiHostPrefsLike = {
+        getSidePanelPanels: (): unknown => STALE_PIN,
+        applySidePanelPanels: (): unknown => { throw new Error("the staged host refused the apply") },
+      }
+      /** The controllable clock. */
+      const clock = fakeClock()
+      /** The keeper under test, on a self-healing host whose store refuses every write. */
+      const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: store, hostVersion: "0.15.0", defaultIds: HOST_DEFAULT }), schedule: clock.schedule, pastIds: () => [] })
+      keeper.observe("act1:team")
+      await clock.runNext()
+      // The throw from inside the migration decision path is a RECORDED refusal, never a rejection of
+      // the promise `.then` returned (the rejection handler covers `loadPrefs` only).
+      expect(keeper.outcome().state).toBe("refused")
+      expect(keeper.outcome().detail).toContain("the migration decision path threw")
+      expect(keeper.outcome().detail).toContain("the staged host refused the apply")
+      expect(unhandled).toEqual([])
+    } finally {
+      process.off("unhandledRejection", collect)
+    }
+  })
+
+  test("(R2.2) a loadPrefs() resolving AFTER stop() neither migrates nor installs the belt", async () => {
+    /** The store with the feed exposed, seeded with the stale pin a late probe would have migrated. */
+    const fake = fakeStore(STALE_PIN, true)
+    /** Resolves the pending probe; the arm owns the timing so `stop()` lands while it is in flight. */
+    let resolveProbe: (probe: { prefs: TuiHostPrefsLike; hostVersion: string; defaultIds: string }) => void = (): void => {}
+    /** The pending-probe loader, unresolved until the arm releases it. */
+    const loadPrefs = (): Promise<{ prefs: TuiHostPrefsLike; hostVersion: string; defaultIds: string }> =>
+      new Promise((resolve): void => { resolveProbe = resolve })
+    /** The controllable clock. */
+    const clock = fakeClock()
+    /** The keeper under test, whose first tick is parked inside the unresolved probe. */
+    const keeper = createPanelEnableKeeper({ loadPrefs, schedule: clock.schedule, pastIds: () => [] })
+    keeper.observe("act1:team")
+    await clock.runNext()
+    // DISPOSAL WHILE PENDING: the scope went away before the probe answered.
+    keeper.stop()
+    resolveProbe({ prefs: fake.store, hostVersion: "0.15.0", defaultIds: HOST_DEFAULT })
+    for (let turn = 0; turn < 8; turn += 1) await Promise.resolve()
+    // No migration of the retired activation's ids, no belt subscription left attached, no settle.
+    expect(fake.applied).toEqual([])
+    expect(fake.listeners()).toBe(0)
+    expect(keeper.outcome().state).toBe("requested")
+  })
+
+  test("(R2.2) a belt the host never gave an unsubscribe for stays silent after stop()", async () => {
+    /** The CSV the store holds. */
+    let csv = STALE_PIN
+    /** Every apply attempted through the store, the host's rewrites included. */
+    const applied: string[] = []
+    /** The listeners the store keeps forever — a host whose subscribe returns NO unsubscribe. */
+    const listeners = new Set<() => void>()
+    /** The store modelling that host: `stop()` cannot detach the belt, only the latch can silence it. */
+    const store: TuiHostPrefsLike = {
+      getSidePanelPanels: (): unknown => csv,
+      applySidePanelPanels: (value: unknown): unknown => {
+        applied.push(String(value))
+        if (value === csv) return csv
+        csv = String(value)
+        for (const listener of [...listeners]) listener()
+        return csv
+      },
+      subscribeSidePanelPanels: (listener: () => void): unknown => {
+        listeners.add(listener)
+        return undefined
+      },
+    }
+    /** The controllable clock. */
+    const clock = fakeClock()
+    /** The keeper under test, on a self-healing host with a readable default. */
+    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: store, hostVersion: "0.15.0", defaultIds: HOST_DEFAULT }), schedule: clock.schedule, pastIds: () => [] })
+    keeper.observe("act1:team")
+    keeper.observe("act1:workmate")
+    await clock.runNext()
+    // The tick migrated the pin and installed the belt — the subscription `stop()` cannot release.
+    expect(applied).toEqual([MIGRATED])
+    expect(csv).toBe(MIGRATED)
+    expect(listeners.size).toBe(1)
+    keeper.stop()
+    // THE HOST RE-PRESENTS THE STALE PIN after disposal: the belt is still attached and MUST NOT
+    // write the retired activation's ids back.
+    applied.push(STALE_PIN)
+    csv = STALE_PIN
+    for (const listener of [...listeners]) listener()
+    expect(applied).toEqual([MIGRATED, STALE_PIN])
+    expect(csv).toBe(STALE_PIN)
+    expect(keeper.outcome().reasserted).toBe(1)
+  })
+
+  test("(R2.3) a host that drops the migration write settles REFUSED, never confirmed", async () => {
+    /** The CSV the store holds — the stale pin, no matter what is applied. */
+    let csv = STALE_PIN
+    /** Every apply attempted through the store. */
+    const applied: string[] = []
+    /** The belt listeners, so the arm can drive the per-event re-check. */
+    const listeners = new Set<() => void>()
+    /** The store that DROPS the write: the apply is recorded and acknowledged, the pin remains. */
+    const store: TuiHostPrefsLike = {
+      getSidePanelPanels: (): unknown => csv,
+      applySidePanelPanels: (value: unknown): unknown => {
+        applied.push(String(value))
+        return csv
+      },
+      subscribeSidePanelPanels: (listener: () => void): unknown => {
+        listeners.add(listener)
+        return (): void => { listeners.delete(listener) }
+      },
+    }
+    /** Every line the keeper logged. */
+    const logged: string[] = []
+    /** The controllable clock. */
+    const clock = fakeClock()
+    /** The keeper under test, on a self-healing host that will not retain the migration CSV. */
+    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: store, hostVersion: "0.15.0", defaultIds: HOST_DEFAULT }), schedule: clock.schedule, pastIds: () => [], log: (line: string): void => { logged.push(line) } })
+    keeper.observe("act1:team")
+    keeper.observe("act1:workmate")
+    await clock.runNext()
+    // The write was ATTEMPTED and dropped, so the stand-down must carry the refusal into its settle:
+    // before R2.3 this same run settled `confirmed` while the stale list remained on the host.
+    expect(applied).toEqual([MIGRATED])
+    expect(csv).toBe(STALE_PIN)
+    expect(keeper.outcome().state).toBe("refused")
+    expect(keeper.outcome().detail).toContain("standing down")
+    expect(keeper.outcome().detail).toContain("the stale-default migration write was refused")
+    // The belt is still installed — its per-event re-check is the retry path for exactly this refusal.
+    expect(listeners.size).toBe(1)
+    for (const listener of [...listeners]) listener()
+    expect(applied).toEqual([MIGRATED, MIGRATED])
+    expect(keeper.outcome().state).toBe("refused")
+    expect(logged.some((line) => line.includes("the re-migration write was refused"))).toBe(true)
+  })
+})

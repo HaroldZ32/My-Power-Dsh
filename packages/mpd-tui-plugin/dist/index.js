@@ -2894,6 +2894,7 @@ function createPanelEnableKeeper(options) {
   let releaseFeed;
   let releaseBelt;
   let writing = false;
+  let stopped = false;
   let state = "requested";
   let detail = "no panel registered yet";
   let feedRefused = "";
@@ -2961,19 +2962,21 @@ function createPanelEnableKeeper(options) {
   const migrateStaleDefaultOnSelfHealer = (prefs, hostDefault) => {
     if (hostDefault === undefined || hostDefault === "") {
       noteInertDefault("the keeper stands down to the host's own union");
-      return false;
+      return "none";
     }
     const merge2 = mergePanelEnableIds(prefs.getSidePanelPanels(), ours, provenPast(), hostDefault);
     if (merge2.staleDefault === "")
-      return false;
+      return "none";
     if (!writeList(prefs, merge2.csv)) {
       options.log?.(`mpd-tui panel enable keeper: the stale-default migration write was refused, so the keeper stands down without it; the belt retries on the host's next apply`);
-      return false;
+      return "refused";
     }
     options.log?.(`mpd-tui panel enable keeper: migrated the stale default ${merge2.staleDefault} to ${merge2.csv} — the ONE write a self-healing host still gets, because its own union heals only registered plugin ids`);
-    return true;
+    return "migrated";
   };
   const decide = (prefs, atArm, hostDefault) => {
+    if (stopped)
+      return;
     if (writing)
       return;
     ticks += 1;
@@ -3029,9 +3032,9 @@ function createPanelEnableKeeper(options) {
       release();
     } catch {}
   };
-  const standDownToHostUnion = (prefs, version, hostDefault) => {
+  const standDownToHostUnion = (prefs, version, hostDefault, migration) => {
     ticks += 1;
-    settle("confirmed", `standing down: the host ${version} self-heals the enable CSV (>= ${PANEL_CSV_SELF_HEAL_SINCE}), so this keeper leaves the list to the host's own union (the stale-default migration aside)`);
+    settle(migration === "refused" ? "refused" : "confirmed", migration === "refused" ? `standing down: the host ${version} self-heals the enable CSV (>= ${PANEL_CSV_SELF_HEAL_SINCE}), but the stale-default migration write was refused, so the stale list remains; the belt re-evaluates on the host's next apply` : `standing down: the host ${version} self-heals the enable CSV (>= ${PANEL_CSV_SELF_HEAL_SINCE}), so this keeper leaves the list to the host's own union (the stale-default migration aside)`);
     cancelLadder();
     options.log?.(`mpd-tui panel enable keeper: standing down on host ${version} — the host self-heals the sidebar enable CSV, so this keeper never writes it again (the stale-default migration aside)`);
     const subscribe = prefs.subscribeSidePanelPanels;
@@ -3040,6 +3043,8 @@ function createPanelEnableKeeper(options) {
     let said = false;
     try {
       const release = subscribe(() => {
+        if (stopped)
+          return;
         if (writing)
           return;
         try {
@@ -3084,19 +3089,26 @@ function createPanelEnableKeeper(options) {
   };
   const runTick = () => {
     options.loadPrefs().then((probe) => {
-      if (probe.prefs === undefined) {
+      if (stopped)
+        return;
+      try {
+        if (probe.prefs === undefined) {
+          ticks += 1;
+          settle("absent", probe.detail ?? "the host exposes no side-panel enable store");
+          return;
+        }
+        if (hostSelfHealsPanelCsv(probe.hostVersion ?? "")) {
+          const migration = migrateStaleDefaultOnSelfHealer(probe.prefs, probe.defaultIds);
+          standDownToHostUnion(probe.prefs, probe.hostVersion ?? "", probe.defaultIds, migration);
+          return;
+        }
+        if (!onFeed && enterFeed(probe.prefs, probe.defaultIds))
+          return;
+        decide(probe.prefs, false, probe.defaultIds);
+      } catch (error) {
         ticks += 1;
-        settle("absent", probe.detail ?? "the host exposes no side-panel enable store");
-        return;
+        settle("refused", `the migration decision path threw: ${String(error?.message ?? error)}`);
       }
-      if (hostSelfHealsPanelCsv(probe.hostVersion ?? "")) {
-        migrateStaleDefaultOnSelfHealer(probe.prefs, probe.defaultIds);
-        standDownToHostUnion(probe.prefs, probe.hostVersion ?? "", probe.defaultIds);
-        return;
-      }
-      if (!onFeed && enterFeed(probe.prefs, probe.defaultIds))
-        return;
-      decide(probe.prefs, false, probe.defaultIds);
     }, (error) => {
       ticks += 1;
       settle("absent", `the host store could not be read: ${String(error?.message ?? error)}`);
@@ -3128,6 +3140,7 @@ function createPanelEnableKeeper(options) {
       return { state, detail, ids: [...ours], reasserted, ticks };
     },
     stop() {
+      stopped = true;
       standDown();
     }
   };

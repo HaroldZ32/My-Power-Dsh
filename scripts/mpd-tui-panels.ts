@@ -1106,6 +1106,16 @@ interface Options {
    * patch-only, byte-identical to before this layer existed.
    */
   readonly tuiSettings?: string
+  /**
+   * The ONE reason the command line itself is refused, `undefined` when it parsed (R2.4).
+   *
+   * Carried on the options rather than thrown so `parseArgs` stays a pure function and `main` keeps
+   * its single refusal surface. Today the only producer is `--tui-settings`: a missing or
+   * dash-prefixed operand must be a NAMED refusal, never the silent fall-back to the real
+   * `~/.dsh-tui/settings.json` that an unchecked `argv[at + 1]` produced (fixture isolation is the
+   * flag's whole point).
+   */
+  readonly argRefusal?: string
   /** `--ids a,b,c`, overriding the adapter's record. */
   readonly ids?: string
   /** `--apply`; absent means dry run. */
@@ -1120,6 +1130,32 @@ interface Options {
 }
 
 /**
+ * Read the `--tui-settings` operand and REFUSE a missing or dash-prefixed one (R2.4).
+ *
+ * The flag's whole point is fixture isolation, so its operand is the ONE path this parser must not
+ * guess about: `--tui-settings --apply` used to make `--apply` the path (a silent patch-only run),
+ * and a trailing `--tui-settings` used to yield `undefined` and silently fall back to the real
+ * `~/.dsh-tui/settings.json` — both defeating the isolation tests and QA rely on. A named refusal is
+ * returned instead; a valid path passes through unchanged.
+ * @param argv - the process arguments after the script path.
+ * @returns the operand's path, or the ONE reason the run must refuse; `{}` when the flag is absent.
+ */
+function tuiSettingsOperand(argv: readonly string[]): { readonly path?: string; readonly refusal?: string } {
+  /** The flag's index; `-1` when absent, in which case there is nothing to validate. */
+  const at = argv.indexOf("--tui-settings")
+  if (at < 0) return {}
+  /** The token after the flag, which an unchecked read used to take as the path sight unseen. */
+  const operand = argv[at + 1]
+  if (operand === undefined) {
+    return { refusal: "--tui-settings needs a path operand, and the flag is trailing; refusing rather than falling back to the real ~/.dsh-tui/settings.json" }
+  }
+  if (operand.startsWith("-")) {
+    return { refusal: `--tui-settings takes a path operand, not the flag "${operand}"; refusing rather than falling back to the real ~/.dsh-tui/settings.json` }
+  }
+  return { path: operand }
+}
+
+/**
  * Parse this script's own command line.
  * @param argv - the process arguments after the script path.
  * @returns the resolved options.
@@ -1131,11 +1167,14 @@ function parseArgs(argv: readonly string[]): Options {
     const at = argv.indexOf("--" + name)
     return at < 0 ? undefined : argv[at + 1]
   }
+  /** The `--tui-settings` operand, validated because a silent fall-back breaks fixture isolation. */
+  const tuiSettings = tuiSettingsOperand(argv)
   return {
     ...(value("dsh-home") === undefined ? {} : { dshHome: value("dsh-home") }),
     ...(value("profile") === undefined ? {} : { profile: value("profile") }),
     workspace: resolve(value("workspace") ?? process.cwd()),
-    ...(value("tui-settings") === undefined ? {} : { tuiSettings: value("tui-settings") }),
+    ...(tuiSettings.path === undefined ? {} : { tuiSettings: tuiSettings.path }),
+    ...(tuiSettings.refusal === undefined ? {} : { argRefusal: tuiSettings.refusal }),
     ...(value("ids") === undefined ? {} : { ids: value("ids") }),
     apply: argv.includes("--apply"),
     restoreBuiltins: argv.includes("--restore-builtins"),
@@ -1150,6 +1189,12 @@ function parseArgs(argv: readonly string[]): Options {
 function main(argv: readonly string[]): number {
   /** The parsed command line. */
   const options = parseArgs(argv)
+  // R2.4 — a command line that did not parse is refused BY NAME before anything is read or written,
+  // so an invalid --tui-settings operand can never fall back to the real settings document.
+  if (options.argRefusal !== undefined) {
+    console.error(`${TAG} REFUSED: ${options.argRefusal}`)
+    return 1
+  }
   /** The resolved install, or the reason it could not be resolved. */
   const resolution = resolveLocation(options.dshHome, options.profile, options.workspace)
   for (const note of resolution.notes) console.log(`${TAG} ${note}`)
@@ -1296,6 +1341,42 @@ function main(argv: readonly string[]): number {
   }
   /** One backup stamp for this run, so both layers' backups name the same moment. */
   const stamp = String(process.hrtime.bigint()).slice(-8)
+  /**
+   * The settings layer's backup path, set once this run replaced that layer; `""` when it never did.
+   *
+   * Held at the apply block's scope (R2.5) because a LATER patch-layer failure must name BOTH layers'
+   * ways back in its one refusal and roll the settings layer back to the bytes this run found there —
+   * without it, a failed two-layer write left the run half-reverted (settings rewritten, patch behind).
+   */
+  let settingsBackup = ""
+  /**
+   * Refuse a failed patch-layer write the R2.5 way: the one refusal names BOTH layers' backups (the
+   * settings layer first, because it shadows the patch) and the settings layer is restored
+   * automatically, so a failed two-layer run leaves the settings layer exactly as found instead of
+   * half-reverted. The patch layer itself keeps its pre-R2.5 contract: its document is left as the
+   * failed write left it and its backup is named for a manual restore.
+   * @param patchBackup - the patch document's backup path, or `""` when the failure preceded its copy.
+   * @param reason - the one-line reason: the read-back mismatch, or the thrown write's message.
+   * @returns the process exit code, always 1.
+   */
+  const refusePatchWrite = (patchBackup: string, reason: string): number => {
+    /** Both ways back this refusal names; an entry is dropped when that layer has no backup to name. */
+    const ways = [
+      settingsBackup === "" ? undefined : `${settingsBackup} over ${settingsPath}`,
+      patchBackup === "" ? undefined : `${patchBackup} over ${location.document}`,
+    ].filter((entry): entry is string => entry !== undefined)
+    console.error(`${TAG} REFUSED: ${reason}${ways.length === 0 ? " No backup was taken, so there is nothing to restore by hand." : ` Restore ${ways.join("; and ")} to undo this run.`}`)
+    if (settingsBackup === "") return 1
+    try {
+      copyFileSync(settingsBackup, settingsPath)
+      console.log(`${TAG} restored ${settingsBackup} over ${settingsPath}: the settings layer is back to the bytes this run found`)
+    } catch (restoreError) {
+      // The restore is best-effort and its failure is NAMED, never swallowed: the backup is already in
+      // the refusal above, so the operator still holds the way back.
+      console.error(`${TAG} could not restore ${settingsBackup} over ${settingsPath}: ${String((restoreError as Error)?.message ?? restoreError)} — restore it by hand`)
+    }
+    return 1
+  }
   // THE SETTINGS LAYER FIRST (it shadows — it is the list the sidebar actually uses), then the patch.
   if (settingsText !== undefined && !settingsNoop) {
     /** The settings document's new text, refused when the document cannot be rewritten. */
@@ -1304,8 +1385,7 @@ function main(argv: readonly string[]): number {
       console.error(`${TAG} REFUSED: ${settingsPath}: ${settingsNext.detail}`)
       return 1
     }
-    /** The backup taken before the write, so a bad merge is one `cp` away from undone. */
-    const settingsBackup = `${settingsPath}.bak-${stamp}`
+    settingsBackup = `${settingsPath}.bak-${stamp}`
     copyFileSync(settingsPath, settingsBackup)
     /** A sibling temp file the atomic rename replaces the document with. */
     const settingsStaged = `${settingsPath}.tmp-${String(process.pid)}`
@@ -1324,23 +1404,29 @@ function main(argv: readonly string[]): number {
   if (!patchNoop && edited !== undefined) {
     /** The backup taken before the write, so a bad merge is one `cp` away from undone. */
     const backup = `${location.document}.bak-${stamp}`
-    copyFileSync(location.document, backup)
-    /** A sibling temp file the atomic rename replaces the document with. */
-    const staged = `${location.document}.tmp-${String(process.pid)}`
-    writeFileSync(staged, edited.text)
-    renameSync(staged, location.document)
-    // THE POST-WRITE READ-BACK (contract D1). The file on disk is read AGAIN and the leaf is compared with
-    // the CSV this run intended, so a document that did not take the edit — a second `panels:` leaf the
-    // editor wrote elsewhere, a rename that landed on a different inode — is reported instead of being
-    // announced as a successful write. The backup taken above is named in the refusal, because the file
-    // HAS been replaced and the user needs the way back.
-    /** What the document on disk carries after the write. */
-    const landed = blockPanelCsv(readFileSync(location.document, "utf8"), location.rowId)
-    if ((landed ?? "").trim().replace(/^["']|["']$/gu, "") !== merge.csv) {
-      console.error(`${TAG} REFUSED: the document read back "${landed ?? "(no panels leaf)"}" instead of the "${merge.csv}" just written. Restore ${backup} over ${location.document} to undo this run.`)
-      return 1
+    // A THROWN COPY/STAGE/RENAME IS A REFUSAL TOO (R2.5), never an unhandled crash: without this
+    // containment the process died mid-write, the refusal never printed, and the settings layer the
+    // same run had already replaced stayed rewritten — the half-reverted state this block refuses.
+    try {
+      copyFileSync(location.document, backup)
+      /** A sibling temp file the atomic rename replaces the document with. */
+      const staged = `${location.document}.tmp-${String(process.pid)}`
+      writeFileSync(staged, edited.text)
+      renameSync(staged, location.document)
+      // THE POST-WRITE READ-BACK (contract D1). The file on disk is read AGAIN and the leaf is compared with
+      // the CSV this run intended, so a document that did not take the edit — a second `panels:` leaf the
+      // editor wrote elsewhere, a rename that landed on a different inode — is reported instead of being
+      // announced as a successful write. The backup taken above is named in the refusal, because the file
+      // HAS been replaced and the user needs the way back.
+      /** What the document on disk carries after the write. */
+      const landed = blockPanelCsv(readFileSync(location.document, "utf8"), location.rowId)
+      if ((landed ?? "").trim().replace(/^["']|["']$/gu, "") !== merge.csv) {
+        return refusePatchWrite(backup, `the document read back "${landed ?? "(no panels leaf)"}" instead of the "${merge.csv}" just written.`)
+      }
+      console.log(`${TAG} WROTE ${location.document} (backup: ${backup}); read back: ${landed}`)
+    } catch (error) {
+      return refusePatchWrite(backup, `the patch layer write failed: ${String((error as Error)?.message ?? error)}.`)
     }
-    console.log(`${TAG} WROTE ${location.document} (backup: ${backup}); read back: ${landed}`)
   } else {
     console.log(`${TAG} ${location.document} already carries the computed list — left untouched`)
   }
@@ -1657,6 +1743,70 @@ function selfTest(): number {
     check("(g) NEGATIVE CONTROL: an unparseable document is refused by the writer", typeof refusedWrite !== "string")
   } catch (error) {
     check(`(g) the settings-layer arm ran (${String((error as Error)?.message ?? error)})`, false)
+  }
+  // ── R2.4: the `--tui-settings` operand is validated — fixture isolation can never silently
+  // degrade into a run against the real ~/.dsh-tui/settings.json ──
+  {
+    /** The parsed line with the NEXT FLAG as the operand — the measured silent patch-only run. */
+    const nextFlag = parseArgs(["--tui-settings", "--apply"])
+    check("(R2.4) `--tui-settings --apply` is refused by name", nextFlag.argRefusal !== undefined && nextFlag.argRefusal.includes("--tui-settings") && nextFlag.tuiSettings === undefined)
+    /** The parsed line with the flag TRAILING — `argv[at + 1]` is `undefined`. */
+    const trailing = parseArgs(["--ids", "act1:team", "--tui-settings"])
+    check("(R2.4) a trailing `--tui-settings` is refused by name", trailing.argRefusal !== undefined && trailing.argRefusal.includes("--tui-settings") && trailing.tuiSettings === undefined)
+    /** The parsed line with a valid operand, which the validation must carry through unchanged. */
+    const valid = parseArgs(["--tui-settings", "/tmp/fixture-settings.json", "--apply"])
+    check("(R2.4) a valid operand is carried through unchanged", valid.argRefusal === undefined && valid.tuiSettings === "/tmp/fixture-settings.json" && valid.apply)
+    // The refusal is PROCESS-LEVEL too: the named refusal is the run's exit, not only a parse result.
+    check("(R2.4) the trailing flag refuses the run itself (exit 1)", main(["--tui-settings"]) === 1)
+  }
+  // ── R2.5: a patch-layer failure after a settings-layer write never leaves the run half-reverted ──
+  try {
+    /** The installed `dsh`, needed to prove the scratch profile's settings document. */
+    const dshRoot = installedDshRoot()
+    if (dshRoot === undefined) {
+      console.log("  SKIP (R2.5) the installed `dsh` was not found: the two-layer rollback arm cannot run")
+    } else {
+      /** The throwaway parent holding the whole fixture. */
+      const parent = mkdtempSync(join(tmpdir(), "mpd-tui-panels-r25-"))
+      /** The scratch DSH home carrying one installed-profile shape. */
+      const dshHome = join(parent, "dsh")
+      /** The scratch profile directory. */
+      const profileDir = join(dshHome, "profiles", "tui")
+      /** The scratch workspace, whose id record is absent (`--ids` supplies the ids). */
+      const workspace = join(parent, "ws")
+      mkdirSync(join(profileDir, "node_modules", ...HOST_PACKAGE.split("/")), { recursive: true })
+      mkdirSync(workspace, { recursive: true })
+      writeFileSync(join(profileDir, "package.json"), "{}\n")
+      writeFileSync(join(profileDir, "node_modules", ...HOST_PACKAGE.split("/"), "package.json"), "{}\n")
+      /** The profile's user layer, carrying the stale pin on its sidePanel row. */
+      const document = join(profileDir, "cordis.patch.yml")
+      writeFileSync(document, ["- id: dsh-tui", "  config:", "    sidePanel:", '      panels: "todo,jobs,agents"', ""].join("\n"))
+      /** The settings-layer fixture, carrying the shadowing stale pin. */
+      const settingsPath = join(parent, "settings.json")
+      /** The settings document's bytes BEFORE the run, which a failed run must leave exactly as found. */
+      const settingsBefore = `${JSON.stringify({ values: { sidePanel: { panels: "todo,jobs,agents" } }, imported: { from: "profile" } }, null, 2)}\n`
+      writeFileSync(settingsPath, settingsBefore)
+      /** The refusal lines the run prints, captured so the arm can assert its OWN console output. */
+      const refused: string[] = []
+      /** The original `console.error`, restored whether the arm holds or throws. */
+      const originalError = console.error
+      console.error = (...args: unknown[]): void => { refused.push(args.map(String).join(" ")) }
+      /** The run's exit code; the ids carry an EMBEDDED NEWLINE, the one spelling the patch writer
+       *  cannot round-trip through its single-line leaf, so the post-write read-back mismatches
+       *  DETERMINISTICALLY — the forced patch failure this rollback exists for, without mocking. */
+      let exit: number | undefined
+      try {
+        exit = main(["--dsh-home", dshHome, "--profile", "tui", "--workspace", workspace, "--tui-settings", settingsPath, "--ids", "act1:te\nam", "--apply"])
+      } finally {
+        console.error = originalError
+      }
+      check("(R2.5) a patch write that fails after a settings write REFUSES (exit 1)", exit === 1)
+      check("(R2.5) the settings layer is restored BYTE-IDENTICAL", readFileSync(settingsPath, "utf8") === settingsBefore)
+      check("(R2.5) the refusal names BOTH layers' backups", refused.some((line) => line.includes("REFUSED") && line.includes(`${settingsPath}.bak-`) && line.includes(`${document}.bak-`)))
+      rmSync(parent, { recursive: true, force: true })
+    }
+  } catch (error) {
+    check(`(R2.5) the two-layer rollback arm ran (${String((error as Error)?.message ?? error)})`, false)
   }
   /** The arm's overall verdict: green only when every arm that RAN held. */
   const verdict = problems.length === 0
