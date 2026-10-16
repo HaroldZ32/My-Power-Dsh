@@ -1,0 +1,66 @@
+== node / npm under measurement
+v24.21.0
+11.19.0
+npm root: /home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/npm
+
+== PROBE 1: does `npm pack --pack-destination <dir>` create the directory?
+npm error code ENOENT
+npm error syscall open
+npm error path /tmp/tmp.JY7fvbdqz5/does-not-exist/probe-fixture-9.9.9.tgz
+npm error errno -2
+npm error enoent ENOENT: no such file or directory, open '/tmp/tmp.JY7fvbdqz5/does-not-exist/probe-fixture-9.9.9.tgz'
+npm error enoent This is related to npm not being able to find a file.
+npm error enoent
+npm error A complete log of this run can be found in: /tmp/tmp.JY7fvbdqz5/.npmc/_logs/2026-10-16T02_51_25_514Z-debug-0.log
+exit=254
+directory created afterwards: NO — the destination must exist before npm pack runs
+
+== PROBE 2: is `npm stage` available on this npm?
+Stage packages for publishing, deferring proof-of-presence (2FA) to a later point in time
+
+Usage:
+npm stage
+npm stage publish <package-spec>
+npm stage list [<package-spec>]
+npm stage view <stage-id>
+npm stage approve <stage-id>
+npm stage reject <stage-id>
+npm stage download <stage-id>
+
+Subcommands:
+exit=0
+
+== PROBE 3: does npm itself read NODE_AUTH_TOKEN anywhere?
+matches: 0
+-- the mechanism npm really has:
+346:      if (!/^npm_config_/i.test(envKey) || envVal === '') {
+349:      let key = envKey.slice('npm_config_'.length)
+925:  // set up the environment object we have with npm_config_* environs
+
+== PROBE 4: which npm subcommands perform the OIDC token exchange?
+/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/npm/lib/commands/publish.js
+/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/npm/lib/commands/trust/circleci.js
+-- and the approve subcommand, in full:
+    if (!args[0]) {
+      throw this.usageError('Missing required <stage-id>')
+    }
+    const stageId = args[0]
+    validateUUID(stageId, 'stage-id')
+    const opts = { ...this.npm.flatOptions }
+
+    log.notice('', `Approving staged package ${stageId}`)
+
+    await otplease(this.npm, opts, o =>
+      npmFetch.json(`/-/stage/${stageId}/approve`, {
+        ...o,
+        method: 'POST',
+      })
+    )
+
+    output.standard(`Staged package ${stageId} approved and published successfully.`, { [META]: true, redact: false })
+  }
+
+== PROBE 5: npm-stage(1) on short-lived trust tokens and on approve
+19:The \fBnpm stage publish\fR command packs the current working directory and places that version of the package into the registry in a state where it's not available for public access, allowing maintainers to approve the package at a later point in time. The act of staging does not prompt for 2FA and can be done with any token type, the act of approving will.
+63:| Command | Requires 2FA | Notes | | --- | --- | --- | | \fBnpm stage publish\fR | No | Designed for automated workflows; defers 2FA to approval | | \fBnpm stage list\fR | No | View staged packages | | \fBnpm stage view\fR | No | View staged package details | | \fBnpm stage approve\fR | Yes | Prompts for 2FA to publish the staged package | | \fBnpm stage reject\fR | Yes | Prompts for 2FA to permanently remove the staged package | | \fBnpm stage download\fR | No | Downloads the tarball for local inspection |
+76:With staged publishing, trust relationships now support granular command permissions. Shortlived tokens issued through trust relationships can only be used with \fBnpm stage publish\fR and \fBnpm publish\fR. Shortlived tokens cannot run \fBnpm stage\fR subcommands.
