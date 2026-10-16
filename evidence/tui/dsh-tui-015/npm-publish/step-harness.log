@@ -1,0 +1,86 @@
+== workflow: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.github/workflows/publish.yml
+== sha256:   2d4cbb02f631492275822746cabcef373ad3a1721b0e878185e9db2f61748f1b
+== scratch:  /tmp/tmp.FgeFWDc9Se
+
+00 RUN   Resolve the tag, the mode and the dist-tag from the event -> /tmp/tmp.FgeFWDc9Se/steps/00-resolve-the-tag-the-mode-and-the-dist-tag-from-the-event.sh
+01 USES  Check out the tagged revision -> actions/checkout@v7
+02 USES  Set up Node.js (no registry-url — the OIDC exchange must not be pre-empted) -> actions/setup-node@v7
+03 RUN   Assert v<package.json version> == the tag, and the package name == @mpd-dsh/mpd -> /tmp/tmp.FgeFWDc9Se/steps/03-assert-v-package-json-version-the-tag-and-the-package-name-m.sh
+04 RUN   Require an npm that knows `npm stage` (>= 11.6) -> /tmp/tmp.FgeFWDc9Se/steps/04-require-an-npm-that-knows-npm-stage-11-6.sh
+05 RUN   Stage the release (npm pack, then npm stage publish) -> /tmp/tmp.FgeFWDc9Se/steps/05-stage-the-release-npm-pack-then-npm-stage-publish.sh
+06 RUN   Approve the staged release -> /tmp/tmp.FgeFWDc9Se/steps/06-approve-the-staged-release.sh
+07 RUN   List the staged releases (always — so the operator can copy the id) -> /tmp/tmp.FgeFWDc9Se/steps/07-list-the-staged-releases-always-so-the-operator-can-copy-the.sh
+08 USES  Upload the packed tarball (staging mode only) -> actions/upload-artifact@v4
+
+PASS  expected=0 actual=0  resolve: a tag push resolves to STAGE mode
+        | event=push tag=v0.13.1 dist_tag=latest
+        | MODE=stage dist_tag=latest
+PASS  expected=1 actual=1  resolve: an EMPTY tag is refused, so a branch can never be staged
+        | event=push tag= dist_tag=latest
+        | ::error title=no tag to publish::this workflow publishes ONE tag. A tag push supplies github.ref_name; a dispatch must fill the 'tag' input (e.g. v0.13.1).
+PASS  expected=0 actual=0  resolve: a filled stage_id resolves to APPROVE mode
+        | event=push tag=v0.13.0 dist_tag=latest-1
+        | MODE=approve stage_id=11111111-2222-3333-4444-555555555555
+PASS  expected=0 actual=0  assert: v0.13.1 == v<package.json version 0.13.1>
+        | checkout: @mpd-dsh/mpd@0.13.1 — requested tag: v0.13.1
+PASS  expected=1 actual=1  assert: a tag that disagrees with package.json is REFUSED
+        | checkout: @mpd-dsh/mpd@0.13.1 — requested tag: v0.13.0
+        | ::error title=tag and version disagree::the tag is 'v0.13.0' but package.json declares '0.13.1' (expected 'v0.13.1'). Refusing to publish.
+PASS  expected=1 actual=1  assert: a tag without the leading v is REFUSED
+        | checkout: @mpd-dsh/mpd@0.13.1 — requested tag: 0.13.1
+        | ::error title=tag and version disagree::the tag is '0.13.1' but package.json declares '0.13.1' (expected 'v0.13.1'). Refusing to publish.
+PASS  expected=0 actual=0  npm guard: the real npm on this machine knows 'npm stage'
+        | v24.21.0
+        | 11.19.0
+PASS  expected=1 actual=1  npm guard: an npm without 'npm stage' fails BY NAME
+        | v24.21.0
+        | ::error title=npm too old for staged publishing::'npm stage' is unavailable on npm . Install npm 11.6 or newer on this job before staging.
+PASS  expected=0 actual=0  stage mode: mkdir + pack + stage publish
+        | mpd-dsh-mpd-0.13.1.tgz
+        | staged @mpd-dsh/mpd@0.13.1 (dist-tag public) as stage-id-11111111-2222-3333-4444-555555555555
+        | ::notice title=Staged v0.13.1 — one more dispatch approves it::Copy the stage id from the 'npm stage list' output below, then dispatch this workflow again with the SAME tag and 'stage_id' set to that id. Nothing is public until that approval, and approving in ascending version order is what keeps 'latest' on the newest release.
+PASS  expected=0 actual=0  stage mode: a backfill carries the dist_tag it was dispatched with
+        | mpd-dsh-mpd-0.13.1.tgz
+        | staged @mpd-dsh/mpd@0.13.1 (dist-tag public) as stage-id-11111111-2222-3333-4444-555555555555
+        | ::notice title=Staged v0.13.0 — one more dispatch approves it::Copy the stage id from the 'npm stage list' output below, then dispatch this workflow again with the SAME tag and 'stage_id' set to that id. Nothing is public until that approval, and approving in ascending version order is what keeps 'latest' on the newest release.
+PASS  expected=1 actual=1  approve mode: no credential -> the bound is stated, not ENEEDAUTH
+        | ::error title=approve needs a human credential::'npm stage approve' cannot authenticate with the trusted-publisher OIDC token (npm-stage(1): short-lived trust tokens cannot run 'npm stage' subcommands) and it is the 2FA proof-of-presence step. Approve locally with 'npm stage approve 11111111-2222-3333-4444-555555555555', or give npm a credential it reads (an .npmrc with //registry.npmjs.org/:_authToken, plus npm_config_otp) and re-dispatch. Staging itself stays secret-free.
+PASS  expected=0 actual=0  approve mode: with a credential the approve call runs
+PASS  expected=0 actual=0  list: 'npm stage list' runs last
+        | stage-id-11111111-2222-3333-4444-555555555555  @mpd-dsh/mpd@0.13.1  latest  2026-10-16
+PASS  recorded: npm pack --pack-destination /tmp/npm-pack       the staging step packs into the directory the artifact step globs
+PASS  recorded: npm stage publish --access public --tag latest  a tag push stages with an explicit access and tag
+PASS  recorded: npm stage publish --access public --tag latest-1  a backfill stages under the dist_tag it was dispatched with
+PASS  recorded: npm stage approve 11111111-2222-3333-4444-555555555555  approve mode passes the stage id through, unmodified
+PASS  recorded: npm stage list                                  the listing step really is the LAST npm call of a staging run
+
+== recorded npm calls
+   npm -v
+   npm stage --help
+   npm -v
+   npm pack --pack-destination /tmp/npm-pack
+   npm stage publish --access public --tag latest
+   npm pack --pack-destination /tmp/npm-pack
+   npm stage publish --access public --tag latest-1
+   npm whoami
+   npm whoami
+   npm stage approve 11111111-2222-3333-4444-555555555555
+   npm stage list
+
+== packed artifact the upload step globs
+   total 0
+   drwxrwxr-x 2 haroldzhao haroldzhao  60 Oct 16 10:50 .
+   drwxr-xr-x 5 haroldzhao haroldzhao 100 Oct 16 10:50 ..
+   -rw-rw-r-- 1 haroldzhao haroldzhao   0 Oct 16 10:50 mpd-dsh-mpd-0.13.1.tgz
+
+== step summary the stage step wrote
+   ### Staged `v0.13.1` (dist-tag `latest`) — not public yet
+   
+   Approve it with a SECOND dispatch of this workflow: `tag=v0.13.1`, `stage_id=<the id from the list step>`.
+   For the two owed releases, approve `v0.13.0` first — or stage it with a non-`latest` `dist_tag` — so `latest` ends on `v0.13.1`.
+   ### Staged `v0.13.0` (dist-tag `latest-1`) — not public yet
+   
+   Approve it with a SECOND dispatch of this workflow: `tag=v0.13.0`, `stage_id=<the id from the list step>`.
+   For the two owed releases, approve `v0.13.0` first — or stage it with a non-`latest` `dist_tag` — so `latest` ends on `v0.13.1`.
+
+HARNESS PASS

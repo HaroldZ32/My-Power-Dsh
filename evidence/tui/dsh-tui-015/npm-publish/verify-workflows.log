@@ -1,0 +1,15 @@
+== node scripts/verify-workflows.ts
+[verify-workflows] audited 3 workflow file(s) under /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.github/workflows
+[verify-workflows] PASS - every workflow is loadable YAML with a sane job/step shape
+EXIT=0
+
+== node scripts/verify-workflows.ts --self-test
+[verify-workflows] self-test arm the-historical-line-really-is-unloadable: PASS - the unquoted `(dev dependencies: tsgo …)` step name is rejected by the parser
+[verify-workflows] self-test arm a-quoted-name-and-a-clean-file-pass: PASS - the quoted form of the same document is clean
+[verify-workflows] self-test arm a-nested-mapping-name-is-caught: PASS - a name that parses as a mapping is reported by path
+[verify-workflows] self-test arm missing-steps-and-missing-runs-on-are-caught: PASS - a job without runs-on and without steps reports both by path
+[verify-workflows] self-test arm a-step-with-both-uses-and-run-is-caught: PASS - a step carrying both uses and run is refused
+[verify-workflows] self-test arm a-boolean-trigger-block-is-caught: PASS - a trigger block that parsed as a boolean is reported
+[verify-workflows] self-test arm an-empty-directory-is-refused: PASS - zero subjects are refused instead of reported green
+[verify-workflows] self-test PASS: 7/7 arms
+EXIT=0

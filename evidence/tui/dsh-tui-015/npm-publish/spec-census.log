@@ -1,0 +1,29 @@
+== spec census of /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.github/workflows/publish.yml
+== sha256: 2d4cbb02f631492275822746cabcef373ad3a1721b0e878185e9db2f61748f1b
+
+PASS  no secret material is referenced anywhere                  (no: no)
+PASS  no npm token is assigned anywhere                          (no: no)
+PASS  workflow-level contents: read                              (yes: yes)
+PASS  workflow-level id-token: write (the OIDC exchange)         (yes: yes)
+PASS  setup-node is called WITHOUT registry-url                  (no: no)
+PASS  setup-node targets Node 24                                 (yes: yes)
+PASS  the npm-stage availability guard is present                (yes: yes)
+PASS  the pack destination is created before npm pack            (yes: yes)
+PASS  npm pack writes into /tmp/npm-pack                         (yes: yes)
+PASS  staging publishes with an explicit access                  (yes: yes)
+PASS  staging passes the dist-tag through                        (yes: yes)
+PASS  approve mode calls npm stage approve                       (yes: yes)
+PASS  the listing step runs under always()                       (yes: yes)
+PASS  the listing step is continue-on-error                      (yes: yes)
+PASS  the tarball is uploaded only when staging                  (yes: yes)
+PASS  the upload tolerates an absent tarball                     (yes: yes)
+PASS  the package-name assertion is present                      (yes: yes)
+PASS  the tag<->version assertion is present                     (yes: yes)
+PASS  the header says why the file exists (npm lagged)           (yes: yes)
+PASS  the header names the trusted publisher / OIDC              (yes: yes)
+PASS  the header explains dist_tag for backfills                 (yes: yes)
+PASS  the header states the ascending-approval rule              (yes: yes)
+PASS  the approve-mode bound is stated in the step               (yes: yes)
+PASS  the assertion precedes any publish call                    (assert at line 106, publish at line 147)
+
+CENSUS PASS

@@ -1,0 +1,126 @@
+{
+  "task": "dsh-tui-015 / npm-publish — write .github/workflows/publish.yml (captain's reviewed spec) and run the workflows gate + bun run verify:gates",
+  "kind": "delivery",
+  "revision": {
+    "path": ".github/workflows/publish.yml",
+    "sha256": "2d4cbb02f631492275822746cabcef373ad3a1721b0e878185e9db2f61748f1b",
+    "bytes": 13389,
+    "lines": 202,
+    "git_state": "UNTRACKED (`?? .github/workflows/publish.yml`) — this wave made NO git write: no add, commit, branch, checkout, tag or push. Read-only git commands only (status, rev-parse, log).",
+    "head": "e7f04bc181640a7a8a585ea551e606d2b28446a6",
+    "branch": "dev",
+    "hash_sandwich": {
+      "recorded_inside_step_harness_log": "2d4cbb02f631492275822746cabcef373ad3a1721b0e878185e9db2f61748f1b",
+      "recorded_inside_spec_census_log": "2d4cbb02f631492275822746cabcef373ad3a1721b0e878185e9db2f61748f1b",
+      "re_hashed_after_every_check": "2d4cbb02f631492275822746cabcef373ad3a1721b0e878185e9db2f61748f1b",
+      "frozen_copy": "evidence/tui/dsh-tui-015/npm-publish/publish.yml.as-verified (identical hash)",
+      "verdict": "the revision the checks read is the revision on disk now"
+    }
+  },
+  "what_changed": {
+    "file_created": ".github/workflows/publish.yml — the whole file, following the captain's reviewed spec: push tags v* + workflow_dispatch (tag / stage_id / dist_tag), permissions contents:read + id-token:write, ONE job `publish` with the nine specified bullets as nine steps in the specified order.",
+    "steps_in_file_order": [
+      "Resolve the tag, the mode and the dist-tag from the event (refuses an empty tag)",
+      "Check out the tagged revision (actions/checkout@v7, ref = env.TAG, fetch-depth 0)",
+      "Set up Node.js (actions/setup-node@v7, node-version 24, NO registry-url)",
+      "Assert v<package.json version> == the tag, and the package name == @mpd-dsh/mpd",
+      "Require an npm that knows `npm stage` (>= 11.6) — prints node -v / npm -v, fails by name",
+      "Stage the release (mkdir + npm pack --pack-destination /tmp/npm-pack + npm stage publish --access public --tag <dist_tag> + the approve-with-a-second-dispatch notice)",
+      "Approve the staged release (npm stage approve <stage_id>, with the credential preflight)",
+      "List the staged releases (always(), continue-on-error)",
+      "Upload the packed tarball (always() when staging, actions/upload-artifact@v4, if-no-files-found: ignore)"
+    ],
+    "spec_intent_preserved": [
+      "no secret anywhere: the file contains no `secrets.` reference and no token assignment; the npm stage publish path authenticates only through the OIDC token minted by `permissions: id-token: write`",
+      "setup-node is called WITHOUT registry-url, and the header says why (the placeholder _authToken defeats the OIDC exchange)",
+      "the tag<->version assertion AND the package-name assertion run BEFORE anything is packed, staged or published (line 106 vs the first publish call at line 147)",
+      "stage-vs-approve are two deliberate modes selected only by the stage_id input",
+      "always() on the listing step, continue-on-error so a failed listing never reddens a run twice",
+      "the header states that approving in ascending version order is what keeps `latest` on the newest release, and the dist_tag rationale for backfills",
+      "the header explains WHY the file exists (npm lagged behind GitHub: only 0.12.0 on the registry while v0.13.0/v0.13.1 shipped on GitHub) and that a trusted publisher is OIDC — nothing to rotate"
+    ]
+  },
+  "technical_corrections": [
+    {
+      "id": "C1",
+      "what": "Added `mkdir -p /tmp/npm-pack` to the staging step, before `npm pack --pack-destination /tmp/npm-pack`.",
+      "why": "MEASURED: `npm pack --pack-destination <dir>` does NOT create the destination directory — with a non-existent directory it fails `npm error enoent ENOENT: no such file or directory, open '<dir>/<name>.tgz'` and exit 254. The spec's bullet assumed the pack lands in a fresh path, so the mkdir is load-bearing, not cosmetic.",
+      "evidence": "PROBE 1 of evidence/tui/dsh-tui-015/npm-publish/npm-probes.sh, transcript beside it: npm 11.19.0 on a throwaway fixture package -> `npm error enoent ENOENT: no such file or directory, open '<dir>/probe-fixture-9.9.9.tgz'`, exit 254, no directory created. The workflow comment records the same measurement."
+    },
+    {
+      "id": "C2",
+      "what": "Kept `npm stage approve <stage_id>` as spec'd, but added a credential preflight that fails BY NAME, plus the measured bound in the step comment.",
+      "why": "MEASURED, and this is a functional gap in the spec as written: `npm stage approve` CANNOT run on the trusted-publisher OIDC token. npm's own manual shipped with npm 11.19.0 (`npm-stage(1)`) states that a short-lived token issued through a trust relationship 'can only be used with `npm stage publish` and `npm publish`' and that short-lived tokens 'cannot run `npm stage` subcommands', while `npm stage approve` is listed as the subcommand that REQUIRES 2FA. The CLI confirms it: only `lib/commands/publish.js` calls the OIDC exchange (`lib/utils/oidc.js`) — `lib/commands/stage/approve.js` calls npm-registry-fetch with no OIDC path at all. So on a runner with no stored credential the approve mode would end in a bare ENEEDAUTH. The fix keeps the mode (a credential supplied in the runner environment still works), keeps the file secret-free, and turns the failure into an actionable message.",
+      "evidence": "PROBES 4 and 5 of evidence/tui/dsh-tui-015/npm-publish/npm-probes.sh: `grep -rln oidc lib/commands/` returns only publish.js (plus trust/circleci.js), and lib/commands/stage/approve.js in full shows the plain npmFetch POST with no OIDC exchange; man/man1/npm-stage.1 lines 19/63/76 state the trust-token restriction and the 2FA requirement for approve."
+    },
+    {
+      "id": "C3",
+      "what": "Corrected my own first draft's credential advice: it named `NODE_AUTH_TOKEN`, which npm itself does not read.",
+      "why": "MEASURED: `NODE_AUTH_TOKEN` appears NOWHERE in the whole npm 11.19.0 installation (`grep -rln NODE_AUTH_TOKEN <npm root>` → no file). It works only because `setup-node`'s `registry-url` writes an `.npmrc` interpolating it — the very input this workflow omits. npm's native mechanism is `npm_config_*` (`@npmcli/config/lib/index.js:345`, `/^npm_config_/i`), so the message now names an `.npmrc` `_authToken` entry plus `npm_config_otp`. Nothing else in the file changed.",
+      "evidence": "PROBE 3 of evidence/tui/dsh-tui-015/npm-publish/npm-probes.sh: `grep -rln NODE_AUTH_TOKEN <npm root>` matches 0 files across the whole npm 11.19.0 installation, while @npmcli/config/lib/index.js:346 parses `npm_config_*` — the env mechanism npm really has."
+    }
+  ],
+  "gates": [
+    {
+      "command": "node scripts/verify-workflows.ts",
+      "observed": "[verify-workflows] audited 3 workflow file(s) under /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.github/workflows\n[verify-workflows] PASS - every workflow is loadable YAML with a sane job/step shape\nEXIT=0",
+      "exit_code": 0,
+      "log": "evidence/tui/dsh-tui-015/npm-publish/verify-workflows.log"
+    },
+    {
+      "command": "node scripts/verify-workflows.ts --self-test",
+      "observed": "7 arms, all PASS — the-historical-line-really-is-unloadable, a-quoted-name-and-a-clean-file-pass, a-nested-mapping-name-is-caught, missing-steps-and-missing-runs-on-are-caught, a-step-with-both-uses-and-run-is-caught, a-boolean-trigger-block-is-caught, an-empty-directory-is-refused; then `[verify-workflows] self-test PASS: 7/7 arms`\nEXIT=0",
+      "exit_code": 0,
+      "log": "evidence/tui/dsh-tui-015/npm-publish/verify-workflows.log"
+    },
+    {
+      "command": ".toolchain/node_modules/.bin/bun run verify:gates   (the repo's pinned buildToolchain bun 1.4.0; `bun run verify:gates` per AGENTS.md §4)",
+      "observed": "8/8 members green, each with `exit=0 PASS`: vendor 157ms, dist-fresh 705ms, rows-parity 131ms, docs-parity 96ms, preset-conformance 277ms, plugin-manifest 1968ms, comment-coverage 1966ms, workflows 70ms; then `[verify-gates] PASS - 8/8 member gate(s) green`\nEXIT=0",
+      "exit_code": 0,
+      "log": "evidence/tui/dsh-tui-015/npm-publish/verify-gates.log"
+    },
+    {
+      "command": "bash evidence/tui/dsh-tui-015/npm-publish/step-harness.sh   (my rehearsal of every run: body, with npm stubbed)",
+      "observed": "13 behavioural cases + 5 recorded-call assertions = 18 PASS, 0 FAIL; `HARNESS PASS`",
+      "exit_code": 0,
+      "log": "evidence/tui/dsh-tui-015/npm-publish/step-harness.log"
+    },
+    {
+      "command": "bash evidence/tui/dsh-tui-015/npm-publish/spec-census.sh   (the captain's guard list, read off the file)",
+      "observed": "24 checks PASS, including: no `secrets.` reference, no token assignment, `contents: read` + `id-token: write`, no `registry-url:`, node 24, the npm-stage guard, mkdir before pack, `npm stage publish --access public --tag \"$DIST_TAG\"`, `npm stage approve \"$STAGE_ID\"`, `always()`, `continue-on-error: true`, the staging-only artifact step, `if-no-files-found: ignore`, and the ORDERING check (assert at line 106 precedes the publish call at line 147); `CENSUS PASS`",
+      "exit_code": 0,
+      "log": "evidence/tui/dsh-tui-015/npm-publish/spec-census.log"
+    }
+  ],
+  "rehearsal_highlights": {
+    "resolve": "tag push -> MODE=stage dist_tag=latest; EMPTY tag -> exit 1 with the `::error title=no tag to publish::` annotation; filled stage_id -> MODE=approve",
+    "assertion": "TAG=v0.13.1 against the real package.json (0.13.1) -> exit 0; TAG=v0.13.0 -> exit 1 `the tag is 'v0.13.0' but package.json declares '0.13.1' (expected 'v0.13.1')`; TAG=0.13.1 (no leading v) -> exit 1",
+    "npm_guard": "real npm 11.19.0 -> exit 0; a stub without `npm stage` -> exit 1 with `::error title=npm too old for staged publishing::`",
+    "recorded_calls": "`npm pack --pack-destination /tmp/npm-pack` -> `npm stage publish --access public --tag latest`; a backfill case recorded `--tag latest-1`; approve mode recorded `npm stage approve 11111111-2222-3333-4444-555555555555`; `npm stage list` is the last call of a staging run",
+    "approve_preflight": "no credential -> exit 1 with the stated bound; with a credential -> the approve call runs (exit 0)"
+  },
+  "not_proven": [
+    "NO LIVE WORKFLOW RUN. There is no GitHub runner, no OIDC token and no npm session here, so `npm stage publish` and `npm stage approve` were never executed against registry.npmjs.org — the rehearsal stubs npm and proves the script logic, the argument order and the guard outcomes only. The registry round-trip (stage id returned, approval applied, dist-tag moved) is UNVERIFIED from this session.",
+    "The trusted-publisher binding on npmjs.com (package @mpd-dsh/mpd -> workflow path .github/workflows/publish.yml) is the user's configuration; this session neither read nor changed it.",
+    "`actions/checkout@v7` / `actions/setup-node@v7` / `actions/upload-artifact@v4` were not executed; their availability on the runner is assumed. NOTE an inconsistency kept deliberately: the spec pinned `@v4` for upload-artifact while the repo's other two workflows (gates.yml, docker-e2e.yml) pin `@v7` — `@v4` is valid, so the spec was followed unchanged; bumping it for repo consistency is a captain's call.",
+    "The job-level env expressions (`github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name`, `inputs.dist_tag || 'latest'`) were reasoned about, not executed: no runner evaluated them. The rehearsal fed the resolved values in directly.",
+    "The Actions YAML dialect itself: the repo gate parses with the installed harness's js-yaml, so `on:` resolves to a string here (as it does for the two existing workflows); PyYAML 1.1 does read `on:` as a boolean, which GitHub's own parser does not.",
+    "The `latest`-pointer behaviour of ascending approvals is npm's documented semantics and the spec's stated rationale; it is not measured here."
+  ],
+  "scope_notes": [
+    "No file outside .github/workflows/publish.yml and evidence/tui/dsh-tui-015/npm-publish/ was touched; no gate, test or script was edited.",
+    "Three census false positives were fixed IN THE CENSUS (not the workflow): a prose mention of `_authToken` read as an assignment, the step name containing `registry-url`, and an unanchored grep reading the header's `npm stage publish` prose as the publish call. The workflow text was changed once in response (C3) and once to drop a literal `_authToken=` from a comment, which the census correctly refused.",
+    "No git write of any kind was performed (rule §5.1: only the captain commits)."
+  ],
+  "evidence_path": "evidence/tui/dsh-tui-015/npm-publish/",
+  "evidence_files": [
+    "evidence/tui/dsh-tui-015/npm-publish/result.json (this file)",
+    "evidence/tui/dsh-tui-015/npm-publish/publish.yml.as-verified (frozen copy of the verified revision)",
+    "evidence/tui/dsh-tui-015/npm-publish/publish.yml.sha256",
+    "evidence/tui/dsh-tui-015/npm-publish/verify-workflows.log",
+    "evidence/tui/dsh-tui-015/npm-publish/verify-gates.log",
+    "evidence/tui/dsh-tui-015/npm-publish/step-harness.sh + step-harness.log",
+    "evidence/tui/dsh-tui-015/npm-publish/spec-census.sh + spec-census.log",
+    "evidence/tui/dsh-tui-015/npm-publish/npm-probes.sh + npm-probes.log"
+  ]
+}

@@ -1,0 +1,202 @@
+name: publish
+
+# WHY THIS FILE EXISTS — npm LAGGED BEHIND GITHUB, SO TWO RELEASES ARE OWED.
+# `@mpd-dsh/mpd` is public on registry.npmjs.org at 0.12.0 ONLY, while GitHub shipped v0.13.0 and
+# v0.13.1 (master c6b86e03, annotated tags, Release pages). The registry is therefore behind the
+# repository, and `dsh plugin --profile web add @mpd-dsh/mpd` still resolves the old version. This
+# workflow is the ONE path that closes that gap, and the path every later release uses too.
+#
+# TRUSTED PUBLISHER = OIDC, SO THERE IS NOTHING TO ROTATE. The npm credential in the local `~/.npmrc`
+# is DEAD (401 against this package), and storing a fresh `NPM_TOKEN` here would only create the next
+# credential to expire. The package is bound instead to a TRUSTED PUBLISHER whose workflow path is
+# exactly `.github/workflows/publish.yml`, so npm accepts a SHORT-LIVED OIDC token minted by this run
+# (`permissions: id-token: write` below) — no long-lived secret, nothing to rotate, nothing to leak.
+# That is why NO SECRET APPEARS ANYWHERE IN THIS FILE, and why `actions/setup-node` is called WITHOUT
+# `registry-url`: that input writes an `.npmrc` carrying a placeholder `_authToken`, and npm then tries
+# to authenticate with the placeholder instead of performing the OIDC exchange. A placeholder
+# credential is not a fallback here, it is the failure.
+#
+# STAGED PUBLISHING — TWO DELIBERATE MODES, NEVER ONE. `npm stage publish` uploads the tarball in a
+# state that is NOT public yet and defers the proof-of-presence (2FA) to a later point in time;
+# `npm stage approve <stage-id>` performs it. That split is what lets an automated, secret-free
+# workflow stage a release while a human still approves what becomes public. The mode is chosen by the
+# `stage_id` input and by nothing else:
+#   * `stage_id` EMPTY  -> STAGE this release: `npm pack` into /tmp/npm-pack, then
+#                          `npm stage publish --access public --tag <dist_tag>`, then a notice naming
+#                          the second dispatch that approves it.
+#   * `stage_id` FILLED -> APPROVE that existing stage: `npm stage approve <stage_id>`.
+#
+# APPROVE IN ASCENDING VERSION ORDER — THAT IS WHAT KEEPS `latest` POINTING AT THE NEWEST RELEASE.
+# A staged release carries the dist-tag it was staged with, and approval is the moment the registry
+# applies it, so approving v0.13.0 AFTER v0.13.1 moves `latest` BACKWARD to the older version. For the
+# two owed releases either stage and approve v0.13.0 first and then v0.13.1, or — cleaner for a
+# backfill — stage v0.13.0 with `dist_tag` set to something that is not `latest` (e.g. `latest-1`).
+# The `dist_tag` input exists for exactly that case: an older version must stay installable by an
+# explicit dist-tag without stealing the `latest` pointer from the newest release.
+#
+# A TAG PUSH IS THE SAME TWO MODES. A `v*` tag push always STAGES, with `latest`: the tag IS the
+# announcement, so the version it names is the newest by construction. A backfill of an OLDER tag must
+# therefore not be a tag push — dispatch this workflow with that tag and an explicit `dist_tag`.
+#
+# THE GUARD THAT MUST NEVER MOVE: `v<package.json version>` == the tag, asserted BEFORE anything is
+# packed, staged or published, together with the package-name assertion. A checkout whose manifest
+# disagrees with the tag it was requested at would publish the wrong version through a trusted
+# publisher, and a published version cannot be un-published.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag: {description: "The git tag to publish (e.g. v0.13.1). Must equal v<package.json version>.", required: true, type: string}
+      stage_id: {description: "Empty = STAGE this release. Filled = APPROVE that existing stage instead.", required: false, default: "", type: string}
+      dist_tag: {description: "npm dist-tag for the staged release (default latest).", required: false, default: "latest", type: string}
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    # THE EVENT IS RESOLVED ONCE, HERE, AND EVERY LATER STEP READS THESE THREE VALUES — never the raw
+    # event again, so no two steps can disagree about which tag or which mode they are in. On a tag
+    # push `inputs.*` renders as the empty string, so `github.ref_name` (the pushed tag) and STAGE mode
+    # are what the job gets; on a dispatch the inputs win. `DIST_TAG` falls back to `latest` for both.
+    env:
+      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+      STAGE_ID: ${{ inputs.stage_id }}
+      DIST_TAG: ${{ inputs.dist_tag || 'latest' }}
+    steps:
+      # THE RESOLVE STEP. It refuses an EMPTY tag outright: a dispatch that names no tag would
+      # otherwise resolve `TAG` to the branch it was dispatched from and stage whatever that branch
+      # happens to contain — the one way this workflow could publish something nobody asked for.
+      - name: Resolve the tag, the mode and the dist-tag from the event
+        run: |
+          set -euo pipefail
+          echo "event=${{ github.event_name }} tag=$TAG dist_tag=$DIST_TAG"
+          if [ -z "$TAG" ]; then
+            echo "::error title=no tag to publish::this workflow publishes ONE tag. A tag push supplies github.ref_name; a dispatch must fill the 'tag' input (e.g. v0.13.1)."
+            exit 1
+          fi
+          if [ -n "$STAGE_ID" ]; then
+            echo "MODE=approve stage_id=$STAGE_ID"
+          else
+            echo "MODE=stage dist_tag=$DIST_TAG"
+          fi
+
+      # `fetch-depth: 0` — the tagged revision is checked out as a real tag with its history, not as a
+      # shallow tip, so what gets published can be traced back to the exact commit the tag names.
+      - name: Check out the tagged revision
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TAG }}
+          fetch-depth: 0
+
+      # NO `registry-url` ON PURPOSE — see the header: the `.npmrc` it writes carries a placeholder
+      # `_authToken`, and npm would try to authenticate with that placeholder instead of exchanging
+      # this run's OIDC token. The absence of that input is what makes the trusted publisher work.
+      - name: Set up Node.js (no registry-url — the OIDC exchange must not be pre-empted)
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      # THE ASSERTION THAT SANCTIONS THE PUBLISH, and it runs BEFORE anything is packed or staged:
+      # the tag must be exactly `v<package.json version>`, and the manifest must be the package the
+      # trusted publisher is bound to. Both are read from the CHECKOUT, so a wrong ref fails here
+      # instead of publishing a wrong version.
+      - name: "Assert v<package.json version> == the tag, and the package name == @mpd-dsh/mpd"
+        run: |
+          set -euo pipefail
+          NAME="$(node -p "require('./package.json').name")"
+          VERSION="$(node -p "require('./package.json').version")"
+          echo "checkout: $NAME@$VERSION — requested tag: $TAG"
+          if [ "$NAME" != "@mpd-dsh/mpd" ]; then
+            echo "::error title=wrong package::package.json says '$NAME', but the trusted publisher is bound to '@mpd-dsh/mpd'."
+            exit 1
+          fi
+          if [ "$TAG" != "v$VERSION" ]; then
+            echo "::error title=tag and version disagree::the tag is '$TAG' but package.json declares '$VERSION' (expected 'v$VERSION'). Refusing to publish."
+            exit 1
+          fi
+
+      # STAGED PUBLISHING NEEDS npm >= 11.6 (`npm stage` did not exist before it). The dispatch runner
+      # image may carry an older npm than the one shown here, so this step states the versions and
+      # FAILS BY NAME instead of letting a later step answer with "Unknown command: stage".
+      - name: Require an npm that knows `npm stage` (>= 11.6)
+        run: |
+          set -euo pipefail
+          node -v
+          npm -v
+          if ! npm stage --help >/dev/null 2>&1; then
+            echo "::error title=npm too old for staged publishing::'npm stage' is unavailable on npm $(npm -v). Install npm 11.6 or newer on this job before staging."
+            exit 1
+          fi
+
+      # STAGE MODE. The tarball is packed FIRST and kept at a stable path, so the exact bytes this run
+      # offered to the registry are the bytes the artifact step uploads for inspection. NOTE: the
+      # destination directory must exist — measured on npm 11.19.0, `npm pack --pack-destination` does
+      # NOT create it and fails with ENOENT ("no such file or directory … <name>.tgz"), so the mkdir
+      # is load-bearing, not cosmetic. The `npm stage publish` call then packs the same tree again
+      # itself (npm's default package-spec is the working directory) and uploads it in a NOT-yet-public
+      # state; `--access public` is explicit because this package is scoped.
+      - name: Stage the release (npm pack, then npm stage publish)
+        if: ${{ env.STAGE_ID == '' }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/npm-pack
+          npm pack --pack-destination /tmp/npm-pack
+          npm stage publish --access public --tag "$DIST_TAG"
+          echo "::notice title=Staged $TAG — one more dispatch approves it::Copy the stage id from the 'npm stage list' output below, then dispatch this workflow again with the SAME tag and 'stage_id' set to that id. Nothing is public until that approval, and approving in ascending version order is what keeps 'latest' on the newest release."
+          {
+            echo "### Staged \`$TAG\` (dist-tag \`$DIST_TAG\`) — not public yet"
+            echo ""
+            echo "Approve it with a SECOND dispatch of this workflow: \`tag=$TAG\`, \`stage_id=<the id from the list step>\`."
+            echo "For the two owed releases, approve \`v0.13.0\` first — or stage it with a non-\`latest\` \`dist_tag\` — so \`latest\` ends on \`v0.13.1\`."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # APPROVE MODE — the human proof-of-presence step. The preflight is deliberate and states the
+      # MEASURED BOUND rather than letting npm answer with a bare ENEEDAUTH: npm's own manual
+      # (`npm-stage(1)`, shipped with npm 11.19.0) says a short-lived token issued through a trust
+      # relationship "can only be used with `npm stage publish` and `npm publish`" and that short-lived
+      # tokens "cannot run `npm stage` subcommands" — while `npm stage approve` is listed as the
+      # subcommand that REQUIRES 2FA. The OIDC identity that stages a release here therefore cannot
+      # approve it from this job, and this file still stores no secret.
+      #
+      # WHAT AN APPROVER CAN DO — both routes stay OUTSIDE this file, on purpose:
+      #   * locally: `npm stage approve <stage-id>` with the maintainer's own 2FA;
+      #   * in CI: give npm a credential it actually reads, then re-dispatch. npm has NO
+      #     `NODE_AUTH_TOKEN` handling of its own (measured: that name appears nowhere in npm 11.19.0) —
+      #     the variable works only because `setup-node`'s `registry-url` writes an `.npmrc` that
+      #     interpolates it, and this workflow deliberately does not use that input. The native route is
+      #     an `.npmrc` whose `//registry.npmjs.org/:_authToken` entry carries a granular token, with the
+      #     2FA code supplied as `npm_config_otp` (npm's generic `npm_config_*` environment mechanism).
+      - name: Approve the staged release
+        if: ${{ env.STAGE_ID != '' }}
+        run: |
+          set -euo pipefail
+          if ! npm whoami >/dev/null 2>&1; then
+            echo "::error title=approve needs a human credential::'npm stage approve' cannot authenticate with the trusted-publisher OIDC token (npm-stage(1): short-lived trust tokens cannot run 'npm stage' subcommands) and it is the 2FA proof-of-presence step. Approve locally with 'npm stage approve $STAGE_ID', or give npm a credential it reads (an .npmrc with //registry.npmjs.org/:_authToken, plus npm_config_otp) and re-dispatch. Staging itself stays secret-free."
+            exit 1
+          fi
+          npm stage approve "$STAGE_ID"
+
+      # ALWAYS — the operator needs this listing even when the step above failed or npm printed an
+      # error before reaching it: the stage id it prints is the handle for the approval dispatch, and a
+      # `continue-on-error` listing must never be the reason a run reddens a second time.
+      - name: List the staged releases (always — so the operator can copy the id)
+        if: ${{ always() }}
+        continue-on-error: true
+        run: npm stage list
+
+      # STAGING MODE ONLY, and `always()` so the packed bytes survive a failed stage — that tarball is
+      # what makes a red run diagnosable. `ignore` because a failure before `npm pack` leaves the
+      # directory empty, and an absent artifact must not redden the run a second time. The name carries
+      # `run_attempt` because artifacts are IMMUTABLE per run: a static name collides with a previous
+      # attempt's upload on "Re-run failed jobs" and fails the step.
+      - name: Upload the packed tarball (staging mode only)
+        if: ${{ always() && env.STAGE_ID == '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-pack-${{ github.run_attempt }}
+          path: /tmp/npm-pack/*.tgz
+          if-no-files-found: ignore
+          retention-days: 14
