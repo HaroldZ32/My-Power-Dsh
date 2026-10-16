@@ -949,7 +949,10 @@ export function mergePanelEnableIds(existing: unknown, ours: readonly string[], 
  * and the only CSV writer left is that settings-apply hop. The enable-list keeper's charter — repair
  * the append the host's own re-apply dropped — therefore no longer exists there, and C2 re-specs it:
  * on these hosts the keeper STANDS DOWN and writes nothing, so it can never race (or undo) the host's
- * own union or re-add a panel the user explicitly removed.
+ * own union or re-add a panel the user explicitly removed. THE ONE EXCEPTION (S1,
+ * `fix/sidebar-015-keeper-migration`): the union heals only REGISTERED PLUGIN ids, so the stale-default
+ * migration still runs BEFORE the stand-down and on the belt's per-event re-check — the single write
+ * class a self-healing host keeps from this keeper.
  */
 export const PANEL_CSV_SELF_HEAL_SINCE = "0.15.0"
 
@@ -1235,8 +1238,86 @@ export function createPanelEnableKeeper(options: PanelEnableKeeperOptions): Pane
   }
 
   /**
+   * The ids this bundle provably registered in EARLIER boots, read PER DECISION.
+   *
+   * Never cached: the record is rewritten on every boot, so a value sampled at construction could
+   * already be a boot stale. A throwing reader is "no proven past", which disables the prune instead of
+   * guessing — shared by {@link decide} and the self-healing paths so they can never prune by two
+   * different pasts.
+   * @returns the bounded past registrations, oldest first; `[]` when the reader refused.
+   */
+  const provenPast = (): readonly string[] => {
+    try {
+      return options.pastIds()
+    } catch {
+      return []
+    }
+  }
+
+  /**
+   * Say the ONE degrade line about an unreadable host default, at most once per keeper.
+   *
+   * The stale-default migration needs the host's CURRENT default as its target, and a host build that
+   * exposes no usable `DEFAULT_SIDE_PANEL_IDS` leaves the migration inert on EVERY path that evaluates
+   * it — the legacy decision and the `>= 0.15.0` stand-down alike. That is a degrade, not an event, so
+   * it is said ONCE through the shared {@link defaultNoted} flag: a ladder or a feed would otherwise
+   * repeat the same sentence on every tick, and the sink is a file a reader has to scan. It goes to the
+   * adapter's own sink and never to a terminal (requirement R5).
+   * @param tail - how the caller's own path proceeds without a target, completing the sentence.
+   */
+  const noteInertDefault = (tail: string): void => {
+    if (defaultNoted) return
+    defaultNoted = true
+    options.log?.(`mpd-tui panel enable keeper: the host exposes no readable DEFAULT_SIDE_PANEL_IDS, so the stale-default migration stays inert and ${tail}`)
+  }
+
+  /**
+   * The ONE write a self-healing host still gets: the stale-default migration, evaluated BEFORE the C2
+   * stand-down takes the keeper out (`fix/sidebar-015-keeper-migration`, S1).
+   *
+   * WHY THIS EXISTS — the regression this re-arms. The C2 stand-down returns from the tick BEFORE
+   * {@link decide}, and `decide` is the only caller of {@link mergePanelEnableIds} — so on a
+   * `>= 0.15.0` host the T1 stale-default migration was dead code, while the host's own self-heal
+   * unions only REGISTERED PLUGIN ids back: a builtin pinned out by a 0.13.0-era user layer was healed
+   * by no one. The predicate is therefore evaluated here with the SAME pure merge, and it fires only
+   * when every T1 condition holds: the residue (the live list with our ids removed) is EXACTLY a
+   * {@link KNOWN_STALE_PANEL_DEFAULTS} entry, the probed host default is readable, the two differ, and
+   * at least one id of ours is registered. In EVERY other case this writes nothing and the keeper
+   * stands down exactly as C2 specifies — a deliberate custom list, a current-default list, an
+   * unreadable host default (its ONE degrade line) and an empty registration set are positions or
+   * non-facts, never migration targets.
+   *
+   * The write target is the migration target {@link PanelEnableMerge.csv} already computes: the host's
+   * current default in the host's own order, then our ids in registration order. It is
+   * SELF-TERMINATING — the write leaves the residue equal to the host's own default, so no later read
+   * of that list can fire the predicate again.
+   * @param prefs - the bound host store, from the probe answer that carried the self-healing version.
+   * @param hostDefault - the host's current default, normalized; `undefined` or empty when this build
+   *   exposes none, which leaves the predicate inert.
+   * @returns true when a migration write landed and read back; false when there was nothing to migrate
+   *   or the host refused the write (already settled as `refused` by {@link writeList}).
+   */
+  const migrateStaleDefaultOnSelfHealer = (prefs: TuiHostPrefsLike, hostDefault: string | undefined): boolean => {
+    if (hostDefault === undefined || hostDefault === "") {
+      noteInertDefault("the keeper stands down to the host's own union")
+      return false
+    }
+    /** The decision, computed by the SAME pure merge the legacy path decides with. */
+    const merge = mergePanelEnableIds(prefs.getSidePanelPanels(), ours, provenPast(), hostDefault)
+    if (merge.staleDefault === "") return false
+    if (!writeList(prefs, merge.csv)) {
+      options.log?.(`mpd-tui panel enable keeper: the stale-default migration write was refused, so the keeper stands down without it; the belt retries on the host's next apply`)
+      return false
+    }
+    options.log?.(`mpd-tui panel enable keeper: migrated the stale default ${merge.staleDefault} to ${merge.csv} — the ONE write a self-healing host still gets, because its own union heals only registered plugin ids`)
+    return true
+  }
+
+  /**
    * Decide once, from ONE read of the host's CSV — the single place both the change feed and the ladder
-   * take their decision, so the two paths cannot drift into two different rules.
+   * take their decision, so the two paths cannot drift into two different rules. (The self-healing
+   * host's belt re-evaluates the SAME pure merge per event, but its write class is the stale-default
+   * migration alone — see {@link standDownToHostUnion}.)
    *
    * THE CONDITION IS THE WHOLE CONTRACT, and it is what keeps the keeper from overruling its user:
    *   * NONE of our ids present — the host's own config mirror has restored a list that does not
@@ -1295,19 +1376,10 @@ export function createPanelEnableKeeper(options: PanelEnableKeeperOptions): Pane
       // THE OWNERSHIP EVIDENCE IS READ PER DECISION, never cached: the record is rewritten on every boot,
       // and a value sampled at construction could already be a boot stale. A throwing reader is "no proven
       // past", which disables the prune rather than guessing.
-      /** The ids this bundle provably registered in earlier boots. */
-      let past: readonly string[] = []
-      try {
-        past = options.pastIds()
-      } catch {
-        past = []
-      }
+      const past = provenPast()
       // THE DEGRADE IS SAID ONCE. Without the host's own default there is no migration target, so the
       // rule stays inert; one line records why, on the same file sink every other keeper line uses.
-      if ((hostDefault === undefined || hostDefault === "") && !defaultNoted) {
-        defaultNoted = true
-        options.log?.(`mpd-tui panel enable keeper: the host exposes no readable DEFAULT_SIDE_PANEL_IDS, so the stale-default migration stays inert and the enable list is merged as before`)
-      }
+      if (hostDefault === undefined || hostDefault === "") noteInertDefault("the enable list is merged as before")
       /** What this read measured, before any decision is taken. */
       const merge = mergePanelEnableIds(prefs.getSidePanelPanels(), ours, past, hostDefault)
       if (merge.present.length > 0) {
@@ -1368,10 +1440,10 @@ export function createPanelEnableKeeper(options: PanelEnableKeeperOptions): Pane
   /**
    * Release the observe-only belt's subscription, when one was installed.
    *
-   * The belt is NOT the repair feed: it exists only to say, once, whether the host's own union
-   * actually re-added our ids on a self-healing host (clause C2's optional belt). It unsubscribes
-   * itself after its first line, so this is usually already a no-op — `standDown()` calls it so a
-   * scope disposal never leaks a listener on a host whose feed never fired.
+   * The belt is NOT the repair feed: on a self-healing host it observes every host apply (saying its
+   * observe-only line once) and re-migrates a re-presented stale default (clause C2's belt, plus the
+   * S1 re-check). It stays subscribed for the keeper's life, so this is the ONE release — `stop()`
+   * calls it through {@link standDown} so a scope disposal never leaks a listener.
    */
   const releaseBeltNow = (): void => {
     if (releaseBelt === undefined) return
@@ -1389,13 +1461,24 @@ export function createPanelEnableKeeper(options: PanelEnableKeeperOptions): Pane
    * Stand the keeper down because the HOST itself self-heals the enable CSV (clause C2).
    *
    * THE KEEPER WRITES NOTHING TO THE ENABLE-LIST CSV on this path — not on this tick, not on a later
-   * feed notification, not ever: the host's own `applyConfiguredSidePanelPanels` union is the only
-   * writer our ids need, an explicit `/settings` removal is recorded by the host session-wide, and a
-   * repair from here could only race the host's own merge or undo a removal the user asked for. The
-   * ladder is cancelled and the ONE line says why the keeper is silent. The optional belt below then
-   * observes the FIRST host apply through the store's own feed and logs whether our ids survived it — a
-   * behaviour assertion with no writes to that CSV, so a union that silently failed is at least VISIBLE
-   * in the log.
+   * feed notification — with ONE EXCEPTION (S1, `fix/sidebar-015-keeper-migration`): the stale-default
+   * migration {@link migrateStaleDefaultOnSelfHealer} evaluated just before this call is the single
+   * write a self-healing host still gets, because the host's own union heals only REGISTERED PLUGIN
+   * ids and a builtin pinned out by a stale user layer is otherwise healed by no one. Everywhere else
+   * the host's own `applyConfiguredSidePanelPanels` union is the only writer our ids need, an explicit
+   * `/settings` removal is recorded by the host session-wide, and a repair from here could only race
+   * the host's own merge or undo a removal the user asked for. The ladder is cancelled and the ONE
+   * line says why the keeper is silent. The optional belt below then observes every host apply through
+   * the store's own feed: non-stale events are logged (the FIRST one-line observation, then silence),
+   * while an event that re-presents a KNOWN stale default is re-migrated — a behaviour assertion plus
+   * the ONE migration write, never an append.
+   *
+   * THE BELT IS PERSISTENT, not one-shot: a configuration mirror, a `/settings` save or the host's
+   * one-time import hop can re-present the stale pin MID-SESSION, long after this tick stood down, so
+   * the belt stays subscribed for the keeper's life ({@link standDown} releases it) and re-evaluates
+   * the SAME predicate on every event. No loop is possible: the belt's own migration write leaves the
+   * residue equal to the host's current default — not a stale default — so the very next event takes
+   * the observe-only branch.
    *
    * THE SCOPE OF "NOTHING" IS THE CSV, NOT THE FILESYSTEM, and the difference is observable rather than
    * rhetorical: this path still calls {@link settle}, whose `announce()` hands the outcome to the mounted
@@ -1403,45 +1486,61 @@ export function createPanelEnableKeeper(options: PanelEnableKeeperOptions): Pane
    * (`<root>/.mpd/logs/` + {@link PANEL_IDS_RECORD_NAME}) through {@link recordPanelIds}. So a reader
    * checking "did the stood-down keeper leave no file behind" would be looking at the wrong artifact:
    * the record is written on every settle, including this stand-down, and the CSV is the ONE thing this
-   * path never touches.
+   * path never touches (the migration exception above excepted).
    * @param prefs - the bound host store, from the probe answer that carried the version.
    * @param version - the host version the gate parsed; carried into the line so a log reader can
    *   tell WHICH host release stood the keeper down.
+   * @param hostDefault - the host's current default, from the SAME probe answer, held for the belt's
+   *   per-event re-evaluation of the stale-default predicate; `undefined` leaves the belt
+   *   observe-only, which is the unreadable-default degrade.
    */
-  const standDownToHostUnion = (prefs: TuiHostPrefsLike, version: string): void => {
+  const standDownToHostUnion = (prefs: TuiHostPrefsLike, version: string, hostDefault: string | undefined): void => {
     ticks += 1
-    settle("confirmed", `standing down: the host ${version} self-heals the enable CSV (>= ${PANEL_CSV_SELF_HEAL_SINCE}), so this keeper writes nothing and the host's own union is the only writer`)
+    settle("confirmed", `standing down: the host ${version} self-heals the enable CSV (>= ${PANEL_CSV_SELF_HEAL_SINCE}), so this keeper leaves the list to the host's own union (the stale-default migration aside)`)
     cancelLadder()
-    options.log?.(`mpd-tui panel enable keeper: standing down on host ${version} — the host self-heals the sidebar enable CSV, so this keeper never writes`)
-    // THE OBSERVE-ONLY BELT: subscribe through the store's OWN feed, read the FIRST change, say ONE
-    // line about whether the host union kept our ids, and leave. No write path exists here — the
-    // belt's listener reads `getSidePanelPanels` and nothing else.
+    options.log?.(`mpd-tui panel enable keeper: standing down on host ${version} — the host self-heals the sidebar enable CSV, so this keeper never writes it again (the stale-default migration aside)`)
+    // THE OBSERVE-ONLY BELT (persistent, S1): subscribe through the store's OWN feed and read every
+    // change. A non-stale event is logged ONCE and then watched in silence; an event that re-presents
+    // a known stale default is re-migrated — the ONE write the paragraph above carves out. No other
+    // write path exists here.
     /** The store's subscribe member, narrowed once; absent on a feed-less build, which costs the belt only. */
     const subscribe = prefs.subscribeSidePanelPanels
     if (typeof subscribe !== "function") return
-    /** Whether the belt has said its one line; a feed that fires again stays silent. */
+    /** Whether the belt has said its one observe-only line; later non-stale events stay silent. */
     let said = false
     try {
       /** The host's unsubscribe for the belt, when it returned one. */
       const release = subscribe((): void => {
-        if (said) return
-        said = true
+        // OUR OWN WRITE'S ECHO IS NOT A NEW FACT: the store notifies synchronously from inside the
+        // apply, and the belt's own migration write below would otherwise re-enter this listener.
+        if (writing) return
         try {
           /** The list as the host's own apply left it, normalized exactly as the merge reads it. */
           const csvNow = normalizePanelCsv(prefs.getSidePanelPanels())
+          // THE BELT RE-CHECK (S1): the SAME stale-default predicate the tick migrated under,
+          // re-evaluated on EVERY feed event, because the stand-down left `decide` out of the loop and
+          // a stale pin can come back mid-session. The merge is the shared pure rule, so the belt and
+          // the tick can never drift into two different migrations.
+          /** This event's decision, by the SAME pure merge the tick decided with. */
+          const merge = mergePanelEnableIds(csvNow, ours, provenPast(), hostDefault)
+          if (merge.staleDefault !== "") {
+            if (writeList(prefs, merge.csv)) {
+              options.log?.(`mpd-tui panel enable keeper (stale-default belt): re-migrated the stale default ${merge.staleDefault} to ${merge.csv} after the host's own apply re-presented it`)
+            } else {
+              options.log?.(`mpd-tui panel enable keeper (stale-default belt): the re-migration write was refused; the next host apply is re-evaluated`)
+            }
+            return
+          }
+          if (said) return
+          said = true
           /** Which of our ids the host's union kept. */
           const kept = ours.filter((id) => csvNow.split(",").includes(id))
           options.log?.(`mpd-tui panel enable keeper (observe-only): after the host's own apply the enable list is "${csvNow}"; ${kept.length === ours.length ? `it still carries every id of ours (${kept.join(",")})` : kept.length === 0 ? "it carries NONE of our ids — the host union did not re-add them" : `it carries only ${kept.join(",")} of our ids — the union did not re-add the rest`}`)
         } catch {
           // The belt is diagnostic: a throwing read costs its one line, never the boot.
         }
-        releaseBeltNow()
       })
-      if (typeof release === "function") {
-        releaseBelt = release as () => void
-        // A store that fired SYNCHRONOUSLY during the subscribe already said the line — release now.
-        if (said) releaseBeltNow()
-      }
+      if (typeof release === "function") releaseBelt = release as () => void
     } catch {
       // A feed that refuses the belt costs the belt only — the stand-down above already stands.
     }
@@ -1502,7 +1601,13 @@ export function createPanelEnableKeeper(options: PanelEnableKeeperOptions): Pane
       // against the host's own merge — or the undo of a removal the user asked for. An unreadable,
       // empty or older version falls through to the legacy behaviour untouched, byte for byte.
       if (hostSelfHealsPanelCsv(probe.hostVersion ?? "")) {
-        standDownToHostUnion(probe.prefs, probe.hostVersion ?? "")
+        // S1 — THE STALE-DEFAULT PREDICATE IS EVALUATED BEFORE THIS GATE RETURNS. The stand-down below
+        // bypasses `decide` (the only caller of the merge), and the host's own union heals only
+        // REGISTERED PLUGIN ids — so without this call a stale builtin pin on a self-healing host is
+        // healed by no one. The helper writes ONLY when the full T1 predicate holds and returns;
+        // every other case stands down untouched, so C2's "writes nothing" holds everywhere else.
+        migrateStaleDefaultOnSelfHealer(probe.prefs, probe.defaultIds)
+        standDownToHostUnion(probe.prefs, probe.hostVersion ?? "", probe.defaultIds)
         return
       }
       // THE FEED OUTRANKS THE LADDER, and the hand-off is attempted on EVERY tick until it lands: a host

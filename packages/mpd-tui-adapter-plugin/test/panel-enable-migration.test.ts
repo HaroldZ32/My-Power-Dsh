@@ -512,12 +512,13 @@ describe("C2 · the keeper stands down on a self-healing host (>= 0.15.0)", () =
     fake.hostApply("todo,jobs,agents")
     expect(fake.applied).toEqual(["todo,jobs,agents"])
     expect(keeper.outcome().reasserted).toBe(0)
-    // THE BELT: exactly one stand-down line and one observe-only line, and the belt then LEFT (no
-    // listener remains, and a second host apply says nothing more).
+    // THE BELT: one stand-down line and one observe-only line; the belt STAYS SUBSCRIBED (S1: it
+    // re-checks every event for a re-presented stale default) but never writes here — this probe
+    // carries NO readable default, so the re-check is inert and a second host apply says nothing more.
     expect(logged.some((line) => line.includes("standing down on host 0.15.0"))).toBe(true)
     expect(logged.filter((line) => line.includes("observe-only")).length).toBe(1)
     expect(logged.some((line) => line.includes("NONE of our ids"))).toBe(true)
-    expect(fake.listeners()).toBe(0)
+    expect(fake.listeners()).toBe(1)
     fake.hostApply("todo,jobs")
     expect(logged.filter((line) => line.includes("observe-only")).length).toBe(1)
     // NO LATER LADDER TICK WRITES EITHER — the stand-down cancelled the ladder.
@@ -595,5 +596,173 @@ describe("C2 · the keeper stands down on a self-healing host (>= 0.15.0)", () =
     // "byte-preserved" witness available on one tick: the pin migrated to the host default ∪ ours.
     expect(fake.csv()).toBe(`${HOST_DEFAULT},act1:team`)
     expect(keeper.outcome().detail).toContain("migrated the stale default")
+  })
+})
+
+// S1 of `fix/sidebar-015-keeper-migration` (2026-10-16): the stale-default migration RE-ARMS on a
+// self-healing host. The C2 stand-down had swallowed it — the gate returned from the tick before
+// `decide`, the only caller of the merge, so on a `>= 0.15.0` host a 0.13.0-era user pin was healed by
+// no one (the host's own union heals only REGISTERED PLUGIN ids). The keeper now evaluates the SAME T1
+// predicate before standing down, and the observe-only belt re-evaluates it on every feed event. Every
+// arm below drives the mounted row's own surface (`createPanelEnableKeeper`), with the probe answer a
+// 0.15.0 host really gives: `hostVersion` "0.15.0" plus the live `defaultIds`.
+describe("S1 · the stale-default migration re-arms on a self-healing host", () => {
+  test("(a) a stale pin on 0.15.0: the LADDER tick migrates it to the host default ∪ ours, then stands down", async () => {
+    /** The store with the feed exposed (every 0.15.0 build has one), seeded with the reported pin. */
+    const fake = fakeStore(STALE_PIN, true)
+    /** Every line the keeper logged. */
+    const logged: string[] = []
+    /** The controllable clock. */
+    const clock = fakeClock()
+    /** The keeper under test, whose probe answer names a self-healing host AND its live default. */
+    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: fake.store, hostVersion: "0.15.0", defaultIds: HOST_DEFAULT }), schedule: clock.schedule, pastIds: () => [], log: (line: string): void => { logged.push(line) } })
+    keeper.observe("act1:team")
+    keeper.observe("act1:workmate")
+    await clock.runNext()
+    // A1: the ONE write a self-healing host still gets — the host's default ∪ ours, in that order.
+    expect(fake.applied).toEqual([MIGRATED])
+    expect(fake.csv()).toBe(MIGRATED)
+    expect(keeper.outcome().reasserted).toBe(1)
+    expect(keeper.outcome().state).toBe("confirmed")
+    expect(keeper.outcome().detail).toContain("self-heals")
+    expect(logged.some((line) => line.includes(`migrated the stale default ${STALE_PIN}`))).toBe(true)
+    expect(logged.some((line) => line.includes("standing down on host 0.15.0"))).toBe(true)
+    // The stand-down owns the ONE listener (the belt, not the repair feed) and cancelled the ladder,
+    // so no later tick can write anything.
+    expect(fake.listeners()).toBe(1)
+    await clock.runNext()
+    expect(fake.applied.length).toBe(1)
+  })
+
+  test("(b) a MID-SESSION feed event re-applying the stale pin: the belt re-migrates it", async () => {
+    /** The store with the feed exposed, seeded with the reported pin. */
+    const fake = fakeStore(STALE_PIN, true)
+    /** Every line the keeper logged. */
+    const logged: string[] = []
+    /** The controllable clock. */
+    const clock = fakeClock()
+    /** The keeper under test, on a self-healing host with a readable default. */
+    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: fake.store, hostVersion: "0.15.0", defaultIds: HOST_DEFAULT }), schedule: clock.schedule, pastIds: () => [], log: (line: string): void => { logged.push(line) } })
+    keeper.observe("act1:team")
+    keeper.observe("act1:workmate")
+    await clock.runNext()
+    expect(fake.applied).toEqual([MIGRATED])
+    // The host's one-time import hop / config mirror re-presents the stale pin MID-SESSION (the
+    // measured 0.15.0 defect): the stood-down belt re-evaluates the predicate and re-migrates.
+    fake.hostApply(STALE_PIN)
+    expect(fake.applied).toEqual([MIGRATED, STALE_PIN, MIGRATED])
+    expect(fake.csv()).toBe(MIGRATED)
+    expect(keeper.outcome().reasserted).toBe(2)
+    expect(logged.some((line) => line.includes("stale-default belt"))).toBe(true)
+  })
+
+  test("(c) the CURRENT default ∪ ours: NO write on the tick or any belt event (C2 preserved)", async () => {
+    /** The store with the feed exposed, seeded with the state a repaired layer carries. */
+    const fake = fakeStore(MIGRATED, true)
+    /** Every line the keeper logged. */
+    const logged: string[] = []
+    /** The controllable clock. */
+    const clock = fakeClock()
+    /** The keeper under test, on a self-healing host with a readable default. */
+    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: fake.store, hostVersion: "0.15.0", defaultIds: HOST_DEFAULT }), schedule: clock.schedule, pastIds: () => [], log: (line: string): void => { logged.push(line) } })
+    keeper.observe("act1:team")
+    keeper.observe("act1:workmate")
+    await clock.runNext()
+    // The residue IS the host's own default, so the predicate is false: the keeper stands down with
+    // zero writes — the C2 clause, unchanged by the re-arm.
+    expect(fake.applied).toEqual([])
+    expect(keeper.outcome().reasserted).toBe(0)
+    expect(logged.some((line) => line.includes("migrated"))).toBe(false)
+    // A `/settings` removal of BOTH panels is a NON-STALE event: observed once, never repaired.
+    fake.hostApply(HOST_DEFAULT)
+    expect(fake.applied).toEqual([HOST_DEFAULT])
+    expect(fake.csv()).toBe(HOST_DEFAULT)
+    expect(keeper.outcome().reasserted).toBe(0)
+    expect(logged.filter((line) => line.includes("observe-only")).length).toBe(1)
+  })
+
+  test("(d) a DELIBERATE custom list: NO write ever, on the tick or the belt", async () => {
+    /** The store with the feed exposed, seeded with the contract's own example custom list. */
+    const fake = fakeStore("todo,workspace", true)
+    /** Every line the keeper logged. */
+    const logged: string[] = []
+    /** The controllable clock. */
+    const clock = fakeClock()
+    /** The keeper under test, on a self-healing host with a readable default. */
+    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: fake.store, hostVersion: "0.15.0", defaultIds: HOST_DEFAULT }), schedule: clock.schedule, pastIds: () => [], log: (line: string): void => { logged.push(line) } })
+    keeper.observe("act1:team")
+    keeper.observe("act1:workmate")
+    await clock.runNext()
+    // A custom residue is a position, not a default: the keeper never even migrates it.
+    expect(fake.applied).toEqual([])
+    expect(keeper.outcome().reasserted).toBe(0)
+    // The host's own union appends ours; the residue stays the custom list — never a migration.
+    fake.hostApply("todo,workspace,act1:team,act1:workmate")
+    fake.hostApply("todo,workspace")
+    expect(keeper.outcome().reasserted).toBe(0)
+    expect(logged.some((line) => line.includes("migrated"))).toBe(false)
+  })
+
+  test("(e) an UNREADABLE host default: inert, exactly ONE degrade line, and no write", async () => {
+    /** The store with the feed exposed, seeded with the stale pin — which stays a stale pin. */
+    const fake = fakeStore(STALE_PIN, true)
+    /** Every line the keeper logged. */
+    const logged: string[] = []
+    /** The controllable clock. */
+    const clock = fakeClock()
+    /** The keeper under test, whose probe names a self-healing host with NO readable default. */
+    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: fake.store, hostVersion: "0.15.0" }), schedule: clock.schedule, pastIds: () => [], log: (line: string): void => { logged.push(line) } })
+    keeper.observe("act1:team")
+    keeper.observe("act1:workmate")
+    await clock.runNext()
+    // Without a target there is no migration: the keeper stands down having written nothing.
+    expect(fake.applied).toEqual([])
+    expect(keeper.outcome().reasserted).toBe(0)
+    /** How many degrade lines the keeper said — the contract's "at most the ONE" bound. */
+    const degrades = (): number => logged.filter((line) => line.includes("DEFAULT_SIDE_PANEL_IDS")).length
+    expect(degrades()).toBe(1)
+    // The belt re-check is equally inert, and never repeats the degrade line on later events.
+    fake.hostApply(STALE_PIN)
+    fake.hostApply("todo,jobs")
+    expect(degrades()).toBe(1)
+    expect(keeper.outcome().reasserted).toBe(0)
+  })
+
+  test("(f) a stale pin with NOTHING registered: the migration stays gated on registration", async () => {
+    /** The store with the feed exposed, seeded with the stale pin. */
+    const fake = fakeStore(STALE_PIN, true)
+    /** The controllable clock. */
+    const clock = fakeClock()
+    /** The keeper under test, on a self-healing host with a readable default. */
+    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: fake.store, hostVersion: "0.15.0", defaultIds: HOST_DEFAULT }), schedule: clock.schedule, pastIds: () => [] })
+    // NO registration: the ladder arms on the first `observe` only, so no tick ever runs — an empty
+    // registration set can never open a write path of its own.
+    expect(clock.delays).toEqual([])
+    await clock.runNext()
+    expect(fake.applied).toEqual([])
+    expect(keeper.outcome().reasserted).toBe(0)
+    // The pure guard this rests on, restated for this host shape: with `ours` empty the merge answers
+    // no stale default, so even a driven tick would have written nothing.
+    expect(mergePanelEnableIds(STALE_PIN, [], [], HOST_DEFAULT).staleDefault).toBe("")
+  })
+
+  test("(g) idempotence: after the belt's re-migration the next event writes NOTHING", async () => {
+    /** The store with the feed exposed, seeded with the reported pin. */
+    const fake = fakeStore(STALE_PIN, true)
+    /** The controllable clock. */
+    const clock = fakeClock()
+    /** The keeper under test, on a self-healing host with a readable default. */
+    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: fake.store, hostVersion: "0.15.0", defaultIds: HOST_DEFAULT }), schedule: clock.schedule, pastIds: () => [] })
+    keeper.observe("act1:team")
+    keeper.observe("act1:workmate")
+    await clock.runNext()
+    fake.hostApply(STALE_PIN)
+    expect(keeper.outcome().reasserted).toBe(2)
+    // THE NEXT EVENT (the host applying its own plain default — e.g. our ids removed): the residue IS
+    // the host default, so the predicate is false and the belt only observes. No loop, no re-add.
+    fake.hostApply(HOST_DEFAULT)
+    expect(fake.applied).toEqual([MIGRATED, STALE_PIN, MIGRATED, HOST_DEFAULT])
+    expect(fake.csv()).toBe(HOST_DEFAULT)
+    expect(keeper.outcome().reasserted).toBe(2)
   })
 })

@@ -312,18 +312,26 @@ settles WITH those ids and without the builtins.) Two independent routes now hol
 * **durable, one command** — `node scripts/mpd-tui-panels.ts --apply` writes `dsh-tui.sidePanel.panels`
   into the
   profile's patch file, which IS the settings user layer (`dsh-config-editor`'s `documentPath` returns
-  `profileContext.patchPath`; `dsh-app-boot` builds it as `<profileDir>/cordis.patch.yml`). Both readings
+  `profileContext.patchPath`; `dsh-app-boot` builds it as `<profileDir>/cordis.patch.yml`) — AND, since
+  the 2026-10-16 amendment, into `~/.dsh-tui/settings.json`'s `values.sidePanel.panels`, the layer
+  dsh-tui 0.15.0 reads FIRST (effective list `values.sidePanel?.panels ?? config.sidePanel?.panels`, so
+  the settings document SHADOWS the patch; `--tui-settings <path>` points it at a fixture, an absent
+  document keeps the run patch-only). The SAME computed list — one shared merge, seeded from the
+  EFFECTIVE value — lands in BOTH layers, every guard unchanged, and the settings document is rewritten
+  as JSON (2-space indent, trailing newline) preserving every other key including the one-time-import
+  `imported` marker. Both readings
   come from the installed sources and the script refuses to write when it cannot prove the path; dry run
-  by default, `--apply` to write, `.bak-<stamp>` kept, only missing ids added **and the same stale-id
+  by default, `--apply` to write, `.bak-<stamp>` kept per layer, only missing ids added **and the same stale-id
   prune applied** (one rule, restated in `scripts/mpd-tui-panels.ts` because a standalone Node entry point
   cannot import a bundled package's source — and since repair round R1 that rule is the PROVENANCE one:
   the script prunes a token only when the record's `history` proves the bundle registered it and this run
   does not enable it, so a foreign `act9:team` is never deleted). A run whose only change is the prune is
   a run, not a no-op.
   `--apply` also **reads the document back** after the atomic rename and compares the leaf with the CSV it
-  intended: a mismatch exits 1 and names the backup, so a write that did not land is never announced as a
+  intended — per layer, so a refused settings write can never be announced behind a landed patch write: a
+  mismatch exits 1 and names the backup, so a write that did not land is never announced as a
   success. It writes the USER's
-  profile patch and nothing in this repository, so it is not part of any gate sweep — the wave that has
+  profile patch and settings document and nothing in this repository, so it is not part of any gate sweep — the wave that has
   to re-pin the vendored skill corpus is the one that edits `skills/**`, whose `treeSha` in
   `VENDOR_LOCK.json` lands with exactly ONE re-pin in the same commit (AGENTS.md §9); this command never
   touches either.
@@ -1247,7 +1255,7 @@ supersedes §11.6:
 | §11.6 — the `PanelBar` no longer paints an icon | `grep -c icon …/PanelBar.js` = 0 on 0.14.0; inactive tabs are `○`/`●` dots | **0.15.0 PAINTS ICONS AGAIN**: inactive tabs draw `tab.icon ?? <first character of the title> ?? '?'` plus the unread count (`tabLabel()` in the re-measured `PanelBar.js`). The bundle's declared one-cell icons (`❖` MPD, `⬢` workmate) are painted again; nothing in the bundle changed — every descriptor still declares exactly-one-cell icons, as the host's validator requires |
 | §3.4 — the `⤢` bound | `dsh-adapter/panels.js` freezes plugin descriptors without `capabilities` → the host's own `⤢` is unreachable | **re-measured on 0.15.0 and still true**: `grep -c capabilities …/dsh-adapter/panels.js` = 0, `SidePanelColumn`'s `canExpand` still reads `definition.capabilities?.fullscreen === true`. MPD's own `⤢` control stays the one full-screen escape |
 | §3.3 / §7 — the pin carriers | `0.14.0` in every carrier that names the release | **`0.15.0` in this wave's carriers**: `docker/**` (both `MPD_E2E_TUI_VERSION` defaults, `docker/ui/docker-compose.yml`, `docker/entrypoint.sh`'s `TUI_VERSION`, `docker/ui/entrypoint.sh`'s two `MPD_UI_TUI_VERSION` defaults, `docker/tui-lane.sh`), `dsh-distribution.json`'s `host-tui` ref (`pkg:npm/@deepseek-harness-tui/dsh-tui@0.15.0`), the seven QA carriers under `skills/dsh-qa/scripts/**`, `scripts/mpd-tui-panels.ts`'s header prose and both `docker/README*.md`. The non-moves stand: `MPD_E2E_DSH_VERSION` stays `0.2.0-rc.2`; `dsh-plugin.json`'s `compat.hosts` stays `@deepseek-harness-tui/dsh-tui@0.10.1` (the admission measurement, not the target); the registry's `0.15` version string stays (ecosystem-spec number, the repo's known false-positive) |
-| §11.6 — the enable-list keeper | FEED-FIRST on every host: `subscribeSidePanelPanels` repairs a config-mirror wipe, the ladder is the degrade, the stand-down rule holds | **RE-SPECED (C2, user-mandated): on a host that self-heals — every `>= 0.15.0` — the keeper JOINS the native self-heal and STANDS DOWN; on older hosts the 0.14 behaviour is preserved byte-for-byte.** See the keeper paragraph below |
+| §11.6 — the enable-list keeper | FEED-FIRST on every host: `subscribeSidePanelPanels` repairs a config-mirror wipe, the ladder is the degrade, the stand-down rule holds | **RE-SPECED (C2, user-mandated): on a host that self-heals — every `>= 0.15.0` — the keeper JOINS the native self-heal and STANDS DOWN; on older hosts the 0.14 behaviour is preserved byte-for-byte.** The 2026-10-16 amendment (`fix/sidebar-015-keeper-migration`) carves the ONE write exception — the stale-default migration, evaluated before the stand-down and re-checked by the belt on every feed event; see the two keeper paragraphs below |
 
 **The host now self-heals the sidebar enable CSV, and the keeper stands down to it (C2).** Measured on
 the 0.15.0 tree: `TuiPanelRuntime.register()` feeds `registeredPanelIds` through
@@ -1258,13 +1266,48 @@ CSV writer left is that settings-apply hop. MPD's answer: the enable-list keeper
 version through the adapter's already-proven `readHostPackageVersion` (the value the probe stamps as
 `hostVersion` on the SAME probe answer the keeper decides from — no new host contact), and on a
 `>= 0.15.0` reading it **stands down before any write path: it never arms the feed, never walks the
-ladder, writes nothing, and cannot race the host's own union or re-add a panel the user explicitly
-removed**. One line in the adapter's log says so (`standing down on host 0.15.0 — the host self-heals
-the sidebar enable CSV, so this keeper never writes`), and an observe-only belt subscribes the store's
-own feed ONCE to log whether the host union actually kept our ids — a behaviour assertion with no
-writes. An empty, unparseable or `< 0.15.0` version keeps the full 0.14 keeper (feed-first, the bounded
-ladder, the stand-down rule, the prune-only dead-id pass) byte-for-byte — the gate can only ever stand
-the keeper DOWN on a version it could actually read.
+ladder, and writes nothing but the ONE exception the next paragraph carves out — everywhere else it
+cannot race the host's own union or re-add a panel the user explicitly removed**. One line in the
+adapter's log says so (`standing down on host 0.15.0 — the host self-heals the sidebar enable CSV, so
+this keeper never writes it again (the stale-default migration aside)`), and an observe-only belt subscribes the store's own feed to log whether the
+host union actually kept our ids — a behaviour assertion whose only write is the same ONE exception.
+An empty, unparseable or `< 0.15.0` version keeps the full 0.14 keeper (feed-first, the bounded ladder,
+the stand-down rule, the prune-only dead-id pass) byte-for-byte — the gate can only ever stand the
+keeper DOWN on a version it could actually read.
+
+**The stale-default migration is the ONE write exception to the `>= 0.15.0` stand-down (2026-10-16,
+`fix/sidebar-015-keeper-migration`).** The stand-down above had swallowed the T1 migration: the gate
+returned from the tick before `decide` — the only caller of the merge — while the host's own self-heal
+unions only REGISTERED PLUGIN ids, so a 0.13.0-era user layer pinning `todo,jobs,agents` (the one
+`KNOWN_STALE_PANEL_DEFAULTS` entry) kept five builtins out of the sidebar and was healed by no one on
+0.15.0. The keeper therefore evaluates the SAME T1 predicate BEFORE the gate returns: when the live
+list with our ids removed is EXACTLY the known stale default AND the probed host default is readable
+AND the two differ AND at least one id of ours is registered, it writes the host's current default ∪
+our ids (host order first, ours appended in registration order — the same merge T1 specifies) and THEN
+stands down to the host union. Every other case on a `>= 0.15.0` host — a deliberate custom list, the
+current default, an unreadable host default (its ONE degrade line), nothing registered — writes
+nothing, exactly as C2 specifies. The belt re-checks the same predicate on EVERY feed event (a
+`/settings` save or the host's one-time import hop can re-present the pin mid-session) and re-migrates
+when it fires; the migration is self-terminating, because its own write leaves the residue equal to the
+host's current default, so the very next event stands down. The pre-0.15.0 behaviour is byte-identical,
+and the adapter suite carries the seven new arms that pin all of this.
+
+**The repair script now repairs BOTH user layers, and the second is new.** dsh-tui 0.15.0 keeps its own
+user settings at `~/.dsh-tui/settings.json` and resolves the effective list as
+`values.sidePanel?.panels ?? config.sidePanel?.panels` — the settings layer SHADOWS the profile patch,
+and its one-time import hop (blocked from re-importing by the `imported.from` marker) had pinned the
+same stale list into the shadowing layer (measured 2026-10-16 on this machine; both layers were
+repaired by hand at the time, `.bak-sidebar-20261016` backups beside each). `node
+scripts/mpd-tui-panels.ts --apply` therefore now applies the SAME computed list to
+`values.sidePanel.panels` AND to the profile patch leaf — one shared merge code path, seeded from the
+EFFECTIVE list (the settings key when present, the patch leaf otherwise), every guard unchanged: an
+existing position is preserved, `--restore-builtins` is still the only explicit builtin restore, and
+only provably-dead recorded act ids are pruned. The settings document is rewritten as JSON with a
+2-space indent and a trailing newline, preserving every other key including the `imported` marker;
+`--tui-settings <path>` points the layer at a fixture for tests and QA; an absent document leaves the
+run patch-only, byte-identical to before this layer existed. The dry run and the apply output report
+BOTH layers separately, each write keeps its own `.bak-<stamp>` backup and is read back, and the
+script's `--self-test` carries the new settings-layer arms.
 
 **The decision-events grant flow, user-facing (C3').** The decision seam this page has carried as
 ready-but-not-activated since §6.1 is now ACTIVATABLE through the host's own documented grant flow, and
@@ -1322,7 +1365,10 @@ readings it was written against and does not pre-claim lane numbers; a SKIP is n
 
 **Bounds (the bounds are part of the claim).** (a) The keeper stand-down rests on the host's own
 self-heal being present — a host that reports `>= 0.15.0` but lost the union helpers would leave MPD
-panels enable-list-less, and the observe-only belt's one line is the visible symptom to look for. (b)
+panels enable-list-less, and the observe-only belt's one line is the visible symptom to look for. The
+stale-default exception adds its own stated bound: a user who deliberately configures EXACTLY the known
+stale list on a host whose current default differs is indistinguishable from the stale pin and is
+migrated once — the same bound T1 already carried, now reaching 0.15.0 through the tick and the belt. (b)
 The grant flow's liveness numbers (per-operation re-read, 200 ms ×100 retries) are the host's measured
 behaviour, not a bundle promise; revocation semantics are the host's. (c) The `PanelBar` icon return is
 a HOST fact re-measured on 0.15.0: a future host that stops painting icons again contradicts no MPD

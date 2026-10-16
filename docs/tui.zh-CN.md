@@ -258,14 +258,20 @@ id 是**从宿主自身的 `list()` 回读中发现的**，绝不自行拼接：
 * **持久、一条命令** —— `node scripts/mpd-tui-panels.ts --apply` 把 `dsh-tui.sidePanel.panels` 写进
   profile 的
   patch 文件，而它就是设置用户层（`dsh-config-editor` 的 `documentPath` 返回
-  `profileContext.patchPath`；`dsh-app-boot` 把它拼成 `<profileDir>/cordis.patch.yml`）。这两个读法都取自
-  已安装的源码，脚本在无法证明该路径时拒绝写入；默认试运行，`--apply` 才写，会留 `.bak-<stamp>`，只补缺失
+  `profileContext.patchPath`；`dsh-app-boot` 把它拼成 `<profileDir>/cordis.patch.yml`）——并且自
+  2026-10-16 的修订起，也写进 `~/.dsh-tui/settings.json` 的 `values.sidePanel.panels`：那是
+  dsh-tui 0.15.0 **先**读的层（生效清单 `values.sidePanel?.panels ?? config.sidePanel?.panels`，
+  设置文档**遮蔽** patch；`--tui-settings <path>` 可指向夹具，文档缺失时本轮只写 patch 层）。
+  **同一条**计算出的清单——一次共享合并、以**生效**值作种子——落进两层，全部护栏不变；设置文档以
+  JSON 写回（2 空格缩进、行尾换行），保留其余每个键，包括一次性导入的 `imported` 标记。这两个读法都取自
+  已安装的源码，脚本在无法证明该路径时拒绝写入；默认试运行，`--apply` 才写，每层各留 `.bak-<stamp>`，只补缺失
   的 id，**并施加同一条陈旧 id 剪除规则**（同一条规则，在 `scripts/mpd-tui-panels.ts` 里重述一次，因为独立
   运行的 Node 入口无法 import 一个已打包产物的源码；自修复轮 R1 起那条规则就是**来源**规则：脚本只在记录的
   `history` 证明本 bundle 注册过、且本次运行未启用它时才剪除该 token，因此外部的 `act9:team` 绝不会被删）。
   只有剪除、没有新增的那一次运行同样算一次运行，而不是
-  空操作。`--apply` 在原子改名之后还会**回读文档**，把该叶子与它打算写入的 CSV 比对：不一致即以退出码 1 拒绝
-  并点名备份文件，因此没有真正落盘的写入绝不会被宣告为成功。它只写**用户**的 profile patch，不碰本仓库里的任何东西，因此不属于任何闸门扫描——需要重新钉定
+  空操作。`--apply` 在原子改名之后还会**逐层回读文档**，把该叶子与它打算写入的 CSV 比对——设置层的写入
+  失败绝不能藏在一次落盘的 patch 写入后面：不一致即以退出码 1 拒绝并点名备份文件，因此没有真正落盘的写入
+  绝不会被宣告为成功。它只写**用户**的 profile patch 与设置文档，不碰本仓库里的任何东西，因此不属于任何闸门扫描——需要重新钉定
   内置技能语料的是那个改动了 `skills/**` 的波次：它的 `treeSha` 必须与**恰好一次**重新钉定落在同一个
   提交里（AGENTS.md §9）；本命令两样都不涉及。
 
@@ -1034,7 +1040,7 @@ rootful 守护进程上给出的是 NOTICE 而不是通过——**SKIP 不是通
 | §11.6 —— `PanelBar` 不再绘制图标 | 0.14.0 上 `grep -c icon …/PanelBar.js` = 0；非活动标签是 `○`/`●` 圆点 | **0.15.0 重新绘制图标**：非活动标签画 `tab.icon ?? <标题首字符> ?? '?'` 外加未读数（重新实测的 `PanelBar.js` 中的 `tabLabel()`）。本 bundle 声明的单格图标（`❖` MPD、`⬢` workmate）重新被画出来；bundle 侧无任何改动——每个描述符仍按宿主校验器的要求声明恰好一格的图标 |
 | §3.4 —— `⤢` 边界 | `dsh-adapter/panels.js` 冻结的插件描述符无 `capabilities` → 宿主自己的 `⤢` 不可达 | **在 0.15.0 上重新实测，仍成立**：`grep -c capabilities …/dsh-adapter/panels.js` = 0，`SidePanelColumn` 的 `canExpand` 仍读 `definition.capabilities?.fullscreen === true`。MPD 自己的 `⤢` 控件仍是唯一的全屏入口 |
 | §3.3 / §7 —— 版本钉住载体 | 每个点名该版本的载体都是 `0.14.0` | **本波次载体为 `0.15.0`**：`docker/**`（两处 `MPD_E2E_TUI_VERSION` 默认值、`docker/ui/docker-compose.yml`、`docker/entrypoint.sh` 的 `TUI_VERSION`、`docker/ui/entrypoint.sh` 的两处 `MPD_UI_TUI_VERSION` 默认值、`docker/tui-lane.sh`）、`dsh-distribution.json` 的 `host-tui` 引用（`pkg:npm/@deepseek-harness-tui/dsh-tui@0.15.0`）、`skills/dsh-qa/scripts/**` 下的七个 QA 载体、`scripts/mpd-tui-panels.ts` 的头部叙述与两份 `docker/README*`。不搬项维持原样：`MPD_E2E_DSH_VERSION` 保持 `0.2.0-rc.2`；`dsh-plugin.json` 的 `compat.hosts` 保持 `@deepseek-harness-tui/dsh-tui@0.10.1`（准入**测量**，不是对标版本）；注册表的 `0.15` 版本串保持（生态规范号，本仓库已知误报） |
-| §11.6 —— 启用清单守卫 | 每个宿主上都"订阅优先"：`subscribeSidePanelPanels` 修复配置镜像的清空，阶梯是降级路径，退位规则不变 | **重规约（C2，用户指定）：在会自愈的宿主——一切 `>= 0.15.0`——上，守卫加入宿主的原生自愈并退位；在更旧宿主上 0.14 行为逐字节保留。**见下方守卫一段 |
+| §11.6 —— 启用清单守卫 | 每个宿主上都"订阅优先"：`subscribeSidePanelPanels` 修复配置镜像的清空，阶梯是降级路径，退位规则不变 | **重规约（C2，用户指定）：在会自愈的宿主——一切 `>= 0.15.0`——上，守卫加入宿主的原生自愈并退位；在更旧宿主上 0.14 行为逐字节保留。**2026-10-16 的修订（`fix/sidebar-015-keeper-migration`）开出**唯一**的写入例外——陈旧默认值迁移：在退位之前评估、由腰带在每个订阅事件上复查；见下方守卫两段 |
 
 **宿主现在会自愈侧栏启用 CSV，守卫向它退位（C2）。** 在 0.15.0 树上实测：`TuiPanelRuntime.register()` 经
 `enablePanelIdInStore` 喂入 `registeredPanelIds`；启动/镜像的应用 `applyConfiguredSidePanelPanels(config.sidePanel?.panels)`
@@ -1042,11 +1048,35 @@ rootful 守护进程上给出的是 NOTICE 而不是通过——**SKIP 不是通
 它把移除记录为**会话级**（`removedPanelIds`）；剩下的唯一 CSV 写入者就是那条 settings 应用路径。MPD 的回答：
 启用清单守卫经适配器已被证明的 `readHostPackageVersion` 探测宿主版本（该值由探针作为 `hostVersion` 盖章在**同一个**
 守卫据以决策的探针答案上——不新增宿主接触点），读到 `>= 0.15.0` 就**在任何写入路径之前退位：不装订阅、不走阶梯、
-一个字节都不写**，既不与宿主自己的合并赛跑，也绝不把用户显式移除的面板加回来。适配器日志里有一行说明
-（`standing down on host 0.15.0 — the host self-heals the sidebar enable CSV, so this keeper never writes`），
-另有一条只观察不写入的"腰带"：经存储自己的订阅看**一次**宿主合并是否真的保住了我们的 id。版本为空、不可解析或
+除了下一段开出的唯一例外之外一个字节都不写**——既不与宿主自己的合并赛跑，也绝不把用户显式移除的面板加回来。适配器日志里有一行说明
+（`standing down on host 0.15.0 — the host self-heals the sidebar enable CSV, so this keeper never writes it again (the stale-default migration aside)`），
+另有一条只观察的"腰带"：经存储自己的订阅查看宿主合并是否真的保住了我们的 id，其唯一写入同样是那同一个例外。版本为空、不可解析或
 `< 0.15.0` 时，0.14 守卫（订阅优先、有界阶梯、退位规则、仅修剪死 id 的一次写）**逐字节保留**——该门只会在
 真正读出版本时让守卫退位。
+
+**陈旧默认值迁移是 `>= 0.15.0` 退位的唯一写入例外（2026-10-16，`fix/sidebar-015-keeper-migration`）。**
+上面的退位曾吞掉 T1 迁移：该门在 `decide`——合并的唯一调用方——之前就从 tick 返回，而宿主自己的自愈只把
+**已注册的插件 id** 并回去，于是 0.13.0 时代用户层钉下的 `todo,jobs,agents`（`KNOWN_STALE_PANEL_DEFAULTS`
+的唯一条目）让五个内置页离开侧栏，且在 0.15.0 上无人治愈。守卫因此在门返回**之前**评估同一条 T1 谓词：当
+去掉我们的 id 之后的现有清单**恰好**是已知陈旧默认值、且探得的宿主默认值可读、且两者不同、且我们至少注册了
+一个 id 时，它写入宿主当前默认值 ∪ 我们的 id（宿主顺序在前、我们的按注册顺序追加——与 T1 指定的同一次合并），
+**然后**向宿主合并退位。`>= 0.15.0` 上的其它一切情形——故意的自定义列表、当前默认值、不可读的宿主默认值
+（只有那一行降级日志）、什么都没注册——都不写任何字节，与 C2 的规定一致。腰带在**每个**订阅事件上复查同一条
+谓词（`/settings` 保存或宿主的一次性导入跳变都可能在**会话中途**重新呈现该钉定值），命中即再次迁移；该迁移
+自我终止——它自己的写入让余量等于宿主当前默认值，于是下一个事件随即退位。0.15.0 之前的行为逐字节不变，
+适配器测试套新增了七条臂把这全部钉死。
+
+**修复脚本现在同时修复两个用户层，第二层是新的。** dsh-tui 0.15.0 把自己的用户设置放在
+`~/.dsh-tui/settings.json`，并按 `values.sidePanel?.panels ?? config.sidePanel?.panels` 解析生效清单——
+该设置层**遮蔽** profile patch，而它的一次性导入跳变（`imported.from` 标记阻止再次导入）曾把同一条陈旧
+列表钉进遮蔽层（2026-10-16 在本机实测；当时两层均由人工修复，各留 `.bak-sidebar-20261016` 备份）。
+`node scripts/mpd-tui-panels.ts --apply` 因此现在把**同一条**计算出的清单写进 `values.sidePanel.panels`
+**和** profile patch 的叶子——一条共享的合并代码路径、以**生效**值（设置键在场则用它，否则用 patch 叶子）
+作种子，全部护栏不变：既有立场逐字节保留、`--restore-builtins` 仍是唯一的显式内置页恢复、只剪除记录证明
+已死的本方 act id。设置文档以 JSON 写回（2 空格缩进 + 行尾换行），保留其余每一个键——包括一次性导入的
+`imported` 标记；`--tui-settings <path>` 供测试/QA 指向夹具；文档缺失时本轮只写 patch 层，与该层出现之前
+逐字节相同。试运行与 `--apply` 的输出都**分别**报告两层，每层各留 `.bak-<stamp>` 备份并各自回读，脚本的
+`--self-test` 带上了新的设置层测试臂。
 
 **决策事件授权流，面向用户（C3'）。** 本页自 §6.1 起记载的"就绪但未激活"决策接缝，现在可以通过宿主自己的
 文档化授权流**激活**，`dsh-plugin.json` 里那四条 `session.*.intercept` 声明（`tui/input`、`tui/rewind-prompt`、
@@ -1088,7 +1118,9 @@ while member … belongs to …`；被守卫跳过的属主报告为 `was passed
 本节只引用它写作时所依据的 host-diff 与单元读数，不预支通道数字；**SKIP 不是通过**。
 
 **边界（边界是主张的一部分）。**（a）守卫退位依赖宿主自愈确实存在——一个自称 `>= 0.15.0` 却丢失合并助手的宿主
-会让 MPD 面板不在启用清单里，而只观察腰带的那一行就是该症状的可见线索。（b）授权流的活跃度数字（每次操作重读、
+会让 MPD 面板不在启用清单里，而只观察腰带的那一行就是该症状的可见线索。陈旧默认值例外自带一条已言明的边界：
+在默认值与宿主当前默认不同的宿主上，**故意**把清单配置成恰好那条已知陈旧列表的用户，与陈旧钉定无法区分，
+会被迁移一次——与 T1 既有的边界相同，现在经 tick 与腰带延伸到 0.15.0。（b）授权流的活跃度数字（每次操作重读、
 200 ms ×100 重试）是宿主的实测行为，不是本 bundle 的承诺；撤销语义同样属于宿主。（c）`PanelBar` 图标回归是
 **宿主**在 0.15.0 上的实测事实：将来某个宿主再次停画图标，也不会与本页任何 MPD 主张矛盾——每个描述符仍声明一个。
 （d）C6 的真机 PTY 目验是一次**点名的人工观察**（船长自己的会话即复现源）；回归重量由单元臂承担。

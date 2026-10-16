@@ -1,0 +1,9 @@
+63a9cf672ba8a1d78d8735aef1a5777a27b9771c754936b3c90d76d5050b80ac  2026-10-16T03:56:55Z  packages/mpd-tui-adapter-plugin/src/index.ts
+680acd5f4f9a069c37dd1a703cee338158fbdac96aa3ef01ea6126ed7bc80242  2026-10-16T03:56:55Z  packages/mpd-tui-adapter-plugin/test/panel-enable-migration.test.ts
+7cd9fab9514e065ae8e4d268dad3a1fb391177909fb1c6fe9ce86d2dd82f5e2f  2026-10-16T03:56:55Z  packages/mpd-tui-adapter-plugin/dist/index.js
+1b1634e675f1a4094c63b356d4b3d76ce6064a3745daac280c9b89f5864de7d2  2026-10-16T03:56:55Z  packages/mpd-tui-plugin/dist/index.js
+543d928da8f2fe17a38d5d2a6265972a31ee5392d4cba72854b69ad5accbfc6e  2026-10-16T03:56:55Z  scripts/mpd-tui-panels.ts
+ab832fa3b1448377e7eaaa9b6641252958888f3ec252dd7612c37eb1b3bd863b  2026-10-16T03:56:55Z  docs/tui.md
+5873a1f1c5466d5ea768832493f833ef060083a29cf278f1074fedebdfcfa258  2026-10-16T03:56:55Z  docs/tui.zh-CN.md
+a9fb43da031af582f790c3c676da395d67bf5bd45aed65bfeac3f170b00da670  2026-10-16T03:56:55Z  packages/mpd-tui-plugin/README.md
+8da5ff012f31a772f28dd4009a9b77f940552a0ecbb3dcf3697760e40aa73777  2026-10-16T03:56:55Z  packages/mpd-tui-plugin/README.zh-CN.md
