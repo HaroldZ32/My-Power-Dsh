@@ -130,10 +130,18 @@ Two INDEPENDENT routes now hold the list:
   the loop because it contains our ids. **Since 0.15.0 the keeper STANDS DOWN on self-healing hosts
   (C2)**: from that release the host unions registered ids back into the enable CSV itself and records
   explicit `/settings` removals session-wide, so the keeper detects the host version (the adapter's
-  `readHostPackageVersion`, stamped on the same probe answer) and on `>= 0.15.0` it writes NOTHING —
-  no feed, no ladder, no repair that could race the host's own union or undo a removal you asked for;
-  one log line says so, and an observe-only belt watches the FIRST host apply to report whether our ids
-  survived it. An empty, unparseable or older version keeps the feed-first behaviour above unchanged. The ids it discovered are recorded to
+  `readHostPackageVersion`, stamped on the same probe answer) and on `>= 0.15.0` it writes nothing but
+  the ONE exception below — no feed, no ladder, no repair that could race the host's own union or undo
+  a removal you asked for; one log line says so, and an observe-only belt watches every host apply to
+  report whether our ids survived it. **The ONE exception (2026-10-16,
+  `fix/sidebar-015-keeper-migration`)**: the host's union heals only REGISTERED PLUGIN ids, so the
+  stale-default migration still runs BEFORE the stand-down — when the list with our ids removed is
+  EXACTLY the known stale default (`todo,jobs,agents`) and the host's current default is readable and
+  differs, the keeper migrates it to the host's default ∪ our ids and THEN stands down, and the belt
+  re-migrates any mid-session event that re-presents the stale pin. Every other list — a deliberate
+  custom one, the current default, an unreadable host default, an empty registration set — is never
+  written on these hosts. An empty, unparseable or older version keeps the feed-first behaviour above
+  unchanged. The ids it discovered are recorded to
   `<workspace>/.mpd/logs/mpd-tui-panels.json`, because no source constant can
   know them — **and the record now carries PROVENANCE** (`{hostRoot, hostVersion, readBack,
   activation}`, record schema version 2): a unit test run had driven the real recorder with the
@@ -158,10 +166,18 @@ Two INDEPENDENT routes now hold the list:
 * **Durable, one command** — `node scripts/mpd-tui-panels.ts` writes `dsh-tui.sidePanel.panels` into the
   profile's own patch file, which IS the host's settings user layer: `dsh-config-editor` answers
   `documentPath` from `profileContext.patchPath`, and `dsh-app-boot` builds that as
-  `<profileDir>/cordis.patch.yml`. The script reads BOTH installed sources and REFUSES to write when it
-  cannot prove the path. It is a DRY RUN by default, prints the exact leaf it would change, supports
-  `--apply`, keeps a `.bak` copy, and adds only the ids the list is missing. Use it when a settings layer
-  arrives too late for the bounded keeper to see, or when you want the choice to persist across restarts.
+  `<profileDir>/cordis.patch.yml` — AND (since the 2026-10-16 amendment) into `~/.dsh-tui/settings.json`'s
+  `values.sidePanel.panels`, the layer dsh-tui 0.15.0 reads FIRST (effective list
+  `values.sidePanel?.panels ?? config.sidePanel?.panels`, so the settings document SHADOWS the patch;
+  `--tui-settings <path>` points it at a fixture, an absent document keeps the run patch-only). The
+  SAME computed list — one shared merge seeded from the effective value — lands in BOTH layers with
+  every guard unchanged, and the settings document is rewritten as JSON (2-space indent, trailing
+  newline) preserving every other key including the one-time-import `imported` marker. The script reads
+  BOTH installed sources and REFUSES to write when it cannot prove the path. It is a DRY RUN by
+  default, prints both layers it would change, supports
+  `--apply`, keeps a `.bak` copy per layer, and adds only the ids the list is missing. Use it when a
+  settings layer arrives too late for the bounded keeper to see, or when you want the choice to persist
+  across restarts.
 
 With both switches in place, `/panel <id>` switches to the page (`/panel toggle` / `focus` / `zoom` are the
 other forms) and `Alt+Z` zooms it. Measured WITHOUT them: the bar reads `│ ‹ 待办 › ▸ ◆` and the host's

@@ -1,0 +1,79 @@
+{
+  "wave": "fix/sidebar-015-keeper-migration — R2 CodeRabbit repair round",
+  "contract": ".mpd/plans/fix-sidebar-015-keeper-migration.md (R2 section)",
+  "captainReadHeadStart": {
+    "head": "47bd0c807c1501d278ace96cf017299ef8ceb4ab",
+    "readAtUtc": "2026-10-16T05:54:33Z"
+  },
+  "head": "47bd0c807c1501d278ace96cf017299ef8ceb4ab",
+  "writer": "Senior Engineer (delegated writer; no git write commands run)",
+  "findings": [
+    {
+      "id": "R2.1",
+      "severity": "Major",
+      "verifiedAgainstCurrentCode": true,
+      "change": "packages/mpd-tui-adapter-plugin/src/index.ts runTick: the loadPrefs().then fulfilled callback body is now contained in try/catch; any throw from the side-panel read, the migration write or the post-write read settles 'refused' with 'the migration decision path threw: <message>' instead of rejecting the promise .then returned (the rejection handler covers loadPrefs only).",
+      "test": "panel-enable-migration.test.ts — '(R2.1) a store whose apply throws settles a recorded refusal — zero unhandled rejections' (process.on('unhandledRejection') collector asserted empty)."
+    },
+    {
+      "id": "R2.2",
+      "severity": "Major",
+      "verifiedAgainstCurrentCode": true,
+      "change": "New latched 'stopped' flag set in stop() before the releases; checked at the top of the runTick fulfilled callback (no migration, no belt install, no decide from a probe that resolved after stop()), at the top of decide() (feed events a host's missing unsubscribe leaves attached), and at the top of the belt listener.",
+      "test": "panel-enable-migration.test.ts — '(R2.2) a loadPrefs() resolving AFTER stop() neither migrates nor installs the belt' (manual-promise probe) and '(R2.2) a belt the host never gave an unsubscribe for stays silent after stop()' (store whose subscribe returns undefined)."
+    },
+    {
+      "id": "R2.3",
+      "severity": "Major",
+      "verifiedAgainstCurrentCode": true,
+      "change": "migrateStaleDefaultOnSelfHealer now returns PanelSelfHealMigration ('migrated' | 'refused' | 'none'); standDownToHostUnion takes the verdict and settles 'refused' (message: standing down … but the stale-default migration write was refused, so the stale list remains; the belt re-evaluates on the host's next apply) instead of 'confirmed'. The 'migrated'/'none' settle line is byte-identical to pre-R2.",
+      "test": "panel-enable-migration.test.ts — '(R2.3) a host that drops the migration write settles REFUSED, never confirmed' (store that records the apply but keeps the stale pin; also asserts the belt re-attempt and its refusal log line)."
+    },
+    {
+      "id": "R2.4",
+      "severity": "Minor",
+      "verifiedAgainstCurrentCode": true,
+      "change": "scripts/mpd-tui-panels.ts: new tuiSettingsOperand() refuses a missing or dash-prefixed --tui-settings operand with a named error carried on Options.argRefusal; main() prints 'REFUSED: …' and exits 1 before anything is read or written. A valid operand passes through unchanged.",
+      "test": "self-test arms '(R2.4) --tui-settings --apply is refused by name', '(R2.4) a trailing --tui-settings is refused by name', '(R2.4) a valid operand is carried through unchanged', '(R2.4) the trailing flag refuses the run itself (exit 1)'."
+    },
+    {
+      "id": "R2.5",
+      "severity": "Minor",
+      "verifiedAgainstCurrentCode": true,
+      "change": "scripts/mpd-tui-panels.ts: the patch-layer write (backup copy, staged write, rename, read-back) is contained in try/catch; a read-back mismatch OR a thrown copy/stage/rename goes through refusePatchWrite(), which names BOTH layers' backups in the one refusal and restores the settings backup automatically (best-effort, failure named). With no settings write this run the refusal message is byte-identical to pre-R2.",
+      "test": "self-test arms '(R2.5) a patch write that fails after a settings write REFUSES (exit 1)', '(R2.5) the settings layer is restored BYTE-IDENTICAL', '(R2.5) the refusal names BOTH layers' backups' — end-to-end main() over a scratch profile; the read-back mismatch is forced deterministically by an --ids operand with an embedded newline (the one-line leaf cannot round-trip it)."
+    }
+  ],
+  "preR2BehaviourPreserved": "The 'confirmed' stand-down settle line, the settings-layer read-back refusal, the loadPrefs rejection handler, and every pre-0.15.0 path are unchanged; existing arms (a)-(g) and all pre-0.15.0 arms pass unmodified.",
+  "rebuild": [
+    ".toolchain/node_modules/.bin/bun build packages/mpd-tui-adapter-plugin/src/index.ts --target node --format esm --outfile packages/mpd-tui-adapter-plugin/dist/index.js (bun 1.4.0, repo root)",
+    ".toolchain/node_modules/.bin/bun build packages/mpd-tui-plugin/src/index.ts --target node --format esm --outfile packages/mpd-tui-plugin/dist/index.js (bun 1.4.0, repo root; the only package whose src imports the adapter)"
+  ],
+  "gates": [
+    { "command": "bun test (packages/mpd-tui-adapter-plugin)", "exit": 0, "observed": "85 pass, 0 fail, 397 expect() calls" },
+    { "command": "bun test (packages/mpd-tui-plugin)", "exit": 0, "observed": "486 pass, 0 fail, 13498 expect() calls" },
+    { "command": "node scripts/mpd-tui-panels.ts --self-test", "exit": 0, "observed": "SELF-TEST PASS (all arms held), incl. 4 R2.4 arms and 3 R2.5 arms" },
+    { "command": "bun run typecheck", "exit": 0, "observed": "tsgo --noEmit, clean" },
+    { "command": "bun run verify:comments", "exit": 0, "observed": "VERDICT: PASS — 404 files, 35930 declarations" },
+    { "command": "node scripts/verify-dist-fresh.ts", "exit": 0, "observed": "ok: 31/31 targets fresh (bun 1.4.0 from the repository toolchain)" },
+    { "command": "bun run verify:docs", "exit": 0, "observed": "pairs=47 failed=0 violations=0 links=436 dead=0 — PASS" }
+  ],
+  "hashes": {
+    "discipline": "hash -> work -> re-hash over a 55 s settle window; start == end",
+    "firstReadUtc": "2026-10-16T06:06:27Z",
+    "secondReadUtc": "2026-10-16T06:07:22Z",
+    "settled": true,
+    "files": {
+      "packages/mpd-tui-adapter-plugin/src/index.ts": "895a7fff04a5aa2768b6daf55e06d728f3ba8a4a15b6fc2bb99249e7f17e6ef0",
+      "packages/mpd-tui-adapter-plugin/test/panel-enable-migration.test.ts": "e7a5052a13c9cfe3248eaaee591663da50fed166e92bf6adb8d03485c75a7c5d",
+      "packages/mpd-tui-adapter-plugin/dist/index.js": "374860024d2eeb531a59c8aa4736ffe1806d19f4c79651a07f34860af60a3862",
+      "packages/mpd-tui-plugin/dist/index.js": "9380671bbc99d6f31b5241403d9c8c31fbf1700ca185c952b49316061354aaf9",
+      "scripts/mpd-tui-panels.ts": "93cd6eed191caecfd617014109a7c99e125684dcef3f5d1fdf3fc50b0dbd9a49"
+    }
+  },
+  "notProven": [
+    "The R2.5 read-back-mismatch arm forces the mismatch with a synthetic newline id; a NATURAL mid-write FS anomaly (inode race) was not reproduced — the thrown-copy/rename branch shares the same refusePatchWrite path but is not separately armed.",
+    "No live boot against the real host was run this round (not in the R2 gate list); the arms drive the keeper through its public surface with staged stores."
+  ],
+  "outputLog": "output.log (same directory)"
+}

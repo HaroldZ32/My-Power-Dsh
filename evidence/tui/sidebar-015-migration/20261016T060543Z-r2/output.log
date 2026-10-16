@@ -1,0 +1,234 @@
+=== R2 repair evidence — fix/sidebar-015-keeper-migration ===
+started: 2026-10-16T06:05:52Z  HEAD=47bd0c807c1501d278ace96cf017299ef8ceb4ab
+
+### bun test — packages/mpd-tui-adapter-plugin
+bun test v1.4.2 (744846f84)
+
+test/panel-enable-migration.test.ts:
+(pass) T1 · the stale-default predicate, as a pure decision > the known stale default is exactly the 0.13.0 list, normalized [0.02ms]
+(pass) T1 · the stale-default predicate, as a pure decision > a known stale residue DIFFERING from the host's default is the migration's trigger [0.02ms]
+(pass) T1 · the stale-default predicate, as a pure decision > the SAME list as the host's current default is NOT a trigger — a 0.13.0 host is unchanged
+(pass) T1 · the stale-default predicate, as a pure decision > an unreadable or empty host default leaves the migration INERT, never a wildcard
+(pass) T1 · the stale-default predicate, as a pure decision > only a KNOWN stale list triggers: a custom list and an empty residue never do [0.01ms]
+(pass) T1 · the merge: the migration target is the host's default ∪ our ids > the stale pin migrates, in the host's order, with our ids appended in registration order [0.26ms]
+(pass) T1 · the merge: the migration target is the host's default ∪ our ids > the pin WITH our ids already in it migrates to the same target, not to a doubled list [0.03ms]
+(pass) T1 · the merge: the migration target is the host's default ∪ our ids > a provably-dead id of ours is part of the residue removal and does not block the migration [0.02ms]
+(pass) T1 · the merge: the migration target is the host's default ∪ our ids > a custom list keeps its exact order and contents, and only ever gains our ids [0.02ms]
+(pass) T1 · the merge: the migration target is the host's default ∪ our ids > a custom list that already names us is never migrated, and its order is untouched [0.02ms]
+(pass) T1 · the merge: the migration target is the host's default ∪ our ids > an UNREADABLE host default writes the old target — `kept ∪ added`, exactly as before [0.02ms]
+(pass) T1 · the merge: the migration target is the host's default ∪ our ids > with NOTHING registered the migration does not open a write path of its own [0.01ms]
+(pass) T1 · the host's default is READ from the host module, never hardcoded > a staged host's own DEFAULT_SIDE_PANEL_IDS comes back normalized, in the host's order [0.93ms]
+(pass) T1 · the host's default is READ from the host module, never hardcoded > a host that exports no default still BINDS the store, with the migration field ABSENT [0.28ms]
+(pass) T1 · the host's default is READ from the host module, never hardcoded > a non-string, or empty, default export is unreadable rather than a wildcard [0.47ms]
+(pass) T1 · the host's default is READ from the host module, never hardcoded > against the INSTALLED host: the migration target is the host's own default, in its own order [5.12ms]
+(pass) T1 · the keeper migrates the stale pin on BOTH repair paths > the LADDER path migrates the pin, then repairs the mirror's rewrite, then stands down [0.72ms]
+(pass) T1 · the keeper migrates the stale pin on BOTH repair paths > the FEED path migrates at arm time and again when the mirror rewrites the stale pin [0.25ms]
+(pass) T1 · the keeper migrates the stale pin on BOTH repair paths > a DELIBERATE custom list is never rewritten, on the ladder or through the feed [0.13ms]
+(pass) T1 · the keeper migrates the stale pin on BOTH repair paths > the CURRENT default ∪ ours stands down untouched, and is not migrated [0.10ms]
+(pass) T1 · the keeper migrates the stale pin on BOTH repair paths > an UNREADABLE host default degrades INERT: one log line, and the old merge on the wire [0.16ms]
+(pass) T1 · the keeper migrates the stale pin on BOTH repair paths > a 0.13.0 host — whose own default IS the pin — keeps the pre-migration behaviour [0.09ms]
+(pass) C2 · the keeper stands down on a self-healing host (>= 0.15.0) > the version predicate: 0.15.0 and later self-heal; older, empty and unparseable versions do not [0.08ms]
+(pass) C2 · the keeper stands down on a self-healing host (>= 0.15.0) > (a) on a 0.15.0 host the keeper writes NOTHING: a mirror rewrite is not repaired, and the belt observes it once [0.35ms]
+(pass) C2 · the keeper stands down on a self-healing host (>= 0.15.0) > (a) an explicit /settings removal of BOTH panels STAYS removed on a 0.15.0 host — the belt reports the union keeping them, then silence [0.18ms]
+(pass) C2 · the keeper stands down on a self-healing host (>= 0.15.0) > (b) a 0.14.0 host keeps the legacy keeper byte-for-byte: the mirror rewrite IS repaired, version explicit [0.13ms]
+(pass) C2 · the keeper stands down on a self-healing host (>= 0.15.0) > (b) an ABSENT version — the pre-C2 probe shape — keeps the legacy keeper: no gate fires [0.09ms]
+(pass) S1 · the stale-default migration re-arms on a self-healing host > (a) a stale pin on 0.15.0: the LADDER tick migrates it to the host default ∪ ours, then stands down [0.16ms]
+(pass) S1 · the stale-default migration re-arms on a self-healing host > (b) a MID-SESSION feed event re-applying the stale pin: the belt re-migrates it [0.20ms]
+(pass) S1 · the stale-default migration re-arms on a self-healing host > (c) the CURRENT default ∪ ours: NO write on the tick or any belt event (C2 preserved) [0.18ms]
+(pass) S1 · the stale-default migration re-arms on a self-healing host > (d) a DELIBERATE custom list: NO write ever, on the tick or the belt [0.13ms]
+(pass) S1 · the stale-default migration re-arms on a self-healing host > (e) an UNREADABLE host default: inert, exactly ONE degrade line, and no write [0.12ms]
+(pass) S1 · the stale-default migration re-arms on a self-healing host > (f) a stale pin with NOTHING registered: the migration stays gated on registration [0.09ms]
+(pass) S1 · the stale-default migration re-arms on a self-healing host > (g) idempotence: after the belt's re-migration the next event writes NOTHING [0.15ms]
+(pass) R2 · the self-healer migration is contained, disposal-safe and honest > (R2.1) a store whose apply throws settles a recorded refusal — zero unhandled rejections [0.19ms]
+(pass) R2 · the self-healer migration is contained, disposal-safe and honest > (R2.2) a loadPrefs() resolving AFTER stop() neither migrates nor installs the belt [0.14ms]
+(pass) R2 · the self-healer migration is contained, disposal-safe and honest > (R2.2) a belt the host never gave an unsubscribe for stays silent after stop() [0.20ms]
+(pass) R2 · the self-healer migration is contained, disposal-safe and honest > (R2.3) a host that drops the migration write settles REFUSED, never confirmed [0.20ms]
+
+test/adapter-hosts.test.ts:
+(pass) host shape 1: reachable by ctx.get only (the mediated plugin host) > the probe binds the plugin host, and ONLY that seam [0.35ms]
+(pass) host shape 1: reachable by ctx.get only (the mediated plugin host) > a probe that answers is NOT a binding channel when the ctx cannot inject [0.04ms]
+(pass) host shape 2: reachable only inside the deferred inject callback > one inject per seam, never a batch [0.21ms]
+(pass) host shape 2: reachable only inside the deferred inject callback > a registration made BEFORE the seam binds is queued and drained at the bind [0.12ms]
+(pass) host shape 2: reachable only inside the deferred inject callback > every host handle goes to the injected scope's effect, and the cleanup clears the status key [0.26ms]
+(pass) host shape 3: absent (a web or headless composition) > nothing binds, nothing throws, and exactly ONE aggregate warning is printed [0.26ms]
+(pass) host shape 3: absent (a web or headless composition) > a composition with ONE seam reports the info line instead, never the warning [0.20ms]
+(pass) resolution and diagnostics > resolveTuiAdapter prefers the mounted service and falls back to a row-private adapter [0.15ms]
+(pass) resolution and diagnostics > a broken ctx.get never escapes resolveTuiAdapter [0.10ms]
+(pass) resolution and diagnostics > createLazyTuiAdapter warns exactly once per row [0.24ms]
+(pass) resolution and diagnostics > describeOutcome renders the vocabulary consumers already read [0.02ms]
+(pass) resolution and diagnostics > the file sink appends under .mpd/logs and caps its own size [0.58ms]
+(pass) host contact resolver > a host install carrying useStdin resolves, and the hook is the module's own [0.40ms]
+(pass) host contact resolver > a candidate without lib/types/ui.js is skipped, and no candidate at all reports one reason [0.11ms]
+(pass) host contact resolver > a version-skew host (no useStdin export) and a module that throws both degrade to undefined [0.47ms]
+(pass) host contact resolver > a pinned root is exclusive, and without a pin every installed profile is probed [0.37ms]
+(pass) host contact on the adapter > an injected contact is reported bound and wakes a subscriber immediately [0.09ms]
+(pass) host contact on the adapter > an adapter that did not probe reports absent, and a subscriber still answers once [0.04ms]
+(pass) host contact on the adapter > a probe against a staged install binds the contact and writes ONE line [0.36ms]
+(pass) host contact on the adapter > a probe with no reachable host degrades to absent with ONE line and no throw [0.09ms]
+(pass) host contact on the adapter > a subscriber registered while the probe is pending runs at the settle [0.24ms]
+(pass) live stdin context classification > a value carrying internal_querier is the LIVE provider's and yields its bus [0.05ms]
+(pass) live stdin context classification > the context DEFAULT is refused with ONE reason, never attached to
+(pass) live stdin context classification > a missing marker, a dead shape, a throwing read and a nullish value are all refusals [0.04ms]
+(pass) the status identity rule and the remembered host kit > a status registration carries the CALLING ACTIVATION, never the consumer's ctx [0.18ms]
+(pass) the status identity rule and the remembered host kit > a remembered kit is preferred over the probed module, and the capability names the source [0.13ms]
+(pass) the status identity rule and the remembered host kit > a kit without a callable useStdin is refused, and the previous contact stands [0.01ms]
+(pass) the status identity rule and the remembered host kit > a kit arriving AFTER the probe settled wakes a waiting subscriber exactly once [37.77ms]
+(pass) rich status view registration > a bound status service registers the view and reports it as requested [0.12ms]
+(pass) rich status view registration > a host refusal (undefined) and a host without registerView are both reported refused [0.05ms]
+(pass) the panels seam > a registration the host accepts is CONFIRMED with the id read back from its own list() [0.18ms]
+(pass) the panels seam > a REFUSED registration is refused, not 'requested' (the host returns undefined and adds no id) [0.04ms]
+(pass) the panels seam > a host with no list() read-back is honestly 'requested' — never claimed as registered [0.02ms]
+(pass) the panels seam > a seam-less host degrades: absent, no id, and opening reports absent rather than refused [0.06ms]
+(pass) the panels seam > a bound seam WITHOUT open() answers false, so the caller can fall back instead of waiting [0.05ms]
+(pass) the panels seam > an accepted open is confirmed; a refused one is refused with the rate-limit/no-consumer reason [0.04ms]
+(pass) the panel-id record's provenance (a record the remedy can trust) > REFUSES a record that cannot name the installed host package [0.06ms]
+(pass) the panel-id record's provenance (a record the remedy can trust) > REFUSES a record whose ids did not come from a host read-back
+(pass) the panel-id record's provenance (a record the remedy can trust) > REFUSES `act0` — the ONE activation the installed host cannot compose, with the measured reason [0.02ms]
+(pass) the panel-id record's provenance (a record the remedy can trust) > NEGATIVE CONTROL: a read-back id from a named host is ACCEPTED, and carries all four facts
+(pass) the panel-id record's provenance (a record the remedy can trust) > the INSTALLED host's own version is readable — the provenance is a measurement, not a literal [0.24ms]
+(pass) the panel-id record's bounded history (the prune's ownership evidence) > panelHistoryAfter folds the previous boot's ids in, drops the live ones, and keeps the NEWEST [0.13ms]
+(pass) the panel-id record's bounded history (the prune's ownership evidence) > readPanelIdRecordPast answers the record's history PLUS its current ids, shape-filtered and deduped [0.25ms]
+(pass) the panel-id record's bounded history (the prune's ownership evidence) > a record the provenance rules REFUSE contributes no past at all — and a missing one is not an error [0.19ms]
+
+test/no-direct-tui-access.test.ts:
+NO-DIRECT-TUI-ACCESS — D6 static gate for the DSH-TUI plane (.mpd/plans/mpd-seam-convergence.md A2.2)
+band: packages/mpd-*/src/**/*.ts, minus packages/mpd-tui-adapter-plugin (the ONE sanctioned route)
+scanned: 28 package(s), 143 .ts file(s)
+declared out-of-band: every non-.ts file under a scanned src/ (currently the .gitkeep placeholders) — printed, never failed
+RESULT: PASS (0 findings)
+NO-DIRECT-TUI-ACCESS — D6 static gate for the DSH-TUI plane (.mpd/plans/mpd-seam-convergence.md A2.2)
+band: packages/mpd-*/src/**/*.ts, minus packages/mpd-tui-adapter-plugin (the ONE sanctioned route)
+scanned: 28 package(s), 143 .ts file(s)
+declared out-of-band: every non-.ts file under a scanned src/ (currently the .gitkeep placeholders) — printed, never failed
+RESULT: PASS (0 findings)
+(pass) no direct DSH-TUI seam access outside the TUI adapter (A2.2) [808.61ms]
+SELF-TEST — no-direct-tui-access (negative control over a seeded fixture tree)
+  ok   the seeded band yields exactly the five seeded violations
+  ok   the comment-only mention is not a finding
+  ok   the aliased receiver is caught (an alias is not a different seam)
+  ok   the string forms are caught (get / inject / serviceOf)
+  ok   the adapter package is excluded by identity
+  ok   the non-.ts fixture file is reported out of band, never as a finding
+  ok   the scan covers the adapter package's siblings
+SELF-TEST: PASS (7/7 checks)
+(pass) the gate reddens on a seeded violation (negative control) [0.74ms]
+(pass) the forbidden list tracks the adapter's seam table [0.09ms]
+
+ 85 pass
+ 0 fail
+ 397 expect() calls
+Ran 85 tests across 3 files. [1.71s]
+[exit: 0]
+
+### bun test — packages/mpd-tui-plugin
+(pass) T2 · the panel body names both sections and draws a rule between them > a host section that renders only its EMPTY STATE is still named and still separated [0.11ms]
+
+ 486 pass
+ 0 fail
+ 13498 expect() calls
+Ran 486 tests across 20 files. [8.18s]
+[exit: 0]
+
+### node scripts/mpd-tui-panels.ts --self-test
+  ok   (a) the merge appends in order without touching the user's tokens
+  ok   (a) a second pass is a no-op
+  ok   (a) the merge never drops an unknown id the user added
+  ok   (a) duplicates collapse the way the host collapses them
+  ok   (a) D1 our STALE act ids are pruned and the current ones take their place
+  ok   (a) D1 the prune is REPORTED, not silent
+  ok   (a) D3 every one of the eight builtins survives
+  ok   (a) D3 a FOREIGN id shaped like an act id is never dropped
+  ok   (a) D1 a prune with nothing to append still changes the list
+  ok   (a) an ABSENT leaf is seeded from the host's own default, so every builtin survives
+  ok   (a) NEGATIVE CONTROL: a SEEDLESS absent leaf drops the builtins — the hazard the seed removes
+  ok   (a) a leaf naming NONE of the builtins is left BYTE-FOR-BYTE by the automatic path
+  ok   (a) so the merge writes nothing at all for it (a deliberate removal is respected)
+  ok   (a) --restore-builtins puts the whole default back AHEAD of the leaf's own tokens
+  ok   (a) --restore-builtins on a HEALTHY list is a no-op that restores nothing
+  ok   (a) --restore-builtins completes a PARTIAL selection, in the host's own order
+  ok   (a) --restore-builtins REFUSES when the host default cannot be read
+  ok   (a) all EIGHT builtins survive every path (absent leaf, explicit restore, healthy list)
+  ok   (a) a FULLY repaired list (all eight + ours) is a NO-OP, not a rewrite
+  ok   (a) and its AUTOMATIC SEED is that same list untouched — nothing is restored
+  ok   (a) CONTROL: a PARTIAL builtin selection is a position and is left byte-for-byte
+  ok   (a) CONTROL: with no readable host default an ABSENT leaf REFUSES rather than seeding empty
+  ok   (a) an EXISTING leaf is still usable when the host default cannot be read
+  ok   (a) D1 the document reader answers the leaf the merge consumes
+  ok   (a) D1 the READ-BACK of an edited document equals the CSV that was written
+  ok   (a) D1 the read-back names its own failure on an unedited document
+  ok   (R1.1) a LIVE foreign `act9:team` beside our `act7:team` is never pruned
+  ok   (R1.1) a never-ours act-shaped token is never pruned
+  ok   (R1.2) our DEAD recorded ids are pruned and the live one takes their place
+  ok   (R1.2) the prune is REPORTED, not silent
+  ok   (R1.6) the reader skips another section's earlier `panels:` leaf
+  ok   (R1.6) ... so a missing current id is NOT reported as already enabled
+  ok   (R1.6) the write lands in the real leaf and the READ-BACK agrees
+  ok   (R1.6) a LATER section's `panels:` leaf is not read either
+  ok   (b) the leaf is inserted under the existing section
+  ok   (b) every other line survives
+  ok   (c) a repeated edit is idempotent
+  ok   (c) the previous CSV is reported
+  ok   (b) a missing section is created beside config
+  ok   (negative) an absent row is refused, not invented
+  ok   (d) the installed host patch declares rows at all
+  ok   (d) the installed host patch declares dsh-tui with a config block
+  ok   (d) the restated block carries the host's own keys, not a guess
+  ok   (e) the proof names the installed sources
+  ok   (e) the proof predicts a file INSIDE the profile directory
+  ok   (e) NEGATIVE CONTROL: an unreadable source makes the proof fail
+  ok   (e) NEGATIVE CONTROL: the refusal names the file it could not read
+  ok   (e) the predicted document is the file the profile template creates
+  ok   (f) the MEASURED version-1 record with NO provenance is refused
+  ok   (f) a blank `provenance.hostVersion` is refused by name
+  ok   (f) a blank `provenance.hostRoot` is refused by name
+  ok   (f) an empty `provenance.readBack` is refused by name
+  ok   (f) the impossible `act0` activation is refused by name
+  ok   (f) a well-formed version-2 record IS accepted
+  ok   (R1.2) a version-3 record hands BOTH its history and its current ids to the prune
+  ok   (R1.2) a version-2 record (no history) still offers its own ids as past
+  ok   (R1.2) the MEASURED polluted record contributes NO past at all
+  ok   (R1.2) a blank `hostVersion` contributes no past either
+  ok   (g) a settings document without a sidePanel block reads as ABSENT
+  ok   (g) writing an ABSENT document creates the nested key and keeps the sibling
+  ok   (g) a PRESENT stale pin is read back as the shadowing value
+  ok   (g) the repair replaces the stale pin in the settings layer
+  ok   (g) the `imported` marker SURVIVES the repair, so the host never re-imports over it
+  ok   (g) a CUSTOM list is read as the shadowing value
+  ok   (g) a CUSTOM list keeps its tokens through the layer's repair
+  ok   (g) the write emits a trailing newline and a 2-space indent
+  ok   (g) re-writing the written document with the same value is a BYTE-FOR-BYTE no-op
+  ok   (g) NEGATIVE CONTROL: an unparseable document is refused by the reader
+  ok   (g) NEGATIVE CONTROL: an unparseable document is refused by the writer
+  ok   (R2.4) `--tui-settings --apply` is refused by name
+  ok   (R2.4) a trailing `--tui-settings` is refused by name
+  ok   (R2.4) a valid operand is carried through unchanged
+  ok   (R2.4) the trailing flag refuses the run itself (exit 1)
+  ok   (R2.5) a patch write that fails after a settings write REFUSES (exit 1)
+  ok   (R2.5) the settings layer is restored BYTE-IDENTICAL
+  ok   (R2.5) the refusal names BOTH layers' backups
+[mpd-tui-panels] SELF-TEST PASS (all arms held)
+[exit: 0]
+
+### bun run typecheck
+$ tsgo --noEmit
+[exit: 0]
+
+### bun run verify:comments
+scanned 404 TypeScript file(s) of 404 in the source set; inspected 35930 declaration(s); skipped 16340 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+[exit: 0]
+
+### node scripts/verify-dist-fresh.ts
+[verify-dist-fresh] build toolchain: bun 1.4.0 from the repository toolchain (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun) · recorded buildToolchain bun@1.4.0
+[verify-dist-fresh] NOT COVERED (1) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+[verify-dist-fresh] ok: 31/31 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 622ms
+[exit: 0]
+
+### bun run verify:docs
+
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=47 failed=0 violations=0 exempt=24 derived=3 links=436 dead=0 — PASS
+[exit: 0]
+
+finished: 2026-10-16T06:06:05Z

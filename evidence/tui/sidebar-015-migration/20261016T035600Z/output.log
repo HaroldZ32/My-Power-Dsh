@@ -1,0 +1,887 @@
+[evidence] dir: evidence/tui/sidebar-015-migration/20261016T035600Z
+[hashes] first read 2026-10-16T03:56:00Z
+63a9cf672ba8a1d78d8735aef1a5777a27b9771c754936b3c90d76d5050b80ac  2026-10-16T03:56:00Z  packages/mpd-tui-adapter-plugin/src/index.ts
+680acd5f4f9a069c37dd1a703cee338158fbdac96aa3ef01ea6126ed7bc80242  2026-10-16T03:56:00Z  packages/mpd-tui-adapter-plugin/test/panel-enable-migration.test.ts
+7cd9fab9514e065ae8e4d268dad3a1fb391177909fb1c6fe9ce86d2dd82f5e2f  2026-10-16T03:56:00Z  packages/mpd-tui-adapter-plugin/dist/index.js
+1b1634e675f1a4094c63b356d4b3d76ce6064a3745daac280c9b89f5864de7d2  2026-10-16T03:56:00Z  packages/mpd-tui-plugin/dist/index.js
+543d928da8f2fe17a38d5d2a6265972a31ee5392d4cba72854b69ad5accbfc6e  2026-10-16T03:56:00Z  scripts/mpd-tui-panels.ts
+ab832fa3b1448377e7eaaa9b6641252958888f3ec252dd7612c37eb1b3bd863b  2026-10-16T03:56:00Z  docs/tui.md
+5873a1f1c5466d5ea768832493f833ef060083a29cf278f1074fedebdfcfa258  2026-10-16T03:56:00Z  docs/tui.zh-CN.md
+a9fb43da031af582f790c3c676da395d67bf5bd45aed65bfeac3f170b00da670  2026-10-16T03:56:00Z  packages/mpd-tui-plugin/README.md
+8da5ff012f31a772f28dd4009a9b77f940552a0ecbb3dcf3697760e40aa73777  2026-10-16T03:56:00Z  packages/mpd-tui-plugin/README.zh-CN.md
+[settle] sleeping 55s for the settle window
+[hashes] settle re-read 2026-10-16T03:56:55Z
+[settle] OK: all hashes unchanged after the 55s window
+63a9cf672ba8a1d78d8735aef1a5777a27b9771c754936b3c90d76d5050b80ac  2026-10-16T03:56:55Z  packages/mpd-tui-adapter-plugin/src/index.ts
+680acd5f4f9a069c37dd1a703cee338158fbdac96aa3ef01ea6126ed7bc80242  2026-10-16T03:56:55Z  packages/mpd-tui-adapter-plugin/test/panel-enable-migration.test.ts
+7cd9fab9514e065ae8e4d268dad3a1fb391177909fb1c6fe9ce86d2dd82f5e2f  2026-10-16T03:56:55Z  packages/mpd-tui-adapter-plugin/dist/index.js
+1b1634e675f1a4094c63b356d4b3d76ce6064a3745daac280c9b89f5864de7d2  2026-10-16T03:56:55Z  packages/mpd-tui-plugin/dist/index.js
+543d928da8f2fe17a38d5d2a6265972a31ee5392d4cba72854b69ad5accbfc6e  2026-10-16T03:56:55Z  scripts/mpd-tui-panels.ts
+ab832fa3b1448377e7eaaa9b6641252958888f3ec252dd7612c37eb1b3bd863b  2026-10-16T03:56:55Z  docs/tui.md
+5873a1f1c5466d5ea768832493f833ef060083a29cf278f1074fedebdfcfa258  2026-10-16T03:56:55Z  docs/tui.zh-CN.md
+a9fb43da031af582f790c3c676da395d67bf5bd45aed65bfeac3f170b00da670  2026-10-16T03:56:55Z  packages/mpd-tui-plugin/README.md
+8da5ff012f31a772f28dd4009a9b77f940552a0ecbb3dcf3697760e40aa73777  2026-10-16T03:56:55Z  packages/mpd-tui-plugin/README.zh-CN.md
+
+[gate] bun test packages/mpd-tui-adapter-plugin (pinned bun)
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-tui-adapter-plugin/test/panel-enable-migration.test.ts:
+(pass) T1 · the stale-default predicate, as a pure decision > the known stale default is exactly the 0.13.0 list, normalized [0.03ms]
+(pass) T1 · the stale-default predicate, as a pure decision > a known stale residue DIFFERING from the host's default is the migration's trigger [0.03ms]
+(pass) T1 · the stale-default predicate, as a pure decision > the SAME list as the host's current default is NOT a trigger — a 0.13.0 host is unchanged
+(pass) T1 · the stale-default predicate, as a pure decision > an unreadable or empty host default leaves the migration INERT, never a wildcard
+(pass) T1 · the stale-default predicate, as a pure decision > only a KNOWN stale list triggers: a custom list and an empty residue never do
+(pass) T1 · the merge: the migration target is the host's default ∪ our ids > the stale pin migrates, in the host's order, with our ids appended in registration order [0.23ms]
+(pass) T1 · the merge: the migration target is the host's default ∪ our ids > the pin WITH our ids already in it migrates to the same target, not to a doubled list [0.03ms]
+(pass) T1 · the merge: the migration target is the host's default ∪ our ids > a provably-dead id of ours is part of the residue removal and does not block the migration [0.02ms]
+(pass) T1 · the merge: the migration target is the host's default ∪ our ids > a custom list keeps its exact order and contents, and only ever gains our ids [0.02ms]
+(pass) T1 · the merge: the migration target is the host's default ∪ our ids > a custom list that already names us is never migrated, and its order is untouched [0.02ms]
+(pass) T1 · the merge: the migration target is the host's default ∪ our ids > an UNREADABLE host default writes the old target — `kept ∪ added`, exactly as before [0.01ms]
+(pass) T1 · the merge: the migration target is the host's default ∪ our ids > with NOTHING registered the migration does not open a write path of its own [0.02ms]
+(pass) T1 · the host's default is READ from the host module, never hardcoded > a staged host's own DEFAULT_SIDE_PANEL_IDS comes back normalized, in the host's order [1.39ms]
+(pass) T1 · the host's default is READ from the host module, never hardcoded > a host that exports no default still BINDS the store, with the migration field ABSENT [0.33ms]
+(pass) T1 · the host's default is READ from the host module, never hardcoded > a non-string, or empty, default export is unreadable rather than a wildcard [0.78ms]
+(pass) T1 · the host's default is READ from the host module, never hardcoded > against the INSTALLED host: the migration target is the host's own default, in its own order [8.44ms]
+(pass) T1 · the keeper migrates the stale pin on BOTH repair paths > the LADDER path migrates the pin, then repairs the mirror's rewrite, then stands down [0.77ms]
+(pass) T1 · the keeper migrates the stale pin on BOTH repair paths > the FEED path migrates at arm time and again when the mirror rewrites the stale pin [0.18ms]
+(pass) T1 · the keeper migrates the stale pin on BOTH repair paths > a DELIBERATE custom list is never rewritten, on the ladder or through the feed [0.12ms]
+(pass) T1 · the keeper migrates the stale pin on BOTH repair paths > the CURRENT default ∪ ours stands down untouched, and is not migrated [0.10ms]
+(pass) T1 · the keeper migrates the stale pin on BOTH repair paths > an UNREADABLE host default degrades INERT: one log line, and the old merge on the wire [0.17ms]
+(pass) T1 · the keeper migrates the stale pin on BOTH repair paths > a 0.13.0 host — whose own default IS the pin — keeps the pre-migration behaviour [0.08ms]
+(pass) C2 · the keeper stands down on a self-healing host (>= 0.15.0) > the version predicate: 0.15.0 and later self-heal; older, empty and unparseable versions do not [0.08ms]
+(pass) C2 · the keeper stands down on a self-healing host (>= 0.15.0) > (a) on a 0.15.0 host the keeper writes NOTHING: a mirror rewrite is not repaired, and the belt observes it once [0.31ms]
+(pass) C2 · the keeper stands down on a self-healing host (>= 0.15.0) > (a) an explicit /settings removal of BOTH panels STAYS removed on a 0.15.0 host — the belt reports the union keeping them, then silence [0.21ms]
+(pass) C2 · the keeper stands down on a self-healing host (>= 0.15.0) > (b) a 0.14.0 host keeps the legacy keeper byte-for-byte: the mirror rewrite IS repaired, version explicit [0.14ms]
+(pass) C2 · the keeper stands down on a self-healing host (>= 0.15.0) > (b) an ABSENT version — the pre-C2 probe shape — keeps the legacy keeper: no gate fires [0.10ms]
+(pass) S1 · the stale-default migration re-arms on a self-healing host > (a) a stale pin on 0.15.0: the LADDER tick migrates it to the host default ∪ ours, then stands down [0.15ms]
+(pass) S1 · the stale-default migration re-arms on a self-healing host > (b) a MID-SESSION feed event re-applying the stale pin: the belt re-migrates it [0.16ms]
+(pass) S1 · the stale-default migration re-arms on a self-healing host > (c) the CURRENT default ∪ ours: NO write on the tick or any belt event (C2 preserved) [0.14ms]
+(pass) S1 · the stale-default migration re-arms on a self-healing host > (d) a DELIBERATE custom list: NO write ever, on the tick or the belt [0.12ms]
+(pass) S1 · the stale-default migration re-arms on a self-healing host > (e) an UNREADABLE host default: inert, exactly ONE degrade line, and no write [0.12ms]
+(pass) S1 · the stale-default migration re-arms on a self-healing host > (f) a stale pin with NOTHING registered: the migration stays gated on registration [0.09ms]
+(pass) S1 · the stale-default migration re-arms on a self-healing host > (g) idempotence: after the belt's re-migration the next event writes NOTHING [0.16ms]
+
+packages/mpd-tui-adapter-plugin/test/adapter-hosts.test.ts:
+(pass) host shape 1: reachable by ctx.get only (the mediated plugin host) > the probe binds the plugin host, and ONLY that seam [0.40ms]
+(pass) host shape 1: reachable by ctx.get only (the mediated plugin host) > a probe that answers is NOT a binding channel when the ctx cannot inject [0.06ms]
+(pass) host shape 2: reachable only inside the deferred inject callback > one inject per seam, never a batch [0.28ms]
+(pass) host shape 2: reachable only inside the deferred inject callback > a registration made BEFORE the seam binds is queued and drained at the bind [0.16ms]
+(pass) host shape 2: reachable only inside the deferred inject callback > every host handle goes to the injected scope's effect, and the cleanup clears the status key [0.19ms]
+(pass) host shape 3: absent (a web or headless composition) > nothing binds, nothing throws, and exactly ONE aggregate warning is printed [0.15ms]
+(pass) host shape 3: absent (a web or headless composition) > a composition with ONE seam reports the info line instead, never the warning [0.12ms]
+(pass) resolution and diagnostics > resolveTuiAdapter prefers the mounted service and falls back to a row-private adapter [0.11ms]
+(pass) resolution and diagnostics > a broken ctx.get never escapes resolveTuiAdapter [0.07ms]
+(pass) resolution and diagnostics > createLazyTuiAdapter warns exactly once per row [0.14ms]
+(pass) resolution and diagnostics > describeOutcome renders the vocabulary consumers already read [0.02ms]
+(pass) resolution and diagnostics > the file sink appends under .mpd/logs and caps its own size [0.71ms]
+(pass) host contact resolver > a host install carrying useStdin resolves, and the hook is the module's own [0.56ms]
+(pass) host contact resolver > a candidate without lib/types/ui.js is skipped, and no candidate at all reports one reason [0.19ms]
+(pass) host contact resolver > a version-skew host (no useStdin export) and a module that throws both degrade to undefined [0.93ms]
+(pass) host contact resolver > a pinned root is exclusive, and without a pin every installed profile is probed [0.41ms]
+(pass) host contact on the adapter > an injected contact is reported bound and wakes a subscriber immediately [0.13ms]
+(pass) host contact on the adapter > an adapter that did not probe reports absent, and a subscriber still answers once [0.05ms]
+(pass) host contact on the adapter > a probe against a staged install binds the contact and writes ONE line [0.60ms]
+(pass) host contact on the adapter > a probe with no reachable host degrades to absent with ONE line and no throw [0.19ms]
+(pass) host contact on the adapter > a subscriber registered while the probe is pending runs at the settle [0.41ms]
+(pass) live stdin context classification > a value carrying internal_querier is the LIVE provider's and yields its bus [0.06ms]
+(pass) live stdin context classification > the context DEFAULT is refused with ONE reason, never attached to [0.02ms]
+(pass) live stdin context classification > a missing marker, a dead shape, a throwing read and a nullish value are all refusals [0.07ms]
+(pass) the status identity rule and the remembered host kit > a status registration carries the CALLING ACTIVATION, never the consumer's ctx [0.20ms]
+(pass) the status identity rule and the remembered host kit > a remembered kit is preferred over the probed module, and the capability names the source [0.16ms]
+(pass) the status identity rule and the remembered host kit > a kit without a callable useStdin is refused, and the previous contact stands [0.04ms]
+(pass) the status identity rule and the remembered host kit > a kit arriving AFTER the probe settled wakes a waiting subscriber exactly once [0.45ms]
+(pass) rich status view registration > a bound status service registers the view and reports it as requested [0.07ms]
+(pass) rich status view registration > a host refusal (undefined) and a host without registerView are both reported refused [0.09ms]
+(pass) the panels seam > a registration the host accepts is CONFIRMED with the id read back from its own list() [0.18ms]
+(pass) the panels seam > a REFUSED registration is refused, not 'requested' (the host returns undefined and adds no id) [0.06ms]
+(pass) the panels seam > a host with no list() read-back is honestly 'requested' — never claimed as registered [0.05ms]
+(pass) the panels seam > a seam-less host degrades: absent, no id, and opening reports absent rather than refused [0.06ms]
+(pass) the panels seam > a bound seam WITHOUT open() answers false, so the caller can fall back instead of waiting [0.06ms]
+(pass) the panels seam > an accepted open is confirmed; a refused one is refused with the rate-limit/no-consumer reason [0.08ms]
+(pass) the panel-id record's provenance (a record the remedy can trust) > REFUSES a record that cannot name the installed host package [0.06ms]
+(pass) the panel-id record's provenance (a record the remedy can trust) > REFUSES a record whose ids did not come from a host read-back [0.01ms]
+(pass) the panel-id record's provenance (a record the remedy can trust) > REFUSES `act0` — the ONE activation the installed host cannot compose, with the measured reason [0.03ms]
+(pass) the panel-id record's provenance (a record the remedy can trust) > NEGATIVE CONTROL: a read-back id from a named host is ACCEPTED, and carries all four facts [0.02ms]
+(pass) the panel-id record's provenance (a record the remedy can trust) > the INSTALLED host's own version is readable — the provenance is a measurement, not a literal [0.18ms]
+(pass) the panel-id record's bounded history (the prune's ownership evidence) > panelHistoryAfter folds the previous boot's ids in, drops the live ones, and keeps the NEWEST [0.17ms]
+(pass) the panel-id record's bounded history (the prune's ownership evidence) > readPanelIdRecordPast answers the record's history PLUS its current ids, shape-filtered and deduped [0.24ms]
+(pass) the panel-id record's bounded history (the prune's ownership evidence) > a record the provenance rules REFUSE contributes no past at all — and a missing one is not an error [0.23ms]
+
+packages/mpd-tui-adapter-plugin/test/no-direct-tui-access.test.ts:
+NO-DIRECT-TUI-ACCESS — D6 static gate for the DSH-TUI plane (.mpd/plans/mpd-seam-convergence.md A2.2)
+band: packages/mpd-*/src/**/*.ts, minus packages/mpd-tui-adapter-plugin (the ONE sanctioned route)
+scanned: 28 package(s), 143 .ts file(s)
+declared out-of-band: every non-.ts file under a scanned src/ (currently the .gitkeep placeholders) — printed, never failed
+RESULT: PASS (0 findings)
+NO-DIRECT-TUI-ACCESS — D6 static gate for the DSH-TUI plane (.mpd/plans/mpd-seam-convergence.md A2.2)
+band: packages/mpd-*/src/**/*.ts, minus packages/mpd-tui-adapter-plugin (the ONE sanctioned route)
+scanned: 28 package(s), 143 .ts file(s)
+declared out-of-band: every non-.ts file under a scanned src/ (currently the .gitkeep placeholders) — printed, never failed
+RESULT: PASS (0 findings)
+(pass) no direct DSH-TUI seam access outside the TUI adapter (A2.2) [770.99ms]
+SELF-TEST — no-direct-tui-access (negative control over a seeded fixture tree)
+  ok   the seeded band yields exactly the five seeded violations
+  ok   the comment-only mention is not a finding
+  ok   the aliased receiver is caught (an alias is not a different seam)
+  ok   the string forms are caught (get / inject / serviceOf)
+  ok   the adapter package is excluded by identity
+  ok   the non-.ts fixture file is reported out of band, never as a finding
+  ok   the scan covers the adapter package's siblings
+SELF-TEST: PASS (7/7 checks)
+(pass) the gate reddens on a seeded violation (negative control) [1.09ms]
+(pass) the forbidden list tracks the adapter's seam table [0.19ms]
+
+ 81 pass
+ 0 fail
+ 375 expect() calls
+Ran 81 tests across 3 files. [1.78s]
+[gate] bun test packages/mpd-tui-adapter-plugin (pinned bun) -> exit 0
+
+[gate] bun test packages/mpd-tui-plugin (pinned bun)
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-tui-plugin/test/state.test.ts:
+(pass) state projection > reads the newest team record, the task ledger, boulder, plans and workmates [1.32ms]
+(pass) state projection > a missing state tree degrades to empty sections without throwing [0.44ms]
+(pass) state projection > a team READOUT that throws is reported as a note, not as a crash [0.50ms]
+(pass) state projection > the status line is one bounded line [0.48ms]
+(pass) state projection > a status line with NO team carries NO scope mark: `team -` is a workspace fact, never another session's board [0.44ms]
+(pass) state projection > S-b THROUGH THE REAL SEAM: the published row names the workspace's team AND carries the scope mark [0.67ms]
+(pass) sanitizer > accepts scalars only and drops everything else [0.04ms]
+(pass) sanitizer > strips control characters and collapses whitespace [0.02ms]
+(pass) sanitizer > clamps by terminal cell, not by code-unit count [0.03ms]
+(pass) sanitizer > scalarLines bounds the line count and per-line width [0.39ms]
+(pass) transcript renderers > every declared type has a renderer and maps a payload to text rows [0.17ms]
+(pass) transcript renderers > renderers never throw and always emit strings, whatever the payload [0.31ms]
+(pass) transcript renderers > renderer output is clamped (a huge payload cannot flood the transcript) [0.07ms]
+(pass) log-only event registration > registerInto reports and mutates truthfully [0.04ms]
+(pass) log-only event registration > candidateAnchors is deduplicated and never empty [0.18ms]
+(pass) log-only event registration > appendBoardOpened refuses to write an unregistered type [0.10ms]
+(pass) log-only event registration > a throwing session.append is contained [0.03ms]
+(pass) logging > never writes to stdout and falls back to stderr only for info/warn [0.06ms]
+(pass) logging > the FILE sink is mirrored even when the host logger takes the line [0.04ms]
+(pass) logging > the debug gate opens for the FILE sink too when DSH_TUI_DEBUG is set [0.02ms]
+
+packages/mpd-tui-plugin/test/dag-fidelity.test.ts:
+(pass) R3/R5 · WEB parity of the six-state glyph and tone tables > the WEB reference still declares all six states on both tables (else every arm below is vacuous) [0.05ms]
+(pass) R3/R5 · WEB parity of the six-state glyph and tone tables > every glyph the TUI draws equals the WEB glyph for the same state [0.03ms]
+(pass) R3/R5 · WEB parity of the six-state glyph and tone tables > the six recorded WEB hexes are the WEB view's own hexes (provenance is not asserted, it is read) [0.04ms]
+(pass) R3/R5 · WEB parity of the six-state glyph and tone tables > R6: blocked and open really do share one glyph on BOTH surfaces, so the legend is the disambiguator [0.02ms]
+(pass) R3/R5 · WEB parity of the six-state glyph and tone tables > the tone table is total over the tone vocabulary, and the vocabulary is exactly eleven tones [0.02ms]
+(pass) R3/R5 · WEB parity of the six-state glyph and tone tables > the state vocabulary carries each of the six states once and leaks no drawing tone [0.11ms]
+(pass) R3/R5 · WEB parity of the six-state glyph and tone tables > R3: the ported kind abbreviations are the WEB view's own words for the same five kinds [0.03ms]
+(pass) R3/R5 · WEB parity of the six-state glyph and tone tables > R6: the legend's own vocabulary is unambiguous — the chrome markers are pairwise distinct [0.04ms]
+(pass) R3/R5 · WEB parity of the six-state glyph and tone tables > R4: the ported entry markers are the TUI's pre-existing ones, read out of the drawing itself [0.18ms]
+(pass) R17 · rank is DERIVED from the dependency graph, never trusted from the served depth > a board whose served depth lies produces MORE THAN ONE rank [1.89ms]
+(pass) R17 · rank is DERIVED from the dependency graph, never trusted from the served depth > the same board with a HONEST depth draws the same ranks (the two sources agree when both are sound) [1.34ms]
+(pass) R17 · rank is DERIVED from the dependency graph, never trusted from the served depth > R21: references that name no task are SURFACED, sorted and de-duplicated — never silently dropped [0.19ms]
+(pass) R17 · rank is DERIVED from the dependency graph, never trusted from the served depth > FALLBACK ARM A — a genuinely flat board, served flat, still draws flat (and says it derived) [0.18ms]
+(pass) R17 · rank is DERIVED from the dependency graph, never trusted from the served depth > FALLBACK ARM B — the user's broken board: nothing resolves and the depths do NOT vary, so the SERVED depth is refused and derivation runs [0.17ms]
+(pass) R17 · rank is DERIVED from the dependency graph, never trusted from the served depth > FALLBACK ARM C — nothing resolves but the served depths DO vary, so the fallback fires and reports itself [0.57ms]
+(pass) R17 · rank is DERIVED from the dependency graph, never trusted from the served depth > a dependency cycle terminates, is drawn, and is reported [0.22ms]
+(pass) R17 · rank is DERIVED from the dependency graph, never trusted from the served depth > a self-dependency terminates and is reported as a cycle [0.07ms]
+(pass) R2/R15 · adaptive vertical geometry, asserted as invariants > shrinking the width never grows any line, and no line ever exceeds the width given [2.32ms]
+(pass) R2/R15 · adaptive vertical geometry, asserted as invariants > every hit rectangle CONTAINS its own node and never claims a task off the board [0.62ms]
+(pass) R2/R15 · adaptive vertical geometry, asserted as invariants > a pointer resolves back to the task whose rectangle it landed in [0.54ms]
+(pass) R2/R15 · adaptive vertical geometry, asserted as invariants > every drawn edge's endpoints belong to a real (blocker, dependent) pair [0.67ms]
+(pass) R2/R15 · adaptive vertical geometry, asserted as invariants > R13-width: a rank reads top-to-bottom, so every blocker sits strictly above its dependent [0.59ms]
+(pass) R2/R15 · adaptive vertical geometry, asserted as invariants > R19: within a rank the task order is NUMERIC, so t2 precedes t10 [0.25ms]
+(pass) R2/R15 · adaptive vertical geometry, asserted as invariants > R19/R6: the legend states the READING DIRECTION and names both drawn markers [0.11ms]
+(pass) R2/R15 · adversarial fixtures > a 500-task board terminates and stays inside its viewport [5.44ms]
+(pass) R2/R15 · adversarial fixtures > an unknown state string, an absent kind and a missing dependency id all survive the drawing [0.20ms]
+(pass) R2/R15 · adversarial fixtures > an empty board draws nothing rather than throwing [0.04ms]
+(pass) R2/R15 · adversarial fixtures > a CJK fixture never shears: every line fits, and a boxed line ends on its own border column [1.93ms]
+(pass) R20 · the WEB view derives rank from blockedBy, never from the served depth > references RESOLVE while every served depth is 0 — the view must still draw more than one column [104.73ms]
+(pass) R20 · the WEB view derives rank from blockedBy, never from the served depth > CONTROL: the same board with honest depths draws the same columns (so the arm cannot be satisfied by ignoring depth) [36.25ms]
+(pass) R20 · the WEB view derives rank from blockedBy, never from the served depth > a genuinely flat board served flat is drawn flat — the view must not invent structure [32.64ms]
+(pass) W5 · every arrival tip touches the border its edge arrives at > the tip is a POINT on the arrival border, by arithmetic, for forward AND back/same-rank edges [67.50ms]
+(pass) W5 · every arrival tip touches the border its edge arrives at > POSITIVE CONTROL: a tip displaced by one pixel fails the same equality, in either direction [30.49ms]
+(pass) W6 · `radius = 0` reproduces the straight orthogonal path > at radius 0 every edge publishes points that ARE the orthogonal waypoints [32.68ms]
+(pass) W6 · `radius = 0` reproduces the straight orthogonal path > a positive radius bends the SAME edges — the knob is the only difference [66.66ms]
+W6 measurement · widest published chord = 304.5000 px of a 936.5 px canvas · 666 chords, none degenerate (EDGE_RADIUS 6, nodeHeight 42)
+(pass) W6 · `radius = 0` reproduces the straight orthogonal path > the published polyline is CONTINUOUS and never degenerate at the declared radius [65.90ms]
+(pass) T3 · the horizontal slice is exact, cell-aware, and never splits a wide glyph > the frozen postcondition holds for EVERY offset and width, over the REAL drawn rows [4.27ms]
+(pass) T3 · the horizontal slice is exact, cell-aware, and never splits a wide glyph > a WIDE glyph straddling an edge is never half-emitted: a space on the left, a drop on the right [0.35ms]
+(pass) T3 · the horizontal slice is exact, cell-aware, and never splits a wide glyph > POSITIVE CONTROL: the naive code-point slice FAILS the same postcondition on the same input [0.23ms]
+(pass) T3 · the horizontal slice is exact, cell-aware, and never splits a wide glyph > `sliceSpans` is the SAME cut, preserving each span's tone [1.97ms]
+(pass) T7 · the termaid glyph obligations, read out of the source rather than restated > every declared glyph is exactly ONE CELL, and none of them is in a C1-banned range [0.17ms]
+(pass) T7 · the termaid glyph obligations, read out of the source rather than restated > the four NODE corners are the rounded set (T7's first sentence) [0.03ms]
+(pass) T7 · the termaid glyph obligations, read out of the source rather than restated > `graph.ts` declares no sharp NODE corner: the boxed drawing reads the table (R2/T7) [0.24ms]
+(pass) T7 · the termaid glyph obligations, read out of the source rather than restated > every dependency is entered by exactly ONE `▼`, whose tip touches the dependent's TOP border [0.76ms]
+(pass) T7 · the termaid glyph obligations, read out of the source rather than restated > AC2: EVERY drawing reports the COMPACT three-row form, and no vertical budget buys padding rows [1.85ms]
+
+packages/mpd-tui-plugin/test/subagent-scene.test.ts:
+(pass) the merged panel puts the host's subagent rows ABOVE the MPD team panel > every subagent row is drawn before the first team row [2.77ms]
+(pass) the merged panel puts the host's subagent rows ABOVE the MPD team panel > each row carries the host's own description, mode, status and start instant [0.46ms]
+(pass) the merged panel degrades honestly > an empty subagent list still renders the team panel, above it the host's own empty tone [0.40ms]
+(pass) the merged panel degrades honestly > a scene handed no channel at all still renders the team panel [0.32ms]
+(pass) the merged panel degrades honestly > a missing team projection renders the team section's own unreadable line [0.40ms]
+(pass) the merged panel degrades honestly > an unreadable status is drawn as unknown — never guessed into completed [0.38ms]
+(pass) the merged panel never trusts the host's shapes > an absent subagentControl does not throw, and the interrupt gesture says so [0.71ms]
+(pass) the merged panel never trusts the host's shapes > the interrupt reaches the host's own control for a LIVE row only [1.10ms]
+(pass) the merged panel never trusts the host's shapes > a hostile description is sanitized before it reaches a row [0.28ms]
+(pass) the merged panel never trusts the host's shapes > a non-scalar field is dropped rather than stringified onto the screen [0.28ms]
+(pass) the merged panel never trusts the host's shapes > a channel missing every field it may carry degrades to the empty state [0.41ms]
+(pass) the merged panel carries the host dashboard's summary row > the counts row tallies the host's own statuses, and an unknown one is not a completion [0.42ms]
+(pass) the merged panel carries the host dashboard's summary row > a cancelled run is counted as failed, exactly as the host's own card draws it [0.29ms]
+(pass) ENTER opens a detail view of the selected subagent > a `super`-modified return does NOT open the detail view (the host's own guard) [1.11ms]
+(pass) ENTER opens a detail view of the selected subagent > a raw CRLF chunk opens the detail view, and a PASTED one does not [0.83ms]
+(pass) ENTER opens a detail view of the selected subagent > the detail draws every fact the host reported and steps back without closing the scene [1.31ms]
+(pass) ENTER opens a detail view of the selected subagent > the projection omits what the host did not report — no instant, no bucket, no duration [0.19ms]
+(pass) ENTER opens a detail view of the selected subagent > the output tail pages with ↑/↓ and never invents a line [5.66ms]
+(pass) ENTER opens a detail view of the selected subagent > the interrupt gesture keeps working, on the DETAIL's own row [0.76ms]
+(pass) ENTER opens a detail view of the selected subagent > a selected entry that leaves the channel degrades to a notice, never a throw [0.68ms]
+(pass) a click selects what the arrow keys would have selected > clicking a row's own Box sets the selection, and only a subagent row is clickable [1.16ms]
+(pass) the merged panel draws the graph legend under its DAG > the legend sits directly under the DAG, in the width the graph was laid out for [0.54ms]
+(pass) the merged panel draws the graph legend under its DAG > both scenes consume the frozen legend interface with their own width budget [0.27ms]
+(pass) AC6 · the scene opens on the requested member's detail > a request is consumed ONCE, and a second take returns nothing (destructive) [0.05ms]
+(pass) AC6 · the scene opens on the requested member's detail > the freshness bound is DECLARED and enforced: a stale request never opens a detail [0.02ms]
+(pass) AC6 · the scene opens on the requested member's detail > the third parameter seeds the detail on the FIRST render, with no keypress [0.56ms]
+(pass) AC6 · the scene opens on the requested member's detail > with no pending request the scene opens on its LIST, exactly as it did before [0.35ms]
+(pass) AC6 · the scene opens on the requested member's detail > the DEFAULT reader is the module's own slot, which is how the page's click reaches a scene `scenes.ts` built [0.22ms]
+(pass) AC6 · the scene opens on the requested member's detail > a request for a member the channel no longer carries lands on the honest notice, not a throw [0.22ms]
+
+packages/mpd-tui-plugin/test/dag-label-parity.test.ts:
+(pass) C4 · the graph-safe label rule, implemented from the frozen text > the adversarial table: every class the decision named, including the near misses [0.09ms]
+(pass) C4 · the graph-safe label rule, implemented from the frozen text > every produced label is non-empty ONLY when the rule found ASCII, and carries no banned character [0.16ms]
+(pass) C4 · the graph-safe label rule, implemented from the frozen text > NEGATIVE CONTROL: the pre-rule pass-through VIOLATES the same table, so the check can fail [0.11ms]
+(pass) C1/C3 · the WEB drawing is CJK-free while the pinned detail keeps the Chinese > the fixture really is the reported case: the RAW subjects carry banned characters [0.14ms]
+(pass) C1/C3 · the WEB drawing is CJK-free while the pinned detail keeps the Chinese > ZERO banned characters inside the rendered drawing [36.83ms]
+(pass) C1/C3 · the WEB drawing is CJK-free while the pinned detail keeps the Chinese > C3: the pinned detail body still carries the ORIGINAL Chinese subject [36.84ms]
+(pass) C1/C3 · the WEB drawing is CJK-free while the pinned detail keeps the Chinese > POSITIVE CONTROL: the pre-rule drawing of the SAME board is measurably not CJK-free [0.14ms]
+(pass) C4/R3 · both surfaces implement the SAME composer > the WEB factory exposes `graphSafeLabel`, and it implements the frozen rule over the whole table [35.58ms]
+(pass) C4/R3 · both surfaces implement the SAME composer > the TUI exports the SAME name and the SAME answers (R3: one concept, one name) [31.82ms]
+(pass) C4/R3 · both surfaces implement the SAME composer > C2: on the WEB the composer is the ONLY thing that turns a subject into drawing text [31.77ms]
+(pass) C4/R3 · both surfaces implement the SAME composer > the ordinal is the 1-based BOARD index, never the rank or the drawn order [29.14ms]
+(pass) C1 · the TUI drawing carries no banned character in ANY of its three modes > boxes, rail and list all draw the pure-Chinese board without one CJK glyph [0.79ms]
+(pass) C1 · the TUI drawing carries no banned character in ANY of its three modes > the legend lines are part of the drawing and are CJK-free too [0.12ms]
+(pass) C1 · the TUI drawing carries no banned character in ANY of its three modes > AC1: every TUI mode draws `<marker> <id>` and carries NO subject and NO ordinal fallback [0.40ms]
+(pass) W3 · the DRAWN curve of every WEB edge stays out of every node box > steps 1-3: the rendered `<path>`'s `data-mpd-curve` IS the layout edge's `curve.d` [34.85ms]
+(pass) W3 · the DRAWN curve of every WEB edge stays out of every node box > steps 1, 2, 4: no SEGMENT of any drawn curve enters any rendered box interior [29.03ms]
+(pass) W3 · the DRAWN curve of every WEB edge stays out of every node box > step 6: the proof is NOT vacuous — a sample floor and edges that are really curved [23.44ms]
+(pass) W3 · the DRAWN curve of every WEB edge stays out of every node box > step 5a: POSITIVE CONTROL — a segment displaced into a box IS caught, the same one the real curve does not enter [29.16ms]
+(pass) W3 · the DRAWN curve of every WEB edge stays out of every node box > step 5b: CURVE-DOMAIN CONTROL — a box BETWEEN two samples is caught, which a point-only test misses [36.70ms]
+(pass) W3 · the DRAWN curve of every WEB edge stays out of every node box > step 5c: a sample taken from the MIDDLE of a real fillet, displaced into a box, is caught [31.73ms]
+(pass) W3 · the DRAWN curve of every WEB edge stays out of every node box > W5/W4 on the DOM: `data-mpd-tip` is a ZERO-WIDTH rect at the arrival point [29.22ms]
+
+packages/mpd-tui-plugin/test/team-record-source.test.ts:
+(pass) the record is the primary team source > the workflow carries the review fields the official board has no column for [1.22ms]
+(pass) the record is the primary team source > the derived states agree: a blocked review, a running task, a failed repair [0.12ms]
+(pass) the record is the primary team source > phase is the STORED lifecycle, not a guess from the roster [0.16ms]
+(pass) the record is the primary team source > a cycle is REPORTED as a note rather than drawn as if the board were sound [0.09ms]
+(pass) the source selection > readBoardState shows the RECORD even when the official readout is empty [0.16ms]
+(pass) the source selection > an ENDED team does not hide the running one behind it [0.04ms]
+(pass) the source selection > the record read degrades to [] with no service, and never throws [0.05ms]
+
+packages/mpd-tui-plugin/test/dashboard-key.test.ts:
+(pass) the Ctrl+A decision > a team with tasks: the event is consumed and the merged panel is asked to open [0.23ms]
+(pass) the Ctrl+A decision > every pass-through case leaves the event untouched and opens nothing [0.14ms]
+(pass) the Ctrl+A decision > an event without the host's stop method is NOT consumed and opens nothing [0.03ms]
+(pass) the zero-row status view > a live host context value attaches a PREPENDED listener, removed on unmount [0.51ms]
+(pass) the zero-row status view > the context DEFAULT (no internal_querier) attaches nothing and reports ONE line [0.04ms]
+(pass) the zero-row status view > a contact that arrives AFTER the mount arms the view on the next render [0.21ms]
+(pass) the zero-row status view > an adapter without the host contact attaches nothing and never throws [0.04ms]
+(pass) the zero-row status view > the view renders an empty Box: zero visible rows while staying mounted [0.04ms]
+(pass) the zero-row status view > a throwing handler does not escape the host's dispatch, and logs one line [0.08ms]
+(pass) registration > the hook asks for a one-row view under its own key and reports the adapter's outcome [0.06ms]
+(pass) the team reader > the mpd record wins over the official readout, and an unreadable read is no team [0.48ms]
+
+packages/mpd-tui-plugin/test/team-surface.test.ts:
+(pass) team-workflow projection (read-only, from the OFFICIAL live readout) > renders the roster, the task DAG, the counts and the honest blanks [1.25ms]
+(pass) team-workflow projection (read-only, from the OFFICIAL live readout) > the depth walk and the failed-dependency marking match the panel's own semantics [0.28ms]
+(pass) team-workflow projection (read-only, from the OFFICIAL live readout) > a pending task behind an UNFINISHED dependency renders BLOCKED [0.18ms]
+(pass) team-workflow projection (read-only, from the OFFICIAL live readout) > a corrupt / absent / cyclic record renders an empty state and never throws [0.33ms]
+(pass) team-workflow projection (read-only, from the OFFICIAL live readout) > the REAL record of this session's own team projects without a hand-built object [0.09ms]
+(pass) team-workflow projection (read-only, from the OFFICIAL live readout) > the board carries the derived team row and never a staged claim [0.25ms]
+(pass) the two surfaces register through the existing tuiScenes seam > all three scene ids are registered with their frozen titles [1.10ms]
+(pass) the two surfaces register through the existing tuiScenes seam > a scene renders null instead of crashing when the host kit is absent [0.86ms]
+(pass) surface T1 — the team workflow > renders the real record's header, roster, DAG and counts [1.56ms]
+(pass) surface T1 — the team workflow > a team that is NOT staged refuses the approval hop with a notice and opens nothing [0.44ms]
+(pass) surface T1 — the team workflow > a bare `r` refresh re-reads the record without throwing [0.76ms]
+(pass) surface T1 — the team workflow > the watchdog HOLD is rendered only when the watchdog reports it [1.11ms]
+(pass) surface T2 — the plan approval > Esc mutates nothing and returns to the workflow when it was the entry point [1.09ms]
+(pass) surface T2 — the plan approval > Esc from the command entry point leaves the scene instead of hopping [0.42ms]
+(pass) surface T2 — the plan approval > Escape/keys never select a printable character as an action [0.29ms]
+(pass) §9.4 — the ONE render boundary strips control characters (finding F1) > safeLine strips C0/C1 (ESC, BEL, OSC) and clamps cells WITHOUT collapsing indentation [0.14ms]
+(pass) §9.4 — the ONE render boundary strips control characters (finding F1) > a control character in a team ID cannot reach a rendered row [0.35ms]
+(pass) §3.1 item 4 — the DAG order (finding F2) > tasks come out ordered by depth, with creation order as the tiebreak [0.35ms]
+(pass) package invariants > no source file in this package imports a filesystem WRITE primitive [0.74ms]
+(pass) package invariants > the built dist carries the two scene ids and no TEAM-STORE writer [0.78ms]
+(pass) package invariants > the retired approval tools are GONE and the surface says why [0.15ms]
+(pass) package invariants > the mailbox key normalization matches the adopted reader [0.19ms]
+(pass) the team scene's focus > ↑/↓ moves the focus through the drawing, and the ▶ marker moves with it [1.46ms]
+(pass) the team scene's focus > a focused task lights its DEPENDENCIES and names them in the graph header [1.05ms]
+(pass) the team scene's focus > `esc` UNPINS rather than closing, and closes once nothing is pinned [0.88ms]
+(pass) the team scene's focus > a CLICK pins a task and hovering previews one, without the keyboard [1.30ms]
+(pass) the team scene's focus > a click on BLANK space unpins rather than pinning nothing [0.66ms]
+(pass) the team scene's focus > the wheel scrolls the graph [0.74ms]
+(pass) the team scene's focus > with the `tui.wheelInvert` knob ON the SCENE's own wheel handler flips BOTH axes and still clamps [1.67ms]
+(pass) the team scene's focus > a NARROW terminal draws the SAME boxes and windows them rather than clipping them [0.69ms]
+(pass) the team scene's legend > the legend is drawn under the DAG, in the width the graph was laid out for [0.47ms]
+(pass) the plan scene reads the SHARED projection > the phrase is the SERVED one, not a record-derived lookalike [0.47ms]
+(pass) the plan scene reads the SHARED projection > a STAGED PLAN with no usable record still renders the gate [0.35ms]
+(pass) the plan scene reads the SHARED projection > with NO plan face the scene never INVENTS a plan phrase [0.31ms]
+
+packages/mpd-tui-plugin/test/model-menu.test.ts:
+(pass) R4: the TUI language resolution follows the HOST's own chain > step 1: DSH_TUI_LANG wins over the file and the locale [0.04ms]
+(pass) R4: the TUI language resolution follows the HOST's own chain > step 1: an INVALID DSH_TUI_LANG falls through to the file, not to the locale [0.02ms]
+(pass) R4: the TUI language resolution follows the HOST's own chain > step 2: the persisted ~/.dsh-tui/lang.json choice is read, and outranks the locale [0.02ms]
+(pass) R4: the TUI language resolution follows the HOST's own chain > step 2: an absent, unreadable or malformed preference file falls through [0.05ms]
+(pass) R4: the TUI language resolution follows the HOST's own chain > step 3: the locale guess — zh prefix is zh, ANY other stated locale is en, empty falls through [0.03ms]
+(pass) R4: the TUI language resolution follows the HOST's own chain > step 4: NO locale stated at all keeps the host's zh default [0.02ms]
+(pass) R4: the TUI language resolution follows the HOST's own chain > the dictionary resolves AT USE: the same pair renders in the language the caller resolves [0.03ms]
+(pass) R4: the TUI language resolution follows the HOST's own chain > placeholders are filled after the language is chosen [0.02ms]
+(pass) R3: the /mpd-model pick-list chain > panel 1 labels each slot with its member group, in the resolved language [0.13ms]
+(pass) R3: the /mpd-model pick-list chain > the five panels open in order slot → scope → provider → model → effort, and settle their ids [0.97ms]
+(pass) R3: the /mpd-model pick-list chain > R2: a MEMBER scope writes agentRoutes.<member> and states the member in the outcome [0.20ms]
+(pass) R3: the /mpd-model pick-list chain > R2: the CLEAR branch unsets only the group's STORED override leaves; nothing stored writes nothing [0.28ms]
+(pass) R3: the /mpd-model pick-list chain > R3: the scope panel's member options state the member's CURRENT EFFECTIVE route [0.12ms]
+(pass) R3: the /mpd-model pick-list chain > R3+T-93: the SAVED user half outranks the stale apply-time value half (first half wins) [0.05ms]
+(pass) R3: the /mpd-model pick-list chain > panel 3 narrows to the picked provider's models; panel 4 to the picked model's efforts [0.04ms]
+(pass) R3: the /mpd-model pick-list chain > panel 3 is NEVER empty: a keyed provider with no models falls back to the union [0.04ms]
+(pass) R3: the /mpd-model pick-list chain > an ABSENT catalog opens the panels over the declared fallback and says so [0.13ms]
+(pass) R3: the /mpd-model pick-list chain > a DEGRADED catalog is treated as no read, and the outcome names the degradation [0.19ms]
+(pass) R3: the /mpd-model pick-list chain > a THROWING catalog read degrades instead of failing the command [0.27ms]
+(pass) R3: the /mpd-model pick-list chain > CANCEL at any panel ends the chain and writes NOTHING [0.32ms]
+(pass) R3: the /mpd-model pick-list chain > an UNBOUND dialogs seam ends the chain before any panel and writes nothing [0.07ms]
+(pass) R3: the /mpd-model pick-list chain > a REFUSED write is reported with the host's own error, and never as success [0.12ms]
+(pass) R3: the /mpd-model pick-list chain > an adapter with no settings write seam is reported, not thrown [0.09ms]
+(pass) R3: the /mpd-model pick-list chain > an unknown slot id writes nothing and says which value was unknown [0.09ms]
+(pass) R3: the /mpd-model pick-list chain > the success sentence carries the SAME disclosure the section carries [0.13ms]
+(pass) R3: the /mpd-model pick-list chain > the revision fence comes from the namespace the write targets [0.07ms]
+(pass) R3: the /mpd-model pick-list chain > the DEFAULT contract's stored values are readable from either settings shape [0.02ms]
+(pass) R3: the /mpd-model pick-list chain > readStoredSlots reads every slot from whichever namespace serves them [0.05ms]
+(pass) R3: the /mpd-model pick-list chain > the command is registered with BOTH languages and a fallback description [0.02ms]
+
+packages/mpd-tui-plugin/test/panel-legend-mount.test.ts:
+(pass) C4 · the negative control — this harness CAN see an accumulating row > the pre-fix key shape accumulates, so the green arms above are falsifiable [1067.27ms]
+(pass) C4 · the legend does not accumulate across the click/pin interaction (mounted instance) > the legend's row count is STABLE across N clicks — 3 after the mount (arrow + wrapped key) and 3 after every click [1365.72ms]
+(pass) C4 · the legend does not accumulate across the click/pin interaction (mounted instance) > the legend and the pin body key every row distinctly among their own siblings [760.43ms]
+(pass) C4 · the legend does not accumulate across the click/pin interaction (mounted instance) > the workmate page keys two same-prefix problems as two rows, not one key twice [152.61ms]
+(pass) A1 · the composed legend prints the state key exactly once (mounted instance, 156 columns) > exactly ONE frame row starts with the contract's first state entry [158.27ms]
+
+packages/mpd-tui-plugin/test/graph-rank.test.ts:
+(pass) the derived rank (R17) > a flat all-zero served depth does NOT collapse the board to one rank [0.74ms]
+(pass) the derived rank (R17) > the SERVED depth is ignored while the graph resolves — the drawing is the same either way [1.23ms]
+(pass) the derived rank (R17) > the SERVED depth draws ONLY when the graph resolves nothing at all and the depth varies [0.12ms]
+(pass) the unresolved references (R18) > the record's own plan ordinals are REPORTED, not silently dropped [0.67ms]
+(pass) the unresolved references (R18) > a reference that DOES resolve draws its edge, and is not listed as unresolved [0.15ms]
+(pass) the unresolved references (R18) > an empty board reports nothing, rather than a phantom reference [0.03ms]
+(pass) the CJK cell discipline > a wide subject cannot shear the drawing: every line stays inside `cols`, and a box CLOSES [0.43ms]
+(pass) the CJK cell discipline > the ASCII control is byte-for-byte the same shape, so the fix is not a special case [0.22ms]
+(pass) the invariants the geometry keeps, on a board that exercises every path > halving the width never WIDENS the drawing, and a node sits in its own hit rectangle [1.00ms]
+(pass) the invariants the geometry keeps, on a board that exercises every path > an edge leaves the BLOCKER's border and arrives above the BLOCKED task, one arrowhead per task [0.66ms]
+(pass) the invariants the geometry keeps, on a board that exercises every path > a cycle terminates, is REPORTED, and still draws every task [0.21ms]
+(pass) the rail keeps every task at any depth > a 40-deep chain still NAMES its tasks, at a narrow and a wide rail [1.49ms]
+
+packages/mpd-tui-plugin/test/panel.test.ts:
+(pass) the panel registration (frozen descriptor, discovered id) > registers ONE panel with the frozen descriptor and the host's own read-back id [0.54ms]
+(pass) the panel registration (frozen descriptor, discovered id) > the final id is READ BACK, not composed from the slug [0.09ms]
+(pass) the panel registration (frozen descriptor, discovered id) > a host with no panel seam degrades to absent and still reports an honest outcome [0.08ms]
+(pass) the panel registration (frozen descriptor, discovered id) > the surface can be switched off entirely by its own config [0.06ms]
+(pass) the `/mpd panel` status sentence is bilingual > every panel sentence exists in en AND zh, and carries its placeholders [0.26ms]
+(pass) the routed open on a REFUSING host (S7) > a bound seam that refused the descriptor reports `refused`, and the line says refused [0.16ms]
+(pass) the routed open on a REFUSING host (S7) > NEGATIVE CONTROL: a genuinely absent seam still reads `unavailable` [0.07ms]
+(pass) the merged-view routing (panel vs full-screen scene) > with the seam bound and an id discovered, the PANEL opens and the scene does not [0.15ms]
+(pass) the merged-view routing (panel vs full-screen scene) > with NO seam bound, the full-screen scene opens and no panel is asked [0.06ms]
+(pass) the merged-view routing (panel vs full-screen scene) > an `opened() === false` refusal FALLS BACK to the scene — never a silent no-op [0.08ms]
+(pass) the merged-view routing (panel vs full-screen scene) > a bare host without the seam reports the scene path honestly, and a refusing scene is not a success [0.05ms]
+(pass) the panel component (both sections, props kit only) > renders the host's subagent rows FIRST and the MPD dependency DAG below them [1.53ms]
+(pass) the panel component (both sections, props kit only) > renders the host's empty state instead of inventing rows, and says when there is no team [0.14ms]
+(pass) the panel component (both sections, props kit only) > survives a hostile host: no React, no kit, no snapshot — and never throws [0.75ms]
+(pass) the panel component (both sections, props kit only) > uses ONLY the props' own React and ui kit (the single-React rule) [0.39ms]
+(pass) the legacy Ctrl+A arming rule (frozen R4/R5) > the SEAM WINS: a bound panel seam forbids interception whatever the config layers say [0.02ms]
+(pass) the legacy Ctrl+A arming rule (frozen R4/R5) > without the seam the SAVED knob outranks the row config's floor
+(pass) the legacy Ctrl+A arming rule (frozen R4/R5) > without the seam and without a saved value the row config decides
+(pass) the DAG row's non-colour emphasis (AC5) > every tone keeps its own theme colour, while focus/chain are BOLD and dim carries dimColor [0.11ms]
+(pass) the two draggable rails (AC7) > a VERTICAL drag commits an ABSOLUTE row offset through the same band a click maps through [0.24ms]
+(pass) the two draggable rails (AC7) > a rail WITH a page callback hands the drag the SAME row it hands a click [0.08ms]
+(pass) the two draggable rails (AC7) > a HORIZONTAL drag scrubs the column offset to the expected absolute column [0.18ms]
+(pass) the two draggable rails (AC7) > a drawing that fits reserves NO rail, and a rail whose Box ignores drag props still draws [0.06ms]
+
+packages/mpd-tui-plugin/test/session-scope-and-push.test.ts:
+(pass) PART D · the team a surface draws is THIS session's > T-D1 REPRODUCTION (pre-fix rule): with A's record on disk, B's ask received A's team [0.13ms]
+(pass) PART D · the team a surface draws is THIS session's > T-D2a session id readable + no record of its own: the marked EMPTY state, never A's DAG [0.39ms]
+(pass) PART D · the team a surface draws is THIS session's > T-D2b session id readable + its OWN record: that record is drawn, session-scoped [0.44ms]
+(pass) PART D · the team a surface draws is THIS session's > T-D2c NO session id readable: today's rule survives, MARKED workspace-level [0.07ms]
+(pass) PART D · the team a surface draws is THIS session's > T-D2d the durable scan cannot leak either: no `active` member, no other session's board [0.08ms]
+(pass) PART D · the mounted sidebar page > T-D1 REPRODUCTION: a mounted page wired with the pre-fix reader draws A's DAG for session B [124.21ms]
+(pass) PART D · the mounted sidebar page > T-D2 the SAME mount, repaired: B gets the empty marker and never A's drawing [126.12ms]
+(pass) PART D · the mounted sidebar page > T-D2 a session WITH a record still gets ITS OWN drawing, on the mounted page [123.97ms]
+(pass) PART D · the mounted sidebar page > a team of THIS session with an EMPTY board is not reported as 'no team in this workspace' [123.04ms]
+(pass) PART D · the mounted sidebar page > T-D2d an UNAVAILABLE session id gets the MARKED workspace-level fallback [123.06ms]
+(pass) PART P · the push re-renders a mounted surface > T-P1 the listener re-renders with the NEW content, while the timer has not fired [246.20ms]
+(pass) PART P · the push re-renders a mounted surface > T-P2a `subscribe` ABSENT: the surface still renders and its 1000 ms tick still refreshes [1324.96ms]
+(pass) PART P · the push re-renders a mounted surface > T-P2b `subscribe` THROWS: the surface still renders, and the push is simply lost [123.86ms]
+(pass) PART P · the push re-renders a mounted surface > T-P2c UNMOUNT disposes the subscription (the disposer ran, effectively once) [244.62ms]
+(pass) PART D · the mounted merged scene > the scene reads ITS OWN session's channel and never another session's board [125.03ms]
+(pass) PART D · the mounted merged scene > the merged scene shows the session-empty MARKER when its own session has no team [122.57ms]
+
+packages/mpd-tui-plugin/test/scene-visuals.test.ts:
+(pass) every surface draws the frozen contract's colours > the drawing engine's table and the contract's table agree tone for tone [0.07ms]
+(pass) every surface draws the frozen contract's colours > the board, the team, the plan and the merged scene draw only contract colours [3.55ms]
+(pass) every surface draws the frozen contract's colours > no surface module spells a colour of its own [0.81ms]
+(pass) every layout row fits the viewport it was laid out for > the drawing and the legend fit at 100, 60 and 40 columns [1.21ms]
+(pass) every layout row fits the viewport it was laid out for > the frame carries a border TITLE the host can actually render [0.66ms]
+(pass) every layout row fits the viewport it was laid out for > the DAG a scene draws never exceeds the width it was laid out for [2.01ms]
+(pass) a CJK fixture does not shear the layout > every boxed node row ENDS ON ITS BORDER COLUMN, wide glyphs included [1.45ms]
+(pass) a CJK fixture does not shear the layout > a wide-glyph label survives the clamps the scene applies [0.37ms]
+(pass) a CJK fixture does not shear the layout > a hostile team name cannot reach a border title unclamped [0.25ms]
+(pass) the running mark breathes on a timer and freezes without one > a host with NO timer draws the STATIC frame [0.27ms]
+(pass) the running mark breathes on a timer and freezes without one > a host WITH a timer draws the phase its clock reports, and every frame is CELL-STABLE [0.87ms]
+(pass) the running mark breathes on a timer and freezes without one > a NON-FINITE clock degrades to the static frame instead of throwing [0.59ms]
+(pass) the running mark breathes on a timer and freezes without one > the mark draws the state's own glyph for every non-running tone [0.05ms]
+(pass) the legend is composed, and it disambiguates the two states that share a glyph > the drawing's arrow line is forwarded, and the contract's ONE state key follows it [0.88ms]
+(pass) the legend is composed, and it disambiguates the two states that share a glyph > the legend sits UNDER its DAG and stays dimmed [0.47ms]
+(pass) the body-row vocabulary is one table, and a surface never re-words a row > a label row splits byte-for-byte, and prose is left whole [0.10ms]
+(pass) the body-row vocabulary is one table, and a surface never re-words a row > the label column draws in the label's own tone [0.06ms]
+(pass) the body-row vocabulary is one table, and a surface never re-words a row > the tally tone ladder reports the loudest state the board carries [0.06ms]
+(pass) the body-row vocabulary is one table, and a surface never re-words a row > the host's own subagent states map onto the same six tones [0.05ms]
+(pass) the body-row vocabulary is one table, and a surface never re-words a row > the progress bar is drawn from the contract's own cells [0.07ms]
+(pass) the body-row vocabulary is one table, and a surface never re-words a row > the chrome title joins what exists and never leaves a dangling separator [0.01ms]
+(pass) the text-only surfaces stay inside their budgets > the status row publishes at most its documented cells, and never shears a wide glyph [0.18ms]
+(pass) the text-only surfaces stay inside their budgets > the status mark reports the workspace's dominant state, in the contract's glyphs [0.09ms]
+
+packages/mpd-tui-plugin/test/graph.test.ts:
+(pass) the dependency chain > is TRANSITIVE and UPSTREAM only, and cannot spin on a cycle [0.08ms]
+(pass) the dependency chain > a cycle in the BOARD is named even when nothing is focused [0.22ms]
+(pass) the boxed layout > draws a MERGE, which is the shape a flat list cannot express [0.47ms]
+(pass) the boxed layout > NEVER exceeds the width it is given, at any width that draws at all [6.02ms]
+(pass) the boxed layout > a box width below the minimum is REFUSED rather than squeezed [0.48ms]
+(pass) the boxed layout > AC1: a box draws EXACTLY `<marker> <id>` — no kind, no subject, no ordinal [0.56ms]
+(pass) the boxed layout > an empty board draws nothing rather than a bare frame [0.03ms]
+(pass) the arrowheads > an edge ENDS in a ▼ on the dependent's centre, in the cell above its box [0.16ms]
+(pass) the arrowheads > a FAN-IN of three blockers still shows exactly ONE ▼ [0.21ms]
+(pass) the arrowheads > a rank that no edge reaches draws no arrowhead [0.08ms]
+(pass) the arrowheads > every drawn row fits its width, keeps no trailing blank, and collapses same-tone runs [0.87ms]
+(pass) the focus > lights the task, its DEPENDENCIES and the edges between them; dims the rest [0.42ms]
+(pass) the focus > the edge between two chain members is BRIGHT, and an edge leaving the chain is not [0.38ms]
+(pass) the focus > with NO focus nothing is dimmed and nothing is a chain [0.37ms]
+(pass) the focus > the focus is marked with ▶ so it is findable without colour [0.51ms]
+(pass) the rail fallback > fits any width and never loses a task [0.26ms]
+(pass) the rail fallback > names the EXTRA blockers instead of drawing a second connector [0.07ms]
+(pass) the rail fallback > the connector points INTO the task, and keeps naming the extra blockers [0.12ms]
+(pass) the rail fallback > draws a task reached by no root, so a cycle cannot silently lose a row [0.06ms]
+(pass) the list view > groups by rank and names every blocker [0.11ms]
+(pass) the legend > names both directional marks and the focus marker in ONE line, and prints no state key of its own [0.05ms]
+(pass) the legend > shortens rather than cutting a sentence, naming BOTH marks on every rung, and never exceeds one line [0.09ms]
+(pass) AC3 · the natural-width drawing is sized by its label > a widest rank of THREE draws at 36 cells — inside a 40-column sidebar with no panning [0.23ms]
+(pass) AC3 · the natural-width drawing is sized by its label > above the floor the LABEL sizes the box, and the cap still bounds it [0.09ms]
+(pass) the pointer > resolves to a task by RECTANGLE, and to nothing on blank space [0.32ms]
+(pass) the pointer > uses the SAME geometry the rail drew, so the two cannot drift [0.09ms]
+(pass) the tone table > every tone maps to a dsh-tui THEME KEY, never to a colour literal [0.05ms]
+
+packages/mpd-tui-plugin/test/two-plugin-ownership.test.ts:
+(pass) exactly ONE successful registration per composition (design §10.1) > mpd-config present: it registers, the TUI skips its fallback and says so [4.18ms]
+(pass) exactly ONE successful registration per composition (design §10.1) > mpd-config present but its registration still pending: the fallback still yields (deterministic owner check) [0.52ms]
+(pass) exactly ONE successful registration per composition (design §10.1) > mpd-config absent: the TUI's fallback registers the namespace (the composition still works) [0.48ms]
+(pass) exactly ONE successful registration per composition (design §10.1) > both plugins in ONE composition: still exactly one registration, whoever runs first [0.55ms]
+
+packages/mpd-tui-plugin/test/plan-actions-live-agent.test.ts:
+(pass) plan actions speak as a LIVE registry agent (H4) > approve forwards the adapter's OWN live agent object by identity, never a clone [0.42ms]
+(pass) plan actions speak as a LIVE registry agent (H4) > a live entry whose SESSION matches is the caller even when the registry keys it by another id [0.10ms]
+(pass) plan actions speak as a LIVE registry agent (H4) > NO live agent for the session refuses honestly and never calls the tool [0.08ms]
+(pass) plan actions speak as a LIVE registry agent (H4) > an empty live registry and no session id refuses instead of calling with no caller [0.07ms]
+(pass) plan actions speak as a LIVE registry agent (H4) > the DISCARD path obeys the same rule (ONE executor serves both mutations) [0.06ms]
+(pass) plan actions speak as a LIVE registry agent (H4) > with no session id the ONE live agent is the caller, and TWO are refused as ambiguous [0.09ms]
+(pass) plan actions speak as a LIVE registry agent (H4) > the captain's session id is used when the scene published no session id (the scene's precedence) [0.07ms]
+
+packages/mpd-tui-plugin/test/watchdog-frontdoor.test.ts:
+(pass) watchdog front door — notice composition > the notice is COMPOSED into the value the status publisher emits, and disappears once the team is resumed [1.85ms]
+(pass) watchdog front door — notice composition > watchdogNotice states the live condition and the replay separately; composeNotices joins providers [0.12ms]
+(pass) watchdog front door — notice composition > heldTeams reads the durable hold index through the service, not a cache [0.34ms]
+(pass) watchdog front door — dialog and acknowledge > the dialog carries the notice text and an acknowledge option, and acknowledging advances the watermark [0.54ms]
+(pass) watchdog front door — dialog and acknowledge > a second start does not surface an acknowledged incident (the replay is watermark-driven) [0.42ms]
+(pass) watchdog front door — dialog and acknowledge > choosing Later keeps the incident unread: the replay is permanent re-display BY DESIGN [0.38ms]
+(pass) watchdog front door — dialog and acknowledge > the attach-time replay runs once, when BOTH the service and the dialog seam are composed [0.29ms]
+(pass) watchdog front door — dialog and acknowledge > no dialog service and nothing unread are both no-ops (never a hang, never a phantom dialog) [0.23ms]
+(pass) watchdog front door — dialog and acknowledge > readWatchdogView is a live read through the service (and empty without one) [0.22ms]
+(pass) watchdog front door — the absent-service path > with no mpdWatchdog service: no notice, no dialog, no fake acknowledge, one warning — and apply does not throw [0.38ms]
+
+packages/mpd-tui-plugin/test/panel-visibility.test.ts:
+(pass) R13 · the host's panel enablement rule (read from the installed host) > the default enabled CSV names BUILTINS ONLY and NOTHING of ours [33.59ms]
+(pass) R13 · the host's panel enablement rule (read from the installed host) > the id GRAMMAR is not the blocker: a composed plugin id round-trips [0.04ms]
+(pass) R13 · the host's panel enablement rule (read from the installed host) > the adapter DOES append a registered id to the CSV — so the mechanism exists and can be undone [0.17ms]
+(pass) R13 · the host's panel enablement rule (read from the installed host) > the host re-applies the configured CSV — a rewrite that on < 0.15.0 DROPS a registered id, and on >= 0.15.0 UNIONS registered ids back [0.53ms]
+(pass) R13 · the width band in which the panel cannot be seen at all > a sidebar splits only at CHAT_MIN + PANEL_MIN + DIVIDER, and no lower [0.06ms]
+(pass) R13 · the width band in which the panel cannot be seen at all > AT the split threshold the panel column is exactly the host's own floor — so a wider floor is a trap [0.07ms]
+(pass) R13 · the width band in which the panel cannot be seen at all > the descriptor this bundle registers is the shape the host accepts [0.03ms]
+(pass) R13b · the composed panel id (read from the installed host) > the host composes `<pluginId>:<slug>`, and `<pluginId>` comes from the caller's identity [0.08ms]
+(pass) R13b · the composed panel id (read from the installed host) > a Component identity exists only for an ADMITTED Component, which a patch row never is [0.14ms]
+(pass) R13c · the enable-list keeper (this bundle's bounded re-assert) > it appends ONLY its own registered ids, preserving the user's list exactly [0.58ms]
+(pass) R13c · the enable-list keeper (this bundle's bounded re-assert) > it KEEPS sampling past the first clean read — the measured loss lands after it [0.21ms]
+(pass) R13c · the enable-list keeper (this bundle's bounded re-assert) > it STANDS DOWN when the configuration already names ANY of ours [0.12ms]
+(pass) R13c · the enable-list keeper (this bundle's bounded re-assert) > the whole set goes in at once, so a partial write can never make the next tick stand down mid-repair [0.12ms]
+(pass) R13c · the enable-list keeper (this bundle's bounded re-assert) > the ladder is the WHOLE budget, and `stop()` releases every pending tick [0.05ms]
+(pass) R13c · the enable-list keeper (this bundle's bounded re-assert) > NEGATIVE CONTROL: an ABSENT host store is reported as `absent`, never thrown, and writes nothing [0.07ms]
+(pass) R13c · the enable-list keeper (this bundle's bounded re-assert) > NEGATIVE CONTROL: a store that throws is recorded as `refused` and takes no boot down [0.12ms]
+(pass) R13c · the enable-list keeper (this bundle's bounded re-assert) > the CONTACT itself binds the installed host and refuses an absent one [0.58ms]
+(pass) R13d · the enable-list keeper's CHANGE FEED (the durable repair) > the host's OWN append does NOT stand the keeper down, and the mirror's rewrite IS repaired [0.22ms]
+(pass) R13d · the enable-list keeper's CHANGE FEED (the durable repair) > our OWN write cannot re-enter the decision — one rewrite, exactly one repair [0.13ms]
+(pass) R13d · the enable-list keeper's CHANGE FEED (the durable repair) > a list that NAMES one of ours ends the keeper for good — and a later rewrite is left alone [0.14ms]
+(pass) R13d · the enable-list keeper's CHANGE FEED (the durable repair) > `stop()` releases the host's feed with the scope — and a retired keeper never writes again [0.11ms]
+(pass) R13d · the enable-list keeper's CHANGE FEED (the durable repair) > NEGATIVE CONTROL: a store with NO feed keeps the ladder, and a THROWING feed degrades to it [0.18ms]
+(pass) D1/D3 · the enable-list keeper prunes only OUR stale ids and reads its own write back > a stale `act*` token of ours is pruned, and every id we do NOT own survives byte-for-byte [0.15ms]
+(pass) D1/D3 · the enable-list keeper prunes only OUR stale ids and reads its own write back > a FOREIGN id that also looks like `act<N>:<slug>` is NOT ours and is never dropped [0.11ms]
+(pass) D1/D3 · the enable-list keeper prunes only OUR stale ids and reads its own write back > D3 · all eight host builtins survive a keeper pass [0.16ms]
+(pass) D1/D3 · the enable-list keeper prunes only OUR stale ids and reads its own write back > D3 · the SAME rule holds in `scripts/mpd-tui-panels.ts --apply`: the eight builtins survive [0.14ms]
+(pass) D1/D3 · the enable-list keeper prunes only OUR stale ids and reads its own write back > a write the host did not carry back is LOUD, never silent drift [0.12ms]
+(pass) R1 · the stale-id prune is owned by the RECORD's provenance, never by a slug > R1.1 a LIVE FOREIGN `act9:team` is not pruned on the keeper's WRITE path [0.12ms]
+(pass) R1 · the stale-id prune is owned by the RECORD's provenance, never by a slug > R1.1/R1.3 · a LIVE FOREIGN `act9:team` survives the STAND-DOWN prune path too [0.10ms]
+(pass) R1 · the stale-id prune is owned by the RECORD's provenance, never by a slug > R1.1/R1.2 · the DOCUMENT-side writer applies the same provenance rule [0.04ms]
+(pass) R1 · the stale-id prune is owned by the RECORD's provenance, never by a slug > R1.2 · a RETIRED page's id (in the record's history, slug no longer registered) is pruned [0.12ms]
+(pass) R1 · the stale-id prune is owned by the RECORD's provenance, never by a slug > R1.3 · a CURRENT id of ours no longer protects a provably-dead past id [0.12ms]
+(pass) R1 · the stale-id prune is owned by the RECORD's provenance, never by a slug > R1.3 · a list of CURRENT ids only still stands down with NOTHING written and NOTHING pruned [0.09ms]
+(pass) AC8 · each MPD page carries its OWN one-cell icon, and none borrows the host's > the TWO surviving icons measure ONE cell under BOTH measures — ours and the host's own [0.25ms]
+(pass) AC8 · each MPD page carries its OWN one-cell icon, and none borrows the host's > the host's built-in icons are read from the host, and neither surviving MPD page wears one [0.17ms]
+(pass) AC8 · each MPD page carries its OWN one-cell icon, and none borrows the host's > BOTH surviving descriptors DECLARE their icon — neither falls back to its title's first letter [0.03ms]
+(pass) AC8 · each MPD page carries its OWN one-cell icon, and none borrows the host's > NO MPD descriptor declares `capabilities` — the host drops the field, so it would be a dead promise [0.11ms]
+(pass) AC8b · MPD's own `⤢` control, drawn in each page's title row > the merged page draws the control, and a click opens ITS full-screen scene [0.62ms]
+(pass) AC8b · MPD's own `⤢` control, drawn in each page's title row > the workmate page draws its own control, wired to the board scene [0.19ms]
+(pass) AC8b · MPD's own `⤢` control, drawn in each page's title row > the hover treatment is the host PanelBar's own: bold and accent over the pointer, dim at rest [0.78ms]
+(pass) AC8b · MPD's own `⤢` control, drawn in each page's title row > the title row is drawn ABOVE the body and outside the page's own window [0.16ms]
+(pass) AC8b · MPD's own `⤢` control, drawn in each page's title row > AT THE 28-COLUMN FLOOR the `⤢` hint SURVIVES — measured, with the pre-fix ordering as the negative control [0.15ms]
+(pass) AC8b · the control OCCUPIES CELLS under the host's real layout engine > each SURVIVING MPD page draws `⤢` at the RIGHT EDGE of its title row — at 28 and at 40 columns [496.36ms]
+(pass) AC8b · the control OCCUPIES CELLS under the host's real layout engine > NEGATIVE CONTROL: the pre-fix row shape LOSES the glyph at the same width — this is what the double could not see [164.83ms]
+
+packages/mpd-tui-plugin/test/plugin.test.ts:
+(pass) plugin contract > exports name / Config (type + schema) / apply and NO default export [0.02ms]
+(pass) plugin contract > every config key has a default in the schema [0.48ms]
+(pass) plugin contract > the row config is VOLATILE, which is what lists its knobs in the harness settings dialog [0.02ms]
+(pass) plugin contract > the schema rejects a wrong type instead of silently dropping it [0.15ms]
+(pass) plugin contract > resolveConfig defaults every key and repairs an invalid interval [0.09ms]
+(pass) T4-INERT-1: activation requires the inject form > a ctx WITHOUT inject registers nothing, even when get() would answer [0.83ms]
+(pass) T4-INERT-1: activation requires the inject form > with inject supported but no service composed, nothing is registered and nothing throws [0.32ms]
+(pass) T4-INERT-1: activation requires the inject form > apply survives a throwing ctx.get and a ctx without effect() [0.40ms]
+(pass) full composition (every service injected) > every seam activates through ctx.inject and reports an honest outcome [3.89ms]
+(pass) full composition (every service injected) > cleanup runs on the injected scope: status cleared, registrations released [1.07ms]
+(pass) full composition (every service injected) > each seam can be disabled by config, and disabling keeps apply inert [0.20ms]
+(pass) A4: the twelve team-model slot knobs select from the live catalog > derives provider / model / effort options from a two-provider catalog [1.92ms]
+(pass) A4: the twelve team-model slot knobs select from the live catalog > the three NEW slot-4 rows register as selects with non-empty options and the declared labels/zh [1.67ms]
+(pass) A4: the twelve team-model slot knobs select from the live catalog > a degraded catalog falls back to the declared option lists [1.64ms]
+(pass) A4: the twelve team-model slot knobs select from the live catalog > a mounted adapter WITHOUT the seam (an older build) degrades to the declared lists [1.60ms]
+(pass) A4: the twelve team-model slot knobs select from the live catalog > the REAL adapter seam (t2) feeds the same projection end to end [1.62ms]
+(pass) A4: the twelve team-model slot knobs select from the live catalog > the section registers EXACTLY once per ns, even when the activation fires twice [1.28ms]
+(pass) A4: the twelve team-model slot knobs select from the live catalog > a DEFERRED register through the injected scope keeps a live non-root caller (the cordis binding late registration relies on) [23.03ms]
+(pass) A4: the twelve team-model slot knobs select from the live catalog > the projection is TOTAL: no catalog, a degraded catalog or a malformed one never yields an empty list [0.39ms]
+(pass) the Ctrl+A takeover wiring (W2) > on a host WITH the panel seam the contact stays INERT (the version gate) [1.30ms]
+(pass) the Ctrl+A takeover wiring (W2) > on a host WITHOUT the panel seam the contact arms (the legacy path) [0.81ms]
+(pass) the Ctrl+A takeover wiring (W2) > with the row config off, the contact stays inert on BOTH host generations [0.73ms]
+(pass) the Ctrl+A takeover wiring (W2) > with the MPD panel off, only that page is skipped and both entry points keep the scene path [1.15ms]
+(pass) the Ctrl+A takeover wiring (W2) > with the WORKMATE panel off, only that page is skipped — the MPD page stays [0.64ms]
+(pass) the Ctrl+A takeover wiring (W2) > every registered SCENE reports the host kit it received (the contact's arming path) [0.87ms]
+(pass) honest outcomes (no disposer-type inference) > a refused shortcut registration is reported refused, never confirmed [0.35ms]
+(pass) honest outcomes (no disposer-type inference) > a refused renderer registration is reported requested, never confirmed [0.31ms]
+(pass) honest outcomes (no disposer-type inference) > a panel host with no list() read-back is reported requested, never confirmed [0.33ms]
+(pass) honest outcomes (no disposer-type inference) > a refused panel registration is reported refused, never confirmed [0.40ms]
+(pass) honest outcomes (no disposer-type inference) > a refused panel OPEN falls back to the full-screen scene and prints the reason [0.80ms]
+(pass) honest outcomes (no disposer-type inference) > C5: `/mpd dag` reaches the RICH scene — the one that draws the pin — not the bare one [0.74ms]
+(pass) honest outcomes (no disposer-type inference) > an accepted panel OPEN prints the panel status line with the discovered id [0.59ms]
+(pass) honest outcomes (no disposer-type inference) > a missing decision grant with a no-op disposer is refused, and the disposer is not called as a probe [0.27ms]
+(pass) honest outcomes (no disposer-type inference) > a granted decision subscription is confirmed [0.25ms]
+(pass) honest outcomes (no disposer-type inference) > the decision identity IS the bound seam scope, never the consumer ctx [0.26ms]
+(pass) honest outcomes (no disposer-type inference) > a consumer-supplied options.identity is NOT forwarded: the bound scope wins [0.08ms]
+(pass) honest outcomes (no disposer-type inference) > without tuiPluginHost the seam is absent and no refusal is claimed [0.27ms]
+(pass) honest outcomes (no disposer-type inference) > admin: the four intercept points are the only decision attempts [0.04ms]
+(pass) /mpd command grammar (bare = picker, value = direct, status = print) > bare /mpd uses the picker, then applies the chosen action [0.67ms]
+(pass) /mpd command grammar (bare = picker, value = direct, status = print) > bare /mpd falls back to the board when no dialog seam is composed [0.50ms]
+(pass) /mpd command grammar (bare = picker, value = direct, status = print) > direct actions and the unknown-action error [0.75ms]
+(pass) settings section disclosure (t21) > every row names its mpd.jsonc key, and the SURFACE states the disclosure once [0.17ms]
+(pass) settings section disclosure (t21) > every slot hint LEADS with the knob's human sentence, then its key [0.32ms]
+(pass) settings section disclosure (t21) > R4: the localized pairs are the host's OWN shape — an `en` base, never a redundant `en` twin [0.21ms]
+(pass) settings section disclosure (t21) > R3: the registered section's description carries the EFFECTIVE model config from the mpdConfig service [1.67ms]
+(pass) settings section disclosure (t21) > R3: the effective summary degrades honestly when no config service is composed [0.14ms]
+(pass) settings section disclosure (t21) > the registered section's rows mirror the declaration: labels, zh, and human-first hints [1.84ms]
+(pass) settings section disclosure (t21) > the marker itself states the bridge write and the LIVE effect — the restart claim is gone [0.03ms]
+(pass) the §D.2 runtime notice (a save with no live session workspace) > the notice constant is the design's exact sentence and matches the exported one [0.14ms]
+(pass) the §D.2 runtime notice (a save with no live session workspace) > the status line publishes the notice only while the last write-back was skipped for no-live-session [1.37ms]
+(pass) R1.5 · the wheel-invert reader falls back to the row config when the config layer throws > a throwing `mpdConfig.get()` + row config `wheelInvert: true` still scrolls inverted [0.49ms]
+
+packages/mpd-tui-plugin/test/panel-dag.test.ts:
+(pass) the DAG page's identity after the merge (clause C3) > its title IS the surviving MPD panel's title — one name, one surface [0.03ms]
+(pass) the DAG page's identity after the merge (clause C3) > the surviving registration carries this page's component and reaches the host read-back [0.29ms]
+(pass) the legend > covers EVERY state the contract knows, with the glyph the contract declares [0.13ms]
+(pass) the legend > fits the width it is given, and drops a line rather than cutting one [0.13ms]
+(pass) the legend > the state key is composed ONCE at every width — no state is ever named twice [0.20ms]
+(pass) the DAG page's layout choice > at the host's own 28-column floor the page still draws, and reads [1.26ms]
+(pass) the DAG page's layout choice > a busy narrow board reaches the dense list, which had no caller before this page [0.30ms]
+(pass) the DAG page's layout choice > EVERY drawn row fits the panel, wide glyphs included [4.33ms]
+(pass) the DAG page's layout choice > a boxed CJK line ends on its own right border column [0.12ms]
+(pass) the DAG page's layout choice > an empty board still lays out without throwing [0.02ms]
+(pass) the DAG page's layout choice > boxes are drawn ONLY when the widest label fits: a label is never cut [0.90ms]
+(pass) the DAG page's layout choice > A REAL BOARD STILL DRAWS BOXES: the natural width cap holds a realistic label whole [1.52ms]
+(pass) the DAG page's layout choice > A MID-LENGTH LABEL IS NOT CUT, and the overflow flag agrees with the truncation [0.19ms]
+(pass) the DAG page's layout choice > C3: THE PINNED DETAIL BODY CARRIES THE ORIGINAL SUBJECT AND DESCRIPTION, CHINESE INCLUDED [0.18ms]
+(pass) the DAG page's layout choice > R18: an unresolved blocker is SURFACED, and the rank source is reported [1.84ms]
+(pass) the running-node animation and its degradation > every frame is ONE CELL, the frames DIFFER, and the static frame is the orbit's head [0.10ms]
+frame 0 glyph ◐ cells 6 row "│ ◐ T2"
+frame 1 glyph ◓ cells 6 row "│ ◓ T2"
+frame 2 glyph ◑ cells 6 row "│ ◑ T2"
+frame 3 glyph ◒ cells 6 row "│ ◒ T2"
+frames 0 and 1: 1 of 139 drawn rows differ, all label rows, none by a cell
+(pass) the running-node animation and its degradation > the DRAWN running label keeps ONE width across every frame of the cycle [2.89ms]
+(pass) the running-node animation and its degradation > a host with NO timer draws the static frame instead of throwing [1.30ms]
+(pass) the running-node animation and its degradation > a NON-FINITE timer degrades to the static frame [0.64ms]
+(pass) the running-node animation and its degradation > no props, no kit, no snapshot: the page renders null instead of throwing [0.19ms]
+(pass) click-to-pin and the keyboard > a click pins a task and the detail body carries all ten facts [1.54ms]
+(pass) click-to-pin and the keyboard > the keymap walks the drawing and does not steal the host's own keys [0.90ms]
+(pass) click-to-pin and the keyboard > F-a the keymap's OWN values: no pin → NOT consumed; pinned → consumed and unpinned [0.05ms]
+(pass) click-to-pin and the keyboard > F-a ON A MOUNTED PAGE: no pin → Escape is NOT consumed; pinned → consumed AND the pin is released [2.59ms]
+(pass) AC4: a click resolves through the row's own rectangle, COLUMN included > POSITIVE CONTROL: clicking the SECOND box of a two-box rank pins the SECOND task [1.13ms]
+(pass) AC4: a click resolves through the row's own rectangle, COLUMN included > the row-band fallback still pins without a column, and a column-aware MISS CLEARS the pin [1.19ms]
+(pass) AC4: a click resolves through the row's own rectangle, COLUMN included > dagRowClick reports WHICH rule resolved a row, and resolves nothing for a row with no box [0.17ms]
+(pass) AC6: clicking the ALREADY-PINNED task opens its owner's agent page > resolves the owner through the host's subagent rows and calls the row's opener [1.49ms]
+(pass) AC6: clicking the ALREADY-PINNED task opens its owner's agent page > an unmatched owner, an absent opener and a refusal each SPEAK through the host's toast [1.83ms]
+(pass) AC6: clicking the ALREADY-PINNED task opens its owner's agent page > a second click on the SAME handler — before the host re-rendered — still opens the page [0.42ms]
+(pass) AC6: clicking the ALREADY-PINNED task opens its owner's agent page > agentIdForOwner matches the owner NAME against the host's own descriptions [0.11ms]
+(pass) R1: non-empty board vs empty workspace > a board WITH tasks paints its rows (plus the header, the mode row and the legend) [0.64ms]
+(pass) R1: non-empty board vs empty workspace > a workspace with NO team prints the empty state that names the call which fills it [0.19ms]
+(pass) R1: non-empty board vs empty workspace > C6: the projection keeps a RESOLVED team's identity when its board is empty, and stays undefined for no team [0.09ms]
+(pass) R1: non-empty board vs empty workspace > C6: a live member-only team (0 tasks) renders identity and roster — NOT a no-team state [0.22ms]
+(pass) R1: non-empty board vs empty workspace > C6: the workspace fallback with ZERO tasks keeps its marker — not the false 'no team in this workspace' row [0.17ms]
+(pass) the viewport hook > every read is clamped against the CURRENT page, from ANY render's closure [0.54ms]
+(pass) the scrollbar and the self-windowed viewport > the rendered window NEVER exceeds the viewport, for a one-row and a 400-row board [49.29ms]
+(pass) the scrollbar and the self-windowed viewport > the offset clamps to [0, max(0, content - viewport)] and never renders a blank page [52.57ms]
+(pass) the scrollbar and the self-windowed viewport > the thumb's LENGTH and POSITION are monotone in the offset, and it never leaves the gutter [0.26ms]
+(pass) the scrollbar and the self-windowed viewport > when the content FITS there is no gutter, and no column is reserved [1.57ms]
+(pass) the scrollbar and the self-windowed viewport > FOCUS AUTO-SCROLL: the focused task is inside the rendered window at both ends of an overflowing board [3.90ms]
+(pass) the scrollbar and the self-windowed viewport > the wheel scrolls down on a positive delta, up on a negative one, and does nothing when it fits [0.19ms]
+(pass) the scrollbar and the self-windowed viewport > the WHEEL HANDLER IS BOUND ONCE, on the page's own window [1.27ms]
+(pass) D2 · wheel direction: ONE normalisation point and the `tui.wheelInvert` knob > the knob OFF is today's behaviour on BOTH directions, and it is the default [0.03ms]
+(pass) D2 · wheel direction: ONE normalisation point and the `tui.wheelInvert` knob > the knob ON inverts BOTH directions [0.01ms]
+(pass) D2 · wheel direction: ONE normalisation point and the `tui.wheelInvert` knob > the HORIZONTAL axis consumes the same helper, and only the axis it names [0.05ms]
+(pass) D2 · wheel direction: ONE normalisation point and the `tui.wheelInvert` knob > `normalizeWheelDelta` is the ONE sign decision, and a zero delta stays a zero [0.01ms]
+(pass) D2 · wheel direction: ONE normalisation point and the `tui.wheelInvert` knob > the knob resolves from `<workspace>/.mpd/mpd.jsonc` through the REAL mpd-config layer [0.42ms]
+(pass) R6: the frame's border title is a structured value, not a string > every page's frame carries { content, position: 'top', align } — and a bare string FAILS [0.72ms]
+(pass) R6: the frame's border title is a structured value, not a string > POSITIVE CONTROL: a bare string is NOT acceptable, and the check can tell [0.04ms]
+(pass) FINDING 11: every emitted row fits the frame interior > no row exceeds the interior at ANY width, and the whole page respects it [2.34ms]
+(pass) FINDING 11: every emitted row fits the frame interior > POSITIVE CONTROL: a deliberately over-long row FAILS the same check [0.04ms]
+(pass) FINDING 11: every emitted row fits the frame interior > the frame's interior helper subtracts exactly the two border cells [0.02ms]
+(pass) the badge ladder > failed outranks blocked outranks running, and an idle board clears it [0.07ms]
+(pass) the badge ladder > the page publishes the badge through the host API, once per change [0.91ms]
+(pass) the workmate page > carries its own descriptor, with a one-cell icon [0.06ms]
+(pass) the workmate page > the EMPTY state names the call that fills the shelf [0.10ms]
+(pass) the workmate page > an unreadable home renders the empty state rather than throwing [0.24ms]
+(pass) the workmate page > a populated shelf shows the key, the base and the note [0.08ms]
+(pass) the workmate page > the reader tolerates a missing library and never throws [0.19ms]
+(pass) AC8b · the page draws its own `⤢`, and the dep the row received reaches it > a click on the control reaches the `openFullscreenScreen` dep the surviving registration forwards [0.70ms]
+(pass) AC8b · the page draws its own `⤢`, and the dep the row received reaches it > a row given no opener still draws the row, but its glyph carries no click handler [0.46ms]
+(pass) T2 · the panel body names both sections and draws a rule between them > the labels are the contract's own ENGLISH names [0.02ms]
+(pass) T2 · the panel body names both sections and draws a rule between them > each rule is the host's own titled-divider shape, drawn by the SHARED `surfaceRule` [0.61ms]
+(pass) T2 · the panel body names both sections and draws a rule between them > the rule sits BETWEEN the sections: host rows, then the DAG rule, then the drawing [0.82ms]
+(pass) T2 · the panel body names both sections and draws a rule between them > an UNREADABLE host snapshot still yields BOTH named sections, the DAG one included [0.58ms]
+(pass) T2 · the panel body names both sections and draws a rule between them > a host section that renders only its EMPTY STATE is still named and still separated [0.17ms]
+
+ 486 pass
+ 0 fail
+ 13498 expect() calls
+Ran 486 tests across 20 files. [8.76s]
+[gate] bun test packages/mpd-tui-plugin (pinned bun) -> exit 0
+
+[gate] node scripts/mpd-tui-panels.ts --self-test
+  ok   (a) the merge appends in order without touching the user's tokens
+  ok   (a) a second pass is a no-op
+  ok   (a) the merge never drops an unknown id the user added
+  ok   (a) duplicates collapse the way the host collapses them
+  ok   (a) D1 our STALE act ids are pruned and the current ones take their place
+  ok   (a) D1 the prune is REPORTED, not silent
+  ok   (a) D3 every one of the eight builtins survives
+  ok   (a) D3 a FOREIGN id shaped like an act id is never dropped
+  ok   (a) D1 a prune with nothing to append still changes the list
+  ok   (a) an ABSENT leaf is seeded from the host's own default, so every builtin survives
+  ok   (a) NEGATIVE CONTROL: a SEEDLESS absent leaf drops the builtins — the hazard the seed removes
+  ok   (a) a leaf naming NONE of the builtins is left BYTE-FOR-BYTE by the automatic path
+  ok   (a) so the merge writes nothing at all for it (a deliberate removal is respected)
+  ok   (a) --restore-builtins puts the whole default back AHEAD of the leaf's own tokens
+  ok   (a) --restore-builtins on a HEALTHY list is a no-op that restores nothing
+  ok   (a) --restore-builtins completes a PARTIAL selection, in the host's own order
+  ok   (a) --restore-builtins REFUSES when the host default cannot be read
+  ok   (a) all EIGHT builtins survive every path (absent leaf, explicit restore, healthy list)
+  ok   (a) a FULLY repaired list (all eight + ours) is a NO-OP, not a rewrite
+  ok   (a) and its AUTOMATIC SEED is that same list untouched — nothing is restored
+  ok   (a) CONTROL: a PARTIAL builtin selection is a position and is left byte-for-byte
+  ok   (a) CONTROL: with no readable host default an ABSENT leaf REFUSES rather than seeding empty
+  ok   (a) an EXISTING leaf is still usable when the host default cannot be read
+  ok   (a) D1 the document reader answers the leaf the merge consumes
+  ok   (a) D1 the READ-BACK of an edited document equals the CSV that was written
+  ok   (a) D1 the read-back names its own failure on an unedited document
+  ok   (R1.1) a LIVE foreign `act9:team` beside our `act7:team` is never pruned
+  ok   (R1.1) a never-ours act-shaped token is never pruned
+  ok   (R1.2) our DEAD recorded ids are pruned and the live one takes their place
+  ok   (R1.2) the prune is REPORTED, not silent
+  ok   (R1.6) the reader skips another section's earlier `panels:` leaf
+  ok   (R1.6) ... so a missing current id is NOT reported as already enabled
+  ok   (R1.6) the write lands in the real leaf and the READ-BACK agrees
+  ok   (R1.6) a LATER section's `panels:` leaf is not read either
+  ok   (b) the leaf is inserted under the existing section
+  ok   (b) every other line survives
+  ok   (c) a repeated edit is idempotent
+  ok   (c) the previous CSV is reported
+  ok   (b) a missing section is created beside config
+  ok   (negative) an absent row is refused, not invented
+  ok   (d) the installed host patch declares rows at all
+  ok   (d) the installed host patch declares dsh-tui with a config block
+  ok   (d) the restated block carries the host's own keys, not a guess
+  ok   (e) the proof names the installed sources
+  ok   (e) the proof predicts a file INSIDE the profile directory
+  ok   (e) NEGATIVE CONTROL: an unreadable source makes the proof fail
+  ok   (e) NEGATIVE CONTROL: the refusal names the file it could not read
+  ok   (e) the predicted document is the file the profile template creates
+  ok   (f) the MEASURED version-1 record with NO provenance is refused
+  ok   (f) a blank `provenance.hostVersion` is refused by name
+  ok   (f) a blank `provenance.hostRoot` is refused by name
+  ok   (f) an empty `provenance.readBack` is refused by name
+  ok   (f) the impossible `act0` activation is refused by name
+  ok   (f) a well-formed version-2 record IS accepted
+  ok   (R1.2) a version-3 record hands BOTH its history and its current ids to the prune
+  ok   (R1.2) a version-2 record (no history) still offers its own ids as past
+  ok   (R1.2) the MEASURED polluted record contributes NO past at all
+  ok   (R1.2) a blank `hostVersion` contributes no past either
+  ok   (g) a settings document without a sidePanel block reads as ABSENT
+  ok   (g) writing an ABSENT document creates the nested key and keeps the sibling
+  ok   (g) a PRESENT stale pin is read back as the shadowing value
+  ok   (g) the repair replaces the stale pin in the settings layer
+  ok   (g) the `imported` marker SURVIVES the repair, so the host never re-imports over it
+  ok   (g) a CUSTOM list is read as the shadowing value
+  ok   (g) a CUSTOM list keeps its tokens through the layer's repair
+  ok   (g) the write emits a trailing newline and a 2-space indent
+  ok   (g) re-writing the written document with the same value is a BYTE-FOR-BYTE no-op
+  ok   (g) NEGATIVE CONTROL: an unparseable document is refused by the reader
+  ok   (g) NEGATIVE CONTROL: an unparseable document is refused by the writer
+[mpd-tui-panels] SELF-TEST PASS (all arms held)
+[gate] node scripts/mpd-tui-panels.ts --self-test -> exit 0
+
+[gate] bun run typecheck (pinned bun)
+$ tsgo --noEmit
+[gate] bun run typecheck (pinned bun) -> exit 0
+
+[gate] bun run verify:comments (pinned bun)
+$ node scripts/verify-comment-coverage.ts
+# verify-comment-coverage
+
+scanned 404 TypeScript file(s) of 404 in the source set; inspected 35883 declaration(s); skipped 16301 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+[gate] bun run verify:comments (pinned bun) -> exit 0
+
+[gate] node scripts/verify-dist-fresh.ts
+  FRESH   packages/mpd-better-sidebar-host/dist/index.js  sha 3654956fbdfd… 21ms  <- packages/mpd-better-sidebar-host/src/index.ts
+  FRESH   packages/mpd-bootstrap-plugin/dist/index.js  sha 42e052209e4e… 22ms  <- packages/mpd-bootstrap-plugin/src/index.ts
+  FRESH   packages/mpd-boulder-plugin/dist/index.js  sha 2688a4c77f15… 21ms  <- packages/mpd-boulder-plugin/src/index.ts
+  FRESH   packages/mpd-bundle-plugin/dist/index.js  sha 75fce6e8a6fd… 20ms  <- packages/mpd-bundle-plugin/src/index.ts
+  FRESH   packages/mpd-codegraph-plugin/dist/index.js  sha 46b610fa1d81… 21ms  <- packages/mpd-codegraph-plugin/src/index.ts
+  FRESH   packages/mpd-comment-checker-plugin/dist/index.js  sha c6afec996532… 22ms  <- packages/mpd-comment-checker-plugin/src/index.ts
+  FRESH   packages/mpd-config-plugin/dist/index.js  sha 299c85a81dfc… 21ms  <- packages/mpd-config-plugin/src/index.ts
+  FRESH   packages/mpd-dsh-adapter-plugin/dist/index.js  sha cc04c5d47cfb… 19ms  <- packages/mpd-dsh-adapter-plugin/src/index.ts
+  FRESH   packages/mpd-ext-plugin/dist/index.js  sha ed4f5ec9d2a0… 19ms  <- packages/mpd-ext-plugin/src/index.ts
+  FRESH   packages/mpd-ext-plugin/dist/sdk.js  sha 7c68358d2560… 13ms  <- packages/mpd-ext-plugin/src/sdk.ts
+  FRESH   packages/mpd-goal-plugin/dist/index.js  sha 843e1801d5a1… 20ms  <- packages/mpd-goal-plugin/src/index.ts
+  FRESH   packages/mpd-hashline-plugin/dist/index.js  sha fa4becd47e0b… 17ms  <- packages/mpd-hashline-plugin/src/index.ts
+  FRESH   packages/mpd-mcp-astgrep/dist/cli.js  sha f11d1d0c501a… 16ms  <- packages/mpd-mcp-astgrep/src/cli.ts
+  FRESH   packages/mpd-mcp-astgrep/dist/launch.js  sha 3f02e8507b35… 15ms  <- packages/mpd-mcp-astgrep/src/launch.ts
+  FRESH   packages/mpd-mcp-codegraph/dist/launch.js  sha bfd3cc817a62… 15ms  <- packages/mpd-mcp-codegraph/src/launch.ts
+  FRESH   packages/mpd-mcp-gitbash/dist/launch.js  sha f46205751274… 13ms  <- packages/mpd-mcp-gitbash/src/launch.ts
+  FRESH   packages/mpd-mcp-lsp/dist/launch.js  sha d536d4d6311e… 15ms  <- packages/mpd-mcp-lsp/src/launch.ts
+  FRESH   packages/mpd-memory-plugin/dist/index.js  sha 6468384efa85… 22ms  <- packages/mpd-memory-plugin/src/index.ts
+  FRESH   packages/mpd-modelchain-plugin/dist/index.js  sha 78c3c3e91737… 19ms  <- packages/mpd-modelchain-plugin/src/index.ts
+  FRESH   packages/mpd-qa-roles-probe/dist/index.js  sha b1edaac67f4a… 20ms  <- packages/mpd-qa-roles-probe/src/index.ts
+  FRESH   packages/mpd-roles-plugin/dist/index.js  sha 446fff781102… 20ms  <- packages/mpd-roles-plugin/src/index.ts
+  FRESH   packages/mpd-roster-provider-plugin/dist/index.js  sha c19696dd4776… 22ms  <- packages/mpd-roster-provider-plugin/src/index.ts
+  FRESH   packages/mpd-team-compact-plugin/dist/index.js  sha d2c849f917d5… 24ms  <- packages/mpd-team-compact-plugin/src/index.ts
+  FRESH   packages/mpd-team-core-plugin/dist/index.js  sha c7383813baf3… 25ms  <- packages/mpd-team-core-plugin/src/index.ts
+  FRESH   packages/mpd-team-watchdog-plugin/dist/index.js  sha 4fbe6b6d9485… 22ms  <- packages/mpd-team-watchdog-plugin/src/index.ts
+  FRESH   packages/mpd-tools-plugin/dist/index.js  sha 2e961aebcaf1… 23ms  <- packages/mpd-tools-plugin/src/index.ts
+  FRESH   packages/mpd-tui-adapter-plugin/dist/index.js  sha 7cd9fab9514e… 19ms  <- packages/mpd-tui-adapter-plugin/src/index.ts
+  FRESH   packages/mpd-tui-plugin/dist/index.js  sha 1b1634e675f1… 24ms  <- packages/mpd-tui-plugin/src/index.ts
+  FRESH   packages/mpd-ulw-plugin/dist/index.js  sha 24d1a6c50c9f… 26ms  <- packages/mpd-ulw-plugin/src/index.ts
+  FRESH   packages/mpd-verify-plugin/dist/index.js  sha 5e776b5284b0… 21ms  <- packages/mpd-verify-plugin/src/index.ts
+  FRESH   packages/mpd-workmate-plugin/dist/index.js  sha 8734d30c3b07… 28ms  <- packages/mpd-workmate-plugin/src/index.ts
+[verify-dist-fresh] root: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh  (build: bun build <src> --target node --format esm --outfile <tmp>/<entry>.js)
+[verify-dist-fresh] build toolchain: bun 1.4.0 from the repository toolchain (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun) · recorded buildToolchain bun@1.4.0
+[verify-dist-fresh] NOT COVERED (1) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+[verify-dist-fresh] ok: 31/31 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 655ms
+[gate] node scripts/verify-dist-fresh.ts -> exit 0
+
+[gate] bun run verify:docs (pinned bun)
+$ node scripts/verify-docs-parity.ts
+ok   README.md
+ok   docs/design.md
+ok   docs/development.md
+ok   docs/extension-adaptation-report.md
+ok   docs/extension-authoring-guide.md
+ok   docs/extensions.md
+ok   docs/feature-audit.md
+ok   docs/independence.md
+ok   docs/index.md
+ok   docs/preset-default.md
+ok   docs/tui-parity.md
+ok   docs/tui.md
+ok   docs/upstream-parity-ledger.md
+ok   docs/user-guide.md
+ok   extensions/README.md
+ok   templates/mpd-extension/README.md
+ok   packages/mpd-better-sidebar-host/README.md
+ok   packages/mpd-bootstrap-plugin/README.md
+ok   packages/mpd-boulder-plugin/README.md
+ok   packages/mpd-bundle/README.md
+ok   packages/mpd-bundle-plugin/README.md
+ok   packages/mpd-codegraph-plugin/README.md
+ok   packages/mpd-comment-checker-plugin/README.md
+ok   packages/mpd-config-plugin/README.md
+ok   packages/mpd-dsh-adapter-plugin/README.md
+ok   packages/mpd-ext-plugin/README.md
+ok   packages/mpd-goal-plugin/README.md
+ok   packages/mpd-hashline-plugin/README.md
+ok   packages/mpd-mcp-astgrep/README.md
+ok   packages/mpd-mcp-codegraph/README.md
+ok   packages/mpd-mcp-gitbash/README.md
+ok   packages/mpd-mcp-lsp/README.md
+ok   packages/mpd-memory-plugin/README.md
+ok   packages/mpd-modelchain-plugin/README.md
+ok   packages/mpd-qa-roles-probe/README.md
+ok   packages/mpd-roles-plugin/README.md
+ok   packages/mpd-roster-provider-plugin/README.md
+ok   packages/mpd-schemastery/README.md
+ok   packages/mpd-team-compact-plugin/README.md
+ok   packages/mpd-team-core-plugin/README.md
+ok   packages/mpd-team-watchdog-plugin/README.md
+ok   packages/mpd-tools-plugin/README.md
+ok   packages/mpd-tui-adapter-plugin/README.md
+ok   packages/mpd-tui-plugin/README.md
+ok   packages/mpd-ulw-plugin/README.md
+ok   packages/mpd-verify-plugin/README.md
+ok   packages/mpd-workmate-plugin/README.md
+skip docs/bline-report.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/decisions.md — EXEMPT: process record (AGENTS.md §3)
+skip docs/omo-parity-gap.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/plan-0.1.7-adaptation.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-c.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-d.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-e.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-f.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-live-session-wave.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-team-plane-split.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-team-watchdog-report.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-team-watchdog.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-tui-edition.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-tui-team-surface.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-ui-team-gui.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/plan-webui-tui-i18n.md — EXEMPT: process record (AGENTS.md §3: plan-*.md)
+skip docs/review-p0-p3.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/track-a-report.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/tui-edition-report.md — EXEMPT: prior-phase report (the TUI edition delivery report) — named in the AGENTS.md Language-policy enumeration of exempt prior-phase reports (captain ruling on T60-F1)
+skip docs/ulw-deepseek-optimization.md — EXEMPT: prior-phase report (AGENTS.md §3)
+skip docs/verification/2026-10-08T1203Z/verdict.md — EXEMPT: verification record (process record, AGENTS.md §3)
+skip packages/mpd-mcp-shared — EXEMPT: ships source and tests only; its README pair is a recorded follow-up
+skip docs/adder4.md — EXEMPT: internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source [ANTICIPATORY — not a live path]
+skip docs/cnt8.md — EXEMPT: internal QA/golden reference — ANTICIPATORY by design: the file does not exist in this tree yet; t39 removed the stale citation from both ends and this list is the single source [ANTICIPATORY — not a live path]
+note AGENTS.md — DERIVED: delta-range claims NOT adjudicated (agent-references/agent-teams-deltas.md is absent — the artifact the pointer NAMES cannot be read) — this root does not ship the artifact the pointer names, so the claim is neither confirmed nor contradicted here
+note agent-references/index.md — DERIVED: delta-range claims NOT adjudicated (agent-references/agent-teams-deltas.md is absent — the artifact the pointer NAMES cannot be read) — this root does not ship the artifact the pointer names, so the claim is neither confirmed nor contradicted here
+note agent-references/agent-teams-deltas.md — DERIVED: region-count claim skipped AND its registry (packages/mpd-agent-teams-plugin/lib/mpd-deltas.ts) is equally absent — both were deleted with the adopted agent-teams body (de-vendor wave), so the derived-value rule is VACUOUS in this root: it is exercised only by this script's --self-test fixtures, never by the live tree
+[verify-docs-parity] links=436 checked=404 resolved=404 dead=0 exemptProvenance=0 absentSite=0 ignoredExternal=26 ignoredAnchorOnly=6 files=115
+
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=47 failed=0 violations=0 exempt=24 derived=3 links=436 dead=0 — PASS
+[gate] bun run verify:docs (pinned bun) -> exit 0
+
+[gates] adapter=0 tui-plugin=0 self-test=0 typecheck=0 comments=0 dist-fresh=0 docs=0
