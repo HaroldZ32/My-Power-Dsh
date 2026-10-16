@@ -18,11 +18,20 @@
 // contract `F5`, `.mpd/plans/tui-014-adaptation.md`). The paragraph above stays the 0.13.0
 // measurement it was.
 //
-// WHAT IT WRITES, AND WHERE — the SETTINGS USER LAYER, which is the profile's own patch file. That
-// is the host's own resolution, not a guess: `dsh-config-editor`'s `ConfigEditor` answers
-// `get documentPath() { return this.ownerContext.profileContext.patchPath }`, and `dsh-app-boot`
-// builds that as `join(profileDir, PROFILE_PATCH_FILENAME)`. The script READS both installed sources
-// and refuses to `--apply` when it cannot prove the path (see `proveSettingsDocument`).
+// WHAT IT WRITES, AND WHERE — TWO user layers, and both are the host's own resolution, not a guess.
+// The first is the SETTINGS USER LAYER, which is the profile's own patch file:
+// `dsh-config-editor`'s `ConfigEditor` answers `get documentPath() { return
+// this.ownerContext.profileContext.patchPath }`, and `dsh-app-boot` builds that as
+// `join(profileDir, PROFILE_PATCH_FILENAME)`. The script READS both installed sources and refuses to
+// `--apply` when it cannot prove the path (see `proveSettingsDocument`). The second (2026-10-16,
+// `fix/sidebar-015-keeper-migration`) is the TUI's OWN settings document `~/.dsh-tui/settings.json`,
+// which dsh-tui 0.15.0 reads BEFORE the patch: the effective list resolves
+// `values.sidePanel?.panels ?? config.sidePanel?.panels`, so the settings layer SHADOWS the patch — a
+// repair that wrote only the patch was a no-op for the sidebar. Its one-time import hop carries an
+// `imported.from` marker that blocks re-import, and this script PRESERVES that marker (and every other
+// key) byte-for-byte, so the host never re-imports over the repair. `--tui-settings <path>` points the
+// layer at a fixture for tests/QA; an absent document leaves the run patch-only, exactly as before
+// this layer existed.
 //
 // WHY THE IDS ARE DISCOVERED RATHER THAN SPELLED. A panel's final id is `<pluginId>:<slug>`, and the
 // `<pluginId>` half is the HOST's: the host composes the caller's Component identity when the caller
@@ -72,7 +81,7 @@
 //
 // Usage:
 //   node scripts/mpd-tui-panels.ts [--dsh-home <dir>] [--profile <name>] [--workspace <dir>]
-//                                  [--ids a,b,c] [--apply] [--restore-builtins]
+//                                  [--tui-settings <path>] [--ids a,b,c] [--apply] [--restore-builtins]
 //   node scripts/mpd-tui-panels.ts --self-test
 //
 // Exit: 0 dry run printed / write landed; 1 for an unprovable path, unprovable ids, or a failed
@@ -583,6 +592,111 @@ export function restoreMissingBuiltins(current: string | undefined, hostDefault:
 }
 
 /**
+ * Parse the TUI's own settings document, narrowed to its root object.
+ *
+ * Shared by the layer's reader and writer so the two can never disagree about what a settings
+ * document is. A file this cannot parse is NEVER rewritten by the writer above it — an unparseable
+ * document is user data this script refuses to guess about, not an absent layer.
+ * @param text - the settings.json document's text.
+ * @returns the parsed root object, or the ONE reason this is not a settings document.
+ */
+function parseTuiSettingsRoot(text: string): { readonly root: Record<string, unknown>; readonly failed: false } | { readonly root: undefined; readonly failed: true; readonly detail: string } {
+  try {
+    /** The parsed document; anything JSON accepts is narrowed to a plain object below. */
+    const parsed: unknown = JSON.parse(text)
+    if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) return { root: parsed as Record<string, unknown>, failed: false }
+    return { root: undefined, failed: true, detail: "the settings document is not a JSON object" }
+  } catch (error) {
+    return { root: undefined, failed: true, detail: `the settings document is not valid JSON (${String((error as Error)?.message ?? error)})` }
+  }
+}
+
+/** What one TUI settings document says about the sidebar enable list. */
+export interface TuiSettingsRead {
+  /**
+   * The `values.sidePanel.panels` CSV the document carries.
+   *
+   * `undefined` when the key is absent or not a string — the key is then simply not a position, and
+   * the effective list falls back to the profile patch (the host's own `??` resolution order).
+   */
+  readonly panels: string | undefined
+}
+
+/**
+ * Read the sidebar enable CSV the TUI's own settings layer carries.
+ *
+ * WHY THIS LAYER EXISTS (measured 2026-10-16, `fix/sidebar-015-keeper-migration`): dsh-tui 0.15.0
+ * keeps its own user settings at `~/.dsh-tui/settings.json` and resolves the effective list as
+ * `values.sidePanel?.panels ?? config.sidePanel?.panels` — the settings layer SHADOWS the profile
+ * patch this script has always edited, and its one-time import hop (`imported.from` marker) can pin
+ * the stale 0.13.0 list into the shadowing layer. A repair that wrote only the patch was therefore a
+ * no-op for the sidebar, which is why the run now reads BOTH layers and merges from the EFFECTIVE
+ * list.
+ * @param text - the settings.json document's text.
+ * @returns the CSV the `values.sidePanel.panels` key carries (or `undefined` when it is absent), or
+ *   the ONE reason the document cannot be read as a settings object.
+ */
+export function readTuiSettingsPanels(text: string): TuiSettingsRead | { detail: string } {
+  /** The parsed root, refused when the document is not a settings object. */
+  const parsed = parseTuiSettingsRoot(text)
+  if (parsed.failed) return { detail: parsed.detail }
+  /** The parsed root object, narrowed by the failed check above. */
+  const root = parsed.root
+  /** The `values` block, when the document carries one. */
+  const values = root.values
+  if (values === undefined) return { panels: undefined }
+  if (typeof values !== "object" || values === null || Array.isArray(values)) return { detail: "the settings document's `values` block is not an object" }
+  /** The `sidePanel` block under `values`, when the document carries one. */
+  const sidePanel = (values as Record<string, unknown>).sidePanel
+  if (sidePanel === undefined) return { panels: undefined }
+  if (typeof sidePanel !== "object" || sidePanel === null || Array.isArray(sidePanel)) return { detail: "the settings document's `values.sidePanel` block is not an object" }
+  /** The enable CSV leaf; a non-string reads as absent (the writer below replaces it with the CSV). */
+  const panels = (sidePanel as Record<string, unknown>).panels
+  return { panels: typeof panels === "string" ? panels : undefined }
+}
+
+/**
+ * Set `values.sidePanel.panels` in the TUI's own settings document, preserving every other key.
+ *
+ * The write is a PARSE-AND-RESERIALIZE on purpose — this document is plain JSON (never the patch
+ * dialect's `!!js` tags), and the host's own writer serializes it with a 2-space indent and a
+ * trailing newline, which is the formatting this emits so a host rewrite and this repair produce the
+ * same bytes. Every key outside the one leaf — including the one-time-import `imported` marker, which
+ * must survive or the host would re-import over the repair — is carried through unchanged. A `values`
+ * or `sidePanel` block that exists but is not an object is a corrupted document, and is REFUSED
+ * rather than replaced (a replacement would delete the user's keys).
+ * @param text - the settings.json document's text.
+ * @param csv - the enable CSV to write.
+ * @returns the document's new text (2-space indent, trailing newline), or the ONE reason it could not
+ *   be rewritten.
+ */
+export function writeTuiSettingsPanels(text: string, csv: string): string | { detail: string } {
+  /** The parsed root, refused when the document is not a settings object. */
+  const parsed = parseTuiSettingsRoot(text)
+  if (parsed.failed) return { detail: parsed.detail }
+  /** The parsed root object, narrowed by the failed check above. */
+  const root = parsed.root
+  /** The `values` block as declared, when the document carries one. */
+  const values = root.values
+  if (values !== undefined && (typeof values !== "object" || values === null || Array.isArray(values))) {
+    return { detail: "the settings document's `values` block is not an object" }
+  }
+  /** The `values` block this write lands in: the declared one, or an empty block created for it. */
+  const valuesBlock = (values ?? {}) as Record<string, unknown>
+  /** The `sidePanel` block as declared, when the document carries one. */
+  const sidePanel = valuesBlock.sidePanel
+  if (sidePanel !== undefined && (typeof sidePanel !== "object" || sidePanel === null || Array.isArray(sidePanel))) {
+    return { detail: "the settings document's `values.sidePanel` block is not an object" }
+  }
+  /** The `sidePanel` block this write lands in: the declared one, or an empty block created for it. */
+  const sidePanelBlock = (sidePanel ?? {}) as Record<string, unknown>
+  sidePanelBlock.panels = csv
+  valuesBlock.sidePanel = sidePanelBlock
+  root.values = valuesBlock
+  return `${JSON.stringify(root, null, 2)}\n`
+}
+
+/**
  * Append a user-layer entry for one row, keeping the document's own trailing newline.
  * @param text - the document's text.
  * @param rowId - the loader entry id.
@@ -984,6 +1098,24 @@ interface Options {
   readonly profile?: string
   /** `--workspace <dir>`; defaults to the current directory. */
   readonly workspace: string
+  /**
+   * `--tui-settings <path>`: the TUI's own settings document, the layer that SHADOWS the patch.
+   *
+   * Defaults to `~/.dsh-tui/settings.json`; the flag exists so tests and QA can point the layer at a
+   * fixture without touching a real home. An absent document (default path or flag) leaves the run
+   * patch-only, byte-identical to before this layer existed.
+   */
+  readonly tuiSettings?: string
+  /**
+   * The ONE reason the command line itself is refused, `undefined` when it parsed (R2.4).
+   *
+   * Carried on the options rather than thrown so `parseArgs` stays a pure function and `main` keeps
+   * its single refusal surface. Today the only producer is `--tui-settings`: a missing or
+   * dash-prefixed operand must be a NAMED refusal, never the silent fall-back to the real
+   * `~/.dsh-tui/settings.json` that an unchecked `argv[at + 1]` produced (fixture isolation is the
+   * flag's whole point).
+   */
+  readonly argRefusal?: string
   /** `--ids a,b,c`, overriding the adapter's record. */
   readonly ids?: string
   /** `--apply`; absent means dry run. */
@@ -998,6 +1130,32 @@ interface Options {
 }
 
 /**
+ * Read the `--tui-settings` operand and REFUSE a missing or dash-prefixed one (R2.4).
+ *
+ * The flag's whole point is fixture isolation, so its operand is the ONE path this parser must not
+ * guess about: `--tui-settings --apply` used to make `--apply` the path (a silent patch-only run),
+ * and a trailing `--tui-settings` used to yield `undefined` and silently fall back to the real
+ * `~/.dsh-tui/settings.json` — both defeating the isolation tests and QA rely on. A named refusal is
+ * returned instead; a valid path passes through unchanged.
+ * @param argv - the process arguments after the script path.
+ * @returns the operand's path, or the ONE reason the run must refuse; `{}` when the flag is absent.
+ */
+function tuiSettingsOperand(argv: readonly string[]): { readonly path?: string; readonly refusal?: string } {
+  /** The flag's index; `-1` when absent, in which case there is nothing to validate. */
+  const at = argv.indexOf("--tui-settings")
+  if (at < 0) return {}
+  /** The token after the flag, which an unchecked read used to take as the path sight unseen. */
+  const operand = argv[at + 1]
+  if (operand === undefined) {
+    return { refusal: "--tui-settings needs a path operand, and the flag is trailing; refusing rather than falling back to the real ~/.dsh-tui/settings.json" }
+  }
+  if (operand.startsWith("-")) {
+    return { refusal: `--tui-settings takes a path operand, not the flag "${operand}"; refusing rather than falling back to the real ~/.dsh-tui/settings.json` }
+  }
+  return { path: operand }
+}
+
+/**
  * Parse this script's own command line.
  * @param argv - the process arguments after the script path.
  * @returns the resolved options.
@@ -1009,10 +1167,14 @@ function parseArgs(argv: readonly string[]): Options {
     const at = argv.indexOf("--" + name)
     return at < 0 ? undefined : argv[at + 1]
   }
+  /** The `--tui-settings` operand, validated because a silent fall-back breaks fixture isolation. */
+  const tuiSettings = tuiSettingsOperand(argv)
   return {
     ...(value("dsh-home") === undefined ? {} : { dshHome: value("dsh-home") }),
     ...(value("profile") === undefined ? {} : { profile: value("profile") }),
     workspace: resolve(value("workspace") ?? process.cwd()),
+    ...(tuiSettings.path === undefined ? {} : { tuiSettings: tuiSettings.path }),
+    ...(tuiSettings.refusal === undefined ? {} : { argRefusal: tuiSettings.refusal }),
     ...(value("ids") === undefined ? {} : { ids: value("ids") }),
     apply: argv.includes("--apply"),
     restoreBuiltins: argv.includes("--restore-builtins"),
@@ -1027,6 +1189,12 @@ function parseArgs(argv: readonly string[]): Options {
 function main(argv: readonly string[]): number {
   /** The parsed command line. */
   const options = parseArgs(argv)
+  // R2.4 — a command line that did not parse is refused BY NAME before anything is read or written,
+  // so an invalid --tui-settings operand can never fall back to the real settings document.
+  if (options.argRefusal !== undefined) {
+    console.error(`${TAG} REFUSED: ${options.argRefusal}`)
+    return 1
+  }
   /** The resolved install, or the reason it could not be resolved. */
   const resolution = resolveLocation(options.dshHome, options.profile, options.workspace)
   for (const note of resolution.notes) console.log(`${TAG} ${note}`)
@@ -1075,77 +1243,193 @@ function main(argv: readonly string[]): number {
       return 1
     }
   }
-  /** The CSV the block carries now, `undefined` when the leaf is absent. */
+  /** The CSV the patch's block carries now, `undefined` when the leaf is absent. */
   const current = blockPanelCsv(text, location.rowId)
+  // THE TUI'S OWN SETTINGS LAYER, read before the seed: dsh-tui 0.15.0 resolves the effective list as
+  // `values.sidePanel?.panels ?? config.sidePanel?.panels`, so this layer SHADOWS the patch — the list
+  // this run starts from is the EFFECTIVE one, not the patch leaf. An ABSENT document leaves the run
+  // patch-only, byte-identical to before this layer existed; a document that exists but cannot be read
+  // as a settings object is a REFUSAL, because `--apply` would have to rewrite it below.
+  /** The settings document's path: the `--tui-settings` flag wins, the TUI's own home default otherwise. */
+  const settingsPath = options.tuiSettings ?? join(homedir(), ".dsh-tui", "settings.json")
+  /** The settings document's text, `undefined` when the layer is absent. */
+  const settingsText = existsSync(settingsPath) ? readFileSync(settingsPath, "utf8") : undefined
+  if (settingsText === undefined) console.log(`${TAG} no TUI settings layer at ${settingsPath}: the profile patch is the only user layer`)
+  /** The settings layer's own panels value — the shadowing half of the effective list. */
+  let settingsPanels: string | undefined
+  if (settingsText !== undefined) {
+    /** The read, refused when the document is not a settings object this run may rewrite. */
+    const readSettings = readTuiSettingsPanels(settingsText)
+    if ("detail" in readSettings) {
+      console.error(`${TAG} REFUSED: ${settingsPath}: ${readSettings.detail}`)
+      return 1
+    }
+    settingsPanels = readSettings.panels
+  }
   // THE SEED, read from the INSTALLED host module and never hard-coded: the host's current default when
-  // the leaf is absent (a seedless merge would DELETE every builtin), and that SAME default restored
-  // ahead of the leaf's own tokens when the leaf names NONE of them — the seedless-write damage that
-  // left the sidebar showing `MPD` and only `MPD`.
+  // the EFFECTIVE leaf is absent (a seedless merge would DELETE every builtin), and that SAME default
+  // restored ahead of the effective tokens when the leaf names NONE of them — the seedless-write damage
+  // that left the sidebar showing `MPD` and only `MPD`.
   /** The installed host's current default. */
   const hostDefault = hostDefaultPanelCsv(location.profileDir)
   /**
-   * The list this run starts from.
+   * The EFFECTIVE list this run starts from: the settings layer's key when it carries one, the patch
+   * leaf otherwise — the host's own `??` resolution order, so the merge can never start from a list
+   * the sidebar does not actually use.
    *
-   * THE AUTOMATIC PATH ONLY SEEDS AN ABSENT LEAF. An existing leaf — including one that names none of
-   * the builtins — is a POSITION and is left byte-for-byte, because "every builtin is missing" cannot be
-   * told apart from "the user removed every builtin". `--restore-builtins` is the EXPLICIT act that also
-   * puts the missing builtins back, since only the human can state that intent.
+   * THE AUTOMATIC PATH ONLY SEEDS AN ABSENT EFFECTIVE LEAF. An existing one — including one that names
+   * none of the builtins — is a POSITION and is left byte-for-byte, because "every builtin is missing"
+   * cannot be told apart from "the user removed every builtin". `--restore-builtins` is the EXPLICIT
+   * act that also puts the missing builtins back, since only the human can state that intent.
    */
-  const seed = options.restoreBuiltins ? restoreMissingBuiltins(current, hostDefault) : resolvePanelSeed(current, hostDefault)
+  const effective = settingsPanels ?? current
+  /** The seed the merge consumes: the effective list as it stands, or the restored builtin prefix. */
+  const seed = options.restoreBuiltins ? restoreMissingBuiltins(effective, hostDefault) : resolvePanelSeed(effective, hostDefault)
   if ("detail" in seed) {
     console.error(`${TAG} REFUSED: ${seed.detail}`)
     console.error(`${TAG}   Seeding an empty list here would REPLACE every builtin panel; check the install of ${HOST_PACKAGE} and re-run.`)
     return 1
   }
-  if (current === undefined) console.log(`${TAG} no ${PANELS_KEY} leaf in the user layer: seeding from the installed host's own default (${String(hostDefault)})`)
+  if (effective === undefined) console.log(`${TAG} no ${PANELS_KEY} key in either user layer: seeding from the installed host's own default (${String(hostDefault)})`)
   if (options.restoreBuiltins) {
     console.log(seed.restored.length === 0
       ? `${TAG} --restore-builtins: every builtin the host ships is already enabled — nothing to restore`
-      : `${TAG} --restore-builtins: restoring ${seed.restored.join(",")} ahead of the tokens the leaf already carries`)
+      : `${TAG} --restore-builtins: restoring ${seed.restored.join(",")} ahead of the tokens the effective list already carries`)
   }
-  /** The merge this run would write, pruning only ids the record proves are ours. */
+  /** The merge this run would write, pruning only ids the record proves are ours — ONE code path for BOTH layers. */
   const merge = mergePanelIds(seed.seed, record.ids, record.past, hostDefault)
   // A PRUNE ALONE IS A REASON TO RUN (contract D1): the current ids may already be enabled while an
   // earlier boot's `act<N>:<slug>` tokens still sit in the list — that is precisely the accumulation the
   // remedy exists to clear, and an `added.length === 0` guard would print "already enabled" and stop.
   // A RESTORATION IS ONE TOO: a leaf that names no builtin at all changes the list even when every id of
-  // ours is already in it, so the early exit must not swallow it.
-  if (merge.added.length === 0 && merge.pruned.length === 0 && seed.restored.length === 0) {
+  // ours is already in it, so the early exit must not swallow it. The exit also demands that BOTH layers
+  // already carry the computed list (compared as token SETS through the same merge, so a mere spelling
+  // difference still exits as today): a layer that lags behind the effective list — the measured case
+  // was a stale pin under a healthy shadow — is brought up to the computed list even when the merge
+  // itself has nothing to add.
+  /** Whether the patch leaf already carries the computed list, as the merge's own normalized token set. */
+  const patchNoop = current !== undefined && mergePanelIds(current, [], []).csv === merge.csv
+  /** Whether the settings layer already carries it; an absent layer has nothing to write. */
+  const settingsNoop = settingsText === undefined || (settingsPanels !== undefined && mergePanelIds(settingsPanels, [], []).csv === merge.csv)
+  if (merge.added.length === 0 && merge.pruned.length === 0 && seed.restored.length === 0 && patchNoop && settingsNoop) {
     console.log(`${TAG} already enabled, and no stale id of ours to prune: ${merge.csv}`)
     return 0
   }
-  /** The edited document. */
-  const edited = writePanelsIntoDocument(text, location.rowId, merge.csv)
-  if (edited.csv === undefined) {
+  /** The edited patch document, needed only when the patch layer's bytes would change. */
+  const edited = patchNoop ? undefined : writePanelsIntoDocument(text, location.rowId, merge.csv)
+  if (!patchNoop && edited !== undefined && edited.csv === undefined) {
     console.error(`${TAG} REFUSED: ${edited.detail ?? "the block could not be edited"}`)
     return 1
   }
-  console.log(`${TAG} ${PANELS_KEY} (before): ${current === undefined || current === "" ? "(unset)" : current}`)
-  console.log(`${TAG} ${PANELS_KEY} (after):  ${merge.csv}`)
+  // BOTH LAYERS ARE REPORTED SEPARATELY, in the host's own resolution order: the settings layer first
+  // (it shadows), then the patch leaf. Each line names its layer, so a dry run is readable as the two
+  // writes it would make.
+  if (settingsText !== undefined) {
+    console.log(`${TAG} tui settings layer: ${settingsPath}`)
+    console.log(`${TAG} ${PANELS_KEY} (tui settings, before): ${settingsPanels === undefined || settingsPanels === "" ? "(unset)" : settingsPanels}`)
+    console.log(`${TAG} ${PANELS_KEY} (tui settings, after):  ${merge.csv}`)
+  }
+  console.log(`${TAG} patch layer: ${location.document}`)
+  console.log(`${TAG} ${PANELS_KEY} (patch, before): ${current === undefined || current === "" ? "(unset)" : current}`)
+  console.log(`${TAG} ${PANELS_KEY} (patch, after):  ${merge.csv}`)
   console.log(`${TAG} added: ${merge.added.join(",") || "(none)"}; pruned: ${merge.pruned.join(",") || "(none)"}; kept: ${merge.kept.join(",") || "(none)"}`)
   if (!options.apply) {
-    console.log(`${TAG} DRY RUN — nothing written. Re-run with --apply to write ${location.document}`)
+    /** The layers this dry run would write, named in the one line. */
+    const targets = [settingsText !== undefined && !settingsNoop ? settingsPath : "", !patchNoop ? location.document : ""].filter((entry) => entry !== "")
+    console.log(`${TAG} DRY RUN — nothing written. Re-run with --apply to write ${targets.join(" and ")}`)
     return 0
   }
-  /** The backup taken before the write, so a bad merge is one `cp` away from undone. */
-  const backup = `${location.document}.bak-${String(process.hrtime.bigint()).slice(-8)}`
-  copyFileSync(location.document, backup)
-  /** A sibling temp file the atomic rename replaces the document with. */
-  const staged = `${location.document}.tmp-${String(process.pid)}`
-  writeFileSync(staged, edited.text)
-  renameSync(staged, location.document)
-  // THE POST-WRITE READ-BACK (contract D1). The file on disk is read AGAIN and the leaf is compared with
-  // the CSV this run intended, so a document that did not take the edit — a second `panels:` leaf the
-  // editor wrote elsewhere, a rename that landed on a different inode — is reported instead of being
-  // announced as a successful write. The backup taken above is named in the refusal, because the file
-  // HAS been replaced and the user needs the way back.
-  /** What the document on disk carries after the write. */
-  const landed = blockPanelCsv(readFileSync(location.document, "utf8"), location.rowId)
-  if ((landed ?? "").trim().replace(/^["']|["']$/gu, "") !== merge.csv) {
-    console.error(`${TAG} REFUSED: the document read back "${landed ?? "(no panels leaf)"}" instead of the "${merge.csv}" just written. Restore ${backup} over ${location.document} to undo this run.`)
+  /** One backup stamp for this run, so both layers' backups name the same moment. */
+  const stamp = String(process.hrtime.bigint()).slice(-8)
+  /**
+   * The settings layer's backup path, set once this run replaced that layer; `""` when it never did.
+   *
+   * Held at the apply block's scope (R2.5) because a LATER patch-layer failure must name BOTH layers'
+   * ways back in its one refusal and roll the settings layer back to the bytes this run found there —
+   * without it, a failed two-layer write left the run half-reverted (settings rewritten, patch behind).
+   */
+  let settingsBackup = ""
+  /**
+   * Refuse a failed patch-layer write the R2.5 way: the one refusal names BOTH layers' backups (the
+   * settings layer first, because it shadows the patch) and the settings layer is restored
+   * automatically, so a failed two-layer run leaves the settings layer exactly as found instead of
+   * half-reverted. The patch layer itself keeps its pre-R2.5 contract: its document is left as the
+   * failed write left it and its backup is named for a manual restore.
+   * @param patchBackup - the patch document's backup path, or `""` when the failure preceded its copy.
+   * @param reason - the one-line reason: the read-back mismatch, or the thrown write's message.
+   * @returns the process exit code, always 1.
+   */
+  const refusePatchWrite = (patchBackup: string, reason: string): number => {
+    /** Both ways back this refusal names; an entry is dropped when that layer has no backup to name. */
+    const ways = [
+      settingsBackup === "" ? undefined : `${settingsBackup} over ${settingsPath}`,
+      patchBackup === "" ? undefined : `${patchBackup} over ${location.document}`,
+    ].filter((entry): entry is string => entry !== undefined)
+    console.error(`${TAG} REFUSED: ${reason}${ways.length === 0 ? " No backup was taken, so there is nothing to restore by hand." : ` Restore ${ways.join("; and ")} to undo this run.`}`)
+    if (settingsBackup === "") return 1
+    try {
+      copyFileSync(settingsBackup, settingsPath)
+      console.log(`${TAG} restored ${settingsBackup} over ${settingsPath}: the settings layer is back to the bytes this run found`)
+    } catch (restoreError) {
+      // The restore is best-effort and its failure is NAMED, never swallowed: the backup is already in
+      // the refusal above, so the operator still holds the way back.
+      console.error(`${TAG} could not restore ${settingsBackup} over ${settingsPath}: ${String((restoreError as Error)?.message ?? restoreError)} — restore it by hand`)
+    }
     return 1
   }
-  console.log(`${TAG} WROTE ${location.document} (backup: ${backup}); read back: ${landed}`)
+  // THE SETTINGS LAYER FIRST (it shadows — it is the list the sidebar actually uses), then the patch.
+  if (settingsText !== undefined && !settingsNoop) {
+    /** The settings document's new text, refused when the document cannot be rewritten. */
+    const settingsNext = writeTuiSettingsPanels(settingsText, merge.csv)
+    if (typeof settingsNext !== "string") {
+      console.error(`${TAG} REFUSED: ${settingsPath}: ${settingsNext.detail}`)
+      return 1
+    }
+    settingsBackup = `${settingsPath}.bak-${stamp}`
+    copyFileSync(settingsPath, settingsBackup)
+    /** A sibling temp file the atomic rename replaces the document with. */
+    const settingsStaged = `${settingsPath}.tmp-${String(process.pid)}`
+    writeFileSync(settingsStaged, settingsNext)
+    renameSync(settingsStaged, settingsPath)
+    /** What the settings layer on disk carries after the write. */
+    const settingsLanded = readTuiSettingsPanels(readFileSync(settingsPath, "utf8"))
+    if ("detail" in settingsLanded || settingsLanded.panels !== merge.csv) {
+      console.error(`${TAG} REFUSED: ${settingsPath} read back "${"detail" in settingsLanded ? settingsLanded.detail : String(settingsLanded.panels)}" instead of the "${merge.csv}" just written. Restore ${settingsBackup} over ${settingsPath} to undo this run.`)
+      return 1
+    }
+    console.log(`${TAG} WROTE ${settingsPath} (backup: ${settingsBackup}); read back: ${merge.csv}`)
+  } else if (settingsText !== undefined) {
+    console.log(`${TAG} ${settingsPath} already carries the computed list — left untouched`)
+  }
+  if (!patchNoop && edited !== undefined) {
+    /** The backup taken before the write, so a bad merge is one `cp` away from undone. */
+    const backup = `${location.document}.bak-${stamp}`
+    // A THROWN COPY/STAGE/RENAME IS A REFUSAL TOO (R2.5), never an unhandled crash: without this
+    // containment the process died mid-write, the refusal never printed, and the settings layer the
+    // same run had already replaced stayed rewritten — the half-reverted state this block refuses.
+    try {
+      copyFileSync(location.document, backup)
+      /** A sibling temp file the atomic rename replaces the document with. */
+      const staged = `${location.document}.tmp-${String(process.pid)}`
+      writeFileSync(staged, edited.text)
+      renameSync(staged, location.document)
+      // THE POST-WRITE READ-BACK (contract D1). The file on disk is read AGAIN and the leaf is compared with
+      // the CSV this run intended, so a document that did not take the edit — a second `panels:` leaf the
+      // editor wrote elsewhere, a rename that landed on a different inode — is reported instead of being
+      // announced as a successful write. The backup taken above is named in the refusal, because the file
+      // HAS been replaced and the user needs the way back.
+      /** What the document on disk carries after the write. */
+      const landed = blockPanelCsv(readFileSync(location.document, "utf8"), location.rowId)
+      if ((landed ?? "").trim().replace(/^["']|["']$/gu, "") !== merge.csv) {
+        return refusePatchWrite(backup, `the document read back "${landed ?? "(no panels leaf)"}" instead of the "${merge.csv}" just written.`)
+      }
+      console.log(`${TAG} WROTE ${location.document} (backup: ${backup}); read back: ${landed}`)
+    } catch (error) {
+      return refusePatchWrite(backup, `the patch layer write failed: ${String((error as Error)?.message ?? error)}.`)
+    }
+  } else {
+    console.log(`${TAG} ${location.document} already carries the computed list — left untouched`)
+  }
   console.log(`${TAG} restart dsh-tui for the new list to compose`)
   return 0
 }
@@ -1157,7 +1441,9 @@ function main(argv: readonly string[]): number {
  * Arm (d) reads the INSTALLED host: it extracts the sidebar row's own config block from the installed
  * bundle patch, so "the script restates what the host declared" is MEASURED rather than asserted. An
  * absent install makes that arm SKIP with a printed reason — never a vacuous pass. Arm (f) drives the
- * real reader over four records that must be refused and one that must be accepted.
+ * real reader over four records that must be refused and one that must be accepted. Arm (g) drives the
+ * TUI settings layer's reader/writer over the measured `~/.dsh-tui/settings.json` shapes (absent key,
+ * stale pin, custom list, `imported` marker, formatting stability).
  * @returns the process exit code.
  */
 function selfTest(): number {
@@ -1397,6 +1683,130 @@ function selfTest(): number {
     rmSync(scratch, { recursive: true, force: true })
   } catch (error) {
     check(`(f) the record-proof arm ran (${String((error as Error)?.message ?? error)})`, false)
+  }
+  // ── arm (g): the TUI's own settings layer — read the shadowing key, rewrite it, keep every other key ──
+  // The measured shape of `~/.dsh-tui/settings.json` on 0.15.0: `values.sidePanel.panels` plus the
+  // one-time-import `imported` marker (plus anything else the host keeps there). These arms are the
+  // pure half of the layer; the merge that consumes `panels` is the same (a)-band merge above.
+  try {
+    /** The settings document exactly as the 0.15.0 import hop leaves it: a stale pin plus the marker. */
+    const staleJson = JSON.stringify({ values: { sidePanel: { panels: "todo,jobs,agents" } }, imported: { from: "cordis.patch.yml", at: "2026-10-13T09:00:00.000Z" } })
+    /** The same document with a custom list in the shadowing key. */
+    const customJson = JSON.stringify({ values: { sidePanel: { panels: "todo,workspace" } }, imported: { from: "cordis.patch.yml" } })
+    /** A settings document with no `sidePanel` block under `values` at all. */
+    const bareJson = JSON.stringify({ values: { theme: "dark" }, imported: { from: "cordis.patch.yml" } })
+    // ABSENT: a document without the key reads as "no position", and the write CREATES the nested path.
+    const bareRead = readTuiSettingsPanels(bareJson)
+    check("(g) a settings document without a sidePanel block reads as ABSENT", !("detail" in bareRead) && bareRead.panels === undefined)
+    /** The bare document after a write, which must create `values.sidePanel.panels` and keep `theme`. */
+    const bareWrite = writeTuiSettingsPanels(bareJson, `${BUILTINS},act1:team`)
+    /** The bare document read back after that write. */
+    const bareBack = typeof bareWrite === "string" ? readTuiSettingsPanels(bareWrite) : undefined
+    check("(g) writing an ABSENT document creates the nested key and keeps the sibling",
+      bareBack !== undefined && !("detail" in bareBack) && bareBack.panels === `${BUILTINS},act1:team`
+        && typeof bareWrite === "string" && JSON.parse(bareWrite).values.theme === "dark")
+    // PRESENT-WITH-STALE-PIN: the read answers the pin; the write replaces it and PRESERVES `imported`.
+    const staleRead = readTuiSettingsPanels(staleJson)
+    check("(g) a PRESENT stale pin is read back as the shadowing value", !("detail" in staleRead) && staleRead.panels === "todo,jobs,agents")
+    /** The stale-pinned document after the repair write. */
+    const staleWrite = writeTuiSettingsPanels(staleJson, `${BUILTINS},act1:team`)
+    /** The stale-pinned document read back after that repair. */
+    const staleBack = typeof staleWrite === "string" ? readTuiSettingsPanels(staleWrite) : undefined
+    check("(g) the repair replaces the stale pin in the settings layer",
+      staleBack !== undefined && !("detail" in staleBack) && staleBack.panels === `${BUILTINS},act1:team`)
+    check("(g) the `imported` marker SURVIVES the repair, so the host never re-imports over it",
+      typeof staleWrite === "string" && JSON.stringify(JSON.parse(staleWrite).imported) === JSON.stringify({ from: "cordis.patch.yml", at: "2026-10-13T09:00:00.000Z" }))
+    // PRESENT-WITH-CUSTOM-LIST: a position is carried through the merge, never replaced.
+    const customRead = readTuiSettingsPanels(customJson)
+    /** The custom document's own panels value, narrowed once for the check and the merge below. */
+    const customPanels = "detail" in customRead ? undefined : customRead.panels
+    check("(g) a CUSTOM list is read as the shadowing value", customPanels === "todo,workspace")
+    /** The custom document's effective repair: the merge keeps the custom tokens and appends ours. */
+    const customMerged = mergePanelIds(customPanels, ["act1:team", "act1:workmate"], [], BUILTINS)
+    /** The custom document after that repair, refused-shaped when the writer could not rewrite it. */
+    const customWrite = writeTuiSettingsPanels(customJson, customMerged.csv)
+    /** The custom document read back after that repair. */
+    const customBack = typeof customWrite === "string" ? readTuiSettingsPanels(customWrite) : undefined
+    check("(g) a CUSTOM list keeps its tokens through the layer's repair",
+      customBack !== undefined && !("detail" in customBack) && customBack.panels === "todo,workspace,act1:team,act1:workmate")
+    // FORMATTING STABLE: 2-space indent, trailing newline, and a second write of the same value is a
+    // byte-for-byte no-op — the host's own writer and this repair produce the same shape.
+    check("(g) the write emits a trailing newline and a 2-space indent",
+      typeof staleWrite === "string" && staleWrite.endsWith("\n") && staleWrite.includes('\n  "values"'))
+    check("(g) re-writing the written document with the same value is a BYTE-FOR-BYTE no-op",
+      typeof staleWrite === "string" && writeTuiSettingsPanels(staleWrite, `${BUILTINS},act1:team`) === staleWrite)
+    // NEGATIVE CONTROL: a document that is not a settings object is refused by BOTH halves, so an
+    // unparseable user file can never be clobbered by the `--apply` path.
+    check("(g) NEGATIVE CONTROL: an unparseable document is refused by the reader", "detail" in readTuiSettingsPanels("{not json"))
+    /** The writer's refusal shape, narrowed by the typeof check (a `string` result is a success). */
+    const refusedWrite = writeTuiSettingsPanels("{not json", "todo")
+    check("(g) NEGATIVE CONTROL: an unparseable document is refused by the writer", typeof refusedWrite !== "string")
+  } catch (error) {
+    check(`(g) the settings-layer arm ran (${String((error as Error)?.message ?? error)})`, false)
+  }
+  // ── R2.4: the `--tui-settings` operand is validated — fixture isolation can never silently
+  // degrade into a run against the real ~/.dsh-tui/settings.json ──
+  {
+    /** The parsed line with the NEXT FLAG as the operand — the measured silent patch-only run. */
+    const nextFlag = parseArgs(["--tui-settings", "--apply"])
+    check("(R2.4) `--tui-settings --apply` is refused by name", nextFlag.argRefusal !== undefined && nextFlag.argRefusal.includes("--tui-settings") && nextFlag.tuiSettings === undefined)
+    /** The parsed line with the flag TRAILING — `argv[at + 1]` is `undefined`. */
+    const trailing = parseArgs(["--ids", "act1:team", "--tui-settings"])
+    check("(R2.4) a trailing `--tui-settings` is refused by name", trailing.argRefusal !== undefined && trailing.argRefusal.includes("--tui-settings") && trailing.tuiSettings === undefined)
+    /** The parsed line with a valid operand, which the validation must carry through unchanged. */
+    const valid = parseArgs(["--tui-settings", "/tmp/fixture-settings.json", "--apply"])
+    check("(R2.4) a valid operand is carried through unchanged", valid.argRefusal === undefined && valid.tuiSettings === "/tmp/fixture-settings.json" && valid.apply)
+    // The refusal is PROCESS-LEVEL too: the named refusal is the run's exit, not only a parse result.
+    check("(R2.4) the trailing flag refuses the run itself (exit 1)", main(["--tui-settings"]) === 1)
+  }
+  // ── R2.5: a patch-layer failure after a settings-layer write never leaves the run half-reverted ──
+  try {
+    /** The installed `dsh`, needed to prove the scratch profile's settings document. */
+    const dshRoot = installedDshRoot()
+    if (dshRoot === undefined) {
+      console.log("  SKIP (R2.5) the installed `dsh` was not found: the two-layer rollback arm cannot run")
+    } else {
+      /** The throwaway parent holding the whole fixture. */
+      const parent = mkdtempSync(join(tmpdir(), "mpd-tui-panels-r25-"))
+      /** The scratch DSH home carrying one installed-profile shape. */
+      const dshHome = join(parent, "dsh")
+      /** The scratch profile directory. */
+      const profileDir = join(dshHome, "profiles", "tui")
+      /** The scratch workspace, whose id record is absent (`--ids` supplies the ids). */
+      const workspace = join(parent, "ws")
+      mkdirSync(join(profileDir, "node_modules", ...HOST_PACKAGE.split("/")), { recursive: true })
+      mkdirSync(workspace, { recursive: true })
+      writeFileSync(join(profileDir, "package.json"), "{}\n")
+      writeFileSync(join(profileDir, "node_modules", ...HOST_PACKAGE.split("/"), "package.json"), "{}\n")
+      /** The profile's user layer, carrying the stale pin on its sidePanel row. */
+      const document = join(profileDir, "cordis.patch.yml")
+      writeFileSync(document, ["- id: dsh-tui", "  config:", "    sidePanel:", '      panels: "todo,jobs,agents"', ""].join("\n"))
+      /** The settings-layer fixture, carrying the shadowing stale pin. */
+      const settingsPath = join(parent, "settings.json")
+      /** The settings document's bytes BEFORE the run, which a failed run must leave exactly as found. */
+      const settingsBefore = `${JSON.stringify({ values: { sidePanel: { panels: "todo,jobs,agents" } }, imported: { from: "profile" } }, null, 2)}\n`
+      writeFileSync(settingsPath, settingsBefore)
+      /** The refusal lines the run prints, captured so the arm can assert its OWN console output. */
+      const refused: string[] = []
+      /** The original `console.error`, restored whether the arm holds or throws. */
+      const originalError = console.error
+      console.error = (...args: unknown[]): void => { refused.push(args.map(String).join(" ")) }
+      /** The run's exit code; the ids carry an EMBEDDED NEWLINE, the one spelling the patch writer
+       *  cannot round-trip through its single-line leaf, so the post-write read-back mismatches
+       *  DETERMINISTICALLY — the forced patch failure this rollback exists for, without mocking. */
+      let exit: number | undefined
+      try {
+        exit = main(["--dsh-home", dshHome, "--profile", "tui", "--workspace", workspace, "--tui-settings", settingsPath, "--ids", "act1:te\nam", "--apply"])
+      } finally {
+        console.error = originalError
+      }
+      check("(R2.5) a patch write that fails after a settings write REFUSES (exit 1)", exit === 1)
+      check("(R2.5) the settings layer is restored BYTE-IDENTICAL", readFileSync(settingsPath, "utf8") === settingsBefore)
+      check("(R2.5) the refusal names BOTH layers' backups", refused.some((line) => line.includes("REFUSED") && line.includes(`${settingsPath}.bak-`) && line.includes(`${document}.bak-`)))
+      rmSync(parent, { recursive: true, force: true })
+    }
+  } catch (error) {
+    check(`(R2.5) the two-layer rollback arm ran (${String((error as Error)?.message ?? error)})`, false)
   }
   /** The arm's overall verdict: green only when every arm that RAN held. */
   const verdict = problems.length === 0

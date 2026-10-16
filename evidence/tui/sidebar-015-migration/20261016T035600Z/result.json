@@ -1,0 +1,50 @@
+{
+  "wave": "fix/sidebar-015-keeper-migration",
+  "contract": ".mpd/plans/fix-sidebar-015-keeper-migration.md",
+  "branch": "fix/sidebar-015-keeper-migration",
+  "recordedAt": "2026-10-16T03:56:00Z",
+  "settleReReadAt": "2026-10-16T03:56:55Z",
+  "settleWindowSeconds": 55,
+  "settleOutcome": "all 9 touched-file sha256 unchanged after the settle window (hashes-first.txt vs hashes-settle.txt)",
+  "build": {
+    "toolchain": "bun 1.4.0 (.toolchain/node_modules/.bin/bun, the pinned buildToolchain)",
+    "cwd": "repo root",
+    "commands": [
+      ".toolchain/node_modules/.bin/bun build packages/mpd-tui-adapter-plugin/src/index.ts --target node --format esm --outfile packages/mpd-tui-adapter-plugin/dist/index.js",
+      ".toolchain/node_modules/.bin/bun build packages/mpd-tui-plugin/src/index.ts --target node --format esm --outfile packages/mpd-tui-plugin/dist/index.js"
+    ],
+    "fanoutCheck": "grep -rln 'mpd-tui-adapter-plugin/src' packages/*/src packages/*/test -> only packages/mpd-tui-plugin imports the adapter; both dists rebuilt"
+  },
+  "gates": [
+    { "name": "bun test packages/mpd-tui-adapter-plugin", "exit": 0, "verbatim": "81 pass / 0 fail — Ran 81 tests across 3 files. (74 pre-wave + 7 new S1 arms)" },
+    { "name": "bun test packages/mpd-tui-plugin", "exit": 0, "verbatim": "486 pass / 0 fail — Ran 486 tests across 20 files. (existing suite, dist rebuilt with the new adapter)" },
+    { "name": "node scripts/mpd-tui-panels.ts --self-test", "exit": 0, "verbatim": "[mpd-tui-panels] SELF-TEST PASS (all arms held) — 69 ok arms incl. 10 new (g) settings.json-layer arms" },
+    { "name": "bun run typecheck", "exit": 0, "verbatim": "tsgo --noEmit — no errors" },
+    { "name": "bun run verify:comments", "exit": 0, "verbatim": "VERDICT: PASS — every declaration in the family carries a precise comment and a full signature." },
+    { "name": "node scripts/verify-dist-fresh.ts", "exit": 0, "verbatim": "ok: 31/31 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed (mpd-mcp-codegraph/dist/serve.js, the declared sha-pinned prebuilt, pre-existing)" },
+    { "name": "bun run verify:docs", "exit": 0, "verbatim": "pairs=47 failed=0 violations=0 exempt=24 derived=3 links=436 dead=0 — PASS" }
+  ],
+  "files": [
+    { "path": "packages/mpd-tui-adapter-plugin/src/index.ts", "sha256": "63a9cf672ba8a1d78d8735aef1a5777a27b9771c754936b3c90d76d5050b80ac" },
+    { "path": "packages/mpd-tui-adapter-plugin/test/panel-enable-migration.test.ts", "sha256": "680acd5f4f9a069c37dd1a703cee338158fbdac96aa3ef01ea6126ed7bc80242" },
+    { "path": "packages/mpd-tui-adapter-plugin/dist/index.js", "sha256": "7cd9fab9514e065ae8e4d268dad3a1fb391177909fb1c6fe9ce86d2dd82f5e2f" },
+    { "path": "packages/mpd-tui-plugin/dist/index.js", "sha256": "1b1634e675f1a4094c63b356d4b3d76ce6064a3745daac280c9b89f5864de7d2" },
+    { "path": "scripts/mpd-tui-panels.ts", "sha256": "543d928da8f2fe17a38d5d2a6265972a31ee5392d4cba72854b69ad5accbfc6e" },
+    { "path": "docs/tui.md", "sha256": "ab832fa3b1448377e7eaaa9b6641252958888f3ec252dd7612c37eb1b3bd863b" },
+    { "path": "docs/tui.zh-CN.md", "sha256": "5873a1f1c5466d5ea768832493f833ef060083a29cf278f1074fedebdfcfa258" },
+    { "path": "packages/mpd-tui-plugin/README.md", "sha256": "a9fb43da031af582f790c3c676da395d67bf5bd45aed65bfeac3f170b00da670" },
+    { "path": "packages/mpd-tui-plugin/README.zh-CN.md", "sha256": "8da5ff012f31a772f28dd4009a9b77f940552a0ecbb3dcf3697760e40aa73777" }
+  ],
+  "whatLanded": {
+    "S1": "packages/mpd-tui-adapter-plugin/src/index.ts: migrateStaleDefaultOnSelfHealer (the ONE write exception) evaluated in runTick BEFORE hostSelfHealsPanelCsv's standDownToHostUnion; standDownToHostUnion gained the hostDefault param and a PERSISTENT belt that re-checks stalePanelDefaultResidue via mergePanelEnableIds on EVERY feed event and re-migrates when it fires; shared helpers provenPast/noteInertDefault extracted (decide byte-identical on pre-0.15.0); stand-down log/settle strings qualified with the exception; PANEL_CSV_SELF_HEAL_SINCE doc notes the carve-out.",
+    "S2": "panel-enable-migration.test.ts: new describe 'S1 · the stale-default migration re-arms on a self-healing host' with arms (a) ladder-tick migration, (b) mid-session belt re-migration, (c) current-default no-write, (d) custom-list no-write-ever, (e) unreadable-default inert + ONE degrade line, (f) nothing-registered no-write, (g) idempotence; the two existing 0.15.0 C2 arms updated ONLY where they pinned the old one-shot belt (belt now persists, listeners 1); every pre-0.15.0 arm untouched and green.",
+    "S3": "scripts/mpd-tui-panels.ts: new exports parseTuiSettingsRoot/readTuiSettingsPanels/writeTuiSettingsPanels + TuiSettingsRead; --tui-settings <path> flag (default ~/.dsh-tui/settings.json); main() merges from the EFFECTIVE list (values.sidePanel?.panels ?? patch leaf), applies the SAME computed list to BOTH layers, per-layer backups + atomic writes + read-backs, per-layer dry-run/apply reporting, absent settings.json = patch-only; 10 new --self-test (g) arms; e2e verified against scratch fixtures (dry run -> apply writes both layers with imported marker preserved -> re-run no-op -> patch-only mode).",
+    "S4": "docs/tui.md + docs/tui.zh-CN.md (§3.3 remedy bullet, §11.7 keeper table row + keeper paragraph + two new paragraphs + bounds (a)); packages/mpd-tui-plugin/README.md + README.zh-CN.md (C2 keeper paragraph + Durable-one-command bullet). packages/mpd-tui-adapter-plugin/README(.zh-CN).md grepped: NO 'never writes on >= 0.15.0'-class claim lives there (only seam tables), so they are untouched. CHANGELOG.md line 106 is the released 0.15-wave's historical record, left as history."
+  },
+  "honestBounds": [
+    "The adapter's runtime migration is proven by unit arms over the mounted row's own surface (createPanelEnableKeeper with 0.15.0-shaped probe answers), not by a live PTY boot; the standing real-PTY lane for the keeper is skills/dsh-qa tui-keeper-standdown (out of this wave's scope; skills/** untouched).",
+    "The e2e scratch run of the repair script used a fixture profile with the REAL installed host package symlinked in (dry run + apply + re-run + patch-only); the REAL ~/.dsh-tui/settings.json and ~/.dsh/profiles/dsh-tui/cordis.patch.yml were already hand-repaired by the captain before this wave and were NOT touched by any command in this run.",
+    "Pre-0.15.0 byte-identity is asserted by the unchanged existing arms (the entire pre-C2 band of panel-enable-migration.test.ts and panel-visibility.test.ts, all green) rather than by a textual diff of behaviour.",
+    "verify:rows / pack-closure / manifest / vendor were NOT run: no bundle-patch, preset, row, manifest or skills/** change is in this wave's scope (S5 names the gate list; all listed gates ran green)."
+  ]
+}
