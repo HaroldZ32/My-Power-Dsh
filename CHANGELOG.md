@@ -14,6 +14,30 @@ Further reading:
 - [`VENDOR_LOCK.json`](./VENDOR_LOCK.json) — the pinned upstream baseline each release is measured
   against.
 
+## v0.13.2 — a patch: the npm trusted-publishing lane and the dsh-tui 0.15.0 sidebar migration re-arm
+
+Patch release over v0.13.1: releases now stage to npm through trusted publishing, the stale-default
+sidebar migration is re-armed on dsh-tui >= 0.15.0 with the CodeRabbit PR #44 repair round on top, and
+the v0.13.0 / v0.13.1 release notes are recorded under `evidence/tui/dsh-tui-015/`.
+
+**Added — CI / release automation.**
+
+- **Releases stage to npm through trusted publishing.** `.github/workflows/publish.yml` (`228df957`)
+  publishes `@mpd-dsh/mpd` releases from CI via OIDC trusted publishing instead of a long-lived token;
+  the probe, spec census and gate sweep are recorded under `evidence/tui/dsh-tui-015/npm-publish/`.
+
+**Changed — docs / evidence.**
+
+- The published GitHub Release notes for v0.13.0 and v0.13.1 are recorded bilingual and evidence-linked
+  (`evidence/tui/dsh-tui-015/RELEASE-v0.13.0.md` and `RELEASE-v0.13.1.md`) (`e7f04bc1`).
+
+**Fixed — the TUI sidebar migration.**
+
+- **The stale-default sidebar migration is re-armed on dsh-tui >= 0.15.0.** `47bd0c80` restores the
+  migration that rewrites a stale persisted default on the 0.15.0 host, and `fa7e37ea` lands the
+  CodeRabbit PR #44 repair round (five findings) on top; the migration suite
+  `packages/mpd-tui-adapter-plugin/test/panel-enable-migration.test.ts` covers both.
+
 ## v0.13.1 — the review pass: team-plane authorization, docker lane honesty, and the QA install path
 
 Patch release answering all fifteen CodeRabbit findings on the v0.13.0 PR (#42), blind-verified PASS at

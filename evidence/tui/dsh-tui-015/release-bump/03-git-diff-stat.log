@@ -1,0 +1,8 @@
+$ git diff --stat
+
+ dsh-distribution.json | 2 +-
+ dsh-plugin.json       | 2 +-
+ package.json          | 2 +-
+ 3 files changed, 3 insertions(+), 3 deletions(-)
+
+[exit code: 0]

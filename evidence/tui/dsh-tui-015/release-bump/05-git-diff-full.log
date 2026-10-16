@@ -1,0 +1,43 @@
+$ git diff -- package.json dsh-plugin.json dsh-distribution.json
+
+diff --git a/dsh-distribution.json b/dsh-distribution.json
+index 05d4815d..f90cf710 100644
+--- a/dsh-distribution.json
++++ b/dsh-distribution.json
+@@ -3,7 +3,7 @@
+   "kind": "DistributionDescriptor",
+   "distribution": {
+     "id": "urn:dsh:distribution:mpd:my-power-dsh",
+-    "version": "0.12.0"
++    "version": "0.13.0"
+   },
+   "displayName": "my-power-dsh — DSH plugin bundle (web edition + dsh-tui edition)",
+   "protocols": [
+diff --git a/dsh-plugin.json b/dsh-plugin.json
+index d8a7bdab..db035bdf 100644
+--- a/dsh-plugin.json
++++ b/dsh-plugin.json
+@@ -3,7 +3,7 @@
+   "manifestVersion": "0.15",
+   "id": "com.mpd-dsh.mpd-tui",
+   "name": "@mpd-dsh/mpd",
+-  "version": "0.12.0",
++  "version": "0.13.0",
+   "facets": {
+     "host": {
+       "entry": "packages/mpd-tui-plugin/dist/index.js",
+diff --git a/package.json b/package.json
+index 6e4062b3..61f8611e 100644
+--- a/package.json
++++ b/package.json
+@@ -3,7 +3,7 @@
+   "private": false,
+   "type": "module",
+   "buildToolchain": "bun@1.4.0",
+-  "version": "0.12.0",
++  "version": "0.13.0",
+   "description": "my-power-dsh: a DeepSeek Harness plugin bundle (@mpd-dsh/mpd) carrying the specialist roster and the model-chain vocabulary on DSH-native plumbing (upstream reference: oh-my-openagent 8c57e46 — historical, no synchronisation owed)",
+   "main": "packages/mpd-bundle-plugin/dist/index.js",
+   "icon": "./icon.svg",
+
+[exit code: 0]
