@@ -40,6 +40,23 @@ First-pass report (superseded, kept for the record): `VERDICT-first-pass.md`.
 | 4b | `--mode source --require-docker` green | same | **FAIL** | lane exit **3**; `passed 61 / failed 3`: `qa.readonlyDeny`, `tui.laneExit`, `ui.mpdSettingsSection` (the two `pack.*` reds from the first pass CLEARED — the re-pack worked) |
 | 5 | Native `TeamExecutor` and the Docker `live.*` arms | — | INCONCLUSIVE | no credential forwarded (bounds unchanged) |
 
+## Addendum — narrow re-verdict of claim 4b (third tree: code `2746cbb0`, evidence `bb360f0f`)
+
+`evidence/harness-0.2.1/f4-docker-source/narrow-verdict.md` holds the full record. In one line each:
+- Assertions: `passed 63 / failed 1 / null 54`; the only red is `tui.laneExit` (`line=182` = the
+  `dsh plugin --profile dsh-tui add dsh-tui@0.15.0` step, right after `tui.hostInstall=true`).
+- `ui.mpdSettingsSection` and `qa.readonlyDeny` are GREEN with their own artifacts, and both `pack.*`
+  assertions are green under the pinned toolchain (`exactMatch=true`). The first-pass reds are gone.
+- **The lane EXIT is 3 for a second, independent reason**: `driver.json` `exitCode: 3`,
+  `unmeasured: ["ui.replyRendered"]`, `requiredPrefixes: ["ui."]`, `liveRequested: false`. The last
+  green source lane (`2026-10-16T10-04-20Z`) ran `liveRequested: true, exitCode: 0, unmeasured: []`.
+  Without a forwarded credential the required `ui.` arm cannot be measured, so exit 0 is unreachable
+  on any tree. `--no-browser` would isolate the TUI red as exit 1 with exactly one failed assertion.
+- Verdict: **PASS on claim 4b as the declared bound** (assertion record), **FAIL on "the process exits
+  0"** — and the FAIL is a credential bound, not a product regression. The TUI refusal TEXT remains
+  unproven because the step's own log was not captured (`tui.pluginAddHost` is null); capturing
+  `$TUI_DIR/add-host.log` would close it.
+
 ## Findings
 
 1. **F4's three red rows, each attributed (no product regression demonstrated by any of them):**
