@@ -7,9 +7,11 @@
 // empty card. The RENDER path is host-owned end to end (the host's ask-user tool, the user-questions
 // service and the TUI's own adapter): zero bundle code participates, and a same-name wrapper is
 // mechanically impossible because the host registry refuses duplicate ids. The ONE point this bundle can
-// act on is therefore PRE-DISPATCH, through the `tools.guard` seam it already uses four times (the
-// captain's write rule and the verifier's envelope in `verify-guard.ts`, the captain's investigation
-// rule in `captain-investigation.ts`, the delegation gate in `delegation-gate.ts`).
+// act on is therefore PRE-DISPATCH, through the `tools.guard` seam. Of the five guards once installed
+// there TWO remain — this one and the roster's read-only discipline (`team-guard.ts`); the captain's
+// write rule and the verifier's envelope (`verify-guard.ts`), the captain's investigation rule
+// (`captain-investigation.ts`) and the delegation gate (`delegation-gate.ts`) were withdrawn on
+// 2026-10-17 and are NOT installed any more.
 //
 // WHAT IT DENIES — deny-only, and ONLY for the call named {@link ASK_USER_QUESTION_TOOL}:
 //   * `arguments` that is not a plain object;

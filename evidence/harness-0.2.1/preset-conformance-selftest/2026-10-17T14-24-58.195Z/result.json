@@ -1,0 +1,13 @@
+{
+  "claim": "F1",
+  "slug": "preset-conformance-selftest",
+  "command": "node skills/dsh-qa/scripts/preset-conformance.ts --self-test",
+  "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "exit": 1,
+  "signal": null,
+  "durationMs": 230,
+  "launcher": "/home/haroldzhao/.nvm/versions/node/v24.21.0/bin/dsh",
+  "launcherVersion": "0.2.0-rc.2",
+  "decisiveLine": "[preset-conformance] FAIL: self-test: conformance problems:",
+  "outputTail": "[preset-conformance] FAIL: self-test: conformance problems:\n  - the mpd preset declares row(s) the installed standard preset does not declare at all: time-context, tool-schedule, tool-plugin-market\n"
+}

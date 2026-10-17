@@ -1,0 +1,34 @@
+{
+  "ok": false,
+  "harness": {
+    "id": "closure",
+    "expected": "0.2.1-rc.2",
+    "observed": "0.2.1-rc.2",
+    "matches": true
+  },
+  "sandbox": {
+    "home": "/tmp/mpd-f2-closure-sHZgF9/dsh-home",
+    "userHome": "/tmp/mpd-f2-closure-sHZgF9/user-home",
+    "ws": "/tmp/mpd-f2-closure-sHZgF9/ws",
+    "kept": false
+  },
+  "credentialsSeeded": {
+    "storeCopied": true,
+    "settingsCopied": false,
+    "refsMerged": false
+  },
+  "installExit": 0,
+  "bootExit": 0,
+  "guardLine": "",
+  "guardTokens": {},
+  "failureLines": [
+    "dsh: warning: 1 entry did not activate"
+  ],
+  "failureCount": 1,
+  "sessionsSandboxed": true,
+  "sessionKeys": [
+    "--tmp-mpd-f2-closure-sHZgF9-ws--"
+  ],
+  "bootProbeAnswered": true,
+  "logBytes": 513
+}

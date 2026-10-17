@@ -104,7 +104,7 @@ declared in `README.md` and `LICENSE-NOTICES.md`.
   for create/edit/pause/resume; the consecutive-round count for `blocked`); ownership is recorded per
   session in `<workspace>/.mpd/goal/anchors.json`. Evidence:
   `evidence/goal/goal-bridge/<ts>/` and the `goal-bridge` QA case.
-- **The session-start complexity gate is MECHANICAL — it stages an APPROVABLE PLAN SHELL, never a
+- **The session-start complexity gate is OPT-IN — it stages an APPROVABLE PLAN SHELL, never a
   team.** The frozen predicate `trigger = explicit flag OR (matchedSignals >= 1)` is evaluated at the
   session's first pre-step and the notice keeps the marker `[AgentTeams] Session-start team rule`, but
   on a trigger the gate STAGES a 0-member, 0-task plan shell through the `agent_teams_plan` tool and
@@ -112,7 +112,7 @@ declared in `README.md` and `LICENSE-NOTICES.md`.
   captain extends it (`add_member` / `create_task`) and approves it with
   `agent_teams_plan {action:"approve"}`. An explicit `team:` / `!team` request ALSO stages the shell
   (signal A) and has its marker CONSUMED from the goal text. `team.gate` in `mpd.jsonc` selects
-  `mechanical` (the default) | `advisory` | `off`; without the `agent_teams_plan` tool mounted, or under
+  `off` (the DEFAULT since the 2026-10-17 rollback) | `advisory` | `mechanical`; without the `agent_teams_plan` tool mounted, or under
   `advisory`, the ONE notice is advisory and says `NO team was staged`, and the captain stages a team
   itself at the moment the work warrants one — or continues solo and says so. Signal D is an ACTIVE
   boulder work for this workspace (`status: "active"` in `.mpd/boulder.json`) — a plan FILE alone is NOT
@@ -177,14 +177,14 @@ short form wins for the rule, and this file wins for the detail.
   mutations go through the harness goal TOOLS, never `ctx.goals`. `mpd-ulw-plugin` (C2 ultrawork v2)
   answers `/ulw <objective>` and `/ultrawork <objective>` by submitting the ULW activation directive as
   the invoking agent's OWN next user turn, so the run actually starts.
-- **The session-start complexity gate is MECHANICAL — it stages an APPROVABLE PLAN SHELL, never a
+- **The session-start complexity gate is OPT-IN — it stages an APPROVABLE PLAN SHELL, never a
   team.** The frozen predicate `trigger = explicit flag OR (matchedSignals >= 1)` runs at the session's
   first pre-step and the notice keeps the marker `[AgentTeams] Session-start team rule`; on a trigger the
   gate STAGES a 0-member, 0-task plan shell through the `agent_teams_plan` tool and injects ONE notice
   naming the returned plan id — NOTHING is spawned, and the shell is INERT until the captain extends it
   (`add_member` / `create_task`) and approves it with `agent_teams_plan {action:"approve"}`. An explicit
   `team:` / `!team` request ALSO stages the shell (signal A) and has its marker CONSUMED from the goal
-  text. `team.gate` in `mpd.jsonc` selects `mechanical` (the default) | `advisory` | `off`: without the
+  text. `team.gate` in `mpd.jsonc` selects `off` (the DEFAULT since the 2026-10-17 rollback) | `advisory` | `mechanical`: without the
   tool mounted, or under `advisory`, the ONE notice is advisory and says `NO team was staged`, and the
   captain stages a team itself when the work warrants one — or continues solo and says so. Signal D is an
   ACTIVE boulder work for this workspace (`status: "active"` in `<workspace>/.mpd/boulder.json`, which is

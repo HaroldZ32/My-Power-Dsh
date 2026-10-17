@@ -1,0 +1,13 @@
+{
+  "claim": "F3",
+  "slug": "typecheck",
+  "command": "bun run typecheck",
+  "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "exit": 0,
+  "signal": null,
+  "durationMs": 568,
+  "launcher": "/home/haroldzhao/.nvm/versions/node/v24.21.0/bin/dsh",
+  "launcherVersion": "0.2.0-rc.2",
+  "decisiveLine": "",
+  "outputTail": "$ tsgo --noEmit\n"
+}

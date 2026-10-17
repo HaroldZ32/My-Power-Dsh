@@ -6,17 +6,20 @@ The **verification law**, as a plugin row. Code written by **A** is verified by 
 records its verdict **before** reading any implementation, and a **FAIL** bounces the work back to a
 writer as a repair task.
 
-The law is mechanical, not aspirational, and it is enforced in two places: a **tool guard** (defence in
-depth, installed by the `mpd-roles` row) and a **record validator** (the actual guarantee, this package).
+The law's GUARANTEE is the **record validator** in this package (it refuses a PASS with no cited
+documents, no gate evidence, a forged evidence id or a same-agent verifier — that never lived in a hook).
+The **tool guard** that used to add defence in depth was **WITHDRAWN by the user's 2026-10-17 ruling**
+(`.mpd/plans/harness-021-rollback.md`, R1): a top-level agent may write code again, and a bound verifier
+seat keeps its envelope as PROSE rather than as a fence.
 
 ## What it is
 
 | piece | where | what it does |
 | --- | --- | --- |
 | the ledger | `<workspace>/.mpd/verify/` | loops, records, evidence, seats, repairs and the append-only escape log |
-| the runtime | the `mpdVerify` service | the observation log, the escape allowances and the counted diagnosis reads |
+| the runtime | the `mpdVerify` service | the escape allowances, the counted diagnosis reads and the delegation observer — its OBSERVATION LOG is written by the withdrawn guard, so no calls are observed any more (a bound seat therefore always reads `blind`) |
 | the tools | this row | `mpd_verify_open` / `_escape` / `_seat` / `_evidence` / `_record` |
-| the guard | `mpd-roles-plugin/src/verify-guard.ts` | refuses a top-level agent's code write, and confines a verifier seat |
+| the guard (WITHDRAWN 2026-10-17) | `mpd-roles-plugin/src/verify-guard.ts` | used to refuse a top-level agent's code write and confine a verifier seat; the module survives as a reference implementation and the `mpd-roles` row NO LONGER INSTALLS it |
 | the boot marker | `<workspace>/.mpd/verify/boot.json` | closes the `pre-plugin` record exemption the moment the law is live |
 
 ## The five tools
@@ -88,13 +91,22 @@ The validator's refusals each carry their own reason string: `same-agent`, `no-d
 ## Configuration
 
 Read **raw** through the config service (never through the settings schema, whose pinned knob count must
-not move for this row): `verify.mode` (`hard` default | `advisory` | `off`), `verify.escapeUses` (default
-1), `verify.loopTtlMs` (default 24h), `verify.gateTimeoutMs` (default 15min), and `verify.dir`.
+not move for this row): `verify.mode` (`hard` default | `advisory` | `off` — INERT since the guard was
+withdrawn: nothing denies a write any more, the value is only reported as `mode=` on the boot line),
+`verify.escapeUses` (default 1), `verify.loopTtlMs` (default 24h), `verify.gateTimeoutMs` (default 15min),
+and `verify.dir`.
 
 ## Bounds (declared, not implied)
 
-1. A composition without the harness's `tools.guard` seam degrades to **bookkeeping only**, and the boot
-   line says `verifyGate=absent` rather than implying an enforcement that is not there.
+1. In every shipped composition this row is **bookkeeping only**, because the guard is withdrawn: the
+   `mpd-roles` boot line reports `verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode)`.
+   A composition without the harness's `tools.guard` seam degrades the same way for its own reason.
+   **THIS row's boot line reports the SEAM and says so on its face:** it prints
+   `verifySeam=present|absent` plus the clause `(the harness tools.guard SEAM — NOT an installed gate: the
+   write guard is WITHDRAWN; the mpd-roles row reports its own state)`, and it NEVER prints `verifyGate=`.
+   The two rows measure two different things and print two different tokens on purpose — a mount lane that
+   needs the guard's state reads `mpd-roles`, and a lane that reads only this line cannot mistake the seam
+   for an install.
 2. A plugin that raises delegates through its own private path is not auto-armed — the captain's writes
    stay denied.
 3. A gate's `tail` may print source frames: it is **controlled black-box evidence**, not a proof of

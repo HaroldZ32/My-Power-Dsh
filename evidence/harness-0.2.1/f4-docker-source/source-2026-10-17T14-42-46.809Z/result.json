@@ -1,0 +1,113 @@
+{
+  "ok": false,
+  "claim": "F4 — docker --mode source --require-docker against 0.2.1-rc.2",
+  "pin": "0.2.1-rc.2",
+  "dockerMode": "  rootless",
+  "composePins": [
+    "      MPD_E2E_DSH_VERSION: 0.2.1-rc.2",
+    "      MPD_E2E_TUI_VERSION: 0.15.0",
+    "      MPD_E2E_DSH_VERSION: 0.2.1-rc.2",
+    "      MPD_E2E_TUI_VERSION: 0.15.0"
+  ],
+  "laneExit": 3,
+  "containerEvidence": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/docker/client-install/2026-10-17T14-42-47Z",
+  "containerHarness": {
+    "installed": "0.2.1-rc.2",
+    "expected": "0.2.1-rc.2",
+    "assertion": "harness.version",
+    "node": "v24.21.0 (npm 11.19.0)",
+    "bun": "1.4.3 (route=official-script, BUN_INSTALL=/opt/toolchain/bun)",
+    "pnpm": "11.23.0",
+    "ubuntu": "ubuntu 24.04 (Ubuntu 24.04.5 LTS)"
+  },
+  "harnessVersionAssertion": {
+    "name": "harness.version",
+    "ok": true,
+    "reason": "npm i -g then 'dsh --version' printed the pin exactly",
+    "raw": "0.2.1-rc.2"
+  },
+  "carrierVersions": {
+    "@deepseek-ai/cordis": [
+      "4.0.2"
+    ],
+    "@deepseek-ai/dsh-experimental-agent-team": [
+      "0.2.1-rc.2"
+    ],
+    "@deepseek-ai/dsh-experimental-client-ui-agent-team": [
+      "0.2.1-rc.2"
+    ],
+    "@deepseek-ai/dsh-experimental-tool-agent-team": [
+      "0.2.1-rc.2"
+    ]
+  },
+  "containerCordis": {
+    "value": "",
+    "source": "supplementary probe: one docker run on the same image resolving @deepseek-ai/cordis from the pinned harness install"
+  },
+  "carrierMismatch": false,
+  "containerOk": false,
+  "containerComplete": false,
+  "assertionsTotal": 118,
+  "failedAssertions": [
+    "qa.readonlyDeny",
+    "tui.laneExit",
+    "ui.mpdSettingsSection"
+  ],
+  "unevaluated": [
+    "qa.mcpCall",
+    "oneclick.scratchRepo",
+    "oneclick.requiredPaths",
+    "oneclick.filesAllowlist",
+    "oneclick.distByteIdentical",
+    "tui.pluginAddHost",
+    "tui.pluginAddBundle",
+    "tui.compose",
+    "tui.presetPreference",
+    "tui.presetRow",
+    "tui.mpdTuiRow",
+    "tui.agentTeamRows",
+    "tui.mergedPanelOpens",
+    "tui.mergedPanelOrder",
+    "tui.hostDashboardKeyIntact",
+    "tui.noDirectTuiSeam",
+    "tui.boot",
+    "tui.noFatalSignatures",
+    "tui.sessionPreset",
+    "tui.teamSceneOtherSessionInvisible",
+    "tui.teamFixtureBound",
+    "tui.teamSceneOpened",
+    "tui.teamGraphDrawn",
+    "tui.teamGraphEdges",
+    "tui.teamGraphContent",
+    "live.credentialStaged",
+    "live.credentialScoped",
+    "live.credentialRemoved",
+    "live.web.turnStarted",
+    "live.web.turnCompleted",
+    "live.web.noErrorTurns",
+    "live.web.noMalformedToolJson",
+    "live.web.toolCallsParsed",
+    "live.web.mpdToolCalled",
+    "live.web.assistantReplied",
+    "live.tui.turnStarted",
+    "live.tui.turnCompleted",
+    "live.tui.noErrorTurns",
+    "live.tui.noMalformedToolJson",
+    "live.tui.toolCallsParsed",
+    "live.tui.mpdToolCalled",
+    "live.tui.assistantReplied",
+    "live.headless.turnStarted",
+    "live.headless.turnCompleted",
+    "live.headless.noErrorTurns",
+    "live.headless.noMalformedToolJson",
+    "live.headless.toolCallsParsed",
+    "live.headless.mpdToolCalled",
+    "live.headless.assistantReplied",
+    "live.teamRecord",
+    "live.nativeExecutor",
+    "live.headlessPresetRow",
+    "boot.llmTurn",
+    "ui.replyRendered"
+  ],
+  "passedAssertions": 61
+}

@@ -3,16 +3,16 @@
 
 **验证法**，以一个 plugin row 的形式交付。**A** 写出的代码必须由一个**不同的** agent **B** 验证；B 只依据冻结契约与文档工作、**绝不**看实现，**先**记录裁决、**再**读任何实现；一旦 **FAIL**，工作以 repair 任务的形式退回给 writer。
 
-这条法是**机械的**而非口头的，由两处共同保障：一个 **tool guard**（纵深防御，由 `mpd-roles` row 安装）和一个**记录校验器**（真正的保证，在本包内）。
+这条法的**保证**在本包内的**记录校验器**：它拒绝没有引用文档、没有 gate 证据、伪造证据 id 或由同一 agent 自审的 PASS —— 这一点从不依赖 hook。曾用于纵深防御的 **tool guard 已在 2026-10-17 由用户决定撤销**（`.mpd/plans/harness-021-rollback.md`，R1）：顶层 agent 重新可以直接写代码，而被绑定的 verifier seat 的边界只是**约定（prose）**，不再是一道栅栏。
 
 ## 它是什么
 
 | 部件 | 位置 | 作用 |
 | --- | --- | --- |
 | 账本 | `<workspace>/.mpd/verify/` | loop、record、evidence、seat、repair 以及只追加的 escape 日志 |
-| 运行时 | `mpdVerify` 服务 | 观测日志、escape 额度、诊断期被计数的读取 |
+| 运行时 | `mpdVerify` 服务 | escape 额度、诊断期被计数的读取与委派观察器 —— 它的**观测日志由已被撤销的 guard 写入**，因此如今不再观测到任何调用（被绑定的 seat 因此总是读作 `blind`） |
 | 工具 | 本 row | `mpd_verify_open` / `_escape` / `_seat` / `_evidence` / `_record` |
-| 守卫 | `mpd-roles-plugin/src/verify-guard.ts` | 拒绝顶层 agent 的代码写入，并约束 verifier seat |
+| 守卫（2026-10-17 已撤销） | `mpd-roles-plugin/src/verify-guard.ts` | 过去用于拒绝顶层 agent 的代码写入并约束 verifier seat；该模块作为参考实现保留，`mpd-roles` row **不再安装它** |
 | 启动标记 | `<workspace>/.mpd/verify/boot.json` | 法一旦生效即关闭 `pre-plugin` 记录豁免 |
 
 ## 五个工具
@@ -47,11 +47,11 @@ verifier 信封直接拒绝 shell、会回传源码的工具以及一切看板�
 
 ## 配置
 
-通过 config 服务**原样**读取（不走 settings schema——本 row 不应推动被钉住的 knob 计数）：`verify.mode`（默认 `hard` | `advisory` | `off`）、`verify.escapeUses`（默认 1）、`verify.loopTtlMs`（默认 24 小时）、`verify.gateTimeoutMs`（默认 15 分钟）、`verify.dir`。
+通过 config 服务**原样**读取（不走 settings schema——本 row 不应推动被钉住的 knob 计数）：`verify.mode`（默认 `hard` | `advisory` | `off` —— 自 guard 撤销起**失效**：已没有任何东西会拒绝写入，该值只作为启动行的 `mode=` 报告）、`verify.escapeUses`（默认 1）、`verify.loopTtlMs`（默认 24 小时）、`verify.gateTimeoutMs`（默认 15 分钟）、`verify.dir`。
 
 ## 边界（明示，而非暗示）
 
-1. 组合中若没有 harness 的 `tools.guard` seam，就退化为**纯记账**，并且启动行写明 `verifyGate=absent`，绝不明示一种并不存在的强制。
+1. 在目前所有已发布的组合中，本 row 都只是**纯记账**，因为该 guard 已被撤销：`mpd-roles` 的启动行报告 `verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode)`。缺少 harness 的 `tools.guard` seam 时，退化原因不同、结果一样。**本 row 自己的启动行只报 SEAM，并且行内就把话说清**：它打印 `verifySeam=present|absent`，并附带 `(the harness tools.guard SEAM — NOT an installed gate: the write guard is WITHDRAWN; the mpd-roles row reports its own state)` 这一句，且**绝不**打印 `verifyGate=`。两行度量的是两件不同的事，因此刻意使用两个不同的 token —— 需要 guard 状态就读 `mpd-roles`，只读本行的人也不可能把 seam 误当成安装。
 2. 插件若通过自己的私有路径拉起 delegate，则不会被自动 armed——队长的写入仍然被拒。
 3. gate 的 `tail` 可能打印源码片段：那是**受控的黑盒证据**，不是「什么都没读」的证明。blind 与否由插件自身的观测日志证明。
 4. 队长仍可通过被计数的 escape 或 self-writer loop 写代码。两者都会被记录、被计数——这正是「被计数」的含义。

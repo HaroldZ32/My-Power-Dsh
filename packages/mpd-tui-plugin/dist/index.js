@@ -1460,6 +1460,53 @@ function agentSystemPromptOf(agent) {
     return;
   }
 }
+function registerAgentSection(agent, section) {
+  const systemPrompt = agentSystemPromptOf(agent);
+  if (systemPrompt === undefined) {
+    throw new Error(`mpd-dsh-adapter: the agent's own scope exposes no systemPrompt.section() — cannot register prompt section "` + String(section?.name) + '" for it');
+  }
+  const registered = systemPrompt.section(section);
+  return typeof registered === "function" ? registered : noop;
+}
+var CONTINUABLE_START_MEMBERS = ["startActivation", "startContinuable"];
+function continuableStartMember(subagents) {
+  for (const member of CONTINUABLE_START_MEMBERS)
+    if (typeof subagents?.[member] === "function")
+      return member;
+  return;
+}
+async function startContinuableChild(subagents, spec, action) {
+  const member = continuableStartMember(subagents);
+  if (member === undefined) {
+    throw new Error(`mpd-dsh-adapter: the harness subagents service exposes neither startActivation() nor startContinuable() — ${action}`);
+  }
+  const argument = member === "startActivation" ? { ...spec, delivery: "parent" } : spec;
+  return subagents[member].call(subagents, argument);
+}
+var REPORTED_RETIRED_SPAWN_FIELDS = new Set;
+function warnRetiredSpawnFields(spec) {
+  for (const field of ["persona", "toolFilter"]) {
+    if (spec[field] === undefined || REPORTED_RETIRED_SPAWN_FIELDS.has(field))
+      continue;
+    REPORTED_RETIRED_SPAWN_FIELDS.add(field);
+    try {
+      rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: spawnAgent was given "${field}", which harness 0.2.1-rc.2 removed from the start request — it is NOT forwarded, so the child runs without it (the selected preset owns persona and tool composition now)`);
+    } catch {}
+  }
+}
+function textOfOutput(output) {
+  if (typeof output === "string")
+    return output;
+  if (!Array.isArray(output))
+    return "";
+  const parts = [];
+  for (const block of output) {
+    const candidate = block;
+    if (candidate?.type === "text" && typeof candidate.text === "string")
+      parts.push(candidate.text);
+  }
+  return parts.join("");
+}
 function createDshAdapter(ctx, config = {}) {
   const defaultTimeoutMs = config.defaultTimeoutMs ?? DEFAULT_TOOL_TIMEOUT_MS;
   let scopedSettings;
@@ -1673,9 +1720,6 @@ function createDshAdapter(ctx, config = {}) {
         if (!ready)
           throw new Error(`mpd-dsh-adapter: no team executor is available — ${reason}`);
         const subagents = requireService("subagents", `cannot raise team member "${request.name}"`);
-        if (typeof subagents.startContinuable !== "function") {
-          throw new Error("mpd-dsh-adapter: the harness subagents service exposes no startContinuable() — cannot raise a team member");
-        }
         const spec = {
           provider: typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn",
           label: `${request.name} · ${request.teamId}`,
@@ -1686,7 +1730,7 @@ function createDshAdapter(ctx, config = {}) {
           },
           signal: request.signal ?? neverAborted()
         };
-        const started = await subagents.startContinuable.call(subagents, spec);
+        const started = await startContinuableChild(subagents, spec, `cannot raise team member "${request.name}"`);
         const handle = String(started?.childId ?? started?.id ?? "");
         if (handle === "")
           throw new Error(`mpd-dsh-adapter: the native backend raised "${request.name}" but reported no child id`);
@@ -1894,8 +1938,8 @@ function createDshAdapter(ctx, config = {}) {
         llmCatalog: LLM_CATALOG_METHODS.every((method) => typeof service("llm")?.[method] === "function"),
         toolsRegisterHost: typeof tools?.register === "function",
         subagentsProvider: typeof subagents?.getProvider === "function" && typeof subagents?.list === "function",
-        subagentsContinuable: typeof subagents?.startContinuable === "function",
-        teamExecutorNative: typeof subagents?.startContinuable === "function",
+        subagentsContinuable: continuableStartMember(subagents) !== undefined,
+        teamExecutorNative: continuableStartMember(subagents) !== undefined,
         subagentsInterrupt: typeof subagents?.interrupt === "function",
         llmListModels: typeof llmService?.listModels === "function",
         llmResolveCallConfig: typeof llmService?.resolveCallConfig === "function",
@@ -2145,18 +2189,44 @@ function createDshAdapter(ctx, config = {}) {
     },
     async spawnAgent(spec) {
       const subagents = requireService("subagents", 'cannot spawn subagent "' + String(spec?.label) + '"');
-      if (typeof subagents.start !== "function")
-        throw new Error("mpd-dsh-adapter: the harness subagent service exposes no start()");
       const route = {
         ...spec.provider === undefined ? {} : { provider: spec.provider },
         ...spec.model === undefined ? {} : { model: spec.model },
         ...spec.agentOptions ?? {}
       };
-      const run = await subagents.start(spec.mode ?? "spawn", {
+      const provider = spec.mode ?? "spawn";
+      const prompt = typeof spec.prompt === "string" ? textBlock(spec.prompt) : spec.prompt;
+      const signal = spec.signal ?? neverAborted();
+      if (typeof subagents.startActivation === "function") {
+        warnRetiredSpawnFields(spec);
+        const activation = await subagents.startActivation.call(subagents, {
+          provider,
+          label: spec.label,
+          request: {
+            prompt,
+            parent: spec.parent,
+            ...Object.keys(route).length === 0 ? {} : { agentOptions: route },
+            ...spec.agentPreset === undefined ? {} : { agentPreset: spec.agentPreset },
+            ...spec.outputSchema === undefined ? {} : { outputSchema: spec.outputSchema },
+            ...spec.maxDepth === undefined ? {} : { maxDepth: spec.maxDepth }
+          },
+          signal,
+          delivery: "parent"
+        });
+        const settled = await (activation?.result ?? {});
+        return {
+          output: textOfOutput(settled.output),
+          structured: settled.structured,
+          stopReason: typeof settled.stopReason === "string" ? settled.stopReason : null
+        };
+      }
+      if (typeof subagents.start !== "function")
+        throw new Error("mpd-dsh-adapter: the harness subagent service exposes neither startActivation() nor start()");
+      const run = await subagents.start(provider, {
         label: spec.label,
-        prompt: typeof spec.prompt === "string" ? textBlock(spec.prompt) : spec.prompt,
+        prompt,
         ...spec.parent === undefined ? {} : { parent: spec.parent },
-        ...spec.signal === undefined ? {} : { signal: spec.signal },
+        signal,
         ...Object.keys(route).length === 0 ? {} : { agentOptions: route },
         ...spec.persona === undefined ? {} : { persona: spec.persona },
         ...spec.outputSchema === undefined ? {} : { outputSchema: spec.outputSchema },
@@ -2165,9 +2235,9 @@ function createDshAdapter(ctx, config = {}) {
       });
       const result = await (run?.result ?? {});
       return {
-        output: typeof result.output === "string" ? result.output : "",
+        output: textOfOutput(result.output),
         structured: result.structured,
-        stopReason: result.stopReason ?? null
+        stopReason: typeof result.stopReason === "string" ? result.stopReason : null
       };
     },
     subagentRuntime() {
@@ -2190,9 +2260,10 @@ function createDshAdapter(ctx, config = {}) {
     },
     startContinuableAgent(spec) {
       const subagents = requireService("subagents", "cannot start a continuable agent");
-      if (typeof subagents.startContinuable !== "function")
-        throw new Error("mpd-dsh-adapter: the harness subagents service exposes no startContinuable()");
-      return subagents.startContinuable.call(subagents, spec);
+      if (continuableStartMember(subagents) === undefined) {
+        throw new Error("mpd-dsh-adapter: the harness subagents service exposes neither startActivation() nor startContinuable()");
+      }
+      return startContinuableChild(subagents, spec, "cannot start a continuable agent");
     },
     registerSubagentProvider(provider) {
       const subagents = requireService("subagents", "cannot register a subagent provider");
@@ -2216,12 +2287,13 @@ function createDshAdapter(ctx, config = {}) {
           return;
         }
       })();
-      const nativeReady = typeof service("subagents")?.startContinuable === "function";
+      const nativeMember = continuableStartMember(service("subagents"));
+      const nativeReady = nativeMember !== undefined;
       const officialReady = service("agentTeams") !== undefined;
       const chosen = override === "official" && officialReady ? "official" : override === "native" && nativeReady ? "native" : nativeReady ? "native" : officialReady ? "official" : "native";
       if (chosen === "official")
         return officialTeamExecutor();
-      return nativeTeamExecutor(nativeReady ? override === undefined ? "native: the default backend — it needs nothing from the official plugin" : "native: chosen by MPD_DSH_TEAM_EXECUTOR=native" : "native UNAVAILABLE: the harness subagents service exposes no startContinuable(), and no team service is mounted either — every team call will refuse", nativeReady);
+      return nativeTeamExecutor(nativeReady ? override === undefined ? `native: the default backend — bound ${String(nativeMember)}() on the harness subagent seam, and it needs nothing from the official plugin` : `native: chosen by MPD_DSH_TEAM_EXECUTOR=native, bound ${String(nativeMember)}() on the harness subagent seam` : "native UNAVAILABLE: the harness subagents service exposes neither startActivation() nor startContinuable(), and no team service is mounted either — every team call will refuse", nativeReady);
     },
     teamService() {
       const teams = service("agentTeams");
@@ -2509,12 +2581,46 @@ function createDshAdapter(ctx, config = {}) {
       return scopeOfAgentContext(agent);
     },
     agentPromptSection(agent, section) {
-      const systemPrompt = agentSystemPromptOf(agent);
-      if (systemPrompt === undefined) {
-        throw new Error(`mpd-dsh-adapter: the agent's own scope exposes no systemPrompt.section() — cannot register prompt section "` + String(section?.name) + '" for it');
+      return registerAgentSection(agent, section);
+    },
+    subagentLabelOf(agent) {
+      const session = agent?.session;
+      if (session === undefined || session === null)
+        return;
+      try {
+        const events = typeof session.ownEvents === "function" ? session.ownEvents() : undefined;
+        if (Array.isArray(events)) {
+          for (const event of events) {
+            const candidate = event;
+            if (candidate?.type !== "subagent/descriptor")
+              continue;
+            const label = candidate.data?.label;
+            return typeof label === "string" && label !== "" ? label : undefined;
+          }
+        }
+      } catch {}
+      const projections = service("sessionProjections");
+      if (typeof projections?.stateOf !== "function")
+        return;
+      try {
+        const state = projections.stateOf(session, "subagent");
+        const label = state?.label;
+        return typeof label === "string" && label !== "" ? label : undefined;
+      } catch {
+        return;
       }
-      const registered = systemPrompt.section(section);
-      return typeof registered === "function" ? registered : noop;
+    },
+    restrictAgentTools(agent, filter) {
+      const context = scopeContextOf(agent);
+      const tools = context?.tools;
+      if (typeof tools?.restrict !== "function") {
+        throw new Error("mpd-dsh-adapter: the agent's own scope exposes no tools.restrict() — cannot apply a tool restriction to it");
+      }
+      const applied = tools.restrict(filter);
+      return typeof applied === "function" ? applied : noop;
+    },
+    applyPersonaSection(agent, text) {
+      return registerAgentSection(agent, { name: "deployment:persona-prefix", order: 0, text, interpolate: false });
     },
     startAgentTurn(agent, message) {
       const followup = agent?.followup;
@@ -2624,6 +2730,7 @@ var TUI_SEAM_KEYS = [
   "commands",
   "settings"
 ];
+var PHANTOM_SEAM_KEYS = ["prompt"];
 function describeOutcome(outcome) {
   return outcome.detail === undefined ? `${outcome.id}(${outcome.state})` : `${outcome.id}(${outcome.state}: ${outcome.detail})`;
 }
@@ -3516,8 +3623,17 @@ function createTuiAdapter(ctx, options = {}) {
       const registry = bindings.scenes.service;
       if (registry === undefined || typeof registry.close !== "function")
         return false;
+      let activeId;
       try {
-        return registry.close(id) === true;
+        activeId = registry.active?.id;
+      } catch {
+        activeId = undefined;
+      }
+      if (activeId !== id)
+        return false;
+      try {
+        registry.close();
+        return true;
       } catch {
         return false;
       }
@@ -3868,6 +3984,8 @@ function createTuiAdapter(ctx, options = {}) {
           return { id, state: "available", detail: "bound through the deferred inject form" };
         if (binding.error !== undefined)
           return { id, state: "refused", detail: binding.error };
+        if (PHANTOM_SEAM_KEYS.includes(key))
+          return { id, state: "absent", detail: "phantom seam: no measured dsh-tui build declares this service" };
         return { id, state: "absent", detail: "not composed in this profile" };
       });
     },

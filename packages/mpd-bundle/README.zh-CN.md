@@ -35,7 +35,7 @@ trigger = explicit flag OR (matchedSignals >= 1)
 团队平面自身的配置就是门的那个键，加上各行自己的配置：
 
 - `team.gate` —— `mechanical`（默认）| `advisory` | `off`，由 `mpd-roles-plugin` **按调用**读取。
-- 官方 `mpd-agent-team` 行携带 patch 中的上限：`maxMembers: 16`、`maxTasks: 256`、`maxPendingMessagesPerMember: 64`、`maxMessageBytes: 32768`、`disposalTimeoutMs: 5000`。
+- 官方 `mpd-agent-team` 行携带 patch 中的上限：`maxMembers: 16`、`maxTasks: 256`、`maxMessageBytes: 32768`、`disposalTimeoutMs: 5000`。`maxPendingMessagesPerMember` 已**移除**：harness 0.2.1-rc.2 的 schema 不再声明它，因此该行不再设置。
 - `mpd-team-core` 拥有 `<workspace>/.mpd/team/` 下的团队记录：`teams/<id>.json`、staged plan 所在的 `staging/<sessionId>.json` 槽位，以及已归档的计划。
 
 已退役内置行那套对齐上游的上限（`maxParallelMembers`、`maxMessagesPerRun`、`maxWallClockMinutes`、`maxMemberTurns`、`messagePayloadMaxBytes`、`recipientUnreadMaxBytes`、`mailboxPollIntervalMs`、`memberMaxDepth`、`stateDir`、`enforcement`）属于**历史**：它们只存在于采纳主体的 `lib/index.ts` 中，而没有任何行挂载它，且该主体已被 de-vendor

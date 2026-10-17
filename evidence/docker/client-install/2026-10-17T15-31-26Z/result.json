@@ -1,0 +1,1578 @@
+{
+  "case": "docker-client-install",
+  "title": "a clean ubuntu:24.04 container installs and boots @mpd-dsh/mpd from a copy of this checkout",
+  "ok": false,
+  "complete": false,
+  "image": "mpd-docker-e2e:local",
+  "startedAt": "2026-10-17T15:31:27.000Z",
+  "finishedAt": "2026-10-17T15:36:09.136Z",
+  "durationSeconds": 282,
+  "harness": {
+    "installed": "0.2.1-rc.2",
+    "expected": "0.2.1-rc.2",
+    "assertion": "harness.version",
+    "node": "v24.21.0 (npm 11.19.0)",
+    "bun": "1.4.3 (route=official-script, BUN_INSTALL=/opt/toolchain/bun)",
+    "pnpm": "11.23.0",
+    "ubuntu": "ubuntu 24.04 (Ubuntu 24.04.5 LTS)"
+  },
+  "proves": [
+    "node 24 + bun + pnpm + @deepseek-ai/dsh install inside a bare ubuntu:24.04 container",
+    "the bundle installs with ONE command from a copy of the checkout (dsh plugin --profile web add .)",
+    "every packages/*/dist entry rebuilds from source with the canonical repo-root bun build",
+    "a MOUNTING boot in an isolated HOME/DSH_HOME applies the plugin tree and registers the mpd tools",
+    "the official TeamService (@deepseek-ai/dsh-experimental-agent-team) is mounted in that process",
+    "the mpd session gate LISTENER is registered for a real mpd session (liveness, not composition) — read from the row's own file log, <workspace>/.mpd/logs/mpd-roles.log (R5)",
+    "the mpd preset really mounts: POST /api/session/create answers ok with agentPreset=mpd",
+    "the TUI session resolves `mpd` through the DOCUMENTED USER-level preference (dsh-tui's own <HOME>/.dsh-tui/agent-preset.json), while the host preset-registry row stays untouched by the bundle"
+  ],
+  "provesCompositionOnly": [
+    "the composed profile carries the mpd rows, the preset-mpd row and the three official agent-team rows",
+    "the bundle is ADDITIVE-ONLY: both shipped patch layers carry zero column-0 id-targets, so no host row is overridden (the retired `default: mpd` id-targets are the class this catches)"
+  ],
+  "doesNotProve": [
+    "any live LLM turn or model routing: no credentials are staged (AGENTS.md §10)",
+    "that mpd is the deployment default for a user who never set the preference: the bundle ships the preset but selects nothing (strict zero-override)",
+    "`--dump-config` output is COMPOSITION evidence and is never cited here as a plugin load",
+    "a packed/tarball install from dist/mpd-package",
+    "a machine without network access: apt, nodejs.org, bun.sh, npm and the registry are all used"
+  ],
+  "summary": {
+    "total": 118,
+    "passed": 63,
+    "failed": 1,
+    "null": 54,
+    "failedNames": [
+      "tui.laneExit"
+    ],
+    "nullNames": [
+      "qa.mcpCall",
+      "oneclick.scratchRepo",
+      "oneclick.requiredPaths",
+      "oneclick.filesAllowlist",
+      "oneclick.distByteIdentical",
+      "tui.pluginAddHost",
+      "tui.pluginAddBundle",
+      "tui.compose",
+      "tui.presetPreference",
+      "tui.presetRow",
+      "tui.mpdTuiRow",
+      "tui.agentTeamRows",
+      "tui.mergedPanelOpens",
+      "tui.mergedPanelOrder",
+      "tui.hostDashboardKeyIntact",
+      "tui.noDirectTuiSeam",
+      "tui.boot",
+      "tui.noFatalSignatures",
+      "tui.sessionPreset",
+      "tui.teamSceneOtherSessionInvisible",
+      "tui.teamFixtureBound",
+      "tui.teamSceneOpened",
+      "tui.teamGraphDrawn",
+      "tui.teamGraphEdges",
+      "tui.teamGraphContent",
+      "live.credentialStaged",
+      "live.credentialScoped",
+      "live.credentialRemoved",
+      "live.web.turnStarted",
+      "live.web.turnCompleted",
+      "live.web.noErrorTurns",
+      "live.web.noMalformedToolJson",
+      "live.web.toolCallsParsed",
+      "live.web.mpdToolCalled",
+      "live.web.assistantReplied",
+      "live.tui.turnStarted",
+      "live.tui.turnCompleted",
+      "live.tui.noErrorTurns",
+      "live.tui.noMalformedToolJson",
+      "live.tui.toolCallsParsed",
+      "live.tui.mpdToolCalled",
+      "live.tui.assistantReplied",
+      "live.headless.turnStarted",
+      "live.headless.turnCompleted",
+      "live.headless.noErrorTurns",
+      "live.headless.noMalformedToolJson",
+      "live.headless.toolCallsParsed",
+      "live.headless.mpdToolCalled",
+      "live.headless.assistantReplied",
+      "live.teamRecord",
+      "live.nativeExecutor",
+      "live.headlessPresetRow",
+      "boot.llmTurn",
+      "ui.replyRendered"
+    ]
+  },
+  "assertions": [
+    {
+      "name": "ubuntu.version",
+      "ok": true,
+      "reason": "the base image is ubuntu:24.04",
+      "raw": "ubuntu 24.04"
+    },
+    {
+      "name": "toolchain.apt",
+      "ok": true,
+      "reason": "apt-get update + install curl git ca-certificates unzip xz-utils tmux",
+      "raw": "exit=0/0"
+    },
+    {
+      "name": "toolchain.node",
+      "ok": true,
+      "reason": "node v24.21.0 and npm 11.19.0 come from the OFFICIAL node:24-bookworm image (docker/Dockerfile stage), so this lane no longer depends on nodejs.org",
+      "raw": "v24.21.0 npm=11.19.0"
+    },
+    {
+      "name": "toolchain.bun",
+      "ok": true,
+      "reason": "bun 1.4.3 on PATH, installed via official-script",
+      "raw": "1.4.3"
+    },
+    {
+      "name": "toolchain.bunPinned",
+      "ok": true,
+      "reason": "the build toolchain the tree declares is staged and reports EXACTLY that version, so the from-source rebuild below runs under the compiler the artifact was cut with",
+      "raw": "bin=/opt/toolchain/bun-pinned/bin/bun version=1.4.0 declared=bun@1.4.0 route=official-script"
+    },
+    {
+      "name": "toolchain.pnpm",
+      "ok": true,
+      "reason": "required by 'dsh plugin' (it forwards to pnpm), available on PATH",
+      "raw": "11.23.0"
+    },
+    {
+      "name": "harness.version",
+      "ok": true,
+      "reason": "npm i -g then 'dsh --version' printed the pin exactly",
+      "raw": "0.2.1-rc.2"
+    },
+    {
+      "name": "copy.contextFiltered",
+      "ok": true,
+      "reason": "the build context carries no host state and no install-affecting config, so nothing can pass for a dependency the container should have installed; the ONLY packed output it carries is dist/mpd-package, which is the subject of the pack assertions",
+      "raw": "absent: node_modules .git evidence .toolchain pnpm-workspace.yaml pnpm-lock.yaml .npmrc .pnpmfile.cjs; present by design: dist/mpd-package"
+    },
+    {
+      "name": "copy.repo",
+      "ok": true,
+      "reason": "package.json is @mpd-dsh/mpd and packages/, skills/, presets/ are present",
+      "raw": "name=@mpd-dsh/mpd"
+    },
+    {
+      "name": "build.bunInstall",
+      "ok": true,
+      "reason": "bun install resolved the workspace and the dev/optional dependencies",
+      "raw": "exit=0"
+    },
+    {
+      "name": "build.dists",
+      "ok": true,
+      "reason": "every discovered packages/*/dist entry rebuilt with exit 0 and a non-empty artifact",
+      "raw": "BUILD_OK=31/31"
+    },
+    {
+      "name": "install.exit",
+      "ok": true,
+      "reason": "one command installed the bundle into the profile",
+      "raw": "exit=0 spec=."
+    },
+    {
+      "name": "install.profileDep",
+      "ok": true,
+      "reason": "the profile links the checkout and keeps the box bundles",
+      "raw": "dep=link:/opt/mpd bundles=@deepseek-ai/dsh-base,@deepseek-ai/dsh-web-app,@mpd-dsh/mpd"
+    },
+    {
+      "name": "install.installedTree",
+      "ok": true,
+      "reason": "the installed bundle resolves inside the profile",
+      "raw": "/root/sandbox-dsh/profiles/web/node_modules/@mpd-dsh/mpd"
+    },
+    {
+      "name": "install.buildScripts",
+      "ok": true,
+      "reason": "the client install completed with NO unapproved build script: exit 0, no ERR_PNPM_IGNORED_BUILDS anywhere in the install output, no ignored-build-scripts warning, and the 2 installed closure root(s) were walked for manifests declaring preinstall/install/postinstall/prepare (0 found)",
+      "raw": "ERROR_CLASS_LINES=none WARN_LINES=none INVENTORY=none"
+    },
+    {
+      "name": "pack.present",
+      "ok": true,
+      "reason": "the packed artifact travelled into the container and is graded below",
+      "raw": "artifact=/src/dist/mpd-package"
+    },
+    {
+      "name": "pack.licenceCoherence",
+      "ok": true,
+      "reason": "the packed artifact carries LICENSE.md + LICENSE-NOTICES.md byte-identical to the tree it was cut from, and declares license=MIT as the source manifest does",
+      "raw": "carried=LICENSE.md,LICENSE-NOTICES.md artifactLicense=MIT sourceLicense=MIT"
+    },
+    {
+      "name": "pack.declarationCoherence",
+      "ok": true,
+      "reason": "every declaration the artifact makes about itself holds: 18 files entries resolve, its 2 bundle-patch layers exist, all 27 row module paths its own patch names resolve inside it, and no host tree (evidence/.git/docker/.toolchain/node_modules) travelled along",
+      "raw": "rowPathsChecked=27 files=619"
+    },
+    {
+      "name": "pack.staticCoherence",
+      "ok": true,
+      "reason": "the artifact agrees with the tree it was cut from: 617 carried file(s) byte-identical, 2 generated path(s) exempted (package.json, packages/mpd-ext-plugin/dist/validator.js), none missing",
+      "raw": "drifted=none untwinned=none"
+    },
+    {
+      "name": "pack.distFreshRebuild",
+      "ok": true,
+      "reason": "every one of the 31 built entries in the artifact is byte-identical to the container's own from-source rebuild — the packed dist is FRESH, not merely present",
+      "raw": "drifted=none uncovered=none rebuildBun=/opt/toolchain/bun-pinned/bin/bun rebuildBunVersion=1.4.0 declaredBuildToolchain=bun@1.4.0 declaredVersion=1.4.0 exactMatch=true witness=/work/rebuild.json"
+    },
+    {
+      "name": "pack.rebuildToolchain",
+      "ok": true,
+      "reason": "the from-source rebuild ran under bun 1.4.0, which IS the version the repository declares for its canonical build (bun@1.4.0), so a byte difference from this rebuild can be read as staleness rather than as a compiler difference",
+      "raw": " rebuildBun=/opt/toolchain/bun-pinned/bin/bun rebuildBunVersion=1.4.0 declaredBuildToolchain=bun@1.4.0 declaredVersion=1.4.0 exactMatch=true witness=/work/rebuild.json"
+    },
+    {
+      "name": "pack.distFreshRebuildControl",
+      "ok": true,
+      "reason": "the freshness arm is FALSIFIABLE on this machine: mutating one built entry in a copy of the same artifact flips pack.distFreshRebuild to FALSE against the SAME from-source rebuild, so a green on the untouched artifact is a measurement rather than a constant (the control's own rows are in /out/owed/pack-control.ndjson)",
+      "raw": "mutated=packages/mpd-better-sidebar-host/dist/index.js controlVerdict=false artifactCopy=/work/pack-mutated"
+    },
+    {
+      "name": "boot.mcpToolNaming",
+      "ok": true,
+      "reason": "every registered MCP tool is named mcp__<server>__<tool>; no server outside the shipped patch's declared set registered (declared: ast_grep,lsp,codegraph,context7,grep_app; registered: ast_grep,codegraph,lsp); every LOCAL row came up (the two remote rows register only when their public service answers, so their absence is not graded); and the ast-grep row published its whole declared surface (search,rewrite,scan)",
+      "raw": "MCP_REGISTERED=mcp__ast_grep__rewrite,mcp__ast_grep__scan,mcp__ast_grep__search,mcp__codegraph__codegraph_explore,mcp__lsp__find_definition,mcp__lsp__find_implementation,mcp__lsp__find_references,mcp__lsp__find_workspace_symbols,mcp__lsp__get_diagnostics,mcp__lsp__get_hover,mcp__lsp__get_incoming_calls,mcp__lsp__get_outgoing_calls,mcp__lsp__prepare_call_hierarchy,mcp__lsp__rename_symbol,mcp__lsp__rename_symbol_strict,mcp__lsp__restart_server MCP_SERVER_COUNTS=ast_grep:3,codegraph:1,lsp:12 declared=ast_grep,lsp,codegraph,context7,grep_app remote=context7,grep_app"
+    },
+    {
+      "name": "boot.mcpLiveSearch",
+      "ok": true,
+      "reason": "a REAL mcp__ast_grep__search call through the mounted adapter matched 1 site(s) in /opt/mpd/packages/mpd-mcp-astgrep/src, and the negative control matched 0 — the search engine ran, so the registered name is backed by a working server on this machine",
+      "raw": "dir=/opt/mpd/packages/mpd-mcp-astgrep/src MCP_LIVE_SEARCH=ok:1 MCP_LIVE_SEARCH_CONTROL=ok:0 SHAPE=keys=isError,ok,raw,value ok=true isError=false value(keys=content matches=none)"
+    },
+    {
+      "name": "restore.reviewPanelSelfTest",
+      "ok": true,
+      "reason": "the restored review panel's offline self-test (with its negative control) ran to a clean exit in this run — the case's own assertions are what passed",
+      "raw": "cmd=node skills/dsh-qa/scripts/review-panel.ts --self-test exit=0 log=/out/owed/owed-logs/restore.reviewPanelSelfTest.log tail=[review-panel self-test] ok: a missing verdict token reddens verdict-tokens | [review-panel self-test] ok: a stale hard-coded lane count reddens no-stale-all-N-verdict | [review-panel self-test] ok: a retired spelling reddens no-retired-spelling | [review-panel self-test] ok: tree scan finds both retired spellings and the stale count, and only in the poisoned file (../../tmp/review-panel-selftest-tree/poisoned.md:4, ../../tmp/review-panel-selftest-tree/poisoned.md:4) | [review-panel self-test] ok: a clean tree scans clean (negative control holds in both directions) | [review-panel self-test] all arms passed"
+    },
+    {
+      "name": "restore.reviewPanelCase",
+      "ok": true,
+      "reason": "the restored review panel's real case ran to a clean exit in this run — the case's own assertions are what passed",
+      "raw": "cmd=node skills/dsh-qa/scripts/review-panel.ts exit=0 log=/out/owed/owed-logs/restore.reviewPanelCase.log tail=  ok   no-stale-all-N-verdict — no hard-coded lane/agent count |   ok   no-retired-spelling — no retired spelling |   ok   tree-no-retired-spelling — 2 file(s) scanned; no retired spelling |   ok   tree-no-stale-all-N-verdict — 2 file(s) scanned; no hard-coded lane/agent count | [review-panel] PASS | [review-panel] evidence -> evidence/restore/s1/2026-10-17T15-35-21-332Z"
+    },
+    {
+      "name": "restore.lspBootstrap",
+      "ok": true,
+      "reason": "the launcher generated a valid .mpd/lsp/cclsp.json with 1 well-formed language server(s), 1 of them serving the TypeScript family, and left a pre-existing user cclsp.json byte-identical (the negative control)",
+      "raw": "generated=/out/owed/lsp-blessed/.mpd/lsp/cclsp.json userConfigDigestBefore=918e657509c6 after=918e657509c6"
+    },
+    {
+      "name": "restore.hashlineRepair",
+      "ok": true,
+      "reason": "the restored hashline fuzzy-repair cases (wrapped line, paired indent, the ambiguous negative control, the CRLF round-trip) ran to a clean exit in this run — the case's own assertions are what passed",
+      "raw": "cmd=bun test packages/mpd-hashline-plugin exit=0 log=/out/owed/owed-logs/restore.hashlineRepair.log tail=(pass) the committed src AND dist carry no array-typed schema form, and the dist carries the oneOf fix [0.28ms] | (pass) the guard resolves a RELATIVE file_path against the session workspace, not process.cwd() [0.69ms] |  21 pass |  0 fail |  80 expect() calls | Ran 21 tests across 3 files. [26.00ms]"
+    },
+    {
+      "name": "qa.mcpCall",
+      "ok": null,
+      "reason": "the live mcp-call case (a real model turn that must record a mcp__ast_grep__search call) did not run to a verdict on this machine: the case itself reported \"[mcp-call] missing credentials\" — a skip is not a pass, and nothing about the bundle is settled by it",
+      "raw": "exit=1 marker=[mcp-call] missing credentials tail=[mcp-call] missing credentials"
+    },
+    {
+      "name": "qa.readonlyDeny",
+      "ok": true,
+      "reason": "the live readonly-deny case (a read-only spawn whose child must really be restricted) ran to a clean exit in this run — the case's own assertions are what passed",
+      "raw": "cmd=node skills/dsh-qa/scripts/readonly-deny.ts exit=0 log=/out/owed/owed-logs/qa.readonlyDeny.log tail=  reinjectionControl: {\"ok\":true,\"mutationLoaded\":true,\"mutationMechanism\":\"child-scope\",\"childScopeFailureRecorded\":true,\"childScopeFailureLine\":\"[2026-10-17T15:36:08.465Z] [mpd-roles] read-only child: the deny could NOT be applied (tools.restrict() names unknown global tools \\\"str_replace_editor\\\", \\\"apply_patch\\\"; kno |   mechanism: {\"ok\":true,\"childScopeMechanism\":true,\"startSpecMechanism\":true,\"childScopeSource\":\"row-log\",\"loggerProbeRecords\":8,\"loggerProbeMountCheck\":true,\"note\":\"the child's own scoped registry carried the deny (0.2.1 mechanism): the roles row logged \\\"[2026-10-17T15:35:35.792Z] [mpd-roles] read-only child:  |   reinjectionNote: \"with the unregistered names re-injected, the CHILD-SCOPE apply refused the list and the roles row said so on disk: \\\"[2026-10-17T15:36:08.465Z] [mpd-roles] read-only child: the deny could NOT be applied (tools.restrict() names unknown global tools \\\\\\\"str_replace_editor\\\\\\\", \\\\\\\"apply_patch\\\\\\\"; kn |   isolation: {\"ok\":true,\"realWorkmateUntouched\":true,\"realWm\":\"/work/.mpd/workmate\"} |   mcpLspDependency: {\"ok\":true,\"name\":\"cclsp\",\"version\":\"0.7.0\",\"positiveLane\":{\"ok\":true,\"source\":\"checkout-store\",\"detail\":\"/opt/mpd/node_modules/.b"
+    },
+    {
+      "name": "qa.mcpCallEngine",
+      "ok": true,
+      "reason": "the ast-grep engine the call arm's launcher resolves (bundle-relative, inside the packed tree the case installs) is staged and its own --version probe reports ast-grep, so qa.mcpCall below measures the CASE rather than a missing binary",
+      "raw": "bin=/opt/mpd/dist/mpd-package/.toolchain/node_modules/.bin/ast-grep probe=ast-grep 0.51.0"
+    },
+    {
+      "name": "oneclick.scratchRepo",
+      "ok": null,
+      "reason": "not applicable in mode=source: this row grades the PUBLISHED package's installed tree (the scratch git build, the manifest's files allowlist, and the byte identity of what landed), and this mode installs the checkout by path — the one-click lane carries the measurement",
+      "raw": "mode=source"
+    },
+    {
+      "name": "oneclick.requiredPaths",
+      "ok": null,
+      "reason": "not applicable in mode=source: this row grades the PUBLISHED package's installed tree (the scratch git build, the manifest's files allowlist, and the byte identity of what landed), and this mode installs the checkout by path — the one-click lane carries the measurement",
+      "raw": "mode=source"
+    },
+    {
+      "name": "oneclick.filesAllowlist",
+      "ok": null,
+      "reason": "not applicable in mode=source: this row grades the PUBLISHED package's installed tree (the scratch git build, the manifest's files allowlist, and the byte identity of what landed), and this mode installs the checkout by path — the one-click lane carries the measurement",
+      "raw": "mode=source"
+    },
+    {
+      "name": "oneclick.distByteIdentical",
+      "ok": null,
+      "reason": "not applicable in mode=source: this row grades the PUBLISHED package's installed tree (the scratch git build, the manifest's files allowlist, and the byte identity of what landed), and this mode installs the checkout by path — the one-click lane carries the measurement",
+      "raw": "mode=source"
+    },
+    {
+      "name": "compose.dumpExit",
+      "ok": true,
+      "reason": "the sanctioned composer exited 0",
+      "raw": "exit=0"
+    },
+    {
+      "name": "compose.mpdRows",
+      "ok": true,
+      "reason": "the mpd host rows compose as INSERTS (additive-only) and the SHIPPED patch layers carry ZERO column-0 id-targets, i.e. no host row is overridden — the strict zero-override contract; the preset default is the USER's setting, not the bundle's",
+      "raw": "rows=mpd-dsh-adapter,mpd-bootstrap,mpd-web-compat,mpd-roles,mpd-workmate layers=2 idTargets=0 defaultMpdLines=0 gate exit=0 subject=byte-identical [verify-no-host-override] PASS: every id-target is bundle-owned (0 of 0 collide with the 192 host-declared row ids) "
+    },
+    {
+      "name": "compose.presetRow",
+      "ok": true,
+      "reason": "the mpd preset is declared as a @deepseek-ai/dsh-agent-preset row (§4 D1)",
+      "raw": "- id: preset-mpd"
+    },
+    {
+      "name": "compose.agentTeamRows",
+      "ok": true,
+      "reason": "the official agent-team rows compose under the mpd-owned ids (§4 D3)",
+      "raw": "ids=mpd-agent-team,mpd-tool-agent-team,mpd-ui-agent-team"
+    },
+    {
+      "name": "boot.probeApplied",
+      "ok": true,
+      "reason": "the probe plugin's apply() ran inside the booted harness — a real MOUNT, not a composition",
+      "raw": "[docker-probe] APPLIED=ok"
+    },
+    {
+      "name": "boot.adapterService",
+      "ok": true,
+      "reason": "the mpd-dsh-adapter row applied and provided the mpdDsh service — witnessed in the row's OWN file log <workspace>/.mpd/logs/mpd-dsh-adapter.log (R5: MPD diagnostics never touch the terminal)",
+      "raw": "[mpd-dsh-adapter] mpdDsh provided (file=/work/.mpd/logs/mpd-dsh-adapter.log)"
+    },
+    {
+      "name": "boot.adapterToolCall",
+      "ok": true,
+      "reason": "an internal tool call through the adapter answered ok",
+      "raw": "[docker-probe] ADAPTER_TOOL_CALL=ok"
+    },
+    {
+      "name": "boot.mpdTools",
+      "ok": true,
+      "reason": "every core mpd tool answered from the live registry",
+      "raw": "CORE_TOOLS=6/6"
+    },
+    {
+      "name": "boot.mcpTools",
+      "ok": true,
+      "reason": "every MCP server this bundle mounts exposed its tool from the live registry",
+      "raw": "MCP_TOOLS=3/3"
+    },
+    {
+      "name": "boot.agentTeamTools",
+      "ok": true,
+      "reason": "every official agent-team tool answered from an EXACT AGENT SCOPE after session creation (the plane the official plugin registers them in)",
+      "raw": "[docker-probe] AGENT_TEAM_TOOLS=9/9 agent=session-a179bd8e-3769-4280-952d-a79eda3e"
+    },
+    {
+      "name": "boot.sessionGateListener",
+      "ok": true,
+      "reason": "the mpd session gate listener is REGISTERED for the created session — witnessed in the row's OWN file log <workspace>/.mpd/logs/mpd-roles.log (R5), liveness not composition (the contract that was silently dead in v0.10.0)",
+      "raw": "[mpd-roles] session gate listener registered for agent \"session-a179bd8e-3769-4280-952d-a79eda3eedb1\" agentPreset=mpd (file=/work/.mpd/logs/mpd-roles.log)"
+    },
+    {
+      "name": "boot.agentTeamService",
+      "ok": true,
+      "reason": "the official TeamService is mounted in the booted process (its class name is the witness)",
+      "raw": "[docker-probe] AGENT_TEAMS=MOUNTED serviceName=TeamService methods=listMembers,spawnTeammate,sendMessage,createTask,getTask,listTasks,updateTask,waitForChange,interrupt,tryMembership"
+    },
+    {
+      "name": "boot.servesHttp",
+      "ok": true,
+      "reason": "the booted Web app answered 200",
+      "raw": "/plugins/mpd-workmate/list -> 200"
+    },
+    {
+      "name": "boot.presetMount",
+      "ok": true,
+      "reason": "the gateway created a session with agentPreset=mpd — every row of the mpd preset activated (it refuses on an inactive row)",
+      "raw": "POST /api/session/create -> {\"type\":\"server-response\",\"rpcId\":\"rpc-1-1792251219-25610\",\"result\":{\"ok\":true,\"value\":{\"sessionId\":\"session-a179bd8e-3769-4280-952d-a79eda3eedb1\",\"agentPreset\":\"mpd\"}}}"
+    },
+    {
+      "name": "boot.noFatalSignatures",
+      "ok": true,
+      "reason": "no fatal apply/module signature in the boot log",
+      "raw": "0 matches"
+    },
+    {
+      "name": "isolation.home",
+      "ok": true,
+      "reason": "HOME and DSH_HOME stay on the sandbox paths for every harness command",
+      "raw": "HOME=/root/sandbox-home DSH_HOME=/root/sandbox-dsh"
+    },
+    {
+      "name": "isolation.realHome",
+      "ok": true,
+      "reason": "no harness/toolchain marker under the real home (/root)",
+      "raw": "absent: .dsh .mpd .npm .bun"
+    },
+    {
+      "name": "isolation.noCredentials",
+      "ok": true,
+      "reason": "no credential file carries a secret-shaped value, and nothing was staged into the container in the first place (the empty .credentials.yaml the harness materializes in the SANDBOX home is expected)",
+      "raw": "inventory=.credentials.yaml(161B),.npmrc(40B), live=0"
+    },
+    {
+      "name": "tui.hostInstall",
+      "ok": true,
+      "reason": "the TUI host installs globally and lands on PATH",
+      "raw": "version=0.15.0 bin=/usr/local/bin/dsh-tui"
+    },
+    {
+      "name": "tui.pluginAddHost",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.pluginAddBundle",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.compose",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.presetPreference",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.presetRow",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.mpdTuiRow",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.agentTeamRows",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.mergedPanelOpens",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.mergedPanelOrder",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.hostDashboardKeyIntact",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.noDirectTuiSeam",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.boot",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.noFatalSignatures",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.sessionPreset",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "team.route.state",
+      "ok": true,
+      "reason": "the mpd team route answered a JSON payload from a REAL mounted row",
+      "raw": "HTTP 200 keys=workspace,sessionId,workspaceTeams,team,counts,members,tasks,cycles,executor,problems"
+    },
+    {
+      "name": "team.route.plan",
+      "ok": true,
+      "reason": "the mpd team route answered a JSON payload from a REAL mounted row",
+      "raw": "HTTP 200 keys=workspace,sessionId,plan"
+    },
+    {
+      "name": "team.route.task",
+      "ok": true,
+      "reason": "the mpd team route answered a JSON payload from a REAL mounted row",
+      "raw": "HTTP 200 keys=workspace,contracts,hold"
+    },
+    {
+      "name": "team.route.mail",
+      "ok": true,
+      "reason": "the mpd team route answered a JSON payload from a REAL mounted row",
+      "raw": "HTTP 200 keys=workspace,messages,records"
+    },
+    {
+      "name": "team.routesAll",
+      "ok": true,
+      "reason": "all four /plugins/mpd-team routes are registered by the mounted row and answer ok:true",
+      "raw": "green=4/4"
+    },
+    {
+      "name": "team.planLookup",
+      "ok": true,
+      "reason": "the plan route answered a plan SHAPE for the live session (null when nothing is staged, which is the honest pre-approval answer)",
+      "raw": "plan=null session=session-a179bd8e-3769-4280-952d-a79eda3eedb1"
+    },
+    {
+      "name": "tui.teamSceneOtherSessionInvisible",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.teamFixtureBound",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.teamSceneOpened",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.teamGraphDrawn",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.teamGraphEdges",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.teamGraphContent",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "tui.laneExit",
+      "ok": false,
+      "reason": "the TUI lane aborted (exit 1) — see this step's log; earlier tui.* records are the assertions that had already run",
+      "raw": "line=182"
+    },
+    {
+      "name": "live.credentialStaged",
+      "ok": null,
+      "reason": "not attempted: a live turn needs MPD_E2E_LIVE=1 and a DEEPSEEK_API_KEY forwarded by name; the mount assertions are the credential-free maximum",
+      "raw": "MPD_E2E_LIVE=0 key=absent"
+    },
+    {
+      "name": "live.credentialScoped",
+      "ok": null,
+      "reason": "not attempted: no credential was staged, so there was nothing to scope-check",
+      "raw": "staged=none"
+    },
+    {
+      "name": "live.credentialRemoved",
+      "ok": null,
+      "reason": "not attempted: nothing was staged, so nothing needed removing",
+      "raw": "staged=none"
+    },
+    {
+      "name": "live.web.turnStarted",
+      "ok": null,
+      "reason": "not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum",
+      "raw": "not attempted"
+    },
+    {
+      "name": "live.web.turnCompleted",
+      "ok": null,
+      "reason": "not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum",
+      "raw": "not attempted"
+    },
+    {
+      "name": "live.web.noErrorTurns",
+      "ok": null,
+      "reason": "not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum",
+      "raw": "not attempted"
+    },
+    {
+      "name": "live.web.noMalformedToolJson",
+      "ok": null,
+      "reason": "not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum",
+      "raw": "not attempted"
+    },
+    {
+      "name": "live.web.toolCallsParsed",
+      "ok": null,
+      "reason": "not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum",
+      "raw": "not attempted"
+    },
+    {
+      "name": "live.web.mpdToolCalled",
+      "ok": null,
+      "reason": "not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum",
+      "raw": "not attempted"
+    },
+    {
+      "name": "live.web.assistantReplied",
+      "ok": null,
+      "reason": "not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum",
+      "raw": "not attempted"
+    },
+    {
+      "name": "live.tui.turnStarted",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.tui.turnCompleted",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.tui.noErrorTurns",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.tui.noMalformedToolJson",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.tui.toolCallsParsed",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.tui.mpdToolCalled",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.tui.assistantReplied",
+      "ok": null,
+      "reason": "not reached: the run stopped before this assertion (see the steps in output.log)",
+      "raw": ""
+    },
+    {
+      "name": "live.headless.turnStarted",
+      "ok": null,
+      "reason": "not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum",
+      "raw": "not attempted"
+    },
+    {
+      "name": "live.headless.turnCompleted",
+      "ok": null,
+      "reason": "not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum",
+      "raw": "not attempted"
+    },
+    {
+      "name": "live.headless.noErrorTurns",
+      "ok": null,
+      "reason": "not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum",
+      "raw": "not attempted"
+    },
+    {
+      "name": "live.headless.noMalformedToolJson",
+      "ok": null,
+      "reason": "not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum",
+      "raw": "not attempted"
+    },
+    {
+      "name": "live.headless.toolCallsParsed",
+      "ok": null,
+      "reason": "not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum",
+      "raw": "not attempted"
+    },
+    {
+      "name": "live.headless.mpdToolCalled",
+      "ok": null,
+      "reason": "not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum",
+      "raw": "not attempted"
+    },
+    {
+      "name": "live.headless.assistantReplied",
+      "ok": null,
+      "reason": "not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum",
+      "raw": "not attempted"
+    },
+    {
+      "name": "live.teamRecord",
+      "ok": null,
+      "reason": "not attempted: no live turn ran, so no approval could materialise a record",
+      "raw": "staged=none"
+    },
+    {
+      "name": "live.nativeExecutor",
+      "ok": null,
+      "reason": "not attempted: no live turn ran, so no member could be raised",
+      "raw": "staged=none"
+    },
+    {
+      "name": "live.headlessPresetRow",
+      "ok": null,
+      "reason": "not attempted: the headless profile was never driven, so its preset activation is unmeasured",
+      "raw": "staged=none"
+    },
+    {
+      "name": "boot.llmTurn",
+      "ok": null,
+      "reason": "not attempted: a live LLM turn needs provider credentials and this container stages none (AGENTS.md §10). The mount assertions above are the credential-free maximum.",
+      "raw": "no credentials staged by design"
+    },
+    {
+      "name": "boot.workspaceRegistered",
+      "ok": true,
+      "reason": "the scratch workspace was registered in the harness's own store BEFORE the boot, so the Web GUI renders a usable composer instead of the disabled landing state",
+      "raw": "id=ws-mpd-e2e path=/work/ws"
+    },
+    {
+      "name": "ui.loads",
+      "ok": true,
+      "reason": "the Web GUI loaded and rendered visible text in a real browser",
+      "raw": "chars=203"
+    },
+    {
+      "name": "ui.workspaceSelected",
+      "ok": true,
+      "reason": "a workspace is selected in the GUI, so the session composer is live",
+      "raw": "placeholders=Describe what you want to build | Add files or run commands"
+    },
+    {
+      "name": "ui.composerPresent",
+      "ok": true,
+      "reason": "the prompt composer exists and is editable — the entry point of every turn",
+      "raw": "placeholders=Describe what you want to build | Add files or run commands"
+    },
+    {
+      "name": "ui.promptSent",
+      "ok": true,
+      "reason": "a prompt was typed into the composer and sent through the real UI",
+      "raw": "promptChars=88"
+    },
+    {
+      "name": "ui.replyRendered",
+      "ok": null,
+      "reason": "DECLARED BOUND — no reply was rendered: the turn's failure panel names the missing credential (MISSING_CREDENTIAL) and this container stages none, so no model turn could run. no reply rendered; the turn's own panel names the missing credential: \"This turn failedllm-deepseek: no API key for provider route \\\"deepseek-official\\\"; store DEEPSEEK_API_KEY through the credentials service (the web Models page writes it), or export DEEPSEEK_API_KEY in the launching environment\"",
+      "raw": "before=227 after=621 growth=394 done=false tool=false region=8 failure=yes staleFailure=none"
+    },
+    {
+      "name": "ui.mpdSettingsSection",
+      "ok": true,
+      "reason": "the MPD settings section registers and renders its card in Settings",
+      "raw": "chars=4000 opened-by=launcher Account menu open=Account menu->General mpd-console=11"
+    },
+    {
+      "name": "ui.teamPanel",
+      "ok": true,
+      "reason": "the right sidebar opens on the Agent Teams panel with its roster and board",
+      "raw": "chars=707 teamTab=1"
+    },
+    {
+      "name": "ui.noConsoleErrors",
+      "ok": true,
+      "reason": "the browser reported no console errors and no uncaught page errors",
+      "raw": "console=0 page=0"
+    }
+  ],
+  "observations": {
+    "npmrc": "registry=https://registry.npmmirror.com (a SANDBOX-home .npmrc; pnpm — and therefore every `dsh plugin` — resolves through the FILE, not the environment, measured 2026-10-09)",
+    "npmRegistry": "https://registry.npmmirror.com (route=mirror-fallback; the scoped-metadata endpoint was probed because npm hangs silently on an unreachable one)",
+    "npmTarball": "https://registry.npmmirror.com/@deepseek-ai/dsh/-/dsh-0.2.1-rc.2.tgz (http=206 bytes=1024 ms=118; a byte RANGE of the harness pin's OWN tarball, fetched after the metadata probe answered, because a registry can serve METADATA and blackhole TARBALLS — which stalled a run here for 3.5 minutes at 0 B/s)",
+    "buildToolchain": "bun@1.4.0",
+    "rebuildNoSrc": "NO_SRC=mpd-bundle=package has no src/ directory (dist is the only committed artifact),mpd-mcp-shared=built by the package itself (bun build src/launch.ts -> dist/launch.js) or a sha-pinned prebuilt — no offline snapshot build any more,mpd-schemastery=package has no src/ directory (dist is the only committed artifact)",
+    "rebuildBun": "[rebuild] BUN=/opt/toolchain/bun-pinned/bin/bun VERSION=1.4.0",
+    "installSpec": ".",
+    "installTail": "+ @mpd-dsh/mpd link:/opt/mpd  Already up to date Done in 342ms using pnpm v11.23.0 ",
+    "packArtifact": "/src/dist/mpd-package (carried through docker/Dockerfile.dockerignore's one deliberate exception)",
+    "dumpMpdRowIds": "mpd-agent-team,mpd-better-sidebar,mpd-bootstrap,mpd-boulder,mpd-codegraph,mpd-comment-checker,mpd-config,mpd-dsh-adapter,mpd-ext,mpd-goal,mpd-hashline,mpd-memory,mpd-modelchain,mpd-roles,mpd-roster-provider,mpd-team-compact,mpd-team-core,mpd-team-watchdog,mpd-tool-agent-team,mpd-tools,mpd-tui,mpd-tui-adapter,mpd-ui-agent-team,mpd-ulw,mpd-verify,mpd-web-compat,mpd-workmate,",
+    "dumpDefaultMpdLines": "0 (expected 0: the bundle ships no preset override)",
+    "dumpAgentTeamRows": "mpd-agent-team,mpd-tool-agent-team,mpd-ui-agent-team,",
+    "qaHomeCredential": "no credential mirror: the live arm was not requested, so the two live cases are expected to refuse and are recorded as null with their own marker quoted",
+    "astgrepEngineTree": "/opt/mpd (the tree whose bundle-relative .toolchain the MCP launcher reads; the installer SCRIPT runs from /opt/mpd/scripts/install-mcp.ts because node_modules paths refuse type stripping)",
+    "astgrepToolchain": "ast-grep,codegraph,sg,",
+    "retiredToolsPresent": "<probe did not report>",
+    "teamToolPlane": "root-plane read=0/9 (0/9 is the documented shape: @deepseek-ai/dsh-experimental-tool-agent-team registers scoped.tools on agent.ctx per agent); the graded read is AGENT_TEAM_TOOLS below",
+    "uiTeamRow": "resolved in the bundle's own node_modules (resolved through the link: dependency) at /opt/mpd/node_modules/@deepseek-ai/dsh-experimental-client-ui-agent-team/package.json with dsh.client.platform=web; host half is a no-op apply(), so no server-side registration can witness this browser-discovered plugin — its load is witnessed as resolved+composed+no apply failure (boot.noFatalSignatures)",
+    "sessionCreate": "http=200 type=server-response rpcIdEcho=match ok=true agentPreset=mpd",
+    "playwrightHost": "https://cdn.npmmirror.com/binaries/playwright (route=mirror-artifact-ok; the CHROMIUM binary travels on its own CDN, which the npm registry knob does NOT cover — the artifact URL is read out of Playwright itself and fetched as a byte RANGE on each transport, because a CDN ROOT answers while the artifact path blackholes)",
+    "realHomeMarkers": ".bashrc,.profile,sandbox-dsh,sandbox-home,",
+    "credentialFiles": ".credentials.yaml(161B),.npmrc(40B), (sizes only; the CONTENT of a credential-shaped file is deliberately never copied into the evidence — the check is a secret-shape match, not a dump)",
+    "lspTree": "/root/sandbox-dsh/profiles/web/node_modules/@mpd-dsh/mpd (the INSTALLED tree when the profile carries one, because the launcher resolves cclsp from its own location and the one-click service runs no bun install)",
+    "mcpCclspConfigAtBoot": "/work/.mpd/lsp/cclsp.json",
+    "caseEngineTree": "/opt/mpd/dist/mpd-package (the bundle root the mcp-call launcher resolves bundle-relatively: the case installs that packed tree with npm `file:` into its sandbox profile)",
+    "qaHomeMirrorPresent": "false",
+    "owedCaseLogs": "/out/owed/owed-logs (each case's own output, in the EVIDENCE tree so a red row can be read verbatim; the quoted tails also travel in the assertion rows)"
+  },
+  "facts": {
+    "stamp": "2026-10-17T15:31:27Z",
+    "entrypoint": "docker/entrypoint.sh",
+    "image": "mpd-docker-e2e:local",
+    "ubuntuImage": "ubuntu 24.04 (Ubuntu 24.04.5 LTS)",
+    "pins": "nodePin=24.19.0 dsh=0.2.1-rc.2 pnpm=11.23.0",
+    "home": "/root/sandbox-home",
+    "dshHome": "/root/sandbox-dsh",
+    "aptSeconds": "32",
+    "nodeArch": "amd64 -> linux-x64",
+    "nodeSource": "image (node:24-bookworm /usr/local)",
+    "node": "v24.21.0 (npm 11.19.0)",
+    "bunPath": "/opt/toolchain/bun/bin/bun",
+    "bun": "1.4.3 (route=official-script, BUN_INSTALL=/opt/toolchain/bun)",
+    "bunPinned": "/opt/toolchain/bun-pinned/bin/bun version=1.4.0 route=official-script declared=bun@1.4.0",
+    "pnpm": "11.23.0",
+    "dsh": "0.2.1-rc.2 (/usr/local/bin/dsh)",
+    "harnessVersion": "0.2.1-rc.2",
+    "harnessVersionExpected": "0.2.1-rc.2",
+    "copyManifest": "@mpd-dsh/mpd",
+    "rebuildEntries": "ENTRIES=31",
+    "profileDep": "link:/opt/mpd",
+    "profileBundles": "@deepseek-ai/dsh-base,@deepseek-ai/dsh-web-app,@mpd-dsh/mpd",
+    "bootCoreTools": "6/6",
+    "bootTeamToolsRootPlane": "0/9",
+    "bootAdapterCaps": "tools,toolsRegister,toolsGuard,toolsGet,toolsExecute,toolsPreExecute,toolsPostExecute,subagents,skills,skillsProvider,agentPresets,commands,commandsRegister,agents,events,llmCatalog,toolsRegisterHost,subagentsProvider,subagentsContinuable,teamExecutorNative,subagentsInterrupt,llmListModels,llmResolveCallConfig,systemPromptSection,agentPreStep,team,teamTasks,teamMessages,subagentsProviderRegister,goals",
+    "bootAgentTeamsMethods": "listMembers,spawnTeammate,sendMessage,createTask,getTask,listTasks,updateTask,waitForChange,interrupt,tryMembership",
+    "bootCookieJarLines": "4",
+    "bootCookieExchange": "http=303 tokenPresent=yes",
+    "bootHttp": "/plugins/mpd-workmate/list -> 200",
+    "bootAgentTeamToolsScoped": "[docker-probe] AGENT_TEAM_TOOLS=9/9 agent=session-a179bd8e-3769-4280-952d-a79eda3e",
+    "bootSessionGate": "[mpd-roles] session gate listener registered for agent \"session-a179bd8e-3769-4280-952d-a79eda3eedb1\" agentPreset=mpd (file=/work/.mpd/logs/mpd-roles.log)",
+    "teamRoutesSession": "session-a179bd8e-3769-4280-952d-a79eda3eedb1",
+    "teamRoutes": " state=200/true plan=200/true task=200/true mail=200/true",
+    "hashesMeasuredAt": "2026-10-17T15:36:09Z",
+    "finishedAt": "2026-10-17T15:36:09Z"
+  },
+  "hashes": [
+    {
+      "sha256": "09bde3d392f1f8a573fb1ab08a2d8f0cc2bfe4f999675b5e8629f18555ffad7a",
+      "path": "/opt/mpd/package.json"
+    },
+    {
+      "sha256": "dc8d6064a0491cb1860befc940a92e536de114fd5e0bd7efe62d8899003ae5a6",
+      "path": "/opt/mpd/cordis.patch.yml"
+    },
+    {
+      "sha256": "fe4672714eaf58b544252accda2c748a4cd8b3026d3e9bc5f599a0ecd48e6bec",
+      "path": "/opt/mpd/presets/mpd.patch.yml"
+    },
+    {
+      "sha256": "9c76ebb958c79a1513e0ad8c5df3564f5f4efa8ea139f610383140bba8abe8f3",
+      "path": "packages/mpd-better-sidebar-host/dist/index.js"
+    },
+    {
+      "sha256": "164bb27b79ed42607cc604e29ddc1a12e019a78406a35c351a5f7d0a2730c142",
+      "path": "packages/mpd-bootstrap-plugin/dist/index.js"
+    },
+    {
+      "sha256": "6b4d979c137da3421e63ba8e53c476d1e4a9f8ed75780ae43646556ae045bf09",
+      "path": "packages/mpd-boulder-plugin/dist/index.js"
+    },
+    {
+      "sha256": "c87362998da3bdd2c245edb1384a85b0d958aa60f6d62e8026c2c5df7fe3f706",
+      "path": "packages/mpd-bundle-plugin/dist/index.js"
+    },
+    {
+      "sha256": "4d500a18e45e705fd1ba95e3c098dc4e9a831b9b0c1fddfe4b2c6182f66e39d5",
+      "path": "packages/mpd-codegraph-plugin/dist/index.js"
+    },
+    {
+      "sha256": "8b32495696bdf69274bf86fbd7a319990338c87313fcbb9fa46457dd5846dc82",
+      "path": "packages/mpd-comment-checker-plugin/dist/index.js"
+    },
+    {
+      "sha256": "ada524b6ee97463daa8f308d31ab4b1bafc83721d2d9f63b0b4a2366686e2b8e",
+      "path": "packages/mpd-config-plugin/dist/index.js"
+    },
+    {
+      "sha256": "e531eed854cc0f611304e29c6c471368f3c7c95855c9d355f63425a07d97835c",
+      "path": "packages/mpd-dsh-adapter-plugin/dist/index.js"
+    },
+    {
+      "sha256": "eb3e565090326342b2f86bd8a5046b18622eea70ee4e62ddcec263a0a28a31ec",
+      "path": "packages/mpd-ext-plugin/dist/index.js"
+    },
+    {
+      "sha256": "847aa0dd8f5a3a789e86572c91505105cc76f86dab7017426d2b3a8f04dc8ba9",
+      "path": "packages/mpd-goal-plugin/dist/index.js"
+    },
+    {
+      "sha256": "b3a4913dc5eb1f5e8fd64af930f3c7c1adc228476009ca3d11f939d73cd1ffae",
+      "path": "packages/mpd-hashline-plugin/dist/index.js"
+    },
+    {
+      "sha256": "c8c32bf6f71c76b5cb412c4bb0c5b59f114edca7f1dadcca1a67513c3ef6f3a5",
+      "path": "packages/mpd-memory-plugin/dist/index.js"
+    },
+    {
+      "sha256": "1f9319f4de56f8286e789d04933e412ca2dd44cee1de703070b4fbdccf95b2a9",
+      "path": "packages/mpd-modelchain-plugin/dist/index.js"
+    },
+    {
+      "sha256": "24ef6e15b4e4c142b537646f2068458e2375db53c1274c6b2cf99d76e2cfc638",
+      "path": "packages/mpd-qa-roles-probe/dist/index.js"
+    },
+    {
+      "sha256": "30df45d27665818d7dc25a4b34988683be44c79c2a02b424d1d0e9d058c5a040",
+      "path": "packages/mpd-roles-plugin/dist/index.js"
+    },
+    {
+      "sha256": "1d3ecc6c655fa743af35ecfd7629a98f1992a77ee8f778937252e63b5c06835a",
+      "path": "packages/mpd-roster-provider-plugin/dist/index.js"
+    },
+    {
+      "sha256": "b364b80f5337d94a491925a50848c9edda1a85deae5d08acd38713382c78f247",
+      "path": "packages/mpd-team-compact-plugin/dist/index.js"
+    },
+    {
+      "sha256": "57e6b44f7cc21ed5972fc44abf828f94b5a8843e8ff022a6faf6e11509c2136a",
+      "path": "packages/mpd-team-core-plugin/dist/index.js"
+    },
+    {
+      "sha256": "b4967998140d4ea585d3385f96ce220517629629bebfa8b3e6ca5421384040fd",
+      "path": "packages/mpd-team-watchdog-plugin/dist/index.js"
+    },
+    {
+      "sha256": "b3e739523de0e1dd5febbce62ce3719ad1302e4eb2ddda966cca05c71976ee23",
+      "path": "packages/mpd-tools-plugin/dist/index.js"
+    },
+    {
+      "sha256": "b16d6e5fb4b837dfb85324a6f91a640b89894027291bd29ae61c88ac0b336cac",
+      "path": "packages/mpd-tui-adapter-plugin/dist/index.js"
+    },
+    {
+      "sha256": "4687321f54f4d0541bff8023959bd555728bec24cb77dcd175445ba745392b1f",
+      "path": "packages/mpd-tui-plugin/dist/index.js"
+    },
+    {
+      "sha256": "17f7b22699799dc1308e423fa333decc61eac088eda000248cf07cb248b37d40",
+      "path": "packages/mpd-ulw-plugin/dist/index.js"
+    },
+    {
+      "sha256": "14f3d2f2ab12de4925469b0365fd4f8e53e6ed615a531c857fddee7742de42b2",
+      "path": "packages/mpd-verify-plugin/dist/index.js"
+    },
+    {
+      "sha256": "f807360ad771d6214a8f2542ef8085185a666c7208dd87079fc43b51830e765b",
+      "path": "packages/mpd-workmate-plugin/dist/index.js"
+    }
+  ],
+  "steps": [
+    {
+      "id": "01b-npm-registry",
+      "exit": 0,
+      "seconds": 11,
+      "cmd": "node -e    const registry = process.argv[1]   const probeUrl = process.argv[2]   const mirror = process.argv[3]   const label = process.argv[4]   const out = process.argv[5]   const tarballPath = process.argv[6]   const knob = process.argv[7]   const fs = await import(\"node:fs\")   const probe = async (target) => {     const started = Date.now()     const controller = new AbortController()     const timer = setTimeout(() => controller.abort(), 20000)     try {       const response = await fetch(target, { signal: controller.signal })       await response.text()       clearTimeout(timer)       return { ok: response.status === 200, ms: Date.now() - started, status: \"http=\" + response.status }     } catch (error) {       clearTimeout(timer)       return { ok: false, ms: Date.now() - started, status: String(error).slice(0, 80) }     }   }   // ONE RANGED GET of the artifact the install will really fetch. `206` is the answer a registry that   // honours Range gives; `200` with bytes is accepted too, because some mirrors stream the whole object   // to a Range request — and in that case the reader below still takes a SINGLE chunk and cancels, so   // the cost stays a chunk rather than a tarball. A body of 0 bytes is a failure, never a pass.   const tarballProbe = async (base) => {     const started = Date.now()     const controller = new AbortController()     const timer = setTimeout(() => controller.abort(), 20000)     try {       const response = await fetch(base + tarballPath, { signal: controller.signal, headers: { Range: \"bytes=0-1023\" } })       const reader = response.body === null ? null : response.body.getReader()       const chunk = reader === null ? null : await reader.read()       if (reader !== null) await reader.cancel()       const bytes = chunk !== null && chunk.value !== undefined ? chunk.value.byteLength : 0       clearTimeout(timer)       return { ok: (response.status === 206 || response.status === 200) && bytes > 0, ms: Date.now() - started, status: \"http=\" + response.status + \" bytes=\" + bytes }     } catch (error) {       clearTimeout(timer)       return { ok: false, ms: Date.now() - started, status: String(error).slice(0, 80) }     }   }   const tarballRead = async (base) => {     if (knob === \"\") return { ok: true, skipped: true, reading: \"skipped reason=no-registry-knob (the operator named no registry with MPD_E2E_NPM_REGISTRY, so the scoped METADATA probe above is the whole transport decision; the ranged GET is opt-in and this run paid no network for it)\" }     const reading = await tarballProbe(base)     return { ok: reading.ok, skipped: false, reading: reading.status + \" ms=\" + reading.ms + (reading.ok ? \"\" : \" FAILED\") }   }   const settle = (chosen, route, detail, tarball) => {     fs.writeFileSync(out, chosen + \"\\n\" + route + \"\\n\" + tarball + \"\\n\")     console.log(\"REGISTRY=\" + chosen + \" ROUTE=\" + route + \" \" + detail)     console.log(\"TARBALL=\" + tarball)   }   const first = await probe(probeUrl)   if (first.ok) {     const arm = await tarballRead(registry)     if (!arm.ok) {       // THE FALLBACK COMES BEFORE THE VERDICT (CodeRabbit finding on PR #42, 2026-10-15): this branch       // used to settle on the OFFICIAL/OPERATOR registry and exit 1, and the caller ignores that status       // with `|| true` — so every later install kept resolving through the very registry whose tarball       // blackholed. Metadata answering proves NOTHING about tarballs, so the MIRROR is probed for BOTH       // before the probe settles: when its metadata AND its ranged GET both answer, the install travels       // on the mirror; when the mirror fails too, the failure behaviour below is unchanged.       const fallback = await probe(mirror + \"/@deepseek-ai%2fdsh\")       if (fallback.ok) {         const mirrorArm = await tarballRead(mirror)         if (mirrorArm.ok) {           settle(mirror, \"mirror-fallback-after-tarball-blackhole\", \"officialProbe=\" + first.status + \" officialTarball=\" + arm.reading + \" mirrorMs=\" + fallback.ms + \" mirrorTarball=\" + mirrorArm.reading, mirrorArm.reading + \" (the \" + label + \" registry answered METADATA while its TARBALL blackholed, so the install travels on the fallback mirror instead of stalling)\")           process.exit(0)         }       }       settle(registry, label + \"-tarball-blackholed\", \"probeMs=\" + first.ms + \" tarball=\" + arm.reading, arm.reading + \" (the METADATA endpoint answered and the TARBALL did not: a registry in this state stalls the install, so the probe FAILS here instead)\")       process.exit(1)     }     settle(registry, label + \"-ok\", \"probeMs=\" + first.ms + \" tarball=\" + arm.reading, arm.reading)     process.exit(0)   }   const second = await probe(mirror + \"/@deepseek-ai%2fdsh\")   if (second.ok) {     const arm = await tarballRead(mirror)     if (!arm.ok) {       settle(mirror, \"mirror-tarball-blackholed\", \"officialProbe=\" + first.status + \" mirrorMs=\" + second.ms + \" tarball=\" + arm.reading, arm.reading + \" (the FALLBACK mirror answered METADATA and not its TARBALL, so the probe FAILS here instead of stalling later)\")       process.exit(1)     }     settle(mirror, \"mirror-fallback\", \"officialProbe=\" + first.status + \" officialProbeMs=\" + first.ms + \" mirrorMs=\" + second.ms + \" tarball=\" + arm.reading, arm.reading)     process.exit(0)   }   settle(registry, \"both-unreachable\", \"officialProbe=\" + first.status + \" mirrorProbe=\" + second.status, \"not reached: no registry answered METADATA\")  https://registry.npmjs.org https://registry.npmjs.org/@deepseek-ai%2fdsh https://registry.npmmirror.com operator-set /work/npm-registry.txt /@deepseek-ai/dsh/-/dsh-0.2.1-rc.2.tgz https://registry.npmjs.org ",
+      "logFile": "01b-npm-registry.log",
+      "logBytes": 205,
+      "tail": [
+        "REGISTRY=https://registry.npmmirror.com ROUTE=mirror-fallback officialProbe=TypeError: fetch failed officialProbeMs=10526 mirrorMs=124 tarball=http=206 bytes=1024 ms=118",
+        "TARBALL=http=206 bytes=1024 ms=118",
+        ""
+      ]
+    },
+    {
+      "id": "01-apt-update",
+      "exit": 0,
+      "seconds": 22,
+      "cmd": "apt-get update ",
+      "logFile": "01-apt-update.log",
+      "logBytes": 1635,
+      "tail": [
+        "Get:1 http://security.ubuntu.com/ubuntu noble-security InRelease [126 kB]",
+        "Get:2 http://archive.ubuntu.com/ubuntu noble InRelease [256 kB]",
+        "Get:3 http://security.ubuntu.com/ubuntu noble-security/multiverse amd64 Packages [55.6 kB]",
+        "Get:4 http://archive.ubuntu.com/ubuntu noble-updates InRelease [126 kB]",
+        "Get:5 http://security.ubuntu.com/ubuntu noble-security/restricted amd64 Packages [2122 kB]",
+        "Get:6 http://archive.ubuntu.com/ubuntu noble-backports InRelease [126 kB]",
+        "Get:7 http://security.ubuntu.com/ubuntu noble-security/universe amd64 Packages [1549 kB]",
+        "Get:8 http://security.ubuntu.com/ubuntu noble-security/main amd64 Packages [1409 kB]",
+        "Get:9 http://archive.ubuntu.com/ubuntu noble/restricted amd64 Packages [117 kB]",
+        "Get:10 http://archive.ubuntu.com/ubuntu noble/main amd64 Packages [1808 kB]",
+        "Get:11 http://archive.ubuntu.com/ubuntu noble/multiverse amd64 Packages [331 kB]",
+        "Get:12 http://archive.ubuntu.com/ubuntu noble/universe amd64 Packages [19.3 MB]",
+        "Get:13 http://archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Packages [2231 kB]",
+        "Get:14 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [1729 kB]",
+        "Get:15 http://archive.ubuntu.com/ubuntu noble-updates/universe amd64 Packages [2168 kB]",
+        "Get:16 http://archive.ubuntu.com/ubuntu noble-updates/multiverse amd64 Packages [61.7 kB]",
+        "Get:17 http://archive.ubuntu.com/ubuntu noble-backports/multiverse amd64 Packages [669 B]",
+        "Get:18 http://archive.ubuntu.com/ubuntu noble-backports/universe amd64 Packages [36.0 kB]",
+        "Get:19 http://archive.ubuntu.com/ubuntu noble-backports/main amd64 Packages [49.0 kB]",
+        "Fetched 33.6 MB in 21s (1614 kB/s)",
+        "Reading package lists...",
+        ""
+      ]
+    },
+    {
+      "id": "01-apt-install",
+      "exit": 0,
+      "seconds": 10,
+      "cmd": "env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends curl git ca-certificates unzip xz-utils tmux ",
+      "logFile": "01-apt-install.log",
+      "logBytes": 16431,
+      "tail": [
+        "Setting up perl-modules-5.38 (5.38.2-3.2ubuntu0.6) ...\r",
+        "Setting up libk5crypto3:amd64 (1.20.1-6ubuntu2.10) ...\r",
+        "Setting up libsasl2-2:amd64 (2.1.28+dfsg1-5ubuntu3.1) ...\r",
+        "Setting up libutempter0:amd64 (1.2.1-3build1) ...\r",
+        "Setting up git-man (1:2.43.0-1ubuntu7.3) ...\r",
+        "Setting up libkrb5-3:amd64 (1.20.1-6ubuntu2.10) ...\r",
+        "Setting up libevent-core-2.1-7t64:amd64 (2.1.12-stable-9ubuntu2.2) ...\r",
+        "Setting up libperl5.38t64:amd64 (5.38.2-3.2ubuntu0.6) ...\r",
+        "Setting up openssl (3.0.13-0ubuntu3.16) ...\r",
+        "Setting up tmux (3.4-1ubuntu0.1) ...\r",
+        "Setting up libldap2:amd64 (2.6.10+dfsg-0ubuntu0.24.04.1) ...\r",
+        "Setting up ca-certificates (20260601~24.04.1) ...\r",
+        "Updating certificates in /etc/ssl/certs...\r",
+        "121 added, 0 removed; done.\r",
+        "Setting up perl (5.38.2-3.2ubuntu0.6) ...\r",
+        "Setting up libgssapi-krb5-2:amd64 (1.20.1-6ubuntu2.10) ...\r",
+        "Setting up libssh-4:amd64 (0.10.6-2ubuntu0.5) ...\r",
+        "Setting up libcurl4t64:amd64 (8.5.0-2ubuntu10.16) ...\r",
+        "Setting up libcurl3t64-gnutls:amd64 (8.5.0-2ubuntu10.16) ...\r",
+        "Setting up liberror-perl (0.17029-2) ...\r",
+        "Setting up git (1:2.43.0-1ubuntu7.3) ...\r",
+        "Setting up curl (8.5.0-2ubuntu10.16) ...\r",
+        "Processing triggers for debianutils (5.17build1) ...\r",
+        "Processing triggers for libc-bin (2.39-0ubuntu8.9) ...\r",
+        "Processing triggers for ca-certificates (20260601~24.04.1) ...\r",
+        "Updating certificates in /etc/ssl/certs...\r",
+        "0 added, 0 removed; done.\r",
+        "Running hooks in /etc/ca-certificates/update.d...\r",
+        "done.\r",
+        ""
+      ]
+    },
+    {
+      "id": "03-bun",
+      "exit": 0,
+      "seconds": 12,
+      "cmd": "bash -c set -euo pipefail; curl -fsSL --retry 8 --retry-delay 2 --retry-all-errors --connect-timeout 20 https://bun.sh/install | bash ",
+      "logFile": "03-bun.log",
+      "logBytes": 5455,
+      "tail": [
+        "#=#=#                                                                          \r##O#-#                                                                         \r##O=#  #                                                                       \r#=#=-#  #                                                                      \r-#O#- #   #                                                                    \r-=#=#   #   #                                                                  \r-=O#-#   #   #                                                                 \r-=O=#  #   #   #                                                               \r-=O=-#  #    #   #                                                             \r-=O=- #   #   #    #                                                           \r-=O=-   #   #   #     #                                                        \r-=O=-    #   #    #     #                                                      \r-=O=-      #   #     #    #                                                    \r-=O=-        #   #     #    #                                                  \r-=O=-         #    #     #     #                                               \r\r                                                                           0.0%\r                                                                           0.1%\r                                                                           0.2%\r                                                                           0.3%\r                                                                           0.4%\r                                                                           0.6%\r                                                                           0.9%\r                                                                           1.4%\r#                                                                          2.0%\r##                                                                         2.9%\r###                                                                        4.2%\r####                                                                       5.9%\r######                                                                     8.4%\r######                                                                     9.2%\r#########                                                                 12.8%\r###########                                                               16.3%\r###########                                                               16.6%\r###############                                                           21.2%\r#################                                                         23.9%\r#################                                                         24.4%\r###################                                                       26.4%\r######################                                                    31.5%\r#######################                                                   32.9%\r########################                                                  33.9%\r#############################                                             41.0%\r################################                                          45.5%\r#################################                                         46.8%\r##################################                                        48.3%\r###################################                                       49.8%\r####################################                                      51.2%\r#####################################                                     52.7%\r#######################################                                   54.2%\r########################################                                  55.7%\r#########################################                                 57.2%\r##########################################                                58.7%\r###########################################                               60.5%\r############################################                              62.4%\r##############################################                            64.4%\r###############################################                           66.5%\r#################################################                         68.9%\r###################################################                       71.3%\r#####################################################                     74.0%\r#######################################################                   76.8%\r########################################################                  78.1%\r##########################################################                81.5%\r#############################################################             84.7%\r###############################################################           87.5%\r#################################################################         90.3%\r###################################################################       93.1%\r#####################################################################     95.9%\r#######################################################################   98.7%\r######################################################################## 100.0%",
+        "bun was installed successfully to /opt/toolchain/bun/bin/bun ",
+        "Run 'bun --help' to get started",
+        ""
+      ]
+    },
+    {
+      "id": "03b-bun-pin",
+      "exit": 0,
+      "seconds": 9,
+      "cmd": "env BUN_INSTALL=/opt/toolchain/bun-pinned bash -c set -euo pipefail; curl -fsSL --retry 8 --retry-delay 2 --retry-all-errors --connect-timeout 20 https://bun.sh/install | bash -s -- 'bun-v1.4.0' ",
+      "logFile": "03b-bun-pin.log",
+      "logBytes": 3782,
+      "tail": [
+        "#=#=#                                                                          \r##O#-#                                                                         \r##O=#  #                                                                       \r#=#=-#  #                                                                      \r-#O#- #   #                                                                    \r\r                                                                           0.0%\r                                                                           0.1%\r                                                                           0.3%\r                                                                           0.4%\r                                                                           0.7%\r                                                                           1.1%\r#                                                                          1.7%\r#                                                                          2.6%\r##                                                                         3.9%\r####                                                                       5.9%\r######                                                                     8.8%\r########                                                                  12.0%\r##########                                                                15.2%\r#############                                                             18.4%\r###############                                                           21.4%\r#####################                                                     29.4%\r#######################                                                   32.6%\r#########################                                                 35.6%\r################################                                          44.6%\r##################################                                        47.7%\r####################################                                      50.7%\r#######################################                                   54.2%\r###########################################                               59.9%\r#############################################                             63.0%\r###############################################                           66.2%\r################################################                          67.2%\r######################################################                    75.1%\r########################################################                  78.3%\r##########################################################                81.4%\r###########################################################               82.6%\r################################################################          90.1%\r###################################################################       93.3%\r#####################################################################     96.5%\r######################################################################    97.5%\r######################################################################    97.6%\r######################################################################    97.7%\r######################################################################    97.7%\r######################################################################    98.0%\r######################################################################    98.3%\r#######################################################################   99.0%\r######################################################################## 100.0%",
+        "bun was installed successfully to /opt/toolchain/bun-pinned/bin/bun ",
+        "Run 'bun --help' to get started",
+        ""
+      ]
+    },
+    {
+      "id": "04-pnpm",
+      "exit": 0,
+      "seconds": 2,
+      "cmd": "npm i -g pnpm@11.23.0 ",
+      "logFile": "04-pnpm.log",
+      "logBytes": 86,
+      "tail": [
+        "",
+        "added 1 package in 2s",
+        "",
+        "1 package is looking for funding",
+        "  run `npm fund` for details",
+        ""
+      ]
+    },
+    {
+      "id": "05-dsh",
+      "exit": 0,
+      "seconds": 23,
+      "cmd": "npm i -g @deepseek-ai/dsh@0.2.1-rc.2 ",
+      "logFile": "05-dsh.log",
+      "logBytes": 1179,
+      "tail": [
+        "npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead",
+        "",
+        "added 613 packages in 23s",
+        "",
+        "68 packages are looking for funding",
+        "  run `npm fund` for details",
+        "npm warn install-scripts 5 packages have install scripts not yet covered by allowScripts:",
+        "npm warn install-scripts   @deepseek-ai/dsh-subprocess-local@0.2.1-rc.2 (postinstall: node scripts/ensure-spawn-helper.mjs)",
+        "npm warn install-scripts   koffi@3.1.1 (install: node ./cnoke.cjs -P . -D src/koffi --prebuild --release)",
+        "npm warn install-scripts   node-pty@1.2.0-beta.15 (install: node scripts/prebuild.js || node-gyp rebuild; postinstall: node scripts/post-install.js)",
+        "npm warn install-scripts   @google/genai@2.21.0 (preinstall: echo 'preinstall: no-op')",
+        "npm warn install-scripts   protobufjs@7.6.6 (postinstall: node scripts/postinstall)",
+        "npm warn install-scripts",
+        "npm warn install-scripts Run `npm install -g --allow-scripts=@deepseek-ai/dsh-subprocess-local,koffi,node-pty,@google/genai,protobufjs` to allow these scripts once, or `npm config set allow-scripts=@deepseek-ai/dsh-subprocess-local,koffi,node-pty,@google/genai,protobufjs --location=user` to allow them for all global installs.",
+        ""
+      ]
+    },
+    {
+      "id": "06-copy",
+      "exit": 0,
+      "seconds": 1,
+      "cmd": "cp -a /src/. /opt/mpd/ ",
+      "logFile": "06-copy.log",
+      "logBytes": 0,
+      "tail": [
+        ""
+      ]
+    },
+    {
+      "id": "07-bun-install",
+      "exit": 0,
+      "seconds": 14,
+      "cmd": "bash -c cd '/opt/mpd' && bun install ",
+      "logFile": "07-bun-install.log",
+      "logBytes": 1544,
+      "tail": [
+        "warn: incorrect peer dependency \"@deepseek-ai/cordis@4.0.2\"",
+        "",
+        "warn: incorrect peer dependency \"@deepseek-ai/cordis@4.0.2\"",
+        "",
+        "warn: incorrect peer dependency \"@deepseek-ai/cordis@4.0.2\"",
+        "",
+        "warn: incorrect peer dependency \"@deepseek-ai/dsh-agent@0.1.5-rc.2\"",
+        "",
+        "warn: incorrect peer dependency \"@deepseek-ai/dsh-tools@0.1.5-rc.2\"",
+        "",
+        "warn: incorrect peer dependency \"@deepseek-ai/dsh-session@0.1.5-rc.2\"",
+        "",
+        "warn: incorrect peer dependency \"@deepseek-ai/dsh-system-prompt@0.1.5-rc.2\"",
+        "Saved lockfile",
+        "",
+        "+ @typescript/native-preview@7.0.0-dev.20260707.2",
+        "+ bun-types@1.4.0",
+        "+ dsh-better-sidebar@0.24.1",
+        "+ typescript5@5.9.3",
+        "+ @colbymchenry/codegraph@1.5.0",
+        "+ @cyanheads/git-mcp-server@2.15.3",
+        "+ cclsp@0.7.0",
+        "+ mcp-server-commands@0.8.2",
+        "+ @deepseek-ai/dsh-experimental-agent-team@0.2.1-rc.2",
+        "+ @deepseek-ai/dsh-experimental-client-ui-agent-team@0.2.1-rc.2",
+        "+ @deepseek-ai/dsh-experimental-tool-agent-team@0.2.1-rc.2",
+        "+ @dsh-std/sdk@0.1.1-rc.2",
+        "",
+        "394 packages installed [14.65s]",
+        ""
+      ]
+    },
+    {
+      "id": "08-rebuild",
+      "exit": 0,
+      "seconds": 1,
+      "cmd": "node /opt/mpd-e2e/lib/rebuild.ts --repo /opt/mpd --bun /opt/toolchain/bun-pinned/bin/bun --json /work/rebuild.json ",
+      "logFile": "08-rebuild.log",
+      "logBytes": 4311,
+      "tail": [
+        "[rebuild] OK   packages/mpd-ext-plugin/src/index.ts -> packages/mpd-ext-plugin/dist/index.js (exit=0 bytes=201815)",
+        "[rebuild] OK   packages/mpd-ext-plugin/src/sdk.ts -> packages/mpd-ext-plugin/dist/sdk.js (exit=0 bytes=1708)",
+        "[rebuild] OK   packages/mpd-goal-plugin/src/index.ts -> packages/mpd-goal-plugin/dist/index.js (exit=0 bytes=80135)",
+        "[rebuild] OK   packages/mpd-hashline-plugin/src/index.ts -> packages/mpd-hashline-plugin/dist/index.js (exit=0 bytes=104756)",
+        "[rebuild] OK   packages/mpd-mcp-astgrep/src/cli.ts -> packages/mpd-mcp-astgrep/dist/cli.js (exit=0 bytes=76601)",
+        "[rebuild] OK   packages/mpd-mcp-astgrep/src/launch.ts -> packages/mpd-mcp-astgrep/dist/launch.js (exit=0 bytes=11358)",
+        "[rebuild] OK   packages/mpd-mcp-codegraph/src/launch.ts -> packages/mpd-mcp-codegraph/dist/launch.js (exit=0 bytes=16084)",
+        "[rebuild] OK   packages/mpd-mcp-gitbash/src/launch.ts -> packages/mpd-mcp-gitbash/dist/launch.js (exit=0 bytes=13017)",
+        "[rebuild] OK   packages/mpd-mcp-lsp/src/launch.ts -> packages/mpd-mcp-lsp/dist/launch.js (exit=0 bytes=61901)",
+        "[rebuild] OK   packages/mpd-memory-plugin/src/index.ts -> packages/mpd-memory-plugin/dist/index.js (exit=0 bytes=82744)",
+        "[rebuild] OK   packages/mpd-modelchain-plugin/src/index.ts -> packages/mpd-modelchain-plugin/dist/index.js (exit=0 bytes=75580)",
+        "[rebuild] OK   packages/mpd-qa-roles-probe/src/index.ts -> packages/mpd-qa-roles-probe/dist/index.js (exit=0 bytes=76156)",
+        "[rebuild] OK   packages/mpd-roles-plugin/src/index.ts -> packages/mpd-roles-plugin/dist/index.js (exit=0 bytes=131783)",
+        "[rebuild] OK   packages/mpd-roster-provider-plugin/src/index.ts -> packages/mpd-roster-provider-plugin/dist/index.js (exit=0 bytes=122190)",
+        "[rebuild] OK   packages/mpd-team-compact-plugin/src/index.ts -> packages/mpd-team-compact-plugin/dist/index.js (exit=0 bytes=87456)",
+        "[rebuild] OK   packages/mpd-team-core-plugin/src/index.ts -> packages/mpd-team-core-plugin/dist/index.js (exit=0 bytes=173169)",
+        "[rebuild] OK   packages/mpd-team-watchdog-plugin/src/index.ts -> packages/mpd-team-watchdog-plugin/dist/index.js (exit=0 bytes=199262)",
+        "[rebuild] OK   packages/mpd-tools-plugin/src/index.ts -> packages/mpd-tools-plugin/dist/index.js (exit=0 bytes=70871)",
+        "[rebuild] OK   packages/mpd-tui-adapter-plugin/src/index.ts -> packages/mpd-tui-adapter-plugin/dist/index.js (exit=0 bytes=54413)",
+        "[rebuild] OK   packages/mpd-tui-plugin/src/index.ts -> packages/mpd-tui-plugin/dist/index.js (exit=0 bytes=420416)",
+        "[rebuild] OK   packages/mpd-ulw-plugin/src/index.ts -> packages/mpd-ulw-plugin/dist/index.js (exit=0 bytes=111707)",
+        "[rebuild] OK   packages/mpd-verify-plugin/src/index.ts -> packages/mpd-verify-plugin/dist/index.js (exit=0 bytes=124130)",
+        "[rebuild] OK   packages/mpd-workmate-plugin/src/index.ts -> packages/mpd-workmate-plugin/dist/index.js (exit=0 bytes=114767)",
+        "[rebuild] ENTRIES=31",
+        "[rebuild] BUILD_OK=31/31",
+        "[rebuild] BUILD_FAILED=",
+        "[rebuild] NO_SRC=mpd-bundle=package has no src/ directory (dist is the only committed artifact),mpd-mcp-shared=built by the package itself (bun build src/launch.ts -> dist/launch.js) or a sha-pinned prebuilt — no offline snapshot build any more,mpd-schemastery=package has no src/ directory (dist is the only committed artifact)",
+        "[rebuild] SKIPPED_SRC=",
+        "[rebuild] OK=true",
+        ""
+      ]
+    },
+    {
+      "id": "09-install",
+      "exit": 0,
+      "seconds": 0,
+      "cmd": "bash -c cd '/opt/mpd' && dsh plugin --profile web add '.' ",
+      "logFile": "09-install.log",
+      "logBytes": 161,
+      "tail": [
+        "dsh: initialized profile web at /root/sandbox-dsh/profiles/web",
+        "",
+        "dependencies:",
+        "+ @mpd-dsh/mpd link:/opt/mpd",
+        "",
+        "Already up to date",
+        "Done in 342ms using pnpm v11.23.0",
+        ""
+      ]
+    },
+    {
+      "id": "09a-install-closure",
+      "exit": 0,
+      "seconds": 0,
+      "cmd": "node /opt/mpd-e2e/lib/owed-install.ts --install-log /work/steps/09-install.log --exit 0 --roots /root/sandbox-dsh/profiles/web,/opt/mpd --state /work/assertions.ndjson ",
+      "logFile": "09a-install-closure.log",
+      "logBytes": 329,
+      "tail": [
+        "[owed-install] install.buildScripts=true — the client install completed with NO unapproved build script: exit 0, no ERR_PNPM_IGNORED_BUILDS anywhere in the install output, no ignored-build-scripts warning, and the 2 installed closure root(s) were walked for manifests declaring preinstall/install/postinstall/prepare (0 found)",
+        ""
+      ]
+    },
+    {
+      "id": "08c-pack",
+      "exit": 0,
+      "seconds": 0,
+      "cmd": "node /opt/mpd-e2e/lib/owed-pack.ts --artifact /src/dist/mpd-package --source /src --rebuild /opt/mpd --rebuild-report /work/rebuild.json --state /work/assertions.ndjson ",
+      "logFile": "08c-pack.log",
+      "logBytes": 1359,
+      "tail": [
+        "[owed-pack] pack.present=true — the packed artifact travelled into the container and is graded below",
+        "[owed-pack] artifact files=619 bytes=14701135",
+        "[owed-pack] pack.licenceCoherence=true — the packed artifact carries LICENSE.md + LICENSE-NOTICES.md byte-identical to the tree it was cut from, and declares license=MIT as the source manifest does",
+        "[owed-pack] pack.declarationCoherence=true — every declaration the artifact makes about itself holds: 18 files entries resolve, its 2 bundle-patch layers exist, all 27 row module paths its own patch names resolve inside it, and no host tree (evidence/.git/docker/.toolchain/node_modules) travelled along",
+        "[owed-pack] pack.staticCoherence=true — the artifact agrees with the tree it was cut from: 617 carried file(s) byte-identical, 2 generated path(s) exempted (package.json, packages/mpd-ext-plugin/dist/validator.js), none missing",
+        "[owed-pack] pack.rebuildToolchain=true — the from-source rebuild ran under bun 1.4.0, which IS the version the repository declares for its canonical build (bun@1.4.0), so a byte difference from this rebuild can be read as staleness rather than as a compiler difference",
+        "[owed-pack] pack.distFreshRebuild=true — every one of the 31 built entries in the artifact is byte-identical to the container's own from-source rebuild — the packed dist is FRESH, not merely present",
+        ""
+      ]
+    },
+    {
+      "id": "08c2-pack-control",
+      "exit": 0,
+      "seconds": 1,
+      "cmd": "node /opt/mpd-e2e/lib/owed-pack.ts --artifact /work/pack-mutated --source /src --rebuild /opt/mpd --rebuild-report /work/rebuild.json --state /work/pack-control.ndjson ",
+      "logFile": "08c2-pack-control.log",
+      "logBytes": 1467,
+      "tail": [
+        "[owed-pack] pack.present=true — the packed artifact travelled into the container and is graded below",
+        "[owed-pack] artifact files=619 bytes=14701230",
+        "[owed-pack] pack.licenceCoherence=true — the packed artifact carries LICENSE.md + LICENSE-NOTICES.md byte-identical to the tree it was cut from, and declares license=MIT as the source manifest does",
+        "[owed-pack] pack.declarationCoherence=true — every declaration the artifact makes about itself holds: 18 files entries resolve, its 2 bundle-patch layers exist, all 27 row module paths its own patch names resolve inside it, and no host tree (evidence/.git/docker/.toolchain/node_modules) travelled along",
+        "[owed-pack] pack.staticCoherence=false — the artifact does NOT agree with the tree it was cut from — it is stale or was edited after the pack: 1 differing file(s), 0 carried file(s) with no twin",
+        "[owed-pack] pack.rebuildToolchain=true — the from-source rebuild ran under bun 1.4.0, which IS the version the repository declares for its canonical build (bun@1.4.0), so a byte difference from this rebuild can be read as staleness rather than as a compiler difference",
+        "[owed-pack] pack.distFreshRebuild=false — the packed artifact's built entries do not match this container's from-source rebuild: 1 differing, 0 not produced by the rebuild. Both the artifact and this rebuild are under bun 1.4.0 (the declared bun@1.4.0, see pack.rebuildToolchain), so the difference is NOT explained by the compiler version",
+        ""
+      ]
+    },
+    {
+      "id": "10-dump",
+      "exit": 0,
+      "seconds": 0,
+      "cmd": "node /opt/mpd/scripts/dump-config.ts --profile web ",
+      "logFile": "10-dump.log",
+      "logBytes": 83111,
+      "tail": [
+        "            config:",
+        "              provider: fork",
+        "              toolName: subagent_fork",
+        "          - id: workflow-ptc",
+        "            name: '@deepseek-ai/dsh-workflow-ptc'",
+        "            config:",
+        "              provider: spawn",
+        "          - id: tool-workflow",
+        "            name: '@deepseek-ai/dsh-tool-workflow'",
+        "      - id: tool-ask-user",
+        "        name: '@deepseek-ai/dsh-tool-ask-user'",
+        "      - id: tool-todo",
+        "        name: '@deepseek-ai/dsh-tool-todo'",
+        "        config:",
+        "          allowParallelInProgress: true",
+        "      - id: tool-web",
+        "        name: '@deepseek-ai/dsh-tool-web'",
+        "        config:",
+        "          fetch: false",
+        "          searchTimeoutMs: 60000",
+        "      - id: present",
+        "        name: '@deepseek-ai/dsh-tool-present'",
+        "      - id: tool-plugin-manager",
+        "        name: '@deepseek-ai/dsh-plugin-manager/tools'",
+        "        disabled: true",
+        "      - id: tool-plugin-market",
+        "        name: '@deepseek-ai/dsh-plugin-market/tools'",
+        "        disabled: true",
+        "[dump-config] COMPOSITION ONLY (recap) — rows above prove COMPOSITION, never a plugin load; for a load proof run a mounting boot (AGENTS.md §4).",
+        ""
+      ]
+    },
+    {
+      "id": "09d-astgrep-engine",
+      "exit": 0,
+      "seconds": 9,
+      "cmd": "node /opt/mpd/scripts/install-mcp.ts --toolchain /opt/mpd/.toolchain ",
+      "logFile": "09d-astgrep-engine.log",
+      "logBytes": 1005,
+      "tail": [
+        "[install-mcp] installing npm toolchain: @ast-grep/cli + @colbymchenry/codegraph@1.5.0",
+        "",
+        "added 5 packages in 9s",
+        "npm warn install-scripts 1 package has install scripts not yet covered by allowScripts:",
+        "npm warn install-scripts   @ast-grep/cli@0.51.0 (postinstall: node postinstall.js)",
+        "npm warn install-scripts",
+        "npm warn install-scripts Run `npm install-scripts ls` to review, or `npm install-scripts approve <pkg>` to allow.",
+        "[install-mcp] cannot write /root/sandbox-home/.mpd/mcp.env (ENOENT); content printed below — write it yourself or pass --env-out to a writable path",
+        "",
+        "# my-power-dsh MCP activation (generated by scripts/install-mcp.ts; source before dsh)",
+        "export MPD_AST_GREP_SG_PATH=\"/opt/mpd/.toolchain/node_modules/.bin/sg\"",
+        "export MPD_CODEGRAPH_BIN=\"/opt/mpd/.toolchain/node_modules/.bin/codegraph\"",
+        "export PATH=\"/opt/mpd/.toolchain/bin:$PATH\"   # toolchain bin dir (optional user binaries)",
+        "",
+        "[install-mcp] next: source /root/sandbox-home/.mpd/mcp.env in the shell that launches dsh, then restart dsh.",
+        ""
+      ]
+    },
+    {
+      "id": "11b-mcp-surface",
+      "exit": 0,
+      "seconds": 0,
+      "cmd": "node /opt/mpd-e2e/lib/owed-mcp.ts --boot-log /work/steps/11-boot.log --state /work/assertions.ndjson --search-dir /opt/mpd/packages/mpd-mcp-astgrep/src ",
+      "logFile": "11b-mcp-surface.log",
+      "logBytes": 748,
+      "tail": [
+        "[owed-mcp] boot.mcpToolNaming=true — every registered MCP tool is named mcp__<server>__<tool>; no server outside the shipped patch's declared set registered (declared: ast_grep,lsp,codegraph,context7,grep_app; registered: ast_grep,codegraph,lsp); every LOCAL row came up (the two remote rows register only when their public service answers, so their absence is not graded); and the ast-grep row published its whole declared surface (search,rewrite,scan)",
+        "[owed-mcp] boot.mcpLiveSearch=true — a REAL mcp__ast_grep__search call through the mounted adapter matched 1 site(s) in /opt/mpd/packages/mpd-mcp-astgrep/src, and the negative control matched 0 — the search engine ran, so the registered name is backed by a working server on this machine",
+        ""
+      ]
+    },
+    {
+      "id": "11-boot",
+      "exit": -1,
+      "seconds": 17,
+      "cmd": "dsh --profile web --patch probe.yml --port 3197 --no-open (background; terminated by the harness after the assertions)",
+      "logFile": "11-boot.log",
+      "logBytes": 2304,
+      "tail": [
+        "[docker-probe] APPLIED=ok",
+        "[docker-probe] CORE_TOOLS=6/6",
+        "[docker-probe] CORE_TOOLS_MISSING=",
+        "[docker-probe] MCP_TOOLS=3/3",
+        "[docker-probe] MCP_TOOLS_MISSING=",
+        "[docker-probe] MCP_REGISTERED=mcp__ast_grep__rewrite,mcp__ast_grep__scan,mcp__ast_grep__search,mcp__codegraph__codegraph_explore,mcp__lsp__find_definition,mcp__lsp__find_implementation,mcp__lsp__find_references,mcp__lsp__find_workspace_symbols,mcp__lsp__get_diagnostics,mcp__lsp__get_hover,mcp__lsp__get_incoming_calls,mcp__lsp__get_outgoing_calls,mcp__lsp__prepare_call_hierarchy,mcp__lsp__rename_symbol,mcp__lsp__rename_symbol_strict,mcp__lsp__restart_server",
+        "[docker-probe] MCP_SERVER_COUNTS=ast_grep:3,codegraph:1,lsp:12",
+        "[docker-probe] TEAM_TOOLS_ROOT=0/9",
+        "[docker-probe] AGENTS_AT_APPLY=0",
+        "[docker-probe] RETIRED_TOOLS_PRESENT=",
+        "[docker-probe] ADAPTER_SERVICE=present",
+        "[docker-probe] ADAPTER_CAPS=tools,toolsRegister,toolsGuard,toolsGet,toolsExecute,toolsPreExecute,toolsPostExecute,subagents,skills,skillsProvider,agentPresets,commands,commandsRegister,agents,events,llmCatalog,toolsRegisterHost,subagentsProvider,subagentsContinuable,teamExecutorNative,subagentsInterrupt,llmListModels,llmResolveCallConfig,systemPromptSection,agentPreStep,team,teamTasks,teamMessages,subagentsProviderRegister,goals",
+        "[docker-probe] ADAPTER_TOOL_CALL=ok",
+        "[docker-probe] MCP_LIVE_SEARCH=ok:1",
+        "[docker-probe] MCP_LIVE_SEARCH_SHAPE=keys=isError,ok,raw,value ok=true isError=false value(keys=content matches=none)",
+        "[docker-probe] MCP_LIVE_SEARCH_CONTROL=ok:0",
+        "[docker-probe] MCP_LIVE_SEARCH_CONTROL_SHAPE=keys=isError,ok,raw,value ok=true isError=false value(keys=content matches=none)",
+        "[docker-probe] AGENT_TEAMS=MOUNTED serviceName=TeamService",
+        "[docker-probe] AGENT_TEAMS_METHODS=listMembers,spawnTeammate,sendMessage,createTask,getTask,listTasks,updateTask,waitForChange,interrupt,tryMembership",
+        "[docker-probe] DONE=1",
+        "dsh web: http://127.0.0.1:3197/?token=<redacted>",
+        "[docker-probe] AGENT_TEAM_TOOLS=9/9 agent=session-a179bd8e-3769-4280-952d-a79eda3e scopelessRead=0/9",
+        "[docker-probe] AGENT_VISIBLE_TOOLS=110 agent=session-a179bd8e-3769-4280-952d-a79eda3e",
+        "[docker-probe] AGENT_TEAM_TOOLS=9/9 agent=session-b8b59a08-91f3-4604-98c4-9280bad8 scopelessRead=0/9",
+        "[docker-probe] AGENT_VISIBLE_TOOLS=114 agent=session-b8b59a08-91f3-4604-98c4-9280bad8",
+        ""
+      ]
+    },
+    {
+      "id": "12-web-live",
+      "exit": 0,
+      "seconds": 0,
+      "cmd": "skipped: no live credential staged",
+      "logFile": "12-web-live.log",
+      "logBytes": 1254,
+      "tail": [
+        "[record] live.web.turnStarted=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum",
+        "[record] live.web.turnCompleted=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum",
+        "[record] live.web.noErrorTurns=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum",
+        "[record] live.web.noMalformedToolJson=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum",
+        "[record] live.web.toolCallsParsed=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum",
+        "[record] live.web.mpdToolCalled=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum",
+        "[record] live.web.assistantReplied=null — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum",
+        ""
+      ]
+    },
+    {
+      "id": "13-browser-host",
+      "exit": 0,
+      "seconds": 11,
+      "cmd": "node -e          const [uiDir, official, mirror, pin, out] = process.argv.slice(1)         const fs = await import(\"node:fs\")         const { execFileSync } = await import(\"node:child_process\")         const settle = (host, route, detail) => {           fs.writeFileSync(out, host + \"\\n\" + route + \"\\n\")           console.log(\"PLAYWRIGHT_HOST=\" + host + \" ROUTE=\" + route + \" \" + detail)         }         if (pin !== \"\") { settle(pin, \"operator-set\", \"MPD_E2E_PLAYWRIGHT_HOST\"); process.exit(0) }         // THE URLS PLAYWRIGHT ITSELF REPORTS, so the probe grades the ARTIFACTS and not a CDN root.         // EVERY reported url must answer on the candidate transport, not merely the first: measured         // 2026-10-14, the mirror answered `chromium-linux.zip` with HTTP 206 and then 404d         // `chromium-headless-shell-linux.zip` (`NoSuchKey`), so a first-url-only probe would have chosen a         // transport that cannot finish the install. (Spelled without apostrophes on purpose: this script         // travels inside the single-quoted argument of a `node -e` invocation, and one would terminate it.)         let artifacts = []         try {           const dry = execFileSync(\"npx\", [\"playwright\", \"install\", \"--dry-run\", \"chromium\"], { cwd: uiDir, encoding: \"utf8\", timeout: 120000, stdio: [\"ignore\", \"pipe\", \"ignore\"] })           artifacts = dry.split(\"\\n\").map((line) => /^\\s*Download url:\\s*(\\S+)\\s*$/.exec(line)).filter((match) => match !== null).map((match) => match[1])         } catch { artifacts = [] }         const paths = artifacts.length === 0           ? [\"/builds/chromium/\"]           : artifacts.map((url) => (url.includes(\"/builds/\") ? \"/builds/\" + url.split(\"/builds/\")[1] : url))         const candidates = [           { host: official, route: \"official-artifact-ok\", urls: artifacts.length === 0 ? [official + paths[0]] : artifacts },           { host: mirror, route: \"mirror-artifact-ok\", urls: paths.map((path) => mirror + path) },         ]         const reachable = async (url) => {           const started = Date.now()           try {             const response = await fetch(url, { method: \"GET\", headers: { Range: \"bytes=0-4095\" }, signal: AbortSignal.timeout(25000) })             await response.arrayBuffer()             return { ok: response.status >= 200 && response.status < 300, ms: Date.now() - started, status: \"http=\" + response.status }           } catch (error) {             return { ok: false, ms: Date.now() - started, status: String(error).slice(0, 80) }           }         }         const seen = []         for (const candidate of candidates) {           const results = []           let complete = true           for (const url of candidate.urls) {             const result = await reachable(url)             results.push(url.replace(candidate.host, \"\") + \"=\" + result.status + \"(\" + result.ms + \"ms)\")             if (!result.ok) { complete = false; break }           }           seen.push(candidate.host + \"[\" + results.join(\" \") + \"]\")           if (complete) { settle(candidate.host, candidate.route, \"artifacts=\" + candidate.urls.length + \" \" + seen.join(\" \")); process.exit(0) }         }         settle(official, \"both-artifacts-unreachable\", \"artifacts=\" + artifacts.length + \" \" + seen.join(\" \"))        /work/ui https://playwright.azureedge.net https://cdn.npmmirror.com/binaries/playwright  /work/playwright-host.txt ",
+      "logFile": "13-browser-host.log",
+      "logBytes": 311,
+      "tail": [
+        "PLAYWRIGHT_HOST=https://cdn.npmmirror.com/binaries/playwright ROUTE=mirror-artifact-ok artifacts=1 https://playwright.azureedge.net[/builds/chromium/1140/chromium-linux.zip=TypeError: fetch failed(10524ms)] https://cdn.npmmirror.com/binaries/playwright[/builds/chromium/1140/chromium-linux.zip=http=206(212ms)]",
+        ""
+      ]
+    },
+    {
+      "id": "13-browser",
+      "exit": 0,
+      "seconds": 0,
+      "cmd": "node browser-lane.ts (Chromium drives the real Web GUI)",
+      "logFile": "13-browser.log",
+      "logBytes": 44968,
+      "tail": [
+        "|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                        |  50% of 164.5 MiB",
+        "|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                |  60% of 164.5 MiB",
+        "|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                        |  70% of 164.5 MiB",
+        "|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                |  80% of 164.5 MiB",
+        "|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■        |  90% of 164.5 MiB",
+        "|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■| 100% of 164.5 MiB",
+        "Chromium 130.0.6723.31 (playwright build v1140) downloaded to /work/pw-browsers/chromium-1140",
+        "Downloading FFMPEG playwright build v1010 from https://cdn.npmmirror.com/binaries/playwright/builds/ffmpeg/1010/ffmpeg-linux.zip",
+        "|                                                                                |   0% of 2.3 MiB",
+        "|■■■■■■■■                                                                        |  10% of 2.3 MiB",
+        "|■■■■■■■■■■■■■■■■                                                                |  20% of 2.3 MiB",
+        "|■■■■■■■■■■■■■■■■■■■■■■■■                                                        |  30% of 2.3 MiB",
+        "|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                                |  40% of 2.3 MiB",
+        "|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                        |  50% of 2.3 MiB",
+        "|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                                |  60% of 2.3 MiB",
+        "|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                        |  70% of 2.3 MiB",
+        "|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■                |  80% of 2.3 MiB",
+        "|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■        |  90% of 2.3 MiB",
+        "|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■| 100% of 2.3 MiB",
+        "FFMPEG playwright build v1010 downloaded to /work/pw-browsers/ffmpeg-1010",
+        "[record] ui.loads=true — the Web GUI loaded and rendered visible text in a real browser",
+        "[record] ui.workspaceSelected=true — a workspace is selected in the GUI, so the session composer is live",
+        "[record] ui.composerPresent=true — the prompt composer exists and is editable — the entry point of every turn",
+        "[record] ui.promptSent=true — a prompt was typed into the composer and sent through the real UI",
+        "[record] ui.replyRendered=null — DECLARED BOUND — no reply was rendered: the turn's failure panel names the missing credential (MISSING_CREDENTIAL) and this container stages none, so no model turn could run. no reply rendered; the turn's own panel names the missing credential: \"This turn failedllm-deepseek: no API key for provider route \\\"deepseek-official\\\"; store DEEPSEEK_API_KEY through the credentials service (the web Models page writes it), or export DEEPSEEK_API_KEY in the launching environment\"",
+        "[record] ui.teamPanel=true — the right sidebar opens on the Agent Teams panel with its roster and board",
+        "[record] ui.mpdSettingsSection=true — the MPD settings section registers and renders its card in Settings",
+        "[record] ui.noConsoleErrors=true — the browser reported no console errors and no uncaught page errors",
+        "[browser-lane] rows=8 failed=0 shots=/out/ui-shots",
+        ""
+      ]
+    },
+    {
+      "id": "14-tui",
+      "exit": 1,
+      "seconds": 5,
+      "cmd": "bash docker/tui-lane.sh",
+      "logFile": "14-tui.log",
+      "logBytes": 232,
+      "tail": [
+        "[record] tui.hostInstall=true — the TUI host installs globally and lands on PATH",
+        "[record] tui.laneExit=false — the TUI lane aborted (exit 1) — see this step's log; earlier tui.* records are the assertions that had already run",
+        ""
+      ]
+    },
+    {
+      "id": "16-owed-lsp",
+      "exit": 0,
+      "seconds": 1,
+      "cmd": "node /opt/mpd-e2e/lib/owed-cases.ts --kind lsp --repo /root/sandbox-dsh/profiles/web/node_modules/@mpd-dsh/mpd --work /out/owed --state /work/assertions.ndjson ",
+      "logFile": "16-owed-lsp.log",
+      "logBytes": 252,
+      "tail": [
+        "[owed-cases] restore.lspBootstrap=true — the launcher generated a valid .mpd/lsp/cclsp.json with 1 well-formed language server(s), 1 of them serving the TypeScript family, and left a pre-existing user cclsp.json byte-identical (the negative control)",
+        ""
+      ]
+    },
+    {
+      "id": "16b-pack-refresh",
+      "exit": 0,
+      "seconds": 0,
+      "cmd": "node /opt/mpd/scripts/pack-mpd.ts ",
+      "logFile": "16b-pack-refresh.log",
+      "logBytes": 476,
+      "tail": [
+        "[pack-mpd] validator: generated packages/mpd-ext-plugin/dist/validator.js (9 exports) from the shipped bundle",
+        "[pack-mpd] staged 2 patch file(s): cordis.patch.yml, presets/mpd.patch.yml",
+        "[pack-mpd] launcher dependencies: 4 shipped launcher(s) resolve 5 npm package(s), every one declared in the packed manifest",
+        "[pack-mpd] modes normalized: 619 files (644: 603, 755: 16)",
+        "[pack-mpd] staged package -> /opt/mpd/dist/mpd-package  (out-dir source: default (<repo>/dist/mpd-package))",
+        ""
+      ]
+    },
+    {
+      "id": "16b2-case-engine",
+      "exit": 0,
+      "seconds": 8,
+      "cmd": "node /opt/mpd/scripts/install-mcp.ts --toolchain /opt/mpd/dist/mpd-package/.toolchain ",
+      "logFile": "16b2-case-engine.log",
+      "logBytes": 963,
+      "tail": [
+        "[install-mcp] installing npm toolchain: @ast-grep/cli + @colbymchenry/codegraph@1.5.0",
+        "",
+        "added 5 packages in 8s",
+        "npm warn install-scripts 1 package has install scripts not yet covered by allowScripts:",
+        "npm warn install-scripts   @ast-grep/cli@0.51.0 (postinstall: node postinstall.js)",
+        "npm warn install-scripts",
+        "npm warn install-scripts Run `npm install-scripts ls` to review, or `npm install-scripts approve <pkg>` to allow.",
+        "[install-mcp] written -> /root/sandbox-home/.mpd/mcp.env",
+        "",
+        "# my-power-dsh MCP activation (generated by scripts/install-mcp.ts; source before dsh)",
+        "export MPD_AST_GREP_SG_PATH=\"/opt/mpd/dist/mpd-package/.toolchain/node_modules/.bin/sg\"",
+        "export MPD_CODEGRAPH_BIN=\"/opt/mpd/dist/mpd-package/.toolchain/node_modules/.bin/codegraph\"",
+        "export PATH=\"/opt/mpd/dist/mpd-package/.toolchain/bin:$PATH\"   # toolchain bin dir (optional user binaries)",
+        "",
+        "[install-mcp] next: source /root/sandbox-home/.mpd/mcp.env in the shell that launches dsh, then restart dsh.",
+        ""
+      ]
+    },
+    {
+      "id": "16c-owed-cases",
+      "exit": 0,
+      "seconds": 48,
+      "cmd": "node /opt/mpd-e2e/lib/owed-cases.ts --kind cases --repo /opt/mpd --work /out/owed --qa-home  --state /work/assertions.ndjson ",
+      "logFile": "16c-owed-cases.log",
+      "logBytes": 1107,
+      "tail": [
+        "[owed-cases] restore.reviewPanelSelfTest=true — the restored review panel's offline self-test (with its negative control) ran to a clean exit in this run — the case's own assertions are what passed",
+        "[owed-cases] restore.reviewPanelCase=true — the restored review panel's real case ran to a clean exit in this run — the case's own assertions are what passed",
+        "[owed-cases] restore.hashlineRepair=true — the restored hashline fuzzy-repair cases (wrapped line, paired indent, the ambiguous negative control, the CRLF round-trip) ran to a clean exit in this run — the case's own assertions are what passed",
+        "[owed-cases] qa.mcpCall=null — the live mcp-call case (a real model turn that must record a mcp__ast_grep__search call) did not run to a verdict on this machine: the case itself reported \"[mcp-call] missing credentials\" — a skip is not a pass, and nothing about the bundle is settled by it",
+        "[owed-cases] qa.readonlyDeny=true — the live readonly-deny case (a read-only spawn whose child must really be restricted) ran to a clean exit in this run — the case's own assertions are what passed",
+        ""
+      ]
+    }
+  ],
+  "outputLog": "output.log",
+  "evidenceScrubbed": true
+}

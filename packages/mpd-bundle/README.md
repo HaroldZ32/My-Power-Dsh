@@ -76,10 +76,13 @@ flow exists in a shipped session.
 
 The team plane's own configuration is the gate's key plus the rows' own:
 
-- `team.gate` — `mechanical` (default) | `advisory` | `off`, read PER CALL by `mpd-roles-plugin`.
+- `team.gate` — `off` (**the DEFAULT since the 2026-10-17 rollback**; the gate is opt-in) | `advisory` |
+  `mechanical`, read PER CALL by `mpd-roles-plugin`. The captain's three mechanical guards
+  (investigation, delegation, write) are WITHDRAWN by the same ruling; the row's boot line reports each as
+  `absent reason=…`.
 - The official `mpd-agent-team` row carries its limits from the patch: `maxMembers: 16`,
-  `maxTasks: 256`, `maxPendingMessagesPerMember: 64`, `maxMessageBytes: 32768`,
-  `disposalTimeoutMs: 5000`.
+  `maxTasks: 256`, `maxMessageBytes: 32768`, `disposalTimeoutMs: 5000`. `maxPendingMessagesPerMember` is
+  GONE: harness 0.2.1-rc.2's schema no longer declares it, so the row does not set it.
 - `mpd-team-core` owns the team record under `<workspace>/.mpd/team/`: `teams/<id>.json`, the
   `staging/<sessionId>.json` slot a staged plan lives in, and the archived plans.
 

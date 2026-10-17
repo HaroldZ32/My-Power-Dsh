@@ -1,0 +1,9 @@
+--- main boot ---
+dsh: warning: 1 entry did not activate
+mpd-better-sidebar (@mpd-dsh/mpd/packages/mpd-better-sidebar-host/dist/index.js): pending (waiting for service: webRuntime)
+dsh web: http://127.0.0.1:3198/?token=<redacted>
+
+--- control boot ---
+dsh: warning: 1 entry did not activate
+mpd-better-sidebar (@mpd-dsh/mpd/packages/mpd-better-sidebar-host/dist/index.js): pending (waiting for service: webRuntime)
+dsh web: http://127.0.0.1:3198/?token=<redacted>

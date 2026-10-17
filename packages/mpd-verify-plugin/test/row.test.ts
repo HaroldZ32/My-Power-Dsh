@@ -228,7 +228,14 @@ describe("the mpd-verify row", () => {
     expect(h.observers.count).toBe(1)
     /** The lines the row wrote to its own log sink. */
     const lines = bootLines(workspace)
-    expect(lines.some((line) => line.includes("verifyGate=installed"))).toBe(true)
+    // THE HEADLINE SAYS WHAT IT MEASURES (re-purposed 2026-10-17, together with the token): this row
+    // reports the harness tools.guard SEAM, not an installed gate. The OLD assertion here pinned
+    // `verifyGate=installed`, which read as "the write guard is live" — the very ambiguity the withdrawal
+    // exposed. Both halves are pinned so the overload cannot come back: the seam token IS present, and the
+    // guard-state token is NOT on this row's line (it belongs to `mpd-roles`, as `verifyGate=absent reason=…`).
+    expect(lines.some((line) => line.includes("verifySeam=present"))).toBe(true)
+    expect(lines.some((line) => line.includes("verifyGate"))).toBe(false)
+    expect(lines.some((line) => line.includes("NOT an installed gate"))).toBe(true)
     expect(lines.some((line) => line.includes("bootMarker=written"))).toBe(true)
     expect(lines.some((line) => line.includes("tools=5"))).toBe(true)
     rmSync(workspace, { recursive: true, force: true })
