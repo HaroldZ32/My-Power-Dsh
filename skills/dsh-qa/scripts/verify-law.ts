@@ -1,34 +1,41 @@
 #!/usr/bin/env node
-// Case verify-law: the A-writes/B-verifies LAW, proven on a MOUNTED row in a real headless boot.
+// Case verify-law: the A-writes/B-verifies law, REPURPOSED for the 2026-10-17 rollback.
 //
-// SOURCE OF THIS FILE. It is the Lane D (mpd-verify-plugin) case body, authored by the Lead inside its
-// own package so the wave's single `skills/**` writer (Lane C) can place it verbatim at
-// `skills/dsh-qa/scripts/verify-law.ts`. The single-skills-writer rule (§9) forbids Lane D writing there.
+// WHY THIS CASE CHANGED (repurposed, never silently deleted — `.mpd/plans/harness-021-rollback.md` R7):
+// until 2026-10-10/11 the `mpd-roles` row installed a `tools.guard` that DENIED the top-level mpd
+// agent's `write` on a code path unless a verification loop was armed, and this case asserted that
+// denial, its `verify.mode: "off"` negative control and the `docs/**` allowance. The user's ruling
+// withdrew the ceremony (R1: one agent, its whole tool pack, steered by the persona prompt), so the OLD
+// assertions described a surface that no longer exists — keeping them would fail a CORRECT tree.
+// The case now asserts the NEW behaviour and keeps the falsifiable shape:
+//   * the `mpd-verify` row still MOUNTS: it writes its own sandbox boot marker, and its five
+//     `mpd_verify_*` tools still register (asserted offline against the built dist). The law's
+//     BOOKKEEPING surface is still shipped — only the mechanical WRITE GUARD is gone, and a real boot
+//     (never `--dump-config`, which proves COMPOSITION ONLY and would pass with the row's apply
+//     aborting) is what can distinguish the two;
+//   * RUN A, the inverse of the old denial: with NO loop armed, the top-level mpd agent's `write` on a
+//     code path LANDS — the harness records the call AND the artifact exists on disk. Both halves are
+//     asserted because the harness pairs a guard-BLOCKED call with a result it does not error-flag
+//     (measured 2026-10-07), so "a write was recorded" alone would pass a denied one;
+//   * RUN B, the retired knob's own arm: the SAME sandbox with `verify.mode: "hard"` — the spelling that
+//     used to be the strictest denial — still lets the write land. A guard that came back would redden
+//     BOTH runs, so neither arm can pass by luck;
+//   * the roles row's boot line reports `verifyGate=absent reason=…`: the withdrawn state is REPORTED,
+//     never faked as a mode, and a stale pre-withdrawal dist reddens this arm on purpose;
+//   * three-layer isolation (§7) and the REAL workspace's marker untouched (unchanged obligations).
 //
-// WHAT IT PROVES, and why a boot is the only thing that can prove it:
-//   * the `mpd-verify` row MOUNTS and installs the guard (a boot line, never `--dump-config` — that flag
-//     proves COMPOSITION ONLY and would pass with the row's apply aborting);
-//   * the top-level agent's `write` on a CODE path is really DENIED by the harness, established
-//     BEHAVIOURALLY from the session log plus the filesystem: the log records a CALL for the code path
-//     and the artifact is NEVER created (MEASURED 2026-10-07: the guard blocks BEFORE dispatch, so the
-//     paired `tool/result` is NOT error-flagged and carries none of the guard's text — the text channel
-//     is REPORTED-only, never asserted, because asserting it would fail a working guard);
-//   * THE NEGATIVE CONTROL — the same write SUCCEEDS with the guard disabled — so the denial assertion
-//     is falsifiable rather than decorative;
-//   * PATH CLASSIFICATION BOTH WAYS: a `docs/**` write is allowed while a `packages/**` write is refused,
-//     because a guard that also blocked the manual, the PR body or the verification records would be a
-//     defect rather than a stricter law;
-//   * the law writes its own records into the SANDBOX workspace, and the REAL repository's
-//     `.mpd/verify/boot.json` was NOT created by the run (F.1/F.2: a mis-isolated boot would retract the
-//     `pre-plugin` record exemption for every lane that finished earlier, silently).
+// WHAT IT DOES NOT PROVE, stated so nobody over-reads it: it does not prove the `mpd_verify_*` TOOLS
+// work end to end (the package's own suite and the record validator's arms do that), and it does not
+// prove the roster read-only guard — a DIFFERENT guard, exercised by its own unit arms and by the
+// `readonly-deny` case.
 //
 // ISOLATION, all three layers (§7): an isolated `DSH_HOME`, a sandbox `HOME`, and a sandbox WORKSPACE
 // (`sandboxWorkspace`), with `assertSessionsSandboxed` asserting that no real-cwd session key exists.
 // Evidence -> evidence/gates/verify-law/<UTC>/{result.json,output.log} (+ per-run logs).
 //
-// --self-test is OFFLINE: the patch row, the built dists' symbols, and the package's own decision arms.
+// --self-test is OFFLINE: the patch row, the built dists' symbols, the SHIPPED apply site's withdrawal
+// and the package's own decision arms.
 import { spawnSync } from "node:child_process"
-import { createHash } from "node:crypto"
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs"
 import { homedir, tmpdir } from "node:os"
 import { dirname, join } from "node:path"
@@ -40,14 +47,16 @@ const repoRoot: string = dirname(dirname(dirname(dirname(fileURLToPath(import.me
 const SLUG: string = "verify-law"
 /** The five tools the row must register, as the mount arm's subject. */
 const TOOLS: readonly string[] = ["mpd_verify_open", "mpd_verify_escape", "mpd_verify_seat", "mpd_verify_evidence", "mpd_verify_record"]
-/** The sentence the guard's denial carries, asserted on the recorded tool RESULT. */
-const DENIAL_MARKER: string = "verification law"
-/** The code path the denied write targets; never created, because it must never be written. */
-const CODE_PATH: string = "packages/mpd-verify-plugin/src/probe-denied.ts"
-/** The documentation path the allowed write targets. */
-const DOC_PATH: string = "docs/probe-allowed.md"
-/** The real workspace marker both obligations assert about. */
+/** The code path RUN A and RUN B write; the whole case is that it LANDS now. */
+const CODE_PATH: string = "packages/mpd-verify-plugin/src/probe-allowed.ts"
+/** The real workspace marker the isolation arm asserts is untouched. */
 const REAL_MARKER: string = join(repoRoot, ".mpd", "verify", "boot.json")
+/** The shipped apply site whose withdrawal the offline arm pins. */
+const APPLY_SITE: string = join(repoRoot, "packages", "mpd-roles-plugin", "src", "index.ts")
+/** The install call a return of the withdrawal would have to reintroduce. */
+const WITHDRAWN_INSTALL: string = "installVerifyGuard("
+/** The boot-line spelling the withdrawn guard must keep reporting (never a mode). */
+const ABSENT_TOKEN: string = "verifyGate=absent reason="
 
 // THE SHARED QA HARNESS is resolved RELATIVE TO THE REPOSITORY ROOT rather than to this file, so the case
 // behaves identically where it is authored (`packages/mpd-verify-plugin/qa/`) and where the wave's single
@@ -92,10 +101,10 @@ const evidenceLib = await import(pathToFileURL(join(QA_LIB, "session-evidence.ts
      * Whether at least one recorded call has a NON-ERROR `tool/result` — the reader's own declared
      * field (`ToolCallEvidence.succeeded` in `lib/session-evidence.ts`).
      *
-     * MEASURED SURPRISE, stated so nobody "fixes" it back: the harness pairs a guard-DENIED call with a
-     * result it does NOT mark as an error, so `succeeded === true` while the write never landed. That is
-     * exactly why the `denied` arm below asserts the behavioural pair (`called && codeNotWritten`) and
-     * treats any text channel as REPORTED-only: asserting this flag would fail a working guard.
+     * MEASURED SURPRISE, stated so nobody "fixes" it back: the harness paired a guard-DENIED call with a
+     * result it did NOT mark as an error, so `succeeded === true` while the write never landed. That is
+     * why this case's arms assert the ARTIFACT (`codeWritten`) as the primary signal and keep this flag
+     * REPORTED-only: it cannot tell an allowed write from a blocked one on its own.
      */
     succeeded: boolean
     /** Every recorded call, with its raw arguments. */
@@ -128,36 +137,36 @@ function selfTest(): void {
   /** The built verify plugin. */
   const verifyDist = readFileSync(join(repoRoot, "packages", "mpd-verify-plugin", "dist", "index.js"), "utf8")
   for (const tool of TOOLS) if (!verifyDist.includes(tool)) fail("the built mpd-verify dist carries no " + tool)
-  /** The built roles plugin, which installs the guard. */
+  // THE WITHDRAWAL, pinned on the SHIPPED SOURCE (never on dist bytes, which the wave's rebuild task
+  // refreshes in its own commit): the apply site must no longer install the guard, and it must still
+  // report the absent state instead of dropping the token silently. THIS ARM REPLACES, for the same
+  // subject, the old assertion that the built roles dist CARRIES the guard's denial sentence — that
+  // sentence is gone with the install, so asserting it now would fail a correct tree.
+  /** The row's apply site, which owns the one install site of every guard. */
+  const applySite = readFileSync(APPLY_SITE, "utf8")
+  if (applySite.includes(WITHDRAWN_INSTALL)) fail("the shipped apply site still installs the write guard (" + WITHDRAWN_INSTALL + "): the 2026-10-17 withdrawal regressed")
+  if (!applySite.includes(ABSENT_TOKEN)) fail("the shipped apply site no longer reports " + ABSENT_TOKEN + " — a withdrawn guard must keep reporting its absence, never drop the token")
+  // The built roles row is still asserted to CARRY the token: the boot line is how a mount lane reads
+  // the state. WHICH value it carries is the live arm's subject, not this one's.
+  /** The built roles plugin whose boot line names the token. */
   const rolesDist = readFileSync(join(repoRoot, "packages", "mpd-roles-plugin", "dist", "index.js"), "utf8")
   if (!rolesDist.includes("verifyGate")) fail("the built mpd-roles dist does not report verifyGate")
-  if (!rolesDist.includes(DENIAL_MARKER)) fail("the built mpd-roles dist carries no denial sentence")
   // THE RECORD VALIDATOR'S REFUSAL VOCABULARY, which is the actual guarantee.
   for (const reason of ["same-agent", "no-doc-sources", "no-gate-evidence", "forged-evidence", "bind-unproven", "fail-without-findings", "finding-without-basis", "blind-spent", "pre-plugin-unattested", "post-install-claim"]) {
     if (!verifyDist.includes(reason)) fail("the built dist carries no refusal reason " + reason)
   }
-  // THE ANTI-DRIFT ARM: the case body exists TWICE — authored here and registered VERBATIM at
-  // `skills/dsh-qa/scripts/verify-law.ts` by the wave's single `skills/**` writer. A verbatim copy that
-  // can silently drift is a stale probe waiting to happen, so whenever both exist their sha256 must
-  // match. A genuinely absent half is SKIPPED WITH A STATED REASON rather than passed silently: the
-  // authored copy is the source of truth, and the registration is the wave's own act.
-  /** The registered copy's path. */
-  const registered = join(repoRoot, "skills", "dsh-qa", "scripts", "verify-law.ts")
-  /** This file's own path. */
-  const authored = fileURLToPath(import.meta.url)
-  if (!existsSync(registered)) {
-    console.log("[" + SLUG + " self-test] note: " + registered + " is not registered yet (the skills/** writer places it) — the drift arm is SKIPPED, not passed")
-  } else {
-    /** Both copies' digests. */
-    const authoredSha = createHash("sha256").update(readFileSync(authored)).digest("hex")
-    /** The registered copy's digest, compared byte for byte with the authored one. */
-    /** The REGISTERED copy's digest, compared with the AUTHORED one so a verbatim copy cannot drift. */
-    const registeredSha = createHash("sha256").update(readFileSync(registered)).digest("hex")
-    if (authoredSha !== registeredSha) {
-      fail("the registered case has DRIFTED from the authored body: " + authored + " " + authoredSha
-        + " vs " + registered + " " + registeredSha + " — re-copy the authored file verbatim")
-    }
-    console.log("[" + SLUG + " self-test] ok: the registered copy is byte-identical (" + authoredSha.slice(0, 12) + ")")
+  // THE RETIRED-TWIN ARM (repurposed 2026-10-17, with the twin's retirement): the case body used to exist
+  // TWICE — an authored copy under `packages/mpd-verify-plugin/qa/` and this registered one — kept
+  // byte-identical by a sha256 arm. The twin was RETIRED when the case was re-purposed for the guard
+  // withdrawal (see `packages/mpd-verify-plugin/qa/RETIRED.md`): this skill copy is now the ONLY body, and
+  // a second copy would drift from a directory no `skills/**` writer may maintain. The arm therefore
+  // asserts the twin stays ABSENT rather than asserting a copy that no longer should exist — a well-meant
+  // re-copy must fail loudly here instead of silently re-introducing a second body.
+  /** The retired authored twin's path. */
+  const retiredTwin = join(repoRoot, "packages", "mpd-verify-plugin", "qa", "verify-law.ts")
+  if (existsSync(retiredTwin)) {
+    fail("the retired authored twin came BACK at " + retiredTwin
+      + " — this registered copy is the only body (its reason is recorded in packages/mpd-verify-plugin/qa/RETIRED.md)")
   }
   // THE PACKAGE'S OWN ARMS: the decision table, the refusal table and the row's integration arm.
   /** The unit suite's result. */
@@ -172,20 +181,16 @@ interface RunOutcome {
   exit: number | null
   /** Whether a `write` tool call for the CODE path was recorded. */
   codeCalled: boolean
-  /** Whether the write was called and blocked: no recorded call for it ever SUCCEEDED. */
-  denied: boolean
-  /** True when a recorded `write` result happened to relay the guard's own sentence (secondary). */
-  sentenceRelayed: boolean
-  /** Whether the documentation path exists in the sandbox workspace afterwards. */
-  docWritten: boolean
-  /** Whether the CODE path exists in the sandbox workspace afterwards (it must not, when guarded). */
+  /** Whether at least one recorded result for that call was a NON-ERROR `tool/result`. */
+  callSucceeded: boolean
+  /** Whether the CODE path exists in the sandbox workspace afterwards — the case's whole point. */
   codeWritten: boolean
   /** The combined child output, kept for the evidence log. */
   output: string
 }
 
 /**
- * Drive ONE headless run in the sandbox and read its evidence from the SESSION LOG.
+ * Drive ONE headless run in the sandbox and read its evidence from the SESSION LOG plus the filesystem.
  * @param task The task text handed to the headless session.
  * @param sandbox Absolute path of the isolated DSH_HOME.
  * @param ws Absolute path of the sandbox workspace the session runs in.
@@ -205,18 +210,14 @@ function runOnce(task: string, sandbox: string, ws: string, env: Env): RunOutcom
   const events = evidenceLib.readSessionEvents(sandbox, { workspace: ws })
   /** The recorded `write` calls and their joined result text. */
   const write = evidenceLib.findToolCall(events, "write")
-  /** True when the recorded `write` results carry the guard's own sentence, when the harness relays it. */
-  const sentenceRelayed = write.resultText.includes(DENIAL_MARKER)
   return {
     exit: run.status,
-    codeCalled: write.calls.some((call): boolean => JSON.stringify(call.arguments ?? {}).includes("probe-denied")),
-    // MEASURED 2026-10-07: a `tools.guard` denial does NOT always reach `tool/result` text — the harness
-    // blocks the call at the guard and records it WITHOUT a successful result, so the RELIABLE evidence
-    // is "the write was called and NO call succeeded". The sentence is kept as a secondary signal and
-    // reported on the result, never as the assertion: requiring it would fail a working guard.
-    denied: write.called && !write.succeeded,
-    sentenceRelayed,
-    docWritten: existsSync(join(ws, DOC_PATH)),
+    // The call must name THIS case's probe file, so a write to some other path cannot satisfy the arm.
+    codeCalled: write.calls.some((call): boolean => JSON.stringify(call.arguments ?? {}).includes("probe-allowed")),
+    callSucceeded: write.succeeded,
+    // THE RELIABLE HALF (measured 2026-10-07): a guard-blocked call is recorded with a result the harness
+    // does NOT error-flag, so the artifact's presence is what distinguishes an allowed write from a
+    // denied one. Kept as the primary signal, with the recorded call as its precondition.
     codeWritten: existsSync(join(ws, CODE_PATH)),
     output,
   }
@@ -258,68 +259,71 @@ function runReal(): void {
   const install = spawnSync(process.execPath, [join(repoRoot, "scripts", "install-profile.ts"), "--yes", "--dsh-home", sandbox, "--profile", "mpd-headless", "--skip-toolchain"], { env, encoding: "utf8", maxBuffer: 32 * 1024 * 1024, timeout: 600000 })
   if (install.status !== 0) fail("install-profile failed\n" + (install.stdout || "") + (install.stderr || ""))
 
-  // ── RUN A: the guard is ON (the shipped default). The code write must be REFUSED. ────────────────
+  // ── RUN A: NO loop armed, no knob set. The code write must LAND (the inverse of the old denial). ──
   /** Run A's outcome. */
-  const guarded = runOnce("Call the write tool with file_path \"" + CODE_PATH + "\" and content \"// probe\". Then call the read tool with file_path \"AGENTS.md\" and paste its first line. Report exactly what the tools returned.", sandbox, ws, env)
-  writeFileSync(join(outDir, "run-a-guarded.log"), guarded.output.slice(0, 200000))
+  const allowed = runOnce("Call the write tool with file_path \"" + CODE_PATH + "\" and content \"// probe\\n\". Then report exactly what the tool returned.", sandbox, ws, env)
+  writeFileSync(join(outDir, "run-a-allowed.log"), allowed.output.slice(0, 200000))
 
-  // ── RUN B: THE NEGATIVE CONTROL. The SAME task with `verify.mode: off` must NOT be refused. ──────
-  // The mode is read RAW through the config service, so the sandbox's own `.mpd/mpd.jsonc` is the
-  // switch — the patch is never edited, and the control is one file in the SANDBOX workspace.
-  /** The sandbox workspace's config file, written only for the control run. */
+  // ── RUN B: THE RETIRED KNOB, spelled as the strictest old mode. The write must STILL land. ──────
+  // `verify.mode: "hard"` used to DENY this exact write. The mode was read RAW through the config
+  // service, so the sandbox's own `.mpd/mpd.jsonc` is the switch — the patch is never edited, and the
+  // arm is one file in the SANDBOX workspace. If the guard were ever reinstalled, this arm would go red
+  // together with RUN A, so neither can pass by accident.
+  /** The sandbox workspace's config file, written only for the retired-knob arm. */
   const configPath = join(ws, ".mpd", "mpd.jsonc")
   mkdirSync(join(ws, ".mpd"), { recursive: true })
-  writeFileSync(configPath, '{ "verify": { "mode": "off" } }\n', "utf8")
+  writeFileSync(configPath, '{ "verify": { "mode": "hard" } }\n', "utf8")
+  // The artifact RUN A wrote is removed FIRST, so RUN B's `codeWritten` is its OWN observation rather
+  // than a leftover from the previous run.
+  spawnSync(process.execPath, ["-e", "require('node:fs').rmSync(" + JSON.stringify(join(ws, CODE_PATH)) + ", { force: true })"], { encoding: "utf8" })
   /** Run B's outcome. */
-  const control = runOnce("Call the write tool with file_path \"" + CODE_PATH + "\" and content \"// probe\". Then report exactly what the tool returned.", sandbox, ws, env)
-  writeFileSync(join(outDir, "run-b-control.log"), control.output.slice(0, 200000))
-  // The control is REMOVED again, so run C is guarded like run A.
+  const retiredKnob = runOnce("Call the write tool with file_path \"" + CODE_PATH + "\" and content \"// probe-b\\n\". Then report exactly what the tool returned.", sandbox, ws, env)
+  writeFileSync(join(outDir, "run-b-retired-knob.log"), retiredKnob.output.slice(0, 200000))
+  // The config is REMOVED again, so the sandbox is left in its default state.
   spawnSync(process.execPath, ["-e", "require('node:fs').rmSync(" + JSON.stringify(configPath) + ", { force: true })"], { encoding: "utf8" })
 
-  // ── RUN C: PATH CLASSIFICATION BOTH WAYS. docs/** must stay WRITABLE. ────────────────────────────
-  /** Run C's outcome. */
-  const docs = runOnce("Call the write tool with file_path \"" + DOC_PATH + "\" and content \"# probe\\n\". Then report exactly what the tool returned.", sandbox, ws, env)
-  writeFileSync(join(outDir, "run-c-docs.log"), docs.output.slice(0, 200000))
-
-  // ── THE ISOLATION ASSERTION, and the two markers ────────────────────────────────────────────────
+  // ── THE ISOLATION ASSERTION, the row's mount marker and the boot line ───────────────────────────
   /** The session-sandbox assertion's verdict, or the reason it threw. */
   let sandboxed = ""
   try { isolationLib.assertSessionsSandboxed(sandbox, sandbox, { label: SLUG }) } catch (error) { sandboxed = error instanceof Error ? error.message : String(error) }
-  /** Whether the sandbox workspace carries the law's boot marker (it must: the row really installed). */
+  /** Whether the sandbox workspace carries the law's boot marker (it must: the verify row really applied). */
   const sandboxMarker = existsSync(join(ws, ".mpd", "verify", "boot.json"))
-  /** Whether the REAL workspace carries it now, and whether it did before the run. */
+  /** Whether the REAL workspace carries the marker now, and whether it did before the run. */
   const realMarkerAfter = existsSync(REAL_MARKER)
+  /** The roles row's own log, where the boot line lands (R5: a row never prints to stdout). */
+  const rowLogPath = join(ws, ".mpd", "logs", "mpd-roles.log")
+  /** The roles row's log text, or the empty string when the row wrote none. */
+  const rowLog = existsSync(rowLogPath) ? readFileSync(rowLogPath, "utf8") : ""
+  /** The ONE team-plane boot line, quoted into the record so a reader sees the reported state. */
+  const bootLine = rowLog.split("\n").find((line) => line.includes("team plane:")) ?? ""
+  // THE BOOT LINE MUST REPORT THE WITHDRAWAL. A stale dist (built before the withdrawal) still prints a
+  // MODE here and reddens this arm — deliberately: the wave's rebuild step is what makes the shipped
+  // bytes say `absent`, and a case that accepted either spelling would hide a stale artifact.
+  /** Whether the boot line names the withdrawn write guard as absent. */
+  const withdrawnReported = bootLine.includes(ABSENT_TOKEN)
 
   /** Every assertion of this case, so the result file reports all of them rather than the first. */
   const steps = {
-    // The row MOUNTED: the guard refused the write, which is only possible through the installed hook.
-    mounted: { ok: guarded.codeCalled, detail: "the harness recorded a write call for the code path" },
-    // THE BEHAVIOURAL PAIR (corrected 2026-10-07, measured): a `tools.guard` denial is blocked BEFORE
-    // dispatch, so the harness pairs the call with a result that is neither error-flagged nor carries
-    // the guard's sentence — asserting either channel FAILS a working guard (measured on this arm:
-    // `denied=false` while the artifact was never created). This arm therefore asserts WHAT THE
-    // HARNESS RECORDS AND WHAT LANDED ON DISK: a recorded call for the code path, and no artifact.
-    // The control pair (`controlNotDenied` + `controlWritten`) in the SAME run is what makes the block
-    // attributable to the guard rather than to any other failure.
-    denied: { ok: guarded.codeCalled && !guarded.codeWritten, detail: "the harness recorded a write CALL for the code path and the artifact was NEVER created (sentence relayed: " + String(guarded.sentenceRelayed) + " — REPORTED, never asserted: requiring it would fail a working guard)" },
-    codeNotWritten: { ok: !guarded.codeWritten, detail: "the denied code path was never created" },
-    // THE NEGATIVE CONTROL: with the guard off the same write is NOT refused. An arm that passes with
-    // and without the guard is worth nothing, so this is what makes the denial falsifiable.
-    controlNotDenied: { ok: !control.denied, detail: "with verify.mode=off the same write was not refused" },
-    controlWritten: { ok: control.codeWritten, detail: "with verify.mode=off the code path really was written" },
-    // BOTH WAYS on classification: a documentation write is allowed and lands.
-    docsAllowed: { ok: docs.docWritten && !docs.denied, detail: "a docs/** write is allowed and exists in the sandbox" },
-    sandboxMarker: { ok: sandboxMarker, detail: "the law wrote its boot marker in the SANDBOX workspace" },
+    // THE INVERSE OF THE OLD DENIAL — both halves, because the recorded call alone is not enough: the
+    // harness pairs a guard-BLOCKED call with a result it does not error-flag (measured 2026-10-07), so
+    // "a write was called" would pass a denied one. The artifact is the reliable half.
+    written: { ok: allowed.codeCalled && allowed.codeWritten, detail: "with no loop armed the top-level agent's write CALL was recorded and the code path EXISTS in the sandbox" },
+    // THE RETIRED KNOB cannot deny any more: the strictest old spelling, explicitly set, changes nothing.
+    retiredKnobWritten: { ok: retiredKnob.codeCalled && retiredKnob.codeWritten, detail: "the retired `verify.mode: \"hard\"` knob no longer denies: the same write still landed" },
+    // The row still MOUNTED: its own boot marker is written (its five tools are asserted offline).
+    mounted: { ok: sandboxMarker, detail: "the mpd-verify row wrote its sandbox boot marker (the law's bookkeeping tools still mount)" },
+    withdrawnReported: { ok: withdrawnReported, detail: "the roles row's boot line reports " + ABSENT_TOKEN + "… (the state is REPORTED, never a mode)" },
     realMarkerUnchanged: { ok: realMarkerAfter === realMarkerBefore, detail: "the REAL workspace's marker is exactly as it was: before=" + String(realMarkerBefore) + " after=" + String(realMarkerAfter) },
     sessionsSandboxed: { ok: sandboxed === "", detail: sandboxed === "" ? "no real-cwd session key exists" : sandboxed },
   }
   /** Whether every step held. */
   const ok = Object.values(steps).every((step) => step.ok)
-  // REPORTED, never asserted: the text channels the guard's denial does NOT reliably reach.
-  /** The channels measured as unreliable, kept in the record so a reader can see them without judging them. */
-  const reported = { sentenceRelayed: guarded.sentenceRelayed, controlSentenceRelayed: control.sentenceRelayed }
+  // REPORTED, never asserted: the exit codes, the recorded-result channel and the boot line, so a reader
+  // can see the raw facts behind the arms without the record judging them twice.
+  /** The runs' raw context, kept in the record. */
+  const reported = { runAExit: allowed.exit, runBExit: retiredKnob.exit, runAResultOk: allowed.callSucceeded, runBResultOk: retiredKnob.callSucceeded, bootLine }
   writeFileSync(join(outDir, "result.json"), JSON.stringify({ ok, slug: SLUG, sandbox, workspace: ws, realMarkerBefore, steps, reported }, null, 2))
-  writeFileSync(join(outDir, "output.log"), JSON.stringify({ runA: guarded.output.slice(0, 20000), runB: control.output.slice(0, 20000), runC: docs.output.slice(0, 20000) }, null, 2))
+  writeFileSync(join(outDir, "output.log"), JSON.stringify({ runA: allowed.output.slice(0, 20000), runB: retiredKnob.output.slice(0, 20000) }, null, 2))
   console.log("[" + SLUG + "] ok=" + ok + " -> " + outDir)
   for (const [name, step] of Object.entries(steps)) console.log("  " + name + ": " + step.ok + " — " + step.detail)
   if (!ok) process.exit(1)

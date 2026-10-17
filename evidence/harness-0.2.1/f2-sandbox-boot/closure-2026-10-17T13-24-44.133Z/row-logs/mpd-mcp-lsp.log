@@ -1,0 +1,20 @@
+[2026-10-17T13:24:48.119Z] [mpd-mcp-lsp] starting cclsp@0.7.0 from /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/node_modules/.bun/cclsp@0.7.0+5b6b5129650ecc67/node_modules/cclsp/dist/index.js
+[2026-10-17T13:24:48.126Z] [mpd-mcp-lsp] cclsp config: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/harness-0.2.1/sandbox/closure-34txlt/ws/.mpd/lsp/cclsp.json (generated, 2 language server(s))
+[2026-10-17T13:24:48.136Z] Loading config from CCLSP_CONFIG_PATH: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/harness-0.2.1/sandbox/closure-34txlt/ws/.mpd/lsp/cclsp.json
+[2026-10-17T13:24:48.136Z] Loaded 2 server configurations from env
+[2026-10-17T13:24:48.136Z] CCLSP Server running on stdio
+[2026-10-17T13:24:48.136Z] Scanning configured server directories for supported file types
+[2026-10-17T13:24:48.136Z] Scanning /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/harness-0.2.1/sandbox/closure-34txlt/ws for extensions: ts, tsx, js, jsx, mjs, cjs, mts, cts
+[2026-10-17T13:24:48.140Z] Scanning /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/harness-0.2.1/sandbox/closure-34txlt/ws for extensions: rs
+[2026-10-17T13:24:48.142Z] Starting 0 LSP servers...
+[2026-10-17T13:24:48.142Z] LSP server preloading completed
+[2026-10-17T13:24:48.203Z] [mpd-mcp-lsp] starting cclsp@0.7.0 from /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/node_modules/.bun/cclsp@0.7.0+5b6b5129650ecc67/node_modules/cclsp/dist/index.js
+[2026-10-17T13:24:48.214Z] [mpd-mcp-lsp] cclsp config: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/harness-0.2.1/sandbox/closure-34txlt/ws/.mpd/lsp/cclsp.json (generated, 2 language server(s), unchanged)
+[2026-10-17T13:24:48.223Z] Loading config from CCLSP_CONFIG_PATH: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/harness-0.2.1/sandbox/closure-34txlt/ws/.mpd/lsp/cclsp.json
+[2026-10-17T13:24:48.223Z] Loaded 2 server configurations from env
+[2026-10-17T13:24:48.223Z] CCLSP Server running on stdio
+[2026-10-17T13:24:48.224Z] Scanning configured server directories for supported file types
+[2026-10-17T13:24:48.224Z] Scanning /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/harness-0.2.1/sandbox/closure-34txlt/ws for extensions: ts, tsx, js, jsx, mjs, cjs, mts, cts
+[2026-10-17T13:24:48.229Z] Scanning /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/harness-0.2.1/sandbox/closure-34txlt/ws for extensions: rs
+[2026-10-17T13:24:48.230Z] Starting 0 LSP servers...
+[2026-10-17T13:24:48.230Z] LSP server preloading completed

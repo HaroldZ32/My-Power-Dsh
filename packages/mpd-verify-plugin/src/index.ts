@@ -1,20 +1,27 @@
 // mpd-verify-plugin — the ROW of the verification law.
 //
 // WHAT IT OWNS: the durable ledger under `<workspace>/.mpd/verify/`, the process-local runtime (the
-// observation log, the escape allowances, the counted diagnosis reads), the five `mpd_verify_*` tools and
-// the boot marker that closes the `pre-plugin` exemption. What it does NOT own: the GUARD, which is
-// installed by the `mpd-roles` row (`installVerifyGuard`, beside its read-only guard) because that row is
-// already the one place a `guardTool` install lives — but the guard is DECIDED by the pure functions in
-// `law.ts` and reads its state from the `mpdVerify` service this row publishes.
+// delegation observer, the escape allowances, the counted diagnosis reads), the five `mpd_verify_*` tools
+// and the boot marker that closes the `pre-plugin` exemption. What it does NOT own: the GUARD — the
+// `tools.guard` hook was installed by the `mpd-roles` row and is **WITHDRAWN** by the user's 2026-10-17
+// ruling (`.mpd/plans/harness-021-rollback.md`, R1), so NO row installs one any more. The pure decision
+// functions still live in `law.ts` and the state this row publishes (`mpdVerify`) is what a future
+// preset-scoped consumer would read.
 //
 // WHY A SERVICE AND NOT A MODULE SINGLETON: `bun build` INLINES every imported module, so a module-level
-// object imported by two packages becomes two objects — the roles row's guard would read an escape
-// allowance this row never wrote. The service is resolved PER CALL, which also means the roles row may
-// apply first (it does: `mpd-roles` sits above `mpd-verify` in the patch).
+// object imported by two packages becomes two objects — a consumer would read an escape allowance this row
+// never wrote. The service is resolved PER CALL, which also means the roles row may apply first (it does:
+// `mpd-roles` sits above `mpd-verify` in the patch).
 //
-// DEGRADATION, never a boot failure: with no `tools.guard` seam the law degrades to bookkeeping and the
-// boot line says `verifyGate=absent`; with no tool registry the tools are not registered and the line
-// says so. The row never throws out of `apply`.
+// DEGRADATION, never a boot failure: with no `tools.guard` SEAM this row still works (it is bookkeeping
+// either way) and the boot line says `verifySeam=absent`; with no tool registry the tools are not
+// registered and the line says so. The row never throws out of `apply`.
+//
+// THE BOOT LINE SAYS WHAT IT MEASURES (2026-10-17). It used to print `verifyGate=installed|absent`, which
+// reads as "a write guard is live" — while this row never installed one and the roles row's guard is
+// withdrawn. The two rows therefore print DIFFERENT tokens on purpose: this row reports the harness SEAM
+// (`verifySeam=`), and the withdrawn guard's own state is the `mpd-roles` row's `verifyGate=absent
+// reason=…`. Never make them "agree" by printing the same token from two measurements.
 import { existsSync } from "node:fs"
 import { join } from "node:path"
 import type { DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
@@ -139,15 +146,22 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   /** The mode in force, reported on the boot line so a mount lane can see what it is asserting. */
   const mode = resolveVerifyMode(configValue("verify.mode"))
   outcome.push("mode=" + mode)
-  outcome.push("guard=" + (dsh.capabilities().toolsGuard === true ? "seam-present" : "no-guard-seam"))
+  /**
+   * Whether the HARNESS exposes the `tools.guard` seam.
+   *
+   * It is a composition fact, never an install: the row that used to install the law's guard is withdrawn,
+   * so this boolean now only decides whether the boot marker may be written and what the headline reports.
+   */
+  const guardSeam: boolean = dsh.capabilities().toolsGuard === true
+  outcome.push("guard=" + (guardSeam ? "seam-present" : "no-guard-seam"))
 
   // THE BOOT MARKER, and it is LOAD-BEARING: a `pre-plugin` verification record is admissible only while
   // its `createdAt` precedes this instant, so the exemption closes itself the moment the law is live in a
-  // workspace. It is written ONLY when the guard seam really exists — a composition that cannot enforce
-  // anything must not close an exemption it will never use.
+  // workspace. It is written ONLY when the seam really exists — a composition that cannot carry the marker
+  // anywhere must not close an exemption it will never use.
   /** The instant this row installed, reported on the boot line and stamped into the marker. */
   const installedAt = new Date().toISOString()
-  if (dsh.capabilities().toolsGuard === true) {
+  if (guardSeam) {
     try {
       /** The boot-time workspace root. A session's own root is marked lazily by the tools that use it. */
       const root = dsh.workspaceRoot()
@@ -160,11 +174,20 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     outcome.push("bootMarker=skipped")
   }
 
-  /** The loops already of record for the boot workspace, so the line reports a real number. */
+  /**
+   * The loops already of record for the boot workspace, so the line reports a real number.
+   *
+   * The headline token is `verifySeam=` because THAT is what this row can measure — the harness seam's
+   * presence. It is deliberately NOT `verifyGate=`: the withdrawn write guard's state belongs to the
+   * `mpd-roles` row, which reports it as `verifyGate=absent reason=…`, and two rows printing one token from
+   * two different measurements is exactly the ambiguity this line removes.
+   */
   let loopCount = 0
   try { loopCount = readLoops(dsh.workspaceRoot()).length } catch { loopCount = 0 }
-  log("verifyGate=" + (dsh.capabilities().toolsGuard === true ? "installed" : "absent")
-    + " loops=" + loopCount + " installedAt=" + installedAt + " " + outcome.join(" "))
+  log("verifySeam=" + (guardSeam ? "present" : "absent")
+    + " (the harness tools.guard SEAM — NOT an installed gate: the write guard is WITHDRAWN; the mpd-roles"
+    + " row reports its own state) loops=" + loopCount + " installedAt=" + installedAt
+    + " " + outcome.join(" "))
 }
 
 /**

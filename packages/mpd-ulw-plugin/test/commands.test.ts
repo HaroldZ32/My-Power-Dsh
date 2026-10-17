@@ -200,10 +200,16 @@ const OFF_REPORT: UlwGateReport = { mode: "off", trigger: false, signals: [], ex
  *
  * `boulder.dir` points at an EMPTY temp directory on purpose: that makes signal D deterministic
  * (`active:false`) whatever the repository's own `.mpd/boulder.json` happens to say, so a gate arm
- * asserts on the predicate it means to exercise. An omitted `gate` leaves the row config silent,
- * which is the MECHANICAL default; the legacy arms pass `"off"` so their bytes stay deterministic.
+ * asserts on the predicate it means to exercise.
  *
- * @param gate - the `team.gate` mode to configure, or undefined for the mechanical default.
+ * REPURPOSED 2026-10-17 (`.mpd/plans/harness-021-rollback.md` R1): an omitted `gate` used to mean
+ * "the MECHANICAL default". The user's ruling made the gate OPT-IN, so `resolveGateMode(undefined)`
+ * now reads `off` — an arm whose SUBJECT is the mechanical route must therefore ASK for it
+ * (`workdirs("mechanical")`) instead of inheriting it. An omission still leaves the row config silent,
+ * which is the honest way to exercise the `off` default; the legacy arms pass `"off"` explicitly so
+ * their bytes stay deterministic.
+ *
+ * @param gate - the `team.gate` mode to configure, or undefined to leave the key unset (now `off`).
  * @returns the row config handed to `apply`.
  */
 function workdirs(gate?: "mechanical" | "advisory" | "off"): NonNullable<Parameters<typeof apply>[1]> {
@@ -388,7 +394,9 @@ test("the frozen head is byte-stable across objectives AND verdicts (prefix-cach
 test("the gate is MECHANICAL: a tripping objective stages EXACTLY ONE plan and the directive names the returned id", async () => {
   // The fake harness for this case; no `team` key, so `team.gate` resolves to the MECHANICAL default.
   const { ctx, commandsRegistered, submitted, agent, stagingCalls } = makeHarness()
-  apply(ctx, workdirs())
+  // REPURPOSED 2026-10-17 (harness-021-rollback R1): the gate is OPT-IN, so this arm ASKS for the
+  // mechanical route instead of inheriting it — the mechanical route is this arm's subject (a tripping objective stages exactly one plan).
+  apply(ctx, workdirs("mechanical"))
   // One activation whose objective trips signal C.
   const result = await commandsRegistered[0].handler({ rawInput: TRIPPING_OBJECTIVE, agent })
   expect(result.kind).toBe("success")
@@ -411,7 +419,9 @@ test("the gate is MECHANICAL: a tripping objective stages EXACTLY ONE plan and t
 test("the gesture path runs the SAME mechanical gate with the agent the payload carries", async () => {
   // The fake harness for this case.
   const { ctx, preStep, agent, stagingCalls } = makeHarness()
-  apply(ctx, workdirs())
+  // REPURPOSED 2026-10-17 (harness-021-rollback R1): the gate is OPT-IN, so this arm ASKS for the
+  // mechanical route instead of inheriting it — the gesture path is this arm's subject and it runs the SAME mechanical gate.
+  apply(ctx, workdirs("mechanical"))
   expect(preStep.length).toBe(1)
   // A user message that opens with the `/ulw` gesture and a tripping objective.
   const gesture = { id: "g1", role: "user", content: [{ type: "text", text: "/ulw " + TRIPPING_OBJECTIVE }], source: { kind: "user" } }
@@ -448,7 +458,9 @@ test("mode advisory and mode off stage nothing and say so", async () => {
 test("an already-staged plan is never re-staged, and the directive names the existing one", async () => {
   // The fake harness whose team record already holds an in-progress plan.
   const { ctx, commandsRegistered, submitted, agent, stagingCalls } = makeHarness({ stagedPlan: { planId: "plan-existing" } })
-  apply(ctx, workdirs())
+  // REPURPOSED 2026-10-17 (harness-021-rollback R1): the gate is OPT-IN, so this arm ASKS for the
+  // mechanical route instead of inheriting it — the idempotence arm measures what a mechanical fire does with a plan already staged.
+  apply(ctx, workdirs("mechanical"))
   // The activation whose objective trips the predicate.
   const result = await commandsRegistered[0].handler({ rawInput: TRIPPING_OBJECTIVE, agent })
   expect(result.kind).toBe("success")
@@ -464,7 +476,9 @@ test("an already-staged plan is never re-staged, and the directive names the exi
 test("a composition without the staging tool degrades honestly — no throw, no claimed team", async () => {
   // The fake harness whose seam registry does NOT hold `agent_teams_plan`.
   const { ctx, commandsRegistered, submitted, agent, stagingCalls } = makeHarness({ withStagingTool: false })
-  apply(ctx, workdirs())
+  // REPURPOSED 2026-10-17 (harness-021-rollback R1): the gate is OPT-IN, so this arm ASKS for the
+  // mechanical route instead of inheriting it — this arm measures the mechanical route's honest degradation when the staging tool is absent.
+  apply(ctx, workdirs("mechanical"))
   // The activation still STARTS: the gate degrades, it never vetoes the run.
   const result = await commandsRegistered[0].handler({ rawInput: TRIPPING_OBJECTIVE, agent })
   expect(result.kind).toBe("success")
@@ -480,7 +494,9 @@ test("a composition without the staging tool degrades honestly — no throw, no 
 test("a REFUSING staging call degrades without throwing: the run starts and the block says so", async () => {
   // The fake harness whose staging tool throws, i.e. the tool refused the call.
   const { ctx, commandsRegistered, submitted, agent, stagingCalls } = makeHarness({ stagingThrows: true })
-  apply(ctx, workdirs())
+  // REPURPOSED 2026-10-17 (harness-021-rollback R1): the gate is OPT-IN, so this arm ASKS for the
+  // mechanical route instead of inheriting it — this arm measures the mechanical route's honest degradation when the staging call refuses.
+  apply(ctx, workdirs("mechanical"))
   // The activation whose objective trips the predicate.
   const result = await commandsRegistered[0].handler({ rawInput: TRIPPING_OBJECTIVE, agent })
   expect(result.kind).toBe("success")
@@ -495,7 +511,9 @@ test("a REFUSING staging call degrades without throwing: the run starts and the 
 test("a tripping objective that carries the explicit `team:` marker has the marker CONSUMED", async () => {
   // The fake harness for this case.
   const { ctx, commandsRegistered, submitted, agent, stagingCalls } = makeHarness()
-  apply(ctx, workdirs())
+  // REPURPOSED 2026-10-17 (harness-021-rollback R1): the gate is OPT-IN, so this arm ASKS for the
+  // mechanical route instead of inheriting it — this arm measures the explicit marker's consumption on the mechanical route.
+  apply(ctx, workdirs("mechanical"))
   // The activation whose objective carries the explicit marker AND trips signal C.
   const result = await commandsRegistered[0].handler({ rawInput: "team: " + TRIPPING_OBJECTIVE, agent })
   expect(result.kind).toBe("success")

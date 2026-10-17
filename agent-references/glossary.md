@@ -61,21 +61,21 @@ caused. `AGENTS.md` §13 carries the binding wording; the block below is history
   prune the names it reports as unknown (`names unknown global tools "…"`), retries EXACTLY ONCE with the
   survivors and rethrows any second failure. Measured 2026-10-10 before the repair: the two
   `mcp__lsp__*` entries made the harness reject the WHOLE list on a profile without `cclsp`, so every
-  read-only `mpd_role_spawn` died and the captain fell back to the official `subagent` tool — which the
-  new delegation gate (below, `delegation.gate`) now refuses. The one-shot path hands the CHILD the
+  read-only `mpd_role_spawn` died and the captain fell back to the official `subagent` tool — which was
+  the escape the since-WITHDRAWN delegation gate refused (below). The one-shot path hands the CHILD the
   PRUNED list as `toolFilter.deny`; a pruned name is reported once on the row's log.
-- delegation gate: the `tools.guard` rule that makes §5 rule 2's delegation discipline MECHANICAL —
-  `packages/mpd-roles-plugin/src/delegation-gate.ts` refuses a call to `subagent`, `subagent_fork` or
-  `workflow` and names the sanctioned routes (`mpd_role_spawn`, `mpd_workmate_match` +
-  `mpd_workmate_spawn`, Agent Teams, `send_message`). The knob is `delegation.gate` in `mpd.jsonc`:
-  `"deny"` (DEFAULT — the captain AND every member session), `"captain"` (the top-level session only) or
-  `"allow"`; anything else reads as `deny`, and the mode is read PER CALL. It is keyed on §5's preset-free
-  `sessionRank`, so it holds for any session in a workspace that mounts this bundle — the live top-level
-  session on this deployment runs a preset the bundle does not own (`cordis`), which is why preset-plane
-  omission is NOT the mechanism. Boot line: `delegationGate=<mode>` (or `delegationGate=absent reason=…`).
-  **Honest bound:** the guard reads the tool CALL at dispatch; it cannot stop a model from TRYING another
-  tool, and a profile without this bundle has no gate at all. Live evidence:
-  `evidence/roles/delegation-gate/`.
+- delegation gate (WITHDRAWN 2026-10-17 — record, not capability): the `tools.guard` rule that made §5
+  rule 2's delegation discipline MECHANICAL. `packages/mpd-roles-plugin/src/delegation-gate.ts` refused a
+  call to `subagent`, `subagent_fork` or `workflow` and named the sanctioned routes (`mpd_role_spawn`,
+  `mpd_workmate_match` + `mpd_workmate_spawn`, Agent Teams, `send_message`); its knob was `delegation.gate`
+  in `mpd.jsonc` (`"deny"` | `"captain"` | `"allow"`, keyed on the preset-free `sessionRank`). The user's
+  2026-10-17 ruling withdrew it (`.mpd/plans/harness-021-rollback.md`, R1): the top-level agent holds its
+  whole pack directly, so those three names are CALLABLE again, the module survives only as a reference
+  implementation with its unit arms, and the row no longer installs it. The diagnostic is the roles row's
+  boot line — `delegationGate=absent reason=withdrawn:2026-10-17-user-ruling(delegation.gate)` — never a
+  mode. `skills/dsh-qa/scripts/delegation-gate.ts` is RE-PURPOSED to assert that a `subagent` call is NOT
+  refused, including with the retired knob spelled explicitly. Do not read the old live evidence under
+  `evidence/roles/delegation-gate/` as current behaviour: it is the measurement of the withdrawn gate.
 - team-model slot: one of the four configurable default model routes of the ROSTER members —
   `teamModels.slot{1,2,3,4}.{provider,model,reasoningEffort}` in `mpd.jsonc` / the `mpd` settings
   namespace, whose defaults are `deepseek-official` / `deepseek-v4-flash` at `max`/`high`/`high`, plus
@@ -116,39 +116,52 @@ caused. `AGENTS.md` §13 carries the binding wording; the block below is history
 
 ## verifier's envelope (long form)
 
-The tool and path boundary a BOUND VERIFIER SEAT works inside under the verification law (AGENTS.md §5,
-§13). It is enforced by the SAME `guardTool` install as the captain's write rule — the one extra install
-the `mpd-roles` row performs (`packages/mpd-roles-plugin/src/verify-guard.ts`), decided by the pure
-functions in `packages/mpd-verify-plugin/src/law.ts` and reading its state from the `mpdVerify` service
-PER CALL (never a module singleton: `bun build` inlines imports, so a singleton would exist twice).
+The tool and path boundary a BOUND VERIFIER SEAT was meant to work inside under the verification law
+(AGENTS.md §5, §13).
+
+**STATUS: the ENVELOPE is PROSE since 2026-10-17; the RECORD VALIDATOR is what still bites.** The envelope
+was enforced by ONE `guardTool` install in the `mpd-roles` row
+(`packages/mpd-roles-plugin/src/verify-guard.ts`), decided by the pure functions in
+`packages/mpd-verify-plugin/src/law.ts` and reading its state from the `mpdVerify` service. The user's
+rolling-back ruling withdrew that install (`.mpd/plans/harness-021-rollback.md`, R1) together with the
+captain's write rule it also carried, so nothing refuses a seat's shell call, its source read or its board
+mutation any more; `mpd_verify_seat` still records the seat, and the list below is the CONTRACT a verifier
+keeps, not a fence around it. What remains mechanical is the record validator's own refusals (no cited
+documents, no gate evidence, a forged evidence id, a same-agent verifier, a FAIL without findings), which
+live in the TOOLS.
 
 A seat is bound with `mpd_verify_seat {loop_id, role:"verifier"}`, which is idempotent and authoritative,
-and which REFUSES a caller that is the loop's own writer. From that moment:
+and which REFUSES a caller that is the loop's own writer. The boundary it is meant to keep:
 
-- **DENIED outright**: the shell (`bash`, `powershell`, `pwsh`); the source-returning tools
+- **NOT CALLED at all**: the shell (`bash`, `powershell`, `pwsh`); the source-returning tools
   (`mcp__codegraph__codegraph_explore`, cclsp's query family — `find_definition`, `find_references`,
   `find_implementation`, `get_diagnostics`, `get_hover`, `find_workspace_symbols`,
   `prepare_call_hierarchy`, `get_incoming_calls`, `get_outgoing_calls` — `mcp__ast_grep__rewrite`,
   `mcp__ast_grep__scan`, and cclsp's two renames `mcp__lsp__rename_symbol` /
   `mcp__lsp__rename_symbol_strict`); and every `agent_teams_*` / `mpd_*` board or team MUTATION —
   with `mpd_verify_*` explicitly exempt, because those five tools ARE the seat's job.
-- **PATH-SCOPED while BLIND**: `read` / `glob` / `grep` pass only under the loop's frozen `basis.docs[]`,
+- **PATH-SCOPED while BLIND**: `read` / `glob` / `grep` under the loop's frozen `basis.docs[]`,
   `<ws>/.mpd/plans/**`, `<ws>/docs/**`, `<ws>/agent-references/**`, `<ws>/.mpd/verify/**` and
-  `<ws>/evidence/**`. MEASURED 2026-10-08: the mounted guard's own bare-path refusal names `evidence/` in
-  the live band, and a `glob {path:"evidence", pattern:"…"}` is ANSWERED (it reports no matches, not a
-  refusal). An earlier revision of this line OMITTED `evidence/**`, and a bound seat concluded from the
-  omission that it could not read a writer's evidence packet at all — it retracted after re-measuring, but
-  the wrong conclusion had already been broadcast to writers and into a wave contract. Do not re-narrow
-  this list without re-measuring the guard. A BARE path
-  argument is refused, because the tool's default path is the whole workspace and that includes the
-  implementation.
+  `<ws>/evidence/**`. MEASURED 2026-10-08: while the guard still installed, its bare-path refusal named
+  `evidence/` in the live band, and a `glob {path:"evidence", pattern:"…"}` was ANSWERED (it reports no
+  matches, not a refusal). An earlier revision of this line OMITTED `evidence/**`, and a bound seat
+  concluded from the omission that it could not read a writer's evidence packet at all — it retracted
+  after re-measuring, but the wrong conclusion had already been broadcast to writers and into a wave
+  contract. Do not re-narrow this list without re-measuring whatever enforces it next.
 - **WRITE confined** to `<ws>/.mpd/verify/**`. A verifier never fixes what it found: the record tool writes
   the verification record itself, and a FAIL bounces the work back to a writer as a `kind=repair` task.
-- **THE RATCHET**: a recorded FAIL unlocks implementation reading for DIAGNOSIS, COUNTED, and the count
-  lands in the next record's `unlockedReads[]`. A PASS NEVER unlocks, and a PASS from an already-unlocked
-  seat is refused (`blind-spent`) — a fresh verifier must take over.
+- **THE RATCHET**: a recorded FAIL was meant to unlock implementation reading for DIAGNOSIS, COUNTED, with
+  the count in the next record's `unlockedReads[]`. Nothing counts now: the observation log that fed it
+  (`law.noteCall` / `law.countRead`, called from the withdrawn guard) is no longer written, so the ratchet
+  stays EMPTY in practice.
 
-Blindness is NOT asserted by the envelope. It is PROVEN by the plugin's own observation log: `guardTool`
-is consulted before every dispatch, so a verifier whose session never triggered a code-path read is
-`blind`, and one that did is `unproven` — and a PASS on an `unproven` basis is refused (`bind-unproven`).
-The envelope is defence in depth; the RECORD VALIDATOR is the actual guarantee.
+**The blindness claim, honestly stated.** While the guard installed, blindness was PROVEN by the plugin's
+own observation log — `guardTool` is consulted before every dispatch, so a seat whose session never
+triggered a code-path read was `blind`, and a PASS on an `unproven` basis was refused (`bind-unproven`).
+With the hook withdrawn nothing observes those reads, so every seat now READS as `blind`
+(`observedCodeRead` is false because no read is recorded) and the `unproven` refusal cannot be triggered
+by evidence. That is a real weakening, not a bound to shout down: the record validator's other refusals
+and the boot marker still hold, and blindness should be treated as UNVERIFIED rather than established
+until an observation channel that is not a pre-dispatch hook exists. Do not re-introduce such a hook
+without a user ruling.
+

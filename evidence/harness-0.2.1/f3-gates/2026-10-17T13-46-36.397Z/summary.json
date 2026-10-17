@@ -1,0 +1,28 @@
+{
+  "stamp": "2026-10-17T13-46-36.397Z",
+  "launcher": "/home/haroldzhao/.nvm/versions/node/v24.21.0/bin/dsh",
+  "launcherVersion": "0.2.0-rc.2",
+  "rows": [
+    {
+      "claim": "F3",
+      "slug": "verify-comments",
+      "exit": 0,
+      "durationMs": 2040,
+      "decisiveLine": ""
+    },
+    {
+      "claim": "F3",
+      "slug": "verify-docs",
+      "exit": 0,
+      "durationMs": 62,
+      "decisiveLine": "ok   packages/mpd-workmate-plugin/README.md"
+    },
+    {
+      "claim": "F3",
+      "slug": "verify-manual-paths",
+      "exit": 0,
+      "durationMs": 69,
+      "decisiveLine": "[verify-manual-paths] census bucket=under-report:prose direction=under-report count=0 reason=\"a directory spelled in words rather than as a token — nothing to stat\""
+    }
+  ]
+}

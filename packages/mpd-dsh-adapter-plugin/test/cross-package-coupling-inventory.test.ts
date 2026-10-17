@@ -244,7 +244,11 @@ export const FROZEN_COUPLINGS: readonly string[] = [
   // inventory this wave, so the gate stays green across the two lanes instead of reddening on an
   // edge that was written on purpose. The third entry is spelled exactly as the scanner captures a
   // multi-line `import type { … } from` clause; that leading `}` is the scanner's own form.
-  "packages/mpd-roles-plugin/src/index.ts :: import { VERIFY_SERVICE } from \"../../mpd-verify-plugin/src/service.ts\"",
+  // WITHDRAWN 2026-10-17 (lane B, harness-021-rollback): the `VERIFY_SERVICE` entry that stood HERE is
+  // DELETED, not re-frozen. It existed only for the verify guard's `lawAccess`, and the user's ruling
+  // withdrew that install from `mpd-roles` — so the coupling is gone. The inventory may only SHRINK, so
+  // the repair is the deletion; keeping a dead import alive to satisfy a frozen entry would preserve
+  // slop with a test.
   "packages/mpd-roles-plugin/src/verify-guard.ts :: import type { ArmedLoopView, VerifierSeatView } from \"../../mpd-verify-plugin/src/law.ts\"",
   "packages/mpd-roles-plugin/src/verify-guard.ts :: } from \"../../mpd-verify-plugin/src/law.ts\"",
   // mpd-ext -> mpd-roles: the roster table is read, never restated.

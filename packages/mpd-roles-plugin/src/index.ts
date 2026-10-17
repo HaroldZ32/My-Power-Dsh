@@ -5,8 +5,8 @@
 // the official Agent Teams `spawn_teammate` takes it as the teammate's prompt), and
 // the mpdRoles service (mpd-modelchain chain lookup). Team mode is the OFFICIAL Agent
 // Teams plugin (`spawn_teammate` + `team_task_create`), which THIS row feeds: it
-// registers the read-only tool guard, the agent-scoped roster section and the advisory
-// session-start gate.
+// registers the read-only tool guard, the agent-scoped roster section, the
+// `ask_user_question` boundary guard and the OPT-IN session-start gate.
 // ADDRESSING CONTRACT: a role is addressed by its normal display NAME — the member
 // name in team mode, the label of a one-shot mpd_role_spawn, and what every
 // description/render lists. The stable `id` is an INTERNAL key (modelchain chain key,
@@ -21,15 +21,11 @@ import { existsSync, readFileSync } from "node:fs"
 import { join, resolve } from "node:path"
 import { ROLES, ROLE_BY_ID, type MpdRoleSpec } from "./roles.data.ts"
 import { installReadonlyGuard } from "./team-guard.ts"
-import { installVerifyGuard, type VerifyLawAccess } from "./verify-guard.ts"
-import { INVESTIGATION_CONFIG_KEY, installCaptainInvestigationGuard } from "./captain-investigation.ts"
 import { installAskUserQuestionGuard } from "./ask-user-guard.ts"
-import { DELEGATION_CONFIG_KEY, installDelegationGate } from "./delegation-gate.ts"
-import { VERIFY_SERVICE } from "../../mpd-verify-plugin/src/service.ts"
 import { installRosterSection } from "./roster-section.ts"
 import { installSessionGate } from "./session-gate.ts"
 import { BOULDER_DIR_CONFIG_KEY, GATE_CONFIG_KEY } from "./complexity-gate.ts"
-import { rowLogLine, DSH_SEAM_SUBAGENTS, DSH_SEAM_TOOLS, bundleRootOf, createLazyDshAdapter, dshAdapterIdentity, dshSeamInject, restrictToolsTolerant, textBlock, withSupportedEffort, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { rowLogLine, DSH_SEAM_SUBAGENTS, DSH_SEAM_TOOLS, bundleRootOf, createLazyDshAdapter, dshAdapterIdentity, dshSeamInject, installChildPersonaSeam, restrictToolsTolerant, textBlock, withSupportedEffort, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /** The cordis plugin name, matched against this row's id in the bundle patch. */
 export const name = "mpd-roles"
@@ -39,13 +35,12 @@ export const inject = dshSeamInject(DSH_SEAM_TOOLS, DSH_SEAM_SUBAGENTS)
 /** The slice of a cordis context this row uses: the two seams, the `mpdRoles` provision and a logger. */
 type Ctx = { tools: any; subagents: any; provide: (n: string, v: any, check?: any) => void; get?: (k: string, strict?: boolean) => any; [k: string]: any }
 /**
- * The row config: the persona directory plus the four keys this row reads itself.
+ * The row config: the persona directory plus the two keys this row reads itself.
  *
- * `team.gate` (mechanical | advisory | off), `boulder.dir`, `captain.investigation`
- * (deny | allow) and `delegation.gate` (deny | captain | allow) mirror their `.mpd/mpd.jsonc`
+ * `team.gate` (off | advisory | mechanical) and `boulder.dir` mirror their `.mpd/mpd.jsonc`
  * spellings, so a composition without the config row mounted can still pin them in the patch.
  */
-type Config = { personasDir?: string; team?: { gate?: unknown }; boulder?: { dir?: unknown }; captain?: { investigation?: unknown }; delegation?: { gate?: unknown } }
+type Config = { personasDir?: string; team?: { gate?: unknown }; boulder?: { dir?: unknown } }
 
 // Every entry must be a tool this profile actually registers: the harness
 // validates the WHOLE deny list at spawn time and rejects the child when any
@@ -66,6 +61,23 @@ export const READONLY_DENY = [
   "mcp__lsp__rename_symbol",
   "mcp__lsp__rename_symbol_strict",
 ]
+
+/**
+ * Why a withdrawn guard reports `absent` on the team-plane boot line, naming the knob that used to
+ * switch it.
+ *
+ * It is a REASON, never a mode: the captain-investigation guard, the delegation gate and the
+ * verification law's write guard were installed HERE on 2026-10-10/11 and are withdrawn by the user's
+ * 2026-10-17 ruling (`.mpd/plans/harness-021-rollback.md`, requirement R1) — the top-level agent holds
+ * its whole tool pack directly and is steered by its persona prompt. A removed install must never print
+ * a token a reader could mistake for an enforced one, hence `absent` plus this sentence and the knob.
+ *
+ * @param knob - the config key that used to select the withdrawn guard's mode.
+ * @returns the boot-line reason spelling.
+ */
+function withdrawnReason(knob: string): string {
+  return "withdrawn:2026-10-17-user-ruling(" + knob + ")"
+}
 
 /** Output schema of a one-shot specialist's structured report, so the tool result is validated. */
 const REPORT_SCHEMA = {
@@ -637,6 +649,30 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   /** Every name this surface answers to — what an unknown-role error lists. */
   const roleNameListOf = (surface: RoleSurface): string => surface.roles.map((role) => role.name).join(", ")
 
+  // ── the child's persona and read-only discipline (harness 0.2.1-rc.2) ──────────────────────
+  //
+  // 0.2.1-rc.2 REMOVED `persona` and `toolFilter` from the subagent start request, so
+  // `spawnAgent` could deliver neither: a child raised by `mpd_role_spawn` lost its role framing
+  // and a read-only member lost its write denial. `installChildPersonaSeam` restores both on the CHILD's
+  // OWN scoped context from an `agent/created` listener — the window the harness itself guarantees,
+  // because publication (and with it the dispatch) precedes the child's first prompt.
+  installChildPersonaSeam(dsh, {
+    // Resolved through the SAME surface `mpd_role_persona` uses, so a base member and an
+    // extension-contributed role are handled by one path (personas are small files, and subagent
+    // creation is not a hot loop).
+    resolve: (label) => {
+      /** The roster member this child label names, or null for any other child. */
+      const spec = roleOf(roleSurface(undefined), label)
+      return spec === null ? null : { persona: spec.persona, readonly: spec.readonly }
+    },
+    // The read-only deny is validated against the CHILD's scope — the surface it truly filters.
+    restrictReadonly: (agent) => { validatedReadonlyDeny(agent) },
+    warn: (line) => warnOnce("child-persona:" + line, line),
+    // Guarded: the event bus is optional, and a row must never lose its boot over a listener it
+    // cannot attach (a mounted-adapter double may expose none of the two seams).
+    onEvent: typeof dsh.onEvent === "function" ? dsh.onEvent : undefined,
+  })
+
   ctx.provide("mpdRoles", {
     /** Which adapter branch THIS read reaches — read at surface time, never cached at apply (T-50). */
     adapterIdentity: dshAdapterIdentity(ctx),
@@ -735,12 +771,16 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   // contracts: the roster's mechanical read-only discipline (the shipped profile carried
   // each read-only member's toolDeny) and the session-start complexity gate. Both are
   // restored HERE, on the OFFICIAL plugin's seams, reached only through the adapter:
-  //   1. a tool guard over the SAME seven names the one-shot path denies;
+  //   1. a tool guard over the SAME eight names the one-shot path denies;
   //   2. an AGENT-SCOPED roster section, so an mpd Lead knows the members it can stage;
-  //   3. the session-start complexity gate, which since 2026-10-07 is MECHANICAL by default: a
-  //      triggered session stages an APPROVABLE PLAN SHELL (0 members, 0 tasks) through the
-  //      `agent_teams_plan` tool — never a team, never a spawned member.
-  // Each installer degrades with a warning instead of taking the row down.
+  //   3. the session-start complexity gate, which is OPT-IN since the 2026-10-17 rollback: only an
+  //      explicit `team.gate` arms it, and a triggered session stages an APPROVABLE PLAN SHELL
+  //      (0 members, 0 tasks) through the `agent_teams_plan` tool — never a team, never a member.
+  // A THIRD contract used to be installed here — the 2026-10-10/11 ceremony of a reconnaissance ban, a
+  // spawn-tool ban and a mandatory A-writes/B-verifies seat for the top-level agent. The user withdrew it
+  // (`.mpd/plans/harness-021-rollback.md` R1): those three guards are NOT installed any more, and the
+  // boot line reports each of them as `absent` with {@link GUARD_WITHDRAWN_REASON}.
+  // Each remaining installer degrades with a warning instead of taking the row down.
   const teamMembers = (): Array<{ name: string; description: string; readonly: boolean }> => ROLES.map((role) => ({ name: role.name, description: role.description, readonly: role.readonly }))
   /**
    * ONE team-plane config value for ONE key, resolved PER CALL and never cached.
@@ -771,13 +811,11 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     if (value !== undefined) return value
     if (key === GATE_CONFIG_KEY) return config.team?.gate
     if (key === BOULDER_DIR_CONFIG_KEY) return config.boulder?.dir
-    if (key === INVESTIGATION_CONFIG_KEY) return config.captain?.investigation
-    if (key === DELEGATION_CONFIG_KEY) return config.delegation?.gate
     return undefined
   }
-  // The TEAM PLANE's boot signature: ONE line naming the three restored contracts and their
-  // outcome, so an integration boot asserts the guard reached the tool registry (a
-  // `[mpd-roles] team plane: readOnlyGuard=installed deny=7 …` line) instead of trusting the
+  // The TEAM PLANE's boot signature: ONE line naming every installed contract and its outcome, so an
+  // integration boot asserts the guard reached the tool registry (a
+  // `[mpd-roles] team plane: readOnlyGuard=installed deny=8 …` line) instead of trusting the
   // absence of an error. The roster section logs its OWN line per agent scope when it lands.
   const guardOutcome: string[] = []
   try {
@@ -794,51 +832,19 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     guardOutcome.push("readOnlyGuard=absent reason=threw")
     warnOnce("team-guard:threw", "the team-path read-only guard could not be installed (" + errText(error) + ")")
   }
-  // THE VERIFICATION LAW'S GUARD, installed at this same site: one extra `guardTool` install, decided by
-  // the pure functions of `mpd-verify-plugin/src/law.ts` and reading its state from the `mpdVerify`
-  // SERVICE per call — so the state belongs to the one verify row even though the hook lives here.
-  try {
-    /** The verify row's runtime, resolved PER CALL: `mpd-verify` applies after this row. */
-    const lawAccess = (): VerifyLawAccess | undefined => {
-      try { return (ctx.get?.(VERIFY_SERVICE, false) ?? undefined) as VerifyLawAccess | undefined } catch { return undefined }
-    }
-    /** The guard's install outcome, reported on the team-plane boot signature below. */
-    const verifyGuard = installVerifyGuard(dsh, {
-      // NO PRESET KNOB HERE: the scope is decided per call inside the guard from the session header, not
-      // configured at install. Rule 1 (the write rule) is scoped to the `mpd` preset through
-      // `sessionIsMpdCaptain`; rule 3 (the one git writer) stays keyed on `sessionIsTopLevel` alone, so
-      // it follows the USER's preset too. The parent-session half of T-92 remains FIXED either way: a
-      // seeded fork whose depth the harness never recorded is the captain, not a child (F0, 2026-10-10).
-      law: lawAccess,
-      workspaceRootOf: (exec) => dsh.workspaceRoot(exec),
-      configValue,
-      warn: (line) => warnOnce("verify-guard:" + line, line),
-    })
-    guardOutcome.push(verifyGuard.installed ? "verifyGate=installed" : "verifyGate=absent reason=" + String(verifyGuard.reason))
-  } catch (error) {
-    guardOutcome.push("verifyGate=absent reason=threw")
-    warnOnce("verify-guard:threw", "the verification law's write guard could not be installed (" + errText(error) + ")")
-  }
-  // THE CAPTAIN INVESTIGATION GUARD, installed at this same site: the `mpd` preset's TOP-LEVEL session
-  // DELEGATES reconnaissance (finding files, reading source, grepping for symbols) instead of spending
-  // its own context on it. It is its OWN registration, so `captain.investigation` is the only switch and
-  // a `verify.mode` change cannot silently alter it. Read-only specialists, members, one-shot spawns and
-  // verifier seats are untouched, and so is any session running ANOTHER preset: the rule is scoped by
-  // `sessionIsMpdCaptain` — §5's top-level predicate AND the `mpd` preset.
-  try {
-    /** The guard's install outcome, whose MODE the team-plane boot signature reports below. */
-    const investigation = installCaptainInvestigationGuard(dsh, {
-      workspaceRootOf: (exec) => dsh.workspaceRoot(exec),
-      configValue,
-      warn: (line) => warnOnce("captain-investigation:" + line, line),
-    })
-    guardOutcome.push(investigation.installed
-      ? "captainInvestigation=" + investigation.mode
-      : "captainInvestigation=absent reason=" + String(investigation.reason))
-  } catch (error) {
-    guardOutcome.push("captainInvestigation=absent reason=threw")
-    warnOnce("captain-investigation:threw", "the captain investigation guard could not be installed (" + errText(error) + ")")
-  }
+  // THE THREE MECHANICAL GUARDS ARE WITHDRAWN — NOT INSTALLED, and reported as such. They used to be
+  // installed at this site: the verification law's write guard (an A-writes/B-verifies seat on the
+  // top-level agent), the captain investigation guard (reconnaissance delegated, `read`/`grep`/`glob`
+  // refused on source paths) and the delegation gate (bare `subagent`/`subagent_fork`/`workflow`
+  // refused). The user's 2026-10-17 ruling withdrew all three: the top-level agent holds its whole tool
+  // pack DIRECTLY and is steered by the persona prompt, not by hooks. The tokens stay on the boot line
+  // so a mount lane can still SEE the state of each capability — and each says `absent` plus the reason,
+  // never a mode: printing a mode for an install that does not run is the one thing this line must not do.
+  guardOutcome.push(
+    "verifyGate=absent reason=" + withdrawnReason("verify.mode"),
+    "captainInvestigation=absent reason=" + withdrawnReason("captain.investigation"),
+    "delegationGate=absent reason=" + withdrawnReason("delegation.gate"),
+  )
   // THE ask_user_question BOUNDARY GUARD, installed at this same site: the HOST tool's schema marks
   // `options` OPTIONAL per question, so a SCHEMA-LEGAL but semantically broken call (a question item with
   // no `question`, a mis-keyed option list) reaches the TUI's question panel and renders as a card with
@@ -857,25 +863,6 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   } catch (error) {
     guardOutcome.push("askUserQuestion=absent reason=threw")
     warnOnce("ask-user-guard:threw", "the ask_user_question boundary guard could not be installed (" + errText(error) + ")")
-  }
-  // THE DELEGATION GATE, installed at this same site: the harness's generic spawn tools (`subagent`,
-  // `subagent_fork`, `workflow`) are NOT this bundle's delegation path — §5 rule 2 names
-  // `mpd_role_spawn`, the workmate library and Agent Teams — so a call to one of them is refused for
-  // every session `delegation.gate` covers (default `deny`: the captain AND every member, because an
-  // escape hatch a member can still use is not a discipline). It is keyed on §5's PRESET-FREE session
-  // rank, so it holds whatever preset the profile assigned to the session.
-  try {
-    /** The gate's install outcome, whose MODE the team-plane boot signature reports below. */
-    const delegation = installDelegationGate(dsh, {
-      configValue,
-      warn: (line) => warnOnce("delegation-gate:" + line, line),
-    })
-    guardOutcome.push(delegation.installed
-      ? "delegationGate=" + delegation.mode
-      : "delegationGate=absent reason=" + String(delegation.reason))
-  } catch (error) {
-    guardOutcome.push("delegationGate=absent reason=threw")
-    warnOnce("delegation-gate:threw", "the delegation gate could not be installed (" + errText(error) + ")")
   }
   try {
     installRosterSection(dsh, {

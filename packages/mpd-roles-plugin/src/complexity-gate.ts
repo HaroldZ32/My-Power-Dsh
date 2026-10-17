@@ -25,9 +25,9 @@
 //            ({@link CJK_CHAR_MIN} Han characters) AND intent (>= {@link CJK_ACTION_VERB_MIN}
 //            distinct action verbs), both calibrated over the frozen corpus.
 //
-// What a TRIGGER does is resolved per call by the wiring: `team.gate` selects `mechanical` (the
-// default: stage an APPROVABLE SHELL through the `agent_teams_plan` tool), `advisory` (one notice,
-// stage nothing) or `off`.
+// What a TRIGGER does is resolved per call by the wiring: `team.gate` selects `off` (the default since the
+// 2026-10-17 rollback: the gate does nothing at all), `mechanical` (stage an APPROVABLE SHELL through the
+// `agent_teams_plan` tool) or `advisory` (one notice, stage nothing).
 import { readFile as readFileFs, readdir as readDirFs } from "node:fs/promises"
 import { join } from "node:path"
 
@@ -42,7 +42,7 @@ export const STARTUP_NOTICE_MARKER = "[AgentTeams] Session-start team rule"
  */
 export const HUMAN_SOURCE_KIND = "user"
 
-/** The three `team.gate` modes; the default is {@link GATE_MODE_MECHANICAL}. */
+/** The three `team.gate` modes; the default is {@link GATE_MODE_OFF} (opt-in since 2026-10-17). */
 export type GateMode = "mechanical" | "advisory" | "off"
 /** The `team.gate` mode that stages a plan shell through the `agent_teams_plan` tool. */
 export const GATE_MODE_MECHANICAL: GateMode = "mechanical"
@@ -409,18 +409,21 @@ export async function readLeadingTeam(
 /**
  * Resolve the `team.gate` mode from one raw config value, PER CALL.
  *
- * `mechanical` is the DEFAULT and the FAIL-SAFE: an unknown string, a number, an object — anything
- * that is not the `advisory`/`off` vocabulary — reads `mechanical`, so a typo can never silently
- * disable the gate. Booleans are tolerated as the pre-#26 spelling (`true` -> mechanical,
- * `false` -> off) and `undefined` (the key is simply absent) takes the default.
+ * `off` is the DEFAULT since the 2026-10-17 rollback (`.mpd/plans/harness-021-rollback.md` R1): the gate
+ * runs only when a config layer EXPLICITLY asks for it, so the ceremony can never be armed by omission.
+ * The fail-safe direction follows the default — an absent key and every UNKNOWN value (`"bogus"`, `0`, an
+ * object) read `off` too, because a state the user did not ask for is not a safe state any more: staging a
+ * plan shell nobody requested is the surprising outcome, not skipping one. `"mechanical"` and the legacy
+ * `true` are the only ways to arm it; `"advisory"` and both spellings of off (`"off"`, `false`) are
+ * honoured as themselves.
  *
  * @param value - the raw value the config layer answered, of any type.
  * @returns the mode the gate must run in.
  */
 export function resolveGateMode(value: unknown): GateMode {
   if (value === GATE_MODE_ADVISORY) return GATE_MODE_ADVISORY
-  if (value === GATE_MODE_OFF || value === false) return GATE_MODE_OFF
-  return GATE_MODE_MECHANICAL
+  if (value === GATE_MODE_MECHANICAL || value === true) return GATE_MODE_MECHANICAL
+  return GATE_MODE_OFF
 }
 
 /** Every whitespace run collapsed to one space, with the ends trimmed. */
@@ -674,13 +677,13 @@ export type SessionRank = "captain" | "child" | "headerless"
  * WHY A PARENT LINK ALONE IS NOT CHILDHOOD (the seeded-fork repair, 2026-10-10): the user's real
  * working session is a SEEDED FORK — its header carries `parentSession`, `isSeeded: true` and
  * `delegationDepth: 0`, with NO `origin: "subagent"` — so the old "any parent session is a child"
- * test classified the CAPTAIN as a child and every captain-scoped rule (the write rule, the
- * investigation guard, the one-git-writer rule) silently stopped applying to it. A session is a
- * child IFF the harness RECORDED one of the two delegation facts: `origin === "subagent"` or
- * `delegationDepth >= 1`. Everything else — including a fork whose depth the harness never recorded
- * — is the captain, which is the CONSERVATIVE direction: captain rules apply, while the delegation
- * gate's default mode denies captains AND children alike, so only the investigation/write rules'
- * scope is widened.
+ * test classified the CAPTAIN as a child and every captain-scoped rule silently stopped applying to
+ * it. A session is a child IFF the harness RECORDED one of the two delegation facts:
+ * `origin === "subagent"` or `delegationDepth >= 1`. Everything else — including a fork whose depth
+ * the harness never recorded — is the captain, which is the CONSERVATIVE direction: a captain-scoped
+ * rule applies. (The three mechanical captain rules this classification used to feed — the write rule,
+ * the investigation guard and the delegation gate — were WITHDRAWN on 2026-10-17: their modules stay
+ * as reference implementations and the classification is still what the roster's own scoping needs.)
  *
  * A header that is absent still fails closed (`headerless`, never the captain), and a
  * `delegationDepth` that is not a number is not ">= 1", so an unreadable depth reads as the captain
@@ -721,14 +724,19 @@ export const MPD_CAPTAIN_PRESET = "mpd"
  * Whether one agent's session is the CAPTAIN OF THE `mpd` PRESET — the top-level session (§5), AND a
  * session whose `agentPreset` really is {@link MPD_CAPTAIN_PRESET}.
  *
- * WHY THIS EXISTS, and why it is not {@link sessionIsTopLevel}. The captain's BEHAVIOURAL rules — the
+ * WHY THIS EXISTS, and why it is not {@link sessionIsTopLevel}. The captain's PRESET-SCOPED rules — the
  * verification law's write rule (`./verify-guard.ts`) and the reconnaissance rule
- * (`./captain-investigation.ts`) — are part of what the `mpd` preset MEANS. Both install through the
+ * (`./captain-investigation.ts`) — were part of what the `mpd` preset MEANT. Both installed through the
  * ONE process-wide `tools.guard` seam, so a bare {@link sessionIsTopLevel} test made them bite EVERY
  * top-level session of the deployment, whatever preset it was running: a user working in the DEFAULT
  * preset (`cordis`) was refused its own code writes and its own reconnaissance by a captain contract
- * that preset never asked for. This predicate scopes those two rules back to the preset that owns
- * them.
+ * that preset never asked for. This predicate scoped those two rules back to the preset that owns them.
+ *
+ * STILL SHIPPED, NO LONGER INSTALLED: both of those guards were WITHDRAWN from the apply() site by the
+ * user's 2026-10-17 ruling (`.mpd/plans/harness-021-rollback.md` R1), so the row no longer installs
+ * them and this predicate now scopes nothing live. It stays — with its modules and their unit arms — as
+ * the reference classification a future preset-scoped rule would need, and because removing a stable
+ * exported predicate is a wider change than this wave's rollback.
  *
  * DIRECTION OF THE PRESET TEST: the gate opens ONLY on the exact preset name. A session with no
  * `agentPreset` at all is therefore NOT gated. That is deliberate and is the OPPOSITE of
@@ -738,7 +746,8 @@ export const MPD_CAPTAIN_PRESET = "mpd"
  * boots assert `agentPreset=mpd` on the row's boot line.
  *
  * NOT FOR §5's ONE-GIT-WRITER RULE: that rule protects the single `.git/HEAD` of a shared checkout, so
- * it stays keyed on {@link sessionIsTopLevel} alone and follows whichever preset the user runs.
+ * while it was mechanical it was keyed on {@link sessionIsTopLevel} alone and followed whichever preset
+ * the user ran. It is prose now — the withdrawal removed its hook together with the write rule.
  *
  * @param agent - the live agent handle whose session header is classified.
  * @returns whether this session is the top-level session of the `mpd` preset.

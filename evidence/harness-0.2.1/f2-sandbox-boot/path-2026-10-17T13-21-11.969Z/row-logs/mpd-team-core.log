@@ -1,0 +1,5 @@
+[2026-10-17T13:21:15.963Z] [mpd-team-core] team workflow plane: staged=0 hold=none registrations=7 (6 tools + the /agent-teams command)
+[2026-10-17T13:21:15.964Z] [mpd-team-core] team executor: native (native UNAVAILABLE: the harness subagents service exposes no startContinuable(), and no team service is mounted either — every team call will refuse)
+[2026-10-17T13:21:16.073Z] [mpd-team-core] team executor: native (native: the default backend — it needs nothing from the official plugin)
+[2026-10-17T13:21:28.377Z] [mpd-team-core] team executor: native (native UNAVAILABLE: the harness subagents service exposes no startContinuable(), and no team service is mounted either — every team call will refuse)
+[2026-10-17T13:21:28.388Z] [mpd-team-core] team executor: native (native UNAVAILABLE: the harness subagents service exposes no startContinuable(), and no team service is mounted either — every team call will refuse)

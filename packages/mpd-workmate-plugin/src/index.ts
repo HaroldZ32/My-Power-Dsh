@@ -14,7 +14,7 @@
 import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs"
 import { homedir, userInfo } from "node:os"
 import { join, resolve, sep } from "node:path"
-import { DSH_SEAM_SUBAGENTS, DSH_SEAM_TOOLS, dshSeamInject, restrictToolsTolerant, rowLogLine, withSupportedEffort, workspaceRootOf, type DshAdapter, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { DSH_SEAM_SUBAGENTS, DSH_SEAM_TOOLS, dshSeamInject, installChildPersonaSeam, restrictToolsTolerant, rowLogLine, withSupportedEffort, workspaceRootOf, type DshAdapter, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /** The cordis plugin name, matched against this row's id in the bundle patch. */
 export const name = "mpd-workmate"
@@ -831,6 +831,37 @@ export function apply(ctx: Ctx): void {
       rowLogLine("mpd-workmate", "[mpd-workmate] " + line)
     } catch { /* logging must never take a spawn down */ }
   }
+
+  // ── the child's CURRENT persona and read-only discipline (harness 0.2.1-rc.2) ───────────────
+  //
+  // 0.2.1-rc.2 REMOVED `persona` and `toolFilter` from the subagent start request, so a workmate
+  // raised by `mpd_workmate_spawn` lost its persona — the very thing a workmate EVOLVES through
+  // `mpd_workmate_reflect` — and a READ-ONLY workmate lost its write denial. `installChildPersonaSeam`
+  // restores both on the CHILD's own scoped context from an `agent/created` listener, which is the
+  // window the harness itself guarantees (publication, and with it the dispatch, precedes the
+  // child's first prompt).
+  //
+  // THE PERSONA IS READ FROM DISK HERE, never frozen at apply time: a workmate that reflected
+  // between two spawns must spawn with the persona it has NOW. The child is identified by the label
+  // its own descriptor carries, which for a workmate is its library key.
+  installChildPersonaSeam(dsh, {
+    resolve: (label) => {
+      /** The library record this child label names, or null for any other child in this process. */
+      const meta = readMeta(wmDir(label))
+      if (meta === null) return null
+      // An empty `persona.md` means there is no text to contribute; the section is skipped rather
+      // than registered empty, but the READ-ONLY half still applies from the record.
+      /** The workmate's current persona text. */
+      const persona = readPersona(label)
+      return { persona, readonly: meta.readonly }
+    },
+    // The read-only deny is validated against the CHILD's scope — the surface it truly filters.
+    restrictReadonly: (agent) => { validatedReadonlyDeny(agent) },
+    warn: (line) => reportPrunedNames(line),
+    // Guarded: the event bus is optional, and a row must never lose its boot over a listener it
+    // cannot attach (a mounted-adapter double may expose none of the two seams).
+    onEvent: typeof dsh.onEvent === "function" ? dsh.onEvent : undefined,
+  })
 
   /** Normalize a base KEY: case/space/hyphen insensitive, so "Deep Worker", "deep worker" and
    * "deep-worker" all name the same specialist. */

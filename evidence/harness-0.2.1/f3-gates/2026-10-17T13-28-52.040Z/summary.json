@@ -1,0 +1,21 @@
+{
+  "stamp": "2026-10-17T13-28-52.040Z",
+  "launcher": "/home/haroldzhao/.nvm/versions/node/v24.21.0/bin/dsh",
+  "launcherVersion": "0.2.0-rc.2",
+  "rows": [
+    {
+      "claim": "F1",
+      "slug": "verify-rows",
+      "exit": 0,
+      "durationMs": 121,
+      "decisiveLine": "[verify-rows-parity] ok: 35 row ids match the 2-file bundle patch layer (mcp-astgrep, mcp-codegraph, mcp-context7, mcp-git, mcp-grepapp, mcp-lsp, mcp-shell, mpd-agent-team, mpd-better-sidebar, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-goal, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-roster-provider, mpd-team-compact, mpd-team-core, mpd-team-watchdog, mpd-tool-agent-team, mpd-tools, mpd-tui, mpd-tui-adapter, mpd-ui-agent-team, mpd-ulw, mpd-verify, mpd-web-compat, mpd-workmate, preset-mpd)"
+    },
+    {
+      "claim": "F3",
+      "slug": "verify-no-host-override",
+      "exit": 0,
+      "durationMs": 82,
+      "decisiveLine": ""
+    }
+  ]
+}

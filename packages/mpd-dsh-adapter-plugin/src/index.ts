@@ -5,8 +5,9 @@
 //
 // Wrapped seams (each feature-detected, never assumed):
 //   tools.register / tools.guard / tools.get / tools.execute / tools/pre-execute / tools/post-execute
-//   subagents.start (spawn)                       -> spawnAgent
-//   subagents.getProvider / list / registerProvider / startContinuable / interrupt
+//   subagents.startActivation (0.2.1+) |
+//   subagents.start (retired)                     -> spawnAgent / startContinuableAgent
+//   subagents.getProvider / list / registerProvider / interrupt
 //   agentTeams.* (the official team service)       -> teamService / teamMembership /
 //                                                     teamListMembers / teamListTasks / teamCreateTask /
 //                                                     teamGetTask / teamUpdateTask / teamSendMessage /
@@ -318,9 +319,27 @@ export interface DshSpawnSpec {
   model?: string
   /** Harness-shaped route object; its keys are merged after the flat ones. */
   agentOptions?: { provider?: string; model?: string; reasoningEffort?: string }
-  /** Persona text the host injects into the child's system prompt. */
+  /**
+   * Independent preset id for the child, on a harness that still offers preset selection.
+   *
+   * Requires the provider to advertise `agentPreset`; the in-process spawn provider does.
+   */
+  agentPreset?: string
+  /**
+   * Persona text for the child's system prompt — RETIRED harness generation only.
+   *
+   * Harness 0.2.1-rc.2 dropped `persona` from the start request, so it is forwarded on the
+   * `start()` arm alone. On the `startActivation()` arm it is NOT forwarded and the adapter logs
+   * that ONCE per process rather than dropping it silently: a persona there belongs to the
+   * selected preset's composition.
+   */
   persona?: string
-  /** Tool filter forwarded verbatim; the host validates every name in it. */
+  /**
+   * Tool filter forwarded verbatim — RETIRED harness generation only.
+   *
+   * Like {@link DshSpawnSpec.persona}, 0.2.1-rc.2 removed it from the start request: the
+   * `startActivation()` arm does not forward it and logs the omission once.
+   */
   toolFilter?: unknown
   /** Maximum nesting depth the child may spawn down to. */
   maxDepth?: number
@@ -504,7 +523,8 @@ export interface DshTeamSpawnTeammateResult {
 // and the more the official plane creeps back into being the system of record.
 //
 // The two implementations, and what each one buys:
-//   `native`   — `ctx.subagents.startContinuable` + `sendMessage` + `interrupt`, with the
+//   `native`   — the harness durable-child start (`startActivation` on 0.2.1+, the retired
+//                `startContinuable` below it) + `sendMessage` + `interrupt`, with the
 //                provider and the per-member `agentOptions` chosen BY THE CALLER. That is
 //                the whole point: a teammate's model route stops depending on the
 //                official tool row's `freshProvider` config, the read-only deny list and
@@ -842,7 +862,13 @@ export interface DshCapabilities {
    * own message instead of a `TypeError`).
    */
   subagentsProvider: boolean
-  /** `ctx.subagents.startContinuable` — the durable continuable-child seam. */
+  /**
+   * `ctx.subagents` can raise a durable child on THIS harness generation.
+   *
+   * True when the service exposes `startActivation` (harness 0.2.1+) or the retired
+   * `startContinuable`; `teamExecutor().reason` names WHICH member was bound, so a future
+   * rename is one boot line away from diagnosis.
+   */
   subagentsContinuable: boolean
   /**
    * The NATIVE team executor is the active backend for `teamExecutor()`.
@@ -1625,8 +1651,9 @@ export interface DshAdapter {
    */
   subagentProviders(): string[]
   /**
-   * Establish a durable continuable child (`subagents.startContinuable(spec)`),
-   * receiver-bound, the service's own promise forwarded untouched.
+   * Establish a durable continuable child — `subagents.startActivation(spec)` on harness
+   * 0.2.1+, the retired `subagents.startContinuable(spec)` on an older host — receiver-bound,
+   * the service's own promise forwarded untouched.
    *
    * Degrade: THROWS synchronously — a member that cannot be spawned must be loud, and
    * a synchronous throw keeps parity with the raw expression a caller would run.
@@ -1879,6 +1906,46 @@ export interface DshAdapter {
    * @returns the registry's effect disposer (a no-op when it returned none).
    */
   agentPromptSection(agent: unknown, section: DshPromptSection): () => void
+  /**
+   * The durable delegation LABEL of one subagent session, or `undefined` when it carries none.
+   *
+   * WHY THIS SEAM EXISTS. Harness 0.2.1-rc.2 removed `persona` / `toolFilter` from the subagent
+   * start request, so a composition that still wants them must apply them to the CHILD's own
+   * scoped context. An `agent/created` listener can only do that if it can tell WHICH child it
+   * was handed, and the label the spawn recorded is the identity the child carries itself — a
+   * plugin-side map would let two concurrent spawns cross personas.
+   *
+   * The descriptor is appended by the agent factory's `setup` callback, which the harness AWAITS
+   * before publishing the agent, and the projection folds lazily over the in-memory log, so the
+   * label is readable at `agent/created` time — the one window a one-shot child's only turn
+   * needs. The shipped identity is FLAT (`{mode, label?, seq}`), with no wrapper object, and the
+   * label is OPTIONAL on the one-shot arm.
+   *
+   * Degrade: `undefined` — never a throw — because this answers "is this child mine?" inside a
+   * listener whose failure would fail the whole spawn.
+   */
+  subagentLabelOf(agent: unknown): string | undefined
+  /**
+   * Contribute the DEPLOYMENT PERSONA slot to one agent's own system prompt.
+   *
+   * This is the slot harness 0.2.0 filled internally from a spawn request's `persona`, and the
+   * name is the host's own exported `PERSONA_PREFIX_SECTION` (`"deployment:persona-prefix"`) at
+   * `SECTION_ORDERS.DEPLOYMENT_PERSONA_PREFIX` (order 0). Naming the SAME slot is what lets a
+   * composition REPLACE the deployment persona rather than duplicate it — a second section under
+   * a name of our own would append beside the host's instead.
+   *
+   * `interpolate: false` is load-bearing, not cosmetic: interpolation defaults ON and an unknown
+   * `{{…}}` reference throws on EVERY assembly, which would break the child's very first step
+   * because a persona is prose that may legitimately contain braces.
+   *
+   * Degrade: THROWS when the agent exposes no scoped `systemPrompt.section` (a silently dropped
+   * persona is a WRONG prompt rather than a missing feature, and the caller reports it), and the
+   * per-scope duplicate-name rule still throws INSIDE the registry.
+   * @param agent - the child agent whose own prompt receives the section.
+   * @param text - the persona prose, registered literally.
+   * @returns the registry's effect disposer (a no-op when it returned none).
+   */
+  applyPersonaSection(agent: unknown, text: string): () => void
   /**
    * Start an agent's next turn: `agent.followup(message)`, receiver-bound, forwarded
    * THROWING.
@@ -2141,6 +2208,86 @@ export function restrictToolsTolerant(restrict: RestrictAttempt, names: readonly
       candidate = next
     }
   }
+}
+
+/** What installing the child-persona seam needs: the lookup, the read-only applier, the reporter. */
+export interface ChildPersonaSeamOptions {
+  /** The identity one child LABEL names, or `null` for any other child in this process. */
+  resolve: (label: string) => { persona: string; readonly: boolean } | null
+  /** Apply the read-only deny list to the CHILD's scope (the surface it actually filters). */
+  restrictReadonly: (agent: unknown) => void
+  /** One-line reporter for a degradation; the seam itself never throws. */
+  warn: (line: string) => void
+  /** `on`-style subscription; a test drives {@link ChildPersonaSeam.handle} directly instead. */
+  onEvent?: (event: string, handler: (...args: unknown[]) => unknown) => (() => void) | undefined
+}
+
+/** The install outcome: whether a subscription landed and the handler every event drives. */
+export interface ChildPersonaSeam {
+  /** True when the seam attached to the event bus; false when the bus was absent. */
+  installed: boolean
+  /**
+   * Apply one child's persona (and read-only discipline) to its OWN scope.
+   * @param payload - the `agent/created` payload, or the agent itself.
+   */
+  handle: (payload: unknown) => void
+}
+
+/**
+ * Restore, for a SPAWNED child, the `persona` and `toolFilter` capabilities that harness
+ * 0.2.1-rc.2 removed from the subagent start request.
+ *
+ * The child is identified by the label its OWN descriptor carries, never by a map kept beside the
+ * spawn, so two concurrent spawns cannot cross personas. The section is contributed on the child's
+ * own scoped prompt through {@link DshAdapter.applyPersonaSection}, and the read-only half rides
+ * the same listener because 0.2.1 dropped both fields together.
+ *
+ * WHY `agent/created` IS THE RIGHT WINDOW (measured on the 0.2.1 code): `agents.create` runs the
+ * factory's `setup` callback — which appends the child's `subagent/descriptor` — and only THEN
+ * publishes the agent; publication is what dispatches `agent/created` through `serial()`, which
+ * the harness AWAITS. Only after that does the subagent manager submit the child's first prompt,
+ * and `SystemPrompt.assemble()` re-reads the scope chain on every pre-step. A section registered
+ * synchronously here is therefore present for a one-shot child's only turn.
+ *
+ * Never throws: a child that cannot take the section is REPORTED, because a throw inside
+ * `agent/created` fails the whole spawn and a missing persona must not cost the spawn.
+ * @param dsh - the two adapter seams this needs.
+ * @param options - the identity lookup, the read-only applier and the reporter.
+ * @returns the outcome, including the handler for tests.
+ */
+export function installChildPersonaSeam(
+  dsh: Pick<DshAdapter, "subagentLabelOf" | "applyPersonaSection">,
+  options: ChildPersonaSeamOptions,
+): ChildPersonaSeam {
+  /**
+   * Apply one child's persona and read-only discipline.
+   * @param payload - the `agent/created` payload, or the agent itself.
+   */
+  const handle = (payload: unknown): void => {
+    /** The agent the payload carries; a build that hands the agent itself still works. */
+    const agent = (payload as { agent?: unknown } | undefined)?.agent ?? payload
+    try {
+      /** The child's own delegation label; absent for a child this composition did not raise. */
+      const label = dsh.subagentLabelOf(agent)
+      if (label === undefined) return
+      /** The identity that label names, or null for any other child in this process. */
+      const member = options.resolve(label)
+      if (member === null) return
+      // The slot 0.2.0 filled internally from the request's `persona`: the adapter names it and
+      // passes `interpolate: false`, because interpolation defaults ON and an unknown `{{…}}`
+      // reference throws on every assembly — which would break the child's very first step.
+      dsh.applyPersonaSection(agent, member.persona)
+      // The read-only half belongs in the SAME listener: 0.2.1 dropped `persona` and `toolFilter`
+      // together, so the retired `applyChildOverrides` did both here.
+      if (member.readonly) options.restrictReadonly(agent)
+    } catch (error) {
+      // A throw here FAILS THE SPAWN (the harness awaits this serial dispatch), so it is reported.
+      options.warn("a spawned child did not receive its persona: " + String((error as Error)?.message ?? error))
+    }
+  }
+  /** The subscription disposer, when one was attached. */
+  const dispose = options.onEvent?.("agent/created", (payload: unknown) => handle(payload))
+  return { installed: dispose !== undefined, handle }
 }
 
 /**
@@ -2431,6 +2578,126 @@ function agentSystemPromptOf(agent: unknown): any {
   }
 }
 
+/**
+ * Register one section on ONE agent's own scoped prompt registry.
+ *
+ * Shared by {@link DshAdapter.agentPromptSection} and {@link DshAdapter.applyPersonaSection} so
+ * the throw-on-missing-seam rule and the "a non-callable answer degrades" rule live in ONE place,
+ * and so neither method depends on `this` (a destructured seam must keep working).
+ * @param agent - the agent whose scoped prompt receives the section.
+ * @param section - the section, forwarded VERBATIM to the registry.
+ * @returns the registry's effect disposer (a no-op when it returned none).
+ * @throws when the agent (or its scoped context) exposes no `systemPrompt.section`.
+ */
+function registerAgentSection(agent: unknown, section: DshPromptSection): () => void {
+  /** The agent's own prompt registry. */
+  const systemPrompt = agentSystemPromptOf(agent)
+  if (systemPrompt === undefined) {
+    throw new Error("mpd-dsh-adapter: the agent's own scope exposes no systemPrompt.section() — cannot register prompt section \"" + String(section?.name) + "\" for it")
+  }
+  // VERBATIM section, receiver-bound. A duplicate name throws INSIDE the registry (per scope) and
+  // is deliberately not swallowed; only a non-callable answer degrades to a no-op disposer.
+  const registered = systemPrompt.section(section)
+  return typeof registered === "function" ? registered : noop
+}
+
+// ── the durable-child seam, across harness generations ──────────────────────
+//
+// Harness 0.2.1-rc.2 REMOVED `SubagentRuntime.startContinuable()` and `.start()`. A durable child
+// is now raised through `startActivation(spec)`, which differs in two ways that matter here:
+// `delivery` is a REQUIRED field, and `childId` is an OPTIONAL pre-reservation (the continuation
+// manager mints one when it is absent, and returns it on the activation). The retired members are
+// still reached when present, so one adapter boots either host; the probes below are the ONE place
+// that decides which generation is in front of it, so no call site can disagree with another.
+
+/** The members that can raise a durable child, NEWEST generation first. */
+const CONTINUABLE_START_MEMBERS = ["startActivation", "startContinuable"] as const
+
+/**
+ * Which durable-child member this `ctx.subagents` service exposes.
+ *
+ * Probed newest-first, so a 0.2.1 host never reports the retired member and the answer is also
+ * the diagnostic a boot line needs when a future harness renames the seam again.
+ * @param subagents - the subagent service, or `undefined` when the composition has none.
+ * @returns the member name to call, or `undefined` when this build can raise no durable child.
+ */
+function continuableStartMember(subagents: any): (typeof CONTINUABLE_START_MEMBERS)[number] | undefined {
+  for (const member of CONTINUABLE_START_MEMBERS) if (typeof subagents?.[member] === "function") return member
+  return undefined
+}
+
+/**
+ * Raise one durable child on whichever generation this host exposes.
+ *
+ * `startActivation` receives `delivery: "parent"` because 0.2.1 requires the field and this is
+ * what BOTH canonical callers in the harness pass for a model-visible child
+ * (`dsh-experimental-agent-team`'s teammate spawn and `dsh-tool-subagent`). The retired member
+ * never had that field, so it is handed the caller's spec untouched.
+ * @param subagents - the subagent service resolved for THIS call, never a cached one.
+ * @param spec - the activation spec minus `delivery`, which this function owns.
+ * @param action - the caller's own phrasing of what could not happen, used in the failure.
+ * @returns the service's own activation answer, unprojected by this adapter.
+ */
+async function startContinuableChild(subagents: any, spec: Record<string, unknown>, action: string): Promise<any> {
+  /** The member this host actually exports. */
+  const member = continuableStartMember(subagents)
+  if (member === undefined) {
+    throw new Error(`mpd-dsh-adapter: the harness subagents service exposes neither startActivation() nor startContinuable() — ${action}`)
+  }
+  /** The argument for that member: 0.2.1+ needs the delivery policy, the retired one rejects none of it. */
+  const argument = member === "startActivation" ? { ...spec, delivery: "parent" } : spec
+  return subagents[member].call(subagents, argument)
+}
+
+/**
+ * Retired start-request fields already reported, so the per-spawn warning is said ONCE per field
+ * per process instead of on every role spawn.
+ */
+const REPORTED_RETIRED_SPAWN_FIELDS = new Set<"persona" | "toolFilter">()
+
+/**
+ * Say OUT LOUD that a retired start-request field is being dropped on the 0.2.1 arm.
+ *
+ * 0.2.1-rc.2 removed `persona` and `toolFilter` from `SubagentStartRequest`, and in-repo callers
+ * still pass `persona` (`mpd-roles-plugin`, `mpd-workmate-plugin`). Dropping it silently would
+ * cost a roster member its persona with nobody noticing, which is the one failure mode this
+ * repository forbids; the spawn still proceeds, because refusing would cost the whole call.
+ * @param spec - the caller's spawn spec, inspected for the retired fields only.
+ */
+function warnRetiredSpawnFields(spec: DshSpawnSpec): void {
+  for (const field of ["persona", "toolFilter"] as const) {
+    if (spec[field] === undefined || REPORTED_RETIRED_SPAWN_FIELDS.has(field)) continue
+    REPORTED_RETIRED_SPAWN_FIELDS.add(field)
+    try {
+      rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: spawnAgent was given "${field}", which harness 0.2.1-rc.2 removed from the start request — it is NOT forwarded, so the child runs without it (the selected preset owns persona and tool composition now)`)
+    } catch {
+      // A missing log seam must never be the reason a spawn fails.
+    }
+  }
+}
+
+/**
+ * Project a subagent result's final output onto the plain string {@link DshSpawnResult} carries.
+ *
+ * 0.2.1 returns the child's assistant blocks (`SubagentResult.output: readonly ContentBlock[]`),
+ * while an older host returned the flattened string, so both shapes are accepted and only `text`
+ * blocks contribute — an image or reasoning block is not this field's contract.
+ * @param output - the runtime's own `result.output`, of either generation.
+ * @returns the child's final text, or the empty string when it produced none.
+ */
+function textOfOutput(output: unknown): string {
+  if (typeof output === "string") return output
+  if (!Array.isArray(output)) return ""
+  /** The text blocks, in the order the child produced them. */
+  const parts: string[] = []
+  for (const block of output) {
+    /** One content block, read defensively: a stub answer may carry anything. */
+    const candidate = block as { type?: unknown; text?: unknown } | undefined
+    if (candidate?.type === "text" && typeof candidate.text === "string") parts.push(candidate.text)
+  }
+  return parts.join("")
+}
+
 /** Build one adapter over a cordis ctx; every seam is probed lazily, so construction never throws. */
 export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number } = {}): DshAdapter {
   /** The row's configured `executeTool` timeout, or the module default. */
@@ -2698,7 +2965,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
   // Both registries below are created ONCE per adapter instance, not per call: the
   // `teamExecutor()` factory is re-entered on every call (so a late-ACTIVE service is picked
   // up), and a handle recorded by one call must still be resolvable by the next.
-  /** Native members, by the durable child session id `startContinuable` returned. */
+  /** Native members, by the durable child session id the durable-child seam returned. */
   const nativeMembers = new Map<string, { teamId: string; memberId: string; name: string; description: string }>()
   /** Official members, by handle, so an interrupt can name the member the way that backend wants. */
   const officialMembers = new Map<string, { teamId: string; memberId: string; name: string }>()
@@ -2718,9 +2985,9 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
    * chosen BY THE CALLER.
    *
    * This is the whole point of the split. The official tool row forwards only
-   * `{ prompt, parent }` to `startContinuable`, so a per-member route had to be smuggled in
-   * through row config (`freshProvider`) and a member's identity had to be encoded in its
-   * DESCRIPTION. Here the provider and `agentOptions` are ordinary arguments, which is what
+   * `{ prompt, parent }` to the harness durable-child start, so a per-member route had to be
+   * smuggled in through row config (`freshProvider`) and a member's identity had to be encoded in
+   * its DESCRIPTION. Here the provider and `agentOptions` are ordinary arguments, which is what
    * lets the roster's model slots, its persona and its read-only deny list apply to a
    * teammate directly — and what makes the path independent of the official plugin.
    * @param reason - why this backend is the active one, shown on a boot line and in a refusal.
@@ -2744,14 +3011,11 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
           return Array.isArray(names) ? names.filter((entry: unknown): entry is string => typeof entry === "string") : []
         } catch { return [] }
       },
-      /** Raise one member through `ctx.subagents.startContinuable`, with the caller's route. */
+      /** Raise one member through the harness's durable-child seam, with the caller's route. */
       async spawn(caller: unknown, request: DshTeamSpawnRequest): Promise<DshTeamSpawnResult> {
         if (!ready) throw new Error(`mpd-dsh-adapter: no team executor is available — ${reason}`)
         /** The subagents service, or a throw naming the action that could not happen. */
         const subagents = requireService("subagents", `cannot raise team member "${request.name}"`)
-        if (typeof subagents.startContinuable !== "function") {
-          throw new Error("mpd-dsh-adapter: the harness subagents service exposes no startContinuable() — cannot raise a team member")
-        }
         /** The continuable-start spec: the member's prompt, its parent, and its ROUTE. */
         const spec: Record<string, unknown> = {
           provider: typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn",
@@ -2764,7 +3028,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
           signal: request.signal ?? neverAborted(),
         }
         /** The manager's answer, whose `childId` is the durable handle a caller records. */
-        const started: any = await subagents.startContinuable.call(subagents, spec)
+        const started: any = await startContinuableChild(subagents, spec, `cannot raise team member "${request.name}"`)
         /** The durable child id, or the empty string when the manager reported none. */
         const handle = String(started?.childId ?? started?.id ?? "")
         // A start that resolved WITHOUT an id is a backend contradiction, and recording it would
@@ -3134,10 +3398,10 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         // The provider catalogue needs BOTH halves (getProvider + list): a caller that
         // reads this flag must never hit a half-present service.
         subagentsProvider: typeof subagents?.getProvider === "function" && typeof subagents?.list === "function",
-        subagentsContinuable: typeof subagents?.startContinuable === "function",
+        subagentsContinuable: continuableStartMember(subagents) !== undefined,
         // The same predicate `teamExecutor()` uses, so a caller that pre-flights cannot disagree
         // with the backend it is about to get.
-        teamExecutorNative: typeof subagents?.startContinuable === "function",
+        teamExecutorNative: continuableStartMember(subagents) !== undefined,
         subagentsInterrupt: typeof subagents?.interrupt === "function",
         llmListModels: typeof llmService?.listModels === "function",
         llmResolveCallConfig: typeof llmService?.resolveCallConfig === "function",
@@ -3554,19 +3818,59 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
     async spawnAgent(spec: DshSpawnSpec): Promise<DshSpawnResult> {
       /** The subagent service, or a THROW naming the child that could not be spawned. */
       const subagents = requireService("subagents", "cannot spawn subagent \"" + String(spec?.label) + "\"")
-      if (typeof subagents.start !== "function") throw new Error("mpd-dsh-adapter: the harness subagent service exposes no start()")
       /** The flat route merged with `agentOptions`, whose keys win on a collision. */
       const route = {
         ...(spec.provider === undefined ? {} : { provider: spec.provider }),
         ...(spec.model === undefined ? {} : { model: spec.model }),
         ...(spec.agentOptions ?? {}),
       }
+      /** The backend to run on; the in-process spawn provider is this bundle's normal one. */
+      const provider = spec.mode ?? "spawn"
+      /** The child's task as content blocks, the shape every generation of the seam takes. */
+      const prompt = typeof spec.prompt === "string" ? textBlock(spec.prompt) : spec.prompt
+      // 0.2.1-rc.2 removed `start(mode, request)` and made `signal` a REQUIRED spec field, so the
+      // caller's own cancellation is forwarded and an absent one becomes a never-aborting signal
+      // rather than a fabricated deadline this method never promised.
+      /** The spawn's cancellation channel. */
+      const signal = spec.signal ?? neverAborted()
+      if (typeof subagents.startActivation === "function") {
+        // The retired fields are not part of this release's request, so say so instead of dropping
+        // them in silence. This runs before the start so the notice precedes the child's own logs.
+        warnRetiredSpawnFields(spec)
+        /** The activation spec: backend, label, request, cancellation and the delivery policy. */
+        const activation: any = await subagents.startActivation.call(subagents, {
+          provider,
+          label: spec.label,
+          request: {
+            prompt,
+            parent: spec.parent,
+            ...(Object.keys(route).length === 0 ? {} : { agentOptions: route }),
+            ...(spec.agentPreset === undefined ? {} : { agentPreset: spec.agentPreset }),
+            ...(spec.outputSchema === undefined ? {} : { outputSchema: spec.outputSchema }),
+            ...(spec.maxDepth === undefined ? {} : { maxDepth: spec.maxDepth }),
+          },
+          signal,
+          // The host's own one-shot caller (`dsh-tool-subagent`) delivers to the parent, so this
+          // is the spelling this seam is given rather than one invented here.
+          delivery: "parent",
+        })
+        /** The settled result; a child FAILURE still resolves here, only teardown rejects. */
+        const settled = (await (activation?.result ?? {})) as { output?: unknown; structured?: unknown; stopReason?: unknown }
+        return {
+          output: textOfOutput(settled.output),
+          structured: settled.structured,
+          stopReason: typeof settled.stopReason === "string" ? settled.stopReason : null,
+        }
+      }
+      // The RETIRED generation: `start(mode, request)` returned a run whose `output` was already
+      // the flattened string. Kept reachable so this adapter still boots an older host.
+      if (typeof subagents.start !== "function") throw new Error("mpd-dsh-adapter: the harness subagent service exposes neither startActivation() nor start()")
       /** The host's run handle, whose `result` is awaited below. */
-      const run = await subagents.start(spec.mode ?? "spawn", {
+      const run = await subagents.start(provider, {
         label: spec.label,
-        prompt: typeof spec.prompt === "string" ? textBlock(spec.prompt) : spec.prompt,
+        prompt,
         ...(spec.parent === undefined ? {} : { parent: spec.parent }),
-        ...(spec.signal === undefined ? {} : { signal: spec.signal }),
+        signal,
         ...(Object.keys(route).length === 0 ? {} : { agentOptions: route }),
         ...(spec.persona === undefined ? {} : { persona: spec.persona }),
         ...(spec.outputSchema === undefined ? {} : { outputSchema: spec.outputSchema }),
@@ -3577,9 +3881,9 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
       // others; awaiting both keeps the normalized shape stable.
       const result = (await (run?.result ?? {})) as { output?: unknown; structured?: unknown; stopReason?: unknown }
       return {
-        output: typeof result.output === "string" ? result.output : "",
+        output: textOfOutput(result.output),
         structured: result.structured,
-        stopReason: (result.stopReason as string | null | undefined) ?? null,
+        stopReason: typeof result.stopReason === "string" ? result.stopReason : null,
       }
     },
 
@@ -3620,14 +3924,25 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
       return Array.isArray(names) ? names.filter((entry): entry is string => typeof entry === "string") : []
     },
 
-    /** Start a durable continuable child; THROWS synchronously when the seam is absent. */
+    /**
+     * Start a durable continuable child; THROWS synchronously when the seam is absent.
+     *
+     * Bound to `startActivation()` on harness 0.2.1+ and to the retired `startContinuable()` on an
+     * older host. On the newer generation the adapter SUPPLIES the `delivery: "parent"` field that
+     * release made mandatory — the one field the caller no longer has to know about.
+     */
     startContinuableAgent(spec: unknown): Promise<unknown> {
       // Synchronous THROW on a missing seam (parity with the raw expression a caller
-      // would run); the service's own promise is forwarded UNTOUCHED, so its rejections
-      // stay rejections for the caller.
+      // would run). The guard must stay AHEAD of the call: a rejected promise is a
+      // different contract from the synchronous throw this surface promises.
       const subagents = requireService("subagents", "cannot start a continuable agent")
-      if (typeof subagents.startContinuable !== "function") throw new Error("mpd-dsh-adapter: the harness subagents service exposes no startContinuable()")
-      return subagents.startContinuable.call(subagents, spec)
+      if (continuableStartMember(subagents) === undefined) {
+        throw new Error("mpd-dsh-adapter: the harness subagents service exposes neither startActivation() nor startContinuable()")
+      }
+      // The service's own promise is forwarded UNTOUCHED, so its rejections stay rejections for
+      // the caller. The frozen signature takes `unknown`; the seam's spec is an object, so the
+      // cast is where that narrowing happens and nowhere deeper.
+      return startContinuableChild(subagents, spec as Record<string, unknown>, "cannot start a continuable agent")
     },
 
     /** Register one subagent provider VERBATIM; THROWS when the seam is absent. */
@@ -3676,8 +3991,10 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
       // Read with the SAME expression `capabilities()` uses, rather than through it: the
       // capabilities object is built inside the adapter literal below, and this factory must
       // stay callable from every method without depending on construction order.
+      /** Whether the native path can raise a durable child at all, and WHICH member it will use. */
+      const nativeMember = continuableStartMember(service("subagents"))
       /** Whether the native path can raise a durable child at all. */
-      const nativeReady = typeof service("subagents")?.startContinuable === "function"
+      const nativeReady = nativeMember !== undefined
       /** Whether the official service is mounted. */
       const officialReady = service("agentTeams") !== undefined
       /** The chosen backend, honouring a valid override and falling through when it cannot serve. */
@@ -3689,8 +4006,10 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
       if (chosen === "official") return officialTeamExecutor()
       return nativeTeamExecutor(
         nativeReady
-          ? (override === undefined ? "native: the default backend — it needs nothing from the official plugin" : "native: chosen by MPD_DSH_TEAM_EXECUTOR=native")
-          : "native UNAVAILABLE: the harness subagents service exposes no startContinuable(), and no team service is mounted either — every team call will refuse",
+          ? (override === undefined
+            ? `native: the default backend — bound ${String(nativeMember)}() on the harness subagent seam, and it needs nothing from the official plugin`
+            : `native: chosen by MPD_DSH_TEAM_EXECUTOR=native, bound ${String(nativeMember)}() on the harness subagent seam`)
+          : "native UNAVAILABLE: the harness subagents service exposes neither startActivation() nor startContinuable(), and no team service is mounted either — every team call will refuse",
         nativeReady,
       )
     },
@@ -4120,14 +4439,41 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
     agentPromptSection(agent: unknown, section: DshPromptSection): () => void {
       // THROW, not a no-op: a section that silently vanished leaves the Lead with a
       // prompt that promises nothing — the same reasoning as `registerPromptSection`.
-      const systemPrompt = agentSystemPromptOf(agent)
-      if (systemPrompt === undefined) {
-        throw new Error("mpd-dsh-adapter: the agent's own scope exposes no systemPrompt.section() — cannot register prompt section \"" + String(section?.name) + "\" for it")
+      return registerAgentSection(agent, section)
+    },
+
+    /** The durable delegation label the child carries itself; never throws. */
+    subagentLabelOf(agent: unknown): string | undefined {
+      /** The child's own session, or a miss when the agent carries none. */
+      const session = (agent as { session?: unknown } | undefined)?.session
+      if (session === undefined || session === null) return undefined
+      /** The projection registry; absent in a composition with no session projection plane. */
+      const projections = service("sessionProjections")
+      if (typeof projections?.stateOf !== "function") return undefined
+      try {
+        // The shipped `SubagentIdentityProjection` is FLAT: `{mode, label?, seq}`. There is no
+        // `identity` wrapper, and a one-shot child may omit the label entirely, so both the
+        // nullish state and a non-string label are ordinary misses.
+        /** The folded identity of this child, or null when it carries no valid descriptor. */
+        const state = projections.stateOf(session, "subagent")
+        /** The label, accepted only when it is a non-empty string. */
+        const label = (state as { label?: unknown } | null | undefined)?.label
+        return typeof label === "string" && label !== "" ? label : undefined
+      } catch {
+        // A projection failure is a miss, never a spawn failure: the caller is a FILTER.
+        return undefined
       }
-      // VERBATIM section, receiver-bound. A duplicate name throws INSIDE the registry
-      // (per scope) and is deliberately not swallowed; only a non-callable answer degrades.
-      const registered = systemPrompt.section(section)
-      return typeof registered === "function" ? registered : noop
+    },
+
+    /** Register the DEPLOYMENT PERSONA slot on one agent's own prompt. */
+    applyPersonaSection(agent: unknown, text: string): () => void {
+      // The section name and order are the HOST's own `PERSONA_PREFIX_SECTION` and
+      // `SECTION_ORDERS.DEPLOYMENT_PERSONA_PREFIX`, spelled here because this repository may not
+      // import the host package by bare specifier. Naming the same slot is what makes this a
+      // REPLACEMENT of the deployment persona rather than a second one beside it.
+      // `interpolate: false` keeps the persona literal: interpolation defaults ON and an unknown
+      // `{{…}}` reference throws on every assembly, which would break the child's first step.
+      return registerAgentSection(agent, { name: "deployment:persona-prefix", order: 0, text, interpolate: false })
     },
 
     /** Start an agent's next turn through `followup`, THROWING so a rejected submission stays loud. */

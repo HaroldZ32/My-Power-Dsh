@@ -99,7 +99,7 @@ This row contributes the ROSTER side of that path — every call through `mpd-ds
 | the roster reaches the Lead | an **AGENT-SCOPED** `mpd:roster` system-prompt section (order `605`, immediately after the harness's `TEAM_POLICY` at 600), registered for a top-level `mpd` session only — never host-plane (that would inject the roster into every session this process serves), never a teammate's or another preset's session |
 | a teammate's persona | the section names `spawn_teammate` and `mpd_role_persona`: the Lead passes the member's persona text as the prompt |
 | a READ-ONLY teammate's discipline | a TOOL GUARD (below), registered through the adapter |
-| the session-start complexity gate | an `agent/pre-step` listener that STAGES an approvable plan shell by default (below) |
+| the session-start complexity gate | an `agent/pre-step` listener that STAGES an approvable plan shell when `team.gate` says `mechanical` — OPT-IN, `off` by default since 2026-10-17 (below) |
 
 **Model routing stays on the one-shot path.** `TeamService` forwards only `{prompt, parent}`
 to `ctx.subagents.startContinuable` (`docs/plan-0.1.7-adaptation.md` §3), so a teammate
@@ -139,35 +139,34 @@ and any second failure is rethrown. `READONLY_DENY` itself is unchanged, the two
 identical (asserted by `roles.test.ts`), and the list is still NEVER pre-filtered with a `hasTool`
 probe (AGENTS.md §13). A pruned name is reported once on the row's log.
 
-### The delegation gate (the official spawn tools are not the delegation path)
+### The delegation gate and the reconnaissance guard were WITHDRAWN (2026-10-17)
 
-`delegation-gate.ts` registers ONE `tools.guard` callback through the adapter: a call to `subagent`,
-`subagent_fork` or `workflow` is REFUSED with a sentence that names the sanctioned routes
-(`mpd_role_spawn`, `mpd_workmate_match` + `mpd_workmate_spawn`, Agent Teams, `send_message`). The knob
-is `delegation.gate` in `mpd.jsonc`:
+This row used to install TWO more `tools.guard` callbacks beside the read-only one: a
+**captain-investigation guard** (the `mpd` preset's top-level session delegated reconnaissance, so
+`read`/`grep`/`glob` on a SOURCE path were refused) and a **delegation gate** (a call to `subagent`,
+`subagent_fork` or `workflow` was refused with a sentence naming `mpd_role_spawn`, the workmate library,
+Agent Teams and `send_message`; knob `delegation.gate`). The user's 2026-10-17 ruling withdrew both,
+together with the verification law's write guard, from the `mpd` preset and the top-level agent's
+session: **one agent, its whole tool pack, steered by the persona prompt.** The top-level agent therefore
+reads its own sources, greps its own code and may call any harness spawn tool; delegating reconnaissance
+and using the roster remain RECOMMENDED practice, never a gate.
 
-- **deny** (default) — the captain AND every member session are refused, because an escape hatch a
-  member can still use is not a discipline;
-- **captain** — only the workspace's TOP-LEVEL session is refused;
-- **allow** — the gate is released entirely.
+The modules survive as reference implementations with their unit arms
+(`src/captain-investigation.ts`, `src/delegation-gate.ts`), and NOTHING installs them. The diagnostic is
+the boot line — each withdrawn guard reports its ABSENT state plus the knob that used to switch it, never
+a mode:
 
-The gate is keyed on §5's PRESET-FREE session rank, so it holds for every session in a workspace that
-mounts this bundle, whatever preset the profile assigned. Preset-plane omission is deliberately NOT
-used: the live top-level session on this deployment runs a preset this bundle does not own (`cordis`),
-so a guard is the portable denial and mounting the bundle is the opt-in. The row's boot line reports
-`delegationGate=<mode>` (or `delegationGate=absent reason=…` when the harness exposes no `tools.guard`
-seam).
+```
+[mpd-roles] team plane: readOnlyGuard=installed deny=8   verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode)   captainInvestigation=absent reason=withdrawn:2026-10-17-user-ruling(captain.investigation)   delegationGate=absent reason=withdrawn:2026-10-17-user-ruling(delegation.gate)   askUserQuestion=installed rosterSection=agent-scoped order=605 sessionGate=off
+```
 
-**Honest bound:** the guard reads the TOOL CALL at dispatch, so a tool the roster never publishes is
-trivially covered, while a session on a profile WITHOUT this bundle mounted has no gate at all — and it
-cannot stop a model from TRYING another tool.
+Two guards remain installed on this row: the roster's read-only discipline above (eight names) and the
+`ask_user_question` boundary backstop. The withdrawal is recorded in
+`.mpd/plans/harness-021-rollback.md` (R1); the QA cases that asserted the old denials are RE-PURPOSED to
+assert the new behaviour with the reason written in them
+(`skills/dsh-qa/scripts/delegation-gate.ts`, `skills/dsh-qa/scripts/captain-full-tools.ts`).
 
-The `mpd` preset's persona carries a short STANDING WORKING DISCIPLINE list (close a hypothesis
-repeated twice, inspection tool over speculation, next operation only, concurrent independent calls,
-ephemeral shell calls, verify against actual output, YAGNI/PDCA) adapted from `dsh-liangshen`
-(Apache-2.0) — ideas only, no upstream bytes ship.
-
-### The session-start complexity gate (mechanical by default)
+### The session-start complexity gate (OPT-IN since 2026-10-17)
 
 At a session's first pre-step the row evaluates the frozen predicate
 
@@ -183,8 +182,8 @@ a plan FILE alone is NOT a signal, repaired 2026-10-07 because the retired plan-
 in every session of this workspace). Every notice carries the marker
 `[AgentTeams] Session-start team rule`.
 
-What a trigger DOES is selected per call by `team.gate` in `mpd.jsonc`: `mechanical` (the default)
-| `advisory` | `off`.
+What a trigger DOES is selected per call by `team.gate` in `mpd.jsonc`: `off` (**the DEFAULT since the
+2026-10-17 rollback** — the gate is opt-in) | `advisory` | `mechanical`.
 
 - **mechanical** — the gate STAGES an APPROVABLE PLAN SHELL through the `agent_teams_plan` tool
   (0 members, 0 tasks: at the first pre-step there is no decomposition yet) and injects ONE

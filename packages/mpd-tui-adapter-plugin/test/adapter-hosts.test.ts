@@ -224,6 +224,44 @@ describe("host shape 2: reachable only inside the deferred inject callback", () 
     expect(scenes.opened).toEqual(["mpd-board", "nope"])
   })
 
+  test("closeScene drives the 0.15.0 void close() ONLY for the host-reported ACTIVE id", () => {
+    /**
+     * The argument list of every close() call, one entry per call.
+     *
+     * The 0.15.0 declaration is `close(): void` — no id, no return value — so this records what the
+     * adapter actually passed: anything other than `[]` would be an argument the host never declared.
+     */
+    const closeArgs: unknown[][] = []
+    /** The scene registry the installed 0.15.0 host shape produces. */
+    const scenes = {
+      /** The scene registration (unused here, but the seam's contract requires the member). */
+      register: () => () => undefined,
+      /** Answers true for the one scene this double knows. */
+      open: (id: string) => id === "mpd-board",
+      /** The host's own close: takes NO argument and returns void. */
+      close: (...args: unknown[]): void => {
+        closeArgs.push(args)
+      },
+      /** The host's active-scene read, the only evidence an id-addressed close can rest on. */
+      active: { id: "mpd-board", title: "board", component: {} } as { id?: string } | undefined,
+    }
+    /** A double with this scene registry composed up front. */
+    const dbl = hostDouble({ [TUI_SEAMS.scenes]: scenes })
+    /** The adapter under test. */
+    const tui = createTuiAdapter(dbl.ctx as never)
+    // NOT the active scene: no call is made and no close is claimed — a blind close() would have
+    // closed the wrong scene and reported success for one that was never open.
+    expect(tui.closeScene("mpd-team")).toBe(false)
+    expect(closeArgs).toEqual([])
+    // The active scene: the void call IS made, with no argument, and the close is reported as done.
+    expect(tui.closeScene("mpd-board")).toBe(true)
+    expect(closeArgs).toEqual([[]])
+    // A host that exposes close() but no active read cannot prove which scene it closed: false.
+    scenes.active = undefined
+    expect(tui.closeScene("mpd-board")).toBe(false)
+    expect(closeArgs).toEqual([[]])
+  })
+
   test("a registration made BEFORE the seam binds is queued and drained at the bind", () => {
     /** The scenes registry, composed only after the adapter exists. */
     const scenes = sceneService()
@@ -287,6 +325,11 @@ describe("host shape 3: absent (a web or headless composition)", () => {
     // Every seam reports `absent` with the service id, and the adapter never threw.
     expect(tui.seamOutcomes()).toHaveLength(TUI_SEAM_KEYS.length)
     for (const outcome of tui.seamOutcomes()) expect(outcome.state).toBe("absent")
+    // The phantom id is the ONE absence that is a HOST fact rather than a composition gap: a future
+    // host build would not change it, and no dsh-tui release through 0.15.0 declares `tuiPrompt`.
+    const promptOutcome = tui.seamOutcomes().find((outcome) => outcome.id === TUI_SEAMS.prompt)
+    expect(promptOutcome?.detail).toContain("phantom seam")
+    expect(tui.seamOutcomes().filter((outcome) => outcome.detail?.includes("phantom seam"))).toHaveLength(1)
     expect(tui.capabilities().bound).toBe(0)
     expect(dbl.cleanups).toHaveLength(0)
   })

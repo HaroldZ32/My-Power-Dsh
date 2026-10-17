@@ -58,7 +58,13 @@ The plugin-facing seams are exactly: `tuiScenes`, `tuiStatus`, `tuiRenderers`, `
 `tuiShortcuts`, `tuiDialogs`, `tuiCommandTrees`, `tuiPluginHost`, `tuiToast`, `tuiThemes`,
 `tuiPluginStorage`, `tuiMessageObserver`, `tuiEffectLedger`, `tuiWorkspaces` (plus `tuiPrompt`, which
 nothing in this installation provides) — and, ADDED BY 0.13.0, **`tuiPanels`**, the sidebar panel
-registry. The wave `dsh-tui-013-adaptation` adopted it as the fifteenth seam: the descriptor's
+registry.
+**`tuiPrompt` is declared PHANTOM by the adapter's own table (2026-10-17):** the seam ids live in
+`packages/mpd-tui-adapter-plugin/src/index.ts`, whose `PHANTOM_SEAM_KEYS` set names `tuiPrompt` as an id
+NO measured host build provides (a grep of the host's `lib/**` finds none). The key stays in the table so
+an absent-seam degrade is reported as `phantom` rather than silently as `absent`, and the adapter's own
+unit arms assert the set — read that constant before adding or removing a seam id, and see
+`docs/tui.md` §11.7 for the reader-facing row. The wave `dsh-tui-013-adaptation` adopted it as the fifteenth seam: the descriptor's
 `apiVersion` must be exactly 1, its `id` is a single lowercase slug the host prefixes with the calling
 activation's plugin id, `component`/`compact` are the two render slots (0.13.0 VALIDATES and STORES
 `compact` but does not mount its render slot, so this bundle declares `component` only), the budget is

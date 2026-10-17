@@ -445,14 +445,22 @@
         quiet: false
     - id: mpd-roles
       name: '@mpd-dsh/mpd/packages/mpd-roles-plugin/dist/index.js'
+      # The session-start complexity gate ships OFF (2026-10-17 rollback): the team surface stays
+      # callable, but nothing stages a plan shell or injects a notice unless the user asks for a
+      # team (`team:` / `!team`) or the agent judges the work warrants one. A deployment overrides
+      # this ROW layer with `team.gate` in mpd.jsonc (off | advisory | mechanical; an absent key and
+      # an unknown value both read off, and only `mechanical`/true arm the gate).
+      config:
+        team:
+          gate: "off"
     # ── the verification law (W4) ──────────────────────────────────────────────────
-    # ONE row, placed AFTER `mpd-roles` on purpose. The GUARD is installed by the roles row (the
-    # bundle's single existing `guardTool` site) and resolves this row's `mpdVerify` service PER CALL,
-    # so apply order costs nothing: by the time any tool call reaches the guard, both rows are up.
-    # This row owns the durable ledger under `<workspace>/.mpd/verify/`, the five `mpd_verify_*` tools
-    # and the boot marker that closes the `pre-plugin` record exemption.
+    # ONE row. The captain write guard that used to resolve this row's `mpdVerify` service per call
+    # was removed by the 2026-10-17 rollback (the top-level agent writes directly), so what remains
+    # is the row's own surface: the durable ledger under `<workspace>/.mpd/verify/`, the five
+    # `mpd_verify_*` tools and the boot marker that closes the `pre-plugin` record exemption. Those
+    # tools are AVAILABLE, never mandatory — nothing refuses a write without them.
     # The `verify.*` knobs are the row's ONLY config and are read RAW (no settings-schema entry, so the
-    # pinned `SETTINGS_KNOBS` count does not move). The defaults below ship the law ON.
+    # pinned `SETTINGS_KNOBS` count does not move). The defaults below keep the TOOLING on.
     - id: mpd-verify
       name: '@mpd-dsh/mpd/packages/mpd-verify-plugin/dist/index.js'
       config:
@@ -669,7 +677,6 @@
       config:
         maxMembers: 16
         maxTasks: 256
-        maxPendingMessagesPerMember: 64
         maxMessageBytes: 32768
         disposalTimeoutMs: 5000
 

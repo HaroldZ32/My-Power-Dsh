@@ -3,10 +3,11 @@
 //
 // WHY THIS EXISTS. Harness 0.1.7-rc.2's official TeamService starts every teammate with the route
 // the LEAD has, because it forwards only `{ prompt, parent }`. The harness itself is not the
-// limitation — `SubagentContinuationManager.startContinuable` resolves `request.agentOptions` into
-// provider/model/reasoningEffort and hands them to the PROVIDER, which is what constructs the run.
-// So a bundle-owned provider can supply the route the team service never sends, and that is what
-// this package registers (`mpd-roster`).
+// limitation — that generation's `SubagentContinuationManager.startContinuable` (renamed
+// `startActivation(spec)` in 0.2.1-rc.2, with the same contract for this module) resolves
+// `request.agentOptions` into provider/model/reasoningEffort and hands them to the PROVIDER, which
+// is what constructs the run. So a bundle-owned provider can supply the route the team service
+// never sends, and that is what this package registers (`mpd-roster`).
 
 /** One member's resolved route, as the mpd `teamModels` slots declare it. */
 export interface SlotRoute {
@@ -33,8 +34,9 @@ export interface RoutableRequest {
  * The roster member a teammate is, read from the descriptor LABEL.
  *
  * The label is the teammate's `description`, which is the only identity channel the team service
- * forwards: it passes `label: description` into `startContinuable` and nothing else carries the
- * name (`request` is `{ prompt, parent }`, and `persona` is not forwarded either).
+ * forwards: it passes `label: description` into the durable-child start and nothing else carries the
+ * name (`request` is `{ prompt, parent }`, and no persona field is forwarded either — 0.2.1-rc.2
+ * removed `persona` from that request outright).
  *
  * The contract is therefore: **a description that names a roster member routes that member; one
  * that does not inherits the Lead's route.** The name is the text before the first separator

@@ -45,6 +45,7 @@ var TUI_SEAM_KEYS = [
   "commands",
   "settings"
 ];
+var PHANTOM_SEAM_KEYS = ["prompt"];
 function describeOutcome(outcome) {
   return outcome.detail === undefined ? `${outcome.id}(${outcome.state})` : `${outcome.id}(${outcome.state}: ${outcome.detail})`;
 }
@@ -937,8 +938,17 @@ function createTuiAdapter(ctx, options = {}) {
       const registry = bindings.scenes.service;
       if (registry === undefined || typeof registry.close !== "function")
         return false;
+      let activeId;
       try {
-        return registry.close(id) === true;
+        activeId = registry.active?.id;
+      } catch {
+        activeId = undefined;
+      }
+      if (activeId !== id)
+        return false;
+      try {
+        registry.close();
+        return true;
       } catch {
         return false;
       }
@@ -1289,6 +1299,8 @@ function createTuiAdapter(ctx, options = {}) {
           return { id, state: "available", detail: "bound through the deferred inject form" };
         if (binding.error !== undefined)
           return { id, state: "refused", detail: binding.error };
+        if (PHANTOM_SEAM_KEYS.includes(key))
+          return { id, state: "absent", detail: "phantom seam: no measured dsh-tui build declares this service" };
         return { id, state: "absent", detail: "not composed in this profile" };
       });
     },
@@ -1381,6 +1393,7 @@ export {
   PANEL_IDS_RECORD_NAME,
   PANEL_ID_HISTORY_LIMIT,
   PANEL_KEEPER_LADDER_MS,
+  PHANTOM_SEAM_KEYS,
   SERVICE_NAME,
   TUI_SEAMS,
   TUI_SEAM_KEYS,
