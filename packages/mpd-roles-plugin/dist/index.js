@@ -2242,6 +2242,18 @@ function createDshAdapter(ctx, config = {}) {
       const session = agent?.session;
       if (session === undefined || session === null)
         return;
+      try {
+        const events = typeof session.ownEvents === "function" ? session.ownEvents() : undefined;
+        if (Array.isArray(events)) {
+          for (const event of events) {
+            const candidate = event;
+            if (candidate?.type !== "subagent/descriptor")
+              continue;
+            const label = candidate.data?.label;
+            return typeof label === "string" && label !== "" ? label : undefined;
+          }
+        }
+      } catch {}
       const projections = service("sessionProjections");
       if (typeof projections?.stateOf !== "function")
         return;
@@ -2252,6 +2264,15 @@ function createDshAdapter(ctx, config = {}) {
       } catch {
         return;
       }
+    },
+    restrictAgentTools(agent, filter) {
+      const context = scopeContextOf(agent);
+      const tools = context?.tools;
+      if (typeof tools?.restrict !== "function") {
+        throw new Error("mpd-dsh-adapter: the agent's own scope exposes no tools.restrict() — cannot apply a tool restriction to it");
+      }
+      const applied = tools.restrict(filter);
+      return typeof applied === "function" ? applied : noop;
     },
     applyPersonaSection(agent, text) {
       return registerAgentSection(agent, { name: "deployment:persona-prefix", order: 0, text, interpolate: false });
@@ -2811,7 +2832,7 @@ function apply(ctx, config = {}) {
   const validatedReadonlyDeny = (agent) => {
     const scope = dsh.agentScope(agent);
     if (scope === undefined) {
-      warnOnce("readonly-deny:no-scope", "read-only spawn: this agent exposes no scoped context, so the canonical deny list is sent unvalidated");
+      warnOnce("readonly-deny:no-scope", "read-only spawn: this agent exposes no scoped context, so the canonical deny list is returned unvalidated");
       return [...READONLY_DENY];
     }
     const outcome = restrictToolsTolerant((names) => scope.tools.restrict({ deny: names }), READONLY_DENY);
@@ -2879,13 +2900,21 @@ function apply(ctx, config = {}) {
     return surface.roles.find((role) => role.extension !== null && normalizeRoleNameKey(role.name) === nameKey) ?? null;
   };
   const roleNameListOf = (surface) => surface.roles.map((role) => role.name).join(", ");
+  const applyChildReadonlyDeny = (agent) => {
+    try {
+      dsh.restrictAgentTools(agent, { deny: [...READONLY_DENY] });
+      rowLogLine("mpd-roles", "[mpd-roles] read-only child: applied " + READONLY_DENY.length + " denials to its own tool scope");
+    } catch (error) {
+      rowLogLine("mpd-roles", "[mpd-roles] read-only child: the deny could NOT be applied (" + String(error?.message ?? error) + ") — this member may be able to write");
+    }
+  };
   installChildPersonaSeam(dsh, {
     resolve: (label) => {
       const spec = roleOf(roleSurface(undefined), label);
       return spec === null ? null : { persona: spec.persona, readonly: spec.readonly };
     },
     restrictReadonly: (agent) => {
-      validatedReadonlyDeny(agent);
+      applyChildReadonlyDeny(agent);
     },
     warn: (line) => warnOnce("child-persona:" + line, line),
     onEvent: typeof dsh.onEvent === "function" ? dsh.onEvent : undefined

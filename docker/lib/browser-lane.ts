@@ -12,6 +12,14 @@
 // screenshotted into the evidence tree, and EVERY stage records an assertion row in the same NDJSON
 // shape the entrypoint's `record()` writes, so a broken GUI reddens the run instead of decorating it.
 //
+// THE SETTINGS ENTRY POINT IS THE HOST'S REGISTERED COMMAND, NOT A BUTTON LABEL (measured 2026-10-17):
+// a signed-out container's rail renders the host account menu ("… More"), not a "Settings" button, so
+// the old selector failed before the MPD section was ever asserted. The stage now opens the dialog with
+// the host's own `settings.open` shortcut (Control+Comma, registered in both target generations) and
+// falls back to the launcher → "Settings" item. Every failure NAMES what it tried and dumps the MPD
+// client's own `[mpd] …` console lines to `<out>/mpd-console.txt`, so the next red says whether the
+// dialog opened and whether the card registered — no second Docker cycle needed for that distinction.
+//
 // The verdict is never the model's prose: `ui.replyRendered` asks whether the TRANSCRIPT rendered the
 // turn's OWN output — the answer the prompt asked for as a line of its own, or a rendered call of the
 // tool it asked for — judged by `docker/lib/reply-verdict.ts`, which also refuses the prompt's own
@@ -24,7 +32,7 @@
 //                        --out /out/ui-shots --state /work/assertions.ndjson [--budget-ms 240000]
 //
 // Exit code: 0 when every recorded row is true, 1 when any is false, 2 when the browser never started.
-import { appendFileSync, mkdirSync } from "node:fs"
+import { appendFileSync, mkdirSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { judgeReply } from "./reply-verdict.ts"
 import type { ReplyVerdict } from "./reply-verdict.ts"
@@ -186,6 +194,19 @@ const rows: UiRow[] = []
 const consoleErrors: string[] = []
 /** Uncaught page errors, captured for the failure report. */
 const pageErrors: string[] = []
+/**
+ * Every console line the MPD client emitted (`[mpd] …`), captured from page load on.
+ *
+ * WHY THIS EXISTS (measured 2026-10-17): the failed `ui.mpdSettingsSection` run raised
+ * "no Settings control was found" — a sentence that cannot distinguish "the dialog never opened"
+ * from "the card never registered", and cost a whole Docker cycle plus a wrong hypothesis. The card
+ * prints its own mount outcome (`[mpd] settings section: form status=…` on success,
+ * `… exposes no configForms service …` / `… could not mount …` on failure), so keeping those lines
+ * turns the NEXT red into a self-explaining row. Bounded: one minified stack cannot flood it.
+ */
+const consoleMpd: string[] = []
+/** How many `[mpd]` console lines are retained for a failure verdict (the tail is the interesting end). */
+const MPD_CONSOLE_LIMIT = 32
 
 /** Append one row to the state file and echo it the way the entrypoint's `record()` does. */
 function record(row: UiRow): void {
@@ -237,7 +258,17 @@ const browser: BrowserLike = await chromium.launch({ args: ["--no-sandbox", "--d
 const context: BrowserContextLike = await browser.newContext({ viewport: { width: 1600, height: 1000 } })
 /** The page every stage below drives. */
 const page: PageLike = await context.newPage()
-page.on("console", (message) => { if (message.type() === "error") consoleErrors.push(String(message.text()).slice(0, 250)) })
+page.on("console", (message) => {
+  /** This line's text, capped so one minified stack cannot bloat the state file. */
+  const text = String(message.text())
+  if (message.type() === "error") consoleErrors.push(text.slice(0, 250))
+  // THE MPD CLIENT'S OWN DIAGNOSTICS: the settings card prints exactly one mount line, so a red
+  // stage can say whether the card REGISTERED (the line exists) or never mounted (it does not).
+  if (text.includes("[mpd]")) {
+    consoleMpd.push(text.slice(0, 250))
+    if (consoleMpd.length > MPD_CONSOLE_LIMIT) consoleMpd.shift()
+  }
+})
 page.on("pageerror", (error) => pageErrors.push(messageOf(error).slice(0, 250)))
 
 /** Screenshot the page into `<OUT>/<name>.png` and answer the path written. */
@@ -477,27 +508,156 @@ await stage("ui.teamPanel", "the right sidebar opens on the Agent Teams panel wi
     return `chars=${text.length} teamTab=${await team.count()}`
   })
 
+// ── the host's Settings dialog: ONE entry point, TWO paths ─────────────────────
+//
+// THE DIALOG IS OPENED THROUGH THE HOST'S OWN REGISTERED COMMAND, NEVER THROUGH A BUTTON LABEL.
+// MEASURED (2026-10-17, the reason this block exists): the rail's bottom control is the host's
+// ACCOUNT MENU, whose label is `signedIn ? label : t("more")` — a signed-out container renders
+// "… More", NOT "Settings", so the old `getByRole("button", { name: /^settings$/i })` matched nothing
+// on 0.2.1-rc.2 and the stage failed before it ever asserted the MPD section. The command is
+// registered IDENTICALLY in both harness generations this bundle targets:
+//   ctx.shortcuts.register({ id: "settings.open", aliases: ["settings", "preferences"],
+//                           defaults: { "desktop:linux": { code: "Comma", modifiers: ["primary"] } } })
+// so Control+Comma is the stable PRIMARY, and the launcher → its first "Settings" menu item is the
+// documented FALLBACK. Neither path depends on the signed-in state or on a release's wording.
+
+/** How long one dialog probe waits for the host's own "General" nav entry to appear. */
+const DIALOG_PROBE_MS = 2000
+/** How long a single click may take before the entry point counts as failed. */
+const DIALOG_CLICK_MS = 5000
+
+/**
+ * Wait until one locator is attached AND visible.
+ * @param locator - the locator to probe.
+ * @param budgetMs - how long to keep probing before answering false.
+ * @returns whether it became visible inside the budget.
+ */
+async function waitVisible(locator: LocatorLike, budgetMs: number): Promise<boolean> {
+  /** The instant this probe gives up; `waitForTimeout` is the only sleep this lane has. */
+  const deadline = Date.now() + budgetMs
+  while (Date.now() < deadline) {
+    if (await locator.count() > 0 && await locator.isVisible().catch(() => false)) return true
+    await page.waitForTimeout(200)
+  }
+  return false
+}
+
+/**
+ * The host's own settings-nav entry with this label, matched as a whole visible line.
+ * @param label - the nav label as the host renders it (`General`, `MPD`, …).
+ * @returns the first matching locator.
+ */
+function settingsNavItem(label: string): LocatorLike {
+  return page.getByText(new RegExp("^" + label + "$", "i")).first()
+}
+
+/**
+ * One compact excerpt of the `[mpd]` console lines, for a row's `raw` field.
+ *
+ * The row's `raw` is capped at 300 characters by {@link stage}, and the diagnostic must SURVIVE that
+ * cap, so the excerpt is deliberately short: a couple of lines, each flattened and clipped.
+ * @param limit - how many trailing lines to include.
+ * @returns the excerpt, or the explicit "none" sentence when the client emitted nothing.
+ */
+function mpdConsoleExcerpt(limit: number = 2): string {
+  if (consoleMpd.length === 0) return "page console carried no [mpd] line"
+  /** The trailing lines, flattened and shortened so the excerpt stays one readable row value. */
+  const lines = consoleMpd.slice(-limit).map((line: string): string => line.replace(/\s+/gu, " ").slice(0, 64))
+  return "[mpd]: " + lines.join(" | ")
+}
+
+/**
+ * Write every captured `[mpd]` console line to `<OUT>/mpd-console.txt`.
+ *
+ * The row's `raw` field is capped at 300 characters by {@link stage}, so the FULL excerpt travels in
+ * the mounted evidence tree beside the PNGs; the failure message names this path.
+ * @returns the evidence file's path.
+ */
+function dumpMpdConsole(): string {
+  /** The evidence file, beside the screenshots so it travels with the mounted tree. */
+  const file = join(OUT, "mpd-console.txt")
+  writeFileSync(file, consoleMpd.length === 0 ? "(no [mpd] console line was emitted)\n" : consoleMpd.join("\n") + "\n")
+  return file
+}
+
+/**
+ * Open the host's Settings dialog, primary path first.
+ *
+ * The OPEN SIGNAL is the host's own "General" nav entry — a section the shipped settings client
+ * registers in every measured build — so the probe does not rely on OUR card appearing (that is the
+ * assertion, not the entry point).
+ * @returns the entry point that worked, named in the verdict (`shortcut`, `launcher More`, …).
+ * @throws naming every attempted path and the `[mpd]` console excerpt when none opened it.
+ */
+async function openSettingsDialog(): Promise<string> {
+  /** Every attempt in order, so a failure names exactly what was tried (compact: the row's raw is capped). */
+  const attempts: string[] = []
+  /** The dialog-open probe: the host's own General section entry. */
+  const dialogOpen = async (): Promise<boolean> => waitVisible(settingsNavItem("General"), DIALOG_PROBE_MS)
+  // PRIMARY: the host's registered `settings.open` command (aliases settings/preferences).
+  attempts.push("Ctrl+Comma")
+  await page.keyboard.press("Control+Comma").catch(() => {})
+  if (await dialogOpen()) return "shortcut Ctrl+Comma"
+  // FALLBACK: the rail launcher — "More" when signed out, the account label when signed in — then
+  // its FIRST menu item, which the host's account menu labels "Settings" in every measured build.
+  /** The launcher candidates, each with the short name the failure text uses for it. */
+  const launchers: readonly { readonly name: string; readonly match: RegExp }[] = [
+    { name: "launcher More", match: /^more$/i },
+    { name: "launcher Settings", match: /^settings$/i },
+    { name: "launcher Account", match: /^account$/i },
+  ]
+  for (const candidate of launchers) {
+    /** The launcher button in the rail's footer. */
+    const launcher = page.getByRole("button", { name: candidate.match }).first()
+    if (await launcher.count() === 0) continue
+    if (!(await launcher.isVisible().catch(() => false))) continue
+    attempts.push(candidate.name)
+    await launcher.click({ timeout: DIALOG_CLICK_MS, force: true }).catch(() => {})
+    await page.waitForTimeout(700)
+    /** The menu item the launcher opened; the host's account menu puts Settings first. */
+    const item = page.getByText(/^settings$/i).first()
+    if (await item.count() > 0 && await item.isVisible().catch(() => false)) {
+      attempts.push("menu Settings")
+      await item.click({ timeout: DIALOG_CLICK_MS, force: true }).catch(() => {})
+    }
+    if (await dialogOpen()) return candidate.name
+    // A menu left open would swallow the next attempt's click, so close it before moving on.
+    await page.keyboard.press("Escape").catch(() => {})
+    await page.waitForTimeout(300)
+  }
+  // THE EXCERPT COMES FIRST: the row's raw is capped at 300 characters, and knowing whether the card
+  // logged its mount outcome is worth more than the attempt list's tail.
+  throw new Error(`the settings dialog did not open — ${mpdConsoleExcerpt()}; mpd-console=${dumpMpdConsole()}; tried: ${attempts.join(", ")}`)
+}
+
 // ── stage 7: the MPD settings section this bundle contributes ─────────────────
 await stage("ui.mpdSettingsSection", "the MPD settings section registers and renders its card in Settings",
   async () => {
     await page.goto(BASE, { waitUntil: "domcontentloaded" })
     await page.waitForTimeout(2500)
     await dismissGates()
-    /** The Settings control in the app's navigation. */
-    const settings = page.getByRole("button", { name: /^settings$/i }).first()
-    if (await settings.count() === 0) throw new Error("no Settings control was found")
-    await settings.click({ timeout: 6000, force: true })
-    await page.waitForTimeout(2000)
+    /** The entry point that opened the dialog, quoted in the pass line and in every failure below. */
+    const openedBy = await openSettingsDialog()
+    await page.waitForTimeout(1200)
+    // SHOT BEFORE THE MPD CLICK: a dialog that opened with no MPD entry must still be readable
+    // evidence (the old stage only screenshotted its success path, which is why the 0.2.1 red left
+    // no picture of the settings screen at all).
+    await shot("ui-04-mpd-settings-open")
     /** The MPD nav entry this bundle contributes to Settings. */
-    const mpd = page.getByText(/^MPD$/).first()
-    if (await mpd.count() === 0) throw new Error("the MPD settings nav entry is absent")
+    const mpd = settingsNavItem("MPD")
+    if (await mpd.count() === 0) {
+      throw new Error(`no MPD settings nav entry after ${openedBy} — ${mpdConsoleExcerpt()}; mpd-console=${dumpMpdConsole()}`)
+    }
     await mpd.click({ timeout: 6000, force: true })
     await page.waitForTimeout(2500)
     /** The rendered settings text the card claim is judged on. */
     const text = await bodyText(4000)
     await shot("ui-04-mpd-settings")
-    if (!/MPD bundle/i.test(text)) throw new Error("the MPD section opened but its card text is absent: " + JSON.stringify(text.slice(0, 200)))
-    return `chars=${text.length}`
+    if (!/MPD bundle/i.test(text)) {
+      throw new Error(`the MPD section opened but its card text is absent after ${openedBy} — ${mpdConsoleExcerpt()}; mpd-console=${dumpMpdConsole()}`)
+    }
+    dumpMpdConsole()
+    return `chars=${text.length} opened-by=${openedBy} mpd-console=${consoleMpd.length}`
   })
 
 // ── stage 8: a console-clean page — a GUI that throws is not a usable GUI ──────

@@ -1,0 +1,13 @@
+{
+  "claim": "F3",
+  "slug": "verify-comments",
+  "command": "bun run verify:comments",
+  "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "exit": 0,
+  "signal": null,
+  "durationMs": 2028,
+  "launcher": "/home/haroldzhao/.nvm/versions/node/v24.21.0/bin/dsh",
+  "launcherVersion": "0.2.0-rc.2",
+  "decisiveLine": "",
+  "outputTail": "# verify-comment-coverage\n\nscanned 405 TypeScript file(s) of 405 in the source set; inspected 36095 declaration(s); skipped 16466 inline callback(s) as out of family\n\nVERDICT: PASS — every declaration in the family carries a precise comment and a full signature.\n$ node scripts/verify-comment-coverage.ts\n"
+}

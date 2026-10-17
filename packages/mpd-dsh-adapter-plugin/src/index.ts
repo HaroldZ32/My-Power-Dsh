@@ -1947,6 +1947,23 @@ export interface DshAdapter {
    */
   applyPersonaSection(agent: unknown, text: string): () => void
   /**
+   * Apply one tool restriction to ONE agent's own scope.
+   *
+   * This is the narrow seam that mirrors the harness's OWN child-override line — 0.2.1's
+   * `applyChildOverrides` runs `childCtx.tools.restrict(composition.toolFilter)` — and it is the
+   * one a read-only member's deny must go through. {@link DshAdapter.agentScope} is an
+   * all-or-nothing probe (`on`, `effect` AND `tools.restrict` together), so a child whose ctx
+   * carries only `tools.restrict` would report NO scope and its write tools would silently
+   * survive.
+   *
+   * Degrade: THROWS when the agent exposes no `tools.restrict` (a silently dropped deny is a
+   * read-only member that can write, which is worse than a loud failure the caller reports).
+   * @param agent - the agent whose own scope is restricted.
+   * @param filter - the harness's own `ToolRestriction` (`allow` and/or `deny`).
+   * @returns the restriction's disposer (a no-op when the host returned none).
+   */
+  restrictAgentTools(agent: unknown, filter: { allow?: readonly string[]; deny?: readonly string[] }): () => void
+  /**
    * Start an agent's next turn: `agent.followup(message)`, receiver-bound, forwarded
    * THROWING.
    *
@@ -4445,8 +4462,34 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
     /** The durable delegation label the child carries itself; never throws. */
     subagentLabelOf(agent: unknown): string | undefined {
       /** The child's own session, or a miss when the agent carries none. */
-      const session = (agent as { session?: unknown } | undefined)?.session
+      const session = (agent as { session?: any } | undefined)?.session
       if (session === undefined || session === null) return undefined
+      // 1. THE CHILD'S OWN LOG is the authoritative identity, and it needs NO service. The harness
+      //    appends `subagent/descriptor` in the factory's `setup` callback, which it AWAITS before
+      //    publishing the agent — so the descriptor is already in this log when an `agent/created`
+      //    listener runs. The subagent package states the FIRST descriptor is authoritative (the
+      //    establishing provider appends exactly one), so an unlabelled first descriptor is a MISS
+      //    rather than a reason to keep scanning.
+      //    MEASURED WHY THIS IS PRIMARY (2026-10-17, live 0.2.1 spawn): the projection read below
+      //    returned nothing for a child that demonstrably HAD a descriptor, so the seam no-opped and
+      //    BOTH the persona section and the read-only deny silently vanished.
+      try {
+        /** This session's own events, when the session object exposes its log. */
+        const events: unknown = typeof session.ownEvents === "function" ? session.ownEvents() : undefined
+        if (Array.isArray(events)) {
+          for (const event of events) {
+            /** One log event, read defensively. */
+            const candidate = event as { type?: unknown; data?: { label?: unknown } } | undefined
+            if (candidate?.type !== "subagent/descriptor") continue
+            /** The descriptor's label, the identity the spawn recorded. */
+            const label = candidate.data?.label
+            return typeof label === "string" && label !== "" ? label : undefined
+          }
+        }
+      } catch {
+        // A log that refuses the read falls through to the projection plane below.
+      }
+      // 2. FALLBACK: the session-projection registry, for a build whose session exposes no log.
       /** The projection registry; absent in a composition with no session projection plane. */
       const projections = service("sessionProjections")
       if (typeof projections?.stateOf !== "function") return undefined
@@ -4463,6 +4506,27 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         // A projection failure is a miss, never a spawn failure: the caller is a FILTER.
         return undefined
       }
+    },
+
+    /** Apply one tool restriction to ONE agent's own scope, mirroring the harness's own call. */
+    restrictAgentTools(agent: unknown, filter: { allow?: readonly string[]; deny?: readonly string[] }): () => void {
+      // WHY THIS EXISTS BESIDE `agentScope`: `agentScope` is an all-or-nothing probe (`on`,
+      // `effect` AND `tools.restrict` must all be present), so a child whose ctx carries
+      // `tools.restrict` but not the other two would report NO scope and the deny would silently
+      // not apply. This mirrors the harness's OWN child-override line exactly — 0.2.1's
+      // `applyChildOverrides` runs `childCtx.tools.restrict(composition.toolFilter)` — and needs
+      // only that one member.
+      /** The agent's raw scoped context, behind a guard so a throwing proxy is a miss. */
+      const context = scopeContextOf(agent)
+      /** The scoped tools service, the receiver the harness itself restricts. */
+      const tools = context?.tools
+      if (typeof tools?.restrict !== "function") {
+        throw new Error("mpd-dsh-adapter: the agent's own scope exposes no tools.restrict() — cannot apply a tool restriction to it")
+      }
+      // Receiver-bound to the scoped `tools`, exactly as the harness calls it, so the restriction
+      // lands on THAT agent's layer rather than the composition's.
+      const applied = tools.restrict(filter)
+      return typeof applied === "function" ? applied : noop
     },
 
     /** Register the DEPLOYMENT PERSONA slot on one agent's own prompt. */

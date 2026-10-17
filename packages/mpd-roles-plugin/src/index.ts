@@ -528,10 +528,14 @@ export function apply(ctx: Ctx, config: Config = {}): void {
    * @returns the list to hand the child as `toolFilter.deny`.
    */
   const validatedReadonlyDeny = (agent: unknown): string[] => {
-    /** The caller's own scope; without it the harness validates the list while composing the child. */
+    // THIS IS A PROBE, NOT AN APPLICATION. `restrictToolsTolerant` applies each attempt and
+    // RELEASES it at once (its contract: "a probe must not linger"), so the list it returns is
+    // what a caller can then apply for real. Routing a real deny through it left a read-only
+    // child's first `request/header` fully write-capable — measured live on 0.2.1, 2026-10-17.
+    /** The caller's own scope; without it the canonical list is returned unvalidated. */
     const scope = dsh.agentScope(agent)
     if (scope === undefined) {
-      warnOnce("readonly-deny:no-scope", "read-only spawn: this agent exposes no scoped context, so the canonical deny list is sent unvalidated")
+      warnOnce("readonly-deny:no-scope", "read-only spawn: this agent exposes no scoped context, so the canonical deny list is returned unvalidated")
       return [...READONLY_DENY]
     }
     /** The harness's verdict on the canonical list, with the contract's one permitted pruning round. */
@@ -656,6 +660,30 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   // and a read-only member lost its write denial. `installChildPersonaSeam` restores both on the CHILD's
   // OWN scoped context from an `agent/created` listener — the window the harness itself guarantees,
   // because publication (and with it the dispatch) precedes the child's first prompt.
+  /**
+   * Apply the canonical read-only deny to one CHILD's own scope, for real and without pruning.
+   *
+   * The disposer is deliberately NOT called: the restriction must outlive this call and is released
+   * by the host with the child's own scope. A failure is reported with the surface size, because the
+   * one thing this must never do is fail silently — a read-only member that can write is the defect
+   * this whole seam exists to prevent.
+   * @param agent - the freshly created child whose own scope is restricted.
+   */
+  const applyChildReadonlyDeny = (agent: unknown): void => {
+    // THE SINK IS `rowLogLine`, DELIBERATELY — not `warn`. `warn` prefers `ctx.logger.warn`, and that
+    // sink is not captured in a headless boot and does not reach `mpd-roles.log`, so a security
+    // decision would leave no trace an operator could find. The workmate twin already writes to disk;
+    // observability of the same discipline must be SYMMETRIC or a verifier can only cite half of it.
+    try {
+      dsh.restrictAgentTools(agent, { deny: [...READONLY_DENY] })
+      // ONE line per child: the length applied, so a future pruning regression is visible on disk
+      // instead of being inferred from a header.
+      rowLogLine("mpd-roles", "[mpd-roles] read-only child: applied " + READONLY_DENY.length + " denials to its own tool scope")
+    } catch (error) {
+      rowLogLine("mpd-roles", "[mpd-roles] read-only child: the deny could NOT be applied (" + String((error as Error)?.message ?? error) + ") — this member may be able to write")
+    }
+  }
+
   installChildPersonaSeam(dsh, {
     // Resolved through the SAME surface `mpd_role_persona` uses, so a base member and an
     // extension-contributed role are handled by one path (personas are small files, and subagent
@@ -666,7 +694,16 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       return spec === null ? null : { persona: spec.persona, readonly: spec.readonly }
     },
     // The read-only deny is validated against the CHILD's scope — the surface it truly filters.
-    restrictReadonly: (agent) => { validatedReadonlyDeny(agent) },
+    // APPLY FOR REAL, AND NEVER PRUNE HERE. Two distinct defects are closed by this one line:
+    //   (1) `validatedReadonlyDeny` is a PROBE — it applies each attempt and RELEASES it at once —
+    //       so routing the live deny through it denied nothing;
+    //   (2) that same probe PRUNES any name the agent's surface does not currently show. Inside
+    //       `agent/created` the child's surface may still be empty, so pruning collapses the
+    //       canonical eight names to `[]`, and `restrict({deny: []})` succeeds while restricting
+    //       NOTHING — a security control silently degrading to a no-op.
+    // The canonical list is therefore applied verbatim: these names ARE the read-only guarantee,
+    // and a harness that rejects one must say so loudly rather than quietly narrow the guarantee.
+    restrictReadonly: (agent) => { applyChildReadonlyDeny(agent) },
     warn: (line) => warnOnce("child-persona:" + line, line),
     // Guarded: the event bus is optional, and a row must never lose its boot over a listener it
     // cannot attach (a mounted-adapter double may expose none of the two seams).

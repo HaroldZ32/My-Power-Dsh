@@ -13,6 +13,19 @@ import { describe, expect, test } from "bun:test"
 
 import { createDshAdapter, installChildPersonaSeam, type DshPromptSection } from "../src/index"
 
+/**
+ * Build one `subagent/descriptor` event, the child's OWN identity record.
+ *
+ * The harness appends this in the factory's `setup` callback, which it AWAITS before publishing the
+ * agent — which is why an `agent/created` listener can read it. `label: undefined` models the
+ * ONE-SHOT arm, where the shipped descriptor may omit the label.
+ * @param label - the delegation label to record, or `undefined` for an unlabelled child.
+ * @returns the log event.
+ */
+function descriptor(label: string | undefined): unknown {
+  return { type: "subagent/descriptor", data: label === undefined ? { mode: "one-shot" } : { mode: "continuable", label } }
+}
+
 /** One prompt section a fake child's scoped registry received. */
 interface RecordedSection {
   /** The child agent that received it. */
@@ -44,7 +57,7 @@ interface Harness {
  * @param options - whether an event bus exists and whether section registration should throw.
  * @returns the harness an arm drives.
  */
-function harness(options: { withOnEvent?: boolean; sectionsThrow?: boolean } = {}): Harness {
+function harness(options: { withOnEvent?: boolean; sectionsThrow?: boolean; noOwnLog?: boolean; noProjection?: boolean } = {}): Harness {
   /** Every section recorded, in order. */
   const sections: RecordedSection[] = []
   /** Every agent handed to the read-only applier. */
@@ -65,13 +78,13 @@ function harness(options: { withOnEvent?: boolean; sectionsThrow?: boolean } = {
     },
   }
   /** The ctx the adapter reads services from. */
-  const ctx = { get: (name: string): unknown => (name === "sessionProjections" ? sessionProjections : undefined) }
+  const ctx = { get: (name: string): unknown => (name === "sessionProjections" && options.noProjection !== true ? sessionProjections : undefined) }
   /** A REAL adapter, so the label read and the section registration are the shipped ones. */
   const dsh = createDshAdapter(ctx as never)
   /** Build one fake child with its own scoped registry. */
   const child = (id: string, label?: string): { session: { id: string }; ctx: { systemPrompt: { section: (section: DshPromptSection) => () => void } } } => {
     /** The child's own session object, which is its identity carrier. */
-    const session = { id }
+    const session = { id, ownEvents: (): unknown[] => (options.noOwnLog === true ? [] : [descriptor(label)]) } as { id: string; ownEvents: () => unknown[] }
     // A continuable child always carries a label; a one-shot child may OMIT it entirely — that is
     // the shipped union, and the "nobody" arm below depends on the omission being tolerated.
     identity.set(session, label === undefined ? { mode: "one-shot", seq: 1 } : { mode: "continuable", label, seq: 1 })
@@ -196,9 +209,11 @@ describe("the seam is a FILTER: every foreign child is a clean no-op", () => {
     expect(h.sections).toEqual([])
   })
 
-  test("a THROWING projection plane is a miss, never a spawn failure", () => {
-    /** A harness with an event bus. */
-    const h = harness()
+  test("an unreadable identity on EVERY channel is a miss, never a spawn failure", () => {
+    // Both channels disabled: no own log (the primary read) and a throwing projection (the
+    // fallback). An identity that cannot be established must leave the child alone, not fail it.
+    /** A harness with an event bus and no readable identity channel. */
+    const h = harness({ noOwnLog: true })
     h.breakProjections()
     /** A child whose identity cannot be read. */
     const child = h.child("child-1", "Junior Engineer")
@@ -261,5 +276,78 @@ describe("the subscription is optional and honest about it", () => {
     const child = h.child("child-1", "Junior Engineer")
     h.seam.handle({ agent: child })
     expect(h.sections.length).toBe(1)
+  })
+})
+
+describe("the label is read from the CHILD'S OWN LOG — the live 0.2.1 failure mode", () => {
+  test("an own-log descriptor resolves the label with NO projection service at all", () => {
+    /** A harness with no projection plane — the composition the live boot effectively had. */
+    const h = harness({ noProjection: true })
+    /** A roster child carrying its descriptor in its own log. */
+    const child = h.child("child-1", "Junior Engineer")
+    h.seam.handle({ agent: child })
+    // MEASURED DEFECT THIS PINS: the projection read returned nothing for a child that HAD a
+    // descriptor, so the seam no-opped and BOTH the persona section and the read-only deny
+    // silently vanished. The own-log read needs no service and is what makes this pass.
+    expect(h.sections.length).toBe(1)
+    expect(h.sections[0].section.text).toBe("small-change executor")
+  })
+
+  test("a read-only child is DENIED on the narrow seam with no projection service", () => {
+    /** A harness with no projection plane. */
+    const h = harness({ noProjection: true })
+    /** The read-only member's child. */
+    const explorer = h.child("child-ro", "Explorer")
+    h.seam.handle({ agent: explorer })
+    // The deny rides the SAME listener as the persona, so a failed identity read silently
+    // disarms the read-only discipline too — the blocker this repair exists for.
+    expect(h.restricted).toEqual([explorer])
+  })
+
+  test("an UNLABELLED first descriptor is a MISS, not a reason to keep scanning", () => {
+    /** A harness whose projection WOULD answer — proving the own-log verdict wins. */
+    const h = harness()
+    // The subagent package states the FIRST descriptor is authoritative, so an unlabelled one must
+    // not fall through to a later channel that could name a DIFFERENT member.
+    const unlabelled = h.child("child-nobody")
+    expect(() => h.seam.handle({ agent: unlabelled })).not.toThrow()
+    expect(h.sections).toEqual([])
+    expect(h.restricted).toEqual([])
+  })
+
+  test("a session that exposes NO log still resolves through the projection plane", () => {
+    /** A harness whose children expose no own log, keeping the fallback path covered. */
+    const h = harness({ noOwnLog: true })
+    /** A roster child whose identity only the projection knows. */
+    const child = h.child("child-1", "Junior Engineer")
+    h.seam.handle({ agent: child })
+    expect(h.sections.length).toBe(1)
+    expect(h.sections[0].section.name).toBe("deployment:persona-prefix")
+  })
+})
+
+describe("restrictAgentTools needs only tools.restrict — the member the harness itself uses", () => {
+  test("a ctx WITHOUT on/effect is still restrictable, where agentScope reports no scope", () => {
+    /** Every filter the scoped tools service received. */
+    const applied: unknown[] = []
+    /** A child whose ctx carries ONLY `tools.restrict` — no `on`, no `effect`. */
+    const child = { ctx: { tools: { restrict: (filter: unknown) => { applied.push(filter); return () => { /* host owns it */ } } } } }
+    /** A real adapter, so the seam under test is the shipped one. */
+    const dsh = createDshAdapter({ get: () => undefined } as never)
+    // MEASURED DEFECT THIS PINS: the read-only deny used to route through `agentScope`, which is an
+    // all-or-nothing probe over `on` + `effect` + `tools.restrict`. A child missing either of the
+    // first two reported NO scope, so the deny silently never applied and a READ-ONLY member kept
+    // `write`/`edit`/`bash` in its first header. The harness's own `applyChildOverrides` reaches
+    // for exactly this one member, and so does this seam.
+    expect(dsh.agentScope(child)).toBeUndefined()
+    expect(() => dsh.restrictAgentTools(child, { deny: ["write", "edit", "bash"] })).not.toThrow()
+    expect(applied).toEqual([{ deny: ["write", "edit", "bash"] }])
+  })
+
+  test("a ctx with NO tools.restrict THROWS, because a dropped deny is a read-only member that writes", () => {
+    /** A real adapter. */
+    const dsh = createDshAdapter({ get: () => undefined } as never)
+    expect(() => dsh.restrictAgentTools({ ctx: { tools: {} } }, { deny: ["write"] }))
+      .toThrow(/exposes no tools\.restrict\(\)/)
   })
 })

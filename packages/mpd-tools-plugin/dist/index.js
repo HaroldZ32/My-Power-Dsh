@@ -1558,6 +1558,18 @@ function createDshAdapter(ctx, config = {}) {
       const session = agent?.session;
       if (session === undefined || session === null)
         return;
+      try {
+        const events = typeof session.ownEvents === "function" ? session.ownEvents() : undefined;
+        if (Array.isArray(events)) {
+          for (const event of events) {
+            const candidate = event;
+            if (candidate?.type !== "subagent/descriptor")
+              continue;
+            const label = candidate.data?.label;
+            return typeof label === "string" && label !== "" ? label : undefined;
+          }
+        }
+      } catch {}
       const projections = service("sessionProjections");
       if (typeof projections?.stateOf !== "function")
         return;
@@ -1568,6 +1580,15 @@ function createDshAdapter(ctx, config = {}) {
       } catch {
         return;
       }
+    },
+    restrictAgentTools(agent, filter) {
+      const context = scopeContextOf(agent);
+      const tools = context?.tools;
+      if (typeof tools?.restrict !== "function") {
+        throw new Error("mpd-dsh-adapter: the agent's own scope exposes no tools.restrict() — cannot apply a tool restriction to it");
+      }
+      const applied = tools.restrict(filter);
+      return typeof applied === "function" ? applied : noop;
     },
     applyPersonaSection(agent, text) {
       return registerAgentSection(agent, { name: "deployment:persona-prefix", order: 0, text, interpolate: false });

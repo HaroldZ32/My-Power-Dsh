@@ -806,10 +806,13 @@ export function apply(ctx: Ctx): void {
    * @returns the list to hand the child as `toolFilter.deny`.
    */
   function validatedReadonlyDeny(agent: unknown): string[] {
-    /** The caller's own scope; without it the harness validates the list while composing the child. */
+    // THIS IS A PROBE, NOT AN APPLICATION. `restrictToolsTolerant` applies each attempt and
+    // RELEASES it at once (its contract), so the returned list is what a caller applies for real.
+    // Routing a real deny through it left a read-only child fully write-capable — measured live.
+    /** The caller's own scope; without it the canonical list is returned unvalidated. */
     const scope = dsh.agentScope(agent)
     if (scope === undefined) {
-      reportPrunedNames("read-only workmate spawn: this agent exposes no scoped context, so the canonical deny list is sent unvalidated")
+      reportPrunedNames("read-only workmate spawn: this agent exposes no scoped context, so the canonical deny list is returned unvalidated")
       return [...READONLY_DENY]
     }
     /** The harness's verdict on the canonical list, with the contract's one permitted pruning round. */
@@ -844,6 +847,24 @@ export function apply(ctx: Ctx): void {
   // THE PERSONA IS READ FROM DISK HERE, never frozen at apply time: a workmate that reflected
   // between two spawns must spawn with the persona it has NOW. The child is identified by the label
   // its own descriptor carries, which for a workmate is its library key.
+  /**
+   * Apply the canonical read-only deny to one CHILD's own scope, for real and without pruning.
+   *
+   * The disposer is deliberately NOT called: the restriction must outlive this call and is released
+   * by the host with the child's own scope. A failure is reported with the reason, because a
+   * read-only workmate that can write is the defect this seam exists to prevent.
+   * @param agent - the freshly created child whose own scope is restricted.
+   */
+  function applyChildReadonlyDeny(agent: unknown): void {
+    try {
+      dsh.restrictAgentTools(agent, { deny: [...READONLY_DENY] })
+      // ONE line per child, so a future pruning regression is visible in a boot log.
+      reportPrunedNames("read-only workmate child: applied " + READONLY_DENY.length + " denials to its own tool scope")
+    } catch (error) {
+      reportPrunedNames("read-only workmate child: the deny could NOT be applied (" + String((error as Error)?.message ?? error) + ") — this workmate may be able to write")
+    }
+  }
+
   installChildPersonaSeam(dsh, {
     resolve: (label) => {
       /** The library record this child label names, or null for any other child in this process. */
@@ -856,7 +877,12 @@ export function apply(ctx: Ctx): void {
       return { persona, readonly: meta.readonly }
     },
     // The read-only deny is validated against the CHILD's scope — the surface it truly filters.
-    restrictReadonly: (agent) => { validatedReadonlyDeny(agent) },
+    // APPLY FOR REAL, AND NEVER PRUNE HERE. `validatedReadonlyDeny` is a PROBE that applies each
+    // attempt and RELEASES it (so a real deny routed through it denied nothing), and it also PRUNES
+    // names the agent's surface does not yet show — inside `agent/created` a child's surface may
+    // still be empty, collapsing the canonical eight names to `[]`, and `restrict({deny: []})`
+    // succeeds while restricting NOTHING. The canonical list is applied verbatim instead.
+    restrictReadonly: (agent) => { applyChildReadonlyDeny(agent) },
     warn: (line) => reportPrunedNames(line),
     // Guarded: the event bus is optional, and a row must never lose its boot over a listener it
     // cannot attach (a mounted-adapter double may expose none of the two seams).
