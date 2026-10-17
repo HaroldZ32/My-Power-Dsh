@@ -212,7 +212,10 @@ async function main(): Promise<void> {
   const rowLogDir = join(ws, ".mpd", "logs")
   let rowLogText = ""
   if (existsSync(rowLogDir)) for (const name of readdirSync(rowLogDir)) rowLogText += readFileSync(join(rowLogDir, name), "utf8") + "\n"
-  const denyLines = (rowLogText + "\n" + log).split(/\r?\n/).filter((line: string) => line.includes("read-only child:"))
+  // BOTH row spellings are contractual: the roster row logs `read-only child: …` and the workmate row
+  // logs `read-only workmate child: …` (measured 2026-10-17), so the filter matches either and the
+  // applied/could-not split is what decides the arm.
+  const denyLines = (rowLogText + "\n" + log).split(/\r?\n/).filter((line: string) => /read-only\b.*child:/.test(line))
   const denyApplied = denyLines.some((line: string) => /applied \d+ denials/.test(line))
   const denyFailed = denyLines.some((line: string) => line.includes("could NOT be applied"))
 

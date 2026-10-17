@@ -1,12 +1,18 @@
 # evidence/harness-0.2.1 — lane G (wave verification) record
 
-Wave: `.mpd/plans/harness-021-rollback.md` · Verdict: `VERDICT.md` (this directory).
+Wave: `.mpd/plans/harness-021-rollback.md` · Verdict: `VERDICT.md` (this directory), which is the
+**second pass on `684f9116`**. `VERDICT-first-pass.md` is the first pass on `06b05814`, kept verbatim
+because it records an instrument defect and its correction: the first-pass child probe inferred
+"parent" from a tool-list property true of BOTH sessions, so it never found a child and one PASS claim
+(persona) was read from prompt text rather than the seam's system section. The corrected instrument
+finds the child by `subagent/descriptor`. BOTH reports stay on disk; the second pass supersedes the first.
 
 ## How to read this tree
 
-Every run directory carries the UTC timestamp of the run in its name, and the verdict pass began after
-the captain's integration commit `06b058148bcb5cac5149f03567fb3ebdce121282` (2026-10-17 ~14:13 UTC).
-**Runs stamped earlier than that are PRE-WAVE BASELINES** — they were taken deliberately to make the
+Every run directory carries the UTC timestamp of the run in its name. Three epochs exist here:
+PRE-WAVE BASELINES (before `06b05814`, ~14:13 UTC), the FIRST PASS (`06b05814`, ~14:18–14:40), and the
+SECOND PASS (the pinged `684f9116`, from ~14:42). **Only second-pass runs are cited by `VERDICT.md`;
+runs from the earlier epochs are baselines or the superseded pass** — they were taken deliberately to make the
 post-wave readings meaningful (a guard line that changes, a spawn that fails, a web boot with a
 pending row). They are kept, not deleted, because the delta is the evidence:
 

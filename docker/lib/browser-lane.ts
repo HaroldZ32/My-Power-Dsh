@@ -12,13 +12,18 @@
 // screenshotted into the evidence tree, and EVERY stage records an assertion row in the same NDJSON
 // shape the entrypoint's `record()` writes, so a broken GUI reddens the run instead of decorating it.
 //
-// THE SETTINGS ENTRY POINT IS THE HOST'S REGISTERED COMMAND, NOT A BUTTON LABEL (measured 2026-10-17):
-// a signed-out container's rail renders the host account menu ("… More"), not a "Settings" button, so
-// the old selector failed before the MPD section was ever asserted. The stage now opens the dialog with
-// the host's own `settings.open` shortcut (Control+Comma, registered in both target generations) and
-// falls back to the launcher → "Settings" item. Every failure NAMES what it tried and dumps the MPD
-// client's own `[mpd] …` console lines to `<out>/mpd-console.txt`, so the next red says whether the
-// dialog opened and whether the card registered — no second Docker cycle needed for that distinction.
+// THE SETTINGS ENTRY POINT IS A CLICK ON THE HOST'S OWN LAUNCHER, NOT A BUTTON LABEL (measured
+// 2026-10-17): a signed-out container's rail renders the host ACCOUNT MENU whose VISIBLE text is
+// "… More" and whose ACCESSIBLE NAME is "Account menu" (`aria-label={t("menu")}`), so a query for a
+// button named "Settings" matches nothing and a fallback keyed on the visible "More" text never runs.
+// Stage 7 therefore clicks that launcher and then the menu's own "Settings" item — matching the ARIA
+// label, not the visible text — and keeps the host's `settings.open` shortcut (Control+Comma) as the
+// LAST resort, because a headless page does not guarantee that a key press reaches the shortcut
+// manager. Every attempt is screenshotted before and after and recorded in `<out>/settings-open.txt`,
+// and every failure NAMES what was tried and dumps the MPD client's `[mpd] …` console lines to
+// `<out>/mpd-console.txt` — so the next red says which leg failed and on what screen, without a
+// second Docker cycle. NOTE: the card mounts at PAGE LOAD (its slot is declared at boot), so a
+// `[mpd] settings section:` line proves the CARD registered, never that the dialog opened.
 //
 // The verdict is never the model's prose: `ui.replyRendered` asks whether the TRANSCRIPT rendered the
 // turn's OWN output — the answer the prompt asked for as a line of its own, or a rendered call of the
@@ -508,23 +513,64 @@ await stage("ui.teamPanel", "the right sidebar opens on the Agent Teams panel wi
     return `chars=${text.length} teamTab=${await team.count()}`
   })
 
-// ── the host's Settings dialog: ONE entry point, TWO paths ─────────────────────
+// ── the host's Settings dialog: CLICK FIRST, shortcut second ───────────────────
 //
-// THE DIALOG IS OPENED THROUGH THE HOST'S OWN REGISTERED COMMAND, NEVER THROUGH A BUTTON LABEL.
-// MEASURED (2026-10-17, the reason this block exists): the rail's bottom control is the host's
-// ACCOUNT MENU, whose label is `signedIn ? label : t("more")` — a signed-out container renders
-// "… More", NOT "Settings", so the old `getByRole("button", { name: /^settings$/i })` matched nothing
-// on 0.2.1-rc.2 and the stage failed before it ever asserted the MPD section. The command is
-// registered IDENTICALLY in both harness generations this bundle targets:
-//   ctx.shortcuts.register({ id: "settings.open", aliases: ["settings", "preferences"],
-//                           defaults: { "desktop:linux": { code: "Comma", modifiers: ["primary"] } } })
-// so Control+Comma is the stable PRIMARY, and the launcher → its first "Settings" menu item is the
-// documented FALLBACK. Neither path depends on the signed-in state or on a release's wording.
+// THE DIALOG IS OPENED BY A REAL CLICK ON A CONTROL THE HOST RENDERS; the keyboard command is only
+// the fallback. TWO Docker runs taught this, so both lessons are written down here:
+//   1. The rail's bottom control is the host's ACCOUNT MENU. Its VISIBLE text is "… More" when
+//      signed out (`signedIn ? label : t("more")`), but its ACCESSIBLE NAME is
+//      `aria-label={t("menu")}` = "Account menu" — an aria-label overrides the visible text for the
+//      accessible-name query, so the lane's earlier candidates ("More"/"Settings"/"Account") matched
+//      NOTHING and the fallback loop never ran (`tried: Ctrl+Comma` alone in the 2026-10-17 artifact).
+//      The menu's first item is `{ id: "settings", label: t("settings") }`.
+//   2. `Control+Comma` is the host's registered `settings.open` command (aliases settings/preferences,
+//      identical in both target generations), but a headless page does not guarantee that a key press
+//      reaches the SPA's shortcut manager, so it is kept as the LAST resort, not the primary.
+// EVERY attempt is screenshotted BEFORE and AFTER and recorded in `<out>/settings-open.txt`, so the
+// next red names the leg that failed and shows the screen it failed on.
+//
+// NOTE ON THE CONSOLE: the settings card mounts at PAGE LOAD (the `settings.section` slot is declared
+// at boot), so `[mpd] settings section: …` lines prove the CARD registered — not that the dialog
+// opened. The open signal below is the host's OWN section nav, never our card.
 
-/** How long one dialog probe waits for the host's own "General" nav entry to appear. */
+/** How long one dialog probe waits for an open marker to appear. */
 const DIALOG_PROBE_MS = 2000
 /** How long a single click may take before the entry point counts as failed. */
 const DIALOG_CLICK_MS = 5000
+
+/**
+ * The host-owned labels that prove the settings dialog is OPEN.
+ *
+ * The shipped settings clients register these section-nav entries in every measured build; the probe
+ * accepts the FIRST one visible, so a release that renames one label does not hide an open dialog.
+ */
+const DIALOG_MARKERS: readonly string[] = ["General", "Built-in plugins", "Agent presets"]
+
+/**
+ * The launcher candidates, each with the short name the trace and the row use for it.
+ *
+ * "Account menu" is the MEASURED accessible name (`aria-label={t("menu")}`); the rest are kept for a
+ * build that rewords that aria label. The visible "More" text is deliberately NOT relied on.
+ */
+const LAUNCHER_CANDIDATES: readonly { readonly name: string; readonly match: RegExp }[] = [
+  { name: "Account menu", match: /^account menu$/i },
+  { name: "More", match: /^more$/i },
+  { name: "Settings", match: /^settings$/i },
+  { name: "Account", match: /^account$/i },
+]
+
+/** One dialog-open attempt's record: what was tried, which marker fired, and the two screenshots. */
+interface OpenAttempt {
+  /** The short attempt name, quoted in the row and in the trace file. */
+  readonly name: string
+  /** The open marker that became visible, or "none". */
+  readonly marker: string
+  /** The before/after screenshot paths. */
+  readonly shots: readonly string[]
+}
+
+/** Every dialog-open attempt this run made, in order. */
+const openAttempts: OpenAttempt[] = []
 
 /**
  * Wait until one locator is attached AND visible.
@@ -581,53 +627,128 @@ function dumpMpdConsole(): string {
 }
 
 /**
- * Open the host's Settings dialog, primary path first.
+ * Wait for ANY host-owned open marker: one visible section-nav label proves the dialog rendered.
+ * @returns the marker label that became visible, or undefined when none did.
+ */
+async function settingsDialogMarker(): Promise<string | undefined> {
+  for (const marker of DIALOG_MARKERS) {
+    if (await waitVisible(settingsNavItem(marker), DIALOG_PROBE_MS)) return marker
+  }
+  return undefined
+}
+
+/**
+ * Run ONE open attempt with a before/after screenshot and record its outcome.
+ * @param name - the attempt's short name, quoted in the trace and the row.
+ * @param slug - a file-name-safe form of the name, used in the screenshot names.
+ * @param action - the click or key press this attempt performs.
+ * @returns the open marker that fired, or undefined when the dialog stayed closed.
+ */
+async function attemptOpen(name: string, slug: string, action: () => Promise<void>): Promise<string | undefined> {
+  /** This attempt's index, so the screenshot names sort in attempt order. */
+  const index = String(openAttempts.length).padStart(2, "0")
+  /** The screen BEFORE the attempt: what the entry point looked like when it was tried. */
+  const before = await shot(`ui-04-open-${index}-${slug}-before`)
+  await action()
+  /** The host marker that proves the dialog rendered; undefined leaves the attempt recorded as "none". */
+  const marker = await settingsDialogMarker()
+  /** The screen AFTER the attempt (or after the probe budget, which IS the failing state). */
+  const after = await shot(`ui-04-open-${index}-${slug}-after`)
+  openAttempts.push({ name, marker: marker ?? "none", shots: [before, after] })
+  return marker
+}
+
+/**
+ * Write every open attempt to `<OUT>/settings-open.txt`.
+ * @returns the evidence file's path.
+ */
+function dumpOpenTrace(): string {
+  /** The evidence file, beside the screenshots and the console dump. */
+  const file = join(OUT, "settings-open.txt")
+  /** One line per attempt: its name, the marker that fired, and the two screenshots that show it. */
+  const lines = openAttempts.map((attempt: OpenAttempt): string => `${attempt.name}: dialog=${attempt.marker} shots=${attempt.shots.join(",")}`)
+  /** The probed marker vocabulary, printed so a renamed host label is diagnosable from the artifact. */
+  const footer = `(open markers probed: ${DIALOG_MARKERS.join(", ")})\n`
+  writeFileSync(file, (lines.length === 0 ? "(no open attempt was made)\n" : lines.join("\n") + "\n") + footer)
+  return file
+}
+
+/**
+ * One compact line naming the LAST attempts' outcomes, for the row's 300-character `raw`.
+ * @param limit - how many trailing attempts to include.
+ * @returns the trace excerpt, e.g. `Account menu->none, shortcut Ctrl+Comma->none`.
+ */
+function openTraceExcerpt(limit: number = 2): string {
+  if (openAttempts.length === 0) return "no open attempt was made"
+  return openAttempts.slice(-limit).map((attempt: OpenAttempt): string => `${attempt.name}->${attempt.marker}`).join(", ")
+}
+
+/**
+ * The Settings menu item a launcher opened, clicked once it is visible.
  *
- * The OPEN SIGNAL is the host's own "General" nav entry — a section the shipped settings client
- * registers in every measured build — so the probe does not rely on OUR card appearing (that is the
- * assertion, not the entry point).
- * @returns the entry point that worked, named in the verdict (`shortcut`, `launcher More`, …).
- * @throws naming every attempted path and the `[mpd]` console excerpt when none opened it.
+ * Role first (the host renders a real menu), then a plain text match for a build whose menu items are
+ * not exposed with the `menuitem` role.
+ * @returns nothing; the caller probes the open marker afterwards.
+ */
+async function clickSettingsMenuItem(): Promise<void> {
+  /** The "Settings" item as a real menu item. */
+  const item = page.getByRole("menuitem", { name: /^settings$/i }).first()
+  if (await item.count() > 0 && await item.isVisible().catch(() => false)) {
+    await item.click({ timeout: DIALOG_CLICK_MS, force: true }).catch(() => {})
+    await page.waitForTimeout(1200)
+    return
+  }
+  /** The same item found by visible text, when the menu exposes no menuitem role. */
+  const byText = page.getByText(/^settings$/i).first()
+  if (await byText.count() > 0 && await byText.isVisible().catch(() => false)) {
+    await byText.click({ timeout: DIALOG_CLICK_MS, force: true }).catch(() => {})
+    await page.waitForTimeout(1200)
+  }
+}
+
+/**
+ * Open the host's Settings dialog: the CLICK paths first, the keyboard shortcut last.
+ *
+ * The 2026-10-17 container run proved the shortcut alone cannot be trusted (a headless page does not
+ * guarantee where a key press lands) and that the launcher must be matched by its ARIA label
+ * ("Account menu"), not by the visible "More" text.
+ * @returns the entry point that worked, named in the verdict (`launcher Account menu`, `shortcut …`).
+ * @throws naming the attempt outcomes, the `[mpd]` console excerpt and both evidence files.
  */
 async function openSettingsDialog(): Promise<string> {
-  /** Every attempt in order, so a failure names exactly what was tried (compact: the row's raw is capped). */
-  const attempts: string[] = []
-  /** The dialog-open probe: the host's own General section entry. */
-  const dialogOpen = async (): Promise<boolean> => waitVisible(settingsNavItem("General"), DIALOG_PROBE_MS)
-  // PRIMARY: the host's registered `settings.open` command (aliases settings/preferences).
-  attempts.push("Ctrl+Comma")
-  await page.keyboard.press("Control+Comma").catch(() => {})
-  if (await dialogOpen()) return "shortcut Ctrl+Comma"
-  // FALLBACK: the rail launcher — "More" when signed out, the account label when signed in — then
-  // its FIRST menu item, which the host's account menu labels "Settings" in every measured build.
-  /** The launcher candidates, each with the short name the failure text uses for it. */
-  const launchers: readonly { readonly name: string; readonly match: RegExp }[] = [
-    { name: "launcher More", match: /^more$/i },
-    { name: "launcher Settings", match: /^settings$/i },
-    { name: "launcher Account", match: /^account$/i },
-  ]
-  for (const candidate of launchers) {
-    /** The launcher button in the rail's footer. */
+  // Give the rail one bounded chance to PAINT the launcher before deciding it is absent: the SPA
+  // renders the footer after its shell mounts, and the attempts below must not race that paint.
+  await waitVisible(page.getByRole("button", { name: LAUNCHER_CANDIDATES[0].match }).first(), DIALOG_PROBE_MS)
+  // PATH 1: the rail launcher — a real click, then the menu's own "Settings" item.
+  for (const candidate of LAUNCHER_CANDIDATES) {
+    /** The launcher button in the rail's footer, matched by ACCESSIBLE name. */
     const launcher = page.getByRole("button", { name: candidate.match }).first()
     if (await launcher.count() === 0) continue
     if (!(await launcher.isVisible().catch(() => false))) continue
-    attempts.push(candidate.name)
-    await launcher.click({ timeout: DIALOG_CLICK_MS, force: true }).catch(() => {})
-    await page.waitForTimeout(700)
-    /** The menu item the launcher opened; the host's account menu puts Settings first. */
-    const item = page.getByText(/^settings$/i).first()
-    if (await item.count() > 0 && await item.isVisible().catch(() => false)) {
-      attempts.push("menu Settings")
-      await item.click({ timeout: DIALOG_CLICK_MS, force: true }).catch(() => {})
-    }
-    if (await dialogOpen()) return candidate.name
+    /** This attempt's screenshot slug, so the files say which spelling was clicked. */
+    const slug = candidate.name.toLowerCase().replace(/[^a-z0-9]+/gu, "-")
+    /** The marker this attempt produced, when it produced one. */
+    const marker = await attemptOpen(candidate.name, slug, async (): Promise<void> => {
+      await launcher.click({ timeout: DIALOG_CLICK_MS, force: true }).catch(() => {})
+      await page.waitForTimeout(800)
+      await clickSettingsMenuItem()
+    })
+    if (marker !== undefined) return `launcher ${candidate.name}`
     // A menu left open would swallow the next attempt's click, so close it before moving on.
     await page.keyboard.press("Escape").catch(() => {})
     await page.waitForTimeout(300)
   }
-  // THE EXCERPT COMES FIRST: the row's raw is capped at 300 characters, and knowing whether the card
-  // logged its mount outcome is worth more than the attempt list's tail.
-  throw new Error(`the settings dialog did not open — ${mpdConsoleExcerpt()}; mpd-console=${dumpMpdConsole()}; tried: ${attempts.join(", ")}`)
+  // PATH 2 (LAST RESORT): the host's registered `settings.open` command. The body click gives the
+  // document focus first, because a headless page does not guarantee where the key press lands.
+  /** The marker the shortcut produced, when it produced one. */
+  const shortcutMarker = await attemptOpen("shortcut Ctrl+Comma", "shortcut-ctrl-comma", async (): Promise<void> => {
+    await page.locator("body").first().click({ timeout: DIALOG_CLICK_MS, force: true }).catch(() => {})
+    await page.waitForTimeout(300)
+    await page.keyboard.press("Control+Comma").catch(() => {})
+    await page.waitForTimeout(1200)
+  })
+  if (shortcutMarker !== undefined) return "shortcut Ctrl+Comma"
+  throw new Error(`the settings dialog did not open — last: ${openTraceExcerpt()}; open-trace=${dumpOpenTrace()}; mpd-console=${dumpMpdConsole()}; ${mpdConsoleExcerpt(1)}`)
 }
 
 // ── stage 7: the MPD settings section this bundle contributes ─────────────────
@@ -638,6 +759,9 @@ await stage("ui.mpdSettingsSection", "the MPD settings section registers and ren
     await dismissGates()
     /** The entry point that opened the dialog, quoted in the pass line and in every failure below. */
     const openedBy = await openSettingsDialog()
+    // The open trace is written as soon as the dialog is proven open, so it exists even when the MPD
+    // assertion below fails and carries the attempt/marker/screenshot record with it.
+    dumpOpenTrace()
     await page.waitForTimeout(1200)
     // SHOT BEFORE THE MPD CLICK: a dialog that opened with no MPD entry must still be readable
     // evidence (the old stage only screenshotted its success path, which is why the 0.2.1 red left
@@ -646,7 +770,7 @@ await stage("ui.mpdSettingsSection", "the MPD settings section registers and ren
     /** The MPD nav entry this bundle contributes to Settings. */
     const mpd = settingsNavItem("MPD")
     if (await mpd.count() === 0) {
-      throw new Error(`no MPD settings nav entry after ${openedBy} — ${mpdConsoleExcerpt()}; mpd-console=${dumpMpdConsole()}`)
+      throw new Error(`no MPD settings nav entry after ${openedBy} — ${mpdConsoleExcerpt(1)}; open-trace=${dumpOpenTrace()}; mpd-console=${dumpMpdConsole()}`)
     }
     await mpd.click({ timeout: 6000, force: true })
     await page.waitForTimeout(2500)
@@ -654,10 +778,10 @@ await stage("ui.mpdSettingsSection", "the MPD settings section registers and ren
     const text = await bodyText(4000)
     await shot("ui-04-mpd-settings")
     if (!/MPD bundle/i.test(text)) {
-      throw new Error(`the MPD section opened but its card text is absent after ${openedBy} — ${mpdConsoleExcerpt()}; mpd-console=${dumpMpdConsole()}`)
+      throw new Error(`the MPD section opened but its card text is absent after ${openedBy} — ${mpdConsoleExcerpt(1)}; open-trace=${dumpOpenTrace()}; mpd-console=${dumpMpdConsole()}`)
     }
     dumpMpdConsole()
-    return `chars=${text.length} opened-by=${openedBy} mpd-console=${consoleMpd.length}`
+    return `chars=${text.length} opened-by=${openedBy} open=${openTraceExcerpt(1)} mpd-console=${consoleMpd.length}`
   })
 
 // ── stage 8: a console-clean page — a GUI that throws is not a usable GUI ──────
