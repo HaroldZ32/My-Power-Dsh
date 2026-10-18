@@ -874,9 +874,14 @@ export function apply(ctx: Ctx): void {
    */
   function applyChildReadonlyDeny(agent: unknown): void {
     try {
-      dsh.restrictAgentTools(agent, { deny: [...READONLY_DENY] })
-      // ONE line per child, so a future pruning regression is visible in a boot log.
-      reportPrunedNames("read-only workmate child: applied " + READONLY_DENY.length + " denials to its own tool scope")
+      // RETAINED + TOLERANT: a scope that does not know `mcp__lsp__*` (a profile without `cclsp`)
+      // rejects the WHOLE list, so an unpruned apply would deny NOTHING and leave this workmate
+      // writable. The applier prunes exactly the names the host reports and retries once.
+      /** The accepted names and whatever the host pruned as unknown here. */
+      const outcome = dsh.restrictAgentToolsRetained(agent, [...READONLY_DENY])
+      // ONE line per child, carrying BOTH numbers, so a pruning regression is visible on disk.
+      reportPrunedNames("read-only workmate child: applied " + outcome.applied.length + " denials to its own tool scope"
+        + (outcome.pruned.length === 0 ? "" : " (pruned as unknown in this composition: " + outcome.pruned.join(", ") + ")"))
     } catch (error) {
       reportPrunedNames("read-only workmate child: the deny could NOT be applied (" + String((error as Error)?.message ?? error) + ") — this workmate may be able to write")
     }

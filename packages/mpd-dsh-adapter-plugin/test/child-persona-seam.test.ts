@@ -383,3 +383,168 @@ describe("ORDERING: a failing persona can never disarm the read-only discipline"
     expect(h.warned).toEqual([])
   })
 })
+
+describe("RETAINED TOLERANT DENY: one dead entry must never deny nothing (CWE-284)", () => {
+  /**
+   * A fake child whose scoped `tools.restrict` behaves like the harness's own.
+   *
+   * WHY THIS FAKE EXISTS AND WHY THE OLD ARMS COULD NOT CATCH THE DEFECT: a live profile with every
+   * toolchain installed resolves all eight names, so the whole list is accepted and the blind spot is
+   * invisible. The harness validates the WHOLE list — `names unknown global tool(s) "…"; known global
+   * tools: …` — so a profile without `cclsp` rejects all eight over the two `mcp__lsp__*` names and
+   * the read-only member stays writable. Only a scope that does NOT know some names can show that.
+   * @param known - the tool names this scope resolves; anything else is rejected as unknown.
+   * @param failSecond - make the SECOND attempt fail with a non-unknown error.
+   * @returns the agent, the per-call name lists, and whether any disposer was released.
+   */
+  function fakeScope(known: readonly string[], options: { failSecond?: boolean; rejectEverything?: boolean } = {}): {
+    agent: unknown
+    calls: string[][]
+    released: boolean
+  } {
+    /** Every argument list `restrict` received, in order. */
+    const calls: string[][] = []
+    /** Whether a returned disposer was ever invoked — which would LIFT the restriction. */
+    let released = false
+    /** The fake child, carrying only the member the narrow seam needs. */
+    const agent = {
+      ctx: {
+        tools: {
+          /** Apply one deny list exactly as the harness validates it. */
+          restrict: (filter: { deny?: readonly string[] }): (() => void) => {
+            /** The names this call asked for. */
+            const names = [...(filter.deny ?? [])]
+            calls.push(names)
+            if (options.failSecond === true && calls.length > 1) throw new Error("host is gone")
+            /** The names this scope cannot resolve. */
+            const unknown = options.rejectEverything === true ? names : names.filter((name) => !known.includes(name))
+            if (unknown.length > 0) {
+              // The harness's OWN message shape, which is what makes pruning possible at all.
+              throw new Error(`tools.restrict() names unknown global tool${unknown.length > 1 ? "s" : ""} ${unknown.map((n) => `"${n}"`).join(", ")}; known global tools: ${[...known].sort().join(", ") || "(none)"}`)
+            }
+            return () => { released = true }
+          },
+        },
+      },
+    }
+    return {
+      agent,
+      calls,
+      /** Whether any returned disposer was invoked — which would LIFT the restriction. */
+      get released(): boolean { return released },
+    }
+  }
+
+  /** The canonical read-only deny the seams apply. */
+  const DENY = ["write", "edit", "mpd_hashline_edit", "bash", "mcp__ast_grep__rewrite", "mcp__ast_grep__scan", "mcp__lsp__rename_symbol", "mcp__lsp__rename_symbol_strict"]
+  /** Every name above EXCEPT the two cclsp LSP tools — the profile without `cclsp`. */
+  const WITHOUT_LSP = DENY.filter((name) => !name.startsWith("mcp__lsp__"))
+  /** A real adapter over an empty ctx: the seam under test is the shipped one. */
+  const dsh = createDshAdapter({ get: () => undefined } as never)
+
+  test("a scope that knows all eight applies all eight, in ONE call, and KEEPS the restriction", () => {
+    /** A fully-tooled scope. */
+    const scope = fakeScope(DENY)
+    /** The applier's answer. */
+    const outcome = dsh.restrictAgentToolsRetained(scope.agent, DENY)
+    expect(outcome.applied).toEqual(DENY)
+    expect(outcome.pruned).toEqual([])
+    expect(scope.calls).toEqual([DENY])
+    // RETAINED: the disposer is never called, so the deny outlives the call.
+    expect(scope.released).toBe(false)
+  })
+
+  test("a scope WITHOUT cclsp prunes exactly the two LSP names, retries ONCE, and still denies write/edit/bash", () => {
+    // THE DEFECT THIS LOCKS: without this retry the host rejects the WHOLE list over two dead
+    // entries, the seam logs a failure nobody reads, and the "read-only" child keeps every write tool.
+    /** The cclsp-less scope. */
+    const scope = fakeScope(WITHOUT_LSP)
+    /** The applier's answer. */
+    const outcome = dsh.restrictAgentToolsRetained(scope.agent, DENY)
+    // Exactly the two dead names were pruned…
+    expect(outcome.pruned).toEqual(["mcp__lsp__rename_symbol", "mcp__lsp__rename_symbol_strict"])
+    // …six survived, including everything that can write…
+    expect(outcome.applied).toEqual(WITHOUT_LSP)
+    expect(outcome.applied).toEqual(expect.arrayContaining(["write", "edit", "bash", "mpd_hashline_edit"]))
+    // …and the retry happened EXACTLY once: rejected at eight, accepted at six.
+    expect(scope.calls).toEqual([DENY, WITHOUT_LSP])
+    expect(scope.released).toBe(false)
+  })
+
+  test("a NON-unknown rejection THROWS instead of passing quietly", () => {
+    /** A scope that rejects a name no verdict can explain. */
+    const scope = fakeScope(DENY, { rejectEverything: false })
+    /** A scope whose restrict throws something unrelated. */
+    const broken = { ctx: { tools: { restrict: (): (() => void) => { throw new Error("the host exploded") } } } }
+    expect(() => dsh.restrictAgentToolsRetained(broken, DENY)).toThrow(/the host exploded/)
+    // A healthy scope still succeeds, so the assertion above is about the failure, not the fake.
+    expect(() => dsh.restrictAgentToolsRetained(scope.agent, DENY)).not.toThrow()
+  })
+
+  test("a REJECTED RETRY throws — pruning gets exactly one chance", () => {
+    // The first attempt is PRUNABLE (the scope lacks cclsp) and the retry then fails for an unrelated
+    // reason, so the applier must stop instead of looping or silently accepting nothing.
+    /** A cclsp-less scope whose retry fails. */
+    const scope = fakeScope(WITHOUT_LSP, { failSecond: true })
+    expect(() => dsh.restrictAgentToolsRetained(scope.agent, DENY)).toThrow(/host is gone/)
+    // Exactly two attempts: the prunable one and the fatal one — never a third.
+    expect(scope.calls).toHaveLength(2)
+    expect(scope.released).toBe(false)
+  })
+
+  test("PRUNING EVERYTHING is a failure, never a silent success", () => {
+    /** A scope that knows none of the names. */
+    const scope = fakeScope([], { rejectEverything: true })
+    expect(() => dsh.restrictAgentToolsRetained(scope.agent, DENY)).toThrow(/every name in the read-only deny was rejected as unknown/)
+    // A deny that would have denied nothing was never left standing.
+    expect(scope.released).toBe(false)
+  })
+})
+
+describe("THROUGH THE SEAM: a cclsp-less child is still restricted", () => {
+  test("the seam's read-only branch prunes the dead names and the child ends up DENIED", () => {
+    // The applier arms above test the mechanism; this one proves the SEAM routes a read-only child
+    // through it. A seam-level double that merely records `restrictReadonly` cannot catch the
+    // dead-entry defect, because it never validates a name.
+    /** Every argument list the child's scoped restrict received. */
+    const calls: string[][] = []
+    /** The names a cclsp-less profile resolves. */
+    const known = ["write", "edit", "mpd_hashline_edit", "bash", "mcp__ast_grep__rewrite", "mcp__ast_grep__scan"]
+    /** A read-only child whose scope knows everything EXCEPT the two LSP names. */
+    const child = {
+      session: { id: "child-ro", ownEvents: (): unknown[] => [{ type: "subagent/descriptor", data: { mode: "continuable", label: "Explorer" } }] },
+      ctx: {
+        systemPrompt: { section: (): (() => void) => () => { /* scope owns it */ } },
+        tools: {
+          /** Validate exactly as the harness does: the WHOLE list fails on any unknown name. */
+          restrict: (filter: { deny?: readonly string[] }): (() => void) => {
+            /** The names this call asked for. */
+            const names = [...(filter.deny ?? [])]
+            calls.push(names)
+            /** The unresolved names in this call. */
+            const unknown = names.filter((name) => !known.includes(name))
+            if (unknown.length > 0) throw new Error(`tools.restrict() names unknown global tool${unknown.length > 1 ? "s" : ""} ${unknown.map((n) => `"${n}"`).join(", ")}; known global tools: ${[...known].sort().join(", ")}`)
+            return () => { /* retained by the scope */ }
+          },
+        },
+      },
+    }
+    /** A REAL adapter, so the retained tolerant applier is the shipped one. */
+    const dsh = createDshAdapter({ get: () => undefined } as never)
+    /** The canonical deny the roles seam applies. */
+    const DENY = ["write", "edit", "mpd_hashline_edit", "bash", "mcp__ast_grep__rewrite", "mcp__ast_grep__scan", "mcp__lsp__rename_symbol", "mcp__lsp__rename_symbol_strict"]
+    /** The seam, with the read-only branch wired to the REAL applier. */
+    const seam = installChildPersonaSeam(dsh, {
+      resolve: () => ({ persona: "read-only searcher", readonly: true }),
+      restrictReadonly: (agent) => { dsh.restrictAgentToolsRetained(agent, DENY) },
+      warn: () => { /* no warnings expected on this path */ },
+      onEvent: () => () => { /* bus owns teardown */ },
+    })
+    seam.handle({ agent: child })
+    // Two attempts: the rejected eight, then the accepted six.
+    expect(calls).toHaveLength(2)
+    expect(calls[1]).toEqual(known)
+    // The names that can write are in the list the child actually accepted.
+    expect(calls[1]).toEqual(expect.arrayContaining(["write", "edit", "bash", "mpd_hashline_edit"]))
+  })
+})

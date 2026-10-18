@@ -34,7 +34,7 @@ trigger = explicit flag OR (matchedSignals >= 1)
 
 团队平面自身的配置就是门的那个键，加上各行自己的配置：
 
-- `team.gate` —— `off`（**自 2026-10-17 回滚起为默认**；缺省或未知值都读作 `off`，门是 opt-in）| `advisory` | `mechanical`，由 `mpd-roles-plugin` **按调用**读取。
+- `team.gate` —— `off`（**自 2026-10-17 回滚起为默认**；缺省或未知值都读作 `off`，门是 opt-in）| `advisory` | `mechanical`，由 `mpd-roles-plugin` **按调用**读取。队长的三道机械守卫（调查、委派、写入）已由同一份裁决**撤销**；该行的启动行把每一道都报告为 `absent reason=…`。
 - 官方 `mpd-agent-team` 行携带 patch 中的上限：`maxMembers: 16`、`maxTasks: 256`、`maxMessageBytes: 32768`、`disposalTimeoutMs: 5000`。`maxPendingMessagesPerMember` 已**移除**：harness 0.2.1-rc.2 的 schema 不再声明它，因此该行不再设置。
 - `mpd-team-core` 拥有 `<workspace>/.mpd/team/` 下的团队记录：`teams/<id>.json`、staged plan 所在的 `staging/<sessionId>.json` 槽位，以及已归档的计划。
 

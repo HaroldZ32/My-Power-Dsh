@@ -897,6 +897,37 @@ function unknownRestrictedNames(error) {
   const names = [...head.matchAll(/"([^"]+)"/g)].map((match) => String(match[1] ?? "")).filter((name) => name !== "");
   return names.length > 0 ? names : undefined;
 }
+function applyScopedRestriction(agent, filter) {
+  const context = scopeContextOf(agent);
+  const tools = context?.tools;
+  if (typeof tools?.restrict !== "function") {
+    throw new Error("mpd-dsh-adapter: the agent's own scope exposes no tools.restrict() — cannot apply a tool restriction to it");
+  }
+  const applied = tools.restrict(filter);
+  return typeof applied === "function" ? applied : noop;
+}
+function restrictAgentToolsRetained(agent, names) {
+  let candidate = [...names];
+  const pruned = [];
+  for (let attempt = 0;; attempt += 1) {
+    if (candidate.length === 0) {
+      throw new Error("every name in the read-only deny was rejected as unknown, so nothing would be denied");
+    }
+    try {
+      applyScopedRestriction(agent, { deny: candidate });
+      return { applied: [...candidate], pruned };
+    } catch (error) {
+      const unknown = attempt === 0 ? unknownRestrictedNames(error) : undefined;
+      if (unknown === undefined)
+        throw error;
+      const next = candidate.filter((name) => !unknown.includes(name));
+      if (next.length === candidate.length)
+        throw error;
+      pruned.push(...candidate.filter((name) => unknown.includes(name)));
+      candidate = next;
+    }
+  }
+}
 function restrictToolsTolerant(restrict, names) {
   let candidate = [...names];
   const pruned = [];
@@ -2282,13 +2313,10 @@ function createDshAdapter(ctx, config = {}) {
       }
     },
     restrictAgentTools(agent, filter) {
-      const context = scopeContextOf(agent);
-      const tools = context?.tools;
-      if (typeof tools?.restrict !== "function") {
-        throw new Error("mpd-dsh-adapter: the agent's own scope exposes no tools.restrict() — cannot apply a tool restriction to it");
-      }
-      const applied = tools.restrict(filter);
-      return typeof applied === "function" ? applied : noop;
+      return applyScopedRestriction(agent, filter);
+    },
+    restrictAgentToolsRetained(agent, names) {
+      return restrictAgentToolsRetained(agent, names);
     },
     applyPersonaSection(agent, text) {
       return registerAgentSection(agent, { name: "deployment:persona-prefix", order: 0, text, interpolate: false });
@@ -2918,8 +2946,8 @@ function apply(ctx, config = {}) {
   const roleNameListOf = (surface) => surface.roles.map((role) => role.name).join(", ");
   const applyChildReadonlyDeny = (agent) => {
     try {
-      dsh.restrictAgentTools(agent, { deny: [...READONLY_DENY] });
-      rowLogLine("mpd-roles", "[mpd-roles] read-only child: applied " + READONLY_DENY.length + " denials to its own tool scope");
+      const outcome = dsh.restrictAgentToolsRetained(agent, [...READONLY_DENY]);
+      rowLogLine("mpd-roles", "[mpd-roles] read-only child: applied " + outcome.applied.length + " denials to its own tool scope" + (outcome.pruned.length === 0 ? "" : " (pruned as unknown in this composition: " + outcome.pruned.join(", ") + ")"));
     } catch (error) {
       rowLogLine("mpd-roles", "[mpd-roles] read-only child: the deny could NOT be applied (" + String(error?.message ?? error) + ") — this member may be able to write");
     }

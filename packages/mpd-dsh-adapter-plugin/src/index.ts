@@ -1964,6 +1964,24 @@ export interface DshAdapter {
    */
   restrictAgentTools(agent: unknown, filter: { allow?: readonly string[]; deny?: readonly string[] }): () => void
   /**
+   * Apply a read-only deny to ONE agent's own scope and KEEP it, pruning only what the host rejects.
+   *
+   * The harness validates the WHOLE list, so ONE dead entry invalidates ALL of it: on a profile
+   * without `cclsp` the two `mcp__lsp__*` names are unknown, the entire deny is rejected, and the
+   * read-only member keeps `write`/`edit`/`bash`. This prunes exactly the names the host names,
+   * retries ONCE, and keeps the restriction.
+   *
+   * NOT {@link restrictToolsTolerant}: that one is a PROBE and releases its own restriction, so
+   * using it here would lift the deny in the same tick.
+   *
+   * Degrade: THROWS for a non-unknown rejection, for a rejected retry, and when pruning would leave
+   * nothing to deny — "restricted nothing" is never reported as success.
+   * @param agent - the agent whose own scope is restricted.
+   * @param names - the canonical deny list; never mutated.
+   * @returns the accepted names and the names pruned as unknown.
+   */
+  restrictAgentToolsRetained(agent: unknown, names: readonly string[]): { applied: string[]; pruned: string[] }
+  /**
    * Start an agent's next turn: `agent.followup(message)`, receiver-bound, forwarded
    * THROWING.
    *
@@ -2199,6 +2217,96 @@ function unknownRestrictedNames(error: unknown): string[] | undefined {
  * @param restrict - one attempt at applying a list (the harness's own `tools.restrict`, bound).
  * @param names - the CANONICAL list, which is never mutated.
  * @returns the accepted list and the pruned names.
+ */
+/**
+ * Apply one filter to ONE agent's own scope, returning the host's disposer UNRELEASED.
+ *
+ * This is the harness's own child-override call — 0.2.1's `applyChildOverrides` runs
+ * `childCtx.tools.restrict(filter)` — bound to that agent's `tools`, so the restriction lands on ITS
+ * layer rather than the composition's. It is narrower than `agentScope`, which is all-or-nothing over
+ * `on` + `effect` + `tools.restrict` and would report no scope for a ctx carrying only the last.
+ * @param agent - the agent whose own scope is restricted.
+ * @param filter - the harness's own `ToolRestriction`.
+ * @returns the host's disposer, or a no-op when it returned none.
+ * @throws when the agent exposes no `tools.restrict`, or when the host rejects the filter.
+ */
+function applyScopedRestriction(agent: unknown, filter: { allow?: readonly string[]; deny?: readonly string[] }): () => void {
+  /** The agent's raw scoped context, behind a guard so a throwing proxy is a miss. */
+  const context = scopeContextOf(agent)
+  /** The scoped tools service, the receiver the harness itself restricts. */
+  const tools = context?.tools
+  if (typeof tools?.restrict !== "function") {
+    throw new Error("mpd-dsh-adapter: the agent's own scope exposes no tools.restrict() — cannot apply a tool restriction to it")
+  }
+  /** The host's own disposer, or a no-op when it returned none. */
+  const applied = tools.restrict(filter)
+  return typeof applied === "function" ? applied : noop
+}
+
+/**
+ * Apply a read-only deny to ONE agent's own scope and KEEP it, pruning only what the host itself
+ * rejects as unknown.
+ *
+ * WHY THE PRUNING RETRY IS MANDATORY HERE (CWE-284, measured 2026-10-17): the harness validates the
+ * WHOLE list, so ONE dead entry invalidates ALL of them. On a profile without `cclsp` the two
+ * `mcp__lsp__*` names are unknown, the host rejects the entire eight-name deny, and the read-only
+ * child keeps `write`, `edit` and `bash` — the discipline becomes a silent no-op. A profile that has
+ * every toolchain installed can never expose this, which is exactly why it survived a live probe.
+ *
+ * WHY IT CANNOT BE {@link restrictToolsTolerant}: that helper is a PROBE — it applies each attempt
+ * and RELEASES the restriction before returning, so using it as the application lifts the deny in the
+ * same tick. This one NEVER calls the disposer: the restriction must outlive the call and is released
+ * by the host with the agent's scope.
+ *
+ * FAILURE IS ALWAYS LOUD. Any non-unknown rejection, a rejection of the retry, and a prune-to-empty
+ * list all THROW, because "restricted nothing" must never be reported as success.
+ * @param agent - the agent whose own scope is restricted.
+ * @param names - the canonical deny list; never mutated.
+ * @returns the accepted names and the names pruned as unknown.
+ * @throws when the restriction could not be applied, or when nothing would be left to deny.
+ */
+export function restrictAgentToolsRetained(agent: unknown, names: readonly string[]): { applied: string[]; pruned: string[] } {
+  /** The candidate list, narrowed by at most ONE pruning round. */
+  let candidate: readonly string[] = [...names]
+  /** The names the host reported as unknown, in the order it named them. */
+  const pruned: string[] = []
+  for (let attempt = 0; ; attempt += 1) {
+    if (candidate.length === 0) {
+      // Pruning everything is NOT a success: an empty deny leaves the member fully writable.
+      throw new Error("every name in the read-only deny was rejected as unknown, so nothing would be denied")
+    }
+    try {
+      // RETAINED, NOT RELEASED: the returned disposer is deliberately dropped so the restriction
+      // lives as long as the agent's scope does.
+      applyScopedRestriction(agent, { deny: candidate })
+      return { applied: [...candidate], pruned }
+    } catch (error) {
+      // Only the host's OWN unknown-names verdict is prunable, and only on the FIRST attempt.
+      const unknown = attempt === 0 ? unknownRestrictedNames(error) : undefined
+      if (unknown === undefined) throw error
+      /** The candidate minus exactly the names the host named. */
+      const next = candidate.filter((name) => !unknown.includes(name))
+      // A verdict that prunes nothing would repeat the same call; the rejection stands.
+      if (next.length === candidate.length) throw error
+      pruned.push(...candidate.filter((name) => unknown.includes(name)))
+      candidate = next
+    }
+  }
+}
+
+/**
+ * Apply one tool-name list through the harness's OWN validation, tolerating its unknown-name verdict
+ * with EXACTLY ONE pruning round.
+ *
+ * THIS IS A PROBE, NOT AN APPLICATION: each attempt's restriction is RELEASED before this returns
+ * ("a probe must not linger"). Use it to learn which names a composition really resolves — for a
+ * spawn spec, or for a team-plane guard — and use {@link restrictAgentToolsRetained} to leave a
+ * restriction standing on an agent. Wiring this one in as the application lifts the deny in the same
+ * tick, which is how a read-only member spent a wave being writable.
+ * @param restrict - one attempt at applying a list (the harness's own `tools.restrict`, bound).
+ * @param names - the CANONICAL list, which is never mutated.
+ * @returns the accepted list and the pruned names.
+ * @throws when a non-unknown rejection occurs, when the retry fails, or when pruning removes nothing.
  */
 export function restrictToolsTolerant(restrict: RestrictAttempt, names: readonly string[]): RestrictToolsOutcome {
   /** The candidate list, narrowed by at most one pruning round. */
@@ -4549,23 +4657,14 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
 
     /** Apply one tool restriction to ONE agent's own scope, mirroring the harness's own call. */
     restrictAgentTools(agent: unknown, filter: { allow?: readonly string[]; deny?: readonly string[] }): () => void {
-      // WHY THIS EXISTS BESIDE `agentScope`: `agentScope` is an all-or-nothing probe (`on`,
-      // `effect` AND `tools.restrict` must all be present), so a child whose ctx carries
-      // `tools.restrict` but not the other two would report NO scope and the deny would silently
-      // not apply. This mirrors the harness's OWN child-override line exactly — 0.2.1's
-      // `applyChildOverrides` runs `childCtx.tools.restrict(composition.toolFilter)` — and needs
-      // only that one member.
-      /** The agent's raw scoped context, behind a guard so a throwing proxy is a miss. */
-      const context = scopeContextOf(agent)
-      /** The scoped tools service, the receiver the harness itself restricts. */
-      const tools = context?.tools
-      if (typeof tools?.restrict !== "function") {
-        throw new Error("mpd-dsh-adapter: the agent's own scope exposes no tools.restrict() — cannot apply a tool restriction to it")
-      }
-      // Receiver-bound to the scoped `tools`, exactly as the harness calls it, so the restriction
-      // lands on THAT agent's layer rather than the composition's.
-      const applied = tools.restrict(filter)
-      return typeof applied === "function" ? applied : noop
+      // Thin delegation: the rules live in ONE module-level applier, shared with the retained
+      // tolerant form so the two can never drift on the "receiver is the agent's own tools" rule.
+      return applyScopedRestriction(agent, filter)
+    },
+
+    /** Apply a deny to one agent's own scope, pruning the host's unknown names and KEEPING it. */
+    restrictAgentToolsRetained(agent: unknown, names: readonly string[]): { applied: string[]; pruned: string[] } {
+      return restrictAgentToolsRetained(agent, names)
     },
 
     /** Register the DEPLOYMENT PERSONA slot on one agent's own prompt. */

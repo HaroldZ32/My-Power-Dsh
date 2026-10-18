@@ -675,10 +675,15 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     // decision would leave no trace an operator could find. The workmate twin already writes to disk;
     // observability of the same discipline must be SYMMETRIC or a verifier can only cite half of it.
     try {
-      dsh.restrictAgentTools(agent, { deny: [...READONLY_DENY] })
-      // ONE line per child: the length applied, so a future pruning regression is visible on disk
-      // instead of being inferred from a header.
-      rowLogLine("mpd-roles", "[mpd-roles] read-only child: applied " + READONLY_DENY.length + " denials to its own tool scope")
+      // RETAINED + TOLERANT: a scope that does not know `mcp__lsp__*` (a profile without `cclsp`)
+      // rejects the WHOLE list, so an unpruned apply would deny NOTHING and leave this member
+      // writable. The applier prunes exactly the names the host reports and retries once.
+      /** The accepted names and whatever the host pruned as unknown here. */
+      const outcome = dsh.restrictAgentToolsRetained(agent, [...READONLY_DENY])
+      // ONE line per child, carrying BOTH numbers: a future pruning regression, or a profile that
+      // quietly lost a toolchain, is then visible on disk instead of inferred from a header.
+      rowLogLine("mpd-roles", "[mpd-roles] read-only child: applied " + outcome.applied.length + " denials to its own tool scope"
+        + (outcome.pruned.length === 0 ? "" : " (pruned as unknown in this composition: " + outcome.pruned.join(", ") + ")"))
     } catch (error) {
       rowLogLine("mpd-roles", "[mpd-roles] read-only child: the deny could NOT be applied (" + String((error as Error)?.message ?? error) + ") — this member may be able to write")
     }
