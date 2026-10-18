@@ -236,8 +236,12 @@ and never `installed`/`allow`.
 record validator still REFUSES a PASS with no cited documents, no gate evidence, a forged evidence id or a
 same-agent verifier — that guarantee never lived in a hook. The verifier's ENVELOPE (a bound seat may not
 shell out, may not return sources while blind, may not mutate the board) is prose now: `mpd_verify_seat`
-records the seat and the observation log evidences its blindness, but nothing fences it. The one-git-writer
-rule for member sessions is prose too — the withdrawal removed the matcher with the hook.
+records the seat, but nothing fences it — and nothing OBSERVES its reads either. The observation log was
+written by the withdrawn guard itself (`law.noteCall` / `law.countRead`), so with the hook gone every seat
+reads as `blind` and the `unproven` refusal cannot be triggered by evidence: treat an unproven basis as
+UNVERIFIED, never as established. `agent-references/glossary.md` and
+`packages/mpd-verify-plugin/README.md` carry the same status. The one-git-writer rule for member sessions
+is prose too — the withdrawal removed the matcher with the hook.
 
 **A read-only spawn survives an unregistered deny-list name (F2, 2026-10-10 — still current).**
 `tools.restrict()` rejects the WHOLE list when one name is not registered in the profile and offers no

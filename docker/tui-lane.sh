@@ -60,11 +60,13 @@ STATE_FILE="${STATE_FILE:?}"
 FACTS_FILE="${FACTS_FILE:?}"
 APP_DIR="${APP_DIR:?}"
 WORK_DIR="${WORK_DIR:?}"
-# Same default as docker/entrypoint.sh, and for the same reason: 0.15.0 is the dsh-tui release this
-# bundle targets, and its peer ranges still cover the whole band this lane runs (up to and including
-# 0.2.0-rc.2), while 0.11.2 stopped at 0.2.0-rc.1 and is REFUSED against a 0.2.0-rc.2 harness. (0.14.0,
-# 0.13.0 and 0.12.0 were the pins before it.) Keep the two in step.
-TUI_VERSION="${TUI_VERSION:-0.15.0}"
+# Same default as docker/entrypoint.sh, and for the same reason: 0.16.1 is the dsh-tui release this
+# bundle targets, and it is the FIRST host whose declared peer bands include harness 0.2.1-rc.2 (every
+# one of its 36 `@deepseek-ai/dsh-*` peers lists it). 0.15.0's bands stop at 0.2.0-rc.2, so the same
+# lane against a 0.2.1 profile is REFUSED on peer ranges — which is exactly what `tui.hostPeerBound`
+# reports instead of a false red. (0.14.0, 0.13.0 and 0.12.0 were the pins before it.) Keep the two in
+# step.
+TUI_VERSION="${TUI_VERSION:-0.16.1}"
 # The apparatus library (docker/lib/live-verdict.ts) and the caller's live-arm switch. Both are handed
 # over by docker/entrypoint.sh, which also owns the credential staging — the TUI cannot run a real
 # turn without them, and a missing LIB_DIR then reddens live.tui.* instead of passing silently.
@@ -248,6 +250,212 @@ else
   record tui.hostInstall false "the TUI host did not install or is not on PATH" "exit=$HOST_EXIT bin=${TUI_BIN:-none}"
 fi
 
+# ── 1b. THE HOST-PEER BOUND: a declared, falsifiable stop ─────────────────────
+#
+# MEASURED from the installed host's OWN manifest: dsh-tui@0.15.0 ENUMERATES the harness line it
+# supports, package by package, and 0.2.1-rc.2 is in NO band — e.g. `@deepseek-ai/dsh-agent`:
+# `^0.1.0-rc.6 || … || 0.2.0-rc.2`, `@deepseek-ai/dsh-app-boot`: `0.2.0-rc.2` exactly. That is why
+# `dsh plugin --profile dsh-tui add dsh-tui@0.15.0` is REFUSED against a 0.2.1 profile: it is the
+# host's own peer validation.
+#
+# THE PIN IS 0.16.1, WHICH IS THE OTHER CASE (user ruling 2026-10-17): it declares 36 `@deepseek-ai/dsh-*`
+# peers and EVERY ONE includes 0.2.1-rc.2 (`dsh-agent`: `… || 0.2.0-rc.2 || 0.2.1-rc.2`,
+# `dsh-app-boot`: `0.2.0-rc.2 || 0.2.1-rc.2`), so on THIS lane the bound below decides `supported`,
+# records NOTHING and the lane runs in full. The bound is kept on purpose: it fires only when an older
+# host (0.15.0 or earlier) is pinned via TUI_VERSION/MPD_E2E_TUI_VERSION, where it explains the refusal
+# instead of parking a permanent red — and on any host that declares 0.2.1 it is inert.
+#
+# So the lane DECLARES the bound instead of reddening forever, with the same shape the credential
+# bound already uses — and it is FALSIFIABLE, because the decision is DERIVED FROM DATA, never from a
+# hardcoded version:
+#   • the host version + its declared peer band come from the INSTALLED dsh-tui package.json;
+#   • the running harness version comes from `dsh --version`;
+#   • SUPPORTED   → the lane runs exactly as today, and NO bound row is written;
+#   • UNSUPPORTED → ONE `tui.hostPeerBound` row (TRUE) quoting both versions and the band, every
+#                   remaining `tui.*` row recorded as BOUNDED (`null`, never `false`), and a
+#                   `tui.laneExit` TRUE saying the lane ended on that bound;
+#   • UNREADABLE  → `tui.hostPeerBound` recorded as NOT AVAILABLE (`null`) and the lane RUNS ANYWAY,
+#                   so a broken read can never mask a real failure.
+# A future dsh-tui release that adds the harness to its band re-arms the lane with no edit here.
+
+PEER_BOUND_JS="$TUI_DIR/host-peer-bound.js"
+cat > "$PEER_BOUND_JS" <<'PEER_EOF'
+// host-peer-bound.js — decide whether the INSTALLED dsh-tui declares THIS harness version.
+// argv: <dsh-tui package.json> <running harness version>
+// stdout: ONE tab-separated line — status, package, host version, harness version, band, note.
+//   status = supported | unsupported | unavailable
+// `unavailable` is the HONEST answer for a missing/unparsable manifest, an unparsable version or a
+// band entry carrying an operator this check cannot evaluate: the caller then runs the lane normally.
+const fs = require("node:fs")
+
+/** Parse one plain semver with an optional prerelease, or null. */
+function parseVersion(text) {
+  const m = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?$/.exec(String(text || "").trim())
+  return m === null ? null : { major: Number(m[1]), minor: Number(m[2]), patch: Number(m[3]), pre: m[4] || "" }
+}
+
+/** Compare two prerelease tails; a release outranks every prerelease. */
+function comparePre(a, b) {
+  if (a === b) return 0
+  if (a === "") return 1
+  if (b === "") return -1
+  return a < b ? -1 : 1
+}
+
+/** Compare two parsed versions. */
+function compare(a, b) {
+  if (a.major !== b.major) return a.major - b.major
+  if (a.minor !== b.minor) return a.minor - b.minor
+  if (a.patch !== b.patch) return a.patch - b.patch
+  return comparePre(a.pre, b.pre)
+}
+
+/**
+ * One band entry against one version.
+ * @returns true (match), false (no match), "undecidable" (an operator this check cannot evaluate) or
+ *   "skip" (an empty entry).
+ */
+function entryVerdict(entry, version) {
+  const text = String(entry || "").trim()
+  if (text === "") return "skip"
+  if (text.startsWith("^")) {
+    const base = parseVersion(text.slice(1))
+    if (base === null) return "undecidable"
+    // A caret on a 0.x range pins the MINOR: 0.2.x only, and not below the base.
+    if (version.major !== base.major || version.minor !== base.minor) return false
+    return compare(version, base) >= 0
+  }
+  if (/^\d/.test(text)) {
+    const base = parseVersion(text)
+    return base === null ? "undecidable" : compare(version, base) === 0
+  }
+  return "undecidable"
+}
+
+/** Print the one-line answer. */
+function print(out) {
+  process.stdout.write([out.status, out.pkg, out.host, out.harness, out.band, out.note].join("\t") + "\n")
+}
+
+/** Read the manifest, pick a representative peer, decide, print. */
+function main() {
+  const pkgPath = process.argv[2] || ""
+  const harnessRaw = process.argv[3] || ""
+  const out = { status: "unavailable", pkg: "", host: "", harness: harnessRaw, band: "", note: "" }
+  const version = parseVersion(harnessRaw)
+  if (version === null) {
+    out.note = "the running harness version could not be parsed"
+    print(out)
+    return
+  }
+  let pkg
+  try {
+    pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"))
+  } catch (error) {
+    out.note = "the installed dsh-tui manifest could not be read"
+    print(out)
+    return
+  }
+  const peers = pkg.peerDependencies || {}
+  const key = ["@deepseek-ai/dsh-agent", "@deepseek-ai/dsh-app-boot"].find((name) => typeof peers[name] === "string")
+  if (key === undefined) {
+    out.host = String(pkg.version || "")
+    out.note = "the installed dsh-tui declares no peer band for @deepseek-ai/dsh-agent or @deepseek-ai/dsh-app-boot"
+    print(out)
+    return
+  }
+  out.pkg = key
+  out.host = String(pkg.version || "")
+  out.band = String(peers[key])
+  const entries = out.band.split("||").map((entry) => entry.trim()).filter((entry) => entry !== "")
+  let matched = false
+  let undecidable = false
+  for (const entry of entries) {
+    const verdict = entryVerdict(entry, version)
+    if (verdict === true) {
+      matched = true
+      break
+    }
+    if (verdict === "undecidable") undecidable = true
+  }
+  out.status = matched ? "supported" : undecidable ? "unavailable" : "unsupported"
+  out.note = matched
+    ? "the host's peer band includes this harness version"
+    : undecidable
+      ? "the host's peer band carries an operator this check cannot evaluate"
+      : "the host's peer band does not include this harness version"
+  print(out)
+}
+
+main()
+PEER_EOF
+
+# Resolve the INSTALLED manifest from the launcher first (whatever layout npm chose), then from the
+# global root — the data must come from the package actually installed, never from the version pin.
+resolve_tui_pkg() {
+  local target dir i root
+  target="$(readlink -f "${TUI_BIN:-}" 2>/dev/null || true)"
+  if [ -n "$target" ]; then
+    dir="$(dirname "$target")"
+    for i in 1 2 3 4 5 6; do
+      if [ -f "$dir/package.json" ] && grep -qF '"@deepseek-harness-tui/dsh-tui"' "$dir/package.json" 2>/dev/null; then
+        printf '%s' "$dir/package.json"
+        return 0
+      fi
+      dir="$(dirname "$dir")"
+    done
+  fi
+  root="$(npm root -g 2>/dev/null || true)"
+  if [ -n "$root" ] && [ -f "$root/@deepseek-harness-tui/dsh-tui/package.json" ]; then
+    printf '%s' "$root/@deepseek-harness-tui/dsh-tui/package.json"
+    return 0
+  fi
+  return 1
+}
+
+TUI_PKG_JSON="$(resolve_tui_pkg || true)"
+HARNESS_VERSION="$(dsh --version 2>/dev/null | head -n 1 | tr -d '[:space:]' || true)"
+PEER_STATUS=""
+PEER_PKG=""
+PEER_HOST=""
+PEER_HARNESS=""
+PEER_BAND=""
+PEER_NOTE=""
+if [ -n "$TUI_PKG_JSON" ] && [ -n "$HARNESS_VERSION" ]; then
+  PEER_LINE="$(node "$PEER_BOUND_JS" "$TUI_PKG_JSON" "$HARNESS_VERSION" 2>/dev/null || true)"
+  IFS=$'\t' read -r PEER_STATUS PEER_PKG PEER_HOST PEER_HARNESS PEER_BAND PEER_NOTE <<<"$PEER_LINE"
+fi
+
+case "${PEER_STATUS:-unavailable}" in
+  supported)
+    # The host declares this harness: run exactly as today. NO bound row exists on this path.
+    ;;
+  unsupported)
+    record tui.hostPeerBound true \
+      "DECLARED BOUND — the installed dsh-tui does not declare this harness version in its peer band, so no real-machine TUI adaptation is attempted on this run (the user-declared non-goal of this wave); the lane re-arms by itself once the host's peer band includes the harness" \
+      "host=${PEER_HOST:-unknown} harness=${PEER_HARNESS:-unknown} peer=${PEER_PKG:-unknown} band=$(printf '%s' "${PEER_BAND:-unknown}" | tr '\t' ' ' | cut -c1-160)"
+    # Every remaining tui.* row this lane owns becomes BOUNDED — a `null`, never a `false`, so a
+    # reader cannot mistake "not attempted because the host refuses this harness" for a pass.
+    for BOUNDED_ROW in pluginAddHost pluginAddBundle compose presetPreference presetRow mpdTuiRow agentTeamRows boot noFatalSignatures sessionPreset teamSceneOtherSessionInvisible teamFixtureBound teamSceneOpened teamGraphDrawn teamGraphEdges teamGraphContent mergedPanelOpens mergedPanelOrder hostDashboardKeyIntact noDirectTuiSeam; do
+      record "tui.$BOUNDED_ROW" null \
+        "DECLARED BOUND — not attempted: the installed dsh-tui does not declare this harness version (see tui.hostPeerBound)" \
+        "bound=tui.hostPeerBound"
+    done
+    record tui.laneExit true \
+      "the TUI lane ended on the DECLARED HOST-PEER BOUND — every remaining tui.* row is BOUNDED (null), not green" \
+      "bound=tui.hostPeerBound host=${PEER_HOST:-unknown} harness=${PEER_HARNESS:-unknown}"
+    LANE_EXIT_RECORDED=1
+    exit 0
+    ;;
+  *)
+    # NOT AVAILABLE is not a pass: the row is recorded as `null` with its reason and the lane runs on,
+    # so a broken peer read can only make the lane noisier, never greener.
+    record tui.hostPeerBound null \
+      "the host-peer bound could not be evaluated, so the lane runs and fails honestly" \
+      "note=${PEER_NOTE:-no installed dsh-tui manifest or harness version could be read} host=${PEER_HOST:-unknown} harness=${PEER_HARNESS:-unknown} peer=${PEER_PKG:-unknown}"
+    ;;
+esac
+
 # ── 2. the TUI profile: host bundle, then THIS bundle as the third layer ───────
 # THE PEER REFUSAL LANDS HERE, and this is the step whose log the 2026-10-17 run could not quote.
 CURRENT_LOG="$TUI_DIR/add-host.log"
@@ -426,7 +634,8 @@ BOOT_PANE="$(cat "$TUI_DIR/pane-boot.txt" 2>/dev/null || true)"
 # session is closed) is the arm that judges it, and this count is its evidence.
 BOOT_LANDING_HITS="$(printf '%s' "$BOOT_PANE" | grep -cE "$LANDING_MARKERS" || true)"
 
-# ── 4.0 THE SESSION MATERIALIZER (measured 2026-10-14 on dsh-tui 0.15.0) ──────
+# ── 4.0 THE SESSION MATERIALIZER (measured 2026-10-14 on dsh-tui 0.15.0; the 0.16.1 host was
+# checked against the same seam and did not change it) ──────────────────────────
 # WHY THIS EXISTS. The harness writes a session store directory only once the session APPENDS an event,
 # and this lane's boot is COMMAND-ONLY: it opens the chat screen and waits. Nothing appends, so
 # `<DSH_HOME>/sessions/<projectKey>/<sessionId>` never appears, the `resolve` poll below can only answer

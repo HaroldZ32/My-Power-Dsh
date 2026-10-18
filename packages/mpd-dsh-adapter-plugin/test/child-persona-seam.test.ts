@@ -106,11 +106,13 @@ function harness(options: { withOnEvent?: boolean; sectionsThrow?: boolean; noOw
   }
   /** The seam under test, over the real adapter and recording collaborators. */
   const seam = installChildPersonaSeam(dsh, {
-    resolve: (label) => (label === "Junior Engineer"
-      ? { persona: "small-change executor", readonly: false }
-      : label === "Explorer"
-        ? { persona: "read-only searcher", readonly: true }
-        : null),
+    resolve: (label) => {
+      // A member with NO persona text at all, so the "empty persona registers nothing" arm is real.
+      if (label === "Blank Member") return { persona: "   ", readonly: false }
+      if (label === "Junior Engineer") return { persona: "small-change executor", readonly: false }
+      if (label === "Explorer") return { persona: "read-only searcher", readonly: true }
+      return null
+    },
     restrictReadonly: (agent) => { restricted.push(agent) },
     warn: (line) => { warned.push(line) },
     onEvent: options.withOnEvent === false
@@ -349,5 +351,35 @@ describe("restrictAgentTools needs only tools.restrict — the member the harnes
     const dsh = createDshAdapter({ get: () => undefined } as never)
     expect(() => dsh.restrictAgentTools({ ctx: { tools: {} } }, { deny: ["write"] }))
       .toThrow(/exposes no tools\.restrict\(\)/)
+  })
+})
+
+describe("ORDERING: a failing persona can never disarm the read-only discipline", () => {
+  test("a THROWING section still leaves the read-only child RESTRICTED", () => {
+    // THE DEFECT THIS LOCKS (CWE-284 class): while persona registration and the restriction shared
+    // one try/catch, a throwing section skipped the restriction entirely — and the likeliest throw
+    // is a SECOND `deployment:persona-prefix` registration on the same child scope, because the
+    // roster seam and the workmate seam can both resolve one child. A read-only member then spawned
+    // WRITABLE with only a warning on the log.
+    /** A harness whose section registration throws, exactly as a duplicate slot does. */
+    const h = harness({ sectionsThrow: true })
+    /** A read-only member's child. */
+    const explorer = h.child("child-ro", "Explorer")
+    h.seam.handle({ agent: explorer })
+    // The discipline survived the persona failure…
+    expect(h.restricted).toEqual([explorer])
+    // …and the failure is still reported rather than swallowed.
+    expect(h.warned.some((line) => line.includes("did not receive its persona section"))).toBe(true)
+  })
+
+  test("an EMPTY or whitespace persona registers NOTHING, so it cannot collide on the slot", () => {
+    /** A harness whose section registration throws — a collision here would be caused by us. */
+    const h = harness({ sectionsThrow: true })
+    /** A child whose resolved member contributes no persona text at all. */
+    const child = h.child("child-blank", "Blank Member")
+    h.seam.handle({ agent: child })
+    // No registration was attempted, so the throwing registry was never touched.
+    expect(h.sections).toEqual([])
+    expect(h.warned).toEqual([])
   })
 })

@@ -138,3 +138,78 @@ describe("the Web runtime seam probe (0.2.1 renamed webRuntime -> webApp)", () =
     }
   })
 })
+
+describe("ARMED is not MOUNTED — a deployment line never claims more than happened", () => {
+  test("an armed decision whose injected callback NEVER fires claims no mount", async () => {
+    // THE DEFECT THIS LOCKS (measured review finding): the `seam armed` line fired BEFORE the
+    // deferred `ctx.inject(...)` callback ran, so a callback that never fired — or a host `apply`
+    // that threw — left a log saying the seam was armed with no sidebar behind it.
+    /** The scratch workspace the row's file sink writes under, so the test owns it. */
+    const workspace = mkdtempSync(join(tmpdir(), "mpd-sidebar-armed-"))
+    /** The environment key the sink resolves its root from, restored in `finally`. */
+    const previousRoot = process.env.DSH_WORKSPACE_ROOT
+    process.env.DSH_WORKSPACE_ROOT = workspace
+    try {
+      /** Every line the row logged, at either level. */
+      const lines: string[] = []
+      await apply(
+        {
+          // The OLD name carrying `trustedHosts` is what arms the seam.
+          get: (id: string): unknown => (id === "webRuntime" ? { trustedHosts: ["a", "b"] } : undefined),
+          logger: {
+            warn: (message: unknown): void => { lines.push(String(message)) },
+            info: (message: unknown): void => { lines.push(String(message)) },
+          },
+          // The callback is HANDED OVER AND NEVER INVOKED: the never-fires case.
+          inject: (): void => { /* never calls back */ },
+        } as never,
+        {},
+      )
+      /** The one armed line this boot wrote. */
+      const armed = lines.filter((line) => line.includes("seam ARMED"))
+      expect(armed).toHaveLength(1)
+      // The wording says DECISION, so an operator cannot read it as a mounted sidebar.
+      expect(armed[0]).toContain("decision only")
+      // ...and nothing claims a mount, because nothing mounted.
+      expect(lines.some((line) => line.includes("seam MOUNTED"))).toBe(false)
+    } finally {
+      if (previousRoot === undefined) delete process.env.DSH_WORKSPACE_ROOT
+      else process.env.DSH_WORKSPACE_ROOT = previousRoot
+      rmSync(workspace, { recursive: true, force: true })
+    }
+  })
+
+  test("when the callback DOES fire, the mount outcome is reported separately from the decision", async () => {
+    /** The scratch workspace for the sink, as above. */
+    const workspace = mkdtempSync(join(tmpdir(), "mpd-sidebar-mount-"))
+    /** The environment key the sink resolves its root from, restored in `finally`. */
+    const previousRoot = process.env.DSH_WORKSPACE_ROOT
+    process.env.DSH_WORKSPACE_ROOT = workspace
+    try {
+      /** Every line the row logged, at either level. */
+      const lines: string[] = []
+      await apply(
+        {
+          get: (id: string): unknown => (id === "webRuntime" ? { trustedHosts: ["a"] } : undefined),
+          logger: {
+            warn: (message: unknown): void => { lines.push(String(message)) },
+            info: (message: unknown): void => { lines.push(String(message)) },
+          },
+          // The callback IS invoked with a scoped ctx, so the mount path really runs. The scoped ctx
+          // carries no services, so whatever the host does, the OUTCOME must be written down.
+          inject: (_seams: readonly string[], callback: (scoped: unknown) => void): void => { callback({ get: (): unknown => undefined, logger: { warn: (...a: unknown[]): void => { lines.push(String(a[0])) }, info: (...a: unknown[]): void => { lines.push(String(a[0])) } } }) },
+        } as never,
+        {},
+      )
+      // A mount OUTCOME line exists and is distinct from the decision line.
+      expect(lines.some((line) => line.includes("seam MOUNTED") || line.includes("seam NOT mounted"))).toBe(true)
+      /** The decision line, asserted to be a decision and not the outcome. */
+      const armed = lines.filter((line) => line.includes("seam ARMED"))
+      expect(armed.every((line) => line.includes("decision only"))).toBe(true)
+    } finally {
+      if (previousRoot === undefined) delete process.env.DSH_WORKSPACE_ROOT
+      else process.env.DSH_WORKSPACE_ROOT = previousRoot
+      rmSync(workspace, { recursive: true, force: true })
+    }
+  })
+})

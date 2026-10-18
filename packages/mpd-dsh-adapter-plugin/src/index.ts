@@ -2283,23 +2283,45 @@ export function installChildPersonaSeam(
   const handle = (payload: unknown): void => {
     /** The agent the payload carries; a build that hands the agent itself still works. */
     const agent = (payload as { agent?: unknown } | undefined)?.agent ?? payload
+    /** The identity this child is, or `null` when it is not ours. */
+    let member: { persona: string; readonly: boolean } | null = null
     try {
       /** The child's own delegation label; absent for a child this composition did not raise. */
       const label = dsh.subagentLabelOf(agent)
       if (label === undefined) return
-      /** The identity that label names, or null for any other child in this process. */
-      const member = options.resolve(label)
-      if (member === null) return
-      // The slot 0.2.0 filled internally from the request's `persona`: the adapter names it and
-      // passes `interpolate: false`, because interpolation defaults ON and an unknown `{{…}}`
-      // reference throws on every assembly — which would break the child's very first step.
-      dsh.applyPersonaSection(agent, member.persona)
-      // The read-only half belongs in the SAME listener: 0.2.1 dropped `persona` and `toolFilter`
-      // together, so the retired `applyChildOverrides` did both here.
-      if (member.readonly) options.restrictReadonly(agent)
+      member = options.resolve(label)
     } catch (error) {
-      // A throw here FAILS THE SPAWN (the harness awaits this serial dispatch), so it is reported.
-      options.warn("a spawned child did not receive its persona: " + String((error as Error)?.message ?? error))
+      // An unreadable identity leaves the child ALONE — it cannot be attributed, so applying either
+      // half to it would be a guess. Reported, never thrown: a throw fails the whole spawn.
+      options.warn("a spawned child could not be identified, so neither its persona nor its read-only discipline was applied: " + String((error as Error)?.message ?? error))
+      return
+    }
+    if (member === null) return
+    // ORDER IS PART OF THE CONTRACT, NOT STYLE. The read-only discipline is a SECURITY control, so it
+    // is applied FIRST and inside its OWN try/catch. While persona registration and the restriction
+    // shared one `catch`, a throwing section skipped the restriction entirely — and the likeliest
+    // throw is a SECOND `deployment:persona-prefix` registration for the same child scope, because
+    // the roster seam and the workmate seam can both resolve one child. That made a "read-only"
+    // member spawn WRITABLE with only a warning: a security control silently becoming a no-op, which
+    // is the exact defect class this seam exists to close.
+    if (member.readonly) {
+      try {
+        options.restrictReadonly(agent)
+      } catch (error) {
+        options.warn("a read-only child could NOT be restricted (" + String((error as Error)?.message ?? error) + ") — this member may be able to write")
+      }
+    }
+    // The persona is PRESENTATION: it may fail without costing the discipline applied above.
+    // An empty persona is not registered at all — `""` would collide on the slot name for no gain.
+    if (typeof member.persona === "string" && member.persona.trim() !== "") {
+      try {
+        // The slot 0.2.0 filled internally from the request's `persona`: the adapter names it and
+        // passes `interpolate: false`, because interpolation defaults ON and an unknown `{{…}}`
+        // reference throws on every assembly — which would break the child's very first step.
+        dsh.applyPersonaSection(agent, member.persona)
+      } catch (error) {
+        options.warn("a spawned child did not receive its persona section: " + String((error as Error)?.message ?? error))
+      }
     }
   }
   /** The subscription disposer, when one was attached. */
@@ -2629,6 +2651,20 @@ function registerAgentSection(agent: unknown, section: DshPromptSection): () => 
 
 /** The members that can raise a durable child, NEWEST generation first. */
 const CONTINUABLE_START_MEMBERS = ["startActivation", "startContinuable"] as const
+
+/**
+ * Whether {@link DshAdapter.spawnAgent} can start a one-shot child on this generation.
+ *
+ * The ONE-TRUE predicate behind both the call path and `capabilities().subagentsSpawn`: 0.2.1-rc.2
+ * removed `start()` and starts through `startActivation`, while an older host has only `start`. The
+ * capability flag used to check `start` alone and therefore reported FALSE on the harness this bundle
+ * now targets, contradicting the code that actually spawned.
+ * @param subagents - the subagent service, or `undefined` when the composition has none.
+ * @returns true when a one-shot spawn has a callable member.
+ */
+function hasOneShotSpawn(subagents: any): boolean {
+  return typeof subagents?.startActivation === "function" || typeof subagents?.start === "function"
+}
 
 /**
  * Which durable-child member this `ctx.subagents` service exposes.
@@ -3392,7 +3428,10 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         toolsPreExecute: typeof ctx?.on === "function",
         toolsPostExecute: typeof ctx?.on === "function",
         subagents: subagents !== undefined,
-        subagentsSpawn: typeof subagents?.start === "function",
+        // Derived from the SAME newest-first probe `spawnAgent` runs, so a capability flag can
+        // never contradict the call path that implements it (it reported FALSE on 0.2.1 while
+        // spawning worked through `startActivation`).
+        subagentsSpawn: hasOneShotSpawn(subagents),
         skills: skills !== undefined,
         skillsProvider: typeof skills?.registerProvider === "function",
         agentPresets: typeof presets?.resolve === "function",

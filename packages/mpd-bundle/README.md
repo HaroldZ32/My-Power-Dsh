@@ -27,10 +27,10 @@ preset-DIRECTORY form under `packages/mpd-bootstrap-plugin/presets/` does not ex
 harness 0.1.7-rc.2 preset model is one row per preset, carrying the child list inline.) The
 specialists exist as a subagent roster (`mpd-roles-plugin`), not as presets.
 
-## Session-start team gate (binding)
+## Session-start team gate (binding, OPT-IN)
 
 A session starts with **NO team** — a team is not a precondition of a session. The frozen predicate is
-evaluated at the session's first pre-step and enforced mechanically by `mpd-roles-plugin` on the
+evaluated at the session's first pre-step and carried by `mpd-roles-plugin` on the
 official plugin's seams:
 
 ```
@@ -45,8 +45,9 @@ trigger = explicit flag OR (matchedSignals >= 1)
   FILE alone is NOT a signal (the retired plan-file probe fired in every session of this workspace).
 - **Not triggered** → the session runs solo; no team, no notice.
 
-`team.gate` in `mpd.jsonc` selects what a TRIGGER does, resolved PER CALL: `mechanical` (the default) |
-`advisory` | `off`.
+`team.gate` in `mpd.jsonc` selects what a TRIGGER does, resolved PER CALL: `off` (**the DEFAULT** — an
+ABSENT or unknown value reads `off`, so the ceremony is opt-in and a typo can never arm it) | `advisory`
+| `mechanical` (the only spellings that arm it are `"mechanical"` and the legacy `true`).
 
 - **mechanical** → the gate STAGES an APPROVABLE PLAN SHELL through the bundle's OWN `agent_teams_plan`
   tool — 0 members, 0 tasks, `approval: required` — and injects exactly ONE notice carrying the marker
@@ -64,7 +65,8 @@ An explicit `team:` / `!team` request is signal **A** and travels the SAME route
 stages the shell too). The gate is scoped to top-level `mpd` sessions — a subagent/member session
 (`parentSession` set) never qualifies, and neither does another preset's session — settles once per
 session, and a failure inside it leaves the step untouched. The `mpd` preset persona carries the
-matching SESSION STARTUP RULE, so the captain behaves correctly whether or not the gate fired.
+matching session-start convention (the frozen notice marker, the `team.gate` knob and its opt-in
+default), so the captain behaves correctly whether or not the gate fired.
 
 **RETIRED — kept as history, not as configuration.** This section used to document the vendored
 `agent-teams` plugin's `sessionTeamPolicy` / `autoRoute` knobs, its provisioned **"MPD Default"** team

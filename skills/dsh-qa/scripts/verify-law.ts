@@ -7,27 +7,44 @@
 // denial, its `verify.mode: "off"` negative control and the `docs/**` allowance. The user's ruling
 // withdrew the ceremony (R1: one agent, its whole tool pack, steered by the persona prompt), so the OLD
 // assertions described a surface that no longer exists — keeping them would fail a CORRECT tree.
-// The case now asserts the NEW behaviour and keeps the falsifiable shape:
+// The case now asserts the NEW behaviour and keeps the falsifiable shape.
+//
+// WHAT EACH ARM IS WORTH — the two tiers are named so no reader mistakes one for the other (the SAME
+// distinction `captain-full-tools.ts` draws, because one suite must not carry two opposite claims):
+//   * DISCRIMINATING, offline: the SHIPPED apply site no longer calls `installVerifyGuard(` and still
+//     prints `verifyGate=absent reason=…` (asserted against src, never against stale dist bytes), plus
+//     the boot line's absent token in the live run below.
+//   * DISCRIMINATING, the boot line: the roles row reports the withdrawal on its own apply site, and a
+//     pre-withdrawal dist prints a MODE there — so that arm reddens on a returned guard.
+//   * CORROBORATIVE, RUN A and RUN B: a one-shot HEADLESS boot NEVER composes an agent preset
+//     (`@deepseek-ai/dsh-headless` `assertAdoptable` refuses it) and the withdrawn guards were
+//     AGENT-SCOPED, so those runs pass IDENTICALLY before and after the rollback. They witness that the
+//     captain's pack is callable on THIS composition — never that the guard is gone. MEASURED by the
+//     verification lane on pre-wave 0.2.0 and 0.2.1: read-source + write-code already worked headless with
+//     `verifyGate=installed captainInvestigation=deny` on the boot line.
 //   * the `mpd-verify` row still MOUNTS: it writes its own sandbox boot marker, and its five
 //     `mpd_verify_*` tools still register (asserted offline against the built dist). The law's
 //     BOOKKEEPING surface is still shipped — only the mechanical WRITE GUARD is gone, and a real boot
 //     (never `--dump-config`, which proves COMPOSITION ONLY and would pass with the row's apply
 //     aborting) is what can distinguish the two;
-//   * RUN A, the inverse of the old denial: with NO loop armed, the top-level mpd agent's `write` on a
-//     code path LANDS — the harness records the call AND the artifact exists on disk. Both halves are
-//     asserted because the harness pairs a guard-BLOCKED call with a result it does not error-flag
-//     (measured 2026-10-07), so "a write was recorded" alone would pass a denied one;
-//   * RUN B, the retired knob's own arm: the SAME sandbox with `verify.mode: "hard"` — the spelling that
-//     used to be the strictest denial — still lets the write land. A guard that came back would redden
-//     BOTH runs, so neither arm can pass by luck;
+//   * RUN A (CORROBORATIVE): with NO loop armed, the top-level mpd agent's `write` on a code path LANDS —
+//     the harness records the call AND the artifact exists on disk. Both halves are asserted because the
+//     harness pairs a guard-BLOCKED call with a result it does not error-flag (measured 2026-10-07), so
+//     "a write was recorded" alone would pass a denied one. Per the bound above, this arm corroborates
+//     the pack on a headless composition; it cannot by itself detect a returned guard;
+//   * RUN B (CORROBORATIVE, the retired knob's own arm): the SAME sandbox with `verify.mode: "hard"` — the
+//     spelling that used to be the strictest denial — still lets the write land. That the KNOB is inert
+//     IS discriminating on the apply site (nothing installs the reader), which is why the offline arm
+//     pins it there and this run only witnesses the same outcome end to end;
 //   * the roles row's boot line reports `verifyGate=absent reason=…`: the withdrawn state is REPORTED,
 //     never faked as a mode, and a stale pre-withdrawal dist reddens this arm on purpose;
 //   * three-layer isolation (§7) and the REAL workspace's marker untouched (unchanged obligations).
 //
 // WHAT IT DOES NOT PROVE, stated so nobody over-reads it: it does not prove the `mpd_verify_*` TOOLS
-// work end to end (the package's own suite and the record validator's arms do that), and it does not
-// prove the roster read-only guard — a DIFFERENT guard, exercised by its own unit arms and by the
-// `readonly-deny` case.
+// work end to end (the package's own suite and the record validator's arms do that), it does not prove
+// the roster read-only guard — a DIFFERENT guard, exercised by its own unit arms and by the
+// `readonly-deny` case — and, per the bound above, RUN A/B cannot prove an agent-scoped guard is
+// absent, because a headless boot never composes one. Read the boot line, not the runs, for that.
 //
 // ISOLATION, all three layers (§7): an isolated `DSH_HOME`, a sandbox `HOME`, and a sandbox WORKSPACE
 // (`sandboxWorkspace`), with `assertSessionsSandboxed` asserting that no real-cwd session key exists.

@@ -316,8 +316,12 @@ function messageOf(error: unknown): string {
 async function mountHost(host: SidebarHost, scoped: SidebarApplyContext, config: unknown): Promise<void> {
   try {
     await (host.apply as (a: unknown, b: unknown) => unknown)(scoped, config)
+    // REPORTED FROM HERE, because only this point knows the mount actually happened: the `seam
+    // armed` decision is written before the injected scope exists, so a line there would promise a
+    // sidebar a failing or never-firing callback never delivered.
+    say(scoped, "info", "seam MOUNTED: the sidebar host applied inside the injected scope")
   } catch (error) {
-    say(scoped, "warn", "apply failed: " + messageOf(error))
+    say(scoped, "warn", "seam NOT mounted: the sidebar host apply failed: " + messageOf(error))
   }
 }
 
@@ -341,7 +345,10 @@ export async function apply(ctx: SidebarApplyContext, config: unknown): Promise<
     say(ctx, "warn", `disabled: ${decision.detail} [reason=${decision.reason}]`)
     return
   }
-  say(ctx, "info", `seam armed: ${DSH_SEAM_WEB_RUNTIME}.trustedHosts (${String(decision.service.trustedHosts.length)} trusted authorities); ${decision.detail}`)
+  // ARMED IS NOT MOUNTED. This line records the PROBE DECISION; the mount happens later, inside the
+  // injected scope, and reports its own outcome (`seam MOUNTED` / `seam NOT mounted`). A deployment
+  // line must not claim more than has happened by the time it is written.
+  say(ctx, "info", `seam ARMED (decision only; the mount is reported separately): ${DSH_SEAM_WEB_RUNTIME}.trustedHosts (${String(decision.service.trustedHosts.length)} trusted authorities); ${decision.detail}`)
   /** The host module, imported once through the memoizing loader. */
   let host: SidebarHost
   try {
@@ -365,6 +372,6 @@ export async function apply(ctx: SidebarApplyContext, config: unknown): Promise<
       void mountHost(host, scoped, config)
     })
   } catch (error) {
-    say(ctx, "warn", `disabled: could not inject ${DSH_SEAM_WEB_RUNTIME}: ${messageOf(error)}`)
+    say(ctx, "warn", `seam NOT mounted: could not inject ${DSH_SEAM_WEB_RUNTIME}: ${messageOf(error)}`)
   }
 }

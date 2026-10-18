@@ -447,6 +447,9 @@ function registerAgentSection(agent, section) {
   return typeof registered === "function" ? registered : noop;
 }
 var CONTINUABLE_START_MEMBERS = ["startActivation", "startContinuable"];
+function hasOneShotSpawn(subagents) {
+  return typeof subagents?.startActivation === "function" || typeof subagents?.start === "function";
+}
 function continuableStartMember(subagents) {
   for (const member of CONTINUABLE_START_MEMBERS)
     if (typeof subagents?.[member] === "function")
@@ -902,7 +905,7 @@ function createDshAdapter(ctx, config = {}) {
         toolsPreExecute: typeof ctx?.on === "function",
         toolsPostExecute: typeof ctx?.on === "function",
         subagents: subagents !== undefined,
-        subagentsSpawn: typeof subagents?.start === "function",
+        subagentsSpawn: hasOneShotSpawn(subagents),
         skills: skills !== undefined,
         skillsProvider: typeof skills?.registerProvider === "function",
         agentPresets: typeof presets?.resolve === "function",

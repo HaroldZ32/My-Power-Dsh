@@ -146,6 +146,21 @@ describe("the capability probe is honest PER GENERATION", () => {
     expect(executor.reason).not.toContain("startContinuable")
   })
 
+  test("subagentsSpawn agrees with spawnAgent: TRUE on a 0.2.1 service with no start()", () => {
+    /** A 0.2.1 service: `startActivation` exists, the retired `start` does NOT. */
+    const h = harness({ generation: "activation" })
+    // The defect this locks: the flag checked `subagents.start` alone and reported FALSE on the
+    // harness this bundle now targets, contradicting the call path that actually spawned.
+    expect(h.capabilities.subagentsSpawn).toBe(true)
+    expect(h.capabilities.subagentsContinuable).toBe(true)
+  })
+
+  test("subagentsSpawn is FALSE only when NO spawn member exists at all", () => {
+    /** A service with no spawn member on either generation. */
+    const h = harness({ generation: "none" })
+    expect(h.capabilities.subagentsSpawn).toBe(false)
+  })
+
   test("a RETIRED service still reports available, and the reason names startContinuable", () => {
     /** A pre-0.2.1 service: the old member is the only one present. */
     const h = harness({ generation: "continuable" })

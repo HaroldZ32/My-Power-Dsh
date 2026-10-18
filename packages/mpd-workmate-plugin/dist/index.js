@@ -317,18 +317,31 @@ function restrictToolsTolerant(restrict, names) {
 function installChildPersonaSeam(dsh, options) {
   const handle = (payload) => {
     const agent = payload?.agent ?? payload;
+    let member = null;
     try {
       const label = dsh.subagentLabelOf(agent);
       if (label === undefined)
         return;
-      const member = options.resolve(label);
-      if (member === null)
-        return;
-      dsh.applyPersonaSection(agent, member.persona);
-      if (member.readonly)
-        options.restrictReadonly(agent);
+      member = options.resolve(label);
     } catch (error) {
-      options.warn("a spawned child did not receive its persona: " + String(error?.message ?? error));
+      options.warn("a spawned child could not be identified, so neither its persona nor its read-only discipline was applied: " + String(error?.message ?? error));
+      return;
+    }
+    if (member === null)
+      return;
+    if (member.readonly) {
+      try {
+        options.restrictReadonly(agent);
+      } catch (error) {
+        options.warn("a read-only child could NOT be restricted (" + String(error?.message ?? error) + ") — this member may be able to write");
+      }
+    }
+    if (typeof member.persona === "string" && member.persona.trim() !== "") {
+      try {
+        dsh.applyPersonaSection(agent, member.persona);
+      } catch (error) {
+        options.warn("a spawned child did not receive its persona section: " + String(error?.message ?? error));
+      }
     }
   };
   const dispose = options.onEvent?.("agent/created", (payload) => handle(payload));
@@ -518,6 +531,9 @@ function registerAgentSection(agent, section) {
   return typeof registered === "function" ? registered : noop;
 }
 var CONTINUABLE_START_MEMBERS = ["startActivation", "startContinuable"];
+function hasOneShotSpawn(subagents) {
+  return typeof subagents?.startActivation === "function" || typeof subagents?.start === "function";
+}
 function continuableStartMember(subagents) {
   for (const member of CONTINUABLE_START_MEMBERS)
     if (typeof subagents?.[member] === "function")
@@ -973,7 +989,7 @@ function createDshAdapter(ctx, config = {}) {
         toolsPreExecute: typeof ctx?.on === "function",
         toolsPostExecute: typeof ctx?.on === "function",
         subagents: subagents !== undefined,
-        subagentsSpawn: typeof subagents?.start === "function",
+        subagentsSpawn: hasOneShotSpawn(subagents),
         skills: skills !== undefined,
         skillsProvider: typeof skills?.registerProvider === "function",
         agentPresets: typeof presets?.resolve === "function",
@@ -1840,6 +1856,12 @@ function wmDir(name2) {
     throw new WorkmateError("invalid-name", "mpd_workmate: empty workmate name — the library root is not an instance", 400);
   return join2(workmateRoot(), key);
 }
+function workmateKeyFromLabel(label) {
+  const text = typeof label === "string" ? label : "";
+  if (text === "")
+    return null;
+  return sanitizeName(text) === text ? text : null;
+}
 function sanitizeName(s) {
   const t = String(s ?? "").trim().toLowerCase().replace(/[^a-z0-9_-]+/g, "-").replace(/-{2,}/g, "-").replace(/^-+|-+$/g, "");
   return t;
@@ -2293,10 +2315,13 @@ function apply(ctx) {
   }
   installChildPersonaSeam(dsh, {
     resolve: (label) => {
-      const meta = readMeta(wmDir(label));
+      const key = workmateKeyFromLabel(label);
+      if (key === null)
+        return null;
+      const meta = readMeta(wmDir(key));
       if (meta === null)
         return null;
-      const persona = readPersona(label);
+      const persona = readPersona(key);
       return { persona, readonly: meta.readonly };
     },
     restrictReadonly: (agent) => {
@@ -2679,5 +2704,6 @@ export {
   nameKey,
   renameWorkmate,
   sanitizeName,
-  scoreMatch
+  scoreMatch,
+  workmateKeyFromLabel
 };

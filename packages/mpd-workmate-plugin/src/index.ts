@@ -194,6 +194,23 @@ function wmDir(name: string): string {
   return join(workmateRoot(), key)
 }
 
+/**
+ * The workmate KEY one child label names, or `null` when the label is not already a canonical key.
+ *
+ * A workmate child's label IS its sanitized library key, so the comparison is EXACT: any other
+ * spelling belongs to another seam. Sanitizing here would be an identity collision — a ROSTER child
+ * labelled "Explorer" sanitizes to `explorer`, so it would resolve to a workmate of that name and
+ * inherit that record's `readonly` flag, letting one seam answer for the other's child.
+ * @param label - the child's own delegation label.
+ * @returns the canonical key, or `null` when this label is not a workmate key.
+ */
+export function workmateKeyFromLabel(label: unknown): string | null {
+  /** The label as text; a non-string is not a workmate key. */
+  const text = typeof label === "string" ? label : ""
+  if (text === "") return null
+  return sanitizeName(text) === text ? text : null
+}
+
 /** Instance name → filesystem-safe, lowercase, kebab-ish. */
 export function sanitizeName(s: string): string {
   /** The sanitized form: trimmed, lowercased, runs of illegal characters collapsed to one hyphen. */
@@ -867,13 +884,19 @@ export function apply(ctx: Ctx): void {
 
   installChildPersonaSeam(dsh, {
     resolve: (label) => {
-      /** The library record this child label names, or null for any other child in this process. */
-      const meta = readMeta(wmDir(label))
+      // EXACT-KEY MATCH: a non-canonical label (a roster NAME like "Explorer", uppercase, spaces)
+      // is another seam's child. Sanitizing it here would resolve the Explorer ROSTER child to an
+      // `explorer` WORKMATE and hand it that record — including its readonly flag.
+      /** The canonical workmate key this label is, or null when it is not one. */
+      const key = workmateKeyFromLabel(label)
+      if (key === null) return null
+      /** The library record this key names, or null for a key with no instance. */
+      const meta = readMeta(wmDir(key))
       if (meta === null) return null
-      // An empty `persona.md` means there is no text to contribute; the section is skipped rather
-      // than registered empty, but the READ-ONLY half still applies from the record.
+      // An empty `persona.md` means there is no text to contribute; the seam skips registering an
+      // empty section, but the READ-ONLY half still applies from the record.
       /** The workmate's current persona text. */
-      const persona = readPersona(label)
+      const persona = readPersona(key)
       return { persona, readonly: meta.readonly }
     },
     // The read-only deny is validated against the CHILD's scope — the surface it truly filters.

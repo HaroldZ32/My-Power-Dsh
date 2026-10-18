@@ -320,8 +320,9 @@ function messageOf(error) {
 async function mountHost(host, scoped, config) {
   try {
     await host.apply(scoped, config);
+    say(scoped, "info", "seam MOUNTED: the sidebar host applied inside the injected scope");
   } catch (error) {
-    say(scoped, "warn", "apply failed: " + messageOf(error));
+    say(scoped, "warn", "seam NOT mounted: the sidebar host apply failed: " + messageOf(error));
   }
 }
 async function apply(ctx, config) {
@@ -330,7 +331,7 @@ async function apply(ctx, config) {
     say(ctx, "warn", `disabled: ${decision.detail} [reason=${decision.reason}]`);
     return;
   }
-  say(ctx, "info", `seam armed: ${DSH_SEAM_WEB_RUNTIME}.trustedHosts (${String(decision.service.trustedHosts.length)} trusted authorities); ${decision.detail}`);
+  say(ctx, "info", `seam ARMED (decision only; the mount is reported separately): ${DSH_SEAM_WEB_RUNTIME}.trustedHosts (${String(decision.service.trustedHosts.length)} trusted authorities); ${decision.detail}`);
   let host;
   try {
     host = await loadSidebarHost();
@@ -349,7 +350,7 @@ async function apply(ctx, config) {
       mountHost(host, scoped, config);
     });
   } catch (error) {
-    say(ctx, "warn", `disabled: could not inject ${DSH_SEAM_WEB_RUNTIME}: ${messageOf(error)}`);
+    say(ctx, "warn", `seam NOT mounted: could not inject ${DSH_SEAM_WEB_RUNTIME}: ${messageOf(error)}`);
   }
 }
 export {
