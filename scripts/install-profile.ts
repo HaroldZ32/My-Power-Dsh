@@ -459,7 +459,7 @@ function buildPlan(o: PlanInputs): Plan {
     // included.
     {
       id: "mpd-agent-team", name: "@deepseek-ai/dsh-experimental-agent-team",
-      config: { maxMembers: 16, maxTasks: 256, maxPendingMessagesPerMember: 64, maxMessageBytes: 32768, disposalTimeoutMs: 5000 }
+      config: { maxMembers: 16, maxTasks: 256, maxMessageBytes: 32768, disposalTimeoutMs: 5000 }
     },
     {
       id: "mpd-tool-agent-team", name: "@deepseek-ai/dsh-experimental-tool-agent-team",
@@ -626,9 +626,9 @@ function selfTest(): void {
   }
   if (rows.includes("agent-teams")) { console.error("[install-profile self-test] FAIL: the retired vendored agent-teams row is still declared"); process.exit(1) }
   // The three official rows were just asserted to exist, and this one is built with a config.
-  /** The `mpd-agent-team` row's config, whose five limits are pinned next. */
+  /** The `mpd-agent-team` row's config, whose four limits are pinned next. */
   const teamPlane = plan.rows.find((r: Row): boolean => r.id === "mpd-agent-team")!.config!
-  for (const [key, want] of Object.entries({ maxMembers: 16, maxTasks: 256, maxPendingMessagesPerMember: 64, maxMessageBytes: 32768, disposalTimeoutMs: 5000 })) {
+  for (const [key, want] of Object.entries({ maxMembers: 16, maxTasks: 256, maxMessageBytes: 32768, disposalTimeoutMs: 5000 })) {
     if (teamPlane[key] !== want) { console.error("[install-profile self-test] FAIL: mpd-agent-team config." + key + " (want " + JSON.stringify(want) + ", got " + JSON.stringify(teamPlane[key]) + ")"); process.exit(1) }
   }
   // The official-row assertion above covers this row too, and it is built with a config.

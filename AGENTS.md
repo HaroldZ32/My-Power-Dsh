@@ -99,7 +99,8 @@ provenance narrative is in `agent-references/overview-and-provenance.md`.
 - **THE TEAM RECORD IS OURS (team-plane split, 2026-09-30).** `mpd-team-core-plugin` owns the team
   (roster, board, DAG, `kind`/`attempt`/`round`/`verdict`) in `.mpd/team/teams/<id>.json`, served as
   **`mpdTeams`** and over `/plugins/mpd-team/state`; `mpd-dsh-adapter` mediates the ONE execution seam,
-  **`TeamExecutor`** — its **native** backend (over `ctx.subagents.startContinuable`) is the DEFAULT and
+  **`TeamExecutor`** — its **native** backend (the `startActivation` seam on 0.2.1+, the retired
+  `startContinuable` below it) is the DEFAULT and
   the official `dsh.team*` calls the FALLBACK — and NO mpd surface reads `dsh.teamLiveTeams()` any more.
   **Long form: `agent-references/overview-and-provenance.md`.**
 - **The vendored `agent-teams` body is RETIRED (2026-09-27) AND REMOVED (2026-10-07)** — harness
@@ -117,14 +118,15 @@ provenance narrative is in `agent-references/overview-and-provenance.md`.
   never `ctx.goals`. `mpd-ulw-plugin` (C2 ultrawork v2) answers `/ulw <objective>` and `/ultrawork
   <objective>` by submitting the ULW activation directive as the invoking agent's OWN next user turn, so
   the run actually starts. **Long form: `agent-references/overview-and-provenance.md`.**
-- **The session-start complexity gate is MECHANICAL — it stages an APPROVABLE PLAN SHELL, never a
-  team.** The frozen predicate `trigger = explicit flag OR (matchedSignals >= 1)` runs at the session's
+- **The session-start complexity gate is OPT-IN — it stages an APPROVABLE PLAN SHELL, never a team.**
+  The frozen predicate `trigger = explicit flag OR (matchedSignals >= 1)` runs at the session's
   first pre-step under the marker `[AgentTeams] Session-start team rule`; on a trigger the gate STAGES a
   0-member, 0-task plan shell through the `agent_teams_plan` tool — NOTHING is spawned, and the shell is
   INERT until the captain extends it (`add_member` / `create_task`) and approves it with
   `agent_teams_plan {action:"approve"}`. An explicit `team:` / `!team` request ALSO stages the shell
   (signal A) and has its marker CONSUMED from the goal text. `team.gate` in `mpd.jsonc` selects
-  `mechanical` (the default) | `advisory` | `off`; with the tool unmounted or under `advisory` the ONE
+  `off` (**the default since the 2026-10-17 rollback** — the gate is OPT-IN) | `advisory` | `mechanical`;
+  with the tool unmounted or under `advisory` the ONE
   notice says `NO team was staged` and the captain stages a team itself when the work warrants one — or
   continues solo and says so. Signal D is an ACTIVE boulder work for this workspace (`status: "active"`
   in `<workspace>/.mpd/boulder.json`, gitignored RUNTIME STATE, not a shipped repo path) — a plan FILE
@@ -174,7 +176,8 @@ specification.
 (measured 2026-10-07: 65923 → `truncated … to 65244`, losing most of §13). Wave E re-measured it on
 2026-10-08 at **60456 bytes** — 5080 B of margin, restored by moving §1's long forms into
 `agent-references/overview-and-provenance.md` and §3's layout tree into
-`agent-references/repository-layout.md`. The rule is therefore MOVE-FIRST: before adding to this
+`agent-references/repository-layout.md`; the harness-021-rollback wave re-measured it at **62650 bytes**
+(2886 B of margin) after rewriting §5 rules 2/4/5 and §13's verifier term. The rule is therefore MOVE-FIRST: before adding to this
 file, move a LONG FORM of comparable or larger size into `agent-references/` and leave a SHORT definition
 **plus an exact pointer** — never drop the term — then re-measure and restore a margin above **2 KB**
 (target **≤ 63.5 KiB / 65024 B**). A truncated manual is one whose tail silently stops binding, and a
@@ -187,7 +190,7 @@ reader cannot tell.
 | Gate | Command | When |
 |---|---|---|
 | Vendor | `node scripts/verify-vendor.ts`; the corpus re-pin is DERIVED — `node scripts/repin-vendor.ts` (dry-run by default, `--check` asserts, `--write` applies; it REFUSES the repository's own `VENDOR_LOCK.json` without `--i-know-this-is-the-captains-step`, so a wave cannot re-pin mid-flight) — and lands in the commit that invalidated the `treeSha` (§9/§11). **The gate's subject is now the bytes this repo SHIPS**: it verifies the asset fingerprints and needs no upstream checkout, no network and no `.mpd-dsh/upstream`; every identity assertion that used to be part of its exit code is GONE (de-vendor wave, 2026-10-07), and a corrupted fingerprint still FAILS | any baseline/asset change; before release |
-| **Verification law (STANDING)** | `mpd_verify_evidence {kind:"gate"}` runs the FIXED table (`gates`, `tests`, `typecheck`, `docs`, `manifest`, `comments`, `rows`, `vendor`, `dist`, `pack`) and `mpd_verify_record` REFUSES a PASS with no documents, no gate evidence, a forged evidence id or a same-agent verifier. Boot-level falsifier: `node skills/dsh-qa/scripts/verify-law.ts` (`--self-test` offline; otherwise the mounted-row boot — denial, the `verify.mode=off` control, the `docs/**` allowance) | any change under the law (§5), and every release sweep |
+| **Verification law (STANDING)** | `mpd_verify_evidence {kind:"gate"}` runs the FIXED table (`gates`, `tests`, `typecheck`, `docs`, `manifest`, `comments`, `rows`, `vendor`, `dist`, `pack`) and `mpd_verify_record` REFUSES a PASS with no documents, no gate evidence, a forged evidence id or a same-agent verifier — the guarantee lives in those TOOLS, not in a hook (the 2026-10-17 ruling withdrew the mechanical write guard; §5 rule 4). Boot-level falsifier: `node skills/dsh-qa/scripts/verify-law.ts` (`--self-test` offline; otherwise the mounted-row boot — the captain's code write LANDS with no loop armed, the retired `verify.mode:"hard"` knob is INERT, and the boot line reports `verifyGate=absent reason=…`) | any change under the law (§5), and every release sweep |
 | Dist freshness | `node scripts/verify-dist-fresh.ts` (deterministic rebuild-and-diff of every `packages/*/src` entry against its committed `dist/`; unmatched `dist/` files print in a loud NOT COVERED section; the canonical REBUILD command — repo root, path-qualified args — and the package-directory trap are named in §6's Build line) | any `packages/*/src` or `dist/` change; before release |
 | Row/parity | `bun run verify:rows` + `node skills/dsh-qa/scripts/preset-conformance.ts --self-test` | any bundle-patch / preset / overlay / row change |
 | Pack closure | `node scripts/verify-pack-closure.ts` (completeness + the byte identity of files whose sources did not move; `--self-test` is the fixture-driven arm; `--pack-stamp <t>` re-anchors the comparison for a reviewer mutating a copy) | any pack, any post-pack writer, and the release sweep (§11) |
@@ -252,8 +255,10 @@ lands (§9/§11).
   ONE delegated writer and freezes everyone else first. Read-only `status`/`log`/`diff`/`show`/`grep`
   stay open to all. Tag `backup/<branch>-<sha>` before any history-writing step.
   **WHO THE CAPTAIN IS:** the workspace's **top-level session** (no parent session, delegation depth
-  `0`) — NOT a preset name. `verify-guard.ts` uses that predicate for this rule and for rule 4; the
-  preset-keyed variant that made the captain branch unreachable here is `T-92` in the reference table.
+  `0`) — NOT a preset name. The predicate (`sessionIsTopLevel` in `complexity-gate.ts`) still ships and
+  still classifies a session; since the 2026-10-17 withdrawal NOTHING installs a guard on top of it, so
+  this rule is enforced by contract, not by a matcher. The preset-keyed variant that made the captain
+  branch unreachable here is `T-92` in the reference table.
 - **Every change lands through a BRANCH + a PULL REQUEST — binding (user-set, 2026-10-06).** Nothing is
   committed straight to `dev` or `master`: cut a `feature/<slug>` or `fix/<slug>` branch, commit the wave
   there, push it, and open a PR against `dev`. **A PR DESCRIPTION IS BILINGUAL**: it carries BOTH an
@@ -275,48 +280,54 @@ lands (§9/§11).
      (`mpd_workmate_*`) for an instance that accumulates across sessions. Size chooses WHICH
      executor: a small mechanical change goes to a Junior Engineer, a bounded independent piece to
      a Senior Engineer or Deep Worker, an evidence question to a Researcher or Explorer, a verdict
-     to a Reviewer. The captain executes only what must not be delegated by rule — the single git
-     writer, contract amendments and plan/roster shaping, releasing a watchdog hold, and the final
-     integration — and does so without framing it as "working solo". RECONNAISSANCE is not in that set:
-     `read`/`grep`/`glob` on a SOURCE path are REFUSED for the top-level session (while the documentation
-     band `.mpd/**`, `docs/**`, `evidence/**`, `agent-references/**` and the root `*.md` stays readable),
-     so finding files and reading code are DELEGATED. **The sanctioned delegation is MECHANICAL too:** the
-     row refuses `subagent` / `subagent_fork` / `workflow` for every session the `delegation.gate` knob
-     covers (`deny` default — captain AND members; `captain`; `allow`). **Long form — the reserved set, the
-     readable band and the `captain.investigation` knob: `agent-references/verification-flow.md`, "§5 rule 2 —
-     the captain's reserved set".**
+     to a Reviewer. The captain executes only what must not be delegated by rule — committing (the
+     single git writer), contract amendments and plan/roster shaping, releasing a watchdog hold, and
+     the final integration — and does so without framing it as "working solo". **The top-level agent
+     holds its whole pack DIRECTLY: `read`, `write`, `edit`, `bash`, `grep`, `glob`, `subagent` are
+     callable from the captain's session, and steering comes from the persona prompt, not from hooks.**
+     The 2026-10-10/11 ceremony that mechanically forced reconnaissance delegation, banned the
+     harness's generic spawn tools and required a verifier seat is **WITHDRAWN by user ruling
+     2026-10-17** (`.mpd/plans/harness-021-rollback.md`, R1). The diagnostic is the roles row's boot
+     line, which now reports
+     `verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode)
+     captainInvestigation=absent reason=…(captain.investigation)
+     delegationGate=absent reason=…(delegation.gate) … sessionGate=off`. Delegating reconnaissance and
+     using `mpd_role_spawn` / Agent Teams are RECOMMENDED practice, never gates; the roster, team,
+     verify, memory and ULW tools stay SHIPPED and callable. **Long form — the restored contract and
+     the withdrawn knobs: `agent-references/verification-flow.md`, "§5 rule 2 — the captain's tool
+     pack".**
   3. **Keep requirement / task / review SEPARATE.** A dispatched piece of work gets a requirement
      task (the frozen acceptance contract), a work task and a review task rather than one lumped
      implementation task; finding-driven work uses `kind=repair` + `sourceTaskId`/
      `sourceFindingIds`, and `coverageOf` names the user clause a task serves — that is what turns
      the Web plan from a flat list into a requirement chain.
-  4. **A-writes/B-verifies is MECHANICAL — the main agent does not write code, and it does not verify
-     its own work.** The workspace's TOP-LEVEL `mpd` agent may not `write`/`edit` a code path unless a
-     delegation+verification loop is armed (`mpd_verify_open {writer:"self", verifier:"<another
-     agent>"}`), and every such write is COUNTED; the normal path is to hand the scope to a
-     write-capable member. Code is verified by a DIFFERENT agent that works from the frozen contract
-     and the docs — **never from the implementation** — with the verdict recorded BEFORE any
-     implementation read; only a recorded FAIL unlocks implementation reading, for diagnosis, counted.
-     A PASS with no cited documents or no gate evidence is REFUSED by the record validator, and a FAIL
-     bounces the work back to a writer as a `kind=repair` task rather than being quietly fixed. Where
-     the law cannot be mechanical (a composition with no `tools.guard` seam), the bound is STATED —
-     the boot line says `verifyGate=absent` — never implied. **Long form — the tool surface (the five
-     `mpd_verify_*` tools) and the two sentences this rule REPLACES: `agent-references/verification-flow.md`,
-     "§5 rule 2 — the captain's reserved set".**
+  4. **A-writes/B-verifies is the RECOMMENDED discipline; its MECHANICAL form is withdrawn.**
+     The top-level `mpd` agent MAY `write`/`edit` a code path directly and NO loop needs to be armed
+     (the 2026-10-17 ruling removed the guard that refused it) — the design still holds, it is no
+     longer a hook. The normal path is to hand the scope to a write-capable member. Code is verified by
+     a DIFFERENT agent that works from the frozen contract and the docs — **never from the
+     implementation** — with the verdict recorded BEFORE any implementation read; only a recorded FAIL
+     justifies implementation reading, for diagnosis. A PASS with no cited documents or no gate evidence
+     is REFUSED by the record validator, and a FAIL bounces the work back to a writer as a `kind=repair`
+     task rather than being quietly fixed — that guarantee lives in the five `mpd_verify_*` TOOLS and
+     their validator, which still ship, not in an installed hook. **Long form — the tool surface, the
+     verifier seat's bookkeeping role and what the withdrawal removed:
+     `agent-references/verification-flow.md`, "§5 rule 2 — the captain's tool pack".**
   5. **The board has terminal verbs, and dispatch honours the declared owner.** `agent_teams_task`
      carries `complete`/`fail` (owner-only, optional `note`, optional `expected_revision`
      compare-and-set; a FAIL releases its dependents per OPT-1) — without them a dependency edge could
      never be satisfied and the DAG could not advance. `agent_teams_dispatch` pairs a ready task with
      its DECLARED owner when that member is free, and falls back to roster order ONLY with the reason
-     reported on the pairing. A git WRITE command (`commit`, `add`, `rm`, `mv`, `checkout`, `switch`,
-     `restore`, `reset`, `stash`, `merge`, `branch`, `rebase`, `tag`, `cherry-pick`, `revert`, `clean`,
-     `apply`, `am`, `update-index`, `worktree`, `init`, `clone`) is denied for any session that is NOT
-     the top-level captain — rule 1 above is now MECHANICAL for member sessions too, with the same
-     honest bound: the matcher reads a command STRING, so an obfuscated invocation can evade it. It is
-     a speed bump that makes the rule real for ordinary use, not a sandbox. **The captain predicate
-     recognises the SEEDED FORK:** a session is a child only when the harness RECORDED a subagent origin
-     or a delegation depth ≥ 1, so the user's own session (`parentSession` + `isSeeded`, depth `0`, no
-     `origin: "subagent"`) is the CAPTAIN and its rules apply to it.
+     reported on the pairing. **ONE git writer per working tree — rule 1 above — is PROSE since
+     2026-10-17: the mechanical denial of git write commands for member sessions lived in the withdrawn
+     `installVerifyGuard` hook (`commit`, `add`, `rm`, `mv`, `checkout`, `switch`, `restore`, `reset`,
+     `stash`, `merge`, `branch`, `rebase`, `tag`, `cherry-pick`, `revert`, `clean`, `apply`, `am`,
+     `update-index`, `worktree`, `init`, `clone` are listed here as the RULE, not as a matcher that
+     still runs).** The rule is unchanged and binding; its enforcement is the dispatch contract —
+     members edit files and run gates, the captain commits — plus review. The captain predicate that
+     scoped it still ships for whoever needs the classification: a session is a child only when the
+     harness RECORDED a subagent origin or a delegation depth ≥ 1, so the user's own session
+     (`parentSession` + `isSeeded`, depth `0`, no `origin: "subagent"`) is the CAPTAIN.
 
 ---
 
@@ -651,15 +662,16 @@ slot, workmate) stay here.
   not forward identity, **a teammate `description` that NAMES a roster member routes that member — one
   that does not inherits the Lead's route**. **Long form — the default models, the effort defaults and the
   routing history: `agent-references/glossary.md`.**
-- **verifier's envelope**: the tool and path boundary a BOUND VERIFIER SEAT works inside, enforced by the
-  same `guardTool` install as the captain's write rule (`packages/mpd-roles-plugin/src/verify-guard.ts`,
-  decided by the pure functions in `packages/mpd-verify-plugin/src/law.ts`). A seat is bound with
-  `mpd_verify_seat`; from then on it may not call the shell, the source-returning tools or any board
-  mutation (`mpd_verify_*` excepted — those ARE its job), its reads are path-scoped to the frozen docs and
-  the documentation band while it is BLIND (a bare path argument is refused), its writes are confined to
-  `.mpd/verify/**`, and a recorded FAIL unlocks implementation reading for DIAGNOSIS, COUNTED. Blindness is
-  PROVEN by the plugin's own observation log, never asserted. **Long form — the full tool lists, the
-  scoping rules and the ratchet: `agent-references/glossary.md` ("verifier's envelope").**
+- **verifier's envelope**: the tool and path boundary a BOUND VERIFIER SEAT works inside. A seat is bound
+  with `mpd_verify_seat`, and the boundary it is meant to keep — no shell, no source-returning tools, no
+  board mutation (`mpd_verify_*` excepted — those ARE its job), reads path-scoped to the frozen docs and
+  the documentation band while it is BLIND (a bare path argument refused), writes confined to
+  `.mpd/verify/**`, and a recorded FAIL unlocking implementation reading for DIAGNOSIS — is **PROSE since
+  2026-10-17**: the hook that ENFORCED it (`installVerifyGuard`) was withdrawn with the captain's write
+  rule, so a seat is BOOKKEEPING now, recorded and auditable, not mechanically fenced. Blindness is no
+  longer OBSERVED — the log that proved it was fed by that same withdrawn hook — so treat an unproven
+  basis as UNVERIFIED rather than established. **Long form — the tool lists, the scoping rules and what
+  remains mechanical (the record validator): `agent-references/glossary.md` ("verifier's envelope").**
 - **workmate**: a durable, evolving agent instance in `~/.mpd/workmate/` created by `mpd-workmate-plugin`
   (`mpd_workmate_*`) from a roster BASE template with an independent name; it self-summarizes after each
   work (persona + independent memory, size-capped) and keeps a short note card. Reuse is via

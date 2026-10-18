@@ -1,0 +1,5 @@
+=== node skills/dsh-qa/scripts/preset-conformance.ts --self-test ===
+[exit 1]
+
+[preset-conformance] FAIL: self-test: conformance problems:
+  - the mpd preset declares row(s) the installed standard preset does not declare at all: time-context, tool-schedule, tool-plugin-market

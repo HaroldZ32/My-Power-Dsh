@@ -1,17 +1,20 @@
 // mpd-roster-provider-plugin: per-member model routing for OFFICIAL Agent Teams teammates.
 //
 // THE GAP THIS CLOSES. A teammate created by the official `spawn_teammate` inherits the LEAD's
-// model route: `TeamService.spawnTeammate` forwards only `{ prompt, parent }` to
-// `ctx.subagents.startContinuable`, so the mpd `teamModels` slots — which DO route the one-shot
-// consult paths (`mpd_role_spawn`, `mpd_workmate_spawn`) — had no effect on a teammate. §8 of
+// model route: `TeamService.spawnTeammate` forwards only `{ prompt, parent }` to the harness
+// subagent seam (the durable-child start, named `startActivation` since 0.2.1-rc.2), so the mpd
+// `teamModels` slots — which DO route the one-shot consult paths (`mpd_role_spawn`,
+// `mpd_workmate_spawn`) — had no effect on a teammate. §8 of
 // docs/plan-0.1.7-adaptation.md recorded that as a bound, and it was right about the team service
 // and wrong about the harness.
 //
-// THE SEAM, MEASURED ON THE INSTALLED 0.1.7-rc.2 PACKAGES:
+// THE SEAM, MEASURED ON THE INSTALLED 0.1.7-rc.2 PACKAGES (the member names below are that
+// generation's; 0.2.1-rc.2 renamed the start to `startActivation(spec)` and dropped the
+// `composition` box, but the CONTRACT this package relies on is unchanged — the request carries
+// `agentOptions`, and the PROVIDER is what constructs the run):
 //
 //   • `SubagentContinuationManager.startContinuable` resolves
-//     `request.agentOptions` into provider/model/reasoningEffort and passes them to
-//     `activations.materialize({ …, agentOptions, composition: { persona, toolFilter } })`;
+//     `request.agentOptions` into provider/model/reasoningEffort and hands them to the provider;
 //   • the PROVIDER is what constructs the run (`const run = await provider.start(resolved)`), and a
 //     provider is a small class a plugin registers itself (`ctx.subagents.registerProvider`);
 //   • the provider NAME is row CONFIG, not a tool argument: the official `spawn_teammate` tool
@@ -62,12 +65,33 @@ interface ConfigLike {
   get?: (key?: string) => unknown
 }
 
+/**
+ * The start-time capabilities a subagent provider advertises — the harness's own
+ * `SubagentCapabilities`, re-declared here because that package is not resolvable by bare
+ * specifier from this repository (AGENTS.md §6).
+ *
+ * EXACTLY these four exist in harness 0.2.1-rc.2. The retired `persona` and `toolFilter` are
+ * not capabilities any more, and advertising them told the harness this provider supported
+ * something no release checks. Naming the shape turns the next such removal into a compile
+ * error here instead of a silent lie at boot.
+ */
+interface ProviderCapabilities {
+  /** The provider accepts resolved child `agentOptions` and runs what they describe. */
+  agentOptions: boolean
+  /** The provider can select a preset independently of the parent's composition. */
+  agentPreset: boolean
+  /** The provider can satisfy a caller-supplied output schema. */
+  outputSchema: boolean
+  /** The provider enforces an absolute delegation-depth cap. */
+  depthLimit: boolean
+}
+
 /** The provider contract, as the harness calls it. */
 interface ProviderLike {
   /** The name the harness addresses this provider by. */
   name: string
   /** Which optional provider capabilities this implementation advertises. */
-  capabilities: Record<string, boolean>
+  capabilities: ProviderCapabilities
   /** Whether a run keeps the Lead's context instead of the options handed to it. */
   inheritsParentContext: boolean
   /** Optional pre-start hook, called when the harness prepares a continuable child. */
@@ -196,8 +220,10 @@ export function apply(ctx: any, config: RosterProviderConfig = {}): void {
   const provider: ProviderLike = {
     name: PROVIDER_NAME,
     // `agentOptions` is the capability that MATTERS here: it tells the harness this provider may be
-    // handed resolved child options and is responsible for the run they describe.
-    capabilities: { agentOptions: true, outputSchema: true, depthLimit: true, toolFilter: true, persona: true },
+    // handed resolved child options and is responsible for the run they describe. `agentPreset` is
+    // advertised because this provider forwards the WHOLE request to the composition's own provider
+    // in both `prepareContinuable` and `start`, so preset selection passes through untouched.
+    capabilities: { agentOptions: true, agentPreset: true, outputSchema: true, depthLimit: true },
     inheritsParentContext: false,
     /** Delegate the preparation to the composition's provider, so the harness sees one normal child. */
     prepareContinuable(request: unknown): unknown {

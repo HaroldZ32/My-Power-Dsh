@@ -1,0 +1,25 @@
+Both calls completed. Reporting the returned text verbatim:
+
+---
+
+**1) `mpd_workmate_init`** (base `"Explorer"`, name `"qa-probe"`) returned:
+
+```
+workmate qa-probe initialized (base Explorer, readonly, deepseek-official/deepseek-v4-flash)
+note: Explorer-based workmate "qa-probe". No task history yet.
+```
+
+---
+
+**2) `mpd_workmate_spawn`** (name `"qa-probe"`, task `"Reply with the single word READY and nothing else."`) returned:
+
+```
+workmate qa-probe (complete)
+summary: READY
+recommendation: No action needed; the requested acknowledgement was delivered to the parent session.
+details: The task asked for the single word READY and nothing else. No reconnaissance, file reads, or writes were required or performed, so the working tree is exactly as found. READY was delivered to the parent agent session-770eaf8a-ca16-4ddb-af1d-81e02b32d6af, and the workmate reflection was recorded (uses=1).
+```
+
+Stopping here.
+dsh: warning: 1 entry did not activate
+preset-mpd (@deepseek-ai/dsh-agent-preset): pending (waiting for service: agentPresets)

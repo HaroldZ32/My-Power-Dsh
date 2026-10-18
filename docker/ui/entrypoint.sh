@@ -52,7 +52,7 @@ if ! command -v bun >/dev/null 2>&1 || ! command -v dsh >/dev/null 2>&1 || ! com
   command -v pnpm >/dev/null 2>&1 || npm i -g pnpm@11.23.0 >>"$LOG_DIR/apt.log" 2>&1
   # The harness CLI: the Web app and both `plugin add` calls are all `dsh`, so a container without it
   # cannot produce a single screenshot.
-  command -v dsh >/dev/null 2>&1 || npm i -g "@deepseek-ai/dsh@${MPD_UI_DSH_VERSION:-0.2.0-rc.2}" >>"$LOG_DIR/apt.log" 2>&1
+  command -v dsh >/dev/null 2>&1 || npm i -g "@deepseek-ai/dsh@${MPD_UI_DSH_VERSION:-0.2.1-rc.2}" >>"$LOG_DIR/apt.log" 2>&1
 fi
 export PATH="/opt/toolchain/node/bin:/root/.bun/bin:$PATH"
 # Fail LOUDLY and EARLY rather than booting into a silently half-built container.
@@ -170,9 +170,9 @@ printf '{\n  "completed": true,\n  "version": 1\n}\n' >/data/home-tui/.dsh-tui/o
 printf '{\n  "preset": "mpd"\n}\n' >/data/home-tui/.dsh-tui/agent-preset.json
 export DSH_TUI_NO_LAUNCHPAD=1
 log "starting the TUI inside tmux (socket /data/tui.sock)"
-npm i -g "@deepseek-harness-tui/dsh-tui@${MPD_UI_TUI_VERSION:-0.15.0}" >>"$LOG_DIR/tui-install.log" 2>&1
+npm i -g "@deepseek-harness-tui/dsh-tui@${MPD_UI_TUI_VERSION:-0.16.1}" >>"$LOG_DIR/tui-install.log" 2>&1
 DSH_HOME=/data/dsh-tui HOME=/data/home-tui mkdir -p /data/dsh-tui /data/home-tui /data/ws
-DSH_HOME=/data/dsh-tui HOME=/data/home-tui dsh plugin --profile dsh-tui add "@deepseek-harness-tui/dsh-tui@${MPD_UI_TUI_VERSION:-0.15.0}" >>"$LOG_DIR/tui-add.log" 2>&1
+DSH_HOME=/data/dsh-tui HOME=/data/home-tui dsh plugin --profile dsh-tui add "@deepseek-harness-tui/dsh-tui@${MPD_UI_TUI_VERSION:-0.16.1}" >>"$LOG_DIR/tui-add.log" 2>&1
 ( cd /src && DSH_HOME=/data/dsh-tui HOME=/data/home-tui dsh plugin --profile dsh-tui add . >>"$LOG_DIR/tui-add.log" 2>&1 )
 tmux -f /dev/null -S /data/tui.sock new-session -d -s tui -x 220 -y 50 -c /data/ws
 tmux -S /data/tui.sock pipe-pane -t tui -o "cat > /data/tui-pane.log" 2>/dev/null || true

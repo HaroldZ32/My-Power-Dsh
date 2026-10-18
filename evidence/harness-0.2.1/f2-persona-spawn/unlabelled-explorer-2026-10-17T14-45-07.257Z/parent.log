@@ -1,0 +1,25 @@
+The subagent finished. Its closing message (verbatim):
+
+READY
+
+For reference, the `subagent` tool's returned text was (verbatim):
+
+started subagent e2a32ce9-9da6-48d6-a4fa-1c2c84f8ff8a
+dsh: warning: 1 entry did not activate
+preset-mpd (@deepseek-ai/dsh-agent-preset): pending (waiting for service: agentPresets)
+dsh: reasoning:
+The user asks me to call the subagent tool exactly once with the given description and prompt, then report the returned text verbatim and stop. This is straightforward.
+
+Let me make the call.
+dsh: reasoning:
+The tool returned a started subagent id, not the child's final text. The instruction says "report the tool's returned text verbatim and stop." The returned text is "started subagent e2a32ce9-9da6-48d6-a4fa-1c2c84f8ff8a". I should report that verbatim and stop.
+
+Hmm, but maybe I should wait for the subagent's result? The instruction says: "Then report the tool's returned text verbatim and stop." The tool call is async — it returned the id immediately. The instruction says exactly once, then report returned text verbatim, stop. So report "started subagent e2a32ce9-9da6-48d6-a4fa-1c2c84f8ff8a".
+
+I'll report that verbatim.
+dsh: reasoning:
+The subagent has now reported back "READY". The user's instruction: call subagent tool exactly once, then report the tool's returned text verbatim and stop. The tool's returned text was "started subagent e2a32ce9-9da6-48d6-a4fa-1c2c84f8ff8a". I already reported that. Now the child sent "READY". Should I report that too, verbatim? The instruction says report the tool's returned text verbatim and stop. The message is from the subagent, not the tool's returned text. But it's reasonable to note the child's reply verbatim. Then stop.
+
+I should not call more tools. Just report.
+dsh: reasoning:
+The subagent finished with closing message "READY". The user asked to report the tool's returned text verbatim and stop. I've already reported it. Now I just report the closing message verbatim and stop. No further action needed.

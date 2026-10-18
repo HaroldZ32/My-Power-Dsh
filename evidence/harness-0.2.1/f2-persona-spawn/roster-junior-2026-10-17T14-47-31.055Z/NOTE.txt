@@ -1,0 +1,3 @@
+NOTE (lane G): this run passed --role "Junior" — the shell loop that launched it split the
+two-word roster name, so the spawn correctly failed on an unknown role. It is NOT evidence
+about the seam. The writable-control arm is roster-junior-engineer-2026-10-17T14-44-02.824Z.

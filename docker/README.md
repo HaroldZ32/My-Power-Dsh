@@ -32,7 +32,7 @@ run produced no `result.json` at all, `3` the host has no usable docker.
 4. `pnpm` (`npm i -g pnpm@…`). Not decoration: `dsh plugin <args>` forwards to `pnpm` in the profile
    directory, and the harness prints `pnpm was not found; install pnpm and make it available on PATH`
    when it is missing. A machine without pnpm cannot install a bundle.
-5. `npm i -g @deepseek-ai/dsh@0.2.0-rc.2` (the default pin — override it with
+5. `npm i -g @deepseek-ai/dsh@0.2.1-rc.2` (the default pin — override it with
    `MPD_E2E_DSH_VERSION=<version>`, which `docker/docker-compose.yml` forwards and
    `docker/entrypoint.sh` reads), then asserts that `dsh --version` prints **exactly** that string.
 6. Copies the checkout to `/opt/mpd`, runs `bun install`, and rebuilds **every** `packages/*/dist`
@@ -94,11 +94,14 @@ run produced no `result.json` at all, `3` the host has no usable docker.
 14. Records `boot.llmTurn` as **`null` with a reason** — see below.
 15. **Runs the DSH-TUI edition** (`docker/tui-lane.sh`) — the one profile a developer host cannot
     exercise, because the TUI host must be installed from npm into a writable global prefix and booted
-    on a real PTY. It installs `@deepseek-harness-tui/dsh-tui@0.15.0` — the dsh-tui release this
-    bundle now targets, whose peer ranges still cover the whole band this lane runs (`0.1.7-rc.2`,
-    `0.2.0-rc.1` and `0.2.0-rc.2`; `0.11.2` stops at `0.2.0-rc.1`, and `dsh plugin --profile dsh-tui
-    add` is then REFUSED on peer ranges). `0.14.0`, `0.13.0` and `0.12.0` were the pins before it,
-    kept as history. Override it
+    on a real PTY. It installs `@deepseek-harness-tui/dsh-tui@0.16.1` — the dsh-tui release this
+    bundle now targets. 0.16.1 is the FIRST host whose declared peer bands include harness
+    `0.2.1-rc.2` (all 36 of its `@deepseek-ai/dsh-*` peers list it), so it serves both the
+    `0.2.0-rc.2` baseline and the `0.2.1` wave; `0.15.0` covered only up to `0.2.0-rc.2`, and
+    `0.11.2` stops at `0.2.0-rc.1`, where `dsh plugin --profile dsh-tui add` is REFUSED on peer
+    ranges — the lane then reddens at that step and its `tui-logs/add-host.log` capture quotes the
+    host's own refusal, rather than passing green on an apology.
+    `0.15.0`, `0.14.0`, `0.13.0` and `0.12.0` were the pins before it, kept as history. Override it
     with `MPD_E2E_TUI_VERSION`, and keep it in step with `MPD_E2E_DSH_VERSION`. It installs THIS bundle
     into the `dsh-tui` profile as the third
     patch layer, and records twenty-two `tui.*` assertions: host install, both `plugin add` calls,

@@ -1,0 +1,13 @@
+{
+  "claim": "F3",
+  "slug": "verify-no-host-override",
+  "command": "node scripts/verify-no-host-override.ts",
+  "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "exit": 0,
+  "signal": null,
+  "durationMs": 81,
+  "launcher": "/home/haroldzhao/.nvm/versions/node/v24.21.0/bin/dsh",
+  "launcherVersion": "0.2.0-rc.2",
+  "decisiveLine": "",
+  "outputTail": "[verify-no-host-override] subject: 2 declared patch layer(s)\n[verify-no-host-override]   patch: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/cordis.patch.yml\n[verify-no-host-override]   patch: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/presets/mpd.patch.yml\n[verify-no-host-override] bundle id-targets (overrides): 0 (none: this bundle is purely additive)\n[verify-no-host-override] bundle inserted rows (additive): 35\n[verify-no-host-override] unclassified top-level entries: 0\n[verify-no-host-override] host layers found on disk: 4\n[verify-no-host-override]   host: dsh-base -> /home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-base [1 patch file(s)]\n[verify-no-host-override]   host: dsh-web-app -> /home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-web-app [5 patch file(s)]\n[verify-no-host-override]   host: dsh-headless -> /home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-headless [1 patch file(s)]\n[verify-no-host-override]   host: dsh-tui (profile dsh-tui) -> /home/haroldzhao/.dsh/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui [1 patch file(s)]\n[verify-no-host-override] host-declared row ids: 205\n[verify-no-host-override] declared exemptions (0): none\n[verify-no-host-override] PASS: every id-target is bundle-owned (0 of 0 collide with the 205 host-declared row ids)\n"
+}

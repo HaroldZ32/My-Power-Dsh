@@ -31,7 +31,7 @@ node、没有 bun、没有 pnpm、也没有 dsh），运行 `mpd-client` compose
 4. 安装 `pnpm`（`npm i -g pnpm@…`）。这不是装饰：`dsh plugin <args>` 会在 profile 目录里转发给
    `pnpm`，缺少它时 harness 会打印 `pnpm was not found; install pnpm and make it available on PATH`。
    没有 pnpm 的机器根本无法安装 bundle。
-5. `npm i -g @deepseek-ai/dsh@0.2.0-rc.2`（默认 pin；可用 `MPD_E2E_DSH_VERSION=<版本>` 覆盖 ——
+5. `npm i -g @deepseek-ai/dsh@0.2.1-rc.2`（默认 pin；可用 `MPD_E2E_DSH_VERSION=<版本>` 覆盖 ——
    `docker/docker-compose.yml` 负责透传，`docker/entrypoint.sh` 负责读取），然后断言 `dsh --version`
    打印的字符串**完全等于**该版本号。
 6. 把检出复制到 `/opt/mpd`，执行 `bun install`，并按 `AGENTS.md` §6 的规范仓库根命令**从源码重建每一个**
@@ -81,10 +81,13 @@ node、没有 bun、没有 pnpm、也没有 dsh），运行 `mpd-client` compose
     让任何 token 形状残留其中（`evidenceScrubbed`；一旦泄漏即判定为红，并用定向清洗重写两个文件）。
 14. 把 `boot.llmTurn` 记为 **`null` 并附原因**——见下。
 15. **跑一遍 DSH-TUI 版本**（`docker/tui-lane.sh`）——这是开发机唯一无法演练的 profile：TUI 宿主必须从 npm
-    装进一个可写的全局前缀，并在真正的 PTY 上启动。该步安装 `@deepseek-harness-tui/dsh-tui@0.15.0`
-    —— 即本 bundle 现在对标的 dsh-tui 版本，其 peer 范围仍覆盖本 lane 会跑的整段区间（`0.1.7-rc.2`、
-    `0.2.0-rc.1` 与 `0.2.0-rc.2`）；`0.11.2` 只到 `0.2.0-rc.1`，对上 `0.2.0-rc.2` 时
-    `dsh plugin --profile dsh-tui add` 会因 peer 范围被拒。此前的 `0.14.0`（以及更早的 `0.13.0`、`0.12.0`）仅作历史保留。
+    装进一个可写的全局前缀，并在真正的 PTY 上启动。该步安装 `@deepseek-harness-tui/dsh-tui@0.16.1`
+    —— 即本 bundle 现在对标的 dsh-tui 版本。0.16.1 是**第一个**在声明的 peer 范围里包含 harness
+    `0.2.1-rc.2` 的宿主（其 36 个 `@deepseek-ai/dsh-*` peer 全部列出该版本），因此同时服务 `0.2.0-rc.2`
+    基线与 `0.2.1` 这一波；`0.15.0` 只覆盖到 `0.2.0-rc.2`，`0.11.2` 只到 `0.2.0-rc.1`，那时
+    `dsh plugin --profile dsh-tui add` 会因 peer 范围被拒——此时 lane 在该步直接判红，并由
+    `tui-logs/add-host.log` 捕获引用宿主自己的拒绝原文，而不是用一句歉意换绿。此前的 `0.15.0`、
+    `0.14.0`、`0.13.0`、`0.12.0` 仅作历史保留。
     可用 `MPD_E2E_TUI_VERSION` 覆盖，并与 `MPD_E2E_DSH_VERSION` 保持配套。它把本 bundle 作为第三层 patch 装进 `dsh-tui`
     profile，并记下二十二条 `tui.*` 断言：宿主安装、两次 `plugin add`、组合、**用户级预设偏好**（见下）、
     `preset-mpd` / `mpd-tui` / 官方团队行、种子看板**绑定到 TUI 实际运行的那个会话**（产品自身 `createTeam` 的两种写法都写上）、

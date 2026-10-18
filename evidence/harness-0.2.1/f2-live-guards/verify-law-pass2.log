@@ -1,0 +1,9 @@
+[verify-law] ok=true -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/gates/verify-law/2026-10-17T14-48-06.704Z
+  written: true — with no loop armed the top-level agent's write CALL was recorded and the code path EXISTS in the sandbox
+  retiredKnobWritten: true — the retired `verify.mode: "hard"` knob no longer denies: the same write still landed
+  mounted: true — the mpd-verify row wrote its sandbox boot marker (the law's bookkeeping tools still mount)
+  withdrawnReported: true — the roles row's boot line reports verifyGate=absent reason=… (the state is REPORTED, never a mode)
+  realMarkerUnchanged: true — the REAL workspace's marker is exactly as it was: before=true after=true
+  sessionsSandboxed: true — no real-cwd session key exists
+[verify-law] PASS
+EXIT=0

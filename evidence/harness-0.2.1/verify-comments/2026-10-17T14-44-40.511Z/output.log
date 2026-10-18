@@ -1,0 +1,9 @@
+=== bun run verify:comments ===
+[exit 0]
+
+# verify-comment-coverage
+
+scanned 405 TypeScript file(s) of 405 in the source set; inspected 36136 declaration(s); skipped 16505 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+$ node scripts/verify-comment-coverage.ts

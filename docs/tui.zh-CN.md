@@ -1035,12 +1035,39 @@ rootful 守护进程上给出的是 NOTICE 而不是通过——**SKIP 不是通
 | 被取代的陈述 | 原为 | 现为（2026-10-15 实测） |
 |---|---|---|
 | 本页对标宿主（§ 前言） | `@deepseek-harness-tui/dsh-tui` **0.14.0** | **0.15.0**（npm `latest`；本波次冻结的测量基准是 `evidence/tui/dsh-tui-015/host-diff/FACTS.md`，两份 tarball 就在其旁解开）。宿主内部新增、无需本 bundle 反应：新的**可选** harness peer（`@deepseek-ai/dsh-plugin-manager`、`dsh-app-boot`/`dsh-cmdline`/`dsh-http-proxy`/`dsh-launch-environment` 改为可选定版）与 `zod@^4.4.3` 运行时依赖。`MPD_E2E_DSH_VERSION` **不动**——harness peer 范围未变（每个 `dsh-*` peer 仍止于 `0.2.0-rc.2`） |
-| §3 接缝清单 | 十五个 `tui*` 接缝，0.13.0→0.14.0 逐字节相同 | **仍是十五个，只增不改**：`panels.d.ts` 新增 `applyConfiguredSidePanelPanels()` 与 `applySidePanelPanelsFromSettings()`（即 C2 所依据的宿主侧 CSV 合并助手），`plugin-host.d.ts` 新增 `probeBackendAdmission()`；其余接缝 `.d.ts` 逐字节相同，没有第十六个接缝，而裸 grep 撞到的 `tuiChannel` 是**内核通道协议 id**，不是接缝（没有 `Service` 注册它、无可注入——已写入 `agent-references/seam-adapters.md`）。**适配器接缝面零改动** |
+| §3 接缝清单 | 十五个 `tui*` 接缝，0.13.0→0.14.0 逐字节相同 | **仍是十五个，只增不改**：`panels.d.ts` 新增 `applyConfiguredSidePanelPanels()` 与 `applySidePanelPanelsFromSettings()`（即 C2 所依据的宿主侧 CSV 合并助手），`plugin-host.d.ts` 新增 `probeBackendAdmission()`；其余接缝 `.d.ts` 逐字节相同，没有第十六个接缝，而裸 grep 撞到的 `tuiChannel` 是**内核通道协议 id**，不是接缝（没有 `Service` 注册它、无可注入——已写入 `agent-references/seam-adapters.md`）。**那一波没有改动适配器代码——而这一行测量的是宿主的文件，不是我们自己的 `Tui*Like` 声明与其是否一致（2026-10-17 重新推导：六处不一致；修订见下）。** |
 | §3.3 —— 启用清单默认值 | `todo,jobs,agents,info,trajectory,workspace,btw,companion`（八个内置，0.14.0） | **0.15.0 上不变**——同一个 `DEFAULT_SIDE_PANEL_IDS`、同样八个内置图标（`≡ ▸ ◆ ⓘ ∿ ⌗ ? ♥`），不变量臂保持绿色。其下的**规则**变了：见下方守卫一行 |
 | §11.6 —— `PanelBar` 不再绘制图标 | 0.14.0 上 `grep -c icon …/PanelBar.js` = 0；非活动标签是 `○`/`●` 圆点 | **0.15.0 重新绘制图标**：非活动标签画 `tab.icon ?? <标题首字符> ?? '?'` 外加未读数（重新实测的 `PanelBar.js` 中的 `tabLabel()`）。本 bundle 声明的单格图标（`❖` MPD、`⬢` workmate）重新被画出来；bundle 侧无任何改动——每个描述符仍按宿主校验器的要求声明恰好一格的图标 |
 | §3.4 —— `⤢` 边界 | `dsh-adapter/panels.js` 冻结的插件描述符无 `capabilities` → 宿主自己的 `⤢` 不可达 | **在 0.15.0 上重新实测，仍成立**：`grep -c capabilities …/dsh-adapter/panels.js` = 0，`SidePanelColumn` 的 `canExpand` 仍读 `definition.capabilities?.fullscreen === true`。MPD 自己的 `⤢` 控件仍是唯一的全屏入口 |
 | §3.3 / §7 —— 版本钉住载体 | 每个点名该版本的载体都是 `0.14.0` | **本波次载体为 `0.15.0`**：`docker/**`（两处 `MPD_E2E_TUI_VERSION` 默认值、`docker/ui/docker-compose.yml`、`docker/entrypoint.sh` 的 `TUI_VERSION`、`docker/ui/entrypoint.sh` 的两处 `MPD_UI_TUI_VERSION` 默认值、`docker/tui-lane.sh`）、`dsh-distribution.json` 的 `host-tui` 引用（`pkg:npm/@deepseek-harness-tui/dsh-tui@0.15.0`）、`skills/dsh-qa/scripts/**` 下的七个 QA 载体、`scripts/mpd-tui-panels.ts` 的头部叙述与两份 `docker/README*`。不搬项维持原样：`MPD_E2E_DSH_VERSION` 保持 `0.2.0-rc.2`；`dsh-plugin.json` 的 `compat.hosts` 保持 `@deepseek-harness-tui/dsh-tui@0.10.1`（准入**测量**，不是对标版本）；注册表的 `0.15` 版本串保持（生态规范号，本仓库已知误报） |
 | §11.6 —— 启用清单守卫 | 每个宿主上都"订阅优先"：`subscribeSidePanelPanels` 修复配置镜像的清空，阶梯是降级路径，退位规则不变 | **重规约（C2，用户指定）：在会自愈的宿主——一切 `>= 0.15.0`——上，守卫加入宿主的原生自愈并退位；在更旧宿主上 0.14 行为逐字节保留。**2026-10-16 的修订（`fix/sidebar-015-keeper-migration`）开出**唯一**的写入例外——陈旧默认值迁移：在退位之前评估、由腰带在每个订阅事件上复查；见下方守卫两段 |
+
+**2026-10-17 修订——宿主文件的逐字节相同，不等于我们自己声明的成员形状一致。** 上面那句"适配器接缝面零改动"
+比较的是宿主自己的 `.d.ts` 模块在版本之间的变化；它从未把
+`packages/mpd-tui-adapter-plugin/src/index.ts` 里的 `Tui*Like` 接口与这些模块对齐。以已安装的 0.15.0
+声明树重新推导后，有 **六处**不一致，本波次已改正。这六处都不承载任何行为声明——bundle 里没有任何代码调用它们的成员；
+它们只是被绑定、探测并报告：
+
+| 接缝 | 原声明 | 0.15.0 声明（重新推导） |
+|---|---|---|
+| `tuiToast` | `push(message, {level})` → `Disposer \| undefined` | `show(text: string \| number \| boolean, {color?, timeoutMs?})` → `boolean` |
+| `tuiThemes` | `register(name: string, theme)` 加 `current?()` | `register(descriptor: TuiThemeDescriptor, identity?)` → disposer；**没有**插件侧读取（`getSnapshot`/`resolve` 是宿主专用） |
+| `tuiPluginStorage` | 扁平的 `get(key)` / `set(key, value)` | `open(pluginCtx)` → 异步 `{ get({key}), set({key,value}), delete({key}) }` |
+| `tuiMessageObserver` | `subscribe(listener)` | `subscribe(pluginCtx, listener, { scope })`——`scope` 是**必填** |
+| `tuiEffectLedger` | `entries?()` | `record(entry, identity?)` → void（插件侧没有任何读取该日志的成员） |
+| `tuiWorkspaces` | `list?()` → `string[]` | `list(currentCwd, signal?)` → `Promise<TuiWorkspaceTarget[]>`，外加 `register(provider)` |
+
+同一波次还有三处修正。**`closeScene(id)`** 原先以 `close(id) === true` 判定，而 0.15.0 的 `close()`
+不接收 id 且返回 void——于是它在**每一个** 0.15.0 宿主上都答 `false`。现在它只在宿主自己的 `active` 读取
+指明的正是请求的 id 时才发出那次 void `close()`（盲调 `close()` 会关掉当前活动的那个场景，却仍为一个从未打开过的
+id 报告成功），并且接缝声明了 `close(): void` 与 `active` 读取。**`tuiPrompt`** 被标记为 phantom 接缝
+（`PHANTOM_SEAM_KEYS`）：把 0.15.0 及之前每个 dsh-tui 的 `lib/**` 全 grep 一遍也找不到这个服务，因此
+`seamOutcomes()` 现在报告 `phantom seam: no measured dsh-tui build declares this service`，而不是把它当成
+组合缺口。另外，`plugin-host.d.ts` 的 `probeBackendAdmission()` 已在 `TuiPluginHostLike` 上声明，作为**刻意不消费**
+的成员，让 Backend 贡献族可见，同时不凭空发明调用方。
+
+本修订**不**声明的内容：本波次没有做真机启动（这是源码基线修正——不运行宿主），六处形状只与已安装的 `.d.ts`
+**声明**比对，接缝集合本身未变（十五个，没有第十六个）。
 
 **宿主现在会自愈侧栏启用 CSV，守卫向它退位（C2）。** 在 0.15.0 树上实测：`TuiPanelRuntime.register()` 经
 `enablePanelIdInStore` 喂入 `registeredPanelIds`；启动/镜像的应用 `applyConfiguredSidePanelPanels(config.sidePanel?.panels)`

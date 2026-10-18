@@ -30,6 +30,7 @@ import {
   evaluateComplexityGate,
   GATE_CONFIG_KEY,
   GATE_MODE_ADVISORY,
+  GATE_MODE_MECHANICAL,
   GATE_MODE_OFF,
   gatePlanShell,
   INERT_PLAN_PHRASE,
@@ -48,6 +49,16 @@ import { installRosterSection, ROSTER_SECTION_NAME, rosterSectionText } from "..
 
 /** The sandbox workspace every fixture session reports as its cwd. */
 const WORKSPACE = join(tmpdir(), "mpd-team-plane-ws")
+
+/**
+ * The EXPLICIT `team.gate: "mechanical"` opt-in every arm whose SUBJECT is the staging route drives.
+ *
+ * REPURPOSED 2026-10-17 (lane B, `harness-021-rollback`): the gate's default flipped to `off` when the
+ * user's ruling withdrew the 2026-10-10/11 ceremony, so an arm asserting what a TRIGGER does must now
+ * ask for that mode the way a user does — through a `team.gate` config value — instead of inheriting
+ * it. Everything else stays `undefined`, so `boulder.dir` and friends keep their own defaults.
+ */
+const MECHANICAL_OPT_IN = (key: string): unknown => (key === GATE_CONFIG_KEY ? GATE_MODE_MECHANICAL : undefined)
 
 /** A qualifying mpd top-level session. */
 function mpdAgent(id: string = "lead-1", header: Record<string, unknown> = {}): {
@@ -358,16 +369,19 @@ describe("the frozen complexity predicate (Option A: explicit flag OR >= 1 match
     expect(skipped).toContain("plan-xyz")
   })
 
-  test("resolveGateMode: the vocabulary, the tolerated booleans, and the fail-safe default", () => {
+  test("resolveGateMode: the vocabulary, the tolerated booleans, and the OPT-IN default", () => {
     expect(resolveGateMode("mechanical")).toBe("mechanical")
     expect(resolveGateMode("advisory")).toBe("advisory")
     expect(resolveGateMode("off")).toBe("off")
     expect(resolveGateMode(true)).toBe("mechanical")
     expect(resolveGateMode(false)).toBe("off")
-    // ABSENT and every UNKNOWN value fail safe to mechanical, so a typo cannot disable the gate.
-    expect(resolveGateMode(undefined)).toBe("mechanical")
-    expect(resolveGateMode("bogus")).toBe("mechanical")
-    expect(resolveGateMode(0)).toBe("mechanical")
+    // REPURPOSED 2026-10-17 (lane B, harness-021-rollback): the default is OFF. The user's ruling
+    // withdrew the 2026-10-10/11 ceremony, so an absent key — and every UNKNOWN value — must now read
+    // `off`: staging a plan shell nobody asked for is the surprising outcome. The OLD fail-safe read
+    // `mechanical` here, and this arm asserted it; only an explicit spelling may arm the gate now.
+    expect(resolveGateMode(undefined)).toBe("off")
+    expect(resolveGateMode("bogus")).toBe("off")
+    expect(resolveGateMode(0)).toBe("off")
   })
 
   test("gatePlanShell fills ONLY what the gate can know, and says so in the description", () => {
@@ -479,8 +493,10 @@ describe("session-start gate: scope, one-shot settlement and the advisory inject
       log: (line) => lines.push(line),
       // The probe POSITIVELY answers "nothing staged" — the only answer that stages in silence.
       stagedPlan: () => null,
+      // The staging route is OPT-IN since 2026-10-17: this arm asks for it, it no longer inherits it.
+      configValue: MECHANICAL_OPT_IN,
     })
-    // The DEFAULT mode is mechanical: absent config reads mechanical (the fail-safe).
+    // The mode the caller explicitly asked for is the one the boot line reports.
     expect(gate.mode).toBe("mechanical")
     /** The claimed user turn the gate must judge. */
     const claimed = userMessage("Check the tests, build the package, verify the output.")
@@ -536,7 +552,7 @@ describe("session-start gate: scope, one-shot settlement and the advisory inject
     // (a) NO staging tool in this composition: nothing is called, the advisory notice lands.
     /** A double whose composition does NOT register the staging tool. */
     const withoutTool = planeHarness({ tools: [] })
-    installSessionGate(withoutTool.dsh as never, { warn: () => {} })
+    installSessionGate(withoutTool.dsh as never, { warn: () => {}, configValue: MECHANICAL_OPT_IN })
     /** The turn that triggers the predicate. */
     const claimed = userMessage("Check the tests, build the package, verify the output.")
     /** The decision for the tool-absent arm. */
@@ -553,7 +569,7 @@ describe("session-start gate: scope, one-shot settlement and the advisory inject
     const failing = planeHarness({ tools: [STAGING_TOOL_NAME], toolResult: { ok: false, isError: true, error: "the store is read-only" } })
     /** Warnings the degraded call reported. */
     const warnings: string[] = []
-    installSessionGate(failing.dsh as never, { warn: (line) => warnings.push(line) })
+    installSessionGate(failing.dsh as never, { warn: (line) => warnings.push(line), configValue: MECHANICAL_OPT_IN })
     /** The decision for the failing-call arm. */
     const failed: any = await failing.steps[0].listener({ messages: [claimed], turn: 1, step: 1 }, { kind: "enter", messages: [claimed] })
     expect(failing.toolCalls).toHaveLength(1)
@@ -569,6 +585,7 @@ describe("session-start gate: scope, one-shot settlement and the advisory inject
     const probes: Array<{ workspace: string; sessionId: string }> = []
     installSessionGate(harness.dsh as never, {
       warn: () => {},
+      configValue: MECHANICAL_OPT_IN,
       stagedPlan: (workspace, sessionId) => {
         probes.push({ workspace, sessionId })
         return { planId: "plan-already-there" }
@@ -604,7 +621,7 @@ describe("session-start gate: scope, one-shot settlement and the advisory inject
     const withSession = { id: "agent-7", session: { id: "sess-7", header: { cwd: WORKSPACE, agentPreset: "mpd" } } }
     /** A double over that handle. */
     const one = planeHarness({ agents: [withSession] })
-    installSessionGate(one.dsh as never, { warn: () => {}, stagedPlan: record })
+    installSessionGate(one.dsh as never, { warn: () => {}, configValue: MECHANICAL_OPT_IN, stagedPlan: record })
     await one.steps[0].listener({ messages: [claimed], turn: 1, step: 1 }, { kind: "enter", messages: [claimed] })
     expect(asked[0]).toBe("sess-7")
 
@@ -614,7 +631,7 @@ describe("session-start gate: scope, one-shot settlement and the advisory inject
     const anonymous = { session: { header: { cwd: WORKSPACE, agentPreset: "mpd" } } }
     /** A double over that anonymous handle. */
     const two = planeHarness({ agents: [anonymous] })
-    installSessionGate(two.dsh as never, { warn: () => {}, stagedPlan: record })
+    installSessionGate(two.dsh as never, { warn: () => {}, configValue: MECHANICAL_OPT_IN, stagedPlan: record })
     await two.steps[0].listener({ messages: [claimed], turn: 1, step: 1 }, { kind: "enter", messages: [claimed] })
     expect(asked[1]).toBe("workspace")
 
@@ -624,7 +641,7 @@ describe("session-start gate: scope, one-shot settlement and the advisory inject
     const numericSession = { id: "agent-9", session: { id: 42, header: { cwd: WORKSPACE, agentPreset: "mpd" } } }
     /** A double over that handle. */
     const three = planeHarness({ agents: [numericSession] })
-    installSessionGate(three.dsh as never, { warn: () => {}, stagedPlan: record })
+    installSessionGate(three.dsh as never, { warn: () => {}, configValue: MECHANICAL_OPT_IN, stagedPlan: record })
     await three.steps[0].listener({ messages: [claimed], turn: 1, step: 1 }, { kind: "enter", messages: [claimed] })
     expect(asked[2]).toBe("workspace")
     // …and the FLAT spelling is honoured when the session object carries none.
@@ -632,7 +649,7 @@ describe("session-start gate: scope, one-shot settlement and the advisory inject
     const flat = { id: "agent-10", sessionId: "flat-10", session: { header: { cwd: WORKSPACE, agentPreset: "mpd" } } }
     /** A double over that handle. */
     const four = planeHarness({ agents: [flat] })
-    installSessionGate(four.dsh as never, { warn: () => {}, stagedPlan: record })
+    installSessionGate(four.dsh as never, { warn: () => {}, configValue: MECHANICAL_OPT_IN, stagedPlan: record })
     await four.steps[0].listener({ messages: [claimed], turn: 1, step: 1 }, { kind: "enter", messages: [claimed] })
     expect(asked[3]).toBe("flat-10")
     // The workspace side of the pair is the same one the tool resolves, always.
@@ -651,7 +668,7 @@ describe("session-start gate: scope, one-shot settlement and the advisory inject
     const missing = planeHarness({ tools: [STAGING_TOOL_NAME] })
     /** Warnings the fire reported. */
     const missingWarnings: string[] = []
-    installSessionGate(missing.dsh as never, { warn: (line) => missingWarnings.push(line) })
+    installSessionGate(missing.dsh as never, { warn: (line) => missingWarnings.push(line), configValue: MECHANICAL_OPT_IN })
     /** The decision for the missing-probe arm. */
     const stagedAnyway: any = await missing.steps[0].listener({ messages: [claimed], turn: 1, step: 1 }, { kind: "enter", messages: [claimed] })
     expect(missing.toolCalls).toHaveLength(1)
@@ -670,6 +687,7 @@ describe("session-start gate: scope, one-shot settlement and the advisory inject
     const throwingWarnings: string[] = []
     installSessionGate(throwing.dsh as never, {
       warn: (line) => throwingWarnings.push(line),
+      configValue: MECHANICAL_OPT_IN,
       stagedPlan: () => { throw new Error("mpdTeams read failed") },
     })
     await throwing.steps[0].listener({ messages: [claimed], turn: 1, step: 1 }, { kind: "enter", messages: [claimed] })
@@ -747,6 +765,7 @@ describe("session-start gate: scope, one-shot settlement and the advisory inject
     const active = planeHarness()
     installSessionGate(active.dsh as never, {
       warn: () => {},
+      configValue: MECHANICAL_OPT_IN,
       readFile: async (path) => { seen.push(path); return JSON.stringify({ active_work_id: "w", works: { w: { status: "active", active_plan: ".mpd/plans/lane.md" } } }) },
     })
     /** The claim the gate must judge, a prompt with no signal of its own. */
@@ -761,7 +780,7 @@ describe("session-start gate: scope, one-shot settlement and the advisory inject
     const overridden = planeHarness()
     installSessionGate(overridden.dsh as never, {
       warn: () => {},
-      configValue: (key) => (key === "boulder.dir" ? "/elsewhere" : undefined),
+      configValue: (key) => (key === "boulder.dir" ? "/elsewhere" : MECHANICAL_OPT_IN(key)),
       readFile: async (path) => { seen.push(path); return JSON.stringify({ active_work_id: "w", works: { w: { status: "active" } } }) },
     })
     await overridden.steps[0].listener({ messages: [claimed], turn: 1, step: 1 }, { kind: "enter", messages: [claimed] })
@@ -772,6 +791,7 @@ describe("session-start gate: scope, one-shot settlement and the advisory inject
     const completed = planeHarness()
     installSessionGate(completed.dsh as never, {
       warn: () => {},
+      configValue: MECHANICAL_OPT_IN,
       readFile: async () => JSON.stringify({ active_work_id: "w", works: { w: { status: "completed", active_plan: ".mpd/plans/mpd-seam-convergence.md" } } }),
     })
     expect(await completed.steps[0].listener({ messages: [claimed], turn: 1, step: 1 }, { kind: "enter", messages: [claimed] })).toBeUndefined()
@@ -811,7 +831,7 @@ describe("session-start gate: scope, one-shot settlement and the advisory inject
     /** A double for the settlement arm. */
     const harness = planeHarness()
     /** The gate install, whose acted set must stay empty until a turn really fires. */
-    const gate = installSessionGate(harness.dsh as never, { warn: () => {} })
+    const gate = installSessionGate(harness.dsh as never, { warn: () => {}, configValue: MECHANICAL_OPT_IN })
     expect(await harness.steps[0].listener({ messages: [], turn: 1, step: 1, signal: new AbortController().signal }, { kind: "enter", messages: [] })).toBeUndefined()
     expect(gate.acted.size).toBe(0)
     expect(await harness.steps[0].listener({ messages: [], turn: 1, step: 1, signal: new AbortController().signal }, { kind: "reject" })).toBeUndefined()
@@ -836,7 +856,7 @@ describe("session-start gate: scope, one-shot settlement and the advisory inject
     const harness = planeHarness()
     /** Warnings the gate reported instead of throwing. */
     const warnings: string[] = []
-    installSessionGate(harness.dsh as never, { warn: (line) => warnings.push(line) })
+    installSessionGate(harness.dsh as never, { warn: (line) => warnings.push(line), configValue: MECHANICAL_OPT_IN })
     // A throwing workspace resolver is the failure this arm forces:
     const broken = harness.dsh as any
     broken.workspaceRoot = () => { throw new Error("no workspace") }
@@ -849,7 +869,7 @@ describe("session-start gate: scope, one-shot settlement and the advisory inject
   test("an explicit team: flag is CONSUMED from the goal text and counts as signal A", async () => {
     /** A double whose composition registers the staging tool, so the flag's route is mechanical. */
     const harness = planeHarness({ tools: [STAGING_TOOL_NAME] })
-    installSessionGate(harness.dsh as never, { warn: () => {} })
+    installSessionGate(harness.dsh as never, { warn: () => {}, configValue: MECHANICAL_OPT_IN })
     /** The user turn carrying the team: marker. */
     const claimed = userMessage("team: redesign the loader")
     /** The decision with the marker consumed and the notice appended. */
@@ -985,7 +1005,7 @@ describe("gate registration through the REAL adapter (the mounted-but-silent reg
     }
     /** The REAL adapter built over that ctx. */
     const adapter = createDshAdapter(ctx)
-    installSessionGate(adapter as never, { warn: () => {} })
+    installSessionGate(adapter as never, { warn: () => {}, configValue: MECHANICAL_OPT_IN })
 
     // Registered on the AGENT's scope, never on the row's event bus.
     expect(captured.map((entry) => entry.event)).toEqual(["agent/pre-step"])
@@ -1029,7 +1049,7 @@ describe("goal selection: the injected runtime-context turn must not shadow the 
   test("the gate judges the GOAL even when the decision carries an injected context turn", async () => {
     /** A double for the runtime-context shadowing arm. */
     const harness = planeHarness()
-    installSessionGate(harness.dsh as never, { warn: () => {} })
+    installSessionGate(harness.dsh as never, { warn: () => {}, configValue: MECHANICAL_OPT_IN })
     /** The real goal the gate must judge. */
     const goal = userMessage("Check the tests, build the package, verify the output.")
     /** The runtime-context turn the harness splices in AFTER the goal. */
@@ -1268,6 +1288,7 @@ describe("C7: a session already LEADING a team is never sent to stage one", () =
       const harness = planeHarness({ tools: [STAGING_TOOL_NAME] })
       installSessionGate(harness.dsh as never, {
         warn: () => {},
+        configValue: MECHANICAL_OPT_IN,
         readDir: async (): Promise<readonly string[]> => (teamRecord === null ? [] : ["team-1.json"]),
         readFile: async (): Promise<string> => teamRecord ?? "{}",
       })

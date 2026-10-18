@@ -1,0 +1,19 @@
+Called `mpd_role_spawn` exactly once (role "Junior Engineer"). Returned text, verbatim:
+
+```
+Error: mpd-dsh-adapter: the harness subagent service exposes no start()
+```
+
+Stopping as instructed — no retry was made.
+dsh: warning: 1 entry did not activate
+preset-mpd (@deepseek-ai/dsh-agent-preset): pending (waiting for service: agentPresets)
+dsh: reasoning:
+The user asks me to call mpd_role_spawn exactly once with role "Junior Engineer" and task. Then report the returned text verbatim and stop.
+
+Simple, single tool call. Let me do it.
+dsh: reasoning:
+The tool call returned an error: "Error: mpd-dsh-adapter: the harness subagent service exposes no start()". The user asked me to call it exactly once, then report the returned text verbatim and stop. I've called it once. I should report the returned text verbatim.
+
+Note: the instruction says "Call the tool mpd_role_spawn exactly once". I did call it exactly once. It errored. Per instructions I should report verbatim and stop. I should not retry.
+
+Report the returned text verbatim.
