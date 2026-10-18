@@ -69,6 +69,18 @@ First-pass report (superseded, kept for the record): `VERDICT-first-pass.md`.
 zero exit needs `--live` with a credential (or `--no-browser`). `complete:false` (34 nulls) is expected and
 is not the acceptance predicate for a single invocation.
 
+### CCLSP-LESS CWE-284 (`6e460bc1`) — PASS, re-derived independently
+
+`evidence/harness-0.2.1/f2-persona-spawn/cclsp-less.md` holds the record. Condition measured: parent
+header `lspTools: []`. Children (first header): read-only roster **85 tools / write `[]`**, read-only
+workmate **85 / `[]`**, writable control **91 with all four** → **91 − 85 = 6**, exactly the denials the
+host could apply; both rows log `applied 6 denials … (pruned as unknown: mcp__lsp__rename_symbol,
+mcp__lsp__rename_symbol_strict)`. Fix's failure modes verified by arms (non-unknown → throws; rejected
+retry → throws after exactly two attempts; prune-to-empty → throws with nothing left standing; disposer
+never released). `bun test packages` on this tree: 2020 pass / 0 fail. Bound: retention ACROSS turns is
+code+unit evidence only — the spawn result exposes no child session id and the store records one header
+per turn, so the follow-up experiment is not constructible today.
+
 ## Findings
 
 1. **F4's three red rows, each attributed (no product regression demonstrated by any of them):**

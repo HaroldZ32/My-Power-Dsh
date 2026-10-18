@@ -57,6 +57,13 @@ const ROLE: string = probeArgv.includes("--role") ? String(probeArgv[probeArgv.i
 const keepSandbox: boolean = probeArgv.includes("--keep")
 /** The persona marker this arm must find in the child's SYSTEM prompt. */
 const MARKER: string = PERSONA_MARKERS[ROLE] ?? ROLE
+/**
+ * Whether to run on a profile WITHOUT the LSP toolchain (`--no-lsp`): the `mcp-lsp` row is disabled in
+ * a QA overlay, which is the condition under which the canonical eight-name deny used to be rejected
+ * WHOLE by the host (CWE-284: one dead entry invalidated all eight). The overlay is a QA patch, never
+ * a shipped one.
+ */
+const NO_LSP: boolean = probeArgv.includes("--no-lsp")
 
 /**
  * Read a child result's combined output without throwing on a null stream.
@@ -91,6 +98,12 @@ interface SessionFacts {
   readonly writeCapable: string[]
   /** The model the request header names. */
   readonly model: string
+  /** How many `request/header` records the session carries (one per TURN on this harness). */
+  readonly headers: number
+  /** Per header, the write-capable tools it offered — so a restriction released between turns is visible. */
+  readonly writePerHeader: string[][]
+  /** The `mcp__lsp__*` tool names the session can see (empty on a cclsp-less profile). */
+  readonly lspTools: string[]
 }
 
 /** The session-evidence module, loaded once. */
@@ -144,7 +157,15 @@ async function main(): Promise<void> {
   const harnessVersion = combined(spawnSync(process.execPath, [CLOSURE_BIN, "--version"], { env, encoding: "utf8", timeout: 120000 })).trim()
   const install = spawnSync(process.execPath, [join(REPO_ROOT, "scripts", "install-profile.ts"), "--yes", "--dsh-home", home, "--profile", "mpd-headless", "--skip-toolchain"], { env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: 900000 })
 
-  const boot = spawnSync(process.execPath, [CLOSURE_BIN, "--profile", "mpd-headless", taskForArm()], { env, cwd: ws, encoding: "utf8", maxBuffer: 128 * 1024 * 1024, timeout: 900000, stdio: ["ignore", "pipe", "pipe"] })
+  // THE CCLSP-LESS CONDITION: disable the `mcp-lsp` row with a QA overlay, so the two `mcp__lsp__*`
+  // names cannot resolve and the host's whole-list validation is exercised. Nothing else changes.
+  const overlays: string[] = []
+  if (NO_LSP) {
+    const overlay = join(sandbox, "no-lsp.yml")
+    writeFileSync(overlay, "- id: mcp-lsp\n  disabled: true\n")
+    overlays.push("--patch", overlay)
+  }
+  const boot = spawnSync(process.execPath, [CLOSURE_BIN, "--profile", "mpd-headless", ...overlays, taskForArm()], { env, cwd: ws, encoding: "utf8", maxBuffer: 128 * 1024 * 1024, timeout: 900000, stdio: ["ignore", "pipe", "pipe"] })
   const log = combined(boot)
   writeFileSync(join(outDir, "parent.log"), log.slice(0, 200000))
 
@@ -169,6 +190,9 @@ async function main(): Promise<void> {
     let system = ""
     let promptText = ""
     let tools: string[] = []
+    const writePerHeader: string[][] = []
+    let headers = 0
+    let lspTools: string[] = []
     let model = ""
     let descriptor = ""
     let label = ""
@@ -187,6 +211,9 @@ async function main(): Promise<void> {
         // DEFINITION OBJECTS: the name is `entry.name`; taking the object itself reads as "[object Object]".
         const header = data.header as { tools?: Array<{ name?: string }>; config?: { model?: string } } | undefined
         tools = (header?.tools ?? []).map((tool) => String(tool.name ?? "")).filter((name: string) => name !== "")
+        headers += 1
+        writePerHeader.push(tools.filter((name: string) => WRITE_CAPABLE.includes(name)))
+        lspTools = tools.filter((name: string) => name.startsWith("mcp__lsp__"))
         model = String(header?.config?.model ?? "")
       }
     }
@@ -201,6 +228,9 @@ async function main(): Promise<void> {
       tools,
       writeCapable: tools.filter((tool: string) => WRITE_CAPABLE.includes(tool)),
       model,
+      headers,
+      writePerHeader,
+      lspTools,
     }
   })
 
@@ -245,10 +275,14 @@ async function main(): Promise<void> {
       personaInPrompt: child.personaInPrompt,
       writeCapable: child.writeCapable,
       tools: child.tools.length,
+      headers: child.headers,
+      writePerHeader: child.writePerHeader,
+      lspTools: child.lspTools,
       model: child.model,
       systemBytes: child.systemBytes,
     },
-    control: control === null ? null : { id: control.id, writeCapable: control.writeCapable, tools: control.tools.length },
+    control: control === null ? null : { id: control.id, writeCapable: control.writeCapable, tools: control.tools.length, lspTools: control.lspTools, headers: control.headers },
+    cclspLess: NO_LSP,
     denyLines,
     denyApplied,
     denyFailed,
