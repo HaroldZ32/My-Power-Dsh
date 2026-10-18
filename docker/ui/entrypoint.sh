@@ -52,7 +52,7 @@ if ! command -v bun >/dev/null 2>&1 || ! command -v dsh >/dev/null 2>&1 || ! com
   command -v pnpm >/dev/null 2>&1 || npm i -g pnpm@11.23.0 >>"$LOG_DIR/apt.log" 2>&1
   # The harness CLI: the Web app and both `plugin add` calls are all `dsh`, so a container without it
   # cannot produce a single screenshot.
-  command -v dsh >/dev/null 2>&1 || npm i -g "@deepseek-ai/dsh@${MPD_UI_DSH_VERSION:-0.2.0-rc.2}" >>"$LOG_DIR/apt.log" 2>&1
+  command -v dsh >/dev/null 2>&1 || npm i -g "@deepseek-ai/dsh@${MPD_UI_DSH_VERSION:-0.2.1-rc.2}" >>"$LOG_DIR/apt.log" 2>&1
 fi
 export PATH="/opt/toolchain/node/bin:/root/.bun/bin:$PATH"
 # Fail LOUDLY and EARLY rather than booting into a silently half-built container.

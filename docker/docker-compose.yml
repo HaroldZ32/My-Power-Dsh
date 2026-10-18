@@ -33,7 +33,7 @@
 #     docker compose -f docker/docker-compose.yml build
 #     docker compose -f docker/docker-compose.yml run --rm mpd-client
 #     MPD_E2E_INSTALL_MODE=oneclick docker compose -f docker/docker-compose.yml run --rm mpd-oneclick
-# The harness pin is `MPD_E2E_DSH_VERSION` (default 0.2.0-rc.2). It MUST be declared below as well as
+# The harness pin is `MPD_E2E_DSH_VERSION` (default 0.2.1-rc.2). It MUST be declared below as well as
 # read by the entrypoint: compose only forwards what this file interpolates, so a knob named only in
 # docker/entrypoint.sh is UNREACHABLE from the host — measured 2026-09-29, when a lane exported
 # MPD_E2E_DSH_VERSION=0.2.0-rc.1 and the container still installed the default, which made the run
@@ -53,10 +53,10 @@ services:
     environment:
       MPD_E2E_OUT: /out
       # Which harness release the container installs (and asserts against). Exported by the driver.
-      # 0.2.0-rc.2 is the pinned baseline: the three `@deepseek-ai/dsh-experimental-agent-team*`
-      # packages this bundle declares carry EXACT peers (`dsh-llm: 0.2.0-rc.2`, …), so the harness has
-      # to move with them — a mixed pair installs but declares unmet peers.
-      MPD_E2E_DSH_VERSION: ${MPD_E2E_DSH_VERSION:-0.2.0-rc.2}
+      # 0.2.1-rc.2 is the pinned baseline: the `mpd` preset plane now declares rows that exist only in
+      # harness 0.2.1 (`time-context`, `tool-schedule`, `tool-plugin-market`), so a 0.2.0 harness can
+      # no longer mount the preset at all — the default must track the harness this bundle targets.
+      MPD_E2E_DSH_VERSION: ${MPD_E2E_DSH_VERSION:-0.2.1-rc.2}
       # Which DSH-TUI host the TUI lane installs. It MUST accept the harness pin's peer range:
       # 0.16.1 is the first host whose 36 declared `@deepseek-ai/dsh-*` peers ALL include harness
       # 0.2.1-rc.2, so it serves both the 0.2.0-rc.2 baseline and the 0.2.1 wave. 0.15.0 covers only
@@ -106,7 +106,7 @@ services:
       # same assertions against the published repository.
       MPD_E2E_INSTALL_SPEC: ${MPD_ONECLICK_SPEC:-git+file:///opt/oneclick.git}
       MPD_E2E_OUT: /out
-      MPD_E2E_DSH_VERSION: ${MPD_E2E_DSH_VERSION:-0.2.0-rc.2}
+      MPD_E2E_DSH_VERSION: ${MPD_E2E_DSH_VERSION:-0.2.1-rc.2}
       MPD_E2E_TUI_VERSION: ${MPD_E2E_TUI_VERSION:-0.16.1}
       # Same optional live-turn prompt as `mpd-client` (see the comment there): both services run the
       # SAME entrypoint and therefore share step 15, so a knob named on only one of them would make

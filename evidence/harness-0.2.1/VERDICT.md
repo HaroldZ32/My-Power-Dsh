@@ -57,6 +57,18 @@ First-pass report (superseded, kept for the record): `VERDICT-first-pass.md`.
   unproven because the step's own log was not captured (`tui.pluginAddHost` is null); capturing
   `$TUI_DIR/add-host.log` would close it.
 
+### FINAL (third tree: `2a22837a`) — Docker acceptance: PASS, bounded by the exit code
+
+`evidence/harness-0.2.1/f4-docker-source/final-verdict.md` holds the record. `result.json`
+`ok:true, passed 84, failed 0, null 34, failedNames:[]`; the TUI is genuinely tested on dsh-tui 0.16.1
+(`pluginAddHost exit=0`, `boot` on a real PTY, `mergedPanelOpens`/`Order`, `hostDashboardKeyIntact`,
+`laneExit=true`, no `hostPeerBound`); both `pack.*` green under the pinned toolchain;
+`ui.mpdSettingsSection` and `qa.readonlyDeny` green with their own bytes. `bun test packages` re-run here:
+2013 pass / 0 fail. **`driver.json` still shows `exitCode: 3`**, `unmeasured: ["ui.replyRendered"]`,
+`requiredPrefixes: ["ui."]`, `liveRequested: false` — the assertions are green, the process is not, and a
+zero exit needs `--live` with a credential (or `--no-browser`). `complete:false` (34 nulls) is expected and
+is not the acceptance predicate for a single invocation.
+
 ## Findings
 
 1. **F4's three red rows, each attributed (no product regression demonstrated by any of them):**

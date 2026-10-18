@@ -61,7 +61,9 @@ ONE_CLICK_SRC="${MPD_E2E_ONECLICK_SRC:-/opt/oneclick-src}"
 ONE_CLICK_REPO="${MPD_E2E_ONECLICK_REPO:-/opt/oneclick.git}"
 
 NODE_VERSION="${MPD_E2E_NODE_VERSION:-24.19.0}"
-DSH_VERSION="${MPD_E2E_DSH_VERSION:-0.2.0-rc.2}"
+# The harness pin. 0.2.1-rc.2 is the bundle's baseline: the `mpd` preset declares rows that exist only
+# in harness 0.2.1, so a 0.2.0 harness cannot mount it — keep this in step with the compose default.
+DSH_VERSION="${MPD_E2E_DSH_VERSION:-0.2.1-rc.2}"
 PNPM_VERSION="${MPD_E2E_PNPM_VERSION:-11.23.0}"
 # The DSH-TUI host. 0.16.1 is the dsh-tui release this bundle targets, and it is the FIRST host whose
 # declared peer bands include harness 0.2.1-rc.2 — every one of its 36 `@deepseek-ai/dsh-*` peers

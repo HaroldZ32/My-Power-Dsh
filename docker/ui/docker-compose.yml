@@ -24,7 +24,7 @@ services:
       MPD_UI_PORT: "3080"
       # The port the relay listens on INSIDE the container, which the mapping below publishes.
       MPD_UI_HOST_PORT: "3081"
-      MPD_UI_DSH_VERSION: "0.2.0-rc.2"
+      MPD_UI_DSH_VERSION: "0.2.1-rc.2"
       MPD_UI_TUI_VERSION: "0.16.1"
     ports:
       # The HOST port is deliberately NOT 3080: that is the operator's own running DSH Web

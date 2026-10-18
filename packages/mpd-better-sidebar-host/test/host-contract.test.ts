@@ -179,10 +179,12 @@ describe("ARMED is not MOUNTED — a deployment line never claims more than happ
     }
   })
 
-  test("when the callback DOES fire, the mount outcome is reported separately from the decision", async () => {
-    /** The scratch workspace for the sink, as above. */
-    const workspace = mkdtempSync(join(tmpdir(), "mpd-sidebar-mount-"))
-    /** The environment key the sink resolves its root from, restored in `finally`. */
+  test("a MOUNT that FAILS reports seam NOT mounted specifically, never an either/or", async () => {
+    // The negative twin, kept SEPARATE from the success arm: an assertion accepting "MOUNTED or NOT
+    // mounted" would pass forever and prove nothing about the distinction.
+    /** The scratch workspace for the sink, restored in `finally`. */
+    const workspace = mkdtempSync(join(tmpdir(), "mpd-sidebar-mount-fail-"))
+    /** The environment key the sink resolves its root from. */
     const previousRoot = process.env.DSH_WORKSPACE_ROOT
     process.env.DSH_WORKSPACE_ROOT = workspace
     try {
@@ -195,21 +197,85 @@ describe("ARMED is not MOUNTED — a deployment line never claims more than happ
             warn: (message: unknown): void => { lines.push(String(message)) },
             info: (message: unknown): void => { lines.push(String(message)) },
           },
-          // The callback IS invoked with a scoped ctx, so the mount path really runs. The scoped ctx
-          // carries no services, so whatever the host does, the OUTCOME must be written down.
-          inject: (_seams: readonly string[], callback: (scoped: unknown) => void): void => { callback({ get: (): unknown => undefined, logger: { warn: (...a: unknown[]): void => { lines.push(String(a[0])) }, info: (...a: unknown[]): void => { lines.push(String(a[0])) } } }) },
+          // The callback FIRES, but the scoped ctx cannot satisfy the host (no inject / effect /
+          // webRuntime), so the host's own apply throws and the mount really fails.
+          inject: (_seams: readonly string[], callback: (scoped: unknown) => void): void => {
+            callback({
+              get: (): unknown => undefined,
+              logger: {
+                warn: (...args: unknown[]): void => { lines.push(String(args[0])) },
+                info: (...args: unknown[]): void => { lines.push(String(args[0])) },
+              },
+            })
+          },
         } as never,
         {},
       )
-      // A mount OUTCOME line exists and is distinct from the decision line.
-      expect(lines.some((line) => line.includes("seam MOUNTED") || line.includes("seam NOT mounted"))).toBe(true)
-      /** The decision line, asserted to be a decision and not the outcome. */
-      const armed = lines.filter((line) => line.includes("seam ARMED"))
-      expect(armed.every((line) => line.includes("decision only"))).toBe(true)
+      // The mount is started with `void mountHost(...)`, so its outcome settles on a later turn.
+      await new Promise((resolve) => setTimeout(resolve, 250))
+      // FAILURE, asserted AS failure — not "one of the two outcomes happened".
+      expect(lines.some((line) => line.includes("seam NOT mounted"))).toBe(true)
+      expect(lines.some((line) => line.includes("seam MOUNTED"))).toBe(false)
     } finally {
       if (previousRoot === undefined) delete process.env.DSH_WORKSPACE_ROOT
       else process.env.DSH_WORKSPACE_ROOT = previousRoot
       rmSync(workspace, { recursive: true, force: true })
     }
   })
+
+  test("a MOUNT that SUCCEEDS reports seam MOUNTED — the positive half of the distinction", async () => {
+    // THE ARM THIS EXISTS FOR (review finding): the split was only proven on the failure side, so an
+    // implementation that never emitted `seam MOUNTED` at all would still pass. This runs the REAL
+    // host against a scoped ctx it can genuinely satisfy, and asserts the SUCCESS spelling.
+    /** The scratch workspace for the sink, restored in `finally`. */
+    const workspace = mkdtempSync(join(tmpdir(), "mpd-sidebar-mounted-"))
+    /** The environment key the sink resolves its root from. */
+    const previousRoot = process.env.DSH_WORKSPACE_ROOT
+    process.env.DSH_WORKSPACE_ROOT = workspace
+    try {
+      /** Every line the row logged, at either level. */
+      const lines: string[] = []
+      /** The scoped ctx the host is mounted into: a REAL `webRuntime.trustedHosts` plus the members
+       *  the pinned host reaches for, which is what makes its apply RESOLVE rather than throw. */
+      const scoped: Record<string, unknown> = {
+        webRuntime: { trustedHosts: ["localhost"] },
+        webServer: { route: (): (() => void) => () => { /* route owned by the host */ }, get: (): (() => void) => () => { /* route owned */ } },
+        sessions: { list: (): unknown[] => [], get: (): unknown => undefined },
+        tools: { register: (): (() => void) => () => { /* tool owned by the host */ }, get: (): unknown => undefined },
+        logger: {
+          info: (message: unknown): void => { lines.push(String(message)) },
+          warn: (message: unknown): void => { lines.push(String(message)) },
+        },
+        get: (id: string): unknown => scoped[id],
+        // Deferred seams the host itself opens stay inert here; the mount does not depend on them.
+        inject: (): void => { /* never calls back */ },
+        effect: (fn: () => unknown): (() => void) => { try { fn() } catch { /* effect body is best-effort */ } return () => { /* scope owns it */ } },
+        on: (): (() => void) => () => { /* scope owns it */ },
+        fiber: {},
+      }
+      await apply(
+        {
+          get: (id: string): unknown => (id === "webRuntime" ? scoped.webRuntime : undefined),
+          logger: scoped.logger as Record<string, unknown>,
+          inject: (_seams: readonly string[], callback: (s: unknown) => void): void => { callback(scoped) },
+        } as never,
+        {},
+      )
+      // Same floating-mount wait as the failure arm.
+      await new Promise((resolve) => setTimeout(resolve, 250))
+      // SUCCESS, asserted by its OWN spelling.
+      expect(lines.some((line) => line.includes("seam MOUNTED: the sidebar host applied inside the injected scope"))).toBe(true)
+      expect(lines.some((line) => line.includes("seam NOT mounted"))).toBe(false)
+      // The decision line stays a decision even on the happy path.
+      /** The armed lines this boot wrote. */
+      const armed = lines.filter((line) => line.includes("seam ARMED"))
+      expect(armed).toHaveLength(1)
+      expect(armed[0]).toContain("decision only")
+    } finally {
+      if (previousRoot === undefined) delete process.env.DSH_WORKSPACE_ROOT
+      else process.env.DSH_WORKSPACE_ROOT = previousRoot
+      rmSync(workspace, { recursive: true, force: true })
+    }
+  })
+
 })

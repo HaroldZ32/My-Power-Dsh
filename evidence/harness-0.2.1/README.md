@@ -11,8 +11,10 @@ finds the child by `subagent/descriptor`. BOTH reports stay on disk; the second 
 
 Every run directory carries the UTC timestamp of the run in its name. Three epochs exist here:
 PRE-WAVE BASELINES (before `06b05814`, ~14:13 UTC), the FIRST PASS (`06b05814`, ~14:18–14:40), and the
-SECOND PASS (the pinged `684f9116`, from ~14:42). **Only second-pass runs are cited by `VERDICT.md`;
-runs from the earlier epochs are baselines or the superseded pass** — they were taken deliberately to make the
+SECOND PASS (the pinged `684f9116`, from ~14:42), and the FINAL narrow rounds on `2746cbb0`/`bb360f0f`
+and `2a22837a` (2026-10-18). **`VERDICT.md` cites the second pass plus its two addenda (Docker claim 4b);
+`f4-docker-source/{narrow-verdict,final-verdict}.md` hold those narrow rounds in full; runs from earlier
+epochs are baselines or the superseded pass** — they were taken deliberately to make the
 post-wave readings meaningful (a guard line that changes, a spawn that fails, a web boot with a
 pending row). They are kept, not deleted, because the delta is the evidence:
 
