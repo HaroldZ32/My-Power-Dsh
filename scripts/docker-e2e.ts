@@ -629,6 +629,32 @@ function selfTest(): void {
   check("entrypoint asserts the preset mount through /api/session/create", entrypoint.includes("/api/session/create"))
   check("entrypoint asserts the session-gate LISTENER registration", /record boot\.sessionGateListener/.test(entrypoint) && entrypoint.includes("session gate listener registered for agent"))
   check("entrypoint records the un-provable LLM assertion as null", /record boot\.llmTurn null/.test(entrypoint))
+  // The WEB and TUI live arms are two DIFFERENT planes and both must ask the same verdict reader.
+  // The 2026-10-19 `{{cwd}}` defect reached a real turn, so a lane that mounts the preset but never
+  // drives a turn is not evidence for the persona contract.
+  // The LIVE branch must be the subject: both scripts ALSO call the reader with `--unavailable` on
+  // the credential-free path, so a bare `--label web` match would stay green even if the live call
+  // vanished. The `--dsh-home` + `--since` pair exists only on the measured branch.
+  check("entrypoint drives the WEB live turn through live-verdict", /--dsh-home\s+"\$DSH_HOME"[\s\S]{0,200}--label web[\s\S]{0,160}--since/.test(entrypoint))
+  /** The TUI lane script, whose live turn is typed into the real PTY. */
+  const tuiLaneScript = readFileSync(join(DOCKER_DIR, "tui-lane.sh"), "utf8")
+  check("tui-lane drives the TUI live turn through live-verdict", /--dsh-home\s+"\$DSH_HOME"[\s\S]{0,200}--label tui[\s\S]{0,160}--since/.test(tuiLaneScript))
+  // The credential-free arms are a DIFFERENT outcome (null rows with a reason), so they are pinned
+  // separately. The WEB live branch has its OWN `--unavailable` fallback when it cannot find a
+  // session id, so the non-live arm is identified by its REASON TEXT, not by the flag alone.
+  check("entrypoint keeps the credential-free WEB arm", /--label web --state "\$STATE_FILE"[\s\S]{0,120}--unavailable "not attempted: a live turn needs MPD_E2E_LIVE=1/.test(entrypoint))
+  check("tui-lane keeps the credential-free TUI arm", /--label tui --state "\$STATE_FILE"[\s\S]{0,120}--unavailable "not attempted: a live turn needs MPD_E2E_LIVE=1/.test(tuiLaneScript))
+  /** The WEB live branch's OWN `--unavailable` fallback, which is NOT the credential-free arm. */
+  const liveWebFallback = 'node "$LIB_DIR/live-verdict.ts" --label web --state "$STATE_FILE" --unavailable "the web session was never created, so no turn could be driven through the gateway"'
+  check("the credential-free WEB check rejects the live branch's own fallback", !/--label web --state "\$STATE_FILE"[\s\S]{0,120}--unavailable "not attempted: a live turn needs MPD_E2E_LIVE=1/.test(liveWebFallback))
+  /** The live verdict reader, whose assertion names are part of the acceptance contract. */
+  const liveVerdict = readFileSync(join(DOCKER_DIR, "lib", "live-verdict.ts"), "utf8")
+  check("live-verdict pins the prompt-variable failure class", liveVerdict.includes("noPromptVariableError") && liveVerdict.includes("unknown prompt variable"))
+  /** The reporter's canonical assertion list, which must name every live row it will grade. */
+  const reporter = readFileSync(join(DOCKER_DIR, "lib", "report.ts"), "utf8")
+  for (const plane of ["web", "tui", "headless"]) {
+    check(`reporter declares live.${plane}.noPromptVariableError`, reporter.includes(`"live.${plane}.noPromptVariableError"`))
+  }
   // The knob is only reachable when the entrypoint reads it: this is the third layer of the path
   // (compose interpolates it, this driver forwards it, the entrypoint substitutes it).
   check("entrypoint reads the optional live prompt knob", entrypoint.includes("MPD_E2E_LIVE_PROMPT"))

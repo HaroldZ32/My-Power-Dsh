@@ -159,13 +159,19 @@ Proves:
   official team tools answer inside an agent scope, the mpd session gate listener registers for a real
   session, the `mpd` preset activates for a real session, and the Web app serves;
 - a real DSH-TUI session resolves `mpd` through the documented USER-level preference while the host
-  preset-registry row stays untouched by the bundle.
+  preset-registry row stays untouched by the bundle;
+- **with `--live`**, a real WEB turn through the gateway and a real TUI turn typed into the PTY both
+  complete, call an `mpd_*` tool and produce text — and neither fails prompt-variable assembly
+  (`live.web.noPromptVariableError` / `live.tui.noPromptVariableError`, read from the session store).
 
 Does NOT prove:
 
-- **any live LLM turn or model routing.** No credential is copied in, read or written (`AGENTS.md`
-  §10), so no model request is attempted. That assertion is recorded as `null` with its reason —
-  never as a pass.
+- **a live LLM turn unless `--live` is passed.** Without it no credential is staged and no model
+  request is attempted; every live row is `null` WITH ITS REASON, never a pass. With `--live` the
+  driver forwards a key BY NAME, the container stages it into the sandbox home, and both the WEB and
+  TUI planes run one real turn whose verdict comes from the harness's own session store — including
+  the prompt-variable assembly class (`live.<plane>.noPromptVariableError`) that a mount-only run
+  cannot see.
 - that the COMPOSED row list equals the MOUNTED row list. `--dump-config` composes rows and never
   executes plugin code (`AGENTS.md` §4); it is labelled composition-only in the evidence, and every
   mount claim comes from the boot (step 9) or from session creation (step 10).
@@ -294,23 +300,27 @@ unchanged.
 
 ### The live-turn prompt knob (`MPD_E2E_LIVE_PROMPT`)
 
-Step 15 of the container (`docker/entrypoint.sh`) drives a real headless agent session, and by default
-its task is a **team-plane smoke prompt**. `MPD_E2E_LIVE_PROMPT` REPLACES that task: when it is set and
-non-empty, its value is used verbatim as the turn's prompt, so the lane can be asked for a different
-piece of work. When it is unset or empty, the built-in prompt runs unchanged **byte for byte** — the
-knob is additive, never a behaviour change.
+A `--live` run drives **three** planes, not one: a real **WEB** turn through the gateway (step 12), a
+real **TUI** turn typed into the tmux PTY (`docker/tui-lane.sh`), and a real **HEADLESS** turn (step
+15). The WEB and TUI prompts are fixed short `mpd_config_get` tasks, so their rows are statements about
+this bundle's own tool plane; the headless step's default task is the **team-plane smoke prompt**.
+
+`MPD_E2E_LIVE_PROMPT` REPLACES that headless task only: when it is set and non-empty, its value is used
+verbatim as the headless turn's prompt, so the lane can be asked for a different piece of work. When it
+is unset or empty, the built-in prompt runs unchanged **byte for byte** — the knob is additive, never a
+behaviour change.
 
 It only matters on a live run, so the invocation is the live one:
 
 ```bash
 export DEEPSEEK_API_KEY=…                 # forwarded BY NAME, never echoed into the argv
-export MPD_E2E_LIVE=1                     # the live arms are opt-in
-export MPD_E2E_LIVE_PROMPT='Write a playable snake game to <path> …'
-node scripts/docker-e2e.ts --live
+export MPD_E2E_LIVE_PROMPT='Write a playable snake game to <path> …'   # headless plane only
+node scripts/docker-e2e.ts --live         # add --mode all for source + oneclick
 ```
 
-Without `MPD_E2E_LIVE=1` (or without a forwarded `DEEPSEEK_API_KEY`) the run never reaches step 15, and
-the driver refuses `--live` outright when it holds no key. The driver forwards the prompt with
+Without `--live` no plane reaches a model request: every live row is `null` WITH ITS REASON. Passing
+`--live` without a forwarded `DEEPSEEK_API_KEY` does NOT produce those rows — the driver refuses the
+run before the build (exit 3), so there is no verdict to read. The driver forwards the prompt with
 `-e MPD_E2E_LIVE_PROMPT` — **by name, not by value**, the same way the credential travels — and
 `docker/docker-compose.yml` names `${MPD_E2E_LIVE_PROMPT:-}` in BOTH services' `environment:` block,
 which is what makes the variable reachable from the host at all: compose forwards only what the compose
@@ -320,6 +330,13 @@ Which prompt a turn actually ran with is part of the evidence: step 15 prints a
 `[live-prompt] promptSource=… bytes=… firstLine="…"` line, records the same note as the `livePrompt`
 fact in `result.json`, and carries it in the `boot.llmTurn` assertion's `raw` field. A long
 caller-supplied prompt is therefore identifiable without being dumped into the log as a blob.
+
+Each plane's verdict is read from the harness's own session store, never from the model's prose or the
+pane. Besides the completed/tool-call/text rows, the reader records
+`live.web.noPromptVariableError`, `live.tui.noPromptVariableError` and
+`live.headless.noPromptVariableError`: a persona template that names an unregistered prompt variable
+throws BEFORE the model request, so a mount-only lane would look green while every turn dies. The
+2026-10-19 `{{cwd}}` defect is that exact class.
 
 ## Isolation model
 

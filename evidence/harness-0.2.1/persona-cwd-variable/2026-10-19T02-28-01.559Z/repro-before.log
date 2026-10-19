@@ -1,0 +1,2 @@
+shipped prefix: THROWS -> unknown prompt variable "{{cwd}}" in section "deployment:persona-prefix"; registered variables: provider, model
+without the cwd clause: RENDER OK (length 11447)

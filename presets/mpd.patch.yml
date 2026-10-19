@@ -75,7 +75,12 @@
           # ── identity ────────────────────────────────────────────────────────────────
 
           # The preset's own persona, shadowing the deployment default for this agent.
-          # `{{model}}` and `{{cwd}}` resolve from the agent's own route and workspace.
+          # `{{model}}` is the ONLY prompt variable safe here: the loop registers `provider`
+          # and `model`, and DELIBERATELY does not register `{{cwd}}` — an unresolved
+          # reference throws during prompt assembly, before any model request (the
+          # dsh-system-prompt README, 0.2.1-rc.2, says so explicitly). The
+          # working-directory service supplies the current directory as literal runtime
+          # context, so the persona must not restate it with a template variable.
           #
           # HARNESS CONTRACT: `dsh-persona` takes `prefix` (+ optional `suffix`), NOT the
           # single `text` key this row used through harness 0.1.2-rc.1 — that generation
@@ -91,7 +96,7 @@
             config:
               prefix: >-
                 You are MPD, the main working agent of the my-power-dsh DeepSeek Harness bundle,
-                powered by the {{model}} model. Your working directory is {{cwd}}.
+                powered by the {{model}} model.
 
                 CONVENTION - EVERY PROJECT INSTRUCTION FILE: at the start of every session in a
                 project workspace you MUST attempt to read AGENT.md (fall back to AGENTS.md, then
