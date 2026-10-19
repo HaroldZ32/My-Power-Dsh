@@ -355,10 +355,15 @@ export function watchGraph(targets: GraphWatchTargets, options: GraphWatchOption
    * lost until an unrelated event. The comparison is skipped when a debounce timer is already
    * pending, because that timer delivers and one change must not become two batches.
    *
-   * WHEN ALL THREE ATTEMPTS FAIL the watch stays DEAD and the give-up is SILENT: no error and no
-   * event is emitted, and only a later notification arriving through another armed handle (or an
-   * explicit `poll()`) can bring it back. "Bounded" means exactly that — the timer gives up, so a
+   * WHEN ALL THREE ATTEMPTS FAIL the watch stays DEAD and the SCHEDULE gives up silently: it stops
+   * with no batch of its own and no event, and only a later notification arriving through another
+   * armed handle (or an explicit `poll()`) can bring it back. "Bounded" means exactly that, so a
    * caller that needs a guarantee after a directory disappears must keep a resync path.
+   *
+   * THE SINK IS NOT SILENT, THOUGH: a refused `arm()` is reported through `onError`, so a caller on a
+   * platform that refuses the path still learns about the failure after the schedule has stopped.
+   * The distinction is deliberate — "nothing happened" and "it failed and we told you" must stay
+   * distinguishable, which is why the give-up adds no report of its own.
    */
   function scheduleRearm(): void {
     if (closed) return

@@ -167,11 +167,14 @@ records the identity of the directory each watch attached to. The watcher re-arm
 notification named after the directory, with no `close` at all), or on a BOUNDED TIMER, and it
 compares the inode AND the birthtime: an `rm -rf` followed by a `mkdir` can reuse the inode, and only
 the birthtime still tells the new directory from the one whose watch just died. Every re-arm ALSO
-compares the target signatures, so a write that landed while the watch was dead — and therefore
-produced no notification at all — is still delivered instead of waiting for an unrelated event. A
-directory REPLACED at the same path is therefore re-armed, because an inotify watch follows the inode
-rather than the path and a watch that merely looked "already armed" would silently stop reporting the
-new directory's files.
+compares the target signatures — skipped only when a debounce timer is already pending, because that
+timer delivers — so a write that landed while the watch was dead (and therefore produced no
+notification at all) is still delivered instead of waiting for an unrelated event. A directory
+REPLACED at the same path is therefore re-armed, because an inotify watch follows the inode rather
+than the path and a watch that merely looked "already armed" would silently stop reporting the new
+directory's files. The attempts are BOUNDED: when all three fail the watch stays dead and the
+schedule gives up with no batch of its own, while a REFUSED attempt is still reported through
+`onError`, so "nothing happened" and "it failed and we were told" stay distinguishable.
 
 **A plan that APPEARS is a change.** `plansDir` watches the plans directory as a SET, not as one
 file: its signature is every candidate plan file (`*.md`, never `*.zh-CN.md`), so creating a plan
