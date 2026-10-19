@@ -24,9 +24,13 @@
 #     check);
 #   · the RESTORED CAPABILITIES and the two live QA cases, re-run here rather than inherited red.
 #
-# WHAT IT DELIBERATELY DOES NOT DO: no credential is copied in, read, or written (AGENTS.md §10),
-# so no live LLM turn is attempted. That assertion is recorded as `null` WITH ITS REASON rather
-# than faked — see docker/README.md.
+# WHAT IS OPT-IN: without `--live` no credential is staged and every live row is `null` WITH ITS
+# REASON (never faked). With `--live`, the driver forwards a key BY NAME, this script stages it into
+# the SANDBOX home, and the same run drives a REAL WEB turn (step 12) and a REAL TUI turn
+# (tui-lane.sh). Both verdicts are read from the harness's own session store by
+# docker/lib/live-verdict.ts, which pins the prompt-variable assembly class beside the
+# turn-completed/tool-call/text rows (`live.<plane>.noPromptVariableError`): a preset MOUNT alone
+# cannot see a persona template fail, and the 2026-10-19 `{{cwd}}` defect proved exactly that gap.
 #
 # Every assertion is recorded by the pure-bash `record()` helper below (argv -> JSON.stringify, so a
 # raw witness line survives quoting intact) and the verdict is assembled by docker/lib/report.ts,

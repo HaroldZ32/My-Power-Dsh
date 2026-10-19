@@ -129,12 +129,17 @@ node、没有 bun、没有 pnpm、也没有 dsh），运行 `mpd-client` compose
 - 已安装的 profile **确实挂载**：插件代码执行了，适配器提供了服务（在其自己的文件日志中见证，R5），mpd 工具已注册，
   官方 TeamService 已挂载，官方团队工具在 Agent 作用域内应答，mpd 会话门监听器为真实会话完成注册，`mpd` preset
   能为真实会话激活，Web 应用在提供服务；
-- 一次真实的 DSH-TUI 会话通过官方文档的用户级偏好解析出 `mpd`，而宿主 preset 注册表行未被本 bundle 触碰。
+- 一次真实的 DSH-TUI 会话通过官方文档的用户级偏好解析出 `mpd`，而宿主 preset 注册表行未被本 bundle 触碰；
+- **在 `--live` 下**，一次经网关的真实 **WEB** 回合与一次敲进 PTY 的真实 **TUI** 回合都能完成、调用一个
+  `mpd_*` 工具并产出文本——且两者都不会因 prompt 变量插值而失败
+  （`live.web.noPromptVariableError` / `live.tui.noPromptVariableError`，从会话存储读取）。
 
 没有证明：
 
-- **任何真实的 LLM 回合或模型路由。** 容器内不复制、不读取、不写入任何凭据（`AGENTS.md` §10），因此不会发起
-  模型请求。该断言以 `null` 加原因记录——绝不记为通过。
+- **除非传入 `--live`，否则不证明任何真实 LLM 回合。** 没有该开关时不落地凭据、不发起模型请求；每一行 live
+  断言都以 `null` **连同原因**记录，绝不记为通过。传入 `--live` 时，驱动按**名字**转发密钥，容器把它落进沙箱
+  home，WEB 与 TUI 两个平面各跑一个真实回合，判决来自 harness 自己的会话存储——其中包含
+  `live.<plane>.noPromptVariableError` 这一 prompt 变量组装类别，而只做挂载的 lane 看不到它。
 - 组合出的行列表与挂载的行列表完全一致。`--dump-config` 只组合行、从不执行插件代码（`AGENTS.md` §4）；证据中
   它被标注为仅组合，所有挂载主张都来自第 9 步的启动或第 10 步的会话创建。
 - 把 `dist/mpd-package` **作为安装包**的打包/tarball 安装，以及迁移安装。它的一致性与新鲜度**确实被评测**
@@ -246,30 +251,37 @@ docker tag  docker.m.daocloud.io/library/node:24-bookworm node:24-bookworm
 
 ### 实时回合的提示词开关（`MPD_E2E_LIVE_PROMPT`）
 
-容器的第 15 步（`docker/entrypoint.sh`）会驱动一次真实的 headless agent 会话，其任务默认是一段
-**团队平面冒烟提示词**。`MPD_E2E_LIVE_PROMPT` 会**替换**该任务：当它被设置且非空时，其值原样作为该回合的
-提示词，因此可以要求本 lane 去做另一件事。未设置或为空时，内置提示词**逐字节**保持不变——该开关只做增量，
-绝不改变行为。
+一次 `--live` 运行驱动**三个**平面，而不是一个：经网关的真实 **WEB** 回合（第 12 步）、敲进 tmux PTY 的真实
+**TUI** 回合（`docker/tui-lane.sh`），以及真实的 **HEADLESS** 回合（第 15 步）。WEB 与 TUI 的提示词是固定的
+短任务（调用一次 `mpd_config_get`），因此它们的断言针对本 bundle 自己的工具平面；headless 步骤的默认任务才是
+**团队平面冒烟提示词**。
+
+`MPD_E2E_LIVE_PROMPT` 只**替换** headless 任务：当它被设置且非空时，其值原样作为该回合的提示词，因此可以要求
+本 lane 去做另一件事。未设置或为空时，内置提示词**逐字节**保持不变——该开关只做增量，绝不改变行为。
 
 它只在实时运行中才有意义，因此调用方式就是实时的那一套：
 
 ```bash
 export DEEPSEEK_API_KEY=…                 # 按“名字”转发，绝不写进 argv 被回显
-export MPD_E2E_LIVE=1                     # 实时类断言是可选开启的
-export MPD_E2E_LIVE_PROMPT='把一个可玩的贪吃蛇游戏写到 <路径> …'
-node scripts/docker-e2e.ts --live
+export MPD_E2E_LIVE_PROMPT='把一个可玩的贪吃蛇游戏写到 <路径> …'   # 仅 headless 平面
+node scripts/docker-e2e.ts --live         # 加 --mode all 可跑 source + oneclick
 ```
 
-没有 `MPD_E2E_LIVE=1`（或没有转发 `DEEPSEEK_API_KEY`）时，运行根本到不了第 15 步；而驱动在手里没有密钥时会
-直接拒绝 `--live`。驱动用 `-e MPD_E2E_LIVE_PROMPT` 转发该提示词——**按名字转发，而不是按值**，与凭据的传递
-方式一致——并且 `docker/docker-compose.yml` 在**两个**服务的 `environment:` 块里都写了
-`${MPD_E2E_LIVE_PROMPT:-}`，这正是该变量能从宿主机送达容器的原因：compose 只转发 compose 文件自己插值过的
-变量。
+没有 `--live`（或没有转发 `DEEPSEEK_API_KEY`）时，三个平面都不会发起模型请求：每一行 live 断言都以 `null`
+**连同原因**记录，而驱动在手里没有密钥时会直接拒绝 `--live`。驱动用 `-e MPD_E2E_LIVE_PROMPT` 转发该提示词
+——**按名字转发，而不是按值**，与凭据的传递方式一致——并且 `docker/docker-compose.yml` 在**两个**服务的
+`environment:` 块里都写了 `${MPD_E2E_LIVE_PROMPT:-}`，这正是该变量能从宿主机送达容器的原因：compose 只转发
+compose 文件自己插值过的变量。
 
 某一回合实际用的是哪条提示词，本身就是证据的一部分：第 15 步会打印
 `[live-prompt] promptSource=… bytes=… firstLine="…"` 这一行，把同样的说明记录为 `result.json` 中的
 `livePrompt` 事实，并写入 `boot.llmTurn` 断言的 `raw` 字段。因此，即使调用方给的提示词很长，也能被识别出来，
 而不会被当作一团无法阅读的文本倾倒进日志。
+
+每个平面的判决都从 harness 自己的会话存储读取，绝不来自模型自述或终端画面。除了 completed/tool-call/text
+行之外，读取器还记录 `live.web.noPromptVariableError`、`live.tui.noPromptVariableError` 与
+`live.headless.noPromptVariableError`：人设模板引用未注册的 prompt 变量时，会在模型请求**之前**抛错，
+因此只做挂载的 lane 会在每个回合都死掉时仍然显示绿色。2026-10-19 的 `{{cwd}}` 缺陷正是这一类。
 
 ## 隔离模型
 
