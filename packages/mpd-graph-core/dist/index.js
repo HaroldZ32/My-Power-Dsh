@@ -506,6 +506,10 @@ function readPlanFile(path) {
 // packages/mpd-graph-core/src/watch.ts
 import { readdirSync as readdirSync2, statSync as statSync2, watch } from "node:fs";
 import { basename, dirname, join as join2 } from "node:path";
+var REARM_DELAYS_MS = [25, 100, 400];
+function defaultCreateWatch(path, listener) {
+  return watch(path, { persistent: false }, (eventType, filename) => listener(String(eventType), filename ?? undefined));
+}
 function statOrUndefined(path) {
   try {
     return statSync2(path);
@@ -582,6 +586,7 @@ function watchGraph(targets, options = {}) {
   if (options.onChange !== undefined)
     listeners.add(options.onChange);
   let timer;
+  const rearmTimers = new Set;
   let pending = 0;
   let sequence = 0;
   let coalesced = 0;
@@ -589,11 +594,34 @@ function watchGraph(targets, options = {}) {
   function report(error) {
     options.onError?.(error);
   }
+  function markDead(entry, directory) {
+    if (closed)
+      return;
+    if (armed.get(directory) !== entry)
+      return;
+    if (entry.dead)
+      return;
+    entry.dead = true;
+    scheduleRearm();
+  }
+  function scheduleRearm() {
+    if (closed)
+      return;
+    for (const delay of REARM_DELAYS_MS) {
+      const attempt = setTimeout(() => {
+        rearmTimers.delete(attempt);
+        arm();
+      }, delay);
+      rearmTimers.add(attempt);
+    }
+  }
   function relevant(name) {
     if (name === undefined)
       return true;
-    for (const entry of armed.values()) {
+    for (const [directory, entry] of armed) {
       if (!entry.exact)
+        return true;
+      if (name === basename(directory))
         return true;
       if (entry.board && name.endsWith(".json"))
         return true;
@@ -613,9 +641,8 @@ function watchGraph(targets, options = {}) {
       return;
     }
     try {
-      const watcher = watch(directory, { persistent: false }, (_event, name) => notify(typeof name === "string" ? name : undefined));
-      watcher.on("error", report);
-      return { watcher, ino: stats.ino };
+      const watcher = (options.createWatch ?? defaultCreateWatch)(directory, (_eventType, name) => notify(name));
+      return { watcher, ino: stats.ino, birthtimeMs: stats.birthtimeMs };
     } catch (error) {
       report(error);
       return;
@@ -642,7 +669,8 @@ function watchGraph(targets, options = {}) {
     }
     for (const [directory, entry] of armed) {
       const stats = statOrUndefined(directory);
-      if (wanted.has(directory) && stats !== undefined && stats.ino === entry.ino)
+      const sameDirectory = stats !== undefined && stats.ino === entry.ino && stats.birthtimeMs === entry.birthtimeMs;
+      if (!entry.dead && wanted.has(directory) && sameDirectory)
         continue;
       entry.watcher.close();
       armed.delete(directory);
@@ -653,7 +681,13 @@ function watchGraph(targets, options = {}) {
       const attached = armDirectory(directory);
       if (attached === undefined)
         continue;
-      armed.set(directory, { watcher: attached.watcher, ino: attached.ino, exact: desired.exact, board: desired.board, plans: desired.plans, names: desired.names });
+      const entry = { watcher: attached.watcher, ino: attached.ino, birthtimeMs: attached.birthtimeMs, dead: false, exact: desired.exact, board: desired.board, plans: desired.plans, names: desired.names };
+      attached.watcher.on("close", () => markDead(entry, directory));
+      attached.watcher.on("error", (error) => {
+        report(error);
+        markDead(entry, directory);
+      });
+      armed.set(directory, entry);
     }
   }
   function deliver(manual) {
@@ -726,6 +760,9 @@ function watchGraph(targets, options = {}) {
         clearTimeout(timer);
         timer = undefined;
       }
+      for (const pendingAttempt of rearmTimers)
+        clearTimeout(pendingAttempt);
+      rearmTimers.clear();
       for (const entry of armed.values())
         entry.watcher.close();
       armed.clear();

@@ -1,0 +1,64 @@
+{
+ "probe": "host-model",
+ "at": "2026-10-19T06:13:08.137Z",
+ "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/living-graph/coderabbit-recheck/20261019T061500Z/ws-host-E7Hkwj",
+ "resolvedPlan": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/living-graph/coderabbit-recheck/20261019T061500Z/ws-host-E7Hkwj/.mpd/plans/task-plan.md",
+ "warnings": [],
+ "observed": {
+  "ranks": [
+   [
+    "T1",
+    0
+   ],
+   [
+    "T2",
+    1
+   ],
+   [
+    "T3",
+    1
+   ],
+   [
+    "T4",
+    2
+   ],
+   [
+    "T5",
+    3
+   ]
+  ],
+  "edges": [
+   "T1->T2:plan",
+   "T1->T3:board",
+   "T2->T4:both",
+   "T4->T5:plan"
+  ],
+  "report": {
+   "planOnly": [
+    "T5"
+   ],
+   "edgePlanOnly": [
+    {
+     "from": "T1",
+     "to": "T2",
+     "source": "plan"
+    },
+    {
+     "from": "T4",
+     "to": "T5",
+     "source": "plan"
+    }
+   ],
+   "ranksDerived": true
+  },
+  "nodeCount": 5
+ },
+ "verdict": {
+  "resolvedTheFixturePlan": true,
+  "hostModelEqualsTheServedFixture": true,
+  "ghostPresent": true,
+  "planOnlyEdgePresent": true,
+  "agreeingEdgePresent": true,
+  "ranksAreTheDerivedOnes": true
+ }
+}

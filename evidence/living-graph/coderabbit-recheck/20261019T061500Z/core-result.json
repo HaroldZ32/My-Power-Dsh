@@ -1,0 +1,338 @@
+{
+ "run": "lane-e-core-preflight",
+ "at": "2026-10-19T06:12:51.690Z",
+ "contract": ".mpd/plans/living-graph.md",
+ "inputs": {
+  "fixtures": "fixtures/ (hand-authored from the package README subset)",
+  "core": "packages/mpd-graph-core/src/index.ts"
+ },
+ "summary": {
+  "checks": 46,
+  "passed": 46,
+  "failed": 0
+ },
+ "checks": [
+  {
+   "id": "A1-plan-ids",
+   "claim": "README: TODO ordinal N → T<N>, final marker → F<N>",
+   "expected": "[\"F1\",\"T1\",\"T2\",\"T3\",\"T4\",\"T6\"]",
+   "observed": "[\"F1\",\"T1\",\"T2\",\"T3\",\"T4\",\"T6\"]",
+   "pass": true
+  },
+  {
+   "id": "A1-plan-section",
+   "claim": "README: TODO vs final-wave section is recorded",
+   "expected": "[\"final-wave\",\"todo\",\"todo\",\"todo\",\"todo\",\"todo\"]",
+   "observed": "[\"final-wave\",\"todo\",\"todo\",\"todo\",\"todo\",\"todo\"]",
+   "pass": true
+  },
+  {
+   "id": "A2-plan-owners",
+   "claim": "README: lane table resolves owners, trailing qualifier cut",
+   "expected": "{\"T2\":\"Junior Engineer\",\"T3\":\"Deep Worker\",\"T4\":\"Junior Engineer\",\"T6\":\"Reviewer\"}",
+   "observed": "{\"T2\":\"Junior Engineer\",\"T3\":\"Deep Worker\",\"T4\":\"Junior Engineer\",\"T6\":\"Reviewer\"}",
+   "pass": true
+  },
+  {
+   "id": "A3-plan-edges",
+   "claim": "README: parenthesised, colon-labelled and lane references all declare blockers",
+   "expected": "{\"F1\":[\"T4\"],\"T1\":[],\"T2\":[\"T1\"],\"T3\":[\"T2\"],\"T4\":[],\"T6\":[\"T4\"]}",
+   "observed": "{\"F1\":[\"T4\"],\"T1\":[],\"T2\":[\"T1\"],\"T3\":[\"T2\"],\"T4\":[],\"T6\":[\"T4\"]}",
+   "pass": true
+  },
+  {
+   "id": "A4-plan-problems",
+   "claim": "README: a half-typed candidate line is a problem at its 1-based line",
+   "expected": "[{\"line\":9,\"text\":\"- [ ] 5\"}]",
+   "observed": "[{\"line\":9,\"text\":\"- [ ] 5\"}]",
+   "pass": true
+  },
+  {
+   "id": "A4b-plan-problem-reason",
+   "claim": "README: every problem carries a reason",
+   "expected": "a non-empty reason",
+   "observed": "not a numbered TODO item",
+   "pass": true
+  },
+  {
+   "id": "B1-node-order",
+   "claim": "contract: node ids ordered by the published collator",
+   "expected": "[\"F1\",\"T1\",\"T2\",\"T3\",\"T4\",\"T6\",\"T7\"]",
+   "observed": "[\"F1\",\"T1\",\"T2\",\"T3\",\"T4\",\"T6\",\"T7\"]",
+   "pass": true
+  },
+  {
+   "id": "B2-ghosts",
+   "claim": "contract: plan-only id is a GHOST (planned:true, visual 'planned') and never dropped",
+   "expected": "{\"ids\":[\"F1\",\"T6\"],\"visuals\":[\"planned\",\"planned\"]}",
+   "observed": "{\"ids\":[\"F1\",\"T6\"],\"visuals\":[\"planned\",\"planned\"]}",
+   "pass": true
+  },
+  {
+   "id": "B3-board-only",
+   "claim": "contract: board-only id is REPORTED and drawn from the board",
+   "expected": "[\"T7\"]",
+   "observed": "[\"T7\"]",
+   "pass": true
+  },
+  {
+   "id": "B3-plan-only",
+   "claim": "contract: plan-only ids are REPORTED",
+   "expected": "[\"F1\",\"T6\"]",
+   "observed": "[\"F1\",\"T6\"]",
+   "pass": true
+  },
+  {
+   "id": "B4-edges",
+   "claim": "contract: every declared edge is drawn with its declaring side",
+   "expected": "[{\"from\":\"T1\",\"source\":\"both\",\"to\":\"T2\"},{\"from\":\"T1\",\"source\":\"board\",\"to\":\"T7\"},{\"from\":\"T2\",\"source\":\"plan\",\"to\":\"T3\"},{\"from\":\"T3\",\"source\":\"board\",\"to\":\"T4\"},{\"from\":\"T4\",\"source\":\"plan\",\"to\":\"F1\"},{\"from\":\"T4\",\"source\":\"plan\",\"to\":\"T6\"}]",
+   "observed": "[{\"from\":\"T1\",\"source\":\"both\",\"to\":\"T2\"},{\"from\":\"T1\",\"source\":\"board\",\"to\":\"T7\"},{\"from\":\"T2\",\"source\":\"plan\",\"to\":\"T3\"},{\"from\":\"T3\",\"source\":\"board\",\"to\":\"T4\"},{\"from\":\"T4\",\"source\":\"plan\",\"to\":\"F1\"},{\"from\":\"T4\",\"source\":\"plan\",\"to\":\"T6\"}]",
+   "pass": true
+  },
+  {
+   "id": "B5-edge-plan-only",
+   "claim": "contract: plan-only edges are REPORTED",
+   "expected": "[{\"from\":\"T2\",\"source\":\"plan\",\"to\":\"T3\"},{\"from\":\"T4\",\"source\":\"plan\",\"to\":\"F1\"},{\"from\":\"T4\",\"source\":\"plan\",\"to\":\"T6\"}]",
+   "observed": "[{\"from\":\"T2\",\"source\":\"plan\",\"to\":\"T3\"},{\"from\":\"T4\",\"source\":\"plan\",\"to\":\"F1\"},{\"from\":\"T4\",\"source\":\"plan\",\"to\":\"T6\"}]",
+   "pass": true
+  },
+  {
+   "id": "B5b-edge-board-only",
+   "claim": "contract: board-only edges are REPORTED",
+   "expected": "[{\"from\":\"T1\",\"source\":\"board\",\"to\":\"T7\"},{\"from\":\"T3\",\"source\":\"board\",\"to\":\"T4\"}]",
+   "observed": "[{\"from\":\"T1\",\"source\":\"board\",\"to\":\"T7\"},{\"from\":\"T3\",\"source\":\"board\",\"to\":\"T4\"}]",
+   "pass": true
+  },
+  {
+   "id": "B5c-agreeing-edge-not-reported",
+   "claim": "contract: an agreeing edge is ordinary, not a disagreement",
+   "expected": "T1->T2 in neither list",
+   "observed": "{\"inPlanOnly\":false,\"inBoardOnly\":false}",
+   "pass": true
+  },
+  {
+   "id": "B6-plan-problems",
+   "claim": "contract: an unreadable plan line reaches the report at its line",
+   "expected": "[{\"line\":9,\"text\":\"- [ ] 5\"}]",
+   "observed": "[{\"line\":9,\"text\":\"- [ ] 5\"}]",
+   "pass": true
+  },
+  {
+   "id": "B7-unresolved",
+   "claim": "contract: an unresolvable reference is reported, kept in dependencies, and draws no edge",
+   "expected": "{\"T7Deps\":[\"T1\",\"T9\"],\"t9Edges\":0,\"unresolved\":[\"T9\"]}",
+   "observed": "{\"T7Deps\":[\"T1\",\"T9\"],\"t9Edges\":0,\"unresolved\":[\"T9\"]}",
+   "pass": true
+  },
+  {
+   "id": "B8-board-wins-subject",
+   "claim": "contract: the board supplies the subject, the plan's title sits beside it",
+   "expected": "{\"assignee\":\"Junior Engineer\",\"status\":\"in_progress\",\"subject\":\"TUI plane adoption\",\"title\":\"TUI panel adoption (blocked by 1)\"}",
+   "observed": "{\"assignee\":\"Junior Engineer\",\"status\":\"in_progress\",\"subject\":\"TUI plane adoption\",\"title\":\"TUI panel adoption (blocked by 1)\"}",
+   "pass": true
+  },
+  {
+   "id": "B9-ranks-derived",
+   "claim": "contract: node.depth IS the derived rank, not the served depth",
+   "expected": "{\"F1\":4,\"T1\":0,\"T2\":1,\"T3\":2,\"T4\":3,\"T6\":4,\"T7\":1,\"ranksDerived\":true}",
+   "observed": "{\"F1\":4,\"T1\":0,\"T2\":1,\"T3\":2,\"T4\":3,\"T6\":4,\"T7\":1,\"ranksDerived\":true}",
+   "pass": true
+  },
+  {
+   "id": "B10-ranks",
+   "claim": "contract: ranks are buckets of ids, sorted within a rank",
+   "expected": "[[\"T1\"],[\"T2\",\"T7\"],[\"T3\"],[\"T4\"],[\"F1\",\"T6\"]]",
+   "observed": "[[\"T1\"],[\"T2\",\"T7\"],[\"T3\"],[\"T4\"],[\"F1\",\"T6\"]]",
+   "pass": true
+  },
+  {
+   "id": "B11-cycles",
+   "claim": "contract: cycles are a first-class model field",
+   "expected": "[]",
+   "observed": "[]",
+   "pass": true
+  },
+  {
+   "id": "C1-twice",
+   "claim": "contract: same board + same plan => byte-identical model",
+   "expected": "JSON strings equal",
+   "observed": "equal",
+   "pass": true
+  },
+  {
+   "id": "C2-shuffle",
+   "claim": "contract: every collection is sorted by a stated key, so input ORDER cannot reach the drawing",
+   "expected": "JSON strings equal",
+   "observed": true,
+   "pass": "{\"equal\":true,\"first\":[[\"T1\"],[\"T2\",\"T7\"],[\"T3\"],[\"T4\"],[\"F1\",\"T6\"]],\"shuffled\":[[\"T1\"],[\"T2\",\"T7\"],[\"T3\"],[\"T4\"],[\"F1\",\"T6\"]]}"
+  },
+  {
+   "id": "C3-roundtrip",
+   "claim": "contract: the model is plain JSON and round-trips losslessly",
+   "expected": "deep equal after JSON round-trip",
+   "observed": "equal",
+   "pass": true
+  },
+  {
+   "id": "D1-depth-disagree-ranks",
+   "claim": "THE discriminating case: derived rank wins over a disagreeing served depth (T4 served 5, derived 0)",
+   "expected": "[[\"T1\",\"T4\"],[\"T2\"],[\"T3\"]]",
+   "observed": "[[\"T1\",\"T4\"],[\"T2\"],[\"T3\"]]",
+   "pass": true
+  },
+  {
+   "id": "D1b-depth-disagree-node-depth",
+   "claim": "the same fact on the node field the planes carry",
+   "expected": "{\"T1\":0,\"T2\":1,\"T3\":2,\"T4\":0}",
+   "observed": "{\"T1\":0,\"T2\":1,\"T3\":2,\"T4\":0}",
+   "pass": true
+  },
+  {
+   "id": "D2-ranks-derived-flag",
+   "claim": "the fallback is reported, not silent",
+   "expected": "ranksDerived true",
+   "observed": "true",
+   "pass": true
+  },
+  {
+   "id": "E1-flat",
+   "claim": "contract: every blockedBy:[] draws FLAT (one rank, honestly)",
+   "expected": "[[\"T1\",\"T2\",\"T3\",\"T4\",\"T5\"]]",
+   "observed": "[[\"T1\",\"T2\",\"T3\",\"T4\",\"T5\"]]",
+   "pass": true
+  },
+  {
+   "id": "E2-flat-derived",
+   "claim": "the flat picture is the DERIVED one, not a fallback claim",
+   "expected": "ranksDerived true",
+   "observed": "true",
+   "pass": true
+  },
+  {
+   "id": "F1-cycle-reported",
+   "claim": "contract: cycle ids are reported",
+   "expected": "[\"T1\",\"T2\"]",
+   "observed": "[\"T1\",\"T2\"]",
+   "pass": true
+  },
+  {
+   "id": "F2-cycle-finite",
+   "claim": "contract: a cycle is RENDERED, never a throw or an infinite rank",
+   "expected": "every rank finite",
+   "observed": "[[],[\"T2\"],[\"T1\"]]",
+   "pass": true
+  },
+  {
+   "id": "F3-cycle-order-stability",
+   "claim": "OBSERVATION: a cyclic board's ranks must not depend on the array order (contract's determinism invariant)",
+   "expected": "JSON strings equal",
+   "observed": "{\"first\":[[],[\"T2\"],[\"T1\"]],\"reversed\":[[],[\"T2\"],[\"T1\"]]}",
+   "pass": true
+  },
+  {
+   "id": "G0-watching",
+   "claim": "the watcher arms at least one directory handle",
+   "expected": "true",
+   "observed": "true",
+   "pass": true
+  },
+  {
+   "id": "G1-one-batch",
+   "claim": "a debounce window with TWO writes delivers ONE batch",
+   "expected": "sequence 1, no queued batch",
+   "observed": "{\"sequence\":1,\"queued\":0}",
+   "pass": true
+  },
+  {
+   "id": "G1b-paths",
+   "claim": "the batch names BOTH watched targets whose signature moved (the board DIR and the plan file)",
+   "expected": "[\"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/living-graph/coderabbit-recheck/20261019T061500Z/watch-KpfVwW/boards\",\"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/living-graph/coderabbit-recheck/20261019T061500Z/watch-KpfVwW/plans/task-plan.md\"]",
+   "observed": "[\"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/living-graph/coderabbit-recheck/20261019T061500Z/watch-KpfVwW/boards\",\"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/living-graph/coderabbit-recheck/20261019T061500Z/watch-KpfVwW/plans/task-plan.md\"]",
+   "pass": true
+  },
+  {
+   "id": "G1c-coalesced",
+   "claim": "the batch absorbed at least two raw notifications (a proven collapse, not a dropped change)",
+   "expected": "coalesced >= 2",
+   "observed": "2",
+   "pass": true
+  },
+  {
+   "id": "G1d-model-latest",
+   "claim": "the model after the batch shows BOTH changes (nothing silently dropped)",
+   "expected": "{\"hasGhostF1\":true,\"hasT3\":true}",
+   "observed": "{\"hasGhostF1\":true,\"hasT3\":true}",
+   "pass": true
+  },
+  {
+   "id": "G1e-latency",
+   "claim": "the refresh latency of one event batch, measured from the last write",
+   "expected": "< 4000 ms (the wait budget)",
+   "observed": "262 ms",
+   "pass": true
+  },
+  {
+   "id": "G3-second-batch",
+   "claim": "a later single edit still delivers (the debounce does not swallow it)",
+   "expected": "sequence 2",
+   "observed": "2",
+   "pass": true
+  },
+  {
+   "id": "G3b-latency",
+   "claim": "single-edit refresh latency",
+   "expected": "reported",
+   "observed": "251 ms",
+   "pass": true
+  },
+  {
+   "id": "G4-poll",
+   "claim": "poll() is the manual resync path and delivers exactly once",
+   "expected": "true, manual batch",
+   "observed": "{\"polled\":true,\"last\":{\"paths\":[\"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/living-graph/coderabbit-recheck/20261019T061500Z/watch-KpfVwW/boards\"],\"manual\":true,\"sequence\":3,\"coalesced\":0}}",
+   "pass": true
+  },
+  {
+   "id": "G4b-poll-manual",
+   "claim": "the poll batch is marked manual",
+   "expected": "manual true",
+   "observed": "true",
+   "pass": true
+  },
+  {
+   "id": "G4c-poll-no-duplicate",
+   "claim": "the debounced notification for the same change is absorbed, not delivered twice",
+   "expected": "sequence stays",
+   "observed": "{\"queued\":0}",
+   "pass": true
+  },
+  {
+   "id": "G5-replace",
+   "claim": "a rename-replace of the plan file is detected (signature includes the inode)",
+   "expected": "paths include the plan file",
+   "observed": "[\"/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/living-graph/coderabbit-recheck/20261019T061500Z/watch-KpfVwW/plans/task-plan.md\"]",
+   "pass": true
+  },
+  {
+   "id": "G6-close",
+   "claim": "close() stops the handles and makes later polls no-ops",
+   "expected": "closed true, poll false, watching false",
+   "observed": "{\"closed\":true,\"poll\":false,\"watching\":false}",
+   "pass": true
+  },
+  {
+   "id": "G7-sequences",
+   "claim": "batch sequence numbers are 1-based and monotonic across event and manual batches",
+   "expected": "[1,2,3,4]",
+   "observed": "[1,2,3,4]",
+   "pass": true
+  },
+  {
+   "id": "H1-served-overload",
+   "claim": "README: rankPlan(tasks, served) applies ranks computed elsewhere",
+   "expected": "{\"derived\":false,\"rankOf\":[[\"T1\",4],[\"T2\",9]]}",
+   "observed": "{\"derived\":false,\"rankOf\":[[\"T1\",4],[\"T2\",9]]}",
+   "pass": true
+  }
+ ]
+}

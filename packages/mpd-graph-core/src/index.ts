@@ -26,5 +26,5 @@ export { ID_ORDER, bucketRanks, cycleIds, deriveRanks, rankPlan, servedRank } fr
 export { parsePlanMarkdown } from "./plan.ts"
 export { buildModel } from "./model.ts"
 export { plansDirectory, readPlanFile, resolvePlanFile } from "./resolve.ts"
-export type { GraphChangeEvent, GraphWatchOptions, GraphWatchTargets, GraphWatcher } from "./watch.ts"
+export type { GraphChangeEvent, GraphWatchFactory, GraphWatchOptions, GraphWatchTargets, GraphWatcher } from "./watch.ts"
 export { watchGraph } from "./watch.ts"

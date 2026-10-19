@@ -162,10 +162,13 @@ when it is created — and decides whether anything changed by comparing a signa
 itself (inode, mtime, ctime and size per file). A rename, a replace, a delete and a create are all
 just "the signature moved", so a rename cannot strand the watch on an inode nobody writes to any
 more. A missing file or directory is survived; the arming pass re-runs after EVERY debounce, and it
-records the inode each watch attached to: a directory REPLACED at the same path (renamed in place,
-or removed and recreated) is re-armed, because an inotify watch follows the inode rather than the
-path and a watch that merely looked "already armed" would silently stop reporting the new
-directory's files.
+records the identity of the directory each watch attached to. The watcher re-arms on a platform
+`close`, on a directory SELF-EVENT (some runtimes report a directory's own removal as a notification
+named after the directory, with no `close` at all), or on a BOUNDED TIMER, and it compares the inode
+AND the birthtime: an `rm -rf` followed by a `mkdir` can reuse the inode, and only the birthtime
+still tells the new directory from the one whose watch just died. A directory REPLACED at the same
+path is therefore re-armed, because an inotify watch follows the inode rather than the path and a
+watch that merely looked "already armed" would silently stop reporting the new directory's files.
 
 **A plan that APPEARS is a change.** `plansDir` watches the plans directory as a SET, not as one
 file: its signature is every candidate plan file (`*.md`, never `*.zh-CN.md`), so creating a plan
@@ -211,6 +214,11 @@ and returns the caller's own row type. With `served` present it applies ranks co
 it, it derives the ranks. This is the TUI's path: the host computed the model once, so the layout
 applies those columns instead of reconstructing a rank plan of its own. `RankPlan` holds the lookup
 `Map`; it is deliberately NOT part of `GraphModel`, which is the value that crosses the wire.
+
+`watchGraph`'s options carry `createWatch?: GraphWatchFactory` as a TEST SEAM: it defaults to
+`fs.watch` and exists because a platform may not signal a directory's death at all (Bun emits no
+`close` for a removed or renamed directory), so the close-recovery arm cannot be proven without it.
+No product caller passes it.
 
 ## Building and testing
 
