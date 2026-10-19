@@ -58,7 +58,9 @@ import {
 } from "../src/panel-workmate"
 import type { TeamWorkflow } from "../src/team-state"
 import { NO_SESSION_TEAM_MARKER, WORKSPACE_SCOPE_MARKER } from "../src/team-state"
-import type { GraphModel, GraphNode } from "../../mpd-graph-core/src/types.ts"
+import { buildModel } from "../../mpd-graph-core/src/model.ts"
+import { parsePlanMarkdown } from "../../mpd-graph-core/src/plan.ts"
+import type { BoardTask, GraphModel, GraphNode } from "../../mpd-graph-core/src/types.ts"
 
 // ── fixtures ────────────────────────────────────────────────────────────────
 
@@ -2764,5 +2766,48 @@ describe("living-graph · the panel draws the SERVED model, ghosts and ranks inc
     expect(labelRow("T1")).not.toContain("+")
     // AND THE LEGEND NAMES THE MARK, so the reader is not left to guess it.
     expect(legendLinesFor(200, []).join(" ")).toContain("+ planned")
+  })
+
+  test("a PLAN-ONLY edge between two BOARD nodes is drawn, and a dangling plan ref stays unresolved", () => {
+    /** The plan: a root and a middle blocked by it, plus a reference that names no task at all. */
+    const planText = [
+      "## TODOs",
+      "",
+      "- [ ] 1. Root task",
+      "- [ ] 2. Middle task (blocked by: 1, 77)",
+    ].join("\n")
+    /** The board: T2 carries NO blocker, so the T1→T2 edge exists ONLY in the plan. */
+    const board: BoardTask[] = [
+      { id: "T1", subject: "Root task", status: "pending", blockedBy: [] },
+      { id: "T2", subject: "Middle task", status: "pending", blockedBy: [] },
+    ]
+    /** The model the host would serve: T2's node carries the union (T1 from the plan, T77 dangling). */
+    const model = buildModel({ board, plan: parsePlanMarkdown(planText) })
+    // THE FIXTURE REALLY HAS THE DEFECT CLASS: a plan-only edge between board nodes, and a dangling
+    // reference reported. Without these two facts the arm below would assert nothing about the defect.
+    expect(model.edges.some((edge) => edge.from === "T1" && edge.to === "T2" && edge.source === "plan")).toBe(true)
+    expect(model.report.unresolved).toEqual(["T77"])
+    /** The SAME board as the TUI reads it — both rows carry their own, empty, blocker list. */
+    const workflow = workflowOf([
+      { id: "T1", subject: "Root task", kind: "work", visual: "open", dependencies: [], failedDependencies: [], depth: 0 },
+      { id: "T2", subject: "Middle task", kind: "work", visual: "open", dependencies: [], failedDependencies: [], depth: 0 },
+    ])
+    workflow.model = model
+    /** The page under judgement. */
+    const page = dagPageOf(workflow)
+    expect(page).toBeDefined()
+    if (page === undefined) return
+    /** The middle task as the DRAWING sees it, which is where the dropped edge used to live. */
+    const middle = page.tasks.find((task) => task.id === "T2")
+    // THE ASSERTION THE DEFECT BREAKS: the drawn row carries the MODEL's union, so `graph.ts` paints
+    // the plan-only T1→T2 edge. Before the fix this row kept the board's empty list and T2 floated.
+    expect(middle?.dependencies).toContain("T1")
+    expect(middle?.dependencies).toContain("T77")
+    // NEGATIVE: a dangling PLAN reference is NOT a failed dependency — the board's own list stays the
+    // only source of `failedDependencies`, and the reference surfaces as `unresolved` instead.
+    expect(middle?.failedDependencies).toEqual([])
+    /** The drawing, which is where the unresolved reference is surfaced to the reader. */
+    const layout = dagPanelLayout(page.tasks, 100, undefined, 30, page.ranks)
+    expect(layout.view.unresolved).toContain("T77")
   })
 })

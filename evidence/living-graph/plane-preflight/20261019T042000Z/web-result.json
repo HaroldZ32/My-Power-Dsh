@@ -1,0 +1,92 @@
+{
+ "probe": "web",
+ "at": "2026-10-19T04:18:49.360Z",
+ "fixture": {
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/living-graph/plane-preflight/20261019T042000Z/ws-179tkW",
+  "urlsRead": [
+   "/plugins/mpd-team-watchdog/state",
+   "/plugins/mpd-team/state?sessionId=sess-lane-e",
+   "/plugins/mpd-team/plan?sessionId=sess-lane-e",
+   "/plugins/mpd-team/task?sessionId=sess-lane-e"
+  ]
+ },
+ "armedIntervals": [
+  15000,
+  2000
+ ],
+ "payload": {
+  "hasModel": true,
+  "servedRanks": [
+   {
+    "id": "T1",
+    "rank": 0,
+    "depth": 0
+   },
+   {
+    "id": "T2",
+    "rank": 1,
+    "depth": 0
+   },
+   {
+    "id": "T3",
+    "rank": 1,
+    "depth": 1
+   },
+   {
+    "id": "T4",
+    "rank": 2,
+    "depth": 1
+   }
+  ]
+ },
+ "web": {
+  "boxes": [
+   {
+    "rank": 0,
+    "planned": false
+   },
+   {
+    "rank": 1,
+    "planned": false
+   },
+   {
+    "rank": 1,
+    "planned": false
+   },
+   {
+    "rank": 2,
+    "planned": false
+   },
+   {
+    "rank": 3,
+    "planned": true
+   }
+  ],
+  "edges": [
+   "T2<-T1",
+   "T3<-T1",
+   "T4<-T2",
+   "T5<-T4"
+  ],
+  "edgesSorted": [
+   "T2<-T1",
+   "T3<-T1",
+   "T4<-T2",
+   "T5<-T4"
+  ]
+ },
+ "modelEdges": [
+  "T2<-T1",
+  "T3<-T1",
+  "T4<-T2",
+  "T5<-T4"
+ ],
+ "verdict": {
+  "payloadCarriesModel": true,
+  "servedRankIsModelRank": true,
+  "boxesFollowModel": true,
+  "ghostBoxDrawn": false,
+  "planOnlyEdgeDrawn": true,
+  "edgeSetEqualsModel": true
+ }
+}

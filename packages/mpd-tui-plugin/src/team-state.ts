@@ -1037,11 +1037,18 @@ function ghostRow(node: GraphNode): TeamTaskRow {
 /**
  * The DAG rows for one projection, with the SERVED model joined in.
  *
- * MEMBERSHIP AND RANK COME FROM THE MODEL; DETAIL COMES FROM THE BOARD. A node with a board row keeps
- * that row's own fields — subject, visual, description and the review fields are the TUI's, computed
- * with the OPT-1 failed-dependency rule the bare record cannot express — and takes the node's `depth`,
- * which IS the model's rank. A node with NO board row is a GHOST, synthesized by {@link ghostRow} and
- * never dropped.
+ * MEMBERSHIP, RANK AND EDGES COME FROM THE MODEL; THE LIVE STATE AND THE DETAIL COME FROM THE BOARD.
+ * A node with a board row keeps that row's own `visual`, subject, description, attempt and the review
+ * fields (the TUI computed them with the OPT-1 failed-dependency rule the bare record cannot express),
+ * and takes the node's `depth` — which IS the model's rank — and the node's `dependencies` — which are
+ * the UNION the merge computed, not the board's own list. THE EDGE AUTHORITY IS THE MODEL, and that is
+ * load-bearing rather than tidy: `graph.ts` draws an edge from exactly `dependencies`, so keeping the
+ * board's list here silently dropped a PLAN-ONLY edge between two BOARD nodes — measured: a plan
+ * declaring `2. Middle (blocked by 1)` over a board whose T2 carried `blockedBy: []` drew T2 one rank
+ * down with NO incoming arrow, a node floating for a reason the drawing never shows. `failedDependencies`
+ * deliberately stays the board row's own: a plan reference that names no node is an `unresolved`
+ * REPORT entry, never a failed dependency. A node with NO board row is a GHOST, synthesized by
+ * {@link ghostRow} and never dropped.
  *
  * TOTAL AND ORDERED: a board row the model omits is still returned (a stale model must not lose a
  * task), and the merged list is sorted by the core's numeric id collator, so a ghost lands at its
@@ -1067,7 +1074,12 @@ export function modelRows(workflow: TeamWorkflow): TeamTaskRow[] {
       rows.push(ghostRow(node))
       continue
     }
-    rows.push({ ...row, depth: rankOfNode(node) })
+    // THE MODEL OWNS THE EDGES. Spreading the board row alone kept ITS `dependencies`, which is what
+    // the drawing paints edges from — so a plan-declared dependency between two board nodes vanished
+    // before the drawing saw it. The union (the model node's list) is the graph; everything else stays
+    // board-authoritative, including `failedDependencies` (see the header: a dangling PLAN reference is
+    // an unresolved report entry, not a failure).
+    rows.push({ ...row, dependencies: [...node.dependencies], depth: rankOfNode(node) })
   }
   for (const task of workflow.tasks) if (!seen.has(task.id)) rows.push(task)
   rows.sort((left, right) => ID_ORDER.compare(left.id, right.id))

@@ -4631,7 +4631,7 @@ function modelRows(workflow) {
       rows.push(ghostRow(node));
       continue;
     }
-    rows.push({ ...row, depth: rankOfNode(node) });
+    rows.push({ ...row, dependencies: [...node.dependencies], depth: rankOfNode(node) });
   }
   for (const task of workflow.tasks)
     if (!seen.has(task.id))
