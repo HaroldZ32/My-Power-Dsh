@@ -12,7 +12,7 @@
 //   * a route never throws into a response — an unreadable record is a payload, not a 500 storm.
 import { describe, expect, test } from "bun:test"
 
-import { TEAM_EVENTS_PATH, TEAM_PLAN_PATH, TEAM_ROUTES, TEAM_STATE_PATH, approvalPhraseFor, buildTeamMail, buildTeamPlan, buildTeamState, buildTeamTasks, buildWorkspaceTeams, planForSession, registerTeamRoutes } from "../src/team-web"
+import { TEAM_EVENTS_PATH, TEAM_MAIL_PATH, TEAM_PLAN_PATH, TEAM_ROUTES, TEAM_STATE_PATH, TEAM_TASK_PATH, approvalPhraseFor, buildTeamMail, buildTeamPlan, buildTeamState, buildTeamTasks, buildWorkspaceTeams, planForSession, registerTeamRoutes } from "../src/team-web"
 import { appendRecord } from "../src/mailbox-store"
 import { addMember, addTask, stagePlan, writePlan } from "../src/plan-store"
 import { addTeamMember, addTeamTask, createTeam, updateTeamTask, writeTeam, type TeamRecord } from "../src/team-store"
@@ -466,6 +466,38 @@ describe("the shared approval phrase", () => {
       { writeHead: () => {}, end: (text: string) => { captured.body = JSON.parse(text) } },
     )
     expect(captured.body).toEqual(planForSession(workspace, "s1"))
+  })
+
+  test("the WORKSPACE a route reads follows the SESSION the query names, not the process root", () => {
+    // THE DEFECT THIS PINS (measured 2026-10-19, Docker web lane): a route request carries no agent
+    // exec, so an argument-less workspace resolver falls to the dsh process cwd — `/work` there, while
+    // the panel's session lived in `/work/ws`. The panel then drew "No team in this workspace yet"
+    // beside a completed board. The contract is now: the query's session id REACHES the resolver for
+    // every JSON route, so the row can answer the workspace that session owns.
+    /** Every session id the resolver was handed, in call order. */
+    const asked: string[] = []
+    /** The routes the double captured, by path. */
+    const routes = new Map<string, (req: unknown, res: unknown) => unknown>()
+    registerTeamRoutes({ register: (route: { path: string; handler: (req: unknown, res: unknown) => unknown }) => { routes.set(route.path, route.handler); return () => {} } }, {
+      recordFor: () => undefined,
+      workspace: (sessionId?: string) => { asked.push(sessionId ?? "<none>"); return "/ws/one" },
+      executor: () => EXECUTOR,
+      effect: (fn: () => unknown) => fn(),
+      warn: () => {},
+      subscribe: () => () => {},
+      revision: () => 0,
+    })
+    /** One response double; every route answers through it. */
+    const sink = { writeHead: () => {}, end: () => {} }
+    for (const path of [TEAM_STATE_PATH, TEAM_PLAN_PATH, TEAM_TASK_PATH, TEAM_MAIL_PATH]) {
+      ;(routes.get(path) as (req: unknown, res: unknown) => unknown)({ url: `${path}?sessionId=sess-42` }, sink)
+    }
+    expect(asked.length).toBeGreaterThanOrEqual(4)
+    expect(asked.every((id) => id === "sess-42")).toBe(true)
+    // A session-less read still asks the resolver with the empty string, never with a guess.
+    asked.length = 0
+    ;(routes.get(TEAM_STATE_PATH) as (req: unknown, res: unknown) => unknown)({ url: TEAM_STATE_PATH }, sink)
+    expect(asked).toEqual([""])
   })
 })
 

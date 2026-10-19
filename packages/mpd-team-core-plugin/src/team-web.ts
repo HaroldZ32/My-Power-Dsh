@@ -609,8 +609,17 @@ export function registerTeamRoutes(
   deps: {
     /** The record for one session, or undefined when it has no team. */
     recordFor: (sessionId: string) => TeamRecord | undefined
-    /** The workspace a read should be attributed to. */
-    workspace: () => string
+    /**
+     * The workspace a read should be attributed to, resolved PER REQUEST.
+     *
+     * THE SESSION ID IS PART OF RESOLUTION, not decoration (measured 2026-10-19 on the Docker web
+     * lane). A browser request carries no agent exec, so an argument-less resolver falls through
+     * `DSH_WORKSPACE_ROOT` to the dsh process cwd — `/work` in that lane, while the session's
+     * workspace is `/work/ws`. The panel then asked the WRONG WORKSPACE for a team it had just
+     * built, and rendered "No team in this workspace yet" beside a live board. The caller now hands
+     * the query's session id in so the row can resolve the workspace that session actually owns.
+     */
+    workspace: (sessionId?: string) => string
     /** The active backend's kind and reason. */
     executor: () => { kind: string; reason: string }
     /** Own a disposable for the caller's fibre lifetime. */
@@ -730,10 +739,20 @@ export function registerTeamRoutes(
     // PER REQUEST, never cached across requests: one host serves many sessions with different
     // workspaces, and each panel asks about its own. `deps.workspace()` is the same impure edge the
     // JSON routes read, and the session comes from the SAME query parameter they use.
-    /** The workspace this stream follows. */
-    const workspace = deps.workspace()
     /** The session the request names, recorded on the open line so a log can tell one panel from another. */
     const sessionId = sessionOf(req)
+    /** The workspace this stream follows, resolved FOR THIS SESSION (see `workspace` in the deps). */
+    let workspace = ""
+    try {
+      workspace = deps.workspace(sessionId)
+    } catch (error) {
+      // THE RESOLVER IS AN IMPURE EDGE. A throw here used to escape the handler before its try, leaving
+      // the response open with nothing ever written — the one failure shape this module forbids. It now
+      // answers like every other route failure instead.
+      deps.warn(`resolving the events workspace failed: ${String((error as Error)?.message ?? error)}`)
+      json(res, 500, { ok: false, error: "mpd-team-core: the events stream could not resolve its workspace" })
+      return
+    }
     /** The revision reader, contained: a broken counter must refuse the stream, not redden the host. */
     const revisionNow = (): number => {
       try { return revision(workspace) } catch { return 0 }
@@ -809,8 +828,8 @@ export function registerTeamRoutes(
   all = mount(TEAM_STATE_PATH, (req) => {
     /** The session this request asks about. */
     const sessionId = sessionOf(req)
-    /** The workspace this request is attributed to, resolved PER CALL like every other read here. */
-    const workspace = deps.workspace()
+    /** The workspace this request is attributed to, resolved PER CALL for THIS session (see the deps). */
+    const workspace = deps.workspace(sessionId)
     // THE RECORD IS READ ONCE, so the model can be asked for the SAME team the payload describes: a
     // workspace-scoped model would hand this session the principal team's ghosts.
     /** The record this session draws, or undefined when it has no team. */
@@ -827,10 +846,13 @@ export function registerTeamRoutes(
     /** The session whose staged plan is asked for. */
     const sessionId = sessionOf(req)
     // The SHARED projection — the same call the service exposes to the TUI, so the two cannot drift.
-    return planForSession(deps.workspace(), sessionId)
+    return planForSession(deps.workspace(sessionId), sessionId)
   }) && all
-  all = mount(TEAM_TASK_PATH, () => buildTeamTasks(deps.workspace())) && all
-  all = mount(TEAM_MAIL_PATH, () => buildTeamMail(deps.workspace())) && all
+  // The contract/hold and mailbox routes take the same session query the state route does, so they
+  // resolve the SAME workspace the panel's session owns; falling back to the process root here would
+  // repeat the defect this signature change exists to close.
+  all = mount(TEAM_TASK_PATH, (req) => buildTeamTasks(deps.workspace(sessionOf(req)))) && all
+  all = mount(TEAM_MAIL_PATH, (req) => buildTeamMail(deps.workspace(sessionOf(req)))) && all
   // LAST, and streaming: it is the only route whose handler does not return a body, so it registers
   // through its own helper rather than through `mount`'s one-shot shape.
   all = mountStream(TEAM_EVENTS_PATH, events) && all

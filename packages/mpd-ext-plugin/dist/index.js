@@ -315,6 +315,28 @@ function workspaceRootsOf(agents) {
     return [];
   }
 }
+function workspaceRootForSessionOf(agents, sessionId) {
+  if (typeof sessionId !== "string" || sessionId === "")
+    return;
+  if (agents === undefined || agents === null || typeof agents.list !== "function")
+    return;
+  try {
+    const list = agents.list();
+    if (!Array.isArray(list))
+      return;
+    for (const agent of list) {
+      const id = agent?.session?.id;
+      if (typeof id === "string" && id === sessionId) {
+        const cwd = sessionCwdOf(agent);
+        if (cwd !== undefined)
+          return resolve2(cwd);
+      }
+    }
+  } catch {
+    return;
+  }
+  return;
+}
 function noop() {}
 var GOAL_TOOL_NAMES = ["get_goal", "create_goal", "update_goal"];
 function goalSnapshotOf(view) {
@@ -549,6 +571,13 @@ function createDshAdapter(ctx, config = {}) {
   }
   const workspaceRoot = (exec) => workspaceRootOf(exec);
   const workspaceRootsAll = () => workspaceRootsOf(service("agents"));
+  const workspaceRootForSession = (sessionId) => {
+    try {
+      return workspaceRootForSessionOf(service("agents"), sessionId);
+    } catch {
+      return;
+    }
+  };
   const rowLog = (name, line) => rowLogLine(name, line);
   function liveAgents() {
     const agents = service("agents");
@@ -977,6 +1006,7 @@ function createDshAdapter(ctx, config = {}) {
     },
     workspaceRoot,
     workspaceRootsAll,
+    workspaceRootForSession,
     rowLog,
     liveAgents,
     liveAgent,

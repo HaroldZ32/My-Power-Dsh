@@ -81,6 +81,27 @@ describe("the record is the primary team source", () => {
     expect(workflow.team?.links).toBe(2)
   })
 
+  test("a task claimed under the member's EXECUTOR HANDLE is credited to that member", () => {
+    // The same two-spelling defect the web panel had: a declared owner carries the member's NAME,
+    // while a claim stamps the claimer's handle (the session id). The member cards credit by name, so
+    // a handle-owned task used to render `0/0` beside a completed board (measured 2026-10-19).
+    /** The record with T3 claimed under the Senior Engineer's handle. */
+    const claimed = record()
+    claimed.tasks = claimed.tasks.map((task) => task.id === "T3" ? { ...task, owner: "sess-a" } : task)
+    /** The projection under test. */
+    const workflow = readRecordWorkflow("/ws", [], claimed)
+    expect(workflow.tasks.find((task) => task.id === "T3")?.assignee).toBe("Senior Engineer")
+    /** The Senior Engineer's card, which must count BOTH of that member's tasks. */
+    const member = workflow.members.find((row) => row.name === "Senior Engineer")
+    expect(member?.done).toBe(1)
+    expect(member?.total).toBe(2)
+    // A handle belonging to no roster row stays as written rather than becoming somebody's work.
+    /** The record with an unknown handle on T3. */
+    const unknown = record()
+    unknown.tasks = unknown.tasks.map((task) => task.id === "T3" ? { ...task, owner: "sess-unknown" } : task)
+    expect(readRecordWorkflow("/ws", [], unknown).tasks.find((task) => task.id === "T3")?.assignee).toBe("sess-unknown")
+  })
+
   test("phase is the STORED lifecycle, not a guess from the roster", () => {
     expect(readRecordWorkflow("/ws", [], record({ approvedAt: undefined, phase: "staged" })).team?.phase).toBe("staged")
     expect(readRecordWorkflow("/ws", [], record({ phase: "idle", members: [], tasks: [] })).team?.phase).toBe("idle")

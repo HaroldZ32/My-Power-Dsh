@@ -1320,8 +1320,10 @@ if [ "$LIVE" = "1" ]; then
   tmux -S "$SOCK" send-keys -t tui Escape 2>/dev/null || true
   sleep 1
   # The prompt asks for ONE MPD tool so `live.tui.mpdToolCalled` is a statement about this bundle's
-  # tool plane inside the TUI, not about the model's mood.
-  TUI_PROMPT="Call the mpd_config_get tool once (it takes no arguments), then reply with exactly: DONE"
+  # tool plane inside the TUI, not about the model's mood. In TEAM-PROJECT mode the entrypoint hands
+  # over the team-building prompt instead (`MPD_E2E_TUI_PROMPT`), which is typed through this exact
+  # keystroke path — the same proof, with a much larger subject.
+  TUI_PROMPT="${MPD_E2E_TUI_PROMPT:-Call the mpd_config_get tool once (it takes no arguments), then reply with exactly: DONE}"
   tmux -S "$SOCK" send-keys -t tui "$TUI_PROMPT" Enter 2>/dev/null || true
   sleep 2
   capture_pane live-sent
@@ -1332,6 +1334,39 @@ if [ "$LIVE" = "1" ]; then
     record live.tui.turnStarted null "node is not on PATH, so the TUI live verdict could not be read — an unmade measurement, never a pass" "node=absent"
   fi
   capture_pane live-after
+  # ── THE LIVE TEAM PROJECT ON THE TUI PLANE ──────────────────────────────────
+  # The turn is over; what remains is the ARTIFACT proof. `/mpd team` opens the product's own team
+  # scene, whose title carries `<name> (<id>)` and whose graph header plus boxed task ids are the
+  # drawing. The plain pane is what the verdict reads; the ANSI bytes are kept as a screenshot
+  # source, so a reviewer can rasterize exactly the screen this run saw (docker/ui/tui-render.py).
+  if [ "${MPD_E2E_TEAM_PROJECT:-0}" = "1" ]; then
+    TEAM_NAME="${MPD_E2E_TEAM_NAME:-live-team-tui}"
+    tmux -S "$SOCK" send-keys -t tui Escape 2>/dev/null || true
+    sleep 1
+    tmux -S "$SOCK" send-keys -t tui "/mpd team" Enter 2>/dev/null || true
+    TEAM_SCENE_WAIT=0
+    while [ "$TEAM_SCENE_WAIT" -lt 60 ]; do
+      sleep 2
+      TEAM_SCENE_WAIT=$((TEAM_SCENE_WAIT + 2))
+      TEAM_NOW="$(tmux -S "$SOCK" capture-pane -p -J -t tui 2>/dev/null || true)"
+      case "$TEAM_NOW" in
+        *"task dependency graph"*) break ;;
+        *"MPD team"*) break ;;
+        *"no team in this session"*) break ;;
+      esac
+    done
+    capture_pane teamLive
+    tmux -S "$SOCK" capture-pane -e -p -J -t tui >"$PANE_DIR/tui-team-live.ansi" 2>/dev/null || true
+    TEAM_SESSION_ARGS=()
+    [ -n "${LIVE_SESSION_ID:-}" ] && TEAM_SESSION_ARGS=(--session "$LIVE_SESSION_ID")
+    if command -v node >/dev/null 2>&1; then
+      node "$LIB_DIR/team-project-verdict.ts" --workspace "$WORK_DIR/ws" --project "team-project-tui" \
+        --state "$STATE_FILE" --label tui --team-name "$TEAM_NAME" --since "$TUI_LIVE_SINCE" \
+        "${TEAM_SESSION_ARGS[@]}" --pane "$TUI_DIR/pane-teamLive.txt" || true
+    else
+      record teamproject.record.tui null "node is not on PATH, so the team-project verdict could not be read — an unmade measurement, never a pass" "node=absent"
+    fi
+  fi
 else
   node "$LIB_DIR/live-verdict.ts" --label tui --state "$STATE_FILE" \
     --unavailable "not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum" || true
@@ -1421,7 +1456,11 @@ fi
 # ONE awk pass, deliberately: `grep -c` PRINTS its count and EXITS 1 when there is no match,
 # so `$(grep -c … || echo 0)` captured "0\n0" and the comparison below could never be true
 # (measured 2026-09-27: all eleven assertions green and the lane still reported laneExit=false).
-TUI_SUMMARY="$(awk '/"name":"tui\./ { total++; if ($0 ~ /"ok":false/) bad++ } END { printf "%d %d", total, bad }' "$STATE_FILE" 2>/dev/null || echo "0 0")"
+# THE TEAM-PROJECT ROWS ARE THIS LANE'S TOO. They are written by the shared verdict as
+# `teamproject.<row>.tui`; counting only `tui.*` let this row say "every assertion green" while a false
+# teamproject row sat beside it (independent review, 2026-10-19). The FLOOR still counts `tui.*` alone —
+# it pins this lane's own record set — while the BAD count spans both families.
+TUI_SUMMARY="$(awk '/"name":"(tui\.|teamproject\.[a-z]+\.tui)/ { total++; if ($0 ~ /"ok":false/) bad++ } END { printf "%d %d", total, bad }' "$STATE_FILE" 2>/dev/null || echo "0 0")"
 TUI_TOTAL="${TUI_SUMMARY%% *}"
 TUI_BAD="${TUI_SUMMARY##* }"
 # The floor is the number of tui.* records this lane REALLY writes BEFORE this exit record (21: the 19

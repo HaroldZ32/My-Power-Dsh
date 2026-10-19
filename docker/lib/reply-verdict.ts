@@ -86,8 +86,14 @@ const CREDENTIAL_PATTERNS: readonly RegExp[] = [
 const CREDENTIAL_LABEL = "MISSING_CREDENTIAL"
 /** The tool the lane's prompt asks the model to call; a rendered mention can only come from a turn. */
 const TOOL_NAME = "mpd_config_get"
-/** The prompt's own answer shape: `DONE` as the WHOLE content of a line, never inside a sentence. */
-const STANDALONE_DONE = /^[\s\-*•]*done[.!]?$/i
+/**
+ * The prompt's own answer shape: `DONE` as the WHOLE content of a line, never inside a sentence.
+ *
+ * MARKDOWN EMPHASIS IS TOLERATED (`**DONE**`, `_DONE_`): a rendered transcript may bold the final line,
+ * and a team turn that spent the whole budget would otherwise red despite a finished project (measured
+ * 2026-10-19 review). The line must still BE the answer — an emphasized `DONE` inside a sentence is not.
+ */
+const STANDALONE_DONE = /^[\s\-*•]*(?:\*\*|__)?\s*done\s*(?:\*\*|__)?\s*[.!]?$/i
 /** How much of a quoted line is kept, so a reason stays one readable line. */
 const QUOTE_MAX = 240
 

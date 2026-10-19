@@ -1811,10 +1811,51 @@ export function apply(ctx: any): void {
       // Registered through the adapter's `webServerOf()` (never a raw ctx service read), and
       // re-attempted when the web server binds LATER — the same host-plane ordering that made the
       // executor line lie once already, so the second attempt is not speculative.
+      /**
+       * The workspace a BROWSER request is attributed to, resolved from the session it names.
+       *
+       * WHY THE QUERY'S SESSION DECIDES (measured 2026-10-19, Docker web lane): a route request has no
+       * agent exec, so `dsh.workspaceRoot()` alone falls through to the dsh process cwd — `/work` in
+       * that lane while the panel's session lives in `/work/ws`. The panel then read a workspace with
+       * no team and rendered "No team in this workspace yet" beside a completed board. The session's
+       * own root is discovered from the artifact that names it (the bound team record, or the staged
+       * plan before approval), over the adapter's documented `workspaceRootsAll()` union; a
+       * single-root composition answers that root for a session with neither yet, and only an
+       * ambiguous composition falls back to the process root.
+       *
+       * @param sessionId - the session the request's query names, or "" for a session-less read.
+       * @returns the absolute workspace root the read belongs to.
+       */
+      const workspaceForRequest = (sessionId: string): string => {
+        if (sessionId === "") return dsh.workspaceRoot()
+        // THE AUTHORITATIVE ANSWER FIRST: the agent registry knows this session's own cwd, so a live
+        // session is resolved WITHOUT inferring anything from its artifacts. The scan below is the
+        // fallback for a registry that does not expose the id (an older host, an agentless boot).
+        try {
+          /** The workspace of the live session this request names, when the adapter can resolve it. */
+          const own = dsh.workspaceRootForSession(sessionId)
+          if (own !== undefined && own !== "") return own
+        } catch {
+          // A composition whose adapter predates the method falls through to the artifact scan.
+        }
+        /** The live session roots, plus the process root as a last resort. */
+        const roots = dsh.workspaceRootsAll()
+        for (const root of roots) {
+          try {
+            if (recordFor(root, sessionId) !== undefined) return root
+            if (readPlan(root, sessionId) !== undefined) return root
+          } catch {
+            // One unreadable root must not blind the scan of the others.
+          }
+        }
+        // NO ARTIFACT YET: with ONE live workspace the answer is unambiguous; anything else stays with
+        // the process-wide root, and the panel's workspace listing is what a session-less read means.
+        return roots.length === 1 ? roots[0] : dsh.workspaceRoot()
+      }
       /** Register the route against whatever web server this composition has right now. */
       const mountTeamRoute = (): boolean => registerTeamRoutes(dsh.webServerOf() as never, {
-        recordFor: (sessionId: string) => recordFor(dsh.workspaceRoot(), sessionId),
-        workspace: () => dsh.workspaceRoot(),
+        recordFor: (sessionId: string) => recordFor(workspaceForRequest(sessionId), sessionId),
+        workspace: (sessionId?: string) => workspaceForRequest(sessionId ?? ""),
         executor: () => {
           /** The executor as of this request, contained so a route never throws into a response. */
           const view = executor()

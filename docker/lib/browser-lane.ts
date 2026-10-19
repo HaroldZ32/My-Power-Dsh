@@ -37,7 +37,7 @@
 //                        --out /out/ui-shots --state /work/assertions.ndjson [--budget-ms 240000]
 //
 // Exit code: 0 when every recorded row is true, 1 when any is false, 2 when the browser never started.
-import { appendFileSync, mkdirSync, writeFileSync } from "node:fs"
+import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { judgeReply } from "./reply-verdict.ts"
 import type { ReplyVerdict } from "./reply-verdict.ts"
@@ -51,6 +51,7 @@ const UI_ASSERTIONS: readonly string[] = [
   "ui.replyRendered",
   "ui.mpdSettingsSection",
   "ui.teamPanel",
+  "ui.teamBoard",
   "ui.noConsoleErrors"
 ]
 
@@ -78,7 +79,7 @@ const COMPOSER_PLACEHOLDERS: readonly string[] = [
 ]
 /** The send control's accessible name. */
 const SEND_LABEL = "Send message"
-/** The prompt this lane types. It asks for one MPD tool so the reply proves the bundle's tool plane. */
+/** The prompt this lane types when the caller supplies none. It asks for one MPD tool, so the reply proves the bundle's tool plane. */
 const PROMPT = "Call the mpd_config_get tool once (it takes no arguments), then reply with exactly: DONE"
 
 /** Read `--<flag> <value>` off the command line, or `fallback` when absent/valueless. */
@@ -87,6 +88,41 @@ function arg(flag: string, fallback: string = ""): string {
   const index = process.argv.indexOf("--" + flag)
   return index === -1 || index + 1 >= process.argv.length ? fallback : process.argv[index + 1]
 }
+
+/** Whether the caller passed a bare flag. */
+function flag(name: string): boolean {
+  return process.argv.includes("--" + name)
+}
+
+// ── the caller's subject: a prompt, a landmark, and the REAL-board expectation ──
+// WHY THESE ARE ARGUMENTS. The lane's default subject is one tool call. The TEAM-PROJECT run asks for
+// a whole small project built by a real team, typed through this same composer: a different prompt,
+// a different landmark in its echo, and — the part that matters — a team panel that must show the
+// team THIS turn built rather than any fixture. A hard-coded default would make the lane lie about
+// which subject it witnessed.
+/** The prompt typed into the composer: the caller's `--prompt`, else the single-tool default. */
+const PROMPT_TEXT = arg("prompt", PROMPT)
+/** The text the sent bubble must carry, so "the prompt was really sent" cannot green on a stale echo. */
+const EXPECT_TEXT = arg("expect", "mpd_config_get")
+/** Whether this run expects the sidebar team panel to render a REAL board (the team-project run). */
+const TEAM_EXPECTED = flag("team-expected")
+/** The roster size the real board must show, when `--team-expected` is set. */
+const EXPECT_MEMBERS = Number(arg("expect-members", "2")) || 2
+/** The board size the real board must show, when `--team-expected` is set. */
+const EXPECT_TASKS = Number(arg("expect-tasks", "2")) || 2
+/**
+ * The workspace whose team records are read to BIND the panel to the fresh record.
+ *
+ * WHY THE LANE READS DISK: the two checks a wrong-board defect could still pass are "a tab id exists"
+ * and "some board has two members and two tasks". The record on disk written during THIS turn is the
+ * one artifact that says which team the turn produced, so the panel's `data-mpd-team-tab` is compared
+ * with it. Empty disables the binding (a caller that did not ask for a team build has none to read).
+ */
+const WORKSPACE = arg("workspace")
+/** The team name the prompt asked for; the record is selected by this name. */
+const TEAM_NAME = arg("team-name")
+/** Where to write the live session id this page is bound to, when the caller wants the verdict to read it. */
+const SESSION_OUT = arg("session-out")
 
 /** The error message of an unknown thrown value. */
 function messageOf(error: unknown): string {
@@ -289,6 +325,22 @@ async function bodyText(limit: number = 3000): Promise<string> {
   return (await page.locator("body").innerText().catch(() => "")).replace(/\n{2,}/g, "\n").slice(0, limit)
 }
 
+/**
+ * The LAST `limit` characters of the rendered body.
+ *
+ * WHY THIS EXISTS (measured reasoning, not taste): a team build runs many tool calls, so the main pane
+ * grows far past the 8k head `bodyText` reads — and the one line the reply judge needs (`DONE`) is the
+ * LAST thing the turn writes. A head capture would sit at the top of the transcript and never see it,
+ * which would time out a turn that actually finished. The tail keeps exactly the region a reply lives in.
+ * @param limit - The number of trailing characters to keep (default 40k, enough for one long turn).
+ * @returns The tail of the body text, newline-collapsed.
+ */
+async function bodyTextTail(limit: number = 40000): Promise<string> {
+  /** The whole rendered body, newline-collapsed, before the tail is cut from it. */
+  const text = (await page.locator("body").innerText().catch(() => "")).replace(/\n{2,}/g, "\n")
+  return text.length <= limit ? text : text.slice(text.length - limit)
+}
+
 /** How many textbox-role candidates the resolver and its diagnostic probe. */
 const TEXTBOX_PROBES = 6
 
@@ -370,6 +422,49 @@ async function dismissGates(): Promise<void> {
   await page.waitForTimeout(400)
 }
 
+/** The team id of the NEWEST record named `name` under `<workspace>/.mpd/team/teams`, or "". */
+function readTeamRecordId(workspace: string, name: string): string {
+  if (workspace === "" || name === "") return ""
+  /** The store directory the product writes its records into. */
+  const dir = workspace + "/.mpd/team/teams"
+  if (!existsSync(dir)) return ""
+  /** The newest matching record seen so far. */
+  let best: { id: string; at: number } | undefined
+  for (const file of readdirSync(dir)) {
+    if (!file.endsWith(".json")) continue
+    try {
+      /** The record's parsed body, read only for the two fields this binding needs. */
+      const record = JSON.parse(readFileSync(dir + "/" + file, "utf8")) as { name?: unknown; teamId?: unknown; createdAt?: unknown }
+      if (record.name !== name) continue
+      /** The record's creation instant, falling back to the file's mtime. */
+      const at = typeof record.createdAt === "string" && !Number.isNaN(Date.parse(record.createdAt)) ? Date.parse(record.createdAt) : statSync(dir + "/" + file).mtimeMs
+      if (best === undefined || at >= best.at) best = { id: typeof record.teamId === "string" ? record.teamId : "", at }
+    } catch {
+      // A record this reader cannot parse is simply not a match.
+    }
+  }
+  return best?.id ?? ""
+}
+
+/** The live session this page is bound to: the host's own marker first, the panel's console line second. */
+async function currentSessionId(): Promise<string> {
+  /** The host's own sidebar session marker, when this build renders one. */
+  const marker = page.locator("[data-sidebar-right-session]").first()
+  if (await marker.count() > 0) {
+    /** The marker's value. */
+    const value = await marker.getAttribute("data-sidebar-right-session").catch(() => null)
+    if (typeof value === "string" && value !== "") return value
+  }
+  // THE PANEL ANNOUNCES ITS OWN SESSION on the console (`[mpd] team sidebar session: <id>`), and the
+  // collector above keeps every `[mpd]` line; the newest announcement is this page's session.
+  for (let index = consoleMpd.length - 1; index >= 0; index--) {
+    /** The id the announcement named, when this line is one. */
+    const match = /team sidebar session:\s*(\S+)/.exec(consoleMpd[index] ?? "")
+    if (match !== null) return match[1]
+  }
+  return ""
+}
+
 // ── stage 1: the app loads at all ─────────────────────────────────────────────
 await stage("ui.loads", "the Web GUI loaded and rendered visible text in a real browser",
   async () => {
@@ -440,7 +535,7 @@ await stage("ui.promptSent", "a prompt was typed into the composer and sent thro
     const box = await resolveComposer()
     if (box === undefined) throw new Error("the composer disappeared between stages")
     await box.click({ timeout: 5000 })
-    await box.fill(PROMPT)
+    await box.fill(PROMPT_TEXT)
     await page.waitForTimeout(500)
     beforeSend = await bodyText(6000)
     /** The send control, or a locator that matches nothing when it is absent. */
@@ -452,8 +547,8 @@ await stage("ui.promptSent", "a prompt was typed into the composer and sent thro
     // The prompt must be VISIBLE as a sent message, not merely typed: a composer that keeps the text
     // (because the click missed) would otherwise read as a successful send.
     const after = await bodyText(6000)
-    if (!after.includes("mpd_config_get")) throw new Error("the prompt text never appeared in the transcript after send")
-    return `promptChars=${PROMPT.length}`
+    if (!after.includes(EXPECT_TEXT)) throw new Error(`the prompt text (expected "${EXPECT_TEXT}") never appeared in the transcript after send`)
+    return `promptChars=${PROMPT_TEXT.length} expect=${EXPECT_TEXT}`
   })
 
 // ── stage 5: the answer renders — a turn really ran through the GUI ───────────
@@ -465,20 +560,32 @@ await stage("ui.replyRendered", "the transcript rendered the turn's OWN output �
     /** The last text seen, so the failure report quotes what the screen really said. */
     let seen = ""
     /** The verdict this stage's row is recorded from, re-read from the LATEST capture every round. */
-    let verdict: ReplyVerdict = judgeReply({ before: beforeSend, after: seen, prompt: PROMPT })
+    let verdict: ReplyVerdict = judgeReply({ before: beforeSend, after: seen, prompt: PROMPT_TEXT })
     while (Date.now() < deadline) {
-      seen = await bodyText(8000)
-      verdict = judgeReply({ before: beforeSend, after: seen, prompt: PROMPT })
+      // A TEAM TURN IS LONG: read the TAIL, where the final answer is, rather than the first 8k of a
+      // page whose top is the user's bubble and whose middle is tool output.
+      seen = TEAM_EXPECTED ? await bodyTextTail() : await bodyText(8000)
+      verdict = judgeReply({ before: beforeSend, after: seen, prompt: PROMPT_TEXT })
       // TWO terminal states, and BOTH end the wait: a rendered turn output (judged by the shared
       // classifier), and the turn's failure panel — the GUI paints that when the turn has ENDED, so
       // waiting out the budget cannot produce a reply after it. The PROMPT's own `DONE` is not one of
       // them: it is echoed into the user's bubble the moment the message is sent, which is the exact
       // false green FINDING F1 reports (`before=225 after=619 done=true`, `ui-02`/`ui-03` byte-identical).
-      if (verdict.kind === "reply" || verdict.failure !== "") break
+      // IN TEAM-PROJECT MODE ONLY THE FINAL ANSWER ENDS THE WAIT. A tool mention is a legitimate reply
+      // for the single-tool default, but a team build asks for MANY tools: breaking on the first one
+      // would judge the board while it was still being built. The team prompt names one final line
+      // (`DONE`), so `verdict.done` is the only terminal state there.
+      // A FAILURE PANEL IS NOT A TERMINAL FOR A TEAM TURN. Measured 2026-10-19: a tool error inside the
+      // build painted a fresh failure line while the lead kept working, and the old early exit judged a
+      // turn that finished one minute later. Only the requested final line ends a team turn; a
+      // non-team run keeps its failure-panel exit because a single-tool turn has nothing else to wait for.
+      // A CREDENTIAL-BOUND FAILURE IS TERMINAL IN BOTH MODES: waiting the whole team budget for a reply
+      // that needs a key would report a known prerequisite 25 minutes late.
+      const settled = TEAM_EXPECTED ? (verdict.done || verdict.kind === "credential-bound") : (verdict.kind === "reply" || verdict.failure !== "")
+      if (settled) break
       await page.waitForTimeout(2500)
     }
     await shot("ui-03-reply")
-    if (verdict.kind === "reply") return verdict.raw
     if (verdict.kind === "credential-bound") {
       // THE HONEST OUTCOME IN A CREDENTIAL-FREE CONTAINER: no reply rendered, and the panel names the
       // missing prerequisite — so the row is a DECLARED BOUND (`null` with this reason), never a green.
@@ -487,6 +594,8 @@ await stage("ui.replyRendered", "the transcript rendered the turn's OWN output �
         raw: verdict.raw,
       }
     }
+    if (TEAM_EXPECTED && !verdict.done) throw new Error(`the team turn never reached its final DONE line within the budget; the last verdict was ${verdict.kind} (${verdict.detail}) (${verdict.raw})`)
+    if (verdict.kind === "reply") return verdict.raw
     throw new Error(`no reply was rendered: ${verdict.detail} (${verdict.raw})`)
   })
 
@@ -511,6 +620,60 @@ await stage("ui.teamPanel", "the right sidebar opens on the Agent Teams panel wi
     await shot("ui-05-team-panel")
     if (!/MEMBERS|TASKS|Team/i.test(text)) throw new Error("the sidebar opened but no team panel content was rendered")
     return `chars=${text.length} teamTab=${await team.count()}`
+  })
+
+// ── stage 6b: the REAL board this turn built (TEAM-PROJECT runs only) ────────
+// `ui.teamPanel` above proves the panel EXISTS. This stage proves it renders the team THIS turn built:
+// the panel root's own `data-mpd-team-tab` carries the bound team's id (the empty string is the
+// workspace-listing view, which a session with no team correctly gets), and the two headings carry
+// the roster and board sizes the prompt asked for. A fixture, a foreign board or an empty team panel
+// all fail it — which is the difference between "the UI is mounted" and "the UI shows the work".
+await stage("ui.teamBoard", "the sidebar team panel renders the REAL team this turn built — a bound team id, the requested roster and the requested board",
+  async (): Promise<StageResult> => {
+    if (!TEAM_EXPECTED) return { bound: "not attempted: this run did not ask for a team build (--team-expected absent), so there is no real board to assert", raw: "teamExpected=false" }
+    /** The instant this stage gives up waiting for the asynchronous projection. */
+    const deadline = Date.now() + 90_000
+    /** The last panel text read, quoted on failure. */
+    let panelText = ""
+    /** The team id the panel root carried; empty is the workspace-listing view. */
+    let tabId = ""
+    /** The members heading's count, or 0 while absent. */
+    let membersSeen = 0
+    /** The tasks heading's count, or 0 while absent. */
+    let tasksSeen = 0
+    while (Date.now() < deadline) {
+      /** The panel root: the ONE element the team view draws its projection into. */
+      const panel = page.locator("[data-mpd-team-tab]").first()
+      if (await panel.count() > 0) {
+        panelText = await panel.innerText().catch(() => "")
+        tabId = (await panel.getAttribute("data-mpd-team-tab").catch(() => "")) ?? ""
+      }
+      membersSeen = Number(/MEMBERS \((\d+)\)/.exec(panelText)?.[1] ?? "0")
+      tasksSeen = Number(/TASKS \((\d+)\)/.exec(panelText)?.[1] ?? "0")
+      if (tabId !== "" && membersSeen >= EXPECT_MEMBERS && tasksSeen >= EXPECT_TASKS) break
+      await page.waitForTimeout(3000)
+    }
+    // THE SESSION IS CAPTURED FOR THE VERDICT before any verdict of this stage: the team-project reader
+    // binds the RECORD to the session, and the Web lane is the only side that knows which session the
+    // browser opened. A page that advertises no id writes an empty file, and the reader records the
+    // binding as an honest NULL (its driver gate then names the miss).
+    /** The live session this page is bound to. */
+    const sessionId = await currentSessionId()
+    if (SESSION_OUT !== "") writeFileSync(SESSION_OUT, sessionId + "\n")
+    await shot("ui-06-team-board")
+    if (tabId === "") throw new Error(`the panel is rendering the workspace-listing view (data-mpd-team-tab is empty), not a team bound to this session; visible text: ${JSON.stringify(panelText.slice(0, 400))}`)
+    if (membersSeen < EXPECT_MEMBERS || tasksSeen < EXPECT_TASKS) throw new Error(`the bound team's panel shows MEMBERS (${membersSeen}) / TASKS (${tasksSeen}); the turn asked for ${EXPECT_MEMBERS} members and ${EXPECT_TASKS} tasks — the team did not finish being built or the projection dropped it; visible text: ${JSON.stringify(panelText.slice(0, 400))}`)
+    // THE PANEL IS BOUND TO THE FRESH RECORD, not merely to a non-empty id: a foreign or stale board with
+    // two members and two tasks must not green this. The record was written by THIS turn's approval, so
+    // its id is the one identity the screenshot and the row may claim.
+    if (WORKSPACE !== "" && TEAM_NAME !== "") {
+      /** The id of the newest record named what the prompt asked for. */
+      const recordId = readTeamRecordId(WORKSPACE, TEAM_NAME)
+      if (recordId === "") throw new Error(`no team record named "${TEAM_NAME}" exists under ${WORKSPACE} — the panel's board cannot be the one this turn built`)
+      if (tabId !== recordId) throw new Error(`the panel is bound to team "${tabId}", but THIS turn's record is "${recordId}" — a foreign or stale board cannot be the evidence`)
+      return `teamId=${tabId} recordId=${recordId} members=${membersSeen} tasks=${tasksSeen} session=${sessionId || "<none>"}`
+    }
+    return `teamId=${tabId} members=${membersSeen} tasks=${tasksSeen} session=${sessionId || "<none>"}`
   })
 
 // ── the host's Settings dialog: CLICK FIRST, shortcut second ───────────────────

@@ -1272,6 +1272,18 @@ export interface DshAdapter {
    */
   workspaceRootsAll(): string[]
   /**
+   * Workspace root of ONE live session, or undefined when no live agent owns that id.
+   *
+   * WHY THIS EXISTS (measured 2026-10-19, Docker web lane): a browser route request carries no agent
+   * exec, so a route that names a session has no exec to hand `workspaceRoot()`. Resolving from the
+   * artifacts instead is a guess; the agent registry already knows each live session's
+   * `session.header.cwd`, and this method exposes exactly that lookup. Agentless surfaces only.
+   *
+   * @param sessionId the live session id the request names.
+   * @returns the absolute workspace root, or undefined when the registry has no such session.
+   */
+  workspaceRootForSession(sessionId: string): string | undefined
+  /**
    * Append one diagnostic line to a ROW's own log file (`<root>/.mpd/logs/<name>.log`).
    *
    * R5: rows never print. In a TUI session the host's stdout/stderr IS the Ink alternate screen, so a
@@ -2461,6 +2473,42 @@ export function workspaceRootsOf(agents: any): string[] {
   }
 }
 
+/**
+ * The workspace root of ONE live session, found through the agent registry.
+ *
+ * The counterpart of {@link workspaceRootsOf} for a route that already knows WHICH session it serves:
+ * it matches the live agent's `session.id` and answers that agent's `session.header.cwd`. Total by
+ * contract — a missing registry, an absent id or a throwing `list()` answers undefined, never throws.
+ * TRUST BOUNDARY, stated rather than implied: the caller is the host's OWN authenticated surface, and
+ * any LIVE session id may be addressed. That is the same data that session's own panel shows, and it
+ * is strictly narrower than the process-wide fallback it replaces; a surface that must enforce
+ * per-user isolation has to bind the id to its request identity ABOVE this helper.
+ * @param agents - the harness agent registry (or anything with a `list()`).
+ * @param sessionId - the live session id to resolve.
+ * @returns the absolute workspace root, or undefined when no live agent owns that id.
+ */
+export function workspaceRootForSessionOf(agents: any, sessionId: string): string | undefined {
+  if (typeof sessionId !== "string" || sessionId === "") return undefined
+  if (agents === undefined || agents === null || typeof agents.list !== "function") return undefined
+  try {
+    /** The registry's live Agent list, validated as an array before it is scanned. */
+    const list = agents.list()
+    if (!Array.isArray(list)) return undefined
+    for (const agent of list) {
+      /** One live agent's session identity, when it exposes one. */
+      const id = agent?.session?.id
+      if (typeof id === "string" && id === sessionId) {
+        /** That agent's session cwd, resolved exactly as `workspaceRootOf` does. */
+        const cwd = sessionCwdOf(agent)
+        if (cwd !== undefined) return resolve(cwd)
+      }
+    }
+  } catch {
+    return undefined
+  }
+  return undefined
+}
+
 /** The shared no-op disposer for a registration that did not happen. */
 function noop(): void { /* seam absent: nothing was registered */ }
 
@@ -2909,6 +2957,15 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
   const workspaceRoot = (exec?: DshToolExec): string => workspaceRootOf(exec)
   /** The union of live session workspaces, read through the registry at call time. */
   const workspaceRootsAll = (): string[] => workspaceRootsOf(service("agents"))
+  /** One live session's workspace, or undefined when the registry does not know it. */
+  const workspaceRootForSession = (sessionId: string): string | undefined => {
+    try {
+      return workspaceRootForSessionOf(service("agents"), sessionId)
+    } catch {
+      // A composition with no agent registry simply cannot resolve a session; the caller falls back.
+      return undefined
+    }
+  }
 
   /** The instance form of the module-level row logger: one implementation, two surfaces. */
   const rowLog = (name: string, line: string): void => rowLogLine(name, line)
@@ -3606,6 +3663,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
     // ── workspace plane ─────────────────────────────────────────────────────
     workspaceRoot,
     workspaceRootsAll,
+    workspaceRootForSession,
     rowLog,
 
     // ── live-session plane ──────────────────────────────────────────────────

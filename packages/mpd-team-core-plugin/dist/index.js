@@ -314,6 +314,28 @@ function workspaceRootsOf(agents) {
     return [];
   }
 }
+function workspaceRootForSessionOf(agents, sessionId) {
+  if (typeof sessionId !== "string" || sessionId === "")
+    return;
+  if (agents === undefined || agents === null || typeof agents.list !== "function")
+    return;
+  try {
+    const list = agents.list();
+    if (!Array.isArray(list))
+      return;
+    for (const agent of list) {
+      const id = agent?.session?.id;
+      if (typeof id === "string" && id === sessionId) {
+        const cwd = sessionCwdOf(agent);
+        if (cwd !== undefined)
+          return resolve2(cwd);
+      }
+    }
+  } catch {
+    return;
+  }
+  return;
+}
 function noop() {}
 var GOAL_TOOL_NAMES = ["get_goal", "create_goal", "update_goal"];
 function goalSnapshotOf(view) {
@@ -548,6 +570,13 @@ function createDshAdapter(ctx, config = {}) {
   }
   const workspaceRoot = (exec) => workspaceRootOf(exec);
   const workspaceRootsAll = () => workspaceRootsOf(service("agents"));
+  const workspaceRootForSession = (sessionId) => {
+    try {
+      return workspaceRootForSessionOf(service("agents"), sessionId);
+    } catch {
+      return;
+    }
+  };
   const rowLog = (name, line) => rowLogLine(name, line);
   function liveAgents() {
     const agents = service("agents");
@@ -976,6 +1005,7 @@ function createDshAdapter(ctx, config = {}) {
     },
     workspaceRoot,
     workspaceRootsAll,
+    workspaceRootForSession,
     rowLog,
     liveAgents,
     liveAgent,
@@ -2433,7 +2463,8 @@ function losslessSummary(summary) {
   return { ...summary, depths: Object.fromEntries(summary.depths) };
 }
 function memberProgress(record, name) {
-  const owned = record.tasks.filter((task) => task.owner === name);
+  const handles = new Set(record.members.filter((member) => member.name === name && typeof member.executorRef === "string" && member.executorRef !== "").map((member) => member.executorRef));
+  const owned = record.tasks.filter((task) => task.owner === name || task.owner !== undefined && handles.has(task.owner));
   const current = owned.find((task) => task.status !== "completed" && task.status !== "cancelled");
   return {
     done: owned.filter((task) => task.status === "completed").length,
@@ -2446,7 +2477,7 @@ function readyTasks(record) {
 }
 function idleMembers(record) {
   const busy = new Set(record.tasks.filter((task) => task.status === "in_progress" || task.status === "claimed").map((task) => task.owner).filter((owner) => owner !== undefined));
-  return record.members.filter((member) => member.status === "running" && !busy.has(member.name));
+  return record.members.filter((member) => member.status === "running" && !busy.has(member.name) && (member.executorRef === undefined || member.executorRef === "" || !busy.has(member.executorRef)));
 }
 
 // packages/mpd-team-core-plugin/src/plan-store.ts
@@ -2853,8 +2884,15 @@ function registerTeamRoutes(webServer, deps) {
       return;
     }
     const out = res;
-    const workspace = deps.workspace();
     const sessionId = sessionOf(req);
+    let workspace = "";
+    try {
+      workspace = deps.workspace(sessionId);
+    } catch (error) {
+      deps.warn(`resolving the events workspace failed: ${String(error?.message ?? error)}`);
+      json(res, 500, { ok: false, error: "mpd-team-core: the events stream could not resolve its workspace" });
+      return;
+    }
     const revisionNow = () => {
       try {
         return revision(workspace);
@@ -2925,17 +2963,17 @@ data: ${JSON.stringify({ rev: revisionNow() })}
   };
   all = mount(TEAM_STATE_PATH, (req) => {
     const sessionId = sessionOf(req);
-    const workspace = deps.workspace();
+    const workspace = deps.workspace(sessionId);
     const record = deps.recordFor(sessionId);
     const model = record === undefined ? undefined : deps.graph?.(workspace, record.teamId);
     return buildTeamState(record, workspace, sessionId, deps.executor(), buildWorkspaceTeams(listTeams(workspace), activeTeamId(workspace, sessionId)), model);
   }) && all;
   all = mount(TEAM_PLAN_PATH, (req) => {
     const sessionId = sessionOf(req);
-    return planForSession(deps.workspace(), sessionId);
+    return planForSession(deps.workspace(sessionId), sessionId);
   }) && all;
-  all = mount(TEAM_TASK_PATH, () => buildTeamTasks(deps.workspace())) && all;
-  all = mount(TEAM_MAIL_PATH, () => buildTeamMail(deps.workspace())) && all;
+  all = mount(TEAM_TASK_PATH, (req) => buildTeamTasks(deps.workspace(sessionOf(req)))) && all;
+  all = mount(TEAM_MAIL_PATH, (req) => buildTeamMail(deps.workspace(sessionOf(req)))) && all;
   all = mountStream(TEAM_EVENTS_PATH, events) && all;
   return all;
 }
@@ -5002,9 +5040,28 @@ Add members and tasks with agent_teams_plan {action: "add_member" | "create_task
       };
       rowLogLine("mpd-team-core", `[mpd-team-core] team workflow plane: staged=${pending} hold=${readHold(root) === undefined ? "none" : "held"} registrations=${disposers.length} (${disposers.length - 1} tools + the /agent-teams command)`);
       reportExecutor();
+      const workspaceForRequest = (sessionId) => {
+        if (sessionId === "")
+          return dsh.workspaceRoot();
+        try {
+          const own = dsh.workspaceRootForSession(sessionId);
+          if (own !== undefined && own !== "")
+            return own;
+        } catch {}
+        const roots = dsh.workspaceRootsAll();
+        for (const root2 of roots) {
+          try {
+            if (recordFor(root2, sessionId) !== undefined)
+              return root2;
+            if (readPlan(root2, sessionId) !== undefined)
+              return root2;
+          } catch {}
+        }
+        return roots.length === 1 ? roots[0] : dsh.workspaceRoot();
+      };
       const mountTeamRoute = () => registerTeamRoutes(dsh.webServerOf(), {
-        recordFor: (sessionId) => recordFor(dsh.workspaceRoot(), sessionId),
-        workspace: () => dsh.workspaceRoot(),
+        recordFor: (sessionId) => recordFor(workspaceForRequest(sessionId), sessionId),
+        workspace: (sessionId) => workspaceForRequest(sessionId ?? ""),
         executor: () => {
           const view = executor();
           return { kind: view.kind, reason: view.reason };

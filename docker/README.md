@@ -302,8 +302,9 @@ unchanged.
 
 A `--live` run drives **three** planes, not one: a real **WEB** turn through the gateway (step 12), a
 real **TUI** turn typed into the tmux PTY (`docker/tui-lane.sh`), and a real **HEADLESS** turn (step
-15). The WEB and TUI prompts are fixed short `mpd_config_get` tasks, so their rows are statements about
-this bundle's own tool plane; the headless step's default task is the **team-plane smoke prompt**.
+15). The WEB and TUI prompts are fixed short `mpd_config_get` tasks (or the team-building prompt under
+`MPD_E2E_TEAM_PROJECT=1`, see below), so their rows are statements about this bundle's own tool plane;
+the headless step's default task is the **team-plane smoke prompt**.
 
 `MPD_E2E_LIVE_PROMPT` REPLACES that headless task only: when it is set and non-empty, its value is used
 verbatim as the headless turn's prompt, so the lane can be asked for a different piece of work. When it
@@ -337,6 +338,36 @@ pane. Besides the completed/tool-call/text rows, the reader records
 `live.headless.noPromptVariableError`: a persona template that names an unregistered prompt variable
 throws BEFORE the model request, so a mount-only lane would look green while every turn dies. The
 2026-10-19 `{{cwd}}` defect is that exact class.
+
+### The live TEAM PROJECT (`MPD_E2E_TEAM_PROJECT=1`)
+
+The live-turn arms above each prove ONE tool call. This knob asks a different question: can a person
+build a real two-member team from each UI's OWN input path and get a small project finished? With
+`MPD_E2E_TEAM_PROJECT=1` and `--live`, the browser lane types a team-building prompt into the Web
+composer and the TUI lane types the same prompt into the tmux PTY. Each asks for
+`agent_teams_plan` stage → two members → two tasks (the second blocked by the first) → approve →
+dispatch → wait → a second dispatch → close both tasks, with the members writing and TESTING
+`team-project-web/` and `team-project-tui/` respectively.
+
+The verdict is ARTIFACTS, not prose: `docker/lib/team-project-verdict.ts` reads the team record, the
+roster's executor handles (EVERY member must be raised), the dependency edge, the tasks' states and
+their owning members, the project files (written after the step began) and TWO test runs — the team's
+own and a verifier-owned `sum(2, 3) === 5` assertion against the team's module, so a vacuous test
+cannot carry the project. The UI proof is separate and stronger: `ui.teamBoard` requires the Web
+sidebar to render the REAL bound team (`data-mpd-team-tab` equal to the id of the record THIS turn
+wrote, `MEMBERS (2)`, `TASKS (2)`), and the TUI arm requires the captured `/mpd team` scene to name the
+live team and draw both task ids. Each record is also bound to the live session the plane drove.
+
+The headless turn keeps its single-tool subject in this mode ON PURPOSE: approving a team inside a
+one-shot CLI can leave a teammate alive behind it, and the process then never exits (measured
+2026-10-19: 30+ minutes at ~0% CPU, no report). The team build therefore belongs to the two server/PTY
+planes, and `live.teamRecord` / `live.nativeExecutor` are recorded as `null` WITH THAT REASON; the
+driver's required-arm gate names the two UI planes' live rows and `teamproject.*` instead.
+`MPD_E2E_TEAM_BUDGET_MS` (default 1500000) bounds each team turn.
+
+Evidence: `ui-shots/ui-06-team-board.png` (the Web board after the turn),
+`ui-shots/ui-03-reply.png` (the transcript), `tui-panes/tui-team-live.ansi` (rasterize it with
+`python3 docker/ui/tui-render.py <ansi> <png>`), and the `teamproject.*` rows in `result.json`.
 
 ## Isolation model
 
