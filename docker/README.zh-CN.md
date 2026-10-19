@@ -301,7 +301,7 @@ node scripts/docker-e2e.ts --live         # 加 --mode all 可跑 source + onecl
 本模式下 headless 回合**故意**保留单工具任务：在一次性 CLI 里批准一个团队可能留下仍存活的队友，进程于是再也
 不退出（2026-10-19 实测：~0% CPU 挂起 30 分钟以上，且不产出报告）。因此团队构建归属两个 server/PTY 平面，
 `live.teamRecord` / `live.nativeExecutor` 以 `null` **连同该原因**记录；驱动的必需断言门禁改为点名两个 UI 平面的
-live 行与 `teamproject.*`。`MPD_E2E_TEAM_BUDGET_MS`（默认 1500000）限定额个团队回合的预算。
+live 行与 `teamproject.*`。`MPD_E2E_TEAM_BUDGET_MS`（默认 1500000）限定每个团队回合的预算。
 
 证据：`ui-shots/ui-06-team-board.png`（回合结束后的 Web 面板）、`ui-shots/ui-03-reply.png`（对话记录）、
 `tui-panes/tui-team-live.ansi`（用 `python3 docker/ui/tui-render.py <ansi> <png>` 光栅化为图片），以及

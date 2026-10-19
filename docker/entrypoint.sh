@@ -91,7 +91,7 @@ export TUI_VERSION
 # credential (the team is a real model team), so it is meaningful only with MPD_E2E_LIVE=1.
 TEAM_PROJECT="${MPD_E2E_TEAM_PROJECT:-0}"
 # A team turn is many model turns deep (stage, raise, dispatch, two members, a second dispatch and a
-# review), so its budget is its own: 15 minutes unless the caller says otherwise.
+# review), so its budget is its own: 25 minutes (1500000 ms) unless the caller says otherwise.
 TEAM_BUDGET_MS="${MPD_E2E_TEAM_BUDGET_MS:-1500000}"
 # THE PROMPT. One line (the TUI types it into a single-line composer, so an embedded newline would
 # submit early), with `@PLANE@` substituted per plane so the record names the plane that built it and

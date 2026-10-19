@@ -1324,7 +1324,13 @@ if [ "$LIVE" = "1" ]; then
   # over the team-building prompt instead (`MPD_E2E_TUI_PROMPT`), which is typed through this exact
   # keystroke path — the same proof, with a much larger subject.
   TUI_PROMPT="${MPD_E2E_TUI_PROMPT:-Call the mpd_config_get tool once (it takes no arguments), then reply with exactly: DONE}"
-  tmux -S "$SOCK" send-keys -t tui "$TUI_PROMPT" Enter 2>/dev/null || true
+  # LITERAL MODE FOR THE PROMPT TEXT (CodeRabbit finding on PR #48): without `-l`, tmux performs
+  # key-name lookup, so a prompt token that happens to match a key name (Enter, Space, C-a, …) is sent
+  # as that KEY instead of as text. The prompt is text, so it is sent literally, and Enter is a
+  # SEPARATE keypress — the same keystroke path a person takes.
+  tmux -S "$SOCK" send-keys -t tui -l -- "$TUI_PROMPT" 2>/dev/null || true
+  sleep 1
+  tmux -S "$SOCK" send-keys -t tui Enter 2>/dev/null || true
   sleep 2
   capture_pane live-sent
   if command -v node >/dev/null 2>&1; then

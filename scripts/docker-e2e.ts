@@ -1259,6 +1259,18 @@ async function main(): Promise<void> {
   // spelling of the default, kept because a caller reading the release checklist looks for a flag
   // that NAMES the requirement rather than for the absence of an opt-out.
   const browserEnabled = argv.includes("--require-browser") || !argv.includes("--no-browser")
+  // THE TEAM-PROJECT PREFLIGHT RUNS BEFORE THE BUILD (CodeRabbit finding on PR #48). A team run needs a
+  // live turn (the prompts drive real model work) AND both UI planes (the verdict reads one record per
+  // plane); without either, the run could only end on the required-row gate — after paying the whole
+  // build, the container boot and up to the team budget. Refusing here costs nothing, leaks no private
+  // BUILDX_CONFIG dir, and matches the `--live`-without-key refusal above.
+  /** Whether this invocation asked for the live team project (forwarded to the container when set). */
+  const teamProjectRequested = process.env.MPD_E2E_TEAM_PROJECT === "1"
+  if (teamProjectRequested && (!liveRequested || !browserEnabled)) {
+    console.error("[driver] MPD_E2E_TEAM_PROJECT=1 needs --live and the browser lane (both UI team verdicts are the subject); refusing before the build.")
+    process.exitCode = 3
+    return
+  }
   /** The environment overrides for the compose run. */
   const envOverrides = [
     ...(mode === "oneclick" ? ["-e", "MPD_E2E_INSTALL_MODE=oneclick"] : []),
@@ -1378,15 +1390,8 @@ async function main(): Promise<void> {
   // two `teamproject.record.*` rows become REQUIRED. Outside team mode the reverse holds: `ui.teamBoard`
   // is not attempted, and the rest of the `ui.` arm stays required. `requiredPrefixesFor` is the ONE
   // place both lists live, so a mode cannot quietly stop requiring an arm.
-  /** Whether this invocation asked for the live team project (forwarded to the container when set). */
-  const teamProjectRequested = process.env.MPD_E2E_TEAM_PROJECT === "1"
-  // TEAM MODE NEEDS BOTH UI PLANES. Its verdict reads one record per plane; a run that skipped the
-  // browser half would otherwise satisfy `teamproject.` with the TUI rows alone and exit 0.
-  if (teamProjectRequested && !browserEnabled) {
-    console.error("[driver] MPD_E2E_TEAM_PROJECT=1 needs the browser lane (the Web team verdict is half the subject); drop --no-browser or drop the team mode.")
-    process.exitCode = 3
-    return
-  }
+  // TEAM MODE'S PREFLIGHT ALREADY RAN before the build (see `teamProjectRequested` above), so the
+  // requirement lists below are built without a second, late refusal.
   /** The prefixes whose NULLs are fatal here, and the exact names each mode may honestly leave NULL. */
   const { prefixes: requiredPrefixes, excluded: excludedRequired } = requiredPrefixesFor({
     live: liveRequested,

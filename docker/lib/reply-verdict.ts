@@ -89,11 +89,13 @@ const TOOL_NAME = "mpd_config_get"
 /**
  * The prompt's own answer shape: `DONE` as the WHOLE content of a line, never inside a sentence.
  *
- * MARKDOWN EMPHASIS IS TOLERATED (`**DONE**`, `_DONE_`): a rendered transcript may bold the final line,
- * and a team turn that spent the whole budget would otherwise red despite a finished project (measured
- * 2026-10-19 review). The line must still BE the answer — an emphasized `DONE` inside a sentence is not.
+ * MARKDOWN EMPHASIS IS TOLERATED (`**DONE**`, `__DONE__`, `*DONE*`, `_DONE_`): a rendered transcript
+ * may bold the final line, and a team turn that spent the whole budget would otherwise red despite a
+ * finished project (measured 2026-10-19 review). The alternatives are EXPLICIT so the markers must
+ * MATCH: an unbalanced `**DONE` or `DONE__` is not the answer, and neither is an emphasized `DONE`
+ * inside a sentence.
  */
-const STANDALONE_DONE = /^[\s\-*•]*(?:\*\*|__)?\s*done\s*(?:\*\*|__)?\s*[.!]?$/i
+const STANDALONE_DONE = /^[\s\-•]*(?:\*\*done\*\*|__done__|\*done\*|_done_|done)[\s\-•]*[.!]?$/i
 /** How much of a quoted line is kept, so a reason stays one readable line. */
 const QUOTE_MAX = 240
 
@@ -336,6 +338,14 @@ function selfTest(): number {
     arm("sidebar-echo-is-not-a-tool-render", { before: BEFORE_SEND, after: page([SIDEBAR_ECHO], CHROME), prompt: PROMPT_TEXT }, "no-reply", false, false),
     arm("growth-alone-is-not-a-reply", { before: BEFORE_SEND, after: page([PROMPT_BUBBLE], CHROME, ["some other sentence the prompt never contained"]), prompt: PROMPT_TEXT }, "no-reply", false, false),
     arm("standalone-done-is-a-reply", { before: BEFORE_SEND, after: page([PROMPT_BUBBLE], CHROME, ["DONE"]), prompt: PROMPT_TEXT }, "reply", true, false),
+    // THE EMPHASIS FORMS THE DOC COMMENT NAMES, plus the two UNBALANCED shapes the explicit
+    // alternatives exist to refuse (CodeRabbit finding on PR #48).
+    arm("bold-done-is-a-reply", { before: BEFORE_SEND, after: page([PROMPT_BUBBLE], CHROME, ["**DONE**"]), prompt: PROMPT_TEXT }, "reply", true, false),
+    arm("underscore-bold-done-is-a-reply", { before: BEFORE_SEND, after: page([PROMPT_BUBBLE], CHROME, ["__DONE__"]), prompt: PROMPT_TEXT }, "reply", true, false),
+    arm("star-done-is-a-reply", { before: BEFORE_SEND, after: page([PROMPT_BUBBLE], CHROME, ["*DONE*"]), prompt: PROMPT_TEXT }, "reply", true, false),
+    arm("underscore-done-is-a-reply", { before: BEFORE_SEND, after: page([PROMPT_BUBBLE], CHROME, ["_DONE_"]), prompt: PROMPT_TEXT }, "reply", true, false),
+    arm("unbalanced-bold-done-is-not-a-reply", { before: BEFORE_SEND, after: page([PROMPT_BUBBLE], CHROME, ["**DONE"]), prompt: PROMPT_TEXT }, "no-reply", false, false),
+    arm("unbalanced-underscore-done-is-not-a-reply", { before: BEFORE_SEND, after: page([PROMPT_BUBBLE], CHROME, ["DONE__"]), prompt: PROMPT_TEXT }, "no-reply", false, false),
     arm("tool-render-is-a-reply", { before: BEFORE_SEND, after: page([PROMPT_BUBBLE], CHROME, ['mpd_config_get {} → {"ok":true}']), prompt: PROMPT_TEXT }, "reply", false, true),
     arm("other-failure-is-not-a-bound", { before: BEFORE_SEND, after: page([PROMPT_BUBBLE], CHROME, OTHER_FAILURE_LINES), prompt: PROMPT_TEXT }, "no-reply", false, false),
     arm("a-pre-send-done-is-not-new", { before: page([BEFORE_SEND], ["DONE"]), after: page([BEFORE_SEND], ["DONE"], [PROMPT_BUBBLE]), prompt: PROMPT_TEXT }, "no-reply", false, false),
