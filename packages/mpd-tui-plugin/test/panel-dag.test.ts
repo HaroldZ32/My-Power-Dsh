@@ -2811,3 +2811,69 @@ describe("living-graph · the panel draws the SERVED model, ghosts and ranks inc
     expect(layout.view.unresolved).toContain("T77")
   })
 })
+
+// ── living-graph · THE RANKS WORD MUST NOT LIE ──────────────────────────────────────────────────
+//
+// The verifier's finding: the footer printed `ranks served` on the NORMAL model path because the
+// LAYOUT's `derived` flag is `false` by design once the host's map is applied — while the model's own
+// report said those ranks were HOST-DERIVED. The layout's flag answers "did this process derive?", not
+// "were these ranks derived at all?"; the page's word must answer the second question. One arm per
+// named state, each asserting the EXACT phrase, because this is a "the label lies" defect.
+
+/**
+ * The chain projection with a served model whose report declares the host's own rank source.
+ * @param ranksDerived - what the model's report claims: `true` = the HOST derived the ranks.
+ * @returns the workflow the page reads.
+ */
+function workflowWithModel(ranksDerived: boolean): TeamWorkflow {
+  /** The chain projection. */
+  const workflow = workflowFixture()
+  /** One board-backed node per chain row, carrying the row's own fields and its depth. */
+  const nodes: GraphNode[] = workflow.tasks.map((task) => ({
+    id: task.id,
+    subject: task.subject,
+    ...(task.kind === undefined ? {} : { kind: task.kind }),
+    visual: task.visual,
+    dependencies: [...task.dependencies],
+    depth: task.depth,
+    planned: false,
+  }))
+  workflow.model = {
+    nodes,
+    edges: [],
+    ranks: [],
+    cycles: [],
+    report: { boardOnly: [], planOnly: [], edgePlanOnly: [], edgeBoardOnly: [], planProblems: [], unresolved: [], ranksDerived },
+  }
+  return workflow
+}
+
+/**
+ * The rendered page text for one reader.
+ * @param readWorkflow - the projection the page must draw.
+ * @returns the page's text, drawn by a panel tall enough to show the whole page at once.
+ */
+function renderedPageText(readWorkflow: () => TeamWorkflow): string {
+  /** The page under test. */
+  const page = createDagPanelComponent(readWorkflow) as (props: unknown) => unknown
+  /** The host double, tall enough that no row is windowed away. */
+  const kit = makeKit({ columns: 120, rows: 200 })
+  return kit.text(render(page, kit, makeHost()))
+}
+
+describe("living-graph · the mode line names where the ranks came from", () => {
+  test("a served model whose report says DERIVED prints `derived (host)`", () => {
+    expect(renderedPageText(() => workflowWithModel(true))).toContain("ranks derived (host)")
+  })
+
+  test("a served model whose own report says the fallback won prints `served depth (host fallback)`", () => {
+    expect(renderedPageText(() => workflowWithModel(false))).toContain("ranks served depth (host fallback)")
+  })
+
+  test("NO served model keeps today's split — local derivation prints `derived`, not a host claim", () => {
+    /** The page text with no model at all. */
+    const text = renderedPageText(() => workflowFixture())
+    expect(text).toContain("ranks derived")
+    expect(text).not.toContain("(host)")
+  })
+})

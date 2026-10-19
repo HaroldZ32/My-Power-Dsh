@@ -7834,9 +7834,11 @@ function dagPageOf(workflow) {
     }
   }
   const ranks = modelRanks(workflow);
+  const ranksSource = workflow.model === undefined ? "local" : workflow.model.report.ranksDerived === true ? "derived-host" : "served-host";
   return {
     tasks,
     ...ranks === undefined ? {} : { ranks },
+    ranksSource,
     workspace: panelField(workflow.workspace, 200) ?? "",
     teamName: panelField(workflow.team?.name, 60) ?? "(unnamed team)",
     phase: panelField(workflow.team?.phase, 20) ?? "unknown",
@@ -7846,6 +7848,13 @@ function dagPageOf(workflow) {
     roster: roster.length === 0 ? "roster  (no members)" : "roster  " + roster.map((member) => `${member.status === "running" ? "◐" : "○"}${member.name} ${member.done}/${member.total}`).join(" · "),
     problems: (Array.isArray(workflow.problems) ? workflow.problems : []).map((problem) => panelField(problem, 120) ?? "").filter((problem) => problem !== "")
   };
+}
+function ranksPhrase(source, layoutDerived) {
+  if (source === "derived-host")
+    return "derived (host)";
+  if (source === "served-host")
+    return "served depth (host fallback)";
+  return layoutDerived ? "derived" : "served depth";
 }
 function viewFacts(view) {
   return {
@@ -8185,7 +8194,7 @@ function createDagPanelComponent(readWorkflow, options) {
     } else {
       children.push(textRow(kit, "no team in this workspace — `agent_teams_plan` stages one", { key: "empty", dim: true, maxCells: contentCols }));
     }
-    if (layout !== undefined) {
+    if (layout !== undefined && page !== undefined) {
       const baseGlyph = DAG_TONE_GLYPH.running ?? "◐";
       const breathe = runningGlyph(phase);
       const breathing = breathe !== baseGlyph;
@@ -8222,7 +8231,7 @@ function createDagPanelComponent(readWorkflow, options) {
         if (rail !== undefined)
           children.push(rail);
       }
-      children.push(textRow(kit, `view ${layout.mode}${layout.list ? " (dense)" : ""} · ${order.length} tasks · ranks ${layout.ranksDerived ? "derived" : "served"}`, { key: "mode", dim: true, maxCells: contentCols }));
+      children.push(textRow(kit, `view ${layout.mode}${layout.list ? " (dense)" : ""} · ${order.length} tasks · ranks ${ranksPhrase(page.ranksSource, layout.ranksDerived)}`, { key: "mode", dim: true, maxCells: contentCols }));
       if (layout.unresolved.length > 0) {
         children.push(textRow(kit, `unresolved blockers: ${layout.unresolved.join(", ")}`, { key: "unresolved", tone: "warning", maxCells: contentCols }));
       }

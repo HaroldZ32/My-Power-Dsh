@@ -1,0 +1,53 @@
+=== HEAD 51caa65336dcaeb29f93a38fe8af029a82ac6676 2026-10-19T04:22:46Z
+--- bun run verify:gates ---
+[verify-gates] plugin-manifest out| ok    cordis-dependency: 9 declared dependency name(s) across dependencies/peerDependencies/optionalDependencies, none of them cordis
+[verify-gates] plugin-manifest out| ok    cordis-devDependency-note: devDependencies declare no cordis package
+[verify-gates] plugin-manifest out| ok    lifecycle-script: 20 script name(s), none carrying preinstall/install/postinstall/prepare
+[verify-gates] plugin-manifest out| ok    version:dsh-plugin.json: version = 0.13.2
+[verify-gates] plugin-manifest out| ok    version:dsh-distribution.json: distribution.version = 0.13.2
+[verify-gates] plugin-manifest out| ok    bundle-patch-files: 2 patch file(s) declared, 0 missing
+[verify-gates] plugin-manifest out| ok    row-module-paths: 27 module path(s) named by the patch files, 0 missing, 0 patch file(s) unreadable
+[verify-gates] plugin-manifest out| ok    files-allowlist: 25 pattern(s); 0 required path(s) not admitted
+[verify-gates] plugin-manifest out| ok    evidence-excluded: the frozen evidence/ tree stays out of the published package
+[verify-gates] plugin-manifest out| ok    packed-content: npm pack --dry-run lists 1008 file(s); 0 required path(s) absent
+[verify-gates] plugin-manifest out| 
+[verify-gates] plugin-manifest out| VERDICT: PASS — the install-time rules and the packaging contract hold.
+[verify-gates] member plugin-manifest: exit=0 PASS - 1970ms
+[verify-gates] member comment-coverage :: node ./scripts/verify-comment-coverage.ts
+[verify-gates] comment-coverage out| # verify-comment-coverage
+[verify-gates] comment-coverage out| 
+[verify-gates] comment-coverage out| scanned 422 TypeScript file(s) of 422 in the source set; inspected 37006 declaration(s); skipped 16972 inline callback(s) as out of family
+[verify-gates] comment-coverage out| 
+[verify-gates] comment-coverage out| VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+[verify-gates] member comment-coverage: exit=0 PASS - 2002ms
+[verify-gates] member workflows :: node ./scripts/verify-workflows.ts
+[verify-gates] workflows out| [verify-workflows] audited 3 workflow file(s) under /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.github/workflows
+[verify-gates] workflows out| [verify-workflows] PASS - every workflow is loadable YAML with a sane job/step shape
+[verify-gates] member workflows: exit=0 PASS - 65ms
+[verify-gates] PASS - 8/8 member gate(s) green
+exit=0
+--- bun run verify:comments ---
+$ node scripts/verify-comment-coverage.ts
+# verify-comment-coverage
+
+scanned 422 TypeScript file(s) of 422 in the source set; inspected 37006 declaration(s); skipped 16972 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+exit=0
+--- bun run verify:manifest ---
+ok    version:dsh-distribution.json: distribution.version = 0.13.2
+ok    bundle-patch-files: 2 patch file(s) declared, 0 missing
+ok    row-module-paths: 27 module path(s) named by the patch files, 0 missing, 0 patch file(s) unreadable
+ok    files-allowlist: 25 pattern(s); 0 required path(s) not admitted
+ok    evidence-excluded: the frozen evidence/ tree stays out of the published package
+ok    packed-content: npm pack --dry-run lists 1008 file(s); 0 required path(s) absent
+
+VERDICT: PASS — the install-time rules and the packaging contract hold.
+exit=0
+--- verify-no-host-override ---
+[verify-no-host-override]   host: dsh-headless -> /home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-headless [1 patch file(s)]
+[verify-no-host-override]   host: dsh-tui (profile dsh-tui) -> /home/haroldzhao/.dsh/profiles/dsh-tui/node_modules/@deepseek-harness-tui/dsh-tui [1 patch file(s)]
+[verify-no-host-override] host-declared row ids: 213
+[verify-no-host-override] declared exemptions (0): none
+[verify-no-host-override] PASS: every id-target is bundle-owned (0 of 0 collide with the 213 host-declared row ids)
+exit=0

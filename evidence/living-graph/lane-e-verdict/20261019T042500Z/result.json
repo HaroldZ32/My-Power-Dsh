@@ -1,0 +1,175 @@
+{
+ "run": "lane-e-living-graph-verdict",
+ "at": "2026-10-19T04:27:46Z",
+ "head": "51caa65336dcaeb29f93a38fe8af029a82ac6676",
+ "branch": "feature/living-graph",
+ "contract": ".mpd/plans/living-graph.md (Amendments 1-3)",
+ "settle": {
+  "headMatchesCaptain": true,
+  "productTreeClean": true,
+  "evidencePathsChanged": [
+   " M evidence/living-graph/plane-preflight/20261019T042000Z/verify-tui-edges.ts",
+   " M evidence/living-graph/plane-preflight/20261019T042000Z/verify-web.ts",
+   " M evidence/living-graph/plane-preflight/20261019T042000Z/web-result.json",
+   "?? evidence/living-graph/lane-e-verdict/",
+   "?? evidence/living-graph/live-preflight/"
+  ],
+  "note": "git status shows only lane E's own evidence paths (untracked/modified by this reviewer); the product tree is clean at the settled hash.",
+  "distFresh": "32/32 targets fresh (each rebuilt twice, byte-identical)",
+  "clientBundle": "derived artifact read through the offline harness; no derivation inside it"
+ },
+ "claims": [
+  {
+   "id": "G1a",
+   "claim": "THE MODEL IS SHARED: both planes draw the SAME model (ranks, ghosts, edges), and a served depth that DISAGREES with the derived rank is overruled on both planes",
+   "evidence": [
+    "evidence/living-graph/lane-e-verdict/20261019T042500Z/compare-result.json",
+    "evidence/living-graph/lane-e-verdict/20261019T042500Z/tui-result.json",
+    "evidence/living-graph/lane-e-verdict/20261019T042500Z/web-result.json",
+    "evidence/living-graph/lane-e-verdict/20261019T042500Z/host-model-result.json",
+    "client.js + graph-model.ts (read)"
+   ],
+   "observed": "TUI ranks = web box ranks = model node depths ([['T1', 0], ['T2', 1], ['T3', 1], ['T4', 2], ['T5', 3]]); web served `rank` = model depth while the store's `depth` disagrees: T1 rank 0 vs depth 0; T2 rank 1 vs depth 0; T3 rank 1 vs depth 1; T4 rank 2 vs depth 1; client.js deriveRanks=0 buildModel=0; host cache buildModel calls=1; the REAL GraphModels cache over the same workspace reproduced this exact model: hostModelEqualsTheServedFixture=True",
+   "source": "a (probes re-run at settled HEAD) + b (artifact/source read)",
+   "verdict": "PASS"
+  },
+  {
+   "id": "G1b",
+   "claim": "THE MODEL'S EDGES reach BOTH drawings, including a plan-only edge between two BOARD nodes (the Blocker this lane filed)",
+   "evidence": [
+    "evidence/living-graph/lane-e-verdict/20261019T042500Z/compare-result.json",
+    "evidence/living-graph/lane-e-verdict/20261019T042500Z/tui-result.json",
+    "evidence/living-graph/lane-e-verdict/20261019T042500Z/web-result.json"
+   ],
+   "observed": "model edges ['T1->T2', 'T1->T3', 'T2->T4', 'T4->T5']; TUI drawn ['T1->T2', 'T1->T3', 'T2->T4', 'T4->T5']; web drawn ['T2<-T1', 'T3<-T1', 'T4<-T2', 'T5<-T4']; plan-only T1->T2 present on both: TUI=True web=True",
+   "source": "a (probes re-run at settled HEAD)",
+   "verdict": "PASS"
+  },
+  {
+   "id": "G2",
+   "claim": "DETERMINISM: same board + same plan => byte-identical model; reversed input order => unchanged model; the model round-trips as JSON",
+   "evidence": [
+    "evidence/living-graph/lane-e-verdict/20261019T042500Z/core-result.json",
+    "evidence/living-graph/lane-e-verdict/20261019T042500Z/gate-output.txt (self-test determinism arms)"
+   ],
+   "observed": "C1-twice: expected JSON strings equal | observed equal | C2-shuffle: expected JSON strings equal | observed True | C3-roundtrip: expected deep equal after JSON round-trip | observed equal | gate self-test: 'two builds serialize byte-identically :: identical' and 'reversed board and plan arrays build the same model :: identical'",
+   "source": "a (re-run) + b (gate self-test log read)",
+   "verdict": "PASS"
+  },
+  {
+   "id": "G3",
+   "claim": "LIVE REFRESH: a board or plan FILE EDIT changes the model with no restart; the path is event-driven (watcher -> feed), and the web's push frame refreshes it without the interval firing",
+   "evidence": [
+    "evidence/living-graph/lane-e-verdict/20261019T042500Z/live-result.json",
+    "evidence/living-graph/lane-e-verdict/20261019T042500Z/web-result.json (push block)",
+    "panel-dag.ts:817 useTeamFeed / index.ts teamFeed (read)"
+   ],
+   "observed": "plan: two writes in one 150 ms window -> batches=[{'sequence': 1, 'coalesced': 2, 'paths': 1, 'manual': False}] and model ghosts ['T3', 'T4'], latency 201 ms from the second write; board: latency 50 ms, nodes ['T1', 'T2', 'T3', 'T4'], ghosts ['T4']; eventDriven=True; web stream /plugins/mpd-team/events?sessionId=sess-lane-e reads 1->2 on ONE frame, intervalFired=0",
+   "source": "a (live + web probes re-run) + b (TUI subscription wiring read)",
+   "verdict": "PASS"
+  },
+  {
+   "id": "G4",
+   "claim": "THE SIX CONFLICT CASES of the frozen table, each observed in the model: board-only, plan-only GHOST, edge plan-only, edge board-only, agreeing edge, unparseable plan line",
+   "evidence": [
+    "evidence/living-graph/lane-e-verdict/20261019T042500Z/core-result.json (B1..B11)",
+    "evidence/living-graph/lane-e-verdict/20261019T042500Z/fixtures/plan-six.md + board-six.json"
+   ],
+   "observed": "B3-board-only: expected [\"T7\"] | observed [\"T7\"] | B3-plan-only: expected [\"F1\",\"T6\"] | observed [\"F1\",\"T6\"] | B2-ghosts: expected {\"ids\":[\"F1\",\"T6\"],\"visuals\":[\"planned\",\"planned\"]} | observed {\"ids\":[\"F1\",\"T6\"],\"visuals\":[\"planned\",\"planned\"]} | B5-edge-plan-only: expected [{\"from\":\"T2\",\"source\":\"plan\",\"to\":\"T3\"},{\"from\":\"T4\",\"source\":\"plan\",\"to\":\"F1\"},{\"from\":\"T4\",\"source\":\"plan\",\"to\":\"T6\"}] | observed [{\"from\":\"T2\",\"source\":\"plan\",\"to\":\"T3\"},{\"from\":\"T4\",\"source\":\"plan\",\"to\":\"F1\"},{\"from\":\"T4\",\"source\":\"plan\",\"to\":\"T6\"}] | B5b-edge-board-only: expected [{\"from\":\"T1\",\"source\":\"board\",\"to\":\"T7\"},{\"from\":\"T3\",\"source\":\"board\",\"to\":\"T4\"}] | observed [{\"from\":\"T1\",\"source\":\"board\",\"to\":\"T7\"},{\"from\":\"T3\",\"source\":\"board\",\"to\":\"T4\"}] | B5c-agreeing-edge-not-reported: expected T1->T2 in neither list | observed {\"inPlanOnly\":false,\"inBoardOnly\":false} | B6-plan-problems: expected [{\"line\":9,\"text\":\"- [ ] 5\"}] | observed [{\"line\":9,\"text\":\"- [ ] 5\"}] | unresolved/dangling: B7-unresolved: expected {\"T7Deps\":[\"T1\",\"T9\"],\"t9Edges\":0,\"unresolved\":[\"T9\"]} | observed {\"T7Deps\":[\"T1\",\"T9\"],\"t9Edges\":0,\"unresolved\":[\"T9\"]}",
+   "source": "a (re-run at settled HEAD)",
+   "verdict": "PASS"
+  },
+  {
+   "id": "G5",
+   "claim": "THE GATE: a fixture plan+board whose nodes/edges equal what the input declares, and a SEEDED wrong edge REDDENS it \u2014 run by this lane, including on THIS lane's own fixture",
+   "evidence": [
+    "evidence/living-graph/lane-e-verdict/20261019T042500Z/gate-output.txt",
+    "evidence/living-graph/lane-e-verdict/20261019T042500Z/gate-own-fixture.txt",
+    "evidence/living-graph/lane-e-verdict/20261019T042500Z/gate-emit.json"
+   ],
+   "observed": "default: 'PASS \u2014 nodes (8), edges (6), ranks, cycles and the report equal the declared input' exit 0; --seed-wrong-edge exit 1 with 'negative control: F1\u2192F2: source \"plan\" seeded to \"board\"' and 'FAIL edge F1\u2192F2'; --self-test '8 arms: both directions and the path forms' exit 0; lane E's own fixture: 'PASS \u2014 nodes (7), edges (6)' and a seeded 'T1\u2192T2: source \"both\" seeded to \"board\"' exit 1",
+   "source": "a (all four arms re-run by this lane)",
+   "verdict": "PASS"
+  },
+  {
+   "id": "G6",
+   "claim": "FLAT BOARD DRAWS FLAT on both planes; the pre-existing suites are still green; the standing static gates pass in the current regime",
+   "evidence": [
+    "evidence/living-graph/lane-e-verdict/20261019T042500Z/core-result.json (E1/E2)",
+    "evidence/living-graph/lane-e-verdict/20261019T042500Z/tui-result.json (flat)",
+    "evidence/living-graph/lane-e-verdict/20261019T042500Z/web-flat-result.json",
+    "evidence/living-graph/lane-e-verdict/20261019T042500Z/suites-output.txt",
+    "evidence/living-graph/lane-e-verdict/20261019T042500Z/gates-full-output.txt"
+   ],
+   "observed": "model E1-flat: expected [[\"T1\",\"T2\",\"T3\",\"T4\",\"T5\"]] | observed [[\"T1\",\"T2\",\"T3\",\"T4\",\"T5\"]]; TUI flat hits [{'id': 'T1', 'row': 0}, {'id': 'T2', 'row': 0}, {'id': 'T3', 'row': 0}, {'id': 'T4', 'row': 0}, {'id': 'T5', 'row': 0}] mode boxes; web flat boxes [{'id': 'T1', 'rank': 0}, {'id': 'T2', 'rank': 0}, {'id': 'T3', 'rank': 0}, {'id': 'T4', 'rank': 0}, {'id': 'T5', 'rank': 0}]; required suites 677 pass / 0 fail (2 packages); core 60 pass / 0 fail; full `bun test packages` 2098 pass, 3 skip, 0 fail; typecheck exit 0; verify:gates 'PASS - 8/8 member gate(s) green'; verify:comments PASS (422 files); verify:manifest PASS; no-host-override PASS; verify-dist-fresh '32/32 targets fresh'",
+   "source": "a (all re-run at settled HEAD)",
+   "verdict": "PASS"
+  }
+ ],
+ "findings": [
+  {
+   "id": "F1",
+   "severity": "Medium",
+   "what": "The TUI DAG page's mode line prints `ranks served` on the normal (model-served) path, while the model's own report says the ranks are DERIVED. The web's geometry reports derived=true for the same model, so the two planes describe one picture with two different provenances, and the TUI's word is the one that used to mean the untrusted served-depth fallback (R18).",
+   "where": "packages/mpd-tui-plugin/src/panel-dag.ts \u2014 the mode line (`ranks ${layout.ranksDerived ? \"derived\" : \"served\"}`) reading `dagPanelLayout`'s flag; `rankPlan(tasks, servedRanks)` returns `derived: false` by design when served ranks are applied.",
+   "why": "A reader is told the vertical order came from the degraded fallback when it came from the shared core's derivation. It is the R18 honesty rule inverted by the new input path.",
+   "evidence": "tui-result.json ranksSource={'layoutRanksDerived': False, 'modelRanksDerived': True, 'pageHasServedRanks': True}; compare-result.json tuiRanksEqualModel=True; web geometry publishes report.ranksDerived from served.report (team-view.ts).",
+   "direction": "Carry the model's `report.ranksDerived` into the page (or add a distinct `rankSource` value) and print THAT when page.ranks is present; keep `layout.ranksDerived` for the no-model path. Alternatively reword to distinguish `derived (host)` from `served depth`.",
+   "source": "a (observed flag values) + b (source read)"
+  },
+  {
+   "id": "F2",
+   "severity": "Nit",
+   "what": "The web factory still declares its own numeric id collator (`ID_ORDER`) for the within-column sort \u2014 a comparator, not a rank derivation; the risk is drift if the core's collator ever changes.",
+   "where": "packages/mpd-bundle-plugin/src/team-view.ts (one `Intl.Collator` declaration, one sort site); two occurrences in the built client.js.",
+   "why": "G1 forbids a third DERIVATION of ranks, which is gone; the duplicated comparator is the last small piece of the shared key that is not shared. Both planes sort by the same rule today.",
+   "evidence": "compare-result.json static={clientBundleIdOrder: 2, webCollatorDuplicated: True}",
+   "direction": "Publish the order with the model (`ranks` already carries each bucket in id order) or splice the core's comparator the way the model itself is spliced; do not copy it again.",
+   "source": "b (artifact read) + a (static measurement)"
+  },
+  {
+   "id": "F3",
+   "severity": "Nit",
+   "what": "A cyclic board's ranks start at 1, leaving an EMPTY rank 0 column.",
+   "where": "mpd-graph-core rank derivation (moved verbatim); a cycle member's blocker contributes 0+1 while still on the walk.",
+   "why": "Cosmetic on a malformed board; the cycle is reported and every rank is finite.",
+   "evidence": "F2-cycle-finite: expected every rank finite | observed [[],[\"T2\"],[\"T1\"]]; the differential (`diff-output.txt`) proves the baseline produced the identical shape, so this is NOT a wave regression.",
+   "direction": "None required; recorded as pre-wave behaviour.",
+   "source": "a (re-run + differential)"
+  }
+ ],
+ "closed": [
+  {
+   "id": "C-original-Blocker",
+   "what": "The TUI dropped a plan-only edge between two BOARD nodes (T1->T2 absent from the drawn dependency source while the model carried it).",
+   "status": "CLOSED at 51caa653",
+   "observed": "TUI drawn edges ['T1->T2', 'T1->T3', 'T2->T4', 'T4->T5'] equal the model's ['T1->T2', 'T1->T3', 'T2->T4', 'T4->T5']; tuiEdgesEqualModel=True",
+   "fix_seen": "packages/mpd-tui-plugin/src/team-state.ts `modelRows` now carries the model node's dependency union for board-backed rows; `failedDependencies`/`visual` stay board-authoritative.",
+   "source": "a (re-run)"
+  }
+ ],
+ "declined": [
+  "Aesthetic judgement of the `+` ghost marker: I judged only its CONTRACT shape (existing label slot, existing legend grammar, no new tone, one ASCII cell, no layout branch) at b9127fda's bytes; whether it looks good is not a reviewable claim here.",
+  "Plan-parser behaviour outside the README subset (a fuzz sweep was not run); the six-case and README grammar arms were exercised.",
+  "The beacon arm of `resolvePlanFile` under a LIVE boulder switch (the newest-file path was exercised; the beacon path was source-read only).",
+  "Browser EventSource reconnection/proxy behaviour (browser-owned; the offline harness covers one frame, not reconnect).",
+  "Docker real-machine, live-LLM sessions, and a real dsh-tui 0.16.x host: the planes were driven through the repo's offline harnesses and the TUI layout directly, not through a terminal.",
+  "Performance/large-board stress (the fixtures are 5-8 nodes; MAX_TASKS/scale bounds not measured).",
+  "The visual fidelity of every drawn box (curves, CJK labels, geometry) beyond the rank/edge/ghost facts this matrix measured."
+ ],
+ "bounds": [
+  "Read: the frozen contract + Amendment 2/3, mpd-graph-core (types/rank/model/plan/watch/resolve/README), the wave diff for graph.ts/team-state.ts/panel-dag.ts/team-view.ts/team-web.ts/graph-model.ts/index.ts, the gate, and the two planes' rendering paths. Not read line-by-line: scenes.ts/subagent-scene.ts (inherited through modelRows; only the call sites checked), the adopted client bundle, docker/**, docs/**.",
+  "Ran: `bun test packages` (2098 pass/3 skip/0 fail), the two required packages (677/0), core (60/0), typecheck, verify:gates 8/8, verify:comments, verify:manifest, verify-no-host-override, verify-dist-fresh (32/32), the graph gate's four arms on the default AND on lane E's fixture, and the six lane-E probes.",
+  "Did NOT run: Docker lane, live-LLM QA cases, pack-closure, the full release sweep, or a real TUI host. A claim that needed one of those would be INCONCLUSIVE here; none of G1-G6 did."
+ ],
+ "summary": {
+  "claims": 7,
+  "passed": 7,
+  "failed": 0,
+  "findings": 3
+ },
+ "verdict": {
+  "decision": "APPROVE",
+  "justification": "Every frozen requirement G1-G6 is met by a re-run observation at 51caa653, the Blocker this lane filed is closed and its arm is green, and the one Medium finding is a user-visible label that misnames the rank source without changing the picture."
+ }
+}

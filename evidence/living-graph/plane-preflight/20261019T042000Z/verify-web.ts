@@ -53,10 +53,27 @@ function textOf(node: TreeNode): string {
   return ""
 }
 
-/** The task id a box draws, read from its own children (`T1`, `F1`, …). */
-function idIn(text: string): string | undefined {
-  const match = /(?:^|\s)([TF]\d+)(?:\s|$)/.exec(text)
-  return match?.[1]
+/** Every plain-text leaf of a rendered subtree, in order. */
+function leavesOf(node: TreeNode, out: string[] = []): string[] {
+  if (typeof node === "string") {
+    out.push(node)
+    return out
+  }
+  if (typeof node === "number") {
+    out.push(String(node))
+    return out
+  }
+  if (Array.isArray(node)) {
+    for (const child of node) leavesOf(child, out)
+    return out
+  }
+  if (node !== null && typeof node === "object") leavesOf((node as ElementNode).props?.children as TreeNode, out)
+  return out
+}
+
+/** The task id a box draws: the ONE leaf that is exactly an id (`T1`, `F1`, …). */
+function idIn(element: ElementNode): string | undefined {
+  return leavesOf(element.props?.children as TreeNode).find((leaf) => /^[TF]\d+$/.test(leaf))
 }
 
 /** The client, evaluated from the SHIPPED `client.js` bytes, with the three routes canned. */
@@ -96,8 +113,7 @@ try {
   /** Every drawn box, with the two witness attributes. */
   const boxes = elements
     .filter((element) => element.props?.["data-mpd-box-rank"] !== undefined)
-    .map((element) => ({ rank: Number(element.props["data-mpd-box-rank"]), planned: element.props["data-mpd-planned"] === "true", text: textOf(element.props?.children as TreeNode) }))
-    .map((box) => ({ id: idIn(box.text), rank: box.rank, planned: box.planned }))
+    .map((element) => ({ id: idIn(element), rank: Number(element.props["data-mpd-box-rank"]), planned: element.props["data-mpd-planned"] === "true" }))
   /** Every drawn edge's witness value (`blocked<-blocker`). */
   const edges = elements.filter((element) => element.props?.["data-mpd-edge"] !== undefined).map((element) => String(element.props["data-mpd-edge"]))
   /** The payload's own rank field, per task, as the host computed it. */

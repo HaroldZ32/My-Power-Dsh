@@ -103,6 +103,9 @@ const result = {
   fixture: { workspace: WS, plan: PLAN, modelEdges, modelRanks: ranks },
   tui: { scope: workflow.scope, tasks: tuiDeps, ranks, drawnEdgeSource, hitRows },
   layoutMode: layout?.mode ?? null,
+  // THE MODE LINE the panel prints: `ranks <derived|served>` from the DRAWING's own flag, next to the
+  // MODEL's own report. They should tell a reader the same story about the same picture.
+  ranksSource: { layoutRanksDerived: layout?.ranksDerived ?? null, modelRanksDerived: MODEL.report.ranksDerived, pageHasServedRanks: page?.ranks !== undefined },
   // THE TWO OBSERVATIONS THE CONTRACT TURNS ON:
   // 1. Does the TUI see the plan-only edges? Its edge source is each drawn task's `dependencies`.
   // 2. Do the ranks follow the MODEL (T2=1, T4=2) or the board's own depth (T2=0, T4=1)?

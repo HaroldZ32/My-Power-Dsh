@@ -155,6 +155,22 @@ export interface DagPanelTask extends GraphTask {
   planned?: boolean
 }
 
+/**
+ * WHERE the page's drawn ranks came from — the three facts the footer must never re-conflate.
+ *
+ * THE DEFECT THIS TYPE EXISTS FOR (wave `living-graph`, verifier finding): the core's
+ * `rankPlan(tasks, served)` reports `derived: false` when it APPLIED the served map, which answers
+ * "did this process derive?" — NOT "were these ranks derived at all?". Reading that flag as the second
+ * question made the page print `ranks served` on the normal model path even though the model's own
+ * report said the HOST derived them, i.e. it told the reader the picture rested on an untrusted
+ * fallback. Naming the states makes the confusion a compile-time-visible choice, not a wording accident:
+ *   · `derived-host` — a served model exists and its report says its ranks were derived → `derived (host)`;
+ *   · `served-host`  — a served model exists and IT fell back to the served depth → `served depth (host fallback)`;
+ *   · `local`        — no served model: this process ranks the board (today's split: `derived`, or
+ *                      `served depth` on the documented served-depth fallback).
+ */
+export type DagRanksSource = "derived-host" | "served-host" | "local"
+
 /** The projection one render draws from: the tasks, the counts, the roster size and the problems. */
 export interface DagPage {
   /** The tasks, in board order — SERVED-MODEL order when a model was joined in (ghosts included). */
@@ -167,6 +183,14 @@ export interface DagPage {
    * input and no local derivation runs. A projection only — never serialized.
    */
   ranks?: ReadonlyMap<string, number>
+  /**
+   * WHERE those ranks came from, in the three states {@link DagRanksSource} names.
+   *
+   * `dagPageOf` derives it from the model's own `report.ranksDerived` (the host's answer), never from
+   * the layout's `derived` flag — that one answers "did this process derive?" and is `false` by design
+   * once a served map is applied.
+   */
+  ranksSource: DagRanksSource
   /** The workspace this projection was scoped to. */
   workspace: string
   /** The team's display name, or an explicit placeholder when the record carries none. */
@@ -255,9 +279,16 @@ export function dagPageOf(workflow: TeamWorkflow | undefined): DagPage | undefin
   }
   /** The served ranks, absent when this projection carries no accepted model. */
   const ranks = modelRanks(workflow)
+  // THE THREE STATES, from the HOST's own report when a model was accepted: `local` is the only one
+  // this process can answer without a model, and the layout's flag decides only its sub-word.
+  /** Where the drawn ranks came from, named for the footer's word. */
+  const ranksSource: DagRanksSource = workflow.model === undefined
+    ? "local"
+    : workflow.model.report.ranksDerived === true ? "derived-host" : "served-host"
   return {
     tasks,
     ...(ranks === undefined ? {} : { ranks }),
+    ranksSource,
     workspace: panelField(workflow.workspace, 200) ?? "",
     teamName: panelField(workflow.team?.name, 60) ?? "(unnamed team)",
     phase: panelField(workflow.team?.phase, 20) ?? "unknown",
@@ -269,6 +300,24 @@ export function dagPageOf(workflow: TeamWorkflow | undefined): DagPage | undefin
       : "roster  " + roster.map((member) => `${member.status === "running" ? "◐" : "○"}${member.name} ${member.done}/${member.total}`).join(" · "),
     problems: (Array.isArray(workflow.problems) ? workflow.problems : []).map((problem) => panelField(problem, 120) ?? "").filter((problem) => problem !== ""),
   }
+}
+
+/**
+ * The footer's EXACT word for a rank source.
+ *
+ * `layoutDerived` is read ONLY for the `local` state. The core's `rankPlan(tasks, served)` reports
+ * `derived: false` whenever it applied the map the host handed it — true, and correct for its own
+ * question ("did this process derive?"), but it says nothing about whether the HOST derived the ranks
+ * from the graph. The page must answer the reader's question, so the two host states come from
+ * `model.report.ranksDerived`; only a composition with no model asks the layout at all.
+ * @param source - the named rank source on the projection.
+ * @param layoutDerived - the layout's own flag, meaningful only for `local`.
+ * @returns the phrase after `ranks ` in the mode line.
+ */
+function ranksPhrase(source: DagRanksSource, layoutDerived: boolean): string {
+  if (source === "derived-host") return "derived (host)"
+  if (source === "served-host") return "served depth (host fallback)"
+  return layoutDerived ? "derived" : "served depth"
 }
 
 /** One laid-out page: the drawing, the mode it chose, and whether every row fits the budget. */
@@ -1078,7 +1127,9 @@ export function createDagPanelComponent(readWorkflow: (sessionId?: string) => Te
       // data" would leave the reader with no idea which surface the DAG is fed from.
       children.push(textRow(kit, "no team in this workspace — `agent_teams_plan` stages one", { key: "empty", dim: true, maxCells: contentCols }))
     }
-    if (layout !== undefined) {
+    // `layout` is DEFINED only when `page` is (the ternary above), and both are named here so the
+    // mode line can read the page's rank source without an assertion.
+    if (layout !== undefined && page !== undefined) {
       /** The contract's own running glyph, which the breath orbit starts from. */
       const baseGlyph = DAG_TONE_GLYPH.running ?? "◐"
       /** The animated glyph for this frame, or the base one when nothing is running. */
@@ -1165,7 +1216,10 @@ export function createDagPanelComponent(readWorkflow: (sessionId?: string) => Te
       // THE MODE LINE: which view was drawn AND WHERE ITS RANKS CAME FROM, said out loud — the view is
       // a fact about the width and the reader is the one who can change the width, while the rank
       // source is the fact that decides whether the vertical order can be trusted at all (R18).
-      children.push(textRow(kit, `view ${layout.mode}${layout.list ? " (dense)" : ""} · ${order.length} tasks · ranks ${layout.ranksDerived ? "derived" : "served"}`, { key: "mode", dim: true, maxCells: contentCols }))
+      // THE WORD COMES FROM THE NAMED SOURCE, never from the layout's `derived` flag alone: that flag
+      // is `false` by design once a served map is applied, so reading it as "the ranks were served"
+      // mislabelled HOST-DERIVED ranks as an untrusted fallback (the verifier's finding).
+      children.push(textRow(kit, `view ${layout.mode}${layout.list ? " (dense)" : ""} · ${order.length} tasks · ranks ${ranksPhrase(page.ranksSource, layout.ranksDerived)}`, { key: "mode", dim: true, maxCells: contentCols }))
       // THE UNRESOLVED BLOCKERS ARE SURFACED, NEVER SWALLOWED (R18). A blocker reference naming no task
       // on the board is the exact shape of the user's own defect — the record says `blockedBy: ["3"]`
       // while its ids are `T3` — and a page that dropped it silently would make a broken board look

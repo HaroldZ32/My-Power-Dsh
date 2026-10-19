@@ -1,8 +1,8 @@
 {
  "probe": "web",
- "at": "2026-10-19T04:18:49.360Z",
+ "at": "2026-10-19T04:19:07.222Z",
  "fixture": {
-  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/living-graph/plane-preflight/20261019T042000Z/ws-179tkW",
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/living-graph/plane-preflight/20261019T042000Z/ws-9n42pH",
   "urlsRead": [
    "/plugins/mpd-team-watchdog/state",
    "/plugins/mpd-team/state?sessionId=sess-lane-e",
@@ -42,22 +42,27 @@
  "web": {
   "boxes": [
    {
+    "id": "T1",
     "rank": 0,
     "planned": false
    },
    {
+    "id": "T2",
     "rank": 1,
     "planned": false
    },
    {
+    "id": "T3",
     "rank": 1,
     "planned": false
    },
    {
+    "id": "T4",
     "rank": 2,
     "planned": false
    },
    {
+    "id": "T5",
     "rank": 3,
     "planned": true
    }
@@ -85,7 +90,7 @@
   "payloadCarriesModel": true,
   "servedRankIsModelRank": true,
   "boxesFollowModel": true,
-  "ghostBoxDrawn": false,
+  "ghostBoxDrawn": true,
   "planOnlyEdgeDrawn": true,
   "edgeSetEqualsModel": true
  }
