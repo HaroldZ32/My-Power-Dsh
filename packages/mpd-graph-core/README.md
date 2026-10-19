@@ -163,12 +163,15 @@ itself (inode, mtime, ctime and size per file). A rename, a replace, a delete an
 just "the signature moved", so a rename cannot strand the watch on an inode nobody writes to any
 more. A missing file or directory is survived; the arming pass re-runs after EVERY debounce, and it
 records the identity of the directory each watch attached to. The watcher re-arms on a platform
-`close`, on a directory SELF-EVENT (some runtimes report a directory's own removal as a notification
-named after the directory, with no `close` at all), or on a BOUNDED TIMER, and it compares the inode
-AND the birthtime: an `rm -rf` followed by a `mkdir` can reuse the inode, and only the birthtime
-still tells the new directory from the one whose watch just died. A directory REPLACED at the same
-path is therefore re-armed, because an inotify watch follows the inode rather than the path and a
-watch that merely looked "already armed" would silently stop reporting the new directory's files.
+`close` OR `error`, on a directory SELF-EVENT (some runtimes report a directory's own removal as a
+notification named after the directory, with no `close` at all), or on a BOUNDED TIMER, and it
+compares the inode AND the birthtime: an `rm -rf` followed by a `mkdir` can reuse the inode, and only
+the birthtime still tells the new directory from the one whose watch just died. Every re-arm ALSO
+compares the target signatures, so a write that landed while the watch was dead — and therefore
+produced no notification at all — is still delivered instead of waiting for an unrelated event. A
+directory REPLACED at the same path is therefore re-armed, because an inotify watch follows the inode
+rather than the path and a watch that merely looked "already armed" would silently stop reporting the
+new directory's files.
 
 **A plan that APPEARS is a change.** `plansDir` watches the plans directory as a SET, not as one
 file: its signature is every candidate plan file (`*.md`, never `*.zh-CN.md`), so creating a plan

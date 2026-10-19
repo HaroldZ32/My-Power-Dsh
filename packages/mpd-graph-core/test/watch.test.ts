@@ -428,6 +428,37 @@ describe("a dead watch recovers on its own", () => {
     }
   })
 
+  test("a write that lands while the watch is DEAD is still reported after the re-arm", async () => {
+    /** A workspace whose directory exists on disk for the arming stat. */
+    const root = scratch()
+    try {
+      /** The board directory the fake watches. */
+      const boardDir = join(root, "board")
+      mkdirSync(boardDir)
+      writeFileSync(join(boardDir, "a.json"), "{}")
+      /** The fakes the injected factory hands out, in arm order. */
+      const created: FakeWatch[] = []
+      /** The watcher under test over the injected platform. */
+      const watcher = watchGraph({ boardDir }, { debounceMs: 20, createWatch: fakeWatchFactory(created) })
+      try {
+        expect(created.length).toBe(1)
+        // The watch dies, and a write lands BEFORE the first bounded attempt (25 ms) re-arms it.
+        created[0]?.die()
+        writeFileSync(join(boardDir, "b.json"), "{}")
+        // NO notification is injected: only the re-arm's own signature comparison can see the write.
+        /** The batch the new handle's signature comparison produced. */
+        const event = await nextEvent(watcher)
+        expect(event.paths).toEqual([boardDir])
+        expect(event.manual).toBe(false)
+        expect(created.length).toBeGreaterThanOrEqual(2)
+      } finally {
+        watcher.close()
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
   test("an untouched directory delivers nothing extra, and close() cancels the attempts", async () => {
     /** A workspace whose directory exists on disk for the arming stat. */
     const root = scratch()

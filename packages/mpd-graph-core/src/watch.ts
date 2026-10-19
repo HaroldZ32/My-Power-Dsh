@@ -349,6 +349,12 @@ export function watchGraph(targets: GraphWatchTargets, options: GraphWatchOption
    * must not wait for a notification — that is exactly the failure this exists for. A few spaced
    * attempts, then it stops; `close()` cancels every pending attempt.
    *
+   * EACH ATTEMPT ALSO COMPARES SIGNATURES: a write that landed while the watch was dead produced NO
+   * notification — the dead handle cannot report what it no longer sees — so the fresh handle would
+   * otherwise start with a stale signature and nothing to compare it against, and the write would be
+   * lost until an unrelated event. The comparison is skipped when a debounce timer is already
+   * pending, because that timer delivers and one change must not become two batches.
+   *
    * WHEN ALL THREE ATTEMPTS FAIL the watch stays DEAD and the give-up is SILENT: no error and no
    * event is emitted, and only a later notification arriving through another armed handle (or an
    * explicit `poll()`) can bring it back. "Bounded" means exactly that — the timer gives up, so a
@@ -361,6 +367,7 @@ export function watchGraph(targets: GraphWatchTargets, options: GraphWatchOption
       const attempt = setTimeout(() => {
         rearmTimers.delete(attempt)
         arm()
+        if (timer === undefined) deliver(false)
       }, delay)
       rearmTimers.add(attempt)
     }

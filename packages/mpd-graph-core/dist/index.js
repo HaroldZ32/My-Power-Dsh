@@ -612,6 +612,8 @@ function watchGraph(targets, options = {}) {
       const attempt = setTimeout(() => {
         rearmTimers.delete(attempt);
         arm();
+        if (timer === undefined)
+          deliver(false);
       }, delay);
       rearmTimers.add(attempt);
     }
