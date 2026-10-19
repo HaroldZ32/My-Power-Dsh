@@ -1,0 +1,62 @@
+LANE E — F4-only re-check (directory-replacement recovery)
+HEAD de67b9f068510a9c1290387add0e7e4ce960bd6c at 2026-10-19T06:26:22Z
+settle: product tree clean=False; dist '[verify-dist-fresh] ok: 32/32 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 675ms'
+
+CORRECTION TO MY PREVIOUS ROUND
+- That line was FALSE. The `close` I saw in `debug-close-event.ts` was my own final `w.close()` call being logged; no runtime emits close/error when a WATCHED directory is deleted or renamed. Raw measurement on Bun 1.4.0, Bun 1.4.2 AND Node 24.21.0: only a directory SELF-EVENT (`rename`, filename = the directory basename), and no close/error.
+- The BEHAVIOURAL finding was real and reproduced: rm+mkdir reuses the inode (same ino measured 5/5), the old watch stays dead, and a later write was missed. The mechanism sentence was mine to get wrong, not the writers'.
+
+RAW RUNTIME SIGNALS (the signal the fix must accept)
+- bun 1.4.2 rm-and-recreate: signals=['event=rename name=watched', 'event=rename name=watched'] sameIno=True
+- bun 1.4.2 rename-away: signals=['event=rename name=watched'] sameIno=False
+- bun 1.4.0 rm-and-recreate: signals=['event=rename name=watched', 'event=rename name=watched'] sameIno=True
+- bun 1.4.0 rename-away: signals=['event=rename name=watched'] sameIno=False
+- node 24.21.0 rm-and-recreate: signals=['event=rename name=watched', 'event=rename name=watched'] sameIno=True
+- node 24.21.0 rename-away: signals=['event=rename name=watched'] sameIno=False
+
+CLAIMS | EVIDENCE | VERDICT | OBSERVED | SOURCE
+F4-live-bun1.4.0 | evidence/living-graph/f4-recheck/20261019T063000Z/f4-result-bun1.4.0.json, evidence/living-graph/f4-recheck/20261019T063000Z/run-bun1.4.0.txt | PASS | runtime bun 1.4.0: rm-recreate sameIno=True replacement=True late=True manual=False; rename-away sameIno=False replacement=True late=True manual=False; batches [{'sequence': 1, 'coalesced': 2, 'manual': False}, {'sequence': 2, 'coalesced': 4, 'manual': False}, {'sequence': 3, 'coalesced': 2, 'manual': False}] / [{'sequence': 1, 'coalesced': 2, 'manual': False}, {'sequence': 2, 'coalesced': 1, 'manual': False}, {'sequence': 3, 'coalesced': 2, 'manual': False}] | a (this lane's own filesystem mutations; no poll anywhere)
+F4-injected-close-bun1.4.0 | evidence/living-graph/f4-recheck/20261019T063000Z/f4-result-bun1.4.0.json | PASS | runtime bun 1.4.0: afterRearm=2 afterOldClose=2 successorStillWorks=True afterDeadClose=3 rearmedDelivers=True closeCancelledTimers=True errors=0 | a (a real FSWatcher whose close signal the probe emits through the documented test seam)
+F4-no-storm-bun1.4.0 | evidence/living-graph/f4-recheck/20261019T063000Z/f4-result-bun1.4.0.json | PASS | runtime bun 1.4.0: batches=0 handles=1 afterCloseHandles=1 closedPoll=False | a
+F4-live-bun1.4.2 | evidence/living-graph/f4-recheck/20261019T063000Z/f4-result-bun1.4.2.json, evidence/living-graph/f4-recheck/20261019T063000Z/run-bun1.4.2.txt | PASS | runtime bun 1.4.2: rm-recreate sameIno=True replacement=True late=True manual=False; rename-away sameIno=False replacement=True late=True manual=False; batches [{'sequence': 1, 'coalesced': 2, 'manual': False}, {'sequence': 2, 'coalesced': 4, 'manual': False}, {'sequence': 3, 'coalesced': 2, 'manual': False}] / [{'sequence': 1, 'coalesced': 2, 'manual': False}, {'sequence': 2, 'coalesced': 1, 'manual': False}, {'sequence': 3, 'coalesced': 2, 'manual': False}] | a (this lane's own filesystem mutations; no poll anywhere)
+F4-injected-close-bun1.4.2 | evidence/living-graph/f4-recheck/20261019T063000Z/f4-result-bun1.4.2.json | PASS | runtime bun 1.4.2: afterRearm=2 afterOldClose=2 successorStillWorks=True afterDeadClose=3 rearmedDelivers=True closeCancelledTimers=True errors=0 | a (a real FSWatcher whose close signal the probe emits through the documented test seam)
+F4-no-storm-bun1.4.2 | evidence/living-graph/f4-recheck/20261019T063000Z/f4-result-bun1.4.2.json | PASS | runtime bun 1.4.2: batches=0 handles=1 afterCloseHandles=1 closedPoll=False | a
+F4-live-node24.21.0 | evidence/living-graph/f4-recheck/20261019T063000Z/f4-result-node24.21.0.json, evidence/living-graph/f4-recheck/20261019T063000Z/run-node24.21.0.txt | PASS | runtime node 24.21.0: rm-recreate sameIno=True replacement=True late=True manual=False; rename-away sameIno=False replacement=True late=True manual=False; batches [{'sequence': 1, 'coalesced': 2, 'manual': False}, {'sequence': 2, 'coalesced': 4, 'manual': False}, {'sequence': 3, 'coalesced': 2, 'manual': False}] / [{'sequence': 1, 'coalesced': 2, 'manual': False}, {'sequence': 2, 'coalesced': 1, 'manual': False}, {'sequence': 3, 'coalesced': 2, 'manual': False}] | a (this lane's own filesystem mutations; no poll anywhere)
+F4-injected-close-node24.21.0 | evidence/living-graph/f4-recheck/20261019T063000Z/f4-result-node24.21.0.json | PASS | runtime node 24.21.0: afterRearm=2 afterOldClose=2 successorStillWorks=True afterDeadClose=3 rearmedDelivers=True closeCancelledTimers=True errors=0 | a (a real FSWatcher whose close signal the probe emits through the documented test seam)
+F4-no-storm-node24.21.0 | evidence/living-graph/f4-recheck/20261019T063000Z/f4-result-node24.21.0.json | PASS | runtime node 24.21.0: batches=0 handles=1 afterCloseHandles=1 closedPoll=False | a
+F4-runtime-raw-signals | evidence/living-graph/f4-recheck/20261019T063000Z/runtime-watch-behavior.ts, evidence/living-graph/f4-recheck/20261019T063000Z/runtime-raw-output.txt | PASS | bun 1.4.2 rm-and-recreate: signals=['event=rename name=watched', 'event=rename name=watched'] sameIno=True | bun 1.4.2 rename-away: signals=['event=rename name=watched'] sameIno=False | bun 1.4.0 rm-and-recreate: signals=['event=rename name=watched', 'event=rename name=watched'] sameIno=True | bun 1.4.0 rename-away: signals=['event=rename name=watched'] sameIno=False | node 24.21.0 rm-and-recreate: signals=['event=rename name=watched', 'event=rename name=watched'] sameIno=True | node 24.21.0 rename-away: signals=['event=rename name=watched'] sameIno=False | a (raw `fs.watch`, no library code)
+
+F4 STATUS
+CLOSED — PASS — 11/11 verdicts true on each of Bun 1.4.0, Bun 1.4.2 and Node 24.21.0: both live replacement shapes delivered the post-replacement write with no poll batch, the injected close path behaved (old close ignored, dead watch re-armed and delivered, close cancelled the timers), and the idle directory stayed silent.
+
+THE SENTENCE THE EVIDENCE SUPPORTS
+The watcher recovers WITHOUT a poll when a watched directory is deleted or renamed: it accepts the directory's own self-event (the signal Bun 1.4.0/1.4.2 and Node 24 emit here — measured), decides identity by inode AND birthtime (an rm -rf + mkdir reuses the inode, measured), and — on a runtime that reports a handle close/error, or when a test injects one — also re-arms on a bounded 25/100/400 ms schedule. A file written after either replacement is delivered, and an untouched directory stays silent. After the three bounded attempts the watch gives up SILENTLY, so a caller that needs a guarantee beyond that must keep a resync path.
+
+SEAM JUDGMENT
+ACCEPTABLE as an optional, documented test seam. — No product caller: `grep -rn createWatch packages/*/src` finds it only in mpd-graph-core, and the default is `fs.watch`.; The interface's own doc says 'present only for a test that drives close itself', and the README's user-facing options line omits it (it lists debounceMs/onChange/onError).; The codebase already carries the same pattern at a higher level: `GraphModelDeps.watch` exists so an arm can drive batches without a filesystem.; It is what makes the close path provable at all on these runtimes, which is strictly better than an untested subscription. Residual: If maximal hygiene is wanted, the seam can stay library-internal by exporting a test-only constructor; that is a polish call, not a defect.
+
+NITS
+- F2: unchanged — web collator; still a bound.
+- F3: unchanged — empty rank 0; still a bound.
+- NIT-1: CLOSED — the committed test scratch directory is gone (`git ls-files packages/mpd-graph-core/test/.tmp-*` is empty).
+- cleanup-mine: My own probe scratch dirs were committed in the previous evidence commit: `evidence/living-graph/coderabbit-recheck/20261019T061500Z/ws-CbMo9h` and `ws-h6bTgX` (6 files). Recommend `git rm -r` those in the PR; they are not deliverables.
+
+BOUNDS
+- Three runtimes measured on this ext4 filesystem: Bun 1.4.0 (the repository toolchain), Bun 1.4.2 (PATH), Node 24.21.0. Another filesystem/runtime may report differently; the probe is committed and can be re-run anywhere.
+- The close path is exercised through `createWatch` (the documented seam) because these runtimes do not emit close for a deleted/renamed directory — raw behaviour is recorded separately.
+- Did NOT run: Docker, live-LLM, a real TUI host, pack-closure, release sweep. The narrow change touched only the watcher, its tests and the README pair.
+
+REGESSION SANITY (observed lines)
+- (pass) determinism > tasks are ordered by id even when the document is not [0.05ms]
+- 299 pass
+- exit=0
+- [verify-graph-model] PASS — nodes (8), edges (6), ranks, cycles and the report equal the declared input
+- positive exit=0
+- seeded exit=1
+- [verify-graph-model] self-test PASS — 8 arms: both directions and the path forms
+- self-test exit=0
+- [verify-dist-fresh] ok: 32/32 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 648ms
+
+VERDICT
+PASS — F4 is closed on this lane's own mutations in both shapes, with no poll, on three runtimes; the injected close path and the no-storm control behave; the regression sanity (core+host 299/0, typecheck 0, gate arms, dist 32/32) is green. APPROVE stands.
+summary: claims 10, passed 10, failed 0

@@ -1,0 +1,6 @@
+{"label":"rm-and-recreate","runtime":"bun 1.4.2","basename":"watched","inoBefore":52177676,"inoAfter":52177676,"sameIno":true,"signals":["event=rename name=watched","event=rename name=watched"]}
+{"label":"rename-away","runtime":"bun 1.4.2","basename":"watched","inoBefore":52177676,"inoAfter":52177677,"sameIno":false,"signals":["event=rename name=watched"]}
+{"label":"rm-and-recreate","runtime":"bun 1.4.0","basename":"watched","inoBefore":52177676,"inoAfter":52177676,"sameIno":true,"signals":["event=rename name=watched","event=rename name=watched"]}
+{"label":"rename-away","runtime":"bun 1.4.0","basename":"watched","inoBefore":52177676,"inoAfter":52177677,"sameIno":false,"signals":["event=rename name=watched"]}
+{"label":"rm-and-recreate","runtime":"node 24.21.0","basename":"watched","inoBefore":52177676,"inoAfter":52177676,"sameIno":true,"signals":["event=rename name=watched","event=rename name=watched"]}
+{"label":"rename-away","runtime":"node 24.21.0","basename":"watched","inoBefore":52177676,"inoAfter":52177677,"sameIno":false,"signals":["event=rename name=watched"]}

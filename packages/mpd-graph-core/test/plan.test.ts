@@ -109,6 +109,7 @@ describe("lane markers strip only declared lanes", () => {
     expect(plan.problems.length).toBe(1)
     expect(plan.problems[0]?.reason).toContain("TWO")
     expect(plan.problems[0]?.reason).toContain("names no lane")
+    expect(plan.problems[0]?.text).toBe("1. Two. Things happen.")
   })
 
   test("an undeclared marker never eats a task id that a title starts with", () => {
@@ -119,6 +120,7 @@ describe("lane markers strip only declared lanes", () => {
     expect(plan.tasks[0]?.title).toBe("T14 (blind verify of the guard scope).")
     expect(plan.problems.length).toBe(1)
     expect(plan.problems[0]?.reason).toContain("T14")
+    expect(plan.problems[0]?.text).toBe("1. T14 (blind verify of the guard scope).")
   })
 })
 
@@ -132,6 +134,7 @@ describe("tolerance with a report", () => {
     expect(plan.problems.map((problem) => problem.line)).toEqual([4, 5, 6])
     expect(plan.problems[0]?.reason).toContain("numbered TODO")
     expect(plan.problems[2]?.reason).toContain("duplicate task id T1")
+    expect(plan.problems[2]?.text).toBe("1. again.")
   })
 
   test("prose and blank lines inside a section are not problems", () => {
@@ -183,6 +186,7 @@ describe("tolerance with a report", () => {
     const plan = parsePlanMarkdown(text)
     expect(plan.problems.length).toBe(1)
     expect(plan.problems.every((problem) => problem.reason.includes("names no task id"))).toBe(true)
+    expect(plan.problems[0]?.text).toBe("1. do it (blocked by the other lane).")
   })
 
   test("a lane table row without an owner is a problem, not a silent skip", () => {

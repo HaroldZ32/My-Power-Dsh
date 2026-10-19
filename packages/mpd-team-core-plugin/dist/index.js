@@ -3199,12 +3199,13 @@ function collectTasks(lines, lanes, problems) {
     const mark = leadingLane(afterOrdinal);
     const lane = mark !== undefined && lanes.has(mark.key) ? mark.key : undefined;
     if (mark !== undefined && lane === undefined) {
-      problems.push({ line: line.line, text: afterOrdinal, reason: `leading lane marker ${mark.key} names no lane the plan declares` });
+      problems.push({ line: line.line, text: line.text, reason: `leading lane marker ${mark.key} names no lane the plan declares` });
     }
     const title = mark !== undefined && lane !== undefined ? mark.title : afterOrdinal;
     tasks.push({
       id: section === "todo" ? `T${match[1]}` : match[1].toUpperCase(),
       title,
+      source: line.text,
       section,
       line: line.line,
       lane,
@@ -3240,7 +3241,7 @@ function resolveTask(task, lanes, byLane, problems) {
         continue;
       }
     }
-    problems.push({ line: task.line, text: token, reason: `"${token}" names no task id and no declared lane` });
+    problems.push({ line: task.line, text: task.source, reason: `"${token}" names no task id and no declared lane` });
   }
   const owner = task.lane === undefined ? undefined : lanes.get(task.lane);
   const blockedBy = [...new Set(ids)].sort((left, right) => ID_ORDER.compare(left, right));
@@ -3263,7 +3264,7 @@ function parsePlanMarkdown(text) {
   const tasks = [];
   for (const task of raw) {
     if (seen.has(task.id)) {
-      problems.push({ line: task.line, text: task.title, reason: `duplicate task id ${task.id}` });
+      problems.push({ line: task.line, text: task.source, reason: `duplicate task id ${task.id}` });
       continue;
     }
     seen.add(task.id);

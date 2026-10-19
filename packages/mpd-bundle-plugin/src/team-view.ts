@@ -2014,8 +2014,11 @@
           // readable as a path rather than as two unrelated highlights.
           edges.push(edgeOf(edge, focus[edge.parent] === true && focus[edge.child] === true))
         }
-        /** The pinned task's own record, or undefined when the pinned id left the board. */
-        const pinnedTask = pinned === null ? undefined : tasks.find((candidate) => candidate.id === pinned)
+        // THE PINNED LOOKUP SEARCHES WHAT IS DRAWN, not the board: a plan-only GHOST is clickable, and
+        // a board-only lookup made the click set `aria-pressed` while `detailSection` never ran — the
+        // pin fell through the same crack the halo and the edges were fixed for.
+        /** The pinned node's own record, or undefined when the pinned id is no longer drawn. */
+        const pinnedTask = pinned === null ? undefined : drawingTasks.find((candidate) => candidate.id === pinned)
         /** The panel's elements, in render order. */
         const children: unknown[] = [
           react.createElement("div", { key: "head", style: CSS.head }, team.name),

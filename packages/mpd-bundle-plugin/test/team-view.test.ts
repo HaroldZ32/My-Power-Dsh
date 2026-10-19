@@ -1226,6 +1226,44 @@ describe("the halo and the pinned detail follow the DRAWN edges (CodeRabbit PR #
     expect(detail).toContain("blocked by")
     expect(detail).toContain("T1")
   })
+
+  test("clicking a plan-only GHOST pins its detail, with its graph-derived relationships", async () => {
+    // THE PART THE HOVER ARM COULD NOT CATCH (CodeRabbit's third round): the PIN resolved the id
+    // against the BOARD, so a ghost click set `aria-pressed` but rendered no detail body at all. The
+    // click arm is deliberately separate from the hover arm — that asymmetry is what hid the defect.
+    /** A board whose two tasks have no relationships of their own. */
+    const board = [
+      { id: "T1", subject: "board blocker", kind: "work", status: "open", visual: "open", blockedBy: [], failedBy: [], depth: 0 },
+      { id: "T2", subject: "board dependent", kind: "review", status: "open", visual: "open", blockedBy: [], failedBy: [], depth: 0 },
+    ]
+    /** A plan declaring a GHOST T9, blocked by the board's T1. */
+    const ghostPlan: PlanDocument = {
+      tasks: [{ id: "T9", title: "plan-only work", section: "todo", line: 3, blockedBy: ["T1"] }],
+      lanes: [],
+      problems: [],
+    }
+    /** The board exactly as the host would serve it, with the ghost and its edge merged in. */
+    const served = withServed(board, ghostPlan)
+    expect(served.model.nodes.find((node) => node.id === "T9")?.planned).toBe(true)
+    expect(served.model.report.edgePlanOnly.map((edge) => [edge.from, edge.to])).toEqual([["T1", "T9"]])
+    /** The settled render of the served payload. */
+    const rendered = await renderView({ routes: { [STATE_PATH]: { ok: true, status: 200, body: stateOf(board, {}, [], ghostPlan) } } })
+    // The ghost is ON SCREEN, carrying the served rank — so the click has something to hit.
+    /** The ghost's rendered box. */
+    const ghost = one(rendered.tree, "data-mpd-node", "T9")
+    expect(ghost.props["data-mpd-planned"]).toBe("true")
+    // CLICK, not hover: this is the interaction that used to fall through.
+    ;(ghost.props.onClick as () => void)()
+    /** The tree after the click pinned the ghost. */
+    const pinned = await rendered.hooks.act(rendered.component, { sessionId: "s1" } as never)
+    expect(one(pinned, "data-mpd-node", "T9").props["aria-pressed"]).toBe(true)
+    // THE DETAIL BODY RENDERS FOR THE GHOST, and its BLOCKED-BY row names the served relationship.
+    /** The pinned ghost's detail text. */
+    const detail = flatText(one(pinned, "data-mpd-detail", "T9"))
+    expect(detail).toContain("plan-only work")
+    expect(detail).toContain("blocked by")
+    expect(detail).toContain("T1")
+  })
 })
 
 describe("team-view localization", () => {

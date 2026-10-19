@@ -31,6 +31,8 @@ interface RawPlanTask {
   id: string
   /** The title with checkbox, ordinal and leading lane marker removed. */
   title: string
+  /** The ORIGINAL source line, verbatim, which every report about this task quotes. */
+  source: string
   /** Which tracked section declared the line. */
   section: PlanSection
   /** The 1-based document line. */
@@ -321,13 +323,14 @@ function collectTasks(lines: readonly SourceLine[], lanes: ReadonlyMap<string, s
     /** The DECLARED lane key the marker names, or undefined for no marker or an undeclared one. */
     const lane = mark !== undefined && lanes.has(mark.key) ? mark.key : undefined
     if (mark !== undefined && lane === undefined) {
-      problems.push({ line: line.line, text: afterOrdinal, reason: `leading lane marker ${mark.key} names no lane the plan declares` })
+      problems.push({ line: line.line, text: line.text, reason: `leading lane marker ${mark.key} names no lane the plan declares` })
     }
     /** The title with a DECLARED marker removed; an undeclared marker stays verbatim. */
     const title = mark !== undefined && lane !== undefined ? mark.title : afterOrdinal
     tasks.push({
       id: section === "todo" ? `T${match[1]}` : match[1].toUpperCase(),
       title,
+      source: line.text,
       section,
       line: line.line,
       lane,
@@ -381,7 +384,7 @@ function resolveTask(task: RawPlanTask, lanes: Map<string, string>, byLane: Map<
         continue
       }
     }
-    problems.push({ line: task.line, text: token, reason: `"${token}" names no task id and no declared lane` })
+    problems.push({ line: task.line, text: task.source, reason: `"${token}" names no task id and no declared lane` })
   }
   /** The task's owner, read from the lane table row its marker names. */
   const owner = task.lane === undefined ? undefined : lanes.get(task.lane)
@@ -423,7 +426,7 @@ export function parsePlanMarkdown(text: string): PlanDocument {
   const tasks: PlanTask[] = []
   for (const task of raw) {
     if (seen.has(task.id)) {
-      problems.push({ line: task.line, text: task.title, reason: `duplicate task id ${task.id}` })
+      problems.push({ line: task.line, text: task.source, reason: `duplicate task id ${task.id}` })
       continue
     }
     seen.add(task.id)
