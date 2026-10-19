@@ -273,6 +273,32 @@ describe("the route", () => {
     expect(String((captured.body as { error: string }).error)).toContain("the store exploded")
   })
 
+  test("an UNRESOLVED named session answers 500 instead of another workspace's team", () => {
+    // THE ROUTE-SIDE CONTAINMENT OF THE RESOLVER'S REFUSAL (CodeRabbit round 2, Major): when no live
+    // agent and no workspace artifact claims the queried session id, `workspaceForRequest` throws so
+    // the read cannot silently be answered from another workspace. The route must turn that into a
+    // 500 payload — an uncaught throw would leave the response unanswered.
+    /** The routes the double captured. */
+    const routes: Array<{ path: string; handler: (req: unknown, res: unknown) => unknown }> = []
+    /** The server double: it captures the route and never refuses. */
+    const server = { register: (route: { path: string; handler: (req: unknown, res: unknown) => unknown }) => { routes.push(route); return () => {} } }
+    registerTeamRoutes(server, {
+      recordFor: () => undefined,
+      workspace: (sessionId?: string) => { throw new Error(`no workspace is bound to session "${sessionId ?? ""}"`) },
+      executor: () => EXECUTOR,
+      effect: (fn: () => unknown) => fn(),
+      warn: () => {},
+    })
+    /** The response double. */
+    const captured: { status: number; body: unknown } = { status: 0, body: undefined }
+    ;(routes.find((route) => route.path === TEAM_STATE_PATH) as { handler: (req: unknown, res: unknown) => unknown }).handler({ url: `${TEAM_STATE_PATH}?sessionId=bogus` }, {
+      writeHead: (status: number) => { captured.status = status },
+      end: (text: string) => { captured.body = JSON.parse(text) },
+    })
+    expect(captured.status).toBe(500)
+    expect(String((captured.body as { error: string }).error)).toContain("no workspace is bound")
+  })
+
   test("a composition with NO web server registers nothing and says so quietly", () => {
     // A headless profile has no web server, and that is not a defect — the route simply is not there.
     expect(registerTeamRoutes(undefined, {

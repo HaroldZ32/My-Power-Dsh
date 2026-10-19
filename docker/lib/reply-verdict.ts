@@ -95,7 +95,7 @@ const TOOL_NAME = "mpd_config_get"
  * MATCH: an unbalanced `**DONE` or `DONE__` is not the answer, and neither is an emphasized `DONE`
  * inside a sentence.
  */
-const STANDALONE_DONE = /^[\s\-•]*(?:\*\*done\*\*|__done__|\*done\*|_done_|done)[\s\-•]*[.!]?$/i
+const STANDALONE_DONE = /^[\s\-•]*(?:\*\s+)?(?:\*\*done\*\*|__done__|\*done\*|_done_|done)[\s\-•]*[.!]?$/i
 /** How much of a quoted line is kept, so a reason stays one readable line. */
 const QUOTE_MAX = 240
 
@@ -344,6 +344,12 @@ function selfTest(): number {
     arm("underscore-bold-done-is-a-reply", { before: BEFORE_SEND, after: page([PROMPT_BUBBLE], CHROME, ["__DONE__"]), prompt: PROMPT_TEXT }, "reply", true, false),
     arm("star-done-is-a-reply", { before: BEFORE_SEND, after: page([PROMPT_BUBBLE], CHROME, ["*DONE*"]), prompt: PROMPT_TEXT }, "reply", true, false),
     arm("underscore-done-is-a-reply", { before: BEFORE_SEND, after: page([PROMPT_BUBBLE], CHROME, ["_DONE_"]), prompt: PROMPT_TEXT }, "reply", true, false),
+    // THE BULLET FORMS A RENDERED TRANSCRIPT MAY USE. `* DONE` is a Markdown bullet whose leading `*`
+    // is NOT emphasis, and the pre-fix class accepted it; the explicit alternatives must keep it
+    // (CodeRabbit finding on PR #48, round 2) while still refusing the unbalanced `**DONE`.
+    arm("star-bullet-done-is-a-reply", { before: BEFORE_SEND, after: page([PROMPT_BUBBLE], CHROME, ["* DONE"]), prompt: PROMPT_TEXT }, "reply", true, false),
+    arm("dash-bullet-done-is-a-reply", { before: BEFORE_SEND, after: page([PROMPT_BUBBLE], CHROME, ["- DONE"]), prompt: PROMPT_TEXT }, "reply", true, false),
+    arm("dot-bullet-done-is-a-reply", { before: BEFORE_SEND, after: page([PROMPT_BUBBLE], CHROME, ["• DONE"]), prompt: PROMPT_TEXT }, "reply", true, false),
     arm("unbalanced-bold-done-is-not-a-reply", { before: BEFORE_SEND, after: page([PROMPT_BUBBLE], CHROME, ["**DONE"]), prompt: PROMPT_TEXT }, "no-reply", false, false),
     arm("unbalanced-underscore-done-is-not-a-reply", { before: BEFORE_SEND, after: page([PROMPT_BUBBLE], CHROME, ["DONE__"]), prompt: PROMPT_TEXT }, "no-reply", false, false),
     arm("tool-render-is-a-reply", { before: BEFORE_SEND, after: page([PROMPT_BUBBLE], CHROME, ['mpd_config_get {} → {"ok":true}']), prompt: PROMPT_TEXT }, "reply", false, true),

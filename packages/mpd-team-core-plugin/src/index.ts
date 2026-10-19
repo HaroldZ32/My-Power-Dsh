@@ -1848,9 +1848,12 @@ export function apply(ctx: any): void {
             // One unreadable root must not blind the scan of the others.
           }
         }
-        // NO ARTIFACT YET: with ONE live workspace the answer is unambiguous; anything else stays with
-        // the process-wide root, and the panel's workspace listing is what a session-less read means.
-        return roots.length === 1 ? roots[0] : dsh.workspaceRoot()
+        // NO FALLBACK FOR A NAMED SESSION (CodeRabbit round 2, Major): if neither the live registry
+        // nor a workspace artifact claims this id, answering from `roots[0]` / the process root would
+        // let a bogus id read ANOTHER workspace's team listings, contracts, holds or mailbox. The
+        // request is refused instead; a SESSION-LESS read (`sessionId === ""`) keeps the process-root
+        // behaviour above, which is what a panel outside a session means.
+        throw new Error(`mpd-team-core: no workspace is bound to session "${sessionId}" — refusing to answer from another workspace`)
       }
       /** Register the route against whatever web server this composition has right now. */
       const mountTeamRoute = (): boolean => registerTeamRoutes(dsh.webServerOf() as never, {

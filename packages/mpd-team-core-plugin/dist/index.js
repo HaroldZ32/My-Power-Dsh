@@ -5057,7 +5057,7 @@ Add members and tasks with agent_teams_plan {action: "add_member" | "create_task
               return root2;
           } catch {}
         }
-        return roots.length === 1 ? roots[0] : dsh.workspaceRoot();
+        throw new Error(`mpd-team-core: no workspace is bound to session "${sessionId}" — refusing to answer from another workspace`);
       };
       const mountTeamRoute = () => registerTeamRoutes(dsh.webServerOf(), {
         recordFor: (sessionId) => recordFor(workspaceForRequest(sessionId), sessionId),
