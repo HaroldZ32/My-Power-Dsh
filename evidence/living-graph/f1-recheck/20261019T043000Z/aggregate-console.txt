@@ -1,0 +1,33 @@
+LANE E — narrow re-check of F1 (and the claim table's regression sanity)
+HEAD da1974f0b9bfd289900d1ecef81cacbd67eade26 at 2026-10-19T04:35:38Z
+previous verdict: 51caa65336dcaeb29f93a38fe8af029a82ac6676 APPROVE with F1 Medium
+settle: product tree clean=True; dist '[verify-dist-fresh] ok: 32/32 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 654ms'
+
+F1 — THREE STATES, RENDERED BY THE REAL COMPONENT
+- derived-host: view boxes · 5 tasks · ranks derived (host)
+- served-host: view boxes · 2 tasks · ranks served depth (host fallback)
+- local-derived: view boxes · 2 tasks · ranks derived
+- local-served: view boxes · 2 tasks · ranks served depth
+
+REGRESSION CLAIMS | EVIDENCE | VERDICT | OBSERVED | SOURCE
+F1 | evidence/living-graph/f1-recheck/20261019T043000Z/f1-result.json, evidence/living-graph/f1-recheck/20261019T043000Z/verify-f1-phrases.ts | PASS | derived-host: 'view boxes · 5 tasks · ranks derived (host)'; served-host: 'view boxes · 2 tasks · ranks served depth (host fallback)'; local-derived: 'view boxes · 2 tasks · ranks derived'; local-served: 'view boxes · 2 tasks · ranks served depth' | a (the real component rendered on a minimal React-shaped runtime; the mode row read as text)
+REG-G1a | evidence/living-graph/f1-recheck/20261019T043000Z/compare-result.json, evidence/living-graph/f1-recheck/20261019T043000Z/host-model-result.json | PASS | tuiRanksEqualModel=True webRanksEqualModel=True servedRankIsModelRank=True hostModelEqualsServed=True | a (re-run at da1974f0)
+REG-G1b | evidence/living-graph/f1-recheck/20261019T043000Z/compare-result.json, evidence/living-graph/f1-recheck/20261019T043000Z/tui-result.json, evidence/living-graph/f1-recheck/20261019T043000Z/web-result.json | PASS | TUI drawn ['T1->T2', 'T1->T3', 'T2->T4', 'T4->T5']; web drawn ['T2<-T1', 'T3<-T1', 'T4<-T2', 'T5<-T4']; planOnlyEdgeDrawn(web)=True tuiSeesPlanOnlyEdgeT1toT2=True | a (re-run at da1974f0)
+REG-G2 | evidence/living-graph/f1-recheck/20261019T043000Z/core-result.json, evidence/living-graph/f1-recheck/20261019T043000Z/regression-output.txt (gate self-test) | PASS | C1-twice: equal; C2-shuffle: True; C3-roundtrip: equal; gate self-test determinism + input-order arms PASS | a (re-run at da1974f0)
+REG-G3 | evidence/living-graph/f1-recheck/20261019T043000Z/live-result.json, evidence/living-graph/f1-recheck/20261019T043000Z/web-result.json (push arm) | PASS | batches=[{'sequence': 1, 'coalesced': 2, 'paths': 1, 'manual': False}] latency=201ms boardLatency=50ms eventDriven=True; web push reads 1->2 intervalFired=0 | a (re-run at da1974f0)
+REG-G4 | evidence/living-graph/f1-recheck/20261019T043000Z/core-result.json, evidence/living-graph/f1-recheck/20261019T043000Z/tui-result.json (flat), evidence/living-graph/f1-recheck/20261019T043000Z/web-flat-result.json | PASS | core {'checks': 46, 'passed': 46, 'failed': 0}; TUI flatDrawsFlat=True; web flat boxesAllRankZero=True | a (re-run at da1974f0)
+REG-G5 | evidence/living-graph/f1-recheck/20261019T043000Z/regression-output.txt | PASS | default 'PASS — nodes (8), edges (6)' exit 0; --seed-wrong-edge exit 1 naming F1→F2; --self-test 8/8 exit 0 | a (re-run at da1974f0)
+REG-G6 | evidence/living-graph/f1-recheck/20261019T043000Z/regression-output.txt, evidence/living-graph/f1-recheck/20261019T043000Z/full-suite.txt | PASS | two plane packages 680 pass / 0 fail (the fix added 3 arms); core 60 pass / 0 fail; full `bun test packages` 2101 pass, 3 skip, 0 fail (2104 tests); typecheck exit 0; verify:gates 8/8 green; [verify-dist-fresh] ok: 32/32 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 654ms | a (all re-run at da1974f0)
+
+FINDING STATUS
+- F1: CLOSED — PASS. The three states render 'ranks derived (host)', 'ranks served depth (host fallback)' and (local) 'ranks derived' / 'ranks served depth'; the host-path phrase equals the model's report.ranksDerived in both directions.
+- F2: recorded as a bound, not fixed this wave (web factory's own comparator; both planes agree today).
+- F3: recorded as a bound, not fixed this wave (empty rank 0 on a cyclic board is pre-wave, differential-proven).
+
+BOUNDS
+- Narrow pass: the full verdict document (evidence/living-graph/lane-e-verdict/20261019T042500Z/) is unchanged except as superseded by this re-check.
+- Re-ran: F1 phrases, the six probes behind G1a/G1b/G2/G3/G4, the gate's three arms, the two plane suites, the core suite, the full `bun test packages`, typecheck and `verify:gates`. Did NOT re-run: Docker, live-LLM, a real TUI host, pack-closure, release sweep.
+
+VERDICT
+APPROVE — F1 is fixed and observed on the rendered component in all three states; the G1a/G1b/G2/G3 probes and the flat/gate/suite regressions are green at da1974f0. The two Nits remain recorded bounds.
+summary: claims 8, passed 8, failed 0

@@ -36,6 +36,8 @@ import { isRecord } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import type { DshAdapter, DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import { scalarText } from "./sanitize.js"
 import type { TeamRecord, TeamTaskRecord } from "../../mpd-team-core-plugin/src/team-store.js"
+import type { GraphModel, GraphNode } from "../../mpd-graph-core/src/types.ts"
+import { ID_ORDER } from "../../mpd-graph-core/src/rank.ts"
 
 /** Bounded caps — so one pathological readout cannot stall a render. */
 const MAX_TEAMS = 20
@@ -154,6 +156,13 @@ export interface TeamTaskRow {
   status: string
   /** The visual state the Web panel computes: completed|failed|cancelled|running|blocked|open. */
   visual: string
+  /**
+   * True for a GHOST row: the task plan declares this id and the board does not (wave `living-graph`).
+   *
+   * Set only by {@link modelRows} when it synthesizes a row from a served model node; an ordinary
+   * board row leaves it absent, so a consumer that keys on the boolean sees ghosts and nothing else.
+   */
+  planned?: boolean
   /** Owner display name, absent when the board records none. */
   assignee?: string
   /** Attempt counter; no official field in 0.1.7, so it stays unset. */
@@ -234,6 +243,15 @@ export interface TeamWorkflow {
   members: TeamMemberRow[]
   /** The DAG rows, ordered by depth and then by board order. */
   tasks: TeamTaskRow[]
+  /**
+   * The SERVED graph model for this team, when the host publishes one (wave `living-graph`).
+   *
+   * Optional on purpose: ABSENT means this composition has no model (an older host, a unit fixture,
+   * or a service whose model cannot be proved to describe this board) and every surface draws the
+   * board alone, exactly as before. PRESENT means the DAG page draws the model's nodes — plan-only
+   * GHOSTS included — and takes each node's rank from the model instead of deriving one.
+   */
+  model?: GraphModel
   /** Task tally by official status, plus an `other` bucket. */
   counts: {
     total: number
@@ -687,6 +705,18 @@ export interface MpdTeamsLike {
   /** The team bound to one Lead session. */
   active?: (workspace: string, sessionId?: string) => TeamRecord | undefined
   /**
+   * The SERVED graph model of one team: the shared plan→graph core's output for this workspace.
+   *
+   * `teamId` GIVEN means the model of THAT team, which is what a session-scoped reader passes so a
+   * session never receives another team's ghosts. OMITTED means the workspace-PRINCIPAL team, the
+   * documented back-compat answer for a host with no session of its own. The member is optional and a
+   * missing one is not an error: every TUI surface then draws the board it already reads.
+   * @param workspace - the workspace to read, resolved per call.
+   * @param teamId - the mpd team whose model is wanted, when the caller knows which one it draws.
+   * @returns the served model, or undefined when this composition publishes none.
+   */
+  graph?: (workspace: string, teamId?: string) => GraphModel | undefined
+  /**
    * The STAGED PLAN of one session — the SHARED projection, exactly as the Web panel receives it.
    *
    * The service-level reads above are workspace-scoped because an agentless surface has no session of
@@ -915,14 +945,20 @@ export function readScopedWorkflow(read: ScopedTeamRead): TeamWorkflow {
       // is marked, so a reader can see that the board is not necessarily theirs.
       /** The workspace's principal record, under the pre-existing rule. */
       const principal = principalRecord(read.records)
-      if (principal !== undefined) return readRecordWorkflow(read.workspace, read.holds, principal, { scope: "workspace" })
+      if (principal !== undefined) return attachModel(readRecordWorkflow(read.workspace, read.holds, principal, { scope: "workspace" }), read.teams, read.workspace, principal.teamId)
+      // NO MODEL ON THIS ARM: the projection came from the OFFICIAL views, so this reader cannot name
+      // the mpd team it belongs to. `graph(workspace)` would answer for the workspace PRINCIPAL team,
+      // and every team numbers its tasks from `T1` — an id check cannot tell them apart, so asking at
+      // all would risk drawing another session's graph. The board is drawn alone instead.
       return readTeamWorkflow(read.workspace, read.holds, read.views, { scope: "workspace" })
     }
     /** The record THIS session owns, through the service's own resolver. */
     const record = sessionRecord(read.teams, read.workspace, sessionId, read.records)
-    if (record !== undefined) return readRecordWorkflow(read.workspace, read.holds, record, { scope: "session", sessionId })
+    if (record !== undefined) return attachModel(readRecordWorkflow(read.workspace, read.holds, record, { scope: "session", sessionId }), read.teams, read.workspace, record.teamId)
     /** The official views THIS session owns; another session's view is never drawn from here. */
     const mine = sessionViewsOf(read.views, sessionId)
+    // NO MODEL HERE EITHER, for the same reason as the workspace arm: an official view carries the
+    // HOST's team identity, not the mpd record's, so there is no mpd `teamId` to ask `graph` for.
     if (mine.length > 0) return readTeamWorkflow(read.workspace, read.holds, mine, { scope: "session", sessionId })
     // THE HONEST EMPTY STATE. The count is informational only — it is never used to choose a team.
     return emptyWorkflow(read.workspace, [], read.holds, { scope: "none", sessionId, workspaceTeams: read.records.length })
@@ -934,6 +970,155 @@ export function readScopedWorkflow(read: ScopedTeamRead): TeamWorkflow {
       ...(sessionId === undefined ? {} : { sessionId }),
     })
   }
+}
+
+/**
+ * Attach the SERVED graph model to a projection, when it demonstrably describes the SAME board.
+ *
+ * TWO DEFENCES, because one was provably too weak. (1) THE CALLER MUST NAME ITS TEAM: this function
+ * is reached only from a record-based arm, which passes the record's own `teamId`; the two
+ * official-view arms do NOT call it at all, because `graph(workspace)` would answer for the workspace
+ * PRINCIPAL team and an mpd team id cannot be derived from a host view. (2) THE GUARD IS A BIJECTION,
+ * NOT AN INTERSECTION: every board id must appear as a NON-GHOST node AND every non-ghost node must be
+ * on the board. An intersection is satisfiable by coincidence — every team numbers its tasks from
+ * `T1`, so almost any two teams share an id — while a bijection refuses a model that describes a
+ * different (even merely larger) board. A model that survives both is attached; otherwise it is
+ * dropped and the board is drawn alone. A throwing service costs the model, never the board.
+ * @param workflow - the projection to enrich.
+ * @param teams - the `mpdTeams` face, when this composition has one.
+ * @param workspace - the workspace this read is scoped to, resolved per call.
+ * @param teamId - the mpd team the projection was built from; a caller that cannot name one must not
+ *   call this function at all (the service's no-team form answers for the principal).
+ * @returns the projection with `model` set only when both defences accepted it.
+ */
+function attachModel(workflow: TeamWorkflow, teams: MpdTeamsLike | undefined, workspace: string, teamId: string): TeamWorkflow {
+  if (teams === undefined || typeof teams.graph !== "function") return workflow
+  /** The served model, read defensively: a refusing service must not cost the board. */
+  let model: GraphModel | undefined
+  try {
+    model = teams.graph(workspace, teamId)
+  } catch {
+    model = undefined
+  }
+  if (model === undefined || !Array.isArray(model.nodes)) return workflow
+  /** The task ids this projection's own board carries. */
+  const boardIds = new Set(workflow.tasks.map((task) => task.id))
+  /** The model's BOARD-BACKED ids; a ghost is plan-only by definition and cannot prove a board match. */
+  const nodeIds = model.nodes.filter((node) => node.planned === false).map((node) => node.id)
+  /** Those ids as a set, so a duplicated node cannot inflate the count. */
+  const nodeSet = new Set(nodeIds)
+  // THE BIJECTION: equal cardinality, no duplicate nodes, and the board is a subset of the nodes —
+  // which, with equal cardinality, makes the two sets EQUAL. Anything less is satisfiable by a shared
+  // `T1` alone, which is exactly how a foreign team's graph could be accepted.
+  const sameBoard = nodeSet.size === boardIds.size && nodeIds.length === nodeSet.size && [...boardIds].every((id) => nodeSet.has(id))
+  return sameBoard ? { ...workflow, model } : workflow
+}
+
+/**
+ * The rank a served node names, normalized the way the layout expects (finite, integer, >= 0).
+ *
+ * `node.depth` IS the rank: the core's `GraphTask` documents `depth` as "longest dependency path
+ * (0 = a root); the boxes view's RANK", and the merge fills it from the rank derivation.
+ * @param node - the served model node.
+ * @returns the rank; a non-finite or negative depth is 0, the drawing's own root rule.
+ */
+function rankOfNode(node: GraphNode): number {
+  return typeof node.depth === "number" && Number.isFinite(node.depth) ? Math.max(0, Math.floor(node.depth)) : 0
+}
+
+/**
+ * Synthesize the row a plan-only node draws: the model node is the only source.
+ *
+ * A ghost has no board row, so every field the board would have supplied stays honestly absent; its
+ * `visual` is kept verbatim (`"planned"` by the merge) and `planned` marks it for a consumer that
+ * keys on the boolean rather than the string.
+ * @param node - the served model node, a ghost by construction.
+ * @returns the row the DAG page draws for it.
+ */
+function ghostRow(node: GraphNode): TeamTaskRow {
+  return {
+    id: node.id,
+    subject: node.subject,
+    ...(node.kind === undefined ? {} : { kind: node.kind }),
+    status: node.status ?? "pending",
+    visual: node.visual,
+    ...(node.assignee === undefined ? {} : { assignee: node.assignee }),
+    dependencies: [...node.dependencies],
+    failedDependencies: [],
+    depth: rankOfNode(node),
+    planned: true,
+  }
+}
+
+/**
+ * The DAG rows for one projection, with the SERVED model joined in.
+ *
+ * MEMBERSHIP, RANK AND EDGES COME FROM THE MODEL; THE LIVE STATE AND THE DETAIL COME FROM THE BOARD.
+ * A node with a board row keeps that row's own `visual`, subject, description, attempt and the review
+ * fields (the TUI computed them with the OPT-1 failed-dependency rule the bare record cannot express),
+ * and takes the node's `depth` — which IS the model's rank — and the node's `dependencies` — which are
+ * the UNION the merge computed, not the board's own list. THE EDGE AUTHORITY IS THE MODEL, and that is
+ * load-bearing rather than tidy: `graph.ts` draws an edge from exactly `dependencies`, so keeping the
+ * board's list here silently dropped a PLAN-ONLY edge between two BOARD nodes — measured: a plan
+ * declaring `2. Middle (blocked by 1)` over a board whose T2 carried `blockedBy: []` drew T2 one rank
+ * down with NO incoming arrow, a node floating for a reason the drawing never shows. `failedDependencies`
+ * deliberately stays the board row's own: a plan reference that names no node is an `unresolved`
+ * REPORT entry, never a failed dependency. A node with NO board row is a GHOST, synthesized by
+ * {@link ghostRow} and never dropped.
+ *
+ * TOTAL AND ORDERED: a board row the model omits is still returned (a stale model must not lose a
+ * task), and the merged list is sorted by the core's numeric id collator, so a ghost lands at its
+ * id's position rather than wherever an insertion happened.
+ * @param workflow - the projection to read.
+ * @returns the rows to draw; the workflow's own rows, unchanged, when no model was accepted.
+ */
+export function modelRows(workflow: TeamWorkflow): TeamTaskRow[] {
+  /** The accepted model, or undefined when this projection carries none. */
+  const model = workflow.model
+  if (model === undefined) return workflow.tasks
+  /** The board rows this projection already holds, keyed by id for the join. */
+  const byId = new Map(workflow.tasks.map((task) => [task.id, task]))
+  /** The ids the model named, so a board row it omitted can be appended rather than lost. */
+  const seen = new Set<string>()
+  /** The joined rows, before the final ordering pass. */
+  const rows: TeamTaskRow[] = []
+  for (const node of model.nodes) {
+    seen.add(node.id)
+    /** This node's board row, when the board carries the id. */
+    const row = byId.get(node.id)
+    if (row === undefined) {
+      rows.push(ghostRow(node))
+      continue
+    }
+    // THE MODEL OWNS THE EDGES. Spreading the board row alone kept ITS `dependencies`, which is what
+    // the drawing paints edges from — so a plan-declared dependency between two board nodes vanished
+    // before the drawing saw it. The union (the model node's list) is the graph; everything else stays
+    // board-authoritative, including `failedDependencies` (see the header: a dangling PLAN reference is
+    // an unresolved report entry, not a failure).
+    rows.push({ ...row, dependencies: [...node.dependencies], depth: rankOfNode(node) })
+  }
+  for (const task of workflow.tasks) if (!seen.has(task.id)) rows.push(task)
+  rows.sort((left, right) => ID_ORDER.compare(left.id, right.id))
+  return rows
+}
+
+/**
+ * The served rank of every model node, keyed by id, or undefined when the projection carries none.
+ *
+ * `node.depth` IS THE RANK (see {@link rankOfNode}). This map is a PROJECTION only — nothing
+ * serializes it — and the layout takes it as an optional input, so a projection without a model falls
+ * back to the core's own `rankPlan` rather than to a second derivation here.
+ * @param workflow - the projection to read.
+ * @returns every node's rank, or undefined when no model was accepted.
+ */
+export function modelRanks(workflow: TeamWorkflow | undefined): ReadonlyMap<string, number> | undefined {
+  /** The accepted model, or undefined when this projection carries none. */
+  const model = workflow?.model
+  if (model === undefined) return undefined
+  /** The rank of every node, keyed by id. */
+  const ranks = new Map<string, number>()
+  for (const node of model.nodes) ranks.set(node.id, rankOfNode(node))
+  return ranks
 }
 
 /**

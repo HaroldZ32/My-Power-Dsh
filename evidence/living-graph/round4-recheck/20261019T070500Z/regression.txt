@@ -1,0 +1,23 @@
+=== HEAD 96b5c925e1132b09dd9b8be859cf010675136bfe 2026-10-19T07:04:48Z
+--- docs ---
+note agent-references/agent-teams-deltas.md — DERIVED: region-count claim skipped AND its registry (packages/mpd-agent-teams-plugin/lib/mpd-deltas.ts) is equally absent — both were deleted with the adopted agent-teams body (de-vendor wave), so the derived-value rule is VACUOUS in this root: it is exercised only by this script's --self-test fixtures, never by the live tree
+[verify-docs-parity] links=438 checked=406 resolved=406 dead=0 exemptProvenance=0 absentSite=0 ignoredExternal=26 ignoredAnchorOnly=6 files=117
+
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=48 failed=0 violations=0 exempt=24 derived=3 links=438 dead=0 — PASS
+exit=0
+--- core + host suites ---
+(pass) determinism > tasks are ordered by id even when the document is not [0.04ms]
+
+ 300 pass
+ 0 fail
+ 1191 expect() calls
+Ran 300 tests across 22 files. [2.29s]
+--- typecheck ---
+$ tsgo --noEmit
+exit=0
+--- gate arms ---
+positive exit=0
+seeded exit=1
+[verify-graph-model] self-test PASS — 8 arms: both directions and the path forms
+--- dist ---
+[verify-dist-fresh] ok: 32/32 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 650ms

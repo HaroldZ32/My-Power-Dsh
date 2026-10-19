@@ -1,0 +1,187 @@
+{
+ "probe": "cross-plane-join",
+ "at": "2026-10-19T04:27:22.114Z",
+ "model": {
+  "nodes": [
+   [
+    "T1",
+    0
+   ],
+   [
+    "T2",
+    1
+   ],
+   [
+    "T3",
+    1
+   ],
+   [
+    "T4",
+    2
+   ],
+   [
+    "T5",
+    3
+   ]
+  ],
+  "edges": [
+   "T1->T2",
+   "T1->T3",
+   "T2->T4",
+   "T4->T5"
+  ]
+ },
+ "observed": {
+  "tuiRanks": [
+   [
+    "T1",
+    0
+   ],
+   [
+    "T2",
+    1
+   ],
+   [
+    "T3",
+    1
+   ],
+   [
+    "T4",
+    2
+   ],
+   [
+    "T5",
+    3
+   ]
+  ],
+  "webBoxes": [
+   {
+    "id": "T1",
+    "rank": 0,
+    "planned": false
+   },
+   {
+    "id": "T2",
+    "rank": 1,
+    "planned": false
+   },
+   {
+    "id": "T3",
+    "rank": 1,
+    "planned": false
+   },
+   {
+    "id": "T4",
+    "rank": 2,
+    "planned": false
+   },
+   {
+    "id": "T5",
+    "rank": 3,
+    "planned": true
+   }
+  ],
+  "tuiDrawnEdges": [
+   "T1->T2",
+   "T1->T3",
+   "T2->T4",
+   "T4->T5"
+  ],
+  "webDrawnEdges": [
+   "T2<-T1",
+   "T3<-T1",
+   "T4<-T2",
+   "T5<-T4"
+  ],
+  "servedRanks": [
+   {
+    "id": "T1",
+    "rank": 0,
+    "depth": 0
+   },
+   {
+    "id": "T2",
+    "rank": 1,
+    "depth": 0
+   },
+   {
+    "id": "T3",
+    "rank": 1,
+    "depth": 1
+   },
+   {
+    "id": "T4",
+    "rank": 2,
+    "depth": 1
+   }
+  ],
+  "flat": {
+   "tuiHits": [
+    {
+     "id": "T1",
+     "row": 0
+    },
+    {
+     "id": "T2",
+     "row": 0
+    },
+    {
+     "id": "T3",
+     "row": 0
+    },
+    {
+     "id": "T4",
+     "row": 0
+    },
+    {
+     "id": "T5",
+     "row": 0
+    }
+   ],
+   "tuiModelRanks": [
+    [
+     "T1",
+     "T2",
+     "T3",
+     "T4",
+     "T5"
+    ]
+   ],
+   "tuiRanksDerived": true
+  }
+ },
+ "host": {
+  "resolvedPlan": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/living-graph/lane-e-verdict/20261019T042500Z/ws-host-BIsnBk/.mpd/plans/task-plan.md",
+  "verdict": {
+   "resolvedTheFixturePlan": true,
+   "hostModelEqualsTheServedFixture": true,
+   "ghostPresent": true,
+   "planOnlyEdgePresent": true,
+   "agreeingEdgePresent": true,
+   "ranksAreTheDerivedOnes": true
+  }
+ },
+ "static": {
+  "clientBundleDeriveRanks": 0,
+  "clientBundleBuildModel": 0,
+  "clientBundleIdOrder": 2,
+  "webFactoryBuildModel": 0,
+  "tuiTeamStateBuildModel": 0,
+  "tuiGraphRankPlanImports": 7,
+  "hostCacheBuildModelCalls": 1
+ },
+ "verdict": {
+  "tuiRanksEqualModel": true,
+  "webRanksEqualModel": true,
+  "tuiEdgesEqualModel": true,
+  "webEdgesEqualModel": true,
+  "servedRankIsModelRank": true,
+  "hostModelEqualsServed": true,
+  "webArtifactHasNoRankDerivation": true,
+  "webCollatorDuplicated": true,
+  "webFactoryHasNoModelCall": true,
+  "tuiHasNoModelCall": true,
+  "hostIsTheOnlyModelCall": true,
+  "flatDrawsFlat": true
+ }
+}

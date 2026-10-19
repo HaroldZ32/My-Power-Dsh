@@ -1,0 +1,91 @@
+{
+ "probe": "f4-replacement-recovery",
+ "at": "2026-10-19T06:25:14.269Z",
+ "runtime": "node 24.21.0",
+ "live": {
+  "rmRecreate": {
+   "kind": "rm-recreate",
+   "sameIno": true,
+   "batches": [
+    {
+     "sequence": 1,
+     "coalesced": 2,
+     "manual": false
+    },
+    {
+     "sequence": 2,
+     "coalesced": 4,
+     "manual": false
+    },
+    {
+     "sequence": 3,
+     "coalesced": 2,
+     "manual": false
+    }
+   ],
+   "replacementDelivered": true,
+   "manualAny": false,
+   "lateWriteDelivered": true
+  },
+  "renameAway": {
+   "kind": "rename-away",
+   "sameIno": false,
+   "batches": [
+    {
+     "sequence": 1,
+     "coalesced": 2,
+     "manual": false
+    },
+    {
+     "sequence": 2,
+     "coalesced": 1,
+     "manual": false
+    },
+    {
+     "sequence": 3,
+     "coalesced": 2,
+     "manual": false
+    }
+   ],
+   "replacementDelivered": true,
+   "manualAny": false,
+   "lateWriteDelivered": true
+  }
+ },
+ "injected": {
+  "afterRearm": 2,
+  "afterOldClose": 2,
+  "oldCloseIgnored": true,
+  "successorStillWorks": true,
+  "afterDeadClose": 3,
+  "deadWatchRearmed": true,
+  "rearmedDelivers": true,
+  "atClose": 3,
+  "afterCloseWait": 3,
+  "closeCancelledTimers": true,
+  "closedPoll": false,
+  "errors": 0
+ },
+ "idle": {
+  "batches": 0,
+  "handles": 1,
+  "idleDeliveredNothing": true,
+  "idleDidNotRearm": true,
+  "closedPoll": false,
+  "afterCloseHandles": 1,
+  "afterCloseNoRearm": true
+ },
+ "verdict": {
+  "rmRecreateLateWriteDelivered": true,
+  "rmRecreateUsedSameInode": true,
+  "rmRecreateReplacementSeen": true,
+  "renameAwayLateWriteDelivered": true,
+  "renameAwayReplacementSeen": true,
+  "noPollBatch": true,
+  "oldCloseCannotKillSuccessor": true,
+  "deadWatchRearmsWithoutEvent": true,
+  "closeCancelsRearmTimers": true,
+  "idleDirectoryStaysSilent": true,
+  "noRearmAfterClose": true
+ }
+}

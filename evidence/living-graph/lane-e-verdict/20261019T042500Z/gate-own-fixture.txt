@@ -1,0 +1,10 @@
+=== THE GATE RUN ON LANE E'S OWN FIXTURE (2026-10-19T04:25:11Z) ===
+--- positive ---
+[verify-graph-model] PASS — nodes (7), edges (6), ranks, cycles and the report equal the declared input
+exit=0
+--- seeded wrong edge ---
+[verify-graph-model] negative control: T1→T2: source "both" seeded to "board"
+[verify-graph-model] FAIL edge T1→T2: expected source "both" got "board"
+[verify-graph-model] FAIL edge list: expected [{"from":"T1","source":"both","to":"T2"},{"from":"T1","source":"board","to":"T7"},{"from":"T2","source":"plan","to":"T3"},{"from":"T3","source":"board","to":"T4"},{"from":"T4","source":"plan","to":"F1"},{"from":"T4","source":"plan","to":"T6"}] got [{"from":"T1","source":"board","to":"T2"},{"from":"T1","source":"board","to":"T7"},{"from":"T2","source":"plan","to":"T3"},{"from":"T3","source":"board","to":"T4"},{"from":"T4","source":"plan","to":"F1"},{"from":"T4","source":"plan","to":"T6"}]
+[verify-graph-model] FAIL — 2 expectation(s) did not hold
+exit=1

@@ -1,0 +1,108 @@
+{
+ "probe": "web",
+ "at": "2026-10-19T04:34:02.902Z",
+ "fixture": {
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/living-graph/f1-recheck/20261019T043000Z/ws-sT8fHQ",
+  "urlsRead": [
+   "/plugins/mpd-team-watchdog/state",
+   "/plugins/mpd-team/state?sessionId=sess-lane-e",
+   "/plugins/mpd-team/plan?sessionId=sess-lane-e",
+   "/plugins/mpd-team/task?sessionId=sess-lane-e",
+   "/plugins/mpd-team/state?sessionId=sess-lane-e",
+   "/plugins/mpd-team/plan?sessionId=sess-lane-e",
+   "/plugins/mpd-team/task?sessionId=sess-lane-e"
+  ]
+ },
+ "armedIntervals": [
+  15000,
+  2000
+ ],
+ "push": {
+  "streamOpened": true,
+  "streamUrl": "/plugins/mpd-team/events?sessionId=sess-lane-e",
+  "readsBefore": 1,
+  "readsAfter": 2,
+  "frameRefreshed": true,
+  "intervalFired": 0
+ },
+ "payload": {
+  "hasModel": true,
+  "servedRanks": [
+   {
+    "id": "T1",
+    "rank": 0,
+    "depth": 0
+   },
+   {
+    "id": "T2",
+    "rank": 1,
+    "depth": 0
+   },
+   {
+    "id": "T3",
+    "rank": 1,
+    "depth": 1
+   },
+   {
+    "id": "T4",
+    "rank": 2,
+    "depth": 1
+   }
+  ]
+ },
+ "web": {
+  "boxes": [
+   {
+    "id": "T1",
+    "rank": 0,
+    "planned": false
+   },
+   {
+    "id": "T2",
+    "rank": 1,
+    "planned": false
+   },
+   {
+    "id": "T3",
+    "rank": 1,
+    "planned": false
+   },
+   {
+    "id": "T4",
+    "rank": 2,
+    "planned": false
+   },
+   {
+    "id": "T5",
+    "rank": 3,
+    "planned": true
+   }
+  ],
+  "edges": [
+   "T2<-T1",
+   "T3<-T1",
+   "T4<-T2",
+   "T5<-T4"
+  ],
+  "edgesSorted": [
+   "T2<-T1",
+   "T3<-T1",
+   "T4<-T2",
+   "T5<-T4"
+  ]
+ },
+ "modelEdges": [
+  "T2<-T1",
+  "T3<-T1",
+  "T4<-T2",
+  "T5<-T4"
+ ],
+ "verdict": {
+  "payloadCarriesModel": true,
+  "servedRankIsModelRank": true,
+  "boxesFollowModel": true,
+  "ghostBoxDrawn": true,
+  "planOnlyEdgeDrawn": true,
+  "edgeSetEqualsModel": true
+ }
+}

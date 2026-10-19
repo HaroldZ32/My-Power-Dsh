@@ -1,6 +1,6 @@
 // packages/mpd-team-core-plugin/src/index.ts
-import { existsSync as existsSync4, mkdirSync as mkdirSync6, readFileSync as readFileSync5, readdirSync as readdirSync4, renameSync as renameSync4, writeFileSync as writeFileSync3 } from "node:fs";
-import { join as join6 } from "node:path";
+import { existsSync as existsSync4, mkdirSync as mkdirSync6, readFileSync as readFileSync6, readdirSync as readdirSync6, renameSync as renameSync4, writeFileSync as writeFileSync3 } from "node:fs";
+import { join as join8 } from "node:path";
 
 // packages/mpd-dsh-adapter-plugin/src/index.ts
 import { randomUUID } from "node:crypto";
@@ -2637,7 +2637,7 @@ function buildWorkspaceTeams(teams, activeId) {
     ...activeId === undefined ? {} : { activeId }
   };
 }
-function buildTeamState(record, workspace, sessionId, executor, workspaceTeams) {
+function buildTeamState(record, workspace, sessionId, executor, workspaceTeams, model) {
   const listing = workspaceTeams ?? { records: [] };
   const empty = {
     ok: true,
@@ -2657,6 +2657,10 @@ function buildTeamState(record, workspace, sessionId, executor, workspaceTeams) 
   const summary = summariseTeam(record);
   const ready = new Set(readyTasks(record).map((task) => task.id));
   const idle = new Set(idleMembers(record).map((member) => member.name));
+  const rankOf = new Map;
+  if (model !== undefined)
+    for (const node of model.nodes)
+      rankOf.set(node.id, node.depth);
   const tasks = record.tasks.map((task) => ({
     id: task.id,
     subject: task.subject,
@@ -2669,7 +2673,8 @@ function buildTeamState(record, workspace, sessionId, executor, workspaceTeams) 
     ...task.verdict === undefined ? {} : { verdict: task.verdict },
     blockedBy: [...task.blockedBy],
     failedBy: blockingDependencies(record.tasks, task.blockedBy).failed,
-    depth: summary.depths.get(task.id) ?? 0
+    depth: summary.depths.get(task.id) ?? 0,
+    ...model === undefined ? {} : { rank: rankOf.get(task.id) ?? 0 }
   })).sort((left, right) => left.depth - right.depth);
   return {
     ok: true,
@@ -2707,6 +2712,7 @@ function buildTeamState(record, workspace, sessionId, executor, workspaceTeams) 
       };
     }),
     tasks,
+    ...model === undefined ? {} : { model },
     cycles: cycleIds(record.tasks),
     executor,
     problems: summary.cycles.length === 0 ? [] : [`cycle ${summary.cycles.join(",")}`]
@@ -2920,7 +2926,9 @@ data: ${JSON.stringify({ rev: revisionNow() })}
   all = mount(TEAM_STATE_PATH, (req) => {
     const sessionId = sessionOf(req);
     const workspace = deps.workspace();
-    return buildTeamState(deps.recordFor(sessionId), workspace, sessionId, deps.executor(), buildWorkspaceTeams(listTeams(workspace), activeTeamId(workspace, sessionId)));
+    const record = deps.recordFor(sessionId);
+    const model = record === undefined ? undefined : deps.graph?.(workspace, record.teamId);
+    return buildTeamState(record, workspace, sessionId, deps.executor(), buildWorkspaceTeams(listTeams(workspace), activeTeamId(workspace, sessionId)), model);
   }) && all;
   all = mount(TEAM_PLAN_PATH, (req) => {
     const sessionId = sessionOf(req);
@@ -2932,9 +2940,891 @@ data: ${JSON.stringify({ rev: revisionNow() })}
   return all;
 }
 
+// packages/mpd-graph-core/src/rank.ts
+function deriveRanks(tasks, byId) {
+  const settled = new Map;
+  const walking = new Set;
+  for (const root of tasks) {
+    if (settled.has(root.id))
+      continue;
+    const stack = [{ id: root.id, next: 0 }];
+    walking.add(root.id);
+    while (stack.length > 0) {
+      const frame = stack[stack.length - 1];
+      const deps = (byId.get(frame.id)?.dependencies ?? []).filter((id) => byId.has(id));
+      if (frame.next < deps.length) {
+        const dependency = deps[frame.next];
+        frame.next += 1;
+        if (settled.has(dependency) || walking.has(dependency))
+          continue;
+        walking.add(dependency);
+        stack.push({ id: dependency, next: 0 });
+        continue;
+      }
+      let deepest = 0;
+      for (const dependency of deps)
+        deepest = Math.max(deepest, (settled.get(dependency) ?? 0) + 1);
+      settled.set(frame.id, deepest);
+      walking.delete(frame.id);
+      stack.pop();
+    }
+  }
+  return settled;
+}
+function servedRank(task) {
+  return Number.isFinite(task.depth) && task.depth > 0 ? Math.floor(task.depth) : 0;
+}
+var ID_ORDER = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
+function bucketRanks(tasks, rankOf) {
+  const deepest = tasks.reduce((max, task) => Math.max(max, rankOf(task)), 0);
+  const ranks = Array.from({ length: deepest + 1 }, () => []);
+  for (const task of tasks)
+    ranks[Math.min(Math.max(0, rankOf(task)), deepest)].push(task);
+  for (const rank of ranks)
+    rank.sort((left, right) => ID_ORDER.compare(left.id, right.id));
+  return ranks;
+}
+function rankPlan(tasks, served) {
+  const byId = new Map(tasks.map((task) => [task.id, task]));
+  const missing = new Set;
+  let resolved = 0;
+  for (const task of tasks) {
+    for (const id of task.dependencies) {
+      if (byId.has(id))
+        resolved += 1;
+      else
+        missing.add(id);
+    }
+  }
+  const unresolved = [...missing].sort();
+  if (served !== undefined) {
+    return { ranks: bucketRanks(tasks, (task) => served.get(task.id) ?? 0), rankOf: served, derived: false, unresolved };
+  }
+  if (tasks.length === 0)
+    return { ranks: [], rankOf: new Map, derived: true, unresolved };
+  const servedVaries = new Set(tasks.map((task) => servedRank(task))).size > 1;
+  if (resolved === 0 && servedVaries) {
+    const ranks = bucketRanks(tasks, servedRank);
+    const rankOf = new Map;
+    ranks.forEach((rank, index) => {
+      for (const task of rank)
+        rankOf.set(task.id, index);
+    });
+    return { ranks, rankOf, derived: false, unresolved };
+  }
+  const derived = deriveRanks(tasks, byId);
+  return { ranks: bucketRanks(tasks, (task) => derived.get(task.id) ?? 0), rankOf: derived, derived: true, unresolved };
+}
+function cycleIds2(tasks) {
+  const byId = new Map(tasks.map((task) => [task.id, task]));
+  const done = new Set;
+  const stack = [];
+  const onStack = new Set;
+  const cyclic = new Set;
+  const visit = (id) => {
+    if (done.has(id))
+      return;
+    if (onStack.has(id)) {
+      for (const entry of stack.slice(stack.indexOf(id)))
+        cyclic.add(entry);
+      return;
+    }
+    const task = byId.get(id);
+    if (task === undefined)
+      return;
+    onStack.add(id);
+    stack.push(id);
+    for (const dependency of task.dependencies)
+      if (byId.has(dependency))
+        visit(dependency);
+    stack.pop();
+    onStack.delete(id);
+    done.add(id);
+  };
+  for (const task of tasks)
+    visit(task.id);
+  return [...cyclic].sort();
+}
+// packages/mpd-graph-core/src/plan.ts
+var TODO_HEADING = /^##[ \t]+TODOs(?:[ \t]+#+)?[ \t]*$/i;
+var FINAL_WAVE_HEADING = /^##[ \t]+Final Verification Wave(?:[ \t]+#+)?[ \t]*$/i;
+var SECTION_BOUNDARY = /^#{1,2}(?:[ \t]+|$)/;
+var FENCE = /^[ \t]{0,3}(`{3,}|~{3,})(.*)$/;
+var TODO_TASK = /^(?:[-*][ \t]+(?:\[[ xX]\][ \t]+)?)?([1-9][0-9]*)\.\s+(\S.*)$/;
+var FINAL_TASK = /^(?:[-*][ \t]+(?:\[[ xX]\][ \t]+)?)?([Ff][1-9][0-9]*)\.\s+(\S.*)$/;
+var TASK_CANDIDATE = /^(?:[-*][ \t]+|[0-9]+\.|[Ff][0-9]+\.)/;
+var LANE_MARKER = /^(?:Lane\s+)?([A-Za-z][A-Za-z0-9]{0,3})\s*(?:\.[ \t]*|—[ \t]*|–[ \t]*|·[ \t]*|:[ \t]*|\()/;
+var PARENTHESISED_BLOCKS = /\(\s*blocked[\s_-]+by\s*:?\s*([^)]+)\)/gi;
+var LABELLED_BLOCKS = /(?:blocked[\s_-]+by|depends[\s_-]+on)\s*:\s*([^.()\n]+)/gi;
+function splitCells(row) {
+  const trimmed = row.trim();
+  if (!trimmed.startsWith("|"))
+    return [];
+  const body = trimmed.replace(/^\|/, "").replace(/\|$/, "");
+  return body.split("|").map((cell) => cell.trim());
+}
+function isTableSeparator(row) {
+  const cells = splitCells(row);
+  return cells.length > 0 && cells.every((cell) => /^:?-+:?$/.test(cell.replace(/[ \t]/g, "")));
+}
+function stripEmphasis(text) {
+  let value = text.trim();
+  while (value.startsWith("**") || value.startsWith("*") || value.startsWith("`")) {
+    value = (value.startsWith("**") ? value.slice(2) : value.slice(1)).trim();
+  }
+  while (value.endsWith("**") || value.endsWith("*") || value.endsWith("`")) {
+    value = (value.endsWith("**") ? value.slice(0, -2) : value.slice(0, -1)).trim();
+  }
+  return value;
+}
+function laneKeyOf(text) {
+  const value = stripEmphasis(text);
+  const match = /^(?:Lane\s+)?([A-Za-z][A-Za-z0-9]{0,3})(?=[ \t]*[.:—–·(]|[ \t]*$)/.exec(value);
+  return match === null ? undefined : match[1].toUpperCase();
+}
+function leadingLane(text) {
+  let value = text.trim();
+  let bold = false;
+  if (value.startsWith("**")) {
+    bold = true;
+    value = value.slice(2);
+  }
+  const match = LANE_MARKER.exec(value);
+  if (match === null)
+    return;
+  let rest = value.slice(match[0].length);
+  if (match[0].endsWith("(")) {
+    const close = rest.indexOf(")");
+    if (close >= 0)
+      rest = rest.slice(close + 1);
+  }
+  if (bold && rest.startsWith("**"))
+    rest = rest.slice(2);
+  rest = rest.replace(/^[ \t]*(?:—|–|-|·|:)[ \t]*/, "").trim();
+  return { key: match[1].toUpperCase(), title: rest === "" ? value.trim() : rest };
+}
+function normalizeOwner(cell) {
+  const value = stripEmphasis(cell);
+  const cut = value.indexOf("(");
+  return (cut >= 0 ? value.slice(0, cut) : value).trim();
+}
+function readableLines(text) {
+  const lines = [];
+  let fence;
+  let number = 0;
+  for (const raw of text.split(`
+`)) {
+    number += 1;
+    const opener = FENCE.exec(raw);
+    if (fence === undefined) {
+      if (opener !== null) {
+        fence = { marker: opener[1][0], length: opener[1].length };
+        continue;
+      }
+      lines.push({ text: raw.replace(/\r$/, ""), line: number });
+      continue;
+    }
+    if (opener !== null && opener[1][0] === fence.marker && opener[1].length >= fence.length && opener[2].trim() === "") {
+      fence = undefined;
+    }
+  }
+  return lines;
+}
+function collectLanes(lines, problems) {
+  const lanes = new Map;
+  let index = 0;
+  while (index < lines.length) {
+    const header = splitCells(lines[index].text);
+    const named = header.some((cell) => stripEmphasis(cell).toLowerCase() === "lane") && header.some((cell) => stripEmphasis(cell).toLowerCase() === "owner");
+    const separator = lines[index + 1];
+    if (!named || separator === undefined || !isTableSeparator(separator.text)) {
+      index += 1;
+      continue;
+    }
+    let cursor = index + 2;
+    while (cursor < lines.length && lines[cursor].text.trimStart().startsWith("|")) {
+      const cells = splitCells(lines[cursor].text);
+      const key = laneKeyOf(cells[0] ?? "");
+      const owner = cells.length > 1 ? normalizeOwner(cells[1]) : "";
+      if (key === undefined || owner === "") {
+        problems.push({
+          line: lines[cursor].line,
+          text: lines[cursor].text,
+          reason: key === undefined ? "lane table row names no lane label" : "lane table row names no owner"
+        });
+      } else if (!lanes.has(key)) {
+        lanes.set(key, owner);
+      }
+      cursor += 1;
+    }
+    index = cursor;
+  }
+  return lanes;
+}
+function collectTasks(lines, lanes, problems) {
+  const tasks = [];
+  let section;
+  for (const line of lines) {
+    if (TODO_HEADING.test(line.text)) {
+      section = "todo";
+      continue;
+    }
+    if (FINAL_WAVE_HEADING.test(line.text)) {
+      section = "final-wave";
+      continue;
+    }
+    if (SECTION_BOUNDARY.test(line.text)) {
+      section = undefined;
+      continue;
+    }
+    if (section === undefined)
+      continue;
+    if (line.text.trim() === "")
+      continue;
+    if (/^[ \t]/.test(line.text))
+      continue;
+    if (!TASK_CANDIDATE.test(line.text))
+      continue;
+    const grammar = section === "todo" ? TODO_TASK : FINAL_TASK;
+    const match = grammar.exec(line.text);
+    if (match === null) {
+      problems.push({
+        line: line.line,
+        text: line.text,
+        reason: section === "todo" ? "not a numbered TODO item" : "not an F<n> final-verification item"
+      });
+      continue;
+    }
+    const afterOrdinal = match[2].trim();
+    const mark = leadingLane(afterOrdinal);
+    const lane = mark !== undefined && lanes.has(mark.key) ? mark.key : undefined;
+    if (mark !== undefined && lane === undefined) {
+      problems.push({ line: line.line, text: line.text, reason: `leading lane marker ${mark.key} names no lane the plan declares` });
+    }
+    const title = mark !== undefined && lane !== undefined ? mark.title : afterOrdinal;
+    tasks.push({
+      id: section === "todo" ? `T${match[1]}` : match[1].toUpperCase(),
+      title,
+      source: line.text,
+      section,
+      line: line.line,
+      lane,
+      references: declaredReferences(afterOrdinal)
+    });
+  }
+  return tasks;
+}
+function declaredReferences(text) {
+  const lists = [];
+  for (const match of text.matchAll(PARENTHESISED_BLOCKS))
+    lists.push(match[1]);
+  for (const match of text.matchAll(LABELLED_BLOCKS))
+    lists.push(match[1]);
+  return lists.flatMap((list) => list.split(/[ \t]*(?:,|\+|&|\band\b)[ \t]*/i).map((token) => token.trim()).filter((token) => token !== ""));
+}
+function resolveTask(task, lanes, byLane, problems) {
+  const ids = [];
+  for (const token of task.references) {
+    const idMatch = /^(T|F)?([1-9][0-9]*)$/i.exec(token);
+    const laneMatch = /^(?:Lane[ \t]+)?([A-Za-z][A-Za-z0-9]{0,3})$/i.exec(token);
+    if (idMatch !== null) {
+      ids.push(`${(idMatch[1] ?? "T").toUpperCase()}${idMatch[2]}`);
+      continue;
+    }
+    if (laneMatch !== null) {
+      const key = laneMatch[1].toUpperCase();
+      const declared = byLane.get(key) ?? [];
+      if (declared.length > 0) {
+        for (const other of declared)
+          if (other.id !== task.id)
+            ids.push(other.id);
+        continue;
+      }
+    }
+    problems.push({ line: task.line, text: task.source, reason: `"${token}" names no task id and no declared lane` });
+  }
+  const owner = task.lane === undefined ? undefined : lanes.get(task.lane);
+  const blockedBy = [...new Set(ids)].sort((left, right) => ID_ORDER.compare(left, right));
+  return { id: task.id, title: task.title, section: task.section, line: task.line, owner, blockedBy };
+}
+function parsePlanMarkdown(text) {
+  const lines = readableLines(text);
+  const problems = [];
+  const lanes = collectLanes(lines, problems);
+  const raw = collectTasks(lines, lanes, problems);
+  const seen = new Set;
+  const byLane = new Map;
+  for (const task of raw) {
+    if (task.lane === undefined)
+      continue;
+    const list = byLane.get(task.lane) ?? [];
+    list.push(task);
+    byLane.set(task.lane, list);
+  }
+  const tasks = [];
+  for (const task of raw) {
+    if (seen.has(task.id)) {
+      problems.push({ line: task.line, text: task.source, reason: `duplicate task id ${task.id}` });
+      continue;
+    }
+    seen.add(task.id);
+    tasks.push(resolveTask(task, lanes, byLane, problems));
+  }
+  problems.sort((left, right) => left.line - right.line || left.text.localeCompare(right.text));
+  const laneRows = [...lanes].map(([key, owner]) => ({ key, owner })).sort((left, right) => ID_ORDER.compare(left.key, right.key));
+  return { tasks: tasks.sort((left, right) => ID_ORDER.compare(left.id, right.id)), lanes: laneRows, problems };
+}
+// packages/mpd-graph-core/src/model.ts
+var BOARD_VISUALS = new Set(["completed", "running", "failed", "blocked", "open", "cancelled"]);
+function visualOf(task) {
+  if (task.visual !== undefined && BOARD_VISUALS.has(task.visual))
+    return task.visual;
+  return statusVisual(task.status);
+}
+function statusVisual(status) {
+  switch (status) {
+    case "completed":
+      return "completed";
+    case "failed":
+      return "failed";
+    case "cancelled":
+      return "cancelled";
+    case "claimed":
+    case "in_progress":
+      return "running";
+    case "blocked":
+      return "blocked";
+    default:
+      return "open";
+  }
+}
+function uniqueSorted(values) {
+  return [...new Set(values)].sort((left, right) => ID_ORDER.compare(left, right));
+}
+function buildModel(input) {
+  const boardById = new Map;
+  for (const task of input.board ?? [])
+    boardById.set(task.id, task);
+  const planById = new Map;
+  for (const task of input.plan?.tasks ?? [])
+    planById.set(task.id, task);
+  const ids = [...new Set([...boardById.keys(), ...planById.keys()])].sort((left, right) => ID_ORDER.compare(left, right));
+  const drafts = [];
+  for (const id of ids) {
+    const board = boardById.get(id);
+    const planned = planById.get(id);
+    const kind = board?.kind;
+    const assignee = board?.owner ?? planned?.owner;
+    const title = planned?.title;
+    const status = board?.status;
+    drafts.push({
+      id,
+      subject: board?.subject ?? planned?.title ?? id,
+      visual: board === undefined ? "planned" : visualOf(board),
+      dependencies: uniqueSorted([...board?.blockedBy ?? [], ...planned?.blockedBy ?? []]),
+      depth: board?.depth ?? 0,
+      planned: board === undefined,
+      ...kind === undefined ? {} : { kind },
+      ...assignee === undefined ? {} : { assignee },
+      ...title === undefined ? {} : { title },
+      ...status === undefined ? {} : { status }
+    });
+  }
+  const declared = new Map;
+  const keyOf = (from, to) => `${from}\x00${to}`;
+  for (const task of boardById.values()) {
+    for (const from of task.blockedBy ?? []) {
+      const entry = declared.get(keyOf(from, task.id)) ?? { from, to: task.id, board: false, plan: false };
+      entry.board = true;
+      declared.set(keyOf(from, task.id), entry);
+    }
+  }
+  for (const task of planById.values()) {
+    for (const from of task.blockedBy) {
+      const entry = declared.get(keyOf(from, task.id)) ?? { from, to: task.id, board: false, plan: false };
+      entry.plan = true;
+      declared.set(keyOf(from, task.id), entry);
+    }
+  }
+  const nodeIds = new Set(ids);
+  const edges = [];
+  for (const entry of declared.values()) {
+    if (!nodeIds.has(entry.from) || !nodeIds.has(entry.to))
+      continue;
+    edges.push({ from: entry.from, to: entry.to, source: entry.board && entry.plan ? "both" : entry.plan ? "plan" : "board" });
+  }
+  edges.sort((left, right) => ID_ORDER.compare(left.from, right.from) || ID_ORDER.compare(left.to, right.to));
+  const layout = rankPlan(drafts);
+  const nodes = drafts.map((node) => ({ ...node, depth: layout.rankOf.get(node.id) ?? node.depth }));
+  const ranks = layout.ranks.map((rank) => rank.map((task) => task.id));
+  const report = {
+    boardOnly: ids.filter((id) => boardById.has(id) && !planById.has(id)),
+    planOnly: ids.filter((id) => planById.has(id) && !boardById.has(id)),
+    edgePlanOnly: edges.filter((edge) => edge.source === "plan"),
+    edgeBoardOnly: edges.filter((edge) => edge.source === "board"),
+    planProblems: [...input.plan?.problems ?? []],
+    unresolved: [...layout.unresolved],
+    ranksDerived: layout.derived
+  };
+  return { nodes, edges, ranks, cycles: cycleIds2(nodes), report };
+}
+// packages/mpd-graph-core/src/resolve.ts
+import { readFileSync as readFileSync4, readdirSync as readdirSync3, statSync as statSync2 } from "node:fs";
+import { isAbsolute as isAbsolute2, join as join5, resolve as resolve3 } from "node:path";
+var LEDGER_PATH = join5(".mpd", "boulder.json");
+var PLANS_DIR = join5(".mpd", "plans");
+var EMPTY_PLAN = { tasks: [], lanes: [], problems: [] };
+function isRecord2(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function planPathFrom(root, value) {
+  if (typeof value !== "string" || value.trim() === "")
+    return;
+  return isAbsolute2(value) ? resolve3(value) : resolve3(root, value);
+}
+function readBoulderState(root) {
+  try {
+    const parsed = JSON.parse(readFileSync4(join5(root, LEDGER_PATH), "utf8"));
+    return isRecord2(parsed) ? parsed : undefined;
+  } catch {
+    return;
+  }
+}
+function beaconPlan(root) {
+  const state = readBoulderState(root);
+  if (state === undefined)
+    return;
+  const works = isRecord2(state.works) ? state.works : undefined;
+  const activeId = typeof state.active_work_id === "string" ? state.active_work_id : undefined;
+  const record = works !== undefined && activeId !== undefined && isRecord2(works[activeId]) ? works[activeId] : undefined;
+  if (record === undefined || record.status !== "active")
+    return;
+  const path = planPathFrom(root, record.active_plan) ?? planPathFrom(root, state.active_plan);
+  if (path === undefined)
+    return;
+  try {
+    return statSync2(path).isFile() ? path : undefined;
+  } catch {
+    return;
+  }
+}
+function newestPlan(root) {
+  const candidates = [];
+  try {
+    const directory = plansDirectory(root);
+    const entries = readdirSync3(directory, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isFile() || !entry.name.endsWith(".md") || entry.name.endsWith(".zh-CN.md"))
+        continue;
+      const path = join5(directory, entry.name);
+      const stats = statSync2(path, { throwIfNoEntry: false });
+      if (stats === undefined)
+        continue;
+      candidates.push({ path, mtimeMs: stats.mtimeMs, name: entry.name });
+    }
+  } catch {
+    return;
+  }
+  candidates.sort((left, right) => right.mtimeMs - left.mtimeMs || left.name.localeCompare(right.name));
+  return candidates[0]?.path;
+}
+function plansDirectory(workspaceRoot) {
+  return join5(workspaceRoot, PLANS_DIR);
+}
+function resolvePlanFile(workspaceRoot) {
+  const beacon = beaconPlan(workspaceRoot);
+  if (beacon !== undefined)
+    return beacon;
+  return newestPlan(workspaceRoot);
+}
+function readPlanFile(path) {
+  if (path === undefined)
+    return { tasks: [...EMPTY_PLAN.tasks], lanes: [...EMPTY_PLAN.lanes], problems: [...EMPTY_PLAN.problems] };
+  try {
+    return parsePlanMarkdown(readFileSync4(path, "utf8"));
+  } catch {
+    return { tasks: [], lanes: [], problems: [{ line: 0, text: path, reason: "plan file could not be read" }] };
+  }
+}
+// packages/mpd-graph-core/src/watch.ts
+import { readdirSync as readdirSync4, statSync as statSync3, watch } from "node:fs";
+import { basename, dirname, join as join6 } from "node:path";
+var REARM_DELAYS_MS = [25, 100, 400];
+function defaultCreateWatch(path, listener) {
+  return watch(path, { persistent: false }, (eventType, filename) => listener(String(eventType), filename ?? undefined));
+}
+function statOrUndefined(path) {
+  try {
+    return statSync3(path);
+  } catch {
+    return;
+  }
+}
+function nearestExistingDirectory(path) {
+  let current = path;
+  for (;; ) {
+    let exists = false;
+    try {
+      exists = statSync3(current).isDirectory();
+    } catch {
+      exists = false;
+    }
+    if (exists)
+      return current;
+    const parent = dirname(current);
+    if (parent === current)
+      return;
+    current = parent;
+  }
+}
+function fileSignature(path) {
+  const stats = statOrUndefined(path);
+  return stats === undefined ? "missing" : `${stats.ino}:${stats.mtimeMs}:${stats.ctimeMs}:${stats.size}`;
+}
+function directorySignature(directory, accept) {
+  let names;
+  try {
+    names = readdirSync4(directory);
+  } catch {
+    return "unavailable";
+  }
+  const parts = [];
+  for (const name of names.sort()) {
+    if (!accept(name))
+      continue;
+    const stats = statOrUndefined(join6(directory, name));
+    if (stats === undefined)
+      continue;
+    parts.push(`${name}:${stats.ino}:${stats.mtimeMs}:${stats.size}`);
+  }
+  return parts.join(";");
+}
+function boardSignature(directory) {
+  return directorySignature(directory, (name) => name.endsWith(".json"));
+}
+function plansSignature(directory) {
+  return directorySignature(directory, (name) => name.endsWith(".md") && !name.endsWith(".zh-CN.md"));
+}
+function targetSignature(target) {
+  if (target.kind === "board-dir")
+    return boardSignature(target.path);
+  if (target.kind === "plans-dir")
+    return plansSignature(target.path);
+  return fileSignature(target.path);
+}
+function watchGraph(targets, options = {}) {
+  const debounceMs = options.debounceMs ?? 150;
+  const watched = [];
+  if (targets.boardDir !== undefined)
+    watched.push({ path: targets.boardDir, kind: "board-dir" });
+  if (targets.planFile !== undefined)
+    watched.push({ path: targets.planFile, kind: "plan-file" });
+  if (targets.plansDir !== undefined)
+    watched.push({ path: targets.plansDir, kind: "plans-dir" });
+  const signatures = new Map;
+  for (const target of watched)
+    signatures.set(target.path, targetSignature(target));
+  const armed = new Map;
+  const listeners = new Set;
+  if (options.onChange !== undefined)
+    listeners.add(options.onChange);
+  let timer;
+  const rearmTimers = new Set;
+  let pending = 0;
+  let sequence = 0;
+  let coalesced = 0;
+  let closed = false;
+  function report(error) {
+    options.onError?.(error);
+  }
+  function markDead(entry, directory) {
+    if (closed)
+      return;
+    if (armed.get(directory) !== entry)
+      return;
+    if (entry.dead)
+      return;
+    entry.dead = true;
+    scheduleRearm();
+  }
+  function scheduleRearm() {
+    if (closed)
+      return;
+    for (const delay of REARM_DELAYS_MS) {
+      const attempt = setTimeout(() => {
+        rearmTimers.delete(attempt);
+        arm();
+        if (timer === undefined)
+          deliver(false);
+      }, delay);
+      rearmTimers.add(attempt);
+    }
+  }
+  function relevant(name) {
+    if (name === undefined)
+      return true;
+    for (const [directory, entry] of armed) {
+      if (!entry.exact)
+        return true;
+      if (name === basename(directory))
+        return true;
+      if (entry.board && name.endsWith(".json"))
+        return true;
+      if (entry.plans && name.endsWith(".md"))
+        return true;
+      if (entry.names.has(name))
+        return true;
+      if (entry.names.size > 0 && name.endsWith(".md"))
+        return true;
+    }
+    return false;
+  }
+  function armDirectory(directory) {
+    const stats = statOrUndefined(directory);
+    if (stats === undefined) {
+      report(new Error("watch target disappeared before it could be armed: " + directory));
+      return;
+    }
+    try {
+      const watcher = (options.createWatch ?? defaultCreateWatch)(directory, (_eventType, name) => notify(name));
+      return { watcher, ino: stats.ino, birthtimeMs: stats.birthtimeMs };
+    } catch (error) {
+      report(error);
+      return;
+    }
+  }
+  function arm() {
+    if (closed)
+      return;
+    const wanted = new Map;
+    for (const target of watched) {
+      const wantedDir = target.kind === "plan-file" ? dirname(target.path) : target.path;
+      const existing = nearestExistingDirectory(wantedDir);
+      if (existing === undefined)
+        continue;
+      const entry = wanted.get(existing) ?? { exact: existing === wantedDir, board: false, plans: false, names: new Set };
+      entry.exact = entry.exact && existing === wantedDir;
+      if (target.kind === "plan-file")
+        entry.names.add(basename(target.path));
+      else if (existing === wantedDir && target.kind === "board-dir")
+        entry.board = true;
+      else if (existing === wantedDir && target.kind === "plans-dir")
+        entry.plans = true;
+      wanted.set(existing, entry);
+    }
+    for (const [directory, entry] of armed) {
+      const stats = statOrUndefined(directory);
+      const sameDirectory = stats !== undefined && stats.ino === entry.ino && stats.birthtimeMs === entry.birthtimeMs;
+      if (!entry.dead && wanted.has(directory) && sameDirectory)
+        continue;
+      entry.watcher.close();
+      armed.delete(directory);
+    }
+    for (const [directory, desired] of wanted) {
+      if (armed.has(directory))
+        continue;
+      const attached = armDirectory(directory);
+      if (attached === undefined)
+        continue;
+      const entry = { watcher: attached.watcher, ino: attached.ino, birthtimeMs: attached.birthtimeMs, dead: false, exact: desired.exact, board: desired.board, plans: desired.plans, names: desired.names };
+      attached.watcher.on("close", () => markDead(entry, directory));
+      attached.watcher.on("error", (error) => {
+        report(error);
+        markDead(entry, directory);
+      });
+      armed.set(directory, entry);
+    }
+  }
+  function deliver(manual) {
+    if (closed)
+      return false;
+    const changed = [];
+    for (const target of watched) {
+      const current = targetSignature(target);
+      if (current === signatures.get(target.path))
+        continue;
+      signatures.set(target.path, current);
+      changed.push(target.path);
+    }
+    if (changed.length === 0) {
+      pending = 0;
+      arm();
+      return false;
+    }
+    changed.sort();
+    sequence += 1;
+    const absorbed = pending;
+    pending = 0;
+    coalesced += absorbed;
+    const event = { paths: changed, manual, sequence, coalesced: absorbed };
+    for (const listener of [...listeners]) {
+      try {
+        listener(event);
+      } catch (error) {
+        report(error);
+      }
+    }
+    arm();
+    return true;
+  }
+  function notify(name) {
+    if (closed)
+      return;
+    if (!relevant(name))
+      return;
+    pending += 1;
+    if (timer !== undefined)
+      clearTimeout(timer);
+    timer = setTimeout(() => {
+      timer = undefined;
+      deliver(false);
+    }, debounceMs);
+  }
+  arm();
+  return {
+    subscribe(listener) {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+    poll() {
+      if (closed)
+        return false;
+      if (timer !== undefined) {
+        clearTimeout(timer);
+        timer = undefined;
+      }
+      return deliver(true);
+    },
+    close() {
+      if (closed)
+        return;
+      closed = true;
+      if (timer !== undefined) {
+        clearTimeout(timer);
+        timer = undefined;
+      }
+      for (const pendingAttempt of rearmTimers)
+        clearTimeout(pendingAttempt);
+      rearmTimers.clear();
+      for (const entry of armed.values())
+        entry.watcher.close();
+      armed.clear();
+      listeners.clear();
+    },
+    get watching() {
+      return armed.size > 0;
+    },
+    get closed() {
+      return closed;
+    },
+    get sequence() {
+      return sequence;
+    },
+    get coalesced() {
+      return coalesced;
+    }
+  };
+}
+// packages/mpd-team-core-plugin/src/graph-model.ts
+function boardOf(record) {
+  const summary = summariseTeam(record);
+  return record.tasks.map((task) => ({
+    id: task.id,
+    subject: task.subject,
+    kind: task.kind,
+    status: task.status,
+    ...task.owner === undefined ? {} : { owner: task.owner },
+    blockedBy: [...task.blockedBy],
+    depth: summary.depths.get(task.id) ?? 0,
+    visual: taskVisual(task, record.tasks),
+    ...task.attempt === undefined ? {} : { attempt: task.attempt }
+  }));
+}
+function messageOf(error) {
+  return String(error?.message ?? error);
+}
+
+class GraphModels {
+  deps;
+  cache = new Map;
+  watchers = new Map;
+  disposed = false;
+  constructor(deps) {
+    this.deps = deps;
+  }
+  get(workspace, record) {
+    if (this.disposed)
+      return;
+    try {
+      const planPath = resolvePlanFile(workspace);
+      this.ensurePlanWatch(workspace, planPath);
+      const revision = this.deps.revision(workspace);
+      const key = workspace + "\x00" + record.teamId;
+      const cached = this.cache.get(key);
+      if (cached !== undefined && cached.revision === revision && cached.planPath === planPath)
+        return cached.model;
+      const model = buildModel({ board: boardOf(record), plan: readPlanFile(planPath) });
+      this.cache.set(key, { revision, planPath, model });
+      return model;
+    } catch (error) {
+      this.deps.warn?.(`[mpd-team-core] building the graph model for ${record.teamId} failed: ${messageOf(error)}`);
+      return;
+    }
+  }
+  ensurePlanWatch(workspace, planPath) {
+    const held = this.watchers.get(workspace);
+    if (held !== undefined && held.planPath === planPath)
+      return;
+    if (held !== undefined) {
+      try {
+        held.watcher.close();
+      } catch {}
+      this.watchers.delete(workspace);
+    }
+    try {
+      const make = this.deps.watch ?? watchGraph;
+      const watcher = make({
+        ...planPath === undefined ? {} : { planFile: planPath },
+        plansDir: plansDirectory(workspace)
+      }, {
+        onChange: () => {
+          this.invalidate(workspace);
+          this.deps.notify(workspace);
+        },
+        onError: (error) => {
+          this.deps.warn?.(`[mpd-team-core] the graph plan watch for ${workspace} failed: ${messageOf(error)}`);
+        }
+      });
+      this.watchers.set(workspace, { watcher, planPath });
+    } catch (error) {
+      this.deps.warn?.(`[mpd-team-core] no graph plan watch for ${workspace} (${messageOf(error)}) — the planes keep their polling fallback`);
+    }
+  }
+  invalidate(workspace) {
+    const prefix = workspace + "\x00";
+    for (const key of [...this.cache.keys()])
+      if (key.startsWith(prefix))
+        this.cache.delete(key);
+  }
+  dispose() {
+    if (this.disposed)
+      return;
+    this.disposed = true;
+    for (const armed of this.watchers.values()) {
+      try {
+        armed.watcher.close();
+      } catch {}
+    }
+    this.watchers.clear();
+    this.cache.clear();
+  }
+}
+
 // packages/mpd-team-core-plugin/src/change-feed.ts
-import { mkdirSync as mkdirSync5, watch } from "node:fs";
-var watchDirectory = (dir, onEvent) => watch(dir, { persistent: false }, onEvent);
+import { mkdirSync as mkdirSync5, watch as watch2 } from "node:fs";
+var watchDirectory = (dir, onEvent) => watch2(dir, { persistent: false }, onEvent);
 function detachTimer(timer) {
   const unref = timer.unref;
   if (typeof unref === "function")
@@ -3101,8 +3991,8 @@ class ChangeFeed {
 }
 
 // packages/mpd-team-core-plugin/src/team-lifecycle.ts
-import { readFileSync as readFileSync4, readdirSync as readdirSync3 } from "node:fs";
-import { join as join5 } from "node:path";
+import { readFileSync as readFileSync5, readdirSync as readdirSync5 } from "node:fs";
+import { join as join7 } from "node:path";
 var LIVE_TEAM_PHASES = ["staged", "active", "idle"];
 function isLiveTeamPhase(phase) {
   return LIVE_TEAM_PHASES.includes(phase);
@@ -3112,13 +4002,13 @@ function readArchivedPlanIndex(workspace) {
   const unapproved = new Set;
   let entries = [];
   try {
-    entries = readdirSync3(join5(teamRoot(workspace), "archive"));
+    entries = readdirSync5(join7(teamRoot(workspace), "archive"));
   } catch {
     return { approved, unapproved };
   }
   for (const entry of entries) {
     try {
-      const raw = readFileSync4(join5(teamRoot(workspace), "archive", entry, "plan.json"), "utf8");
+      const raw = readFileSync5(join7(teamRoot(workspace), "archive", entry, "plan.json"), "utf8");
       const plan = JSON.parse(raw);
       const key = String(plan.planId ?? "");
       if (key === "")
@@ -3174,17 +4064,17 @@ var name = "mpd-team-core";
 var inject = dshSeamInject(DSH_SEAM_TOOLS, DSH_SEAM_COMMANDS);
 var TEAMS_SERVICE = "mpdTeams";
 var text = (value) => [{ type: "text", text: typeof value === "string" ? value : JSON.stringify(value, null, 2) }];
-var dispatchPath = (workspace) => join6(workspace, ".mpd", "team", "dispatch.json");
+var dispatchPath = (workspace) => join8(workspace, ".mpd", "team", "dispatch.json");
 function readLedger(workspace) {
   try {
-    const raw = JSON.parse(readFileSync5(dispatchPath(workspace), "utf8"));
+    const raw = JSON.parse(readFileSync6(dispatchPath(workspace), "utf8"));
     return raw !== null && typeof raw === "object" ? raw : {};
   } catch {
     return {};
   }
 }
 function writeLedger(workspace, ledger) {
-  mkdirSync6(join6(workspace, ".mpd", "team"), { recursive: true });
+  mkdirSync6(join8(workspace, ".mpd", "team"), { recursive: true });
   const temp = dispatchPath(workspace) + ".tmp-" + process.pid;
   writeFileSync3(temp, JSON.stringify(ledger, null, 2) + `
 `);
@@ -3259,6 +4149,18 @@ function apply(ctx) {
   disposers.push(() => {
     feed.dispose();
   });
+  const graphModels = new GraphModels({
+    revision: (workspace) => feed.revision(workspace),
+    notify: (workspace) => {
+      feed.notify(workspace);
+    },
+    warn: (line) => {
+      rowLogLine("mpd-team-core", line);
+    }
+  });
+  disposers.push(() => {
+    graphModels.dispose();
+  });
   const executor = () => dsh.teamExecutor();
   const where = (exec) => ({
     workspace: dsh.workspaceRoot(exec),
@@ -3332,6 +4234,14 @@ function apply(ctx) {
     return healed === resolved.record ? resolved : { ...resolved, record: healed };
   };
   const recordFor = (workspace, sessionId, lineage = []) => resolveTeam(workspace, sessionId, lineage).record;
+  const graphOf = (workspace, teamId) => {
+    try {
+      const record = teamId === undefined ? recordFor(workspace, "workspace") : readTeam(workspace, teamId);
+      return record === undefined ? undefined : graphModels.get(workspace, record);
+    } catch {
+      return;
+    }
+  };
   if (typeof ctx?.provide === "function") {
     try {
       ctx.provide(TEAMS_SERVICE, {
@@ -3374,6 +4284,7 @@ function apply(ctx) {
             return [];
           }
         },
+        graph: (workspace, teamId) => graphOf(workspace, teamId),
         planFor: (workspace, sessionId) => {
           try {
             return planForSession(workspace, sessionId);
@@ -3964,9 +4875,9 @@ function apply(ctx) {
       const self = exec.agent;
       const mailTeam = recordFor(workspace, caller, lineage);
       const roster = (mailTeam?.members ?? []).map((member) => ({ id: member.id, name: member.name, status: member.status, handle: member.executorRef ?? "" }));
-      const resolve3 = (name2) => roster.find((member) => member.id === name2 || member.name === name2);
+      const resolve4 = (name2) => roster.find((member) => member.id === name2 || member.name === name2);
       if (args?.action === "send") {
-        const target = resolve3(String(args?.to ?? ""));
+        const target = resolve4(String(args?.to ?? ""));
         if (target === undefined) {
           return { refused: `"${String(args?.to ?? "")}" is not a member of this team (members: ${roster.map((m) => m.name).join(", ") || "none"})` };
         }
@@ -4007,7 +4918,7 @@ ${result.message.body}`, exec.signal);
         return { summary: summarise({ messages: mine }), scope: "team", ...legacyUnstamped === 0 ? {} : { legacyUnstamped } };
       }
       const state = readMailbox(workspace);
-      const wanted = args?.member === undefined ? undefined : resolve3(String(args.member));
+      const wanted = args?.member === undefined ? undefined : resolve4(String(args.member));
       const memberId = wanted?.id ?? self?.session?.id ?? caller;
       return {
         messages: unreadOf(state, memberId).map((message) => ({
@@ -4077,8 +4988,8 @@ Add members and tasks with agent_teams_plan {action: "add_member" | "create_task
   })();
   if (root !== "") {
     try {
-      const staging = join6(root, ".mpd", "team", "staging");
-      const pending = existsSync4(staging) ? readdirSync4(staging).filter((file) => file.endsWith(".json")).length : 0;
+      const staging = join8(root, ".mpd", "team", "staging");
+      const pending = existsSync4(staging) ? readdirSync6(staging).filter((file) => file.endsWith(".json")).length : 0;
       const reportExecutor = () => {
         const view = (() => {
           try {
@@ -4107,7 +5018,8 @@ Add members and tasks with agent_teams_plan {action: "add_member" | "create_task
         },
         warn: (line) => rowLogLine("mpd-team-core", `[mpd-team-core] ${line}`),
         subscribe: (workspace, listener) => feed.subscribe(workspace, listener),
-        revision: (workspace) => feed.revision(workspace)
+        revision: (workspace) => feed.revision(workspace),
+        graph: (workspace, teamId) => graphOf(workspace, teamId)
       });
       if (mountTeamRoute())
         rowLogLine("mpd-team-core", `[mpd-team-core] team web routes: ${TEAM_ROUTES.join(" ")}`);

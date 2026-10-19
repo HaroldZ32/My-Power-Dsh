@@ -1,0 +1,48 @@
+lane E core preflight — 46 checks, 0 failed
+
+PASS A1-plan-ids | expected ["F1","T1","T2","T3","T4","T6"] | observed ["F1","T1","T2","T3","T4","T6"]
+PASS A1-plan-section | expected ["final-wave","todo","todo","todo","todo","todo"] | observed ["final-wave","todo","todo","todo","todo","todo"]
+PASS A2-plan-owners | expected {"T2":"Junior Engineer","T3":"Deep Worker","T4":"Junior Engineer","T6":"Reviewer"} | observed {"T2":"Junior Engineer","T3":"Deep Worker","T4":"Junior Engineer","T6":"Reviewer"}
+PASS A3-plan-edges | expected {"F1":["T4"],"T1":[],"T2":["T1"],"T3":["T2"],"T4":[],"T6":["T4"]} | observed {"F1":["T4"],"T1":[],"T2":["T1"],"T3":["T2"],"T4":[],"T6":["T4"]}
+PASS A4-plan-problems | expected [{"line":9,"text":"- [ ] 5"}] | observed [{"line":9,"text":"- [ ] 5"}]
+PASS A4b-plan-problem-reason | expected a non-empty reason | observed not a numbered TODO item
+PASS B1-node-order | expected ["F1","T1","T2","T3","T4","T6","T7"] | observed ["F1","T1","T2","T3","T4","T6","T7"]
+PASS B2-ghosts | expected {"ids":["F1","T6"],"visuals":["planned","planned"]} | observed {"ids":["F1","T6"],"visuals":["planned","planned"]}
+PASS B3-board-only | expected ["T7"] | observed ["T7"]
+PASS B3-plan-only | expected ["F1","T6"] | observed ["F1","T6"]
+PASS B4-edges | expected [{"from":"T1","source":"both","to":"T2"},{"from":"T1","source":"board","to":"T7"},{"from":"T2","source":"plan","to":"T3"},{"from":"T3","source":"board","to":"T4"},{"from":"T4","source":"plan","to":"F1"},{"from":"T4","source":"plan","to":"T6"}] | observed [{"from":"T1","source":"both","to":"T2"},{"from":"T1","source":"board","to":"T7"},{"from":"T2","source":"plan","to":"T3"},{"from":"T3","source":"board","to":"T4"},{"from":"T4","source":"plan","to":"F1"},{"from":"T4","source":"plan","to":"T6"}]
+PASS B5-edge-plan-only | expected [{"from":"T2","source":"plan","to":"T3"},{"from":"T4","source":"plan","to":"F1"},{"from":"T4","source":"plan","to":"T6"}] | observed [{"from":"T2","source":"plan","to":"T3"},{"from":"T4","source":"plan","to":"F1"},{"from":"T4","source":"plan","to":"T6"}]
+PASS B5b-edge-board-only | expected [{"from":"T1","source":"board","to":"T7"},{"from":"T3","source":"board","to":"T4"}] | observed [{"from":"T1","source":"board","to":"T7"},{"from":"T3","source":"board","to":"T4"}]
+PASS B5c-agreeing-edge-not-reported | expected T1->T2 in neither list | observed {"inPlanOnly":false,"inBoardOnly":false}
+PASS B6-plan-problems | expected [{"line":9,"text":"- [ ] 5"}] | observed [{"line":9,"text":"- [ ] 5"}]
+PASS B7-unresolved | expected {"T7Deps":["T1","T9"],"t9Edges":0,"unresolved":["T9"]} | observed {"T7Deps":["T1","T9"],"t9Edges":0,"unresolved":["T9"]}
+PASS B8-board-wins-subject | expected {"assignee":"Junior Engineer","status":"in_progress","subject":"TUI plane adoption","title":"TUI panel adoption (blocked by 1)"} | observed {"assignee":"Junior Engineer","status":"in_progress","subject":"TUI plane adoption","title":"TUI panel adoption (blocked by 1)"}
+PASS B9-ranks-derived | expected {"F1":4,"T1":0,"T2":1,"T3":2,"T4":3,"T6":4,"T7":1,"ranksDerived":true} | observed {"F1":4,"T1":0,"T2":1,"T3":2,"T4":3,"T6":4,"T7":1,"ranksDerived":true}
+PASS B10-ranks | expected [["T1"],["T2","T7"],["T3"],["T4"],["F1","T6"]] | observed [["T1"],["T2","T7"],["T3"],["T4"],["F1","T6"]]
+PASS B11-cycles | expected [] | observed []
+PASS C1-twice | expected JSON strings equal | observed equal
+PASS C2-shuffle | expected JSON strings equal | observed true
+PASS C3-roundtrip | expected deep equal after JSON round-trip | observed equal
+PASS D1-depth-disagree-ranks | expected [["T1","T4"],["T2"],["T3"]] | observed [["T1","T4"],["T2"],["T3"]]
+PASS D1b-depth-disagree-node-depth | expected {"T1":0,"T2":1,"T3":2,"T4":0} | observed {"T1":0,"T2":1,"T3":2,"T4":0}
+PASS D2-ranks-derived-flag | expected ranksDerived true | observed true
+PASS E1-flat | expected [["T1","T2","T3","T4","T5"]] | observed [["T1","T2","T3","T4","T5"]]
+PASS E2-flat-derived | expected ranksDerived true | observed true
+PASS F1-cycle-reported | expected ["T1","T2"] | observed ["T1","T2"]
+PASS F2-cycle-finite | expected every rank finite | observed [[],["T2"],["T1"]]
+PASS F3-cycle-order-stability | expected JSON strings equal | observed {"first":[[],["T2"],["T1"]],"reversed":[[],["T2"],["T1"]]}
+PASS G0-watching | expected true | observed true
+PASS G1-one-batch | expected sequence 1, no queued batch | observed {"sequence":1,"queued":0}
+PASS G1b-paths | expected ["/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/living-graph/core-preflight/20261019T040654Z/watch-JprOZF/boards","/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/living-graph/core-preflight/20261019T040654Z/watch-JprOZF/plans/task-plan.md"] | observed ["/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/living-graph/core-preflight/20261019T040654Z/watch-JprOZF/boards","/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/living-graph/core-preflight/20261019T040654Z/watch-JprOZF/plans/task-plan.md"]
+PASS G1c-coalesced | expected coalesced >= 2 | observed 2
+PASS G1d-model-latest | expected {"hasGhostF1":true,"hasT3":true} | observed {"hasGhostF1":true,"hasT3":true}
+PASS G1e-latency | expected < 4000 ms (the wait budget) | observed 262 ms
+PASS G3-second-batch | expected sequence 2 | observed 2
+PASS G3b-latency | expected reported | observed 252 ms
+PASS G4-poll | expected true, manual batch | observed {"polled":true,"last":{"paths":["/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/living-graph/core-preflight/20261019T040654Z/watch-JprOZF/boards"],"manual":true,"sequence":3,"coalesced":0}}
+PASS G4b-poll-manual | expected manual true | observed true
+PASS G4c-poll-no-duplicate | expected sequence stays | observed {"queued":0}
+PASS G5-replace | expected paths include the plan file | observed ["/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/living-graph/core-preflight/20261019T040654Z/watch-JprOZF/plans/task-plan.md"]
+PASS G6-close | expected closed true, poll false, watching false | observed {"closed":true,"poll":false,"watching":false}
+PASS G7-sequences | expected [1,2,3,4] | observed [1,2,3,4]
+PASS H1-served-overload | expected {"derived":false,"rankOf":[["T1",4],["T2",9]]} | observed {"derived":false,"rankOf":[["T1",4],["T2",9]]}

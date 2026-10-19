@@ -40,8 +40,9 @@
 //   WHAT CARRIES THE PROOF — RE-POINTED 2026-10-17 at the mechanism that enforces read-only authority
 //   NOW (two assertions, and the first one CHANGED):
 //   1. the deny is applied to the CHILD's OWN scoped tool registry through the adapter's
-//      `restrictAgentTools(agent, { deny: READONLY_DENY })`, and the roles row says so on disk:
-//      `read-only child: applied 8 denials to its own tool scope` (R5 row log, searched together with the
+//      `restrictAgentToolsRetained(agent, [...READONLY_DENY])` (wave 1's RETAINED applier: it prunes only
+//      the names the host reports as unknown and reports what it APPLIED), and the roles row says so on
+//      disk: `read-only child: applied 8 denials to its own tool scope` (R5 row log, searched together with the
 //      boot output and the logger probe). THIS REPLACES the instrumented start-spec probe
 //      (`[ADAPTER-PROBE] toolFilter=`) this case used to read: that path is gone from the product, so a
 //      "the eight were SENT on the start spec" assertion measures an instrumentation we removed, not the
@@ -123,8 +124,9 @@ const LOGGER_PROBE_PREFIX: string = "[LOGGER-PROBE] "
  *
  * THE MECHANISM CHANGED ON 2026-10-17: the deny is no longer threaded through the spawn's start spec (a
  * field plus a stub double, which is what this case used to instrument); the row applies it on the child's
- * own scoped tool registry through the adapter's `restrictAgentTools`, and logs this line. The count is
- * built from {@link EXPECTED_DENY}, so an "applied 0 denials" regression cannot match it.
+ * own scoped tool registry through the adapter's `restrictAgentToolsRetained` (wave 1's retained applier,
+ * which reports the APPLIED count and prunes only host-reported unknown names), and logs this line. The
+ * count is built from {@link EXPECTED_DENY}, so an "applied 0 denials" regression cannot match it.
  */
 const CHILD_SCOPE_RECORD: string = "read-only child: applied " + EXPECTED_DENY.length + " denials to its own tool scope"
 /** The ROLES row's own record that the child-scope apply FAILED — the control lane's provenance signal. */
@@ -659,8 +661,19 @@ function selfTest(): void {
   // assertion cannot pass vacuously (the same trap the OpenAI needle above documents).
   // THE NEW MECHANISM'S OWN-SOURCE ARMS (re-pointed 2026-10-17, together with the assertions they guard).
   checks.push(["the start-spec instrumentation is GONE, and the child-scope record replaces it", !ownSource.includes("console.error(\"[ADAPTER-" + "PROBE] toolFilter=") && !ownSource.includes("adapter" + "-probe/index.js") && ownSource.includes("findChildScopeRecord(") && ownSource.includes("CHILD_SCOPE_RECORD")])
-  checks.push(["the child-scope sentence this case asserts is the ROW's own emitted sentence", rolesSrc.includes("read-only child: applied \" + READONLY_DENY.length + \" denials to its own tool scope")])
-  checks.push(["the row applies the deny on the CHILD's own scoped tool registry (restrictAgentTools)", rolesSrc.includes("dsh.restrictAgentTools(agent, { deny: [...READONLY_DENY] })") && rolesSrc.includes("const applyChildReadonlyDeny = (agent: unknown): void =>")])
+  // WHY THE RETAINED VARIANT, not the plain one: wave 1's CWE-284 repair replaced `restrictAgentTools`
+  // with `restrictAgentToolsRetained`, which passes the CANONICAL list whole and prunes only the names the
+  // host reports as unknown. An unpruned apply makes a cclsp-less host reject the WHOLE list and deny
+  // NOTHING, so a revert to the plain call is the original defect — the arms below must redden on it.
+  checks.push(["the child-scope sentence the ROW emits reports the APPLIED count", rolesSrc.includes("read-only child: applied \" + outcome.applied.length + \" denials to its own tool scope")])
+  checks.push(["the row applies the deny on the CHILD's own scoped tool registry (restrictAgentToolsRetained)", rolesSrc.includes("const applyChildReadonlyDeny = (agent: unknown): void =>") && rolesSrc.includes("dsh.restrictAgentToolsRetained(agent, [...READONLY_DENY])")])
+  // WHY THE WHOLE LIST AND THE ABSENCE ARM: pre-filtering the list before the applier is the defect the
+  // repair removed, and the plain call is what that repair replaced. The absence literal stops at the
+  // paren on purpose — `restrictAgentToolsRetained(` must NOT satisfy it.
+  checks.push(["the applier passes the canonical list WHOLE and the plain restrictAgentTools call is GONE", rolesSrc.includes("dsh.restrictAgentToolsRetained(agent, [...READONLY_DENY])") && !rolesSrc.includes("dsh.restrictAgentTools(")])
+  // WHY THE PRUNED REPORT: on a host that lost a toolchain the applier prunes rather than fails, so the
+  // pruned names are the ONLY trace of a security-relevant narrowing; a silent prune would be invisible.
+  checks.push(["the retained applier's pruned-names report is carried into the row log", rolesSrc.includes("outcome.pruned.length") && rolesSrc.includes("outcome.pruned.join(\", \")")])
   checks.push(["the logger probe is mounted, because the harness logger prints nothing headless", ownSource.includes("qa-logger-probe") && ownSource.includes("LOGGER_PROBE_PREFIX")])
   // MECHANISM-AWARE (2026-10-17): the case accepts EITHER trace a mutated canonical list can leave — the
   // child-scope refusal (0.2.1) or the start-spec prune (0.2.0) — and names which one it saw.

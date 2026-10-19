@@ -67,6 +67,8 @@ import {
   type StagedTask,
 } from "./plan-store"
 import { planForSession, registerTeamRoutes, TEAM_ROUTES, type TeamWebPlan } from "./team-web"
+import { GraphModels } from "./graph-model"
+import type { GraphModel } from "../../mpd-graph-core/src/index.ts"
 import { ChangeFeed } from "./change-feed"
 import {
   activeTeamId,
@@ -159,6 +161,17 @@ export interface MpdTeamsService {
    * @returns the payload, with `plan: null` when that session has nothing staged.
    */
   planFor: (workspace: string, sessionId: string) => TeamWebPlan
+  /**
+   * The ONE graph model both planes draw, computed here with the shared core.
+   *
+   * ADDRESSED BY TEAM, not by session: `teamId` GIVEN returns that team's model (the TUI passes the id
+   * of the record it just read), and OMITTED returns the workspace principal's — the session-less
+   * fallback. A workspace-scoped answer would put one team's plan-only ghosts into another team's DAG.
+   * @param workspace - the caller's workspace root.
+   * @param teamId - the team to draw, or undefined for the workspace principal.
+   * @returns the same value the web payload carries, or undefined when that team is not on disk.
+   */
+  graph: (workspace: string, teamId?: string) => GraphModel | undefined
   /** Subscribe to change notifications for one workspace; the returned disposer is idempotent. */
   subscribe: (workspace: string, listener: () => void) => () => void
   /** A monotonically increasing revision of one workspace's team state; 0 before any change is seen. */
@@ -411,6 +424,20 @@ export function apply(ctx: any): void {
   const feed = new ChangeFeed({ warn: (line: string): void => { rowLogLine("mpd-team-core", line) } })
   disposers.push((): void => { feed.dispose() })
 
+  // ── THE ONE GRAPH MODEL: computed here, served to BOTH planes ───────────────
+  // `mpd-graph-core` owns the derivation and the merge; this row owns the record, so this is the ONE
+  // place the two are combined. The result goes to the `mpdTeams` service (the TUI) and to the web
+  // payload (`.mpd/plans/living-graph.md`, Amendment 3). A plan-file edit fires no notification from
+  // the feed, so the cache arms the core's plan watcher and funnels its batches into `feed.notify` —
+  // the SAME one channel, never a second one.
+  /** The per-team model cache, invalidated by the feed revision and the plan watch. */
+  const graphModels = new GraphModels({
+    revision: (workspace: string): number => feed.revision(workspace),
+    notify: (workspace: string): void => { feed.notify(workspace) },
+    warn: (line: string): void => { rowLogLine("mpd-team-core", line) },
+  })
+  disposers.push((): void => { graphModels.dispose() })
+
   /**
    * THE TEAM EXECUTOR: the ONE seam a member is raised through and a message delivered to.
    *
@@ -618,6 +645,27 @@ export function apply(ctx: any): void {
    */
   const recordFor = (workspace: string, sessionId: string, lineage: readonly string[] = []): TeamRecord | undefined => resolveTeam(workspace, sessionId, lineage).record
 
+  /**
+   * The ONE graph model for one team, or the workspace principal when the caller named none.
+   *
+   * CONTAINED LIKE EVERY SERVICE MEMBER: it is called from a render path and from a web route, so an
+   * unreadable record or a failed build answers `undefined` rather than throwing into a surface. The
+   * TEAM ID is the address, never the session: a caller that named a team gets THAT team's model, and a
+   * workspace-scoped answer would hand it the principal team's ghosts.
+   * @param workspace - the CALLING SESSION's workspace root.
+   * @param teamId - the team to draw, or undefined for the workspace principal.
+   * @returns the shared model, or undefined when that team is not on disk.
+   */
+  const graphOf = (workspace: string, teamId?: string): GraphModel | undefined => {
+    try {
+      /** The team named, or the principal when none was named (the session-less fallback). */
+      const record = teamId === undefined ? recordFor(workspace, "workspace") : readTeam(workspace, teamId)
+      return record === undefined ? undefined : graphModels.get(workspace, record)
+    } catch {
+      return undefined
+    }
+  }
+
   // ── the mpd team read surface: THE seam every other mpd plugin reads ────────
   // Published before the tools so a consumer that resolves the service during this row's own
   // activation still finds it. Every member is synchronous and non-throwing: it is called from
@@ -647,6 +695,10 @@ export function apply(ctx: any): void {
             return []
           }
         },
+        // THE ONE MODEL both planes draw, addressed by TEAM. Computed once with the shared core and
+        // served here and on `/plugins/mpd-team/state`, so a TUI page and a browser tab render the SAME
+        // ranks and edges rather than two derivations that agree today and drift tomorrow.
+        graph: (workspace: string, teamId?: string) => graphOf(workspace, teamId),
         // THE SHARED PROJECTION. The TUI calls this and the `/plan` route calls `planForSession`
         // directly; both resolve through the same function, so a surface cannot disagree with the Web
         // panel about what is staged or what phrase the gate demands. It never throws: a broken
@@ -1775,6 +1827,9 @@ export function apply(ctx: any): void {
         // the same directory — the exact duplication the ONE substrate exists to prevent.
         subscribe: (workspace: string, listener: () => void) => feed.subscribe(workspace, listener),
         revision: (workspace: string) => feed.revision(workspace),
+        // THE SAME COMPUTATION SITE the service answers: the route asks for the model by TEAM, so the
+        // payload and the TUI cannot draw different graphs for one record.
+        graph: (workspace: string, teamId?: string) => graphOf(workspace, teamId),
       })
       // Mounted ONCE here and retried on the binding below; the route is idempotent by path on the
       // host's own registry, and a second registration attempt against the SAME server is harmless

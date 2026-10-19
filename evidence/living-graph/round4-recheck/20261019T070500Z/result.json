@@ -1,0 +1,161 @@
+{
+ "run": "lane-e-round4-recheck",
+ "at": "2026-10-19T07:05:40Z",
+ "head": "96b5c925e1132b09dd9b8be859cf010675136bfe",
+ "previous": {
+  "head": "de67b9f0",
+  "f4": "PASS (closed), residual: the dead-window write"
+ },
+ "settle": {
+  "productTreeClean": true,
+  "foreignChanges": [],
+  "distFresh": "[verify-dist-fresh] ok: 32/32 targets fresh (each rebuilt twice, byte-identical) \u2014 1 NOT COVERED files listed \u2014 641ms"
+ },
+ "claims": [
+  {
+   "id": "DEAD-WINDOW-bun1.4.0",
+   "claim": "A write landing inside the dead re-arm window is delivered with NO notification injected anywhere (the batch can only come from the signature comparison)",
+   "evidence": [
+    "evidence/living-graph/round4-recheck/20261019T070500Z/dead-window-bun1.4.0.json",
+    "evidence/living-graph/round4-recheck/20261019T070500Z/run-bun1.4.0.txt"
+   ],
+   "observed": "bun 1.4.0: delivered=True latency=27 ms batches=1 manual=False errors=0",
+   "source": "a (fake handle killed; real file written on the next line; no notification injected)",
+   "verdict": "PASS"
+  },
+  {
+   "id": "DOUBLE-DELIVERY-bun1.4.0",
+   "claim": "One change with a pending debounce timer stays ONE batch: the re-arm attempt must not deliver a duplicate",
+   "evidence": [
+    "evidence/living-graph/round4-recheck/20261019T070500Z/dead-window-bun1.4.0.json"
+   ],
+   "observed": "bun 1.4.0: batches=1 manualAny=False firstCoalesced=1",
+   "source": "a",
+   "verdict": "PASS"
+  },
+  {
+   "id": "GIVE-UP-bun1.4.0",
+   "claim": "The schedule is bounded (nothing after the three attempts), the give-up emits no event, failed attempts report their platform refusal through onError, and close() cancels a pending schedule",
+   "evidence": [
+    "evidence/living-graph/round4-recheck/20261019T070500Z/dead-window-bun1.4.0.json"
+   ],
+   "observed": "bun 1.4.0: attempts/errors at700={'errors': 6, 'attempts': 7} after1100={'errors': 6, 'attempts': 7} batches=0; close: handles 1->1 batches=0 poll=False",
+   "source": "a (a factory that refuses every re-arm, then a separate close-cancel trial)",
+   "verdict": "PASS"
+  },
+  {
+   "id": "DEAD-WINDOW-bun1.4.2",
+   "claim": "A write landing inside the dead re-arm window is delivered with NO notification injected anywhere (the batch can only come from the signature comparison)",
+   "evidence": [
+    "evidence/living-graph/round4-recheck/20261019T070500Z/dead-window-bun1.4.2.json",
+    "evidence/living-graph/round4-recheck/20261019T070500Z/run-bun1.4.2.txt"
+   ],
+   "observed": "bun 1.4.2: delivered=True latency=27 ms batches=1 manual=False errors=0",
+   "source": "a (fake handle killed; real file written on the next line; no notification injected)",
+   "verdict": "PASS"
+  },
+  {
+   "id": "DOUBLE-DELIVERY-bun1.4.2",
+   "claim": "One change with a pending debounce timer stays ONE batch: the re-arm attempt must not deliver a duplicate",
+   "evidence": [
+    "evidence/living-graph/round4-recheck/20261019T070500Z/dead-window-bun1.4.2.json"
+   ],
+   "observed": "bun 1.4.2: batches=1 manualAny=False firstCoalesced=1",
+   "source": "a",
+   "verdict": "PASS"
+  },
+  {
+   "id": "GIVE-UP-bun1.4.2",
+   "claim": "The schedule is bounded (nothing after the three attempts), the give-up emits no event, failed attempts report their platform refusal through onError, and close() cancels a pending schedule",
+   "evidence": [
+    "evidence/living-graph/round4-recheck/20261019T070500Z/dead-window-bun1.4.2.json"
+   ],
+   "observed": "bun 1.4.2: attempts/errors at700={'errors': 6, 'attempts': 7} after1100={'errors': 6, 'attempts': 7} batches=0; close: handles 1->1 batches=0 poll=False",
+   "source": "a (a factory that refuses every re-arm, then a separate close-cancel trial)",
+   "verdict": "PASS"
+  },
+  {
+   "id": "DEAD-WINDOW-node24.21.0",
+   "claim": "A write landing inside the dead re-arm window is delivered with NO notification injected anywhere (the batch can only come from the signature comparison)",
+   "evidence": [
+    "evidence/living-graph/round4-recheck/20261019T070500Z/dead-window-node24.21.0.json",
+    "evidence/living-graph/round4-recheck/20261019T070500Z/run-node24.21.0.txt"
+   ],
+   "observed": "node 24.21.0: delivered=True latency=27 ms batches=1 manual=False errors=0",
+   "source": "a (fake handle killed; real file written on the next line; no notification injected)",
+   "verdict": "PASS"
+  },
+  {
+   "id": "DOUBLE-DELIVERY-node24.21.0",
+   "claim": "One change with a pending debounce timer stays ONE batch: the re-arm attempt must not deliver a duplicate",
+   "evidence": [
+    "evidence/living-graph/round4-recheck/20261019T070500Z/dead-window-node24.21.0.json"
+   ],
+   "observed": "node 24.21.0: batches=1 manualAny=False firstCoalesced=1",
+   "source": "a",
+   "verdict": "PASS"
+  },
+  {
+   "id": "GIVE-UP-node24.21.0",
+   "claim": "The schedule is bounded (nothing after the three attempts), the give-up emits no event, failed attempts report their platform refusal through onError, and close() cancels a pending schedule",
+   "evidence": [
+    "evidence/living-graph/round4-recheck/20261019T070500Z/dead-window-node24.21.0.json"
+   ],
+   "observed": "node 24.21.0: attempts/errors at700={'errors': 6, 'attempts': 7} after1100={'errors': 6, 'attempts': 7} batches=0; close: handles 1->1 batches=0 poll=False",
+   "source": "a (a factory that refuses every re-arm, then a separate close-cancel trial)",
+   "verdict": "PASS"
+  },
+  {
+   "id": "RED-CONTROL",
+   "claim": "My dead-window probe CAN fail: the same scenario against a copy of watch.ts with the fix line removed loses the write",
+   "evidence": [
+    "evidence/living-graph/round4-recheck/20261019T070500Z/verify-red-control.ts",
+    "evidence/living-graph/round4-recheck/20261019T070500Z/watch-red.ts",
+    "evidence/living-graph/round4-recheck/20261019T070500Z/red-control-bun1.4.0.txt",
+    "evidence/living-graph/round4-recheck/20261019T070500Z/red-control-node24.txt"
+   ],
+   "observed": "patched copy (the `if (timer === undefined) deliver(false)` line removed): delivered=false, no batch within 1500 ms on Bun 1.4.0 AND Node 24; the product copy delivers in ~27 ms",
+   "source": "a (this lane patched a COPY and ran the same scenario; the product file was never touched)",
+   "verdict": "PASS"
+  },
+  {
+   "id": "README-PAIR",
+   "claim": "The README recovery list matches the code in BOTH halves: platform close, error, directory self-event, bounded timer, inode+birthtime, and the re-arm's signature comparison",
+   "evidence": [
+    "packages/mpd-graph-core/README.md (recovery paragraph)",
+    "packages/mpd-graph-core/README.zh-CN.md (\u76d1\u542c\u8f93\u5165 recovery paragraph)",
+    "evidence/living-graph/round4-recheck/20261019T070500Z/regression.txt (verify:docs)"
+   ],
+   "observed": "presence checks 12/12; verify:docs 'pairs=48 failed=0 violations=0 ... PASS'",
+   "source": "b (both halves read) + a (verify:docs re-run)",
+   "verdict": "PASS"
+  }
+ ],
+ "giveUpPrecision": {
+  "finding": "The give-up DECISION is silent (no event, no dedicated error), but the failed attempts themselves report their platform refusal through the onError sink: my refusing-factory trial produced 6 onError calls across 7 arm attempts (each attempt's arm plus the arming pass inside deliver's no-change branch), and then the counters froze \u2014 700 ms and 1100 ms are identical.",
+  "answer_to_no_error_surfaced": "If 'no error is surfaced' means the give-up adds nothing, TRUE; if it means onError stays empty on a refusing platform, the code does not do that and the doc's 'no error' sentence should be read as 'no error AT give-up time'."
+ },
+ "readme": {
+  "triggers": {
+   "EN close": true,
+   "EN error": true,
+   "EN self-event": true,
+   "EN bounded timer": true,
+   "EN inode+birthtime": true,
+   "EN signature comparison": true,
+   "ZH close": true,
+   "ZH error": true,
+   "ZH self-event": true,
+   "ZH bounded timer": true,
+   "ZH inode+birthtime": true,
+   "ZH signature comparison": true
+  },
+  "matchesCode": "The five triggers and the signature comparison are present in BOTH halves and match the code. ONE literal nuance: the EN/ZH sentence says 'every re-arm also compares the target signatures'; the code skips the ATTEMPT's comparison when a debounce timer is already pending (that timer delivers, so the guarantee 'still delivered' holds). Optional one-clause amendment: 'unless a debounce timer is already pending \u2014 that timer delivers'.",
+  "pairRule": "Both halves changed in the same commit; verify:docs passes (48 pairs, 0 violations)."
+ },
+ "prSentence": "The watcher recovers without a poll when a watched directory is deleted or renamed: it accepts the directory's own self-event (the signal Bun 1.4.0/1.4.2 and Node 24 emit here), decides identity by inode AND birthtime (an rm -rf + mkdir reuses the inode), and on a dead handle \u2014 a platform close/error, or an injected one \u2014 re-arms on a bounded 25/100/400 ms schedule whose every attempt also compares the target signatures (skipped only when a debounce timer is already pending, since that timer delivers), so a write that landed inside the dead window is delivered exactly once, without a poll; an untouched directory stays silent, and after the three attempts the schedule stops.",
+ "verdict": {
+  "decision": "PASS",
+  "justification": "The dead-window write is delivered on its own signature comparison (26-30 ms) with no injected notification and no poll; one change stays one batch under a pending timer; the schedule is bounded and never re-fires, with its refusals surfaced through onError and close() cancelling the rest; and the README pair names the same five triggers and the signature comparison the code has."
+ }
+}

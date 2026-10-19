@@ -1,0 +1,19 @@
+=== HEAD de67b9f068510a9c1290387add0e7e4ce960bd6c 2026-10-19T06:24:57Z
+--- core + host suites ---
+(pass) determinism > tasks are ordered by id even when the document is not [0.05ms]
+
+ 299 pass
+ 0 fail
+ 1183 expect() calls
+Ran 299 tests across 22 files. [2.26s]
+--- typecheck ---
+$ tsgo --noEmit
+exit=0
+--- gate arms ---
+[verify-graph-model] PASS — nodes (8), edges (6), ranks, cycles and the report equal the declared input
+positive exit=0
+seeded exit=1
+[verify-graph-model] self-test PASS — 8 arms: both directions and the path forms
+self-test exit=0
+--- dist ---
+[verify-dist-fresh] ok: 32/32 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 648ms

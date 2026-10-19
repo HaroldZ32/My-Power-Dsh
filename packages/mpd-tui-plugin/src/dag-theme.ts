@@ -168,6 +168,18 @@ export const DAG_CHARS_ONE_CELL: boolean = Object.values(DAG_CHARS).every((glyph
 )
 
 /**
+ * The marker a PLAN-ONLY node (a ghost) draws INSTEAD OF a state glyph.
+ *
+ * WHY A SINGLE ASCII `+`. The theme declares six state marks and no `planned` glyph, and a ghost must
+ * not become a seventh state: its tone stays `open` (no new theme key, no new box form), and
+ * `visual: "planned"` stays the model-side value. `+` is the one-cell ASCII reading of "declared by
+ * the plan, not yet on the board" — it invents no box-drawing character, assumes nothing about the
+ * font's Unicode coverage, and is the same one cell as every state mark, so a label's width (and
+ * therefore every layout decision taken from it) is unchanged. The legend names it.
+ */
+export const DAG_GHOST_MARKER = "+"
+
+/**
  * The chrome every DAG surface draws with.
  *
  * `border` is a host style name (not a glyph), so a theme or a host build that renames the styles is

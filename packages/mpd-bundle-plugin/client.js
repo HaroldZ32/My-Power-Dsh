@@ -10577,8 +10577,24 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
                                  
                                                                                      
                       
-                                                                    
+                                                                                                         
                  
+       
+                                                                         
+      
+                                                                                                      
+                                                                                                    
+                                                                                                    
+                                                                       
+       
+                 
+       
+                                                                             
+      
+                                                                                                       
+                                                                                                     
+       
+                     
    
 
   /**
@@ -10606,6 +10622,65 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
                    
    
 
+  /**
+   * One node of the host's model, narrowed to what this drawing reads.
+   *
+   * The full node is `GraphNode` from `mpd-graph-core`; the fields below are the ones a box needs. A
+   * node the PLAN declared and the board did not carries `planned: true` — the GHOST this view draws
+   * so a plan edit changes the picture.
+   */
+                                  
+                                     
+              
+                                                                                    
+                 
+                                                                 
+                    
+                                                                 
+                  
+                                                                        
+                 
+                                                          
+                   
+                                                           
+                     
+                                                                           
+                           
+                                                                          
+                     
+   
+
+  /** One dependency edge of the host's model: `from` must close before `to`. */
+                                  
+                          
+                
+                          
+              
+   
+
+  /**
+   * The graph model the host serves beside the board, narrowed to what this drawing reads.
+   *
+   * THE FULL VALUE IS `GraphModel` FROM `mpd-graph-core` — `{ nodes, edges, ranks, cycles, report }`.
+   * This factory reads the NODES (for plan-only ghosts and the report), the EDGES (so a plan-declared
+   * dependency is drawn) and the REPORT. Each board task's served rank rides on the task entries as
+   * {@link TeamTask.rank}, so no join is needed for a box's column; the rest of the model belongs to
+   * planes that draw from it directly. A structural subset is deliberate: the factory body has no
+   * imports, and a type is the only way to describe the wire without one.
+   */
+                              
+                                                                                         
+                                  
+                                                                                             
+                                  
+       
+                                                                                                  
+                                                                                        
+                                                
+       
+                                                           
+   
+
   /** The payload the route serves. */
                        
                                           
@@ -10622,6 +10697,15 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
                          
                                     
                      
+       
+                                                                                      
+      
+                                                                                                     
+                                                                                                      
+                                                                                                  
+                                                                                               
+       
+                            
                                           
                     
                                                              
@@ -10811,21 +10895,21 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
                                                                                                    
                    
        
-                                                                                                   
+                                                                               
+      
+                                                                                                      
                                                                                                  
+                                                  
        
                          
        
-                                                                                  
+                                                                            
       
-                                                                                            
-                                                                                                       
-                                                                                                    
-                                                                                          
-      
-                                                                                                        
-                                                                                                         
-                                                                              
+                                                                                               
+                                                                                                      
+                                                                                                        
+                                                                                                  
+                                                                                    
        
                         
                                                                                                            
@@ -11065,7 +11149,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
                                                                           
                                                      
                                                                                                 
-                                                                   
+                                                                                              
          
                                                                                                          
                                                 
@@ -11272,8 +11356,13 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
       }
       /** The status tone of one rendered state, falling back to the neutral label colour. */
       const toneOf = (visual        )         => TONE[visual] ?? TONE.open
-      /** The glyph of one rendered state; `?` is honest about a state this view has never seen. */
-      const glyphOf = (visual        )         => GLYPH[visual] ?? "?"
+      /**
+       * The glyph of one rendered state; `?` is honest about a state this view has never seen.
+       *
+       * A plan-only GHOST draws in the EXISTING open glyph: a plan edit must not invent a visual
+       * vocabulary, so it borrows the one the drawing already carries.
+       */
+      const glyphOf = (visual        )         => GLYPH[visual] ?? (visual === "planned" ? GLYPH.open : "?")
       /** The bilingual kind abbreviation of one task; empty when the task carries no kind. */
       const kindOf = (kind                    )         => {
         if (kind === undefined || kind === "") return ""
@@ -11506,9 +11595,12 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
        * Compute the whole DAG geometry from the board alone: rank columns, node boxes, and every
        * drawn edge ROUTED as a chain of adjacent-rank hops.
        *
-       * `depth` is already the longest dependency path, so the columns are correct without re-deriving
-       * a layout; a negative or non-finite depth falls back to rank 0 rather than dropping the task.
-       * Every box is fixed, which is what lets an edge be arithmetic instead of a measurement.
+       * THE RANKS ARE SERVED, NEVER RE-DERIVED HERE. The host computes them ONCE with the shared core
+       * (`mpd-graph-core`) and publishes each task's rank beside the board; this function decides only
+       * WHICH COLUMN a node lands in, never which rank it has. A task with no served rank — a payload
+       * from an older server — draws from its served `depth`, the documented degrade; a negative or
+       * non-finite value is rank 0 rather than a dropped task. Every box is fixed, which is what lets
+       * an edge be arithmetic instead of a measurement.
        *
        * WHAT WAS WRONG (reported from a screenshot 2026-10-06: "依赖关系连线，根本看不清"):
        *   * a multi-rank edge took the space between its two END boxes and called it "the band the
@@ -11535,38 +11627,66 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
        * @param tasks - the board, in the order the route served it.
        * @param radius - the corner radius the painted curves are built with, defaulting to
        *   {@link EDGE_RADIUS}; `0` is clause W6's control and emits the straight orthogonal polyline.
+       * @param served - the host's model when the payload carried one; absent on an older server,
+       *   which is the ONE signal that makes the `depth` degrade (and `ranksDerived: false`) coherent
+       *   rather than looking like a model that lost its report.
        * @returns the columns, the canvas size, every node's box and every routed edge.
        */
-      const layout = (tasks            , radius         = EDGE_RADIUS)                => {
-        // ── R20: THE RANK IS DERIVED FROM THE `blockedBy` GRAPH, NOT TRUSTED FROM `depth` ──────────
-        // WHAT WAS WRONG, and it is the defect the user photographed: this function bucketed the
-        // columns by `task.depth` verbatim. `team-store.ts` resolves a blocker by exact task id or
-        // exact subject and otherwise returns the reference UNCHANGED, and its `taskDepths` then
-        // FILTERS the unresolvable ones out — so on our own live board (ids `T1..T10`, `blockedBy`
-        // holding plan ordinals `["2"]`, `["2","3","4","6"]`, …) every task became a root, every depth
-        // became 0, and the view drew ONE column with NO edges. A view that trusts that number
-        // reproduces the lie; the TUI sibling (`mpd-tui-plugin/src/graph.ts`) already derives it, and
-        // the two planes must agree or the same record reads differently in the sidebar and the
-        // terminal. This is the same algorithm, inline because this file is ONE factory expression.
-        /** Task lookup by id, so a blocker reference can be resolved at all. */
-        const byId                           = {}
-        for (const task of tasks) byId[task.id] = task
-        /** A task's blocker references; a record may carry none at all, or carry something else. */
-        const blockedOf = (task          )           => (Array.isArray(task.blockedBy) ? task.blockedBy : [])
-        /** Every blocker reference no task on the board carries, which is REPORTED rather than dropped. */
-        const missing = new Set        ()
-        /** How many blocker references DO resolve to a task on the board. */
-        let resolved = 0
-        for (const task of tasks) {
-          for (const reference of blockedOf(task)) {
-            if (byId[reference] === undefined) missing.add(reference)
-            else resolved += 1
+      const layout = (tasks            , radius         = EDGE_RADIUS, served                   )                => {
+        /**
+         * The board plus the model's plan-only GHOSTS — the tasks the drawing actually lays out.
+         *
+         * A node the plan declares and the board does not is DRAWN, never dropped: that is the user's
+         * requirement ("改 task plan 就可以实时调整工程"), and a web that skipped it would show a plan
+         * edit on the TUI only. A ghost is a normal box in the EXISTING `open` tone — no new glyph, no
+         * new colour — carrying `visual: "planned"` and the rank the host derived for it.
+         * @param board - the board, in the order the route served it.
+         * @param model - the host's model, or undefined on an older server (which serves no ghosts).
+         * @returns the board followed by one synthesized row per plan-only ghost, in model order.
+         */
+        const withGhosts = (board            , model                              )             => {
+          if (model === undefined || !Array.isArray(model.nodes)) return board
+          /** The ids the board already carries, so a board node is never drawn twice. */
+          const known = new Set(board.map((task) => task.id))
+          /** One row per node only the plan carries. */
+          const ghosts             = []
+          for (const node of model.nodes) {
+            if (known.has(node.id) || node.planned !== true) continue
+            ghosts.push({
+              id: node.id,
+              subject: node.title ?? node.subject ?? node.id,
+              ...(node.kind === undefined ? {} : { kind: node.kind }),
+              status: "planned",
+              visual: "planned",
+              ...(node.assignee === undefined ? {} : { owner: node.assignee }),
+              blockedBy: Array.isArray(node.dependencies) ? [...node.dependencies] : [],
+              failedBy: [],
+              depth: node.depth,
+              rank: node.depth,
+              planned: true,
+            })
           }
+          return [...board, ...ghosts]
         }
-        // THE UNRESOLVED REFERENCES ARE A RESULT, NOT A LOG LINE: the store's silent filter is what
-        // produced the one-column board, so the view hands the list on (the page reports the count).
-        // AND THE RECORD'S OWN REPORT IS READ BESIDE THE VIEW'S RE-DERIVATION (R18's reader side): the
-        // producer stores what matched nothing at write time in `unresolvedBlockers`, a fact that
+        /** The board plus every plan-only ghost: what the columns and boxes are computed from. */
+        const drawing = withGhosts(tasks, served)
+        // ── R20, AMENDED: THE RANK IS SERVED BY THE HOST, NOT DERIVED HERE ────────────────────────
+        // THE DEFECT, TWICE OVER. This function first bucketed the columns by `task.depth` verbatim —
+        // the wrong number, because `team-store.ts` FILTERED unresolvable references out and left every
+        // depth 0, so the live board drew ONE column with NO edges. It was then "fixed" by duplicating
+        // the TUI's rank walk INLINE, which agreed with the sibling only until one copy moved: two
+        // implementations of one derivation, in two planes, neither shared. The duplicate is what
+        // Amendment 3 of `.mpd/plans/living-graph.md` deletes. The host (`mpd-team-core-plugin`) now
+        // derives the rank ONCE with the shared core and serves it as `task.rank`, mapped from the
+        // core's `GraphNode.depth` (a historical name; in the core's `GraphTask` it IS the rank). This
+        // plane reads it. Nothing below walks `blockedBy`, and an unresolved reference arrives in the
+        // core's report rather than being recomputed.
+        /** The rank a served `depth` claims; the OLDER-SERVER degrade, and a negative/non-finite depth is a root. */
+        const servedDepthRank = (task          )         => (Number.isFinite(task.depth) && task.depth > 0 ? Math.floor(task.depth) : 0)
+        /** The rank this task draws in: the SERVED one when present, else the documented `depth` degrade. */
+        const rankOfTask = (task          )         => (typeof task.rank === "number" && Number.isFinite(task.rank) ? Math.max(0, Math.floor(task.rank)) : servedDepthRank(task))
+        // THE RECORD'S OWN REPORT IS READ BESIDE THE SERVED ONE (R18's reader side): the producer
+        // stores what matched nothing when it accepted the task in `unresolvedBlockers`, a fact that
         // survives a later repair of the references — the live board was repaired that way — so a
         // viewer must see BOTH: what the record said then, and what the served references say now.
         /** The references the RECORD itself reports, task by task; empty when the payload carries none. */
@@ -11576,64 +11696,20 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         }
         /** The record's own report, sorted and de-duplicated. */
         const unresolvedRecorded = [...recorded].sort()
-        /** The blocker references that resolve to nothing, from the record AND from the board. */
-        const unresolved = [...new Set([...unresolvedRecorded, ...missing])].sort()
-        /** The rank a served `depth` claims; a negative or non-finite depth is a root. */
-        const servedRank = (task          )         => (Number.isFinite(task.depth) && task.depth > 0 ? Math.floor(task.depth) : 0)
-        /** Whether the served depths claim any structure at all. */
-        const servedVaries = new Set(tasks.map((task) => servedRank(task))).size > 1
-        // THE DERIVATION WINS; THE SERVED DEPTH IS THE NARROW FALLBACK, exactly as in the TUI engine: it
-        // draws only when NOT ONE reference resolves AND the served depths still vary, i.e. when the
-        // record knows about structure its references cannot express. Both arms matter — a genuinely
-        // flat board served flat draws flat, and our broken board (nothing resolves, every depth 0, so
-        // they do NOT vary) falls through to the derivation.
-        /** Whether the ranks were DERIVED; `false` means the served depth was the only signal left. */
-        const derived = !(resolved === 0 && servedVaries)
-        /** The rank every task draws in. */
-        const rankOf = new Map                ()
-        if (!derived) {
-          for (const task of tasks) rankOf.set(task.id, servedRank(task))
-        } else {
-          /** The settled rank of every task. */
-          const settled = new Map                ()
-          /** The tasks on the current walk, whose ranks are not settled yet. */
-          const walking = new Set        ()
-          for (const root of tasks) {
-            if (settled.has(root.id)) continue
-            /** The walk's frames: the id, and how many of its blockers have been expanded. */
-            const stack                                      = [{ id: root.id, next: 0 }]
-            walking.add(root.id)
-            while (stack.length > 0) {
-              /** The frame being worked. */
-              const frame = stack[stack.length - 1]
-              /** This task's blocker references that RESOLVE to a task on the board. */
-              const blocked = blockedOf(byId[frame.id]).filter((reference) => byId[reference] !== undefined)
-              if (frame.next < blocked.length) {
-                /** The next blocker to expand. */
-                const dependency = blocked[frame.next]
-                frame.next += 1
-                // A blocker already on the walk closes a CYCLE: it contributes nothing, so the walk
-                // neither recurses nor settles it twice — and every rank stays finite.
-                if (settled.has(dependency) || walking.has(dependency)) continue
-                walking.add(dependency)
-                stack.push({ id: dependency, next: 0 })
-                continue
-              }
-              /** The longest chain under this task, one longer than its deepest blocker. */
-              let deepest = 0
-              for (const dependency of blocked) deepest = Math.max(deepest, (settled.get(dependency) ?? 0) + 1)
-              settled.set(frame.id, deepest)
-              walking.delete(frame.id)
-              stack.pop()
-            }
-          }
-          for (const task of tasks) rankOf.set(task.id, settled.get(task.id) ?? 0)
-        }
-        /** The board bucketed by rank, which is the graph's column axis. */
+        /** The references the HOST reports as resolving to nothing; empty when no model arrived. */
+        const servedUnresolved = served === undefined || served.report === undefined || !Array.isArray(served.report.unresolved) ? [] : served.report.unresolved
+        /** The union of the host's report and the record's own, sorted and de-duplicated. */
+        const unresolved = [...new Set([...unresolvedRecorded, ...servedUnresolved])].sort()
+        // THE DEGRADE IS DECIDED BY THE PAYLOAD, NOT PER TASK: a payload with no model reads exactly as
+        // the older server did — columns from `depth`, `ranksDerived: false` — instead of looking like
+        // a model that lost its report. `served === undefined` is the ONE signal for that.
+        /** Whether the SERVED model derived these ranks; `false` means the payload carried no model. */
+        const ranksDerived = served !== undefined && served.report !== undefined && served.report.ranksDerived === true
+        /** The board plus ghosts, bucketed by rank: the graph's column axis. */
         const columns               = []
-        for (const task of tasks) {
-          /** The rank this task draws in, per the plan above — never a value off the record. */
-          const at = Math.max(0, rankOf.get(task.id) ?? 0)
+        for (const task of drawing) {
+          /** The rank this task draws in, served by the host — never a value this plane computed. */
+          const at = rankOfTask(task)
           while (columns.length <= at) columns.push([])
           columns[at].push(task)
         }
@@ -11654,6 +11730,15 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
          */
         const ordinalOf                         = {}
         for (let index = 0; index < tasks.length; index += 1) ordinalOf[tasks[index].id] = index + 1
+        // A plan-only GHOST has no board position, so it numbers AFTER the board in the model's own node
+        // order: a deterministic value, which is all clause C4's label fallback needs from it.
+        /** The next ordinal a ghost may take, continuing the board's own numbering. */
+        let nextOrdinal = tasks.length
+        for (const task of drawing) {
+          if (ordinalOf[task.id] !== undefined) continue
+          nextOrdinal += 1
+          ordinalOf[task.id] = nextOrdinal
+        }
         /** Every node's box, before the reserved rows are known — its `row` is final, its `top` is not. */
         const nodes              = []
         for (let rank = 0; rank < columns.length; rank += 1) {
@@ -11666,21 +11751,34 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         for (const node of nodes) nodeOf[node.task.id] = node
 
         // ── THE DEPENDENCIES TO DRAW ──────────────────────────────────────────────────────────────
-        // One per `blockedBy` entry naming a task ON THIS BOARD. An id the board does not carry draws
-        // NOTHING: the payload serves the list raw, so a ghost entry is reachable in real data, and an
-        // edge into a node that is not there would be a picture of a dependency the record lacks.
-        /** The dependencies to route, in board order. */
+        // THE MODEL'S EDGE SET WHEN IT IS SERVED, the board's own references only when it is not — the
+        // same degrade rule as the ranks. The model MERGES the board's edges with the plan's, so a
+        // plan-declared dependency is drawn and nothing the board carries is lost. An edge naming a
+        // node this drawing does not carry is skipped: the payload serves ids raw, and an edge into a
+        // box that is not there would be a picture of a dependency the record lacks.
+        /** The dependencies to route, in the order the serving source gives them. */
         const wants                                                              = []
-        for (const node of nodes) {
-          // A RECORD MAY CARRY NO BLOCKER LIST AT ALL (a minimal fixture, an older payload), so the
-          // list is read defensively rather than trusted to be an array.
-          /** This task's blocker references, empty when the record carries none. */
-          const blocked = Array.isArray(node.task.blockedBy) ? node.task.blockedBy : []
-          for (const blockerId of blocked) {
-            /** The blocker's own box; a blocker the board does not carry draws no edge. */
-            const parent = nodeOf[blockerId]
-            if (parent === undefined) continue
-            wants.push({ parent, child: node, key: parent.task.id + ">" + node.task.id })
+        if (served !== undefined && Array.isArray(served.edges)) {
+          for (const edge of served.edges) {
+            /** The blocker's box, when this drawing carries that node. */
+            const parent = nodeOf[edge.from]
+            /** The blocked task's box, when this drawing carries that node. */
+            const child = nodeOf[edge.to]
+            if (parent === undefined || child === undefined) continue
+            wants.push({ parent, child, key: parent.task.id + ">" + child.task.id })
+          }
+        } else {
+          for (const node of nodes) {
+            // A RECORD MAY CARRY NO BLOCKER LIST AT ALL (a minimal fixture, an older payload), so the
+            // list is read defensively rather than trusted to be an array.
+            /** This task's blocker references, empty when the record carries none. */
+            const blocked = Array.isArray(node.task.blockedBy) ? node.task.blockedBy : []
+            for (const blockerId of blocked) {
+              /** The blocker's own box; a blocker the board does not carry draws no edge. */
+              const parent = nodeOf[blockerId]
+              if (parent === undefined) continue
+              wants.push({ parent, child: node, key: parent.task.id + ">" + node.task.id })
+            }
           }
         }
 
@@ -11947,7 +12045,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
           maxLanes,
           laneOverflow,
           slots,
-          ranksDerived: derived,
+          ranksDerived,
           unresolved,
           unresolvedRecorded,
         }
@@ -11974,24 +12072,43 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
        * Each frontier is worked as a QUEUE rather than a recursion, and `inHalo` holds it to one visit
        * per node, so a dependency cycle in the payload — which the route reports rather than repairs —
        * cannot spin this into a stack overflow.
-       * @param tasks - the board.
+       * @param tasks - the tasks the DRAWING contains: the board plus any plan-only ghost.
        * @param from - the hovered task's id.
        * @param rankOf - the rank each task was DRAWN in, straight off the geometry's own nodes.
+       * @param edges - the edges the DRAWING routed (the served model's), when one arrived; absent
+       *   means the board's own `blockedBy` is the only relationship available.
        * @returns the ids to tint; every other node is dimmed while a focus is held.
        */
-      const focusChain = (tasks            , from        , rankOf                        )                          => {
+      const focusChain = (tasks            , from        , rankOf                        , edges                         )                          => {
         /** The task each id names, for the dependency lookups below. */
         const byId                           = {}
         for (const task of tasks) byId[task.id] = task
         /** The ids in the halo so far. */
         const focus                          = {}
         if (byId[from] === undefined) return focus
-        /** What rests on each task, which is `blockedBy` read backwards. */
+        // ONE SOURCE FOR BOTH DIRECTIONS. The halo must name the relationships the DRAWING routes, so
+        // when a model arrived it reads the SERVED edges (`from` is the blocker, `to` the blocked task)
+        // and falls back to the board's `blockedBy` only when none did — the SAME degrade the geometry
+        // follows. Otherwise a plan-declared arrow would be painted while its hover called the
+        // relationship nonexistent: the "picture disagrees with itself" class this wave exists to end.
+        /** The blocker ids of one task, from the served edges or the board's own references. */
+        const blockersOf = (id        )           => {
+          if (edges !== undefined) return edges.filter((edge) => edge.to === id).map((edge) => edge.from)
+          return byId[id] === undefined ? [] : byId[id].blockedBy
+        }
+        /** What rests on each task, which is the same relationship read forwards. */
         const dependentsOf                           = {}
-        for (const task of tasks) {
-          for (const blockerId of task.blockedBy) {
-            if (dependentsOf[blockerId] === undefined) dependentsOf[blockerId] = []
-            dependentsOf[blockerId].push(task.id)
+        if (edges !== undefined) {
+          for (const edge of edges) {
+            if (dependentsOf[edge.from] === undefined) dependentsOf[edge.from] = []
+            dependentsOf[edge.from].push(edge.to)
+          }
+        } else {
+          for (const task of tasks) {
+            for (const blockerId of task.blockedBy) {
+              if (dependentsOf[blockerId] === undefined) dependentsOf[blockerId] = []
+              dependentsOf[blockerId].push(task.id)
+            }
           }
         }
         focus[from] = true
@@ -12008,7 +12125,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
           const id = up.shift()          
           /** The origin, whose own rank row the guard below is relaxed for (see the cycle note above). */
           const atOrigin = id === from
-          for (const blockerId of byId[id].blockedBy) {
+          for (const blockerId of blockersOf(id)) {
             if (seenUp[blockerId] === true) continue
             /** The blocker's own row; one the board does not carry draws no edge and tints nothing. */
             const parent = byId[blockerId]
@@ -12126,14 +12243,24 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
        * dependents, and — when the task route served one — the FROZEN acceptance contract, quoted
        * rather than summarized because that text is what a reviewer holds the work to.
        * @param task - the pinned task.
-       * @param tasks - the whole board, for the dependents lookup.
+       * @param tasks - the whole board, for the dependents lookup when no model arrived.
        * @param contract - the frozen contract of this task, when the route served one.
+       * @param edges - the edges the DRAWING routed (the served model's), when one arrived.
        * @returns the detail element.
        */
-      const detailSection = (task          , tasks            , contract                                                                                            )          => {
-        /** The tasks resting on this one, which is the reverse of `blockedBy`. */
+      const detailSection = (task          , tasks            , contract                                                                                            , edges                         )          => {
+        // BLOCKERS AND DEPENDENTS COME FROM THE SAME SOURCE AS THE DRAWN EDGES. A plan-declared arrow
+        // is painted, so the pinned body must name that relationship: with a model it reads the served
+        // edges, and only without one does it fall back to the board's `blockedBy` — the same degrade.
+        /** This task's blockers as the drawing routes them: served edges first, `blockedBy` as the degrade. */
+        const blockers = edges === undefined ? task.blockedBy : edges.filter((edge) => edge.to === task.id).map((edge) => edge.from)
+        /** The tasks resting on this one, which is the same relationship read forwards. */
         const dependents           = []
-        for (const other of tasks) if (other.blockedBy.indexOf(task.id) >= 0) dependents.push(other.id)
+        if (edges === undefined) {
+          for (const other of tasks) if (other.blockedBy.indexOf(task.id) >= 0) dependents.push(other.id)
+        } else {
+          for (const edge of edges) if (edge.from === task.id) dependents.push(edge.to)
+        }
         /** The detail's rows, in render order. */
         const rows            = [
           react.createElement("div", { key: "d-top", style: CSS.row },
@@ -12152,7 +12279,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         if (task.attempt !== undefined) rows.push(detailRow("d-attempt", "task.attempt", String(task.attempt)))
         if (task.round !== undefined) rows.push(detailRow("d-round", "task.round", String(task.round)))
         if (task.verdict !== undefined) rows.push(detailRow("d-verdict", "task.verdict", task.verdict))
-        rows.push(detailRow("d-blocked", "task.blockedBy", task.blockedBy.length === 0 ? "—" : task.blockedBy.join(", ")))
+        rows.push(detailRow("d-blocked", "task.blockedBy", blockers.length === 0 ? "—" : blockers.join(", ")))
         rows.push(detailRow("d-dependents", "task.dependents", dependents.length === 0 ? "—" : dependents.join(", ")))
         // THE PRODUCER'S OWN REPORT, on the task it belongs to (R18's reader side): these references
         // matched nothing when the record was written, so naming them is what turns "this task looks
@@ -12282,8 +12409,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         const tasks = state.tasks
         /** The completion percentage, 0 while the board has no tasks. */
         const percent = counts.total === 0 ? 0 : Math.round((counts.completed / counts.total) * 100)
-        /** The DAG geometry of this poll's board. */
-        const graph = layout(tasks)
+        /** The DAG geometry of this poll's board, drawn from the SERVED ranks (Amendment 3). */
+        const graph = layout(tasks, EDGE_RADIUS, state.model)
         /** The node each task id draws in, so an edge is placed from the board alone. */
         const nodeOf                            = {}
         for (const node of graph.nodes) nodeOf[node.task.id] = node
@@ -12297,10 +12424,15 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         const labelOf                         = {}
         for (const node of graph.nodes) labelOf[node.task.id] = graphSafeLabel(node.task.subject, node.ordinal)
         // THE RANKS THE DRAWING USED, handed to the hover halo so it cannot measure a different relation
-        // than the columns draw: the node's own `rank` IS the derived rank (R20), never the served value.
+        // than the columns draw: the node's own `rank` is the SERVED rank this plane drew, never a value
+        // recomputed here (R20, as amended by Amendment 3).
         /** The drawn rank of every task, straight off the geometry. */
         const drawnRank                         = {}
         for (const node of graph.nodes) drawnRank[node.task.id] = node.rank
+        // THE DRAWING'S OWN TASK SET, GHOSTS INCLUDED: the halo walks what is ON SCREEN, not the board,
+        // or a plan-only node could be painted yet never tint its neighbours.
+        /** Every task the drawing contains: the board plus any plan-only ghost. */
+        const drawingTasks = graph.nodes.map((node) => node.task)
         // THE TALLY SAYS WHAT A CAPTAIN ACTS ON, not just how far along the board is: how many tasks
         // a member could pick up RIGHT NOW, and how many of those are only ready because a
         // prerequisite FAILED (OPT-1 releases them, and that must not hide inside "ready").
@@ -12309,7 +12441,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
           + " · " + counts.blocked + " " + t("tally.blocked")
           + (counts.releasedByFailure === 0 ? "" : " · " + counts.releasedByFailure + " " + t("tally.released"))
         /** The focus halo of the hovered node — empty while nothing is hovered, so every node is full. */
-        const focus                          = hover === null ? {} : focusChain(tasks, hover          , drawnRank)
+        const focus                          = hover === null ? {} : focusChain(drawingTasks, hover          , drawnRank, state.model?.edges)
         /** Whether a hover is dimming the rest of the board. */
         const focusing = Object.keys(focus).length > 0
         // A CHAIN IS ACTIVE ONLY WITH A RELATED NODE: a hover whose halo holds nothing beyond the
@@ -12330,8 +12462,11 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
           // readable as a path rather than as two unrelated highlights.
           edges.push(edgeOf(edge, focus[edge.parent] === true && focus[edge.child] === true))
         }
-        /** The pinned task's own record, or undefined when the pinned id left the board. */
-        const pinnedTask = pinned === null ? undefined : tasks.find((candidate) => candidate.id === pinned)
+        // THE PINNED LOOKUP SEARCHES WHAT IS DRAWN, not the board: a plan-only GHOST is clickable, and
+        // a board-only lookup made the click set `aria-pressed` while `detailSection` never ran — the
+        // pin fell through the same crack the halo and the edges were fixed for.
+        /** The pinned node's own record, or undefined when the pinned id is no longer drawn. */
+        const pinnedTask = pinned === null ? undefined : drawingTasks.find((candidate) => candidate.id === pinned)
         /** The panel's elements, in render order. */
         const children            = [
           react.createElement("div", { key: "head", style: CSS.head }, team.name),
@@ -12439,6 +12574,13 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
                 // actually rendered: an edge's runs and every box come out of the same object, and a
                 // test proves no run crosses a box without re-deriving a single number.
                 "data-mpd-box": (rank * GEO.column + graph.inset) + "," + boxTop(row) + "," + (GEO.column - graph.inset * 2) + "," + GEO.nodeHeight,
+                // THE BOX'S RANK, published as its own value: `data-mpd-box` already carries it inside
+                // the x coordinate, but a verifier comparing the served rank against the drawn rank
+                // should not have to invert `rank * column + inset` to read it.
+                "data-mpd-box-rank": String(rank),
+                // A GHOST is a box the PLAN declared and the board does not. Published so a verifier can
+                // tell it from a board task without inspecting the payload it came from.
+                ...(task.planned === true ? { "data-mpd-planned": "true" } : {}),
                 role: "button",
                 tabIndex: 0,
                 "aria-pressed": pinned === task.id,
@@ -12475,7 +12617,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
                 // map, the grid, the padded wrapper, the graph element, and `children.push`.
                 ))))))))
         }
-        if (pinnedTask !== undefined) children.push(detailSection(pinnedTask, tasks, current.contracts[pinnedTask.id]))
+        if (pinnedTask !== undefined) children.push(detailSection(pinnedTask, tasks, current.contracts[pinnedTask.id], state.model?.edges))
         for (const problem of state.problems) {
           children.push(react.createElement("div", { key: "p-" + problem, style: { ...CSS.dim, marginTop: "6px" } }, problem))
         }

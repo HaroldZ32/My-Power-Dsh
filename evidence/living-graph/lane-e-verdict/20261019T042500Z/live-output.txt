@@ -1,0 +1,68 @@
+{
+ "probe": "live-refresh",
+ "at": "2026-10-19T04:21:28.311Z",
+ "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/living-graph/lane-e-verdict/20261019T042500Z/ws-VUjKD9",
+ "planFile": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/living-graph/lane-e-verdict/20261019T042500Z/ws-VUjKD9/.mpd/plans/task-plan.md",
+ "boardFile": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/living-graph/lane-e-verdict/20261019T042500Z/ws-VUjKD9/.mpd/team/teams/team-live-fixture.json",
+ "before": {
+  "nodes": [
+   "T1",
+   "T2"
+  ],
+  "ghosts": [],
+  "boardOnly": []
+ },
+ "phaseA": {
+  "writes": 2,
+  "batches": [
+   {
+    "sequence": 1,
+    "coalesced": 2,
+    "paths": 1,
+    "manual": false
+   }
+  ],
+  "feedEvents": 1,
+  "latencyFromSecondWriteMs": 201,
+  "elapsedFromFirstWriteMs": 212,
+  "after": {
+   "nodes": [
+    "T1",
+    "T2",
+    "T3",
+    "T4"
+   ],
+   "ghosts": [
+    "T3",
+    "T4"
+   ]
+  }
+ },
+ "phaseB": {
+  "boardWrite": "T3 added",
+  "latencyMs": 50,
+  "after": {
+   "nodes": [
+    "T1",
+    "T2",
+    "T3",
+    "T4"
+   ],
+   "ghosts": [
+    "T4"
+   ],
+   "boardOnly": []
+  }
+ },
+ "feedRevisions": {
+  "afterPlan": 2
+ },
+ "warnings": [],
+ "verdict": {
+  "planEditReachesModel": true,
+  "secondWriteNotDropped": true,
+  "debounceCoalesced": true,
+  "boardEditReachesModel": true,
+  "eventDriven": true
+ }
+}
