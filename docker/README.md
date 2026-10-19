@@ -318,12 +318,13 @@ export MPD_E2E_LIVE_PROMPT='Write a playable snake game to <path> …'   # headl
 node scripts/docker-e2e.ts --live         # add --mode all for source + oneclick
 ```
 
-Without `--live` (or without a forwarded `DEEPSEEK_API_KEY`) no plane reaches a model request: every
-live row is `null` WITH ITS REASON, and the driver refuses `--live` outright when it holds no key. The
-driver forwards the prompt with `-e MPD_E2E_LIVE_PROMPT` — **by name, not by value**, the same way the
-credential travels — and `docker/docker-compose.yml` names `${MPD_E2E_LIVE_PROMPT:-}` in BOTH services'
-`environment:` block, which is what makes the variable reachable from the host at all: compose forwards
-only what the compose file interpolates.
+Without `--live` no plane reaches a model request: every live row is `null` WITH ITS REASON. Passing
+`--live` without a forwarded `DEEPSEEK_API_KEY` does NOT produce those rows — the driver refuses the
+run before the build (exit 3), so there is no verdict to read. The driver forwards the prompt with
+`-e MPD_E2E_LIVE_PROMPT` — **by name, not by value**, the same way the credential travels — and
+`docker/docker-compose.yml` names `${MPD_E2E_LIVE_PROMPT:-}` in BOTH services' `environment:` block,
+which is what makes the variable reachable from the host at all: compose forwards only what the compose
+file interpolates.
 
 Which prompt a turn actually ran with is part of the evidence: step 15 prints a
 `[live-prompt] promptSource=… bytes=… firstLine="…"` line, records the same note as the `livePrompt`

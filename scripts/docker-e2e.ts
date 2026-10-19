@@ -632,10 +632,17 @@ function selfTest(): void {
   // The WEB and TUI live arms are two DIFFERENT planes and both must ask the same verdict reader.
   // The 2026-10-19 `{{cwd}}` defect reached a real turn, so a lane that mounts the preset but never
   // drives a turn is not evidence for the persona contract.
-  check("entrypoint drives the WEB live turn through live-verdict", /--label web/.test(entrypoint))
+  // The LIVE branch must be the subject: both scripts ALSO call the reader with `--unavailable` on
+  // the credential-free path, so a bare `--label web` match would stay green even if the live call
+  // vanished. The `--dsh-home` + `--since` pair exists only on the measured branch.
+  check("entrypoint drives the WEB live turn through live-verdict", /--dsh-home\s+"\$DSH_HOME"[\s\S]{0,200}--label web[\s\S]{0,160}--since/.test(entrypoint))
   /** The TUI lane script, whose live turn is typed into the real PTY. */
   const tuiLaneScript = readFileSync(join(DOCKER_DIR, "tui-lane.sh"), "utf8")
-  check("tui-lane drives the TUI live turn through live-verdict", /--label tui/.test(tuiLaneScript))
+  check("tui-lane drives the TUI live turn through live-verdict", /--dsh-home\s+"\$DSH_HOME"[\s\S]{0,200}--label tui[\s\S]{0,160}--since/.test(tuiLaneScript))
+  // The credential-free arms are a DIFFERENT outcome (null rows with a reason), so they are pinned
+  // separately instead of satisfying the live checks above.
+  check("entrypoint keeps the credential-free WEB arm", /--label web --state "\$STATE_FILE"[\s\S]{0,120}--unavailable/.test(entrypoint))
+  check("tui-lane keeps the credential-free TUI arm", /--label tui --state "\$STATE_FILE"[\s\S]{0,120}--unavailable/.test(tuiLaneScript))
   /** The live verdict reader, whose assertion names are part of the acceptance contract. */
   const liveVerdict = readFileSync(join(DOCKER_DIR, "lib", "live-verdict.ts"), "utf8")
   check("live-verdict pins the prompt-variable failure class", liveVerdict.includes("noPromptVariableError") && liveVerdict.includes("unknown prompt variable"))

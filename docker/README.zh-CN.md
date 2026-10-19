@@ -267,11 +267,11 @@ export MPD_E2E_LIVE_PROMPT='把一个可玩的贪吃蛇游戏写到 <路径> …
 node scripts/docker-e2e.ts --live         # 加 --mode all 可跑 source + oneclick
 ```
 
-没有 `--live`（或没有转发 `DEEPSEEK_API_KEY`）时，三个平面都不会发起模型请求：每一行 live 断言都以 `null`
-**连同原因**记录，而驱动在手里没有密钥时会直接拒绝 `--live`。驱动用 `-e MPD_E2E_LIVE_PROMPT` 转发该提示词
-——**按名字转发，而不是按值**，与凭据的传递方式一致——并且 `docker/docker-compose.yml` 在**两个**服务的
-`environment:` 块里都写了 `${MPD_E2E_LIVE_PROMPT:-}`，这正是该变量能从宿主机送达容器的原因：compose 只转发
-compose 文件自己插值过的变量。
+没有 `--live` 时，三个平面都不会发起模型请求：每一行 live 断言都以 `null` **连同原因**记录。若传了
+`--live` 却没有转发 `DEEPSEEK_API_KEY`，驱动会在构建前直接拒绝整次运行（退出码 3），不会产生任何判决行。
+驱动用 `-e MPD_E2E_LIVE_PROMPT` 转发该提示词——**按名字转发，而不是按值**，与凭据的传递方式一致——并且
+`docker/docker-compose.yml` 在**两个**服务的 `environment:` 块里都写了 `${MPD_E2E_LIVE_PROMPT:-}`，这正是
+该变量能从宿主机送达容器的原因：compose 只转发 compose 文件自己插值过的变量。
 
 某一回合实际用的是哪条提示词，本身就是证据的一部分：第 15 步会打印
 `[live-prompt] promptSource=… bytes=… firstLine="…"` 这一行，把同样的说明记录为 `result.json` 中的
