@@ -640,9 +640,13 @@ function selfTest(): void {
   const tuiLaneScript = readFileSync(join(DOCKER_DIR, "tui-lane.sh"), "utf8")
   check("tui-lane drives the TUI live turn through live-verdict", /--dsh-home\s+"\$DSH_HOME"[\s\S]{0,200}--label tui[\s\S]{0,160}--since/.test(tuiLaneScript))
   // The credential-free arms are a DIFFERENT outcome (null rows with a reason), so they are pinned
-  // separately instead of satisfying the live checks above.
-  check("entrypoint keeps the credential-free WEB arm", /--label web --state "\$STATE_FILE"[\s\S]{0,120}--unavailable/.test(entrypoint))
-  check("tui-lane keeps the credential-free TUI arm", /--label tui --state "\$STATE_FILE"[\s\S]{0,120}--unavailable/.test(tuiLaneScript))
+  // separately. The WEB live branch has its OWN `--unavailable` fallback when it cannot find a
+  // session id, so the non-live arm is identified by its REASON TEXT, not by the flag alone.
+  check("entrypoint keeps the credential-free WEB arm", /--label web --state "\$STATE_FILE"[\s\S]{0,120}--unavailable "not attempted: a live turn needs MPD_E2E_LIVE=1/.test(entrypoint))
+  check("tui-lane keeps the credential-free TUI arm", /--label tui --state "\$STATE_FILE"[\s\S]{0,120}--unavailable "not attempted: a live turn needs MPD_E2E_LIVE=1/.test(tuiLaneScript))
+  /** The WEB live branch's OWN `--unavailable` fallback, which is NOT the credential-free arm. */
+  const liveWebFallback = 'node "$LIB_DIR/live-verdict.ts" --label web --state "$STATE_FILE" --unavailable "the web session was never created, so no turn could be driven through the gateway"'
+  check("the credential-free WEB check rejects the live branch's own fallback", !/--label web --state "\$STATE_FILE"[\s\S]{0,120}--unavailable "not attempted: a live turn needs MPD_E2E_LIVE=1/.test(liveWebFallback))
   /** The live verdict reader, whose assertion names are part of the acceptance contract. */
   const liveVerdict = readFileSync(join(DOCKER_DIR, "lib", "live-verdict.ts"), "utf8")
   check("live-verdict pins the prompt-variable failure class", liveVerdict.includes("noPromptVariableError") && liveVerdict.includes("unknown prompt variable"))
