@@ -4141,6 +4141,112 @@ function field(payload, key, maxCells = 200) {
   return scalarText(payload[key], maxCells);
 }
 
+// packages/mpd-graph-core/src/rank.ts
+function deriveRanks(tasks, byId) {
+  const settled = new Map;
+  const walking = new Set;
+  for (const root of tasks) {
+    if (settled.has(root.id))
+      continue;
+    const stack = [{ id: root.id, next: 0 }];
+    walking.add(root.id);
+    while (stack.length > 0) {
+      const frame = stack[stack.length - 1];
+      const deps = (byId.get(frame.id)?.dependencies ?? []).filter((id) => byId.has(id));
+      if (frame.next < deps.length) {
+        const dependency = deps[frame.next];
+        frame.next += 1;
+        if (settled.has(dependency) || walking.has(dependency))
+          continue;
+        walking.add(dependency);
+        stack.push({ id: dependency, next: 0 });
+        continue;
+      }
+      let deepest = 0;
+      for (const dependency of deps)
+        deepest = Math.max(deepest, (settled.get(dependency) ?? 0) + 1);
+      settled.set(frame.id, deepest);
+      walking.delete(frame.id);
+      stack.pop();
+    }
+  }
+  return settled;
+}
+function servedRank(task) {
+  return Number.isFinite(task.depth) && task.depth > 0 ? Math.floor(task.depth) : 0;
+}
+var ID_ORDER = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
+function bucketRanks(tasks, rankOf) {
+  const deepest = tasks.reduce((max, task) => Math.max(max, rankOf(task)), 0);
+  const ranks = Array.from({ length: deepest + 1 }, () => []);
+  for (const task of tasks)
+    ranks[Math.min(Math.max(0, rankOf(task)), deepest)].push(task);
+  for (const rank of ranks)
+    rank.sort((left, right) => ID_ORDER.compare(left.id, right.id));
+  return ranks;
+}
+function rankPlan(tasks, served) {
+  const byId = new Map(tasks.map((task) => [task.id, task]));
+  const missing = new Set;
+  let resolved = 0;
+  for (const task of tasks) {
+    for (const id of task.dependencies) {
+      if (byId.has(id))
+        resolved += 1;
+      else
+        missing.add(id);
+    }
+  }
+  const unresolved = [...missing].sort();
+  if (served !== undefined) {
+    return { ranks: bucketRanks(tasks, (task) => served.get(task.id) ?? 0), rankOf: served, derived: false, unresolved };
+  }
+  if (tasks.length === 0)
+    return { ranks: [], rankOf: new Map, derived: true, unresolved };
+  const servedVaries = new Set(tasks.map((task) => servedRank(task))).size > 1;
+  if (resolved === 0 && servedVaries) {
+    const ranks = bucketRanks(tasks, servedRank);
+    const rankOf = new Map;
+    ranks.forEach((rank, index) => {
+      for (const task of rank)
+        rankOf.set(task.id, index);
+    });
+    return { ranks, rankOf, derived: false, unresolved };
+  }
+  const derived = deriveRanks(tasks, byId);
+  return { ranks: bucketRanks(tasks, (task) => derived.get(task.id) ?? 0), rankOf: derived, derived: true, unresolved };
+}
+function cycleIds(tasks) {
+  const byId = new Map(tasks.map((task) => [task.id, task]));
+  const done = new Set;
+  const stack = [];
+  const onStack = new Set;
+  const cyclic = new Set;
+  const visit = (id) => {
+    if (done.has(id))
+      return;
+    if (onStack.has(id)) {
+      for (const entry of stack.slice(stack.indexOf(id)))
+        cyclic.add(entry);
+      return;
+    }
+    const task = byId.get(id);
+    if (task === undefined)
+      return;
+    onStack.add(id);
+    stack.push(id);
+    for (const dependency of task.dependencies)
+      if (byId.has(dependency))
+        visit(dependency);
+    stack.pop();
+    onStack.delete(id);
+    done.add(id);
+  };
+  for (const task of tasks)
+    visit(task.id);
+  return [...cyclic].sort();
+}
+
 // packages/mpd-tui-plugin/src/team-state.ts
 var MAX_TEAMS = 20;
 var MAX_TASKS = 5000;
@@ -4206,7 +4312,7 @@ function taskDepths(tasks) {
     depthOf(task.id);
   return depths;
 }
-function cycleIds(tasks) {
+function cycleIds2(tasks) {
   const byId = new Map(tasks.map((task) => [task.id, task]));
   const done = new Set;
   const stack = [];
@@ -4332,7 +4438,7 @@ function readTeamWorkflow(workspace, holds = [], views = [], source) {
   }
   const creationIndex = new Map(tasks.map((task, index) => [task.id, index]));
   tasks.sort((left, right) => left.depth - right.depth || (creationIndex.get(left.id) ?? 0) - (creationIndex.get(right.id) ?? 0));
-  const cycle = cycleIds(tasks);
+  const cycle = cycleIds2(tasks);
   if (cycle.length > 0)
     problems.push(`cycle ${cycle.join(",")}`);
   const counts = { total: 0, completed: 0, inProgress: 0, pending: 0, claimed: 0, failed: 0, cancelled: 0, other: 0 };
@@ -4461,15 +4567,15 @@ function readScopedWorkflow(read) {
     if (sessionId === undefined) {
       const principal = principalRecord(read.records);
       if (principal !== undefined)
-        return readRecordWorkflow(read.workspace, read.holds, principal, { scope: "workspace" });
-      return readTeamWorkflow(read.workspace, read.holds, read.views, { scope: "workspace" });
+        return attachModel(readRecordWorkflow(read.workspace, read.holds, principal, { scope: "workspace" }), read.teams, read.workspace, principal.teamId);
+      return attachModel(readTeamWorkflow(read.workspace, read.holds, read.views, { scope: "workspace" }), read.teams, read.workspace);
     }
     const record = sessionRecord(read.teams, read.workspace, sessionId, read.records);
     if (record !== undefined)
-      return readRecordWorkflow(read.workspace, read.holds, record, { scope: "session", sessionId });
+      return attachModel(readRecordWorkflow(read.workspace, read.holds, record, { scope: "session", sessionId }), read.teams, read.workspace, record.teamId);
     const mine = sessionViewsOf(read.views, sessionId);
     if (mine.length > 0)
-      return readTeamWorkflow(read.workspace, read.holds, mine, { scope: "session", sessionId });
+      return attachModel(readTeamWorkflow(read.workspace, read.holds, mine, { scope: "session", sessionId }), read.teams, read.workspace);
     return emptyWorkflow(read.workspace, [], read.holds, { scope: "none", sessionId, workspaceTeams: read.records.length });
   } catch (error) {
     const note = `the team read failed: ${String(error?.message ?? error)}`.slice(0, 200);
@@ -4478,6 +4584,69 @@ function readScopedWorkflow(read) {
       ...sessionId === undefined ? {} : { sessionId }
     });
   }
+}
+function attachModel(workflow, teams, workspace, teamId) {
+  if (teams === undefined || typeof teams.graph !== "function")
+    return workflow;
+  let model;
+  try {
+    model = teams.graph(workspace, teamId);
+  } catch {
+    model = undefined;
+  }
+  if (model === undefined || !Array.isArray(model.nodes))
+    return workflow;
+  const boardIds = new Set(workflow.tasks.map((task) => task.id));
+  const sameBoard = model.nodes.some((node) => node.planned === false && boardIds.has(node.id));
+  return sameBoard ? { ...workflow, model } : workflow;
+}
+function rankOfNode(node) {
+  return typeof node.depth === "number" && Number.isFinite(node.depth) ? Math.max(0, Math.floor(node.depth)) : 0;
+}
+function ghostRow(node) {
+  return {
+    id: node.id,
+    subject: node.subject,
+    ...node.kind === undefined ? {} : { kind: node.kind },
+    status: node.status ?? "pending",
+    visual: node.visual,
+    ...node.assignee === undefined ? {} : { assignee: node.assignee },
+    dependencies: [...node.dependencies],
+    failedDependencies: [],
+    depth: rankOfNode(node),
+    planned: true
+  };
+}
+function modelRows(workflow) {
+  const model = workflow.model;
+  if (model === undefined)
+    return workflow.tasks;
+  const byId = new Map(workflow.tasks.map((task) => [task.id, task]));
+  const seen = new Set;
+  const rows = [];
+  for (const node of model.nodes) {
+    seen.add(node.id);
+    const row = byId.get(node.id);
+    if (row === undefined) {
+      rows.push(ghostRow(node));
+      continue;
+    }
+    rows.push({ ...row, depth: rankOfNode(node) });
+  }
+  for (const task of workflow.tasks)
+    if (!seen.has(task.id))
+      rows.push(task);
+  rows.sort((left, right) => ID_ORDER.compare(left.id, right.id));
+  return rows;
+}
+function modelRanks(workflow) {
+  const model = workflow?.model;
+  if (model === undefined)
+    return;
+  const ranks = new Map;
+  for (const node of model.nodes)
+    ranks.set(node.id, rankOfNode(node));
+  return ranks;
 }
 function readRecordWorkflow(workspace, holds, record, source) {
   const problems = [];
@@ -4505,7 +4674,7 @@ function readRecordWorkflow(workspace, holds, record, source) {
   }
   const order = new Map(tasks.map((task, index) => [task.id, index]));
   tasks.sort((left, right) => left.depth - right.depth || (order.get(left.id) ?? 0) - (order.get(right.id) ?? 0));
-  const cycle = cycleIds(tasks);
+  const cycle = cycleIds2(tasks);
   if (cycle.length > 0)
     problems.push(`cycle ${cycle.join(",")}`);
   const counts = { total: 0, completed: 0, inProgress: 0, pending: 0, claimed: 0, failed: 0, cancelled: 0, other: 0 };
@@ -5803,109 +5972,8 @@ function dependencyChain(tasks, id) {
   }
   return seen;
 }
-function deriveRanks(tasks, byId) {
-  const settled = new Map;
-  const walking = new Set;
-  for (const root of tasks) {
-    if (settled.has(root.id))
-      continue;
-    const stack = [{ id: root.id, next: 0 }];
-    walking.add(root.id);
-    while (stack.length > 0) {
-      const frame = stack[stack.length - 1];
-      const deps = (byId.get(frame.id)?.dependencies ?? []).filter((id) => byId.has(id));
-      if (frame.next < deps.length) {
-        const dependency = deps[frame.next];
-        frame.next += 1;
-        if (settled.has(dependency) || walking.has(dependency))
-          continue;
-        walking.add(dependency);
-        stack.push({ id: dependency, next: 0 });
-        continue;
-      }
-      let deepest = 0;
-      for (const dependency of deps)
-        deepest = Math.max(deepest, (settled.get(dependency) ?? 0) + 1);
-      settled.set(frame.id, deepest);
-      walking.delete(frame.id);
-      stack.pop();
-    }
-  }
-  return settled;
-}
-function servedRank(task) {
-  return Number.isFinite(task.depth) && task.depth > 0 ? Math.floor(task.depth) : 0;
-}
-var ID_ORDER = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
-function bucketRanks(tasks, rankOf) {
-  const deepest = tasks.reduce((max, task) => Math.max(max, rankOf(task)), 0);
-  const ranks = Array.from({ length: deepest + 1 }, () => []);
-  for (const task of tasks)
-    ranks[Math.min(Math.max(0, rankOf(task)), deepest)].push(task);
-  for (const rank of ranks)
-    rank.sort((left, right) => ID_ORDER.compare(left.id, right.id));
-  return ranks;
-}
-function rankPlan(tasks) {
-  const byId = new Map(tasks.map((task) => [task.id, task]));
-  const missing = new Set;
-  let resolved = 0;
-  for (const task of tasks) {
-    for (const id of task.dependencies) {
-      if (byId.has(id))
-        resolved += 1;
-      else
-        missing.add(id);
-    }
-  }
-  const unresolved = [...missing].sort();
-  if (tasks.length === 0)
-    return { ranks: [], rankOf: new Map, derived: true, unresolved };
-  const servedVaries = new Set(tasks.map((task) => servedRank(task))).size > 1;
-  if (resolved === 0 && servedVaries) {
-    const ranks = bucketRanks(tasks, servedRank);
-    const rankOf = new Map;
-    ranks.forEach((rank, index) => {
-      for (const task of rank)
-        rankOf.set(task.id, index);
-    });
-    return { ranks, rankOf, derived: false, unresolved };
-  }
-  const derived = deriveRanks(tasks, byId);
-  return { ranks: bucketRanks(tasks, (task) => derived.get(task.id) ?? 0), rankOf: derived, derived: true, unresolved };
-}
-function cycleIds2(tasks) {
-  const byId = new Map(tasks.map((task) => [task.id, task]));
-  const done = new Set;
-  const stack = [];
-  const onStack = new Set;
-  const cyclic = new Set;
-  const visit = (id) => {
-    if (done.has(id))
-      return;
-    if (onStack.has(id)) {
-      for (const entry of stack.slice(stack.indexOf(id)))
-        cyclic.add(entry);
-      return;
-    }
-    const task = byId.get(id);
-    if (task === undefined)
-      return;
-    onStack.add(id);
-    stack.push(id);
-    for (const dependency of task.dependencies)
-      if (byId.has(dependency))
-        visit(dependency);
-    stack.pop();
-    onStack.delete(id);
-    done.add(id);
-  };
-  for (const task of tasks)
-    visit(task.id);
-  return [...cyclic].sort();
-}
-function layoutBoxesNatural(tasks, focus, budget) {
-  const plan = rankPlan(tasks);
+function layoutBoxesNatural(tasks, focus, budget, servedRanks) {
+  const plan = rankPlan(tasks, servedRanks);
   const ranks = plan.ranks;
   if (ranks.length > MAX_BOX_RANKS)
     return;
@@ -6059,17 +6127,17 @@ function drawBoxes(tasks, ranks, widest, nodeWidth, form, focus, plan, widestLab
   while (lines.length > 0 && lines[lines.length - 1].every((span) => span.text.trim() === ""))
     lines.pop();
   const chainList = chain === undefined ? [] : [...chain].sort();
-  const view = { lines, hits, width, mode: "boxes", cycles: cycleIds2(tasks), chain: chainList, ranksDerived: plan.derived, unresolved: plan.unresolved, boxRows: form };
+  const view = { lines, hits, width, mode: "boxes", cycles: cycleIds(tasks), chain: chainList, ranksDerived: plan.derived, unresolved: plan.unresolved, boxRows: form };
   if (focus !== undefined)
     view.focus = focus;
   if (widestLabel !== undefined)
     view.labelOverflow = widestLabel > labelCells - 1;
   return view;
 }
-function layoutRail(tasks, cols, focus) {
+function layoutRail(tasks, cols, focus, servedRanks) {
   const chain = focus === undefined ? undefined : dependencyChain(tasks, focus);
   const byId = new Map(tasks.map((task) => [task.id, task]));
-  const plan = rankPlan(tasks);
+  const plan = rankPlan(tasks, servedRanks);
   const children = new Map;
   for (const task of tasks) {
     const parent = task.dependencies.filter((id) => byId.has(id)).sort((left, right) => (plan.rankOf.get(right) ?? 0) - (plan.rankOf.get(left) ?? 0))[0];
@@ -6120,14 +6188,14 @@ function layoutRail(tasks, cols, focus) {
     hits.push({ taskId: entry.task.id, row: index, rowEnd: index, col: 0, colEnd: Math.max(0, cols - 1) });
   });
   const chainList = chain === undefined ? [] : [...chain].sort();
-  const view = { lines, hits, width: cols, mode: "rail", cycles: cycleIds2(tasks), chain: chainList, ranksDerived: plan.derived, unresolved: plan.unresolved, boxRows: 3 };
+  const view = { lines, hits, width: cols, mode: "rail", cycles: cycleIds(tasks), chain: chainList, ranksDerived: plan.derived, unresolved: plan.unresolved, boxRows: 3 };
   if (focus !== undefined)
     view.focus = focus;
   return view;
 }
-function layoutList(tasks, cols, focus) {
+function layoutList(tasks, cols, focus, servedRanks) {
   const chain = focus === undefined ? undefined : dependencyChain(tasks, focus);
-  const plan = rankPlan(tasks);
+  const plan = rankPlan(tasks, servedRanks);
   const ranks = plan.ranks;
   const lines = [];
   const hits = [];
@@ -6145,13 +6213,13 @@ function layoutList(tasks, cols, focus) {
     }
   }
   const chainList = chain === undefined ? [] : [...chain].sort();
-  const view = { lines, hits, width: cols, mode: "list", cycles: cycleIds2(tasks), chain: chainList, ranksDerived: plan.derived, unresolved: plan.unresolved, boxRows: 3 };
+  const view = { lines, hits, width: cols, mode: "list", cycles: cycleIds(tasks), chain: chainList, ranksDerived: plan.derived, unresolved: plan.unresolved, boxRows: 3 };
   if (focus !== undefined)
     view.focus = focus;
   return view;
 }
-function layoutGraphNatural(tasks, focus, budget) {
-  return layoutBoxesNatural(tasks, focus, budget) ?? layoutRail(tasks, NATURAL_RAIL_FALLBACK_COLS, focus);
+function layoutGraphNatural(tasks, focus, budget, servedRanks) {
+  return layoutBoxesNatural(tasks, focus, budget, servedRanks) ?? layoutRail(tasks, NATURAL_RAIL_FALLBACK_COLS, focus, servedRanks);
 }
 function hitTest(view, row, col) {
   for (const hit of view.hits) {
@@ -6560,23 +6628,14 @@ function subagentSectionRows(channel) {
     section.push({ text: subagentRowLine(rows[index]), rowIndex: index });
   return section;
 }
-function graphTasksOf(workflow) {
-  return workflow.tasks.map((task) => ({
-    id: task.id,
-    subject: task.subject,
-    ...task.kind === undefined ? {} : { kind: task.kind },
-    visual: task.visual,
-    ...task.assignee === undefined ? {} : { assignee: task.assignee },
-    dependencies: task.dependencies,
-    depth: task.depth,
-    ...task.attempt === undefined ? {} : { attempt: task.attempt }
-  }));
-}
 function teamGraphView(workflow, cols, rows) {
-  if (workflow === undefined || workflow.tasks.length === 0)
+  if (workflow === undefined)
+    return;
+  const graphTasks = modelRows(workflow);
+  if (graphTasks.length === 0)
     return;
   try {
-    return layoutGraphNatural(graphTasksOf(workflow), undefined, rows === undefined ? {} : { rows });
+    return layoutGraphNatural(graphTasks, undefined, rows === undefined ? {} : { rows }, modelRanks(workflow));
   } catch {
     return;
   }
@@ -7736,8 +7795,9 @@ function dagPageOf(workflow) {
     return;
   if (workflow.tasks.length === 0 && workflow.team === undefined)
     return;
+  const rows = modelRows(workflow);
   const tasks = [];
-  for (const task of workflow.tasks) {
+  for (const task of rows) {
     const id = panelField(task.id, 40);
     if (id === undefined || id === "")
       continue;
@@ -7753,7 +7813,8 @@ function dagPageOf(workflow) {
       ...typeof task.attempt === "number" && Number.isFinite(task.attempt) ? { attempt: Math.floor(task.attempt) } : {},
       failedDependencies: (Array.isArray(task.failedDependencies) ? task.failedDependencies : []).map((dep) => panelField(dep, 40) ?? "").filter((dep) => dep !== ""),
       ...typeof task.round === "number" && Number.isFinite(task.round) ? { round: Math.floor(task.round) } : {},
-      ...task.verdict === undefined ? {} : { verdict: panelField(task.verdict, 60) ?? "" }
+      ...task.verdict === undefined ? {} : { verdict: panelField(task.verdict, 60) ?? "" },
+      ...task.planned === true ? { planned: true } : {}
     });
   }
   if (tasks.length === 0 && workflow.team === undefined)
@@ -7769,8 +7830,10 @@ function dagPageOf(workflow) {
       });
     }
   }
+  const ranks = modelRanks(workflow);
   return {
     tasks,
+    ...ranks === undefined ? {} : { ranks },
     workspace: panelField(workflow.workspace, 200) ?? "",
     teamName: panelField(workflow.team?.name, 60) ?? "(unnamed team)",
     phase: panelField(workflow.team?.phase, 20) ?? "unknown",
@@ -7788,16 +7851,16 @@ function viewFacts(view) {
   };
 }
 var LIST_ROWS = 24;
-function dagPanelLayout(tasks, cols, focus, rows) {
+function dagPanelLayout(tasks, cols, focus, rows, servedRanks) {
   const width = Math.max(8, Math.floor(Number.isFinite(cols) ? cols : 8));
-  const boxes = layoutBoxesNatural(tasks, focus, rows === undefined ? undefined : { rows });
+  const boxes = layoutBoxesNatural(tasks, focus, rows === undefined ? undefined : { rows }, servedRanks);
   if (boxes !== undefined && boxes.labelOverflow !== true)
     return { view: boxes, mode: "boxes", list: false, ...viewFacts(boxes) };
   if (tasks.length > LIST_ROWS) {
-    const dense = layoutList(tasks, width, focus);
+    const dense = layoutList(tasks, width, focus, servedRanks);
     return { view: dense, mode: "list", list: true, ...viewFacts(dense) };
   }
-  const rail = layoutRail(tasks, width, focus);
+  const rail = layoutRail(tasks, width, focus, servedRanks);
   return { view: rail, mode: "rail", list: false, ...viewFacts(rail) };
 }
 function dagBadge(tasks) {
@@ -8023,7 +8086,7 @@ function createDagPanelComponent(readWorkflow, options) {
     const focus = pinnedNow() ?? cursorNow();
     const windowRows = Math.max(1, (measured.rows ?? DAG_FALLBACK_ROWS) - PANEL_CHROME_ROWS - PANEL_TITLE_ROW_ROWS);
     const sizes = { contentRows: 1, viewportRows: 1, contentCols, viewportCols: contentCols };
-    const layout = page === undefined ? undefined : dagPanelLayout(page.tasks, contentCols, focus, windowRows);
+    const layout = page === undefined ? undefined : dagPanelLayout(page.tasks, contentCols, focus, windowRows, page.ranks);
     sizes.contentCols = layout?.view.width ?? contentCols;
     usePanelTick(kit, DAG_PANEL_REFRESH_MS, true);
     const animate = layout !== undefined && layout.view.lines.some((row) => row.some((span) => span.tone === "running"));
@@ -8777,21 +8840,12 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
         }
       };
     }, []);
-    const graphTasks = (workflow?.tasks ?? []).map((task) => ({
-      id: task.id,
-      subject: task.subject,
-      ...task.kind === undefined ? {} : { kind: task.kind },
-      visual: task.visual,
-      ...task.assignee === undefined ? {} : { assignee: task.assignee },
-      dependencies: task.dependencies,
-      depth: task.depth,
-      ...task.attempt === undefined ? {} : { attempt: task.attempt }
-    }));
+    const graphTasks = workflow === undefined ? [] : modelRows(workflow);
     const focus = hover ?? pinned;
     const measured = measureTerminal2(ui);
     const graphWidth = Math.max(20, measured.cols - 4);
     const graphWindow = Math.max(3, measured.window - 4);
-    const view = layoutGraphNatural(graphTasks, focus, { rows: graphWindow });
+    const view = layoutGraphNatural(graphTasks, focus, { rows: graphWindow }, modelRanks(workflow));
     const scrollXMax = Math.max(0, view.width - graphWidth);
     const scrollXAt = Math.min(Math.max(0, scrollX), scrollXMax);
     if (viewRef !== undefined && viewRef !== null)

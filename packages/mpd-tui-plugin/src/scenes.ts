@@ -36,6 +36,8 @@ import { cellWidth, clampCells, stripControl } from "./sanitize.js"
 import type { TeamWorkflow } from "./team-state.js"
 import {
   approvalPhrase,
+  modelRanks,
+  modelRows,
   NO_SESSION_TEAM_MARKER,
   planProjectionLines,
   readScopedWorkflow,
@@ -725,17 +727,8 @@ function createTeamComponent(
       }
     }, [])
 
-    /** The board in the graph's own vocabulary. */
-    const graphTasks: GraphTask[] = (workflow?.tasks ?? []).map((task) => ({
-      id: task.id,
-      subject: task.subject,
-      ...(task.kind === undefined ? {} : { kind: task.kind }),
-      visual: task.visual,
-      ...(task.assignee === undefined ? {} : { assignee: task.assignee }),
-      dependencies: task.dependencies,
-      depth: task.depth,
-      ...(task.attempt === undefined ? {} : { attempt: task.attempt }),
-    }))
+    /** The board in the graph's own vocabulary, joined with the SERVED model (ghosts included). */
+    const graphTasks: GraphTask[] = workflow === undefined ? [] : modelRows(workflow)
     /** HOVER OUTRANKS THE PIN while it lasts: the pointer is the more recent intent. */
     const focus = hover ?? pinned
     // The window is computed from the host's own terminal size (never assumed).
@@ -748,7 +741,7 @@ function createTeamComponent(
     /** The rows of the graph that fit the window. */
     const graphWindow = Math.max(3, measured.window - 4)
     /** The drawing for this render, at its own width. */
-    const view = layoutGraphNatural(graphTasks, focus, { rows: graphWindow })
+    const view = layoutGraphNatural(graphTasks, focus, { rows: graphWindow }, modelRanks(workflow))
     /** The furthest horizontal offset that still fills the viewport; zero when the drawing fits. */
     const scrollXMax = Math.max(0, view.width - graphWidth)
     /** The horizontal offset for THIS render, clamped — the one value the rows and the rail both read. */

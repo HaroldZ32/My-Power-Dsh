@@ -14,6 +14,7 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import ts from "typescript5";
+import { buildModel, type BoardTask, type GraphModel, type PlanDocument } from "../../mpd-graph-core/src/index.ts"
 import { createHookRuntime, type ElementNode, type HookRuntime, type TreeChild, type TreeNode } from "./client-harness.ts";
 
 /** Repository root, three directories above this test file. */
@@ -48,6 +49,51 @@ const CYCLE_TASKS = [
   { id: "T2", subject: "second", kind: "work", status: "open", visual: "blocked", blockedBy: ["T1"], failedBy: [], depth: 1 },
 ]
 
+/**
+ * The SERVED model one board (plus an optional plan) would arrive with: computed by the SHARED CORE.
+ *
+ * THE WEB VIEW NO LONGER DERIVES ANYTHING (`.mpd/plans/living-graph.md`, Amendment 3): the host
+ * computes the model ONCE with `mpd-graph-core` and serves it beside the board. So the harness asks
+ * the core what the payload would carry, and every arm below proves the view RENDERS that model
+ * instead of inventing a second one. A test-side import is what makes the fixture the SAME
+ * implementation the host runs, not a hand-copied expectation.
+ * @param tasks - a fixture board, in board order.
+ * @param plan - the parsed plan, when the case needs plan-only ghosts or declared edges.
+ * @returns the rank per task id, and the model as the wire carries it.
+ */
+function servedOf(tasks: Array<Record<string, unknown>>, plan?: PlanDocument): { ranks: Record<string, number>; model: GraphModel } {
+  /** The board rows the core's merge consumes: the store's own vocabulary, as the host hands it over. */
+  const board: BoardTask[] = tasks.map((task) => ({
+    id: String(task.id),
+    subject: String(task.subject ?? task.id),
+    ...(typeof task.kind === "string" ? { kind: task.kind } : {}),
+    ...(typeof task.status === "string" ? { status: task.status } : {}),
+    ...(typeof task.owner === "string" ? { owner: task.owner } : {}),
+    blockedBy: Array.isArray(task.blockedBy) ? task.blockedBy.map(String) : [],
+    depth: Number(task.depth ?? 0),
+    ...(typeof task.attempt === "number" ? { attempt: task.attempt } : {}),
+    ...(typeof task.visual === "string" ? { visual: task.visual } : {}),
+  }))
+  /** The core's own answer, which is what the host would serve. */
+  const model = buildModel({ board, ...(plan === undefined ? {} : { plan }) })
+  /** The rank each id draws in, read off the model's own nodes. */
+  const ranks: Record<string, number> = {}
+  for (const node of model.nodes) ranks[node.id] = node.depth
+  return { ranks, model }
+}
+
+/**
+ * Stamp one fixture board with the served ranks, and answer the model the payload would carry.
+ * @param tasks - a fixture board.
+ * @param plan - the parsed plan, when the case needs plan-only ghosts or declared edges.
+ * @returns the tasks as the host serves them (each with `rank`), plus the served model.
+ */
+function withServed(tasks: Array<Record<string, unknown>>, plan?: PlanDocument): { tasks: Array<Record<string, unknown>>; model: GraphModel } {
+  /** What the host would serve for this board. */
+  const served = servedOf(tasks, plan)
+  return { tasks: tasks.map((task) => ({ ...task, rank: served.ranks[String(task.id)] ?? 0 })), model: served.model }
+}
+
 /** One canned route answer, in the shape the view's own `readOne` consumes. */
 interface CannedRoute {
   /** Whether the answer carries a 2xx status, as `Response.ok` reports it. */
@@ -69,7 +115,11 @@ interface CannedResponse {
 }
 
 /** Build a full team payload around one board, overriding the tally the case needs. */
-function stateOf(tasks: Array<Record<string, unknown>>, counts: Partial<Record<string, number>> = {}, cycles: string[] = []): unknown {
+function stateOf(tasks: Array<Record<string, unknown>>, counts: Partial<Record<string, number>> = {}, cycles: string[] = [], plan?: PlanDocument): unknown {
+  // THE BOARD THE HOST WOULD SERVE: every task carries the rank the shared core computed, and the
+  // payload carries the model beside it. The view reads both; nothing here is re-derived.
+  /** The served form of this fixture board, with the plan's ghosts and edges when a case supplies one. */
+  const served = withServed(tasks, plan)
   return {
     ok: true,
     workspace: WORKSPACE,
@@ -79,7 +129,8 @@ function stateOf(tasks: Array<Record<string, unknown>>, counts: Partial<Record<s
       { id: "m1", name: "web-team-gui", role: "Senior Engineer", status: "running", done: 1, total: 2, current: "Build the header", route: "deepseek/deepseek-chat" },
       { id: "m2", name: "web-settings-card", role: "Senior Engineer", status: "idle", done: 0, total: 1 },
     ],
-    tasks,
+    tasks: served.tasks,
+    model: served.model,
     cycles,
     executor: { kind: "native", reason: "ctx.subagents.startContinuable" },
     problems: [],
@@ -208,7 +259,7 @@ interface ViewModule {
   /** The component under test. */
   TeamView: (props?: unknown) => unknown
   /** The pure geometry the panel draws with. */
-  layout: (tasks: Array<Record<string, unknown>>) => GraphGeometry
+  layout: (tasks: Array<Record<string, unknown>>, radius?: number, served?: GraphModel) => GraphGeometry
   /** The graph-safe label rule itself (clause C4), exposed so the drawing's one composer is provable. */
   graphSafeLabel: (subject: string, ordinal: number) => string
   /** The curve builder itself, exposed so its `radius = 0` control can be driven directly (clause W6). */
@@ -228,7 +279,7 @@ interface GraphGeometry {
   /** The column-major grid template. */
   gridTemplateColumns: string
   /** Every node's box, in column-major order. */
-  nodes: Array<{ task: { id: string }; rank: number; row: number; ordinal: number; top: number }>
+  nodes: Array<{ task: { id: string; visual?: string; planned?: boolean }; rank: number; row: number; ordinal: number; top: number }>
   /** One ROUTED edge per drawable dependency, which is what the render paints and the arms assert. */
   edges: Array<{
     parent: string
@@ -381,18 +432,26 @@ describe("team-view factory shape", () => {
     expect(SOURCE).toContain("planPath?: string; taskPath?: string; eventsPath?: string; pollMs?: number; t?: Translator")
     // THE W6 CONTROL TRAVELS ON THE SIGNATURE: `radius` is optional, so every existing caller keeps the
     // shipped 6px while a test can drive the same pure layout with `0` and get the orthogonal path back.
-    expect(SOURCE).toContain("layout: (tasks: TeamTask[], radius?: number) => GraphGeometry")
+    // THE THIRD ARGUMENT IS AMENDMENT 3's (2026-10-19): the host's merge report. It is optional so a
+    // payload from an older server still lays out (from the served `depth`), and REQUIRED to be absent
+    // when no model arrived so `ranksDerived`/`unresolved` degrade coherently with it.
+    expect(SOURCE).toContain("layout: (tasks: TeamTask[], radius?: number, served?: ServedGraphModel) => GraphGeometry")
     expect(SOURCE).toContain("graphSafeLabel: (subject: string, ordinal: number) => string")
     expect(SOURCE).toContain("curveOf: (waypoints: CurvePoint[], radius: number)")
   })
 })
 
 describe("team-view DAG geometry", () => {
-  test("one column per depth rank, one node box per task, in rank order", () => {
+  test("one column per SERVED rank, one node box per task, in rank order", () => {
     /** The view module, built without rendering. */
     const view = loadFactory()({}).createTeamView({ react: null, statePath: STATE_PATH })
+    // THE RANKS ARE THE HOST'S (Amendment 3): this fixture's served depths happen to agree with the
+    // shared core's derivation, so stamping them changes no column — which is exactly the arm's point:
+    // the geometry follows the served rank, and this board's ranks are 0..3 either way.
+    /** The four-task board exactly as the host would serve it. */
+    const served = withServed(TASKS)
     /** The geometry of the four-task fixture board. */
-    const graph = view.layout(TASKS)
+    const graph = view.layout(served.tasks, undefined, served.model)
     expect(graph.columns.map((column) => column.map((task) => task.id))).toEqual([["T1"], ["T2"], ["T3"], ["T4"]])
     expect(graph.rankCount).toBe(4)
     expect(graph.width).toBe(4 * 168)
@@ -402,9 +461,11 @@ describe("team-view DAG geometry", () => {
     ])
   })
 
-  test("a negative or missing depth falls back to the first column instead of dropping the task", () => {
+  test("the DEGRADE (no served model): a negative or missing depth falls back to the first column", () => {
     /** The view module, built without rendering. */
     const view = loadFactory()({}).createTeamView({ react: null, statePath: STATE_PATH })
+    // NO TASK CARRIES A SERVED RANK AND NO REPORT ARRIVES: this is the OLDER-SERVER payload, and the
+    // one documented degrade of Amendment 3. The columns come from `depth` and nothing is re-derived.
     /** A board whose second task carries an impossible rank. */
     const graph = view.layout([{ id: "A", depth: 0 }, { id: "B", depth: -3 }, { id: "C", depth: 2 }])
     // B lands in rank 0, so rank 2 still exists: the columns are contiguous, and the empty one between
@@ -734,8 +795,13 @@ describe("team-view drawn edges", () => {
     // THE RISER IS READ OFF THE LAYOUT, which is where it has always been computed: the painted curve
     // only rounds it. `segments` keeps its names and its rectangles (clause W4), so this arm keeps its
     // exact numbers and only changes the accessor.
+    // THE PURE CALL GETS THE SAME BOARD THE HOST SERVED, ranks included: the render above received
+    // `stateOf(board)`, whose tasks carry the core's ranks (T2 rank 1, T3 rank 0), so a bare fallback
+    // here would lay out a DIFFERENT board than the one that was painted.
+    /** The board exactly as the host served it. */
+    const served = withServed(board)
     /** The geometry's own T2←T3 edge: its route runs AND the curve painted over them. */
-    const drawn = view.layout(board).edges.find((candidate) => candidate.witness === "T2<-T3") as {
+    const drawn = view.layout(served.tasks, undefined, served.model).edges.find((candidate) => candidate.witness === "T2<-T3") as {
       segments: Array<{ key: string; rect: Rect }>
       curve: { points: Array<{ x: number; y: number }> }
     }
@@ -770,8 +836,12 @@ describe("team-view drawn edges", () => {
     // A cycle's two tasks resolve to the SAME rank, so the drawn order is the board's own order — the
     // arm pins the SET of edges, which is the fact the geometry can guarantee.
     expect(edges.map((edge) => edge.props["data-mpd-edge"]).sort()).toEqual(["T1<-T2", "T2<-T1"])
+    // THE SAME SERVED BOARD, for the same reason: the core ranks both cycle members 0, while the raw
+    // fixture's depths say 0 and 1 — a bare fallback would draw a different picture than the one rendered.
+    /** The cycle exactly as the host would serve it. */
+    const servedCycle = withServed(CYCLE_TASKS)
     /** The same board's geometry, where every run and every curve is checkable as a number. */
-    const graph = view.layout(CYCLE_TASKS)
+    const graph = view.layout(servedCycle.tasks, undefined, servedCycle.model)
     expect(graph.edges.length).toBe(2)
     for (const edge of graph.edges) {
       /** Every rect the route publishes, which must never be negative or unparsable. */
@@ -1256,8 +1326,10 @@ describe("team-view edge legibility (the reported tangle)", () => {
     expect(boxes.size).toBe(LONG_EDGE_TASKS.length)
     // THE SAMPLES COME FROM THE PURE LAYOUT, not from a re-derivation in this file: the polyline the
     // containment claim is about is the one the layout published as `points`.
+    /** The screenshot's board exactly as the host served it, ranks included. */
+    const servedLong = withServed(LONG_EDGE_TASKS)
     /** The routed geometry of the screenshot's board. */
-    const graph = view.layout(LONG_EDGE_TASKS)
+    const graph = view.layout(servedLong.tasks, undefined, servedLong.model)
     expect(graph.edges.length).toBe(16)
     // THE BRIDGE, without which samples and paint could drift apart and this arm would be proving a
     // drawing nobody rendered: every edge's RENDERED `data-mpd-curve` must BE the layout's own `d`.
@@ -1314,8 +1386,10 @@ describe("team-view edge legibility (the reported tangle)", () => {
   test("a rank-skipping edge is routed as a CHAIN of adjacent-rank hops, not one riser through a column", async () => {
     /** The view module, built without rendering, for the pure geometry. */
     const view = loadFactory()({}).createTeamView({ react: null, statePath: STATE_PATH })
+    /** The screenshot's board exactly as the host served it, ranks included. */
+    const servedLong = withServed(LONG_EDGE_TASKS)
     /** The routed geometry of the screenshot's board. */
-    const graph = view.layout(LONG_EDGE_TASKS)
+    const graph = view.layout(servedLong.tasks, undefined, servedLong.model)
     /** The long edge this arm follows: rank 0 → rank 2, over rank 1. */
     const long = graph.edges.find((edge) => edge.parent === "T2" && edge.child === "T7")
     expect(long).toBeDefined()
@@ -1352,8 +1426,10 @@ describe("team-view edge legibility (the reported tangle)", () => {
   test("every gutter lane gets its OWN column: one x per hop, none on a border", async () => {
     /** The view module, built without rendering. */
     const view = loadFactory()({}).createTeamView({ react: null, statePath: STATE_PATH })
+    /** The screenshot's board exactly as the host served it, ranks included. */
+    const servedLong = withServed(LONG_EDGE_TASKS)
     /** The routed geometry of the screenshot's board. */
-    const graph = view.layout(LONG_EDGE_TASKS)
+    const graph = view.layout(servedLong.tasks, undefined, servedLong.model)
     // THE ARITHMETIC IS CHECKED AGAINST THE DRAWING, not against a literal: an edge crosses EVERY gutter
     // between its two ends, so each gutter's lane count is countable from the fixture and the DRAWN ranks
     // alone. (The busiest is gutter 1 with ten hops here, because the rank-skipping edges pass through it
@@ -1475,14 +1551,20 @@ const WEB_DERIVED_TASKS = [
   { id: "T10", subject: "integration", kind: "integration", status: "open", visual: "blocked", blockedBy: ["T7", "T8", "T9"], failedBy: [], depth: 0 },
 ]
 
-describe("team-view R20: the rank is DERIVED, never trusted from the served depth", () => {
-  test("a board whose references RESOLVE and whose every depth is 0 draws FIVE columns, not one", () => {
-    // THE ARM THE EARLIER VERIFICATION LACKED. Before this port the view bucketed by `task.depth`, so
-    // this board — all zeros — collapsed to ONE column with no edges, which is the user's photograph.
+describe("team-view R20 (Amendment 3): the web plane RENDERS the host's ranks and derives nothing", () => {
+  test("a board whose references RESOLVE and whose every served depth is 0 draws FIVE columns, not one", () => {
+    // THE ARM THE EARLIER VERIFICATION LACKED, re-pointed by Amendment 3. Before R20 the view bucketed
+    // by `task.depth`, so this board — all zeros — collapsed to ONE column with no edges, which is the
+    // user's photograph. R20 then fixed it by DUPLICATING the TUI's rank walk inside this factory body;
+    // Amendment 3 deletes that duplicate and the HOST (`mpd-team-core-plugin`, via `mpd-graph-core`)
+    // serves the ranks. This arm now proves the view DRAWS the served ranks: the fixture is stamped by
+    // the shared core through `withServed`, so a view that re-derived — or ignored the payload — fails.
     /** The view module, built without rendering. */
     const view = loadFactory()({}).createTeamView({ react: null, statePath: STATE_PATH })
-    /** The geometry of the lying board. */
-    const graph = view.layout(WEB_DERIVED_TASKS)
+    /** The board exactly as the host would serve it, plus the merge report it would carry. */
+    const served = withServed(WEB_DERIVED_TASKS)
+    /** The geometry of that served board. */
+    const graph = view.layout(served.tasks, undefined, served.model)
     expect(graph.ranksDerived).toBe(true)
     expect(graph.rankCount).toBe(5)
     expect(graph.rankCount).not.toBe(1)
@@ -1500,28 +1582,42 @@ describe("team-view R20: the rank is DERIVED, never trusted from the served dept
     expect(graph.unresolved).toEqual([])
   })
 
-  test("the two fallback arms, exactly as the TUI engine has them", () => {
+  test("the served report's two arms are SURFACED, not re-decided here", () => {
     /** The view module, built without rendering. */
     const view = loadFactory()({}).createTeamView({ react: null, statePath: STATE_PATH })
-    // ARM A — A GENUINELY FLAT BOARD SERVED FLAT STAYS FLAT, and says it derived: nothing is invented.
-    /** Two independent roots, served flat. */
-    const flat = view.layout([{ id: "A", depth: 0 }, { id: "B", depth: 0 }])
+    // ARM A — A GENUINELY FLAT BOARD: the CORE reports it as derived (nothing resolves and the depths do
+    // not vary, so its own fallback does not fire), and the drawing says exactly that.
+    /** The core's served answer for two independent roots. */
+    const flatServed = withServed([{ id: "A", depth: 0 }, { id: "B", depth: 0 }])
+    /** The geometry of that served board. */
+    const flat = view.layout(flatServed.tasks, undefined, flatServed.model)
     expect(flat.rankCount).toBe(1)
     expect(flat.ranksDerived).toBe(true)
-    // ARM B — NOTHING RESOLVES AND THE SERVED DEPTHS VARY, so the fallback fires and reports itself.
-    /** Ghost references whose served depths claim two ranks. */
-    const ghosts = view.layout([{ id: "A", depth: 0, blockedBy: ["Z"] }, { id: "B", depth: 1, blockedBy: ["Y"] }])
+    // ARM B — NOTHING RESOLVES AND THE SERVED DEPTHS VARY: the CORE's own fallback fires, reports
+    // `derived: false` and hands the unresolved ids on; the view surfaces both and decides neither.
+    /** The core's served answer for ghost references whose depths claim two ranks. */
+    const ghostServed = withServed([{ id: "A", depth: 0, blockedBy: ["Z"] }, { id: "B", depth: 1, blockedBy: ["Y"] }])
+    /** The geometry of that served board. */
+    const ghosts = view.layout(ghostServed.tasks, undefined, ghostServed.model)
     expect(ghosts.ranksDerived).toBe(false)
     expect(ghosts.rankCount).toBe(2)
     expect(ghosts.unresolved).toEqual(["Y", "Z"])
+    // THE DEGRADE, on the SAME board with NO served model (an older server): it lays out from `depth`,
+    // and `ranksDerived`/`unresolved` degrade WITH it — coherent, rather than looking like a model that
+    // lost its report. The absence of `model` on the payload is the one signal the component forwards.
+    /** The same board with no model, i.e. the older-server payload. */
+    const degraded = view.layout([{ id: "A", depth: 0, blockedBy: ["Z"] }, { id: "B", depth: 1, blockedBy: ["Y"] }])
+    expect(degraded.ranksDerived).toBe(false)
+    expect(degraded.rankCount).toBe(2)
+    expect(degraded.unresolved).toEqual([])
   })
 
-  test("R21: unresolved references are SURFACED with their ids, never silently dropped", () => {
+  test("R21: the host's unresolved references are SURFACED with their ids, never silently dropped", () => {
     /** The view module, built without rendering. */
     const view = loadFactory()({}).createTeamView({ react: null, statePath: STATE_PATH })
     // The MEASURED record, verbatim: ids T1..T10 and `blockedBy` holding plan ordinals. Not one
-    // reference resolves, so the board is genuinely flat — and now it SAYS why instead of drawing a
-    // one-column picture that looks like a healthy board.
+    // reference resolves, so the board is genuinely flat — and now the HOST says why (the core's
+    // `report.unresolved`) instead of the view drawing a one-column picture that looks healthy.
     /** The record as it sits on disk. */
     const ordinals = [
       { id: "T1", depth: 0, blockedBy: [] }, { id: "T2", depth: 0, blockedBy: [] }, { id: "T3", depth: 0, blockedBy: [] },
@@ -1530,14 +1626,18 @@ describe("team-view R20: the rank is DERIVED, never trusted from the served dept
       { id: "T8", depth: 0, blockedBy: ["7"] }, { id: "T9", depth: 0, blockedBy: ["2", "3", "4", "5", "6"] },
       { id: "T10", depth: 0, blockedBy: ["7", "8", "9"] },
     ]
-    /** The geometry of that record. */
-    const graph = view.layout(ordinals)
+    /** The record exactly as the host would serve it, plus the core's report. */
+    const served = withServed(ordinals)
+    /** The geometry of that served record. */
+    const graph = view.layout(served.tasks, undefined, served.model)
     expect(graph.unresolved).toEqual(["2", "3", "4", "5", "6", "7", "8", "9"])
     expect(graph.rankCount).toBe(1)
     expect(graph.edges.length).toBe(0)
     // A MIXED BOARD SEPARATES THE TWO FACTS: the reference that resolves draws, the ghost is reported.
-    /** One drawable blocker and one ghost on the same task. */
-    const mixed = view.layout([{ id: "P", depth: 0 }, { id: "C", depth: 0, blockedBy: ["P", "GHOST"] }])
+    /** One drawable blocker and one ghost on the same task, as the host would serve them. */
+    const mixedServed = withServed([{ id: "P", depth: 0 }, { id: "C", depth: 0, blockedBy: ["P", "GHOST"] }])
+    /** The geometry of that served board. */
+    const mixed = view.layout(mixedServed.tasks, undefined, mixedServed.model)
     expect(mixed.unresolved).toEqual(["GHOST"])
     expect(mixed.edges.length).toBe(1)
     expect(mixed.rankCount).toBe(2)
@@ -1548,8 +1648,10 @@ describe("team-view R20: the rank is DERIVED, never trusted from the served dept
     // all-zero board EVERY hop was pruned (`0 >= 0`) and a hover lit one node while dimming the rest.
     /** The view module, built without rendering. */
     const view = loadFactory()({}).createTeamView({ react: null, statePath: STATE_PATH })
-    /** The geometry of the lying board, which is where the halo's ranks come from. */
-    const graph = view.layout(WEB_DERIVED_TASKS)
+    /** The board exactly as the host would serve it — the ranks are the shared core's. */
+    const served = withServed(WEB_DERIVED_TASKS)
+    /** The geometry of that served board, which is where the halo's ranks come from. */
+    const graph = view.layout(served.tasks, undefined, served.model)
     /** The drawn rank of every task. */
     const rankOf: Record<string, number> = {}
     for (const node of graph.nodes) rankOf[node.task.id] = node.rank
@@ -1562,7 +1664,96 @@ describe("team-view R20: the rank is DERIVED, never trusted from the served dept
   })
 })
 
-describe("R18's reader side: the RECORD's own unresolved report, beside the view's re-derivation", () => {
+describe("Amendment 3's discriminating fixture: the SERVED rank decides the column, the depth does not", () => {
+  // THE FIXTURE LANE E RUNS TOO, and the one this lane's before/after is measured on: `T2` is blocked by
+  // `T3`, so the shared core ranks `T3` 0 and `T2` 1 — while the record's served depths say the exact
+  // opposite (`T2` 0, `T3` 1). A client that trusts `depth` draws T2 in the first column; a client that
+  // renders the served model draws T2 in the SECOND. That move is the whole contract in one assertion.
+  test("the columns MOVE to the derived ranks, and each drawn box publishes the rank it got", async () => {
+    /** A board whose served depths disagree with the dependency graph. */
+    const board = [
+      { id: "T1", depth: 0, blockedBy: [], failedBy: [] },
+      { id: "T2", depth: 0, blockedBy: ["T3"], failedBy: [] },
+      { id: "T3", depth: 1, blockedBy: [], failedBy: [] },
+    ]
+    /** The view module, built without rendering. */
+    const view = loadFactory()({}).createTeamView({ react: null, statePath: STATE_PATH })
+    // BEFORE — no model on the payload (the older-server degrade): `depth` decides, so T2 sits LEFT of T3.
+    /** The bare layout, which is what an older server's payload produces. */
+    const degraded = view.layout(board)
+    expect(degraded.columns.map((column) => column.map((task) => task.id))).toEqual([["T1", "T2"], ["T3"]])
+    expect(degraded.ranksDerived).toBe(false)
+    // AFTER — the host's model: the CORE's derivation decides, so T2 crosses into the second column.
+    /** The board exactly as the host would serve it. */
+    const served = withServed(board)
+    expect(servedOf(board).ranks).toEqual({ T1: 0, T2: 1, T3: 0 })
+    /** The geometry of the served board. */
+    const graph = view.layout(served.tasks, undefined, served.model)
+    expect(graph.columns.map((column) => column.map((task) => task.id))).toEqual([["T1", "T3"], ["T2"]])
+    expect(graph.nodes.map((node) => [node.task.id, node.rank])).toEqual([["T1", 0], ["T3", 0], ["T2", 1]])
+    expect(graph.ranksDerived).toBe(true)
+    // AND THE RENDER CARRIES IT: the rendered payload goes through the same served fixture, and every
+    // box publishes the rank it was DRAWN in — the vehicle a verifier can measure without inverting
+    // `data-mpd-box`'s x coordinate.
+    /** The settled render of the served board. */
+    const { tree } = await renderView({ routes: { [STATE_PATH]: { ok: true, status: 200, body: stateOf(board) } } })
+    /** The drawn rank of every rendered node, as the box publishes it. */
+    const boxRank: Record<string, string> = {}
+    for (const node of collect(tree, "data-mpd-node")) boxRank[String(node.props["data-mpd-node"])] = String(node.props["data-mpd-box-rank"])
+    expect(boxRank).toEqual({ T1: "0", T2: "1", T3: "0" })
+  })
+})
+
+describe("Amendment 3's plan contribution: plan-only GHOSTS and plan-declared edges are DRAWN", () => {
+  // THE USER'S REQUIREMENT, ON THE WEB SIDE: "改 task plan 就可以实时调整工程". The plan's unique
+  // contribution to the picture is exactly what the board does not carry — a task only the plan
+  // declares, and a dependency only the plan declares. If the web drew the board alone, that edit
+  // would show on the TUI and not here, which is the split this wave exists to end.
+  test("a ghost is a box in the EXISTING open tone, and a plan-declared edge is routed", async () => {
+    /** A board with two independent tasks: no ghosts, no edges of its own. */
+    const board = [
+      { id: "T1", subject: "board work", kind: "work", status: "open", visual: "open", blockedBy: [], failedBy: [], depth: 0 },
+      { id: "T2", subject: "board review", kind: "review", status: "open", visual: "open", blockedBy: [], failedBy: [], depth: 0 },
+    ]
+    /** A plan that declares a GHOST (T9) and an edge the board does not carry (T2 blocked by T1). */
+    const plan: PlanDocument = {
+      tasks: [
+        { id: "T9", title: "plan-only work", section: "todo", line: 3, blockedBy: [] },
+        { id: "T2", title: "board review", section: "todo", line: 7, blockedBy: ["T1"] },
+      ],
+      lanes: [],
+      problems: [],
+    }
+    /** The board exactly as the host would serve it, with the plan merged in. */
+    const served = withServed(board, plan)
+    // THE CORE'S REPORT PROVES THE INPUT REACHED THE MODEL: one ghost id, one plan-only edge.
+    expect(served.model.report.planOnly).toEqual(["T9"])
+    expect(served.model.report.edgePlanOnly.map((edge) => [edge.from, edge.to])).toEqual([["T1", "T2"]])
+    /** The view module, built without rendering. */
+    const view = loadFactory()({}).createTeamView({ react: null, statePath: STATE_PATH })
+    /** The geometry of the merged model. */
+    const graph = view.layout(served.tasks, undefined, served.model)
+    // THE GHOST IS A BOX (at the rank the host served), and the plan's edge is ROUTED.
+    expect(graph.nodes.map((node) => node.task.id).sort()).toEqual(["T1", "T2", "T9"])
+    expect(graph.edges.map((edge) => edge.witness).sort()).toEqual(["T2<-T1"])
+    /** The ghost's own drawn entry, which carries the planned visual. */
+    const ghost = graph.nodes.find((node) => node.task.id === "T9")
+    expect(ghost?.task.visual).toBe("planned")
+    // AND THE RENDER CARRIES BOTH: the ghost box publishes its planned marker, the edge is painted,
+    // and the ghost's border is the SAME colour a board `open` task draws — no new tone was invented.
+    /** The settled render of the merged model. */
+    const { tree } = await renderView({ routes: { [STATE_PATH]: { ok: true, status: 200, body: stateOf(board, {}, [], plan) } } })
+    /** The ghost's rendered box. */
+    const ghostBox = one(tree, "data-mpd-node", "T9")
+    expect(ghostBox.props["data-mpd-planned"]).toBe("true")
+    one(tree, "data-mpd-edge", "T2<-T1")
+    /** A board task in the ordinary open state, for the tone comparison. */
+    const openBox = one(tree, "data-mpd-node", "T1")
+    expect(styleOf(ghostBox, "borderColor")).toBe(styleOf(openBox, "borderColor"))
+  })
+})
+
+describe("R18's reader side: the RECORD's own unresolved report, beside the SERVED one", () => {
   test("the served `unresolvedBlockers` reaches the geometry, and is reported AS the record's", () => {
     // THE SHAPE IS NOT INVENTED: `evidence/tui/dag-port/web-dag/20261006T143500Z/producer-shape.mts`
     // mints these very objects with the producer's own `addTeamTask`/`resolveBlockers`, which store the
@@ -1585,9 +1776,9 @@ describe("R18's reader side: the RECORD's own unresolved report, beside the view
     expect(graph.rankCount).toBe(2)
   })
 
-  test("a REPAIRED board still reports what the record said: the reader sees more than the re-derivation", () => {
+  test("a REPAIRED board still reports what the record said: the reader sees more than the served scan", () => {
     // THE CASE ONLY THE READER CAN SEE, and the live board is exactly it: `blockedBy` was rewritten to
-    // real ids after the fact, so the served references now ALL resolve and the view's own scan finds
+    // real ids after the fact, so the served references now ALL resolve and the CORE's report finds
     // nothing. The record still remembers what did not resolve when it was written, and a viewer must
     // not be told the board is clean.
     /** The view module, built without rendering. */
@@ -1597,10 +1788,14 @@ describe("R18's reader side: the RECORD's own unresolved report, beside the view
       { id: "T1", depth: 0, blockedBy: [], failedBy: [] },
       { id: "T2", depth: 1, blockedBy: ["T1"], failedBy: [], unresolvedBlockers: ["2", "6"] },
     ]
+    /** The board as the host would serve it, plus the core's (clean) report. */
+    const served = withServed(repaired)
     /** The geometry of the repaired board. */
-    const graph = view.layout(repaired)
-    // The view's re-derivation sees a clean board…
+    const graph = view.layout(served.tasks, undefined, served.model)
+    // The HOST's report sees a clean board: every served reference resolves…
+    expect(served.model.report.unresolved).toEqual([])
     expect(graph.unresolvedRecorded).toEqual(["2", "6"])
+    // …and the record's own report STILL reaches the reader, beside it.
     expect(graph.unresolved).toEqual(["2", "6"])
     expect(graph.ranksDerived).toBe(true)
   })

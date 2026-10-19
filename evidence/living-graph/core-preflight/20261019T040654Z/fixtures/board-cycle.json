@@ -1,0 +1,4 @@
+[
+  { "id": "T1", "subject": "first half", "status": "pending", "blockedBy": ["T2"], "depth": 0 },
+  { "id": "T2", "subject": "second half", "status": "pending", "blockedBy": ["T1"], "depth": 0 }
+]

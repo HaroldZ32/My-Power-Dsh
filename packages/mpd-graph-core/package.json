@@ -1,0 +1,10 @@
+{
+  "name": "@mpd-dsh/graph-core",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "The shared plan→graph core (wave living-graph): one exported rank derivation, one tolerant task-plan parser, one deterministic merge model and one debounced file watcher, inlined by both the TUI and the web plane through bun build. Library only: no cordis row, no patch entry, no runtime dependency.",
+  "scripts": {
+    "test": "bun test"
+  }
+}

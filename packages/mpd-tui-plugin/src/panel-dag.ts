@@ -46,7 +46,7 @@ import { PANEL_FULLSCREEN_GLYPH, PANEL_TITLE_ROW_ROWS, usePanelTitleRow } from "
 import { subagentSectionRows, surfaceRule, type SubagentSectionRow } from "./subagent-scene.js"
 import { hitTest, layoutBoxesNatural, layoutList, layoutRail, legendLines, sliceSpans, type GraphTask, type GraphView } from "./graph.js"
 import type { TeamWorkflow } from "./team-state.js"
-import { NO_SESSION_TEAM_MARKER, WORKSPACE_SCOPE_MARKER, type TeamFeedAccessor } from "./team-state.js"
+import { modelRanks, modelRows, NO_SESSION_TEAM_MARKER, WORKSPACE_SCOPE_MARKER, type TeamFeedAccessor } from "./team-state.js"
 import {
   clampScroll,
   graphRow,
@@ -146,12 +146,27 @@ export interface DagPanelTask extends GraphTask {
   round?: number
   /** Review verdict, when the record carries one. */
   verdict?: string
+  /**
+   * True for a GHOST row: the served model's plan-only node, drawn here but absent from the board.
+   *
+   * The projection copies it from {@link TeamTaskRow.planned}, so the page can tell a planned task
+   * from a board task without comparing `visual` strings.
+   */
+  planned?: boolean
 }
 
 /** The projection one render draws from: the tasks, the counts, the roster size and the problems. */
 export interface DagPage {
-  /** The tasks, in board order. */
+  /** The tasks, in board order — SERVED-MODEL order when a model was joined in (ghosts included). */
   tasks: DagPanelTask[]
+  /**
+   * The SERVED rank of every drawn task, when the host published a model (wave `living-graph`).
+   *
+   * OPTIONAL on purpose: absent means the drawing derives ranks through the shared core's `rankPlan`,
+   * exactly as it always has; present means that map is handed to the layout as its optional ranks
+   * input and no local derivation runs. A projection only — never serialized.
+   */
+  ranks?: ReadonlyMap<string, number>
   /** The workspace this projection was scoped to. */
   workspace: string
   /** The team's display name, or an explicit placeholder when the record carries none. */
@@ -194,9 +209,11 @@ export function dagPageOf(workflow: TeamWorkflow | undefined): DagPage | undefin
   // projection, the `none` scope's carrier) omits it — so a live team with zero tasks keeps its page
   // while the no-team projection keeps yielding undefined for the render's marker row below.
   if (workflow.tasks.length === 0 && workflow.team === undefined) return undefined
+  /** The rows to draw: the board joined with the served model, ghosts included (wave `living-graph`). */
+  const rows = modelRows(workflow)
   /** The tasks, projected once. */
   const tasks: DagPanelTask[] = []
-  for (const task of workflow.tasks) {
+  for (const task of rows) {
     /** The task's sanitized id; a row with no readable id cannot be focused or clicked. */
     const id = panelField(task.id, 40)
     if (id === undefined || id === "") continue
@@ -213,6 +230,7 @@ export function dagPageOf(workflow: TeamWorkflow | undefined): DagPage | undefin
       failedDependencies: (Array.isArray(task.failedDependencies) ? task.failedDependencies : []).map((dep) => panelField(dep, 40) ?? "").filter((dep) => dep !== ""),
       ...(typeof task.round === "number" && Number.isFinite(task.round) ? { round: Math.floor(task.round) } : {}),
       ...(task.verdict === undefined ? {} : { verdict: panelField(task.verdict, 60) ?? "" }),
+      ...(task.planned === true ? { planned: true } : {}),
     })
   }
   // The SAME C6 rule, one guard later: a board whose every row failed to project is still a resolved
@@ -235,8 +253,11 @@ export function dagPageOf(workflow: TeamWorkflow | undefined): DagPage | undefin
       })
     }
   }
+  /** The served ranks, absent when this projection carries no accepted model. */
+  const ranks = modelRanks(workflow)
   return {
     tasks,
+    ...(ranks === undefined ? {} : { ranks }),
     workspace: panelField(workflow.workspace, 200) ?? "",
     teamName: panelField(workflow.team?.name, 60) ?? "(unnamed team)",
     phase: panelField(workflow.team?.phase, 20) ?? "unknown",
@@ -312,21 +333,23 @@ const LIST_ROWS = 24
  * @param cols - the cells the panel measured; the VIEWPORT, never the drawing's width.
  * @param focus - the task to light, with its dependency chain.
  * @param rows - the rows the panel can show, which buys the roomy box form when there is room.
+ * @param servedRanks - the SERVED rank of each task id when the host published a model; omitted
+ *   means the drawing derives them through the core, exactly as it did before this wave.
  * @returns the drawing and the mode that produced it.
  */
-export function dagPanelLayout(tasks: readonly DagPanelTask[], cols: number, focus?: string, rows?: number): DagPanelLayout {
+export function dagPanelLayout(tasks: readonly DagPanelTask[], cols: number, focus?: string, rows?: number, servedRanks?: ReadonlyMap<string, number>): DagPanelLayout {
   /** The usable viewport width; a nonsense width still has to produce something drawable. */
   const width = Math.max(8, Math.floor(Number.isFinite(cols) ? cols : 8))
   /** The boxed DAG at its natural width, absent when the board refuses to be drawn as boxes. */
-  const boxes = layoutBoxesNatural(tasks, focus, rows === undefined ? undefined : { rows })
+  const boxes = layoutBoxesNatural(tasks, focus, rows === undefined ? undefined : { rows }, servedRanks)
   if (boxes !== undefined && boxes.labelOverflow !== true) return { view: boxes, mode: "boxes", list: false, ...viewFacts(boxes) }
   if (tasks.length > LIST_ROWS) {
     /** The dense table, for a board with more rows than a rail can show legibly. */
-    const dense = layoutList(tasks, width, focus)
+    const dense = layoutList(tasks, width, focus, servedRanks)
     return { view: dense, mode: "list", list: true, ...viewFacts(dense) }
   }
   /** The forest, for a board a box cannot hold. */
-  const rail = layoutRail(tasks, width, focus)
+  const rail = layoutRail(tasks, width, focus, servedRanks)
   return { view: rail, mode: "rail", list: false, ...viewFacts(rail) }
 }
 
@@ -870,7 +893,7 @@ export function createDagPanelComponent(readWorkflow: (sessionId?: string) => Te
     /** The sizes the hook and every later closure read; written by this render, before anything reads it. */
     const sizes: { contentRows: number; viewportRows: number; contentCols?: number; viewportCols?: number } = { contentRows: 1, viewportRows: 1, contentCols: contentCols, viewportCols: contentCols }
     /** The drawing for this render, at the natural width and for the height THIS panel measured. */
-    const layout = page === undefined ? undefined : dagPanelLayout(page.tasks, contentCols, focus, windowRows)
+    const layout = page === undefined ? undefined : dagPanelLayout(page.tasks, contentCols, focus, windowRows, page.ranks)
     // THE DRAWING'S OWN WIDTH, once it has been laid out: what the window may pan across. It is the
     // DRAWING's width and not the panel's (captain's ruling R8) — the purpose, said once: the pan exists
     // so the WHOLE DAG can be seen, and it is not a page-level scrolling mode. Every other row of the page

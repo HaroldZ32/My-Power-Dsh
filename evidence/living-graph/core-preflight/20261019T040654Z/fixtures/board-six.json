@@ -1,0 +1,7 @@
+[
+  { "id": "T1", "subject": "Freeze the acceptance contract", "kind": "requirement", "status": "completed", "owner": "Reviewer", "blockedBy": [], "depth": 2 },
+  { "id": "T2", "subject": "TUI plane adoption", "kind": "work", "status": "in_progress", "owner": "Junior Engineer", "blockedBy": ["T1"], "depth": 0 },
+  { "id": "T3", "subject": "Web plane adoption", "kind": "work", "status": "pending", "blockedBy": [], "depth": 0 },
+  { "id": "T4", "subject": "Picture gate", "kind": "review", "status": "pending", "blockedBy": ["T3"], "depth": 7 },
+  { "id": "T7", "subject": "Board-only task", "kind": "work", "status": "pending", "blockedBy": ["T1", "T9"], "depth": 0 }
+]

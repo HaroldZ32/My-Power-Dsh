@@ -601,25 +601,38 @@ describe("R2/R15 · adversarial fixtures", () => {
   })
 })
 
-// ── R20 · the WEB view derives too ──────────────────────────────────────────────────────────────
+// ── R20 · the WEB view OBEYS the served rank; it derives nothing of its own ─────────────────────
 //
 // HOW THE WEB VIEW IS LOADED. `packages/mpd-bundle-plugin/src/team-view.ts` is a FACTORY BODY — one
 // arrow expression the build splices into `client.js` — so it has no `import`/`export` to resolve.
 // It is loaded here the way the repo's own `team-view.test.ts` loads it: strip the types with the
 // SAME `typescript5` tool class the build uses, then evaluate the result. Its `layout(tasks)` is PURE,
-// which is what makes R20 assertable without a browser.
+// which is what makes R20 assertable without a browser. The load path and the cross-plane intent STAY:
+// this file still judges the WEB view from the TUI package, so the two planes cannot drift unseen.
 //
-// WHY THIS ARM EXISTS AT ALL, GIVEN THE TUI ARM. An earlier revision of the reviewer's evidence
-// script computed the served `depth` with the real `taskDepths` and then reported `rankCount 5` for
-// the WEB view — a GREEN that measured the PAYLOAD, not the VIEW, because a correct payload is
-// trivially laid out correctly by a view that trusts it. The fixture below is the one that can
-// actually fail: the references RESOLVE to real ids while EVERY served `depth` is 0. A deriving view
-// recovers five columns; a trusting view draws one.
+// R7 — RE-PURPOSED, NEVER DELETED. These arms used to assert that the WEB view DERIVED the rank from
+// `blockedBy`. That derivation was the defect this wave exists to remove — two planes each composing
+// the same number — and Amendment 3 of `.mpd/plans/living-graph.md` DELETED the client-side copy: the
+// host (`mpd-team-core-plugin`) computes the model ONCE with the shared core and serves every node's
+// rank. Asserting a client-side derivation now would be asserting a behaviour that no longer exists,
+// so the discriminating subject is INVERTED: the client must OBEY the served rank even where that rank
+// contradicts what `blockedBy` would produce. The first arm serves a rank map that reverses the graph,
+// so a re-introduced derivation reddens; the control serves the honest ranks, so a view that ignores
+// them reddens instead.
 
 /** The WEB factory's module shape, as this file reads it. */
 interface WebViewModule {
-  /** The pure geometry the WEB panel draws with. */
-  layout: (tasks: ReadonlyArray<Record<string, unknown>>) => { rankCount: number; columns: Array<Array<{ id: string }>> }
+  /**
+   * The pure geometry the WEB panel draws with.
+   *
+   * `served` is the host's merge report when the payload carried a model; passing it is what marks the
+   * ranks as SERVED rather than the older server's `depth` degrade.
+   */
+  layout: (
+    tasks: ReadonlyArray<Record<string, unknown>>,
+    radius?: number,
+    served?: { unresolved: string[]; ranksDerived: boolean },
+  ) => { rankCount: number; columns: Array<Array<{ id: string }>> }
 }
 
 /**
@@ -642,41 +655,62 @@ function loadWebView(): WebViewModule {
   })
 }
 
-/** The WEB payload row a board row becomes, with the served `depth` the caller names. */
-function webRow(task: GraphTask, depth: number): Record<string, unknown> {
+/**
+ * The WEB payload row a board row becomes.
+ * @param task - the board row.
+ * @param depth - the payload's historical `depth` field, which is only the older-server degrade now.
+ * @param rank - the SERVED rank the host computed; omitted means this row carries no model rank.
+ * @returns the payload row the WEB view reads.
+ */
+function webRow(task: GraphTask, depth: number, rank?: number): Record<string, unknown> {
   return {
     id: task.id, subject: task.subject, kind: task.kind, status: "pending", visual: task.visual,
     blockedBy: [...task.dependencies], failedBy: [], depth,
+    ...(rank === undefined ? {} : { rank }),
   }
 }
 
-describe("R20 · the WEB view derives rank from blockedBy, never from the served depth", () => {
-  test("references RESOLVE while every served depth is 0 — the view must still draw more than one column", () => {
+describe("R20 · the WEB view OBEYS the served rank; it derives nothing of its own", () => {
+  test("the SERVED rank wins over what `blockedBy` would derive — a re-deriving view reddens here", () => {
     /** The WEB view module under test. */
     const view = loadWebView()
-    /** The resolvable board, handed over with a payload whose every depth is the lie the live record told. */
-    const rows = RESOLVABLE_BOARD.map(row => webRow(row, 0))
-    /** What the view draws from that payload. */
-    const geometry = view.layout(rows)
-    // The assertion is BOTH halves on purpose: `rankCount 1` is the defect's own signature, and a
-    // bare `> 1` would also accept a view that invented columns the graph does not hold.
-    expect(geometry.rankCount).toBeGreaterThan(1)
-    expect(geometry.rankCount).not.toBe(1)
-    // And the ranks must be the graph's, not a shuffle: T10 is the deepest task on this board.
+    /**
+     * The served ranks, the OPPOSITE of the board's graph: T10 is a root and T1 the deepest.
+     *
+     * This is the discriminating input. The graph yields five ranks with T10 at 4 (GRAPH_DEPTHS); the
+     * host says the reverse, so a client that walks `blockedBy` draws the mirror image of this map.
+     */
+    const servedRank: Readonly<Record<string, number>> = { T1: 4, T2: 3, T3: 3, T4: 2, T5: 2, T6: 3, T7: 2, T8: 1, T9: 1, T10: 0 }
+    /** The payload a model-serving host sends: every row carries its rank, and `depth` stays 0. */
+    const rows = RESOLVABLE_BOARD.map(row => webRow(row, 0, servedRank[row.id] ?? 0))
+    /** What the view draws from that served model. */
+    const geometry = view.layout(rows, undefined, { unresolved: [], ranksDerived: true })
     /** The column index each task was drawn in. */
     const columnOf = new Map<string, number>()
     geometry.columns.forEach((column, index) => { for (const node of column) columnOf.set(node.id, index) })
-    expect(columnOf.get("T10")).toBeGreaterThan(columnOf.get("T1") ?? -1)
+    // THE ASSERTION A RE-INTRODUCED DERIVATION BREAKS: the graph puts T10 deepest and T1 at the root,
+    // so a view that derived instead of obeying would draw exactly the reverse of these two facts.
+    expect(columnOf.get("T10")).toBe(0)
+    expect(columnOf.get("T1")).toBe(4)
   })
 
-  test("CONTROL: the same board with honest depths draws the same columns (so the arm cannot be satisfied by ignoring depth)", () => {
+  test("CONTROL: the same board with HONEST served ranks draws the graph's own columns", () => {
     /** The WEB view module under test. */
     const view = loadWebView()
-    /** The same board, this time with the depths a correct store serves. */
-    const honest = view.layout(RESOLVABLE_BOARD.map(row => webRow(row, GRAPH_DEPTHS[row.id] ?? 0)))
-    /** The board with a lying payload, which must reach the SAME geometry. */
-    const lying = view.layout(RESOLVABLE_BOARD.map(row => webRow(row, 0)))
-    expect(lying.rankCount).toBe(honest.rankCount)
+    /** The same board, served the ranks the shared core derives for it. */
+    const geometry = view.layout(
+      RESOLVABLE_BOARD.map(row => webRow(row, 0, GRAPH_DEPTHS[row.id] ?? 0)),
+      undefined,
+      { unresolved: [], ranksDerived: true },
+    )
+    /** The column index each task was drawn in. */
+    const columnOf = new Map<string, number>()
+    geometry.columns.forEach((column, index) => { for (const node of column) columnOf.set(node.id, index) })
+    // THE CONTROL THAT KEEPS THE ARM ABOVE FROM BEING SATISFIED BY ANY ARBITRARY NUMBER: honest served
+    // ranks reproduce the graph's shape exactly — five ranks, T10 deepest, T6 in the second rank.
+    expect(geometry.rankCount).toBe(5)
+    expect(columnOf.get("T10")).toBe(4)
+    expect(columnOf.get("T6")).toBe(1)
   })
 
   test("a genuinely flat board served flat is drawn flat — the view must not invent structure", () => {

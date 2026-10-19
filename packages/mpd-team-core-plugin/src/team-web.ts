@@ -14,6 +14,7 @@
 // The projection mirrors the TUI's (`mpd-tui-plugin/src/team-state.ts`) because the two surfaces
 // answer the same question and must not disagree — but it is computed here from the RECORD, which is
 // why it can carry `kind`, `attempt`, `round` and `verdict` at all.
+import type { GraphModel } from "../../mpd-graph-core/src/index.ts"
 import type { TeamRecord } from "./team-store"
 import { blockingDependencies, cycleIds, derivePhase, idleMembers, listTeams, memberProgress, readyTasks, summariseTeam, taskVisual, activeTeamId } from "./team-store"
 import { listContracts, readHold, readPlan, type StagedPlan } from "./plan-store"
@@ -115,8 +116,17 @@ export interface TeamWebTask {
   blockedBy: string[]
   /** Blockers that FAILED — reported beside the state, which is the OPT-1 rule. */
   failedBy: string[]
-  /** Longest dependency path; the graph's rank. */
+  /** Longest dependency path; the graph's OLDER-SERVER fallback, not the rank the drawing uses. */
   depth: number
+  /**
+   * The DERIVED rank: the column this task draws in, computed ONCE by the shared core.
+   *
+   * MAPPED FROM `GraphNode.depth` (the core's `GraphTask.depth` IS the rank). It is a SEPARATE field
+   * from {@link TeamWebTask.depth} on purpose: `depth` is the store's summary value a 0.16.x consumer
+   * already reads, and redefining it would be a silent meaning change in an additive-only payload.
+   * ABSENT on a payload that carried no model (an older host), the client's documented degrade.
+   */
+  rank?: number
 }
 
 /** One of the WORKSPACE's teams, as the browser reads it in the session-less listing. */
@@ -185,6 +195,15 @@ export interface TeamWebState {
   members: TeamWebMember[]
   /** The board, in rank order. */
   tasks: TeamWebTask[]
+  /**
+   * The ONE graph model both planes draw, computed by the shared core and served ADDITIVELY.
+   *
+   * `{ nodes, edges, ranks, cycles, report }`, ghosts included. It is the same value the `mpdTeams`
+   * service's `graph()` answers the TUI, which is what makes the two planes one picture instead of two
+   * derivations. ABSENT only on a payload built without a record; a consumer that ignores it reads
+   * exactly the pre-wave payload.
+   */
+  model?: GraphModel
   /** Task ids on a dependency cycle; a non-empty list is a broken board, reported not hidden. */
   cycles: string[]
   /** Which backend raises this team's members, and why — the split's own state, made visible. */
@@ -236,6 +255,7 @@ export function buildWorkspaceTeams(teams: readonly TeamRecord[], activeId: stri
  * @param sessionId - the session the caller asked about.
  * @param executor - the active backend's kind and reason.
  * @param workspaceTeams - the workspace's own teams, or omitted when the caller did not read them.
+ * @param model - the shared core's model for this record, when the host computed one.
  * @returns the payload.
  */
 export function buildTeamState(
@@ -244,6 +264,7 @@ export function buildTeamState(
   sessionId: string,
   executor: { kind: string; reason: string },
   workspaceTeams?: TeamWebState["workspaceTeams"],
+  model?: GraphModel,
 ): TeamWebState {
   /** The workspace listing this payload carries; an absent one reads as "nothing was read", never as a promise. */
   const listing: TeamWebState["workspaceTeams"] = workspaceTeams ?? { records: [] }
@@ -268,6 +289,12 @@ export function buildTeamState(
   const ready = new Set(readyTasks(record).map((task) => task.id))
   /** The members free to take work. */
   const idle = new Set(idleMembers(record).map((member) => member.name))
+  // THE SERVED RANK, looked up by id: the core's `GraphNode.depth` IS the column the node draws in.
+  // Absent when no model arrived, and then the row carries no `rank` at all — the client's documented
+  // degrade to `depth`, rather than a zero that would look like a real column.
+  /** The rank the shared core assigned each node, when a model arrived; empty without one. */
+  const rankOf = new Map<string, number>()
+  if (model !== undefined) for (const node of model.nodes) rankOf.set(node.id, node.depth)
   /** The board, drawn in rank order so the browser can lay it out without re-sorting. */
   const tasks: TeamWebTask[] = record.tasks
     .map((task) => ({
@@ -287,6 +314,7 @@ export function buildTeamState(
       // see that a task is dispatchable only because a prerequisite gave up.
       failedBy: blockingDependencies(record.tasks, task.blockedBy).failed,
       depth: summary.depths.get(task.id) ?? 0,
+      ...(model === undefined ? {} : { rank: rankOf.get(task.id) ?? 0 }),
     }))
     .sort((left, right) => left.depth - right.depth)
   return {
@@ -334,6 +362,10 @@ export function buildTeamState(
       }
     }),
     tasks,
+    // THE SAME VALUE the `mpdTeams` service's `graph()` answers the TUI: both projections carry ONE
+    // model, so a rank or an edge cannot differ between the planes. Additive; absent when no model
+    // source is mounted, and a consumer that ignores it reads the pre-wave payload unchanged.
+    ...(model === undefined ? {} : { model }),
     cycles: cycleIds(record.tasks),
     executor,
     problems: summary.cycles.length === 0 ? [] : [`cycle ${summary.cycles.join(",")}`],
@@ -589,6 +621,14 @@ export function registerTeamRoutes(
     subscribe?: (workspace: string, listener: () => void) => () => void
     /** The change feed's counter; a stream is refused unless BOTH it and `subscribe` are present. */
     revision?: (workspace: string) => number
+    /**
+     * The shared graph model for one team, when this composition computes one.
+     *
+     * The route asks for the SAME value the `mpdTeams` service answers the TUI, addressed by the team
+     * the session's record names — never by session id, so this module does not resolve sessions to
+     * teams. Absent in a composition that never built a cache.
+     */
+    graph?: (workspace: string, teamId?: string) => GraphModel | undefined
   },
 ): boolean {
   if (webServer === undefined || typeof webServer.register !== "function") return false
@@ -771,11 +811,17 @@ export function registerTeamRoutes(
     const sessionId = sessionOf(req)
     /** The workspace this request is attributed to, resolved PER CALL like every other read here. */
     const workspace = deps.workspace()
+    // THE RECORD IS READ ONCE, so the model can be asked for the SAME team the payload describes: a
+    // workspace-scoped model would hand this session the principal team's ghosts.
+    /** The record this session draws, or undefined when it has no team. */
+    const record = deps.recordFor(sessionId)
+    /** The ONE model both planes draw, when this composition computes one. */
+    const model = record === undefined ? undefined : deps.graph?.(workspace, record.teamId)
     // THE WORKSPACE LISTING IS READ HERE, at the impure edge, and passed into the projection: the
     // session-scoped record stays exactly what it was, and a session with none now renders the
     // workspace's teams instead of a dead empty state (D2). `activeTeamId` is the index's answer for
     // THIS session, which is what marks the row the panel should call active.
-    return buildTeamState(deps.recordFor(sessionId), workspace, sessionId, deps.executor(), buildWorkspaceTeams(listTeams(workspace), activeTeamId(workspace, sessionId)))
+    return buildTeamState(record, workspace, sessionId, deps.executor(), buildWorkspaceTeams(listTeams(workspace), activeTeamId(workspace, sessionId)), model)
   }) && all
   all = mount(TEAM_PLAN_PATH, (req) => {
     /** The session whose staged plan is asked for. */
