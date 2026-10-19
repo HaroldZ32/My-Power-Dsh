@@ -3161,7 +3161,7 @@ function collectLanes(lines, problems) {
   }
   return lanes;
 }
-function collectTasks(lines, problems) {
+function collectTasks(lines, lanes, problems) {
   const tasks = [];
   let section;
   for (const line of lines) {
@@ -3196,13 +3196,18 @@ function collectTasks(lines, problems) {
       continue;
     }
     const afterOrdinal = match[2].trim();
-    const lane = leadingLane(afterOrdinal);
+    const mark = leadingLane(afterOrdinal);
+    const lane = mark !== undefined && lanes.has(mark.key) ? mark.key : undefined;
+    if (mark !== undefined && lane === undefined) {
+      problems.push({ line: line.line, text: afterOrdinal, reason: `leading lane marker ${mark.key} names no lane the plan declares` });
+    }
+    const title = mark !== undefined && lane !== undefined ? mark.title : afterOrdinal;
     tasks.push({
       id: section === "todo" ? `T${match[1]}` : match[1].toUpperCase(),
-      title: lane?.title ?? afterOrdinal,
+      title,
       section,
       line: line.line,
-      lane: lane?.key,
+      lane,
       references: declaredReferences(afterOrdinal)
     });
   }
@@ -3245,7 +3250,7 @@ function parsePlanMarkdown(text) {
   const lines = readableLines(text);
   const problems = [];
   const lanes = collectLanes(lines, problems);
-  const raw = collectTasks(lines, problems);
+  const raw = collectTasks(lines, lanes, problems);
   const seen = new Set;
   const byLane = new Map;
   for (const task of raw) {
@@ -3405,11 +3410,12 @@ function beaconPlan(root) {
 function newestPlan(root) {
   const candidates = [];
   try {
-    const entries = readdirSync3(join5(root, PLANS_DIR), { withFileTypes: true });
+    const directory = plansDirectory(root);
+    const entries = readdirSync3(directory, { withFileTypes: true });
     for (const entry of entries) {
       if (!entry.isFile() || !entry.name.endsWith(".md") || entry.name.endsWith(".zh-CN.md"))
         continue;
-      const path = join5(root, PLANS_DIR, entry.name);
+      const path = join5(directory, entry.name);
       const stats = statSync2(path, { throwIfNoEntry: false });
       if (stats === undefined)
         continue;
@@ -3420,6 +3426,9 @@ function newestPlan(root) {
   }
   candidates.sort((left, right) => right.mtimeMs - left.mtimeMs || left.name.localeCompare(right.name));
   return candidates[0]?.path;
+}
+function plansDirectory(workspaceRoot) {
+  return join5(workspaceRoot, PLANS_DIR);
 }
 function resolvePlanFile(workspaceRoot) {
   const beacon = beaconPlan(workspaceRoot);
@@ -3467,7 +3476,7 @@ function fileSignature(path) {
   const stats = statOrUndefined(path);
   return stats === undefined ? "missing" : `${stats.ino}:${stats.mtimeMs}:${stats.ctimeMs}:${stats.size}`;
 }
-function boardSignature(directory) {
+function directorySignature(directory, accept) {
   let names;
   try {
     names = readdirSync4(directory);
@@ -3476,7 +3485,7 @@ function boardSignature(directory) {
   }
   const parts = [];
   for (const name of names.sort()) {
-    if (!name.endsWith(".json"))
+    if (!accept(name))
       continue;
     const stats = statOrUndefined(join6(directory, name));
     if (stats === undefined)
@@ -3485,8 +3494,18 @@ function boardSignature(directory) {
   }
   return parts.join(";");
 }
+function boardSignature(directory) {
+  return directorySignature(directory, (name) => name.endsWith(".json"));
+}
+function plansSignature(directory) {
+  return directorySignature(directory, (name) => name.endsWith(".md") && !name.endsWith(".zh-CN.md"));
+}
 function targetSignature(target) {
-  return target.kind === "board-dir" ? boardSignature(target.path) : fileSignature(target.path);
+  if (target.kind === "board-dir")
+    return boardSignature(target.path);
+  if (target.kind === "plans-dir")
+    return plansSignature(target.path);
+  return fileSignature(target.path);
 }
 function watchGraph(targets, options = {}) {
   const debounceMs = options.debounceMs ?? 150;
@@ -3495,6 +3514,8 @@ function watchGraph(targets, options = {}) {
     watched.push({ path: targets.boardDir, kind: "board-dir" });
   if (targets.planFile !== undefined)
     watched.push({ path: targets.planFile, kind: "plan-file" });
+  if (targets.plansDir !== undefined)
+    watched.push({ path: targets.plansDir, kind: "plans-dir" });
   const signatures = new Map;
   for (const target of watched)
     signatures.set(target.path, targetSignature(target));
@@ -3518,18 +3539,25 @@ function watchGraph(targets, options = {}) {
         return true;
       if (entry.board && name.endsWith(".json"))
         return true;
+      if (entry.plans && name.endsWith(".md"))
+        return true;
       if (entry.names.has(name))
         return true;
-      if (!entry.board && entry.names.size > 0 && name.endsWith(".md"))
+      if (entry.names.size > 0 && name.endsWith(".md"))
         return true;
     }
     return false;
   }
   function armDirectory(directory) {
+    const stats = statOrUndefined(directory);
+    if (stats === undefined) {
+      report(new Error("watch target disappeared before it could be armed: " + directory));
+      return;
+    }
     try {
       const watcher = watch(directory, { persistent: false }, (_event, name) => notify(typeof name === "string" ? name : undefined));
       watcher.on("error", report);
-      return watcher;
+      return { watcher, ino: stats.ino };
     } catch (error) {
       report(error);
       return;
@@ -3540,20 +3568,23 @@ function watchGraph(targets, options = {}) {
       return;
     const wanted = new Map;
     for (const target of watched) {
-      const wantedDir = target.kind === "board-dir" ? target.path : dirname(target.path);
+      const wantedDir = target.kind === "plan-file" ? dirname(target.path) : target.path;
       const existing = nearestExistingDirectory(wantedDir);
       if (existing === undefined)
         continue;
-      const entry = wanted.get(existing) ?? { exact: existing === wantedDir, board: false, names: new Set };
+      const entry = wanted.get(existing) ?? { exact: existing === wantedDir, board: false, plans: false, names: new Set };
       entry.exact = entry.exact && existing === wantedDir;
-      if (target.kind === "board-dir" && existing === target.path)
-        entry.board = true;
-      else
+      if (target.kind === "plan-file")
         entry.names.add(basename(target.path));
+      else if (existing === wantedDir && target.kind === "board-dir")
+        entry.board = true;
+      else if (existing === wantedDir && target.kind === "plans-dir")
+        entry.plans = true;
       wanted.set(existing, entry);
     }
     for (const [directory, entry] of armed) {
-      if (wanted.has(directory))
+      const stats = statOrUndefined(directory);
+      if (wanted.has(directory) && stats !== undefined && stats.ino === entry.ino)
         continue;
       entry.watcher.close();
       armed.delete(directory);
@@ -3561,10 +3592,10 @@ function watchGraph(targets, options = {}) {
     for (const [directory, desired] of wanted) {
       if (armed.has(directory))
         continue;
-      const watcher = armDirectory(directory);
-      if (watcher === undefined)
+      const attached = armDirectory(directory);
+      if (attached === undefined)
         continue;
-      armed.set(directory, { watcher, exact: desired.exact, board: desired.board, names: desired.names });
+      armed.set(directory, { watcher: attached.watcher, ino: attached.ino, exact: desired.exact, board: desired.board, plans: desired.plans, names: desired.names });
     }
   }
   function deliver(manual) {
@@ -3687,22 +3718,22 @@ class GraphModels {
     if (this.disposed)
       return;
     try {
-      this.ensurePlanWatch(workspace);
+      const planPath = resolvePlanFile(workspace);
+      this.ensurePlanWatch(workspace, planPath);
       const revision = this.deps.revision(workspace);
       const key = workspace + "\x00" + record.teamId;
       const cached = this.cache.get(key);
-      if (cached !== undefined && cached.revision === revision)
+      if (cached !== undefined && cached.revision === revision && cached.planPath === planPath)
         return cached.model;
-      const model = buildModel({ board: boardOf(record), plan: readPlanFile(resolvePlanFile(workspace)) });
-      this.cache.set(key, { revision, model });
+      const model = buildModel({ board: boardOf(record), plan: readPlanFile(planPath) });
+      this.cache.set(key, { revision, planPath, model });
       return model;
     } catch (error) {
       this.deps.warn?.(`[mpd-team-core] building the graph model for ${record.teamId} failed: ${messageOf(error)}`);
       return;
     }
   }
-  ensurePlanWatch(workspace) {
-    const planPath = resolvePlanFile(workspace);
+  ensurePlanWatch(workspace, planPath) {
     const held = this.watchers.get(workspace);
     if (held !== undefined && held.planPath === planPath)
       return;
@@ -3712,11 +3743,12 @@ class GraphModels {
       } catch {}
       this.watchers.delete(workspace);
     }
-    if (planPath === undefined)
-      return;
     try {
       const make = this.deps.watch ?? watchGraph;
-      const watcher = make({ planFile: planPath }, {
+      const watcher = make({
+        ...planPath === undefined ? {} : { planFile: planPath },
+        plansDir: plansDirectory(workspace)
+      }, {
         onChange: () => {
           this.invalidate(workspace);
           this.deps.notify(workspace);

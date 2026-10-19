@@ -131,7 +131,12 @@ function laneKeyOf(text: string): string | undefined {
 }
 
 /**
- * Read a task title's leading lane marker, if it has one, and the title it leaves behind.
+ * Read a task title's leading lane marker, if it has one, and the title it would leave behind.
+ *
+ * DETECTION ONLY, DELIBERATELY: the caller decides whether the marker's key is one the document's
+ * lane table actually declares. An UNDECLARED marker must not eat the text — a title that begins
+ * `Two. Things` or `P1 · something` outside any lane table is a title, not a marker — so this
+ * function reports what it saw and lets `collectTasks` keep the line verbatim and record a problem.
  * @param text - the title text after its ordinal was removed.
  * @returns the lane key and the remaining title, or undefined when the title starts with prose.
  */
@@ -265,11 +270,17 @@ function collectLanes(lines: readonly SourceLine[], problems: PlanProblem[]): Ma
  * marker; a candidate that fails its section's grammar becomes a problem. Everything else — prose,
  * blank lines, indented continuation lines and table rows — is not a candidate and is simply not a
  * task, which is what keeps a plan's explanatory paragraphs out of the problem count.
+ *
+ * A LANE MARKER IS STRIPPED ONLY WHEN ITS KEY IS DECLARED by the lane table: a prefix that looks
+ * like a marker but names no declared lane leaves the title verbatim and is REPORTED, because
+ * silently eating the first token of a real title is the kind of loss a tolerant parser must not
+ * commit.
  * @param lines - the readable lines.
+ * @param lanes - the lane table's keys, which decide whether a marker may strip a title.
  * @param problems - the problem list this scan appends to.
  * @returns the raw task lines in document order.
  */
-function collectTasks(lines: readonly SourceLine[], problems: PlanProblem[]): RawPlanTask[] {
+function collectTasks(lines: readonly SourceLine[], lanes: ReadonlyMap<string, string>, problems: PlanProblem[]): RawPlanTask[] {
   /** The tasks in document order. */
   const tasks: RawPlanTask[] = []
   /** The tracked section currently open, undefined outside both. */
@@ -305,14 +316,21 @@ function collectTasks(lines: readonly SourceLine[], problems: PlanProblem[]): Ra
     }
     /** The text after the ordinal, before any lane marker is read. */
     const afterOrdinal = match[2].trim()
-    /** The lane marker and the title it leaves. */
-    const lane = leadingLane(afterOrdinal)
+    /** The marker the title starts with, from detection only. */
+    const mark = leadingLane(afterOrdinal)
+    /** The DECLARED lane key the marker names, or undefined for no marker or an undeclared one. */
+    const lane = mark !== undefined && lanes.has(mark.key) ? mark.key : undefined
+    if (mark !== undefined && lane === undefined) {
+      problems.push({ line: line.line, text: afterOrdinal, reason: `leading lane marker ${mark.key} names no lane the plan declares` })
+    }
+    /** The title with a DECLARED marker removed; an undeclared marker stays verbatim. */
+    const title = mark !== undefined && lane !== undefined ? mark.title : afterOrdinal
     tasks.push({
       id: section === "todo" ? `T${match[1]}` : match[1].toUpperCase(),
-      title: lane?.title ?? afterOrdinal,
+      title,
       section,
       line: line.line,
-      lane: lane?.key,
+      lane,
       references: declaredReferences(afterOrdinal),
     })
   }
@@ -388,8 +406,8 @@ export function parsePlanMarkdown(text: string): PlanDocument {
   const problems: PlanProblem[] = []
   /** The lane owner table collected from the whole document. */
   const lanes = collectLanes(lines, problems)
-  /** The task lines, in document order. */
-  const raw = collectTasks(lines, problems)
+  /** The task lines, in document order; the lane table decides which markers may strip a title. */
+  const raw = collectTasks(lines, lanes, problems)
   /** Task ids already claimed, so a repeated ordinal is REPORTED instead of merged. */
   const seen = new Set<string>()
   /** Raw tasks indexed by the lane key they name, for lane references. */

@@ -11,6 +11,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { GraphModels } from "../src/graph-model"
+import { resolvePlanFile } from "../../mpd-graph-core/src/index.ts"
 import { TEAM_STATE_PATH, buildTeamState, registerTeamRoutes } from "../src/team-web"
 import { addTeamTask, createTeam, writeTeam, type TeamRecord } from "../src/team-store"
 import type { GraphChangeEvent, GraphModel, GraphWatchOptions, GraphWatchTargets, GraphWatcher } from "../../mpd-graph-core/src/index.ts"
@@ -66,11 +67,13 @@ interface WatchDouble {
   closes: () => number
   /** How many watchers the cache armed. */
   armed: () => number
+  /** The targets the LAST armed watcher was given, so a re-arm is observable. */
+  targets: () => GraphWatchTargets | undefined
 }
 
 /**
  * Build a watcher double that records what the cache asked for and lets an arm fire a batch.
- * @returns the factory, the batch trigger and the two counters.
+ * @returns the factory, the batch trigger, the counters and the captured targets.
  */
 function watchDouble(): WatchDouble {
   /** The listener the cache registered through `onChange`. */
@@ -79,9 +82,12 @@ function watchDouble(): WatchDouble {
   let armed = 0
   /** How many times a watcher was closed. */
   let closes = 0
+  /** The targets of the last armed watcher. */
+  let lastTargets: GraphWatchTargets | undefined
   return {
-    make: (_targets: GraphWatchTargets, options: GraphWatchOptions): GraphWatcher => {
+    make: (targets: GraphWatchTargets, options: GraphWatchOptions): GraphWatcher => {
       armed += 1
+      lastTargets = targets
       listener = options.onChange
       return {
         subscribe: (next: (event: GraphChangeEvent) => void): (() => void) => { listener = next; return (): void => { listener = undefined } },
@@ -96,6 +102,7 @@ function watchDouble(): WatchDouble {
     fire: (): void => { listener?.({ paths: ["/ws/.mpd/plans/wave.md"], manual: false, sequence: 1, coalesced: 1 }) },
     closes: (): number => closes,
     armed: (): number => armed,
+    targets: (): GraphWatchTargets | undefined => lastTargets,
   }
 }
 
@@ -185,6 +192,69 @@ describe("the model is computed with the shared core and cached per team", () =>
     const rebuilt = fixture.models.get(workspace, team) as GraphModel
     expect(rebuilt).not.toBe(first)
     expect(rebuilt.nodes.map((node) => node.id)).toContain("T4")
+    fixture.models.dispose()
+  })
+
+  test("a plan path that RESOLVES DIFFERENTLY rebuilds the model with NO revision change", () => {
+    // THE DEFECT THIS ARM PINS (CodeRabbit, Data Integrity): the model cache was valid while the TEAM
+    // matched, so a plan file that resolves differently — the newest-plan fallback swapping to a newer
+    // file — kept serving a stale model. `ensurePlanWatch` resolved the path a SECOND time, so the cache
+    // and the watcher could even follow different files. Here the revision does NOT move and no
+    // notification is fired: the PATH alone must make the cache rebuild.
+    /** A fresh sandbox. */
+    const workspace = mkdtempSync(join(tmpdir(), "mpd-graph-swap-"))
+    sandboxes.push(workspace)
+    /** The plans directory, which holds the two files this arm swaps between. */
+    const plans = join(workspace, ".mpd", "plans")
+    mkdirSync(plans, { recursive: true })
+    // THE OLD ANSWER: for now the only file, so `resolvePlanFile` names it.
+    writeFileSync(join(plans, "z-swap-old.md"), PLAN)
+    /** The record written into that workspace. */
+    let team = createTeam(workspace, { name: "wave-swap", description: "swap", leadSessionId: "sess-1" }, NOW)
+    team = addTeamTask(team, { subject: "Build the core", description: "own it", kind: "work" }, NOW)
+    team = addTeamTask(team, { subject: "Review it", description: "judge it", kind: "review", blockedBy: ["T1"] }, NOW)
+    writeTeam(workspace, team)
+    /** The cache wired to counters. */
+    const fixture = cacheFixture()
+    /** The model built from the OLD plan. */
+    const before = fixture.models.get(workspace, team) as GraphModel
+    expect(before.nodes.map((node) => node.id)).toContain("T3")
+    expect(before.nodes.map((node) => node.id)).not.toContain("T4")
+    // THE NEWEST PLAN APPEARS. The name sorts BEFORE the old one too, so even two mtimes landing in the
+    // same millisecond resolve to the new file (the core's own name tie-break).
+    /** The newer file, which `resolvePlanFile` must now answer. */
+    const newer = join(plans, "a-swap-new.md")
+    writeFileSync(newer, PLAN + "\n4. Newer plan task\n")
+    expect(resolvePlanFile(workspace)).toBe(newer)
+    // NOBODY TOLD THE CACHE: no feed notification was fired, so only the path comparison can save it.
+    expect(fixture.notifies()).toBe(0)
+    /** The model built after the swap, which must be rebuilt against the new file. */
+    const after = fixture.models.get(workspace, team) as GraphModel
+    expect(after).not.toBe(before)
+    expect(after.nodes.map((node) => node.id)).toContain("T4")
+    // AND THE WATCHER MOVED WITH IT: re-armed against the SAME path the read used, not left on the old
+    // file — the split this patch exists to close.
+    expect(fixture.watch.targets()?.planFile).toBe(newer)
+    fixture.models.dispose()
+  })
+
+  test("a workspace with NO plan file still arms the plans directory, so the FIRST plan notifies", () => {
+    // THE OTHER HALF OF THE SAME BLIND SPOT: `ensurePlanWatch` used to return early when no plan existed,
+    // so the first plan file ever created in a workspace fired nothing at all.
+    /** A fresh sandbox with a team but no `.mpd/plans` directory. */
+    const workspace = mkdtempSync(join(tmpdir(), "mpd-graph-noplan-"))
+    sandboxes.push(workspace)
+    /** The record written into that workspace. */
+    let team = createTeam(workspace, { name: "wave-empty", description: "no plan", leadSessionId: "sess-1" }, NOW)
+    team = addTeamTask(team, { subject: "Build the core", description: "own it", kind: "work" }, NOW)
+    writeTeam(workspace, team)
+    /** The cache wired to counters. */
+    const fixture = cacheFixture()
+    expect(fixture.models.get(workspace, team)).toBeDefined()
+    // ARMED ANYWAY: the directory target covers a plan that does not exist yet.
+    expect(fixture.watch.armed()).toBe(1)
+    expect(fixture.watch.targets()?.planFile).toBeUndefined()
+    expect(String(fixture.watch.targets()?.plansDir).endsWith(join(".mpd", "plans"))).toBe(true)
     fixture.models.dispose()
   })
 

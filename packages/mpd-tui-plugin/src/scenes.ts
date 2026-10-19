@@ -33,7 +33,7 @@ import type { PluginContextLike, SeamOutcome, TuiAdapter, TuiScenePropsLike } fr
 import type { Log } from "./log.js"
 import { boardLines, readBoardState, statusLine, type BoardState } from "./state.js"
 import { cellWidth, clampCells, stripControl } from "./sanitize.js"
-import type { TeamWorkflow } from "./team-state.js"
+import type { TeamTaskRow, TeamWorkflow } from "./team-state.js"
 import {
   approvalPhrase,
   modelRanks,
@@ -50,7 +50,7 @@ import {
   type MpdTeamsLike,
   type TeamSourceDeps,
 } from "./team-state.js"
-import { hitTest, layoutGraph, layoutGraphNatural, legendLines, sliceSpans, type GraphTask } from "./graph.js"
+import { hitTest, layoutGraph, layoutGraphNatural, legendLines, sliceSpans } from "./graph.js"
 import { gutterCellsX, legendLinesFor, normalizeWheelDelta, toneColor, useTeamFeed, visualTone, wheelInvertOn } from "./panel-core.ts"
 import { statusMarker } from "./status.js"
 import {
@@ -727,8 +727,11 @@ function createTeamComponent(
       }
     }, [])
 
+    // THE ROW TYPE IS THE JOINED ONE, not the drawing's narrower `GraphTask`: the detail pane below
+    // reads `description`-class fields and the graph-derived `dependencies`, and a PLAN-ONLY ghost has
+    // no board row to look up — typing this as `GraphTask[]` kept the ghost's details unreachable.
     /** The board in the graph's own vocabulary, joined with the SERVED model (ghosts included). */
-    const graphTasks: GraphTask[] = workflow === undefined ? [] : modelRows(workflow)
+    const graphTasks: TeamTaskRow[] = workflow === undefined ? [] : modelRows(workflow)
     /** HOVER OUTRANKS THE PIN while it lasts: the pointer is the more recent intent. */
     const focus = hover ?? pinned
     // The window is computed from the host's own terminal size (never assumed).
@@ -979,8 +982,10 @@ function createTeamComponent(
         children.push(surfaceText(surface, `state-key-${index - arrow.length}`, legend[index], { dim: true }))
       }
       // The detail pane: the focused task's contract, which is what a reader needs after finding it.
-      /** The focused task's row, when there is one. */
-      const detail = focus === undefined ? undefined : workflow.tasks.find((task) => task.id === focus)
+      // THE LOOKUP IS THE DRAWN ROWS, not the board's: a plan-only ghost exists only in the joined
+      // rows, so looking in `workflow.tasks` left a focused ghost with no detail at all.
+      /** The focused task's joined row, when there is one. */
+      const detail = focus === undefined ? undefined : graphTasks.find((task) => task.id === focus)
       if (detail !== undefined) {
         // The pane draws in the FOCUSED TASK'S OWN TONE: the reader asked about this task, so the pane
         // reports its state rather than repeating the surface's.

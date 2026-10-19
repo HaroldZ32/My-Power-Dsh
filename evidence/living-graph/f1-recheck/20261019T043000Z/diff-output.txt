@@ -1,0 +1,47 @@
+{
+ "run": "lane-e-rank-differential",
+ "at": "2026-10-19T04:34:02.742Z",
+ "oracle": "git show dc796a27:packages/mpd-tui-plugin/src/graph.ts (lines 570-740 + GraphTask at line 73)",
+ "seed": 20261019,
+ "randomBoards": 300,
+ "depthSamples": [
+  -3,
+  -1,
+  0,
+  0.5,
+  1,
+  2.9,
+  7,
+  null,
+  null,
+  null
+ ],
+ "idOrderSample": {
+  "ids": [
+   "T10",
+   "T2",
+   "T1",
+   "T9",
+   "F1",
+   "T3"
+  ],
+  "old": [
+   "F1",
+   "T1",
+   "T2",
+   "T3",
+   "T9",
+   "T10"
+  ],
+  "new": [
+   "F1",
+   "T1",
+   "T2",
+   "T3",
+   "T9",
+   "T10"
+  ]
+ },
+ "mismatches": [],
+ "verdict": "IDENTICAL on every case"
+}

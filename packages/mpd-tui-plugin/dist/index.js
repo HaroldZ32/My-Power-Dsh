@@ -4568,14 +4568,14 @@ function readScopedWorkflow(read) {
       const principal = principalRecord(read.records);
       if (principal !== undefined)
         return attachModel(readRecordWorkflow(read.workspace, read.holds, principal, { scope: "workspace" }), read.teams, read.workspace, principal.teamId);
-      return attachModel(readTeamWorkflow(read.workspace, read.holds, read.views, { scope: "workspace" }), read.teams, read.workspace);
+      return readTeamWorkflow(read.workspace, read.holds, read.views, { scope: "workspace" });
     }
     const record = sessionRecord(read.teams, read.workspace, sessionId, read.records);
     if (record !== undefined)
       return attachModel(readRecordWorkflow(read.workspace, read.holds, record, { scope: "session", sessionId }), read.teams, read.workspace, record.teamId);
     const mine = sessionViewsOf(read.views, sessionId);
     if (mine.length > 0)
-      return attachModel(readTeamWorkflow(read.workspace, read.holds, mine, { scope: "session", sessionId }), read.teams, read.workspace);
+      return readTeamWorkflow(read.workspace, read.holds, mine, { scope: "session", sessionId });
     return emptyWorkflow(read.workspace, [], read.holds, { scope: "none", sessionId, workspaceTeams: read.records.length });
   } catch (error) {
     const note = `the team read failed: ${String(error?.message ?? error)}`.slice(0, 200);
@@ -4597,7 +4597,9 @@ function attachModel(workflow, teams, workspace, teamId) {
   if (model === undefined || !Array.isArray(model.nodes))
     return workflow;
   const boardIds = new Set(workflow.tasks.map((task) => task.id));
-  const sameBoard = model.nodes.some((node) => node.planned === false && boardIds.has(node.id));
+  const nodeIds = model.nodes.filter((node) => node.planned === false).map((node) => node.id);
+  const nodeSet = new Set(nodeIds);
+  const sameBoard = nodeSet.size === boardIds.size && nodeIds.length === nodeSet.size && [...boardIds].every((id) => nodeSet.has(id));
   return sameBoard ? { ...workflow, model } : workflow;
 }
 function rankOfNode(node) {
@@ -9018,7 +9020,7 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
       for (let index = arrow.length;index < legend.length; index += 1) {
         children.push(surfaceText(surface, `state-key-${index - arrow.length}`, legend[index], { dim: true }));
       }
-      const detail = focus === undefined ? undefined : workflow.tasks.find((task) => task.id === focus);
+      const detail = focus === undefined ? undefined : graphTasks.find((task) => task.id === focus);
       if (detail !== undefined) {
         children.push(surfaceText(surface, "detail", `${detail.id} · ${detail.kind ?? "?"} · ${detail.subject}`, { bold: true, tone: visualTone(detail.visual) }));
         children.push(surfaceText(surface, "detail-meta", `${detail.visual}${detail.attempt === undefined ? "" : ` · attempt ${detail.attempt}`}${detail.round === undefined ? "" : ` · round ${detail.round}`}${detail.verdict === undefined ? "" : ` · ${detail.verdict}`}${detail.assignee === undefined ? "" : ` · @${detail.assignee}`}${detail.dependencies.length === 0 ? "" : ` · ⇠ ${detail.dependencies.join(",")}`}`, { dim: true }));

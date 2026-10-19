@@ -73,10 +73,12 @@ GraphReport = { boardOnly, planOnly, edgePlanOnly, edgeBoardOnly,
 F1. 标题                      - F1. 标题                  - [ ] F1. 标题
 ```
 
-**标题文本。** 标记之后的文本，并去掉开头的 lane 标记：`A. Core work`、`C — parser work`、
-`P0 · contract work`、`Lane B (Senior Engineer) — panel work` 都会得到一个 lane 键（`A`、`C`、`P0`、`B`），
-并留下标记之后真正的标题。标记后面必须是分隔符（`.`、`—`、`–`、`·`、`:`、`(`）或文本结束，因此普通散文不会被误认为
-lane。标题只取第一行；更深的续行被忽略而不会报成问题。
+**标题文本。** 标记之后的文本，**只有在该 lane 表真的声明了该键时**才去掉开头的 lane 标记：`A. Core work`、
+`C — parser work`、`P0 · contract work`、`Lane B (Senior Engineer) — panel work` 都会得到一个 lane 键
+（`A`、`C`、`P0`、`B`），并留下标记之后真正的标题——前提是文档声明了这些 lane。标记后面必须是分隔符
+（`.`、`—`、`–`、`·`、`:`、`(`）或文本结束，因此普通散文不会被误认为 lane。形似标记、但键**未被** lane 表声明的
+前缀会记成一条问题，标题原样保留——宽容解析器绝不能吃掉真实标题的第一个词。标题只取第一行；更深的续行被忽略而不会
+报成问题。
 
 **Lane 表（owner 来源）。** 任何表头同时含 `Lane` 与 `Owner` 两个单元格的 Markdown 表都提供 owner，位置与所属标题
 不限。同一个键的第一行生效。owner 取第二个单元格，去掉强调标记并切掉尾部的限定语（`Junior Engineer (after C)` 变成
@@ -113,8 +115,8 @@ lane。标题只取第一行；更深的续行被忽略而不会报成问题。
 
 ## 监听输入
 
-`watchGraph({ boardDir?, planFile? }, { debounceMs?, onChange?, onError? })` 返回**一个**监听器，所有消费方订阅
-同一个——在一个文件上挂两个监听器，正是选择事件驱动刷新时要避免的资源浪费。
+`watchGraph({ boardDir?, planFile?, plansDir? }, { debounceMs?, onChange?, onError? })` 返回**一个**监听器，
+所有消费方订阅同一个——在一个文件上挂两个监听器，正是选择事件驱动刷新时要避免的资源浪费。
 
 ```ts
 GraphWatcher = {
@@ -132,7 +134,13 @@ GraphChangeEvent = { paths, manual, sequence, coalesced }
 **它为什么在真实文件系统上仍然正确。** 监听器盯着每个目标**所在的目录**——从目标路径向上走到最近一个真实存在的
 目录，因此尚不存在的目标在创建时也能被发现——并用它自己计算的签名（每个文件的 inode、mtime、ctime 与大小）判断
 是否有变化。重命名、替换、删除、创建都只是"签名动了"，所以一次 rename 不会把监听留在没人再写的 inode 上。文件或
-目录缺失都能存活；每次去抖后都会重新挂载一遍，因此后来出现的目录会在下一轮被真正挂上。
+目录缺失都能存活；每次去抖后都会重新挂载一遍，并记录该监听挂上的 inode：在同一路径上被**替换**的目录（原地改名，
+或删掉重建）会被重新挂载——inotify 跟随的是 inode 而不是路径，"看起来已经挂上"的监听会静默地不再报告新目录里的
+文件。
+
+**新出现的计划也是一次变化。** `plansDir` 把计划目录当作**集合**来听：它的签名是每一个候选计划文件（`*.md`，
+绝不含 `*.zh-CN.md`），所以在原本没有计划的地方创建一个计划、或创建一个更新的计划从而改变 `resolvePlanFile` 的
+答案，都会投递一个批次——即使原先监听的那个文件根本没变。没有它，"改计划就重绘"就会静默地漏掉"新建计划"。
 
 **去抖是可观察的。** 同一窗口内的多次变化合并成**一个**批次，其 `coalesced` 说明吸收了多少条原始通知，监听器另带
 累计总数。因此静默吞掉事件不可能被忽略：`sequence === 1` 且 `coalesced === 2` 就是一次被证明的合并，而 `poll()`
@@ -152,7 +160,8 @@ ID_ORDER: Intl.Collator
 // plan.ts —— 宽容解析器
 parsePlanMarkdown(text): PlanDocument
 
-// resolve.ts —— 选哪个文件，以及宽容读取
+// resolve.ts —— 选哪个文件、宽容读取，以及监听器必须点名的目录
+plansDirectory(workspaceRoot): string
 resolvePlanFile(workspaceRoot): string | undefined
 readPlanFile(path): PlanDocument
 

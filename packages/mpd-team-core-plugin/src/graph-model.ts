@@ -21,7 +21,7 @@
 // plan watcher ONCE per workspace and funnels its batches into `feed.notify`, which is what makes a
 // plan-only edit invalidate the model through the SAME one notification path (no second channel for a
 // TUI surface to learn about).
-import { buildModel, readPlanFile, resolvePlanFile, watchGraph } from "../../mpd-graph-core/src/index.ts"
+import { buildModel, plansDirectory, readPlanFile, resolvePlanFile, watchGraph } from "../../mpd-graph-core/src/index.ts"
 import type { BoardTask, GraphModel, GraphWatchOptions, GraphWatchTargets, GraphWatcher } from "../../mpd-graph-core/src/index.ts"
 import { summariseTeam, taskVisual } from "./team-store"
 import type { TeamRecord } from "./team-store"
@@ -43,10 +43,18 @@ export interface GraphModelDeps {
   watch?: (targets: GraphWatchTargets, options: GraphWatchOptions) => GraphWatcher
 }
 
-/** One team's cached model, and the workspace revision it was built at. */
+/** One team's cached model, the workspace revision it was built at, and the plan it was built from. */
 interface CachedModel {
   /** The feed revision observed when the model was built. */
   revision: number
+  /**
+   * The plan path this model was built from, or undefined when the workspace had none.
+   *
+   * PART OF THE KEY, not a note: the newest-plan fallback can start resolving a DIFFERENT file while
+   * the team and the feed revision are unchanged, and a revision-only check would keep serving a
+   * model built from the previous plan — a wrong picture with no event to correct it.
+   */
+  planPath: string | undefined
   /** The model itself: plain JSON, the same value both projections carry. */
   model: GraphModel
 }
@@ -114,10 +122,12 @@ export class GraphModels {
   }
 
   /**
-   * The model for one team, built if the cache is cold or the workspace's revision moved.
+   * The model for one team, built if the cache is cold, the revision moved, or the PLAN moved.
    *
    * THE KEY IS THE TEAM ID, never the workspace alone: a session must receive ITS team's model, or a
-   * plan-only ghost from the principal team would appear in a different team's DAG.
+   * plan-only ghost from the principal team would appear in a different team's DAG. The plan path is
+   * resolved ONCE per read and is part of the validity check, so the cache, the watcher and the merge
+   * can never be looking at three different files.
    * @param workspace - the CALLING SESSION's workspace root.
    * @param record - the team record the caller already read, so this never resolves sessions to teams.
    * @returns the shared model, or `undefined` when it could not be built.
@@ -125,17 +135,23 @@ export class GraphModels {
   get(workspace: string, record: TeamRecord): GraphModel | undefined {
     if (this.disposed) return undefined
     try {
-      this.ensurePlanWatch(workspace)
+      // RESOLVED EXACTLY ONCE: this value keys the cache, arms the watcher and is read for the merge.
+      // A second resolution anywhere is how the cache and the watch come to follow different files.
+      /** The plan this read follows, or undefined when the workspace has none yet. */
+      const planPath = resolvePlanFile(workspace)
+      this.ensurePlanWatch(workspace, planPath)
       /** The revision the cache entry must match to still be valid. */
       const revision = this.deps.revision(workspace)
       /** This team's cache slot. */
       const key = workspace + "\u0000" + record.teamId
       /** The entry already held, when there is one. */
       const cached = this.cache.get(key)
-      if (cached !== undefined && cached.revision === revision) return cached.model
+      // BOTH KEYS ARE LOAD-BEARING: the revision catches a team write, the plan path catches a
+      // newest-plan swap that fired no team event at all.
+      if (cached !== undefined && cached.revision === revision && cached.planPath === planPath) return cached.model
       /** The freshly merged model: the board is authoritative, the plan is intent. */
-      const model = buildModel({ board: boardOf(record), plan: readPlanFile(resolvePlanFile(workspace)) })
-      this.cache.set(key, { revision, model })
+      const model = buildModel({ board: boardOf(record), plan: readPlanFile(planPath) })
+      this.cache.set(key, { revision, planPath, model })
       return model
     } catch (error) {
       this.deps.warn?.(`[mpd-team-core] building the graph model for ${record.teamId} failed: ${messageOf(error)}`)
@@ -148,13 +164,16 @@ export class GraphModels {
    *
    * A plan-only edit fires no notification from the team feed (it watches `.mpd/team/**`), so this is
    * the ONE observer that turns such an edit into the feed's own revision bump. The watcher follows the
-   * PLAN FILE only; the board directory is already watched by the feed, and arming it twice would be the
-   * duplication the one-substrate rule forbids.
-   * @param workspace - the workspace whose plan file is followed.
+   * resolved PLAN FILE and the plans DIRECTORY; the board directory is already watched by the feed, and
+   * arming it twice would be the duplication the one-substrate rule forbids.
+   *
+   * THE DIRECTORY IS ARMED EVEN WHEN NO PLAN EXISTS YET: the newest-plan fallback means a file created
+   * later — or a newer one that becomes the answer — must produce a batch, and a watcher bound to one
+   * path would never see it. The directory target tracks the whole `*.md` set, so a swap is caught.
+   * @param workspace - the workspace whose plan is followed.
+   * @param planPath - the path resolved by the caller, so the watch and the cache cannot split.
    */
-  private ensurePlanWatch(workspace: string): void {
-    /** The plan this workspace currently follows, or undefined when it has none. */
-    const planPath = resolvePlanFile(workspace)
+  private ensurePlanWatch(workspace: string, planPath: string | undefined): void {
     /** The watch already armed for this workspace, when there is one. */
     const held = this.watchers.get(workspace)
     if (held !== undefined && held.planPath === planPath) return
@@ -162,14 +181,17 @@ export class GraphModels {
       try { held.watcher.close() } catch { /* already closed */ }
       this.watchers.delete(workspace)
     }
-    // NO PLAN FILE: nothing to watch yet. A later `get` re-resolves, so the watcher arms as soon as a
-    // plan appears — the same self-healing shape the change feed uses for a directory that did not exist.
-    if (planPath === undefined) return
     try {
       /** The watcher door, the injected one in an arm and `watchGraph` in production. */
       const make = this.deps.watch ?? watchGraph
+      // THE PLANS DIRECTORY SET IS ALWAYS ARMED: without it, the first plan file ever created in a
+      // workspace would fire nothing — the "no plan yet" blind spot — and a newer file replacing the
+      // resolved answer would fire nothing either.
       /** The live watcher. */
-      const watcher = make({ planFile: planPath }, {
+      const watcher = make({
+        ...(planPath === undefined ? {} : { planFile: planPath }),
+        plansDir: plansDirectory(workspace),
+      }, {
         onChange: (): void => {
           // BOTH HALVES MATTER: the cached model must be dropped, and the feed must publish the change so
           // a passive panel re-reads it without waiting for a user action.

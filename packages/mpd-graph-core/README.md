@@ -57,7 +57,7 @@ boolean while a renderer keys on the string.
 
 **Determinism.** The same board and the same plan produce the same model, byte for byte. Nodes, rank
 buckets and both id lists are ordered by the numeric id collator (`T2` before `T10`); edges by
-(`from`, then `to`); rank problems by source line and then by text. No collection that reaches the
+(`from`, then `to`); plan problems by source line and then by text. No collection that reaches the
 drawing is ordered by a `Map`/`Set` insertion accident. `JSON.stringify` round-trips the model
 unchanged: an absent optional field is an absent key, never an `undefined` value.
 
@@ -85,11 +85,14 @@ are ignored entirely, so a plan that quotes the grammar declares nothing.
 F1. title                    - F1. title                  - [ ] F1. title
 ```
 
-**Titles.** The text after the marker, with a leading lane marker removed: `A. Core work`,
-`C — parser work`, `P0 · contract work` and `Lane B (Senior Engineer) — panel work` all yield a lane
-key (`A`, `C`, `P0`, `B`) and leave the title behind the marker. A marker must be followed by a
+**Titles.** The text after the marker, with a leading lane marker removed ONLY when the lane table
+declares that key: `A. Core work`, `C — parser work`, `P0 · contract work` and
+`Lane B (Senior Engineer) — panel work` all yield a lane key (`A`, `C`, `P0`, `B`) and leave the
+title behind the marker, provided the document declares those lanes. A marker must be followed by a
 separator (`.`, `—`, `–`, `·`, `:`, `(`) or end the title, so ordinary prose is not mistaken for a
-lane. A title is its first line only; deeper continuation lines are ignored rather than reported.
+lane. A marker-shaped prefix whose key the lane table does NOT declare is reported as a problem and
+the title is kept VERBATIM — a tolerant parser must not eat the first token of a real title. A title
+is its first line only; deeper continuation lines are ignored rather than reported.
 
 **Lane tables (owners).** Any markdown table whose header carries both a `Lane` cell and an `Owner`
 cell supplies owners, at any depth and under any heading. The first row for a key wins. The owner is
@@ -136,9 +139,9 @@ a throw.
 
 ## Watching the inputs
 
-`watchGraph({ boardDir?, planFile? }, { debounceMs?, onChange?, onError? })` returns ONE watcher that
-everything subscribes to — two watchers on one file is the resource waste the event-driven refresh
-was chosen to avoid.
+`watchGraph({ boardDir?, planFile?, plansDir? }, { debounceMs?, onChange?, onError? })` returns ONE
+watcher that everything subscribes to — two watchers on one file is the resource waste the
+event-driven refresh was chosen to avoid.
 
 ```ts
 GraphWatcher = {
@@ -158,8 +161,17 @@ the nearest directory that exists, which is how a target that does not exist yet
 when it is created — and decides whether anything changed by comparing a signature it computes
 itself (inode, mtime, ctime and size per file). A rename, a replace, a delete and a create are all
 just "the signature moved", so a rename cannot strand the watch on an inode nobody writes to any
-more. A missing file or directory is survived; the arming pass re-runs after every debounce, so a
-directory that appears is watched on the next round.
+more. A missing file or directory is survived; the arming pass re-runs after EVERY debounce, and it
+records the inode each watch attached to: a directory REPLACED at the same path (renamed in place,
+or removed and recreated) is re-armed, because an inotify watch follows the inode rather than the
+path and a watch that merely looked "already armed" would silently stop reporting the new
+directory's files.
+
+**A plan that APPEARS is a change.** `plansDir` watches the plans directory as a SET, not as one
+file: its signature is every candidate plan file (`*.md`, never `*.zh-CN.md`), so creating a plan
+where none existed — or creating a newer one that changes `resolvePlanFile`'s answer — emits a batch
+even though the previously watched file did not change. Without that, "a plan edit re-renders" would
+silently exclude "a plan created".
 
 **The debounce is observable.** Changes inside one window collapse into ONE batch whose `coalesced`
 count says how many raw notifications it absorbed; the watcher carries the running total. A silent
@@ -181,7 +193,8 @@ ID_ORDER: Intl.Collator
 // plan.ts — the tolerant parser
 parsePlanMarkdown(text): PlanDocument
 
-// resolve.ts — which file, and the tolerant read
+// resolve.ts — which file, the tolerant read, and the directory a watcher must name
+plansDirectory(workspaceRoot): string
 resolvePlanFile(workspaceRoot): string | undefined
 readPlanFile(path): PlanDocument
 

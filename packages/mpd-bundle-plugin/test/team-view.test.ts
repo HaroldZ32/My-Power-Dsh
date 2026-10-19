@@ -114,10 +114,20 @@ interface CannedResponse {
   json: () => Promise<unknown>
 }
 
-/** Build a full team payload around one board, overriding the tally the case needs. */
-function stateOf(tasks: Array<Record<string, unknown>>, counts: Partial<Record<string, number>> = {}, cycles: string[] = [], plan?: PlanDocument): unknown {
+/**
+ * Build a full team payload around one board, overriding the tally the case needs.
+ *
+ * @param tasks - the board, in board order.
+ * @param counts - the tally fields this case overrides.
+ * @param cycles - the cycle ids the payload carries.
+ * @param plan - the parsed plan, when the case needs plan-only ghosts or declared edges.
+ * @param omitModel - true to build the OLDER-SERVER payload: no `model`, no per-task `rank`.
+ * @returns the payload the route would serve.
+ */
+function stateOf(tasks: Array<Record<string, unknown>>, counts: Partial<Record<string, number>> = {}, cycles: string[] = [], plan?: PlanDocument, omitModel: boolean = false): unknown {
   // THE BOARD THE HOST WOULD SERVE: every task carries the rank the shared core computed, and the
-  // payload carries the model beside it. The view reads both; nothing here is re-derived.
+  // payload carries the model beside it. The view reads both; nothing here is re-derived. `omitModel`
+  // is the pre-wave shape, so the degrade path is exercised by the same harness.
   /** The served form of this fixture board, with the plan's ghosts and edges when a case supplies one. */
   const served = withServed(tasks, plan)
   return {
@@ -129,8 +139,8 @@ function stateOf(tasks: Array<Record<string, unknown>>, counts: Partial<Record<s
       { id: "m1", name: "web-team-gui", role: "Senior Engineer", status: "running", done: 1, total: 2, current: "Build the header", route: "deepseek/deepseek-chat" },
       { id: "m2", name: "web-settings-card", role: "Senior Engineer", status: "idle", done: 0, total: 1 },
     ],
-    tasks: served.tasks,
-    model: served.model,
+    tasks: omitModel ? tasks : served.tasks,
+    ...(omitModel ? {} : { model: served.model }),
     cycles,
     executor: { kind: "native", reason: "ctx.subagents.startContinuable" },
     problems: [],
@@ -1115,7 +1125,11 @@ describe("team-view interaction", () => {
     expect(detail).toContain("verdict changes")
     // The blockers name what it rests on, the dependents are derived from the board, and the frozen
     // acceptance contract is QUOTED rather than summarized.
-    expect(detail).toContain("blocked by T2, T9")
+    // THE ROW NAMES THE EDGES THE DRAWING ROUTES (CodeRabbit PR #47): T2 resolves and is drawn, so it
+    // is named. T9 names nothing on the board, so no edge is painted for it; the served report still
+    // carries it in `graph.unresolved` (pinned by R21's arm), which is where an unresolved reference
+    // belongs — the hover/detail may not claim a relationship the picture does not draw.
+    expect(detail).toContain("blocked by T2 dependents T4")
     expect(detail).toContain("dependents T4")
     expect(detail).toContain("acceptance contract ACCEPTED WHEN: one drawn edge exists per blockedBy entry.")
     // The close control unpins it again.
@@ -1143,6 +1157,74 @@ describe("team-view interaction", () => {
     const rendered = await renderView()
     expect(rendered.asked).toEqual([STATE_PATH + "?sessionId=s1", PLAN_PATH + "?sessionId=s1", TASK_PATH + "?sessionId=s1"])
     expect(rendered.view.layout([]).rankCount).toBe(1)
+  })
+})
+
+describe("the halo and the pinned detail follow the DRAWN edges (CodeRabbit PR #47)", () => {
+  // THE COHERENCE DEFECT: after Amendment 3 the DRAWING routes the served model's edges, while the halo
+  // and the pinned body still read the board's `blockedBy`. A plan-declared arrow was therefore painted
+  // while its hover called the relationship nonexistent — the picture disagreeing with itself, which is
+  // the failure class this wave exists to end. Both arms below drive the SAME interaction surface the
+  // host drives (a real `onMouseEnter` and a real `onClick`), never a private helper.
+  /** Two board tasks whose paths are BOTH empty: only the plan declares their relationship. */
+  const planOnlyBoard = [
+    { id: "T1", subject: "board blocker", kind: "work", status: "open", visual: "open", blockedBy: [], failedBy: [], depth: 0 },
+    { id: "T2", subject: "board dependent", kind: "review", status: "open", visual: "open", blockedBy: [], failedBy: [], depth: 0 },
+  ]
+  /** A plan that declares `T2 blocked by T1`, an edge neither board task carries. */
+  const planEdge: PlanDocument = {
+    tasks: [{ id: "T2", title: "board dependent", section: "todo", line: 5, blockedBy: ["T1"] }],
+    lanes: [],
+    problems: [],
+  }
+
+  test("with a model: the hover halo and the pinned body name the SERVED blocker", async () => {
+    /** The board exactly as the host would serve it, with the plan edge merged in. */
+    const served = withServed(planOnlyBoard, planEdge)
+    // The model really carries the edge, and the layout really routes it: the picture is the premise.
+    expect(served.model.report.edgePlanOnly.map((edge) => [edge.from, edge.to])).toEqual([["T1", "T2"]])
+    /** The settled render of the served payload. */
+    const rendered = await renderView({ routes: { [STATE_PATH]: { ok: true, status: 200, body: stateOf(planOnlyBoard, {}, [], planEdge) } } })
+    expect(collect(rendered.tree, "data-mpd-edge").map((edge) => edge.props["data-mpd-edge"])).toEqual(["T2<-T1"])
+    // HOVER T2: the served blocker T1 is IN the halo, so the arrow it is drawn with is a relationship
+    // the interaction also names.
+    ;(one(rendered.tree, "data-mpd-node", "T2").props.onMouseEnter as () => void)()
+    /** The tree after the hover re-rendered. */
+    const hovered = await rendered.hooks.act(rendered.component, { sessionId: "s1" } as never)
+    expect(one(hovered, "data-mpd-graph", "ranks=2 edges=1").props["data-mpd-focus"]).toBe("chain")
+    expect(styleOf(one(hovered, "data-mpd-node", "T1"), "opacity")).toBe("1")
+    // PIN T2: the detail body's BLOCKED-BY row names T1 even though the board's own list is empty.
+    ;(one(hovered, "data-mpd-node", "T2").props.onClick as () => void)()
+    /** The tree after the click pinned T2. */
+    const pinned = await rendered.hooks.act(rendered.component, { sessionId: "s1" } as never)
+    /** The pinned body's flat text. */
+    const detail = flatText(one(pinned, "data-mpd-detail", "T2"))
+    expect(detail).toContain("blocked by")
+    expect(detail).toContain("T1")
+  })
+
+  test("without a model: the same interaction uses the board's `blockedBy` (the degrade control)", async () => {
+    // THE OLDER-SERVER PAYLOAD: no model, no served ranks, so `blockedBy` and `depth` are all there is.
+    // The interaction must still name the same blocker — the fallback is a degrade, not a regression.
+    /** Two board tasks where the SECOND carries the blocker itself. */
+    const board = [
+      { id: "T1", subject: "board blocker", kind: "work", status: "open", visual: "open", blockedBy: [], failedBy: [], depth: 0 },
+      { id: "T2", subject: "board dependent", kind: "review", status: "open", visual: "open", blockedBy: ["T1"], failedBy: [], depth: 1 },
+    ]
+    /** The settled render of the pre-wave payload. */
+    const rendered = await renderView({ routes: { [STATE_PATH]: { ok: true, status: 200, body: stateOf(board, {}, [], undefined, true) } } })
+    expect(collect(rendered.tree, "data-mpd-edge").map((edge) => edge.props["data-mpd-edge"])).toEqual(["T2<-T1"])
+    ;(one(rendered.tree, "data-mpd-node", "T2").props.onMouseEnter as () => void)()
+    /** The tree after the hover re-rendered. */
+    const hovered = await rendered.hooks.act(rendered.component, { sessionId: "s1" } as never)
+    expect(styleOf(one(hovered, "data-mpd-node", "T1"), "opacity")).toBe("1")
+    ;(one(hovered, "data-mpd-node", "T2").props.onClick as () => void)()
+    /** The tree after the click pinned T2. */
+    const pinned = await rendered.hooks.act(rendered.component, { sessionId: "s1" } as never)
+    /** The pinned body's flat text. */
+    const detail = flatText(one(pinned, "data-mpd-detail", "T2"))
+    expect(detail).toContain("blocked by")
+    expect(detail).toContain("T1")
   })
 })
 

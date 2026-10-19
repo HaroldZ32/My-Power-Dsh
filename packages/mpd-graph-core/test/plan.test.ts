@@ -79,6 +79,49 @@ describe("the accepted subset", () => {
   })
 })
 
+describe("lane markers strip only declared lanes", () => {
+  test("a bold-wrapped Lane marker with an inline owner is stripped when its lane is declared", () => {
+    /** A plan whose lane table declares B, so the marker is allowed to strip the title. */
+    const text = [
+      "| Lane | Owner |",
+      "|---|---|",
+      "| **B. adopt** | Junior Engineer |",
+      "",
+      "## TODOs",
+      "",
+      "- [ ] 1. **Lane B (Senior Engineer) — panel work.** More text.",
+      "",
+    ].join("\n")
+    /** The parsed document. */
+    const plan = parsePlanMarkdown(text)
+    expect(plan.tasks[0]?.title).toBe("panel work.** More text.")
+    expect(plan.tasks[0]?.owner).toBe("Junior Engineer")
+    expect(plan.problems).toEqual([])
+  })
+
+  test("a marker-shaped prefix whose lane is NOT declared is reported and left verbatim", () => {
+    /** A title that begins with `Two.` — marker-shaped, but no lane `TWO` exists. */
+    const text = ["## TODOs", "", "1. Two. Things happen.", ""].join("\n")
+    /** The parsed document. */
+    const plan = parsePlanMarkdown(text)
+    expect(plan.tasks[0]?.title).toBe("Two. Things happen.")
+    expect(plan.tasks[0]?.owner).toBeUndefined()
+    expect(plan.problems.length).toBe(1)
+    expect(plan.problems[0]?.reason).toContain("TWO")
+    expect(plan.problems[0]?.reason).toContain("names no lane")
+  })
+
+  test("an undeclared marker never eats a task id that a title starts with", () => {
+    /** A title that begins with an explicit id and a parenthesised note. */
+    const text = ["## TODOs", "", "1. T14 (blind verify of the guard scope).", ""].join("\n")
+    /** The parsed document. */
+    const plan = parsePlanMarkdown(text)
+    expect(plan.tasks[0]?.title).toBe("T14 (blind verify of the guard scope).")
+    expect(plan.problems.length).toBe(1)
+    expect(plan.problems[0]?.reason).toContain("T14")
+  })
+})
+
 describe("tolerance with a report", () => {
   test("a half-typed item, a stray bullet and a duplicate id are collected, not thrown on", () => {
     /** A TODO section with three unreadable lines around one good task. */

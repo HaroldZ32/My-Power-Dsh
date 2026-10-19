@@ -256,7 +256,9 @@ function expectedModel(plan: PlanDocument, board: readonly BoardTask[]): GraphMo
    * @returns a key no id can collide with.
    */
   const pairKey = (from: string, to: string): string => `${from}\u0000${to}`
-  for (const row of board) {
+  // THE DE-DUPLICATED ROWS, not the raw array: the contract keeps the LAST row for a repeated board
+  // id, so an oracle that iterated `board` would read blockers from a row the model discarded.
+  for (const row of boardById.values()) {
     for (const from of row.blockedBy ?? []) {
       /** The merged entry, created on first sight. */
       const entry = declared.get(pairKey(from, row.id)) ?? { from, to: row.id, board: false, plan: false }
@@ -726,8 +728,10 @@ function selfTest(): number {
   const seeded = seedWrongEdge(model)
   /** The seeded model's failures: the gate must refuse it and name the edge. */
   const seededFailures = checkModel(seeded.model, expected)
-  /** Whether at least one failure names the seeded edge. */
-  const namesEdge = seededFailures.some((line) => line.includes("→"))
+  /** The pair the seed actually flipped, so the failure line must name EXACTLY that edge. */
+  const seededPair = `${seeded.model.edges[0]?.from ?? ""}→${seeded.model.edges[0]?.to ?? ""}`
+  /** Whether at least one failure names the seeded edge (not merely some edge, and not an arrow). */
+  const namesEdge = seededFailures.some((line) => line.includes(`edge ${seededPair}:`))
   arms.push({ name: "negative: a seeded wrong edge is refused and NAMED", ok: seededFailures.length > 0 && namesEdge, detail: seededFailures[0] ?? "the seeded edge was accepted" })
   /** A throwaway directory for the path-form arms. */
   const dir = mkdtempSync(join(tmpdir(), "mpd-graph-gate-"))
@@ -744,12 +748,25 @@ function selfTest(): number {
     /** The explicit-path run. */
     const pathRun = spawnGate(["--board", boardPath, "--plan", planPath])
     arms.push({ name: "--board <path> --plan <path> loads the explicit files and exits 0", ok: pathRun.status === 0, detail: `exit ${pathRun.status}: ${pathRun.output.trim().split("\n").slice(-1)[0] ?? ""}` })
-    /** The spawned negative control: non-zero AND the seeded edge named. */
-    const negativeRun = spawnGate(["--fixture", dir, "--seed-wrong-edge"])
-    arms.push({ name: "--seed-wrong-edge exits non-zero and names the edge", ok: negativeRun.status !== 0 && negativeRun.output.includes("→"), detail: `exit ${negativeRun.status}: ${negativeRun.output.trim().split("\n").filter((line) => line.includes("→"))[0] ?? "(no edge named)"}` })
     /** The snapshot run: exit 0 and a serialized model on stdout. */
     const emitRun = spawnGate(["--fixture", dir, "--emit"])
     arms.push({ name: "--emit prints the serialized model and still exits by the check", ok: emitRun.status === 0 && emitRun.output.includes("\"nodes\"") && emitRun.output.includes("\"report\""), detail: `exit ${emitRun.status}, snapshot=${emitRun.output.includes("\"nodes\"") ? "present" : "missing"}` })
+    /** The snapshot parsed back, so the negative arm can name the edge the seed will flip. */
+    let emitted: GraphModel | undefined
+    try {
+      emitted = JSON.parse(emitRun.output.slice(emitRun.output.indexOf("{"), emitRun.output.lastIndexOf("}") + 1)) as GraphModel
+    } catch {
+      emitted = undefined
+    }
+    /** The pair the seed flips: the gate always mutates the FIRST edge in model order. */
+    const seededPair = emitted?.edges[0] === undefined ? "" : `${emitted.edges[0].from}→${emitted.edges[0].to}`
+    /** The spawned negative control. */
+    const negativeRun = spawnGate(["--fixture", dir, "--seed-wrong-edge"])
+    // THE ARM REQUIRES THE NAMED FAILURE, not just a non-zero exit: a gate that reddened for an
+    // unrelated reason would satisfy "exit !== 0" while proving nothing about the seeded edge, so the
+    // FAIL line must name exactly the pair the seed mutated.
+    const named = seededPair !== "" && negativeRun.output.includes(`FAIL edge ${seededPair}:`)
+    arms.push({ name: "--seed-wrong-edge exits non-zero and a FAIL line NAMES the edge", ok: negativeRun.status !== 0 && named, detail: `exit ${negativeRun.status}: ${negativeRun.output.trim().split("\n").filter((line) => line.includes("FAIL edge"))[0] ?? "(no edge named)"}` })
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }

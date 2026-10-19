@@ -117,12 +117,14 @@ function newestPlan(root: string): string | undefined {
   /** One candidate plan file: its absolute path, modification time and name. */
   const candidates: Array<{ path: string; mtimeMs: number; name: string }> = []
   try {
+    /** The plans directory for this workspace, named once so the watcher can be told the same path. */
+    const directory = plansDirectory(root)
     /** The plans directory's entries. */
-    const entries = readdirSync(join(root, PLANS_DIR), { withFileTypes: true })
+    const entries = readdirSync(directory, { withFileTypes: true })
     for (const entry of entries) {
       if (!entry.isFile() || !entry.name.endsWith(".md") || entry.name.endsWith(".zh-CN.md")) continue
       /** The entry's absolute path. */
-      const path = join(root, PLANS_DIR, entry.name)
+      const path = join(directory, entry.name)
       /** The entry's stats, absent when it vanished between listing and stat. */
       const stats = statSync(path, { throwIfNoEntry: false })
       if (stats === undefined) continue
@@ -133,6 +135,19 @@ function newestPlan(root: string): string | undefined {
   }
   candidates.sort((left, right) => right.mtimeMs - left.mtimeMs || left.name.localeCompare(right.name))
   return candidates[0]?.path
+}
+
+/**
+ * The directory plan files live in for a workspace.
+ *
+ * EXPORTED so the resolver, the watcher and any host cache cannot disagree about it: a host that
+ * resolves a plan path and then arms a watch must name the SAME directory, or the cache and the
+ * watcher follow two different trees and "a new plan appears" never reaches the cache.
+ * @param workspaceRoot - the CALLING SESSION's workspace root, expected absolute (the adapter's value).
+ * @returns the absolute `.mpd/plans` directory under it.
+ */
+export function plansDirectory(workspaceRoot: string): string {
+  return join(workspaceRoot, PLANS_DIR)
 }
 
 /**

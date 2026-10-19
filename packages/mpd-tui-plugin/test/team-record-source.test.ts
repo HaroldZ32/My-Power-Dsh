@@ -9,6 +9,7 @@ import { describe, expect, test } from "bun:test"
 import { readBoardState } from "../src/state.js"
 import { modelRanks, modelRows, mpdTeamRecords, principalRecord, readRecordWorkflow, readScopedWorkflow } from "../src/team-state.js"
 import type { MpdTeamsLike } from "../src/team-state.js"
+import type { DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import type { TeamRecord } from "../../mpd-team-core-plugin/src/team-store.js"
 import type { GraphModel, GraphNode } from "../../mpd-graph-core/src/types.ts"
 
@@ -166,6 +167,15 @@ function servedModel(ids: readonly string[], ranks: Readonly<Record<string, numb
   }
 }
 
+/**
+ * One official-plane view for a session; empty, because the attachment arms only need its identity.
+ * @param sessionId - the Lead session the view belongs to.
+ * @returns the view the official readout would carry.
+ */
+function teamView(sessionId: string): DshTeamView {
+  return { teamId: sessionId, leadName: "Lead", leadSessionId: sessionId, members: [], tasks: [] }
+}
+
 describe("living-graph · the served model reaches the projection only when it is the same board", () => {
   test("a model for THIS team is attached, receives the team id, and joins ghost + ranks", () => {
     /** The model for the fixture record's own board, with ranks that contradict the chain. */
@@ -221,5 +231,41 @@ describe("living-graph · the served model reaches the projection only when it i
     const workflow = readScopedWorkflow({ workspace: "/ws", sessionId: "sess-1", holds: [], teams: {}, records: [record()], views: [] })
     expect(workflow.model).toBeUndefined()
     expect(workflow.tasks.length).toBe(4)
+  })
+
+  test("a FOREIGN model with the SAME T1.. numbering plus one task is REJECTED", () => {
+    // THE REALISTIC COLLISION (CodeRabbit): another team also numbers from `T1`, so an intersection
+    // is satisfied by `T1` alone. This model shares T1..T4 with our board and adds its own T5 — the
+    // ordinary shape of a different team's board — so only a BIJECTION can refuse it.
+    /** Another team's model: T1..T4 collide by numbering, and T5 proves the boards differ. */
+    const foreign = servedModel(["T1", "T2", "T3", "T4", "T5"], { T1: 0 })
+    /** The fake service that always answers the foreign model. */
+    const teams: MpdTeamsLike = { graph: () => foreign }
+    /** The projection under test: the session's own record, wrongly answered with another model. */
+    const workflow = readScopedWorkflow({ workspace: "/ws", sessionId: "sess-1", holds: [], teams, records: [record()], views: [] })
+    expect(workflow.model).toBeUndefined()
+    expect(modelRows(workflow).some((row) => row.planned === true)).toBe(false)
+  })
+
+  test("the OFFICIAL-VIEW arms never ask for a model by workspace alone", () => {
+    /** The (workspace, teamId) pairs a service was asked for; it must stay empty. */
+    const asked: Array<{ workspace: string; teamId: string | undefined }> = []
+    /** A service that WOULD answer a model, so the absence of a call is what the arm measures. */
+    const teams: MpdTeamsLike = {
+      graph: (workspace, teamId) => {
+        asked.push({ workspace, teamId })
+        return servedModel(["T1", "T2", "T3", "T4"], {})
+      },
+    }
+    /** The session-scoped read: no mpd record, one official view owned by this session. */
+    const session = readScopedWorkflow({ workspace: "/ws", sessionId: "sess-1", holds: [], teams, records: [], views: [teamView("sess-1")] })
+    /** The workspace-scoped read: no session id, no record, one official view. */
+    const workspace = readScopedWorkflow({ workspace: "/ws", holds: [], teams, records: [], views: [teamView("sess-9")] })
+    // THE FIX: an official view carries the HOST's team identity, not the mpd record's, so no mpd
+    // teamId can be named — and `graph(workspace)` would answer for the principal, which may be
+    // another session's team. The projection therefore asks NOTHING and draws the board alone.
+    expect(asked).toEqual([])
+    expect(session.model).toBeUndefined()
+    expect(workspace.model).toBeUndefined()
   })
 })

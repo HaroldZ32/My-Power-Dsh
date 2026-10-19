@@ -304,7 +304,7 @@ export const FROZEN_COUPLINGS: readonly string[] = [
   // Both planes INLINE the package through `bun build`, so none of these is a runtime edge; each is a
   // compile-time coupling this gate exists to make loud. A future lane reaching into the core from a
   // THIRD package should add its entry here deliberately, not widen an existing one.
-  "packages/mpd-team-core-plugin/src/graph-model.ts :: import { buildModel, readPlanFile, resolvePlanFile, watchGraph } from \"../../mpd-graph-core/src/index.ts\"",
+  "packages/mpd-team-core-plugin/src/graph-model.ts :: import { buildModel, plansDirectory, readPlanFile, resolvePlanFile, watchGraph } from \"../../mpd-graph-core/src/index.ts\"",
   "packages/mpd-team-core-plugin/src/graph-model.ts :: import type { BoardTask, GraphModel, GraphWatchOptions, GraphWatchTargets, GraphWatcher } from \"../../mpd-graph-core/src/index.ts\"",
   "packages/mpd-team-core-plugin/src/index.ts :: import type { GraphModel } from \"../../mpd-graph-core/src/index.ts\"",
   "packages/mpd-team-core-plugin/src/team-web.ts :: import type { GraphModel } from \"../../mpd-graph-core/src/index.ts\"",

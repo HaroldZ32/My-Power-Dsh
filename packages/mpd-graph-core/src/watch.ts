@@ -23,12 +23,21 @@ import { readdirSync, statSync, watch } from "node:fs"
 import type { FSWatcher, Stats } from "node:fs"
 import { basename, dirname, join } from "node:path"
 
-/** The paths the watcher follows; either side may be omitted. */
+/** The paths the watcher follows; every side is optional. */
 export interface GraphWatchTargets {
   /** The directory holding the board records (`<workspace>/.mpd/team/teams`); missing is tolerated. */
   boardDir?: string
   /** The task-plan file; missing, replaced and renamed are all tolerated. */
   planFile?: string
+  /**
+   * The directory plan files APPEAR in (`<workspace>/.mpd/plans`).
+   *
+   * WATCHED AS A SET, not as one file, because "a plan edit re-renders" must also mean "a plan
+   * CREATED re-renders": a new file changes the newest-plan resolution, so the host's cached model
+   * is stale even though the file it was watching did not change. Without this target that event
+   * would never fire. `*.zh-CN.md` twins are excluded, exactly as the resolver excludes them.
+   */
+  plansDir?: string
 }
 
 /** How the watcher behaves; every field has a documented default. */
@@ -87,18 +96,22 @@ export interface GraphWatcher {
 interface WatchTarget {
   /** The absolute-ish path the caller named. */
   path: string
-  /** Whether the target is a board directory or the plan file. */
-  kind: "board-dir" | "plan-file"
+  /** Which kind of path it is: a board directory, the plan file, or the plans directory as a set. */
+  kind: "board-dir" | "plan-file" | "plans-dir"
 }
 
 /** One armed directory watch and what its notifications can mean. */
 interface ArmedDirectory {
   /** The live platform watcher. */
   watcher: FSWatcher
+  /** The inode this watcher was armed on, so a replaced directory is re-armed instead of trusted. */
+  ino: number
   /** Whether the armed directory IS a target directory, which makes filename filtering meaningful. */
   exact: boolean
   /** Whether a board directory is watched here, so a `*.json` entry matters. */
   board: boolean
+  /** Whether the plans directory is watched here, so any `*.md` entry matters. */
+  plans: boolean
   /** The plan-file basenames watched here. */
   names: Set<string>
 }
@@ -155,11 +168,18 @@ function fileSignature(path: string): string {
 }
 
 /**
- * The signature of a board directory: every `*.json` record's name, inode, mtime and size, in name order.
+ * The signature of a directory's ACCEPTED entries: each one's name, inode, mtime and size, in name order.
+ *
+ * THE SET ITSELF IS PART OF THE SIGNATURE, and that is what makes a file APPEARING a change: a
+ * directory with no accepted entry and one with a single new file have different tokens, so a plan
+ * created where none existed invalidates the model instead of waiting for an edit to a file that was
+ * never there. A replaced entry also moves the token, because its inode differs even when the name,
+ * the size and a same-millisecond mtime do not.
  * @param directory - the directory to summarise.
- * @returns a stable token that changes when any record is created, replaced or deleted.
+ * @param accept - which entry names belong to the signature.
+ * @returns a stable token that changes when any accepted entry is created, replaced or deleted.
  */
-function boardSignature(directory: string): string {
+function directorySignature(directory: string, accept: (name: string) => boolean): string {
   /** The directory's entry names, or undefined when it cannot be read. */
   let names: string[]
   try {
@@ -167,11 +187,11 @@ function boardSignature(directory: string): string {
   } catch {
     return "unavailable"
   }
-  /** One fragment per record, so the whole directory has one comparable token. */
+  /** One fragment per accepted entry, so the whole directory has one comparable token. */
   const parts: string[] = []
   for (const name of names.sort()) {
-    if (!name.endsWith(".json")) continue
-    /** The record's stats, absent when it vanished between listing and stat. */
+    if (!accept(name)) continue
+    /** The entry's stats, absent when it vanished between listing and stat. */
     const stats = statOrUndefined(join(directory, name))
     if (stats === undefined) continue
     parts.push(`${name}:${stats.ino}:${stats.mtimeMs}:${stats.size}`)
@@ -180,12 +200,35 @@ function boardSignature(directory: string): string {
 }
 
 /**
+ * The board directory's signature: every `*.json` record.
+ * @param directory - the board directory.
+ * @returns the directory's signature token.
+ */
+function boardSignature(directory: string): string {
+  return directorySignature(directory, (name) => name.endsWith(".json"))
+}
+
+/**
+ * The plans directory's signature: every CANDIDATE plan file, in name order.
+ *
+ * The `*.zh-CN.md` exclusion is the resolver's own rule, mirrored here so the watcher and
+ * `resolvePlanFile` agree about what counts as a plan file.
+ * @param directory - the plans directory.
+ * @returns the directory's signature token.
+ */
+function plansSignature(directory: string): string {
+  return directorySignature(directory, (name) => name.endsWith(".md") && !name.endsWith(".zh-CN.md"))
+}
+
+/**
  * A target's own signature, which is what the watcher actually compares.
  * @param target - the target to summarise.
  * @returns the target's signature token.
  */
 function targetSignature(target: WatchTarget): string {
-  return target.kind === "board-dir" ? boardSignature(target.path) : fileSignature(target.path)
+  if (target.kind === "board-dir") return boardSignature(target.path)
+  if (target.kind === "plans-dir") return plansSignature(target.path)
+  return fileSignature(target.path)
 }
 
 /**
@@ -193,7 +236,7 @@ function targetSignature(target: WatchTarget): string {
  *
  * NEVER THROWS: a directory the platform refuses to watch is reported through `onError` and the
  * watcher keeps whatever handles it has, with `poll()` as the documented resync path.
- * @param targets - the board directory and the plan file, either of which may be omitted.
+ * @param targets - the board directory, the plan file and the plans directory; any may be omitted.
  * @param options - debounce window, initial listener and error sink.
  * @returns the live watcher.
  */
@@ -204,6 +247,7 @@ export function watchGraph(targets: GraphWatchTargets, options: GraphWatchOption
   const watched: WatchTarget[] = []
   if (targets.boardDir !== undefined) watched.push({ path: targets.boardDir, kind: "board-dir" })
   if (targets.planFile !== undefined) watched.push({ path: targets.planFile, kind: "plan-file" })
+  if (targets.plansDir !== undefined) watched.push({ path: targets.plansDir, kind: "plans-dir" })
   /** Each target's signature at its last delivered batch, or at arm time. */
   const signatures = new Map<string, string>()
   for (const target of watched) signatures.set(target.path, targetSignature(target))
@@ -241,23 +285,30 @@ export function watchGraph(targets: GraphWatchTargets, options: GraphWatchOption
     for (const entry of armed.values()) {
       if (!entry.exact) return true
       if (entry.board && name.endsWith(".json")) return true
+      if (entry.plans && name.endsWith(".md")) return true
       if (entry.names.has(name)) return true
-      if (!entry.board && entry.names.size > 0 && name.endsWith(".md")) return true
+      if (entry.names.size > 0 && name.endsWith(".md")) return true
     }
     return false
   }
 
   /**
-   * Attach one directory watch.
+   * Attach one directory watch, recording the inode it actually attached to.
    * @param directory - the existing directory to watch.
-   * @returns the live watcher, or undefined when the platform refused it.
+   * @returns the live watcher and its inode, or undefined when the platform refused it.
    */
-  function armDirectory(directory: string): FSWatcher | undefined {
+  function armDirectory(directory: string): { watcher: FSWatcher; ino: number } | undefined {
+    /** The directory's stats BEFORE the watch is attached, so a replacement can be detected later. */
+    const stats = statOrUndefined(directory)
+    if (stats === undefined) {
+      report(new Error("watch target disappeared before it could be armed: " + directory))
+      return undefined
+    }
     try {
       /** The platform watcher; `persistent: false` so a library never holds the process open. */
       const watcher = watch(directory, { persistent: false }, (_event, name) => notify(typeof name === "string" ? name : undefined))
       watcher.on("error", report)
-      return watcher
+      return { watcher, ino: stats.ino }
     } catch (error) {
       report(error)
       return undefined
@@ -265,40 +316,46 @@ export function watchGraph(targets: GraphWatchTargets, options: GraphWatchOption
   }
 
   /**
-   * Arm one watcher per distinct directory the targets currently need, and drop the ones they no longer do.
+   * Arm one watcher per distinct directory the targets currently need, and drop the ones they no longer may keep.
    *
-   * Called at start and after every delivered batch, which is what heals a target whose directory
-   * did not exist when the watcher started: the ancestor watch sees it appear, the batch delivers,
-   * and the next arming moves the watch onto the real directory.
+   * Called at start and after EVERY debounce, delivered or not, which is what heals two shapes the
+   * platform cannot report well: a target whose directory did not exist when the watcher started
+   * (the ancestor watch sees it appear, then the next pass moves the watch onto it), and a directory
+   * REPLACED at the same path (a rename-in-place or an rm-and-recreate). The second shape is why the
+   * inode is recorded and compared: an inotify watch follows the inode, not the path, so a watch that
+   * looked "already armed" would silently stop reporting the new directory's files.
    */
   function arm(): void {
     if (closed) return
     /** The directories that should be armed, with what their notifications may mean. */
-    const wanted = new Map<string, { exact: boolean; board: boolean; names: Set<string> }>()
+    const wanted = new Map<string, { exact: boolean; board: boolean; plans: boolean; names: Set<string> }>()
     for (const target of watched) {
       /** The directory that holds the target when it exists. */
-      const wantedDir = target.kind === "board-dir" ? target.path : dirname(target.path)
+      const wantedDir = target.kind === "plan-file" ? dirname(target.path) : target.path
       /** Where the watch can attach right now: that directory, or its nearest existing ancestor. */
       const existing = nearestExistingDirectory(wantedDir)
       if (existing === undefined) continue
       /** The registry entry for that directory, created on first sight. */
-      const entry = wanted.get(existing) ?? { exact: existing === wantedDir, board: false, names: new Set<string>() }
+      const entry = wanted.get(existing) ?? { exact: existing === wantedDir, board: false, plans: false, names: new Set<string>() }
       entry.exact = entry.exact && existing === wantedDir
-      if (target.kind === "board-dir" && existing === target.path) entry.board = true
-      else entry.names.add(basename(target.path))
+      if (target.kind === "plan-file") entry.names.add(basename(target.path))
+      else if (existing === wantedDir && target.kind === "board-dir") entry.board = true
+      else if (existing === wantedDir && target.kind === "plans-dir") entry.plans = true
       wanted.set(existing, entry)
     }
     for (const [directory, entry] of armed) {
-      if (wanted.has(directory)) continue
+      /** The directory's stats right now; a vanished or REPLACED path must not keep the old watch. */
+      const stats = statOrUndefined(directory)
+      if (wanted.has(directory) && stats !== undefined && stats.ino === entry.ino) continue
       entry.watcher.close()
       armed.delete(directory)
     }
     for (const [directory, desired] of wanted) {
       if (armed.has(directory)) continue
-      /** The freshly attached watcher, absent when the platform refused. */
-      const watcher = armDirectory(directory)
-      if (watcher === undefined) continue
-      armed.set(directory, { watcher, exact: desired.exact, board: desired.board, names: desired.names })
+      /** The freshly attached watcher and the inode it attached to, absent when the platform refused. */
+      const attached = armDirectory(directory)
+      if (attached === undefined) continue
+      armed.set(directory, { watcher: attached.watcher, ino: attached.ino, exact: desired.exact, board: desired.board, plans: desired.plans, names: desired.names })
     }
   }
 

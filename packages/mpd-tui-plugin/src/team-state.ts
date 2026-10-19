@@ -946,14 +946,20 @@ export function readScopedWorkflow(read: ScopedTeamRead): TeamWorkflow {
       /** The workspace's principal record, under the pre-existing rule. */
       const principal = principalRecord(read.records)
       if (principal !== undefined) return attachModel(readRecordWorkflow(read.workspace, read.holds, principal, { scope: "workspace" }), read.teams, read.workspace, principal.teamId)
-      return attachModel(readTeamWorkflow(read.workspace, read.holds, read.views, { scope: "workspace" }), read.teams, read.workspace)
+      // NO MODEL ON THIS ARM: the projection came from the OFFICIAL views, so this reader cannot name
+      // the mpd team it belongs to. `graph(workspace)` would answer for the workspace PRINCIPAL team,
+      // and every team numbers its tasks from `T1` — an id check cannot tell them apart, so asking at
+      // all would risk drawing another session's graph. The board is drawn alone instead.
+      return readTeamWorkflow(read.workspace, read.holds, read.views, { scope: "workspace" })
     }
     /** The record THIS session owns, through the service's own resolver. */
     const record = sessionRecord(read.teams, read.workspace, sessionId, read.records)
     if (record !== undefined) return attachModel(readRecordWorkflow(read.workspace, read.holds, record, { scope: "session", sessionId }), read.teams, read.workspace, record.teamId)
     /** The official views THIS session owns; another session's view is never drawn from here. */
     const mine = sessionViewsOf(read.views, sessionId)
-    if (mine.length > 0) return attachModel(readTeamWorkflow(read.workspace, read.holds, mine, { scope: "session", sessionId }), read.teams, read.workspace)
+    // NO MODEL HERE EITHER, for the same reason as the workspace arm: an official view carries the
+    // HOST's team identity, not the mpd record's, so there is no mpd `teamId` to ask `graph` for.
+    if (mine.length > 0) return readTeamWorkflow(read.workspace, read.holds, mine, { scope: "session", sessionId })
     // THE HONEST EMPTY STATE. The count is informational only — it is never used to choose a team.
     return emptyWorkflow(read.workspace, [], read.holds, { scope: "none", sessionId, workspaceTeams: read.records.length })
   } catch (error) {
@@ -969,19 +975,23 @@ export function readScopedWorkflow(read: ScopedTeamRead): TeamWorkflow {
 /**
  * Attach the SERVED graph model to a projection, when it demonstrably describes the SAME board.
  *
- * THE GUARD IS NOT DECORATION. `graph(workspace)` answers for the workspace PRINCIPAL team when no
- * team id is passed, while this reader is session-scoped: a model for another team would inject that
- * team's plan-only ghosts into this session's DAG — a plausible-looking wrong picture, which is worse
- * than a missing one. So the model is accepted only when at least one NON-GHOST node
- * (`planned === false`) names an id THIS projection's board already carries; otherwise it is dropped
- * and the board is drawn alone. A throwing service costs the model, never the board.
+ * TWO DEFENCES, because one was provably too weak. (1) THE CALLER MUST NAME ITS TEAM: this function
+ * is reached only from a record-based arm, which passes the record's own `teamId`; the two
+ * official-view arms do NOT call it at all, because `graph(workspace)` would answer for the workspace
+ * PRINCIPAL team and an mpd team id cannot be derived from a host view. (2) THE GUARD IS A BIJECTION,
+ * NOT AN INTERSECTION: every board id must appear as a NON-GHOST node AND every non-ghost node must be
+ * on the board. An intersection is satisfiable by coincidence — every team numbers its tasks from
+ * `T1`, so almost any two teams share an id — while a bijection refuses a model that describes a
+ * different (even merely larger) board. A model that survives both is attached; otherwise it is
+ * dropped and the board is drawn alone. A throwing service costs the model, never the board.
  * @param workflow - the projection to enrich.
  * @param teams - the `mpdTeams` face, when this composition has one.
  * @param workspace - the workspace this read is scoped to, resolved per call.
- * @param teamId - the mpd team the projection was built from, when the reader knows it.
- * @returns the projection with `model` set only when the guard accepted it.
+ * @param teamId - the mpd team the projection was built from; a caller that cannot name one must not
+ *   call this function at all (the service's no-team form answers for the principal).
+ * @returns the projection with `model` set only when both defences accepted it.
  */
-function attachModel(workflow: TeamWorkflow, teams: MpdTeamsLike | undefined, workspace: string, teamId?: string): TeamWorkflow {
+function attachModel(workflow: TeamWorkflow, teams: MpdTeamsLike | undefined, workspace: string, teamId: string): TeamWorkflow {
   if (teams === undefined || typeof teams.graph !== "function") return workflow
   /** The served model, read defensively: a refusing service must not cost the board. */
   let model: GraphModel | undefined
@@ -993,8 +1003,14 @@ function attachModel(workflow: TeamWorkflow, teams: MpdTeamsLike | undefined, wo
   if (model === undefined || !Array.isArray(model.nodes)) return workflow
   /** The task ids this projection's own board carries. */
   const boardIds = new Set(workflow.tasks.map((task) => task.id))
-  /** Whether the model proves it describes this board: one board-backed id must be present. */
-  const sameBoard = model.nodes.some((node) => node.planned === false && boardIds.has(node.id))
+  /** The model's BOARD-BACKED ids; a ghost is plan-only by definition and cannot prove a board match. */
+  const nodeIds = model.nodes.filter((node) => node.planned === false).map((node) => node.id)
+  /** Those ids as a set, so a duplicated node cannot inflate the count. */
+  const nodeSet = new Set(nodeIds)
+  // THE BIJECTION: equal cardinality, no duplicate nodes, and the board is a subset of the nodes —
+  // which, with equal cardinality, makes the two sets EQUAL. Anything less is satisfiable by a shared
+  // `T1` alone, which is exactly how a foreign team's graph could be accepted.
+  const sameBoard = nodeSet.size === boardIds.size && nodeIds.length === nodeSet.size && [...boardIds].every((id) => nodeSet.has(id))
   return sameBoard ? { ...workflow, model } : workflow
 }
 

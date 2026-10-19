@@ -1624,24 +1624,43 @@
        * Each frontier is worked as a QUEUE rather than a recursion, and `inHalo` holds it to one visit
        * per node, so a dependency cycle in the payload — which the route reports rather than repairs —
        * cannot spin this into a stack overflow.
-       * @param tasks - the board.
+       * @param tasks - the tasks the DRAWING contains: the board plus any plan-only ghost.
        * @param from - the hovered task's id.
        * @param rankOf - the rank each task was DRAWN in, straight off the geometry's own nodes.
+       * @param edges - the edges the DRAWING routed (the served model's), when one arrived; absent
+       *   means the board's own `blockedBy` is the only relationship available.
        * @returns the ids to tint; every other node is dimmed while a focus is held.
        */
-      const focusChain = (tasks: TeamTask[], from: string, rankOf: Record<string, number>): Record<string, boolean> => {
+      const focusChain = (tasks: TeamTask[], from: string, rankOf: Record<string, number>, edges?: ServedGraphModelEdge[]): Record<string, boolean> => {
         /** The task each id names, for the dependency lookups below. */
         const byId: Record<string, TeamTask> = {}
         for (const task of tasks) byId[task.id] = task
         /** The ids in the halo so far. */
         const focus: Record<string, boolean> = {}
         if (byId[from] === undefined) return focus
-        /** What rests on each task, which is `blockedBy` read backwards. */
+        // ONE SOURCE FOR BOTH DIRECTIONS. The halo must name the relationships the DRAWING routes, so
+        // when a model arrived it reads the SERVED edges (`from` is the blocker, `to` the blocked task)
+        // and falls back to the board's `blockedBy` only when none did — the SAME degrade the geometry
+        // follows. Otherwise a plan-declared arrow would be painted while its hover called the
+        // relationship nonexistent: the "picture disagrees with itself" class this wave exists to end.
+        /** The blocker ids of one task, from the served edges or the board's own references. */
+        const blockersOf = (id: string): string[] => {
+          if (edges !== undefined) return edges.filter((edge) => edge.to === id).map((edge) => edge.from)
+          return byId[id] === undefined ? [] : byId[id].blockedBy
+        }
+        /** What rests on each task, which is the same relationship read forwards. */
         const dependentsOf: Record<string, string[]> = {}
-        for (const task of tasks) {
-          for (const blockerId of task.blockedBy) {
-            if (dependentsOf[blockerId] === undefined) dependentsOf[blockerId] = []
-            dependentsOf[blockerId].push(task.id)
+        if (edges !== undefined) {
+          for (const edge of edges) {
+            if (dependentsOf[edge.from] === undefined) dependentsOf[edge.from] = []
+            dependentsOf[edge.from].push(edge.to)
+          }
+        } else {
+          for (const task of tasks) {
+            for (const blockerId of task.blockedBy) {
+              if (dependentsOf[blockerId] === undefined) dependentsOf[blockerId] = []
+              dependentsOf[blockerId].push(task.id)
+            }
           }
         }
         focus[from] = true
@@ -1658,7 +1677,7 @@
           const id = up.shift() as string
           /** The origin, whose own rank row the guard below is relaxed for (see the cycle note above). */
           const atOrigin = id === from
-          for (const blockerId of byId[id].blockedBy) {
+          for (const blockerId of blockersOf(id)) {
             if (seenUp[blockerId] === true) continue
             /** The blocker's own row; one the board does not carry draws no edge and tints nothing. */
             const parent = byId[blockerId]
@@ -1776,14 +1795,24 @@
        * dependents, and — when the task route served one — the FROZEN acceptance contract, quoted
        * rather than summarized because that text is what a reviewer holds the work to.
        * @param task - the pinned task.
-       * @param tasks - the whole board, for the dependents lookup.
+       * @param tasks - the whole board, for the dependents lookup when no model arrived.
        * @param contract - the frozen contract of this task, when the route served one.
+       * @param edges - the edges the DRAWING routed (the served model's), when one arrived.
        * @returns the detail element.
        */
-      const detailSection = (task: TeamTask, tasks: TeamTask[], contract: { description: string; claimedBy: string; claimedAt: string; attempt: number } | undefined): unknown => {
-        /** The tasks resting on this one, which is the reverse of `blockedBy`. */
+      const detailSection = (task: TeamTask, tasks: TeamTask[], contract: { description: string; claimedBy: string; claimedAt: string; attempt: number } | undefined, edges?: ServedGraphModelEdge[]): unknown => {
+        // BLOCKERS AND DEPENDENTS COME FROM THE SAME SOURCE AS THE DRAWN EDGES. A plan-declared arrow
+        // is painted, so the pinned body must name that relationship: with a model it reads the served
+        // edges, and only without one does it fall back to the board's `blockedBy` — the same degrade.
+        /** This task's blockers as the drawing routes them: served edges first, `blockedBy` as the degrade. */
+        const blockers = edges === undefined ? task.blockedBy : edges.filter((edge) => edge.to === task.id).map((edge) => edge.from)
+        /** The tasks resting on this one, which is the same relationship read forwards. */
         const dependents: string[] = []
-        for (const other of tasks) if (other.blockedBy.indexOf(task.id) >= 0) dependents.push(other.id)
+        if (edges === undefined) {
+          for (const other of tasks) if (other.blockedBy.indexOf(task.id) >= 0) dependents.push(other.id)
+        } else {
+          for (const edge of edges) if (edge.from === task.id) dependents.push(edge.to)
+        }
         /** The detail's rows, in render order. */
         const rows: unknown[] = [
           react.createElement("div", { key: "d-top", style: CSS.row },
@@ -1802,7 +1831,7 @@
         if (task.attempt !== undefined) rows.push(detailRow("d-attempt", "task.attempt", String(task.attempt)))
         if (task.round !== undefined) rows.push(detailRow("d-round", "task.round", String(task.round)))
         if (task.verdict !== undefined) rows.push(detailRow("d-verdict", "task.verdict", task.verdict))
-        rows.push(detailRow("d-blocked", "task.blockedBy", task.blockedBy.length === 0 ? "—" : task.blockedBy.join(", ")))
+        rows.push(detailRow("d-blocked", "task.blockedBy", blockers.length === 0 ? "—" : blockers.join(", ")))
         rows.push(detailRow("d-dependents", "task.dependents", dependents.length === 0 ? "—" : dependents.join(", ")))
         // THE PRODUCER'S OWN REPORT, on the task it belongs to (R18's reader side): these references
         // matched nothing when the record was written, so naming them is what turns "this task looks
@@ -1952,6 +1981,10 @@
         /** The drawn rank of every task, straight off the geometry. */
         const drawnRank: Record<string, number> = {}
         for (const node of graph.nodes) drawnRank[node.task.id] = node.rank
+        // THE DRAWING'S OWN TASK SET, GHOSTS INCLUDED: the halo walks what is ON SCREEN, not the board,
+        // or a plan-only node could be painted yet never tint its neighbours.
+        /** Every task the drawing contains: the board plus any plan-only ghost. */
+        const drawingTasks = graph.nodes.map((node) => node.task)
         // THE TALLY SAYS WHAT A CAPTAIN ACTS ON, not just how far along the board is: how many tasks
         // a member could pick up RIGHT NOW, and how many of those are only ready because a
         // prerequisite FAILED (OPT-1 releases them, and that must not hide inside "ready").
@@ -1960,7 +1993,7 @@
           + " · " + counts.blocked + " " + t("tally.blocked")
           + (counts.releasedByFailure === 0 ? "" : " · " + counts.releasedByFailure + " " + t("tally.released"))
         /** The focus halo of the hovered node — empty while nothing is hovered, so every node is full. */
-        const focus: Record<string, boolean> = hover === null ? {} : focusChain(tasks, hover as string, drawnRank)
+        const focus: Record<string, boolean> = hover === null ? {} : focusChain(drawingTasks, hover as string, drawnRank, state.model?.edges)
         /** Whether a hover is dimming the rest of the board. */
         const focusing = Object.keys(focus).length > 0
         // A CHAIN IS ACTIVE ONLY WITH A RELATED NODE: a hover whose halo holds nothing beyond the
@@ -2133,7 +2166,7 @@
                 // map, the grid, the padded wrapper, the graph element, and `children.push`.
                 ))))))))
         }
-        if (pinnedTask !== undefined) children.push(detailSection(pinnedTask, tasks, current.contracts[pinnedTask.id]))
+        if (pinnedTask !== undefined) children.push(detailSection(pinnedTask, tasks, current.contracts[pinnedTask.id], state.model?.edges))
         for (const problem of state.problems) {
           children.push(react.createElement("div", { key: "p-" + problem, style: { ...CSS.dim, marginTop: "6px" } }, problem))
         }

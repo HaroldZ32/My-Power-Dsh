@@ -9,7 +9,7 @@ import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from "node:
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
-import { readPlanFile, resolvePlanFile } from "../src/resolve.ts"
+import { plansDirectory, readPlanFile, resolvePlanFile } from "../src/resolve.ts"
 
 /** This test file's own directory, which is inside the workspace the file sandbox allows. */
 const TEST_DIR = dirname(fileURLToPath(import.meta.url))
@@ -163,6 +163,16 @@ describe("readPlanFile", () => {
       const plan = readPlanFile(join(root, ".mpd/plans/read.md"))
       expect(plan.tasks.map((task) => task.id)).toEqual(["T1"])
       expect(plan.problems).toEqual([])
+    })
+  })
+})
+
+describe("plansDirectory", () => {
+  test("names the directory the resolver reads, so a watcher can be pointed at the same path", () => {
+    withWorkspace((root) => {
+      writeFile(root, ".mpd/plans/only.md", "## TODOs\n\n1. only.\n")
+      expect(plansDirectory(root)).toBe(join(root, ".mpd", "plans"))
+      expect(resolvePlanFile(root)).toBe(join(plansDirectory(root), "only.md"))
     })
   })
 })

@@ -186,3 +186,97 @@ describe("the debounce is observable", () => {
     }
   })
 })
+
+describe("a plan that appears", () => {
+  test("creating a plan where none existed is a batch when the plans directory is watched", () => {
+    /** A workspace whose plans directory exists but holds nothing. */
+    const root = mkdtempSync(join(TEST_DIR, ".tmp-"))
+    try {
+      /** The plans directory the host would pass. */
+      const plansDir = join(root, ".mpd", "plans")
+      mkdirSync(plansDir, { recursive: true })
+      /** The watcher under test; the long window keeps the platform event out of this arm. */
+      const watcher = watchGraph({ plansDir }, { debounceMs: 500 })
+      try {
+        writeFileSync(join(plansDir, "first.md"), "## TODOs\n\n1. one.\n")
+        expect(watcher.poll()).toBe(true)
+      } finally {
+        watcher.close()
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test("a NEWER plan emits a batch even though the watched file did not change", async () => {
+    await withWorkspace(async (root) => {
+      /** The plans directory holding the plan the watcher was armed for. */
+      const plansDir = join(root, ".mpd", "plans")
+      mkdirSync(plansDir, { recursive: true })
+      /** The plan file resolved when the watch was armed. */
+      const planFile = join(plansDir, "older.md")
+      writeFileSync(planFile, "## TODOs\n\n1. older.\n")
+      /** The watcher under test. */
+      const watcher = watchGraph({ planFile, plansDir }, { debounceMs: 20 })
+      try {
+        writeFileSync(join(plansDir, "newer.md"), "## TODOs\n\n1. newer.\n")
+        /** The batch the new file produced, attributed to the SET rather than to the old file. */
+        const event = await nextEvent(watcher)
+        expect(event.paths).toEqual([plansDir])
+        expect(event.manual).toBe(false)
+      } finally {
+        watcher.close()
+      }
+    })
+  })
+
+  test("a zh-CN twin is not a plan change", () => {
+    /** A workspace for the twin's plans directory. */
+    const root = mkdtempSync(join(TEST_DIR, ".tmp-"))
+    try {
+      /** The plans directory the host would pass. */
+      const plansDir = join(root, ".mpd", "plans")
+      mkdirSync(plansDir, { recursive: true })
+      /** The watcher under test; its long window keeps the platform event out of this arm. */
+      const watcher = watchGraph({ plansDir }, { debounceMs: 500 })
+      try {
+        writeFileSync(join(plansDir, "plan.zh-CN.md"), "## TODOs\n\n1. 计划。\n")
+        expect(watcher.poll()).toBe(false)
+      } finally {
+        watcher.close()
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+})
+
+describe("a directory replaced at the same path", () => {
+  test("the watch follows the NEW inode, so later files are still reported", async () => {
+    await withWorkspace(async (root) => {
+      /** The board directory the watcher follows. */
+      const boardDir = join(root, "board")
+      mkdirSync(boardDir)
+      writeFileSync(join(boardDir, "a.json"), "{}")
+      /** The watcher under test. */
+      const watcher = watchGraph({ boardDir }, { debounceMs: 30 })
+      try {
+        writeFileSync(join(boardDir, "b.json"), "{}")
+        /** The first batch, which proves the watch is live before the replacement. */
+        const first = await nextEvent(watcher)
+        expect(first.paths).toEqual([boardDir])
+        renameSync(boardDir, boardDir + "-old")
+        mkdirSync(boardDir)
+        writeFileSync(join(boardDir, "a.json"), "{}")
+        expect(watcher.poll()).toBe(true)
+        writeFileSync(join(boardDir, "c.json"), "{}")
+        /** The batch the NEW directory's file produced; a watch left on the old inode cannot see it. */
+        const third = await nextEvent(watcher)
+        expect(third.paths).toEqual([boardDir])
+        expect(third.sequence).toBeGreaterThan(first.sequence)
+      } finally {
+        watcher.close()
+      }
+    })
+  })
+})
