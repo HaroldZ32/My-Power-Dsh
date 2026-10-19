@@ -2733,4 +2733,36 @@ describe("living-graph · the panel draws the SERVED model, ghosts and ranks inc
     expect(page.ranks).toBeUndefined()
     expect(page.tasks.some((task) => task.planned === true)).toBe(false)
   })
+
+  test("a GHOST box carries the plan-only marker, and an open board task does not", () => {
+    /** The board rows. */
+    const board = ghostBoard()
+    /** The projection carrying the served model, so T3 is a plan-only ghost. */
+    const workflow = workflowOf(board)
+    workflow.model = servedModelFixture(board)
+    /** The page under judgement. */
+    const page = dagPageOf(workflow)
+    expect(page).toBeDefined()
+    if (page === undefined) return
+    /** The drawing, at a width that fits every box. */
+    const layout = dagPanelLayout(page.tasks, 100, undefined, 30, page.ranks)
+    /**
+     * The text of one task's box label row.
+     * @param id - the task id to read.
+     * @returns the label row's text, or "" when the task was not drawn.
+     */
+    const labelRow = (id: string): string => {
+      /** The task's own rectangle, when the drawing contains it. */
+      const hit = layout.view.hits.find((candidate) => candidate.taskId === id)
+      return hit === undefined ? "" : (layout.view.lines[hit.row + 1] ?? []).map((span) => span.text).join("")
+    }
+    // THE GHOST IS VISUALLY DIFFERENT: the plan-only marker replaces its state glyph, so a reader can
+    // tell where the plan ends and the board begins — the one question the six-case report answers.
+    expect(labelRow("T3")).toContain("+ T3")
+    // AN OPEN BOARD TASK keeps the contract's own open glyph and carries NO plan-only marker.
+    expect(labelRow("T1")).toContain(`${DAG_TONE_GLYPH.open} T1`)
+    expect(labelRow("T1")).not.toContain("+")
+    // AND THE LEGEND NAMES THE MARK, so the reader is not left to guess it.
+    expect(legendLinesFor(200, []).join(" ")).toContain("+ planned")
+  })
 })

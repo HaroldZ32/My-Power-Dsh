@@ -67,7 +67,7 @@
 // against `ascii codepoints=34 cellWidth=34 endsWith│=true`. The `wide` array below is that fix, and
 // it is why a CJK subject can no longer shear the drawing.
 import { cellWidth, clampCells, sliceCells, stripControl } from "./sanitize.js"
-import { DAG_CHARS, DAG_TONE_GLYPH } from "./dag-theme.js"
+import { DAG_CHARS, DAG_GHOST_MARKER, DAG_TONE_GLYPH } from "./dag-theme.js"
 // THE SHARED PLAN→GRAPH CORE (wave `living-graph`): the ONE rank derivation both planes use. The
 // private copy that used to live here — `deriveRanks`, `servedRank`, `ID_ORDER`, `bucketRanks`,
 // `rankPlan` and their `RankPlan` type — is DELETED, so a fix now reaches the web plane too. What is
@@ -230,6 +230,14 @@ const ARROW_DOWN = DAG_CHARS.arrowDown
 const ARROW_RIGHT = DAG_CHARS.arrowRight
 /** The marker a FOCUSED task draws instead of its state glyph; the legend must name the same one. */
 const FOCUS_MARKER = DAG_CHARS.focusMarker
+/**
+ * The marker a PLAN-ONLY ghost draws instead of a state glyph.
+ *
+ * It is a MARKER, not a tone: `toneOf` still reads `visual: "planned"` as `open`, so the box is
+ * drawn in the same colour and the same form. Without this the ghost would be indistinguishable from
+ * an open board task — the drawing would be technically complete and practically unreadable.
+ */
+const GHOST_MARKER = DAG_GHOST_MARKER
 
 /**
  * THE LEGEND'S ARROW SENTENCE, roomiest wording first.
@@ -514,8 +522,11 @@ export function sliceSpans(spans: readonly GraphSpan[], offset: number, cols: nu
  * @returns the label text: `<marker> <id>`.
  */
 function labelOf(task: GraphTask, focus: string | undefined): string {
-  /** The marker: the focus outranks the state glyph, because where you ARE beats what it is. */
-  const marker = task.id === focus ? FOCUS_MARKER : (GLYPH[task.visual] ?? "?")
+  // THE MARKER PRECEDENCE, in one place for all three views: FOCUS outranks everything (where you ARE
+  // beats what it is), then a GHOST's plan-only marker, then the contract's state glyph. The ghost is
+  // keyed on the model's `visual: "planned"` value, so the tone (`toneOf`) still reads it as `open`.
+  /** The marker this label draws. */
+  const marker = task.id === focus ? FOCUS_MARKER : task.visual === "planned" ? GHOST_MARKER : (GLYPH[task.visual] ?? "?")
   return `${marker} ${task.id}`
 }
 

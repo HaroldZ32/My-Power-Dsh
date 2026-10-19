@@ -36,6 +36,7 @@ import { sessionIdOf, type TeamFeedAccessor, type TeamFeedSubscribe } from "./te
 import {
   DAG_ANIM,
   DAG_CHROME,
+  DAG_GHOST_MARKER,
   DAG_PANEL_MIN_COLUMNS,
   DAG_STATE_TONES,
   DAG_TONE_GLYPH,
@@ -1678,6 +1679,10 @@ export function legendLinesFor(cols: number, arrowLines: readonly string[]): str
   }
   /** Each mark's entry: its glyph, then EVERY state it stands for, in the contract's own order. */
   const entries: string[] = groups.map((group) => `${group.glyph} ${group.states.join("/")}`)
+  // THE PLAN-ONLY MARK JOINS THE KEY. A ghost draws `+ <id>` (`graph.ts` `labelOf`), and a mark the
+  // key does not name is a riddle — the one ambiguity this legend exists to remove. It is an ENTRY,
+  // not a seventh state: the ghost's tone stays `open`, and `planned` is the model's own value.
+  entries.push(`${DAG_GHOST_MARKER} planned`)
   /** Every entry on one line; the widest wording of the key. */
   const oneLine = entries.join(" · ")
   if (cellWidth(oneLine) <= width) {

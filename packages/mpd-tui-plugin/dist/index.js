@@ -5183,6 +5183,7 @@ var DAG_CHARS = Object.freeze({
   railElbowMid: "├─"
 });
 var DAG_CHARS_ONE_CELL = Object.values(DAG_CHARS).every((glyph) => [...glyph].every((character) => cellWidth(character) === 1));
+var DAG_GHOST_MARKER = "+";
 var DAG_CHROME = Object.freeze({
   nodeBorder: "round",
   frameBorder: "single",
@@ -5780,6 +5781,7 @@ function legendLinesFor(cols, arrowLines) {
       existing.states.push(state);
   }
   const entries = groups.map((group) => `${group.glyph} ${group.states.join("/")}`);
+  entries.push(`${DAG_GHOST_MARKER} planned`);
   const oneLine = entries.join(" · ");
   if (cellWidth(oneLine) <= width) {
     push2(oneLine);
@@ -5852,6 +5854,7 @@ var GLYPH = DAG_TONE_GLYPH;
 var ARROW_DOWN = DAG_CHARS.arrowDown;
 var ARROW_RIGHT = DAG_CHARS.arrowRight;
 var FOCUS_MARKER = DAG_CHARS.focusMarker;
+var GHOST_MARKER = DAG_GHOST_MARKER;
 var LEGEND_ENTRY = Object.freeze([
   `${ARROW_DOWN}/${ARROW_RIGHT} blocker above → dependent below · ${FOCUS_MARKER} focus lights its chain`,
   `${ARROW_DOWN}/${ARROW_RIGHT} blocker → dependent · ${FOCUS_MARKER} focus`,
@@ -5939,7 +5942,7 @@ function sliceSpans(spans, offset, cols) {
   return kept;
 }
 function labelOf(task, focus) {
-  const marker = task.id === focus ? FOCUS_MARKER : GLYPH[task.visual] ?? "?";
+  const marker = task.id === focus ? FOCUS_MARKER : task.visual === "planned" ? GHOST_MARKER : GLYPH[task.visual] ?? "?";
   return `${marker} ${task.id}`;
 }
 function widestLabelCells(tasks, focus) {
