@@ -1,0 +1,17 @@
+=== BEFORE FIX: shipped preset persona prefix through the installed harness renderPrompt ===
+shipped prefix: THROWS -> unknown prompt variable "{{cwd}}" in section "deployment:persona-prefix"; registered variables: provider, model
+without the cwd clause: RENDER OK (length 11447)
+
+=== AFTER FIX: same render through the same harness ===
+shipped prefix: RENDER OK (length 11447)
+without the cwd clause: RENDER OK (length 11447)
+
+=== REGRESSION TEST (repo root, pinned bun 1.4.0) ===
+(pass) the mpd preset's persona prefix uses only loop-registered prompt variables > the subject really is the persona prefix (a lost block cannot pass vacuously) [0.04ms]
+(pass) the mpd preset's persona prefix uses only loop-registered prompt variables > no reference names `{{cwd}}` — the loop does not register it [0.01ms]
+(pass) the mpd preset's persona prefix uses only loop-registered prompt variables > every reference is one the harness loop registers [0.02ms]
+
+ 3 pass
+ 0 fail
+ 6 expect() calls
+Ran 3 tests across 1 file. [153.00ms]

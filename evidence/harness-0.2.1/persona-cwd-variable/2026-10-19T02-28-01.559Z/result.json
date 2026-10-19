@@ -1,0 +1,79 @@
+{
+  "case": "harness-0.2.1/persona-cwd-variable",
+  "ok": true,
+  "reported": "turn error unknown prompt variable \"{{cwd}}\" in section \"deployment:persona-prefix\"; registered variables: provider, model",
+  "environment": {
+    "harness": "0.2.1-rc.2",
+    "bun": "1.4.0 (pinned .toolchain)"
+  },
+  "rootCause": "The shipped mpd preset's persona prefix ended with 'Your working directory is {{cwd}}.' The harness loop registers only provider and model as prompt variables; dsh-persona registers the prefix with strict interpolation, so the unknown reference throws during prompt assembly before any model request. The installed dsh-system-prompt README states custom persona templates must not depend on a built-in {{cwd}}.",
+  "fix": "Removed the {{cwd}} clause from presets/mpd.patch.yml's persona prefix and corrected the adjacent comment. The harness working-directory service already supplies the current directory as literal runtime context.",
+  "files": [
+    "presets/mpd.patch.yml",
+    "packages/mpd-bundle-plugin/test/preset-prompt-variables.test.ts"
+  ],
+  "reproduction": {
+    "subject": "The shipped preset's persona prefix rendered through the installed harness's own @deepseek-ai/dsh-system-prompt renderPrompt with variables {provider, model}.",
+    "before": "THROWS -> unknown prompt variable \"{{cwd}}\" in section \"deployment:persona-prefix\"; registered variables: provider, model",
+    "after": "RENDER OK (length 11447)",
+    "log": "output.log",
+    "script": "repro-persona-cwd.mjs"
+  },
+  "gates": [
+    {
+      "name": "regression test",
+      "command": ".toolchain/node_modules/.bin/bun test packages/mpd-bundle-plugin/test/preset-prompt-variables.test.ts",
+      "observed": "3 pass, 0 fail"
+    },
+    {
+      "name": "bundle package suite",
+      "command": ".toolchain/node_modules/.bin/bun test packages/mpd-bundle-plugin/test",
+      "observed": "181 pass, 0 fail"
+    },
+    {
+      "name": "preset conformance self-test",
+      "command": "node skills/dsh-qa/scripts/preset-conformance.ts --self-test",
+      "observed": "PASS; 32 harness rows conform; persona prefix=true; mpd preset 29 child rows; row parity 27/27; negative controls 4/4 reddened"
+    },
+    {
+      "name": "rows parity",
+      "command": "node scripts/verify-rows-parity.ts",
+      "observed": "PASS; 35 row ids match the 2-file bundle patch layer"
+    },
+    {
+      "name": "no host override",
+      "command": "node scripts/verify-no-host-override.ts",
+      "observed": "PASS; 0 id-targets, 35 additive rows, 0 collisions with 213 host-declared ids"
+    },
+    {
+      "name": "pack closure",
+      "command": "node scripts/verify-pack-closure.ts",
+      "observed": "PASS; 607/607 content files identical, 0 drift, 508 declared source files compared"
+    },
+    {
+      "name": "dist freshness",
+      "command": "node scripts/verify-dist-fresh.ts",
+      "observed": "PASS; 31/31 targets fresh"
+    },
+    {
+      "name": "manifest",
+      "command": "bun run verify:manifest",
+      "observed": "PASS; 2 patch files, 989 packed files listed"
+    },
+    {
+      "name": "declaration comments",
+      "command": "node scripts/verify-comment-coverage.ts",
+      "observed": "PASS; 407 TypeScript files scanned"
+    },
+    {
+      "name": "typecheck",
+      "command": "bun run typecheck",
+      "observed": "exit 0 (tsgo --noEmit)"
+    }
+  ],
+  "notes": [
+    "A running dsh process copies the preset's prefix text at plugin apply time, so the fix reaches a live session only after restarting dsh / dsh-tui.",
+    "dist/mpd-package was regenerated with the canonical packer; it is gitignored and therefore not part of the source diff.",
+    "The failing package-dir invocation of the bundle suite is a pre-existing path-resolution quirk in client-harness.ts; the same suite passes from the repo root, which is the invocation the repo's gates use."
+  ]
+}
