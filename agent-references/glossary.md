@@ -17,6 +17,12 @@ reasoning efforts at all in the live catalog is sent none (the adapter's `withSu
 the keyword and logs it), so a materialised slot default cannot fail a call no configuration error
 caused. `AGENTS.md` §13 carries the binding wording; the block below is history.
 
+**LIVE AMENDMENT (2026-10-20, workmate injection):** the automatic persona/memory injection into a
+teammate lived in the vendored `dsh-agent-teams` body, which no loader row has mounted since its
+2026-09-27 retirement and which the de-vendor wave removed — so that capability is NOT active.
+Re-establishing it belongs to the OFFICIAL team path, `mpd-roster-provider-plugin`, which already routes
+a teammate whose description names a roster member. The block below predates this note and is history.
+
 ## The former §13 body (verbatim)
 
 ## 13. Glossary
@@ -126,11 +132,6 @@ caused. `AGENTS.md` §13 carries the binding wording; the block below is history
   roster id is refused with a names-only error), an auto-generated name derives from that functional
   name (`Deep Worker` → `deep-worker-1`), and `baseId` is internal provenance in `meta.json` that no
   tool output, web route or GUI ever exposes.
-  **History (MEASURED):** the automatic persona/memory injection into a teammate lived in the vendored
-  `dsh-agent-teams` body, which no loader row has mounted since its 2026-09-27 retirement and which the
-  de-vendor wave removed — so that capability is NOT active. Re-establishing it belongs to the OFFICIAL
-  team path, `mpd-roster-provider-plugin`, which already routes a teammate whose description names a
-  roster member.
 - mpd: our naming prefix (my-power-dsh).
 - golden: graded benchmark task set in `tests/golden`.
 
