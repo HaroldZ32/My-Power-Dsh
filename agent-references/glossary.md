@@ -126,6 +126,11 @@ caused. `AGENTS.md` §13 carries the binding wording; the block below is history
   roster id is refused with a names-only error), an auto-generated name derives from that functional
   name (`Deep Worker` → `deep-worker-1`), and `baseId` is internal provenance in `meta.json` that no
   tool output, web route or GUI ever exposes.
+  **History (MEASURED):** the automatic persona/memory injection into a teammate lived in the vendored
+  `dsh-agent-teams` body, which no loader row has mounted since its 2026-09-27 retirement and which the
+  de-vendor wave removed — so that capability is NOT active. Re-establishing it belongs to the OFFICIAL
+  team path, `mpd-roster-provider-plugin`, which already routes a teammate whose description names a
+  roster member.
 - mpd: our naming prefix (my-power-dsh).
 - golden: graded benchmark task set in `tests/golden`.
 
@@ -156,8 +161,8 @@ and which REFUSES a caller that is the loop's own writer. The boundary it is mea
   `mcp__lsp__rename_symbol_strict`); and every `agent_teams_*` / `mpd_*` board or team MUTATION —
   with `mpd_verify_*` explicitly exempt, because those five tools ARE the seat's job.
 - **PATH-SCOPED while BLIND**: `read` / `glob` / `grep` under the loop's frozen `basis.docs[]`,
-  `<ws>/.mpd/plans/**`, `<ws>/docs/**`, `<ws>/agent-references/**`, `<ws>/.mpd/verify/**` and
-  `<ws>/evidence/**`. MEASURED 2026-10-08: while the guard still installed, its bare-path refusal named
+  `<ws>/.mpd/plans/**`, `<ws>/docs/**`, `<ws>/agent-references/**`, `<ws>/packages/*/README*.md`,
+  `<ws>/.mpd/verify/**` and `<ws>/evidence/**`. MEASURED 2026-10-08: while the guard still installed, its bare-path refusal named
   `evidence/` in the live band, and a `glob {path:"evidence", pattern:"…"}` was ANSWERED (it reports no
   matches, not a refusal). An earlier revision of this line OMITTED `evidence/**`, and a bound seat
   concluded from the omission that it could not read a writer's evidence packet at all — it retracted
