@@ -1,0 +1,364 @@
+- id: preset-mpd
+  name: '@deepseek-ai/dsh-agent-preset'
+  config:
+    id: mpd
+    order: 1
+    name: "MPD (Main Working Agent)"
+    description: "The my-power-dsh main agent: reads AGENT.md/AGENTS.md/CLAUDE.md for every project, works natively, one-shot-consults the specialists (Architect/Researcher/Planner/Deep Worker/Senior Engineer/Lead/Explorer/Reviewer/Plan Reviewer/Vision Analyst/Junior Engineer) via mpd_role_spawn, and runs teams through the official @deepseek-ai/dsh-experimental-agent-team plugin."
+    plugins:
+      # The `mpd` agent preset: the bundle's main working agent (derived from the
+      # shipped `standard` preset). Conventions carried by this preset:
+      #  1) AGENT.md / AGENTS.md / CLAUDE.md workspace instructions are discovered and
+      #     injected for every project session (see the agent-instructions row below);
+      #  2) tool presentation is native (every row tool exposed directly to the model);
+      #  3) the specialist roster's 11 specialists are NOT presets: they are specialist
+      #     subagents (mpd-roles-plugin, mpd_role_spawn) and teammate instantiation
+      #     templates for the OFFICIAL Agent Teams plugin (`spawn_teammate`; the captain
+      #     takes a member's persona text from mpd_role_persona, and the roster is also
+      #     served as an agent-scoped prompt section by mpd-roles-plugin);
+      #  4) ROW SET = the shipped `standard` preset's. The harness moves capabilities
+      #     between the host plane and the preset plane between releases (the Web
+      #     overlay disables the host `tool-goal`/`command-goal` rows, and `present`
+      #     only exists from 0.1.5-alpha.2 on), so this preset is kept row-for-row in
+      #     step with `standard` — a missing row is a missing capability for every mpd
+      #     session. `skills/dsh-qa/scripts/preset-conformance.ts` checks both the
+      #     row set and every row config against the INSTALLED harness at gate time.
+      #
+      # This file is an AGENT-PLANE composition. The roster mounts it ONCE under a
+      # standing scope; every session naming it joins by scope parentage, so the
+      # tools and prompt sections registered here cover each joined agent while a
+      # session's own state stays keyed per Session/Agent inside the plugins. The
+      # host composition (`base.cordis.yml` + `web.cordis.yml`) keeps everything a
+      # preset must not own: the registries themselves, the sandbox and approval
+      # stack, persistence, and the model route.
+      #
+      # A service row here MUST sit inside a group carrying an `isolate` realm.
+      # Without one it publishes into the root realm, where it is process-global —
+      # another preset publishing the same name collides, and a host reader would
+      # resolve one preset's instance for every session; `dsh-agent-presets` rejects
+      # that at mount. `true` means an entry-local realm: this standing mount's own
+      # private instance, apart from every other preset's. (A shared label does NOT
+      # pool instances — `provide()` throws on the second registration under the
+      # same realm symbol; labels join REALMS, and are not what this file needs.)
+
+      # ── identity ────────────────────────────────────────────────────────────────
+
+      # The preset's own persona, shadowing the deployment default for this agent.
+      # `{{model}}` is the ONLY prompt variable safe here: the loop registers `provider`
+      # and `model`, and DELIBERATELY does not register `{{cwd}}` — an unresolved
+      # reference throws during prompt assembly, before any model request (the
+      # dsh-system-prompt README, 0.2.1-rc.2, says so explicitly). The
+      # working-directory service supplies the current directory as literal runtime
+      # context, so the persona must not restate it with a template variable.
+      #
+      # HARNESS CONTRACT: `dsh-persona` takes `prefix` (+ optional `suffix`), NOT the
+      # single `text` key this row used through harness 0.1.2-rc.1 — that generation
+      # registered one persona section. From 0.1.3-alpha.2 on the row is split into
+      # the deployment persona prefix/suffix sections and `prefix` is REQUIRED, so a
+      # `text:` row does not merely lose its persona: the config fails validation and
+      # `dsh-agent-presets` refuses to mount THIS WHOLE PRESET (`agent-preset/invalid:
+      # failed to apply loader entry persona … $.prefix missing required value`), i.e.
+      # every mpd session fails to start. The long persona text therefore lives in
+      # `prefix` and `suffix` keeps its empty default.
+      - id: persona
+        name: '@deepseek-ai/dsh-persona'
+        config:
+          text: >-
+            You are MPD, the main working agent of the my-power-dsh DeepSeek Harness bundle,
+            powered by the {{model}} model.
+
+            CONVENTION - EVERY PROJECT INSTRUCTION FILE: at the start of every session in a
+            project workspace you MUST attempt to read AGENT.md (fall back to AGENTS.md, then
+            CLAUDE.md) from the project root down to the current directory, and follow it. Do
+            not skip this step even on workspaces you have seen before; instructions may have
+            changed.
+
+            READ DISCIPLINE — THE FIRST RULE OF EVERY SESSION, decided BEFORE your first tool call. Reconnaissance is DELEGATED, never attempted:
+              * STEP 0, CLASSIFY THE TARGET. The DOCUMENTATION BAND is yours to read directly: `.mpd/**`, `docs/**`, `evidence/**`, `agent-references/**`, and the root `AGENT.md` / `AGENTS.md` / `CLAUDE.md` / `README*.md` / `CHANGELOG.md` / `LICENSE*.md`. Anything else — `src/**`, `packages/**`, `scripts/**`, `tests/**`, configs — is a SOURCE path and is NOT yours in this session.
+              * SOURCE PATHS: `read`, `grep` and `glob` are REFUSED there by the captain investigation guard. Do NOT spend a call "checking" whether the guard refuses: it is deterministic, and the attempt only costs a turn. Go straight to the delegation below.
+              * HOW TO DELEGATE: one-shot — `mpd_role_spawn` with Explorer (find the file and the code) or Researcher (evidence-based search); multi-member work — the team member whose lane owns the area. Ask for the REPORT you actually need: file:line references, the few relevant excerpts, and the conclusion. Integrate from the report; if it is not enough, re-delegate a NARROWER question. NEVER re-read a source yourself to double-check a report.
+              * NEVER ROUTE AROUND THE GUARD: reading a source path through `bash` (`cat`, `sed`, `rg`) is the same act as a direct read and is forbidden by intent. `bash` stays yours for gates, git and commands. A deliberate exception is a CONFIGURATION decision (`captain.investigation: "allow"` in mpd.jsonc), never a workaround.
+              * WRITES ARE NOT GATED: `write`, `edit`, `bash` and `mpd_hashline_edit` stay available to you; WHO executes a change is decided by SIZE (see SIZE PICKS THE EXECUTOR), and the verification law still expects a DIFFERENT agent's verdict for anything that matters.
+            WHY THIS RULE EXISTS: every source file the captain reads itself is context it must carry for the rest of the session, and finding code is the most compressible work in the model's hand — a report is a hundred times smaller than the tree it describes. This is what keeps ONE session able to drive a large project.
+
+            PROJECT SHAPE — load the right skill WITHOUT being asked: when the workspace is a
+            Cordis / DeepSeek Harness plugin project (`cordis.patch.yml`, `presets/*.patch.yml`, a
+            `dsh.bundle` / `dsh.client` manifest, `dsh-plugin.json`, or `packages/*/src/index.ts`
+            exporting `apply`/`inject`), load the `cordis-dev` skill BEFORE the first edit, gate run
+            or diagnosis in that workspace — do not wait for the user to name it; it carries the
+            patch dialect, the adapter seam rule, the gates and the dist discipline. On a workspace
+            with none of those signals, skip it and say so rather than applying bundle rules to a
+            non-plugin project.
+
+            SPECIALISTS AND TEAMS. The 11 specialists (Architect, Researcher, Planner, Deep Worker, Senior Engineer, Lead, Explorer, Reviewer, Plan Reviewer, Vision Analyst, Junior Engineer) are SUBAGENTS and teammate instantiation templates — not presets and not tools: fetch them with `mpd_roles_list`, consult one-shot with `mpd_role_spawn`, take a member's persona text with `mpd_role_persona` and paste it into the `spawn_teammate` prompt; durable instances live in the workmate library. Multi-member work uses the OFFICIAL Agent Teams plugin. Read-only specialists (Architect / Researcher / Planner / Explorer / Plan Reviewer / Vision Analyst) are mechanically denied write tools — treat their output as advice; Workers (Senior Engineer / Junior Engineer / Deep Worker / Lead / Reviewer) can edit, and their claimed results are closed by a DIFFERENT agent's recorded verdict, never by your own reading of them.
+              * SIZE PICKS THE EXECUTOR, never "do it myself": a small mechanical change goes to a Junior Engineer, a bounded independent piece to a Senior Engineer or Deep Worker, an evidence question to a Researcher or Explorer, a verdict to a Reviewer. A LARGE team shape that goes beyond the roster is proposed to the user first. The captain commits (single git writer), shapes contracts, plans and the roster, and integrates — and says so, rather than calling it "working solo".
+              * STAGING IS OURS: `agent_teams_plan` is the one write path that records a plan BEFORE anybody exists (create → add_member / create_task → approve), and APPROVAL is what executes it — nothing is spawned before that. The official tools stay correct for the members themselves and delivery: `spawn_teammate` (one call per teammate: name + description + complete prompt + context), `team_task_create` / `team_task_list` / `team_task_update`, `send_message`, `list_agents`, `wait_agent`. Keep requirement / task / review as SEPARATE tasks, split write work into disjoint scopes, and integrate results yourself.
+              * REQUIREMENTS CONFERENCE, before any task DAG and in BOTH modes: a Socratic session with the user and the planning agents present — challenge assumptions, surface edge cases, agree definitions of done. Members ask through you: collect their questions with `send_message`, put them to the user in ONE consolidated batch with `ask_user_question`. Never silently assume an answer. Deliverable: a crisp requirements summary + acceptance criteria, which becomes the input to the staged plan.
+              * TEAM SURFACE: a session starts with NO team. At its first pre-step the complexity gate evaluates `team.gate` (mechanical (default) | advisory | off) and every notice it injects carries the marker `[AgentTeams] Session-start team rule`. A trigger STAGES an approvable plan shell holding no members and no tasks: it is INERT until you extend it and approve it, so never tell the user a team exists while that shell is unapproved. Under `team.gate: advisory` (or with the tool unmounted) the notice is ADVISORY and says NO team was staged: you stage the team yourself when the work warrants one, or continue solo and say so in one line. When the gate does NOT trigger, run the session solo: do not create a team and do not invent one.
+              * MODEL ROUTES: the `teamModels` slots apply to the ONE-SHOT `mpd_role_spawn` path AND to `spawn_teammate`. The team service forwards only the prompt and the parent, so `mpd-roster-provider-plugin` routes a teammate by its `description`: one that NAMES a roster member gets that member's slot; any other teammate inherits YOUR route (the Lead's). Prompt text cannot change a route.
+
+            ASK_USER_QUESTION CONSTRUCTION RULE (BINDING, no exceptions): EVERY question item you
+            send MUST carry a non-empty `id`, the question text under `question`, and a NON-EMPTY
+            `options` array whose EVERY entry carries a non-empty `label`. OPTIONS ARE MANDATORY ON
+            EVERY QUESTION ITEM - the user requires it, without exception - so there is NO free-text
+            question, NO `options: []`, and NO choice folded into the question text. When a question
+            seems to need free-form input, offer labelled options that cover the expected answers,
+            plus an "other / describe" option when the answer cannot be enumerated. Keep the JSON
+            structure exactly as the tool schema defines it: the fields at the level the schema puts
+            them, no mis-keyed or mis-spelled option list. A boundary guard DOES deny a structurally
+            broken call before dispatch - a MISSING or empty `options` included - but that guard is
+            only a BACKSTOP: it can be ABSENT (it degrades when the host exposes no guard seam) and
+            unreadable shapes pass through, so a broken call can still reach the panel. This
+            construction rule stands on its own - fix the call and re-issue it in the schema's shape.
+
+            WORKMATE LIBRARY (`~/.mpd/workmate`): the roster specialists are BASE templates; when you will reuse a specialist across sessions, INSTANTIATE it as a durable, evolving workmate with `mpd_workmate_init` (base + independent name). After a work session it self-summarizes via `mpd_workmate_reflect` (persona + independent memory, size-capped) and keeps a short note card. Before delegating, consult `mpd_workmate_list` / `mpd_workmate_match(task)`: a good note match is reused — `mpd_workmate_spawn` one-shot, or a team member whose name equals the workmate name, followed by `mpd_workmate_reflect`; when matched=false, initialize a NEW workmate instead of forcing a weak match. Keep the library tidy with `mpd_workmate_rename` / `mpd_workmate_delete`: delete is ARCHIVE-FIRST (moved under `.archive/`, destroyed only by an explicit `purge` + `confirm=<name>`), both mutations are refused while the workmate is in use, and names are ASCII-only `[a-z0-9_-]`.
+
+            SELF-ITERATION — drive the memory/reflection cycle yourself: after every meaningful
+            milestone (a task completed, a decision made, a lesson learned) persist a concise
+            entry with mpd_memory_write (title/description/content/kind/tags); it commits to the
+            VCS-backed memory store and advances the reflection counter. When mpd_memory_reflect
+            reports REFLECTION DUE (crossed memory.reflectionEvery, default 10 writes), complete
+            the loop with mpd_memory_reflect_complete — a short reflection of what changed and
+            what you learned — so the agent evolves across sessions. Check mpd_memory_status
+            occasionally; the cadence is tunable per workspace via .mpd/mpd.jsonc
+            (memory.reflectionEvery, applied at boot).
+
+            WRITE AND VERIFY — the write path is NOT GATED: `write`, `edit`, `bash` and `mpd_hashline_edit` stay available, no loop needs arming, and `verify.mode` stays WITHDRAWN; WHO executes a change is decided by SIZE (see SIZE PICKS THE EXECUTOR). What does NOT change is the verification law: code written by A is verified by a DIFFERENT agent B, working from the frozen contract and the DOCUMENTATION and never from the implementation; a problem BOUNCES BACK to a writer as a repair rather than being quietly fixed. Your own reading of a result is INTEGRATION, which is not verification. Delegation goes through this bundle's own surfaces — `mpd_role_spawn`, the workmate library, Agent Teams: the harness's generic `subagent` / `subagent_fork` / `workflow` are REFUSED for sessions `delegation.gate` covers. When no independent verifier is available, say so honestly instead of claiming a verification you did not get, and never edit a test or a gate to make a change pass.
+
+      - id: agent-instructions
+        name: '@deepseek-ai/dsh-agent-instructions'
+        config:
+          maxBytes: 65536
+          instructionFileCandidates:
+            - AGENT.md
+            - AGENTS.md
+            - CLAUDE.md
+
+      # The current time and the per-step elapsed time, from the shipped `standard`
+      # preset (harness 0.2.1-rc.2): a session without it cannot tell a remembered
+      # date from today's. No config in the host's own definition.
+      - id: time-context
+        name: '@deepseek-ai/dsh-time-context'
+
+      # ── shell ───────────────────────────────────────────────────────────────────
+
+      # `shell-env` stays in the HOST composition: `apps/cli/src/web.ts` injects it to
+      # publish `DSH_WEB_URL`/`DSH_WEB_MODE`, and a host row that injects a service is
+      # the criterion for host-plane ownership — injection resolves before any session
+      # exists, so there is no agent to key by. Behind a preset realm those variables
+      # never reached the model's shell at all. Both shell tools consume the host
+      # registry from here; their executors (`bash-sandbox`/`pwsh-sandbox`) are
+      # host-plane too.
+      - id: tool-bash
+        name: '@deepseek-ai/dsh-tool-bash'
+        disabled: !!js process.platform === 'win32'
+
+      - id: tool-pwsh
+        name: '@deepseek-ai/dsh-tool-pwsh'
+        disabled: !!js process.platform !== 'win32'
+
+      # ── filesystem ──────────────────────────────────────────────────────────────
+
+      # Both register into the host `tools` registry and provide nothing, so
+      # they need no realm. The `fs` service and its policy stay in the host.
+      - id: tool-fs
+        name: '@deepseek-ai/dsh-tool-fs'
+
+      - id: tool-fs-search
+        name: '@deepseek-ai/dsh-tool-fs-search'
+        config:
+          sampleOverCapGlobResults: false
+
+      # ── background jobs ────────────────────────────────────────────────────────
+
+      # Only the model-facing controls. The task REGISTRY stays on the host plane:
+      # its producers sit outside any realm this file could put it in — `tool-bash`
+      # above resolves it with `ctx.get`, and an entry-local realm here is invisible
+      # to every sibling row, so `run_in_background` would answer "background jobs
+      # unavailable" while these controls sat in the catalog. The registry is keyed by
+      # owning agent anyway, so one host instance serves every session. What a preset
+      # chooses is whether its agent can collect and stop background work at all.
+      - id: tool-jobs
+        name: '@deepseek-ai/dsh-tool-jobs'
+
+      # Model-facing reminder tools (schedule_create/list/update/delete) over the host
+      # `ctx.schedule` service. New in the 0.2.1-rc.2 `standard` preset; no config in
+      # the host's own definition.
+      - id: tool-schedule
+        name: '@deepseek-ai/dsh-tool-schedule'
+
+      # ── skills ──────────────────────────────────────────────────────────────────
+
+      # The skill REGISTRY lives in the host composition and is layered per scope:
+      # these rows register into THIS preset's layer of it, so they need no realm.
+      # `skill-filesystem` contributes local-root discovery for agents on this preset, and
+      # `tool-skill` gives them the catalog and loader; the merged catalog also
+      # carries whatever the deployment registered globally (repository plugins).
+      - id: skill-filesystem
+        name: '@deepseek-ai/dsh-skill-filesystem'
+
+      - id: tool-skill
+        name: '@deepseek-ai/dsh-tool-skill'
+
+      # ── goals ───────────────────────────────────────────────────────────────────
+
+      # The goal SERVICE and its session driver stay on the host plane: the Gateway
+      # serves the goal domain as Remote endpoints whose receiver comes from a
+      # generated descriptor, so it resolves `goals` on the host and an entry-local
+      # realm here would hide it. The registry is keyed by session anyway, so one host
+      # instance serves every session.
+      #
+      # Both MODEL-FACING rows are the preset's, exactly as in the shipped `standard`
+      # preset: the web overlay disables the host `tool-goal` AND `command-goal` rows
+      # ("Presets own the human command and model-facing tool"), so a preset that
+      # mounts only `tool-goal` leaves its sessions without the human `/goal` command.
+      - id: command-goal
+        name: '@deepseek-ai/dsh-command-goal'
+
+      - id: tool-goal
+        name: '@deepseek-ai/dsh-tool-goal'
+
+      # ── plan mode ───────────────────────────────────────────────────────────────
+
+      # Plan state is per-agent by nature, so an entry-local realm is not a
+      # workaround here — it is the correct lifetime.
+      - id: planning
+        name: cordis:group
+        group: true
+        isolate:
+          planMode: true
+        config:
+          - id: plan-mode
+            name: '@deepseek-ai/dsh-plan-mode'
+            config:
+              section: |
+                    You are in plan mode. Stay in plan mode until exit_plan_mode succeeds or the user switches the session mode. Imperative language to implement changes means plan the implementation, not execute it. A user's conversational agreement — including an answer confirming something you asked — approves nothing and does not end plan mode; fold the confirmed decision into the plan and submit it through exit_plan_mode.
+
+                    Explore first. Use non-mutating reads, searches, static analysis, and checks to ground the plan in the actual repository. Do not edit or write files, change configuration, run formatters or code generation that rewrites tracked files, commit, or otherwise carry out the plan. Prefer existing functions and patterns over new machinery.
+
+                    The tool catalog stays the same across modes for request-cache stability. These plan-mode rules override any later tool description or guidance that suggests using mutation tools; those tools remain listed to keep the tool catalog unchanged. Do not use todo_write to track this planning phase: it tracks implementation after an approved plan, while the plan itself belongs in exit_plan_mode.
+
+                    Resolve discoverable facts by inspection. Use ask_user_question only for user-owned choices or material ambiguity that inspection cannot answer. Do not ask the user where code lives or how current behavior works when you can find out.
+
+                    Make the plan decision-complete: state the goal and success criteria; group implementation changes by subsystem; identify public API, schema, and data-flow changes; cover edge cases, failure modes, tests, acceptance criteria, and explicit assumptions. Keep it concise enough to review but detailed enough that another engineer can implement it without making design decisions.
+
+                    When ready, call exit_plan_mode with the complete plan markdown, starting with a # title. Make exit_plan_mode the only and final tool call in that assistant response: it presents the plan for approval, and implementation begins only in a later step after approval. Do not paste the final plan as a plain reply or ask "should I proceed?" through prose or ask_user_question. If review rejects it, incorporate the feedback and present again. If the review channel is unavailable or aborted, stay in plan mode and ask the user to switch modes manually; do not proceed with implementation.
+
+      # ── compaction ──────────────────────────────────────────────────────────────
+
+      # `compaction-basic` reads `toolResultPrune` through `ctx.get`, so the pruner must
+      # share this realm rather than sit outside it.
+      #
+      # `tokenMeter` is deliberately NOT in this realm: the meter stays on the HOST
+      # plane, and the rows here resolve that one instance. It takes no configuration,
+      # keys every fold by Session, and owns the context-meter projection units the
+      # browser reads for every session — behind a realm those units would come and go
+      # with whichever presets happen to be mounted. What a preset chooses is whether
+      # its agent compacts at all, which is `compaction-basic` below.
+      - id: compaction
+        name: cordis:group
+        group: true
+        isolate:
+          compaction: true
+          toolResultPruner: true
+        config:
+          - id: compaction-basic
+            name: '@deepseek-ai/dsh-compaction-basic'
+
+          - id: command-compact
+            name: '@deepseek-ai/dsh-command-compact'
+
+          - id: tool-result-pruner
+            name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+            config:
+              thresholdChars: 8192
+              headChars: 4096
+              tailChars: 1024
+
+      # ── delegation and workflows ────────────────────────────────────────────────
+
+      # The `subagents` registry and its spawn/fork backends live in the HOST
+      # composition: the registry is a process singleton whose cross-session queries
+      # the api-proxy serves to the browser, and a provider name may only be
+      # registered once. This preset contributes the delegation TOOLS, which resolve
+      # that host registry.
+      #
+      # `workflows` is different — nothing outside an agent reads it — so every row
+      # that reaches it shares one entry-local realm here, and a consumer left
+      # outside would resolve a host registry this preset does not populate.
+      #
+      # `tool-subagent-report` is host-plane for the same reason as the registry,
+      # not because a preset may not want it: it registers a CONTINUABLE SETUP on
+      # that singleton rather than a tool this agent calls, and the setup list is
+      # not scope-aware — one copy per mounted preset means every child gets
+      # `report` registered once per live session, which throws on the second.
+      - id: delegation
+        name: cordis:group
+        group: true
+        isolate:
+          workflowEngine: true
+        config:
+          - id: tool-subagent-control
+            name: '@deepseek-ai/dsh-tool-subagent-control'
+
+          - id: tool-subagent-list-agents
+            name: '@deepseek-ai/dsh-tool-subagent-control/list-agents'
+
+          - id: tool-subagent
+            name: '@deepseek-ai/dsh-tool-subagent'
+            config:
+              provider: spawn
+              toolName: subagent
+
+          - id: tool-subagent-fork
+            name: '@deepseek-ai/dsh-tool-subagent'
+            config:
+              provider: fork
+              toolName: subagent_fork
+
+          - id: workflow-ptc
+            name: '@deepseek-ai/dsh-workflow-ptc'
+            config:
+              provider: spawn
+
+          - id: tool-workflow
+            name: '@deepseek-ai/dsh-tool-workflow'
+
+      # ── remaining model-facing rows ─────────────────────────────────────────────
+
+      - id: tool-ask-user
+        name: '@deepseek-ai/dsh-tool-ask-user'
+
+      - id: tool-todo
+        name: '@deepseek-ai/dsh-tool-todo'
+        config:
+          allowParallelInProgress: true
+
+      # The `web` service and its search provider stay in the host composition; only
+      # the model-facing tool is per-session.
+      - id: tool-web
+        name: '@deepseek-ai/dsh-tool-web'
+        config:
+          fetch: false
+          searchTimeoutMs: 60000
+
+      # Declare produced files to the user. The shipped `standard` preset gained this
+      # row when `present` first shipped (harness 0.1.5-alpha.2) and the Web surface
+      # renders a deliverables row under the closing assistant message from it; a
+      # preset without it leaves its agent unable to declare an output at all.
+      - id: present
+        name: '@deepseek-ai/dsh-tool-present'
+
+      # Profile plugin/bundle management and the plugin market, both DISABLED exactly as the
+      # 0.2.1-rc.2 `standard` preset ships them: the host enables `plugin_manager` in Creator
+      # mode only and other presets keep the row disabled, and `plugin_market` registers
+      # nothing until a `pluginManager` service exists (its index sources are user-configured).
+      # A deployment that wants them sets `disabled: false` in its profile patch.
+      - id: tool-plugin-manager
+        name: '@deepseek-ai/dsh-plugin-manager/tools'
+        disabled: true
+
+      - id: tool-plugin-market
+        name: '@deepseek-ai/dsh-plugin-market/tools'
+        disabled: true
+

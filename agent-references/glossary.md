@@ -17,6 +17,12 @@ reasoning efforts at all in the live catalog is sent none (the adapter's `withSu
 the keyword and logs it), so a materialised slot default cannot fail a call no configuration error
 caused. `AGENTS.md` §13 carries the binding wording; the block below is history.
 
+**LIVE AMENDMENT (2026-10-20, workmate injection):** the automatic persona/memory injection into a
+teammate lived in the vendored `dsh-agent-teams` body, which no loader row has mounted since its
+2026-09-27 retirement and which the de-vendor wave removed — so that capability is NOT active.
+Re-establishing it belongs to the OFFICIAL team path, `mpd-roster-provider-plugin`, which already routes
+a teammate whose description names a roster member. The block below predates this note and is history.
+
 ## The former §13 body (verbatim)
 
 ## 13. Glossary
@@ -156,8 +162,8 @@ and which REFUSES a caller that is the loop's own writer. The boundary it is mea
   `mcp__lsp__rename_symbol_strict`); and every `agent_teams_*` / `mpd_*` board or team MUTATION —
   with `mpd_verify_*` explicitly exempt, because those five tools ARE the seat's job.
 - **PATH-SCOPED while BLIND**: `read` / `glob` / `grep` under the loop's frozen `basis.docs[]`,
-  `<ws>/.mpd/plans/**`, `<ws>/docs/**`, `<ws>/agent-references/**`, `<ws>/.mpd/verify/**` and
-  `<ws>/evidence/**`. MEASURED 2026-10-08: while the guard still installed, its bare-path refusal named
+  `<ws>/.mpd/plans/**`, `<ws>/docs/**`, `<ws>/agent-references/**`, `<ws>/packages/*/README*.md`,
+  `<ws>/.mpd/verify/**` and `<ws>/evidence/**`. MEASURED 2026-10-08: while the guard still installed, its bare-path refusal named
   `evidence/` in the live band, and a `glob {path:"evidence", pattern:"…"}` was ANSWERED (it reports no
   matches, not a refusal). An earlier revision of this line OMITTED `evidence/**`, and a bound seat
   concluded from the omission that it could not read a writer's evidence packet at all — it retracted
