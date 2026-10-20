@@ -2,7 +2,7 @@
 
 **English** | [中文](./README.zh-CN.md)
 
-[![Version](https://img.shields.io/badge/version-0.14.0-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
+[![Version](https://img.shields.io/badge/version-0.15.0-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
 [![npm](https://img.shields.io/badge/npm-%40mpd--dsh%2Fmpd-CB3837.svg)](https://www.npmjs.com/package/@mpd-dsh/mpd)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE.md)
 [![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-0.2.1--rc.2-4B32C3.svg)](#acknowledgements)
@@ -94,6 +94,11 @@ recorded deviations. Read the ledger before you rely on the TUI for a Web capabi
 - **Code intelligence and extensibility** — MCP servers for AST search (ast-grep), a code knowledge
   graph, a language server and git-bash; plus an extension interface other packages contribute
   skills, flows, MCP servers and specialists through.
+- **A skill corpus that knows the project shape** — 19 skills served by reference from
+  `<bundle>/skills`, the repository's own `dsh-qa` among them; `cordis-dev` loads itself on
+  detection (`cordis.patch.yml` or `presets/*.patch.yml`, a manifest carrying `dsh.bundle` /
+  `dsh.client`, `dsh-plugin.json`, a `packages/*/src/index.ts` exporting `apply`, or an
+  `extensions/*` manifest), so Cordis / DSH plugin work starts from this repository's own rules.
 - **Bilingual by policy** — every human-facing document ships an English file and a 简体中文 twin; a
   gate reddens when one falls behind.
 
@@ -121,7 +126,7 @@ script, so installing it runs no code from the package. Its rows reach the harne
 `cordis.patch.yml` and the profile mechanism, and it overrides **no** host row: the `mpd` preset is
 added additively and becomes your default through *your* action, never the bundle's.
 
-![The Plugins page of the DSH Web GUI after the one install command: @mpd-dsh/mpd listed under Installed with its toggle on, above the harness's own official plugins.](./docs/assets/images/web-plugins-installed.png)
+![The Plugins page of the DSH Web GUI after the one install command: @mpd-dsh/mpd listed under Installed with its toggle on.](./docs/assets/images/web-plugins-installed.png)
 
 To track the repository instead of the npm release, or to pin a revision, install from a checkout:
 
@@ -189,7 +194,7 @@ version:
 
 ![The MPD section of the DSH settings panel, showing the bundle's knobs with a Reset to the file value button on each.](./docs/assets/images/web-settings-mpd.png)
 
-![The Agent presets settings page, with the MPD (Main Working Agent) preset listed under CUSTOM and badged as the default for a new task.](./docs/assets/images/web-agent-presets.png)
+![The Agent presets settings page: the MPD (Main Working Agent) preset listed under CUSTOM, while the New task default badge sits on the host's Standard mode — the deployment default is the host's to choose, and the bundle never overrides it.](./docs/assets/images/web-agent-presets.png)
 
 Configuration is JSONC and layered — `<workspace>/.mpd/mpd.jsonc` over `$DSH_HOME/mpd.jsonc`, per
 key, project wins. Your state lives in `<workspace>/.mpd/`; the one exception is the workmate
@@ -246,7 +251,7 @@ bilingual (English and 简体中文).
 ## Changelog
 
 Release notes live in [`CHANGELOG.md`](./CHANGELOG.md), newest first, one section per released
-version (the current release is **v0.14.0**). Annotated tags are listed under
+version (the current release is **v0.15.0**). Annotated tags are listed under
 [Releases](https://github.com/HaroldZ32/My-Power-Dsh/releases).
 
 ## Acknowledgements

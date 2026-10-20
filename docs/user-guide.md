@@ -278,6 +278,17 @@ interrupt_agent { target }                                                # Lead
   is still what the team itself runs on. Under `team.gate: "advisory"`, or with `agent_teams_plan`
   unmounted, the gate stages nothing and says so in one notice, and the captain stages a team itself
   when the work warrants one.
+- **The captain's reconnaissance and delegation guards are ON (restored 2026-10-20).** On the `mpd`
+  preset's **top-level** session, `captain.investigation` (default `deny`) refuses `read` / `grep` /
+  `glob` on SOURCE paths — the documentation band stays readable — and `delegation.gate` (default
+  `deny`) refuses the harness's generic spawn tools `subagent`, `subagent_fork` and `workflow`, naming
+  the sanctioned routes (`mpd_role_spawn`, the workmate library, Agent Teams). The delegation gate is
+  **preset-scoped**: a top-level session of another preset — the deployment default `cordis` included —
+  is released, while the `mpd` captain and every member/child session stay covered whatever preset they
+  run. `write` / `edit` / `bash` are NOT gated, and the verification law's write guard (`verify.mode`)
+  stays withdrawn: the captain writes code, a different agent records the verdict. Both knobs live under
+  the `mpd` settings namespace (§9); `captain.investigation` takes `deny` | `allow`, `delegation.gate`
+  takes `deny` | `captain` (the top-level session only) | `allow`.
 - **The board is compare-and-set.** `team_task_update` carries the `expected_revision` you read and
   answers a stale revision with an error instead of overwriting newer work. Actions: `claim`,
   `release`, `edit`, `set_dependencies`, `complete`, `reopen`, `reassign`, `delete`.
@@ -289,7 +300,7 @@ interrupt_agent { target }                                                # Lead
   availability (`inactive` means no turn is executing, not that the work is done); `wait_agent` answers
   `noProgress` immediately when no other member is running or provisioning.
 - **Read-only members stay read-only.** Architect, Researcher, Planner, Explorer, Plan Reviewer and
-  Vision Analyst are denied the seven write tools: on the one-shot path through `toolFilter.deny`, and
+  Vision Analyst are denied the eight write tools: on the one-shot path through `toolFilter.deny`, and
   on the team path through a tool guard in `mpd-roles-plugin` keyed on team membership, because the
   official `spawn_teammate` cannot take a per-teammate tool filter. Workers (Senior Engineer, Junior
   Engineer, Deep Worker, Lead, Reviewer) implement and verify.
@@ -356,8 +367,8 @@ pipe.
 
 | Web surface | TUI equivalent |
 |---|---|
-| Agent Teams panel (conversation header) | the `tuiScenes` full-screen board plus the keyed `tuiStatus` line |
-| Workmates sidebar tab | the `/mpd` command tree (`tuiCommandTrees`) plus `tuiDialogs` |
+| Agent Teams panel (conversation header) | the `tuiPanels` sidebar page (`MPD`, opened with `alt+a` / `/mpd panel`) — the `tuiScenes` full-screen board plus the keyed `tuiStatus` line remain the fallback |
+| Workmates sidebar tab | the `tuiPanels` `workmate` page, plus the `/mpd` command tree (`tuiCommandTrees`) and `tuiDialogs` |
 | Settings → MPD section | the `/settings` section (`tuiSettingsSections`) |
 | — | `tuiShortcuts` keyboard shortcuts |
 
@@ -365,6 +376,27 @@ These are **equivalents, not parity**: each surface is rebuilt on the host's own
 seams are deliberately not claimed — the host offers no prompt slot (`tuiPrompt` is host-unavailable)
 and it projects no transcript row for the bundle's renderer event, so neither a prompt slot nor a
 transcript line is claimed. The full list is §10 NOT-CLAIMED of [`tui.md`](tui.md).
+
+### 7.1.1 The sidebar panel: attention badge, auto-open, and a host that owns the list
+
+- **The attention badge is published from the plugin, not from the page.** The panel carries a badge
+  through `tuiPanels.badge` counting the **displayed** team's watchdog holds. It is set from the row's
+  apply path because dsh-tui mounts a plugin panel only while it is the active page — a page-side badge
+  could only decorate the page you are already looking at. The first publish after arming includes the
+  empty case, which is what clears a stale badge from an earlier run.
+- **`panelAutoOpen` (the `mpd-tui` row's knob, default `true`)** opens the MPD page **at most once per
+  process**, on the NOT-LIVE → LIVE edge of a team: booting into a workspace that already has a team
+  never steals the sidebar, and the one-shot latch is shared across panel-seam re-binds, so a re-bind
+  cannot open it a second time. A host refusal (dsh-tui rate-limits `open()` per plugin) is retried on
+  the next team state change; a host that exposes no badge member at all is never retried. The
+  `panel` and `workmate` row knobs switch the two pages off independently.
+- **On dsh-tui ≥ 0.16.1 the deployment is stateless.** That host OWNS the sidebar enable list: its
+  registry enables a panel on registration, removes it on dispose and unions the registered ids back on
+  every apply, so the bundle's enable keeper goes **read-only** — it cancels its ladder, installs no
+  feed and no belt, and skips even the stale-default migration. On 0.15.x the keeper joins the host's
+  self-heal and keeps exactly one write (the stale-default migration); below 0.15 it is feed-first as
+  before. `/mpd status` reports the deployment: the host-assigned panel ids, the seam state and the
+  keeper's verdict.
 
 ### 7.2 The `/settings` screen and the `mpd.jsonc` bridge
 

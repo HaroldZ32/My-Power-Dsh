@@ -3,12 +3,15 @@
 [English](./tui.md) | **中文**
 
 本页说明 my-power-dsh 的 **DSH-TUI 版本**：它提供什么、如何安装、逐包兼容性测量的结果，以及它
-**明确不声明**什么。目标宿主为 `@deepseek-harness-tui/dsh-tui` **0.14.0** 及其内置的准入
-（admission）配置文件——该版本新增 **Claude 后端 peer**（`@anthropic-ai/claude-agent-sdk`
-0.3.287）与 `ws` 运行时依赖、第**八**个内置侧栏面板（`btw`），并把 `PanelBar` 改成**轮播**：只画
-当前标签页的标题加 `○`/`●` 圆点，不再绘制插件声明的图标。§11.6 是本波次的修订，其中列出了本次
-移动触及的各个载体。**此前的钉定版本是 0.13.0，那段表述作为历史保持可读**：0.13.0 是**新增侧栏
-面板接缝**的那个版本——宿主 row 为 `dsh-tui-panels`，
+**明确不声明**什么。目标宿主为 `@deepseek-harness-tui/dsh-tui` **0.16.1** 及其内置的准入
+（admission）配置文件——它是第一个声明 peer 接受 DeepSeek Harness `0.2.1-rc.2` 的 dsh-tui 版本。
+§11.8 是本波次的修订：其中记录了这次移动、没有变化的接缝清单以及被触及的各个载体。**此前的钉定版本
+是 0.14.0，那段表述作为历史保持可读**：0.14.0 是新增 **Claude 后端 peer**
+（`@anthropic-ai/claude-agent-sdk` 0.3.287）与 `ws` 运行时依赖、第**八**个内置侧栏面板（`btw`），
+并把 `PanelBar` 改成**轮播**（只画当前标签页的标题加 `○`/`●` 圆点，不再绘制插件声明的图标）的那个
+版本；§11.6 是那一波次的修订，其中列出了那次移动触及的各个载体。
+**此前的钉定版本是 0.13.0，那段表述作为历史保持可读**：0.13.0 是**新增侧栏面板接缝**的那个版本——
+宿主 row 为 `dsh-tui-panels`，
 导出为 `@deepseek-harness-tui/dsh-tui/panels`——它同时把宿主自己的 `dsh-ecosystem-spec/` 目录更名为
 `tui-profile/`；本版本把这条新接缝采纳为**第十五条** `tui*` 接缝（§3、§3.3）。**此前的钉定版本是
 0.12.0，那段表述作为历史保持可读**：0.12.0 是 peer 范围覆盖本 bundle 所钉 harness 整段区间的 dsh-tui
@@ -19,7 +22,7 @@
 `dsh-distribution.json` 里写的是 `pkg:npm/@deepseek-harness-tui/dsh-tui@0.13.0`），以及 QA 宿主规格
 （`docker/tui-lane.sh`、`docker/entrypoint.sh`、`skills/dsh-qa/scripts/tui-mount.ts` 的
 `TUI_HOST_SPEC` 与 `skills/dsh-qa/scripts/install-dependencies.ts` 的修复命令，当时的默认值均为
-`0.13.0`）。**这两类载体在 0.14.0 波次中又移动了一次——当前生效的取值由 §11.6 那一节给出，而不是本节。**
+`0.13.0`）。**这两类载体在 0.14.0 与 0.16.1 波次中又移动过——当前生效的取值由 §11.8 那一节给出，而不是本节。**
 下文的兼容性
 测量是在 0.10.1 上做的，并已在 Docker 端到端测试（`docker/tui-lane.sh`）中重新验证 —— 那也是
 唯一能端到端跑通 TUI profile 的地方。
@@ -1182,7 +1185,7 @@ while member … belongs to …`；被守卫跳过的属主报告为 `was passed
 
 | 被取代的陈述 | 原为 | 现为（2026-10-18 实测） |
 |---|---|---|
-| 本页对标宿主（§ 前言、§11.7） | **0.15.0** | **0.16.1** |
+| 本页对标宿主（§ 前言） | **0.14.0** | **0.16.1** |
 | §3 接缝清单 | 十五个 `tui*` 接缝，0.13.0→0.15.0 不变 | **仍是十五个，且 0.16.1 没有破坏适配器的任何东西**：同样六个 `Tui*Like` 形状、`close(): void` + `active.id`、`tuiPanels`、`tuiPrompt` 仍是 phantom、`lib/types/ui.js` 仍导出 `useStdin`；唯一新增是 `EFFECT_LEDGER_NAME` 常量，适配器与 bundle 都不声明、不消费。适配器代码无需改动 |
 | §3.3 / §7 —— 版本钉住载体与 `MPD_E2E_DSH_VERSION` | 载体为 `0.15.0`；`MPD_E2E_DSH_VERSION` 保持 `0.2.0-rc.2` | **载体为 `0.16.1`，harness 为 `0.2.1-rc.2`**：两条 Docker 车道（`MPD_E2E_TUI_VERSION`、`MPD_E2E_DSH_VERSION`）、`dsh-distribution.json` 的 `host-tui` 引用（`…@0.16.1`）与 `dsh-plugin.json` 的 `compat.hosts`（`…@0.16.1`，从陈旧的 `0.10.1` 移来）。`MPD_E2E_DSH_VERSION` 现默认 `0.2.1-rc.2`，因为宿主的 peer 带接受它 |
 

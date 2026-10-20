@@ -1,0 +1,75 @@
+{
+  "ok": true,
+  "stamp": "2026-10-20T11:25:38Z",
+  "kind": "release-docs-verification",
+  "release": "v0.15.0",
+  "branch": "release/v0.15.0",
+  "head": "8f1736c507914d46f329539d61daef17569f166e",
+  "toolchain": {
+    "bun": "1.4.0 (.toolchain/node_modules/.bin/bun, the package.json buildToolchain pin)",
+    "node": "v24.21.0"
+  },
+  "gates": [
+    {
+      "name": "verify:docs",
+      "command": ".toolchain/node_modules/.bin/bun run verify:docs",
+      "exit": 0,
+      "result": "PASS",
+      "keyLines": [
+        "[verify-docs-parity] links=438 checked=406 resolved=406 dead=0 exemptProvenance=0 absentSite=0 ignoredExternal=26 ignoredAnchorOnly=6 files=117",
+        "[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=48 failed=0 violations=0 exempt=24 derived=3 links=438 dead=0 — PASS"
+      ]
+    },
+    {
+      "name": "verify:manifest",
+      "command": ".toolchain/node_modules/.bin/bun run verify:manifest",
+      "exit": 0,
+      "result": "PASS",
+      "keyLines": [
+        "version:dsh-plugin.json: version = 0.15.0",
+        "version:dsh-distribution.json: distribution.version = 0.15.0",
+        "packed-content: npm pack --dry-run lists 1011 file(s); 0 required path(s) absent",
+        "VERDICT: PASS — the install-time rules and the packaging contract hold."
+      ]
+    },
+    {
+      "name": "typecheck",
+      "command": ".toolchain/node_modules/.bin/bun run typecheck",
+      "exit": 0,
+      "result": "PASS (no source change in this scope; tsgo --noEmit printed nothing)"
+    }
+  ],
+  "knobCount": {
+    "claim": "59 knobs at the six claim sites — docs/user-guide.md:403, docs/user-guide.zh-CN.md:364, docs/tui.md:120 and :149, docs/tui.zh-CN.md:110 and :131 (line numbers AFTER this wave's edits)",
+    "method": "runtime import of packages/mpd-config-plugin/src/settings-schema.ts under the pinned bun and count of SETTINGS_KNOBS",
+    "command": ".toolchain/node_modules/.bin/bun -e \"import { SETTINGS_KNOBS } from './packages/mpd-config-plugin/src/settings-schema.ts'; console.log(SETTINGS_KNOBS.length)\"",
+    "observed": 59,
+    "breakdown": {
+      "originalThirteen": 13,
+      "teamModelsSlotLeaves": 12,
+      "agentRoutesLeaves": 33,
+      "tuiDashboardKey": 1
+    },
+    "verdict": "CLAIM HOLDS — 13 + 12 + 33 + 1 = 59; no number changed. The TUI ROW carries four knobs (panel, workmate, panelAutoOpen, dashboardKey), but only tui.dashboardKey is an mpd.jsonc namespace knob in SETTINGS_KNOBS; panel/workmate/panelAutoOpen are cordis.patch.yml row config, so they do not enter the /settings count."
+  },
+  "scope": [
+    "package.json, dsh-plugin.json, dsh-distribution.json (version 0.15.0; six @0.12.0 refs -> @0.15.0; TUI note)",
+    "README.md, README.zh-CN.md (badge, current release, cordis-dev capability bullet)",
+    "CHANGELOG.md (v0.15.0 section above v0.14.0)",
+    "docs/tui.md, docs/tui.zh-CN.md (preamble target 0.16.1 -> §11.8; §11.8 Was cell)",
+    "packages/mpd-tui-plugin/README.md, README.zh-CN.md (adapted to 0.16.1)",
+    "docs/user-guide.md, docs/user-guide.zh-CN.md (§6 guards bullet + eight write tools; §7.1 tuiPanels; §7.1.1 badge/panelAutoOpen/stateless)",
+    "docs/design.md, docs/design.zh-CN.md (mode: hard dropped from mpd-verify; mpd-tools writeGuard kept)",
+    "evidence/release/v0.15.0/RELEASE-v0.15.0.md, REPORT.md (new)"
+  ],
+  "notInScope": [
+    "images / SVGs / docs/index.md captions / README image alt texts (a second writer owns those)",
+    "no git write command was run"
+  ],
+  "bounds": [
+    "The full release sweep (tests, QA self-tests, pack closure, live cases, Docker lanes) was NOT run by this docs lane; REPORT.md carries placeholders for the captain's final sweep.",
+    "The SVG text corrections named in the plan (`team-lifecycle.svg` 'seven write tools', `architecture.svg` row count / patch path) are owned by the image writer and were still unapplied when this evidence was written; this lane did not touch them."
+  ],
+  "supersededBy": "20261020T112746Z",
+  "note": "Superseded: two final user-guide wording edits (delegation.gate \"captain\" mode spelled out, EN + zh-CN) landed after this run; the same three gates were re-run into 20261020T112746Z on the final tree."
+}

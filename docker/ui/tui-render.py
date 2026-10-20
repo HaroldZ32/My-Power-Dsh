@@ -208,14 +208,15 @@ def load_fonts():
 
 def render(lines, scale: int = 2, cell_band=None):
     """Paint the parsed grid and return the image, cropped to the widest drawn row."""
-    # `--cols` is applied here, on the cell list, so the band is a window onto the SAME grid: the
-    # x position of a kept glyph is still its original column times `cell_w`.
+    # `--cols` is a CROP, so the band's left edge becomes the image's left edge.
+    # WHY IT SLIDES TO ZERO (measured 2026-10-20): this used to keep the window's own x offset, which
+    # produced a figure as wide as the whole pane with the content pushed to the right — the sidebar
+    # tile came out mostly empty background, while the v0.12.0 tiles it replaces are tight crops. A
+    # `--rows` band already behaves this way (the rows are the ones kept), so the two axes now agree.
     if cell_band is not None:
         c0, c1 = cell_band
         lines = [clip_cells(ln, c0, c1) for ln in lines]
-        column_origin = c0
-    else:
-        column_origin = 0
+    column_origin = 0
 
     # Metrics: cell width is measured from the font itself, so the grid cannot drift from the glyphs.
     font, font_bold, cjk_font = load_fonts()
@@ -224,8 +225,7 @@ def render(lines, scale: int = 2, cell_band=None):
     ascent, descent = font.getmetrics()
     cell_h = ascent + descent
 
-    # The widest row, plus the window's own left offset, so a `--cols 100:158` band keeps its x
-    # position instead of being slid back to column zero.
+    # The widest KEPT row — the band is a crop, so the window's own left offset is gone (see above).
     width = max((sum(cell_width(c[0]) for c in ln) for ln in lines), default=1) + column_origin
     img = Image.new("RGB", (max(1, width * cell_w), max(1, len(lines) * cell_h)), PAGE_BG)
     draw = ImageDraw.Draw(img)

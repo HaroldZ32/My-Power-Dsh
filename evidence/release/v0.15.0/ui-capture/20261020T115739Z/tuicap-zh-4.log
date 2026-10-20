@@ -1,0 +1,11 @@
+[tui-capture] language=zh out=/data-out/readme/zh-CN geometry=218x51 scale=2
+[tui-capture] panelAutoOpen already pinned in /data/dsh-tui/profiles/dsh-tui/cordis.patch.yml
+[tui-capture] session restarted: 218x51, DSH_TUI_LANG=zh
+[tui-capture] note: the keyed status row is not on the chat frame yet; scene 3 waits for it on its own
+[tui-capture] session materialized: 6ea32da0-e963-4c54-ba3e-53eb7c4ced32 (attempt 3)
+[tui-capture] fixture seeded for 6ea32da0-e963-4c54-ba3e-53eb7c4ced32: seeded team-2026-10-05T22-30-00.000Z (board=normal) for session 6ea32da0-e963-4c54-ba3e-53eb7c4ced32: 6 tasks, 5 members
+[tui-capture] scene 1/3: /mpd team
+[tui-capture] scene 2/3: the MPD workmate page (/mpd workmate)
+[tui-capture] scene 3/3: the keyed status line
+[tui-capture] manifest: 3/3 captures justified by a marker -> /data/tui-evidence/zh/tui-manifest.json
+[tui-capture] done — 7 image(s) in /data-out/readme/zh-CN

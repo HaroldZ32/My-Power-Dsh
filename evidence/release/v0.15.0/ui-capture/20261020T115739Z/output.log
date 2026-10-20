@@ -1,0 +1,100 @@
+# UI capture run — release/v0.15.0 (docs image refresh)
+# evidence dir stamp 20261020T115739Z; final web rerun logs are rc-en-5 / rc-zh-5
+
+===== container: headless Chromium runtime libraries =====
+Setting up libgbm1:amd64 (25.2.8-0ubuntu0.24.04.4) ...
+Processing triggers for libc-bin (2.39-0ubuntu8.9) ...
+(before: 21 shared libraries 'not found'; after: ldd chrome | grep -c 'not found' = 0)
+
+===== TUI en =====
+$ docker exec -i ui-ui-1 bash /src/docker/ui/tui-capture.sh --lang en --out /data-out/readme
+[tui-capture] language=en out=/data-out/readme/en geometry=158x45 scale=2
+[tui-capture] panelAutoOpen already pinned in /data/dsh-tui/profiles/dsh-tui/cordis.patch.yml
+[tui-capture] session restarted: 158x45, DSH_TUI_LANG=en
+[tui-capture] note: the keyed status row is not on the chat frame yet; scene 3 waits for it on its own
+[tui-capture] session materialized: 97a7f45d-7cfc-417c-8895-c448db534238 (attempt 3)
+[tui-capture] fixture seeded for 97a7f45d-7cfc-417c-8895-c448db534238: seeded team-2026-10-05T22-30-00.000Z (board=normal) for session 97a7f45d-7cfc-417c-8895-c448db534238: 6 tasks, 5 members
+[tui-capture] scene 1/3: /mpd team
+[tui-capture] scene 2/3: the MPD workmate page (/mpd workmate)
+[tui-capture] scene 3/3: the keyed status line
+[tui-capture] manifest: 3/3 captures justified by a marker -> /data/tui-evidence/en/tui-manifest.json
+[tui-capture] done — 7 image(s) in /data-out/readme/en
+exit=0
+
+===== TUI zh =====
+$ docker exec -i ui-ui-1 bash /src/docker/ui/tui-capture.sh --lang zh --out /data-out/readme
+[tui-capture] language=zh out=/data-out/readme/zh-CN geometry=218x51 scale=2
+[tui-capture] panelAutoOpen already pinned in /data/dsh-tui/profiles/dsh-tui/cordis.patch.yml
+[tui-capture] session restarted: 218x51, DSH_TUI_LANG=zh
+[tui-capture] note: the keyed status row is not on the chat frame yet; scene 3 waits for it on its own
+[tui-capture] session materialized: 6ea32da0-e963-4c54-ba3e-53eb7c4ced32 (attempt 3)
+[tui-capture] fixture seeded for 6ea32da0-e963-4c54-ba3e-53eb7c4ced32: seeded team-2026-10-05T22-30-00.000Z (board=normal) for session 6ea32da0-e963-4c54-ba3e-53eb7c4ced32: 6 tasks, 5 members
+[tui-capture] scene 1/3: /mpd team
+[tui-capture] scene 2/3: the MPD workmate page (/mpd workmate)
+[tui-capture] scene 3/3: the keyed status line
+[tui-capture] manifest: 3/3 captures justified by a marker -> /data/tui-evidence/zh/tui-manifest.json
+[tui-capture] done — 7 image(s) in /data-out/readme/zh-CN
+exit=0
+
+===== WEB en =====
+$ docker exec -i ui-ui-1 bash -lc 'MPD_UI_LANG= bash /data/run-capture.sh'
+[capture] bound the board to 118 session(s)
+[capture] browser locale="" board="normal" out="/data-out/shots"
+[capture] seeded the normal board for 120 session(s), including session-b310e78e-ed98-433c-aa8a-f52e2bc323a0
+[capture] the panel has not named a session yet; relying on the preamble's per-session seed
+[capture] ranks={"T1":0,"T2":0,"T3":0,"T4":1,"T5":2,"T6":3} forward=["T4<-T1","T4<-T3","T5<-T4","T6<-T5"] hover=T6
+ "ok": true,
+  "mpdPresetOffered": true,
+  "dagDrawingHasNoCjk": true,
+   "ok": true,
+   "ok": true,
+   "ok": true,
+   "ok": true,
+   "ok": true,
+   "ok": true,
+   "ok": true,
+   "ok": true,
+   "ok": true,
+exit=0
+
+===== WEB zh-CN =====
+$ docker exec -i ui-ui-1 bash -lc 'MPD_UI_LANG=zh-CN bash /data/run-capture.sh'
+[capture] bound the board to 120 session(s)
+[capture] browser locale="zh-CN" board="normal" out="/data-out/shots-zh-CN"
+[capture] seeded the normal board for 122 session(s), including session-2b3fbfda-72c4-4b35-b6b6-b40658498b6f
+[capture] the panel has not named a session yet; relying on the preamble's per-session seed
+[capture] ranks={"T1":0,"T2":0,"T3":0,"T4":1,"T5":2,"T6":3} forward=["T4<-T1","T4<-T3","T5<-T4","T6<-T5"] hover=T6
+ "ok": false,
+   "ok": true,
+   "ok": true,
+   "ok": true,
+   "ok": true,
+   "ok": true,
+   "ok": true,
+exit=1 — the single failing check is dagDrawingHasNoCjk; see result.json captures.web.note
+
+===== gates (final, after every caption edit and every published image) =====
+$ bun run verify:docs
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=48 failed=0 violations=0 exempt=24 derived=3 links=438 dead=0 — PASS
+exit=0
+$ bun run verify:manifest
+VERDICT: PASS — the install-time rules and the packaging contract hold.
+exit=0
+
+===== published files (dimensions, bytes, sha256) =====
+docs/assets/images/hero-web-tui.png  3505x1080  496665 B  sha256=e871ef0731587a0c142a3dac967caba27dd6f39ba34c9e2535d0f4fa38170f84
+docs/assets/images/tui-status-line.png  2620x114  14541 B  sha256=6221b9fffc3546f02fd41b927624d21197044559757e47ed009f50cb6610b21e
+docs/assets/images/tui-team-dag.png  3120x1330  68668 B  sha256=e4c808036da0fe287693a68fbcb2ffdc32227095ac80b535a7380eaeb3bf1dd8
+docs/assets/images/tui-workmates.png  980x760  57363 B  sha256=5697f712a1ff8d65e7362442ccd09e21707b04525be3e9e840ad5dc37b0bbfd9
+docs/assets/images/web-agent-presets.png  596x817  91538 B  sha256=987ed3658436d642e3445f2c9ffdcc722c905e6089fa944b77fb128dbb8f2c85
+docs/assets/images/web-plugins-installed.png  1008x98  13057 B  sha256=810350501a405fa2b897eadda0681684ee6acfea46c548098ff9da6eda8ff860
+docs/assets/images/web-settings-mpd.png  596x660  57251 B  sha256=a738462c213ebc006bbfc9eaa47ef4d2357d5d0a1bfe485125c1fa823fcde540
+docs/assets/images/web-team-board.png  719x962  65968 B  sha256=0bd8ee339ff146b3e14ab45422b603800922dc4ed8eec2fca2f128c4742f07d6
+docs/assets/images/zh-CN/hero-web-tui.png  4002x1080  453263 B  sha256=7ddd925eda75abad97adc38714d233853170853c91748dbc150c0c5559d1b73c
+docs/assets/images/zh-CN/tui-status-line.png  2380x114  21895 B  sha256=1ea8727e30ccc0bc9c8fca677bab321069b1c77d11c03095391982bf68c7c508
+docs/assets/images/zh-CN/tui-team-dag.png  4320x1520  77324 B  sha256=0e07c9c02369dcbe829de9c8dc8d2ed22805372449cc94e4c012cf124312a2bd
+docs/assets/images/zh-CN/tui-workmates.png  1360x874  66308 B  sha256=8ec546ab806c5434fa9b8d223d6b4aa9cdce5793b3289ecd049d748e1a1090fd
+docs/assets/images/zh-CN/web-agent-presets.png  596x777  102516 B  sha256=5de8375ea3f6be6ca666d0a462b9fdb0d740bde3cf84f22e799882e18b4ef9cd
+docs/assets/images/zh-CN/web-plugins-installed.png  1008x98  13001 B  sha256=75d499c89687434cdfd6afcefd76cb46308419f50740d6f602d40834e3d69da4
+docs/assets/images/zh-CN/web-settings-mpd.png  596x660  68450 B  sha256=715eed2ecec327b02457a1247dc5e519c193d2fd60da2ca13a3bf11ea0f3dcfe
+docs/assets/images/zh-CN/web-team-board.png  719x962  68331 B  sha256=18f3f7d2cfd841959b73f5051081f7c898e50957897186a23dc48ca443c5a0b9

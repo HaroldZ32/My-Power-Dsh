@@ -1,0 +1,95 @@
+{
+  "ok": true,
+  "slug": "delegation-gate",
+  "startedAt": "2026-10-20T12-29-36.953Z",
+  "sandbox": "/tmp/mpd-delegation-gate-gCpnj9",
+  "credential": {
+    "provider": "deepseek",
+    "keyName": "DEEPSEEK_API_KEY",
+    "present": true,
+    "source": "credentials-file",
+    "file": "/home/haroldzhao/.dsh/.credentials.yaml",
+    "line": 19,
+    "length": 35,
+    "reason": null,
+    "tried": [
+      {
+        "tier": "environment",
+        "detail": "DEEPSEEK_API_KEY",
+        "outcome": "unset"
+      },
+      {
+        "tier": "credentials-file",
+        "detail": "/home/haroldzhao/.dsh/.credentials.yaml:19 (flat layout)",
+        "outcome": "hit"
+      }
+    ]
+  },
+  "toolsOffered": {
+    "deny": 108,
+    "allow": 108,
+    "roles": 108
+  },
+  "rows": [
+    {
+      "name": "R5-dist-carries-the-gate",
+      "ok": true,
+      "reason": "the built roles row carries the gate's install and refusal text",
+      "raw": "needles=[\"installDelegationGate\",\"delegation gate\",\"delegationGate\"] missing=[]"
+    },
+    {
+      "name": "R5-a-presetless-top-level-released",
+      "ok": true,
+      "reason": "the preset-less top-level headless session is RELEASED by the mpd-preset scope; the DENY side proper is carried by the offline arms and the preset-carrying session (evidence/dsh-qa/preset-conformance/)",
+      "raw": "side=deny exit=0 bootLine=\"[2026-10-20T12:29:39.253Z] [mpd-roles] team plane: readOnlyGuard=installed deny=8 captainInvestigation=deny delegationGate=deny verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) askUserQuestion=installed rosterSection=agent-scoped order=605 sessionGate=mechanical\" subagentCalled=true subagentSucceeded=true roleSpawnCalled=false roleSpawnSucceeded=false subagentResult=\"started subagent 9f0a47a7-aca1-4dd8-93c6-e3cfc36b811d\" roleSpawnResult=\"started subagent 9f0a47a7-aca1-4dd8-93c6-e3cfc36b811d\""
+    },
+    {
+      "name": "R5-a-presetless-headless-and-deny-mode",
+      "ok": true,
+      "reason": "the row log names the booted session `agentPreset=none` while the gate installed in deny mode, so the release is attributable to the preset scope",
+      "raw": "presetLine=\"[2026-10-20T12:29:43.138Z] [mpd-roles] roster section registered for agent \\\"session-8dca6a8d-3c2a-401b-bfe5-d2e8eeecb709\\\" agentPreset=none — mpd:roster order=605\" bootLine=\"[2026-10-20T12:29:39.253Z] [mpd-roles] team plane: readOnlyGuard=installed deny=8 captainInvestigation=deny delegationGate=deny verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) askUserQuestion=installed rosterSection=agent-scoped order=605 sessionGate=mechanical\""
+    },
+    {
+      "name": "R5-b-allow-mode-reported",
+      "ok": true,
+      "reason": "the row log reports `delegationGate=allow` with `delegation.gate: \"allow\"` in the side's project config — the PROJECT CONFIG IS READ; the released call is corroboration only, because both live sides are preset-less and released whatever the knob says",
+      "raw": "bootLine=\"[2026-10-20T12:29:52.094Z] [mpd-roles] team plane: readOnlyGuard=installed deny=8 captainInvestigation=deny delegationGate=allow verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) askUserQuestion=installed rosterSection=agent-scoped order=605 sessionGate=mechanical\" side=allow exit=0 bootLine=\"[2026-10-20T12:29:52.094Z] [mpd-roles] team plane: readOnlyGuard=installed deny=8 captainInvestigation=deny delegationGate=allow verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) askUserQuestion=installed rosterSection=agent-scoped order=605 sessionGate=mechanical\" subagentCalled=true subagentSucceeded=true roleSpawnCalled=false roleSpawnSucceeded=false subagentResult=\"started subagent 227937ca-fc77-40b7-94af-e2ae2642c032\" roleSpawnResult=\"started subagent 227937ca-fc77-40b7-94af-e2ae2642c032\""
+    },
+    {
+      "name": "R5-c-readonly-role-spawn-succeeds",
+      "ok": true,
+      "reason": "the read-only Explorer spawn completed without the unknown-names rejection",
+      "raw": "side=roles exit=0 bootLine=\"[2026-10-20T12:30:03.815Z] [mpd-roles] team plane: readOnlyGuard=installed deny=8 captainInvestigation=deny delegationGate=deny verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) askUserQuestion=installed rosterSection=agent-scoped order=605 sessionGate=mechanical\" subagentCalled=false subagentSucceeded=false roleSpawnCalled=true roleSpawnSucceeded=true subagentResult=\"role Explorer (complete)\\nsummary: The workspace /tmp/mpd-delegation-gate-gCpnj9/ws-roles has zero top-level regular files. Its root holds only two hidden tool-state directories: .mpd/ (MPD runtime state) and .codegraph/ (codegraph index). All 21 files in the tree are nested under those two directories.\\nrecommendation: Treat this workspace as a bare MPD/DSH state directory, not a code project: ther\" roleSpawnResult=\"role Explorer (complete)\\nsummary: The workspace /tmp/mpd-delegation-gate-gCpnj9/ws-roles has zero top-level regular files. Its root holds only two hidden tool-state directories: .mpd/ (MPD runtime state) and .codegraph/ (codegraph index). All 21 files in the tree are nested under those two directories.\\nrecommendation: Treat this workspace as a bare MPD/DSH state directory, not a code project: ther\""
+    },
+    {
+      "name": "R5-bootline-deny",
+      "ok": true,
+      "reason": "the row log reports the gate's install and mode",
+      "raw": "side=deny exit=0 bootLine=\"[2026-10-20T12:29:39.253Z] [mpd-roles] team plane: readOnlyGuard=installed deny=8 captainInvestigation=deny delegationGate=deny verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) askUserQuestion=installed rosterSection=agent-scoped order=605 sessionGate=mechanical\" subagentCalled=true subagentSucceeded=true roleSpawnCalled=false roleSpawnSucceeded=false subagentResult=\"started subagent 9f0a47a7-aca1-4dd8-93c6-e3cfc36b811d\" roleSpawnResult=\"started subagent 9f0a47a7-aca1-4dd8-93c6-e3cfc36b811d\""
+    },
+    {
+      "name": "R5-bootline-allow",
+      "ok": true,
+      "reason": "the row log reports the gate's install and mode",
+      "raw": "side=allow exit=0 bootLine=\"[2026-10-20T12:29:52.094Z] [mpd-roles] team plane: readOnlyGuard=installed deny=8 captainInvestigation=deny delegationGate=allow verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) askUserQuestion=installed rosterSection=agent-scoped order=605 sessionGate=mechanical\" subagentCalled=true subagentSucceeded=true roleSpawnCalled=false roleSpawnSucceeded=false subagentResult=\"started subagent 227937ca-fc77-40b7-94af-e2ae2642c032\" roleSpawnResult=\"started subagent 227937ca-fc77-40b7-94af-e2ae2642c032\""
+    },
+    {
+      "name": "R5-bootline-roles",
+      "ok": true,
+      "reason": "the row log reports the gate's install and mode",
+      "raw": "side=roles exit=0 bootLine=\"[2026-10-20T12:30:03.815Z] [mpd-roles] team plane: readOnlyGuard=installed deny=8 captainInvestigation=deny delegationGate=deny verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) askUserQuestion=installed rosterSection=agent-scoped order=605 sessionGate=mechanical\" subagentCalled=false subagentSucceeded=false roleSpawnCalled=true roleSpawnSucceeded=true subagentResult=\"role Explorer (complete)\\nsummary: The workspace /tmp/mpd-delegation-gate-gCpnj9/ws-roles has zero top-level regular files. Its root holds only two hidden tool-state directories: .mpd/ (MPD runtime state) and .codegraph/ (codegraph index). All 21 files in the tree are nested under those two directories.\\nrecommendation: Treat this workspace as a bare MPD/DSH state directory, not a code project: ther\" roleSpawnResult=\"role Explorer (complete)\\nsummary: The workspace /tmp/mpd-delegation-gate-gCpnj9/ws-roles has zero top-level regular files. Its root holds only two hidden tool-state directories: .mpd/ (MPD runtime state) and .codegraph/ (codegraph index). All 21 files in the tree are nested under those two directories.\\nrecommendation: Treat this workspace as a bare MPD/DSH state directory, not a code project: ther\""
+    },
+    {
+      "name": "R5-isolation",
+      "ok": true,
+      "reason": "ok: 3 session-store key(s), all under the sandbox",
+      "raw": "{\"ok\":true,\"checked\":3,\"keys\":[\"--tmp-mpd-delegation-gate-gCpnj9-ws-allow--\",\"--tmp-mpd-delegation-gate-gCpnj9-ws-deny--\",\"--tmp-mpd-delegation-gate-gCpnj9-ws-roles--\"]}"
+    },
+    {
+      "name": "R5-real-checkout-untouched",
+      "ok": true,
+      "reason": "the real checkout's row log is byte-identical across the run",
+      "raw": "before=d146389f4774a58061022020e83e9595fae1f9c7a8834facf29f38b40cdd42be after=d146389f4774a58061022020e83e9595fae1f9c7a8834facf29f38b40cdd42be"
+    }
+  ]
+}
