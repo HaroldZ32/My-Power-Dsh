@@ -959,7 +959,12 @@ export async function contractProblems(gate: GateModule): Promise<string[]> {
   // The call that reported NO id: the notice says the staging FAILED to report one, rather than inventing
   // an id or falling back to the advisory taxonomy (the shell really was staged, and cannot be approved).
   const noId = String(gate.mechanicalNoticeText({ planId: "", signals: ["B"], explicit: false, alreadyStaged: false }) ?? "")
-  if (!noId.includes(gate.MISSING_PLAN_ID_PHRASE)) problems.push(at("notice/mechanical-no-id") + "an empty id must be reported as " + JSON.stringify(gate.MISSING_PLAN_ID_PHRASE) + ", never invented")
+  // THE PHRASE IS RESTATED INDEPENDENTLY: reading both sides from `gate.MISSING_PLAN_ID_PHRASE` would pass
+  // vacuously if that export ever became "" (`includes("")` is always true). Pin the export AND the text.
+  /** The no-id phrase this case expects, stated independently of the module under test. */
+  const missingIdPhrase = "STAGING FAILED TO RETURN A PLAN ID"
+  if (gate.MISSING_PLAN_ID_PHRASE !== missingIdPhrase) problems.push(at("notice/mechanical-no-id") + "the exported MISSING_PLAN_ID_PHRASE must equal " + JSON.stringify(missingIdPhrase) + ", got " + JSON.stringify(gate.MISSING_PLAN_ID_PHRASE))
+  if (!noId.includes(missingIdPhrase)) problems.push(at("notice/mechanical-no-id") + "an empty id must be reported as " + JSON.stringify(missingIdPhrase) + ", never invented")
   if (noId.includes(ADVISORY_PHRASE)) problems.push(at("notice/mechanical-no-id") + "a staged shell with a missing id must NOT fall back to the advisory taxonomy")
   // THE PLAN ID FORMAT: `newPlanId` mints `plan-<17-digit ms>-<tag>-<counter>`, and the live three-source
   // agreement is only as good as this parser. The pre-fix 14-digit-only pattern silently returned [] for

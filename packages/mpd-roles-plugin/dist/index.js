@@ -400,8 +400,10 @@ function advisoryNoticeText(signals, explicit) {
 function mechanicalNoticeText(input) {
   const matched = input.signals.length === 0 ? "complexity signals" : "complexity signals " + input.signals.join("/");
   const id = input.planId === "" ? MISSING_PLAN_ID_PHRASE + " — the shell was staged but CANNOT be approved, so report this failure" : input.planId;
+  const nextStep = input.planId === "" ? `
+- Do NOT attempt to extend or approve it: the staging call returned no id, so report this failure and re-stage before continuing.` : "\n- Extend it with `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[0] + "\"}` (each member's prompt comes from `mpd_role_persona`)" + " and `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[1] + '"}`, then approve it with `' + STAGING_TOOL_NAME + ' {action:"approve"}` — approval is what spawns the members and posts the tasks.';
   return STARTUP_NOTICE_MARKER + ": this session shows " + matched + ", and " + (input.alreadyStaged ? ALREADY_STAGED_PLAN_PHRASE : STAGED_PLAN_PHRASE) + " — " + id + " (0 members, 0 tasks: a SHELL, not a team)." + (input.alreadyStaged ? `
-- The gate did NOT stage again: a second staging would ARCHIVE your in-progress plan.` : "") + (input.explicit ? "\n- The explicit `team:` / `!team` marker was CONSUMED from the goal text: the request is why this is your session to lead." : "") + "\n- Extend it with `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[0] + "\"}` (each member's prompt comes from `mpd_role_persona`)" + " and `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[1] + '"}`, then approve it with `' + STAGING_TOOL_NAME + ' {action:"approve"}` — approval is what spawns the members and posts the tasks.' + `
+- The gate did NOT stage again: a second staging would ARCHIVE your in-progress plan.` : "") + (input.explicit ? "\n- The explicit `team:` / `!team` marker was CONSUMED from the goal text: the request is why this is your session to lead." : "") + nextStep + `
 - ` + INERT_PLAN_PHRASE + " — never tell the user a team was created." + `
 ` + SOLO_PERMISSION_SENTENCE + " — and say so in one line: an unapproved plan is inert." + `
 - A team is NOT a precondition of this session, and you may not create a second team while leading one.`;

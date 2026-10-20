@@ -361,12 +361,20 @@ describe("the frozen complexity predicate (Option A: explicit flag OR >= 1 match
     expect(text).toContain(INERT_PLAN_PHRASE)
     expect(text).toContain("agent_teams_plan")
     expect(text).toContain("SHELL")
+    // A shell WITH an id IS extendable and approvable: the instruction must be present.
+    expect(text).toContain("Extend it with")
+    expect(text).toContain('{action:"approve"}')
     // An id the call did NOT report is never invented: the notice states the LOUD failure and that the
     // staged shell cannot be approved — never the advisory "nothing was staged" taxonomy.
     const missingId = mechanicalNoticeText({ planId: "", signals: ["C"], explicit: false, alreadyStaged: false })
     expect(missingId).toContain(MISSING_PLAN_ID_PHRASE)
     expect(missingId).toContain("CANNOT be approved")
     expect(missingId).not.toContain("NO team was staged")
+    // THE CONTRADICTION THIS BRANCH REMOVES: an unapprovable shell must NOT also be told to extend and
+    // approve it; the only instruction is to report the failure.
+    expect(missingId).not.toContain("Extend it with")
+    expect(missingId).not.toContain('{action:"approve"}')
+    expect(missingId).toContain("report this failure")
     // The idempotence branch says the gate did NOT stage again.
     const skipped = mechanicalNoticeText({ planId: "plan-xyz", signals: ["B"], explicit: false, alreadyStaged: true })
     expect(skipped).toContain(ALREADY_STAGED_PLAN_PHRASE)
