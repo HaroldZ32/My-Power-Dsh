@@ -1,13 +1,17 @@
 #!/usr/bin/env node
-// Case delegation-gate: the official spawn tools (`subagent` / `subagent_fork` / `workflow`) are
-// REFUSED for the workspace's top-level session, the sanctioned roster path (`mpd_role_spawn`) is OPEN
-// on the same sandbox, and the knob both ways is measured from the HARNESS's own session log.
+// Case delegation-gate: the gate's decision table, the delegation knob, and the roster front door. The
+// LIVE lane measures the PRESET SCOPE as a headless composition can expose it (a preset-less top-level
+// session is RELEASED while the row log still reports `delegationGate=deny`) and the sanctioned roster
+// path (`mpd_role_spawn`) on the same sandbox; the DENY side proper is carried offline and by the
+// preset-carrying session of the verification lane (see "WHAT CARRIES THE PROOF").
 //
 // WHY THIS CASE EXISTS: the wave fixes two measured defects at once.
 //   * F1 — nothing denied the harness's generic spawn tools, so §5 rule 2's sanctioned delegation
 //     surfaces (mpd_role_spawn / the workmate library / Agent Teams) were advice, and the escape cost
-//     nothing. The gate is a `tools.guard` callback in `mpd-roles-plugin` (`delegation-gate.ts`), keyed
-//     on §5's PRESET-FREE session rank.
+//     nothing. The gate is a `tools.guard` callback in `mpd-roles-plugin` (`delegation-gate.ts`): §5's
+//     session rank decides captain vs member, and a CAPTAIN session is gated only when
+//     `sessionIsMpdCaptain` holds (`mpd` preset); ANOTHER preset's top-level session is released, while
+//     child/member sessions are gated whatever preset they run.
 //   * F2 — the sanctioned path was itself BROKEN: `mpd_role_spawn` of a read-only role died with
 //     `tools.restrict() names unknown global tools "mcp__lsp__rename_symbol", …` on a profile without
 //     `cclsp`, because the harness rejects the WHOLE deny list when one name is unregistered. The fix
@@ -15,11 +19,20 @@
 // An escape that is closed while the front door is bricked would be worse than no gate, so (c) below
 // asserts the front door on the SAME sandbox as (a).
 //
-// WHAT CARRIES THE PROOF — the HARNESS's session log, never the model's prose (AGENTS.md §7):
-//   (a) a `tool/call` for `subagent` exists and EVERY recorded result for it is an ERROR whose text
-//       carries the delegation-gate refusal;
+// WHAT CARRIES THE PROOF — the HARNESS's session log and the row log, never the model's prose (AGENTS.md §7):
+//   (a) THE PRESET SCOPE, measured where a headless boot can expose it: the deny-default side's
+//       top-level session carries NO agent preset (`agentPreset=none` in the row log — a headless boot
+//       never composes one; `@deepseek-ai/dsh-headless` `assertAdoptable` refuses it), so its `subagent`
+//       call carries NO refusal text, while the SAME row log reports `delegationGate=deny`: the gate IS
+//       installed and the release is the mpd-preset scope, not a missing guard.
+//       THE DENY SIDE PROPER — an `mpd`-preset top-level session IS refused — is carried by the offline
+//       arms below (`delegationGateDecision` + `sessionIsMpdCaptain`) and by the deny-mode boot line; a
+//       preset-carrying session is measured by `preset-conformance` (`evidence/dsh-qa/preset-conformance/`
+//       records a real `session/create` with `agentPreset: "mpd"`), while the preset-less boot-line witness
+//       is `evidence/roles/captain-scope/` (`agentPreset=none`). This headless lane does NOT claim a live
+//       refusal on an mpd session.
 //   (b) with `delegation.gate: "allow"` in the side's `.mpd/mpd.jsonc`, the same call's recorded
-//       results carry NO refusal text (the call is not refused by the gate);
+//       results carry NO refusal text (corroborative on the same composition: allow releases);
 //   (c) on the deny-default sandbox, `mpd_role_spawn` (role Explorer, read-only) has a `tool/call`
 //       whose recorded result is NOT an error and does NOT carry the unknown-names rejection.
 // `--dump-config` is deliberately NOT used: it composes rows and never executes plugin code, so it
@@ -53,7 +66,7 @@ import {
   resolveDelegationGateMode,
 } from "../../../packages/mpd-roles-plugin/src/delegation-gate.ts"
 import type { DelegationGateMode } from "../../../packages/mpd-roles-plugin/src/delegation-gate.ts"
-import { sessionRank } from "../../../packages/mpd-roles-plugin/src/complexity-gate.ts"
+import { sessionIsMpdCaptain, sessionRank } from "../../../packages/mpd-roles-plugin/src/complexity-gate.ts"
 // The tolerant-restrict helper is read from the BUILT adapter: the package's `src` uses extensionless
 // specifiers (the `bun build` form), so only `dist` is importable by both runners this case must work
 // under (`node <case>.ts` from the skill, and `bun` from `run-qa-selftests`). The TYPE comes from the
@@ -205,6 +218,14 @@ function selfTest(): number {
   check(sessionRank({ id: "d", session: { header: { delegationDepth: 1 } } }) === "child", "a recorded depth of 1 is a child")
   check(sessionRank(agents[3]?.[1]) === "headerless", "a missing header is headerless")
 
+  // ── the PRESET SCOPE (2026-10-20 restore): the rank alone is not the rule ──────────────────────
+  /** An `mpd`-preset top-level session, the only captain the gate binds. */
+  const mpdCaptain = { id: "m", session: { header: { agentPreset: "mpd", delegationDepth: 0 } } }
+  check(sessionIsMpdCaptain(agents[0]?.[1]) === false, "a `cordis` top-level session must NOT be the mpd captain")
+  check(sessionIsMpdCaptain(mpdCaptain) === true, "an `mpd` top-level session must be the mpd captain")
+  check(sessionIsMpdCaptain(agents[2]?.[1]) === false, "a child must NOT be the mpd captain")
+  check(sessionIsMpdCaptain(agents[3]?.[1]) === false, "a headerless session must NOT be the mpd captain")
+
   // ── the tolerant restrict: parse, prune, ONE retry, then rethrow ──────────────────────────────
   /** The canonical deny list, of which the profile without `cclsp` registers none of the two lsp names. */
   const canonical: readonly string[] = ["write", "edit", "bash", "mcp__lsp__rename_symbol", "mcp__lsp__rename_symbol_strict"]
@@ -258,6 +279,7 @@ function selfTest(): number {
     "refusal steering",
     "knob spellings",
     "seeded-fork classification",
+    "mpd-preset scope",
     "restrictToolsTolerant parse/prune/retry cap",
   ].join("; "))
   return 0
@@ -466,6 +488,8 @@ function runReal(): void {
   const booted = (outcome: SideOutcome): boolean => outcome.rowLog.includes(BOOT_FIELD)
   /** One boot line's text, quoted into a row's raw field. */
   const bootLine = (outcome: SideOutcome): string => outcome.rowLog.split("\n").find((line) => line.includes(BOOT_FIELD)) ?? ""
+  /** The row-log line naming the booted session's agent preset, or `""` when the row wrote none. */
+  const presetLine = (outcome: SideOutcome): string => outcome.rowLog.split("\n").find((line) => line.includes("agentPreset=")) ?? ""
   /** The raw observation for one side, quoted so a reader sees the measured facts. */
   const rawOf = (label: SideName, outcome: SideOutcome): string =>
     "side=" + label + " exit=" + String(outcome.exit) + " bootLine=" + JSON.stringify(bootLine(outcome))
@@ -483,16 +507,22 @@ function runReal(): void {
     raw: "needles=" + JSON.stringify(["installDelegationGate", REFUSAL_MARKER, "delegationGate"]) + " missing=[]",
   })
   rows.push({
-    name: "R5-a-subagent-refused",
-    ok: deny.subagent.called ? (deny.subagent.succeeded === false && deny.subagent.resultText.includes(REFUSAL_MARKER)) : null,
+    name: "R5-a-presetless-top-level-released",
+    ok: deny.subagent.called ? !deny.subagent.resultText.includes(REFUSAL_MARKER) : null,
     reason: !deny.subagent.called
       ? "the model never called `subagent` (answer-only narration is not tool evidence)"
-      : deny.subagent.succeeded
-        ? "the `subagent` call was NOT refused under the default deny mode"
-        : deny.subagent.resultText.includes(REFUSAL_MARKER)
-          ? "the `subagent` call was refused with the delegation-gate sentence"
-          : "the call errored, but without the delegation-gate sentence",
+      : deny.subagent.resultText.includes(REFUSAL_MARKER)
+        ? "a PRESET-LESS top-level headless session was REFUSED — the gate is no longer mpd-preset-scoped"
+        : "the preset-less top-level headless session is RELEASED by the mpd-preset scope; the DENY side proper is carried by the offline arms and the preset-carrying session (evidence/dsh-qa/preset-conformance/)",
     raw: rawOf("deny", deny),
+  })
+  rows.push({
+    name: "R5-a-presetless-headless-and-deny-mode",
+    ok: presetLine(deny).includes("agentPreset=none") && bootLine(deny).includes("delegationGate=deny"),
+    reason: presetLine(deny).includes("agentPreset=none") && bootLine(deny).includes("delegationGate=deny")
+      ? "the row log names the booted session `agentPreset=none` while the gate installed in deny mode, so the release is attributable to the preset scope"
+      : "the row log does not pair a preset-less session with `delegationGate=deny` — a release cannot be attributed to the preset scope",
+    raw: "presetLine=" + JSON.stringify(presetLine(deny)) + " bootLine=" + JSON.stringify(bootLine(deny)),
   })
   rows.push({
     name: "R5-b-allow-releases",

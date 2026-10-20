@@ -32,9 +32,10 @@
 //     read through `readBoulderGate`. The RETIRED plan-file probe is asserted ABSENT: a workspace
 //     holding a `.mpd/plans/*.md` artifact but NO active work must read `active:false` — the retired
 //     predicate fired in EVERY session of this workspace, which is the defect this case now pins;
-//   * `team.gate` selects `off` (the DEFAULT since the 2026-10-17 rollback) | `mechanical` | `advisory`,
-//     and an UNKNOWN value reads `off` like an absent one: arming the gate is OPT-IN, so no typo can turn
-//     the ceremony ON behind the user's back;
+//   * `team.gate` selects `mechanical` (the DEFAULT again since the 2026-10-20 restore) | `advisory` | `off`,
+//     and every UNKNOWN value (`undefined`, `bogus`, `0`, an object) reads `mechanical` too — the fail-safe
+//     direction; `advisory` and both spellings of off (`off`, `false`) are the explicit opt-outs, so only a
+//     deliberate spelling disarms the ceremony;
 //   * a trigger stages a 0-member / 0-task PLAN SHELL through `agent_teams_plan` and injects ONE
 //     MECHANICAL notice naming the id the call RETURNED, stating `a team PLAN was STAGED` and that the
 //     plan is INERT until approved. STAGING IS NOT SPAWNING, and the notice must never claim a team;
@@ -448,7 +449,7 @@ interface GateModule {
   readonly STARTUP_NOTICE_MARKER: string
   /** The presets whose top-level sessions the gate covers. */
   readonly DEFAULT_GATE_PRESETS: readonly string[]
-  /** The `team.gate` mode that stages the shell (OPT-IN since the 2026-10-17 rollback). */
+  /** The `team.gate` mode that stages the shell (MECHANICAL DEFAULT since the 2026-10-20 restore). */
   readonly GATE_MODE_MECHANICAL: string
   /** The `team.gate` mode that only advises. */
   readonly GATE_MODE_ADVISORY: string
@@ -1093,16 +1094,15 @@ async function selfTest(): Promise<void> {
   // OWN subject rather than on another lane's in-flight preset edit.
   const preset = readMpdPresetSource(repoRoot)
   if (preset === "") fail("no declared bundle patch declares the `preset-mpd` row — the preset audit has no subject")
-  // REPURPOSED 2026-10-17 (this wave's guard rollback): when `team.gate` became OPT-IN the preset's
-  // session-start prose was rewritten by the parallel preset lane, so the literal heading
+  // The preset's session-start prose was rewritten by the parallel preset lane, so the literal heading
   // "SESSION STARTUP RULE" no longer exists. What this arm must protect is the CONVENTION, not one
   // wording — and the convention's vocabulary-stable tokens are the FROZEN notice marker (frozen in
-  // `complexity-gate.ts`), the knob `team.gate`, its OPT-IN default `off`, and the OFFICIAL staging tool.
+  // `complexity-gate.ts`), the knob `team.gate`, its MECHANICAL default, and the OFFICIAL staging tool.
   // Old assertion, kept here as the recorded reason: `preset.includes("SESSION STARTUP RULE")`.
   for (const token of ["[AgentTeams] Session-start team rule", "team.gate", "spawn_teammate"]) {
     if (!preset.includes(token)) fail("the mpd preset no longer states the session-start convention: missing " + JSON.stringify(token))
   }
-  if (!/default[^\n]{0,60}off|off[^\n]{0,60}default/i.test(preset)) fail("the mpd preset must state that `team.gate` defaults to `off` — the ceremony is OPT-IN after the 2026-10-17 rollback")
+  if (!/default[^\n]{0,60}mechanical|mechanical[^\n]{0,60}default/i.test(preset)) fail("the mpd preset must state that `team.gate` defaults to `mechanical` — the session-start rule is ON by default since the 2026-10-20 restore")
   if (/MUST start inside a team|MUST begin inside a team/.test(preset)) fail("the mpd preset still carries the retired mandatory-team invariant")
 
   // THE CORPUS TABLE: every frozen case with the SHIPPED predicate's verdict, printed so the evidence
@@ -1134,13 +1134,13 @@ async function selfTest(): Promise<void> {
   console.log("[session-start-team self-test] ok: the shipped PURE gate module conforms to the MECHANICAL contract ("
     + SIMPLE_PROMPTS.length + " simple / " + SOFT_COMPLEX_PROMPTS.length + " soft-complex / " + EXPLICIT_PROMPTS.length + " explicit / "
     + CJK_COMPLEX_PROMPTS.length + " cjk-positive / " + CJK_SIMPLE_PROMPTS.length + " cjk-negative / 1 boulder-probe prompt, both ways; "
-    + "signal D through the INJECTED reader AND the real filesystem, the mode's OPT-IN default, the shell builder's honest bounds, "
+    + "signal D through the INJECTED reader AND the real filesystem, the mode's MECHANICAL fail-safe default (undefined/bogus/0 -> mechanical; advisory/off/false explicit opt-outs), the shell builder's honest bounds, "
     + "both notices with the retired vocabulary scoped per text, and the session scope)"
     + "; FOUR negative controls reddened (always-trigger " + triggerProblems.length + ", always-silent " + silentProblems.length
     + ", advisory-only-mechanical " + confusedProblems.length + ", CJK-blind " + blindProblems.length + " problem(s))"
     + "; C7 (a session already leading a team) and C8 (an inbound `team-message`/`agent-message` is never the human turn) each driven BOTH ways"
     + "; the LIVE verdict and the REAL `.mpd/team` stage scan were each driven offline BOTH ways (a matching shell passes; a spawned record, a plan-id mismatch, a leaked notice and a non-shell staged plan all redden)"
-    + "; bundle mounts mpd-roles with the retired rows gone; preset carries the session-start convention (frozen marker + team.gate + the OFF-INITIATIVE default wording)")
+    + "; bundle mounts mpd-roles with the retired rows gone; preset carries the session-start convention (frozen marker + team.gate + the MECHANICAL default wording)")
 }
 
 // ── live lane ────────────────────────────────────────────────────────────────
@@ -1452,11 +1452,11 @@ async function runReal(): Promise<void> {
       if (side.seed?.boulderStatus !== undefined) seedFile(sideWs, join(".mpd", "boulder.json"), boulderStateJson(side.seed.boulderStatus))
       // The seeded project config, when this side selects its `team.gate` mode that way.
       if (side.seed?.mpdJsonc !== undefined) seedFile(sideWs, join(".mpd", "mpd.jsonc"), side.seed.mpdJsonc)
-      // REPURPOSED 2026-10-17 (`.mpd/plans/harness-021-rollback.md` R1): the gate is OPT-IN, so its
-      // default is `off`. A side whose SUBJECT is what a MECHANICAL fire does must therefore ASK for
-      // that mode the way a user does — a project `mpd.jsonc` — instead of inheriting it from a default
-      // that no longer exists. Seeded only when the side did not select its own mode, so the advisory /
-      // off sides keep their explicit spellings and the arm stays honest about which mode it measured.
+      // The gate is MECHANICAL by default again (2026-10-20 restore). A side whose SUBJECT is what a
+      // MECHANICAL fire does still SEEDS that mode explicitly the way a user does — a project
+      // `mpd.jsonc` — so the mode it measured is NAMED by the side rather than inherited. Seeded only
+      // when the side did not select its own mode, so the advisory / off sides keep their explicit
+      // spellings and the arm stays honest about which mode it measured.
       else if (side.expectedMode === GATE_MODE_MECHANICAL) seedFile(sideWs, join(".mpd", "mpd.jsonc"), GATE_MODE_JSONC_MECHANICAL)
       // The launcher spec for this boot, or `null` when no `dsh` launcher resolves.
       const spec = dshCommand(["--profile", "mpd-headless", prompts[index]], env)

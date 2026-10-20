@@ -193,22 +193,26 @@ single re-pin lands (§9/§11).
 
 The manual's §5 rule 2 is the binding statement; this section is its LONG FORM, moved out on 2026-10-08 by
 the instruction-budget rule (§3, MOVE-FIRST). It was REWRITTEN on 2026-10-17 by the guard-rollback wave
-(`.mpd/plans/harness-021-rollback.md`, user ruling R1), because the mechanical ceremony it described was
-withdrawn: read this as the RESTORED contract, and the WITHDRAWN note at the bottom as the reason the old
-paragraphs are gone rather than deleted.
+(`.mpd/plans/harness-021-rollback.md`, user ruling R1) and AMENDED on 2026-10-20
+(`.mpd/plans/restore-guard-discipline.md`, the split ruling). Read this as the CURRENT contract: TWO
+guards installed again, ONE still withdrawn, and the boot line is the arbiter.
 
 **The captain executes only what must not be delegated.** §5 names the reserved set because no other agent
 may: committing (the SINGLE GIT WRITER of the checkout, §5's one-writer rule), CONTRACT AMENDMENTS,
 PLAN/ROSTER SHAPING, releasing a watchdog hold, and the FINAL INTEGRATION. It does that without framing it
 as "working solo" — sizing decides WHICH executor, never whether to delegate.
 
-**The captain's TOOL PACK, held directly.** `read`, `write`, `edit`, `bash`, `grep`, `glob` and `subagent`
-are AVAILABLE to the top-level `mpd` session with no loop armed and no band reserved: reconnaissance on a
-source path, a code write, a generic spawn and a shell command all run. Steering comes from the persona
-prompt — the manual's §5 rules and the preset's own text — not from hooks. The roster (`mpd_role_spawn`,
-`mpd_role_persona`), the official Agent Teams surface, the five `mpd_verify_*` tools, the memory engine,
-the boulder ledger and the ULW commands stay SHIPPED and callable; they are RECOMMENDED practice, never
-mandatory gates.
+**The captain's TOOL PACK — what is direct, and what is delegated.** The WRITE path is DIRECT:
+`write`, `edit`, `bash` and `mpd_hashline_edit` run with no loop armed and no band reserved, and
+`verify.mode` stays withdrawn. RECONNAISSANCE is DELEGATED, again MECHANICALLY (2026-10-20): on the `mpd`
+preset's top-level session `read`/`grep`/`glob` are REFUSED on a SOURCE path, while the documentation band
+(`.mpd/**`, `docs/**`, `evidence/**`, `agent-references/**`, and the root instruction/overview files) stays
+readable; and the harness's generic spawn tools (`subagent`, `subagent_fork`, `workflow`) are REFUSED for
+the sessions `delegation.gate` covers, so delegation goes through `mpd_role_spawn`, the workmate library
+or Agent Teams. Steering is therefore BOTH: the persona states the rule up front (its READ DISCIPLINE
+block, so the first move is a delegation rather than a refused read), and the two guards make it
+mechanical. The roster (`mpd_role_spawn`, `mpd_role_persona`), the official Agent Teams surface, the five
+`mpd_verify_*` tools, the memory engine, the boulder ledger and the ULW commands stay SHIPPED and callable.
 
 **Why the ceremony was withdrawn, so a reader does not re-invent it.** The 2026-10-10/11 wave installed
 three `guardTool` hooks from ONE `apply()` site (`packages/mpd-roles-plugin/src/index.ts`) on top of that
@@ -264,19 +268,22 @@ link is deliberately NOT the test — the user's real working session is a SEEDE
 `isSeeded: true` + depth `0`, no subagent origin), and the old "any parent session is a child" rule
 classified THAT session as a member, which silently disarmed the captain rules on the one session they
 gate. An absent header still fails CLOSED (`headerless`, never the captain). `sessionQualifies` — the
-session-start gate's preset-scoped question — is untouched and must never be substituted here (T-92). Since
-the withdrawal no guard consumes `sessionRank`; it stays as the reference classification a preset-scoped
-rule would need.
+session-start gate's preset-scoped question — is untouched and must never be substituted here (T-92). TWO
+guards consume `sessionRank` again: the delegation gate (`rank` decides captain vs member), and
+`sessionIsMpdCaptain` (top-level AND the `mpd` preset) scopes the investigation guard — a top-level
+session of ANOTHER preset keeps its own reconnaissance.
 
-**WITHDRAWN — recorded, not silently dropped.** The former paragraphs here described the reconnaissance
-DENIAL (the readable documentation band, the fail-closed path classification, the `captain.investigation`
-knob and its `captainInvestigation=deny|allow` boot token) and the delegation gate (`delegation.gate`:
-`deny` DEFAULT | `captain` | `allow`, keyed on `sessionRank`, with its refusal sentence naming the routes
-out). Those behaviours no longer exist in any shipped apply path; the modules
-(`src/captain-investigation.ts`, `src/delegation-gate.ts`) survive as reference implementations with their
-unit arms, no install references them, and the QA cases that asserted them were re-purposed
-(`skills/dsh-qa/scripts/delegation-gate.ts`, `skills/dsh-qa/scripts/captain-full-tools.ts`) with the
-reason written in each. Do not restore a denial by quoting this file: the boot line above is the contract.
+**WITHDRAWN — `verify.mode` ONLY, recorded rather than silently dropped.** The write guard was the third
+of the 2026-10-10/11 hooks: an A-writes/B-verifies seat plus the mechanical one-git-writer denial for
+member sessions. It is NOT installed: `src/verify-guard.ts` survives as a reference implementation with
+its unit arms, and its boot token is the fixed absence sentence
+(`verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode)`). The other two hooks are
+INSTALLED again (2026-10-20) and their tokens print MODES — see the boot line above. The QA cases:
+`skills/dsh-qa/scripts/delegation-gate.ts` asserts the refusal table and the knob spellings;
+`skills/dsh-qa/scripts/captain-scope.ts` asserts the boot-line tokens and the persona rule (it replaced
+`captain-full-tools.ts`, which had asserted the withdrawal). Do not quote this section as a reason to
+restore or remove a denial: the boot line above, and `.mpd/plans/restore-guard-discipline.md`, are the
+contract.
 
 **The verification law's tool surface.** ONE row, `mpd-verify-plugin`: `mpd_verify_open` / `_escape` /
 `_seat` / `_evidence` / `_record`. **Two sentences §5 rule 4 still REPLACES**: "execute directly when it

@@ -679,10 +679,13 @@ function installDelegationGate(dsh, options) {
     }
     const dispose = dsh.guardTool((exec) => {
       try {
+        const rank = sessionRank(exec?.agent);
+        if (rank === "captain" && !sessionIsMpdCaptain(exec?.agent))
+          return;
         return delegationGateDecision({
           toolName: String(exec?.name ?? ""),
           mode: resolveDelegationGateMode(options.configValue(DELEGATION_CONFIG_KEY)),
-          rank: sessionRank(exec?.agent)
+          rank
         });
       } catch {
         return;
@@ -3284,6 +3287,10 @@ Work with the tools your role requires (read-only roles must never modify anythi
       return config.team?.gate;
     if (key === BOULDER_DIR_CONFIG_KEY)
       return config.boulder?.dir;
+    if (key === INVESTIGATION_CONFIG_KEY)
+      return config.captain?.investigation;
+    if (key === DELEGATION_CONFIG_KEY)
+      return config.delegation?.gate;
     return;
   };
   const guardOutcome = [];

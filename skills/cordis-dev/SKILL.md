@@ -13,7 +13,7 @@ before you write anything; the flow below picks the references you need.
 ## Load on detection — do this WITHOUT the user asking
 
 A workspace that ships **any** of the signals below is a Cordis / DSH plugin project, and this skill is
-its map. Check once at session start (`ls` + one `grep`), and if a signal matches, load `cordis-dev`
+its map. Check once at session start (the block below), and if a signal matches, load `cordis-dev`
 **before** the first edit, gate run or diagnosis — never wait for the user to name the skill:
 
 | Signal | Where it lives |
@@ -22,10 +22,18 @@ its map. Check once at session start (`ls` + one `grep`), and if a signal matche
 | `"dsh": { "bundle": … }` or `"dsh": { "client": … }` in a manifest | root or any package |
 | `dsh-plugin.json` / `dsh-distribution.json` | repo root |
 | `packages/*/src/index.ts` exporting `apply` (usually with `name` + `inject`) | one directory per plugin |
-| `extensions/*` manifest (the mpd-ext CLI's `extension.json`) | extension root |
+| `extensions/*` manifest (the mpd-ext CLI's `mpd-ext.json`) | extension root |
 | `mpd.jsonc` / `.mpd/mpd.jsonc`, or `.mpd/plans/**` | a project running this bundle |
 
-One-liner (POSIX): `ls cordis.patch.yml dsh-plugin.json 2>/dev/null; grep -l '"dsh"' package.json packages/*/package.json 2>/dev/null`
+One-liner block (POSIX; EVERY line covers a different row above, so a workspace matching only ONE signal
+is still detected):
+
+```sh
+ls cordis.patch.yml dsh-plugin.json dsh-distribution.json presets/*.patch.yml extensions/*/mpd-ext.json mpd.jsonc .mpd/mpd.jsonc 2>/dev/null
+grep -l '"dsh"' package.json packages/*/package.json 2>/dev/null
+grep -lE 'export (const|function) apply' packages/*/src/index.ts 2>/dev/null
+ls -d .mpd/plans 2>/dev/null
+```
 
 **If none of these match**, this skill is probably not yours: say so and do not apply bundle rules to a
 non-plugin project. Reading a project that merely *depends* on a plugin is not a Cordis project.

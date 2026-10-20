@@ -834,7 +834,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
    *
    * Precedence: the mounted `mpdConfig` layer first (a `.mpd/mpd.jsonc` edit is therefore picked up
    * LIVE, T-18), this row's own config second, `undefined` last so the plugin's own default applies.
-   * @param key - the dot-path key, e.g. `team.gate` or `boulder.dir`.
+   * @param key - the dot-path key, e.g. `team.gate`, `boulder.dir`, `captain.investigation` or `delegation.gate`.
    * @returns the raw value, or `undefined` when neither layer declares it.
    */
   const configValue = (key: string): unknown => {
@@ -858,6 +858,8 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     if (value !== undefined) return value
     if (key === GATE_CONFIG_KEY) return config.team?.gate
     if (key === BOULDER_DIR_CONFIG_KEY) return config.boulder?.dir
+    if (key === INVESTIGATION_CONFIG_KEY) return config.captain?.investigation
+    if (key === DELEGATION_CONFIG_KEY) return config.delegation?.gate
     return undefined
   }
   // The TEAM PLANE's boot signature: ONE line naming every installed contract and its outcome, so an

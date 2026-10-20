@@ -123,6 +123,8 @@ interface FakeCtxOptions {
   mounted?: unknown
   /** Whether the fake ctx exposes a logger, so the ROW-LOG-only warning path stays reachable. */
   logger?: boolean
+  /** Whether the fake ctx exposes `tools.guard`, so a guard install reports a MODE instead of `absent`. */
+  guard?: boolean
 }
 
 /** A cordis-shaped ctx stand-in recording every registration, provision and warning. */
@@ -140,7 +142,9 @@ function fakeCtx(options: FakeCtxOptions = {}): {
   const warnings: string[] = []
   /** The ctx handed to apply; permissive, so the optional logger can be added below. */
   const ctx: any = {
-    tools: { register: (definition: any) => { registered.push(definition); return () => {} } },
+    // The guard seam is OPTIONAL: only the row-config arms need it, and the fallback adapter derives
+    // `capabilities().toolsGuard` from this same property.
+    tools: { register: (definition: any) => { registered.push(definition); return () => {} }, ...(options.guard === true ? { guard: () => () => {} } : {}) },
     subagents: { start: async () => ({ result: { structured: { role: "x", summary: "done" }, stopReason: "complete" } }) },
     provide: (key: string, value: any) => { provided[key] = value },
     get: (key: string) => (key === "mpdDsh" ? options.mounted : undefined),
@@ -309,5 +313,32 @@ describe("F1 shipped artifact", () => {
     expect(dist, "dist does not carry the mounted identity").toContain("mounted:mpdDsh")
     expect(dist, "dist does not carry the fallback identity").toContain("fallback:createDshAdapter")
     expect(dist, "dist does not expose the identity on the service").toContain("adapterIdentity")
+  })
+})
+
+describe("row config fallbacks (2026-10-20 restore)", () => {
+  // WHY THIS LIVES HERE: these arms reuse the file's apply harness — a recording ctx plus the ROW LOG —
+  // because the boot line is the ONE surface where the row reports the MODE each restored guard
+  // resolved. A guard seam is enough for both installs to report a mode instead of `absent`.
+  test("captain.investigation and delegation.gate spelled in the ROW config reach the resolved mode", async () => {
+    /** A ctx exposing the guard seam, so both restored installs report their mode. */
+    const fake = fakeCtx({ guard: true })
+    /** The row-log lines this apply appended, i.e. the boot signature the assertion reads. */
+    const log = await inRowLog("mpd-roles", () => { apply(fake.ctx, { captain: { investigation: "allow" }, delegation: { gate: "allow" } }) })
+    /** The `team plane:` signature, which carries both resolved modes. */
+    const boot = log.lines.find((line) => line.includes("team plane:")) ?? ""
+    expect(boot).toContain("captainInvestigation=allow")
+    expect(boot).toContain("delegationGate=allow")
+  })
+
+  test("with no row spelling both restored guards keep their deny default", async () => {
+    /** A ctx exposing the guard seam, so both restored installs report their mode. */
+    const fake = fakeCtx({ guard: true })
+    /** The row-log lines this default-collection apply appended. */
+    const log = await inRowLog("mpd-roles", () => { apply(fake.ctx) })
+    /** The `team plane:` signature under the no-config default. */
+    const boot = log.lines.find((line) => line.includes("team plane:")) ?? ""
+    expect(boot).toContain("captainInvestigation=deny")
+    expect(boot).toContain("delegationGate=deny")
   })
 })

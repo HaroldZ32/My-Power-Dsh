@@ -118,7 +118,7 @@ provenance narrative is in `agent-references/overview-and-provenance.md`.
   never `ctx.goals`. `mpd-ulw-plugin` (C2 ultrawork v2) answers `/ulw <objective>` and `/ultrawork
   <objective>` by submitting the ULW activation directive as the invoking agent's OWN next user turn, so
   the run actually starts. **Long form: `agent-references/overview-and-provenance.md`.**
-- **The session-start complexity gate is OPT-IN — it stages an APPROVABLE PLAN SHELL, never a team.**
+- **The session-start complexity gate ships ON (default `mechanical`) — it stages an APPROVABLE PLAN SHELL, never a team.**
   The frozen predicate `trigger = explicit flag OR (matchedSignals >= 1)` runs at the session's
   first pre-step under the marker `[AgentTeams] Session-start team rule`; on a trigger the gate STAGES a
   0-member, 0-task plan shell through the `agent_teams_plan` tool — NOTHING is spawned, and the shell is

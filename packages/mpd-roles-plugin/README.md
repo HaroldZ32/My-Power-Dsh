@@ -186,7 +186,7 @@ a plan FILE alone is NOT a signal, repaired 2026-10-07 because the retired plan-
 in every session of this workspace). Every notice carries the marker
 `[AgentTeams] Session-start team rule`.
 
-What a trigger DOES is selected per call by `team.gate` in `mpd.jsonc`: `off` (**the DEFAULT since the
+What a trigger DOES is selected per call by `team.gate` in `mpd.jsonc`: `mechanical` (**the DEFAULT since the
 2026-10-20 restore**) | `advisory` | `off`.
 
 - **mechanical** — the gate STAGES an APPROVABLE PLAN SHELL through the `agent_teams_plan` tool
