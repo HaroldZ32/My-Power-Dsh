@@ -1872,9 +1872,9 @@ var TEAM_RECORDS_DIR = join2(".mpd", "team", "teams");
 function resolveGateMode(value) {
   if (value === GATE_MODE_ADVISORY)
     return GATE_MODE_ADVISORY;
-  if (value === GATE_MODE_MECHANICAL || value === true)
-    return GATE_MODE_MECHANICAL;
-  return GATE_MODE_OFF;
+  if (value === GATE_MODE_OFF || value === false)
+    return GATE_MODE_OFF;
+  return GATE_MODE_MECHANICAL;
 }
 function collapseWhitespace(text) {
   return String(text ?? "").replace(/\s+/gu, " ").trim();

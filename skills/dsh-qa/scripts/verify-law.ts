@@ -10,7 +10,7 @@
 // The case now asserts the NEW behaviour and keeps the falsifiable shape.
 //
 // WHAT EACH ARM IS WORTH — the two tiers are named so no reader mistakes one for the other (the SAME
-// distinction `captain-full-tools.ts` draws, because one suite must not carry two opposite claims):
+// distinction `captain-scope.ts` draws, because one suite must not carry two opposite claims):
 //   * DISCRIMINATING, offline: the SHIPPED apply site no longer calls `installVerifyGuard(` and still
 //     prints `verifyGate=absent reason=…` (asserted against src, never against stale dist bytes), plus
 //     the boot line's absent token in the live run below.

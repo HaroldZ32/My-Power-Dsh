@@ -64,18 +64,28 @@ caused. `AGENTS.md` §13 carries the binding wording; the block below is history
   read-only `mpd_role_spawn` died and the captain fell back to the official `subagent` tool — which was
   the escape the since-WITHDRAWN delegation gate refused (below). The one-shot path hands the CHILD the
   PRUNED list as `toolFilter.deny`; a pruned name is reported once on the row's log.
-- delegation gate (WITHDRAWN 2026-10-17 — record, not capability): the `tools.guard` rule that made §5
-  rule 2's delegation discipline MECHANICAL. `packages/mpd-roles-plugin/src/delegation-gate.ts` refused a
-  call to `subagent`, `subagent_fork` or `workflow` and named the sanctioned routes (`mpd_role_spawn`,
-  `mpd_workmate_match` + `mpd_workmate_spawn`, Agent Teams, `send_message`); its knob was `delegation.gate`
-  in `mpd.jsonc` (`"deny"` | `"captain"` | `"allow"`, keyed on the preset-free `sessionRank`). The user's
-  2026-10-17 ruling withdrew it (`.mpd/plans/harness-021-rollback.md`, R1): the top-level agent holds its
-  whole pack directly, so those three names are CALLABLE again, the module survives only as a reference
-  implementation with its unit arms, and the row no longer installs it. The diagnostic is the roles row's
-  boot line — `delegationGate=absent reason=withdrawn:2026-10-17-user-ruling(delegation.gate)` — never a
-  mode. `skills/dsh-qa/scripts/delegation-gate.ts` is RE-PURPOSED to assert that a `subagent` call is NOT
-  refused, including with the retired knob spelled explicitly. Do not read the old live evidence under
-  `evidence/roles/delegation-gate/` as current behaviour: it is the measurement of the withdrawn gate.
+- delegation gate (RESTORED 2026-10-20 — a live capability again): the `tools.guard` rule that makes
+  §5 rule 2's delegation discipline MECHANICAL, and the sibling of the captain-investigation guard
+  below. `packages/mpd-roles-plugin/src/delegation-gate.ts` refuses a call to `subagent`, `subagent_fork`
+  or `workflow` and names the sanctioned routes (`mpd_role_spawn`, `mpd_workmate_match` +
+  `mpd_workmate_spawn`, Agent Teams, `send_message`); its knob is `delegation.gate` in `mpd.jsonc`
+  (`"deny"` default | `"captain"` | `"allow"`), keyed on the preset-free `sessionRank`. The user's
+  2026-10-17 ruling withdrew it together with the persona restoration; the **2026-10-20 ruling split that
+  bundle** (`.mpd/plans/restore-guard-discipline.md`): the long prompt stays, the guard comes back,
+  because the measured consequence of its absence was a captain that did every search itself while the
+  roster/team tools went unused. The row installs it again and its boot line reports the MODE
+  (`delegationGate=deny`), never an `absent` claim.
+- captain investigation guard (RESTORED 2026-10-20 — a live capability again): the `tools.guard` rule
+  that makes the `mpd` preset's TOP-LEVEL session delegate reconnaissance. `read`, `grep` and `glob` are
+  refused on a SOURCE path; the DOCUMENTATION BAND stays readable (`.mpd/**`, `docs/**`, `evidence/**`,
+  `agent-references/**`, and the root `AGENT.md`/`AGENTS.md`/`CLAUDE.md`/`README*.md`/`CHANGELOG.md`/
+  `LICENSE*.md`), because integrating a report needs the contract and the records, not the sources. The
+  knob is `captain.investigation` in `mpd.jsonc` (`"deny"` default | `"allow"`), read per call, and the
+  rule is scoped by `sessionIsMpdCaptain` (top-level AND the `mpd` preset — another preset keeps its own
+  reconnaissance). It was withdrawn by the 2026-10-17 ruling and restored by the 2026-10-20 split, for
+  the same measured reason as the delegation gate. Honest bound, unchanged: the guard reads a TOOL CALL's
+  arguments, so a source path reached through the shell (`cat`, `rg`) is not blocked — the persona
+  forbids that route by INTENT, and the guard's own doc comment says so.
 - team-model slot: one of the four configurable default model routes of the ROSTER members —
   `teamModels.slot{1,2,3,4}.{provider,model,reasoningEffort}` in `mpd.jsonc` / the `mpd` settings
   namespace, whose defaults are `deepseek-official` / `deepseek-v4-flash` at `max`/`high`/`high`, plus

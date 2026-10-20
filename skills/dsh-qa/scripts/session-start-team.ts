@@ -687,19 +687,21 @@ export async function contractProblems(gate: GateModule): Promise<string[]> {
     if (actual !== expected) problems.push(at("constants") + label + " must be " + JSON.stringify(expected) + ", got " + JSON.stringify(actual))
   }
 
-  // The mode resolver: `off` is the DEFAULT since the 2026-10-17 rollback (`.mpd/plans/harness-021-rollback.md`
-  // R1), and an UNKNOWN value reads `off` too — arming the ceremony is OPT-IN, so the fail-safe direction
-  // now points at the state the user asked for (nothing) rather than at staging a shell nobody requested.
+  // The mode resolver: `mechanical` is the DEFAULT again since the 2026-10-20 restore
+  // (`.mpd/plans/restore-guard-discipline.md`), and an UNKNOWN value reads `mechanical` too — the
+  // fail-safe direction points at the state the user asked for (a staged, UNAPPROVED shell that spawns
+  // nothing) rather than at a silently disarmed session-start rule. `"off"` and the legacy `false` are
+  // the deliberate opt-out and are honoured as themselves.
   const modeCases: Array<[unknown, string]> = [
     ["advisory", GATE_MODE_ADVISORY],
     ["off", GATE_MODE_OFF],
     ["mechanical", GATE_MODE_MECHANICAL],
     [false, GATE_MODE_OFF],
     [true, GATE_MODE_MECHANICAL],
-    [undefined, GATE_MODE_OFF],
-    ["bogus", GATE_MODE_OFF],
-    [0, GATE_MODE_OFF],
-    [{ gate: "off" }, GATE_MODE_OFF],
+    [undefined, GATE_MODE_MECHANICAL],
+    ["bogus", GATE_MODE_MECHANICAL],
+    [0, GATE_MODE_MECHANICAL],
+    [{ gate: "off" }, GATE_MODE_MECHANICAL],
   ]
   for (const [input, expected] of modeCases) {
     // The mode the shipped resolver answered for this raw value.

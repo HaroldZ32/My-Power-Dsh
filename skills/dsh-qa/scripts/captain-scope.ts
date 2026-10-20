@@ -1,49 +1,43 @@
 #!/usr/bin/env node
-// Case captain-full-tools: the WITHDRAWAL's boot-line proof, plus a corroborative read/write/bash witness.
+// Case captain-scope: WHERE the captain's own tool pack ends (restored 2026-10-20).
 //
-// WHY THIS CASE EXISTS (`.mpd/plans/harness-021-rollback.md` R1 + F2, user ruling 2026-10-17): the
-// 2026-10-10/11 wave installed three mechanical guards on the top-level agent — a captain-investigation
-// guard (reconnaissance delegated: `read`/`grep`/`glob` refused on SOURCE paths), a delegation gate
-// (bare `subagent`/`subagent_fork`/`workflow` refused) and the verification law's write guard (a code
-// `write` refused unless an A-writes/B-verifies loop was armed). The user withdrew ALL THREE: one agent,
-// its whole tool pack, steered by the persona prompt instead of hooks.
+// WHY THIS CASE EXISTS (`.mpd/plans/restore-guard-discipline.md`, user ruling 2026-10-20): the
+// 2026-10-17 rollback withdrew THREE mechanical guards together with the persona restoration. The
+// 2026-10-20 ruling splits that bundle — the long prompt stays, but the captain delegates again:
+// reconnaissance to a specialist, and delegation through THIS bundle's own surfaces. Measured reason
+// for the restore: with the guards gone the captain did every search itself, the roster/team tools went
+// unused and the session's context inflated one file read at a time.
 //
-// WHAT EACH ARM IS WORTH — the two tiers are named so no reader mistakes one for the other:
-//   * DISCRIMINATING, the boot line: the roles row reports the three withdrawn guards as
-//     `absent reason=…` and the session gate as `off`. `apply()` produces that line, and a
-//     pre-withdrawal `dist` prints MODES here, so this arm reddens on a stale artifact and cannot pass
-//     a tree that still installs the ceremony.
-//   * DISCRIMINATING, offline (`--self-test`): the SHIPPED apply site no longer contains any of the
-//     three install calls and still prints each absent token; `resolveGateMode(undefined)` is `off`; the
-//     row is composed exactly once; this case is registered in the skill's table.
-//   * CORROBORATIVE, the read/write/bash arms — read this before trusting them: a one-shot HEADLESS boot
-//     NEVER composes an agent preset. The harness's own `@deepseek-ai/dsh-headless` `assertAdoptable`
-//     throws `session "…" runs under agent preset "…", which the one-shot runner does not compose`, and
-//     the withdrawn guards were AGENT-SCOPED, so they never armed in this lane at all. MEASURED by the
-//     wave's verification lane: the PRE-wave tree on 0.2.0 AND on 0.2.1 already allowed read-source +
-//     write-code headless, with `verifyGate=installed captainInvestigation=deny` on the boot line. These
-//     arms therefore prove the pack is intact and callable on THIS composition — never that the rollback
-//     happened — which is why their row names carry the `corroborative-` prefix. A discriminating LIVE
-//     arm needs an AGENT-PRESET session (the web profile's `session/create` with `agentPreset: "mpd"`),
-//     and that belongs to the verification lane.
-//   * CORROBORATIVE, the tool list: the request header OFFERS the pack (`read`, `write`, `edit`, `bash`,
-//     `grep`, `glob`, `subagent`) — tool-LIST evidence, the only accepted proof that a tool is mounted
-//     (§7). The harness offers the same list before and after the rollback; it is a mount witness.
-//   * SAFETY (neither tier): three-layer isolation (§7) holds and the REAL checkout's row log is
-//     untouched — those keep the case itself trustworthy, they say nothing about the withdrawal.
+// WHAT IS RESTORED, AND WHAT IS NOT:
+//   * RESTORED — the captain investigation guard (`read`/`grep`/`glob` refused on SOURCE paths; the
+//     documentation band stays readable; knob `captain.investigation`) and the delegation gate (bare
+//     `subagent`/`subagent_fork`/`workflow` refused; knob `delegation.gate`), plus the session gate's
+//     `mechanical` default.
+//   * STILL WITHDRAWN — the verification law's write guard (`verify.mode`): the captain still writes
+//     code without an armed loop. The law itself stays a DISCIPLINE (A writes, a DIFFERENT agent
+//     records the verdict), never a hook.
 //
-// WHAT IT DOES NOT PROVE, stated so nobody over-reads it: it does not prove the roster read-only guard
-// (a DIFFERENT guard, `readonly-deny`'s subject), nor the ask_user_question backstop, nor that the model
-// USES the pack well — and, per the bound above, it does not prove the agent-scoped guards were
-// withdrawn on an agent-preset session.
+// TWO TIERS, named so no reader mistakes one for the other:
+//   * DISCRIMINATING, the boot line: the roles row reports `captainInvestigation=deny`,
+//     `delegationGate=deny` and `sessionGate=mechanical`, and `verifyGate=absent reason=…`. A pre-
+//     restoration `dist` prints `absent reason=` for the two restored guards, so this arm reddens on a
+//     stale artifact and cannot pass a tree that still carries the rollback.
+//   * DISCRIMINATING, offline: the SHIPPED apply site CALLS the two restored installs and does NOT call
+//     `installVerifyGuard(`; `resolveGateMode(undefined)` is `mechanical`; the persona carries the READ
+//     DISCIPLINE block and no longer carries the rollback's "no reconnaissance guard, no delegation
+//     gate" sentence; the row is composed once; this case is registered in the skill's table.
+//   * CORROBORATIVE, the read/write/bash witness — read this before trusting them: a one-shot HEADLESS
+//     boot NEVER composes an agent preset (the harness's own `@deepseek-ai/dsh-headless`
+//     `assertAdoptable` refuses it) and these guards are AGENT-SCOPED, so they never arm in this lane.
+//     Those arms therefore witness that the pack is mounted and callable on this composition — never
+//     that the guards deny here. A discriminating LIVE agent-preset arm needs the web profile's
+//     `session/create` with `agentPreset: "mpd"` and belongs to the verification lane; their row names
+//     carry the `corroborative-` prefix for exactly that reason.
+//
+// WHAT IT DOES NOT PROVE: the roster read-only guard (`readonly-deny`), the ask_user_question backstop,
+// or that the model USES the scope well.
 //
 // PREREQ: absent-dsh-binary dsh "install DeepSeek Harness (dsh) on PATH"
-// PREREQ: absent-credentials DEEPSEEK_API_KEY "export DEEPSEEK_API_KEY in the launching shell, or add `refs: DEEPSEEK_API_KEY: <value>` to ~/.dsh/.credentials.yaml"
-// PREREQ: absent-runtime packages/mpd-roles-plugin/dist/index.js ".toolchain/node_modules/.bin/bun build packages/mpd-roles-plugin/src/index.ts --target node --format esm --outfile packages/mpd-roles-plugin/dist/index.js"
-//
-// Isolation (all three layers, §7): isolated DSH_HOME + sandbox HOME + a sandbox WORKSPACE whose source
-// and code paths are COPIES (the real tree is never the subject). Evidence ->
-// evidence/roles/captain-full-tools/<ts>/{result.json,output.log,logs/}.
 import { spawnSync } from "node:child_process"
 import { closeSync, cpSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, readdirSync, writeFileSync } from "node:fs"
 import { createHash } from "node:crypto"
@@ -56,22 +50,22 @@ import type { CredentialResolution } from "./lib/credentials.ts"
 import { DSH_MISSING, dshCommand } from "./lib/dsh-launcher.ts"
 import { assertSessionsSandboxed, sandboxWorkspace } from "./lib/workspace-isolation.ts"
 import { findToolCall, readSessionEvents } from "./lib/session-evidence.ts"
-import { GATE_MODE_OFF, resolveGateMode } from "../../../packages/mpd-roles-plugin/src/complexity-gate.ts"
+import { GATE_MODE_MECHANICAL, resolveGateMode } from "../../../packages/mpd-roles-plugin/src/complexity-gate.ts"
 
 /** The repository root, derived from this script's own URL (`<root>/skills/dsh-qa/scripts/`). */
 const repoRoot: string = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 /** The evidence slug: the SKIP/FAIL marker and the evidence directory both carry it. */
-const SLUG: string = "captain-full-tools"
+const SLUG: string = "captain-scope"
 /** The role's own log, relative to a booting session's workspace (R5: a row never prints to stdout). */
 const ROW_LOG: string = join(".mpd", "logs", "mpd-roles.log")
-/** The boot-line token a withdrawn write guard must report — a REASON, never a mode. */
+/** The boot-line token the STILL-WITHDRAWN write guard must report — a REASON, never a mode. */
 const ABSENT_VERIFY: string = "verifyGate=absent reason="
-/** The boot-line token a withdrawn reconnaissance guard must report. */
-const ABSENT_INVESTIGATION: string = "captainInvestigation=absent reason="
-/** The boot-line token a withdrawn delegation gate must report. */
-const ABSENT_DELEGATION: string = "delegationGate=absent reason="
-/** The session gate's OPT-IN default, as the boot line must spell it. */
-const SESSION_GATE_OFF: string = "sessionGate=off"
+/** The boot-line token the RESTORED reconnaissance guard must report, with its mode. */
+const INSTALLED_INVESTIGATION: string = "captainInvestigation=deny"
+/** The boot-line token the RESTORED delegation gate must report, with its mode. */
+const INSTALLED_DELEGATION: string = "delegationGate=deny"
+/** The session gate's restored MECHANICAL default, as the boot line must spell it. */
+const SESSION_GATE_MECHANICAL: string = "sessionGate=mechanical"
 /** The pack §5's top-level agent holds DIRECTLY, asserted from the request header's tool list. */
 const ENGINE_TOOLS: readonly string[] = ["read", "write", "edit", "bash", "grep", "glob", "subagent"]
 /** The SOURCE path the session reads — a COPY inside the sandbox workspace, never the real tree. */
@@ -82,8 +76,10 @@ const CODE_PATH: string = "packages/mpd-roles-plugin/src/probe-full-tools.ts"
 const SOURCE_ORIGIN: string = join(repoRoot, "packages", "mpd-roles-plugin", "src", "roles.data.ts")
 /** The shipped apply site, whose absent tokens the offline arm pins. */
 const APPLY_SITE: string = join(repoRoot, "packages", "mpd-roles-plugin", "src", "index.ts")
-/** The three installs the rollback removed; any of them present again means the ceremony returned. */
-const WITHDRAWN_INSTALLS: readonly string[] = ["installVerifyGuard(", "installCaptainInvestigationGuard(", "installDelegationGate("]
+/** The two installs the 2026-10-20 ruling RESTORED; a tree without them carries the rollback again. */
+const RESTORED_INSTALLS: readonly string[] = ["installCaptainInvestigationGuard(", "installDelegationGate("]
+/** The ONE install that stays withdrawn: the captain's code `write` is not gated. */
+const WITHDRAWN_INSTALL: string = "installVerifyGuard("
 /** The rebuild command the runtime precondition names, so a stale artifact is never a mystery. */
 const REBUILD_COMMAND: string = ".toolchain/node_modules/.bin/bun build packages/mpd-roles-plugin/src/index.ts --target node --format esm --outfile packages/mpd-roles-plugin/dist/index.js"
 /** The declared provider id this case resolves its credential for. */
@@ -170,30 +166,41 @@ function selfTest(): number {
   const rowOccurrences = bundle.split("- id: mpd-roles").length - 1
   check(rowOccurrences === 1, "the mpd-roles row id must appear exactly once in cordis.patch.yml, found " + String(rowOccurrences))
 
-  // ── the WITHDRAWAL, pinned on the SHIPPED SOURCE ──────────────────────────────────────────────
-  // The source is the subject, not `dist/**`: the wave's rebuild task refreshes the built bytes in its
-  // own commit, and a self-test that needed the rebuild to land first could not run in this lane at all.
+  // ── the RESTORE, pinned on the SHIPPED SOURCE ─────────────────────────────────────────────────────
+  // The source is the subject, not `dist/**`: a self-test that needed the rebuild to land first could
+  // not run in this lane at all.
   /** The row's apply site, which owns the ONE install site of every guard. */
   const applySite = readFileSync(APPLY_SITE, "utf8")
-  for (const install of WITHDRAWN_INSTALLS) {
-    check(!applySite.includes(install), "the shipped apply site still installs " + install + ": the 2026-10-17 withdrawal regressed")
+  for (const install of RESTORED_INSTALLS) {
+    check(applySite.includes(install), "the shipped apply site no longer installs " + install + ": the 2026-10-20 restore regressed")
   }
-  for (const token of [ABSENT_VERIFY, ABSENT_INVESTIGATION, ABSENT_DELEGATION]) {
-    check(applySite.includes(token), "the shipped apply site no longer reports " + token + " — a withdrawn guard must keep reporting its absence")
+  check(!applySite.includes(WITHDRAWN_INSTALL), "the shipped apply site installs " + WITHDRAWN_INSTALL + " again: the write guard stays withdrawn")
+  // The two restored guards report their MODE, so the apply site carries the KEY (its value is the
+  // installed mode); the withdrawn one carries a literal because its whole sentence is fixed text.
+  check(applySite.includes(ABSENT_VERIFY), "the shipped apply site no longer reports " + ABSENT_VERIFY)
+  for (const key of ["captainInvestigation=", "delegationGate=", "sessionGate="]) {
+    check(applySite.includes(key), "the shipped apply site no longer reports " + key)
   }
-  check(applySite.includes(SESSION_GATE_OFF.replace("=off", "=")), "the shipped apply site no longer reports the sessionGate token")
 
-  // ── the session gate is OPT-IN: an absent config value reads `off` ────────────────────────────
-  check(resolveGateMode(undefined) === GATE_MODE_OFF, "the session gate's default must read `off` after the rollback (an absent key arms nothing)")
+  // ── the session gate ships MECHANICAL again: an absent config value stages the shell ─────────────
+  check(resolveGateMode(undefined) === GATE_MODE_MECHANICAL, "the session gate's default must read `mechanical` after the 2026-10-20 restore")
 
-  // ── this case is REGISTERED: the skill's case table names it ──────────────────────────────────
+  // ── the PERSONA says the restored rule, and no longer says the rollback's permission ─────────────
+  /** The shipped `mpd` preset, whose persona prefix is what the model actually reads. */
+  const preset = readFileSync(join(repoRoot, "presets", "mpd.patch.yml"), "utf8")
+  check(preset.includes("READ DISCIPLINE"), "the persona no longer carries the READ DISCIPLINE block")
+  check(preset.includes("REFUSED"), "the persona no longer tells the model that source reconnaissance is refused")
+  check(preset.includes("mpd_role_spawn"), "the persona no longer names the sanctioned delegation path")
+  check(!preset.includes("no reconnaissance guard, no delegation gate"), "the persona still carries the rollback's \"no reconnaissance guard, no delegation gate\" sentence")
+
+  // ── this case is REGISTERED: the skill's case table names it ──────────────────────────────────────
   /** The QA skill document whose case table registers every case in this corpus. */
   const skill = readFileSync(join(repoRoot, "skills", "dsh-qa", "SKILL.md"), "utf8")
   check(skill.includes("| " + SLUG + " |"), "the dsh-qa SKILL.md case table must carry a row for " + SLUG)
 
   for (const message of failures) console.error("[" + SLUG + " self-test] FAIL: " + message)
   if (failures.length > 0) return failures.length
-  console.log("[" + SLUG + " self-test] ok: row composed once; three installs withdrawn with absent tokens; session gate defaults off; case registered")
+  console.log("[" + SLUG + " self-test] ok: row composed once; the two guards installed and the write guard still withdrawn; session gate defaults mechanical; the persona states the restored rule; case registered")
   return 0
 }
 
@@ -406,7 +413,7 @@ function runReal(): void {
     reason: (ENGINE_TOOLS.every((name) => run.toolNames.includes(name))
       ? "CORROBORATIVE: the request header offers the whole pack: " + ENGINE_TOOLS.join(", ")
       : "the harness recorded no request header / the pack is incomplete — offered: " + JSON.stringify(run.toolNames.slice(0, 40)))
-      + " (the same list is offered before and after the rollback; the boot-line arm below is the discriminator)",
+      + " (the pack is offered on this composition whatever the guards decide; the boot-line arm is the discriminator)",
     raw: rawBase + " missing=" + JSON.stringify(ENGINE_TOOLS.filter((name) => !run.toolNames.includes(name))),
   })
   rows.push({
@@ -432,7 +439,7 @@ function runReal(): void {
         : codeWritten
           ? "CORROBORATIVE: the code path was WRITTEN with no loop armed (no `mpd_verify_open`, no loop record)"
           : "the `write` call was recorded but the artifact does not exist")
-      + " (agent-scoped guards never arm in a headless boot: the withdrawal is proved by the boot line)",
+      + " (agent-scoped guards never arm in a headless boot: the restored scope is proved by the boot line)",
     raw: rawBase + " codeWritten=" + String(codeWritten) + " loopOpened=" + String(run.loopOpened) + " loopFiles=" + JSON.stringify(loopFiles) + " writeResult=" + JSON.stringify(run.codeWrite.resultText.slice(0, 400)),
   })
   rows.push({
@@ -448,10 +455,10 @@ function runReal(): void {
   })
   rows.push({
     name: "DISCRIMINATING-guard-state-reported",
-    ok: [ABSENT_VERIFY, ABSENT_INVESTIGATION, ABSENT_DELEGATION, SESSION_GATE_OFF].every((token) => bootLine.includes(token)),
-    reason: [ABSENT_VERIFY, ABSENT_INVESTIGATION, ABSENT_DELEGATION, SESSION_GATE_OFF].every((token) => bootLine.includes(token))
-      ? "DISCRIMINATING: the boot line reports the three withdrawn guards as absent and the session gate as off"
-      : "the boot line does not report the withdrawn state (a stale dist still prints modes — rebuild it: " + REBUILD_COMMAND + ")",
+    ok: [ABSENT_VERIFY, INSTALLED_INVESTIGATION, INSTALLED_DELEGATION, SESSION_GATE_MECHANICAL].every((token) => bootLine.includes(token)),
+    reason: [ABSENT_VERIFY, INSTALLED_INVESTIGATION, INSTALLED_DELEGATION, SESSION_GATE_MECHANICAL].every((token) => bootLine.includes(token))
+      ? "DISCRIMINATING: the boot line reports the TWO RESTORED guards by MODE (captainInvestigation=deny, delegationGate=deny), the session gate as mechanical, and the still-withdrawn write guard as absent"
+      : "the boot line does not report the restored scope (a stale dist still prints the rollback's absent tokens — rebuild it: " + REBUILD_COMMAND + ")",
     raw: JSON.stringify(bootLine),
   })
   rows.push({

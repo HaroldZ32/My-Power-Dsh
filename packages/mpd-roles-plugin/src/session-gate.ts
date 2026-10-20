@@ -10,11 +10,10 @@
 //      for a live agent, which is exactly why the TUI's approval hop used to be broken.
 //
 // WHAT A TRIGGER DOES (the mode, resolved PER CALL from `team.gate`):
-//   off (DEFAULT since 2026-10-17) — the listener returns immediately; the ceremony is OPT-IN, so a
-//                          session that did not explicitly ask for it stages nothing;
-//   mechanical           — stage the shell, then inject the MECHANICAL notice naming the id the
+//   mechanical (DEFAULT) — stage the shell, then inject the MECHANICAL notice naming the id the
 //                          call returned; every degradation of this route falls back to ADVISORY;
-//   advisory             — today's notice, stages nothing.
+//   advisory             — today's notice, stages nothing;
+//   off                  — the listener returns immediately.
 //
 // THE HONEST BOUND (stated so no reader over-reads the log): the gate can fill the plan's `name`,
 // `description` and `approval`; the store fills `planId`/`stagedAt`/`version` and the tool fills

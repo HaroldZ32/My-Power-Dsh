@@ -52,7 +52,7 @@
 | 名册送达到 Lead | 一个 **AGENT 作用域**的 `mpd:roster` 系统提示段落（顺序 `605`，紧跟 Harness 的 `TEAM_POLICY`（600）之后），只对顶层 `mpd` session 注册 —— 绝不在 host 平面（那会把名册注入本进程服务的每一个 session），也绝不进入 teammate 或其它 preset 的 session |
 | teammate 的 persona | 该段落点名 `spawn_teammate` 与 `mpd_role_persona`：Lead 把成员的 persona 文本作为 prompt 传入 |
 | 只读 teammate 的纪律 | 一道 TOOL GUARD（见下），经适配器注册 |
-| session 启动复杂度闸门 | 一个 `agent/pre-step` 监听器：当 `team.gate` 为 `mechanical` 时 **stage** 一个可批准的 plan shell —— 自 2026-10-17 起为 opt-in，默认 `off`（见下） |
+| session 启动复杂度闸门 | 一个 `agent/pre-step` 监听器：当 `team.gate` 为 `mechanical` 时 **stage** 一个可批准的 plan shell —— 自 2026-10-20 起**重新成为默认**（见下） |
 
 **模型路由只保留在一次性路径上。** `TeamService` 只把 `{prompt, parent}` 转发给 `ctx.subagents.startContinuable`（`docs/plan-0.1.7-adaptation.md` §3），因此 teammate 继承 Lead 的路由，无法为其附加 provider/persona/tool filter。`teamModels.slot*` 路由因此只作用于 `mpd_role_spawn` / `mpd_workmate_spawn`（它们会传入显式的 `agentOptions`）；名册段落如实说明这一点，而不是承诺 Harness 无法兑现的路由。路由中的推理强度还会经过适配器的 `withSupportedEffort`（`mpd-dsh-adapter-plugin`）：若槽位的模型**完全没有**推理等级，则不发送任何等级 —— spawn 照常运行，而不是因 provider 无法接受的关键字失败；而声明了推理等级的模型则保留槽位的等级。
 
@@ -67,23 +67,25 @@
 
 **拒绝清单由 Harness 自己在 spawn 之前裁定一次。** 只要其中一个名字未在本 profile 注册，`tools.restrict()` 就会拒绝**整份**清单，因此一个未注册条目（无 `cclsp` 主机上的两个 `mcp__lsp__*` 名称）会让名册与 workmate 库的**每一次**只读 spawn 全部失败 —— 2026-10-10 实测，而正是这扇被砖死的正门把 captain 推向了 Harness 自带的 `subagent` 工具。适配器的 `restrictToolsTolerant` 把**规范**清单应用到调用方自己的 scope 并在同一同步轮次内释放，因此唯一裁定者是 Harness 自己：它报告为未知的名字会被剪除，**只允许一次**重试，第二次失败一律抛出。`READONLY_DENY` 本身未变，两个包的清单保持完全一致（由 `roles.test.ts` 断言），且该清单**绝不**用 `hasTool` 预过滤（AGENTS.md §13）。被剪除的名字会在该行日志中报告一次。
 
-### 委派闸门与侦察 guard 已于 2026-10-17 撤销
+### 委派闸门与侦察 guard（2026-10-20 恢复）
 
-本行过去在只读 guard 之外还安装**两道** `tools.guard` 回调：**captain 侦察 guard**（`mpd` preset 的顶层 session 委派侦察，因此对**源码**路径的 `read`/`grep`/`glob` 会被拒绝）与**委派闸门**（对 `subagent`、`subagent_fork`、`workflow` 的调用会被拒绝，拒绝文本点名 `mpd_role_spawn`、workmate 库、Agent Teams 与 `send_message`；开关为 `delegation.gate`）。用户 2026-10-17 的决定把这两者连同"验证法"的写守卫一起撤下：**一个 agent、完整工具包、由 persona 提示词来引导**。因此顶层 agent 会自己读源码、自己 grep 代码，也可以调用 Harness 的任何 spawn 工具；委派侦察与使用名册仍是**推荐做法**，而不再是闸门。
+本行在只读 guard 之外安装**两道** `tools.guard` 回调：**captain 侦察 guard**（`mpd` preset 的顶层 session 委派侦察，因此对**源码**路径的 `read`/`grep`/`glob` 会被拒绝，而文档带 —— `.mpd/**`、`docs/**`、`evidence/**`、`agent-references/**` 以及根目录的说明/概览文件 —— 保持可读；开关 `captain.investigation`，默认 `"deny"` | `"allow"`）与**委派闸门**（对 `subagent`、`subagent_fork`、`workflow` 的调用被拒绝，拒绝文本点名 `mpd_role_spawn`、workmate 库、Agent Teams 与 `send_message`；开关 `delegation.gate`，默认 `"deny"` | `"captain"` | `"allow"`）。侦察 guard 由 `sessionIsMpdCaptain` 限定，闸门按不依赖 preset 的 `sessionRank` 判定，因此别的 preset 的顶层 session 保留自己的习惯。
 
-两个模块作为参考实现连同其单测保留（`src/captain-investigation.ts`、`src/delegation-gate.ts`），**没有任何代码安装它们**。诊断依据是 boot 行 —— 每个被撤销的 guard 报告其 **absent** 状态以及过去控制它的开关，绝不再报 mode：
+**为什么恢复。** 2026-10-17 的决定把这两者连同 persona 的回归一起撤下（"一个 agent、完整工具包、由 persona 提示词引导"）。实测后果是：captain 自己做完每一次搜索、名册/团队工具基本闲置、上下文被一次次文件读取撑大。2026-10-20 的决定把这个包拆开 —— **长提示词保留，两道决策性 guard 回归** —— 并且 persona 现在把规则写在最前面，所以开局就是委派，而不是先撞一次被拒的 `read`。写入路径**刻意不变**：`write`/`edit`/`bash` 不受门控，验证法的写守卫（`verify.mode`）继续处于撤销状态；验证法要求的是**另一个 agent 记录的裁决**，那是纪律，不是 hook。
+
+诊断依据是 boot 行 —— 恢复的 guard 报 **mode**，撤销的那个报 absent：
 
 ```
 [mpd-roles] team plane: readOnlyGuard=installed deny=8 \
+  captainInvestigation=deny \
+  delegationGate=deny \
   verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) \
-  captainInvestigation=absent reason=withdrawn:2026-10-17-user-ruling(captain.investigation) \
-  delegationGate=absent reason=withdrawn:2026-10-17-user-ruling(delegation.gate) \
-  askUserQuestion=installed rosterSection=agent-scoped order=605 sessionGate=off
+  askUserQuestion=installed rosterSection=agent-scoped order=605 sessionGate=mechanical
 ```
 
-本行仍安装两道 guard：上面的名册只读纪律（八个名称）与 `ask_user_question` 边界兜底。此次撤销记录在 `.mpd/plans/harness-021-rollback.md`（R1）；断言旧拒绝行为的 QA 用例已**改写**为断言新行为，并把原因写进用例本身（`skills/dsh-qa/scripts/delegation-gate.ts`、`skills/dsh-qa/scripts/captain-full-tools.ts`）。
+恢复记录在 `.mpd/plans/restore-guard-discipline.md`；断言它的 QA 用例是 `skills/dsh-qa/scripts/delegation-gate.ts`（拒绝表、开关拼写、名册正门）与 `skills/dsh-qa/scripts/captain-scope.ts`（boot 行 token、已发布 apply 站点、persona）。
 
-### session 启动复杂度闸门（自 2026-10-17 起为 OPT-IN）
+### session 启动复杂度闸门（自 2026-10-20 起重新默认 MECHANICAL）
 
 在 session 的第一个 pre-step，本行求值冻结谓词
 
@@ -93,7 +95,7 @@ trigger = explicit flag OR (matchedSignals >= 1)
 
 信号为 **A**（`team:` 前缀或 `!team`；标记会从目标文本中被**消费**）、**B**（≥ 4 个不同的交付动词）、**C**（**一个**信号，由其三路子信号中的 ≥ 2 路触发：≥ 3 条枚举行、≥ 3 个不同动作动词、≥ 3 个动作小句）与 **D**（session 工作区存在**正在进行**的 boulder 工作：`.mpd/boulder.json` 中 `status: "active"` —— 仅有 plan **文件**并不构成信号；2026-10-07 修复，因为旧的文件探测在本工作区的每个 session 都会触发）。每一条通知都携带标记 `[AgentTeams] Session-start team rule`。
 
-触发后**做什么**由 `mpd.jsonc` 的 `team.gate` 按调用决定：`off`（**自 2026-10-17 回滚起为默认** —— 闸门是 opt-in）| `advisory` | `mechanical`。
+触发后**做什么**由 `mpd.jsonc` 的 `team.gate` 按调用决定：`mechanical`（**自 2026-10-20 恢复起为默认**）| `advisory` | `off`。
 
 - **mechanical** —— 闸门通过 `agent_teams_plan` 工具 **stage** 一个**可批准的 plan shell**（0 成员、0 任务：第一个 pre-step 时还不存在任何分解），并注入**一条** user 角色通知，点名该调用**返回**的 plan id。此时**没有 spawn 任何东西**：该 plan 在 captain 用 `add_member` / `create_task` 扩展并用 `agent_teams_plan {action:"approve"}` 批准之前一直是**惰性**的，批准才是 spawn 成员、发布任务的时刻。当本 session 已有 staged 的 plan 时，闸门只报告这一事实、不再重复 stage —— 第二次 stage 会归档进行中的 plan。
 - **advisory** —— 未挂载 `agent_teams_plan` 工具，或 `team.gate: "advisory"` 时，那**一条**通知声明 `NO team was staged`，并告诉 captain 在工作确实需要时自行 stage。

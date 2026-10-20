@@ -25,9 +25,9 @@
 //            ({@link CJK_CHAR_MIN} Han characters) AND intent (>= {@link CJK_ACTION_VERB_MIN}
 //            distinct action verbs), both calibrated over the frozen corpus.
 //
-// What a TRIGGER does is resolved per call by the wiring: `team.gate` selects `off` (the default since the
-// 2026-10-17 rollback: the gate does nothing at all), `mechanical` (stage an APPROVABLE SHELL through the
-// `agent_teams_plan` tool) or `advisory` (one notice, stage nothing).
+// What a TRIGGER does is resolved per call by the wiring: `team.gate` selects `mechanical` (the DEFAULT
+// again since 2026-10-20: stage an APPROVABLE SHELL through the `agent_teams_plan` tool), `advisory`
+// (one notice, stage nothing) or `off` (the gate does nothing at all).
 import { readFile as readFileFs, readdir as readDirFs } from "node:fs/promises"
 import { join } from "node:path"
 
@@ -42,7 +42,11 @@ export const STARTUP_NOTICE_MARKER = "[AgentTeams] Session-start team rule"
  */
 export const HUMAN_SOURCE_KIND = "user"
 
-/** The three `team.gate` modes; the default is {@link GATE_MODE_OFF} (opt-in since 2026-10-17). */
+/**
+ * The three `team.gate` modes; the default is {@link GATE_MODE_MECHANICAL} again since the 2026-10-20
+ * ruling (it was opt-in from 2026-10-17 to 2026-10-20: the session-start rule ships ON, and `off` is a
+ * deliberate configuration rather than an omission).
+ */
 export type GateMode = "mechanical" | "advisory" | "off"
 /** The `team.gate` mode that stages a plan shell through the `agent_teams_plan` tool. */
 export const GATE_MODE_MECHANICAL: GateMode = "mechanical"
@@ -409,21 +413,20 @@ export async function readLeadingTeam(
 /**
  * Resolve the `team.gate` mode from one raw config value, PER CALL.
  *
- * `off` is the DEFAULT since the 2026-10-17 rollback (`.mpd/plans/harness-021-rollback.md` R1): the gate
- * runs only when a config layer EXPLICITLY asks for it, so the ceremony can never be armed by omission.
- * The fail-safe direction follows the default — an absent key and every UNKNOWN value (`"bogus"`, `0`, an
- * object) read `off` too, because a state the user did not ask for is not a safe state any more: staging a
- * plan shell nobody requested is the surprising outcome, not skipping one. `"mechanical"` and the legacy
- * `true` are the only ways to arm it; `"advisory"` and both spellings of off (`"off"`, `false`) are
- * honoured as themselves.
+ * `mechanical` is the DEFAULT again (2026-10-20 ruling, `.mpd/plans/restore-guard-discipline.md`) and the
+ * FAIL-SAFE: an absent key and every UNKNOWN value (`"bogus"`, `0`, an object) read `mechanical`, so a
+ * typo can never silently disable the session-start rule. This was the pre-2026-10-17 behaviour; the
+ * rollback made it opt-in for three days and the top-level agent then did every piece of work itself,
+ * which is exactly what the restored rule prevents. `"advisory"` and both spellings of off (`"off"`,
+ * `false`) are honoured as themselves, so a session that does not want the shell says so explicitly.
  *
  * @param value - the raw value the config layer answered, of any type.
  * @returns the mode the gate must run in.
  */
 export function resolveGateMode(value: unknown): GateMode {
   if (value === GATE_MODE_ADVISORY) return GATE_MODE_ADVISORY
-  if (value === GATE_MODE_MECHANICAL || value === true) return GATE_MODE_MECHANICAL
-  return GATE_MODE_OFF
+  if (value === GATE_MODE_OFF || value === false) return GATE_MODE_OFF
+  return GATE_MODE_MECHANICAL
 }
 
 /** Every whitespace run collapsed to one space, with the ends trimmed. */

@@ -99,7 +99,7 @@ This row contributes the ROSTER side of that path — every call through `mpd-ds
 | the roster reaches the Lead | an **AGENT-SCOPED** `mpd:roster` system-prompt section (order `605`, immediately after the harness's `TEAM_POLICY` at 600), registered for a top-level `mpd` session only — never host-plane (that would inject the roster into every session this process serves), never a teammate's or another preset's session |
 | a teammate's persona | the section names `spawn_teammate` and `mpd_role_persona`: the Lead passes the member's persona text as the prompt |
 | a READ-ONLY teammate's discipline | a TOOL GUARD (below), registered through the adapter |
-| the session-start complexity gate | an `agent/pre-step` listener that STAGES an approvable plan shell when `team.gate` says `mechanical` — OPT-IN, `off` by default since 2026-10-17 (below) |
+| the session-start complexity gate | an `agent/pre-step` listener that STAGES an approvable plan shell when `team.gate` says `mechanical` — the DEFAULT again since 2026-10-20 (below) |
 
 **Model routing stays on the one-shot path.** `TeamService` forwards only `{prompt, parent}`
 to `ctx.subagents.startContinuable` (`docs/plan-0.1.7-adaptation.md` §3), so a teammate
@@ -139,34 +139,38 @@ and any second failure is rethrown. `READONLY_DENY` itself is unchanged, the two
 identical (asserted by `roles.test.ts`), and the list is still NEVER pre-filtered with a `hasTool`
 probe (AGENTS.md §13). A pruned name is reported once on the row's log.
 
-### The delegation gate and the reconnaissance guard were WITHDRAWN (2026-10-17)
+### The delegation gate and the reconnaissance guard (RESTORED 2026-10-20)
 
-This row used to install TWO more `tools.guard` callbacks beside the read-only one: a
-**captain-investigation guard** (the `mpd` preset's top-level session delegated reconnaissance, so
-`read`/`grep`/`glob` on a SOURCE path were refused) and a **delegation gate** (a call to `subagent`,
-`subagent_fork` or `workflow` was refused with a sentence naming `mpd_role_spawn`, the workmate library,
-Agent Teams and `send_message`; knob `delegation.gate`). The user's 2026-10-17 ruling withdrew both,
-together with the verification law's write guard, from the `mpd` preset and the top-level agent's
-session: **one agent, its whole tool pack, steered by the persona prompt.** The top-level agent therefore
-reads its own sources, greps its own code and may call any harness spawn tool; delegating reconnaissance
-and using the roster remain RECOMMENDED practice, never a gate.
+This row installs TWO `tools.guard` callbacks beside the read-only one: a **captain-investigation guard**
+(the `mpd` preset's top-level session DELEGATES reconnaissance, so `read`/`grep`/`glob` on a SOURCE path
+are refused while the documentation band — `.mpd/**`, `docs/**`, `evidence/**`, `agent-references/**`
+and the root instruction/overview files — stays readable; knob `captain.investigation`, `"deny"` default
+| `"allow"`) and a **delegation gate** (a call to `subagent`, `subagent_fork` or `workflow` is refused
+with a sentence naming `mpd_role_spawn`, the workmate library, Agent Teams and `send_message`; knob
+`delegation.gate`, `"deny"` default | `"captain"` | `"allow"`). Both are scoped by `sessionIsMpdCaptain`
+for the investigation guard and the preset-free `sessionRank` for the gate, so another preset's top-level
+session keeps its own habits.
 
-The modules survive as reference implementations with their unit arms
-(`src/captain-investigation.ts`, `src/delegation-gate.ts`), and NOTHING installs them. The diagnostic is
-the boot line — each withdrawn guard reports its ABSENT state plus the knob that used to switch it, never
-a mode:
+WHY THEY CAME BACK. The 2026-10-17 ruling withdrew both together with the persona restoration ("one
+agent, its whole tool pack, steered by the persona prompt"). The measured consequence: the captain did
+every search itself, the roster/team tools went unused, and the session's context inflated one file read
+at a time. The 2026-10-20 ruling split that bundle — the LONG PROMPT stays, the two DECISIONAL guards
+return — and the persona now leads with the rule, so the first move is delegation rather than a refused
+`read`. The write path is deliberately UNCHANGED: `write`/`edit`/`bash` are not gated and the
+verification law's write guard (`verify.mode`) stays withdrawn; what the law asks for is a DIFFERENT
+agent's recorded verdict, which is a discipline, not a hook.
+
+The diagnostic is the boot line — the restored guards report their MODE, the withdrawn one its absence:
 
 ```
-[mpd-roles] team plane: readOnlyGuard=installed deny=8   verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode)   captainInvestigation=absent reason=withdrawn:2026-10-17-user-ruling(captain.investigation)   delegationGate=absent reason=withdrawn:2026-10-17-user-ruling(delegation.gate)   askUserQuestion=installed rosterSection=agent-scoped order=605 sessionGate=off
+[mpd-roles] team plane: readOnlyGuard=installed deny=8   captainInvestigation=deny   delegationGate=deny   verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode)   askUserQuestion=installed rosterSection=agent-scoped order=605 sessionGate=mechanical
 ```
 
-Two guards remain installed on this row: the roster's read-only discipline above (eight names) and the
-`ask_user_question` boundary backstop. The withdrawal is recorded in
-`.mpd/plans/harness-021-rollback.md` (R1); the QA cases that asserted the old denials are RE-PURPOSED to
-assert the new behaviour with the reason written in them
-(`skills/dsh-qa/scripts/delegation-gate.ts`, `skills/dsh-qa/scripts/captain-full-tools.ts`).
+The restore is recorded in `.mpd/plans/restore-guard-discipline.md`; the QA cases that assert it are
+`skills/dsh-qa/scripts/delegation-gate.ts` (refusal table, knob spellings, the roster front door) and
+`skills/dsh-qa/scripts/captain-scope.ts` (the boot-line tokens, the shipped apply site, the persona).
 
-### The session-start complexity gate (OPT-IN since 2026-10-17)
+### The session-start complexity gate (MECHANICAL by default again since 2026-10-20)
 
 At a session's first pre-step the row evaluates the frozen predicate
 
@@ -183,7 +187,7 @@ in every session of this workspace). Every notice carries the marker
 `[AgentTeams] Session-start team rule`.
 
 What a trigger DOES is selected per call by `team.gate` in `mpd.jsonc`: `off` (**the DEFAULT since the
-2026-10-17 rollback** — the gate is opt-in) | `advisory` | `mechanical`.
+2026-10-20 restore**) | `advisory` | `off`.
 
 - **mechanical** — the gate STAGES an APPROVABLE PLAN SHELL through the `agent_teams_plan` tool
   (0 members, 0 tasks: at the first pre-step there is no decomposition yet) and injects ONE

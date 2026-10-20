@@ -214,23 +214,26 @@ mandatory gates.
 three `guardTool` hooks from ONE `apply()` site (`packages/mpd-roles-plugin/src/index.ts`) on top of that
 pack: a captain-investigation guard refusing `read`/`grep`/`glob` on source paths, a delegation gate
 refusing `subagent`/`subagent_fork`/`workflow`, and the verification law's write guard (an A-writes/B-
-verifies seat, plus the mechanical one-git-writer denial for member sessions). The user's ruling withdrew
-all three: one agent, its whole tool pack, one persona prompt. **The diagnostic is the roles row's boot
-line** — it names every withdrawn guard as `absent` with the knob that used to switch it, and the session
-gate as `off`:
+verifies seat, plus the mechanical one-git-writer denial for member sessions). The 2026-10-17 ruling
+withdrew all three: one agent, its whole tool pack, one persona prompt. **The 2026-10-20 ruling split
+that bundle** (`.mpd/plans/restore-guard-discipline.md`): the persona stays, the DECISIONAL two guards
+come back, and only the write guard stays withdrawn. **The diagnostic is the roles row's boot line**, and
+it must be read token by token — the restored guards print MODES, the withdrawn one prints a REASON, and
+the session gate prints its restored default:
 
 ```
 [mpd-roles] team plane: readOnlyGuard=installed deny=8 \
+  captainInvestigation=deny \
+  delegationGate=deny \
   verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) \
-  captainInvestigation=absent reason=withdrawn:2026-10-17-user-ruling(captain.investigation) \
-  delegationGate=absent reason=withdrawn:2026-10-17-user-ruling(delegation.gate) \
-  askUserQuestion=installed rosterSection=agent-scoped order=605 sessionGate=off
+  askUserQuestion=installed rosterSection=agent-scoped order=605 sessionGate=mechanical
 ```
 
-Two guards REMAIN installed: the roster's read-only discipline (`installReadonlyGuard`, the eight-name
-deny list §13 defines) and the `ask_user_question` schema backstop. A token that reported a MODE for a
-withdrawn guard would be a lie a mount lane could not detect — which is why each says `absent reason=…`
-and never `installed`/`allow`.
+Three guards are installed: the captain investigation guard, the delegation gate, and the roster's
+read-only discipline (`installReadonlyGuard`, the eight-name deny list §13 defines) — plus the
+`ask_user_question` schema backstop. Only the WRITE guard says `absent reason=…`: a token that reported
+a MODE for an install that does not run would be a lie a mount lane could not detect, which is why that
+one never prints `installed`/`allow`.
 
 **What survives mechanically, and what is prose.** The five `mpd_verify_*` TOOLS still ship, and their
 record validator still REFUSES a PASS with no cited documents, no gate evidence, a forged evidence id or a

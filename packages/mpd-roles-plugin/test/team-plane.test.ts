@@ -369,19 +369,20 @@ describe("the frozen complexity predicate (Option A: explicit flag OR >= 1 match
     expect(skipped).toContain("plan-xyz")
   })
 
-  test("resolveGateMode: the vocabulary, the tolerated booleans, and the OPT-IN default", () => {
+  test("resolveGateMode: the vocabulary, the tolerated booleans, and the MECHANICAL default", () => {
     expect(resolveGateMode("mechanical")).toBe("mechanical")
     expect(resolveGateMode("advisory")).toBe("advisory")
     expect(resolveGateMode("off")).toBe("off")
     expect(resolveGateMode(true)).toBe("mechanical")
     expect(resolveGateMode(false)).toBe("off")
-    // REPURPOSED 2026-10-17 (lane B, harness-021-rollback): the default is OFF. The user's ruling
-    // withdrew the 2026-10-10/11 ceremony, so an absent key — and every UNKNOWN value — must now read
-    // `off`: staging a plan shell nobody asked for is the surprising outcome. The OLD fail-safe read
-    // `mechanical` here, and this arm asserted it; only an explicit spelling may arm the gate now.
-    expect(resolveGateMode(undefined)).toBe("off")
-    expect(resolveGateMode("bogus")).toBe("off")
-    expect(resolveGateMode(0)).toBe("off")
+    // RESTORED 2026-10-20 (`.mpd/plans/restore-guard-discipline.md`): the default is MECHANICAL again.
+    // The 2026-10-17 rollback made the gate opt-in for three days; the measured consequence was a
+    // captain that did every piece of work itself. An absent key and every UNKNOWN value therefore read
+    // `mechanical` (the pre-2026-10-17 fail-safe: a typo can never silently disarm the session-start
+    // rule), while `"off"` and the legacy `false` are honoured as the deliberate opt-out they are.
+    expect(resolveGateMode(undefined)).toBe("mechanical")
+    expect(resolveGateMode("bogus")).toBe("mechanical")
+    expect(resolveGateMode(0)).toBe("mechanical")
   })
 
   test("gatePlanShell fills ONLY what the gate can know, and says so in the description", () => {
