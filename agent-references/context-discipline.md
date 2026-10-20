@@ -27,8 +27,8 @@ this sharper:
   full re-injection of the file, ~16 k tokens at 63 KB). Batch manual edits into their own short
   session; never sprinkle them through a long one.
 
-Budget arithmetic, after the 2026-10-20 diet: manual 63,416 → 56,061 B, persona text
-18,437 → 11,307 B raw (15,350 → 10,420 folded characters).
+Budget arithmetic, after the 2026-10-20 diet: manual 63,416 → 56,278 B, persona text
+18,437 → 11,349 B raw.
 
 ## 2. Changing the manual or the persona (MOVE-FIRST)
 

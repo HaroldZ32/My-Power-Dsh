@@ -276,9 +276,9 @@ lands (§9/§11).
      REFUSED on SOURCE paths (`captain.investigation: "deny"`; the documentation band stays readable),
      and the harness's generic spawn tools (`subagent`, `subagent_fork`, `workflow`) are REFUSED
      (`delegation.gate: "deny"`), so delegation goes through `mpd_role_spawn`, the workmate library or
-     Agent Teams. **THE WRITE PATH STAYS DIRECT:** `write`/`edit`/`bash` are not gated and the
-     verification law's write guard (`verify.mode`) remains WITHDRAWN — the captain writes code, a
-     DIFFERENT agent records the verdict. **Full token-by-token account of the boot line and the remaining
+     Agent Teams. **THE WRITE PATH IS NOT GATED:** `write`/`edit`/`bash` stay available and the verification law's
+     write guard (`verify.mode`) remains WITHDRAWN; WHO executes a change is decided by size (this very
+     rule), and a DIFFERENT agent records the verdict. **Full token-by-token account of the boot line and the remaining
      withdrawn knob: `agent-references/verification-flow.md`, "§5 rule 2 — the captain's tool pack".**
   3. **Keep requirement / task / review SEPARATE.** A dispatched piece of work gets a requirement task
      (the frozen acceptance contract), a work task and a review task rather than one lumped

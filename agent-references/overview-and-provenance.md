@@ -104,15 +104,15 @@ declared in `README.md` and `LICENSE-NOTICES.md`.
   for create/edit/pause/resume; the consecutive-round count for `blocked`); ownership is recorded per
   session in `<workspace>/.mpd/goal/anchors.json`. Evidence:
   `evidence/goal/goal-bridge/<ts>/` and the `goal-bridge` QA case.
-- **The session-start complexity gate ships ON (default `mechanical`) — it stages an APPROVABLE
-  PLAN SHELL, never a team.** The frozen predicate `trigger = explicit flag OR (matchedSignals >= 1)` is evaluated at the
+- **The session-start complexity gate is MECHANICAL — it stages an APPROVABLE PLAN SHELL, never a
+  team.** The frozen predicate `trigger = explicit flag OR (matchedSignals >= 1)` is evaluated at the
   session's first pre-step and the notice keeps the marker `[AgentTeams] Session-start team rule`, but
   on a trigger the gate STAGES a 0-member, 0-task plan shell through the `agent_teams_plan` tool and
   injects ONE notice naming the returned plan id — NOTHING is spawned, and the shell is INERT until the
   captain extends it (`add_member` / `create_task`) and approves it with
   `agent_teams_plan {action:"approve"}`. An explicit `team:` / `!team` request ALSO stages the shell
   (signal A) and has its marker CONSUMED from the goal text. `team.gate` in `mpd.jsonc` selects
-  `mechanical` (**the default again since the 2026-10-20 restore**) | `advisory` | `off`; without the `agent_teams_plan` tool mounted, or under
+  `mechanical` (the default) | `advisory` | `off`; without the `agent_teams_plan` tool mounted, or under
   `advisory`, the ONE notice is advisory and says `NO team was staged`, and the captain stages a team
   itself at the moment the work warrants one — or continues solo and says so. Signal D is an ACTIVE
   boulder work for this workspace (`status: "active"` in `.mpd/boulder.json`) — a plan FILE alone is NOT
@@ -177,18 +177,27 @@ short form wins for the rule, and this file wins for the detail.
   mutations go through the harness goal TOOLS, never `ctx.goals`. `mpd-ulw-plugin` (C2 ultrawork v2)
   answers `/ulw <objective>` and `/ultrawork <objective>` by submitting the ULW activation directive as
   the invoking agent's OWN next user turn, so the run actually starts.
-- **The session-start complexity gate ships ON (default `mechanical`) — it stages an APPROVABLE
-  PLAN SHELL, never a team.** The frozen predicate `trigger = explicit flag OR (matchedSignals >= 1)` runs at the session's
+- **The session-start complexity gate is MECHANICAL — it stages an APPROVABLE PLAN SHELL, never a
+  team.** The frozen predicate `trigger = explicit flag OR (matchedSignals >= 1)` runs at the session's
   first pre-step and the notice keeps the marker `[AgentTeams] Session-start team rule`; on a trigger the
   gate STAGES a 0-member, 0-task plan shell through the `agent_teams_plan` tool and injects ONE notice
   naming the returned plan id — NOTHING is spawned, and the shell is INERT until the captain extends it
   (`add_member` / `create_task`) and approves it with `agent_teams_plan {action:"approve"}`. An explicit
   `team:` / `!team` request ALSO stages the shell (signal A) and has its marker CONSUMED from the goal
-  text. `team.gate` in `mpd.jsonc` selects `mechanical` (**the default again since the 2026-10-20 restore**) | `advisory` | `off`: without the
+  text. `team.gate` in `mpd.jsonc` selects `mechanical` (the default) | `advisory` | `off`: without the
   tool mounted, or under `advisory`, the ONE notice is advisory and says `NO team was staged`, and the
   captain stages a team itself when the work warrants one — or continues solo and says so. Signal D is an
   ACTIVE boulder work for this workspace (`status: "active"` in `<workspace>/.mpd/boulder.json`, which is
   gitignored RUNTIME STATE and not a shipped repo path) — a plan FILE alone is NOT a signal (repaired
   2026-10-07). Softer signals and the retired path are in the historical block above.
 
+## Gate default — CURRENT STATE (2026-10-20)
 
+The verbatim blocks above are HISTORICAL SNAPSHOTS of `AGENTS.md` (the 2026-10-06 §1 body and the wave E
+long forms), pinned by the byte counts and sha256 recorded in `evidence/gates/agents-budget/`. Quote them
+as history, never as the live default.
+
+**Current state:** the session-start complexity gate ships **ON**, and `team.gate` in `mpd.jsonc` defaults
+to **`mechanical`** again since the 2026-10-20 restore (it had been `off` since the 2026-10-17 rollback).
+`AGENTS.md` §1 is the binding statement; this section exists so a reader of the historical bytes cannot
+mistake them for what runs today.
