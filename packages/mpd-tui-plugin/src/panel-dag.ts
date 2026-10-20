@@ -65,7 +65,6 @@ import {
   panelSessionId,
   panelSnapshot,
   panelText,
-  publishBadge,
   runningGlyph,
   textRow,
   usePanelKeys,
@@ -412,7 +411,7 @@ export function dagPanelLayout(tasks: readonly DagPanelTask[], cols: number, foc
  * @param tasks - the projected board.
  * @returns the badge, or null when there is nothing to report.
  */
-export function dagBadge(tasks: readonly DagPanelTask[]): PanelBadge | null {
+export function dagBadge(tasks: readonly { readonly visual: string }[]): PanelBadge | null {
   /** How many tasks the badge counts. */
   let unread = 0
   /** Whether a failed task was seen, which outranks every other level. */
@@ -956,13 +955,12 @@ export function createDagPanelComponent(readWorkflow: (sessionId?: string) => Te
     const animate = layout !== undefined && layout.view.lines.some((row) => row.some((span) => span.tone === "running"))
     /** The breathing frame for this render: the host's timer quantised, or the static frame when absent. */
     const phase = useRunningPhase(kit.ui, animate)
-    /** The badge this render derived; published below through the host's own API (R9). */
-    const badge = page === undefined ? null : dagBadge(page.tasks)
-    /** The last badge published, so the host's badge listener fires on a CHANGE rather than per render. */
-    const published = kit.React.useRef(null)
-    kit.React.useEffect(() => {
-      publishBadge(props?.host, badge, published as { current: PanelBadge | null })
-    }, [badge === null ? "none" : `${badge.level}:${badge.unread}`, props?.host])
+    // THE BADGE IS NO LONGER THIS PAGE'S TO PUBLISH (G2 of the stateless-deployment wave). A sidebar
+    // panel is mounted only while it is the ACTIVE page (`mountPolicy: 'active'` in the host), so a
+    // page-side publish could only ever badge a page the user is already looking at. `panel-attention.ts`
+    // owns the host-side `tuiPanels.badge(id, …)` call from apply, driven by the team feed — which is
+    // also the only place that can badge the panel while it is closed. `dagBadge` STAYS the one level
+    // ladder: the attention surface calls it with the same task rows.
 
     /** The task ids in DRAWING order, which is the order the keyboard walks. */
     const order: string[] = layout === undefined ? [] : layout.view.hits.map((hit) => hit.taskId)

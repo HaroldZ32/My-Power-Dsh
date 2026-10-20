@@ -2253,26 +2253,27 @@ describe("the badge ladder", () => {
     expect(dagBadge(done)).toBeNull()
   })
 
-  test("the page publishes the badge through the host API, once per change", () => {
+  test("the page publishes NO badge itself — the apply-side attention surface owns it (G2)", () => {
+    // THE GAP THIS ARM GUARDS: a sidebar page is mounted only while it is the ACTIVE page, so a
+    // page-side badge could only ever decorate a page the user is already looking at. The publisher
+    // moved to `panel-attention.ts` (driven by the team feed, from apply), and `host.notifications`
+    // staying EMPTY here is what proves the page did not keep a second writer alive.
     /** The kit. */
     const kit = makeKit({ columns: 80 })
-    /** The host double. */
+    /** The host double, whose notification log is the observation. */
     const host = makeHost()
     /** The page. */
     const page = createDagPanelComponent(() => workflowFixture()) as (props: unknown) => unknown
     render(page, kit, host)
     kit.runEffects()
-    // The chain fixture carries a failed task, so the badge is an `error` and the count is the number
-    // of actionable tasks — asserted as the DERIVED shape rather than as a magic number, so the arm
-    // keeps meaning something if the fixture grows.
-    expect(host.notifications).toHaveLength(1)
-    expect(host.notifications[0]?.level).toBe("error")
-    expect(host.notifications[0]?.unread).toBe(dagBadge(chainTasks())?.unread as number)
-    // A SECOND render with the same state publishes NOTHING: `notify` per render would make the host's
-    // own badge listener fire in a loop.
+    expect(host.notifications).toHaveLength(0)
+    // A SECOND render is still silent: nothing here publishes on a change either.
     render(page, kit, host)
     kit.runEffects()
-    expect(host.notifications).toHaveLength(1)
+    expect(host.notifications).toHaveLength(0)
+    // The LADDER itself is unchanged and still belongs to `dagBadge` — asserted here so the two cannot
+    // drift while the publisher moved.
+    expect(dagBadge(chainTasks())?.level).toBe("error")
   })
 })
 
