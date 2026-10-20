@@ -24,6 +24,9 @@ dist/mpd-package/
 .research/
 .venv*/
 
+# dsh-tui session exports (`/export`) are local scratch, never a deliverable
+dsh-tui-export-*.md
+
 # compiled build artifacts (never commit objects)
 .sim_build/
 sim_build/
