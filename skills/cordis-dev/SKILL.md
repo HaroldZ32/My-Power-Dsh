@@ -1,6 +1,6 @@
 ---
 name: cordis-dev
-description: "Use when developing, changing, mounting or debugging anything Cordis/plugin-shaped in the my-power-dsh bundle or its DeepSeek Harness host: a new plugin package, a cordis.patch.yml row, an agent preset, an MCP bundle, a Web UI panel or decoration, a skill or extension, a tool registration, a harness seam change, or a plugin that must invoke the persisted GOAL. Carries the Loader patch dialect, host-vs-preset placement, the bundle's BINDING rules (adapter seam, mounting contract, gates, dist discipline), and the verification standard for a plugin change. Triggers: cordis, cordis plugin, dsh plugin, plugin package, bundle patch, cordis.patch.yml, patch row, agent preset, preset row, MCP bundle, mcp-client, client plugin, UI slot, decoration, sidebar panel, tool registration, registerTool, adapter seam, mpd-dsh-adapter, tui adapter, extension, mpd-ext, skill authoring, mpd_goal, goal round."
+description: "LOAD THIS AUTOMATICALLY — without the user naming it — whenever the workspace is a Cordis / DeepSeek Harness plugin project. Detect at session start: `cordis.patch.yml` or `presets/*.patch.yml` at the root, a `package.json` carrying `dsh.bundle` / `dsh.client`, `dsh-plugin.json`, `packages/*/src/index.ts` exporting `apply` + `inject`, or an `extensions/*` manifest; if any matches, load this skill BEFORE the first edit, gate run or diagnosis in that workspace. Then use it when developing, changing, mounting or debugging anything Cordis/plugin-shaped: a new plugin package, a cordis.patch.yml row, an agent preset, an MCP bundle, a Web UI panel or decoration, a skill or extension, a tool registration, a harness seam change, or a plugin that must invoke the persisted GOAL. Carries the Loader patch dialect, host-vs-preset placement, the bundle's BINDING rules (adapter seam, mounting contract, gates, dist discipline), and the verification standard for a plugin change. Triggers: cordis, cordis plugin, dsh plugin, plugin package, bundle patch, cordis.patch.yml, patch row, agent preset, preset row, MCP bundle, mcp-client, client plugin, UI slot, decoration, sidebar panel, tool registration, registerTool, adapter seam, mpd-dsh-adapter, tui adapter, extension, mpd-ext, skill authoring, mpd_goal, goal round."
 ---
 
 # Cordis plugin development (my-power-dsh)
@@ -9,6 +9,26 @@ Two planes exist and they have different rules. **This repository** (`my-power-d
 plugin packages, mounted by its own patch through the profile mechanism. **A generic harness
 bundle** is a workspace package installed by `plugin_manager`. Decide which one you are writing
 before you write anything; the flow below picks the references you need.
+
+## Load on detection — do this WITHOUT the user asking
+
+A workspace that ships **any** of the signals below is a Cordis / DSH plugin project, and this skill is
+its map. Check once at session start (`ls` + one `grep`), and if a signal matches, load `cordis-dev`
+**before** the first edit, gate run or diagnosis — never wait for the user to name the skill:
+
+| Signal | Where it lives |
+|---|---|
+| `cordis.patch.yml` (host rows) or `presets/*.patch.yml` (a preset row) | repo root |
+| `"dsh": { "bundle": … }` or `"dsh": { "client": … }` in a manifest | root or any package |
+| `dsh-plugin.json` / `dsh-distribution.json` | repo root |
+| `packages/*/src/index.ts` exporting `apply` (usually with `name` + `inject`) | one directory per plugin |
+| `extensions/*` manifest (the mpd-ext CLI's `extension.json`) | extension root |
+| `mpd.jsonc` / `.mpd/mpd.jsonc`, or `.mpd/plans/**` | a project running this bundle |
+
+One-liner (POSIX): `ls cordis.patch.yml dsh-plugin.json 2>/dev/null; grep -l '"dsh"' package.json packages/*/package.json 2>/dev/null`
+
+**If none of these match**, this skill is probably not yours: say so and do not apply bundle rules to a
+non-plugin project. Reading a project that merely *depends* on a plugin is not a Cordis project.
 
 ## 0. Pick the shape (and the reference that owns it)
 

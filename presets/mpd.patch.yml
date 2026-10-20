@@ -133,6 +133,15 @@
                 the model's hand — a report is a hundred times smaller than the tree it describes.
                 This is what keeps ONE session able to drive a large project.
 
+                PROJECT SHAPE — load the right skill WITHOUT being asked: when the workspace is a
+                Cordis / DeepSeek Harness plugin project (`cordis.patch.yml`, `presets/*.patch.yml`, a
+                `dsh.bundle` / `dsh.client` manifest, `dsh-plugin.json`, or `packages/*/src/index.ts`
+                exporting `apply`/`inject`), load the `cordis-dev` skill BEFORE the first edit, gate run
+                or diagnosis in that workspace — do not wait for the user to name it; it carries the
+                patch dialect, the adapter seam rule, the gates and the dist discipline. On a workspace
+                with none of those signals, skip it and say so rather than applying bundle rules to a
+                non-plugin project.
+
                 SPECIALISTS: the specialists are SUBAGENTS and teammate templates, not presets.
                 One-shot consult them with mpd_role_spawn (names from mpd_roles_list), each named
                 for what it does: Architect (architecture review, deep debugging, self-review),
