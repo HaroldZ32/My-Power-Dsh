@@ -1279,8 +1279,13 @@ export interface DshAdapter {
    * artifacts instead is a guess; the agent registry already knows each live session's
    * `session.header.cwd`, and this method exposes exactly that lookup. Agentless surfaces only.
    *
+   * PRESENCE IS PART OF THE ANSWER (CodeRabbit round 4): a session created WITHOUT `meta.cwd` (a fork
+   * that preserved the omission) has no `session.header.cwd`. For a session the registry DOES hold, the
+   * answer follows the host's own precedence — cwd, then `DSH_WORKSPACE_ROOT`, then `process.cwd()`;
+   * an id no live agent holds still answers undefined, so the caller can refuse instead of guessing.
+   *
    * @param sessionId the live session id the request names.
-   * @returns the absolute workspace root, or undefined when the registry has no such session.
+   * @returns the absolute workspace root for a matched live session, or undefined for an unknown id.
    */
   workspaceRootForSession(sessionId: string): string | undefined
   /**
@@ -2136,11 +2141,29 @@ function sessionCwdOf(agent: any): string | undefined {
   }
 }
 
+/**
+ * The host's workspace precedence for ONE agent: its cwd, then `DSH_WORKSPACE_ROOT`, then the process
+ * directory.
+ *
+ * Split out of {@link workspaceRootOf} so a MATCHED live session with no `meta.cwd` (a fork that
+ * preserved the omission) resolves exactly as the host resolves it, while an UNMATCHED id remains
+ * undefined for {@link workspaceRootForSessionOf} — presence is what separates a fallback from a guess.
+ * @param agent - a live harness Agent.
+ * @returns the absolute workspace root this agent resolves to.
+ */
+function workspaceRootOfAgent(agent: any): string {
+  /** The agent's own session workspace, which outranks every process-wide source. */
+  const session = sessionCwdOf(agent)
+  if (session !== undefined) return resolve(session)
+  /** The operator/QA process override, read per call and never cached. */
+  const override = process.env.DSH_WORKSPACE_ROOT
+  if (typeof override === "string" && override.length > 0) return resolve(override)
+  return process.cwd()
+}
+
 /** The authoritative workspace root for a call (see precedence above). */
 export function workspaceRootOf(exec?: DshToolExec): string {
-  /** The calling session's own workspace, which outranks every process-wide source. */
-  const session = sessionCwdOf(exec?.agent)
-  if (session !== undefined) return resolve(session)
+  if (exec?.agent !== undefined && exec?.agent !== null) return workspaceRootOfAgent(exec.agent)
   /** The operator/QA process override, read per call and never cached. */
   const override = process.env.DSH_WORKSPACE_ROOT
   if (typeof override === "string" && override.length > 0) return resolve(override)
@@ -2513,9 +2536,10 @@ export function workspaceRootForSessionOf(agents: any, sessionId: string): strin
       /** One live agent's session identity, when it exposes one. */
       const id = agent?.session?.id
       if (typeof id === "string" && id === sessionId) {
-        /** That agent's session cwd, resolved exactly as `workspaceRootOf` does. */
-        const cwd = sessionCwdOf(agent)
-        if (cwd !== undefined) return resolve(cwd)
+        // A MATCHED live session always answers: with its cwd, or with the host's own fallback when a
+        // cwd-less session (a fork that omitted `meta.cwd`) genuinely has none. An UNMATCHED id falls
+        // through to undefined, which is what lets the caller refuse instead of reading another root.
+        return workspaceRootOfAgent(agent)
       }
     }
   } catch {
