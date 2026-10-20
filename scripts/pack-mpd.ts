@@ -285,6 +285,21 @@ const PLUGIN_PKGS: readonly string[] = [
   "mpd-goal-plugin",
   "mpd-bundle-plugin"
 ]
+/**
+ * Internal LIBRARY packages whose built `dist/` ships although NO patch row mounts one.
+ *
+ * WHY THIS LIST EXISTS: `verify-pack-closure.ts`'s dist contract (T-65) requires EVERY
+ * `packages/<pkg>/dist/**` file in the shipped tree to have an artifact counterpart. `mpd-graph-core`
+ * is the shared plan→graph model the team/TUI packages INLINE at build time, so no row mounts it and
+ * it is correctly absent from `PLUGIN_PKGS` — but its `dist/` is still a shipped tree file. The
+ * living-graph wave left it out and the closure gate reddened on exactly that file (measured
+ * 2026-10-19: `packages/mpd-graph-core/dist/index.js … the packed tree has NO counterpart`). Shipping
+ * its dist is the whole fix. A package that owns NO dist belongs in `SOURCE_PKGS` instead.
+ */
+const INLINED_PKGS: readonly string[] = [
+  "mpd-graph-core",
+]
+
 /** The MCP server packages whose launcher modules and assets ship in the packed tree. */
 const MCP_PKGS: readonly string[] = ["mpd-mcp-astgrep", "mpd-mcp-gitbash", "mpd-mcp-lsp", "mpd-mcp-codegraph"]
 
@@ -393,7 +408,7 @@ const VALIDATOR_ENTRY: string = join("packages", "mpd-ext-plugin", "dist", "vali
 function cpDist(): void {
   /** Package names whose `dist/` directory is absent, collected so ONE message names them all. */
   const missing: string[] = []
-  for (const p of [...PLUGIN_PKGS, ...MCP_PKGS]) {
+  for (const p of [...PLUGIN_PKGS, ...MCP_PKGS, ...INLINED_PKGS]) {
     /** The package's built output directory in this checkout. */
     const src = join(repoRoot, "packages", p, "dist")
     if (!existsSync(src)) { missing.push(p); continue }

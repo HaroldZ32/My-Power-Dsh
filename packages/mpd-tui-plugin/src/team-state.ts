@@ -1139,6 +1139,21 @@ export function readRecordWorkflow(workspace: string, holds: readonly string[], 
   const problems: string[] = []
   /** The board, capped so one pathological record cannot stall a render. */
   const board: TeamTaskRecord[] = record.tasks.slice(0, MAX_TASKS)
+  // OWNERSHIP HAS TWO SPELLINGS, and this projection read only one: a declared owner carries a display
+  // name, while a CLAIM stamps the claimer's executor handle (the session id). The member cards credit
+  // by name, so a handle-owned task rendered as `0/0` beside a completed board (measured 2026-10-19 on
+  // the Docker TUI lane). The record's own roster maps a handle back to its member name here, once.
+  /** The roster's executor handles mapped back to their display names. */
+  const handleToName = new Map<string, string>()
+  for (const member of record.members) {
+    /** This member's handle, when the record carries one. */
+    const handle = scalarText(member.executorRef, 80)
+    /** This member's display name. */
+    const name = scalarText(member.name, 80)
+    if (handle !== undefined && name !== undefined) handleToName.set(handle, name)
+  }
+  /** The task owner as a member NAME: a claim's handle resolves to its roster row. */
+  const ownerName = (owner: string | undefined): string | undefined => owner === undefined ? undefined : (handleToName.get(owner) ?? owner)
   /** The projected rows, built before the depth and visual passes below. */
   const tasks: TeamTaskRow[] = board.map((task) => ({
     id: scalarText(task.id, 40) ?? "",
@@ -1147,7 +1162,7 @@ export function readRecordWorkflow(workspace: string, holds: readonly string[], 
     kind: scalarText(task.kind, 24),
     status: scalarText(task.status, 40) ?? "pending",
     visual: "open",
-    assignee: scalarText(task.owner, 80),
+    assignee: ownerName(scalarText(task.owner, 80)),
     attempt: typeof task.attempt === "number" ? task.attempt : undefined,
     round: typeof task.round === "number" ? task.round : undefined,
     verdict: scalarText(task.verdict, 40),

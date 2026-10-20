@@ -253,7 +253,7 @@ docker tag  docker.m.daocloud.io/library/node:24-bookworm node:24-bookworm
 
 一次 `--live` 运行驱动**三个**平面，而不是一个：经网关的真实 **WEB** 回合（第 12 步）、敲进 tmux PTY 的真实
 **TUI** 回合（`docker/tui-lane.sh`），以及真实的 **HEADLESS** 回合（第 15 步）。WEB 与 TUI 的提示词是固定的
-短任务（调用一次 `mpd_config_get`），因此它们的断言针对本 bundle 自己的工具平面；headless 步骤的默认任务才是
+短任务（调用一次 `mpd_config_get`），或 `MPD_E2E_TEAM_PROJECT=1` 下的建队提示词（见下文），因此它们的断言针对本 bundle 自己的工具平面；headless 步骤的默认任务才是
 **团队平面冒烟提示词**。
 
 `MPD_E2E_LIVE_PROMPT` 只**替换** headless 任务：当它被设置且非空时，其值原样作为该回合的提示词，因此可以要求
@@ -282,6 +282,30 @@ node scripts/docker-e2e.ts --live         # 加 --mode all 可跑 source + onecl
 行之外，读取器还记录 `live.web.noPromptVariableError`、`live.tui.noPromptVariableError` 与
 `live.headless.noPromptVariableError`：人设模板引用未注册的 prompt 变量时，会在模型请求**之前**抛错，
 因此只做挂载的 lane 会在每个回合都死掉时仍然显示绿色。2026-10-19 的 `{{cwd}}` 缺陷正是这一类。
+
+### 实时团队工程（`MPD_E2E_TEAM_PROJECT=1`）
+
+上面的实时断言各自只证明**一次**工具调用。本开关问的是另一个问题：一个人能否从每个界面**自己的**输入路径
+建出一个真实的双成员团队，并把一个小工程做完？在 `MPD_E2E_TEAM_PROJECT=1` 且 `--live` 时，浏览器 lane 会把
+建队提示词敲进 Web 输入框，TUI lane 会把同一条提示词敲进 tmux PTY。两者都要求
+`agent_teams_plan` 拟定计划 → 两个成员 → 两个任务（第二个被第一个阻塞）→ 批准 → 派发 → 等待 → 二次派发 →
+关闭两个任务，并由成员写出并**实际运行测试** `team-project-web/` 与 `team-project-tui/`。
+
+判定读的是**产物**，不是模型自述：`docker/lib/team-project-verdict.ts` 读取团队记录、成员的执行器句柄
+（**每个**成员都必须真正被拉起）、依赖边、任务状态及其归属成员、工程文件（必须写于本步骤开始之后），并真实运行
+**两次**测试——团队自己写的测试，以及验证器针对团队模块写下的 `sum(2, 3) === 5` 断言，因此空转的测试无法替工程
+背书。界面证据另有一套且更强：`ui.teamBoard` 要求 Web 侧边栏渲染出**真实的**已绑定团队
+（`data-mpd-team-tab` 等于**本回合**写出的记录 id、`MEMBERS (2)`、`TASKS (2)`），TUI 侧则要求抓到的
+`/mpd team` 画面写出真实团队名并画出两个任务 id。每条记录还绑定到该平面实际驱动的那个实时会话。
+
+本模式下 headless 回合**故意**保留单工具任务：在一次性 CLI 里批准一个团队可能留下仍存活的队友，进程于是再也
+不退出（2026-10-19 实测：~0% CPU 挂起 30 分钟以上，且不产出报告）。因此团队构建归属两个 server/PTY 平面，
+`live.teamRecord` / `live.nativeExecutor` 以 `null` **连同该原因**记录；驱动的必需断言门禁改为点名两个 UI 平面的
+live 行与 `teamproject.*`。`MPD_E2E_TEAM_BUDGET_MS`（默认 1500000）限定每个团队回合的预算。
+
+证据：`ui-shots/ui-06-team-board.png`（回合结束后的 Web 面板）、`ui-shots/ui-03-reply.png`（对话记录）、
+`tui-panes/tui-team-live.ansi`（用 `python3 docker/ui/tui-render.py <ansi> <png>` 光栅化为图片），以及
+`result.json` 中的 `teamproject.*` 行。
 
 ## 隔离模型
 

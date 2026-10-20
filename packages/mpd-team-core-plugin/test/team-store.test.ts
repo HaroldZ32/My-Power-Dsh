@@ -251,6 +251,24 @@ describe("the derived state", () => {
     // A member that owns nothing is not an error, it is an empty row.
     expect(memberProgress(record, "Nobody")).toEqual({ done: 0, total: 0 })
   })
+
+  test("a task claimed under the member's EXECUTOR HANDLE is attributed to that member", () => {
+    // OWNERSHIP HAS TWO SPELLINGS, and the panel read only one of them: a declared owner carries the
+    // display name, while a member that CLAIMED its task stamps its executor handle (the session id).
+    // Measured 2026-10-19 on the Docker Web lane: the card said `0/0` beside a board the member had
+    // just completed, and the same blind spot could keep a busy member in the dispatch pool.
+    /** The seeded record with one member's handle recorded. */
+    let record = updateTeamMember(seeded(), "Senior Engineer", { executorRef: "sess-eng" })
+    record = updateTeamTask(record, "T1", { status: "in_progress", owner: "sess-eng" }, LATER)
+    expect(memberProgress(record, "Senior Engineer")).toEqual({ done: 0, total: 1, current: "T1" })
+    // The in-flight claim keeps the member out of the idle pool, whichever spelling stamped it.
+    expect(idleMembers(record).map((member) => member.name)).not.toContain("Senior Engineer")
+    /** The board after the claim closed. */
+    const closed = updateTeamTask(record, "T1", { status: "completed" }, LATER)
+    expect(memberProgress(closed, "Senior Engineer")).toEqual({ done: 1, total: 1 })
+    // A handle belonging to NO member does not become somebody's work by accident.
+    expect(memberProgress(closed, "Reviewer").total).toBe(1)
+  })
 })
 
 describe("the index and the files", () => {

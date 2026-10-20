@@ -72,6 +72,13 @@ services:
       # load-bearing: without it compose would warn about an unset variable and hand the container
       # NOTHING, which would look identical to the default while proving nothing.
       MPD_E2E_LIVE_PROMPT: ${MPD_E2E_LIVE_PROMPT:-}
+      # THE LIVE TEAM PROJECT (docker/entrypoint.sh, docker/lib/team-project-verdict.ts). `1` asks BOTH
+      # UI planes to build a real two-member team and a small tested project through their own input
+      # path; unset/0 leaves every existing arm byte-for-byte. The budget is its own because a team
+      # turn spans approval, two raises, two dispatches and two member turns. BOTH are interpolated
+      # HERE for the measured compose reason above: a knob only the entrypoint reads is unreachable.
+      MPD_E2E_TEAM_PROJECT: ${MPD_E2E_TEAM_PROJECT:-}
+      MPD_E2E_TEAM_BUDGET_MS: ${MPD_E2E_TEAM_BUDGET_MS:-1500000}
       # THE NPM TRANSPORT (2026-10-09, measured: the official registry's scoped-metadata endpoint
       # answered in 1.5 s once and FAILED on the next probe, and npm retried a failure like that for 23
       # minutes at 0.3% CPU until the run had to be killed). `MPD_E2E_NPM_REGISTRY` names a registry to
@@ -112,6 +119,10 @@ services:
       # SAME entrypoint and therefore share step 15, so a knob named on only one of them would make
       # the prompt depend on which service the operator drove.
       MPD_E2E_LIVE_PROMPT: ${MPD_E2E_LIVE_PROMPT:-}
+      # Same live-team-project knobs as `mpd-client` (see the comment there): both services run the
+      # SAME entrypoint, so a knob named on only one of them would make the run depend on the service.
+      MPD_E2E_TEAM_PROJECT: ${MPD_E2E_TEAM_PROJECT:-}
+      MPD_E2E_TEAM_BUDGET_MS: ${MPD_E2E_TEAM_BUDGET_MS:-1500000}
       # THE NPM TRANSPORT (2026-10-09, measured: the official registry's scoped-metadata endpoint
       # answered in 1.5 s once and FAILED on the next probe, and npm retried a failure like that for 23
       # minutes at 0.3% CPU until the run had to be killed). `MPD_E2E_NPM_REGISTRY` names a registry to

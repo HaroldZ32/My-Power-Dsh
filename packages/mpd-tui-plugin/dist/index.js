@@ -1264,10 +1264,18 @@ function sessionCwdOf(agent) {
     return;
   }
 }
-function workspaceRootOf(exec) {
-  const session = sessionCwdOf(exec?.agent);
+function workspaceRootOfAgent(agent) {
+  const session = sessionCwdOf(agent);
   if (session !== undefined)
     return resolve3(session);
+  const override = process.env.DSH_WORKSPACE_ROOT;
+  if (typeof override === "string" && override.length > 0)
+    return resolve3(override);
+  return process.cwd();
+}
+function workspaceRootOf(exec) {
+  if (exec?.agent !== undefined && exec?.agent !== null)
+    return workspaceRootOfAgent(exec.agent);
   const override = process.env.DSH_WORKSPACE_ROOT;
   if (typeof override === "string" && override.length > 0)
     return resolve3(override);
@@ -1341,6 +1349,26 @@ function workspaceRootsOf(agents) {
   } catch {
     return [];
   }
+}
+function workspaceRootForSessionOf(agents, sessionId) {
+  if (typeof sessionId !== "string" || sessionId === "")
+    return;
+  if (agents === undefined || agents === null || typeof agents.list !== "function")
+    return;
+  try {
+    const list = agents.list();
+    if (!Array.isArray(list))
+      return;
+    for (const agent of list) {
+      const id = agent?.session?.id;
+      if (typeof id === "string" && id === sessionId) {
+        return workspaceRootOfAgent(agent);
+      }
+    }
+  } catch {
+    return;
+  }
+  return;
 }
 function noop() {}
 var GOAL_TOOL_NAMES = ["get_goal", "create_goal", "update_goal"];
@@ -1576,6 +1604,13 @@ function createDshAdapter(ctx, config = {}) {
   }
   const workspaceRoot = (exec) => workspaceRootOf(exec);
   const workspaceRootsAll = () => workspaceRootsOf(service("agents"));
+  const workspaceRootForSession = (sessionId) => {
+    try {
+      return workspaceRootForSessionOf(service("agents"), sessionId);
+    } catch {
+      return;
+    }
+  };
   const rowLog = (name, line) => rowLogLine(name, line);
   function liveAgents() {
     const agents = service("agents");
@@ -2004,6 +2039,7 @@ function createDshAdapter(ctx, config = {}) {
     },
     workspaceRoot,
     workspaceRootsAll,
+    workspaceRootForSession,
     rowLog,
     liveAgents,
     liveAgent,
@@ -2019,6 +2055,19 @@ function createDshAdapter(ctx, config = {}) {
         return goalSnapshotOf(view) ?? null;
       } catch {
         return;
+      }
+    },
+    webRequestRejection(request) {
+      try {
+        if (typeof ctx?.get !== "function")
+          return 401;
+        const connection = ctx.get("connection", false);
+        if (connection === undefined || typeof connection.requestRejection !== "function")
+          return 401;
+        const headers = request?.headers;
+        return connection.requestRejection({ headers: typeof headers === "object" && headers !== null ? headers : {} }) ?? undefined;
+      } catch {
+        return 401;
       }
     },
     async goalControl(input) {
@@ -4653,6 +4702,14 @@ function modelRanks(workflow) {
 function readRecordWorkflow(workspace, holds, record, source) {
   const problems = [];
   const board = record.tasks.slice(0, MAX_TASKS);
+  const handleToName = new Map;
+  for (const member of record.members) {
+    const handle = scalarText(member.executorRef, 80);
+    const name = scalarText(member.name, 80);
+    if (handle !== undefined && name !== undefined)
+      handleToName.set(handle, name);
+  }
+  const ownerName = (owner) => owner === undefined ? undefined : handleToName.get(owner) ?? owner;
   const tasks = board.map((task) => ({
     id: scalarText(task.id, 40) ?? "",
     subject: scalarText(task.subject, 160) ?? "",
@@ -4660,7 +4717,7 @@ function readRecordWorkflow(workspace, holds, record, source) {
     kind: scalarText(task.kind, 24),
     status: scalarText(task.status, 40) ?? "pending",
     visual: "open",
-    assignee: scalarText(task.owner, 80),
+    assignee: ownerName(scalarText(task.owner, 80)),
     attempt: typeof task.attempt === "number" ? task.attempt : undefined,
     round: typeof task.round === "number" ? task.round : undefined,
     verdict: scalarText(task.verdict, 40),

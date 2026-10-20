@@ -236,10 +236,18 @@ function sessionCwdOf(agent) {
     return;
   }
 }
-function workspaceRootOf(exec) {
-  const session = sessionCwdOf(exec?.agent);
+function workspaceRootOfAgent(agent) {
+  const session = sessionCwdOf(agent);
   if (session !== undefined)
     return resolve2(session);
+  const override = process.env.DSH_WORKSPACE_ROOT;
+  if (typeof override === "string" && override.length > 0)
+    return resolve2(override);
+  return process.cwd();
+}
+function workspaceRootOf(exec) {
+  if (exec?.agent !== undefined && exec?.agent !== null)
+    return workspaceRootOfAgent(exec.agent);
   const override = process.env.DSH_WORKSPACE_ROOT;
   if (typeof override === "string" && override.length > 0)
     return resolve2(override);
@@ -313,6 +321,26 @@ function workspaceRootsOf(agents) {
   } catch {
     return [];
   }
+}
+function workspaceRootForSessionOf(agents, sessionId) {
+  if (typeof sessionId !== "string" || sessionId === "")
+    return;
+  if (agents === undefined || agents === null || typeof agents.list !== "function")
+    return;
+  try {
+    const list = agents.list();
+    if (!Array.isArray(list))
+      return;
+    for (const agent of list) {
+      const id = agent?.session?.id;
+      if (typeof id === "string" && id === sessionId) {
+        return workspaceRootOfAgent(agent);
+      }
+    }
+  } catch {
+    return;
+  }
+  return;
 }
 function noop() {}
 var GOAL_TOOL_NAMES = ["get_goal", "create_goal", "update_goal"];
@@ -548,6 +576,13 @@ function createDshAdapter(ctx, config = {}) {
   }
   const workspaceRoot = (exec) => workspaceRootOf(exec);
   const workspaceRootsAll = () => workspaceRootsOf(service("agents"));
+  const workspaceRootForSession = (sessionId) => {
+    try {
+      return workspaceRootForSessionOf(service("agents"), sessionId);
+    } catch {
+      return;
+    }
+  };
   const rowLog = (name, line) => rowLogLine(name, line);
   function liveAgents() {
     const agents = service("agents");
@@ -976,6 +1011,7 @@ function createDshAdapter(ctx, config = {}) {
     },
     workspaceRoot,
     workspaceRootsAll,
+    workspaceRootForSession,
     rowLog,
     liveAgents,
     liveAgent,
@@ -991,6 +1027,19 @@ function createDshAdapter(ctx, config = {}) {
         return goalSnapshotOf(view) ?? null;
       } catch {
         return;
+      }
+    },
+    webRequestRejection(request) {
+      try {
+        if (typeof ctx?.get !== "function")
+          return 401;
+        const connection = ctx.get("connection", false);
+        if (connection === undefined || typeof connection.requestRejection !== "function")
+          return 401;
+        const headers = request?.headers;
+        return connection.requestRejection({ headers: typeof headers === "object" && headers !== null ? headers : {} }) ?? undefined;
+      } catch {
+        return 401;
       }
     },
     async goalControl(input) {
@@ -2433,7 +2482,8 @@ function losslessSummary(summary) {
   return { ...summary, depths: Object.fromEntries(summary.depths) };
 }
 function memberProgress(record, name) {
-  const owned = record.tasks.filter((task) => task.owner === name);
+  const handles = new Set(record.members.filter((member) => member.name === name && typeof member.executorRef === "string" && member.executorRef !== "").map((member) => member.executorRef));
+  const owned = record.tasks.filter((task) => task.owner === name || task.owner !== undefined && handles.has(task.owner));
   const current = owned.find((task) => task.status !== "completed" && task.status !== "cancelled");
   return {
     done: owned.filter((task) => task.status === "completed").length,
@@ -2446,7 +2496,7 @@ function readyTasks(record) {
 }
 function idleMembers(record) {
   const busy = new Set(record.tasks.filter((task) => task.status === "in_progress" || task.status === "claimed").map((task) => task.owner).filter((owner) => owner !== undefined));
-  return record.members.filter((member) => member.status === "running" && !busy.has(member.name));
+  return record.members.filter((member) => member.status === "running" && !busy.has(member.name) && (member.executorRef === undefined || member.executorRef === "" || !busy.has(member.executorRef)));
 }
 
 // packages/mpd-team-core-plugin/src/plan-store.ts
@@ -2812,6 +2862,11 @@ function registerTeamRoutes(webServer, deps) {
         kind: "exact",
         path,
         handler: (req, res) => {
+          const rejection = deps.authorize?.(req);
+          if (rejection !== undefined) {
+            json(res, rejection, { ok: false, error: `mpd-team-core: the request is not authenticated for ${path}` });
+            return;
+          }
           try {
             json(res, 200, build(req));
           } catch (error) {
@@ -2848,13 +2903,25 @@ function registerTeamRoutes(webServer, deps) {
   const events = (req, res) => {
     const subscribe = deps.subscribe;
     const revision = deps.revision;
+    const rejection = deps.authorize?.(req);
+    if (rejection !== undefined) {
+      json(res, rejection, { ok: false, error: "mpd-team-core: the request is not authenticated for the events stream" });
+      return;
+    }
     if (subscribe === undefined || revision === undefined) {
       json(res, 503, { ok: false, error: "mpd-team-core: the team change feed is unavailable in this composition" });
       return;
     }
     const out = res;
-    const workspace = deps.workspace();
     const sessionId = sessionOf(req);
+    let workspace = "";
+    try {
+      workspace = deps.workspace(sessionId);
+    } catch (error) {
+      deps.warn(`resolving the events workspace failed: ${String(error?.message ?? error)}`);
+      json(res, 500, { ok: false, error: "mpd-team-core: the events stream could not resolve its workspace" });
+      return;
+    }
     const revisionNow = () => {
       try {
         return revision(workspace);
@@ -2925,17 +2992,17 @@ data: ${JSON.stringify({ rev: revisionNow() })}
   };
   all = mount(TEAM_STATE_PATH, (req) => {
     const sessionId = sessionOf(req);
-    const workspace = deps.workspace();
+    const workspace = deps.workspace(sessionId);
     const record = deps.recordFor(sessionId);
     const model = record === undefined ? undefined : deps.graph?.(workspace, record.teamId);
     return buildTeamState(record, workspace, sessionId, deps.executor(), buildWorkspaceTeams(listTeams(workspace), activeTeamId(workspace, sessionId)), model);
   }) && all;
   all = mount(TEAM_PLAN_PATH, (req) => {
     const sessionId = sessionOf(req);
-    return planForSession(deps.workspace(), sessionId);
+    return planForSession(deps.workspace(sessionId), sessionId);
   }) && all;
-  all = mount(TEAM_TASK_PATH, () => buildTeamTasks(deps.workspace())) && all;
-  all = mount(TEAM_MAIL_PATH, () => buildTeamMail(deps.workspace())) && all;
+  all = mount(TEAM_TASK_PATH, (req) => buildTeamTasks(deps.workspace(sessionOf(req)))) && all;
+  all = mount(TEAM_MAIL_PATH, (req) => buildTeamMail(deps.workspace(sessionOf(req)))) && all;
   all = mountStream(TEAM_EVENTS_PATH, events) && all;
   return all;
 }
@@ -5002,9 +5069,29 @@ Add members and tasks with agent_teams_plan {action: "add_member" | "create_task
       };
       rowLogLine("mpd-team-core", `[mpd-team-core] team workflow plane: staged=${pending} hold=${readHold(root) === undefined ? "none" : "held"} registrations=${disposers.length} (${disposers.length - 1} tools + the /agent-teams command)`);
       reportExecutor();
+      const workspaceForRequest = (sessionId) => {
+        if (sessionId === "")
+          return dsh.workspaceRoot();
+        try {
+          const own = dsh.workspaceRootForSession(sessionId);
+          if (own !== undefined && own !== "")
+            return own;
+        } catch {}
+        const roots = dsh.workspaceRootsAll();
+        for (const root2 of roots) {
+          try {
+            if (recordFor(root2, sessionId) !== undefined)
+              return root2;
+            if (readPlan(root2, sessionId) !== undefined)
+              return root2;
+          } catch {}
+        }
+        throw new Error(`mpd-team-core: no workspace is bound to session "${sessionId}" — refusing to answer from another workspace`);
+      };
       const mountTeamRoute = () => registerTeamRoutes(dsh.webServerOf(), {
-        recordFor: (sessionId) => recordFor(dsh.workspaceRoot(), sessionId),
-        workspace: () => dsh.workspaceRoot(),
+        recordFor: (sessionId) => recordFor(workspaceForRequest(sessionId), sessionId),
+        workspace: (sessionId) => workspaceForRequest(sessionId ?? ""),
+        authorize: (request) => dsh.webRequestRejection(request),
         executor: () => {
           const view = executor();
           return { kind: view.kind, reason: view.reason };

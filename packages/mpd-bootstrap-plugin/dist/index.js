@@ -242,10 +242,18 @@ function sessionCwdOf(agent) {
     return;
   }
 }
-function workspaceRootOf(exec) {
-  const session = sessionCwdOf(exec?.agent);
+function workspaceRootOfAgent(agent) {
+  const session = sessionCwdOf(agent);
   if (session !== undefined)
     return resolve2(session);
+  const override = process.env.DSH_WORKSPACE_ROOT;
+  if (typeof override === "string" && override.length > 0)
+    return resolve2(override);
+  return process.cwd();
+}
+function workspaceRootOf(exec) {
+  if (exec?.agent !== undefined && exec?.agent !== null)
+    return workspaceRootOfAgent(exec.agent);
   const override = process.env.DSH_WORKSPACE_ROOT;
   if (typeof override === "string" && override.length > 0)
     return resolve2(override);
@@ -319,6 +327,26 @@ function workspaceRootsOf(agents) {
   } catch {
     return [];
   }
+}
+function workspaceRootForSessionOf(agents, sessionId) {
+  if (typeof sessionId !== "string" || sessionId === "")
+    return;
+  if (agents === undefined || agents === null || typeof agents.list !== "function")
+    return;
+  try {
+    const list = agents.list();
+    if (!Array.isArray(list))
+      return;
+    for (const agent of list) {
+      const id = agent?.session?.id;
+      if (typeof id === "string" && id === sessionId) {
+        return workspaceRootOfAgent(agent);
+      }
+    }
+  } catch {
+    return;
+  }
+  return;
 }
 function noop() {}
 var GOAL_TOOL_NAMES = ["get_goal", "create_goal", "update_goal"];
@@ -554,6 +582,13 @@ function createDshAdapter(ctx, config = {}) {
   }
   const workspaceRoot = (exec) => workspaceRootOf(exec);
   const workspaceRootsAll = () => workspaceRootsOf(service("agents"));
+  const workspaceRootForSession = (sessionId) => {
+    try {
+      return workspaceRootForSessionOf(service("agents"), sessionId);
+    } catch {
+      return;
+    }
+  };
   const rowLog = (name, line) => rowLogLine(name, line);
   function liveAgents() {
     const agents = service("agents");
@@ -982,6 +1017,7 @@ function createDshAdapter(ctx, config = {}) {
     },
     workspaceRoot,
     workspaceRootsAll,
+    workspaceRootForSession,
     rowLog,
     liveAgents,
     liveAgent,
@@ -997,6 +1033,19 @@ function createDshAdapter(ctx, config = {}) {
         return goalSnapshotOf(view) ?? null;
       } catch {
         return;
+      }
+    },
+    webRequestRejection(request) {
+      try {
+        if (typeof ctx?.get !== "function")
+          return 401;
+        const connection = ctx.get("connection", false);
+        if (connection === undefined || typeof connection.requestRejection !== "function")
+          return 401;
+        const headers = request?.headers;
+        return connection.requestRejection({ headers: typeof headers === "object" && headers !== null ? headers : {} }) ?? undefined;
+      } catch {
+        return 401;
       }
     },
     async goalControl(input) {

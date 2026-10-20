@@ -257,11 +257,67 @@ export function decideExit(result: ResultBody | null | undefined): number {
  * @param prefixes - Assertion-name prefixes whose `null` rows are fatal (e.g. `live.`, `ui.`).
  * @returns The names of the unevaluated assertions inside a required arm, in report order.
  */
-export function unmeasuredRequired(result: ResultBody | null | undefined, prefixes: readonly string[]): string[] {
+export function unmeasuredRequired(result: ResultBody | null | undefined, prefixes: readonly string[], excluded: readonly string[] = []): string[] {
   if (result === null || result === undefined || prefixes.length === 0) return []
   return (result.assertions ?? [])
-    .filter((assertion: ResultAssertion) => assertion.ok === null && prefixes.some((prefix) => assertion.name.startsWith(prefix)))
-    .map((assertion: ResultAssertion) => assertion.name)
+    .filter((assertion: ResultAssertion) => assertion.ok === null
+      && prefixes.some((prefix) => assertion.name.startsWith(prefix))
+      && !excluded.includes(assertion.name))
+    .map((assertion) => assertion.name)
+}
+
+/** The rows a TEAM-PROJECT run must RECORD, per plane, in the order a reader checks them. */
+export function requiredTeamNames(): readonly string[] {
+  /** The fixed row suffixes every plane's verdict writes. */
+  const suffixes = ["record", "members", "executor", "board", "completed", "session", "files", "test"]
+  return [
+    "ui.teamBoard",
+    ...suffixes.map((suffix) => `teamproject.${suffix}.web`),
+    ...suffixes.map((suffix) => `teamproject.${suffix}.tui`),
+    "teamproject.pane.tui",
+  ]
+}
+
+/**
+ * The required names that are ABSENT or NULL in a result body.
+ *
+ * WHY NOT just `unmeasuredRequired`: that reader can only see a row the run WROTE as null. A verdict
+ * script that crashed, never ran, or wrote to the wrong file leaves NO row at all, and `ok` (which is
+ * `failed.length === 0`) then reads the absence as a pass — the exact "no evidence, no failure" shape
+ * the independent review named. Team mode therefore requires PRESENCE, not merely non-nullness.
+ * @param result - the result.json body, or null when the container never produced one.
+ * @param names - the required assertion names.
+ * @returns the names absent from the body or recorded with `ok: null`.
+ */
+export function missingOrNull(result: ResultBody | null | undefined, names: readonly string[]): string[] {
+  if (names.length === 0) return []
+  /** The body's rows by name, or an empty map when no body was produced. */
+  const byName = new Map((result?.assertions ?? []).map((assertion) => [assertion.name, assertion.ok]))
+  return names.filter((name) => !byName.has(name) || byName.get(name) === null)
+}
+
+/**
+ * The required-arm prefixes and the named exclusions for one invocation.
+ *
+ * WHY EXCLUSIONS EXIST (measured 2026-10-19, independent review). Two arms are NULL BY DESIGN in one
+ * mode each: `ui.teamBoard` is "not attempted" on a run that did not ask for a team build, and
+ * `live.teamRecord` / `live.nativeExecutor` are NULL in team-project mode because the headless turn
+ * deliberately keeps a single-tool subject there. Requiring the whole prefix without excluding those
+ * names would turn each mode's honest `null` into a false red. Team mode also REQUIRES the two
+ * `teamproject.record.*` rows, so a verdict that never ran cannot pass by writing nothing.
+ *
+ * @param opts - which arms this invocation asked for: live, the browser lane, the team project.
+ * @returns the prefixes whose NULLs are fatal, and the exact names excused.
+ */
+export function requiredPrefixesFor(opts: { live: boolean; browser: boolean; team: boolean }): { prefixes: readonly string[]; excluded: readonly string[] } {
+  return {
+    prefixes: [
+      ...(opts.live ? ["live.", "boot.llmTurn"] : []),
+      ...(opts.browser ? ["ui."] : []),
+      ...(opts.team ? ["teamproject.record.web", "teamproject.record.tui"] : []),
+    ],
+    excluded: opts.team ? ["live.teamRecord", "live.nativeExecutor"] : ["ui.teamBoard"],
+  }
 }
 
 /**
@@ -959,6 +1015,49 @@ function selfTest(): void {
   const spineNames = [...(/const EXPECTED: readonly string\[\] = \[([\s\S]*?)^\]/m.exec(reported)?.[1] ?? "").split("\n").filter((line: string) => !line.trim().startsWith("//")).join("\n").matchAll(/"([^"]+)"/g)].map((match) => match[1])
   check("the EXPECTED spine carries no duplicate name", spineNames.length === new Set(spineNames).size, `names=${spineNames.length} unique=${new Set(spineNames).size}`)
   check("the declared spine covers the union of both modes' rows", unionRequired.every((name) => spineNames.includes(name)) && spineNames.length >= 114, `spine=${spineNames.length}`)
+  // THE REQUIRED-ARM SELECTION, both modes, including the two names each may leave NULL. The blocker
+  // this pins: `ui.teamBoard` is a declared BOUND outside team mode, so requiring the whole `ui.`
+  // prefix made every ordinary live browser run exit 3.
+  /** A synthetic result carrying one NULL-named assertion. */
+  const nullRow = (name: string): ResultBody => ({ assertions: [{ name, ok: null }] })
+  /** The selection a non-team live browser run uses. */
+  const plainSelection = requiredPrefixesFor({ live: true, browser: true, team: false })
+  check("a plain live browser run requires live+ui and excuses only ui.teamBoard",
+    plainSelection.prefixes.includes("live.") && plainSelection.prefixes.includes("ui.")
+    && plainSelection.prefixes.every((prefix) => !prefix.startsWith("teamproject"))
+    && plainSelection.excluded.length === 1 && plainSelection.excluded[0] === "ui.teamBoard",
+    JSON.stringify(plainSelection))
+  check("the plain arm does NOT redden an unattempted ui.teamBoard",
+    unmeasuredRequired(nullRow("ui.teamBoard"), plainSelection.prefixes, plainSelection.excluded).length === 0)
+  check("the plain arm still reddens a DIFFERENT null ui row",
+    unmeasuredRequired(nullRow("ui.replyRendered"), plainSelection.prefixes, plainSelection.excluded).length === 1)
+  /** The selection a team-project run uses. */
+  const teamSelection = requiredPrefixesFor({ live: true, browser: true, team: true })
+  check("a team run requires both planes' record rows and excuses the two headless team rows",
+    teamSelection.prefixes.includes("teamproject.record.web") && teamSelection.prefixes.includes("teamproject.record.tui")
+    && teamSelection.excluded.includes("live.teamRecord") && teamSelection.excluded.includes("live.nativeExecutor"),
+    JSON.stringify(teamSelection))
+  check("the team arm excuses the two honest headless nulls",
+    unmeasuredRequired(nullRow("live.teamRecord"), teamSelection.prefixes, teamSelection.excluded).length === 0
+    && unmeasuredRequired(nullRow("live.nativeExecutor"), teamSelection.prefixes, teamSelection.excluded).length === 0)
+  check("the team arm still reddens a null live.web row",
+    unmeasuredRequired(nullRow("live.web.turnCompleted"), teamSelection.prefixes, teamSelection.excluded).length === 1)
+  check("the team arm reddens a missing team verdict (both record rows null)",
+    unmeasuredRequired(nullRow("teamproject.record.web"), teamSelection.prefixes, teamSelection.excluded).length === 1)
+  // PRESENCE: the requirement a verdict that wrote NOTHING cannot evade. `unmeasuredRequired` sees only
+  // recorded nulls, so these arms pin the absent-row case the independent review named.
+  check("requiredTeamNames covers both planes and the Web board",
+    requiredTeamNames().includes("ui.teamBoard") && requiredTeamNames().includes("teamproject.record.web")
+    && requiredTeamNames().includes("teamproject.test.tui") && requiredTeamNames().includes("teamproject.pane.tui")
+    && requiredTeamNames().length === 18, `names=${requiredTeamNames().length}`)
+  check("an ABSENT required team row is reported as missing",
+    missingOrNull({ assertions: [] }, ["teamproject.record.web"]).length === 1)
+  check("a NULL required team row is reported as missing",
+    missingOrNull(nullRow("teamproject.record.web"), ["teamproject.record.web"]).length === 1)
+  check("a recorded true team row is not missing",
+    missingOrNull({ assertions: [{ name: "teamproject.record.web", ok: true }] }, ["teamproject.record.web"]).length === 0)
+  check("a complete team body has nothing missing",
+    missingOrNull({ assertions: requiredTeamNames().map((name) => ({ name, ok: true })) }, requiredTeamNames()).length === 0)
 
   // 9. BUILDX_CONFIG: the sandbox cannot write ~/.docker/buildx, so every docker child must run
   //    with a writable buildx state dir and the caller's own value must win.
@@ -1160,6 +1259,18 @@ async function main(): Promise<void> {
   // spelling of the default, kept because a caller reading the release checklist looks for a flag
   // that NAMES the requirement rather than for the absence of an opt-out.
   const browserEnabled = argv.includes("--require-browser") || !argv.includes("--no-browser")
+  // THE TEAM-PROJECT PREFLIGHT RUNS BEFORE THE BUILD (CodeRabbit finding on PR #48). A team run needs a
+  // live turn (the prompts drive real model work) AND both UI planes (the verdict reads one record per
+  // plane); without either, the run could only end on the required-row gate — after paying the whole
+  // build, the container boot and up to the team budget. Refusing here costs nothing, leaks no private
+  // BUILDX_CONFIG dir, and matches the `--live`-without-key refusal above.
+  /** Whether this invocation asked for the live team project (forwarded to the container when set). */
+  const teamProjectRequested = process.env.MPD_E2E_TEAM_PROJECT === "1"
+  if (teamProjectRequested && (!liveRequested || !browserEnabled)) {
+    console.error("[driver] MPD_E2E_TEAM_PROJECT=1 needs --live and the browser lane (both UI team verdicts are the subject); refusing before the build.")
+    process.exitCode = 3
+    return
+  }
   /** The environment overrides for the compose run. */
   const envOverrides = [
     ...(mode === "oneclick" ? ["-e", "MPD_E2E_INSTALL_MODE=oneclick"] : []),
@@ -1175,6 +1286,11 @@ async function main(): Promise<void> {
     // only when a live run was asked for AND the value is non-empty — forwarding an empty string
     // would be a no-op the compose file already maps to the entrypoint's own default prompt.
     ...(livePromptOverride(liveRequested, process.env.MPD_E2E_LIVE_PROMPT) ? ["-e", "MPD_E2E_LIVE_PROMPT"] : []),
+    // THE LIVE TEAM PROJECT TRAVELS THE SAME WAY: by NAME, and only when the caller set it. `1` turns
+    // the mode on; the budget is forwarded only beside it (a budget without the mode is a no-op the
+    // entrypoint would ignore, so forwarding it alone would only add noise to the argv).
+    ...(process.env.MPD_E2E_TEAM_PROJECT === undefined || process.env.MPD_E2E_TEAM_PROJECT === "" ? [] : ["-e", "MPD_E2E_TEAM_PROJECT"]),
+    ...(process.env.MPD_E2E_TEAM_BUDGET_MS === undefined || process.env.MPD_E2E_TEAM_BUDGET_MS === "" ? [] : ["-e", "MPD_E2E_TEAM_BUDGET_MS"]),
     ...(browserEnabled ? ["-e", "MPD_E2E_BROWSER=1"] : []),
   ]
 
@@ -1268,15 +1384,28 @@ async function main(): Promise<void> {
   // THE REQUIRED-ARM GATE. An arm the caller asked for that came back unevaluated is a MISSING
   // PREREQUISITE, not a pass — exit 3, the same code `--require-docker` uses for a skipped lane. This
   // is what makes `--live` and the browser lane unfakeable: the run cannot green by not running them.
-  /** The assertion-name prefixes whose `null` rows are fatal for this invocation. */
-  const requiredPrefixes: string[] = [
-    ...(liveRequested ? ["live.", "boot.llmTurn"] : []),
-    ...(browserEnabled ? ["ui."] : []),
-  ]
+  // IN TEAM-PROJECT MODE TWO ARMS ARE NULL BY DESIGN: the headless turn deliberately keeps a
+  // single-tool subject there (a team approval can leave a teammate alive and hang the CLI — measured
+  // 2026-10-19), so `live.teamRecord` / `live.nativeExecutor` are recorded with that reason, while the
+  // two `teamproject.record.*` rows become REQUIRED. Outside team mode the reverse holds: `ui.teamBoard`
+  // is not attempted, and the rest of the `ui.` arm stays required. `requiredPrefixesFor` is the ONE
+  // place both lists live, so a mode cannot quietly stop requiring an arm.
+  // TEAM MODE'S PREFLIGHT ALREADY RAN before the build (see `teamProjectRequested` above), so the
+  // requirement lists below are built without a second, late refusal.
+  /** The prefixes whose NULLs are fatal here, and the exact names each mode may honestly leave NULL. */
+  const { prefixes: requiredPrefixes, excluded: excludedRequired } = requiredPrefixesFor({
+    live: liveRequested,
+    browser: browserEnabled,
+    team: teamProjectRequested,
+  })
   /** The unevaluated assertions inside those arms. */
-  const unmeasured = unmeasuredRequired(result, requiredPrefixes)
+  const unmeasured = unmeasuredRequired(result, requiredPrefixes, excludedRequired)
+  // PRESENCE, NOT JUST NON-NULLNESS, for the team rows: a verdict that wrote nothing is invisible to
+  // `unmeasuredRequired` and to `ok`, so the required names are checked against the body directly.
+  /** The required team rows absent or null in this run's result. */
+  const teamRowsMissing = teamProjectRequested ? missingOrNull(result, requiredTeamNames()) : []
   /** The verdict after the requirement gate. */
-  const finalExit = unmeasured.length > 0 ? 3 : exitCode
+  const finalExit = unmeasured.length > 0 || teamRowsMissing.length > 0 ? 3 : exitCode
   writeFileSync(driverLog, JSON.stringify({
     startedAt,
     finishedAt: new Date().toISOString(),
@@ -1288,7 +1417,9 @@ async function main(): Promise<void> {
     liveRequested,
     browserEnabled,
     requiredPrefixes,
+    excludedRequired,
     unmeasured,
+    teamRowsMissing,
     steps,
     containerExit: ran.status,
     verdict: summarize(result),
@@ -1308,6 +1439,11 @@ async function main(): Promise<void> {
   // The required arms are named separately, because these are the ones that turn the run RED.
   for (const name of unmeasured) {
     console.log(`[driver] UNMEASURED ${name} — this arm was required by the flags of this invocation, so a null is a MISSING PREREQUISITE (exit 3), not a pass`)
+  }
+  // A team-mode run needs its verdict rows PRESENT: an absent row is a verdict that never ran, which
+  // neither `ok` nor the null reader can see. Named here for the same reason as the unmeasured arms.
+  for (const name of teamRowsMissing) {
+    console.log(`[driver] MISSING ${name} — a team-project run must RECORD this row; absent or null means the verdict did not run (exit 3)`)
   }
   console.log(`[driver] evidence -> ${relative(REPO, evidence)}`)
   cleanup()
