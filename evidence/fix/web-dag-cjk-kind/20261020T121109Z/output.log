@@ -1,0 +1,96 @@
+web-dag-cjk-kind — output transcript
+UTC: 2026-10-20T12:15:40Z
+branch: fix/web-dag-cjk-kind  base: 8f1736c507914d46f329539d61daef17569f166e
+pinned bun: 1.4.0  node: v24.21.0  PATH bun: 1.4.2
+
+== 1. DEFECT REPRODUCED IN THE UNIT TEST (before the fix) ==
+$ bun test packages/mpd-bundle-plugin/test/team-view.test.ts -t "under a zh locale"
+error: expect(received).toContain(expected)
+Expected to contain: "REQ"
+Received: "✓ T1 需求 #1"
+(fail) team-view drawn edges > under a zh locale ... — 1 fail, exit 1
+
+== 2. BUILD PATH ==
+$ node scripts/build-mpd-client.ts
+[build-mpd-client] wrote packages/mpd-bundle-plugin/client.js (733058 bytes)
+client.js sha256: a443c22e08ffb1824289f3a26583f4a7e5eee83f445f2c4737764e8b1cef539b (746365 bytes)
+git diff client.js: 22 insertions, 1 deletion — the splice reflects ONLY the src change
+
+== 3. GATES (all from the repo root, pinned bun where bun is invoked) ==
+---- $ .toolchain/node_modules/.bin/bun test packages
+    
+     2161 pass
+     3 skip
+     0 fail
+     26165 expect() calls
+    Ran 2164 tests across 134 files. [25.25s]
+    EXIT=0
+---- $ .toolchain/node_modules/.bin/bun run typecheck
+    $ tsgo --noEmit
+    EXIT=0
+---- $ bun run verify:comments
+    $ node scripts/verify-comment-coverage.ts
+    # verify-comment-coverage
+    
+    scanned 426 TypeScript file(s) of 426 in the source set; inspected 37567 declaration(s); skipped 17390 inline callback(s) as out of family
+    
+    VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+    EXIT=0
+---- $ bun run verify:docs
+    note AGENTS.md — DERIVED: delta-range claims NOT adjudicated (agent-references/agent-teams-deltas.md is absent — the artifact the pointer NAMES cannot be read) — this root does not ship the artifact the pointer names, so the claim is neither confirmed nor contradicted here
+    note agent-references/index.md — DERIVED: delta-range claims NOT adjudicated (agent-references/agent-teams-deltas.md is absent — the artifact the pointer NAMES cannot be read) — this root does not ship the artifact the pointer names, so the claim is neither confirmed nor contradicted here
+    note agent-references/agent-teams-deltas.md — DERIVED: region-count claim skipped AND its registry (packages/mpd-agent-teams-plugin/lib/mpd-deltas.ts) is equally absent — both were deleted with the adopted agent-teams body (de-vendor wave), so the derived-value rule is VACUOUS in this root: it is exercised only by this script's --self-test fixtures, never by the live tree
+    [verify-docs-parity] links=438 checked=406 resolved=406 dead=0 exemptProvenance=0 absentSite=0 ignoredExternal=26 ignoredAnchorOnly=6 files=117
+    
+    [verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=48 failed=0 violations=0 exempt=24 derived=3 links=438 dead=0 — PASS
+    EXIT=0
+---- $ bun run verify:rows
+    $ node scripts/verify-rows-parity.ts
+    [verify-rows-parity] ok: 35 row ids match the 2-file bundle patch layer (mcp-astgrep, mcp-codegraph, mcp-context7, mcp-git, mcp-grepapp, mcp-lsp, mcp-shell, mpd-agent-team, mpd-better-sidebar, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-goal, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-roster-provider, mpd-team-compact, mpd-team-core, mpd-team-watchdog, mpd-tool-agent-team, mpd-tools, mpd-tui, mpd-tui-adapter, mpd-ui-agent-team, mpd-ulw, mpd-verify, mpd-web-compat, mpd-workmate, preset-mpd)
+    EXIT=0
+---- $ bun run verify:manifest
+    ok    row-module-paths: 27 module path(s) named by the patch files, 0 missing, 0 patch file(s) unreadable
+    ok    files-allowlist: 25 pattern(s); 0 required path(s) not admitted
+    ok    evidence-excluded: the frozen evidence/ tree stays out of the published package
+    ok    packed-content: npm pack --dry-run lists 1011 file(s); 0 required path(s) absent
+    
+    VERDICT: PASS — the install-time rules and the packaging contract hold.
+    EXIT=0
+---- $ bun run verify:vendor
+    [verify-vendor] asset OK: packages/mpd-hashline-plugin/src/vendor 8 files
+    [verify-vendor] asset OK: packages/mpd-boulder-plugin/src/vendor 13 files
+    [verify-vendor] asset OK: packages/mpd-schemastery 19 files
+    [verify-vendor] asset OK: packages/mpd-bundle-plugin/adopted 2 files
+    [verify-vendor] asset OK: packages/mpd-bundle-plugin/client.js 1 files
+    [verify-vendor] PASS - 7 shipped asset(s) fingerprinted, upstream identity not checked
+    EXIT=0
+---- $ node scripts/verify-dist-fresh.ts
+      FRESH   packages/mpd-workmate-plugin/dist/index.js  sha fd9d9e4987ce… 24ms  <- packages/mpd-workmate-plugin/src/index.ts
+    [verify-dist-fresh] root: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh  (build: bun build <src> --target node --format esm --outfile <tmp>/<entry>.js)
+    [verify-dist-fresh] build toolchain: bun 1.4.0 from the repository toolchain (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun) · recorded buildToolchain bun@1.4.0
+    [verify-dist-fresh] NOT COVERED (1) — committed dist files no target maps to, listed so nothing is silently skipped:
+      packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+    [verify-dist-fresh] ok: 32/32 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 664ms
+    EXIT=0
+
+== 4. LIVE ZH-CN CAPTURE (ui-ui-1) ==
+$ docker exec -i ui-ui-1 bash -lc "MPD_UI_LANG=zh-CN bash /data/run-capture.sh"
+BEFORE (shipped client sha256 c9724d95…):
+    checks=18 passed=17 failed=['dagDrawingHasNoCjk'] ok=False
+    dagDrawingText[:110] = '✓T1需求Web: rebuild the team panel body on the payload projection◐T2工作Web: restyle the settings card on the offi'
+    runner exit: 1
+
+AFTER (rebuilt client sha256 a443c22e…):
+    checks=18 passed=18 failed=[] ok=True
+    dagDrawingHasNoCjk=True dagDetailKeepsCjk=True browserLocale=zh-CN
+    dagDrawingText[:110] = '✓T1REQWeb: rebuild the team panel body on the payload projection◐T2WRKWeb: restyle the settings card on the of'
+    dagDetailPins[0] = {id: T1, keeps: True, text: 'Web: rebuild the team panel body on the payload projection关闭T1 · 需求 · ✓ completed负责人web-team-gui前置—后继T4该任务没有已冻'}
+    runner exit: 0
+
+== 5. TREE STATE (no commit made) ==
+ M VENDOR_LOCK.json
+ M packages/mpd-bundle-plugin/client.js
+ M packages/mpd-bundle-plugin/src/team-view.ts
+ M packages/mpd-bundle-plugin/test/team-view.test.ts
+?? docker/ui/out/readme/
+?? evidence/fix/web-dag-cjk-kind/
