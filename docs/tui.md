@@ -1420,8 +1420,9 @@ profile. The target moves to **0.16.1**; the following supersedes §11.7 where i
 | §3 seam inventory | fifteen `tui*` seams, unchanged 0.13.0→0.15.0 | **still fifteen, and 0.16.1 breaks nothing in the adapter**: the same six `Tui*Like` shapes, `close(): void` + `active.id`, `tuiPanels`, `tuiPrompt` still a phantom, and `lib/types/ui.js` still exports `useStdin`; the only addition is the `EFFECT_LEDGER_NAME` const, which neither the adapter nor the bundle declares or consumes. No adapter code change was needed |
 | §3.3 / §7 — the pin carriers and `MPD_E2E_DSH_VERSION` | `0.15.0` carriers; `MPD_E2E_DSH_VERSION` stayed `0.2.0-rc.2` | **`0.16.1` carriers and harness `0.2.1-rc.2`**: both Docker lanes (`MPD_E2E_TUI_VERSION`, `MPD_E2E_DSH_VERSION`), `dsh-distribution.json`'s `host-tui` ref (`…@0.16.1`) and `dsh-plugin.json`'s `compat.hosts` (`…@0.16.1`, moved off the stale `0.10.1`). `MPD_E2E_DSH_VERSION` now defaults to `0.2.1-rc.2` because the host's peer band admits it |
 
-The TUI lane keeps its host-peer bound: it decides from the INSTALLED host's real peer band (no
-hardcoded version), records one `tui.hostPeerBound` row, bounds the remaining rows only when the band
-genuinely excludes the harness, and self-disarms on a supporting host. It exists so an older pin
-explains itself in one run instead of parking a permanent red; it never turns a failure green.
+The TUI lane uses the configured `TUI_VERSION` (default `0.16.1`) and `MPD_E2E_DSH_VERSION` (default
+`0.2.1-rc.2`) pins. It records `tui.hostInstall`, `tui.pluginAddHost`, `tui.pluginAddBundle` and
+`tui.compose`; when the selected host's peer range excludes the harness, the host's
+`dsh plugin --profile dsh-tui add <host>` is refused, `tui.pluginAddHost` is `false`, and the lane ends
+red — it does NOT inspect peer ranges and does NOT record a `tui.hostPeerBound` row.
 
