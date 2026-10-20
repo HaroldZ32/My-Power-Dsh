@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 // Case tui-keeper-standdown: the C2 real-PTY arm of the tui-015-adaptation wave — prove, on the
-// INSTALLED 0.15.0 host, that an explicit `/settings` removal of BOTH MPD sidebar panels STAYS
+// INSTALLED 0.16.1 host, that an explicit `/settings` removal of BOTH MPD sidebar panels STAYS
 // removed: the 0.14-era enable-list keeper stands down on a self-healing host and never repairs.
 //
 // What it proves (always from a real pane the host painted, or a file the host itself wrote):
@@ -21,7 +21,7 @@
 // row is located by its pointer glyph, and Up/Down presses are computed from the measured line
 // distance — the host's focus-follow windowing never has to fit the pane.
 //
-// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.15.0"
+// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.16.1"
 // PREREQ: absent-runtime tmux "install tmux; the TUI requires a real TTY"
 // PREREQ: absent-fixture tui profile in the sandbox root "bun skills/dsh-qa/scripts/tui-mount.ts --sandbox-root <root> --install"
 //

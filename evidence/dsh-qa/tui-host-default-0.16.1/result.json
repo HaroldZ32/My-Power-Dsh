@@ -1,0 +1,59 @@
+{
+  "case": "tui-host-default-0.16.1",
+  "source": "PR #49 CodeRabbit review comments 4321186995 and 4321186999; PR #50 review comments 4321249852, 4321249865 and 4321304932",
+  "findings": [
+    {
+      "id": "CR-1",
+      "severity": "minor",
+      "claim": "tui-mount.ts falls back to dsh-tui@0.15.0 when MPD_E2E_TUI_VERSION is unset; 0.15.0 refuses harness 0.2.1-rc.2, so the default QA install can fail.",
+      "verified": true,
+      "evidence": "skills/dsh-qa/scripts/tui-mount.ts:191 read before the fix; docker/tui-lane.sh:245 defaults to 0.16.1; 0.15.0's peer bands stop at 0.2.0-rc.2.",
+      "fix": "TUI_HOST_SPEC and its PREREQ now default to 0.16.1; the same install/remedy string was aligned in seven other QA carriers (tui-team-surface, tui-admission, install-dependencies, lib/tui-lane, tui-deps-ctrla, tui-panels, tui-keeper-standdown)."
+    },
+    {
+      "id": "CR-2",
+      "severity": "minor",
+      "claim": "docs/tui.md §11.8 claims the TUI lane inspects the installed host's peer band and records tui.hostPeerBound, which the implementation does not do.",
+      "verified": true,
+      "evidence": "No hostPeerBound/peerBand implementation exists in skills/scripts/docker; the peer bound was deliberately deleted in 162bcdcb ('delete the peer bound'). docker/tui-lane.sh uses fixed TUI_VERSION and MPD_E2E_DSH_VERSION pins and records tui.hostInstall / tui.pluginAddHost / tui.pluginAddBundle / tui.compose; a peer refusal makes tui.pluginAddHost false and ends the lane red.",
+      "fix": "§11.8 (EN + zh-CN) now describes the fixed-pin behavior and explicitly says the lane does not inspect peer ranges or record tui.hostPeerBound."
+    },
+    {
+      "id": "CR-3",
+      "severity": "minor",
+      "claim": "tui-keeper-standdown.ts's header still said 'INSTALLED 0.15.0+ host', which contradicts the 0.2.1-rc.2 baseline (0.15.0 is refused on peer ranges).",
+      "verified": true,
+      "evidence": "The first fix widened the header to '0.15.0+' while the default host moved to 0.16.1; the two statements disagreed.",
+      "fix": "The header now reads 'INSTALLED 0.16.1 host', matching the QA default and the Docker lane."
+    },
+    {
+      "id": "CR-4",
+      "severity": "major",
+      "claim": "The PR edits files under skills/ but does not update VENDOR_LOCK.json, so verify-vendor rejects the stale skills treeSha.",
+      "verified": true,
+      "evidence": "node scripts/verify-vendor.ts FAILED with 'asset skills treeSha mismatch' before the re-pin; the Static gates CI step failed at the aggregate gate for the same reason.",
+      "fix": "Ran node scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step once, after the last skills edit, and amended VENDOR_LOCK.json into the SAME commit (skills.treeSha c85dc14f… -> 5b77726a…). verify-vendor now PASS."
+    },
+    {
+      "id": "CR-5",
+      "severity": "minor",
+      "claim": "skills/dsh-qa/SKILL.md:121 still described the tui-keeper-standdown lane as running on an installed 0.15.0 host.",
+      "verified": true,
+      "evidence": "SKILL.md:121 read before the fix; the lane's default is now 0.16.1, so the row's host claim was stale.",
+      "fix": "The row now says 'installed 0.16.1 host'; the tui-admission row's 0.15.0 rename history was left untouched. The skills treeSha was re-pinned once more in the same amended commit."
+    }
+  ],
+  "gates": {
+    "tui-mount self-test": "PASS",
+    "tui-keeper-standdown self-test": "PASS",
+    "test:qa (all self-tests)": "PASS",
+    "verify-docs-parity": "PASS - 48 pairs, 438 links, 0 dead",
+    "verify-comment-coverage": "PASS",
+    "verify-vendor": "PASS after the single re-pin (skills treeSha 5b77726a…)"
+  },
+  "bounds": [
+    "Docs-only correction for CR-2: the peer-range diagnostic was NOT re-implemented; 162bcdcb deliberately removed it, so the documentation follows the shipped behavior.",
+    "The QA host-default fix is a string/default change; no product package code or dist artifact changed.",
+    "Exactly ONE vendor re-pin landed, in the same commit as the skills edit that invalidated the treeSha."
+  ]
+}
