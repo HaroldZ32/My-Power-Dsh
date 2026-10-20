@@ -20,8 +20,11 @@ import {
   HOST_PREFS_MODULE,
   KNOWN_STALE_PANEL_DEFAULTS,
   PANEL_CSV_SELF_HEAL_SINCE,
+  PANEL_KEEPER_LADDER_MS,
   createPanelEnableKeeper,
+  hostOwnsPanelCsv,
   hostSelfHealsPanelCsv,
+  hostVersionAtLeast,
   mergePanelEnableIds,
   probeHostPrefs,
   stalePanelDefaultResidue,
@@ -911,5 +914,94 @@ describe("R2 · the self-healer migration is contained, disposal-safe and honest
     expect(applied).toEqual([MIGRATED, MIGRATED])
     expect(keeper.outcome().state).toBe("refused")
     expect(logged.some((line) => line.includes("the re-migration write was refused"))).toBe(true)
+  })
+})
+
+// G1 of the STATELESS-DEPLOYMENT wave (2026-10-20): on a host that OWNS the enable list the adapter is
+// READ-ONLY. 0.16.1's `TuiPanelRuntime.register()` enables a panel on registration, `dispose()` removes
+// it, and both the boot and the settings apply union every registered id back — so every write this
+// keeper could still make is a second writer racing the host's own merge, and the recurring
+// "our bundle rewrote the sidebar enable list" incident class the older repair paths belong to.
+//
+// THE ARMS BELOW PIN THE WHOLE CLAIM: no write (not even the stale-default migration), no belt and no
+// feed on >= 0.16.1, while the 0.15.0 host keeps the S1 migration byte for byte (the arms above).
+describe("G1 · the adapter is READ-ONLY on a host that owns the enable list (>= 0.16.1)", () => {
+  test("the ownership predicate starts at 0.16.1, and unreadable versions stay out of it", () => {
+    expect(hostOwnsPanelCsv("0.16.1")).toBe(true)
+    expect(hostOwnsPanelCsv("0.16.1-rc.2")).toBe(true)
+    expect(hostOwnsPanelCsv("0.17.0")).toBe(true)
+    expect(hostOwnsPanelCsv("1.0.0")).toBe(true)
+    // THE BOUNDARY IS EXACT: a self-healing host BELOW the ownership gate keeps the S1 migration.
+    expect(hostOwnsPanelCsv("0.16.0")).toBe(false)
+    expect(hostOwnsPanelCsv("0.15.9")).toBe(false)
+    // DEGRADE-SAFE: everything the gate cannot read keeps the older, pinned behaviour.
+    expect(hostOwnsPanelCsv("")).toBe(false)
+    expect(hostOwnsPanelCsv("next")).toBe(false)
+    // The shared comparison the two gates are built on.
+    expect(hostVersionAtLeast("0.16.1", "0.16.1")).toBe(true)
+    expect(hostVersionAtLeast("0.16.0", "0.16.1")).toBe(false)
+    expect(hostVersionAtLeast("garbage", "0.16.1")).toBe(false)
+  })
+
+  test("(a) 0.16.1 with a STALE PIN: the keeper writes NOTHING — no migration, no belt, no feed", async () => {
+    /** The host store, with a feed exposed (0.16.1 has one) so a belt WOULD be observable. */
+    const fake = fakeStore(STALE_PIN, true)
+    /** Every line the keeper logged. */
+    const logged: string[] = []
+    /** The controllable clock. */
+    const clock = fakeClock()
+    /** The keeper under test on the owning host. */
+    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: fake.store, hostVersion: "0.16.1", defaultIds: HOST_DEFAULT }), schedule: clock.schedule, pastIds: () => [], log: (line: string): void => { logged.push(line) } })
+    keeper.observe("act1:team")
+    keeper.observe("act1:workmate")
+    clock.runNext()
+    // WAIT FOR THE PROMISE CHAIN the keeper's tick runs on.
+    for (let turn = 0; turn < 8; turn += 1) await Promise.resolve()
+    // THE WHOLE CLAIM: not one apply reached the host, and the stale list is exactly as it was.
+    expect(fake.applied).toEqual([])
+    expect(fake.csv()).toBe(STALE_PIN)
+    // NO BELT: the store's feed was never subscribed (a belt here would only re-migrate).
+    expect(fake.listeners()).toBe(0)
+    // The outcome and the ONE line both SAY read-only, so a support run reads the reason.
+    expect(keeper.outcome().state).toBe("confirmed")
+    expect(keeper.outcome().detail).toContain("read-only")
+    expect(keeper.outcome().detail).toContain("writes nothing")
+    expect(logged.some((line) => line.includes("standing down READ-ONLY on host 0.16.1"))).toBe(true)
+    // The discovered ids still reach the diagnostic consumer — the half that is not a write.
+    expect(keeper.outcome().ids).toEqual(["act1:team", "act1:workmate"])
+  })
+
+  test("(b) 0.16.1 with a CURRENT list: still nothing written, and no tick is left armed", async () => {
+    /** A store whose list already names us, the ordinary post-registration shape on an owning host. */
+    const fake = fakeStore(`${HOST_DEFAULT},${OURS.join(",")}`, true)
+    /** The controllable clock. */
+    const clock = fakeClock()
+    /** The keeper under test. */
+    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: fake.store, hostVersion: "0.16.1", defaultIds: HOST_DEFAULT }), schedule: clock.schedule, pastIds: () => [] })
+    keeper.observe("act1:team")
+    clock.runNext()
+    for (let turn = 0; turn < 8; turn += 1) await Promise.resolve()
+    expect(fake.applied).toEqual([])
+    expect(fake.listeners()).toBe(0)
+    // THE LADDER IS CANCELLED: the remaining armed ticks were released, so nothing can write later.
+    expect(clock.delays.length).toBe(PANEL_KEEPER_LADDER_MS.length)
+    await clock.runNext()
+    expect(fake.applied).toEqual([])
+    expect(keeper.outcome().ticks).toBe(1)
+  })
+
+  test("(c) 0.16.0 is BELOW the gate: the S1 migration still runs exactly once", async () => {
+    /** The same stale pin on the last self-healing-but-not-owning host. */
+    const fake = fakeStore(STALE_PIN, true)
+    /** The controllable clock. */
+    const clock = fakeClock()
+    /** The keeper under test. */
+    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: fake.store, hostVersion: "0.16.0", defaultIds: HOST_DEFAULT }), schedule: clock.schedule, pastIds: () => [] })
+    keeper.observe("act1:team")
+    keeper.observe("act1:workmate")
+    clock.runNext()
+    for (let turn = 0; turn < 8; turn += 1) await Promise.resolve()
+    expect(fake.applied).toEqual([MIGRATED])
+    expect(keeper.outcome().detail).toContain("self-heals")
   })
 })

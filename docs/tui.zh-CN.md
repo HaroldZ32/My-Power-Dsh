@@ -1093,6 +1093,26 @@ id 报告成功），并且接缝声明了 `close(): void` 与 `active` 读取�
 自我终止——它自己的写入让余量等于宿主当前默认值，于是下一个事件随即退位。0.15.0 之前的行为逐字节不变，
 适配器测试套新增了七条臂把这全部钉死。
 
+**2026-10-20 修订 —— 在**拥有**启用清单的宿主（`>= 0.16.1`）上，适配器是**只读**的。** 0.16.1 的
+`TuiPanelRuntime.register()` 在注册时即启用面板，`dispose()` 时移除，启动与设置应用都会把已注册 id 并回——
+启用的清单状态已没有本包可写入的余地，任何写入都只是与宿主自己的合并赛跑（即上面两段所属的事故类）。
+`hostOwnsPanelCsv` 引出一条独立的 `standDownOwnedByHost` 路径；两道门共享的版本比较抽成
+`hostVersionAtLeast`，避免两个下限各自漂移。该路径上阶梯被取消、不装订阅也不装腰带、**连陈旧默认值迁移
+都不跑**，并留一行说明（`standing down READ-ONLY on host 0.16.1 …`）。0.15.x 路径逐字节保留 S1 迁移——
+`0.16.0` 的那条测试臂钉住这个边界——发现的 id 仍经同一个 `onChange` 钩子写进诊断记录，因为记录是诊断而非
+对宿主的写入。`node scripts/mpd-tui-panels.ts --apply` 仍是用户在任何宿主上手工修复陈旧用户层的方式。
+
+**面板徽标与那一次自动开页现在从 apply 侧发布，不再由页面发布（G2，2026-10-20）。** dsh-tui 只在插件面板
+是所在栏的**当前激活页**时挂载它，所以页面侧的徽标只能装饰用户已经在看的那一页。
+`packages/mpd-tui-plugin/src/panel-attention.ts` 现在持有宿主侧 `tuiPanels.badge(id, …)` 调用与一次性的
+`tuiPanels.open(id)`：两者都经 `whenBound("panels")` 挂载（没有该接缝的组合什么都不注册），并由页面同样订阅
+的 `mpdTeams` 推送驱动。自动开页每个进程至多一次，且只对**进程启动之后才出现**的团队触发（启动时就已存在的
+团队不触发）；宿主对 `open()` 有每插件 5 秒一次的限速，因此被拒绝即锁定、绝不重试；由新增的 `panelAutoOpen`
+行配置控制（默认 `true`）。触发信号是**工作区级**的——该推送不携带会话 id——所以来自其它会话的触发会让页面
+画出自己的 `no team in this session` 标记，而不是画错看板。`/mpd status` 增加了对应的部署行
+（`panels: team=… workmate=… · seam bound · keeper …`），因为宿主分配的 panel id 是用户与文档都无法自行
+推导的那条事实。
+
 **修复脚本现在同时修复两个用户层，第二层是新的。** dsh-tui 0.15.0 把自己的用户设置放在
 `~/.dsh-tui/settings.json`，并按 `values.sidePanel?.panels ?? config.sidePanel?.panels` 解析生效清单——
 该设置层**遮蔽** profile patch，而它的一次性导入跳变（`imported.from` 标记阻止再次导入）曾把同一条陈旧

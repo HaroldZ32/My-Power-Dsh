@@ -1323,6 +1323,31 @@ when it fires; the migration is self-terminating, because its own write leaves t
 host's current default, so the very next event stands down. The pre-0.15.0 behaviour is byte-identical,
 and the adapter suite carries the seven new arms that pin all of this.
 
+**AMENDED 2026-10-20 — on a host that OWNS the enable list (`>= 0.16.1`) the adapter is READ-ONLY.** 0.16.1's
+`TuiPanelRuntime.register()` enables a panel on registration, `dispose()` removes it, and both the boot and the
+settings apply union every registered id back — so there is no enable-list state left for this bundle to author,
+and any write would be a second writer racing the host's own merge (the incident class the two paragraphs above
+belong to). `hostOwnsPanelCsv` gates a separate `standDownOwnedByHost` path; the version comparison the two gates
+share is `hostVersionAtLeast`, extracted so their floors cannot drift. On that path the ladder is cancelled, no
+feed and no belt are installed, **not even the stale-default migration runs**, and one line says so
+(`standing down READ-ONLY on host 0.16.1 …`). The 0.15.x path keeps the S1 migration byte-for-byte — the 0.16.0
+arm pins that boundary — and the discovered ids still reach the diagnostic record through the same `onChange`
+hook, because the record is a diagnostic and not a write to the host. `node scripts/mpd-tui-panels.ts --apply`
+remains the manual way a user repairs a stale user layer on any host.
+
+**The panel's badge and its one auto-open are published from APPLY, not from the page (G2, 2026-10-20).** dsh-tui
+mounts a plugin panel only while it is the ACTIVE page of its column, so a page-side badge can only ever decorate
+a page the user is already looking at. `packages/mpd-tui-plugin/src/panel-attention.ts` now owns the host-side
+`tuiPanels.badge(id, …)` call and the one-shot `tuiPanels.open(id)`: both are armed through `whenBound("panels")`
+— a composition without the seam registers nothing — and driven by the same `mpdTeams` feed the pages subscribe
+to. The auto-open fires at most ONCE per process, only for a team that APPEARED after the process started (never
+for a team the boot already found), latches on a refusal because the host rate-limits `open()` per plugin (one
+per 5 s), and is governed by the new `panelAutoOpen` row knob (default `true`). The trigger is
+WORKSPACE-scoped — the feed carries no session id — so a trigger from another session makes the page draw its own
+`no team in this session` marker rather than a wrong board. `/mpd status` gained the matching deployment line
+(`panels: team=… workmate=… · seam bound · keeper …`) because the host-assigned panel ids are the one fact neither
+a user nor a document can derive.
+
 **The repair script now repairs BOTH user layers, and the second is new.** dsh-tui 0.15.0 keeps its own
 user settings at `~/.dsh-tui/settings.json` and resolves the effective list as
 `values.sidePanel?.panels ?? config.sidePanel?.panels` — the settings layer SHADOWS the profile patch,

@@ -1296,64 +1296,19 @@ export function panelViewportBody(
 }
 
 /**
- * The per-render notification sink, as a page hands it to {@link useBadgeEffect}.
- *
- * Every member is optional because the host only guarantees `notify`/`clearBadge` on a 0.13.0 build:
- * a leaner composition renders the same page without a badge instead of throwing.
- */
-export interface PanelHostNotify extends PanelHostLike {
-  /** Sets this panel's badge level and unread count. */
-  notify?(level: string, unread?: number): unknown
-  /** Clears this panel's badge. */
-  clearBadge?(): unknown
-}
-
-/**
  * The badge a page derives from its own state, as DATA (frozen clause R9).
  *
  * A pure value rather than an effect body, so the level ladder is assertable without a host: failed
- * work is `error`, a blocked task is `warning`, and anything else worth a glance is `info`.
+ * work is `error`, a blocked task is `warning`, and anything else worth a glance is `info`. Since G2
+ * of the stateless-deployment wave the value is published from APPLY (`panel-attention.ts`), not from
+ * a mounted page — the ladder itself is unchanged, and `panel-dag.ts`'s `dagBadge` remains its ONE
+ * derivation.
  */
 export interface PanelBadge {
   /** The host badge level. */
   level: "info" | "warning" | "error"
   /** How many items the badge counts. */
   unread: number
-}
-
-/**
- * Publish a page's badge through the host API, once per change.
- *
- * Called from an effect, with the previous value kept in a ref: `notify` on every render would make
- * the host's own badge listener fire in a loop, so the write happens only when the derived badge
- * actually differs.
- * @param host - the props' `host` field.
- * @param badge - the badge this render derived, or `null` for "nothing to report".
- * @param previous - the ref holding the last badge this page published.
- */
-export function publishBadge(host: unknown, badge: PanelBadge | null, previous: { current: PanelBadge | null }): void {
-  if (host === null || host === undefined) return
-  /** The host API, before either member is trusted. */
-  const api = host as PanelHostNotify
-  /** The value the badge must now show: `null` means "clear it". */
-  const next = badge === null ? null : { level: badge.level, unread: Math.max(0, Math.floor(badge.unread)) }
-  /** The last published value, if any. */
-  const last = previous.current
-  if (last === next || (last !== null && next !== null && last.level === next.level && last.unread === next.unread)) return
-  try {
-    if (next === null) {
-      if (typeof api.clearBadge === "function") api.clearBadge()
-    } else if (typeof api.notify === "function") {
-      api.notify(next.level, next.unread)
-    } else {
-      // A host that cannot show a badge must not record one as published: leaving the ref alone makes
-      // the next render retry rather than believe a badge it never set.
-      return
-    }
-    previous.current = next
-  } catch {
-    // The badge is a decoration: a refusing host costs the badge, never the page.
-  }
 }
 
 /**

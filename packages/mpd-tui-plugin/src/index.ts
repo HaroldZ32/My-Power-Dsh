@@ -56,13 +56,15 @@ import { registerRenderers } from "./renderers.js"
 import { registerSettingsSection } from "./settings.js"
 import { DASHBOARD_TAKEOVER_KNOB, markVolatile, wheelInvertFrom } from "./settings.js"
 import { setWheelInvertRead } from "./panel-core.ts"
+import type { PanelBadge } from "./panel-core.js"
+import { armPanelAttention, panelsSummaryLine } from "./panel-attention.js"
 import { readDashboardWorkflow, registerDashboardKey } from "./dashboard-key.js"
 import { registerPanelSurface, takeoverArmed } from "./panel.js"
 import type { PanelOpenOutcome } from "./panel.js"
 import { requestSubagentDetail, takeSubagentDetailRequest } from "./subagent-scene.js"
 import { registerWorkmatePanel } from "./panel-workmate.js"
 import { boardSummary, registerScene, type PlanActionOutcome, type PlanActions } from "./scenes.js"
-import { readPlanView, type MpdPlanView } from "./team-state.js"
+import { readPlanView, type MpdPlanView, type TeamWorkflow } from "./team-state.js"
 import { liveTeamViews, mpdTeamRecords, type MpdTeamsLike, type TeamFeedAccessor, type TeamFeedSubscribe, type TeamFeedSubscribeMember, type TeamSourceDeps } from "./team-state.js"
 import type { TeamRecord } from "../../mpd-team-core-plugin/src/team-store.js"
 import type { DshLiveAgent, DshTeamView } from "../../mpd-dsh-adapter-plugin/src/index.js"
@@ -113,6 +115,20 @@ export type Config = {
    * MPD page keeps. Restart-scoped, like every row-config knob.
    */
   workmate?: boolean
+  /**
+   * Open the MPD sidebar page ONCE when the first team becomes live in this process (default on).
+   *
+   * THE GAP THIS CLOSES: the page is reachable through `alt+a`, `/mpd panel` and the host's own panel
+   * bar, so a user who knows none of those never sees the DAG at all. The reference implementation this
+   * wave follows auto-opens its sidebar panel on the readiness edge for exactly that reason.
+   *
+   * WHAT IT DELIBERATELY IS NOT: it never fires for a team that already existed when the process
+   * started (that would steal the sidebar on every boot), it fires at most ONCE per process whatever
+   * the host answers, and it never retries a refusal — the host rate-limits `open()` per plugin (one
+   * per 5 s), so a retry loop is impossible by construction. The badge stays a separate concern
+   * (published on every team-state change), so turning this off does not silence warnings.
+   */
+  panelAutoOpen?: boolean
   /**
    * Enable the Ctrl+A takeover — MEANINGFUL ON OLD dsh-tui BUILDS ONLY.
    *
@@ -170,6 +186,7 @@ export const Config: Schemastery<Config> = markVolatile(z.object({
   // switch stick: nothing — not the runtime enable keeper, not the config re-apply — can resurrect a
   // panel that was never registered.
   workmate: z.boolean().default(true),
+  panelAutoOpen: z.boolean().default(true),
   dashboardKey: z.boolean().default(true),
   wheelInvert: z.boolean().default(false),
   sessionEvents: z.boolean().default(true),
@@ -201,6 +218,8 @@ export interface ResolvedConfig {
   panel: boolean
   /** Whether the workmate sidebar page is contributed — its OWN knob, independent of `panel`. */
   workmate: boolean
+  /** Whether the MPD page auto-opens once on the first live team of this process. */
+  panelAutoOpen: boolean
   /** Whether the Ctrl+A takeover may intercept at all (the per-press floor of the toggle). */
   dashboardKey: boolean
   /** Whether the wheel's sign is inverted (the floor of the `tui.wheelInvert` knob; false = today). */
@@ -235,6 +254,7 @@ export function resolveConfig(config: Config = {}): ResolvedConfig {
     dialogs: bool(config.dialogs, true),
     panel: bool(config.panel, true),
     workmate: bool(config.workmate, true),
+    panelAutoOpen: bool(config.panelAutoOpen, true),
     dashboardKey: bool(config.dashboardKey, true),
     // TODAY'S BEHAVIOUR IS THE DEFAULT: `false` means the raw host delta is used unchanged, which is what
     // every wheel path did before this knob existed. Only a deliberate configuration inverts it.
@@ -760,6 +780,53 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
     openScene: () => scene.open(),
     log,
   })
+  // ── the panel's ATTENTION SURFACE (G2 of the stateless-deployment wave) ─────
+  // THE BADGE AND THE ONE AUTO-OPEN ARE PUBLISHED FROM APPLY, not from the page, because dsh-tui
+  // mounts a plugin panel only while it is the ACTIVE page: a page-side badge could only ever decorate a
+  // page the user is already looking at. The host's own registry accepts `badge(id, …)` at any time and
+  // `open(id)` from here, and the team feed drives both — so a team that turns red badges the closed
+  // panel, and the FIRST team that becomes live after this process started opens the page once.
+  //
+  // ARMED THROUGH `whenBound("panels")`, NOT AT APPLY: a composition with no panel seam (a web profile,
+  // an older host) must end up with NOTHING registered — the T4-INERT-1 contract every other seam of
+  // this row keeps — and the injected scope is also where the feed subscription's release belongs.
+  //
+  // EVERY READ BELOW IS SESSION-LESS ON PURPOSE: the feed is workspace-scoped (it carries no session
+  // id), so the trigger means "a team became live in this workspace". The page stays session-accurate —
+  // it draws `no team in this session` when the trigger came from another session — rather than this
+  // surface inventing a session it cannot see.
+  if (resolved.panel) {
+    tui.whenBound("panels", (_service, scope): void => {
+      /** The live surface for this binding; a re-bind replaces it, so the previous one is stopped. */
+      const surface = armPanelAttention({
+        panelId: (): string | undefined => panel.id(),
+        // THE PANEL, NEVER THE SCENE: this open exists to make the DAG visible while it is closed, so a
+        // full-screen fallback would be a different surface than the one the user was given.
+        openPanel: (id: string): boolean => {
+          try {
+            return tui.openPanel(id).opened() === true
+          } catch {
+            return false
+          }
+        },
+        badgePanel: (id: string, badge: PanelBadge | null): boolean => {
+          try {
+            /** The bound registry, read per call: the seam binds asynchronously. */
+            const seam = tui.panels()
+            return seam !== undefined && typeof seam.badge === "function" ? seam.badge(id, badge) === true : false
+          } catch {
+            return false
+          }
+        },
+        readWorkflow: (): TeamWorkflow | undefined => readDashboardWorkflow(workspaceRoot, () => watchdogFrontDoor.view().holds, teamViews, teamRecords, () => teamsService),
+        feed: teamFeed,
+        autoOpen: resolved.panelAutoOpen,
+        log,
+      })
+      if (typeof scope.effect === "function") scope.effect(() => (): void => surface.stop(), "mpd-tui: panel attention")
+    })
+  }
+
   // ── the Ctrl+A takeover (W2) ─────────────────────────────────────────────
   // The hook rides the SAME status seam and the SAME read path as the scenes; it mounts an empty-Box
   // view inside the Chat screen, prepends a listener on the host's own input bus through the adapter's
@@ -873,6 +940,24 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
       })
     : skipped("shortcuts", "disabled by config")
 
+  /**
+   * The PANEL-DEPLOYMENT sentence `/mpd status` prints (G4 of the stateless-deployment wave).
+   *
+   * WHY ONE LINE, AND WHY HERE: the reference implementation's doctor prints the host-assigned panel id
+   * (`act1:viewport`) and its registration state, because a panel id is the ONE fact a user cannot
+   * derive — the `<pluginId>` half is the host's, not ours. This bundle already writes that to a log
+   * file and a JSON record; this line is the version a user can actually read without opening either.
+   * It reports the DISCOVERED ids, whether the seam is bound, and the enable-keeper's own verdict —
+   * which since G1 is `read-only` on a host that owns the enable list.
+   * @returns the one line, newline-free.
+   */
+  const panelsSummary = (): string => panelsSummaryLine({
+    teamId: panel.id(),
+    workmateId: workmatePanel.id(),
+    seamBound: tui.panelSeamBound(),
+    keeper: tui.panelEnableOutcome(),
+  })
+
   /** The command seam result, or a config-disabled stub. */
   const commands = resolved.commands
     ? registerCommands(tui, {
@@ -910,7 +995,7 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
           const route = openPage(workmatePanel)
           return { outcome: route.outcome, id: route.id }
         },
-        statusText: () => boardSummary(workspaceRoot, home, teamViews, teamRecords),
+        statusText: () => boardSummary(workspaceRoot, home, teamViews, teamRecords) + String.fromCharCode(10) + panelsSummary(),
         workmatesText: () => {
           /** The board projection the workmate text is rendered from. */
           const state = readBoardState(workspaceRoot(), home(), teamViews(), teamRecords())

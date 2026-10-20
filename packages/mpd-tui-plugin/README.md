@@ -39,6 +39,15 @@ log-only `mpd-tui/board-opened` session record.
 
 ### Two sidebar pages (since the 0.14.0 wave): the merged rich page `MPD` and the workmate shelf
 
+**The badge and the one auto-open are published from APPLY, never from a page (G2, 2026-10-20).** dsh-tui mounts a
+plugin panel only while it is the ACTIVE page of its column, so a page-side badge could only ever decorate a page
+the user is already looking at. `src/panel-attention.ts` owns the host-side `tuiPanels.badge(id, …)` call and the
+one-shot `tuiPanels.open(id)`, armed through `whenBound("panels")` (a composition without the seam registers
+nothing) and driven by the same `mpdTeams` feed the pages subscribe to. The badge ladder is `dagBadge` — one
+derivation for both surfaces — with a watchdog HOLD promoted to at least `warning`. `/mpd status` carries the
+matching deployment line (`panels: team=… workmate=… · seam bound · keeper …`), which names the host-assigned ids
+because nothing else can derive them.
+
 The bundle contributes **TWO** pages through the host's `tuiPanels` seam, each with its own FROZEN
 descriptor (`*_DESCRIPTOR_FROZEN` at module scope) and each inside the host's own
 `MAX_PANELS_PER_PLUGIN = 4` budget:
@@ -613,6 +622,7 @@ soft probe, which is the host's documented idiom.
 | `shortcuts` | `true` | register the key bindings |
 | `panel` | `true` | contribute the MPD sidebar page (dsh-tui 0.13.0) and route `alt+a` / `/mpd panel` through it. Off ⇒ no registration is attempted (the aggregate reports the adapter's own `skipped("panels", …)` outcome naming the config) and both entry points keep the pre-panel path, the full-screen merged scene |
 | `workmate` | `true` | contribute the WORKMATE sidebar page — its OWN knob, INDEPENDENT of `panel`, so the two MPD pages toggle apart. Off ⇒ that page is never registered (the aggregate reports `skipped("panels", …)` naming `workmate: false`) and `/mpd workmate` keeps its full-screen surface, the board scene. because a page that is never registered cannot be re-added by anything — not the host's config re-apply, not the runtime enable keeper — this is the switch that STICKS; both knobs are restart-scoped, and BOTH are listed as CHECKBOXES in the harness `/settings` dialog, because the row config is marked volatile and that flag is what the dialog's `volatileForm` walk reads |
+| `panelAutoOpen` | `true` | open the MPD page ONCE when the first team becomes live in this process. The page is otherwise reachable only through `alt+a`, `/mpd panel` and the host's panel bar, so a user who knows none of them never sees the DAG. It never fires for a team that already existed at boot, fires at most once per process whatever the host answers, and never retries a refusal (the host rate-limits `open()` per plugin, one per 5 s). The BADGE stays a separate concern — it is published on every team-state change from apply, so turning this off does not silence warnings |
 | `dashboardKey` | `true` | arm the `Ctrl+A` take-over: with a team in the workspace `Ctrl+A` opens the merged panel, and with no team (or with this off) the key keeps the host's own meaning. UNLIKE every other knob here it is read PER KEYPRESS through the config layer, so a `/settings` save applies without a restart. The take-over itself arms once the host has handed this session its live input kit — i.e. after any MPD scene or panel render (NOT CLAIMED 12). **On a host that offers the sidebar panel seam (dsh-tui 0.13.0+) this knob is INERT** — the contact stays disarmed whatever it says, so it is meaningful on OLD hosts only |
 | `dialogs` | `true` | enable the mediated dialog facade |
 | `sessionEvents` | `true` | append the log-only `mpd-tui/board-opened` record, and only after the event type is verified known to a reachable `dsh-session` copy |

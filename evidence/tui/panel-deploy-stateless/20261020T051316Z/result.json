@@ -1,0 +1,52 @@
+{
+  "case": "TUI sidebar panel deployment — stateless read-only adapter (G1) + apply-side attention (G2) + one deployment line (G4)",
+  "capturedAt": "20261020T051316Z",
+  "tree": "branch feature/tui-panels-stateless, working tree at capture (no version bump, no release)",
+  "subject": "shipped bytes of packages/mpd-tui-adapter-plugin/dist/index.js for A/B; the two packages' behaviour suites for C/D and for the G2 surface",
+  "cases": {
+    "A": {
+      "claim": "on a host that OWNS the enable list (>= 0.16.1) the keeper writes NOTHING — not even the stale-default migration — and installs no feed/belt",
+      "measured": "writes 0, subscribers 0, detail 'read-only: the host 0.16.1 owns the enable list (>= 0.16.1), so this keeper writes nothing — the stale-default migration included', discovered ids still announced",
+      "source": "run.mjs (dist import)"
+    },
+    "B": {
+      "claim": "the boundary holds: 0.16.0 keeps the S1 stale-default migration exactly once",
+      "measured": "1 write, csv 'todo,jobs,agents,info,trajectory,workspace,btw,companion,act1:team,act1:workmate'",
+      "source": "run.mjs (dist import)"
+    },
+    "C": {
+      "claim": "the badge reaches a CLOSED panel (published from apply), the first team that APPEARS auto-opens the page once, a refusal latches, and a boot-existing team never auto-opens",
+      "measured": "11 arms in packages/mpd-tui-plugin/test/panel-attention.test.ts (badge without a page, one-shot open, no retry, hold promotion, clear on settle, stop() release, absent badge member)",
+      "source": "output.log (suite)"
+    },
+    "D": {
+      "claim": "/mpd status names the host-assigned panel ids, the seam state and the keeper verdict",
+      "measured": "2 arms on panelsSummaryLine + the plugin's statusText appending it (one line, ids or 'unregistered', read-only verdict)",
+      "source": "output.log (suite)"
+    },
+    "E": {
+      "claim": "the page no longer publishes a badge of its own (one publisher, one ladder)",
+      "measured": "the rewritten panel-dag arm asserts host.notifications stays empty across two renders while dagBadge keeps the ladder",
+      "source": "output.log (suite)"
+    }
+  },
+  "gates": {
+    "bun test packages": "2146 pass / 3 skip / 0 fail (2149 tests, 134 files)",
+    "bun test adapter+tui-plugin": "603 pass / 0 fail (24 files)",
+    "tsgo --noEmit": "exit 0",
+    "node scripts/verify-dist-fresh.ts": "32/32 targets fresh (1 pre-existing NOT COVERED vendored file)",
+    "node scripts/verify-comment-coverage.ts": "PASS — 37455 declarations",
+    "bun run verify:docs": "pairs=48 failed=0 violations=0 — PASS",
+    "bun run verify:rows": "35 row ids match (patch untouched)",
+    "node scripts/verify-no-host-override.ts": "PASS (0 of 0 collide)",
+    "node scripts/verify-vendor.ts": "PASS — 7 shipped assets fingerprinted",
+    "bun run test:qa": "all self-tests passed",
+    "bun run verify:manifest": "PASS — 27 module paths, 25 patterns, pack lists 1011 files"
+  },
+  "bounds": [
+    "C/D are proven by the packages' behaviour suites over the sources, not by a dist import: the plugin package's public entry re-exports the plugin contract only, so panel-attention's helpers are not importable from dist. The ADAPTER artifact (A/B) IS the shipped bytes.",
+    "THE AUTO-OPEN TRIGGER IS WORKSPACE-SCOPED, not session-scoped: the mpdTeams feed carries no session id and no documented dsh-tui seam exposes the on-screen session to apply-side code. A trigger from another session therefore opens the page, which draws its own 'no team in this session' marker rather than a wrong board.",
+    "No real PTY capture in this wave: the change is registration/publication plumbing, not drawing. The DAG visual wave carries the PTY-capture obligation.",
+    "dsh-tui 0.16.1's own enable-list behaviour was read from the installed host package (register/dispose/settings-apply), not re-measured on a live boot in this lane."
+  ]
+}

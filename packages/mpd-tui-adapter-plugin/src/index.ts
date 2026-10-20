@@ -984,16 +984,56 @@ export const PANEL_CSV_SELF_HEAL_SINCE = "0.15.0"
  * @returns true only when the version parses and is at or past {@link PANEL_CSV_SELF_HEAL_SINCE}.
  */
 export function hostSelfHealsPanelCsv(version: string): boolean {
+  return hostVersionAtLeast(version, PANEL_CSV_SELF_HEAL_SINCE)
+}
+
+/**
+ * The first host release whose ENABLE LIST is OWNED by the host, for this bundle's purposes.
+ *
+ * 0.16.1 is the release this bundle is admitted on (`dsh-plugin.json` compat), and its
+ * `TuiPanelRuntime.register()` enables a panel on registration, `dispose()` removes it, and the boot
+ * and settings applies union every registered id back. There is therefore NO enable-list state this
+ * adapter could still author — anything it wrote would be a second writer racing the host's own
+ * merge, which is exactly the incident class (`fix/sidebar-015-keeper-migration`) this gate retires.
+ */
+export const PANEL_CSV_HOST_OWNED_SINCE = "0.16.1"
+
+/**
+ * Whether one host version OWNS the sidebar enable list, i.e. whether this adapter must be READ-ONLY.
+ *
+ * A STRICTER GATE THAN {@link hostSelfHealsPanelCsv}, and deliberately so: a self-healing host still
+ * accepted the one stale-default migration write, while an OWNING host needs no write at all — not
+ * even that one — because the list it keeps is the list its own registry produces. Degrade-safe in
+ * the same direction: an unreadable version answers FALSE and keeps the older, pinned behaviour.
+ * @param version - the installed host package's version, from {@link readHostPackageVersion}.
+ * @returns true only when the version parses and is at or past {@link PANEL_CSV_HOST_OWNED_SINCE}.
+ */
+export function hostOwnsPanelCsv(version: string): boolean {
+  return hostVersionAtLeast(version, PANEL_CSV_HOST_OWNED_SINCE)
+}
+
+/**
+ * Whether one host version is at or past a `major.minor.patch` floor.
+ *
+ * ONE comparison for both panel-CSV gates, so the two releases they name can never be compared by
+ * two subtly different rules. An unparseable version answers FALSE, which is the degrade-safe
+ * direction for every caller: the keeper keeps its pinned legacy behaviour on exactly the hosts
+ * whose behaviour it pinned.
+ * @param version - the installed host package's version.
+ * @param since - the first release the caller's rule applies to, as `major.minor.patch`.
+ * @returns true only when the version parses and ranks at or past `since`.
+ */
+export function hostVersionAtLeast(version: string, since: string): boolean {
   /** The leading `major.minor.patch` of the version, when it carries a readable one. */
   const match = /^(\d+)\.(\d+)\.(\d+)/.exec(version.trim())
   if (match === null) return false
-  /** The first host release that self-heals, pre-split once so the comparison reads as a rank. */
-  const since = PANEL_CSV_SELF_HEAL_SINCE.split(".").map((part) => Number.parseInt(part, 10))
+  /** The floor, pre-split once so the comparison reads as a rank. */
+  const floor = since.split(".").map((part) => Number.parseInt(part, 10))
   /** The parsed version, in the same rank order. */
   const parsed = [Number(match[1]), Number(match[2]), Number(match[3])]
   for (let rank = 0; rank < 3; rank += 1) {
-    if (parsed[rank] > since[rank]) return true
-    if (parsed[rank] < since[rank]) return false
+    if (parsed[rank] > floor[rank]) return true
+    if (parsed[rank] < floor[rank]) return false
   }
   return true
 }
@@ -1502,6 +1542,34 @@ export function createPanelEnableKeeper(options: PanelEnableKeeperOptions): Pane
   }
 
   /**
+   * Stand the keeper down READ-ONLY because the HOST OWNS the enable list
+   * (>= {@link PANEL_CSV_HOST_OWNED_SINCE}, repaired 2026-10-20).
+   *
+   * WHY THIS IS ITS OWN PATH RATHER THAN A FLAG ON {@link standDownToHostUnion}. A self-healing host
+   * still accepted the ONE stale-default migration write, so its stand-down had to evaluate that
+   * write and install the belt that re-evaluates it on every apply. An OWNING host accepts nothing:
+   * its registry produces the list, so a migration here would race the host's own union AND would be
+   * the recurring "our bundle rewrote the sidebar enable list" incident class
+   * (`fix/sidebar-015-keeper-migration`) that this gap exists to end. Keeping it a separate function
+   * makes "this adapter writes no enable-list state on a supported host" a property a reader and a
+   * test can SEE, instead of a branch inside the one function that used to write.
+   *
+   * NOTHING IS LOST BUT THE WRITES: the ladder is cancelled, no feed or belt is installed, and
+   * {@link settle} still announces the outcome — so the discovered ids keep reaching the
+   * diagnostic record, which is the half a support run actually reads.
+   * @param version - the host version the gate parsed, carried into the one line so a log reader can
+   *   tell WHICH release made this adapter read-only.
+   */
+  const standDownOwnedByHost = (version: string): void => {
+    ticks += 1
+    settle("confirmed", `read-only: the host ${version} owns the enable list (>= ${PANEL_CSV_HOST_OWNED_SINCE}), so this keeper writes nothing — the stale-default migration included`)
+    cancelLadder()
+    releaseFeedNow()
+    releaseBeltNow()
+    options.log?.(`mpd-tui panel enable keeper: standing down READ-ONLY on host ${version} — the host owns the sidebar enable list (>= ${PANEL_CSV_HOST_OWNED_SINCE}); this keeper never writes it again`)
+  }
+
+  /**
    * Stand the keeper down because the HOST itself self-heals the enable CSV (clause C2).
    *
    * THE KEEPER WRITES NOTHING TO THE ENABLE-LIST CSV on this path — not on this tick, not on a later
@@ -1672,6 +1740,14 @@ export function createPanelEnableKeeper(options: PanelEnableKeeperOptions): Pane
         // against the host's own merge — or the undo of a removal the user asked for. An unreadable,
         // empty or older version falls through to the legacy behaviour untouched, byte for byte.
         if (hostSelfHealsPanelCsv(probe.hostVersion ?? "")) {
+          // 0.16.1+ — THE HOST OWNS THE LIST (G1 of the stateless-deployment wave): the adapter is
+          // READ-ONLY here. No migration (the owning host's list is its own registry's), no belt (it
+          // existed only to re-migrate) and no feed (no repair to make). This gate is checked FIRST so
+          // no write-bearing path below can be reached on a supported host.
+          if (hostOwnsPanelCsv(probe.hostVersion ?? "")) {
+            standDownOwnedByHost(probe.hostVersion ?? "")
+            return
+          }
           // S1 — THE STALE-DEFAULT PREDICATE IS EVALUATED BEFORE THIS GATE RETURNS. The stand-down below
           // bypasses `decide` (the only caller of the merge), and the host's own union heals only
           // REGISTERED PLUGIN ids — so without this call a stale builtin pin on a self-healing host is

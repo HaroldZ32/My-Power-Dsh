@@ -37,6 +37,14 @@ Cordis 插件行（`mpd-tui`），其模块说明符由 bundle patch 持有：
 
 ### 两个侧栏页面（0.14.0 波次起）：合并的富页面 `MPD` 与 workmate 书架
 
+**徽标与那一次自动开页从 apply 侧发布，从不由页面发布（G2，2026-10-20）。** dsh-tui 只在插件面板是所在栏的
+**当前激活页**时挂载它，所以页面侧的徽标只能装饰用户已经在看的那一页。`src/panel-attention.ts` 持有宿主侧
+`tuiPanels.badge(id, …)` 调用与一次性的 `tuiPanels.open(id)`，经 `whenBound("panels")` 挂载（没有该接缝的
+组合什么都不注册），并由页面同样订阅的 `mpdTeams` 推送驱动。徽标阶梯就是 `dagBadge` —— 两个界面共用同一条
+推导 —— 同时把 watchdog 的 HOLD 提升到至少 `warning`。`/mpd status` 带有对应的部署行
+（`panels: team=… workmate=… · seam bound · keeper …`），它点名宿主分配的 id，因为除此之外没有任何东西能
+推导出它们。
+
 本包通过宿主的 `tuiPanels` 接缝贡献**两个**页面，每个页面都有自己在模块作用域**冻结**的描述符
 （`*_DESCRIPTOR_FROZEN`），且都在宿主自己的 `MAX_PANELS_PER_PLUGIN = 4` 配额之内：
 
@@ -497,6 +505,7 @@ harness 接缝（tools、skills、agent registry、subagents）不在此处直�
 | `shortcuts` | `true` | 注册快捷键 |
 | `panel` | `true` | 贡献 MPD 侧栏页（dsh-tui 0.13.0）并把 `alt+a` / `/mpd panel` 路由到它。关闭 ⇒ 不再尝试注册（聚合行上报适配器自己的 `skipped("panels", …)` 结果并点名该配置），两个入口都保持面板出现之前的路径：全屏合并场景 |
 | `workmate` | `true` | 贡献 WORKMATE 侧栏页 —— 它**自己的**开关，与 `panel` **相互独立**，因此 MPD 的两个页可以分别开关。关闭 ⇒ 该页完全不注册（聚合行上报 `skipped("panels", …)` 并点名 `workmate: false`），`/mpd workmate` 保持它的全屏界面（看板场景）。因为「从未注册的页」不可能被任何东西加回来 —— 宿主的配置重写不会、运行时的启用保持器也不会 —— 所以这个开关**能真正留住**；两个开关都需要重启生效，而且**两者都作为勾选框出现在宿主的 `/settings` 对话框里** —— 因为该行配置被标记为 volatile，而那个标记正是对话框 `volatileForm` 遍历所读的字段 |
+| `panelAutoOpen` | `true` | 在本进程内**第一次**出现活跃团队时，把 MPD 页打开一次。否则该页只能通过 `alt+a`、`/mpd panel` 与宿主的页签栏到达，不知道这些入口的用户永远看不到 DAG。它不会为启动时就已存在的团队触发；无论宿主如何回答，每进程至多一次；被拒绝即不重试（宿主对 `open()` 有每插件 5 秒一次的限速）。**徽标**是另一件事 —— 它在每次团队状态变化时从 apply 侧发布，因此关掉本项不会让告警失效 |
 | `dashboardKey` | `true` | 启用 `Ctrl+A` 接管：工作区存在团队时 `Ctrl+A` 打开合并面板；无团队（或本项关闭）时该键保持宿主原有含义。与本节其它旋钮不同，它**每次按键**都通过配置层重新读取，因此 `/settings` 保存后**无需重启**即生效。接管本身会在宿主把活的输入 kit 交给本会话之后就绪——即任意一次 MPD 场景/面板渲染之后（见"明确不声明"第 12 条）。**在提供侧栏面板接缝的宿主（dsh-tui 0.13.0+）上本旋钮是惰性的** —— 无论它说什么，接触面都保持解除武装，因此它只在旧宿主上有意义 |
 | `dialogs` | `true` | 启用托管对话框门面 |
 | `sessionEvents` | `true` | 追加 log-only 的 `mpd-tui/board-opened` 记录，且仅在事件类型已验证被可达的 `dsh-session` 副本认识之后 |

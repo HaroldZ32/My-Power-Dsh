@@ -114,6 +114,18 @@ band of terminal widths in which the sidebar opens, the tab exists, and the user
 instead of the page — and nothing reddens at registration, because the host's validator accepts the
 larger number happily. Ask for the floor; degrade inside the page.
 
+**The enable-list keeper is READ-ONLY on a host that owns the list (`>= 0.16.1`, 2026-10-20).** The keeper
+exists for one defect class: an enable-list rewrite dropping the bundle's panel ids. dsh-tui 0.15.0 began
+self-healing that list (it unions registered plugin ids back, and records explicit `/settings` removals
+session-wide), so the keeper stands down there — leaving the ONE stale-default migration as its only write.
+0.16.1 owns the list outright (it enables a panel on registration and removes it on dispose), and every write
+left would race that registry, so `hostOwnsPanelCsv` gates a separate read-only path: no ladder, no feed, no
+belt, **not even the migration**, and one log line that says so. `hostSelfHealsPanelCsv` and `hostOwnsPanelCsv`
+share `hostVersionAtLeast`, so the two release floors cannot drift, and an unreadable version keeps the older
+pinned behaviour. The discovered ids still reach the diagnostic record through the keeper's own `onChange` —
+the record is a diagnostic, not a write to the host — and `node scripts/mpd-tui-panels.ts --apply` remains the
+manual repair for a stale user layer.
+
 ## The binding discipline
 
 Measured, not chosen (T4-INERT-1, `evidence/tui/plugin/20260915T054343Z/mount-instrumentation/`):
