@@ -1,0 +1,21 @@
+=== bun test packages/mpd-tui-adapter-plugin packages/mpd-tui-plugin (behaviour arms: G1 keeper + G2 attention + G4 line) ===
+  ok   the string forms are caught (get / inject / serviceOf)
+  ok   the adapter package is excluded by identity
+  ok   the non-.ts fixture file is reported out of band, never as a finding
+  ok   the scan covers the adapter package's siblings
+SELF-TEST: PASS (7/7 checks)
+(pass) the gate reddens on a seeded violation (negative control) [0.92ms]
+(pass) the forbidden list tracks the adapter's seam table [0.16ms]
+
+ 603 pass
+ 0 fail
+ 14025 expect() calls
+Ran 603 tests across 24 files. [10.65s]
+
+=== full suite ===
+
+ 2146 pass
+ 3 skip
+ 0 fail
+ 26063 expect() calls
+Ran 2149 tests across 134 files. [24.93s]

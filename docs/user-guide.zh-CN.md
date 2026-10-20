@@ -252,6 +252,15 @@ interrupt_agent { target }                                                # 仅 
   平面是**我们的**（`mpd-team-core`），不属于官方 Agent Teams 插件：团队本身仍然跑在官方任务板上 ——
   `spawn_teammate` 与 `team_task_*` 生命周期。若 `team.gate: "advisory"`，或 `agent_teams_plan`
   没有挂载，门就不会 stage 任何东西，只用一条通知说明，并由 captain 在工作确需团队时自行建队。
+- **captain 的侦察与委派守卫重新开启（2026-10-20 恢复）。** 在 `mpd` preset 的**顶层**会话里，
+  `captain.investigation`（默认 `deny`）拒绝在**源码**路径上使用 `read` / `grep` / `glob` ——
+  文档带仍然可读 —— `delegation.gate`（默认 `deny`）拒绝 harness 自带的通用 spawn 工具
+  `subagent`、`subagent_fork` 与 `workflow`，并在拒绝里点名获准的通道（`mpd_role_spawn`、workmate
+  库、Agent Teams）。委派门是**按 preset 划定范围的**：别的 preset 的顶层会话（包括部署默认的
+  `cordis`）会被放行，而 `mpd` captain 与每个成员/子会话无论跑哪个 preset 都仍被覆盖。
+  `write` / `edit` / `bash` **不受**该门限制，验证法则的写入守卫（`verify.mode`）仍处于撤销状态：
+  由 captain 写代码，由**另一个**智能体记录判决。两个旋钮都在 `mpd` 设置命名空间下（§9）：
+  `captain.investigation` 取 `deny` | `allow`，`delegation.gate` 取 `deny` | `captain`（仅顶层会话）| `allow`。
 - **任务板是 compare-and-set 的。** `team_task_update` 要带上你读到的 `expected_revision`，过期
   revision 会得到错误而不是覆盖更新的工作。动作有 `claim`、`release`、`edit`、
   `set_dependencies`、`complete`、`reopen`、`reassign`、`delete`。
@@ -263,7 +272,7 @@ interrupt_agent { target }                                                # 仅 
   轮次在执行，不是工作已完成）；当没有其他成员在运行或创建中时，`wait_agent` 立刻回答
   `noProgress`。
 - **只读成员就是只读的。** Architect、Researcher、Planner、Explorer、Plan Reviewer 与
-  Vision Analyst 会被拒绝那七个写入工具：一次性通道通过 `toolFilter.deny`，团队通道通过
+  Vision Analyst 会被拒绝那八个写入工具：一次性通道通过 `toolFilter.deny`，团队通道通过
   `mpd-roles-plugin` 里以团队身份为键的工具守卫 —— 因为官方 `spawn_teammate` 无法接受按队友的
   工具过滤器。工作者（Senior Engineer、Junior Engineer、Deep Worker、Lead、Reviewer）负责实现与
   验证。
@@ -323,8 +332,8 @@ host，直到你选择 `mpd` 为止（TUI 的 `/preset mpd`、Web Settings 的 `
 
 | Web 界面 | TUI 等价物 |
 |---|---|
-| Agent Teams 面板（会话头部） | `tuiScenes` 全屏看板 + 带 key 的 `tuiStatus` 状态行 |
-| Workmates 侧边栏标签页 | `/mpd` 命令树（`tuiCommandTrees`）+ `tuiDialogs` |
+| Agent Teams 面板（会话头部） | `tuiPanels` 侧栏页面（`MPD`，用 `alt+a` / `/mpd panel` 打开）—— `tuiScenes` 全屏看板 + 带 key 的 `tuiStatus` 状态行仍是回退 |
+| Workmates 侧边栏标签页 | `tuiPanels` 的 `workmate` 页面，外加 `/mpd` 命令树（`tuiCommandTrees`）与 `tuiDialogs` |
 | 设置 → MPD 栏 | `/settings` 分区（`tuiSettingsSections`） |
 | — | `tuiShortcuts` 快捷键 |
 
@@ -332,6 +341,23 @@ host，直到你选择 `mpd` 为止（TUI 的 `/preset mpd`、Web Settings 的 `
 声明为未主张 —— 宿主不提供 prompt 插槽（`tuiPrompt` 宿主不可用），也不为 bundle 的 renderer 事件投射
 任何 transcript 行，因此 prompt 插槽与 transcript 行都不作主张。完整清单位于
 [`tui.zh-CN.md`](tui.zh-CN.md) §10 NOT-CLAIMED。
+
+### 7.1.1 侧栏面板：注意力徽标、自动打开，以及自己掌管清单的宿主
+
+- **注意力徽标由插件侧发布，而不是由页面发布。** 面板通过 `tuiPanels.badge` 携带徽标，统计**当前
+  显示的那个团队**的看门狗 hold。它从行的 apply 路径设置，因为 dsh-tui 只在某个插件面板是活动页时
+  才挂载它 —— 页面侧的徽标只能装饰你正在看的那个页面。武装后的第一次发布包含空状态，这正是清掉上一
+  次运行遗留的陈旧徽标的方式。
+- **`panelAutoOpen`（`mpd-tui` 行的旋钮，默认 `true`）** 每进程**最多打开一次** MPD 页面，触发点是
+  团队从 NOT-LIVE → LIVE 的**边沿**：启动时工作区里已有团队不会抢走侧栏；一次性闩锁在面板接缝重绑
+  之间共享，所以重绑不会开第二次。宿主的拒绝（dsh-tui 对每个插件的 `open()` 有速率限制）会在下一次
+  团队状态变化时重试；宿主若根本不暴露 badge 成员，则永不重试。`panel` 与 `workmate` 两个行旋钮
+  分别独立关闭两个页面。
+- **在 dsh-tui ≥ 0.16.1 上部署是 STATELESS 的。** 该宿主**自己掌管**侧栏启用清单：它的注册表在注册时
+  启用面板、在 dispose 时移除，并在每次 apply 时把已注册 id 并回去，因此本 bundle 的启用保持器变为
+  **只读** —— 取消阶梯、不装 feed、不装腰带，连陈旧默认迁移也跳过。在 0.15.x 上保持器加入宿主自愈，
+  只保留唯一一次写入（陈旧默认迁移）；0.15 以下仍是 feed-first。`/mpd status` 报告部署情况：宿主分配
+  的面板 id、接缝状态与保持器的结论。
 
 ### 7.2 `/settings` 界面与 `mpd.jsonc` 桥接
 

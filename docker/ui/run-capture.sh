@@ -94,6 +94,12 @@ LANG_ARGS=()
 # whose file names must stay stable for the lanes that compare them, while `--readme` is the curated
 # figure set the page links, and it carries the SAME locale split so the two language sets cannot
 # overwrite each other.
-README_DIR=/data-out/readme
+# THE ENGLISH SET LANDS IN `readme/en`, NOT AT THE BASE. MEASURED 2026-10-20: the English run used to
+# write into `/data-out/readme/` while the TUI lane writes `/data-out/readme/en/`, so the publish step
+# the release pipeline documents (`cp -r docker/ui/out/readme/en/*.png docs/assets/images/`) copied the
+# TUI tiles and left every Web figure at the OLD revision — a stale set that looks refreshed. The two
+# writers now agree on `en` / `zh-CN`, which is also the name of the README's own language directory.
+README_DIR=/data-out/readme/en
 [ -n "$LANG_KIND" ] && README_DIR="/data-out/readme/$LANG_KIND"
+mkdir -p "$README_DIR"
 node /data/capture.mts --base http://127.0.0.1:3080 --token "$TOKEN" --out "$OUT_DIR" --readme "$README_DIR" --workspace /data/ws --board "$BOARD_KIND" "${LANG_ARGS[@]}"

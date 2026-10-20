@@ -1,0 +1,12 @@
+[delegation-gate] ok   R5-dist-carries-the-gate — the built roles row carries the gate's install and refusal text
+[delegation-gate] ok   R5-a-presetless-top-level-released — the preset-less top-level headless session is RELEASED by the mpd-preset scope; the DENY side proper is carried by the offline arms and the preset-carrying session (evidence/dsh-qa/preset-conformance/)
+[delegation-gate] ok   R5-a-presetless-headless-and-deny-mode — the row log names the booted session `agentPreset=none` while the gate installed in deny mode, so the release is attributable to the preset scope
+[delegation-gate] ok   R5-b-allow-mode-reported — the row log reports `delegationGate=allow` with `delegation.gate: "allow"` in the side's project config — the PROJECT CONFIG IS READ; the released call is corroboration only, because both live sides are preset-less and released whatever the knob says
+[delegation-gate] ok   R5-c-readonly-role-spawn-succeeds — the read-only Explorer spawn completed without the unknown-names rejection
+[delegation-gate] ok   R5-bootline-deny — the row log reports the gate's install and mode
+[delegation-gate] ok   R5-bootline-allow — the row log reports the gate's install and mode
+[delegation-gate] ok   R5-bootline-roles — the row log reports the gate's install and mode
+[delegation-gate] ok   R5-isolation — ok: 3 session-store key(s), all under the sandbox
+[delegation-gate] ok   R5-real-checkout-untouched — the real checkout's row log is byte-identical across the run
+[delegation-gate] evidence -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/roles/delegation-gate/2026-10-20T12-29-36.953Z
+[delegation-gate] PASS (3 sides, 10 rows)

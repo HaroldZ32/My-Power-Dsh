@@ -337,6 +337,9 @@ describe("plugin contract", () => {
       panel: true,
       // The workmate page's OWN knob: independent of `panel`, so the two sidebar pages toggle apart.
       workmate: true,
+      // The one-shot auto-open's own knob (G2): on by default, so a user who never reads the docs still
+      // MEETS the page the first time a team becomes live; turning it off keeps the badge.
+      panelAutoOpen: true,
       // The Ctrl+A takeover's FLOOR: the row config default. A saved `tui.dashboardKey` (the /settings
       // row) outranks it per press, so this stays true for every composition that never saves one.
       dashboardKey: true,

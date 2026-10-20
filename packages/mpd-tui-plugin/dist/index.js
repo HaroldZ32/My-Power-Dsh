@@ -3064,15 +3064,22 @@ function mergePanelEnableIds(existing, ours, past, hostDefault) {
 }
 var PANEL_CSV_SELF_HEAL_SINCE = "0.15.0";
 function hostSelfHealsPanelCsv(version) {
+  return hostVersionAtLeast(version, PANEL_CSV_SELF_HEAL_SINCE);
+}
+var PANEL_CSV_HOST_OWNED_SINCE = "0.16.1";
+function hostOwnsPanelCsv(version) {
+  return hostVersionAtLeast(version, PANEL_CSV_HOST_OWNED_SINCE);
+}
+function hostVersionAtLeast(version, since) {
   const match = /^(\d+)\.(\d+)\.(\d+)/.exec(version.trim());
   if (match === null)
     return false;
-  const since = PANEL_CSV_SELF_HEAL_SINCE.split(".").map((part) => Number.parseInt(part, 10));
+  const floor = since.split(".").map((part) => Number.parseInt(part, 10));
   const parsed = [Number(match[1]), Number(match[2]), Number(match[3])];
   for (let rank = 0;rank < 3; rank += 1) {
-    if (parsed[rank] > since[rank])
+    if (parsed[rank] > floor[rank])
       return true;
-    if (parsed[rank] < since[rank])
+    if (parsed[rank] < floor[rank])
       return false;
   }
   return true;
@@ -3227,6 +3234,14 @@ function createPanelEnableKeeper(options) {
       release();
     } catch {}
   };
+  const standDownOwnedByHost = (version) => {
+    ticks += 1;
+    settle("confirmed", `read-only: the host ${version} owns the enable list (>= ${PANEL_CSV_HOST_OWNED_SINCE}), so this keeper writes nothing — the stale-default migration included`);
+    cancelLadder();
+    releaseFeedNow();
+    releaseBeltNow();
+    options.log?.(`mpd-tui panel enable keeper: standing down READ-ONLY on host ${version} — the host owns the sidebar enable list (>= ${PANEL_CSV_HOST_OWNED_SINCE}); this keeper never writes it again`);
+  };
   const standDownToHostUnion = (prefs, version, hostDefault, migration) => {
     ticks += 1;
     settle(migration === "refused" ? "refused" : "confirmed", migration === "refused" ? `standing down: the host ${version} self-heals the enable CSV (>= ${PANEL_CSV_SELF_HEAL_SINCE}), but the stale-default migration write was refused, so the stale list remains; the belt re-evaluates on the host's next apply` : `standing down: the host ${version} self-heals the enable CSV (>= ${PANEL_CSV_SELF_HEAL_SINCE}), so this keeper leaves the list to the host's own union (the stale-default migration aside)`);
@@ -3293,6 +3308,10 @@ function createPanelEnableKeeper(options) {
           return;
         }
         if (hostSelfHealsPanelCsv(probe.hostVersion ?? "")) {
+          if (hostOwnsPanelCsv(probe.hostVersion ?? "")) {
+            standDownOwnedByHost(probe.hostVersion ?? "");
+            return;
+          }
           const migration = migrateStaleDefaultOnSelfHealer(probe.prefs, probe.defaultIds);
           standDownToHostUnion(probe.prefs, probe.hostVersion ?? "", probe.defaultIds, migration);
           return;
@@ -5684,26 +5703,6 @@ function panelViewportBody(kit, children, viewport, reserveGutter = true, rowWra
     return drawn;
   return [kit.React.createElement(kit.ui.Box, { key: "window", flexDirection: "row" }, kit.React.createElement(kit.ui.Box, { key: "rows", flexDirection: "column" }, ...drawn), rail)];
 }
-function publishBadge(host, badge, previous) {
-  if (host === null || host === undefined)
-    return;
-  const api = host;
-  const next = badge === null ? null : { level: badge.level, unread: Math.max(0, Math.floor(badge.unread)) };
-  const last = previous.current;
-  if (last === next || last !== null && next !== null && last.level === next.level && last.unread === next.unread)
-    return;
-  try {
-    if (next === null) {
-      if (typeof api.clearBadge === "function")
-        api.clearBadge();
-    } else if (typeof api.notify === "function") {
-      api.notify(next.level, next.unread);
-    } else {
-      return;
-    }
-    previous.current = next;
-  } catch {}
-}
 function usePanelKeys(kit, host, active, listener) {
   const handlerRef = kit.React.useRef(listener);
   if (handlerRef !== null && handlerRef !== undefined)
@@ -7708,145 +7707,6 @@ function registerSettingsSection(ctx, tui, log, adapterOverride) {
   };
 }
 
-// packages/mpd-tui-plugin/src/dashboard-key.ts
-var DASHBOARD_KEY_VIEW = "mpd-tui-keyhook";
-var DASHBOARD_KEY_MAX_ROWS = 1;
-function reactHooksOf(value) {
-  if (value === undefined || value === null)
-    return;
-  const candidate = value;
-  if (typeof candidate.useState !== "function")
-    return;
-  if (typeof candidate.useEffect !== "function")
-    return;
-  if (typeof candidate.createElement !== "function")
-    return;
-  return candidate;
-}
-function readHostInputBus(tui) {
-  try {
-    return readHostStdinValue(tui.hostInput()?.useStdin());
-  } catch (error) {
-    return { detail: `the host stdin hook threw: ${String(error?.message ?? error)}` };
-  }
-}
-function interceptDashboardKey(event, deps) {
-  const candidate = event;
-  if (candidate === undefined || candidate === null)
-    return false;
-  if (candidate.input !== "a")
-    return false;
-  const key = candidate.key;
-  if (key === undefined || key === null)
-    return false;
-  if (key.ctrl !== true || key.meta === true)
-    return false;
-  if (!deps.enabled())
-    return false;
-  if (!deps.mergedSceneAvailable())
-    return false;
-  const workflow = deps.readWorkflow();
-  if (workflow === undefined || workflow.team === undefined || workflow.tasks.length === 0)
-    return false;
-  const stop = candidate.stopImmediatePropagation;
-  if (typeof stop !== "function")
-    return false;
-  stop.call(event);
-  const opened = deps.openMergedScene();
-  deps.log.debug(`Ctrl+A takeover: ${opened ? "opened" : "FAILED to open"} ${SUBAGENT_SCENE_ID} (${workflow.tasks.length} task(s))`);
-  return true;
-}
-function readDashboardWorkflow(workspaceRoot, holds, teamViews, teamRecords, teams, sessionId) {
-  try {
-    let holdIds = [];
-    try {
-      holdIds = holds() ?? [];
-    } catch {
-      holdIds = [];
-    }
-    let records = [];
-    try {
-      records = teamRecords?.() ?? [];
-    } catch {
-      records = [];
-    }
-    let views = [];
-    try {
-      views = teamViews?.() ?? [];
-    } catch {
-      views = [];
-    }
-    let service;
-    try {
-      service = teams?.();
-    } catch {
-      service = undefined;
-    }
-    return readScopedWorkflow({
-      workspace: workspaceRoot(),
-      ...sessionId === undefined || sessionId === "" ? {} : { sessionId },
-      holds: holdIds,
-      ...service === undefined ? {} : { teams: service },
-      records,
-      views
-    });
-  } catch {
-    return;
-  }
-}
-function createDashboardKeyComponent(tui, deps) {
-  return function MpdTuiDashboardKey(props) {
-    const React = reactHooksOf(props?.React);
-    if (React === undefined) {
-      return null;
-    }
-    const ui = props?.ui;
-    const armed = React.useState(0);
-    const setArmed = armed[1];
-    React.useEffect(() => tui.whenHostInput(() => setArmed((previous) => previous + 1)), []);
-    const bus = readHostInputBus(tui);
-    const emitter = bus.emitter;
-    const unavailable = bus.detail;
-    React.useEffect(() => {
-      if (emitter === undefined) {
-        if (unavailable !== undefined)
-          deps.log.debug(`Ctrl+A takeover: ${unavailable}`);
-        return;
-      }
-      const listener = (event) => {
-        try {
-          interceptDashboardKey(event, deps);
-        } catch (error) {
-          deps.log.debug(`Ctrl+A takeover handler failed: ${String(error?.message ?? error)}`);
-        }
-      };
-      try {
-        emitter.prependListener("input", listener);
-      } catch {
-        return;
-      }
-      return () => {
-        try {
-          emitter.removeListener("input", listener);
-        } catch {}
-      };
-    }, [emitter, unavailable]);
-    if (typeof ui?.Box !== "function")
-      return null;
-    return React.createElement(ui.Box, {}, null);
-  };
-}
-function registerDashboardKey(ctx, tui, deps) {
-  const view = tui.registerStatusComponent({
-    key: DASHBOARD_KEY_VIEW,
-    component: createDashboardKeyComponent(tui, deps),
-    maxRows: DASHBOARD_KEY_MAX_ROWS,
-    identity: ctx,
-    label: "mpd-tui Ctrl+A keyhook"
-  });
-  return { outcome: () => view.outcome() };
-}
-
 // packages/mpd-tui-plugin/src/panel-dag.ts
 var DAG_PANEL_TITLE = "MPD";
 var DAG_SECTION_HOST_TITLE = "Host subagents";
@@ -8162,11 +8022,6 @@ function createDagPanelComponent(readWorkflow, options) {
     usePanelTick(kit, DAG_PANEL_REFRESH_MS, true);
     const animate = layout !== undefined && layout.view.lines.some((row) => row.some((span) => span.tone === "running"));
     const phase = useRunningPhase(kit.ui, animate);
-    const badge = page === undefined ? null : dagBadge(page.tasks);
-    const published = kit.React.useRef(null);
-    kit.React.useEffect(() => {
-      publishBadge(props?.host, badge, published);
-    }, [badge === null ? "none" : `${badge.level}:${badge.unread}`, props?.host]);
     const order = layout === undefined ? [] : layout.view.hits.map((hit) => hit.taskId);
     const rowIndex = new Map;
     usePanelKeys(kit, props?.host, keysArmed, (event) => {
@@ -8328,6 +8183,289 @@ function createDagPanelComponent(readWorkflow, options) {
     const titleRow = usePanelTitleRow(kit, { key: "title", title: DAG_PANEL_TITLE, cols: contentCols, ...options?.openFullscreen === undefined ? {} : { open: options.openFullscreen } });
     return panelFrame(kit, DAG_PANEL_TITLE, [titleRow, ...body, footer]);
   };
+}
+
+// packages/mpd-tui-plugin/src/panel-attention.ts
+function sameBadge(left, right) {
+  if (left === null || right === null)
+    return left === right;
+  return left.level === right.level && left.unread === right.unread;
+}
+function attentionBadge(workflow) {
+  if (workflow === undefined)
+    return null;
+  const fromTasks = dagBadge(workflow.tasks);
+  const teamId = workflow.team?.id;
+  const holds = teamId !== undefined && Array.isArray(workflow.holds) ? workflow.holds.filter((held) => held === teamId).length : 0;
+  if (fromTasks === null)
+    return holds > 0 ? { level: "warning", unread: holds } : null;
+  if (holds > 0 && fromTasks.level === "info")
+    return { level: "warning", unread: Math.max(fromTasks.unread, holds) };
+  return fromTasks;
+}
+function armPanelAttention(deps) {
+  let last = null;
+  let settled = false;
+  let opened = false;
+  let wasLive = false;
+  let stopped = false;
+  let release;
+  let badgeMissing = false;
+  const id = () => {
+    try {
+      return deps.panelId();
+    } catch {
+      return;
+    }
+  };
+  const read = () => {
+    try {
+      return deps.readWorkflow();
+    } catch {
+      return;
+    }
+  };
+  const publish = (next) => {
+    const address = id();
+    if (address === undefined)
+      return false;
+    try {
+      const accepted = deps.badgePanel(address, next);
+      if (accepted === undefined && !badgeMissing) {
+        badgeMissing = true;
+        deps.log.debug(`panel badge: ${address} has no badge member on this host; the panel keeps its tab chip only`);
+      }
+      return accepted;
+    } catch {
+      return false;
+    }
+  };
+  const observe = (event) => {
+    if (stopped)
+      return;
+    const workflow = read();
+    const next = attentionBadge(workflow);
+    if (!settled || !sameBadge(last, next)) {
+      const result = publish(next);
+      if (result === true || result === undefined && badgeMissing) {
+        last = next;
+        settled = true;
+      }
+    }
+    const live = workflow !== undefined && workflow.tasks.length > 0;
+    const appeared = live && !wasLive;
+    wasLive = live;
+    if (!event || !deps.autoOpen || opened || deps.autoOpenLatch?.spent === true || !appeared)
+      return;
+    const address = id();
+    if (address === undefined)
+      return;
+    opened = true;
+    if (deps.autoOpenLatch !== undefined)
+      deps.autoOpenLatch.spent = true;
+    try {
+      if (deps.openPanel(address))
+        deps.log.info(`panel auto-open: opened ${address} on the first live team`);
+      else
+        deps.log.debug(`panel auto-open: the host refused the one auto-open of ${address}; the panel stays reachable through the command and the panel bar`);
+    } catch (error) {
+      deps.log.debug(`panel auto-open: the open of ${address} threw (${String(error?.message ?? error)}); the panel stays reachable through the command and the panel bar`);
+    }
+  };
+  const attach = () => {
+    const previous = release;
+    release = undefined;
+    if (previous !== undefined) {
+      try {
+        previous();
+      } catch {}
+    }
+    let subscribe;
+    try {
+      subscribe = deps.feed === undefined ? undefined : deps.feed();
+    } catch {
+      subscribe = undefined;
+    }
+    if (typeof subscribe !== "function")
+      return;
+    try {
+      release = subscribe(() => observe(true));
+    } catch {
+      release = undefined;
+    }
+  };
+  attach();
+  observe(false);
+  return {
+    observe,
+    resubscribe() {
+      if (stopped)
+        return;
+      attach();
+      observe(false);
+    },
+    current() {
+      return last;
+    },
+    opened() {
+      return opened;
+    },
+    stop() {
+      if (stopped)
+        return;
+      stopped = true;
+      const disposer = release;
+      release = undefined;
+      if (disposer === undefined)
+        return;
+      try {
+        disposer();
+      } catch {}
+    }
+  };
+}
+function panelsSummaryLine(facts) {
+  const ids = ["team=" + (facts.teamId ?? "unregistered"), "workmate=" + (facts.workmateId ?? "unregistered")];
+  return "panels: " + ids.join(" ") + " · " + (facts.seamBound ? "seam bound" : "no panel seam") + " · keeper " + facts.keeper.state + " — " + facts.keeper.detail;
+}
+
+// packages/mpd-tui-plugin/src/dashboard-key.ts
+var DASHBOARD_KEY_VIEW = "mpd-tui-keyhook";
+var DASHBOARD_KEY_MAX_ROWS = 1;
+function reactHooksOf(value) {
+  if (value === undefined || value === null)
+    return;
+  const candidate = value;
+  if (typeof candidate.useState !== "function")
+    return;
+  if (typeof candidate.useEffect !== "function")
+    return;
+  if (typeof candidate.createElement !== "function")
+    return;
+  return candidate;
+}
+function readHostInputBus(tui) {
+  try {
+    return readHostStdinValue(tui.hostInput()?.useStdin());
+  } catch (error) {
+    return { detail: `the host stdin hook threw: ${String(error?.message ?? error)}` };
+  }
+}
+function interceptDashboardKey(event, deps) {
+  const candidate = event;
+  if (candidate === undefined || candidate === null)
+    return false;
+  if (candidate.input !== "a")
+    return false;
+  const key = candidate.key;
+  if (key === undefined || key === null)
+    return false;
+  if (key.ctrl !== true || key.meta === true)
+    return false;
+  if (!deps.enabled())
+    return false;
+  if (!deps.mergedSceneAvailable())
+    return false;
+  const workflow = deps.readWorkflow();
+  if (workflow === undefined || workflow.team === undefined || workflow.tasks.length === 0)
+    return false;
+  const stop = candidate.stopImmediatePropagation;
+  if (typeof stop !== "function")
+    return false;
+  stop.call(event);
+  const opened = deps.openMergedScene();
+  deps.log.debug(`Ctrl+A takeover: ${opened ? "opened" : "FAILED to open"} ${SUBAGENT_SCENE_ID} (${workflow.tasks.length} task(s))`);
+  return true;
+}
+function readDashboardWorkflow(workspaceRoot, holds, teamViews, teamRecords, teams, sessionId) {
+  try {
+    let holdIds = [];
+    try {
+      holdIds = holds() ?? [];
+    } catch {
+      holdIds = [];
+    }
+    let records = [];
+    try {
+      records = teamRecords?.() ?? [];
+    } catch {
+      records = [];
+    }
+    let views = [];
+    try {
+      views = teamViews?.() ?? [];
+    } catch {
+      views = [];
+    }
+    let service;
+    try {
+      service = teams?.();
+    } catch {
+      service = undefined;
+    }
+    return readScopedWorkflow({
+      workspace: workspaceRoot(),
+      ...sessionId === undefined || sessionId === "" ? {} : { sessionId },
+      holds: holdIds,
+      ...service === undefined ? {} : { teams: service },
+      records,
+      views
+    });
+  } catch {
+    return;
+  }
+}
+function createDashboardKeyComponent(tui, deps) {
+  return function MpdTuiDashboardKey(props) {
+    const React = reactHooksOf(props?.React);
+    if (React === undefined) {
+      return null;
+    }
+    const ui = props?.ui;
+    const armed = React.useState(0);
+    const setArmed = armed[1];
+    React.useEffect(() => tui.whenHostInput(() => setArmed((previous) => previous + 1)), []);
+    const bus = readHostInputBus(tui);
+    const emitter = bus.emitter;
+    const unavailable = bus.detail;
+    React.useEffect(() => {
+      if (emitter === undefined) {
+        if (unavailable !== undefined)
+          deps.log.debug(`Ctrl+A takeover: ${unavailable}`);
+        return;
+      }
+      const listener = (event) => {
+        try {
+          interceptDashboardKey(event, deps);
+        } catch (error) {
+          deps.log.debug(`Ctrl+A takeover handler failed: ${String(error?.message ?? error)}`);
+        }
+      };
+      try {
+        emitter.prependListener("input", listener);
+      } catch {
+        return;
+      }
+      return () => {
+        try {
+          emitter.removeListener("input", listener);
+        } catch {}
+      };
+    }, [emitter, unavailable]);
+    if (typeof ui?.Box !== "function")
+      return null;
+    return React.createElement(ui.Box, {}, null);
+  };
+}
+function registerDashboardKey(ctx, tui, deps) {
+  const view = tui.registerStatusComponent({
+    key: DASHBOARD_KEY_VIEW,
+    component: createDashboardKeyComponent(tui, deps),
+    maxRows: DASHBOARD_KEY_MAX_ROWS,
+    identity: ctx,
+    label: "mpd-tui Ctrl+A keyhook"
+  });
+  return { outcome: () => view.outcome() };
 }
 
 // packages/mpd-tui-plugin/src/panel.ts
@@ -10157,6 +10295,7 @@ var Config = markVolatile(Schema.object({
   dialogs: Schema.boolean().default(true),
   panel: Schema.boolean().default(true),
   workmate: Schema.boolean().default(true),
+  panelAutoOpen: Schema.boolean().default(true),
   dashboardKey: Schema.boolean().default(true),
   wheelInvert: Schema.boolean().default(false),
   sessionEvents: Schema.boolean().default(true),
@@ -10178,6 +10317,7 @@ function resolveConfig(config = {}) {
     dialogs: bool(config.dialogs, true),
     panel: bool(config.panel, true),
     workmate: bool(config.workmate, true),
+    panelAutoOpen: bool(config.panelAutoOpen, true),
     dashboardKey: bool(config.dashboardKey, true),
     wheelInvert: bool(config.wheelInvert, false),
     sessionEvents: bool(config.sessionEvents, true),
@@ -10286,8 +10426,13 @@ function apply(ctx, config = {}) {
   const home = () => homeDir();
   const teamViews = () => liveTeamViews(adapter, workspaceRoot());
   let teamsService;
+  let panelAttention;
+  const autoOpenLatch = { spent: false };
   onService(ctx, "mpdTeams", (_scoped, service) => {
     teamsService = service;
+    try {
+      panelAttention?.resubscribe();
+    } catch {}
   });
   const teamRecords = () => mpdTeamRecords(teamsService, workspaceRoot());
   let feedClosure;
@@ -10390,6 +10535,41 @@ function apply(ctx, config = {}) {
     openScene: () => scene.open(),
     log
   });
+  if (resolved.panel) {
+    tui.whenBound("panels", (_service, scope) => {
+      try {
+        panelAttention?.stop();
+      } catch {}
+      const surface = armPanelAttention({
+        panelId: () => panel.id(),
+        openPanel: (id) => {
+          try {
+            return tui.openPanel(id).opened() === true;
+          } catch {
+            return false;
+          }
+        },
+        badgePanel: (id, badge) => {
+          try {
+            const seam = tui.panels();
+            if (seam === undefined || typeof seam.badge !== "function")
+              return;
+            return seam.badge(id, badge) === true;
+          } catch {
+            return false;
+          }
+        },
+        readWorkflow: () => readDashboardWorkflow(workspaceRoot, () => watchdogFrontDoor.view().holds, teamViews, teamRecords, () => teamsService),
+        feed: teamFeed,
+        autoOpen: resolved.panelAutoOpen,
+        autoOpenLatch,
+        log
+      });
+      panelAttention = surface;
+      if (typeof scope.effect === "function")
+        scope.effect(() => () => surface.stop(), "mpd-tui: panel attention");
+    });
+  }
   const dashboardKeyEnabled = () => {
     let saved;
     try {
@@ -10437,6 +10617,12 @@ function apply(ctx, config = {}) {
       pickWorkmate(log, dialogs, workspaceRoot, home, scene, teamViews, teamRecords);
     }
   }) : skipped("shortcuts", "disabled by config");
+  const panelsSummary = () => panelsSummaryLine({
+    teamId: panel.id(),
+    workmateId: workmatePanel.id(),
+    seamBound: tui.panelSeamBound(),
+    keeper: tui.panelEnableOutcome()
+  });
   const commands = resolved.commands ? registerCommands(tui, {
     openBoard: () => scene.open(),
     openTeam: () => scene.openTeam(),
@@ -10457,7 +10643,7 @@ function apply(ctx, config = {}) {
       const route = openPage(workmatePanel);
       return { outcome: route.outcome, id: route.id };
     },
-    statusText: () => boardSummary(workspaceRoot, home, teamViews, teamRecords),
+    statusText: () => boardSummary(workspaceRoot, home, teamViews, teamRecords) + String.fromCharCode(10) + panelsSummary(),
     workmatesText: () => {
       const state = readBoardState(workspaceRoot(), home(), teamViews(), teamRecords());
       return state.workmates.count === 0 ? t("command.workmatesNone") : t("command.workmatesList", { count: String(state.workmates.count), names: state.workmates.names.join(", ") });

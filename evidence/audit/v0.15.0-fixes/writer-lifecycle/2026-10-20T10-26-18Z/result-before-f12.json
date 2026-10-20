@@ -1,0 +1,79 @@
+{
+  "ok": false,
+  "sandbox": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-reloc/bundle-lifecycle-2026-10-20T10-11-49.711Z",
+  "env": {
+    "DSH_HOME": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-reloc/bundle-lifecycle-2026-10-20T10-11-49.711Z/home",
+    "HOME": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-reloc/bundle-lifecycle-2026-10-20T10-11-49.711Z/userhome",
+    "XDG_RUNTIME_DIR": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-reloc/bundle-lifecycle-2026-10-20T10-11-49.711Z/run",
+    "npm_config_cache": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-reloc/bundle-lifecycle-2026-10-20T10-11-49.711Z/npm-cache",
+    "PNPM_HOME": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-reloc/bundle-lifecycle-2026-10-20T10-11-49.711Z/pnpm-home"
+  },
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0,
+      "dependency": "link:/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app",
+        "@mpd-dsh/mpd"
+      ],
+      "oneCommand": "dsh plugin --profile w add <repo root>"
+    },
+    "composed": {
+      "ok": false,
+      "exit": 0
+    },
+    "boot": {
+      "ok": false,
+      "checks": {
+        "http": true,
+        "adapterProvided": false,
+        "adapterSeams": true,
+        "adapterToolCall": true,
+        "corpusFromBundle": false,
+        "noPresetRefusal": true,
+        "probePass": true,
+        "presetProbeOk": true
+      },
+      "failed": [
+        "adapterProvided",
+        "corpusFromBundle"
+      ],
+      "probeVerdict": "PASS",
+      "presetProbeLine": "ok",
+      "http": true,
+      "corpus": null,
+      "presetPath": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/presets/mpd.patch.yml",
+      "bundleReal": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+      "adapterSeams": "tools,toolsRegister,toolsGuard,toolsGet,toolsExecute,toolsPreExecute,toolsPostExecute,subagents,subagentsSpawn,skills,skillsProvider,agentPresets,commands,commandsRegister,agents,events,llmCatalog,toolsRegisterHost,subagentsProvider,subagentsContinuable,teamExecutorNative,subagentsInterrupt,llmListModels,llmResolveCallConfig,systemPromptSection,agentPreStep,team,teamTasks,teamMessages,subagentsProviderRegister,goals"
+    },
+    "noHomeCopy": {
+      "ok": true,
+      "skills": [],
+      "presets": []
+    },
+    "layerDurability": {
+      "ok": true,
+      "exit": 0,
+      "dependency": true,
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app",
+        "@mpd-dsh/mpd"
+      ]
+    },
+    "uninstall": {
+      "ok": false,
+      "exit": 0,
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app"
+      ],
+      "residue": [
+        "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-reloc/bundle-lifecycle-2026-10-20T10-11-49.711Z/home/profiles/w/node_modules/@mpd-dsh"
+      ],
+      "mpdState": []
+    }
+  }
+}

@@ -445,14 +445,13 @@
         quiet: false
     - id: mpd-roles
       name: '@mpd-dsh/mpd/packages/mpd-roles-plugin/dist/index.js'
-      # The session-start complexity gate ships OFF (2026-10-17 rollback): the team surface stays
-      # callable, but nothing stages a plan shell or injects a notice unless the user asks for a
-      # team (`team:` / `!team`) or the agent judges the work warrants one. A deployment overrides
-      # this ROW layer with `team.gate` in mpd.jsonc (off | advisory | mechanical; an absent key and
-      # an unknown value both read off, and only `mechanical`/true arm the gate).
-      config:
-        team:
-          gate: "off"
+      # The session-start complexity gate ships ON again (2026-10-20 ruling): with no row pin, the
+      # plugin's own default is `mechanical`, so a session whose first pre-step matches a signal gets
+      # ONE approvable plan shell staged (0 members, 0 tasks, INERT until approved) instead of the
+      # captain quietly doing everything itself. A deployment overrides this with `team.gate` in
+      # mpd.jsonc: mechanical (default) | advisory (notice only) | off (nothing). The pin is
+      # deliberately ABSENT from this row so the code default is the one that governs; a `"off"` here
+      # would silently re-disarm the rule the 2026-10-20 ruling restored.
     # ── the verification law (W4) ──────────────────────────────────────────────────
     # ONE row. The captain write guard that used to resolve this row's `mpdVerify` service per call
     # was removed by the 2026-10-17 rollback (the top-level agent writes directly), so what remains

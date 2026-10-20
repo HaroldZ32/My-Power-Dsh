@@ -1,0 +1,166 @@
+{
+  "task": "fix a real product defect: under a zh-CN locale the Web DAG node kind chip drew the localized kind; frozen contract .mpd/plans/dag-edges-scroll.md §F1 requires the ASCII REQ|WRK|REV|FIX|INT and never kindOf(kind)/t(\"kind.req\")",
+  "branch": "fix/web-dag-cjk-kind",
+  "baseCommit": "8f1736c507914d46f329539d61daef17569f166e",
+  "committed": false,
+  "timestampUtc": "2026-10-20T12:15:30Z",
+  "rootCause": {
+    "site": "packages/mpd-bundle-plugin/src/team-view.ts, the DAG node legend line's kind span: react.createElement(\"span\", { key: \"kind\", style: CSS.dim }, kindOf(task.kind))",
+    "why": "kindOf() resolves KIND_KEY[kind] then t(key); the shipped host dictionary (web-client.ts TEAM_COPY_ZH) maps kind.req -> 需求, kind.wrk -> 工作, kind.rev -> 评审, kind.fix -> 修复, kind.int -> 集成, so the DRAWING carried the localized word while data-mpd-graph.textContent is what capture.mts scans",
+    "contractQuote": "§F1: 'The node legend line reads <glyph> <id> <KIND> <label>, where <KIND> is the ASCII kind abbreviation (REQ | WRK | REV | FIX | INT, the empty string when the task carries no kind) — NEVER the localized kindOf(kind)/t(\"kind.req\"), which resolves to Chinese under a zh locale.'",
+    "c3": "untouched: the click/task-detail body and every title tooltip still render task.subject / task.description verbatim, Chinese included"
+  },
+  "change": [
+    {
+      "file": "packages/mpd-bundle-plugin/src/team-view.ts",
+      "added": 22,
+      "removed": 1,
+      "what": "added nested const kindCodeOf(kind) beside kindOf — ASCII-only (reads KIND_KEY then the EN table, never t()); switched the ONE drawing call site (node legend kind span) to it; kindOf stays for chrome (detail body)"
+    },
+    {
+      "file": "packages/mpd-bundle-plugin/test/team-view.test.ts",
+      "added": 59,
+      "removed": 1,
+      "what": "new arm 'under a zh locale the node legend draws the ASCII kind...' (real zh translator + pure-CJK subjects: drawing CJK-free, REQ/WRK/REV/FIX/INT present, title tooltip and pinned detail keep the verbatim Chinese, detail keeps the localized kind); inverted ONE obsolete assertion in the localization arm (kind.req is now the declared F1 exception, from translated-in-drawing to NOT translated in drawing + ASCII REQ asserted)"
+    },
+    {
+      "file": "packages/mpd-bundle-plugin/client.js",
+      "added": 22,
+      "removed": 1,
+      "what": "rebuilt prebuilt browser client, NOT hand-edited",
+      "sha256Before": "c9724d95507a646e39cda1c78266c597d7396104ac29761196c1699bc72449e2",
+      "sha256After": "a443c22e08ffb1824289f3a26583f4a7e5eee83f445f2c4737764e8b1cef539b"
+    },
+    {
+      "file": "VENDOR_LOCK.json",
+      "added": 1,
+      "removed": 1,
+      "what": "packages/mpd-bundle-plugin/client.js sha256 re-pinned to the rebuilt artifact (a derived value, verified by verify:vendor; repin-vendor.ts classifies build artifacts as POLICY and refuses to rewrite them, so the single value is recorded directly — precedent commit a98b2bdc)"
+    }
+  ],
+  "buildPath": {
+    "command": "node scripts/build-mpd-client.ts   (repo root; Node v24.21.0; uses node:module stripTypeScriptTypes)",
+    "output": "packages/mpd-bundle-plugin/client.js",
+    "bytes": 746365,
+    "determinism": "git diff against the committed artifact is exactly the src change (+22/-1 lines), so the splice is reproducible; no dist target is built from team-view.ts (verify-dist-fresh 32/32 fresh)",
+    "containerInstall": "docker cp packages/mpd-bundle-plugin/client.js ui-ui-1:/src/packages/mpd-bundle-plugin/client.js (the web profile links @mpd-dsh/mpd -> /src)"
+  },
+  "tests": {
+    "fullSuite": {
+      "command": ".toolchain/node_modules/.bin/bun test packages",
+      "exit": 0,
+      "observed": "2161 pass, 3 skip, 0 fail, 2164 tests across 134 files (26165 expect() calls)"
+    },
+    "pinnedBun": "1.4.0 (.toolchain/node_modules/.bin/bun; PATH bun is 1.4.2 and was not used)",
+    "redBeforeFix": "targeted new arm failed with: Expected to contain: \"REQ\" / Received: \"✓ T1 需求 #1\" — the exact production defect, reproduced in the unit test",
+    "greenAfterFix": "targeted arm: 1 pass, 0 fail, 24 expect() calls"
+  },
+  "gates": [
+    {
+      "name": "tests",
+      "command": ".toolchain/node_modules/.bin/bun test packages",
+      "exit": 0,
+      "summary": "2161 pass\n 3 skip\n 0 fail\n 26165 expect() calls\nRan 2164 tests across 134 files. [25.25s]"
+    },
+    {
+      "name": "typecheck",
+      "command": ".toolchain/node_modules/.bin/bun run typecheck",
+      "exit": 0,
+      "summary": "tsgo --noEmit (no diagnostics)"
+    },
+    {
+      "name": "comments",
+      "command": "bun run verify:comments",
+      "exit": 0,
+      "summary": "scanned 426 TypeScript file(s) of 426 in the source set; inspected 37567 declaration(s); skipped 17390 inline callback(s) as out of family\n\nVERDICT: PASS — every declaration in the family carries a precise comment and a full signature."
+    },
+    {
+      "name": "docs",
+      "command": "bun run verify:docs",
+      "exit": 0,
+      "summary": "[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=48 failed=0 violations=0 exempt=24 derived=3 links=438 dead=0 — PASS"
+    },
+    {
+      "name": "rows",
+      "command": "bun run verify:rows",
+      "exit": 0,
+      "summary": "[verify-rows-parity] ok: 35 row ids match the 2-file bundle patch layer (mcp-astgrep, mcp-codegraph, mcp-context7, mcp-git, mcp-grepapp, mcp-lsp, mcp-shell, mpd-agent-team, mpd-better-sidebar, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-g"
+    },
+    {
+      "name": "manifest",
+      "command": "bun run verify:manifest",
+      "exit": 0,
+      "summary": "VERDICT: PASS — the install-time rules and the packaging contract hold."
+    },
+    {
+      "name": "vendor",
+      "command": "bun run verify:vendor",
+      "exit": 0,
+      "summary": "[verify-vendor] PASS - 7 shipped asset(s) fingerprinted, upstream identity not checked"
+    },
+    {
+      "name": "dist-fresh",
+      "command": "node scripts/verify-dist-fresh.ts",
+      "exit": 0,
+      "summary": "[verify-dist-fresh] NOT COVERED (1) — committed dist files no target maps to, listed so nothing is silently skipped:\n  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/\n[verify-dist-fresh] ok: 32/32 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 664ms"
+    }
+  ],
+  "capture": {
+    "container": "ui-ui-1 (image mpd-ui-view:latest), served path /src/packages/mpd-bundle-plugin/client.js",
+    "command": "docker exec -i ui-ui-1 bash -lc 'MPD_UI_LANG=zh-CN bash /data/run-capture.sh'",
+    "before": {
+      "browserLocale": "zh-CN",
+      "checks": 18,
+      "passed": 17,
+      "failed": [
+        "dagDrawingHasNoCjk"
+      ],
+      "ok": false,
+      "dagDrawingHasNoCjk": false,
+      "dagDetailKeepsCjk": true,
+      "dagDrawingTextHead": "✓T1需求Web: rebuild the team panel body on the payload projection◐T2工作Web: restyle the settings card on the official desig",
+      "dagDetailPinHead": "Web: rebuild the team panel body on the payload projection关闭T1 · 需求 · ✓ completed负责人web-team-gui前置—后继T4该任务没有已冻结的验收契约。",
+      "installedSha256": "c9724d95507a646e39cda1c78266c597d7396104ac29761196c1699bc72449e2",
+      "runnerExit": 1,
+      "note": "shipped client: 17/18, dagDrawingHasNoCjk FALSE; drawing text carried 需求/工作/评审"
+    },
+    "after": {
+      "browserLocale": "zh-CN",
+      "checks": 18,
+      "passed": 18,
+      "failed": [],
+      "ok": true,
+      "dagDrawingHasNoCjk": true,
+      "dagDetailKeepsCjk": true,
+      "dagDrawingTextHead": "✓T1REQWeb: rebuild the team panel body on the payload projection◐T2WRKWeb: restyle the settings card on the official des",
+      "dagDetailPinHead": "Web: rebuild the team panel body on the payload projection关闭T1 · 需求 · ✓ completed负责人web-team-gui前置—后继T4该任务没有已冻结的验收契约。",
+      "installedSha256": "a443c22e08ffb1824289f3a26583f4a7e5eee83f445f2c4737764e8b1cef539b",
+      "runnerExit": 0,
+      "note": "rebuilt client: 18/18, dagDrawingHasNoCjk TRUE, dagDetailKeepsCjk TRUE; drawing text reads ✓T1REQ…/◐T2WRK…, the pinned detail body still reads 'T1 · 需求 · ✓ completed' with the verbatim subject"
+    }
+  },
+  "artifacts": [
+    "web-report-zh-CN.json (after, 18/18)",
+    "web-report-zh-CN-before.json (baseline, 17/18)",
+    "capture-before.log",
+    "capture-after.log",
+    "output.log",
+    "tests.log",
+    "typecheck.log",
+    "comments.log",
+    "docs.log",
+    "rows.log",
+    "manifest.log",
+    "vendor.log",
+    "dist-fresh.log",
+    "shot-dag-zh-CN.png"
+  ],
+  "limits": [
+    "The baseline report named in the task (evidence/release/v0.15.0/ui-capture/20261020T115739Z/web-report-zh-CN.json) does not exist in this checkout; the defect was re-reproduced live instead (web-report-zh-CN-before.json).",
+    "The container's /data/capture.mts is NEWER than the committed docker/ui/capture.mts (it carries the 2026-10-20 account-menu settings fix and up=7 crop; the host copy has up=3/direct Settings click). Its 18 checks are the same set and the DAG checks are unchanged; the run used the container's copy, which is the check surface that produced the cited baseline. Syncing that host/container difference is outside this defect's scope.",
+    "The CJK seed board (MPD_UI_BOARD=cjk) was not run live; the harder fixture (pure-CJK subjects + zh locale) is covered by the new unit arm, not by the capture.",
+    "kindCodeOf draws the empty string for a kind outside the declared five (an out-of-contract value is never drawn verbatim into a CJK-free plane); such a kind still appears in the detail body through kindOf.",
+    "The capture overwrote tracked artifacts under docker/ui/out/shots-zh-CN/**; those were restored byte-for-byte from HEAD with git cat-file (read-only git), and the run's new 08-dag-curve.png was moved into this evidence directory. No git write command was run.",
+    "Container /src is a baked copy, not a bind mount: a container recreate loses the installed client.js. The installed sha is recorded above."
+  ]
+}

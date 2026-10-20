@@ -1,0 +1,359 @@
+{
+  "release": "v0.15.0",
+  "branch": "release/v0.15.0",
+  "domain": "ui-capture",
+  "plan": ".mpd/plans/release-v0.15.0.md §4",
+  "generatedAt": "2026-10-20T11:58:28Z",
+  "container": "ui-ui-1 (compose project ui, docker/ui/docker-compose.yml, ubuntu 24.04, harness 0.2.1-rc.2)",
+  "captures": {
+    "web": {
+      "commandEn": "docker exec -i ui-ui-1 bash -lc 'MPD_UI_LANG= bash /data/run-capture.sh'",
+      "commandZh": "docker exec -i ui-ui-1 bash -lc 'MPD_UI_LANG=zh-CN bash /data/run-capture.sh'",
+      "en": {
+        "ok": true,
+        "checks": 18,
+        "failedChecks": [],
+        "steps": "9/9",
+        "crops": "4/4"
+      },
+      "zhCN": {
+        "ok": false,
+        "checks": 18,
+        "failedChecks": [
+          "dagDrawingHasNoCjk"
+        ],
+        "steps": "9/9",
+        "crops": "4/4"
+      },
+      "exitEn": 0,
+      "exitZh": 1,
+      "note": "zh-CN exits 1 on ONE check (dagDrawingHasNoCjk). The lane's check is right: the graph node label carries the localized kind chip (需求/工作/…), which contradicts .mpd/plans/dag-edges-scroll.md §F1 ('<KIND> is the ASCII abbreviation … NEVER the localized kindOf'). The cause is shipped client code (packages/mpd-bundle-plugin/src/web-client.ts zh dict, present at HEAD/v0.12.0), NOT this docs wave; fixing it is a product change on a version/docs-only branch. The zh readme crops are written (4/4)."
+    },
+    "tui": {
+      "commandEn": "docker exec -i ui-ui-1 bash /src/docker/ui/tui-capture.sh --lang en --out /data-out/readme",
+      "commandZh": "docker exec -i ui-ui-1 bash /src/docker/ui/tui-capture.sh --lang zh --out /data-out/readme",
+      "en": {
+        "captured": 3,
+        "expected": 3,
+        "failed": 0,
+        "items": [
+          {
+            "name": "tui-team-dag",
+            "ok": true,
+            "marker": "task dependency graph",
+            "matchedLine": "  │ task dependency graph                                                                                                                                  │",
+            "file": "/data-out/readme/en/tui-team-dag.png"
+          },
+          {
+            "name": "tui-workmates",
+            "ok": true,
+            "marker": "┌MPD workmate",
+            "matchedLine": "                                            ██████ ██████ ██████ ██████ ██████ ██████ ██████ ██  ██       │┌MPD workmate───────────────────────────────────┐",
+            "file": "/data-out/readme/en/tui-workmates.png"
+          },
+          {
+            "name": "tui-status-line",
+            "ok": true,
+            "marker": "^[[:space:]]*mpd: ",
+            "matchedLine": "mpd: team webui-tui-i18n 5·2/6 (workspace-level) · failed 1 · boulder 1/2 · plans 2 · workmates 3 · watchdog: 20 unread incidents",
+            "file": "/data-out/readme/en/tui-status-line.png"
+          }
+        ]
+      },
+      "zh": {
+        "captured": 3,
+        "expected": 3,
+        "failed": 0,
+        "items": [
+          {
+            "name": "tui-team-dag",
+            "ok": true,
+            "marker": "task dependency graph",
+            "matchedLine": "  │ task dependency graph                                                                                                                                                                                              │",
+            "file": "/data-out/readme/zh-CN/tui-team-dag.png"
+          },
+          {
+            "name": "tui-workmates",
+            "ok": true,
+            "marker": "┌MPD workmate",
+            "matchedLine": "                                            ██████ ██████ ██████ ██████ ██████ ██████ ██████ ██  ██                                                │┌MPD workmate──────────────────────────────────────────────────────┐",
+            "file": "/data-out/readme/zh-CN/tui-workmates.png"
+          },
+          {
+            "name": "tui-status-line",
+            "ok": true,
+            "marker": "^[[:space:]]*mpd: ",
+            "matchedLine": "mpd: 团队 webui-tui-i18n 5·2/6 (workspace-level) · 失败 1 · boulder 1/2 · 计划 2 · workmate 3 · 看门狗：22 条未读事件",
+            "file": "/data-out/readme/zh-CN/tui-status-line.png"
+          }
+        ]
+      },
+      "exitEn": 0,
+      "exitZh": 0,
+      "note": "3 figures per language (tui-team-dag, tui-workmates, tui-status-line); 3/3 markers per language = 6/6 across en+zh, every one gated on a marker only that surface emits.",
+      "figureSet": "tui-team-dag, tui-workmates, tui-status-line — the three terminal tiles the README links. HEAD's script records exactly these three per run (verified: `git show HEAD:docker/ui/tui-capture.sh` has ONE `capture_scenes` call and three success-path `record` sites), so a per-language manifest of 3/3 is the complete set and 3/3 + 3/3 = 6/6 across en+zh. The 6-item, 2/6-graded manifest found before this wave was a DUPLICATED record set left by an older run, not a six-figure contract."
+    }
+  },
+  "manifestMarkerCounts": {
+    "tuiEn": "3/3",
+    "tuiZh": "3/3",
+    "combined": "6/6"
+  },
+  "filesPublished": [
+    {
+      "path": "docs/assets/images/hero-web-tui.png",
+      "sha256": "e871ef0731587a0c142a3dac967caba27dd6f39ba34c9e2535d0f4fa38170f84",
+      "bytes": 496665,
+      "width": 3505,
+      "height": 1080
+    },
+    {
+      "path": "docs/assets/images/tui-status-line.png",
+      "sha256": "6221b9fffc3546f02fd41b927624d21197044559757e47ed009f50cb6610b21e",
+      "bytes": 14541,
+      "width": 2620,
+      "height": 114
+    },
+    {
+      "path": "docs/assets/images/tui-team-dag.png",
+      "sha256": "e4c808036da0fe287693a68fbcb2ffdc32227095ac80b535a7380eaeb3bf1dd8",
+      "bytes": 68668,
+      "width": 3120,
+      "height": 1330
+    },
+    {
+      "path": "docs/assets/images/tui-workmates.png",
+      "sha256": "5697f712a1ff8d65e7362442ccd09e21707b04525be3e9e840ad5dc37b0bbfd9",
+      "bytes": 57363,
+      "width": 980,
+      "height": 760
+    },
+    {
+      "path": "docs/assets/images/web-agent-presets.png",
+      "sha256": "987ed3658436d642e3445f2c9ffdcc722c905e6089fa944b77fb128dbb8f2c85",
+      "bytes": 91538,
+      "width": 596,
+      "height": 817
+    },
+    {
+      "path": "docs/assets/images/web-plugins-installed.png",
+      "sha256": "810350501a405fa2b897eadda0681684ee6acfea46c548098ff9da6eda8ff860",
+      "bytes": 13057,
+      "width": 1008,
+      "height": 98
+    },
+    {
+      "path": "docs/assets/images/web-settings-mpd.png",
+      "sha256": "a738462c213ebc006bbfc9eaa47ef4d2357d5d0a1bfe485125c1fa823fcde540",
+      "bytes": 57251,
+      "width": 596,
+      "height": 660
+    },
+    {
+      "path": "docs/assets/images/web-team-board.png",
+      "sha256": "0bd8ee339ff146b3e14ab45422b603800922dc4ed8eec2fca2f128c4742f07d6",
+      "bytes": 65968,
+      "width": 719,
+      "height": 962
+    },
+    {
+      "path": "docs/assets/images/zh-CN/hero-web-tui.png",
+      "sha256": "7ddd925eda75abad97adc38714d233853170853c91748dbc150c0c5559d1b73c",
+      "bytes": 453263,
+      "width": 4002,
+      "height": 1080
+    },
+    {
+      "path": "docs/assets/images/zh-CN/tui-status-line.png",
+      "sha256": "1ea8727e30ccc0bc9c8fca677bab321069b1c77d11c03095391982bf68c7c508",
+      "bytes": 21895,
+      "width": 2380,
+      "height": 114
+    },
+    {
+      "path": "docs/assets/images/zh-CN/tui-team-dag.png",
+      "sha256": "0e07c9c02369dcbe829de9c8dc8d2ed22805372449cc94e4c012cf124312a2bd",
+      "bytes": 77324,
+      "width": 4320,
+      "height": 1520
+    },
+    {
+      "path": "docs/assets/images/zh-CN/tui-workmates.png",
+      "sha256": "8ec546ab806c5434fa9b8d223d6b4aa9cdce5793b3289ecd049d748e1a1090fd",
+      "bytes": 66308,
+      "width": 1360,
+      "height": 874
+    },
+    {
+      "path": "docs/assets/images/zh-CN/web-agent-presets.png",
+      "sha256": "5de8375ea3f6be6ca666d0a462b9fdb0d740bde3cf84f22e799882e18b4ef9cd",
+      "bytes": 102516,
+      "width": 596,
+      "height": 777
+    },
+    {
+      "path": "docs/assets/images/zh-CN/web-plugins-installed.png",
+      "sha256": "75d499c89687434cdfd6afcefd76cb46308419f50740d6f602d40834e3d69da4",
+      "bytes": 13001,
+      "width": 1008,
+      "height": 98
+    },
+    {
+      "path": "docs/assets/images/zh-CN/web-settings-mpd.png",
+      "sha256": "715eed2ecec327b02457a1247dc5e519c193d2fd60da2ca13a3bf11ea0f3dcfe",
+      "bytes": 68450,
+      "width": 596,
+      "height": 660
+    },
+    {
+      "path": "docs/assets/images/zh-CN/web-team-board.png",
+      "sha256": "18f3f7d2cfd841959b73f5051081f7c898e50957897186a23dc48ca443c5a0b9",
+      "bytes": 68331,
+      "width": 719,
+      "height": 962
+    }
+  ],
+  "hero": {
+    "script": "docker/ui/compose-hero.py",
+    "pairing": "both tiles render the SAME fixture team, webui-tui-i18n (team-2026-10-05T22-30-00.000Z, 6 tasks / 5 members)",
+    "en": {
+      "path": "docs/assets/images/hero-web-tui.png",
+      "size": "3505x1080",
+      "webTile": "1037x1000",
+      "tuiTile": "2340x1000"
+    },
+    "zhCN": {
+      "path": "docs/assets/images/zh-CN/hero-web-tui.png",
+      "size": "4002x1080",
+      "webTile": "1037x1000",
+      "tuiTile": "2837x1000"
+    },
+    "oldHeroBound": "v0.12.0 paired a CJK board with a 'Dual Surface Demo' TUI — two different fixtures in one picture; that is the defect this recomposition removes"
+  },
+  "laneFixes": [
+    {
+      "file": "docker/ui/tui-capture.sh",
+      "what": "materialize the post-restart session (/mpd board, poll /data/dsh-tui/sessions, Escape), read the NEW session id, seed the normal board for exactly that id; scene 2 opens /mpd workmate instead of Ctrl+B; pin panelAutoOpen:false on the mpd-tui row of the profile's user patch layer; team window is the FULL pane width (the old 0.614 clipped every long row mid-word)"
+    },
+    {
+      "file": "docker/ui/tui-render.py",
+      "what": "--cols is a CROP again: the band's left edge becomes the image's left edge (the offset made the sidebar tile mostly empty background)"
+    },
+    {
+      "file": "docker/ui/capture.mts",
+      "what": "openSettings() — Settings lives behind the account menu now (More / aria-label Account menu); the old single click answered 'absent' and BOTH settings checks failed on a home-screen capture. Also: the settings crop scrolls the knob rows into view, and the presets crop climbs 7 ancestors (measured per level) so the Standard-mode badge and the MPD card are in ONE figure"
+    },
+    {
+      "file": "docker/ui/run-capture.sh",
+      "what": "the English readme crops now land in /data-out/readme/en (they used to land at /data-out/readme, so the documented publish step copied only the TUI tiles and left every Web figure stale)"
+    },
+    {
+      "file": "docker/ui/compose-hero.py",
+      "what": "NEW: the hero is composed from the two refreshed tiles, with the pairing rule written down"
+    }
+  ],
+  "environmentSteps": [
+    {
+      "what": "install the headless Chromium runtime libs in the container",
+      "command": "apt-get install -y --no-install-recommends libnss3 libnspr4 libdbus-1-3 libatk1.0-0t64 libatk-bridge2.0-0t64 libcups2t64 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libpango-1.0-0 libcairo2 libasound2t64 libx11-6 libxext6",
+      "result": "apt exit 0, `ldd chrome | grep -c 'not found'` = 0 (was 21)"
+    },
+    {
+      "what": "remove the stale team fixture 'dual-surface-demo' (container scratch state, index key 'tui-capture', authored by an older lane) so the workspace's principal team IS the normal fixture and the keyed status row names webui-tui-i18n instead of a second fixture",
+      "command": "node -e 'delete index.active[\"tui-capture\"]; rmSync(/data/ws/.mpd/team/teams/dual-surface-demo.json)'"
+    },
+    {
+      "what": "rewrite the three hand-seeded workmate meta.json files to the CURRENT schema (baseId/baseName); they carried the retired `base` key, so the panel drew 'base (unknown base)'",
+      "command": "node -e '... baseId: \"sisyphus\", baseName: \"Senior Engineer\" ...' for hero-composer / tui-capture / web-capture"
+    }
+  ],
+  "captionsChanged": [
+    {
+      "file": "README.md",
+      "line": 197,
+      "what": "Agent presets alt: the MPD preset is listed under CUSTOM while the New task default badge sits on the host's Standard mode"
+    },
+    {
+      "file": "README.zh-CN.md",
+      "line": 179,
+      "what": "same correction in 简体中文"
+    },
+    {
+      "file": "docs/index.md",
+      "line": 118,
+      "what": "Agent presets row: mpd under CUSTOM, new-task-default badge on the host's Standard mode"
+    },
+    {
+      "file": "docs/index.zh-CN.md",
+      "line": 115,
+      "what": "same correction in 简体中文"
+    },
+    {
+      "file": "docs/index.md",
+      "line": 120,
+      "what": "tui-status-line row: the keyed mpd: row naming the team and its progress, boulder, plans, workmates — the old text claimed an open /mpd command tree that is not in the pixels"
+    },
+    {
+      "file": "docs/index.zh-CN.md",
+      "line": 117,
+      "what": "same correction in 简体中文"
+    },
+    {
+      "file": "docs/index.md",
+      "line": 121,
+      "what": "tui-workmates row: `/mpd workmates` -> `/mpd workmate` page, with base and use count"
+    },
+    {
+      "file": "docs/index.zh-CN.md",
+      "line": 118,
+      "what": "same correction in 简体中文"
+    },
+    {
+      "file": "docs/index.md",
+      "line": 122,
+      "what": "zh-CN row: its OWN run of the same lanes in the Chinese locale — a separate render set, not a copy of the English PNGs"
+    },
+    {
+      "file": "docs/index.zh-CN.md",
+      "line": 120,
+      "what": "the paragraph under the table now states the 简体中文 set is a separate run, not a renamed English set"
+    }
+  ],
+  "svgChanged": [
+    {
+      "file": "docs/assets/images/team-lifecycle.svg",
+      "what": "'denied the seven write tools' -> 'eight' (the canonical deny list is eight names, bash included)"
+    },
+    {
+      "file": "docs/assets/images/architecture.svg",
+      "what": "removed the '+ 1 id-TARGETED host row: agent-preset-registry -> default: mpd' claim (that block is commented out and the id is host-owned) and replaced it with the accurate rule; patch path packages/mpd-bundle/cordis.patch.yml -> ./cordis.patch.yml (package.json dsh.bundle.patch[0]); row count 18 -> 34 (counted `    - id:` rows in cordis.patch.yml = 34)"
+    },
+    {
+      "file": "docs/assets/images/ulw-loop.svg",
+      "what": "unchanged — current"
+    }
+  ],
+  "gates": {
+    "verify:docs": {
+      "command": "bun run verify:docs",
+      "exit": 0,
+      "observed": "[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=48 failed=0 violations=0 exempt=24 derived=3 links=438 dead=0 — PASS",
+      "when": "after EVERY caption edit and after the images were published and the hero recomposed"
+    },
+    "verify:manifest": {
+      "command": "bun run verify:manifest",
+      "exit": 0,
+      "observed": "VERDICT: PASS — the install-time rules and the packaging contract hold.",
+      "when": "after the caption edits; the manifest carriers are untouched by this wave"
+    }
+  },
+  "residualRisks": [
+    "zh-CN WEB capture exits 1 on `dagDrawingHasNoCjk`: shipped client localizes the DAG node's KIND chip (需求/工作/评审/修复/集成), contradicting .mpd/plans/dag-edges-scroll.md §F1. Pre-existing at HEAD, out of scope on a version/docs-only branch. The zh images are still fresh and were published.",
+    "docker/ui/out/shots and out/shots-zh-CN are TRACKED files and the runs refreshed them; they are the raw lane output, left modified and NOT committed.",
+    "The MPD settings crop starts at the viewport top because the union of [data-mpd-row-key] and [data-mpd-disclosure] reaches above the dialog's scroll port; the figure shows the knob rows and their Reset buttons (what the caption claims) but keeps a strip of the dimmed backdrop above them.",
+    "The keyed status strip's lower row carries the `/mpd workmate` command's own confirmation line ('mpd sidebar panel: the host accepted alt:workmate; if no panel appeared, add …') because scene 3 runs after scene 2; the `mpd:` row the caption names is the strip's first line.",
+    "The TUI team tile keeps a band of empty background under the hint lines (rows 0:35 of a 45-row pane); the full panel, the DAG and all three hint lines are inside the figure.",
+    "The workmate library is CONTAINER STATE hand-seeded by an older lane (no repo script seeds it); this run repaired its schema. A fresh volume must seed it again or the figure shows no instances.",
+    "No git write commands were run: nothing is committed, and the other writer's version/changelog/behaviour edits were not touched."
+  ]
+}

@@ -38,6 +38,9 @@ function agentDouble(header: Record<string, unknown>): Record<string, unknown> {
 /** The workspace's TOP-LEVEL session: §5's captain, preset ignored. */
 const CAPTAIN = agentDouble({ agentPreset: "cordis", delegationDepth: 0 })
 
+/** The `mpd` preset's TOP-LEVEL session — the only captain the preset-scoped rule binds. */
+const MPD_CAPTAIN = agentDouble({ agentPreset: "mpd", delegationDepth: 0 })
+
 /** The USER'S REAL SESSION SHAPE (F0): a seeded fork — parent link, depth 0, no subagent origin. */
 const SEEDED_FORK = agentDouble({ agentPreset: "cordis", parentSession: "seed-root", isSeeded: true, delegationDepth: 0 })
 
@@ -203,12 +206,29 @@ describe("D1 — the install reaches the seam and reports its mode", () => {
     expect(install.mode).toBe("deny")
     expect(guards).toHaveLength(1)
     // The callback the ROW installed decides on the agent handle it is given — the real wiring.
-    expect(String(guards[0]?.({ name: "subagent", agent: CAPTAIN }) ?? "")).toContain("delegation gate")
+    expect(String(guards[0]?.({ name: "subagent", agent: MPD_CAPTAIN }) ?? "")).toContain("delegation gate")
     expect(guards[0]?.({ name: "read", agent: CAPTAIN })).toBeUndefined()
     // The knob is read PER CALL, so a live `mpd.jsonc` edit takes effect without a restart.
     config[DELEGATION_CONFIG_KEY] = "allow"
-    expect(guards[0]?.({ name: "subagent", agent: CAPTAIN })).toBeUndefined()
+    expect(guards[0]?.({ name: "subagent", agent: MPD_CAPTAIN })).toBeUndefined()
     expect(warnings).toEqual([])
+  })
+
+  test("the gate is preset-scoped: the mpd captain and every child are refused, another preset's top level is not", () => {
+    /** The adapter double for a default-deny install, with no config layer answer. */
+    const { dsh, guards } = adapterDouble(true, {})
+    installDelegationGate(dsh, { configValue: () => undefined, warn: () => {} })
+    // The fixture shapes are honest: both top-level agents share the captain RANK, and only one is mpd.
+    expect(sessionRank(MPD_CAPTAIN)).toBe("captain")
+    expect(sessionRank(CAPTAIN)).toBe("captain")
+    for (const tool of DELEGATION_TOOLS) {
+      // The `mpd` preset's own top-level session stays bound by its rules under the deny default.
+      expect(String(guards[0]?.({ name: tool, agent: MPD_CAPTAIN }) ?? "")).toContain("delegation gate")
+      // ANOTHER preset's top-level session keeps its own habits: the process-wide guard releases it.
+      expect(guards[0]?.({ name: tool, agent: CAPTAIN })).toBeUndefined()
+      // A member/child session stays refused whatever preset it runs.
+      expect(String(guards[0]?.({ name: tool, agent: CHILD }) ?? "")).toContain("delegation gate")
+    }
   })
 
   test("a headerless or throwing call is a pass-through — a guard never takes a tool call down", () => {

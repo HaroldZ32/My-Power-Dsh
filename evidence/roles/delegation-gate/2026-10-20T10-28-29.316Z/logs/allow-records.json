@@ -1,0 +1,43 @@
+[
+ {
+  "type": "tool/call",
+  "seq": 19,
+  "time": 1792492133098,
+  "data": {
+   "turn": 1,
+   "step": 1,
+   "callId": "call_00_E8UxFWv7T9ruG7ebvGck9670",
+   "name": "subagent",
+   "arguments": "{\"description\": \"gate-probe\", \"prompt\": \"reply with the single word ok\"}"
+  }
+ },
+ {
+  "type": "tool/result",
+  "seq": 21,
+  "time": 1792492133121,
+  "data": {
+   "turn": 1,
+   "step": 1,
+   "message": {
+    "role": "tool",
+    "source": {
+     "kind": "tool",
+     "callId": "call_00_E8UxFWv7T9ruG7ebvGck9670"
+    },
+    "toolCallId": "call_00_E8UxFWv7T9ruG7ebvGck9670",
+    "content": [
+     {
+      "type": "text",
+      "text": "started subagent 02f09bc8-8262-472b-b85b-96a7991f1b4a"
+     }
+    ],
+    "isError": false,
+    "id": "32c6e583-70cd-4f1e-927d-cf1dc143487f"
+   }
+  },
+  "sourceEventSeqs": [
+   19
+  ],
+  "surfaceOp": "append"
+ }
+]

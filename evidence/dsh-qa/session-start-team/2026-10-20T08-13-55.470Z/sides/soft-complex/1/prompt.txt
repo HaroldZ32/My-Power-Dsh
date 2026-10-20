@@ -1,0 +1,4 @@
+1. Read the patch file
+2. Audit the gates
+3. Implement the change
+4. Verify the boot

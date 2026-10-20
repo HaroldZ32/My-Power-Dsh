@@ -4,11 +4,14 @@
 
 This page describes the **DSH-TUI edition** of the my-power-dsh bundle: what it ships, how to
 install it, what the per-package compatibility measurement found, and what it explicitly does
-**not** claim. It targets `@deepseek-harness-tui/dsh-tui` **0.14.0** and its built-in admission
-profile — the release that adds the **Claude backend peer** (`@anthropic-ai/claude-agent-sdk`
-0.3.287) and the `ws` runtime dependency, an **eighth** builtin sidebar panel (`btw`) and a
-**carousel** `PanelBar` that draws the active tab's title plus `○`/`●` dots and no longer paints a
-plugin's declared icon. §11.6 is this wave's amendment; it names the carriers the move touched.
+**not** claim. It targets `@deepseek-harness-tui/dsh-tui` **0.16.1** and its built-in admission
+profile — the first dsh-tui release whose declared peers admit DeepSeek Harness `0.2.1-rc.2`. §11.8
+is this wave's amendment: it records the move, the unchanged seam inventory and the carriers it
+touched. **The pin before it was 0.14.0, and that statement stays readable as history**: 0.14.0 is
+the release that adds the **Claude backend peer** (`@anthropic-ai/claude-agent-sdk` 0.3.287) and the
+`ws` runtime dependency, an **eighth** builtin sidebar panel (`btw`) and a **carousel** `PanelBar`
+that draws the active tab's title plus `○`/`●` dots and no longer paints a plugin's declared icon;
+§11.6 is that wave's amendment, and it names the carriers that move touched.
 **The pin before it was 0.13.0, and that statement stays readable as history**: 0.13.0 is the release
 that **adds the sidebar panel seam** — host row `dsh-tui-panels`,
 export `@deepseek-harness-tui/dsh-tui/panels` — and that renames the host's own `dsh-ecosystem-spec/`
@@ -23,8 +26,8 @@ installed package). **The move touched every carrier in one wave**: the global p
 `pkg:npm/@deepseek-harness-tui/dsh-tui@0.13.0` while 0.13.0 was the pin), and the QA host spec
 (`docker/tui-lane.sh`, `docker/entrypoint.sh`, `skills/dsh-qa/scripts/tui-mount.ts`'s `TUI_HOST_SPEC`
 and `skills/dsh-qa/scripts/install-dependencies.ts`'s remedy all defaulted to `0.13.0` then). **Both
-those carriers moved again in the 0.14.0 wave: that paragraph — not this one — states the values in
-force today (§11.6).** The compatibility
+those carriers moved again in the 0.14.0 and 0.16.1 waves: §11.8 — not this paragraph — states the
+values in force today.** The compatibility
 work below was measured on 0.10.1 and is re-verified in the Docker end-to-end test
 (`docker/tui-lane.sh`), which is the only place the TUI profile can be exercised end to end.
 
@@ -1323,6 +1326,32 @@ when it fires; the migration is self-terminating, because its own write leaves t
 host's current default, so the very next event stands down. The pre-0.15.0 behaviour is byte-identical,
 and the adapter suite carries the seven new arms that pin all of this.
 
+**AMENDED 2026-10-20 — on a host that OWNS the enable list (`>= 0.16.1`) the adapter is READ-ONLY.** 0.16.1's
+`TuiPanelRuntime.register()` enables a panel on registration, `dispose()` removes it, and both the boot and the
+settings apply union every registered id back — so there is no enable-list state left for this bundle to author,
+and any write would be a second writer racing the host's own merge (the incident class the two paragraphs above
+belong to). `hostOwnsPanelCsv` gates a separate `standDownOwnedByHost` path; the version comparison the two gates
+share is `hostVersionAtLeast`, extracted so their floors cannot drift. On that path the ladder is cancelled, no
+feed and no belt are installed, **not even the stale-default migration runs**, and one line says so
+(`standing down READ-ONLY on host 0.16.1 …`). The 0.15.x path keeps the S1 migration byte-for-byte — the 0.16.0
+arm pins that boundary — and the discovered ids still reach the diagnostic record through the same `onChange`
+hook, because the record is a diagnostic and not a write to the host. `node scripts/mpd-tui-panels.ts --apply`
+remains the manual way a user repairs a stale user layer on any host.
+
+**The panel's badge and its one auto-open are published from APPLY, not from the page (G2, 2026-10-20).** dsh-tui
+mounts a plugin panel only while it is the ACTIVE page of its column, so a page-side badge can only ever decorate
+a page the user is already looking at. `packages/mpd-tui-plugin/src/panel-attention.ts` now owns the host-side
+`tuiPanels.badge(id, …)` call and the one-shot `tuiPanels.open(id)`: both are armed through `whenBound("panels")`
+— a composition without the seam registers nothing — and driven by the same `mpdTeams` feed the pages subscribe
+to. The auto-open fires at most ONCE per process and is **edge-triggered**: it sees a team APPEAR (a pass with no live
+team followed by one with a live team), so a boot with an existing team — and any later status change on that
+team — opens nothing. It latches on a refusal because the host rate-limits `open()` per plugin (one
+per 5 s), and is governed by the new `panelAutoOpen` row knob (default `true`). The trigger is
+WORKSPACE-scoped — the feed carries no session id — so a trigger from another session makes the page draw its own
+`no team in this session` marker rather than a wrong board. `/mpd status` gained the matching deployment line
+(`panels: team=… workmate=… · seam bound · keeper …`) because the host-assigned panel ids are the one fact neither
+a user nor a document can derive.
+
 **The repair script now repairs BOTH user layers, and the second is new.** dsh-tui 0.15.0 keeps its own
 user settings at `~/.dsh-tui/settings.json` and resolves the effective list as
 `values.sidePanel?.panels ?? config.sidePanel?.panels` — the settings layer SHADOWS the profile patch,
@@ -1416,7 +1445,7 @@ profile. The target moves to **0.16.1**; the following supersedes §11.7 where i
 
 | Superseded statement | Was | Is (measured 2026-10-18) |
 |---|---|---|
-| This page's target host (§ preamble, §11.7) | **0.15.0** | **0.16.1** |
+| This page's target host (§ preamble) | **0.14.0** | **0.16.1** |
 | §3 seam inventory | fifteen `tui*` seams, unchanged 0.13.0→0.15.0 | **still fifteen, and 0.16.1 breaks nothing in the adapter**: the same six `Tui*Like` shapes, `close(): void` + `active.id`, `tuiPanels`, `tuiPrompt` still a phantom, and `lib/types/ui.js` still exports `useStdin`; the only addition is the `EFFECT_LEDGER_NAME` const, which neither the adapter nor the bundle declares or consumes. No adapter code change was needed |
 | §3.3 / §7 — the pin carriers and `MPD_E2E_DSH_VERSION` | `0.15.0` carriers; `MPD_E2E_DSH_VERSION` stayed `0.2.0-rc.2` | **`0.16.1` carriers and harness `0.2.1-rc.2`**: both Docker lanes (`MPD_E2E_TUI_VERSION`, `MPD_E2E_DSH_VERSION`), `dsh-distribution.json`'s `host-tui` ref (`…@0.16.1`) and `dsh-plugin.json`'s `compat.hosts` (`…@0.16.1`, moved off the stale `0.10.1`). `MPD_E2E_DSH_VERSION` now defaults to `0.2.1-rc.2` because the host's peer band admits it |
 

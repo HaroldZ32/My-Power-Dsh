@@ -1,0 +1,9 @@
+dsh: warning: 1 entry did not activate
+preset-mpd (@deepseek-ai/dsh-agent-preset): pending (waiting for service: agentPresets)
+dsh: reasoning:
+The user wants one call to `subagent` with description "gate-probe" and prompt "reply with the single word ok". Wait, label "gate-probe" — the subagent tool doesn't have a "label" parameter, it has "description". Let me just call it once with description "gate-probe" and the prompt. Then answer in one line.
+
+Let me do that.
+dsh: reasoning:
+The subagent replied "ok". The task is complete. Answer briefly.
+The call succeeded: the `subagent` tool spawned agent ee587fe3 and it returned `ok`.

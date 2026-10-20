@@ -52,9 +52,9 @@
   <!-- Layer B: bundle patch -->
   <rect class="layer" x="40" y="214" width="1100" height="152" rx="12"/>
   <text class="layer-h" x="60" y="242">Patch layer 1 — bundle plugins and MCP servers</text>
-  <text class="mono" x="470" y="242">dsh.bundle.patch[0] · packages/mpd-bundle/cordis.patch.yml</text>
+  <text class="mono" x="470" y="242">dsh.bundle.patch[0] · ./cordis.patch.yml</text>
   <rect class="chip" x="60" y="256" width="196" height="46" rx="8"/>
-  <text class="chip-h" x="72" y="275">18 host plugin rows</text>
+  <text class="chip-h" x="72" y="275">34 host rows</text>
   <text class="chip-s" x="72" y="291">adapter · roles · ulw · boulder</text>
   <rect class="chip" x="276" y="256" width="196" height="46" rx="8"/>
   <text class="chip-h" x="288" y="275">4 in-repo MCP servers</text>
@@ -68,10 +68,7 @@
   <rect class="chip" x="924" y="256" width="196" height="46" rx="8"/>
   <text class="chip-h" x="936" y="275">2 remote MCP rows</text>
   <text class="chip-s" x="936" y="291">context7 · grep_app</text>
-  <text class="note" x="60" y="330">+ 1 id-TARGETED host row (replace, not insert):</text>
-  <text class="mono" x="362" y="330">agent-preset-registry</text>
-  <text class="note" x="524" y="330">→</text>
-  <text class="mono" x="546" y="330">default: mpd</text>
+  <text class="note" x="60" y="330">No host row is id-TARGETED: the deployment default preset is HOST-OWNED — this layer adds rows, never replaces one.</text>
   <text class="note" x="60" y="352">The mcp-gitbash row is disabled: true by default (Windows only) — no mcp__git_bash__* tool exists until it is enabled.</text>
 
   <path d="M590 366 L590 390" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)"/>

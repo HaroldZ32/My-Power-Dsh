@@ -14,6 +14,125 @@ Further reading:
 - [`VENDOR_LOCK.json`](./VENDOR_LOCK.json) — the pinned upstream baseline each release is measured
   against.
 
+## v0.15.0 — the guard split: reconnaissance and delegation delegated again, a mechanical session gate, a stateless TUI panel, and the `cordis-dev` skill
+
+Minor release over v0.14.0, and the one that finishes the 2026-10-17 guard ruling properly. That wave
+restored the long persona prompt but withdrew all three mechanical guards with it; the measured
+consequence was a captain that did every search itself while the roster and team surfaces went unused.
+The 2026-10-20 ruling SPLITS the bundle: the two DECISIONAL guards come back, the session-start gate
+ships `mechanical` again, and the verification law's write guard (`verify.mode`) STAYS withdrawn, so the
+captain keeps writing code directly while a DIFFERENT agent records the verdict. The same release fixes
+a seeded-fork qualification defect in that gate, hardens the investigation guard's error boundary, makes
+the TUI sidebar deployment stateless on dsh-tui ≥ 0.16.1 with a panel attention badge, and teaches the
+`cordis-dev` skill to load itself. Frozen contracts: `.mpd/plans/restore-guard-discipline.md` and
+`.mpd/plans/release-v0.15.0.md`; evidence is under `evidence/roles/captain-scope/`,
+`evidence/audit/v0.15.0-fixes/`, `evidence/tui/panel-deploy-stateless/` and
+`evidence/release/v0.15.0/`.
+
+**Changed — the guard split (user ruling 2026-10-20).**
+
+- **The captain's investigation guard is back.** `installCaptainInvestigationGuard` refuses `read` /
+  `grep` / `glob` on a SOURCE path for the `mpd` preset's top-level session; the documentation band stays
+  readable, and the knob is `captain.investigation` (`deny` default | `allow`). Classification happens
+  BEFORE the first tool call, and the persona now says so instead of leaving the rule to be discovered.
+- **The delegation gate is back, and preset-scoped.** `installDelegationGate` refuses the harness's
+  generic spawn tools `subagent`, `subagent_fork` and `workflow`, naming the sanctioned routes
+  (`mpd_role_spawn`, the workmate library, Agent Teams); the knob is `delegation.gate` (`deny` default |
+  `captain` | `allow`). `tools.guard` is process-wide, so the rule is scoped by what the `mpd` preset
+  MEANS: a top-level session of another preset — the deployment default `cordis` included — is
+  RELEASED, while the `mpd` captain and every member/child session stay bound whatever preset they run.
+  The `mpd-roles` row's own `captain.investigation` / `delegation.gate` config values are honored again
+  (a fallback bug had silently ignored them).
+- **`team.gate` ships `mechanical` again.** `resolveGateMode(undefined)` answers `mechanical`, and the
+  `mpd-roles` row's `gate: "off"` pin is removed so the code default governs. The boot line reads
+  `captainInvestigation=deny delegationGate=deny … sessionGate=mechanical`, and the one withdrawn knob
+  reports `verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode)` — never a mode.
+- **Persona, written to avoid a wall.** The `mpd` preset opens with a READ DISCIPLINE block: classify the
+  path before the first call, the documentation band is yours, source paths are delegated, do not spend
+  a call checking whether the guard refuses, and never route around it with `bash cat`/`rg`. A new
+  PROJECT SHAPE paragraph tells the captain to load `cordis-dev` before the first edit, gate run or
+  diagnosis in a plugin-shaped workspace. Writes stay direct.
+- **QA cases are re-purposed, not deleted.** `delegation-gate.ts` returns to the DENIAL assertions,
+  `captain-full-tools.ts` is renamed and rewritten as `captain-scope.ts` (boot-line tokens, the shipped
+  apply site, persona arms, the headless bound stated), and `session-start-team.ts` follows the
+  mechanical default.
+
+**Added — the TUI sidebar panel: attention badge, auto-open, stateless deployment.**
+
+- `panel-attention.ts` publishes the panel's `tuiPanels.badge` and its one auto-open from APPLY, never
+  from a page: dsh-tui mounts a plugin panel only while it is the active page, so a page-side badge could
+  only decorate the page the user was already looking at. The surface arms through `whenBound("panels")`
+  (a composition without the seam registers nothing) and is driven by the same `mpdTeams` feed the pages
+  read. The badge counts only the DISPLAYED team's watchdog holds, and the first publish after arming
+  includes the null case, which is what clears a stale badge.
+- The auto-open fires at most ONCE per process, on the NOT-LIVE → LIVE edge of a team (booting into a
+  workspace that already has a team opens nothing), retries a host refusal on the next state change,
+  never retries a host that exposes no badge member, shares its one-shot latch across panel-seam
+  re-binds, and is governed by the new `panelAutoOpen` row knob (default `true`).
+- **On dsh-tui ≥ 0.16.1 the deployment is stateless.** `hostOwnsPanelCsv` gates a READ-ONLY stand-down:
+  the ladder is cancelled, no feed and no belt are installed, and even the stale-default migration is
+  skipped, because that host's registry enables a panel on registration, removes it on dispose and
+  unions registered ids back on every apply. 0.15.x keeps the self-heal path with its ONE migration
+  write; below 0.15 the feed-first keeper is unchanged, and both version floors share one comparison.
+- `/mpd status` gained a panel-deployment line naming the host-assigned panel ids, the seam state and the
+  keeper's verdict — the `<pluginId>` half of a panel id is the one fact no document can derive.
+
+**Added — `cordis-dev` loads itself.**
+
+- `skills/cordis-dev/SKILL.md` leads its front-matter description with the auto-load rule and the
+  detection list, and a new "Load on detection" section states every signal (`cordis.patch.yml` or
+  `presets/*.patch.yml`, a manifest carrying `dsh.bundle` / `dsh.client`, `dsh-plugin.json`, a
+  `packages/*/src/index.ts` exporting `apply`, an `extensions/*` manifest, `mpd.jsonc` /
+  `.mpd/plans/**`), the presence-only one-line check, and the NEGATIVE case (no signal means skip it and
+  say so rather than applying bundle rules to a non-plugin project). Detection parses manifests for a
+  real `dsh.bundle` / `dsh.client` entry, so a project that merely DEPENDS on a package named `dsh` no
+  longer matches.
+
+**Fixed — the session gate, the guards and the TUI badge (audit of dev @ 5a62e936).**
+
+- `sessionQualifies` now composes `sessionRank`, so a seeded-fork top-level session receives the
+  mechanical session-start gate and origin/depth children do not. The previous preset-name heuristic
+  misclassified the fork (T-92); unit and QA contract arms cover all four cases.
+- The captain-investigation guard passes a call through on an INTERNAL error with one warning instead of
+  failing an unrelated tool call.
+- The staging notice is self-consistent when staging returns no plan id: it now says the shell cannot be
+  approved and tells the captain not to try, instead of contradicting itself. The QA case's plan-id
+  parser accepts the current `plan-<17 digits>-<4-char tag>-<3-char counter>` format (it had parsed the
+  previous 14-digit form and gone blind), and `session-gate.ts` emits a row warning when
+  `staged && planId === ""`, so a staging call that produced no id cannot read as healthy.
+- The Web DAG node legend draws the ASCII kind (`REQ|WRK|REV|FIX|INT`) under a zh-CN locale, satisfying
+  the frozen `dag-edges-scroll` §F1; the task-detail body and title tooltips keep the localized kind and
+  the verbatim subject. The zh-CN capture goes 17/18 → 18/18.
+
+**Fixed — QA and evidence repairs from the same audit.**
+
+- `bundle-lifecycle` pins `XDG_RUNTIME_DIR` and the npm caches inside its sandbox and repairs three stale
+  assertions; the real lane is green again instead of passing on a stale fixture.
+- The delegation-gate live arm proves `delegationGate=allow` on its released side and pins
+  `agentPreset=none` in the row log, so a release cannot be confused with a missing guard.
+- A `mechanical-default` side seeds NO `team.gate` and asserts `sessionGate=mechanical` plus the full
+  staging contract (one notice naming a plan id, one staged slot, zero team records, `staged=1` with the
+  same id), with the key's absence proved rather than assumed.
+- The boulder claim cites current green evidence, and the Docker TUI lane pins `panelAutoOpen: false` in
+  its profile's user layer so its pre-key control capture measures what it claims whatever the fixture
+  timing.
+
+**Changed — documentation and UI refresh.**
+
+- The README pair carries the v0.15.0 badge and current-release line, and the capability list names
+  `cordis-dev`; the user-guide pair documents the restored guards and the delegation gate's preset scope
+  in §6, corrects "seven write tools" to **eight** (the canonical deny list includes `bash`), and §7 now
+  names `tuiPanels` as the primary Agent Teams surface plus the attention badge, `panelAutoOpen` and the
+  stateless ≥ 0.16.1 deployment.
+- The `tui.md` pair's preamble target is REWRITTEN to dsh-tui **0.16.1** and points at §11.8 (the 0.14.0
+  narrative is kept as history rather than bare-swapped), §11.8's "Was" cell is corrected, and both
+  `packages/mpd-tui-plugin/README` halves read "adapted to 0.16.1".
+- The design pair drops `mode: hard` from the `mpd-verify` config column — the guard is withdrawn and the
+  key is diagnostic only — while every `mpd-tools` `writeGuard` mention stays (a different, still-shipping
+  guard).
+- The release also refreshes the documentation images and the three hand-authored SVGs; that capture
+  work is owned by the UI-refresh lane and is recorded under `evidence/release/v0.15.0/ui-capture/`.
+
 ## v0.14.0 — DeepSeek Harness 0.2.1-rc.2 + dsh-tui 0.16.1, one shared plan→graph model, and a real-team acceptance lane
 
 Minor release over v0.13.2, and a **BREAKING** one. The bundle now targets DeepSeek Harness

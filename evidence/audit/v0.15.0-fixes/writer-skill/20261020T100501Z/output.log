@@ -1,0 +1,20 @@
+# F4 — writer-skill evidence
+# date (UTC): 20261020T100501Z
+# base: 5a62e936
+# scope: skills/cordis-dev/SKILL.md only
+
+$ git status --porcelain skills/cordis-dev/
+ M skills/cordis-dev/SKILL.md
+
+$ git diff --stat -- skills/cordis-dev/SKILL.md
+ skills/cordis-dev/SKILL.md | 24 ++++++++++++++++--------
+ 1 file changed, 16 insertions(+), 8 deletions(-)
+
+$ bun run verify:docs
+[verify-docs-parity] links=438 checked=406 resolved=406 dead=0 exemptProvenance=0 absentSite=0 ignoredExternal=26 ignoredAnchorOnly=6 files=117
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=48 failed=0 violations=0 exempt=24 derived=3 links=438 dead=0 — PASS
+[exit 0]
+
+# Note: the observed lines above are the tail (summary) of the single verify:docs run.
+# The skill file is agent-facing and outside the verify:docs discovery band; the gate
+# witnesses no doc-pair breakage in the repository band, not the skill's prose semantics.

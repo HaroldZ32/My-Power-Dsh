@@ -5,7 +5,7 @@
     "skills": {
       "fileCount": 382,
       "source": "skill corpus at repo root (ported upstream skills + dsh-qa + svn-master + bundle-lifecycle, agent-teams-dispatch, agent-teams-sidebar, extension-isolation, extension-lifecycle, extension-mcp-bridge, extension-template, workmate-library, workmate-team-member and readonly-deny QA cases + the dsh-qa scripts/lib/workspace-isolation.mjs QA sandbox helper + the dsh-qa scripts/lib/gate-probe.mjs two-sided complexity-gate probe + the five TUI lanes and their shared harness: scripts/tui-mount.mjs, tui-panels.mjs, tui-admission.mjs, tui-distribution.mjs, tui-spec-conformance.mjs, lib/tui-lane.mjs + the settings-bridge lanes and their shared engine: scripts/tui-settings-bridge.mjs, web-settings-bridge.mjs, lib/settings-bridge-lane.mjs + the six team-watchdog lanes and their shared harness: scripts/team-watchdog-{heartbeat,fault,scene,config,notify,boot}.mjs, lib/watchdog-lane.mjs + the real-dsh boot lane); whole-dir refresh from upstream, keep provenance links",
-      "treeSha": "26c289c4db976b2e122ece783555d2e5b34f311c31e0c34ca45d548048f52ca4"
+      "treeSha": "f7c831a03f6244a5ed7b40480512b0ad303722f2744eff48dd9a06f47b1736fd"
     },
     "packages/mpd-mcp-codegraph/dist/serve.js": {
       "fileCount": 1,
@@ -34,7 +34,7 @@
     },
     "packages/mpd-bundle-plugin/client.js": {
       "fileCount": 1,
-      "sha256": "c9724d95507a646e39cda1c78266c597d7396104ac29761196c1699bc72449e2",
+      "sha256": "a443c22e08ffb1824289f3a26583f4a7e5eee83f445f2c4737764e8b1cef539b",
       "source": "combined web client DERIVED from packages/mpd-bundle-plugin/adopted/** by scripts/build-mpd-client.ts; rebuild it, never rewrite this fingerprint"
     }
   },

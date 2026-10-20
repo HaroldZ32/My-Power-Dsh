@@ -196,94 +196,20 @@ function installReadonlyGuard(dsh, options) {
   }
 }
 
-// packages/mpd-roles-plugin/src/ask-user-guard.ts
-var ASK_USER_QUESTION_TOOL = "ask_user_question";
-function nonEmptyString(value) {
-  return typeof value === "string" && value.length > 0;
-}
-function describeShape(value) {
-  if (value === null)
-    return "null";
-  if (value === undefined)
-    return "undefined";
-  if (Array.isArray(value))
-    return "an array";
-  return typeof value === "object" ? "an object" : "a " + typeof value;
-}
-function isPlainObject(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-function askUserQuestionRefusal(defect) {
-  return "ask_user_question is refused: " + defect + ". Re-issue the call with every question item carrying a" + " non-empty string `id`, the question text under `question`, and a non-empty `options` array whose" + " entries each carry a non-empty string `label`, in exactly the JSON structure the tool schema defines." + " Every question item must offer at least one option — a question without options is refused exactly" + " like an empty list. A structurally broken call would render as an empty card, so it is denied before" + " dispatch and never reaches the user.";
-}
-function askUserQuestionDenial(args) {
-  try {
-    if (!isPlainObject(args)) {
-      return askUserQuestionRefusal("`arguments` must be a JSON object (received " + describeShape(args) + ")");
-    }
-    const call = args;
-    const questions = call.questions;
-    if (!Array.isArray(questions)) {
-      return askUserQuestionRefusal("`questions` must be a non-empty array (received " + describeShape(questions) + ")");
-    }
-    if (questions.length === 0) {
-      return askUserQuestionRefusal("`questions` must not be empty — a call carrying no question renders nothing");
-    }
-    for (let index = 0;index < questions.length; index += 1) {
-      const item = questions[index];
-      const at = "question item " + String(index + 1);
-      if (!isPlainObject(item)) {
-        return askUserQuestionRefusal(at + " must be an object carrying `id` and `question` (received " + describeShape(item) + ")");
-      }
-      if (!nonEmptyString(item.id)) {
-        return askUserQuestionRefusal(at + " lacks a non-empty string `id` (received " + describeShape(item.id) + ")");
-      }
-      if (!nonEmptyString(item.question)) {
-        return askUserQuestionRefusal(at + " lacks a non-empty string `question` (received " + describeShape(item.question) + ")");
-      }
-      const options = item.options;
-      if (options === undefined) {
-        return askUserQuestionRefusal(at + " carries no `options` array — every question item must offer at least one option");
-      }
-      if (!Array.isArray(options)) {
-        return askUserQuestionRefusal(at + " carries `options` that is not an array (received " + describeShape(options) + ")");
-      }
-      if (options.length === 0) {
-        return askUserQuestionRefusal(at + " carries an empty `options` array — a choice needs at least one option");
-      }
-      for (let optionIndex = 0;optionIndex < options.length; optionIndex += 1) {
-        const option = options[optionIndex];
-        if (!isPlainObject(option) || !nonEmptyString(option.label)) {
-          return askUserQuestionRefusal(at + " option " + String(optionIndex + 1) + " lacks a non-empty string `label`");
-        }
-      }
-    }
-    return;
-  } catch {
-    return;
+// packages/mpd-verify-plugin/src/law.ts
+var PATH_ARG_KEYS = ["file_path", "path", "filePath", "target"];
+function readTargetPath(toolName, args) {
+  if (toolName === "mcp__ast_grep__rewrite") {
+    const paths = args?.paths;
+    if (Array.isArray(paths) && typeof paths[0] === "string")
+      return paths[0];
   }
-}
-function askUserQuestionGuardDecision(exec) {
-  try {
-    if (String(exec?.name ?? "") !== ASK_USER_QUESTION_TOOL)
-      return;
-    return askUserQuestionDenial(exec?.arguments);
-  } catch {
-    return;
+  for (const key of PATH_ARG_KEYS) {
+    const value = args?.[key];
+    if (typeof value === "string" && value !== "")
+      return value;
   }
-}
-function installAskUserQuestionGuard(dsh, options) {
-  try {
-    if (dsh.capabilities().toolsGuard !== true) {
-      options.warn("the harness exposes no tools.guard seam — the ask_user_question boundary guard is NOT installed " + "(a structurally broken question call would reach the user's panel unchanged; the construction rule in the " + "preset prompt is then the only protection)");
-      return { installed: false, reason: "no-guard-seam" };
-    }
-    const dispose = dsh.guardTool((exec) => askUserQuestionGuardDecision(exec));
-    return { installed: true, ...typeof dispose === "function" ? { dispose } : {} };
-  } catch (error) {
-    options.warn("installing the ask_user_question boundary guard failed (" + (error instanceof Error ? error.message : String(error)) + ")");
-    return { installed: false, reason: "install-failed" };
-  }
+  return;
 }
 
 // packages/mpd-roles-plugin/src/complexity-gate.ts
@@ -310,6 +236,7 @@ var PLAN_EXTEND_ACTIONS = ["add_member", "create_task"];
 var STAGED_PLAN_PHRASE = "a team PLAN was STAGED";
 var ALREADY_STAGED_PLAN_PHRASE = "a team PLAN is ALREADY STAGED";
 var INERT_PLAN_PHRASE = "NOTHING has been spawned; the plan is INERT until approved";
+var MISSING_PLAN_ID_PHRASE = "STAGING FAILED TO RETURN A PLAN ID";
 var NO_TEAM_STAGED_PHRASE = "NO team was staged";
 var SOLO_PERMISSION_SENTENCE = "- If the work does not warrant a team (a short or single-threaded task), continue solo";
 var DELIVERABLE_VERB_PATTERN = /(align|migrate|refactor|audit|overhaul|port|rewrite|consolidate|脱去|移除|剥离|删除|新建|搬迁|修复|校准|重建|验证|对齐|重构|迁移|审计|移植|梳理|全量|独立|强制|回归|设计|实现|改造|补充)/giu;
@@ -442,9 +369,9 @@ async function readLeadingTeam(workspace, sessionId, opts = {}) {
 function resolveGateMode(value) {
   if (value === GATE_MODE_ADVISORY)
     return GATE_MODE_ADVISORY;
-  if (value === GATE_MODE_MECHANICAL || value === true)
-    return GATE_MODE_MECHANICAL;
-  return GATE_MODE_OFF;
+  if (value === GATE_MODE_OFF || value === false)
+    return GATE_MODE_OFF;
+  return GATE_MODE_MECHANICAL;
 }
 function collapseWhitespace(text) {
   return String(text ?? "").replace(/\s+/gu, " ").trim();
@@ -472,9 +399,13 @@ function advisoryNoticeText(signals, explicit) {
 }
 function mechanicalNoticeText(input) {
   const matched = input.signals.length === 0 ? "complexity signals" : "complexity signals " + input.signals.join("/");
-  const id = input.planId === "" ? "(plan id not reported by the call)" : input.planId;
+  const missingId = input.planId === "";
+  const id = !missingId ? input.planId : MISSING_PLAN_ID_PHRASE + (input.alreadyStaged ? " — the returned shell's id could not be read, so it CANNOT be approved; report this failure" : " — the shell was staged but CANNOT be approved, so report this failure");
+  const nextStep = !missingId ? "\n- Extend it with `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[0] + "\"}` (each member's prompt comes from `mpd_role_persona`)" + " and `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[1] + '"}`, then approve it with `' + STAGING_TOOL_NAME + ' {action:"approve"}` — approval is what spawns the members and posts the tasks.' : input.alreadyStaged ? `
+- Do NOT attempt to extend or approve it, and do NOT stage again: the returned shell's id could not be read, so report this failure instead.` : `
+- Do NOT attempt to extend or approve it: the staging call returned no id, so report this failure and re-stage before continuing.`;
   return STARTUP_NOTICE_MARKER + ": this session shows " + matched + ", and " + (input.alreadyStaged ? ALREADY_STAGED_PLAN_PHRASE : STAGED_PLAN_PHRASE) + " — " + id + " (0 members, 0 tasks: a SHELL, not a team)." + (input.alreadyStaged ? `
-- The gate did NOT stage again: a second staging would ARCHIVE your in-progress plan.` : "") + (input.explicit ? "\n- The explicit `team:` / `!team` marker was CONSUMED from the goal text: the request is why this is your session to lead." : "") + "\n- Extend it with `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[0] + "\"}` (each member's prompt comes from `mpd_role_persona`)" + " and `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[1] + '"}`, then approve it with `' + STAGING_TOOL_NAME + ' {action:"approve"}` — approval is what spawns the members and posts the tasks.' + `
+- The gate did NOT stage again: a second staging would ARCHIVE your in-progress plan.` : "") + (input.explicit ? "\n- The explicit `team:` / `!team` marker was CONSUMED from the goal text: the request is why this is your session to lead." : "") + nextStep + `
 - ` + INERT_PLAN_PHRASE + " — never tell the user a team was created." + `
 ` + SOLO_PERMISSION_SENTENCE + " — and say so in one line: an unapproved plan is inert." + `
 - A team is NOT a precondition of this session, and you may not create a second team while leading one.`;
@@ -520,15 +451,267 @@ function consumeFlagFromMessage(message, source) {
   return changed ? { ...message, content } : message;
 }
 function sessionQualifies(agent, presets = DEFAULT_GATE_PRESETS) {
+  if (sessionRank(agent) !== "captain")
+    return false;
   const header = agent?.session?.header;
   if (header === undefined || header === null)
     return false;
-  if (header.parentSession !== undefined)
-    return false;
   const preset = header.agentPreset;
-  if (preset === undefined)
+  if (preset === undefined || preset === null)
     return true;
   return presets.includes(String(preset));
+}
+function sessionRank(agent) {
+  const header = agent?.session?.header;
+  if (header === undefined || header === null)
+    return "headerless";
+  if (header.origin === "subagent")
+    return "child";
+  const depth = Number(header.delegationDepth);
+  return depth >= 1 ? "child" : "captain";
+}
+function sessionIsTopLevel(agent) {
+  return sessionRank(agent) === "captain";
+}
+var MPD_CAPTAIN_PRESET = "mpd";
+function sessionIsMpdCaptain(agent) {
+  if (!sessionIsTopLevel(agent))
+    return false;
+  const header = agent?.session?.header;
+  return header?.agentPreset === MPD_CAPTAIN_PRESET;
+}
+
+// packages/mpd-roles-plugin/src/captain-investigation.ts
+var INVESTIGATION_CONFIG_KEY = "captain.investigation";
+var INVESTIGATION_TOOLS = ["read", "glob", "grep"];
+var CAPTAIN_READABLE_PREFIXES = [".mpd/", "docs/", "evidence/", "agent-references/"];
+var CAPTAIN_READABLE_ROOT_FILES = [
+  "AGENTS.md",
+  "AGENT.md",
+  "CLAUDE.md",
+  "README.md",
+  "README.zh-CN.md",
+  "CHANGELOG.md"
+];
+var ROOT_LICENSE_PATTERN = /^LICENSE.*\.md$/i;
+function resolveInvestigationMode(raw) {
+  return raw === "allow" ? "allow" : "deny";
+}
+function captainReadablePath(workspaceRoot, raw) {
+  const posix = String(raw ?? "").replace(/\\/g, "/");
+  if (posix === "")
+    return false;
+  const root = workspaceRoot.replace(/\\/g, "/").replace(/\/+$/, "");
+  const absolute = posix.startsWith("/") || /^[a-zA-Z]:[\\/]/.test(posix);
+  let rel;
+  if (!absolute)
+    rel = posix.startsWith("./") ? posix.slice(2) : posix;
+  else if (root !== "" && posix.startsWith(root + "/"))
+    rel = posix.slice(root.length + 1);
+  if (rel === undefined || rel === "")
+    return false;
+  if (rel.split("/").includes(".."))
+    return false;
+  const inBand = CAPTAIN_READABLE_PREFIXES.some((prefix) => rel.startsWith(prefix) || rel === prefix.replace(/\/$/, ""));
+  if (inBand)
+    return true;
+  if (CAPTAIN_READABLE_ROOT_FILES.includes(rel))
+    return true;
+  return rel.indexOf("/") === -1 && ROOT_LICENSE_PATTERN.test(rel);
+}
+function captainInvestigationDecision(input) {
+  if (input.mode !== "deny")
+    return;
+  if (!input.topLevel)
+    return;
+  const toolName = String(input.toolName ?? "");
+  if (!INVESTIGATION_TOOLS.includes(toolName))
+    return;
+  const raw = readTargetPath(toolName, input.args);
+  if (raw === undefined)
+    return investigationRefusal(toolName, "(no path argument — a bare call searches the whole workspace)");
+  if (captainReadablePath(input.workspaceRoot, raw))
+    return;
+  return investigationRefusal(toolName, JSON.stringify(raw));
+}
+function investigationRefusal(toolName, target) {
+  return "captain investigation rule: `" + toolName + "` on " + target + " is refused — the `mpd`" + " preset's TOP-LEVEL session does not run reconnaissance, so its context stays small enough for very large" + " projects. Delegate it: `mpd_role_spawn` with the `Explorer` role (find files and code) or the" + " `Researcher` role (evidence-based search), or hand the search to a team member, and consume the" + " REPORT. The documentation band stays open to you: `.mpd/**`, `docs/**`, `evidence/**`," + " `agent-references/**`, the root AGENTS.md / README*.md / CHANGELOG.md / LICENSE*.md — and" + ' `captain.investigation: "allow"` in mpd.jsonc restores full access.';
+}
+function installCaptainInvestigationGuard(dsh, options) {
+  const mode = resolveInvestigationMode(options.configValue(INVESTIGATION_CONFIG_KEY));
+  try {
+    if (dsh.capabilities().toolsGuard !== true) {
+      options.warn("the harness exposes no tools.guard seam — the captain investigation guard is NOT installed " + "(the top-level session keeps read/grep/glob on source paths; the rule lives in the instruction text only)");
+      return { installed: false, mode, reason: "no-guard-seam" };
+    }
+    let reportedInternalError = false;
+    const dispose = dsh.guardTool((exec) => {
+      try {
+        return captainInvestigationDecision({
+          toolName: String(exec?.name ?? ""),
+          args: exec?.arguments,
+          workspaceRoot: (() => {
+            try {
+              return options.workspaceRootOf(exec);
+            } catch {
+              return "";
+            }
+          })(),
+          topLevel: sessionIsMpdCaptain(exec?.agent),
+          mode: resolveInvestigationMode(options.configValue(INVESTIGATION_CONFIG_KEY))
+        });
+      } catch (error) {
+        if (!reportedInternalError) {
+          reportedInternalError = true;
+          options.warn("the captain investigation guard hit an internal error and passed the call through (" + (error instanceof Error ? error.message : String(error)) + ")");
+        }
+        return;
+      }
+    });
+    return { installed: true, mode, ...typeof dispose === "function" ? { dispose } : {} };
+  } catch (error) {
+    options.warn("installing the captain investigation guard failed (" + (error instanceof Error ? error.message : String(error)) + ")");
+    return { installed: false, mode, reason: "install-failed" };
+  }
+}
+
+// packages/mpd-roles-plugin/src/ask-user-guard.ts
+var ASK_USER_QUESTION_TOOL = "ask_user_question";
+function nonEmptyString(value) {
+  return typeof value === "string" && value.length > 0;
+}
+function describeShape(value) {
+  if (value === null)
+    return "null";
+  if (value === undefined)
+    return "undefined";
+  if (Array.isArray(value))
+    return "an array";
+  return typeof value === "object" ? "an object" : "a " + typeof value;
+}
+function isPlainObject(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function askUserQuestionRefusal(defect) {
+  return "ask_user_question is refused: " + defect + ". Re-issue the call with every question item carrying a" + " non-empty string `id`, the question text under `question`, and a non-empty `options` array whose" + " entries each carry a non-empty string `label`, in exactly the JSON structure the tool schema defines." + " Every question item must offer at least one option — a question without options is refused exactly" + " like an empty list. A structurally broken call would render as an empty card, so it is denied before" + " dispatch and never reaches the user.";
+}
+function askUserQuestionDenial(args) {
+  try {
+    if (!isPlainObject(args)) {
+      return askUserQuestionRefusal("`arguments` must be a JSON object (received " + describeShape(args) + ")");
+    }
+    const call = args;
+    const questions = call.questions;
+    if (!Array.isArray(questions)) {
+      return askUserQuestionRefusal("`questions` must be a non-empty array (received " + describeShape(questions) + ")");
+    }
+    if (questions.length === 0) {
+      return askUserQuestionRefusal("`questions` must not be empty — a call carrying no question renders nothing");
+    }
+    for (let index = 0;index < questions.length; index += 1) {
+      const item = questions[index];
+      const at = "question item " + String(index + 1);
+      if (!isPlainObject(item)) {
+        return askUserQuestionRefusal(at + " must be an object carrying `id` and `question` (received " + describeShape(item) + ")");
+      }
+      if (!nonEmptyString(item.id)) {
+        return askUserQuestionRefusal(at + " lacks a non-empty string `id` (received " + describeShape(item.id) + ")");
+      }
+      if (!nonEmptyString(item.question)) {
+        return askUserQuestionRefusal(at + " lacks a non-empty string `question` (received " + describeShape(item.question) + ")");
+      }
+      const options = item.options;
+      if (options === undefined) {
+        return askUserQuestionRefusal(at + " carries no `options` array — every question item must offer at least one option");
+      }
+      if (!Array.isArray(options)) {
+        return askUserQuestionRefusal(at + " carries `options` that is not an array (received " + describeShape(options) + ")");
+      }
+      if (options.length === 0) {
+        return askUserQuestionRefusal(at + " carries an empty `options` array — a choice needs at least one option");
+      }
+      for (let optionIndex = 0;optionIndex < options.length; optionIndex += 1) {
+        const option = options[optionIndex];
+        if (!isPlainObject(option) || !nonEmptyString(option.label)) {
+          return askUserQuestionRefusal(at + " option " + String(optionIndex + 1) + " lacks a non-empty string `label`");
+        }
+      }
+    }
+    return;
+  } catch {
+    return;
+  }
+}
+function askUserQuestionGuardDecision(exec) {
+  try {
+    if (String(exec?.name ?? "") !== ASK_USER_QUESTION_TOOL)
+      return;
+    return askUserQuestionDenial(exec?.arguments);
+  } catch {
+    return;
+  }
+}
+function installAskUserQuestionGuard(dsh, options) {
+  try {
+    if (dsh.capabilities().toolsGuard !== true) {
+      options.warn("the harness exposes no tools.guard seam — the ask_user_question boundary guard is NOT installed " + "(a structurally broken question call would reach the user's panel unchanged; the construction rule in the " + "preset prompt is then the only protection)");
+      return { installed: false, reason: "no-guard-seam" };
+    }
+    const dispose = dsh.guardTool((exec) => askUserQuestionGuardDecision(exec));
+    return { installed: true, ...typeof dispose === "function" ? { dispose } : {} };
+  } catch (error) {
+    options.warn("installing the ask_user_question boundary guard failed (" + (error instanceof Error ? error.message : String(error)) + ")");
+    return { installed: false, reason: "install-failed" };
+  }
+}
+
+// packages/mpd-roles-plugin/src/delegation-gate.ts
+var DELEGATION_CONFIG_KEY = "delegation.gate";
+var DELEGATION_TOOLS = ["subagent", "subagent_fork", "workflow"];
+function resolveDelegationGateMode(raw) {
+  if (raw === "captain")
+    return "captain";
+  if (raw === "allow")
+    return "allow";
+  return "deny";
+}
+function delegationGateDecision(input) {
+  const toolName = String(input.toolName ?? "");
+  if (!DELEGATION_TOOLS.includes(toolName))
+    return;
+  if (input.mode === "deny" || input.mode === "captain" && input.rank === "captain")
+    return delegationRefusal(toolName);
+  return;
+}
+function delegationRefusal(toolName) {
+  return "delegation gate: `" + toolName + "` is refused — the official spawn tools are not the delegation" + " path under the MPD discipline. Delegate instead: `mpd_role_spawn` (one-shot roster specialist)," + " `mpd_workmate_match` + `mpd_workmate_spawn` (durable instance), or Agent Teams for multi-member work" + " (`agent_teams_plan`, persona from `mpd_role_persona`); `send_message` continues an existing" + " continuable child. The gate covers the captain and every member session. `delegation.gate` in" + ' mpd.jsonc: "captain" limits it to the top-level session, "allow" releases it entirely.';
+}
+function installDelegationGate(dsh, options) {
+  const mode = resolveDelegationGateMode(options.configValue(DELEGATION_CONFIG_KEY));
+  try {
+    if (dsh.capabilities().toolsGuard !== true) {
+      options.warn("the harness exposes no tools.guard seam — the delegation gate is NOT installed " + "(the official spawn tools stay available; the rule lives in the instruction text only; " + "`delegation.gate` in mpd.jsonc selects the mode once the seam exists)");
+      return { installed: false, mode, reason: "no-guard-seam" };
+    }
+    const dispose = dsh.guardTool((exec) => {
+      try {
+        const rank = sessionRank(exec?.agent);
+        if (rank === "captain" && !sessionIsMpdCaptain(exec?.agent))
+          return;
+        return delegationGateDecision({
+          toolName: String(exec?.name ?? ""),
+          mode: resolveDelegationGateMode(options.configValue(DELEGATION_CONFIG_KEY)),
+          rank
+        });
+      } catch {
+        return;
+      }
+    });
+    return { installed: true, mode, ...typeof dispose === "function" ? { dispose } : {} };
+  } catch (error) {
+    options.warn("installing the delegation gate failed (" + (error instanceof Error ? error.message : String(error)) + ")");
+    return { installed: false, mode, reason: "install-failed" };
+  }
 }
 
 // packages/mpd-roles-plugin/src/roster-section.ts
@@ -2639,6 +2822,9 @@ function installSessionGate(dsh, options) {
       }
       const staged = mode === GATE_MODE_MECHANICAL && outcome.ok;
       report('session gate fired for agent "' + agentId + '" signals=' + verdict.signals.join("/") + " mode=" + mode + " staged=" + (staged ? "1" : "0") + (outcome.planId === "" ? "" : " plan=" + outcome.planId));
+      if (staged && outcome.planId === "") {
+        warn("session-start gate: " + MISSING_PLAN_ID_PHRASE + ' for agent "' + agentId + '" — the shell is staged but cannot be approved');
+      }
       gateTrace("FIRING agent=" + agentId + " signals=" + verdict.signals.join("/") + " mode=" + mode + " staged=" + String(staged));
       const notice = dsh.userMessage({
         text: staged ? mechanicalNoticeText({ planId: outcome.planId, signals: verdict.signals, explicit: consumed.flagged, alreadyStaged: outcome.alreadyStaged }) : advisoryNoticeText(verdict.signals, consumed.flagged),
@@ -3120,6 +3306,10 @@ Work with the tools your role requires (read-only roles must never modify anythi
       return config.team?.gate;
     if (key === BOULDER_DIR_CONFIG_KEY)
       return config.boulder?.dir;
+    if (key === INVESTIGATION_CONFIG_KEY)
+      return config.captain?.investigation;
+    if (key === DELEGATION_CONFIG_KEY)
+      return config.delegation?.gate;
     return;
   };
   const guardOutcome = [];
@@ -3134,7 +3324,28 @@ Work with the tools your role requires (read-only roles must never modify anythi
     guardOutcome.push("readOnlyGuard=absent reason=threw");
     warnOnce("team-guard:threw", "the team-path read-only guard could not be installed (" + errText(error) + ")");
   }
-  guardOutcome.push("verifyGate=absent reason=" + withdrawnReason("verify.mode"), "captainInvestigation=absent reason=" + withdrawnReason("captain.investigation"), "delegationGate=absent reason=" + withdrawnReason("delegation.gate"));
+  try {
+    const investigation = installCaptainInvestigationGuard(dsh, {
+      workspaceRootOf: (exec) => dsh.workspaceRoot(exec),
+      configValue,
+      warn: (line) => warnOnce("captain-investigation:" + line, line)
+    });
+    guardOutcome.push(investigation.installed ? "captainInvestigation=" + investigation.mode : "captainInvestigation=absent reason=" + String(investigation.reason));
+  } catch (error) {
+    guardOutcome.push("captainInvestigation=absent reason=threw");
+    warnOnce("captain-investigation:threw", "the captain investigation guard could not be installed (" + errText(error) + ")");
+  }
+  try {
+    const delegation = installDelegationGate(dsh, {
+      configValue,
+      warn: (line) => warnOnce("delegation-gate:" + line, line)
+    });
+    guardOutcome.push(delegation.installed ? "delegationGate=" + delegation.mode : "delegationGate=absent reason=" + String(delegation.reason));
+  } catch (error) {
+    guardOutcome.push("delegationGate=absent reason=threw");
+    warnOnce("delegation-gate:threw", "the delegation gate could not be installed (" + errText(error) + ")");
+  }
+  guardOutcome.push("verifyGate=absent reason=" + withdrawnReason("verify.mode"));
   try {
     const askUserGuard = installAskUserQuestionGuard(dsh, {
       warn: (line) => warnOnce("ask-user-guard:" + line, line)

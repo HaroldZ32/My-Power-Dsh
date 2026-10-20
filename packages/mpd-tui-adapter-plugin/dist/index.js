@@ -291,15 +291,22 @@ function mergePanelEnableIds(existing, ours, past, hostDefault) {
 }
 var PANEL_CSV_SELF_HEAL_SINCE = "0.15.0";
 function hostSelfHealsPanelCsv(version) {
+  return hostVersionAtLeast(version, PANEL_CSV_SELF_HEAL_SINCE);
+}
+var PANEL_CSV_HOST_OWNED_SINCE = "0.16.1";
+function hostOwnsPanelCsv(version) {
+  return hostVersionAtLeast(version, PANEL_CSV_HOST_OWNED_SINCE);
+}
+function hostVersionAtLeast(version, since) {
   const match = /^(\d+)\.(\d+)\.(\d+)/.exec(version.trim());
   if (match === null)
     return false;
-  const since = PANEL_CSV_SELF_HEAL_SINCE.split(".").map((part) => Number.parseInt(part, 10));
+  const floor = since.split(".").map((part) => Number.parseInt(part, 10));
   const parsed = [Number(match[1]), Number(match[2]), Number(match[3])];
   for (let rank = 0;rank < 3; rank += 1) {
-    if (parsed[rank] > since[rank])
+    if (parsed[rank] > floor[rank])
       return true;
-    if (parsed[rank] < since[rank])
+    if (parsed[rank] < floor[rank])
       return false;
   }
   return true;
@@ -454,6 +461,14 @@ function createPanelEnableKeeper(options) {
       release();
     } catch {}
   };
+  const standDownOwnedByHost = (version) => {
+    ticks += 1;
+    settle("confirmed", `read-only: the host ${version} owns the enable list (>= ${PANEL_CSV_HOST_OWNED_SINCE}), so this keeper writes nothing — the stale-default migration included`);
+    cancelLadder();
+    releaseFeedNow();
+    releaseBeltNow();
+    options.log?.(`mpd-tui panel enable keeper: standing down READ-ONLY on host ${version} — the host owns the sidebar enable list (>= ${PANEL_CSV_HOST_OWNED_SINCE}); this keeper never writes it again`);
+  };
   const standDownToHostUnion = (prefs, version, hostDefault, migration) => {
     ticks += 1;
     settle(migration === "refused" ? "refused" : "confirmed", migration === "refused" ? `standing down: the host ${version} self-heals the enable CSV (>= ${PANEL_CSV_SELF_HEAL_SINCE}), but the stale-default migration write was refused, so the stale list remains; the belt re-evaluates on the host's next apply` : `standing down: the host ${version} self-heals the enable CSV (>= ${PANEL_CSV_SELF_HEAL_SINCE}), so this keeper leaves the list to the host's own union (the stale-default migration aside)`);
@@ -520,6 +535,10 @@ function createPanelEnableKeeper(options) {
           return;
         }
         if (hostSelfHealsPanelCsv(probe.hostVersion ?? "")) {
+          if (hostOwnsPanelCsv(probe.hostVersion ?? "")) {
+            standDownOwnedByHost(probe.hostVersion ?? "");
+            return;
+          }
           const migration = migrateStaleDefaultOnSelfHealer(probe.prefs, probe.defaultIds);
           standDownToHostUnion(probe.prefs, probe.hostVersion ?? "", probe.defaultIds, migration);
           return;
@@ -1389,6 +1408,7 @@ export {
   HOST_ROOT_ENV,
   HOST_UI_MODULE,
   KNOWN_STALE_PANEL_DEFAULTS,
+  PANEL_CSV_HOST_OWNED_SINCE,
   PANEL_CSV_SELF_HEAL_SINCE,
   PANEL_IDS_RECORD_NAME,
   PANEL_ID_HISTORY_LIMIT,
@@ -1405,8 +1425,10 @@ export {
   defaultLogRoot,
   describeOutcome,
   effectOn,
+  hostOwnsPanelCsv,
   hostRootCandidates,
   hostSelfHealsPanelCsv,
+  hostVersionAtLeast,
   inject,
   mergePanelEnableIds,
   name,

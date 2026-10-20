@@ -6,7 +6,8 @@
 // the mpdRoles service (mpd-modelchain chain lookup). Team mode is the OFFICIAL Agent
 // Teams plugin (`spawn_teammate` + `team_task_create`), which THIS row feeds: it
 // registers the read-only tool guard, the agent-scoped roster section, the
-// `ask_user_question` boundary guard and the OPT-IN session-start gate.
+// `ask_user_question` boundary guard, the captain's reconnaissance ban, the delegation
+// gate and the session-start gate (MECHANICAL by default since the 2026-10-20 restore).
 // ADDRESSING CONTRACT: a role is addressed by its normal display NAME — the member
 // name in team mode, the label of a one-shot mpd_role_spawn, and what every
 // description/render lists. The stable `id` is an INTERNAL key (modelchain chain key,
@@ -21,7 +22,9 @@ import { existsSync, readFileSync } from "node:fs"
 import { join, resolve } from "node:path"
 import { ROLES, ROLE_BY_ID, type MpdRoleSpec } from "./roles.data.ts"
 import { installReadonlyGuard } from "./team-guard.ts"
+import { INVESTIGATION_CONFIG_KEY, installCaptainInvestigationGuard } from "./captain-investigation.ts"
 import { installAskUserQuestionGuard } from "./ask-user-guard.ts"
+import { DELEGATION_CONFIG_KEY, installDelegationGate } from "./delegation-gate.ts"
 import { installRosterSection } from "./roster-section.ts"
 import { installSessionGate } from "./session-gate.ts"
 import { BOULDER_DIR_CONFIG_KEY, GATE_CONFIG_KEY } from "./complexity-gate.ts"
@@ -35,12 +38,14 @@ export const inject = dshSeamInject(DSH_SEAM_TOOLS, DSH_SEAM_SUBAGENTS)
 /** The slice of a cordis context this row uses: the two seams, the `mpdRoles` provision and a logger. */
 type Ctx = { tools: any; subagents: any; provide: (n: string, v: any, check?: any) => void; get?: (k: string, strict?: boolean) => any; [k: string]: any }
 /**
- * The row config: the persona directory plus the two keys this row reads itself.
+ * The row config: the persona directory plus the four keys this row reads itself.
  *
- * `team.gate` (off | advisory | mechanical) and `boulder.dir` mirror their `.mpd/mpd.jsonc`
- * spellings, so a composition without the config row mounted can still pin them in the patch.
+ * `team.gate` (mechanical | advisory | off), `boulder.dir`, `captain.investigation` (deny | allow) and
+ * `delegation.gate` (deny | captain | allow) mirror their `.mpd/mpd.jsonc` spellings, so a composition
+ * without the config row mounted can still pin them in the patch. The two guard knobs are read PER
+ * CALL through the same config layer, so a `mpd.jsonc` edit applies without a reinstall.
  */
-type Config = { personasDir?: string; team?: { gate?: unknown }; boulder?: { dir?: unknown } }
+type Config = { personasDir?: string; team?: { gate?: unknown }; boulder?: { dir?: unknown }; captain?: { investigation?: unknown }; delegation?: { gate?: unknown } }
 
 // Every entry must be a tool this profile actually registers: the harness
 // validates the WHOLE deny list at spawn time and rejects the child when any
@@ -66,11 +71,12 @@ export const READONLY_DENY = [
  * Why a withdrawn guard reports `absent` on the team-plane boot line, naming the knob that used to
  * switch it.
  *
- * It is a REASON, never a mode: the captain-investigation guard, the delegation gate and the
- * verification law's write guard were installed HERE on 2026-10-10/11 and are withdrawn by the user's
- * 2026-10-17 ruling (`.mpd/plans/harness-021-rollback.md`, requirement R1) — the top-level agent holds
- * its whole tool pack directly and is steered by its persona prompt. A removed install must never print
- * a token a reader could mistake for an enforced one, hence `absent` plus this sentence and the knob.
+ * It is a REASON, never a mode: the verification law's write guard was installed HERE on 2026-10-11 and
+ * is withdrawn by the user's 2026-10-17 ruling (`.mpd/plans/harness-021-rollback.md`, requirement R1).
+ * The TWO guards beside it — the captain-investigation guard and the delegation gate — were withdrawn by
+ * the same ruling and RESTORED by the 2026-10-20 ruling (`.mpd/plans/restore-guard-discipline.md`), so
+ * they print their MODES again; only `verify.mode` still reports this reason. A removed install must
+ * never print a token a reader could mistake for an enforced one, hence `absent` plus the sentence.
  *
  * @param knob - the config key that used to select the withdrawn guard's mode.
  * @returns the boot-line reason spelling.
@@ -815,13 +821,15 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   // restored HERE, on the OFFICIAL plugin's seams, reached only through the adapter:
   //   1. a tool guard over the SAME eight names the one-shot path denies;
   //   2. an AGENT-SCOPED roster section, so an mpd Lead knows the members it can stage;
-  //   3. the session-start complexity gate, which is OPT-IN since the 2026-10-17 rollback: only an
-  //      explicit `team.gate` arms it, and a triggered session stages an APPROVABLE PLAN SHELL
-  //      (0 members, 0 tasks) through the `agent_teams_plan` tool — never a team, never a member.
-  // A THIRD contract used to be installed here — the 2026-10-10/11 ceremony of a reconnaissance ban, a
-  // spawn-tool ban and a mandatory A-writes/B-verifies seat for the top-level agent. The user withdrew it
-  // (`.mpd/plans/harness-021-rollback.md` R1): those three guards are NOT installed any more, and the
-  // boot line reports each of them as `absent` with {@link GUARD_WITHDRAWN_REASON}.
+  //   3. the session-start complexity gate, MECHANICAL by default since the 2026-10-20 restore: an
+  //      untouched `team.gate` stages an APPROVABLE PLAN SHELL (0 members, 0 tasks) through the
+  //      `agent_teams_plan` tool — never a team, never a member — and `advisory` / `off` are the
+  //      deliberate opt-outs.
+  // A THIRD contract was installed here on 2026-10-10/11 — a reconnaissance ban, a spawn-tool ban and a
+  // mandatory A-writes/B-verifies seat for the top-level agent. The user's 2026-10-17 ruling withdrew the
+  // bundle (`.mpd/plans/harness-021-rollback.md` R1), and the 2026-10-20 split restored the TWO
+  // reconnaissance/delegation guards while the write guard stays withdrawn: the boot line reports their
+  // modes and `verifyGate=absent` with {@link withdrawnReason} for the one that no longer installs.
   // Each remaining installer degrades with a warning instead of taking the row down.
   const teamMembers = (): Array<{ name: string; description: string; readonly: boolean }> => ROLES.map((role) => ({ name: role.name, description: role.description, readonly: role.readonly }))
   /**
@@ -829,7 +837,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
    *
    * Precedence: the mounted `mpdConfig` layer first (a `.mpd/mpd.jsonc` edit is therefore picked up
    * LIVE, T-18), this row's own config second, `undefined` last so the plugin's own default applies.
-   * @param key - the dot-path key, e.g. `team.gate` or `boulder.dir`.
+   * @param key - the dot-path key, e.g. `team.gate`, `boulder.dir`, `captain.investigation` or `delegation.gate`.
    * @returns the raw value, or `undefined` when neither layer declares it.
    */
   const configValue = (key: string): unknown => {
@@ -853,6 +861,8 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     if (value !== undefined) return value
     if (key === GATE_CONFIG_KEY) return config.team?.gate
     if (key === BOULDER_DIR_CONFIG_KEY) return config.boulder?.dir
+    if (key === INVESTIGATION_CONFIG_KEY) return config.captain?.investigation
+    if (key === DELEGATION_CONFIG_KEY) return config.delegation?.gate
     return undefined
   }
   // The TEAM PLANE's boot signature: ONE line naming every installed contract and its outcome, so an
@@ -874,19 +884,48 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     guardOutcome.push("readOnlyGuard=absent reason=threw")
     warnOnce("team-guard:threw", "the team-path read-only guard could not be installed (" + errText(error) + ")")
   }
-  // THE THREE MECHANICAL GUARDS ARE WITHDRAWN — NOT INSTALLED, and reported as such. They used to be
-  // installed at this site: the verification law's write guard (an A-writes/B-verifies seat on the
-  // top-level agent), the captain investigation guard (reconnaissance delegated, `read`/`grep`/`glob`
-  // refused on source paths) and the delegation gate (bare `subagent`/`subagent_fork`/`workflow`
-  // refused). The user's 2026-10-17 ruling withdrew all three: the top-level agent holds its whole tool
-  // pack DIRECTLY and is steered by the persona prompt, not by hooks. The tokens stay on the boot line
-  // so a mount lane can still SEE the state of each capability — and each says `absent` plus the reason,
-  // never a mode: printing a mode for an install that does not run is the one thing this line must not do.
-  guardOutcome.push(
-    "verifyGate=absent reason=" + withdrawnReason("verify.mode"),
-    "captainInvestigation=absent reason=" + withdrawnReason("captain.investigation"),
-    "delegationGate=absent reason=" + withdrawnReason("delegation.gate"),
-  )
+  // ── THE RECONNAISSANCE AND DELEGATION GUARDS (restored 2026-10-20) ─────────
+  // The user's 2026-10-17 ruling withdrew three mechanical guards together with the persona
+  // restoration; the 2026-10-20 ruling split that bundle: the LONG PROMPT stays, but the top-level
+  // `mpd` session must again DELEGATE its reconnaissance and must again delegate through THIS bundle's
+  // own surfaces (`mpd_role_spawn`, the workmate library, Agent Teams). Measured reason: with the
+  // guards gone the captain did every search itself, the roster/team tools went unused and the
+  // session's context inflated by one file read after another. `verify.mode` (the write guard) stays
+  // withdrawn — the captain still writes code directly; only the hook is gone, not the discipline.
+  //
+  // Both installs are CONTAINED: a seam-less composition reports the guard `absent` with its reason and
+  // keeps the rest of the row, exactly as before.
+  try {
+    /** The guard's install outcome, whose MODE the team-plane boot signature reports below. */
+    const investigation = installCaptainInvestigationGuard(dsh, {
+      workspaceRootOf: (exec) => dsh.workspaceRoot(exec),
+      configValue,
+      warn: (line) => warnOnce("captain-investigation:" + line, line),
+    })
+    guardOutcome.push(investigation.installed
+      ? "captainInvestigation=" + investigation.mode
+      : "captainInvestigation=absent reason=" + String(investigation.reason))
+  } catch (error) {
+    guardOutcome.push("captainInvestigation=absent reason=threw")
+    warnOnce("captain-investigation:threw", "the captain investigation guard could not be installed (" + errText(error) + ")")
+  }
+  try {
+    /** The gate's install outcome, whose MODE the team-plane boot signature reports below. */
+    const delegation = installDelegationGate(dsh, {
+      configValue,
+      warn: (line) => warnOnce("delegation-gate:" + line, line),
+    })
+    guardOutcome.push(delegation.installed
+      ? "delegationGate=" + delegation.mode
+      : "delegationGate=absent reason=" + String(delegation.reason))
+  } catch (error) {
+    guardOutcome.push("delegationGate=absent reason=threw")
+    warnOnce("delegation-gate:threw", "the delegation gate could not be installed (" + errText(error) + ")")
+  }
+  // THE WRITE GUARD STAYS WITHDRAWN (user ruling 2026-10-17, kept by the 2026-10-20 split): the captain
+  // writes code without an armed verification loop. The token stays on the boot line so a mount lane can
+  // SEE the state, and it says `absent` plus the reason — never a mode for an install that does not run.
+  guardOutcome.push("verifyGate=absent reason=" + withdrawnReason("verify.mode"))
   // THE ask_user_question BOUNDARY GUARD, installed at this same site: the HOST tool's schema marks
   // `options` OPTIONAL per question, so a SCHEMA-LEGAL but semantically broken call (a question item with
   // no `question`, a mis-keyed option list) reaches the TUI's question panel and renders as a card with

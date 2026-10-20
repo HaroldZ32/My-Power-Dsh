@@ -1,0 +1,49 @@
+tail start 2026-10-20T10:41:25Z
+NOTE session-start-team-live STOPPED after 2/15 sides in 11 min (optional live matrix; its contract self-test is green).
+NOTE the captain-scope live case follows; mcp-call and dual-track-smoke are the AGENTS §11 real cases.
+
+=== CASE captain-scope-live :: node skills/dsh-qa/scripts/captain-scope.ts ===
+CASE captain-scope-live exit=0 elapsed=15s
+
+=== CASE mcp-call :: node skills/dsh-qa/scripts/mcp-call.ts ===
+CASE mcp-call exit=0 elapsed=96s
+
+=== CASE dual-track-smoke :: node skills/dsh-qa/scripts/dual-track-smoke.ts ===
+CASE dual-track-smoke exit=1 elapsed=15s
+--- tail dual-track-smoke ---
+[llm-dual-track] official ok=true (9600ms, exit=0) -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/dsh-qa/llm-dual-track/official/2026-10-20T10-43-25.953Z
+[llm-dual-track] deepseek ok=false (5699ms, exit=1) -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/dsh-qa/llm-dual-track/deepseek/2026-10-20T10-43-31.654Z
+--- end tail ---
+
+=== CASE docker-source-live :: node scripts/docker-e2e.ts --mode source --require-docker --live ===
+CASE docker-source-live exit=3 elapsed=0s
+--- tail docker-source-live ---
+[driver] --live was passed but DEEPSEEK_API_KEY is not set in this environment; refusing to run a lane that would report the credential-free NULL. Export the key, or drop --live.
+--- end tail ---
+tail end 2026-10-20T10:43:31Z
+--- SUMMARY ---
+vendor	0	0s	bun run verify:vendor
+rows	0	0s	bun run verify:rows
+docs	0	0s	bun run verify:docs
+manifest	0	3s	bun run verify:manifest
+comments	0	2s	bun run verify:comments
+no-host-override	0	0s	node scripts/verify-no-host-override.ts
+manual-paths	0	0s	node scripts/verify-manual-paths.ts
+dist-fresh	0	1s	node scripts/verify-dist-fresh.ts
+graph	0	0s	bun run verify:graph
+preset-conformance-selftest	0	0s	node skills/dsh-qa/scripts/preset-conformance.ts --self-test
+verify-law-selftest	0	1s	node skills/dsh-qa/scripts/verify-law.ts --self-test
+ext-selftest	0	0s	bun scripts/mpd-ext.ts --self-test
+ext-validate	0	0s	bun scripts/mpd-ext.ts validate extensions/mpd-ext-example
+docker-selftest	0	1s	node scripts/docker-e2e.ts --self-test
+typecheck	0	1s	bun run typecheck
+tests	0	25s	.toolchain/node_modules/.bin/bun test packages
+qa-selftests	0	10s	bun run test:qa
+lifecycle	0	14s	bun skills/dsh-qa/scripts/bundle-lifecycle.ts
+preset-conformance-real	0	25s	node skills/dsh-qa/scripts/preset-conformance.ts
+verify-law-boot	0	19s	node skills/dsh-qa/scripts/verify-law.ts
+delegation-gate-live	0	67s	node skills/dsh-qa/scripts/delegation-gate.ts
+captain-scope-live	0	15s	node skills/dsh-qa/scripts/captain-scope.ts
+mcp-call	0	96s	node skills/dsh-qa/scripts/mcp-call.ts
+dual-track-smoke	1	15s	node skills/dsh-qa/scripts/dual-track-smoke.ts
+docker-source-live	3	0s	node scripts/docker-e2e.ts --mode source --require-docker --live

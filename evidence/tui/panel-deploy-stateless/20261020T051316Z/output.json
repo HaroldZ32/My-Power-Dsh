@@ -1,0 +1,18 @@
+{
+  "ok": true,
+  "results": [
+    {
+      "case": "A",
+      "host": "0.16.1",
+      "writes": 0,
+      "subscribers": 0,
+      "detail": "read-only: the host 0.16.1 owns the enable list (>= 0.16.1), so this keeper writes nothing — the stale-default migration included"
+    },
+    {
+      "case": "B",
+      "host": "0.16.0",
+      "writes": 1,
+      "csv": "todo,jobs,agents,info,trajectory,workspace,btw,companion,act1:team,act1:workmate"
+    }
+  ]
+}

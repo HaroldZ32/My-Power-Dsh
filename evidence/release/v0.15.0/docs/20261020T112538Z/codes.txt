@@ -1,0 +1,3 @@
+verify:docs=0
+verify:manifest=0
+typecheck=0

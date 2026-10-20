@@ -1,0 +1,79 @@
+{
+  "ok": true,
+  "slug": "captain-scope",
+  "startedAt": "2026-10-20T10-41-25.263Z",
+  "sandbox": "/tmp/mpd-captain-full-tools-MnY8Tz",
+  "credential": {
+    "provider": "deepseek",
+    "keyName": "DEEPSEEK_API_KEY",
+    "present": true,
+    "source": "credentials-file",
+    "file": "/home/haroldzhao/.dsh/.credentials.yaml",
+    "line": 19,
+    "length": 35,
+    "reason": null,
+    "tried": [
+      {
+        "tier": "environment",
+        "detail": "DEEPSEEK_API_KEY",
+        "outcome": "unset"
+      },
+      {
+        "tier": "credentials-file",
+        "detail": "/home/haroldzhao/.dsh/.credentials.yaml:19 (flat layout)",
+        "outcome": "hit"
+      }
+    ]
+  },
+  "bootLine": "[2026-10-20T10:41:27.840Z] [mpd-roles] team plane: readOnlyGuard=installed deny=8 captainInvestigation=deny delegationGate=deny verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) askUserQuestion=installed rosterSection=agent-scoped order=605 sessionGate=mechanical",
+  "rows": [
+    {
+      "name": "boot-completed",
+      "ok": true,
+      "reason": "the headless boot exited 0 (the session really completed its turn)",
+      "raw": "exit=0 offered=108 bootLine=\"[2026-10-20T10:41:27.840Z] [mpd-roles] team plane: readOnlyGuard=installed deny=8 captainInvestigation=deny delegationGate=deny verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) askUserQuestion=installed rosterSection=agent-scoped order=605 sessionGate=mechanical\""
+    },
+    {
+      "name": "corroborative-pack-offered",
+      "ok": true,
+      "reason": "CORROBORATIVE: the request header offers the whole pack: read, write, edit, bash, grep, glob, subagent (the pack is offered on this composition whatever the guards decide; the boot-line arm is the discriminator)",
+      "raw": "exit=0 offered=108 bootLine=\"[2026-10-20T10:41:27.840Z] [mpd-roles] team plane: readOnlyGuard=installed deny=8 captainInvestigation=deny delegationGate=deny verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) askUserQuestion=installed rosterSection=agent-scoped order=605 sessionGate=mechanical\" missing=[]"
+    },
+    {
+      "name": "corroborative-source-read",
+      "ok": true,
+      "reason": "CORROBORATIVE: the source path was READ — a non-error result carries the file's own first line (a headless boot composes no agent preset, so this arm reads before and after the withdrawal)",
+      "raw": "exit=0 offered=108 bootLine=\"[2026-10-20T10:41:27.840Z] [mpd-roles] team plane: readOnlyGuard=installed deny=8 captainInvestigation=deny delegationGate=deny verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) askUserQuestion=installed rosterSection=agent-scoped order=605 sessionGate=mechanical\" needle=\"// The specialist roster. Each entry is a SPECIALIST definition with a\" readResult=\"<path>/tmp/mpd-captain-full-tools-MnY8Tz/ws/packages/mpd-roles-plugin/src/roles.data.ts</path>\\n<type>file</type>\\n<content>\\n1: // The specialist roster. Each entry is a SPECIALIST definition with a\\n2: // stable id (a modelchain chain key) and a normal, functional display name.\\n3: // ids are stable because they double as mpd-modelchain chain keys and are\\n4: // referenced across skills/docs; only the\""
+    },
+    {
+      "name": "corroborative-code-write-no-loop",
+      "ok": true,
+      "reason": "CORROBORATIVE: the code path was WRITTEN with no loop armed (no `mpd_verify_open`, no loop record) (agent-scoped guards never arm in a headless boot: the restored scope is proved by the boot line)",
+      "raw": "exit=0 offered=108 bootLine=\"[2026-10-20T10:41:27.840Z] [mpd-roles] team plane: readOnlyGuard=installed deny=8 captainInvestigation=deny delegationGate=deny verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) askUserQuestion=installed rosterSection=agent-scoped order=605 sessionGate=mechanical\" codeWritten=true loopOpened=false loopFiles=[] writeResult=\"<path>/tmp/mpd-captain-full-tools-MnY8Tz/ws/packages/mpd-roles-plugin/src/roles.data.ts</path>\\n<type>file</type>\\n<content>\\n1: // The specialist roster. Each entry is a SPECIALIST definition with a\\n2: // stable id (a modelchain chain key) and a normal, functional display name.\\n3: // ids are stable because they double as mpd-modelchain chain keys and are\\n4: // referenced across skills/docs; only the\""
+    },
+    {
+      "name": "corroborative-shell",
+      "ok": true,
+      "reason": "CORROBORATIVE: `bash` ran and answered with its own output (same bound as the two arms above)",
+      "raw": "exit=0 offered=108 bootLine=\"[2026-10-20T10:41:27.840Z] [mpd-roles] team plane: readOnlyGuard=installed deny=8 captainInvestigation=deny delegationGate=deny verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) askUserQuestion=installed rosterSection=agent-scoped order=605 sessionGate=mechanical\" shellResult=\"<path>/tmp/mpd-captain-full-tools-MnY8Tz/ws/packages/mpd-roles-plugin/src/roles.data.ts</path>\\n<type>file</type>\\n<content>\\n1: // The specialist roster. Each entry is a SPECIALIST definition with a\\n2: // stable id (a modelchain chain key) and a normal, functional display name.\\n3: // ids are stable because they double as mpd-modelchain chain keys and are\\n4: // referenced across skills/docs; only the\""
+    },
+    {
+      "name": "DISCRIMINATING-guard-state-reported",
+      "ok": true,
+      "reason": "DISCRIMINATING: the boot line reports the TWO RESTORED guards by MODE (captainInvestigation=deny, delegationGate=deny), the session gate as mechanical, and the still-withdrawn write guard as absent",
+      "raw": "\"[2026-10-20T10:41:27.840Z] [mpd-roles] team plane: readOnlyGuard=installed deny=8 captainInvestigation=deny delegationGate=deny verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) askUserQuestion=installed rosterSection=agent-scoped order=605 sessionGate=mechanical\""
+    },
+    {
+      "name": "isolation-sessions-sandboxed",
+      "ok": true,
+      "reason": "ok: 1 session-store key(s), all under the sandbox",
+      "raw": "{\"ok\":true,\"checked\":1,\"keys\":[\"--tmp-mpd-captain-full-tools-MnY8Tz-ws--\"]}"
+    },
+    {
+      "name": "isolation-real-checkout-untouched",
+      "ok": true,
+      "reason": "the real checkout's row log is byte-identical across the run",
+      "raw": "before=99b3715a7f47abb144ece3f0807170c2007d48e5406183c1ed5236e4b3b4a085 after=99b3715a7f47abb144ece3f0807170c2007d48e5406183c1ed5236e4b3b4a085"
+    }
+  ]
+}

@@ -3,12 +3,15 @@
 [English](./tui.md) | **中文**
 
 本页说明 my-power-dsh 的 **DSH-TUI 版本**：它提供什么、如何安装、逐包兼容性测量的结果，以及它
-**明确不声明**什么。目标宿主为 `@deepseek-harness-tui/dsh-tui` **0.14.0** 及其内置的准入
-（admission）配置文件——该版本新增 **Claude 后端 peer**（`@anthropic-ai/claude-agent-sdk`
-0.3.287）与 `ws` 运行时依赖、第**八**个内置侧栏面板（`btw`），并把 `PanelBar` 改成**轮播**：只画
-当前标签页的标题加 `○`/`●` 圆点，不再绘制插件声明的图标。§11.6 是本波次的修订，其中列出了本次
-移动触及的各个载体。**此前的钉定版本是 0.13.0，那段表述作为历史保持可读**：0.13.0 是**新增侧栏
-面板接缝**的那个版本——宿主 row 为 `dsh-tui-panels`，
+**明确不声明**什么。目标宿主为 `@deepseek-harness-tui/dsh-tui` **0.16.1** 及其内置的准入
+（admission）配置文件——它是第一个声明 peer 接受 DeepSeek Harness `0.2.1-rc.2` 的 dsh-tui 版本。
+§11.8 是本波次的修订：其中记录了这次移动、没有变化的接缝清单以及被触及的各个载体。**此前的钉定版本
+是 0.14.0，那段表述作为历史保持可读**：0.14.0 是新增 **Claude 后端 peer**
+（`@anthropic-ai/claude-agent-sdk` 0.3.287）与 `ws` 运行时依赖、第**八**个内置侧栏面板（`btw`），
+并把 `PanelBar` 改成**轮播**（只画当前标签页的标题加 `○`/`●` 圆点，不再绘制插件声明的图标）的那个
+版本；§11.6 是那一波次的修订，其中列出了那次移动触及的各个载体。
+**此前的钉定版本是 0.13.0，那段表述作为历史保持可读**：0.13.0 是**新增侧栏面板接缝**的那个版本——
+宿主 row 为 `dsh-tui-panels`，
 导出为 `@deepseek-harness-tui/dsh-tui/panels`——它同时把宿主自己的 `dsh-ecosystem-spec/` 目录更名为
 `tui-profile/`；本版本把这条新接缝采纳为**第十五条** `tui*` 接缝（§3、§3.3）。**此前的钉定版本是
 0.12.0，那段表述作为历史保持可读**：0.12.0 是 peer 范围覆盖本 bundle 所钉 harness 整段区间的 dsh-tui
@@ -19,7 +22,7 @@
 `dsh-distribution.json` 里写的是 `pkg:npm/@deepseek-harness-tui/dsh-tui@0.13.0`），以及 QA 宿主规格
 （`docker/tui-lane.sh`、`docker/entrypoint.sh`、`skills/dsh-qa/scripts/tui-mount.ts` 的
 `TUI_HOST_SPEC` 与 `skills/dsh-qa/scripts/install-dependencies.ts` 的修复命令，当时的默认值均为
-`0.13.0`）。**这两类载体在 0.14.0 波次中又移动了一次——当前生效的取值由 §11.6 那一节给出，而不是本节。**
+`0.13.0`）。**这两类载体在 0.14.0 与 0.16.1 波次中又移动过——当前生效的取值由 §11.8 那一节给出，而不是本节。**
 下文的兼容性
 测量是在 0.10.1 上做的，并已在 Docker 端到端测试（`docker/tui-lane.sh`）中重新验证 —— 那也是
 唯一能端到端跑通 TUI profile 的地方。
@@ -1093,6 +1096,26 @@ id 报告成功），并且接缝声明了 `close(): void` 与 `active` 读取�
 自我终止——它自己的写入让余量等于宿主当前默认值，于是下一个事件随即退位。0.15.0 之前的行为逐字节不变，
 适配器测试套新增了七条臂把这全部钉死。
 
+**2026-10-20 修订 —— 在**拥有**启用清单的宿主（`>= 0.16.1`）上，适配器是**只读**的。** 0.16.1 的
+`TuiPanelRuntime.register()` 在注册时即启用面板，`dispose()` 时移除，启动与设置应用都会把已注册 id 并回——
+启用的清单状态已没有本包可写入的余地，任何写入都只是与宿主自己的合并赛跑（即上面两段所属的事故类）。
+`hostOwnsPanelCsv` 引出一条独立的 `standDownOwnedByHost` 路径；两道门共享的版本比较抽成
+`hostVersionAtLeast`，避免两个下限各自漂移。该路径上阶梯被取消、不装订阅也不装腰带、**连陈旧默认值迁移
+都不跑**，并留一行说明（`standing down READ-ONLY on host 0.16.1 …`）。0.15.x 路径逐字节保留 S1 迁移——
+`0.16.0` 的那条测试臂钉住这个边界——发现的 id 仍经同一个 `onChange` 钩子写进诊断记录，因为记录是诊断而非
+对宿主的写入。`node scripts/mpd-tui-panels.ts --apply` 仍是用户在任何宿主上手工修复陈旧用户层的方式。
+
+**面板徽标与那一次自动开页现在从 apply 侧发布，不再由页面发布（G2，2026-10-20）。** dsh-tui 只在插件面板
+是所在栏的**当前激活页**时挂载它，所以页面侧的徽标只能装饰用户已经在看的那一页。
+`packages/mpd-tui-plugin/src/panel-attention.ts` 现在持有宿主侧 `tuiPanels.badge(id, …)` 调用与一次性的
+`tuiPanels.open(id)`：两者都经 `whenBound("panels")` 挂载（没有该接缝的组合什么都不注册），并由页面同样订阅
+的 `mpdTeams` 推送驱动。自动开页每个进程至多一次，且是**边沿触发**：只有「上一次没有活跃团队、这一次有」才算出现，因此
+启动时就已存在的团队、以及该团队之后的任何状态变化都不会触发开页；宿主对 `open()` 有每插件 5 秒一次的限速，因此被拒绝即锁定、绝不重试；由新增的 `panelAutoOpen`
+行配置控制（默认 `true`）。触发信号是**工作区级**的——该推送不携带会话 id——所以来自其它会话的触发会让页面
+画出自己的 `no team in this session` 标记，而不是画错看板。`/mpd status` 增加了对应的部署行
+（`panels: team=… workmate=… · seam bound · keeper …`），因为宿主分配的 panel id 是用户与文档都无法自行
+推导的那条事实。
+
 **修复脚本现在同时修复两个用户层，第二层是新的。** dsh-tui 0.15.0 把自己的用户设置放在
 `~/.dsh-tui/settings.json`，并按 `values.sidePanel?.panels ?? config.sidePanel?.panels` 解析生效清单——
 该设置层**遮蔽** profile patch，而它的一次性导入跳变（`imported.from` 标记阻止再次导入）曾把同一条陈旧
@@ -1162,7 +1185,7 @@ while member … belongs to …`；被守卫跳过的属主报告为 `was passed
 
 | 被取代的陈述 | 原为 | 现为（2026-10-18 实测） |
 |---|---|---|
-| 本页对标宿主（§ 前言、§11.7） | **0.15.0** | **0.16.1** |
+| 本页对标宿主（§ 前言） | **0.14.0** | **0.16.1** |
 | §3 接缝清单 | 十五个 `tui*` 接缝，0.13.0→0.15.0 不变 | **仍是十五个，且 0.16.1 没有破坏适配器的任何东西**：同样六个 `Tui*Like` 形状、`close(): void` + `active.id`、`tuiPanels`、`tuiPrompt` 仍是 phantom、`lib/types/ui.js` 仍导出 `useStdin`；唯一新增是 `EFFECT_LEDGER_NAME` 常量，适配器与 bundle 都不声明、不消费。适配器代码无需改动 |
 | §3.3 / §7 —— 版本钉住载体与 `MPD_E2E_DSH_VERSION` | 载体为 `0.15.0`；`MPD_E2E_DSH_VERSION` 保持 `0.2.0-rc.2` | **载体为 `0.16.1`，harness 为 `0.2.1-rc.2`**：两条 Docker 车道（`MPD_E2E_TUI_VERSION`、`MPD_E2E_DSH_VERSION`）、`dsh-distribution.json` 的 `host-tui` 引用（`…@0.16.1`）与 `dsh-plugin.json` 的 `compat.hosts`（`…@0.16.1`，从陈旧的 `0.10.1` 移来）。`MPD_E2E_DSH_VERSION` 现默认 `0.2.1-rc.2`，因为宿主的 peer 带接受它 |
 

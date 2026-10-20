@@ -1,0 +1,250 @@
+sweep start 2026-10-20T09:29:32Z
+branch=dev head=5a62e93674348f9ad0e6eb5d5b27502d6342175b
+dirty=1
+node=v24.21.0 bun=1.4.2 pinned=1.4.0 dsh=0.2.1-rc.2
+docker=29.8.2
+
+=== CASE vendor :: bun run verify:vendor ===
+CASE vendor exit=0 elapsed=0s
+
+=== CASE rows :: bun run verify:rows ===
+CASE rows exit=0 elapsed=0s
+
+=== CASE docs :: bun run verify:docs ===
+CASE docs exit=0 elapsed=0s
+
+=== CASE manifest :: bun run verify:manifest ===
+CASE manifest exit=0 elapsed=2s
+
+=== CASE comments :: bun run verify:comments ===
+CASE comments exit=0 elapsed=2s
+
+=== CASE no-host-override :: node scripts/verify-no-host-override.ts ===
+CASE no-host-override exit=0 elapsed=0s
+
+=== CASE manual-paths :: node scripts/verify-manual-paths.ts ===
+CASE manual-paths exit=0 elapsed=1s
+
+=== CASE dist-fresh :: node scripts/verify-dist-fresh.ts ===
+CASE dist-fresh exit=0 elapsed=0s
+
+=== CASE pack-closure :: node scripts/verify-pack-closure.ts ===
+CASE pack-closure exit=0 elapsed=0s
+
+=== CASE preset-conformance-selftest :: node skills/dsh-qa/scripts/preset-conformance.ts --self-test ===
+CASE preset-conformance-selftest exit=0 elapsed=1s
+
+=== CASE verify-law-selftest :: node skills/dsh-qa/scripts/verify-law.ts --self-test ===
+CASE verify-law-selftest exit=0 elapsed=0s
+
+=== CASE ext-selftest :: bun scripts/mpd-ext.ts --self-test ===
+CASE ext-selftest exit=0 elapsed=1s
+
+=== CASE ext-validate :: bun scripts/mpd-ext.ts validate extensions/mpd-ext-example ===
+CASE ext-validate exit=0 elapsed=0s
+
+=== CASE typecheck :: bun run typecheck ===
+CASE typecheck exit=0 elapsed=0s
+
+=== CASE tests :: bun test ===
+CASE tests exit=1 elapsed=25s
+--- tail tests ---
+(pass) stripAnsi > #given an ANSI-wrapped string #when stripped #then escape codes are removed
+(pass) stripAnsi > #given a plain string #when stripped #then it is unchanged
+(pass) hasAnsi > #given a string with ANSI codes #when checked #then it is true
+(pass) hasAnsi > #given a plain string #when checked #then it is false
+
+evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control-refs/packed/skills/programming/scripts/typescript/check-no-excuse-rules.test.ts:
+
+# Unhandled error between tests
+-------------------------------
+error: Cannot find module 'typescript/package.json' from '/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control-refs/packed/skills/programming/scripts/typescript/check-no-excuse-rules.test.ts'
+-------------------------------
+
+
+evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control/packed/skills/programming/scripts/typescript/check-no-excuse-rules.test.ts:
+
+# Unhandled error between tests
+-------------------------------
+error: Cannot find module 'typescript/package.json' from '/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/pack-closure/impl/20260917T011849Z/raw/final/negative-control/packed/skills/programming/scripts/typescript/check-no-excuse-rules.test.ts'
+-------------------------------
+
+
+3 tests skipped:
+(skip) binary resolves from toolchain
+(skip) comment file triggers detection (exit 2)
+(skip) clean file passes (exit 0)
+
+
+18 tests failed:
+(fail) cli entry > #given the Node bundle is spawned for image-diff without Bun on PATH #when it runs #then it prints JSON and exits zero [19.48ms]
+(fail) cli entry > #given the Node bundle is spawned for image-diff without Bun on PATH #when it runs #then it prints JSON and exits zero [18.30ms]
+(fail) cli entry > #given the Node bundle is spawned for image-diff without Bun on PATH #when it runs #then it prints JSON and exits zero [20.91ms]
+(fail) cli entry > #given the Node bundle is spawned for image-diff without Bun on PATH #when it runs #then it prints JSON and exits zero [20.33ms]
+(fail) cli entry > #given the Node bundle is spawned for image-diff without Bun on PATH #when it runs #then it prints JSON and exits zero [20.06ms]
+
+ 2557 pass
+ 3 skip
+ 18 fail
+ 13 errors
+ 26786 expect() calls
+Ran 2578 tests across 213 files. [24.48s]
+--- end tail tests ---
+
+=== CASE qa-selftests :: bun run test:qa ===
+CASE qa-selftests exit=0 elapsed=9s
+
+=== CASE boot-bundle-lifecycle :: bun skills/dsh-qa/scripts/bundle-lifecycle.ts ===
+CASE boot-bundle-lifecycle exit=1 elapsed=10s
+--- tail boot-bundle-lifecycle ---
+[bundle-lifecycle] FAIL: install step failed: [WARN] The package @mpd-dsh/mpd, which you have just pnpm linked, has the following peerDependencies specified in its package.json:
+
+  - dsh-better-sidebar@>=0.24.1 <0.25.0
+
+The linked in dependency will not resolve the peer dependencies from the target node_modules.
+This might cause issues in your project. To resolve this, you may use the "file:" protocol to reference the local dependency.
+! Corepack is about to download https://registry.npmjs.org/pnpm/-/pnpm-12.14.0.tgz
+Downloading the pnpm 12.14.0 binary for linux-x64...
+Error: ERR_PNPM_STORE_DIR_OPEN_OPERATION_LOCK
+
+  × adding a new package
+  ╰─▶ Failed to open the store operation lock at "pnpm-store-operation-locks":
+      Read-only file system (os error 30)
+
+dsh: plugin command failed; diagnostics: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.qa-reloc/bundle-lifecycle-2026-10-20T09-30-14.898Z/home/profiles/w/.plugin-manager/logs/operation-oweyrG/pnpm.log
+
+--- end tail boot-bundle-lifecycle ---
+
+=== CASE preset-conformance-real :: node skills/dsh-qa/scripts/preset-conformance.ts ===
+CASE preset-conformance-real exit=0 elapsed=32s
+
+=== CASE verify-law-boot :: node skills/dsh-qa/scripts/verify-law.ts ===
+CASE verify-law-boot exit=0 elapsed=30s
+
+=== CASE dual-track-smoke :: node skills/dsh-qa/scripts/dual-track-smoke.ts ===
+CASE dual-track-smoke exit=1 elapsed=19s
+--- tail dual-track-smoke ---
+[llm-dual-track] official ok=true (13826ms, exit=0) -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/dsh-qa/llm-dual-track/official/2026-10-20T09-31-39.993Z
+[llm-dual-track] deepseek ok=false (5804ms, exit=1) -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/dsh-qa/llm-dual-track/deepseek/2026-10-20T09-31-45.799Z
+--- end tail dual-track-smoke ---
+
+=== CASE mcp-call :: node skills/dsh-qa/scripts/mcp-call.ts ===
+CASE mcp-call exit=0 elapsed=97s
+
+=== CASE docker-source :: node scripts/docker-e2e.ts --mode source --require-docker ===
+CASE docker-source exit=3 elapsed=519s
+--- tail docker-source ---
+[driver] NULL qa.mcpCall — the live mcp-call case (a real model turn that must record a mcp__ast_grep__search call) did not run to a verdict on this machine: the case itself reported "[mcp-call] missing credentials" — a skip is not a pass, and nothing about the bundle is settled by it
+[driver] NULL oneclick.scratchRepo — not applicable in mode=source: this row grades the PUBLISHED package's installed tree (the scratch git build, the manifest's files allowlist, and the byte identity of what landed), and this mode installs the checkout by path — the one-click lane carries the measurement
+[driver] NULL oneclick.requiredPaths — not applicable in mode=source: this row grades the PUBLISHED package's installed tree (the scratch git build, the manifest's files allowlist, and the byte identity of what landed), and this mode installs the checkout by path — the one-click lane carries the measurement
+[driver] NULL oneclick.filesAllowlist — not applicable in mode=source: this row grades the PUBLISHED package's installed tree (the scratch git build, the manifest's files allowlist, and the byte identity of what landed), and this mode installs the checkout by path — the one-click lane carries the measurement
+[driver] NULL oneclick.distByteIdentical — not applicable in mode=source: this row grades the PUBLISHED package's installed tree (the scratch git build, the manifest's files allowlist, and the byte identity of what landed), and this mode installs the checkout by path — the one-click lane carries the measurement
+[driver] NULL live.credentialStaged — not attempted: a live turn needs MPD_E2E_LIVE=1 and a DEEPSEEK_API_KEY forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.credentialScoped — not attempted: no credential was staged, so there was nothing to scope-check
+[driver] NULL live.credentialRemoved — not attempted: nothing was staged, so nothing needed removing
+[driver] NULL live.web.turnStarted — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.web.turnCompleted — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.web.noErrorTurns — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.web.noPromptVariableError — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.web.noMalformedToolJson — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.web.toolCallsParsed — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.web.mpdToolCalled — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.web.assistantReplied — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.tui.turnStarted — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.tui.turnCompleted — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.tui.noErrorTurns — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.tui.noPromptVariableError — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.tui.noMalformedToolJson — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.tui.toolCallsParsed — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.tui.mpdToolCalled — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.tui.assistantReplied — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.headless.turnStarted — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.headless.turnCompleted — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.headless.noErrorTurns — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.headless.noPromptVariableError — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.headless.noMalformedToolJson — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.headless.toolCallsParsed — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.headless.mpdToolCalled — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.headless.assistantReplied — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.teamRecord — not attempted: no live turn ran, so no approval could materialise a record
+[driver] NULL live.nativeExecutor — not attempted: no live turn ran, so no member could be raised
+[driver] NULL live.headlessPresetRow — not attempted: the headless profile was never driven, so its preset activation is unmeasured
+[driver] NULL boot.llmTurn — not attempted: a live LLM turn needs provider credentials and this container stages none (AGENTS.md §10). The mount assertions above are the credential-free maximum.
+[driver] NULL ui.replyRendered — DECLARED BOUND — no reply was rendered: the turn's failure panel names the missing credential (MISSING_CREDENTIAL) and this container stages none, so no model turn could run. no reply rendered; the turn's own panel names the missing credential: "This turn failedllm-deepseek: no API key for provider route \"deepseek-official\"; store DEEPSEEK_API_KEY through the credentials service (the web Models page writes it), or export DEEPSEEK_API_KEY in the launching environment"
+[driver] NULL ui.teamBoard — not attempted: this run did not ask for a team build (--team-expected absent), so there is no real board to assert
+[driver] UNMEASURED ui.replyRendered — this arm was required by the flags of this invocation, so a null is a MISSING PREREQUISITE (exit 3), not a pass
+[driver] evidence -> evidence/docker/client-install/2026-10-20T09-33-22Z
+--- end tail docker-source ---
+
+=== CASE docker-oneclick :: node scripts/docker-e2e.ts --mode oneclick --require-docker ===
+CASE docker-oneclick exit=3 elapsed=471s
+--- tail docker-oneclick ---
+[driver] NULL build.dists — not applicable in one-click mode: the published package ships its built dist entries, and the mount below is what judges them
+[driver] NULL pack.distFreshRebuild — not measured in this mode: no from-source rebuild of the tree was produced here, so there is nothing to compare the artifact against. A comparison against an un-rebuilt copy would be a second byte-coherence check wearing freshness's name — the source lane carries this measurement
+[driver] NULL pack.rebuildToolchain — not measured in this mode: no from-source rebuild was produced, so no compiler produced the bytes this row would match against the artifact's declared buildToolchain
+[driver] NULL pack.distFreshRebuildControl — not applicable in mode=oneclick: the control mutates the packed artifact and re-grades it against a from-source rebuild, and this mode produces no rebuild to compare against (see pack.distFreshRebuild in this same report)
+[driver] NULL qa.mcpCall — the live mcp-call case (a real model turn that must record a mcp__ast_grep__search call) did not run to a verdict on this machine: the case itself reported "[mcp-call] missing credentials" — a skip is not a pass, and nothing about the bundle is settled by it
+[driver] NULL live.credentialStaged — not attempted: a live turn needs MPD_E2E_LIVE=1 and a DEEPSEEK_API_KEY forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.credentialScoped — not attempted: no credential was staged, so there was nothing to scope-check
+[driver] NULL live.credentialRemoved — not attempted: nothing was staged, so nothing needed removing
+[driver] NULL live.web.turnStarted — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.web.turnCompleted — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.web.noErrorTurns — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.web.noPromptVariableError — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.web.noMalformedToolJson — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.web.toolCallsParsed — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.web.mpdToolCalled — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.web.assistantReplied — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.tui.turnStarted — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.tui.turnCompleted — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.tui.noErrorTurns — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.tui.noPromptVariableError — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.tui.noMalformedToolJson — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.tui.toolCallsParsed — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.tui.mpdToolCalled — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.tui.assistantReplied — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.headless.turnStarted — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.headless.turnCompleted — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.headless.noErrorTurns — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.headless.noPromptVariableError — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.headless.noMalformedToolJson — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.headless.toolCallsParsed — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.headless.mpdToolCalled — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.headless.assistantReplied — not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum
+[driver] NULL live.teamRecord — not attempted: no live turn ran, so no approval could materialise a record
+[driver] NULL live.nativeExecutor — not attempted: no live turn ran, so no member could be raised
+[driver] NULL live.headlessPresetRow — not attempted: the headless profile was never driven, so its preset activation is unmeasured
+[driver] NULL boot.llmTurn — not attempted: a live LLM turn needs provider credentials and this container stages none (AGENTS.md §10). The mount assertions above are the credential-free maximum.
+[driver] NULL ui.replyRendered — DECLARED BOUND — no reply was rendered: the turn's failure panel names the missing credential (MISSING_CREDENTIAL) and this container stages none, so no model turn could run. no reply rendered; the turn's own panel names the missing credential: "This turn failedllm-deepseek: no API key for provider route \"deepseek-official\"; store DEEPSEEK_API_KEY through the credentials service (the web Models page writes it), or export DEEPSEEK_API_KEY in the launching environment"
+[driver] NULL ui.teamBoard — not attempted: this run did not ask for a team build (--team-expected absent), so there is no real board to assert
+[driver] UNMEASURED ui.replyRendered — this arm was required by the flags of this invocation, so a null is a MISSING PREREQUISITE (exit 3), not a pass
+[driver] evidence -> evidence/docker/client-install-oneclick/2026-10-20T09-42-01Z
+--- end tail docker-oneclick ---
+
+sweep end 2026-10-20T09:49:52Z
+dirty-after=9
+--- SUMMARY ---
+vendor	0	0s	bun run verify:vendor
+rows	0	0s	bun run verify:rows
+docs	0	0s	bun run verify:docs
+manifest	0	2s	bun run verify:manifest
+comments	0	2s	bun run verify:comments
+no-host-override	0	0s	node scripts/verify-no-host-override.ts
+manual-paths	0	1s	node scripts/verify-manual-paths.ts
+dist-fresh	0	0s	node scripts/verify-dist-fresh.ts
+pack-closure	0	0s	node scripts/verify-pack-closure.ts
+preset-conformance-selftest	0	1s	node skills/dsh-qa/scripts/preset-conformance.ts --self-test
+verify-law-selftest	0	0s	node skills/dsh-qa/scripts/verify-law.ts --self-test
+ext-selftest	0	1s	bun scripts/mpd-ext.ts --self-test
+ext-validate	0	0s	bun scripts/mpd-ext.ts validate extensions/mpd-ext-example
+typecheck	0	0s	bun run typecheck
+tests	1	25s	bun test
+qa-selftests	0	9s	bun run test:qa
+boot-bundle-lifecycle	1	10s	bun skills/dsh-qa/scripts/bundle-lifecycle.ts
+preset-conformance-real	0	32s	node skills/dsh-qa/scripts/preset-conformance.ts
+verify-law-boot	0	30s	node skills/dsh-qa/scripts/verify-law.ts
+dual-track-smoke	1	19s	node skills/dsh-qa/scripts/dual-track-smoke.ts
+mcp-call	0	97s	node skills/dsh-qa/scripts/mcp-call.ts
+docker-source	3	519s	node scripts/docker-e2e.ts --mode source --require-docker
+docker-oneclick	3	471s	node scripts/docker-e2e.ts --mode oneclick --require-docker
+failures=5

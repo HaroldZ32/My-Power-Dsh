@@ -1,0 +1,76 @@
+{
+  "fix": "F5",
+  "title": "The TUI attention badge counts only the DISPLAYED team's watchdog holds and clears a stale badge on the first observation after arming",
+  "contract": ".mpd/plans/audit-v0.15.0-fixes.md",
+  "branch": "dev",
+  "baseCommit": "5a62e93674348f9ad0e6eb5d5b27502d6342175b",
+  "timestampUtc": "20261020T095933Z",
+  "files": [
+    "packages/mpd-tui-plugin/src/panel-attention.ts",
+    "packages/mpd-tui-plugin/test/panel-attention.test.ts",
+    "packages/mpd-tui-plugin/dist/index.js"
+  ],
+  "commands": [
+    {
+      "command": ".toolchain/node_modules/.bin/bun test ./packages/mpd-tui-plugin/test/",
+      "cwd": "repo root",
+      "exitCode": 0,
+      "observed": "522 pass, 0 fail, 13626 expect() calls, 21 files"
+    },
+    {
+      "command": ".toolchain/node_modules/.bin/bun test ./packages/mpd-tui-plugin/test/panel-attention.test.ts",
+      "cwd": "repo root",
+      "exitCode": 0,
+      "observed": "22 pass, 0 fail"
+    },
+    {
+      "command": ".toolchain/node_modules/.bin/bun build packages/mpd-tui-plugin/src/index.ts --target node --format esm --outfile packages/mpd-tui-plugin/dist/index.js",
+      "cwd": "repo root",
+      "exitCode": 0,
+      "observed": "Bundled 36 modules; index.js 0.43 MB; git diff 7 insertions, 3 deletions in dist"
+    },
+    {
+      "command": "node scripts/verify-comment-coverage.ts --file packages/mpd-tui-plugin/src/panel-attention.ts",
+      "cwd": "repo root",
+      "exitCode": 0,
+      "observed": "VERDICT: PASS (55 declarations)"
+    },
+    {
+      "command": "node scripts/verify-comment-coverage.ts --file packages/mpd-tui-plugin/test/panel-attention.test.ts",
+      "cwd": "repo root",
+      "exitCode": 0,
+      "observed": "VERDICT: PASS (74 declarations)"
+    },
+    {
+      "command": "bun run typecheck",
+      "cwd": "repo root",
+      "exitCode": 0,
+      "observed": "tsgo --noEmit, no diagnostics"
+    }
+  ],
+  "tests": {
+    "package": { "pass": 522, "fail": 0, "files": 21, "expectCalls": 13626 },
+    "focusedFile": { "pass": 22, "fail": 0 },
+    "contractTests": [
+      "a FOREIGN team's hold neither warns nor raises the count",
+      "only the DISPLAYED team's holds are counted",
+      "the FIRST observation after arming publishes badgePanel(id, null) exactly once",
+      "a second IDENTICAL pass publishes nothing"
+    ],
+    "pageSideNoBadge": "kept and green: 'the page publishes NO badge itself — the apply-side attention surface owns it (G2)' passes in the package run"
+  },
+  "changes": {
+    "attentionBadge": "filters workflow.holds to entries equal to workflow.team?.id; no team id means no hold count, so a foreign hold cannot warn or inflate unread",
+    "armPanelAttention": "adds a `settled` first-publish sentinel: the first observation publishes once even when the badge is null; the sentinel settles only on an acceptance or an absent badge member, preserving the existing refusal-retry semantics",
+    "tests": "fixture helper gained an optional teamId; the old workspace-wide-hold test now supplies the displayed id; three new tests added (foreign hold, displayed-only counting, first null publish, second identical no-publish) covering the four contract behaviors"
+  },
+  "notRun": [
+    "node scripts/verify-dist-fresh.ts - excluded by the task instruction (cross-package dist-fresh gate is the captain/verifier's)"
+  ],
+  "residualRisks": [
+    "Dist freshness is not proven by the excluded cross-package gate; the rebuild used the pinned .toolchain bun 1.4.0 from the repo root and the resulting diff was inspected to contain exactly the two F5 changes.",
+    "The whole-wave gates (repo-wide verify:comments, docs, rows, manifest, test:qa) were not run in this lane; per-file comment coverage and the root typecheck passed.",
+    "Other writers' in-flight changes are present in the working tree; the diff produced by this lane is limited to the three declared files (git status scoped to packages/mpd-tui-plugin).",
+    "A duplicate entry of the displayed team id in `holds` counts twice (the count is membership-counted by design); the watchdog's own ledger does not emit duplicates today."
+  ]
+}

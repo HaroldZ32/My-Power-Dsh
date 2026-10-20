@@ -922,6 +922,25 @@
         const key = KIND_KEY[kind]
         return key === undefined ? kind : t(key)
       }
+      /**
+       * The ASCII kind abbreviation the DRAWING prints (clause F1) — never the localized kind.
+       *
+       * WHY THIS EXISTS BESIDE `kindOf`. `kindOf` is the CHROME's word and is meant to be translated:
+       * under a zh-CN locale the task detail body prints 评审, and that is correct there. A node legend
+       * line is a DRAWING, and a drawing must stay locale-free (clauses C1/F1), so its `<KIND>` is the
+       * ASCII `REQ | WRK | REV | FIX | INT`. Both functions read the ONE `KIND_KEY` table, so a new kind
+       * is added in one place, but only this one is guaranteed ASCII: it never calls `t()`, which is what
+       * the reported defect did and how 需求 reached the picture.
+       * @param kind - the task's `kind` exactly as the route served it.
+       * @returns the abbreviation, or the empty string for no kind — and also for a kind outside the
+       * five the contract declares, because an unknown value is not drawn verbatim into a CJK-free plane.
+       */
+      const kindCodeOf = (kind: string | undefined): string => {
+        if (kind === undefined || kind === "") return ""
+        /** The dictionary key this kind resolves through, when it is one of the five. */
+        const key = KIND_KEY[kind]
+        return key === undefined ? "" : EN[key]
+      }
       /** The style of one member's status dot: a CSS circle, never a raster avatar or a mascot. */
       const memberDot = (status: string): Record<string, string> => ({
         width: "7px",
@@ -2163,7 +2182,9 @@
                 react.createElement("div", { key: "node-top", style: CSS.nodeTop },
                   react.createElement("span", { key: "glyph", style: { color: toneOf(task.visual), fontWeight: 700 } }, glyphOf(task.visual)),
                   react.createElement("span", { key: "id", style: { fontWeight: 700 } }, task.id),
-                  react.createElement("span", { key: "kind", style: CSS.dim }, kindOf(task.kind))),
+                  // THE LEGEND'S `<KIND>` IS ASCII (clause F1): the localized word belongs to the
+                  // chrome (the pinned detail body), never to the CJK-free drawing plane.
+                  react.createElement("span", { key: "kind", style: CSS.dim }, kindCodeOf(task.kind))),
                 react.createElement("div", { key: "subject", style: { ...CSS.dim, marginTop: "1px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" } }, labelOf[task.id]),
                 // The closers, in order: the node, the column's node map, the column, the grid's column
                 // map, the grid, the padded wrapper, the graph element, and `children.push`.

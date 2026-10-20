@@ -1,0 +1,133 @@
+release sweep start 2026-10-20T12:27:41Z
+branch=release/v0.15.0 head=dff60cb796346ca16c672f26e0a208ffd03d48b3 version=0.15.0
+node=v24.21.0 bun=1.4.2 pinned=1.4.0 dsh=0.2.1-rc.2
+
+=== CASE verify-gates :: bun run verify:gates ===
+CASE verify-gates exit=0 elapsed=6s
+
+=== CASE vendor :: bun run verify:vendor ===
+CASE vendor exit=0 elapsed=1s
+
+=== CASE rows :: bun run verify:rows ===
+CASE rows exit=0 elapsed=0s
+
+=== CASE docs :: bun run verify:docs ===
+CASE docs exit=0 elapsed=0s
+
+=== CASE manifest :: bun run verify:manifest ===
+CASE manifest exit=0 elapsed=2s
+
+=== CASE comments :: bun run verify:comments ===
+CASE comments exit=0 elapsed=2s
+
+=== CASE no-host-override :: node scripts/verify-no-host-override.ts ===
+CASE no-host-override exit=0 elapsed=0s
+
+=== CASE manual-paths :: node scripts/verify-manual-paths.ts ===
+CASE manual-paths exit=0 elapsed=0s
+
+=== CASE dist-fresh :: node scripts/verify-dist-fresh.ts ===
+CASE dist-fresh exit=0 elapsed=1s
+
+=== CASE graph :: bun run verify:graph ===
+CASE graph exit=0 elapsed=0s
+
+=== CASE preset-conformance-selftest :: node skills/dsh-qa/scripts/preset-conformance.ts --self-test ===
+CASE preset-conformance-selftest exit=0 elapsed=0s
+
+=== CASE verify-law-selftest :: node skills/dsh-qa/scripts/verify-law.ts --self-test ===
+CASE verify-law-selftest exit=0 elapsed=1s
+
+=== CASE ext-selftest :: bun scripts/mpd-ext.ts --self-test ===
+CASE ext-selftest exit=0 elapsed=0s
+
+=== CASE ext-validate :: bun scripts/mpd-ext.ts validate extensions/mpd-ext-example ===
+CASE ext-validate exit=0 elapsed=0s
+
+=== CASE docker-selftest :: node scripts/docker-e2e.ts --self-test ===
+CASE docker-selftest exit=0 elapsed=1s
+
+=== CASE typecheck :: bun run typecheck ===
+CASE typecheck exit=0 elapsed=1s
+
+=== CASE tests :: .toolchain/node_modules/.bin/bun test packages ===
+CASE tests exit=0 elapsed=26s
+
+=== CASE qa-selftests :: bun run test:qa ===
+CASE qa-selftests exit=0 elapsed=9s
+
+=== CASE lifecycle :: bun skills/dsh-qa/scripts/bundle-lifecycle.ts ===
+CASE lifecycle exit=0 elapsed=19s
+
+=== CASE preset-conformance-real :: node skills/dsh-qa/scripts/preset-conformance.ts ===
+CASE preset-conformance-real exit=0 elapsed=24s
+
+=== CASE verify-law-boot :: node skills/dsh-qa/scripts/verify-law.ts ===
+CASE verify-law-boot exit=0 elapsed=22s
+
+=== CASE delegation-gate-live :: node skills/dsh-qa/scripts/delegation-gate.ts ===
+CASE delegation-gate-live exit=0 elapsed=58s
+
+=== CASE captain-scope-live :: node skills/dsh-qa/scripts/captain-scope.ts ===
+CASE captain-scope-live exit=0 elapsed=14s
+
+=== CASE mcp-call :: node skills/dsh-qa/scripts/mcp-call.ts ===
+CASE mcp-call exit=0 elapsed=136s
+
+=== CASE dual-track-smoke :: node skills/dsh-qa/scripts/dual-track-smoke.ts ===
+CASE dual-track-smoke exit=1 elapsed=16s
+--- tail dual-track-smoke ---
+[llm-dual-track] official ok=true (8658ms, exit=0) -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/dsh-qa/llm-dual-track/official/2026-10-20T12-33-13.467Z
+[llm-dual-track] deepseek ok=false (6873ms, exit=1) -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/dsh-qa/llm-dual-track/deepseek/2026-10-20T12-33-20.342Z
+--- end tail ---
+
+=== CASE pack :: node scripts/pack-mpd.ts ===
+CASE pack exit=0 elapsed=0s
+
+=== CASE pack-closure :: node scripts/verify-pack-closure.ts ===
+CASE pack-closure exit=0 elapsed=0s
+
+=== CASE pack-repack :: node scripts/pack-mpd.ts ===
+CASE pack-repack exit=0 elapsed=0s
+
+=== CASE pack-closure-after-repack :: node scripts/verify-pack-closure.ts ===
+CASE pack-closure-after-repack exit=0 elapsed=1s
+credential loaded for the Docker live lane: len=35
+
+=== CASE docker-source :: node scripts/docker-e2e.ts --mode source --require-docker --live ===
+CASE docker-source exit=0 elapsed=1124s
+
+release sweep end 2026-10-20T12:52:05Z
+dirty-after=17
+--- SUMMARY ---
+verify-gates exit=0 elapsed=6ss cmd=bun run verify:gates
+vendor exit=0 elapsed=1ss cmd=bun run verify:vendor
+rows exit=0 elapsed=0ss cmd=bun run verify:rows
+docs exit=0 elapsed=0ss cmd=bun run verify:docs
+manifest exit=0 elapsed=2ss cmd=bun run verify:manifest
+comments exit=0 elapsed=2ss cmd=bun run verify:comments
+no-host-override exit=0 elapsed=0ss cmd=node scripts/verify-no-host-override.ts
+manual-paths exit=0 elapsed=0ss cmd=node scripts/verify-manual-paths.ts
+dist-fresh exit=0 elapsed=1ss cmd=node scripts/verify-dist-fresh.ts
+graph exit=0 elapsed=0ss cmd=bun run verify:graph
+preset-conformance-selftest exit=0 elapsed=0ss cmd=node skills/dsh-qa/scripts/preset-conformance.ts --self-test
+verify-law-selftest exit=0 elapsed=1ss cmd=node skills/dsh-qa/scripts/verify-law.ts --self-test
+ext-selftest exit=0 elapsed=0ss cmd=bun scripts/mpd-ext.ts --self-test
+ext-validate exit=0 elapsed=0ss cmd=bun scripts/mpd-ext.ts validate extensions/mpd-ext-example
+docker-selftest exit=0 elapsed=1ss cmd=node scripts/docker-e2e.ts --self-test
+typecheck exit=0 elapsed=1ss cmd=bun run typecheck
+tests exit=0 elapsed=26ss cmd=.toolchain/node_modules/.bin/bun test packages
+qa-selftests exit=0 elapsed=9ss cmd=bun run test:qa
+lifecycle exit=0 elapsed=19ss cmd=bun skills/dsh-qa/scripts/bundle-lifecycle.ts
+preset-conformance-real exit=0 elapsed=24ss cmd=node skills/dsh-qa/scripts/preset-conformance.ts
+verify-law-boot exit=0 elapsed=22ss cmd=node skills/dsh-qa/scripts/verify-law.ts
+delegation-gate-live exit=0 elapsed=58ss cmd=node skills/dsh-qa/scripts/delegation-gate.ts
+captain-scope-live exit=0 elapsed=14ss cmd=node skills/dsh-qa/scripts/captain-scope.ts
+mcp-call exit=0 elapsed=136ss cmd=node skills/dsh-qa/scripts/mcp-call.ts
+dual-track-smoke exit=1 elapsed=16ss cmd=node skills/dsh-qa/scripts/dual-track-smoke.ts
+pack exit=0 elapsed=0ss cmd=node scripts/pack-mpd.ts
+pack-closure exit=0 elapsed=0ss cmd=node scripts/verify-pack-closure.ts
+pack-repack exit=0 elapsed=0ss cmd=node scripts/pack-mpd.ts
+pack-closure-after-repack exit=0 elapsed=1ss cmd=node scripts/verify-pack-closure.ts
+docker-source exit=0 elapsed=1124ss cmd=node scripts/docker-e2e.ts --mode source --require-docker --live
+failures=1

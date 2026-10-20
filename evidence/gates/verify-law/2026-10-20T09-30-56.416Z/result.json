@@ -1,0 +1,40 @@
+{
+  "ok": true,
+  "slug": "verify-law",
+  "sandbox": "/tmp/mpd-verify-law-mcSTCo",
+  "workspace": "/tmp/mpd-verify-law-mcSTCo/ws",
+  "realMarkerBefore": true,
+  "steps": {
+    "written": {
+      "ok": true,
+      "detail": "with no loop armed the top-level agent's write CALL was recorded and the code path EXISTS in the sandbox"
+    },
+    "retiredKnobWritten": {
+      "ok": true,
+      "detail": "the retired `verify.mode: \"hard\"` knob no longer denies: the same write still landed"
+    },
+    "mounted": {
+      "ok": true,
+      "detail": "the mpd-verify row wrote its sandbox boot marker (the law's bookkeeping tools still mount)"
+    },
+    "withdrawnReported": {
+      "ok": true,
+      "detail": "the roles row's boot line reports verifyGate=absent reason=… (the state is REPORTED, never a mode)"
+    },
+    "realMarkerUnchanged": {
+      "ok": true,
+      "detail": "the REAL workspace's marker is exactly as it was: before=true after=true"
+    },
+    "sessionsSandboxed": {
+      "ok": true,
+      "detail": "no real-cwd session key exists"
+    }
+  },
+  "reported": {
+    "runAExit": 0,
+    "runBExit": 0,
+    "runAResultOk": true,
+    "runBResultOk": true,
+    "bootLine": "[2026-10-20T09:31:04.772Z] [mpd-roles] team plane: readOnlyGuard=installed deny=8 captainInvestigation=deny delegationGate=deny verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) askUserQuestion=installed rosterSection=agent-scoped order=605 sessionGate=mechanical"
+  }
+}

@@ -10,11 +10,10 @@
 //      for a live agent, which is exactly why the TUI's approval hop used to be broken.
 //
 // WHAT A TRIGGER DOES (the mode, resolved PER CALL from `team.gate`):
-//   off (DEFAULT since 2026-10-17) — the listener returns immediately; the ceremony is OPT-IN, so a
-//                          session that did not explicitly ask for it stages nothing;
-//   mechanical           — stage the shell, then inject the MECHANICAL notice naming the id the
+//   mechanical (DEFAULT) — stage the shell, then inject the MECHANICAL notice naming the id the
 //                          call returned; every degradation of this route falls back to ADVISORY;
-//   advisory             — today's notice, stages nothing.
+//   advisory             — today's notice, stages nothing;
+//   off                  — the listener returns immediately.
 //
 // THE HONEST BOUND (stated so no reader over-reads the log): the gate can fill the plan's `name`,
 // `description` and `approval`; the store fills `planId`/`stagedAt`/`version` and the tool fills
@@ -23,8 +22,10 @@
 // "invent a team" defect this bundle forbids. So it stages a NAMED, SIGNALLED, APPROVABLE SHELL of
 // 0 members and 0 tasks, and the notice says so outright. NEVER claim a team was created.
 //
-// Scope: the mpd preset's own top-level sessions only. A child session (subagent, teammate,
-// workflow worker) never gets its own gate, and neither does another preset's session.
+// Scope: TOP-LEVEL sessions (`sessionRank === "captain"`, which includes a seeded fork the harness
+// records with a parent link but delegation depth 0) whose preset is `mpd` OR absent/null. A child
+// session (a recorded `origin: "subagent"` or a `delegationDepth >= 1`) never gets its own gate, and a
+// session that NAMES another preset is not gated.
 import type { DshAdapter, DshAgentPreStep, DshPreStepDecision } from "../../mpd-dsh-adapter-plugin/src/index"
 import { rowLogLine } from "../../mpd-dsh-adapter-plugin/src/index"
 import {
@@ -40,6 +41,7 @@ import {
   gatePlanShell,
   latestUserMessage,
   mechanicalNoticeText,
+  MISSING_PLAN_ID_PHRASE,
   readBoulderGate,
   readLeadingTeam,
   resolveBoulderDir,
@@ -95,7 +97,8 @@ function sessionCwdOf(agent: unknown): string | undefined {
  * TWO SHAPES reach this reader and both are documented: the TOOL RESULT wraps the plan
  * (`{plan:{planId}}`, the `create` action's return) while the STAGED-PLAN PROBE returns the plan
  * itself (`{planId}`, `mpdTeams.planFor(...).plan`). Neither is ever invented here — an unreadable
- * payload reads as the empty string, which the notice renders as "plan id not reported".
+ * payload reads as the empty string, which the notice renders as {@link MISSING_PLAN_ID_PHRASE} plus
+ * the explicit statement that the staged shell cannot be approved.
  */
 function planIdOf(value: unknown): string {
   /** The id on the payload itself, which is what the staged-plan probe answers. */
@@ -170,8 +173,8 @@ export interface SessionGateInstall {
    * It is a snapshot and can be WRONG for the live behaviour in ONE case, named so a reader is not
    * misled: the loader applies sibling rows CONCURRENTLY and cordis answers `undefined` for a
    * provider whose fiber is not ACTIVE yet (the same transient miss T-50 documents), so a
-   * `mpdConfig` that has not activated by this row's apply reads as ABSENT and the default (`off`,
-   * since the 2026-10-17 rollback) is reported. The AUTHORITATIVE mode is the one the FIRING line
+   * `mpdConfig` that has not activated by this row's apply reads as ABSENT and the default
+   * (`mechanical`, restored 2026-10-20) is reported. The AUTHORITATIVE mode is the one the FIRING line
    * prints, because every fire re-resolves it per call.
    */
   mode: GateMode
@@ -474,6 +477,12 @@ export function installSessionGate(
       const staged = mode === GATE_MODE_MECHANICAL && outcome.ok
       report('session gate fired for agent "' + agentId + '" signals=' + verdict.signals.join("/")
         + " mode=" + mode + " staged=" + (staged ? "1" : "0") + (outcome.planId === "" ? "" : " plan=" + outcome.planId))
+      // A staged shell whose id the call did not report is STILL staged, but nobody can approve it. The
+      // notice carries the failure sentence; this warning makes the same failure visible in the row log,
+      // so an operator cannot read `staged=1` (with no `plan=`) as a healthy fire.
+      if (staged && outcome.planId === "") {
+        warn("session-start gate: " + MISSING_PLAN_ID_PHRASE + " for agent \"" + agentId + "\" — the shell is staged but cannot be approved")
+      }
       gateTrace("FIRING agent=" + agentId + " signals=" + verdict.signals.join("/") + " mode=" + mode + " staged=" + String(staged))
       /** The ONE notice: the mechanical text only when a plan is really staged, else the advisory one. */
       const notice = dsh.userMessage({
