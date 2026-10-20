@@ -115,11 +115,11 @@ as SVG so the labels stay selectable and diffable) and captures of the shipped b
 | [`web-team-board.png`](./assets/images/web-team-board.png) | [README](../README.md#one-plugin-two-surfaces) | The bundle's own **Team** view in a sidebar, with a populated roster and task graph. |
 | [`tui-team-dag.png`](./assets/images/tui-team-dag.png) | [README](../README.md#one-plugin-two-surfaces) | The same team as a full-screen DSH-TUI scene, DAG drawn with box characters. |
 | [`web-plugins-installed.png`](./assets/images/web-plugins-installed.png) | [README](../README.md#install) | The Plugins page after the one install: `@mpd-dsh/mpd` under **Installed**, enabled. |
-| [`web-agent-presets.png`](./assets/images/web-agent-presets.png) | [README](../README.md#usage) | The Agent presets page: the `mpd` preset, badged for a new task. |
+| [`web-agent-presets.png`](./assets/images/web-agent-presets.png) | [README](../README.md#usage) | The Agent presets page: the `mpd` preset listed under CUSTOM, with the new-task-default badge on the host's Standard mode. |
 | [`web-settings-mpd.png`](./assets/images/web-settings-mpd.png) | [README](../README.md#usage) | The MPD section of the settings page — the same knobs as `.mpd/mpd.jsonc`. |
-| [`tui-status-line.png`](./assets/images/tui-status-line.png) | [README](../README.md#quick-start) | The DSH-TUI's keyed status line above the prompt, with the `/mpd` command tree open. |
-| [`tui-workmates.png`](./assets/images/tui-workmates.png) | [README](../README.md#usage) | The `/mpd workmates` listing in the DSH-TUI. |
-| [`zh-CN/`](./assets/images/zh-CN) | [README.zh-CN.md](../README.zh-CN.md) | The 简体中文 set of the same captures, taken from the app's Chinese locale. |
+| [`tui-status-line.png`](./assets/images/tui-status-line.png) | [README](../README.md#quick-start) | The DSH-TUI's keyed status line: the `mpd:` row naming the team and its progress, the boulder ledger, plans and workmates. |
+| [`tui-workmates.png`](./assets/images/tui-workmates.png) | [README](../README.md#usage) | The `/mpd workmate` page in the DSH-TUI: the library's instances with their base and use count. |
+| [`zh-CN/`](./assets/images/zh-CN) | [README.zh-CN.md](../README.zh-CN.md) | The 简体中文 set: its OWN run of the same Docker lanes with the browser and TUI in the app's Chinese locale — a separate render set, not a copy of the English PNGs. |
 
 Every capture above is produced by the Docker lanes under [`docker/ui/`](../docker/ui), not taken by
 hand and not authored in a drawing tool: the Web tiles by headless Chromium driving the real app, the

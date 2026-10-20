@@ -2,7 +2,7 @@
 
 [English](./README.md) | **中文**
 
-[![版本](https://img.shields.io/badge/version-0.14.0-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
+[![版本](https://img.shields.io/badge/version-0.15.0-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
 [![npm](https://img.shields.io/badge/npm-%40mpd--dsh%2Fmpd-CB3837.svg)](https://www.npmjs.com/package/@mpd-dsh/mpd)
 [![许可证：MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE.md)
 [![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-0.2.1--rc.2-4B32C3.svg)](#致谢)
@@ -81,6 +81,11 @@ Chromium 驱动真实应用截取；终端图把**真实 TUI 在真实 PTY 上�
 - **有牙齿的验证**——一个智能体写的代码由**另一个**智能体验证，依据是冻结的契约，留下判决与关卡证据。
 - **代码理解与可扩展性**——AST 搜索（ast-grep）、代码知识图谱、language server、git-bash 四类 MCP 服务；
   外加一套扩展接口，让别的包贡献技能、流程、MCP 服务和专家。
+- **认得项目形态的技能库**——从 `<bundle>/skills` 按引用服务的 19 个技能，其中包含本仓库自己的
+  `dsh-qa`；`cordis-dev` 在检测到项目形态时**自动加载**（`cordis.patch.yml` 或
+  `presets/*.patch.yml`、清单里带 `dsh.bundle` / `dsh.client`、`dsh-plugin.json`、导出 `apply` 的
+  `packages/*/src/index.ts`，或 `extensions/*` 清单），因此 Cordis / DSH 插件开发一开始就按本仓库
+  自己的规则走。
 - **双语是硬规定**——每一份面向人的文档都同时提供英文文件与简体中文孪生文件，任何一份落后，关卡就会红。
 
 ## 安装
@@ -171,7 +176,7 @@ Workmates 页签和设置里的 MPD 分区。
 
 ![DSH 设置面板里的 MPD 分区，列出套件的各档旋钮，每一项都带一个"重置为文件值"按钮。](./docs/assets/images/zh-CN/web-settings-mpd.png)
 
-![Agent presets 设置页，MPD (Main Working Agent) preset 列在 CUSTOM 下，并被标记为新任务的默认项。](./docs/assets/images/zh-CN/web-agent-presets.png)
+![Agent presets 设置页：MPD (Main Working Agent) preset 列在 CUSTOM 下，而"新建任务默认"标记落在宿主的 Standard mode 上——部署默认项由宿主决定，套件从不覆盖它。](./docs/assets/images/zh-CN/web-agent-presets.png)
 
 配置是 JSONC 且分层：`<workspace>/.mpd/mpd.jsonc` 覆盖 `$DSH_HOME/mpd.jsonc`，按**单个键**覆盖，项目文件赢。
 你的状态住在 `<workspace>/.mpd/`；唯一的例外是 workmate 库，它在 HOME 下：`~/.mpd/workmate/`。见
@@ -221,7 +226,7 @@ Workmates 页签和设置里的 MPD 分区。
 
 ## 变更日志
 
-发布说明在 [`CHANGELOG.md`](./CHANGELOG.md)，最新的在前，每个已发布版本一节（当前版本是 **v0.14.0**）。
+发布说明在 [`CHANGELOG.md`](./CHANGELOG.md)，最新的在前，每个已发布版本一节（当前版本是 **v0.15.0**）。
 带注释的 tag 列在 [Releases](https://github.com/HaroldZ32/My-Power-Dsh/releases)。
 
 ## 致谢

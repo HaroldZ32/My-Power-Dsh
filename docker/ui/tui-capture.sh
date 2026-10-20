@@ -67,6 +67,15 @@ MARKER_TIMEOUT="${MPD_UI_TUI_MARKER_TIMEOUT:-120}"
 # The rasterizer's scale. 2 is what the README's existing terminal tiles were rendered at.
 SCALE="${MPD_UI_TUI_SCALE:-2}"
 
+# The harness home and workspace this lane's session runs in — the SAME defaults `restart-tui.sh`
+# boots it with. The home is where the fresh session id is read back from (the store keys a workspace
+# by its path, so the id is a DIRECTORY under `<home>/sessions/<projectKey>`), and the workspace is
+# where the fixture board is written (`<workspace>/.mpd/team`), which is the pair both surfaces read.
+TUI_DSH_HOME="${MPD_UI_TUI_DSH_HOME:-/data/dsh-tui}"
+TUI_WORKSPACE="${MPD_UI_TUI_WORKSPACE:-/data/ws}"
+# The fixture board shape: the same value `docker/ui/seed-team-fixture.sh` calls `normal`.
+BOARD_KIND="${MPD_UI_TUI_BOARD:-normal}"
+
 # ── the crop table, in CELLS of the pane grid (half-open bands) ───────────────
 # WHAT PRODUCED THESE NUMBERS. The terminal tiles the README already ships are WINDOWS into a full-pane
 # render, not whole panes: `tui-team-dag.png` is the upper-left window over the panel header, the member
@@ -75,11 +84,17 @@ SCALE="${MPD_UI_TUI_SCALE:-2}"
 # them (panes of 158x45 in English and 218x51 in 简体中文 — see the default_* helpers), so this lane
 # reproduces the framing the page already uses instead of inventing a new one.
 #
-# AS FRACTIONS, NOT COLUMN NUMBERS, deliberately: a fraction survives an overridden geometry. Measured
-# back, 0.614/0.689 reproduce 97x31 of 158x45 and 134x35 of 218x51 for the team window, and 0.45
-# reproduces the 20- and 22-row sidebar windows.
-TEAM_WIN_W_FRAC="0.614"
-TEAM_WIN_H_FRAC="0.689"
+# AS FRACTIONS, NOT COLUMN NUMBERS, deliberately: a fraction survives an overridden geometry.
+#
+# THE WIDTH IS THE FULL PANE, and the previous 0.614 was a MEASURED MISTAKE. The shipped
+# `tui-team-dag.png` is a FULL-WIDTH window — its own capture carried the whole 156 cells of a
+# 158-wide pane, key-hint line included — while 0.614 reproduced 97 cells and cut every long row
+# mid-word (`4 lin`, `ui-re`, `p bo`). Reproduced 2026-10-20 and read back off the tiles: the team
+# figure is the panel's own width, so the width fraction is 1 and the DAG's right-hand columns and the
+# hint line underneath stay in the picture. The HEIGHT covers the header, the roster line, the DAG and
+# the three hint lines (35 rows of a 45-row pane).
+TEAM_WIN_W_FRAC="1"
+TEAM_WIN_H_FRAC="0.78"
 SIDEBAR_WIN_H_FRAC="0.45"
 # Cells of headroom a text-anchored window keeps past the text it frames.
 STATUS_PAD_COLS=2
@@ -314,12 +329,15 @@ capture_scenes() {
   keys Escape; sleep 1
   wait_absent "$TEAM_MARKER" 15 || log "note: the team scene is still painted; the next marker gates anyway"
 
-  # 2) THE HOST SIDE PANEL on the MPD workmate page — `Ctrl+B` toggles it, and the panel box's own border
-  #    title is the marker, so no chat-screen string can satisfy it. The window is anchored on the
-  #    sidebar's own left edge, FOUND IN THE PANE rather than assumed from a column number, which is why it
-  #    follows the pane instead of drifting off the figure when the geometry changes.
-  log "scene 2/3: the MPD workmate sidebar page (Ctrl+B)"
-  keys C-b
+  # 2) THE MPD WORKMATE PAGE — opened by its OWN command, `/mpd workmate`, and the panel box's border
+  #    title is the marker, so no chat-screen string can satisfy it. `Ctrl+B` was the opener here ONCE
+  #    and it is the wrong key: it toggles the HOST sidebar, which draws its own (different) box, so a
+  #    pane carrying `┌MPD workmate` never appeared and the figure was skipped. The later `Ctrl+B` is
+  #    kept as the CLOSE, because that is what toggles this panel back off. The window is anchored on
+  #    the sidebar's own left edge, FOUND IN THE PANE rather than assumed from a column number, which
+  #    is why it follows the pane instead of drifting off the figure when the geometry changes.
+  log "scene 2/3: the MPD workmate page (/mpd workmate)"
+  keys "/mpd workmate" Enter
   if wait_marker '┌MPD workmate' 60; then
     pane_joined >"$EVIDENCE_DIR/tui-workmates.pane.txt"
     pane_ansi >"$ansi"; cp -f "$ansi" "$EVIDENCE_DIR/tui-workmates.ansi"
@@ -372,21 +390,99 @@ capture_scenes() {
   return "$failed"
 }
 
+# ── the fresh session's id, and the fixture bound to IT ──────────────────────
+# THE OLD SEEDING RAN BEFORE THE RESTART AND WAS A NO-OP HERE. `docker/ui/seed-team-fixture.sh` reaches
+# the container through the docker CLI, which this image does not ship, and it seeds `/data/dsh-web` —
+# the WEB lane's store — while this session lives in `/data/dsh-tui`. `restart-tui.sh` then creates a
+# NEW harness session, so nothing was ever bound to the session the TUI was actually drawing:
+# `/mpd team` answered "no team in this session", the scene never drew `task dependency graph`, and the
+# DAG figure had no marker to gate on.
+# WHAT REPLACES IT. The session is MATERIALIZED, its new id is read from the harness's own store, and
+# the repository's own fixture writes the board for exactly that id:
+#   * `/mpd board` is the one log-only record this composition appends from a real terminal — the same
+#     drive `docker/tui-lane.sh` §4.0 and `skills/dsh-qa/scripts/tui-team-surface.ts` use, so the three
+#     lanes cannot drift;
+#   * the STORE is the witness, never a timer or a startup string the host may rename: the ids under
+#     `<home>/sessions/<projectKey>/` are snapshotted BEFORE the restart, and the new one is the set
+#     difference;
+#   * the command is RETRIED, because it is right and the TIMING is not: the readiness predicate accepts
+#     the composer glyph while the session is not attached yet, and a single send renders its transcript
+#     line without appending anything (measured: `before=1;after=1;created=`).
+#   * the scene owns the keyboard until Escape, so every attempt closes it before the next one AND
+#     before the captures below, each of which sends from the plain chat state.
+session_store_ids() {
+  (cd "$TUI_DSH_HOME/sessions" 2>/dev/null \
+    && find . -mindepth 2 -maxdepth 2 -type d | sed 's#^\./##' | sort || true)
+}
+
+seed_tui_fixture() {
+  local attempts=0 waited=0 new_id=""
+  while [ "$attempts" -lt 4 ] && [ -z "$new_id" ]; do
+    attempts=$((attempts + 1))
+    keys "/mpd board" Enter
+    waited=0
+    while [ "$waited" -lt 24 ]; do
+      sleep 3
+      waited=$((waited + 3))
+      new_id="$(comm -13 <(printf '%s\n' "$SESSIONS_BEFORE") <(session_store_ids) \
+        | sed 's#.*/##' | grep -E '^[0-9a-f-]{8,}$' | head -1)"
+      [ -n "$new_id" ] && break
+    done
+    keys Escape; sleep 2
+  done
+  if [ -z "$new_id" ]; then
+    log "note: no new session appeared after ${attempts} materialize attempt(s) — the fixture stays unbound"
+    return 1
+  fi
+  printf '%s\n' "$new_id" >"$EVIDENCE_DIR/tui-session-id.txt"
+  log "session materialized: $new_id (attempt $attempts)"
+  # The fixture's two sources ship beside this script, so `node <file>.mts` runs them in place — the
+  # same shape `seed-team-fixture.sh` uses, minus the docker CLI this image does not have.
+  if ! node "$HERE/team-fixture.mts" "$new_id" "$TUI_WORKSPACE" "$BOARD_KIND" >>"$EVIDENCE_DIR/seed.log" 2>&1; then
+    log "note: fixture seeding failed (see $EVIDENCE_DIR/seed.log) — the team scene will fail its marker"
+    return 1
+  fi
+  log "fixture seeded for $new_id: $(tail -1 "$EVIDENCE_DIR/seed.log")"
+}
+
+# ── the profile pin that keeps a LIVE team from swallowing the keyboard ──────
+# `panelAutoOpen` (the bundle's `mpd-tui` row, default true) opens the MPD sidebar page once when the
+# first team becomes live. This run seeds its team AFTER the boot, so that rule would open the panel
+# before scene 1 and the next `/mpd …` keystroke would land in the panel instead of the composer
+# (measured on the 2026-10-20 run of PR #51 — see `docker/tui-lane.sh` §3b). The pin is ONE id-targeted
+# config override on a BUNDLE-owned row in the profile's USER patch layer, the layer a user edits, so
+# the run exercises the documented configuration path and the composition itself is unchanged.
+pin_panel_auto_open() {
+  local layer="$TUI_DSH_HOME/profiles/dsh-tui/cordis.patch.yml"
+  mkdir -p "$(dirname "$layer")"
+  [ -f "$layer" ] || printf '# Your patch layer for this dsh profile, applied after every bundle layer.\n' >"$layer"
+  # `dsh plugin` leaves the stock empty array (`[]`) in a fresh layer, and appending a list item after
+  # that COMPLETE document makes the overlay unparseable, which takes the TUI down AT BOOT (measured
+  # 2026-10-20: `YAMLException … (7:1)`). Removing the marker keeps the file ONE array document.
+  sed -i '/^\[\]$/d' "$layer"
+  if grep -q 'panelAutoOpen' "$layer"; then
+    log "panelAutoOpen already pinned in $layer"
+    return 0
+  fi
+  cat >>"$layer" <<'PANEL_AUTO_OPEN_PIN'
+- id: mpd-tui
+  name: '@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js'
+  config:
+    panelAutoOpen: false
+PANEL_AUTO_OPEN_PIN
+  log "pinned panelAutoOpen: false in $layer"
+}
+
 # ── run ───────────────────────────────────────────────────────────────────────
 log "language=$LANG_KIND out=$OUT_DIR geometry=${COLS}x${ROWS} scale=$SCALE"
 mkdir -p "$OUT_DIR" "$EVIDENCE_DIR" "$SCRATCH"
 : >"$ITEMS"
+: >"$EVIDENCE_DIR/seed.log"
 
-# The workspace state the three scenes read. The seeding lives in the repository's own fixture script so
-# the Web and TUI sets show the SAME run; when it is absent or has no docker CLI to reach the container
-# with, the run continues and the manifest records what was captured as it stood.
-SEEDER="$HERE/seed-team-fixture.sh"
-if [ -f "$SEEDER" ] && command -v docker >/dev/null 2>&1; then
-  MPD_UI_CONTAINER="${MPD_UI_CONTAINER:-ui-ui-1}" bash "$SEEDER" >>"$EVIDENCE_DIR/seed.log" 2>&1 \
-    || log "note: fixture seeding failed (see $EVIDENCE_DIR/seed.log); capturing the workspace as it stands"
-else
-  log "note: no fixture seeder reachable here — the workspace is captured as it stands"
-fi
+# THE PRE-RESTART SNAPSHOT: every session this workspace's store already holds belongs to a SIBLING run,
+# so the one that appears from here on is this boot's.
+SESSIONS_BEFORE="$(session_store_ids)"
+pin_panel_auto_open
 
 restart_session
 if ! wait_marker '❯|esc to interrupt' 120; then
@@ -395,6 +491,7 @@ if ! wait_marker '❯|esc to interrupt' 120; then
 fi
 sleep 2
 assert_chat_frame || exit 1
+seed_tui_fixture || log "note: continuing without a bound fixture; the team scene reports its own miss"
 
 capture_scenes
 SCENE_STATUS=$?

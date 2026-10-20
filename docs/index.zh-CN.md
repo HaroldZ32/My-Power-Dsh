@@ -112,14 +112,15 @@ vendor 波次，2026-10-07），所以那份作为出处的 README 已不存在�
 | [`web-team-board.png`](./assets/images/zh-CN/web-team-board.png) | [README](../README.zh-CN.md#一个插件两个端) | Web 端带真实名册与任务图的 Agent Teams 面板。 |
 | [`tui-team-dag.png`](./assets/images/zh-CN/tui-team-dag.png) | [README](../README.zh-CN.md#一个插件两个端) | 同一个团队渲染成一整屏 DSH-TUI 场景，任务图用制表符画出。 |
 | [`web-plugins-installed.png`](./assets/images/zh-CN/web-plugins-installed.png) | [README](../README.zh-CN.md#安装) | 一条安装命令之后的 Plugins 页面：`@mpd-dsh/mpd` 列在 **Installed** 且已启用。 |
-| [`web-agent-presets.png`](./assets/images/zh-CN/web-agent-presets.png) | [README](../README.zh-CN.md#用法) | Agent presets 页面：`mpd` preset 被标记为新任务的默认项。 |
+| [`web-agent-presets.png`](./assets/images/zh-CN/web-agent-presets.png) | [README](../README.zh-CN.md#用法) | Agent presets 页面：`mpd` preset 列在 CUSTOM 下，而"新建任务默认"标记在宿主的 Standard mode 上。 |
 | [`web-settings-mpd.png`](./assets/images/zh-CN/web-settings-mpd.png) | [README](../README.zh-CN.md#用法) | 设置页里的 MPD 分区 —— 与 `.mpd/mpd.jsonc` 是同一批旋钮。 |
-| [`tui-status-line.png`](./assets/images/zh-CN/tui-status-line.png) | [README](../README.zh-CN.md#快速上手) | DSH-TUI 提示符上方的按键状态行，以及打开的 `/mpd` 命令树。 |
-| [`tui-workmates.png`](./assets/images/zh-CN/tui-workmates.png) | [README](../README.zh-CN.md#用法) | DSH-TUI 里的 `/mpd workmates` 列表。 |
+| [`tui-status-line.png`](./assets/images/zh-CN/tui-status-line.png) | [README](../README.zh-CN.md#快速上手) | DSH-TUI 的按键状态行：`mpd:` 那一行列出团队与进度、boulder 台账、计划数和 workmate 数。 |
+| [`tui-workmates.png`](./assets/images/zh-CN/tui-workmates.png) | [README](../README.zh-CN.md#用法) | DSH-TUI 里的 `/mpd workmate` 页面：库里的各个实例及其 base 与使用次数。 |
 
 上面每一张截图都由 [`docker/ui/`](../docker/ui) 下的 Docker 通道产出，不是手工截的、也不是在绘图
 工具里画的：Web 图由无头 Chromium 驱动真实应用取得，终端图由真实终端模拟器在真实 PTY 上渲染真实
-TUI 取得。通道的原始输出落在 `docker/ui/out/`（该目录被 gitignore），只把筛选后的图片提交到本目录。
+TUI 取得。简体中文这一套是**同一批通道在中文 locale 下的另一次运行**产出的独立渲染结果，不是把英文
+PNG 改个名。通道的原始输出落在 `docker/ui/out/`（该目录被 gitignore），只把筛选后的图片提交到本目录。
 SVG 示意图则是在本仓库中编写的。
 
 ## 扩展资产

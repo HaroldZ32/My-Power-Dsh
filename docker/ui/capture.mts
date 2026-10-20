@@ -208,9 +208,9 @@ const README_CROPS: readonly ReadmeCropRule[] = [
   {
     name: "web-agent-presets",
     needle: "MPD (Main Working Agent)",
-    up: 3,
+    up: 7,
     pad: 16,
-    note: "HOST screen with no mpd attribute to select; 3 levels is the preset row (name -> row body -> row card -> list), read off the live DOM rather than guessed, and the crop is clamped to the viewport so a taller ancestor cannot overflow the clip",
+    note: "HOST screen with no mpd attribute to select. MEASURED 2026-10-20 against the live DOM, one probe per level: the anchor has ONE deepest carrier (the title element), up=4/5 land inside the MPD card (564x183), up=6 lands on the CUSTOM group, and up=7 lands on the settings section that holds BOTH groups (564x785). 7 is the level that shows what the page's sentence is about — Standard mode with the `New task default` badge AND the MPD card under CUSTOM — which is also why 3, the v0.12.0 value, cut the card's description at its bottom edge. The crop is clamped to the viewport so a taller ancestor cannot overflow the clip",
   },
   {
     name: "web-team-board",
@@ -781,6 +781,33 @@ const clickText = async (re: RegExp, opts: ClickOptions = {}): Promise<string> =
   return opts.error ? "click-failed: " + opts.error.slice(0, 120) : "clicked"
 }
 
+// THE SETTINGS SURFACE MOVED BEHIND THE ACCOUNT MENU. MEASURED 2026-10-20 on this image's web
+// frontend: the shell renders NO always-visible `Settings` control any more, so the single old click
+// answered "absent", the step never left the home screen, and the run reported two failed checks
+// (`mpdSectionRendered`, `presetsShowMpdDefault`) while every screenshot still looked plausible. The
+// only entry is the account menu's own `Settings` item, opened from the trigger labelled
+// `More` (aria-label `Account menu`).
+// The ladder is therefore: a DIRECT `Settings` control when a build still has one, otherwise the
+// account menu and then its item. Both spellings of both labels are listed because the zh-CN run
+// renders Chinese, and the aria-label is preferred over the visible word where the host provides one.
+const openSettings = async (): Promise<string> => {
+  /** The direct click's outcome, kept for the evidence line either way. */
+  const direct = await clickText(/^(settings|设置)$/i)
+  if (direct !== "absent") return "direct:" + direct
+  /** The account-menu trigger, by its locale-free contract attribute where the host offers it. */
+  const trigger = page.locator('button[aria-label="Account menu"], button[aria-label="账户菜单"]').first()
+  /** How the menu was opened: `aria`, `text:<outcome>`, or `absent` when no trigger was found. */
+  let opened = "absent"
+  if (await trigger.count() > 0) {
+    await trigger.click({ force: true }).catch(() => {})
+    await page.waitForTimeout(1200)
+    opened = "aria"
+  } else {
+    opened = "text:" + await clickText(/^(more|更多)$/i)
+  }
+  return "menu(" + opened + ")->" + await clickText(/^(settings|设置)$/i)
+}
+
 // 1) FIRST RUN: the token URL sets the browser-trust cookie (the only way in). Captured BEFORE any
 //    dismissal, because this is what a person actually meets on the first load.
 await step("01-first-run", async () => {
@@ -836,7 +863,7 @@ await step("04-settings-mpd", async () => {
   await page.goto(BASE, { waitUntil: "domcontentloaded" })
   await page.waitForTimeout(2500)
   await dismissGates()
-  report.settingsClick = await clickText(/^(settings|设置)$/i)
+  report.settingsClick = await openSettings()
   report.settingsNav = await page.evaluate(() => {
     // The settings nav entries, read from the browser side.
     const out: string[] = []
@@ -857,6 +884,19 @@ await step("04-settings-mpd", async () => {
   // rows are read as live control values instead — that is the difference between "the card rendered"
   // and "the card is bound to the real config entry".
   report.mpdControls = await readSettingsControls(page)
+  // THE KNOB ROWS SIT BELOW THE FOLD OF THE SECTION'S OWN SCROLL PORT. The section renders its title,
+  // its guidance paragraphs and the effective-config disclosures FIRST, and the rows that carry the
+  // values and their `Reset to the file value` buttons under them — so a crop taken at the top of the
+  // section showed the prose and none of the knobs (measured 2026-10-20). Centering the FIRST knob row
+  // in its scroll container puts the whole run of rows into the figure the page's own sentence
+  // describes, WITH the first row's label (a `block: "start"` scroll pushed that label above the
+  // viewport and the crop clamped to the top of the window, cutting it off); it changes no state, and
+  // the binding proof above has already been read.
+  await page.evaluate(() => {
+    const row = document.querySelector("[data-mpd-row-key]")
+    if (row !== null) row.scrollIntoView({ block: "center" })
+  }).catch(() => {})
+  await page.waitForTimeout(900)
   await readmeShot("web-settings-mpd")
   return shot("04-settings-mpd")
 })

@@ -88,7 +88,7 @@
   <text class="chip-h" x="56" y="474">Read-only roster names</text>
   <text class="chip-s" x="56" y="496">Architect, Researcher, Planner,</text>
   <text class="chip-s" x="56" y="513">Explorer, Plan Reviewer and Vision</text>
-  <text class="chip-s" x="56" y="530">Analyst are denied the seven write</text>
+  <text class="chip-s" x="56" y="530">Analyst are denied the eight write</text>
   <text class="chip-s" x="56" y="547">tools by a guard — bash included.</text>
 
   <rect class="chip" x="310" y="450" width="250" height="106" rx="10"/>
