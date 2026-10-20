@@ -292,7 +292,9 @@ lands (§9/§11).
      **never from the implementation** — with the verdict recorded BEFORE any implementation read; only a
      recorded FAIL justifies implementation reading, for diagnosis. A PASS with no cited documents or no
      gate evidence is REFUSED, and a FAIL bounces the work back to a writer as a `kind=repair` task. That
-     guarantee lives in the five `mpd_verify_*` TOOLS and their validator, not in an installed hook.
+     REFUSAL guarantee lives in the five `mpd_verify_*` TOOLS and their validator, not in an installed
+     hook — and it reaches the RECORD only: neither the tools nor anything else OBSERVE the read order or a
+     seat's blindness, so an unproven basis is UNVERIFIED, never established.
      **Long form: `agent-references/verification-flow.md`, "§5 rule 2 — the captain's tool pack".**
   5. **The board has terminal verbs, and dispatch honours the declared owner.** `agent_teams_task`
      carries `complete`/`fail` (owner-only, optional `note`, optional `expected_revision`
@@ -541,7 +543,11 @@ lane hold this line.
    `node skills/dsh-qa/scripts/preset-conformance.ts --self-test`, `node scripts/verify-dist-fresh.ts`,
    `node scripts/verify-pack-closure.ts` (freshness read from the `expected-after-pack` list at the
    re-pack, never from its exit code — §4's bound), plus the real smoke cases (`dual-track-smoke`,
-   `mcp-call`).
+   `mcp-call`). `bun run verify:gates` covers the static members (vendor, dist freshness, row parity, doc
+   pairs, preset conformance, plugin manifest, comment coverage, graph model, workflows);
+   `node scripts/verify-no-host-override.ts` is NOT a member of that aggregate and must be run, and
+   `node scripts/verify-manual-paths.ts` must be run whenever `AGENTS.md` changed — §4 marks both
+   REQUIRED for every release sweep.
    - **LAST: the Docker real-machine lane, with `--require-docker` so it cannot skip silently** —
      `node scripts/docker-e2e.ts --mode source --require-docker` then `--mode oneclick --require-docker`.
      Run it AFTER the last write, and cite the stamps it writes.
