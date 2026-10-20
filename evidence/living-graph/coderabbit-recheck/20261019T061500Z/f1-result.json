@@ -1,0 +1,34 @@
+{
+ "probe": "f1-phrases",
+ "at": "2026-10-19T06:13:08.195Z",
+ "head": "see result.json head",
+ "armedIntervals": [
+  1000,
+  1000,
+  1000,
+  1000
+ ],
+ "observed": {
+  "derived-host": {
+   "line": "view boxes · 5 tasks · ranks derived (host)",
+   "modelRanksDerived": true
+  },
+  "served-host": {
+   "line": "view boxes · 2 tasks · ranks served depth (host fallback)",
+   "modelRanksDerived": false
+  },
+  "local-derived": {
+   "line": "view boxes · 2 tasks · ranks derived"
+  },
+  "local-served": {
+   "line": "view boxes · 2 tasks · ranks served depth"
+  }
+ },
+ "verdict": {
+  "derivedHostPhrase": true,
+  "servedHostPhrase": true,
+  "localDerivedPhrase": true,
+  "localServedPhrase": true,
+  "phraseMatchesModelOnHostPath": true
+ }
+}

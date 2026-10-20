@@ -32,7 +32,7 @@ run produced no `result.json` at all, `3` the host has no usable docker.
 4. `pnpm` (`npm i -g pnpm@…`). Not decoration: `dsh plugin <args>` forwards to `pnpm` in the profile
    directory, and the harness prints `pnpm was not found; install pnpm and make it available on PATH`
    when it is missing. A machine without pnpm cannot install a bundle.
-5. `npm i -g @deepseek-ai/dsh@0.2.0-rc.2` (the default pin — override it with
+5. `npm i -g @deepseek-ai/dsh@0.2.1-rc.2` (the default pin — override it with
    `MPD_E2E_DSH_VERSION=<version>`, which `docker/docker-compose.yml` forwards and
    `docker/entrypoint.sh` reads), then asserts that `dsh --version` prints **exactly** that string.
 6. Copies the checkout to `/opt/mpd`, runs `bun install`, and rebuilds **every** `packages/*/dist`
@@ -94,11 +94,14 @@ run produced no `result.json` at all, `3` the host has no usable docker.
 14. Records `boot.llmTurn` as **`null` with a reason** — see below.
 15. **Runs the DSH-TUI edition** (`docker/tui-lane.sh`) — the one profile a developer host cannot
     exercise, because the TUI host must be installed from npm into a writable global prefix and booted
-    on a real PTY. It installs `@deepseek-harness-tui/dsh-tui@0.15.0` — the dsh-tui release this
-    bundle now targets, whose peer ranges still cover the whole band this lane runs (`0.1.7-rc.2`,
-    `0.2.0-rc.1` and `0.2.0-rc.2`; `0.11.2` stops at `0.2.0-rc.1`, and `dsh plugin --profile dsh-tui
-    add` is then REFUSED on peer ranges). `0.14.0`, `0.13.0` and `0.12.0` were the pins before it,
-    kept as history. Override it
+    on a real PTY. It installs `@deepseek-harness-tui/dsh-tui@0.16.1` — the dsh-tui release this
+    bundle now targets. 0.16.1 is the FIRST host whose declared peer bands include harness
+    `0.2.1-rc.2` (all 36 of its `@deepseek-ai/dsh-*` peers list it), so it serves both the
+    `0.2.0-rc.2` baseline and the `0.2.1` wave; `0.15.0` covered only up to `0.2.0-rc.2`, and
+    `0.11.2` stops at `0.2.0-rc.1`, where `dsh plugin --profile dsh-tui add` is REFUSED on peer
+    ranges — the lane then reddens at that step and its `tui-logs/add-host.log` capture quotes the
+    host's own refusal, rather than passing green on an apology.
+    `0.15.0`, `0.14.0`, `0.13.0` and `0.12.0` were the pins before it, kept as history. Override it
     with `MPD_E2E_TUI_VERSION`, and keep it in step with `MPD_E2E_DSH_VERSION`. It installs THIS bundle
     into the `dsh-tui` profile as the third
     patch layer, and records twenty-two `tui.*` assertions: host install, both `plugin add` calls,
@@ -156,13 +159,19 @@ Proves:
   official team tools answer inside an agent scope, the mpd session gate listener registers for a real
   session, the `mpd` preset activates for a real session, and the Web app serves;
 - a real DSH-TUI session resolves `mpd` through the documented USER-level preference while the host
-  preset-registry row stays untouched by the bundle.
+  preset-registry row stays untouched by the bundle;
+- **with `--live`**, a real WEB turn through the gateway and a real TUI turn typed into the PTY both
+  complete, call an `mpd_*` tool and produce text — and neither fails prompt-variable assembly
+  (`live.web.noPromptVariableError` / `live.tui.noPromptVariableError`, read from the session store).
 
 Does NOT prove:
 
-- **any live LLM turn or model routing.** No credential is copied in, read or written (`AGENTS.md`
-  §10), so no model request is attempted. That assertion is recorded as `null` with its reason —
-  never as a pass.
+- **a live LLM turn unless `--live` is passed.** Without it no credential is staged and no model
+  request is attempted; every live row is `null` WITH ITS REASON, never a pass. With `--live` the
+  driver forwards a key BY NAME, the container stages it into the sandbox home, and both the WEB and
+  TUI planes run one real turn whose verdict comes from the harness's own session store — including
+  the prompt-variable assembly class (`live.<plane>.noPromptVariableError`) that a mount-only run
+  cannot see.
 - that the COMPOSED row list equals the MOUNTED row list. `--dump-config` composes rows and never
   executes plugin code (`AGENTS.md` §4); it is labelled composition-only in the evidence, and every
   mount claim comes from the boot (step 9) or from session creation (step 10).
@@ -291,23 +300,28 @@ unchanged.
 
 ### The live-turn prompt knob (`MPD_E2E_LIVE_PROMPT`)
 
-Step 15 of the container (`docker/entrypoint.sh`) drives a real headless agent session, and by default
-its task is a **team-plane smoke prompt**. `MPD_E2E_LIVE_PROMPT` REPLACES that task: when it is set and
-non-empty, its value is used verbatim as the turn's prompt, so the lane can be asked for a different
-piece of work. When it is unset or empty, the built-in prompt runs unchanged **byte for byte** — the
-knob is additive, never a behaviour change.
+A `--live` run drives **three** planes, not one: a real **WEB** turn through the gateway (step 12), a
+real **TUI** turn typed into the tmux PTY (`docker/tui-lane.sh`), and a real **HEADLESS** turn (step
+15). The WEB and TUI prompts are fixed short `mpd_config_get` tasks (or the team-building prompt under
+`MPD_E2E_TEAM_PROJECT=1`, see below), so their rows are statements about this bundle's own tool plane;
+the headless step's default task is the **team-plane smoke prompt**.
+
+`MPD_E2E_LIVE_PROMPT` REPLACES that headless task only: when it is set and non-empty, its value is used
+verbatim as the headless turn's prompt, so the lane can be asked for a different piece of work. When it
+is unset or empty, the built-in prompt runs unchanged **byte for byte** — the knob is additive, never a
+behaviour change.
 
 It only matters on a live run, so the invocation is the live one:
 
 ```bash
 export DEEPSEEK_API_KEY=…                 # forwarded BY NAME, never echoed into the argv
-export MPD_E2E_LIVE=1                     # the live arms are opt-in
-export MPD_E2E_LIVE_PROMPT='Write a playable snake game to <path> …'
-node scripts/docker-e2e.ts --live
+export MPD_E2E_LIVE_PROMPT='Write a playable snake game to <path> …'   # headless plane only
+node scripts/docker-e2e.ts --live         # add --mode all for source + oneclick
 ```
 
-Without `MPD_E2E_LIVE=1` (or without a forwarded `DEEPSEEK_API_KEY`) the run never reaches step 15, and
-the driver refuses `--live` outright when it holds no key. The driver forwards the prompt with
+Without `--live` no plane reaches a model request: every live row is `null` WITH ITS REASON. Passing
+`--live` without a forwarded `DEEPSEEK_API_KEY` does NOT produce those rows — the driver refuses the
+run before the build (exit 3), so there is no verdict to read. The driver forwards the prompt with
 `-e MPD_E2E_LIVE_PROMPT` — **by name, not by value**, the same way the credential travels — and
 `docker/docker-compose.yml` names `${MPD_E2E_LIVE_PROMPT:-}` in BOTH services' `environment:` block,
 which is what makes the variable reachable from the host at all: compose forwards only what the compose
@@ -317,6 +331,43 @@ Which prompt a turn actually ran with is part of the evidence: step 15 prints a
 `[live-prompt] promptSource=… bytes=… firstLine="…"` line, records the same note as the `livePrompt`
 fact in `result.json`, and carries it in the `boot.llmTurn` assertion's `raw` field. A long
 caller-supplied prompt is therefore identifiable without being dumped into the log as a blob.
+
+Each plane's verdict is read from the harness's own session store, never from the model's prose or the
+pane. Besides the completed/tool-call/text rows, the reader records
+`live.web.noPromptVariableError`, `live.tui.noPromptVariableError` and
+`live.headless.noPromptVariableError`: a persona template that names an unregistered prompt variable
+throws BEFORE the model request, so a mount-only lane would look green while every turn dies. The
+2026-10-19 `{{cwd}}` defect is that exact class.
+
+### The live TEAM PROJECT (`MPD_E2E_TEAM_PROJECT=1`)
+
+The live-turn arms above each prove ONE tool call. This knob asks a different question: can a person
+build a real two-member team from each UI's OWN input path and get a small project finished? With
+`MPD_E2E_TEAM_PROJECT=1` and `--live`, the browser lane types a team-building prompt into the Web
+composer and the TUI lane types the same prompt into the tmux PTY. Each asks for
+`agent_teams_plan` stage → two members → two tasks (the second blocked by the first) → approve →
+dispatch → wait → a second dispatch → close both tasks, with the members writing and TESTING
+`team-project-web/` and `team-project-tui/` respectively.
+
+The verdict is ARTIFACTS, not prose: `docker/lib/team-project-verdict.ts` reads the team record, the
+roster's executor handles (EVERY member must be raised), the dependency edge, the tasks' states and
+their owning members, the project files (written after the step began) and TWO test runs — the team's
+own and a verifier-owned `sum(2, 3) === 5` assertion against the team's module, so a vacuous test
+cannot carry the project. The UI proof is separate and stronger: `ui.teamBoard` requires the Web
+sidebar to render the REAL bound team (`data-mpd-team-tab` equal to the id of the record THIS turn
+wrote, `MEMBERS (2)`, `TASKS (2)`), and the TUI arm requires the captured `/mpd team` scene to name the
+live team and draw both task ids. Each record is also bound to the live session the plane drove.
+
+The headless turn keeps its single-tool subject in this mode ON PURPOSE: approving a team inside a
+one-shot CLI can leave a teammate alive behind it, and the process then never exits (measured
+2026-10-19: 30+ minutes at ~0% CPU, no report). The team build therefore belongs to the two server/PTY
+planes, and `live.teamRecord` / `live.nativeExecutor` are recorded as `null` WITH THAT REASON; the
+driver's required-arm gate names the two UI planes' live rows and `teamproject.*` instead.
+`MPD_E2E_TEAM_BUDGET_MS` (default 1500000) bounds each team turn.
+
+Evidence: `ui-shots/ui-06-team-board.png` (the Web board after the turn),
+`ui-shots/ui-03-reply.png` (the transcript), `tui-panes/tui-team-live.ansi` (rasterize it with
+`python3 docker/ui/tui-render.py <ansi> <png>`), and the `teamproject.*` rows in `result.json`.
 
 ## Isolation model
 

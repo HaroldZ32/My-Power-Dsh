@@ -6,17 +6,20 @@ The **verification law**, as a plugin row. Code written by **A** is verified by 
 records its verdict **before** reading any implementation, and a **FAIL** bounces the work back to a
 writer as a repair task.
 
-The law is mechanical, not aspirational, and it is enforced in two places: a **tool guard** (defence in
-depth, installed by the `mpd-roles` row) and a **record validator** (the actual guarantee, this package).
+The law's GUARANTEE is the **record validator** in this package (it refuses a PASS with no cited
+documents, no gate evidence, a forged evidence id or a same-agent verifier — that never lived in a hook).
+The **tool guard** that used to add defence in depth was **WITHDRAWN by the user's 2026-10-17 ruling**
+(`.mpd/plans/harness-021-rollback.md`, R1): a top-level agent may write code again, and a bound verifier
+seat keeps its envelope as PROSE rather than as a fence.
 
 ## What it is
 
 | piece | where | what it does |
 | --- | --- | --- |
 | the ledger | `<workspace>/.mpd/verify/` | loops, records, evidence, seats, repairs and the append-only escape log |
-| the runtime | the `mpdVerify` service | the observation log, the escape allowances and the counted diagnosis reads |
+| the runtime | the `mpdVerify` service | the escape allowances, the counted diagnosis reads and the delegation observer — its OBSERVATION LOG is written by the withdrawn guard, so no calls are observed any more (a bound seat therefore always reads `blind`) |
 | the tools | this row | `mpd_verify_open` / `_escape` / `_seat` / `_evidence` / `_record` |
-| the guard | `mpd-roles-plugin/src/verify-guard.ts` | refuses a top-level agent's code write, and confines a verifier seat |
+| the guard (WITHDRAWN 2026-10-17) | `mpd-roles-plugin/src/verify-guard.ts` | used to refuse a top-level agent's code write and confine a verifier seat; the module survives as a reference implementation and the `mpd-roles` row NO LONGER INSTALLS it |
 | the boot marker | `<workspace>/.mpd/verify/boot.json` | closes the `pre-plugin` record exemption the moment the law is live |
 
 ## The five tools
@@ -37,39 +40,38 @@ depth, installed by the `mpd-roles` row) and a **record validator** (the actual 
   `kind:"probe"` reports `{path, exists, bytes, sha256, mtime}` per path and **never content**.
 - **`mpd_verify_record`** — record the verdict through the validator. A **PASS** needs the documents it
   cites, at least one gate, and a provably blind basis; a **FAIL** needs findings, each with the
-  `doc_source` that proves it, and it opens a repair task and unlocks diagnosis reading. **Blindness is
-  judged from the observation log, not from the unlock flag**: a seat that has recorded a FAIL may still
-  record the PASS when its log shows no ADMITTED implementation read, and is refused `blind-spent` —
-  naming the path — when it does. Only an admitted read spends the basis; a read the envelope REFUSED
-  does not, which is what keeps "prove the band refuses `src/**`" from spending the very basis the PASS
-  needs.
+  `doc_source` that proves it, and it opens a repair task and unlocks diagnosis reading. The validator
+  still judges blindness from the loop's observation log — `blind-spent` names an ADMITTED implementation
+  read — but that log's only writer was the withdrawn guard, so in every shipped composition the log is
+  empty and every seat reads `blind`. The old carve-out ("a read the envelope REFUSED does not spend the
+  basis") is therefore bookkeeping with no refusal behind it; see the bounds for what that costs.
 
-## The two guards
+## The withdrawn guards (a record, not an install)
 
-The captain rule gates `write`, `edit`, `mpd_hashline_edit`, `mcp__ast_grep__rewrite` and
-`mcp__ast_grep__scan` for the workspace's **top-level** mpd agent. A path is **always writable** without
-any loop when it is `*.md`, `LICENSE*`, or under `.mpd/`, `docs/`, `evidence/` or `agent-references/` —
-the manual, the PR body and the verification records must never be gated. Everything else is **code**
-(fail-closed: an unrecognised extension is code, and so is an absolute path outside the workspace).
+Both guards this package was designed around lived in ONE `tools.guard` install, and the user's
+2026-10-17 ruling removed it (`.mpd/plans/harness-021-rollback.md`, R1). What follows is what they DID,
+stated so that no line reads as enforced:
 
-A code write is allowed only through an armed loop, a counted escape, or a delegation. A **child session**
-(a member, a subagent, a workflow worker, a ralph round) is never the captain: that is where the writes
-are supposed to go.
-
-The SAME install also makes AGENTS.md §5's **one-git-writer rule** mechanical: a session that is not the
-workspace's top-level captain may not run a git WRITE command (`commit`, `add`, `rm`, `mv`, `checkout`,
-`switch`, `restore`, `reset`, `stash`, `merge`, `branch`, `rebase`, `tag`, `cherry-pick`, `revert`,
-`clean`, `apply`, `am`, `update-index`, `worktree`, `init`, `clone`, `push`, `fetch`, `pull`, `reflog`).
-Read-only git (`status`, `log`, `diff`, `show`, `grep`, `ls-files`, `rev-parse`, `merge-base`,
-`describe`, `blame`, …) stays open to everyone, and a command that merely MENTIONS git — a commit-message
-heredoc, an `echo "git commit"`, a `grep` for the string — is not denied. **Honest bound**: the matcher
-reads a command STRING, so an obfuscated invocation (`g"it" commit`, `sh -c "$X"`) can evade it. It is a
-speed bump that makes the rule real for ordinary use, never a sandbox.
-
-The verifier envelope denies the shell, the source-returning tools and every board mutation outright,
-confines writes to `.mpd/verify/**`, and confines `read`/`glob`/`grep` to the frozen docs, `.mpd/plans/`,
-`docs/`, `agent-references/` and `.mpd/verify/` while the seat is blind. A recorded **FAIL** unlocks
-implementation reading for diagnosis, **counted**.
+- **The captain's write gate** used to deny the top-level mpd agent's `write`, `edit`,
+  `mpd_hashline_edit`, `mcp__ast_grep__rewrite` and `mcp__ast_grep__scan` on a CODE path, while `*.md`,
+  `LICENSE*` and anything under `.mpd/`, `docs/`, `evidence/` or `agent-references/` stayed open so the
+  manual, the PR body and the verification records could always be written. **Nothing refuses that write
+  today** — the captain holds its whole pack, and the loop / counted-escape / delegation paths remain as
+  BOOKKEEPING, not as the only way in.
+- **The one-git-writer rule is PROSE now.** That same install used to DENY a non-captain session the git
+  write commands; the matcher went with the hook, so the list below is the RULE this repository still
+  binds itself to — `commit`, `add`, `rm`, `mv`, `checkout`, `switch`, `restore`, `reset`, `stash`,
+  `merge`, `branch`, `rebase`, `tag`, `cherry-pick`, `revert`, `clean`, `apply`, `am`,
+  `update-index`, `worktree`, `init`, `clone` (AGENTS.md §5 states the rule, its measured history and
+  the withdrawal). Read-only git stays open to everyone. Its enforcement is the dispatch contract —
+  members edit files and run gates, the captain commits — plus review, never a matcher.
+- **The verifier envelope is PROSE too**: no shell, no source-returning tools and no board mutation (the
+  `mpd_verify_*` tools excepted — those ARE the seat's job), reads scoped to the frozen docs and the
+  documentation band while blind, writes confined to `.mpd/verify/**`, and a recorded FAIL unlocking
+  implementation reading for DIAGNOSIS. `mpd_verify_seat` still RECORDS the seat and a verdict stays
+  auditable, but nothing fences the seat and nothing OBSERVES its reads: the observation log was written
+  by the withdrawn guard, so in every shipped composition the log is empty, every base reads `blind`, and
+  the `blind-spent` refusal cannot be triggered by evidence. Treat an unproven basis as UNVERIFIED.
 
 ## The record
 
@@ -88,24 +90,37 @@ The validator's refusals each carry their own reason string: `same-agent`, `no-d
 ## Configuration
 
 Read **raw** through the config service (never through the settings schema, whose pinned knob count must
-not move for this row): `verify.mode` (`hard` default | `advisory` | `off`), `verify.escapeUses` (default
-1), `verify.loopTtlMs` (default 24h), `verify.gateTimeoutMs` (default 15min), and `verify.dir`.
+not move for this row): `verify.mode` (`hard` default | `advisory` | `off` — INERT since the guard was
+withdrawn: nothing denies a write any more, the value is only reported as `mode=` on the boot line),
+`verify.escapeUses` (default 1), `verify.loopTtlMs` (default 24h), `verify.gateTimeoutMs` (default 15min),
+and `verify.dir`.
 
 ## Bounds (declared, not implied)
 
-1. A composition without the harness's `tools.guard` seam degrades to **bookkeeping only**, and the boot
-   line says `verifyGate=absent` rather than implying an enforcement that is not there.
-2. A plugin that raises delegates through its own private path is not auto-armed — the captain's writes
-   stay denied.
+1. In every shipped composition this row is **bookkeeping only**, because the guard is withdrawn: the
+   `mpd-roles` boot line reports `verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode)`.
+   A composition without the harness's `tools.guard` seam degrades the same way for its own reason.
+   **THIS row's boot line reports the SEAM and says so on its face:** it prints
+   `verifySeam=present|absent` plus the clause `(the harness tools.guard SEAM — NOT an installed gate: the
+   write guard is WITHDRAWN; the mpd-roles row reports its own state)`, and it NEVER prints `verifyGate=`.
+   The two rows measure two different things and print two different tokens on purpose — a mount lane that
+   needs the guard's state reads `mpd-roles`, and a lane that reads only this line cannot mistake the seam
+   for an install.
+2. A plugin that raises delegates through its own private path gets no persona and no read-only deny
+   applied by this bundle — that discipline is the plugin's own responsibility now. Nothing denies the
+   CAPTAIN any write in either case.
 3. A gate's `tail` may print source frames: it is **controlled black-box evidence**, not a proof of
-   reading nothing. Blindness is proven by the plugin's own observation log.
-4. The captain may still write code through the counted escape or a self-writer loop. Both are logged and
-   counted, which is the whole point of calling them counted.
+   reading nothing. Blindness is NOT observed any more — the log that used to prove it was written by the
+   withdrawn guard — so an unproven basis is UNVERIFIED, never established.
+4. The captain may write a code path DIRECTLY (no loop, no escape): the counted escape and the
+   self-writer loop remain available and stay logged and counted, which is the whole point of calling
+   them counted — they are bookkeeping, not a gate.
 5. `.mpd/**` is always writable, so code-shaped content could be hidden there — bounded because `.mpd/`
    is gitignored runtime state and cannot ship.
-6. **The observation log is per-process.** It lives in memory, while a seat's `unlocked` flag is durable;
-   so a read performed in an EARLIER process cannot bar a later PASS. The rule above is exactly
-   process-scoped, and this bound is written into the law's own source text rather than implied.
+6. **The observation log is per-process, and now also inert.** It lived in memory while a seat's
+   `unlocked` flag is durable, so a read in an EARLIER process could never bar a later PASS. With the
+   guard withdrawn nothing writes the log at all, so this bound is history: every seat reads `blind` and
+   no read is observed in any process.
 7. **A bound verifier may read `evidence/**` and every `packages/*/README.md` (and its `.zh-CN` twin)**
    while it is blind — both were refused before, which left a verdict resting on artifact
    existence/size/sha256 instead of their content. The band still refuses `packages/*/src/**`,

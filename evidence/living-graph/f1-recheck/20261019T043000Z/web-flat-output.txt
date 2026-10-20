@@ -1,0 +1,73 @@
+{
+ "probe": "web-flat",
+ "at": "2026-10-19T04:34:10.855Z",
+ "payload": {
+  "modelRanks": [
+   [
+    "T1",
+    "T2",
+    "T3",
+    "T4",
+    "T5"
+   ]
+  ],
+  "ranksDerived": true,
+  "servedRanks": [
+   {
+    "id": "T1",
+    "rank": 0
+   },
+   {
+    "id": "T2",
+    "rank": 0
+   },
+   {
+    "id": "T3",
+    "rank": 0
+   },
+   {
+    "id": "T4",
+    "rank": 0
+   },
+   {
+    "id": "T5",
+    "rank": 0
+   }
+  ]
+ },
+ "web": {
+  "boxes": [
+   {
+    "id": "T1",
+    "rank": 0
+   },
+   {
+    "id": "T2",
+    "rank": 0
+   },
+   {
+    "id": "T3",
+    "rank": 0
+   },
+   {
+    "id": "T4",
+    "rank": 0
+   },
+   {
+    "id": "T5",
+    "rank": 0
+   }
+  ],
+  "armedIntervals": [
+   15000,
+   2000
+  ]
+ },
+ "verdict": {
+  "modelOneRank": true,
+  "servedRanksAllZero": true,
+  "boxesAllRankZero": true,
+  "boxesAreTheFiveTasks": true
+ }
+}
+[mpd] no sidebar host took the mpd panels: neither "sidebarRightTabs + sidebarRight" nor better-sidebar accepted a registration within 8000ms. The Team and Workmate tabs are NOT registered; the workspace teams and the staged plan are still served on /plugins/mpd-team/state and /plugins/mpd-team/plan.

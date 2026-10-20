@@ -1,0 +1,175 @@
+=== harness version ===
+0.2.1-rc.2
+
+=== install-profile (tail) ===
+ const rel = other.dsh && other.dsh.bundle ? other.dsh.bundle.patch : undefined; if (typeof rel !== 'string') continue; const text = readText(path.join(dir, rel)); if (text !== null && foreignRowMountsSidebar(text)) { say('DISABLED', 'bundle layer ' + name + ' already mounts it in its own patch'); return true } } } const argv = Array.isArray(process.argv) ? process.argv : []; const overlays = []; for (let i = 0; i < argv.length; i++) { const arg = typeof argv[i] === 'string' ? argv[i] : ''; if (arg === '--patch' && typeof argv[i + 1] === 'string') { overlays.push(argv[i + 1]) } else if (arg.indexOf('--patch=') === 0) { overlays.push(arg.slice(8)) } } const layers = [path.join(profileDir, 'cordis.patch.yml'), path.join(profileDir, '..', '..', 'cordis.patch.yml')]; if (typeof process.env.DSH_HOME === 'string' && process.env.DSH_HOME !== '') { layers.push(path.join(process.env.DSH_HOME, 'cordis.patch.yml')) } for (const overlay of overlays) { layers.push(path.resolve(overlay)) } for (const layer of layers) { const text = readText(layer); if (text !== null && foreignRowMountsSidebar(text)) { say('DISABLED', 'patch layer ' + layer + ' already mounts it'); return true } } const entries = [...ctx.loader.entries()]; const hasWebEntry = entries.some((e) => e.options && e.options.name === '@deepseek-ai/dsh-host-webserver' && (e.options.disabled === undefined || e.options.disabled === false)); if (!hasWebEntry) { say('DISABLED', 'no enabled @deepseek-ai/dsh-host-webserver entry in this composition'); return true } say('ENABLED', 'web plane present and no other layer mounts dsh-better-sidebar'); return false } catch (e) { try { logGuard('[mpd-better-sidebar] mount guard: DISABLED - guard threw ' + String(e && e.message ? e.message : e)) } catch (e2) {} return true } })()"
+  - id: mcp-astgrep
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "ast_grep"
+      transport: "stdio"
+      command: "node"
+      args:
+        - "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-mcp-astgrep/dist/cli.js"
+      env:
+        MPD_AST_GREP_SG_PATH: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/sg"
+      toolCallTimeoutMs: 60000
+  - id: mcp-git
+    name: "@deepseek-ai/dsh-mcp-client"
+    disabled: true
+    config:
+      serverName: "git"
+      transport: "stdio"
+      command: "node"
+      args:
+        - "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-mcp-gitbash/dist/launch.js"
+        - "git"
+      toolCallTimeoutMs: 60000
+  - id: mcp-shell
+    name: "@deepseek-ai/dsh-mcp-client"
+    disabled: true
+    config:
+      serverName: "shell"
+      transport: "stdio"
+      command: "node"
+      args:
+        - "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-mcp-gitbash/dist/launch.js"
+        - "shell"
+      toolCallTimeoutMs: 60000
+  - id: mcp-lsp
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "lsp"
+      transport: "stdio"
+      command: "node"
+      args:
+        - "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-mcp-lsp/dist/launch.js"
+      toolCallTimeoutMs: 60000
+  - id: mcp-codegraph
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "codegraph"
+      transport: "stdio"
+      command: "node"
+      args:
+        - "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-mcp-codegraph/dist/serve.js"
+      env:
+        MPD_CODEGRAPH_BIN: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/codegraph"
+      toolCallTimeoutMs: 60000
+  - id: mcp-context7
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "context7"
+      transport: "streamable-http"
+      url: "https://mcp.context7.com/mcp"
+      toolCallTimeoutMs: 60000
+  - id: mcp-grepapp
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "grep_app"
+      transport: "streamable-http"
+      url: "https://mcp.grep.app"
+      toolCallTimeoutMs: 60000
+  - id: mpd-codegraph
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-codegraph-plugin/dist/index.js"
+    config:
+      autoInit: true
+      initTimeoutMs: 60000
+      binary: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/codegraph"
+  - id: mpd-tools
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tools-plugin/dist/index.js"
+    config:
+      writeGuard: true
+      truncateMaxBytes: 8192
+  - id: mpd-modelchain
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-modelchain-plugin/dist/index.js"
+  - id: mpd-ulw
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-ulw-plugin/dist/index.js"
+    config:
+      maxRounds: 3
+  - id: mpd-hashline
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-hashline-plugin/dist/index.js"
+    config:
+      guardEditTools: true
+  - id: mpd-boulder
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-boulder-plugin/dist/index.js"
+  - id: mpd-dsh-adapter
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-dsh-adapter-plugin/dist/index.js"
+  - id: mpd-config
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-config-plugin/dist/index.js"
+  - id: mpd-goal
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-goal-plugin/dist/index.js"
+    config:
+      enabled: true
+      autoAnchor: true
+      autoRounds: 32
+  - id: mpd-comment-checker
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-comment-checker-plugin/dist/index.js"
+    config:
+      autoCheck: false
+  - id: mpd-memory
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-memory-plugin/dist/index.js"
+    config:
+      vcs: "git"
+  - id: mpd-ext
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-ext-plugin/dist/index.js"
+    config:
+      quiet: false
+  - id: mpd-roles
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-roles-plugin/dist/index.js"
+  - id: mpd-verify
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-verify-plugin/dist/index.js"
+    config:
+      mode: "hard"
+      escapeUses: 1
+  - id: mpd-workmate
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-workmate-plugin/dist/index.js"
+  - id: mpd-roster-provider
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-roster-provider-plugin/dist/index.js"
+    config:
+      baseProvider: "spawn"
+  - id: mpd-team-core
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-team-core-plugin/dist/index.js"
+  - id: mpd-team-compact
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-team-compact-plugin/dist/index.js"
+  - id: mpd-team-watchdog
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-team-watchdog-plugin/dist/index.js"
+    config:
+      stateDir: ".mpd/team"
+      warnSilenceMs: 90000
+      tickIntervalMs: 15000
+      warnStreakToEscalate: 3
+      actionOnEscalate: "pause"
+  - id: mpd-bootstrap
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-bootstrap-plugin/dist/index.js"
+  - id: mpd-tui-adapter
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-adapter-plugin/dist/index.js"
+  - id: mpd-tui
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/dist/index.js"
+  - id: mpd-agent-team
+    name: "@deepseek-ai/dsh-experimental-agent-team"
+    config:
+      maxMembers: 16
+      maxTasks: 256
+      maxPendingMessagesPerMember: 64
+      maxMessageBytes: 32768
+      disposalTimeoutMs: 5000
+  - id: mpd-tool-agent-team
+    name: "@deepseek-ai/dsh-experimental-tool-agent-team"
+    config:
+      freshProvider: "spawn"
+      forkProvider: "fork"
+  - id: mpd-ui-agent-team
+    name: "@deepseek-ai/dsh-experimental-client-ui-agent-team"
+[install-profile] wrote profile/ + home patch (35 rows incl. preset-mpd) + web-compat shim @mpd-dsh/mpd
+[install-profile] done. Start with: dsh --profile mpd-headless   (the web preset selector will show the mpd preset)
+
+
+=== boot ===
+F2-BOOT-PROBE
+dsh: warning: 1 entry did not activate
+preset-mpd (@deepseek-ai/dsh-agent-preset): pending (waiting for service: agentPresets)
+dsh: reasoning:
+The user asks: "Reply with exactly: F2-BOOT-PROBE". Simple instruction. Just reply exactly that string.
+
+No tool calls needed. Follow user instruction literally.

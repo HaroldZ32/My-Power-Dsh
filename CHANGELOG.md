@@ -14,6 +14,144 @@ Further reading:
 - [`VENDOR_LOCK.json`](./VENDOR_LOCK.json) — the pinned upstream baseline each release is measured
   against.
 
+## v0.14.0 — DeepSeek Harness 0.2.1-rc.2 + dsh-tui 0.16.1, one shared plan→graph model, and a real-team acceptance lane
+
+Minor release over v0.13.2, and a **BREAKING** one. The bundle now targets DeepSeek Harness
+**0.2.1-rc.2** and dsh-tui **0.16.1**; the plan→graph model is computed once in the host plane and drawn
+by both surfaces; and the 2026-10-10/11 guard ceremony is withdrawn, so the top-level agent holds its
+tool pack directly again. A real two-member team now builds and tests a small project through the Web
+composer and the TUI PTY in the Docker acceptance lane. Frozen contracts:
+`.mpd/plans/harness-021-rollback.md` and `.mpd/plans/living-graph.md`; evidence is under
+`evidence/harness-0.2.1/`, `evidence/living-graph/`, `evidence/docker/client-install/` and
+`evidence/release/v0.14.0/`.
+
+**Changed — the harness seam (0.2.1-rc.2).**
+
+- The continuable spawn path is re-implemented on the 0.2.1 subagent seam (`startActivation` +
+  `waitForChildren`); the removed `startContinuable` / `start` branches are gone, so a 0.2.1
+  composition resolves a live member again instead of calling one the host REMOVED. The roster provider's
+  advertised capability set is corrected to the four the 0.2.1 row really accepts (`agentOptions`,
+  `agentPreset`, `outputSchema`, `depthLimit` — the retired `persona` / `toolFilter` are gone), and the dead `@deepseek-ai/dsh-invariants` pins under
+  `packages/mpd-schemastery/harness/*/package.json` are dropped.
+
+**Changed — preset / row parity.**
+
+- The `mpd` preset follows the 0.2.1 `standard` row set: `time-context`, `tool-schedule` and the
+  disabled `tool-plugin-manager` / `tool-plugin-market` are added, `tool-ralph` / `tool-subagent-codex` /
+  `tool-subagent-claude-code` are retired, both `tool-subagent` rows drop `backgroundMode`,
+  `mpd-agent-team` drops `maxPendingMessagesPerMember` (the key the 0.2.1 schema no longer declares), and the
+  preset's persona prose is trimmed (below).
+
+**Added — one shared plan→graph model (`packages/mpd-graph-core`).**
+
+- `packages/mpd-graph-core` is the ONE implementation of the tolerant plan-markdown parser, the
+  board+plan merge with its six-case report, the rank derivation moved VERBATIM out of the TUI, and one
+  debounced watcher. It is a library — no cordis row, no patch entry, no dependency — and both planes
+  inline it through `bun build`.
+- The model is computed ONCE in the host plane: `mpd-team-core-plugin` resolves the plan with the
+  core's own `resolvePlanFile`, calls `buildModel({ board, plan })`, caches per TEAM against the change
+  feed's revision, and publishes the result on BOTH projections — the `mpdTeams` service
+  (`graph(workspaceRoot, teamId?)`) and the `/plugins/mpd-team/state` payload (`model` +
+  `tasks[].rank`, additive). The web client now derives NOTHING: its inline walk is deleted and it
+  renders the served ranks, edges and ghosts, degrading to `depth` only when no model arrives. The TUI
+  renders the same served model.
+- Ghosts are real pictures: a node the plan declares and the board does not is drawn
+  (`planned: true`, `visual: "planned"`) on both planes, and plan-only edges are drawn too. Plan-file
+  edits now reach the existing change feed (`feed.notify(workspace)`), so one watcher and one channel
+  refresh both surfaces instead of two independent rank derivations drifting apart.
+- New gate `scripts/verify-graph-model.ts` (`bun run verify:graph`) with a hand-written oracle, a
+  hard-coded golden fixture, `--fixture` / `--board --plan` / `--emit`, and a `--seed-wrong-edge`
+  negative control that exits 1 naming the edge (`--self-test` 8/8). The TUI's DAG page names its rank
+  provenance in three states: `derived (host)` · `served depth (host fallback)` · `local`.
+
+**Added — a real-team acceptance lane (Web composer + TUI PTY).**
+
+- `MPD_E2E_TEAM_PROJECT=1` makes a real two-member team build a small tested project through each
+  UI's own input path: the browser lane types the prompt into the Web composer, the TUI lane types the
+  same prompt into the tmux PTY. Each stages a two-member / two-task plan (T2 blocked by T1), approves,
+  dispatches, waits, re-dispatches and closes both rows while the members write and test
+  `team-project-web/` / `team-project-tui/`.
+- `docker/lib/team-project-verdict.ts` reads the record by name + `--since` and requires every member
+  raised, a resolvable dependency edge, completed tasks credited to team members, project files
+  written during the step, and both the team's own test and a verifier-owned
+  `sum(2, 3) === 5` assertion. It ships a 10-arm offline `--self-test`.
+- `ui.teamBoard` binds to the id of the record THIS turn wrote, and the browser's live session is
+  carried into the verdict. A team run must RECORD its 18 verdict rows (`missingOrNull`), so a verdict
+  that never ran cannot pass by writing nothing; `--no-browser` is refused in team mode.
+
+**Removed — the 2026-10-10/11 guard ceremony (user ruling 2026-10-17).**
+
+- The top-level `mpd` agent holds its whole tool pack DIRECTLY again: `read`, `write`, `edit`,
+  `bash`, `grep`, `glob` and `subagent` are callable with no loop armed, and steering comes from the
+  persona prompt instead of hooks. The `mpd-roles` row no longer installs the captain-investigation
+  guard, the delegation gate or the verification law's write guard; its boot line keeps one token per
+  withdrawn capability and reports `absent` plus the reason and the knob
+  (`verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode)`, likewise for
+  `captain.investigation` and `delegation.gate`) — never a mode.
+- The roster's read-only discipline (the eight-name deny list) and the `ask_user_question` boundary
+  backstop REMAIN installed. The roster, team, verify, memory, boulder and ULW surfaces stay shipped and
+  callable; they stop being mandatory.
+- `team.gate` becomes OPT-IN: `resolveGateMode` now defaults to `off` (an absent key AND every unknown
+  value), so the session-start gate stages nothing unless a config layer explicitly asks for
+  `mechanical`.
+- **Honest consequence, stated rather than implied:** removing `installVerifyGuard` also removed the
+  mechanical single-git-writer denial for member sessions. That rule is PROSE from this wave on — its
+  enforcement is the dispatch contract (members edit files and run gates, the captain commits) plus
+  review. The `mpd_verify_*` tools and their record validator still ship and still refuse an unsupported
+  PASS; the verifier seat's ENVELOPE is prose too, and the seat's blindness is no longer observed (the
+  observation log was fed by the withdrawn hook).
+- QA cases that asserted the old denials are RE-PURPOSED to assert the new behaviour with the reason
+  written in them, never silently deleted: `skills/dsh-qa/scripts/verify-law.ts`,
+  `skills/dsh-qa/scripts/delegation-gate.ts`, `skills/dsh-qa/scripts/session-start-team.ts`, the
+  `mpd-ulw-plugin` gate arms, and the NEW `skills/dsh-qa/scripts/captain-full-tools.ts` (its boot-line
+  arm is the discriminating evidence; its read/write/bash witness is labelled CORROBORATIVE because a
+  one-shot headless boot composes no agent preset). Two stale probes were retired with their reasons on
+  disk (`packages/mpd-roles-plugin/test/RETIRED-PROBES.md`,
+  `packages/mpd-verify-plugin/qa/RETIRED.md`).
+
+**Fixed — the DSH-TUI adapter declarations.**
+
+- Six `Tui*Like` shapes now agree with the installed 0.15.0 `.d.ts` (`tuiToast`, `tuiThemes`,
+  `tuiPluginStorage`, `tuiMessageObserver`, `tuiEffectLedger`, `tuiWorkspaces`), `closeScene(id)` no
+  longer guards on a return value the 0.15.0 `close(): void` never produces, `probeBackendAdmission()` is
+  a declared member, and `tuiPrompt` is marked PHANTOM by the adapter's `PHANTOM_SEAM_KEYS` table
+  instead of reading as merely absent. The target then moved to dsh-tui **0.16.1** (the
+  harness-0.2.1 release): a declaration-level comparison against 0.15.0 found nothing breaking for the
+  adapter — the same fifteen `tui*` seams, the same six shapes, `close(): void` + `active.id`, the
+  `tuiPanels` seam, and `tuiPrompt` still a phantom — so the pins were the whole change. The pins moved
+  in eight files (both Docker lanes, the UI stack, `dsh-distribution.json`'s `host-tui` ref and
+  `dsh-plugin.json`'s `compat.hosts`, stale at `0.10.1`).
+
+**Fixed — the team plane and the live rows.**
+
+- The team web routes resolve the workspace from the SESSION the request names (new adapter
+  `workspaceRootForSession`, backed by the agent registry) instead of the dsh process cwd, which had
+  made the panel render “No team in this workspace yet” beside a completed board.
+- A task claimed under a member's EXECUTOR HANDLE is credited to that member in the core progress
+  reader, the dispatch idle pool and the TUI projection, so a busy member no longer sits in the idle
+  pool and member cards no longer read `0/0`.
+- A nested failure line no longer ends the reply wait while the lead keeps working: team turns settle
+  only on the final DONE (or a credential bound), with a tail capture for long transcripts. A headless
+  live turn after `approve` is now bounded instead of hanging forever, and team mode keeps the headless
+  arm on a single-tool probe.
+- Docker live-row grading separates SKIPPED live rows from a refused run, scopes the credential-free
+  WEB check to the non-live reason, and grades real WEB and TUI turns for prompt-variable failures.
+- The packer ships `packages/mpd-graph-core/dist` (`INLINED_PKGS`), closing the pack-closure gap.
+
+**Changed — docs.**
+
+- AGENTS.md §5 rules 2/4/5 and `§13`'s verifier term describe the restored contract; the captain's
+  reserved-set long form in `agent-references/verification-flow.md` is rewritten as "the captain's tool
+  pack" with the withdrawn behaviour recorded as WITHDRAWN; the glossary's delegation-gate and
+  verifier-envelope entries carry the same status; `seam-adapters.md` points at `PHANTOM_SEAM_KEYS`;
+  `docs/feature-audit.md` (both languages) records that the host removed its `tool-ralph` row from the
+  0.2.1 `standard` preset. The `dsh-liangshen` attribution sentences are GONE from both halves of every
+  bilingual pair that carried them.
+- The living-graph wave documents the shared model in `packages/mpd-graph-core/README.md` (EN +
+  zh-CN); the team lane documents `MPD_E2E_TEAM_PROJECT`, its 18 verdict rows and the evidence paths
+  in both `docker/README*.md`; and the TUI target, the seam inventory and the pin carriers are kept in
+  `docs/tui.md` (EN + zh-CN).
+
 ## v0.13.2 — a patch: the npm trusted-publishing lane and the dsh-tui 0.15.0 sidebar migration re-arm
 
 Patch release over v0.13.1: releases now stage to npm through trusted publishing, the stale-default
@@ -231,7 +369,7 @@ records for the merged intermediate waves live under `evidence/**` where each PR
   the provenance/license sections. It was 68 524 B of manual; it is 18 429 B, and the long form lives
   where a long form belongs — [`docs/user-guide.md`](./docs/user-guide.md) (57 770 B, with its
   `zh-CN` twin), which already existed and is why **no `docs/manual.md` was created**: a second copy
-  would have been a third overlapping document. `README.zh-CN.md` is the 简体中文 twin and is updated
+  would have been a third overlapping document. `README.zh-CN.md` is the zh-CN twin and is updated
   in the SAME change, as the language policy requires.
 - **No section of the old manual was lost.** Every `##`-level section of the pre-wave README maps to
   an existing home — a RETAINED section of the new page, or a named section of the user guide, the
@@ -264,7 +402,7 @@ records for the merged intermediate waves live under `evidence/**` where each PR
     — previously the TUI was only ever captured as plain text, and the repository shipped **zero**
     terminal images;
   - a paired **hero** composite showing the same bundle on both surfaces side by side;
-  - both sets in **English and 简体中文**, so the Chinese README does not show an English app.
+  - both sets in **English and zh-CN**, so the Chinese README does not show an English app.
 - **The images have a stated provenance**, not just a directory: see
   [`evidence/docs/readme-0.12.0/image-provenance.md`](./evidence/docs/readme-0.12.0/image-provenance.md).
   It records the exact method, the fixture that makes every surface render populated, and — stated

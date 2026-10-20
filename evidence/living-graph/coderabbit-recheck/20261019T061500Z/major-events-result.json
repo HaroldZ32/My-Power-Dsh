@@ -1,0 +1,71 @@
+{
+ "probe": "coderabbit-major-and-events",
+ "at": "2026-10-19T06:13:13.877Z",
+ "major": {
+  "foreignNonGhostIds": [
+   "T1",
+   "T2",
+   "T3",
+   "T4",
+   "T5"
+  ],
+  "realBoardIds": [
+   "T1",
+   "T2",
+   "T3",
+   "T4"
+  ],
+  "foreignRejected": true,
+  "foreignPageHasNoServedRanks": true,
+  "matchingAccepted": true,
+  "residualSameIdSetAccepted": true,
+  "officialSessionCalls": 0,
+  "officialWorkspaceCalls": 0,
+  "officialSessionModelAbsent": true,
+  "officialWorkspaceModelAbsent": true,
+  "recordArmTeamId": "team-real"
+ },
+ "eventPlanCreated": {
+  "beforeGhosts": [],
+  "afterGhosts": [
+   "T9"
+  ],
+  "notifyLatencyMs": 152,
+  "notified": true
+ },
+ "eventDirectoryReplaced": {
+  "batches": [
+   {
+    "sequence": 1,
+    "coalesced": 1,
+    "paths": 1
+   }
+  ],
+  "replacementDelivered": true,
+  "postReplaceWriteDelivered": false
+ },
+ "eventPlanSwap": {
+  "firstPlanOnly": [
+   "T8"
+  ],
+  "secondPlanOnly": [
+   "T9"
+  ],
+  "revisionConstant": 0
+ },
+ "parser": {
+  "undeclaredTitle": "Core — the work",
+  "declaredTitle": "the work"
+ },
+ "verdict": {
+  "foreignModelRejected": true,
+  "matchingModelAccepted": true,
+  "officialArmsNeverAsk": true,
+  "recordArmNamesItsTeam": true,
+  "createdPlanReachesModel": true,
+  "replacedDirectorySeen": true,
+  "postReplaceWriteSeen": false,
+  "planSwapRebuilds": true,
+  "laneMarkerDeclaredOnly": true
+ }
+}

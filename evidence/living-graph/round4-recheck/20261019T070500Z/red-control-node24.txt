@@ -1,0 +1,7 @@
+{
+ "probe": "red-control",
+ "runtime": "node 24.21.0",
+ "delivered": false,
+ "latencyMs": -1,
+ "expected": "NOT delivered (the fix line is absent)"
+}

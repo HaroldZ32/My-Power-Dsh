@@ -81,6 +81,10 @@ const DECLARED_MEMBERS: readonly Member[] = [
   // Every declaration in the TypeScript source set carries a precise comment and every named
   // function spells out its parameter and return types.
   { id: "comment-coverage", argv: ["node", "./scripts/verify-comment-coverage.ts"] },
+  // The picture-vs-input gate (wave `living-graph`, G5): the shared model's nodes, edges and report
+  // must EQUAL the declared fixture input — and `--self-test` spawns the captured negative control
+  // (a seeded wrong edge), so this member proves the gate discriminates rather than merely exits 0.
+  { id: "graph-model", argv: ["node", "./scripts/verify-graph-model.ts", "--self-test"] },
   // Every `.github/workflows/*.yml` must be LOADABLE YAML with a sane job/step shape. This member
   // exists because the failure it catches is invisible to every other one: GitHub rejects an
   // unloadable workflow at LOAD time — the run appears, fails in 0 s, creates NO job and no step

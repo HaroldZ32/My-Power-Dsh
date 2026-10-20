@@ -10,10 +10,11 @@
 //      for a live agent, which is exactly why the TUI's approval hop used to be broken.
 //
 // WHAT A TRIGGER DOES (the mode, resolved PER CALL from `team.gate`):
-//   mechanical (DEFAULT) — stage the shell, then inject the MECHANICAL notice naming the id the
+//   off (DEFAULT since 2026-10-17) — the listener returns immediately; the ceremony is OPT-IN, so a
+//                          session that did not explicitly ask for it stages nothing;
+//   mechanical           — stage the shell, then inject the MECHANICAL notice naming the id the
 //                          call returned; every degradation of this route falls back to ADVISORY;
-//   advisory             — today's notice, stages nothing;
-//   off                  — the listener returns immediately.
+//   advisory             — today's notice, stages nothing.
 //
 // THE HONEST BOUND (stated so no reader over-reads the log): the gate can fill the plan's `name`,
 // `description` and `approval`; the store fills `planId`/`stagedAt`/`version` and the tool fills
@@ -169,9 +170,9 @@ export interface SessionGateInstall {
    * It is a snapshot and can be WRONG for the live behaviour in ONE case, named so a reader is not
    * misled: the loader applies sibling rows CONCURRENTLY and cordis answers `undefined` for a
    * provider whose fiber is not ACTIVE yet (the same transient miss T-50 documents), so a
-   * `mpdConfig` that has not activated by this row's apply reads as ABSENT and the default
-   * (`mechanical`) is reported. The AUTHORITATIVE mode is the one the FIRING line prints, because
-   * every fire re-resolves it per call.
+   * `mpdConfig` that has not activated by this row's apply reads as ABSENT and the default (`off`,
+   * since the 2026-10-17 rollback) is reported. The AUTHORITATIVE mode is the one the FIRING line
+   * prints, because every fire re-resolves it per call.
    */
   mode: GateMode
 }

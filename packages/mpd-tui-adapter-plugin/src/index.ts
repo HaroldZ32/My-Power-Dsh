@@ -104,7 +104,12 @@ export const TUI_SEAMS = {
    * arms on (see {@link TuiAdapter.panelSeamBound}).
    */
   panels: "tuiPanels",
-  /** The prompt-slot seam — HOST-UNAVAILABLE on every measured dsh-tui build (docs/tui.md seam 2). */
+  /**
+   * The prompt-slot seam — a PHANTOM id: no dsh-tui build measured through 0.15.0 declares a
+   * `tuiPrompt` service (a grep of the host's own `lib/**` finds none), so it stays in the table
+   * ONLY so the inventory reports its absence explicitly instead of hiding it. See
+   * {@link PHANTOM_SEAM_KEYS}.
+   */
   prompt: "tuiPrompt",
   /** The harness command registry (`/mpd`). */
   commands: "commands",
@@ -143,6 +148,17 @@ export const TUI_SEAM_KEYS: readonly TuiSeamKey[] = [
   "commands",
   "settings",
 ]
+
+/**
+ * The seam ids NO measured host build provides — declared so the inventory can name their absence.
+ *
+ * A phantom seam is different from an absent one: an absent seam is missing from THIS composition,
+ * while a phantom id is missing from EVERY host build (measured: `tuiPrompt` appears in no dsh-tui
+ * `lib/**` declaration through 0.15.0). It stays in {@link TUI_SEAMS} because the aggregate
+ * diagnostic prints one term per key in table order, and dropping the id would silently change that
+ * contract; {@link TuiAdapter.seamOutcomes} reports it with this reason instead of a composition gap.
+ */
+export const PHANTOM_SEAM_KEYS: readonly TuiSeamKey[] = ["prompt"]
 
 // ── the outcome vocabulary (moved here from the TUI plugin's own host.ts/types.ts) ──────────────
 
@@ -2123,13 +2139,20 @@ export interface TuiScenesLike {
   /** Opens a registered scene; false when this composition has none. */
   open(id: string): boolean
   /**
-   * Closes a scene by id, WHEN the host build carries the member at all.
+   * Closes whichever scene is ACTIVE — dsh-tui 0.15.0's `close()` takes NO id and returns void.
    *
-   * The measured dsh-tui build exposes no close: a scene leaves by calling the `close()` on its
-   * own props. The member is therefore optional here and {@link TuiAdapter.closeScene} reports
-   * `false` instead of inventing one.
+   * The member is optional because a host build without it closes a scene through the `close()` on
+   * its own props instead; {@link TuiAdapter.closeScene} then reports `false` rather than inventing
+   * a member.
    */
-  close?(id: string): boolean
+  close?(): void
+  /**
+   * The scene currently replacing the conversation, when the host exposes the read (0.15.0 does).
+   *
+   * This is what makes an ID-addressed close honest: the host's `close()` names no scene, so the
+   * adapter only reports a successful close for the id this read-back proves to be active.
+   */
+  active?: TuiSceneDescriptor | undefined
 }
 
 /** One command-tree completion provider (host `TuiCommandTreeProvider`). */
@@ -2183,6 +2206,15 @@ export interface TuiPluginHostLike {
   /** Lists the intercept points the host exposes, when it can enumerate them at all. */
   probeDecisionEvents?(): readonly string[]
   /**
+   * The host's read-only backend-admission probe (dsh-tui 0.15.0 added it to `TuiPluginHost`).
+   *
+   * DECLARED BUT DELIBERATELY UNCONSUMED: it is the evidence the host publishes its `Backend`
+   * contribution contract on, and it registers, imports and writes nothing — but no mpd surface asks
+   * for a backend today, so declaring the member documents the family without inventing a consumer.
+   * @returns the probe's verdict facts; absent on every host build before 0.15.0.
+   */
+  probeBackendAdmission?(): TuiBackendAdmissionProbeLike
+  /**
    * Caller-safe grant facade. `allows` is the documented source of truth for
    * "is this activation authorised for permission@scope" — the ONE honest signal
    * that does not require calling a disposer as a probe (reviewer direction for
@@ -2194,64 +2226,243 @@ export interface TuiPluginHostLike {
   }
 }
 
+/** The facts dsh-tui 0.15.0's `BackendAdmissionProbe` reports (read-only; registers nothing). */
+export interface TuiBackendAdmissionProbeLike {
+  /** Entries the registry holds: the built-in seed plus every registration. */
+  readonly registered: number
+  /** How many of them a picker may offer (not `waiting_authorization`). */
+  readonly offered: number
+  /** What a synthetic third-party declaration was admitted as; the probe accepts only `compatible`. */
+  readonly verdict: "compatible"
+}
+
 /**
  * `ctx.tuiToast` — transient host notifications.
  *
- * MINIMAL SHAPE, NO CLAIMED SEMANTICS: no mpd surface registers a toast yet, so this interface is
- * the structural minimum (`push` returning a dismissal handle). A host build that reshapes it
- * degrades into `absent`/`refused` like every other seam here; nothing in the bundle depends on
- * the member beyond the read surface.
+ * SHAPE RE-DERIVED from the installed dsh-tui 0.15.0 declaration
+ * (`lib/types/dsh-adapter/toast.d.ts`): the plugin-facing runtime is `show(text, options) → boolean`,
+ * NOT a `push(message)` returning a dismissal handle. No mpd surface calls a toast yet; the member is
+ * declared so a later consumer compiles against the host's real contract, and a host build that
+ * reshapes it degrades into `absent`/`refused` like every other seam here.
  */
 export interface TuiToastLike {
-  /** Shows one transient message and returns its dismissal handle. */
-  push(message: string, options?: { level?: string; timeoutMs?: number }): Disposer | undefined
+  /**
+   * Shows one transient toast.
+   * @param text - the display text: a string, number or boolean (anything else is refused by the host).
+   * @param options - the host's optional color key and auto-dismiss timeout (`[500, 12000]` ms).
+   * @returns true when the host delivered the toast; false when it refused the input or dropped it
+   * (no sink, rate limit) — the host never throws on a toast.
+   */
+  show(text: string | number | boolean, options?: { color?: "success" | "warning" | "error"; timeoutMs?: number }): boolean
+}
+
+/** The base palette a runtime theme overlays, exactly the 0.15.0 `TuiThemeBase` union. */
+export type TuiThemeBaseLike = "light" | "dark" | "dark-ansi" | "claude-dark" | "claude-paper" | "codex-lavender" | "codex-paper"
+
+/**
+ * One runtime theme declaration, as dsh-tui 0.15.0's `TuiThemeDescriptor` carries it.
+ *
+ * `colors` is WIDENED to `string` keys on purpose: the host narrows them to its own `ThemeColorKey`
+ * union, and duplicating that palette list here would let a host release that adds one key redden a
+ * declaration that is otherwise correct.
+ */
+export interface TuiThemeDescriptorLike {
+  /** The theme name this registration introduces. */
+  name: string
+  /** The picker label; the host defaults it to the name. */
+  displayName?: string
+  /** The built-in palette this theme overlays. */
+  base: TuiThemeBaseLike
+  /** Palette overrides, keyed by the host's own color keys. */
+  colors?: Readonly<Partial<Record<string, string>>>
 }
 
 /**
- * `ctx.tuiThemes` — the theme registry.
+ * `ctx.tuiThemes` — the runtime theme registry.
  *
- * MINIMAL SHAPE, NO CLAIMED SEMANTICS: registered for the same reason as the other unused seams —
- * the seam is bound, probed and reported in ONE place, so a later mpd surface can use it without
- * reopening this closure.
+ * SHAPE RE-DERIVED from 0.15.0 (`lib/types/dsh-adapter/themes.d.ts`): `register` takes a
+ * DESCRIPTOR plus the optional trailing caller identity — not `(name, theme)` — and returns a
+ * disposer (an invalid or duplicate declaration gets an inert one, never `undefined`). The old
+ * `current()` member is gone: the 0.15.0 runtime exposes no read on the plugin face — `getSnapshot`/
+ * `resolve` live on the host-only `getHostThemes()` facade.
  */
 export interface TuiThemesLike {
-  /** Registers one named theme; a refusal still returns a no-op disposer. */
-  register(name: string, theme: Record<string, unknown>): Disposer | undefined
-  /** The currently selected theme name, when the host exposes a read. */
-  current?(): string | undefined
+  /**
+   * Registers one immutable runtime palette, bound to the caller's activation.
+   * @param descriptor - the theme declaration the host validates.
+   * @param identity - the caller's own context; the host binds the registration to it.
+   * @returns the disposer, inert when the host refused the declaration.
+   */
+  register(descriptor: TuiThemeDescriptorLike, identity?: unknown): Disposer
 }
 
-/** `ctx.tuiPluginStorage` — per-plugin durable key/value storage. */
-export interface TuiPluginStorageLike {
-  /** Reads one key of this plugin's own storage. */
-  get(key: string): unknown
-  /** Writes one key of this plugin's own storage. */
-  set(key: string, value: unknown): void
-}
-
-/** `ctx.tuiMessageObserver` — read-only observation of the session's message stream. */
-export interface TuiMessageObserverLike {
-  /** Subscribes to message events; the returned disposer is the only unsubscribe path. */
-  subscribe(listener: (message: unknown) => void): Disposer | undefined
+/** The per-namespace handle dsh-tui 0.15.0's `tuiPluginStorage.open(ctx)` returns. */
+export interface TuiPluginStorageHandleLike {
+  /**
+   * Reads one key of the caller's own namespace.
+   * @param input - the key to read.
+   * @returns the stored value, or null when the key is absent.
+   */
+  get(input: { key: string }): Promise<{ value: unknown | null }>
+  /**
+   * Writes one key of the caller's own namespace.
+   * @param input - the key and its exact-JSON value.
+   * @returns `{stored: true}`; quota or validation failures reject with the host's error code.
+   */
+  set(input: { key: string; value: unknown }): Promise<{ stored: true }>
+  /**
+   * Deletes one key of the caller's own namespace.
+   * @param input - the key to delete.
+   * @returns whether a key was actually removed.
+   */
+  delete(input: { key: string }): Promise<{ deleted: boolean }>
 }
 
 /**
- * `ctx.tuiEffectLedger` — the host's ledger of plugin effects.
+ * `ctx.tuiPluginStorage` — per-plugin durable key/value storage (the `storage.local` contract).
  *
- * MEASURED UNREACHABLE from a plugin activation in the probed build
- * (`evidence/tui/plugin/20260915T060934Z/mount/renderer-type-probe/FINDING-CORRECTION.md`), which
- * is why nothing in the bundle reads it: binding and reporting it here is the honest treatment of
- * a seam that exists in the composition but not on this channel.
+ * SHAPE RE-DERIVED from 0.15.0 (`lib/types/dsh-adapter/plugin-storage.d.ts`): the service is not a
+ * flat `get`/`set`; it OPENS a namespace for the caller's own verified activation and hands back an
+ * async `{get,set,delete}` handle. The namespace is derived from the passed context, so there is no
+ * parameter that could name another plugin.
  */
-export interface TuiEffectLedgerLike {
-  /** The ledger's rows, when the host exposes them at all. */
-  entries?(): readonly unknown[]
+export interface TuiPluginStorageLike {
+  /**
+   * Opens the caller's private namespace.
+   * @param pluginCtx - the caller's own activation context (the identity the namespace derives from).
+   * @returns the handle whose calls are grant-checked per invocation.
+   */
+  open(pluginCtx: unknown): TuiPluginStorageHandleLike
 }
 
-/** `ctx.tuiWorkspaces` — the workspace registry. */
+/**
+ * `ctx.tuiMessageObserver` — read-only observation of the session's message stream.
+ *
+ * SHAPE RE-DERIVED from 0.15.0 (`lib/types/dsh-adapter/message-observer.d.ts`): `subscribe` takes
+ * the caller's context, the listener AND a REQUIRED `{scope}` object, and returns a plain disposer.
+ * The exact scope string is what isolates one session's sensitive envelopes from another's; the old
+ * one-argument `subscribe(listener)` shape named no scope and could not have matched this host.
+ */
+export interface TuiMessageObserverLike {
+  /**
+   * Subscribes to the observation envelopes of ONE scope.
+   * @param pluginCtx - the caller's own activation context (the identity grants are checked against).
+   * @param listener - receives each envelope addressed to `scope`; may return a promise.
+   * @param options - the required `scope` (`session:<sessionId>`); delivery never crosses it.
+   * @returns the subscription's disposer; a denied subscription gets a no-op one.
+   */
+  subscribe(pluginCtx: unknown, listener: (envelope: unknown) => void | Promise<void>, options: { scope: string }): Disposer
+}
+
+/**
+ * One effect-ledger record, as dsh-tui 0.15.0's `LedgerEntry` declares it.
+ *
+ * The host fills the lifecycle triple (pluginId / activationInstance / runtimeGenerationId) itself,
+ * so a caller never supplies it.
+ */
+export interface TuiEffectLedgerEntryLike {
+  /** The effect's lifecycle operation. */
+  operation: "create" | "bind" | "replace" | "release" | "cleanup-failed"
+  /** The resource the record is about. */
+  resource: { kind: string; id: string }
+  /** The operation's outcome. */
+  result: "applied" | "pending" | "failed"
+  /** The contract error code when `result` is `failed`. */
+  errorCode?: string
+  /** What this record supersedes (`operation: "replace"`). */
+  replaces?: { resourceId?: string; activationInstance?: string }
+  /** `sha256:<64hex>` digest of an opaque value the record must reference. */
+  valueDigest?: string
+}
+
+/**
+ * `ctx.tuiEffectLedger` — the host's append-only journal of plugin-visible effects.
+ *
+ * SHAPE RE-DERIVED from 0.15.0 (`lib/types/dsh-adapter/effect-ledger.d.ts`): the plugin face is
+ * `record(entry, identity?)`, not a readable `entries()` — nothing on the plugin side can list the
+ * journal. MEASURED UNREACHABLE from a plugin activation in the probed build
+ * (`evidence/tui/plugin/20260915T060934Z/mount/renderer-type-probe/FINDING-CORRECTION.md`), which is
+ * why nothing in the bundle records either: binding and reporting the seam is the honest treatment of
+ * a member set that exists in the composition but not on this channel.
+ */
+export interface TuiEffectLedgerLike {
+  /**
+   * Appends one record.
+   * @param entry - the effect record the host validates before writing.
+   * @param identity - the caller's own context (omitting it records `undeclared`, never a guess).
+   * @returns nothing; recording is observability and never throws.
+   */
+  record(entry: TuiEffectLedgerEntryLike, identity?: unknown): void
+}
+
+/** One workspace target, as dsh-tui 0.15.0's `TuiWorkspaceTarget` declares it. */
+export interface TuiWorkspaceTargetLike {
+  /** Stable, user-pasteable target identifier. */
+  uri: string
+  /** The host-side cwd recorded in the session header. */
+  cwd: string
+  /** Compact picker/status label. */
+  label: string
+  /** Optional secondary picker copy. */
+  description?: string
+  /** Whether the target is a local path or a provider-owned location. */
+  kind: "local" | "provider"
+  /** Provider-owned compact badge; the TUI does not interpret it. */
+  badge: string
+}
+
+/**
+ * One workspace provider, as dsh-tui 0.15.0's `TuiWorkspaceProvider` declares it.
+ *
+ * The host's interface also carries optional `resolvePath`, `commandShell`, `rename` and `commands`
+ * members; they are NOT declared here because nothing in the bundle registers a provider yet, and a
+ * declaration nobody exercises is a claim this adapter cannot keep honest.
+ */
+export interface TuiWorkspaceProviderLike {
+  /** URI schemes owned by this provider, without the trailing colon. */
+  schemes: readonly string[]
+  /**
+   * Enumerates the targets this provider owns.
+   * @param signal - cancels a slow discovery.
+   * @returns the targets, in the provider's own order.
+   */
+  list(signal?: AbortSignal): Promise<readonly TuiWorkspaceTargetLike[]> | readonly TuiWorkspaceTargetLike[]
+  /**
+   * Resolves one provider URI.
+   * @param uri - the reference to resolve.
+   * @param signal - cancels the resolution.
+   * @returns the target, or undefined when the scheme is not this provider's.
+   */
+  resolve(uri: string, signal?: AbortSignal): Promise<TuiWorkspaceTargetLike | undefined> | TuiWorkspaceTargetLike | undefined
+  /**
+   * Describes an already-recorded cwd without performing I/O.
+   * @param cwd - the directory to describe.
+   * @returns the target, or undefined when this provider does not own the cwd.
+   */
+  describe(cwd: string): TuiWorkspaceTargetLike | undefined
+}
+
+/**
+ * `ctx.tuiWorkspaces` — the workspace registry.
+ *
+ * SHAPE RE-DERIVED from 0.15.0 (`lib/types/dsh-adapter/workspaces.d.ts`): `list` takes the CALLING
+ * cwd (plus an optional abort signal) and answers a promise of `TuiWorkspaceTarget` objects, not a
+ * synchronous list of path strings; `register` is the provider entry point.
+ */
 export interface TuiWorkspacesLike {
-  /** The workspace roots this host currently serves. */
-  list?(): readonly string[]
+  /**
+   * Registers one workspace provider, bound to the caller's activation.
+   * @param provider - the provider whose targets join the picker.
+   * @returns the disposer that drops the registration.
+   */
+  register(provider: TuiWorkspaceProviderLike): Disposer
+  /**
+   * Lists the targets this host serves for one calling cwd.
+   * @param currentCwd - the caller's own cwd, which routes the local provider.
+   * @param signal - cancels the enumeration.
+   * @returns every target the host can offer from `currentCwd`.
+   */
+  list(currentCwd: string, signal?: AbortSignal): Promise<readonly TuiWorkspaceTargetLike[]>
 }
 
 /**
@@ -2310,11 +2521,13 @@ export interface TuiPanelSummaryLike {
 }
 
 /**
- * `ctx.tuiPrompt` — the prompt-slot seam.
+ * `ctx.tuiPrompt` — a PHANTOM seam id (in {@link PHANTOM_SEAM_KEYS}).
  *
- * HOST-UNAVAILABLE: every measured dsh-tui build omits this service, and `docs/tui.md` (seam 2)
- * records the decision to claim nothing about it. It stays in the table so the inventory reports
- * its absence explicitly rather than hiding it.
+ * NO HOST DECLARES IT: a grep of dsh-tui 0.15.0's own `lib/**` finds no `tuiPrompt` service and no
+ * `prompt`-slot registration surface, so this interface cannot be "re-derived" from anything — it is
+ * a shape kept ONLY so the phantom id has a type and the inventory reports its absence as a fact
+ * rather than a composition gap. `docs/tui.md` (seam 2) records the decision to claim nothing about
+ * it. Nothing in the bundle calls it.
  */
 export interface TuiPromptLike {
   /** Contributes one prompt section, when a future host build provides the slot. */
@@ -2552,7 +2765,10 @@ export interface StatusViewHandle extends SeamBindingHandle {
 export interface SceneRegistrationHandle extends SeamBindingHandle {
   /** Opens a registered scene by id; false when the seam is absent or the host does not know it. */
   openScene(id: string): boolean
-  /** Closes a scene by id; false when this host build exposes no close member. */
+  /**
+   * Closes a scene by id; false when this host build exposes no close member, or when the host owns
+   * no active-scene read that names the id (its close() takes no id — see {@link TuiScenesLike.close}).
+   */
   closeScene(id: string): boolean
 }
 
@@ -2720,7 +2936,7 @@ export interface TuiAdapter {
   workspaces(): TuiWorkspacesLike | undefined
   /** The bound sidebar panel registry, or undefined on every host before dsh-tui 0.13.0. */
   panels(): TuiPanelsLike | undefined
-  /** The bound prompt slot, or undefined (host-unavailable on every measured build). */
+  /** The bound prompt slot, or undefined — `tuiPrompt` is a PHANTOM id no measured host declares. */
   prompt(): TuiPromptLike | undefined
   /** The bound harness command registry, or undefined when the seam never bound. */
   commands(): CommandsLike | undefined
@@ -2767,7 +2983,10 @@ export interface TuiAdapter {
   registerScene(descriptor: TuiSceneDescriptor, identity?: unknown): SceneRegistrationHandle
   /** Opens a registered scene; false when the seam is absent or the host does not know the id. */
   openScene(id: string): boolean
-  /** Closes a scene; false when this host build exposes no close member. */
+  /**
+   * Closes a scene by id; false when this host build exposes no close member, or when the host owns
+   * no active-scene read that names the id (its close() takes no id — see {@link TuiScenesLike.close}).
+   */
   closeScene(id: string): boolean
   /**
    * Publishes one status-line value now (or as soon as the seam binds).
@@ -3234,13 +3453,32 @@ export function createTuiAdapter(ctx: PluginContextLike, options: TuiAdapterOpti
       }
     },
 
-    /** Closes a scene; false when this host build exposes no close member. */
+    /**
+     * Closes a scene; false when the seam is absent, the host build exposes no close member, or the
+     * host's own `active` read does not name this id.
+     *
+     * dsh-tui 0.15.0's `close()` takes NO id and returns void — it closes whichever scene is ACTIVE.
+     * The previous implementation guarded on `close(id) === true`, which a void call can never
+     * satisfy, so it answered `false` on every 0.15.0 build; calling `close()` blind would instead
+     * report success for a scene that was never open AND close the wrong scene. The active read-back
+     * is therefore the discriminator: the call is made, and `true` returned, ONLY when the host
+     * itself says this id is the active scene.
+     */
     closeScene(id: string): boolean {
       /** The bound scene registry, absent when the seam never bound. */
       const registry = bindings.scenes.service as TuiScenesLike | undefined
       if (registry === undefined || typeof registry.close !== "function") return false
+      /** The id the host reports as active; undefined when it exposes no read or reads nothing. */
+      let activeId: unknown
       try {
-        return registry.close(id) === true
+        activeId = registry.active?.id
+      } catch {
+        activeId = undefined
+      }
+      if (activeId !== id) return false
+      try {
+        registry.close()
+        return true
       } catch {
         return false
       }
@@ -3736,6 +3974,8 @@ export function createTuiAdapter(ctx: PluginContextLike, options: TuiAdapterOpti
         const id: string = TUI_SEAMS[key]
         if (binding.bound) return { id, state: "available" as const, detail: "bound through the deferred inject form" }
         if (binding.error !== undefined) return { id, state: "refused" as const, detail: binding.error }
+        // A phantom id's absence is a HOST fact, never a gap in this profile's composition.
+        if (PHANTOM_SEAM_KEYS.includes(key)) return { id, state: "absent" as const, detail: "phantom seam: no measured dsh-tui build declares this service" }
         return { id, state: "absent" as const, detail: "not composed in this profile" }
       })
     },

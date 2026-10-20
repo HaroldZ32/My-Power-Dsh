@@ -1,0 +1,1 @@
+[2026-10-17T14:43:01.451Z] [mpd-verify] verifySeam=present (the harness tools.guard SEAM — NOT an installed gate: the write guard is WITHDRAWN; the mpd-roles row reports its own state) loops=0 installedAt=2026-10-17T14:43:01.450Z delegationObserver=installed tools=5 mode=hard guard=seam-present bootMarker=written

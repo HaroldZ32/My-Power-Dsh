@@ -1,0 +1,156 @@
+{
+ "at": "2026-10-19T06:12:51.748Z",
+ "fixture": {
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/living-graph/coderabbit-recheck/20261019T061500Z/ws-d1ozXA",
+  "plan": "## TODOs\n\n- [ ] 1. Anchor\n- [ ] 2. Middle (blocked by 1)\n- [ ] 3. Side\n- [ ] 4. Leaf (blocked by: 2)\n- [ ] 5. Ghost (blocked by 4)\n",
+  "modelEdges": [
+   "T1->T2:plan",
+   "T1->T3:board",
+   "T2->T4:both",
+   "T4->T5:plan"
+  ],
+  "modelRanks": [
+   [
+    "T1",
+    0
+   ],
+   [
+    "T2",
+    1
+   ],
+   [
+    "T3",
+    1
+   ],
+   [
+    "T4",
+    2
+   ],
+   [
+    "T5",
+    3
+   ]
+  ]
+ },
+ "tui": {
+  "tasks": [
+   {
+    "id": "T1",
+    "dependencies": [],
+    "depth": 0
+   },
+   {
+    "id": "T2",
+    "dependencies": [
+     "T1"
+    ],
+    "depth": 1
+   },
+   {
+    "id": "T3",
+    "dependencies": [
+     "T1"
+    ],
+    "depth": 1
+   },
+   {
+    "id": "T4",
+    "dependencies": [
+     "T2"
+    ],
+    "depth": 2
+   },
+   {
+    "id": "T5",
+    "dependencies": [
+     "T4"
+    ],
+    "depth": 3
+   }
+  ],
+  "ranks": [
+   [
+    "T1",
+    0
+   ],
+   [
+    "T2",
+    1
+   ],
+   [
+    "T3",
+    1
+   ],
+   [
+    "T4",
+    2
+   ],
+   [
+    "T5",
+    3
+   ]
+  ],
+  "drawnEdgeSource": [
+   "T1->T2",
+   "T1->T3",
+   "T2->T4",
+   "T4->T5"
+  ],
+  "hitRows": [
+   "T1@0",
+   "T2@6",
+   "T3@6",
+   "T4@12",
+   "T5@18"
+  ]
+ },
+ "layoutMode": "boxes",
+ "flat": {
+  "modelRanks": [
+   [
+    "T1",
+    "T2",
+    "T3",
+    "T4",
+    "T5"
+   ]
+  ],
+  "ranksDerived": true,
+  "layoutMode": "boxes",
+  "hits": [
+   {
+    "id": "T1",
+    "row": 0
+   },
+   {
+    "id": "T2",
+    "row": 0
+   },
+   {
+    "id": "T3",
+    "row": 0
+   },
+   {
+    "id": "T4",
+    "row": 0
+   },
+   {
+    "id": "T5",
+    "row": 0
+   }
+  ]
+ },
+ "ranksSource": {
+  "layoutRanksDerived": false,
+  "modelRanksDerived": true,
+  "pageHasServedRanks": true
+ },
+ "verdict": {
+  "tuiSeesPlanOnlyEdgeT1toT2": true,
+  "tuiSeesPlanOnlyEdgeT2toT4": true,
+  "ranksFollowModel": true,
+  "ghostDrawn": true,
+  "flatModelOneRank": true,
+  "flatDrawsFlat": true
+ }
+}

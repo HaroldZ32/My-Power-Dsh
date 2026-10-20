@@ -1,0 +1,13 @@
+{
+  "claim": "F3",
+  "slug": "verify-manifest",
+  "command": "bun run verify:manifest",
+  "cwd": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "exit": 0,
+  "signal": null,
+  "durationMs": 1923,
+  "launcher": "/home/haroldzhao/.nvm/versions/node/v24.21.0/bin/dsh",
+  "launcherVersion": "0.2.0-rc.2",
+  "decisiveLine": "ok    files-allowlist: 25 pattern(s); 0 required path(s) not admitted\nok    evidence-excluded: the frozen evidence/ tree stays out of the published package\nok    packed-content: npm pack --dry-run lists 987 file(s); 0 required path(s) absent",
+  "outputTail": "# verify-plugin-manifest — repository manifest\n\nok    cordis-dependency: 9 declared dependency name(s) across dependencies/peerDependencies/optionalDependencies, none of them cordis\nok    cordis-devDependency-note: devDependencies declare no cordis package\nok    lifecycle-script: 19 script name(s), none carrying preinstall/install/postinstall/prepare\nok    version:dsh-plugin.json: version = 0.13.2\nok    version:dsh-distribution.json: distribution.version = 0.13.2\nok    bundle-patch-files: 2 patch file(s) declared, 0 missing\nok    row-module-paths: 27 module path(s) named by the patch files, 0 missing, 0 patch file(s) unreadable\nok    files-allowlist: 25 pattern(s); 0 required path(s) not admitted\nok    evidence-excluded: the frozen evidence/ tree stays out of the published package\nok    packed-content: npm pack --dry-run lists 987 file(s); 0 required path(s) absent\n\nVERDICT: PASS — the install-time rules and the packaging contract hold.\n$ node scripts/verify-plugin-manifest.ts --pack\n"
+}

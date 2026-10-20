@@ -1,0 +1,35 @@
+{
+  "startedAt": "2026-10-19T08:01:45.123Z",
+  "finishedAt": "2026-10-19T08:15:01.883Z",
+  "docker": "Docker version 29.9.0, build f415da8",
+  "compose": "Docker Compose version v5.6.0",
+  "image": "mpd-docker-e2e:local",
+  "imageMiB": 475,
+  "buildxConfig": "/tmp/mpd-docker-e2e-buildx-XbVNje",
+  "liveRequested": true,
+  "browserEnabled": true,
+  "requiredPrefixes": [
+    "live.",
+    "boot.llmTurn",
+    "ui."
+  ],
+  "unmeasured": [
+    "live.nativeExecutor"
+  ],
+  "steps": [
+    {
+      "id": "driver-build",
+      "cmd": "docker compose -f /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/docker/docker-compose.yml build",
+      "status": 0
+    },
+    {
+      "id": "driver-run",
+      "cmd": "docker compose -f /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/docker/docker-compose.yml run --rm -T -e DEEPSEEK_API_KEY -e MPD_E2E_LIVE=1 -e MPD_E2E_TEAM_PROJECT -e MPD_E2E_BROWSER=1 mpd-client",
+      "status": 1,
+      "signal": null
+    }
+  ],
+  "containerExit": 1,
+  "verdict": "ok=false complete=false passed=128 failed=5 null=5 FAILED=[pack.staticCoherence,pack.distFreshRebuild,live.teamRecord,ui.replyRendered,ui.teamBoard] NULL=[oneclick.scratchRepo,oneclick.requiredPaths,oneclick.filesAllowlist,oneclick.distByteIdentical,live.nativeExecutor]",
+  "exitCode": 3
+}

@@ -48,8 +48,8 @@
 // form), so it cannot drag a second React copy under the host's reconciler.
 import type { TuiScenePropsLike } from "./types.js"
 import { clampCells, stripControl } from "./sanitize.js"
-import { layoutGraphNatural, legendLines, sliceSpans, type GraphTask, type GraphView } from "./graph.js"
-import { NO_SESSION_TEAM_MARKER, sessionIdOf, teamWorkflowLines, WORKSPACE_SCOPE_MARKER, type TeamFeedAccessor, type TeamWorkflow } from "./team-state.js"
+import { layoutGraphNatural, legendLines, sliceSpans, type GraphView } from "./graph.js"
+import { modelRanks, modelRows, NO_SESSION_TEAM_MARKER, sessionIdOf, teamWorkflowLines, WORKSPACE_SCOPE_MARKER, type TeamFeedAccessor, type TeamWorkflow } from "./team-state.js"
 import { t } from "./i18n.js"
 import { gutterCellsX, legendLinesFor, panelKit, textRow, toneColor, useTeamFeed, visualGlyph, type PanelKit } from "./panel-core.js"
 import { DAG_ANIM, DAG_CHROME, DAG_TONE_GLYPH, type DagTone } from "./dag-theme.js"
@@ -1069,24 +1069,6 @@ export function subagentSectionRows(channel: unknown): SubagentSectionRow[] {
 }
 
 /**
- * The team's tasks in the DAG's own vocabulary, mapped exactly as the team scene maps them.
- * @param workflow - the team projection.
- * @returns one `GraphTask` per task row.
- */
-function graphTasksOf(workflow: TeamWorkflow): GraphTask[] {
-  return workflow.tasks.map((task) => ({
-    id: task.id,
-    subject: task.subject,
-    ...(task.kind === undefined ? {} : { kind: task.kind }),
-    visual: task.visual,
-    ...(task.assignee === undefined ? {} : { assignee: task.assignee }),
-    dependencies: task.dependencies,
-    depth: task.depth,
-    ...(task.attempt === undefined ? {} : { attempt: task.attempt }),
-  }))
-}
-
-/**
  * The DAG box for one render, at its NATURAL width (frozen clauses T1/T2).
  *
  * THE SIGNATURE IS UNCHANGED ON PURPOSE and its second argument has CHANGED MEANING: `cols` is now the
@@ -1100,9 +1082,12 @@ function graphTasksOf(workflow: TeamWorkflow): GraphTask[] {
  * @returns the laid-out graph, or undefined when there is no team or no task to draw.
  */
 export function teamGraphView(workflow: TeamWorkflow | undefined, cols: number, rows?: number): GraphView | undefined {
-  if (workflow === undefined || workflow.tasks.length === 0) return undefined
+  if (workflow === undefined) return undefined
+  /** The rows to draw, joined with the SERVED model so a plan-only ghost is never dropped. */
+  const graphTasks = modelRows(workflow)
+  if (graphTasks.length === 0) return undefined
   try {
-    return layoutGraphNatural(graphTasksOf(workflow), undefined, rows === undefined ? {} : { rows })
+    return layoutGraphNatural(graphTasks, undefined, rows === undefined ? {} : { rows }, modelRanks(workflow))
   } catch {
     // A pathological record must cost the DAG, not the surface.
     return undefined

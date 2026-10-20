@@ -1,0 +1,45 @@
+{
+ "probe": "dead-window",
+ "at": "2026-10-19T07:04:29.958Z",
+ "runtime": "bun 1.4.2",
+ "deadWindow": {
+  "delivered": true,
+  "latencyMs": 27,
+  "manual": false,
+  "batches": 1,
+  "errors": 0
+ },
+ "doubleDelivery": {
+  "batches": 1,
+  "manualAny": false,
+  "firstCoalesced": 1
+ },
+ "giveUp": {
+  "batches": 0,
+  "errors": 6,
+  "attempts": 7,
+  "at700": {
+   "errors": 6,
+   "attempts": 7
+  },
+  "after1100": {
+   "errors": 6,
+   "attempts": 7
+  }
+ },
+ "closeCancels": {
+  "handlesAfterClose": 1,
+  "afterWait": 1,
+  "batches": 0,
+  "closedPoll": false
+ },
+ "verdict": {
+  "deadWindowWriteDelivered": true,
+  "deadWindowOneBatch": true,
+  "doubleDeliveryGuard": true,
+  "giveUpBounded": true,
+  "giveUpAddsNoEvent": true,
+  "giveUpFailuresReported": true,
+  "closeCancelsRearm": true
+ }
+}

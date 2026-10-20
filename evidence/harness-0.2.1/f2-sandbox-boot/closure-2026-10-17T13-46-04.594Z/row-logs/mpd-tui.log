@@ -1,0 +1,5 @@
+[mpd-tui-adapter] mpdTui provided (one deferred inject per seam, inject-free row)
+TUI_SEAMS=(none composed)
+[mpd-tui] decision-event seam: no intercept point attempted — the mediated plugin host was not injected (read at apply time; the seam discloses its own verdict once it binds)
+[mpd-tui] no DSH-TUI service is composed in this profile (web composition?): every mpd TUI surface was skipped
+[mpd-tui-adapter] host contact ABSENT: no candidate carried a readable lib/types/ui.js (16 probed) — the surfaces that need it stay inactive

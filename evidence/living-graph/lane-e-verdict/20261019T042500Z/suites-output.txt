@@ -1,0 +1,25 @@
+=== HEAD 51caa65336dcaeb29f93a38fe8af029a82ac6676 2026-10-19T04:22:07Z
+--- bun test packages/mpd-tui-plugin packages/mpd-bundle-plugin ---
+(pass) R18's reader side: the RECORD's own unresolved report, beside the SERVED one > the pinned detail body NAMES the record's unresolved references, beside blocked-by and dependents [37.50ms]
+
+ 677 pass
+ 0 fail
+ 17175 expect() calls
+Ran 677 tests across 30 files. [11.30s]
+exit=0
+--- bun test packages/mpd-graph-core ---
+ 60 pass
+ 0 fail
+ 137 expect() calls
+Ran 60 tests across 5 files. [390.00ms]
+--- bun test packages (full) ---
+
+ 2098 pass
+ 3 skip
+ 0 fail
+ 25882 expect() calls
+Ran 2101 tests across 132 files. [22.54s]
+exit=0
+--- typecheck ---
+$ tsgo --noEmit
+exit=0

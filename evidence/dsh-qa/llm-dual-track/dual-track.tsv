@@ -1,3 +1,3 @@
 track	provider	ok	duration_ms	exit
-official	deepseek-official	true	23027	0
-deepseek	deepseek	false	11580	1
+official	deepseek-official	true	10734	0
+deepseek	deepseek	false	6733	1

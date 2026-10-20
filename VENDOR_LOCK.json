@@ -3,9 +3,9 @@
   "assets": {
     "_note": "directory assets: fileCount + treeSha (sorted relpath + LF-normalized per-file sha256 aggregation) double gate; single-file assets: fileCount + sha256 gate - both verified by scripts/verify-vendor.ts, which refuses a zero-subject run",
     "skills": {
-      "fileCount": 381,
+      "fileCount": 382,
       "source": "skill corpus at repo root (ported upstream skills + dsh-qa + svn-master + bundle-lifecycle, agent-teams-dispatch, agent-teams-sidebar, extension-isolation, extension-lifecycle, extension-mcp-bridge, extension-template, workmate-library, workmate-team-member and readonly-deny QA cases + the dsh-qa scripts/lib/workspace-isolation.mjs QA sandbox helper + the dsh-qa scripts/lib/gate-probe.mjs two-sided complexity-gate probe + the five TUI lanes and their shared harness: scripts/tui-mount.mjs, tui-panels.mjs, tui-admission.mjs, tui-distribution.mjs, tui-spec-conformance.mjs, lib/tui-lane.mjs + the settings-bridge lanes and their shared engine: scripts/tui-settings-bridge.mjs, web-settings-bridge.mjs, lib/settings-bridge-lane.mjs + the six team-watchdog lanes and their shared harness: scripts/team-watchdog-{heartbeat,fault,scene,config,notify,boot}.mjs, lib/watchdog-lane.mjs + the real-dsh boot lane); whole-dir refresh from upstream, keep provenance links",
-      "treeSha": "2bcadef496c2f8191aaf124ccc2d0ff065475880b551cff650b3f14af89b81ad"
+      "treeSha": "c85dc14fb10315b6c3ddaabe90f8e0682931673b9f11b2da674dee60642fe18e"
     },
     "packages/mpd-mcp-codegraph/dist/serve.js": {
       "fileCount": 1,
@@ -24,7 +24,7 @@
     },
     "packages/mpd-schemastery": {
       "fileCount": 19,
-      "treeSha": "1d086f00dad5c204a3d7d4cec92efb205f847f5914c7ee90c02554fa0b9ea4ed",
+      "treeSha": "5debcfdceb2e988fb047e6b674eaf63f560621652fd8ceb2b3f506e6ada62c68",
       "source": "schemastery validator relocated out of the deleted adopted agent-teams body (MIT; see packages/mpd-schemastery/LICENSE and LICENSE-NOTICES.md)"
     },
     "packages/mpd-bundle-plugin/adopted": {
@@ -34,7 +34,7 @@
     },
     "packages/mpd-bundle-plugin/client.js": {
       "fileCount": 1,
-      "sha256": "a9c6223c94173a40400fc81ee9a943c7b39efe6c9d62c4c9c1410bdcdfa066eb",
+      "sha256": "c9724d95507a646e39cda1c78266c597d7396104ac29761196c1699bc72449e2",
       "source": "combined web client DERIVED from packages/mpd-bundle-plugin/adopted/** by scripts/build-mpd-client.ts; rebuild it, never rewrite this fingerprint"
     }
   },

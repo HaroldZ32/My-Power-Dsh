@@ -1,0 +1,20 @@
+[2026-10-17T13:46:07.318Z] [mpd-mcp-lsp] starting cclsp@0.7.0 from /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/node_modules/.bun/cclsp@0.7.0+5b6b5129650ecc67/node_modules/cclsp/dist/index.js
+[2026-10-17T13:46:07.328Z] [mpd-mcp-lsp] cclsp config: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/harness-0.2.1/sandbox/closure-uBAca9/ws/.mpd/lsp/cclsp.json (generated, 2 language server(s))
+[2026-10-17T13:46:07.339Z] Loading config from CCLSP_CONFIG_PATH: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/harness-0.2.1/sandbox/closure-uBAca9/ws/.mpd/lsp/cclsp.json
+[2026-10-17T13:46:07.339Z] Loaded 2 server configurations from env
+[2026-10-17T13:46:07.339Z] CCLSP Server running on stdio
+[2026-10-17T13:46:07.339Z] Scanning configured server directories for supported file types
+[2026-10-17T13:46:07.339Z] Scanning /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/harness-0.2.1/sandbox/closure-uBAca9/ws for extensions: ts, tsx, js, jsx, mjs, cjs, mts, cts
+[2026-10-17T13:46:07.343Z] Scanning /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/harness-0.2.1/sandbox/closure-uBAca9/ws for extensions: rs
+[2026-10-17T13:46:07.344Z] Starting 0 LSP servers...
+[2026-10-17T13:46:07.344Z] LSP server preloading completed
+[2026-10-17T13:46:07.419Z] [mpd-mcp-lsp] starting cclsp@0.7.0 from /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/node_modules/.bun/cclsp@0.7.0+5b6b5129650ecc67/node_modules/cclsp/dist/index.js
+[2026-10-17T13:46:07.428Z] [mpd-mcp-lsp] cclsp config: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/harness-0.2.1/sandbox/closure-uBAca9/ws/.mpd/lsp/cclsp.json (generated, 2 language server(s), unchanged)
+[2026-10-17T13:46:07.438Z] Loading config from CCLSP_CONFIG_PATH: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/harness-0.2.1/sandbox/closure-uBAca9/ws/.mpd/lsp/cclsp.json
+[2026-10-17T13:46:07.438Z] Loaded 2 server configurations from env
+[2026-10-17T13:46:07.439Z] CCLSP Server running on stdio
+[2026-10-17T13:46:07.439Z] Scanning configured server directories for supported file types
+[2026-10-17T13:46:07.439Z] Scanning /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/harness-0.2.1/sandbox/closure-uBAca9/ws for extensions: ts, tsx, js, jsx, mjs, cjs, mts, cts
+[2026-10-17T13:46:07.447Z] Scanning /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/harness-0.2.1/sandbox/closure-uBAca9/ws for extensions: rs
+[2026-10-17T13:46:07.448Z] Starting 0 LSP servers...
+[2026-10-17T13:46:07.448Z] LSP server preloading completed

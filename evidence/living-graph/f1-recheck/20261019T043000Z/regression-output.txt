@@ -1,0 +1,40 @@
+=== HEAD da1974f0b9bfd289900d1ecef81cacbd67eade26 2026-10-19T04:34:28Z
+--- gate positive ---
+[verify-graph-model] PASS — nodes (8), edges (6), ranks, cycles and the report equal the declared input
+exit=0
+--- gate seeded negative ---
+[verify-graph-model] negative control: F1→F2: source "plan" seeded to "board"
+[verify-graph-model] FAIL edge F1→F2: expected source "plan" got "board"
+[verify-graph-model] FAIL edge list: expected [{"from":"F1","source":"plan","to":"F2"},{"from":"T1","source":"both","to":"T2"},{"from":"T1","source":"board","to":"T4"},{"from":"T2","source":"plan","to":"T4"},{"from":"T3","source":"both","to":"T4"},{"from":"T4","source":"board","to":"T9"}] got [{"from":"F1","source":"board","to":"F2"},{"from":"T1","source":"both","to":"T2"},{"from":"T1","source":"board","to":"T4"},{"from":"T2","source":"plan","to":"T4"},{"from":"T3","source":"both","to":"T4"},{"from":"T4","source":"board","to":"T9"}]
+[verify-graph-model] FAIL golden edges: expected [{"from":"F1","source":"plan","to":"F2"},{"from":"T1","source":"both","to":"T2"},{"from":"T1","source":"board","to":"T4"},{"from":"T2","source":"plan","to":"T4"},{"from":"T3","source":"both","to":"T4"},{"from":"T4","source":"board","to":"T9"}] got [{"from":"F1","source":"board","to":"F2"},{"from":"T1","source":"both","to":"T2"},{"from":"T1","source":"board","to":"T4"},{"from":"T2","source":"plan","to":"T4"},{"from":"T3","source":"both","to":"T4"},{"from":"T4","source":"board","to":"T9"}]
+[verify-graph-model] FAIL — 3 expectation(s) did not hold
+exit=1
+--- gate self-test ---
+[verify-graph-model] self-test PASS — positive: the default model equals its declared input (oracle + golden) :: 0 mismatches
+[verify-graph-model] self-test PASS — determinism: two builds serialize byte-identically :: identical
+[verify-graph-model] self-test PASS — input-order independence: reversed board and plan arrays build the same model :: identical
+[verify-graph-model] self-test PASS — negative: a seeded wrong edge is refused and NAMED :: edge F1→F2: expected source "plan" got "board"
+[verify-graph-model] self-test PASS — --fixture <dir> loads plan.md + board.json and exits 0 :: exit 0: [verify-graph-model] PASS — nodes (8), edges (6), ranks, cycles and the report equal the declared input
+[verify-graph-model] self-test PASS — --board <path> --plan <path> loads the explicit files and exits 0 :: exit 0: [verify-graph-model] PASS — nodes (8), edges (6), ranks, cycles and the report equal the declared input
+[verify-graph-model] self-test PASS — --seed-wrong-edge exits non-zero and names the edge :: exit 1: [verify-graph-model] negative control: F1→F2: source "plan" seeded to "board"
+[verify-graph-model] self-test PASS — --emit prints the serialized model and still exits by the check :: exit 0, snapshot=present
+[verify-graph-model] self-test PASS — 8 arms: both directions and the path forms
+exit=0
+--- two plane suites ---
+
+ 680 pass
+ 0 fail
+ 17179 expect() calls
+Ran 680 tests across 30 files. [11.27s]
+--- core suite ---
+ 0 fail
+ 137 expect() calls
+Ran 60 tests across 5 files. [385.00ms]
+--- typecheck ---
+$ tsgo --noEmit
+exit=0
+--- verify:gates ---
+[verify-gates] workflows out| [verify-workflows] PASS - every workflow is loadable YAML with a sane job/step shape
+[verify-gates] member workflows: exit=0 PASS - 71ms
+[verify-gates] PASS - 8/8 member gate(s) green
+exit=0

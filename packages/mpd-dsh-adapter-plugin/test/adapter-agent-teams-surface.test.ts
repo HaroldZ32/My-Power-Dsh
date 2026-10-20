@@ -494,9 +494,14 @@ describe("subagent plane forwarders", () => {
 
   test("startContinuableAgent THROWS synchronously when the service or the method is absent", () => {
     expect(() => createDshAdapter({ get: () => undefined }).startContinuableAgent({ label: "x" })).toThrow(/harness service "subagents" is unavailable/)
-    /** A subagent service without startContinuable(). */
+    /** A subagent service without any durable-child start member (it has only `start()`). */
     const withoutMethod = { get: (name: string) => (name === "subagents" ? { start: async () => ({}) } : undefined) }
-    expect(() => createDshAdapter(withoutMethod).startContinuableAgent({ label: "x" })).toThrow(/exposes no startContinuable\(\)/)
+    // RE-PURPOSED for harness 0.2.1-rc.2: that release removed `startContinuable()`, so the seam
+    // this surface binds is `startActivation()`. The refusal therefore names BOTH generations
+    // instead of the one member that used to exist — an operator on either host is told which
+    // members were probed. The synchronous-throw contract itself is unchanged and is still what
+    // this arm asserts (a rejected promise would be a different contract).
+    expect(() => createDshAdapter(withoutMethod).startContinuableAgent({ label: "x" })).toThrow(/exposes neither startActivation\(\) nor startContinuable\(\)/)
   })
 
   test("interruptAgent forwards both arguments verbatim, receiver-bound, and THROWS when absent", () => {

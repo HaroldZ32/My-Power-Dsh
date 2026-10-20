@@ -1317,8 +1317,16 @@ export interface MemberProgress {
  * @returns the counts and the current task id.
  */
 export function memberProgress(record: TeamRecord, name: string): MemberProgress {
-  /** Tasks this member owns, in board order. */
-  const owned = record.tasks.filter((task) => task.owner === name)
+  // OWNERSHIP HAS TWO SPELLINGS. A declared owner carries the member's display NAME, while a member
+  // that CLAIMED its task stamps the claimer, which is its executor handle (the session id). Reading
+  // only the name made a member card say `0/0` beside a board it had just completed — measured
+  // 2026-10-19 on the Docker Web lane — so the row's own handles are collected and both match.
+  /** The executor handles the roster rows with this display name carry. */
+  const handles = new Set(record.members
+    .filter((member) => member.name === name && typeof member.executorRef === "string" && member.executorRef !== "")
+    .map((member) => member.executorRef as string))
+  /** Tasks this member owns, under either spelling, in board order. */
+  const owned = record.tasks.filter((task) => task.owner === name || (task.owner !== undefined && handles.has(task.owner)))
   /** The first owned task that is not finished. */
   const current = owned.find((task) => task.status !== "completed" && task.status !== "cancelled")
   return {
@@ -1343,7 +1351,11 @@ export function readyTasks(record: TeamRecord): TeamTaskRecord[] {
 
 /** The members free to take work: provisioned, and with no task in flight. */
 export function idleMembers(record: TeamRecord): TeamMemberRecord[] {
-  /** Names with a task actually in flight. */
+  /** Every spelling a task in flight may have stamped: the member's name or its executor handle. */
   const busy = new Set(record.tasks.filter((task) => task.status === "in_progress" || task.status === "claimed").map((task) => task.owner).filter((owner): owner is string => owner !== undefined))
-  return record.members.filter((member) => member.status === "running" && !busy.has(member.name))
+  return record.members.filter((member) => member.status === "running"
+    && !busy.has(member.name)
+    // A member whose claim stamped its handle is BUSY; matching only the name would let dispatch book
+    // a second task onto it (the same two-spelling defect `memberProgress` documents).
+    && (member.executorRef === undefined || member.executorRef === "" || !busy.has(member.executorRef)))
 }

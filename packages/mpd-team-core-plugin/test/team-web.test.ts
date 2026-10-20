@@ -12,7 +12,7 @@
 //   * a route never throws into a response — an unreadable record is a payload, not a 500 storm.
 import { describe, expect, test } from "bun:test"
 
-import { TEAM_EVENTS_PATH, TEAM_PLAN_PATH, TEAM_ROUTES, TEAM_STATE_PATH, approvalPhraseFor, buildTeamMail, buildTeamPlan, buildTeamState, buildTeamTasks, buildWorkspaceTeams, planForSession, registerTeamRoutes } from "../src/team-web"
+import { TEAM_EVENTS_PATH, TEAM_MAIL_PATH, TEAM_PLAN_PATH, TEAM_ROUTES, TEAM_STATE_PATH, TEAM_TASK_PATH, approvalPhraseFor, buildTeamMail, buildTeamPlan, buildTeamState, buildTeamTasks, buildWorkspaceTeams, planForSession, registerTeamRoutes } from "../src/team-web"
 import { appendRecord } from "../src/mailbox-store"
 import { addMember, addTask, stagePlan, writePlan } from "../src/plan-store"
 import { addTeamMember, addTeamTask, createTeam, updateTeamTask, writeTeam, type TeamRecord } from "../src/team-store"
@@ -273,6 +273,82 @@ describe("the route", () => {
     expect(String((captured.body as { error: string }).error)).toContain("the store exploded")
   })
 
+  test("an UNRESOLVED named session answers 500 instead of another workspace's team", () => {
+    // THE ROUTE-SIDE CONTAINMENT OF THE RESOLVER'S REFUSAL (CodeRabbit round 2, Major): when no live
+    // agent and no workspace artifact claims the queried session id, `workspaceForRequest` throws so
+    // the read cannot silently be answered from another workspace. The route must turn that into a
+    // 500 payload — an uncaught throw would leave the response unanswered.
+    /** The routes the double captured. */
+    const routes: Array<{ path: string; handler: (req: unknown, res: unknown) => unknown }> = []
+    /** The server double: it captures the route and never refuses. */
+    const server = { register: (route: { path: string; handler: (req: unknown, res: unknown) => unknown }) => { routes.push(route); return () => {} } }
+    registerTeamRoutes(server, {
+      recordFor: () => undefined,
+      workspace: (sessionId?: string) => { throw new Error(`no workspace is bound to session "${sessionId ?? ""}"`) },
+      executor: () => EXECUTOR,
+      effect: (fn: () => unknown) => fn(),
+      warn: () => {},
+    })
+    /** The response double. */
+    const captured: { status: number; body: unknown } = { status: 0, body: undefined }
+    ;(routes.find((route) => route.path === TEAM_STATE_PATH) as { handler: (req: unknown, res: unknown) => unknown }).handler({ url: `${TEAM_STATE_PATH}?sessionId=bogus` }, {
+      writeHead: (status: number) => { captured.status = status },
+      end: (text: string) => { captured.body = JSON.parse(text) },
+    })
+    expect(captured.status).toBe(500)
+    expect(String((captured.body as { error: string }).error)).toContain("no workspace is bound")
+  })
+
+  test("the HOST FENCE refuses the state route BEFORE any read is attempted", () => {
+    // CodeRabbit round 3, Major: a route outside `/api` must not answer a session-scoped read without
+    // the host's own Host/Origin + credential verdict. A refusal must not touch the store.
+    /** Whether the store was read at all. */
+    let read = false
+    /** The routes the double captured. */
+    const routes = new Map<string, (req: unknown, res: unknown) => unknown>()
+    registerTeamRoutes({ register: (route: { path: string; handler: (req: unknown, res: unknown) => unknown }) => { routes.set(route.path, route.handler); return () => {} } }, {
+      recordFor: () => { read = true; return undefined },
+      workspace: () => "/ws",
+      authorize: () => 401,
+      executor: () => EXECUTOR,
+      effect: (fn: () => unknown) => fn(),
+      warn: () => {},
+    })
+    /** The response double. */
+    const captured: { status: number; body: unknown } = { status: 0, body: undefined }
+    ;(routes.get(TEAM_STATE_PATH) as (req: unknown, res: unknown) => unknown)({ url: `${TEAM_STATE_PATH}?sessionId=s1` }, {
+      writeHead: (status: number) => { captured.status = status },
+      end: (text: string) => { captured.body = JSON.parse(text) },
+    })
+    expect(captured.status).toBe(401)
+    expect(String((captured.body as { error: string }).error)).toContain("not authenticated")
+    expect(read).toBe(false)
+  })
+
+  test("the HOST FENCE refuses the events route instead of opening a stream", () => {
+    /** The route handler the double captured. */
+    let handler: ((req: unknown, res: unknown) => unknown) | undefined
+    /** The writes the response double saw; a refused stream must write NONE of the SSE head. */
+    const writes: string[] = []
+    /** The status the refusal answered with. */
+    let status = 0
+    registerTeamRoutes({ register: (route: { path: string; handler: (req: unknown, res: unknown) => unknown }) => { if (route.path === TEAM_EVENTS_PATH) handler = route.handler; return () => {} } }, {
+      recordFor: () => undefined,
+      workspace: () => "/ws",
+      authorize: () => 403,
+      executor: () => EXECUTOR,
+      effect: (fn: () => unknown) => fn(),
+      warn: () => {},
+    })
+    ;(handler as unknown as (req: unknown, res: unknown) => unknown)({ url: TEAM_EVENTS_PATH }, {
+      writeHead: (value: number) => { status = value },
+      write: (frame: string) => { writes.push(frame) },
+      end: () => {},
+    })
+    expect(status).toBe(403)
+    expect(writes).toEqual([])
+  })
+
   test("a composition with NO web server registers nothing and says so quietly", () => {
     // A headless profile has no web server, and that is not a defect — the route simply is not there.
     expect(registerTeamRoutes(undefined, {
@@ -466,6 +542,38 @@ describe("the shared approval phrase", () => {
       { writeHead: () => {}, end: (text: string) => { captured.body = JSON.parse(text) } },
     )
     expect(captured.body).toEqual(planForSession(workspace, "s1"))
+  })
+
+  test("the WORKSPACE a route reads follows the SESSION the query names, not the process root", () => {
+    // THE DEFECT THIS PINS (measured 2026-10-19, Docker web lane): a route request carries no agent
+    // exec, so an argument-less workspace resolver falls to the dsh process cwd — `/work` there, while
+    // the panel's session lived in `/work/ws`. The panel then drew "No team in this workspace yet"
+    // beside a completed board. The contract is now: the query's session id REACHES the resolver for
+    // every JSON route, so the row can answer the workspace that session owns.
+    /** Every session id the resolver was handed, in call order. */
+    const asked: string[] = []
+    /** The routes the double captured, by path. */
+    const routes = new Map<string, (req: unknown, res: unknown) => unknown>()
+    registerTeamRoutes({ register: (route: { path: string; handler: (req: unknown, res: unknown) => unknown }) => { routes.set(route.path, route.handler); return () => {} } }, {
+      recordFor: () => undefined,
+      workspace: (sessionId?: string) => { asked.push(sessionId ?? "<none>"); return "/ws/one" },
+      executor: () => EXECUTOR,
+      effect: (fn: () => unknown) => fn(),
+      warn: () => {},
+      subscribe: () => () => {},
+      revision: () => 0,
+    })
+    /** One response double; every route answers through it. */
+    const sink = { writeHead: () => {}, end: () => {} }
+    for (const path of [TEAM_STATE_PATH, TEAM_PLAN_PATH, TEAM_TASK_PATH, TEAM_MAIL_PATH]) {
+      ;(routes.get(path) as (req: unknown, res: unknown) => unknown)({ url: `${path}?sessionId=sess-42` }, sink)
+    }
+    expect(asked.length).toBeGreaterThanOrEqual(4)
+    expect(asked.every((id) => id === "sess-42")).toBe(true)
+    // A session-less read still asks the resolver with the empty string, never with a guess.
+    asked.length = 0
+    ;(routes.get(TEAM_STATE_PATH) as (req: unknown, res: unknown) => unknown)({ url: TEAM_STATE_PATH }, sink)
+    expect(asked).toEqual([""])
   })
 })
 

@@ -1,0 +1,32 @@
+{
+  "ok": false,
+  "harness": "0.2.1-rc.2",
+  "sandbox": {
+    "root": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/harness-0.2.1/sandbox/guards-x0YvwC",
+    "home": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/harness-0.2.1/sandbox/guards-x0YvwC/dsh-home",
+    "ws": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/harness-0.2.1/sandbox/guards-x0YvwC/ws",
+    "kept": false
+  },
+  "credentialsSeeded": {
+    "storeCopied": true,
+    "settingsCopied": false,
+    "refsMerged": false
+  },
+  "installExit": 0,
+  "read": {
+    "sourcePath": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-boulder-plugin/src/index.ts",
+    "called": true,
+    "resultOk": false,
+    "exit": 0,
+    "resultText": ""
+  },
+  "write": {
+    "codePath": "packages/guard-probe/src/probe.ts",
+    "called": true,
+    "resultOk": false,
+    "artifactExists": true,
+    "exit": 0,
+    "resultText": ""
+  },
+  "bootLine": "[2026-10-17T13:30:27.452Z] [mpd-roles] team plane: readOnlyGuard=installed deny=8 verifyGate=installed captainInvestigation=deny askUserQuestion=installed delegationGate=deny rosterSection=agent-scoped order=605 sessionGate=mechanical"
+}

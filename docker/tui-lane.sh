@@ -60,11 +60,14 @@ STATE_FILE="${STATE_FILE:?}"
 FACTS_FILE="${FACTS_FILE:?}"
 APP_DIR="${APP_DIR:?}"
 WORK_DIR="${WORK_DIR:?}"
-# Same default as docker/entrypoint.sh, and for the same reason: 0.15.0 is the dsh-tui release this
-# bundle targets, and its peer ranges still cover the whole band this lane runs (up to and including
-# 0.2.0-rc.2), while 0.11.2 stopped at 0.2.0-rc.1 and is REFUSED against a 0.2.0-rc.2 harness. (0.14.0,
-# 0.13.0 and 0.12.0 were the pins before it.) Keep the two in step.
-TUI_VERSION="${TUI_VERSION:-0.15.0}"
+# Same default as docker/entrypoint.sh, and for the same reason: 0.16.1 is the dsh-tui release this
+# bundle targets, and it is the FIRST host whose declared peer bands include harness 0.2.1-rc.2 (every
+# one of its 36 `@deepseek-ai/dsh-*` peers lists it). 0.15.0's bands stop at 0.2.0-rc.2, so pinning it
+# against a 0.2.1 profile is REFUSED on peer ranges — the lane then REDDENS at that step and the row's
+# raw quotes the host's own refusal, because the `add-host.log` capture below copies the step log into
+# the evidence tree (`tui-logs/`) and clips its first/error lines. (0.14.0, 0.13.0 and 0.12.0 were the
+# pins before it.) Keep the two in step.
+TUI_VERSION="${TUI_VERSION:-0.16.1}"
 # The apparatus library (docker/lib/live-verdict.ts) and the caller's live-arm switch. Both are handed
 # over by docker/entrypoint.sh, which also owns the credential staging — the TUI cannot run a real
 # turn without them, and a missing LIB_DIR then reddens live.tui.* instead of passing silently.
@@ -81,6 +84,22 @@ mkdir -p "$TUI_DIR"
 EVIDENCE_DIR="${OUT_DIR:-$TUI_DIR}"
 PANE_DIR="$EVIDENCE_DIR/tui-panes"
 mkdir -p "$PANE_DIR"
+
+# ── step-log evidence: the refusal text must outlive the container ─────────────
+#
+# MEASURED 2026-10-17 (the F4 source run): this lane aborted at the
+# `dsh plugin --profile dsh-tui add "@deepseek-harness-tui/dsh-tui@$TUI_VERSION"` step and recorded
+# `raw: line=182` — with the step's own `add-host.log`, the file that carries the host's refusal, left
+# behind in the container's scratch tree. The verifier could therefore sign the BOUND (no real-machine
+# TUI adaptation this wave) but had to leave the CAUSE unproven, because the repository's recorded
+# peer-refusal measurement names an EARLIER pin (0.11.2 vs 0.2.0-rc.2), never this run's pair. So every
+# step log is now copied into the evidence tree on failure, and the failing row's `raw` quotes the
+# first line (plus the first error-looking line when it differs) AND the path — the file is the durable
+# anchor, the raw is the label on it.
+LOG_DIR="$EVIDENCE_DIR/tui-logs"
+mkdir -p "$LOG_DIR"
+# The step log CURRENTLY being written; the two failure nets below quote it. Empty until a step sets it.
+CURRENT_LOG=""
 
 json_escape() {
   local s="$1"
@@ -116,17 +135,70 @@ record() {
 # path sets it BEFORE exiting, exactly as `on_err` does, and the net keeps firing for the exit NOBODY
 # recorded: the ERR trap, or an exit the lane did not itself request.
 LANE_EXIT_RECORDED=0
+
+# capture_step_log <path> — copy one step log into the evidence tree and print its evidence path.
+# A copy that fails (permissions, a vanished file) still PRINTS the intended path, so the raw names the
+# anchor either way; the failure itself is never allowed to take the lane down.
+capture_step_log() {
+  local src="$1" name
+  name="$(basename "$src")"
+  cp "$src" "$LOG_DIR/$name" 2>/dev/null || true
+  printf '%s' "$LOG_DIR/$name"
+}
+
+# capture_step_logs — copy every step log this lane writes; called from BOTH failure nets, so the
+# evidence is complete even when the abort was an immediate one (a `set -u` unbound variable) rather
+# than a failed command the ERR trap saw.
+capture_step_logs() {
+  local name
+  for name in install-host.log add-host.log add-bundle.log dump.yml dump.err tmux.err store.err session-probe.err preset-pref-writer.log; do
+    [ -f "$TUI_DIR/$name" ] && capture_step_log "$TUI_DIR/$name" >/dev/null
+  done
+}
+
+# first_log_line <path> — the first non-blank line, clipped: the FIRST thing the tool said.
+first_log_line() {
+  local line
+  line="$(grep -m1 -vE '^[[:space:]]*$' "$1" 2>/dev/null | tr -d '\r' || true)"
+  printf '%s' "${line:0:90}"
+}
+
+# error_log_line <path> — the first line that LOOKS like the refusal, clipped; empty when none does.
+# Quoted beside the first line because pnpm's progress output comes FIRST and the refusal further down.
+error_log_line() {
+  local line
+  line="$(grep -m1 -iE 'ERR_|ERESOLVE|peer|refus|invalid|error|conflict|unmet|Cannot' "$1" 2>/dev/null | tr -d '\r' || true)"
+  printf '%s' "${line:0:90}"
+}
+
+# step_raw <prefix> — the failing row's raw: the prefix, the current log's first line, the first
+# error-looking line when it differs, and the evidence path. The row's raw is read by a human, so it
+# carries the witness text itself; the copied file carries the whole log.
+step_raw() {
+  local raw="$1" bad first
+  if [ -n "$CURRENT_LOG" ] && [ -f "$CURRENT_LOG" ]; then
+    first="$(first_log_line "$CURRENT_LOG")"
+    raw="$raw first=$first"
+    bad="$(error_log_line "$CURRENT_LOG")"
+    if [ -n "$bad" ] && [ "$bad" != "$first" ]; then raw="$raw err=$bad"; fi
+    raw="$raw log=$(capture_step_log "$CURRENT_LOG")"
+  fi
+  printf '%s' "$raw"
+}
+
 on_err() {
   local code=$?
   LANE_EXIT_RECORDED=1
-  record tui.laneExit false "the TUI lane aborted (exit $code) — see this step's log; earlier tui.* records are the assertions that had already run" "line=${BASH_LINENO[0]:-$LINENO}"
+  capture_step_logs
+  record tui.laneExit false "the TUI lane aborted (exit $code) — see this step's log; earlier tui.* records are the assertions that had already run" "$(step_raw "line=${BASH_LINENO[0]:-$LINENO} exit=$code")"
   exit "$code"
 }
 trap 'on_err' ERR
 on_exit() {
   local code=$?
   if [ "$code" != "0" ] && [ "$LANE_EXIT_RECORDED" = "0" ]; then
-    record tui.laneExit false "the TUI lane exited with $code without the ERR trap seeing it (an immediate abort such as a set -u unbound variable) — earlier tui.* records are the assertions that had already run, and every arm after this point reads as 'not reached'" "abort=exit-$code net=EXIT-trap"
+    capture_step_logs
+    record tui.laneExit false "the TUI lane exited with $code without the ERR trap seeing it (an immediate abort such as a set -u unbound variable) — earlier tui.* records are the assertions that had already run, and every arm after this point reads as 'not reached'" "$(step_raw "abort=exit-$code net=EXIT-trap")"
   fi
 }
 trap 'on_exit' EXIT
@@ -169,6 +241,7 @@ pane_glyphs() {
 }
 
 # ── 1. the TUI host ────────────────────────────────────────────────────────────
+CURRENT_LOG="$TUI_DIR/install-host.log"
 npm i -g "@deepseek-harness-tui/dsh-tui@$TUI_VERSION" >"$TUI_DIR/install-host.log" 2>&1
 HOST_EXIT=$?
 TUI_BIN="$(command -v dsh-tui || true)"
@@ -179,21 +252,28 @@ else
 fi
 
 # ── 2. the TUI profile: host bundle, then THIS bundle as the third layer ───────
+# THE PEER REFUSAL LANDS HERE, and this is the step whose log the 2026-10-17 run could not quote.
+CURRENT_LOG="$TUI_DIR/add-host.log"
 dsh plugin --profile dsh-tui add "@deepseek-harness-tui/dsh-tui@$TUI_VERSION" >"$TUI_DIR/add-host.log" 2>&1
 ADD_HOST=$?
 record tui.pluginAddHost "$([ "$ADD_HOST" = 0 ] && echo true || echo false)" \
   "the TUI host bundle installs into the dsh-tui profile" "exit=$ADD_HOST"
+CURRENT_LOG=""
 
+CURRENT_LOG="$TUI_DIR/add-bundle.log"
 ( cd "$APP_DIR" && dsh plugin --profile dsh-tui add . ) >"$TUI_DIR/add-bundle.log" 2>&1
 ADD_BUNDLE=$?
 record tui.pluginAddBundle "$([ "$ADD_BUNDLE" = 0 ] && echo true || echo false)" \
   "THIS bundle installs into the dsh-tui profile as the third patch layer" "exit=$ADD_BUNDLE"
+CURRENT_LOG=""
 
 # ── 3. composition (COMPOSITION ONLY — never cited as a load proof) ────────────
+CURRENT_LOG="$TUI_DIR/dump.err"
 dsh --profile dsh-tui --dump-config >"$TUI_DIR/dump.yml" 2>"$TUI_DIR/dump.err"
 DUMP_EXIT=$?
 record tui.compose "$([ "$DUMP_EXIT" = 0 ] && echo true || echo false)" \
   "dsh --profile dsh-tui --dump-config composes (COMPOSITION ONLY, never a load proof)" "exit=$DUMP_EXIT"
+CURRENT_LOG=""
 
 # One row's own block, from `- id: <id>` to the next column-0 `- id:`.
 row_block() { awk -v id="$1" '$0 ~ "^- id: " id "$" {f=1} f && NR>1 && /^- id: / && $0 !~ "^- id: " id "$" {exit} f' "$TUI_DIR/dump.yml"; }
@@ -318,8 +398,10 @@ SOCK="$TUI_DIR/tui.sock"
 PANE_LOG="$TUI_DIR/pane.log"
 : > "$PANE_LOG"
 rm -f "$SOCK"
+CURRENT_LOG="$TUI_DIR/tmux.err"
 tmux -f /dev/null -S "$SOCK" new-session -d -s tui -x 220 -y 50 -c "$WORK_DIR/ws" 2>"$TUI_DIR/tmux.err"
 TMUX_NEW=$?
+CURRENT_LOG=""
 tmux -S "$SOCK" pipe-pane -t tui -o "cat > '$PANE_LOG'" 2>/dev/null || true
 # `dsh-tui` must be given the SANDBOX environment only: a leaked real HOME/DSH_HOME would
 # make this run write state outside the container's throwaway home and prove nothing.
@@ -347,7 +429,8 @@ BOOT_PANE="$(cat "$TUI_DIR/pane-boot.txt" 2>/dev/null || true)"
 # session is closed) is the arm that judges it, and this count is its evidence.
 BOOT_LANDING_HITS="$(printf '%s' "$BOOT_PANE" | grep -cE "$LANDING_MARKERS" || true)"
 
-# ── 4.0 THE SESSION MATERIALIZER (measured 2026-10-14 on dsh-tui 0.15.0) ──────
+# ── 4.0 THE SESSION MATERIALIZER (measured 2026-10-14 on dsh-tui 0.15.0; the 0.16.1 host was
+# checked against the same seam and did not change it) ──────────────────────────
 # WHY THIS EXISTS. The harness writes a session store directory only once the session APPENDS an event,
 # and this lane's boot is COMMAND-ONLY: it opens the chat screen and waits. Nothing appends, so
 # `<DSH_HOME>/sessions/<projectKey>/<sessionId>` never appears, the `resolve` poll below can only answer
@@ -1237,9 +1320,17 @@ if [ "$LIVE" = "1" ]; then
   tmux -S "$SOCK" send-keys -t tui Escape 2>/dev/null || true
   sleep 1
   # The prompt asks for ONE MPD tool so `live.tui.mpdToolCalled` is a statement about this bundle's
-  # tool plane inside the TUI, not about the model's mood.
-  TUI_PROMPT="Call the mpd_config_get tool once (it takes no arguments), then reply with exactly: DONE"
-  tmux -S "$SOCK" send-keys -t tui "$TUI_PROMPT" Enter 2>/dev/null || true
+  # tool plane inside the TUI, not about the model's mood. In TEAM-PROJECT mode the entrypoint hands
+  # over the team-building prompt instead (`MPD_E2E_TUI_PROMPT`), which is typed through this exact
+  # keystroke path — the same proof, with a much larger subject.
+  TUI_PROMPT="${MPD_E2E_TUI_PROMPT:-Call the mpd_config_get tool once (it takes no arguments), then reply with exactly: DONE}"
+  # LITERAL MODE FOR THE PROMPT TEXT (CodeRabbit finding on PR #48): without `-l`, tmux performs
+  # key-name lookup, so a prompt token that happens to match a key name (Enter, Space, C-a, …) is sent
+  # as that KEY instead of as text. The prompt is text, so it is sent literally, and Enter is a
+  # SEPARATE keypress — the same keystroke path a person takes.
+  tmux -S "$SOCK" send-keys -t tui -l -- "$TUI_PROMPT" 2>/dev/null || true
+  sleep 1
+  tmux -S "$SOCK" send-keys -t tui Enter 2>/dev/null || true
   sleep 2
   capture_pane live-sent
   if command -v node >/dev/null 2>&1; then
@@ -1249,6 +1340,39 @@ if [ "$LIVE" = "1" ]; then
     record live.tui.turnStarted null "node is not on PATH, so the TUI live verdict could not be read — an unmade measurement, never a pass" "node=absent"
   fi
   capture_pane live-after
+  # ── THE LIVE TEAM PROJECT ON THE TUI PLANE ──────────────────────────────────
+  # The turn is over; what remains is the ARTIFACT proof. `/mpd team` opens the product's own team
+  # scene, whose title carries `<name> (<id>)` and whose graph header plus boxed task ids are the
+  # drawing. The plain pane is what the verdict reads; the ANSI bytes are kept as a screenshot
+  # source, so a reviewer can rasterize exactly the screen this run saw (docker/ui/tui-render.py).
+  if [ "${MPD_E2E_TEAM_PROJECT:-0}" = "1" ]; then
+    TEAM_NAME="${MPD_E2E_TEAM_NAME:-live-team-tui}"
+    tmux -S "$SOCK" send-keys -t tui Escape 2>/dev/null || true
+    sleep 1
+    tmux -S "$SOCK" send-keys -t tui "/mpd team" Enter 2>/dev/null || true
+    TEAM_SCENE_WAIT=0
+    while [ "$TEAM_SCENE_WAIT" -lt 60 ]; do
+      sleep 2
+      TEAM_SCENE_WAIT=$((TEAM_SCENE_WAIT + 2))
+      TEAM_NOW="$(tmux -S "$SOCK" capture-pane -p -J -t tui 2>/dev/null || true)"
+      case "$TEAM_NOW" in
+        *"task dependency graph"*) break ;;
+        *"MPD team"*) break ;;
+        *"no team in this session"*) break ;;
+      esac
+    done
+    capture_pane teamLive
+    tmux -S "$SOCK" capture-pane -e -p -J -t tui >"$PANE_DIR/tui-team-live.ansi" 2>/dev/null || true
+    TEAM_SESSION_ARGS=()
+    [ -n "${LIVE_SESSION_ID:-}" ] && TEAM_SESSION_ARGS=(--session "$LIVE_SESSION_ID")
+    if command -v node >/dev/null 2>&1; then
+      node "$LIB_DIR/team-project-verdict.ts" --workspace "$WORK_DIR/ws" --project "team-project-tui" \
+        --state "$STATE_FILE" --label tui --team-name "$TEAM_NAME" --since "$TUI_LIVE_SINCE" \
+        "${TEAM_SESSION_ARGS[@]}" --pane "$TUI_DIR/pane-teamLive.txt" || true
+    else
+      record teamproject.record.tui null "node is not on PATH, so the team-project verdict could not be read — an unmade measurement, never a pass" "node=absent"
+    fi
+  fi
 else
   node "$LIB_DIR/live-verdict.ts" --label tui --state "$STATE_FILE" \
     --unavailable "not attempted: a live turn needs MPD_E2E_LIVE=1 and a credential forwarded by name; the mount assertions are the credential-free maximum" || true
@@ -1338,7 +1462,11 @@ fi
 # ONE awk pass, deliberately: `grep -c` PRINTS its count and EXITS 1 when there is no match,
 # so `$(grep -c … || echo 0)` captured "0\n0" and the comparison below could never be true
 # (measured 2026-09-27: all eleven assertions green and the lane still reported laneExit=false).
-TUI_SUMMARY="$(awk '/"name":"tui\./ { total++; if ($0 ~ /"ok":false/) bad++ } END { printf "%d %d", total, bad }' "$STATE_FILE" 2>/dev/null || echo "0 0")"
+# THE TEAM-PROJECT ROWS ARE THIS LANE'S TOO. They are written by the shared verdict as
+# `teamproject.<row>.tui`; counting only `tui.*` let this row say "every assertion green" while a false
+# teamproject row sat beside it (independent review, 2026-10-19). The FLOOR still counts `tui.*` alone —
+# it pins this lane's own record set — while the BAD count spans both families.
+TUI_SUMMARY="$(awk '/"name":"(tui\.|teamproject\.[a-z]+\.tui)/ { total++; if ($0 ~ /"ok":false/) bad++ } END { printf "%d %d", total, bad }' "$STATE_FILE" 2>/dev/null || echo "0 0")"
 TUI_TOTAL="${TUI_SUMMARY%% *}"
 TUI_BAD="${TUI_SUMMARY##* }"
 # The floor is the number of tui.* records this lane REALLY writes BEFORE this exit record (21: the 19

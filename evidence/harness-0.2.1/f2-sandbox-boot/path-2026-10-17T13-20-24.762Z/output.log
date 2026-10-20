@@ -1,0 +1,235 @@
+=== harness version ===
+0.2.1-rc.2
+
+=== install-profile (tail) ===
+ const rel = other.dsh && other.dsh.bundle ? other.dsh.bundle.patch : undefined; if (typeof rel !== 'string') continue; const text = readText(path.join(dir, rel)); if (text !== null && foreignRowMountsSidebar(text)) { say('DISABLED', 'bundle layer ' + name + ' already mounts it in its own patch'); return true } } } const argv = Array.isArray(process.argv) ? process.argv : []; const overlays = []; for (let i = 0; i < argv.length; i++) { const arg = typeof argv[i] === 'string' ? argv[i] : ''; if (arg === '--patch' && typeof argv[i + 1] === 'string') { overlays.push(argv[i + 1]) } else if (arg.indexOf('--patch=') === 0) { overlays.push(arg.slice(8)) } } const layers = [path.join(profileDir, 'cordis.patch.yml'), path.join(profileDir, '..', '..', 'cordis.patch.yml')]; if (typeof process.env.DSH_HOME === 'string' && process.env.DSH_HOME !== '') { layers.push(path.join(process.env.DSH_HOME, 'cordis.patch.yml')) } for (const overlay of overlays) { layers.push(path.resolve(overlay)) } for (const layer of layers) { const text = readText(layer); if (text !== null && foreignRowMountsSidebar(text)) { say('DISABLED', 'patch layer ' + layer + ' already mounts it'); return true } } const entries = [...ctx.loader.entries()]; const hasWebEntry = entries.some((e) => e.options && e.options.name === '@deepseek-ai/dsh-host-webserver' && (e.options.disabled === undefined || e.options.disabled === false)); if (!hasWebEntry) { say('DISABLED', 'no enabled @deepseek-ai/dsh-host-webserver entry in this composition'); return true } say('ENABLED', 'web plane present and no other layer mounts dsh-better-sidebar'); return false } catch (e) { try { logGuard('[mpd-better-sidebar] mount guard: DISABLED - guard threw ' + String(e && e.message ? e.message : e)) } catch (e2) {} return true } })()"
+  - id: mcp-astgrep
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "ast_grep"
+      transport: "stdio"
+      command: "node"
+      args:
+        - "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-mcp-astgrep/dist/cli.js"
+      env:
+        MPD_AST_GREP_SG_PATH: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/sg"
+      toolCallTimeoutMs: 60000
+  - id: mcp-git
+    name: "@deepseek-ai/dsh-mcp-client"
+    disabled: true
+    config:
+      serverName: "git"
+      transport: "stdio"
+      command: "node"
+      args:
+        - "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-mcp-gitbash/dist/launch.js"
+        - "git"
+      toolCallTimeoutMs: 60000
+  - id: mcp-shell
+    name: "@deepseek-ai/dsh-mcp-client"
+    disabled: true
+    config:
+      serverName: "shell"
+      transport: "stdio"
+      command: "node"
+      args:
+        - "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-mcp-gitbash/dist/launch.js"
+        - "shell"
+      toolCallTimeoutMs: 60000
+  - id: mcp-lsp
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "lsp"
+      transport: "stdio"
+      command: "node"
+      args:
+        - "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-mcp-lsp/dist/launch.js"
+      toolCallTimeoutMs: 60000
+  - id: mcp-codegraph
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "codegraph"
+      transport: "stdio"
+      command: "node"
+      args:
+        - "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-mcp-codegraph/dist/serve.js"
+      env:
+        MPD_CODEGRAPH_BIN: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/codegraph"
+      toolCallTimeoutMs: 60000
+  - id: mcp-context7
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "context7"
+      transport: "streamable-http"
+      url: "https://mcp.context7.com/mcp"
+      toolCallTimeoutMs: 60000
+  - id: mcp-grepapp
+    name: "@deepseek-ai/dsh-mcp-client"
+    config:
+      serverName: "grep_app"
+      transport: "streamable-http"
+      url: "https://mcp.grep.app"
+      toolCallTimeoutMs: 60000
+  - id: mpd-codegraph
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-codegraph-plugin/dist/index.js"
+    config:
+      autoInit: true
+      initTimeoutMs: 60000
+      binary: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/codegraph"
+  - id: mpd-tools
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tools-plugin/dist/index.js"
+    config:
+      writeGuard: true
+      truncateMaxBytes: 8192
+  - id: mpd-modelchain
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-modelchain-plugin/dist/index.js"
+  - id: mpd-ulw
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-ulw-plugin/dist/index.js"
+    config:
+      maxRounds: 3
+  - id: mpd-hashline
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-hashline-plugin/dist/index.js"
+    config:
+      guardEditTools: true
+  - id: mpd-boulder
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-boulder-plugin/dist/index.js"
+  - id: mpd-dsh-adapter
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-dsh-adapter-plugin/dist/index.js"
+  - id: mpd-config
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-config-plugin/dist/index.js"
+  - id: mpd-goal
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-goal-plugin/dist/index.js"
+    config:
+      enabled: true
+      autoAnchor: true
+      autoRounds: 32
+  - id: mpd-comment-checker
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-comment-checker-plugin/dist/index.js"
+    config:
+      autoCheck: false
+  - id: mpd-memory
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-memory-plugin/dist/index.js"
+    config:
+      vcs: "git"
+  - id: mpd-ext
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-ext-plugin/dist/index.js"
+    config:
+      quiet: false
+  - id: mpd-roles
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-roles-plugin/dist/index.js"
+  - id: mpd-verify
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-verify-plugin/dist/index.js"
+    config:
+      mode: "hard"
+      escapeUses: 1
+  - id: mpd-workmate
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-workmate-plugin/dist/index.js"
+  - id: mpd-roster-provider
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-roster-provider-plugin/dist/index.js"
+    config:
+      baseProvider: "spawn"
+  - id: mpd-team-core
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-team-core-plugin/dist/index.js"
+  - id: mpd-team-compact
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-team-compact-plugin/dist/index.js"
+  - id: mpd-team-watchdog
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-team-watchdog-plugin/dist/index.js"
+    config:
+      stateDir: ".mpd/team"
+      warnSilenceMs: 90000
+      tickIntervalMs: 15000
+      warnStreakToEscalate: 3
+      actionOnEscalate: "pause"
+  - id: mpd-bootstrap
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-bootstrap-plugin/dist/index.js"
+  - id: mpd-tui-adapter
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-adapter-plugin/dist/index.js"
+  - id: mpd-tui
+    name: "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-tui-plugin/dist/index.js"
+  - id: mpd-agent-team
+    name: "@deepseek-ai/dsh-experimental-agent-team"
+    config:
+      maxMembers: 16
+      maxTasks: 256
+      maxPendingMessagesPerMember: 64
+      maxMessageBytes: 32768
+      disposalTimeoutMs: 5000
+  - id: mpd-tool-agent-team
+    name: "@deepseek-ai/dsh-experimental-tool-agent-team"
+    config:
+      freshProvider: "spawn"
+      forkProvider: "fork"
+  - id: mpd-ui-agent-team
+    name: "@deepseek-ai/dsh-experimental-client-ui-agent-team"
+[install-profile] wrote profile/ + home patch (35 rows incl. preset-mpd) + web-compat shim @mpd-dsh/mpd
+[install-profile] done. Start with: dsh --profile mpd-headless   (the web preset selector will show the mpd preset)
+
+
+=== boot (stdout+stderr) ===
+F2-BOOT-PROBE
+dsh: warning: 1 entry did not activate
+preset-mpd (@deepseek-ai/dsh-agent-preset): pending (waiting for service: agentPresets)
+
+
+=== row logs ===
+[2026-10-17T13:20:36.184Z] [mpd-bootstrap] skill corpus served from /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/skills (provider mpd-bundle, bundle 0.13.2)
+
+[2026-10-17T13:20:36.147Z] [mpd-codegraph] init status=ok binary=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/codegraph cwd=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/harness-0.2.1/sandbox/path-qEE1js/ws
+
+[2026-10-17T13:20:36.240Z] [mpd-config] settings bridge: the namespace-registry model is RETIRED in this harness — the mpd knobs are served as this row's config (entry "mpd-config") and edited through the harness's own form. The legacy file write-back and override clearing are dormant.
+[2026-10-17T13:20:36.318Z] [mpd-config] entry-config update: state re-loaded from the "mpd-config" document (0 knob(s) in force) — no restart needed
+
+[2026-10-17T13:20:25.309Z] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+[2026-10-17T13:20:25.310Z] ADAPTER FALLBACK (adapterIdentity=fallback:createDshAdapter): mpdDsh is not provided in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs) and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working, which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).
+[2026-10-17T13:20:36.148Z] [mpd-dsh-adapter] mpdDsh provided (harness seams resolved lazily, inject-free)
+
+[2026-10-17T13:20:36.307Z] [mpd-ext] mpdExtensions provided (apiVersion 1) | adapterIdentity=mounted:mpdDsh | tools: mpd_ext_list, mpd_ext_show, mpd_flow_list, mpd_flow_show | skill providers: mpd-ext:mpd-ext-example, mpd-ext:project-plane | project plane: <session workspace>/.mpd/extensions (per call)
+
+[2026-10-17T13:20:36.208Z] mounted: enabled=true autoAnchor=true autoRounds=32
+
+[2026-10-17T13:20:36.435Z] [mpd-mcp-lsp] starting cclsp@0.7.0 from /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/node_modules/.bun/cclsp@0.7.0+5b6b5129650ecc67/node_modules/cclsp/dist/index.js
+[2026-10-17T13:20:36.444Z] [mpd-mcp-lsp] cclsp config: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/harness-0.2.1/sandbox/path-qEE1js/ws/.mpd/lsp/cclsp.json (generated, 2 language server(s))
+[2026-10-17T13:20:36.455Z] Loading config from CCLSP_CONFIG_PATH: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/harness-0.2.1/sandbox/path-qEE1js/ws/.mpd/lsp/cclsp.json
+[2026-10-17T13:20:36.455Z] Loaded 2 server configurations from env
+[2026-10-17T13:20:36.456Z] CCLSP Server running on stdio
+[2026-10-17T13:20:36.456Z] Scanning configured server directories for supported file types
+[2026-10-17T13:20:36.456Z] Scanning /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/harness-0.2.1/sandbox/path-qEE1js/ws for extensions: ts, tsx, js, jsx, mjs, cjs, mts, cts
+[2026-10-17T13:20:36.464Z] Scanning /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/harness-0.2.1/sandbox/path-qEE1js/ws for extensions: rs
+[2026-10-17T13:20:36.465Z] Starting 0 LSP servers...
+[2026-10-17T13:20:36.465Z] LSP server preloading completed
+[2026-10-17T13:20:36.508Z] [mpd-mcp-lsp] starting cclsp@0.7.0 from /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/node_modules/.bun/cclsp@0.7.0+5b6b5129650ecc67/node_modules/cclsp/dist/index.js
+[2026-10-17T13:20:36.516Z] [mpd-mcp-lsp] cclsp config: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/harness-0.2.1/sandbox/path-qEE1js/ws/.mpd/lsp/cclsp.json (generated, 2 language server(s), unchanged)
+[2026-10-17T13:20:36.526Z] Loading config from CCLSP_CONFIG_PATH: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/harness-0.2.1/sandbox/path-qEE1js/ws/.mpd/lsp/cclsp.json
+[2026-10-17T13:20:36.526Z] Loaded 2 server configurations from env
+[2026-10-17T13:20:36.526Z] CCLSP Server running on stdio
+[2026-10-17T13:20:36.526Z] Scanning configured server directories for supported file types
+[2026-10-17T13:20:36.526Z] Scanning /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/harness-0.2.1/sandbox/path-qEE1js/ws for extensions: ts, tsx, js, jsx, mjs, cjs, mts, cts
+[2026-10-17T13:20:36.533Z] Scanning /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/harness-0.2.1/sandbox/path-qEE1js/ws for extensions: rs
+[2026-10-17T13:20:36.535Z] Starting 0 LSP servers...
+[2026-10-17T13:20:36.535Z] LSP server preloading completed
+
+[mpd-better-sidebar] mount guard: DISABLED - dsh-better-sidebar is resolvable from neither the profile node_modules nor the bundle
+
+[2026-10-17T13:20:36.370Z] [mpd-roles] team plane: readOnlyGuard=installed deny=8 verifyGate=installed captainInvestigation=deny askUserQuestion=installed delegationGate=deny rosterSection=agent-scoped order=605 sessionGate=mechanical
+[2026-10-17T13:20:36.370Z] [mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+[2026-10-17T13:20:48.440Z] [mpd-roles] roster section registered for agent "session-3b1357ed-b3ea-4cc9-9d76-b89c8eea1c0a" agentPreset=none — mpd:roster order=605
+[2026-10-17T13:20:48.440Z] [mpd-roles] session gate listener registered for agent "session-3b1357ed-b3ea-4cc9-9d76-b89c8eea1c0a" agentPreset=none
+
+[2026-10-17T13:20:36.372Z] [mpd-roster] provider "mpd-roster" registered (delegating to "spawn"; point the team tool row's freshProvider at it)
+
+[2026-10-17T13:20:36.222Z] [mpd-team-core] team workflow plane: staged=0 hold=none registrations=7 (6 tools + the /agent-teams command)
+[2026-10-17T13:20:36.222Z] [mpd-team-core] team executor: native (native UNAVAILABLE: the harness subagents service exposes no startContinuable(), and no team service is mounted either — every team call will refuse)
+[2026-10-17T13:20:36.327Z] [mpd-team-core] team executor: native (native: the default backend — it needs nothing from the official plugin)
+[2026-10-17T13:20:50.639Z] [mpd-team-core] team executor: native (native UNAVAILABLE: the harness subagents service exposes no startContinuable(), and no team service is mounted either — every team call will refuse)
+[2026-10-17T13:20:50.652Z] [mpd-team-core] team executor: native (native UNAVAILABLE: the harness subagents service exposes no startContinuable(), and no team service is mounted either — every team call will refuse)
+
+[2026-10-17T13:20:36.226Z] [mpd-team-watchdog] applied: enabled=true warnSilenceMs=90000 tickIntervalMs=15000 warnStreakToEscalate=3 actionOnEscalate=pause stateDir=.mpd/team disposers=8 holdService=mpdWatchdog hydratedHolds=0 deadTeamGraceMs=86400000 toolInFlightMaxMs=900000 holdTtlMs=900000 predicate=channel enrichment=on
+
+[mpd-tui-adapter] mpdTui provided (one deferred inject per seam, inject-free row)
+TUI_SEAMS=(none composed)
+[mpd-tui] decision-event seam: no intercept point attempted — the mediated plugin host was not injected (read at apply time; the seam discloses its own verdict once it binds)
+[mpd-tui] no DSH-TUI service is composed in this profile (web composition?): every mpd TUI surface was skipped
+[mpd-tui-adapter] host contact ABSENT: no candidate carried a readable lib/types/ui.js (15 probed) — the surfaces that need it stay inactive
+
+[2026-10-17T13:20:36.220Z] [mpd-verify] verifyGate=installed loops=0 installedAt=2026-10-17T13:20:36.218Z delegationObserver=installed tools=5 mode=hard guard=seam-present bootMarker=written
+

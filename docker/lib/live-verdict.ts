@@ -28,6 +28,14 @@ import { zstdCompressSync, zstdDecompressSync } from "node:zlib"
 /** zstd frame magic — the only reliable frame boundary in this container format. */
 const ZSTD_MAGIC = Buffer.from([0x28, 0xb5, 0x2f, 0xfd])
 
+/**
+ * The prompt-assembly failure class the 2026-10-19 mpd persona defect produced:
+ *   unknown prompt variable "{{cwd}}" in section "deployment:persona-prefix"
+ * The harness throws these STRICTLY, before any model request, so the only durable witness
+ * is the `turn/end` error — the same channel this reader already walks.
+ */
+const PROMPT_VARIABLE_ERROR = /unknown prompt variable|malformed prompt variable|has no value for this assembly/i
+
 /** One assertion row, byte-identical in shape to what the entrypoint's `record()` appends. */
 interface VerdictRow {
   /** Assertion name, e.g. `live.web.toolCallsParsed`. */
@@ -50,6 +58,8 @@ interface LiveFacts {
   readonly turnsCompleted: number
   /** Terminal turn failures: `turn/end` with reason kind `error`, as `code: message` strings. */
   readonly turnErrors: readonly string[]
+  /** The subset of {@link turnErrors} that names a prompt-variable assembly failure. */
+  readonly promptVariableErrors: readonly string[]
   /** Tool-call blocks inside `assistant/attempt` streams whose assembled arguments do not parse. */
   readonly malformedToolBlocks: readonly string[]
   /** `tool/call` rows at or after `--since`. */
@@ -230,6 +240,7 @@ function collect(file: string | undefined, since: number): LiveFacts {
     turnsStarted: 0,
     turnsCompleted: 0,
     turnErrors: [] as string[],
+    promptVariableErrors: [] as string[],
     malformedToolBlocks: [] as string[],
     toolCalls: 0,
     toolCallsParsed: 0,
@@ -251,7 +262,12 @@ function collect(file: string | undefined, since: number): LiveFacts {
       /** The terminal reason the harness recorded. */
       const reason = data.reason as { kind?: string; error?: { code?: string; message?: string } } | undefined
       if (reason?.kind === "completed") facts.turnsCompleted++
-      else if (reason?.kind === "error") facts.turnErrors.push(`${reason.error?.code ?? "<none>"}: ${reason.error?.message ?? "<none>"}`)
+      else if (reason?.kind === "error") {
+        /** The recorded failure, `code: message`, kept verbatim for both rows. */
+        const failure = `${reason.error?.code ?? "<none>"}: ${reason.error?.message ?? "<none>"}`
+        facts.turnErrors.push(failure)
+        if (PROMPT_VARIABLE_ERROR.test(failure)) facts.promptVariableErrors.push(failure)
+      }
       continue
     }
     if (record.type === "assistant/attempt") { facts.malformedToolBlocks.push(...malformedBlocks(data.stream)); continue }
@@ -288,6 +304,7 @@ function rowsFor(label: string, facts: LiveFacts): VerdictRow[] {
     { name: `live.${label}.turnStarted`, ok: facts.turnsStarted > 0, reason: facts.turnsStarted > 0 ? `the ${label} plane started a real turn` : `no turn/start was recorded for the ${label} plane after the prompt — the prompt never reached an agent`, raw },
     { name: `live.${label}.turnCompleted`, ok: facts.turnsCompleted > 0, reason: facts.turnsCompleted > 0 ? `the ${label} turn reached turn/end reason=completed` : `the ${label} turn never completed (completed=${facts.turnsCompleted})`, raw },
     { name: `live.${label}.noErrorTurns`, ok: facts.turnErrors.length === 0, reason: facts.turnErrors.length === 0 ? `no ${label} turn ended in an error` : `the ${label} plane had ${facts.turnErrors.length} failing turn(s)`, raw: `${raw} errors=[${facts.turnErrors.join(" | ")}]` },
+    { name: `live.${label}.noPromptVariableError`, ok: facts.promptVariableErrors.length === 0, reason: facts.promptVariableErrors.length === 0 ? `no ${label} turn failed prompt-variable interpolation` : `the ${label} plane failed prompt assembly: ${facts.promptVariableErrors.join(" | ")}`, raw: `${raw} promptVariableErrors=[${facts.promptVariableErrors.join(" | ")}]` },
     { name: `live.${label}.noMalformedToolJson`, ok: facts.malformedToolBlocks.length === 0 && !facts.turnErrors.some((error) => error.startsWith("MALFORMED_RESPONSE")), reason: facts.malformedToolBlocks.length === 0 ? `every ${label} tool-call payload the model emitted parsed as JSON` : `the model emitted ${facts.malformedToolBlocks.length} unparseable tool-call payload(s) on ${label}`, raw: `${raw} malformed=[${facts.malformedToolBlocks.join(" | ")}]` },
     { name: `live.${label}.toolCallsParsed`, ok: facts.toolCalls > 0 && facts.toolCallsParsed === facts.toolCalls, reason: facts.toolCalls === 0 ? `the ${label} turn called no tool, so the tool plane was never exercised` : `all ${facts.toolCalls} ${label} tool call(s) parsed (${facts.toolCallsParsed}/${facts.toolCalls})`, raw },
     { name: `live.${label}.mpdToolCalled`, ok: facts.toolNames.some((name) => name.startsWith("mpd_")), reason: facts.toolNames.some((name) => name.startsWith("mpd_")) ? `an MPD tool ran under a live ${label} turn` : `no mpd_* tool was called on ${label} — the bundle's own tool plane is unproven there`, raw },
@@ -303,10 +320,10 @@ function rowsFor(label: string, facts: LiveFacts): VerdictRow[] {
  * reported as "not reached" instead of failing.
  *
  * @param label - The plane label used as the middle segment.
- * @returns The seven assertion names.
+ * @returns The eight assertion names.
  */
 function namesFor(label: string): string[] {
-  return ["turnStarted", "turnCompleted", "noErrorTurns", "noMalformedToolJson", "toolCallsParsed", "mpdToolCalled", "assistantReplied"].map((suffix) => `live.${label}.${suffix}`)
+  return ["turnStarted", "turnCompleted", "noErrorTurns", "noPromptVariableError", "noMalformedToolJson", "toolCallsParsed", "mpdToolCalled", "assistantReplied"].map((suffix) => `live.${label}.${suffix}`)
 }
 
 /**
@@ -419,6 +436,11 @@ function selfTest(): void {
     { type: "turn/start", seq: 1, time: 30, data: { turn: 1 } },
     { type: "turn/end", seq: 2, time: 31, data: { turn: 1, reason: { kind: "error", error: { code: "MISSING_CREDENTIAL", message: "no key" } } } }
   ]
+  /** The 2026-10-19 shape: the mpd persona's `{{cwd}}` fails strict assembly before the model request. */
+  const promptVariable = [
+    { type: "turn/start", seq: 1, time: 40, data: { turn: 1 } },
+    { type: "turn/end", seq: 2, time: 41, data: { turn: 1, reason: { kind: "error", error: { code: "TURN_ERROR", message: 'unknown prompt variable "{{cwd}}" in section "deployment:persona-prefix"; registered variables: provider, model' } } } }
+  ]
   /** Checks run, so a silent no-op arm cannot pass. */
   let checks = 0
   /** Assert one arm, printing the failing one loudly. */
@@ -437,6 +459,11 @@ function selfTest(): void {
     const noToolRows = rowsFor("headless", collect(fixtureSession(join(root, "c"), "/ws/c", noTools), 0))
     check("a tool-less turn reddens toolCallsParsed", noToolRows.some((row) => row.name === "live.headless.toolCallsParsed" && !row.ok))
     check("a tool-less turn reddens mpdToolCalled", noToolRows.some((row) => row.name === "live.headless.mpdToolCalled" && !row.ok))
+    /** The prompt-variable class: its OWN row must redden, and a DIFFERENT error must leave it green. */
+    const promptVariableRows = rowsFor("web", collect(fixtureSession(join(root, "g"), "/ws/g", promptVariable), 0))
+    check("a prompt-variable assembly failure reddens noPromptVariableError", promptVariableRows.some((row) => row.name === "live.web.noPromptVariableError" && !row.ok))
+    check("a prompt-variable assembly failure also reddens noErrorTurns", promptVariableRows.some((row) => row.name === "live.web.noErrorTurns" && !row.ok))
+    check("a different turn error does NOT redden noPromptVariableError", noToolRows.some((row) => row.name === "live.headless.noPromptVariableError" && row.ok))
     /** The workspace selector must not pick another workspace's session. */
     const picked = pickSession(join(root, "c"), "/ws/c")
     check("the workspace selector picks the matching session", picked !== undefined && picked.includes("session-fixture"))

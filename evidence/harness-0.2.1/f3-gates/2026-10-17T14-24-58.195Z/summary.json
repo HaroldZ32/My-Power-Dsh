@@ -1,0 +1,91 @@
+{
+  "stamp": "2026-10-17T14-24-58.195Z",
+  "launcher": "/home/haroldzhao/.nvm/versions/node/v24.21.0/bin/dsh",
+  "launcherVersion": "0.2.0-rc.2",
+  "rows": [
+    {
+      "claim": "F1",
+      "slug": "verify-rows",
+      "exit": 0,
+      "durationMs": 120,
+      "decisiveLine": "[verify-rows-parity] ok: 35 row ids match the 2-file bundle patch layer (mcp-astgrep, mcp-codegraph, mcp-context7, mcp-git, mcp-grepapp, mcp-lsp, mcp-shell, mpd-agent-team, mpd-better-sidebar, mpd-bootstrap, mpd-boulder, mpd-codegraph, mpd-comment-checker, mpd-config, mpd-dsh-adapter, mpd-ext, mpd-goal, mpd-hashline, mpd-memory, mpd-modelchain, mpd-roles, mpd-roster-provider, mpd-team-compact, mpd-team-core, mpd-team-watchdog, mpd-tool-agent-team, mpd-tools, mpd-tui, mpd-tui-adapter, mpd-ui-agent-team, mpd-ulw, mpd-verify, mpd-web-compat, mpd-workmate, preset-mpd)"
+    },
+    {
+      "claim": "F1",
+      "slug": "preset-conformance-selftest",
+      "exit": 1,
+      "durationMs": 230,
+      "decisiveLine": "[preset-conformance] FAIL: self-test: conformance problems:"
+    },
+    {
+      "claim": "F3",
+      "slug": "bun-test",
+      "exit": 1,
+      "durationMs": 22320,
+      "decisiveLine": " 18 fail"
+    },
+    {
+      "claim": "F3",
+      "slug": "typecheck",
+      "exit": 0,
+      "durationMs": 568,
+      "decisiveLine": ""
+    },
+    {
+      "claim": "F3",
+      "slug": "test-qa",
+      "exit": 1,
+      "durationMs": 10364,
+      "decisiveLine": "[test:qa] FAIL - 1 of 51 case(s) failed"
+    },
+    {
+      "claim": "F3",
+      "slug": "verify-dist",
+      "exit": 0,
+      "durationMs": 669,
+      "decisiveLine": "$ node scripts/verify-dist-fresh.ts"
+    },
+    {
+      "claim": "F3",
+      "slug": "verify-pack-closure",
+      "exit": 0,
+      "durationMs": 125,
+      "decisiveLine": "[verify-pack-closure] ok: 23 dist/index.js row(s) + 0 adopted lib/index.ts row(s) + 4 mcp row(s) of the bundle patch all resolve; 24 PLUGIN_PKGS + 4 MCP_PKGS entries all exist; root assets skills/presets/extensions/templates/docs/agent-references declared and present; CLI validator surface 9 exports in step; packed tree: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/dist/mpd-package (475 asset files); agent references 2/2; root files 1/1; declared packages 28/28 present in the artifact; content bytes: 606 file(s) compared, 560 identical, 0 drift, 46 expected-after-pack; completeness: 508 declared source file(s) compared, 506 present, 1 declared exemption(s), 0 absent; pack stamp 2026-10-16T08:24:59.915Z (inferred: the newest mtime among the artifact's own files (cpSync gives every copied file the pack's write time)); exemption exercised: packages/mpd-qa-roles-probe/dist/index.js"
+    },
+    {
+      "claim": "F3",
+      "slug": "verify-comments",
+      "exit": 0,
+      "durationMs": 2028,
+      "decisiveLine": ""
+    },
+    {
+      "claim": "F3",
+      "slug": "verify-manifest",
+      "exit": 0,
+      "durationMs": 2034,
+      "decisiveLine": "ok    packed-content: npm pack --dry-run lists 987 file(s); 0 required path(s) absent"
+    },
+    {
+      "claim": "F3",
+      "slug": "verify-docs",
+      "exit": 0,
+      "durationMs": 58,
+      "decisiveLine": "ok   packages/mpd-workmate-plugin/README.md"
+    },
+    {
+      "claim": "F3",
+      "slug": "verify-manual-paths",
+      "exit": 0,
+      "durationMs": 64,
+      "decisiveLine": "[verify-manual-paths] census bucket=under-report:prose direction=under-report count=0 reason=\"a directory spelled in words rather than as a token — nothing to stat\""
+    },
+    {
+      "claim": "F3",
+      "slug": "verify-no-host-override",
+      "exit": 0,
+      "durationMs": 81,
+      "decisiveLine": ""
+    }
+  ]
+}

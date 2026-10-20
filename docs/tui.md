@@ -1250,12 +1250,43 @@ supersedes §11.6:
 | Superseded statement | Was | Is (measured 2026-10-15) |
 |---|---|---|
 | This page's target host (§ preamble) | `@deepseek-harness-tui/dsh-tui` **0.14.0** | **0.15.0** (npm `latest`; the wave's frozen measurement basis is `evidence/tui/dsh-tui-015/host-diff/FACTS.md`, both tarballs unpacked beside it). Host-internal additions that need NO bundle reaction: new OPTIONAL harness peers (`@deepseek-ai/dsh-plugin-manager`, `dsh-app-boot`/`dsh-cmdline`/`dsh-http-proxy`/`dsh-launch-environment` pinned optional) and a `zod@^4.4.3` runtime dep. `MPD_E2E_DSH_VERSION` does NOT move — the harness peer range is unchanged (every `dsh-*` peer still ends at `0.2.0-rc.2`) |
-| §3 seam inventory | fifteen `tui*` seams, byte-identical 0.13.0→0.14.0 | **still fifteen, additive-only**: `panels.d.ts` gains `applyConfiguredSidePanelPanels()` + `applySidePanelPanelsFromSettings()` (the host-side CSV merge helpers behind C2 below), `plugin-host.d.ts` gains `probeBackendAdmission()`; every other seam `.d.ts` is byte-identical, there is no sixteenth seam, and a raw-grep hit on `tuiChannel` is the KERNEL-CHANNEL protocol id, not a seam (no `Service` registers it, nothing to inject — stated in `agent-references/seam-adapters.md`). **No adapter seam change** |
+| §3 seam inventory | fifteen `tui*` seams, byte-identical 0.13.0→0.14.0 | **still fifteen, additive-only**: `panels.d.ts` gains `applyConfiguredSidePanelPanels()` + `applySidePanelPanelsFromSettings()` (the host-side CSV merge helpers behind C2 below), `plugin-host.d.ts` gains `probeBackendAdmission()`; every other seam `.d.ts` is byte-identical, there is no sixteenth seam, and a raw-grep hit on `tuiChannel` is the KERNEL-CHANNEL protocol id, not a seam (no `Service` registers it, nothing to inject — stated in `agent-references/seam-adapters.md`). **That wave changed no adapter code — and this row measures the HOST files, not the agreement of OUR `Tui*Like` declarations with them (re-derived 2026-10-17: six disagreed; amendment below).** |
 | §3.3 — the enable list's default | `todo,jobs,agents,info,trajectory,workspace,btw,companion` (eight builtins, 0.14.0) | **UNCHANGED on 0.15.0** — same `DEFAULT_SIDE_PANEL_IDS`, same eight builtin icons (`≡ ▸ ◆ ⓘ ∿ ⌗ ? ♥`), so the invariant arms stay green. The RULE beneath it changed: see the keeper row below |
 | §11.6 — the `PanelBar` no longer paints an icon | `grep -c icon …/PanelBar.js` = 0 on 0.14.0; inactive tabs are `○`/`●` dots | **0.15.0 PAINTS ICONS AGAIN**: inactive tabs draw `tab.icon ?? <first character of the title> ?? '?'` plus the unread count (`tabLabel()` in the re-measured `PanelBar.js`). The bundle's declared one-cell icons (`❖` MPD, `⬢` workmate) are painted again; nothing in the bundle changed — every descriptor still declares exactly-one-cell icons, as the host's validator requires |
 | §3.4 — the `⤢` bound | `dsh-adapter/panels.js` freezes plugin descriptors without `capabilities` → the host's own `⤢` is unreachable | **re-measured on 0.15.0 and still true**: `grep -c capabilities …/dsh-adapter/panels.js` = 0, `SidePanelColumn`'s `canExpand` still reads `definition.capabilities?.fullscreen === true`. MPD's own `⤢` control stays the one full-screen escape |
 | §3.3 / §7 — the pin carriers | `0.14.0` in every carrier that names the release | **`0.15.0` in this wave's carriers**: `docker/**` (both `MPD_E2E_TUI_VERSION` defaults, `docker/ui/docker-compose.yml`, `docker/entrypoint.sh`'s `TUI_VERSION`, `docker/ui/entrypoint.sh`'s two `MPD_UI_TUI_VERSION` defaults, `docker/tui-lane.sh`), `dsh-distribution.json`'s `host-tui` ref (`pkg:npm/@deepseek-harness-tui/dsh-tui@0.15.0`), the seven QA carriers under `skills/dsh-qa/scripts/**`, `scripts/mpd-tui-panels.ts`'s header prose and both `docker/README*.md`. The non-moves stand: `MPD_E2E_DSH_VERSION` stays `0.2.0-rc.2`; `dsh-plugin.json`'s `compat.hosts` stays `@deepseek-harness-tui/dsh-tui@0.10.1` (the admission measurement, not the target); the registry's `0.15` version string stays (ecosystem-spec number, the repo's known false-positive) |
 | §11.6 — the enable-list keeper | FEED-FIRST on every host: `subscribeSidePanelPanels` repairs a config-mirror wipe, the ladder is the degrade, the stand-down rule holds | **RE-SPECED (C2, user-mandated): on a host that self-heals — every `>= 0.15.0` — the keeper JOINS the native self-heal and STANDS DOWN; on older hosts the 0.14 behaviour is preserved byte-for-byte.** The 2026-10-16 amendment (`fix/sidebar-015-keeper-migration`) carves the ONE write exception — the stale-default migration, evaluated before the stand-down and re-checked by the belt on every feed event; see the two keeper paragraphs below |
+
+**AMENDED 2026-10-17 — byte identity of the HOST files is NOT member-shape agreement of OUR
+declarations.** The "no adapter seam change" conclusion above compared the host's own `.d.ts` modules
+across releases; it never compared the `Tui*Like` interfaces in
+`packages/mpd-tui-adapter-plugin/src/index.ts` against those modules. Re-derived against the installed
+0.15.0 declaration tree, SIX of them disagreed and are corrected in this wave. No behaviour claim rides
+on the six — nothing in the bundle calls their members; they are bound, probed and reported only:
+
+| Seam | Declared before | 0.15.0 declaration (re-derived) |
+|---|---|---|
+| `tuiToast` | `push(message, {level})` → `Disposer \| undefined` | `show(text: string \| number \| boolean, {color?, timeoutMs?})` → `boolean` |
+| `tuiThemes` | `register(name: string, theme)` plus `current?()` | `register(descriptor: TuiThemeDescriptor, identity?)` → disposer; NO plugin-facing read (`getSnapshot`/`resolve` are host-only) |
+| `tuiPluginStorage` | flat `get(key)` / `set(key, value)` | `open(pluginCtx)` → async `{ get({key}), set({key,value}), delete({key}) }` |
+| `tuiMessageObserver` | `subscribe(listener)` | `subscribe(pluginCtx, listener, { scope })` — the scope is REQUIRED |
+| `tuiEffectLedger` | `entries?()` | `record(entry, identity?)` → void (nothing on the plugin face lists the journal) |
+| `tuiWorkspaces` | `list?()` → `string[]` | `list(currentCwd, signal?)` → `Promise<TuiWorkspaceTarget[]>` plus `register(provider)` |
+
+Three further corrections in the same wave. **`closeScene(id)`** guarded on `close(id) === true`, and
+0.15.0's `close()` takes no id and returns void — so it answered `false` on EVERY 0.15.0 build. It now
+calls the void `close()` only when the host's own `active` read names the requested id (a blind
+`close()` would close whichever scene is active and still report success for an id that was never open),
+and the seam declares `close(): void` plus the `active` read. **`tuiPrompt`** is marked a PHANTOM seam
+(`PHANTOM_SEAM_KEYS`): a grep of every dsh-tui `lib/**` through 0.15.0 finds no such service, so
+`seamOutcomes()` now reports `phantom seam: no measured dsh-tui build declares this service` instead of
+a composition gap. And `plugin-host.d.ts`'s `probeBackendAdmission()` is declared on `TuiPluginHostLike`
+as a deliberately UNCONSUMED member, so the Backend contribution family is visible without inventing a
+consumer.
+
+What this amendment does NOT claim: no real-machine boot was taken in this wave (it is a source-baseline
+correction — the host is not run), the six shapes are compared against the installed `.d.ts`
+DECLARATIONS only, and the seam set itself is unchanged (fifteen, no sixteenth).
 
 **The host now self-heals the sidebar enable CSV, and the keeper stands down to it (C2).** Measured on
 the 0.15.0 tree: `TuiPanelRuntime.register()` feeds `registeredPanelIds` through

@@ -1,0 +1,197 @@
+{
+  "nodes": [
+    {
+      "id": "F1",
+      "subject": "Prove both planes draw one model",
+      "visual": "planned",
+      "dependencies": [],
+      "depth": 0,
+      "planned": true,
+      "title": "Prove both planes draw one model"
+    },
+    {
+      "id": "F2",
+      "subject": "Prove the live refresh (blocked by: F1)",
+      "visual": "planned",
+      "dependencies": [
+        "F1"
+      ],
+      "depth": 1,
+      "planned": true,
+      "title": "Prove the live refresh (blocked by: F1)"
+    },
+    {
+      "id": "T1",
+      "subject": "Build the shared model",
+      "visual": "completed",
+      "dependencies": [],
+      "depth": 0,
+      "planned": false,
+      "kind": "requirement",
+      "assignee": "Senior Engineer",
+      "title": "Build the shared model",
+      "status": "completed"
+    },
+    {
+      "id": "T2",
+      "subject": "Adopt the shared model",
+      "visual": "running",
+      "dependencies": [
+        "T1"
+      ],
+      "depth": 1,
+      "planned": false,
+      "kind": "work",
+      "assignee": "Junior Engineer",
+      "title": "Adopt the shared model (blocked by: 1)",
+      "status": "in_progress"
+    },
+    {
+      "id": "T3",
+      "subject": "Serve the ranks",
+      "visual": "open",
+      "dependencies": [],
+      "depth": 0,
+      "planned": false,
+      "kind": "work",
+      "assignee": "Deep Worker",
+      "title": "Serve the ranks on both planes",
+      "status": "pending"
+    },
+    {
+      "id": "T4",
+      "subject": "Gate the picture",
+      "visual": "open",
+      "dependencies": [
+        "T1",
+        "T2",
+        "T3"
+      ],
+      "depth": 2,
+      "planned": false,
+      "kind": "work",
+      "assignee": "Junior Engineer",
+      "title": "Gate the picture against the plan (blocked_by: 2, 3)",
+      "status": "pending"
+    },
+    {
+      "id": "T5",
+      "subject": "Verify the wave independently",
+      "visual": "planned",
+      "dependencies": [],
+      "depth": 0,
+      "planned": true,
+      "assignee": "Reviewer",
+      "title": "Verify the wave independently"
+    },
+    {
+      "id": "T9",
+      "subject": "Board-only sidetrack",
+      "visual": "cancelled",
+      "dependencies": [
+        "T4",
+        "T99"
+      ],
+      "depth": 3,
+      "planned": false,
+      "kind": "work",
+      "status": "cancelled"
+    }
+  ],
+  "edges": [
+    {
+      "from": "F1",
+      "to": "F2",
+      "source": "plan"
+    },
+    {
+      "from": "T1",
+      "to": "T2",
+      "source": "both"
+    },
+    {
+      "from": "T1",
+      "to": "T4",
+      "source": "board"
+    },
+    {
+      "from": "T2",
+      "to": "T4",
+      "source": "plan"
+    },
+    {
+      "from": "T3",
+      "to": "T4",
+      "source": "both"
+    },
+    {
+      "from": "T4",
+      "to": "T9",
+      "source": "board"
+    }
+  ],
+  "ranks": [
+    [
+      "F1",
+      "T1",
+      "T3",
+      "T5"
+    ],
+    [
+      "F2",
+      "T2"
+    ],
+    [
+      "T4"
+    ],
+    [
+      "T9"
+    ]
+  ],
+  "cycles": [],
+  "report": {
+    "boardOnly": [
+      "T9"
+    ],
+    "planOnly": [
+      "F1",
+      "F2",
+      "T5"
+    ],
+    "edgePlanOnly": [
+      {
+        "from": "F1",
+        "to": "F2",
+        "source": "plan"
+      },
+      {
+        "from": "T2",
+        "to": "T4",
+        "source": "plan"
+      }
+    ],
+    "edgeBoardOnly": [
+      {
+        "from": "T1",
+        "to": "T4",
+        "source": "board"
+      },
+      {
+        "from": "T4",
+        "to": "T9",
+        "source": "board"
+      }
+    ],
+    "planProblems": [
+      {
+        "line": 10,
+        "text": "- [ ] a half-typed line the tolerant parser must REPORT",
+        "reason": "not a numbered TODO item"
+      }
+    ],
+    "unresolved": [
+      "T99"
+    ],
+    "ranksDerived": true
+  }
+}

@@ -1,0 +1,87 @@
+{
+  "ok": true,
+  "harness": {
+    "id": "closure",
+    "expected": "0.2.1-rc.2",
+    "observed": "0.2.1-rc.2",
+    "matches": true
+  },
+  "sandbox": {
+    "root": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/harness-0.2.1/sandbox/closure-bMtKQz",
+    "home": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/harness-0.2.1/sandbox/closure-bMtKQz/dsh-home",
+    "userHome": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/harness-0.2.1/sandbox/closure-bMtKQz/user-home",
+    "ws": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/harness-0.2.1/sandbox/closure-bMtKQz/ws",
+    "kept": false
+  },
+  "credentialsSeeded": {
+    "storeCopied": true,
+    "settingsCopied": false,
+    "refsMerged": false
+  },
+  "installExit": 0,
+  "bootExit": 0,
+  "bootLineSource": "row-log",
+  "guardLine": "[mpd-roles] team plane: readOnlyGuard=installed deny=8 verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) captainInvestigation=absent reason=withdrawn:2026-10-17-user-ruling(captain.investigation) delegationGate=absent reason=withdrawn:2026-10-17-user-ruling(delegation.gate) askUserQuestion=installed rosterSection=agent-scoped order=605 sessionGate=off",
+  "guardTokens": {
+    "readOnlyGuard": "installed",
+    "deny": "8",
+    "verifyGate": "absent",
+    "reason": "withdrawn:2026-10-17-user-ruling(delegation.gate)",
+    "captainInvestigation": "absent",
+    "delegationGate": "absent",
+    "askUserQuestion": "installed",
+    "rosterSection": "agent-scoped",
+    "order": "605",
+    "sessionGate": "off"
+  },
+  "withdrawnGuards": {
+    "verifyGate": "absent",
+    "captainInvestigation": "absent",
+    "delegationGate": "absent"
+  },
+  "keptGuards": {
+    "readOnlyGuard": "installed",
+    "askUserQuestion": "installed",
+    "rosterSection": "agent-scoped",
+    "sessionGate": "off"
+  },
+  "guardLineOk": true,
+  "failureLines": [
+    "dsh: warning: 1 entry did not activate"
+  ],
+  "failureCount": 1,
+  "inactiveEntries": [
+    {
+      "id": "preset-mpd",
+      "name": "@deepseek-ai/dsh-agent-preset",
+      "service": "agentPresets"
+    }
+  ],
+  "unexpectedInactive": [],
+  "failureFree": true,
+  "rowLogFiles": [
+    "mpd-bootstrap.log",
+    "mpd-codegraph.log",
+    "mpd-config.log",
+    "mpd-dsh-adapter.log",
+    "mpd-ext.log",
+    "mpd-goal.log",
+    "mpd-mcp-lsp.log",
+    "mpd-patch-guards.log",
+    "mpd-roles.log",
+    "mpd-roster.log",
+    "mpd-team-core.log",
+    "mpd-team-watchdog.log",
+    "mpd-tui.log",
+    "mpd-verify.log"
+  ],
+  "toolCount": 107,
+  "registeredMpdTools": 47,
+  "missingTools": [],
+  "sessionsSandboxed": true,
+  "sessionKeys": [
+    "--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-evidence-harness-0.2.1-sandbox-closure-bMtKQz-ws--"
+  ],
+  "bootProbeAnswered": true,
+  "logBytes": 263
+}

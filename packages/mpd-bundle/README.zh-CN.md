@@ -8,9 +8,9 @@
 
 该 bundle 只随附 ONE preset（`mpd`，主工作 agent），声明为 `presets/mpd.patch.yml` 中的 **`preset-mpd` 行** —— `dsh.bundle.patch` 数组的第二个条目：它配置 `dsh-agent-instructions`，使用 `instructionFileCandidates: [AGENT.md, AGENTS.md, CLAUDE.md]`，使每个 project session 都尝试读取 AGENT.md，并声明 native tool presentation。（已退役的 preset **目录**形式 `packages/mpd-bootstrap-plugin/presets/` 不再存在：harness 0.1.7-rc.2 的预设模型是"每个预设一行"，子条目列表内联在该行里。）各专家以 subagent roster（`mpd-roles-plugin`）形式存在，而非 presets。
 
-## 会话启动团队门（强制）
+## 会话启动团队门（opt-in）
 
-会话启动时**没有团队** —— 团队不是会话的前提条件。冻结谓词在会话第一步的 pre-step 求值，并由 `mpd-roles-plugin` 在官方插件的接缝上**机械执行**：
+会话启动时**没有团队** —— 团队不是会话的前提条件。冻结谓词在会话第一步的 pre-step 求值，并由 `mpd-roles-plugin` 在官方插件的接缝上承载（**缺省不启用**，只有显式要求时才动作）：
 
 ```
 trigger = explicit flag OR (matchedSignals >= 1)
@@ -20,13 +20,13 @@ trigger = explicit flag OR (matchedSignals >= 1)
 - 软信号为 (**B**) 去重命中 ≥ 4 个交付动词、(**C**) **一个**信号、由其 3 路子信号中的 2 路满足（≥ 3 条枚举行、≥ 3 个不同动作动词、≥ 3 个动作子句），以及 (**D**) 该会话工作区存在**正在进行**的 boulder 工作（`.mpd/boulder.json` 中 `status: "active"`）—— 仅有 plan **文件**并不构成信号（旧的"文件探测"在本工作区的每个会话都会触发）。
 - **未命中** → 会话单独运行：没有团队、也没有通知。
 
-`team.gate`（`mpd.jsonc`）决定一次触发**做什么**，按调用解析：`mechanical`（默认）| `advisory` | `off`。
+`team.gate`（`mpd.jsonc`）决定一次触发**做什么**，按调用解析：`off`（**自 2026-10-17 回滚起为默认** —— **缺省或未知值都读作 `off`**，因此这套仪式是 opt-in，拼写错误也绝不会把它打开）| `advisory` | `mechanical`（只有 `"mechanical"` 与 legacy 的 `true` 会启用它）。
 
 - **mechanical** → 门通过本 bundle **自己**的 `agent_teams_plan` 工具 **stage** 一个**可批准的 plan shell** —— 0 成员、0 任务、`approval: required` —— 并注入**恰好一条**携带标记 `[AgentTeams] Session-start team rule` 的通知，点名该调用**返回**的 plan id。此时**没有 spawn 任何东西**：该 shell 在 captain 用 `add_member` / `create_task` 扩展（每个成员的 prompt 取自 `mpd_role_persona`）并用 `agent_teams_plan {action:"approve"}` 批准之前一直是**惰性**的 —— 批准才是落地团队记录、并通过本 bundle 的 **native 执行器**唤醒成员的时刻。若该会话已有 staged 的 plan，门只报告这一事实、不再重复 stage（第二次 stage 会归档进行中的 plan）。
 - **advisory** —— 未挂载 `agent_teams_plan` 时实际也走这条路 —— 那**一条**通知声明 `NO team was staged`，由 captain 在工作确实需要时自行组队。
 - **off** → 监听器直接返回。
 
-显式的 `team:` / `!team` 请求属于信号 **A**，走**同一条**路径（在 `mechanical` 下同样会 stage 该 shell）。门只作用于顶层 `mpd` session —— 带 `parentSession` 的 subagent/成员会话永远不适用，其它 preset 的会话亦然 —— 每个会话只结算一次，且其内部失败不会影响该 step。`mpd` preset 的 persona 带有对应的 SESSION STARTUP RULE，使 captain 无论门是否命中都按正确方式工作。
+显式的 `team:` / `!team` 请求属于信号 **A**，走**同一条**路径（在 `mechanical` 下同样会 stage 该 shell）。门只作用于顶层 `mpd` session —— 带 `parentSession` 的 subagent/成员会话永远不适用，其它 preset 的会话亦然 —— 每个会话只结算一次，且其内部失败不会影响该 step。`mpd` preset 的 persona 带有对应的会话启动约定（冻结的通知标记、`team.gate` 旋钮及其 opt-in 缺省），使 captain 无论门是否命中都按正确方式工作。
 
 **已退役 —— 作为历史保留，不再是配置。** 本节过去记录的是内置 `agent-teams` 插件的 `sessionTeamPolicy` / `autoRoute` 旋钮、它供应的 **“MPD Default”** 默认团队（由 `agent_teams_create(approval="required", profile="mpd")` staged），以及 `mode: auto | instruct` 选择加入项。已无任何 loader 行挂载该插件，以上键、工具与该 staged-team 流程在已发布的会话里都不存在。
 
@@ -34,8 +34,8 @@ trigger = explicit flag OR (matchedSignals >= 1)
 
 团队平面自身的配置就是门的那个键，加上各行自己的配置：
 
-- `team.gate` —— `mechanical`（默认）| `advisory` | `off`，由 `mpd-roles-plugin` **按调用**读取。
-- 官方 `mpd-agent-team` 行携带 patch 中的上限：`maxMembers: 16`、`maxTasks: 256`、`maxPendingMessagesPerMember: 64`、`maxMessageBytes: 32768`、`disposalTimeoutMs: 5000`。
+- `team.gate` —— `off`（**自 2026-10-17 回滚起为默认**；缺省或未知值都读作 `off`，门是 opt-in）| `advisory` | `mechanical`，由 `mpd-roles-plugin` **按调用**读取。队长的三道机械守卫（调查、委派、写入）已由同一份裁决**撤销**；该行的启动行把每一道都报告为 `absent reason=…`。
+- 官方 `mpd-agent-team` 行携带 patch 中的上限：`maxMembers: 16`、`maxTasks: 256`、`maxMessageBytes: 32768`、`disposalTimeoutMs: 5000`。`maxPendingMessagesPerMember` 已**移除**：harness 0.2.1-rc.2 的 schema 不再声明它，因此该行不再设置。
 - `mpd-team-core` 拥有 `<workspace>/.mpd/team/` 下的团队记录：`teams/<id>.json`、staged plan 所在的 `staging/<sessionId>.json` 槽位，以及已归档的计划。
 
 已退役内置行那套对齐上游的上限（`maxParallelMembers`、`maxMessagesPerRun`、`maxWallClockMinutes`、`maxMemberTurns`、`messagePayloadMaxBytes`、`recipientUnreadMaxBytes`、`mailboxPollIntervalMs`、`memberMaxDepth`、`stateDir`、`enforcement`）属于**历史**：它们只存在于采纳主体的 `lib/index.ts` 中，而没有任何行挂载它，且该主体已被 de-vendor

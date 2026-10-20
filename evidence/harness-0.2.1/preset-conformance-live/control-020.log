@@ -1,0 +1,7 @@
+[preset-conformance] ok=false -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/dsh-qa/preset-conformance/2026-10-17T13-42-23.163Z
+  conformance: {"ok":false,"checked":32,"schemaFree":6,"patchFiles":["cordis.patch.yml","presets/mpd.patch.yml"],"preset":{"rowId":"preset-mpd","id":"mpd","children":29,"file":"presets/mpd.patch.yml"},"parity":{"reference":"/home/haroldzhao/.nvm/versions/node/v24.21.0/lib/node_modules/@deepseek-ai/dsh/node_modules
+  auth: {"ok":true,"tokenSeen":true,"cookieSession":true}
+  sessionCreate: {"ok":false,"status":200,"error":{"code":"agent-preset/invalid","message":"tool-schedule (@deepseek-ai/dsh-tool-schedule): never started","details":{"agentPreset":"mpd","reason":"tool-schedule (@deepseek-ai/dsh-tool-schedule): never started"}},"sessionId":null,"agentPreset":null,"raw":"{\"type\":\"s
+  sessionHeader: {"ok":false,"agentPreset":null,"log":null}
+  bootLog: {"ok":true,"signatures":[]}
+  negativeControl: {"ok":true,"code":"agent-preset/invalid","message":"persona (@deepseek-ai/dsh-persona): invalid config:\n  - $.prefix missing required value (at prefix)\ntool-schedule (@deepseek-ai/dsh-tool-schedule): never started","mutations":["preset-mpd row: persona prefix: -> text:"],"override":"id-target on p

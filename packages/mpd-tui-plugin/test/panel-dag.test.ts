@@ -58,6 +58,9 @@ import {
 } from "../src/panel-workmate"
 import type { TeamWorkflow } from "../src/team-state"
 import { NO_SESSION_TEAM_MARKER, WORKSPACE_SCOPE_MARKER } from "../src/team-state"
+import { buildModel } from "../../mpd-graph-core/src/model.ts"
+import { parsePlanMarkdown } from "../../mpd-graph-core/src/plan.ts"
+import type { BoardTask, GraphModel, GraphNode } from "../../mpd-graph-core/src/types.ts"
 
 // ── fixtures ────────────────────────────────────────────────────────────────
 
@@ -2620,5 +2623,257 @@ describe("T2 · the panel body names both sections and draws a rule between them
     // The TWO empty states are both drawn: the host's own sentence above the rule, the page's below it.
     expect(kit.text(tree)).toContain("No subagents in the current se")
     expect(kit.text(tree)).toContain("no team in this workspace")
+  })
+})
+
+// ── living-graph · THE SERVED MODEL, NOT A LOCAL DERIVATION ─────────────────────────────────────
+//
+// WHAT THIS ADDS (it changes no existing assertion). Wave `living-graph` publishes the host's merged
+// model on the `mpdTeams` service: `TeamWorkflow.model` carries it, `dagPageOf` joins its nodes onto
+// the board's rows (membership + rank from the model, detail from the board), and the layout takes
+// the served ranks as an optional input. The fixture below is the case a board-only derivation CANNOT
+// draw: a PLAN-ONLY GHOST, plus ranks that deliberately contradict the board's own chain.
+
+/**
+ * A four-task chain whose ids make NUMERIC order differ from lexical order (T3 must precede T10).
+ * @returns the board rows, in board order.
+ */
+function ghostBoard(): DagPanelTask[] {
+  /** The ids, in the chain's own order. */
+  const ids = ["T1", "T2", "T10", "T11"]
+  return ids.map((id, index) => ({
+    id,
+    subject: `chain task ${id}`,
+    kind: "work",
+    visual: "open",
+    dependencies: index === 0 ? [] : [ids[index - 1]],
+    failedDependencies: [],
+    depth: index,
+  }))
+}
+
+/**
+ * The served model for {@link ghostBoard}: ranks REVERSED relative to the chain, plus one ghost.
+ * @param board - the board rows the host merged.
+ * @returns the model the host would publish.
+ */
+function servedModelFixture(board: readonly DagPanelTask[]): GraphModel {
+  /** The served rank of each board id: the OPPOSITE of the chain, so a deriving layout is separable. */
+  const served: Readonly<Record<string, number>> = { T1: 3, T2: 3, T10: 2, T11: 0 }
+  /** One node per board row, each carrying the host's rank (never the board's `depth`). */
+  const nodes: GraphNode[] = board.map((task) => ({
+    id: task.id,
+    subject: task.subject,
+    ...(task.kind === undefined ? {} : { kind: task.kind }),
+    visual: task.visual,
+    dependencies: [...task.dependencies],
+    depth: served[task.id] ?? 0,
+    planned: false,
+  }))
+  // THE GHOST: the plan declares T3 and the board does not. It must be DRAWN, never dropped.
+  nodes.push({ id: "T3", subject: "plan-only task", kind: "work", visual: "planned", dependencies: [], depth: 1, planned: true })
+  return {
+    nodes,
+    edges: [],
+    ranks: [],
+    cycles: [],
+    report: { boardOnly: [], planOnly: ["T3"], edgePlanOnly: [], edgeBoardOnly: [], planProblems: [], unresolved: [], ranksDerived: true },
+  }
+}
+
+describe("living-graph · the panel draws the SERVED model, ghosts and ranks included", () => {
+  test("a plan-only GHOST is drawn, at its NUMERIC id position, and the served rank wins", () => {
+    /** The board rows the panel already reads. */
+    const board = ghostBoard()
+    /** The projection a model-serving host would publish. */
+    const workflow = workflowOf(board)
+    workflow.model = servedModelFixture(board)
+    /** The page under judgement. */
+    const page = dagPageOf(workflow)
+    expect(page).toBeDefined()
+    if (page === undefined) return
+    // TOTAL AND ORDERED: the ghost lands between T2 and T10 — a NUMERIC id order, so a lexical sort
+    // (which would put T10 before T3) is refused by this equality.
+    expect(page.tasks.map((task) => task.id)).toEqual(["T1", "T2", "T3", "T10", "T11"])
+    /** The ghost's own row, as the projection carries it. */
+    const ghost = page.tasks.find((task) => task.id === "T3")
+    expect(ghost?.planned).toBe(true)
+    expect(ghost?.visual).toBe("planned")
+    // BOARD COUNTS ARE NOT DISTURBED by a plan-only node: they stay the record's own tally.
+    expect(page.total).toBe(workflow.counts.total)
+    expect(page.members).toBe(workflow.members.length)
+    // THE SERVED RANKS ARE THE PAGE'S OWN MAP (`node.depth` IS the rank in the core's `GraphTask`).
+    expect(page.ranks?.get("T11")).toBe(0)
+    expect(page.ranks?.get("T1")).toBe(3)
+    /** The drawing, at a width that fits four ranks of boxes. */
+    const layout = dagPanelLayout(page.tasks, 100, undefined, 30, page.ranks)
+    /**
+     * The first row each task's rectangle occupies.
+     * @param id - the task id to look up.
+     * @returns the row, or +Infinity when the task was not drawn at all.
+     */
+    const rowOf = (id: string): number => {
+      /** The task's own rectangle, when the drawing contains it. */
+      const hit = layout.view.hits.find((candidate) => candidate.taskId === id)
+      return hit === undefined ? Number.POSITIVE_INFINITY : hit.row
+    }
+    // THE DISCRIMINATING ASSERTION: the board's chain puts T1 at rank 0 and T11 at rank 3, so a layout
+    // that re-derives from `dependencies` draws the reverse of these inequalities and reddens here.
+    expect(rowOf("T11")).toBeLessThan(rowOf("T3"))
+    expect(rowOf("T3")).toBeLessThan(rowOf("T10"))
+    expect(rowOf("T10")).toBeLessThan(rowOf("T1"))
+    // And the ghost is genuinely drawn, not merely carried by the projection.
+    expect(rowOf("T3")).toBeLessThan(Number.POSITIVE_INFINITY)
+  })
+
+  test("with NO served model the page is the board's own projection, exactly as before", () => {
+    /** The same board, with no model published (an older host or a unit fixture). */
+    const page = dagPageOf(workflowOf(ghostBoard()))
+    expect(page).toBeDefined()
+    if (page === undefined) return
+    expect(page.tasks.map((task) => task.id)).toEqual(["T1", "T2", "T10", "T11"])
+    expect(page.ranks).toBeUndefined()
+    expect(page.tasks.some((task) => task.planned === true)).toBe(false)
+  })
+
+  test("a GHOST box carries the plan-only marker, and an open board task does not", () => {
+    /** The board rows. */
+    const board = ghostBoard()
+    /** The projection carrying the served model, so T3 is a plan-only ghost. */
+    const workflow = workflowOf(board)
+    workflow.model = servedModelFixture(board)
+    /** The page under judgement. */
+    const page = dagPageOf(workflow)
+    expect(page).toBeDefined()
+    if (page === undefined) return
+    /** The drawing, at a width that fits every box. */
+    const layout = dagPanelLayout(page.tasks, 100, undefined, 30, page.ranks)
+    /**
+     * The text of one task's box label row.
+     * @param id - the task id to read.
+     * @returns the label row's text, or "" when the task was not drawn.
+     */
+    const labelRow = (id: string): string => {
+      /** The task's own rectangle, when the drawing contains it. */
+      const hit = layout.view.hits.find((candidate) => candidate.taskId === id)
+      return hit === undefined ? "" : (layout.view.lines[hit.row + 1] ?? []).map((span) => span.text).join("")
+    }
+    // THE GHOST IS VISUALLY DIFFERENT: the plan-only marker replaces its state glyph, so a reader can
+    // tell where the plan ends and the board begins — the one question the six-case report answers.
+    expect(labelRow("T3")).toContain("+ T3")
+    // AN OPEN BOARD TASK keeps the contract's own open glyph and carries NO plan-only marker.
+    expect(labelRow("T1")).toContain(`${DAG_TONE_GLYPH.open} T1`)
+    expect(labelRow("T1")).not.toContain("+")
+    // AND THE LEGEND NAMES THE MARK, so the reader is not left to guess it.
+    expect(legendLinesFor(200, []).join(" ")).toContain("+ planned")
+  })
+
+  test("a PLAN-ONLY edge between two BOARD nodes is drawn, and a dangling plan ref stays unresolved", () => {
+    /** The plan: a root and a middle blocked by it, plus a reference that names no task at all. */
+    const planText = [
+      "## TODOs",
+      "",
+      "- [ ] 1. Root task",
+      "- [ ] 2. Middle task (blocked by: 1, 77)",
+    ].join("\n")
+    /** The board: T2 carries NO blocker, so the T1→T2 edge exists ONLY in the plan. */
+    const board: BoardTask[] = [
+      { id: "T1", subject: "Root task", status: "pending", blockedBy: [] },
+      { id: "T2", subject: "Middle task", status: "pending", blockedBy: [] },
+    ]
+    /** The model the host would serve: T2's node carries the union (T1 from the plan, T77 dangling). */
+    const model = buildModel({ board, plan: parsePlanMarkdown(planText) })
+    // THE FIXTURE REALLY HAS THE DEFECT CLASS: a plan-only edge between board nodes, and a dangling
+    // reference reported. Without these two facts the arm below would assert nothing about the defect.
+    expect(model.edges.some((edge) => edge.from === "T1" && edge.to === "T2" && edge.source === "plan")).toBe(true)
+    expect(model.report.unresolved).toEqual(["T77"])
+    /** The SAME board as the TUI reads it — both rows carry their own, empty, blocker list. */
+    const workflow = workflowOf([
+      { id: "T1", subject: "Root task", kind: "work", visual: "open", dependencies: [], failedDependencies: [], depth: 0 },
+      { id: "T2", subject: "Middle task", kind: "work", visual: "open", dependencies: [], failedDependencies: [], depth: 0 },
+    ])
+    workflow.model = model
+    /** The page under judgement. */
+    const page = dagPageOf(workflow)
+    expect(page).toBeDefined()
+    if (page === undefined) return
+    /** The middle task as the DRAWING sees it, which is where the dropped edge used to live. */
+    const middle = page.tasks.find((task) => task.id === "T2")
+    // THE ASSERTION THE DEFECT BREAKS: the drawn row carries the MODEL's union, so `graph.ts` paints
+    // the plan-only T1→T2 edge. Before the fix this row kept the board's empty list and T2 floated.
+    expect(middle?.dependencies).toContain("T1")
+    expect(middle?.dependencies).toContain("T77")
+    // NEGATIVE: a dangling PLAN reference is NOT a failed dependency — the board's own list stays the
+    // only source of `failedDependencies`, and the reference surfaces as `unresolved` instead.
+    expect(middle?.failedDependencies).toEqual([])
+    /** The drawing, which is where the unresolved reference is surfaced to the reader. */
+    const layout = dagPanelLayout(page.tasks, 100, undefined, 30, page.ranks)
+    expect(layout.view.unresolved).toContain("T77")
+  })
+})
+
+// ── living-graph · THE RANKS WORD MUST NOT LIE ──────────────────────────────────────────────────
+//
+// The verifier's finding: the footer printed `ranks served` on the NORMAL model path because the
+// LAYOUT's `derived` flag is `false` by design once the host's map is applied — while the model's own
+// report said those ranks were HOST-DERIVED. The layout's flag answers "did this process derive?", not
+// "were these ranks derived at all?"; the page's word must answer the second question. One arm per
+// named state, each asserting the EXACT phrase, because this is a "the label lies" defect.
+
+/**
+ * The chain projection with a served model whose report declares the host's own rank source.
+ * @param ranksDerived - what the model's report claims: `true` = the HOST derived the ranks.
+ * @returns the workflow the page reads.
+ */
+function workflowWithModel(ranksDerived: boolean): TeamWorkflow {
+  /** The chain projection. */
+  const workflow = workflowFixture()
+  /** One board-backed node per chain row, carrying the row's own fields and its depth. */
+  const nodes: GraphNode[] = workflow.tasks.map((task) => ({
+    id: task.id,
+    subject: task.subject,
+    ...(task.kind === undefined ? {} : { kind: task.kind }),
+    visual: task.visual,
+    dependencies: [...task.dependencies],
+    depth: task.depth,
+    planned: false,
+  }))
+  workflow.model = {
+    nodes,
+    edges: [],
+    ranks: [],
+    cycles: [],
+    report: { boardOnly: [], planOnly: [], edgePlanOnly: [], edgeBoardOnly: [], planProblems: [], unresolved: [], ranksDerived },
+  }
+  return workflow
+}
+
+/**
+ * The rendered page text for one reader.
+ * @param readWorkflow - the projection the page must draw.
+ * @returns the page's text, drawn by a panel tall enough to show the whole page at once.
+ */
+function renderedPageText(readWorkflow: () => TeamWorkflow): string {
+  /** The page under test. */
+  const page = createDagPanelComponent(readWorkflow) as (props: unknown) => unknown
+  /** The host double, tall enough that no row is windowed away. */
+  const kit = makeKit({ columns: 120, rows: 200 })
+  return kit.text(render(page, kit, makeHost()))
+}
+
+describe("living-graph · the mode line names where the ranks came from", () => {
+  test("a served model whose report says DERIVED prints `derived (host)`", () => {
+    expect(renderedPageText(() => workflowWithModel(true))).toContain("ranks derived (host)")
+  })
+
+  test("a served model whose own report says the fallback won prints `served depth (host fallback)`", () => {
+    expect(renderedPageText(() => workflowWithModel(false))).toContain("ranks served depth (host fallback)")
+  })
+
+  test("NO served model keeps today's split — local derivation prints `derived`, not a host claim", () => {
+    /** The page text with no model at all. */
+    const text = renderedPageText(() => workflowFixture())
+    expect(text).toContain("ranks derived")
+    expect(text).not.toContain("(host)")
   })
 })

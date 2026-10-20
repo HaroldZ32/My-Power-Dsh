@@ -1,0 +1,74 @@
+{
+  "ok": false,
+  "harness": {
+    "id": "closure",
+    "expected": "0.2.1-rc.2",
+    "observed": "0.2.1-rc.2",
+    "matches": true
+  },
+  "sandbox": {
+    "root": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/harness-0.2.1/sandbox/closure-M28dVh",
+    "home": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/harness-0.2.1/sandbox/closure-M28dVh/dsh-home",
+    "userHome": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/harness-0.2.1/sandbox/closure-M28dVh/user-home",
+    "ws": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/harness-0.2.1/sandbox/closure-M28dVh/ws",
+    "kept": false
+  },
+  "credentialsSeeded": {
+    "storeCopied": true,
+    "settingsCopied": false,
+    "refsMerged": false
+  },
+  "installExit": 0,
+  "bootExit": 0,
+  "bootLineSource": "row-log",
+  "guardLine": "[mpd-roles] team plane: readOnlyGuard=installed deny=8 verifyGate=installed captainInvestigation=deny askUserQuestion=installed delegationGate=deny rosterSection=agent-scoped order=605 sessionGate=mechanical",
+  "guardTokens": {
+    "readOnlyGuard": "installed",
+    "deny": "8",
+    "verifyGate": "installed",
+    "captainInvestigation": "deny",
+    "askUserQuestion": "installed",
+    "delegationGate": "deny",
+    "rosterSection": "agent-scoped",
+    "order": "605",
+    "sessionGate": "mechanical"
+  },
+  "withdrawnGuards": {
+    "verifyGate": "STILL-INSTALLED(installed)",
+    "captainInvestigation": "STILL-INSTALLED(deny)",
+    "delegationGate": "STILL-INSTALLED(deny)"
+  },
+  "keptGuards": {
+    "readOnlyGuard": "installed",
+    "askUserQuestion": "installed",
+    "rosterSection": "agent-scoped",
+    "sessionGate": "unexpected(mechanical)"
+  },
+  "guardLineOk": false,
+  "failureLines": [
+    "dsh: warning: 1 entry did not activate"
+  ],
+  "failureCount": 1,
+  "rowLogFiles": [
+    "mpd-bootstrap.log",
+    "mpd-codegraph.log",
+    "mpd-config.log",
+    "mpd-dsh-adapter.log",
+    "mpd-ext.log",
+    "mpd-goal.log",
+    "mpd-mcp-lsp.log",
+    "mpd-patch-guards.log",
+    "mpd-roles.log",
+    "mpd-roster.log",
+    "mpd-team-core.log",
+    "mpd-team-watchdog.log",
+    "mpd-tui.log",
+    "mpd-verify.log"
+  ],
+  "sessionsSandboxed": true,
+  "sessionKeys": [
+    "--home-haroldzhao-MyProj-DshProj-My-Power-Dsh-evidence-harness-0.2.1-sandbox-closure-M28dVh-ws--"
+  ],
+  "bootProbeAnswered": true,
+  "logBytes": 570
+}

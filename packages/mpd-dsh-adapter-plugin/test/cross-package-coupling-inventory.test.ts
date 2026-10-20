@@ -244,7 +244,11 @@ export const FROZEN_COUPLINGS: readonly string[] = [
   // inventory this wave, so the gate stays green across the two lanes instead of reddening on an
   // edge that was written on purpose. The third entry is spelled exactly as the scanner captures a
   // multi-line `import type { … } from` clause; that leading `}` is the scanner's own form.
-  "packages/mpd-roles-plugin/src/index.ts :: import { VERIFY_SERVICE } from \"../../mpd-verify-plugin/src/service.ts\"",
+  // WITHDRAWN 2026-10-17 (lane B, harness-021-rollback): the `VERIFY_SERVICE` entry that stood HERE is
+  // DELETED, not re-frozen. It existed only for the verify guard's `lawAccess`, and the user's ruling
+  // withdrew that install from `mpd-roles` — so the coupling is gone. The inventory may only SHRINK, so
+  // the repair is the deletion; keeping a dead import alive to satisfy a frozen entry would preserve
+  // slop with a test.
   "packages/mpd-roles-plugin/src/verify-guard.ts :: import type { ArmedLoopView, VerifierSeatView } from \"../../mpd-verify-plugin/src/law.ts\"",
   "packages/mpd-roles-plugin/src/verify-guard.ts :: } from \"../../mpd-verify-plugin/src/law.ts\"",
   // mpd-ext -> mpd-roles: the roster table is read, never restated.
@@ -288,6 +292,26 @@ export const FROZEN_COUPLINGS: readonly string[] = [
   // spelling names a path. Same edge direction and same reasoning as the LANE D entries above; frozen
   // here by lane L, whose own scope does not hold this file, on the captain's instruction.
   "packages/mpd-roles-plugin/src/captain-investigation.ts :: import { readTargetPath } from \"../../mpd-verify-plugin/src/law.ts\"",
+  // THE SHARED GRAPH CORE (living-graph wave, 2026-10-19): `packages/mpd-graph-core` is a LIBRARY —
+  // no cordis row, no patch entry, no runtime dependency — and it is the ONE implementation of the
+  // plan→graph model and the rank derivation. Eight edges point at it on purpose, and they are frozen
+  // here rather than discovered later because the whole wave exists to remove a DUPLICATE derivation:
+  //   · the HOST plane (`mpd-team-core-plugin`) builds the model once per team and serves it on both
+  //     projections — that is the four-value import plus the type-only ones in `graph-model.ts`,
+  //     the service signature in `index.ts`, and the wire type in `team-web.ts`;
+  //   · the TUI plane (`mpd-tui-plugin`) calls the same `rankPlan`/`cycleIds` for its layout and reads
+  //     the served model's types, which is the two `graph.ts` edges and the two in `team-state.ts`.
+  // Both planes INLINE the package through `bun build`, so none of these is a runtime edge; each is a
+  // compile-time coupling this gate exists to make loud. A future lane reaching into the core from a
+  // THIRD package should add its entry here deliberately, not widen an existing one.
+  "packages/mpd-team-core-plugin/src/graph-model.ts :: import { buildModel, plansDirectory, readPlanFile, resolvePlanFile, watchGraph } from \"../../mpd-graph-core/src/index.ts\"",
+  "packages/mpd-team-core-plugin/src/graph-model.ts :: import type { BoardTask, GraphModel, GraphWatchOptions, GraphWatchTargets, GraphWatcher } from \"../../mpd-graph-core/src/index.ts\"",
+  "packages/mpd-team-core-plugin/src/index.ts :: import type { GraphModel } from \"../../mpd-graph-core/src/index.ts\"",
+  "packages/mpd-team-core-plugin/src/team-web.ts :: import type { GraphModel } from \"../../mpd-graph-core/src/index.ts\"",
+  "packages/mpd-tui-plugin/src/graph.ts :: import { cycleIds, rankPlan } from \"../../mpd-graph-core/src/rank.ts\"",
+  "packages/mpd-tui-plugin/src/graph.ts :: import type { RankPlan } from \"../../mpd-graph-core/src/types.ts\"",
+  "packages/mpd-tui-plugin/src/team-state.ts :: import type { GraphModel, GraphNode } from \"../../mpd-graph-core/src/types.ts\"",
+  "packages/mpd-tui-plugin/src/team-state.ts :: import { ID_ORDER } from \"../../mpd-graph-core/src/rank.ts\"",
 ]
 
 /** Blank out comments while preserving BOTH the character count and every newline, so a

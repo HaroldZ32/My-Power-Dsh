@@ -1,0 +1,5 @@
+rm-recreate {"sameIno":true,"deliveredAfterReplace":1,"deliveredAfterLateWrite":1}
+rm-recreate {"sameIno":true,"deliveredAfterReplace":1,"deliveredAfterLateWrite":1}
+rm-recreate {"sameIno":true,"deliveredAfterReplace":1,"deliveredAfterLateWrite":1}
+rename-away {"sameIno":false,"deliveredAfterReplace":0,"deliveredAfterLateWrite":0}
+rename-away {"sameIno":false,"deliveredAfterReplace":0,"deliveredAfterLateWrite":0}

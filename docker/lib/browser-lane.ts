@@ -12,6 +12,19 @@
 // screenshotted into the evidence tree, and EVERY stage records an assertion row in the same NDJSON
 // shape the entrypoint's `record()` writes, so a broken GUI reddens the run instead of decorating it.
 //
+// THE SETTINGS ENTRY POINT IS A CLICK ON THE HOST'S OWN LAUNCHER, NOT A BUTTON LABEL (measured
+// 2026-10-17): a signed-out container's rail renders the host ACCOUNT MENU whose VISIBLE text is
+// "… More" and whose ACCESSIBLE NAME is "Account menu" (`aria-label={t("menu")}`), so a query for a
+// button named "Settings" matches nothing and a fallback keyed on the visible "More" text never runs.
+// Stage 7 therefore clicks that launcher and then the menu's own "Settings" item — matching the ARIA
+// label, not the visible text — and keeps the host's `settings.open` shortcut (Control+Comma) as the
+// LAST resort, because a headless page does not guarantee that a key press reaches the shortcut
+// manager. Every attempt is screenshotted before and after and recorded in `<out>/settings-open.txt`,
+// and every failure NAMES what was tried and dumps the MPD client's `[mpd] …` console lines to
+// `<out>/mpd-console.txt` — so the next red says which leg failed and on what screen, without a
+// second Docker cycle. NOTE: the card mounts at PAGE LOAD (its slot is declared at boot), so a
+// `[mpd] settings section:` line proves the CARD registered, never that the dialog opened.
+//
 // The verdict is never the model's prose: `ui.replyRendered` asks whether the TRANSCRIPT rendered the
 // turn's OWN output — the answer the prompt asked for as a line of its own, or a rendered call of the
 // tool it asked for — judged by `docker/lib/reply-verdict.ts`, which also refuses the prompt's own
@@ -24,7 +37,7 @@
 //                        --out /out/ui-shots --state /work/assertions.ndjson [--budget-ms 240000]
 //
 // Exit code: 0 when every recorded row is true, 1 when any is false, 2 when the browser never started.
-import { appendFileSync, mkdirSync } from "node:fs"
+import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { judgeReply } from "./reply-verdict.ts"
 import type { ReplyVerdict } from "./reply-verdict.ts"
@@ -38,6 +51,7 @@ const UI_ASSERTIONS: readonly string[] = [
   "ui.replyRendered",
   "ui.mpdSettingsSection",
   "ui.teamPanel",
+  "ui.teamBoard",
   "ui.noConsoleErrors"
 ]
 
@@ -65,7 +79,7 @@ const COMPOSER_PLACEHOLDERS: readonly string[] = [
 ]
 /** The send control's accessible name. */
 const SEND_LABEL = "Send message"
-/** The prompt this lane types. It asks for one MPD tool so the reply proves the bundle's tool plane. */
+/** The prompt this lane types when the caller supplies none. It asks for one MPD tool, so the reply proves the bundle's tool plane. */
 const PROMPT = "Call the mpd_config_get tool once (it takes no arguments), then reply with exactly: DONE"
 
 /** Read `--<flag> <value>` off the command line, or `fallback` when absent/valueless. */
@@ -74,6 +88,41 @@ function arg(flag: string, fallback: string = ""): string {
   const index = process.argv.indexOf("--" + flag)
   return index === -1 || index + 1 >= process.argv.length ? fallback : process.argv[index + 1]
 }
+
+/** Whether the caller passed a bare flag. */
+function flag(name: string): boolean {
+  return process.argv.includes("--" + name)
+}
+
+// ── the caller's subject: a prompt, a landmark, and the REAL-board expectation ──
+// WHY THESE ARE ARGUMENTS. The lane's default subject is one tool call. The TEAM-PROJECT run asks for
+// a whole small project built by a real team, typed through this same composer: a different prompt,
+// a different landmark in its echo, and — the part that matters — a team panel that must show the
+// team THIS turn built rather than any fixture. A hard-coded default would make the lane lie about
+// which subject it witnessed.
+/** The prompt typed into the composer: the caller's `--prompt`, else the single-tool default. */
+const PROMPT_TEXT = arg("prompt", PROMPT)
+/** The text the sent bubble must carry, so "the prompt was really sent" cannot green on a stale echo. */
+const EXPECT_TEXT = arg("expect", "mpd_config_get")
+/** Whether this run expects the sidebar team panel to render a REAL board (the team-project run). */
+const TEAM_EXPECTED = flag("team-expected")
+/** The roster size the real board must show, when `--team-expected` is set. */
+const EXPECT_MEMBERS = Number(arg("expect-members", "2")) || 2
+/** The board size the real board must show, when `--team-expected` is set. */
+const EXPECT_TASKS = Number(arg("expect-tasks", "2")) || 2
+/**
+ * The workspace whose team records are read to BIND the panel to the fresh record.
+ *
+ * WHY THE LANE READS DISK: the two checks a wrong-board defect could still pass are "a tab id exists"
+ * and "some board has two members and two tasks". The record on disk written during THIS turn is the
+ * one artifact that says which team the turn produced, so the panel's `data-mpd-team-tab` is compared
+ * with it. Empty disables the binding (a caller that did not ask for a team build has none to read).
+ */
+const WORKSPACE = arg("workspace")
+/** The team name the prompt asked for; the record is selected by this name. */
+const TEAM_NAME = arg("team-name")
+/** Where to write the live session id this page is bound to, when the caller wants the verdict to read it. */
+const SESSION_OUT = arg("session-out")
 
 /** The error message of an unknown thrown value. */
 function messageOf(error: unknown): string {
@@ -186,6 +235,19 @@ const rows: UiRow[] = []
 const consoleErrors: string[] = []
 /** Uncaught page errors, captured for the failure report. */
 const pageErrors: string[] = []
+/**
+ * Every console line the MPD client emitted (`[mpd] …`), captured from page load on.
+ *
+ * WHY THIS EXISTS (measured 2026-10-17): the failed `ui.mpdSettingsSection` run raised
+ * "no Settings control was found" — a sentence that cannot distinguish "the dialog never opened"
+ * from "the card never registered", and cost a whole Docker cycle plus a wrong hypothesis. The card
+ * prints its own mount outcome (`[mpd] settings section: form status=…` on success,
+ * `… exposes no configForms service …` / `… could not mount …` on failure), so keeping those lines
+ * turns the NEXT red into a self-explaining row. Bounded: one minified stack cannot flood it.
+ */
+const consoleMpd: string[] = []
+/** How many `[mpd]` console lines are retained for a failure verdict (the tail is the interesting end). */
+const MPD_CONSOLE_LIMIT = 32
 
 /** Append one row to the state file and echo it the way the entrypoint's `record()` does. */
 function record(row: UiRow): void {
@@ -237,7 +299,17 @@ const browser: BrowserLike = await chromium.launch({ args: ["--no-sandbox", "--d
 const context: BrowserContextLike = await browser.newContext({ viewport: { width: 1600, height: 1000 } })
 /** The page every stage below drives. */
 const page: PageLike = await context.newPage()
-page.on("console", (message) => { if (message.type() === "error") consoleErrors.push(String(message.text()).slice(0, 250)) })
+page.on("console", (message) => {
+  /** This line's text, capped so one minified stack cannot bloat the state file. */
+  const text = String(message.text())
+  if (message.type() === "error") consoleErrors.push(text.slice(0, 250))
+  // THE MPD CLIENT'S OWN DIAGNOSTICS: the settings card prints exactly one mount line, so a red
+  // stage can say whether the card REGISTERED (the line exists) or never mounted (it does not).
+  if (text.includes("[mpd]")) {
+    consoleMpd.push(text.slice(0, 250))
+    if (consoleMpd.length > MPD_CONSOLE_LIMIT) consoleMpd.shift()
+  }
+})
 page.on("pageerror", (error) => pageErrors.push(messageOf(error).slice(0, 250)))
 
 /** Screenshot the page into `<OUT>/<name>.png` and answer the path written. */
@@ -251,6 +323,22 @@ async function shot(name: string): Promise<string> {
 /** The rendered body text, newline-collapsed and capped — the evidence a screen is not blank. */
 async function bodyText(limit: number = 3000): Promise<string> {
   return (await page.locator("body").innerText().catch(() => "")).replace(/\n{2,}/g, "\n").slice(0, limit)
+}
+
+/**
+ * The LAST `limit` characters of the rendered body.
+ *
+ * WHY THIS EXISTS (measured reasoning, not taste): a team build runs many tool calls, so the main pane
+ * grows far past the 8k head `bodyText` reads — and the one line the reply judge needs (`DONE`) is the
+ * LAST thing the turn writes. A head capture would sit at the top of the transcript and never see it,
+ * which would time out a turn that actually finished. The tail keeps exactly the region a reply lives in.
+ * @param limit - The number of trailing characters to keep (default 40k, enough for one long turn).
+ * @returns The tail of the body text, newline-collapsed.
+ */
+async function bodyTextTail(limit: number = 40000): Promise<string> {
+  /** The whole rendered body, newline-collapsed, before the tail is cut from it. */
+  const text = (await page.locator("body").innerText().catch(() => "")).replace(/\n{2,}/g, "\n")
+  return text.length <= limit ? text : text.slice(text.length - limit)
 }
 
 /** How many textbox-role candidates the resolver and its diagnostic probe. */
@@ -334,6 +422,49 @@ async function dismissGates(): Promise<void> {
   await page.waitForTimeout(400)
 }
 
+/** The team id of the NEWEST record named `name` under `<workspace>/.mpd/team/teams`, or "". */
+function readTeamRecordId(workspace: string, name: string): string {
+  if (workspace === "" || name === "") return ""
+  /** The store directory the product writes its records into. */
+  const dir = workspace + "/.mpd/team/teams"
+  if (!existsSync(dir)) return ""
+  /** The newest matching record seen so far. */
+  let best: { id: string; at: number } | undefined
+  for (const file of readdirSync(dir)) {
+    if (!file.endsWith(".json")) continue
+    try {
+      /** The record's parsed body, read only for the two fields this binding needs. */
+      const record = JSON.parse(readFileSync(dir + "/" + file, "utf8")) as { name?: unknown; teamId?: unknown; createdAt?: unknown }
+      if (record.name !== name) continue
+      /** The record's creation instant, falling back to the file's mtime. */
+      const at = typeof record.createdAt === "string" && !Number.isNaN(Date.parse(record.createdAt)) ? Date.parse(record.createdAt) : statSync(dir + "/" + file).mtimeMs
+      if (best === undefined || at >= best.at) best = { id: typeof record.teamId === "string" ? record.teamId : "", at }
+    } catch {
+      // A record this reader cannot parse is simply not a match.
+    }
+  }
+  return best?.id ?? ""
+}
+
+/** The live session this page is bound to: the host's own marker first, the panel's console line second. */
+async function currentSessionId(): Promise<string> {
+  /** The host's own sidebar session marker, when this build renders one. */
+  const marker = page.locator("[data-sidebar-right-session]").first()
+  if (await marker.count() > 0) {
+    /** The marker's value. */
+    const value = await marker.getAttribute("data-sidebar-right-session").catch(() => null)
+    if (typeof value === "string" && value !== "") return value
+  }
+  // THE PANEL ANNOUNCES ITS OWN SESSION on the console (`[mpd] team sidebar session: <id>`), and the
+  // collector above keeps every `[mpd]` line; the newest announcement is this page's session.
+  for (let index = consoleMpd.length - 1; index >= 0; index--) {
+    /** The id the announcement named, when this line is one. */
+    const match = /team sidebar session:\s*(\S+)/.exec(consoleMpd[index] ?? "")
+    if (match !== null) return match[1]
+  }
+  return ""
+}
+
 // ── stage 1: the app loads at all ─────────────────────────────────────────────
 await stage("ui.loads", "the Web GUI loaded and rendered visible text in a real browser",
   async () => {
@@ -404,7 +535,7 @@ await stage("ui.promptSent", "a prompt was typed into the composer and sent thro
     const box = await resolveComposer()
     if (box === undefined) throw new Error("the composer disappeared between stages")
     await box.click({ timeout: 5000 })
-    await box.fill(PROMPT)
+    await box.fill(PROMPT_TEXT)
     await page.waitForTimeout(500)
     beforeSend = await bodyText(6000)
     /** The send control, or a locator that matches nothing when it is absent. */
@@ -416,8 +547,8 @@ await stage("ui.promptSent", "a prompt was typed into the composer and sent thro
     // The prompt must be VISIBLE as a sent message, not merely typed: a composer that keeps the text
     // (because the click missed) would otherwise read as a successful send.
     const after = await bodyText(6000)
-    if (!after.includes("mpd_config_get")) throw new Error("the prompt text never appeared in the transcript after send")
-    return `promptChars=${PROMPT.length}`
+    if (!after.includes(EXPECT_TEXT)) throw new Error(`the prompt text (expected "${EXPECT_TEXT}") never appeared in the transcript after send`)
+    return `promptChars=${PROMPT_TEXT.length} expect=${EXPECT_TEXT}`
   })
 
 // ── stage 5: the answer renders — a turn really ran through the GUI ───────────
@@ -429,20 +560,32 @@ await stage("ui.replyRendered", "the transcript rendered the turn's OWN output �
     /** The last text seen, so the failure report quotes what the screen really said. */
     let seen = ""
     /** The verdict this stage's row is recorded from, re-read from the LATEST capture every round. */
-    let verdict: ReplyVerdict = judgeReply({ before: beforeSend, after: seen, prompt: PROMPT })
+    let verdict: ReplyVerdict = judgeReply({ before: beforeSend, after: seen, prompt: PROMPT_TEXT })
     while (Date.now() < deadline) {
-      seen = await bodyText(8000)
-      verdict = judgeReply({ before: beforeSend, after: seen, prompt: PROMPT })
+      // A TEAM TURN IS LONG: read the TAIL, where the final answer is, rather than the first 8k of a
+      // page whose top is the user's bubble and whose middle is tool output.
+      seen = TEAM_EXPECTED ? await bodyTextTail() : await bodyText(8000)
+      verdict = judgeReply({ before: beforeSend, after: seen, prompt: PROMPT_TEXT })
       // TWO terminal states, and BOTH end the wait: a rendered turn output (judged by the shared
       // classifier), and the turn's failure panel — the GUI paints that when the turn has ENDED, so
       // waiting out the budget cannot produce a reply after it. The PROMPT's own `DONE` is not one of
       // them: it is echoed into the user's bubble the moment the message is sent, which is the exact
       // false green FINDING F1 reports (`before=225 after=619 done=true`, `ui-02`/`ui-03` byte-identical).
-      if (verdict.kind === "reply" || verdict.failure !== "") break
+      // IN TEAM-PROJECT MODE ONLY THE FINAL ANSWER ENDS THE WAIT. A tool mention is a legitimate reply
+      // for the single-tool default, but a team build asks for MANY tools: breaking on the first one
+      // would judge the board while it was still being built. The team prompt names one final line
+      // (`DONE`), so `verdict.done` is the only terminal state there.
+      // A FAILURE PANEL IS NOT A TERMINAL FOR A TEAM TURN. Measured 2026-10-19: a tool error inside the
+      // build painted a fresh failure line while the lead kept working, and the old early exit judged a
+      // turn that finished one minute later. Only the requested final line ends a team turn; a
+      // non-team run keeps its failure-panel exit because a single-tool turn has nothing else to wait for.
+      // A CREDENTIAL-BOUND FAILURE IS TERMINAL IN BOTH MODES: waiting the whole team budget for a reply
+      // that needs a key would report a known prerequisite 25 minutes late.
+      const settled = TEAM_EXPECTED ? (verdict.done || verdict.kind === "credential-bound") : (verdict.kind === "reply" || verdict.failure !== "")
+      if (settled) break
       await page.waitForTimeout(2500)
     }
     await shot("ui-03-reply")
-    if (verdict.kind === "reply") return verdict.raw
     if (verdict.kind === "credential-bound") {
       // THE HONEST OUTCOME IN A CREDENTIAL-FREE CONTAINER: no reply rendered, and the panel names the
       // missing prerequisite — so the row is a DECLARED BOUND (`null` with this reason), never a green.
@@ -451,6 +594,8 @@ await stage("ui.replyRendered", "the transcript rendered the turn's OWN output �
         raw: verdict.raw,
       }
     }
+    if (TEAM_EXPECTED && !verdict.done) throw new Error(`the team turn never reached its final DONE line within the budget; the last verdict was ${verdict.kind} (${verdict.detail}) (${verdict.raw})`)
+    if (verdict.kind === "reply") return verdict.raw
     throw new Error(`no reply was rendered: ${verdict.detail} (${verdict.raw})`)
   })
 
@@ -477,27 +622,329 @@ await stage("ui.teamPanel", "the right sidebar opens on the Agent Teams panel wi
     return `chars=${text.length} teamTab=${await team.count()}`
   })
 
+// ── stage 6b: the REAL board this turn built (TEAM-PROJECT runs only) ────────
+// `ui.teamPanel` above proves the panel EXISTS. This stage proves it renders the team THIS turn built:
+// the panel root's own `data-mpd-team-tab` carries the bound team's id (the empty string is the
+// workspace-listing view, which a session with no team correctly gets), and the two headings carry
+// the roster and board sizes the prompt asked for. A fixture, a foreign board or an empty team panel
+// all fail it — which is the difference between "the UI is mounted" and "the UI shows the work".
+await stage("ui.teamBoard", "the sidebar team panel renders the REAL team this turn built — a bound team id, the requested roster and the requested board",
+  async (): Promise<StageResult> => {
+    if (!TEAM_EXPECTED) return { bound: "not attempted: this run did not ask for a team build (--team-expected absent), so there is no real board to assert", raw: "teamExpected=false" }
+    /** The instant this stage gives up waiting for the asynchronous projection. */
+    const deadline = Date.now() + 90_000
+    /** The last panel text read, quoted on failure. */
+    let panelText = ""
+    /** The team id the panel root carried; empty is the workspace-listing view. */
+    let tabId = ""
+    /** The members heading's count, or 0 while absent. */
+    let membersSeen = 0
+    /** The tasks heading's count, or 0 while absent. */
+    let tasksSeen = 0
+    while (Date.now() < deadline) {
+      /** The panel root: the ONE element the team view draws its projection into. */
+      const panel = page.locator("[data-mpd-team-tab]").first()
+      if (await panel.count() > 0) {
+        panelText = await panel.innerText().catch(() => "")
+        tabId = (await panel.getAttribute("data-mpd-team-tab").catch(() => "")) ?? ""
+      }
+      membersSeen = Number(/MEMBERS \((\d+)\)/.exec(panelText)?.[1] ?? "0")
+      tasksSeen = Number(/TASKS \((\d+)\)/.exec(panelText)?.[1] ?? "0")
+      if (tabId !== "" && membersSeen >= EXPECT_MEMBERS && tasksSeen >= EXPECT_TASKS) break
+      await page.waitForTimeout(3000)
+    }
+    // THE SESSION IS CAPTURED FOR THE VERDICT before any verdict of this stage: the team-project reader
+    // binds the RECORD to the session, and the Web lane is the only side that knows which session the
+    // browser opened. A page that advertises no id writes an empty file, and the reader records the
+    // binding as an honest NULL (its driver gate then names the miss).
+    /** The live session this page is bound to. */
+    const sessionId = await currentSessionId()
+    if (SESSION_OUT !== "") writeFileSync(SESSION_OUT, sessionId + "\n")
+    await shot("ui-06-team-board")
+    if (tabId === "") throw new Error(`the panel is rendering the workspace-listing view (data-mpd-team-tab is empty), not a team bound to this session; visible text: ${JSON.stringify(panelText.slice(0, 400))}`)
+    if (membersSeen < EXPECT_MEMBERS || tasksSeen < EXPECT_TASKS) throw new Error(`the bound team's panel shows MEMBERS (${membersSeen}) / TASKS (${tasksSeen}); the turn asked for ${EXPECT_MEMBERS} members and ${EXPECT_TASKS} tasks — the team did not finish being built or the projection dropped it; visible text: ${JSON.stringify(panelText.slice(0, 400))}`)
+    // THE PANEL IS BOUND TO THE FRESH RECORD, not merely to a non-empty id: a foreign or stale board with
+    // two members and two tasks must not green this. The record was written by THIS turn's approval, so
+    // its id is the one identity the screenshot and the row may claim.
+    if (WORKSPACE !== "" && TEAM_NAME !== "") {
+      /** The id of the newest record named what the prompt asked for. */
+      const recordId = readTeamRecordId(WORKSPACE, TEAM_NAME)
+      if (recordId === "") throw new Error(`no team record named "${TEAM_NAME}" exists under ${WORKSPACE} — the panel's board cannot be the one this turn built`)
+      if (tabId !== recordId) throw new Error(`the panel is bound to team "${tabId}", but THIS turn's record is "${recordId}" — a foreign or stale board cannot be the evidence`)
+      return `teamId=${tabId} recordId=${recordId} members=${membersSeen} tasks=${tasksSeen} session=${sessionId || "<none>"}`
+    }
+    return `teamId=${tabId} members=${membersSeen} tasks=${tasksSeen} session=${sessionId || "<none>"}`
+  })
+
+// ── the host's Settings dialog: CLICK FIRST, shortcut second ───────────────────
+//
+// THE DIALOG IS OPENED BY A REAL CLICK ON A CONTROL THE HOST RENDERS; the keyboard command is only
+// the fallback. TWO Docker runs taught this, so both lessons are written down here:
+//   1. The rail's bottom control is the host's ACCOUNT MENU. Its VISIBLE text is "… More" when
+//      signed out (`signedIn ? label : t("more")`), but its ACCESSIBLE NAME is
+//      `aria-label={t("menu")}` = "Account menu" — an aria-label overrides the visible text for the
+//      accessible-name query, so the lane's earlier candidates ("More"/"Settings"/"Account") matched
+//      NOTHING and the fallback loop never ran (`tried: Ctrl+Comma` alone in the 2026-10-17 artifact).
+//      The menu's first item is `{ id: "settings", label: t("settings") }`.
+//   2. `Control+Comma` is the host's registered `settings.open` command (aliases settings/preferences,
+//      identical in both target generations), but a headless page does not guarantee that a key press
+//      reaches the SPA's shortcut manager, so it is kept as the LAST resort, not the primary.
+// EVERY attempt is screenshotted BEFORE and AFTER and recorded in `<out>/settings-open.txt`, so the
+// next red names the leg that failed and shows the screen it failed on.
+//
+// NOTE ON THE CONSOLE: the settings card mounts at PAGE LOAD (the `settings.section` slot is declared
+// at boot), so `[mpd] settings section: …` lines prove the CARD registered — not that the dialog
+// opened. The open signal below is the host's OWN section nav, never our card.
+
+/** How long one dialog probe waits for an open marker to appear. */
+const DIALOG_PROBE_MS = 2000
+/** How long a single click may take before the entry point counts as failed. */
+const DIALOG_CLICK_MS = 5000
+
+/**
+ * The host-owned labels that prove the settings dialog is OPEN.
+ *
+ * The shipped settings clients register these section-nav entries in every measured build; the probe
+ * accepts the FIRST one visible, so a release that renames one label does not hide an open dialog.
+ */
+const DIALOG_MARKERS: readonly string[] = ["General", "Built-in plugins", "Agent presets"]
+
+/**
+ * The launcher candidates, each with the short name the trace and the row use for it.
+ *
+ * "Account menu" is the MEASURED accessible name (`aria-label={t("menu")}`); the rest are kept for a
+ * build that rewords that aria label. The visible "More" text is deliberately NOT relied on.
+ */
+const LAUNCHER_CANDIDATES: readonly { readonly name: string; readonly match: RegExp }[] = [
+  { name: "Account menu", match: /^account menu$/i },
+  { name: "More", match: /^more$/i },
+  { name: "Settings", match: /^settings$/i },
+  { name: "Account", match: /^account$/i },
+]
+
+/** One dialog-open attempt's record: what was tried, which marker fired, and the two screenshots. */
+interface OpenAttempt {
+  /** The short attempt name, quoted in the row and in the trace file. */
+  readonly name: string
+  /** The open marker that became visible, or "none". */
+  readonly marker: string
+  /** The before/after screenshot paths. */
+  readonly shots: readonly string[]
+}
+
+/** Every dialog-open attempt this run made, in order. */
+const openAttempts: OpenAttempt[] = []
+
+/**
+ * Wait until one locator is attached AND visible.
+ * @param locator - the locator to probe.
+ * @param budgetMs - how long to keep probing before answering false.
+ * @returns whether it became visible inside the budget.
+ */
+async function waitVisible(locator: LocatorLike, budgetMs: number): Promise<boolean> {
+  /** The instant this probe gives up; `waitForTimeout` is the only sleep this lane has. */
+  const deadline = Date.now() + budgetMs
+  while (Date.now() < deadline) {
+    if (await locator.count() > 0 && await locator.isVisible().catch(() => false)) return true
+    await page.waitForTimeout(200)
+  }
+  return false
+}
+
+/**
+ * The host's own settings-nav entry with this label, matched as a whole visible line.
+ * @param label - the nav label as the host renders it (`General`, `MPD`, …).
+ * @returns the first matching locator.
+ */
+function settingsNavItem(label: string): LocatorLike {
+  return page.getByText(new RegExp("^" + label + "$", "i")).first()
+}
+
+/**
+ * One compact excerpt of the `[mpd]` console lines, for a row's `raw` field.
+ *
+ * The row's `raw` is capped at 300 characters by {@link stage}, and the diagnostic must SURVIVE that
+ * cap, so the excerpt is deliberately short: a couple of lines, each flattened and clipped.
+ * @param limit - how many trailing lines to include.
+ * @returns the excerpt, or the explicit "none" sentence when the client emitted nothing.
+ */
+function mpdConsoleExcerpt(limit: number = 2): string {
+  if (consoleMpd.length === 0) return "page console carried no [mpd] line"
+  /** The trailing lines, flattened and shortened so the excerpt stays one readable row value. */
+  const lines = consoleMpd.slice(-limit).map((line: string): string => line.replace(/\s+/gu, " ").slice(0, 64))
+  return "[mpd]: " + lines.join(" | ")
+}
+
+/**
+ * Write every captured `[mpd]` console line to `<OUT>/mpd-console.txt`.
+ *
+ * The row's `raw` field is capped at 300 characters by {@link stage}, so the FULL excerpt travels in
+ * the mounted evidence tree beside the PNGs; the failure message names this path.
+ * @returns the evidence file's path.
+ */
+function dumpMpdConsole(): string {
+  /** The evidence file, beside the screenshots so it travels with the mounted tree. */
+  const file = join(OUT, "mpd-console.txt")
+  writeFileSync(file, consoleMpd.length === 0 ? "(no [mpd] console line was emitted)\n" : consoleMpd.join("\n") + "\n")
+  return file
+}
+
+/**
+ * Wait for ANY host-owned open marker: one visible section-nav label proves the dialog rendered.
+ * @returns the marker label that became visible, or undefined when none did.
+ */
+async function settingsDialogMarker(): Promise<string | undefined> {
+  for (const marker of DIALOG_MARKERS) {
+    if (await waitVisible(settingsNavItem(marker), DIALOG_PROBE_MS)) return marker
+  }
+  return undefined
+}
+
+/**
+ * Run ONE open attempt with a before/after screenshot and record its outcome.
+ * @param name - the attempt's short name, quoted in the trace and the row.
+ * @param slug - a file-name-safe form of the name, used in the screenshot names.
+ * @param action - the click or key press this attempt performs.
+ * @returns the open marker that fired, or undefined when the dialog stayed closed.
+ */
+async function attemptOpen(name: string, slug: string, action: () => Promise<void>): Promise<string | undefined> {
+  /** This attempt's index, so the screenshot names sort in attempt order. */
+  const index = String(openAttempts.length).padStart(2, "0")
+  /** The screen BEFORE the attempt: what the entry point looked like when it was tried. */
+  const before = await shot(`ui-04-open-${index}-${slug}-before`)
+  await action()
+  /** The host marker that proves the dialog rendered; undefined leaves the attempt recorded as "none". */
+  const marker = await settingsDialogMarker()
+  /** The screen AFTER the attempt (or after the probe budget, which IS the failing state). */
+  const after = await shot(`ui-04-open-${index}-${slug}-after`)
+  openAttempts.push({ name, marker: marker ?? "none", shots: [before, after] })
+  return marker
+}
+
+/**
+ * Write every open attempt to `<OUT>/settings-open.txt`.
+ * @returns the evidence file's path.
+ */
+function dumpOpenTrace(): string {
+  /** The evidence file, beside the screenshots and the console dump. */
+  const file = join(OUT, "settings-open.txt")
+  /** One line per attempt: its name, the marker that fired, and the two screenshots that show it. */
+  const lines = openAttempts.map((attempt: OpenAttempt): string => `${attempt.name}: dialog=${attempt.marker} shots=${attempt.shots.join(",")}`)
+  /** The probed marker vocabulary, printed so a renamed host label is diagnosable from the artifact. */
+  const footer = `(open markers probed: ${DIALOG_MARKERS.join(", ")})\n`
+  writeFileSync(file, (lines.length === 0 ? "(no open attempt was made)\n" : lines.join("\n") + "\n") + footer)
+  return file
+}
+
+/**
+ * One compact line naming the LAST attempts' outcomes, for the row's 300-character `raw`.
+ * @param limit - how many trailing attempts to include.
+ * @returns the trace excerpt, e.g. `Account menu->none, shortcut Ctrl+Comma->none`.
+ */
+function openTraceExcerpt(limit: number = 2): string {
+  if (openAttempts.length === 0) return "no open attempt was made"
+  return openAttempts.slice(-limit).map((attempt: OpenAttempt): string => `${attempt.name}->${attempt.marker}`).join(", ")
+}
+
+/**
+ * The Settings menu item a launcher opened, clicked once it is visible.
+ *
+ * Role first (the host renders a real menu), then a plain text match for a build whose menu items are
+ * not exposed with the `menuitem` role.
+ * @returns nothing; the caller probes the open marker afterwards.
+ */
+async function clickSettingsMenuItem(): Promise<void> {
+  /** The "Settings" item as a real menu item. */
+  const item = page.getByRole("menuitem", { name: /^settings$/i }).first()
+  if (await item.count() > 0 && await item.isVisible().catch(() => false)) {
+    await item.click({ timeout: DIALOG_CLICK_MS, force: true }).catch(() => {})
+    await page.waitForTimeout(1200)
+    return
+  }
+  /** The same item found by visible text, when the menu exposes no menuitem role. */
+  const byText = page.getByText(/^settings$/i).first()
+  if (await byText.count() > 0 && await byText.isVisible().catch(() => false)) {
+    await byText.click({ timeout: DIALOG_CLICK_MS, force: true }).catch(() => {})
+    await page.waitForTimeout(1200)
+  }
+}
+
+/**
+ * Open the host's Settings dialog: the CLICK paths first, the keyboard shortcut last.
+ *
+ * The 2026-10-17 container run proved the shortcut alone cannot be trusted (a headless page does not
+ * guarantee where a key press lands) and that the launcher must be matched by its ARIA label
+ * ("Account menu"), not by the visible "More" text.
+ * @returns the entry point that worked, named in the verdict (`launcher Account menu`, `shortcut …`).
+ * @throws naming the attempt outcomes, the `[mpd]` console excerpt and both evidence files.
+ */
+async function openSettingsDialog(): Promise<string> {
+  // Give the rail one bounded chance to PAINT the launcher before deciding it is absent: the SPA
+  // renders the footer after its shell mounts, and the attempts below must not race that paint.
+  await waitVisible(page.getByRole("button", { name: LAUNCHER_CANDIDATES[0].match }).first(), DIALOG_PROBE_MS)
+  // PATH 1: the rail launcher — a real click, then the menu's own "Settings" item.
+  for (const candidate of LAUNCHER_CANDIDATES) {
+    /** The launcher button in the rail's footer, matched by ACCESSIBLE name. */
+    const launcher = page.getByRole("button", { name: candidate.match }).first()
+    if (await launcher.count() === 0) continue
+    if (!(await launcher.isVisible().catch(() => false))) continue
+    /** This attempt's screenshot slug, so the files say which spelling was clicked. */
+    const slug = candidate.name.toLowerCase().replace(/[^a-z0-9]+/gu, "-")
+    /** The marker this attempt produced, when it produced one. */
+    const marker = await attemptOpen(candidate.name, slug, async (): Promise<void> => {
+      await launcher.click({ timeout: DIALOG_CLICK_MS, force: true }).catch(() => {})
+      await page.waitForTimeout(800)
+      await clickSettingsMenuItem()
+    })
+    if (marker !== undefined) return `launcher ${candidate.name}`
+    // A menu left open would swallow the next attempt's click, so close it before moving on.
+    await page.keyboard.press("Escape").catch(() => {})
+    await page.waitForTimeout(300)
+  }
+  // PATH 2 (LAST RESORT): the host's registered `settings.open` command. The body click gives the
+  // document focus first, because a headless page does not guarantee where the key press lands.
+  /** The marker the shortcut produced, when it produced one. */
+  const shortcutMarker = await attemptOpen("shortcut Ctrl+Comma", "shortcut-ctrl-comma", async (): Promise<void> => {
+    await page.locator("body").first().click({ timeout: DIALOG_CLICK_MS, force: true }).catch(() => {})
+    await page.waitForTimeout(300)
+    await page.keyboard.press("Control+Comma").catch(() => {})
+    await page.waitForTimeout(1200)
+  })
+  if (shortcutMarker !== undefined) return "shortcut Ctrl+Comma"
+  throw new Error(`the settings dialog did not open — last: ${openTraceExcerpt()}; open-trace=${dumpOpenTrace()}; mpd-console=${dumpMpdConsole()}; ${mpdConsoleExcerpt(1)}`)
+}
+
 // ── stage 7: the MPD settings section this bundle contributes ─────────────────
 await stage("ui.mpdSettingsSection", "the MPD settings section registers and renders its card in Settings",
   async () => {
     await page.goto(BASE, { waitUntil: "domcontentloaded" })
     await page.waitForTimeout(2500)
     await dismissGates()
-    /** The Settings control in the app's navigation. */
-    const settings = page.getByRole("button", { name: /^settings$/i }).first()
-    if (await settings.count() === 0) throw new Error("no Settings control was found")
-    await settings.click({ timeout: 6000, force: true })
-    await page.waitForTimeout(2000)
+    /** The entry point that opened the dialog, quoted in the pass line and in every failure below. */
+    const openedBy = await openSettingsDialog()
+    // The open trace is written as soon as the dialog is proven open, so it exists even when the MPD
+    // assertion below fails and carries the attempt/marker/screenshot record with it.
+    dumpOpenTrace()
+    await page.waitForTimeout(1200)
+    // SHOT BEFORE THE MPD CLICK: a dialog that opened with no MPD entry must still be readable
+    // evidence (the old stage only screenshotted its success path, which is why the 0.2.1 red left
+    // no picture of the settings screen at all).
+    await shot("ui-04-mpd-settings-open")
     /** The MPD nav entry this bundle contributes to Settings. */
-    const mpd = page.getByText(/^MPD$/).first()
-    if (await mpd.count() === 0) throw new Error("the MPD settings nav entry is absent")
+    const mpd = settingsNavItem("MPD")
+    if (await mpd.count() === 0) {
+      throw new Error(`no MPD settings nav entry after ${openedBy} — ${mpdConsoleExcerpt(1)}; open-trace=${dumpOpenTrace()}; mpd-console=${dumpMpdConsole()}`)
+    }
     await mpd.click({ timeout: 6000, force: true })
     await page.waitForTimeout(2500)
     /** The rendered settings text the card claim is judged on. */
     const text = await bodyText(4000)
     await shot("ui-04-mpd-settings")
-    if (!/MPD bundle/i.test(text)) throw new Error("the MPD section opened but its card text is absent: " + JSON.stringify(text.slice(0, 200)))
-    return `chars=${text.length}`
+    if (!/MPD bundle/i.test(text)) {
+      throw new Error(`the MPD section opened but its card text is absent after ${openedBy} — ${mpdConsoleExcerpt(1)}; open-trace=${dumpOpenTrace()}; mpd-console=${dumpMpdConsole()}`)
+    }
+    dumpMpdConsole()
+    return `chars=${text.length} opened-by=${openedBy} open=${openTraceExcerpt(1)} mpd-console=${consoleMpd.length}`
   })
 
 // ── stage 8: a console-clean page — a GUI that throws is not a usable GUI ──────

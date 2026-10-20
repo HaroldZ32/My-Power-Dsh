@@ -46,7 +46,7 @@ import { PANEL_FULLSCREEN_GLYPH, PANEL_TITLE_ROW_ROWS, usePanelTitleRow } from "
 import { subagentSectionRows, surfaceRule, type SubagentSectionRow } from "./subagent-scene.js"
 import { hitTest, layoutBoxesNatural, layoutList, layoutRail, legendLines, sliceSpans, type GraphTask, type GraphView } from "./graph.js"
 import type { TeamWorkflow } from "./team-state.js"
-import { NO_SESSION_TEAM_MARKER, WORKSPACE_SCOPE_MARKER, type TeamFeedAccessor } from "./team-state.js"
+import { modelRanks, modelRows, NO_SESSION_TEAM_MARKER, WORKSPACE_SCOPE_MARKER, type TeamFeedAccessor } from "./team-state.js"
 import {
   clampScroll,
   graphRow,
@@ -146,12 +146,51 @@ export interface DagPanelTask extends GraphTask {
   round?: number
   /** Review verdict, when the record carries one. */
   verdict?: string
+  /**
+   * True for a GHOST row: the served model's plan-only node, drawn here but absent from the board.
+   *
+   * The projection copies it from {@link TeamTaskRow.planned}, so the page can tell a planned task
+   * from a board task without comparing `visual` strings.
+   */
+  planned?: boolean
 }
+
+/**
+ * WHERE the page's drawn ranks came from — the three facts the footer must never re-conflate.
+ *
+ * THE DEFECT THIS TYPE EXISTS FOR (wave `living-graph`, verifier finding): the core's
+ * `rankPlan(tasks, served)` reports `derived: false` when it APPLIED the served map, which answers
+ * "did this process derive?" — NOT "were these ranks derived at all?". Reading that flag as the second
+ * question made the page print `ranks served` on the normal model path even though the model's own
+ * report said the HOST derived them, i.e. it told the reader the picture rested on an untrusted
+ * fallback. Naming the states makes the confusion a compile-time-visible choice, not a wording accident:
+ *   · `derived-host` — a served model exists and its report says its ranks were derived → `derived (host)`;
+ *   · `served-host`  — a served model exists and IT fell back to the served depth → `served depth (host fallback)`;
+ *   · `local`        — no served model: this process ranks the board (today's split: `derived`, or
+ *                      `served depth` on the documented served-depth fallback).
+ */
+export type DagRanksSource = "derived-host" | "served-host" | "local"
 
 /** The projection one render draws from: the tasks, the counts, the roster size and the problems. */
 export interface DagPage {
-  /** The tasks, in board order. */
+  /** The tasks, in board order — SERVED-MODEL order when a model was joined in (ghosts included). */
   tasks: DagPanelTask[]
+  /**
+   * The SERVED rank of every drawn task, when the host published a model (wave `living-graph`).
+   *
+   * OPTIONAL on purpose: absent means the drawing derives ranks through the shared core's `rankPlan`,
+   * exactly as it always has; present means that map is handed to the layout as its optional ranks
+   * input and no local derivation runs. A projection only — never serialized.
+   */
+  ranks?: ReadonlyMap<string, number>
+  /**
+   * WHERE those ranks came from, in the three states {@link DagRanksSource} names.
+   *
+   * `dagPageOf` derives it from the model's own `report.ranksDerived` (the host's answer), never from
+   * the layout's `derived` flag — that one answers "did this process derive?" and is `false` by design
+   * once a served map is applied.
+   */
+  ranksSource: DagRanksSource
   /** The workspace this projection was scoped to. */
   workspace: string
   /** The team's display name, or an explicit placeholder when the record carries none. */
@@ -194,9 +233,11 @@ export function dagPageOf(workflow: TeamWorkflow | undefined): DagPage | undefin
   // projection, the `none` scope's carrier) omits it — so a live team with zero tasks keeps its page
   // while the no-team projection keeps yielding undefined for the render's marker row below.
   if (workflow.tasks.length === 0 && workflow.team === undefined) return undefined
+  /** The rows to draw: the board joined with the served model, ghosts included (wave `living-graph`). */
+  const rows = modelRows(workflow)
   /** The tasks, projected once. */
   const tasks: DagPanelTask[] = []
-  for (const task of workflow.tasks) {
+  for (const task of rows) {
     /** The task's sanitized id; a row with no readable id cannot be focused or clicked. */
     const id = panelField(task.id, 40)
     if (id === undefined || id === "") continue
@@ -213,6 +254,7 @@ export function dagPageOf(workflow: TeamWorkflow | undefined): DagPage | undefin
       failedDependencies: (Array.isArray(task.failedDependencies) ? task.failedDependencies : []).map((dep) => panelField(dep, 40) ?? "").filter((dep) => dep !== ""),
       ...(typeof task.round === "number" && Number.isFinite(task.round) ? { round: Math.floor(task.round) } : {}),
       ...(task.verdict === undefined ? {} : { verdict: panelField(task.verdict, 60) ?? "" }),
+      ...(task.planned === true ? { planned: true } : {}),
     })
   }
   // The SAME C6 rule, one guard later: a board whose every row failed to project is still a resolved
@@ -235,8 +277,18 @@ export function dagPageOf(workflow: TeamWorkflow | undefined): DagPage | undefin
       })
     }
   }
+  /** The served ranks, absent when this projection carries no accepted model. */
+  const ranks = modelRanks(workflow)
+  // THE THREE STATES, from the HOST's own report when a model was accepted: `local` is the only one
+  // this process can answer without a model, and the layout's flag decides only its sub-word.
+  /** Where the drawn ranks came from, named for the footer's word. */
+  const ranksSource: DagRanksSource = workflow.model === undefined
+    ? "local"
+    : workflow.model.report.ranksDerived === true ? "derived-host" : "served-host"
   return {
     tasks,
+    ...(ranks === undefined ? {} : { ranks }),
+    ranksSource,
     workspace: panelField(workflow.workspace, 200) ?? "",
     teamName: panelField(workflow.team?.name, 60) ?? "(unnamed team)",
     phase: panelField(workflow.team?.phase, 20) ?? "unknown",
@@ -248,6 +300,24 @@ export function dagPageOf(workflow: TeamWorkflow | undefined): DagPage | undefin
       : "roster  " + roster.map((member) => `${member.status === "running" ? "◐" : "○"}${member.name} ${member.done}/${member.total}`).join(" · "),
     problems: (Array.isArray(workflow.problems) ? workflow.problems : []).map((problem) => panelField(problem, 120) ?? "").filter((problem) => problem !== ""),
   }
+}
+
+/**
+ * The footer's EXACT word for a rank source.
+ *
+ * `layoutDerived` is read ONLY for the `local` state. The core's `rankPlan(tasks, served)` reports
+ * `derived: false` whenever it applied the map the host handed it — true, and correct for its own
+ * question ("did this process derive?"), but it says nothing about whether the HOST derived the ranks
+ * from the graph. The page must answer the reader's question, so the two host states come from
+ * `model.report.ranksDerived`; only a composition with no model asks the layout at all.
+ * @param source - the named rank source on the projection.
+ * @param layoutDerived - the layout's own flag, meaningful only for `local`.
+ * @returns the phrase after `ranks ` in the mode line.
+ */
+function ranksPhrase(source: DagRanksSource, layoutDerived: boolean): string {
+  if (source === "derived-host") return "derived (host)"
+  if (source === "served-host") return "served depth (host fallback)"
+  return layoutDerived ? "derived" : "served depth"
 }
 
 /** One laid-out page: the drawing, the mode it chose, and whether every row fits the budget. */
@@ -312,21 +382,23 @@ const LIST_ROWS = 24
  * @param cols - the cells the panel measured; the VIEWPORT, never the drawing's width.
  * @param focus - the task to light, with its dependency chain.
  * @param rows - the rows the panel can show, which buys the roomy box form when there is room.
+ * @param servedRanks - the SERVED rank of each task id when the host published a model; omitted
+ *   means the drawing derives them through the core, exactly as it did before this wave.
  * @returns the drawing and the mode that produced it.
  */
-export function dagPanelLayout(tasks: readonly DagPanelTask[], cols: number, focus?: string, rows?: number): DagPanelLayout {
+export function dagPanelLayout(tasks: readonly DagPanelTask[], cols: number, focus?: string, rows?: number, servedRanks?: ReadonlyMap<string, number>): DagPanelLayout {
   /** The usable viewport width; a nonsense width still has to produce something drawable. */
   const width = Math.max(8, Math.floor(Number.isFinite(cols) ? cols : 8))
   /** The boxed DAG at its natural width, absent when the board refuses to be drawn as boxes. */
-  const boxes = layoutBoxesNatural(tasks, focus, rows === undefined ? undefined : { rows })
+  const boxes = layoutBoxesNatural(tasks, focus, rows === undefined ? undefined : { rows }, servedRanks)
   if (boxes !== undefined && boxes.labelOverflow !== true) return { view: boxes, mode: "boxes", list: false, ...viewFacts(boxes) }
   if (tasks.length > LIST_ROWS) {
     /** The dense table, for a board with more rows than a rail can show legibly. */
-    const dense = layoutList(tasks, width, focus)
+    const dense = layoutList(tasks, width, focus, servedRanks)
     return { view: dense, mode: "list", list: true, ...viewFacts(dense) }
   }
   /** The forest, for a board a box cannot hold. */
-  const rail = layoutRail(tasks, width, focus)
+  const rail = layoutRail(tasks, width, focus, servedRanks)
   return { view: rail, mode: "rail", list: false, ...viewFacts(rail) }
 }
 
@@ -870,7 +942,7 @@ export function createDagPanelComponent(readWorkflow: (sessionId?: string) => Te
     /** The sizes the hook and every later closure read; written by this render, before anything reads it. */
     const sizes: { contentRows: number; viewportRows: number; contentCols?: number; viewportCols?: number } = { contentRows: 1, viewportRows: 1, contentCols: contentCols, viewportCols: contentCols }
     /** The drawing for this render, at the natural width and for the height THIS panel measured. */
-    const layout = page === undefined ? undefined : dagPanelLayout(page.tasks, contentCols, focus, windowRows)
+    const layout = page === undefined ? undefined : dagPanelLayout(page.tasks, contentCols, focus, windowRows, page.ranks)
     // THE DRAWING'S OWN WIDTH, once it has been laid out: what the window may pan across. It is the
     // DRAWING's width and not the panel's (captain's ruling R8) — the purpose, said once: the pan exists
     // so the WHOLE DAG can be seen, and it is not a page-level scrolling mode. Every other row of the page
@@ -1055,7 +1127,9 @@ export function createDagPanelComponent(readWorkflow: (sessionId?: string) => Te
       // data" would leave the reader with no idea which surface the DAG is fed from.
       children.push(textRow(kit, "no team in this workspace — `agent_teams_plan` stages one", { key: "empty", dim: true, maxCells: contentCols }))
     }
-    if (layout !== undefined) {
+    // `layout` is DEFINED only when `page` is (the ternary above), and both are named here so the
+    // mode line can read the page's rank source without an assertion.
+    if (layout !== undefined && page !== undefined) {
       /** The contract's own running glyph, which the breath orbit starts from. */
       const baseGlyph = DAG_TONE_GLYPH.running ?? "◐"
       /** The animated glyph for this frame, or the base one when nothing is running. */
@@ -1142,7 +1216,10 @@ export function createDagPanelComponent(readWorkflow: (sessionId?: string) => Te
       // THE MODE LINE: which view was drawn AND WHERE ITS RANKS CAME FROM, said out loud — the view is
       // a fact about the width and the reader is the one who can change the width, while the rank
       // source is the fact that decides whether the vertical order can be trusted at all (R18).
-      children.push(textRow(kit, `view ${layout.mode}${layout.list ? " (dense)" : ""} · ${order.length} tasks · ranks ${layout.ranksDerived ? "derived" : "served"}`, { key: "mode", dim: true, maxCells: contentCols }))
+      // THE WORD COMES FROM THE NAMED SOURCE, never from the layout's `derived` flag alone: that flag
+      // is `false` by design once a served map is applied, so reading it as "the ranks were served"
+      // mislabelled HOST-DERIVED ranks as an untrusted fallback (the verifier's finding).
+      children.push(textRow(kit, `view ${layout.mode}${layout.list ? " (dense)" : ""} · ${order.length} tasks · ranks ${ranksPhrase(page.ranksSource, layout.ranksDerived)}`, { key: "mode", dim: true, maxCells: contentCols }))
       // THE UNRESOLVED BLOCKERS ARE SURFACED, NEVER SWALLOWED (R18). A blocker reference naming no task
       // on the board is the exact shape of the user's own defect — the record says `blockedBy: ["3"]`
       // while its ids are `T3` — and a page that dropped it silently would make a broken board look

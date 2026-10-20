@@ -31,7 +31,7 @@ node、没有 bun、没有 pnpm、也没有 dsh），运行 `mpd-client` compose
 4. 安装 `pnpm`（`npm i -g pnpm@…`）。这不是装饰：`dsh plugin <args>` 会在 profile 目录里转发给
    `pnpm`，缺少它时 harness 会打印 `pnpm was not found; install pnpm and make it available on PATH`。
    没有 pnpm 的机器根本无法安装 bundle。
-5. `npm i -g @deepseek-ai/dsh@0.2.0-rc.2`（默认 pin；可用 `MPD_E2E_DSH_VERSION=<版本>` 覆盖 ——
+5. `npm i -g @deepseek-ai/dsh@0.2.1-rc.2`（默认 pin；可用 `MPD_E2E_DSH_VERSION=<版本>` 覆盖 ——
    `docker/docker-compose.yml` 负责透传，`docker/entrypoint.sh` 负责读取），然后断言 `dsh --version`
    打印的字符串**完全等于**该版本号。
 6. 把检出复制到 `/opt/mpd`，执行 `bun install`，并按 `AGENTS.md` §6 的规范仓库根命令**从源码重建每一个**
@@ -81,10 +81,13 @@ node、没有 bun、没有 pnpm、也没有 dsh），运行 `mpd-client` compose
     让任何 token 形状残留其中（`evidenceScrubbed`；一旦泄漏即判定为红，并用定向清洗重写两个文件）。
 14. 把 `boot.llmTurn` 记为 **`null` 并附原因**——见下。
 15. **跑一遍 DSH-TUI 版本**（`docker/tui-lane.sh`）——这是开发机唯一无法演练的 profile：TUI 宿主必须从 npm
-    装进一个可写的全局前缀，并在真正的 PTY 上启动。该步安装 `@deepseek-harness-tui/dsh-tui@0.15.0`
-    —— 即本 bundle 现在对标的 dsh-tui 版本，其 peer 范围仍覆盖本 lane 会跑的整段区间（`0.1.7-rc.2`、
-    `0.2.0-rc.1` 与 `0.2.0-rc.2`）；`0.11.2` 只到 `0.2.0-rc.1`，对上 `0.2.0-rc.2` 时
-    `dsh plugin --profile dsh-tui add` 会因 peer 范围被拒。此前的 `0.14.0`（以及更早的 `0.13.0`、`0.12.0`）仅作历史保留。
+    装进一个可写的全局前缀，并在真正的 PTY 上启动。该步安装 `@deepseek-harness-tui/dsh-tui@0.16.1`
+    —— 即本 bundle 现在对标的 dsh-tui 版本。0.16.1 是**第一个**在声明的 peer 范围里包含 harness
+    `0.2.1-rc.2` 的宿主（其 36 个 `@deepseek-ai/dsh-*` peer 全部列出该版本），因此同时服务 `0.2.0-rc.2`
+    基线与 `0.2.1` 这一波；`0.15.0` 只覆盖到 `0.2.0-rc.2`，`0.11.2` 只到 `0.2.0-rc.1`，那时
+    `dsh plugin --profile dsh-tui add` 会因 peer 范围被拒——此时 lane 在该步直接判红，并由
+    `tui-logs/add-host.log` 捕获引用宿主自己的拒绝原文，而不是用一句歉意换绿。此前的 `0.15.0`、
+    `0.14.0`、`0.13.0`、`0.12.0` 仅作历史保留。
     可用 `MPD_E2E_TUI_VERSION` 覆盖，并与 `MPD_E2E_DSH_VERSION` 保持配套。它把本 bundle 作为第三层 patch 装进 `dsh-tui`
     profile，并记下二十二条 `tui.*` 断言：宿主安装、两次 `plugin add`、组合、**用户级预设偏好**（见下）、
     `preset-mpd` / `mpd-tui` / 官方团队行、种子看板**绑定到 TUI 实际运行的那个会话**（产品自身 `createTeam` 的两种写法都写上）、
@@ -126,12 +129,17 @@ node、没有 bun、没有 pnpm、也没有 dsh），运行 `mpd-client` compose
 - 已安装的 profile **确实挂载**：插件代码执行了，适配器提供了服务（在其自己的文件日志中见证，R5），mpd 工具已注册，
   官方 TeamService 已挂载，官方团队工具在 Agent 作用域内应答，mpd 会话门监听器为真实会话完成注册，`mpd` preset
   能为真实会话激活，Web 应用在提供服务；
-- 一次真实的 DSH-TUI 会话通过官方文档的用户级偏好解析出 `mpd`，而宿主 preset 注册表行未被本 bundle 触碰。
+- 一次真实的 DSH-TUI 会话通过官方文档的用户级偏好解析出 `mpd`，而宿主 preset 注册表行未被本 bundle 触碰；
+- **在 `--live` 下**，一次经网关的真实 **WEB** 回合与一次敲进 PTY 的真实 **TUI** 回合都能完成、调用一个
+  `mpd_*` 工具并产出文本——且两者都不会因 prompt 变量插值而失败
+  （`live.web.noPromptVariableError` / `live.tui.noPromptVariableError`，从会话存储读取）。
 
 没有证明：
 
-- **任何真实的 LLM 回合或模型路由。** 容器内不复制、不读取、不写入任何凭据（`AGENTS.md` §10），因此不会发起
-  模型请求。该断言以 `null` 加原因记录——绝不记为通过。
+- **除非传入 `--live`，否则不证明任何真实 LLM 回合。** 没有该开关时不落地凭据、不发起模型请求；每一行 live
+  断言都以 `null` **连同原因**记录，绝不记为通过。传入 `--live` 时，驱动按**名字**转发密钥，容器把它落进沙箱
+  home，WEB 与 TUI 两个平面各跑一个真实回合，判决来自 harness 自己的会话存储——其中包含
+  `live.<plane>.noPromptVariableError` 这一 prompt 变量组装类别，而只做挂载的 lane 看不到它。
 - 组合出的行列表与挂载的行列表完全一致。`--dump-config` 只组合行、从不执行插件代码（`AGENTS.md` §4）；证据中
   它被标注为仅组合，所有挂载主张都来自第 9 步的启动或第 10 步的会话创建。
 - 把 `dist/mpd-package` **作为安装包**的打包/tarball 安装，以及迁移安装。它的一致性与新鲜度**确实被评测**
@@ -243,30 +251,61 @@ docker tag  docker.m.daocloud.io/library/node:24-bookworm node:24-bookworm
 
 ### 实时回合的提示词开关（`MPD_E2E_LIVE_PROMPT`）
 
-容器的第 15 步（`docker/entrypoint.sh`）会驱动一次真实的 headless agent 会话，其任务默认是一段
-**团队平面冒烟提示词**。`MPD_E2E_LIVE_PROMPT` 会**替换**该任务：当它被设置且非空时，其值原样作为该回合的
-提示词，因此可以要求本 lane 去做另一件事。未设置或为空时，内置提示词**逐字节**保持不变——该开关只做增量，
-绝不改变行为。
+一次 `--live` 运行驱动**三个**平面，而不是一个：经网关的真实 **WEB** 回合（第 12 步）、敲进 tmux PTY 的真实
+**TUI** 回合（`docker/tui-lane.sh`），以及真实的 **HEADLESS** 回合（第 15 步）。WEB 与 TUI 的提示词是固定的
+短任务（调用一次 `mpd_config_get`），或 `MPD_E2E_TEAM_PROJECT=1` 下的建队提示词（见下文），因此它们的断言针对本 bundle 自己的工具平面；headless 步骤的默认任务才是
+**团队平面冒烟提示词**。
+
+`MPD_E2E_LIVE_PROMPT` 只**替换** headless 任务：当它被设置且非空时，其值原样作为该回合的提示词，因此可以要求
+本 lane 去做另一件事。未设置或为空时，内置提示词**逐字节**保持不变——该开关只做增量，绝不改变行为。
 
 它只在实时运行中才有意义，因此调用方式就是实时的那一套：
 
 ```bash
 export DEEPSEEK_API_KEY=…                 # 按“名字”转发，绝不写进 argv 被回显
-export MPD_E2E_LIVE=1                     # 实时类断言是可选开启的
-export MPD_E2E_LIVE_PROMPT='把一个可玩的贪吃蛇游戏写到 <路径> …'
-node scripts/docker-e2e.ts --live
+export MPD_E2E_LIVE_PROMPT='把一个可玩的贪吃蛇游戏写到 <路径> …'   # 仅 headless 平面
+node scripts/docker-e2e.ts --live         # 加 --mode all 可跑 source + oneclick
 ```
 
-没有 `MPD_E2E_LIVE=1`（或没有转发 `DEEPSEEK_API_KEY`）时，运行根本到不了第 15 步；而驱动在手里没有密钥时会
-直接拒绝 `--live`。驱动用 `-e MPD_E2E_LIVE_PROMPT` 转发该提示词——**按名字转发，而不是按值**，与凭据的传递
-方式一致——并且 `docker/docker-compose.yml` 在**两个**服务的 `environment:` 块里都写了
-`${MPD_E2E_LIVE_PROMPT:-}`，这正是该变量能从宿主机送达容器的原因：compose 只转发 compose 文件自己插值过的
-变量。
+没有 `--live` 时，三个平面都不会发起模型请求：每一行 live 断言都以 `null` **连同原因**记录。若传了
+`--live` 却没有转发 `DEEPSEEK_API_KEY`，驱动会在构建前直接拒绝整次运行（退出码 3），不会产生任何判决行。
+驱动用 `-e MPD_E2E_LIVE_PROMPT` 转发该提示词——**按名字转发，而不是按值**，与凭据的传递方式一致——并且
+`docker/docker-compose.yml` 在**两个**服务的 `environment:` 块里都写了 `${MPD_E2E_LIVE_PROMPT:-}`，这正是
+该变量能从宿主机送达容器的原因：compose 只转发 compose 文件自己插值过的变量。
 
 某一回合实际用的是哪条提示词，本身就是证据的一部分：第 15 步会打印
 `[live-prompt] promptSource=… bytes=… firstLine="…"` 这一行，把同样的说明记录为 `result.json` 中的
 `livePrompt` 事实，并写入 `boot.llmTurn` 断言的 `raw` 字段。因此，即使调用方给的提示词很长，也能被识别出来，
 而不会被当作一团无法阅读的文本倾倒进日志。
+
+每个平面的判决都从 harness 自己的会话存储读取，绝不来自模型自述或终端画面。除了 completed/tool-call/text
+行之外，读取器还记录 `live.web.noPromptVariableError`、`live.tui.noPromptVariableError` 与
+`live.headless.noPromptVariableError`：人设模板引用未注册的 prompt 变量时，会在模型请求**之前**抛错，
+因此只做挂载的 lane 会在每个回合都死掉时仍然显示绿色。2026-10-19 的 `{{cwd}}` 缺陷正是这一类。
+
+### 实时团队工程（`MPD_E2E_TEAM_PROJECT=1`）
+
+上面的实时断言各自只证明**一次**工具调用。本开关问的是另一个问题：一个人能否从每个界面**自己的**输入路径
+建出一个真实的双成员团队，并把一个小工程做完？在 `MPD_E2E_TEAM_PROJECT=1` 且 `--live` 时，浏览器 lane 会把
+建队提示词敲进 Web 输入框，TUI lane 会把同一条提示词敲进 tmux PTY。两者都要求
+`agent_teams_plan` 拟定计划 → 两个成员 → 两个任务（第二个被第一个阻塞）→ 批准 → 派发 → 等待 → 二次派发 →
+关闭两个任务，并由成员写出并**实际运行测试** `team-project-web/` 与 `team-project-tui/`。
+
+判定读的是**产物**，不是模型自述：`docker/lib/team-project-verdict.ts` 读取团队记录、成员的执行器句柄
+（**每个**成员都必须真正被拉起）、依赖边、任务状态及其归属成员、工程文件（必须写于本步骤开始之后），并真实运行
+**两次**测试——团队自己写的测试，以及验证器针对团队模块写下的 `sum(2, 3) === 5` 断言，因此空转的测试无法替工程
+背书。界面证据另有一套且更强：`ui.teamBoard` 要求 Web 侧边栏渲染出**真实的**已绑定团队
+（`data-mpd-team-tab` 等于**本回合**写出的记录 id、`MEMBERS (2)`、`TASKS (2)`），TUI 侧则要求抓到的
+`/mpd team` 画面写出真实团队名并画出两个任务 id。每条记录还绑定到该平面实际驱动的那个实时会话。
+
+本模式下 headless 回合**故意**保留单工具任务：在一次性 CLI 里批准一个团队可能留下仍存活的队友，进程于是再也
+不退出（2026-10-19 实测：~0% CPU 挂起 30 分钟以上，且不产出报告）。因此团队构建归属两个 server/PTY 平面，
+`live.teamRecord` / `live.nativeExecutor` 以 `null` **连同该原因**记录；驱动的必需断言门禁改为点名两个 UI 平面的
+live 行与 `teamproject.*`。`MPD_E2E_TEAM_BUDGET_MS`（默认 1500000）限定每个团队回合的预算。
+
+证据：`ui-shots/ui-06-team-board.png`（回合结束后的 Web 面板）、`ui-shots/ui-03-reply.png`（对话记录）、
+`tui-panes/tui-team-live.ansi`（用 `python3 docker/ui/tui-render.py <ansi> <png>` 光栅化为图片），以及
+`result.json` 中的 `teamproject.*` 行。
 
 ## 隔离模型
 

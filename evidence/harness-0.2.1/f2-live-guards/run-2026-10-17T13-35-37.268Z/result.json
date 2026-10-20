@@ -1,0 +1,42 @@
+{
+  "ok": true,
+  "harness": "0.2.1-rc.2",
+  "sandbox": {
+    "root": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/harness-0.2.1/sandbox/guards-elqUTW",
+    "home": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/harness-0.2.1/sandbox/guards-elqUTW/dsh-home",
+    "ws": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/harness-0.2.1/sandbox/guards-elqUTW/ws",
+    "kept": false
+  },
+  "credentialsSeeded": {
+    "storeCopied": true,
+    "settingsCopied": false,
+    "refsMerged": false
+  },
+  "installExit": 0,
+  "read": {
+    "sourcePath": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-boulder-plugin/src/index.ts",
+    "called": true,
+    "resultOk": true,
+    "carriesSource": true,
+    "exit": 0,
+    "inactive": [],
+    "presetTrail": [
+      "permission/preset: {\"preset\":\"workspace-write\"}"
+    ],
+    "resultText": "[{\"type\":\"text\",\"text\":\"<path>/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-boulder-plugin/src/index.ts</path>\\n<type>file</type>\\n<content>\\n1: // C5 mpd-boulder-plugin: durable work-state machine (boulder) on the DSH tool seam.\\n2: // The core under `vendor/**` is OUR OWN code (wave de-omo C), written against the contract this row\\n3: // already documented: a `.mpd`-rooted JSON ledger plus per-task timers. It carries no third-party\\n\\n(Showing lines 1-3 of 313. Use offset=4 to continue.)\\n</content>\"}]\n"
+  },
+  "write": {
+    "codePath": "packages/guard-probe/src/probe.ts",
+    "called": true,
+    "resultOk": true,
+    "artifactExists": true,
+    "exit": 0,
+    "inactive": [],
+    "presetTrail": [
+      "permission/preset: {\"preset\":\"workspace-write\"}",
+      "permission/preset: {\"preset\":\"workspace-write\"}"
+    ],
+    "resultText": "[{\"type\":\"text\",\"text\":\"<path>/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/harness-0.2.1/sandbox/guards-elqUTW/ws/packages/guard-probe/src/probe.ts</path>\\n<type>file</type>\\n<content>\\nCreated file\\n</content>\"}]\n"
+  },
+  "bootLine": "[2026-10-17T13:35:40.530Z] [mpd-roles] team plane: readOnlyGuard=installed deny=8 verifyGate=installed captainInvestigation=deny askUserQuestion=installed delegationGate=deny rosterSection=agent-scoped order=605 sessionGate=mechanical"
+}

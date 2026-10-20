@@ -24,9 +24,13 @@
 #     check);
 #   · the RESTORED CAPABILITIES and the two live QA cases, re-run here rather than inherited red.
 #
-# WHAT IT DELIBERATELY DOES NOT DO: no credential is copied in, read, or written (AGENTS.md §10),
-# so no live LLM turn is attempted. That assertion is recorded as `null` WITH ITS REASON rather
-# than faked — see docker/README.md.
+# WHAT IS OPT-IN: without `--live` no credential is staged and every live row is `null` WITH ITS
+# REASON (never faked). With `--live`, the driver forwards a key BY NAME, this script stages it into
+# the SANDBOX home, and the same run drives a REAL WEB turn (step 12) and a REAL TUI turn
+# (tui-lane.sh). Both verdicts are read from the harness's own session store by
+# docker/lib/live-verdict.ts, which pins the prompt-variable assembly class beside the
+# turn-completed/tool-call/text rows (`live.<plane>.noPromptVariableError`): a preset MOUNT alone
+# cannot see a persona template fail, and the 2026-10-19 `{{cwd}}` defect proved exactly that gap.
 #
 # Every assertion is recorded by the pure-bash `record()` helper below (argv -> JSON.stringify, so a
 # raw witness line survives quoting intact) and the verdict is assembled by docker/lib/report.ts,
@@ -61,17 +65,49 @@ ONE_CLICK_SRC="${MPD_E2E_ONECLICK_SRC:-/opt/oneclick-src}"
 ONE_CLICK_REPO="${MPD_E2E_ONECLICK_REPO:-/opt/oneclick.git}"
 
 NODE_VERSION="${MPD_E2E_NODE_VERSION:-24.19.0}"
-DSH_VERSION="${MPD_E2E_DSH_VERSION:-0.2.0-rc.2}"
+# The harness pin. 0.2.1-rc.2 is the bundle's baseline: the `mpd` preset declares rows that exist only
+# in harness 0.2.1, so a 0.2.0 harness cannot mount it — keep this in step with the compose default.
+DSH_VERSION="${MPD_E2E_DSH_VERSION:-0.2.1-rc.2}"
 PNPM_VERSION="${MPD_E2E_PNPM_VERSION:-11.23.0}"
-# The DSH-TUI host. 0.15.0 is the dsh-tui release this bundle targets, and its peer ranges still
-# cover the WHOLE band this lane is
-# expected to run — its lists end with `|| 0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2` — so ONE default
-# serves the pinned baseline and any older adaptation run. (0.14.0 was the pin before it, 0.13.0 and 0.12.0 the ones before that.) 0.11.2 stopped at 0.2.0-rc.1, and a
-# `dsh plugin --profile dsh-tui add` against a 0.2.0-rc.2 harness is then REFUSED on peer ranges: the
-# same failure mode measured 2026-09-29 on the 0.11.1/0.2.0-rc.1 pair, which aborted this lane
-# (evidence/docker/client-install/2026-09-29T07-07-01Z).
-TUI_VERSION="${MPD_E2E_TUI_VERSION:-0.15.0}"
+# The DSH-TUI host. 0.16.1 is the dsh-tui release this bundle targets, and it is the FIRST host whose
+# declared peer bands include harness 0.2.1-rc.2 — every one of its 36 `@deepseek-ai/dsh-*` peers
+# lists it (e.g. `dsh-agent`: `… || 0.2.0-rc.2 || 0.2.1-rc.2`) — so it serves BOTH the 0.2.0-rc.2
+# baseline and the 0.2.1 wave. 0.15.0's bands stop at 0.2.0-rc.2: a
+# `dsh plugin --profile dsh-tui add` against a 0.2.1 harness is then REFUSED on peer ranges, the same
+# failure mode measured 2026-09-29 on the 0.11.1/0.2.0-rc.1 pair (which aborted this lane,
+# evidence/docker/client-install/2026-09-29T07-07-01Z) and again 2026-10-17 on 0.15.0/0.2.1-rc.2.
+TUI_VERSION="${MPD_E2E_TUI_VERSION:-0.16.1}"
 export TUI_VERSION
+# ── THE LIVE TEAM PROJECT: one small engineering task, built by a REAL team, on each UI plane ──
+# WHY THIS KNOB EXISTS. Every live arm above its own block proves ONE tool call. That answers "is the
+# agent plane alive"; it does not answer "can a person build a team from the Web composer / the TUI
+# prompt and get a finished project". This mode asks the model for exactly that, on BOTH planes,
+# against the same on-disk contract: approve a two-member plan, dispatch the two shared tasks, have
+# the members write and TEST a small module, and only then call the turn done. The verdict is read
+# from the team record, the project files and a real `node --test` run
+# (docker/lib/team-project-verdict.ts) — never from the model's prose.
+#
+# OFF BY DEFAULT, and an unset value leaves every existing arm byte-for-byte. It needs a live
+# credential (the team is a real model team), so it is meaningful only with MPD_E2E_LIVE=1.
+TEAM_PROJECT="${MPD_E2E_TEAM_PROJECT:-0}"
+# A team turn is many model turns deep (stage, raise, dispatch, two members, a second dispatch and a
+# review), so its budget is its own: 25 minutes (1500000 ms) unless the caller says otherwise.
+TEAM_BUDGET_MS="${MPD_E2E_TEAM_BUDGET_MS:-1500000}"
+# THE PROMPT. One line (the TUI types it into a single-line composer, so an embedded newline would
+# submit early), with `@PLANE@` substituted per plane so the record names the plane that built it and
+# the verdict can filter by name. It names the exact tool calls, the two members, the two tasks (the
+# second blocked by the first's SUBJECT, which the plan store's own alias map resolves) and the final
+# `DONE` line the browser lane's reply classifier accepts. It avoids `$` and backticks so the value
+# survives `send-keys` and shell quoting unchanged.
+read -r -d '' TEAM_PROMPT_TEMPLATE <<'TEAM_PROMPT_EOF' || true
+Build a small project with a real agent team. Work only in team-project-@PLANE@/ under this workspace. The mpd board is read with agent_teams_plan {"action":"status"} — do not use team_task_list, team_task_update or agent_teams_task contract. Do these steps in order: (0) call mpd_config_get once with no arguments, which proves the bundle tool plane is live; (1) agent_teams_plan {"action":"create","name":"live-team-@PLANE@","description":"docker live team build"}; (2) agent_teams_plan {"action":"add_member","member":{"name":"Senior Engineer","prompt":"You are the Senior Engineer: implement the task you are given, run its test, then close it with agent_teams_task complete."}}; (3) agent_teams_plan {"action":"add_member","member":{"name":"Reviewer","prompt":"You are the Reviewer: read the code and test, run the test, write team-project-@PLANE@/REVIEW.md ending with a PASS or FAIL line, then close the task with agent_teams_task complete."}}; (4) agent_teams_plan {"action":"create_task","task":{"subject":"Implement sum module and test","description":"Write team-project-@PLANE@/sum.ts exporting sum(a, b) returning a + b, and team-project-@PLANE@/sum.test.ts using node:test that asserts sum(2, 3) === 5. Run node --test team-project-@PLANE@/sum.test.ts and paste the result.","owner":"Senior Engineer"}}; (5) agent_teams_plan {"action":"create_task","task":{"subject":"Review sum module","description":"Read team-project-@PLANE@/sum.ts and team-project-@PLANE@/sum.test.ts, run node --test team-project-@PLANE@/sum.test.ts, then write team-project-@PLANE@/REVIEW.md ending with a PASS or FAIL line.","blocked_by":["Implement sum module and test"],"owner":"Reviewer"}}; (6) agent_teams_plan {"action":"approve"}; (7) agent_teams_dispatch {"action":"run"}, then call list_agents and wait_agent for each teammate; (8) after the first task is completed, call agent_teams_dispatch {"action":"run"} again and wait_agent again; (9) repeat step 8 until agent_teams_plan {"action":"status"} shows both tasks completed and team-project-@PLANE@/REVIEW.md exists. Then reply with a final line that is exactly: DONE
+TEAM_PROMPT_EOF
+# The heredoc keeps its line breaks; the TUI composer and the browser composer both want ONE line.
+TEAM_PROMPT_TEMPLATE="$(printf '%s' "$TEAM_PROMPT_TEMPLATE" | tr '\n' ' ' | sed -e 's/  */ /g' -e 's/ $//')"
+# team_prompt <plane> — the one-line prompt for a plane (`web` or `tui`).
+team_prompt() { printf '%s' "${TEAM_PROMPT_TEMPLATE//@PLANE@/$1}"; }
+# team_name <plane> — the team name the prompt asks for, so the verdict can match the record by name.
+team_name() { printf 'live-team-%s' "$1"; }
 PORT="${MPD_E2E_PORT:-3197}"
 BOOT_BUDGET="${MPD_E2E_BOOT_BUDGET:-300}"
 
@@ -1839,6 +1875,20 @@ if [ "${MPD_E2E_BROWSER:-0}" = "1" ]; then
   # classifier (`docker/lib/reply-verdict.ts`, FINDING F1), and a relative `.ts` specifier resolves from
   # the IMPORTING file's directory — so the copy above alone would make the lane fail to LOAD.
   cp "$LIB_DIR/reply-verdict.ts" "$UI_DIR/reply-verdict.ts" 2>/dev/null || true
+  # THE LIVE TEAM PROJECT ON THE WEB PLANE. The prompt is typed into the composer by the lane, the
+  # model builds the team, and the panel stage then asserts the REAL board rather than a seeded
+  # fixture. The budget is the TEAM budget because one turn now spans the approval, two raises, two
+  # dispatches and two member turns. `--expect` names text only the prompt carries, so the
+  # "the prompt was really sent" arm cannot green on the stale `mpd_config_get` default.
+  BROWSER_BUDGET="${MPD_E2E_BROWSER_BUDGET_MS:-240000}"
+  BROWSER_TEAM_ARGS=()
+  WEB_TEAM_SINCE=0
+  if [ "$TEAM_PROJECT" = "1" ]; then
+    BROWSER_BUDGET="$TEAM_BUDGET_MS"
+    WEB_TEAM_SINCE="$(date +%s%3N)"
+    BROWSER_TEAM_ARGS=(--prompt "$(team_prompt web)" --expect "team-project" --team-expected --expect-members 2 --expect-tasks 2 \
+      --workspace "$WORK_DIR/ws" --team-name "$(team_name web)" --session-out "$WORK_DIR/web-team-session.txt")
+  fi
   if [ "$BROWSER_INSTALL" != "0" ]; then
     # THE REASON NAMES THE TRANSPORT THAT FAILED, not merely "npm/npx exit 1". Measured 2026-10-14: that
     # sentence sent a reader looking for a registry fault while the registry had served every package and
@@ -1850,8 +1900,8 @@ if [ "${MPD_E2E_BROWSER:-0}" = "1" ]; then
     BROWSER_STEP=$BROWSER_INSTALL
   else
     node "$UI_DIR/browser-lane.ts" --base "http://127.0.0.1:$PORT" --token "$TOKEN" \
-      --out "$OUT_DIR/ui-shots" --state "$STATE_FILE" --budget-ms "${MPD_E2E_BROWSER_BUDGET_MS:-240000}" \
-      >>"$BROWSER_LOG" 2>&1 || BROWSER_STEP=$?
+      --out "$OUT_DIR/ui-shots" --state "$STATE_FILE" --budget-ms "$BROWSER_BUDGET" \
+      "${BROWSER_TEAM_ARGS[@]}" >>"$BROWSER_LOG" 2>&1 || BROWSER_STEP=$?
   fi
   # A LANE THAT CRASHED BEFORE RECORDING leaves the reporter's "not reached" NULLs, which say nothing
   # about WHY. This net turns that silent hole into an explicit "not attempted (node exit N)" row set,
@@ -1862,6 +1912,20 @@ if [ "${MPD_E2E_BROWSER:-0}" = "1" ]; then
   fi
   cat "$BROWSER_LOG"
   append_step 13-browser "$BROWSER_STEP" 0 "13-browser.log" "node browser-lane.ts (Chromium drives the real Web GUI)"
+  # THE WEB TEAM PROJECT'S VERDICT, read from the artifacts rather than the panel: the team record the
+  # prompt asked for, its roster and board, the project files and a REAL `node --test` run. The panel
+  # arm above proves the surface renders a board; this read proves the team FINISHED the project.
+  if [ "$TEAM_PROJECT" = "1" ]; then
+    # THE SESSION THE BROWSER RAN AS: the lane captured it from the host's own marker, so the verdict
+    # binds the record to the live session (a name + a timestamp alone is weaker evidence). An empty
+    # file is passed as the empty string, and the verdict records the binding as an honest NULL — which
+    # the driver's required-row gate then treats as a miss.
+    WEB_TEAM_SESSION="$(cat "$WORK_DIR/web-team-session.txt" 2>/dev/null | tr -d '\n' || true)"
+    run_step 13b-web-team node "$LIB_DIR/team-project-verdict.ts" \
+      --workspace "$WORK_DIR/ws" --project "team-project-web" --state "$STATE_FILE" \
+      --label web --team-name "$(team_name web)" --since "$WEB_TEAM_SINCE" \
+      --session "$WEB_TEAM_SESSION"
+  fi
 else
   node "$LIB_DIR/browser-lane.ts" --state "$STATE_FILE" --out "$OUT_DIR/ui-shots" \
     --unavailable "not attempted: the browser lane is opt-in (MPD_E2E_BROWSER=1) because it downloads Chromium; the HTTP assertions above are the browser-free maximum" || true
@@ -1950,7 +2014,7 @@ TUI_STEP=0
 # hung the container for 10 minutes at 0.0% CPU with nothing on the console, because the lane's own log
 # only reaches the evidence after it exits. `MPD_E2E_TUI_TIMEOUT` (default 1800 s) bounds it, and the
 # elapsed seconds are now recorded instead of the hard 0 this line used to write.
-TUI_TIMEOUT="${MPD_E2E_TUI_TIMEOUT:-1800}"
+TUI_TIMEOUT="${MPD_E2E_TUI_TIMEOUT:-$([ "$TEAM_PROJECT" = "1" ] && printf '3600' || printf '1800')}"
 TUI_STARTED="$(date +%s)"
 # The lane is a SEPARATE process: every path it needs is passed explicitly, because a
 # shell variable is not inherited by a child unless it is exported (measured 2026-09-27:
@@ -1958,7 +2022,9 @@ TUI_STARTED="$(date +%s)"
 STATE_FILE="$STATE_FILE" FACTS_FILE="$FACTS_FILE" APP_DIR="$APP_DIR" WORK_DIR="$WORK_DIR" \
   TUI_VERSION="$TUI_VERSION" DSH_HOME="$DSH_HOME" HOME="$HOME" PATH="$PATH" \
   OUT_DIR="$OUT_DIR" \
-  LIB_DIR="$LIB_DIR" LIVE="$LIVE" MPD_E2E_LIVE_BUDGET_MS="${MPD_E2E_LIVE_BUDGET_MS:-300000}" \
+  LIB_DIR="$LIB_DIR" LIVE="$LIVE" MPD_E2E_LIVE_BUDGET_MS="$([ "$TEAM_PROJECT" = "1" ] && printf '%s' "$TEAM_BUDGET_MS" || printf '%s' "${MPD_E2E_LIVE_BUDGET_MS:-300000}")" \
+  MPD_E2E_TEAM_PROJECT="$TEAM_PROJECT" MPD_E2E_TEAM_NAME="$([ "$TEAM_PROJECT" = "1" ] && team_name tui || printf '')" \
+  MPD_E2E_TUI_PROMPT="$([ "$TEAM_PROJECT" = "1" ] && team_prompt tui || printf '')" \
   npm_config_cache="${npm_config_cache:-$HOME/.npm}" \
   timeout --kill-after=15 "$TUI_TIMEOUT" bash /opt/mpd-e2e/tui-lane.sh >"$STEPS_DIR/14-tui.log" 2>&1 || TUI_STEP=$?
 TUI_SECONDS=$(( $(date +%s) - TUI_STARTED ))
@@ -1988,6 +2054,15 @@ if [ "$LIVE" = "1" ]; then
   # docker/docker-compose.yml's per-service `environment:` interpolation and the driver's
   # `-e MPD_E2E_LIVE_PROMPT`, because compose forwards only what the compose file names.
   LIVE_PROMPT_DEFAULT="Do these steps in order: (1) call mpd_config_get once with no arguments; (2) call agent_teams_plan with action \"create\" (name it live-smoke, description \"docker live turn\"); (3) call agent_teams_plan with action \"add_member\" for a member named Reviewer; (4) call agent_teams_plan with action \"create_task\" with subject \"check the mount\"; (5) call agent_teams_plan with action \"approve\". Then reply with the single word DONE."
+  # IN TEAM-PROJECT MODE THE HEADLESS ARM KEEPS ITS CHEAP SUBJECT. The team build is what the TWO UI
+  # planes are asked for; the headless turn's job is to prove the CLI plane is alive, and the default
+  # team prompt is the one subject that can HANG the CLI: measured 2026-10-19, `approve` raised a
+  # teammate through the native executor and the `dsh --profile headless` process never exited (30+
+  # minutes at ~0% CPU), so steps 15-17 never ran and the run produced no report. A single-tool turn
+  # leaves no child alive behind it, which keeps `boot.llmTurn` an honest green in team mode.
+  if [ "$TEAM_PROJECT" = "1" ]; then
+    LIVE_PROMPT_DEFAULT="Call the mpd_config_get tool once (it takes no arguments), then reply with exactly: DONE"
+  fi
   LIVE_PROMPT_OVERRIDE="${MPD_E2E_LIVE_PROMPT:-}"
   LIVE_PROMPT="$(live_prompt_select "$LIVE_PROMPT_DEFAULT" "$LIVE_PROMPT_OVERRIDE")"
   if [ -n "$LIVE_PROMPT_OVERRIDE" ]; then LIVE_PROMPT_SOURCE="caller (MPD_E2E_LIVE_PROMPT)"; else LIVE_PROMPT_SOURCE="default"; fi
@@ -2015,7 +2090,13 @@ if [ "$LIVE" = "1" ]; then
   # `profiles/headless/node_modules/@mpd-dsh/mpd/packages/mpd-mcp-codegraph/launch.ts` and die with
   # MODULE_NOT_FOUND. Installing the bundle INTO the headless profile is the one-command fix.
   dsh plugin --profile headless add "$APP_DIR" >"$STEPS_DIR/15-headless-install.log" 2>&1 || true
-  ( cd "$WORK_DIR/ws" && DSH_HOME="$DSH_HOME" HOME="$HOME" PATH="$PATH" dsh --profile headless "$LIVE_PROMPT" ) >"$LIVE_LOG" 2>&1 || LIVE_CODE=$?
+  # THE LIVE TURN IS BOUNDED LIKE EVERY OTHER STEP (measured 2026-10-19). This invocation used to be
+  # UNBOUNDED, and the default team prompt hung it: the CLI raised a teammate and never exited, so the
+  # container sat at ~0% CPU and the run produced no report at all. `timeout` turns that into exit 124,
+  # which the rows below already grade as an honest failure (`live.headless.*` red + boot.llmTurn red),
+  # instead of a lane that never finishes. The budget is the same one every `run_step` uses.
+  ( cd "$WORK_DIR/ws" && DSH_HOME="$DSH_HOME" HOME="$HOME" PATH="$PATH" \
+      timeout --kill-after=15 "$STEP_TIMEOUT" dsh --profile headless "$LIVE_PROMPT" ) >"$LIVE_LOG" 2>&1 || LIVE_CODE=$?
   # The step's own log is ECHOED, unlike the mostly-silent steps above: this is the one live run whose
   # transcript a human needs when its verdict reddens, and without this line it existed only inside the
   # container (measured 2026-10-03: a failing headless arm was undiagnosable from the evidence tree).
@@ -2083,7 +2164,14 @@ if [ "$LIVE" = "1" ]; then
   LIVETEAMS="${LIVE_TEAMS_PICK#* }"
   # `%T@` prints fractional epoch seconds; the step start is in milliseconds, so compare in seconds.
   LIVE_FRESH="$(awk -v t="${LIVE_TEAMS_TS:-0}" -v s="$(( LIVE_STARTED_MS / 1000 ))" 'BEGIN { print (t + 0 >= s) ? "yes" : "no" }')"
-  if [ -n "$LIVETEAMS" ] && [ -f "$LIVETEAMS" ] && [ "$LIVE_FRESH" = "yes" ]; then
+  if [ "$TEAM_PROJECT" = "1" ]; then
+    # IN TEAM-PROJECT MODE THE TEAM BUILD BELONGS TO THE UI PLANES, and this step deliberately runs the
+    # single-tool probe that cannot leave a teammate alive behind it (see LIVE_PROMPT_DEFAULT above).
+    # There is therefore no headless approval for these two rows to read: NULL with its own reason is
+    # the honest answer, and the driver's required-arm policy for this mode names `teamproject.` instead.
+    record live.teamRecord null "not attempted in team-project mode: the team was built and measured on the UI planes (teamproject.*), and the headless turn is a single-tool probe by design so it cannot hang the CLI" "team-project=1"
+    record live.nativeExecutor null "not attempted in team-project mode: the native executor is proven by the UI teams' member handles (teamproject.executor.web / .tui)" "team-project=1"
+  elif [ -n "$LIVETEAMS" ] && [ -f "$LIVETEAMS" ] && [ "$LIVE_FRESH" = "yes" ]; then
     LIVE_MEMBERS="$(node -e 'const d=require(process.argv[1]);const m=(d.members||[]).filter(x=>typeof x.executorRef==="string"&&x.executorRef!=="");console.log(m.length+"/"+(d.members||[]).length)' "$LIVETEAMS" 2>/dev/null || echo "?")"
     LIVE_PHASE="$(node -e 'console.log(require(process.argv[1]).phase||"?")' "$LIVETEAMS" 2>/dev/null || echo "?")"
     record live.teamRecord true "the team record THIS step produced exists (written at/after the step started) after a REAL approval" "file=$(basename "$LIVETEAMS") phase=$LIVE_PHASE mtime=$LIVE_TEAMS_TS"

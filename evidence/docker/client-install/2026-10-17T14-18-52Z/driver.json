@@ -1,0 +1,33 @@
+{
+  "startedAt": "2026-10-17T14:18:52.864Z",
+  "finishedAt": "2026-10-17T14:23:55.666Z",
+  "docker": "Docker version 29.9.0, build f415da8",
+  "compose": "Docker Compose version v5.6.0",
+  "image": "mpd-docker-e2e:local",
+  "imageMiB": 473,
+  "buildxConfig": "/tmp/mpd-docker-e2e-buildx-lISPKr",
+  "liveRequested": false,
+  "browserEnabled": true,
+  "requiredPrefixes": [
+    "ui."
+  ],
+  "unmeasured": [
+    "ui.replyRendered"
+  ],
+  "steps": [
+    {
+      "id": "driver-build",
+      "cmd": "docker compose -f /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/docker/docker-compose.yml build",
+      "status": 0
+    },
+    {
+      "id": "driver-run",
+      "cmd": "docker compose -f /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/docker/docker-compose.yml run --rm -T -e MPD_E2E_BROWSER=1 mpd-client",
+      "status": 1,
+      "signal": null
+    }
+  ],
+  "containerExit": 1,
+  "verdict": "ok=false complete=false passed=59 failed=5 null=54 FAILED=[pack.staticCoherence,pack.distFreshRebuild,qa.readonlyDeny,tui.laneExit,ui.mpdSettingsSection] NULL=[qa.mcpCall,oneclick.scratchRepo,oneclick.requiredPaths,oneclick.filesAllowlist,oneclick.distByteIdentical,tui.pluginAddHost,tui.pluginAddBundle,tui.compose,tui.presetPreference,tui.presetRow,tui.mpdTuiRow,tui.agentTeamRows,tui.mergedPanelOpens,tui.mergedPanelOrder,tui.hostDashboardKeyIntact,tui.noDirectTuiSeam,tui.boot,tui.noFatalSignatures,tui.sessionPreset,tui.teamSceneOtherSessionInvisible,tui.teamFixtureBound,tui.teamSceneOpened,tui.teamGraphDrawn,tui.teamGraphEdges,tui.teamGraphContent,live.credentialStaged,live.credentialScoped,live.credentialRemoved,live.web.turnStarted,live.web.turnCompleted,live.web.noErrorTurns,live.web.noMalformedToolJson,live.web.toolCallsParsed,live.web.mpdToolCalled,live.web.assistantReplied,live.tui.turnStarted,live.tui.turnCompleted,live.tui.noErrorTurns,live.tui.noMalformedToolJson,live.tui.toolCallsParsed,live.tui.mpdToolCalled,live.tui.assistantReplied,live.headless.turnStarted,live.headless.turnCompleted,live.headless.noErrorTurns,live.headless.noMalformedToolJson,live.headless.toolCallsParsed,live.headless.mpdToolCalled,live.headless.assistantReplied,live.teamRecord,live.nativeExecutor,live.headlessPresetRow,boot.llmTurn,ui.replyRendered]",
+  "exitCode": 3
+}
