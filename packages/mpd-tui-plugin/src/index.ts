@@ -526,6 +526,13 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
    * block.
    */
   let panelAttention: PanelAttention | undefined
+  /**
+   * THE PROCESS-WIDE auto-open latch (CodeRabbit finding, 2026-10-20): `panelAutoOpen` promises the page
+   * opens "at most once per process", and a panel-seam RE-BIND replaces the surface — whose own latch is
+   * per-surface — so the spent state lives here, in `apply` scope, and every surface created by the
+   * `whenBound` callback below shares it.
+   */
+  const autoOpenLatch: { spent: boolean } = { spent: false }
   onService(ctx, "mpdTeams", (_scoped: PluginContextLike, service: unknown) => {
     teamsService = service as MpdTeamsLike
     // THE FEED MAY BE READABLE NOW AND WAS NOT AT ARM: subscribe, then publish the current badge.
@@ -847,6 +854,7 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
         readWorkflow: (): TeamWorkflow | undefined => readDashboardWorkflow(workspaceRoot, () => watchdogFrontDoor.view().holds, teamViews, teamRecords, () => teamsService),
         feed: teamFeed,
         autoOpen: resolved.panelAutoOpen,
+        autoOpenLatch,
         log,
       })
       panelAttention = surface

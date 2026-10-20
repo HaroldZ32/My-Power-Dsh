@@ -493,3 +493,50 @@ describe("the /mpd status panel-deployment line (G4)", () => {
     expect(line).not.toContain("\n")
   })
 })
+
+describe("the process-wide auto-open latch (a panel-seam re-bind)", () => {
+  test("a RE-BOUND surface cannot open the page a second time in the same process", () => {
+    /** One latch stands in for the `apply`-scoped one the plugin passes to every surface. */
+    const latch = { spent: false }
+    /** The feed. */
+    const feed = fakeFeed()
+    /** The first surface's panel routes. */
+    const first = fakePanel()
+    /** What the first surface reads: no team yet. */
+    let current: TeamWorkflow | undefined = workflow([])
+    /** The first binding. */
+    const before = armPanelAttention({
+      ...first.deps,
+      readWorkflow: () => current,
+      feed: feed.accessor,
+      autoOpen: true,
+      autoOpenLatch: latch,
+      log: silentLog(),
+    })
+    current = workflow([{ visual: "running" }])
+    feed.fire()
+    expect(first.opens()).toBe(1)
+    expect(latch.spent).toBe(true)
+    before.stop()
+    // THE RE-BIND: a fresh surface (its own `opened` flag is false) over a live team, sharing the latch.
+    const second = fakePanel()
+    /** The re-bound surface. */
+    const after = armPanelAttention({
+      ...second.deps,
+      readWorkflow: () => current,
+      feed: feed.accessor,
+      autoOpen: true,
+      autoOpenLatch: latch,
+      log: silentLog(),
+    })
+    // The team is live already, so this is not an appearance anyway; make one appear to prove the latch
+    // (not the edge rule) is what stops it.
+    current = workflow([])
+    feed.fire()
+    current = workflow([{ visual: "failed" }])
+    feed.fire()
+    expect(second.opens()).toBe(0)
+    expect(after.opened()).toBe(false)
+    after.stop()
+  })
+})

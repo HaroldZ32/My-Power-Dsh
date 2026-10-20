@@ -51,6 +51,14 @@ export interface PanelAttentionDeps {
   readonly feed: TeamFeedAccessor | undefined
   /** Whether the first-live-team auto-open is enabled (the row's `panelAutoOpen` knob). */
   readonly autoOpen: boolean
+  /**
+   * The PROCESS-WIDE one-shot latch for the auto-open, shared across every surface this activation
+   * arms. A panel-seam RE-BIND replaces the surface (and its own `opened` flag with it), so without a
+   * latch in `apply` scope a re-bind would let a later team open the page a second time in the same
+   * process — the promise the knob's documentation makes is "once per process", not "once per
+   * binding". Omitted by a unit arm that wants the per-surface behaviour.
+   */
+  readonly autoOpenLatch?: { spent: boolean }
   /** Diagnostics; never a terminal. */
   readonly log: Log
 }
@@ -199,13 +207,15 @@ export function armPanelAttention(deps: PanelAttentionDeps): PanelAttention {
     /** Whether a live team APPEARED since the previous pass. */
     const appeared = live && !wasLive
     wasLive = live
-    if (!event || !deps.autoOpen || opened || !appeared) return
+    if (!event || !deps.autoOpen || opened || deps.autoOpenLatch?.spent === true || !appeared) return
     /** The discovered id at the moment the first live team was seen. */
     const address = id()
     if (address === undefined) return
-    // LATCHED BEFORE THE CALL: the host's `open()` is rate-limited per plugin (one per 5 s) and can
-    // refuse for reasons the next event would hit again, so one refusal must not become a loop.
+    // LATCHED BEFORE THE CALL, in BOTH scopes: the host's `open()` is rate-limited per plugin (one per
+    // 5 s) and can refuse for reasons the next event would hit again, so one refusal must not become a
+    // loop — and the process-wide latch is what carries that across a panel-seam re-bind.
     opened = true
+    if (deps.autoOpenLatch !== undefined) deps.autoOpenLatch.spent = true
     try {
       if (deps.openPanel(address)) deps.log.info(`panel auto-open: opened ${address} on the first live team`)
       else deps.log.debug(`panel auto-open: the host refused the one auto-open of ${address}; the panel stays reachable through the command and the panel bar`)

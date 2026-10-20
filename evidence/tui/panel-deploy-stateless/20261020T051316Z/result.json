@@ -86,10 +86,15 @@
         "file": "packages/mpd-tui-plugin/test/panel-attention.test.ts:306",
         "finding": "the stop() arm proved only that unsubscribe works, because the fake feed always returned a working disposer",
         "fix": "the fake feed gained a noopDisposer option; the arm now leaves the listener attached after stop() and proves the surface's own STOPPED latch suppresses both the badge and the open."
+      },
+      {
+        "file": "packages/mpd-tui-plugin/src/index.ts:852",
+        "finding": "the 'once per process' promise did not survive a panel-seam RE-BIND: the latch lived in the surface, and each re-bind armed a fresh one",
+        "fix": "`autoOpenLatch` is now created in apply scope and passed to every surface, so the second binding cannot open the page again; a new arm re-binds and proves it."
       }
     ],
     "gates": {
-      "bun test packages": "2153 pass / 3 skip / 0 fail (2156 tests, 134 files)",
+      "bun test packages": "2154 pass / 3 skip / 0 fail (2157 tests, 134 files)",
       "tsgo --noEmit": "exit 0",
       "verify-dist-fresh": "32/32 fresh",
       "verify-comments": "PASS",

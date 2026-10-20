@@ -8251,12 +8251,14 @@ function armPanelAttention(deps) {
     const live = workflow !== undefined && workflow.tasks.length > 0;
     const appeared = live && !wasLive;
     wasLive = live;
-    if (!event || !deps.autoOpen || opened || !appeared)
+    if (!event || !deps.autoOpen || opened || deps.autoOpenLatch?.spent === true || !appeared)
       return;
     const address = id();
     if (address === undefined)
       return;
     opened = true;
+    if (deps.autoOpenLatch !== undefined)
+      deps.autoOpenLatch.spent = true;
     try {
       if (deps.openPanel(address))
         deps.log.info(`panel auto-open: opened ${address} on the first live team`);
@@ -10421,6 +10423,7 @@ function apply(ctx, config = {}) {
   const teamViews = () => liveTeamViews(adapter, workspaceRoot());
   let teamsService;
   let panelAttention;
+  const autoOpenLatch = { spent: false };
   onService(ctx, "mpdTeams", (_scoped, service) => {
     teamsService = service;
     try {
@@ -10555,6 +10558,7 @@ function apply(ctx, config = {}) {
         readWorkflow: () => readDashboardWorkflow(workspaceRoot, () => watchdogFrontDoor.view().holds, teamViews, teamRecords, () => teamsService),
         feed: teamFeed,
         autoOpen: resolved.panelAutoOpen,
+        autoOpenLatch,
         log
       });
       panelAttention = surface;
