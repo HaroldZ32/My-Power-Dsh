@@ -1,6 +1,6 @@
 [driver] Docker version 29.9.1, build dfc520d / Docker Compose version v5.6.0
 [driver] docker mode: ROOTLESS (["name=seccomp,profile=builtin","name=rootless","name=cgroupns"])
-[driver] BUILDX_CONFIG=/tmp/mpd-docker-e2e-buildx-R8hBbd (private, writable: the sandbox denies ~/.docker/buildx)
+[driver] BUILDX_CONFIG=/tmp/mpd-docker-e2e-buildx-6cCorE (private, writable: the sandbox denies ~/.docker/buildx)
 [driver] $ docker compose -f /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/docker/docker-compose.yml build
  Image mpd-docker-e2e:local Building 
  Image mpd-docker-e2e:local Building 
@@ -8,49 +8,49 @@
 #1 reading from stdin 1.05kB done
 #1 DONE 0.0s
 
-#2 [mpd-client internal] load build definition from Dockerfile
+#2 [mpd-oneclick internal] load build definition from Dockerfile
 #2 transferring dockerfile: 6.95kB done
 #2 DONE 0.0s
 
-#3 [mpd-client internal] load metadata for docker.io/library/ubuntu:24.04
+#3 [mpd-oneclick internal] load metadata for docker.io/library/node:24-bookworm
 #3 DONE 0.0s
 
-#4 [mpd-oneclick internal] load metadata for docker.io/library/node:24-bookworm
+#4 [mpd-client internal] load metadata for docker.io/library/ubuntu:24.04
 #4 DONE 0.0s
 
-#5 [mpd-oneclick stage-1  1/12] FROM docker.io/library/ubuntu:24.04@sha256:a853f94d226358a79c740cfc7bce0c289748f3fe3488d921d038ccd752c61b60
-#5 resolve docker.io/library/ubuntu:24.04@sha256:a853f94d226358a79c740cfc7bce0c289748f3fe3488d921d038ccd752c61b60 0.0s done
+#5 [mpd-client node-runtime 1/1] FROM docker.io/library/node:24-bookworm@sha256:64af3819f9275802414d7cdc38c27e9d82bd564dec4d4da87d008255d36c63b4
+#5 resolve docker.io/library/node:24-bookworm@sha256:64af3819f9275802414d7cdc38c27e9d82bd564dec4d4da87d008255d36c63b4 0.0s done
 #5 DONE 0.0s
 
-#6 [mpd-client node-runtime 1/1] FROM docker.io/library/node:24-bookworm@sha256:64af3819f9275802414d7cdc38c27e9d82bd564dec4d4da87d008255d36c63b4
-#6 resolve docker.io/library/node:24-bookworm@sha256:64af3819f9275802414d7cdc38c27e9d82bd564dec4d4da87d008255d36c63b4 0.0s done
+#6 [mpd-client stage-1  1/12] FROM docker.io/library/ubuntu:24.04@sha256:a853f94d226358a79c740cfc7bce0c289748f3fe3488d921d038ccd752c61b60
+#6 resolve docker.io/library/ubuntu:24.04@sha256:a853f94d226358a79c740cfc7bce0c289748f3fe3488d921d038ccd752c61b60 0.0s done
 #6 DONE 0.0s
 
 #7 [mpd-client internal] load build context
-#7 transferring context: 34.48MB 0.1s
+#7 transferring context: 34.86MB 0.1s
 #7 transferring context: 71.03MB 0.2s done
 #7 transferring context: 71.03MB 0.2s done
 #7 DONE 0.3s
 
-#8 [mpd-oneclick stage-1  2/12] COPY --from=node-runtime /usr/local /usr/local
+#8 [mpd-client stage-1  2/12] COPY --from=node-runtime /usr/local /usr/local
 #8 CACHED
 
 #9 [mpd-client stage-1  3/12] COPY . /src/
 #9 DONE 0.3s
 
-#10 [mpd-oneclick stage-1  4/12] COPY docker/entrypoint.sh /opt/mpd-e2e/entrypoint.sh
+#10 [mpd-client stage-1  4/12] COPY docker/entrypoint.sh /opt/mpd-e2e/entrypoint.sh
 #10 DONE 0.1s
 
-#11 [mpd-client stage-1  5/12] COPY docker/probe.ts /opt/mpd-e2e/probe.ts
+#11 [mpd-oneclick stage-1  5/12] COPY docker/probe.ts /opt/mpd-e2e/probe.ts
 #11 DONE 0.1s
 
-#12 [mpd-oneclick stage-1  6/12] COPY docker/lib/ /opt/mpd-e2e/lib/
+#12 [mpd-client stage-1  6/12] COPY docker/lib/ /opt/mpd-e2e/lib/
 #12 DONE 0.1s
 
 #13 [mpd-oneclick stage-1  7/12] COPY docker/tui-lane.sh /opt/mpd-e2e/tui-lane.sh
 #13 DONE 0.1s
 
-#14 [mpd-client stage-1  8/12] COPY docker/ui/entrypoint.sh /opt/mpd-e2e/ui-entrypoint.sh
+#14 [mpd-oneclick stage-1  8/12] COPY docker/ui/entrypoint.sh /opt/mpd-e2e/ui-entrypoint.sh
 #14 DONE 0.1s
 
 #15 [mpd-oneclick stage-1  9/12] COPY docker/ui/capture.mts /opt/mpd-e2e/capture.mts
@@ -60,47 +60,47 @@
 #16 DONE 0.1s
 
 #17 [mpd-client stage-1 11/12] RUN chmod 0755 /opt/mpd-e2e/entrypoint.sh /opt/mpd-e2e/tui-lane.sh /opt/mpd-e2e/ui-entrypoint.sh  && chmod 0755 /opt/mpd-e2e/capture.mts /opt/mpd-e2e/run-capture.sh  && mkdir -p /work /out /data /src
-#17 DONE 0.2s
+#17 DONE 0.3s
 
-#18 [mpd-client stage-1 12/12] WORKDIR /work
+#18 [mpd-oneclick stage-1 12/12] WORKDIR /work
 #18 DONE 0.1s
 
-#19 [mpd-client] exporting to image
+#19 [mpd-oneclick] exporting to image
 #19 exporting layers
-#19 exporting layers 2.2s done
-#19 exporting manifest sha256:b38136e7f569741478dba81b7affd25e61517d7538aa9c463c6928c8fe524bbc 0.0s done
-#19 exporting config sha256:2556a1e5aa3d27c1c1f034dfa87815415df2137ee8e364d65bf2d3de570275a8 0.0s done
-#19 exporting attestation manifest sha256:de3c6cea2b99426981176107aea126211a344b04e8594d82216b5de40f5d848a 0.0s done
-#19 exporting manifest list sha256:6597a2b5e0eab522074a0a1f95bae299681c295151bc968afe24f0b9506abacc
-#19 exporting manifest list sha256:6597a2b5e0eab522074a0a1f95bae299681c295151bc968afe24f0b9506abacc 0.0s done
+#19 exporting layers 2.1s done
+#19 exporting manifest sha256:b5d9b33180ee87abb96cc5b0b6d128a338fda00b18bf5bd4a66b4ee7d957f8f1 0.0s done
+#19 exporting config sha256:0619a4d9f0c1707310e474de85eb580ebf89679083e383ca5ed197b04472c5d8 0.0s done
+#19 exporting attestation manifest sha256:6866f87222b32a9376844b8d4f8a6b88b6fdde850a7e45966492258ac88191dc
+#19 exporting attestation manifest sha256:6866f87222b32a9376844b8d4f8a6b88b6fdde850a7e45966492258ac88191dc 0.0s done
+#19 exporting manifest list sha256:60065c625225eddb850058ecb296e31b5a50d512272853accaf920241d81578f 0.0s done
 #19 naming to docker.io/library/mpd-docker-e2e:local done
 #19 unpacking to docker.io/library/mpd-docker-e2e:local
 #19 unpacking to docker.io/library/mpd-docker-e2e:local 0.7s done
 #19 DONE 3.0s
 
-#20 [mpd-oneclick] exporting to image
-#20 exporting layers 2.2s done
-#20 exporting manifest sha256:69cd9aa87caf03c37af107a3ac2410d68bd15cd2d13e792ab13db120824b9525 0.0s done
-#20 exporting config sha256:5501aa23ecc00c9b9769625dac6039f7545d8308a5fa7a2ec670c081910aaeff 0.0s done
-#20 exporting attestation manifest sha256:1e6fbbb55b534ee23aae82c96d73ba6a095c7a391d776c19fb245fe5f7020e5c 0.0s done
-#20 exporting manifest list sha256:f2332453034b63fb33943ea2b3b163835ba05a35dd97351c00861fa73da963bb 0.0s done
+#20 [mpd-client] exporting to image
+#20 exporting layers 2.1s done
+#20 exporting manifest sha256:02a0d14938ffe5ed75fe14aea06215b8b52cf00c53d0bc0caf399b45cdc63054 0.0s done
+#20 exporting config sha256:7f83d748f584277d01a212acc7bae41b97a4620653338c55881a3ccdf84b89cf 0.0s done
+#20 exporting attestation manifest sha256:c80a007552c5ad343be77174dbddd0d075bd13cd5254bf496a57563c4e1de17d 0.0s done
+#20 exporting manifest list sha256:29f4f6f973747abe776300ad3420225bfd3be4daed3f88ec4420305250ce4b7e 0.1s done
 #20 naming to docker.io/library/mpd-docker-e2e:local done
 #20 unpacking to docker.io/library/mpd-docker-e2e:local 0.7s done
 #20 DONE 3.0s
 
-#21 [mpd-client] resolving provenance for metadata file
+#21 [mpd-oneclick] resolving provenance for metadata file
 #21 DONE 0.0s
 
-#22 [mpd-oneclick] resolving provenance for metadata file
+#22 [mpd-client] resolving provenance for metadata file
 #22 DONE 0.0s
  Image mpd-docker-e2e:local Built 
  Image mpd-docker-e2e:local Built 
 [driver] image mpd-docker-e2e:local = 488 MiB
 [driver] $ docker compose -f /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/docker/docker-compose.yml run --rm -T -e MPD_E2E_INSTALL_MODE=oneclick -e DEEPSEEK_API_KEY -e MPD_E2E_LIVE=1 -e MPD_E2E_BROWSER=1 mpd-oneclick
-[driver] evidence -> evidence/docker/client-install-oneclick/2026-10-20T12-52-47Z
- Container docker-mpd-oneclick-run-e2cf4b972712 Creating 
- Container docker-mpd-oneclick-run-e2cf4b972712 Created 
-===== Docker client-install E2E — 2026-10-20T12:52:52Z =====
+[driver] evidence -> evidence/docker/client-install-oneclick/2026-10-20T13-09-20Z
+ Container docker-mpd-oneclick-run-a45c6fe3173f Creating 
+ Container docker-mpd-oneclick-run-a45c6fe3173f Created 
+===== Docker client-install E2E — 2026-10-20T13:09:25Z =====
 ubuntu image : ubuntu 24.04
 app dir      : /opt/mpd   (copy of /src)
 HOME         : /root/sandbox-home
@@ -198,10 +198,10 @@ $ node -e
   }
   settle(registry, "both-unreachable", "officialProbe=" + first.status + " mirrorProbe=" + second.status, "not reached: no registry answered METADATA")
  https://registry.npmjs.org https://registry.npmjs.org/@deepseek-ai%2fdsh https://registry.npmmirror.com official-registry /work/npm-registry.txt /@deepseek-ai/dsh/-/dsh-0.2.1-rc.2.tgz  (timeout 900s)
-REGISTRY=https://registry.npmjs.org ROUTE=official-registry-ok probeMs=2362 tarball=skipped reason=no-registry-knob (the operator named no registry with MPD_E2E_NPM_REGISTRY, so the scoped METADATA probe above is the whole transport decision; the ranged GET is opt-in and this run paid no network for it)
+REGISTRY=https://registry.npmjs.org ROUTE=official-registry-ok probeMs=2271 tarball=skipped reason=no-registry-knob (the operator named no registry with MPD_E2E_NPM_REGISTRY, so the scoped METADATA probe above is the whole transport decision; the ranged GET is opt-in and this run paid no network for it)
 TARBALL=skipped reason=no-registry-knob (the operator named no registry with MPD_E2E_NPM_REGISTRY, so the scoped METADATA probe above is the whole transport decision; the ranged GET is opt-in and this run paid no network for it)
 [step 01b-npm-registry] exit=0 seconds=3
-REGISTRY=https://registry.npmjs.org ROUTE=official-registry-ok probeMs=2362 tarball=skipped reason=no-registry-knob (the operator named no registry with MPD_E2E_NPM_REGISTRY, so the scoped METADATA probe above is the whole transport decision; the ranged GET is opt-in and this run paid no network for it)
+REGISTRY=https://registry.npmjs.org ROUTE=official-registry-ok probeMs=2271 tarball=skipped reason=no-registry-knob (the operator named no registry with MPD_E2E_NPM_REGISTRY, so the scoped METADATA probe above is the whole transport decision; the ranged GET is opt-in and this run paid no network for it)
 TARBALL=skipped reason=no-registry-knob (the operator named no registry with MPD_E2E_NPM_REGISTRY, so the scoped METADATA probe above is the whole transport decision; the ranged GET is opt-in and this run paid no network for it)
 
 ----- apt: curl git ca-certificates unzip xz-utils -----
@@ -213,22 +213,22 @@ Get:3 http://security.ubuntu.com/ubuntu noble-security/multiverse amd64 Packages
 Get:4 http://archive.ubuntu.com/ubuntu noble-updates InRelease [126 kB]
 Get:5 http://security.ubuntu.com/ubuntu noble-security/main amd64 Packages [1410 kB]
 Get:6 http://archive.ubuntu.com/ubuntu noble-backports InRelease [126 kB]
-Get:7 http://archive.ubuntu.com/ubuntu noble/universe amd64 Packages [19.3 MB]
+Get:7 http://archive.ubuntu.com/ubuntu noble/main amd64 Packages [1808 kB]
 Get:8 http://security.ubuntu.com/ubuntu noble-security/universe amd64 Packages [1549 kB]
 Get:9 http://security.ubuntu.com/ubuntu noble-security/restricted amd64 Packages [2122 kB]
-Get:10 http://archive.ubuntu.com/ubuntu noble/restricted amd64 Packages [117 kB]
-Get:11 http://archive.ubuntu.com/ubuntu noble/main amd64 Packages [1808 kB]
-Get:12 http://archive.ubuntu.com/ubuntu noble/multiverse amd64 Packages [331 kB]
-Get:13 http://archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Packages [2231 kB]
-Get:14 http://archive.ubuntu.com/ubuntu noble-updates/universe amd64 Packages [2168 kB]
-Get:15 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [1729 kB]
-Get:16 http://archive.ubuntu.com/ubuntu noble-updates/multiverse amd64 Packages [61.7 kB]
-Get:17 http://archive.ubuntu.com/ubuntu noble-backports/multiverse amd64 Packages [669 B]
-Get:18 http://archive.ubuntu.com/ubuntu noble-backports/universe amd64 Packages [36.0 kB]
+Get:10 http://archive.ubuntu.com/ubuntu noble/universe amd64 Packages [19.3 MB]
+Get:11 http://archive.ubuntu.com/ubuntu noble/multiverse amd64 Packages [331 kB]
+Get:12 http://archive.ubuntu.com/ubuntu noble/restricted amd64 Packages [117 kB]
+Get:13 http://archive.ubuntu.com/ubuntu noble-updates/multiverse amd64 Packages [61.7 kB]
+Get:14 http://archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Packages [2231 kB]
+Get:15 http://archive.ubuntu.com/ubuntu noble-updates/universe amd64 Packages [2168 kB]
+Get:16 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [1729 kB]
+Get:17 http://archive.ubuntu.com/ubuntu noble-backports/universe amd64 Packages [36.0 kB]
+Get:18 http://archive.ubuntu.com/ubuntu noble-backports/multiverse amd64 Packages [669 B]
 Get:19 http://archive.ubuntu.com/ubuntu noble-backports/main amd64 Packages [49.0 kB]
-Fetched 33.6 MB in 11s (3139 kB/s)
+Fetched 33.6 MB in 8s (4361 kB/s)
 Reading package lists...
-[step 01-apt-update] exit=0 seconds=11
+[step 01-apt-update] exit=0 seconds=8
 ===== STEP 01-apt-install =====
 $ env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends curl git ca-certificates unzip xz-utils tmux (timeout 900s)
 Reading package lists...
@@ -295,7 +295,7 @@ Get:31 http://archive.ubuntu.com/ubuntu noble/main amd64 libutempter0 amd64 1.2.
 Get:32 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 tmux amd64 3.4-1ubuntu0.1 [480 kB]
 Get:33 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 unzip amd64 6.0-28ubuntu4.1 [174 kB]
 debconf: delaying package configuration, since apt-utils is not installed
-Fetched 19.8 MB in 7s (2818 kB/s)
+Fetched 19.8 MB in 5s (3714 kB/s)
 Selecting previously unselected package perl-modules-5.38.
 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 4381 files and directories currently installed.)
 Preparing to unpack .../0-perl-modules-5.38_5.38.2-3.2ubuntu0.6_all.deb ...
@@ -449,7 +449,7 @@ Updating certificates in /etc/ssl/certs...
 0 added, 0 removed; done.
 Running hooks in /etc/ca-certificates/update.d...
 done.
-[step 01-apt-install] exit=0 seconds=13
+[step 01-apt-install] exit=0 seconds=11
 [record] toolchain.apt=true — apt-get update + install curl git ca-certificates unzip xz-utils tmux
 curl: curl 8.5.0 (x86_64-pc-linux-gnu) libcurl/8.5.0 OpenSSL/3.0.13 zlib/1.3 brotli/1.1.0 zstd/1.5.5 libidn2/2.3.7 libpsl/0.21.2 (+libidn2/2.3.7) libssh/0.10.6/openssl/zlib nghttp2/1.59.0 librtmp/2.3 OpenLDAP/2.6.10
 
@@ -459,28 +459,28 @@ curl: curl 8.5.0 (x86_64-pc-linux-gnu) libcurl/8.5.0 OpenSSL/3.0.13 zlib/1.3 bro
 ----- bun (official install script) -----
 ===== STEP 03-bun =====
 $ bash -c set -euo pipefail; curl -fsSL --retry 8 --retry-delay 2 --retry-all-errors --connect-timeout 20 https://bun.sh/install | bash (timeout 900s)
-#=#=#                                                                          ##O#-#                                                                         ##O=#  #                                                                       #=#=-#  #                                                                      -#O#- #   #                                                                    -=#=#   #   #                                                                  -=O#-#   #   #                                                                 -=O=#  #   #   #                                                               -=O=-#  #    #   #                                                             -=O=- #   #   #    #                                                           -=O=-   #   #   #     #                                                        -=O=-    #   #    #     #                                                      -=O=-      #   #     #    #                                                    -=O=-        #   #     #    #                                                  -=O=-         #    #     #     #                                                                                                                          0.0%                                                                           0.1%                                                                           0.1%                                                                           0.4%                                                                           0.7%                                                                           1.0%                                                                           1.2%#                                                                          1.6%#                                                                          2.2%##                                                                         3.1%###                                                                        4.6%###                                                                        5.5%####                                                                       5.9%#####                                                                      7.1%#########                                                                 13.2%##########                                                                14.5%###########                                                               16.5%##############                                                            20.8%###############                                                           21.5%###################                                                       27.1%#####################                                                     30.3%#####################                                                     30.5%#######################                                                   33.1%########################                                                  34.6%##########################                                                36.9%###########################                                               38.7%##############################                                            43.0%################################                                          45.1%##################################                                        47.6%###################################                                       49.9%###################################                                       50.0%######################################                                    53.8%########################################                                  56.6%############################################                              62.0%#############################################                             63.8%##############################################                            64.3%##################################################                        70.7%###################################################                       72.1%###################################################                       72.1%#####################################################                     74.2%#######################################################                   76.5%########################################################                  79.0%########################################################                  79.0%#############################################################             85.1%###############################################################           87.5%###############################################################           88.0%##################################################################        92.1%##################################################################        92.9%####################################################################      95.8%#######################################################################   99.2%#######################################################################   99.8%######################################################################## 100.0%
+#=#=#                                                                          ##O#-#                                                                         ##O=#  #                                                                       #=#=-#  #                                                                      -#O#- #   #                                                                    -=#=#   #   #                                                                  -=O#-#   #   #                                                                 -=O=#  #   #   #                                                               -=O=-#  #    #   #                                                             -=O=- #   #   #    #                                                           -=O=-   #   #   #     #                                                        -=O=-    #   #    #     #                                                      -=O=-      #   #     #    #                                                    -=O=-        #   #     #    #                                                  -=O=-         #    #     #     #                                                                                                                          0.0%                                                                           0.1%                                                                           0.1%                                                                           0.2%                                                                           0.4%                                                                           0.5%                                                                           0.8%                                                                           1.2%#                                                                          1.8%#                                                                          2.7%##                                                                         4.0%####                                                                       5.9%#####                                                                      8.1%########                                                                  12.1%#########                                                                 12.6%#########                                                                 13.6%#############                                                             18.4%##############                                                            19.8%###############                                                           21.6%###############                                                           22.2%#################                                                         24.7%####################                                                      29.1%######################                                                    31.5%#########################                                                 35.0%###########################                                               38.9%#############################                                             41.5%###############################                                           43.8%#################################                                         46.5%###################################                                       49.2%#####################################                                     51.8%#######################################                                   54.4%########################################                                  56.9%##########################################                                59.6%############################################                              62.2%#############################################                             62.7%###############################################                           66.3%##################################################                        70.0%####################################################                      72.7%######################################################                    75.4%########################################################                  77.9%##########################################################                80.7%############################################################              83.4%##############################################################            86.2%################################################################          89.0%##################################################################        91.8%###################################################################       93.9%######################################################################    97.4%######################################################################## 100.0%
 bun was installed successfully to /opt/toolchain/bun/bin/bun 
 Run 'bun --help' to get started
-[step 03-bun] exit=0 seconds=16
+[step 03-bun] exit=0 seconds=11
 [record] toolchain.bun=true — bun 1.4.3 on PATH, installed via official-script
 ===== STEP 03b-bun-pin =====
 $ env BUN_INSTALL=/opt/toolchain/bun-pinned bash -c set -euo pipefail; curl -fsSL --retry 8 --retry-delay 2 --retry-all-errors --connect-timeout 20 https://bun.sh/install | bash -s -- 'bun-v1.4.0' (timeout 900s)
-#=#=#                                                                          ##O#-#                                                                         ##O=#  #                                                                       #=#=-#  #                                                                      -#O#- #   #                                                                                                                                               0.0%                                                                           0.2%                                                                           0.4%                                                                           0.6%                                                                           0.8%#                                                                          1.7%#                                                                          2.0%#                                                                          2.0%##                                                                         2.9%##                                                                         3.7%#####                                                                      7.5%######                                                                     9.5%########                                                                  11.8%############                                                              16.8%############                                                              17.3%#############                                                             18.2%##############                                                            19.5%##############                                                            19.9%####################                                                      29.0%#####################                                                     29.9%######################                                                    31.4%############################                                              39.0%############################                                              40.1%############################                                              40.2%##################################                                        47.8%##################################                                        47.8%####################################                                      50.7%######################################                                    53.4%########################################                                  56.0%###########################################                               60.0%###########################################                               60.5%################################################                          67.8%##################################################                        70.4%###################################################                       71.2%#####################################################                     73.6%#######################################################                   76.5%########################################################                  78.8%#########################################################                 79.4%############################################################              83.7%#############################################################             86.0%################################################################          90.2%####################################################################      95.0%######################################################################    97.4%######################################################################## 100.0%
+#=#=#                                                                          ##O#-#                                                                         ##O=#  #                                                                       #=#=-#  #                                                                      -#O#- #   #                                                                                                                                               0.1%                                                                           0.1%                                                                           0.1%                                                                           0.2%                                                                           0.4%                                                                           0.6%                                                                           0.9%                                                                           1.3%#                                                                          2.0%##                                                                         2.8%###                                                                        4.2%####                                                                       6.3%######                                                                     9.0%######                                                                     9.5%##########                                                                14.3%##########                                                                15.3%###########                                                               15.3%#############                                                             18.3%##################                                                        25.5%##################                                                        25.8%###################                                                       26.8%#########################                                                 34.9%##########################                                                37.2%############################                                              40.2%###############################                                           43.2%#################################                                         46.4%##################################                                        48.3%#####################################                                     52.7%#########################################                                 57.9%###########################################                               60.8%##############################################                            64.0%################################################                          67.0%##################################################                        70.0%####################################################                      73.2%#######################################################                   76.4%#########################################################                 79.6%###########################################################               82.5%#############################################################             85.1%################################################################          89.2%###################################################################       93.5%#####################################################################     96.7%#######################################################################   99.8%######################################################################## 100.0%
 bun was installed successfully to /opt/toolchain/bun-pinned/bin/bun 
 Run 'bun --help' to get started
-[step 03b-bun-pin] exit=0 seconds=12
+[step 03b-bun-pin] exit=0 seconds=9
 [record] toolchain.bunPinned=true — the build toolchain the tree declares is staged and reports EXACTLY that version, so the from-source rebuild below runs under the compiler the artifact was cut with
 
 ----- pnpm 11.23.0 (required by 'dsh plugin') -----
 ===== STEP 04-pnpm =====
 $ npm i -g pnpm@11.23.0 (timeout 900s)
 
-added 1 package in 6s
+added 1 package in 5s
 
 1 package is looking for funding
   run `npm fund` for details
-[step 04-pnpm] exit=0 seconds=7
+[step 04-pnpm] exit=0 seconds=5
 [record] toolchain.pnpm=true — required by 'dsh plugin' (it forwards to pnpm), available on PATH
 
 ----- @deepseek-ai/dsh@0.2.1-rc.2 -----
@@ -488,7 +488,7 @@ added 1 package in 6s
 $ npm i -g @deepseek-ai/dsh@0.2.1-rc.2 (timeout 900s)
 npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
 
-added 613 packages in 2m
+added 613 packages in 1m
 
 68 packages are looking for funding
   run `npm fund` for details
@@ -500,7 +500,7 @@ npm warn install-scripts   @google/genai@2.21.0 (preinstall: echo 'preinstall: n
 npm warn install-scripts   protobufjs@7.6.6 (postinstall: node scripts/postinstall)
 npm warn install-scripts
 npm warn install-scripts Run `npm install -g --allow-scripts=@deepseek-ai/dsh-subprocess-local,koffi,node-pty,@google/genai,protobufjs` to allow these scripts once, or `npm config set allow-scripts=@deepseek-ai/dsh-subprocess-local,koffi,node-pty,@google/genai,protobufjs --location=user` to allow them for all global installs.
-[step 05-dsh] exit=0 seconds=149
+[step 05-dsh] exit=0 seconds=71
 [record] harness.version=true — npm i -g then 'dsh --version' printed the pin exactly
 
 ----- build-context filter (did the image carry host state?) -----
@@ -543,16 +543,13 @@ hint: See "git help submodule" for more information.
 $ bash -c cd '/opt/mpd' && dsh plugin --profile web add 'git+file:///opt/oneclick.git' (timeout 900s)
 dsh: initialized profile web at /root/sandbox-dsh/profiles/web
 Progress: resolved 0, reused 0, downloaded 1, added 0
-Progress: resolved 1, reused 0, downloaded 1, added 0
-Progress: resolved 2, reused 0, downloaded 1, added 0
-Progress: resolved 13, reused 0, downloaded 1, added 0
-Progress: resolved 26, reused 0, downloaded 1, added 0
-Progress: resolved 36, reused 0, downloaded 1, added 0
-Progress: resolved 76, reused 0, downloaded 1, added 0
-Progress: resolved 85, reused 0, downloaded 1, added 0
-Progress: resolved 144, reused 0, downloaded 1, added 0
-Progress: resolved 166, reused 0, downloaded 1, added 0
-Progress: resolved 189, reused 0, downloaded 1, added 0
+Progress: resolved 3, reused 0, downloaded 1, added 0
+Progress: resolved 15, reused 0, downloaded 1, added 0
+Progress: resolved 31, reused 0, downloaded 1, added 0
+Progress: resolved 72, reused 0, downloaded 1, added 0
+Progress: resolved 126, reused 0, downloaded 1, added 0
+Progress: resolved 162, reused 0, downloaded 1, added 0
+Progress: resolved 188, reused 0, downloaded 1, added 0
 [WARN] Issues with peer dependencies found. Run "pnpm peers check" to list them.
 
 dependencies:
@@ -560,18 +557,20 @@ dependencies:
 
 Packages: +186
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-Progress: resolved 189, reused 0, downloaded 1, added 1
+Progress: resolved 189, reused 0, downloaded 1, added 0
 Packages are hard linked from the content-addressable store to the virtual store.
   Content-addressable store is at: /root/sandbox-home/.local/share/pnpm/store/v11
   Virtual store is at:             node_modules/.pnpm
-Progress: resolved 189, reused 0, downloaded 110, added 109
-Progress: resolved 189, reused 0, downloaded 175, added 177
-Progress: resolved 189, reused 0, downloaded 181, added 183
+Progress: resolved 189, reused 0, downloaded 91, added 91
+Progress: resolved 189, reused 0, downloaded 178, added 180
+[WARN] Tarball download average speed 48 KiB/s (size 83 KiB) is below 50 KiB/s: https://registry.npmjs.org/ip-address/-/ip-address-10.7.4.tgz (GET)
+Progress: resolved 189, reused 0, downloaded 180, added 182
+Progress: resolved 189, reused 0, downloaded 182, added 184
 Progress: resolved 189, reused 0, downloaded 183, added 185
 Progress: resolved 189, reused 0, downloaded 184, added 185
 Progress: resolved 189, reused 0, downloaded 184, added 186, done
-Done in 29.1s using pnpm v11.23.0
-[step 09-install] exit=0 seconds=29
+Done in 21.5s using pnpm v11.23.0
+[step 09-install] exit=0 seconds=22
 ===== STEP 09a-install-closure =====
 $ node /opt/mpd-e2e/lib/owed-install.ts --install-log /work/steps/09-install.log --exit 0 --roots /root/sandbox-dsh/profiles/web,/opt/mpd --state /work/assertions.ndjson (timeout 900s)
 [owed-install] install.buildScripts=true — the client install completed with NO unapproved build script: exit 0, no ERR_PNPM_IGNORED_BUILDS anywhere in the install output, no ignored-build-scripts warning, and the 2 installed closure root(s) were walked for manifests declaring preinstall/install/postinstall/prepare (12 found)
@@ -587,10 +586,10 @@ $ node /opt/mpd-e2e/lib/owed-install.ts --install-log /work/steps/09-install.log
 ===== STEP 08c-pack =====
 $ node /opt/mpd-e2e/lib/owed-pack.ts --artifact /src/dist/mpd-package --source /src --rebuild  --rebuild-report  --state /work/assertions.ndjson (timeout 900s)
 [owed-pack] pack.present=true — the packed artifact travelled into the container and is graded below
-[owed-pack] artifact files=620 bytes=15022213
+[owed-pack] artifact files=620 bytes=15022188
 [owed-pack] pack.licenceCoherence=true — the packed artifact carries LICENSE.md + LICENSE-NOTICES.md byte-identical to the tree it was cut from, and declares license=MIT as the source manifest does
 [owed-pack] pack.declarationCoherence=true — every declaration the artifact makes about itself holds: 18 files entries resolve, its 2 bundle-patch layers exist, all 27 row module paths its own patch names resolve inside it, and no host tree (evidence/.git/docker/.toolchain/node_modules) travelled along
-[owed-pack] pack.staticCoherence=false — the artifact does NOT agree with the tree it was cut from — it is stale or was edited after the pack: 3 differing file(s), 0 carried file(s) with no twin
+[owed-pack] pack.staticCoherence=true — the artifact agrees with the tree it was cut from: 618 carried file(s) byte-identical, 2 generated path(s) exempted (package.json, packages/mpd-ext-plugin/dist/validator.js), none missing
 [owed-pack] pack.distFreshRebuild=null — not measured in this mode: no from-source rebuild of the tree was produced here, so there is nothing to compare the artifact against. A comparison against an un-rebuilt copy would be a second byte-coherence check wearing freshness's name — the source lane carries this measurement
 [owed-pack] pack.rebuildToolchain=null — not measured in this mode: no from-source rebuild was produced, so no compiler produced the bytes this row would match against the artifact's declared buildToolchain
 [step 08c-pack] exit=0 seconds=0
@@ -2590,7 +2589,7 @@ $ node /opt/mpd/scripts/dump-config.ts --profile web (timeout 900s)
         name: '@deepseek-ai/dsh-plugin-market/tools'
         disabled: true
 [dump-config] COMPOSITION ONLY (recap) — rows above prove COMPOSITION, never a plugin load; for a load proof run a mounting boot (AGENTS.md §4).
-[step 10-dump] exit=0 seconds=0
+[step 10-dump] exit=0 seconds=1
 [label] the block above is COMPOSITION ONLY — rows composed, no plugin code executed
 [record] compose.dumpExit=true — the sanctioned composer exited 0
 ----- scripts/verify-no-host-override.ts (subject: a byte-identical copy of the installed patch) -----
@@ -2617,7 +2616,7 @@ $ node /opt/mpd/scripts/dump-config.ts --profile web (timeout 900s)
 $ node /opt/mpd/scripts/install-mcp.ts --toolchain /root/sandbox-dsh/profiles/web/node_modules/@mpd-dsh/mpd/.toolchain (timeout 900s)
 [install-mcp] installing npm toolchain: @ast-grep/cli + @colbymchenry/codegraph@1.5.0
 
-added 5 packages in 15s
+added 5 packages in 12s
 npm warn install-scripts 1 package has install scripts not yet covered by allowScripts:
 npm warn install-scripts   @ast-grep/cli@0.51.0 (postinstall: node postinstall.js)
 npm warn install-scripts
@@ -2630,7 +2629,7 @@ export MPD_CODEGRAPH_BIN="/root/sandbox-dsh/profiles/web/node_modules/@mpd-dsh/m
 export PATH="/root/sandbox-dsh/profiles/web/node_modules/@mpd-dsh/mpd/.toolchain/bin:$PATH"   # toolchain bin dir (optional user binaries)
 
 [install-mcp] next: source /root/sandbox-home/.mpd/mcp.env in the shell that launches dsh, then restart dsh.
-[step 09d-astgrep-engine] exit=0 seconds=15
+[step 09d-astgrep-engine] exit=0 seconds=12
 
 ----- MOUNTING BOOT (registration instrumentation) -----
 $ cd /work && dsh --profile web --patch /work/probe.yml --port 3197 --no-open
@@ -2658,11 +2657,11 @@ $ node /opt/mpd-e2e/lib/owed-mcp.ts --boot-log /work/steps/11-boot.log --state /
 [record] team.planLookup=true — the plan route answered a plan SHAPE for the live session (null when nothing is staged, which is the honest pre-approval answer)
 
 ----- LIVE TURN ON THE WEB PLANE (gateway) -----
-[web-live] session=session-c90c272d-429f-4792-9f44-07b344db531b http=200 prompt=Call the mpd_config_get tool once (it takes no arguments), then reply with exactly: DONE
-session=session-c90c272d-429f-4792-9f44-07b344db531b http=200
+[web-live] session=session-e6e8029b-5039-476e-8ebc-9c88e04160fd http=200 prompt=Call the mpd_config_get tool once (it takes no arguments), then reply with exactly: DONE
+session=session-e6e8029b-5039-476e-8ebc-9c88e04160fd http=200
 prompt=Call the mpd_config_get tool once (it takes no arguments), then reply with exactly: DONE
-{"type":"server-response","rpcId":"req-1-1792501044-10537","result":{"ok":true,"value":{"accepted":true}}}
-[live-verdict] wait=300000ms landed=true session=/root/sandbox-dsh/sessions/--work-ws--/session-c90c272d-429f-4792-9f44-07b344db531b/session.v4.jsonl.zstd
+{"type":"server-response","rpcId":"req-1-1792501932-12591","result":{"ok":true,"value":{"accepted":true}}}
+[live-verdict] wait=300000ms landed=true session=/root/sandbox-dsh/sessions/--work-ws--/session-e6e8029b-5039-476e-8ebc-9c88e04160fd/session.v4.jsonl.zstd
 [record] live.web.turnStarted=true — the web plane started a real turn
 [record] live.web.turnCompleted=true — the web turn reached turn/end reason=completed
 [record] live.web.noErrorTurns=true — no web turn ended in an error
@@ -2725,10 +2724,10 @@ $ node -e
         }
         settle(official, "both-artifacts-unreachable", "artifacts=" + artifacts.length + " " + seen.join(" "))
        /work/ui https://playwright.azureedge.net https://cdn.npmmirror.com/binaries/playwright  /work/playwright-host.txt (timeout 900s)
-PLAYWRIGHT_HOST=https://playwright.azureedge.net ROUTE=official-artifact-ok artifacts=1 https://playwright.azureedge.net[/builds/chromium/1140/chromium-linux.zip=http=206(4399ms)]
-[step 13-browser-host] exit=0 seconds=5
+PLAYWRIGHT_HOST=https://playwright.azureedge.net ROUTE=official-artifact-ok artifacts=1 https://playwright.azureedge.net[/builds/chromium/1140/chromium-linux.zip=http=206(4076ms)]
+[step 13-browser-host] exit=0 seconds=4
 
-added 2 packages, and audited 3 packages in 7s
+added 2 packages, and audited 3 packages in 6s
 
 1 high severity vulnerability
 
@@ -2791,10 +2790,10 @@ After this operation, 360 MB of additional disk space will be used.
 Get:1 http://archive.ubuntu.com/ubuntu noble/universe amd64 fonts-ipafont-gothic all 00303-21ubuntu1 [3513 kB]
 Get:2 http://security.ubuntu.com/ubuntu noble-security/main amd64 libx11-data all 2:1.8.7-1ubuntu0.1 [116 kB]
 Get:3 http://security.ubuntu.com/ubuntu noble-security/main amd64 libx11-6 amd64 2:1.8.7-1ubuntu0.1 [653 kB]
-Get:4 http://security.ubuntu.com/ubuntu noble-security/main amd64 libx11-xcb1 amd64 2:1.8.7-1ubuntu0.1 [7796 B]
-Get:5 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libbsd0 amd64 0.12.1-1build1.1 [41.2 kB]
-Get:6 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libdbus-1-3 amd64 1.14.10-4ubuntu4.1 [210 kB]
-Get:7 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libelf1t64 amd64 0.190-1.1ubuntu0.1 [57.8 kB]
+Get:4 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libbsd0 amd64 0.12.1-1build1.1 [41.2 kB]
+Get:5 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libdbus-1-3 amd64 1.14.10-4ubuntu4.1 [210 kB]
+Get:6 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libelf1t64 amd64 0.190-1.1ubuntu0.1 [57.8 kB]
+Get:7 http://security.ubuntu.com/ubuntu noble-security/main amd64 libx11-xcb1 amd64 2:1.8.7-1ubuntu0.1 [7796 B]
 Get:8 http://archive.ubuntu.com/ubuntu noble/main amd64 libfribidi0 amd64 1.0.13-3build1 [26.1 kB]
 Get:9 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libglib2.0-0t64 amd64 2.80.0-6ubuntu3.9 [1547 kB]
 Get:10 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libicu74 amd64 74.2-1ubuntu3.1 [10.9 MB]
@@ -2891,7 +2890,7 @@ Get:100 http://archive.ubuntu.com/ubuntu noble/main amd64 libglx0 amd64 1.7.0-1b
 Get:101 http://archive.ubuntu.com/ubuntu noble/main amd64 libgl1 amd64 1.7.0-1build1 [102 kB]
 Get:102 http://archive.ubuntu.com/ubuntu noble-updates/universe amd64 xvfb amd64 2:21.1.12-1ubuntu1.9 [877 kB]
 debconf: delaying package configuration, since apt-utils is not installed
-Fetched 97.6 MB in 16s (6206 kB/s)
+Fetched 97.6 MB in 56s (1756 kB/s)
 Selecting previously unselected package fonts-ipafont-gothic.
 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 8245 files and directories currently installed.)
 Preparing to unpack .../000-fonts-ipafont-gothic_00303-21ubuntu1_all.deb ...
@@ -3367,7 +3366,7 @@ FFMPEG playwright build v1010 downloaded to /work/pw-browsers/ffmpeg-1010
 [record] tui.mergedPanelOrder=true — the captured pane holds the subagent section ABOVE the team body — measured on the same pane the open row reads: the captured pane carries the merged panel: titleHits=2 subagentHits=2 teamHits=2 subagentMarker=line 7 teamMarker=line 11 header=line 7 emptyState=line 8 (each family must be > 0, pre-key control hits = 0)
 [record] tui.hostDashboardKeyIntact=true — Ctrl+A stayed the HOST's key on this host, as frozen R4 requires wherever the panel seam is present: with the seeded team present it did NOT open MPD's merged panel, and after the team record was removed it still did not. The panel is reached through MPD's own entry points instead (tui.mergedPanelOpens above proves /mpd panel)
 [record] tui.noDirectTuiSeam=true — the D6 gate (no file outside mpd-tui-adapter-plugin names a ctx.tui* seam) passed on a byte-identical copy of the INSTALLED tree, executed where node can strip types
-[live-verdict] wait=300000ms landed=true session=/root/sandbox-dsh/sessions/--work-ws--/ba02baf0-3403-4264-9640-df194e4d4ef7/session.v4.jsonl.zstd
+[live-verdict] wait=300000ms landed=true session=/root/sandbox-dsh/sessions/--work-ws--/6309a63b-32d1-4899-b988-7aa2380c0795/session.v4.jsonl.zstd
 [record] live.tui.turnStarted=true — the tui plane started a real turn
 [record] live.tui.turnCompleted=true — the tui turn reached turn/end reason=completed
 [record] live.tui.noErrorTurns=true — no tui turn ended in an error
@@ -3384,71 +3383,54 @@ FFMPEG playwright build v1010 downloaded to /work/pw-browsers/ffmpeg-1010
 dsh: warning: 1 entry did not activate
 preset-mpd (@deepseek-ai/dsh-agent-preset): pending (waiting for service: agentPresets)
 dsh: reasoning:
-The user wants me to execute 5 tool calls in order. Let me do them sequentially since they have dependencies (plan create → add_member → create_task → approve).
-
-Let me start with step 1.
-
-Actually, I can batch independent calls, but these are dependent. Let me do them one at a time.
-
-Step 1: mpd_config_get with no args.
-Step 2: agent_teams_plan create.
-Step 3: add_member Reviewer (need to look up persona? Not required — member just needs name, prompt is required per schema "member: {name, prompt, description?, role?}"). I should provide a prompt. Maybe get persona via mpd_role_persona first, but that's an extra step not requested. The instruction says do these steps in order. I'll provide a reasonable prompt.
-
-Step 4: create_task subject "check the mount".
-Step 5: approve.
-
-Then reply DONE.
-
-Let me do step 1 first.
+All steps done, reply with DONE.
 dsh: reasoning:
-Step 1 done. Step 2: create plan.
+The user (well, the Reviewer teammate via message) has reported results. The instruction was just to do the steps and reply DONE, which I did. Now this message comes in. I should respond appropriately — probably just acknowledge/confirm. Should I do anything? The task is done. The message is informational. I should give a brief final answer noting the result.
+
+Let me check the board state maybe, but not necessary. Keep it short. Maybe verify the team status quickly to confirm T1 completed. That's reasonable and cheap.
+
+Let me check list_agents / team_task_list to confirm. Actually the reviewer's message says the task is complete. A quick verification is fine, but the user asked only for DONE. Now a new message arrived. I'll acknowledge concisely. Perhaps do a quick team_task_list to confirm. I'll do one call.
 dsh: reasoning:
-Step 3: add_member Reviewer with prompt. Let me fetch persona? The step says "add_member for a member named Reviewer". I'll include a prompt describing its role. To be faithful, I could get the persona in the same batch? Persona fetch is independent — but the instruction is only those 5 calls; extra call is fine but let's keep minimal. The schema requires prompt. I'll write a concise prompt.
+Interesting — the official team task board (team_task_*) is empty, while the plan board (agent_teams_plan) has T1 complete. Different planes. Let me check plan status.
 
-Actually, could do mpd_role_persona in parallel with nothing... no dependency issues, but let's just write a prompt.
+Actually, the plan task is on the plan/team record plane. team_task_list empty is just the official board being separate. Let me check agent_teams_plan status to confirm.
 dsh: reasoning:
-Interesting: I passed subject "check the mount" but it says non-empty subject. Perhaps the parameter must be nested or the alias... The tool schema for create_task has params: task: {subject, description, ...}, and aliases owner/blocked_by at top level. Maybe subject at top level isn't accepted — only `task.subject`. The error suggests subject was empty, i.e. top-level "subject" isn't mapped. Let me retry with task object. But wait — that would create a second call; the user asked for a single create_task call with subject "check the mount". Retrying after an error is fine to accomplish the step.
+Hmm, status shows plan (none), members 1, tasks 1. And team_task_list is empty. The reviewer claims T1 board-completed at revision 3. But the plan plane shows... ambiguous. Let me check the team record file to verify, and list_agents.
 
-Let me pass task: {subject, description, owner, kind, write_scopes}.
+Actually the simple response: acknowledge the report. The user's original ask was just the 5 steps + DONE. That's satisfied. The reviewer's message is informational. I'll confirm and summarize, noting the discrepancy that the official board shows no tasks (different plane) — but reviewer said it was claimed/completed on its board.
+
+Let me quickly check list_agents and the team record to be accurate.
 dsh: reasoning:
-All five steps done (step 4 needed a retry due to the alias not being accepted). Reply with the single word DONE.
-dsh: reasoning:
-The Reviewer reported back. The original user request was to do the 5 steps then reply DONE — which I already did. Now this is a teammate message with review results. What should I do? The task board: reviewer claims it's marking complete. I should probably acknowledge/verify status and then report the result concisely to the user.
+The Reviewer is no longer listed (its turn ended / it was a plan-plane member). The live-smoke team has 1 member, 1 task, T1 completed per reviewer.
 
-I'm the Lead. The user's request was completed already (DONE). Now a teammate message arrived with the review result. I should process it — check team/task status, and give a brief final summary since there's no further user instruction. Keep it short.
+I'll just reply concisely acknowledging. No further action needed. Maybe read the team record for confirmation? Not necessary — but a quick read is cheap and confirms. Let me read /work/ws/.mpd/team/teams/team-20261020131729104-41u3-002.json.
 
-Let me check task board status and maybe team status.
-dsh: reasoning:
-No tasks on the official board? The plan tasks went into the MPD plan plane. The Reviewer referenced "team live-smoke, team-20261020130153122-axm3-002" and T1. Let me check agent_teams_plan status and list_agents.
-dsh: reasoning:
-Interesting: plan status shows a plan with 1 member, 1 task, but name "(none)". list_agents shows only lead — so the Reviewer teammate isn't listed as a live agent (it may have been a one-shot?). The Reviewer sent a message directly.
+Actually being a lead, verifying is good practice. One read.
+Acknowledged — the Reviewer finished and T1 is verified on the board.
 
-The message says the task was claimed and marked complete. But plan status shows tasks 1... can't see status. Let me check the plan status more thoroughly — maybe there's a way via team record. Not critical.
+**Live-smoke team: complete.**
 
-The user's turn here is just the teammate message. My response should be a brief report to the human: the smoke run completed, the 5 steps executed, and the Reviewer's verdict. Keep it concise.
+| Item | Status |
+|---|---|
+| `mpd_config_get` | done — returned `teamModels` slots 1–4 (deepseek-official, `deepseek-v4-flash` / `-vision-exp`) |
+| Plan `live-smoke` created + approved | done — `plan-20261020131726102-41u3-001`, `approvedAt` 13:17:29Z |
+| Member `Reviewer` | raised, executorRef `64a464fe…`, now finished |
+| Task T1 "check the mount" | `completed`, revision 3, owner Reviewer |
+| Team record | `/work/ws/.mpd/team/teams/team-20261020131729104-41u3-002.json` (verified by direct read) |
 
-Should I take further action? The review says FAIL on literal "mounted" but PASS on substance. The test was a live smoke test ("docker live turn") — the point was that the plan/member/task lifecycle works live in docker. That worked: plan created, member added, task created, approved, reviewer executed the task and reported.
+**Reviewer verdict:** PASS. `/out` is a real ext4 bind mount (dev 66306) and is readable; `/work` and `/work/ws` are overlay dirs (dev 67), not mounts. Harness mount green (`APPLIED=ok`, `CORE_TOOLS=6/6`, `MCP_TOOLS=3/3`, `AGENT_TEAMS=MOUNTED`, `AGENT_TEAM_TOOLS=9/9`).
 
-I'll summarize concisely. No further fixes needed. The task was a smoke test. I could note that the finding is a spec wording issue, not a defect.
+**Open risks (flagged, not fixed — none affect the requested steps):**
+1. **Medium** — T1 stayed `pending`/unowned after approve: the live prompt has no `agent_teams_dispatch`/claim step, and `live.nativeExecutor` only checks for a member-with-handle, so the gate can go green with no owner. The Reviewer claimed it manually; the prompt should add an explicit dispatch/claim step.
+2. **Medium** — step 15's CLI (`pid 7327`) outlived the completed turn waiting on the raised teammate, bounded only by `timeout 900`; the step may record exit 124 despite `live.headless.turnCompleted`.
+3. **Low** — "the mount" is under-specified; only `/out` is a mount. Name exact paths in tasks.
+4. **Low** — `/work/ws` is shared with the browser-lane fixture workspace; separate per-lane workspaces to avoid board/record collisions on retry.
 
-Let me check if there's a boulder/plan file to verify task completed. Not necessary.
+Note: `team_task_list` (official Agent Teams plane) reports zero tasks while the plan/team-record plane shows T1 — the two boards are distinct, exactly as the composite backend is meant to behave.
 
-Answer briefly to the human.
-dsh: reasoning:
-The subagent finished; closing message is a duplicate of what I already reported. The user's request is already answered (DONE). No further work needed. Should I do anything? Maybe verify the task board state / plan status once more, then give a brief acknowledgment that nothing further is pending.
-
-The instruction: "Background subagent ... finished and will do no further work unless you send it more." So I just acknowledge. Keep it very brief — the report is already delivered and integrated. No need to send more to the subagent.
-
-Maybe confirm plan status shows task completed? Earlier plan status was odd. Not necessary. Keep it short.
-Acknowledged — that closing message matches the report already integrated above, so nothing new to act on and no follow-up will be sent to the subagent.
-
-Final state of the live smoke:
-- All five requested steps executed in order (`mpd_config_get` → `create` → `add_member Reviewer` → `create_task "check the mount"` → `approve`), and the answer `DONE` was returned at that point.
-- T1 completed (revision 3) by Reviewer, read-only, no files modified.
-- Verdict stands: **FAIL** only on the literal word "mounted" (`mountpoint /work/ws` exit 32; `/work/ws` is an ordinary dir on the root overlay, only `/out` is host-backed), **PASS** on workspace present/readable/usable.
-- Recommendation unchanged: re-specify the check as "workspace present and usable" rather than repairing anything — this image/compose intentionally mounts only `/out`, so the live-turn plumbing itself is healthy.
+DONE
 [record] live.headlessPresetRow=true — preset-mpd pends because the HEADLESS composition declares no agent-presets registry (a harness-plane fact: only dsh-web-app declares @deepseek-ai/dsh-agent-preset-registry); the mpd HOST rows still mount, which the live turn proves
-[live-verdict] wait=300000ms landed=true session=/root/sandbox-dsh/sessions/--work-ws--/session-89ec4ab5-e36e-4f24-a7f6-0dfebe1328c3/session.v4.jsonl.zstd
+[live-verdict] wait=300000ms landed=true session=/root/sandbox-dsh/sessions/--work-ws--/session-f3470cee-9415-4661-b9ea-90fb22f87da3/session.v4.jsonl.zstd
 [record] live.headless.turnStarted=true — the headless plane started a real turn
 [record] live.headless.turnCompleted=true — the headless turn reached turn/end reason=completed
 [record] live.headless.noErrorTurns=true — no headless turn ended in an error
@@ -3466,7 +3448,7 @@ Final state of the live smoke:
 ===== STEP 16-owed-lsp =====
 $ node /opt/mpd-e2e/lib/owed-cases.ts --kind lsp --repo /root/sandbox-dsh/profiles/web/node_modules/@mpd-dsh/mpd --work /out/owed --state /work/assertions.ndjson (timeout 900s)
 [owed-cases] restore.lspBootstrap=true — the launcher generated a valid .mpd/lsp/cclsp.json with 1 well-formed language server(s), 1 of them serving the TypeScript family, and left a pre-existing user cclsp.json byte-identical (the negative control)
-[step 16-owed-lsp] exit=0 seconds=1
+[step 16-owed-lsp] exit=0 seconds=0
 ===== STEP 16b-pack-refresh =====
 $ node /opt/mpd/scripts/pack-mpd.ts (timeout 900s)
 [pack-mpd] validator: generated packages/mpd-ext-plugin/dist/validator.js (9 exports) from the shipped bundle
@@ -3502,9 +3484,8 @@ $ node /opt/mpd-e2e/lib/owed-cases.ts --kind cases --repo /opt/mpd --work /out/o
 [owed-cases] restore.hashlineRepair=true — the restored hashline fuzzy-repair cases (wrapped line, paired indent, the ambiguous negative control, the CRLF round-trip) ran to a clean exit in this run — the case's own assertions are what passed
 [owed-cases] qa.mcpCall=true — the live mcp-call case (a real model turn that must record a mcp__ast_grep__search call) ran to a clean exit in this run — the case's own assertions are what passed
 [owed-cases] qa.readonlyDeny=true — the live readonly-deny case (a read-only spawn whose child must really be restricted) ran to a clean exit in this run — the case's own assertions are what passed
-[step 16c-owed-cases] exit=0 seconds=272
-[report] ok=false complete=false passed=115 failed=1 null=6 scrubbed=true -> /out/result.json
-[report] FAIL pack.staticCoherence — the artifact does NOT agree with the tree it was cut from — it is stale or was edited after the pack: 3 differing file(s), 0 carried file(s) with no twin | raw: drifted=README.md,README.zh-CN.md,docs/index.md untwinned=none
+[step 16c-owed-cases] exit=0 seconds=304
+[report] ok=true complete=false passed=116 failed=0 null=6 scrubbed=true -> /out/result.json
 [report] NULL build.bunInstall — not applicable in one-click mode: the published package carries its own dependencies and the install materializes them
 [report] NULL build.dists — not applicable in one-click mode: the published package ships its built dist entries, and the mount below is what judges them
 [report] NULL pack.distFreshRebuild — not measured in this mode: no from-source rebuild of the tree was produced here, so there is nothing to compare the artifact against. A comparison against an un-rebuilt copy would be a second byte-coherence check wearing freshness's name — the source lane carries this measurement
@@ -3512,13 +3493,11 @@ $ node /opt/mpd-e2e/lib/owed-cases.ts --kind cases --repo /opt/mpd --work /out/o
 [report] NULL pack.distFreshRebuildControl — not applicable in mode=oneclick: the control mutates the packed artifact and re-grades it against a from-source rebuild, and this mode produces no rebuild to compare against (see pack.distFreshRebuild in this same report)
 [report] NULL ui.teamBoard — not attempted: this run did not ask for a team build (--team-expected absent), so there is no real board to assert
 
-
-[driver] ok=false complete=false passed=115 failed=1 null=6 FAILED=[pack.staticCoherence] NULL=[build.bunInstall,build.dists,pack.distFreshRebuild,pack.rebuildToolchain,pack.distFreshRebuildControl,ui.teamBoard]
-[driver] FAIL pack.staticCoherence — the artifact does NOT agree with the tree it was cut from — it is stale or was edited after the pack: 3 differing file(s), 0 carried file(s) with no twin | raw: drifted=README.md,README.zh-CN.md,docs/index.md untwinned=none
+[driver] ok=true complete=false passed=116 failed=0 null=6 NULL=[build.bunInstall,build.dists,pack.distFreshRebuild,pack.rebuildToolchain,pack.distFreshRebuildControl,ui.teamBoard]
 [driver] NULL build.bunInstall — not applicable in one-click mode: the published package carries its own dependencies and the install materializes them
 [driver] NULL build.dists — not applicable in one-click mode: the published package ships its built dist entries, and the mount below is what judges them
 [driver] NULL pack.distFreshRebuild — not measured in this mode: no from-source rebuild of the tree was produced here, so there is nothing to compare the artifact against. A comparison against an un-rebuilt copy would be a second byte-coherence check wearing freshness's name — the source lane carries this measurement
 [driver] NULL pack.rebuildToolchain — not measured in this mode: no from-source rebuild was produced, so no compiler produced the bytes this row would match against the artifact's declared buildToolchain
 [driver] NULL pack.distFreshRebuildControl — not applicable in mode=oneclick: the control mutates the packed artifact and re-grades it against a from-source rebuild, and this mode produces no rebuild to compare against (see pack.distFreshRebuild in this same report)
 [driver] NULL ui.teamBoard — not attempted: this run did not ask for a team build (--team-expected absent), so there is no real board to assert
-[driver] evidence -> evidence/docker/client-install-oneclick/2026-10-20T12-52-47Z
+[driver] evidence -> evidence/docker/client-install-oneclick/2026-10-20T13-09-20Z

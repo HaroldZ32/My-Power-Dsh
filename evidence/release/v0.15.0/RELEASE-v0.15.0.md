@@ -136,7 +136,7 @@ logs are under `gates/` and the full grading is in [`REPORT.md`](./REPORT.md). O
 | Live cases | **PASS** — delegation-gate, captain-scope, mcp-call; dual-track official PASS, gateway `NO_ADAPTER` (host bound) |
 | Pack + closure | **PASS** — 608/608 files, 0 drift |
 | Docker source (`--live`) | **PASS** — 117 passed / 0 failed / 5 declared NULL |
-| Docker one-click (`--live`) | recorded in [`REPORT.md`](./REPORT.md) (default-branch lane) |
+| Docker one-click (`--live`) | **PASS** — 116 passed / 0 failed / 6 declared NULL (local checkout stand-in; the live default-branch spec is a post-publish step) |
 
 The gateway (non-official) DeepSeek track cannot run on this host (`NO_ADAPTER`); the official track and
 the Docker live rows reach a model. The full sweep, its evidence paths and every bound are in
@@ -258,7 +258,7 @@ dsh plugin --profile web add github:HaroldZ32/My-Power-Dsh
 | 实时 case | **PASS** —— delegation-gate、captain-scope、mcp-call；dual-track official 通过，gateway `NO_ADAPTER`（宿主边界） |
 | 打包 + 闭合 | **PASS** —— 608/608 文件、0 漂移 |
 | Docker source（`--live`） | **PASS** —— 117 通过 / 0 失败 / 5 个已声明 NULL |
-| Docker one-click（`--live`） | 记录在 [`REPORT.md`](./REPORT.md)（默认分支车道） |
+| Docker one-click（`--live`） | **PASS** —— 116 通过 / 0 失败 / 6 个已声明 NULL（本地 checkout stand-in；线上默认分支 spec 是发布后步骤） |
 
 本机跑不了 gateway（非 official）DeepSeek 轨道（`NO_ADAPTER`）；official 轨道与 Docker 实机行都真实到达模型。
 完整扫尾、证据路径与全部边界见 [`REPORT.md`](./REPORT.md)。
