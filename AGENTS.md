@@ -477,8 +477,8 @@ lane hold this line.
 - **`cd <repo> && dsh plugin --profile web add .`** is the whole install from a CHECKOUT. The repo root IS
   the bundle package: `package.json` is named `@mpd-dsh/mpd` and declares `dsh.bundle.patch` (an ARRAY:
   `./cordis.patch.yml` then `./presets/mpd.patch.yml`), `dsh.client` (`platform: web`), the `exports` map
-  the rows resolve through, and the toolchain `optionalDependencies`. `dsh plugin remove @mpd-dsh/mpd` is
-  the one-command uninstall.
+  the rows resolve through, and the toolchain `optionalDependencies`. `dsh plugin --profile web remove @mpd-dsh/mpd`
+  is the one-command uninstall.
 - **The published dependency closure is BUILD-SCRIPT-FREE on purpose**: pnpm 11 hard-exits on unapproved
   dependency build scripts (`ERR_PNPM_IGNORED_BUILDS`) and `dsh plugin add` has no approval channel, so
   `dsh-better-sidebar` is an optional PEER + a `devDependency` (its `node-pty` postinstall is the

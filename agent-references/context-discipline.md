@@ -11,14 +11,14 @@ its context and leaves a usable trace.
 
 ## 1. The fixed cost, measured
 
-Two things are injected into every session before the agent does anything:
+In an `mpd` preset session, two things are injected before the agent does anything:
 
 1. **`AGENTS.md`** — through `presets/mpd.patch.yml`'s `agent-instructions` row
    (`maxBytes: 65536`, candidates `AGENT.md` → `AGENTS.md` → `CLAUDE.md`). This is the only route by
    which the manual reaches the model.
 2. **The `mpd` preset persona** — the `prefix: >-` block of the `persona` row in the same file.
 
-Both are paid on EVERY session, so a byte added there is a byte paid forever. Two measured facts make
+Both are paid on EVERY `mpd` preset session, so a byte added there is a byte paid forever. Two measured facts make
 this sharper:
 
 - **A longer manual is silently truncated.** Nothing exits non-zero when `AGENTS.md` passes 65536 B;
