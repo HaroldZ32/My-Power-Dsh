@@ -1,0 +1,36 @@
+{
+  "notice": {
+    "any": 1,
+    "advisory": 0,
+    "mechanical": 1,
+    "signalsNamed": 1,
+    "shellShaped": 1,
+    "inert": 1,
+    "retiredProvisioned": 0,
+    "officialTools": 0,
+    "mechanicalTool": 1,
+    "retiredVocabulary": 0,
+    "signals": [
+      "C"
+    ],
+    "planIds": [
+      "plan-20261020075841815-m2fj-001"
+    ]
+  },
+  "teams": {
+    "staged": 1,
+    "planIds": [
+      "plan-20261020075841815-m2fj-001"
+    ],
+    "stagedMembers": 0,
+    "stagedTasks": 0,
+    "records": 0,
+    "recordIds": []
+  },
+  "goal": "1. Read the patch file\n2. Audit the gates\n3. Implement the change\n4. Verify the boot",
+  "bootLine": "[mpd-roles] team plane: readOnlyGuard=installed deny=8 captainInvestigation=deny delegationGate=deny verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) askUserQuestion=installed rosterSection=agent-scoped order=605 sessionGate=mechanical",
+  "firedLine": "[mpd-roles] session gate fired for agent \"session-82a0173b-1c0e-4db4-a59c-dd9b96e87576\" signals=C mode=mechanical staged=1 plan=plan-20261020075841815-m2fj-001",
+  "gateInstalled": true,
+  "ownKeyWritten": true,
+  "problems": []
+}

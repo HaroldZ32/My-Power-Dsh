@@ -25,12 +25,15 @@ its map. Check once at session start (the block below), and if a signal matches,
 | `extensions/*` manifest (the mpd-ext CLI's `mpd-ext.json`) | extension root |
 | `mpd.jsonc` / `.mpd/mpd.jsonc`, or `.mpd/plans/**` | a project running this bundle |
 
-One-liner block (POSIX; EVERY line covers a different row above, so a workspace matching only ONE signal
-is still detected):
+One-liner block (POSIX; EVERY command below covers a different row above, so a workspace matching only
+ONE signal is still detected):
 
 ```sh
 ls cordis.patch.yml dsh-plugin.json dsh-distribution.json presets/*.patch.yml extensions/*/mpd-ext.json mpd.jsonc .mpd/mpd.jsonc 2>/dev/null
-grep -l '"dsh"' package.json packages/*/package.json 2>/dev/null
+# a manifest qualifies only when it declares dsh.bundle or dsh.client (a dependency literally named "dsh" does not)
+for f in package.json packages/*/package.json; do
+  node -e 'const p=require(process.argv[1]); process.exit(p.dsh && (p.dsh.bundle || p.dsh.client) ? 0 : 1)' "$PWD/$f" 2>/dev/null && echo "$f"
+done
 grep -lE 'export (const|function) apply' packages/*/src/index.ts 2>/dev/null
 ls -d .mpd/plans 2>/dev/null
 ```

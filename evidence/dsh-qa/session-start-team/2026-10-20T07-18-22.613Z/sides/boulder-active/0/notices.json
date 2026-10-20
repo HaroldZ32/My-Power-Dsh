@@ -1,0 +1,37 @@
+{
+  "notice": {
+    "any": 1,
+    "advisory": 0,
+    "mechanical": 1,
+    "signalsNamed": 1,
+    "shellShaped": 1,
+    "inert": 1,
+    "retiredProvisioned": 0,
+    "officialTools": 0,
+    "mechanicalTool": 1,
+    "retiredVocabulary": 0,
+    "signals": [
+      "D"
+    ],
+    "planIds": []
+  },
+  "teams": {
+    "staged": 1,
+    "planIds": [
+      "plan-20261020073547333-r02j-001"
+    ],
+    "stagedMembers": 0,
+    "stagedTasks": 0,
+    "records": 0,
+    "recordIds": []
+  },
+  "goal": "Reply with exactly: boulder-ok",
+  "bootLine": "[mpd-roles] team plane: readOnlyGuard=installed deny=8 captainInvestigation=deny delegationGate=deny verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) askUserQuestion=installed rosterSection=agent-scoped order=605 sessionGate=mechanical",
+  "firedLine": "[mpd-roles] session gate fired for agent \"session-feacba60-40f3-403a-a050-e0aaaa718a2d\" signals=D mode=mechanical staged=1 plan=plan-20261020073547333-r02j-001",
+  "gateInstalled": true,
+  "ownKeyWritten": true,
+  "problems": [
+    "the notice must name EXACTLY ONE plan id, got []",
+    "the row log names \"plan-20261020073547\" while the injected notice names \"(no plan)\" — the row log and the notice must agree"
+  ]
+}

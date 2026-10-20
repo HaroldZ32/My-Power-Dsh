@@ -102,6 +102,12 @@ export const STAGED_PLAN_PHRASE = "a team PLAN was STAGED"
 export const ALREADY_STAGED_PLAN_PHRASE = "a team PLAN is ALREADY STAGED"
 /** The mechanical notice's inertness sentence: staging is not spawning. */
 export const INERT_PLAN_PHRASE = "NOTHING has been spawned; the plan is INERT until approved"
+/**
+ * The mechanical notice's failure sentence when the staging call reports OK but returns NO plan id.
+ * The shell WAS staged, so the notice must not fall back to the advisory taxonomy; it must say the
+ * staged plan cannot be approved and that the failure is to be reported.
+ */
+export const MISSING_PLAN_ID_PHRASE = "STAGING FAILED TO RETURN A PLAN ID"
 /** The advisory notice's staging disclaimer (the advisory route must never claim a staged plan). */
 export const NO_TEAM_STAGED_PHRASE = "NO team was staged"
 /** The permission to continue solo, which BOTH notices state so an unapproved shell is never a trap. */
@@ -506,7 +512,8 @@ export function advisoryNoticeText(signals: readonly string[], explicit: boolean
  * The MECHANICAL notice: a plan SHELL was staged (or already was), and NOTHING was spawned.
  *
  * The id is the one the staging call RETURNED, never a claimed or reconstructed one; an empty id is
- * reported as "plan id not reported" rather than invented. The notice states outright that the plan
+ * reported as {@link MISSING_PLAN_ID_PHRASE} plus the explicit statement that the staged shell cannot
+ * be approved, rather than invented. The notice states outright that the plan
  * is INERT until approved, because "a team was created" is the exact false claim this gate must not
  * invite.
  *
@@ -526,8 +533,8 @@ export function mechanicalNoticeText(input: {
 }): string {
   /** The fired signals as a readable list, or the generic wording when none is named. */
   const matched = input.signals.length === 0 ? "complexity signals" : "complexity signals " + input.signals.join("/")
-  /** The id sentence: the returned id, or an explicit statement that the call reported none. */
-  const id = input.planId === "" ? "(plan id not reported by the call)" : input.planId
+  /** The id sentence: the returned id, or a LOUD failure because a staged shell without an id cannot be approved. */
+  const id = input.planId === "" ? MISSING_PLAN_ID_PHRASE + " — the shell was staged but CANNOT be approved, so report this failure" : input.planId
   return STARTUP_NOTICE_MARKER + ": this session shows " + matched + ", and "
     + (input.alreadyStaged ? ALREADY_STAGED_PLAN_PHRASE : STAGED_PLAN_PHRASE) + " — " + id
     + " (0 members, 0 tasks: a SHELL, not a team)."
