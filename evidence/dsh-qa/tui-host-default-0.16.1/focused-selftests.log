@@ -1,0 +1,4 @@
+$ bun skills/dsh-qa/scripts/tui-mount.ts --self-test
+[tui-mount self-test] ok: layering, crash-scan, boot-face and isolation predicates are two-sided
+$ bun skills/dsh-qa/scripts/tui-keeper-standdown.ts --self-test
+[tui-keeper-standdown self-test] ok: csv detector, user-layer reader/writer, row matcher, pointer finder and readiness pattern are two-sided

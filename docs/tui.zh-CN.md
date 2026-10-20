@@ -1166,6 +1166,8 @@ while member … belongs to …`；被守卫跳过的属主报告为 `was passed
 | §3 接缝清单 | 十五个 `tui*` 接缝，0.13.0→0.15.0 不变 | **仍是十五个，且 0.16.1 没有破坏适配器的任何东西**：同样六个 `Tui*Like` 形状、`close(): void` + `active.id`、`tuiPanels`、`tuiPrompt` 仍是 phantom、`lib/types/ui.js` 仍导出 `useStdin`；唯一新增是 `EFFECT_LEDGER_NAME` 常量，适配器与 bundle 都不声明、不消费。适配器代码无需改动 |
 | §3.3 / §7 —— 版本钉住载体与 `MPD_E2E_DSH_VERSION` | 载体为 `0.15.0`；`MPD_E2E_DSH_VERSION` 保持 `0.2.0-rc.2` | **载体为 `0.16.1`，harness 为 `0.2.1-rc.2`**：两条 Docker 车道（`MPD_E2E_TUI_VERSION`、`MPD_E2E_DSH_VERSION`）、`dsh-distribution.json` 的 `host-tui` 引用（`…@0.16.1`）与 `dsh-plugin.json` 的 `compat.hosts`（`…@0.16.1`，从陈旧的 `0.10.1` 移来）。`MPD_E2E_DSH_VERSION` 现默认 `0.2.1-rc.2`，因为宿主的 peer 带接受它 |
 
-TUI 车道保留 host-peer 边界：它按**已安装宿主**的真实 peer 带判断（不写死版本），记录一行
-`tui.hostPeerBound`，只有在该带确实排除 harness 时才限制其余行，并在支持的宿主上自动解除。
-它存在的意义是让旧 pin 在一次运行里自解释，而不是长期挂红；它从不把失败变绿。
+TUI 车道使用配置好的 `TUI_VERSION`（默认 `0.16.1`）与 `MPD_E2E_DSH_VERSION`（默认 `0.2.1-rc.2`）
+钉住值，记录 `tui.hostInstall`、`tui.pluginAddHost`、`tui.pluginAddBundle` 与 `tui.compose`；若所选
+宿主的 peer 范围排除该 harness，宿主的 `dsh plugin --profile dsh-tui add <host>` 会被拒绝，
+`tui.pluginAddHost` 为 `false`，车道以红色结束——它**不**检查 peer 范围，也**不**记录
+`tui.hostPeerBound` 行。
