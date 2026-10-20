@@ -8205,6 +8205,7 @@ function attentionBadge(workflow) {
 function armPanelAttention(deps) {
   let last = null;
   let opened = false;
+  let wasLive = false;
   let stopped = false;
   let release;
   let badgeMissing = false;
@@ -8228,9 +8229,9 @@ function armPanelAttention(deps) {
       return false;
     try {
       const accepted = deps.badgePanel(address, next);
-      if (!accepted && !badgeMissing) {
+      if (accepted === undefined && !badgeMissing) {
         badgeMissing = true;
-        deps.log.debug(`panel badge: the host accepted no badge for ${address}; the panel keeps its tab chip only`);
+        deps.log.debug(`panel badge: ${address} has no badge member on this host; the panel keeps its tab chip only`);
       }
       return accepted;
     } catch {
@@ -8243,12 +8244,14 @@ function armPanelAttention(deps) {
     const workflow = read();
     const next = attentionBadge(workflow);
     if (!sameBadge(last, next)) {
-      if (publish(next) || badgeMissing)
+      const result = publish(next);
+      if (result === true || result === undefined && badgeMissing)
         last = next;
     }
-    if (!event || !deps.autoOpen || opened)
-      return;
-    if (workflow === undefined || workflow.tasks.length === 0)
+    const live = workflow !== undefined && workflow.tasks.length > 0;
+    const appeared = live && !wasLive;
+    wasLive = live;
+    if (!event || !deps.autoOpen || opened || !appeared)
       return;
     const address = id();
     if (address === undefined)
@@ -8263,22 +8266,38 @@ function armPanelAttention(deps) {
       deps.log.debug(`panel auto-open: the open of ${address} threw (${String(error?.message ?? error)}); the panel stays reachable through the command and the panel bar`);
     }
   };
-  let subscribe;
-  try {
-    subscribe = deps.feed === undefined ? undefined : deps.feed();
-  } catch {
-    subscribe = undefined;
-  }
-  if (typeof subscribe === "function") {
+  const attach = () => {
+    const previous = release;
+    release = undefined;
+    if (previous !== undefined) {
+      try {
+        previous();
+      } catch {}
+    }
+    let subscribe;
+    try {
+      subscribe = deps.feed === undefined ? undefined : deps.feed();
+    } catch {
+      subscribe = undefined;
+    }
+    if (typeof subscribe !== "function")
+      return;
     try {
       release = subscribe(() => observe(true));
     } catch {
       release = undefined;
     }
-  }
+  };
+  attach();
   observe(false);
   return {
     observe,
+    resubscribe() {
+      if (stopped)
+        return;
+      attach();
+      observe(false);
+    },
     current() {
       return last;
     },
@@ -10401,8 +10420,12 @@ function apply(ctx, config = {}) {
   const home = () => homeDir();
   const teamViews = () => liveTeamViews(adapter, workspaceRoot());
   let teamsService;
+  let panelAttention;
   onService(ctx, "mpdTeams", (_scoped, service) => {
     teamsService = service;
+    try {
+      panelAttention?.resubscribe();
+    } catch {}
   });
   const teamRecords = () => mpdTeamRecords(teamsService, workspaceRoot());
   let feedClosure;
@@ -10507,6 +10530,9 @@ function apply(ctx, config = {}) {
   });
   if (resolved.panel) {
     tui.whenBound("panels", (_service, scope) => {
+      try {
+        panelAttention?.stop();
+      } catch {}
       const surface = armPanelAttention({
         panelId: () => panel.id(),
         openPanel: (id) => {
@@ -10519,7 +10545,9 @@ function apply(ctx, config = {}) {
         badgePanel: (id, badge) => {
           try {
             const seam = tui.panels();
-            return seam !== undefined && typeof seam.badge === "function" ? seam.badge(id, badge) === true : false;
+            if (seam === undefined || typeof seam.badge !== "function")
+              return;
+            return seam.badge(id, badge) === true;
           } catch {
             return false;
           }
@@ -10529,6 +10557,7 @@ function apply(ctx, config = {}) {
         autoOpen: resolved.panelAutoOpen,
         log
       });
+      panelAttention = surface;
       if (typeof scope.effect === "function")
         scope.effect(() => () => surface.stop(), "mpd-tui: panel attention");
     });

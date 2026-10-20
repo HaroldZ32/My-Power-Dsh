@@ -57,7 +57,7 @@ import { registerSettingsSection } from "./settings.js"
 import { DASHBOARD_TAKEOVER_KNOB, markVolatile, wheelInvertFrom } from "./settings.js"
 import { setWheelInvertRead } from "./panel-core.ts"
 import type { PanelBadge } from "./panel-core.js"
-import { armPanelAttention, panelsSummaryLine } from "./panel-attention.js"
+import { armPanelAttention, panelsSummaryLine, type PanelAttention } from "./panel-attention.js"
 import { readDashboardWorkflow, registerDashboardKey } from "./dashboard-key.js"
 import { registerPanelSurface, takeoverArmed } from "./panel.js"
 import type { PanelOpenOutcome } from "./panel.js"
@@ -516,8 +516,24 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
   // scenes read a team that exists; with it absent they fall back to the official readout, so this
   // package still works mounted alone.
   let teamsService: MpdTeamsLike | undefined
+  /**
+   * The live panel-attention surface, when this composition has the panel seam.
+   *
+   * DECLARED HERE because the `mpdTeams` callback below must reach it: the two services bind
+   * INDEPENDENTLY, and a panel seam that binds before the team service leaves the surface armed
+   * against a feed that answered `undefined` — no badge and no auto-open, silently. The callback is
+   * the second attempt (`resubscribe()`), and it is the reason this handle is not local to the `whenBound`
+   * block.
+   */
+  let panelAttention: PanelAttention | undefined
   onService(ctx, "mpdTeams", (_scoped: PluginContextLike, service: unknown) => {
     teamsService = service as MpdTeamsLike
+    // THE FEED MAY BE READABLE NOW AND WAS NOT AT ARM: subscribe, then publish the current badge.
+    try {
+      panelAttention?.resubscribe()
+    } catch {
+      // A surface that refuses a re-subscribe costs the push, never the rest of this callback.
+    }
   })
   /** The mpd team records for the CURRENT workspace, resolved per call; `[]` when the row is absent. */
   const teamRecords = (): readonly TeamRecord[] => mpdTeamRecords(teamsService, workspaceRoot())
@@ -797,7 +813,14 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
   // surface inventing a session it cannot see.
   if (resolved.panel) {
     tui.whenBound("panels", (_service, scope): void => {
-      /** The live surface for this binding; a re-bind replaces it, so the previous one is stopped. */
+      // A RE-BIND REPLACES THE SURFACE: release the previous subscription before the new arm, so a
+      // late event cannot reach a page this activation no longer owns.
+      try {
+        panelAttention?.stop()
+      } catch {
+        // A retired surface's own teardown is idempotent; a throw here must not stop the re-subscribe.
+      }
+      /** The live surface for this binding. */
       const surface = armPanelAttention({
         panelId: (): string | undefined => panel.id(),
         // THE PANEL, NEVER THE SCENE: this open exists to make the DAG visible while it is closed, so a
@@ -809,11 +832,14 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
             return false
           }
         },
-        badgePanel: (id: string, badge: PanelBadge | null): boolean => {
+        badgePanel: (id: string, badge: PanelBadge | null): boolean | undefined => {
           try {
             /** The bound registry, read per call: the seam binds asynchronously. */
             const seam = tui.panels()
-            return seam !== undefined && typeof seam.badge === "function" ? seam.badge(id, badge) === true : false
+            if (seam === undefined || typeof seam.badge !== "function") return undefined
+            // A CALLABLE MEMBER'S REFUSAL IS `false`, which the surface retries; only an ABSENT member
+            // is `undefined`, which it remembers as a fact that cannot change.
+            return seam.badge(id, badge) === true
           } catch {
             return false
           }
@@ -823,6 +849,7 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
         autoOpen: resolved.panelAutoOpen,
         log,
       })
+      panelAttention = surface
       if (typeof scope.effect === "function") scope.effect(() => (): void => surface.stop(), "mpd-tui: panel attention")
     })
   }

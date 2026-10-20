@@ -31,29 +31,45 @@ function workflow(tasks: readonly TaskVisual[], holds: readonly string[] = []): 
   return { workspace: "/w", tasks: tasks as unknown as TeamWorkflow["tasks"], holds } as unknown as TeamWorkflow
 }
 
-/** A controllable team feed: the surface under test subscribes once and the arm drives the events. */
-function fakeFeed(): {
+/**
+ * A controllable team feed: the surface under test subscribes once and the arm drives the events.
+ * @param options - `noopDisposer` returns an unsubscribe that does nothing (a host that gave none),
+ *   which is what makes the surface's own STOPPED latch observable; `unbound` starts the accessor
+ *   answering `undefined` (the panel seam bound before `mpdTeams`), and `bind()` flips it.
+ * @returns the accessor, the subscription ledger, an event driver and the binding control.
+ */
+function fakeFeed(options: { readonly noopDisposer?: boolean; readonly unbound?: boolean } = {}): {
   readonly accessor: () => ((listener: () => void) => () => void) | undefined
   readonly events: () => number
   readonly listeners: () => number
   readonly fire: () => void
+  readonly bind: () => void
 } {
   /** The listeners the surface registered. */
   const listeners = new Set<() => void>()
   /** How many subscriptions were made. */
   let events = 0
+  /** Whether the accessor answers (see `unbound`). */
+  let bound = options.unbound !== true
   return {
-    accessor: () => (listener: () => void): (() => void) => {
-      events += 1
-      listeners.add(listener)
-      return (): void => {
-        listeners.delete(listener)
+    accessor: (): ((listener: () => void) => () => void) | undefined => {
+      if (!bound) return undefined
+      return (listener: () => void): (() => void) => {
+        events += 1
+        listeners.add(listener)
+        if (options.noopDisposer === true) return (): void => {}
+        return (): void => {
+          listeners.delete(listener)
+        }
       }
     },
     events: (): number => events,
     listeners: (): number => listeners.size,
     fire: (): void => {
       for (const listener of [...listeners]) listener()
+    },
+    bind: (): void => {
+      bound = true
     },
   }
 }
@@ -310,13 +326,13 @@ describe("the apply-side attention surface", () => {
     const feed = fakeFeed()
     /** How many badge attempts the surface made. */
     let attempts = 0
-    /** The surface under test, over a host that refuses every badge. */
+    /** The surface under test, over a host that exposes NO badge member (undefined, not false). */
     const attention = armPanelAttention({
       panelId: () => "act1:team",
       openPanel: () => false,
-      badgePanel: (): boolean => {
+      badgePanel: (): boolean | undefined => {
         attempts += 1
-        return false
+        return undefined
       },
       readWorkflow: () => workflow([{ visual: "failed" }]),
       feed: feed.accessor,
@@ -325,8 +341,128 @@ describe("the apply-side attention surface", () => {
     })
     feed.fire()
     feed.fire()
-    // The first refusal is remembered: a state that never changes is not re-published per event.
+    // An ABSENT member is remembered as a fact that cannot change: no per-event retry.
     expect(attempts).toBe(1)
+    attention.stop()
+  })
+
+  test("a CALLABLE badge member that REFUSES is retried on the next state change (false ≠ absent)", () => {
+    /** The team feed. */
+    const feed = fakeFeed()
+    /** How many badge attempts the surface made. */
+    let attempts = 0
+    /** What the host answers: a refusal on the first call, acceptance afterwards. */
+    let answer: boolean = false
+    /** The badges the host finally accepted, in order. */
+    const accepted: PanelBadge[] = []
+    /** The surface under test. */
+    const attention = armPanelAttention({
+      panelId: () => "act1:team",
+      openPanel: () => false,
+      badgePanel: (_id, badge): boolean | undefined => {
+        attempts += 1
+        if (answer === true && badge !== null) accepted.push(badge)
+        return answer
+      },
+      readWorkflow: () => workflow([{ visual: "failed" }]),
+      feed: feed.accessor,
+      autoOpen: false,
+      log: silentLog(),
+    })
+    // The arm-time publish was refused, so the value stayed UNSET (the retry is the point).
+    expect(attempts).toBe(1)
+    expect(attention.current()).toBeNull()
+    answer = true
+    feed.fire()
+    // The next event retried the SAME badge and this time it landed.
+    expect(attempts).toBe(2)
+    expect(accepted).toEqual([{ level: "error", unread: 1 }])
+    expect(attention.current()).toEqual({ level: "error", unread: 1 })
+    attention.stop()
+  })
+
+  test("a team present at ARM is not an appearance: a later event does not open the page", () => {
+    /** The team feed. */
+    const feed = fakeFeed()
+    /** The panel routes. */
+    const panel = fakePanel()
+    /** The surface under test, armed over an already-live team. */
+    const attention = armPanelAttention({
+      ...panel.deps,
+      readWorkflow: () => workflow([{ visual: "running" }, { visual: "open" }]),
+      feed: feed.accessor,
+      autoOpen: true,
+      log: silentLog(),
+    })
+    expect(panel.opens()).toBe(0)
+    // THE EDGE, NOT THE STATE: a status change on the same team fires a feed event, and the boot-time
+    // team must still not open anything.
+    feed.fire()
+    feed.fire()
+    expect(panel.opens()).toBe(0)
+    expect(attention.opened()).toBe(false)
+    attention.stop()
+  })
+
+  test("stop() LATCHES: a host that returned no disposer still cannot act through a late event", () => {
+    /** A feed whose unsubscribe does nothing, so the listener outlives `stop()` — the latch's case. */
+    const feed = fakeFeed({ noopDisposer: true })
+    /** The panel routes. */
+    const panel = fakePanel()
+    /** The surface under test. */
+    const attention = armPanelAttention({
+      ...panel.deps,
+      readWorkflow: () => workflow([{ visual: "failed" }]),
+      feed: feed.accessor,
+      autoOpen: true,
+      log: silentLog(),
+    })
+    /** How many badges the arm-time pass already published. */
+    const publishedAtArm = panel.badges().length
+    expect(publishedAtArm).toBe(1)
+    attention.stop()
+    // The listener is STILL attached (the host gave no disposer), so this is the stopped latch working,
+    // not the unsubscribe.
+    expect(feed.listeners()).toBe(1)
+    feed.fire()
+    expect(panel.badges()).toHaveLength(publishedAtArm)
+    expect(panel.opens()).toBe(0)
+  })
+
+  test("resubscribe() attaches a feed that bound AFTER the panel seam, then publishes and opens", () => {
+    /** A feed that answers nothing at first — the panel seam bound first. */
+    const feed = fakeFeed({ unbound: true })
+    /** The panel routes. */
+    const panel = fakePanel()
+    /** The workflow the surface reads: no team until after the rebind. */
+    let current: TeamWorkflow | undefined = workflow([])
+    /** The surface under test. */
+    const attention = armPanelAttention({
+      ...panel.deps,
+      readWorkflow: () => current,
+      feed: feed.accessor,
+      autoOpen: true,
+      log: silentLog(),
+    })
+    // Nothing was subscribed: the accessor answered undefined at arm.
+    expect(feed.events()).toBe(0)
+    // `mpdTeams` binds: the caller re-subscribes, which subscribes and republishes.
+    feed.bind()
+    current = workflow([{ visual: "failed" }])
+    attention.resubscribe()
+    expect(feed.events()).toBe(1)
+    expect(panel.badges()).toEqual([{ level: "error", unread: 1 }])
+    // The auto-open did NOT fire on the re-subscribe's own observation (it is not an event)…
+    expect(panel.opens()).toBe(0)
+    // …and the next APPEARANCE does.
+    current = workflow([])
+    feed.fire()
+    current = workflow([{ visual: "running" }])
+    feed.fire()
+    expect(panel.opens()).toBe(1)
+    // A second re-subscribe releases the previous subscription instead of double-delivering.
+    attention.resubscribe()
+    expect(feed.listeners()).toBe(1)
     attention.stop()
   })
 })

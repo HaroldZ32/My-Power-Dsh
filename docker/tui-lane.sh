@@ -374,6 +374,27 @@ else
   record tui.agentTeamRows false "the TUI composition carries ${TEAM_ROWS:-0} of the 3 official Agent Teams rows" "count=${TEAM_ROWS:-0}"
 fi
 
+# ── 3b. THE LANE'S OWN ROW CONFIG: auto-open OFF ───────────────────────────────
+# `panelAutoOpen` (the `mpd-tui` row, default `true`) opens the MPD sidebar page once when the first team
+# becomes live. THIS LANE SEEDS ITS TEAM AFTER THE BOOT (§4a), so that rule would open the panel before
+# the PRE-KEY control capture and destroy the attribution `tui.mergedPanelOpens` rests on — measured on
+# the 2026-10-20 run of PR #51 (the same commit that introduced the knob): the control pane already
+# carried 6 panel-body marker lines, so `docker/lib/tui-panel-body.ts` correctly refused to credit the
+# combo (`OPENS=false REASON=the PRE-KEY capture already carries …`).
+# THE KNOB IS PINNED IN THE PROFILE'S USER PATCH LAYER, the very layer a user edits, and NOT by an env
+# var or a lane-only hook: the run then exercises the documented configuration path end to end, and the
+# combo is again the only thing that can open the panel on this run. The pin is one id-targeted config
+# override on a BUNDLE-owned row (never a host row), so the composition itself is unchanged.
+TUI_USER_PATCH="$DSH_HOME/profiles/dsh-tui/cordis.patch.yml"
+if [ ! -f "$TUI_USER_PATCH" ]; then
+  mkdir -p "$(dirname "$TUI_USER_PATCH")"
+  printf '# Your patch layer for this dsh profile, applied after every bundle layer.\n' >"$TUI_USER_PATCH"
+fi
+{
+  printf '\n# tui-lane: pin panelAutoOpen off, so a team seeded AFTER boot cannot open the panel before the combo.\n'
+  printf -- '- id: mpd-tui\n  config:\n    panelAutoOpen: false\n'
+} >>"$TUI_USER_PATCH"
+
 # ── 4. the REAL boot on a real PTY ─────────────────────────────────────────────
 # THE SESSION-STORE SNAPSHOT, taken BEFORE the TUI can create a session of its own. The product draws
 # the CALLING session's team (the user-required behaviour this wave landed), so the board seeded in

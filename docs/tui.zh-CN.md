@@ -1106,8 +1106,8 @@ id 报告成功），并且接缝声明了 `close(): void` 与 `active` 读取�
 是所在栏的**当前激活页**时挂载它，所以页面侧的徽标只能装饰用户已经在看的那一页。
 `packages/mpd-tui-plugin/src/panel-attention.ts` 现在持有宿主侧 `tuiPanels.badge(id, …)` 调用与一次性的
 `tuiPanels.open(id)`：两者都经 `whenBound("panels")` 挂载（没有该接缝的组合什么都不注册），并由页面同样订阅
-的 `mpdTeams` 推送驱动。自动开页每个进程至多一次，且只对**进程启动之后才出现**的团队触发（启动时就已存在的
-团队不触发）；宿主对 `open()` 有每插件 5 秒一次的限速，因此被拒绝即锁定、绝不重试；由新增的 `panelAutoOpen`
+的 `mpdTeams` 推送驱动。自动开页每个进程至多一次，且是**边沿触发**：只有「上一次没有活跃团队、这一次有」才算出现，因此
+启动时就已存在的团队、以及该团队之后的任何状态变化都不会触发开页；宿主对 `open()` 有每插件 5 秒一次的限速，因此被拒绝即锁定、绝不重试；由新增的 `panelAutoOpen`
 行配置控制（默认 `true`）。触发信号是**工作区级**的——该推送不携带会话 id——所以来自其它会话的触发会让页面
 画出自己的 `no team in this session` 标记，而不是画错看板。`/mpd status` 增加了对应的部署行
 （`panels: team=… workmate=… · seam bound · keeper …`），因为宿主分配的 panel id 是用户与文档都无法自行

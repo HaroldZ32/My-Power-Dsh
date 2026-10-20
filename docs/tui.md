@@ -1340,8 +1340,9 @@ mounts a plugin panel only while it is the ACTIVE page of its column, so a page-
 a page the user is already looking at. `packages/mpd-tui-plugin/src/panel-attention.ts` now owns the host-side
 `tuiPanels.badge(id, …)` call and the one-shot `tuiPanels.open(id)`: both are armed through `whenBound("panels")`
 — a composition without the seam registers nothing — and driven by the same `mpdTeams` feed the pages subscribe
-to. The auto-open fires at most ONCE per process, only for a team that APPEARED after the process started (never
-for a team the boot already found), latches on a refusal because the host rate-limits `open()` per plugin (one
+to. The auto-open fires at most ONCE per process and is **edge-triggered**: it sees a team APPEAR (a pass with no live
+team followed by one with a live team), so a boot with an existing team — and any later status change on that
+team — opens nothing. It latches on a refusal because the host rate-limits `open()` per plugin (one
 per 5 s), and is governed by the new `panelAutoOpen` row knob (default `true`). The trigger is
 WORKSPACE-scoped — the feed carries no session id — so a trigger from another session makes the page draw its own
 `no team in this session` marker rather than a wrong board. `/mpd status` gained the matching deployment line

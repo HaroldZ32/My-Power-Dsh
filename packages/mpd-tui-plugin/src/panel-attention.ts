@@ -36,8 +36,15 @@ export interface PanelAttentionDeps {
   readonly panelId: () => string | undefined
   /** Opens (and focuses) the panel; false when the host refused or no seam serves it. */
   readonly openPanel: (id: string) => boolean
-  /** Sets or clears the panel's badge; false when the host exposes no badge member. */
-  readonly badgePanel: (id: string, badge: PanelBadge | null) => boolean
+  /**
+   * Sets or clears the panel's badge.
+   *
+   * THE THREE ANSWERS ARE DIFFERENT FACTS and the surface treats them so: `true` accepted, `false`
+   * the host HAS a badge member and refused this call (retry on the next state change), `undefined`
+   * the host exposes no badge member at all (never retry — no later call can succeed, and a per-event
+   * retry would only repeat a line forever).
+   */
+  readonly badgePanel: (id: string, badge: PanelBadge | null) => boolean | undefined
   /** Reads the CURRENT workspace's team projection; undefined when the composition has none. */
   readonly readWorkflow: () => TeamWorkflow | undefined
   /** The live team feed accessor; undefined when this composition publishes none. */
@@ -60,6 +67,15 @@ export interface PanelAttention {
   current(): PanelBadge | null
   /** Whether the one-shot auto-open has already fired (whatever the host answered). */
   opened(): boolean
+  /**
+   * Re-resolve the team feed and subscribe again, then publish the current badge.
+   *
+   * WHY THIS EXISTS: the two services bind INDEPENDENTLY. When the panel seam binds before `mpdTeams`,
+   * the feed accessor answers `undefined` at arm, and without a second attempt this surface would
+   * never subscribe — no badge, no auto-open, silently. The caller invokes this from the team
+   * service's own bind callback, and it is idempotent (the previous subscription is released first).
+   */
+  resubscribe(): void
   /** Releases the feed subscription and makes every later observation a no-op. */
   stop(): void
 }
@@ -109,6 +125,8 @@ export function armPanelAttention(deps: PanelAttentionDeps): PanelAttention {
   let last: PanelBadge | null = null
   /** Whether the one-shot auto-open already fired, whatever the host answered. */
   let opened = false
+  /** Whether the PREVIOUS pass saw a live team, which is what turns a state into an APPEARANCE. */
+  let wasLive = false
   /** Whether {@link PanelAttention.stop} retired this surface. */
   let stopped = false
   /** The feed's own unsubscribe, once a subscription landed. */
@@ -134,18 +152,19 @@ export function armPanelAttention(deps: PanelAttentionDeps): PanelAttention {
   /**
    * Publish one badge, tolerating a host that offers no badge member.
    * @param next - the badge to publish, or `null` to clear.
-   * @returns whether the host accepted it.
+   * @returns `true` accepted, `false` a callable host refused it, `undefined` the host has no badge
+   *   member (the fact {@link badgeMissing} remembers so the retry stops).
    */
-  const publish = (next: PanelBadge | null): boolean => {
-    /** The discovered id; an unbound seam has nothing to address yet. */
+  const publish = (next: PanelBadge | null): boolean | undefined => {
+    /** The discovered id; an unbound seam has nothing to address yet — a refusal, not an absence. */
     const address = id()
     if (address === undefined) return false
     try {
-      /** Whether the host took the badge (false also when it has no badge member at all). */
+      /** The host's own answer, kept three-valued so a refusal can retry and an absence cannot. */
       const accepted = deps.badgePanel(address, next)
-      if (!accepted && !badgeMissing) {
+      if (accepted === undefined && !badgeMissing) {
         badgeMissing = true
-        deps.log.debug(`panel badge: the host accepted no badge for ${address}; the panel keeps its tab chip only`)
+        deps.log.debug(`panel badge: ${address} has no badge member on this host; the panel keeps its tab chip only`)
       }
       return accepted
     } catch {
@@ -163,14 +182,24 @@ export function armPanelAttention(deps: PanelAttentionDeps): PanelAttention {
     /** The badge this state earns. */
     const next = attentionBadge(workflow)
     if (!sameBadge(last, next)) {
-      // THE LAST VALUE TRACKS THE ATTEMPT, not the acceptance, when the host has no badge member: a
-      // surface that retried every event against a host that can never answer would log a line per
-      // team change forever. An accepted publish and an absent member both settle the value; only a
-      // REFUSING host (which accepted the member and said no) keeps it unset so a later event retries.
-      if (publish(next) || badgeMissing) last = next
+      // THE LAST VALUE SETTLES ON AN ACCEPTANCE OR AN ABSENT MEMBER, and on nothing else: a host that
+      // HAS the member and refused this call leaves the value unset, so the next state change retries
+      // it. An absent member settles it, because no later event can change that fact and a per-event
+      // retry would log the same sentence forever.
+      /** The publish's own three-valued answer. */
+      const result = publish(next)
+      if (result === true || (result === undefined && badgeMissing)) last = next
     }
-    if (!event || !deps.autoOpen || opened) return
-    if (workflow === undefined || workflow.tasks.length === 0) return
+    // AUTO-OPEN IS AN EDGE, NOT A STATE (CodeRabbit finding, 2026-10-20): a team that already existed
+    // when this surface armed is NOT an appearance, and the first feed event after it (a status change,
+    // a task update) must not open the page for it. `wasLive` carries the previous pass's answer and is
+    // updated on EVERY pass, including the arm-time one.
+    /** Whether this pass sees a live team (a team with at least one task). */
+    const live = workflow !== undefined && workflow.tasks.length > 0
+    /** Whether a live team APPEARED since the previous pass. */
+    const appeared = live && !wasLive
+    wasLive = live
+    if (!event || !deps.autoOpen || opened || !appeared) return
     /** The discovered id at the moment the first live team was seen. */
     const address = id()
     if (address === undefined) return
@@ -184,27 +213,51 @@ export function armPanelAttention(deps: PanelAttentionDeps): PanelAttention {
       deps.log.debug(`panel auto-open: the open of ${address} threw (${String((error as Error)?.message ?? error)}); the panel stays reachable through the command and the panel bar`)
     }
   }
-  // THE FEED IS THE TRIGGER, and the accessor is asked ONCE at arm: this surface lives for the whole
-  // activation (a rebound service is a fresh activation in practice), so a per-event resolution would
-  // only re-subscribe.
-  let subscribe: ReturnType<TeamFeedAccessor> | undefined
-  try {
-    subscribe = deps.feed === undefined ? undefined : deps.feed()
-  } catch {
-    subscribe = undefined
-  }
-  if (typeof subscribe === "function") {
+  /**
+   * Resolve the feed and subscribe, releasing any previous subscription first.
+   *
+   * A feed that is not available YET is not a failure: the accessor answers `undefined` while
+   * `mpdTeams` is unbound, and {@link PanelAttention.resubscribe} is the caller's second attempt from that
+   * service's own bind callback.
+   */
+  const attach = (): void => {
+    /** The previous subscription, released so a re-subscribe cannot double-deliver. */
+    const previous = release
+    release = undefined
+    if (previous !== undefined) {
+      try {
+        previous()
+      } catch {
+        // A host unsubscribe that throws must not break a re-subscribe.
+      }
+    }
+    /** This attempt's subscribe function, narrowed before it is trusted. */
+    let subscribe: ReturnType<TeamFeedAccessor> | undefined
+    try {
+      subscribe = deps.feed === undefined ? undefined : deps.feed()
+    } catch {
+      subscribe = undefined
+    }
+    if (typeof subscribe !== "function") return
     try {
       release = subscribe((): void => observe(true))
     } catch {
       release = undefined
     }
   }
+  attach()
   // THE INITIAL PASS publishes the badge a reboot must not forget, but may NOT auto-open (see the
-  // header): a team that already existed before this process started is not an appearance.
+  // header): a team that already existed before this process started is not an appearance, and it
+  // seeds `wasLive` so the next event cannot turn it into one.
   observe(false)
   return {
     observe,
+    /** Re-resolve the feed and re-publish; see {@link PanelAttention.resubscribe}. */
+    resubscribe(): void {
+      if (stopped) return
+      attach()
+      observe(false)
+    },
     /** The badge this surface last published; see {@link PanelAttention.current}. */
     current(): PanelBadge | null {
       return last

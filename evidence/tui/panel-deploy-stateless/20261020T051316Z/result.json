@@ -1,12 +1,12 @@
 {
-  "case": "TUI sidebar panel deployment — stateless read-only adapter (G1) + apply-side attention (G2) + one deployment line (G4)",
+  "case": "TUI sidebar panel deployment \u2014 stateless read-only adapter (G1) + apply-side attention (G2) + one deployment line (G4)",
   "capturedAt": "20261020T051316Z",
   "tree": "branch feature/tui-panels-stateless, working tree at capture (no version bump, no release)",
   "subject": "shipped bytes of packages/mpd-tui-adapter-plugin/dist/index.js for A/B; the two packages' behaviour suites for C/D and for the G2 surface",
   "cases": {
     "A": {
-      "claim": "on a host that OWNS the enable list (>= 0.16.1) the keeper writes NOTHING — not even the stale-default migration — and installs no feed/belt",
-      "measured": "writes 0, subscribers 0, detail 'read-only: the host 0.16.1 owns the enable list (>= 0.16.1), so this keeper writes nothing — the stale-default migration included', discovered ids still announced",
+      "claim": "on a host that OWNS the enable list (>= 0.16.1) the keeper writes NOTHING \u2014 not even the stale-default migration \u2014 and installs no feed/belt",
+      "measured": "writes 0, subscribers 0, detail 'read-only: the host 0.16.1 owns the enable list (>= 0.16.1), so this keeper writes nothing \u2014 the stale-default migration included', discovered ids still announced",
       "source": "run.mjs (dist import)"
     },
     "B": {
@@ -35,18 +35,60 @@
     "bun test adapter+tui-plugin": "603 pass / 0 fail (24 files)",
     "tsgo --noEmit": "exit 0",
     "node scripts/verify-dist-fresh.ts": "32/32 targets fresh (1 pre-existing NOT COVERED vendored file)",
-    "node scripts/verify-comment-coverage.ts": "PASS — 37455 declarations",
-    "bun run verify:docs": "pairs=48 failed=0 violations=0 — PASS",
+    "node scripts/verify-comment-coverage.ts": "PASS \u2014 37455 declarations",
+    "bun run verify:docs": "pairs=48 failed=0 violations=0 \u2014 PASS",
     "bun run verify:rows": "35 row ids match (patch untouched)",
     "node scripts/verify-no-host-override.ts": "PASS (0 of 0 collide)",
-    "node scripts/verify-vendor.ts": "PASS — 7 shipped assets fingerprinted",
+    "node scripts/verify-vendor.ts": "PASS \u2014 7 shipped assets fingerprinted",
     "bun run test:qa": "all self-tests passed",
-    "bun run verify:manifest": "PASS — 27 module paths, 25 patterns, pack lists 1011 files"
+    "bun run verify:manifest": "PASS \u2014 27 module paths, 25 patterns, pack lists 1011 files"
   },
   "bounds": [
     "C/D are proven by the packages' behaviour suites over the sources, not by a dist import: the plugin package's public entry re-exports the plugin contract only, so panel-attention's helpers are not importable from dist. The ADAPTER artifact (A/B) IS the shipped bytes.",
     "THE AUTO-OPEN TRIGGER IS WORKSPACE-SCOPED, not session-scoped: the mpdTeams feed carries no session id and no documented dsh-tui seam exposes the on-screen session to apply-side code. A trigger from another session therefore opens the page, which draws its own 'no team in this session' marker rather than a wrong board.",
     "No real PTY capture in this wave: the change is registration/publication plumbing, not drawing. The DAG visual wave carries the PTY-capture obligation.",
     "dsh-tui 0.16.1's own enable-list behaviour was read from the installed host package (register/dispose/settings-apply), not re-measured on a live boot in this lane."
-  ]
+  ],
+  "ciFollowup": {
+    "date": "2026-10-20",
+    "dockerCiFailure": {
+      "rows": [
+        "tui.mergedPanelOpens",
+        "tui.mergedPanelOrder",
+        "tui.laneExit"
+      ],
+      "rootCause": "the docker TUI lane seeds its team fixture AFTER the TUI booted (tui-lane.sh: fixture at ~line 510, boot at ~line 402), so the new auto-open opened the MPD sidebar page before the lane's PRE-KEY control capture; docker/lib/tui-panel-body.ts then correctly refused to credit alt+a with the open (controlHits=6).",
+      "fix": "two changes: (1) the auto-open is now EDGE-triggered (a not-live -> live transition; a boot-time team and any later status change on it open nothing), which is also a real defect fix raised by review; (2) the lane pins the knob OFF in the profile's USER patch layer (`- id: mpd-tui / config: panelAutoOpen: false`) so the lane measures what it claims regardless of when its fixture appears. The knob belongs to a bundle-owned row, so the pin is an id-targeted CONFIG override, never a host-row override.",
+      "note": "the same edge-trigger also protects the sandbox lane (skills/dsh-qa/scripts/tui-deps-ctrla.ts), which writes its team fixture BEFORE the boot and therefore never auto-opens."
+    },
+    "codeRabbitFindings": [
+      {
+        "file": "packages/mpd-tui-plugin/src/panel-attention.ts:150",
+        "finding": "badgePanel conflated an absent host badge member with a callable refusal, so a refusal settled the value and was never retried",
+        "fix": "badgePanel now answers boolean | undefined: undefined = no member (settles, cannot change), false = callable refusal (retried on the next state change); index.ts returns undefined when the seam has no badge member. Two new arms pin both paths."
+      },
+      {
+        "file": "packages/mpd-tui-plugin/src/panel-attention.ts:179",
+        "finding": "the initial observe(false) skipped auto-open but did not record that a team already existed, so a later feed event could open the page for a boot-time team",
+        "fix": "wasLive tracks the previous pass and the open is now edge-triggered; a new arm fires events over a boot-time team and expects zero opens."
+      },
+      {
+        "file": "packages/mpd-tui-plugin/src/panel-attention.ts:202",
+        "finding": "the feed was resolved once at arm; when the panel seam binds before mpdTeams the surface never subscribes (no badge, no auto-open, silently)",
+        "fix": "PanelAttention.resubscribe() re-resolves the feed (releasing the previous subscription) and the plugin calls it from the mpdTeams bind callback; a new arm binds the feed late and proves subscribe + badge + a later appearance."
+      },
+      {
+        "file": "packages/mpd-tui-plugin/test/panel-attention.test.ts:306",
+        "finding": "the stop() arm proved only that unsubscribe works, because the fake feed always returned a working disposer",
+        "fix": "the fake feed gained a noopDisposer option; the arm now leaves the listener attached after stop() and proves the surface's own STOPPED latch suppresses both the badge and the open."
+      }
+    ],
+    "gates": {
+      "bun test packages": "2153 pass / 3 skip / 0 fail (2156 tests, 134 files)",
+      "tsgo --noEmit": "exit 0",
+      "verify-dist-fresh": "32/32 fresh",
+      "verify-comments": "PASS",
+      "verify-docs": "pairs=48 failed=0 \u2014 PASS"
+    }
+  }
 }
