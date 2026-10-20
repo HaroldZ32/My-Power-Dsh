@@ -1151,3 +1151,21 @@ while member … belongs to …`；被守卫跳过的属主报告为 `was passed
 200 ms ×100 重试）是宿主的实测行为，不是本 bundle 的承诺；撤销语义同样属于宿主。（c）`PanelBar` 图标回归是
 **宿主**在 0.15.0 上的实测事实：将来某个宿主再次停画图标，也不会与本页任何 MPD 主张矛盾——每个描述符仍声明一个。
 （d）C6 的真机 PTY 目验是一次**点名的人工观察**（船长自己的会话即复现源）；回归重量由单元臂承担。
+
+### 11.8 DSH-TUI 0.16.1 适配波次之后的修订（2026-10-18）
+
+0.16.1 是第一个声明 peer 接受 harness `0.2.1-rc.2` 的 dsh-tui 版本：36 个 `@deepseek-ai/dsh-*` peer
+全部带该段（例如 `dsh-agent: … || 0.2.0-rc.2 || 0.2.1-rc.2`、
+`dsh-app-boot: 0.2.0-rc.2 || 0.2.1-rc.2`），而 0.15.0 的同一族只列到 `0.2.0-rc.2`——这正是
+`dsh plugin --profile dsh-tui add dsh-tui@0.15.0` 在 0.2.1 profile 上被拒的原因。对标宿主移向
+**0.16.1**；以下各条在与 §11.7 冲突处取代它：
+
+| 被取代的陈述 | 原为 | 现为（2026-10-18 实测） |
+|---|---|---|
+| 本页对标宿主（§ 前言、§11.7） | **0.15.0** | **0.16.1** |
+| §3 接缝清单 | 十五个 `tui*` 接缝，0.13.0→0.15.0 不变 | **仍是十五个，且 0.16.1 没有破坏适配器的任何东西**：同样六个 `Tui*Like` 形状、`close(): void` + `active.id`、`tuiPanels`、`tuiPrompt` 仍是 phantom、`lib/types/ui.js` 仍导出 `useStdin`；唯一新增是 `EFFECT_LEDGER_NAME` 常量，适配器与 bundle 都不声明、不消费。适配器代码无需改动 |
+| §3.3 / §7 —— 版本钉住载体与 `MPD_E2E_DSH_VERSION` | 载体为 `0.15.0`；`MPD_E2E_DSH_VERSION` 保持 `0.2.0-rc.2` | **载体为 `0.16.1`，harness 为 `0.2.1-rc.2`**：两条 Docker 车道（`MPD_E2E_TUI_VERSION`、`MPD_E2E_DSH_VERSION`）、`dsh-distribution.json` 的 `host-tui` 引用（`…@0.16.1`）与 `dsh-plugin.json` 的 `compat.hosts`（`…@0.16.1`，从陈旧的 `0.10.1` 移来）。`MPD_E2E_DSH_VERSION` 现默认 `0.2.1-rc.2`，因为宿主的 peer 带接受它 |
+
+TUI 车道保留 host-peer 边界：它按**已安装宿主**的真实 peer 带判断（不写死版本），记录一行
+`tui.hostPeerBound`，只有在该带确实排除 harness 时才限制其余行，并在支持的宿主上自动解除。
+它存在的意义是让旧 pin 在一次运行里自解释，而不是长期挂红；它从不把失败变绿。

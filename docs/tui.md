@@ -1406,3 +1406,22 @@ a HOST fact re-measured on 0.15.0: a future host that stops painting icons again
 claim — every descriptor still declares one. (d) The C6 live-PTY eyeball is a named manual observation
 (the captain's own session is the repro); the unit arms carry the regression weight.
 
+### 11.8 Amendment after the DSH-TUI 0.16.1 adaptation wave (2026-10-18)
+
+0.16.1 is the first dsh-tui release whose declared peers admit harness `0.2.1-rc.2`: all 36
+`@deepseek-ai/dsh-*` peers carry that band (e.g. `dsh-agent: … || 0.2.0-rc.2 || 0.2.1-rc.2`,
+`dsh-app-boot: 0.2.0-rc.2 || 0.2.1-rc.2`), while 0.15.0 enumerated the same family only up to
+`0.2.0-rc.2` — which is why `dsh plugin --profile dsh-tui add dsh-tui@0.15.0` was refused on a 0.2.1
+profile. The target moves to **0.16.1**; the following supersedes §11.7 where it disagrees:
+
+| Superseded statement | Was | Is (measured 2026-10-18) |
+|---|---|---|
+| This page's target host (§ preamble, §11.7) | **0.15.0** | **0.16.1** |
+| §3 seam inventory | fifteen `tui*` seams, unchanged 0.13.0→0.15.0 | **still fifteen, and 0.16.1 breaks nothing in the adapter**: the same six `Tui*Like` shapes, `close(): void` + `active.id`, `tuiPanels`, `tuiPrompt` still a phantom, and `lib/types/ui.js` still exports `useStdin`; the only addition is the `EFFECT_LEDGER_NAME` const, which neither the adapter nor the bundle declares or consumes. No adapter code change was needed |
+| §3.3 / §7 — the pin carriers and `MPD_E2E_DSH_VERSION` | `0.15.0` carriers; `MPD_E2E_DSH_VERSION` stayed `0.2.0-rc.2` | **`0.16.1` carriers and harness `0.2.1-rc.2`**: both Docker lanes (`MPD_E2E_TUI_VERSION`, `MPD_E2E_DSH_VERSION`), `dsh-distribution.json`'s `host-tui` ref (`…@0.16.1`) and `dsh-plugin.json`'s `compat.hosts` (`…@0.16.1`, moved off the stale `0.10.1`). `MPD_E2E_DSH_VERSION` now defaults to `0.2.1-rc.2` because the host's peer band admits it |
+
+The TUI lane keeps its host-peer bound: it decides from the INSTALLED host's real peer band (no
+hardcoded version), records one `tui.hostPeerBound` row, bounds the remaining rows only when the band
+genuinely excludes the harness, and self-disarms on a supporting host. It exists so an older pin
+explains itself in one run instead of parking a permanent red; it never turns a failure green.
+
