@@ -268,6 +268,11 @@ lands (§9/§11).
   A single-language PR description is not ready for review. Every PR body states, in both languages:
   what changed, the measured evidence (paths under `evidence/`), the gates run WITH their observed
   results, and the honest bounds — never a claim the evidence does not carry.
+- **Wait for CodeRabbit before merging — binding (user-set, 2026-10-20).** A PR is not mergeable while
+  its CodeRabbit review is `in progress`: wait for COMPLETION, reconcile every inline finding as
+  FIXED / STALE / STILL-VALID with file:line evidence, and record that reconciliation in the PR. CI
+  green plus an independent verifier is NOT a substitute; a pending review is never a pass. If the bot
+  is stuck, state the pending state in the PR and wait for the user's decision.
 - **Attribution cannot come from the author field.** A shared checkout writes every commit under
   ONE configured identity, so attribute by task ownership + content + reflog ORDER, never by `%an`.
 - **The captain's standing rules (user-set, 2026-09-16)** — instructions, not suggestions:
