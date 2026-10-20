@@ -14,12 +14,16 @@ Further reading:
 - [`VENDOR_LOCK.json`](./VENDOR_LOCK.json) — the pinned upstream baseline each release is measured
   against.
 
-## Unreleased — DeepSeek Harness 0.2.1-rc.2 adaptation and the guard rollback
+## v0.14.0 — DeepSeek Harness 0.2.1-rc.2 + dsh-tui 0.16.1, one shared plan→graph model, and a real-team acceptance lane
 
-**No version bump and no release in this wave (user decision 2026-10-17): the version iteration waits for
-a dsh-tui release that adapts to the new harness.** Frozen contract and lanes:
-`.mpd/plans/harness-021-rollback.md`; the notes below describe the wave's own changes, not a shipped
-release, and every gate result it quotes lives under `evidence/harness-0.2.1/`.
+Minor release over v0.13.2, and a **BREAKING** one. The bundle now targets DeepSeek Harness
+**0.2.1-rc.2** and dsh-tui **0.16.1**; the plan→graph model is computed once in the host plane and drawn
+by both surfaces; and the 2026-10-10/11 guard ceremony is withdrawn, so the top-level agent holds its
+tool pack directly again. A real two-member team now builds and tests a small project through the Web
+composer and the TUI PTY in the Docker acceptance lane. Frozen contracts:
+`.mpd/plans/harness-021-rollback.md` and `.mpd/plans/living-graph.md`; evidence is under
+`evidence/harness-0.2.1/`, `evidence/living-graph/`, `evidence/docker/client-install/` and
+`evidence/release/v0.14.0/`.
 
 **Changed — the harness seam (0.2.1-rc.2).**
 
@@ -33,10 +37,47 @@ release, and every gate result it quotes lives under `evidence/harness-0.2.1/`.
 **Changed — preset / row parity.**
 
 - The `mpd` preset follows the 0.2.1 `standard` row set: `time-context`, `tool-schedule` and the
-  disabled `tool-plugin-market` are added, `tool-ralph` / `tool-subagent-codex` /
+  disabled `tool-plugin-manager` / `tool-plugin-market` are added, `tool-ralph` / `tool-subagent-codex` /
   `tool-subagent-claude-code` are retired, both `tool-subagent` rows drop `backgroundMode`,
   `mpd-agent-team` drops `maxPendingMessagesPerMember` (the key the 0.2.1 schema no longer declares), and the
   preset's persona prose is trimmed (below).
+
+**Added — one shared plan→graph model (`packages/mpd-graph-core`).**
+
+- `packages/mpd-graph-core` is the ONE implementation of the tolerant plan-markdown parser, the
+  board+plan merge with its six-case report, the rank derivation moved VERBATIM out of the TUI, and one
+  debounced watcher. It is a library — no cordis row, no patch entry, no dependency — and both planes
+  inline it through `bun build`.
+- The model is computed ONCE in the host plane: `mpd-team-core-plugin` resolves the plan with the
+  core's own `resolvePlanFile`, calls `buildModel({ board, plan })`, caches per TEAM against the change
+  feed's revision, and publishes the result on BOTH projections — the `mpdTeams` service
+  (`graph(workspaceRoot, teamId?)`) and the `/plugins/mpd-team/state` payload (`model` +
+  `tasks[].rank`, additive). The web client now derives NOTHING: its inline walk is deleted and it
+  renders the served ranks, edges and ghosts, degrading to `depth` only when no model arrives. The TUI
+  renders the same served model.
+- Ghosts are real pictures: a node the plan declares and the board does not is drawn
+  (`planned: true`, `visual: "planned"`) on both planes, and plan-only edges are drawn too. Plan-file
+  edits now reach the existing change feed (`feed.notify(workspace)`), so one watcher and one channel
+  refresh both surfaces instead of two independent rank derivations drifting apart.
+- New gate `scripts/verify-graph-model.ts` (`bun run verify:graph`) with a hand-written oracle, a
+  hard-coded golden fixture, `--fixture` / `--board --plan` / `--emit`, and a `--seed-wrong-edge`
+  negative control that exits 1 naming the edge (`--self-test` 8/8). The TUI's DAG page names its rank
+  provenance in three states: `derived (host)` · `served depth (host fallback)` · `local`.
+
+**Added — a real-team acceptance lane (Web composer + TUI PTY).**
+
+- `MPD_E2E_TEAM_PROJECT=1` makes a real two-member team build a small tested project through each
+  UI's own input path: the browser lane types the prompt into the Web composer, the TUI lane types the
+  same prompt into the tmux PTY. Each stages a two-member / two-task plan (T2 blocked by T1), approves,
+  dispatches, waits, re-dispatches and closes both rows while the members write and test
+  `team-project-web/` / `team-project-tui/`.
+- `docker/lib/team-project-verdict.ts` reads the record by name + `--since` and requires every member
+  raised, a resolvable dependency edge, completed tasks credited to team members, project files
+  written during the step, and both the team's own test and a verifier-owned
+  `sum(2, 3) === 5` assertion. It ships a 10-arm offline `--self-test`.
+- `ui.teamBoard` binds to the id of the record THIS turn wrote, and the browser's live session is
+  carried into the verdict. A team run must RECORD its 18 verdict rows (`missingOrNull`), so a verdict
+  that never ran cannot pass by writing nothing; `--no-browser` is refused in team mode.
 
 **Removed — the 2026-10-10/11 guard ceremony (user ruling 2026-10-17).**
 
@@ -74,7 +115,28 @@ release, and every gate result it quotes lives under `evidence/harness-0.2.1/`.
   `tuiPluginStorage`, `tuiMessageObserver`, `tuiEffectLedger`, `tuiWorkspaces`), `closeScene(id)` no
   longer guards on a return value the 0.15.0 `close(): void` never produces, `probeBackendAdmission()` is
   a declared member, and `tuiPrompt` is marked PHANTOM by the adapter's `PHANTOM_SEAM_KEYS` table
-  instead of reading as merely absent.
+  instead of reading as merely absent. The target then moved to dsh-tui **0.16.1** (the
+  harness-0.2.1 release): a declaration-level comparison against 0.15.0 found nothing breaking for the
+  adapter — the same fifteen `tui*` seams, the same six shapes, `close(): void` + `active.id`, the
+  `tuiPanels` seam, and `tuiPrompt` still a phantom — so the pins were the whole change. The pins moved
+  in eight files (both Docker lanes, the UI stack, `dsh-distribution.json`'s `host-tui` ref and
+  `dsh-plugin.json`'s `compat.hosts`, stale at `0.10.1`).
+
+**Fixed — the team plane and the live rows.**
+
+- The team web routes resolve the workspace from the SESSION the request names (new adapter
+  `workspaceRootForSession`, backed by the agent registry) instead of the dsh process cwd, which had
+  made the panel render “No team in this workspace yet” beside a completed board.
+- A task claimed under a member's EXECUTOR HANDLE is credited to that member in the core progress
+  reader, the dispatch idle pool and the TUI projection, so a busy member no longer sits in the idle
+  pool and member cards no longer read `0/0`.
+- A nested failure line no longer ends the reply wait while the lead keeps working: team turns settle
+  only on the final DONE (or a credential bound), with a tail capture for long transcripts. A headless
+  live turn after `approve` is now bounded instead of hanging forever, and team mode keeps the headless
+  arm on a single-tool probe.
+- Docker live-row grading separates SKIPPED live rows from a refused run, scopes the credential-free
+  WEB check to the non-live reason, and grades real WEB and TUI turns for prompt-variable failures.
+- The packer ships `packages/mpd-graph-core/dist` (`INLINED_PKGS`), closing the pack-closure gap.
 
 **Changed — docs.**
 
@@ -85,6 +147,10 @@ release, and every gate result it quotes lives under `evidence/harness-0.2.1/`.
   `docs/feature-audit.md` (both languages) records that the host removed its `tool-ralph` row from the
   0.2.1 `standard` preset. The `dsh-liangshen` attribution sentences are GONE from both halves of every
   bilingual pair that carried them.
+- The living-graph wave documents the shared model in `packages/mpd-graph-core/README.md` (EN +
+  zh-CN); the team lane documents `MPD_E2E_TEAM_PROJECT`, its 18 verdict rows and the evidence paths
+  in both `docker/README*.md`; and the TUI target, the seam inventory and the pin carriers are kept in
+  `docs/tui.md` (EN + zh-CN).
 
 ## v0.13.2 — a patch: the npm trusted-publishing lane and the dsh-tui 0.15.0 sidebar migration re-arm
 
@@ -303,7 +369,7 @@ records for the merged intermediate waves live under `evidence/**` where each PR
   the provenance/license sections. It was 68 524 B of manual; it is 18 429 B, and the long form lives
   where a long form belongs — [`docs/user-guide.md`](./docs/user-guide.md) (57 770 B, with its
   `zh-CN` twin), which already existed and is why **no `docs/manual.md` was created**: a second copy
-  would have been a third overlapping document. `README.zh-CN.md` is the 简体中文 twin and is updated
+  would have been a third overlapping document. `README.zh-CN.md` is the zh-CN twin and is updated
   in the SAME change, as the language policy requires.
 - **No section of the old manual was lost.** Every `##`-level section of the pre-wave README maps to
   an existing home — a RETAINED section of the new page, or a named section of the user guide, the
@@ -336,7 +402,7 @@ records for the merged intermediate waves live under `evidence/**` where each PR
     — previously the TUI was only ever captured as plain text, and the repository shipped **zero**
     terminal images;
   - a paired **hero** composite showing the same bundle on both surfaces side by side;
-  - both sets in **English and 简体中文**, so the Chinese README does not show an English app.
+  - both sets in **English and zh-CN**, so the Chinese README does not show an English app.
 - **The images have a stated provenance**, not just a directory: see
   [`evidence/docs/readme-0.12.0/image-provenance.md`](./evidence/docs/readme-0.12.0/image-provenance.md).
   It records the exact method, the fixture that makes every surface render populated, and — stated

@@ -1,0 +1,12 @@
+[mpd] settings section: form status=loading value=absent writable=false mode=undefined
+[mpd] settings section: form updated status=ready value=present
+[mpd] settings section: form updated status=ready value=present
+[mpd] model catalog: declared fallback — live catalog unavailable (no session is bound)
+[mpd] model catalog: live catalog — 1 provider · 2 models
+[mpd] settings section: form updated status=ready value=present
+[mpd] team sidebar session: session-636e520c-8cb0-489c-8251-21cf7a62251f
+[mpd] settings section: form status=loading value=absent writable=false mode=undefined
+[mpd] settings section: form updated status=ready value=present
+[mpd] settings section: form updated status=ready value=present
+[mpd] model catalog: live catalog — 1 provider · 2 models
+[mpd] team sidebar session: session-636e520c-8cb0-489c-8251-21cf7a62251f

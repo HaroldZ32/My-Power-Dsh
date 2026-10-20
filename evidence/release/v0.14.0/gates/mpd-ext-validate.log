@@ -1,0 +1,8 @@
+$ bun scripts/mpd-ext.ts validate extensions/mpd-ext-example
+START 2026-10-20T02:41:11Z
+[mpd-ext] validate /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/extensions/mpd-ext-example (plane=user)
+  extension "mpd-ext-example": loadable
+  contributes: 1 skill(s), 1 flow(s), 1 role(s), 1 mcp server(s)
+  pending contributes.mcp[0]: pending: server "lint-mcp" is declared and not connected yet (connectTimeoutMs=10000, toolCallTimeoutMs=60000) — the runtime bridge replaces this line with the server's live state
+[mpd-ext] ok
+EXIT 0

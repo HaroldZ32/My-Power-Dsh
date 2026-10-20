@@ -1,0 +1,4 @@
+$ node scripts/verify-graph-model.ts
+START 2026-10-20T02:40:55Z
+[verify-graph-model] PASS — nodes (8), edges (6), ranks, cycles and the report equal the declared input
+EXIT 0
