@@ -76,8 +76,10 @@ Anything an agent READS lands in its context and stays there. Prefer a number to
   pasted into the captain.
 - **Authored docs** (PR body, release report, screenshot pass): delegate from a compact spec; the
   captain reviews the file path and the key claims, not the full text.
-- **Reconnaissance is delegated** (AGENTS.md §5 rule 2): the captain does not read source paths, so it
-  never carries a tree it only needed once.
+- **Reconnaissance is delegated** on the `mpd` preset's TOP-LEVEL session only (AGENTS.md §5 rule 2):
+  there the captain's `read`/`grep`/`glob` are refused on source paths, so it never carries a tree it
+  needed once. Every other preset keeps its own reconnaissance behaviour — the restriction is scoped by
+  `captain.investigation` and `delegation.gate`, not a repository-wide ban.
 
 ## 4. Session hygiene
 
