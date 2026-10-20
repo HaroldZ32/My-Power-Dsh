@@ -1,0 +1,13 @@
+dsh: reasoning:
+The user asks to call mcp__ast_grep__search with the pattern "return 0" on tests/mcp-fixtures/sample.c. Simple task, do it directly.
+
+I should first verify file exists? Not needed; just call the tool. Paths must be provided. Use relative path from workspace, workdir default is server cwd which may not be workspace. Safer to give absolute path: /tmp/mpd-dsh-qa-NvqbxL/ws/tests/mcp-fixtures/sample.c.
+
+Note "return 0" as ast-grep pattern in C language: `return 0` should parse as a return statement. Let's call it.
+Tool returned (verbatim):
+
+```json
+{"schemaVersion":1,"ok":true,"kind":"search","workdir":"/tmp/mpd-dsh-qa-NvqbxL/ws","matches":[{"path":"tests/mcp-fixtures/sample.c","language":"c","text":"return 0;","range":{"start":{"line":1,"column":17,"byteOffset":17},"end":{"line":1,"column":26,"byteOffset":26}},"metavariables":{"single":{},"multi":{}}}],"counts":{"returnedMatches":1,"returnedFiles":1,"totalMatches":1,"totalFiles":1,"atLeastMatches":1},"truncation":{"truncated":false,"reason":null,"maxMatches":50,"maxPayloadBytes":4194304,"salvagedRecords":0},"warnings":[],"durationMs":6}
+```
+
+Summary: `ok: true`, 1 match of `return 0;` at `tests/mcp-fixtures/sample.c` line 1, column 17 (byte offset 17–26), no truncation, no warnings.

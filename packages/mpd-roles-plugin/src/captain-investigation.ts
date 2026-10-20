@@ -177,7 +177,7 @@ export interface CaptainInvestigationOptions {
   workspaceRootOf: (exec: DshToolExec) => string
   /** Raw config reader for `captain.investigation`. */
   configValue: (key: string) => unknown
-  /** One-line reporter for an install-time degradation. */
+  /** One-line reporter: an install-time degradation, or the ONE internal guard error that passes a call through. */
   warn: (line: string) => void
 }
 
@@ -199,6 +199,10 @@ export interface CaptainInvestigationInstall {
  * Degrades with a warning instead of aborting the plugin tree: without the `tools.guard` seam the rule is
  * a stated absence rather than an enforcement, and the row's boot line says so.
  *
+ * The callback body is ERROR-BOUNDED: a malformed/throwing exec handle or an unreadable config layer
+ * passes the call through (returning `undefined`) and is reported once — the guard must never deny or
+ * fail an unrelated tool call for a reason of its own.
+ *
  * The MODE is read per call inside the decision — so a live `mpd.jsonc` edit takes effect without a
  * restart — while the returned `mode` is the install-time observation the boot line reports.
  *
@@ -218,14 +222,32 @@ export function installCaptainInvestigationGuard(
         + "(the top-level session keeps read/grep/glob on source paths; the rule lives in the instruction text only)")
       return { installed: false, mode, reason: "no-guard-seam" }
     }
+    /**
+     * Whether the internal-error warning has already been reported, so a persistently malformed exec
+     * call is visible in the row log ONCE instead of on every tool call.
+     */
+    let reportedInternalError = false
     /** The registry's disposer, returned so the row can release the guard. */
-    const dispose = dsh.guardTool((exec) => captainInvestigationDecision({
-      toolName: String(exec?.name ?? ""),
-      args: exec?.arguments,
-      workspaceRoot: ((): string => { try { return options.workspaceRootOf(exec) } catch { return "" } })(),
-      topLevel: sessionIsMpdCaptain(exec?.agent),
-      mode: resolveInvestigationMode(options.configValue(INVESTIGATION_CONFIG_KEY)),
-    }))
+    const dispose = dsh.guardTool((exec) => {
+      // AN INTERNAL ERROR MUST NEVER FAIL AN UNRELATED TOOL CALL: a throwing exec/args proxy or a config
+      // layer that refuses a read is a PASS-THROUGH, reported once, never a deny and never a throw.
+      try {
+        return captainInvestigationDecision({
+          toolName: String(exec?.name ?? ""),
+          args: exec?.arguments,
+          workspaceRoot: ((): string => { try { return options.workspaceRootOf(exec) } catch { return "" } })(),
+          topLevel: sessionIsMpdCaptain(exec?.agent),
+          mode: resolveInvestigationMode(options.configValue(INVESTIGATION_CONFIG_KEY)),
+        })
+      } catch (error) {
+        if (!reportedInternalError) {
+          reportedInternalError = true
+          options.warn("the captain investigation guard hit an internal error and passed the call through ("
+            + (error instanceof Error ? error.message : String(error)) + ")")
+        }
+        return undefined
+      }
+    })
     return { installed: true, mode, ...(typeof dispose === "function" ? { dispose } : {}) }
   } catch (error) {
     options.warn("installing the captain investigation guard failed ("

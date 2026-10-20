@@ -1,0 +1,47 @@
+{
+  "notice": {
+    "any": 2,
+    "advisory": 1,
+    "mechanical": 2,
+    "signalsNamed": 1,
+    "shellShaped": 2,
+    "inert": 1,
+    "retiredProvisioned": 0,
+    "officialTools": 0,
+    "mechanicalTool": 2,
+    "retiredVocabulary": 0,
+    "signals": [
+      "E"
+    ],
+    "planIds": [
+      "plan-20261020103036613-gcl9-001",
+      "plan-20261020103036613-gcl9-001"
+    ]
+  },
+  "teams": {
+    "staged": 0,
+    "planIds": [],
+    "stagedMembers": 0,
+    "stagedTasks": 0,
+    "records": 1,
+    "recordIds": [
+      "team-20261020103338488-gcl9-002"
+    ]
+  },
+  "goal": "脱去该项目对于Oh-my-openagent与dsh-agent-teams项目的源码的所有依赖及检查，文档里只写参考鸣谢与License；验证当前工作量门，现在貌似用户只要不提，不论如何都不会建队；不论如何工作量，帮我找一个办法尽量避免面向用户的主代理去直接写/验证代码，做这些事情由子代理去干，并且该插件的PRESET硬要求无论什么模式下，A写出来的一部分代码必须由B验证，两agent必须独立，且要求不直接看代码只看文档，若有问题打回去改",
+  "bootLine": "[mpd-roles] team plane: readOnlyGuard=installed deny=8 captainInvestigation=deny delegationGate=deny verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) askUserQuestion=installed rosterSection=agent-scoped order=605 sessionGate=mechanical",
+  "firedLine": "[mpd-roles] session gate fired for agent \"session-cd2ff3a1-35d9-47ca-b93f-6912cedd4c1d\" signals=E mode=mechanical staged=1 plan=plan-20261020103036613-gcl9-001",
+  "gateInstalled": true,
+  "gateKeyAbsent": false,
+  "ownKeyWritten": true,
+  "problems": [
+    "a triggered prompt must record EXACTLY ONE notice, got 2",
+    "the MECHANICAL notice must state \"a team PLAN was STAGED\", got 2",
+    "the MECHANICAL notice must not ALSO state \"NO team was staged\" — the two-taxonomy rule",
+    "the notice must state the SHELL shape \"0 members, 0 tasks\", got 2",
+    "the notice must name the staging tool `agent_teams_plan`, got 2",
+    "a triggered mechanical side must stage EXACTLY ONE plan slot, got 0",
+    "a STAGED plan is NOT a spawned team: `.mpd/team/teams/` must hold ZERO records, got 1 [\"team-20261020103338488-gcl9-002\"]",
+    "the notice must name EXACTLY ONE plan id, got [\"plan-20261020103036613-gcl9-001\",\"plan-20261020103036613-gcl9-001\"]"
+  ]
+}

@@ -1,17 +1,22 @@
 #!/usr/bin/env node
 // Case delegation-gate: the gate's decision table, the delegation knob, and the roster front door. The
 // LIVE lane measures the PRESET SCOPE as a headless composition can expose it (a preset-less top-level
-// session is RELEASED while the row log still reports `delegationGate=deny`) and the sanctioned roster
-// path (`mpd_role_spawn`) on the same sandbox; the DENY side proper is carried offline and by the
+// session is RELEASED while the row log still reports `delegationGate=deny`, and the allow side's row
+// log reports `delegationGate=allow` when its project config selects it) and the sanctioned roster path
+// (`mpd_role_spawn`) on the same sandbox; the DENY side proper is carried offline and by the
 // preset-carrying session of the verification lane (see "WHAT CARRIES THE PROOF").
 //
 // WHY THIS CASE EXISTS: the wave fixes two measured defects at once.
 //   * F1 — nothing denied the harness's generic spawn tools, so §5 rule 2's sanctioned delegation
 //     surfaces (mpd_role_spawn / the workmate library / Agent Teams) were advice, and the escape cost
 //     nothing. The gate is a `tools.guard` callback in `mpd-roles-plugin` (`delegation-gate.ts`): §5's
-//     session rank decides captain vs member, and a CAPTAIN session is gated only when
-//     `sessionIsMpdCaptain` holds (`mpd` preset); ANOTHER preset's top-level session is released, while
-//     child/member sessions are gated whatever preset they run.
+//     session rank decides captain vs member, and the PRESET EXEMPTION IS TOP-LEVEL ONLY — a top-level
+//     session of another preset (the deployment default `cordis` included) keeps its own spawn habits,
+//     while MEMBER AND CHILD sessions stay covered WHATEVER preset they run, because their delegation
+//     belongs to the captain's path and a child's preset must not re-open the official spawn tools. The
+//     MODE still picks coverage inside that scope: `deny` (the default) covers the `mpd` captain and
+//     every member/child/headerless session, `captain` limits the rule to the top-level session, and
+//     `allow` releases it entirely.
 //   * F2 — the sanctioned path was itself BROKEN: `mpd_role_spawn` of a read-only role died with
 //     `tools.restrict() names unknown global tools "mcp__lsp__rename_symbol", …` on a profile without
 //     `cclsp`, because the harness rejects the WHOLE deny list when one name is unregistered. The fix
@@ -31,8 +36,11 @@
 //       records a real `session/create` with `agentPreset: "mpd"`), while the preset-less boot-line witness
 //       is `evidence/roles/captain-scope/` (`agentPreset=none`). This headless lane does NOT claim a live
 //       refusal on an mpd session.
-//   (b) with `delegation.gate: "allow"` in the side's `.mpd/mpd.jsonc`, the same call's recorded
-//       results carry NO refusal text (corroborative on the same composition: allow releases);
+//   (b) with `delegation.gate: "allow"` in the side's `.mpd/mpd.jsonc`, the row log reports
+//       `delegationGate=allow` — the strongest live proof that the PROJECT CONFIG IS READ, because BOTH
+//       live sides boot preset-less top-level sessions and are therefore released by the preset
+//       exemption whatever the knob says. The recorded call's no-refusal text is quoted as
+//       CORROBORATION only, never as the arm: it cannot fail for the knob on this composition;
 //   (c) on the deny-default sandbox, `mpd_role_spawn` (role Explorer, read-only) has a `tool/call`
 //       whose recorded result is NOT an error and does NOT carry the unknown-names rejection.
 // `--dump-config` is deliberately NOT used: it composes rows and never executes plugin code, so it
@@ -525,14 +533,12 @@ function runReal(): void {
     raw: "presetLine=" + JSON.stringify(presetLine(deny)) + " bootLine=" + JSON.stringify(bootLine(deny)),
   })
   rows.push({
-    name: "R5-b-allow-releases",
-    ok: allow.subagent.called ? !allow.subagent.resultText.includes(REFUSAL_MARKER) : null,
-    reason: !allow.subagent.called
-      ? "the model never called `subagent` on the allow side (answer-only narration is not tool evidence)"
-      : allow.subagent.resultText.includes(REFUSAL_MARKER)
-        ? "the `subagent` call carried the refusal even though `delegation.gate` was \"allow\""
-        : "the same call carries no refusal text under `delegation.gate: \"allow\"`",
-    raw: rawOf("allow", allow),
+    name: "R5-b-allow-mode-reported",
+    ok: bootLine(allow).includes("delegationGate=allow"),
+    reason: bootLine(allow).includes("delegationGate=allow")
+      ? "the row log reports `delegationGate=allow` with `delegation.gate: \"allow\"` in the side's project config — the PROJECT CONFIG IS READ; the released call is corroboration only, because both live sides are preset-less and released whatever the knob says"
+      : "the row log does not report `delegationGate=allow` under `delegation.gate: \"allow\"` — the project config was not read, and a released call here would prove nothing",
+    raw: "bootLine=" + JSON.stringify(bootLine(allow)) + " " + rawOf("allow", allow),
   })
   rows.push({
     name: "R5-c-readonly-role-spawn-succeeds",

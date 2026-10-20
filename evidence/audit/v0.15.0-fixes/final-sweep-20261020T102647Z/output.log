@@ -1,0 +1,69 @@
+fix sweep start 2026-10-20T10:26:47Z
+branch=dev head=5a62e93674348f9ad0e6eb5d5b27502d6342175b
+dirty=34
+node=v24.21.0 bun=1.4.2 pinned=1.4.0 dsh=0.2.1-rc.2
+
+=== CASE vendor :: bun run verify:vendor ===
+CASE vendor exit=0 elapsed=0s
+
+=== CASE rows :: bun run verify:rows ===
+CASE rows exit=0 elapsed=0s
+
+=== CASE docs :: bun run verify:docs ===
+CASE docs exit=0 elapsed=0s
+
+=== CASE manifest :: bun run verify:manifest ===
+CASE manifest exit=0 elapsed=3s
+
+=== CASE comments :: bun run verify:comments ===
+CASE comments exit=0 elapsed=2s
+
+=== CASE no-host-override :: node scripts/verify-no-host-override.ts ===
+CASE no-host-override exit=0 elapsed=0s
+
+=== CASE manual-paths :: node scripts/verify-manual-paths.ts ===
+CASE manual-paths exit=0 elapsed=0s
+
+=== CASE dist-fresh :: node scripts/verify-dist-fresh.ts ===
+CASE dist-fresh exit=0 elapsed=1s
+
+=== CASE graph :: bun run verify:graph ===
+CASE graph exit=0 elapsed=0s
+
+=== CASE preset-conformance-selftest :: node skills/dsh-qa/scripts/preset-conformance.ts --self-test ===
+CASE preset-conformance-selftest exit=0 elapsed=0s
+
+=== CASE verify-law-selftest :: node skills/dsh-qa/scripts/verify-law.ts --self-test ===
+CASE verify-law-selftest exit=0 elapsed=1s
+
+=== CASE ext-selftest :: bun scripts/mpd-ext.ts --self-test ===
+CASE ext-selftest exit=0 elapsed=0s
+
+=== CASE ext-validate :: bun scripts/mpd-ext.ts validate extensions/mpd-ext-example ===
+CASE ext-validate exit=0 elapsed=0s
+
+=== CASE docker-selftest :: node scripts/docker-e2e.ts --self-test ===
+CASE docker-selftest exit=0 elapsed=1s
+
+=== CASE typecheck :: bun run typecheck ===
+CASE typecheck exit=0 elapsed=1s
+
+=== CASE tests :: .toolchain/node_modules/.bin/bun test packages ===
+CASE tests exit=0 elapsed=25s
+
+=== CASE qa-selftests :: bun run test:qa ===
+CASE qa-selftests exit=0 elapsed=10s
+
+=== CASE lifecycle :: bun skills/dsh-qa/scripts/bundle-lifecycle.ts ===
+CASE lifecycle exit=0 elapsed=14s
+
+=== CASE preset-conformance-real :: node skills/dsh-qa/scripts/preset-conformance.ts ===
+CASE preset-conformance-real exit=0 elapsed=25s
+
+=== CASE verify-law-boot :: node skills/dsh-qa/scripts/verify-law.ts ===
+CASE verify-law-boot exit=0 elapsed=19s
+
+=== CASE delegation-gate-live :: node skills/dsh-qa/scripts/delegation-gate.ts ===
+CASE delegation-gate-live exit=0 elapsed=67s
+
+=== CASE session-start-team-live :: node skills/dsh-qa/scripts/session-start-team.ts ===

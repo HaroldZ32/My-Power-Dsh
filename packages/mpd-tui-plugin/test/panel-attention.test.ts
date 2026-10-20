@@ -25,10 +25,18 @@ type TaskVisual = { readonly visual: string }
  * A workflow fixture: the projection members the attention surface reads, and nothing else.
  * @param tasks - the task visuals the badge ladder reads.
  * @param holds - the team-watchdog holds the projection carries.
+ * @param teamId - the DISPLAYED team's id, when the fixture has one; a hold only counts against it.
  * @returns the projection, structurally sufficient for the surface under test.
  */
-function workflow(tasks: readonly TaskVisual[], holds: readonly string[] = []): TeamWorkflow {
-  return { workspace: "/w", tasks: tasks as unknown as TeamWorkflow["tasks"], holds } as unknown as TeamWorkflow
+function workflow(tasks: readonly TaskVisual[], holds: readonly string[] = [], teamId?: string): TeamWorkflow {
+  /** The minimal projection, cast once at this fixture boundary. */
+  const fixture = {
+    workspace: "/w",
+    tasks: tasks as unknown as TeamWorkflow["tasks"],
+    holds,
+    team: teamId === undefined ? undefined : { id: teamId },
+  }
+  return fixture as unknown as TeamWorkflow
 }
 
 /**
@@ -122,11 +130,28 @@ describe("the attention badge ladder", () => {
     expect(attentionBadge(undefined)).toBeNull()
   })
 
-  test("a watchdog HOLD is at least a warning, and it upgrades a quiet running badge", () => {
-    expect(attentionBadge(workflow([], ["team-1"]))).toEqual({ level: "warning", unread: 1 })
-    expect(attentionBadge(workflow([{ visual: "running" }], ["team-1"]))).toEqual({ level: "warning", unread: 1 })
+  test("a watchdog HOLD on the DISPLAYED team is at least a warning, and it upgrades a quiet running badge", () => {
+    expect(attentionBadge(workflow([], ["team-1"], "team-1"))).toEqual({ level: "warning", unread: 1 })
+    expect(attentionBadge(workflow([{ visual: "running" }], ["team-1"], "team-1"))).toEqual({ level: "warning", unread: 1 })
     // A failure still outranks a hold: the level ladder is not flattened by the hold clause.
-    expect(attentionBadge(workflow([{ visual: "failed" }, { visual: "blocked" }], ["team-1"]))?.level).toBe("error")
+    expect(attentionBadge(workflow([{ visual: "failed" }, { visual: "blocked" }], ["team-1"], "team-1"))?.level).toBe("error")
+  })
+
+  test("a FOREIGN team's hold neither warns nor raises the count", () => {
+    // The hold ledger is workspace-wide; only the displayed team's id is this panel's business.
+    expect(attentionBadge(workflow([], ["team-OTHER"], "team-MINE"))).toBeNull()
+    // A quiet running badge is not raised by another team's hold either.
+    expect(attentionBadge(workflow([{ visual: "running" }], ["team-OTHER"], "team-MINE"))).toEqual({ level: "info", unread: 0 })
+    // Nor does it inflate a badge the board already earned.
+    expect(attentionBadge(workflow([{ visual: "failed" }], ["team-OTHER"], "team-MINE"))).toEqual({ level: "error", unread: 1 })
+    // With NO displayed team id there is no membership to prove, so no hold is ours.
+    expect(attentionBadge(workflow([], ["team-OTHER"]))).toBeNull()
+  })
+
+  test("only the DISPLAYED team's holds are counted", () => {
+    expect(attentionBadge(workflow([], ["team-MINE"], "team-MINE"))).toEqual({ level: "warning", unread: 1 })
+    // A mixed ledger counts this team's holds only, not the workspace total.
+    expect(attentionBadge(workflow([], ["team-OTHER", "team-MINE", "team-MINE"], "team-MINE"))).toEqual({ level: "warning", unread: 2 })
   })
 })
 
@@ -275,6 +300,57 @@ describe("the apply-side attention surface", () => {
     feed.fire()
     expect(cleared).toEqual([{ level: "error", unread: 1 }, null])
     expect(attention.current()).toBeNull()
+    attention.stop()
+  })
+
+  test("the FIRST observation after arming publishes badgePanel(id, null) exactly once", () => {
+    /** The team feed. */
+    const feed = fakeFeed()
+    /** Every badge call the host received, clears included (the helper's `badges` drops nulls). */
+    const calls: { id: string; badge: PanelBadge | null }[] = []
+    /** The surface under test, armed over a projection with no team and no holds. */
+    const attention = armPanelAttention({
+      panelId: () => "act1:team",
+      openPanel: () => false,
+      badgePanel: (id: string, badge: PanelBadge | null): boolean => {
+        calls.push({ id, badge })
+        return true
+      },
+      readWorkflow: () => workflow([]),
+      feed: feed.accessor,
+      autoOpen: false,
+      log: silentLog(),
+    })
+    // A null badge IS a publish: it clears a badge a previous binding may have left on the panel.
+    expect(calls).toEqual([{ id: "act1:team", badge: null }])
+    expect(attention.current()).toBeNull()
+    attention.stop()
+  })
+
+  test("a second IDENTICAL pass publishes nothing", () => {
+    /** The team feed. */
+    const feed = fakeFeed()
+    /** Every badge call, clears included. */
+    const calls: (PanelBadge | null)[] = []
+    /** The surface under test, armed over a projection with no team. */
+    const attention = armPanelAttention({
+      panelId: () => "act1:team",
+      openPanel: () => false,
+      badgePanel: (_id: string, badge: PanelBadge | null): boolean => {
+        calls.push(badge)
+        return true
+      },
+      readWorkflow: () => workflow([]),
+      feed: feed.accessor,
+      autoOpen: false,
+      log: silentLog(),
+    })
+    // The arm-time sentinel published the null badge exactly once.
+    expect(calls).toEqual([null])
+    feed.fire()
+    feed.fire()
+    // THE SAME STATE twice more: nothing to publish, so nothing is published.
+    expect(calls).toEqual([null])
     attention.stop()
   })
 

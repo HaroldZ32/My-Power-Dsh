@@ -21,7 +21,7 @@
 //      the harness home + HOME keep no bundle residue.
 // Evidence -> evidence/dsh-qa/bundle-lifecycle/<ts>/. Never touches the real ~/.dsh.
 import { spawn, spawnSync } from "node:child_process"
-import { cpSync, existsSync, mkdirSync, openSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from "node:fs"
+import { cpSync, existsSync, lstatSync, mkdirSync, openSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from "node:fs"
 import { homedir, tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -218,6 +218,22 @@ function runSync(cmd: string, args: string[], env: Env, opts: RunSyncOptions = {
   return { status: result.status, out: (result.stdout || "") + (result.stderr || ""), stdout: result.stdout || "" }
 }
 
+/**
+ * Whether one post-uninstall path is real residue: anything present EXCEPT an empty directory.
+ * pnpm leaves a removed package's scope dir behind (`node_modules/@mpd-dsh/`), which installs
+ * nothing and is not residue; a surviving package, symlink or non-empty directory is.
+ * @param path The absolute candidate path to inspect.
+ * @returns `true` when a package, link or non-empty directory survived there.
+ */
+function isResidue(path: string): boolean {
+  try {
+    if (!lstatSync(path).isDirectory()) return true
+    return readdirSync(path).length > 0
+  } catch {
+    return false
+  }
+}
+
 /** The live arm: install, boot, re-install and uninstall the bundle in one isolated profile. */
 async function runReal(): Promise<void> {
   /** The real home's credential file, copied ONCE into the sandbox and never read again. */
@@ -236,10 +252,20 @@ async function runReal(): Promise<void> {
   const userHome = join(sandbox, "userhome")    // HOME (workmate library isolation)
   /** The pnpm store inside the sandbox, so the install writes nothing outside it. */
   const store = join(sandbox, "pnpm-store")
+  // pnpm's store OPERATION lock resolves to `$XDG_RUNTIME_DIR`, whose default `/run/user/<uid>` is
+  // read-only under a workspace-write sandbox: the install then dies with
+  // `ERR_PNPM_STORE_DIR_OPEN_OPERATION_LOCK` before this case can write `result.json` (F11).
+  /** The sandbox runtime dir that replaces `/run/user/<uid>` for every child. */
+  const runDir = join(sandbox, "run")
+  /** The sandbox npm cache, keeping the read-only real `~/.npm` out of the run (hardening). */
+  const npmCache = join(sandbox, "npm-cache")
+  /** The sandbox pnpm home, so no pnpm tooling state lands in the real `HOME` (hardening). */
+  const pnpmHome = join(sandbox, "pnpm-home")
   /** The isolated harness profile (`w`) the whole lifecycle runs against. */
   const profile = join(home, "profiles", "w")
   mkdirSync(profile, { recursive: true })
   mkdirSync(userHome, { recursive: true })
+  for (const dir of [runDir, npmCache, pnpmHome]) mkdirSync(dir, { recursive: true })
   seedSandboxCredentials(home, { credentialsFile: creds })
   // AGENTS.md §7 — a live case must ALSO stage settings.yaml when present: this home's
 // model chain is configured through gateway providers (llm-pi-ai), so without it the
@@ -251,7 +277,18 @@ async function runReal(): Promise<void> {
   const qaSettings = join(homedir(), ".dsh", "settings.yaml")
   if (existsSync(qaSettings)) cpSync(qaSettings, join(home, "settings.yaml"))
   /** The sandboxed environment every child of this case inherits (sandbox credentials only). */
-  const env: Env = credentialEnv({ ...process.env, DSH_HOME: home, HOME: userHome  })
+  const env: Env = credentialEnv({
+    ...process.env,
+    DSH_HOME: home,
+    HOME: userHome,
+    XDG_RUNTIME_DIR: runDir,
+    npm_config_cache: npmCache,
+    PNPM_HOME: pnpmHome,
+  })
+  // The sandbox-pointing keys are recorded as FAIL provenance. The credential key `credentialEnv`
+  // adds is deliberately NOT recorded: evidence never carries secret material (AGENTS.md §10).
+  /** The env keys this case pins, with the sandbox value each one got; written into `result.json`. */
+  const sandboxEnv: Env = { DSH_HOME: home, HOME: userHome, XDG_RUNTIME_DIR: runDir, npm_config_cache: npmCache, PNPM_HOME: pnpmHome }
   /** The probe overlay written into the sandbox, mounting ONLY the QA roles probe. */
   const probePatch = join(sandbox, "probe.yml")
   // The probe overlay adds only the QA probe; the boot carries the FULL bundle
@@ -293,9 +330,11 @@ async function runReal(): Promise<void> {
   steps.composed = {
     ok: dumpAfterInstall.status === 0
       && ["mpd-dsh-adapter", "mpd-bootstrap", "mpd-web-compat", "mpd-tools", "mpd-roles", "mpd-workmate", "mpd-agent-team", "mpd-tool-agent-team", "mpd-ui-agent-team", "mcp-astgrep"].every((id) => composed.includes("id: " + id))
-      // 0.1.7-rc.2 preset model: the registry id-target AND the preset ROW itself
-      // must both be composed — the row is the whole mpd composition now.
-      && composed.includes("id: agent-preset-registry") && composed.includes("default: mpd")
+      // 0.1.7-rc.2 preset model: the registry row AND the preset ROW itself must both be
+      // composed, while the DEPLOYMENT DEFAULT stays the HOST's `standard` — the bundle is
+      // additive-only and never id-targets the host-owned registry (verify-no-host-override;
+      // `presets/mpd.patch.yml` header). The uninstall leg below asserts the same default.
+      && composed.includes("id: agent-preset-registry") && composed.includes("default: standard")
       && composed.includes("id: preset-mpd") && composed.includes("@deepseek-ai/dsh-agent-preset"),
     exit: dumpAfterInstall.status,
   }
@@ -308,8 +347,16 @@ async function runReal(): Promise<void> {
   // The app form of the launcher: a direct node child where the layout allows it, so the kill below
   // really disposes of it (a `.cmd`-spawned app is a CHILD of cmd.exe, survives the kill and keeps
   // the profile directory busy - measured 2026-09-22 as an uninstall residue and a held port).
+  /** The web boot's argument vector: the sandbox profile, the probe overlay and the fixed port. */
+  const webArgs = ["--profile", "w", "--patch", probePatch, "--port", String(PORT), "--no-open"]
+  // `dshAppSpec` runs the app with `process.execPath`, which is NODE under `node` but BUN under
+  // `bun` — and bun cannot host this harness (measured: `host preparation failed:
+  // node-addon-require-builtin unsupported`), so a bun-run lane would boot nothing. Under bun the
+  // launcher shim is spawned instead; its `#!/usr/bin/env node` keeps the app a direct node child.
   /** The web-app launcher invocation, or `null` when no launcher resolves on this host. */
-  const webSpec = dshAppSpec(["--profile", "w", "--patch", probePatch, "--port", String(PORT), "--no-open"], env)
+  const webSpec = process.versions.bun !== undefined
+    ? (resolveOnPath("dsh", env) === "" ? null : spawnSpec("dsh", webArgs, env))
+    : dshAppSpec(webArgs, env)
   if (webSpec === null) fail(DSH_MISSING)
   /** The web boot child whose port is polled below and disposed of after the poll. */
   const web = spawn(webSpec.command, webSpec.args, { env, cwd: sandbox, detached: false, stdio: ["ignore", fd, fd] })
@@ -337,6 +384,22 @@ async function runReal(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 500))
   /** The boot log, read back after the child was disposed of. */
   const boot = readFileSync(bootLog, "utf8")
+  // Row diagnostics do NOT reach this stdout/stderr file: `rowLogLine` appends to
+  // `<workspace>/.mpd/logs/<row>.log` and the sink rebinds fd 2 into that same file (F12). The
+  // boot's workspace IS the sandbox (the child's cwd), so the markers are read there; `boot.log`
+  // remains the fallback for a host or row that still writes them to stderr.
+  /** The boot workspace's row-log directory, where `rowLogLine` puts each row's file. */
+  const rowLogDir = join(sandbox, ".mpd", "logs")
+  /** Read one row's log, or `""` when that row wrote none. */
+  const rowLog = (name: string): string => {
+    /** That row's log file under the boot workspace. */
+    const file = join(rowLogDir, name + ".log")
+    return existsSync(file) ? readFileSync(file, "utf8") : ""
+  }
+  /** The adapter row's evidence: its own log, or `boot.log` when the row log is absent. */
+  const adapterEvidence = rowLog("mpd-dsh-adapter") || boot
+  /** The bootstrap row's evidence: its own log, or `boot.log` when the row log is absent. */
+  const bootstrapEvidence = rowLog("mpd-bootstrap") || boot
   // The installed package is a pnpm link, so the plugin's own location resolves to
   // the real package dir; the skill corpus is the asset that still has a PATH (the
   // preset is a ROW now).
@@ -353,7 +416,7 @@ async function runReal(): Promise<void> {
   /** The installed package's real path, which the served corpus path must sit under. */
   const bundleReal = realpathSync(installedBundle)
   /** The bootstrap's `skill corpus served from` line, naming the directory the corpus is served out of. */
-  const served = /\[mpd-bootstrap\] skill corpus served from ([^\s]+) \(provider mpd-bundle/.exec(boot)
+  const served = /\[mpd-bootstrap\] skill corpus served from ([^\s]+) \(provider mpd-bundle/.exec(bootstrapEvidence)
   /** The served corpus path reported by that line, `""` when the line never appeared. */
   const corpusPath = String(served?.[1] ?? "")
   /** The `PRESET_PATH=<path> trust=<value>` probe line: the preset's resolved path and trust. */
@@ -367,7 +430,7 @@ async function runReal(): Promise<void> {
   /** Every boot assertion, kept separate so a red names its own subject. */
   const checks = {
     http: up,
-    adapterProvided: /\[mpd-dsh-adapter\] mpdDsh provided/.test(boot),
+    adapterProvided: /\[mpd-dsh-adapter\] mpdDsh provided/.test(adapterEvidence),
     adapterSeams: seams.includes("toolsRegister") && seams.includes("subagentsSpawn") && seams.includes("skillsProvider"),
     adapterToolCall: /ADAPTER_TOOL_CALL=ok/.test(boot),
     corpusFromBundle: corpusPath.startsWith(bundleReal),
@@ -432,10 +495,10 @@ async function runReal(): Promise<void> {
   const dumpAfter = runSync(process.execPath, [join(repoRoot, "scripts", "dump-config.ts"), "--profile", "w", "--json"], env)
   /** That dump's composed tree, unwrapped from the JSON envelope. */
   const dumpAfterText = dumpJsonText(dumpAfter.stdout)
-  /** Every install path that survived the uninstall; any entry fails the step. */
+  /** Every install path that survived the uninstall; an empty pnpm scope dir is not residue. */
   const residue: string[] = []
   for (const candidate of [join(home, "skills"), join(home, ".agent-presets"), join(profile, "node_modules", "@mpd-dsh"), installedBundle]) {
-    if (existsSync(candidate)) residue.push(candidate)
+    if (isResidue(candidate)) residue.push(candidate)
   }
   /** The sandbox `HOME`'s plugin-state root, which must keep no entry either. */
   const mpdState = join(userHome, ".mpd")
@@ -460,7 +523,7 @@ async function runReal(): Promise<void> {
     residue,
     mpdState: mpdStateEntries,
   }
-  writeFileSync(join(outDir, "result.json"), JSON.stringify({ ok: Object.values(steps).every((step) => step.ok), sandbox, steps }, null, 2))
+  writeFileSync(join(outDir, "result.json"), JSON.stringify({ ok: Object.values(steps).every((step) => step.ok), sandbox, env: sandboxEnv, steps }, null, 2))
   writeFileSync(join(outDir, "output.log"), ["--- install ---", add.out.slice(-4000), "--- boot ---", boot.slice(0, 20000), "--- remove ---", remove.out.slice(-4000)].join("\n"))
   console.log("[bundle-lifecycle] ok=" + Object.values(steps).every((step) => step.ok) + " -> " + outDir)
   for (const [name, step] of Object.entries(steps)) console.log("  " + name + ": " + JSON.stringify(step).slice(0, 260))

@@ -1,0 +1,10 @@
+[captain-scope] ok   boot-completed — the headless boot exited 0 (the session really completed its turn)
+[captain-scope] ok   corroborative-pack-offered — CORROBORATIVE: the request header offers the whole pack: read, write, edit, bash, grep, glob, subagent (the pack is offered on this composition whatever the guards decide; the boot-line arm is the discriminator)
+[captain-scope] ok   corroborative-source-read — CORROBORATIVE: the source path was READ — a non-error result carries the file's own first line (a headless boot composes no agent preset, so this arm reads before and after the withdrawal)
+[captain-scope] ok   corroborative-code-write-no-loop — CORROBORATIVE: the code path was WRITTEN with no loop armed (no `mpd_verify_open`, no loop record) (agent-scoped guards never arm in a headless boot: the restored scope is proved by the boot line)
+[captain-scope] ok   corroborative-shell — CORROBORATIVE: `bash` ran and answered with its own output (same bound as the two arms above)
+[captain-scope] ok   DISCRIMINATING-guard-state-reported — DISCRIMINATING: the boot line reports the TWO RESTORED guards by MODE (captainInvestigation=deny, delegationGate=deny), the session gate as mechanical, and the still-withdrawn write guard as absent
+[captain-scope] ok   isolation-sessions-sandboxed — ok: 1 session-store key(s), all under the sandbox
+[captain-scope] ok   isolation-real-checkout-untouched — the real checkout's row log is byte-identical across the run
+[captain-scope] evidence -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/evidence/roles/captain-scope/2026-10-20T10-41-25.263Z
+[captain-scope] PASS (8 rows)

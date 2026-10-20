@@ -25,18 +25,26 @@ its map. Check once at session start (the block below), and if a signal matches,
 | `extensions/*` manifest (the mpd-ext CLI's `mpd-ext.json`) | extension root |
 | `mpd.jsonc` / `.mpd/mpd.jsonc`, or `.mpd/plans/**` | a project running this bundle |
 
-One-liner block (POSIX; EVERY command below covers a different row above, so a workspace matching only
-ONE signal is still detected):
+Presence-only block (POSIX; EVERY check below covers a different row above, so a workspace matching only
+ONE signal is still detected). It stats paths and never opens, greps or parses a file, so it is safe for
+a session whose role forbids reading sources or config:
 
 ```sh
 ls cordis.patch.yml dsh-plugin.json dsh-distribution.json presets/*.patch.yml extensions/*/mpd-ext.json mpd.jsonc .mpd/mpd.jsonc 2>/dev/null
-# a manifest qualifies only when it declares dsh.bundle or dsh.client (a dependency literally named "dsh" does not)
-for f in package.json packages/*/package.json; do
-  node -e 'const p=require(process.argv[1]); process.exit(p.dsh && (p.dsh.bundle || p.dsh.client) ? 0 : 1)' "$PWD/$f" 2>/dev/null && echo "$f"
-done
-grep -lE 'export (const|function) apply' packages/*/src/index.ts 2>/dev/null
-ls -d .mpd/plans 2>/dev/null
+for f in package.json packages/*/package.json; do test -f "$f" && echo "$f"; done
+ls packages/*/src/index.ts 2>/dev/null
+test -d .mpd/plans && echo .mpd/plans
 ```
+
+A bare `package.json` or a bare `packages/*/src/index.ts` is only a CANDIDATE: that row qualifies on
+content — the manifest declaring `dsh.bundle` / `dsh.client`, the entry exporting `apply`. Treat a
+candidate as a match and load the skill; a false match costs one skill load, a missed one costs the
+rules below.
+
+**Content checks are OPTIONAL and never part of detection.** Only a session whose role permits reading
+sources, and only when a captain explicitly delegates that read, may confirm a candidate by inspecting
+its content; no detection above depends on it, and the block must never grow a `package.json` read or a
+`packages/*/src/index.ts` grep.
 
 **If none of these match**, this skill is probably not yours: say so and do not apply bundle rules to a
 non-plugin project. Reading a project that merely *depends* on a plugin is not a Cordis project.

@@ -102,7 +102,13 @@ function sameBadge(left: PanelBadge | null, right: PanelBadge | null): boolean {
 /**
  * The badge one workflow earns, by the SAME level ladder the page used to derive
  * ({@link dagBadge}): failed work is `error`, a blocked task `warning`, a running task a quiet
- * `info`; a team-watchdog HOLD is at least `warning`, because a hold is a team the watchdog stopped.
+ * `info`; a team-watchdog HOLD of the DISPLAYED team is at least `warning`, because a hold is a team
+ * the watchdog stopped.
+ *
+ * THE HOLD LEDGER IS WORKSPACE-WIDE, so it is filtered to the team this projection displays — the
+ * same membership test the page's hold row uses (`workflow.holds.includes(team.id)`). Another
+ * team's hold must neither warn this panel nor raise its count, and a projection with no team id
+ * has no membership to prove, so it reports no hold at all.
  * @param workflow - the projection, or undefined when the composition has no readable team.
  * @returns the badge to publish, or `null` for "nothing to report".
  */
@@ -110,8 +116,12 @@ export function attentionBadge(workflow: TeamWorkflow | undefined): PanelBadge |
   if (workflow === undefined) return null
   /** The task-derived badge: the drawer's own ladder, reused rather than re-typed here. */
   const fromTasks = dagBadge(workflow.tasks)
-  /** How many team-watchdog holds this workspace currently carries. */
-  const holds = Array.isArray(workflow.holds) ? workflow.holds.length : 0
+  /** The id of the team this projection DISPLAYS; absent means no hold can be proved ours. */
+  const teamId = workflow.team?.id
+  /** How many watchdog holds name the DISPLAYED team — never another team's holds. */
+  const holds = teamId !== undefined && Array.isArray(workflow.holds)
+    ? workflow.holds.filter((held) => held === teamId).length
+    : 0
   if (fromTasks === null) return holds > 0 ? { level: "warning", unread: holds } : null
   // A HOLD OUTRANKS A QUIET `info`: a running task is worth a glance, a held team is not running.
   if (holds > 0 && fromTasks.level === "info") return { level: "warning", unread: Math.max(fromTasks.unread, holds) }
@@ -129,8 +139,17 @@ export function attentionBadge(workflow: TeamWorkflow | undefined): PanelBadge |
  * @returns the live surface; the caller must call {@link PanelAttention.stop} from a fiber-owned effect.
  */
 export function armPanelAttention(deps: PanelAttentionDeps): PanelAttention {
-  /** The last badge this surface published, or null before the first publish. */
+  /** The last badge this surface SETTLED, or null before the first settle (see {@link settled}). */
   let last: PanelBadge | null = null
+  /**
+   * Whether a publish has ever SETTLED — an accepted call, or a host with no badge member.
+   *
+   * WHY A FLAG ON TOP OF `last`: `last === null` means BOTH "nothing published yet" and "published
+   * the null badge", so a first pass with no badge would compare equal by `sameBadge` and publish
+   * nothing — leaving a badge a previous binding left on the panel. The first observation after
+   * arming must publish exactly once, the null badge included, which is what clears it.
+   */
+  let settled = false
   /** Whether the one-shot auto-open already fired, whatever the host answered. */
   let opened = false
   /** Whether the PREVIOUS pass saw a live team, which is what turns a state into an APPEARANCE. */
@@ -189,14 +208,17 @@ export function armPanelAttention(deps: PanelAttentionDeps): PanelAttention {
     const workflow = read()
     /** The badge this state earns. */
     const next = attentionBadge(workflow)
-    if (!sameBadge(last, next)) {
+    if (!settled || !sameBadge(last, next)) {
       // THE LAST VALUE SETTLES ON AN ACCEPTANCE OR AN ABSENT MEMBER, and on nothing else: a host that
       // HAS the member and refused this call leaves the value unset, so the next state change retries
       // it. An absent member settles it, because no later event can change that fact and a per-event
       // retry would log the same sentence forever.
       /** The publish's own three-valued answer. */
       const result = publish(next)
-      if (result === true || (result === undefined && badgeMissing)) last = next
+      if (result === true || (result === undefined && badgeMissing)) {
+        last = next
+        settled = true
+      }
     }
     // AUTO-OPEN IS AN EDGE, NOT A STATE (CodeRabbit finding, 2026-10-20): a team that already existed
     // when this surface armed is NOT an appearance, and the first feed event after it (a status change,

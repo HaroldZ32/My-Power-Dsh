@@ -46,7 +46,8 @@
 //     member of the family — `agent_teams_plan`, our own staging tool;
 //   * an untriggered (simple) session gets NO notice at all — the falsifiability arm;
 //   * the explicit marker is CONSUMED from the goal text and counts as signal A;
-//   * scope: a top-level session of a configured preset only, never a child session.
+//   * scope: a TOP-LEVEL session (a seeded fork — parent link, `isSeeded`, depth 0 — included) whose
+//     preset is configured or absent/null, never a child session (a recorded subagent origin or depth 1+).
 //
 // 1) `--self-test` (offline, no boot): imports the SHIPPED pure module and drives the frozen predicate
 //    over six frozen prompt sets in BOTH directions (the English four plus the CJK positive and the
@@ -1008,8 +1009,20 @@ export async function contractProblems(gate: GateModule): Promise<string[]> {
   if (!Array.isArray(gate.DEFAULT_GATE_PRESETS) || !gate.DEFAULT_GATE_PRESETS.includes("mpd")) {
     problems.push(at("scope") + "the default gate presets must include `mpd`, got " + JSON.stringify(gate.DEFAULT_GATE_PRESETS))
   }
-  if (gate.sessionQualifies({ session: { header: { parentSession: "parent-1", agentPreset: "mpd" } } }) !== false) {
-    problems.push(at("scope") + "a CHILD session must never get a gate of its own")
+  // THE CAPTAIN/CHILD HALF IS THE SHIPPED `sessionRank` (F1): a seeded fork — the user's real top-level
+  // session, carrying a parent LINK plus `isSeeded: true` and depth 0 — MUST qualify; a recorded subagent
+  // origin and a delegation depth of 1+ MUST NOT, whatever parent link they carry.
+  if (gate.sessionQualifies({ session: { header: { parentSession: "root-0", isSeeded: true, delegationDepth: 0, agentPreset: "mpd" } } }) !== true) {
+    problems.push(at("scope") + "a SEEDED FORK (parent link, isSeeded, depth 0) is the top-level session and must get the gate")
+  }
+  if (gate.sessionQualifies({ session: { header: { origin: "subagent", agentPreset: "mpd" } } }) !== false) {
+    problems.push(at("scope") + "a session with a recorded subagent origin must never get a gate of its own")
+  }
+  if (gate.sessionQualifies({ session: { header: { delegationDepth: 1, agentPreset: "mpd" } } }) !== false) {
+    problems.push(at("scope") + "a session at delegation depth 1 or more must never get a gate of its own")
+  }
+  if (gate.sessionQualifies({ session: { header: { agentPreset: null } } }) !== true) {
+    problems.push(at("scope") + "agentPreset null must count as ABSENT, so a preset-less top-level session stays covered")
   }
   if (gate.sessionQualifies({ session: { header: { agentPreset: "standard" } } }) !== false) {
     problems.push(at("scope") + "another preset's session must not be gated")
@@ -1669,16 +1682,13 @@ async function runReal(): Promise<void> {
   steps.explicitSide = runSide("explicit", EXPLICIT_PROMPTS, { expect: "stage", expectedMode: GATE_MODE_MECHANICAL, explicit: true })
   // (P7) Signal D over a REAL workspace: the SAME prompt and the SAME ledger bytes, moved by ONE
   // status field — the pair is what proves D reads ACTIVE work rather than "a plan file exists".
-  // MEASURED 2026-10-06 (live): the ACTIVE arm is RED, because the config layer answers
-  // `boulder.dir = ".mpd"` (mpd-config's SettingsSchema default) and `readBoulderGate` joins
-  // `.mpd/boulder.json` onto that root, so the read lands on `<ws>/.mpd/.mpd/boulder.json` while the
-  // contract places the ledger at `<ws>/.mpd/boulder.json` (AGENTS.md §1). Four boots pin it: the
-  // contract path stays silent, the DOUBLED path fires `signals=D mode=mechanical staged=1`, an
-  // `.mpd/mpd.jsonc` `boulder.dir` override does NOT change it (the row-knob layer outranks the
-  // project file), and `mpd_config_get boulder.dir` answers `.mpd`. The pair below therefore reads:
-  // ACTIVE -> silent (a true RED for the contract) and COMPLETED -> silent (green, but today for the
-  // SAME wrong reason, since neither arm's file is reached). The red arm is the finding; do not
-  // "fix" it by seeding the doubled path.
+  // MEASURED GREEN on 2026-10-20 (evidence/dsh-qa/session-start-team/2026-10-20T08-13-55.470Z/):
+  // ACTIVE -> the gate fires signal D and stages exactly one shell (`signals:["D"]`, `stagedPlans:1`,
+  // `ok:true`), COMPLETED -> silent (`signals:[]`, `stagedPlans:0`, `ok:true`). The 2026-10-06 "RED" is
+  // HISTORICAL: it was the `boulder.dir` double-nesting (`.mpd` read as a directory UNDER the workspace,
+  // so the read landed on `<ws>/.mpd/.mpd/boulder.json`). `resolveBoulderDir` now normalizes the
+  // conventional `.mpd` spellings to "the session workspace" (WORKSPACE_ROOT_SPELLINGS), which is what
+  // turned the pair green. If this pair ever reddens again, cite the CURRENT failing run instead.
   steps.boulderActiveSide = runSide("boulder-active", [BOULDER_PROBE_PROMPT], { expect: "stage", expectedMode: GATE_MODE_MECHANICAL, signal: "D", seed: { boulderStatus: ACTIVE_STATUS } })
   steps.boulderCompletedSide = runSide("boulder-completed", [BOULDER_PROBE_PROMPT], { expect: "none", expectedMode: GATE_MODE_MECHANICAL, seed: { boulderStatus: COMPLETED_STATUS } })
   // The two non-default modes, selected the way a USER selects them: a project `.mpd/mpd.jsonc`.

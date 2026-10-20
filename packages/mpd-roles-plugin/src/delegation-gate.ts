@@ -11,9 +11,14 @@
 // WHAT IT DENIES: a call to any name in {@link DELEGATION_TOOLS}, for the sessions the mode covers. The
 // mode is `delegation.gate` in `mpd.jsonc`: `"deny"` (default: the `mpd` preset's top-level session and
 // every member session), `"captain"` (the top-level session only) or `"allow"` (the gate is released
-// entirely). A top-level session of ANOTHER preset is never gated: `tools.guard` is process-wide, but the
-// rule is part of what the `mpd` preset means, so the deployment's default `cordis` session keeps its own
-// spawn habits.
+// entirely).
+//
+// THE PRESET EXEMPTION IS TOP-LEVEL ONLY: `tools.guard` is process-wide, but the rule is part of what the
+// `mpd` preset means, so a TOP-LEVEL session of another preset (the deployment default `cordis` included)
+// keeps its own spawn habits. MEMBER AND CHILD sessions stay covered WHATEVER preset they run — their
+// delegation belongs to the captain's path, and a child's preset must not re-open the official spawn
+// tools. The install-time bypass below enforces exactly that: it releases only a rank-`captain` session
+// that is not the `mpd` captain.
 //
 // WHY A GUARD AND NOT A PRESET-PLANE OMISSION: the live top-level session on this deployment runs a
 // preset this bundle does not own (`cordis`), so "do not compose the row" is not available to us — a

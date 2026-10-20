@@ -1,0 +1,23 @@
+vendor	0	0s	bun run verify:vendor
+rows	0	0s	bun run verify:rows
+docs	0	0s	bun run verify:docs
+manifest	0	2s	bun run verify:manifest
+comments	0	2s	bun run verify:comments
+no-host-override	0	0s	node scripts/verify-no-host-override.ts
+manual-paths	0	1s	node scripts/verify-manual-paths.ts
+dist-fresh	0	0s	node scripts/verify-dist-fresh.ts
+pack-closure	0	0s	node scripts/verify-pack-closure.ts
+preset-conformance-selftest	0	1s	node skills/dsh-qa/scripts/preset-conformance.ts --self-test
+verify-law-selftest	0	0s	node skills/dsh-qa/scripts/verify-law.ts --self-test
+ext-selftest	0	1s	bun scripts/mpd-ext.ts --self-test
+ext-validate	0	0s	bun scripts/mpd-ext.ts validate extensions/mpd-ext-example
+typecheck	0	0s	bun run typecheck
+tests	1	25s	bun test
+qa-selftests	0	9s	bun run test:qa
+boot-bundle-lifecycle	1	10s	bun skills/dsh-qa/scripts/bundle-lifecycle.ts
+preset-conformance-real	0	32s	node skills/dsh-qa/scripts/preset-conformance.ts
+verify-law-boot	0	30s	node skills/dsh-qa/scripts/verify-law.ts
+dual-track-smoke	1	19s	node skills/dsh-qa/scripts/dual-track-smoke.ts
+mcp-call	0	97s	node skills/dsh-qa/scripts/mcp-call.ts
+docker-source	3	519s	node scripts/docker-e2e.ts --mode source --require-docker
+docker-oneclick	3	471s	node scripts/docker-e2e.ts --mode oneclick --require-docker
