@@ -1,0 +1,6 @@
+[tui-panel] SHAPE=present
+[tui-panel] TITLE_HITS=0 SUB_HITS=0 TEAM_HITS=0 CONTROL_HITS=0
+[tui-panel] SUB_LINE=0 TEAM_LINE=0 HEAD_LINE=0 EMPTY_LINE=0
+[tui-panel] OPENS=false
+[tui-panel] ORDER=false
+[tui-panel] REASON=the captured pane does NOT carry the merged panel: titleHits=0 subagentHits=0 teamHits=0 subagentMarker=line 0 teamMarker=line 0 header=line 0 emptyState=line 0 (each family must be > 0, pre-key control hits = 0)

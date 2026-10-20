@@ -1,0 +1,48 @@
+root@51981c336691:/work/ws# env -i 'PATH=/opt/toolchain/bun/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin' 'DSH_HOME=/root/sandbox-dsh' 'HOME=/root/sandbox-home' 'TERM=xterm-256color' 'DSH_TUI_WORKSPACE_TARGET=/work/ws' 'npm_config_cache=/root/sandbox-home/.npm' 'DSH_TUI_NO_LAUNCHPAD=1' dsh-tui
+dsh-tui: the installed dsh cannot host this launch (dsh: failed to parse overlay /root/sandbox-dsh/profiles/dsh-tui/cordis.patch.yml: YAMLException: end of the stream or a document separator is expected (7:1)); starting DSH through `dsh --profile`
+file:///usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:3998
+                throw new Error(`${binName}: failed to parse ${label} ${file}: ${String(error)}`);
+                      ^
+
+Error: dsh: failed to parse overlay /root/sandbox-dsh/profiles/dsh-tui/cordis.patch.yml: YAMLException: end of the stream or a document separator is expected (7:1)
+
+ 4 | []
+ 5 | 
+ 6 | # tui-lane: pin panelAutoOpen of ...
+ 7 | - id: mpd-tui
+-----^
+ 8 |   config:
+ 9 |     panelAutoOpen: false
+    at parsePatchList (file:///usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:3998:9)
+    at loadOverlayPatches (file:///usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:3968:9)
+    at loadProfileDirectory (file:///usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:1042:73)
+    at loadProfile (file:///usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-app-boot/lib/index.js:1074:9)
+    at prepareProfile (file:///usr/local/lib/node_modules/@deepseek-ai/dsh/lib/profile-boot-C14i-8IN.js:218:18)
+    at composeProfile (file:///usr/local/lib/node_modules/@deepseek-ai/dsh/lib/profile-boot-C14i-8IN.js:237:46)
+    at runProfile (file:///usr/local/lib/node_modules/@deepseek-ai/dsh/lib/profile-boot-C14i-8IN.js:272:26)
+    at async runCli (file:///usr/local/lib/node_modules/@deepseek-ai/dsh/lib/bin.js:215:5)
+    at async file:///usr/local/lib/node_modules/@deepseek-ai/dsh/lib/bin.js:252:23
+
+Node.js v24.21.0
+[dsh-tui] dsh profile 已退出（退出码 1）。可直接运行以下命令查看诊断：
+  dsh --profile dsh-tui
+dsh-tui 异常退出（码 1）。进入安全模式？[Y/n] /mpd board
+[dsh-tui] dsh profile 已退出（退出码 1）。可直接运行以下命令查看诊断：
+  dsh --profile dsh-tui
+root@51981c336691:/work/ws# .mpd/mpd board
+-bash: .mpd/mpd: No such file or directory
+root@51981c336691:/work/ws# .mpd/mpd board
+-bash: .mpd/mpd: No such file or directory
+root@51981c336691:/work/ws# .mpd/mpd board
+-bash: .mpd/mpd: No such file or directory
+root@51981c336691:/work/ws# .mpd/mpd team
+-bash: .mpd/mpd: No such file or directory
+root@51981c336691:/work/ws# .mpd/mpd team
+-bash: .mpd/mpd: No such file or directory
+root@51981c336691:/work/ws# j
+
+
+
+
+
+
