@@ -84,6 +84,9 @@ contracts: `.mpd/plans/restore-guard-discipline.md` and `.mpd/plans/release-v0.1
   parser accepts the current `plan-<17 digits>-<4-char tag>-<3-char counter>` format (it had parsed the
   previous 14-digit form and gone blind), and `session-gate.ts` emits a row warning when
   `staged && planId === ""`, so a staging call that produced no id cannot read as healthy.
+- **The Web DAG node legend is ASCII under zh-CN.** The node draws `REQ|WRK|REV|FIX|INT`
+  (`dag-edges-scroll` §F1) instead of the localized kind chip; the task-detail body and every `title`
+  keep the localized kind and the verbatim subject. The zh-CN capture goes 17/18 → 18/18.
 - **The attention badge is truthful.** It counts only the displayed team's watchdog holds and publishes
   once on arm (including the empty case) to clear a stale badge.
 - **QA and evidence repairs from the v0.15.0 audit.** `bundle-lifecycle` pins `XDG_RUNTIME_DIR` and the
@@ -117,20 +120,27 @@ Nothing in `.mpd/` changes shape. If you relied on the v0.14.0 withdrawal, the t
 `captain.investigation: "allow"` and `delegation.gate: "allow"` in `mpd.jsonc`; the `team.gate` values are
 `mechanical`, `advisory` and `off`.
 
-### Verified at this documentation cut
+### Release verification
 
-This file was written by the release-docs lane, which ran only the gates its scope can move. Observed
-(all under the pinned bun 1.4.0, exit 0):
+The release sweep ran on `release/v0.15.0` with the pinned toolchain (bun 1.4.0, node v24.21.0); per-gate
+logs are under `gates/` and the full grading is in [`REPORT.md`](./REPORT.md). Observed:
 
 | Gate | Result |
 |---|---|
-| `bun run verify:docs` | PASS — 48 pairs, 438 links, 406 checked, 0 dead, 24 exempt, 3 derived, 117 files |
-| `bun run verify:manifest` | PASS — version 0.15.0 in both manifests, 27 row module paths, 1011 packed files, every required path present |
-| `bun run typecheck` | PASS — `tsgo --noEmit`, no diagnostics, exit 0 |
+| Static aggregate | **PASS** — 9/9 member gates |
+| Unit tests | **PASS** — 2161 pass / 3 skip / 0 fail, 2164 tests / 134 files |
+| Typecheck | **PASS** — `tsgo --noEmit` |
+| Doc pairs | **PASS** — 48 pairs, 438 links, 0 dead |
+| Manifest / comments / rows / vendor / dist | **PASS** — 0.15.0 carriers, 426 commented files, 35 rows, 7 assets, 32/32 dist |
+| Boot lanes | **PASS** — bundle lifecycle, preset conformance (`agentPreset=mpd`), verify-law |
+| Live cases | **PASS** — delegation-gate, captain-scope, mcp-call; dual-track official PASS, gateway `NO_ADAPTER` (host bound) |
+| Pack + closure | **PASS** — 608/608 files, 0 drift |
+| Docker source (`--live`) | **PASS** — 117 passed / 0 failed / 5 declared NULL |
+| Docker one-click (`--live`) | recorded in [`REPORT.md`](./REPORT.md) (default-branch lane) |
 
-The full release sweep (tests, QA self-tests, boot lanes, live cases, pack closure, Docker source and
-one-click lanes) is graded in [`REPORT.md`](./REPORT.md); its per-gate logs land under `gates/`. This
-lane's own evidence is under `docs/20261020T112746Z/`.
+The gateway (non-official) DeepSeek track cannot run on this host (`NO_ADAPTER`); the official track and
+the Docker live rows reach a model. The full sweep, its evidence paths and every bound are in
+[`REPORT.md`](./REPORT.md).
 
 ## 简体中文
 
@@ -200,6 +210,9 @@ stateless 并带上注意力徽标，还让 `cordis-dev` 技能能自动加载�
   尝试，而不是自相矛盾；QA case 的 plan-id 解析器接受当前
   `plan-<17 digits>-<4-char tag>-<3-char counter>` 格式（它此前解析旧的 14 位形式，已经失明），并且
   `session-gate.ts` 在 `staged && planId === ""` 时发一条行警告，使产生不出 id 的 stage 调用不会读成健康。
+- **Web DAG 图例在 zh-CN 下使用 ASCII kind。** 节点绘制 `REQ|WRK|REV|FIX|INT`
+  （`dag-edges-scroll` §F1），而不是本地化的 kind 标签；任务详情正文与所有 `title` 仍保留本地化 kind 与
+  逐字 subject。zh-CN 捕获由 17/18 变为 18/18。
 - **注意力徽标是诚实的。** 只统计当前显示团队的看门狗 hold，并在武装时发布一次（含空状态）以清除陈旧徽标。
 - **v0.15.0 审计带来的 QA / 证据修复。** `bundle-lifecycle` 把 `XDG_RUNTIME_DIR` 与 npm 缓存钉进沙箱，
   并修好三条陈旧断言；delegation-gate 的实时臂在其被放行的一侧证明 `delegationGate=allow` 并钉住
@@ -229,16 +242,23 @@ dsh plugin --profile web add github:HaroldZ32/My-Power-Dsh
 `captain.investigation: "allow"` 与 `delegation.gate: "allow"`；`team.gate` 的取值是
 `mechanical`、`advisory`、`off`。
 
-### 本次文档交付的实测
+### 本次发布的实测
 
-本文件由发布文档车道撰写，只跑了它能影响的门禁。以下为实测（钉定 bun 1.4.0，exit 0）：
+发布扫尾在 `release/v0.15.0` 上以钉定工具链（bun 1.4.0、node v24.21.0）运行；逐门禁日志在 `gates/`，
+完整评级见 [`REPORT.md`](./REPORT.md)。实测：
 
 | 门禁 | 结果 |
 |---|---|
-| `bun run verify:docs` | PASS —— 48 对文档、438 条链接、检查 406 条、0 死链、24 条豁免、3 条派生、117 个文件 |
-| `bun run verify:manifest` | PASS —— 两份清单版本均为 0.15.0、27 个行模块路径、1011 个打包文件、所有必需路径存在 |
-| `bun run typecheck` | PASS —— `tsgo --noEmit` 无诊断，exit 0 |
+| 静态聚合 | **PASS** —— 9/9 成员门禁 |
+| 单元测试 | **PASS** —— 2161 通过 / 3 跳过 / 0 失败，2164 用例 / 134 文件 |
+| 类型检查 | **PASS** —— `tsgo --noEmit` |
+| 文档配对 | **PASS** —— 48 对、438 链接、0 死链 |
+| 清单 / 注释 / 行 / vendor / dist | **PASS** —— 0.15.0 载体、426 个注释文件、35 行、7 个资产、32/32 dist |
+| 启动车道 | **PASS** —— bundle lifecycle、preset conformance（`agentPreset=mpd`）、verify-law |
+| 实时 case | **PASS** —— delegation-gate、captain-scope、mcp-call；dual-track official 通过，gateway `NO_ADAPTER`（宿主边界） |
+| 打包 + 闭合 | **PASS** —— 608/608 文件、0 漂移 |
+| Docker source（`--live`） | **PASS** —— 117 通过 / 0 失败 / 5 个已声明 NULL |
+| Docker one-click（`--live`） | 记录在 [`REPORT.md`](./REPORT.md)（默认分支车道） |
 
-完整的发布扫尾（测试、QA 自测、启动车道、实时 case、打包闭合、Docker source 与 one-click 车道）在
-[`REPORT.md`](./REPORT.md) 中评级，逐门禁日志落在 `gates/` 下。本车道自己的证据在
-`docs/20261020T112746Z/`。
+本机跑不了 gateway（非 official）DeepSeek 轨道（`NO_ADAPTER`）；official 轨道与 Docker 实机行都真实到达模型。
+完整扫尾、证据路径与全部边界见 [`REPORT.md`](./REPORT.md)。

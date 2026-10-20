@@ -1,0 +1,30 @@
+verify-gates exit=0 elapsed=6ss cmd=bun run verify:gates
+vendor exit=0 elapsed=1ss cmd=bun run verify:vendor
+rows exit=0 elapsed=0ss cmd=bun run verify:rows
+docs exit=0 elapsed=0ss cmd=bun run verify:docs
+manifest exit=0 elapsed=2ss cmd=bun run verify:manifest
+comments exit=0 elapsed=2ss cmd=bun run verify:comments
+no-host-override exit=0 elapsed=0ss cmd=node scripts/verify-no-host-override.ts
+manual-paths exit=0 elapsed=0ss cmd=node scripts/verify-manual-paths.ts
+dist-fresh exit=0 elapsed=1ss cmd=node scripts/verify-dist-fresh.ts
+graph exit=0 elapsed=0ss cmd=bun run verify:graph
+preset-conformance-selftest exit=0 elapsed=0ss cmd=node skills/dsh-qa/scripts/preset-conformance.ts --self-test
+verify-law-selftest exit=0 elapsed=1ss cmd=node skills/dsh-qa/scripts/verify-law.ts --self-test
+ext-selftest exit=0 elapsed=0ss cmd=bun scripts/mpd-ext.ts --self-test
+ext-validate exit=0 elapsed=0ss cmd=bun scripts/mpd-ext.ts validate extensions/mpd-ext-example
+docker-selftest exit=0 elapsed=1ss cmd=node scripts/docker-e2e.ts --self-test
+typecheck exit=0 elapsed=1ss cmd=bun run typecheck
+tests exit=0 elapsed=26ss cmd=.toolchain/node_modules/.bin/bun test packages
+qa-selftests exit=0 elapsed=9ss cmd=bun run test:qa
+lifecycle exit=0 elapsed=19ss cmd=bun skills/dsh-qa/scripts/bundle-lifecycle.ts
+preset-conformance-real exit=0 elapsed=24ss cmd=node skills/dsh-qa/scripts/preset-conformance.ts
+verify-law-boot exit=0 elapsed=22ss cmd=node skills/dsh-qa/scripts/verify-law.ts
+delegation-gate-live exit=0 elapsed=58ss cmd=node skills/dsh-qa/scripts/delegation-gate.ts
+captain-scope-live exit=0 elapsed=14ss cmd=node skills/dsh-qa/scripts/captain-scope.ts
+mcp-call exit=0 elapsed=136ss cmd=node skills/dsh-qa/scripts/mcp-call.ts
+dual-track-smoke exit=1 elapsed=16ss cmd=node skills/dsh-qa/scripts/dual-track-smoke.ts
+pack exit=0 elapsed=0ss cmd=node scripts/pack-mpd.ts
+pack-closure exit=0 elapsed=0ss cmd=node scripts/verify-pack-closure.ts
+pack-repack exit=0 elapsed=0ss cmd=node scripts/pack-mpd.ts
+pack-closure-after-repack exit=0 elapsed=1ss cmd=node scripts/verify-pack-closure.ts
+docker-source exit=0 elapsed=1124ss cmd=node scripts/docker-e2e.ts --mode source --require-docker --live

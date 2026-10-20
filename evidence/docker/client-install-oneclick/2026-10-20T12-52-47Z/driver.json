@@ -1,0 +1,37 @@
+{
+  "startedAt": "2026-10-20T12:52:47.496Z",
+  "finishedAt": "2026-10-20T13:08:21.792Z",
+  "docker": "Docker version 29.9.1, build dfc520d",
+  "compose": "Docker Compose version v5.6.0",
+  "image": "mpd-docker-e2e:local",
+  "imageMiB": 488,
+  "buildxConfig": "/tmp/mpd-docker-e2e-buildx-R8hBbd",
+  "liveRequested": true,
+  "browserEnabled": true,
+  "requiredPrefixes": [
+    "live.",
+    "boot.llmTurn",
+    "ui."
+  ],
+  "excludedRequired": [
+    "ui.teamBoard"
+  ],
+  "unmeasured": [],
+  "teamRowsMissing": [],
+  "steps": [
+    {
+      "id": "driver-build",
+      "cmd": "docker compose -f /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/docker/docker-compose.yml build",
+      "status": 0
+    },
+    {
+      "id": "driver-run",
+      "cmd": "docker compose -f /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/docker/docker-compose.yml run --rm -T -e MPD_E2E_INSTALL_MODE=oneclick -e DEEPSEEK_API_KEY -e MPD_E2E_LIVE=1 -e MPD_E2E_BROWSER=1 mpd-oneclick",
+      "status": 1,
+      "signal": null
+    }
+  ],
+  "containerExit": 1,
+  "verdict": "ok=false complete=false passed=115 failed=1 null=6 FAILED=[pack.staticCoherence] NULL=[build.bunInstall,build.dists,pack.distFreshRebuild,pack.rebuildToolchain,pack.distFreshRebuildControl,ui.teamBoard]",
+  "exitCode": 1
+}

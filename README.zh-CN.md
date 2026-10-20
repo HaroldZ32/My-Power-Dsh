@@ -111,7 +111,7 @@ dsh plugin --profile web remove @mpd-dsh/mpd
 包里的任何代码。它所有的行都只通过 `cordis.patch.yml` 加 profile 机制进入 harness，而且**不覆盖任何 host
 行**：`mpd` preset 是增量添加的，把它设成默认靠的是**你自己**的一次动作，永远不是套件替你做的。
 
-![一条安装命令之后 DSH Web GUI 的插件页：@mpd-dsh/mpd 列在 Installed 下且开关已打开，排在 harness 自带官方插件之上。](./docs/assets/images/zh-CN/web-plugins-installed.png)
+![一条安装命令之后 DSH Web GUI 的插件页：@mpd-dsh/mpd 列在 Installed 下且开关已打开。](./docs/assets/images/zh-CN/web-plugins-installed.png)
 
 想跟仓库而不是 npm 发布版，或者要钉住某个 revision，就从检出目录安装：
 

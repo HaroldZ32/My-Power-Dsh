@@ -100,6 +100,9 @@ the TUI sidebar deployment stateless on dsh-tui ≥ 0.16.1 with a panel attentio
   parser accepts the current `plan-<17 digits>-<4-char tag>-<3-char counter>` format (it had parsed the
   previous 14-digit form and gone blind), and `session-gate.ts` emits a row warning when
   `staged && planId === ""`, so a staging call that produced no id cannot read as healthy.
+- The Web DAG node legend draws the ASCII kind (`REQ|WRK|REV|FIX|INT`) under a zh-CN locale, satisfying
+  the frozen `dag-edges-scroll` §F1; the task-detail body and title tooltips keep the localized kind and
+  the verbatim subject. The zh-CN capture goes 17/18 → 18/18.
 
 **Fixed — QA and evidence repairs from the same audit.**
 

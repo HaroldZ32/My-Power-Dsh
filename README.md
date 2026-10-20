@@ -126,7 +126,7 @@ script, so installing it runs no code from the package. Its rows reach the harne
 `cordis.patch.yml` and the profile mechanism, and it overrides **no** host row: the `mpd` preset is
 added additively and becomes your default through *your* action, never the bundle's.
 
-![The Plugins page of the DSH Web GUI after the one install command: @mpd-dsh/mpd listed under Installed with its toggle on, above the harness's own official plugins.](./docs/assets/images/web-plugins-installed.png)
+![The Plugins page of the DSH Web GUI after the one install command: @mpd-dsh/mpd listed under Installed with its toggle on.](./docs/assets/images/web-plugins-installed.png)
 
 To track the repository instead of the npm release, or to pin a revision, install from a checkout:
 

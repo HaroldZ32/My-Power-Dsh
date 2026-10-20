@@ -119,7 +119,7 @@ as SVG so the labels stay selectable and diffable) and captures of the shipped b
 | [`web-settings-mpd.png`](./assets/images/web-settings-mpd.png) | [README](../README.md#usage) | The MPD section of the settings page — the same knobs as `.mpd/mpd.jsonc`. |
 | [`tui-status-line.png`](./assets/images/tui-status-line.png) | [README](../README.md#quick-start) | The DSH-TUI's keyed status line: the `mpd:` row naming the team and its progress, the boulder ledger, plans and workmates. |
 | [`tui-workmates.png`](./assets/images/tui-workmates.png) | [README](../README.md#usage) | The `/mpd workmate` page in the DSH-TUI: the library's instances with their base and use count. |
-| [`zh-CN/`](./assets/images/zh-CN) | [README.zh-CN.md](../README.zh-CN.md) | The 简体中文 set: its OWN run of the same Docker lanes with the browser and TUI in the app's Chinese locale — a separate render set, not a copy of the English PNGs. |
+| [`zh-CN/`](./assets/images/zh-CN) | [README.zh-CN.md](../README.zh-CN.md) | The 简体中文 set: its OWN run of the same Docker lanes with the Web surfaces in the app's Chinese locale (the TUI scene bodies stay English by design, see the README) — a separate render set, not a copy of the English PNGs. |
 
 Every capture above is produced by the Docker lanes under [`docker/ui/`](../docker/ui), not taken by
 hand and not authored in a drawing tool: the Web tiles by headless Chromium driving the real app, the
