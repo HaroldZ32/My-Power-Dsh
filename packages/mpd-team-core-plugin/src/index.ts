@@ -1859,6 +1859,9 @@ export function apply(ctx: any): void {
       const mountTeamRoute = (): boolean => registerTeamRoutes(dsh.webServerOf() as never, {
         recordFor: (sessionId: string) => recordFor(workspaceForRequest(sessionId), sessionId),
         workspace: (sessionId?: string) => workspaceForRequest(sessionId ?? ""),
+        // THE HOST'S FENCE, delegated through the adapter: the same Host/Origin check and browser/API
+        // credential check the harness's own `/api` routes use. See `webRequestRejection`.
+        authorize: (request: unknown) => dsh.webRequestRejection(request),
         executor: () => {
           /** The executor as of this request, contained so a route never throws into a response. */
           const view = executor()

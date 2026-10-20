@@ -610,6 +610,16 @@ export function registerTeamRoutes(
     /** The record for one session, or undefined when it has no team. */
     recordFor: (sessionId: string) => TeamRecord | undefined
     /**
+     * The HOST'S OWN verdict on the request: 401/403 refuses it before ANY read, undefined admits it.
+     *
+     * WHY IT EXISTS (CodeRabbit round 3, Major): a route on the raw web server sits outside the `/api`
+     * Host/Origin fence, so a session-scoped read that trusts its `?sessionId` query is reachable by an
+     * unauthenticated or DNS-rebound caller. The production wiring delegates to the harness Connection
+     * service's `requestRejection`; with the request authenticated, the query only SELECTS among the
+     * sessions the authenticated UI already exposes. Optional so a route fixture stays fence-free.
+     */
+    authorize?: (request: unknown) => 401 | 403 | undefined
+    /**
      * The workspace a read should be attributed to, resolved PER REQUEST.
      *
      * THE SESSION ID IS PART OF RESOLUTION, not decoration (measured 2026-10-19 on the Docker web
@@ -666,6 +676,13 @@ export function registerTeamRoutes(
         kind: "exact",
         path,
         handler: (req: unknown, res: unknown) => {
+          // THE FENCE RUNS BEFORE THE READ, so a refused request never reaches the store.
+          /** The host's verdict for this request, when the composition supplies a fence. */
+          const rejection = deps.authorize?.(req)
+          if (rejection !== undefined) {
+            json(res, rejection, { ok: false, error: `mpd-team-core: the request is not authenticated for ${path}` })
+            return
+          }
           try {
             json(res, 200, build(req))
           } catch (error) {
@@ -730,6 +747,14 @@ export function registerTeamRoutes(
     // A REFUSAL THAT ANSWERS. A stream that cannot be served must be a normal error response: never a
     // throw inside a request, and never a response held open with nothing ever written to it, which is
     // what a client cannot tell apart from a healthy idle stream.
+    // THE FENCE BEFORE THE STREAM HEAD: an unauthenticated EventSource gets a JSON refusal, never a
+    // subscription and never a held-open response.
+    /** The host's verdict for this request, when the composition supplies a fence. */
+    const rejection = deps.authorize?.(req)
+    if (rejection !== undefined) {
+      json(res, rejection, { ok: false, error: "mpd-team-core: the request is not authenticated for the events stream" })
+      return
+    }
     if (subscribe === undefined || revision === undefined) {
       json(res, 503, { ok: false, error: "mpd-team-core: the team change feed is unavailable in this composition" })
       return

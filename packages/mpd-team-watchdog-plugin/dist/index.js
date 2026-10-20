@@ -1934,6 +1934,19 @@ function createDshAdapter(ctx, config = {}) {
         return;
       }
     },
+    webRequestRejection(request) {
+      try {
+        if (typeof ctx?.get !== "function")
+          return 401;
+        const connection = ctx.get("connection", false);
+        if (connection === undefined || typeof connection.requestRejection !== "function")
+          return 401;
+        const headers = request?.headers;
+        return connection.requestRejection({ headers: typeof headers === "object" && headers !== null ? headers : {} }) ?? undefined;
+      } catch {
+        return 401;
+      }
+    },
     async goalControl(input) {
       if (input === null || typeof input !== "object" || typeof input.action !== "string") {
         return { ok: false, isError: true, error: "goalControl requires an action" };

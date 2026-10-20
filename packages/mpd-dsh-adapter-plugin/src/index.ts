@@ -1586,6 +1586,21 @@ export interface DshAdapter {
    */
   /** The harness web server, probed tolerantly; see the implementation for the two names it tries. */
   webServerOf(): unknown
+  /**
+   * The HOST'S OWN verdict on one browser request: `403` for an untrusted Host/Origin, `401` when no
+   * authenticated live Peer carries the request, `undefined` when it may proceed.
+   *
+   * WHY A PLUGIN ROUTE NEEDS THIS (CodeRabbit round 3, Major): a route registered on the raw
+   * `webServer` sits OUTSIDE the `/api` Host/Origin fence and outside browser authentication, so a
+   * session-scoped read that trusts its `?sessionId` query is reachable by an unauthenticated or
+   * rebound caller. Delegating to the host's `connection.requestRejection(request)` applies the SAME
+   * fence and credential check the host's own API uses; the query then selects among sessions the
+   * authenticated UI already exposes, and is never itself the authorization.
+   *
+   * @param request - the route's Node request (only `headers` is read).
+   * @returns the HTTP status to answer, or `undefined` when the request is admitted.
+   */
+  webRequestRejection(request: unknown): 401 | 403 | undefined
   /** Run `callback` when one of `names` binds (or rebinds) as a service; returns a disposer. */
   onServiceBound(names: readonly string[], callback: (name: string) => void): () => void
   /** Register the pre-step listener inside ONE agent's own scope — the site delivery reliably reaches. */
@@ -3687,6 +3702,31 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         return goalSnapshotOf(view) ?? null
       } catch {
         return undefined
+      }
+    },
+
+    /**
+     * The HOST'S OWN verdict on one browser request (see the interface for the contract).
+     *
+     * Delegates to the Connection service's `requestRejection`, which composes the Host/Origin fence
+     * and the browser/API credential check in ONE call. An absent Connection service is NOT treated as
+     * "open": a composition that cannot authenticate a request cannot authorize a session-scoped read,
+     * so the route answers 401 rather than leaking. The probe is contained — a throwing service read
+     * refuses too, never crashes the route.
+     * @param request - the route's Node request; only `headers` is read.
+     * @returns 401/403, or undefined when the host admits the request.
+     */
+    webRequestRejection(request: unknown): 401 | 403 | undefined {
+      try {
+        if (typeof ctx?.get !== "function") return 401
+        /** The host's Connection service, or undefined when this composition has none. */
+        const connection = ctx.get("connection", false) as { requestRejection?: (value: unknown) => 401 | 403 | undefined } | undefined
+        if (connection === undefined || typeof connection.requestRejection !== "function") return 401
+        /** The request headers the fence reads; a non-Node request simply carries none. */
+        const headers = (request as { headers?: unknown } | undefined)?.headers
+        return connection.requestRejection({ headers: typeof headers === "object" && headers !== null ? headers : {} }) ?? undefined
+      } catch {
+        return 401
       }
     },
 

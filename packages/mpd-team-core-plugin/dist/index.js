@@ -1023,6 +1023,19 @@ function createDshAdapter(ctx, config = {}) {
         return;
       }
     },
+    webRequestRejection(request) {
+      try {
+        if (typeof ctx?.get !== "function")
+          return 401;
+        const connection = ctx.get("connection", false);
+        if (connection === undefined || typeof connection.requestRejection !== "function")
+          return 401;
+        const headers = request?.headers;
+        return connection.requestRejection({ headers: typeof headers === "object" && headers !== null ? headers : {} }) ?? undefined;
+      } catch {
+        return 401;
+      }
+    },
     async goalControl(input) {
       if (input === null || typeof input !== "object" || typeof input.action !== "string") {
         return { ok: false, isError: true, error: "goalControl requires an action" };
@@ -2843,6 +2856,11 @@ function registerTeamRoutes(webServer, deps) {
         kind: "exact",
         path,
         handler: (req, res) => {
+          const rejection = deps.authorize?.(req);
+          if (rejection !== undefined) {
+            json(res, rejection, { ok: false, error: `mpd-team-core: the request is not authenticated for ${path}` });
+            return;
+          }
           try {
             json(res, 200, build(req));
           } catch (error) {
@@ -2879,6 +2897,11 @@ function registerTeamRoutes(webServer, deps) {
   const events = (req, res) => {
     const subscribe = deps.subscribe;
     const revision = deps.revision;
+    const rejection = deps.authorize?.(req);
+    if (rejection !== undefined) {
+      json(res, rejection, { ok: false, error: "mpd-team-core: the request is not authenticated for the events stream" });
+      return;
+    }
     if (subscribe === undefined || revision === undefined) {
       json(res, 503, { ok: false, error: "mpd-team-core: the team change feed is unavailable in this composition" });
       return;
@@ -5062,6 +5085,7 @@ Add members and tasks with agent_teams_plan {action: "add_member" | "create_task
       const mountTeamRoute = () => registerTeamRoutes(dsh.webServerOf(), {
         recordFor: (sessionId) => recordFor(workspaceForRequest(sessionId), sessionId),
         workspace: (sessionId) => workspaceForRequest(sessionId ?? ""),
+        authorize: (request) => dsh.webRequestRejection(request),
         executor: () => {
           const view = executor();
           return { kind: view.kind, reason: view.reason };

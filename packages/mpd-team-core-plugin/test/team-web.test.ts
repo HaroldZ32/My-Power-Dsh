@@ -299,6 +299,56 @@ describe("the route", () => {
     expect(String((captured.body as { error: string }).error)).toContain("no workspace is bound")
   })
 
+  test("the HOST FENCE refuses the state route BEFORE any read is attempted", () => {
+    // CodeRabbit round 3, Major: a route outside `/api` must not answer a session-scoped read without
+    // the host's own Host/Origin + credential verdict. A refusal must not touch the store.
+    /** Whether the store was read at all. */
+    let read = false
+    /** The routes the double captured. */
+    const routes = new Map<string, (req: unknown, res: unknown) => unknown>()
+    registerTeamRoutes({ register: (route: { path: string; handler: (req: unknown, res: unknown) => unknown }) => { routes.set(route.path, route.handler); return () => {} } }, {
+      recordFor: () => { read = true; return undefined },
+      workspace: () => "/ws",
+      authorize: () => 401,
+      executor: () => EXECUTOR,
+      effect: (fn: () => unknown) => fn(),
+      warn: () => {},
+    })
+    /** The response double. */
+    const captured: { status: number; body: unknown } = { status: 0, body: undefined }
+    ;(routes.get(TEAM_STATE_PATH) as (req: unknown, res: unknown) => unknown)({ url: `${TEAM_STATE_PATH}?sessionId=s1` }, {
+      writeHead: (status: number) => { captured.status = status },
+      end: (text: string) => { captured.body = JSON.parse(text) },
+    })
+    expect(captured.status).toBe(401)
+    expect(String((captured.body as { error: string }).error)).toContain("not authenticated")
+    expect(read).toBe(false)
+  })
+
+  test("the HOST FENCE refuses the events route instead of opening a stream", () => {
+    /** The route handler the double captured. */
+    let handler: ((req: unknown, res: unknown) => unknown) | undefined
+    /** The writes the response double saw; a refused stream must write NONE of the SSE head. */
+    const writes: string[] = []
+    /** The status the refusal answered with. */
+    let status = 0
+    registerTeamRoutes({ register: (route: { path: string; handler: (req: unknown, res: unknown) => unknown }) => { if (route.path === TEAM_EVENTS_PATH) handler = route.handler; return () => {} } }, {
+      recordFor: () => undefined,
+      workspace: () => "/ws",
+      authorize: () => 403,
+      executor: () => EXECUTOR,
+      effect: (fn: () => unknown) => fn(),
+      warn: () => {},
+    })
+    ;(handler as unknown as (req: unknown, res: unknown) => unknown)({ url: TEAM_EVENTS_PATH }, {
+      writeHead: (value: number) => { status = value },
+      write: (frame: string) => { writes.push(frame) },
+      end: () => {},
+    })
+    expect(status).toBe(403)
+    expect(writes).toEqual([])
+  })
+
   test("a composition with NO web server registers nothing and says so quietly", () => {
     // A headless profile has no web server, and that is not a defect — the route simply is not there.
     expect(registerTeamRoutes(undefined, {
