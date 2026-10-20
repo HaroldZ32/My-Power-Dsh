@@ -1043,6 +1043,59 @@ describe("team-view drawn edges", () => {
     const pinned = await rendered.hooks.act(rendered.component, { sessionId: "s1" } as never)
     expect(flatText(one(pinned, "data-mpd-detail", "T1"))).toContain("冻结验收契约")
   })
+
+  test("under a zh locale the node legend draws the ASCII kind, while the detail body keeps the localized kind and the Chinese subject", async () => {
+    // THE REPORTED DEFECT: the node's kind chip went through `kindOf`, which IS the translated kind — so
+    // a zh-CN capture drew 需求/工作/评审 in the DAG where clause F1 fixes the ASCII
+    // `REQ | WRK | REV | FIX | INT`. The DRAWING is the one place the kind must be locale-free; the task
+    // detail body is chrome, so it keeps the localized word. Both halves are pinned here, because a
+    // blanket "make every kind ASCII" fix would redden the second assertion and is not the contract.
+    /** The host's zh dictionary for the five kinds, spelled as the shipped client localizes them. */
+    const zh: Record<string, string> = { "kind.req": "需求", "kind.wrk": "工作", "kind.rev": "评审", "kind.fix": "修复", "kind.int": "集成" }
+    /** The translator a zh-CN browser hands the view: localized kinds, every other key marked. */
+    const t = (key: string): string => zh[key] ?? ZH + key
+    // NEGATIVE CONTROL, stated before the render: this translator really does produce CJK for a kind
+    // key, so a green no-CJK assertion below is a statement about the DRAWING, not about the fixture.
+    expect(/[\u4E00-\u9FFF]/.test(t("kind.req"))).toBe(true)
+    /** One task of each kind F1 declares, every subject pure Chinese so the C3 half is not vacuous. */
+    const board = [
+      { id: "T1", subject: "冻结验收契约", kind: "requirement", status: "completed", visual: "completed", blockedBy: [], failedBy: [], depth: 0 },
+      { id: "T2", subject: "构建头部与进度条", kind: "work", status: "running", visual: "running", blockedBy: ["T1"], failedBy: [], depth: 1 },
+      { id: "T3", subject: "画依赖边", kind: "review", status: "open", visual: "open", blockedBy: ["T2"], failedBy: [], depth: 2 },
+      { id: "T4", subject: "修复截断的路由", kind: "repair", status: "open", visual: "blocked", blockedBy: ["T3"], failedBy: [], depth: 3 },
+      { id: "T5", subject: "集成收尾", kind: "integration", status: "open", visual: "open", blockedBy: ["T4"], failedBy: [], depth: 4 },
+    ]
+    /** The settled render of that board through the zh translator. */
+    const rendered = await renderView({ t, routes: { [STATE_PATH]: { ok: true, status: 200, body: stateOf(board) } } })
+    /** That render's tree. */
+    const tree = rendered.tree
+    /** Each task's F1 abbreviation beside the zh word the SAME kind translates to. */
+    const kinds: Array<[string, string, string]> = [
+      ["T1", "REQ", zh["kind.req"]], ["T2", "WRK", zh["kind.wrk"]], ["T3", "REV", zh["kind.rev"]],
+      ["T4", "FIX", zh["kind.fix"]], ["T5", "INT", zh["kind.int"]],
+    ]
+    for (const [id, code, word] of kinds) {
+      /** One node's whole drawn legend: the glyph, the id, the kind and the graph-safe label. */
+      const drawn = flatText(one(tree, "data-mpd-node", id))
+      expect(drawn).toContain(code)
+      expect(drawn).not.toContain(word)
+    }
+    // CLAUSE C1/F1 over the whole drawing: no codepoint in any declared CJK/full-width range survives —
+    // with the zh translator threaded in, which is the locale the shipped check failed under.
+    /** The drawing's own text: every node box, with none of the panel's chrome. */
+    const picture = collect(tree, "data-mpd-node").map((node) => flatText(node)).join(" ")
+    expect(/[\u2E80-\u2FFF\u3000-\u303F\u3040-\u9FFF\uAC00-\uD7AF\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFFEF]/.test(picture)).toBe(false)
+    // CLAUSE C3: the hover TOOLTIP is not drawing text, so it keeps the original subject verbatim.
+    expect(String(one(tree, "data-mpd-node", "T3").props.title)).toContain("画依赖边")
+    // AND SO DOES THE PINNED DETAIL BODY — including its localized kind, which is chrome and stays zh.
+    ;(one(tree, "data-mpd-node", "T3").props.onClick as () => void)()
+    /** The tree after the click pinned T3. */
+    const pinned = await rendered.hooks.act(rendered.component, { sessionId: "s1" } as never)
+    /** The pinned body's text. */
+    const detail = flatText(one(pinned, "data-mpd-detail", "T3"))
+    expect(detail).toContain("画依赖边")
+    expect(detail).toContain(zh["kind.rev"])
+  })
 })
 
 describe("team-view interaction", () => {
@@ -1281,7 +1334,12 @@ describe("team-view localization", () => {
     expect(marked).toContain(ZH + "header.complete")
     expect(marked).toContain(ZH + "executor.label")
     expect(marked).toContain(ZH + "members.current")
-    expect(marked).toContain(ZH + "kind.req")
+    // THE KIND IS THE DECLARED EXCEPTION (frozen contract §F1, `.mpd/plans/dag-edges-scroll.md`): the
+    // node legend line's `<KIND>` is the ASCII abbreviation, so the DRAWING must not route it through the
+    // translator at all. The localized word is still chrome — the pinned detail body prints it, and the
+    // zh arm above drives that half — so the assertion here is inverted rather than dropped.
+    expect(marked).not.toContain(ZH + "kind.req")
+    expect(marked).toContain("REQ")
     // The two payload-owned strings are NOT translated, because they are not the view's words.
     expect(marked).toContain("Build the header")
     expect(marked).not.toContain("Members (")
