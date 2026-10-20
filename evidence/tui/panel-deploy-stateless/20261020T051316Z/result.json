@@ -59,7 +59,12 @@
       ],
       "rootCause": "the docker TUI lane seeds its team fixture AFTER the TUI booted (tui-lane.sh: fixture at ~line 510, boot at ~line 402), so the new auto-open opened the MPD sidebar page before the lane's PRE-KEY control capture; docker/lib/tui-panel-body.ts then correctly refused to credit alt+a with the open (controlHits=6).",
       "fix": "two changes: (1) the auto-open is now EDGE-triggered (a not-live -> live transition; a boot-time team and any later status change on it open nothing), which is also a real defect fix raised by review; (2) the lane pins the knob OFF in the profile's USER patch layer (`- id: mpd-tui / config: panelAutoOpen: false`) so the lane measures what it claims regardless of when its fixture appears. The knob belongs to a bundle-owned row, so the pin is an id-targeted CONFIG override, never a host-row override.",
-      "note": "the same edge-trigger also protects the sandbox lane (skills/dsh-qa/scripts/tui-deps-ctrla.ts), which writes its team fixture BEFORE the boot and therefore never auto-opens."
+      "note": "the same edge-trigger also protects the sandbox lane (skills/dsh-qa/scripts/tui-deps-ctrla.ts), which writes its team fixture BEFORE the boot and therefore never auto-opens.",
+      "secondCorrection": {
+        "observed": "the first pin attempt made the TUI fail to boot: `pane-boot.txt` on the 2026-10-20 CI run carried `dsh: failed to parse overlay \u2026 cordis.patch.yml: YAMLException: end of the stream or a document separator is expected (7:1)` and the lane recorded 8 failures that all read as 'the fixture did not bind'.",
+        "cause": "the profile's user layer is ONE YAML document whose stock content is the empty array `[]`; appending a list item after that complete document makes the overlay unparseable. The id-target shape also carries `name` (the loader patch dialect the installer writes).",
+        "fix": "the lane deletes the stock `[]` marker line first (so the file stays ONE array document) and appends a full id-target row (`id` + `name` + `config.panelAutoOpen: false`). Both the fixed shape and the negative control were checked with the host's own YAML parser: the fixed file parses to the expected entry; the old append fails with the same class of error the boot pane showed."
+      }
     },
     "codeRabbitFindings": [
       {

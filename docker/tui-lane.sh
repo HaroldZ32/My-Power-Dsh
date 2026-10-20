@@ -390,9 +390,21 @@ if [ ! -f "$TUI_USER_PATCH" ]; then
   mkdir -p "$(dirname "$TUI_USER_PATCH")"
   printf '# Your patch layer for this dsh profile, applied after every bundle layer.\n' >"$TUI_USER_PATCH"
 fi
+# THE FILE IS ONE YAML DOCUMENT, AND `dsh plugin` LEAVES THE STOCK EMPTY ARRAY (`[]`) IN IT. Appending a
+# list item after that complete document makes the whole overlay unparseable ("end of the stream or a
+# document separator is expected"), which takes the TUI down AT BOOT — measured on the 2026-10-20 run of
+# this very change: `pane-boot.txt` carried `YAMLException … (7:1)` and the lane recorded 8 failures that
+# all read as "the fixture did not bind". The marker line is therefore removed first, so the file stays
+# ONE array document; a user layer that already holds rows is appended to and keeps its shape.
+sed -i '/^\[\]$/d' "$TUI_USER_PATCH"
 {
   printf '\n# tui-lane: pin panelAutoOpen off, so a team seeded AFTER boot cannot open the panel before the combo.\n'
-  printf -- '- id: mpd-tui\n  config:\n    panelAutoOpen: false\n'
+  cat <<'TUI_LANE_PIN'
+- id: mpd-tui
+  name: '@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js'
+  config:
+    panelAutoOpen: false
+TUI_LANE_PIN
 } >>"$TUI_USER_PATCH"
 
 # ── 4. the REAL boot on a real PTY ─────────────────────────────────────────────
