@@ -6,7 +6,8 @@
 // the mpdRoles service (mpd-modelchain chain lookup). Team mode is the OFFICIAL Agent
 // Teams plugin (`spawn_teammate` + `team_task_create`), which THIS row feeds: it
 // registers the read-only tool guard, the agent-scoped roster section, the
-// `ask_user_question` boundary guard and the OPT-IN session-start gate.
+// `ask_user_question` boundary guard, the captain's reconnaissance ban, the delegation
+// gate and the session-start gate (MECHANICAL by default since the 2026-10-20 restore).
 // ADDRESSING CONTRACT: a role is addressed by its normal display NAME — the member
 // name in team mode, the label of a one-shot mpd_role_spawn, and what every
 // description/render lists. The stable `id` is an INTERNAL key (modelchain chain key,
@@ -820,13 +821,15 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   // restored HERE, on the OFFICIAL plugin's seams, reached only through the adapter:
   //   1. a tool guard over the SAME eight names the one-shot path denies;
   //   2. an AGENT-SCOPED roster section, so an mpd Lead knows the members it can stage;
-  //   3. the session-start complexity gate, which is OPT-IN since the 2026-10-17 rollback: only an
-  //      explicit `team.gate` arms it, and a triggered session stages an APPROVABLE PLAN SHELL
-  //      (0 members, 0 tasks) through the `agent_teams_plan` tool — never a team, never a member.
-  // A THIRD contract used to be installed here — the 2026-10-10/11 ceremony of a reconnaissance ban, a
-  // spawn-tool ban and a mandatory A-writes/B-verifies seat for the top-level agent. The user withdrew it
-  // (`.mpd/plans/harness-021-rollback.md` R1): those three guards are NOT installed any more, and the
-  // boot line reports each of them as `absent` with {@link GUARD_WITHDRAWN_REASON}.
+  //   3. the session-start complexity gate, MECHANICAL by default since the 2026-10-20 restore: an
+  //      untouched `team.gate` stages an APPROVABLE PLAN SHELL (0 members, 0 tasks) through the
+  //      `agent_teams_plan` tool — never a team, never a member — and `advisory` / `off` are the
+  //      deliberate opt-outs.
+  // A THIRD contract was installed here on 2026-10-10/11 — a reconnaissance ban, a spawn-tool ban and a
+  // mandatory A-writes/B-verifies seat for the top-level agent. The user's 2026-10-17 ruling withdrew the
+  // bundle (`.mpd/plans/harness-021-rollback.md` R1), and the 2026-10-20 split restored the TWO
+  // reconnaissance/delegation guards while the write guard stays withdrawn: the boot line reports their
+  // modes and `verifyGate=absent` with {@link withdrawnReason} for the one that no longer installs.
   // Each remaining installer degrades with a warning instead of taking the row down.
   const teamMembers = (): Array<{ name: string; description: string; readonly: boolean }> => ROLES.map((role) => ({ name: role.name, description: role.description, readonly: role.readonly }))
   /**

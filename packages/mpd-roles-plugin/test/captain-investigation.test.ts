@@ -227,6 +227,38 @@ describe("L2 — the INSTALL is the decision the arms above proved, with a repor
     expect(capture.guard?.({ name: "read", arguments: { file_path: "packages/x/src/y.ts" }, agent: CAPTAIN })).toBeUndefined()
   })
 
+  test("a throwing exec is PASSED THROUGH, never denied or thrown, and reported once", () => {
+    /** Warnings the internal-error boundary must emit exactly once. */
+    const warnings: string[] = []
+    /** The callback the install hands the adapter. */
+    let guard: ((exec: DshToolExec) => string | undefined) | undefined
+    /** A minimal adapter double exposing the ONE seam under test. */
+    const dsh = {
+      capabilities: () => ({ toolsGuard: true }),
+      guardTool: (installed: (exec: DshToolExec) => string | undefined): (() => void) => {
+        guard = installed
+        return () => { /* this arm asserts the callback, not disposal */ }
+      },
+    } as Pick<DshAdapter, "capabilities" | "guardTool">
+    /** The install outcome under the deny mode. */
+    const install = installCaptainInvestigationGuard(dsh, {
+      workspaceRootOf: () => WORKSPACE,
+      configValue: () => "deny",
+      warn: (line) => warnings.push(line),
+    })
+    expect(install.installed).toBe(true)
+    // A MALFORMED EXEC: every property read throws, which is what an unreadable exec/args proxy is here.
+    const throwingExec = new Proxy({}, { get: () => { throw new Error("malformed exec") } }) as unknown as DshToolExec
+    // F3: the guard must never throw out of its callback...
+    expect(() => guard?.(throwingExec)).not.toThrow()
+    // ...and never DENY an unrelated call for a reason of its own: the decision is a pass-through.
+    expect(guard?.(throwingExec)).toBeUndefined()
+    // ONE report across repeated failures, so a persistently malformed exec cannot flood the row log.
+    expect(warnings.filter((line) => line.includes("internal error")).length).toBe(1)
+    expect(guard?.(throwingExec)).toBeUndefined()
+    expect(warnings.filter((line) => line.includes("internal error")).length).toBe(1)
+  })
+
   test("a composition without the guard seam reports the absence instead of installing nothing silently", () => {
     /** The outcome for an adapter whose harness exposes no `tools.guard`. */
     const install = installCaptainInvestigationGuard({

@@ -69,7 +69,12 @@ caused. `AGENTS.md` §13 carries the binding wording; the block below is history
   below. `packages/mpd-roles-plugin/src/delegation-gate.ts` refuses a call to `subagent`, `subagent_fork`
   or `workflow` and names the sanctioned routes (`mpd_role_spawn`, `mpd_workmate_match` +
   `mpd_workmate_spawn`, Agent Teams, `send_message`); its knob is `delegation.gate` in `mpd.jsonc`
-  (`"deny"` default | `"captain"` | `"allow"`), keyed on the preset-free `sessionRank`. The user's
+  (`"deny"` default | `"captain"` | `"allow"`), keyed on the preset-free `sessionRank`. **Its preset
+  exemption is TOP-LEVEL ONLY**: a top-level session of another preset (the deployment default `cordis`
+  included) keeps its own spawn habits, while MEMBER AND CHILD sessions stay covered WHATEVER preset they
+  run — the install-time bypass releases only a rank-`captain` session that is not the `mpd` captain. The
+  MODE picks coverage inside that scope: `deny` (the default) covers the `mpd` captain and every
+  member/child/headerless session, `captain` the top-level session only, `allow` none. The user's
   2026-10-17 ruling withdrew it together with the persona restoration; the **2026-10-20 ruling split that
   bundle** (`.mpd/plans/restore-guard-discipline.md`): the long prompt stays, the guard comes back,
   because the measured consequence of its absence was a captain that did every search itself while the

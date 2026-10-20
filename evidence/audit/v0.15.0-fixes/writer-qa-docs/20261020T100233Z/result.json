@@ -1,0 +1,107 @@
+{
+  "lane": "writer-qa-docs",
+  "role": "Senior Engineer",
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "branch": "dev",
+  "base": "5a62e936",
+  "head": "5a62e93674348f9ad0e6eb5d5b27502d6342175b",
+  "contract": ".mpd/plans/audit-v0.15.0-fixes.md",
+  "measuredAt": {
+    "startUtc": "2026-10-20T10:02:33Z",
+    "endUtc": "2026-10-20T10:04:00Z"
+  },
+  "inScope": [
+    "F2 docs half: skills/dsh-qa/scripts/delegation-gate.ts top comment, packages/mpd-roles-plugin/README.md, README.zh-CN.md, agent-references/glossary.md (behavior UNCHANGED)",
+    "F1 item 7: agent-references/verification-flow.md composed-predicate wording + T-92 warning",
+    "F8: skills/dsh-qa/scripts/delegation-gate.ts live allow arm -> boot-line assertion",
+    "F9: skills/dsh-qa/SKILL.md session-start-team row (MEASURED RED -> measured green + evidence citation)"
+  ],
+  "notInScope": [
+    "packages/mpd-roles-plugin/src/** and test/** (Writer A)",
+    "skills/dsh-qa/scripts/session-start-team.ts (Writer A; its F1 contract arms and F9 comment were already changed there, verified by reading lines 1685-1691)",
+    "packages/mpd-roles-plugin/README*.md source-comment half of F2 in the plugin source (Writer A already landed it)",
+    "dist/** rebuilds (F10)", "package.json / dsh-plugin.json / dsh-distribution.json / CHANGELOG.md / release artifacts",
+    "cross-package gate sweep and the live delegation-gate lane (captain runs after all writers)", "any git write command"
+  ],
+  "fixes": [
+    {
+      "id": "F2 (docs half)",
+      "change": "The delegation gate's PRESET EXEMPTION is now stated as TOP-LEVEL ONLY in all four named places: a top-level session of another preset (the deployment default `cordis` included) keeps its own spawn habits, while MEMBER AND CHILD sessions stay covered WHATEVER preset they run. The same paragraphs state that the MODE picks coverage inside that scope (deny = mpd captain + every member/child/headerless session; captain = top-level only; allow = none).",
+      "files": [
+        "packages/mpd-roles-plugin/README.md (new paragraph under 'The delegation gate and the reconnaissance guard')",
+        "packages/mpd-roles-plugin/README.zh-CN.md (mirrored paragraph, same commit scope; verify:docs pair/switch/heading/CJK check green)",
+        "agent-references/glossary.md ('delegation gate' entry: preset-exemption sentence added)",
+        "skills/dsh-qa/scripts/delegation-gate.ts (top comment F1 bullet + WHAT CARRIES THE PROOF)"
+      ],
+      "behavior": "UNCHANGED. No source, test, dist or gate logic was edited in this lane; the wording now matches the shipped install-time bypass (rank === 'captain' && !sessionIsMpdCaptain) and the decision table."
+    },
+    {
+      "id": "F1 item 7",
+      "change": "verification-flow.md no longer calls sessionQualifies 'untouched'. It now says sessionQualifies is NOT a second captain predicate: it COMPOSES sessionRank for the captain/child half and keeps its own PRESET check, and must never be substituted for sessionRank (T-92: class comes from the header's delegation facts, never from the preset name).",
+      "files": ["agent-references/verification-flow.md"]
+    },
+    {
+      "id": "F8",
+      "change": "The live allow arm is no longer a call-result tautology. Row R5-b now asserts the ALLOW side's row log carries `delegationGate=allow` (project config `.mpd/mpd.jsonc` `{delegation:{gate:'allow'}}` was read at install); the released-call observation is kept only as corroboration in the row's raw text. The DENY side's `delegationGate=deny` + `agentPreset=none` assertion was already present in row R5-a-presetless-headless-and-deny-mode. The offline unit arms stay the behavioral proof (decision table, knob spellings, preset scope).",
+      "files": ["skills/dsh-qa/scripts/delegation-gate.ts"],
+      "falsifiability": "If the project config were not read, the allow side's boot line would report `delegationGate=deny` and the row FAILS; the old arm could not fail for the knob because both live sides boot preset-less top-level sessions that the preset exemption releases regardless.",
+      "historicalCorroboration": "evidence/roles/delegation-gate/2026-10-10T07-38-46.822Z/result.json records a live run whose allow side boot line carries `delegationGate=allow` and whose deny/roles sides carry `delegationGate=deny` — the assertion is observable on this composition."
+    },
+    {
+      "id": "F9 (SKILL.md half)",
+      "change": "skills/dsh-qa/SKILL.md's session-start-team row no longer claims the ACTIVE-boulder side is 'MEASURED RED (2026-10-06)'. It now records the current measured GREEN and cites evidence/dsh-qa/session-start-team/2026-10-20T08-13-55.470Z/: ACTIVE -> signals ['D'], stagedPlans 1, ok true; COMPLETED -> signals [], stagedPlans 0, ok true. The 2026-10-06 red is retained as HISTORY (the boulder.dir double-nesting, now normalized by resolveBoulderDir) with the instruction to cite a current failing run if it reddens again.",
+      "files": ["skills/dsh-qa/SKILL.md"],
+      "evidenceCited": "evidence/dsh-qa/session-start-team/2026-10-20T08-13-55.470Z/",
+      "verificationOfCitation": "Read the result.json: steps.boulderActiveSide[0] = {ok:true, signals:['D'], stagedPlans:1}; steps.boulderCompletedSide[0] = {ok:true, signals:[], stagedPlans:0}. The cited directory exists."
+    }
+  ],
+  "filesChanged": [
+    "skills/dsh-qa/scripts/delegation-gate.ts",
+    "skills/dsh-qa/SKILL.md",
+    "packages/mpd-roles-plugin/README.md",
+    "packages/mpd-roles-plugin/README.zh-CN.md",
+    "agent-references/glossary.md",
+    "agent-references/verification-flow.md"
+  ],
+  "diffstat": "6 files changed, 46 insertions(+), 23 deletions(-)",
+  "sha256": {
+    "skills/dsh-qa/scripts/delegation-gate.ts": "05012114d0f549ff0d5cc52ac907b92eebe8927e6a17f0b2d7fe14fe2d251c6d",
+    "skills/dsh-qa/SKILL.md": "71df346a7f9524450ec9eaec739720af28710afed44a3a654fec6991948baa95",
+    "packages/mpd-roles-plugin/README.md": "cc5bf293020364a4de4cf0db6cd0f8de6b7c4abf6f84f9c742aa894963cab817",
+    "packages/mpd-roles-plugin/README.zh-CN.md": "1ff06a7216de13e167a33479171d98156eecc2b20b68da6b83b74a8ff19b1122",
+    "agent-references/glossary.md": "62e6099eaad25ab2487ea870a1ae3a3193269c61946c2c089e17872b85f7ed23",
+    "agent-references/verification-flow.md": "ee8a80529129067c4e9626623e13ace51a7f82724d3a898631d2f792c2ea245d"
+  },
+  "commands": [
+    {
+      "command": "node skills/dsh-qa/scripts/delegation-gate.ts --self-test",
+      "exit": 0,
+      "observed": "[delegation-gate self-test] ok: decision table 3 tools x 3 modes x 4 session classes; refusal steering; knob spellings; seeded-fork classification; mpd-preset scope; restrictToolsTolerant parse/prune/retry cap"
+    },
+    {
+      "command": "node skills/dsh-qa/scripts/captain-scope.ts --self-test",
+      "exit": 0,
+      "observed": "[captain-scope self-test] ok: row composed once; the two guards installed and the write guard still withdrawn; session gate defaults mechanical; the persona states the restored rule; case registered"
+    },
+    {
+      "command": "bun run verify:docs",
+      "exit": 0,
+      "bunOnPath": "1.4.2 (the gate script is `node scripts/verify-docs-parity.ts`; no build was run)",
+      "observed": "[verify-docs-parity] links=438 checked=406 resolved=406 dead=0 exemptProvenance=0 absentSite=0 ignoredExternal=26 ignoredAnchorOnly=6 files=117; root=... pairs=48 failed=0 violations=0 exempt=24 derived=3 links=438 dead=0 — PASS"
+    },
+    {
+      "command": "bun run typecheck",
+      "exit": 0,
+      "observed": "tsgo --noEmit: clean (no diagnostics)",
+      "note": "EXTRA check, not among the three required commands: tsconfig includes `skills/*/scripts/**/*.ts`, so it covers the edited delegation-gate.ts (it type-checks the whole tree, including the other writers' in-flight files)."
+    }
+  ],
+  "evidencePath": "evidence/audit/v0.15.0-fixes/writer-qa-docs/20261020T100233Z/",
+  "residualRisks": [
+    "The F8 boot-line assertion is a LIVE-lane row: this lane did not run the delegation-gate live case (it needs `dsh` on PATH, credentials and real model calls). The script parses and all offline arms pass, and a historical live run (2026-10-10T07-38-46.822Z) observed `delegationGate=allow` on the same composition, but the current live row has NOT been executed in this lane.",
+    "skills/** was edited (delegation-gate.ts + SKILL.md), which invalidates the `skills` treeSha in VENDOR_LOCK.json. AGENTS.md §9 requires exactly ONE re-pin per wave in the same commit as the change; the captain must run `node scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step`. No vendor gate was run here (it would redden mid-wave by design).",
+    "The working tree carries other writers' uncommitted changes (source, tests, dist, session-start-team.ts). This lane changed exactly the six files listed above; the diffstat/status were captured for exactly those six.",
+    "Cross-package gates (`bun test packages`, `verify:comments`, `verify:rows`, `verify:manifest`, `verify-no-host-override`, `verify-dist-fresh`, `bun run test:qa`) were NOT run here: the contract assigns the final sweep to the captain after all writers. `bun run typecheck` WAS run as an extra check and exited 0.",
+    "No git write command was run; the branch remains dev at 5a62e936."
+  ]
+}

@@ -268,8 +268,11 @@ link is deliberately NOT the test — the user's real working session is a SEEDE
 `isSeeded: true` + depth `0`, no subagent origin), and the old "any parent session is a child" rule
 classified THAT session as a member, which silently disarmed the captain rules on the one session they
 gate. An absent header still fails CLOSED (`headerless`, never the captain). `sessionQualifies` — the
-session-start gate's preset-scoped question — is untouched and must never be substituted here (T-92). TWO
-guards consume `sessionRank` again: the delegation gate (`rank` decides captain vs member), and
+session-start gate's preset-scoped question — is NOT a second captain predicate: it COMPOSES `sessionRank`
+for its captain/child half and keeps its own PRESET check, and it must never be substituted for
+`sessionRank` here (T-92: a session's class comes from the header's delegation facts, never from its
+preset name). TWO guards consume `sessionRank` again: the delegation gate (`rank` decides captain vs
+member), and
 `sessionIsMpdCaptain` (top-level AND the `mpd` preset) scopes the investigation guard — a top-level
 session of ANOTHER preset keeps its own reconnaissance.
 

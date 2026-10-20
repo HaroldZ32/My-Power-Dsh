@@ -147,9 +147,16 @@ are refused while the documentation band — `.mpd/**`, `docs/**`, `evidence/**`
 and the root instruction/overview files — stays readable; knob `captain.investigation`, `"deny"` default
 | `"allow"`) and a **delegation gate** (a call to `subagent`, `subagent_fork` or `workflow` is refused
 with a sentence naming `mpd_role_spawn`, the workmate library, Agent Teams and `send_message`; knob
-`delegation.gate`, `"deny"` default | `"captain"` | `"allow"`). Both are scoped by `sessionIsMpdCaptain`
-for the investigation guard and the preset-free `sessionRank` for the gate, so another preset's top-level
-session keeps its own habits.
+`delegation.gate`, `"deny"` default | `"captain"` | `"allow"`).
+
+**The delegation gate's preset exemption is TOP-LEVEL ONLY.** A top-level session of another preset (the
+deployment default `cordis` included) keeps its own spawn habits, while MEMBER AND CHILD sessions stay
+covered WHATEVER preset they run — their delegation belongs to the captain's path, and a child's preset
+must not re-open the official spawn tools. The investigation guard is scoped by `sessionIsMpdCaptain`
+(top-level AND the `mpd` preset), so it never applies to another preset's session at any rank. The gate
+is keyed on the preset-free `sessionRank`, and its mode picks coverage inside that scope: `deny` (the
+default) covers the `mpd` preset's top-level session plus every member/child/headerless session,
+`captain` limits the rule to the top-level session, and `allow` releases it entirely.
 
 WHY THEY CAME BACK. The 2026-10-17 ruling withdrew both together with the persona restoration ("one
 agent, its whole tool pack, steered by the persona prompt"). The measured consequence: the captain did

@@ -1,0 +1,47 @@
+{
+  "task": "F4 (MEDIUM, DOCS ONLY) — cordis-dev skill detection block must not route around the captain's source-read guard",
+  "contract": ".mpd/plans/audit-v0.15.0-fixes.md",
+  "base": "dev @ 5a62e936",
+  "writer": "Junior Engineer (Writer C)",
+  "scope": ["skills/cordis-dev/SKILL.md"],
+  "changed": [
+    {
+      "file": "skills/cordis-dev/SKILL.md",
+      "section": "## Load on detection — do this WITHOUT the user asking",
+      "what": "Replaced the old one-liner block (which ran `node -e require(...)` over package.json and `grep -lE 'export (const|function) apply' packages/*/src/index.ts`) with a presence-only block using `ls` and `test -f`/`test -d`.",
+      "why": "The captain persona forbids reading sources/config; detection must not instruct a captain to read package.json or grep packages/*/src/index.ts through bash."
+    },
+    {
+      "file": "skills/cordis-dev/SKILL.md",
+      "section": "## Load on detection — do this WITHOUT the user asking",
+      "what": "Added prose: a bare package.json / packages/*/src/index.ts is only a CANDIDATE and counts as a match; content confirmation is OPTIONAL, only for sessions whose role permits reading sources, and only when a captain explicitly delegates it.",
+      "why": "Contract requires any content check to be optional and captain-delegated, while detection itself stays presence-only."
+    }
+  ],
+  "signalsCovered": [
+    "cordis.patch.yml / presets/*.patch.yml (ls)",
+    "package.json / packages/*/package.json candidate for a manifest declaring dsh.bundle or dsh.client (test -f)",
+    "dsh-plugin.json / dsh-distribution.json (ls)",
+    "packages/*/src/index.ts candidate for an entry exporting apply (ls)",
+    "extensions/*/mpd-ext.json (ls)",
+    "mpd.jsonc / .mpd/mpd.jsonc and .mpd/plans (ls, test -d)"
+  ],
+  "preserved": [
+    "signal table unchanged",
+    "'If none of these match' guidance unchanged",
+    "routing table (## 0) and 'Read next' section untouched",
+    "frontmatter description untouched",
+    "skill remains English and concise"
+  ],
+  "commands": [
+    {
+      "cmd": "bun run verify:docs",
+      "exit": 0,
+      "observed": "[verify-docs-parity] root=... pairs=48 failed=0 violations=0 exempt=24 derived=3 links=438 dead=0 — PASS"
+    }
+  ],
+  "limits": [
+    "The skill is agent-facing and sits outside the verify:docs discovery band; the gate confirms no doc-pair breakage, not the skill's prose semantics.",
+    "No git write command was run (captain is the single git writer)."
+  ]
+}

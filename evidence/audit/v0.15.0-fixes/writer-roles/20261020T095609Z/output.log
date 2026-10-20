@@ -1,0 +1,432 @@
+UTC: 2026-10-20T09:56:21Z
+REPO: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh
+HEAD: 5a62e93674348f9ad0e6eb5d5b27502d6342175b
+BRANCH: dev
+
+===== $ .toolchain/node_modules/.bin/bun test ./packages/mpd-roles-plugin/test/ =====
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-roles-plugin/test/boulder-dir.test.ts:
+(pass) resolveBoulderDir — the ONE reading of the knob > every state-directory spelling means the SESSION WORKSPACE, never a root to join onto [0.07ms]
+(pass) resolveBoulderDir — the ONE reading of the knob > a real root override is kept, trimmed and otherwise verbatim [0.02ms]
+(pass) readBoulderGate reads the CONTRACT path > with boulder.dir UNSET the ledger is read at <ws>/.mpd/boulder.json [0.32ms]
+(pass) readBoulderGate reads the CONTRACT path > a `.mpd` override — the retired default — STILL reads the contract path, not a doubled one [0.08ms]
+(pass) readBoulderGate reads the CONTRACT path > an explicitly SET boulder.dir still overrides for the gate [0.04ms]
+
+packages/mpd-roles-plugin/test/ask-user-guard.test.ts:
+(pass) D5 — allow: every shape the rule set does NOT deny stays dispatchable > a fully-formed call with options is allowed [0.08ms]
+(pass) D5 — allow: every shape the rule set does NOT deny stays dispatchable > an `options` entry may carry extra fields — only `label` is the rule's subject [0.01ms]
+(pass) D5 — allow: every shape the rule set does NOT deny stays dispatchable > a multi-question call is allowed when EVERY item carries a non-empty options list [0.01ms]
+(pass) D5 — allow: every shape the rule set does NOT deny stays dispatchable > the validator never mutates the call it was handed [0.05ms]
+(pass) D5 — deny: a question item with MISSING `options` (the 2026-10-11 occurrence) > a question with no `options` key at all is refused, naming the offending item [0.02ms]
+(pass) D5 — deny: a question item with MISSING `options` (the 2026-10-11 occurrence) > `options: undefined` is refused exactly like a missing key [0.03ms]
+(pass) D5 — deny: a question item with MISSING `options` (the 2026-10-11 occurrence) > a mixed call is refused at the FIRST item that lacks `options`, and the sentence names it [0.01ms]
+(pass) D5 — deny: a question item with MISSING `options` (the 2026-10-11 occurrence) > the refusal tells the model to re-issue with an options array on every item [0.02ms]
+(pass) D5 — deny: `arguments` is not an object > a non-object call is refused, naming the received shape [0.04ms]
+(pass) D5 — deny: `questions` missing, not an array, or empty > a missing `questions` field is refused [0.02ms]
+(pass) D5 — deny: `questions` missing, not an array, or empty > a non-array `questions` value is refused and names the shape [0.02ms]
+(pass) D5 — deny: `questions` missing, not an array, or empty > an EMPTY `questions` array is refused — a call with no question renders nothing [0.01ms]
+(pass) D5 — deny: a question item lacks a non-empty string `id` or `question` > a non-object item is refused, naming its position [0.01ms]
+(pass) D5 — deny: a question item lacks a non-empty string `id` or `question` > a missing, empty or non-string `id` is refused [0.05ms]
+(pass) D5 — deny: a question item lacks a non-empty string `id` or `question` > a missing or empty `question` is refused — THE measured defect (a card with no text) [0.02ms]
+(pass) D5 — deny: a question item lacks a non-empty string `id` or `question` > the denial names the OFFENDING item, so a 4-item call points at item 4 [0.02ms]
+(pass) D5 — deny: `options` present and malformed > `options` that is not an array is refused [0.02ms]
+(pass) D5 — deny: `options` present and malformed > an EMPTY `options` array is refused — a choice card with no option is the broken card [0.06ms]
+(pass) D5 — deny: `options` present and malformed > an option without a non-empty string `label` is refused, naming its position [0.07ms]
+(pass) D5 — the name test: only `ask_user_question` is this guard's subject > a non-target tool name passes untouched, whatever its arguments [0.02ms]
+(pass) D5 — the name test: only `ask_user_question` is this guard's subject > the target name is decided by the validator, and the constant is the host's own spelling [0.01ms]
+(pass) D5 — the name test: only `ask_user_question` is this guard's subject > a headless or unreadable execution is a pass-through — a guard never takes a tool call down [0.13ms]
+(pass) D5 — the install reaches the seam and reports its outcome > with the seam present the row installs exactly one guard, and it decides both ways [0.12ms]
+(pass) D5 — the install reaches the seam and reports its outcome > a composition without the guard seam reports the absence instead of installing nothing silently [0.04ms]
+(pass) D5 — the install reaches the seam and reports its outcome > a throwing guard seam is reported as an install failure, not an abort [0.05ms]
+
+packages/mpd-roles-plugin/test/team-plane.test.ts:
+(pass) read-only discipline: the guard denies exactly the roster's read-only members > the guard's deny list IS the one-shot path's list (one constant, eight names) [0.33ms]
+(pass) read-only discipline: the guard denies exactly the roster's read-only members > a read-only teammate is denied; a worker, the Lead and a non-team agent pass [0.08ms]
+(pass) read-only discipline: the guard denies exactly the roster's read-only members > every read-only NAME spelling is protected, including a team-unique numeric suffix [0.09ms]
+(pass) read-only discipline: the guard denies exactly the roster's read-only members > the guard is NON-THROWING: a hostile membership resolver is a pass-through [0.11ms]
+(pass) read-only discipline: the guard denies exactly the roster's read-only members > a missing tools.guard seam degrades with a warning instead of aborting the roster [0.04ms]
+(pass) the frozen complexity predicate (Option A: explicit flag OR >= 1 matched signal) > signal A: team: prefix and !team, with the marker consumed [0.36ms]
+(pass) the frozen complexity predicate (Option A: explicit flag OR >= 1 matched signal) > P8: a QUOTED !team is neither an activation nor stripped (only the earliest boundary one is) [0.02ms]
+(pass) the frozen complexity predicate (Option A: explicit flag OR >= 1 matched signal) > signal B: >= 4 DISTINCT deliverable verbs [0.04ms]
+(pass) the frozen complexity predicate (Option A: explicit flag OR >= 1 matched signal) > signal C: ONE signal, fired by its own 2-of-3 majority (never counted as C1/C2/C3) [0.02ms]
+(pass) the frozen complexity predicate (Option A: explicit flag OR >= 1 matched signal) > signal D reads an ACTIVE boulder work, never a plan FILE [0.02ms]
+(pass) the frozen complexity predicate (Option A: explicit flag OR >= 1 matched signal) > no signal: nothing fires, and the trigger needs at least one [0.02ms]
+(pass) the frozen complexity predicate (Option A: explicit flag OR >= 1 matched signal) > the advisory text carries the frozen marker, names the signals and stages nothing [0.04ms]
+(pass) the frozen complexity predicate (Option A: explicit flag OR >= 1 matched signal) > the MECHANICAL text names the RETURNED plan id, the shell bound and the inertness rule [0.11ms]
+(pass) the frozen complexity predicate (Option A: explicit flag OR >= 1 matched signal) > resolveGateMode: the vocabulary, the tolerated booleans, and the MECHANICAL default [0.03ms]
+(pass) the frozen complexity predicate (Option A: explicit flag OR >= 1 matched signal) > gatePlanShell fills ONLY what the gate can know, and says so in the description [0.09ms]
+(pass) readBoulderGate: signal D's only input, repaired to an ACTIVE work > an ACTIVE work reads active and carries its plan path [0.08ms]
+(pass) readBoulderGate: signal D's only input, repaired to an ACTIVE work > a COMPLETED work is silent — this workspace's own ledger must read inactive [0.12ms]
+(pass) readBoulderGate: signal D's only input, repaired to an ACTIVE work > the fallback shape mirrors the vendor, and boulder.dir overrides the workspace [0.12ms]
+(pass) readBoulderGate: signal D's only input, repaired to an ACTIVE work > this WORKSPACE's real ledger reads inactive (the measured D repair) [0.35ms]
+(pass) session-start gate: scope, one-shot settlement and the advisory injection > the MECHANICAL route stages a SHELL through the tool and injects the notice naming its id [1.43ms]
+(pass) session-start gate: scope, one-shot settlement and the advisory injection > the notice names the id the staging call RETURNED — and a call that returns NO id is a LOUD failure [0.48ms]
+(pass) session-start gate: scope, one-shot settlement and the advisory injection > the ladder degrades to the ADVISORY notice: tool absent, and a failing call [0.41ms]
+(pass) session-start gate: scope, one-shot settlement and the advisory injection > IDEMPOTENCE: a plan the probe REPORTS is never re-staged (a second stage would ARCHIVE it) [0.22ms]
+(pass) session-start gate: scope, one-shot settlement and the advisory injection > ID-KEY AGREEMENT: the probe asks the SAME session key the staging tool writes under [0.75ms]
+(pass) session-start gate: scope, one-shot settlement and the advisory injection > an UNANSWERABLE probe still stages — and says LOUDLY that a plan may have been ARCHIVED [0.57ms]
+(pass) session-start gate: scope, one-shot settlement and the advisory injection > stagedPlanProbe: an UNREADABLE service THROWS instead of answering 'nothing staged' [0.11ms]
+(pass) session-start gate: scope, one-shot settlement and the advisory injection > team.gate=advisory stages nothing; team.gate=off does nothing at all [0.43ms]
+(pass) session-start gate: scope, one-shot settlement and the advisory injection > signal D: an ACTIVE boulder work fires the gate through the injected reader, honours boulder.dir [0.72ms]
+(pass) session-start gate: scope, one-shot settlement and the advisory injection > scope: the composed captain/child classification plus the preset check [0.16ms]
+(pass) session-start gate: scope, one-shot settlement and the advisory injection > P4: only a FIRING turn registers the agent — an empty or non-firing turn stays unjudged-and-rejudged [0.36ms]
+(pass) session-start gate: scope, one-shot settlement and the advisory injection > a contained failure leaves the step untouched (a broken gate never breaks a turn) [0.49ms]
+(pass) session-start gate: scope, one-shot settlement and the advisory injection > an explicit team: flag is CONSUMED from the goal text and counts as signal A [0.36ms]
+(pass) session-start gate: scope, one-shot settlement and the advisory injection > consumeFlagFromMessage rewrites only text blocks and leaves a clean message identical [0.06ms]
+(pass) roster section: agent-scoped teammate templates for the mpd Lead > the text names every member, its read-only flag, and how to instantiate one [0.23ms]
+(pass) roster section: agent-scoped teammate templates for the mpd Lead > registered ONCE per qualifying live agent, and only for mpd top-level sessions [0.36ms]
+(pass) roster section: agent-scoped teammate templates for the mpd Lead > a later session is covered through agent/created, and disposal releases the section [0.07ms]
+(pass) roster section: agent-scoped teammate templates for the mpd Lead > a scope that refuses the section degrades with ONE warning, never a boot failure [0.08ms]
+(pass) gate registration through the REAL adapter (the mounted-but-silent regression) > a payload WITHOUT `agent` still injects: the registration site is the authority [0.90ms]
+(pass) goal selection: the injected runtime-context turn must not shadow the user turn > the gate judges the GOAL even when the decision carries an injected context turn [0.30ms]
+(pass) goal selection: the injected runtime-context turn must not shadow the user turn > latestUserMessage is source-aware, and still answers for a host that tags nothing [0.04ms]
+(pass) the mpd preset states the MECHANICAL gate contract (prompt/implementation drift guard) > the preset names team.gate, the marker and the staging tool, and drops the drifted sentences [0.12ms]
+(pass) signal E: a CJK-scale instruction fires where the English-centric signals cannot > the user's verbatim Chinese instruction triggers, and E is the signal that carries it [0.22ms]
+(pass) signal E: a CJK-scale instruction fires where the English-centric signals cannot > BOTH conjuncts are load-bearing: scale without verbs and verbs without scale stay silent [0.04ms]
+(pass) signal E: a CJK-scale instruction fires where the English-centric signals cannot > the frozen Chinese NEGATIVE controls stay silent (the language fix is not a blanket 'fires on CJK') [0.03ms]
+(pass) signal E: a CJK-scale instruction fires where the English-centric signals cannot > the full-width clause separators enumerate a one-line Chinese plan [0.02ms]
+(pass) C8: an inbound agent message is never judged as the human turn > a `team-message` and a relayed `agent-message` are excluded; the SAME text as a human turn is not [0.07ms]
+(pass) C8: an inbound agent message is never judged as the human turn > an UNTAGGED message stays eligible (the host that tags nothing keeps its gate) [0.02ms]
+(pass) C7: a session already LEADING a team is never sent to stage one > this session's OWN record with members reads leading; another session's does not [0.19ms]
+(pass) C7: a session already LEADING a team is never sent to stage one > a 0-member record is a STAGED SHELL, not a team, so the gate may still stage [0.04ms]
+(pass) C7: a session already LEADING a team is never sent to stage one > every failure path reads NOT leading, and never throws [0.12ms]
+(pass) C7: a session already LEADING a team is never sent to stage one > WIRING: a session already leading a team stages NOTHING and injects NO notice [0.34ms]
+(pass) C7: a session already LEADING a team is never sent to stage one > the DEFAULT reader walks a real `.mpd/team/teams` directory (the live boot's path) [0.52ms]
+
+packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+(pass) F1 vocabulary (standing pin) > the two identity literals are the agreed vocabulary [0.08ms]
+(pass) F1 fallback arm: no mounted mpdDsh > warns exactly ONCE per apply and names the private adapter identity [1.46ms]
+(pass) F1 fallback arm: no mounted mpdDsh > the fallback identity is assertable on the mpdRoles service field [0.26ms]
+(pass) F1 fallback arm: no mounted mpdDsh > a warning reaches the row log even when the ctx exposes no logger [0.37ms]
+(pass) F1 healthy arm: a mounted mpdDsh > emits NO warning and reports the mounted identity on both surfaces [0.45ms]
+(pass) F1 healthy arm: a mounted mpdDsh > the three tools are registered THROUGH the mounted adapter, not beside it [0.18ms]
+(pass) F1 shipped artifact > the committed dist is the byte-identical product of a canonical build (T-62) [67.85ms]
+(pass) F1 shipped artifact > the built dist carries the adapter-identity fix [0.33ms]
+(pass) row config fallbacks (2026-10-20 restore) > captain.investigation and delegation.gate spelled in the ROW config reach the resolved mode [0.95ms]
+(pass) row config fallbacks (2026-10-20 restore) > with no row spelling both restored guards keep their deny default [0.46ms]
+
+packages/mpd-roles-plugin/test/verify-guard.test.ts:
+(pass) F1 — sessionIsTopLevel: the workspace's top-level session, never a preset > a header with no parent session and delegation depth 0 (or absent) IS top-level, whatever preset [0.07ms]
+(pass) F1 — sessionIsTopLevel: the workspace's top-level session, never a preset > a SUBAGENT ORIGIN or a recorded depth of 1+ is a CHILD — a parent link alone is NOT (the seeded-fork repair) [0.03ms]
+(pass) F1 — sessionIsTopLevel: the workspace's top-level session, never a preset > NO header is refused (fail-closed), and the class is reported [0.03ms]
+(pass) F1 — sessionIsTopLevel: the workspace's top-level session, never a preset > F3 — the session-start gate keeps its preset scope: it is NOT the captain test [0.02ms]
+(pass) F1 — sessionIsTopLevel: the workspace's top-level session, never a preset > F6 — sessionIsMpdCaptain: the `mpd` preset's top-level session, the ONE the behavioural rules gate [0.06ms]
+(pass) F2/F5 — the guard's two rules read that ONE predicate > F5-1: a TOP-LEVEL `cordis` session may run a git write AND keeps its own code writes [0.45ms]
+(pass) F2/F5 — the guard's two rules read that ONE predicate > F5-2: a TOP-LEVEL `mpd` session is allowed the same git write — no regression for that deployment [0.03ms]
+(pass) F2/F5 — the guard's two rules read that ONE predicate > F5-3: a CHILD session is STILL DENIED the git write under either preset — the rule survives [0.21ms]
+(pass) F2/F5 — the guard's two rules read that ONE predicate > F5-4: a session with NO header is refused the git write (fail-closed) [0.04ms]
+(pass) F2/F5 — the guard's two rules read that ONE predicate > F5-5: the denial states the class decided and names the route — with NO claim about top-levelness [0.05ms]
+
+packages/mpd-roles-plugin/test/team-models-routing.test.ts:
+(pass) the slot membership is the ONE declaration the settings front doors already share [0.08ms]
+(pass) the config read resolves a configured slot over its schema defaults [0.15ms]
+(pass) a saved slot route BECOMES the roster's route for the member it drives [0.97ms]
+(pass) mpd_role_spawn runs the member on the configured provider, model AND effort [1.32ms]
+(pass) THE ADAPTATION: a slot on a model that declares NO efforts drops the keyword instead of failing [0.48ms]
+(pass) CONTROL: the same slot on a model that DECLARES that effort keeps it [0.41ms]
+(pass) NEGATIVE CONTROL: with NO config service mounted the static roster chain stands [0.55ms]
+
+packages/mpd-roles-plugin/test/roles.test.ts:
+(pass) roster: 11 roles, unique ids, non-empty chains and fields [0.07ms]
+(pass) persona assets exist for every role and contain real instructions [0.29ms]
+(pass) normalizeRoleKey: canonical, chain keys and legacy mpd- ids [0.03ms]
+(pass) normalizeRoleKey: team-style normal names resolve to the same role as their id [0.09ms]
+(pass) a one-shot spawn is labelled with the team-style normal name, and an id is refused [0.75ms]
+(pass) no surface advertises an upstream alias: names plus what a role does [3.41ms]
+(pass) tool input takes a NAME only; the mpdRoles service still resolves internal keys [1.52ms]
+(pass) the roster tool payloads carry no id field (an alias is not part of a result) [0.65ms]
+(pass) mpdRoles service: list 11, get resolves aliases, unknown is null [0.70ms]
+(pass) mpd_role_persona returns the extracted persona text under the role's NAME [0.29ms]
+(pass) mpd_role_spawn: read-only roles get write-deny toolFilter, workers none [0.58ms]
+(pass) mpd_roles_list returns the full roster summary [0.31ms]
+(pass) read-only deny list covers every write-capable tool (no shell/AST/LSP write bypass) [0.35ms]
+(pass) read-only deny list carries no dead tool name (the defect that broke every read-only spawn) [0.02ms]
+(pass) the same dead names must not reappear in the roles source or its built dist [1.97ms]
+(pass) the built dist renders no role as `Name (upstream-alias)` [0.86ms]
+(pass) roles and workmate read-only deny lists are exactly equal (drift guard) [0.15ms]
+(pass) extension roles: a real mpd-ext registration joins the roster with its owning extension [5.62ms]
+(pass) extension roles: resolved PER CALL — later registration and disabled extensions take effect next call [1.10ms]
+(pass) extension roles: a name colliding with a base role or another extension is refused loudly, never fatally [1.77ms]
+(pass) extension roles: usable as a workmate BASE template (real mpd_workmate_init) [1.62ms]
+(pass) extension roles: an absent or broken mpdExtensions service leaves the base roster answering [1.12ms]
+(pass) extension roles do NOT enter the agent-teams `mpd` profile member list (documented limit) [0.77ms]
+(pass) the built dist carries the extension-role wiring (a src-only change would ship dead) [0.20ms]
+(pass) extension roles: a PROJECT-plane extension's role is refused (the contract rejects it) [1.16ms]
+
+packages/mpd-roles-plugin/test/delegation-gate.test.ts:
+(pass) D1 — the decision table: mode × session class × tool > the deny default refuses all three spawn tools for the captain, a child AND a headerless session [0.08ms]
+(pass) D1 — the decision table: mode × session class × tool > the captain mode refuses the top-level session ONLY — the seeded fork included [0.03ms]
+(pass) D1 — the decision table: mode × session class × tool > the allow mode releases every session, and any other tool is somebody else's rule [0.05ms]
+(pass) D1 — the decision table: mode × session class × tool > the whole 3×3 table, cell by cell: every mode covers exactly one set of ranks [0.08ms]
+(pass) D1 — the decision table: mode × session class × tool > an unexpected tool name is a pass-through, never a throw [0.01ms]
+(pass) D1 — the refusal sentence steers to the sanctioned paths > the refusal names the three sanctioned routes, the knob and its two modes [0.03ms]
+(pass) D1 — resolveDelegationGateMode is fail-closed > only the two exact spellings are honoured [0.02ms]
+(pass) D1 — the install reaches the seam and reports its mode > with the seam present the guard denies a covered tool and follows the knob [0.12ms]
+(pass) D1 — the install reaches the seam and reports its mode > the gate is preset-scoped: the mpd captain and every child are refused, another preset's top level is not [0.06ms]
+(pass) D1 — the install reaches the seam and reports its mode > a headerless or throwing call is a pass-through — a guard never takes a tool call down [0.05ms]
+(pass) D1 — the install reaches the seam and reports its mode > a composition without the guard seam reports the absence instead of installing nothing silently [0.04ms]
+(pass) D1 — the install reaches the seam and reports its mode > a throwing guard seam is reported as an install failure, not an abort [0.05ms]
+
+packages/mpd-roles-plugin/test/captain-investigation.test.ts:
+(pass) L1 — the decision function's behaviour table, path by path > a SOURCE path is refused, and the sentence teaches the route [0.11ms]
+(pass) L1 — the decision function's behaviour table, path by path > the documentation band is allowed: .mpd/**, docs/**, evidence/**, agent-references/** [0.04ms]
+(pass) L1 — the decision function's behaviour table, path by path > the root instruction/overview files are allowed, and only at the root [0.09ms]
+(pass) L1 — the decision function's behaviour table, path by path > a call with NO usable path is refused (fail-closed), for every reconnaissance tool [0.03ms]
+(pass) L1 — the decision function's behaviour table, path by path > grep/glob are judged by the SAME rule on their path argument [0.03ms]
+(pass) L1 — the decision function's behaviour table, path by path > a path outside the workspace, or one spelled out of a band, is refused [0.04ms]
+(pass) L1 — the decision function's behaviour table, path by path > a NON-top-level session keeps reconnaissance — members, spawns and verifier seats [0.02ms]
+(pass) L1 — the decision function's behaviour table, path by path > a TOP-LEVEL session of ANOTHER preset keeps its reconnaissance — the rule is scoped to `mpd` [0.03ms]
+(pass) L1 — the decision function's behaviour table, path by path > the rule touches NO tool but the three reconnaissance tools [0.02ms]
+(pass) L1/L3 — the mode resolver and the mode's own arms > only the exact spelling `allow` opts out; everything else is the fail-closed default [0.02ms]
+(pass) L1/L3 — the mode resolver and the mode's own arms > mode `allow` restores today's freedom exactly, for the captain on a source path
+(pass) L1/L3 — the mode resolver and the mode's own arms > the band test is total for a primitive path argument [0.01ms]
+(pass) L2 — the INSTALL is the decision the arms above proved, with a reported mode > the guard reaches the seam and the reported mode follows the knob [0.12ms]
+(pass) L2 — the INSTALL is the decision the arms above proved, with a reported mode > a throwing exec is PASSED THROUGH, never denied or thrown, and reported once [0.09ms]
+(pass) L2 — the INSTALL is the decision the arms above proved, with a reported mode > a composition without the guard seam reports the absence instead of installing nothing silently [0.03ms]
+
+ 161 pass
+ 0 fail
+ 1306 expect() calls
+Ran 161 tests across 9 files. [158.00ms]
+----- exit: 0
+===== $ node skills/dsh-qa/scripts/session-start-team.ts --self-test =====
+[session-start-team self-test] corpus (verdicts from the SHIPPED predicate):
+  ok simple        han=  0 trigger=false signals=[]       "Reply with exactly: hello-ok"
+  ok simple        han=  0 trigger=false signals=[]       "What does the git-master skill do? Answer in one sentence."
+  ok simple        han=  0 trigger=false signals=[]       "Rename the variable `foo` to `bar` in src/util.ts and run it"
+  ok soft-complex  han=  0 trigger=true  signals=["C"]    "Align the bundle with upstream: audit the orchestration surf"
+  ok soft-complex  han=  0 trigger=true  signals=["C"]    "1. Read the patch file\n2. Audit the gates\n3. Implement the c"
+  ok explicit      han=  0 trigger=true  signals=["A"]    "team: fix the flaky test"
+  ok cjk-positive  han=159 trigger=true  signals=["E"]    "脱去该项目对于Oh-my-openagent与dsh-agent-teams项目的源码的所有依赖及检查，文档里只写参考鸣"
+  ok cjk-negative  han=  9 trigger=false signals=[]       "这个函数是干什么的？"
+  ok cjk-negative  han= 17 trigger=false signals=[]       "读一下 AGENTS.md 的第一节，然后告诉我它说了什么"
+  ok cjk-negative  han= 52 trigger=false signals=[]       "请解释一下这个项目里 preset 和 profile 到底有什么区别，为什么会这样设计，以及这样做对我们有什么好处和坏"
+  calibration: positives han=[159] negatives han=[9,17,52] bound=60 verbs>=2
+[session-start-team self-test] ok: the shipped PURE gate module conforms to the MECHANICAL contract (3 simple / 2 soft-complex / 1 explicit / 1 cjk-positive / 3 cjk-negative / 1 boulder-probe prompt, both ways; signal D through the INJECTED reader AND the real filesystem, the mode's MECHANICAL fail-safe default (undefined/bogus/0 -> mechanical; advisory/off/false explicit opt-outs), the shell builder's honest bounds, both notices with the retired vocabulary scoped per text, and the session scope); FOUR negative controls reddened (always-trigger 12, always-silent 14, advisory-only-mechanical 11, CJK-blind 1 problem(s)); C7 (a session already leading a team) and C8 (an inbound `team-message`/`agent-message` is never the human turn) each driven BOTH ways; the LIVE verdict and the REAL `.mpd/team` stage scan were each driven offline BOTH ways (a matching shell passes; a spawned record, a plan-id mismatch, a leaked notice and a non-shell staged plan all redden); bundle mounts mpd-roles with the retired rows gone; preset carries the session-start convention (frozen marker + team.gate + the MECHANICAL default wording)
+----- exit: 0
+===== $ bun run typecheck =====
+$ tsgo --noEmit
+----- exit: 0
+===== $ .toolchain/node_modules/.bin/bun build packages/mpd-roles-plugin/src/index.ts --target node --format esm --outfile packages/mpd-roles-plugin/dist/index.js =====
+Bundled 13 modules in 8ms
+
+  index.js  145.0 KB  (entry point)
+
+----- exit: 0
+===== post-build re-run: unit tests =====
+===== $ .toolchain/node_modules/.bin/bun test ./packages/mpd-roles-plugin/test/ =====
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-roles-plugin/test/boulder-dir.test.ts:
+(pass) resolveBoulderDir — the ONE reading of the knob > every state-directory spelling means the SESSION WORKSPACE, never a root to join onto [0.08ms]
+(pass) resolveBoulderDir — the ONE reading of the knob > a real root override is kept, trimmed and otherwise verbatim [0.03ms]
+(pass) readBoulderGate reads the CONTRACT path > with boulder.dir UNSET the ledger is read at <ws>/.mpd/boulder.json [0.34ms]
+(pass) readBoulderGate reads the CONTRACT path > a `.mpd` override — the retired default — STILL reads the contract path, not a doubled one [0.08ms]
+(pass) readBoulderGate reads the CONTRACT path > an explicitly SET boulder.dir still overrides for the gate [0.05ms]
+
+packages/mpd-roles-plugin/test/ask-user-guard.test.ts:
+(pass) D5 — allow: every shape the rule set does NOT deny stays dispatchable > a fully-formed call with options is allowed [0.11ms]
+(pass) D5 — allow: every shape the rule set does NOT deny stays dispatchable > an `options` entry may carry extra fields — only `label` is the rule's subject [0.02ms]
+(pass) D5 — allow: every shape the rule set does NOT deny stays dispatchable > a multi-question call is allowed when EVERY item carries a non-empty options list [0.01ms]
+(pass) D5 — allow: every shape the rule set does NOT deny stays dispatchable > the validator never mutates the call it was handed [0.06ms]
+(pass) D5 — deny: a question item with MISSING `options` (the 2026-10-11 occurrence) > a question with no `options` key at all is refused, naming the offending item [0.02ms]
+(pass) D5 — deny: a question item with MISSING `options` (the 2026-10-11 occurrence) > `options: undefined` is refused exactly like a missing key [0.03ms]
+(pass) D5 — deny: a question item with MISSING `options` (the 2026-10-11 occurrence) > a mixed call is refused at the FIRST item that lacks `options`, and the sentence names it [0.01ms]
+(pass) D5 — deny: a question item with MISSING `options` (the 2026-10-11 occurrence) > the refusal tells the model to re-issue with an options array on every item [0.01ms]
+(pass) D5 — deny: `arguments` is not an object > a non-object call is refused, naming the received shape [0.06ms]
+(pass) D5 — deny: `questions` missing, not an array, or empty > a missing `questions` field is refused [0.03ms]
+(pass) D5 — deny: `questions` missing, not an array, or empty > a non-array `questions` value is refused and names the shape [0.02ms]
+(pass) D5 — deny: `questions` missing, not an array, or empty > an EMPTY `questions` array is refused — a call with no question renders nothing [0.02ms]
+(pass) D5 — deny: a question item lacks a non-empty string `id` or `question` > a non-object item is refused, naming its position [0.02ms]
+(pass) D5 — deny: a question item lacks a non-empty string `id` or `question` > a missing, empty or non-string `id` is refused [0.06ms]
+(pass) D5 — deny: a question item lacks a non-empty string `id` or `question` > a missing or empty `question` is refused — THE measured defect (a card with no text) [0.02ms]
+(pass) D5 — deny: a question item lacks a non-empty string `id` or `question` > the denial names the OFFENDING item, so a 4-item call points at item 4 [0.02ms]
+(pass) D5 — deny: `options` present and malformed > `options` that is not an array is refused [0.02ms]
+(pass) D5 — deny: `options` present and malformed > an EMPTY `options` array is refused — a choice card with no option is the broken card [0.04ms]
+(pass) D5 — deny: `options` present and malformed > an option without a non-empty string `label` is refused, naming its position [0.12ms]
+(pass) D5 — the name test: only `ask_user_question` is this guard's subject > a non-target tool name passes untouched, whatever its arguments [0.04ms]
+(pass) D5 — the name test: only `ask_user_question` is this guard's subject > the target name is decided by the validator, and the constant is the host's own spelling [0.04ms]
+(pass) D5 — the name test: only `ask_user_question` is this guard's subject > a headless or unreadable execution is a pass-through — a guard never takes a tool call down [0.13ms]
+(pass) D5 — the install reaches the seam and reports its outcome > with the seam present the row installs exactly one guard, and it decides both ways [0.14ms]
+(pass) D5 — the install reaches the seam and reports its outcome > a composition without the guard seam reports the absence instead of installing nothing silently [0.04ms]
+(pass) D5 — the install reaches the seam and reports its outcome > a throwing guard seam is reported as an install failure, not an abort [0.06ms]
+
+packages/mpd-roles-plugin/test/team-plane.test.ts:
+(pass) read-only discipline: the guard denies exactly the roster's read-only members > the guard's deny list IS the one-shot path's list (one constant, eight names) [0.36ms]
+(pass) read-only discipline: the guard denies exactly the roster's read-only members > a read-only teammate is denied; a worker, the Lead and a non-team agent pass [0.08ms]
+(pass) read-only discipline: the guard denies exactly the roster's read-only members > every read-only NAME spelling is protected, including a team-unique numeric suffix [0.11ms]
+(pass) read-only discipline: the guard denies exactly the roster's read-only members > the guard is NON-THROWING: a hostile membership resolver is a pass-through [0.11ms]
+(pass) read-only discipline: the guard denies exactly the roster's read-only members > a missing tools.guard seam degrades with a warning instead of aborting the roster [0.05ms]
+(pass) the frozen complexity predicate (Option A: explicit flag OR >= 1 matched signal) > signal A: team: prefix and !team, with the marker consumed [0.43ms]
+(pass) the frozen complexity predicate (Option A: explicit flag OR >= 1 matched signal) > P8: a QUOTED !team is neither an activation nor stripped (only the earliest boundary one is) [0.02ms]
+(pass) the frozen complexity predicate (Option A: explicit flag OR >= 1 matched signal) > signal B: >= 4 DISTINCT deliverable verbs [0.04ms]
+(pass) the frozen complexity predicate (Option A: explicit flag OR >= 1 matched signal) > signal C: ONE signal, fired by its own 2-of-3 majority (never counted as C1/C2/C3) [0.03ms]
+(pass) the frozen complexity predicate (Option A: explicit flag OR >= 1 matched signal) > signal D reads an ACTIVE boulder work, never a plan FILE [0.02ms]
+(pass) the frozen complexity predicate (Option A: explicit flag OR >= 1 matched signal) > no signal: nothing fires, and the trigger needs at least one [0.02ms]
+(pass) the frozen complexity predicate (Option A: explicit flag OR >= 1 matched signal) > the advisory text carries the frozen marker, names the signals and stages nothing [0.05ms]
+(pass) the frozen complexity predicate (Option A: explicit flag OR >= 1 matched signal) > the MECHANICAL text names the RETURNED plan id, the shell bound and the inertness rule [0.11ms]
+(pass) the frozen complexity predicate (Option A: explicit flag OR >= 1 matched signal) > resolveGateMode: the vocabulary, the tolerated booleans, and the MECHANICAL default [0.03ms]
+(pass) the frozen complexity predicate (Option A: explicit flag OR >= 1 matched signal) > gatePlanShell fills ONLY what the gate can know, and says so in the description [0.10ms]
+(pass) readBoulderGate: signal D's only input, repaired to an ACTIVE work > an ACTIVE work reads active and carries its plan path [0.11ms]
+(pass) readBoulderGate: signal D's only input, repaired to an ACTIVE work > a COMPLETED work is silent — this workspace's own ledger must read inactive [0.14ms]
+(pass) readBoulderGate: signal D's only input, repaired to an ACTIVE work > the fallback shape mirrors the vendor, and boulder.dir overrides the workspace [0.15ms]
+(pass) readBoulderGate: signal D's only input, repaired to an ACTIVE work > this WORKSPACE's real ledger reads inactive (the measured D repair) [0.48ms]
+(pass) session-start gate: scope, one-shot settlement and the advisory injection > the MECHANICAL route stages a SHELL through the tool and injects the notice naming its id [1.60ms]
+(pass) session-start gate: scope, one-shot settlement and the advisory injection > the notice names the id the staging call RETURNED — and a call that returns NO id is a LOUD failure [0.46ms]
+(pass) session-start gate: scope, one-shot settlement and the advisory injection > the ladder degrades to the ADVISORY notice: tool absent, and a failing call [0.43ms]
+(pass) session-start gate: scope, one-shot settlement and the advisory injection > IDEMPOTENCE: a plan the probe REPORTS is never re-staged (a second stage would ARCHIVE it) [0.26ms]
+(pass) session-start gate: scope, one-shot settlement and the advisory injection > ID-KEY AGREEMENT: the probe asks the SAME session key the staging tool writes under [0.71ms]
+(pass) session-start gate: scope, one-shot settlement and the advisory injection > an UNANSWERABLE probe still stages — and says LOUDLY that a plan may have been ARCHIVED [0.50ms]
+(pass) session-start gate: scope, one-shot settlement and the advisory injection > stagedPlanProbe: an UNREADABLE service THROWS instead of answering 'nothing staged' [0.15ms]
+(pass) session-start gate: scope, one-shot settlement and the advisory injection > team.gate=advisory stages nothing; team.gate=off does nothing at all [0.44ms]
+(pass) session-start gate: scope, one-shot settlement and the advisory injection > signal D: an ACTIVE boulder work fires the gate through the injected reader, honours boulder.dir [0.97ms]
+(pass) session-start gate: scope, one-shot settlement and the advisory injection > scope: the composed captain/child classification plus the preset check [0.28ms]
+(pass) session-start gate: scope, one-shot settlement and the advisory injection > P4: only a FIRING turn registers the agent — an empty or non-firing turn stays unjudged-and-rejudged [0.31ms]
+(pass) session-start gate: scope, one-shot settlement and the advisory injection > a contained failure leaves the step untouched (a broken gate never breaks a turn) [0.23ms]
+(pass) session-start gate: scope, one-shot settlement and the advisory injection > an explicit team: flag is CONSUMED from the goal text and counts as signal A [0.22ms]
+(pass) session-start gate: scope, one-shot settlement and the advisory injection > consumeFlagFromMessage rewrites only text blocks and leaves a clean message identical [0.03ms]
+(pass) roster section: agent-scoped teammate templates for the mpd Lead > the text names every member, its read-only flag, and how to instantiate one [0.15ms]
+(pass) roster section: agent-scoped teammate templates for the mpd Lead > registered ONCE per qualifying live agent, and only for mpd top-level sessions [0.20ms]
+(pass) roster section: agent-scoped teammate templates for the mpd Lead > a later session is covered through agent/created, and disposal releases the section [0.08ms]
+(pass) roster section: agent-scoped teammate templates for the mpd Lead > a scope that refuses the section degrades with ONE warning, never a boot failure [0.10ms]
+(pass) gate registration through the REAL adapter (the mounted-but-silent regression) > a payload WITHOUT `agent` still injects: the registration site is the authority [1.16ms]
+(pass) goal selection: the injected runtime-context turn must not shadow the user turn > the gate judges the GOAL even when the decision carries an injected context turn [0.38ms]
+(pass) goal selection: the injected runtime-context turn must not shadow the user turn > latestUserMessage is source-aware, and still answers for a host that tags nothing [0.06ms]
+(pass) the mpd preset states the MECHANICAL gate contract (prompt/implementation drift guard) > the preset names team.gate, the marker and the staging tool, and drops the drifted sentences [0.15ms]
+(pass) signal E: a CJK-scale instruction fires where the English-centric signals cannot > the user's verbatim Chinese instruction triggers, and E is the signal that carries it [0.27ms]
+(pass) signal E: a CJK-scale instruction fires where the English-centric signals cannot > BOTH conjuncts are load-bearing: scale without verbs and verbs without scale stay silent [0.06ms]
+(pass) signal E: a CJK-scale instruction fires where the English-centric signals cannot > the frozen Chinese NEGATIVE controls stay silent (the language fix is not a blanket 'fires on CJK') [0.04ms]
+(pass) signal E: a CJK-scale instruction fires where the English-centric signals cannot > the full-width clause separators enumerate a one-line Chinese plan [0.03ms]
+(pass) C8: an inbound agent message is never judged as the human turn > a `team-message` and a relayed `agent-message` are excluded; the SAME text as a human turn is not [0.19ms]
+(pass) C8: an inbound agent message is never judged as the human turn > an UNTAGGED message stays eligible (the host that tags nothing keeps its gate) [0.03ms]
+(pass) C7: a session already LEADING a team is never sent to stage one > this session's OWN record with members reads leading; another session's does not [0.27ms]
+(pass) C7: a session already LEADING a team is never sent to stage one > a 0-member record is a STAGED SHELL, not a team, so the gate may still stage [0.05ms]
+(pass) C7: a session already LEADING a team is never sent to stage one > every failure path reads NOT leading, and never throws [0.16ms]
+(pass) C7: a session already LEADING a team is never sent to stage one > WIRING: a session already leading a team stages NOTHING and injects NO notice [0.45ms]
+(pass) C7: a session already LEADING a team is never sent to stage one > the DEFAULT reader walks a real `.mpd/team/teams` directory (the live boot's path) [0.64ms]
+
+packages/mpd-roles-plugin/test/adapter-identity.test.ts:
+(pass) F1 vocabulary (standing pin) > the two identity literals are the agreed vocabulary [0.11ms]
+(pass) F1 fallback arm: no mounted mpdDsh > warns exactly ONCE per apply and names the private adapter identity [2.22ms]
+(pass) F1 fallback arm: no mounted mpdDsh > the fallback identity is assertable on the mpdRoles service field [0.30ms]
+(pass) F1 fallback arm: no mounted mpdDsh > a warning reaches the row log even when the ctx exposes no logger [0.42ms]
+(pass) F1 healthy arm: a mounted mpdDsh > emits NO warning and reports the mounted identity on both surfaces [0.54ms]
+(pass) F1 healthy arm: a mounted mpdDsh > the three tools are registered THROUGH the mounted adapter, not beside it [0.20ms]
+(pass) F1 shipped artifact > the committed dist is the byte-identical product of a canonical build (T-62) [74.06ms]
+(pass) F1 shipped artifact > the built dist carries the adapter-identity fix [0.63ms]
+(pass) row config fallbacks (2026-10-20 restore) > captain.investigation and delegation.gate spelled in the ROW config reach the resolved mode [0.86ms]
+(pass) row config fallbacks (2026-10-20 restore) > with no row spelling both restored guards keep their deny default [0.32ms]
+
+packages/mpd-roles-plugin/test/verify-guard.test.ts:
+(pass) F1 — sessionIsTopLevel: the workspace's top-level session, never a preset > a header with no parent session and delegation depth 0 (or absent) IS top-level, whatever preset [0.06ms]
+(pass) F1 — sessionIsTopLevel: the workspace's top-level session, never a preset > a SUBAGENT ORIGIN or a recorded depth of 1+ is a CHILD — a parent link alone is NOT (the seeded-fork repair) [0.03ms]
+(pass) F1 — sessionIsTopLevel: the workspace's top-level session, never a preset > NO header is refused (fail-closed), and the class is reported [0.03ms]
+(pass) F1 — sessionIsTopLevel: the workspace's top-level session, never a preset > F3 — the session-start gate keeps its preset scope: it is NOT the captain test [0.02ms]
+(pass) F1 — sessionIsTopLevel: the workspace's top-level session, never a preset > F6 — sessionIsMpdCaptain: the `mpd` preset's top-level session, the ONE the behavioural rules gate [0.06ms]
+(pass) F2/F5 — the guard's two rules read that ONE predicate > F5-1: a TOP-LEVEL `cordis` session may run a git write AND keeps its own code writes [0.45ms]
+(pass) F2/F5 — the guard's two rules read that ONE predicate > F5-2: a TOP-LEVEL `mpd` session is allowed the same git write — no regression for that deployment [0.03ms]
+(pass) F2/F5 — the guard's two rules read that ONE predicate > F5-3: a CHILD session is STILL DENIED the git write under either preset — the rule survives [0.21ms]
+(pass) F2/F5 — the guard's two rules read that ONE predicate > F5-4: a session with NO header is refused the git write (fail-closed) [0.04ms]
+(pass) F2/F5 — the guard's two rules read that ONE predicate > F5-5: the denial states the class decided and names the route — with NO claim about top-levelness [0.05ms]
+
+packages/mpd-roles-plugin/test/team-models-routing.test.ts:
+(pass) the slot membership is the ONE declaration the settings front doors already share [0.08ms]
+(pass) the config read resolves a configured slot over its schema defaults [0.16ms]
+(pass) a saved slot route BECOMES the roster's route for the member it drives [0.98ms]
+(pass) mpd_role_spawn runs the member on the configured provider, model AND effort [1.26ms]
+(pass) THE ADAPTATION: a slot on a model that declares NO efforts drops the keyword instead of failing [0.45ms]
+(pass) CONTROL: the same slot on a model that DECLARES that effort keeps it [0.38ms]
+(pass) NEGATIVE CONTROL: with NO config service mounted the static roster chain stands [0.54ms]
+
+packages/mpd-roles-plugin/test/roles.test.ts:
+(pass) roster: 11 roles, unique ids, non-empty chains and fields [0.07ms]
+(pass) persona assets exist for every role and contain real instructions [0.33ms]
+(pass) normalizeRoleKey: canonical, chain keys and legacy mpd- ids [0.04ms]
+(pass) normalizeRoleKey: team-style normal names resolve to the same role as their id [0.14ms]
+(pass) a one-shot spawn is labelled with the team-style normal name, and an id is refused [0.74ms]
+(pass) no surface advertises an upstream alias: names plus what a role does [1.98ms]
+(pass) tool input takes a NAME only; the mpdRoles service still resolves internal keys [1.44ms]
+(pass) the roster tool payloads carry no id field (an alias is not part of a result) [0.64ms]
+(pass) mpdRoles service: list 11, get resolves aliases, unknown is null [0.67ms]
+(pass) mpd_role_persona returns the extracted persona text under the role's NAME [0.28ms]
+(pass) mpd_role_spawn: read-only roles get write-deny toolFilter, workers none [0.61ms]
+(pass) mpd_roles_list returns the full roster summary [0.30ms]
+(pass) read-only deny list covers every write-capable tool (no shell/AST/LSP write bypass) [0.34ms]
+(pass) read-only deny list carries no dead tool name (the defect that broke every read-only spawn) [0.02ms]
+(pass) the same dead names must not reappear in the roles source or its built dist [2.04ms]
+(pass) the built dist renders no role as `Name (upstream-alias)` [0.99ms]
+(pass) roles and workmate read-only deny lists are exactly equal (drift guard) [0.16ms]
+(pass) extension roles: a real mpd-ext registration joins the roster with its owning extension [5.59ms]
+(pass) extension roles: resolved PER CALL — later registration and disabled extensions take effect next call [1.11ms]
+(pass) extension roles: a name colliding with a base role or another extension is refused loudly, never fatally [1.57ms]
+(pass) extension roles: usable as a workmate BASE template (real mpd_workmate_init) [1.83ms]
+(pass) extension roles: an absent or broken mpdExtensions service leaves the base roster answering [1.12ms]
+(pass) extension roles do NOT enter the agent-teams `mpd` profile member list (documented limit) [0.74ms]
+(pass) the built dist carries the extension-role wiring (a src-only change would ship dead) [0.20ms]
+(pass) extension roles: a PROJECT-plane extension's role is refused (the contract rejects it) [1.20ms]
+
+packages/mpd-roles-plugin/test/delegation-gate.test.ts:
+(pass) D1 — the decision table: mode × session class × tool > the deny default refuses all three spawn tools for the captain, a child AND a headerless session [0.08ms]
+(pass) D1 — the decision table: mode × session class × tool > the captain mode refuses the top-level session ONLY — the seeded fork included [0.03ms]
+(pass) D1 — the decision table: mode × session class × tool > the allow mode releases every session, and any other tool is somebody else's rule [0.05ms]
+(pass) D1 — the decision table: mode × session class × tool > the whole 3×3 table, cell by cell: every mode covers exactly one set of ranks [0.08ms]
+(pass) D1 — the decision table: mode × session class × tool > an unexpected tool name is a pass-through, never a throw [0.01ms]
+(pass) D1 — the refusal sentence steers to the sanctioned paths > the refusal names the three sanctioned routes, the knob and its two modes [0.03ms]
+(pass) D1 — resolveDelegationGateMode is fail-closed > only the two exact spellings are honoured [0.02ms]
+(pass) D1 — the install reaches the seam and reports its mode > with the seam present the guard denies a covered tool and follows the knob [0.12ms]
+(pass) D1 — the install reaches the seam and reports its mode > the gate is preset-scoped: the mpd captain and every child are refused, another preset's top level is not [0.06ms]
+(pass) D1 — the install reaches the seam and reports its mode > a headerless or throwing call is a pass-through — a guard never takes a tool call down [0.05ms]
+(pass) D1 — the install reaches the seam and reports its mode > a composition without the guard seam reports the absence instead of installing nothing silently [0.04ms]
+(pass) D1 — the install reaches the seam and reports its mode > a throwing guard seam is reported as an install failure, not an abort [0.05ms]
+
+packages/mpd-roles-plugin/test/captain-investigation.test.ts:
+(pass) L1 — the decision function's behaviour table, path by path > a SOURCE path is refused, and the sentence teaches the route [0.11ms]
+(pass) L1 — the decision function's behaviour table, path by path > the documentation band is allowed: .mpd/**, docs/**, evidence/**, agent-references/** [0.04ms]
+(pass) L1 — the decision function's behaviour table, path by path > the root instruction/overview files are allowed, and only at the root [0.09ms]
+(pass) L1 — the decision function's behaviour table, path by path > a call with NO usable path is refused (fail-closed), for every reconnaissance tool [0.03ms]
+(pass) L1 — the decision function's behaviour table, path by path > grep/glob are judged by the SAME rule on their path argument [0.04ms]
+(pass) L1 — the decision function's behaviour table, path by path > a path outside the workspace, or one spelled out of a band, is refused [0.03ms]
+(pass) L1 — the decision function's behaviour table, path by path > a NON-top-level session keeps reconnaissance — members, spawns and verifier seats [0.02ms]
+(pass) L1 — the decision function's behaviour table, path by path > a TOP-LEVEL session of ANOTHER preset keeps its reconnaissance — the rule is scoped to `mpd` [0.03ms]
+(pass) L1 — the decision function's behaviour table, path by path > the rule touches NO tool but the three reconnaissance tools [0.01ms]
+(pass) L1/L3 — the mode resolver and the mode's own arms > only the exact spelling `allow` opts out; everything else is the fail-closed default [0.02ms]
+(pass) L1/L3 — the mode resolver and the mode's own arms > mode `allow` restores today's freedom exactly, for the captain on a source path
+(pass) L1/L3 — the mode resolver and the mode's own arms > the band test is total for a primitive path argument [0.01ms]
+(pass) L2 — the INSTALL is the decision the arms above proved, with a reported mode > the guard reaches the seam and the reported mode follows the knob [0.12ms]
+(pass) L2 — the INSTALL is the decision the arms above proved, with a reported mode > a throwing exec is PASSED THROUGH, never denied or thrown, and reported once [0.09ms]
+(pass) L2 — the INSTALL is the decision the arms above proved, with a reported mode > a composition without the guard seam reports the absence instead of installing nothing silently [0.03ms]
+
+ 161 pass
+ 0 fail
+ 1306 expect() calls
+Ran 161 tests across 9 files. [169.00ms]
+----- exit: 0
+===== $ node scripts/verify-comment-coverage.ts =====
+# verify-comment-coverage
+
+scanned 426 TypeScript file(s) of 426 in the source set; inspected 37535 declaration(s); skipped 17370 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+----- exit: 0
+===== changed files =====
+ M packages/mpd-roles-plugin/dist/index.js
+ M packages/mpd-roles-plugin/src/captain-investigation.ts
+ M packages/mpd-roles-plugin/src/complexity-gate.ts
+ M packages/mpd-roles-plugin/src/delegation-gate.ts
+ M packages/mpd-roles-plugin/src/index.ts
+ M packages/mpd-roles-plugin/src/session-gate.ts
+ M packages/mpd-roles-plugin/test/captain-investigation.test.ts
+ M packages/mpd-roles-plugin/test/team-plane.test.ts
+ M skills/dsh-qa/scripts/session-start-team.ts
+===== diffstat =====
+ packages/mpd-roles-plugin/dist/index.js            | 49 +++++++-----
+ .../mpd-roles-plugin/src/captain-investigation.ts  | 38 +++++++--
+ packages/mpd-roles-plugin/src/complexity-gate.ts   | 89 ++++++++++++++--------
+ packages/mpd-roles-plugin/src/delegation-gate.ts   | 11 ++-
+ packages/mpd-roles-plugin/src/index.ts             | 19 +++--
+ packages/mpd-roles-plugin/src/session-gate.ts      | 10 ++-
+ .../test/captain-investigation.test.ts             | 32 ++++++++
+ packages/mpd-roles-plugin/test/team-plane.test.ts  | 33 ++++++--
+ skills/dsh-qa/scripts/session-start-team.ts        | 36 +++++----
+ 9 files changed, 224 insertions(+), 93 deletions(-)

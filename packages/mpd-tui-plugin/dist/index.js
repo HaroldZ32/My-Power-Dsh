@@ -8195,7 +8195,8 @@ function attentionBadge(workflow) {
   if (workflow === undefined)
     return null;
   const fromTasks = dagBadge(workflow.tasks);
-  const holds = Array.isArray(workflow.holds) ? workflow.holds.length : 0;
+  const teamId = workflow.team?.id;
+  const holds = teamId !== undefined && Array.isArray(workflow.holds) ? workflow.holds.filter((held) => held === teamId).length : 0;
   if (fromTasks === null)
     return holds > 0 ? { level: "warning", unread: holds } : null;
   if (holds > 0 && fromTasks.level === "info")
@@ -8204,6 +8205,7 @@ function attentionBadge(workflow) {
 }
 function armPanelAttention(deps) {
   let last = null;
+  let settled = false;
   let opened = false;
   let wasLive = false;
   let stopped = false;
@@ -8243,10 +8245,12 @@ function armPanelAttention(deps) {
       return;
     const workflow = read();
     const next = attentionBadge(workflow);
-    if (!sameBadge(last, next)) {
+    if (!settled || !sameBadge(last, next)) {
       const result = publish(next);
-      if (result === true || result === undefined && badgeMissing)
+      if (result === true || result === undefined && badgeMissing) {
         last = next;
+        settled = true;
+      }
     }
     const live = workflow !== undefined && workflow.tasks.length > 0;
     const appeared = live && !wasLive;

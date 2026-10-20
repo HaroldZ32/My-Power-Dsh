@@ -22,8 +22,10 @@
 // "invent a team" defect this bundle forbids. So it stages a NAMED, SIGNALLED, APPROVABLE SHELL of
 // 0 members and 0 tasks, and the notice says so outright. NEVER claim a team was created.
 //
-// Scope: the mpd preset's own top-level sessions only. A child session (subagent, teammate,
-// workflow worker) never gets its own gate, and neither does another preset's session.
+// Scope: TOP-LEVEL sessions (`sessionRank === "captain"`, which includes a seeded fork the harness
+// records with a parent link but delegation depth 0) whose preset is `mpd` OR absent/null. A child
+// session (a recorded `origin: "subagent"` or a `delegationDepth >= 1`) never gets its own gate, and a
+// session that NAMES another preset is not gated.
 import type { DshAdapter, DshAgentPreStep, DshPreStepDecision } from "../../mpd-dsh-adapter-plugin/src/index"
 import { rowLogLine } from "../../mpd-dsh-adapter-plugin/src/index"
 import {
@@ -171,8 +173,8 @@ export interface SessionGateInstall {
    * It is a snapshot and can be WRONG for the live behaviour in ONE case, named so a reader is not
    * misled: the loader applies sibling rows CONCURRENTLY and cordis answers `undefined` for a
    * provider whose fiber is not ACTIVE yet (the same transient miss T-50 documents), so a
-   * `mpdConfig` that has not activated by this row's apply reads as ABSENT and the default (`off`,
-   * since the 2026-10-17 rollback) is reported. The AUTHORITATIVE mode is the one the FIRING line
+   * `mpdConfig` that has not activated by this row's apply reads as ABSENT and the default
+   * (`mechanical`, restored 2026-10-20) is reported. The AUTHORITATIVE mode is the one the FIRING line
    * prints, because every fire re-resolves it per call.
    */
   mode: GateMode

@@ -380,6 +380,17 @@ describe("the frozen complexity predicate (Option A: explicit flag OR >= 1 match
     expect(skipped).toContain(ALREADY_STAGED_PLAN_PHRASE)
     expect(skipped).not.toContain(STAGED_PLAN_PHRASE + " — plan-xyz")
     expect(skipped).toContain("plan-xyz")
+    // THE ALREADY-STAGED BRANCH WITH NO READABLE ID (F6): no staging call ran on this fire, so the notice
+    // must say the returned shell's id could not be read — never that "the staging call returned no id" —
+    // and must forbid a re-stage, which would archive the in-progress plan.
+    const skippedNoId = mechanicalNoticeText({ planId: "", signals: ["B"], explicit: false, alreadyStaged: true })
+    expect(skippedNoId).toContain(ALREADY_STAGED_PLAN_PHRASE)
+    expect(skippedNoId).toContain(MISSING_PLAN_ID_PHRASE)
+    expect(skippedNoId).toContain("returned shell's id could not be read")
+    expect(skippedNoId).not.toContain("the staging call returned no id")
+    expect(skippedNoId).toContain("do NOT stage again")
+    expect(skippedNoId).not.toContain("Extend it with")
+    expect(skippedNoId).not.toContain('{action:"approve"}')
   })
 
   test("resolveGateMode: the vocabulary, the tolerated booleans, and the MECHANICAL default", () => {
@@ -849,17 +860,25 @@ describe("session-start gate: scope, one-shot settlement and the advisory inject
     expect(await completed.steps[0].listener({ messages: [claimed], turn: 1, step: 1 }, { kind: "enter", messages: [claimed] })).toBeUndefined()
   })
 
-  test("scope: child sessions and other presets never get the gate; mpd and preset-less sessions do", async () => {
+  test("scope: the composed captain/child classification plus the preset check", async () => {
+    // THE COMPOSED PREDICATE (F1): the gate's child half IS `sessionRank` (`origin: "subagent"` or
+    // `delegationDepth >= 1`), so a SEEDED FORK — the user's real top-level session, carrying a parent
+    // LINK plus `isSeeded: true` and depth 0 — qualifies. A parent link ALONE is never childhood.
     expect(sessionQualifies(mpdAgent())).toBe(true)
     expect(sessionQualifies({ id: "x", session: { header: { cwd: WORKSPACE } } })).toBe(true)
-    expect(sessionQualifies(mpdAgent("lead-1", { parentSession: "lead-0" }))).toBe(false)
+    // `agentPreset: null` counts as absent, exactly like a missing key.
+    expect(sessionQualifies({ id: "x", session: { header: { cwd: WORKSPACE, agentPreset: null } } })).toBe(true)
+    expect(sessionQualifies(mpdAgent("fork-1", { parentSession: "root-0", isSeeded: true, delegationDepth: 0 }))).toBe(true)
+    // An origin-only child (NO parent link) is still a child, and a depth-1 member is a child.
+    expect(sessionQualifies(mpdAgent("sub-1", { origin: "subagent" }))).toBe(false)
+    expect(sessionQualifies(mpdAgent("member-1", { delegationDepth: 1 }))).toBe(false)
     expect(sessionQualifies({ id: "x", session: { header: { cwd: WORKSPACE, agentPreset: "standard" } } })).toBe(false)
     expect(sessionQualifies({ id: "x" })).toBe(false)
 
     /** The qualifying top-level mpd session. */
     const lead = mpdAgent()
-    /** A child session, which must never receive a listener. */
-    const child = mpdAgent("child-1", { parentSession: "lead-1" })
+    /** A child session (a recorded subagent origin), which must never receive a listener. */
+    const child = mpdAgent("child-1", { origin: "subagent" })
     /** A session of another preset, which must never receive a listener. */
     const other = { id: "other-1", session: { header: { cwd: WORKSPACE, agentPreset: "standard" } } }
     /** A double over all three agents, so registration alone is the filter. */
@@ -872,7 +891,7 @@ describe("session-start gate: scope, one-shot settlement and the advisory inject
     // A later qualifying agent is picked up through agent/created; a child is not.
     const late = mpdAgent("late-1")
     harness.emit("agent/created", { agent: late })
-    harness.emit("agent/created", { agent: mpdAgent("child-2", { parentSession: "lead-1" }) })
+    harness.emit("agent/created", { agent: mpdAgent("child-2", { delegationDepth: 1 }) })
     expect(harness.steps.map((step) => step.agent)).toEqual([lead, late])
     // Disposal releases the registration (never a leak across agent lifetimes).
     harness.emit("agent/disposed", { agent: late })
@@ -971,8 +990,8 @@ describe("roster section: agent-scoped teammate templates for the mpd Lead", () 
   test("registered ONCE per qualifying live agent, and only for mpd top-level sessions", () => {
     /** The qualifying top-level mpd session. */
     const lead = mpdAgent()
-    /** A child session, whose scope must not receive the section. */
-    const child = mpdAgent("child-1", { parentSession: "lead-1" })
+    /** A child session (a recorded subagent origin), whose scope must not receive the section. */
+    const child = mpdAgent("child-1", { origin: "subagent" })
     /** A session of another preset, likewise out of scope. */
     const other = { id: "other-1", session: { header: { cwd: WORKSPACE, agentPreset: "standard" } } }
     /** A double over all three agents. */

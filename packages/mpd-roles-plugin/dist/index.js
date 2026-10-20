@@ -399,9 +399,11 @@ function advisoryNoticeText(signals, explicit) {
 }
 function mechanicalNoticeText(input) {
   const matched = input.signals.length === 0 ? "complexity signals" : "complexity signals " + input.signals.join("/");
-  const id = input.planId === "" ? MISSING_PLAN_ID_PHRASE + " — the shell was staged but CANNOT be approved, so report this failure" : input.planId;
-  const nextStep = input.planId === "" ? `
-- Do NOT attempt to extend or approve it: the staging call returned no id, so report this failure and re-stage before continuing.` : "\n- Extend it with `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[0] + "\"}` (each member's prompt comes from `mpd_role_persona`)" + " and `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[1] + '"}`, then approve it with `' + STAGING_TOOL_NAME + ' {action:"approve"}` — approval is what spawns the members and posts the tasks.';
+  const missingId = input.planId === "";
+  const id = !missingId ? input.planId : MISSING_PLAN_ID_PHRASE + (input.alreadyStaged ? " — the returned shell's id could not be read, so it CANNOT be approved; report this failure" : " — the shell was staged but CANNOT be approved, so report this failure");
+  const nextStep = !missingId ? "\n- Extend it with `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[0] + "\"}` (each member's prompt comes from `mpd_role_persona`)" + " and `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[1] + '"}`, then approve it with `' + STAGING_TOOL_NAME + ' {action:"approve"}` — approval is what spawns the members and posts the tasks.' : input.alreadyStaged ? `
+- Do NOT attempt to extend or approve it, and do NOT stage again: the returned shell's id could not be read, so report this failure instead.` : `
+- Do NOT attempt to extend or approve it: the staging call returned no id, so report this failure and re-stage before continuing.`;
   return STARTUP_NOTICE_MARKER + ": this session shows " + matched + ", and " + (input.alreadyStaged ? ALREADY_STAGED_PLAN_PHRASE : STAGED_PLAN_PHRASE) + " — " + id + " (0 members, 0 tasks: a SHELL, not a team)." + (input.alreadyStaged ? `
 - The gate did NOT stage again: a second staging would ARCHIVE your in-progress plan.` : "") + (input.explicit ? "\n- The explicit `team:` / `!team` marker was CONSUMED from the goal text: the request is why this is your session to lead." : "") + nextStep + `
 - ` + INERT_PLAN_PHRASE + " — never tell the user a team was created." + `
@@ -449,13 +451,13 @@ function consumeFlagFromMessage(message, source) {
   return changed ? { ...message, content } : message;
 }
 function sessionQualifies(agent, presets = DEFAULT_GATE_PRESETS) {
+  if (sessionRank(agent) !== "captain")
+    return false;
   const header = agent?.session?.header;
   if (header === undefined || header === null)
     return false;
-  if (header.parentSession !== undefined)
-    return false;
   const preset = header.agentPreset;
-  if (preset === undefined)
+  if (preset === undefined || preset === null)
     return true;
   return presets.includes(String(preset));
 }
@@ -542,19 +544,30 @@ function installCaptainInvestigationGuard(dsh, options) {
       options.warn("the harness exposes no tools.guard seam — the captain investigation guard is NOT installed " + "(the top-level session keeps read/grep/glob on source paths; the rule lives in the instruction text only)");
       return { installed: false, mode, reason: "no-guard-seam" };
     }
-    const dispose = dsh.guardTool((exec) => captainInvestigationDecision({
-      toolName: String(exec?.name ?? ""),
-      args: exec?.arguments,
-      workspaceRoot: (() => {
-        try {
-          return options.workspaceRootOf(exec);
-        } catch {
-          return "";
+    let reportedInternalError = false;
+    const dispose = dsh.guardTool((exec) => {
+      try {
+        return captainInvestigationDecision({
+          toolName: String(exec?.name ?? ""),
+          args: exec?.arguments,
+          workspaceRoot: (() => {
+            try {
+              return options.workspaceRootOf(exec);
+            } catch {
+              return "";
+            }
+          })(),
+          topLevel: sessionIsMpdCaptain(exec?.agent),
+          mode: resolveInvestigationMode(options.configValue(INVESTIGATION_CONFIG_KEY))
+        });
+      } catch (error) {
+        if (!reportedInternalError) {
+          reportedInternalError = true;
+          options.warn("the captain investigation guard hit an internal error and passed the call through (" + (error instanceof Error ? error.message : String(error)) + ")");
         }
-      })(),
-      topLevel: sessionIsMpdCaptain(exec?.agent),
-      mode: resolveInvestigationMode(options.configValue(INVESTIGATION_CONFIG_KEY))
-    }));
+        return;
+      }
+    });
     return { installed: true, mode, ...typeof dispose === "function" ? { dispose } : {} };
   } catch (error) {
     options.warn("installing the captain investigation guard failed (" + (error instanceof Error ? error.message : String(error)) + ")");

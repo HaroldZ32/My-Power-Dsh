@@ -533,18 +533,31 @@ export function mechanicalNoticeText(input: {
 }): string {
   /** The fired signals as a readable list, or the generic wording when none is named. */
   const matched = input.signals.length === 0 ? "complexity signals" : "complexity signals " + input.signals.join("/")
-  /** The id sentence: the returned id, or a LOUD failure because a staged shell without an id cannot be approved. */
-  const id = input.planId === "" ? MISSING_PLAN_ID_PHRASE + " — the shell was staged but CANNOT be approved, so report this failure" : input.planId
+  /** Whether the plan id could not be read (the staging call reported none, or an already-staged plan carried none). */
+  const missingId = input.planId === ""
   /**
-   * The next-step sentence. ONLY a shell whose id the call returned can be extended and approved; with
-   * no id the notice must NOT instruct the captain to do either (the contradiction this branch removes)
-   * and must send them to report the failure instead.
+   * The id sentence: the returned id, or a LOUD failure because a staged shell without an id cannot be
+   * approved. The ALREADY-STAGED branch must not claim a staging call ran — the gate skipped it — so it
+   * says the returned shell's id could not be read instead.
    */
-  const nextStep = input.planId === ""
-    ? "\n- Do NOT attempt to extend or approve it: the staging call returned no id, so report this failure and re-stage before continuing."
-    : "\n- Extend it with `" + STAGING_TOOL_NAME + " {action:\"" + PLAN_EXTEND_ACTIONS[0] + "\"}` (each member's prompt comes from `mpd_role_persona`)"
+  const id = !missingId
+    ? input.planId
+    : MISSING_PLAN_ID_PHRASE + (input.alreadyStaged
+      ? " — the returned shell's id could not be read, so it CANNOT be approved; report this failure"
+      : " — the shell was staged but CANNOT be approved, so report this failure")
+  /**
+   * The next-step sentence. ONLY a shell whose id was read can be extended and approved; with no id the
+   * notice must NOT instruct the captain to do either (the contradiction this branch removes) and must
+   * send them to report the failure instead. The ALREADY-STAGED branch also forbids a re-stage: the gate
+   * skipped staging precisely because a second staging would ARCHIVE the in-progress plan.
+   */
+  const nextStep = !missingId
+    ? "\n- Extend it with `" + STAGING_TOOL_NAME + " {action:\"" + PLAN_EXTEND_ACTIONS[0] + "\"}` (each member's prompt comes from `mpd_role_persona`)"
       + " and `" + STAGING_TOOL_NAME + " {action:\"" + PLAN_EXTEND_ACTIONS[1] + "\"}`, then approve it with `"
       + STAGING_TOOL_NAME + " {action:\"approve\"}` — approval is what spawns the members and posts the tasks."
+    : input.alreadyStaged
+      ? "\n- Do NOT attempt to extend or approve it, and do NOT stage again: the returned shell's id could not be read, so report this failure instead."
+      : "\n- Do NOT attempt to extend or approve it: the staging call returned no id, so report this failure and re-stage before continuing."
   return STARTUP_NOTICE_MARKER + ": this session shows " + matched + ", and "
     + (input.alreadyStaged ? ALREADY_STAGED_PLAN_PHRASE : STAGED_PLAN_PHRASE) + " — " + id
     + " (0 members, 0 tasks: a SHELL, not a team)."
@@ -642,8 +655,16 @@ export function consumeFlagFromMessage(message: unknown, source: string): unknow
 }
 
 /**
- * Whether one agent's SESSION is covered by the SESSION-START GATE: a top-level session whose
- * `agentPreset` is on the covered list, or a session with no preset at all.
+ * Whether one agent's SESSION is covered by the SESSION-START GATE: a TOP-LEVEL session (the
+ * {@link sessionRank} `captain` — never an `origin: "subagent"` child or a `delegationDepth >= 1`
+ * member; a seeded fork that carries a parent LINK with `isSeeded: true` and depth 0 still counts as
+ * top-level) whose `agentPreset` is on the covered list, or one with NO preset at all (`undefined`
+ * or `null`).
+ *
+ * THE CHILD HALF IS COMPOSED, NOT RE-DERIVED: this calls {@link sessionRank}, so the gate and §5's
+ * captain classification can never disagree about who is a child. A parent LINK alone is NOT
+ * childhood — the seeded-fork repair of 2026-10-10 — and this predicate must never become the
+ * captain test itself.
  *
  * WHAT IT IS NOT — read this before reusing it: this is NOT the captain test. It answers "does the
  * complexity gate apply to this session", and its preset conjunct is deliberate gate scoping
@@ -653,22 +674,25 @@ export function consumeFlagFromMessage(message: unknown, source: string): unknow
  * another, which is exactly the defect T-92 records.
  *
  * A child session (subagent, teammate, workflow worker, ralph round) already belongs to a
- * parent's team — it must never be told to stage one of its own. A session that names a
- * preset must be on the list; a session with NO preset at all (the headless direct driver,
- * legacy installs) deploys the bundle itself and stays covered.
+ * parent's team — it must never be told to stage one of its own. A session that NAMES a preset must
+ * be on the list; one with NO preset at all (the headless direct driver, legacy installs) deploys
+ * the bundle itself and stays covered.
  *
  * @param agent - the live agent handle whose session header decides the scope.
  * @param presets - the covered preset names; defaults to {@link DEFAULT_GATE_PRESETS}.
  * @returns whether this agent's session carries a gate.
  */
 export function sessionQualifies(agent: unknown, presets: readonly string[] = DEFAULT_GATE_PRESETS): boolean {
-  /** The agent's session header, which carries the parent link and the preset. */
+  // THE CAPTAIN/CHILD HALF COMPOSES THE ONE CLASSIFICATION: `headerless` fails closed, a child is a
+  // recorded subagent origin or a delegation depth of 1+, and everything else (a seeded fork included)
+  // is the top-level session the gate is meant to arm on.
+  if (sessionRank(agent) !== "captain") return false
+  /** The agent's session header, which carries the preset. */
   const header = (agent as { session?: { header?: Record<string, unknown> } } | undefined)?.session?.header
   if (header === undefined || header === null) return false
-  if (header.parentSession !== undefined) return false
-  /** The session's preset name; absent means a preset-less session, which still qualifies. */
+  /** The session's preset name; absent OR explicitly null means a preset-less session, which still qualifies. */
   const preset = header.agentPreset
-  if (preset === undefined) return true
+  if (preset === undefined || preset === null) return true
   return presets.includes(String(preset))
 }
 
@@ -699,9 +723,9 @@ export type SessionRank = "captain" | "child" | "headerless"
  * it. A session is a child IFF the harness RECORDED one of the two delegation facts:
  * `origin === "subagent"` or `delegationDepth >= 1`. Everything else — including a fork whose depth
  * the harness never recorded — is the captain, which is the CONSERVATIVE direction: a captain-scoped
- * rule applies. (The three mechanical captain rules this classification used to feed — the write rule,
- * the investigation guard and the delegation gate — were WITHDRAWN on 2026-10-17: their modules stay
- * as reference implementations and the classification is still what the roster's own scoping needs.)
+ * rule applies. (The two mechanical captain rules this classification feeds — the reconnaissance guard
+ * and the delegation gate — were restored on 2026-10-20; the write rule itself stays withdrawn, and the
+ * classification is also what the roster's own scoping needs.)
  *
  * A header that is absent still fails closed (`headerless`, never the captain), and a
  * `delegationDepth` that is not a number is not ">= 1", so an unreadable depth reads as the captain
@@ -743,18 +767,19 @@ export const MPD_CAPTAIN_PRESET = "mpd"
  * session whose `agentPreset` really is {@link MPD_CAPTAIN_PRESET}.
  *
  * WHY THIS EXISTS, and why it is not {@link sessionIsTopLevel}. The captain's PRESET-SCOPED rules — the
- * verification law's write rule (`./verify-guard.ts`) and the reconnaissance rule
- * (`./captain-investigation.ts`) — were part of what the `mpd` preset MEANT. Both installed through the
- * ONE process-wide `tools.guard` seam, so a bare {@link sessionIsTopLevel} test made them bite EVERY
- * top-level session of the deployment, whatever preset it was running: a user working in the DEFAULT
- * preset (`cordis`) was refused its own code writes and its own reconnaissance by a captain contract
- * that preset never asked for. This predicate scoped those two rules back to the preset that owns them.
+ * reconnaissance ban (`./captain-investigation.ts`) and the delegation gate (`./delegation-gate.ts`) —
+ * are part of what the `mpd` preset MEANS. Both install through the ONE process-wide `tools.guard` seam,
+ * so a bare {@link sessionIsTopLevel} test made them bite EVERY top-level session of the deployment,
+ * whatever preset it was running: a user working in the DEFAULT preset (`cordis`) was refused its own
+ * reconnaissance and its own delegation habits by a captain contract that preset never asked for. This
+ * predicate scoped those two rules back to the preset that owns them.
  *
- * STILL SHIPPED, NO LONGER INSTALLED: both of those guards were WITHDRAWN from the apply() site by the
- * user's 2026-10-17 ruling (`.mpd/plans/harness-021-rollback.md` R1), so the row no longer installs
- * them and this predicate now scopes nothing live. It stays — with its modules and their unit arms — as
- * the reference classification a future preset-scoped rule would need, and because removing a stable
- * exported predicate is a wider change than this wave's rollback.
+ * INSTALLED AGAIN SINCE 2026-10-20: the user's 2026-10-17 ruling (`.mpd/plans/harness-021-rollback.md` R1)
+ * withdrew the reconnaissance ban and the spawn-tool ban with the persona restoration, and the 2026-10-20
+ * ruling (`.mpd/plans/restore-guard-discipline.md`) restored BOTH — so the two guards read this predicate
+ * again and the boot line reports their modes. The verification law's write rule (`./verify-guard.ts`)
+ * stays WITHDRAWN: the captain writes code directly, and the boot line reports
+ * `verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode)`.
  *
  * DIRECTION OF THE PRESET TEST: the gate opens ONLY on the exact preset name. A session with no
  * `agentPreset` at all is therefore NOT gated. That is deliberate and is the OPPOSITE of

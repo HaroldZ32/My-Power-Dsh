@@ -69,7 +69,9 @@
 
 ### 委派闸门与侦察 guard（2026-10-20 恢复）
 
-本行在只读 guard 之外安装**两道** `tools.guard` 回调：**captain 侦察 guard**（`mpd` preset 的顶层 session 委派侦察，因此对**源码**路径的 `read`/`grep`/`glob` 会被拒绝，而文档带 —— `.mpd/**`、`docs/**`、`evidence/**`、`agent-references/**` 以及根目录的说明/概览文件 —— 保持可读；开关 `captain.investigation`，默认 `"deny"` | `"allow"`）与**委派闸门**（对 `subagent`、`subagent_fork`、`workflow` 的调用被拒绝，拒绝文本点名 `mpd_role_spawn`、workmate 库、Agent Teams 与 `send_message`；开关 `delegation.gate`，默认 `"deny"` | `"captain"` | `"allow"`）。侦察 guard 由 `sessionIsMpdCaptain` 限定，闸门按不依赖 preset 的 `sessionRank` 判定，因此别的 preset 的顶层 session 保留自己的习惯。
+本行在只读 guard 之外安装**两道** `tools.guard` 回调：**captain 侦察 guard**（`mpd` preset 的顶层 session 委派侦察，因此对**源码**路径的 `read`/`grep`/`glob` 会被拒绝，而文档带 —— `.mpd/**`、`docs/**`、`evidence/**`、`agent-references/**` 以及根目录的说明/概览文件 —— 保持可读；开关 `captain.investigation`，默认 `"deny"` | `"allow"`）与**委派闸门**（对 `subagent`、`subagent_fork`、`workflow` 的调用被拒绝，拒绝文本点名 `mpd_role_spawn`、workmate 库、Agent Teams 与 `send_message`；开关 `delegation.gate`，默认 `"deny"` | `"captain"` | `"allow"`）。
+
+**委派闸门的 preset 豁免只适用于顶层 session。** 别的 preset（包括部署默认的 `cordis`）的**顶层** session 保留自己的 spawn 习惯；而**成员与子 session 不论运行哪个 preset 都继续受门控** —— 它们的委派属于 captain 的路径，子 session 的 preset 不得重新打开官方 spawn 工具。侦察 guard 由 `sessionIsMpdCaptain` 限定（顶层 **且** `mpd` preset），因此对任何 rank 的非 `mpd` session 都不生效。闸门按不依赖 preset 的 `sessionRank` 判定，其 mode 在该范围内决定覆盖面：`deny`（默认）覆盖 `mpd` preset 的顶层 session 以及每个成员/子/无 header 的 session，`captain` 只约束顶层 session，`allow` 则完全放行。
 
 **为什么恢复。** 2026-10-17 的决定把这两者连同 persona 的回归一起撤下（"一个 agent、完整工具包、由 persona 提示词引导"）。实测后果是：captain 自己做完每一次搜索、名册/团队工具基本闲置、上下文被一次次文件读取撑大。2026-10-20 的决定把这个包拆开 —— **长提示词保留，两道决策性 guard 回归** —— 并且 persona 现在把规则写在最前面，所以开局就是委派，而不是先撞一次被拒的 `read`。写入路径**刻意不变**：`write`/`edit`/`bash` 不受门控，验证法的写守卫（`verify.mode`）继续处于撤销状态；验证法要求的是**另一个 agent 记录的裁决**，那是纪律，不是 hook。
 

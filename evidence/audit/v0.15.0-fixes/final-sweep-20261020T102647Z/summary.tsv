@@ -1,0 +1,25 @@
+vendor	0	0s	bun run verify:vendor
+rows	0	0s	bun run verify:rows
+docs	0	0s	bun run verify:docs
+manifest	0	3s	bun run verify:manifest
+comments	0	2s	bun run verify:comments
+no-host-override	0	0s	node scripts/verify-no-host-override.ts
+manual-paths	0	0s	node scripts/verify-manual-paths.ts
+dist-fresh	0	1s	node scripts/verify-dist-fresh.ts
+graph	0	0s	bun run verify:graph
+preset-conformance-selftest	0	0s	node skills/dsh-qa/scripts/preset-conformance.ts --self-test
+verify-law-selftest	0	1s	node skills/dsh-qa/scripts/verify-law.ts --self-test
+ext-selftest	0	0s	bun scripts/mpd-ext.ts --self-test
+ext-validate	0	0s	bun scripts/mpd-ext.ts validate extensions/mpd-ext-example
+docker-selftest	0	1s	node scripts/docker-e2e.ts --self-test
+typecheck	0	1s	bun run typecheck
+tests	0	25s	.toolchain/node_modules/.bin/bun test packages
+qa-selftests	0	10s	bun run test:qa
+lifecycle	0	14s	bun skills/dsh-qa/scripts/bundle-lifecycle.ts
+preset-conformance-real	0	25s	node skills/dsh-qa/scripts/preset-conformance.ts
+verify-law-boot	0	19s	node skills/dsh-qa/scripts/verify-law.ts
+delegation-gate-live	0	67s	node skills/dsh-qa/scripts/delegation-gate.ts
+captain-scope-live	0	15s	node skills/dsh-qa/scripts/captain-scope.ts
+mcp-call	0	96s	node skills/dsh-qa/scripts/mcp-call.ts
+dual-track-smoke	1	15s	node skills/dsh-qa/scripts/dual-track-smoke.ts
+docker-source-live	3	0s	node scripts/docker-e2e.ts --mode source --require-docker --live
