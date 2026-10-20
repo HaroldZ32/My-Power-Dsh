@@ -36,6 +36,7 @@ import {
   INERT_PLAN_PHRASE,
   latestUserMessage,
   mechanicalNoticeText,
+  MISSING_PLAN_ID_PHRASE,
   readBoulderGate,
   readLeadingTeam,
   resolveGateMode,
@@ -360,8 +361,20 @@ describe("the frozen complexity predicate (Option A: explicit flag OR >= 1 match
     expect(text).toContain(INERT_PLAN_PHRASE)
     expect(text).toContain("agent_teams_plan")
     expect(text).toContain("SHELL")
-    // An id the call did NOT report is never invented.
-    expect(mechanicalNoticeText({ planId: "", signals: ["C"], explicit: false, alreadyStaged: false })).toContain("plan id not reported")
+    // A shell WITH an id IS extendable and approvable: the instruction must be present.
+    expect(text).toContain("Extend it with")
+    expect(text).toContain('{action:"approve"}')
+    // An id the call did NOT report is never invented: the notice states the LOUD failure and that the
+    // staged shell cannot be approved — never the advisory "nothing was staged" taxonomy.
+    const missingId = mechanicalNoticeText({ planId: "", signals: ["C"], explicit: false, alreadyStaged: false })
+    expect(missingId).toContain(MISSING_PLAN_ID_PHRASE)
+    expect(missingId).toContain("CANNOT be approved")
+    expect(missingId).not.toContain("NO team was staged")
+    // THE CONTRADICTION THIS BRANCH REMOVES: an unapprovable shell must NOT also be told to extend and
+    // approve it; the only instruction is to report the failure.
+    expect(missingId).not.toContain("Extend it with")
+    expect(missingId).not.toContain('{action:"approve"}')
+    expect(missingId).toContain("report this failure")
     // The idempotence branch says the gate did NOT stage again.
     const skipped = mechanicalNoticeText({ planId: "plan-xyz", signals: ["B"], explicit: false, alreadyStaged: true })
     expect(skipped).toContain(ALREADY_STAGED_PLAN_PHRASE)
@@ -369,19 +382,20 @@ describe("the frozen complexity predicate (Option A: explicit flag OR >= 1 match
     expect(skipped).toContain("plan-xyz")
   })
 
-  test("resolveGateMode: the vocabulary, the tolerated booleans, and the OPT-IN default", () => {
+  test("resolveGateMode: the vocabulary, the tolerated booleans, and the MECHANICAL default", () => {
     expect(resolveGateMode("mechanical")).toBe("mechanical")
     expect(resolveGateMode("advisory")).toBe("advisory")
     expect(resolveGateMode("off")).toBe("off")
     expect(resolveGateMode(true)).toBe("mechanical")
     expect(resolveGateMode(false)).toBe("off")
-    // REPURPOSED 2026-10-17 (lane B, harness-021-rollback): the default is OFF. The user's ruling
-    // withdrew the 2026-10-10/11 ceremony, so an absent key — and every UNKNOWN value — must now read
-    // `off`: staging a plan shell nobody asked for is the surprising outcome. The OLD fail-safe read
-    // `mechanical` here, and this arm asserted it; only an explicit spelling may arm the gate now.
-    expect(resolveGateMode(undefined)).toBe("off")
-    expect(resolveGateMode("bogus")).toBe("off")
-    expect(resolveGateMode(0)).toBe("off")
+    // RESTORED 2026-10-20 (`.mpd/plans/restore-guard-discipline.md`): the default is MECHANICAL again.
+    // The 2026-10-17 rollback made the gate opt-in for three days; the measured consequence was a
+    // captain that did every piece of work itself. An absent key and every UNKNOWN value therefore read
+    // `mechanical` (the pre-2026-10-17 fail-safe: a typo can never silently disarm the session-start
+    // rule), while `"off"` and the legacy `false` are honoured as the deliberate opt-out they are.
+    expect(resolveGateMode(undefined)).toBe("mechanical")
+    expect(resolveGateMode("bogus")).toBe("mechanical")
+    expect(resolveGateMode(0)).toBe("mechanical")
   })
 
   test("gatePlanShell fills ONLY what the gate can know, and says so in the description", () => {
@@ -546,6 +560,44 @@ describe("session-start gate: scope, one-shot settlement and the advisory inject
     // THE RE-ENTRY GUARD: a second step injects nothing and stages nothing more.
     expect(await harness.steps[0].listener({ messages: [claimed], turn: 1, step: 1, signal: new AbortController().signal }, { kind: "enter", messages: [claimed] })).toBeUndefined()
     expect(harness.toolCalls).toHaveLength(1)
+  })
+
+  test("the notice names the id the staging call RETURNED — and a call that returns NO id is a LOUD failure", async () => {
+    /** The REAL id shape `newPlanId` mints: 17-digit millisecond instant + process tag + counter. */
+    const planId = "plan-20261020073206455-ciwd-001"
+    /** A double whose create answer carries the real-shaped plan record. */
+    const named = planeHarness({ tools: [STAGING_TOOL_NAME], toolResult: { ok: true, isError: false, value: { plan: { planId, name: "shell" } } } })
+    /** Warnings the named arm must NOT produce. */
+    const namedWarnings: string[] = []
+    installSessionGate(named.dsh as never, { warn: (line) => namedWarnings.push(line), stagedPlan: () => null, configValue: MECHANICAL_OPT_IN })
+    /** The triggered turn the named arm judges. */
+    const namedClaimed = userMessage("Check the tests, build the package, verify the output.")
+    /** The decision whose SECOND message is the injected notice. */
+    const namedDecision: any = await named.steps[0].listener({ messages: [namedClaimed], turn: 1, step: 1 }, { kind: "enter", messages: [namedClaimed] })
+    /** The notice text the named arm injected. */
+    const namedText = String(namedDecision.messages[1].content[0].text)
+    // The extraction reads `{plan:{planId}}` from the call, so the notice carries THAT id verbatim.
+    expect(namedText).toContain(STAGED_PLAN_PHRASE)
+    expect(namedText).toContain(planId)
+    expect(namedWarnings).toEqual([])
+
+    /** A double whose create answer is OK but carries NO plan record at all. */
+    const anonymous = planeHarness({ tools: [STAGING_TOOL_NAME], toolResult: { ok: true, isError: false, value: {} } })
+    /** Warnings the anonymous arm must produce, naming the failure. */
+    const anonymousWarnings: string[] = []
+    installSessionGate(anonymous.dsh as never, { warn: (line) => anonymousWarnings.push(line), stagedPlan: () => null, configValue: MECHANICAL_OPT_IN })
+    /** The triggered turn the anonymous arm judges. */
+    const anonymousClaimed = userMessage("Check the tests, build the package, verify the output.")
+    /** The decision whose SECOND message is the failure notice. */
+    const anonymousDecision: any = await anonymous.steps[0].listener({ messages: [anonymousClaimed], turn: 1, step: 1 }, { kind: "enter", messages: [anonymousClaimed] })
+    /** The failure notice's text. */
+    const anonymousText = String(anonymousDecision.messages[1].content[0].text)
+    // The shell WAS staged; the failure is the missing id, stated as such — never the advisory taxonomy.
+    expect(anonymousText).toContain(STAGED_PLAN_PHRASE)
+    expect(anonymousText).toContain(MISSING_PLAN_ID_PHRASE)
+    expect(anonymousText).not.toContain("NO team was staged")
+    // The row log names the same failure, so `staged=1` with no `plan=` cannot read as healthy.
+    expect(anonymousWarnings.join(" ")).toContain(MISSING_PLAN_ID_PHRASE)
   })
 
   test("the ladder degrades to the ADVISORY notice: tool absent, and a failing call", async () => {

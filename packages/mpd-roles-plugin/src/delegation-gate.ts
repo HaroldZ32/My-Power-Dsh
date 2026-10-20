@@ -9,14 +9,17 @@
 // write guard, the captain investigation guard).
 //
 // WHAT IT DENIES: a call to any name in {@link DELEGATION_TOOLS}, for the sessions the mode covers. The
-// mode is `delegation.gate` in `mpd.jsonc`: `"deny"` (default: every session, captain and members
-// alike), `"captain"` (the top-level session only) or `"allow"` (the gate is released entirely).
+// mode is `delegation.gate` in `mpd.jsonc`: `"deny"` (default: the `mpd` preset's top-level session and
+// every member session), `"captain"` (the top-level session only) or `"allow"` (the gate is released
+// entirely). A top-level session of ANOTHER preset is never gated: `tools.guard` is process-wide, but the
+// rule is part of what the `mpd` preset means, so the deployment's default `cordis` session keeps its own
+// spawn habits.
 //
 // WHY A GUARD AND NOT A PRESET-PLANE OMISSION: the live top-level session on this deployment runs a
-// preset this bundle does not own (`cordis`), so "do not compose the row" is not available to us —
-// a guard keyed on §5's PRESET-FREE session rank covers every session in a workspace that mounts this
-// bundle, whatever preset the profile assigned. That is the honest scope: mounting the bundle is the
-// opt-in.
+// preset this bundle does not own (`cordis`), so "do not compose the row" is not available to us — a
+// guard keyed on §5's session rank PLUS the `mpd`-captain preset test covers exactly the sessions the
+// rule owns, in any workspace that mounts this bundle. That is the honest scope: mounting the bundle is
+// the opt-in.
 //
 // THE DECISION IS PURE ({@link delegationGateDecision}), so it is unit-testable without a harness, and
 // the INSTALL is ONE `guardTool` registration through the adapter, beside the captain investigation
@@ -26,7 +29,7 @@
 // a model from TRYING another tool, and a session on a profile WITHOUT this bundle mounted has no gate
 // at all.
 import type { DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
-import { sessionRank } from "./complexity-gate.ts"
+import { sessionIsMpdCaptain, sessionRank } from "./complexity-gate.ts"
 import type { SessionRank } from "./complexity-gate.ts"
 
 /** The `mpd.jsonc` key the modes are read from, through the config layer this bundle already uses. */
@@ -153,6 +156,10 @@ export interface DelegationGateInstall {
  * The MODE is read per call inside the decision — so a live `mpd.jsonc` edit takes effect without a
  * restart — while the returned `mode` is the install-time observation the boot line reports.
  *
+ * PRESET SCOPE: `tools.guard` is process-wide, so a top-level session that is NOT the `mpd` captain is
+ * bypassed before the decision. The rule is part of the `mpd` preset's contract; another preset's
+ * top-level session (the deployment default `cordis` included) keeps its own delegation habits.
+ *
  * NEVER throws from the guard itself: an unreadable agent handle or a throwing rank probe reads as
  * "not the captain" only in the sense that the decision is skipped, so a guard can never take a tool
  * call down for a reason of its own.
@@ -177,10 +184,16 @@ export function installDelegationGate(
     /** The registry's disposer, returned so the row can release the guard. */
     const dispose = dsh.guardTool((exec) => {
       try {
+        /** §5's session class, computed ONCE for the preset bypass and the decision below. */
+        const rank = sessionRank(exec?.agent)
+        // THE RULE IS PRESET-SCOPED: only the `mpd` preset's top-level session is its captain, so
+        // another preset's top-level session is released before the decision. Child/member sessions
+        // stay covered whatever preset they run — the rule protects the captain's delegation path.
+        if (rank === "captain" && !sessionIsMpdCaptain(exec?.agent)) return undefined
         return delegationGateDecision({
           toolName: String(exec?.name ?? ""),
           mode: resolveDelegationGateMode(options.configValue(DELEGATION_CONFIG_KEY)),
-          rank: sessionRank(exec?.agent),
+          rank,
         })
       } catch {
         // A guard that throws would take an unrelated tool call down; an unreadable call is a

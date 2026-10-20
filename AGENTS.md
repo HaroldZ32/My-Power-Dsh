@@ -118,14 +118,14 @@ provenance narrative is in `agent-references/overview-and-provenance.md`.
   never `ctx.goals`. `mpd-ulw-plugin` (C2 ultrawork v2) answers `/ulw <objective>` and `/ultrawork
   <objective>` by submitting the ULW activation directive as the invoking agent's OWN next user turn, so
   the run actually starts. **Long form: `agent-references/overview-and-provenance.md`.**
-- **The session-start complexity gate is OPT-IN — it stages an APPROVABLE PLAN SHELL, never a team.**
+- **The session-start complexity gate ships ON (default `mechanical`) — it stages an APPROVABLE PLAN SHELL, never a team.**
   The frozen predicate `trigger = explicit flag OR (matchedSignals >= 1)` runs at the session's
   first pre-step under the marker `[AgentTeams] Session-start team rule`; on a trigger the gate STAGES a
   0-member, 0-task plan shell through the `agent_teams_plan` tool — NOTHING is spawned, and the shell is
   INERT until the captain extends it (`add_member` / `create_task`) and approves it with
   `agent_teams_plan {action:"approve"}`. An explicit `team:` / `!team` request ALSO stages the shell
   (signal A) and has its marker CONSUMED from the goal text. `team.gate` in `mpd.jsonc` selects
-  `off` (**the default since the 2026-10-17 rollback** — the gate is OPT-IN) | `advisory` | `mechanical`;
+  `mechanical` (**the default again since the 2026-10-20 restore**) | `advisory` | `off`;
   with the tool unmounted or under `advisory` the ONE
   notice says `NO team was staged` and the captain stages a team itself when the work warrants one — or
   continues solo and says so. Signal D is an ACTIVE boulder work for this workspace (`status: "active"`
@@ -256,9 +256,10 @@ lands (§9/§11).
   stay open to all. Tag `backup/<branch>-<sha>` before any history-writing step.
   **WHO THE CAPTAIN IS:** the workspace's **top-level session** (no parent session, delegation depth
   `0`) — NOT a preset name. The predicate (`sessionIsTopLevel` in `complexity-gate.ts`) still ships and
-  still classifies a session; since the 2026-10-17 withdrawal NOTHING installs a guard on top of it, so
-  this rule is enforced by contract, not by a matcher. The preset-keyed variant that made the captain
-  branch unreachable here is `T-92` in the reference table.
+  still classifies a session; the 2026-10-20 restore re-arms TWO guards on the `mpd` preset's top-level
+  session (`captain.investigation`, `delegation.gate` — see §5 rule 2), while the git-write rule itself
+  remains a CONTRACT, not a matcher. The preset-keyed variant that made the captain branch unreachable
+  here is `T-92` in the reference table.
 - **Every change lands through a BRANCH + a PULL REQUEST — binding (user-set, 2026-10-06).** Nothing is
   committed straight to `dev` or `master`: cut a `feature/<slug>` or `fix/<slug>` branch, commit the wave
   there, push it, and open a PR against `dev`. **A PR DESCRIPTION IS BILINGUAL**: it carries BOTH an
@@ -282,20 +283,19 @@ lands (§9/§11).
      a Senior Engineer or Deep Worker, an evidence question to a Researcher or Explorer, a verdict
      to a Reviewer. The captain executes only what must not be delegated by rule — committing (the
      single git writer), contract amendments and plan/roster shaping, releasing a watchdog hold, and
-     the final integration — and does so without framing it as "working solo". **The top-level agent
-     holds its whole pack DIRECTLY: `read`, `write`, `edit`, `bash`, `grep`, `glob`, `subagent` are
-     callable from the captain's session, and steering comes from the persona prompt, not from hooks.**
-     The 2026-10-10/11 ceremony that mechanically forced reconnaissance delegation, banned the
-     harness's generic spawn tools and required a verifier seat is **WITHDRAWN by user ruling
-     2026-10-17** (`.mpd/plans/harness-021-rollback.md`, R1). The diagnostic is the roles row's boot
-     line, which now reports
-     `verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode)
-     captainInvestigation=absent reason=…(captain.investigation)
-     delegationGate=absent reason=…(delegation.gate) … sessionGate=off`. Delegating reconnaissance and
-     using `mpd_role_spawn` / Agent Teams are RECOMMENDED practice, never gates; the roster, team,
-     verify, memory and ULW tools stay SHIPPED and callable. **Long form — the restored contract and
-     the withdrawn knobs: `agent-references/verification-flow.md`, "§5 rule 2 — the captain's tool
-     pack".**
+     the final integration — and does so without framing it as "working solo". **RECONNAISSANCE IS
+     DELEGATED, AGAIN MECHANICALLY (user ruling 2026-10-20):** on the `mpd` preset's top-level session
+     the captain's `read`/`grep`/`glob` are REFUSED on SOURCE paths (`captain.investigation: "deny"`,
+     the documentation band still readable), and the harness's generic spawn tools
+     (`subagent`, `subagent_fork`, `workflow`) are REFUSED (`delegation.gate: "deny"`), so delegation
+     goes through `mpd_role_spawn`, the workmate library or Agent Teams. **THE WRITE PATH STAYS
+     DIRECT:** `write`/`edit`/`bash` are not gated and the verification law's write guard
+     (`verify.mode`) remains WITHDRAWN (2026-10-17 ruling, kept by the 2026-10-20 split) — the captain
+     writes code, a DIFFERENT agent records the verdict. The 2026-10-17 wave had withdrawn all three
+     guards together with the persona restoration; the 2026-10-20 ruling split that bundle after the
+     measured consequence (the captain did every search itself, the roster/team tools went unused and
+     the session's context inflated). **Long form — the boot-line token by token and the remaining
+     withdrawn knob: `agent-references/verification-flow.md`, "§5 rule 2 — the captain's tool pack".**
   3. **Keep requirement / task / review SEPARATE.** A dispatched piece of work gets a requirement
      task (the frozen acceptance contract), a work task and a review task rather than one lumped
      implementation task; finding-driven work uses `kind=repair` + `sourceTaskId`/
@@ -303,8 +303,8 @@ lands (§9/§11).
      the Web plan from a flat list into a requirement chain.
   4. **A-writes/B-verifies is the RECOMMENDED discipline; its MECHANICAL form is withdrawn.**
      The top-level `mpd` agent MAY `write`/`edit` a code path directly and NO loop needs to be armed
-     (the 2026-10-17 ruling removed the guard that refused it) — the design still holds, it is no
-     longer a hook. The normal path is to hand the scope to a write-capable member. Code is verified by
+     (the 2026-10-17 ruling removed the write guard, and the 2026-10-20 restore did NOT bring it back —
+     only the reconnaissance and delegation guards) — the design still holds, it is no longer a hook. The normal path is to hand the scope to a write-capable member. Code is verified by
      a DIFFERENT agent that works from the frozen contract and the docs — **never from the
      implementation** — with the verdict recorded BEFORE any implementation read; only a recorded FAIL
      justifies implementation reading, for diagnosis. A PASS with no cited documents or no gate evidence

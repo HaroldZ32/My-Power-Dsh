@@ -32,9 +32,10 @@
 //     read through `readBoulderGate`. The RETIRED plan-file probe is asserted ABSENT: a workspace
 //     holding a `.mpd/plans/*.md` artifact but NO active work must read `active:false` — the retired
 //     predicate fired in EVERY session of this workspace, which is the defect this case now pins;
-//   * `team.gate` selects `off` (the DEFAULT since the 2026-10-17 rollback) | `mechanical` | `advisory`,
-//     and an UNKNOWN value reads `off` like an absent one: arming the gate is OPT-IN, so no typo can turn
-//     the ceremony ON behind the user's back;
+//   * `team.gate` selects `mechanical` (the DEFAULT again since the 2026-10-20 restore) | `advisory` | `off`,
+//     and every UNKNOWN value (`undefined`, `bogus`, `0`, an object) reads `mechanical` too — the fail-safe
+//     direction; `advisory` and both spellings of off (`off`, `false`) are the explicit opt-outs, so only a
+//     deliberate spelling disarms the ceremony;
 //   * a trigger stages a 0-member / 0-task PLAN SHELL through `agent_teams_plan` and injects ONE
 //     MECHANICAL notice naming the id the call RETURNED, stating `a team PLAN was STAGED` and that the
 //     plan is INERT until approved. STAGING IS NOT SPAWNING, and the notice must never claim a team;
@@ -60,9 +61,13 @@
 // 2) real run: isolated DSH_HOME + sandboxed HOME + SEEDED sandbox workspace, one headless boot per
 //    prompt side — INCLUDING the CJK sides: the user's verbatim Chinese instruction must stage a
 //    shell and name its plan id (`cjk-positive`), while the three Chinese controls stage nothing and
-//    are injected no notice (`cjk-negative`); the notices, the staged plan slot and the absence of team records are read from the
-//    side's own workspace and from the HARNESS session log through the sanctioned reader
-//    (`lib/session-evidence.ts`), never from the model's prose (AGENTS.md §7).
+//    are injected no notice (`cjk-negative`). ONE triggered side (`mechanical-default`) seeds NO
+//    `team.gate` key at all, so it measures the live DEFAULT: its boot line must report
+//    `sessionGate=mechanical` and it must stage the shell under the same three-source agreement (row
+//    fire line + injected notice + staged slot) the explicit mechanical sides assert. The notices, the
+//    staged plan slot and the absence of team records are read from the side's own workspace and from
+//    the HARNESS session log through the sanctioned reader (`lib/session-evidence.ts`), never from the
+//    model's prose (AGENTS.md §7).
 //
 // THE TWO MEASURED BLIND SPOTS THIS REWRITE CLOSES, named so they cannot come back:
 //   (P6) the retired `teamRecords()` scanned `.mpd/team/<id>/team.json`, a layout mpd-team-core does
@@ -123,8 +128,12 @@ const OFFICIAL_TOOLS: readonly string[] = ["spawn_teammate", "team_task_create"]
 const STAGING_TOOL: string = "agent_teams_plan"
 /** Every `agent_teams_*` token in a text, matched as whole tokens (never `/g` + `.test`, stateful). */
 const AGENT_TEAMS_TOKEN_PATTERN: RegExp = /agent_teams_[a-z_]*/gu
-/** The plan ids a notice names, as `newPlanId` spells them: `plan-<14 digits>`. */
-const PLAN_ID_PATTERN: RegExp = /\bplan-\d{14}\b/gu
+/**
+ * The plan ids a text names: the CURRENT `newPlanId` mint (`plan-<17-digit ms>-<tag>-<counter>`) and the
+ * legacy `plan-<14 digits>` form that archived plans still carry. The pre-fix 14-digit-only pattern
+ * matched NEITHER the current ids nor the row fire line, so a healthy notice read as "no plan id".
+ */
+const PLAN_ID_PATTERN: RegExp = /\bplan-\d{17}-[0-9a-z]{4}-[0-9a-z]{3,}\b|\bplan-\d{14}\b/gu
 /** The `team.gate` mode that stages the shell — the DEFAULT, restated here so a rename reddens. */
 const GATE_MODE_MECHANICAL: string = "mechanical"
 /** The `team.gate` mode that only advises and stages nothing. */
@@ -448,7 +457,7 @@ interface GateModule {
   readonly STARTUP_NOTICE_MARKER: string
   /** The presets whose top-level sessions the gate covers. */
   readonly DEFAULT_GATE_PRESETS: readonly string[]
-  /** The `team.gate` mode that stages the shell (OPT-IN since the 2026-10-17 rollback). */
+  /** The `team.gate` mode that stages the shell (MECHANICAL DEFAULT since the 2026-10-20 restore). */
   readonly GATE_MODE_MECHANICAL: string
   /** The `team.gate` mode that only advises. */
   readonly GATE_MODE_ADVISORY: string
@@ -462,6 +471,8 @@ interface GateModule {
   readonly ALREADY_STAGED_PLAN_PHRASE: string
   /** The mechanical notice's inertness sentence. */
   readonly INERT_PLAN_PHRASE: string
+  /** The mechanical notice's failure sentence when the staging call returns no plan id. */
+  readonly MISSING_PLAN_ID_PHRASE: string
   /** The advisory notice's staging disclaimer. */
   readonly NO_TEAM_STAGED_PHRASE: string
   /** The tool a mechanical fire calls to stage the shell. */
@@ -575,6 +586,8 @@ interface SideSpec {
   readonly explicit?: boolean
   /** A signal letter this side is BUILT to prove, when it is built to prove exactly one. */
   readonly signal?: string
+  /** Whether this side leaves `team.gate` UNSET (no project `mpd.jsonc` entry), exercising the DEFAULT route. */
+  readonly unsetGate?: boolean
   /** What the side seeds into its workspace before the boot. */
   readonly seed?: SideSeed
 }
@@ -687,19 +700,21 @@ export async function contractProblems(gate: GateModule): Promise<string[]> {
     if (actual !== expected) problems.push(at("constants") + label + " must be " + JSON.stringify(expected) + ", got " + JSON.stringify(actual))
   }
 
-  // The mode resolver: `off` is the DEFAULT since the 2026-10-17 rollback (`.mpd/plans/harness-021-rollback.md`
-  // R1), and an UNKNOWN value reads `off` too — arming the ceremony is OPT-IN, so the fail-safe direction
-  // now points at the state the user asked for (nothing) rather than at staging a shell nobody requested.
+  // The mode resolver: `mechanical` is the DEFAULT again since the 2026-10-20 restore
+  // (`.mpd/plans/restore-guard-discipline.md`), and an UNKNOWN value reads `mechanical` too — the
+  // fail-safe direction points at the state the user asked for (a staged, UNAPPROVED shell that spawns
+  // nothing) rather than at a silently disarmed session-start rule. `"off"` and the legacy `false` are
+  // the deliberate opt-out and are honoured as themselves.
   const modeCases: Array<[unknown, string]> = [
     ["advisory", GATE_MODE_ADVISORY],
     ["off", GATE_MODE_OFF],
     ["mechanical", GATE_MODE_MECHANICAL],
     [false, GATE_MODE_OFF],
     [true, GATE_MODE_MECHANICAL],
-    [undefined, GATE_MODE_OFF],
-    ["bogus", GATE_MODE_OFF],
-    [0, GATE_MODE_OFF],
-    [{ gate: "off" }, GATE_MODE_OFF],
+    [undefined, GATE_MODE_MECHANICAL],
+    ["bogus", GATE_MODE_MECHANICAL],
+    [0, GATE_MODE_MECHANICAL],
+    [{ gate: "off" }, GATE_MODE_MECHANICAL],
   ]
   for (const [input, expected] of modeCases) {
     // The mode the shipped resolver answered for this raw value.
@@ -941,9 +956,28 @@ export async function contractProblems(gate: GateModule): Promise<string[]> {
   if (!already.includes(PROBE_PLAN_ID)) problems.push(at("notice/mechanical-already") + "the notice must name the plan id already staged")
   if (!already.includes(INERT_PLAN_PHRASE)) problems.push(at("notice/mechanical-already") + "the inert bound must hold on the skipped-staging route too")
   if (already.includes(STAGED_PLAN_PHRASE)) problems.push(at("notice/mechanical-already") + "a fire that did NOT stage must not claim " + JSON.stringify(STAGED_PLAN_PHRASE))
-  // The call that reported NO id: the notice says so rather than inventing one.
+  // The call that reported NO id: the notice says the staging FAILED to report one, rather than inventing
+  // an id or falling back to the advisory taxonomy (the shell really was staged, and cannot be approved).
   const noId = String(gate.mechanicalNoticeText({ planId: "", signals: ["B"], explicit: false, alreadyStaged: false }) ?? "")
-  if (!noId.includes("plan id not reported")) problems.push(at("notice/mechanical-no-id") + "an empty id must be reported as unreported, never invented")
+  // THE PHRASE IS RESTATED INDEPENDENTLY: reading both sides from `gate.MISSING_PLAN_ID_PHRASE` would pass
+  // vacuously if that export ever became "" (`includes("")` is always true). Pin the export AND the text.
+  /** The no-id phrase this case expects, stated independently of the module under test. */
+  const missingIdPhrase = "STAGING FAILED TO RETURN A PLAN ID"
+  if (gate.MISSING_PLAN_ID_PHRASE !== missingIdPhrase) problems.push(at("notice/mechanical-no-id") + "the exported MISSING_PLAN_ID_PHRASE must equal " + JSON.stringify(missingIdPhrase) + ", got " + JSON.stringify(gate.MISSING_PLAN_ID_PHRASE))
+  if (!noId.includes(missingIdPhrase)) problems.push(at("notice/mechanical-no-id") + "an empty id must be reported as " + JSON.stringify(missingIdPhrase) + ", never invented")
+  if (noId.includes(ADVISORY_PHRASE)) problems.push(at("notice/mechanical-no-id") + "a staged shell with a missing id must NOT fall back to the advisory taxonomy")
+  // THE PLAN ID FORMAT: `newPlanId` mints `plan-<17-digit ms>-<tag>-<counter>`, and the live three-source
+  // agreement is only as good as this parser. The pre-fix 14-digit-only pattern silently returned [] for
+  // every CURRENT id — the false red this arm pins. The legacy form stays accepted for archived plans.
+  const currentPlanId = "plan-20261020073206455-ciwd-001"
+  if (planIdsIn("a team PLAN was STAGED — " + currentPlanId + " (0 members)").join(",") !== currentPlanId) {
+    problems.push(at("plan-id-format") + "planIdsIn must read the current `newPlanId` form (" + currentPlanId + ")")
+  }
+  /** A pre-2026-10 `newPlanId` value, the legacy form archived plans still carry. */
+  const legacyPlanId = "plan-20261006083801"
+  if (planIdsIn("a team PLAN was STAGED — " + legacyPlanId + " (0 members)").join(",") !== legacyPlanId) {
+    problems.push(at("plan-id-format") + "planIdsIn must keep reading the legacy 14-digit plan id (" + legacyPlanId + ")")
+  }
 
   // ── the staged SHELL: 0 members and 0 tasks by construction, never a guessed team ──
   const shell = gate.gatePlanShell({ signals: ["C"], goal: "Align the bundle\nwith upstream.", planPath: SEEDED_PLAN_PATH })
@@ -1078,6 +1112,22 @@ async function selfTest(): Promise<void> {
     rmSync(stageProbe, { recursive: true, force: true })
   }
 
+  // ── the UNSET-KEY AUDIT itself, offline: absent / no key / supplied / malformed ──
+  /** A throwaway workspace for the gate-key audit's four states. */
+  const keyProbe = mkdtempSync(join(tmpdir(), "mpd-sst-gate-key-"))
+  try {
+    if (!teamGateKeyAbsent(keyProbe)) fail("a side with NO `.mpd/mpd.jsonc` must read gateKeyAbsent=true")
+    mkdirSync(join(keyProbe, ".mpd"), { recursive: true })
+    writeFileSync(join(keyProbe, ".mpd", "mpd.jsonc"), JSON.stringify({ boulder: { dir: ".mpd" } }))
+    if (!teamGateKeyAbsent(keyProbe)) fail("a config with NO `team.gate` must read gateKeyAbsent=true")
+    writeFileSync(join(keyProbe, ".mpd", "mpd.jsonc"), JSON.stringify({ team: { gate: "mechanical" } }))
+    if (teamGateKeyAbsent(keyProbe)) fail("a config that SUPPLIES `team.gate` must read gateKeyAbsent=false")
+    writeFileSync(join(keyProbe, ".mpd", "mpd.jsonc"), "{ not json")
+    if (teamGateKeyAbsent(keyProbe)) fail("an UNREADABLE config must read gateKeyAbsent=false (a malformed file is not proof the key is unset)")
+  } finally {
+    rmSync(keyProbe, { recursive: true, force: true })
+  }
+
   // ── the wiring the live boot depends on ──
   // The bundle patch, which must mount the row that hosts the gate.
   const patch = readFileSync(join(repoRoot, "cordis.patch.yml"), "utf8")
@@ -1091,16 +1141,15 @@ async function selfTest(): Promise<void> {
   // OWN subject rather than on another lane's in-flight preset edit.
   const preset = readMpdPresetSource(repoRoot)
   if (preset === "") fail("no declared bundle patch declares the `preset-mpd` row — the preset audit has no subject")
-  // REPURPOSED 2026-10-17 (this wave's guard rollback): when `team.gate` became OPT-IN the preset's
-  // session-start prose was rewritten by the parallel preset lane, so the literal heading
+  // The preset's session-start prose was rewritten by the parallel preset lane, so the literal heading
   // "SESSION STARTUP RULE" no longer exists. What this arm must protect is the CONVENTION, not one
   // wording — and the convention's vocabulary-stable tokens are the FROZEN notice marker (frozen in
-  // `complexity-gate.ts`), the knob `team.gate`, its OPT-IN default `off`, and the OFFICIAL staging tool.
+  // `complexity-gate.ts`), the knob `team.gate`, its MECHANICAL default, and the OFFICIAL staging tool.
   // Old assertion, kept here as the recorded reason: `preset.includes("SESSION STARTUP RULE")`.
   for (const token of ["[AgentTeams] Session-start team rule", "team.gate", "spawn_teammate"]) {
     if (!preset.includes(token)) fail("the mpd preset no longer states the session-start convention: missing " + JSON.stringify(token))
   }
-  if (!/default[^\n]{0,60}off|off[^\n]{0,60}default/i.test(preset)) fail("the mpd preset must state that `team.gate` defaults to `off` — the ceremony is OPT-IN after the 2026-10-17 rollback")
+  if (!/default[^\n]{0,60}mechanical|mechanical[^\n]{0,60}default/i.test(preset)) fail("the mpd preset must state that `team.gate` defaults to `mechanical` — the session-start rule is ON by default since the 2026-10-20 restore")
   if (/MUST start inside a team|MUST begin inside a team/.test(preset)) fail("the mpd preset still carries the retired mandatory-team invariant")
 
   // THE CORPUS TABLE: every frozen case with the SHIPPED predicate's verdict, printed so the evidence
@@ -1132,13 +1181,13 @@ async function selfTest(): Promise<void> {
   console.log("[session-start-team self-test] ok: the shipped PURE gate module conforms to the MECHANICAL contract ("
     + SIMPLE_PROMPTS.length + " simple / " + SOFT_COMPLEX_PROMPTS.length + " soft-complex / " + EXPLICIT_PROMPTS.length + " explicit / "
     + CJK_COMPLEX_PROMPTS.length + " cjk-positive / " + CJK_SIMPLE_PROMPTS.length + " cjk-negative / 1 boulder-probe prompt, both ways; "
-    + "signal D through the INJECTED reader AND the real filesystem, the mode's OPT-IN default, the shell builder's honest bounds, "
+    + "signal D through the INJECTED reader AND the real filesystem, the mode's MECHANICAL fail-safe default (undefined/bogus/0 -> mechanical; advisory/off/false explicit opt-outs), the shell builder's honest bounds, "
     + "both notices with the retired vocabulary scoped per text, and the session scope)"
     + "; FOUR negative controls reddened (always-trigger " + triggerProblems.length + ", always-silent " + silentProblems.length
     + ", advisory-only-mechanical " + confusedProblems.length + ", CJK-blind " + blindProblems.length + " problem(s))"
     + "; C7 (a session already leading a team) and C8 (an inbound `team-message`/`agent-message` is never the human turn) each driven BOTH ways"
     + "; the LIVE verdict and the REAL `.mpd/team` stage scan were each driven offline BOTH ways (a matching shell passes; a spawned record, a plan-id mismatch, a leaked notice and a non-shell staged plan all redden)"
-    + "; bundle mounts mpd-roles with the retired rows gone; preset carries the session-start convention (frozen marker + team.gate + the OFF-INITIATIVE default wording)")
+    + "; bundle mounts mpd-roles with the retired rows gone; preset carries the session-start convention (frozen marker + team.gate + the MECHANICAL default wording)")
 }
 
 // ── live lane ────────────────────────────────────────────────────────────────
@@ -1282,6 +1331,29 @@ function rowLogText(ws: string): string {
     return existsSync(file) ? readFileSync(file, "utf8") : ""
   } catch {
     return ""
+  }
+}
+
+/**
+ * Whether one side's PROJECT config leaves `team.gate` UNSET — the audit field that proves the
+ * `mechanical-default` side measured the resolver's DEFAULT rather than an inherited seed.
+ *
+ * True when the side workspace has no `.mpd/mpd.jsonc`, or that file parses to an object with no
+ * `team.gate` value. A malformed file reads FALSE (the live assertion then reddens): an unreadable
+ * config is not proof the key is unset. The lane seeds plain JSON, so JSON.parse is the right reader.
+ * @param ws The side's sandbox workspace.
+ * @returns whether `team.gate` is provably absent from the side's project config.
+ */
+function teamGateKeyAbsent(ws: string): boolean {
+  // The project config the seeding helper writes, relative to the side's workspace.
+  const file = join(ws, ".mpd", "mpd.jsonc")
+  if (!existsSync(file)) return true
+  try {
+    /** The parsed config, read for the one nested key this audit judges. */
+    const config = JSON.parse(readFileSync(file, "utf8")) as { team?: { gate?: unknown } }
+    return config?.team?.gate === undefined
+  } catch {
+    return false
   }
 }
 
@@ -1450,12 +1522,16 @@ async function runReal(): Promise<void> {
       if (side.seed?.boulderStatus !== undefined) seedFile(sideWs, join(".mpd", "boulder.json"), boulderStateJson(side.seed.boulderStatus))
       // The seeded project config, when this side selects its `team.gate` mode that way.
       if (side.seed?.mpdJsonc !== undefined) seedFile(sideWs, join(".mpd", "mpd.jsonc"), side.seed.mpdJsonc)
-      // REPURPOSED 2026-10-17 (`.mpd/plans/harness-021-rollback.md` R1): the gate is OPT-IN, so its
-      // default is `off`. A side whose SUBJECT is what a MECHANICAL fire does must therefore ASK for
-      // that mode the way a user does — a project `mpd.jsonc` — instead of inheriting it from a default
-      // that no longer exists. Seeded only when the side did not select its own mode, so the advisory /
-      // off sides keep their explicit spellings and the arm stays honest about which mode it measured.
-      else if (side.expectedMode === GATE_MODE_MECHANICAL) seedFile(sideWs, join(".mpd", "mpd.jsonc"), GATE_MODE_JSONC_MECHANICAL)
+      // The gate is MECHANICAL by default again (2026-10-20 restore). A side whose SUBJECT is what a
+      // MECHANICAL fire does still SEEDS that mode explicitly the way a user does — a project
+      // `mpd.jsonc` — so the mode it measured is NAMED by the side rather than inherited. Seeded only
+      // when the side did not select its own mode, so the advisory / off sides keep their explicit
+      // spellings and the arm stays honest about which mode it measured. ONE side sets `unsetGate`:
+      // it deliberately seeds NO key, so the resolver's fail-safe DEFAULT is the mode it measures.
+      else if (side.expectedMode === GATE_MODE_MECHANICAL && side.unsetGate !== true) seedFile(sideWs, join(".mpd", "mpd.jsonc"), GATE_MODE_JSONC_MECHANICAL)
+      // THE UNSET-KEY AUDIT: read from the side's OWN sandbox config, so the evidence proves the
+      // default route was measured and a future re-added seed cannot leave this arm green.
+      const gateKeyAbsent = teamGateKeyAbsent(sideWs)
       // The launcher spec for this boot, or `null` when no `dsh` launcher resolves.
       const spec = dshCommand(["--profile", "mpd-headless", prompts[index]], env)
       // The boot's result, or a synthetic miss when nothing could be spawned.
@@ -1518,14 +1594,19 @@ async function runReal(): Promise<void> {
       if (!isolation.ok) problems.push("workspace isolation violated: " + isolation.error)
       if (!ownKeyWritten) problems.push("this side's own session-store key was not written — the boot did not run in its sandbox workspace")
       if (!gateInstalled) problems.push("the row did not report `sessionGate=" + side.expectedMode + "` — the gate was NOT mounted for this mode on this boot (a different defect from a mounted-but-silent gate); boot line: " + JSON.stringify(bootLine.slice(0, 240)))
+      // The `mechanical-default` side exists to measure the resolver's DEFAULT; if its project config
+      // actually supplies `team.gate`, the boot proved a seeded mode and the side must NOT pass.
+      if (side.unsetGate === true && !gateKeyAbsent) {
+        problems.push("this side declares `unsetGate` but its project config supplies `team.gate` — the DEFAULT route was not measured (" + join(".mpd", "mpd.jsonc") + ")")
+      }
       // The ROW's own fire line, judged per expectation: a mechanical side must report `staged=1` AND
       // the SAME plan id the injected notice names — a three-source agreement (row log + notice + the
       // staged slot) that no single text can fake; an advisory fire must report `staged=0`; a side that
       // must not fire at all must have written no fire line.
       if (side.expect === "stage") {
         if (!firedLine.includes("staged=1")) problems.push("the row's own fire line must report staged=1, got " + JSON.stringify(firedLine.slice(0, 200)))
-        // The plan id the ROW recorded for this fire, or `""` when its line named none.
-        const firedPlanId = /plan=(plan-\d{14})/.exec(firedLine)?.[1] ?? ""
+        // The plan id the ROW recorded for this fire, read by the SAME pattern the notice is read with.
+        const firedPlanId = planIdsIn(firedLine)[0] ?? ""
         if (firedPlanId === "" || firedPlanId !== notice.planIds[0]) {
           problems.push("the row log names " + JSON.stringify(firedPlanId === "" ? "(no plan)" : firedPlanId) + " while the injected notice names " + JSON.stringify(notice.planIds[0] ?? "(no plan)") + " — the row log and the notice must agree")
         }
@@ -1545,7 +1626,7 @@ async function runReal(): Promise<void> {
         writeFileSync(join(keep, "prompt.txt"), prompts[index])
         // The ROW's own log is copied verbatim: it is the primary evidence (boot signature + fire).
         writeFileSync(join(keep, "row-log.txt"), rowLog)
-        writeFileSync(join(keep, "notices.json"), JSON.stringify({ notice, teams, goal: goal.slice(0, 400), bootLine: bootLine.slice(0, 400), firedLine: firedLine.slice(0, 400), gateInstalled, ownKeyWritten, problems }, null, 2))
+        writeFileSync(join(keep, "notices.json"), JSON.stringify({ notice, teams, goal: goal.slice(0, 400), bootLine: bootLine.slice(0, 400), firedLine: firedLine.slice(0, 400), gateInstalled, gateKeyAbsent, ownKeyWritten, problems }, null, 2))
       } catch { /* evidence copy is best-effort; the assertions are the gate */ }
       results.push({
         prompt: prompts[index], expect: side.expect, expectedMode: side.expectedMode, exited: live.status,
@@ -1556,15 +1637,16 @@ async function runReal(): Promise<void> {
         stagedPlans: teams.staged, stagedPlanIds: teams.planIds, stagedMembers: teams.stagedMembers, stagedTasks: teams.stagedTasks,
         teamRecords: teams.records, teamRecordIds: teams.recordIds,
         sessionRecords: recorded.records, sessionFrames: recorded.frames,
-        isolation: isolation.ok, ownKeyWritten, gateInstalled, bootLine: bootLine.slice(0, 240), firedLine: firedLine.slice(0, 240), problems, ok: problems.length === 0,
+        isolation: isolation.ok, ownKeyWritten, gateInstalled, gateKeyAbsent, bootLine: bootLine.slice(0, 240), firedLine: firedLine.slice(0, 240), problems, ok: problems.length === 0,
       })
     }
     return results
   }
 
   // The four sides the retired case already had: the negative control, the soft-complex trigger, and
-  // the explicit request (whose marker must be consumed) — all mechanical now, since the FAIL-SAFE
-  // default is what a workspace with no `mpd.jsonc` gets.
+  // the explicit request (whose marker must be consumed) — all mechanical. They seed the mode
+  // explicitly because their subject is what a MECHANICAL fire DOES; the `mechanical-default` side
+  // below leaves `team.gate` UNSET, so the resolver's fail-safe DEFAULT is measured live too.
   //
   // THE CJK CORPUS RUNS FIRST, and the order is deliberate rather than incidental: the CJK positive is
   // this wave's acceptance arm AND the slowest boot of the run (a work-shaped 222-character
@@ -1578,6 +1660,12 @@ async function runReal(): Promise<void> {
   steps.cjkNegativeSide = runSide("cjk-negative", CJK_SIMPLE_PROMPTS, { expect: "none", expectedMode: GATE_MODE_MECHANICAL })
   steps.simpleSide = runSide("simple", SIMPLE_PROMPTS, { expect: "none", expectedMode: GATE_MODE_MECHANICAL })
   steps.softComplexSide = runSide("soft-complex", SOFT_COMPLEX_PROMPTS, { expect: "stage", expectedMode: GATE_MODE_MECHANICAL })
+  // THE DEFAULT ROUTE, live (CodeRabbit NEW-2 on PR #52): `team.gate` is UNSET in the project config, so
+  // this side measures what an untouched workspace gets. Its boot must report `sessionGate=mechanical`
+  // (the row and `mpdConfig` layers supply no value) AND stage a shell under the same three-source
+  // agreement the explicit mechanical sides assert. A config layer that supplies `off` when the key is
+  // unset reddens HERE — no explicitly seeded side can detect that.
+  steps.mechanicalDefaultSide = runSide("mechanical-default", [SOFT_COMPLEX_PROMPTS[0]], { expect: "stage", expectedMode: GATE_MODE_MECHANICAL, unsetGate: true })
   steps.explicitSide = runSide("explicit", EXPLICIT_PROMPTS, { expect: "stage", expectedMode: GATE_MODE_MECHANICAL, explicit: true })
   // (P7) Signal D over a REAL workspace: the SAME prompt and the SAME ledger bytes, moved by ONE
   // status field — the pair is what proves D reads ACTIVE work rather than "a plan file exists".
@@ -1599,7 +1687,7 @@ async function runReal(): Promise<void> {
 
   // The folded verdict: EVERY side's `ok` must hold, which is what the run's exit code reports.
   const sides: LiveStep[] = [
-    ...steps.simpleSide, ...steps.softComplexSide, ...steps.explicitSide,
+    ...steps.simpleSide, ...steps.softComplexSide, ...steps.explicitSide, ...steps.mechanicalDefaultSide,
     ...steps.boulderActiveSide, ...steps.boulderCompletedSide,
     ...steps.advisorySide, ...steps.offSide,
     ...steps.cjkPositiveSide, ...steps.cjkNegativeSide,
@@ -1611,6 +1699,8 @@ async function runReal(): Promise<void> {
     simpleNotices: steps.simpleSide.map((r) => r.notices),
     softNotices: steps.softComplexSide.map((r) => r.notices),
     softPlanIds: steps.softComplexSide.map((r) => r.planIds),
+    mechanicalDefault: steps.mechanicalDefaultSide.map((r) => ({ notices: r.notices, planIds: r.planIds, stagedPlans: r.stagedPlans, teamRecords: r.teamRecords, gateKeyAbsent: r.gateKeyAbsent, bootLine: r.bootLine, firedLine: r.firedLine })),
+    mechanicalDefaultGateKeyAbsent: steps.mechanicalDefaultSide.every((r) => r.gateKeyAbsent === true),
     explicitMarkerConsumed: steps.explicitSide.map((r) => r.markerConsumed),
     boulderActive: steps.boulderActiveSide.map((r) => ({ notices: r.notices, signals: r.signals, stagedPlans: r.stagedPlans, teamRecords: r.teamRecords, planIds: r.planIds })),
     boulderCompleted: steps.boulderCompletedSide.map((r) => ({ notices: r.notices, stagedPlans: r.stagedPlans, teamRecords: r.teamRecords })),

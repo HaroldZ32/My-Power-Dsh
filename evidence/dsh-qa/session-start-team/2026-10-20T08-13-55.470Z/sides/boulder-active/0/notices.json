@@ -1,0 +1,37 @@
+{
+  "notice": {
+    "any": 1,
+    "advisory": 0,
+    "mechanical": 1,
+    "signalsNamed": 1,
+    "shellShaped": 1,
+    "inert": 1,
+    "retiredProvisioned": 0,
+    "officialTools": 0,
+    "mechanicalTool": 1,
+    "retiredVocabulary": 0,
+    "signals": [
+      "D"
+    ],
+    "planIds": [
+      "plan-20261020083849091-ujf1-001"
+    ]
+  },
+  "teams": {
+    "staged": 1,
+    "planIds": [
+      "plan-20261020083849091-ujf1-001"
+    ],
+    "stagedMembers": 0,
+    "stagedTasks": 0,
+    "records": 0,
+    "recordIds": []
+  },
+  "goal": "Reply with exactly: boulder-ok",
+  "bootLine": "[mpd-roles] team plane: readOnlyGuard=installed deny=8 captainInvestigation=deny delegationGate=deny verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) askUserQuestion=installed rosterSection=agent-scoped order=605 sessionGate=mechanical",
+  "firedLine": "[mpd-roles] session gate fired for agent \"session-e56d231a-4318-4d72-8046-81e1243510e9\" signals=D mode=mechanical staged=1 plan=plan-20261020083849091-ujf1-001",
+  "gateInstalled": true,
+  "gateKeyAbsent": false,
+  "ownKeyWritten": true,
+  "problems": []
+}

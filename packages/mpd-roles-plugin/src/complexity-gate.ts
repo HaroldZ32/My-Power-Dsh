@@ -25,9 +25,9 @@
 //            ({@link CJK_CHAR_MIN} Han characters) AND intent (>= {@link CJK_ACTION_VERB_MIN}
 //            distinct action verbs), both calibrated over the frozen corpus.
 //
-// What a TRIGGER does is resolved per call by the wiring: `team.gate` selects `off` (the default since the
-// 2026-10-17 rollback: the gate does nothing at all), `mechanical` (stage an APPROVABLE SHELL through the
-// `agent_teams_plan` tool) or `advisory` (one notice, stage nothing).
+// What a TRIGGER does is resolved per call by the wiring: `team.gate` selects `mechanical` (the DEFAULT
+// again since 2026-10-20: stage an APPROVABLE SHELL through the `agent_teams_plan` tool), `advisory`
+// (one notice, stage nothing) or `off` (the gate does nothing at all).
 import { readFile as readFileFs, readdir as readDirFs } from "node:fs/promises"
 import { join } from "node:path"
 
@@ -42,7 +42,11 @@ export const STARTUP_NOTICE_MARKER = "[AgentTeams] Session-start team rule"
  */
 export const HUMAN_SOURCE_KIND = "user"
 
-/** The three `team.gate` modes; the default is {@link GATE_MODE_OFF} (opt-in since 2026-10-17). */
+/**
+ * The three `team.gate` modes; the default is {@link GATE_MODE_MECHANICAL} again since the 2026-10-20
+ * ruling (it was opt-in from 2026-10-17 to 2026-10-20: the session-start rule ships ON, and `off` is a
+ * deliberate configuration rather than an omission).
+ */
 export type GateMode = "mechanical" | "advisory" | "off"
 /** The `team.gate` mode that stages a plan shell through the `agent_teams_plan` tool. */
 export const GATE_MODE_MECHANICAL: GateMode = "mechanical"
@@ -98,6 +102,12 @@ export const STAGED_PLAN_PHRASE = "a team PLAN was STAGED"
 export const ALREADY_STAGED_PLAN_PHRASE = "a team PLAN is ALREADY STAGED"
 /** The mechanical notice's inertness sentence: staging is not spawning. */
 export const INERT_PLAN_PHRASE = "NOTHING has been spawned; the plan is INERT until approved"
+/**
+ * The mechanical notice's failure sentence when the staging call reports OK but returns NO plan id.
+ * The shell WAS staged, so the notice must not fall back to the advisory taxonomy; it must say the
+ * staged plan cannot be approved and that the failure is to be reported.
+ */
+export const MISSING_PLAN_ID_PHRASE = "STAGING FAILED TO RETURN A PLAN ID"
 /** The advisory notice's staging disclaimer (the advisory route must never claim a staged plan). */
 export const NO_TEAM_STAGED_PHRASE = "NO team was staged"
 /** The permission to continue solo, which BOTH notices state so an unapproved shell is never a trap. */
@@ -409,21 +419,20 @@ export async function readLeadingTeam(
 /**
  * Resolve the `team.gate` mode from one raw config value, PER CALL.
  *
- * `off` is the DEFAULT since the 2026-10-17 rollback (`.mpd/plans/harness-021-rollback.md` R1): the gate
- * runs only when a config layer EXPLICITLY asks for it, so the ceremony can never be armed by omission.
- * The fail-safe direction follows the default — an absent key and every UNKNOWN value (`"bogus"`, `0`, an
- * object) read `off` too, because a state the user did not ask for is not a safe state any more: staging a
- * plan shell nobody requested is the surprising outcome, not skipping one. `"mechanical"` and the legacy
- * `true` are the only ways to arm it; `"advisory"` and both spellings of off (`"off"`, `false`) are
- * honoured as themselves.
+ * `mechanical` is the DEFAULT again (2026-10-20 ruling, `.mpd/plans/restore-guard-discipline.md`) and the
+ * FAIL-SAFE: an absent key and every UNKNOWN value (`"bogus"`, `0`, an object) read `mechanical`, so a
+ * typo can never silently disable the session-start rule. This was the pre-2026-10-17 behaviour; the
+ * rollback made it opt-in for three days and the top-level agent then did every piece of work itself,
+ * which is exactly what the restored rule prevents. `"advisory"` and both spellings of off (`"off"`,
+ * `false`) are honoured as themselves, so a session that does not want the shell says so explicitly.
  *
  * @param value - the raw value the config layer answered, of any type.
  * @returns the mode the gate must run in.
  */
 export function resolveGateMode(value: unknown): GateMode {
   if (value === GATE_MODE_ADVISORY) return GATE_MODE_ADVISORY
-  if (value === GATE_MODE_MECHANICAL || value === true) return GATE_MODE_MECHANICAL
-  return GATE_MODE_OFF
+  if (value === GATE_MODE_OFF || value === false) return GATE_MODE_OFF
+  return GATE_MODE_MECHANICAL
 }
 
 /** Every whitespace run collapsed to one space, with the ends trimmed. */
@@ -503,7 +512,8 @@ export function advisoryNoticeText(signals: readonly string[], explicit: boolean
  * The MECHANICAL notice: a plan SHELL was staged (or already was), and NOTHING was spawned.
  *
  * The id is the one the staging call RETURNED, never a claimed or reconstructed one; an empty id is
- * reported as "plan id not reported" rather than invented. The notice states outright that the plan
+ * reported as {@link MISSING_PLAN_ID_PHRASE} plus the explicit statement that the staged shell cannot
+ * be approved, rather than invented. The notice states outright that the plan
  * is INERT until approved, because "a team was created" is the exact false claim this gate must not
  * invite.
  *
@@ -523,16 +533,24 @@ export function mechanicalNoticeText(input: {
 }): string {
   /** The fired signals as a readable list, or the generic wording when none is named. */
   const matched = input.signals.length === 0 ? "complexity signals" : "complexity signals " + input.signals.join("/")
-  /** The id sentence: the returned id, or an explicit statement that the call reported none. */
-  const id = input.planId === "" ? "(plan id not reported by the call)" : input.planId
+  /** The id sentence: the returned id, or a LOUD failure because a staged shell without an id cannot be approved. */
+  const id = input.planId === "" ? MISSING_PLAN_ID_PHRASE + " — the shell was staged but CANNOT be approved, so report this failure" : input.planId
+  /**
+   * The next-step sentence. ONLY a shell whose id the call returned can be extended and approved; with
+   * no id the notice must NOT instruct the captain to do either (the contradiction this branch removes)
+   * and must send them to report the failure instead.
+   */
+  const nextStep = input.planId === ""
+    ? "\n- Do NOT attempt to extend or approve it: the staging call returned no id, so report this failure and re-stage before continuing."
+    : "\n- Extend it with `" + STAGING_TOOL_NAME + " {action:\"" + PLAN_EXTEND_ACTIONS[0] + "\"}` (each member's prompt comes from `mpd_role_persona`)"
+      + " and `" + STAGING_TOOL_NAME + " {action:\"" + PLAN_EXTEND_ACTIONS[1] + "\"}`, then approve it with `"
+      + STAGING_TOOL_NAME + " {action:\"approve\"}` — approval is what spawns the members and posts the tasks."
   return STARTUP_NOTICE_MARKER + ": this session shows " + matched + ", and "
     + (input.alreadyStaged ? ALREADY_STAGED_PLAN_PHRASE : STAGED_PLAN_PHRASE) + " — " + id
     + " (0 members, 0 tasks: a SHELL, not a team)."
     + (input.alreadyStaged ? "\n- The gate did NOT stage again: a second staging would ARCHIVE your in-progress plan." : "")
     + (input.explicit ? "\n- The explicit `team:` / `!team` marker was CONSUMED from the goal text: the request is why this is your session to lead." : "")
-    + "\n- Extend it with `" + STAGING_TOOL_NAME + " {action:\"" + PLAN_EXTEND_ACTIONS[0] + "\"}` (each member's prompt comes from `mpd_role_persona`)"
-    + " and `" + STAGING_TOOL_NAME + " {action:\"" + PLAN_EXTEND_ACTIONS[1] + "\"}`, then approve it with `"
-    + STAGING_TOOL_NAME + " {action:\"approve\"}` — approval is what spawns the members and posts the tasks."
+    + nextStep
     + "\n- " + INERT_PLAN_PHRASE + " — never tell the user a team was created."
     + "\n" + SOLO_PERMISSION_SENTENCE + " — and say so in one line: an unapproved plan is inert."
     + "\n- A team is NOT a precondition of this session, and you may not create a second team while leading one."

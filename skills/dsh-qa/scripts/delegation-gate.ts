@@ -1,35 +1,42 @@
 #!/usr/bin/env node
-// Case delegation-gate: REPURPOSED for the 2026-10-17 rollback — the official spawn tools
-// (`subagent` / `subagent_fork` / `workflow`) are NOT refused any more, and the sanctioned roster path
-// (`mpd_role_spawn`) is OPEN on the same sandbox. Every verdict comes from the HARNESS's own session log.
+// Case delegation-gate: the gate's decision table, the delegation knob, and the roster front door. The
+// LIVE lane measures the PRESET SCOPE as a headless composition can expose it (a preset-less top-level
+// session is RELEASED while the row log still reports `delegationGate=deny`) and the sanctioned roster
+// path (`mpd_role_spawn`) on the same sandbox; the DENY side proper is carried offline and by the
+// preset-carrying session of the verification lane (see "WHAT CARRIES THE PROOF").
 //
-// WHY THIS CASE CHANGED (repurposed, never silently deleted — `.mpd/plans/harness-021-rollback.md` R7):
-// this case used to assert the OPPOSITE. Through 2026-10-10 the `mpd-roles` row installed a
-// `tools.guard` that REFUSED the harness's generic spawn tools for every session `delegation.gate`
-// covered (default `deny`), and this case proved the refusal, the `allow` release and the
-// `mpd_role_spawn` front door. The user's ruling withdrew that gate (R1: one agent, its whole tool
-// pack, steered by the persona prompt), so the OLD assertions described a surface that no longer
-// exists — keeping them would fail a CORRECT tree. What survives, and what the case now proves:
-//   * the WITHDRAWAL is real: the shipped apply site no longer installs the gate (`--self-test`, pinned
-//     on the source rather than on dist bytes, which the wave's rebuild task refreshes in its own
-//     commit) and the boot line still reports `delegationGate=absent reason=…` — a state, never a mode;
-//   * (a) with NO config at all, a `subagent` call is NOT refused: a `tool/call` was recorded and NO
-//     recorded result carries the old refusal sentence;
-//   * (b) the RETIRED KNOB cannot refuse: with `delegation.gate: "deny"` — the old default, spelled
-//     explicitly in the side's `.mpd/mpd.jsonc` — the same call is STILL not refused. A gate that came
-//     back would redden (a) and (b) together, so neither arm passes by luck;
-//   * (c) the ROSTER front door still works: `mpd_role_spawn` of the READ-ONLY `Explorer` role has a
-//     recorded `tool/call` whose result is NOT an error and does NOT carry the harness's unknown-names
-//     rejection. This half is NOT about the withdrawn gate — it pins the `restrictToolsTolerant` repair
-//     that keeps a read-only spawn alive on a profile without `cclsp`, and the offline arms below still
-//     drive that shipped helper directly.
-// The offline `--self-test` keeps the seeded-fork classification arms (the ONE §5 predicate the roster
-// still uses), the tolerant-restrict arms, and the withdrawal arms; it no longer drives the retired
-// decision table (`delegationGateDecision`), because a table for an uninstalled hook proves nothing.
+// WHY THIS CASE EXISTS: the wave fixes two measured defects at once.
+//   * F1 — nothing denied the harness's generic spawn tools, so §5 rule 2's sanctioned delegation
+//     surfaces (mpd_role_spawn / the workmate library / Agent Teams) were advice, and the escape cost
+//     nothing. The gate is a `tools.guard` callback in `mpd-roles-plugin` (`delegation-gate.ts`): §5's
+//     session rank decides captain vs member, and a CAPTAIN session is gated only when
+//     `sessionIsMpdCaptain` holds (`mpd` preset); ANOTHER preset's top-level session is released, while
+//     child/member sessions are gated whatever preset they run.
+//   * F2 — the sanctioned path was itself BROKEN: `mpd_role_spawn` of a read-only role died with
+//     `tools.restrict() names unknown global tools "mcp__lsp__rename_symbol", …` on a profile without
+//     `cclsp`, because the harness rejects the WHOLE deny list when one name is unregistered. The fix
+//     prunes by the harness's OWN verdict (`restrictToolsTolerant`, one retry).
+// An escape that is closed while the front door is bricked would be worse than no gate, so (c) below
+// asserts the front door on the SAME sandbox as (a).
 //
-// WHAT CARRIES THE PROOF — the HARNESS's session log, never the model's prose (AGENTS.md §7):
-// `tool/call` plus a `tool/result`. `--dump-config` is deliberately NOT used: it composes rows and never
-// executes plugin code, so it cannot witness a guard ANY WAY ROUND.
+// WHAT CARRIES THE PROOF — the HARNESS's session log and the row log, never the model's prose (AGENTS.md §7):
+//   (a) THE PRESET SCOPE, measured where a headless boot can expose it: the deny-default side's
+//       top-level session carries NO agent preset (`agentPreset=none` in the row log — a headless boot
+//       never composes one; `@deepseek-ai/dsh-headless` `assertAdoptable` refuses it), so its `subagent`
+//       call carries NO refusal text, while the SAME row log reports `delegationGate=deny`: the gate IS
+//       installed and the release is the mpd-preset scope, not a missing guard.
+//       THE DENY SIDE PROPER — an `mpd`-preset top-level session IS refused — is carried by the offline
+//       arms below (`delegationGateDecision` + `sessionIsMpdCaptain`) and by the deny-mode boot line; a
+//       preset-carrying session is measured by `preset-conformance` (`evidence/dsh-qa/preset-conformance/`
+//       records a real `session/create` with `agentPreset: "mpd"`), while the preset-less boot-line witness
+//       is `evidence/roles/captain-scope/` (`agentPreset=none`). This headless lane does NOT claim a live
+//       refusal on an mpd session.
+//   (b) with `delegation.gate: "allow"` in the side's `.mpd/mpd.jsonc`, the same call's recorded
+//       results carry NO refusal text (corroborative on the same composition: allow releases);
+//   (c) on the deny-default sandbox, `mpd_role_spawn` (role Explorer, read-only) has a `tool/call`
+//       whose recorded result is NOT an error and does NOT carry the unknown-names rejection.
+// `--dump-config` is deliberately NOT used: it composes rows and never executes plugin code, so it
+// cannot witness a guard at all.
 //
 // PREREQ: absent-dsh-binary dsh "install DeepSeek Harness (dsh) on PATH"
 // PREREQ: absent-credentials DEEPSEEK_API_KEY "export DEEPSEEK_API_KEY in the launching shell, or add `refs: DEEPSEEK_API_KEY: <value>` to ~/.dsh/.credentials.yaml"
@@ -51,8 +58,15 @@ import { DSH_MISSING, dshCommand } from "./lib/dsh-launcher.ts"
 import { assertSessionsSandboxed, sandboxWorkspace } from "./lib/workspace-isolation.ts"
 import { findToolCall, readSessionEvents } from "./lib/session-evidence.ts"
 import {
-  sessionRank,
-} from "../../../packages/mpd-roles-plugin/src/complexity-gate.ts"
+  DEFAULT_DELEGATION_GATE_MODE,
+  DELEGATION_CONFIG_KEY,
+  DELEGATION_TOOLS,
+  delegationGateDecision,
+  delegationRefusal,
+  resolveDelegationGateMode,
+} from "../../../packages/mpd-roles-plugin/src/delegation-gate.ts"
+import type { DelegationGateMode } from "../../../packages/mpd-roles-plugin/src/delegation-gate.ts"
+import { sessionIsMpdCaptain, sessionRank } from "../../../packages/mpd-roles-plugin/src/complexity-gate.ts"
 // The tolerant-restrict helper is read from the BUILT adapter: the package's `src` uses extensionless
 // specifiers (the `bun build` form), so only `dist` is importable by both runners this case must work
 // under (`node <case>.ts` from the skill, and `bun` from `run-qa-selftests`). The TYPE comes from the
@@ -63,19 +77,13 @@ import type { RestrictAttempt } from "../../../packages/mpd-dsh-adapter-plugin/s
 const repoRoot: string = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
 /** The evidence slug: the SKIP/FAIL marker and the evidence directory both carry it. */
 const SLUG: string = "delegation-gate"
-/** The built roles row the live lane boots — asserted to carry the reported state before any boot is spent. */
+/** The built roles row the live lane boots — asserted to CARRY the gate before any boot is spent. */
 const ROLES_DIST: string = join(repoRoot, "packages", "mpd-roles-plugin", "dist", "index.js")
-/** The shipped apply site whose withdrawal the offline arms pin. */
-const APPLY_SITE: string = join(repoRoot, "packages", "mpd-roles-plugin", "src", "index.ts")
-/** The install call a return of the 2026-10-10 gate would have to reintroduce. */
-const WITHDRAWN_INSTALL: string = "installDelegationGate("
-/** The boot-line spelling a WITHDRAWN gate must keep reporting — a state, never a mode. */
-const ABSENT_TOKEN: string = "delegationGate=absent reason="
 /** The row's own log, relative to a booting session's workspace (R5: a row never prints to stdout). */
 const ROW_LOG: string = join(".mpd", "logs", "mpd-roles.log")
-/** The boot-line field the roles row reports the gate's state with. */
+/** The boot-line field the roles row reports the gate's install and mode with. */
 const BOOT_FIELD: string = "delegationGate="
-/** The fragment every refusal sentence carried; its ABSENCE from a recorded result is what (a)/(b) prove. */
+/** The fragment every refusal sentence carries, asserted against the RECORDED result text. */
 const REFUSAL_MARKER: string = "delegation gate"
 /** The harness's own unknown-name rejection, whose ABSENCE is what (c) proves about the F2 repair. */
 const UNKNOWN_NAMES_MARKER: string = "names unknown global tools"
@@ -124,12 +132,12 @@ interface Prereq {
 }
 
 /** The three live sides this case drives, one headless boot each. */
-type SideName = "default" | "retired-knob" | "roles"
+type SideName = "deny" | "allow" | "roles"
 
-/** The prompt every side is driven with — a FORCED single tool call, so the lane measures the surface and not the model's judgement. */
+/** The prompt every side is driven with — a FORCED single tool call, so the lane measures the guard and not the model's judgement. */
 const PROMPTS: Readonly<Record<SideName, string>> = {
-  default: "Call the `subagent` tool EXACTLY ONCE, with label \"gate-probe\" and prompt \"reply with the single word ok\". Do not call any other tool. After the call, answer in one short line: did the call succeed or was it refused?",
-  "retired-knob": "Call the `subagent` tool EXACTLY ONCE, with label \"gate-probe\" and prompt \"reply with the single word ok\". Do not call any other tool. After the call, answer in one short line: did the call succeed or was it refused?",
+  deny: "Call the `subagent` tool EXACTLY ONCE, with label \"gate-probe\" and prompt \"reply with the single word ok\". Do not call any other tool. After the call, answer in one short line: did the call succeed or was it refused?",
+  allow: "Call the `subagent` tool EXACTLY ONCE, with label \"gate-probe\" and prompt \"reply with the single word ok\". Do not call any other tool. After the call, answer in one short line: did the call succeed or was it refused?",
   roles: "Call the `mpd_role_spawn` tool EXACTLY ONCE, with role \"Explorer\" and task \"list the top-level files of the current working directory\". Do not call any other tool. After the call, answer in one short line with the tool's status.",
 }
 
@@ -164,23 +172,7 @@ function selfTest(): number {
    */
   const check = (ok: boolean, what: string): void => { if (!ok) failures.push(what) }
 
-  // ── the WITHDRAWAL, pinned on the SHIPPED SOURCE ──────────────────────────────────────────────
-  // REPURPOSED 2026-10-17: this block used to drive `delegationGateDecision` over 3 tools × 3 modes × 4
-  // session classes, pin `delegationRefusal`'s steering sentence, pin `resolveDelegationGateMode`'s two
-  // spellings and `DEFAULT_DELEGATION_GATE_MODE === "deny"`. The user's ruling withdrew the install, so a
-  // table for a hook nobody installs proves nothing about the shipped tree — and keeping the OLD
-  // assertions would lock the withdrawn behaviour in as if it still described reality. What replaces
-  // them is the fact the case now exists to protect: the apply site does NOT install the gate, and the
-  // boot line still REPORTS its absence rather than dropping the token or faking a mode.
-  /** The row's apply site, which owns the ONE install site of every guard. */
-  const applySite = readFileSync(APPLY_SITE, "utf8")
-  check(!applySite.includes(WITHDRAWN_INSTALL), "the shipped apply site still installs the delegation gate (" + WITHDRAWN_INSTALL + "): the 2026-10-17 withdrawal regressed")
-  check(applySite.includes(ABSENT_TOKEN), "the shipped apply site no longer reports " + ABSENT_TOKEN + " — a withdrawn gate must keep reporting its absence, never drop the token")
-
-  // ── the seeded-fork classification, the R2 repair ─────────────────────────────────────────────
-  // §5's ONE session predicate is still SHIPPED and still load-bearing (the session-start gate and the
-  // roster's own scoping read it), so its arms stay here: a gate that was withdrawn must not take the
-  // classification it used to share with the tree.
+  // ── the decision table: mode × session class × tool ────────────────────────────────────────────
   /** A captain session (the seeded-fork shape included), a child and an unreadable header. */
   const agents: ReadonlyArray<readonly [string, unknown]> = [
     ["captain", { id: "c", session: { header: { agentPreset: "cordis", delegationDepth: 0 } } }],
@@ -188,12 +180,51 @@ function selfTest(): number {
     ["child", { id: "k", session: { header: { origin: "subagent", parentSession: "p", delegationDepth: 1 } } }],
     ["headerless", { id: "h" }],
   ]
+  /** The decision for one call, through the SHIPPED function. */
+  const decide = (toolName: string, mode: DelegationGateMode, agent: unknown): string | undefined =>
+    delegationGateDecision({ toolName, mode, rank: sessionRank(agent) })
+  for (const tool of DELEGATION_TOOLS) {
+    for (const [label, agent] of agents) {
+      check(decide(tool, "deny", agent) !== undefined, "deny must refuse " + tool + " for " + label)
+      check(decide(tool, "allow", agent) === undefined, "allow must release " + tool + " for " + label)
+    }
+    check(decide(tool, "captain", agents[0]?.[1]) !== undefined, "captain mode must refuse " + tool + " for the captain")
+    check(decide(tool, "captain", agents[1]?.[1]) !== undefined, "captain mode must refuse " + tool + " for the seeded fork")
+    check(decide(tool, "captain", agents[2]?.[1]) === undefined, "captain mode must release " + tool + " for a child")
+    check(decide(tool, "captain", agents[3]?.[1]) === undefined, "captain mode must release " + tool + " for a headerless session")
+    check(decide("read", "deny", agents[0]?.[1]) === undefined, "a bystander tool is never the gate's business")
+  }
+  check(DEFAULT_DELEGATION_GATE_MODE === "deny", "the default mode must be the fail-closed deny")
+  check([...DELEGATION_TOOLS].join(",") === "subagent,subagent_fork,workflow", "the covered list must be the three official spawn tools")
+
+  // ── the refusal sentence steers to the sanctioned routes ──────────────────────────────────────
+  /** The refusal for one covered tool. */
+  const refusal = delegationRefusal("subagent")
+  for (const needle of ["delegation gate", "subagent", "mpd_role_spawn", "mpd_workmate_spawn", "agent_teams_plan", "mpd_role_persona", "send_message", "delegation.gate"]) {
+    check(refusal.includes(needle), "the refusal must name " + needle)
+  }
+
+  // ── the knob's spellings, fail-closed ─────────────────────────────────────────────────────────
+  check(resolveDelegationGateMode("captain") === "captain" && resolveDelegationGateMode("allow") === "allow", "the two exact spellings must be honoured")
+  for (const raw of ["ALLOW", "Allow", "allow ", "yes", "", true, 1, null, undefined]) {
+    check(resolveDelegationGateMode(raw) === "deny", "resolveDelegationGateMode(" + JSON.stringify(raw) + ") must read as deny")
+  }
+
+  // ── the seeded-fork classification, the R2 repair ─────────────────────────────────────────────
   check(sessionRank(agents[0]?.[1]) === "captain", "a depth-0 header is the captain")
   check(sessionRank(agents[1]?.[1]) === "captain", "a SEEDED FORK (parentSession + depth 0, no origin) is the captain")
   check(sessionRank({ id: "p", session: { header: { parentSession: "seed" } } }) === "captain", "a parent link with no recorded depth is the captain")
   check(sessionRank(agents[2]?.[1]) === "child", "a subagent origin is a child")
   check(sessionRank({ id: "d", session: { header: { delegationDepth: 1 } } }) === "child", "a recorded depth of 1 is a child")
   check(sessionRank(agents[3]?.[1]) === "headerless", "a missing header is headerless")
+
+  // ── the PRESET SCOPE (2026-10-20 restore): the rank alone is not the rule ──────────────────────
+  /** An `mpd`-preset top-level session, the only captain the gate binds. */
+  const mpdCaptain = { id: "m", session: { header: { agentPreset: "mpd", delegationDepth: 0 } } }
+  check(sessionIsMpdCaptain(agents[0]?.[1]) === false, "a `cordis` top-level session must NOT be the mpd captain")
+  check(sessionIsMpdCaptain(mpdCaptain) === true, "an `mpd` top-level session must be the mpd captain")
+  check(sessionIsMpdCaptain(agents[2]?.[1]) === false, "a child must NOT be the mpd captain")
+  check(sessionIsMpdCaptain(agents[3]?.[1]) === false, "a headerless session must NOT be the mpd captain")
 
   // ── the tolerant restrict: parse, prune, ONE retry, then rethrow ──────────────────────────────
   /** The canonical deny list, of which the profile without `cclsp` registers none of the two lsp names. */
@@ -244,8 +275,11 @@ function selfTest(): number {
   for (const message of failures) console.error("[delegation-gate self-test] FAIL: " + message)
   if (failures.length > 0) return failures.length
   console.log("[delegation-gate self-test] ok: " + [
-    "the withdrawal pinned on the apply site and the boot token",
+    "decision table " + String(DELEGATION_TOOLS.length) + " tools x 3 modes x 4 session classes",
+    "refusal steering",
+    "knob spellings",
     "seeded-fork classification",
+    "mpd-preset scope",
     "restrictToolsTolerant parse/prune/retry cap",
   ].join("; "))
   return 0
@@ -366,17 +400,15 @@ interface Row {
  * @returns never; the process exits 0 on PASS and 1 on any failed arm.
  */
 function runReal(): void {
-  // A dist that does not report the state would make every boot below prove NOTHING while looking green,
-  // so the artifact is asserted BEFORE a single model call is spent. REPURPOSED 2026-10-17: the needle is
-  // the boot-line TOKEN, not the withdrawn install or its refusal sentence — a rebuilt dist no longer
-  // carries either, and asserting them would now demand the ceremony back.
+  // A dist that does not carry the gate would make every boot below prove NOTHING while looking green
+  // -free, so the artifact is asserted BEFORE a single model call is spent.
   if (!existsSync(ROLES_DIST)) gate("real", { reason: "absent-runtime", prereq: "packages/mpd-roles-plugin/dist/index.js", remedy: REBUILD_COMMAND })
-  /** The built row's bytes, which must report the gate's state on the boot line. */
+  /** The built row's bytes, which must already carry the gate this case asserts. */
   const distText = readFileSync(ROLES_DIST, "utf8")
-  /** The needles the built row must carry (a dist without the boot token predates the row entirely). */
-  const distMissing = ["delegationGate"].filter((needle) => !distText.includes(needle))
+  /** The needles the built row must carry (a stale pre-wave dist fails all of them). */
+  const distMissing = ["installDelegationGate", REFUSAL_MARKER, "delegationGate"].filter((needle) => !distText.includes(needle))
   if (distMissing.length > 0) {
-    console.error("[" + SLUG + "] FAIL: the built row " + ROLES_DIST + " does not report " + BOOT_FIELD + " (missing " + JSON.stringify(distMissing) + "); rebuild it: " + REBUILD_COMMAND)
+    console.error("[" + SLUG + "] FAIL: the built row " + ROLES_DIST + " does not carry the delegation gate (missing " + JSON.stringify(distMissing) + "); rebuild it: " + REBUILD_COMMAND)
     process.exit(1)
   }
   // The declared credential, resolved POSITIVELY through the shared tiers (never assumed).
@@ -424,18 +456,16 @@ function runReal(): void {
   }
 
   /** The three sides, in the order the contract's assertions (a)(b)(c) name them. */
-  const sides: readonly SideName[] = ["default", "retired-knob", "roles"]
+  const sides: readonly SideName[] = ["deny", "allow", "roles"]
   /** Every side's recorded outcome, keyed by name. */
   const outcomes = new Map<SideName, SideOutcome>()
   for (const side of sides) {
     /** This side's own workspace, so its session store key is unambiguous. */
     const ws = sandboxWorkspace(sandbox, "ws-" + side)
-    if (side === "retired-knob") {
-      // THE RETIRED KNOB, spelled EXPLICITLY as the old default. It is selected the way a USER selected
-      // it — a project `.mpd/mpd.jsonc` the row reads live — so the arm proves the knob is INERT rather
-      // than unread: a gate that came back would refuse this side's call.
+    if (side === "allow") {
+      // The knob, selected the way a USER selects it: a project `.mpd/mpd.jsonc` (read live by the row).
       mkdirSync(join(ws, ".mpd"), { recursive: true })
-      writeFileSync(join(ws, ".mpd", "mpd.jsonc"), JSON.stringify({ delegation: { gate: "deny" } }, null, 2) + "\n", "utf8")
+      writeFileSync(join(ws, ".mpd", "mpd.jsonc"), JSON.stringify({ delegation: { gate: "allow" } }, null, 2) + "\n", "utf8")
     }
     outcomes.set(side, runSide(sandbox, ws, PROMPTS[side], env, join(logsDir, side + ".log")))
   }
@@ -444,20 +474,22 @@ function runReal(): void {
   /** The REAL checkout's row log after the run, for the untouched assertion. */
   const realRowLogAfter = existsSync(realRowLog) ? createHash("sha256").update(readFileSync(realRowLog)).digest("hex") : "absent"
 
-  /** The default side's outcome (no config at all). */
-  const byDefault = outcomes.get("default")!
-  /** The retired-knob side's outcome (`delegation.gate: "deny"` spelled explicitly). */
-  const retiredKnob = outcomes.get("retired-knob")!
+  /** The deny side's outcome. */
+  const deny = outcomes.get("deny")!
+  /** The allow side's outcome. */
+  const allow = outcomes.get("allow")!
   /** The roster side's outcome. */
   const roles = outcomes.get("roles")!
   /**
-   * Whether a side's boot reported the gate's state line.
+   * Whether a side's boot reported the gate's install line.
    * @param outcome The side's recorded outcome.
    * @returns true when the row log carries `delegationGate=`.
    */
   const booted = (outcome: SideOutcome): boolean => outcome.rowLog.includes(BOOT_FIELD)
   /** One boot line's text, quoted into a row's raw field. */
   const bootLine = (outcome: SideOutcome): string => outcome.rowLog.split("\n").find((line) => line.includes(BOOT_FIELD)) ?? ""
+  /** The row-log line naming the booted session's agent preset, or `""` when the row wrote none. */
+  const presetLine = (outcome: SideOutcome): string => outcome.rowLog.split("\n").find((line) => line.includes("agentPreset=")) ?? ""
   /** The raw observation for one side, quoted so a reader sees the measured facts. */
   const rawOf = (label: SideName, outcome: SideOutcome): string =>
     "side=" + label + " exit=" + String(outcome.exit) + " bootLine=" + JSON.stringify(bootLine(outcome))
@@ -469,30 +501,38 @@ function runReal(): void {
   /** Every acceptance row this run produces. */
   const rows: Row[] = []
   rows.push({
-    name: "R5-dist-reports-the-state",
+    name: "R5-dist-carries-the-gate",
     ok: true,
-    reason: "the built roles row reports the gate's state on the boot line",
-    raw: "needles=" + JSON.stringify(["delegationGate"]) + " missing=[]",
+    reason: "the built roles row carries the gate's install and refusal text",
+    raw: "needles=" + JSON.stringify(["installDelegationGate", REFUSAL_MARKER, "delegationGate"]) + " missing=[]",
   })
   rows.push({
-    name: "R5-a-subagent-ALLOWED",
-    ok: byDefault.subagent.called ? !byDefault.subagent.resultText.includes(REFUSAL_MARKER) : null,
-    reason: !byDefault.subagent.called
+    name: "R5-a-presetless-top-level-released",
+    ok: deny.subagent.called ? !deny.subagent.resultText.includes(REFUSAL_MARKER) : null,
+    reason: !deny.subagent.called
       ? "the model never called `subagent` (answer-only narration is not tool evidence)"
-      : byDefault.subagent.resultText.includes(REFUSAL_MARKER)
-        ? "the `subagent` call carried the WITHDRAWN gate's refusal sentence — the install is back"
-        : "with no config at all the `subagent` call is NOT refused (no delegation-gate sentence)",
-    raw: rawOf("default", byDefault),
+      : deny.subagent.resultText.includes(REFUSAL_MARKER)
+        ? "a PRESET-LESS top-level headless session was REFUSED — the gate is no longer mpd-preset-scoped"
+        : "the preset-less top-level headless session is RELEASED by the mpd-preset scope; the DENY side proper is carried by the offline arms and the preset-carrying session (evidence/dsh-qa/preset-conformance/)",
+    raw: rawOf("deny", deny),
   })
   rows.push({
-    name: "R5-b-retired-knob-cannot-refuse",
-    ok: retiredKnob.subagent.called ? !retiredKnob.subagent.resultText.includes(REFUSAL_MARKER) : null,
-    reason: !retiredKnob.subagent.called
-      ? "the model never called `subagent` on the retired-knob side (answer-only narration is not tool evidence)"
-      : retiredKnob.subagent.resultText.includes(REFUSAL_MARKER)
-        ? "an EXPLICIT `delegation.gate: \"deny\"` still refuses — the retired knob is live again"
-        : "the explicitly spelled retired knob `delegation.gate: \"deny\"` no longer refuses: the install is gone",
-    raw: rawOf("retired-knob", retiredKnob),
+    name: "R5-a-presetless-headless-and-deny-mode",
+    ok: presetLine(deny).includes("agentPreset=none") && bootLine(deny).includes("delegationGate=deny"),
+    reason: presetLine(deny).includes("agentPreset=none") && bootLine(deny).includes("delegationGate=deny")
+      ? "the row log names the booted session `agentPreset=none` while the gate installed in deny mode, so the release is attributable to the preset scope"
+      : "the row log does not pair a preset-less session with `delegationGate=deny` — a release cannot be attributed to the preset scope",
+    raw: "presetLine=" + JSON.stringify(presetLine(deny)) + " bootLine=" + JSON.stringify(bootLine(deny)),
+  })
+  rows.push({
+    name: "R5-b-allow-releases",
+    ok: allow.subagent.called ? !allow.subagent.resultText.includes(REFUSAL_MARKER) : null,
+    reason: !allow.subagent.called
+      ? "the model never called `subagent` on the allow side (answer-only narration is not tool evidence)"
+      : allow.subagent.resultText.includes(REFUSAL_MARKER)
+        ? "the `subagent` call carried the refusal even though `delegation.gate` was \"allow\""
+        : "the same call carries no refusal text under `delegation.gate: \"allow\"`",
+    raw: rawOf("allow", allow),
   })
   rows.push({
     name: "R5-c-readonly-role-spawn-succeeds",
@@ -509,19 +549,10 @@ function runReal(): void {
   for (const side of sides) {
     /** The boot-line row for one side. */
     const outcome = outcomes.get(side)!
-    /** Whether this side's boot line reports the WITHDRAWN state (not a mode). */
-    const reportsAbsent = outcome.rowLog.includes(ABSENT_TOKEN)
     rows.push({
       name: "R5-bootline-" + side,
-      // A stale dist (built before the withdrawal) prints a MODE here and reddens this row on purpose:
-      // the wave's rebuild step is what makes the shipped bytes say `absent`, and accepting either
-      // spelling would let a stale artifact pass a "reports the withdrawal" claim.
-      ok: booted(outcome) ? reportsAbsent : false,
-      reason: !booted(outcome)
-        ? "the row log carries no " + BOOT_FIELD + " line"
-        : reportsAbsent
-          ? "the row log reports " + ABSENT_TOKEN + "…"
-          : "the row log reports a MODE for a withdrawn gate: " + JSON.stringify(bootLine(outcome)),
+      ok: booted(outcome),
+      reason: booted(outcome) ? "the row log reports the gate's install and mode" : "the row log carries no " + BOOT_FIELD + " line",
       raw: rawOf(side, outcome),
     })
   }
@@ -548,7 +579,7 @@ function runReal(): void {
     startedAt: ts,
     sandbox,
     credential: descriptor,
-    toolsOffered: { default: byDefault.toolNames.length, retiredKnob: retiredKnob.toolNames.length, roles: roles.toolNames.length },
+    toolsOffered: { deny: deny.toolNames.length, allow: allow.toolNames.length, roles: roles.toolNames.length },
     rows,
   }, null, 2) + "\n", "utf8")
   writeFileSync(join(outDir, "output.log"), [

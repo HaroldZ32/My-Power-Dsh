@@ -1,6 +1,6 @@
 ---
 name: cordis-dev
-description: "Use when developing, changing, mounting or debugging anything Cordis/plugin-shaped in the my-power-dsh bundle or its DeepSeek Harness host: a new plugin package, a cordis.patch.yml row, an agent preset, an MCP bundle, a Web UI panel or decoration, a skill or extension, a tool registration, a harness seam change, or a plugin that must invoke the persisted GOAL. Carries the Loader patch dialect, host-vs-preset placement, the bundle's BINDING rules (adapter seam, mounting contract, gates, dist discipline), and the verification standard for a plugin change. Triggers: cordis, cordis plugin, dsh plugin, plugin package, bundle patch, cordis.patch.yml, patch row, agent preset, preset row, MCP bundle, mcp-client, client plugin, UI slot, decoration, sidebar panel, tool registration, registerTool, adapter seam, mpd-dsh-adapter, tui adapter, extension, mpd-ext, skill authoring, mpd_goal, goal round."
+description: "LOAD THIS AUTOMATICALLY — without the user naming it — whenever the workspace is a Cordis / DeepSeek Harness plugin project. Detect at session start: `cordis.patch.yml` or `presets/*.patch.yml` at the root, a `package.json` carrying `dsh.bundle` / `dsh.client`, `dsh-plugin.json`, `packages/*/src/index.ts` exporting `apply` + `inject`, or an `extensions/*` manifest; if any matches, load this skill BEFORE the first edit, gate run or diagnosis in that workspace. Then use it when developing, changing, mounting or debugging anything Cordis/plugin-shaped: a new plugin package, a cordis.patch.yml row, an agent preset, an MCP bundle, a Web UI panel or decoration, a skill or extension, a tool registration, a harness seam change, or a plugin that must invoke the persisted GOAL. Carries the Loader patch dialect, host-vs-preset placement, the bundle's BINDING rules (adapter seam, mounting contract, gates, dist discipline), and the verification standard for a plugin change. Triggers: cordis, cordis plugin, dsh plugin, plugin package, bundle patch, cordis.patch.yml, patch row, agent preset, preset row, MCP bundle, mcp-client, client plugin, UI slot, decoration, sidebar panel, tool registration, registerTool, adapter seam, mpd-dsh-adapter, tui adapter, extension, mpd-ext, skill authoring, mpd_goal, goal round."
 ---
 
 # Cordis plugin development (my-power-dsh)
@@ -9,6 +9,37 @@ Two planes exist and they have different rules. **This repository** (`my-power-d
 plugin packages, mounted by its own patch through the profile mechanism. **A generic harness
 bundle** is a workspace package installed by `plugin_manager`. Decide which one you are writing
 before you write anything; the flow below picks the references you need.
+
+## Load on detection — do this WITHOUT the user asking
+
+A workspace that ships **any** of the signals below is a Cordis / DSH plugin project, and this skill is
+its map. Check once at session start (the block below), and if a signal matches, load `cordis-dev`
+**before** the first edit, gate run or diagnosis — never wait for the user to name the skill:
+
+| Signal | Where it lives |
+|---|---|
+| `cordis.patch.yml` (host rows) or `presets/*.patch.yml` (a preset row) | repo root |
+| `"dsh": { "bundle": … }` or `"dsh": { "client": … }` in a manifest | root or any package |
+| `dsh-plugin.json` / `dsh-distribution.json` | repo root |
+| `packages/*/src/index.ts` exporting `apply` (usually with `name` + `inject`) | one directory per plugin |
+| `extensions/*` manifest (the mpd-ext CLI's `mpd-ext.json`) | extension root |
+| `mpd.jsonc` / `.mpd/mpd.jsonc`, or `.mpd/plans/**` | a project running this bundle |
+
+One-liner block (POSIX; EVERY command below covers a different row above, so a workspace matching only
+ONE signal is still detected):
+
+```sh
+ls cordis.patch.yml dsh-plugin.json dsh-distribution.json presets/*.patch.yml extensions/*/mpd-ext.json mpd.jsonc .mpd/mpd.jsonc 2>/dev/null
+# a manifest qualifies only when it declares dsh.bundle or dsh.client (a dependency literally named "dsh" does not)
+for f in package.json packages/*/package.json; do
+  node -e 'const p=require(process.argv[1]); process.exit(p.dsh && (p.dsh.bundle || p.dsh.client) ? 0 : 1)' "$PWD/$f" 2>/dev/null && echo "$f"
+done
+grep -lE 'export (const|function) apply' packages/*/src/index.ts 2>/dev/null
+ls -d .mpd/plans 2>/dev/null
+```
+
+**If none of these match**, this skill is probably not yours: say so and do not apply bundle rules to a
+non-plugin project. Reading a project that merely *depends* on a plugin is not a Cordis project.
 
 ## 0. Pick the shape (and the reference that owns it)
 
