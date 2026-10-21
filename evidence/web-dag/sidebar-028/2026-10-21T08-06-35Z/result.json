@@ -3,7 +3,7 @@
   "branch": "feature/web-dag-sidebar-028",
   "codeCommit": "defa50ea",
   "preFixCommit": "6e89d619",
-  "docsImagesCommit": "e0b3ab22",
+  "docsImagesCommit": "e0b3ab22 (content) + fbea3917 (v2 cache-bust URLs)",
   "contract": "contract.md",
   "evidenceCommit": "ebadecc1",
   "status": "PASS — independent verifier record rec-20261021T090546-abad35 for loop-20261021T070931-850b4a (code defa50ea)",

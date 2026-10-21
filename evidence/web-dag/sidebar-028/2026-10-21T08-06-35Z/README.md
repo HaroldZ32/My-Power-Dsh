@@ -1,6 +1,6 @@
 # Wave evidence — web-dag-sidebar-028
 
-Code: `feature/web-dag-sidebar-028`, final repair commit `defa50ea` (first feature commit `6e89d619`; visual repair `83796fb4`; docs images `e0b3ab22`).
+Code: `feature/web-dag-sidebar-028`, final repair commit `defa50ea` (first feature commit `6e89d619`; visual repair `83796fb4`; docs images `e0b3ab22`, v2 cache-bust URLs `fbea3917`).
 Frozen contract: [`contract.md`](./contract.md) (copy of `.mpd/plans/web-dag-sidebar-028.md`).
 
 This root is the measured-evidence deliverable the contract's DoD and AGENTS.md §4/§5 require.
