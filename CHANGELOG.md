@@ -14,6 +14,26 @@ Further reading:
 - [`VENDOR_LOCK.json`](./VENDOR_LOCK.json) — the pinned upstream baseline each release is measured
   against.
 
+## v0.15.1 — reconcile the context-diet wave with the code, and fix the Docker release recipe
+
+Patch release over v0.15.0. The context-diet wave shipped correct prompts but several wrong statements about what the code does. A full review of its 12 commits, plus a real-machine Docker run, found them; this release aligns every live statement with the code and fixes two release-process defects.
+
+**Fixed — model routing (the statement was backwards).** An official `spawn_teammate` teammate runs on the route of the session that staged it — the captain's in a top-level spawn, the Lead's in a team-lead spawn — and `mpd-roster-provider-plugin` applies a roster member's `teamModels` slot ONLY when the teammate's `description` NAMES that member. `AGENTS.md` §13, `agent-references/glossary.md`, `docs/design` and `docs/user-guide` (English and 简体中文), the roster-provider/adapter/roles READMEs, the rendered roster-section text in `mpd-roles-plugin`, the adapter docblock and three skills (`review-work`, `ulw-execute`, `ulw-research`) said the opposite; all are corrected against `routeFor` / `applyRoute` (identity pass-through) and its tests.
+
+**Fixed — the team record.** "NO mpd surface reads `dsh.teamLiveTeams()` any more" was false at three fallback call sites. The MPD team record is authoritative on every surface; the official call remains only the contained fallback for a composition that runs the official executor.
+
+**Fixed — the verifier's envelope.** The `mpd_verify_*` descriptions, READMEs and code comments no longer claim the envelope is mechanically enforced or that blindness is "proven" by an observation log. Blindness is DECLARED, never observed (`verifyGate` is absent); an unproven basis is UNVERIFIED. The refusal rules that are true — no cited documents, forged evidence id, same-agent verifier — remain.
+
+**Fixed — workmate injection.** Only the one-shot `mpd_workmate_spawn` carries the persona automatically; a TEAM member is given the persona by the caller in the staged prompt. Tool description, source comment and README pair agree.
+
+**Fixed — the Docker release recipe could never pass as written.** `AGENTS.md` §11 documented credential-free commands that the driver turns into exit 3 by design (`ui.replyRendered` is a declared bound without `--live`). The recipe now runs both modes with `--live` and `DEEPSEEK_API_KEY` exported, states that `--live` without a key is a hard exit 3 BEFORE the build, and names `--no-browser` as the credential-free variant that is NOT release evidence. `docker/README(.zh-CN)` lists all three exit-3 causes and the declared-bound set; `agent-references/verification-flow.md` names the credential prerequisite behind the `ui.` required prefix.
+
+**Changed — the facts the manual asserts.** `verify:gates` is documented with its nine members; the JavaScript inventory is re-measured at 57 files (33 `packages/*/dist/**` artifacts + 2 browser bundles + 22 vendored skill-corpus files), replacing the stale "32" and the deleted `mpd-agent-teams-plugin` path; the `node-pty` sentence states the measured 0.24.1 fact; the T-21…T-55 evidence bound is narrowed to what is actually pinned; the release sweep separates `verify-no-host-override` (every sweep) from `verify-manual-paths` (when `AGENTS.md` changed); the sweep command is `bun test packages`, because a repo-root `bun test` also scans the historical `evidence/**` fixtures.
+
+**Fixed — hygiene.** `docker/ui/out/readme/` (14 duplicate capture PNGs) is gitignored; the PR template carries the `## English` / `## 简体中文` sections AGENTS §5 requires; the `.coderabbit.yaml` comment agrees with the binding CodeRabbit-completion merge gate without changing any setting.
+
+**Verification.** An independent verifier failed the wave on three shipped-text defects, a repair lane fixed them, and a round-2 verdict passed every criterion (`evidence/verification/context-diet-reconcile/2026-10-21T02-50-59Z`, `…/2026-10-21T03-03-10Z`). The rootless real-machine Docker lane (`--mode source --require-docker --live`) ran a real model turn on all three planes: **117 passed / 0 failed / 5 declared NULL, exit 0** (`evidence/docker/client-install/2026-10-21T02-50-28Z`); the same lane caught a stale local pack (4 drifted files), which the branch re-packs and re-closes (609/609 identical). Released CHANGELOG entries (v0.10.0 / v0.11.0) keep their historical wording as history.
+
 ## v0.15.0 — the guard split: reconnaissance and delegation delegated again, a mechanical session gate, a stateless TUI panel, and the `cordis-dev` skill
 
 Minor release over v0.14.0, and the one that finishes the 2026-10-17 guard ruling properly. That wave
