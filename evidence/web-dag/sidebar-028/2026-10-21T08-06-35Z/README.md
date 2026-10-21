@@ -8,10 +8,10 @@ The contract's clause matrix is below; the command log is [`output.log`](./outpu
 real-browser capture is [`docker-post-fix/`](./docker-post-fix/), and the pre-fix defect record is
 `../2026-10-21T07-40-13Z/docker/`.
 
-Independent verifier: **PASS** — final record `rec-20261021T090546-abad35` for loop
-`loop-20261021T070931-850b4a` (code `defa50ea`). The verifier re-ran the nine fixed-table gates on
-that tree (tests 2194 pass, 3 skip, 0 fail; `gates/` holds the logs). A final re-run for the latest
-CodeRabbit fixes (`ea8f1e19`) is pending; the four-package suite on the current tree is 988 pass.
+Independent verifier: **PASS** — final record `rec-20261021T093756-c7c3c5` for loop
+`loop-20261021T070931-850b4a` (code `ea8f1e19`). The verifier re-ran the nine fixed-table gates on
+that tree (tests 2196 pass, 3 skip, 0 fail; `gates/` holds the logs) and inspected the v2 docs images.
+The four-package affected suite is 988 pass.
 
 CodeRabbit reconciliation (commits `defa50ea`, `ea8f1e19`): **F1** reduced-motion flow overlay **FIXED** (the
 `[data-mpd-flow]` SMIL arrow is hidden under `prefers-reduced-motion`, while the static path and
@@ -21,8 +21,9 @@ arrowhead stay visible); **F4** cancelled-task finish stamp **FIXED** (`cancelle
 keeps the dash without it). **F6** legacy progress fallback **FIXED** (a claimed task without
 `progress` now falls back to 10, not 50; the status table mirrors the producer). **F2** crossing-gutter
 lane registration and **F3** geometry cache + ticker gating are recorded as **STILL-VALID follow-ups**
-(non-blocking width/perf cleanups; the property battery and UI checks are green). The final post-repair
-verifier record for `ea8f1e19` is added below when the re-run lands.
+(non-blocking width/perf cleanups; the property battery and UI checks are green). The final verifier
+record for `ea8f1e19` is `rec-20261021T093756-c7c3c5`: 2196 gate tests pass (988 in the four-package
+suite).
 
 ## Clause-to-evidence matrix
 

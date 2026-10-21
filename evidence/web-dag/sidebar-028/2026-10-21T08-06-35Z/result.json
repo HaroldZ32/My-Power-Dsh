@@ -5,26 +5,26 @@
   "preFixCommit": "6e89d619",
   "docsImagesCommit": "e0b3ab22 (content) + fbea3917 (v2 cache-bust URLs)",
   "contract": "contract.md",
-  "evidenceCommit": "ebadecc1",
-  "status": "PASS — independent verifier record rec-20261021T090546-abad35 (code defa50ea) plus CodeRabbit F5/F6 fixes at ea8f1e19; final verifier re-run pending",
+  "evidenceCommit": "d84fb08b",
+  "status": "PASS — final independent verifier record rec-20261021T093756-c7c3c5 for loop-20261021T070931-850b4a (code ea8f1e19)",
   "verification": {
     "loop": "loop-20261021T070931-850b4a",
-    "record": "rec-20261021T090546-abad35",
+    "record": "rec-20261021T093756-c7c3c5",
     "verdict": "PASS",
-    "gateTests": "2194 pass, 3 skip, 0 fail, 2197 tests across 134 files (after the CodeRabbit repairs)",
+    "gateTests": "2196 pass, 3 skip, 0 fail, 2199 tests across 134 files (after the final CodeRabbit repairs)",
     "gateEvidenceIds": [
-      "ev-20261021T090327-cc7c53",
-      "ev-20261021T090353-fcc19f",
-      "ev-20261021T090356-3c93c9",
-      "ev-20261021T090358-a90d9a",
-      "ev-20261021T090401-b944e4",
-      "ev-20261021T090405-135abb",
-      "ev-20261021T090407-5d0119",
-      "ev-20261021T090409-f4c4fe",
-      "ev-20261021T090411-056076"
+      "ev-20261021T093543-4fa814",
+      "ev-20261021T093610-3a07ed",
+      "ev-20261021T093612-41af75",
+      "ev-20261021T093614-17a443",
+      "ev-20261021T093617-ae0bc2",
+      "ev-20261021T093621-7b5da9",
+      "ev-20261021T093623-86d73a",
+      "ev-20261021T093625-9cff25",
+      "ev-20261021T093626-9ebf26"
     ],
     "logDir": "gates/",
-    "visual": "post-fix real-browser capture on 6f517b58: 18/18 checks, 9/9 steps on normal and CJK boards; hover card beside T6/T5, fan-in tips 12px apart, stronger glow, 6px dash flow. defa50ea only adds the reduced-motion hide and cancelled-finishedAt rules, so the depicted board states and images are unchanged. The current client fingerprint is f446e783...fffdd."
+    "visual": "post-fix real-browser capture on 83796fb4: 18/18 checks, 9/9 steps on normal and CJK boards; hover card beside T6/T5, fan-in tips 12px apart, stronger glow, 6px dash flow. The later CodeRabbit repairs only change the elapsed label and the legacy progress fallback, so the depicted board states and docs images are unchanged. The current client fingerprint is bd68a418...c1c9."
   },
   "docsImages": {
     "en": "docs/assets/images/web-team-board-v2.png and docs/assets/images/hero-web-tui-v2.png from docker-post-fix/ui-shots/07-team-graph-hover.png",
@@ -51,12 +51,12 @@
     "hover_card": "status/owner/elapsed/truncated task/progress; pointer-derived position; D2 card arms; 07 stills",
     "pin_opaque_leave_close": "D2 pin-opacity + mouseleave arms; pre-fix focus-anchor defect repaired and regression arm added",
     "data_fields": "team-store.test.ts transition matrix; team-web.test.ts payload/omitted-undefined/progress mapping",
-    "existing_features": "986 affected tests pass; Docker UI capture 18/18 checks, 9/9 steps; click-to-pin detail still renders"
+    "existing_features": "988 affected tests pass; Docker UI capture 18/18 checks, 9/9 steps; click-to-pin detail still renders"
   },
   "tests": {
     "affectedSuites": "bun test packages/mpd-bundle-plugin packages/mpd-team-core-plugin packages/mpd-tui-plugin packages/mpd-better-sidebar-host",
     "affectedResult": "988 pass, 0 fail, 31392 expect() calls (after the latest CodeRabbit repairs)",
-    "gateResult": "2194 pass, 3 skip, 0 fail, 2197 tests across 134 files",
+    "gateResult": "2196 pass, 3 skip, 0 fail, 2199 tests across 134 files",
     "typecheck": "bun run typecheck -> exit 0",
     "gates": "bun run verify:gates -> 9/9 PASS",
     "docs": "bun run verify:docs -> pairs 48, failed 0",
@@ -98,15 +98,15 @@
     }
   },
   "gateEvidenceIds": [
-    "ev-20261021T090327-cc7c53",
-    "ev-20261021T090353-fcc19f",
-    "ev-20261021T090356-3c93c9",
-    "ev-20261021T090358-a90d9a",
-    "ev-20261021T090401-b944e4",
-    "ev-20261021T090405-135abb",
-    "ev-20261021T090407-5d0119",
-    "ev-20261021T090409-f4c4fe",
-    "ev-20261021T090411-056076"
+    "ev-20261021T093543-4fa814",
+    "ev-20261021T093610-3a07ed",
+    "ev-20261021T093612-41af75",
+    "ev-20261021T093614-17a443",
+    "ev-20261021T093617-ae0bc2",
+    "ev-20261021T093621-7b5da9",
+    "ev-20261021T093623-86d73a",
+    "ev-20261021T093625-9cff25",
+    "ev-20261021T093626-9ebf26"
   ],
   "honestBounds": [
     "No live model reply in the Docker lane; ui.replyRendered is a declared credential-free bound.",

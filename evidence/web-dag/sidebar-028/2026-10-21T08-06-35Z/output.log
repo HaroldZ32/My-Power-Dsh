@@ -39,3 +39,8 @@ bun test packages/mpd-bundle-plugin packages/mpd-team-core-plugin packages/mpd-t
 bun run typecheck -> exit 0
 bun run verify:gates -> 9/9 PASS
 node scripts/verify-vendor.ts -> 7/7 assets fingerprinted (client.js sha256 bd68a418...c1c9)
+
+## Final verifier record rec-20261021T093756-c7c3c5 (ea8f1e19)
+tests -> 2196 pass, 3 skip, 0 fail, 39180 expect() calls, 2199 tests / 134 files
+four-package suite -> 988 pass, 0 fail
+gates -> 9/9 PASS; docs 48/0; comments 426/426; vendor 7/7 (client.js bd68a418...c1c9); dist fresh
