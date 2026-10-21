@@ -1,0 +1,64 @@
+## A1: adapter README routing sentence (EN + ZH)
+  team?" with).
+
+`teamLiveTeams()` is the contained FALLBACK for a composition that runs the official executor — the
+read a Web route, a TUI scene or the watchdog uses there. The MPD team RECORD is authoritative on
+every mpd surface: `.mpd/team/teams/<id>.json`, served as `mpdTeams`. The call folds the live agent
+registry, keeps one entry per Lead, and degrades to `[]` — never to a throw.
+
+**Model routing on the teammate path (plan §3):** `teamSpawnTeammate` is the harness's own
+`spawnTeammate`, whose `SubagentStartRequest` carries no `agentOptions`, `persona` or
+`toolFilter`. A teammate whose description does NOT name a roster member is not routed by this
+bundle at all: the request passes through by identity, so the harness-resolved route of the
+session that staged it stands (the captain's in a top-level spawn, the Lead's in a team-lead
+spawn), and prompt text cannot change a route. A description that NAMES a roster member is routed
+through `mpd-roster-provider-plugin`'s `teamModels.slot*` contract. Per-member routing also
+applies on the one-shot consult paths (`mpd_role_spawn` / `mpd_workmate_spawn`), which pass
+`agentOptions` themselves.
+
+### The D6 gate (`test/no-direct-team-access.test.ts`)
+
+A static gate scans `packages/mpd-*/src/**/*.ts`, except this package, for the literal
+identifiers `agentTeams` and `startContinuable`, fails naming file + line, strips comments first
+--- zh ---
+11-27-| `ctx.llm.resolveCallConfig` | `llmResolveCallConfig(config, signal?)` | **抛错**转发，signal 透传 |
+12---
+13:87-**teammate 路径上的模型路由（方案 §3）：** `teamSpawnTeammate` 就是 Harness 自己的
+14-88-`spawnTeammate`，其 `SubagentStartRequest` 不携带 `agentOptions`、`persona` 或 `toolFilter`。
+15:89:若 teammate 的 description **没有**点名名册成员，本 bundle 完全不路由它：请求按原样（by
+16:90-identity）透传，由 staging 它的 session 的 Harness 解析路由生效（顶层 spawn 是队长的路由，
+17:91:team-lead spawn 是 Lead 的路由），prompt 文本无法改变路由。若 description **点名**了名册成员，
+18:92-则通过 `mpd-roster-provider-plugin` 的 `teamModels.slot*` 契约路由。按成员路由同样作用于一次性
+19-93-咨询路径（`mpd_role_spawn` / `mpd_workmate_spawn`），因为它们自行传入 `agentOptions`。
+20-94-
+21-95-### D6 静态闸门（`test/no-direct-team-access.test.ts`）
+22-96-
+23-97-该静态闸门扫描 `packages/mpd-*/src/**/*.ts`（本包除外）中的字面标识符 `agentTeams` 与
+24-98-`startContinuable`，失败时指出文件与行号；它先剥离注释（"绝不要碰 `ctx.agentTeams`" 这类说明
+25-99-不算违规），并把 `*.ts` 波段之外文件中的命中放在醒目的 `NOT COVERED` 段落里报告，而不是静默
+26---
+## A1: roster-provider README known limits
+76:## Known limits
+77-
+78-- Routing is resolved at SPAWN time from the live config; changing a slot affects the next teammate,
+79-  not one already running.
+80-- A teammate whose label names no roster member is not routed: it runs on the route of the session that
+81-  staged it. That is a property of the one identity channel the team service forwards, not a policy
+82-  choice, and prompt text cannot change it.
+## A1: user-guide §10 row agreement
+| `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate (via mpd-config) | the four **team-model slots**: `{provider, model, reasoningEffort}` per slot, defaulting to `deepseek-official` / `deepseek-v4-flash` at `max`/`high`/`high` (slot 4: `deepseek-official` / `deepseek-v4-flash-vision-exp` at `high`). Slot 1 routes Architect/Planner/Reviewer/Lead/Senior Engineer, slot 2 Researcher/Explorer/Plan Reviewer, slot 3 Deep Worker/Junior Engineer, slot 4 Vision Analyst — the vision member, whose slot model MUST accept image input. They are resolved by the ONE-SHOT consult paths (`mpd_role_spawn`, `mpd_workmate_spawn`), which pass the route explicitly; a `spawn_teammate` teammate gets a slot only when its `description` NAMES a roster member, and any other teammate runs on the route of the session that staged it (§6). A slot that cannot be resolved fails the corresponding spawn **loudly** (the member and the slot are named, nothing is written) and an effort is never silently clamped; the ONE exception is a model whose live catalog entry declares NO reasoning efforts at all — it is sent none, so the spawn still runs (the runtime half of the adaptation the settings pickers already make). Editable as selection-only fields in **Settings → MPD** and the TUI `/settings` section, which show the current effective value before you edit it; a saved change is re-read in the running process — the next spawn or resolve carries it, no restart (`mpd_config_reload` forces it). |
+| `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate（经 mpd-config） | 四个**团队模型槽位**：每个槽位是 `{provider, model, reasoningEffort}`，默认 `deepseek-official` / `deepseek-v4-flash`，推理强度依次为 `max`/`high`/`high`（槽位 4 默认 `deepseek-official` / `deepseek-v4-flash-vision-exp` / `high`）。槽位 1 路由 Architect/Planner/Reviewer/Lead/Senior Engineer，槽位 2 路由 Researcher/Explorer/Plan Reviewer，槽位 3 路由 Deep Worker/Junior Engineer，槽位 4 路由 Vision Analyst —— 视觉成员，其槽位模型**必须支持图像输入**。它们由**一次性咨询**通道（`mpd_role_spawn`、`mpd_workmate_spawn`）解析，由这两条通道显式传入路由；而 `spawn_teammate` 队友只有在 `description` **点名**名册成员时才取用槽位，其他队友则跑在暂存它的那个会话的路由上（§6）。槽位解析失败会让对应的 spawn **大声失败**（指名成员与槽位，不写入任何内容），且推理强度**永远不会**被悄悄钳制。唯一的例外是：若该模型在实时目录中完全没有推理等级，则不发送任何等级，spawn 照常运行（这正是设置选择器早已采用的适配的运行时一半）。可在 **设置 → MPD** 与 TUI 的 `/settings` 区块中作为只可选择字段编辑，界面会在编辑前显示当前生效值；保存后的改动在运行中的进程里被重新读取 —— 下一次 spawn 或解析即携带新值，无需重启（`mpd_config_reload` 可强制重读）。 |
+## A6: troubleshooting .js inventory row
+18:T-22 instruction-budget split (the manual must stay under the harness's 65,536-byte workspace
+51:| a team shows PAUSED and it is unclear which of two mechanisms holds it, or which verb releases it | **T-19 (consolidated in wave 2, 2026-09-17, user ruling; RE-POINTED 2026-10-08 to the live surface — see the banner). The retired vendored plugin's `agent_teams_halt` / `agent_teams_resume` tools are GONE, and the live status view is FALSIFIABLE on exactly that: `test/holds-lifecycle.test.ts` asserts `expect(text).not.toContain("agent_teams_halt")`.** TWO live holds remain and BOTH stop a dispatch pass: `agent_teams_control {action:"halt", reason}` (cleared by `{action:"resume"}`), which writes the workspace-wide `<workspace>/.mpd/team/hold.json`; and the WATCHDOG's per-team preserving hold, placed by `session-watchdog-hold` and cleared by `session-watchdog-resume`. The live source states the pair verbatim: the two holds "are different things and BOTH stop a pass: `hold.json` halts the workspace, the watchdog's halts one team" (`packages/mpd-team-core-plugin/src/index.ts`, the watchdog-hold refusal helper — the same passage that names `session-watchdog-resume` and `agent_teams_control resume` as the two verbs that clear a hold). `session-watchdog-status` prints ONE line per team — `team-b: PAUSED — the watchdog's preserving hold (the only pause mechanism; the official team service exposes no halt)`, or `team-a: not paused` — because it reports the WATCHDOG's own hold (`mechanism: "watchdog-hold"`) and nothing else: read the mechanism from the verb you called, never from that sentence. The three watchdog tools stay REGISTERED (removing one would be a tool-schema change needing a mounted-boot tool-list reading); a hold stops NEW DISPATCH only, so the board's own `agent_teams_task` `claim`/`contract`/`complete` still succeed while held. Pin: `test/holds-lifecycle.test.ts` (the status text and the json `pause` block, both directions) |
+71:| the GUI/sidebar reports `cannot resolve target "<cwd>/team-activity": ENOENT … realpath '<cwd>/team-activity'` | the AgentTeams tab's auto-open passed a CONTENT SEED. From `dsh-better-sidebar` 0.19 a seed carrying `path` (or `url`) is routed to DSH's NATIVE right column (`surface.openResource(fileAddress(sessionId, cwd, path))`) instead of opening the registered tab type, so the throwaway marker path made the host resolve `<cwd>/team-activity`, fail `realpath`, and raise the error while the tab never opened at all (pre-0.19 used that seed only to expand a collapsed panel). Fix: seedless `openTab({ type: TEAM_ID })` in `packages/mpd-bundle-plugin/src/team-page.ts`, then `node scripts/build-mpd-client.ts` + re-pack. Gates: `bun test packages/mpd-bundle-plugin` and `node skills/dsh-qa/scripts/agent-teams-sidebar.mjs` (`seedlessAutoOpen` pins the shipped AND the served bytes) |
+115:| a seat is woken for a task that is ALREADY TERMINAL: the claim answers `task status cannot move from "completed" to "claimed"`, or the pre-wake guard declines with `task tN became completed before its assignment could be delivered` | **RETIRED SURFACE (see the banner): the vendored scheduler and its verbs are GONE — the live contract is read with `agent_teams_task {action:"contract", task_id}`, and there is NO working `agent_teams_reassign_task` (see the captain-takeover row above).** PLATFORM behaviour: a delivery is composed under the team lock and DELIVERED after that lock is released, so a task finished inside the window is still offered; the shipped tree already classifies the offer (`deliveryRoutingClass` in `packages/mpd-agent-teams-plugin/lib/scheduler.ts`, region `mpd-delta terminal-dispatch-recheck`) and names it in the decline — `… (routing class reoffer-terminal-same-attempt: the delivery carries the attempt id the task's own completion recorded — a RE-OFFER of finished work, not a reassignment)`. The class REPEATED across waves and was measured as a count twice over: `six offers to terminal tasks: t1, t2, t3, t4, t6, t22 — each refused by terminal immutability, one turn burned each` (`.mpd/team/archive/friction-p2-wave/inbox/captain.jsonl`) and `six automatic re-dispatches of already-terminal tasks (t13 ×2, t3, t15 ×2, t16)` (`evidence/docs-overhaul/SUMMARY.md`, "Process notes worth carrying"). **The SEAT RESPONSE is the discipline, not a workaround: refuse the claim, re-read the contract with `agent_teams_task {action:"contract", task_id}`, verify the acceptance on disk, and NEVER redo or re-file a terminal result — "a terminal payload is the answer".** Terminal work is immutable (`terminal task tN is immutable; use agent_teams_reassign_task to retry failed/cancelled work`); the ONE sanctioned revive is a deliberate captain `agent_teams_reassign_task`, which mints a FRESH attempt id — never a seat reacting to a wake. |
+119:| a reader asks why the tree still carries `.js` files after the JavaScript→TypeScript wave | exactly **57** remain (measured 2026-10-21), and the reason is MEASURED rather than habitual: Node refuses type stripping for any file whose resolved path is under `node_modules` (`ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING` — measured BOTH for an import and for a direct `node <path>.ts` invocation), and a shipped bundle IS installed at `<profile>/node_modules/@mpd-dsh/mpd`. The 57 are: 33 `packages/*/dist/**` build artifacts (the loader imports them as `.../dist/index.js`, and `bun build` emits JavaScript by definition); 2 browser bundles — `packages/mpd-bundle-plugin/client.js` and the adopted `packages/mpd-bundle-plugin/adopted/agent-teams-client.js` (upstream bytes spliced VERBATIM); and 22 upstream skill-corpus files — 19 under `skills/ulw-research/scripts/*.mjs`, `skills/visual-qa/scripts/visual-qa.mjs` (generated from `skills/visual-qa/scripts/cli.ts` and run with `node`), and 2 `skills/ultimate-browsing/engine/templates/*.js` (Playwright templates the vendored engine drives with `node`). Everything else this repository owns is `.ts`, and a genuine CommonJS module is `.cts` — **convert one and it works from a checkout while the SAME file throws the error above from an installed bundle.** The converted ADOPTED body carries `@ts-nocheck` and its suite is `tsconfig.json`-excluded ON PURPOSE: it is vendored code renamed for the source-language rule, never code this repository types — typing it is a deliberate project, not a cleanup. Evidence: `evidence/ts-cordis-conformance/`. |
+## A7: historical-section boundary
+7:## The order is part of the contract
+24:## The Docker lane is the last step, and it may SKIP
+109:## Evidence layout
+118:## Why the lane exists at all
+150:## The former §4 body (verbatim): the full gate table with every per-row measurement
+158:## 4. Gates (binding)
+202:## §5 rule 2 — the captain's tool pack

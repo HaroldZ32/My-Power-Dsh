@@ -1,0 +1,20 @@
+## A2: shipped scope
+$ git grep -n -I -F "NO mpd surface reads" -- <shipped scope>
+exit=1
+## A2: whole tracked tree (path classification)
+$ git grep -l -I -F "NO mpd surface reads" | cut -d/ -f1-2 | sort | uniq -c
+     12 evidence/dsh-qa
+      6 evidence/tui
+## A3: prohibited verifier-envelope claims in shipped scope
+exit=1
+## A4: workmate TEAM injection claims in shipped scope
+exit=1
+## A4: corrected source comment
+          // Name unification: the workmate's OWN name is the label — the same word a
+          // team member would carry when its caller adds it under that name. ONLY this
+          // one-shot spawn carries the persona; a TEAM member is given the persona by
+          // the caller in the staged prompt. Never a `workmate-<key>-<random>` alias:
+          // one agent, one name, on every surface.
+## A4: corrected tool description in src and dist
+the TEAM path injects no persona or memory
+the TEAM path injects no persona or memory

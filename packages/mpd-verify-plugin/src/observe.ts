@@ -1,10 +1,10 @@
 // THE OBSERVATION LOG, the in-memory runtime, and the DELEGATION auto-arm.
 //
-// WHY AN OBSERVATION LOG AT ALL. The envelope in `law.ts` is defence in depth, not proof: it can only
-// judge the calls the harness routes through it, and it says nothing about what happened before the
-// plugin was loaded. Blindness is therefore established from the plugin's OWN record of what it saw —
-// `guardTool` is consulted before every dispatch, so a verifier whose session never triggered a
-// code-path read in that log is demonstrably blind, and one that did is `unproven` rather than `blind`.
+// WHY AN OBSERVATION LOG AT ALL. The envelope in `law.ts` is a CONTRACT, not a fence, and it says nothing
+// about what happened before the plugin was loaded. This log is the record such a judgement WOULD rest on,
+// and it exists — but NO shipped composition writes it: only the WITHDRAWN guard ever reached `noteCall`.
+// A seat's blindness is therefore DECLARED by the record's basis, never observed, and a basis that is
+// unproven is UNVERIFIED rather than established.
 //
 // THE SECOND JOB: ARMING. In a solo session the captain arms a loop explicitly (`mpd_verify_open`). In
 // every delegated mode the captain instead CALLS a delegation tool, and the observer sees that call and
@@ -218,7 +218,7 @@ export function createVerifyRuntime(options: RuntimeOptions): VerifyRuntime {
     /** The session key of one agent, in the frozen `??` order. */
     keyOf(agent: unknown): string { return sessionKeyOf(agent) },
 
-    /** Record one guarded call, so blindness is provable from what the plugin itself saw. */
+    /** Record one guarded call; only the WITHDRAWN guard ever reached this, so nothing shipped writes it. */
     noteCall(exec: DshToolExec): void {
       try {
         /** The tool name, read defensively. */

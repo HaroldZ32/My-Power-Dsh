@@ -2,7 +2,8 @@
 // without a harness, a ctx or a model.
 //
 // WHY THIS EXISTS. Harness 0.1.7-rc.2's official TeamService starts every teammate with the route
-// the LEAD has, because it forwards only `{ prompt, parent }`. The harness itself is not the
+// of the session that staged it (the LEAD's, in the team flow this row serves), because it forwards
+// only `{ prompt, parent }`. The harness itself is not the
 // limitation — that generation's `SubagentContinuationManager.startContinuable` (renamed
 // `startActivation(spec)` in 0.2.1-rc.2, with the same contract for this module) resolves
 // `request.agentOptions` into provider/model/reasoningEffort and hands them to the PROVIDER, which
@@ -39,7 +40,9 @@ export interface RoutableRequest {
  * removed `persona` from that request outright).
  *
  * The contract is therefore: **a description that names a roster member routes that member; one
- * that does not inherits the Lead's route.** The name is the text before the first separator
+ * that does not is NOT routed here — `routeFor` returns `undefined`, `applyRoute` returns the request
+ * by identity, and the harness-resolved route of the session that staged it stands.** The name is
+ * the text before the first separator
  * (`—`, `-`, `:`, `|`) and is matched case-insensitively, so
  * `"Senior Engineer — implements the parser"` routes Senior Engineer while
  * `"check the vendored corpus"` routes nothing. Matching is deliberately conservative: a wrong

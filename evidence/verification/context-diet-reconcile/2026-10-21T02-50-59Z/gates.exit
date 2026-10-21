@@ -1,0 +1,10 @@
+verify-docs exit=0 seconds=0
+verify-comments exit=0 seconds=3
+verify-dist-fresh exit=0 seconds=0
+verify-vendor exit=0 seconds=1
+verify-manual-paths exit=0 seconds=0
+verify-no-host-override exit=0 seconds=0
+verify-manifest exit=0 seconds=2
+bun-test-packages exit=0 seconds=24
+typecheck exit=0 seconds=1
+DONE

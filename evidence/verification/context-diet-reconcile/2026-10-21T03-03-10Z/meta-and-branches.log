@@ -1,0 +1,97 @@
+## metadata
+branch=dev
+head=8f5b5e0d4e084f687351232d341d223a2b8359b0
+porcelain_entries=46
+measured_at_utc=2026-10-21T03:05:12Z
+## A5: required-arm unmeasured branch
+255- *
+256- * @param result - The result.json body, or null/undefined when none was produced.
+257- * @param prefixes - Assertion-name prefixes whose `null` rows are fatal (e.g. `live.`, `ui.`).
+258- * @returns The names of the unevaluated assertions inside a required arm, in report order.
+259- */
+260:export function unmeasuredRequired(result: ResultBody | null | undefined, prefixes: readonly string[], excluded: readonly string[] = []): string[] {
+261-  if (result === null || result === undefined || prefixes.length === 0) return []
+262-  return (result.assertions ?? [])
+263-    .filter((assertion: ResultAssertion) => assertion.ok === null
+264-      && prefixes.some((prefix) => assertion.name.startsWith(prefix))
+265-      && !excluded.includes(assertion.name))
+266-    .map((assertion) => assertion.name)
+267-}
+268-
+--
+279-}
+280-
+281-/**
+282- * The required names that are ABSENT or NULL in a result body.
+283- *
+284: * WHY NOT just `unmeasuredRequired`: that reader can only see a row the run WROTE as null. A verdict
+285- * script that crashed, never ran, or wrote to the wrong file leaves NO row at all, and `ok` (which is
+286- * `failed.length === 0`) then reads the absence as a pass — the exact "no evidence, no failure" shape
+287- * the independent review named. Team mode therefore requires PRESENCE, not merely non-nullness.
+288- * @param result - the result.json body, or null when the container never produced one.
+289- * @param names - the required assertion names.
+290- * @returns the names absent from the body or recorded with `ok: null`.
+291- */
+292-export function missingOrNull(result: ResultBody | null | undefined, names: readonly string[]): string[] {
+--
+553-      { name: "boot.llmTurn", ok: null, reason: "not attempted" },
+554-      { name: "tui.boot", ok: null, reason: "not reached" },
+555-      { name: "live.web.toolCallsParsed", ok: true, reason: "ok" }
+556-    ]
+557-  }
+558:  check("a null live row is unmeasured when --live was asked for", unmeasuredRequired(mixedArms, ["live.", "boot.llmTurn"]).join(",") === "live.web.turnCompleted,boot.llmTurn")
+559:  check("a null ui row is unmeasured when the browser lane is on", unmeasuredRequired(mixedArms, ["ui."]).join(",") === "ui.replyRendered")
+560:  check("an unrelated null is NOT a required-arm gap", !unmeasuredRequired(mixedArms, ["live."]).includes("tui.boot"))
+561:  check("a passed row is never an unmeasured one", unmeasuredRequired(mixedArms, ["live."]).every((name) => name !== "live.web.toolCallsParsed"))
+562:  check("no required arms means no gap", unmeasuredRequired(mixedArms, []).length === 0)
+563:  check("a missing body has no required-arm gap", unmeasuredRequired(null, ["live."]).length === 0)
+564-
+565-  // 3c. the arm-selecting flags: `--require-live` is the long spelling of `--live`, and
+566-  // `--require-browser` names a requirement that is ON by default (`--no-browser` is the opt-out).
+567-  /** The flag predicate the CLI uses, re-stated so the arms read as behaviour, not as argv plumbing. */
+568-  const selectsLive = (args: readonly string[]): boolean => args.includes("--live") || args.includes("--require-live")
+569-  /** The browser predicate, which must stay true under the explicit requirement. */
+570-  const selectsBrowser = (args: readonly string[]): boolean => args.includes("--require-browser") || !args.includes("--no-browser")
+571-  check("--live selects the live arms", selectsLive(["--live"]))
+--
+1026-    plainSelection.prefixes.includes("live.") && plainSelection.prefixes.includes("ui.")
+1027-    && plainSelection.prefixes.every((prefix) => !prefix.startsWith("teamproject"))
+1028-    && plainSelection.excluded.length === 1 && plainSelection.excluded[0] === "ui.teamBoard",
+1029-    JSON.stringify(plainSelection))
+1030-  check("the plain arm does NOT redden an unattempted ui.teamBoard",
+1031:    unmeasuredRequired(nullRow("ui.teamBoard"), plainSelection.prefixes, plainSelection.excluded).length === 0)
+1032-  check("the plain arm still reddens a DIFFERENT null ui row",
+1033:    unmeasuredRequired(nullRow("ui.replyRendered"), plainSelection.prefixes, plainSelection.excluded).length === 1)
+1034-  /** The selection a team-project run uses. */
+1035-  const teamSelection = requiredPrefixesFor({ live: true, browser: true, team: true })
+## CHANGELOG headers near the two exempt hits
+887:## v0.11.2 — a TypeScript plugin, and a verification flow that ends in a real container
+1058:## v0.11.1 — mailbox unread
+1082:## v0.11.0 — the team workflow, per-member routing, and a settings surface that reads
+1144:## v0.10.2 — TUI preset default, adapter event seams, TUI end-to-end lane
+1171:## v0.10.1 — session-start gate delivery, producer-owned message source
+1201:## v0.10.0 — DeepSeek Harness 0.1.7-rc.2 adaptation, official Agent Teams, Docker client test
+## the two exempt lines with their section
+  <what the team is for>` stages a plan from the current goal.
+
+**Added — per-member model routing (`mpd-roster-provider-plugin`).**
+
+`spawn_teammate` used to inherit the Lead's route: the official TeamService forwards only
+`{ prompt, parent }`. The harness itself is not the limitation — `SubagentContinuationManager`
+resolves `request.agentOptions` and hands them to the PROVIDER, which constructs the run, and the
+provider NAME is row config (`config.freshProvider`). This bundle therefore registers `mpd-roster`, a
+provider that delegates to the composition's own and applies the member's `teamModels` slot route, and
+points its `mpd-tool-agent-team` row at it. The teammate stays a real, continuable official teammate:
+no fork, no contract change. A teammate `description` that NAMES a roster member routes that member;
+one that does not inherits the Lead's route — the descriptor label is the only identity channel the
+team service forwards. An incomplete slot fails the spawn loudly, naming the member and the slot.
+
+**Added — the team GUI in the harness's own right sidebar (`mpd-bundle-plugin`).**
+
+  `ctx.agentTeams` / `subagents.startContinuable` reference anywhere outside the adapter.
+
+**Capability bound.** `TeamService.spawnTeammate` forwards only `{ prompt, parent }` to
+`ctx.subagents.startContinuable`, so a teammate created by `spawn_teammate` inherits the Lead's model
+route: per-teammate model routing is impossible on the official plugin. The `teamModels.slot*` settings
+keep applying to the one-shot consult paths (`mpd_role_spawn`, `mpd_workmate_spawn`), which pass an
+explicit route. The roster's mechanical read-only discipline is preserved by a tool guard, and the

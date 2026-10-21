@@ -8,7 +8,8 @@
 //
 // THE RESIDUAL, STATED WHERE IT LIVES (spec (c)): a gate's output may print source frames in a failure
 // report, so `tail` is controlled black-box evidence rather than a proof of reading nothing. The
-// envelope is defence in depth; blindness itself is proven by the observation log in `observe.ts`.
+// envelope is defence in depth and blindness is DECLARED, never observed: no shipped composition writes
+// the read-observation log in `observe.ts` (only the withdrawn guard reached its `noteCall`).
 
 import { spawnSync } from "node:child_process"
 import { existsSync, statSync } from "node:fs"

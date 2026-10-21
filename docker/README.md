@@ -399,8 +399,39 @@ docker compose -f docker/docker-compose.yml run --rm mpd-client
 If that fails with `mkdir <home>/.docker/buildx: read-only file system`, see **Environment** above
 (`export BUILDX_CONFIG=$(mktemp -d)`).
 
-Exit codes: `0` all assertions true or `null`, `1` at least one FALSE, `2` no `result.json`, `3` no
-usable docker on the host.
+Exit codes: `0` all assertions true or `null`, `1` at least one FALSE, `2` no `result.json`, `3` any of
+the three causes below.
+
+### The declared bounds, and the three causes of exit 3
+
+A `null` row is a DECLARED BOUND — the honest shape for an arm the run did not ask for, never a pass:
+
+| Row | Declared bound when |
+|---|---|
+| `boot.llmTurn` | `--live` was not passed (no credential staged, no model request attempted) |
+| `ui.teamBoard` | the run is outside team mode (`MPD_E2E_TEAM_PROJECT` unset) |
+| `ui.replyRendered` | the browser lane is on but no credential was staged (a credential-free run) |
+| `oneclick.*` | the mode is not `oneclick` |
+
+The required-arm gate (`agent-references/verification-flow.md`) re-checks every `null` whose name
+starts with a prefix the run ASKED for; such a row is `UNMEASURED` and turns the exit code into 3. A
+`--live` run without a key in the environment is a hard exit 3 BEFORE the build.
+
+**Exit 3 therefore means any of: no usable Docker under `--require-docker`; a required arm unmeasured;
+or `--live` without a key.**
+
+### The release recipe
+
+The release sweep runs the live arms, on BOTH modes, with the credential exported:
+
+```bash
+export DEEPSEEK_API_KEY=…              # forwarded by NAME, never echoed into the argv
+node scripts/docker-e2e.ts --mode source    --require-docker --live
+node scripts/docker-e2e.ts --mode oneclick  --require-docker --live
+```
+
+The credential-free spelling is `--no-browser`: it exits 0 and records every `ui.*` row NULL, which is
+a declared bound and NOT release evidence.
 
 ## Reading a red run
 

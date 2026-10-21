@@ -54,7 +54,7 @@
 | 只读 teammate 的纪律 | 一道 TOOL GUARD（见下），经适配器注册 |
 | session 启动复杂度闸门 | 一个 `agent/pre-step` 监听器：当 `team.gate` 为 `mechanical` 时 **stage** 一个可批准的 plan shell —— 自 2026-10-20 起**重新成为默认**（见下） |
 
-**模型路由只保留在一次性路径上。** `TeamService` 只把 `{prompt, parent}` 转发给 `ctx.subagents.startContinuable`（`docs/plan-0.1.7-adaptation.md` §3），因此 teammate 继承 Lead 的路由，无法为其附加 provider/persona/tool filter。`teamModels.slot*` 路由因此只作用于 `mpd_role_spawn` / `mpd_workmate_spawn`（它们会传入显式的 `agentOptions`）；名册段落如实说明这一点，而不是承诺 Harness 无法兑现的路由。路由中的推理强度还会经过适配器的 `withSupportedEffort`（`mpd-dsh-adapter-plugin`）：若槽位的模型**完全没有**推理等级，则不发送任何等级 —— spawn 照常运行，而不是因 provider 无法接受的关键字失败；而声明了推理等级的模型则保留槽位的等级。
+**模型路由跟着 label 走。** `TeamService` 只转发 `{prompt, parent}` 外加 descriptor label（teammate 的 `description`），因此 label 是请求携带的唯一名册身份（`docs/plan-0.1.7-adaptation.md` §3）。只有当 `description` **点名**某个名册成员时，`mpd-roster-provider-plugin` 才会应用该成员的 `teamModels.slot*` 路由；其余 teammate 完全不被路由 —— 请求按原样（by identity）透传，由 staging 它的 session 的 Harness 解析路由生效（顶层 spawn 是队长的路由，team-lead spawn 是 Lead 的路由）。prompt 文本无法改变路由。同一组槽位也作用于 `mpd_role_spawn` / `mpd_workmate_spawn`（它们会传入显式的 `agentOptions`）；名册段落如实说明这一点。路由中的推理强度还会经过适配器的 `withSupportedEffort`（`mpd-dsh-adapter-plugin`）：若槽位的模型**完全没有**推理等级，则不发送任何等级 —— spawn 照常运行，而不是因 provider 无法接受的关键字失败；而声明了推理等级的模型则保留槽位的等级。
 
 ### 只读 teammate 会被机械地拒绝
 

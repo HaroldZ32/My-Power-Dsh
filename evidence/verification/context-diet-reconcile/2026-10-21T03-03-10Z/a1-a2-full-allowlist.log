@@ -1,0 +1,12 @@
+## A1: retired-claim sweep INCLUDING CHANGELOG.md (the full shipped allowlist)
+$ git grep -n -I -E "teammate is NOT routed by these slots|不由这些槽位路由|Lead.s route|inherits the Lead" -- <full allowlist>
+CHANGELOG.md:1109:`spawn_teammate` used to inherit the Lead's route: the official TeamService forwards only
+CHANGELOG.md:1116:one that does not inherits the Lead's route — the descriptor label is the only identity channel the
+CHANGELOG.md:1228:`ctx.subagents.startContinuable`, so a teammate created by `spawn_teammate` inherits the Lead's model
+exit=0
+## classification: which section each CHANGELOG hit lives in (released history, captain ruling)
+1082:## v0.11.0 — the team workflow, per-member routing, and a settings surface that reads
+1144:## v0.10.2 — TUI preset default, adapter event seams, TUI end-to-end lane
+1201:## v0.10.0 — DeepSeek Harness 0.1.7-rc.2 adaptation, official Agent Teams, Docker client test
+## A2: full shipped allowlist INCLUDING CHANGELOG.md
+exit=1

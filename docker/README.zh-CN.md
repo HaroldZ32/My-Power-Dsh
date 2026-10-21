@@ -335,8 +335,38 @@ docker compose -f docker/docker-compose.yml run --rm mpd-client
 若失败信息为 `mkdir <home>/.docker/buildx: read-only file system`，见上文 **环境（Environment）**
 （`export BUILDX_CONFIG=$(mktemp -d)`）。
 
-退出码：`0` 所有断言为真或 `null`；`1` 至少一个为假；`2` 没有 `result.json`；`3` 宿主机上没有可用的
-docker。
+退出码：`0` 所有断言为真或 `null`；`1` 至少一个为假；`2` 没有 `result.json`；`3` 是下面三种原因之一。
+
+### 已声明的边界，以及退出码 3 的三种原因
+
+记为 `null` 的断言是**已声明的边界（DECLARED BOUND）**——对本次运行没有要求的那条臂而言是诚实的形状，绝不
+等于通过：
+
+| 行 | 何时属于已声明的边界 |
+|---|---|
+| `boot.llmTurn` | 未传 `--live`（不落地凭据、不发起模型请求） |
+| `ui.teamBoard` | 本次运行不在团队模式（未设 `MPD_E2E_TEAM_PROJECT`） |
+| `ui.replyRendered` | 浏览器 lane 已开启、但没有落地凭据（无凭据运行） |
+| `oneclick.*` | 模式不是 `oneclick` |
+
+必需断言门禁（`agent-references/verification-flow.md`）会复查每一个名字以**本次运行所要求**的前缀开头的
+`null`；这种行记为 `UNMEASURED`，并把退出码变成 3。`--live` 运行时环境里没有密钥，会在构建**之前**直接以
+退出码 3 拒绝整次运行。
+
+**因此退出码 3 表示以下任一情况：在 `--require-docker` 下没有可用 Docker；某条必需的臂未被测量；或
+`--live` 缺少密钥。**
+
+### 发布配方
+
+发布扫尾在**两种**模式下都跑 live 臂，并导出凭据：
+
+```bash
+export DEEPSEEK_API_KEY=…              # 按“名字”转发，绝不写进 argv 被回显
+node scripts/docker-e2e.ts --mode source    --require-docker --live
+node scripts/docker-e2e.ts --mode oneclick  --require-docker --live
+```
+
+无凭据的写法是 `--no-browser`：它退出 0，并把每一行 `ui.*` 记为 NULL——那属于已声明的边界，**不是**发布证据。
 
 ## 如何阅读一次红色运行
 

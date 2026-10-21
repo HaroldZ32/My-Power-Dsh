@@ -101,12 +101,15 @@ This row contributes the ROSTER side of that path — every call through `mpd-ds
 | a READ-ONLY teammate's discipline | a TOOL GUARD (below), registered through the adapter |
 | the session-start complexity gate | an `agent/pre-step` listener that STAGES an approvable plan shell when `team.gate` says `mechanical` — the DEFAULT again since 2026-10-20 (below) |
 
-**Model routing stays on the one-shot path.** `TeamService` forwards only `{prompt, parent}`
-to `ctx.subagents.startContinuable` (`docs/plan-0.1.7-adaptation.md` §3), so a teammate
-inherits the Lead's route and no provider/persona/tool filter can be attached to it. The
-`teamModels.slot*` routes therefore apply to `mpd_role_spawn` / `mpd_workmate_spawn` (which
-pass explicit `agentOptions`), and the roster section says exactly that instead of promising
-a route the harness cannot deliver. The route's effort is additionally passed through the
+**Model routing follows the label.** `TeamService` forwards only `{prompt, parent}` plus the
+descriptor label (the teammate's `description`), so the label is the only roster identity the
+request carries (`docs/plan-0.1.7-adaptation.md` §3). `mpd-roster-provider-plugin` applies a
+roster member's `teamModels.slot*` route ONLY when that description NAMES the member; every other
+teammate is not routed at all — the request passes through by identity, so the harness-resolved
+route of the session that staged it stands (the captain's in a top-level spawn, the Lead's in a
+team-lead spawn). Prompt text cannot change a route. The same slots also apply to `mpd_role_spawn`
+/ `mpd_workmate_spawn`, which pass explicit `agentOptions`; the roster section says exactly that.
+The route's effort is additionally passed through the
 adapter's `withSupportedEffort` (`mpd-dsh-adapter-plugin`), so a slot whose model declares NO
 reasoning efforts at all is sent none — the spawn runs instead of failing on a keyword the
 provider cannot accept — while a model that declares efforts keeps the slot's keyword.

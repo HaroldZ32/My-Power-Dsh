@@ -1,0 +1,12 @@
+[verify-gates] resolving 9 member gate(s) (declared table)
+[verify-gates] member vendor :: node ./scripts/verify-vendor.ts
+[verify-gates] member dist-fresh :: node ./scripts/verify-dist-fresh.ts
+[verify-gates] member rows-parity :: node ./scripts/verify-rows-parity.ts
+[verify-gates] member docs-parity :: node ./scripts/verify-docs-parity.ts
+[verify-gates] member preset-conformance :: node ./skills/dsh-qa/scripts/preset-conformance.ts --self-test
+[verify-gates] member plugin-manifest :: node ./scripts/verify-plugin-manifest.ts --pack
+[verify-gates] member comment-coverage :: node ./scripts/verify-comment-coverage.ts
+[verify-gates] member graph-model :: node ./scripts/verify-graph-model.ts --self-test
+[verify-gates] member workflows :: node ./scripts/verify-workflows.ts
+[verify-gates] list OK: 9 member gate(s) resolved, 0 spawned
+exit=0

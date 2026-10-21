@@ -1,0 +1,54 @@
+## A1: prohibited old claim in SHIPPED scope
+$ git grep -n -F "teammate is NOT routed by these slots" -- <shipped scope>
+exit=1
+$ git grep -n -F "不由这些槽位路由" -- <shipped scope>
+exit=1
+$ git grep -n -E "Lead.s route" -- <shipped scope>
+exit=1
+## A1: the repaired §9.1 rows
+$ grep -n "spawn_teammate" docs/user-guide.md (row 538) / zh-CN (row 483)
+| `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate for the one-shot paths (`mpd_role_spawn`, `mpd_workmate_spawn`), and mpd-roster-provider for a `spawn_teammate` whose `description` names a roster member | at spawn, from the live service | the next one-shot spawn: a settings save or a hand edit of `<workspace>/.mpd/mpd.jsonc` is re-read in-process, so no restart is needed; `mpd_config_reload` forces a re-read. A `spawn_teammate` teammate whose `description` NAMES a roster member IS routed by that member's slot through mpd-roster-provider-plugin; any other teammate runs on the route of the session that staged it, and prompt text cannot change a route |
+| `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate（一次性通道 `mpd_role_spawn`、`mpd_workmate_spawn`），以及 mpd-roster-provider（其 `description` 点名名册成员的 `spawn_teammate`） | spawn 时，从实时服务读取 | 下一次一次性 spawn：设置保存或手工编辑 `<workspace>/.mpd/mpd.jsonc` 都会在进程内被重新读取，因此无需重启；`mpd_config_reload` 可强制重读。若 `spawn_teammate` 队友的 `description` 点名的是一位名册成员，它就**会**经由 mpd-roster-provider-plugin 按该成员的槽位路由；其他队友运行在创建它的会话的路由上，提示词文本无法改变路由 |
+## A1: whole-tracked-tree hits for the same prohibited claims (classification)
+$ git grep -n -I -E "teammate is NOT routed by these slots|不由这些槽位路由|inherits the Lead"
+      2 CHANGELOG.md
+      1 evidence/dsh-qa/mcp-call/2026-10-14T15-33-01.111Z/call.session.decoded.jsonl
+      1 evidence/dsh-qa/mcp-call/2026-10-14T15-33-01.111Z/enum.session.decoded.jsonl
+      1 evidence/dsh-qa/mcp-call/2026-10-14T15-50-28.570Z/call.session.decoded.jsonl
+      1 evidence/dsh-qa/mcp-call/2026-10-14T15-50-28.570Z/enum.session.decoded.jsonl
+      1 evidence/dsh-qa/mcp-call/2026-10-15T06-24-32.213Z/call.session.decoded.jsonl
+      1 evidence/dsh-qa/mcp-call/2026-10-15T06-24-32.213Z/enum.session.decoded.jsonl
+      1 evidence/dsh-qa/mcp-call/2026-10-15T06-34-34.077Z/call.session.decoded.jsonl
+      1 evidence/dsh-qa/mcp-call/2026-10-15T06-34-34.077Z/enum.session.decoded.jsonl
+      1 evidence/dsh-qa/mcp-call/2026-10-15T06-39-30.382Z/call.session.decoded.jsonl
+      1 evidence/dsh-qa/mcp-call/2026-10-15T06-39-30.382Z/enum.session.decoded.jsonl
+      1 evidence/dsh-qa/mcp-call/2026-10-15T06-42-48.587Z/call.session.decoded.jsonl
+      1 evidence/dsh-qa/mcp-call/2026-10-15T06-42-48.587Z/enum.session.decoded.jsonl
+      2 evidence/dsh-qa/session-start-team/2026-09-26T18-53-03.477Z/output.log
+      1 evidence/dsh-qa/session-start-team/2026-09-26T20-11-47.620Z/output.log
+      1 evidence/dsh-qa/session-start-team/2026-10-06T08-22-09.876Z/output.log
+      1 evidence/gates/agents-budget/20261006T085805Z/AGENTS.md.after
+      1 evidence/gates/agents-budget/20261006T085805Z/AGENTS.md.before
+      4 evidence/gates/agents-budget/20261006T085805Z/citations-core.txt
+      1 evidence/gates/agents-budget/20261006T085805Z/restructure-final.py
+      1 evidence/plan-f/workmate-team-member/2026-09-27T21-45-58.634Z/output.log
+      1 evidence/tui/dsh-tui-015/coderabbit/skills3/lane-final-evidence/call.session.decoded.jsonl
+      1 evidence/tui/dsh-tui-015/coderabbit/skills3/lane-final-evidence/enum.session.decoded.jsonl
+      1 evidence/tui/dsh-tui-015/coderabbit/skills3/lane-frozen-evidence/call.session.decoded.jsonl
+      1 evidence/tui/dsh-tui-015/coderabbit/skills3/lane-frozen-evidence/enum.session.decoded.jsonl
+      1 evidence/tui/dsh-tui-015/coderabbit/skills3/lane-mirror-evidence/call.session.decoded.jsonl
+      1 evidence/tui/dsh-tui-015/coderabbit/skills3/lane-mirror-evidence/enum.session.decoded.jsonl
+## A1: CHANGELOG released-history exemption (captain ruling)
+$ grep -n -B 8 "Lead" CHANGELOG.md (the two released entries only)
+1109:`spawn_teammate` used to inherit the Lead's route: the official TeamService forwards only
+1116:one that does not inherits the Lead's route — the descriptor label is the only identity channel the
+1228:`ctx.subagents.startContinuable`, so a teammate created by `spawn_teammate` inherits the Lead's model
+$ grep -n "^## \[" CHANGELOG.md | head -8
+17:## v0.15.0 — the guard split: reconnaissance and delegation delegated again, a mechanical session gate, a stateless TUI panel, and the `cordis-dev` skill
+136:## v0.14.0 — DeepSeek Harness 0.2.1-rc.2 + dsh-tui 0.16.1, one shared plan→graph model, and a real-team acceptance lane
+274:## v0.13.2 — a patch: the npm trusted-publishing lane and the dsh-tui 0.15.0 sidebar migration re-arm
+298:## v0.13.1 — the review pass: team-plane authorization, docker lane honesty, and the QA install path
+354:## v0.13.0 — two host adaptations and a leaner captain: dsh-tui 0.15.0, live team surfaces, the MIT re-source, the win32 band, and the keeper that knows when to stand down
+479:## v0.12.0 — the product page, and one bundle on two surfaces
+832:## v0.11.6 — the gate's own comments, and the manual's budget
+843:## v0.11.5 — the release version lives in three files, and the gate knows it

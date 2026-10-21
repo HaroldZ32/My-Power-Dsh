@@ -117,7 +117,9 @@ a teammate whose description names a roster member. The block below predates thi
   composition's own provider and applies the member's slot route — and the bundle points its
   `mpd-tool-agent-team` row's `freshProvider` at it. IDENTITY is the one thing the team service does
   not forward, so the routing rule is: **a teammate `description` that NAMES a roster member routes
-  that member; one that does not inherits the Lead's route.** An incomplete slot fails the spawn
+  that member; any other teammate runs on the route of the session that staged it (the captain's in a
+  top-level spawn, the Lead's in a team-lead spawn), and prompt text cannot change a route.** An
+  incomplete slot fails the spawn
   loudly, naming the member and the slot. See `packages/mpd-roster-provider-plugin/README.md`.
 - workmate: a durable, evolving agent instance in `~/.mpd/workmate/` created by `mpd-workmate-plugin`
   (`mpd_workmate_*`) from a roster BASE template with an independent name; it self-summarizes after each

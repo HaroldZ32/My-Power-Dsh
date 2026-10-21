@@ -1818,8 +1818,10 @@ export interface DshAdapter {
    * NOTE (AGENTS.md §3 of the adaptation plan): this is the path on which per-member
    * model routing CANNOT be applied mechanically — the official
    * `SubagentStartRequest` carries no `agentOptions`/`persona`/`toolFilter`, so the
-   * teammate inherits the Lead's route. A caller that needs a roster slot's route
-   * states it in the spawn prompt.
+   * teammate runs on the route of the session that stages it: the captain's in a
+   * top-level spawn, the Lead's in a team-lead spawn. `mpd-roster-provider-plugin` applies
+   * a roster member's `teamModels` slot only when the teammate DESCRIPTION names that
+   * member; prompt text cannot change a route.
    *
    * Degrade: THROWS when the service or `spawnTeammate` is absent (reported by the
    * service-level `capabilities().team`).
