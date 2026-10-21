@@ -60,7 +60,7 @@ Chromium 驱动真实应用截取；终端图把**真实 TUI 在真实 PTY 上�
 [`docs/tui-parity.md`](./docs/tui-parity.md)，每一行都写明了证据，每一条仍然开放的偏差都记录在案。
 上表中两列不是同一句话的那些行，正是台账里记下的偏差。在拿 TUI 顶替一项 Web 能力之前，请先读那份台账。
 
-![DSH Web GUI 的 Agent Teams 面板：团队 id 与阶段、一条进度条、五位成员各自的模型路由与任务计数，以及一张带状态配色、依赖连边、毛玻璃节点卡和悬浮信息卡的六节点任务图。](./docs/assets/images/zh-CN/web-team-board.png)
+![DSH Web GUI 的 Team 视图：团队 id 与阶段、一条进度条、五位成员各自的模型路由与任务计数，以及一张带状态配色、依赖连边、毛玻璃节点卡和悬浮信息卡的六节点任务图。](./docs/assets/images/zh-CN/web-team-board.png)
 
 ![DSH-TUI 的 /mpd team 场景：团队头部与进度条、名册行，以及用制表符画出的六节点任务依赖图，下面是该场景的按键提示。](./docs/assets/images/zh-CN/tui-team-dag.png)
 
