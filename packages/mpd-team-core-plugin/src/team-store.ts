@@ -143,8 +143,10 @@ export interface TeamTaskRecord {
    * ISO-8601 UTC instant this task entered `completed` or `failed`; ABSENT while it is not terminal.
    *
    * `updatedAt` IS NOT A FINISH STAMP — it moves on every patch, a note edit included — so a duration
-   * is `startedAt` -> `finishedAt` (or now, while the row is still running). Reopening to
-   * `pending`/`claimed`/`in_progress` DELETES this field, so a reopened row never reads as finished.
+   * is `startedAt` -> `finishedAt` (or now, while the row is still running). Leaving a terminal state
+   * for a NON-terminal one (`pending`/`claimed`/`in_progress`) DELETES this field, so a reopened row
+   * never reads as finished; entering `cancelled` deletes it too, because a cancelled task never ran to
+   * a finish of its own and must not keep a prior one.
    */
   finishedAt?: string
   /** The EXECUTOR's own handle for this task (an official board id today), or absent. */
@@ -742,9 +744,11 @@ export function updateTeamTask(record: TeamRecord, taskId: string, patch: TaskPa
       // Into a terminal state: the finish instant is the transition itself. `cancelled` is deliberately
       // NOT stamped — only `completed` and `failed` close work, and `cancelled` means it never ran.
       if (patch.status === "completed" || patch.status === "failed") next.finishedAt = now.toISOString()
-      // Reopening DELETES the finish: a row back on the board must not read as finished, and deleting
-      // the key (rather than blanking it) keeps an explicit `undefined` out of the serialized record.
-      if (patch.status === "pending" || patch.status === "claimed" || patch.status === "in_progress") delete next.finishedAt
+      // Leaving the finished state DELETES the finish: a row back on the board must not read as
+      // finished, and a CANCELLED row must not keep a finish from an earlier completion either — it
+      // never ran to one of its own. Deleting the key (rather than blanking it) keeps an explicit
+      // `undefined` out of the serialized record.
+      if (patch.status === "pending" || patch.status === "claimed" || patch.status === "in_progress" || patch.status === "cancelled") delete next.finishedAt
     }
     return next
   })

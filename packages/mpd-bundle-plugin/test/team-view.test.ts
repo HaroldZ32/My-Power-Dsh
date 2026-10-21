@@ -2547,6 +2547,15 @@ describe("team-view D2: the scoped stylesheet and the frosted node", () => {
     // depended on `pathLength`, which crushed the 6px dash pattern (Docker 2026-10-21).
     expect(css).toContain("@keyframes mpd-dag-dash")
     expect(css).toContain("@media (prefers-reduced-motion: reduce)")
+    // THE SMIL OVERLAY IS HIDDEN TOO (CodeRabbit a11y repair): a media query can stop a CSS
+    // animation, but it cannot stop an SVG `animateMotion`, so the block hides the overlay group.
+    // Slicing from the query proves the rule lives INSIDE the media block, not elsewhere in the sheet.
+    /** The reduced-motion block's own text, from the query to the end of the stylesheet. */
+    const reducedMotion = css.slice(css.indexOf("@media (prefers-reduced-motion: reduce)"))
+    expect(reducedMotion).toContain("[data-mpd-flow] { display: none; }")
+    // ONLY the moving overlay goes: the static dependency path and its arrowhead stay visible.
+    expect(reducedMotion).not.toContain("[data-mpd-curve]")
+    expect(reducedMotion).not.toContain("[data-mpd-head]")
     expect(css).not.toContain("mpd-dag-draw")
     // ASCII ONLY, so the stylesheet cannot smuggle a full-width codepoint into the drawing's page.
     expect(/[^\x00-\x7F]/.test(css)).toBe(false)

@@ -589,6 +589,10 @@
    * The node keeps its inline border width/colour and opacity (pinned 1px, idle 0.5px, dimmed 0.4);
    * this stylesheet supplies the MATERIAL (glass, shadow, motion) and never the geometry. Position is
    * `translate3d(...)` from the render so a rank change animates instead of jumping.
+   *
+   * REDUCED MOTION ALSO HIDES THE SMIL OVERLAY: CSS can stop a keyframe but cannot stop an SVG
+   * `animateMotion`, so the media query sets `[data-mpd-flow] { display: none; }`. The dependency
+   * path and its static arrowhead live in the edge group and stay visible; only the moving arrow goes.
    */
   const DAG_CSS = `
 .mpd-dag-node { position: absolute; left: 0; top: 0; box-sizing: border-box; overflow: hidden; cursor: pointer; border: 0.5px solid rgba(17,24,39,.22); border-radius: 6px; padding: 3px 5px; font-family: var(--dsw-font-mono, ui-monospace, monospace); font-size: 10px; line-height: 1.3; color: #111827; background: var(--dsw-alias-bg-layer-1, #ffffff); background: linear-gradient(180deg, rgba(255,255,255,.92) 0%, rgba(255,255,255,.62) 55%, rgba(238,243,251,.58) 100%); -webkit-backdrop-filter: blur(14px) saturate(1.25); backdrop-filter: blur(14px) saturate(1.25); box-shadow: inset 0 1px 0 rgba(255,255,255,.95), inset 0 -1px 0 rgba(17,24,39,.06), 0 1px 2px rgba(16,24,40,.08), 0 6px 18px rgba(16,24,40,.12); transition: transform 420ms cubic-bezier(.2,.8,.2,1), opacity 200ms, border-color 200ms, box-shadow 200ms; will-change: transform; }
@@ -603,7 +607,7 @@
 .mpd-dag-tip-fill { height: 100%; background: #111; }
 @keyframes mpd-dag-dash { to { stroke-dashoffset: -12; } }
 .mpd-dag-flow { stroke-dasharray: 6 6; animation: mpd-dag-dash 1s linear infinite; }
-@media (prefers-reduced-motion: reduce) { .mpd-dag-node { transition: none; } .mpd-dag-node[data-visual="running"] { animation: none; } .mpd-dag-flow { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .mpd-dag-node { transition: none; } .mpd-dag-node[data-visual="running"] { animation: none; } .mpd-dag-flow { animation: none; } [data-mpd-flow] { display: none; } }
 `
 
   /** The colour token each rendered state draws in — a MEANING mapped to a host token, never a literal. */

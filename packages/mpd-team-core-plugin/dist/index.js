@@ -2249,7 +2249,7 @@ function updateTeamTask(record, taskId, patch, now) {
         next.startedAt = now.toISOString();
       if (patch.status === "completed" || patch.status === "failed")
         next.finishedAt = now.toISOString();
-      if (patch.status === "pending" || patch.status === "claimed" || patch.status === "in_progress")
+      if (patch.status === "pending" || patch.status === "claimed" || patch.status === "in_progress" || patch.status === "cancelled")
         delete next.finishedAt;
     }
     return next;

@@ -351,6 +351,30 @@ describe("the task lifecycle stamps", () => {
     expect(again.tasks[0].finishedAt).toBe(laterStill.toISOString())
   })
 
+  test("a CANCELLED row does not retain a prior finish, and is never stamped one of its own", () => {
+    // THE EDGE CASE (CodeRabbit): `cancelled` is terminal but no work ever ran to a finish of its own,
+    // so a row cancelled AFTER a completion must not keep the earlier instant — a hover card would
+    // otherwise show a cancelled task with a stale elapsed time and a finished-looking stamp.
+    /** A task completed, so it carries a real finish. */
+    const completed = updateTeamTask(seeded(), "T1", { status: "in_progress" }, NOW)
+    /** The same task completed at the later instant. */
+    const finished = updateTeamTask(completed, "T1", { status: "completed" }, LATER)
+    expect(finished.tasks[0].finishedAt).toBe(LATER.toISOString())
+    /** The row after it is cancelled. */
+    const cancelled = updateTeamTask(finished, "T1", { status: "cancelled" }, NOW)
+    // ABSENT, not blanked: the key is DELETED, so no explicit `undefined` reaches the serialized record
+    // and the next reader's own `in` check tells the truth.
+    expect(Object.prototype.hasOwnProperty.call(cancelled.tasks[0], "finishedAt")).toBe(false)
+    expect(JSON.stringify(cancelled.tasks[0])).not.toContain("finishedAt")
+    // The START is history and survives: the row did begin work, and only the finish is withdrawn.
+    expect(cancelled.tasks[0].startedAt).toBe(NOW.toISOString())
+    // Cancelling a row that NEVER finished does not invent a finish either.
+    /** A pending row that is cancelled outright. */
+    const dropped = updateTeamTask(seeded(), "T1", { status: "cancelled" }, NOW)
+    expect(Object.prototype.hasOwnProperty.call(dropped.tasks[0], "finishedAt")).toBe(false)
+    expect(Object.prototype.hasOwnProperty.call(dropped.tasks[0], "startedAt")).toBe(false)
+  })
+
   test("a hand-built legacy record with NO lifecycle fields still reads, and stamps from the next claim", () => {
     // THE UPGRADE CASE: records written before this wave carry neither field. Reading one must not
     // throw, its rows must still classify, and nothing may be normalized in from thin air.
