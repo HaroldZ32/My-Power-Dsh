@@ -1,0 +1,74 @@
+{
+  "wave": "web-dag-sidebar-028",
+  "branch": "feature/web-dag-sidebar-028",
+  "codeCommit": "83796fb4",
+  "preFixCommit": "6e89d619",
+  "contract": "contract.md",
+  "status": "code green; measured-evidence root present; independent verifier re-verification pending",
+  "clauses": {
+    "better_sidebar_028": "package.json + bun.lock + scripts/pack-mpd.ts + host-contract.test.ts; verify:rows, verify:manifest, preset-conformance, bundle-lifecycle",
+    "secondary_both_surfaces": "sidebar-tab.test.ts primary ids + :bottom twins + bottomOnly + fallback; docs/user-guide.md section 8",
+    "dag_symmetry": "team-view.test.ts D1 centerY/stack-centre arms + 8-board x 2-source property battery",
+    "no_overlapping_lines": "overlaps === [] battery + TASKS/LONG_EDGE_TASKS/CYCLE_TASKS; rank-parity port proof; fan-in 12px pitch arm with >=10px tip gap",
+    "dynamic_change": "translate3d 420ms transition + served-rank recomputation; D2 CSS arms",
+    "flow_arrow_completed_to_running": "animateMotion overlay + 6px dash flow; D2 flow-only arm; cjk 06b real-browser still",
+    "glass_nodes": "scoped gradient + backdrop-filter blur(14px) saturate(1.25) + inset highlight/outer shadow; D2 CSS arms; 06b still",
+    "breathing_active": "box-shadow/border-color keyframes only; reduced-motion disables; D2 CSS arms; 06b T3 glow",
+    "hover_card": "status/owner/elapsed/truncated task/progress; pointer-derived position; D2 card arms; 07 stills",
+    "pin_opaque_leave_close": "D2 pin-opacity + mouseleave arms; pre-fix focus-anchor defect repaired and regression arm added",
+    "data_fields": "team-store.test.ts transition matrix; team-web.test.ts payload/omitted-undefined/progress mapping",
+    "existing_features": "985 affected tests pass; Docker UI capture 18/18 checks, 9/9 steps; click-to-pin detail still renders"
+  },
+  "tests": {
+    "affectedSuites": "bun test packages/mpd-bundle-plugin packages/mpd-team-core-plugin packages/mpd-tui-plugin packages/mpd-better-sidebar-host",
+    "affectedResult": "985 pass, 0 fail, 31337 expect() calls",
+    "typecheck": "bun run typecheck -> exit 0",
+    "gates": "bun run verify:gates -> 9/9 PASS",
+    "docs": "bun run verify:docs -> pairs 48, failed 0",
+    "comments": "bun run verify:comments -> 426/426 files, PASS",
+    "vendor": "node scripts/verify-vendor.ts -> 7/7 assets fingerprinted, PASS",
+    "boot": {
+      "presetConformance": "node skills/dsh-qa/scripts/preset-conformance.ts -> PASS; evidence/dsh-qa/preset-conformance/2026-10-21T07-33-58.879Z/",
+      "bundleLifecycle": "bun skills/dsh-qa/scripts/bundle-lifecycle.ts -> PASS; evidence/dsh-qa/bundle-lifecycle/2026-10-21T07-34-29.585Z/"
+    }
+  },
+  "docker": {
+    "declaredE2E": {
+      "command": "node scripts/docker-e2e.ts --mode source --require-docker --require-browser",
+      "commit": "6e89d619",
+      "exit": 3,
+      "reason": "credential-free declared bound ui.replyRendered=MISSING_CREDENTIAL; not a pass",
+      "evidence": "../2026-10-21T07-40-13Z/docker/"
+    },
+    "uiCapturePreFix": {
+      "commit": "6e89d619",
+      "result": "exit 0; 18/18 checks; 9/9 steps",
+      "defects": [
+        "hover card parked at viewport top-left after click/focus (FocusEvent has no clientX/clientY)",
+        "two fan-in arrowheads at T4 merged (4px port pitch)",
+        "pathLength=100 crushed the flow dash to about 1.4px on short edges"
+      ],
+      "evidence": "../2026-10-21T07-40-13Z/docker/"
+    },
+    "uiCapturePostFix": {
+      "commit": "83796fb4",
+      "result": "exit 0; 18/18 checks; 9/9 steps; normal + cjk boards",
+      "fixes": [
+        "focus no longer overwrites the pointer anchor; card renders beside the node",
+        "fan-in port pitch 12px for 2-4 incident edges (8px for 5-6); arrowheads disjoint",
+        "pathLength and draw-in removed; 6px dash flow reads at pixel size",
+        "node glass gradient/inset highlight/shadow and running glow strengthened"
+      ],
+      "evidence": "docker-post-fix/"
+    }
+  },
+  "gateEvidenceIds": [],
+  "honestBounds": [
+    "No live model reply in the Docker lane; ui.replyRendered is a declared credential-free bound.",
+    "Still frames prove element presence, not motion; SMIL/dash animation is asserted structurally in tests.",
+    "Progress is coarse and status-derived (100/50/10/0), not measured work; legacy tasks without startedAt show a dash.",
+    "Zero-overlap proof is the rank-parity channel plus the generated battery; capacity bounds are >=21 incident ports, >47 crossing lanes per gutter, >23 same-rank lanes; 5-6 incident edges use an 8px pitch whose outermost arrowheads can touch at the +/-20 clamp.",
+    "No zoom/pan/minimap and no graph-layout library in this wave.",
+    "Better-sidebar bottom-workbench registration is proven at source-contract + real preset/host-boot level, not by a screenshot of the bottom surface; the right-sidebar capture covers the shared body."
+  ]
+}
