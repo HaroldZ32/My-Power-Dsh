@@ -1,7 +1,7 @@
 // mpd-roles-plugin: the specialists live as a SPECIALIST ROSTER, not as
 // presets. Each role = { stable id (chain key), normal display name, persona
 // text, DeepSeek model chain, read-only discipline }. Consumers: mpd_role_spawn
-// (one-shot specialist from anywhere), mpd_role_persona (text for spawn surfaces —
+// (single-call specialist consult from anywhere), mpd_role_persona (text for spawn surfaces —
 // the official Agent Teams `spawn_teammate` takes it as the teammate's prompt), and
 // the mpdRoles service (mpd-modelchain chain lookup). Team mode is the OFFICIAL Agent
 // Teams plugin (`spawn_teammate` + `team_task_create`), which THIS row feeds: it
@@ -9,7 +9,7 @@
 // `ask_user_question` boundary guard, the captain's reconnaissance ban, the delegation
 // gate and the session-start gate (MECHANICAL by default since the 2026-10-20 restore).
 // ADDRESSING CONTRACT: a role is addressed by its normal display NAME — the member
-// name in team mode, the label of a one-shot mpd_role_spawn, and what every
+// name in team mode, the label of a single-call mpd_role_spawn, and what every
 // description/render lists. The stable `id` is an INTERNAL key (modelchain chain key,
 // `personas/<id>.md`, workmate meta.baseId): the TOOL surface REFUSES it (`roleOfToolInput`
 // accepts a NAME spelling only) while the internal `mpdRoles.get` path keeps resolving it
@@ -85,7 +85,7 @@ function withdrawnReason(knob: string): string {
   return "withdrawn:2026-10-17-user-ruling(" + knob + ")"
 }
 
-/** Output schema of a one-shot specialist's structured report, so the tool result is validated. */
+/** Output schema of a single-call specialist consult's structured report, so the tool result is validated. */
 const REPORT_SCHEMA = {
   type: "object",
   properties: {
@@ -558,7 +558,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
    * THE DEFECT THIS REPAIRS (measured on a real machine, 2026-10-12). Both live profiles carried a
    * SAVED `teamModels` block in the `mpd-config` row config (`company-api` / `deepseek-flash`, written
    * from the settings front doors), and `mpd-config-plugin` served it resolved — but the ONLY reader was
-   * `mpd-roster-provider-plugin`, which routes an OFFICIAL `spawn_teammate`. Every one-shot path kept
+   * `mpd-roster-provider-plugin`, which routes an OFFICIAL `spawn_teammate`. Every single-call consult path kept
    * the STATIC `roles.data.ts` chain, so `mpd_role_spawn` ran on the shipped `deepseek-official` route
    * even when the user had configured a gateway provider: on that machine no key exists for
    * `deepseek-official`, so the spawn died with `MISSING_CREDENTIAL` and the save looked inert on web,
@@ -734,7 +734,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
 
   dsh.registerTool({
     name: "mpd_roles_list",
-    description: "List the specialist roster — the SAME normal-named specialists team mode stages as teammates, each named for what it does: " + rosterFunctionList() + ". Address a role by that name (any case, space or hyphen spelling). Use this before mpd_role_spawn; for team work stage the roster with spawn_teammate + team_task_create (persona text from mpd_role_persona) instead of repeated one-shot spawns.",
+    description: "List the specialist roster — the SAME normal-named specialists team mode stages as teammates, each named for what it does: " + rosterFunctionList() + ". Address a role by that name (any case, space or hyphen spelling). Use this before mpd_role_spawn; for team work stage the roster with spawn_teammate + team_task_create (persona text from mpd_role_persona) instead of repeated single-call consults.",
     parameters: { type: "object", properties: {} },
     output: { schema: { type: "object", properties: { roles: { type: "array", items: { type: "object" } }, count: { type: "integer" }, refused: { type: "array", items: { type: "object", properties: { extension: { type: "string" }, name: { type: "string" }, reason: { type: "string" } }, required: ["extension", "name", "reason"] } } }, required: ["roles", "count"] }, render: (_a: unknown, v: any) => textBlock("roster (" + v.count + "):\n" + v.roles.map((r: any) => "- " + r.name + " [" + r.model + (r.readonly ? " readonly" : "") + (r.extension ? " extension:" + r.extension : "") + "] — " + r.description).join("\n") + (Array.isArray(v.refused) && v.refused.length > 0 ? "\nrefused (" + v.refused.length + "):\n" + v.refused.map((r: any) => "- " + r.name + " (" + r.extension + ") — " + r.reason).join("\n") : "")) },
     execute: async (_args: any, exec: any) => {
@@ -748,7 +748,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
 
   dsh.registerTool({
     name: "mpd_role_spawn",
-    description: "Spawn one specialist as a one-shot subagent, carrying its persona, model route and read-only discipline (read-only roles get a write-tool deny filter). Roles, each named for what it does: " + rosterFunctionList() + ". The subagent is labelled with that name. For multi-member team work prefer the official Agent Teams tools (spawn_teammate + team_task_create) instead of repeated one-shot spawns: a teammate inherits the caller's model route, while THIS path applies the role's teamModels slot route.",
+    description: "Run ONE bounded delegation with a specialist and return one report — a single-call consult, not an ephemeral subagent: the harness keeps the child CONTINUABLE, so after the report it stays listed as inactive and `send_message` can continue it. It carries the role's persona, model route and read-only discipline (read-only roles get a write-tool deny filter). Roles, each named for what it does: " + rosterFunctionList() + ". The child is labelled with that name. `mpd_workmate_spawn` is the same spawn mechanics for a durable, evolving instance (plus its persona/memory from the library). For multi-member team work prefer the official Agent Teams tools (spawn_teammate + team_task_create) instead of repeated single-call consults: a teammate inherits the caller's model route, while THIS path applies the role's teamModels slot route.",
     parameters: { type: "object", properties: { role: { type: "string", description: "role name (see mpd_roles_list), e.g. \"Architect\" or \"Deep Worker\"" }, task: { type: "string" }, context: { type: "string", description: "optional context block to include" }, model: { type: "string", description: "optional model override (default: the role's primary route)" } }, required: ["role", "task"], additionalProperties: false },
     output: { schema: { type: "object", properties: { role: { type: "string" }, status: { type: "string", enum: ["complete"] }, summary: { type: "string" }, recommendation: { type: "string" }, details: { type: "string" }, evidence: { type: "array", items: { type: "string" } }, stopReason: { type: "string" } }, required: ["role", "status", "summary"] }, render: (_a: unknown, v: any) => textBlock("role " + v.role + " (" + v.status + ")\nsummary: " + v.summary + (v.recommendation ? "\nrecommendation: " + v.recommendation : "") + (v.details ? "\ndetails: " + v.details : "") + (v.evidence?.length ? "\nevidence:\n- " + v.evidence.join("\n- ") : "")) },
     execute: async (args: any, exec: any) => {
@@ -819,7 +819,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   // contracts: the roster's mechanical read-only discipline (the shipped profile carried
   // each read-only member's toolDeny) and the session-start complexity gate. Both are
   // restored HERE, on the OFFICIAL plugin's seams, reached only through the adapter:
-  //   1. a tool guard over the SAME eight names the one-shot path denies;
+  //   1. a tool guard over the SAME eight names the role-spawn path denies;
   //   2. an AGENT-SCOPED roster section, so an mpd Lead knows the members it can stage;
   //   3. the session-start complexity gate, MECHANICAL by default since the 2026-10-20 restore: an
   //      untouched `team.gate` stages an APPROVABLE PLAN SHELL (0 members, 0 tasks) through the

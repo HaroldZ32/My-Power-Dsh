@@ -404,6 +404,13 @@ table below; `1` is at least one FALSE (a failed assertion); `2` is no `result.j
 three causes below. `--no-browser` only SKIPS the browser assertions (their `ui.*` rows become `null`)
 and still requires every remaining assertion to pass.
 
+**A SKIP is not a pass.** The `0` rule above applies only AFTER the Docker lane ran. Without
+`--require-docker`, an unavailable Docker — absent, or a rootful daemon not opted in with
+`--allow-rootful-docker` — prints the `[driver] SKIP — the Docker real-machine lane did NOT run` notice
+and returns exit 0 BEFORE the lane assertions run: no evidence directory or `result.json` is written,
+nothing was measured, and the run is not release evidence. `--require-docker` turns that same skip into
+exit 3, which is why the release recipe below keeps it.
+
 ### The declared bounds, and the three causes of exit 3
 
 A `null` row is a DECLARED BOUND — the honest shape for an arm the run did not ask for, never a pass:

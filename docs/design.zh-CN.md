@@ -245,7 +245,7 @@ patch 文件（`presets/mpd.patch.yml`）再携带一个
 
 ## 5. 交互流程
 
-### Roster → 单发专家
+### Roster → 单次专家咨询
 `mpd_role_spawn` 读取 roster 规格（`mpdRoles`），构造 `persona + task`，然后
 `dsh.spawnAgent({ provider, model, persona,
 outputSchema, toolFilter (只读 deny) })`。模型路由来自角色链
@@ -261,8 +261,8 @@ key**。
   `meta.json` 保留内部 `baseId` 作为溯源，而所有工具输出、路由与界面都会剥离它。
 - 工作后 `mpd_workmate_reflect` 追加有界 memory 条目（最旧淘汰）、合并 persona 修订、
   重生成 note（保留特长 + 最新任务）、`uses` 加一。
-- `mpd_workmate_spawn` 一次性复用实例：persona + memory + note + 任务，走实例自身路由；
-  subagent 被指示在最终报告前调用 `mpd_workmate_reflect`。
+- `mpd_workmate_spawn` 以单次咨询复用实例：一次有界委派、一份报告 —— persona + memory + note + 任务，
+  走实例自身路由（continuable 子会话）；子会话被指示在最终报告前调用 `mpd_workmate_reflect`。
 - `mpd_workmate_match` 对 note 打分（关键词重叠 + base 名加成，阈值 0.35）；低于阈值
   → `matched: false` + "新建 workmate"（绝不强行弱匹配）。
 - `mpd_workmate_rename { name, new_name }` **搬移**已演化的身份 —— 目录键**就是**身份，

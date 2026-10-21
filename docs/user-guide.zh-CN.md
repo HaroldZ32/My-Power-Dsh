@@ -131,7 +131,7 @@ node scripts/install-profile.ts            # --dry-run 只打印计划，不写�
 | 推进长任务 | `mpd_ulw`（轻量）/ `mpd_ultrawork`（完整纪律：计划关卡、执行轮次、验证关卡），或等价的 `/ulw <objective>` / `/ultrawork <objective>` 命令、`mpd_boulder_start/status/complete/task_timer/plan_progress/plans` | 两个命令会注入 ULW 自治指令 —— 该运行不向用户提问，并在工作确需团队时自行建队；`mpd_boulder_*` 跨会话跟踪某个计划 markdown 文件的进度 |
 | 让长任务跨轮继续 | `mpd_goal_status`、`mpd_goal_anchor`、`mpd_goal_finish`（以及宿主的 `/goal` 命令与它的 goal 轮次驱动器） | 见 §13.10：**持久化 goal** 是本 bundle 持续化执行的依据 —— heavy 档 ULW 运行或绑定 plan 的 boulder 工作会自动 anchor 一个（`goal.autoAnchor`），而当 turn 内引擎提前停下时它会保持启用 |
 | 保存记忆 | `mpd_memory_write/read/reflect/reflect_complete/status`、`mpd_memory_save/recall` | 版本库后端可以是 git 或 svn；`mpd_memory_save/recall` 是简单的键值层 |
-| 咨询专家 | `mpd_roles_list`、`mpd_role_spawn`、`mpd_role_persona` | 一次性子智能体；只读角色会被禁用写入类工具 |
+| 咨询专家 | `mpd_roles_list`、`mpd_role_spawn`、`mpd_role_persona` | 单次咨询子智能体（continuable 子会话）；只读角色会被禁用写入类工具 |
 | 养一个会成长的智能体 | `mpd_workmate_list/init/spawn/reflect/match/rename/delete` | 见 §5 |
 | 运行一个团队 | `agent_teams_plan`（暂存计划、扩展它、批准它）、`spawn_teammate`、`send_message`、`list_agents`、`wait_agent`、`interrupt_agent`、`team_task_create/list/get/update` + Web 的 Agent Teams 面板 | 见 §6 |
 | 配置本 bundle | `.mpd/mpd.jsonc`、`mpd_config_get`、`mpd_config_reload` | 见 §9 |
@@ -160,11 +160,12 @@ node scripts/install-profile.ts            # --dry-run 只打印计划，不写�
 | Vision Analyst | 读取截图与图表 —— 只读 |
 | Junior Engineer | 小而明确范围的机械化改动 |
 
-一次性使用：
+以单次咨询方式使用：
 
 - `mpd_roles_list` —— 列出名册。
-- `mpd_role_spawn { role, task, context? }` —— 以子智能体形式 spawn 一位专家，带上它的人设与
-  模型路由；只读角色会被机制性地禁用写入类工具。
+- `mpd_role_spawn { role, task, context? }` —— 用一位专家执行一次有界委派并返回一份报告；子会话保留该角色的
+  人设与模型路由，以角色名称为 label，并且是 continuable 的（以 `inactive` 列出，可用 `send_message`
+  继续）；只读角色会被机制性地禁用写入类工具。
 - `mpd_role_persona { role }` —— 取出完整人设文本（例如传给只接受文本人设的 spawn 接口）。
 
 按工作量大小挑选工具：小而机械的改动交给 **Junior Engineer**，边界清晰且独立的一块交给
@@ -189,7 +190,7 @@ mpd_workmate_init   { base: <功能名>, name?: <独立名字>, note? }
 | 工具 | 用途 |
 |---|---|
 | `mpd_workmate_list` | 列出实例（name、baseName、uses、updatedAt、note） |
-| `mpd_workmate_spawn { name, task, context? }` | 一次性复用：workmate 以其演化后的人设 + 独立记忆 + 说明卡，在自己的模型路由上运行；它被要求在最终汇报前调用 `mpd_workmate_reflect` |
+| `mpd_workmate_spawn { name, task, context? }` | 单次咨询：workmate 在 continuable 子会话中、以自己的模型路由执行一次有界委派，并带上其演化后的人设 + 独立记忆 + 说明卡；它被要求在最终汇报前调用 `mpd_workmate_reflect` |
 | `mpd_workmate_reflect { name, task, outcome, persona_delta?, note? }` | 工作后自我演化：有上限的记忆追加（最旧的被淘汰）、人设修订合并、说明卡重生成、`uses++` |
 | `mpd_workmate_match { task }` | 针对任务给说明卡打分；低于阈值时返回 `matched: false`，并建议 **新建一个 workmate** —— 绝不强推弱匹配 |
 | `mpd_workmate_rename { name, new_name }` | 重命名实例（迁移它已演化的身份） |
@@ -272,13 +273,13 @@ interrupt_agent { target }                                                # 仅 
   轮次在执行，不是工作已完成）；当没有其他成员在运行或创建中时，`wait_agent` 立刻回答
   `noProgress`。
 - **只读成员就是只读的。** Architect、Researcher、Planner、Explorer、Plan Reviewer 与
-  Vision Analyst 会被拒绝那八个写入工具：一次性通道通过 `toolFilter.deny`，团队通道通过
+  Vision Analyst 会被拒绝那八个写入工具：`mpd_role_spawn` 通道通过 `toolFilter.deny`，团队通道通过
   `mpd-roles-plugin` 里以团队身份为键的工具守卫 —— 因为官方 `spawn_teammate` 无法接受按队友的
   工具过滤器。工作者（Senior Engineer、Junior Engineer、Deep Worker、Lead、Reviewer）负责实现与
   验证。
 - **队友跑在暂存它的那个会话的路由上** —— 顶层 spawn 是 captain 的路由，team-lead spawn 是 Lead 的
   路由。只有当队友的 `description` **点名**名册成员时，`mpd-roster-provider` 才施加该成员的
-  `teamModels.slot*` 路由；**一次性咨询**通道（`mpd_role_spawn`、`mpd_workmate_spawn`）则显式传入路由。
+  `teamModels.slot*` 路由；**单次咨询**通道（`mpd_role_spawn`、`mpd_workmate_spawn`）则显式传入路由。
   提示词文本无法改变路由：要在 `description` 里写成员**名字**，而不是在提示词里写模型。
 - **由 workmate 背书的成员是一段提示词，而不是自动注入。** 现在已经没有任何东西会把某个 workmate
   的人设自动带进队友：先初始化或挑出该 workmate（`mpd_workmate_init` / `mpd_workmate_match`），
@@ -441,7 +442,7 @@ host，直到你选择 `mpd` 为止（TUI 的 `/preset mpd`、Web Settings 的 `
 | `extensions.mcp.*` | mpd-ext | MCP 桥默认值：`enabled`、`connectTimeoutMs`、`toolCallTimeoutMs` |
 | `modelchain.*` | mpd-modelchain | 各名册角色的 provider/model 链 |
 | `team.stateDir` | 读取旧版团队记录的 mpd 插件（看门狗 web 路由、压缩、TUI 团队界面、workmate 在用检查） | 这些记录的位置（默认 `.mpd/team`）。官方团队插件不读它 |
-| `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate（经 mpd-config） | 四个**团队模型槽位**：每个槽位是 `{provider, model, reasoningEffort}`，默认 `deepseek-official` / `deepseek-v4-flash`，推理强度依次为 `max`/`high`/`high`（槽位 4 默认 `deepseek-official` / `deepseek-v4-flash-vision-exp` / `high`）。槽位 1 路由 Architect/Planner/Reviewer/Lead/Senior Engineer，槽位 2 路由 Researcher/Explorer/Plan Reviewer，槽位 3 路由 Deep Worker/Junior Engineer，槽位 4 路由 Vision Analyst —— 视觉成员，其槽位模型**必须支持图像输入**。它们由**一次性咨询**通道（`mpd_role_spawn`、`mpd_workmate_spawn`）解析，由这两条通道显式传入路由；而 `spawn_teammate` 队友只有在 `description` **点名**名册成员时才取用槽位，其他队友则跑在暂存它的那个会话的路由上（§6）。槽位解析失败会让对应的 spawn **大声失败**（指名成员与槽位，不写入任何内容），且推理强度**永远不会**被悄悄钳制。唯一的例外是：若该模型在实时目录中完全没有推理等级，则不发送任何等级，spawn 照常运行（这正是设置选择器早已采用的适配的运行时一半）。可在 **设置 → MPD** 与 TUI 的 `/settings` 区块中作为只可选择字段编辑，界面会在编辑前显示当前生效值；保存后的改动在运行中的进程里被重新读取 —— 下一次 spawn 或解析即携带新值，无需重启（`mpd_config_reload` 可强制重读）。 |
+| `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate（经 mpd-config） | 四个**团队模型槽位**：每个槽位是 `{provider, model, reasoningEffort}`，默认 `deepseek-official` / `deepseek-v4-flash`，推理强度依次为 `max`/`high`/`high`（槽位 4 默认 `deepseek-official` / `deepseek-v4-flash-vision-exp` / `high`）。槽位 1 路由 Architect/Planner/Reviewer/Lead/Senior Engineer，槽位 2 路由 Researcher/Explorer/Plan Reviewer，槽位 3 路由 Deep Worker/Junior Engineer，槽位 4 路由 Vision Analyst —— 视觉成员，其槽位模型**必须支持图像输入**。它们由**单次咨询**通道（`mpd_role_spawn`、`mpd_workmate_spawn`）解析，由这两条通道显式传入路由；而 `spawn_teammate` 队友只有在 `description` **点名**名册成员时才取用槽位，其他队友则跑在暂存它的那个会话的路由上（§6）。槽位解析失败会让对应的 spawn **大声失败**（指名成员与槽位，不写入任何内容），且推理强度**永远不会**被悄悄钳制。唯一的例外是：若该模型在实时目录中完全没有推理等级，则不发送任何等级，spawn 照常运行（这正是设置选择器早已采用的适配的运行时一半）。可在 **设置 → MPD** 与 TUI 的 `/settings` 区块中作为只可选择字段编辑，界面会在编辑前显示当前生效值；保存后的改动在运行中的进程里被重新读取 —— 下一次 spawn 或解析即携带新值，无需重启（`mpd_config_reload` 可强制重读）。 |
 | `agentRoutes.<name>.*` | mpd-roles / mpd-workmate（经 mpd-config） | 按名册 base **名字**（`Architect`、`Researcher`、`Planner`、`Deep Worker`、`Senior Engineer`、`Lead`、`Explorer`、`Reviewer`、`Plan Reviewer`、`Vision Analyst`、`Junior Engineer`）映射到 `{provider?, model?, reasoningEffort?}`，每个叶子都可选。**优先级（逐叶子）：** `agentRoutes[<name>]` > 该成员的 `teamModels.slot{N}` > 内置默认值。workmate 每次 spawn 都会重新解析其 base 的路由（进行中的任务保留启动时的路由，下一个任务携带新值；冻结的 `meta.provider`/`meta.model` 只是来源记录）。未知成员名或格式错误的条目会**大声**校验失败，绝不静默忽略。可在 **设置 → MPD** 与 TUI 的 `/settings` 区块中编辑，界面会在编辑前显示当前生效值。 |
 
 `mpd-codegraph` 刻意不在上表中：它的 `autoInit`、`initTimeoutMs`、`cooldownMs` 与 `binary` 来自
@@ -460,7 +461,7 @@ host，直到你选择 `mpd` 为止（TUI 的 `/preset mpd`、Web Settings 的 `
 
 - **模型配置旋钮在进程内实时刷新。** 配置服务在每次设置保存时、以及监听到
   `<workspace>/.mpd/mpd.jsonc` 被编辑时都会重新解析，而模型路由（`modelchain.*`、`teamModels.slot*`、
-  `agentRoutes.*`）是**每次使用**时读取的，因此下一次 `mpd_modelchain_resolve` 调用、或下一次一次性
+  `agentRoutes.*`）是**每次使用**时读取的，因此下一次 `mpd_modelchain_resolve` 调用、或下一次单次咨询
   spawn / workmate spawn / 队友启动都会携带新路由，无需重启。`mpd_config_reload` 仍是需要强制重读时的
   手动兜底。
 - **回读永远是即时的。** `mpd_config_get` 与 `mpd_config_reload` 每次调用都重新读取各层并立刻报告
@@ -480,8 +481,8 @@ host，直到你选择 `mpd` 为止（TUI 的 `/preset mpd`、Web Settings 的 `
 | `modelchain.*` | mpd-modelchain | 每次调用，从实时服务读取 | 实时生效 —— 无需重启：每次 `mpd_modelchain_resolve` 都会重读该 overlay，因此设置保存或文件编辑会改变下一次解析；`mpd_config_reload` 可强制重读 |
 | `extensions.enable` / `.disable` / `.mcp.*` | mpd-ext | 插件启动时（进程级） | 重启后 |
 | `team.stateDir` | 读取旧版团队记录的 mpd 插件，经实时服务解析 | 每次调用 | 服务重新读取文件之后立即生效（`mpd_config_reload`，或任意一次设置保存）。这些是**旧版**记录：官方团队插件把名册、邮箱与任务板保存在 Lead 的会话日志里，不在这里 |
-| `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate（一次性通道 `mpd_role_spawn`、`mpd_workmate_spawn`），以及 mpd-roster-provider（其 `description` 点名名册成员的 `spawn_teammate`） | spawn 时，从实时服务读取 | 下一次一次性 spawn：设置保存或手工编辑 `<workspace>/.mpd/mpd.jsonc` 都会在进程内被重新读取，因此无需重启；`mpd_config_reload` 可强制重读。若 `spawn_teammate` 队友的 `description` 点名的是一位名册成员，它就**会**经由 mpd-roster-provider-plugin 按该成员的槽位路由；其他队友运行在创建它的会话的路由上，提示词文本无法改变路由 |
-| `agentRoutes.<name>.*` | mpd-roles / mpd-workmate（一次性通道），以及为点名队友解析路由的 mpd-roster-provider | spawn 时，从实时服务读取 | 该成员的下一次一次性 spawn 或 workmate spawn：逐叶子而言，`agentRoutes[<name>]` 优先于该成员的 `teamModels.slot{N}` 叶子，后者又优先于内置默认值。未知成员名与格式错误的条目会大声校验失败 |
+| `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate（单次咨询通道 `mpd_role_spawn`、`mpd_workmate_spawn`），以及 mpd-roster-provider（其 `description` 点名名册成员的 `spawn_teammate`） | spawn 时，从实时服务读取 | 下一次单次咨询：设置保存或手工编辑 `<workspace>/.mpd/mpd.jsonc` 都会在进程内被重新读取，因此无需重启；`mpd_config_reload` 可强制重读。若 `spawn_teammate` 队友的 `description` 点名的是一位名册成员，它就**会**经由 mpd-roster-provider-plugin 按该成员的槽位路由；其他队友运行在创建它的会话的路由上，提示词文本无法改变路由 |
+| `agentRoutes.<name>.*` | mpd-roles / mpd-workmate（单次咨询通道），以及为点名队友解析路由的 mpd-roster-provider | spawn 时，从实时服务读取 | 该成员的下一次单次咨询或 workmate spawn：逐叶子而言，`agentRoutes[<name>]` 优先于该成员的 `teamModels.slot{N}` 叶子，后者又优先于内置默认值。未知成员名与格式错误的条目会大声校验失败 |
 | `watchdog.*` | mpd-team-watchdog | 挂载时、settings 更新时、每个 tick | 实时生效 —— 无需重启 |
 
 `mpd-codegraph` 的旋钮是反证这条规则的例外：它们是 patch 行选项（`autoInit`、`initTimeoutMs`、
@@ -681,7 +682,7 @@ hyperplan 波、使用计划文件时的**计划关卡**（planner + plan review
 `.mpd/ulw/<id>`。被激活的运行不会向你提问：它先做三角定位，在工作确需团队时自行建队，然后走完
 各道关卡才收尾。
 
-### 13.3 专家（一次性子智能体）
+### 13.3 专家（单次咨询）
 
 ```text
 mpd_roles_list {}

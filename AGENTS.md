@@ -92,8 +92,10 @@ replaced or deleted. License: **MIT** (`LICENSE.md`); third-party components kee
   remote MCP rows follow the same rule); and the two vendored env keys (`MPD_AST_GREP_SG_PATH`,
   `MPD_CODEGRAPH_BIN`) are read by upstream vendored code.
 - **Roster.** The 11 specialists are teammate instantiation templates — NOT presets — addressed by NAME,
-  never by their internal stable `id` (§13). One-shot consult: `mpd-roles-plugin`; team work: the
-  **official Agent Teams plugin**; durable instances: the **workmate library**.
+  never by their internal stable `id` (§13). Single-call consult: `mpd-roles-plugin` (one bounded
+  delegation, one report; the harness keeps the child CONTINUABLE — listed `inactive`, resumable with
+  `send_message`); team work: the **official Agent Teams plugin**; durable, evolving instances: the
+  **workmate library** (`mpd_workmate_spawn` — the same spawn mechanics, plus persona/memory).
 - **THE TEAM RECORD IS OURS (team-plane split, 2026-09-30).** `mpd-team-core-plugin` owns the team
   (roster, board, DAG, `kind`/`attempt`/`round`/`verdict`) in `.mpd/team/teams/<id>.json`, served as
   `mpdTeams` and over `/plugins/mpd-team/state`; `mpd-dsh-adapter` mediates the ONE execution seam,
@@ -269,7 +271,7 @@ lands (§9/§11).
      wave, and end it when the wave lands.
   2. **Dispatch by WORKLOAD SIZE — size picks the EXECUTOR, it never decides "do it myself".** Team mode
      is NOT a precondition for using specialists: outside a team the MPD-native path is always available
-     — `mpd_role_spawn` for a one-shot specialist and the workmate library (`mpd_workmate_*`) for an
+     — `mpd_role_spawn` for a single-call specialist consult and the workmate library (`mpd_workmate_*`) for an
      instance that accumulates across sessions. A small mechanical change goes to a Junior Engineer, a
      bounded independent piece to a Senior Engineer or Deep Worker, an evidence question to a Researcher
      or Explorer, a verdict to a Reviewer. The captain executes only what must not be delegated by rule —
@@ -625,7 +627,7 @@ slot, workmate) stay here, with the verifier's envelope.
   Plan Reviewer, slot 3 Deep Worker/Junior Engineer, slot 4 Vision Analyst (its model MUST accept image
   input). A slot that cannot be resolved fails the spawn LOUDLY, writes no state and NEVER clamps an
   effort; a slot whose model declares NO reasoning efforts is sent none (`withSupportedEffort` drops the
-  keyword, logging it). Slots apply to the ONE-SHOT paths AND to an official `spawn_teammate` (routed
+  keyword, logging it). Slots apply to the single-call consult paths AND to an official `spawn_teammate` (routed
   through `mpd-roster-provider-plugin`); because the team service does not forward identity, **a
   teammate `description` that NAMES a roster member routes that member — any other teammate runs on the
   route of the session that staged it (the captain's in a top-level spawn, the Lead's in a team-lead

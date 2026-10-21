@@ -339,6 +339,12 @@ docker compose -f docker/docker-compose.yml run --rm mpd-client
 失败）；`2` 表示没有 `result.json`；`3` 是下面三种原因之一。`--no-browser` 只跳过（SKIP）浏览器断言（其
 `ui.*` 行变为 `null`），其余每条断言仍须通过。
 
+**SKIP 不是通过。** 上面的 `0` 规则只在 Docker lane 实际运行**之后**才适用。不传 `--require-docker` 时，
+不可用的 Docker —— 完全缺失，或未用 `--allow-rootful-docker` 显式放行的 rootful daemon —— 会打印
+`[driver] SKIP — the Docker real-machine lane did NOT run` 通知，并在任何 lane 断言运行**之前**返回退出码 0：
+不会写出证据目录或 `result.json`，没有任何测量，因此不构成发布证据。`--require-docker` 会把同样的 skip
+变成退出码 3 —— 这正是下方发布配方保留它的原因。
+
 ### 已声明的边界，以及退出码 3 的三种原因
 
 记为 `null` 的断言是**已声明的边界（DECLARED BOUND）**——对本次运行没有要求的那条臂而言是诚实的形状，绝不

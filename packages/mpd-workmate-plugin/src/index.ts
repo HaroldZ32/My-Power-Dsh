@@ -1033,7 +1033,7 @@ export function apply(ctx: Ctx): void {
 
   dsh.registerTool({
     name: "mpd_workmate_spawn",
-    description: "Reuse a workmate instance: spawn it as a one-shot subagent carrying its evolved persona + independent memory + note, on its own model route (readonly bases are mechanically denied write tools). The subagent must call mpd_workmate_reflect with a self-summary before finishing. For team work, instead add a member whose name equals the workmate name and give it the persona in the staged prompt yourself — the TEAM path injects no persona or memory.",
+    description: "Reuse a workmate instance: spawn it as a single-call consult — one bounded delegation, one report — carrying its evolved persona + independent memory + note, on its own model route (readonly bases are mechanically denied write tools). The harness keeps the child CONTINUABLE: after the report it stays listed as inactive and `send_message` can continue it. The subagent must call mpd_workmate_reflect with a self-summary before finishing. This uses the SAME spawn mechanics as `mpd_role_spawn` (plus the library's persona/memory); for team work, instead add a member whose name equals the workmate name and give it the persona in the staged prompt yourself — the TEAM path injects no persona or memory.",
     parameters: { type: "object", properties: { name: { type: "string", description: "workmate instance name" }, task: { type: "string" }, context: { type: "string", description: "optional context block" } }, required: ["name", "task"], additionalProperties: false },
     output: { schema: { type: "object", properties: { name: { type: "string" }, status: { type: "string", enum: ["complete", "error"] }, summary: { type: "string" }, recommendation: { type: "string" }, details: { type: "string" }, evidence: { type: "array", items: { type: "string" } }, stopReason: { type: "string" } }, required: ["name", "status", "summary"], additionalProperties: false }, render: (_a: unknown, v: any) => textBlock("workmate " + v.name + " (" + v.status + ")\nsummary: " + v.summary + (v.recommendation ? "\nrecommendation: " + v.recommendation : "") + (v.details ? "\ndetails: " + v.details : "")) },
     execute: async (args: any, exec: any) => {
@@ -1075,7 +1075,7 @@ export function apply(ctx: Ctx): void {
         const result = await dsh.spawnAgent({
           // Name unification: the workmate's OWN name is the label — the same word a
           // team member would carry when its caller adds it under that name. ONLY this
-          // one-shot spawn carries the persona; a TEAM member is given the persona by
+          // single-call consult carries the persona; a TEAM member is given the persona by
           // the caller in the staged prompt. Never a `workmate-<key>-<random>` alias:
           // one agent, one name, on every surface.
           label: key,

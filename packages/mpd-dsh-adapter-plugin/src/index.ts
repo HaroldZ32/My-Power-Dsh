@@ -349,7 +349,7 @@ export interface DshSpawnSpec {
   parent?: unknown
   /** Cancellation for the spawn and for the child's run. */
   signal?: AbortSignal
-  /** Harness spawn mode; this bundle always uses the one-shot "spawn" mode. */
+  /** Subagent PROVIDER name; this bundle uses the in-process "spawn" provider. */
   mode?: string
 }
 
@@ -1651,7 +1651,12 @@ export interface DshAdapter {
    * hand-built Agent-like object.
    */
   executeTool(input: { name: string; arguments?: unknown; callId?: string; signal?: AbortSignal; timeoutMs?: number; agent?: unknown }): Promise<DshToolCallResult>
-  /** Spawn one one-shot subagent and normalize its answer onto {@link DshSpawnResult}. */
+  /**
+   * Run one single-call consult and normalize its answer onto {@link DshSpawnResult}.
+   *
+   * The child is a harness CONTINUABLE session: it runs one bounded delegation, reports once,
+   * then stays listed as inactive and `send_message` can continue it.
+   */
   spawnAgent(spec: DshSpawnSpec): Promise<DshSpawnResult>
   /**
    * The subagent DELIVERY RUNTIME itself (identity-preserving), or `undefined` when
@@ -1951,9 +1956,9 @@ export interface DshAdapter {
    *
    * The descriptor is appended by the agent factory's `setup` callback, which the harness AWAITS
    * before publishing the agent, and the projection folds lazily over the in-memory log, so the
-   * label is readable at `agent/created` time — the one window a one-shot child's only turn
+   * label is readable at `agent/created` time — the one window a continuable child's first turn
    * needs. The shipped identity is FLAT (`{mode, label?, seq}`), with no wrapper object, and the
-   * label is OPTIONAL on the one-shot arm.
+   * label is OPTIONAL on the external arm.
    *
    * Degrade: `undefined` — never a throw — because this answers "is this child mine?" inside a
    * listener whose failure would fail the whole spawn.
@@ -2424,7 +2429,7 @@ export interface ChildPersonaSeam {
  * publishes the agent; publication is what dispatches `agent/created` through `serial()`, which
  * the harness AWAITS. Only after that does the subagent manager submit the child's first prompt,
  * and `SystemPrompt.assemble()` re-reads the scope chain on every pre-step. A section registered
- * synchronously here is therefore present for a one-shot child's only turn.
+ * synchronously here is therefore present for a continuable child's first turn.
  *
  * Never throws: a child that cannot take the section is REPORTED, because a throw inside
  * `agent/created` fails the whole spawn and a missing persona must not cost the spawn.
@@ -2850,14 +2855,14 @@ function registerAgentSection(agent: unknown, section: DshPromptSection): () => 
 const CONTINUABLE_START_MEMBERS = ["startActivation", "startContinuable"] as const
 
 /**
- * Whether {@link DshAdapter.spawnAgent} can start a one-shot child on this generation.
+ * Whether {@link DshAdapter.spawnAgent} can start a local child on this generation.
  *
  * The ONE-TRUE predicate behind both the call path and `capabilities().subagentsSpawn`: 0.2.1-rc.2
  * removed `start()` and starts through `startActivation`, while an older host has only `start`. The
  * capability flag used to check `start` alone and therefore reported FALSE on the harness this bundle
  * now targets, contradicting the code that actually spawned.
  * @param subagents - the subagent service, or `undefined` when the composition has none.
- * @returns true when a one-shot spawn has a callable member.
+ * @returns true when a local spawn has a callable member.
  */
 function hasOneShotSpawn(subagents: any): boolean {
   return typeof subagents?.startActivation === "function" || typeof subagents?.start === "function"
@@ -4138,7 +4143,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
             ...(spec.maxDepth === undefined ? {} : { maxDepth: spec.maxDepth }),
           },
           signal,
-          // The host's own one-shot caller (`dsh-tool-subagent`) delivers to the parent, so this
+          // The host's own subagent caller (`dsh-tool-subagent`) delivers to the parent, so this
           // is the spelling this seam is given rather than one invented here.
           delivery: "parent",
         })
@@ -4766,7 +4771,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
       if (typeof projections?.stateOf !== "function") return undefined
       try {
         // The shipped `SubagentIdentityProjection` is FLAT: `{mode, label?, seq}`. There is no
-        // `identity` wrapper, and a one-shot child may omit the label entirely, so both the
+        // `identity` wrapper, and an external (non-continuable) child may omit the label entirely, so both the
         // nullish state and a non-string label are ordinary misses.
         /** The folded identity of this child, or null when it carries no valid descriptor. */
         const state = projections.stateOf(session, "subagent")

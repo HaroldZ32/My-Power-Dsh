@@ -29,7 +29,7 @@ export interface GuardRosterMember {
 
 /** What installing the team-path guard needs: the deny list, the roster and a degradation reporter. */
 export interface ReadonlyGuardOptions {
-  /** The write-capable tool names the roster denies (the SAME list the one-shot path uses). */
+  /** The write-capable tool names the roster denies (the SAME list the role-spawn path uses). */
   deny: readonly string[]
   /** The roster; every `readonly: true` member is protected. */
   members: readonly GuardRosterMember[]
@@ -158,7 +158,7 @@ export function installReadonlyGuard(
   try {
     if (dsh.capabilities().toolsGuard !== true) {
       options.warn("the harness exposes no tools.guard seam — the team-path read-only guard is NOT installed "
-        + "(read-only teammates would keep write access; the one-shot path is unaffected)")
+        + "(read-only teammates would keep write access; the `mpd_role_spawn` path is unaffected)")
       return { installed: false, reason: "no-guard-seam" }
     }
     /** The deny list as a set, so the per-call decision costs one lookup. */

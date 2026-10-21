@@ -50,7 +50,7 @@ a teammate whose description names a roster member. The block below predates thi
   `mcp__ast_grep__scan`, `mcp__lsp__rename_symbol`, `mcp__lsp__rename_symbol_strict` (cclsp's own two
   rename tools, which replaced the single `mcp__lsp__rename` in de-omo wave B2). `bash` is denied on
   purpose (a shell can write files); `read`/`glob`/`grep` stay available. Enforced TWO ways that must
-  keep agreeing: the one-shot path passes it as `toolFilter.deny` to `mpd_role_spawn`, and a tool GUARD
+  keep agreeing: the `mpd_role_spawn` path passes it as `toolFilter.deny`, and a tool GUARD
   denies the same eight names for a
   live Team teammate whose name normalises to a read-only roster member — the official `spawn_teammate`
   accepts no per-teammate tool filter. **Do NOT re-add
@@ -68,7 +68,7 @@ a teammate whose description names a roster member. The block below predates thi
   survivors and rethrows any second failure. Measured 2026-10-10 before the repair: the two
   `mcp__lsp__*` entries made the harness reject the WHOLE list on a profile without `cclsp`, so every
   read-only `mpd_role_spawn` died and the captain fell back to the official `subagent` tool — which was
-  the escape the since-WITHDRAWN delegation gate refused (below). The one-shot path hands the CHILD the
+  the escape the since-WITHDRAWN delegation gate refused (below). The `mpd_role_spawn` path hands the CHILD the
   PRUNED list as `toolFilter.deny`; a pruned name is reported once on the row's log.
 - delegation gate (RESTORED 2026-10-20 — a live capability again): the `tools.guard` rule that makes
   §5 rule 2's delegation discipline MECHANICAL, and the sibling of the captain-investigation guard
@@ -107,7 +107,7 @@ a teammate whose description names a roster member. The block below predates thi
   missing service, a missing or incomplete slot, an unknown model, an unsupported effort — fails the
   corresponding spawn LOUDLY naming the member and the slot, writes no state, and NEVER clamps an
   effort. **Team teammates ARE routed, through a provider of this bundle's own (2026-09-27).** The slot
-  applies to the mpd ONE-SHOT consult paths (`mpd_role_spawn`, `mpd_workmate_spawn`), which pass an
+  applies to the mpd single-call consult paths (`mpd_role_spawn`, `mpd_workmate_spawn`), which pass an
   explicit `agentOptions`, AND to an official `spawn_teammate` teammate: the harness — unlike its own
   TeamService — is not the limitation. `TeamService` forwards only `{ prompt, parent }`, but
   `SubagentContinuationManager.startContinuable` resolves `request.agentOptions` into

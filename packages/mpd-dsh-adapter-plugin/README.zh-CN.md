@@ -89,8 +89,10 @@ Harness 以三个官方包提供 Agent Teams（`@deepseek-ai/dsh-experimental-ag
 若 teammate 的 description **没有**点名名册成员，本 bundle 完全不路由它：请求按原样（by
 identity）透传，由 staging 它的 session 的 Harness 解析路由生效（顶层 spawn 是队长的路由，
 team-lead spawn 是 Lead 的路由），prompt 文本无法改变路由。若 description **点名**了名册成员，
-则通过 `mpd-roster-provider-plugin` 的 `teamModels.slot*` 契约路由。按成员路由同样作用于一次性
-咨询路径（`mpd_role_spawn` / `mpd_workmate_spawn`），因为它们自行传入 `agentOptions`。
+则通过 `mpd-roster-provider-plugin` 的 `teamModels.slot*` 契约路由。按成员路由同样作用于单次
+咨询路径（`mpd_role_spawn` / `mpd_workmate_spawn`），因为它们自行传入 `agentOptions`；这是
+roster/workmate 的 spawn 路径，并非 team 路径，其启动的子会话是 CONTINUABLE 的（一次有界委派、
+一份报告，随后以 `inactive` 列出，可用 `send_message` 继续）。
 
 ### D6 静态闸门（`test/no-direct-team-access.test.ts`）
 
@@ -134,7 +136,7 @@ provider 无法接受的关键字交给它、令调用失败。导出的 `withSu
   因此被适配的调用绝不静默；
 - **绝不抛错**，也绝不把等级替换成别的值 —— 替换即为 clamp，是契约禁止的。
 
-两个携带推理强度的调用方都使用它：`mpd-roles-plugin`（一次性 spawn 路径）与
+两个携带推理强度的调用方都使用它：`mpd-roles-plugin`（role spawn 路径）与
 `mpd-roster-provider-plugin`（官方 `spawn_teammate`）。接缝仍是唯一的接触面。
 
 ## 为什么存在

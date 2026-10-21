@@ -101,8 +101,10 @@ bundle at all: the request passes through by identity, so the harness-resolved r
 session that staged it stands (the captain's in a top-level spawn, the Lead's in a team-lead
 spawn), and prompt text cannot change a route. A description that NAMES a roster member is routed
 through `mpd-roster-provider-plugin`'s `teamModels.slot*` contract. Per-member routing also
-applies on the one-shot consult paths (`mpd_role_spawn` / `mpd_workmate_spawn`), which pass
-`agentOptions` themselves.
+applies on the single-call consult paths (`mpd_role_spawn` / `mpd_workmate_spawn`), which pass
+`agentOptions` themselves; this is the roster/workmate spawn path, not the team path, and the child
+it starts is CONTINUABLE (one bounded delegation, one report, then `inactive`, resumable with
+`send_message`).
 
 ### The D6 gate (`test/no-direct-team-access.test.ts`)
 
@@ -151,7 +153,7 @@ is the pure predicate behind it — and it reads this seam:
 - it NEVER throws and never substitutes a different effort — swapping the value would be clamping,
   which the contract forbids.
 
-Both effort-carrying callers use it: `mpd-roles-plugin` (the one-shot spawn path) and
+Both effort-carrying callers use it: `mpd-roles-plugin` (the role-spawn path) and
 `mpd-roster-provider-plugin` (an official `spawn_teammate`). The seam stays the single contact surface.
 
 ## Why it exists

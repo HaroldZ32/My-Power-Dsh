@@ -274,7 +274,7 @@ bundle's web client into the boot graph (§3, §7) while being inert elsewhere.
 
 ## 5. Interaction flows
 
-### Roster → one-shot specialist
+### Roster → single-call specialist consult
 `mpd_role_spawn` reads the roster spec (`mpdRoles`), builds `persona + task`, then
 `dsh.spawnAgent({ provider, model, persona, outputSchema, toolFilter (read-only deny) })`
 (the adapter's normalized form of the harness spawn). The model route comes from the role's
@@ -293,9 +293,9 @@ mechanism — the plugin never touches API keys**.
 - After work, `mpd_workmate_reflect` appends a bounded memory entry (oldest evicted),
   merges a persona revision, regenerates the note (specialty kept + latest task), bumps
   `uses`.
-- `mpd_workmate_spawn` reuses the instance one-shot: persona + memory + note + task on
-  the instance's own route; the subagent is instructed to call `mpd_workmate_reflect`
-  before its final report.
+- `mpd_workmate_spawn` reuses the instance as a single-call consult: one bounded delegation,
+  one report — persona + memory + note + task on the instance's own route in a continuable
+  child; the child is instructed to call `mpd_workmate_reflect` before its final report.
 - `mpd_workmate_match` scores notes (keyword overlap + base-name boost, threshold 0.35);
   below threshold → `matched: false` + "initialize a new workmate" (never force a weak
   match).
