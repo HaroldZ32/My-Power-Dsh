@@ -29,6 +29,7 @@ Independent verifier: **PASS** — record `rec-20261021T082128-b28f07` for loop
 | Click → next hover opaque; mouse leave closes | D2 pin-opacity and mouseleave arms; the post-fix stills show the opaque pinned card; the pre-fix focus-anchor defect was repaired (focus no longer invents `(14,14)`) |
 | Existing features preserved | full affected suite 985 pass / 0 fail; the real-browser capture 18/18 checks and 9/9 steps; click-to-pin detail still renders in the stills |
 | `startedAt` / `finishedAt` and coarse progress | `packages/mpd-team-core-plugin/test/team-store.test.ts` transition matrix; `test/team-web.test.ts` payload/omitted-undefined/progress mapping; docs/user-guide.md §8.1 declares the coarse 100/50/10/0 mapping |
+| Docs images refreshed to the new UI | `docs/assets/images/web-team-board.png` + `hero-web-tui.png` (EN) from `docker-post-fix/ui-shots/07-team-graph-hover.png`; the zh pair from `docs-capture-zh/07-team-graph-hover.png`; README/README.zh-CN and docs/index descriptions updated in the same commit |
 
 ## Gate and boot results
 

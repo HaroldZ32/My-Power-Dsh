@@ -25,6 +25,11 @@
     "logDir": "gates/",
     "visual": "post-fix real-browser capture: 18/18 checks, 9/9 steps on normal and CJK boards; hover card beside T6/T5, fan-in tips 12px apart, stronger glow, 6px dash flow; shipped/fingerprinted client.js sha256 6f517b58...51ab86a equals the container client.js"
   },
+  "docsImages": {
+    "en": "docs/assets/images/web-team-board.png and docs/assets/images/hero-web-tui.png from docker-post-fix/ui-shots/07-team-graph-hover.png",
+    "zh": "docs/assets/images/zh-CN/web-team-board.png and docs/assets/images/zh-CN/hero-web-tui.png from docs-capture-zh/07-team-graph-hover.png",
+    "evidence": "docs-capture-zh/"
+  },
   "clauses": {
     "better_sidebar_028": "package.json + bun.lock + scripts/pack-mpd.ts + host-contract.test.ts; verify:rows, verify:manifest, preset-conformance, bundle-lifecycle",
     "secondary_both_surfaces": "sidebar-tab.test.ts primary ids + :bottom twins + bottomOnly + fallback; docs/user-guide.md section 8",

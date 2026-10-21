@@ -108,8 +108,8 @@ vendor 波次，2026-10-07），所以那份作为出处的 README 已不存在�
 | [`architecture.svg`](./assets/images/architecture.svg) | 本文档中心、[design.zh-CN.md](design.zh-CN.md) | bundle 的各层：DSH 宿主 → patch 层 1 → patch 层 2 → 适配器接缝 → 界面 → 状态根目录。 |
 | [`ulw-loop.svg`](./assets/images/ulw-loop.svg) | [使用者指南 §13.2](user-guide.zh-CN.md#132-ulw-循环与它的关卡) | 一次 ultrawork 运行：分诊、可选计划、按轮次走 `pin → red → green → surface → clean` 循环执行、验证关卡与质量关卡。 |
 | [`team-lifecycle.svg`](./assets/images/team-lifecycle.svg) | [使用者指南 §6](user-guide.zh-CN.md#6-团队模式) | 一波团队工作的完整路径，以及各类护栏（只读工具禁用、持久邮箱、compare-and-set 任务板、提示性写入范围）。 |
-| [`hero-web-tui.png`](./assets/images/zh-CN/hero-web-tui.png) | [README](../README.zh-CN.md) | 同一个 bundle 在两个端上的并排对比：Web GUI 与 DSH-TUI，各自裁到 Agent Teams 面板与团队场景。 |
-| [`web-team-board.png`](./assets/images/zh-CN/web-team-board.png) | [README](../README.zh-CN.md#一个插件两个端) | Web 端带真实名册与任务图的 Agent Teams 面板。 |
+| [`hero-web-tui.png`](./assets/images/zh-CN/hero-web-tui.png) | [README](../README.zh-CN.md) | 同一个 bundle 在两个端上的并排对比：Web GUI 的 Team 视图带毛玻璃任务图与悬浮信息卡，DSH-TUI 则是团队场景。 |
+| [`web-team-board.png`](./assets/images/zh-CN/web-team-board.png) | [README](../README.zh-CN.md#一个插件两个端) | Web 端带真实名册、毛玻璃任务图与悬浮信息卡的 Agent Teams 面板。 |
 | [`tui-team-dag.png`](./assets/images/zh-CN/tui-team-dag.png) | [README](../README.zh-CN.md#一个插件两个端) | 同一个团队渲染成一整屏 DSH-TUI 场景，任务图用制表符画出。 |
 | [`web-plugins-installed.png`](./assets/images/zh-CN/web-plugins-installed.png) | [README](../README.zh-CN.md#安装) | 一条安装命令之后的 Plugins 页面：`@mpd-dsh/mpd` 列在 **Installed** 且已启用。 |
 | [`web-agent-presets.png`](./assets/images/zh-CN/web-agent-presets.png) | [README](../README.zh-CN.md#用法) | Agent presets 页面：`mpd` preset 列在 CUSTOM 下，而"新建任务默认"标记在宿主的 Standard mode 上。 |
