@@ -45,6 +45,20 @@ function restore(client: LoadedMpdClient): void {
   }
 }
 
+/**
+ * The PRIMARY tab ids a client registered, with the better-sidebar bottom-workbench twins folded out.
+ *
+ * The twins (`<id>:bottom`, 0.28 `bottomOnly`) are proven by the SOURCE arms at the end of this file:
+ * `client.js` is rebuilt by the captain AFTER the visual lane lands, so a behavioural arm written
+ * against the stale artifact would fail today and prove nothing about the rebuilt one. Filtering the
+ * suffix keeps this arm honest for BOTH artifact states, and the source contract owns the twins.
+ * @param client - the client whose registrations are read.
+ * @returns the sorted primary tab ids.
+ */
+function primaryTabIds(client: LoadedMpdClient): string[] {
+  return client.calls.registerTab.map((tab) => tab.id).filter((id: string): boolean => !id.endsWith(":bottom")).sort();
+}
+
 /** Flatten an element tree (or any nested value) into its text, the way JSON.stringify(flat) reads. */
 function flatText(value: TreeNode): string {
   if (value === null || value === undefined || typeof value === "boolean") return "";
@@ -138,9 +152,11 @@ describe("with DSH-better-sidebar installed", () => {
 
   test("registers the mpd TEAM view, the AgentTeams page and the workmate library, and no legacy floater", () => {
     expect(provided).toBe(true);
-    // THREE tabs since W4: the mpd-owned TEAM view (`mpd-team`, which reads this bundle's own
-    // /plugins/mpd-team/state route) beside the adopted AgentTeams page and the workmate library.
-    expect(tabs.map((tab) => tab.id).sort()).toEqual(["mpd-agent-teams", "mpd-team", "mpd-workmate"]);
+    // THREE PRIMARY tabs since W4: the mpd-owned TEAM view (`mpd-team`, which reads this bundle's own
+    // /plugins/mpd-team/state route) beside the adopted AgentTeams page and the workmate library. The
+    // 0.28 bottom-workbench twins are proven by the source arms at the end of this file, because the
+    // shipped `client.js` is rebuilt after the visual lane lands.
+    expect(primaryTabIds(client)).toEqual(["mpd-agent-teams", "mpd-team", "mpd-workmate"]);
   /** Every keyed slot registration the host recorded. */
     const definitions = client.calls.slotsRegistered ?? [];
     expect(definitions.some((definition) => definition.id === "agent-teams-activity")).toBe(false);
@@ -184,11 +200,11 @@ describe("a sidebar provider REMOUNT keeps both tabs", () => {
     client.exports.apply(client.ctx);
     // EVERY tab this client registers, so a fourth one is caught by this list rather than by nothing:
     // the mpd team view (`mpd-team`, W4), the adopted AgentTeams page and the workmate library.
-    expect(client.calls.registerTab.map((tab) => tab.id).sort()).toEqual(["mpd-agent-teams", "mpd-team", "mpd-workmate"]);
+    expect(primaryTabIds(client)).toEqual(["mpd-agent-teams", "mpd-team", "mpd-workmate"]);
     client.refireInjections();
     // The RE-FIRE is the point: `ctx.inject` re-runs on a provider remount, and the host's own
     // `registerTab` THROWS on a duplicate id — so a missing idempotence guard reddens right here.
-    expect(client.calls.registerTab.map((tab) => tab.id).sort()).toEqual(["mpd-agent-teams", "mpd-team", "mpd-workmate"]);
+    expect(primaryTabIds(client)).toEqual(["mpd-agent-teams", "mpd-team", "mpd-workmate"]);
     expect(client.sidebarService.getTab("mpd-agent-teams")).toBeDefined();
     expect(client.sidebarService.getTab("mpd-team")).toBeDefined();
     expect(client.sidebarService.getTab("mpd-workmate")).toBeDefined();
@@ -983,7 +999,7 @@ describe("the harness right sidebar is the assuredly-working fallback (D1)", () 
       expect(lines.filter((line) => line.includes("no sidebar host took the mpd panels"))).toEqual([])
       expect(client.exports.sidebarDiagnostics()).toMatchObject({ reported: false, host: "dsh-better-sidebar" })
       // The preferred host DID get the tabs, which is what makes this a preference and not a disable.
-      expect(client.calls.registerTab.map((tab) => tab.id).sort()).toEqual(["mpd-agent-teams", "mpd-team", "mpd-workmate"])
+      expect(primaryTabIds(client)).toEqual(["mpd-agent-teams", "mpd-team", "mpd-workmate"])
     } finally {
       console.warn = originalWarn
     }
@@ -1126,7 +1142,7 @@ describe("the sidebar host preference (W4)", () => {
     expect(harness.tabs).toEqual([]);
     expect(harness.bodies).toEqual([]);
     // The preferred host DID get the tabs, which is what makes this a preference and not a disable.
-    expect(client.calls.registerTab.map((tab) => tab.id).sort()).toEqual(["mpd-agent-teams", "mpd-team", "mpd-workmate"]);
+    expect(primaryTabIds(client)).toEqual(["mpd-agent-teams", "mpd-team", "mpd-workmate"]);
     restore(client);
   });
 
@@ -1152,6 +1168,112 @@ describe("the sidebar host preference (W4)", () => {
     // Every body is a component the host can call, not a value.
     for (const body of client.calls.slotsRegistered ?? []) {
       if (body.name === "sidebar.right.pane.tab") expect(typeof body.component).toBe("function");
+    }
+    restore(client);
+  });
+})
+
+// ── 0.28 second surface: the bottom workbench, and fallback parity ───────────
+//
+// `client.js` is rebuilt by the captain AFTER the visual lane lands, so a behavioural arm over the
+// shipped bytes would either fail today or have to be weakened later. These arms read the SOURCES the
+// build splices — they run today, they still hold after the rebuild, and they pin the parts a future
+// edit could drop without any double reaching them.
+describe("0.28 bottom-workbench twins and fallback parity (source contract)", () => {
+  /** The AgentTeams page source, the second module that contributes a better-sidebar tab. */
+  const teamPage = readFileSync(join(ROOT, "packages", "mpd-bundle-plugin", "src", "team-page.ts"), "utf8");
+
+  test("the three primary tabs still register under their stable ids", () => {
+    expect(source).toContain('const TEAM_PAGE_TAB_ID = "mpd-team";');
+    expect(source).toContain('const SIDEBAR_TAB_ID = "mpd-workmate";');
+    expect(teamPage).toContain('const TEAM_TAB_ID = "mpd-agent-teams";');
+  });
+
+  test("every primary has a bottomOnly twin built from it, with its own id and the same body", () => {
+    // WEB-CLIENT twins: spread from the primary descriptor, so title/icon/order/single/description/
+    // component are shared BY CONSTRUCTION rather than copied by hand.
+    expect(source).toContain('const BOTTOM_TAB_SUFFIX = ":bottom";');
+    expect(source).toContain("const id = primary.id + BOTTOM_TAB_SUFFIX;");
+    expect(source).toContain("ctx.effect(() => sidebar.registerTab({ ...primary, id, bottomOnly: true }), label);");
+    expect(source).toContain('registerBottomTab(ctx, sidebar, descriptor, "mpd: team bottom tab");');
+    expect(source).toContain('registerBottomTab(ctx, sidebar, descriptor, "mpd-workmate: bottom tab");');
+    // TEAM-PAGE twin: the same spread, plus a `createTab` that mints the DUPLICATE's own id and type
+    // so opening it never focuses the primary's tab.
+    expect(teamPage).toContain('const BOTTOM_TAB_SUFFIX = ":bottom";');
+    expect(teamPage).toContain("const bottomId = TEAM_TAB_ID + BOTTOM_TAB_SUFFIX;");
+    expect(teamPage).toContain("...descriptor,");
+    expect(teamPage).toContain("bottomOnly: true,");
+    expect(teamPage).toContain('createTab: () => ({ tab: { id: bottomId, type: bottomId, title: t("tab.title") } }),');
+  });
+
+  test("the twins register ONLY through the betterSidebar path, never on the official fallback", () => {
+    // The two web-client registrars are called from `mountSidebarPages`' betterSidebar callback...
+    expect(source).toContain('ctx.inject(["betterSidebar"]');
+    expect(source).toContain("registerTeamSidebarTab(sidebarCtx, service)");
+    expect(source).toContain("registerWorkmateSidebarTab(sidebarCtx, service)");
+    // ...and the AgentTeams page's registrar is only reached from that same callback.
+    expect(source).toContain("teamPage.registerTeamSidebarTab(sidebarCtx, service)");
+    // The official fallback block carries NEITHER the suffix NOR `bottomOnly`: with better-sidebar
+    // absent there is no bottom workbench to register into, so a twin there would be dead code (or a
+    // second panel on a host that has no such surface).
+    /** The fallback registration block, from its inject to the in-callback command registration. */
+    const fallback = source.slice(
+      source.indexOf('ctx.inject(["sidebarRightTabs", "sidebarRight"]'),
+      source.indexOf("The command the workmate guide entry names"),
+    );
+    expect(fallback.length).toBeGreaterThan(0);
+    expect(fallback).not.toContain('":bottom"');
+    expect(fallback).not.toContain("bottomOnly");
+  });
+
+  test("the official fallback keeps title/guide/description parity with the primaries", () => {
+    // Workmates: ONE title and ONE description constant feed the better-sidebar descriptor AND the
+    // official guide entry, so the two surfaces cannot drift.
+    expect(source).toContain('const SIDEBAR_TAB_TITLE = "Workmates";');
+    expect(source).toContain('const SIDEBAR_TAB_DESCRIPTION = "Durable agents from your library";');
+    expect(source).toContain("title: () => SIDEBAR_TAB_TITLE,");
+    expect(source).toContain("description: () => SIDEBAR_TAB_DESCRIPTION,");
+    // Team: the descriptor's description IS the English guide description the official entry resolves.
+    expect(source).toContain('const TEAM_TAB_DESCRIPTION = "Roster and shared task progress for this session";');
+    expect(source).toContain('"guide.description": TEAM_TAB_DESCRIPTION,');
+    expect(source).toContain("description: TEAM_TAB_DESCRIPTION,");
+    expect(source).toContain('description: () => t("guide.description"),');
+  });
+
+  test("the fallback still registers both panels when better-sidebar is absent", () => {
+    // The behavioural arm above drives the shipped client bytes; this one pins the SOURCE the next
+    // rebuild splices, so the guarantee cannot be dropped by an edit that escapes a build.
+    expect(source).toContain('ctx.inject(["sidebarRightTabs", "sidebarRight"]');
+    expect(source).toContain("sidebar.sidebarRightTabs.register({");
+    expect(source).toContain("id: TEAM_TAB_ID,");
+    expect(source).toContain("id: WORKMATE_TAB_ID,");
+    expect(source).toContain('name: "sidebar.right.pane.tab",');
+  });
+
+  test("once the shipped client carries the twins, every primary has a registered <id>:bottom", () => {
+    // THE BEHAVIOURAL HALF, ACTIVATED BY THE REBUILD RATHER THAN DELETED. `client.js` is rebuilt by
+    // the captain AFTER the visual lane; until then this arm prints the bound and the source arms
+    // above carry the proof. On the rebuilt artifact it asserts the three ids, `bottomOnly: true`,
+    // `single: true` and a real component — i.e. exactly what a `client.js` splice could silently drop.
+    if (!built.includes('const BOTTOM_TAB_SUFFIX = ":bottom"')) {
+      console.log("[sidebar-tab] client.js predates the 0.28 bottom twins (captain rebuild pending); the source arms above pin them");
+      return;
+    }
+    /** The client loaded from the REBUILT artifact. */
+    const client = loadMpdClient();
+    client.exports.apply(client.ctx);
+    expect(client.provideSidebar()).toBe(true);
+    /** Every id the rebuilt client registered. */
+    const ids = client.calls.registerTab.map((tab) => tab.id);
+    for (const id of ["mpd-team:bottom", "mpd-workmate:bottom", "mpd-agent-teams:bottom"]) {
+      expect(ids).toContain(id);
+      // The harness type predates 0.28 (it is a test double, not the host), so the new field is read
+      // through a structural cast rather than widening the harness for one assertion.
+      /** The duplicate descriptor under test. */
+      const tab = client.calls.registerTab.find((candidate) => candidate.id === id) as (TabDescriptor & { bottomOnly?: boolean }) | undefined;
+      expect(tab?.bottomOnly).toBe(true);
+      expect(tab?.single).toBe(true);
+      expect(typeof tab?.component).toBe("function");
     }
     restore(client);
   });

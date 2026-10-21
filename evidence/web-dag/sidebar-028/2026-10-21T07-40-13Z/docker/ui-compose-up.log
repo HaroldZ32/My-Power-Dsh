@@ -1,0 +1,80 @@
+ Image mpd-ui-view:latest Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 534B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile: 6.95kB done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/ubuntu:24.04
+#3 DONE 0.0s
+
+#4 [internal] load metadata for docker.io/library/node:24-bookworm
+#4 DONE 0.0s
+
+#5 [node-runtime 1/1] FROM docker.io/library/node:24-bookworm@sha256:64af3819f9275802414d7cdc38c27e9d82bd564dec4d4da87d008255d36c63b4
+#5 resolve docker.io/library/node:24-bookworm@sha256:64af3819f9275802414d7cdc38c27e9d82bd564dec4d4da87d008255d36c63b4 0.0s done
+#5 DONE 0.0s
+
+#6 [stage-1  1/12] FROM docker.io/library/ubuntu:24.04@sha256:a853f94d226358a79c740cfc7bce0c289748f3fe3488d921d038ccd752c61b60
+#6 resolve docker.io/library/ubuntu:24.04@sha256:a853f94d226358a79c740cfc7bce0c289748f3fe3488d921d038ccd752c61b60 0.0s done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 25.61MB 0.1s
+#7 transferring context: 30.13MB 0.1s done
+#7 DONE 0.1s
+
+#8 [stage-1  8/12] COPY docker/ui/entrypoint.sh /opt/mpd-e2e/ui-entrypoint.sh
+#8 CACHED
+
+#9 [stage-1  9/12] COPY docker/ui/capture.mts /opt/mpd-e2e/capture.mts
+#9 CACHED
+
+#10 [stage-1  7/12] COPY docker/tui-lane.sh /opt/mpd-e2e/tui-lane.sh
+#10 CACHED
+
+#11 [stage-1 10/12] COPY docker/ui/run-capture.sh /opt/mpd-e2e/run-capture.sh
+#11 CACHED
+
+#12 [stage-1  5/12] COPY docker/probe.ts /opt/mpd-e2e/probe.ts
+#12 CACHED
+
+#13 [stage-1  6/12] COPY docker/lib/ /opt/mpd-e2e/lib/
+#13 CACHED
+
+#14 [stage-1 11/12] RUN chmod 0755 /opt/mpd-e2e/entrypoint.sh /opt/mpd-e2e/tui-lane.sh /opt/mpd-e2e/ui-entrypoint.sh  && chmod 0755 /opt/mpd-e2e/capture.mts /opt/mpd-e2e/run-capture.sh  && mkdir -p /work /out /data /src
+#14 CACHED
+
+#15 [stage-1  3/12] COPY . /src/
+#15 CACHED
+
+#16 [stage-1  2/12] COPY --from=node-runtime /usr/local /usr/local
+#16 CACHED
+
+#17 [stage-1  4/12] COPY docker/entrypoint.sh /opt/mpd-e2e/entrypoint.sh
+#17 CACHED
+
+#18 [stage-1 12/12] WORKDIR /work
+#18 CACHED
+
+#19 exporting to image
+#19 exporting layers done
+#19 exporting manifest sha256:0462cfc58d97d22734afaf798846142b9e7107b12c90b66303c66f5e4fb8ecad 0.0s done
+#19 exporting config sha256:87f095868e86cd4d07cbebacdd5faa5d5d07352e8210c5b645d7cb4dd6c7c035 0.0s done
+#19 exporting attestation manifest sha256:80905c37421e1dccf7d7207ad469684495aa8a6df0798ba04b8f9163e7e8d700
+#19 exporting attestation manifest sha256:80905c37421e1dccf7d7207ad469684495aa8a6df0798ba04b8f9163e7e8d700 0.0s done
+#19 exporting manifest list sha256:8ce6fdd4af64b16ac6d810ceafd4f66a33d5af2877f215185395b35543412f41 0.0s done
+#19 naming to docker.io/library/mpd-ui-view:latest done
+#19 unpacking to docker.io/library/mpd-ui-view:latest done
+#19 DONE 0.1s
+
+#20 resolving provenance for metadata file
+#20 DONE 0.0s
+ Image mpd-ui-view:latest Built 
+ Container ui-ui-1 Recreate 
+ Container ui-ui-1 Recreated 
+ Container ui-ui-1 Starting 
+ Container ui-ui-1 Started 
+EXIT=0

@@ -130,6 +130,25 @@ export interface TeamTaskRecord {
   createdAt: string
   /** ISO instant the task last changed. */
   updatedAt: string
+  /**
+   * ISO-8601 UTC instant this task FIRST entered `in_progress`; ABSENT until it does.
+   *
+   * WRITTEN BY THE ONE SEAM (`updateTeamTask`), from the status transition rather than from a caller's
+   * own clock, so every claim path — the `agent_teams_task` claim, the dispatch compare-and-set and a
+   * reopen — stamps the same field. A reopen KEEPS it: the clock starts when the work began, and
+   * re-entering `in_progress` must not restart it.
+   */
+  startedAt?: string
+  /**
+   * ISO-8601 UTC instant this task entered `completed` or `failed`; ABSENT while it is not terminal.
+   *
+   * `updatedAt` IS NOT A FINISH STAMP — it moves on every patch, a note edit included — so a duration
+   * is `startedAt` -> `finishedAt` (or now, while the row is still running). Leaving a terminal state
+   * for a NON-terminal one (`pending`/`claimed`/`in_progress`) DELETES this field, so a reopened row
+   * never reads as finished; entering `cancelled` deletes it too, because a cancelled task never ran to
+   * a finish of its own and must not keep a prior one.
+   */
+  finishedAt?: string
   /** The EXECUTOR's own handle for this task (an official board id today), or absent. */
   executorRef?: string
   /** Monotonic per task: bumped on every mpd-side mutation, so a CAS can name a revision. */
@@ -713,6 +732,23 @@ export function updateTeamTask(record: TeamRecord, taskId: string, patch: TaskPa
     if (patch.note !== undefined) {
       if (patch.note === "") delete next.note
       else next.note = patch.note
+    }
+    // THE LIFECYCLE STAMPS ARE DERIVED FROM THE TRANSITION, in this ONE seam: the tool claim, the
+    // dispatch compare-and-set ({@link casClaimTask}) and every terminal verb ({@link casCloseTask})
+    // reach this function, so no caller can write a status and a start/finish instant that disagree.
+    // A patch with NO status touches neither field — a note or a blocker edit must not fabricate a
+    // finish, which is exactly what `updatedAt` alone could never tell a reader apart.
+    if (patch.status !== undefined) {
+      // Into `in_progress`: the FIRST entry starts the clock; a reopen keeps the original instant.
+      if (patch.status === "in_progress" && next.startedAt === undefined) next.startedAt = now.toISOString()
+      // Into a terminal state: the finish instant is the transition itself. `cancelled` is deliberately
+      // NOT stamped — only `completed` and `failed` close work, and `cancelled` means it never ran.
+      if (patch.status === "completed" || patch.status === "failed") next.finishedAt = now.toISOString()
+      // Leaving the finished state DELETES the finish: a row back on the board must not read as
+      // finished, and a CANCELLED row must not keep a finish from an earlier completion either — it
+      // never ran to one of its own. Deleting the key (rather than blanking it) keeps an explicit
+      // `undefined` out of the serialized record.
+      if (patch.status === "pending" || patch.status === "claimed" || patch.status === "in_progress" || patch.status === "cancelled") delete next.finishedAt
     }
     return next
   })

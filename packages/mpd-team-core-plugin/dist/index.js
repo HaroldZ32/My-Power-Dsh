@@ -2244,6 +2244,14 @@ function updateTeamTask(record, taskId, patch, now) {
       else
         next.note = patch.note;
     }
+    if (patch.status !== undefined) {
+      if (patch.status === "in_progress" && next.startedAt === undefined)
+        next.startedAt = now.toISOString();
+      if (patch.status === "completed" || patch.status === "failed")
+        next.finishedAt = now.toISOString();
+      if (patch.status === "pending" || patch.status === "claimed" || patch.status === "in_progress" || patch.status === "cancelled")
+        delete next.finishedAt;
+    }
     return next;
   });
   return touched ? { ...record, tasks } : record;
@@ -2687,6 +2695,13 @@ function buildWorkspaceTeams(teams, activeId) {
     ...activeId === undefined ? {} : { activeId }
   };
 }
+function taskProgress(status, visual) {
+  if (visual === "completed")
+    return 100;
+  if (visual === "running")
+    return status === "claimed" ? 10 : 50;
+  return 0;
+}
 function buildTeamState(record, workspace, sessionId, executor, workspaceTeams, model) {
   const listing = workspaceTeams ?? { records: [] };
   const empty = {
@@ -2711,21 +2726,27 @@ function buildTeamState(record, workspace, sessionId, executor, workspaceTeams, 
   if (model !== undefined)
     for (const node of model.nodes)
       rankOf.set(node.id, node.depth);
-  const tasks = record.tasks.map((task) => ({
-    id: task.id,
-    subject: task.subject,
-    ...task.kind === undefined ? {} : { kind: task.kind },
-    status: task.status,
-    visual: taskVisual(task, record.tasks),
-    ...task.owner === undefined ? {} : { owner: task.owner },
-    ...task.attempt === undefined ? {} : { attempt: task.attempt },
-    ...task.round === undefined ? {} : { round: task.round },
-    ...task.verdict === undefined ? {} : { verdict: task.verdict },
-    blockedBy: [...task.blockedBy],
-    failedBy: blockingDependencies(record.tasks, task.blockedBy).failed,
-    depth: summary.depths.get(task.id) ?? 0,
-    ...model === undefined ? {} : { rank: rankOf.get(task.id) ?? 0 }
-  })).sort((left, right) => left.depth - right.depth);
+  const tasks = record.tasks.map((task) => {
+    const visual = taskVisual(task, record.tasks);
+    return {
+      id: task.id,
+      subject: task.subject,
+      ...task.kind === undefined ? {} : { kind: task.kind },
+      status: task.status,
+      visual,
+      ...task.owner === undefined ? {} : { owner: task.owner },
+      ...task.attempt === undefined ? {} : { attempt: task.attempt },
+      ...task.round === undefined ? {} : { round: task.round },
+      ...task.verdict === undefined ? {} : { verdict: task.verdict },
+      ...task.startedAt === undefined ? {} : { startedAt: task.startedAt },
+      ...task.finishedAt === undefined ? {} : { finishedAt: task.finishedAt },
+      progress: taskProgress(task.status, visual),
+      blockedBy: [...task.blockedBy],
+      failedBy: blockingDependencies(record.tasks, task.blockedBy).failed,
+      depth: summary.depths.get(task.id) ?? 0,
+      ...model === undefined ? {} : { rank: rankOf.get(task.id) ?? 0 }
+    };
+  }).sort((left, right) => left.depth - right.depth);
   return {
     ok: true,
     workspace,

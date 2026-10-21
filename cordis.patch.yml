@@ -118,7 +118,7 @@
 # the `betterSidebar` service never existed and the bundle's two sidebar pages
 # (mpd-agent-teams, mpd-workmate) registered nothing — the reported "the sidebar
 # cannot display". The package is declared in the bundle manifest as an OPTIONAL PEER plus a
-# devDependency (`dsh-better-sidebar 0.24.1`) — not as a `dependencies` entry — and MOUNTED here.
+# devDependency (`dsh-better-sidebar 0.28.0`) — not as a `dependencies` entry — and MOUNTED here.
 #
 # BOTH halves are required. The declaration alone never mounts anything: `dsh plugin
 # add` reconciles only PROFILE-level dependencies into `dsh.profile.bundles`, so a

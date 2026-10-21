@@ -27,7 +27,7 @@ The bundle is the package [`@mpd-dsh/mpd`](https://www.npmjs.com/package/@mpd-ds
 repository root *is* that package. It installs with one command and uninstalls with one command that
 leaves no residue.
 
-![The same bundle on both surfaces, side by side: on the left the DSH Web GUI with the bundle's own Team view showing a populated roster and task graph in the sidebar; on the right the DSH-TUI running the same team as a full-screen terminal scene.](./docs/assets/images/hero-web-tui.png)
+![The same bundle on both surfaces, side by side: on the left the DSH Web GUI with the bundle's own Team view showing a populated roster and a frosted-glass task graph with a hover card in the sidebar; on the right the DSH-TUI running the same team as a full-screen terminal scene.](./docs/assets/images/hero-web-tui-v2.png)
 
 *The same bundle, the same run, the same state — the **Web GUI** on the left, the **DSH-TUI**
 terminal edition on the right. Every screenshot here is a real capture of the shipped bundle, produced
@@ -67,7 +67,7 @@ row-by-row ledger behind this table — every row names its evidence, and every 
 open is recorded there. The rows above whose two columns are not the same sentence are exactly those
 recorded deviations. Read the ledger before you rely on the TUI for a Web capability.
 
-![The Team view in the DSH Web GUI sidebar: team id and phase, a progress bar, five members with their model routes and per-member task counts, and a six-node task graph with status colours and dependency edges.](./docs/assets/images/web-team-board.png)
+![The Team view in the DSH Web GUI sidebar: team id and phase, a progress bar, five members with their model routes and per-member task counts, and a six-node frosted-glass task graph with status colours, dependency edges and a hover card showing the pinned task's status, owner, elapsed time, subject and progress.](./docs/assets/images/web-team-board-v2.png)
 
 ![The DSH-TUI's /mpd team scene: the team header and progress bar, the roster line, and the six-node task graph in box-drawing characters, above the key hints.](./docs/assets/images/tui-team-dag.png)
 

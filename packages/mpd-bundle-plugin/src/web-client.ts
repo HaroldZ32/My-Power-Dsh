@@ -212,12 +212,16 @@
     id: string
     /** The tab title. */
     title: () => string
+    /** One-line purpose rendered under the title in the host's new-tab list (0.28). */
+    description?: string | (() => string)
     /** The tab icon factory; the host passes the icon size in pixels. */
     icon: (size: number) => unknown
     /** The tab's position among the host's tabs. */
     order: number
     /** Whether the host keeps at most one instance of this tab. */
     single: boolean
+    /** Bottom-workbench-only type (0.26+): offered in the plugin's own bottom menu and nowhere else. */
+    bottomOnly?: boolean
     /** The tab body, any component the host will call with its own props. */
     component: unknown
   }
@@ -508,6 +512,22 @@
     "kind.rev": "REV",
     "kind.fix": "FIX",
     "kind.int": "INT",
+    // ── D2: the hover card's vocabulary, verbatim from `team-view.ts`'s EN table ──
+    // A rendered state is localized for the CARD only; the drawing keeps the payload's ASCII word.
+    "visual.completed": "completed",
+    "visual.running": "running",
+    "visual.blocked": "blocked",
+    "visual.failed": "failed",
+    "visual.cancelled": "cancelled",
+    "visual.open": "open",
+    "visual.planned": "planned",
+    "tip.status": "status",
+    "tip.owner": "owner",
+    "tip.elapsed": "elapsed",
+    "tip.task": "task",
+    "tip.progress": "progress",
+    "tip.unassigned": "unassigned",
+    "tip.notStarted": "not started",
     // THE ROSTER ROLES. These are product names carried by the record (`member.role`), so English is the
     // identity mapping and Chinese is a DISPLAY-only rendering — the record itself is never rewritten.
     // Without this the panel renders a Chinese shell around English role chips, which is the one place a
@@ -580,6 +600,21 @@
     "kind.rev": "评审",
     "kind.fix": "修复",
     "kind.int": "集成",
+    // ── D2：悬停卡片的词汇 ────────────────────────────────────────
+    "visual.completed": "已完成",
+    "visual.running": "进行中",
+    "visual.blocked": "受阻",
+    "visual.failed": "失败",
+    "visual.cancelled": "已取消",
+    "visual.open": "未开始",
+    "visual.planned": "计划中",
+    "tip.status": "状态",
+    "tip.owner": "负责人",
+    "tip.elapsed": "耗时",
+    "tip.task": "任务",
+    "tip.progress": "进度",
+    "tip.unassigned": "未分配",
+    "tip.notStarted": "尚未开始",
     "Lead": "队长",
     "Architect": "架构师",
     "Researcher": "研究员",
@@ -755,6 +790,41 @@
     }
   }
 
+  /**
+   * The suffix that turns one primary tab id into its bottom-workbench duplicate's id.
+   *
+   * A SEPARATE TYPE, not a second surface of one type: 0.28's `bottomOnly` keeps a type out of the
+   * native right Sidebar, so the workbench twin must be its own registration and its own id. The
+   * suffix makes the relationship readable in the host's tab list and in a diagnostic.
+   */
+  const BOTTOM_TAB_SUFFIX = ":bottom";
+
+  /**
+   * Register the bottom-workbench twin of one primary descriptor (0.28 `bottomOnly`).
+   *
+   * The twin carries the SAME body, title, icon, order and `single`, and differs only in its id and
+   * `bottomOnly`; it is registered through the same `ctx.betterSidebar` path as the primary, so a
+   * profile without that host never reaches this function at all. Idempotent PER ID: a provider
+   * remount re-fires the injecting scope and the host throws on a duplicate id.
+   * @param ctx - the injection scope, which owns the disposer.
+   * @param sidebar - the better-sidebar service.
+   * @param primary - the already-built primary descriptor to twin.
+   * @param label - the effect label, so a teardown names the tab it removed.
+   * @returns whether the duplicate was registered (or was already present).
+   */
+  function registerBottomTab(ctx: ClientContext, sidebar: SidebarService, primary: SidebarTabDescriptor, label: string): boolean {
+    /** The duplicate's own id, derived from the primary so the pair can never drift apart. */
+    const id = primary.id + BOTTOM_TAB_SUFFIX;
+    if (sidebarAlreadyHasTab(sidebar, id)) return true;
+    try {
+      ctx.effect(() => sidebar.registerTab({ ...primary, id, bottomOnly: true }), label);
+      return true;
+    } catch (error) {
+      console.warn("[mpd] bottom-workbench tab registration failed for " + id + ": " + String(error));
+      return false;
+    }
+  }
+
   /** The `/list` route the library page reads. */
   const LIST_URL = "/plugins/mpd-workmate/list";
   /** The `/init` route that creates one workmate. */
@@ -781,6 +851,13 @@
   // every tab in the same place.
   /** The workmate tab's title, resolved at registration time. */
   const SIDEBAR_TAB_TITLE = "Workmates";
+  /**
+   * The workmate surfaces' one-line purpose.
+   *
+   * ONE constant for the better-sidebar descriptor AND the official right sidebar's guide entry, so
+   * the two secondary surfaces cannot describe the same page differently.
+   */
+  const SIDEBAR_TAB_DESCRIPTION = "Durable agents from your library";
 
   // Dictionary namespace for the workmate page. zh is the key-set source of truth;
   // en is checked complete against it.
@@ -1355,6 +1432,15 @@
   const TEAM_PAGE_TAB_ID = "mpd-team";
   /** Where the team tab sits among the host's tabs: before the watchdog page, after the builtins. */
   const TEAM_TAB_ORDER = 80;
+  /** The team tab's title, shared by the better-sidebar descriptor and its bottom-workbench twin. */
+  const TEAM_TAB_TITLE = "Team";
+  /**
+   * The team surfaces' one-line purpose.
+   *
+   * The same sentence is the English `mpdTeamSidebar.guide.description` the official right sidebar's
+   * guide entry resolves, so both secondary surfaces describe the page identically.
+   */
+  const TEAM_TAB_DESCRIPTION = "Roster and shared task progress for this session";
 
   /**
    * Register the MPD TEAM tab on `dsh-better-sidebar` — the PREFERRED host.
@@ -1374,14 +1460,21 @@
     /** The shared view, or undefined when this host has no React to build it with. */
     const view = teamViewOf();
     if (view === undefined) return false;
-    ctx.effect(() => sidebar.registerTab({
+    /**
+     * The PRIMARY descriptor. The bottom-workbench twin is derived from it verbatim, which is what
+     * keeps title, icon, order, `single` and the body identical between the two surfaces.
+     */
+    const descriptor: SidebarTabDescriptor = {
       id: TEAM_PAGE_TAB_ID,
-      title: () => "Team",
+      title: () => TEAM_TAB_TITLE,
+      description: TEAM_TAB_DESCRIPTION,
       icon: () => "◆",
       order: TEAM_TAB_ORDER,
       single: true,
       component: (props: unknown) => view.TeamView(props),
-    }), "mpd: team sidebar tab");
+    };
+    ctx.effect(() => sidebar.registerTab(descriptor), "mpd: team sidebar tab");
+    registerBottomTab(ctx, sidebar, descriptor, "mpd: team bottom tab");
     return true;
   }
 
@@ -1400,14 +1493,21 @@
     // that lost it, instead of reporting a failure the user sees as "the tab is gone".
     if (sidebarAlreadyHasTab(sidebar, SIDEBAR_TAB_ID)) return true;
     try {
-      ctx.effect(() => sidebar.registerTab({
+      /**
+       * The PRIMARY descriptor. The bottom-workbench twin is derived from it verbatim, which is what
+       * keeps title, icon, order, `single` and the body identical between the two surfaces.
+       */
+      const descriptor: SidebarTabDescriptor = {
         id: SIDEBAR_TAB_ID,
         title: () => SIDEBAR_TAB_TITLE,
+        description: SIDEBAR_TAB_DESCRIPTION,
         icon: (size: number) => react.createElement("span", { "aria-hidden": true, style: { fontSize: size, lineHeight: 1 } }, "\u{1F916}"),
         order: 90,
         single: true,
         component: (props: WorkmateLibraryProps | undefined) => react.createElement(WorkmateLibraryView, { t: translateFor({ t: props && props.t }) }),
-      }), "mpd-workmate: sidebar tab");
+      };
+      ctx.effect(() => sidebar.registerTab(descriptor), "mpd-workmate: sidebar tab");
+      registerBottomTab(ctx, sidebar, descriptor, "mpd-workmate: bottom tab");
       return true;
     } catch (error) {
       console.warn("[mpd] workmate sidebar tab registration failed: " + String(error));
@@ -1657,9 +1757,9 @@
     };
     ctx.effect(() => ctx.locale.register("mpdTeamSidebar", {
       en: {
-        "type.label": "Team",
-        "guide.title": "Team",
-        "guide.description": "Roster and shared task progress for this session",
+        "type.label": TEAM_TAB_TITLE,
+        "guide.title": TEAM_TAB_TITLE,
+        "guide.description": TEAM_TAB_DESCRIPTION,
         // The shared view's own copy. Registered from the SAME table the fallback reads, so the two
         // cannot drift: a key added to the view and forgotten here still renders English instead of
         // a raw key, which is the failure mode this pairing exists to make impossible.
@@ -1738,13 +1838,15 @@
       id: WORKMATE_TAB_ID,
       kind: WORKMATE_TAB_KIND,
       priority: "extension",
-      title: () => "Workmates",
+      // SAME strings as the better-sidebar descriptor above, by constant rather than by copy: the
+      // fallback is a second surface of one page, not a second description of it.
+      title: () => SIDEBAR_TAB_TITLE,
       guide: [{
         id: "new",
         commandId: WORKMATE_COMMAND_ID,
         order: 41,
-        title: () => "Workmates",
-        description: () => "Durable agents from your library",
+        title: () => SIDEBAR_TAB_TITLE,
+        description: () => SIDEBAR_TAB_DESCRIPTION,
       }],
     }), "mpd-workmate-sidebar:type");
     registered += 1;

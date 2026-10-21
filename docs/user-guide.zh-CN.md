@@ -31,8 +31,10 @@ cd <repo> && bun install          # 只需一次：把声明的运行时依赖�
 ```
 
 如果 `node-gyp` 不可用，可以用
-`bun add dsh-better-sidebar@0.24.1 --ignore-scripts` 跳过构建脚本装上这个**可选 peer** —— 只有侧边栏的
-终端面板会降级。（当初需要这个开关的传递依赖 `node-pty` 在 `0.24.1` 中已被移除，2026-10-02 实测。）
+`bun add dsh-better-sidebar@0.28.0 --ignore-scripts` 跳过构建脚本装上这个**可选 peer** —— 只有侧边栏的
+终端面板会降级。（当初需要这个开关的传递依赖 `node-pty` 自 `0.24.1` 起已被移除，2026-10-02 实测；
+`0.28.0` 同样不含任何安装脚本，2026-10-21 实测。）`dsh-better-sidebar@0.28.0` 要求 harness
+**DSH 0.2.1-rc.1 或更新**；本 bundle 固定的是 `0.2.1-rc.2`。
 从打包产物安装时无需额外步骤：pnpm 会替你装好那些已声明的依赖（见下方 *打包产物*）。
 
 **每条 `dsh plugin` 命令都必须带 `--profile`**，`--help` 与 `remove` 也不例外：不带时 CLI 会直接
@@ -423,6 +425,37 @@ host，直到你选择 `mpd` 为止（TUI 的 `/preset mpd`、Web Settings 的 `
   第二次手动安装：没有该宿主时，**同一张**页面会注册进 **HARNESS 自带的**右侧边栏并保持可访问；若
   连侧边栏接缝都不存在，mpd 各面板会各自按名字报告一次。团队工作仍然可以通过官方团队工具运行，
   workmate 库也仍然可以通过 `mpd_workmate_*` 工具完整使用。
+- **社区宿主存在时有两个侧边栏表面（0.28）**：每张 mpd 页面 —— Team 视图、Workmates 库与
+  AgentTeams 看门狗 —— 都会向 `dsh-better-sidebar` 注册**两次**：主标签页（`mpd-team`、
+  `mpd-workmate`、`mpd-agent-teams`）以及一个**底部工作台孪生**（`mpd-team:bottom`、
+  `mpd-workmate:bottom`、`mpd-agent-teams:bottom`）。孪生复用同一份正文、标题、图标与排序，并标记
+  `bottomOnly`，因此只出现在插件自己的底部工作台、不会出现在别处；主标签页仍留在侧边栏标签条。孪生
+  按 id 幂等，且**仅当**社区宿主存在时才注册 —— 没有该宿主时走官方右侧边栏回退，回退标签页与主
+  标签页保持相同的标题、guide 与描述。以上都不会改变 `mpd_*` 工具，也不改变页面读取的路由。
+
+### 8.1 Team 视图的任务 DAG
+
+Team 视图的这张图按团队状态提供的 rank 布局：每个 rank 一列，按 rank 顺序排列，每一列的节点栈
+都以整张图的水平中线为中心对齐，因此短列与长列处在同一水平高度。跨 rank 的边不会横穿节点
+卡片 —— 它从图上方或下方的通道绕行，两条通道以中线为轴镜像，再汇入目标节点。相邻的连接线各走
+独立车道，不会有两段直线重叠。任务或 rank 变化时图形会重新计算，节点位置随之过渡。
+
+只有 **completed → running** 的边有动画：一个小箭头沿路径移动，同时虚线段向前流动，让任务板上的
+推进方向一眼可读。其余边保持静止，整张图不做动画。
+
+节点卡片使用毛玻璃表面。处于 **running** 的节点会带呼吸式光晕，但光晕画在卡片边缘，文字与边框
+保持稳定，标签始终清晰可读。系统启用 `prefers-reduced-motion` 时，呼吸效果关闭。
+
+把指针悬停在节点上，光标旁会弹出一个小圆角卡片：半透明白底、黑字，显示状态、归属、已用时间、
+截断后的任务标题与进度条。点击节点会将其固定（pin），之后再悬停时卡片变为不透明；鼠标离开即
+关闭。图下方原有的「点击固定」详情面板保持不变。
+
+卡片上的已用时间与进度各有明确的边界。已用时间来自任务的 `startedAt` 与 `finishedAt`
+时间戳（running 任务算到当前时刻）；没有起始时间戳的旧任务显示破折号，而不是猜一个时长。进度条
+是粗粒度的状态推导值 —— completed 100、running 50、claimed 10、pending/failed/cancelled 0 ——
+不是实测的工作量。
+
+这一波不提供缩放、平移或小地图；图的布局由 bundle 自己计算，不引入图形布局库。
 
 ## 9. 配置（`mpd.jsonc`）
 
@@ -574,7 +607,10 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp   # 从一个可工作的骨�
   刷新页面），并确认 profile 中存在某个侧边栏宿主。该宿主是 bundle 从不安装的**可选 peer**；
   没有它时 mpd 各页面会注册进 harness 自带的右侧边栏，若连侧边栏接缝都不存在则各自按名字报告
   一次。如果你想要那个社区宿主，请在检出目录执行 `bun install`（或
-  `bun add dsh-better-sidebar@0.24.1 --ignore-scripts`），然后重新安装 bundle。
+  `bun add dsh-better-sidebar@0.28.0 --ignore-scripts`），然后重新安装 bundle。若 profile 里的
+  `dsh-better-sidebar` 低于 `0.28.0`，那就在受支持的 peer 范围（`>=0.28.0 <0.29.0`）之外：本行重述
+  的是 0.28 的 `["webServer","sessions","connection","tools"]` 注入列表，底部工作台孪生也需要
+  0.28 的 `bottomOnly` 描述符字段。
 - 会话头部缺少 Agent Teams 面板 → 它的行是 `mpd-ui-agent-team`
   （`@deepseek-ai/dsh-experimental-client-ui-agent-team`，已声明依赖）；重新安装 bundle 并刷新一次
   页面。只有当会话真的有 Team 投影可展示时它才会出现。

@@ -98,6 +98,10 @@
    `DSH_SEAM_SESSIONS`、`DSH_SEAM_WEB_SERVER`、`DSH_SEAM_WEB_RUNTIME`、`DSH_SEAM_AGENT_PRESETS` 由适配器
    导出，行用 `dshSeamInject(...)` 构造自己的数组，返回的字符串完全相同。宿主改名如今只需改**一个
    文件**。运行期取值未变是通过 import 每个重建后的 `dist/index.js` 并打印其 `inject` 来核验的。
+   **一处已声明的例外（2026-10-21）：** 0.28 侧边栏宿主的 `connection` 接缝在
+   `packages/mpd-better-sidebar-host/src/index.ts` 里以本地常量 `DSH_SEAM_CONNECTION` 拼写，因为该行
+   是它目前唯一的消费者，适配器的清单里还没有对应常量。它和适配器常量一样被重述进该行的 `inject`
+   数组；一旦出现第二个消费者，这个常量就迁入适配器。
 3. **共享纯模块，而不是各自分叉。** `mpd-bootstrap-plugin` import `mpd-ext-plugin` 的 skill frontmatter
    子集，`mpd-roster-provider-plugin` import `mpd-config-plugin` 的 slot 表，`mpd-ext-plugin` import
    `mpd-roles-plugin` 的 roster 数据。每一种情形下都只有**一份**声明是契约；第二份副本正是两种写法开始

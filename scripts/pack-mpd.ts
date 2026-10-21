@@ -653,15 +653,16 @@ function decouplePatch(srcPatch: string): string {
 /**
  * The packer's OWN policy additions to the packed manifest's `dependencies`.
  *
- * `dsh-better-sidebar` is the sidebar HOST the bundle's two GUI pages register into. The ROOT manifest
- * declares it as a devDependency plus an OPTIONAL peer — its `node-pty` postinstall is the build script
- * pnpm 11 refuses to run without an approval channel (`ERR_PNPM_IGNORED_BUILDS`, AGENTS.md §8) — so it
- * is absent from the root's runtime closure by design, while the packed artifact must still pull it in.
+ * `dsh-better-sidebar` is the sidebar HOST the bundle's GUI pages register into. The ROOT manifest
+ * declares it as a devDependency plus an OPTIONAL peer — the historical `node-pty` postinstall (removed
+ * from the package by 0.24.1, and absent from 0.28.0, measured) is the build script pnpm 11 refuses to
+ * run without an approval channel (`ERR_PNPM_IGNORED_BUILDS`, AGENTS.md §8) — so it is absent from the
+ * root's runtime closure by design, while the packed artifact must still pull it in.
  * This table is where that policy decision is stated, and it is why the packed `dependencies` field
  * legitimately differs from the root's: the packer only ever ADDS. A dependency declared only here,
  * with no row, mounts nothing.
  */
-const PACK_THIRD_PARTY_DEPENDENCIES: Readonly<Record<string, string>> = { "dsh-better-sidebar": "0.24.1" }
+const PACK_THIRD_PARTY_DEPENDENCIES: Readonly<Record<string, string>> = { "dsh-better-sidebar": "0.28.0" }
 
 /**
  * The packer's OWN policy additions to the packed manifest's `optionalDependencies`, on TOP of the full

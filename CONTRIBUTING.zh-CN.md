@@ -59,7 +59,7 @@ bun install
 `node-gyp` 不可用时才需要：
 
 ```bash
-bun add dsh-better-sidebar@0.24.1 --ignore-scripts
+bun add dsh-better-sidebar@0.28.0 --ignore-scripts
 ```
 
 只有侧边栏的终端面板会降级。

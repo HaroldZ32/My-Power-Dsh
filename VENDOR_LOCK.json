@@ -34,7 +34,7 @@
     },
     "packages/mpd-bundle-plugin/client.js": {
       "fileCount": 1,
-      "sha256": "a443c22e08ffb1824289f3a26583f4a7e5eee83f445f2c4737764e8b1cef539b",
+      "sha256": "bd68a418cd2c9c2e7b86943b54e1581ea7f88cb8216ee43b84d40f79a9acb1c9",
       "source": "combined web client DERIVED from packages/mpd-bundle-plugin/adopted/** by scripts/build-mpd-client.ts; rebuild it, never rewrite this fingerprint"
     }
   },

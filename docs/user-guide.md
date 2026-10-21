@@ -33,9 +33,11 @@ cd <repo> && bun install          # required once: materializes the declared run
 ```
 
 If `node-gyp` is unavailable,
-`bun add dsh-better-sidebar@0.24.1 --ignore-scripts` installs the optional sidebar peer without build
+`bun add dsh-better-sidebar@0.28.0 --ignore-scripts` installs the optional sidebar peer without build
 scripts — only the sidebar's terminal panel degrades. (The transitive `node-pty` this flag was needed
-for is gone from `0.24.1`, measured 2026-10-02.) A packed install needs no extra step: pnpm
+for is gone since `0.24.1`, measured 2026-10-02; `0.28.0` ships no install script either, measured
+2026-10-21.) `dsh-better-sidebar@0.28.0` requires harness **DSH 0.2.1-rc.1 or newer**; this bundle
+pins `0.2.1-rc.2`. A packed install needs no extra step: pnpm
 installs the declared dependencies for you (see *Packed package* below).
 
 `--profile` is **required on every `dsh plugin` command**, including `--help` and `remove`:
@@ -475,6 +477,46 @@ strings, the state scopes and the explicit NOT-CLAIMED list, read [`tui.md`](tui
   sidebar seam at all the mpd panels report themselves once, by name. Team work still runs through the
   official team tools, and the workmate library is still fully usable through the `mpd_workmate_*`
   tools.
+- **Two sidebar surfaces when the community host is present (0.28)**: every mpd page — the Team view,
+  the Workmates library and the AgentTeams watchdog — is registered **twice** against
+  `dsh-better-sidebar`: the primary tab (`mpd-team`, `mpd-workmate`, `mpd-agent-teams`) and a
+  **bottom-workbench twin** (`mpd-team:bottom`, `mpd-workmate:bottom`,
+  `mpd-agent-teams:bottom`). The twin carries the same body, title, icon and order and is marked
+  `bottomOnly`, so it appears in the plugin's own bottom workbench and nowhere else; the primary tabs
+  stay in the sidebar strip. Twins are idempotent per id and are registered **only** when the
+  community host exists — a profile without it gets the official right-sidebar fallback instead, whose
+  tabs keep the same title, guide and description as the primaries. Nothing here changes the
+  `mpd_*` tools or the routes the pages read.
+
+### 8.1 The Team view's task DAG
+
+The Team view's graph is laid out by the ranks the team state serves: one column per rank, in rank
+order, with every column's stack centred on the graph's horizontal midline, so a short column sits
+level with a long one. An edge that skips ranks does not cross a node card — it leaves through a band
+above or below the graph, mirrored about the midline, and rejoins its target. Connector runs get
+separate lanes, so two edges do not share a straight segment. The graph is recomputed when tasks or
+ranks change, and nodes animate to their new positions.
+
+Only a **completed → running** edge is animated: a small arrow moves along it while its dashes flow,
+so direction through the board reads at a glance. Every other edge is static; the graph as a whole
+does not animate.
+
+Node cards use a frosted-glass surface over the page background. A **running** node breathes with a
+glow on the card's edge, while the card's text and border stay stable so labels remain readable.
+With `prefers-reduced-motion` set, the breathing is turned off.
+
+Hovering a node opens a small rounded, semi-transparent white card with black text beside the
+cursor. It shows the task's status, owner, elapsed time, a truncated task line and a progress bar.
+Clicking a node pins it, and the next hover shows the card opaque; the card closes on mouse leave.
+The existing click-to-pin detail panel below the graph is unchanged.
+
+The two values on that card have deliberate bounds. Elapsed time comes from the task's `startedAt`
+and `finishedAt` stamps (a running task counts up to now); a task recorded before those stamps
+existed shows a dash instead of a guessed duration. The progress bar is coarse and status-derived —
+completed 100, running 50, claimed 10, pending/failed/cancelled 0 — not a measured share of work.
+
+This wave does not add zoom, pan or a minimap, and the layout is computed by the bundle itself
+rather than by a graph-layout library.
 
 ## 9. Configuration (`mpd.jsonc`)
 
@@ -640,7 +682,10 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp   # start from a working skele
   That host is an **optional peer** the bundle never installs; without it the mpd pages register into
   the harness's own right sidebar, and with no sidebar seam at all they report themselves once, by
   name. If you want the community host, run `bun install` in the checkout (or
-  `bun add dsh-better-sidebar@0.24.1 --ignore-scripts`) and reinstall the bundle.
+  `bun add dsh-better-sidebar@0.28.0 --ignore-scripts`) and reinstall the bundle. A profile whose
+  `dsh-better-sidebar` is older than `0.28.0` is **outside** the supported peer range
+  (`>=0.28.0 <0.29.0`): the row restates 0.28's `["webServer","sessions","connection","tools"]` inject
+  list, and the bottom-workbench twins need 0.28's `bottomOnly` descriptor field.
 - The Agent Teams panel is missing from the conversation header → its row is
   `mpd-ui-agent-team` (`@deepseek-ai/dsh-experimental-client-ui-agent-team`, a declared dependency);
   reinstall the bundle and reload the page once. It appears only when the session really has a Team

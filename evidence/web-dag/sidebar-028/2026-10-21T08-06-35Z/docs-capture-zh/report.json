@@ -1,0 +1,752 @@
+{
+  "base": "http://127.0.0.1:3080",
+  "workspace": "/data/ws",
+  "viewport": [
+    1600,
+    1000
+  ],
+  "steps": [
+    {
+      "name": "01-first-run",
+      "ok": true,
+      "file": "/data-out/shots-zh/01-first-run.png"
+    },
+    {
+      "name": "02-home",
+      "ok": true,
+      "file": "/data-out/shots-zh/02-home.png"
+    },
+    {
+      "name": "03-plugins",
+      "ok": true,
+      "file": "/data-out/shots-zh/03-plugins.png"
+    },
+    {
+      "name": "04-settings-mpd",
+      "ok": true,
+      "file": "/data-out/shots-zh/04-settings-mpd.png"
+    },
+    {
+      "name": "05-settings-agent-presets",
+      "ok": true,
+      "file": "/data-out/shots-zh/05-settings-agent-presets.png"
+    },
+    {
+      "name": "06-team-panel",
+      "ok": true,
+      "file": "/data-out/shots-zh/06-team-panel.png"
+    },
+    {
+      "name": "06b-team-board-seed",
+      "ok": true,
+      "file": "/data-out/shots-zh/06b-team-board.png"
+    },
+    {
+      "name": "07-team-graph-interaction",
+      "ok": true,
+      "file": "/data-out/shots-zh/07-team-graph-hover.png"
+    },
+    {
+      "name": "08-dag-curve",
+      "ok": true,
+      "file": "/data-out/shots-zh/08-dag-curve.png curves=4"
+    }
+  ],
+  "readmeShots": [
+    {
+      "name": "web-plugins-installed",
+      "ok": true,
+      "file": "/data-out/readme/zh/web-plugins-installed.png",
+      "rect": [
+        436,
+        796,
+        1008,
+        98
+      ]
+    },
+    {
+      "name": "web-settings-mpd",
+      "ok": true,
+      "file": "/data-out/readme/zh/web-settings-mpd.png",
+      "rect": [
+        596,
+        0,
+        596,
+        660
+      ]
+    },
+    {
+      "name": "web-agent-presets",
+      "ok": true,
+      "file": "/data-out/readme/zh/web-agent-presets.png",
+      "rect": [
+        596,
+        138,
+        596,
+        777
+      ]
+    },
+    {
+      "name": "web-team-board",
+      "ok": true,
+      "file": "/data-out/readme/zh/web-team-board.png",
+      "rect": [
+        881,
+        38,
+        719,
+        962
+      ]
+    }
+  ],
+  "consoleErrors": [],
+  "pageErrors": [],
+  "failedRequests": [
+    "http://127.0.0.1:3080/plugins/events — net::ERR_ABORTED",
+    "http://127.0.0.1:3080/plugins/events — net::ERR_ABORTED"
+  ],
+  "mpdConsole": [
+    "log: [mpd] settings section: form status=loading value=absent writable=false mode=undefined",
+    "log: [mpd] settings section: form updated status=ready value=present",
+    "log: [mpd] settings section: form updated status=ready value=present",
+    "warning: [mpd] model catalog: declared fallback — live catalog unavailable (no session is bound)",
+    "log: [mpd] settings section: form status=loading value=absent writable=false mode=undefined",
+    "log: [mpd] settings section: form updated status=ready value=present",
+    "log: [mpd] settings section: form updated status=ready value=present",
+    "warning: [mpd] model catalog: declared fallback — live catalog unavailable (no session is bound)",
+    "log: [mpd] settings section: form status=loading value=absent writable=false mode=undefined",
+    "log: [mpd] settings section: form updated status=ready value=present",
+    "log: [mpd] settings section: form updated status=ready value=present",
+    "warning: [mpd] model catalog: declared fallback — live catalog unavailable (no session is bound)",
+    "info: [mpd] team sidebar session: session-91a905ed-b7e7-4aec-bb04-b9932673714f"
+  ],
+  "firstRunText": "新会话\n插件\n自动化任务\n工作区\nws\n新会话\n更多\n探索未至之境\n预览版\nws\n标准模式\n描述你想要构建的内容, / 调用指令, @ 文件或对话\n工作区内修改\n请选择模型\n开始使用\n登录 DeepSeek 账号，或添加 API Key，即可开始使用。你的项目和文件保存在本地。\n添加 API Key\n登录",
+  "gatesDismissedOnHome": 0,
+  "controls": [
+    "新建会话",
+    "收起侧边栏",
+    "新会话",
+    "插件",
+    "自动化任务",
+    "搜索会话",
+    "视图选项",
+    "添加工作区",
+    "工作区“ws”的操作",
+    "在“ws”中新建会话",
+    "更多",
+    "打开右侧边栏",
+    "ws",
+    "标准模式",
+    "添加文件或调用指令",
+    "工作区内修改",
+    "请选择模型",
+    "发送消息",
+    "新标签页",
+    "分栏",
+    "全屏",
+    "收起右侧边栏"
+  ],
+  "homeText": "新会话\n插件\n自动化任务\n工作区\nws\n新会话\n更多\n探索未至之境\n预览版\nws\n标准模式\n描述你想要构建的内容, / 调用指令, @ 文件或对话\n工作区内修改\n请选择模型",
+  "composerPresetNames": [
+    "MPD (Main Working Agent)",
+    "The my-power-dsh main agent: reads AGENT.md/AGENTS.md/CLAUDE.md for every project, works natively, consults the specialists in single calls (Architect/Researcher/Planner/Deep Worker/Senior Engineer/Lead/Explorer/Reviewer/Plan Reviewer/Vision Analyst/Junior Engineer) via mpd_role_spawn, and runs teams through the official @deepseek-ai/dsh-experimental-agent-team plugin.",
+    "处理代码、文件和资料，适合大多数任务。Agent 会按需使用检索、编辑和终端等工具。",
+    "Agent 使用终端和图片读取工具，并支持上下文压缩，适合测试和对比其基础表现。",
+    "用对话定制 DSH：让 Agent 编写插件，添加新功能或界面；也能组合工具和提示词，创建自己的模式。"
+  ],
+  "pluginsClick": "clicked",
+  "pluginsText": "新会话\n插件\n自动化任务\n工作区\nws\n新会话\n更多\n插件\n安装、启用和配置插件\n添加插件\n内置插件配置\n子智能体\n设置子智能体的递归层级、数量和模型。\n网页搜索\n设置 DeepSeek 的搜索提供方。\nAgent 循环\n控制 Agent 派发工具调用的方式。\n终端\n限制每条命令最多能跑多久、最多输出多少内容。\n实验性插件\n更多\n智能体团队\n实验性\n启用团队协作、团队工具、成员列表和共享任务看板。\n语音输入\n实验性\n在本机使用 SenseVoice 转写录音，首次使用需安装依赖。\n自动授权审查\n实验性\n提供自动审查权限模式，由模型在每次工具调用前判断是否授权。\n开发者工具\n实验性\n查看调试会话原始数据、聊天消息分组数据，以及调试 NodeJS 后端\n已安装插件\n@mpd-dsh/mpd\nmy-power-dsh: a DeepSeek Harness plugin bundle (@mpd-dsh/mpd) carrying the specialist roster and the model-chain vocabulary on DSH-native plumbing (upstream reference: oh-my-openagent 8c57e46 — historical, no synchronisation owed)",
+  "settingsClick": "menu(text:clicked)->clicked",
+  "settingsNav": [
+    "通用设置",
+    "模型",
+    "内置插件",
+    "Agent 预设",
+    "MPD"
+  ],
+  "mpdClick": "clicked",
+  "mpdSectionText": "新会话\n插件\n自动化任务\n工作区\nws\n新会话\n更多\n探索未至之境\n预览版\nws\n标准模式\n描述你想要构建的内容, / 调用指令, @ 文件或对话\n工作区内修改\n请选择模型\n设置\n通用设置\n模型\n内置插件\nAgent 预设\nMPD\n打开配置文件\n关闭\nMPD 插件包\n本插件包读取的 mpd.jsonc 配置项。命名空间 mpd · 保存后即时生效——模型路由按次读取，无需重启\n「MPD (Main Working Agent)」是本插件包的主工作 agent：读取项目的 AGENT.md/AGENTS.md/CLAUDE.md，原生工作，通过 mpd_role_spawn 一次性咨询 11 位专家，并用官方 Agent Teams 插件跑团队。它在 preset 选择器里的说明由宿主以纯文本提供，无法本地化。\ndeclared fallback — live catalog unavailable (the model directory for this session reports no provider)\na save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect in the RUNNING process — no restart: the config service re-resolves on every settings save and on a watched edit of the project file, and the model routes (teamModels, agentRoutes, modelchain) are read per use, so the next spawn or resolve carries them\nthe restart wording now applies only to a knob some plugin captured at its own mount instead of reading the live config service per use — the model routes above are not such knobs; a captured knob keeps its captured value until the next dsh boot\nthe value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session\nif no session is live, the save stays in settings — not written to any .mpd/mpd.jsonc\n当前生效的模型配置——改之前先看（实时读取，无需重启）\n槽位 1 · 重推理成员：deepseek-official / deepseek-v4-flash / max\n槽位 2 · 分析型成员：deepseek-official / deepseek-v4-flash / high\n槽位 3 · 执行型成员：deepseek-official / deepseek-v4-flash / high\n槽位 4 · 视觉成员：deepseek-official / deepseek-v4-flash-vision-exp / high\nagentRoutes：未设置任何成员覆盖——所有成员跟随各自槽位\nmodelchain：未配置任何链——内置默认链生效\n读取自实时配置服务——挂载时、卡片保存后与设置文档更新时刷新\n行内 diff 上限\nmpd.jsonc hashline.maxDiffChars\n重置为文件值\n注释检查\nmpd.jsonc commentChecker.autoCheck\n重置为文件值\nUltrawork 轮数\nmpd.jsonc ulw.maxRounds\n重置为文件值\n记忆后端\nmpd.jsonc memory.vcs\n—\ngit\nsvn\n重置为文件值\n团队状态目录\nmpd.jsonc team.stateDir\n重置为文件值\nBoulder 目录\nmpd.jsonc boulder.dir\n重置为文件值\n看门狗启用\nmpd.jsonc watchdog.enabled\n重置为文件值\n静默告警阈值（毫秒）\nmpd.jsonc watchdog.warnSilenceMs\n重置为文件值\n看门狗轮询间隔（毫秒）\nmpd.jsonc watchdog.tickIntervalMs\n重置为文件值\n升级前连续告警次数\nmpd.jsonc watchdog.warnStreakToEscalate\n重置为文件值\n升级时的动作\nmpd.jsonc watchdog.actionOnEscalate\n—\npause\nwarn-only\n重置为文件值\n工具在飞上限（毫秒，0 表示不设上限）\nmpd.jsonc watchdog.toolInFlightMaxMs\n重置为文件值\n暂停持有有效期（毫秒，0 表示不设有效期）\nmpd.jsonc watchdog.holdTtlMs\n重置为文件值\ndeclared fallback — live catalog unavailable (the model directory for this session reports no provider)\n槽位 1 —— 重推理成员（Architect、Planner、Reviewer、Lead、Senior Engineer）\n建队时这些成员默认用本档的 提供商 · 模型 · 推理强度 启动；填错会让建队直接失败并点名成员与槽位。\n槽位 1 提供商（重推理成员）\n这一档的提供商。各槽位合起来是 team 成员的默认模型路由：建队时，重推理成员（Architect、Planner、Reviewer、Lead、Senior Engineer）会按本档的 提供商+模型+推理强度 启动。改它的影响：这些成员下次建队即走新路由；填成不可用会让建队直接失败并点名成员与槽位，不会静默换模型。Vision Analyst 是视觉成员：由槽位 4 驱动。\nmpd.jsonc teamModels.slot1.provider) — declared fallback: the model directory for this session reports no provider\n—\ndeepseek-official\n重置为文件值\n槽位 1 模型（重推理成员）\n这一档的模型。与上面的提供商共同决定 重推理成员（Architect、Planner、Reviewer、Lead、Senior Engineer）建队时使用的模型。改它的影响：同上，下次建队生效；模型与提供商不匹配、或该提供商没有这个模型时，建队会点名失败。\nmpd.jsonc teamModels.slot1.model) — declared fallback: the model directory for this session reports no provider\n—\ndeepseek-v4-flash\ndeepseek-v4-flash-vision-exp\ndeepseek-v4-pro\ndeepseek-flash\n重置为文件值\n槽位 1 推理强度（重推理成员）\n这一档的推理强度（off / low / high / max）。它决定 重推理成员（Architect、Planner、Reviewer、Lead、Senior Engineer）建队时的思考深度：max 最强、high 是常规平衡、low 更省、off 关闭思考。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。例外：若该模型的目录条目完全没有推理等级，则不发送任何等级——调用照常。\nmpd.jsonc teamModels.slot1.reasoningEffort) — declared fallback: the model directory for this session reports no provider\n—\noff\nlow\nhigh\nmax\n重置为文件值\n槽位 2 —— 分析型成员（Researcher、Explorer、Plan Reviewer）\n建队时这些成员默认用本档的 提供商 · 模型 · 推理强度 启动；填错会让建队直接失败并点名成员与槽位。\n槽位 2 提供商（分析型成员）\n这一档的提供商。各槽位合起来是 team 成员的默认模型路由：建队时，分析型成员（Researcher、Explorer、Plan Reviewer）会按本档的 提供商+模型+推理强度 启动。改它的影响：这些成员下次建队即走新路由；填成不可用会让建队直接失败并点名成员与槽位，不会静默换模型。Vision Analyst 是视觉成员：由槽位 4 驱动。\nmpd.jsonc teamModels.slot2.provider) — declared fallback: the model directory for this session reports no provider\n—\ndeepseek-official\n重置为文件值\n槽位 2 模型（分析型成员）\n这一档的模型。与上面的提供商共同决定 分析型成员（Researcher、Explorer、Plan Reviewer）建队时使用的模型。改它的影响：同上，下次建队生效；模型与提供商不匹配、或该提供商没有这个模型时，建队会点名失败。\nmpd.jsonc teamModels.slot2.model) — declared fallback: the model directory for this session reports no provider\n—\ndeepseek-v4-flash\ndeepseek-v4-flash-vision-exp\ndeepseek-v4-pro\ndeepseek-flash\n重置为文件值\n槽位 2 推理强度（分析型成员）\n这一档的推理强度（off / low / high / max）。它决定 分析型成员（Researcher、Explorer、Plan Reviewer）建队时的思考深度：max 最强、high 是常规平衡、low 更省、off 关闭思考。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。例外：若该模型的目录条目完全没有推理等级，则不发送任何等级——调用照常。\nmpd.jsonc teamModels.slot2.reasoningEffort) — declared fallback: the model directory for this session reports no provider\n—\noff\nlow\nhigh\nmax\n重置为文件值\n槽位 3 —— 执行型成员（Deep Worker、Junior Engineer）\n建队时这些成员默认用本档的 提供商 · 模型 · 推理强度 启动；填错会让建队直接失败并点名成员与槽位。\n槽位 3 提供商（执行型成员）\n这一档的提供商。各槽位合起来是 team 成员的默认模型路由：建队时，执行型成员（Deep Worker、Junior Engineer）会按本档的 提供商+模型+推理强度 启动。改它的影响：这些成员下次建队即走新路由；填成不可用会让建队直接失败并点名成员与槽位，不会静默换模型。Vision Analyst 是视觉成员：由槽位 4 驱动。\nmpd.jsonc teamModels.slot3.provider) — declared fallback: the model directory for this session reports no provider\n—\ndeepseek-official\n重置为文件值\n槽位 3 模型（执行型成员）\n这一档的模型。与上面的提供商共同决定 执行型成员（Deep Worker、Junior Engineer）建队时使用的模型。改它的影响：同上，下次建队生效；模型与提供商不匹配、或该提供商没有这个模型时，建队会点名失败。\nmpd.jsonc teamModels.slot3.model) — declared fallback: the model directory for this session reports no provider\n—\ndeepseek-v4-flash\ndeepseek-v4-flash-vision-exp\ndeepseek-v4-pro\ndeepseek-flash\n重置为文件值\n槽位 3 推理强度（执行型成员）\n这一档的推理强度（off / low / high / max）。它决定 执行型成员（Deep Worker、Junior Engineer）建队时的思考深度：max 最强、high 是常规平衡、low 更省、off 关闭思考。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。例外：若该模型的目录条目完全没有推理等级，则不发送任何等级——调用照常。\nmpd.jsonc teamModels.slot3.reasoningEffort) — declared fallback: the model directory for this session reports no provider\n—\noff\nlow\nhigh\nmax\n重置为文件值\n槽位 4 —— 视觉成员（Vision Analyst）\n建队时 Vision Analyst 默认用本档的 提供商 · 模型 · 推理强度 启动；本档的模型必须支持图像输入，否则看图任务会失败；填错会让建队直接失败并点名成员与槽位。\n槽位 4 提供商（视觉成员）\n这一档的提供商。它只驱动 Vision Analyst（唯一负责看图/读图/分析截图的成员）。改它的影响：下次建队生效；填成不可用会让建队直接失败并点名成员与槽位。注意本档的模型必须是支持图像输入的视觉模型（例如 deepseek-v4-flash-vision-exp），换成纯文本模型会让看图任务失败。\nmpd.jsonc teamModels.slot4.provider) — declared fallback: the model directory for this session reports no provider\n—\ndeepseek-official\n重置为文件值\n槽位 4 模型（视觉成员）\n这一档的模型。必须选支持图像输入的模型：Vision Analyst 的全部价值在于读图，纯文本模型会让它的读图任务直接失败。改它的影响：下次建队生效。\nmpd.jsonc teamModels.slot4.model) — declared fallback: the model directory for this session reports no provider\n—\ndeepseek-v4-flash\ndeepseek-v4-flash-vision-exp\ndeepseek-v4-pro\ndeepseek-flash\n重置为文件值\n槽位 4 推理强度（视觉成员）\n这一档的推理强度（off / low / high / max）。决定 Vision Analyst 读图时的思考深度。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。例外：若该模型的目录条目完全没有推理等级，则不发送任何等级——调用照常。\nmpd.jsonc teamModels.slot4.reasoningEffort) — declared fallback: the model directory for this session reports no provider\n—\noff\nlow\nhigh\nmax\n重置为文件值\nArchitect —— 专属路由（覆盖槽位 1 · 重推理成员）\n在这里设置的叶子只作用于该成员本人且即时生效——下次生成/解析即携带；未设置的叶子回落到该成员的槽位，清空全部叶子即恢复跟随槽位。\nArchitect 提供商（专属路由）\nArchitect 专属路由覆盖的提供商。agentRoutes 的叶子优先于 Architect 的 team 模型槽位：只作用于 Architect 本人，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的提供商；清空全部叶子即恢复跟随槽位。\nmpd.jsonc agentRoutes.Architect.provider) — declared fallback: the model directory for this session reports no provider\n—\ndeepseek-official\n重置为文件值\nArchitect 模型（专属路由）\nArchitect 专属路由覆盖的模型。优先于 Architect 所属槽位（重推理成员）的模型，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的模型；清空全部叶子即恢复跟随槽位。\nmpd.jsonc agentRoutes.Architect.model) — declared fallback: the model directory for this session reports no provider\n—\ndeepseek-v4-flash\ndeepseek-v4-flash-vision-exp\ndeepseek-v4-pro\ndeepseek-flash\n重置为文件值\nArchitect 推理强度（专属路由）\nArchitect 专属路由覆盖的推理强度（off / low / high / max）。优先于 Architect 所属槽位（重推理成员）的推理强度，且即时生效——该成员下次生成/解析即携带新值。未设置的叶子回落到槽位的等级；该模型不支持的等级会让该成员的生成直接报错并点名。\nmpd.jsonc agentRoutes.Architect.reasoningEffort) — declared fallback: the model directory for this session reports no provider\n—\noff\nlow\nhigh\nmax\n重置为文件值\nPlanner —— 专属路由（覆盖槽位 1 · 重推理成员）\n在这里设置的叶子只作用于该成员本人且即时生效——下次生成/解析即携带；未设置的叶子回落到该成员的槽位，清空全部叶子即恢复跟随槽位。\nPlanner 提供商（专属路由）\nPlanner 专属路由覆盖的提供商。agentRoutes 的叶子优先于 Planner 的 team 模型槽位：只作用于 Planner 本人，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的提供商；清空全部叶子即恢复跟随槽位。\nmpd.jsonc agentRoutes.Planner.provider) — declared fallback: the model directory for this session reports no provider\n—\ndeepseek-official\n重置为文件值\nPlanner 模型（专属路由）\nPlanner 专属路由覆盖的模型。优先于 Planner 所属槽位（重推理成员）的模型，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的模型；清空全部叶子即恢复跟随槽位。\nmpd.jsonc agentRoutes.Planner.model) — declared fallback: the model directory for this session reports no provider\n—\ndeepseek-v4-flash\ndeepseek-v4-flash-vision-exp\ndeepseek-v4-pro\ndeepseek-flash\n重置为文件值\nPlanner 推理强度（专属路由）\nPlanner 专属路由覆盖的推理强度（off / low / high / max）。优先于 Planner 所属槽位（重推理成员）的推理强度，且即时生效——该成员下次生成/解析即携带新值。未设置的叶子回落到槽位的等级；该模型不支持的等级会让该成员的生成直接报错并点名。\nmpd.jsonc agentRoutes.Planner.reasoningEffort) — declared fallback: the model directory for this session reports no provider\n—\noff\nlow\nhigh\nmax\n重置为文件值\nReviewer —— 专属路由（覆盖槽位 1 · 重推理成员）\n在这里设置的叶子只作用于该成员本人且即时生效——下次生成/解析即携带；未设置的叶子回落到该成员的槽位，清空全部叶子即恢复跟随槽位。\nReviewer 提供商（专属路由）\nReviewer 专属路由覆盖的提供商。agentRoutes 的叶子优先于 Reviewer 的 team 模型槽位：只作用于 Reviewer 本人，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的提供商；清空全部叶子即恢复跟随槽位。\nmpd.jsonc agentRoutes.Reviewer.provider) — declared fallback: the model directory for this session reports no provider\n—\ndeepseek-official\n重置为文件值\nReviewer 模型（专属路由）\nReviewer 专属路由覆盖的模型。优先于 Reviewer 所属槽位（重推理成员）的模型，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的模型；清空全部叶子即恢复跟随槽位。\nmpd.jsonc agentRoutes.Reviewer.model) — declared fallback: the model directory for this session reports no provider\n—\ndeepseek-v4-flash\ndeepseek-v4-flash-vision-exp\ndeepseek-v4-pro\ndeepseek-flash\n重置为文件值\nReviewer 推理强度（专属路由）\nReviewer 专属路由覆盖的推理强度（off / low / high / max）。优先于 Reviewer 所属槽位（重推理成员）的推理强度，且即时生效——该成员下次生成/解析即携带新值。未设置的叶子回落到槽位的等级；该模型不支持的等级会让该成员的生成直接报错并点名。\nmpd.jsonc agentRoutes.Reviewer.reasoningEffort) — declared fallback: the model directory for this session reports no provider\n—\noff\nlow\nhigh\nmax\n重置为文件值\nLead —— 专属路由（覆盖槽位 1 · 重推理成员）\n在这里设置的叶子只作用于该成员本人且即时生效——下次生成/解析即携带；未设置的叶子回落到该成员的槽位，清空全部叶子即恢复跟随槽位。\nLead 提供商（专属路由）\nLead 专属路由覆盖的提供商。agentRoutes 的叶子优先于 Lead 的 team 模型槽位：只作用于 Lead 本人，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的提供商；清空全部叶子即恢复跟随槽位。\nmpd.jsonc agentRoutes.Lead.provider) — declared fallback: the model directory for this session reports no provider\n—\ndeepseek-official\n重置为文件值\nLead 模型（专属路由）\nLead 专属路由覆盖的模型。优先于 Lead 所属槽位（重推理成员）的模型，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的模型；清空全部叶子即恢复跟随槽位。\nmpd.jsonc agentRoutes.Lead.model) — declared fallback: the model directory for this session reports no provider\n—\ndeepseek-v4-flash\ndeepseek-v4-flash-vision-exp\ndeepseek-v4-pro\ndeepseek-flash\n重置为文件值\nLead 推理强度（专属路由）\nLead 专属路由覆盖的推理强度（off / low / high / max）。优先于 Lead 所属槽位（重推理成员）的推理强度，且即时生效——该成员下次生成/解析即携带新值。未设置的叶子回落到槽位的等级；该模型不支持的等级会让该成员的生成直接报错并点名。\nmpd.jsonc agentRoutes.Lead.reasoningEffort) — declared fallback: the model directory for this session reports no provider\n—\noff\nlow\nhigh\nmax\n重置为文件值\nSenior Engineer —— 专属路由（覆盖槽位 1 · 重推理成员）\n在这里设置的叶子只作用于该成员本人且即时生效——下次生成/解析即携带；未设置的叶子回落到该成员的槽位，清空全部叶子即恢复跟随槽位。\nSenior Engineer 提供商（专属路由）\nSenior Engineer 专属路由覆盖的提供商。agentRoutes 的叶子优先于 Senior Engineer 的 team 模型槽位：只作用于 Senior Engineer 本人，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的提供商；清空全部叶子即恢复跟随槽位。\nmpd.jsonc agentRoutes.Senior Engineer.provider) — declared fallback: the model directory for this session reports no provider\n—\ndeepseek-official\n重置为文件值\nSenior Engineer 模型（专属路由）\nSenior Engineer 专属路由覆盖的模型。优先于 Senior Engineer 所属槽位（重推理成员）的模型，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的模型；清空全部叶子即恢复跟随槽位。\nmpd.jsonc agentRoutes.Senior Engineer.model) — declared fallback: the model directory for this session reports no provider\n—\ndeepseek-v4-flash\ndeepseek-v4-flash-vision-exp\ndeepseek-v4-pro\ndeepseek-flash\n重置为文件值\nSenior Engineer 推理强度（专属路由）\nSenior Engineer 专属路由覆盖的推理强度（off / low / high / max）。优先于 Senior Engineer 所属槽位（重推理成员）的推理强度，且即时生效——该成员下次生成/解析即携带新值。未设置的叶子回落到槽位的等级；该模型不支持的等级会让该成员的生成直接报错并点名。\nmpd.jsonc agentRoutes.Senior Engineer.reasoningEffort) — declared fallback: the model directory for this session reports no provider\n—\noff\nlow\nhigh\nmax\n重置为文件值\nResearcher —— 专属路由（覆盖槽位 2 · 分析型成员）\n在这里设置的叶子只作用于该成员本人且即时生效——下次生成/解析即携带；未设置的叶子回落到该成员的槽位，清空全部叶子即恢复跟随槽位。\nResearcher 提供商（专属路由）\nResearcher 专属路由覆盖的提供商。agentRoutes 的叶子优先于 Researcher 的 team 模型槽位：只作用于 Researcher 本人，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的提供商；清空全部叶子即恢复跟随槽位。\nmpd.jsonc agentRoutes.Researcher.provider) — declared fallback: the model directory for this session reports no provider\n—\ndeepseek-official\n重置为文件值\nResearcher 模型（专属路由）\nResearcher 专属路由覆盖的模型。优先于 Researcher 所属槽位（分析型成员）的模型，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的模型；清空全部叶子即恢复跟随槽位。\nmpd.jsonc agentRoutes.Researcher.model) — declared fallback: the model directory for this session reports no provider\n—\ndeepseek-v4-flash\ndeepseek-v4-flash-vision-exp\ndeepseek-v4-pro\ndeepseek-flash\n重置为文件值\nResearcher 推理强度（专属路由）\nResearcher 专属路由覆盖的推理强度（off / low / high / max）。优先于 Researcher 所属槽位（分析型成员）的推理强度，且即时生效——该成员下次生成/解析即携带新值。未设置的叶子回落到槽位的等级；该模型不支持的等级会让该成员的生成直接报错并点名。\nmpd.jsonc agentRoutes.Researcher.reasoningEffort) — declared fallback: the model directory for this session reports no provider\n—\noff\nlow\nhigh\nmax\n重置为文件值\nExplorer —— 专属路由（覆盖槽位 2 · 分析型成员）\n在这里设置的叶子只作用于该成员本人且即时生效——下次生成/解析即携带；未设置的叶子回落到该成员的槽位，清空全部叶子即恢复跟随槽位。\nExplorer 提供商（专属路由）\nExplorer 专属路由覆盖的提供商。agentRoutes 的叶子优先于 Explorer 的 team 模型槽位：只作用于 Explorer 本人，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的提供商；清空全部叶子即恢复跟随槽位。\nmpd.jsonc agentRoutes.Explorer.provider) — declared fallback: the model directory for this session reports no provider\n—\ndeepseek-official\n重置为文件值\nExplorer 模型（专属路由）\nExplorer 专属路由覆盖的模型。优先于 Explorer 所属槽位（分析型成员）的模型，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的模型；清空全部叶子即恢复跟随槽位。\nmpd.jsonc agentRoutes.Explorer.model) — declared fallback: the model directory for this session reports no provider\n—\ndeepseek-v4-flash\ndeepseek-v4-flash-vision-exp\ndeepseek-v4-pro\ndeepseek-flash\n重置为文件值\nExplorer 推理强度（专属路由）\nExplorer 专属路由覆盖的推理强度（off / low / high / max）。优先于 Explorer 所属槽位（分析型成员）的推理强度，且即时生效——该成员下次生成/解析即携带新值。未设置的叶子回落到槽位的等级；该模型不支持的等级会让该成员的生成直接报错并点名。\nmpd.jsonc agentRoutes.Explorer.reasoningEffort) — declared fallback: the model directory for this session reports no provider\n—\noff\nlow\nhigh\nmax\n重置为文件值\nPlan Reviewer —— 专属路由（覆盖槽位 2 · 分析型成员）\n在这里设置的叶子只作用于该成员本人且即时生效——下次生成/解析即携带；未设置的叶子回落到该成员的槽位，清空全部叶子即恢复跟随槽位。\nPlan Reviewer 提供商（专属路由）\nPlan Reviewer 专属路由覆盖的提供商。agentRoutes 的叶子优先于 Plan Reviewer 的 team 模型槽位：只作用于 Plan Reviewer 本人，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的提供商；清空全部叶子即恢复跟随槽位。\nmpd.jsonc agentRoutes.Plan Reviewer.provider) — declared fallback: the model directory for this session reports no provider\n—\ndeepseek-official\n重置为文件值\nPlan Reviewer 模型（专属路由）\nPlan Reviewer 专属路由覆盖的模型。优先于 Plan Reviewer 所属槽位（分析型成员）的模型，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的模型；清空全部叶子即恢复跟随槽位。\nmpd.jsonc agentRoutes.Plan Reviewer.model) — declared fallback: the model directory for this session reports no provider\n—\ndeepseek-v4-flash\ndeepseek-v4-flash-vision-exp\ndeepseek-v4-pro\ndeepseek-flash\n重置为文件值\nPlan Reviewer 推理强度（专属路由）\nPlan Reviewer 专属路由覆盖的推理强度（off / low / high / max）。优先于 Plan Reviewer 所属槽位（分析型成员）的推理强度，且即时生效——该成员下次生成/解析即携带新值。未设置的叶子回落到槽位的等级；该模型不支持的等级会让该成员的生成直接报错并点名。\nmpd.jsonc agentRoutes.Plan Reviewer.reasoningEffort) — declared fallback: the model directory for this session reports no provider\n—\noff\nlow\nhigh\nmax\n重置为文件值\nDeep Worker —— 专属路由（覆盖槽位 3 · 执行型成员）\n在这里设置的叶子只作用于该成员本人且即时生效——下次生成/解析即携带；未设置的叶子回落到该成员的槽位，清空全部叶子即恢复跟随槽位。\nDeep Worker 提供商（专属路由）\nDeep Worker 专属路由覆盖的提供商。agentRoutes 的叶子优先于 Deep Worker 的 team 模型槽位：只作用于 Deep Worker 本人，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的提供商；清空全部叶子即恢复跟随槽位。\nmpd.jsonc agentRoutes.Deep Worker.provider) — declared fallback: the model directory for this session reports no provider\n—\ndeepseek-official\n重置为文件值\nDeep Worker 模型（专属路由）\nDeep Worker 专属路由覆盖的模型。优先于 Deep Worker 所属槽位（执行型成员）的模型，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的模型；清空全部叶子即恢复跟随槽位。\nmpd.jsonc agentRoutes.Deep Worker.model) — declared fallback: the model directory for this session reports no provider\n—\ndeepseek-v4-flash\ndeepseek-v4-flash-vision-exp\ndeepseek-v4-pro\ndeepseek-flash\n重置为文件值\nDeep Worker 推理强度（专属路由）\nDeep Worker 专属路由覆盖的推理强度（off / low / high / max）。优先于 Deep Worker 所属槽位（执行型成员）的推理强度，且即时生效——该成员下次生成/解析即携带新值。未设置的叶子回落到槽位的等级；该模型不支持的等级会让该成员的生成直接报错并点名。\nmpd.jsonc agentRoutes.Deep Worker.reasoningEffort) — declared fallback: the model directory for this session reports no provider\n—\noff\nlow\nhigh\nmax\n重置为文件值\nJunior Engineer —— 专属路由（覆盖槽位 3 · 执行型成员）\n在这里设置的叶子只作用于该成员本人且即时生效——下次生成/解析即携带；未设置的叶子回落到该成员的槽位，清空全部叶子即恢复跟随槽位。\nJunior Engineer 提供商（专属路由）\nJunior Engineer 专属路由覆盖的提供商。agentRoutes 的叶子优先于 Junior Engineer 的 team 模型槽位：只作用于 Junior Engineer 本人，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的提供商；清空全部叶子即恢复跟随槽位。\nmpd.jsonc agentRoutes.Junior Engineer.provider) — declared fallback: the model directory for this session reports no provider\n—\ndeepseek-official\n重置为文件值\nJunior Engineer 模型（专属路由）\nJunior Engineer 专属路由覆盖的模型。优先于 Junior Engineer 所属槽位（执行型成员）的模型，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的模型；清空全部叶子即恢复跟随槽位。\nmpd.jsonc agentRoutes.Junior Engineer.model) — declared fallback: the model directory for this session reports no provider\n—\ndeepseek-v4-flash\ndeepseek-v4-flash-vision-exp\ndeepseek-v4-pro\ndeepseek-flash\n重置为文件值\nJunior Engineer 推理强度（专属路由）\nJunior Engineer 专属路由覆盖的推理强度（off / low / high / max）。优先于 Junior Engineer 所属槽位（执行型成员）的推理强度，且即时生效——该成员下次生成/解析即携带新值。未设置的叶子回落到槽位的等级；该模型不支持的等级会让该成员的生成直接报错并点名。\nmpd.jsonc agentRoutes.Junior Engineer.reasoningEffort) — declared fallback: the model directory for this session reports no provider\n—\noff\nlow\nhigh\nmax\n重置为文件值\nVision Analyst —— 专属路由（覆盖槽位 4 · 视觉成员）\n在这里设置的叶子只作用于该成员本人且即时生效——下次生成/解析即携带；未设置的叶子回落到该成员的槽位，清空全部叶子即恢复跟随槽位。\nVision Analyst 提供商（专属路由）\nVision Analyst 专属路由覆盖的提供商。agentRoutes 的叶子优先于 Vision Analyst 的 team 模型槽位：只作用于 Vision Analyst 本人，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的提供商；清空全部叶子即恢复跟随槽位。\nmpd.jsonc agentRoutes.Vision Analyst.provider) — declared fallback: the model directory for this session reports no provider\n—\ndeepseek-official\n重置为文件值\nVision Analyst 模型（专属路由）\nVision Analyst 专属路由覆盖的模型。优先于 Vision Analyst 所属槽位（视觉成员）的模型，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的模型；清空全部叶子即恢复跟随槽位。\nmpd.jsonc agentRoutes.Vision Analyst.model) — declared fallback: the model directory for this session reports no provider\n—\ndeepseek-v4-flash\ndeepseek-v4-flash-vision-exp\ndeepseek-v4-pro\ndeepseek-flash\n重置为文件值\nVision Analyst 推理强度（专属路由）\nVision Analyst 专属路由覆盖的推理强度（off / low / high / max）。优先于 Vision Analyst 所属槽位（视觉成员）的推理强度，且即时生效——该成员下次生成/解析即携带新值。未设置的叶子回落到槽位的等级；该模型不支持的等级会让该成员的生成直接报错并点名。\nmpd.jsonc agentRoutes.Vision Analyst.reasoningEffort) — declared fallback: the model directory for this session reports no provider\n—\noff\nlow\nhigh\nmax\n重置为文件值\nCtrl+A 依赖视图（旧版 dsh-tui）\nmpd.jsonc tui.dashboardKey\n重置为文件值\n保存\n放弃\n该页面不是回环地址：设置写入仅保留在进程内，不会写入宿主文档。",
+  "mpdControls": [
+    {
+      "label": "",
+      "kind": "input",
+      "value": ""
+    },
+    {
+      "label": "",
+      "kind": "input",
+      "value": ""
+    },
+    {
+      "label": "行内 diff 上限mpd.jsonc hashline.maxDiffChars重置为文件值",
+      "kind": "input",
+      "value": "20000"
+    },
+    {
+      "label": "注释检查mpd.jsonc commentChecker.autoCheck重置为文件值",
+      "kind": "input",
+      "value": "true"
+    },
+    {
+      "label": "Ultrawork 轮数mpd.jsonc ulw.maxRounds重置为文件值",
+      "kind": "input",
+      "value": "6"
+    },
+    {
+      "label": "记忆后端mpd.jsonc memory.vcs—gitsvn重置为文件值",
+      "kind": "select",
+      "value": "git"
+    },
+    {
+      "label": "团队状态目录mpd.jsonc team.stateDir重置为文件值",
+      "kind": "input",
+      "value": ".mpd/team"
+    },
+    {
+      "label": "Boulder 目录mpd.jsonc boulder.dir重置为文件值",
+      "kind": "input",
+      "value": ""
+    },
+    {
+      "label": "看门狗启用mpd.jsonc watchdog.enabled重置为文件值",
+      "kind": "input",
+      "value": "true"
+    },
+    {
+      "label": "静默告警阈值（毫秒）mpd.jsonc watchdog.warnSilenceMs重置为文件值",
+      "kind": "input",
+      "value": "600000"
+    },
+    {
+      "label": "看门狗轮询间隔（毫秒）mpd.jsonc watchdog.tickIntervalMs重置为文件值",
+      "kind": "input",
+      "value": "15000"
+    },
+    {
+      "label": "升级前连续告警次数mpd.jsonc watchdog.warnStreakToEscalate重置为文件值",
+      "kind": "input",
+      "value": "6"
+    },
+    {
+      "label": "升级时的动作mpd.jsonc watchdog.actionOnEscalate—pausewarn-only重置为文件值",
+      "kind": "select",
+      "value": "warn-only"
+    },
+    {
+      "label": "工具在飞上限（毫秒，0 表示不设上限）mpd.jsonc watchdog.toolInFlightMaxMs重置为文件值",
+      "kind": "input",
+      "value": "900000"
+    },
+    {
+      "label": "暂停持有有效期（毫秒，0 表示不设有效期）mpd.jsonc watchdog.holdTtlMs重置为文件值",
+      "kind": "input",
+      "value": "900000"
+    },
+    {
+      "label": "槽位 1 提供商（重推理成员）这一档的提供商。各槽位合起来是 team 成员的默认模型路由：建队时，重推理成员（Architect、Planner、Reviewer、Lead、Senior Engineer）会按本档的 提供商+模型+推理强",
+      "kind": "select",
+      "value": "deepseek-official"
+    },
+    {
+      "label": "槽位 1 模型（重推理成员）这一档的模型。与上面的提供商共同决定 重推理成员（Architect、Planner、Reviewer、Lead、Senior Engineer）建队时使用的模型。改它的影响：同上，下次建队生效；模型与提供商不匹",
+      "kind": "select",
+      "value": "deepseek-v4-flash"
+    },
+    {
+      "label": "槽位 1 推理强度（重推理成员）这一档的推理强度（off / low / high / max）。它决定 重推理成员（Architect、Planner、Reviewer、Lead、Senior Engineer）建队时的思考深度：max ",
+      "kind": "select",
+      "value": "max"
+    },
+    {
+      "label": "槽位 2 提供商（分析型成员）这一档的提供商。各槽位合起来是 team 成员的默认模型路由：建队时，分析型成员（Researcher、Explorer、Plan Reviewer）会按本档的 提供商+模型+推理强度 启动。改它的影响：这些成",
+      "kind": "select",
+      "value": "deepseek-official"
+    },
+    {
+      "label": "槽位 2 模型（分析型成员）这一档的模型。与上面的提供商共同决定 分析型成员（Researcher、Explorer、Plan Reviewer）建队时使用的模型。改它的影响：同上，下次建队生效；模型与提供商不匹配、或该提供商没有这个模型时",
+      "kind": "select",
+      "value": "deepseek-v4-flash"
+    },
+    {
+      "label": "槽位 2 推理强度（分析型成员）这一档的推理强度（off / low / high / max）。它决定 分析型成员（Researcher、Explorer、Plan Reviewer）建队时的思考深度：max 最强、high 是常规平衡、",
+      "kind": "select",
+      "value": "high"
+    },
+    {
+      "label": "槽位 3 提供商（执行型成员）这一档的提供商。各槽位合起来是 team 成员的默认模型路由：建队时，执行型成员（Deep Worker、Junior Engineer）会按本档的 提供商+模型+推理强度 启动。改它的影响：这些成员下次建队即",
+      "kind": "select",
+      "value": "deepseek-official"
+    },
+    {
+      "label": "槽位 3 模型（执行型成员）这一档的模型。与上面的提供商共同决定 执行型成员（Deep Worker、Junior Engineer）建队时使用的模型。改它的影响：同上，下次建队生效；模型与提供商不匹配、或该提供商没有这个模型时，建队会点名",
+      "kind": "select",
+      "value": "deepseek-v4-flash"
+    },
+    {
+      "label": "槽位 3 推理强度（执行型成员）这一档的推理强度（off / low / high / max）。它决定 执行型成员（Deep Worker、Junior Engineer）建队时的思考深度：max 最强、high 是常规平衡、low 更省",
+      "kind": "select",
+      "value": "high"
+    },
+    {
+      "label": "槽位 4 提供商（视觉成员）这一档的提供商。它只驱动 Vision Analyst（唯一负责看图/读图/分析截图的成员）。改它的影响：下次建队生效；填成不可用会让建队直接失败并点名成员与槽位。注意本档的模型必须是支持图像输入的视觉模型（例如",
+      "kind": "select",
+      "value": "deepseek-official"
+    },
+    {
+      "label": "槽位 4 模型（视觉成员）这一档的模型。必须选支持图像输入的模型：Vision Analyst 的全部价值在于读图，纯文本模型会让它的读图任务直接失败。改它的影响：下次建队生效。mpd.jsonc teamModels.slot4.mode",
+      "kind": "select",
+      "value": "deepseek-v4-flash-vision-exp"
+    },
+    {
+      "label": "槽位 4 推理强度（视觉成员）这一档的推理强度（off / low / high / max）。决定 Vision Analyst 读图时的思考深度。改它的影响：下次建队生效；该模型不支持的等级会在建队时报错并点名本槽位。例外：若该模型的目",
+      "kind": "select",
+      "value": "high"
+    },
+    {
+      "label": "Architect 提供商（专属路由）Architect 专属路由覆盖的提供商。agentRoutes 的叶子优先于 Architect 的 team 模型槽位：只作用于 Architect 本人，且即时生效——该成员下次生成/解析即携带新",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Architect 模型（专属路由）Architect 专属路由覆盖的模型。优先于 Architect 所属槽位（重推理成员）的模型，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的模型；清空",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Architect 推理强度（专属路由）Architect 专属路由覆盖的推理强度（off / low / high / max）。优先于 Architect 所属槽位（重推理成员）的推理强度，且即时生效——该成员下次生成/解析即携带新值。",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Planner 提供商（专属路由）Planner 专属路由覆盖的提供商。agentRoutes 的叶子优先于 Planner 的 team 模型槽位：只作用于 Planner 本人，且即时生效——该成员下次生成/解析即携带新值，无需重启、也",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Planner 模型（专属路由）Planner 专属路由覆盖的模型。优先于 Planner 所属槽位（重推理成员）的模型，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的模型；清空全部叶子即恢",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Planner 推理强度（专属路由）Planner 专属路由覆盖的推理强度（off / low / high / max）。优先于 Planner 所属槽位（重推理成员）的推理强度，且即时生效——该成员下次生成/解析即携带新值。未设置的叶子",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Reviewer 提供商（专属路由）Reviewer 专属路由覆盖的提供商。agentRoutes 的叶子优先于 Reviewer 的 team 模型槽位：只作用于 Reviewer 本人，且即时生效——该成员下次生成/解析即携带新值，无需",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Reviewer 模型（专属路由）Reviewer 专属路由覆盖的模型。优先于 Reviewer 所属槽位（重推理成员）的模型，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的模型；清空全部叶",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Reviewer 推理强度（专属路由）Reviewer 专属路由覆盖的推理强度（off / low / high / max）。优先于 Reviewer 所属槽位（重推理成员）的推理强度，且即时生效——该成员下次生成/解析即携带新值。未设置",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Lead 提供商（专属路由）Lead 专属路由覆盖的提供商。agentRoutes 的叶子优先于 Lead 的 team 模型槽位：只作用于 Lead 本人，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Lead 模型（专属路由）Lead 专属路由覆盖的模型。优先于 Lead 所属槽位（重推理成员）的模型，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的模型；清空全部叶子即恢复跟随槽位。mpd",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Lead 推理强度（专属路由）Lead 专属路由覆盖的推理强度（off / low / high / max）。优先于 Lead 所属槽位（重推理成员）的推理强度，且即时生效——该成员下次生成/解析即携带新值。未设置的叶子回落到槽位的等级；",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Senior Engineer 提供商（专属路由）Senior Engineer 专属路由覆盖的提供商。agentRoutes 的叶子优先于 Senior Engineer 的 team 模型槽位：只作用于 Senior Engineer ",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Senior Engineer 模型（专属路由）Senior Engineer 专属路由覆盖的模型。优先于 Senior Engineer 所属槽位（重推理成员）的模型，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Senior Engineer 推理强度（专属路由）Senior Engineer 专属路由覆盖的推理强度（off / low / high / max）。优先于 Senior Engineer 所属槽位（重推理成员）的推理强度，且即时生效",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Researcher 提供商（专属路由）Researcher 专属路由覆盖的提供商。agentRoutes 的叶子优先于 Researcher 的 team 模型槽位：只作用于 Researcher 本人，且即时生效——该成员下次生成/解析",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Researcher 模型（专属路由）Researcher 专属路由覆盖的模型。优先于 Researcher 所属槽位（分析型成员）的模型，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的模型",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Researcher 推理强度（专属路由）Researcher 专属路由覆盖的推理强度（off / low / high / max）。优先于 Researcher 所属槽位（分析型成员）的推理强度，且即时生效——该成员下次生成/解析即携带",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Explorer 提供商（专属路由）Explorer 专属路由覆盖的提供商。agentRoutes 的叶子优先于 Explorer 的 team 模型槽位：只作用于 Explorer 本人，且即时生效——该成员下次生成/解析即携带新值，无需",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Explorer 模型（专属路由）Explorer 专属路由覆盖的模型。优先于 Explorer 所属槽位（分析型成员）的模型，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的模型；清空全部叶",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Explorer 推理强度（专属路由）Explorer 专属路由覆盖的推理强度（off / low / high / max）。优先于 Explorer 所属槽位（分析型成员）的推理强度，且即时生效——该成员下次生成/解析即携带新值。未设置",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Plan Reviewer 提供商（专属路由）Plan Reviewer 专属路由覆盖的提供商。agentRoutes 的叶子优先于 Plan Reviewer 的 team 模型槽位：只作用于 Plan Reviewer 本人，且即时生效",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Plan Reviewer 模型（专属路由）Plan Reviewer 专属路由覆盖的模型。优先于 Plan Reviewer 所属槽位（分析型成员）的模型，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Plan Reviewer 推理强度（专属路由）Plan Reviewer 专属路由覆盖的推理强度（off / low / high / max）。优先于 Plan Reviewer 所属槽位（分析型成员）的推理强度，且即时生效——该成员下",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Deep Worker 提供商（专属路由）Deep Worker 专属路由覆盖的提供商。agentRoutes 的叶子优先于 Deep Worker 的 team 模型槽位：只作用于 Deep Worker 本人，且即时生效——该成员下次生",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Deep Worker 模型（专属路由）Deep Worker 专属路由覆盖的模型。优先于 Deep Worker 所属槽位（执行型成员）的模型，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Deep Worker 推理强度（专属路由）Deep Worker 专属路由覆盖的推理强度（off / low / high / max）。优先于 Deep Worker 所属槽位（执行型成员）的推理强度，且即时生效——该成员下次生成/解析",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Junior Engineer 提供商（专属路由）Junior Engineer 专属路由覆盖的提供商。agentRoutes 的叶子优先于 Junior Engineer 的 team 模型槽位：只作用于 Junior Engineer ",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Junior Engineer 模型（专属路由）Junior Engineer 专属路由覆盖的模型。优先于 Junior Engineer 所属槽位（执行型成员）的模型，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Junior Engineer 推理强度（专属路由）Junior Engineer 专属路由覆盖的推理强度（off / low / high / max）。优先于 Junior Engineer 所属槽位（执行型成员）的推理强度，且即时生效",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Vision Analyst 提供商（专属路由）Vision Analyst 专属路由覆盖的提供商。agentRoutes 的叶子优先于 Vision Analyst 的 team 模型槽位：只作用于 Vision Analyst 本人，且",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Vision Analyst 模型（专属路由）Vision Analyst 专属路由覆盖的模型。优先于 Vision Analyst 所属槽位（视觉成员）的模型，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Vision Analyst 推理强度（专属路由）Vision Analyst 专属路由覆盖的推理强度（off / low / high / max）。优先于 Vision Analyst 所属槽位（视觉成员）的推理强度，且即时生效——该成",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Ctrl+A 依赖视图（旧版 dsh-tui）mpd.jsonc tui.dashboardKey重置为文件值",
+      "kind": "input",
+      "value": "true"
+    }
+  ],
+  "presetsClick": "clicked",
+  "agentPresetsText": "新会话\n插件\n自动化任务\n工作区\nws\n新会话\n更多\n探索未至之境\n预览版\nws\n标准模式\n描述你想要构建的内容, / 调用指令, @ 文件或对话\n工作区内修改\n请选择模型\n设置\n通用设置\n模型\n内置插件\nAgent 预设\nMPD\n打开配置文件\n关闭\nAgent 预设\n选择 Agent 的工具和工作方式。日常任务用「标准模式」，扩展 DSH 的能力用「创造模式」。\n内置\n标准模式\n新任务默认\nstandard\n处理代码、文件和资料，适合大多数任务。Agent 会按需使用检索、编辑和终端等工具。\n模式说明\n如何使用\nPTC 模式\n内置\nptc\n包含标准模式的所有能力，更适合批量调用工具，并对结果进行筛选、整理、去重、统计或汇总的任务。\n模式说明\n如何使用\n极简模式\n内置\nminimal\nAgent 使用终端和图片读取工具，并支持上下文压缩，适合测试和对比其基础表现。\n模式说明\n如何使用\n创造模式\n内置\ncordis\n用对话定制 DSH：让 Agent 编写插件，添加新功能或界面；也能组合工具和提示词，创建自己的模式。\n模式说明\n如何使用\n自定义\nMPD (Main Working Agent)\n自定义\nmpd\nThe my-power-dsh main agent: reads AGENT.md/AGENTS.md/CLAUDE.md for every project, works natively, consults the specialists in single calls (Architect/Researcher/Planner/Deep Worker/Senior Engineer/Lead/Explorer/Reviewer/Plan Reviewer/Vision Analyst/Junior Engineer) via mpd_role_spawn, and runs teams through the official @deepseek-ai/dsh-experimental-agent-team plugin.\n让 Agent 帮我创建预设模式",
+  "browserLocale": "zh",
+  "sessionCreate": {
+    "status": 200,
+    "body": "{\"type\":\"server-response\",\"rpcId\":\"capture-1792573000120\",\"result\":{\"ok\":true,\"value\":{\"sessionId\":\"session-2f07baa0-9274-49ee-b3e1-0dd08298afe1\",\"agentPreset\":\"mpd\"}}}"
+  },
+  "sessionId": "session-2f07baa0-9274-49ee-b3e1-0dd08298afe1",
+  "sidebarButton": 1,
+  "teamTabClick": "clicked",
+  "teamPanelText": "新会话\n插件\n自动化任务\n工作区\nws\n新会话\n更多\n探索未至之境\n预览版\nws\n标准模式\n描述你想要构建的内容, / 调用指令, @ 文件或对话\n工作区内修改\n请选择模型\n团队\nwebui-tui-i18n\nactive\nteam-2026-10-05T22-30-00.000Z\n已批准 2026-10-05T22:30:00.000Z\n工作区 ws\n1 进行中 · 1 可领取 · 1 受阻 · 1 因前置失败而释放\n2/6 已完成 · 1 进行中 / 1 可领取\n进度 33%\nnative 执行器\n成员 (5)\nlead\n队长\n0/0\ndeepseek-official/deepseek-v4-pro\nweb-team-gui\n高级工程师\n1/2\ndeepseek-official/deepseek-flash\n当前 T5\nweb-settings-card\n高级工程师\n0/1\ndeepseek-official/deepseek-flash\n当前 T2\ntui-model-i18n\n高级工程师\n1/1\ndeepseek-official/deepseek-flash\nui-reviewer\n审查者\n0/1\ndeepseek-official/deepseek-v4-pro\n当前 T4\n任务 (6)\n✓\nT1\nREQ\nWeb: rebuild the team panel body on the payload projection\n✓\nT3\nWRK\nTUI: /mpd-model pick-list over the live catalog\n◐\nT2\nWRK\nWeb: restyle the settings card on the official design tokens\n✗\nT4\nREV\nReview the integrated diff against the frozen contracts\n○\nT5\nFIX\nRepair the findings the review raised\n○\nT6\nINT\nIntegrate: thread the translator, rebuild dists, capture evidence",
+  "teamRouteRequests": [],
+  "teamPanelSession": "",
+  "teamPanelNodesAfterSeed": 6,
+  "teamTabId": "team-2026-10-05T22-30-00.000Z",
+  "teamGraph": "ranks=4 edges=4",
+  "teamNodes": [
+    "T1",
+    "T3",
+    "T2",
+    "T4",
+    "T5",
+    "T6"
+  ],
+  "teamEdges": [
+    "T4<-T1",
+    "T4<-T3",
+    "T5<-T4",
+    "T6<-T5"
+  ],
+  "teamFixtureSubjects": [
+    "Web: rebuild the team panel body on the payload projection",
+    "Web: restyle the settings card on the official design tokens",
+    "TUI: /mpd-model pick-list over the live catalog",
+    "Review the integrated diff against the frozen contracts",
+    "Repair the findings the review raised",
+    "Integrate: thread the translator, rebuild dists, capture evidence"
+  ],
+  "teamFixtureTasks": [
+    {
+      "id": "T1",
+      "subject": "Web: rebuild the team panel body on the payload projection"
+    },
+    {
+      "id": "T2",
+      "subject": "Web: restyle the settings card on the official design tokens"
+    },
+    {
+      "id": "T3",
+      "subject": "TUI: /mpd-model pick-list over the live catalog"
+    },
+    {
+      "id": "T4",
+      "subject": "Review the integrated diff against the frozen contracts"
+    },
+    {
+      "id": "T5",
+      "subject": "Repair the findings the review raised"
+    },
+    {
+      "id": "T6",
+      "subject": "Integrate: thread the translator, rebuild dists, capture evidence"
+    }
+  ],
+  "teamFixtureSubjectsCjk": [],
+  "teamHoverReachable": true,
+  "teamRanks": {
+    "T1": 0,
+    "T3": 0,
+    "T2": 0,
+    "T4": 1,
+    "T5": 2,
+    "T6": 3
+  },
+  "teamForwardEdges": [
+    "T4<-T1",
+    "T4<-T3",
+    "T5<-T4",
+    "T6<-T5"
+  ],
+  "teamHoverTarget": "T6",
+  "teamFocusWhileHovered": "chain",
+  "teamFocusAfterLeave": "none",
+  "teamNodeBoxes": [
+    {
+      "id": "T1",
+      "x": 905,
+      "y": 574,
+      "w": 144,
+      "h": 42
+    },
+    {
+      "id": "T3",
+      "x": 905,
+      "y": 626,
+      "w": 144,
+      "h": 42
+    },
+    {
+      "id": "T2",
+      "x": 905,
+      "y": 678,
+      "w": 144,
+      "h": 42
+    },
+    {
+      "id": "T4",
+      "x": 1073,
+      "y": 626,
+      "w": 144,
+      "h": 42
+    },
+    {
+      "id": "T5",
+      "x": 1241,
+      "y": 626,
+      "w": 144,
+      "h": 42
+    },
+    {
+      "id": "T6",
+      "x": 1409,
+      "y": 626,
+      "w": 144,
+      "h": 42
+    }
+  ],
+  "teamNodeOverlaps": [],
+  "teamDetailAfterClick": "T6",
+  "dagCurves": [
+    {
+      "edge": "T4<-T1",
+      "route": "156,25,12,1;168,25,1,41;168,66,13,1|R175,62,5,8",
+      "d": "M 156 25 L 162 25 Q 168 25 168 31 L 168 60 C 168 60 174 66 180 66",
+      "tip": "180,62,0,8",
+      "head": "1"
+    },
+    {
+      "edge": "T4<-T3",
+      "route": "156,77,23,1;179,77,1,1;179,78,2,1|R175,74,5,8",
+      "d": "M 156 77 L 178.5 77 Q 179 77 179 77.5 L 179 78 L 180 78",
+      "tip": "180,74,0,8",
+      "head": "1"
+    },
+    {
+      "edge": "T5<-T4",
+      "route": "324,90,12,1;336,71,1,19;336,71,13,1|R343,67,5,8",
+      "d": "M 324 90 L 330 90 Q 336 90 336 84 L 336 77 C 336 77 342 71 348 71",
+      "tip": "348,67,0,8",
+      "head": "1"
+    },
+    {
+      "edge": "T6<-T5",
+      "route": "492,83,12,1;504,78,1,5;504,78,13,1|R511,74,5,8",
+      "d": "M 492 83 L 501.5 83 Q 504 83 504 80.5 L 504 80.5 C 504 80.5 506.5 78 516 78",
+      "tip": "516,74,0,8",
+      "head": "1"
+    }
+  ],
+  "dagNodeBoxes": [
+    {
+      "id": "T1",
+      "lx": 12,
+      "ly": 4,
+      "lw": 144,
+      "lh": 42,
+      "vx": 905,
+      "vy": 574,
+      "vw": 144,
+      "vh": 42,
+      "text": "✓T1REQWeb: rebuild the team panel body on the payload projection"
+    },
+    {
+      "id": "T3",
+      "lx": 12,
+      "ly": 56,
+      "lw": 144,
+      "lh": 42,
+      "vx": 905,
+      "vy": 626,
+      "vw": 144,
+      "vh": 42,
+      "text": "✓T3WRKTUI: /mpd-model pick-list over the live catalog"
+    },
+    {
+      "id": "T2",
+      "lx": 12,
+      "ly": 108,
+      "lw": 144,
+      "lh": 42,
+      "vx": 905,
+      "vy": 678,
+      "vw": 144,
+      "vh": 42,
+      "text": "◐T2WRKWeb: restyle the settings card on the official design tokens"
+    },
+    {
+      "id": "T4",
+      "lx": 180,
+      "ly": 56,
+      "lw": 144,
+      "lh": 42,
+      "vx": 1073,
+      "vy": 626,
+      "vw": 144,
+      "vh": 42,
+      "text": "✗T4REVReview the integrated diff against the frozen contracts"
+    },
+    {
+      "id": "T5",
+      "lx": 348,
+      "ly": 56,
+      "lw": 144,
+      "lh": 42,
+      "vx": 1241,
+      "vy": 626,
+      "vw": 144,
+      "vh": 42,
+      "text": "○T5FIXRepair the findings the review raised"
+    },
+    {
+      "id": "T6",
+      "lx": 516,
+      "ly": 56,
+      "lw": 144,
+      "lh": 42,
+      "vx": 1409,
+      "vy": 626,
+      "vw": 144,
+      "vh": 42,
+      "text": "○T6INTIntegrate: thread the translator, rebuild dists, capture evidence"
+    }
+  ],
+  "dagDrawingText": "✓T1REQWeb: rebuild the team panel body on the payload projection✓T3WRKTUI: /mpd-model pick-list over the live catalog◐T2WRKWeb: restyle the settings card on the official design tokens✗T4REVReview the integrated diff against the frozen contracts○T5FIXRepair the findings the review raised○T6INTIntegrate: thread the translator, rebuild dists, capture evidence",
+  "dagDetailText": "\n.mpd-dag-node { position: absolute; left: 0; top: 0; box-sizing: border-box; overflow: hidden; cursor: pointer; border: 0.5px solid rgba(17,24,39,.22); border-radius: 6px; padding: 3px 5px; font-family: var(--dsw-font-mono, ui-monospace, monospace); font-size: 10px; line-height: 1.3; color: #111827; background: var(--dsw-alias-bg-layer-1, #ffffff); background: linear-gradient(180deg, rgba(255,255,255,.92) 0%, rgba(255,255,255,.62) 55%, rgba(238,243,251,.58) 100%); -webkit-backdrop-filter: blur(14px) saturate(1.25); backdrop-filter: blur(14px) saturate(1.25); box-shadow: inset 0 1px 0 rgba(255,255,255,.95), inset 0 -1px 0 rgba(17,24,39,.06), 0 1px 2px rgba(16,24,40,.08), 0 6px 18px rgba(16,24,40,.12); transition: transform 420ms cubic-bezier(.2,.8,.2,1), opacity 200ms, border-color 200ms, box-shadow 200ms; will-change: transform; }\n@keyframes mpd-dag-breathe { 0%, 100% { box-shadow: inset 0 1px 0 rgba(255,255,255,.95), inset 0 -1px 0 rgba(17,24,39,.06), 0 0 0 1px rgba(77,107,254,.55), 0 0 0 5px rgba(77,107,254,.20), 0 8px 24px rgba(77,107,254,.30); border-color: rgba(77,107,254,.75); } 50% { box-shadow: inset 0 1px 0 rgba(255,255,255,.95), inset 0 -1px 0 rgba(17,24,39,.06), 0 0 0 2px rgba(77,107,254,.90), 0 0 0 9px rgba(77,107,254,.32), 0 10px 30px rgba(77,107,254,.40); border-color: rgba(77,107,254,.95); } }\n.mpd-dag-node[data-visual=\"running\"] { animation: mpd-dag-breathe 2.4s ease-in-out infinite; }\n.mpd-dag-tip { position: fixed; z-index: 2147483000; pointer-events: none; box-sizing: border-box; padding: 8px 10px; border: 0.5px solid rgba(17,24,39,.45); border-radius: 10px; background: rgba(255,255,255,.78); color: #111; font-family: var(--dsw-font-mono, ui-monospace, monospace); font-size: 11px; line-height: 1.4; box-shadow: 0 6px 22px rgba(16,24,40,.18); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }\n.mpd-dag-tip[data-pinned=\"true\"] { background: #ffffff; opacity: 1; }\n.mpd-dag-tip-row { display: flex; gap: 6px; justify-content: space-between; white-space: nowrap; overflow: hidden; }\n.mpd-dag-tip-label { color: #4b5563; }\n.mpd-dag-tip-subject { display: block; flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; margin-top: 2px; text-align: right; }\n.mpd-dag-tip-bar { height: 5px; border-radius: 3px; background: rgba(17,24,39,.12); overflow: hidden; margin-top: 4px; }\n.mpd-dag-tip-fill { height: 100%; background: #111; }\n@keyframes mpd-dag-dash { to { stroke-dashoffset: -12; } }\n.mpd-dag-flow { stroke-dasharray: 6 6; animation: mpd-dag-dash 1s linear infinite; }\n@media (prefers-reduced-motion: reduce) { .mpd-dag-node { transition: none; } .mpd-dag-node[data-visual=\"running\"] { animation: none; } .mpd-dag-flow { animation: none; } }\nwebui-tui-i18nactiveteam-2026-10-05T22-30-00.000Z已批准 2026-10-05T22:30:00.000Z工作区 ws1 进行中 · 1 可领取 · 1 受阻 · 1 因前置失败而释放2/6 已完成 · 1 进行中 / 1 可领取进度 33%native 执行器成员 (5)lead队长0/0deepseek-official/deepseek-v4-proweb-team-gui高级工程师1/2deepseek-official/deepseek-flash当前 T5web-settings-card高级工程师0/1deepseek-official/deepseek-flash当前 T2tui-model-i18n高级工程师1/1deepseek-official/deepseek-flashui-reviewer审查者0/1deepseek-official/deepseek-v4-pro当前 T4任务 (6)✓T1REQWeb: rebuild the team panel body on the payload projection✓T3WRKTUI: /mpd-model pick-list over the live catalog◐T2WRKWeb: restyle the settings card on the official design tokens✗T4REVReview the integrated diff against the frozen contracts○T5FIXRepair the findings the review raised○T6INTIntegrate: thread the translator, rebuild dists, capture evidence状态受阻负责人未分配耗时-任务Integrate: thread the translator, rebuild…进度 0%Integrate: thread the translator, rebuild dists, capture evidence关闭T6 · 集成 · ○ blocked前置T5后继—该任务没有已冻结的验收契约。",
+  "dagDetailPins": [
+    {
+      "id": "T1",
+      "subject": "Web: rebuild the team panel body on the payload projection",
+      "ideographs": false,
+      "text": "Web: rebuild the team panel body on the payload projection关闭T1 · 需求 · ✓ completed负责人web-team-gui前置—后继T4该任务没有已冻结的验收契约。",
+      "keeps": true
+    }
+  ],
+  "dagScroller": {
+    "clientWidth": 695,
+    "scrollWidth": 695,
+    "clientHeight": 154,
+    "scrollHeight": 162
+  },
+  "mpdBindingProbe": {
+    "diffLimit": "20000",
+    "autoCheck": "true",
+    "controls": 61
+  },
+  "checks": {
+    "mpdPresetOffered": true,
+    "pluginsShowsInstalledBundle": true,
+    "presetsShowMpdDefault": true,
+    "mpdSectionRendered": true,
+    "sessionCreatedOnMpdPreset": true,
+    "teamPanelShowsRoster": true,
+    "teamGraphDrewEdges": true,
+    "dagEdgesAreCurves": true,
+    "dagOnePathPerEdge": true,
+    "dagTipIsZeroWidth": true,
+    "dagTipTouchesBorder": true,
+    "dagDrawingHasNoCjk": true,
+    "dagDetailKeepsCjk": true,
+    "teamGraphEdgesResolve": true,
+    "teamGraphHoverFocusChain": true,
+    "teamGraphNodesDoNotOverlap": true,
+    "teamGraphClickPinsDetail": true,
+    "mpdControlsBound": true
+  },
+  "ok": true,
+  "visibleText": "新会话\n插件\n自动化任务\n工作区\nws\n新会话\n更多\n探索未至之境\n预览版\nws\n标准模式\n描述你想要构建的内容, / 调用指令, @ 文件或对话\n工作区内修改\n请选择模型\n团队\nwebui-tui-i18n\nactive\nteam-2026-10-05T22-30-00.000Z\n已批准 2026-10-05T22:30:00.000Z\n工作区 ws\n1 进行中 · 1 可领取 · 1 受阻 · 1 因前置失败而释放\n2/6 已完成 · 1 进行中 / 1 可领取\n进度 33%\nnative 执行器\n成员 (5)\nlead\n队长\n0/0\ndeepseek-official/deepseek-v4-pro\nweb-team-gui\n高级工程师\n1/2\ndeepseek-official/deepseek-flash\n当前 T5\nweb-settings-card\n高级工程师\n0/1\ndeepseek-official/deepseek-flash\n当前 T2\ntui-model-i18n\n高级工程师\n1/1\ndeepseek-official/deepseek-flash\nui-reviewer\n审查者\n0/1\ndeepseek-official/deepseek-v4-pro\n当前 T4\n任务 (6)\n✓\nT1\nREQ\nWeb: rebuild the team panel body on the payload projection\n✓\nT3\nWRK\nTUI: /mpd-model pick-list over the live catalog\n◐\nT2\nWRK\nWeb: restyle the settings card on the official design tokens\n✗\nT4\nREV\nReview the integrated diff against the frozen contracts\n○\nT5\nFIX\nRepair the findings the review raised\n○\nT6\nINT\nIntegrate: thread the translator, rebuild dists, capture evidence\nWeb: rebuild the team panel body on the payload projection\n关闭\nT1 · 需求 · ✓ completed\n负责人\nweb-team-gui\n前置\n—\n后继\nT4\n该任务没有已冻结的验收契约。"
+}
