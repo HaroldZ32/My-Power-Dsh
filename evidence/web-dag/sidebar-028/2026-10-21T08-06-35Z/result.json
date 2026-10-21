@@ -27,8 +27,8 @@
     "visual": "post-fix real-browser capture on 6f517b58: 18/18 checks, 9/9 steps on normal and CJK boards; hover card beside T6/T5, fan-in tips 12px apart, stronger glow, 6px dash flow. defa50ea only adds the reduced-motion hide and cancelled-finishedAt rules, so the depicted board states and images are unchanged. The current client fingerprint is f446e783...fffdd."
   },
   "docsImages": {
-    "en": "docs/assets/images/web-team-board.png and docs/assets/images/hero-web-tui.png from docker-post-fix/ui-shots/07-team-graph-hover.png",
-    "zh": "docs/assets/images/zh-CN/web-team-board.png and docs/assets/images/zh-CN/hero-web-tui.png from docs-capture-zh/07-team-graph-hover.png",
+    "en": "docs/assets/images/web-team-board-v2.png and docs/assets/images/hero-web-tui-v2.png from docker-post-fix/ui-shots/07-team-graph-hover.png",
+    "zh": "docs/assets/images/zh-CN/web-team-board-v2.png and docs/assets/images/zh-CN/hero-web-tui-v2.png from docs-capture-zh/07-team-graph-hover.png",
     "evidence": "docs-capture-zh/"
   },
   "codeRabbit": {
