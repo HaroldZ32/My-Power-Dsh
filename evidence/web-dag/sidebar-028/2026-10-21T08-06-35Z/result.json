@@ -4,7 +4,27 @@
   "codeCommit": "83796fb4",
   "preFixCommit": "6e89d619",
   "contract": "contract.md",
-  "status": "code green; measured-evidence root present; independent verifier re-verification pending",
+  "evidenceCommit": "25ff1efc",
+  "status": "PASS — independent verifier record rec-20261021T082128-b28f07 for loop-20261021T070931-850b4a",
+  "verification": {
+    "loop": "loop-20261021T070931-850b4a",
+    "record": "rec-20261021T082128-b28f07",
+    "verdict": "PASS",
+    "gateTests": "2193 pass, 3 skip, 0 fail, 2196 tests across 134 files",
+    "gateEvidenceIds": [
+      "ev-20261021T081803-4d6c27",
+      "ev-20261021T081810-c39be6",
+      "ev-20261021T081836-763628",
+      "ev-20261021T081838-e33a78",
+      "ev-20261021T081841-57e653",
+      "ev-20261021T081845-29fc2f",
+      "ev-20261021T081849-88d340",
+      "ev-20261021T081850-5817d8",
+      "ev-20261021T081852-06fede"
+    ],
+    "logDir": "gates/",
+    "visual": "post-fix real-browser capture: 18/18 checks, 9/9 steps on normal and CJK boards; hover card beside T6/T5, fan-in tips 12px apart, stronger glow, 6px dash flow; shipped/fingerprinted client.js sha256 6f517b58...51ab86a equals the container client.js"
+  },
   "clauses": {
     "better_sidebar_028": "package.json + bun.lock + scripts/pack-mpd.ts + host-contract.test.ts; verify:rows, verify:manifest, preset-conformance, bundle-lifecycle",
     "secondary_both_surfaces": "sidebar-tab.test.ts primary ids + :bottom twins + bottomOnly + fallback; docs/user-guide.md section 8",
@@ -22,6 +42,7 @@
   "tests": {
     "affectedSuites": "bun test packages/mpd-bundle-plugin packages/mpd-team-core-plugin packages/mpd-tui-plugin packages/mpd-better-sidebar-host",
     "affectedResult": "985 pass, 0 fail, 31337 expect() calls",
+    "gateResult": "2193 pass, 3 skip, 0 fail, 2196 tests across 134 files",
     "typecheck": "bun run typecheck -> exit 0",
     "gates": "bun run verify:gates -> 9/9 PASS",
     "docs": "bun run verify:docs -> pairs 48, failed 0",
@@ -62,13 +83,32 @@
       "evidence": "docker-post-fix/"
     }
   },
-  "gateEvidenceIds": [],
+  "gateEvidenceIds": [
+    "ev-20261021T081803-4d6c27",
+    "ev-20261021T081810-c39be6",
+    "ev-20261021T081836-763628",
+    "ev-20261021T081838-e33a78",
+    "ev-20261021T081841-57e653",
+    "ev-20261021T081845-29fc2f",
+    "ev-20261021T081849-88d340",
+    "ev-20261021T081850-5817d8",
+    "ev-20261021T081852-06fede"
+  ],
   "honestBounds": [
     "No live model reply in the Docker lane; ui.replyRendered is a declared credential-free bound.",
     "Still frames prove element presence, not motion; SMIL/dash animation is asserted structurally in tests.",
     "Progress is coarse and status-derived (100/50/10/0), not measured work; legacy tasks without startedAt show a dash.",
     "Zero-overlap proof is the rank-parity channel plus the generated battery; capacity bounds are >=21 incident ports, >47 crossing lanes per gutter, >23 same-rank lanes; 5-6 incident edges use an 8px pitch whose outermost arrowheads can touch at the +/-20 clamp.",
     "No zoom/pan/minimap and no graph-layout library in this wave.",
-    "Better-sidebar bottom-workbench registration is proven at source-contract + real preset/host-boot level, not by a screenshot of the bottom surface; the right-sidebar capture covers the shared body."
+    "Better-sidebar bottom-workbench registration is proven at source-contract + real preset/host-boot level, not by a screenshot of the bottom surface; the right-sidebar capture covers the shared body.",
+    "The two pack.* false rows in the pre-fix declared e2e came from a stale local dist/mpd-package; the pack was refreshed after the repair and the UI-capture lane re-passed.",
+    "docker/ui/entrypoint.sh still skips the Chromium install-deps on a recreated container because it probes libglib rather than libnss3; the post-fix capture installed the deps in-container only. This is a pre-existing QA-infrastructure follow-up, not a wave-code defect."
+  ],
+  "followUps": [
+    "Fix the docker/ui/entrypoint.sh install-deps guard (probe libnss3) so recreated UI containers are self-sufficient.",
+    "Add a client.js freshness gate (the artifact is rebuilt by a hand step; dist-fresh does not cover it).",
+    "Add zoom/pan/fit-to-view and a minimap; the current graph is a capped scroller.",
+    "Extract the layered layout into mpd-graph-core with crossing/symmetry/overlap metrics shared with the TUI.",
+    "Replace the coarse status-derived progress with a real per-task progress source (and optionally retry/attempt analytics)."
   ]
 }

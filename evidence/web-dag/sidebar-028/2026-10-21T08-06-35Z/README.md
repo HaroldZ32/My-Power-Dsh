@@ -8,6 +8,10 @@ The contract's clause matrix is below; the command log is [`output.log`](./outpu
 real-browser capture is [`docker-post-fix/`](./docker-post-fix/), and the pre-fix defect record is
 `../2026-10-21T07-40-13Z/docker/`.
 
+Independent verifier: **PASS** — record `rec-20261021T082128-b28f07` for loop
+`loop-20261021T070931-850b4a`. The verifier re-ran the nine fixed-table gates on the repaired tree
+(tests 2193 pass, 3 skip, 0 fail; `gates/` holds the logs) and inspected the post-fix stills.
+
 ## Clause-to-evidence matrix
 
 | Clause | Evidence |
