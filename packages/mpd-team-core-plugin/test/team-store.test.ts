@@ -15,6 +15,7 @@ import {
   bindActiveTeam,
   blockingDependencies,
   casClaimTask,
+  casCloseTask,
   createTeam,
   cycleIds,
   deleteTeam,
@@ -268,6 +269,115 @@ describe("the derived state", () => {
     expect(memberProgress(closed, "Senior Engineer")).toEqual({ done: 1, total: 1 })
     // A handle belonging to NO member does not become somebody's work by accident.
     expect(memberProgress(closed, "Reviewer").total).toBe(1)
+  })
+})
+
+describe("the task lifecycle stamps", () => {
+  // A TASK RECORD HAD ONLY `createdAt`/`updatedAt`, and `updatedAt` moves on EVERY patch — a note edit
+  // included — so it can never answer "when did this row start, and when did it finish". The two
+  // stamps below are derived by the ONE seam every claim and every terminal verb funnels through, so
+  // a status and the instants beside it cannot disagree.
+
+  test("a claim stamps `startedAt` ONCE, and a later claim does not restart the clock", () => {
+    /** The seeded record, whose first task has never run. */
+    const record = seeded()
+    // The TOOL-claim shape: `agent_teams_task claim` patches status, owner and attempt through this
+    // same function, so this arm is the tool path rather than a private shortcut.
+    /** The record after the claim. */
+    const claimed = updateTeamTask(record, "T1", { status: "in_progress", owner: "Senior Engineer", attempt: 1 }, NOW)
+    expect(claimed.tasks[0].startedAt).toBe(NOW.toISOString())
+    // A row that has not finished carries NO `finishedAt` KEY at all: an explicit `undefined` would
+    // serialize away and make a reader's own `in` check lie about the record it just read.
+    expect(Object.prototype.hasOwnProperty.call(claimed.tasks[0], "finishedAt")).toBe(false)
+    // A SECOND claim keeps the FIRST instant: the clock is when the work began, not when it was last
+    // touched — which is the one thing `updatedAt` could never express.
+    /** The record after a later re-claim. */
+    const reclaimed = updateTeamTask(claimed, "T1", { status: "in_progress" }, LATER)
+    expect(reclaimed.tasks[0].startedAt).toBe(NOW.toISOString())
+    expect(reclaimed.tasks[0].updatedAt).toBe(LATER.toISOString())
+    // The DISPATCH path funnels through the same seam, so it stamps the same field.
+    /** The compare-and-set claim the dispatch pass would make, decided against the fresh revision. */
+    const dispatched = casClaimTask(record, "T1", "Senior Engineer", record.tasks[0].revision, LATER)
+    expect(dispatched.applied).toBe(true)
+    if (dispatched.applied) expect(dispatched.record.tasks[0].startedAt).toBe(LATER.toISOString())
+  })
+
+  test("a terminal verb stamps `finishedAt`, and a later note patch does NOT move it", () => {
+    /** The seeded record after a claim. */
+    const running = updateTeamTask(seeded(), "T1", { status: "in_progress" }, NOW)
+    // The TOOL-close shape: `agent_teams_task complete` reaches `casCloseTask`, which patches through
+    // `updateTeamTask` — so the stamp is the transition's own instant, never a caller's guess.
+    /** The closure as the terminal verb decides it. */
+    const closed = casCloseTask(running, { taskId: "T1", status: "completed", caller: ["Senior Engineer"], lead: false, now: LATER })
+    expect(closed.applied).toBe(true)
+    if (!closed.applied) return
+    expect(closed.record.tasks[0].startedAt).toBe(NOW.toISOString())
+    expect(closed.record.tasks[0].finishedAt).toBe(LATER.toISOString())
+    /** A later instant, so a re-stamp by a non-transition patch would be visible. */
+    const laterStill = new Date("2026-09-30T12:30:00.000Z")
+    // A NOTE-only patch moves `updatedAt` and must not fabricate — or move — a finish.
+    /** The closed row after the note-only patch. */
+    const noted = updateTeamTask(closed.record, "T1", { note: "landed" }, laterStill)
+    expect(noted.tasks[0].updatedAt).toBe(laterStill.toISOString())
+    expect(noted.tasks[0].finishedAt).toBe(LATER.toISOString())
+    // A BLOCKER edit is the same kind of patch: no status, so neither lifecycle key appears.
+    /** The still-pending second task after a blocker-only patch. */
+    const blocked = updateTeamTask(closed.record, "T2", { blockedBy: ["T1"] }, laterStill)
+    expect(Object.prototype.hasOwnProperty.call(blocked.tasks[1], "startedAt")).toBe(false)
+    expect(Object.prototype.hasOwnProperty.call(blocked.tasks[1], "finishedAt")).toBe(false)
+  })
+
+  test("a FAILED close stamps `finishedAt` too; reopening DELETES it and the next claim restarts the clock", () => {
+    /** The seeded record, whose first task is failed before it ever ran. */
+    const failed = updateTeamTask(seeded(), "T1", { status: "failed" }, NOW)
+    expect(failed.tasks[0].finishedAt).toBe(NOW.toISOString())
+    // A row failed before it ever ran did not START, so `startedAt` is not invented for it.
+    expect(Object.prototype.hasOwnProperty.call(failed.tasks[0], "startedAt")).toBe(false)
+    // REOPENING deletes the finish: the row is back on the board, not finished.
+    /** The row reopened to pending. */
+    const reopened = updateTeamTask(failed, "T1", { status: "pending" }, LATER)
+    expect(Object.prototype.hasOwnProperty.call(reopened.tasks[0], "finishedAt")).toBe(false)
+    // Reopening straight into `in_progress` starts the clock at THAT moment (there was no earlier
+    // start), and still carries no finish.
+    /** The reopened row after a fresh claim. */
+    const reworked = updateTeamTask(reopened, "T1", { status: "in_progress" }, LATER)
+    expect(reworked.tasks[0].startedAt).toBe(LATER.toISOString())
+    expect(Object.prototype.hasOwnProperty.call(reworked.tasks[0], "finishedAt")).toBe(false)
+    /** A later instant for the second closure. */
+    const laterStill = new Date("2026-09-30T12:30:00.000Z")
+    /** The second close, whose span is the second attempt's. */
+    const again = updateTeamTask(reworked, "T1", { status: "completed" }, laterStill)
+    expect(again.tasks[0].startedAt).toBe(LATER.toISOString())
+    expect(again.tasks[0].finishedAt).toBe(laterStill.toISOString())
+  })
+
+  test("a hand-built legacy record with NO lifecycle fields still reads, and stamps from the next claim", () => {
+    // THE UPGRADE CASE: records written before this wave carry neither field. Reading one must not
+    // throw, its rows must still classify, and nothing may be normalized in from thin air.
+    /** A record with a finished task, as the current store writes it. */
+    const current = updateTeamTask(seeded(), "T1", { status: "completed" }, LATER)
+    // The bytes an OLDER mpd wrote: the lifecycle keys simply do not exist. The JSON round-trip is the
+    // same serialization a real record goes through, so this is a hand-built legacy record, not a
+    // stripped live object.
+    /** The same record with every lifecycle key removed. */
+    const legacy = JSON.parse(JSON.stringify(current)) as TeamRecord
+    delete legacy.tasks[0].finishedAt
+    writeTeam(sandbox, legacy)
+    /** The legacy record as the store reads it back. */
+    const reread = readTeam(sandbox, legacy.teamId)
+    expect(reread).toBeDefined()
+    expect(Object.prototype.hasOwnProperty.call(reread?.tasks[0] ?? {}, "finishedAt")).toBe(false)
+    expect(Object.prototype.hasOwnProperty.call(reread?.tasks[0] ?? {}, "startedAt")).toBe(false)
+    // The serialized record carries neither NAME, so a reader cannot mistake an absent stamp for one
+    // that was written as `undefined`.
+    expect(JSON.stringify(reread)).not.toContain("finishedAt")
+    expect(JSON.stringify(reread)).not.toContain("startedAt")
+    // The board still classifies the row, and the next claim stamps the start like any other row.
+    expect(taskVisual(reread!.tasks[0], reread!.tasks)).toBe("completed")
+    /** The legacy row reopened and claimed. */
+    const claimed = updateTeamTask(reread!, "T1", { status: "in_progress" }, NOW)
+    expect(claimed.tasks[0].startedAt).toBe(NOW.toISOString())
+    expect(Object.prototype.hasOwnProperty.call(claimed.tasks[0], "finishedAt")).toBe(false)
   })
 })
 

@@ -204,10 +204,6 @@ function capLine(body, maxLineBytes) {
 var DSH_SEAM_TOOLS = "tools";
 var DSH_SEAM_SESSIONS = "sessions";
 var DSH_SEAM_WEB_SERVER = "webServer";
-var DSH_SEAM_WEB_RUNTIME = "webRuntime";
-function dshSeamInject(...names) {
-  return [...names];
-}
 function sessionCwdOf(agent) {
   try {
     const cwd = agent?.session?.header?.cwd;
@@ -248,23 +244,22 @@ function rowLogLine(name, line) {
 var REPORTED_RETIRED_SPAWN_FIELDS = new Set;
 
 // packages/mpd-better-sidebar-host/src/index.ts
-var DSH_SEAM_WEB_APP = "webApp";
+var DSH_SEAM_CONNECTION = "connection";
 function probeSidebarSeam(ctx) {
-  const webApp = softProbe(ctx, DSH_SEAM_WEB_APP);
-  const webRuntime = softProbe(ctx, DSH_SEAM_WEB_RUNTIME);
-  const appTrust = trustOf(webApp);
-  const runtimeTrust = trustOf(webRuntime);
-  const seen = `${DSH_SEAM_WEB_APP}=${describeService(webApp, appTrust)}, ${DSH_SEAM_WEB_RUNTIME}=${describeService(webRuntime, runtimeTrust)}`;
-  if (appTrust !== undefined) {
-    return { armed: "none", reason: "web-app-under-another-name", detail: `${seen} — the pinned host reads ctx.${DSH_SEAM_WEB_RUNTIME} by name, so arming ${DSH_SEAM_WEB_APP} would need a context view this row does not build` };
+  const connection = softProbe(ctx, DSH_SEAM_CONNECTION);
+  if (connection === undefined) {
+    return {
+      armed: "none",
+      reason: "absent",
+      detail: `${DSH_SEAM_CONNECTION}=absent — the 0.28 sidebar host fences /sidebar/api through ctx.${DSH_SEAM_CONNECTION}.requestRejection, so it cannot mount without that service`
+    };
   }
-  if (runtimeTrust !== undefined) {
-    return { armed: "webRuntime", service: runtimeTrust, detail: seen };
-  }
-  if (webApp !== undefined) {
-    return { armed: "none", reason: "web-app-without-member", detail: `${seen} — 0.2.1-rc.2's WebApp declares only getAdvertisedUrl() and no bind-dependent trustedHosts` };
-  }
-  return { armed: "none", reason: "absent", detail: `${seen} — neither the Web GUI service nor the older Web runtime service is provided in this composition` };
+  const hasFence = typeof connection?.requestRejection === "function";
+  return {
+    armed: "connection",
+    service: connection,
+    detail: `${DSH_SEAM_CONNECTION}=${hasFence ? "present with requestRejection()" : "present without requestRejection() — the 0.28 host calls it, so its apply will report the failure"}`
+  };
 }
 function softProbe(ctx, name) {
   try {
@@ -272,23 +267,6 @@ function softProbe(ctx, name) {
   } catch {
     return;
   }
-}
-function trustOf(value) {
-  if (typeof value !== "object" || value === null)
-    return;
-  const trusted = value.trustedHosts;
-  if (!Array.isArray(trusted))
-    return;
-  if (!trusted.every((entry) => typeof entry === "string"))
-    return;
-  return value;
-}
-function describeService(value, trust) {
-  if (value === undefined)
-    return "absent";
-  if (trust === undefined)
-    return "present without trustedHosts";
-  return `present with trustedHosts(${String(trust.trustedHosts.length)})`;
 }
 function hostUrl() {
   const here = dirname(fileURLToPath(import.meta.url));
@@ -308,7 +286,7 @@ async function loadSidebarHost() {
   }
 }
 var name = "mpd-better-sidebar-host";
-var inject = dshSeamInject(DSH_SEAM_WEB_SERVER, DSH_SEAM_SESSIONS, DSH_SEAM_TOOLS);
+var inject = [DSH_SEAM_WEB_SERVER, DSH_SEAM_SESSIONS, DSH_SEAM_CONNECTION, DSH_SEAM_TOOLS];
 function say(ctx, level, line) {
   const text = "[mpd-better-sidebar] " + line;
   try {
@@ -339,7 +317,7 @@ async function apply(ctx, config) {
     say(ctx, "warn", `disabled: ${decision.detail} [reason=${decision.reason}]`);
     return;
   }
-  say(ctx, "info", `seam ARMED (decision only; the mount is reported separately): ${DSH_SEAM_WEB_RUNTIME}.trustedHosts (${String(decision.service.trustedHosts.length)} trusted authorities); ${decision.detail}`);
+  say(ctx, "info", `seam ARMED (decision only; the mount is reported separately): ${decision.detail}`);
   let host;
   try {
     host = await loadSidebarHost();
@@ -354,15 +332,15 @@ async function apply(ctx, config) {
     return;
   }
   try {
-    ctx.inject([DSH_SEAM_WEB_RUNTIME], (scoped) => {
+    ctx.inject([DSH_SEAM_CONNECTION], (scoped) => {
       mountHost(host, scoped, config);
     });
   } catch (error) {
-    say(ctx, "warn", `seam NOT mounted: could not inject ${DSH_SEAM_WEB_RUNTIME}: ${messageOf(error)}`);
+    say(ctx, "warn", `seam NOT mounted: could not inject ${DSH_SEAM_CONNECTION}: ${messageOf(error)}`);
   }
 }
 export {
-  DSH_SEAM_WEB_APP,
+  DSH_SEAM_CONNECTION,
   apply,
   inject,
   loadSidebarHost,

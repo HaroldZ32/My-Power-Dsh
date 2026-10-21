@@ -274,6 +274,14 @@ interface ViewModule {
   graphSafeLabel: (subject: string, ordinal: number) => string
   /** The curve builder itself, exposed so its `radius = 0` control can be driven directly (clause W6). */
   curveOf: (waypoints: Array<{ x: number; y: number }>, radius: number) => { d: string; points: Array<{ x: number; y: number }> }
+  /**
+   * The pure overlap audit, exposed so a deliberately overlapping pair can be FED to it.
+   * @param edges - the routed edges to audit.
+   * @returns every collinear overlap between two different edges' runs.
+   */
+  overlapAudit: (edges: GraphGeometry["edges"]) => Array<{ a: string; b: string; orientation: "horizontal" | "vertical"; at: number; overlap: number }>
+  /** The elapsed formatter D2 exposes additively, so the duration grammar is provable here. */
+  formatElapsed: (task: { startedAt?: string; finishedAt?: string; visual: string }, nowMs?: number) => string
 }
 
 /** The geometry `layout` returns, as this file reads it. */
@@ -309,8 +317,12 @@ interface GraphGeometry {
   maxLanes: number
   /** How many lanes could not be given a distinct column. */
   laneOverflow: number
-  /** How many rows each rank's column holds, reserved rows included. */
+  /** How many boxes each rank's column holds; a long edge no longer reserves a row in it. */
   slots: number[]
+  /** The y every column's stack is centred on, which is the canvas's own horizontal midline. */
+  centerY: number
+  /** Every collinear overlap between two DIFFERENT edges' runs; empty is the promise. */
+  overlaps: Array<{ a: string; b: string; orientation: "horizontal" | "vertical"; at: number; overlap: number }>
   /** Whether the ranks were DERIVED from the `blockedBy` graph (R20), or taken off the served depth. */
   ranksDerived: boolean
   /** The blocker references no task on the board carries, sorted. */
@@ -766,6 +778,13 @@ describe("team-view drawn edges", () => {
       ({ left: rank * DIMS.column + DIMS.inset, right: rank * DIMS.column + DIMS.column - DIMS.inset })
     /** The vertical middle of the one row this fixture puts both nodes on. */
     const middle = DIMS.pad + DIMS.nodeHeight / 2
+    // THE TWO BOXES THE EDGE ATTACHES TO, read off the layout's own centred placement. The middle
+    // above is the PARENT's port exactly, because T1 has one incident edge; the dependant T2 carries
+    // two (in from T1, out to T3), so its ports spread about the middle (D1's anti-overlap device).
+    /** The parent's box, whose single incident edge attaches at its middle. */
+    const parentBox = graph.nodes.find((node) => node.task.id === "T1") as { top: number }
+    /** The dependant's box, whose two incident edges spread its ports. */
+    const childBox = graph.nodes.find((node) => node.task.id === "T2") as { top: number }
     // The route's own runs are still published, which is what keeps `data-mpd-route` the routing truth:
     // the lead-out STARTS on the parent's right border and the lead-in ENDS on the child's first pixel.
     /** The edge's route as published: its runs, then `R`/`L` and the arrowhead's own box. */
@@ -774,14 +793,29 @@ describe("team-view drawn edges", () => {
     const runs = route.split(";").map(parseRect)
     expect(runs[0].left).toBe(borders(0).right)
     expect(runs[runs.length - 1].left + runs[runs.length - 1].width).toBe(borders(1).left + 1)
-    // Every run lies on the one row's middle, so an edge meets a border at its midpoint.
-    for (const run of runs) expect(run.top).toBe(middle)
+    // PORTS, NOT ONE SHARED MIDDLE (D1). The lead-out leaves the blocker's own port — its middle here,
+    // because T1 has ONE incident edge — and the lead-in arrives at the dependant's port, which is
+    // offset because T2 has two. What the route must keep is that BOTH attachments live inside their
+    // box's own height and land where the painted curve starts and stops.
+    expect(runs[0].top).toBe(parentBox.top + DIMS.nodeHeight / 2)
+    expect(runs[0].top).toBe(curve.points[0].y)
+    expect(runs[runs.length - 1].top).toBe(curve.points[curve.points.length - 1].y)
+    for (const attachment of [curve.points[0].y, curve.points[curve.points.length - 1].y]) {
+      expect(attachment).toBeGreaterThan(0)
+      expect(attachment).toBeLessThan(DIMS.pad + DIMS.nodeHeight)
+    }
+    expect(middle).toBe(parentBox.top + DIMS.nodeHeight / 2)
+    expect(curve.points[curve.points.length - 1].y).toBeGreaterThan(childBox.top)
+    expect(curve.points[curve.points.length - 1].y).toBeLessThan(childBox.top + DIMS.nodeHeight)
     // The route `data-mpd-route` publishes is the layout's own, run for run and pixel for pixel.
     expect(route.split(";")).toEqual((drawn as { segments: Array<{ rect: Rect }> }).segments.map((segment) => rectTextOf(segment.rect)))
-    // THE CURVE TRAVELS THE SAME TWO POINTS: it leaves the blocker's border middle and lands on the
-    // dependant's, which is what makes the painted form a parametrisation of the route, not a redraw.
+    // THE CURVE TRAVELS THE SAME TWO ATTACHMENTS: it leaves the blocker's border at its port (the
+    // middle, T1 having one edge) and lands on the dependant's port — above the middle, T2 having two.
+    // That is what makes the painted form a parametrisation of the route, not a redraw.
     expect(curve.points[0]).toEqual({ x: borders(0).right, y: middle })
-    expect(curve.points[curve.points.length - 1]).toEqual({ x: borders(1).left, y: middle })
+    expect(curve.points[curve.points.length - 1].x).toBe(borders(1).left)
+    expect(curve.points[curve.points.length - 1].y).toBeGreaterThan(childBox.top)
+    expect(curve.points[curve.points.length - 1].y).toBeLessThan(childBox.top + DIMS.nodeHeight)
     expect(curve.points[curve.points.length - 1]).toEqual({ x: curve.tip.x, y: curve.tip.y })
     // The arrowhead points RIGHT (the edge arrives from the left) and its tip is the child's border.
     expect(marker.startsWith("R")).toBe(true)
@@ -803,8 +837,13 @@ describe("team-view drawn edges", () => {
     /** The single drawn edge, as the DOM carries it. */
     const edge = one(one(tree, "data-edges", "1"), "data-mpd-edge", "T2<-T3")
     // THE RISER IS READ OFF THE LAYOUT, which is where it has always been computed: the painted curve
-    // only rounds it. `segments` keeps its names and its rectangles (clause W4), so this arm keeps its
-    // exact numbers and only changes the accessor.
+    // only rounds it. `segments` keeps its names and its rectangles (clause W4), so this arm keeps the
+    // route's own numbers and only changes the accessor.
+    //
+    // THE ROWS MOVED (D1), and the arm follows the geometry rather than a literal: each column's stack
+    // is now CENTRED on the graph's midline, so rank 1's single node no longer sits at the top of its
+    // column and its box middle is no longer `4 + 52 + 21`. The PROPERTY is unchanged — the riser spans
+    // exactly the two boxes' attachment ys — so those two ys are read off the route's own ends.
     // THE PURE CALL GETS THE SAME BOARD THE HOST SERVED, ranks included: the render above received
     // `stateOf(board)`, whose tasks carry the core's ranks (T2 rank 1, T3 rank 0), so a bare fallback
     // here would lay out a DIFFERENT board than the one that was painted.
@@ -817,13 +856,21 @@ describe("team-view drawn edges", () => {
     }
     /** Its riser, the run that has to span the rows. */
     const riser = drawn.segments.filter((segment) => segment.key === "riser")[0].rect
-    // Row 1's centre is 4 + 52 + 21 = 77; row 0's is 25, so the riser is 52px tall starting at 25.
-    expect(riser.top).toBe(25)
-    expect(riser.height).toBe(52)
+    // THE TWO ATTACHMENTS, off the route's own ends: the blocker's port and the dependant's port.
+    /** Where the painted route leaves the blocker. */
+    const leaveY = drawn.curve.points[0].y
+    /** Where it arrives at the dependant. */
+    const arriveY = drawn.curve.points[drawn.curve.points.length - 1].y
+    // THE RISER SPANS THOSE TWO ROWS EXACTLY — the arm's whole subject, now independent of where the
+    // centring put them. A zero-height riser would mean the two rows collapsed; a shorter one would
+    // mean the line stopped short of a box.
+    expect(riser.top).toBe(Math.min(leaveY, arriveY))
+    expect(riser.height).toBe(Math.abs(arriveY - leaveY))
+    expect(Math.abs(arriveY - leaveY)).toBeGreaterThan(0)
     // AND THE PAINTED CURVE SPANS THE SAME ROWS: the sweep bends the leg, it does not shorten it.
     const ys = drawn.curve.points.map((point) => point.y)
-    expect(Math.min(...ys)).toBe(25)
-    expect(Math.max(...ys)).toBe(77)
+    expect(Math.min(...ys)).toBe(Math.min(leaveY, arriveY))
+    expect(Math.max(...ys)).toBe(Math.max(leaveY, arriveY))
     // The DOM's own path is that geometry's, which the main edge arm proves character for character.
     expect(String(collect(edge, "data-mpd-curve")[0].props["data-mpd-curve"]).startsWith("M ")).toBe(true)
   })
@@ -1539,11 +1586,23 @@ describe("team-view edge legibility (the reported tangle)", () => {
     }
     expect(crossings).toBe(0)
     // POSITIVE CONTROL 1 — THE OLD ROUTER: the same instrument fed the pre-fix run must FLAG it, or this
-    // arm could pass by measuring nothing at all. That formula put T2→T7's riser at the centre of the
-    // band between T2's right border (164) and T7's left border (340) — x=252, inside rank 1 — and ran
-    // it from the parent's middle (25) down to the child's (77).
-    /** The pre-fix T2→T7 riser, reconstructed from the removed formula, which the check MUST catch. */
-    const oldRiser: Rect = { left: 252, top: 25, width: 1, height: 52 }
+    // arm could pass by measuring nothing at all. That formula put ONE riser for a rank-skipping edge at
+    // the centre of the band between the parent's right border and the child's left border — x=252,
+    // inside rank 1's column — and ran it between the two ends' attachment ys. The X is the removed
+    // formula's own; the YS come from the CURRENT geometry's T4→T7 edge, because D1 moved the rows
+    // (the stacks are centred now) and a frozen `25..77` would describe a picture this layout never
+    // draws. The pair is chosen because T4's port to T7 and T7's port from T4 straddle rank 1's boxes.
+    /** The real T4→T7 edge, whose two attachment ys the old formula would have spanned in one riser. */
+    const oldRoute = graph.edges.find((candidate) => candidate.witness === "T7<-T4")
+    expect(oldRoute).toBeDefined()
+    /** The y it leaves T4 at. */
+    const oldLeaveY = (oldRoute as { curve: { points: Array<{ x: number; y: number }> } }).curve.points[0].y
+    /** The y it arrives at T7. */
+    const oldPoints = (oldRoute as { curve: { points: Array<{ x: number; y: number }> } }).curve.points
+    /** The arrival y. */
+    const oldArriveY = oldPoints[oldPoints.length - 1].y
+    /** The pre-fix single riser: the removed formula's x, spanning the two attachment ys. */
+    const oldRiser: Rect = { left: 252, top: Math.min(oldLeaveY, oldArriveY), width: 1, height: Math.abs(oldArriveY - oldLeaveY) }
     /** The boxes that riser stood inside, which is the tangle the user photographed. */
     expect([...boxes].filter(([, box]) => entersInterior(oldRiser, box)).length).toBeGreaterThan(0)
     // POSITIVE CONTROL 2 — THE CURVE DOMAIN: the SAME segment instrument, fed a polyline that bends
@@ -1551,8 +1610,17 @@ describe("team-view edge legibility (the reported tangle)", () => {
     // a sample path, which is exactly the failure mode a curve introduces. (The per-vertex clamp to half
     // a leg is what makes a real curve unable to bulge, so an injected path — not a huge radius — is the
     // honest way to make this instrument fail in its own domain.)
-    /** The pre-fix route's shape, emitted as a curve at a radius far larger than any leg it has. */
-    const bulging = view.curveOf([{ x: 164, y: 25 }, { x: 252, y: 25 }, { x: 252, y: 77 }, { x: 340, y: 77 }], 400).points
+    // The injected shape is built from a REAL box, because D1 moved the stacks (they are centred now)
+    // and the old `164,25 -> 252,77` stub no longer passes through anything. It runs down that box's
+    // centre line and out past its right edge, which the instrument must catch on the way through.
+    /** One box the injected curve is meant to invade. */
+    const victim = boxes.get("T6") as Rect
+    /** The pre-fix route's shape: straight through a node, emitted at the shipped radius. */
+    const bulging = view.curveOf([
+      { x: victim.left + victim.width / 2, y: victim.top - 10 },
+      { x: victim.left + victim.width / 2, y: victim.top + victim.height + 10 },
+      { x: victim.left + victim.width + 10, y: victim.top + victim.height + 10 },
+    ], 6).points
     /** How many boxes that injected curve enters, which must be at least one. */
     let caught = 0
     for (let index = 1; index < bulging.length; index += 1) {
@@ -1561,7 +1629,7 @@ describe("team-view edge legibility (the reported tangle)", () => {
     expect(caught).toBeGreaterThan(0)
   })
 
-  test("a rank-skipping edge is routed as a CHAIN of adjacent-rank hops, not one riser through a column", async () => {
+  test("a rank-skipping edge rises beside its blocker, crosses on a band row, and descends beside its dependant", async () => {
     /** The view module, built without rendering, for the pure geometry. */
     const view = loadFactory()({}).createTeamView({ react: null, statePath: STATE_PATH })
     /** The screenshot's board exactly as the host served it, ranks included. */
@@ -1572,8 +1640,8 @@ describe("team-view edge legibility (the reported tangle)", () => {
     const long = graph.edges.find((edge) => edge.parent === "T2" && edge.child === "T7")
     expect(long).toBeDefined()
     // BEFORE: three runs (lead-out, riser, lead-in) with ONE riser standing in the middle of rank 1's
-    // column. AFTER: five runs — the path leaves T2, drops into gutter 0, CROSSES rank 1 along a row
-    // reserved in it, drops into gutter 1 and arrives at T7.
+    // column. AFTER: five runs — the path leaves T2, rises in gutter 0 to its own BAND row, crosses
+    // rank 1 on that row (outside the box area), descends in gutter 1 and arrives at T7.
     expect((long as { segments: Array<{ key: string }> }).segments.map((segment) => segment.key)).toEqual(["out", "riser", "cross1", "riser2", "in"])
     /** The runs of that edge, by key, so each claim reads off the drawn rectangle. */
     const byKey = new Map((long as { segments: Array<{ key: string; rect: Rect }> }).segments.map((segment) => [segment.key, segment.rect]))
@@ -1584,17 +1652,22 @@ describe("team-view edge legibility (the reported tangle)", () => {
     // THE TWO RISERS STAND IN DIFFERENT GUTTERS, which is the whole construction: a single riser could
     // only travel down one x, and that x would have to cross rank 1's column.
     expect(riser2.left).not.toBe(riser1.left)
-    // And the CROSSING runs along a row BELOW every box of the rank it crosses, which is why it cannot
-    // meet one. The rank members are read off the GEOMETRY's own nodes (R20 derives them), never off the
-    // fixture's served `depth`: this board is the captain's rank list, and the two disagree for `T12` —
-    // which is exactly the class of lie the derivation exists to ignore.
+    // And the CROSSING runs along a row OUTSIDE every box of the rank it crosses — ABOVE the topmost
+    // or BELOW the bottommost — which is why it cannot meet one. THE BAND REPLACED THE BELOW-ONLY ROW
+    // (D1, contract §5.1): the old router appended a dummy row under each intermediate column, so every
+    // long edge crossed underneath and the picture read as a one-sided comb. The frozen contract says
+    // to update such an assertion deliberately and allow a top OR bottom band, which is exactly this
+    // widening — the invariant kept is "outside the box area", not "below it". The rank members are
+    // read off the GEOMETRY's own nodes (R20), never off the fixture's served `depth`.
     /** The crossing run, which is the horizontal hop over rank 1. */
     const crossing = byKey.get("cross1") as Rect
+    /** The topmost box the DRAWING placed in rank 1. */
+    const rank1Top = Math.min(...graph.nodes.filter((node) => node.rank === 1).map((node) => node.top))
     /** The bottom edge of the lowest box the DRAWING placed in rank 1. */
     const rank1Bottom = Math.max(...graph.nodes.filter((node) => node.rank === 1).map((node) => node.top + 42))
-    expect(crossing.top).toBeGreaterThanOrEqual(rank1Bottom)
+    expect(crossing.top < rank1Top || crossing.top >= rank1Bottom).toBe(true)
     // AND THE PAINTED CURVE CROSSES ON THAT SAME ROW: the fillets round the turns but never move the
-    // crossing, so the polyline must carry samples ON the reserved row itself. Without this the curve
+    // crossing, so the polyline must carry samples ON the band row itself. Without this the curve
     // could satisfy every rect assertion above while being drawn somewhere else entirely.
     /** That edge's flattened polyline, which is what the renderer painted. */
     const curve = long as { curve: { points: Array<{ x: number; y: number }> } }
@@ -1705,6 +1778,372 @@ describe("team-view edge legibility (the reported tangle)", () => {
       expect(tip.left).toBe(arrivesAtRight ? into.left + into.width : into.left)
       expect(tip.height).toBe(8)
     }
+  })
+})
+
+/**
+ * D1 — the layout's SHAPE as arithmetic: symmetry, zero overlaps, separated ports and the crossing band.
+ *
+ * Every arm reads the PURE layout rather than a picture: `layout` is the one composer, and the render
+ * paints exactly what it returns (the edge arm above proves that character for character). The three
+ * fixtures are the frozen contract's own acceptance set, so a change that re-tangles them reddens here.
+ */
+describe("team-view D1 layout: symmetric stacks, zero overlaps, separated ports", () => {
+  /** The three fixtures the frozen contract names, each with the label its failure message carries. */
+  const FIXTURES: Array<[string, Array<Record<string, unknown>>]> = [
+    ["TASKS", TASKS], ["LONG_EDGE_TASKS", LONG_EDGE_TASKS], ["CYCLE_TASKS", CYCLE_TASKS],
+  ]
+
+  test("every column's stack is CENTRED on the graph's midline, and a one-row column keeps top = 4", () => {
+    /** The view module, built without rendering. */
+    const view = loadFactory()({}).createTeamView({ react: null, statePath: STATE_PATH })
+    for (const [label, fixture] of FIXTURES) {
+      /** The fixture exactly as the host would serve it. */
+      const served = withServed(fixture)
+      /** Its geometry. */
+      const graph = view.layout(served.tasks, undefined, served.model)
+      // THE MIDLINE IS THE CANVAS'S OWN MIDDLE: the same pad and the same band extent above and below,
+      // so `height / 2` and `centerY` are the same number. That single equality IS the symmetry claim
+      // at the canvas level; the per-column loop below is the same claim at the stack level.
+      expect(`${label} centerY=${graph.centerY}`).toBe(`${label} centerY=${graph.height / 2}`)
+      for (let rank = 0; rank < graph.columns.length; rank += 1) {
+        // AN EMPTY RANK STAYS EMPTY and has no stack to centre.
+        if (graph.columns[rank].length === 0) continue
+        /** The boxes this column placed. */
+        const boxes = graph.nodes.filter((node) => node.rank === rank)
+        /** The top of the column's stack. */
+        const top = Math.min(...boxes.map((node) => node.top))
+        /** The bottom of the column's stack. */
+        const bottom = Math.max(...boxes.map((node) => node.top + 42))
+        expect(`${label} rank ${rank} center=${top + (bottom - top) / 2}`).toBe(`${label} rank ${rank} center=${graph.centerY}`)
+      }
+      // A ONE-ROW BOARD KEEPS THE FROZEN TOP: with at most one box per column the midline is `pad + 21`,
+      // so the single box starts at `pad` — the contract's "single-node column must still produce 4".
+      if (graph.columns.every((column) => column.length <= 1)) {
+        for (const node of graph.nodes) expect(`${label} ${node.task.id} top=${node.top}`).toBe(`${label} ${node.task.id} top=4`)
+      }
+      // AND THE GUTTERS HOLD EVERY LANE: a normal fixture never has to report an overflow.
+      expect(`${label} laneOverflow=${graph.laneOverflow}`).toBe(`${label} laneOverflow=0`)
+    }
+  })
+
+  test("overlaps is EMPTY on all three fixtures, no run enters a box, and the audit catches a planted pair", () => {
+    /** The view module, built without rendering. */
+    const view = loadFactory()({}).createTeamView({ react: null, statePath: STATE_PATH })
+    for (const [label, fixture] of FIXTURES) {
+      /** The fixture exactly as the host would serve it. */
+      const served = withServed(fixture)
+      /** Its geometry. */
+      const graph = view.layout(served.tasks, undefined, served.model)
+      expect(`${label} overlaps=${JSON.stringify(graph.overlaps)}`).toBe(`${label} overlaps=[]`)
+      // NO ROUTE RUN ENTERS A NODE BOX INTERIOR either — the rect half of legibility, beside the
+      // painted-curve arm above (which measures the long-edge board's flattened samples).
+      for (const edge of graph.edges) {
+        for (const segment of edge.segments) {
+          for (const node of graph.nodes) {
+            /** The box exactly as the render publishes it: the layout's inset and the centred top. */
+            const box = { left: node.rank * 168 + graph.inset, top: node.top, width: 168 - graph.inset * 2, height: 42 }
+            expect(`${label} ${edge.witness} ${segment.key} enters ${node.task.id}=${entersInterior(segment.rect, box)}`).toBe(`${label} ${edge.witness} ${segment.key} enters ${node.task.id}=false`)
+          }
+        }
+      }
+    }
+    // POSITIVE CONTROL — the audit is fed a DELIBERATELY overlapping pair: two real edges, with one run
+    // moved onto the other's. Without this the three empty lists above could be the output of an audit
+    // that never compares anything. Both orientations are exercised, so neither half is untested.
+    /** The long-edge board's geometry, whose first two edges supply well-formed witnesses. */
+    const served = withServed(LONG_EDGE_TASKS)
+    /** That geometry. */
+    const graph = view.layout(served.tasks, undefined, served.model)
+    /** The first real edge, which the planted pair reuses for its identity. */
+    const first = graph.edges[0]
+    /** The second real edge. */
+    const second = graph.edges[1]
+    /** Two edges sharing 20px of one horizontal run. */
+    const horizontal = [
+      { ...first, segments: [{ key: "out", rect: { left: 10, top: 20, width: 40, height: 1 } }] },
+      { ...second, segments: [{ key: "out", rect: { left: 30, top: 20, width: 40, height: 1 } }] },
+    ]
+    /** What the audit reports for that pair. */
+    const horizontalFound = view.overlapAudit(horizontal)
+    expect(horizontalFound.length).toBe(1)
+    expect(`${horizontalFound[0].orientation} at=${horizontalFound[0].at} overlap=${horizontalFound[0].overlap}`).toBe("horizontal at=20 overlap=20")
+    expect(`${horizontalFound[0].a}|${horizontalFound[0].b}`).toBe(`${first.witness}|${second.witness}`)
+    /** Two edges sharing 15px of one vertical run. */
+    const vertical = [
+      { ...first, segments: [{ key: "riser", rect: { left: 50, top: 10, width: 1, height: 30 } }] },
+      { ...second, segments: [{ key: "riser", rect: { left: 50, top: 25, width: 1, height: 30 } }] },
+    ]
+    /** What the audit reports for the vertical pair. */
+    const verticalFound = view.overlapAudit(vertical)
+    expect(verticalFound.length).toBe(1)
+    expect(`${verticalFound[0].orientation} at=${verticalFound[0].at} overlap=${verticalFound[0].overlap}`).toBe("vertical at=50 overlap=15")
+  })
+
+  test("a node with several edges gets DISTINCT ports ordered by counterpart y, and distinct lanes", () => {
+    /** The view module, built without rendering. */
+    const view = loadFactory()({}).createTeamView({ react: null, statePath: STATE_PATH })
+    /** The long-edge board exactly as the host would serve it. */
+    const served = withServed(LONG_EDGE_TASKS)
+    /** Its geometry. */
+    const graph = view.layout(served.tasks, undefined, served.model)
+    /** Every edge T2 originates, which is the most crowded port set on this board. */
+    const fromT2 = graph.edges.filter((edge) => edge.parent === "T2")
+    expect(fromT2.length).toBe(3)
+    /** T2's box, whose middle the three ports spread about. */
+    const t2 = graph.nodes.find((node) => node.task.id === "T2") as { top: number }
+    /** The departure y of each of T2's edges, keyed by the dependant it reaches. */
+    const portOfChild = new Map(fromT2.map((edge) => [edge.child, edge.curve.points[0].y]))
+    // THREE DISTINCT PORT YS, each INSIDE the node's own height — the attachment contract.
+    expect(new Set(portOfChild.values()).size).toBe(3)
+    for (const port of portOfChild.values()) {
+      expect(port).toBeGreaterThan(t2.top)
+      expect(port).toBeLessThan(t2.top + 42)
+    }
+    // ORDERED BY THE COUNTERPART'S Y: T7 is the topmost dependant, then T11, then T9 — so their ports
+    // ascend in exactly that order, with the middle port on the border middle.
+    expect(portOfChild.get("T7") as number).toBeLessThan(portOfChild.get("T11") as number)
+    expect(portOfChild.get("T11") as number).toBeLessThan(portOfChild.get("T9") as number)
+    expect(portOfChild.get("T11") as number).toBe(t2.top + 21)
+    // AND DISTINCT LANES: each of those three hops stands in its own gutter column, which its first
+    // riser's x publishes — a shared x with overlapping y is exactly the collinear run the audit bans.
+    const lanes = fromT2.map((edge) => (edge.segments.find((segment) => segment.key === "riser") as { rect: Rect }).rect.left)
+    expect(new Set(lanes).size).toBe(lanes.length)
+    // A SINGLE-INCIDENT NODE HAS NO SPREAD: it attaches at the border middle plus its COLUMN'S
+    // parity channel (D1's anti-collinearity device) — odd pixels on even ranks, even ones on odd.
+    // T11 is only ever blocked by T2 and sits in rank 1, so its arrival is the middle + 1.
+    /** The one edge into T11. */
+    const onlyT11 = graph.edges.find((edge) => edge.child === "T11") as GraphGeometry["edges"][number]
+    /** T11's box. */
+    const t11 = graph.nodes.find((node) => node.task.id === "T11") as { top: number }
+    expect(onlyT11.curve.points[onlyT11.curve.points.length - 1].y).toBe(t11.top + 22)
+    // AND THE OTHER PARITY: T5 is a rank-0 root with exactly one incident edge (T9←T5), so its port is
+    // exactly the border middle (channel 0) — together they prove the channel is per COLUMN, not a
+    // global shift.
+    /** The one edge out of T5. */
+    const onlyT5 = graph.edges.find((edge) => edge.parent === "T5") as GraphGeometry["edges"][number]
+    /** T5's box. */
+    const t5 = graph.nodes.find((node) => node.task.id === "T5") as { top: number }
+    expect(onlyT5.curve.points[0].y).toBe(t5.top + 21)
+  })
+
+  test("rank-skipping edges cross on DISTINCT, MIRRORED band rows and never through a box", () => {
+    /** The view module, built without rendering. */
+    const view = loadFactory()({}).createTeamView({ react: null, statePath: STATE_PATH })
+    /** The long-edge board exactly as the host would serve it. */
+    const served = withServed(LONG_EDGE_TASKS)
+    /** Its geometry. */
+    const graph = view.layout(served.tasks, undefined, served.model)
+    /** The rank each id was drawn in, read off the geometry's own nodes (R20). */
+    const rankOf = new Map(graph.nodes.map((node) => [node.task.id, node.rank]))
+    /** The edges that skip at least one rank, which the band must carry. */
+    const long = graph.edges.filter((edge) => Math.abs((rankOf.get(edge.parent) ?? 0) - (rankOf.get(edge.child) ?? 0)) >= 2)
+    expect(long.length).toBe(9)
+    /** Each long edge's crossing row, read off its own `cross1` run. */
+    const rows = long.map((edge) => (edge.segments.find((segment) => segment.key === "cross1") as { rect: Rect }).rect.top)
+    // DISTINCT ROWS: two long edges sharing a row would be a collinear pair the audit above would flag.
+    expect(new Set(rows).size).toBe(rows.length)
+    /** The rows above the midline, ascending. */
+    const above = rows.filter((row) => row < graph.centerY).sort((left, right) => left - right)
+    /** The rows below the midline, ascending. */
+    const below = rows.filter((row) => row > graph.centerY).sort((left, right) => left - right)
+    // HALF AND HALF: the odd row goes on top, mirroring by midpoint y.
+    expect(above.length).toBe(Math.ceil(rows.length / 2))
+    expect(below.length).toBe(Math.floor(rows.length / 2))
+    // MIRRORED ABOUT THE MIDLINE: the row nearest the boxes on each side is the same distance away, and
+    // so is every following pair — the property the one-sided below-only band could not have.
+    for (let index = 0; index < below.length; index += 1) {
+      expect(`${graph.centerY - above[above.length - 1 - index]}`).toBe(`${below[index] - graph.centerY}`)
+    }
+    // AND NO CROSSING ENTERS A BOX: the row is outside every box's y range, and the run is long enough
+    // to pass over at least one intermediate column — otherwise this arm would be measuring a stub.
+    for (const [index, edge] of long.entries()) {
+      /** That edge's crossing run. */
+      const crossing = (edge.segments.find((segment) => segment.key === "cross1") as { rect: Rect }).rect
+      for (const node of graph.nodes) {
+        /** The box as the render publishes it. */
+        const box = { left: node.rank * 168 + graph.inset, top: node.top, width: 168 - graph.inset * 2, height: 42 }
+        expect(`${edge.witness} crosses ${node.task.id}=${entersInterior(crossing, box)}`).toBe(`${edge.witness} crosses ${node.task.id}=false`)
+      }
+      expect(crossing.top).toBe(rows[index])
+    }
+  })
+
+  test("PROPERTY: a battery of generated boards has zero overlaps, no box entry and correct borders", () => {
+    // THE ABSOLUTE REQUIREMENT, MEASURED OVER SHAPES RATHER THAN ONE FIXTURE. The three frozen boards
+    // are kept as their own arms above; this one throws the awkward generators at the router: fan-out,
+    // fan-in, diamond, chain, a flat cycle (same-rank edges), rank-skipping long edges, a rank GAP and
+    // a ~20-node mixed board with a back edge. Every board is laid out BOTH ways — the depth degrade
+    // and the served model — because the two rank sources produce different column shapes.
+    /** The view module, built without rendering. */
+    const view = loadFactory()({}).createTeamView({ react: null, statePath: STATE_PATH })
+    /**
+     * One battery task row.
+     * @param id - the task id.
+     * @param depth - the explicit depth the degrade layout uses as its rank.
+     * @param blockedBy - the blockers it names, all of which are on the same board.
+     * @returns the row the layout consumes.
+     */
+    const row = (id: string, depth: number, blockedBy: string[] = []): Record<string, unknown> => ({ id, subject: id, blockedBy, depth })
+    /**
+     * A run of ids.
+     * @param prefix - the id prefix.
+     * @param count - how many ids.
+     * @returns `prefix0 … prefix<count-1>`.
+     */
+    const ids = (prefix: string, count: number): string[] => Array.from({ length: count }, (_, index) => prefix + index)
+    /** The battery: one entry per board shape, each a self-contained board. */
+    const battery: Array<{ name: string; tasks: Array<Record<string, unknown>> }> = [
+      // FAN-OUT 6→6 — the shape that defeated the first D1 router: each child takes two adjacent roots,
+      // so a root's lead-out and a child's lead-in share a gutter at the same row.
+      {
+        name: "fan-out 6→6",
+        tasks: [...ids("R", 6).map((id) => row(id, 0)), ...ids("C", 6).map((id, index) => row(id, 1, ["R" + index, "R" + ((index + 1) % 6)]))],
+      },
+      // FAN-IN: three sinks, each blocked by all six roots — eighteen edges and six ports per sink.
+      {
+        name: "fan-in 6→3",
+        tasks: [...ids("R", 6).map((id) => row(id, 0)), ...ids("S", 3).map((id) => row(id, 1, ids("R", 6)))],
+      },
+      // FAN-IN 19→1: ONE sink with nineteen ports, which is past the four-pixel pitch's eleven and
+      // exactly the documented fallback-pitch / parity-shift capacity bound.
+      {
+        name: "fan-in 19→1",
+        tasks: [...ids("Q", 19).map((id) => row(id, 0)), row("SINK", 1, ids("Q", 19))],
+      },
+      // DIAMOND: two roots, two middles, one join.
+      {
+        name: "diamond",
+        tasks: [row("A", 0), row("B", 0), row("C", 1, ["A", "B"]), row("D", 1, ["A"]), row("E", 2, ["C", "D"])],
+      },
+      // CHAIN: ten ranks of one node — the single-incident case at every attachment.
+      {
+        name: "chain 10",
+        tasks: ids("N", 10).map((id, index) => row(id, index, index === 0 ? [] : ["N" + (index - 1)])),
+      },
+      // FLAT CYCLE: four mutual blockers at ONE depth — four same-rank edges wrapping one column.
+      {
+        name: "flat cycle",
+        tasks: ids("K", 4).map((id, index) => row(id, 0, ["K" + ((index + 1) % 4)])),
+      },
+      // LONG EDGES OVER A RANK GAP: rank 1 is empty, every rank-0 node reaches rank 2 and then rank 4.
+      {
+        name: "long edges over a gap",
+        tasks: [...ids("A", 5).map((id) => row(id, 0)), ...ids("B", 5).map((id) => row(id, 2)), row("Z", 4, ids("B", 5))],
+      },
+      // MIXED ~20 NODES: six roots, five middles, five deep nodes, four finals at rank 4 (rank 3 empty),
+      // with long edges, a densely blocked node, and a BACK edge (a rank-0 root blocked by a rank-2 node).
+      {
+        name: "mixed ~20",
+        tasks: [
+          ...ids("R", 6).map((id) => row(id, 0)),
+          ...ids("M", 5).map((id, index) => row(id, 1, ["R" + index, "R" + ((index + 2) % 6)])),
+          ...ids("D", 5).map((id, index) => row(id, 2, ["M" + index, "R" + index])),
+          ...ids("F", 4).map((id, index) => row(id, 4, ["D" + index, "D" + ((index + 1) % 5), "M" + index])),
+          row("BACK", 0, ["D0"]),
+        ],
+      },
+    ]
+    /** Every routed edge across the battery, so the coverage floors below are measured. */
+    let routed = 0
+    /** How many rank-skipping edges the battery exercised. */
+    let long = 0
+    /** How many back edges (parent drawn to the right of its dependant). */
+    let back = 0
+    /** How many same-rank edges. */
+    let level = 0
+    /** How many nodes with more than one incident edge. */
+    let crowded = 0
+    for (const board of battery) {
+      // BOTH RANK SOURCES: the depth degrade (which is what makes the awkward shapes reachable) and the
+      // served model the live host sends.
+      /** The board exactly as the host would serve it. */
+      const served = withServed(board.tasks)
+      /** The layouts judged for this board, degrade first. */
+      const layouts: Array<{ name: string; graph: GraphGeometry }> = [
+        { name: board.name + " (degrade)", graph: view.layout(board.tasks) },
+        { name: board.name + " (served)", graph: view.layout(served.tasks, undefined, served.model) },
+      ]
+      for (const { name, graph } of layouts) {
+        expect(`${name} edges=${graph.edges.length > 0}`).toBe(`${name} edges=true`)
+        // ZERO OVERLAPS IS THE HARD REQUIREMENT, and the audit is the measurement.
+        expect(`${name} overlaps=${JSON.stringify(graph.overlaps)}`).toBe(`${name} overlaps=[]`)
+        /** The node each id was drawn as. */
+        const nodeOf = new Map(graph.nodes.map((node) => [node.task.id, node]))
+        /** How many incident edges each node carries, for the crowded-node floor. */
+        const incident = new Map<string, number>()
+        for (const edge of graph.edges) {
+          routed += 1
+          /** The blocker's box. */
+          const parent = nodeOf.get(edge.parent)
+          /** The dependant's box. */
+          const child = nodeOf.get(edge.child)
+          if (parent === undefined || child === undefined) throw new Error(`${name}: ${edge.witness} names a task the layout did not place`)
+          incident.set(edge.parent, (incident.get(edge.parent) ?? 0) + 1)
+          incident.set(edge.child, (incident.get(edge.child) ?? 0) + 1)
+          /** Whether the dependency runs downhill, which is the ordinary case. */
+          const forward = parent.rank <= child.rank
+          /** Whether both ends sit in one column. */
+          const sameColumn = parent.rank === child.rank
+          /** The border the route must LEAVE: the blocker's right when forward/level, its left otherwise. */
+          const leaveX = forward ? parent.rank * 168 + 168 - graph.inset : parent.rank * 168 + graph.inset
+          // The level route leaves the right border too, which `forward` already covers.
+          /** The border it must ARRIVE at: the dependant's right for a level/back edge, its left otherwise. */
+          const arriveX = sameColumn || !forward ? child.rank * 168 + 168 - graph.inset : child.rank * 168 + graph.inset
+          /** The route's first vertex. */
+          const start = edge.curve.points[0]
+          /** Its last vertex, which IS the tip. */
+          const end = edge.curve.points[edge.curve.points.length - 1]
+          // ATTACHMENT ON THE CORRECT BORDER, and INSIDE the box it names (a port, not empty space).
+          expect(`${name} ${edge.witness} leaveX=${start.x}`).toBe(`${name} ${edge.witness} leaveX=${leaveX}`)
+          expect(`${name} ${edge.witness} arriveX=${end.x}`).toBe(`${name} ${edge.witness} arriveX=${arriveX}`)
+          expect(`${name} ${edge.witness} startInside=${start.y > parent.top && start.y < parent.top + 42}`).toBe(`${name} ${edge.witness} startInside=true`)
+          expect(`${name} ${edge.witness} endInside=${end.y > child.top && end.y < child.top + 42}`).toBe(`${name} ${edge.witness} endInside=true`)
+          // NO ROUTE RUN ENTERS A BOX INTERIOR: every rect against every box, by arithmetic.
+          for (const segment of edge.segments) {
+            for (const node of graph.nodes) {
+              /** The box as the render publishes it. */
+              const box = { left: node.rank * 168 + graph.inset, top: node.top, width: 168 - graph.inset * 2, height: 42 }
+              expect(`${name} ${edge.witness} ${segment.key} enters ${node.task.id}=${entersInterior(segment.rect, box)}`).toBe(`${name} ${edge.witness} ${segment.key} enters ${node.task.id}=false`)
+            }
+          }
+          // COVERAGE COUNTERS, accumulated so the floors below prove the battery had teeth.
+          if (Math.abs(parent.rank - child.rank) >= 2) long += 1
+          if (!forward) back += 1
+          if (sameColumn) level += 1
+        }
+        for (const count of incident.values()) if (count > 1) crowded += 1
+      }
+    }
+    // NON-VACUITY FLOORS: the battery must carry a real load and every route class must appear at
+    // least once, or "zero overlaps" could be the audit of a graph the router never drew.
+    expect(routed).toBeGreaterThan(100)
+    expect(long).toBeGreaterThan(0)
+    expect(back).toBeGreaterThan(0)
+    expect(level).toBeGreaterThan(0)
+    expect(crowded).toBeGreaterThan(0)
+  })
+
+  test("R20's served ranks and the radius-0 curve control are unchanged by the new routing", () => {
+    /** The view module, built without rendering. */
+    const view = loadFactory()({}).createTeamView({ react: null, statePath: STATE_PATH })
+    // R20 — THE RANKS ARE THE HOST'S: this board's every served depth is 0 and its references resolve,
+    // so a client that re-derived would collapse it to one column. It draws five, in the core's order.
+    /** The board exactly as the host would serve it. */
+    const served = withServed(WEB_DERIVED_TASKS)
+    /** Its geometry. */
+    const graph = view.layout(served.tasks, undefined, served.model)
+    expect(graph.ranksDerived).toBe(true)
+    expect(graph.columns.map((column) => column.map((task) => task.id))).toEqual([
+      ["T1", "T2", "T3", "T4", "T5"], ["T6"], ["T7", "T9"], ["T8"], ["T10"],
+    ])
+    // W6 — THE BYTE-EXACT CONTROL PATH: `curveOf` is untouched by the routing change, so the frozen
+    // four-vertex route still collapses to the exact `M`/`L` string the contract pins.
+    /** The contract's frozen control waypoints. */
+    const waypoints = [{ x: 164, y: 25 }, { x: 168, y: 25 }, { x: 168, y: 77 }, { x: 172, y: 77 }]
+    expect(view.curveOf(waypoints, 0).d).toBe("M 164 25 L 168 25 L 168 77 L 172 77")
+    // AND THE RADIUS ECHOES ON EVERY ROUTED EDGE, so the control is observable in the layout itself.
+    for (const edge of graph.edges) expect(edge.curve.radius).toBe(6)
   })
 })
 
@@ -2020,5 +2459,312 @@ describe("R18's reader side: the RECORD's own unresolved report, beside the SERV
     /** The tree with T1 pinned, which carries no unresolved report. */
     const clean = await rendered.hooks.act(rendered.component, { sessionId: "s1" } as never)
     expect(flatText(one(clean, "data-mpd-detail", "T1"))).not.toContain("unresolved blockers")
+  })
+})
+
+/**
+ * D2's fixture: a completed task with BOTH stamps, a running dependant, and a blocked dependant.
+ *
+ * The shapes are chosen so ONE board proves every D2 claim: `T1 -> T2` is the completed -> running
+ * edge (the one moving arrow), `T1 -> T3` is a completed -> blocked edge (which must stay static),
+ * `T1` owns a deterministic 1m 5s elapsed span, `T3` has no owner (the "unassigned" fallback), and
+ * the served progress values exercise both ends of the clamp.
+ */
+const VISUAL_TASKS = [
+  { id: "T1", subject: "Freeze the acceptance contract and publish the frozen text for every lane", kind: "requirement", status: "completed", visual: "completed", owner: "web-team-gui", attempt: 1, blockedBy: [], failedBy: [], depth: 0, startedAt: "2026-10-21T10:00:00.000Z", finishedAt: "2026-10-21T10:01:05.000Z", progress: 100 },
+  { id: "T2", subject: "Build the hover card", kind: "work", status: "running", visual: "running", owner: "web-dag", blockedBy: ["T1"], failedBy: [], depth: 1, startedAt: "2026-10-21T10:02:00.000Z", progress: 50 },
+  { id: "T3", subject: "Blocked child", kind: "review", status: "open", visual: "blocked", blockedBy: ["T1"], failedBy: [], depth: 1, progress: 140 },
+]
+
+describe("team-view D2: the scoped stylesheet and the frosted node", () => {
+  test("renders ONE stylesheet at the panel root, outside the graph, with the contracted material", async () => {
+    /** The settled render of D2's fixture. */
+    const rendered = await renderView({ routes: { [STATE_PATH]: { ok: true, status: 200, body: stateOf(VISUAL_TASKS) } } })
+    /** Every stylesheet marker in the tree, so a second one is a failure rather than a silent pass. */
+    const sheets = collect(rendered.tree, "data-mpd-dag-css")
+    expect(sheets.length).toBe(1)
+    expect(sheets[0].props["data-mpd-dag-css"]).toBe("1")
+    /** The stylesheet's own text. */
+    const css = flatText(sheets[0])
+    // THE GLASS: a real backdrop filter, the exact transition the contract names, and the material.
+    expect(css).toContain("backdrop-filter: blur(14px) saturate(1.25)")
+    expect(css).toContain("transition: transform 420ms cubic-bezier(.2,.8,.2,1), opacity 200ms, border-color 200ms, box-shadow 200ms;")
+    expect(css).toContain("will-change: transform;")
+    expect(css).toContain("border: 0.5px solid")
+    expect(css).toContain("box-shadow:")
+    expect(css).toContain("color: #111827")
+    // THE BREATHING: a keyframe + the running selector that uses it, edge glow only.
+    expect(css).toContain("@keyframes mpd-dag-breathe")
+    expect(css).toContain('.mpd-dag-node[data-visual="running"] { animation: mpd-dag-breathe')
+    // THE CARD: translucent white, black text, the pinned override.
+    expect(css).toContain("rgba(255,255,255,.78)")
+    expect(css).toContain("color: #111;")
+    expect(css).toContain('.mpd-dag-tip[data-pinned="true"] { background: #ffffff')
+    expect(css).toContain("pointer-events: none")
+    // THE FLOW + DRAW keyframes and the reduced-motion block.
+    expect(css).toContain("@keyframes mpd-dag-dash")
+    expect(css).toContain("@keyframes mpd-dag-draw")
+    expect(css).toContain("@media (prefers-reduced-motion: reduce)")
+    // ASCII ONLY, so the stylesheet cannot smuggle a full-width codepoint into the drawing's page.
+    expect(/[^\x00-\x7F]/.test(css)).toBe(false)
+    // OUTSIDE THE GRAPH SUBTREE: the graph's own descendants carry no stylesheet, so the CJK-free
+    // drawing region and the stylesheet's carrier are disjoint by construction.
+    const graph = one(rendered.tree, "data-mpd-graph", "ranks=2 edges=2")
+    expect(collect(graph, "data-mpd-dag-css").length).toBe(0)
+  })
+
+  test("every node carries the glass class, its rendered state, and a translate3d position", async () => {
+    /** The settled render of D2's fixture. */
+    const rendered = await renderView({ routes: { [STATE_PATH]: { ok: true, status: 200, body: stateOf(VISUAL_TASKS) } } })
+    /** The rendered tree. */
+    const tree = rendered.tree
+    /** One node element by id. */
+    const nodeOf = (id: string): ElementNode => one(tree, "data-mpd-node", id)
+    // THE VISUAL MARKERS: what the stylesheet's breathing selector keys on.
+    expect(nodeOf("T1").props["data-visual"]).toBe("completed")
+    expect(nodeOf("T2").props["data-visual"]).toBe("running")
+    expect(nodeOf("T3").props["data-visual"]).toBe("blocked")
+    for (const id of ["T1", "T2", "T3"]) expect(nodeOf(id).props.className).toBe("mpd-dag-node")
+    // THE GEOMETRY IS STILL THE LAYOUT'S: the box is published in LAYOUT coordinates, and the inline
+    // style moves the SAME numbers through `translate3d`, which is what the transition animates.
+    /** The served board, with the ranks the host would send. */
+    const served = withServed(VISUAL_TASKS)
+    /** The pure geometry that render drew from. */
+    const graph = rendered.view.layout(served.tasks as never, 6, served.model as never)
+    /** T2's own node in that geometry. */
+    const placed = graph.nodes.find((node) => node.task.id === "T2") as { rank: number; top: number }
+    /** T2's painted element. */
+    const painted = nodeOf("T2")
+    expect(parseRect(String(painted.props["data-mpd-box"]))).toEqual({ left: placed.rank * 168 + graph.inset, top: placed.top, width: 168 - graph.inset * 2, height: 42 })
+    expect(styleOf(painted, "transform")).toBe("translate3d(" + graph.inset + "px," + placed.top + "px,0)")
+    expect(styleOf(painted, "left")).toBe("0px")
+    expect(styleOf(painted, "top")).toBe("0px")
+    expect(styleOf(painted, "right")).toBe("")
+    expect(styleOf(painted, "width")).toBe(168 - graph.inset * 2 + "px")
+    // THE EXISTING INLINE SEMANTICS SURVIVE: an idle border is 0.5px and an unpinned node is opaque.
+    expect(styleOf(painted, "borderWidth")).toBe("0.5px")
+    expect(styleOf(painted, "opacity")).toBe("1")
+  })
+})
+
+describe("team-view D2: the completed -> running flow overlay", () => {
+  test("one overlay for a completed -> running edge, none for completed -> blocked, counts unchanged", async () => {
+    /** The settled render of D2's fixture. */
+    const rendered = await renderView({ routes: { [STATE_PATH]: { ok: true, status: 200, body: stateOf(VISUAL_TASKS) } } })
+    /** The rendered tree. */
+    const tree = rendered.tree
+    /** The edge layer. */
+    const layer = one(tree, "data-edges", "1")
+    /** Every motion overlay in the drawing. */
+    const flows = collect(tree, "data-mpd-flow")
+    // EXACTLY ONE: T1 completed -> T2 running. T1 completed -> T3 blocked stays static.
+    expect(flows.map((flow) => flow.props["data-mpd-flow"])).toEqual(["T2<-T1"])
+    expect(collect(layer, "data-mpd-flow").length).toBe(1)
+    /** The one overlay group. */
+    const flow = flows[0]
+    // IT CARRIES NONE OF THE COUNTED MARKS, so the one-path/one-head-per-edge counts stay edge facts.
+    for (const counted of ["data-mpd-edge", "data-mpd-curve", "data-mpd-tip", "data-mpd-head"]) {
+      expect(flow.props[counted]).toBeUndefined()
+      expect(collect(flow, counted).length).toBe(0)
+    }
+    /** The overlay's arrow polygon. */
+    const arrow = findFirst(flow, (candidate) => candidate.type === "polygon")
+    expect(arrow).not.toBeNull()
+    expect(String(arrow?.props.points)).toBe("-5,-4 5,0 -5,4")
+    // THE MOTION RIDES THE SAME `d` THE EDGE DRAWS: read the pure layout, never a copy.
+    /** The served board, with the ranks the host would send. */
+    const served = withServed(VISUAL_TASKS)
+    /** The geometry that render drew from. */
+    const graph = rendered.view.layout(served.tasks as never, 6, served.model as never)
+    /** The routed edge the overlay animates. */
+    const routed = graph.edges.find((edge) => edge.witness === "T2<-T1") as { curve: { d: string } }
+    /** The SMIL element inside the overlay. */
+    const motion = findFirst(flow, (candidate) => candidate.type === "animateMotion")
+    expect(motion).not.toBeNull()
+    expect(motion?.props.path).toBe(routed.curve.d)
+    expect(motion?.props.dur).toBe("1.6s")
+    expect(motion?.props.repeatCount).toBe("indefinite")
+    expect(motion?.props.rotate).toBe("auto")
+    // THE MAIN PATH gets the dash-flow class; the completed -> blocked path does NOT.
+    /** The children of one edge group: [curve, head]. */
+    const painted = (key: string): ElementNode[] => collectByKey(layer, key)[0].props.children as ElementNode[]
+    expect(String(painted("edge:T1>T2")[0].props.className)).toContain("mpd-dag-flow")
+    expect(String(painted("edge:T1>T2")[0].props.className)).toContain("mpd-dag-draw")
+    expect(String(painted("edge:T1>T3")[0].props.className)).not.toContain("mpd-dag-flow")
+    // THE COUNTS AND THE PAINTED `d` ARE UNCHANGED: the overlay adds motion, never an edge.
+    expect(collect(layer, "data-mpd-edge").length).toBe(2)
+    expect(collect(layer, "data-mpd-curve").length).toBe(2)
+    expect(collect(layer, "data-mpd-tip").length).toBe(2)
+    expect(collect(layer, "data-mpd-head").length).toBe(2)
+    expect(one(tree, "data-mpd-graph", "ranks=2 edges=2").props["data-mpd-graph"]).toBe("ranks=2 edges=2")
+    /** The routed T1 -> T2 edge's own `d`. */
+    const curve = routed.curve.d
+    expect(painted("edge:T1>T2")[0].props["data-mpd-curve"]).toBe(curve)
+    expect(painted("edge:T1>T2")[0].props.d).toBe(curve)
+  })
+})
+
+describe("team-view D2: the hover card", () => {
+  test("shows status, owner, elapsed, a truncated subject and progress, outside the graph", async () => {
+    /** The settled render of D2's fixture. */
+    const rendered = await renderView({ routes: { [STATE_PATH]: { ok: true, status: 200, body: stateOf(VISUAL_TASKS) } } })
+    // Hover T1 at a known viewport point: the card anchors 14px below/right of it.
+    ;(one(rendered.tree, "data-mpd-node", "T1").props.onMouseEnter as (event: unknown) => void)({ clientX: 40, clientY: 60 })
+    /** The tree with the card open. */
+    const hovered = await rendered.hooks.act(rendered.component, { sessionId: "s1" } as never)
+    /** The one card. */
+    const card = one(hovered, "data-mpd-tip-card", "1")
+    // OUTSIDE THE GRAPH SUBTREE: the card is a SIBLING of the graph, which is what keeps the raw
+    // subject it shows legal while the drawing stays CJK-free.
+    expect(collect(one(hovered, "data-mpd-graph", "ranks=2 edges=2"), "data-mpd-tip-card").length).toBe(0)
+    expect(card.props["data-pinned"]).toBe("false")
+    expect(styleOf(card, "left")).toBe("54px")
+    expect(styleOf(card, "top")).toBe("74px")
+    /** The card's whole text. */
+    const text = flatText(card)
+    expect(text).toContain("status")
+    expect(text).toContain("completed")
+    expect(text).toContain("owner")
+    expect(text).toContain("web-team-gui")
+    expect(text).toContain("elapsed")
+    expect(text).toContain("1m 5s")
+    expect(text).toContain("progress")
+    expect(text).toContain("100%")
+    // THE SUBJECT IS ONE LINE WITH AN ELLIPSIS, and the FULL text stays on `title`.
+    /** The card's subject element. */
+    const subject = collectByKey(card, "tip-subject")[0]
+    expect(String(subject.props.title)).toBe(VISUAL_TASKS[0].subject)
+    expect(flatText(subject).endsWith("…")).toBe(true)
+    // MOUSEMOVE FOLLOWS THE CURSOR: the same offset from the new point, still no measurement API.
+    ;(one(hovered, "data-mpd-node", "T1").props.onMouseMove as (event: unknown) => void)({ clientX: 100, clientY: 120 })
+    /** The tree after the pointer moved. */
+    const moved = await rendered.hooks.act(rendered.component, { sessionId: "s1" } as never)
+    expect(styleOf(one(moved, "data-mpd-tip-card", "1"), "left")).toBe("114px")
+    expect(styleOf(one(moved, "data-mpd-tip-card", "1"), "top")).toBe("134px")
+  })
+
+  test("clamps the card inside a small viewport when the host exposes one", async () => {
+    /** The settled render of D2's fixture. */
+    const rendered = await renderView({ routes: { [STATE_PATH]: { ok: true, status: 200, body: stateOf(VISUAL_TASKS) } } })
+    /** The global scope, narrowed so the stubbed viewport can be installed and removed. */
+    const scope = globalThis as { window?: unknown }
+    /** The host global this case replaces, kept for the restore in the `finally`. */
+    const saved = scope.window
+    scope.window = { innerWidth: 300, innerHeight: 200 }
+    try {
+      // A pointer at (950, 500) would put the 240x104 card far outside a 300x200 viewport; the
+      // clamp pins it to `width - TIP_WIDTH - TIP_OFFSET` and `height - TIP_HEIGHT - TIP_OFFSET`.
+      ;(one(rendered.tree, "data-mpd-node", "T1").props.onMouseEnter as (event: unknown) => void)({ clientX: 950, clientY: 500 })
+      /** The tree with the clamped card open. */
+      const hovered = await rendered.hooks.act(rendered.component, { sessionId: "s1" } as never)
+      /** The clamped card. */
+      const card = one(hovered, "data-mpd-tip-card", "1")
+      expect(styleOf(card, "left")).toBe("46px")
+      expect(styleOf(card, "top")).toBe("82px")
+    } finally {
+      scope.window = saved
+    }
+  })
+
+  test("pinning makes the next hover OPAQUE, leaves the detail body open, and mouseleave closes the card", async () => {
+    /** The settled render of D2's fixture. */
+    const rendered = await renderView({ routes: { [STATE_PATH]: { ok: true, status: 200, body: stateOf(VISUAL_TASKS) } } })
+    // Pin T1 with the EXISTING click behaviour, then hover it again.
+    ;(one(rendered.tree, "data-mpd-node", "T1").props.onClick as () => void)()
+    /** The tree with T1 pinned. */
+    const pinned = await rendered.hooks.act(rendered.component, { sessionId: "s1" } as never)
+    expect(collect(pinned, "data-mpd-detail").map((body) => body.props["data-mpd-detail"])).toEqual(["T1"])
+    ;(one(pinned, "data-mpd-node", "T1").props.onMouseEnter as (event: unknown) => void)({ clientX: 20, clientY: 30 })
+    /** The tree with the pinned task's card open. */
+    const hovered = await rendered.hooks.act(rendered.component, { sessionId: "s1" } as never)
+    /** The card, which the stylesheet renders opaque through this flag. */
+    const card = one(hovered, "data-mpd-tip-card", "1")
+    expect(card.props["data-pinned"]).toBe("true")
+    expect(flatText(card)).toContain("100%")
+    // THE EXISTING DETAIL PANEL IS STILL THERE, beside the card.
+    expect(flatText(one(hovered, "data-mpd-detail", "T1"))).toContain("Freeze the acceptance contract")
+    // LEAVING CLOSES THE CARD and leaves the PINNED detail body alone.
+    ;(one(hovered, "data-mpd-node", "T1").props.onMouseLeave as () => void)()
+    /** The tree after the pointer left. */
+    const left = await rendered.hooks.act(rendered.component, { sessionId: "s1" } as never)
+    expect(collect(left, "data-mpd-tip-card").length).toBe(0)
+    expect(collect(left, "data-mpd-detail").length).toBe(1)
+  })
+
+  test("falls back to `unassigned` for a task with no owner, and clamps the progress bar", async () => {
+    /** The settled render of D2's fixture (T3 has no owner and a served progress ABOVE the clamp). */
+    const rendered = await renderView({ routes: { [STATE_PATH]: { ok: true, status: 200, body: stateOf(VISUAL_TASKS) } } })
+    ;(one(rendered.tree, "data-mpd-node", "T3").props.onMouseEnter as (event: unknown) => void)({ clientX: 10, clientY: 10 })
+    /** The tree with T3's card open. */
+    const high = await rendered.hooks.act(rendered.component, { sessionId: "s1" } as never)
+    /** T3's card. */
+    const highCard = one(high, "data-mpd-tip-card", "1")
+    expect(flatText(highCard)).toContain("unassigned")
+    expect(styleOf(collectByKey(highCard, "tip-fill")[0], "width")).toBe("100%")
+    // THE LOW END: a board whose served progress is negative draws an EMPTY bar, never a negative width.
+    /** D2's board with T3's progress pushed below zero. */
+    const negative = VISUAL_TASKS.map((task) => (task.id === "T3" ? { ...task, progress: -20 } : task))
+    /** A fresh render of that board. */
+    const lowRendered = await renderView({ routes: { [STATE_PATH]: { ok: true, status: 200, body: stateOf(negative) } } })
+    ;(one(lowRendered.tree, "data-mpd-node", "T3").props.onMouseEnter as (event: unknown) => void)({ clientX: 10, clientY: 10 })
+    /** The tree with the clamped card open. */
+    const low = await lowRendered.hooks.act(lowRendered.component, { sessionId: "s1" } as never)
+    /** The clamped fill. */
+    const fill = collectByKey(one(low, "data-mpd-tip-card", "1"), "tip-fill")[0]
+    expect(styleOf(fill, "width")).toBe("0%")
+    expect(flatText(one(low, "data-mpd-tip-card", "1"))).toContain("0%")
+  })
+})
+
+describe("team-view D2: elapsed formatting and the ticker", () => {
+  test("formats Xs, Xm Ys and Xh Ym, and dashes a record that cannot answer", () => {
+    /** The view module, built without rendering because the formatter is pure. */
+    const view = loadFactory()({}).createTeamView({ react: null, statePath: STATE_PATH })
+    /** A fixed clock, so every case is deterministic. */
+    const start = "2026-10-21T12:00:00.000Z"
+    /** The epoch milliseconds of that start. */
+    const base = Date.parse(start)
+    expect(view.formatElapsed({ visual: "running", startedAt: start }, base)).toBe("0s")
+    expect(view.formatElapsed({ visual: "running", startedAt: start }, base + 65_000)).toBe("1m 5s")
+    expect(view.formatElapsed({ visual: "running", startedAt: start }, base + 3_661_000)).toBe("1h 1m")
+    // A finished task measures start -> finish, never now.
+    expect(view.formatElapsed({ visual: "completed", startedAt: start, finishedAt: "2026-10-21T12:01:05.000Z" }, base)).toBe("1m 5s")
+    // THE HONEST DASHES: no start, a completed task with no finish, and a malformed stamp.
+    expect(view.formatElapsed({ visual: "running" }, base)).toBe("-")
+    expect(view.formatElapsed({ visual: "running", startedAt: "" }, base)).toBe("-")
+    expect(view.formatElapsed({ visual: "completed", startedAt: start }, base)).toBe("-")
+    expect(view.formatElapsed({ visual: "running", startedAt: "not-a-date" }, base)).toBe("-")
+    // A clock that runs backwards clamps to zero instead of printing a negative span.
+    expect(view.formatElapsed({ visual: "running", startedAt: start }, base - 5_000)).toBe("0s")
+  })
+
+  test("ticks once a second ONLY while a running task is visible, and cleans the interval up", () => {
+    // A SOURCE PIN: the harness has no fake clock, so the arm proves the SHIPPED guard, cadence and
+    // cleanup are present rather than waiting a real second in a unit test.
+    expect(SOURCE).toContain('const runningVisible = state !== null && state.tasks.some((task) => task.visual === "running")')
+    expect(SOURCE).toContain("if (!runningVisible) return undefined")
+    expect(SOURCE).toContain("setInterval(() => setClockState(Date.now()), 1000)")
+    expect(SOURCE).toContain("return () => clearInterval(timer)")
+  })
+
+  test("the drawing stays CJK-free while the card shows the raw subject", async () => {
+    /** A board whose subjects are pure Chinese, which is exactly what the drawing may not carry. */
+    const board = [
+      { id: "T1", subject: "冻结验收契约", kind: "requirement", status: "completed", visual: "completed", owner: "web-team-gui", blockedBy: [], failedBy: [], depth: 0, startedAt: "2026-10-21T10:00:00.000Z", finishedAt: "2026-10-21T10:01:05.000Z" },
+      { id: "T2", subject: "构建悬停卡片", kind: "work", status: "running", visual: "running", owner: "web-dag", blockedBy: ["T1"], failedBy: [], depth: 1, startedAt: "2026-10-21T10:02:00.000Z" },
+    ]
+    /** The settled render of that board. */
+    const rendered = await renderView({ routes: { [STATE_PATH]: { ok: true, status: 200, body: stateOf(board) } } })
+    ;(one(rendered.tree, "data-mpd-node", "T1").props.onMouseEnter as (event: unknown) => void)({ clientX: 30, clientY: 40 })
+    /** The tree with the card open. */
+    const hovered = await rendered.hooks.act(rendered.component, { sessionId: "s1" } as never)
+    /** The drawing's own text: every node box, none of the card's chrome. */
+    const picture = collect(hovered, "data-mpd-node").map((node) => flatText(node)).join(" ")
+    expect(/[\u2E80-\u2FFF\u3000-\u303F\u3040-\u9FFF\uAC00-\uD7AF\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFFEF]/.test(picture)).toBe(false)
+    // C3: the card keeps the original subject verbatim, and it is outside the graph subtree.
+    /** The card's subject element, whose text may carry the Chinese. */
+    const subject = collectByKey(one(hovered, "data-mpd-tip-card", "1"), "tip-subject")[0]
+    expect(flatText(subject)).toContain("冻结验收契约")
+    expect(collect(one(hovered, "data-mpd-graph", "ranks=2 edges=1"), "data-mpd-tip-card").length).toBe(0)
   })
 })

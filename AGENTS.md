@@ -487,9 +487,13 @@ lane hold this line.
   is the one-command uninstall.
 - **The published dependency closure is BUILD-SCRIPT-FREE on purpose**: pnpm 11 hard-exits on unapproved
   dependency build scripts (`ERR_PNPM_IGNORED_BUILDS`) and `dsh plugin add` has no approval channel, so
-  `dsh-better-sidebar` is an optional PEER + a `devDependency` (the transitive `node-pty` postinstall
-  that OLDER releases pulled is the historical reason; 0.24.1 no longer depends on node-pty, measured
-  2026-10-02 — its row's mount guard disables it when absent) and `@ast-grep/cli` +
+  `dsh-better-sidebar` is an optional PEER (`>=0.28.0 <0.29.0`) + a `devDependency` pinned at `0.28.0`
+  (the transitive `node-pty` postinstall that OLDER releases pulled is the historical reason; it has been
+  gone since 0.24.1, measured 2026-10-02, and 0.28.0 ships no install script either, measured 2026-10-21
+  — its row's mount guard disables it when absent). 0.28.0 requires harness 0.2.1-rc.1+ (this repo pins
+  0.2.1-rc.2), injects `["webServer","sessions","connection","tools"]`, and contributes each mpd sidebar
+  page twice — the primary tab plus a `bottomOnly` bottom-workbench twin (`<id>:bottom`) — with the
+  official right sidebar as the fallback when the package is absent. `@ast-grep/cli` +
   `@code-yeongyu/comment-checker` left `optionalDependencies`.
 - Every path-bearing patch value resolves through the loader's `baseUrl` (the profile directory), so the
   same patch works for a checkout install and for a packed install. The `mpd` preset and the skill corpus

@@ -133,12 +133,16 @@
     id: string
     /** The tab title, resolved through the page's translator on every render. */
     title: () => string
+    /** One-line purpose for the host's new-tab list (0.28). */
+    description?: string | (() => string)
     /** The tab icon factory; the host passes the icon size in pixels. */
     icon: (size: number) => unknown
     /** The tab's position among the host's tabs. */
     order: number
     /** Whether the host keeps at most one instance of this tab. */
     single: boolean
+    /** Bottom-workbench-only type (0.26+): offered in the plugin's own bottom menu and nowhere else. */
+    bottomOnly?: boolean
     /** The one tab state the host opens on demand. */
     createTab: () => { tab: { id: string; type: string; title: string } }
     /** The unread count the host renders as a badge, or undefined for no badge. */
@@ -167,6 +171,13 @@
   const TEAM_TAB_ID = "mpd-agent-teams";
   /** The tab's position among the sidebar's own tabs. */
   const TEAM_TAB_ORDER = 85;
+  /**
+   * The suffix that turns the primary tab id into its bottom-workbench duplicate's id.
+   *
+   * A SEPARATE TYPE, not a second surface of one type: 0.28's `bottomOnly` keeps a type out of the
+   * native right Sidebar, so the workbench twin needs its own id (and its own minted tab state).
+   */
+  const BOTTOM_TAB_SUFFIX = ":bottom";
   /** The locale namespace this page's dictionaries are registered under. */
   const TEAM_LOCALE_NAMESPACE = "mpdAgentTeams";
 
@@ -183,6 +194,7 @@
   /** The Simplified-Chinese dictionary (the page's own labels, not the harness's). */
   const zh: Record<string, string | undefined> = {
     "tab.title": "团队看门狗",
+    "tab.description": "看门狗事件与活动",
     "panel.subtitle": "只看门狗视图 —— 花名册与任务板由官方 Agent Teams 客户端提供。",
     "panel.loading": "加载中…",
     "panel.empty": "没有卡住的团队：没有 hold，也没有未读事件。",
@@ -198,6 +210,7 @@
   /** The English dictionary, key-complete against `zh` (the key-set source of truth). */
   const en: Record<string, string | undefined> = {
     "tab.title": "Team watchdog",
+    "tab.description": "Watchdog incidents and activity",
     "panel.subtitle": "Watchdog view only — the roster and task board belong to the official Agent Teams client.",
     "panel.loading": "Loading…",
     "panel.empty": "No stuck team: no hold and no unread incident.",
@@ -475,9 +488,14 @@
       /** The translator this registration closes over (the title and body both use it). */
       const t = translatorFor(ctx);
       ctx.effect(() => ctx.locale.register(TEAM_LOCALE_NAMESPACE, { zh, en }), "mpd-agent-teams: dictionaries");
-      ctx.effect(() => service.registerTab({
+      /**
+       * The PRIMARY descriptor. The bottom-workbench twin is derived from it, which is what keeps
+       * title, icon, order, `single`, the badge and the body identical between the two surfaces.
+       */
+      const descriptor: TabDescriptor = {
         id: TEAM_TAB_ID,
         title: () => t("tab.title"),
+        description: () => t("tab.description"),
         icon: (size: number) => react.createElement("span", { "aria-hidden": true, style: { fontSize: size, lineHeight: 1 } }, "\u{1F6A8}"),
         order: TEAM_TAB_ORDER,
         single: true,
@@ -496,7 +514,31 @@
           }
         },
         component: (props: unknown) => react.createElement(TeamPageView, Object.assign({ t }, props))
-      }), "mpd-agent-teams: sidebar tab");
+      };
+      ctx.effect(() => service.registerTab(descriptor), "mpd-agent-teams: sidebar tab");
+      // THE BOTTOM WORKBENCH TWIN (0.28 `bottomOnly`). Registered through the SAME betterSidebar
+      // path as the primary — this function is only reached from the `betterSidebar` injection, so a
+      // profile without that host never registers it. Idempotent PER ID, like the primary above.
+      const bottomId = TEAM_TAB_ID + BOTTOM_TAB_SUFFIX;
+      /** Whether the twin is already present; a throwing `getTab` means "cannot tell". */
+      let bottomPresent = false;
+      try {
+        bottomPresent = typeof service.getTab === "function" && service.getTab(bottomId) !== undefined;
+      } catch {
+        bottomPresent = false;
+      }
+      if (!bottomPresent) {
+        try {
+          ctx.effect(() => service.registerTab({
+            ...descriptor,
+            id: bottomId,
+            bottomOnly: true,
+            createTab: () => ({ tab: { id: bottomId, type: bottomId, title: t("tab.title") } }),
+          }), "mpd-agent-teams: bottom tab");
+        } catch (error) {
+          console.warn("[mpd] team watchdog bottom tab registration failed: " + String(error));
+        }
+      }
       ctx.effect(() => {
         startPolling();
         return () => { stopPolling(); };

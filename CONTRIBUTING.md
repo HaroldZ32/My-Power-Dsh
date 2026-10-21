@@ -63,7 +63,7 @@ releases pulled a transitive `node-pty` that needs `node-gyp`; `0.24.1` no longe
 (measured 2026-10-02), so this is only needed where `node-gyp` is unavailable:
 
 ```bash
-bun add dsh-better-sidebar@0.24.1 --ignore-scripts
+bun add dsh-better-sidebar@0.28.0 --ignore-scripts
 ```
 
 Only the sidebar's terminal panel degrades.

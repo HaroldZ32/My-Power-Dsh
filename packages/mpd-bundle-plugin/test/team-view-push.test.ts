@@ -40,6 +40,16 @@ const PUSH_BUDGET_MS = 200
  * team view's timer by its period rather than by being the only one in the list.
  */
 const VIEW_POLL_MS = 2000
+/**
+ * The team view's elapsed-time ticker, in ms, registered only while a running task is visible (D2).
+ *
+ * It is the view's SECOND owned timer: the poll above re-reads the routes, while this one only moves
+ * the hover card's elapsed row forward once a second. A board with no running task registers no
+ * ticker, which is why the arms identify it by period rather than by counting every interval.
+ */
+const VIEW_TICK_MS = 1000
+/** The watchdog page's own poll period, in ms — the OTHER poller this file records, not the view's. */
+const WATCHDOG_POLL_MS = 15000
 
 /**
  * Build a state payload whose one member name carries `tag`.
@@ -527,8 +537,12 @@ describe("W-c — lifecycle: unmount and session change", () => {
     try {
       /** The stream the mount opened. */
       const stream = panel.streams.opened[0]
-      /** The team view's own interval record, read before the unmount clears it. */
-      const viewTimer = panel.intervals.registered.filter((entry) => entry.ms === VIEW_POLL_MS)
+      /** The team view's OWN poll records, read before the unmount clears them. */
+      const pollTimers = panel.intervals.registered.filter((entry) => entry.ms === VIEW_POLL_MS)
+      /** The view's 1s elapsed ticker, registered because this fixture's task is running (D2). */
+      const tickTimers = panel.intervals.registered.filter((entry) => entry.ms === VIEW_TICK_MS)
+      /** The watchdog page's interval, which this view does not own and must not clear. */
+      const watchdogTimers = panel.intervals.registered.filter((entry) => entry.ms === WATCHDOG_POLL_MS)
       expect(stream.closed).toBe(false)
       // THE UNMOUNT, driven exactly as React runs an effect's cleanup.
       panel.client.hooks.runCleanups()
@@ -542,12 +556,16 @@ describe("W-c — lifecycle: unmount and session change", () => {
       expect(stream.closed).toBe(true)
       expect(stream.closeCalls).toBe(1)
       expect(panel.streams.opened.filter((entry) => !entry.closed).length).toBe(0)
-      // THE VIEW'S OWN TIMER IS EXACTLY WHAT THE UNMOUNT CLEARED — once. The 15000 ms interval in the
-      // list belongs to the watchdog page (another surface, another disposer) and is deliberately not
-      // touched here.
-      expect(viewTimer.length).toBe(1)
-      expect(panel.intervals.cleared.length).toBe(1)
-      expect(panel.intervals.cleared[0]).toBe(viewTimer[0])
+      // THE VIEW OWNS TWO TIMERS — the poll and (since D2) the 1s elapsed ticker — and the unmount
+      // clears EXACTLY those, once each. The 15000 ms interval belongs to the watchdog page (another
+      // surface, another disposer), so it is registered here and deliberately NOT cleared.
+      expect(pollTimers.length).toBe(1)
+      expect(tickTimers.length).toBe(1)
+      expect(watchdogTimers.length).toBe(1)
+      expect(panel.intervals.cleared.length).toBe(2)
+      expect(panel.intervals.cleared).toContain(pollTimers[0])
+      expect(panel.intervals.cleared).toContain(tickTimers[0])
+      expect(panel.intervals.cleared).not.toContain(watchdogTimers[0])
     } finally {
       panel.teardown()
     }

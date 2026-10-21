@@ -117,6 +117,11 @@ Four kinds of coupling are **allowed**; they are called out here so "independent
    builds its array with `dshSeamInject(...)`, which returns the same strings. A harness rename now
    lands in **one file**. The runtime values are verified unchanged by importing each rebuilt
    `dist/index.js` and printing its `inject`.
+   **One declared exception (2026-10-21):** the 0.28 sidebar host's `connection` seam is spelled as
+   the local `DSH_SEAM_CONNECTION` constant in `packages/mpd-better-sidebar-host/src/index.ts`,
+   because that row is its only consumer and the adapter's vocabulary has no constant for it yet. It
+   is restated in the row's `inject` array exactly as an adapter constant would be, and it moves into
+   the adapter when a second consumer needs it.
 3. **A shared pure module is imported instead of forked.** `mpd-bootstrap-plugin` imports
    `mpd-ext-plugin`'s skill-frontmatter subset, `mpd-roster-provider-plugin` imports
    `mpd-config-plugin`'s slot table, `mpd-ext-plugin` imports `mpd-roles-plugin`'s roster data. In

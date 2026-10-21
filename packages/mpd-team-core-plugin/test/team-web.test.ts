@@ -12,7 +12,7 @@
 //   * a route never throws into a response — an unreadable record is a payload, not a 500 storm.
 import { describe, expect, test } from "bun:test"
 
-import { TEAM_EVENTS_PATH, TEAM_MAIL_PATH, TEAM_PLAN_PATH, TEAM_ROUTES, TEAM_STATE_PATH, TEAM_TASK_PATH, approvalPhraseFor, buildTeamMail, buildTeamPlan, buildTeamState, buildTeamTasks, buildWorkspaceTeams, planForSession, registerTeamRoutes } from "../src/team-web"
+import { TEAM_EVENTS_PATH, TEAM_MAIL_PATH, TEAM_PLAN_PATH, TEAM_ROUTES, TEAM_STATE_PATH, TEAM_TASK_PATH, approvalPhraseFor, buildTeamMail, buildTeamPlan, buildTeamState, buildTeamTasks, buildWorkspaceTeams, planForSession, registerTeamRoutes, taskProgress } from "../src/team-web"
 import { appendRecord } from "../src/mailbox-store"
 import { addMember, addTask, stagePlan, writePlan } from "../src/plan-store"
 import { addTeamMember, addTeamTask, createTeam, updateTeamTask, writeTeam, type TeamRecord } from "../src/team-store"
@@ -22,6 +22,8 @@ import { join } from "node:path"
 
 /** The frozen instant every record in this file is stamped with. */
 const NOW = new Date("2026-09-30T09:15:00.000Z")
+/** A later frozen instant, so a finish stamp is distinguishable from the start it follows. */
+const LATER = new Date("2026-09-30T09:45:00.000Z")
 /** The executor read every arm reports. */
 const EXECUTOR = { kind: "native", reason: "native: the default backend" }
 
@@ -57,6 +59,53 @@ function workspaceOf(team: TeamRecord): string {
   // The record's own file name is `<teamId>.json` under `<ws>/.mpd/team/teams/`, so the workspace is
   // three levels up — computed rather than remembered, so a store layout change reddens here.
   return sandboxes[sandboxes.length - 1]
+}
+
+/**
+ * Every path in a payload whose value is an explicit `undefined`.
+ *
+ * WHY NOT `JSON.stringify` ALONE: JSON silently DROPS an `undefined` own key, so the serialized bytes
+ * cannot show the difference between "the field is absent" and "the field was emitted as a
+ * placeholder". The payload object itself can, which is the shape a client's `in` check reads.
+ * @param value - the value to walk.
+ * @param path - the diagnostic path of this node.
+ * @returns the offending paths, in walk order; empty means no key was emitted as a placeholder.
+ */
+function undefinedPaths(value: unknown, path: string = "payload"): string[] {
+  if (value === undefined) return [`${path}: undefined`]
+  if (value === null || typeof value !== "object") return []
+  /** Violations under this node's own keys. */
+  const out: string[] = []
+  for (const key of Object.keys(value)) out.push(...undefinedPaths((value as Record<string, unknown>)[key], `${path}.${key}`))
+  return out
+}
+
+/**
+ * A board carrying ONE row per status the progress mapping names, plus the transition stamps.
+ *
+ * T1 running, T2 claimed, T3 pending, T4 completed (started at NOW, finished at LATER), T5 failed,
+ * T6 cancelled. Built through the STORE, so the fixture cannot drift from the shape the seam writes.
+ */
+function lifecycleRecord(): TeamRecord {
+  /** A fresh sandbox, so the store's own writes never touch another arm. */
+  const workspace = mkdtempSync(join(tmpdir(), "mpd-team-web-life-"))
+  sandboxes.push(workspace)
+  /** The record, built through the STORE so the fixture cannot drift from the real shape. */
+  let team = createTeam(workspace, { name: "life", description: "lifecycle", leadSessionId: "sess-1" }, NOW)
+  team = addTeamTask(team, { subject: "running", description: "under way" }, NOW)
+  team = addTeamTask(team, { subject: "claimed", description: "claimed only", owner: "Reviewer" }, NOW)
+  team = addTeamTask(team, { subject: "pending", description: "not started" }, NOW)
+  team = addTeamTask(team, { subject: "done", description: "finished" }, NOW)
+  team = addTeamTask(team, { subject: "failed", description: "gave up" }, NOW)
+  team = addTeamTask(team, { subject: "cancelled", description: "dropped" }, NOW)
+  team = updateTeamTask(team, "T1", { status: "in_progress" }, NOW)
+  team = updateTeamTask(team, "T2", { status: "claimed" }, NOW)
+  team = updateTeamTask(team, "T4", { status: "in_progress" }, NOW)
+  team = updateTeamTask(team, "T4", { status: "completed" }, LATER)
+  team = updateTeamTask(team, "T5", { status: "failed" }, NOW)
+  team = updateTeamTask(team, "T6", { status: "cancelled" }, NOW)
+  writeTeam(workspace, team)
+  return team
 }
 
 describe("the payload is computed from the RECORD", () => {
@@ -191,6 +240,100 @@ describe("the payload is computed from the RECORD", () => {
     const state = buildTeamState(team, workspace, "s1", EXECUTOR)
     expect(state.cycles).toEqual(["T1", "T2"])
     expect(state.problems.length).toBeGreaterThan(0)
+  })
+})
+
+describe("the lifecycle stamps and the COARSE progress (Lane DATA)", () => {
+  // The hover card needs an elapsed time and a rough completion bar. `updatedAt` cannot supply the
+  // first — it moves on every patch — and the second is deliberately NOT measured work, so the payload
+  // serves the two transition stamps and one status-derived percentage, with the mapping pinned here.
+
+  test("the payload serves startedAt/finishedAt where they exist, and OMITS them where they do not", () => {
+    /** The record under test. */
+    const team = lifecycleRecord()
+    /** The payload the route would serve. */
+    const state = buildTeamState(team, workspaceOf(team), "sess-1", EXECUTOR)
+    /** The task rows by id. */
+    const byId = new Map(state.tasks.map((task) => [task.id, task]))
+    // The COMPLETED row carries BOTH stamps, which is what makes an elapsed span computable without
+    // reading `updatedAt` (which any later note edit would have moved).
+    expect(byId.get("T4")?.startedAt).toBe(NOW.toISOString())
+    expect(byId.get("T4")?.finishedAt).toBe(LATER.toISOString())
+    // The RUNNING row has a start and NO finish: the card's elapsed time runs to `now`.
+    expect(byId.get("T1")?.startedAt).toBe(NOW.toISOString())
+    expect(Object.prototype.hasOwnProperty.call(byId.get("T1") ?? {}, "finishedAt")).toBe(false)
+    // The PENDING row has NEITHER key — ABSENT, not `undefined` — so a browser's `in` check is honest
+    // about the difference between "not started" and "started at an unrepresentable instant".
+    expect(Object.prototype.hasOwnProperty.call(byId.get("T3") ?? {}, "startedAt")).toBe(false)
+    expect(Object.prototype.hasOwnProperty.call(byId.get("T3") ?? {}, "finishedAt")).toBe(false)
+  })
+
+  test("progress is the DOCUMENTED mapping: 100 / 50 / 10 / 0, status by status", () => {
+    /** The record under test. */
+    const team = lifecycleRecord()
+    /** The payload under test. */
+    const state = buildTeamState(team, workspaceOf(team), "sess-1", EXECUTOR)
+    /** The served progress per task id. */
+    const progress = new Map(state.tasks.map((task) => [task.id, task.progress]))
+    expect(progress.get("T4")).toBe(100) // completed
+    expect(progress.get("T1")).toBe(50) // running (in_progress)
+    expect(progress.get("T2")).toBe(10) // claimed, not yet under way
+    expect(progress.get("T3")).toBe(0) // pending
+    expect(progress.get("T5")).toBe(0) // failed
+    expect(progress.get("T6")).toBe(0) // cancelled
+    // Every value is an integer percentage a bar can trust, so no row arrives without a usable number.
+    for (const task of state.tasks) {
+      expect(Number.isInteger(task.progress)).toBe(true)
+      expect(task.progress).toBeGreaterThanOrEqual(0)
+      expect(task.progress).toBeLessThanOrEqual(100)
+    }
+    // The DERIVATION is exported, so a future surface asks the same question instead of inventing a
+    // second scale. Both arguments matter: the visual collapses `claimed` into `running`, and only the
+    // status can tell the two apart.
+    expect(taskProgress("claimed", "running")).toBe(10)
+    expect(taskProgress("in_progress", "running")).toBe(50)
+    expect(taskProgress("pending", "blocked")).toBe(0)
+    expect(taskProgress("completed", "completed")).toBe(100)
+    expect(taskProgress("failed", "failed")).toBe(0)
+    expect(taskProgress("cancelled", "cancelled")).toBe(0)
+  })
+
+  test("no key in the payload is an explicit `undefined`, stamps included", () => {
+    /** The record under test. */
+    const team = lifecycleRecord()
+    /** The payload the route would serve. */
+    const state = buildTeamState(team, workspaceOf(team), "sess-1", EXECUTOR, buildWorkspaceTeams([team], team.teamId))
+    expect(undefinedPaths(state)).toEqual([])
+    // The fixture exercises BOTH branches of the conditional spreads, so the arm above is not vacuous.
+    expect(state.tasks.some((task) => Object.prototype.hasOwnProperty.call(task, "startedAt"))).toBe(true)
+    expect(state.tasks.some((task) => !Object.prototype.hasOwnProperty.call(task, "startedAt"))).toBe(true)
+  })
+
+  test("a hand-built LEGACY record without the stamps still serves, with progress from its status", () => {
+    // THE UPGRADE CASE: a record written by an OLDER mpd carries neither lifecycle field. It must not
+    // throw, must not gain a fabricated stamp, and its rows must still answer a progress bar.
+    /** The current record, whose rows carry the stamps. */
+    const current = lifecycleRecord()
+    /** The same record with every lifecycle key removed, as an older writer left it. */
+    const legacy: TeamRecord = {
+      ...current,
+      tasks: current.tasks.map((task) => {
+        /** One row without the two optional keys. */
+        const copy = { ...task }
+        delete copy.startedAt
+        delete copy.finishedAt
+        return copy
+      }),
+    }
+    /** The payload built from the legacy record. */
+    const state = buildTeamState(legacy, "/ws", "sess-1", EXECUTOR)
+    /** The row that was completed before the keys existed. */
+    const done = state.tasks.find((task) => task.id === "T4")
+    expect(done).toBeDefined()
+    expect(Object.prototype.hasOwnProperty.call(done ?? {}, "startedAt")).toBe(false)
+    expect(Object.prototype.hasOwnProperty.call(done ?? {}, "finishedAt")).toBe(false)
+    // The bar is derived from the STATUS, so the legacy row still reads 100 rather than going blank.
+    expect(done?.progress).toBe(100)
   })
 })
 

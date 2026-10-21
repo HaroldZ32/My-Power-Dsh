@@ -30,11 +30,24 @@ Cordis takes the DECLARED `inject` list from the module the row names — this o
 the host applied and then threw `cannot get property "webServer" without inject`: it was loaded and
 starved of the services it declares. The list is therefore restated here rather than imported (a static
 import cannot name a path that exists in both layouts, and the dynamic import that solves that cannot
-produce a static export).
+produce a static export). For `dsh-better-sidebar@0.28.0` it is exactly
+`["webServer","sessions","connection","tools"]`.
 
 `test/host-contract.test.ts` compares this list against the shipped host's own whenever that package is
-resolvable, and says so in the log when it is not — a silent skip would be the same defect class this
-package exists to fix.
+resolvable, asserts the installed version is `0.28.0`, and says so in the log when it is not — a silent
+skip would be the same defect class this package exists to fix. The same file pins the case table the
+list is frozen against: the retired `webRuntime` seam, the 0.2.0-generation probe, and the `connection`
+service a 0.28 composition provides.
+
+## The seam: `connection`, not `webRuntime`
+
+`dsh-better-sidebar@0.28.0` fences `/sidebar/api` with
+`ctx.connection.requestRejection(req) === undefined` and declares `connection` in its own inject list.
+That service is provided by `@deepseek-ai/dsh-client-connection` on harness **0.2.1-rc.1+** — this
+repository pins `0.2.1-rc.2`, so the row mounts on every supported composition. The shim arms on the
+service's presence, mounts the host inside an injected scope that declares it, and otherwise disables
+itself with `[mpd-better-sidebar] disabled: … [reason=absent]`, naming the missing service. It never
+waits for a service no build provides.
 
 ## Configuration
 
@@ -43,7 +56,7 @@ None. The row that mounts it is `mpd-better-sidebar` in the bundle patch.
 ## Known limits
 
 - The `inject` list is pinned to the host version the bundle declares
-  (`dsh-better-sidebar@0.24.1`). A version bump that changes the list fails the contract arm
-  rather than starving the host in silence.
+  (`dsh-better-sidebar@0.28.0`, peer range `>=0.28.0 <0.29.0`). A version bump that changes the list
+  fails the contract arm rather than starving the host in silence.
 - The host is reached by a path computed at runtime; a host installed somewhere else entirely is not
   found, and the row then fails loudly with the path it tried.

@@ -57,10 +57,14 @@ A local install needs no pack step: the repo root manifest IS the bundle package
 `dsh plugin add .` (in the repo root) installs everything; after a code change rebuild the
 touched `dist/` and restart dsh. Materialize the repository's dependencies first (`bun install`):
 the manifest declares one external runtime dependency, `dsh-better-sidebar` — the community
-sidebar host for the two mpd tabs — and a checkout install reads this repository. Where
-`node-gyp` is unavailable, `bun add dsh-better-sidebar@0.24.1 --ignore-scripts` installs it without
+sidebar host for the mpd sidebar pages (and their 0.28 bottom-workbench twins) — and a checkout
+install reads this repository. Where
+`node-gyp` is unavailable, `bun add dsh-better-sidebar@0.28.0 --ignore-scripts` installs it without
 build scripts (only the sidebar's terminal panel degrades; the transitive `node-pty` this flag used to
-be needed for is gone from `0.24.1`, measured 2026-10-02). A packed install gets it from pnpm.
+be needed for is gone since `0.24.1`, measured 2026-10-02, and `0.28.0` ships no install script,
+measured 2026-10-21). `0.28.0` requires harness **DSH 0.2.1-rc.1+** (this repository pins
+`0.2.1-rc.2`) and fences its routes through the `connection` service, whose inject list the
+`packages/mpd-better-sidebar-host` shim restates. A packed install gets it from pnpm.
 
 MCP servers are built by `node scripts/build-mcp.ts` (offline from in-repo sources).
 
