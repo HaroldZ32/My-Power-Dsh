@@ -335,7 +335,9 @@ docker compose -f docker/docker-compose.yml run --rm mpd-client
 若失败信息为 `mkdir <home>/.docker/buildx: read-only file system`，见上文 **环境（Environment）**
 （`export BUILDX_CONFIG=$(mktemp -d)`）。
 
-退出码：`0` 所有断言为真或 `null`；`1` 至少一个为假；`2` 没有 `result.json`；`3` 是下面三种原因之一。
+退出码：`0` 要求每条断言都为真，或每个 `null` 都属于下表中已声明的边界之一；`1` 表示至少一个为假（断言
+失败）；`2` 表示没有 `result.json`；`3` 是下面三种原因之一。`--no-browser` 只跳过（SKIP）浏览器断言（其
+`ui.*` 行变为 `null`），其余每条断言仍须通过。
 
 ### 已声明的边界，以及退出码 3 的三种原因
 
@@ -344,17 +346,18 @@ docker compose -f docker/docker-compose.yml run --rm mpd-client
 
 | 行 | 何时属于已声明的边界 |
 |---|---|
-| `boot.llmTurn` | 未传 `--live`（不落地凭据、不发起模型请求） |
+| `boot.llmTurn` | `--live` 与 `--require-live` 都未传（不落地凭据、不发起模型请求） |
 | `ui.teamBoard` | 本次运行不在团队模式（未设 `MPD_E2E_TEAM_PROJECT`） |
-| `ui.replyRendered` | 浏览器 lane 已开启、但没有落地凭据（无凭据运行） |
+| `ui.replyRendered` | 浏览器 lane 已开启、但没有落地凭据（无凭据运行），或用 `--no-browser` 跳过了浏览器 lane |
 | `oneclick.*` | 模式不是 `oneclick` |
 
 必需断言门禁（`agent-references/verification-flow.md`）会复查每一个名字以**本次运行所要求**的前缀开头的
-`null`；这种行记为 `UNMEASURED`，并把退出码变成 3。`--live` 运行时环境里没有密钥，会在构建**之前**直接以
+`null`；这种行记为 `UNMEASURED`，并把退出码变成 3。`--require-live` 被接受为 `--live` 的同义词（同一个
+`liveRequested` 状态）。带 `--live` 或 `--require-live` 运行、但环境里没有密钥时，会在构建**之前**直接以
 退出码 3 拒绝整次运行。
 
-**因此退出码 3 表示以下任一情况：在 `--require-docker` 下没有可用 Docker；某条必需的臂未被测量；或
-`--live` 缺少密钥。**
+**因此退出码 3 表示以下任一情况：在 `--require-docker` 下没有可用 Docker；某条必需的臂未被测量；或带
+`--live` 或 `--require-live` 运行却没有密钥。**
 
 ### 发布配方
 
@@ -366,7 +369,8 @@ node scripts/docker-e2e.ts --mode source    --require-docker --live
 node scripts/docker-e2e.ts --mode oneclick  --require-docker --live
 ```
 
-无凭据的写法是 `--no-browser`：它退出 0，并把每一行 `ui.*` 记为 NULL——那属于已声明的边界，**不是**发布证据。
+无凭据的写法是 `--no-browser`：它跳过浏览器断言，把每一行 `ui.*` 记为 NULL——那属于已声明的边界，**不是**发布
+证据；它只有在其余断言全部通过时才退出 0，只要有断言失败就是退出 1。
 
 ## 如何阅读一次红色运行
 
@@ -377,9 +381,10 @@ node scripts/docker-e2e.ts --mode oneclick  --require-docker --live
 4. `evidence/…/driver.json` → 宿主机做了什么：镜像大小、确切的 docker 命令及其退出状态、以及使用的 buildx
    状态目录。
 
-记为 `null` 的断言**不是**通过：它表示本次运行在到达该断言之前就停止了（`reason` 会说明），或该断言被有意排除在
-范围之外（目前只有 `boot.llmTurn`）。`result.json` 还带有 `evidenceScrubbed` 字段——它是从已写出的产物重新读回
-得出的，而不是来自内存。
+记为 `null` 的断言**不是**通过：它表示本次运行在到达该断言之前就停止了（`reason` 会说明），或该断言属于本次运行
+的已声明边界——未传 `--live`/`--require-live` 时的 `boot.llmTurn`、团队模式之外的 `ui.teamBoard`、无凭据运行或
+`--no-browser` 下的 `ui.replyRendered`、`oneclick` 模式之外的 `oneclick.*`，以及自身标记触发时的 `qa.mcpCall`。
+`result.json` 还带有 `evidenceScrubbed` 字段——它是从已写出的产物重新读回得出的，而不是来自内存。
 
 ## 自检
 
