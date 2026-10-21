@@ -1,0 +1,120 @@
+## A5: driver source exit-3 causes
+436: * `--require-docker` turns any skip into a failure for a release run that must not silently lose it.
+442:export function decideDockerUse(probe: DockerModeProbe, flags: { readonly requireDocker: boolean; readonly allowRootful: boolean }): DockerDecision {
+449:  if (flags.requireDocker) return { action: "fail", reason: `--require-docker was passed and ${found}` }
+457:      "[driver] `node scripts/docker-e2e.ts --mode source` / `--mode oneclick`, or pass --require-docker to",
+566:  // `--require-browser` names a requirement that is ON by default (`--no-browser` is the opt-out).
+570:  const selectsBrowser = (args: readonly string[]): boolean => args.includes("--require-browser") || !args.includes("--no-browser")
+576:  check("--no-browser is the only opt-out", !selectsBrowser(["--no-browser"]))
+1098:  const plain = { requireDocker: false, allowRootful: false }
+1102:  check("--allow-rootful-docker opts a rootful daemon in", decideDockerUse(probes.rootful, { requireDocker: false, allowRootful: true }).action === "run")
+1103:  check("--require-docker turns the skip into a failure", decideDockerUse(probes.unusable, { requireDocker: true, allowRootful: false }).action === "fail")
+1104:  check("--allow-rootful-docker does NOT rescue an unusable daemon", decideDockerUse(probes.unusable, { requireDocker: false, allowRootful: true }).action === "skip")
+1107:  check("the skip notice names the cause and the overrides", skipNotice.action === "skip" && skipNotice.notice.includes("rootless") && skipNotice.notice.includes("--require-docker") && skipNotice.notice.includes("permission denied"), JSON.stringify(skipNotice))
+1197:    console.log("usage: node scripts/docker-e2e.ts [--self-test] [--no-build] [--mode source|oneclick|all] [--spec <install-spec>] [--live|--require-live] [--require-browser|--no-browser] [--allow-rootful-docker] [--require-docker]")
+1247:  const keyPresent = process.env.DEEPSEEK_API_KEY !== undefined && process.env.DEEPSEEK_API_KEY !== ""
+1252:    console.error("[driver] --live was passed but DEEPSEEK_API_KEY is not set in this environment; refusing to run a lane that would report the credential-free NULL. Export the key, or drop --live.")
+1253:    process.exitCode = 3
+1257:  // browser" is not an optional question. `--no-browser` skips it (and its assertions become NULL,
+1261:  const browserEnabled = argv.includes("--require-browser") || !argv.includes("--no-browser")
+1271:    process.exitCode = 3
+1279:    // one. `-e DEEPSEEK_API_KEY` makes compose read it from THIS process's environment, so the secret
+1282:    ...(liveRequested ? ["-e", "DEEPSEEK_API_KEY", "-e", "MPD_E2E_LIVE=1"] : []),
+1302:    const absent = decideDockerUse({ state: "unusable", detail: docker.reason }, { requireDocker: argv.includes("--require-docker"), allowRootful: argv.includes("--allow-rootful-docker") })
+1303:    if (absent.action === "run") { console.error(`[driver] an absent toolchain cannot reach the run arm`); process.exitCode = 3; return }
+1304:    if (absent.action === "fail") { console.error(`[driver] ${absent.reason}`); process.exitCode = 3; return }
+1312:  const decision = decideDockerUse(modeProbe, { requireDocker: argv.includes("--require-docker"), allowRootful: argv.includes("--allow-rootful-docker") })
+1313:  if (decision.action === "fail") { console.error(`[driver] ${decision.reason}`); process.exitCode = 3; return }
+1385:  // PREREQUISITE, not a pass — exit 3, the same code `--require-docker` uses for a skipped lane. This
+## A5: AGENTS.md §11 bullet
+   `mcp-call`). `bun run verify:gates` covers the nine static members (vendor, dist freshness, row
+   parity, doc pairs, preset conformance, plugin manifest, comment coverage, graph model, workflows).
+   `node scripts/verify-no-host-override.ts` is NOT a member of that aggregate and is REQUIRED for EVERY
+   release sweep; `node scripts/verify-manual-paths.ts` is REQUIRED whenever `AGENTS.md` changed.
+   - **LAST: the Docker real-machine lane — `--live` with `DEEPSEEK_API_KEY` exported, and
+     `--require-docker` so it cannot skip silently** — `node scripts/docker-e2e.ts --mode source
+     --require-docker --live` then `--mode oneclick --require-docker --live`. Run it AFTER the last
+     write, and cite the stamps it writes. `--live` WITHOUT a key in the environment is a hard exit 3
+     BEFORE the build, and a credential-free browser-enabled run records `ui.replyRendered` as a DECLARED
+     BOUND that the required-arm gate turns into exit 3 by design — the credential-free spelling is
+     `--no-browser` (exit 0, every `ui.*` NULL, NOT release evidence).
+## A5: docker/README.md exit-3 block
+### The declared bounds, and the three causes of exit 3
+
+A `null` row is a DECLARED BOUND — the honest shape for an arm the run did not ask for, never a pass:
+
+| Row | Declared bound when |
+|---|---|
+| `boot.llmTurn` | `--live` was not passed (no credential staged, no model request attempted) |
+| `ui.teamBoard` | the run is outside team mode (`MPD_E2E_TEAM_PROJECT` unset) |
+| `ui.replyRendered` | the browser lane is on but no credential was staged (a credential-free run) |
+| `oneclick.*` | the mode is not `oneclick` |
+
+The required-arm gate (`agent-references/verification-flow.md`) re-checks every `null` whose name
+starts with a prefix the run ASKED for; such a row is `UNMEASURED` and turns the exit code into 3. A
+`--live` run without a key in the environment is a hard exit 3 BEFORE the build.
+
+**Exit 3 therefore means any of: no usable Docker under `--require-docker`; a required arm unmeasured;
+or `--live` without a key.**
+
+### The release recipe
+
+The release sweep runs the live arms, on BOTH modes, with the credential exported:
+
+```bash
+export DEEPSEEK_API_KEY=…              # forwarded by NAME, never echoed into the argv
+node scripts/docker-e2e.ts --mode source    --require-docker --live
+node scripts/docker-e2e.ts --mode oneclick  --require-docker --live
+```
+
+The credential-free spelling is `--no-browser`: it exits 0 and records every `ui.*` row NULL, which is
+## A5: docker/README.zh-CN.md exit-3 block
+退出码：`0` 所有断言为真或 `null`；`1` 至少一个为假；`2` 没有 `result.json`；`3` 是下面三种原因之一。
+
+### 已声明的边界，以及退出码 3 的三种原因
+
+记为 `null` 的断言是**已声明的边界（DECLARED BOUND）**——对本次运行没有要求的那条臂而言是诚实的形状，绝不
+等于通过：
+
+| 行 | 何时属于已声明的边界 |
+|---|---|
+| `boot.llmTurn` | 未传 `--live`（不落地凭据、不发起模型请求） |
+| `ui.teamBoard` | 本次运行不在团队模式（未设 `MPD_E2E_TEAM_PROJECT`） |
+| `ui.replyRendered` | 浏览器 lane 已开启、但没有落地凭据（无凭据运行） |
+| `oneclick.*` | 模式不是 `oneclick` |
+
+必需断言门禁（`agent-references/verification-flow.md`）会复查每一个名字以**本次运行所要求**的前缀开头的
+`null`；这种行记为 `UNMEASURED`，并把退出码变成 3。`--live` 运行时环境里没有密钥，会在构建**之前**直接以
+退出码 3 拒绝整次运行。
+
+**因此退出码 3 表示以下任一情况：在 `--require-docker` 下没有可用 Docker；某条必需的臂未被测量；或
+`--live` 缺少密钥。**
+
+### 发布配方
+
+发布扫尾在**两种**模式下都跑 live 臂，并导出凭据：
+
+```bash
+export DEEPSEEK_API_KEY=…              # 按“名字”转发，绝不写进 argv 被回显
+node scripts/docker-e2e.ts --mode source    --require-docker --live
+node scripts/docker-e2e.ts --mode oneclick  --require-docker --live
+```
+
+无凭据的写法是 `--no-browser`：它退出 0，并把每一行 `ui.*` 记为 NULL——那属于已声明的边界，**不是**发布证据。
+
+## A8: .coderabbit.yaml comment
+
+  # `request_changes_workflow: false` only keeps the bot from filing a CHANGES_REQUESTED review
+  # state; it does NOT make the bot non-blocking. A PR is not mergeable while its CodeRabbit review
+  # is `in progress`: wait for COMPLETION, reconcile every inline finding as FIXED / STALE /
+  # STILL-VALID with file:line evidence, and record that reconciliation in the PR (AGENTS §5,
+  # user-set 2026-10-20). CI green plus an independent verifier is NOT a substitute, and a pending
+  # review is never a pass. The repository's own gates and their committed evidence (AGENTS §4)
+  # still decide whether the change is correct.
+  request_changes_workflow: false
+
+  # The review surface is the walkthrough and the inline comments, not a fortune cookie.
+  in_progress_fortune: false
+## A10: PR template headings (English first)
+3:## English
+47:## 简体中文

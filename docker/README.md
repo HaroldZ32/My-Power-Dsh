@@ -399,8 +399,50 @@ docker compose -f docker/docker-compose.yml run --rm mpd-client
 If that fails with `mkdir <home>/.docker/buildx: read-only file system`, see **Environment** above
 (`export BUILDX_CONFIG=$(mktemp -d)`).
 
-Exit codes: `0` all assertions true or `null`, `1` at least one FALSE, `2` no `result.json`, `3` no
-usable docker on the host.
+Exit codes: `0` requires every assertion TRUE, or every `null` to be one of the declared bounds in the
+table below; `1` is at least one FALSE (a failed assertion); `2` is no `result.json`; `3` is any of the
+three causes below. `--no-browser` only SKIPS the browser assertions (their `ui.*` rows become `null`)
+and still requires every remaining assertion to pass.
+
+**A SKIP is not a pass.** The `0` rule above applies only AFTER the Docker lane ran. Without
+`--require-docker`, an unavailable Docker — absent, or a rootful daemon not opted in with
+`--allow-rootful-docker` — prints the `[driver] SKIP — the Docker real-machine lane did NOT run` notice
+and returns exit 0 BEFORE the lane assertions run: no evidence directory or `result.json` is written,
+nothing was measured, and the run is not release evidence. `--require-docker` turns that same skip into
+exit 3, which is why the release recipe below keeps it.
+
+### The declared bounds, and the three causes of exit 3
+
+A `null` row is a DECLARED BOUND — the honest shape for an arm the run did not ask for, never a pass:
+
+| Row | Declared bound when |
+|---|---|
+| `boot.llmTurn` | neither `--live` nor `--require-live` was passed (no credential staged, no model request attempted) |
+| `ui.teamBoard` | the run is outside team mode (`MPD_E2E_TEAM_PROJECT` unset) |
+| `ui.replyRendered` | the browser lane is on but no credential was staged (a credential-free run), or the browser lane was SKIPPED (`--no-browser`) |
+| `oneclick.*` | the mode is not `oneclick` |
+
+The required-arm gate (`agent-references/verification-flow.md`) re-checks every `null` whose name
+starts with a prefix the run ASKED for; such a row is `UNMEASURED` and turns the exit code into 3.
+`--require-live` is accepted as a synonym of `--live` (the same `liveRequested` state). A run with
+`--live` or `--require-live` without a key in the environment is a hard exit 3 BEFORE the build.
+
+**Exit 3 therefore means any of: no usable Docker under `--require-docker`; a required arm unmeasured;
+or a run with `--live` or `--require-live` and no key.**
+
+### The release recipe
+
+The release sweep runs the live arms, on BOTH modes, with the credential exported:
+
+```bash
+export DEEPSEEK_API_KEY=…              # forwarded by NAME, never echoed into the argv
+node scripts/docker-e2e.ts --mode source    --require-docker --live
+node scripts/docker-e2e.ts --mode oneclick  --require-docker --live
+```
+
+The credential-free spelling is `--no-browser`: it skips the browser assertions, records every `ui.*`
+row NULL (a declared bound and NOT release evidence), and exits 0 only while every remaining assertion
+passes — one failed assertion is exit 1.
 
 ## Reading a red run
 
@@ -413,7 +455,9 @@ usable docker on the host.
    exit status, and the buildx state directory used.
 
 An assertion recorded as `null` is *not* a pass: it means the run stopped before reaching it
-(`reason` says so), or the assertion is deliberately out of scope (only `boot.llmTurn` today).
+(`reason` says so), or the assertion is a declared bound for this run — `boot.llmTurn` without
+`--live`/`--require-live`, `ui.teamBoard` outside team mode, `ui.replyRendered` credential-free or under
+`--no-browser`, `oneclick.*` outside `oneclick` mode, or `qa.mcpCall` when its own markers fire.
 `result.json` also carries `evidenceScrubbed` — re-read from the written artifacts, not from memory.
 
 ## Self-test

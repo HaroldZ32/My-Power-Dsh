@@ -3,9 +3,10 @@
 **English** | [中文](./README.zh-CN.md)
 
 Per-member model routing for **official Agent Teams teammates**. A teammate created by
-`spawn_teammate` inherits the LEAD's model route, because the official `TeamService` forwards only
-`{ prompt, parent }` — so the mpd `teamModels` slots, which do route the one-shot consult paths, had
-no effect on a teammate. This package closes that gap **without forking the official plugin**.
+`spawn_teammate` runs on the route of the session that staged it, and the official `TeamService`
+forwards only `{ prompt, parent }` — so the mpd `teamModels` slots, which do route the one-shot
+consult paths, had no way to reach a teammate. This package closes that gap **without forking the
+official plugin**: it applies a member's slot when the teammate `description` NAMES that member.
 
 ## How it works
 
@@ -26,8 +27,9 @@ provider** and applies the member's slot route on the way through, and the bundl
 The team service forwards no name — `request` is `{ prompt, parent }` — so the identity channel is the
 descriptor **label**, i.e. the teammate's `description`. The contract is:
 
-> A description that NAMES a roster member routes that member; one that does not inherits the Lead's
-> route.
+> A description that NAMES a roster member routes that member; any other teammate runs on the route of
+> the session that staged it (the captain's in a top-level spawn, the Lead's in a team-lead spawn), and
+> prompt text cannot change a route.
 
 The name is the text before the first separator (`—`, `–`, `:`, `|`, ` - `), matched
 case-insensitively and longest-name-first, so `"Senior Engineer — implements the parser"` routes
@@ -50,7 +52,8 @@ render — is imported, never restated:
 
 A member that HAS a slot whose provider or model is unset **fails the spawn loudly, naming the member
 and the slot**, writes no state, and never clamps an effort — the rule the one-shot paths already
-follow. A member with no slot inherits, which is what every teammate did before this row existed.
+follow. A teammate whose label names no roster member is not routed at all: it runs on the staging
+session's route, which is what every teammate did before this row existed.
 
 ### The reasoning-effort adaptation
 
@@ -74,5 +77,6 @@ evidence of anything. Nothing is ever substituted FOR the effort, so this is not
 
 - Routing is resolved at SPAWN time from the live config; changing a slot affects the next teammate,
   not one already running.
-- A teammate whose label names no roster member is not routed. That is a property of the one identity
-  channel the team service forwards, not a policy choice.
+- A teammate whose label names no roster member is not routed: it runs on the route of the session that
+  staged it. That is a property of the one identity channel the team service forwards, not a policy
+  choice, and prompt text cannot change it.

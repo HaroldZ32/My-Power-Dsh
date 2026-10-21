@@ -54,10 +54,11 @@ const WORKSPACE = join(tmpdir(), "mpd-team-plane-ws")
 /**
  * The EXPLICIT `team.gate: "mechanical"` opt-in every arm whose SUBJECT is the staging route drives.
  *
- * REPURPOSED 2026-10-17 (lane B, `harness-021-rollback`): the gate's default flipped to `off` when the
- * user's ruling withdrew the 2026-10-10/11 ceremony, so an arm asserting what a TRIGGER does must now
- * ask for that mode the way a user does — through a `team.gate` config value — instead of inheriting
- * it. Everything else stays `undefined`, so `boulder.dir` and friends keep their own defaults.
+ * REPURPOSED 2026-10-17 and RESTORED 2026-10-20: `mechanical` is the DEFAULT again
+ * (`.mpd/plans/restore-guard-discipline.md`), yet an arm asserting what a TRIGGER does still asks for
+ * that mode the way a user does — through a `team.gate` config value — instead of relying on a default
+ * it does not measure. Everything else stays `undefined`, so `boulder.dir` and friends keep their own
+ * defaults.
  */
 const MECHANICAL_OPT_IN = (key: string): unknown => (key === GATE_CONFIG_KEY ? GATE_MODE_MECHANICAL : undefined)
 

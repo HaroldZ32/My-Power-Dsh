@@ -148,9 +148,9 @@ const GATE_MODE_JSONC_OFF: string = '{ "team": { "gate": "off" } }\n'
 /**
  * The project-config body selecting the MECHANICAL route.
  *
- * Since the 2026-10-17 rollback `mechanical` is no longer the default, so every side whose subject is
- * what a mechanical fire DOES seeds this explicitly: the case must drive the mode it measures, never
- * inherit it.
+ * `mechanical` has been the DEFAULT again since the 2026-10-20 restore (and every UNKNOWN value reads
+ * it), so every side whose subject is what a mechanical fire DOES still seeds this explicitly: the case
+ * must drive the mode it measures, never inherit it.
  */
 const GATE_MODE_JSONC_MECHANICAL: string = '{ "team": { "gate": "mechanical" } }\n'
 /** The `status` the seeded boulder work carries when signal D MUST fire. */

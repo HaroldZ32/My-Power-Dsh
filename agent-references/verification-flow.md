@@ -9,13 +9,15 @@ or when you need to know whether a step may be skipped.
 A verification pass runs cheapest-and-most-falsifiable first, so a broken tree is caught before an
 expensive step can hide it behind unrelated noise:
 
-1. **Static gates** — vendor, dist freshness, row parity, doc pairs, preset conformance. These are
-   `bun run verify:gates` (7 members, all static, seconds each).
+1. **Static gates** — `bun run verify:gates` runs its nine static members, seconds each: vendor,
+   dist-fresh, rows-parity, docs-parity, preset-conformance, plugin-manifest, comment-coverage,
+   graph-model and workflows (the membership is proven by `node scripts/verify-gates.ts --list`).
 2. **The two standing user-mandated gates** — `bun run verify:manifest` (no `cordis` in any dependency
    field by NAME, no `preinstall` / `install` / `postinstall` / `prepare` script name, and the packaging
    contract a one-command install rests on) and `bun run verify:comments` (every declaration carries a
    precise comment and every named function writes down its parameter and return types).
-3. **Correctness suites** — `bun run typecheck` (root `tsgo --noEmit`), `bun test`, `bun run test:qa`.
+3. **Correctness suites** — `bun run typecheck` (root `tsgo --noEmit`), `bun test packages` (the
+   repo-root `bun test` also scans the historical `evidence/**` fixtures and reddens on them), `bun run test:qa`.
 4. **Packaging** — `node scripts/pack-mpd.ts`, then `node scripts/verify-pack-closure.ts`.
 5. **Docker real-machine lane — THE LAST STEP.** `bun run verify:docker` (see below).
 
@@ -66,6 +68,14 @@ arm. It is the wrong shape for an arm the caller asked for: after the run, every
 with a required prefix (`live.`/`boot.llmTurn` under `--live`, `ui.` when the browser lane is on) is
 reported as `UNMEASURED` and turns the exit code into **3**. This is what stops the lane from greening by
 not running the thing it was asked to verify.
+
+**The `ui.` prefix has a credential prerequisite.** A credential-free browser-enabled run cannot render
+a model reply: the turn's failure panel names the missing credential, so `ui.replyRendered` is recorded
+as a DECLARED BOUND (`null` with that reason) and the required-arm gate then turns it into exit 3 BY
+DESIGN — that exit is the gate working, not a pass. The credential-free spelling is `--no-browser`
+(exit 0, every `ui.*` row NULL, NOT release evidence). `--live` without a key in the environment is a
+hard exit 3 BEFORE the build. Exit 3 therefore means any of: no usable Docker under `--require-docker`,
+a required arm unmeasured, or `--live` without a key.
 
 ### Rootless, skip, and when the step is fatal
 

@@ -21,7 +21,7 @@
 - **`mpd_verify_escape`** —— **被计数的**逃生口：一行 JSONL、一行启动日志、一次允许的写入。`reason` 为空会拒绝；日志写不下去时不发放任何额度。
 - **`mpd_verify_seat`** —— 把调用方 session 绑定为某 loop 的 **verifier**。幂等；当调用方就是该 loop 的 writer 时拒绝。该席位的冻结文档就是**这个 loop 自己的 `contract`**，由**同一个函数**解析，席位与记录都调它，因此一份裁决的 `docPaths` 与它的 `basis.frozenContract` **不可能对不上**。
 - **`mpd_verify_evidence`** —— `kind:"gate"` 只跑固定表里的一个 id（`gates`、`tests`、`typecheck`、`docs`、`manifest`、`comments`、`rows`、`vendor`、`dist`、`pack`）并写日志；`kind:"probe"` 对每个路径返回 `{path, exists, bytes, sha256, mtime}`，**绝不返回内容**。
-- **`mpd_verify_record`** —— 通过校验器记录裁决。**PASS** 必须给出所依据的文档、至少一项 gate 证据，以及可证明的 blind basis；**FAIL** 必须给出 finding（每条都要有证明它的 `doc_source`），并会开出 repair 任务、解锁诊断读取。校验器仍然按该 loop 的**观测日志**判定盲性 —— `blind-spent` 会点名一次「被准入的」实现读取 —— 但该日志唯一的写入者是被撤销的 guard，因此在所有已发布组合中日志都是空的、每个席位都读作 `blind`。旧的那条豁免（"被信封**拒绝**的读取不耗尽基础"）因此只剩下记账意义，背后并没有拒绝动作；它要付出什么代价见文末边界。
+- **`mpd_verify_record`** —— 通过校验器记录裁决。**PASS** 必须给出所依据的文档、至少一项 gate 证据，以及一个不是 `unproven` 的基础 —— 盲性只是**声明**，从不被观测，因此未证明的基础一律视为 UNVERIFIED；校验器仍会拒绝没有文档、使用伪造证据 id 或同一 agent 自证的 PASS。**FAIL** 必须给出 finding（每条都要有证明它的 `doc_source`），并会开出 repair 任务、解锁诊断读取。`bind-unproven` 仍会拒绝 basis 被声明为 `unproven` 的 PASS，`blind-spent` 仍会点名一次「被准入的」读取，但没有任何已发布组合会写入观测日志，因此 `blind-spent` 无法被证据触发 —— 需要付出什么代价见文末边界。
 
 ## 已撤销的两道守卫（记录，而非安装）
 

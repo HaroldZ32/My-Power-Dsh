@@ -133,7 +133,7 @@ export function captainReadablePath(workspaceRoot: string, raw: string): boolean
 export function captainInvestigationDecision(input: CaptainInvestigationInput): string | undefined {
   // THE MODE COMES FIRST: `"allow"` restores today's freedom exactly, for every session.
   if (input.mode !== "deny") return undefined
-  // ONLY THE CAPTAIN: members, one-shot specialists, workmate spawns and verifier seats keep their
+  // ONLY THE CAPTAIN: members, single-call specialists, workmate spawns and verifier seats keep their
   // reconnaissance — the verifier's own envelope scopes ITS reads separately and must not be doubled.
   if (!input.topLevel) return undefined
   /** The tool name, read defensively so an unexpected shape is a pass-through. */

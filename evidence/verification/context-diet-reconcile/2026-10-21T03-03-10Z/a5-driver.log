@@ -1,0 +1,127 @@
+## A5: driver exit-3 branches
+1249-  // green lane whose live rows were all `null` — the exact "verification that verifies nothing" shape
+1250-  // this lane exists to remove. Asking for the live arms without a key now fails BEFORE the build.
+1251-  if (liveRequested && !keyPresent) {
+1252-    console.error("[driver] --live was passed but DEEPSEEK_API_KEY is not set in this environment; refusing to run a lane that would report the credential-free NULL. Export the key, or drop --live.")
+1253:    process.exitCode = 3
+1254-    return
+1255-  }
+1256-  // THE BROWSER LANE IS ON BY DEFAULT: the Web GUI is a shipped surface, so "is it usable in a real
+1257-  // browser" is not an optional question. `--no-browser` skips it (and its assertions become NULL,
+1258-  // which the required-arm check below then reports honestly). `--require-browser` is the explicit
+1259-  // spelling of the default, kept because a caller reading the release checklist looks for a flag
+--
+1267-  /** Whether this invocation asked for the live team project (forwarded to the container when set). */
+1268-  const teamProjectRequested = process.env.MPD_E2E_TEAM_PROJECT === "1"
+1269-  if (teamProjectRequested && (!liveRequested || !browserEnabled)) {
+1270-    console.error("[driver] MPD_E2E_TEAM_PROJECT=1 needs --live and the browser lane (both UI team verdicts are the subject); refusing before the build.")
+1271:    process.exitCode = 3
+1272-    return
+1273-  }
+1274-  /** The environment overrides for the compose run. */
+1275-  const envOverrides = [
+1276-    ...(mode === "oneclick" ? ["-e", "MPD_E2E_INSTALL_MODE=oneclick"] : []),
+1277-    ...(spec === undefined ? [] : ["-e", `MPD_E2E_INSTALL_SPEC=${spec}`]),
+--
+1299-  if (!docker.ok) {
+1300-    // A machine with no docker AT ALL is the same class as a rootful one: notice, skip, keep the wave.
+1301-    /** The skip/fail decision for an absent toolchain, so the two absence shapes read alike. */
+1302-    const absent = decideDockerUse({ state: "unusable", detail: docker.reason }, { requireDocker: argv.includes("--require-docker"), allowRootful: argv.includes("--allow-rootful-docker") })
+1303:    if (absent.action === "run") { console.error(`[driver] an absent toolchain cannot reach the run arm`); process.exitCode = 3; return }
+1304:    if (absent.action === "fail") { console.error(`[driver] ${absent.reason}`); process.exitCode = 3; return }
+1305-    console.log(absent.notice)
+1306-    return
+1307-  }
+1308-  console.log(`[driver] ${docker.version} / ${docker.compose}`)
+1309-  /** The daemon-mode probe: rootless runs, rootful needs the explicit opt-in, unusable skips. */
+1310-  const modeProbe = probeDockerMode(docker.docker)
+1311-  /** What this run does about the measured mode. */
+1312-  const decision = decideDockerUse(modeProbe, { requireDocker: argv.includes("--require-docker"), allowRootful: argv.includes("--allow-rootful-docker") })
+1313:  if (decision.action === "fail") { console.error(`[driver] ${decision.reason}`); process.exitCode = 3; return }
+1314-  if (decision.action === "skip") { console.log(decision.notice); return }
+1315-  console.log(`[driver] ${decision.modeLine}`)
+1316-
+1317-  /** Child environment carrying the private buildx state dir. */
+1318-  const buildx = buildxEnv()
+1319-  console.log(`[driver] BUILDX_CONFIG=${buildx.env.BUILDX_CONFIG}${buildx.owned ? " (private, writable: the sandbox denies ~/.docker/buildx)" : " (caller-provided)"}`)
+## A5: --live without key check
+1241-  const specIndex = argv.indexOf("--spec")
+1242-  /** The install spec, when the caller named one (defaults to the service's own). */
+1243-  const spec = specIndex === -1 ? undefined : argv[specIndex + 1]
+1244-  /** Whether the caller asked for the live arms; the key is only forwarded when they did. */
+1245-  const liveRequested = argv.includes("--live") || argv.includes("--require-live")
+1246-  /** Whether this process actually holds a key to forward. */
+1247:  const keyPresent = process.env.DEEPSEEK_API_KEY !== undefined && process.env.DEEPSEEK_API_KEY !== ""
+1248-  // `--live` IS A CONTRACT, NOT A HINT. It used to print a warning and run anyway, which produced a
+1249-  // green lane whose live rows were all `null` — the exact "verification that verifies nothing" shape
+1250-  // this lane exists to remove. Asking for the live arms without a key now fails BEFORE the build.
+1251-  if (liveRequested && !keyPresent) {
+1252:    console.error("[driver] --live was passed but DEEPSEEK_API_KEY is not set in this environment; refusing to run a lane that would report the credential-free NULL. Export the key, or drop --live.")
+1253-    process.exitCode = 3
+1254-    return
+1255-  }
+1256-  // THE BROWSER LANE IS ON BY DEFAULT: the Web GUI is a shipped surface, so "is it usable in a real
+1257-  // browser" is not an optional question. `--no-browser` skips it (and its assertions become NULL,
+1258-  // which the required-arm check below then reports honestly). `--require-browser` is the explicit
+1259-  // spelling of the default, kept because a caller reading the release checklist looks for a flag
+1260-  // that NAMES the requirement rather than for the absence of an opt-out.
+--
+1273-  }
+1274-  /** The environment overrides for the compose run. */
+1275-  const envOverrides = [
+1276-    ...(mode === "oneclick" ? ["-e", "MPD_E2E_INSTALL_MODE=oneclick"] : []),
+1277-    ...(spec === undefined ? [] : ["-e", `MPD_E2E_INSTALL_SPEC=${spec}`]),
+1278-    // THE CREDENTIAL IS FORWARDED BY NAME, NEVER BY VALUE, and only when this process actually has
+1279:    // one. `-e DEEPSEEK_API_KEY` makes compose read it from THIS process's environment, so the secret
+1280-    // never enters the argv the driver echoes below — which is the whole reason the live turn can be
+1281-    // run at all without violating AGENTS.md §10 ("never committed, logged, or echoed").
+1282:    ...(liveRequested ? ["-e", "DEEPSEEK_API_KEY", "-e", "MPD_E2E_LIVE=1"] : []),
+1283-    // THE LIVE PROMPT ALSO TRAVELS BY NAME, for the same reason the key does: passing it by VALUE
+1284-    // would print a caller's whole task into the argv this driver echoes below. `-e
+1285-    // MPD_E2E_LIVE_PROMPT` makes compose read it from THIS process's environment, and it is added
+1286-    // only when a live run was asked for AND the value is non-empty — forwarding an empty string
+1287-    // would be a no-op the compose file already maps to the entrypoint's own default prompt.
+1288-    ...(livePromptOverride(liveRequested, process.env.MPD_E2E_LIVE_PROMPT) ? ["-e", "MPD_E2E_LIVE_PROMPT"] : []),
+1289-    // THE LIVE TEAM PROJECT TRAVELS THE SAME WAY: by NAME, and only when the caller set it. `1` turns
+1290-    // the mode on; the budget is forwarded only beside it (a budget without the mode is a no-op the
+## A5: --no-browser
+563-  check("a missing body has no required-arm gap", unmeasuredRequired(null, ["live."]).length === 0)
+564-
+565-  // 3c. the arm-selecting flags: `--require-live` is the long spelling of `--live`, and
+566:  // `--require-browser` names a requirement that is ON by default (`--no-browser` is the opt-out).
+567-  /** The flag predicate the CLI uses, re-stated so the arms read as behaviour, not as argv plumbing. */
+568-  const selectsLive = (args: readonly string[]): boolean => args.includes("--live") || args.includes("--require-live")
+569-  /** The browser predicate, which must stay true under the explicit requirement. */
+570:  const selectsBrowser = (args: readonly string[]): boolean => args.includes("--require-browser") || !args.includes("--no-browser")
+571-  check("--live selects the live arms", selectsLive(["--live"]))
+572-  check("--require-live is the same switch", selectsLive(["--require-live"]))
+573-  check("neither flag leaves the live arms off", !selectsLive([]))
+574-  check("the browser lane is on with no flag at all", selectsBrowser([]))
+575-  check("--require-browser selects it explicitly", selectsBrowser(["--require-browser"]))
+576:  check("--no-browser is the only opt-out", !selectsBrowser(["--no-browser"]))
+577-
+578-  // 4. the driver never stages a copy of the repository inside the repository (lead-reported
+579-  //    defect, measured 2026-09-27: a docker/src copy poisoned `bun test`'s globs and every
+580-  //    tree-walking gate). Nothing under docker/ may be a repository copy.
+581-  // Each forbidden name is a directory a staged repository copy used to occupy.
+--
+1194-  const argv = process.argv.slice(2)
+1195-  if (argv.includes("--self-test")) { selfTest(); return }
+1196-  if (argv.includes("--help") || argv.includes("-h")) {
+1197:    console.log("usage: node scripts/docker-e2e.ts [--self-test] [--no-build] [--mode source|oneclick|all] [--spec <install-spec>] [--live|--require-live] [--require-browser|--no-browser] [--allow-rootful-docker] [--require-docker]")
+1198-    return
+1199-  }
+1200-  // `--mode all` runs EVERY acceptance mode, each as its own child process, so one command answers the
+1201-  // whole "does this run everywhere" question. Each child gets its own evidence directory and its own
+1202-  // compose build (cached after the first), and the parent reports the WORST child exit code.
+--
+1254-    return
+1255-  }
+1256-  // THE BROWSER LANE IS ON BY DEFAULT: the Web GUI is a shipped surface, so "is it usable in a real
+1257:  // browser" is not an optional question. `--no-browser` skips it (and its assertions become NULL,
+1258-  // which the required-arm check below then reports honestly). `--require-browser` is the explicit
+1259-  // spelling of the default, kept because a caller reading the release checklist looks for a flag
+1260-  // that NAMES the requirement rather than for the absence of an opt-out.
+1261:  const browserEnabled = argv.includes("--require-browser") || !argv.includes("--no-browser")
+1262-  // THE TEAM-PROJECT PREFLIGHT RUNS BEFORE THE BUILD (CodeRabbit finding on PR #48). A team run needs a
+1263-  // live turn (the prompts drive real model work) AND both UI planes (the verdict reads one record per

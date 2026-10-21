@@ -1,0 +1,2 @@
+0eff331011fb78b8411de88e0f40c1038470c43df8801e96fa24ba73d85e2528  packages/mpd-roster-provider-plugin/dist/index.js
+17bb934bc62b3222fa94cd3cdf3dad23bcbee340640b23239bcc9d7353d28380  packages/mpd-verify-plugin/dist/index.js

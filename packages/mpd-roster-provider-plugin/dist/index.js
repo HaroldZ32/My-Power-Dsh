@@ -2998,7 +2998,7 @@ function apply(ctx, config = {}) {
     disposers.push(dsh.registerSubagentProvider(provider));
     rowLogLine("mpd-roster", `[mpd-roster] provider "${PROVIDER_NAME}" registered (delegating to "${configBaseName}"; point the team tool row's freshProvider at it)`);
   } catch (error) {
-    rowLogLine("mpd-roster", `[mpd-roster] the provider could not be registered — teammates keep the Lead's route: ${String(error?.message ?? error)}`);
+    rowLogLine("mpd-roster", `[mpd-roster] the provider could not be registered — teammates run on the route of the session that stages them (the captain's in a top-level spawn): ${String(error?.message ?? error)}`);
   }
   if (typeof ctx?.on === "function")
     ctx.on("dispose", () => {

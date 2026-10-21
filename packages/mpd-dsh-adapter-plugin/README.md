@@ -89,17 +89,22 @@ The discipline is the same one `registerHostTool` follows:
   and `teamMembership` never throws at all (it is the filter a caller asks "is this agent on a
   team?" with).
 
-`teamLiveTeams()` is the readout a Web route or a TUI scene uses instead of a `.mpd/team` record
-(there is none any more: team state lives in the Lead Session log and is published as the
-`agentTeam` Session projection). It folds the live agent registry, keeps one entry per Lead, and
-degrades to `[]` — never to a throw.
+`teamLiveTeams()` is the contained FALLBACK for a composition that runs the official executor — the
+read a Web route, a TUI scene or the watchdog uses there. The MPD team RECORD is authoritative on
+every mpd surface: `.mpd/team/teams/<id>.json`, served as `mpdTeams`. The call folds the live agent
+registry, keeps one entry per Lead, and degrades to `[]` — never to a throw.
 
 **Model routing on the teammate path (plan §3):** `teamSpawnTeammate` is the harness's own
 `spawnTeammate`, whose `SubagentStartRequest` carries no `agentOptions`, `persona` or
-`toolFilter`; a teammate therefore inherits the Lead's route, and the `teamModels.slot*` contract
-is carried as explicit guidance inside the spawn prompt. Per-member routing still applies
-mechanically on the one-shot consult paths (`mpd_role_spawn` / `mpd_workmate_spawn`), which pass
-`agentOptions` themselves.
+`toolFilter`. A teammate whose description does NOT name a roster member is not routed by this
+bundle at all: the request passes through by identity, so the harness-resolved route of the
+session that staged it stands (the captain's in a top-level spawn, the Lead's in a team-lead
+spawn), and prompt text cannot change a route. A description that NAMES a roster member is routed
+through `mpd-roster-provider-plugin`'s `teamModels.slot*` contract. Per-member routing also
+applies on the single-call consult paths (`mpd_role_spawn` / `mpd_workmate_spawn`), which pass
+`agentOptions` themselves; this is the roster/workmate spawn path, not the team path, and the child
+it starts is CONTINUABLE (one bounded delegation, one report, then `inactive`, resumable with
+`send_message`).
 
 ### The D6 gate (`test/no-direct-team-access.test.ts`)
 
@@ -148,7 +153,7 @@ is the pure predicate behind it — and it reads this seam:
 - it NEVER throws and never substitutes a different effort — swapping the value would be clamping,
   which the contract forbids.
 
-Both effort-carrying callers use it: `mpd-roles-plugin` (the one-shot spawn path) and
+Both effort-carrying callers use it: `mpd-roles-plugin` (the role-spawn path) and
 `mpd-roster-provider-plugin` (an official `spawn_teammate`). The seam stays the single contact surface.
 
 ## Why it exists

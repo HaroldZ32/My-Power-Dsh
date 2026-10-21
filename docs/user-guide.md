@@ -144,7 +144,7 @@ The only shipped preset is **MPD (Main Working Agent)**. Its conventions:
 | Drive long work | `mpd_ulw` (light) / `mpd_ultrawork` (full discipline: plan gate, execution rounds, verification gate), or the equivalent `/ulw <objective>` / `/ultrawork <objective>` commands, `mpd_boulder_start/status/complete/task_timer/plan_progress/plans` | the commands inject the ULW autonomy directive — a run asks the user nothing and stages its own team when the work warrants one; `mpd_boulder_*` tracks progress of a plan markdown file across sessions |
 | Keep a long run going across turns | `mpd_goal_status`, `mpd_goal_anchor`, `mpd_goal_finish` (plus the host's `/goal` command and its goal round driver) | see §13.10: the **persisted goal** is the bundle's basis of continuous execution — a heavy ULW run or a plan-bound boulder work anchors one automatically (`goal.autoAnchor`), and it stays armed when the in-turn engine stops short of the objective |
 | Keep memory | `mpd_memory_write/read/reflect/reflect_complete/status`, `mpd_memory_save/recall` | the VCS-backed store can be git or svn; `mpd_memory_save/recall` is the simple key/value layer |
-| Consult a specialist | `mpd_roles_list`, `mpd_role_spawn`, `mpd_role_persona` | one-shot subagents; read-only roles are denied write tools |
+| Consult a specialist | `mpd_roles_list`, `mpd_role_spawn`, `mpd_role_persona` | single-call consult subagents (continuable children); read-only roles are denied write tools |
 | Keep an evolving agent | `mpd_workmate_list/init/spawn/reflect/match/rename/delete` | see §5 |
 | Run a team | `agent_teams_plan` (stage a plan, extend it, approve it), `spawn_teammate`, `send_message`, `list_agents`, `wait_agent`, `interrupt_agent`, `team_task_create/list/get/update` + the Web Agent Teams panel | see §6 |
 | Configure the bundle | `.mpd/mpd.jsonc`, `mpd_config_get`, `mpd_config_reload` | see §9 |
@@ -174,11 +174,13 @@ case, space or hyphen spelling: `Architect`, `deep worker`, `plan-reviewer`):
 | Vision Analyst | reads screenshots and diagrams — read-only |
 | Junior Engineer | small, well-scoped mechanical changes |
 
-Use them one-shot:
+Use them as single-call consults:
 
 - `mpd_roles_list` — list the roster.
-- `mpd_role_spawn { role, task, context? }` — spawn one specialist as a subagent with its persona
-  and model route; read-only roles are mechanically denied the write tools.
+- `mpd_role_spawn { role, task, context? }` — run one bounded delegation with one specialist and
+  return one report; the child keeps the role's persona and model route, is labelled with the role's
+  name, and stays continuable (listed `inactive`, resumable with `send_message`); read-only roles are
+  mechanically denied the write tools.
 - `mpd_role_persona { role }` — fetch the full persona text (e.g. to pass to a spawn surface that
   takes persona as text).
 
@@ -207,7 +209,7 @@ tool output, route or GUI ever exposes it.
 | Tool | Use |
 |---|---|
 | `mpd_workmate_list` | list instances (name, baseName, uses, updatedAt, note) |
-| `mpd_workmate_spawn { name, task, context? }` | one-shot reuse: the workmate runs with its evolved persona + independent memory + note on its own model route; it is instructed to call `mpd_workmate_reflect` before its final report |
+| `mpd_workmate_spawn { name, task, context? }` | single-call consult: the workmate runs one bounded delegation with its evolved persona + independent memory + note on its own model route in a continuable child; it is instructed to call `mpd_workmate_reflect` before its final report |
 | `mpd_workmate_reflect { name, task, outcome, persona_delta?, note? }` | self-evolve after work: bounded memory append (oldest evicted), persona revision merge, note regenerate, `uses++` |
 | `mpd_workmate_match { task }` | rank notes against a task; below threshold → `matched: false` and the suggestion is to **initialize a NEW workmate** — never force a weak match |
 | `mpd_workmate_rename { name, new_name }` | rename an instance (moves its evolved identity) |
@@ -300,14 +302,15 @@ interrupt_agent { target }                                                # Lead
   availability (`inactive` means no turn is executing, not that the work is done); `wait_agent` answers
   `noProgress` immediately when no other member is running or provisioning.
 - **Read-only members stay read-only.** Architect, Researcher, Planner, Explorer, Plan Reviewer and
-  Vision Analyst are denied the eight write tools: on the one-shot path through `toolFilter.deny`, and
+  Vision Analyst are denied the eight write tools: on the `mpd_role_spawn` path through `toolFilter.deny`, and
   on the team path through a tool guard in `mpd-roles-plugin` keyed on team membership, because the
   official `spawn_teammate` cannot take a per-teammate tool filter. Workers (Senior Engineer, Junior
   Engineer, Deep Worker, Lead, Reviewer) implement and verify.
-- **A teammate runs on the Lead's model route.** The official `TeamService` forwards only the prompt
-  and the parent to the subagent registry, so the `teamModels.slot*` settings apply to the ONE-SHOT
-  consult paths (`mpd_role_spawn`, `mpd_workmate_spawn`) and cannot be injected per teammate. If a
-  member needs another model, say so in its spawn prompt.
+- **A teammate runs on the route of the session that staged it** — the captain's in a top-level spawn,
+  the Lead's in a team-lead spawn. `mpd-roster-provider` applies a roster member's `teamModels.slot*`
+  route only when the teammate `description` NAMES that member, and the single-call consult paths
+  (`mpd_role_spawn`, `mpd_workmate_spawn`) pass their route explicitly. Prompt text cannot change a
+  route: state the member's NAME in the `description`, not a model in the prompt.
 - **Workmate-backed members are a prompt, not an injection.** Nothing carries a workmate's persona
   into a teammate automatically any more: initialize or pick the workmate
   (`mpd_workmate_init` / `mpd_workmate_match`), read what it should carry, and put that text into the
@@ -492,7 +495,7 @@ strings, the state scopes and the explicit NOT-CLAIMED list, read [`tui.md`](tui
 | `extensions.mcp.*` | mpd-ext | MCP bridge defaults: `enabled`, `connectTimeoutMs`, `toolCallTimeoutMs` |
 | `modelchain.*` | mpd-modelchain | provider/model chains per roster role |
 | `team.stateDir` | the mpd plugins that read legacy team records (watchdog web routes, compaction, the TUI team scene, the workmate in-use check) | where those records live (defaults to `.mpd/team`). The official team plugin does not read it |
-| `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate (via mpd-config) | the four **team-model slots**: `{provider, model, reasoningEffort}` per slot, defaulting to `deepseek-official` / `deepseek-v4-flash` at `max`/`high`/`high` (slot 4: `deepseek-official` / `deepseek-v4-flash-vision-exp` at `high`). Slot 1 routes Architect/Planner/Reviewer/Lead/Senior Engineer, slot 2 Researcher/Explorer/Plan Reviewer, slot 3 Deep Worker/Junior Engineer, slot 4 Vision Analyst — the vision member, whose slot model MUST accept image input. They are resolved by the ONE-SHOT consult paths (`mpd_role_spawn`, `mpd_workmate_spawn`), which pass the route explicitly; a teammate created by `spawn_teammate` inherits the Lead's route instead (§6). A slot that cannot be resolved fails the corresponding spawn **loudly** (the member and the slot are named, nothing is written) and an effort is never silently clamped; the ONE exception is a model whose live catalog entry declares NO reasoning efforts at all — it is sent none, so the spawn still runs (the runtime half of the adaptation the settings pickers already make). Editable as selection-only fields in **Settings → MPD** and the TUI `/settings` section, which show the current effective value before you edit it; a saved change is re-read in the running process — the next spawn or resolve carries it, no restart (`mpd_config_reload` forces it). |
+| `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate (via mpd-config) | the four **team-model slots**: `{provider, model, reasoningEffort}` per slot, defaulting to `deepseek-official` / `deepseek-v4-flash` at `max`/`high`/`high` (slot 4: `deepseek-official` / `deepseek-v4-flash-vision-exp` at `high`). Slot 1 routes Architect/Planner/Reviewer/Lead/Senior Engineer, slot 2 Researcher/Explorer/Plan Reviewer, slot 3 Deep Worker/Junior Engineer, slot 4 Vision Analyst — the vision member, whose slot model MUST accept image input. They are resolved by the single-call consult paths (`mpd_role_spawn`, `mpd_workmate_spawn`), which pass the route explicitly; a `spawn_teammate` teammate gets a slot only when its `description` NAMES a roster member, and any other teammate runs on the route of the session that staged it (§6). A slot that cannot be resolved fails the corresponding spawn **loudly** (the member and the slot are named, nothing is written) and an effort is never silently clamped; the ONE exception is a model whose live catalog entry declares NO reasoning efforts at all — it is sent none, so the spawn still runs (the runtime half of the adaptation the settings pickers already make). Editable as selection-only fields in **Settings → MPD** and the TUI `/settings` section, which show the current effective value before you edit it; a saved change is re-read in the running process — the next spawn or resolve carries it, no restart (`mpd_config_reload` forces it). |
 | `agentRoutes.<name>.*` | mpd-roles / mpd-workmate (via mpd-config) | per roster base NAME (`Architect`, `Researcher`, `Planner`, `Deep Worker`, `Senior Engineer`, `Lead`, `Explorer`, `Reviewer`, `Plan Reviewer`, `Vision Analyst`, `Junior Engineer`) → `{provider?, model?, reasoningEffort?}`, each leaf optional. **Precedence, per leaf:** `agentRoutes[<name>]` > that member's `teamModels.slot{N}` > the built-in default. A workmate re-resolves its base's route on every spawn (an in-flight task keeps the route it started with; the next task carries the change; the frozen `meta.provider`/`meta.model` is provenance only). An unknown member name or a malformed entry fails validation **loudly** — it is never silently ignored. Editable in **Settings → MPD** and the TUI `/settings` section, which show the current effective value before you edit it. |
 
 `mpd-codegraph` is deliberately absent from this table: it takes `autoInit`, `initTimeoutMs`,
@@ -513,7 +516,7 @@ Three things do not wait for that restart, and all are useful:
 - **The model-config knobs are live-refreshed in-process.** The config service re-resolves on every
   settings save and on a watched edit of `<workspace>/.mpd/mpd.jsonc`, and the model routes
   (`modelchain.*`, `teamModels.slot*`, `agentRoutes.*`) are read per use, so the next
-  `mpd_modelchain_resolve` call or the next one-shot spawn / workmate spawn / teammate start carries the
+  `mpd_modelchain_resolve` call or the next single-call consult / workmate spawn / teammate start carries the
   new route with no restart. `mpd_config_reload` remains the manual fallback when you want to force a
   re-read.
 - **The read-back is always immediate.** `mpd_config_get` and `mpd_config_reload` re-read the layers
@@ -534,8 +537,8 @@ Three things do not wait for that restart, and all are useful:
 | `modelchain.*` | mpd-modelchain | per call, from the live service | live — no restart: every `mpd_modelchain_resolve` re-reads the overlay, so a settings save or a file edit changes the next resolution; `mpd_config_reload` forces a re-read |
 | `extensions.enable` / `.disable` / `.mcp.*` | mpd-ext | when the plugin starts (process-level) | after a restart |
 | `team.stateDir` | the mpd plugins that read legacy team records, through the live service | per call | right after the service re-reads the file (`mpd_config_reload`, or any settings save). These are LEGACY records: the official team plugin keeps its roster, mailbox and board in the Lead's session log, not here |
-| `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate, resolved at the one-shot consult paths (`mpd_role_spawn`, `mpd_workmate_spawn`) | at spawn, from the live service | the next one-shot spawn: a settings save or a hand edit of `<workspace>/.mpd/mpd.jsonc` is re-read in-process, so no restart is needed; `mpd_config_reload` forces a re-read. A `spawn_teammate` teammate is NOT routed by these slots |
-| `agentRoutes.<name>.*` | mpd-roles / mpd-workmate, resolved at the same one-shot consult paths | at spawn, from the live service | the next one-shot spawn or workmate spawn for that member: `agentRoutes[<name>]` outranks the member's `teamModels.slot{N}` leaf, which outranks the built-in default, per leaf. Unknown member names and malformed entries fail validation loudly |
+| `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate for the single-call consult paths (`mpd_role_spawn`, `mpd_workmate_spawn`), and mpd-roster-provider for a `spawn_teammate` whose `description` names a roster member | at spawn, from the live service | the next single-call consult: a settings save or a hand edit of `<workspace>/.mpd/mpd.jsonc` is re-read in-process, so no restart is needed; `mpd_config_reload` forces a re-read. A `spawn_teammate` teammate whose `description` NAMES a roster member IS routed by that member's slot through mpd-roster-provider-plugin; any other teammate runs on the route of the session that staged it, and prompt text cannot change a route |
+| `agentRoutes.<name>.*` | mpd-roles / mpd-workmate on the single-call consult paths, and the mpd-roster-provider route for a named `spawn_teammate` teammate | at spawn, from the live service | the next single-call consult or workmate spawn for that member: `agentRoutes[<name>]` outranks the member's `teamModels.slot{N}` leaf, which outranks the built-in default, per leaf. Unknown member names and malformed entries fail validation loudly |
 | `watchdog.*` | mpd-team-watchdog | at mount, on a settings update, and every tick | live — no restart |
 
 `mpd-codegraph`'s knobs are the exception that proves the rule: they are patch-row options
@@ -758,7 +761,7 @@ gate** (momus reviewer, at most 2 re-reviews) when a plan exists AND (`tier: "he
 `.mpd/ulw/<id>`. An activated run asks you nothing: it triages first, stages its own team when the
 work warrants one, and closes out through the gates.
 
-### 13.3 Specialists (one-shot subagents)
+### 13.3 Specialists (single-call consults)
 
 ```text
 mpd_roles_list {}

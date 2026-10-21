@@ -163,7 +163,7 @@ export const REFUSAL = {
   noGateEvidence: "no-gate-evidence",
   /** A PASS citing an evidence id this loop never produced. */
   forgedEvidence: "forged-evidence",
-  /** A PASS whose basis the observation log cannot prove blind. */
+  /** A PASS on a basis declared `unproven` — blindness is asserted, never observed. */
   bindUnproven: "bind-unproven",
   /** A FAIL with no findings. */
   failWithoutFindings: "fail-without-findings",
@@ -282,19 +282,19 @@ export function validateVerificationRecord(record: VerificationRecord, context: 
         + "): the exemption closes the moment the guard is live")
     }
   }
-  // RULE 5 — THE RATCHET, JUDGED FROM THE OBSERVATION LOG (captain's ruling, 2026-10-07).
+  // RULE 5 — THE RATCHET, JUDGED FROM THE PROCESS-LOCAL LOG (captain's ruling, 2026-10-07).
   //
   // WHAT CHANGED AND WHY: this clause used to fire on `seat.unlocked` alone, so ONE recorded FAIL barred
   // that seat from ever recording that loop's PASS — even when its diagnosis window had been opened and
-  // never used. The repo's own doctrine says blindness is PROVEN by the plugin's observation log, so the
-  // validator now obeys that doctrine instead of the blunter flag: a seat whose log shows NO
-  // implementation read may record the PASS, and one whose log shows a read is refused with the read
+  // never used. Blindness itself is DECLARED by the record's basis, never observed: no shipped
+  // composition writes the read-observation log (`noteCall` is reached only from the withdrawn guard), so
+  // the validator treats the log as a BOUND, not a proof. A seat whose log names NO admitted
+  // implementation read may record the PASS, and one whose log names a read is refused with the read
   // NAMED. `seat.unlocked` is reported in the sentence, never decisive.
   //
   // THE BOUND, DECLARED: the log is per-PROCESS and in memory only (`observe.ts` persists no
   // observations), so a read performed in an earlier process is not visible here and cannot bar a PASS.
-  // That is what "judge from the observation log" means; the alternative — trusting the durable flag
-  // instead — is the blunter rule the captain replaced.
+  // The alternative — trusting the durable flag instead — is the blunter rule the captain replaced.
   //
   // A FAIL is deliberately NOT gated by this clause: a refusal here would contradict its own words
   // ("it can only record further FAILs", which the flag-based rule also refused), and a seat that has
@@ -326,12 +326,13 @@ export function validateVerificationRecord(record: VerificationRecord, context: 
     }
     return { ok: true }
   }
-  // RULE 3 — BLINDNESS MUST BE PROVABLE. A PASS from a seat the observation log cannot show to have been
-  // blind is not evidence; it is a claim. The FAIL path above is deliberately exempt, because a FAIL
-  // needs no blindness to be believed.
+  // RULE 3 — AN UNPROVEN BASIS CANNOT CARRY A PASS. Blindness is DECLARED, never observed: no shipped
+  // composition writes the read-observation log, so a PASS on an `unproven` basis is not evidence; it is
+  // a claim. The FAIL path above is deliberately exempt, because a FAIL needs no blindness to be believed.
   if (record.basis.kind === "unproven") {
-    return refuse(REFUSAL.bindUnproven, "the basis is \"unproven\": the plugin's own observation log shows this verifier read"
-      + " implementation paths before recording a verdict, so a PASS cannot be justified. Record a FAIL, or re-verify from a fresh agent")
+    return refuse(REFUSAL.bindUnproven, "the basis is \"unproven\": blindness is DECLARED, never observed, and no shipped"
+      + " composition writes the read-observation log that could establish it, so a PASS cannot be justified."
+      + " Record a FAIL, or re-verify from a fresh agent")
   }
   // RULE 2 — A PASS MUST BE EVIDENCED, three times over: documents it rested on, gates it ran, and only
   // evidence THIS loop produced. An empty PASS is the failure mode the whole law exists to prevent.

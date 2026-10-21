@@ -1,0 +1,85 @@
+## A6: fresh JS inventory
+./packages/mpd-better-sidebar-host/dist/index.js
+./packages/mpd-bootstrap-plugin/dist/index.js
+./packages/mpd-boulder-plugin/dist/index.js
+./packages/mpd-bundle-plugin/adopted/agent-teams-client.js
+./packages/mpd-bundle-plugin/client.js
+./packages/mpd-bundle-plugin/dist/index.js
+./packages/mpd-codegraph-plugin/dist/index.js
+./packages/mpd-comment-checker-plugin/dist/index.js
+./packages/mpd-config-plugin/dist/index.js
+./packages/mpd-dsh-adapter-plugin/dist/index.js
+./packages/mpd-ext-plugin/dist/index.js
+./packages/mpd-ext-plugin/dist/sdk.js
+./packages/mpd-goal-plugin/dist/index.js
+./packages/mpd-graph-core/dist/index.js
+./packages/mpd-hashline-plugin/dist/index.js
+./packages/mpd-mcp-astgrep/dist/cli.js
+./packages/mpd-mcp-astgrep/dist/launch.js
+./packages/mpd-mcp-codegraph/dist/launch.js
+./packages/mpd-mcp-codegraph/dist/serve.js
+./packages/mpd-mcp-gitbash/dist/launch.js
+./packages/mpd-mcp-lsp/dist/launch.js
+./packages/mpd-memory-plugin/dist/index.js
+./packages/mpd-modelchain-plugin/dist/index.js
+./packages/mpd-qa-roles-probe/dist/index.js
+./packages/mpd-roles-plugin/dist/index.js
+./packages/mpd-roster-provider-plugin/dist/index.js
+./packages/mpd-team-compact-plugin/dist/index.js
+./packages/mpd-team-core-plugin/dist/index.js
+./packages/mpd-team-watchdog-plugin/dist/index.js
+./packages/mpd-tools-plugin/dist/index.js
+./packages/mpd-tui-adapter-plugin/dist/index.js
+./packages/mpd-tui-plugin/dist/index.js
+./packages/mpd-ulw-plugin/dist/index.js
+./packages/mpd-verify-plugin/dist/index.js
+./packages/mpd-workmate-plugin/dist/index.js
+./skills/ultimate-browsing/engine/templates/playwright_mobile_chrome.js
+./skills/ultimate-browsing/engine/templates/playwright_real_chrome.js
+./skills/ulw-research/scripts/cli-support.mjs
+./skills/ulw-research/scripts/contracts.mjs
+./skills/ulw-research/scripts/css-lite.mjs
+./skills/ulw-research/scripts/design-spec.mjs
+./skills/ulw-research/scripts/entities.mjs
+./skills/ulw-research/scripts/entry-guard.mjs
+./skills/ulw-research/scripts/format-extract-css.mjs
+./skills/ulw-research/scripts/format-extract.mjs
+./skills/ulw-research/scripts/gates-figures.mjs
+./skills/ulw-research/scripts/gates-layout.mjs
+./skills/ulw-research/scripts/gates-static.mjs
+./skills/ulw-research/scripts/gates-structure.mjs
+./skills/ulw-research/scripts/gates-text.mjs
+./skills/ulw-research/scripts/html-lite.mjs
+./skills/ulw-research/scripts/layout-probe.mjs
+./skills/ulw-research/scripts/outcome.mjs
+./skills/ulw-research/scripts/repair-tracker.mjs
+./skills/ulw-research/scripts/report-tools-commands.mjs
+./skills/ulw-research/scripts/report-tools.mjs
+./skills/visual-qa/scripts/visual-qa.mjs
+--- count ---
+57
+--- classes ---
+dist=33
+browser=2
+corpus=22
+unexpected=none
+## A9: ignore proof
+.gitignore:118:docker/ui/out/readme/	docker/ui/out/readme/probe.png
+check-ignore exit=0
+$ git status --porcelain --untracked-files=all | grep -c "docker/ui/out/readme"
+0
+grep exit=1
+## A7: nine-member list
+[verify-gates] resolving 9 member gate(s) (declared table)
+[verify-gates] member vendor :: node ./scripts/verify-vendor.ts
+[verify-gates] member dist-fresh :: node ./scripts/verify-dist-fresh.ts
+[verify-gates] member rows-parity :: node ./scripts/verify-rows-parity.ts
+[verify-gates] member docs-parity :: node ./scripts/verify-docs-parity.ts
+[verify-gates] member preset-conformance :: node ./skills/dsh-qa/scripts/preset-conformance.ts --self-test
+[verify-gates] member plugin-manifest :: node ./scripts/verify-plugin-manifest.ts --pack
+[verify-gates] member comment-coverage :: node ./scripts/verify-comment-coverage.ts
+[verify-gates] member graph-model :: node ./scripts/verify-graph-model.ts --self-test
+[verify-gates] member workflows :: node ./scripts/verify-workflows.ts
+[verify-gates] list OK: 9 member gate(s) resolved, 0 spawned
+## A11: AGENTS.md byte size
+58083 AGENTS.md

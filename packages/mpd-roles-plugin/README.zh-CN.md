@@ -21,7 +21,7 @@
 
 - `mpdRoles` service（`ctx.get("mpdRoles")`）：`list()` / `get(key)` — 被 `mpd-modelchain-plugin` 消费（chain lookup）。
 - `mpd_roles_list` — roster，每个 role 一行：名称、route、做什么。
-- `mpd_role_spawn` — one-shot consult：将一个 role 作为 subagent 生成（roster persona + route + 对 read-only roles 的 write-deny toolFilter）。被生成的 subagent **以该 role 的名称为 label**（`Architect`、`Deep Worker`），而不再是 `role-<id>-<random>`。
+- `mpd_role_spawn` — single-call consult：对一个 role 发起一次有界委派并返回一份报告。被生成的子智能体（roster persona + route + 对 read-only roles 的 write-deny toolFilter）**以该 role 的名称为 label**（`Architect`、`Deep Worker`），而不再是 `role-<id>-<random>`；它是 **continuable** 的：harness 会保留它，报告之后仍以 `inactive` 列出，可用 `send_message` 继续。`mpd_workmate_spawn` 使用同样的 spawn 机制但作用于持久的、可演化的实例（外加库中的 persona/memory）；团队工作是官方 `spawn_teammate` 路径。
 - `mpd_role_persona` — 为需要将 persona 作为文本使用的 spawn surface 获取 persona 文本（官方 Agent Teams 的 `spawn_teammate` 会把它作为 teammate 的 `prompt`）。
 
 **两个 surface 共用同一套命名（名称统一）。** 名称就是 role 的身份：它既是 team mode 下 agent-teams 为成员取的名称，也是单次 `mpd_role_spawn` 产生的 label。称呼时任意拼写均可：`Architect`、`architect`、`Deep Worker`、`deep-worker`、`deepworker`、`Plan Reviewer`（大小写、空格、连字符、下划线均不敏感）。**任何 surface 都不再展示沿袭自上游的别称** —— role 只用它做什么来描述。
@@ -41,7 +41,7 @@
 
 拒绝是响亮且隔离的：名称已被基础 role 或另一个扩展占用的 role，会在 `mpd_roles_list` 的 `refused` 列表中报告并记录一次日志 —— 它绝不会拖垮名册或启动。persona 文件不可读的 role 同样被拒绝；被配置禁用的扩展则完全不贡献 role。
 
-**已明确的边界 —— roster 段落只列出 BASE 名册。** 扩展贡献的 role 是按调用（`mpdExtensions`）解析的，而不是在 agent scope 创建时解析，因此它们不会出现在下方的 `mpd:roster` 段落中。它们依然完全可用：可通过 `mpd_role_spawn` 一次性 spawn、可作为 **workmate BASE 模板**，而且知道它的 Lead 仍可用 `spawn_teammate` 并传入 `mpd_role_persona` 的文本把它 stage 为 teammate。
+**已明确的边界 —— roster 段落只列出 BASE 名册。** 扩展贡献的 role 是按调用（`mpdExtensions`）解析的，而不是在 agent scope 创建时解析，因此它们不会出现在下方的 `mpd:roster` 段落中。它们依然完全可用：可通过 `mpd_role_spawn` 单次咨询（single-call consult）、可作为 **workmate BASE 模板**，而且知道它的 Lead 仍可用 `spawn_teammate` 并传入 `mpd_role_persona` 的文本把它 stage 为 teammate。
 
 ## Team mode
 
@@ -54,13 +54,13 @@
 | 只读 teammate 的纪律 | 一道 TOOL GUARD（见下），经适配器注册 |
 | session 启动复杂度闸门 | 一个 `agent/pre-step` 监听器：当 `team.gate` 为 `mechanical` 时 **stage** 一个可批准的 plan shell —— 自 2026-10-20 起**重新成为默认**（见下） |
 
-**模型路由只保留在一次性路径上。** `TeamService` 只把 `{prompt, parent}` 转发给 `ctx.subagents.startContinuable`（`docs/plan-0.1.7-adaptation.md` §3），因此 teammate 继承 Lead 的路由，无法为其附加 provider/persona/tool filter。`teamModels.slot*` 路由因此只作用于 `mpd_role_spawn` / `mpd_workmate_spawn`（它们会传入显式的 `agentOptions`）；名册段落如实说明这一点，而不是承诺 Harness 无法兑现的路由。路由中的推理强度还会经过适配器的 `withSupportedEffort`（`mpd-dsh-adapter-plugin`）：若槽位的模型**完全没有**推理等级，则不发送任何等级 —— spawn 照常运行，而不是因 provider 无法接受的关键字失败；而声明了推理等级的模型则保留槽位的等级。
+**模型路由跟着 label 走。** `TeamService` 只转发 `{prompt, parent}` 外加 descriptor label（teammate 的 `description`），因此 label 是请求携带的唯一名册身份（`docs/plan-0.1.7-adaptation.md` §3）。只有当 `description` **点名**某个名册成员时，`mpd-roster-provider-plugin` 才会应用该成员的 `teamModels.slot*` 路由；其余 teammate 完全不被路由 —— 请求按原样（by identity）透传，由 staging 它的 session 的 Harness 解析路由生效（顶层 spawn 是队长的路由，team-lead spawn 是 Lead 的路由）。prompt 文本无法改变路由。同一组槽位也作用于 `mpd_role_spawn` / `mpd_workmate_spawn`（它们会传入显式的 `agentOptions`）；名册段落如实说明这一点。路由中的推理强度还会经过适配器的 `withSupportedEffort`（`mpd-dsh-adapter-plugin`）：若槽位的模型**完全没有**推理等级，则不发送任何等级 —— spawn 照常运行，而不是因 provider 无法接受的关键字失败；而声明了推理等级的模型则保留槽位的等级。
 
 ### 只读 teammate 会被机械地拒绝
 
 那七个名称的拒绝清单在**两条**路径上生效，且共用**同一个**导出常量（`READONLY_DENY`），因此二者永远不会漂移：
 
-- **一次性路径** —— `mpd_role_spawn` 传入 `toolFilter: { deny: READONLY_DENY }`（保持不变）；
+- **单次咨询路径** —— `mpd_role_spawn` 传入 `toolFilter: { deny: READONLY_DENY }`（保持不变）；
 - **team 路径** —— 一道 tool guard 经适配器解析**调用方** agent 的团队身份（`dsh.teamMembership(exec.agent)`）：当身份为 `teammate`，且其面向模型的名号经归一化（小写、每段非字母数字 → `-`，可选一个尾部 `-<数字>` 团队唯一后缀）后命中某个**只读**名册成员时，清单中的任何工具名都会被拒绝。拒绝信息会点名该成员与规则，并指向 Lead 或某个 worker 成员。Lead、worker 成员、非团队 agent 以及无法解析的身份一律放行；该 guard 从不抛错、从不改动状态、也从不放宽。
 
 这修掉了已退役、由 profile 携带 `toolDeny` 的实测缺陷：以 "Explorer" 身份 stage 却未带过滤器的 teammate 会保留 `write`/`edit`/`bash`。

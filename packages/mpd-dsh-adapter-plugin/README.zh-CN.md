@@ -79,15 +79,20 @@ Harness 以三个官方包提供 Agent Teams（`@deepseek-ai/dsh-experimental-ag
   （`mpd-dsh-adapter: harness service "agentTeams" is unavailable — cannot create team task "…"`），
   而 `teamMembership` 完全不抛错（它是调用方用来问"这个 agent 在团队里吗？"的过滤器）。
 
-`teamLiveTeams()` 是 Web 路由或 TUI 场景用来替代 `.mpd/team` 记录的只读视图（该记录已不存在：
-团队状态保存在 Lead 的 Session 日志中，并作为 `agentTeam` Session projection 发布）。它折叠
-活跃 agent 注册表，每个 Lead 保留一项，缺失时降级为 `[]`，绝不抛错。
+`teamLiveTeams()` 只是运行官方执行器（official executor）的组合里那条受限的**兜底**读取 ——
+在那种组合中由 Web 路由、TUI 场景或看门狗使用。MPD 的团队**记录**（`.mpd/team/teams/<id>.json`，
+经 `mpdTeams` 提供）在所有 mpd 表面上都是权威。它折叠活跃 agent 注册表，每个 Lead 保留一项，
+缺失时降级为 `[]`，绝不抛错。
 
 **teammate 路径上的模型路由（方案 §3）：** `teamSpawnTeammate` 就是 Harness 自己的
-`spawnTeammate`，其 `SubagentStartRequest` 不携带 `agentOptions`、`persona` 或 `toolFilter`；
-因此 teammate 继承 Lead 的路由，`teamModels.slot*` 契约以显式指引的形式写在 spawn prompt 里。
-按成员路由在一次性咨询路径（`mpd_role_spawn` / `mpd_workmate_spawn`）上仍可机械生效，因为它们
-自行传入 `agentOptions`。
+`spawnTeammate`，其 `SubagentStartRequest` 不携带 `agentOptions`、`persona` 或 `toolFilter`。
+若 teammate 的 description **没有**点名名册成员，本 bundle 完全不路由它：请求按原样（by
+identity）透传，由 staging 它的 session 的 Harness 解析路由生效（顶层 spawn 是队长的路由，
+team-lead spawn 是 Lead 的路由），prompt 文本无法改变路由。若 description **点名**了名册成员，
+则通过 `mpd-roster-provider-plugin` 的 `teamModels.slot*` 契约路由。按成员路由同样作用于单次
+咨询路径（`mpd_role_spawn` / `mpd_workmate_spawn`），因为它们自行传入 `agentOptions`；这是
+roster/workmate 的 spawn 路径，并非 team 路径，其启动的子会话是 CONTINUABLE 的（一次有界委派、
+一份报告，随后以 `inactive` 列出，可用 `send_message` 继续）。
 
 ### D6 静态闸门（`test/no-direct-team-access.test.ts`）
 
@@ -131,7 +136,7 @@ provider 无法接受的关键字交给它、令调用失败。导出的 `withSu
   因此被适配的调用绝不静默；
 - **绝不抛错**，也绝不把等级替换成别的值 —— 替换即为 clamp，是契约禁止的。
 
-两个携带推理强度的调用方都使用它：`mpd-roles-plugin`（一次性 spawn 路径）与
+两个携带推理强度的调用方都使用它：`mpd-roles-plugin`（role spawn 路径）与
 `mpd-roster-provider-plugin`（官方 `spawn_teammate`）。接缝仍是唯一的接触面。
 
 ## 为什么存在

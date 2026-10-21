@@ -1,7 +1,8 @@
 // mpd-roster-provider-plugin: per-member model routing for OFFICIAL Agent Teams teammates.
 //
-// THE GAP THIS CLOSES. A teammate created by the official `spawn_teammate` inherits the LEAD's
-// model route: `TeamService.spawnTeammate` forwards only `{ prompt, parent }` to the harness
+// THE GAP THIS CLOSES. Before this row, a teammate created by the official `spawn_teammate` kept
+// the route of the session that staged it (the LEAD's in a team-lead spawn):
+// `TeamService.spawnTeammate` forwards only `{ prompt, parent }` to the harness
 // subagent seam (the durable-child start, named `startActivation` since 0.2.1-rc.2), so the mpd
 // `teamModels` slots — which DO route the one-shot consult paths (`mpd_role_spawn`,
 // `mpd_workmate_spawn`) — had no effect on a teammate. §8 of
@@ -106,7 +107,8 @@ interface ProviderLike {
 export interface RosterProviderConfig {
   /** The composition's own provider a delegation delegates TO. */
   baseProvider?: string
-  /** `false` leaves the provider unregistered, so every teammate inherits the Lead's route. */
+  /** `false` leaves the provider unregistered, so no slot is applied and every teammate keeps the
+   * harness-resolved route of the session that staged it. */
   enabled?: boolean
 }
 
@@ -200,9 +202,11 @@ export function apply(ctx: any, config: RosterProviderConfig = {}): void {
   /**
    * The route one teammate takes, resolved from the descriptor label.
    *
-   * A member the label does not name — or one the roster does not slot-route — inherits the Lead's
-   * route, which is the behaviour every teammate had before this row existed. A member the label
-   * DOES name resolves through the config service's precedence chain first (R2: `agentRoutes` >
+   * A member the label does not name — or one the roster does not slot-route — is NOT routed here:
+   * this returns `undefined`, `applyRoute` returns the request by identity, and the harness-resolved
+   * route of the session that staged the teammate stands (the captain's in a top-level spawn, the
+   * Lead's in a team-lead spawn). A member the label DOES name resolves through the config service's
+   * precedence chain first (R2: `agentRoutes` >
    * slot > defaults, PER CALL so a saved route reaches the NEXT teammate), and only falls back to
    * the local slot read when no config service is mounted.
    */
@@ -270,7 +274,7 @@ export function apply(ctx: any, config: RosterProviderConfig = {}): void {
     rowLogLine("mpd-roster", `[mpd-roster] provider "${PROVIDER_NAME}" registered (delegating to "${configBaseName}"; point the team tool row's freshProvider at it)`)
   } catch (error) {
     // A composition without a subagent plane must not lose its boot: say so once and stay inert.
-    rowLogLine("mpd-roster", `[mpd-roster] the provider could not be registered — teammates keep the Lead's route: ${String((error as Error)?.message ?? error)}`)
+    rowLogLine("mpd-roster", `[mpd-roster] the provider could not be registered — teammates run on the route of the session that stages them (the captain's in a top-level spawn): ${String((error as Error)?.message ?? error)}`)
   }
 
   if (typeof ctx?.on === "function") ctx.on("dispose", () => { for (const dispose of disposers) { try { dispose() } catch { /* already gone */ } } })

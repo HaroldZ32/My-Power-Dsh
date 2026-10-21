@@ -39,12 +39,13 @@ seat keeps its envelope as PROSE rather than as a fence.
   `typecheck`, `docs`, `manifest`, `comments`, `rows`, `vendor`, `dist`, `pack`) and writes its log;
   `kind:"probe"` reports `{path, exists, bytes, sha256, mtime}` per path and **never content**.
 - **`mpd_verify_record`** — record the verdict through the validator. A **PASS** needs the documents it
-  cites, at least one gate, and a provably blind basis; a **FAIL** needs findings, each with the
-  `doc_source` that proves it, and it opens a repair task and unlocks diagnosis reading. The validator
-  still judges blindness from the loop's observation log — `blind-spent` names an ADMITTED implementation
-  read — but that log's only writer was the withdrawn guard, so in every shipped composition the log is
-  empty and every seat reads `blind`. The old carve-out ("a read the envelope REFUSED does not spend the
-  basis") is therefore bookkeeping with no refusal behind it; see the bounds for what that costs.
+  cites, at least one gate, and a basis that is not `unproven` — blindness is DECLARED, never observed,
+  so an unproven basis is UNVERIFIED; the validator still refuses a PASS with no documents, a forged
+  evidence id or a same-agent verifier. A **FAIL** needs findings, each with the `doc_source` that
+  proves it, and it opens a repair task and unlocks diagnosis reading. `bind-unproven` still rejects a
+  PASS whose basis is declared `unproven`, and `blind-spent` still names an admitted read, but no
+  shipped composition writes the observation log, so `blind-spent` cannot be triggered by evidence —
+  see the bounds for what that costs.
 
 ## The withdrawn guards (a record, not an install)
 

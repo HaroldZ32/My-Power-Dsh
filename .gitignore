@@ -112,6 +112,10 @@ docker/ui/pw/
 # capture report are the evidence; a live token is not, and AGENTS.md §10 keeps secret-shaped
 # strings out of committed artifacts (the same rule the QA lanes apply when they redact it).
 docker/ui/out/*.log
+# The README capture pass writes its screenshots here, duplicating the committed
+# `docs/assets/images/` set the docs actually reference; the capture is a local re-run, not a
+# deliverable, so it stays untracked (the committed images remain the evidence).
+docker/ui/out/readme/
 
 # Wave-local host payloads: the unpacked dsh-tui 0.14.0/0.15.0 package trees and their
 # tarballs are third-party bytes used only to MEASURE the delta; FACTS.md is the record.

@@ -22,9 +22,14 @@ reviews:
   # would trade a real defect for a little less reading.
   profile: "assertive"
 
-  # A bot never blocks a merge here. Every change lands through a branch + PR into `dev` and
-  # merges only after this repository's own gates pass and their evidence is committed with
-  # the change (AGENTS §4/§5). CodeRabbit is advisory input to that decision, not a gate.
+  # `request_changes_workflow` is the schema's automatic-approval workflow, and with `false` that
+  # workflow is DISABLED, so the bot does not post a formal CHANGES_REQUESTED review state. That is a
+  # review-state setting, NOT a merge gate: a PR is not mergeable while its CodeRabbit review is
+  # `in progress`. Wait for COMPLETION, reconcile every inline finding as FIXED / STALE / STILL-VALID
+  # with file:line evidence, and record that reconciliation in the PR (AGENTS §5, user-set
+  # 2026-10-20). CI green plus an independent verifier is NOT a substitute, and a pending review is
+  # never a pass. The repository's own gates and their committed evidence (AGENTS §4) still decide
+  # whether the change is correct.
   request_changes_workflow: false
 
   # The review surface is the walkthrough and the inline comments, not a fortune cookie.

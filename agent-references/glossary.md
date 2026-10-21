@@ -17,6 +17,12 @@ reasoning efforts at all in the live catalog is sent none (the adapter's `withSu
 the keyword and logs it), so a materialised slot default cannot fail a call no configuration error
 caused. `AGENTS.md` §13 carries the binding wording; the block below is history.
 
+**LIVE AMENDMENT (2026-10-20, workmate injection):** the automatic persona/memory injection into a
+teammate lived in the vendored `dsh-agent-teams` body, which no loader row has mounted since its
+2026-09-27 retirement and which the de-vendor wave removed — so that capability is NOT active.
+Re-establishing it belongs to the OFFICIAL team path, `mpd-roster-provider-plugin`, which already routes
+a teammate whose description names a roster member. The block below predates this note and is history.
+
 ## The former §13 body (verbatim)
 
 ## 13. Glossary
@@ -44,7 +50,7 @@ caused. `AGENTS.md` §13 carries the binding wording; the block below is history
   `mcp__ast_grep__scan`, `mcp__lsp__rename_symbol`, `mcp__lsp__rename_symbol_strict` (cclsp's own two
   rename tools, which replaced the single `mcp__lsp__rename` in de-omo wave B2). `bash` is denied on
   purpose (a shell can write files); `read`/`glob`/`grep` stay available. Enforced TWO ways that must
-  keep agreeing: the one-shot path passes it as `toolFilter.deny` to `mpd_role_spawn`, and a tool GUARD
+  keep agreeing: the `mpd_role_spawn` path passes it as `toolFilter.deny`, and a tool GUARD
   denies the same eight names for a
   live Team teammate whose name normalises to a read-only roster member — the official `spawn_teammate`
   accepts no per-teammate tool filter. **Do NOT re-add
@@ -62,7 +68,7 @@ caused. `AGENTS.md` §13 carries the binding wording; the block below is history
   survivors and rethrows any second failure. Measured 2026-10-10 before the repair: the two
   `mcp__lsp__*` entries made the harness reject the WHOLE list on a profile without `cclsp`, so every
   read-only `mpd_role_spawn` died and the captain fell back to the official `subagent` tool — which was
-  the escape the since-WITHDRAWN delegation gate refused (below). The one-shot path hands the CHILD the
+  the escape the since-WITHDRAWN delegation gate refused (below). The `mpd_role_spawn` path hands the CHILD the
   PRUNED list as `toolFilter.deny`; a pruned name is reported once on the row's log.
 - delegation gate (RESTORED 2026-10-20 — a live capability again): the `tools.guard` rule that makes
   §5 rule 2's delegation discipline MECHANICAL, and the sibling of the captain-investigation guard
@@ -101,7 +107,7 @@ caused. `AGENTS.md` §13 carries the binding wording; the block below is history
   missing service, a missing or incomplete slot, an unknown model, an unsupported effort — fails the
   corresponding spawn LOUDLY naming the member and the slot, writes no state, and NEVER clamps an
   effort. **Team teammates ARE routed, through a provider of this bundle's own (2026-09-27).** The slot
-  applies to the mpd ONE-SHOT consult paths (`mpd_role_spawn`, `mpd_workmate_spawn`), which pass an
+  applies to the mpd single-call consult paths (`mpd_role_spawn`, `mpd_workmate_spawn`), which pass an
   explicit `agentOptions`, AND to an official `spawn_teammate` teammate: the harness — unlike its own
   TeamService — is not the limitation. `TeamService` forwards only `{ prompt, parent }`, but
   `SubagentContinuationManager.startContinuable` resolves `request.agentOptions` into
@@ -111,7 +117,9 @@ caused. `AGENTS.md` §13 carries the binding wording; the block below is history
   composition's own provider and applies the member's slot route — and the bundle points its
   `mpd-tool-agent-team` row's `freshProvider` at it. IDENTITY is the one thing the team service does
   not forward, so the routing rule is: **a teammate `description` that NAMES a roster member routes
-  that member; one that does not inherits the Lead's route.** An incomplete slot fails the spawn
+  that member; any other teammate runs on the route of the session that staged it (the captain's in a
+  top-level spawn, the Lead's in a team-lead spawn), and prompt text cannot change a route.** An
+  incomplete slot fails the spawn
   loudly, naming the member and the slot. See `packages/mpd-roster-provider-plugin/README.md`.
 - workmate: a durable, evolving agent instance in `~/.mpd/workmate/` created by `mpd-workmate-plugin`
   (`mpd_workmate_*`) from a roster BASE template with an independent name; it self-summarizes after each
@@ -156,8 +164,8 @@ and which REFUSES a caller that is the loop's own writer. The boundary it is mea
   `mcp__lsp__rename_symbol_strict`); and every `agent_teams_*` / `mpd_*` board or team MUTATION —
   with `mpd_verify_*` explicitly exempt, because those five tools ARE the seat's job.
 - **PATH-SCOPED while BLIND**: `read` / `glob` / `grep` under the loop's frozen `basis.docs[]`,
-  `<ws>/.mpd/plans/**`, `<ws>/docs/**`, `<ws>/agent-references/**`, `<ws>/.mpd/verify/**` and
-  `<ws>/evidence/**`. MEASURED 2026-10-08: while the guard still installed, its bare-path refusal named
+  `<ws>/.mpd/plans/**`, `<ws>/docs/**`, `<ws>/agent-references/**`, `<ws>/packages/*/README*.md`,
+  `<ws>/.mpd/verify/**` and `<ws>/evidence/**`. MEASURED 2026-10-08: while the guard still installed, its bare-path refusal named
   `evidence/` in the live band, and a `glob {path:"evidence", pattern:"…"}` was ANSWERED (it reports no
   matches, not a refusal). An earlier revision of this line OMITTED `evidence/**`, and a bound seat
   concluded from the omission that it could not read a writer's evidence packet at all — it retracted
