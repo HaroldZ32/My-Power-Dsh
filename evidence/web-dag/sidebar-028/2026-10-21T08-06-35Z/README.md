@@ -12,6 +12,14 @@ Independent verifier: **PASS** — record `rec-20261021T082128-b28f07` for loop
 `loop-20261021T070931-850b4a`. The verifier re-ran the nine fixed-table gates on the repaired tree
 (tests 2193 pass, 3 skip, 0 fail; `gates/` holds the logs) and inspected the post-fix stills.
 
+CodeRabbit reconciliation (commit `defa50ea`): **F1** reduced-motion flow overlay **FIXED** (the
+`[data-mpd-flow]` SMIL arrow is hidden under `prefers-reduced-motion`, while the static path and
+arrowhead stay visible); **F4** cancelled-task finish stamp **FIXED** (`cancelled` now deletes
+`finishedAt`, so a prior finish cannot survive). **F2** crossing-gutter lane registration and **F3**
+geometry cache + ticker gating are recorded as **STILL-VALID follow-ups** (non-blocking width/perf
+cleanups; the property battery and UI checks are green). The final post-repair verifier record and
+affected-test count (986) are added below when the re-run lands.
+
 ## Clause-to-evidence matrix
 
 | Clause | Evidence |
@@ -27,13 +35,13 @@ Independent verifier: **PASS** — record `rec-20261021T082128-b28f07` for loop
 | Running-node breathing without harming text | keyframes animate only `box-shadow`/`border-color`; reduced-motion disables it; D2 CSS arms; `06b-team-board.png` (T3 running glow) |
 | Hover card: status, owner, elapsed, rough task, progress; beside the cursor | D2 card arms (content, truncation, clamp, pointer-derived position); real-browser `07-team-graph-hover.png` in both boards shows the card next to the pinned node |
 | Click → next hover opaque; mouse leave closes | D2 pin-opacity and mouseleave arms; the post-fix stills show the opaque pinned card; the pre-fix focus-anchor defect was repaired (focus no longer invents `(14,14)`) |
-| Existing features preserved | full affected suite 985 pass / 0 fail; the real-browser capture 18/18 checks and 9/9 steps; click-to-pin detail still renders in the stills |
+| Existing features preserved | full affected suite 986 pass / 0 fail; the real-browser capture 18/18 checks and 9/9 steps; click-to-pin detail still renders in the stills |
 | `startedAt` / `finishedAt` and coarse progress | `packages/mpd-team-core-plugin/test/team-store.test.ts` transition matrix; `test/team-web.test.ts` payload/omitted-undefined/progress mapping; docs/user-guide.md §8.1 declares the coarse 100/50/10/0 mapping |
 | Docs images refreshed to the new UI | `docs/assets/images/web-team-board.png` + `hero-web-tui.png` (EN) from `docker-post-fix/ui-shots/07-team-graph-hover.png`; the zh pair from `docs-capture-zh/07-team-graph-hover.png`; README/README.zh-CN and docs/index descriptions updated in the same commit |
 
 ## Gate and boot results
 
-- `bun test packages/mpd-bundle-plugin packages/mpd-team-core-plugin packages/mpd-tui-plugin packages/mpd-better-sidebar-host` → **985 pass, 0 fail**.
+- `bun test packages/mpd-bundle-plugin packages/mpd-team-core-plugin packages/mpd-tui-plugin packages/mpd-better-sidebar-host` → **986 pass, 0 fail** (after the CodeRabbit repairs).
 - `bun run typecheck` → exit 0.
 - `bun run verify:gates` → **9/9 members green** (vendor, dist freshness, row parity, doc pairs, preset conformance, plugin manifest, comment coverage, graph model, workflows).
 - `bun run verify:docs` → pairs 48, failed 0.

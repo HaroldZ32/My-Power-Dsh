@@ -26,3 +26,10 @@ $ tsgo --noEmit
 [verify-vendor] asset OK: packages/mpd-bundle-plugin/adopted 2 files
 [verify-vendor] asset OK: packages/mpd-bundle-plugin/client.js 1 files
 [verify-vendor] PASS - 7 shipped asset(s) fingerprinted, upstream identity not checked
+
+## CodeRabbit repairs (defa50ea)
+bun test packages/mpd-bundle-plugin packages/mpd-team-core-plugin packages/mpd-tui-plugin packages/mpd-better-sidebar-host -> 986 pass, 0 fail, 31346 expect() calls
+bun run typecheck -> exit 0
+bun run verify:gates -> 9/9 PASS
+node scripts/verify-vendor.ts -> 7/7 assets fingerprinted (client.js sha256 f446e783...fffdd)
+bun run verify:docs -> pairs 48, failed 0

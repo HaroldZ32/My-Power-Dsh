@@ -1,8 +1,9 @@
 {
   "wave": "web-dag-sidebar-028",
   "branch": "feature/web-dag-sidebar-028",
-  "codeCommit": "83796fb4",
+  "codeCommit": "defa50ea",
   "preFixCommit": "6e89d619",
+  "docsImagesCommit": "e0b3ab22",
   "contract": "contract.md",
   "evidenceCommit": "25ff1efc",
   "status": "PASS — independent verifier record rec-20261021T082128-b28f07 for loop-20261021T070931-850b4a",
@@ -30,6 +31,12 @@
     "zh": "docs/assets/images/zh-CN/web-team-board.png and docs/assets/images/zh-CN/hero-web-tui.png from docs-capture-zh/07-team-graph-hover.png",
     "evidence": "docs-capture-zh/"
   },
+  "codeRabbit": {
+    "F1_reduced_motion_flow": "FIXED in defa50ea — [data-mpd-flow] hidden inside prefers-reduced-motion; static dependency path/arrowhead kept; scoped CSS test",
+    "F4_cancelled_finishedAt": "FIXED in defa50ea — cancelled deletes finishedAt; test arm proves the key is absent, not blanked",
+    "F2_gutter_registration": "STILL-VALID follow-up — long edges are still registered in every crossed gutter; width/lane cleanup; property battery stays green",
+    "F3_geometry_cache_ticker": "STILL-VALID follow-up — layout geometry is not cached by payload identity and the ticker runs while a running task is visible; performance cleanup"
+  },
   "clauses": {
     "better_sidebar_028": "package.json + bun.lock + scripts/pack-mpd.ts + host-contract.test.ts; verify:rows, verify:manifest, preset-conformance, bundle-lifecycle",
     "secondary_both_surfaces": "sidebar-tab.test.ts primary ids + :bottom twins + bottomOnly + fallback; docs/user-guide.md section 8",
@@ -46,7 +53,7 @@
   },
   "tests": {
     "affectedSuites": "bun test packages/mpd-bundle-plugin packages/mpd-team-core-plugin packages/mpd-tui-plugin packages/mpd-better-sidebar-host",
-    "affectedResult": "985 pass, 0 fail, 31337 expect() calls",
+    "affectedResult": "986 pass, 0 fail, 31346 expect() calls (after the CodeRabbit repairs)",
     "gateResult": "2193 pass, 3 skip, 0 fail, 2196 tests across 134 files",
     "typecheck": "bun run typecheck -> exit 0",
     "gates": "bun run verify:gates -> 9/9 PASS",
