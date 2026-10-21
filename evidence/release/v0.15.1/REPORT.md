@@ -67,5 +67,8 @@ mode-specific by design) and `ui.teamBoard`. The live credential was staged ONCE
   `AGENTS.md` §11 now says so.
 - Released `CHANGELOG.md` entries (v0.10.0 / v0.11.0) keep their historical wording as released history;
   the reconciliation binds live shipped text.
-- The post-publish `github:` one-click spec against the default branch is a separate post-release step
-  (the lane above graded the local checkout stand-in, as in v0.14.0/v0.15.0).
+- The post-publish `github:` one-click spec against the default branch is a separate post-release step.
+  **It was then run and PASSED after the tag was pushed**: a bare `ubuntu:24.04` installed
+  `@mpd-dsh/mpd` straight from `github:HaroldZ32/My-Power-Dsh` (master @ `83ef3603`) with `--live` —
+  `ok=true`, 116 passed / 0 failed / 6 mode-specific declared NULL, exit 0
+  (`evidence/docker/client-install-oneclick/2026-10-21T04-33-29Z/`).
