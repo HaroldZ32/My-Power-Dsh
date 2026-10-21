@@ -5,26 +5,26 @@
   "preFixCommit": "6e89d619",
   "docsImagesCommit": "e0b3ab22",
   "contract": "contract.md",
-  "evidenceCommit": "25ff1efc",
-  "status": "PASS — independent verifier record rec-20261021T082128-b28f07 for loop-20261021T070931-850b4a",
+  "evidenceCommit": "ebadecc1",
+  "status": "PASS — independent verifier record rec-20261021T090546-abad35 for loop-20261021T070931-850b4a (code defa50ea)",
   "verification": {
     "loop": "loop-20261021T070931-850b4a",
-    "record": "rec-20261021T082128-b28f07",
+    "record": "rec-20261021T090546-abad35",
     "verdict": "PASS",
-    "gateTests": "2193 pass, 3 skip, 0 fail, 2196 tests across 134 files",
+    "gateTests": "2194 pass, 3 skip, 0 fail, 2197 tests across 134 files (after the CodeRabbit repairs)",
     "gateEvidenceIds": [
-      "ev-20261021T081803-4d6c27",
-      "ev-20261021T081810-c39be6",
-      "ev-20261021T081836-763628",
-      "ev-20261021T081838-e33a78",
-      "ev-20261021T081841-57e653",
-      "ev-20261021T081845-29fc2f",
-      "ev-20261021T081849-88d340",
-      "ev-20261021T081850-5817d8",
-      "ev-20261021T081852-06fede"
+      "ev-20261021T090327-cc7c53",
+      "ev-20261021T090353-fcc19f",
+      "ev-20261021T090356-3c93c9",
+      "ev-20261021T090358-a90d9a",
+      "ev-20261021T090401-b944e4",
+      "ev-20261021T090405-135abb",
+      "ev-20261021T090407-5d0119",
+      "ev-20261021T090409-f4c4fe",
+      "ev-20261021T090411-056076"
     ],
     "logDir": "gates/",
-    "visual": "post-fix real-browser capture: 18/18 checks, 9/9 steps on normal and CJK boards; hover card beside T6/T5, fan-in tips 12px apart, stronger glow, 6px dash flow; shipped/fingerprinted client.js sha256 6f517b58...51ab86a equals the container client.js"
+    "visual": "post-fix real-browser capture on 6f517b58: 18/18 checks, 9/9 steps on normal and CJK boards; hover card beside T6/T5, fan-in tips 12px apart, stronger glow, 6px dash flow. defa50ea only adds the reduced-motion hide and cancelled-finishedAt rules, so the depicted board states and images are unchanged. The current client fingerprint is f446e783...fffdd."
   },
   "docsImages": {
     "en": "docs/assets/images/web-team-board.png and docs/assets/images/hero-web-tui.png from docker-post-fix/ui-shots/07-team-graph-hover.png",
@@ -49,12 +49,12 @@
     "hover_card": "status/owner/elapsed/truncated task/progress; pointer-derived position; D2 card arms; 07 stills",
     "pin_opaque_leave_close": "D2 pin-opacity + mouseleave arms; pre-fix focus-anchor defect repaired and regression arm added",
     "data_fields": "team-store.test.ts transition matrix; team-web.test.ts payload/omitted-undefined/progress mapping",
-    "existing_features": "985 affected tests pass; Docker UI capture 18/18 checks, 9/9 steps; click-to-pin detail still renders"
+    "existing_features": "986 affected tests pass; Docker UI capture 18/18 checks, 9/9 steps; click-to-pin detail still renders"
   },
   "tests": {
     "affectedSuites": "bun test packages/mpd-bundle-plugin packages/mpd-team-core-plugin packages/mpd-tui-plugin packages/mpd-better-sidebar-host",
     "affectedResult": "986 pass, 0 fail, 31346 expect() calls (after the CodeRabbit repairs)",
-    "gateResult": "2193 pass, 3 skip, 0 fail, 2196 tests across 134 files",
+    "gateResult": "2194 pass, 3 skip, 0 fail, 2197 tests across 134 files",
     "typecheck": "bun run typecheck -> exit 0",
     "gates": "bun run verify:gates -> 9/9 PASS",
     "docs": "bun run verify:docs -> pairs 48, failed 0",
@@ -96,15 +96,15 @@
     }
   },
   "gateEvidenceIds": [
-    "ev-20261021T081803-4d6c27",
-    "ev-20261021T081810-c39be6",
-    "ev-20261021T081836-763628",
-    "ev-20261021T081838-e33a78",
-    "ev-20261021T081841-57e653",
-    "ev-20261021T081845-29fc2f",
-    "ev-20261021T081849-88d340",
-    "ev-20261021T081850-5817d8",
-    "ev-20261021T081852-06fede"
+    "ev-20261021T090327-cc7c53",
+    "ev-20261021T090353-fcc19f",
+    "ev-20261021T090356-3c93c9",
+    "ev-20261021T090358-a90d9a",
+    "ev-20261021T090401-b944e4",
+    "ev-20261021T090405-135abb",
+    "ev-20261021T090407-5d0119",
+    "ev-20261021T090409-f4c4fe",
+    "ev-20261021T090411-056076"
   ],
   "honestBounds": [
     "No live model reply in the Docker lane; ui.replyRendered is a declared credential-free bound.",

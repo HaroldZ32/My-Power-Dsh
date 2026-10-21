@@ -1,6 +1,6 @@
 # Wave evidence — web-dag-sidebar-028
 
-Code: `feature/web-dag-sidebar-028`, repair commit `83796fb4` (first feature commit `6e89d619`).
+Code: `feature/web-dag-sidebar-028`, final repair commit `defa50ea` (first feature commit `6e89d619`; visual repair `83796fb4`; docs images `e0b3ab22`).
 Frozen contract: [`contract.md`](./contract.md) (copy of `.mpd/plans/web-dag-sidebar-028.md`).
 
 This root is the measured-evidence deliverable the contract's DoD and AGENTS.md §4/§5 require.
@@ -8,17 +8,18 @@ The contract's clause matrix is below; the command log is [`output.log`](./outpu
 real-browser capture is [`docker-post-fix/`](./docker-post-fix/), and the pre-fix defect record is
 `../2026-10-21T07-40-13Z/docker/`.
 
-Independent verifier: **PASS** — record `rec-20261021T082128-b28f07` for loop
-`loop-20261021T070931-850b4a`. The verifier re-ran the nine fixed-table gates on the repaired tree
-(tests 2193 pass, 3 skip, 0 fail; `gates/` holds the logs) and inspected the post-fix stills.
+Independent verifier: **PASS** — final record `rec-20261021T090546-abad35` for loop
+`loop-20261021T070931-850b4a`. The verifier re-ran the nine fixed-table gates on the final tree
+(tests 2194 pass, 3 skip, 0 fail; `gates/` holds the logs) and inspected the post-fix stills and the
+refreshed docs images.
 
 CodeRabbit reconciliation (commit `defa50ea`): **F1** reduced-motion flow overlay **FIXED** (the
 `[data-mpd-flow]` SMIL arrow is hidden under `prefers-reduced-motion`, while the static path and
 arrowhead stay visible); **F4** cancelled-task finish stamp **FIXED** (`cancelled` now deletes
 `finishedAt`, so a prior finish cannot survive). **F2** crossing-gutter lane registration and **F3**
 geometry cache + ticker gating are recorded as **STILL-VALID follow-ups** (non-blocking width/perf
-cleanups; the property battery and UI checks are green). The final post-repair verifier record and
-affected-test count (986) are added below when the re-run lands.
+cleanups; the property battery and UI checks are green). The final post-repair verifier record is
+`rec-20261021T090546-abad35`: 2194 gate tests pass (986 in the four-package suite).
 
 ## Clause-to-evidence matrix
 
