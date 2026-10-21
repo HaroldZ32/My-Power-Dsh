@@ -11219,6 +11219,16 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   /** The key each RENDERED state resolves through in the hover card, so its status is localized. */
   const VISUAL_KEY                         = { completed: "visual.completed", running: "visual.running", blocked: "visual.blocked", failed: "visual.failed", cancelled: "visual.cancelled", open: "visual.open", planned: "visual.planned" }
 
+  /**
+   * The DOCUMENTED coarse progress of a record STATUS, used only when the payload carries no
+   * numeric `progress` (a legacy server).
+   *
+   * `claimed` is 10 while `in_progress` is 50 — the distinction a status-aware fallback exists for:
+   * a claimed task is DRAWN as running, so a visual-only fallback would report 50 for work nobody
+   * has started yet. Statuses outside this table (or an absent status) degrade to the visual rule.
+   */
+  const STATUS_PROGRESS                         = { completed: 100, in_progress: 50, claimed: 10, pending: 0, blocked: 0, failed: 0, cancelled: 0 }
+
   /** The key each lifecycle phase resolves through, so a phase label is localized like every other word. */
   const PHASE_KEY                         = { staged: "phase.staged", active: "phase.active", idle: "phase.idle", ended: "phase.ended" }
 
@@ -11810,16 +11820,22 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
       }
       /**
        * The clamped coarse progress of one task, 0-100.
-       * @param task - the task, whose served `progress` wins when it is a finite number.
-       * @returns the integer percent, rounded and clamped; an absent field degrades to the coarse
-       *   lifecycle mapping (completed 100, running 50, anything else 0) the route documents.
+       *
+       * A served numeric `progress` always wins. A legacy payload without one falls back to the
+       * record's STATUS first (see {@link STATUS_PROGRESS}), because `claimed` and `in_progress` both
+       * DRAW as running but mean 10 and 50; only an absent or unknown status degrades to the visual
+       * rule (completed 100, running 50, anything else 0).
+       * @param task - the task, whose served `progress` (or status) decides the number.
+       * @returns the integer percent, rounded and clamped to 0..100.
        */
       const progressOf = (task          )         => {
         /** The served number, when the payload carried one. */
         const servedValue = typeof task.progress === "number" && Number.isFinite(task.progress) ? task.progress : undefined
-        /** The older-server degrade, which mirrors the route's own coarse mapping. */
-        const fallback = task.visual === "completed" ? 100 : task.visual === "running" ? 50 : 0
-        return Math.max(0, Math.min(100, Math.round(servedValue ?? fallback)))
+        /** The status-derived fallback, when the record carries a status the table knows. */
+        const statusFallback = typeof task.status === "string" && task.status !== "" ? STATUS_PROGRESS[task.status] : undefined
+        /** The visual-derived degrade for a payload with neither a served number nor a known status. */
+        const visualFallback = task.visual === "completed" ? 100 : task.visual === "running" ? 50 : 0
+        return Math.max(0, Math.min(100, Math.round(servedValue ?? statusFallback ?? visualFallback)))
       }
       /**
        * The viewport anchor of the hover card: the event's own `clientX/clientY` plus the 14px offset.
@@ -11896,6 +11912,12 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         /** The elapsed text; a dash means the record cannot answer. */
         const elapsed = formatElapsed(task, nowMs)
         /**
+         * Whether that dash means NEVER STARTED, rather than a start with no finish or a malformed
+         * stamp. Only this case gets the "not started" sublabel: labelling a completed task with a
+         * missing `finishedAt` as "not started" would be false, because it clearly did start.
+         */
+        const neverStarted = elapsed === "-" && (typeof task.startedAt !== "string" || task.startedAt === "")
+        /**
          * One label/value row of the card.
          * @param key - the row's React key.
          * @param label - the already-localized label.
@@ -11916,7 +11938,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         },
           row("tip-status", t("tip.status"), visualLabelOf(task.visual)),
           row("tip-owner", t("tip.owner"), task.owner === undefined || task.owner === "" ? t("tip.unassigned") : task.owner),
-          row("tip-elapsed", t("tip.elapsed"), elapsed, elapsed === "-" ? t("tip.notStarted") : undefined),
+          row("tip-elapsed", t("tip.elapsed"), elapsed, neverStarted ? t("tip.notStarted") : undefined),
           react.createElement("div", { key: "tip-subject-row", className: "mpd-dag-tip-row" },
             react.createElement("span", { key: "tip-subject-label", className: "mpd-dag-tip-label" }, t("tip.task")),
             react.createElement("span", { key: "tip-subject", className: "mpd-dag-tip-subject", title: task.subject }, short(task.subject, TIP_SUBJECT_MAX))),

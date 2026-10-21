@@ -2751,6 +2751,97 @@ describe("team-view D2: the hover card", () => {
     expect(collect(left, "data-mpd-tip-card").length).toBe(0)
   })
 
+  test("labels the elapsed dash `not started` ONLY when the task never started (CodeRabbit repair)", async () => {
+    // THE REPORTED DEFECT: `formatElapsed` dashes three different situations, and the card labelled
+    // ALL of them "not started" — false for a completed task missing `finishedAt` and for a malformed
+    // stamp. Only an absent/empty `startedAt` may carry the sublabel now.
+    /** One completed task with a start but NO finish, one with malformed stamps, and one never started. */
+    const board = [
+      { id: "T1", subject: "no finish", kind: "requirement", status: "completed", visual: "completed", startedAt: "2026-10-21T10:00:00.000Z", blockedBy: [], failedBy: [], depth: 0 },
+      { id: "T2", subject: "malformed", kind: "requirement", status: "completed", visual: "completed", startedAt: "not-a-date", finishedAt: "also-bad", blockedBy: ["T1"], failedBy: [], depth: 1 },
+      { id: "T3", subject: "never started", kind: "work", status: "pending", visual: "open", blockedBy: ["T1"], failedBy: [], depth: 1 },
+    ]
+    /** The settled render of that board. */
+    const rendered = await renderView({ routes: { [STATE_PATH]: { ok: true, status: 200, body: stateOf(board) } } })
+    /** The current tree, advanced after every hover so the next handler is fresh. */
+    let tree = rendered.tree
+    /**
+     * Hover one node and answer its elapsed row.
+     * @param id - the node to hover.
+     * @returns the card's elapsed row element.
+     */
+    const elapsedRowOf = async (id: string): Promise<ElementNode> => {
+      ;(one(tree, "data-mpd-node", id).props.onMouseEnter as (event: unknown) => void)({ clientX: 10, clientY: 10 })
+      tree = await rendered.hooks.act(rendered.component, { sessionId: "s1" } as never)
+      return collectByKey(one(tree, "data-mpd-tip-card", "1"), "tip-elapsed")[0]
+    }
+    // (b) STARTED, NO FINISH: the dash is honest, but the task clearly started — no sublabel.
+    /** T1's elapsed row. */
+    const noFinish = await elapsedRowOf("T1")
+    expect(flatText(noFinish)).toContain("elapsed -")
+    expect(flatText(noFinish)).not.toContain("not started")
+    expect(noFinish.props.title).toBeUndefined()
+    // (c) MALFORMED START: a start exists, so the dash stays and the sublabel stays away.
+    /** T2's elapsed row. */
+    const malformed = await elapsedRowOf("T2")
+    expect(flatText(malformed)).toContain("elapsed -")
+    expect(flatText(malformed)).not.toContain("not started")
+    expect(malformed.props.title).toBeUndefined()
+    // (a) NO START: this is the one case the sublabel describes.
+    /** T3's elapsed row. */
+    const never = await elapsedRowOf("T3")
+    expect(flatText(never)).toContain("elapsed -")
+    expect(never.props.title).toBe("not started")
+  })
+
+  test("a legacy payload's progress falls back to STATUS, so claimed is 10 and in_progress 50 (CodeRabbit repair)", async () => {
+    // THE REPORTED DEFECT: a legacy payload has no `progress`, and `claimed` DRAWS as running — the
+    // old visual-only fallback reported 50 for work nobody had started. The fallback now reads the
+    // record's status first (completed 100, in_progress 50, claimed 10, pending/blocked/failed/
+    // cancelled 0); only an absent/unknown status keeps the visual rule. A served number still wins
+    // and still clamps.
+    /** One task per documented status, all without `progress`, plus the two explicit numeric cases. */
+    const board = [
+      { id: "T1", subject: "completed", kind: "requirement", status: "completed", visual: "completed", blockedBy: [], failedBy: [], depth: 0 },
+      { id: "T2", subject: "in progress", kind: "work", status: "in_progress", visual: "running", blockedBy: ["T1"], failedBy: [], depth: 1 },
+      { id: "T3", subject: "claimed", kind: "work", status: "claimed", visual: "running", blockedBy: ["T1"], failedBy: [], depth: 1 },
+      { id: "T4", subject: "pending", kind: "work", status: "pending", visual: "open", blockedBy: ["T1"], failedBy: [], depth: 1 },
+      { id: "T5", subject: "blocked", kind: "work", status: "blocked", visual: "blocked", blockedBy: ["T1"], failedBy: [], depth: 1 },
+      { id: "T6", subject: "failed", kind: "work", status: "failed", visual: "failed", blockedBy: ["T1"], failedBy: [], depth: 1 },
+      { id: "T7", subject: "cancelled", kind: "work", status: "cancelled", visual: "cancelled", blockedBy: ["T1"], failedBy: [], depth: 1 },
+      { id: "T8", subject: "explicit high", kind: "work", status: "claimed", visual: "running", progress: 140, blockedBy: ["T1"], failedBy: [], depth: 1 },
+      { id: "T9", subject: "explicit low", kind: "work", status: "pending", visual: "open", progress: -20, blockedBy: ["T1"], failedBy: [], depth: 1 },
+      { id: "T10", subject: "no status", kind: "work", status: "", visual: "running", blockedBy: ["T1"], failedBy: [], depth: 1 },
+    ]
+    /** The settled render of that board. */
+    const rendered = await renderView({ routes: { [STATE_PATH]: { ok: true, status: 200, body: stateOf(board) } } })
+    /** The current tree, advanced after every hover so the next handler is fresh. */
+    let tree = rendered.tree
+    /**
+     * Hover one node and answer its progress fill width.
+     * @param id - the node to hover.
+     * @returns the bar fill's inline width (`NN%`).
+     */
+    const percentOf = async (id: string): Promise<string> => {
+      ;(one(tree, "data-mpd-node", id).props.onMouseEnter as (event: unknown) => void)({ clientX: 10, clientY: 10 })
+      tree = await rendered.hooks.act(rendered.component, { sessionId: "s1" } as never)
+      return styleOf(collectByKey(one(tree, "data-mpd-tip-card", "1"), "tip-fill")[0], "width")
+    }
+    expect(await percentOf("T1")).toBe("100%")
+    expect(await percentOf("T2")).toBe("50%")
+    // THE DISCRIMINATOR: claimed draws as running, but means 10.
+    expect(await percentOf("T3")).toBe("10%")
+    expect(await percentOf("T4")).toBe("0%")
+    expect(await percentOf("T5")).toBe("0%")
+    expect(await percentOf("T6")).toBe("0%")
+    expect(await percentOf("T7")).toBe("0%")
+    // A SERVED NUMBER STILL WINS, clamped at both ends.
+    expect(await percentOf("T8")).toBe("100%")
+    expect(await percentOf("T9")).toBe("0%")
+    // NO STATUS AT ALL keeps the visual fallback (running -> 50).
+    expect(await percentOf("T10")).toBe("50%")
+  })
+
   test("pinning makes the next hover OPAQUE, leaves the detail body open, and mouseleave closes the card", async () => {
     /** The settled render of D2's fixture. */
     const rendered = await renderView({ routes: { [STATE_PATH]: { ok: true, status: 200, body: stateOf(VISUAL_TASKS) } } })
