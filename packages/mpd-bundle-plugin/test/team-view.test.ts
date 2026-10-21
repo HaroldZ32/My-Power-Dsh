@@ -1927,6 +1927,40 @@ describe("team-view D1 layout: symmetric stacks, zero overlaps, separated ports"
     expect(onlyT5.curve.points[0].y).toBe(t5.top + 21)
   })
 
+  test("a 2-incoming fan-in arrives >=10px apart, so the two 8px arrowheads cannot overlap (D2 repair)", () => {
+    // THE REPORTED DEFECT (Docker UI capture 2026-10-21): two edges into one child landed 4px apart,
+    // and their 8px-tall arrowhead polygons merged into a single thick arrow. The repair widens the
+    // port pitch for small fan-in; this arm pins the ARRIVAL gap and the arrowhead boxes, while the
+    // property battery below still proves no horizontal run became collinear (`overlaps === []`).
+    /** The view module, built without rendering. */
+    const view = loadFactory()({}).createTeamView({ react: null, statePath: STATE_PATH })
+    /** Two roots feeding ONE child: the exact fan-in the screenshot showed on T4. */
+    const board = [
+      { id: "T1", subject: "first", kind: "work", status: "completed", visual: "completed", blockedBy: [], failedBy: [], depth: 0 },
+      { id: "T3", subject: "second", kind: "work", status: "completed", visual: "completed", blockedBy: [], failedBy: [], depth: 0 },
+      { id: "T4", subject: "join", kind: "work", status: "running", visual: "running", blockedBy: ["T1", "T3"], failedBy: [], depth: 1 },
+    ]
+    /** The board exactly as the host would serve it. */
+    const served = withServed(board)
+    /** Its geometry. */
+    const graph = view.layout(served.tasks as never, undefined, served.model as never)
+    /** Both arrivals at the one child. */
+    const arrivals = graph.edges.filter((edge) => edge.child === "T4")
+    expect(arrivals.length).toBe(2)
+    /** The two arrival ys, ascending. */
+    const ys = arrivals.map((edge) => edge.curve.tip.y).sort((left, right) => left - right)
+    // THE TARGET: at least 10px for a 2-incoming fan-in (the shipped 4px pitch failed this).
+    expect(ys[1] - ys[0]).toBeGreaterThanOrEqual(10)
+    // THE ARROWHEADS THEMSELVES: two 8px boxes at those tips must be disjoint, not overlapping.
+    /** The two arrival markers, ordered by their top edge. */
+    const heads = arrivals.map((edge) => edge.marker).sort((left, right) => left.top - right.top)
+    expect(heads[0].top + heads[0].height).toBeLessThanOrEqual(heads[1].top)
+    // THE D1 PARITY CHANNEL SURVIVES: the child is rank 1 (odd), so its ports attach on EVEN pixels.
+    for (const edge of arrivals) expect(edge.curve.tip.y % 2).toBe(0)
+    // AND THE ANTI-COLLINEARITY PROPERTY: widening the pitch must not put two runs on one y.
+    expect(graph.overlaps).toEqual([])
+  })
+
   test("rank-skipping edges cross on DISTINCT, MIRRORED band rows and never through a box", () => {
     /** The view module, built without rendering. */
     const view = loadFactory()({}).createTeamView({ react: null, statePath: STATE_PATH })
@@ -2486,25 +2520,34 @@ describe("team-view D2: the scoped stylesheet and the frosted node", () => {
     expect(sheets[0].props["data-mpd-dag-css"]).toBe("1")
     /** The stylesheet's own text. */
     const css = flatText(sheets[0])
-    // THE GLASS: a real backdrop filter, the exact transition the contract names, and the material.
+    // THE GLASS: a real backdrop filter, a translucent white/host-token GRADIENT with an opaque
+    // host-token fallback before it, an inset top highlight, a soft outer shadow, the exact
+    // transition the contract names, and dark text.
     expect(css).toContain("backdrop-filter: blur(14px) saturate(1.25)")
+    expect(css).toContain("background: var(--dsw-alias-bg-layer-1, #ffffff)")
+    expect(css).toContain("background: linear-gradient(180deg, rgba(255,255,255,.92) 0%, rgba(255,255,255,.62) 55%, rgba(238,243,251,.58) 100%)")
+    expect(css).toContain("inset 0 1px 0 rgba(255,255,255,.95)")
+    expect(css).toContain("0 6px 18px rgba(16,24,40,.12)")
     expect(css).toContain("transition: transform 420ms cubic-bezier(.2,.8,.2,1), opacity 200ms, border-color 200ms, box-shadow 200ms;")
     expect(css).toContain("will-change: transform;")
     expect(css).toContain("border: 0.5px solid")
-    expect(css).toContain("box-shadow:")
     expect(css).toContain("color: #111827")
-    // THE BREATHING: a keyframe + the running selector that uses it, edge glow only.
+    // THE BREATHING: a keyframe + the running selector that uses it, edge glow only. The glow is
+    // deliberately STRONG on a white page: a 9px spread at .32 alpha plus a .90 ring in the crest.
     expect(css).toContain("@keyframes mpd-dag-breathe")
     expect(css).toContain('.mpd-dag-node[data-visual="running"] { animation: mpd-dag-breathe')
+    expect(css).toContain("0 0 0 9px rgba(77,107,254,.32)")
+    expect(css).toContain("0 0 0 2px rgba(77,107,254,.90)")
     // THE CARD: translucent white, black text, the pinned override.
     expect(css).toContain("rgba(255,255,255,.78)")
     expect(css).toContain("color: #111;")
     expect(css).toContain('.mpd-dag-tip[data-pinned="true"] { background: #ffffff')
     expect(css).toContain("pointer-events: none")
-    // THE FLOW + DRAW keyframes and the reduced-motion block.
+    // THE DASH-FLOW keyframe and the reduced-motion block. The draw-in is deliberately GONE: it
+    // depended on `pathLength`, which crushed the 6px dash pattern (Docker 2026-10-21).
     expect(css).toContain("@keyframes mpd-dag-dash")
-    expect(css).toContain("@keyframes mpd-dag-draw")
     expect(css).toContain("@media (prefers-reduced-motion: reduce)")
+    expect(css).not.toContain("mpd-dag-draw")
     // ASCII ONLY, so the stylesheet cannot smuggle a full-width codepoint into the drawing's page.
     expect(/[^\x00-\x7F]/.test(css)).toBe(false)
     // OUTSIDE THE GRAPH SUBTREE: the graph's own descendants carry no stylesheet, so the CJK-free
@@ -2589,8 +2632,11 @@ describe("team-view D2: the completed -> running flow overlay", () => {
     /** The children of one edge group: [curve, head]. */
     const painted = (key: string): ElementNode[] => collectByKey(layer, key)[0].props.children as ElementNode[]
     expect(String(painted("edge:T1>T2")[0].props.className)).toContain("mpd-dag-flow")
-    expect(String(painted("edge:T1>T2")[0].props.className)).toContain("mpd-dag-draw")
     expect(String(painted("edge:T1>T3")[0].props.className)).not.toContain("mpd-dag-flow")
+    // NO `pathLength` NORMALISATION (D2 repair): it scaled the 6px dash pattern down on short edges,
+    // so the flow class must be the ONLY class on the path and the attribute must be absent.
+    expect(painted("edge:T1>T2")[0].props.pathLength).toBeUndefined()
+    expect(String(painted("edge:T1>T2")[0].props.className)).not.toContain("mpd-dag-draw")
     // THE COUNTS AND THE PAINTED `d` ARE UNCHANGED: the overlay adds motion, never an edge.
     expect(collect(layer, "data-mpd-edge").length).toBe(2)
     expect(collect(layer, "data-mpd-curve").length).toBe(2)
@@ -2664,6 +2710,36 @@ describe("team-view D2: the hover card", () => {
     } finally {
       scope.window = saved
     }
+  })
+
+  test("a coordinate-less focus never parks the card at the viewport origin (D2 repair)", async () => {
+    // THE REPORTED DEFECT (Docker UI capture 2026-10-21): clicking a node focused it, `onFocus` ran
+    // `tipPoint(FocusEvent)` — which has no clientX/clientY — and the (14,14) fallback OVERWROTE the
+    // pointer anchor, parking the card in the viewport's top-left corner. The repair removes the
+    // focus-triggered card entirely; the keyboard path is the pin (Enter/Space opens the detail).
+    /** The settled render of D2's fixture. */
+    const rendered = await renderView({ routes: { [STATE_PATH]: { ok: true, status: 200, body: stateOf(VISUAL_TASKS) } } })
+    // A real pointer anchor first: (400,300) + the 14px offset.
+    ;(one(rendered.tree, "data-mpd-node", "T1").props.onMouseEnter as (event: unknown) => void)({ clientX: 400, clientY: 300 })
+    /** The tree with the pointer-derived card open. */
+    const hovered = await rendered.hooks.act(rendered.component, { sessionId: "s1" } as never)
+    expect(styleOf(one(hovered, "data-mpd-tip-card", "1"), "left")).toBe("414px")
+    expect(styleOf(one(hovered, "data-mpd-tip-card", "1"), "top")).toBe("314px")
+    // THE FIX IS STRUCTURAL: there is no focus handler to overwrite the anchor with.
+    /** The hovered node's element. */
+    const node = one(hovered, "data-mpd-node", "T1")
+    expect(node.props.onFocus).toBeUndefined()
+    // Even if a host did deliver a FocusEvent, the anchor must not move to (14,14).
+    if (typeof node.props.onFocus === "function") (node.props.onFocus as (event: unknown) => void)({ type: "focus" })
+    /** The tree after the (absent) focus event. */
+    const afterFocus = await rendered.hooks.act(rendered.component, { sessionId: "s1" } as never)
+    expect(styleOf(one(afterFocus, "data-mpd-tip-card", "1"), "left")).toBe("414px")
+    expect(styleOf(one(afterFocus, "data-mpd-tip-card", "1"), "top")).toBe("314px")
+    // LEAVING STILL CLOSES the card, and the pin path still opens the detail body.
+    ;(one(afterFocus, "data-mpd-node", "T1").props.onMouseLeave as () => void)()
+    /** The tree after the pointer left. */
+    const left = await rendered.hooks.act(rendered.component, { sessionId: "s1" } as never)
+    expect(collect(left, "data-mpd-tip-card").length).toBe(0)
   })
 
   test("pinning makes the next hover OPAQUE, leaves the detail body open, and mouseleave closes the card", async () => {

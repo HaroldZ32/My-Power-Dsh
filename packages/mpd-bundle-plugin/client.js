@@ -11181,8 +11181,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
    * `translate3d(...)` from the render so a rank change animates instead of jumping.
    */
   const DAG_CSS = `
-.mpd-dag-node { position: absolute; left: 0; top: 0; box-sizing: border-box; overflow: hidden; cursor: pointer; border: 0.5px solid rgba(17,24,39,.22); border-radius: 6px; padding: 3px 5px; font-family: var(--dsw-font-mono, ui-monospace, monospace); font-size: 10px; line-height: 1.3; color: #111827; background: var(--dsw-alias-bg-layer-1, #ffffff); background: rgba(255,255,255,.62); -webkit-backdrop-filter: blur(14px) saturate(1.25); backdrop-filter: blur(14px) saturate(1.25); box-shadow: 0 1px 2px rgba(16,24,40,.06), 0 4px 14px rgba(16,24,40,.08); transition: transform 420ms cubic-bezier(.2,.8,.2,1), opacity 200ms, border-color 200ms, box-shadow 200ms; will-change: transform; }
-@keyframes mpd-dag-breathe { 0%, 100% { box-shadow: 0 0 0 1px rgba(77,107,254,.35), 0 0 0 3px rgba(77,107,254,.10), 0 4px 14px rgba(16,24,40,.08); } 50% { box-shadow: 0 0 0 1px rgba(77,107,254,.80), 0 0 0 6px rgba(77,107,254,.22), 0 4px 14px rgba(16,24,40,.08); border-color: rgba(77,107,254,.80); } }
+.mpd-dag-node { position: absolute; left: 0; top: 0; box-sizing: border-box; overflow: hidden; cursor: pointer; border: 0.5px solid rgba(17,24,39,.22); border-radius: 6px; padding: 3px 5px; font-family: var(--dsw-font-mono, ui-monospace, monospace); font-size: 10px; line-height: 1.3; color: #111827; background: var(--dsw-alias-bg-layer-1, #ffffff); background: linear-gradient(180deg, rgba(255,255,255,.92) 0%, rgba(255,255,255,.62) 55%, rgba(238,243,251,.58) 100%); -webkit-backdrop-filter: blur(14px) saturate(1.25); backdrop-filter: blur(14px) saturate(1.25); box-shadow: inset 0 1px 0 rgba(255,255,255,.95), inset 0 -1px 0 rgba(17,24,39,.06), 0 1px 2px rgba(16,24,40,.08), 0 6px 18px rgba(16,24,40,.12); transition: transform 420ms cubic-bezier(.2,.8,.2,1), opacity 200ms, border-color 200ms, box-shadow 200ms; will-change: transform; }
+@keyframes mpd-dag-breathe { 0%, 100% { box-shadow: inset 0 1px 0 rgba(255,255,255,.95), inset 0 -1px 0 rgba(17,24,39,.06), 0 0 0 1px rgba(77,107,254,.55), 0 0 0 5px rgba(77,107,254,.20), 0 8px 24px rgba(77,107,254,.30); border-color: rgba(77,107,254,.75); } 50% { box-shadow: inset 0 1px 0 rgba(255,255,255,.95), inset 0 -1px 0 rgba(17,24,39,.06), 0 0 0 2px rgba(77,107,254,.90), 0 0 0 9px rgba(77,107,254,.32), 0 10px 30px rgba(77,107,254,.40); border-color: rgba(77,107,254,.95); } }
 .mpd-dag-node[data-visual="running"] { animation: mpd-dag-breathe 2.4s ease-in-out infinite; }
 .mpd-dag-tip { position: fixed; z-index: 2147483000; pointer-events: none; box-sizing: border-box; padding: 8px 10px; border: 0.5px solid rgba(17,24,39,.45); border-radius: 10px; background: rgba(255,255,255,.78); color: #111; font-family: var(--dsw-font-mono, ui-monospace, monospace); font-size: 11px; line-height: 1.4; box-shadow: 0 6px 22px rgba(16,24,40,.18); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
 .mpd-dag-tip[data-pinned="true"] { background: #ffffff; opacity: 1; }
@@ -11192,10 +11192,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
 .mpd-dag-tip-bar { height: 5px; border-radius: 3px; background: rgba(17,24,39,.12); overflow: hidden; margin-top: 4px; }
 .mpd-dag-tip-fill { height: 100%; background: #111; }
 @keyframes mpd-dag-dash { to { stroke-dashoffset: -12; } }
-.mpd-dag-draw { stroke-dasharray: 100; animation: mpd-dag-draw 520ms ease-out both; }
-@keyframes mpd-dag-draw { from { stroke-dashoffset: 100; opacity: 0; } to { stroke-dashoffset: 0; opacity: 1; } }
 .mpd-dag-flow { stroke-dasharray: 6 6; animation: mpd-dag-dash 1s linear infinite; }
-@media (prefers-reduced-motion: reduce) { .mpd-dag-node { transition: none; } .mpd-dag-node[data-visual="running"] { animation: none; } .mpd-dag-draw { animation: none; stroke-dasharray: none; } .mpd-dag-flow { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .mpd-dag-node { transition: none; } .mpd-dag-node[data-visual="running"] { animation: none; } .mpd-dag-flow { animation: none; } }
 `
 
   /** The colour token each rendered state draws in — a MEANING mapped to a host token, never a literal. */
@@ -11339,24 +11337,35 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   /** The arrival marker's height in pixels, which is the triangle's base. */
   const MARK_H = 8
   /**
-   * The preferred spacing between two PORTS of one node, in pixels.
+   * The preferred spacing between two PORTS of the SHIPPED capacity fallback, in pixels.
    *
-   * A node with one incident edge attaches at its border middle (on its column's parity channel),
-   * so a chain draws as it always did. A node with several spreads them symmetrically about that
-   * middle at this pitch — clamped a pixel inside the node's own height — which is what stops two edges
-   * meeting one box from sharing a collinear lead-out/lead-in run. Four is the largest pitch that still
-   * fits the busiest real boards (six incident edges) inside the 42px box with a clearance to the
-   * border; it is a MULTIPLE OF FOUR so every offset stays even and the column channel below flips
-   * the attachment set's parity cleanly.
-   *
-   * THE CAPACITY BOUND: the ±20px clamp keeps every port a pixel inside the box. At four pixels of
-   * pitch a node gets up to eleven distinct ports; past eleven the fallback halves the pitch and
-   * reaches TWENTY (odd rank) / TWENTY-ONE (even rank), measured as the last clean count. A node
-   * with more incident edges than that starts collapsing its extreme ports onto one y, and the
-   * collinear runs that follow are what `overlaps` reports — the router never silently pretends such
-   * a node fits.
+   * Kept as the crowded tier's pitch: a node with seven to eleven incident edges still uses it, and
+   * {@link portStepOf} widens the pitch for smaller fan-in (the D2 repair below) while every tier
+   * stays a MULTIPLE OF FOUR so each spread offset is EVEN.
    */
   const PORT_STEP = 4
+  /**
+   * The port pitch for a node with `count` incident edges, in pixels.
+   *
+   * D2 REPAIR (Docker UI capture 2026-10-21): the old single 4px pitch put the two arrivals of a
+   * 2-incoming fan-in 4px apart, so their 8px arrowheads merged into one thick arrow and the fan-in
+   * read as a single dependency. The pitch now WIDENS for small fan-in and only falls back when the
+   * 42px box cannot hold it. Every tier is a MULTIPLE OF FOUR, so every spread offset stays EVEN,
+   * which is what leaves the rank-parity channel (`shift` below) systematic rather than a per-node
+   * nudge. A node with one incident edge still attaches at its border middle.
+   *
+   *   2..4 edges  -> 12px: two arrivals sit at +/-6 (a 12px gap), three at -12/0/+12, four at
+   *                  +/-6/+/-18 (all inside the +/-20 clamp; an 8px arrowhead cannot overlap).
+   *   5..6 edges  -> 8px: five at 0/+/-8/+/-16, six at +/-4/+/-12/+/-20. On an ODD rank the +/-
+   *                  20 offsets clamp to +/-18, so the two outermost gaps shrink to 6px — the
+   *                  documented crowded-node bound; the ports stay distinct and `overlaps` stays [].
+   *   7..11 edges -> the shipped 4px pitch (eleven ports, the last count that fits 4px).
+   *   12+ edges   -> the 2px capacity fallback; its own collapse bound is {@link PORT_STEP}'s story.
+   *
+   * @param count - how many edges touch this node (incoming plus outgoing).
+   * @returns the pitch in pixels; 0 for a node with fewer than two incident edges.
+   */
+  const portStepOf = (count        )         => count < 2 ? 0 : count <= 4 ? 12 : count <= 6 ? 8 : count <= 11 ? PORT_STEP : 2
   /**
    * The vertical pitch of the crossing band's rows, in pixels.
    *
@@ -12456,16 +12465,16 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
           /** How many ports this node must spread. */
           const count = ordered.length
           /**
-           * The pitch between two ports: the preferred {@link PORT_STEP} while the box holds them, two
-           * pixels once a crowded node needs the room (more than eleven incident edges).
+           * The pitch between two ports, widened for small fan-in and narrowed only when the box
+           * needs the room (see {@link portStepOf}).
            */
-          const step = count < 2 ? 0 : count <= 11 ? PORT_STEP : 2
+          const step = portStepOf(count)
           /**
-           * The parity of this node's spread offsets. A four-pixel pitch makes every offset EVEN even
-           * when the count is even (the centre then sits on a half-step); a two-pixel pitch is an odd
-           * multiple of one and inherits the COUNT's parity instead.
+           * The parity of this node's spread offsets. EVERY tier above except the 2px capacity
+           * fallback is a multiple of four, so each offset is EVEN and the spread parity is zero; a
+           * two-pixel pitch is an odd multiple of one and inherits the COUNT's parity instead.
            */
-          const spreadParity = step === PORT_STEP ? 0 : count % 2 === 0 ? 1 : 0
+          const spreadParity = step % 4 === 0 ? 0 : count % 2 === 0 ? 1 : 0
           /**
            * This column's PARITY CHANNEL: even ranks attach on odd pixels, odd ranks on even ones.
            *
@@ -13010,10 +13019,11 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
             // flattened polyline the containment arm measures is built from exactly this `d`.
             "data-mpd-curve": edge.curve.d,
             d: edge.curve.d,
-            // THE DRAW-IN IS NORMALISED TO 100 UNITS (`pathLength`), so ONE keyframe works for a short
-            // forward hop and a long banded route alike; the flow class below overrides the pattern.
-            pathLength: "100",
-            className: flowing ? "mpd-dag-draw mpd-dag-flow" : "mpd-dag-draw",
+            // THE FLOW CLASS IS PIXEL-UNIT, ON PURPOSE (D2 repair, Docker 2026-10-21): the old
+            // `pathLength="100"` normalisation shrank the 6px dashes to ~1.4px on a short hop, so it
+            // was removed and `stroke-dasharray: 6 6` now reads at 6px ON EVERY EDGE LENGTH. A
+            // non-flow edge carries NO class — it is static, as the contract requires.
+            className: flowing ? "mpd-dag-flow" : undefined,
             fill: "none",
             // THE TINT IS THE STROKE (clause W7): the box this edge used to fill with a colour is now
             // painted by a line, so the focus halo has to travel through the stroke and the head's fill.
@@ -13477,10 +13487,15 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
                   // THE HOVER CHAIN AND THE HOVER CARD LIVE ON THE NODE ITSELF: the host drives both
                   // with a real mouse move, so these handlers are the only writers — no document
                   // listener, no layout effect, and therefore nothing that can outlive this element.
+                  //
+                  // FOCUS DOES NOT OPEN THE CARD (D2 repair, Docker 2026-10-21): a FocusEvent has
+                  // no `clientX/clientY`, so the old `onFocus` overwrote a real pointer anchor with
+                  // the (14,14) fallback and parked the card in the viewport's top-left corner the
+                  // moment a click focused the node. Keyboard access is the PIN (Enter/Space opens
+                  // the detail body); `onBlur` still closes a card the pointer left open.
                   onMouseEnter: (event         ) => { if (setHover !== null) setHover(task.id); setTipState({ id: task.id, ...tipPoint(event) }) },
                   onMouseMove: (event         ) => { setTipState({ id: task.id, ...tipPoint(event) }) },
                   onMouseLeave: () => { if (setHover !== null) setHover(null); setTipState(null) },
-                  onFocus: (event         ) => { setTipState({ id: task.id, ...tipPoint(event) }) },
                   onBlur: () => { setTipState(null) },
                   onClick: () => { if (setPinned !== null) setPinned(pinned === task.id ? null : task.id) },
                   onKeyDown: (event                  ) => {
