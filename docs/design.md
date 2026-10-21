@@ -252,7 +252,7 @@ COMPOSITION ONLY — it never executes plugin code, so it is never load evidence
 | `mpd-memory` | mpd-memory-plugin | web + dsh-tui | VCS-backed memory (git/svn) + reflection state machine | `mpd_memory_write`, `mpd_memory_read`, `mpd_memory_reflect`, `mpd_memory_reflect_complete`, `mpd_memory_status` | `vcs`, `dir`, `agentSlug`, `reflectionEvery` |
 | `mpd-workmate` | mpd-workmate-plugin | web + dsh-tui | durable evolving agent library under `~/.mpd/workmate/` (mutations rename/delete, archive-first) | `mpd_workmate_list/init/spawn/reflect/match/rename/delete`; service `mpdWorkmate` (`list`/`get`/`read`/`rename`/`delete`); web routes `GET /plugins/mpd-workmate/{list,roster,get}` + `POST /plugins/mpd-workmate/{init,rename,delete}` | — |
 | `mpd-team-core` | mpd-team-core-plugin | web + dsh-tui | THE TEAM RECORD + WORKFLOW around the official runtime: the PLAN plane (`agent_teams_plan` stages a plan the user can read and approve BEFORE anybody exists, and approval EXECUTES it through the `TeamExecutor` seam), the task contract + monotonic `attempt`, the durable mailbox, the hold, and the archive; kept under `<workspace>/.mpd/team/` and served as `mpdTeams` + `/plugins/mpd-team/state` | `agent_teams_plan`, `agent_teams_task`, `agent_teams_dispatch`, `agent_teams_mail`, `agent_teams_control`; service `mpdTeams` | — |
-| `mpd-roster-provider` | mpd-roster-provider-plugin | web + dsh-tui | per-member MODEL ROUTING for official teammates: registers the `mpd-roster` subagent provider the team tool row points at, so a `spawn_teammate` teammate is routed by the `teamModels` slots instead of inheriting the Lead's route (the official `TeamService` forwards only `{prompt, parent}`, so a provider — not a per-teammate option — is the only seam) | no model-facing tools; registers subagent provider `mpd-roster` | `baseProvider` |
+| `mpd-roster-provider` | mpd-roster-provider-plugin | web + dsh-tui | per-member MODEL ROUTING for official teammates: registers the `mpd-roster` subagent provider the team tool row points at, so a `spawn_teammate` teammate whose `description` NAMES a roster member is routed by that member's `teamModels` slot — any other teammate runs on the route of the session that staged it, because the official `TeamService` forwards only `{prompt, parent}`, so a provider (not a per-teammate option) is the only seam and a name in the prompt cannot change a route | no model-facing tools; registers subagent provider `mpd-roster` | `baseProvider` |
 | `mpd-team-compact` | mpd-team-compact-plugin | web + dsh-tui | compacts a FINISHED team's members (every task terminal AND every member idle) through each member's OWN scoped context; the captain is left to the human `/compact`; audit lands under `<workspace>/.mpd/team-compact/` and this row never writes `.mpd/team` | `mpd_team_compact_run`, `mpd_team_compact_status` | — |
 | `mpd-bootstrap` | mpd-bootstrap-plugin | web + dsh-tui | asset provisioning BY REFERENCE: registers `<bundle>/skills` as a skill provider through the adapter (rank 600 `bundled`) and removes the version-stamped home copies written by bundle <= 0.2.6 | effect only | `skillsDir`, `skipSkills`, `skipPresets`, `skipLegacyCleanup` |
 | `mpd-tui-adapter` | mpd-tui-adapter-plugin | web + dsh-tui | THE single contact surface with the DSH-TUI plane: every `ctx.tui*` seam, the harness `commands` registry and the `settings` provider reach an mpd plugin through this one package (the seam-id table is `TUI_SEAMS`: FIFTEEN `tui*` services — the fourteen 0.12.0 exposed plus the `tuiPanels` registry 0.13.0 added), binder = ONE deferred `ctx.inject([id], …)` per seam, probe = `ctx.get(id, false)`, and a seam that never binds degrades to `absent` instead of failing the boot; it also owns the R5 file log sink | service `mpdTui` | — |
@@ -274,7 +274,7 @@ bundle's web client into the boot graph (§3, §7) while being inert elsewhere.
 
 ## 5. Interaction flows
 
-### Roster → one-shot specialist
+### Roster → single-call specialist consult
 `mpd_role_spawn` reads the roster spec (`mpdRoles`), builds `persona + task`, then
 `dsh.spawnAgent({ provider, model, persona, outputSchema, toolFilter (read-only deny) })`
 (the adapter's normalized form of the harness spawn). The model route comes from the role's
@@ -293,9 +293,9 @@ mechanism — the plugin never touches API keys**.
 - After work, `mpd_workmate_reflect` appends a bounded memory entry (oldest evicted),
   merges a persona revision, regenerates the note (specialty kept + latest task), bumps
   `uses`.
-- `mpd_workmate_spawn` reuses the instance one-shot: persona + memory + note + task on
-  the instance's own route; the subagent is instructed to call `mpd_workmate_reflect`
-  before its final report.
+- `mpd_workmate_spawn` reuses the instance as a single-call consult: one bounded delegation,
+  one report — persona + memory + note + task on the instance's own route in a continuable
+  child; the child is instructed to call `mpd_workmate_reflect` before its final report.
 - `mpd_workmate_match` scores notes (keyword overlap + base-name boost, threshold 0.35);
   below threshold → `matched: false` + "initialize a new workmate" (never force a weak
   match).
@@ -324,10 +324,12 @@ mechanism — the plugin never touches API keys**.
   description, and a prompt built from `mpd_role_persona` text plus the task), opens each lane with
   `team_task_create`, and drives the board with `team_task_list` / `team_task_get` /
   `team_task_update` (compare-and-set on the task `revision`) and the mailbox tools. Two measured
-  bounds are part of the design, not an omission: a teammate **inherits the Lead's model route**
-  (`TeamService` forwards only the prompt and the parent to the subagent registry), so the
-  `teamModels` slots apply to the one-shot consult paths only; and a read-only roster member's write
-  tools are denied by the `mpd-roles` guard keyed on team membership, because
+  bounds are part of the design, not an omission: a teammate runs on the route of the session that
+  staged it — the captain's in a top-level spawn, the Lead's in a team-lead spawn — because
+  `TeamService` forwards only the prompt and the parent to the subagent registry, and the `teamModels`
+  slots apply only when the `description` NAMES a roster member (prompt text cannot change a route);
+  and a read-only roster member's write tools are denied by the `mpd-roles` guard keyed on team
+  membership, because
   `spawn_teammate` cannot take a per-teammate tool filter. Persona and workmate memory are NOT
   injected automatically — they travel in the prompt text.
 

@@ -224,7 +224,7 @@ patch 文件（`presets/mpd.patch.yml`）再携带一个
 | `mpd-memory` | mpd-memory-plugin | web + dsh-tui | VCS 支撑的记忆（git/svn）+ 反思状态机 | `mpd_memory_write`、`mpd_memory_read`、`mpd_memory_reflect`、`mpd_memory_reflect_complete`、`mpd_memory_status` | `vcs`、`dir`、`agentSlug`、`reflectionEvery` |
 | `mpd-workmate` | mpd-workmate-plugin | web + dsh-tui | `~/.mpd/workmate/` 下的持久化可演化代理库（变更操作 rename/delete，删除默认先归档） | `mpd_workmate_list/init/spawn/reflect/match/rename/delete`；服务 `mpdWorkmate`（`list`/`get`/`read`/`rename`/`delete`）；web 路由 `GET /plugins/mpd-workmate/{list,roster,get}` + `POST /plugins/mpd-workmate/{init,rename,delete}` | — |
 | `mpd-team-core` | mpd-team-core-plugin | web + dsh-tui | 官方运行时之外的**团队记录 + 工作流**：plan 平面（`agent_teams_plan` 暂存一份"在任何人存在之前"用户就能读到并批准的 plan，批准即经由 `TeamExecutor` 接缝**执行**它）、任务契约 + 单调 `attempt`、持久点对点邮箱、hold 与归档；保存在 `<workspace>/.mpd/team/`，并以 `mpdTeams` 与 `/plugins/mpd-team/state` 提供 | `agent_teams_plan`、`agent_teams_task`、`agent_teams_dispatch`、`agent_teams_mail`、`agent_teams_control`；服务 `mpdTeams` | — |
-| `mpd-roster-provider` | mpd-roster-provider-plugin | web + dsh-tui | 官方队友的**按成员模型路由**：注册 team tool 行指向的 `mpd-roster` subagent provider，使 `spawn_teammate` 队友由 `teamModels` 槽位路由，而不是继承 Lead 的路由（官方 `TeamService` 只转发 `{prompt, parent}`，因此 provider —— 而非按队友选项 —— 是唯一的接缝） | 无面向模型的工具；注册 subagent provider `mpd-roster` | `baseProvider` |
+| `mpd-roster-provider` | mpd-roster-provider-plugin | web + dsh-tui | 官方队友的**按成员模型路由**：注册 team tool 行指向的 `mpd-roster` subagent provider，使 `spawn_teammate` 队友在其 `description` **点名**名册成员时由该成员的 `teamModels` 槽位路由 —— 其他队友跑在暂存它的那个会话的路由上，因为官方 `TeamService` 只转发 `{prompt, parent}`，因此 provider（而非按队友选项）是唯一的接缝，且提示词里写名字无法改变路由 | 无面向模型的工具；注册 subagent provider `mpd-roster` | `baseProvider` |
 | `mpd-team-compact` | mpd-team-compact-plugin | web + dsh-tui | 对**已结束**的团队做成员压缩（所有任务终态且所有成员 idle），经由每个成员**自己的**作用域上下文执行；captain 交由人类 `/compact` 处理；审计落在 `<workspace>/.mpd/team-compact/`，该行从不写 `.mpd/team` | `mpd_team_compact_run`、`mpd_team_compact_status` | — |
 | `mpd-bootstrap` | mpd-bootstrap-plugin | web + dsh-tui | 按引用供给：经由适配器把 `<bundle>/skills` 注册为 skill provider（rank 600 `bundled`），并清理 bundle <= 0.2.6 写入 home 的带版本戳副本 | 仅 effect | `skillsDir`、`skipSkills`、`skipPresets`、`skipLegacyCleanup` |
 | `mpd-tui-adapter` | mpd-tui-adapter-plugin | web + dsh-tui | 与 DSH-TUI 平面的**唯一**接触面：每个 `ctx.tui*` 接缝、harness 的 `commands` registry 与 `settings` provider 都经由这一个包触达 mpd 插件（接缝 id 表为 `TUI_SEAMS`：**十五个** `tui*` 服务 —— 0.12.0 起暴露的十四个，加上 0.13.0 新增的 `tuiPanels` registry），binder = 每个接缝一次延迟 `ctx.inject([id], …)`，probe = `ctx.get(id, false)`，永不绑定的接缝降级为 `absent` 而不是让启动失败；R5 文件日志汇聚点也由它拥有 | 服务 `mpdTui` | — |
@@ -245,7 +245,7 @@ patch 文件（`presets/mpd.patch.yml`）再携带一个
 
 ## 5. 交互流程
 
-### Roster → 单发专家
+### Roster → 单次专家咨询
 `mpd_role_spawn` 读取 roster 规格（`mpdRoles`），构造 `persona + task`，然后
 `dsh.spawnAgent({ provider, model, persona,
 outputSchema, toolFilter (只读 deny) })`。模型路由来自角色链
@@ -261,8 +261,8 @@ key**。
   `meta.json` 保留内部 `baseId` 作为溯源，而所有工具输出、路由与界面都会剥离它。
 - 工作后 `mpd_workmate_reflect` 追加有界 memory 条目（最旧淘汰）、合并 persona 修订、
   重生成 note（保留特长 + 最新任务）、`uses` 加一。
-- `mpd_workmate_spawn` 一次性复用实例：persona + memory + note + 任务，走实例自身路由；
-  subagent 被指示在最终报告前调用 `mpd_workmate_reflect`。
+- `mpd_workmate_spawn` 以单次咨询复用实例：一次有界委派、一份报告 —— persona + memory + note + 任务，
+  走实例自身路由（continuable 子会话）；子会话被指示在最终报告前调用 `mpd_workmate_reflect`。
 - `mpd_workmate_match` 对 note 打分（关键词重叠 + base 名加成，阈值 0.35）；低于阈值
   → `matched: false` + "新建 workmate"（绝不强行弱匹配）。
 - `mpd_workmate_rename { name, new_name }` **搬移**已演化的身份 —— 目录键**就是**身份，
@@ -284,9 +284,10 @@ key**。
 - 团队模式：会话智能体就是 Lead。它按成员逐个调用 `spawn_teammate`（名字、描述，以及由
   `mpd_role_persona` 文本加任务拼成的提示词），用 `team_task_create` 给每人开一条通道，再用
   `team_task_list` / `team_task_get` / `team_task_update`（对任务 `revision` 做 compare-and-set）
-  与邮箱工具驱动任务板。两条实测边界是设计的一部分，不是遗漏：队友**继承 Lead 的模型路由**
-  （`TeamService` 只把提示词与父会话转发给 subagent 注册表），因此 `teamModels` 槽位只作用于
-  一次性咨询通道；只读名册成员的写入工具由 `mpd-roles` 上以团队身份为键的守卫拒绝，因为
+  与邮箱工具驱动任务板。两条实测边界是设计的一部分，不是遗漏：队友跑在**暂存它的那个会话**的路由上
+  —— 顶层 spawn 是 captain 的路由，team-lead spawn 是 Lead 的路由 —— 因为 `TeamService` 只把提示词与
+  父会话转发给 subagent 注册表；而 `teamModels` 槽位仅在 `description` **点名**名册成员时生效
+  （提示词文本无法改变路由）；只读名册成员的写入工具由 `mpd-roles` 上以团队身份为键的守卫拒绝，因为
   `spawn_teammate` 无法接受按队友的工具过滤器。persona 与 workmate 记忆**不会**被自动注入 ——
   它们随提示词文本一起传递。
 

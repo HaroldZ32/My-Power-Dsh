@@ -56,9 +56,11 @@ declared in `README.md` and `LICENSE-NOTICES.md`.
 - **THE TEAM RECORD IS OURS (team-plane split, 2026-09-30).** `mpd-team-core-plugin` owns the team
   (roster, board, DAG, `kind`/`attempt`/`round`/`verdict`) in `.mpd/team/teams/<id>.json`, served as
   **`mpdTeams`** and over the host route `/plugins/mpd-team/state`; `mpd-dsh-adapter` mediates the ONE
-  execution seam, **`TeamExecutor`**, whose **native** backend (over `ctx.subagents.startContinuable`)
-  is the DEFAULT and the official `dsh.team*` calls the FALLBACK. No mpd surface reads
-  `dsh.teamLiveTeams()` any more. Surfaces: the TUI team scene draws the record's dependency graph
+  execution seam, **`TeamExecutor`**, whose **native** backend is the `startActivation` seam on 0.2.1+
+  (`startContinuable` is the retired seam below it), the DEFAULT, and the official `dsh.team*` calls the
+  FALLBACK. The RECORD is authoritative on every mpd surface; `dsh.teamLiveTeams()` remains only the
+  contained FALLBACK for a composition that runs the official executor (the team-compact read, the TUI
+  team state and the watchdog). Surfaces: the TUI team scene draws the record's dependency graph
   (rank columns, status colours, focus chain, rail fallback) and the Web panel is ONE body registered
   into `dsh-better-sidebar` first with the harness's right sidebar as fallback — for the team AND the
   workmate library. See `docs/plan-team-plane-split.md`.
@@ -154,9 +156,11 @@ short form wins for the rule, and this file wins for the detail.
 - **THE TEAM RECORD IS OURS (team-plane split, 2026-09-30).** `mpd-team-core-plugin` owns the team
   (roster, board, DAG, `kind`/`attempt`/`round`/`verdict`) in `.mpd/team/teams/<id>.json`, served as
   **`mpdTeams`** and over the host route `/plugins/mpd-team/state`; `mpd-dsh-adapter` mediates the ONE
-  execution seam, **`TeamExecutor`**, whose **native** backend (over `ctx.subagents.startContinuable`)
-  is the DEFAULT and the official `dsh.team*` calls the FALLBACK. No mpd surface reads
-  `dsh.teamLiveTeams()` any more. Surfaces: the TUI team scene draws the record's dependency graph (rank
+  execution seam, **`TeamExecutor`**, whose **native** backend is the `startActivation` seam on 0.2.1+
+  (`startContinuable` is the retired seam below it), the DEFAULT, and the official `dsh.team*` calls the
+  FALLBACK. The RECORD is authoritative on every mpd surface; `dsh.teamLiveTeams()` remains only the
+  contained FALLBACK for a composition that runs the official executor (the team-compact read, the TUI
+  team state and the watchdog). Surfaces: the TUI team scene draws the record's dependency graph (rank
   columns, status colours, focus chain, rail fallback) and the Web panel is ONE body registered into
   `dsh-better-sidebar` first with the harness's right sidebar as fallback — for the team AND the workmate
   library. See `docs/plan-team-plane-split.md`.

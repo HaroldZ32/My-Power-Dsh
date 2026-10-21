@@ -25,10 +25,13 @@ read-only discipline.
 - `mpdRoles` service (`ctx.get("mpdRoles")`): `list()` / `get(key)` — consumed by
   `mpd-modelchain-plugin` (chain lookup).
 - `mpd_roles_list` — the roster, one line per role: name, route, and what it does.
-- `mpd_role_spawn` — one-shot consult: spawn one role as a subagent (roster
-  persona + route + write-deny toolFilter for read-only roles). The spawned
-  subagent is **labelled with the role's name** (`Architect`,
-  `Deep Worker`), never with `role-<id>-<random>`.
+- `mpd_role_spawn` — single-call consult: one bounded delegation with one role, one report. The
+  child (roster persona + route + write-deny toolFilter for read-only roles) is **labelled with the
+  role's name** (`Architect`, `Deep Worker`), never with `role-<id>-<random>`, and it is
+  **continuable**: the harness keeps it, so after the report it stays listed as `inactive` and
+  `send_message` can continue it. `mpd_workmate_spawn` is the same spawn mechanics for a durable,
+  evolving instance (plus persona/memory from the library); team work is the official
+  `spawn_teammate` path.
 - `mpd_role_persona` — fetch the persona text for spawn surfaces that take
   persona as text (the official Agent Teams `spawn_teammate` takes it as the
   teammate's `prompt`).
@@ -81,7 +84,7 @@ same way, and an extension that is disabled by config contributes no role at all
 
 **Honoured limit — the roster SECTION lists the BASE roster only.** Extension-contributed
 roles are resolved per call from `mpdExtensions`, not when an agent scope is created, so they
-are not named in the `mpd:roster` section below. They stay fully usable: one-shot through
+are not named in the `mpd:roster` section below. They stay fully usable: single-call consult through
 `mpd_role_spawn`, as a **workmate BASE template**, and a Lead that knows one can still stage
 it with `spawn_teammate` by passing its `mpd_role_persona` text.
 
@@ -101,12 +104,15 @@ This row contributes the ROSTER side of that path — every call through `mpd-ds
 | a READ-ONLY teammate's discipline | a TOOL GUARD (below), registered through the adapter |
 | the session-start complexity gate | an `agent/pre-step` listener that STAGES an approvable plan shell when `team.gate` says `mechanical` — the DEFAULT again since 2026-10-20 (below) |
 
-**Model routing stays on the one-shot path.** `TeamService` forwards only `{prompt, parent}`
-to `ctx.subagents.startContinuable` (`docs/plan-0.1.7-adaptation.md` §3), so a teammate
-inherits the Lead's route and no provider/persona/tool filter can be attached to it. The
-`teamModels.slot*` routes therefore apply to `mpd_role_spawn` / `mpd_workmate_spawn` (which
-pass explicit `agentOptions`), and the roster section says exactly that instead of promising
-a route the harness cannot deliver. The route's effort is additionally passed through the
+**Model routing follows the label.** `TeamService` forwards only `{prompt, parent}` plus the
+descriptor label (the teammate's `description`), so the label is the only roster identity the
+request carries (`docs/plan-0.1.7-adaptation.md` §3). `mpd-roster-provider-plugin` applies a
+roster member's `teamModels.slot*` route ONLY when that description NAMES the member; every other
+teammate is not routed at all — the request passes through by identity, so the harness-resolved
+route of the session that staged it stands (the captain's in a top-level spawn, the Lead's in a
+team-lead spawn). Prompt text cannot change a route. The same slots also apply to `mpd_role_spawn`
+/ `mpd_workmate_spawn`, which pass explicit `agentOptions`; the roster section says exactly that.
+The route's effort is additionally passed through the
 adapter's `withSupportedEffort` (`mpd-dsh-adapter-plugin`), so a slot whose model declares NO
 reasoning efforts at all is sent none — the spawn runs instead of failing on a keyword the
 provider cannot accept — while a model that declares efforts keeps the slot's keyword.
@@ -116,7 +122,7 @@ provider cannot accept — while a model that declares efforts keeps the slot's 
 The seven-name deny list is enforced on BOTH paths, from ONE exported constant
 (`READONLY_DENY`), so the two can never drift:
 
-- **one-shot** — `mpd_role_spawn` passes `toolFilter: { deny: READONLY_DENY }` (unchanged);
+- **single-call consult** — `mpd_role_spawn` passes `toolFilter: { deny: READONLY_DENY }` (unchanged);
 - **team** — a tool guard resolves the CALLING agent's team membership through the adapter
   (`dsh.teamMembership(exec.agent)`) and denies any name in the list when the membership is
   role `teammate` AND its model-facing name normalises (lowercase, every run of

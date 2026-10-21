@@ -57,7 +57,8 @@ export const ALWAYS_WRITABLE_PREFIXES: readonly string[] = [".mpd/", "docs/", "e
  * exists, how big it is and its hash. THE RESIDUAL IS DECLARED, not implied: an `evidence/**` artifact
  * may EMBED source frames — a gate log's tail prints whatever the runner printed, and a captured listing
  * is a listing — so this band is CONTROLLED BLACK-BOX EVIDENCE and never a proof of reading nothing.
- * Blindness is what the plugin's own observation log proves (see `observe.ts`), not the width of a list.
+ * Blindness is DECLARED, never observed, not the width of a list: no shipped composition writes the
+ * read-observation log in `observe.ts` (only the withdrawn guard reached its `noteCall`).
  */
 export const VERIFIER_DOC_PREFIXES: readonly string[] = [".mpd/plans/", "docs/", "agent-references/", ".mpd/verify/", "evidence/"]
 
@@ -502,7 +503,8 @@ export function verifierEnvelopeDecision(input: VerifierEnvelopeInput): Envelope
   // and the package READMEs INTO the blind band deliberately: a verifier that may only probe an artifact
   // for size and hash cannot check what the artifact says. The residual is declared on
   // {@link VERIFIER_DOC_PREFIXES} and stays declared here: an `evidence/**` artifact may embed source
-  // frames, so this is CONTROLLED BLACK-BOX EVIDENCE, and blindness is proven by the observation log.
+  // frames, so this is CONTROLLED BLACK-BOX EVIDENCE; blindness is DECLARED, never observed, and no shipped
+  // composition writes the read-observation log (only the withdrawn guard reached its `noteCall`).
   if (isAllowedVerifierRead(target, seat)) return seat.unlocked ? { countedRead: true } : {}
   if (seat.unlocked) return { countedRead: true }
   return { deny: "verification law: a bound VERIFIER seat may not read " + JSON.stringify(target.rel ?? target.raw)

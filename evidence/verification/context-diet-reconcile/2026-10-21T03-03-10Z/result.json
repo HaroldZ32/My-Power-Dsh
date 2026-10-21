@@ -1,0 +1,127 @@
+{
+  "role": "Reviewer",
+  "wave": "fix-context-diet-reconcile",
+  "round": 2,
+  "startedAtUtc": "2026-10-21T03:03:10Z",
+  "measuredAtUtc": "2026-10-21T03:05:28Z",
+  "branch": "dev",
+  "headSha": "8f5b5e0d4e084f687351232d341d223a2b8359b0",
+  "tree": "UNCOMMITTED wave working tree (46 porcelain entries at measurement end, including the untracked evidence directories). This verifier edited NO shipped file; every write is confined to this artifact directory.",
+  "captainRuling": "CHANGELOG.md released entries v0.11.0 (section header '## v0.11.0 — the team workflow, per-member routing, and a settings surface that reads'; hits at 1109/1116) and v0.10.0 (section header '## v0.10.0 — DeepSeek Harness 0.1.7-rc.2 adaptation, official Agent Teams, Docker client test'; hit at 1228) are IMMUTABLE HISTORY and OUT of A1's scope; A1 binds LIVE shipped text only. Applied; no re-fail on released changelog history.",
+  "ok": true,
+  "verdict": "PASS",
+  "checks": [
+    {
+      "name": "A1",
+      "ok": true,
+      "evidence": "REPAIRED AND CONSISTENT. docs/user-guide.md section 'When a saved knob takes effect' (teamModels row) now states R1: a spawn_teammate teammate whose description NAMES a roster member IS routed by that member's slot through mpd-roster-provider-plugin, any other teammate runs on the route of the session that staged it, and prompt text cannot change a route. docs/user-guide.zh-CN.md's twin row states the same. Both agree with the same file's section 6 bullet ('A teammate runs on the route of the session that staged it - the captain's in a top-level spawn, the Lead's in a team-lead spawn') and its section 10 teamModels table row, and with packages/mpd-roster-provider-plugin/src/index.ts routeFor (returns undefined when memberFromLabel/labelOf misses) and src/route.ts applyRoute (returns the request by identity when route is undefined). Full shipped-allowlist sweep (CHANGELOG.md included): the exact retired user-guide claims 'teammate is NOT routed by these slots' and '不由这些槽位路由' return no hits; the only matches are CHANGELOG.md's three released-history lines (v0.11.0 section: 'used to inherit the Lead's route' and 'one that does not inherits the Lead's route'; v0.10.0 section: 'a teammate created by spawn_teammate inherits the Lead's model route'), which the captain ruling exempts. Excluding those released entries, no live shipped statement says a non-roster teammate inherits the Lead specialist's slot1 route. Other live statements read and correct: presets/mpd.patch.yml MODEL ROUTES (explicitly 'not the Lead specialist's slot'; 'Prompt text cannot change a route'), packages/mpd-roles-plugin/src/roster-section.ts rosterSectionText ('any other teammate inherits YOUR model route (the staging session's)'), mpd-roles-plugin's mpd_role_spawn description ('a teammate inherits the caller's model route'), packages/mpd-dsh-adapter-plugin/README.md 'Model routing on the teammate path' + zh twin, docs/design.md team bullet + mpd-roster-provider row + zh twin, skills/review-work/SKILL.md routing step, docs/user-guide.md sections 6/10 + zh twin. No other LIVE shipped statement says a non-roster teammate inherits the Lead specialist's slot1 route. Whole-tracked-tree hits are only CHANGELOG.md released entries (captain ruling) and 18 unshipped historical evidence/** session logs."
+    },
+    {
+      "name": "A2",
+      "ok": true,
+      "evidence": "PASS. Full shipped allowlist including CHANGELOG.md: git grep -n -I -F 'NO mpd surface reads' over AGENTS.md, CHANGELOG.md, README*, CONTRIBUTING*, EXTENSIONS-FOR-AGENTS.md, LICENSE*, PLAN.md, VENDOR_LOCK.json, agent-references, cordis.patch.yml, docs, dsh-distribution.json, dsh-plugin.json, extensions, icon.svg, locale, packages, presets, scripts, skills, templates returns exit 1 (no match). A whole-tracked-tree grep still hits 18 immutable evidence/** files (12 under evidence/dsh-qa, 6 under evidence/tui); evidence/ is excluded from the published package (verify:manifest confirms evidence-excluded). Same bound as round 1."
+    },
+    {
+      "name": "A3",
+      "ok": true,
+      "evidence": "PASS. packages/mpd-verify-plugin/src/tools.ts seatTool states the envelope is a CONTRACT, not a fence, nothing in the shipped tree refuses a seat's shell call/source read/board mutation, no installed hook observes read order or blindness, so an unproven basis is UNVERIFIED; recordTool states blindness is DECLARED, never observed. README.md and README.zh-CN.md say the envelope is PROSE, nothing fences the seat and nothing OBSERVES its reads. The true refusal rules remain in src/record.ts (same-agent, no-doc-sources, no-gate-evidence, forged-evidence, bind-unproven, fail-without-findings, finding-without-basis). Shipped-scope grep for 'provably blind', 'blindness is proven', 'blindness is observed', 'proven by the observation log' and 'envelope applies/is enforced' returns exit 1."
+    },
+    {
+      "name": "A4",
+      "ok": true,
+      "evidence": "REPAIRED, DIST FRESH. packages/mpd-workmate-plugin/src/index.ts, inside mpd_workmate_spawn's spawnAgent call, the 'Name unification' comment now says: 'ONLY this one-shot spawn carries the persona; a TEAM member is given the persona by the caller in the staged prompt.' The same tool's description says '... give it the persona in the staged prompt yourself - the TEAM path injects no persona or memory', present in BOTH src/index.ts and dist/index.js. node scripts/verify-dist-fresh.ts reports packages/mpd-workmate-plugin/dist/index.js FRESH (sha 4752c40e216e...) rebuilt twice byte-identically with the pinned bun 1.4.0. Shipped-scope grep for 'persona/memory are injected' and automatic-injection claims returns exit 1; docs/design.md's 'Persona and workmate memory are NOT injected automatically' is a negation."
+    },
+    {
+      "name": "A5",
+      "ok": true,
+      "evidence": "PASS. AGENTS.md section 11: both Docker commands carry --require-docker --live, the DEEPSEEK_API_KEY prerequisite is stated, --live without a key is a hard exit 3 BEFORE the build, and the credential-free spelling is --no-browser (exit 0, every ui.* NULL, NOT release evidence). docker/README.md's 'The declared bounds, and the three causes of exit 3' and docker/README.zh-CN.md's '已声明的边界，以及退出码 3 的三种原因' list all three causes (no usable Docker under --require-docker; a required arm unmeasured; --live without a key) and the declared-bound rows. scripts/docker-e2e.ts agrees: liveRequested && !keyPresent -> exitCode 3 before the build; unusable Docker under --require-docker -> exitCode 3; unmeasuredRequired -> exit 3 by design; --no-browser selects no browser arm."
+    },
+    {
+      "name": "A6",
+      "ok": true,
+      "evidence": "PASS. Fresh find (excluding .git, node_modules, .toolchain, dist/mpd-package, evidence, .mpd, .qa-*, .research): 57 files = 33 packages/*/dist/** + 2 browser bundles (packages/mpd-bundle-plugin/client.js and packages/mpd-bundle-plugin/adopted/agent-teams-client.js) + 22 corpus files (19 under skills/ulw-research/scripts/*.mjs, skills/visual-qa/scripts/visual-qa.mjs, 2 under skills/ultimate-browsing/engine/templates/*.js); unexpected = none. agent-references/troubleshooting.md's inventory row matches the 57 and the same breakdown (it states 19 ulw-research files). Contract note: R6's parenthetical says 20 under ulw-research/scripts; measured truth is 19, and the shipped row states 19; A6's total of 57 is unaffected (contract text, not a shipped defect)."
+    },
+    {
+      "name": "A7",
+      "ok": true,
+      "evidence": "REPAIRED. agent-references/verification-flow.md's LIVE section 'The order is part of the contract', step 1, says 'bun run verify:gates runs its nine static members, seconds each: vendor, dist-fresh, rows-parity, docs-parity, preset-conformance, plugin-manifest, comment-coverage, graph-model and workflows (the membership is proven by node scripts/verify-gates.ts --list)'. node scripts/verify-gates.ts --list exits 0 with 'resolving 9 member gate(s) (declared table)' and names exactly those nine. The explicitly historical section headed 'The former section 4 body (verbatim): the full gate table with every per-row measurement' still says five; that historical verbatim section is allowed to keep its old count by the round-2 task. AGENTS.md sections 4 and 11 both say nine."
+    },
+    {
+      "name": "A8",
+      "ok": true,
+      "evidence": "PASS. .coderabbit.yaml reviews comment above request_changes_workflow: false says the flag does NOT make the bot non-blocking, a PR is not mergeable while its CodeRabbit review is in progress, wait for COMPLETION, reconcile every inline finding FIXED/STALE/STILL-VALID with file:line evidence, CI green plus an independent verifier is not a substitute, and a pending review is never a pass. This matches AGENTS.md section 5's binding 2026-10-20 rule; request_changes_workflow: false remains the setting."
+    },
+    {
+      "name": "A9",
+      "ok": true,
+      "evidence": "PASS. .gitignore carries 'docker/ui/out/readme/'. git check-ignore -v docker/ui/out/readme/probe.png resolves to .gitignore:118:docker/ui/out/readme/. git status --porcelain --untracked-files=all | grep -c 'docker/ui/out/readme' -> 0."
+    },
+    {
+      "name": "A10",
+      "ok": true,
+      "evidence": "PASS. .github/PULL_REQUEST_TEMPLATE.md carries '## English' first (line 3) and '## 简体中文' second (line 47); the template's other prompts are retained and mirrored."
+    },
+    {
+      "name": "A11",
+      "ok": true,
+      "evidence": "PASS. All requested gates exit 0 (see gates[]): verify:docs (pairs=48 failed=0 violations=0 dead=0 PASS), verify:comments (426 files, 37567 declarations, PASS), verify-dist-fresh (32/32 targets fresh, 1 NOT COVERED listed), verify-vendor (7 assets fingerprinted, PASS), verify:manifest (PASS), bun test packages (2161 pass, 3 skip, 0 fail, 2164 tests / 134 files). Extra: bun run typecheck exits 0 (tsgo --noEmit); node scripts/verify-manual-paths.ts exits 0. AGENTS.md is 58083 bytes, below the 65536-byte instruction budget."
+    }
+  ],
+  "gates": [
+    {
+      "command": "bun run verify:docs",
+      "exit": 0,
+      "tail": "[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=48 failed=0 violations=0 exempt=24 derived=3 links=438 dead=0 — PASS"
+    },
+    {
+      "command": "bun run verify:comments",
+      "exit": 0,
+      "tail": "scanned 426 TypeScript file(s) of 426 in the source set; inspected 37567 declaration(s); skipped 17390 inline callback(s) as out of family\n\nVERDICT: PASS — every declaration in the family carries a precise comment and a full signature."
+    },
+    {
+      "command": "node scripts/verify-dist-fresh.ts",
+      "exit": 0,
+      "tail": "[verify-dist-fresh] build toolchain: bun 1.4.0 from the repository toolchain (.toolchain/node_modules/.bin/bun) · recorded buildToolchain bun@1.4.0\n[verify-dist-fresh] NOT COVERED (1): packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time — no local src/\n[verify-dist-fresh] ok: 32/32 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED files listed — 650ms"
+    },
+    {
+      "command": "node scripts/verify-vendor.ts",
+      "exit": 0,
+      "tail": "[verify-vendor] PASS - 7 shipped asset(s) fingerprinted, upstream identity not checked"
+    },
+    {
+      "command": "bun run verify:manifest",
+      "exit": 0,
+      "tail": "ok    evidence-excluded: the frozen evidence/ tree stays out of the published package\nok    packed-content: npm pack --dry-run lists 1012 file(s); 0 required path(s) absent\n\nVERDICT: PASS — the install-time rules and the packaging contract hold."
+    },
+    {
+      "command": "bun test packages",
+      "exit": 0,
+      "tail": " 2161 pass\n 3 skip\n 0 fail\n 26165 expect() calls\nRan 2164 tests across 134 files. [24.48s]"
+    },
+    {
+      "command": "bun run typecheck (extra for A11)",
+      "exit": 0,
+      "tail": "$ tsgo --noEmit"
+    },
+    {
+      "command": "node scripts/verify-manual-paths.ts (extra; AGENTS.md unchanged in round 2)",
+      "exit": 0,
+      "tail": "[verify-manual-paths] PASS resolved=151 over-report=71 under-report=74 declared=2 (every audited path exists; the DECLARED anticipatory class is named with its reason and counted apart; the two matcher-error directions above are reported, not merged)"
+    },
+    {
+      "command": "node scripts/verify-gates.ts --list (A7 membership evidence)",
+      "exit": 0,
+      "tail": "[verify-gates] resolving 9 member gate(s) (declared table)\n[verify-gates] list OK: 9 member gate(s) resolved, 0 spawned"
+    }
+  ],
+  "bounds": [
+    "Docker was NOT run (instruction). A5 is verified from AGENTS.md, both docker READMEs and scripts/docker-e2e.ts source, not by executing a container; the --no-browser exit-0 path was read, not run.",
+    "No live harness boot/mount and no live tool call was performed. A1/A3/A4 are judged at the shipped-text level plus the dist-freshness gate; the rendered roster/preset prompt in a live team-lead session was not observed.",
+    "Whole-tracked-tree grep hits for A1/A2 are historical evidence/** session logs (18 files, unshipped and immutable) and CHANGELOG released entries (captain ruling). The shipped allowlist is clean.",
+    "node scripts/verify-manual-paths.ts was run as an extra although AGENTS.md did not change in round 2; it exits 0. bun run typecheck was run as an extra to substantiate A11.",
+    "NOT run (not requested in round 2): bun run verify:rows, preset-conformance, graph-model, workflows, verify-pack-closure, verify-no-host-override, bun run test:qa, and the Docker lane. Each named gate was run once; no repeat/flake study.",
+    "Contract R6's parenthetical '20 under skills/ulw-research/scripts' is off by one against the measured 19; A6's total of 57 still holds and the shipped troubleshooting row states 19. Contract text, not a shipped defect.",
+    "Declined to judge: presets/mpd.patch.yml's parenthetical '(the captain's, not the Lead specialist's slot)' is accurate for the top-level captain reader and explicitly negates the retired claim; whether that static preset text is rendered verbatim inside a team-lead session would need a live boot, which is out of bounds. It does not assert the prohibited claim.",
+    "CHANGELOG.md released history was left untouched per the captain ruling; no shipped file was edited by this verifier. Historical evidence/** and .mpd/** runtime state were not audited. No credential, token or connection string was encountered or copied."
+  ]
+}

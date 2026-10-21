@@ -2,9 +2,10 @@
 
 [English](./README.md) | **简体中文**
 
-为**官方 Agent Teams 队友**提供逐成员模型路由。用 `spawn_teammate` 起的队友会继承 **Lead 的**模型路由，
-因为官方 `TeamService` 只转发 `{ prompt, parent }`——于是能路由一次性咨询路径的 mpd `teamModels`
-槽位，对队友毫无作用。本包在不 fork 官方插件的前提下补上这一点。
+为**官方 Agent Teams 队友**提供逐成员模型路由。用 `spawn_teammate` 起的队友跑在**暂存它的那个会话**的
+路由上，而官方 `TeamService` 只转发 `{ prompt, parent }`——于是能路由一次性咨询路径的 mpd `teamModels`
+槽位，没有通道能作用到队友身上。本包在不 fork 官方插件的前提下补上这一点：当队友的 `description`
+**点名**某位成员时，就施加该成员的槽位路由。
 
 ## 原理
 
@@ -24,7 +25,8 @@ bundle 把自己那条 `mpd-tool-agent-team` 行的 `freshProvider` 指向它。
 team service 不转发任何名字——`request` 只有 `{ prompt, parent }`——所以身份通道是描述符的 **label**，
 也就是队友的 `description`。契约为：
 
-> 描述里**点名**了名册成员，就路由该成员；没有点名就继承 Lead 的路由。
+> 描述里**点名**了名册成员，就路由该成员；其他队友跑在**暂存它的那个会话**的路由上（顶层 spawn 是
+> captain 的路由，team-lead spawn 是 Lead 的路由），且提示词文本无法改变路由。
 
 名字取第一个分隔符（`—`、`–`、`:`、`|`、` - `）之前的文本，大小写不敏感、**长名优先**：所以
 `"Senior Engineer — implements the parser"` 会路由 Senior Engineer，而 `"check the vendored corpus"`
@@ -45,7 +47,8 @@ team service 不转发任何名字——`request` 只有 `{ prompt, parent }`—
 ## 失败行为
 
 成员**有**槽位、但该槽位的 provider 或 model 未设置时：**spawn 大声失败，点名成员与槽位**，不写任何状态，
-**绝不 clamp effort**——一次性路径早已遵守的规则。没有槽位的成员则继承，也就是本行存在之前所有队友的行为。
+**绝不 clamp effort**——一次性路径早已遵守的规则。label 没有点名任何名册成员的队友则完全不被路由：
+它跑在暂存会话的路由上，也就是本行存在之前所有队友的行为。
 
 ### 推理强度适配
 
@@ -66,4 +69,5 @@ team service 不转发任何名字——`request` 只有 `{ prompt, parent }`—
 ## 已知边界
 
 - 路由在 **spawn 时**按当时配置解析；改槽位影响的是下一个队友，不是已经在跑的那个。
-- label 没有点名任何名册成员的队友不会被路由。这是 team service 唯一转发的身份通道的性质，不是策略选择。
+- label 没有点名任何名册成员的队友不会被路由：它跑在暂存它的那个会话的路由上。这是 team service 唯一
+  转发的身份通道的性质，不是策略选择，且提示词文本无法改变它。

@@ -2477,7 +2477,7 @@ function validateVerificationRecord(record, context) {
     return { ok: true };
   }
   if (record.basis.kind === "unproven") {
-    return refuse(REFUSAL.bindUnproven, `the basis is "unproven": the plugin's own observation log shows this verifier read` + " implementation paths before recording a verdict, so a PASS cannot be justified. Record a FAIL, or re-verify from a fresh agent");
+    return refuse(REFUSAL.bindUnproven, 'the basis is "unproven": blindness is DECLARED, never observed, and no shipped' + " composition writes the read-observation log that could establish it, so a PASS cannot be justified." + " Record a FAIL, or re-verify from a fresh agent");
   }
   if (record.sources.length === 0) {
     return refuse(REFUSAL.noDocSources, "a PASS must cite at least one document it worked from (sources[] is empty); the verifier's basis is the frozen contract and the docs");
@@ -2642,7 +2642,7 @@ function escapeTool(deps) {
 function seatTool(deps) {
   return {
     name: "mpd_verify_seat",
-    description: "Bind THIS session as a loop's VERIFIER seat. Idempotent and authoritative. From that moment the envelope applies: no shell, no board mutations, no implementation reads until a verdict is recorded, and a FAIL is what unlocks diagnosis.",
+    description: "Bind THIS session as a loop's VERIFIER seat. Idempotent and authoritative. The envelope is a CONTRACT, not a fence: nothing in the shipped tree refuses a seat's shell call, source read or board mutation, and no installed hook observes read order or blindness, so an unproven basis is UNVERIFIED. A recorded FAIL is what unlocks diagnosis reading.",
     parameters: {
       type: "object",
       properties: {
@@ -2741,7 +2741,7 @@ function evidenceTool(deps) {
 function recordTool(deps) {
   return {
     name: "mpd_verify_record",
-    description: "Record a VERDICT through the validator. A PASS needs the docs it cites (`sources`), at least one gate (`evidence_ids`) and a provably blind basis; a FAIL needs findings, each with the `doc_source` that proves it, and it opens a repair task and unlocks diagnosis reading. Refusals name the rule: same-agent, no-doc-sources, no-gate-evidence, forged-evidence, bind-unproven, fail-without-findings, finding-without-basis, blind-spent, unknown-loop, pre-plugin-*.",
+    description: "Record a VERDICT through the validator. A PASS needs the docs it cites (`sources`), at least one gate (`evidence_ids`) and a basis that is not `unproven` — blindness is DECLARED, never observed, so an unproven basis is UNVERIFIED; a FAIL needs findings, each with the `doc_source` that proves it, and it opens a repair task and unlocks diagnosis reading. Refusals name the rule: same-agent, no-doc-sources, no-gate-evidence, forged-evidence, bind-unproven, fail-without-findings, finding-without-basis, blind-spent, unknown-loop, pre-plugin-*.",
     parameters: {
       type: "object",
       properties: {
@@ -2867,7 +2867,7 @@ function recordTool(deps) {
         unlockedReads: record.unlockedReads,
         ...repair === undefined ? {} : { repair },
         recordPath: ".mpd/verify/records/" + record.recordId + ".json",
-        bound: "gate output (tail) may print source frames; blindness is proven by the observation log, not by the envelope"
+        bound: "gate output (tail) may print source frames; nothing observes a seat's read order (`verifyGate` is absent), so this bounds what the gate proved, not what the verifier read"
       };
     }
   };

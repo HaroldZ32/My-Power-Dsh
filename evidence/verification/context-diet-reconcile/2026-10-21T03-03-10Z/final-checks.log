@@ -1,0 +1,67 @@
+## A3: refusal rules still present in record.ts
+58:   * for the record's loop — an asserted one is `forged-evidence`, exactly as frozen.
+159:  sameAgent: "same-agent",
+161:  noDocSources: "no-doc-sources",
+163:  noGateEvidence: "no-gate-evidence",
+165:  forgedEvidence: "forged-evidence",
+167:  bindUnproven: "bind-unproven",
+169:  failWithoutFindings: "fail-without-findings",
+171:  findingWithoutBasis: "finding-without-basis",
+## A4: design.md negation context
+- Team mode: the session agent is the Lead. It calls `spawn_teammate` once per member (name,
+  description, and a prompt built from `mpd_role_persona` text plus the task), opens each lane with
+  `team_task_create`, and drives the board with `team_task_list` / `team_task_get` /
+  `team_task_update` (compare-and-set on the task `revision`) and the mailbox tools. Two measured
+  bounds are part of the design, not an omission: a teammate runs on the route of the session that
+  staged it — the captain's in a top-level spawn, the Lead's in a team-lead spawn — because
+  `TeamService` forwards only the prompt and the parent to the subagent registry, and the `teamModels`
+  slots apply only when the `description` NAMES a roster member (prompt text cannot change a route);
+  and a read-only roster member's write tools are denied by the `mpd-roles` guard keyed on team
+  membership, because
+  `spawn_teammate` cannot take a per-teammate tool filter. Persona and workmate memory are NOT
+  injected automatically — they travel in the prompt text.
+
+### Extension → skills, flows, MCP tools and roles
+## A4: workmate README injection statement
+177:**THE PERSONA-INJECTION HOOK IS ABSENT, AND HAS BEEN SINCE 2026-09-27 (chronology, not causation).**
+179:a workmate instance got that workmate's persona + memory injected into its system prompt, plus a
+183:cannot inject anything, so **the automatic injection could not have fired from that date on**. The
+## A6: troubleshooting inventory
+117-| `packages/mpd-bundle-plugin/client.js` no longer parses after the browser factories were edited (`SyntaxError: Unexpected token ':'` from every suite that loads the artifact) | the build script splices `src/{web-client,team-page,settings-card}.ts` into the artifact **as TEXT**, so raw TypeScript reached a browser bundle. The build now erases types itself before splicing (`stripTypeScriptTypes(…, { mode: "strip" })` — the same transform the runtime applies, which keeps comments and the factory line boundaries the boundary searches rely on). Rebuild with `node scripts/build-mpd-client.ts`, confirm `node --check packages/mpd-bundle-plugin/client.js`, and never hand-edit the artifact. |
+118-| a tool that reads a `packages/*/src/*.ts` file as TEXT breaks after that file became TypeScript | any text consumer of a TypeScript source (the client splice above, a fixture that `eval`s source, a needle that greps for an exact declaration) must run the text through Node's own `stripTypeScriptTypes(…, { mode: "strip" })` first, or match on SHAPE rather than on one spelling of a declaration. Measured twice in this wave: the client splice and `packages/mpd-bundle-plugin/test/*` reading `src/*.js` by literal path; a third instance was a QA needle pinned to a local variable's name (`parsed` → `fields`), repaired by matching the claim instead of the identifier. |
+119:| a reader asks why the tree still carries `.js` files after the JavaScript→TypeScript wave | exactly **57** remain (measured 2026-10-21), and the reason is MEASURED rather than habitual: Node refuses type stripping for any file whose resolved path is under `node_modules` (`ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING` — measured BOTH for an import and for a direct `node <path>.ts` invocation), and a shipped bundle IS installed at `<profile>/node_modules/@mpd-dsh/mpd`. The 57 are: 33 `packages/*/dist/**` build artifacts (the loader imports them as `.../dist/index.js`, and `bun build` emits JavaScript by definition); 2 browser bundles — `packages/mpd-bundle-plugin/client.js` and the adopted `packages/mpd-bundle-plugin/adopted/agent-teams-client.js` (upstream bytes spliced VERBATIM); and 22 upstream skill-corpus files — 19 under `skills/ulw-research/scripts/*.mjs`, `skills/visual-qa/scripts/visual-qa.mjs` (generated from `skills/visual-qa/scripts/cli.ts` and run with `node`), and 2 `skills/ultimate-browsing/engine/templates/*.js` (Playwright templates the vendored engine drives with `node`). Everything else this repository owns is `.ts`, and a genuine CommonJS module is `.cts` — **convert one and it works from a checkout while the SAME file throws the error above from an installed bundle.** The converted ADOPTED body carries `@ts-nocheck` and its suite is `tsconfig.json`-excluded ON PURPOSE: it is vendored code renamed for the source-language rule, never code this repository types — typing it is a deliberate project, not a cleanup. Evidence: `evidence/ts-cordis-conformance/`. |
+120-| an evidence write lands somewhere nobody aimed at — `bash: line 1: /logs/baseline-bun-test-bundle-plugin.log: No such file or directory`, or worse, a file appears in an unrelated tree and nothing reported an error | a shell variable built from a **command substitution whose failure was not checked**, used as a **REDIRECT TARGET**. Measured 2026-10-06 (wave `dag-edges-scroll`, the verifier's own first attempt): `TS=$(cat /tmp/verify_ts.txt) && OUT="evidence/<wave>/verify/$TS" && mkdir -p "$OUT/logs" && { …; } > "$OUT/logs/x.log" 2>&1`. The bash tool gives **every call a FRESH `/tmp`** (T-23 above), so `/tmp/verify_ts.txt` did not exist, `cat` failed, `TS` came back EMPTY, and `$OUT/logs/x.log` degraded to the ROOT-ANCHORED absolute path `/logs/x.log`. That run failed harmlessly ONLY because `/logs` did not exist — **the dangerous half is that if the parent directory HAPPENS to exist, the write lands there SILENTLY and no gate sees it.** Any wave script building an evidence path from `$(cat f)`, `$(mktemp)`, `$(date …)` or an unvalidated `$1` is one existing directory away from writing into an unrelated tree. **Fix, and it is a standing rule: every redirect target in an evidence/QA script is a LITERAL path, never one assembled through an unvalidated variable; if a variable must be used, assert non-empty AND that the resolved parent exists BEFORE the redirect (`[ -n "$TS" ] || exit 1`); prefer a `node`/`bun` file write, which throws on a bad path, over shell redirection, which mostly does not.** An UNRESOLVED instance of this class is recorded rather than explained: roughly 300 lines of unrelated output (a `no-terminal-writes --self-test` transcript and a root `bun test` run) were spliced into the middle of a reviewer's `findings.md` between that seat's own writes, and no command of any seat named that path — **attribution stays open**, and the mechanism is NOT this one, because the measured redirect ENOENT'd before writing a byte. |
+121-
+122-## T-92 — the captain test must not key on the agent PRESET (fixed 2026-10-08)
+123-
+## A1: CHANGELOG section boundary check
+1058: ## v0.11.1 — mailbox unread
+1082: ## v0.11.0 — the team workflow, per-member routing, and a settings surface that reads
+1201: ## v0.10.0 — DeepSeek Harness 0.1.7-rc.2 adaptation, official Agent Teams, Docker client test
+## A5: AGENTS §11 heading context
+540: ## 11. Release Process
+541: 
+542: 1. From dev: `git checkout -b release/vX.Y.Z`; bump the version in ALL THREE carriers —
+543:    `package.json`, `dsh-plugin.json`, `dsh-distribution.json` (`verify:manifest` reddens on any
+544:    mismatch) — plus the changelog note.
+545: 2. Full gate sweep, each command named exactly: `bun run verify:vendor` (after the wave's single `node
+546:    scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step` re-pin when `skills/**` changed),
+547:    `bun test packages` (a repo-root `bun test` also scans the historical `evidence/**` fixtures and
+548:    reddens on them), `bun run typecheck`, `bun run test:qa`, `bun run verify:docs`, `bun run verify:rows`,
+549:    `node skills/dsh-qa/scripts/preset-conformance.ts --self-test`, `node scripts/verify-dist-fresh.ts`,
+550:    `node scripts/verify-pack-closure.ts` (freshness read from the `expected-after-pack` list at the
+551:    re-pack, never from its exit code — §4's bound), plus the real smoke cases (`dual-track-smoke`,
+552:    `mcp-call`). `bun run verify:gates` covers the nine static members (vendor, dist freshness, row
+553:    parity, doc pairs, preset conformance, plugin manifest, comment coverage, graph model, workflows).
+554:    `node scripts/verify-no-host-override.ts` is NOT a member of that aggregate and is REQUIRED for EVERY
+555:    release sweep; `node scripts/verify-manual-paths.ts` is REQUIRED whenever `AGENTS.md` changed.
+556:    - **LAST: the Docker real-machine lane — `--live` with `DEEPSEEK_API_KEY` exported, and
+557:      `--require-docker` so it cannot skip silently** — `node scripts/docker-e2e.ts --mode source
+558:      --require-docker --live` then `--mode oneclick --require-docker --live`. Run it AFTER the last
+559:      write, and cite the stamps it writes. `--live` WITHOUT a key in the environment is a hard exit 3
+560:      BEFORE the build, and a credential-free browser-enabled run records `ui.replyRendered` as a DECLARED
+561:      BOUND that the required-arm gate turns into exit 3 by design — the credential-free spelling is
+562:      `--no-browser` (exit 0, every `ui.*` NULL, NOT release evidence).
+563:    - **Release-checklist line (VENDOR_LOCK pairing rule):** `VENDOR_LOCK.json` lands in the SAME commit
+564:      as every `skills/**` change that invalidates its `treeSha`; with the single-skills-writer rule (§9)
+565:      that is exactly ONE re-pin per wave — verify the wave's single re-pin is present and that no

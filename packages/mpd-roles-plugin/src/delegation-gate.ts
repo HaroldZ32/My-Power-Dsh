@@ -1,7 +1,7 @@
 // THE DELEGATION GATE — the official spawn tools are NOT this bundle's delegation path.
 //
 // WHY THIS EXISTS (the user's requirement, 2026-10-10): AGENTS.md §5 rule 2 names the sanctioned
-// delegation surfaces — `mpd_role_spawn` for a one-shot roster specialist, the workmate library for a
+// delegation surfaces — `mpd_role_spawn` for a single-call roster consult, the workmate library for a
 // durable instance, Agent Teams for multi-member work — but NOTHING denied the harness's own generic
 // spawn tools `subagent` / `subagent_fork` / `workflow`, so the sanctioned discipline was advice and
 // the escape cost nothing. The harness exposes `tools.guard` (a guard callback DENIES by RETURNING A
@@ -119,7 +119,7 @@ export function delegationGateDecision(input: DelegationGateInput): string | und
  */
 export function delegationRefusal(toolName: string): string {
   return "delegation gate: `" + toolName + "` is refused — the official spawn tools are not the delegation"
-    + " path under the MPD discipline. Delegate instead: `mpd_role_spawn` (one-shot roster specialist),"
+    + " path under the MPD discipline. Delegate instead: `mpd_role_spawn` (single-call roster consult),"
     + " `mpd_workmate_match` + `mpd_workmate_spawn` (durable instance), or Agent Teams for multi-member work"
     + " (`agent_teams_plan`, persona from `mpd_role_persona`); `send_message` continues an existing"
     + " continuable child. The gate covers the captain and every member session. `delegation.gate` in"

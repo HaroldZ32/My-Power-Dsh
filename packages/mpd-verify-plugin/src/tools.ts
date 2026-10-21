@@ -270,7 +270,7 @@ function seatTool(deps: VerifyToolDeps): DshToolDef {
   return {
     name: "mpd_verify_seat",
     description:
-      "Bind THIS session as a loop's VERIFIER seat. Idempotent and authoritative. From that moment the envelope applies: no shell, no board mutations, no implementation reads until a verdict is recorded, and a FAIL is what unlocks diagnosis.",
+      "Bind THIS session as a loop's VERIFIER seat. Idempotent and authoritative. The envelope is a CONTRACT, not a fence: nothing in the shipped tree refuses a seat's shell call, source read or board mutation, and no installed hook observes read order or blindness, so an unproven basis is UNVERIFIED. A recorded FAIL is what unlocks diagnosis reading.",
     parameters: {
       type: "object",
       properties: {
@@ -404,7 +404,7 @@ function recordTool(deps: VerifyToolDeps): DshToolDef {
   return {
     name: "mpd_verify_record",
     description:
-      "Record a VERDICT through the validator. A PASS needs the docs it cites (`sources`), at least one gate (`evidence_ids`) and a provably blind basis; a FAIL needs findings, each with the `doc_source` that proves it, and it opens a repair task and unlocks diagnosis reading. Refusals name the rule: same-agent, no-doc-sources, no-gate-evidence, forged-evidence, bind-unproven, fail-without-findings, finding-without-basis, blind-spent, unknown-loop, pre-plugin-*.",
+      "Record a VERDICT through the validator. A PASS needs the docs it cites (`sources`), at least one gate (`evidence_ids`) and a basis that is not `unproven` — blindness is DECLARED, never observed, so an unproven basis is UNVERIFIED; a FAIL needs findings, each with the `doc_source` that proves it, and it opens a repair task and unlocks diagnosis reading. Refusals name the rule: same-agent, no-doc-sources, no-gate-evidence, forged-evidence, bind-unproven, fail-without-findings, finding-without-basis, blind-spent, unknown-loop, pre-plugin-*.",
     parameters: {
       type: "object",
       properties: {
@@ -438,9 +438,9 @@ function recordTool(deps: VerifyToolDeps): DshToolDef {
       const loopId = String(args?.loop_id ?? "")
       /** The loop, when one exists. */
       const loop = readLoops(workspace).find((candidate) => candidate.loopId === loopId)
-      /** The basis kind: the caller's override, else `blind` unless the observation log disagrees. */
+      /** The basis kind the caller explicitly named, or the empty string when it named none. */
       const explicitBasis = typeof args?.basis_kind === "string" ? String(args.basis_kind) : ""
-      /** The basis in force, DERIVED from the observation log unless the caller overrode it. */
+      /** The basis in force: the caller's override, else `blind` — the plugin's log can only downgrade a call it SAW, and with `verifyGate` absent it saw nothing. */
       const basisKind = explicitBasis === "pre-plugin" ? "pre-plugin" as const
         : explicitBasis === "unproven" ? "unproven" as const
           : explicitBasis === "blind" ? "blind" as const
@@ -571,7 +571,7 @@ function recordTool(deps: VerifyToolDeps): DshToolDef {
         recordPath: ".mpd/verify/records/" + record.recordId + ".json",
         // THE DECLARED BOUND, carried in the result as well as on the record: a gate's tail may print
         // source frames, so this is controlled black-box evidence and never a proof of reading nothing.
-        bound: "gate output (tail) may print source frames; blindness is proven by the observation log, not by the envelope",
+        bound: "gate output (tail) may print source frames; nothing observes a seat's read order (`verifyGate` is absent), so this bounds what the gate proved, not what the verifier read",
       }
     },
   }

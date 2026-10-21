@@ -1,0 +1,135 @@
+{
+  "role": "Senior Engineer",
+  "wave": "fix-context-diet-reconcile - remaining live R1/R2/R3 residuals",
+  "measuredAtUtc": "2026-10-21T02:46:32Z",
+  "changes": [
+    {
+      "file": "skills/review-work/SKILL.md",
+      "line": 183,
+      "rule": "R1",
+      "old": "the roster provider routes a teammate by the head of its description, so `\"Architect - quality and architecture lane\"` routes the Architect model slot while `\"check the diff\"` inherits the lead's route.",
+      "new": "the roster provider applies a member's `teamModels.slot*` only when the description NAMES that member, so `\"Architect - quality and architecture lane\"` routes the Architect model slot; any other teammate runs on the route of the session that stages it (the captain's in a top-level spawn, the Lead's in a team-lead spawn), and prompt text cannot change a route."
+    },
+    {
+      "file": "packages/mpd-roster-provider-plugin/src/index.ts",
+      "line": 277,
+      "rule": "R1 runtime LOG",
+      "old": "[mpd-roster] the provider could not be registered - teammates keep the Lead's route: ...",
+      "new": "[mpd-roster] the provider could not be registered - teammates run on the route of the session that stages them (the captain's in a top-level spawn): ..."
+    },
+    {
+      "file": "packages/mpd-verify-plugin/src/gates.ts",
+      "line": 11,
+      "rule": "R3",
+      "old": "The envelope is defence in depth; blindness itself is proven by the observation log in `observe.ts`.",
+      "new": "The envelope is defence in depth and blindness is DECLARED, never observed: no shipped composition writes the read-observation log in `observe.ts` (only the withdrawn guard reached its `noteCall`)."
+    },
+    {
+      "file": "packages/mpd-verify-plugin/src/law.ts",
+      "line": 60,
+      "rule": "R3",
+      "old": "Blindness is what the plugin's own observation log proves (see `observe.ts`), not the width of a list.",
+      "new": "Blindness is DECLARED, never observed, not the width of a list: no shipped composition writes the read-observation log in `observe.ts` (only the withdrawn guard reached its `noteCall`)."
+    },
+    {
+      "file": "packages/mpd-verify-plugin/src/law.ts",
+      "line": 506,
+      "rule": "R3 (site was line 505 before the line-60 edit grew by one line)",
+      "old": "frames, so this is CONTROLLED BLACK-BOX EVIDENCE, and blindness is proven by the observation log.",
+      "new": "frames, so this is CONTROLLED BLACK-BOX EVIDENCE; blindness is DECLARED, never observed, and no shipped composition writes the read-observation log (only the withdrawn guard reached its `noteCall`)."
+    },
+    {
+      "file": "packages/mpd-verify-plugin/src/record.ts",
+      "line": 289,
+      "rule": "R3",
+      "old": "The repo's own doctrine says blindness is PROVEN by the plugin's observation log, so the validator now obeys that doctrine instead of the blunter flag...",
+      "new": "Blindness itself is DECLARED by the record's basis, never observed: no shipped composition writes the read-observation log (`noteCall` is reached only from the withdrawn guard), so the validator treats the log as a BOUND, not a proof..."
+    },
+    {
+      "file": "packages/mpd-verify-plugin/src/record.ts",
+      "line": 329,
+      "rule": "R3",
+      "old": "RULE 3 - BLINDNESS MUST BE PROVABLE. A PASS from a seat the observation log cannot show to have been blind is not evidence; it is a claim.",
+      "new": "RULE 3 - AN UNPROVEN BASIS CANNOT CARRY A PASS. Blindness is DECLARED, never observed: no shipped composition writes the read-observation log, so a PASS on an `unproven` basis is not evidence; it is a claim."
+    },
+    {
+      "file": "packages/mpd-verify-plugin/src/record.ts",
+      "line": 333,
+      "rule": "R3 runtime refusal detail",
+      "old": "the basis is \"unproven\": the plugin's own observation log shows this verifier read implementation paths before recording a verdict, so a PASS cannot be justified. Record a FAIL, or re-verify from a fresh agent",
+      "new": "the basis is \"unproven\": blindness is DECLARED, never observed, and no shipped composition writes the read-observation log that could establish it, so a PASS cannot be justified. Record a FAIL, or re-verify from a fresh agent"
+    },
+    {
+      "file": "packages/mpd-verify-plugin/src/record.ts",
+      "line": 166,
+      "rule": "R3 same-class adjacent fix inside the assigned file",
+      "old": "A PASS whose basis the observation log cannot prove blind.",
+      "new": "A PASS on a basis declared `unproven` - blindness is asserted, never observed."
+    },
+    {
+      "file": "packages/mpd-dsh-adapter-plugin/README.md",
+      "line": 92,
+      "rule": "R2",
+      "old": "`teamLiveTeams()` is the readout a Web route or a TUI scene uses instead of a `.mpd/team` record (there is none any more: team state lives in the Lead Session log and is published as the `agentTeam` Session projection).",
+      "new": "`teamLiveTeams()` is the contained FALLBACK for a composition that runs the official executor - the read a Web route, a TUI scene or the watchdog uses there. The MPD team RECORD is authoritative on every mpd surface: `.mpd/team/teams/<id>.json`, served as `mpdTeams`."
+    },
+    {
+      "file": "packages/mpd-dsh-adapter-plugin/README.zh-CN.md",
+      "line": 82,
+      "rule": "R2",
+      "old": "`teamLiveTeams()` 是 Web 路由或 TUI 场景用来替代 `.mpd/team` 记录的只读视图（该记录已不存在：团队状态保存在 Lead 的 Session 日志中，并作为 `agentTeam` Session projection 发布）。",
+      "new": "`teamLiveTeams()` 只是运行官方执行器（official executor）的组合里那条受限的**兜底**读取 —— 在那种组合中由 Web 路由、TUI 场景或看门狗使用。MPD 的团队**记录**（`.mpd/team/teams/<id>.json`，经 `mpdTeams` 提供）在所有 mpd 表面上都是权威。"
+    }
+  ],
+  "changelog": {
+    "file": "CHANGELOG.md",
+    "lines": [1109, 1116],
+    "section": "v0.11.0 (heading line 1082; next heading v0.10.2 at line 1144)",
+    "status": "RELEASED history - left untouched. The file has no Unreleased section: the top heading is v0.15.0.",
+    "gitStatus": "CHANGELOG.md is not modified"
+  },
+  "vendor": {
+    "command": "node scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step",
+    "oldTreeSha": "357948615f1bd124f60dbce405fa263e58598c5f5f9babac0186a5eacf2f4304",
+    "newTreeSha": "03327518cc2d4597c18362e73504c6f4a2f18e530391a4bcfa449638bf2a7fb1",
+    "fileCount": 382,
+    "lockChanges": "1 field change / 1 line; the single existing assets.skills entry was overwritten, no second entry added"
+  },
+  "dist": {
+    "buildToolchain": ".toolchain/node_modules/.bin/bun 1.4.0 (PATH bun is 1.4.2)",
+    "roster": {
+      "sessionStartSha256": "0ca2f7866346b9790c26033ecba15f24ef3db74b3cadce0c91096d8ad1e504a9",
+      "rebuiltSha256": "0eff331011fb78b8411de88e0f40c1038470c43df8801e96fa24ba73d85e2528",
+      "runtimeStringChangedDistBytes": true,
+      "delta": "git diff shows exactly the one [mpd-roster] log line; old string count in dist = 0, new string count = 1"
+    },
+    "verify": {
+      "sessionStartSha256": "04b328d1393cfb6cf33a28b94c030f9021fa07b299fb1fc590aac5d066cbebb4",
+      "rebuiltSha256": "17bb934bc62b3222fa94cd3cdf3dad23bcbee340640b23239bcc9d7353d28380",
+      "runtimeStringChangedDistBytes": true,
+      "delta": "the bindUnproven refusal detail changed (old string count in dist = 0); comments are stripped by bun build, and a comment-only follow-up edit left the hash unchanged at 17bb934b. The diff against HEAD also carries the prior lane's tools.ts description changes because the session-start dist was already dirty (HEAD sha 3bf4d959)."
+    }
+  },
+  "gates": [
+    {"command": "bun test packages/mpd-roster-provider-plugin packages/mpd-verify-plugin packages/mpd-dsh-adapter-plugin", "exit": 0, "tail": "317 pass, 0 fail, 1396 expect() calls, 20 files"},
+    {"command": "node scripts/verify-dist-fresh.ts", "exit": 0, "tail": "ok: 32/32 targets fresh (each rebuilt twice, byte-identical); 1 NOT COVERED file listed (packages/mpd-mcp-codegraph/dist/serve.js); build toolchain bun 1.4.0"},
+    {"command": "bun run verify:comments", "exit": 0, "tail": "scanned 426/426 TypeScript files; inspected 37567 declarations; VERDICT: PASS"},
+    {"command": "bun run verify:docs", "exit": 0, "tail": "pairs=48 failed=0 violations=0 exempt=24 derived=3 links=438 dead=0 - PASS"},
+    {"command": "node scripts/verify-vendor.ts", "exit": 0, "tail": "PASS - 7 shipped asset(s) fingerprinted; skills 382 files; upstream identity not checked"},
+    {"command": "bun run typecheck", "exit": 0, "tail": "$ tsgo --noEmit (no diagnostics)"}
+  ],
+  "evidencePath": "evidence/verification/context-diet-reconcile-residuals/20261021T024612Z/",
+  "findings": [
+    {
+      "file": "packages/mpd-verify-plugin/src/observe.ts",
+      "lines": [3, 7, 221],
+      "issue": "Same R3 class but outside the enumerated sites, so left untouched: the module rationale still says 'Blindness is therefore established from the plugin's OWN record' / 'demonstrably blind', and noteCall is documented as making blindness 'provable'. Read-observation log is written only by the withdrawn guard, so these claims are stale in a shipped composition.",
+      "recommendation": "A one-comment follow-up can apply the same R3 wording (comments are stripped from dist, so no rebuild would be needed)."
+    }
+  ],
+  "limits": [
+    "No commit was made (captain owns git).",
+    "The verify dist hash delta vs HEAD includes the prior lane's tools.ts edits; the delta vs the session-start hash is the bindUnproven string only (inferred from comment stripping plus the unchanged hash after the comment-only edit).",
+    "The repo-wide tests/gates were run on the current dirty tree, so they also cover other lanes' uncommitted changes."
+  ]
+}

@@ -8,10 +8,11 @@
 //
 // The text is deliberately compact — a model pays for it every turn — and it states the
 // MEASURED bound of the official teammate path (plan §3): `spawn_teammate` forwards only
-// `{prompt, parent}` to `ctx.subagents.startContinuable`, so a teammate inherits the Lead's
-// model route and cannot take a persona/tool-filter argument. The roster's `teamModels`
-// slots therefore stay on the one-shot consult path, and the section says so rather than
-// promising a route the harness cannot deliver.
+// `{prompt, parent}` to the harness durable-child start, so a teammate runs on the route of
+// the session that staged it — this captain's in a top-level spawn — and cannot take a
+// persona/tool-filter argument. A `teamModels` slot applies only when the teammate's
+// DESCRIPTION names a roster member (or on the single-call `mpd_role_spawn`), and the section
+// says so rather than promising a route the harness cannot deliver.
 import type { DshAdapter, DshPromptSection } from "../../mpd-dsh-adapter-plugin/src/index"
 import { sessionQualifies } from "./complexity-gate.ts"
 
@@ -53,7 +54,7 @@ export function rosterSectionText(members: readonly SectionRosterMember[]): stri
     "## MPD specialist roster",
     "The specialists this deployment stages as teammates, addressed by NAME:",
     ...lines,
-    "Create one with `spawn_teammate` (name = the member name, description = its responsibility, prompt = the persona text from `mpd_role_persona`); `team_task_create` opens its lane on the shared board. A teammate inherits YOUR model route and cannot take a model or tool filter, so the `teamModels` slots apply to the one-shot `mpd_role_spawn` only; a read-only member's write tools are denied by the roster guard.",
+    "Create one with `spawn_teammate` (name = the member name, description = its responsibility, prompt = the persona text from `mpd_role_persona`); `team_task_create` opens its lane on the shared board. A teammate cannot take a model or tool filter: a `teamModels` slot applies when the description NAMES a roster member, and on the single-call `mpd_role_spawn`; any other teammate inherits YOUR model route (the staging session's), and prompt text cannot change a route. A read-only member's write tools are denied by the roster guard.",
   ].join("\n")
 }
 

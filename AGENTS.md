@@ -92,14 +92,18 @@ replaced or deleted. License: **MIT** (`LICENSE.md`); third-party components kee
   remote MCP rows follow the same rule); and the two vendored env keys (`MPD_AST_GREP_SG_PATH`,
   `MPD_CODEGRAPH_BIN`) are read by upstream vendored code.
 - **Roster.** The 11 specialists are teammate instantiation templates — NOT presets — addressed by NAME,
-  never by their internal stable `id` (§13). One-shot consult: `mpd-roles-plugin`; team work: the
-  **official Agent Teams plugin**; durable instances: the **workmate library**.
+  never by their internal stable `id` (§13). Single-call consult: `mpd-roles-plugin` (one bounded
+  delegation, one report; the harness keeps the child CONTINUABLE — listed `inactive`, resumable with
+  `send_message`); team work: the **official Agent Teams plugin**; durable, evolving instances: the
+  **workmate library** (`mpd_workmate_spawn` — the same spawn mechanics, plus persona/memory).
 - **THE TEAM RECORD IS OURS (team-plane split, 2026-09-30).** `mpd-team-core-plugin` owns the team
   (roster, board, DAG, `kind`/`attempt`/`round`/`verdict`) in `.mpd/team/teams/<id>.json`, served as
   `mpdTeams` and over `/plugins/mpd-team/state`; `mpd-dsh-adapter` mediates the ONE execution seam,
   **`TeamExecutor`** — its native backend (the `startActivation` seam on 0.2.1+, the retired
   `startContinuable` below it) is the DEFAULT, and the official `dsh.team*` calls are the FALLBACK. NO
-  mpd surface reads `dsh.teamLiveTeams()` any more.
+  mpd surface treats `dsh.teamLiveTeams()` as truth: the RECORD is authoritative everywhere, and the
+  official call remains only the contained FALLBACK for a composition that runs the official executor
+  (the team-compact read, the TUI team state and the watchdog).
 - **The vendored `agent-teams` body is RETIRED (2026-09-27) AND REMOVED (2026-10-07)** — harness
   0.1.7-rc.2's official Agent Teams plugin replaced it and the de-vendor wave deleted the tree, so its
   `agent_teams_*` tools and its `mpd-delta` registry belong to no shipped session.
@@ -213,8 +217,9 @@ instruction that sends a reader to the flag goes through the repo wrapper `node 
 No evidence on disk for a gate = the change is not complete. Merge to dev only after the relevant gates
 pass and their evidence is committed with the change.
 
-`bun run verify:gates` is the fast aggregate over the static gates (vendor, dist freshness, row parity,
-doc pairs, preset conformance) — one command for a patch/preset edit and the release sweep — and it
+`bun run verify:gates` is the fast aggregate over the static gates — **nine members: vendor, dist
+freshness, row parity, doc pairs, preset conformance, plugin manifest, comment coverage, graph model,
+workflows** — one command for a patch/preset edit and the release sweep — and it
 expects a CLEAN tree: a dirty `skills/**` corpus reddens the vendor gate until the wave's single re-pin
 lands (§9/§11).
 
@@ -266,7 +271,7 @@ lands (§9/§11).
      wave, and end it when the wave lands.
   2. **Dispatch by WORKLOAD SIZE — size picks the EXECUTOR, it never decides "do it myself".** Team mode
      is NOT a precondition for using specialists: outside a team the MPD-native path is always available
-     — `mpd_role_spawn` for a one-shot specialist and the workmate library (`mpd_workmate_*`) for an
+     — `mpd_role_spawn` for a single-call specialist consult and the workmate library (`mpd_workmate_*`) for an
      instance that accumulates across sessions. A small mechanical change goes to a Junior Engineer, a
      bounded independent piece to a Senior Engineer or Deep Worker, an evidence question to a Researcher
      or Explorer, a verdict to a Reviewer. The captain executes only what must not be delegated by rule —
@@ -369,8 +374,9 @@ analysis, the delta-registry mechanics and every adapter API signature — is in
   relative specifier carries the explicit `.ts` extension**; `import type` for type-only imports; no
   `tsconfig`-`paths` mapping. `packages/*/src` differs in FORM only (`bun build` → `dist/*.js`,
   extensionless specifiers), and a genuine CommonJS module is spelled `.cts`. The ONLY JavaScript left is
-  32 files, for a MEASURED reason (a shipped bundle sits under `node_modules`, where Node refuses to
-  strip types) — the list is in `agent-references/troubleshooting.md`.
+  **57 files**, for a MEASURED reason (a shipped bundle sits under `node_modules`, where Node refuses to
+  strip types): 33 `packages/*/dist/**` build artifacts, 2 browser bundles and 22 vendored skill-corpus
+  files — the list is in `agent-references/troubleshooting.md`.
 - **Every declaration is documented and every named function is fully typed — binding, enforced by §4's
   `verify:comments`.** A comment states the contract, unit, invariant or reason — never a restatement of
   the name; a local inside a function body counts as a declaration. Types are precise: `unknown` plus
@@ -481,8 +487,9 @@ lane hold this line.
   is the one-command uninstall.
 - **The published dependency closure is BUILD-SCRIPT-FREE on purpose**: pnpm 11 hard-exits on unapproved
   dependency build scripts (`ERR_PNPM_IGNORED_BUILDS`) and `dsh plugin add` has no approval channel, so
-  `dsh-better-sidebar` is an optional PEER + a `devDependency` (its `node-pty` postinstall is the
-  offending script; its row's mount guard disables it when absent) and `@ast-grep/cli` +
+  `dsh-better-sidebar` is an optional PEER + a `devDependency` (the transitive `node-pty` postinstall
+  that OLDER releases pulled is the historical reason; 0.24.1 no longer depends on node-pty, measured
+  2026-10-02 — its row's mount guard disables it when absent) and `@ast-grep/cli` +
   `@code-yeongyu/comment-checker` left `optionalDependencies`.
 - Every path-bearing patch value resolves through the loader's `baseUrl` (the profile directory), so the
   same patch works for a checkout install and for a packed install. The `mpd` preset and the skill corpus
@@ -539,18 +546,22 @@ lane hold this line.
    mismatch) — plus the changelog note.
 2. Full gate sweep, each command named exactly: `bun run verify:vendor` (after the wave's single `node
    scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step` re-pin when `skills/**` changed),
-   `bun test`, `bun run typecheck`, `bun run test:qa`, `bun run verify:docs`, `bun run verify:rows`,
+   `bun test packages` (a repo-root `bun test` also scans the historical `evidence/**` fixtures and
+   reddens on them), `bun run typecheck`, `bun run test:qa`, `bun run verify:docs`, `bun run verify:rows`,
    `node skills/dsh-qa/scripts/preset-conformance.ts --self-test`, `node scripts/verify-dist-fresh.ts`,
    `node scripts/verify-pack-closure.ts` (freshness read from the `expected-after-pack` list at the
    re-pack, never from its exit code — §4's bound), plus the real smoke cases (`dual-track-smoke`,
-   `mcp-call`). `bun run verify:gates` covers the static members (vendor, dist freshness, row parity, doc
-   pairs, preset conformance, plugin manifest, comment coverage, graph model, workflows);
-   `node scripts/verify-no-host-override.ts` is NOT a member of that aggregate and must be run, and
-   `node scripts/verify-manual-paths.ts` must be run whenever `AGENTS.md` changed — §4 marks both
-   REQUIRED for every release sweep.
-   - **LAST: the Docker real-machine lane, with `--require-docker` so it cannot skip silently** —
-     `node scripts/docker-e2e.ts --mode source --require-docker` then `--mode oneclick --require-docker`.
-     Run it AFTER the last write, and cite the stamps it writes.
+   `mcp-call`). `bun run verify:gates` covers the nine static members (vendor, dist freshness, row
+   parity, doc pairs, preset conformance, plugin manifest, comment coverage, graph model, workflows).
+   `node scripts/verify-no-host-override.ts` is NOT a member of that aggregate and is REQUIRED for EVERY
+   release sweep; `node scripts/verify-manual-paths.ts` is REQUIRED whenever `AGENTS.md` changed.
+   - **LAST: the Docker real-machine lane — `--live` with `DEEPSEEK_API_KEY` exported, and
+     `--require-docker` so it cannot skip silently** — `node scripts/docker-e2e.ts --mode source
+     --require-docker --live` then `--mode oneclick --require-docker --live`. Run it AFTER the last
+     write, and cite the stamps it writes. `--live` WITHOUT a key in the environment is a hard exit 3
+     BEFORE the build, and a credential-free browser-enabled run records `ui.replyRendered` as a DECLARED
+     BOUND that the required-arm gate turns into exit 3 by design — the credential-free spelling is
+     `--no-browser` (exit 0, every `ui.*` NULL, NOT release evidence).
    - **Release-checklist line (VENDOR_LOCK pairing rule):** `VENDOR_LOCK.json` lands in the SAME commit
      as every `skills/**` change that invalidates its `treeSha`; with the single-skills-writer rule (§9)
      that is exactly ONE re-pin per wave — verify the wave's single re-pin is present and that no
@@ -585,8 +596,9 @@ behaviour we do not fight; the detail and the measurements are in `agent-referen
 - **T-55** cite code by SYMBOL, never by line number.
 - **T-92** `sessionQualifies` must not decide "is this the captain" by PRESET NAME (see §5).
 
-All seven of T-21..T-55 are verified by `node scripts/mpd-bg.ts --self-test` (13 arms) plus the two
-sandbox cases in `evidence/platform/harness-close/`.
+T-21/T-23/T-24/T-26 are verified by `node scripts/mpd-bg.ts --self-test` (13 arms); T-43 by the
+harness-close guard cases in `evidence/platform/harness-close/`; T-54 and T-55 are documentation rules,
+not mechanically checked.
 
 ---
 
@@ -615,10 +627,11 @@ slot, workmate) stay here, with the verifier's envelope.
   Plan Reviewer, slot 3 Deep Worker/Junior Engineer, slot 4 Vision Analyst (its model MUST accept image
   input). A slot that cannot be resolved fails the spawn LOUDLY, writes no state and NEVER clamps an
   effort; a slot whose model declares NO reasoning efforts is sent none (`withSupportedEffort` drops the
-  keyword, logging it). Slots apply to the ONE-SHOT paths AND to an official `spawn_teammate` (routed
+  keyword, logging it). Slots apply to the single-call consult paths AND to an official `spawn_teammate` (routed
   through `mpd-roster-provider-plugin`); because the team service does not forward identity, **a
-  teammate `description` that NAMES a roster member routes that member — one that does not inherits the
-  Lead's route**. Long form: `agent-references/glossary.md`.
+  teammate `description` that NAMES a roster member routes that member — any other teammate runs on the
+  route of the session that staged it (the captain's in a top-level spawn, the Lead's in a team-lead
+  spawn), and prompt text cannot change a route**. Long form: `agent-references/glossary.md`.
 - **verifier's envelope**: the tool and path boundary a BOUND VERIFIER SEAT works inside. A seat is bound
   with `mpd_verify_seat`; the boundary it is meant to keep — no shell, no source-returning tools, no
   board mutation (`mpd_verify_*` excepted), reads path-scoped to the frozen docs AND the documentation
