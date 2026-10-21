@@ -33,3 +33,9 @@ bun run typecheck -> exit 0
 bun run verify:gates -> 9/9 PASS
 node scripts/verify-vendor.ts -> 7/7 assets fingerprinted (client.js sha256 f446e783...fffdd)
 bun run verify:docs -> pairs 48, failed 0
+
+## CodeRabbit F5/F6 repairs (ea8f1e19)
+bun test packages/mpd-bundle-plugin packages/mpd-team-core-plugin packages/mpd-tui-plugin packages/mpd-better-sidebar-host -> 988 pass, 0 fail, 31392 expect() calls
+bun run typecheck -> exit 0
+bun run verify:gates -> 9/9 PASS
+node scripts/verify-vendor.ts -> 7/7 assets fingerprinted (client.js sha256 bd68a418...c1c9)

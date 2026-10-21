@@ -1,6 +1,6 @@
 # Wave evidence — web-dag-sidebar-028
 
-Code: `feature/web-dag-sidebar-028`, final repair commit `defa50ea` (first feature commit `6e89d619`; visual repair `83796fb4`; docs images `e0b3ab22`, v2 cache-bust URLs `fbea3917`).
+Code: `feature/web-dag-sidebar-028`, final repair commit `ea8f1e19` (first feature commit `6e89d619`; visual repair `83796fb4`; docs images `e0b3ab22`, v2 cache-bust URLs `fbea3917`).
 Frozen contract: [`contract.md`](./contract.md) (copy of `.mpd/plans/web-dag-sidebar-028.md`).
 
 This root is the measured-evidence deliverable the contract's DoD and AGENTS.md §4/§5 require.
@@ -9,17 +9,20 @@ real-browser capture is [`docker-post-fix/`](./docker-post-fix/), and the pre-fi
 `../2026-10-21T07-40-13Z/docker/`.
 
 Independent verifier: **PASS** — final record `rec-20261021T090546-abad35` for loop
-`loop-20261021T070931-850b4a`. The verifier re-ran the nine fixed-table gates on the final tree
-(tests 2194 pass, 3 skip, 0 fail; `gates/` holds the logs) and inspected the post-fix stills and the
-refreshed docs images.
+`loop-20261021T070931-850b4a` (code `defa50ea`). The verifier re-ran the nine fixed-table gates on
+that tree (tests 2194 pass, 3 skip, 0 fail; `gates/` holds the logs). A final re-run for the latest
+CodeRabbit fixes (`ea8f1e19`) is pending; the four-package suite on the current tree is 988 pass.
 
-CodeRabbit reconciliation (commit `defa50ea`): **F1** reduced-motion flow overlay **FIXED** (the
+CodeRabbit reconciliation (commits `defa50ea`, `ea8f1e19`): **F1** reduced-motion flow overlay **FIXED** (the
 `[data-mpd-flow]` SMIL arrow is hidden under `prefers-reduced-motion`, while the static path and
 arrowhead stay visible); **F4** cancelled-task finish stamp **FIXED** (`cancelled` now deletes
-`finishedAt`, so a prior finish cannot survive). **F2** crossing-gutter lane registration and **F3**
-geometry cache + ticker gating are recorded as **STILL-VALID follow-ups** (non-blocking width/perf
-cleanups; the property battery and UI checks are green). The final post-repair verifier record is
-`rec-20261021T090546-abad35`: 2194 gate tests pass (986 in the four-package suite).
+`finishedAt`, so a prior finish cannot survive). **F5** elapsed dash label **FIXED** (the
+`not started` label applies only when `startedAt` is absent/empty; a started-but-unfinished record
+keeps the dash without it). **F6** legacy progress fallback **FIXED** (a claimed task without
+`progress` now falls back to 10, not 50; the status table mirrors the producer). **F2** crossing-gutter
+lane registration and **F3** geometry cache + ticker gating are recorded as **STILL-VALID follow-ups**
+(non-blocking width/perf cleanups; the property battery and UI checks are green). The final post-repair
+verifier record for `ea8f1e19` is added below when the re-run lands.
 
 ## Clause-to-evidence matrix
 
@@ -36,13 +39,13 @@ cleanups; the property battery and UI checks are green). The final post-repair v
 | Running-node breathing without harming text | keyframes animate only `box-shadow`/`border-color`; reduced-motion disables it; D2 CSS arms; `06b-team-board.png` (T3 running glow) |
 | Hover card: status, owner, elapsed, rough task, progress; beside the cursor | D2 card arms (content, truncation, clamp, pointer-derived position); real-browser `07-team-graph-hover.png` in both boards shows the card next to the pinned node |
 | Click → next hover opaque; mouse leave closes | D2 pin-opacity and mouseleave arms; the post-fix stills show the opaque pinned card; the pre-fix focus-anchor defect was repaired (focus no longer invents `(14,14)`) |
-| Existing features preserved | full affected suite 986 pass / 0 fail; the real-browser capture 18/18 checks and 9/9 steps; click-to-pin detail still renders in the stills |
+| Existing features preserved | full affected suite 988 pass / 0 fail; the real-browser capture 18/18 checks and 9/9 steps; click-to-pin detail still renders in the stills |
 | `startedAt` / `finishedAt` and coarse progress | `packages/mpd-team-core-plugin/test/team-store.test.ts` transition matrix; `test/team-web.test.ts` payload/omitted-undefined/progress mapping; docs/user-guide.md §8.1 declares the coarse 100/50/10/0 mapping |
 | Docs images refreshed to the new UI | `docs/assets/images/web-team-board-v2.png` + `hero-web-tui-v2.png` (EN) from `docker-post-fix/ui-shots/07-team-graph-hover.png`; the zh pair from `docs-capture-zh/07-team-graph-hover.png`; README/README.zh-CN and docs/index descriptions updated in the same commit (the `-v2` names also cache-bust GitHub's README image proxy) |
 
 ## Gate and boot results
 
-- `bun test packages/mpd-bundle-plugin packages/mpd-team-core-plugin packages/mpd-tui-plugin packages/mpd-better-sidebar-host` → **986 pass, 0 fail** (after the CodeRabbit repairs).
+- `bun test packages/mpd-bundle-plugin packages/mpd-team-core-plugin packages/mpd-tui-plugin packages/mpd-better-sidebar-host` → **988 pass, 0 fail** (after the latest CodeRabbit repairs).
 - `bun run typecheck` → exit 0.
 - `bun run verify:gates` → **9/9 members green** (vendor, dist freshness, row parity, doc pairs, preset conformance, plugin manifest, comment coverage, graph model, workflows).
 - `bun run verify:docs` → pairs 48, failed 0.

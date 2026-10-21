@@ -1,12 +1,12 @@
 {
   "wave": "web-dag-sidebar-028",
   "branch": "feature/web-dag-sidebar-028",
-  "codeCommit": "defa50ea",
+  "codeCommit": "ea8f1e19",
   "preFixCommit": "6e89d619",
   "docsImagesCommit": "e0b3ab22 (content) + fbea3917 (v2 cache-bust URLs)",
   "contract": "contract.md",
   "evidenceCommit": "ebadecc1",
-  "status": "PASS — independent verifier record rec-20261021T090546-abad35 for loop-20261021T070931-850b4a (code defa50ea)",
+  "status": "PASS — independent verifier record rec-20261021T090546-abad35 (code defa50ea) plus CodeRabbit F5/F6 fixes at ea8f1e19; final verifier re-run pending",
   "verification": {
     "loop": "loop-20261021T070931-850b4a",
     "record": "rec-20261021T090546-abad35",
@@ -34,6 +34,8 @@
   "codeRabbit": {
     "F1_reduced_motion_flow": "FIXED in defa50ea — [data-mpd-flow] hidden inside prefers-reduced-motion; static dependency path/arrowhead kept; scoped CSS test",
     "F4_cancelled_finishedAt": "FIXED in defa50ea — cancelled deletes finishedAt; test arm proves the key is absent, not blanked",
+    "F5_elapsed_not_started_label": "FIXED in ea8f1e19 — the dash is labelled not-started only when startedAt is absent/empty; a started-but-unfinished or malformed record keeps the dash without that label",
+    "F6_claimed_progress_fallback": "FIXED in ea8f1e19 — a legacy claimed task without progress falls back to 10, not 50; in_progress 50, completed 100, pending/blocked/failed/cancelled 0; served numbers still win and clamp",
     "F2_gutter_registration": "STILL-VALID follow-up — long edges are still registered in every crossed gutter; width/lane cleanup; property battery stays green",
     "F3_geometry_cache_ticker": "STILL-VALID follow-up — layout geometry is not cached by payload identity and the ticker runs while a running task is visible; performance cleanup"
   },
@@ -53,7 +55,7 @@
   },
   "tests": {
     "affectedSuites": "bun test packages/mpd-bundle-plugin packages/mpd-team-core-plugin packages/mpd-tui-plugin packages/mpd-better-sidebar-host",
-    "affectedResult": "986 pass, 0 fail, 31346 expect() calls (after the CodeRabbit repairs)",
+    "affectedResult": "988 pass, 0 fail, 31392 expect() calls (after the latest CodeRabbit repairs)",
     "gateResult": "2194 pass, 3 skip, 0 fail, 2197 tests across 134 files",
     "typecheck": "bun run typecheck -> exit 0",
     "gates": "bun run verify:gates -> 9/9 PASS",
