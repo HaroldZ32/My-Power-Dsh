@@ -1,0 +1,82 @@
+{
+  "provenance": "Copied from the sandbox workspace after the live settle boot (2026-10-22T08:08Z). The workspace's .mpd directory is gitignored, so the raw files are reproduced here; sha256 of each source file is included.",
+  "workspace": "evidence/team-board-settlement/integration/live-settle-approve-ws",
+  "teams": [
+    {
+      "file": "team-20261022080822136-e9cz-003.json",
+      "record": {
+        "version": 1,
+        "teamId": "team-20261022080822136-e9cz-003",
+        "name": "live-settle",
+        "description": "Live settlement check",
+        "leadSessionId": "session-b9cd8150-4175-473e-b8cf-2d375111f252",
+        "planId": "plan-20261022080818736-e9cz-002",
+        "phase": "idle",
+        "createdAt": "2026-10-22T08:08:22.136Z",
+        "members": [
+          {
+            "id": "M1",
+            "name": "live-reviewer",
+            "description": "Reviewer - complete your task",
+            "status": "inactive",
+            "spawnedAt": "2026-10-22T08:08:22.137Z",
+            "executorRef": "53e4c97a-b723-4ac8-b9c6-628b27cd7eb2"
+          }
+        ],
+        "tasks": [
+          {
+            "id": "T1",
+            "subject": "Complete the live settlement",
+            "description": "Use agent_teams_task action complete for this task, then reply DONE",
+            "kind": "work",
+            "status": "completed",
+            "blockedBy": [],
+            "writeScopes": [],
+            "createdAt": "2026-10-22T08:08:22.137Z",
+            "updatedAt": "2026-10-22T08:08:29.987Z",
+            "revision": 3,
+            "owner": "live-reviewer",
+            "startedAt": "2026-10-22T08:08:23.648Z",
+            "note": "Completed live settlement task.",
+            "finishedAt": "2026-10-22T08:08:29.987Z"
+          }
+        ],
+        "nextMemberNumber": 2,
+        "nextTaskNumber": 2,
+        "approvedAt": "2026-10-22T08:08:22.154Z"
+      }
+    }
+  ],
+  "dispatchLedger": {
+    "team-20261022080822136-e9cz-003::T1": {
+      "teamId": "team-20261022080822136-e9cz-003",
+      "taskId": "T1",
+      "memberId": "53e4c97a-b723-4ac8-b9c6-628b27cd7eb2",
+      "memberName": "live-reviewer",
+      "assignedAt": "2026-10-22T08:08:23.648Z"
+    }
+  },
+  "goalAnchors": {
+    "session-b9cd8150-4175-473e-b8cf-2d375111f252": {
+      "goalId": "goal-8882b060-8c84-44c9-ba20-ae92a7c2d620",
+      "revision": 1,
+      "objective": "Live settlement check",
+      "source": "team",
+      "at": "2026-10-22T08:08:22.162Z"
+    }
+  },
+  "projectInitMarker": {
+    "version": 1,
+    "plugin": "mpd-project-init",
+    "file": "AGENT.md",
+    "createdAt": "2026-10-22T08:08:12.955Z"
+  },
+  "projectInitLog": "[mpd-project-init] 2026-10-22T08:08:12.955Z created AGENT.md in /tmp/mpd-mount-QT3Eju/ws\n",
+  "sha256": {
+    ".mpd/team/teams/team-20261022080822136-e9cz-003.json": "e8970880ad24e9daaf5474156025029c6611683a6d3ca84826276526f59e32e6",
+    ".mpd/team/dispatch.json": "85dcb57dd355b4528e45cfe766e75491ea84e8495996136b86a297d1dd0c05cf",
+    ".mpd/goal/anchors.json": "32c79a48d91b67a7b2c1b74c7c255e28f72327cf821c28c03c0bed653363e3e6",
+    ".mpd/project-init.json": "aa8204adb60e20c7da6a6979d15157d554920eab475bf3514f344dea3d8455ac",
+    ".mpd/logs/mpd-project-init.log": "869fea9459aaf6bbfbf6ddbbf26b0e61e0625bcad272d867e63c96a2d1be756f"
+  }
+}
