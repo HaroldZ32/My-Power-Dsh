@@ -357,11 +357,11 @@ MPD 面板渲染的是**调用会话（本会话）自己**的团队依赖 DAG �
   `mpdTeams.subscribe(workspace, listener)`，同一底座也由 `mpd-team-core` 经 SSE 路由
   `/plugins/mpd-team/events` 提供——并在卸载时释放订阅。在真实的 dsh-tui 0.14.0 PTY 上实测：侧栏**打开且
   无人按键**时改写记录，六次试验都在 **76–85 ms** 内到达终端
-  （`evidence/tui/session-scope-and-push/2026-10-08T08-22-12Z/pty-latency/`），而兜底的 tick 是
-  **1000 ms**（`DAG_PANEL_REFRESH_MS`）——六次采样落在 9 ms 的带宽内、约 80 ms，这不是 tick 采样。
-  事件源监听团队目录，因此本会话的 agent 或**另一个进程**所做的改动都能被看到；侧栏的 1000 ms tick 与
-  场景的 2000 ms tick 原样保留，作为没有事件源时的兜底。没有 `mpdTeams` 行、没有 `subscribe`、或它抛错，
-  损失的只是 push，绝不会损失页面。
+  （`evidence/tui/session-scope-and-push/2026-10-08T08-22-12Z/pty-latency/`）——这是 0.14.0 时期的
+  记录。**在那次测量时**兜底的 tick 是 **1000 ms**（`DAG_PANEL_REFRESH_MS`）——六次采样落在 9 ms 的
+  带宽内、约 80 ms，这不是 tick 采样。事件源监听团队目录，因此本会话的 agent 或**另一个进程**所做的
+  改动都能被看到；实时节拍只在 §3.5 说一次——所有 MPD 界面统一为 **2000 ms** 的 tick，作为没有事件源
+  时的兜底。没有 `mpdTeams` 行、没有 `subscribe`、或它抛错，损失的只是 push，绝不会损失页面。
 
 - **纵排且自适应。** rank 是**纵向**轴（自上而下），每一个尺寸都由宿主实测出的面板算出——没有任何固定像素
   或单元格常量决定布局，这正是本波次用户的明确决定（纵向，但不要固定尺寸）。`boxes`、`rail`、`list` 是三种
@@ -446,8 +446,12 @@ workmate 页（`WORKMATE_PANEL_REFRESH_MS`）、board/team 场景与 subagents �
   或终端丢了一帧之后，用它。
 - **`r` 恢复整屏图。** 整屏 team 场景把纵向窗口夹到最后一行，所以 `End` 和长时间的滚轮都会停在底部，
   不会把图滑走；`r` 重读记录并把窗口退回顶部，`Home`/`g` 不重读而直接回顶。
-- **`DSH_TUI_DISABLE_MOUSE=1` 关闭鼠标跟踪**，适用于处理不当的终端或复用器（选区卡住、滚轮同时被 shell
-  吃掉）。键盘手势——焦点游走、滚动键、`Esc` 取消钉住、`⤢` 打开场景——照旧可用。
+- **`DSH_TUI_DISABLE_MOUSE=1` 只关闭应用内的点击与选区处理。** 在钉住的宿主 dsh-tui 0.16.1 上，
+  `lib/types/utils/fullscreen.js#isMouseClicksDisabled` 喂给 `App.js#handleMouseEvent`，后者在点击分支
+  之前就**返回**、滚轮滚动照旧保留，而 `AlternateScreen.js` 无条件开启鼠标上报——所以设了这个开关，
+  鼠标上报与滚轮滚动**明确仍然生效**；它不是「滚轮被 shell 吃掉」的解药（那种情况要动终端 / tmux /
+  全屏那一层的开关，见下面的 tmux 条目）。键盘手势——焦点游走、滚动键、`Esc` 取消钉住、`⤢` 打开
+  场景——照旧可用。
 - **tmux：** 用 `set -g aggressive-resize on` 让窗格尺寸保持真实，并用
   `set -g default-terminal 'tmux-256color'` 给宿主一个 UTF-8 的 terminfo。tmux 之外，`TERM` 必须是
   支持 UTF-8 的终端（如 `xterm-256color`），locale 必须是 UTF-8（`LANG=…UTF-8`），否则中日韩字符宽度
