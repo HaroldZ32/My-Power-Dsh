@@ -436,7 +436,7 @@ function mechanicalNoticeFixture(): NoticeClassification {
  * @returns The scan a passing mechanical side produces, spread with the caller's overrides.
  */
 function stageScanFixture(over: Partial<TeamStageScan> = {}): TeamStageScan {
-  return { staged: 1, planIds: [PROBE_PLAN_ID], stagedMembers: 0, stagedTasks: 0, records: 0, recordIds: [], ...over }
+  return { staged: 1, planIds: [PROBE_PLAN_ID], stagedMembers: 0, stagedTasks: 0, records: 0, recordIds: [], recordPlanIds: [], ...over }
 }
 
 /** The verdict of one complexity-gate evaluation: the frozen predicate's outcome. */
@@ -667,6 +667,8 @@ interface TeamStageScan {
   readonly records: number
   /** The record ids seen, so a failure names WHAT was spawned instead of only how much. */
   readonly recordIds: string[]
+  /** The `planId` each team RECORD carries — the shell's id, copied in at approval. */
+  readonly recordPlanIds: string[]
 }
 
 /** Which expectation judges one live side. */
@@ -710,14 +712,22 @@ interface LiveSideInput {
   readonly markerConsumed: boolean | undefined
   /** The signal letter this side must see named, when it is built to prove one. */
   readonly expectedSignal: string | undefined
+  /** The plan id the row's OWN fire line named; `""`/absent when it named none. */
+  readonly firedPlanId?: string
 }
 
-/** The pure verdict of one live side: whether it held, and every violation found. */
+/** The pure verdict of one live side: whether it held, every violation found, and the branch taken. */
 interface SideVerdict {
   /** `true` when no violation was recorded. */
   readonly ok: boolean
   /** The violation sentences, empty on a passing side. */
   readonly problems: string[]
+  /**
+   * The fate a TRIGGERED MECHANICAL side took, recorded so the evidence says which shape was proven:
+   * `staged` = the shell is still in `.mpd/team/staging`, `approved` = the model extended and
+   * approved it (the slot was consumed and ONE team record carries the same plan id).
+   */
+  readonly branch?: "staged" | "approved"
 }
 
 /** One live-lane step's verdict: the folded `ok` flag plus whatever that step records. */
@@ -1280,14 +1290,26 @@ async function selfTest(): Promise<void> {
 
   // ── the LIVE verdict's own falsifiability, driven offline through the SAME `evaluateSide()` ──
   // A mechanical side that staged ONE matching shell and spawned nobody must PASS…
-  const passingSide = evaluateSide({ expect: "stage", notice: mechanicalNoticeFixture(), teams: stageScanFixture(), markerConsumed: undefined, expectedSignal: "D" })
+  const passingSide = evaluateSide({ expect: "stage", notice: mechanicalNoticeFixture(), teams: stageScanFixture(), markerConsumed: undefined, expectedSignal: "D", firedPlanId: PROBE_PLAN_ID })
   if (!passingSide.ok) fail("the live verdict must PASS a mechanical side that staged one matching shell: " + JSON.stringify(passingSide.problems))
-  // …and the EXACT class the retired helper could not see must REDDEN: one spawned team record.
-  const spawnedSide = evaluateSide({ expect: "stage", notice: mechanicalNoticeFixture(), teams: stageScanFixture({ records: 1, recordIds: ["team-1"] }), markerConsumed: undefined, expectedSignal: "D" })
-  if (spawnedSide.ok) fail("the live verdict must REDDEN when a team RECORD exists — the retired helper scanned a layout mpd-team-core never writes, so it read 0 by construction (P6)")
-  // A notice whose plan id disagrees with the staged slot must redden too: the id is the RETURNED one.
-  const mismatchedSide = evaluateSide({ expect: "stage", notice: mechanicalNoticeFixture(), teams: stageScanFixture({ planIds: ["plan-20250101000000"] }), markerConsumed: undefined, expectedSignal: "D" })
-  if (mismatchedSide.ok) fail("the live verdict must REDDEN when the notice's plan id differs from the staged slot's")
+  if (passingSide.branch !== "staged") fail("that side's branch must be recorded as `staged`, got " + JSON.stringify(passingSide.branch))
+  // THE APPROVED BRANCH (the live CJK positive's measured fate): the model EXTENDED AND APPROVED the
+  // shell exactly as the notice instructs, so the slot is consumed and ONE record carries the SAME id.
+  const approvedSide = evaluateSide({ expect: "stage", notice: mechanicalNoticeFixture(), teams: stageScanFixture({ staged: 0, planIds: [], records: 1, recordIds: ["team-1"], recordPlanIds: [PROBE_PLAN_ID] }), markerConsumed: undefined, expectedSignal: "D", firedPlanId: PROBE_PLAN_ID })
+  if (!approvedSide.ok) fail("the live verdict must PASS the model-approved branch (one record carrying the fired plan id): " + JSON.stringify(approvedSide.problems))
+  if (approvedSide.branch !== "approved") fail("that side's branch must be recorded as `approved`, got " + JSON.stringify(approvedSide.branch))
+  // …but a record carrying a DIFFERENT plan id is NOT that approval: the assertion must still redden.
+  const spawnedSide = evaluateSide({ expect: "stage", notice: mechanicalNoticeFixture(), teams: stageScanFixture({ staged: 0, planIds: [], records: 1, recordIds: ["team-1"], recordPlanIds: ["plan-somebody-else"] }), markerConsumed: undefined, expectedSignal: "D", firedPlanId: PROBE_PLAN_ID })
+  if (spawnedSide.ok) fail("the live verdict must REDDEN when the only team record carries a DIFFERENT plan id — the retired helper scanned a layout mpd-team-core never writes, so it read 0 by construction (P6)")
+  // …and a fire line whose workspace shows NEITHER branch must redden (non-vacuous two-branch rule).
+  const neitherSide = evaluateSide({ expect: "stage", notice: mechanicalNoticeFixture(), teams: stageScanFixture({ staged: 0, planIds: [], records: 0 }), markerConsumed: undefined, expectedSignal: "D", firedPlanId: PROBE_PLAN_ID })
+  if (neitherSide.ok) fail("the live verdict must REDDEN when a triggered side shows neither a staged shell nor its approved record")
+  // A fire line that names NO plan cannot prove either branch.
+  const noFiredSide = evaluateSide({ expect: "stage", notice: mechanicalNoticeFixture(), teams: stageScanFixture(), markerConsumed: undefined, expectedSignal: "D", firedPlanId: "" })
+  if (noFiredSide.ok) fail("the live verdict must REDDEN when the row's fire line named no plan id")
+  // A fire line whose plan id disagrees with the staged slot must redden too: the id is the RETURNED one.
+  const mismatchedSide = evaluateSide({ expect: "stage", notice: mechanicalNoticeFixture(), teams: stageScanFixture({ planIds: ["plan-20250101000000"] }), markerConsumed: undefined, expectedSignal: "D", firedPlanId: PROBE_PLAN_ID })
+  if (mismatchedSide.ok) fail("the live verdict must REDDEN when the fire line's plan id differs from the staged slot's")
   // …and an untriggered side that recorded a notice is the falsifiability arm, which must also redden.
   const leakedSide = evaluateSide({ expect: "none", notice: mechanicalNoticeFixture(), teams: stageScanFixture(), markerConsumed: undefined, expectedSignal: undefined })
   if (leakedSide.ok) fail("the live verdict must REDDEN when an untriggered side recorded a notice")
@@ -1299,7 +1321,7 @@ async function selfTest(): Promise<void> {
     mkdirSync(join(stageProbe, ".mpd", "team", "staging"), { recursive: true })
     writeFileSync(join(stageProbe, ".mpd", "team", "staging", "sess-1.json"), JSON.stringify({ version: 1, planId: PROBE_PLAN_ID, sessionId: "sess-1", members: [], tasks: [] }))
     mkdirSync(join(stageProbe, ".mpd", "team", "teams"), { recursive: true })
-    writeFileSync(join(stageProbe, ".mpd", "team", "teams", "team-1.json"), JSON.stringify({ id: "team-1", members: [{ name: "spawned" }] }))
+    writeFileSync(join(stageProbe, ".mpd", "team", "teams", "team-1.json"), JSON.stringify({ id: "team-1", planId: PROBE_PLAN_ID, members: [{ name: "spawned" }] }))
     // The RETIRED layout a helper could regress to: its presence must change NOTHING at all.
     mkdirSync(join(stageProbe, ".mpd", "team", "mpd-default-9"), { recursive: true })
     writeFileSync(join(stageProbe, ".mpd", "team", "mpd-default-9", "team.json"), JSON.stringify({ id: "mpd-default-9" }))
@@ -1309,12 +1331,16 @@ async function selfTest(): Promise<void> {
     if (scan.planIds[0] !== PROBE_PLAN_ID) fail("the stage scan must report the staged plan's planId, got " + JSON.stringify(scan.planIds))
     if (scan.records !== 1 || scan.recordIds[0] !== "team-1") fail("the stage scan must count the REAL record layout `.mpd/team/teams/*.json` and IGNORE the retired `.mpd/team/<id>/team.json` decoy, got " + JSON.stringify(scan.recordIds))
     if (scan.stagedMembers !== 0 || scan.stagedTasks !== 0) fail("a gate-staged SHELL must read 0 members / 0 tasks, got " + scan.stagedMembers + "/" + scan.stagedTasks)
+    if (scan.recordPlanIds.length !== 1 || scan.recordPlanIds[0] !== PROBE_PLAN_ID) fail("the stage scan must report the team record's planId (the approved-branch identity), got " + JSON.stringify(scan.recordPlanIds))
     // The falsifiability twin: a staged plan WITH a member and a task must be reported as such, so
     // the "the staged plan must be a SHELL" clause can fail rather than being unprovable.
     writeFileSync(join(stageProbe, ".mpd", "team", "staging", "sess-1.json"), JSON.stringify({ version: 1, planId: PROBE_PLAN_ID, sessionId: "sess-1", members: [{ name: "spawned" }], tasks: [{ subject: "t" }] }))
     // The same scan over the NON-shell twin, whose counts must move.
     const withMember = teamStageScan(stageProbe)
     if (withMember.stagedMembers !== 1 || withMember.stagedTasks !== 1) fail("the stage scan must count staged members/tasks, got " + withMember.stagedMembers + "/" + withMember.stagedTasks)
+    // The absent-field twin: a record that predates `planId` contributes NO id (never a throw).
+    writeFileSync(join(stageProbe, ".mpd", "team", "teams", "team-1.json"), JSON.stringify({ id: "team-1", members: [{ name: "spawned" }] }))
+    if (teamStageScan(stageProbe).recordPlanIds.length !== 0) fail("a record with no planId must contribute no record plan id")
   } finally {
     rmSync(stageProbe, { recursive: true, force: true })
   }
@@ -1401,7 +1427,7 @@ async function selfTest(): Promise<void> {
     + "; FOUR negative controls reddened (always-trigger " + triggerProblems.length + ", always-silent " + silentProblems.length
     + ", advisory-only-mechanical " + confusedProblems.length + ", CJK-blind " + blindProblems.length + " problem(s))"
     + "; C7 (a session already leading a team) and C8 (an inbound `team-message`/`agent-message` is never the human turn) each driven BOTH ways"
-    + "; the LIVE verdict and the REAL `.mpd/team` stage scan were each driven offline BOTH ways (a matching shell passes; a spawned record, a plan-id mismatch, a leaked notice and a non-shell staged plan all redden)"
+    + "; the LIVE verdict and the REAL `.mpd/team` stage scan were each driven offline BOTH ways (a matching shell passes as `staged`; the MODEL-APPROVED shape passes as `approved` only when the record carries the fired plan id; a mismatched record id, neither-branch workspace, missing fired id, plan-id mismatch, leaked notice and non-shell staged plan all redden)"
     + "; team.sensitivity's three rows and its easy fail-safe resolver, the PER-ROW LEXICON (four wave-only English verbs fire B at easy and are invisible at normal; the original four still fire B at normal), the user's VERBATIM first message (B/E at easy; SILENT at normal, which is the measured pre-change verdict, and at strict), and signal F both ways (a large root fires F alone; a tiny root and the injected listings stay silent)"
     + "; bundle mounts mpd-roles with the retired rows gone; preset carries the session-start convention (frozen marker + team.gate + the MECHANICAL default wording)")
 }
@@ -1508,6 +1534,19 @@ export function teamStageScan(ws: string): TeamStageScan {
   const teamsRoot = join(root, "teams")
   // Every record file name, empty while no team has been approved.
   const recordFiles = existsSync(teamsRoot) ? readdirSync(teamsRoot).filter((name) => name.endsWith(".json")) : []
+  // The plan id each team RECORD carries: an approval copies the shell's id into the record, which is
+  // what lets the verdict accept "the model approved the shell" as the SAME plan rather than any team.
+  const recordPlanIds: string[] = []
+  for (const name of recordFiles) {
+    try {
+      // This record's decoded payload, accepted only when it is a plain object.
+      const parsed: unknown = JSON.parse(readFileSync(join(teamsRoot, name), "utf8"))
+      if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) continue
+      /** The plan id the record names, empty for a record that predates the field. */
+      const planId = String((parsed as Record<string, unknown>).planId ?? "")
+      if (planId !== "") recordPlanIds.push(planId)
+    } catch { /* an unreadable record contributes no id: the scan itself must never throw */ }
+  }
   return {
     staged: plans.length,
     planIds,
@@ -1515,6 +1554,7 @@ export function teamStageScan(ws: string): TeamStageScan {
     stagedTasks: plans.reduce((total, plan) => total + (Array.isArray(plan.tasks) ? plan.tasks.length : 0), 0),
     records: recordFiles.length,
     recordIds: recordFiles.map((name) => name.replace(/\.json$/u, "")),
+    recordPlanIds,
   }
 }
 
@@ -1578,7 +1618,7 @@ function teamGateKeyAbsent(ws: string): boolean {
  * @param input The side's expectation and the measurements the session log + workspace produced.
  * @returns Whether the side held, plus every violation it recorded.
  */
-export function evaluateSide({ expect, notice, teams, markerConsumed, expectedSignal }: LiveSideInput): SideVerdict {
+export function evaluateSide({ expect, notice, teams, markerConsumed, expectedSignal, firedPlanId }: LiveSideInput): SideVerdict {
   // Every violation this side recorded, in the order the clauses are checked.
   const problems: string[] = []
   if (expect === "none" || expect === "off") {
@@ -1605,23 +1645,43 @@ export function evaluateSide({ expect, notice, teams, markerConsumed, expectedSi
     if (teams.records !== 0) problems.push("the gate stages nothing, so it spawns no team record, got " + teams.records)
     return { ok: problems.length === 0, problems }
   }
-  // expect === "stage": THE MECHANICAL CONTRACT — a plan was STAGED and NOTHING was spawned.
+  // expect === "stage": THE MECHANICAL CONTRACT — the gate STAGED a shell, and the side must show ONE
+  // of the TWO legitimate fates. The shipped notice INSTRUCTS the captain to extend and approve the
+  // shell itself, so "zero team records" was an assertion that contradicted the product:
+  //   "staged"   — nobody approved it yet: ONE staged slot carrying the FIRED plan id, ZERO records;
+  //   "approved" — the model did exactly that: the slot is consumed (staged=0) and EXACTLY ONE team
+  //                record carries that SAME plan id.
+  // A fire line whose workspace shows NEITHER branch still fails, so the assertion stays non-vacuous.
   if (notice.mechanical !== 1) problems.push("the MECHANICAL notice must state " + JSON.stringify(STAGED_PLAN_PHRASE) + ", got " + notice.mechanical)
   if (notice.advisory !== 0) problems.push("the MECHANICAL notice must not ALSO state " + JSON.stringify(ADVISORY_PHRASE) + " — the two-taxonomy rule")
   if (notice.inert !== 1) problems.push("the notice must state " + JSON.stringify(INERT_PLAN_PHRASE) + ", got " + notice.inert)
   if (notice.shellShaped !== 1) problems.push("the notice must state the SHELL shape " + JSON.stringify(NOTICE_SHELL_PHRASE) + ", got " + notice.shellShaped)
   if (notice.mechanicalTool !== 1) problems.push("the notice must name the staging tool `" + STAGING_TOOL + "`, got " + notice.mechanicalTool)
-  if (teams.staged !== 1) problems.push("a triggered mechanical side must stage EXACTLY ONE plan slot, got " + teams.staged)
-  if (teams.records !== 0) problems.push("a STAGED plan is NOT a spawned team: `.mpd/team/teams/` must hold ZERO records, got " + teams.records + " " + JSON.stringify(teams.recordIds))
   if (notice.planIds.length !== 1) problems.push("the notice must name EXACTLY ONE plan id, got " + JSON.stringify(notice.planIds))
-  if (notice.planIds.length === 1 && teams.planIds.length === 1 && notice.planIds[0] !== teams.planIds[0]) {
-    problems.push("the notice names " + notice.planIds[0] + " while the staged slot holds " + teams.planIds[0] + " — the notice must name the id the staging call RETURNED")
+  /** The plan id the row's OWN fire line named — the identity BOTH branches are proven against. */
+  const firedId = String(firedPlanId ?? "")
+  if (firedId === "") {
+    problems.push("the row's fire line must name the plan this side staged — neither the staged nor the approved branch can be proven without it")
   }
-  if (teams.stagedMembers !== 0 || teams.stagedTasks !== 0) {
-    problems.push("the staged plan must be a SHELL: 0 members and 0 tasks, got " + teams.stagedMembers + "/" + teams.stagedTasks)
+  /** The branch this side took, `undefined` when it took neither. */
+  let branch: "staged" | "approved" | undefined
+  if (teams.staged === 1 && teams.records === 0) {
+    branch = "staged"
+    if (teams.planIds.length !== 1) {
+      problems.push("the staged slot must carry EXACTLY ONE plan id, got " + JSON.stringify(teams.planIds))
+    } else if (teams.planIds[0] !== firedId) {
+      problems.push("the fire line names " + JSON.stringify(firedId) + " while the staged slot holds " + JSON.stringify(teams.planIds[0]) + " — the notice must name the id the staging call RETURNED")
+    }
+    if (teams.stagedMembers !== 0 || teams.stagedTasks !== 0) {
+      problems.push("the staged plan must be a SHELL: 0 members and 0 tasks, got " + teams.stagedMembers + "/" + teams.stagedTasks)
+    }
+  } else if (teams.staged === 0 && teams.records === 1 && firedId !== "" && teams.recordPlanIds.includes(firedId)) {
+    branch = "approved"
+  } else {
+    problems.push("a triggered mechanical side must show EITHER one still-staged shell holding the fired plan, OR exactly one team record whose planId is that same plan (the model approved the shell the notice told it to approve); got staged=" + teams.staged + " stagedPlanIds=" + JSON.stringify(teams.planIds) + " records=" + teams.records + " recordIds=" + JSON.stringify(teams.recordIds) + " recordPlanIds=" + JSON.stringify(teams.recordPlanIds) + " firedPlanId=" + JSON.stringify(firedId))
   }
   if (markerConsumed !== undefined && markerConsumed !== true) problems.push("the explicit `team:` marker must be CONSUMED from the recorded goal text")
-  return { ok: problems.length === 0, problems }
+  return { ok: problems.length === 0, problems, ...(branch === undefined ? {} : { branch }) }
 }
 
 /** The live arm: an isolated profile boot per prompt side, judged from the harness session log. */
@@ -1807,8 +1867,11 @@ async function runReal(): Promise<void> {
       // different defects with different owners (measured 2026-09-27: `sessionGate=advisory`
       // was present while ZERO notices fired, and the single opaque failure hid that split).
       const gateInstalled = bootLine.includes("sessionGate=" + side.expectedMode)
+      // The plan id the ROW recorded for this fire, read by the SAME pattern the notice is read with.
+      // Computed BEFORE the verdict: the two-branch mechanical acceptance proves BOTH fates against it.
+      const firedPlanId = planIdsIn(firedLine)[0] ?? ""
       // The pure side verdict, computed from the measurements above.
-      const verdict = evaluateSide({ expect: side.expect, notice, teams, markerConsumed, expectedSignal: side.signal })
+      const verdict = evaluateSide({ expect: side.expect, notice, teams, markerConsumed, expectedSignal: side.signal, firedPlanId })
       // The side's violations: the pure verdict's, plus this boot's own instrumentation failures.
       const problems = [...verdict.problems]
       if (!recorded.ok) problems.push("session log unreadable: " + recorded.error)
@@ -1831,8 +1894,6 @@ async function runReal(): Promise<void> {
       // must not fire at all must have written no fire line.
       if (side.expect === "stage") {
         if (!firedLine.includes("staged=1")) problems.push("the row's own fire line must report staged=1, got " + JSON.stringify(firedLine.slice(0, 200)))
-        // The plan id the ROW recorded for this fire, read by the SAME pattern the notice is read with.
-        const firedPlanId = planIdsIn(firedLine)[0] ?? ""
         if (firedPlanId === "" || firedPlanId !== notice.planIds[0]) {
           problems.push("the row log names " + JSON.stringify(firedPlanId === "" ? "(no plan)" : firedPlanId) + " while the injected notice names " + JSON.stringify(notice.planIds[0] ?? "(no plan)") + " — the row log and the notice must agree")
         }
@@ -1852,10 +1913,10 @@ async function runReal(): Promise<void> {
         writeFileSync(join(keep, "prompt.txt"), prompts[index])
         // The ROW's own log is copied verbatim: it is the primary evidence (boot signature + fire).
         writeFileSync(join(keep, "row-log.txt"), rowLog)
-        writeFileSync(join(keep, "notices.json"), JSON.stringify({ notice, teams, goal: goal.slice(0, 400), bootLine: bootLine.slice(0, 400), firedLine: firedLine.slice(0, 400), gateInstalled, gateKeyAbsent, ownKeyWritten, problems }, null, 2))
+        writeFileSync(join(keep, "notices.json"), JSON.stringify({ notice, teams, branch: verdict.branch ?? null, goal: goal.slice(0, 400), bootLine: bootLine.slice(0, 400), firedLine: firedLine.slice(0, 400), gateInstalled, gateKeyAbsent, ownKeyWritten, problems }, null, 2))
       } catch { /* evidence copy is best-effort; the assertions are the gate */ }
       results.push({
-        prompt: prompts[index], expect: side.expect, expectedMode: side.expectedMode, exited: live.status,
+        prompt: prompts[index], expect: side.expect, expectedMode: side.expectedMode, exited: live.status, branch: verdict.branch,
         notices: notice.any, advisory: notice.advisory, mechanical: notice.mechanical,
         officialTools: notice.officialTools, mechanicalTool: notice.mechanicalTool,
         retiredVocabulary: notice.retiredVocabulary, retiredProvisioned: notice.retiredProvisioned,
@@ -1925,16 +1986,16 @@ async function runReal(): Promise<void> {
     simpleNotices: steps.simpleSide.map((r) => r.notices),
     softNotices: steps.softComplexSide.map((r) => r.notices),
     softPlanIds: steps.softComplexSide.map((r) => r.planIds),
-    mechanicalDefault: steps.mechanicalDefaultSide.map((r) => ({ notices: r.notices, planIds: r.planIds, stagedPlans: r.stagedPlans, teamRecords: r.teamRecords, gateKeyAbsent: r.gateKeyAbsent, bootLine: r.bootLine, firedLine: r.firedLine })),
+    mechanicalDefault: steps.mechanicalDefaultSide.map((r) => ({ notices: r.notices, planIds: r.planIds, stagedPlans: r.stagedPlans, teamRecords: r.teamRecords, branch: r.branch, gateKeyAbsent: r.gateKeyAbsent, bootLine: r.bootLine, firedLine: r.firedLine })),
     mechanicalDefaultGateKeyAbsent: steps.mechanicalDefaultSide.every((r) => r.gateKeyAbsent === true),
     explicitMarkerConsumed: steps.explicitSide.map((r) => r.markerConsumed),
-    boulderActive: steps.boulderActiveSide.map((r) => ({ notices: r.notices, signals: r.signals, stagedPlans: r.stagedPlans, teamRecords: r.teamRecords, planIds: r.planIds })),
+    boulderActive: steps.boulderActiveSide.map((r) => ({ notices: r.notices, signals: r.signals, stagedPlans: r.stagedPlans, teamRecords: r.teamRecords, planIds: r.planIds, branch: r.branch })),
     boulderCompleted: steps.boulderCompletedSide.map((r) => ({ notices: r.notices, stagedPlans: r.stagedPlans, teamRecords: r.teamRecords })),
     advisory: steps.advisorySide.map((r) => ({ notices: r.notices, advisory: r.advisory, stagedPlans: r.stagedPlans, teamRecords: r.teamRecords })),
     off: steps.offSide.map((r) => ({ notices: r.notices, stagedPlans: r.stagedPlans, teamRecords: r.teamRecords, modeLine: r.bootLine })),
-    cjkPositive: steps.cjkPositiveSide.map((r) => ({ notices: r.notices, signals: r.signals, stagedPlans: r.stagedPlans, planIds: r.planIds, teamRecords: r.teamRecords, firedLine: r.firedLine })),
+    cjkPositive: steps.cjkPositiveSide.map((r) => ({ notices: r.notices, signals: r.signals, stagedPlans: r.stagedPlans, planIds: r.planIds, teamRecords: r.teamRecords, branch: r.branch, firedLine: r.firedLine })),
     cjkNegative: steps.cjkNegativeSide.map((r) => ({ notices: r.notices, stagedPlans: r.stagedPlans, teamRecords: r.teamRecords })),
-    largeWorkspace: steps.largeWorkspaceSide.map((r) => ({ notices: r.notices, signals: r.signals, stagedPlans: r.stagedPlans, planIds: r.planIds, teamRecords: r.teamRecords, firedLine: r.firedLine })),
+    largeWorkspace: steps.largeWorkspaceSide.map((r) => ({ notices: r.notices, signals: r.signals, stagedPlans: r.stagedPlans, planIds: r.planIds, teamRecords: r.teamRecords, branch: r.branch, firedLine: r.firedLine })),
   }
 
   // The run's single verdict: every ledger entry that carries an `ok` must have held.
