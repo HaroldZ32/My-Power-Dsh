@@ -14,6 +14,49 @@ Further reading:
 - [`VENDOR_LOCK.json`](./VENDOR_LOCK.json) — the pinned upstream baseline each release is measured
   against.
 
+## v0.15.2 — team settlement, an authorized release, and a sidebar DAG that fits
+
+Patch release over v0.15.1. Two merged waves: the team plane now settles its members and scopes its
+dispatch ledger per team, and the TUI sidebar DAG no longer drops nodes or collapses on a wheel drag.
+
+**Fixed — the team plane (wave `team-board-settlement`).** A member settles to `inactive` only when it
+owns no open task: deterministically after `complete`/`fail`, and from a detached
+`agent/turn-stopping` event keyed by `executorRef`. A dispatch claim raises a settled member back to
+`running`, and a team whose tasks are all terminal reaches `phase: idle`. The dispatch ledger is
+team-scoped (`teamId::taskId`), prunes a team's rows when its record reaches the terminal phase, and
+drops legacy bare keys with a `forgotten` report. `release` now reopens the task row (`pending`, owner
+and start clock cleared, CAS-bounded) and is authorized: only the team's Lead or the task's own owner
+may release, and the check runs before the pairing is freed (CodeRabbit F1); a successful release
+renders as a release rather than as a close (F2); and a settled member that claims its own task is
+raised back to `running` (F3). A live headless boot observed approve → dispatch → complete →
+`phase: idle`, member `inactive`, the composite ledger key and the team-sourced goal anchor.
+
+**Fixed — the TUI sidebar DAG and the fullscreen graph (wave `tui-refresh`).** The sidebar picks boxes
+only when the natural drawing fits BOTH axes (a three-sibling rank in a 26-cell interior falls back to
+rail and still draws every node); the window budget is the real four-row chrome, so the last row is not
+clipped and no box is drawn in half; the scrollbar cell is reserved, the title is drawn once, and the
+footer keeps its position and `col n/m`. The fullscreen graph clamps its vertical offset in the render
+loop, both hit tests, the wheel, `⇧↓/j`, `PgDn`, `End` and `Home`, so a wheel drag or End can no longer
+empty it. The sidebar panel refreshes on the fixed 2 s cadence, and the panel frame swallows wheels on
+its chrome instead of scrolling the chat.
+
+**Changed — docs.** `docs/tui{,.zh-CN}.md` §3.5 and one `agent-references/troubleshooting.md` row
+document `Ctrl+L` (the host repaint after cells are lost over SSH), `r`/`Home` (a collapsed fullscreen
+graph), `DSH_TUI_DISABLE_MOUSE` as click/selection-only (mouse reporting and the wheel stay active), and
+the tmux/TERM/locale/font recipe. `docs/design{,.zh-CN}.md`, `docs/feature-audit{,.zh-CN}.md` and the
+team-core/workmate READMEs describe the authoritative record, the one-shot consult and the in-use gate
+across both team-record layouts.
+
+**Verification.** Full gate sweep at the release commit: `bun test packages` **2279 pass / 3 skip /
+0 fail of 2282**, `bun run typecheck` clean, `bun run test:qa` PASS, `verify:gates` 9/9, `verify:docs`
+PASS, `verify:rows` PASS, the preset-conformance self-test PASS, `verify-dist-fresh` 33/33 fresh,
+pack-closure 612/612 identical, and `verify-no-host-override` PASS. The rootless real-machine Docker
+lane (`--mode source --require-docker --live`) ran a real model turn on all three planes:
+**117 passed / 0 failed / 5 declared NULL, exit 0**
+(`evidence/docker/client-install/2026-10-22T12-40-53Z`; the NULL rows are the four `oneclick.*`
+measurements that only the published-package lane grades, plus `ui.teamBoard`, which this run did not
+request).
+
 ## v0.15.1 — reconcile the context-diet wave with the code, and fix the Docker release recipe
 
 Patch release over v0.15.0. The context-diet wave shipped correct prompts but several wrong statements about what the code does. A full review of its 12 commits, plus a real-machine Docker run, found them; this release aligns every live statement with the code and fixes two release-process defects.
