@@ -153,8 +153,9 @@ This row installs TWO `tools.guard` callbacks beside the read-only one: a **capt
 are refused while the documentation band — `.mpd/**`, `docs/**`, `evidence/**`, `agent-references/**`
 and the root instruction/overview files — stays readable; knob `captain.investigation`, `"deny"` default
 | `"allow"`) and a **delegation gate** (a call to `subagent`, `subagent_fork` or `workflow` is refused
-with a sentence naming `mpd_role_spawn`, the workmate library, Agent Teams and `send_message`; knob
-`delegation.gate`, `"deny"` default | `"captain"` | `"allow"`).
+with a sentence naming `mpd_role_spawn`, the workmate library, Agent Teams and `send_message` — with
+the qualifier that `send_message` continues only an EXISTING TEAM child, never a finished consult
+(consults are one-shot); knob `delegation.gate`, `"deny"` default | `"captain"` | `"allow"`).
 
 **The delegation gate's preset exemption is TOP-LEVEL ONLY.** A top-level session of another preset (the
 deployment default `cordis` included) keeps its own spawn habits, while MEMBER AND CHILD sessions stay

@@ -69,7 +69,7 @@
 
 ### 委派闸门与侦察 guard（2026-10-20 恢复）
 
-本行在只读 guard 之外安装**两道** `tools.guard` 回调：**captain 侦察 guard**（`mpd` preset 的顶层 session 委派侦察，因此对**源码**路径的 `read`/`grep`/`glob` 会被拒绝，而文档带 —— `.mpd/**`、`docs/**`、`evidence/**`、`agent-references/**` 以及根目录的说明/概览文件 —— 保持可读；开关 `captain.investigation`，默认 `"deny"` | `"allow"`）与**委派闸门**（对 `subagent`、`subagent_fork`、`workflow` 的调用被拒绝，拒绝文本点名 `mpd_role_spawn`、workmate 库、Agent Teams 与 `send_message`；开关 `delegation.gate`，默认 `"deny"` | `"captain"` | `"allow"`）。
+本行在只读 guard 之外安装**两道** `tools.guard` 回调：**captain 侦察 guard**（`mpd` preset 的顶层 session 委派侦察，因此对**源码**路径的 `read`/`grep`/`glob` 会被拒绝，而文档带 —— `.mpd/**`、`docs/**`、`evidence/**`、`agent-references/**` 以及根目录的说明/概览文件 —— 保持可读；开关 `captain.investigation`，默认 `"deny"` | `"allow"`）与**委派闸门**（对 `subagent`、`subagent_fork`、`workflow` 的调用被拒绝，拒绝文本点名 `mpd_role_spawn`、workmate 库、Agent Teams 与 `send_message`，并明确限定：`send_message` 只能继续**已存在的 TEAM 子会话**，绝不用于已结束的咨询（consult 是一次性的）；开关 `delegation.gate`，默认 `"deny"` | `"captain"` | `"allow"`）。
 
 **委派闸门的 preset 豁免只适用于顶层 session。** 别的 preset（包括部署默认的 `cordis`）的**顶层** session 保留自己的 spawn 习惯；而**成员与子 session 不论运行哪个 preset 都继续受门控** —— 它们的委派属于 captain 的路径，子 session 的 preset 不得重新打开官方 spawn 工具。侦察 guard 由 `sessionIsMpdCaptain` 限定（顶层 **且** `mpd` preset），因此对任何 rank 的非 `mpd` session 都不生效。闸门按不依赖 preset 的 `sessionRank` 判定，其 mode 在该范围内决定覆盖面：`deny`（默认）覆盖 `mpd` preset 的顶层 session 以及每个成员/子/无 header 的 session，`captain` 只约束顶层 session，`allow` 则完全放行。
 
