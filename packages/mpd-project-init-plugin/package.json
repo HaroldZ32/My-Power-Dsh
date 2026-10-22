@@ -1,0 +1,7 @@
+{
+  "name": "@mpd-dsh/project-init",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "One-time AGENT.md scaffold for a new project (host row mpd-project-init)"
+}

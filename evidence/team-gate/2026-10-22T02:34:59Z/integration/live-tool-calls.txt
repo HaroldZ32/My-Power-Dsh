@@ -1,0 +1,8 @@
+== evidence/team-gate/2026-10-22T02:34:59Z/integration/live-mount-sessions/--tmp-mpd-mount-2nN0ji-ws--/abc3ff7c-d4fa-4399-86f0-f7cfe4867e53/session.v4.jsonl.zstd frames=11
+== evidence/team-gate/2026-10-22T02:34:59Z/integration/live-mount-sessions/--tmp-mpd-mount-2nN0ji-ws--/session-73fcf134-e3c7-4d0d-a964-84ef2521ddd8/session.v4.jsonl.zstd frames=60
+CALL agent_teams_plan callId=call_00_o69bq7QMSH0co5gYkSCg6786 args="{\"action\": \"status\"}"
+CALL agent_teams_plan callId=call_00_pxqgpovmKAr6EH6uq6lT8739 args="{\"action\": \"edit\"}"
+CALL agent_teams_plan callId=call_00_HhMGlw8jePc54C8MHnCo7178 args="{\"action\": \"add_member\", \"member\": {\"name\": \"live-reviewer\", \"description\": \"Reviewer - reply with exactly: ok\", \"prompt\": \"Reply with exactly: ok\"}}"
+CALL agent_teams_plan callId=call_00_ET_PnnBnjkiK6ERniKByE1o1885 args="{\"action\": \"create_task\", \"task\": {\"subject\": \"Reply with ok\", \"owner\": \"live-reviewer\"}}"
+CALL agent_teams_plan callId=call_00_ZyDkl8aznhTkZ7SBlEXL6877 args="{\"action\": \"approve\"}"
+CALL agent_teams_plan callId=call_00_4pNxNEpOKVg7oQ7glXIF0084 args="{\"action\": \"status\"}"

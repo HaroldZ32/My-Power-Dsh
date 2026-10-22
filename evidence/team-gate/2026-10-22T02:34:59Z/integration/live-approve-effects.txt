@@ -1,0 +1,13 @@
+# Live mounting boot — mount + approval bundle evidence
+# profile mpd-headless installed by scripts/install-profile.ts (offline), QA-only overlay pins agent-preset-registry default to mpd
+# workspace: empty dir; real credentials staged from ~/.dsh/.credentials.yaml (0600), never printed
+
+== evidence/team-gate/2026-10-22T02:34:59Z/integration/live-mount-sessions/--tmp-mpd-mount-2nN0ji-ws--/session-73fcf134-e3c7-4d0d-a964-84ef2521ddd8/session.v4.jsonl.zstd
+APPROVE {"turn":1,"step":5,"callId":"call_00_ZyDkl8aznhTkZ7SBlEXL6877","name":"agent_teams_plan","arguments":"{\"action\": \"approve\"}"}
+GOAL {"operation":"create","id":"goal-d49b0002-a478-43e1-8a10-70d42002c97b","revision":1,"objectiveHead":"Staged mechanically by the mpd session-start complexity gate on complexity signals B.\nThis"}
+GOAL {"operation":"complete","id":"goal-d49b0002-a478-43e1-8a10-70d42002c97b","revision":2,"objectiveHead":"Staged mechanically by the mpd session-start complexity gate on complexity signals B.\nThis"}
+TODO {"todos":[{"content":"Reply with ok","status":"pending"}]}
+== evidence/team-gate/2026-10-22T02:34:59Z/integration/live-mount-sessions/--tmp-mpd-mount-joT5sZ-ws--/session-3a2c34dd-e3f4-46f5-a007-e69c494258cb/session.v4.jsonl.zstd
+APPROVE {"turn":1,"step":5,"callId":"call_00_ET_0o3Lp3Fsts4YWFYYvRjQ9335","name":"agent_teams_plan","arguments":"{\"action\": \"approve\"}"}
+GOAL {"operation":"create","id":"goal-5347e364-3c3d-4a8e-9185-1ebe5b1fca0f","revision":1,"objectiveHead":"Staged mechanically by the mpd session-start complexity gate on complexity signals B.\nThis"}
+TODO {"todos":[{"content":"Reply with ok","status":"pending"}]}

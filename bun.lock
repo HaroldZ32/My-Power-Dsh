@@ -97,6 +97,10 @@
       "name": "@mpd-dsh/modelchain",
       "version": "0.2.3",
     },
+    "packages/mpd-project-init-plugin": {
+      "name": "@mpd-dsh/project-init",
+      "version": "0.1.0",
+    },
     "packages/mpd-qa-roles-probe": {
       "name": "@mpd-dsh/qa-roles-probe",
       "version": "0.3.2",
@@ -408,6 +412,8 @@
     "@mpd-dsh/modelchain": ["@mpd-dsh/modelchain@workspace:packages/mpd-modelchain-plugin"],
 
     "@mpd-dsh/mpd-tui": ["@mpd-dsh/mpd-tui@workspace:packages/mpd-tui-plugin"],
+
+    "@mpd-dsh/project-init": ["@mpd-dsh/project-init@workspace:packages/mpd-project-init-plugin"],
 
     "@mpd-dsh/qa-roles-probe": ["@mpd-dsh/qa-roles-probe@workspace:packages/mpd-qa-roles-probe"],
 

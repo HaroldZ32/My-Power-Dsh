@@ -400,6 +400,146 @@ function callerIdentity(record: TeamRecord, sessionId: string, title: string, li
   return ownMember === undefined ? { ancestry: lineage } : { ownMember, ancestry: [] }
 }
 
+/** The tool whose WHOLE-LIST write carries a wave's checklist; probed before it is ever called. */
+const TODO_TOOL_NAME = "todo_write"
+
+/**
+ * The longest the bundled `todo_write` seed may take, in milliseconds.
+ *
+ * WHY THE ROW OWNS THIS BOUND. `dsh.executeTool` uses a caller `signal` INSTEAD of any timeout
+ * (`input.signal ?? timeoutSignal(input.timeoutMs ?? DEFAULT_TOOL_TIMEOUT_MS)` in the adapter), so a
+ * call that supplies neither is bounded only by the adapter's 120 s default. The seed is the LAST act
+ * of an approval that already succeeded, so it must not hold the answer for minutes: a whole-list
+ * checklist write is local and small, and 10 s is generous for it. {@link seedSignal} composes this
+ * bound with the caller's own cancellation.
+ */
+const SEED_TIMEOUT_MS = 10_000
+
+/**
+ * The cancellation the bundled `todo_write` seed runs under.
+ *
+ * BOTH sources, because the adapter accepts only ONE: `executeTool` computes
+ * `input.signal ?? timeoutSignal(input.timeoutMs ?? default)`, so a caller signal REPLACES the timeout
+ * (verified against the shipped adapter before this fix). Handing over `exec.signal` alone would let a
+ * wedged write outlive its turn; handing over a timeout alone would drop the caller's cancellation.
+ * Composition ends the seed on EITHER event. The goal ANCHOR is deliberately not wrapped this way:
+ * `mpdGoal.anchor` owns its own cancellation through the goal tools' contract.
+ * @param upstream - the approving call's own cancellation, when the harness supplied one.
+ * @returns the combined signal; a runtime without `AbortSignal.any`/`timeout` degrades to the caller's
+ *          own signal — exactly what this row passed before the bound existed.
+ */
+function seedSignal(upstream: AbortSignal | undefined): AbortSignal | undefined {
+  try {
+    /**
+     * The platform's signal constructors, read structurally: the type surface differs between the
+     * Node and Bun programs, and a partial runtime must degrade rather than fail an approval.
+     */
+    const platform = AbortSignal as unknown as { timeout?: (ms: number) => AbortSignal; any?: (signals: AbortSignal[]) => AbortSignal }
+    if (typeof platform?.timeout !== "function") return upstream
+    /** The bounded seed clock, minted per approval so two approvals never share one. */
+    const bounded = platform.timeout(SEED_TIMEOUT_MS)
+    if (upstream === undefined) return bounded
+    return typeof platform.any === "function" ? platform.any([upstream, bounded]) : upstream
+  } catch {
+    // A runtime that refuses the composition keeps the caller's signal — never "no cancellation".
+    return upstream
+  }
+}
+
+/**
+ * The slice of the `mpdGoal` service this row consumes, declared STRUCTURALLY on purpose.
+ *
+ * The authoritative declaration is `packages/mpd-goal-plugin/src/index.ts` (`MpdGoalService`); a
+ * source import would add a cross-package coupling the independence inventory may only SHRINK, and
+ * the two rows meet through a SERVICE at runtime anyway. A composition without the goal row leaves
+ * `ctx.get("mpdGoal")` undefined, and an approval simply anchors no goal.
+ */
+interface GoalBridge {
+  /**
+   * Put a durable goal in place, keeping any unfinished goal already current.
+   * @param exec - the tool exec carrying the calling agent, forwarded verbatim.
+   * @param input - the objective the goal carries and the token naming what asked for it.
+   * @returns the anchor outcome; `ok:false` carries the harness's own refusal in `error`.
+   */
+  anchor(exec: unknown, input: { objective: string; source: string }): Promise<{ ok: boolean; created: boolean; goal?: { id?: string } | null; error?: string; note?: string }>
+}
+
+/**
+ * Whether `todo_write` is registered in the CALLING agent's own view.
+ *
+ * The probe is `hasTool` WITH the live agent, exactly like the roster gate's `hasStagingTool`: that
+ * is the view that would EXECUTE the call (host globals + the preset plane mounted as the scope's
+ * parent), so a probe and the call it promises cannot come from different planes. A missing seam (a
+ * partial adapter double) or a throwing probe reads FALSE — the degrade step, never a throw.
+ * @param dsh - the adapter facade.
+ * @param agent - the live agent whose own view is probed.
+ * @returns true only when the adapter answered positively for that agent's view.
+ */
+function hasTodoTool(dsh: DshAdapter, agent: unknown): boolean {
+  if (typeof dsh.hasTool !== "function") return false
+  try {
+    return dsh.hasTool(TODO_TOOL_NAME, agent) === true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Bundle the durable GOAL and the TODO checklist into ONE successful approval (wave requirement 4).
+ *
+ * WHY HERE. Approval is the one moment a wave stops being text and becomes work, so it is the only
+ * place the three mechanisms can start TOGETHER: the team record is already written (and the plan
+ * archived unless a member's spawn stopped the sequence) by the time this runs, and the caller is
+ * about to read "approved". Both effects are ADDITIONS to an approval that has already succeeded —
+ * each is wrapped on its own, a failure logs ONE line and never changes the result, and a composition
+ * without the service or the tool simply skips the effect rather than failing the wave.
+ * @param ctx - the cordis context, read for the optional `mpdGoal` service.
+ * @param dsh - the adapter facade: the tool probe, the internal call and the row log.
+ * @param exec - the approving call's exec, carrying the live agent the effects are attributed to.
+ * @param plan - the plan this approval built the team from.
+ */
+async function bundleApprovalEffects(ctx: { get?: (id: string) => unknown }, dsh: DshAdapter, exec: DshToolExec, plan: StagedPlan): Promise<void> {
+  // ── 1. THE DURABLE GOAL ────────────────────────────────────────────────────
+  // The objective a later reader sees is what the team is FOR; the plan's name is the fallback a
+  // plan staged without a description leaves, so the goal is never created with an empty objective.
+  /** The objective the goal carries: the plan's description, falling back to its name. */
+  const objective = plan.description !== "" ? plan.description : plan.name
+  try {
+    /** The goal row's service; absent in a composition that does not mount that row. */
+    const bridge = ctx.get?.("mpdGoal") as GoalBridge | undefined
+    if (bridge !== undefined && typeof bridge.anchor === "function") {
+      /** The anchor outcome; the service KEEPS any unfinished goal already current. */
+      const outcome = await bridge.anchor(exec, { objective, source: "team" })
+      if (outcome?.ok === false) dsh.rowLog("mpd-team-core", "goal anchor refused after approval: " + String(outcome.error ?? "unknown"))
+    }
+  } catch (error) {
+    // Never fatal: the approval already happened, so a broken bridge costs one diagnostic line.
+    dsh.rowLog("mpd-team-core", "goal anchor failed after approval: " + String((error as Error)?.message ?? error))
+  }
+  // ── 2. THE TODO CHECKLIST ──────────────────────────────────────────────────
+  // ONE pending item per staged task, written through `todo_write` — a WHOLE-LIST replace, which is
+  // the right effect here and only here: an approval starts a new wave, so the checklist it seeds
+  // IS the wave's checklist. A plan with NO tasks seeds nothing, because writing `[]` would ERASE a
+  // checklist the captain already holds, the opposite of what this requirement asks for.
+  if (plan.tasks.length === 0) return
+  if (!hasTodoTool(dsh, exec.agent)) return
+  try {
+    /** The harness's own result; a marked error is logged, never thrown at the approval. */
+    const result = await dsh.executeTool({
+      name: TODO_TOOL_NAME,
+      arguments: { todos: plan.tasks.map((task) => ({ content: task.subject, status: "pending" })) },
+      agent: exec.agent,
+      // BOUNDED AND CANCELLABLE: a caller signal would REPLACE the adapter's timeout, so the two are
+      // composed here instead of trusting either one alone.
+      signal: seedSignal(exec.signal),
+    })
+    if (result.isError === true) dsh.rowLog("mpd-team-core", "todo seed failed after approval: " + String(result.error ?? "the tool returned an error result"))
+  } catch (error) {
+    // Same rule as the anchor: the wave is already approved, so one line and no rethrow.
+    dsh.rowLog("mpd-team-core", "todo seed failed after approval: " + String((error as Error)?.message ?? error))
+  }
+}
+
 /** Row entry point: build the adapter once, then register the five tools and the `/agent-teams` command. */
 export function apply(ctx: any): void {
   /** The adapter facade — the only contact surface this row has with the harness seams. */
@@ -1193,6 +1333,14 @@ export function apply(ctx: any): void {
         // The plan is archived so the STAGING slot is free for the next wave while the approved
         // plan stays readable; the record is what every surface reads from here on.
         if (stoppedAt === undefined) archivePlan(workspace, { ...approved })
+        // ── WAVE REQUIREMENT 4: ONE APPROVAL, THREE MECHANISMS ────────────────
+        // The team RECORD exists (it is written above even when a spawn stopped the sequence), so
+        // this is the moment the wave's durable GOAL and its TODO checklist start too — bundled
+        // here instead of left to the captain's next turn. The effects are deliberately AFTER the
+        // persistence: `dry_run` returned earlier, `create`/`add_member`/`edit` never reach this
+        // line, and an approval that throws (empty shell, already approved, executor refusal) does
+        // not leak a goal or a checklist. NON-FATAL by contract: see {@link bundleApprovalEffects}.
+        await bundleApprovalEffects(ctx, dsh, exec, plan)
         return { plan: approved, team: approvedRecord, created, ...(stoppedAt === undefined ? {} : { stoppedAt }) }
       }
 

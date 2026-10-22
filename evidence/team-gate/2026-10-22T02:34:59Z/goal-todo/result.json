@@ -1,0 +1,103 @@
+{
+  "lane": "R4 — goal + todo bundled into the agent_teams_plan APPROVE success path",
+  "contract": ".mpd/plans/team-gate-wave.md (R4, lines 93-105); user clause 4",
+  "package": "packages/mpd-team-core-plugin",
+  "branch": "feature/team-gate-wave (captain commits; this lane ran NO git write command)",
+  "capturedAtLocal": "2026-10-22T10:38:44+08:00 (final settled sweep, UTC 02:38:44Z)",
+  "files": {
+    "modified": [
+      {
+        "path": "packages/mpd-team-core-plugin/src/index.ts",
+        "insertions": 102,
+        "symbols": [
+          "TODO_TOOL_NAME (module const, 'todo_write')",
+          "GoalBridge (module interface: the structural slice of `mpdGoal` this row consumes)",
+          "hasTodoTool(dsh, agent) — hasTool probe with the LIVE agent, tolerant like hasStagingTool",
+          "bundleApprovalEffects(ctx, dsh, exec, plan) — anchor + todo seed, each effect isolated and non-fatal",
+          "agent_teams_plan execute/action=approve — one call site, AFTER writeTeam/writePlan/archivePlan and BEFORE the answer is returned"
+        ]
+      },
+      {
+        "path": "packages/mpd-team-core-plugin/README.md",
+        "insertions": 9,
+        "symbols": ["Semantics: new bullet 'ONE approval starts three mechanisms.'"]
+      },
+      {
+        "path": "packages/mpd-team-core-plugin/README.zh-CN.md",
+        "insertions": 6,
+        "symbols": ["语义：新增『一次批准同时启动三套机制』一条"]
+      }
+    ],
+    "added": [
+      {
+        "path": "packages/mpd-team-core-plugin/test/goal-todo-bundle.test.ts",
+        "tests": 9,
+        "arms": [
+          "ONE anchor, plan description + source=team, approval answer unchanged, team on disk",
+          "ONE whole-list todo_write from task subjects, scoped to the live agent",
+          "empty plan description falls back to the plan name",
+          "NEGATIVE: create/create_task and dry_run approve anchor and seed NOTHING; the real approve does each exactly once",
+          "NEGATIVE: the gate's inert shell cannot approve, so it anchors nothing",
+          "a composition without mpdGoal AND without todo_write still approves and logs nothing",
+          "a plan with NO tasks seeds no todo list (a whole-list write would clear the captain's)",
+          "a THROWING effect costs one log line each and never the approval",
+          "an ERROR-RESULT todo_write also costs one log line and never the approval"
+        ]
+      }
+    ],
+    "notTouched": [
+      "packages/mpd-team-core-plugin/dist/index.js — the plan makes dist rebuild the CAPTAIN's integration step (pinned bun, all adapter dependents)",
+      "skills/**, presets/mpd.patch.yml, AGENTS.md (forbidden to this lane)"
+    ]
+  },
+  "contractMapping": {
+    "approve-only": "effects sit inside `if (action === \"approve\")`, after persistence; `create`/`add_member`/`create_task`/`edit`/`status`/`delete` never reach them",
+    "not-on-inert-shell": "the empty-plan refusal throws before the effects; covered by an explicit negative arm",
+    "dry-run": "`dry_run` returns before the team is created, so no effect runs; covered by an explicit negative arm",
+    "after-the-team-exists": "the call site is after writeTeam + writePlan + archivePlan; a spawn-stopped approval has still persisted the record, so the wave's goal/todo start there too",
+    "anchor": "ctx.get(\"mpdGoal\") optional; anchor(exec, { objective: plan.description || plan.name, source: \"team\" })",
+    "todos": "probe dsh.hasTool(\"todo_write\", exec.agent); dsh.executeTool({name, arguments:{todos:[{content: subject, status:\"pending\"}]}, agent}); skipped when the plan has no tasks",
+    "non-fatal": "each effect in its own try/catch; ONE rowLog line on refusal/throw/isError; approval result and return value unchanged",
+    "no-new-config": "no Config key, no mpd.jsonc key, no row option added"
+  },
+  "commands": [
+    {
+      "command": "bun test packages/mpd-team-core-plugin/test/goal-todo-bundle.test.ts",
+      "observed": "9 pass / 0 fail, 38 expect() calls, 1 file",
+      "exit": 0
+    },
+    {
+      "command": "bun test packages/mpd-team-core-plugin",
+      "observed": "242 pass / 0 fail, 1066 expect() calls, 18 files",
+      "exit": 0
+    },
+    {
+      "command": "bun run typecheck",
+      "observed": "tsgo --noEmit — no diagnostics, exit 0 (final sweep 2026-10-22T10:38+08:00). NOTE: an earlier run at 10:40 failed with ONE error in packages/mpd-project-init-plugin/src/index.ts:416 (R3 lane, `rowLog` missing from its own Pick<DshAdapter,...>); that lane fixed it while this lane worked. No error ever came from mpd-team-core-plugin.",
+      "exit": 0
+    },
+    {
+      "command": "bun run verify:docs",
+      "observed": "PASS at the final sweep: pairs=49 failed=0 violations=0, links=440 dead=0. (An earlier run was red solely on `package-no-readme:packages/mpd-project-init-plugin` before the R3 lane added its README pair; the mpd-team-core-plugin pair never contributed a violation.)",
+      "exit": 0
+    },
+    {
+      "command": "bun run verify:comments",
+      "observed": "FINAL: VERDICT FAIL — 1 violation, `packages/mpd-project-init-plugin/test/project-init.test.ts:79: parameter-type — fakeAdapter` (R3 lane). My earlier hits on goal-todo-bundle.test.ts:200/213 (missing parameter types on stageWave/approveWave) were FIXED; no violation remains in packages/mpd-team-core-plugin, and R2's earlier :342 hit is gone too.",
+      "exit": 1,
+      "attribution": "SIBLING LANE (R3), outside this lane's scope"
+    }
+  ],
+  "unverified": [
+    "NO live mounting boot: the anchor and the todo seed were proven against the real tool surface with a STUB composition (real plugin apply, real plan/team stores, stubbed dsh/goal services). The acceptance gate names a real mounting boot as the captain's; it was not run in this lane.",
+    "The anchor reaches the harness through mpdGoal.anchor -> create_goal, so the harness's own authorisation still applies: a top-level session's user-started turn is expected to create the goal, while an unauthorised caller answers ok:false and this row logs ONE line and approves anyway. Not exercised against a live goal service here — the goal-row side is covered by packages/mpd-goal-plugin/test/goal.test.ts, not by this lane.",
+    "`todo_write` is a harness tool: this lane proves the probe + call contract, not that a given composition registers it. When it is absent the effect is skipped silently (asserted).",
+    "dist/ is NOT rebuilt (captain's integration step); a consumer of dist/ will not see this change until integration.",
+    "AGENTS.md / presets / skills docs are a shared one-writer step after R1-R4; not touched here."
+  ],
+  "evidence": "evidence/team-gate/2026-10-22T02:34:59Z/goal-todo/{result.json,output.log}",
+  "openFindings": [
+    "Shared-tree, outside R4: at 10:40 `bun run typecheck` failed on packages/mpd-project-init-plugin/src/index.ts:416 (`rowLog` on its narrowed Pick<DshAdapter,...>); GREEN again by 10:46 (the R3 lane fixed it). No action for R4.",
+    "Shared-tree, outside R4: `bun run verify:comments` is STILL RED at the final sweep on one declaration in packages/mpd-project-init-plugin/test/project-init.test.ts:79 (`fakeAdapter` lacks parameter types). The wave's `bun run verify:comments` acceptance gate cannot pass until R3 fixes it. verify:docs went GREEN (R3 added its README pair); typecheck is GREEN."
+  ]
+}

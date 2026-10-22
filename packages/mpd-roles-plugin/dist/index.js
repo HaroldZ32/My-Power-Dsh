@@ -222,6 +222,52 @@ var GATE_MODE_ADVISORY = "advisory";
 var GATE_MODE_OFF = "off";
 var GATE_CONFIG_KEY = "team.gate";
 var BOULDER_DIR_CONFIG_KEY = "boulder.dir";
+var GATE_SENSITIVITY_EASY = "easy";
+var GATE_SENSITIVITY_NORMAL = "normal";
+var GATE_SENSITIVITY_STRICT = "strict";
+var SENSITIVITY_CONFIG_KEY = "team.sensitivity";
+function resolveSensitivity(value) {
+  if (value === GATE_SENSITIVITY_NORMAL)
+    return GATE_SENSITIVITY_NORMAL;
+  if (value === GATE_SENSITIVITY_STRICT)
+    return GATE_SENSITIVITY_STRICT;
+  return GATE_SENSITIVITY_EASY;
+}
+var SENSITIVITY_THRESHOLDS = {
+  easy: {
+    deliverableVerbs: 2,
+    enumeratedLines: 2,
+    actionVerbs: 2,
+    clauseSteps: 2,
+    cSubSignals: 2,
+    cjkChars: 24,
+    cjkVerbs: 2,
+    workspaceScale: true,
+    lexicon: "expanded"
+  },
+  normal: {
+    deliverableVerbs: 4,
+    enumeratedLines: 3,
+    actionVerbs: 3,
+    clauseSteps: 3,
+    cSubSignals: 2,
+    cjkChars: 60,
+    cjkVerbs: 2,
+    workspaceScale: false,
+    lexicon: "pre-wave"
+  },
+  strict: {
+    deliverableVerbs: 6,
+    enumeratedLines: 4,
+    actionVerbs: 4,
+    clauseSteps: 4,
+    cSubSignals: 3,
+    cjkChars: 80,
+    cjkVerbs: 3,
+    workspaceScale: false,
+    lexicon: "expanded"
+  }
+};
 var WORKSPACE_ROOT_SPELLINGS = [".", "./", ".mpd", ".mpd/", "./.mpd", "./.mpd/"];
 function resolveBoulderDir(value) {
   if (typeof value !== "string")
@@ -239,18 +285,35 @@ var INERT_PLAN_PHRASE = "NOTHING has been spawned; the plan is INERT until appro
 var MISSING_PLAN_ID_PHRASE = "STAGING FAILED TO RETURN A PLAN ID";
 var NO_TEAM_STAGED_PHRASE = "NO team was staged";
 var SOLO_PERMISSION_SENTENCE = "- If the work does not warrant a team (a short or single-threaded task), continue solo";
-var DELIVERABLE_VERB_PATTERN = /(align|migrate|refactor|audit|overhaul|port|rewrite|consolidate|脱去|移除|剥离|删除|新建|搬迁|修复|校准|重建|验证|对齐|重构|迁移|审计|移植|梳理|全量|独立|强制|回归|设计|实现|改造|补充)/giu;
-var ACTION_VERB_PATTERN = /\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|脱去|移除|剥离|删除|新建|搬迁|修复|校准|重建|验证|对齐|重构|迁移|审计|移植|梳理|全量|独立|强制|回归|设计|实现|改造|补充/giu;
+var PRE_WAVE_DELIVERABLE_VERB_PATTERN = /(align|migrate|refactor|audit|overhaul|port|rewrite|consolidate|脱去|移除|剥离|删除|新建|搬迁|修复|校准|重建|验证|对齐|重构|迁移|审计|移植|梳理|全量|独立|强制|回归|设计|实现|改造|补充)/giu;
+var PRE_WAVE_ACTION_VERB_PATTERN = /\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|脱去|移除|剥离|删除|新建|搬迁|修复|校准|重建|验证|对齐|重构|迁移|审计|移植|梳理|全量|独立|强制|回归|设计|实现|改造|补充/giu;
+var PRE_WAVE_CLAUSE_ACTION_PATTERN = /^\s*(?:(?:and|then|also)\s+)?(?:\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|脱去|移除|剥离|删除|新建|搬迁|修复|校准|重建|验证|对齐|重构|迁移|审计|移植|梳理|全量|独立|强制|回归|设计|实现|改造|补充)/iu;
+var DELIVERABLE_VERB_PATTERN = /(align|migrate|refactor|audit|overhaul|port|rewrite|consolidate|implement|add|build|change|check|verify|fix|create|update|remove|delete|move|rename|test|document|wire|integrate|deploy|release|review|investigate|diagnose|reproduce|benchmark|optimize|harden|validate|split|restructure|脱去|移除|剥离|删除|新建|搬迁|修复|校准|重建|验证|对齐|重构|迁移|审计|移植|梳理|全量|独立|强制|回归|设计|实现|改造|补充|降低|提高|提升|触发|创建|添加|增加|修改|调整|优化|统一|清理|简化|拆分|补全|支持|接入|升级|覆盖|整合|编排|打包|发布|部署|审查|评审|排查|定位|复现|编写|撰写|补写|重写|运行|执行|检查|核查|扩展|完善|精简|合并|替换|加固|校验|测量|记录|规范|抽取)/giu;
+var ACTION_VERB_PATTERN = /\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|脱去|移除|剥离|删除|新建|搬迁|修复|校准|重建|验证|对齐|重构|迁移|审计|移植|梳理|全量|独立|强制|回归|设计|实现|改造|补充|降低|提高|提升|触发|创建|添加|增加|修改|调整|优化|统一|清理|简化|拆分|补全|支持|接入|升级|覆盖|整合|编排|打包|发布|部署|审查|评审|排查|定位|复现|编写|撰写|补写|重写|运行|执行|检查|核查|扩展|完善|精简|合并|替换|加固|校验|测量|记录|规范|抽取/giu;
 var ENUMERATED_LINE_PATTERN = /^\s*(?:\d+[.)]|[-*|])\s/u;
 var CLAUSE_SEPARATOR_PATTERN = /[\n\r;:,.、，。；：！？（）「」『』“”‘’【】]/u;
-var CLAUSE_ACTION_PATTERN = /^\s*(?:(?:and|then|also)\s+)?(?:\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|脱去|移除|剥离|删除|新建|搬迁|修复|校准|重建|验证|对齐|重构|迁移|审计|移植|梳理|全量|独立|强制|回归|设计|实现|改造|补充)/iu;
-var DELIVERABLE_VERB_MIN = 4;
-var ENUMERATED_LINE_MIN = 3;
-var ACTION_VERB_MIN = 3;
-var C_SUBSIGNAL_MIN = 2;
+var CLAUSE_ACTION_PATTERN = /^\s*(?:(?:and|then|also)\s+)?(?:\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|脱去|移除|剥离|删除|新建|搬迁|修复|校准|重建|验证|对齐|重构|迁移|审计|移植|梳理|全量|独立|强制|回归|设计|实现|改造|补充|降低|提高|提升|触发|创建|添加|增加|修改|调整|优化|统一|清理|简化|拆分|补全|支持|接入|升级|覆盖|整合|编排|打包|发布|部署|审查|评审|排查|定位|复现|编写|撰写|补写|重写|运行|执行|检查|核查|扩展|完善|精简|合并|替换|加固|校验|测量|记录|规范|抽取)/iu;
+var PRE_WAVE_LEXICON = {
+  deliverable: PRE_WAVE_DELIVERABLE_VERB_PATTERN,
+  action: PRE_WAVE_ACTION_VERB_PATTERN,
+  clause: PRE_WAVE_CLAUSE_ACTION_PATTERN
+};
+var EXPANDED_LEXICON = {
+  deliverable: DELIVERABLE_VERB_PATTERN,
+  action: ACTION_VERB_PATTERN,
+  clause: CLAUSE_ACTION_PATTERN
+};
+var GATE_LEXICONS = {
+  "pre-wave": PRE_WAVE_LEXICON,
+  expanded: EXPANDED_LEXICON
+};
+var DELIVERABLE_VERB_MIN = SENSITIVITY_THRESHOLDS.normal.deliverableVerbs;
+var ENUMERATED_LINE_MIN = SENSITIVITY_THRESHOLDS.normal.enumeratedLines;
+var ACTION_VERB_MIN = SENSITIVITY_THRESHOLDS.normal.actionVerbs;
+var C_SUBSIGNAL_MIN = SENSITIVITY_THRESHOLDS.normal.cSubSignals;
 var CJK_CHAR_PATTERN = /\p{Script=Han}/gu;
-var CJK_CHAR_MIN = 60;
-var CJK_ACTION_VERB_MIN = 2;
+var CJK_CHAR_MIN = SENSITIVITY_THRESHOLDS.normal.cjkChars;
+var CJK_ACTION_VERB_MIN = SENSITIVITY_THRESHOLDS.normal.cjkVerbs;
 var GATE_PLAN_NAME_MAX = 60;
 var GATE_PLAN_EXCERPT_MAX = 500;
 var GATE_PLAN_NAME_FALLBACK = "session-start complexity gate team";
@@ -269,10 +332,10 @@ function enumeratedLineCount(text) {
       count += 1;
   return count;
 }
-function clauseStepCount(text) {
+function clauseStepCount(text, pattern) {
   let count = 0;
   for (const clause of text.split(CLAUSE_SEPARATOR_PATTERN))
-    if (CLAUSE_ACTION_PATTERN.test(clause))
+    if (pattern.test(clause))
       count += 1;
   return count;
 }
@@ -293,23 +356,27 @@ function consumeExplicitFlag(text) {
 }
 function evaluateComplexityGate(text, input = {}) {
   const source = String(text ?? "");
+  const thresholds = SENSITIVITY_THRESHOLDS[resolveSensitivity(input.sensitivity)];
+  const lexicon = GATE_LEXICONS[thresholds.lexicon];
   const signals = [];
   if (input.explicitFlag === true)
     signals.push("A");
-  if (distinctMatches(source, DELIVERABLE_VERB_PATTERN) >= DELIVERABLE_VERB_MIN)
+  if (distinctMatches(source, lexicon.deliverable) >= thresholds.deliverableVerbs)
     signals.push("B");
-  const actionVerbs = distinctMatches(source, ACTION_VERB_PATTERN);
+  const actionVerbs = distinctMatches(source, lexicon.action);
   const cSubSignals = [
-    enumeratedLineCount(source) >= ENUMERATED_LINE_MIN,
-    actionVerbs >= ACTION_VERB_MIN,
-    clauseStepCount(source) >= ENUMERATED_LINE_MIN
+    enumeratedLineCount(source) >= thresholds.enumeratedLines,
+    actionVerbs >= thresholds.actionVerbs,
+    clauseStepCount(source, lexicon.clause) >= thresholds.clauseSteps
   ].filter(Boolean).length;
-  if (cSubSignals >= C_SUBSIGNAL_MIN)
+  if (cSubSignals >= thresholds.cSubSignals)
     signals.push("C");
   if (input.activeBoulder === true)
     signals.push("D");
-  if (cjkCharCount(source) >= CJK_CHAR_MIN && actionVerbs >= CJK_ACTION_VERB_MIN)
+  if (cjkCharCount(source) >= thresholds.cjkChars && actionVerbs >= thresholds.cjkVerbs)
     signals.push("E");
+  if (thresholds.workspaceScale && input.workspaceScale === true)
+    signals.push("F");
   return { trigger: input.explicitFlag === true || signals.length >= 1, signals };
 }
 async function readBoulderGate(workspace, opts = {}) {
@@ -334,6 +401,45 @@ async function readBoulderGate(workspace, opts = {}) {
     };
   } catch {
     return { active: false };
+  }
+}
+var WORKSPACE_MANIFESTS = [
+  "package.json",
+  "pyproject.toml",
+  "Cargo.toml",
+  "go.mod",
+  "pom.xml",
+  "build.gradle",
+  "build.gradle.kts",
+  "composer.json",
+  "Gemfile",
+  "mix.exs",
+  "pubspec.yaml",
+  "CMakeLists.txt"
+];
+var WORKSPACE_PROJECT_DIRS = [
+  "packages",
+  "src",
+  "apps",
+  "lib",
+  "services",
+  "plugins",
+  "crates",
+  "cmd",
+  "internal",
+  "modules"
+];
+var WORKSPACE_VISIBLE_ENTRIES_MIN = 8;
+async function readWorkspaceScale(workspace, opts = {}) {
+  try {
+    const list = opts.readDir ?? ((path) => readDirFs(path, { encoding: "utf8", withFileTypes: false }));
+    const entries = (await list(String(workspace ?? ""))).map((entry) => String(entry));
+    const visible = entries.filter((name) => !name.startsWith("."));
+    const manifests = visible.filter((name) => WORKSPACE_MANIFESTS.includes(name)).length;
+    const projectDirs = visible.filter((name) => WORKSPACE_PROJECT_DIRS.includes(name)).length;
+    return manifests >= 1 && projectDirs >= 1 && visible.length >= WORKSPACE_VISIBLE_ENTRIES_MIN;
+  } catch {
+    return false;
   }
 }
 var TEAM_RECORDS_DIR = join(".mpd", "team", "teams");
@@ -684,7 +790,7 @@ function delegationGateDecision(input) {
   return;
 }
 function delegationRefusal(toolName) {
-  return "delegation gate: `" + toolName + "` is refused — the official spawn tools are not the delegation" + " path under the MPD discipline. Delegate instead: `mpd_role_spawn` (single-call roster consult)," + " `mpd_workmate_match` + `mpd_workmate_spawn` (durable instance), or Agent Teams for multi-member work" + " (`agent_teams_plan`, persona from `mpd_role_persona`); `send_message` continues an existing" + " continuable child. The gate covers the captain and every member session. `delegation.gate` in" + ' mpd.jsonc: "captain" limits it to the top-level session, "allow" releases it entirely.';
+  return "delegation gate: `" + toolName + "` is refused — the official spawn tools are not the delegation" + " path under the MPD discipline. Delegate instead: `mpd_role_spawn` (one-shot single-call roster consult)," + " `mpd_workmate_match` + `mpd_workmate_spawn` (durable instance), or Agent Teams for multi-member work" + " (`agent_teams_plan`, persona from `mpd_role_persona`); a consult is one-shot — `send_message`" + " continues only an existing TEAM child, never a finished consult. The gate covers the captain and" + " every member session. `delegation.gate` in" + ' mpd.jsonc: "captain" limits it to the top-level session, "allow" releases it entirely.';
 }
 function installDelegationGate(dsh, options) {
   const mode = resolveDelegationGateMode(options.configValue(DELEGATION_CONFIG_KEY));
@@ -1395,6 +1501,14 @@ async function startContinuableChild(subagents, spec, action) {
   }
   const argument = member === "startActivation" ? { ...spec, delivery: "parent" } : spec;
   return subagents[member].call(subagents, argument);
+}
+async function disposeSettledConsult(activation) {
+  const dispose = activation?.dispose;
+  if (typeof dispose !== "function")
+    return;
+  try {
+    await dispose.call(activation);
+  } catch {}
 }
 var REPORTED_RETIRED_SPAWN_FIELDS = new Set;
 function warnRetiredSpawnFields(spec) {
@@ -2148,6 +2262,7 @@ function createDshAdapter(ctx, config = {}) {
           delivery: "parent"
         });
         const settled = await (activation?.result ?? {});
+        await disposeSettledConsult(activation);
         return {
           output: textOfOutput(settled.output),
           structured: settled.structured,
@@ -2799,7 +2914,17 @@ function installSessionGate(dsh, options) {
         ...options.readFile === undefined ? {} : { readFile: options.readFile },
         ...boulderDir === undefined ? {} : { boulderDir }
       });
-      const verdict = evaluateComplexityGate(consumed.text, { explicitFlag: consumed.flagged, activeBoulder: boulder.active });
+      const sensitivity = resolveSensitivity(configValue(SENSITIVITY_CONFIG_KEY));
+      const wantsWorkspaceScale = SENSITIVITY_THRESHOLDS[sensitivity].workspaceScale;
+      const workspaceScale = wantsWorkspaceScale ? await readWorkspaceScale(workspace, {
+        ...options.readDir === undefined ? {} : { readDir: options.readDir }
+      }) : false;
+      const verdict = evaluateComplexityGate(consumed.text, {
+        explicitFlag: consumed.flagged,
+        activeBoulder: boulder.active,
+        sensitivity,
+        workspaceScale
+      });
       if (verdict.trigger !== true) {
         gateTrace("predicate false agent=" + agentId + " text=" + JSON.stringify(user.text.slice(0, 60)));
         return;
@@ -2821,11 +2946,11 @@ function installSessionGate(dsh, options) {
         }
       }
       const staged = mode === GATE_MODE_MECHANICAL && outcome.ok;
-      report('session gate fired for agent "' + agentId + '" signals=' + verdict.signals.join("/") + " mode=" + mode + " staged=" + (staged ? "1" : "0") + (outcome.planId === "" ? "" : " plan=" + outcome.planId));
+      report('session gate fired for agent "' + agentId + '" signals=' + verdict.signals.join("/") + " mode=" + mode + " staged=" + (staged ? "1" : "0") + (outcome.planId === "" ? "" : " plan=" + outcome.planId) + " sensitivity=" + sensitivity);
       if (staged && outcome.planId === "") {
         warn("session-start gate: " + MISSING_PLAN_ID_PHRASE + ' for agent "' + agentId + '" — the shell is staged but cannot be approved');
       }
-      gateTrace("FIRING agent=" + agentId + " signals=" + verdict.signals.join("/") + " mode=" + mode + " staged=" + String(staged));
+      gateTrace("FIRING agent=" + agentId + " signals=" + verdict.signals.join("/") + " mode=" + mode + " staged=" + String(staged) + " sensitivity=" + sensitivity);
       const notice = dsh.userMessage({
         text: staged ? mechanicalNoticeText({ planId: outcome.planId, signals: verdict.signals, explicit: consumed.flagged, alreadyStaged: outcome.alreadyStaged }) : advisoryNoticeText(verdict.signals, consumed.flagged),
         source: { kind: "mpd-roles", reason: "session-start-advisory" }
@@ -2876,7 +3001,13 @@ function installSessionGate(dsh, options) {
   };
   subscribe("agent/created", (payload) => register(payload?.agent ?? payload));
   subscribe("agent/disposed", (payload) => release(payload?.agent ?? payload));
-  return { installed: true, acted, disposers, mode: resolveGateMode(configValue(GATE_CONFIG_KEY)) };
+  return {
+    installed: true,
+    acted,
+    disposers,
+    mode: resolveGateMode(configValue(GATE_CONFIG_KEY)),
+    sensitivity: resolveSensitivity(configValue(SENSITIVITY_CONFIG_KEY))
+  };
 }
 
 // packages/mpd-roles-plugin/src/index.ts
@@ -3224,7 +3355,7 @@ refused (` + v.refused.length + `):
   });
   dsh.registerTool({
     name: "mpd_role_spawn",
-    description: "Run ONE bounded delegation with a specialist and return one report — a single-call consult, not an ephemeral subagent: the harness keeps the child CONTINUABLE, so after the report it stays listed as inactive and `send_message` can continue it. It carries the role's persona, model route and read-only discipline (read-only roles get a write-tool deny filter). Roles, each named for what it does: " + rosterFunctionList() + ". The child is labelled with that name. `mpd_workmate_spawn` is the same spawn mechanics for a durable, evolving instance (plus its persona/memory from the library). For multi-member team work prefer the official Agent Teams tools (spawn_teammate + team_task_create) instead of repeated single-call consults: a teammate inherits the caller's model route, while THIS path applies the role's teamModels slot route.",
+    description: "Run ONE bounded delegation with a specialist and return one report — a ONE-SHOT single-call consult: the adapter disposes the activation once the report settles, so the consult is NOT reused — ask a new question with a NEW spawn (the harness catalog is append-only, so a settled child may still list as `inactive`, but the contract is one-shot). It carries the role's persona, model route and read-only discipline (read-only roles get a write-tool deny filter). Roles, each named for what it does: " + rosterFunctionList() + ". The child is labelled with that name. `mpd_workmate_spawn` is the same spawn mechanics for a durable, evolving instance (its persona/memory/note — not the child session — carry continuity). For multi-member team work prefer the official Agent Teams tools (spawn_teammate + team_task_create) instead of repeated single-call consults: a teammate inherits the caller's model route, while THIS path applies the role's teamModels slot route.",
     parameters: { type: "object", properties: { role: { type: "string", description: 'role name (see mpd_roles_list), e.g. "Architect" or "Deep Worker"' }, task: { type: "string" }, context: { type: "string", description: "optional context block to include" }, model: { type: "string", description: "optional model override (default: the role's primary route)" } }, required: ["role", "task"], additionalProperties: false },
     output: { schema: { type: "object", properties: { role: { type: "string" }, status: { type: "string", enum: ["complete"] }, summary: { type: "string" }, recommendation: { type: "string" }, details: { type: "string" }, evidence: { type: "array", items: { type: "string" } }, stopReason: { type: "string" } }, required: ["role", "status", "summary"] }, render: (_a, v) => textBlock("role " + v.role + " (" + v.status + `)
 summary: ` + v.summary + (v.recommendation ? `
@@ -3304,6 +3435,8 @@ Work with the tools your role requires (read-only roles must never modify anythi
       return value;
     if (key === GATE_CONFIG_KEY)
       return config.team?.gate;
+    if (key === SENSITIVITY_CONFIG_KEY)
+      return config.team?.sensitivity;
     if (key === BOULDER_DIR_CONFIG_KEY)
       return config.boulder?.dir;
     if (key === INVESTIGATION_CONFIG_KEY)
@@ -3375,7 +3508,7 @@ Work with the tools your role requires (read-only roles must never modify anythi
       configValue,
       stagedPlan: stagedPlanProbe(ctx)
     });
-    guardOutcome.push("sessionGate=" + gate.mode);
+    guardOutcome.push("sessionGate=" + gate.mode + " sensitivity=" + gate.sensitivity);
   } catch (error) {
     guardOutcome.push("sessionGate=absent");
     warnOnce("team-gate:threw", "the session-start complexity gate could not be installed (" + errText(error) + ")");

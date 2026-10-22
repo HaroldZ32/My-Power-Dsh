@@ -508,6 +508,13 @@
     # patch layer, `presets/mpd.patch.yml`.
     - id: mpd-bootstrap
       name: '@mpd-dsh/mpd/packages/mpd-bootstrap-plugin/dist/index.js'
+    # One-time project scaffold (R3): on the FIRST pre-step of a TOP-LEVEL session,
+    # writes a generic English AGENT.md when the workspace has none, then records
+    # <workspace>/.mpd/project-init.json so it never writes again. Silent for subagent
+    # sessions, HOME/root, an existing AGENT.md/AGENTS.md/CLAUDE.md, a non-project
+    # directory and an already-marked workspace; writes nothing outside the workspace.
+    - id: mpd-project-init
+      name: '@mpd-dsh/mpd/packages/mpd-project-init-plugin/dist/index.js'
     # DSH-TUI PLANE ADAPTER (R2/A2.2): the ONE contact surface with the TUI's own
     # seams. `mpd-tui-plugin` used to name the host's `tui*` services itself; every
     # one of those touches now goes through this package's `mpdTui` service

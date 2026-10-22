@@ -4,7 +4,8 @@
 // resolver) lives in `./complexity-gate.ts`, which resolves under plain `node` and is what the QA
 // case and the unit tests import. THIS file owns the three things that need a live harness:
 //   1. ONE `agent/pre-step` listener PER QUALIFYING AGENT, registered in that agent's own scope;
-//   2. the per-call config read (`team.gate`, `boulder.dir`) and the workspace/session resolution;
+//   2. the per-call config read (`team.gate`, `team.sensitivity`, `boulder.dir`) and the
+//      workspace/session resolution, including signal F's bounded root listing;
 //   3. the STAGING call: a triggered session stages an APPROVABLE PLAN SHELL through the
 //      `agent_teams_plan` tool (mpd-team-core) — never through a hand-built `{session:{id}}` stand-in
 //      for a live agent, which is exactly why the TUI's approval hop used to be broken.
@@ -44,11 +45,16 @@ import {
   MISSING_PLAN_ID_PHRASE,
   readBoulderGate,
   readLeadingTeam,
+  readWorkspaceScale,
   resolveBoulderDir,
   resolveGateMode,
+  resolveSensitivity,
+  SENSITIVITY_CONFIG_KEY,
+  SENSITIVITY_THRESHOLDS,
   sessionQualifies,
   STAGING_TOOL_NAME,
   type GateMode,
+  type GateSensitivity,
 } from "./complexity-gate.ts"
 
 /** How long ONE staging call may take before the mechanical route degrades, in milliseconds. */
@@ -138,7 +144,11 @@ export interface SessionGateOptions {
   configValue?: (key: string) => unknown
   /** The boulder-state READER seam (`node:fs/promises` by default), for tests and the QA case. */
   readFile?: (path: string) => Promise<string>
-  /** The team-record DIRECTORY-LIST seam (`node:fs/promises` by default), for tests and the QA case. */
+  /**
+   * The DIRECTORY-LIST seam (`node:fs/promises` by default), for tests and the QA case. It serves
+   * TWO probes on the eager row: the team-record directory (C7) and signal F's bounded workspace
+   * ROOT listing; a call answers ONE path, so an injected lister must answer by path.
+   */
   readDir?: (path: string) => Promise<readonly string[]>
   /**
    * Whether a plan is ALREADY staged for one session — `mpdTeams.planFor(...).plan` in a boot.
@@ -178,6 +188,12 @@ export interface SessionGateInstall {
    * prints, because every fire re-resolves it per call.
    */
   mode: GateMode
+  /**
+   * The `team.sensitivity` row resolved at INSTALL time — the boot line's snapshot, with the same
+   * transient-miss bound as {@link SessionGateInstall.mode}. The AUTHORITATIVE row is the one the
+   * FIRING line prints, because every fire re-resolves `team.sensitivity` per call.
+   */
+  sensitivity: GateSensitivity
 }
 
 /** The outcome of ONE mechanical staging attempt. */
@@ -447,8 +463,26 @@ export function installSessionGate(
         ...(options.readFile === undefined ? {} : { readFile: options.readFile }),
         ...(boulderDir === undefined ? {} : { boulderDir }),
       })
+      // THE THRESHOLD ROW, resolved PER CALL from `team.sensitivity` (an absent or unknown value
+      // reads `easy`, the eager default). Signal F is probed ONLY on a row that evaluates it, so
+      // `normal`/`strict` never pay for the listing and never gain a sixth signal.
+      /** The threshold row this fire reads. */
+      const sensitivity = resolveSensitivity(configValue(SENSITIVITY_CONFIG_KEY))
+      /** Whether this row evaluates signal F at all (only `easy` does). */
+      const wantsWorkspaceScale = SENSITIVITY_THRESHOLDS[sensitivity].workspaceScale
+      /** Whether the workspace looks like a large project — signal F's input, bounded and non-throwing. */
+      const workspaceScale = wantsWorkspaceScale
+        ? await readWorkspaceScale(workspace, {
+          ...(options.readDir === undefined ? {} : { readDir: options.readDir }),
+        })
+        : false
       /** The frozen predicate's answer: whether it triggered, and which signals fired. */
-      const verdict = evaluateComplexityGate(consumed.text, { explicitFlag: consumed.flagged, activeBoulder: boulder.active })
+      const verdict = evaluateComplexityGate(consumed.text, {
+        explicitFlag: consumed.flagged,
+        activeBoulder: boulder.active,
+        sensitivity,
+        workspaceScale,
+      })
       // NO TRIGGER = NO SETTLEMENT: the session is judged again on its next user turn, so a trivial
       // first turn can never spend the one evaluation on the complex turn that follows it.
       if (verdict.trigger !== true) { gateTrace("predicate false agent=" + agentId + " text=" + JSON.stringify(user.text.slice(0, 60))); return undefined }
@@ -476,14 +510,15 @@ export function installSessionGate(
       /** Whether a plan is staged in this session as a result of this fire. */
       const staged = mode === GATE_MODE_MECHANICAL && outcome.ok
       report('session gate fired for agent "' + agentId + '" signals=' + verdict.signals.join("/")
-        + " mode=" + mode + " staged=" + (staged ? "1" : "0") + (outcome.planId === "" ? "" : " plan=" + outcome.planId))
+        + " mode=" + mode + " staged=" + (staged ? "1" : "0") + (outcome.planId === "" ? "" : " plan=" + outcome.planId)
+        + " sensitivity=" + sensitivity)
       // A staged shell whose id the call did not report is STILL staged, but nobody can approve it. The
       // notice carries the failure sentence; this warning makes the same failure visible in the row log,
       // so an operator cannot read `staged=1` (with no `plan=`) as a healthy fire.
       if (staged && outcome.planId === "") {
         warn("session-start gate: " + MISSING_PLAN_ID_PHRASE + " for agent \"" + agentId + "\" — the shell is staged but cannot be approved")
       }
-      gateTrace("FIRING agent=" + agentId + " signals=" + verdict.signals.join("/") + " mode=" + mode + " staged=" + String(staged))
+      gateTrace("FIRING agent=" + agentId + " signals=" + verdict.signals.join("/") + " mode=" + mode + " staged=" + String(staged) + " sensitivity=" + sensitivity)
       /** The ONE notice: the mechanical text only when a plan is really staged, else the advisory one. */
       const notice = dsh.userMessage({
         text: staged
@@ -564,9 +599,15 @@ export function installSessionGate(
   }
   subscribe("agent/created", (payload: unknown) => register((payload as { agent?: unknown } | undefined)?.agent ?? payload))
   subscribe("agent/disposed", (payload: unknown) => release((payload as { agent?: unknown } | undefined)?.agent ?? payload))
-  // The MODE is resolved ONCE here, for the boot line ONLY: `installSessionGate` is a synchronous
-  // installer, and every fire re-resolves it through `configValue` (never a cached mode).
-  return { installed: true, acted, disposers, mode: resolveGateMode(configValue(GATE_CONFIG_KEY)) }
+  // The MODE and the SENSITIVITY are resolved ONCE here, for the boot line ONLY: `installSessionGate`
+  // is a synchronous installer, and every fire re-resolves both through `configValue` (never cached).
+  return {
+    installed: true,
+    acted,
+    disposers,
+    mode: resolveGateMode(configValue(GATE_CONFIG_KEY)),
+    sensitivity: resolveSensitivity(configValue(SENSITIVITY_CONFIG_KEY)),
+  }
 }
 
 /** The cwd used for the boulder probe (documented for callers that pass an agent). */

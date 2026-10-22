@@ -44,6 +44,12 @@ interface DoubleOptions {
   output?: unknown
   /** The `stopReason` an activation's result carries. */
   stopReason?: unknown
+  /**
+   * How the 0.2.1 activation's `dispose()` behaves. A real handle always carries one (`Promise<void>`
+   * that rejects on teardown failure); `absent` models a stub without teardown so the optionality
+   * arm stays tested.
+   */
+  dispose?: "resolve" | "reject" | "throw" | "absent"
 }
 
 /** The doubles one arm drives, plus the adapter under test. */
@@ -80,6 +86,8 @@ function harness(options: DoubleOptions = {}): Harness {
     output: options.output ?? [{ type: "text", text: "researched" }],
     stopReason: options.stopReason ?? "completed",
   })
+  /** Whether an activation's `result` has settled; its `dispose` records this to prove the ORDER. */
+  let activationSettled = false
   /** The service double: ONLY the members its generation actually has. */
   const subagents: Record<string, unknown> = {
     /** The provider catalogue, so `providers()` answers something realistic. */
@@ -95,10 +103,33 @@ function harness(options: DoubleOptions = {}): Harness {
     },
   }
   if (generation === "activation") {
+    /** The SAME result, flagged first so the flag is already true whenever `spawnAgent` resumes. */
+    const activationResult = result.then((value) => {
+      activationSettled = true
+      return value
+    })
+    /** The activation handle itself, so the dispose arm can assert its receiver by identity. */
+    const activation: Record<string, unknown> = {
+      childId: options.childId ?? "child-021",
+      messageId: "msg-021",
+      result: activationResult,
+    }
+    /** The teardown behaviour this arm models; `absent` keeps a handle WITHOUT the member. */
+    const disposeMode = options.dispose ?? "resolve"
+    if (disposeMode !== "absent") {
+      activation.dispose = function (this: unknown): Promise<void> {
+        // The flag is read AT CALL TIME: a dispose that ran before `result` settled would record
+        // false, which is the ordering defect this arm exists to catch.
+        record("dispose", this, [activationSettled])
+        if (disposeMode === "throw") throw new Error("dispose boom")
+        if (disposeMode === "reject") return Promise.reject(new Error("dispose rejected"))
+        return Promise.resolve()
+      }
+    }
     /** The 0.2.1 member: `startActivation(spec)` → activation with a durable `childId`. */
     subagents.startActivation = function (this: unknown, spec: unknown): Promise<unknown> {
       record("startActivation", this, [spec])
-      return Promise.resolve({ childId: options.childId ?? "child-021", messageId: "msg-021", result })
+      return Promise.resolve(activation)
     }
   }
   if (generation === "continuable") {
@@ -259,7 +290,8 @@ describe("spawnAgent follows the generation too", () => {
     // contract; serializing the reasoning block or emitting "[object Object]" would both be wrong.
     expect(answer.output).toBe("first second")
     expect(answer.stopReason).toBe("completed")
-    expect(h.calls.map((call) => call.seam)).toEqual(["startActivation"])
+    // Start, THEN exactly one release of the settled consult: the one-shot contract this arm pins.
+    expect(h.calls.map((call) => call.seam)).toEqual(["startActivation", "dispose"])
     /** The activation spec. */
     const spec = h.calls[0]?.args[0] as Record<string, unknown>
     expect(spec.provider).toBe("spawn")
@@ -280,8 +312,9 @@ describe("spawnAgent follows the generation too", () => {
     const request = (h.calls[0]?.args[0] as Record<string, unknown>).request as Record<string, unknown>
     expect("persona" in request).toBe(false)
     expect("toolFilter" in request).toBe(false)
-    // The spawn itself still happened: a retired field must not cost the call.
-    expect(h.calls.map((call) => call.seam)).toEqual(["startActivation"])
+    // The spawn itself still happened: a retired field must not cost the call — and the settled
+    // consult is still released exactly once.
+    expect(h.calls.map((call) => call.seam)).toEqual(["startActivation", "dispose"])
   })
 
   test("0.2.1: an absent caller signal becomes a never-aborting one, because the field is REQUIRED", async () => {
@@ -292,6 +325,52 @@ describe("spawnAgent follows the generation too", () => {
     const spec = h.calls[0]?.args[0] as Record<string, unknown>
     expect(spec.signal).toBeInstanceOf(AbortSignal)
     expect((spec.signal as AbortSignal).aborted).toBe(false)
+  })
+
+  test("0.2.1: the settled consult disposes its activation EXACTLY ONCE, after the result", async () => {
+    /** A 0.2.1 service whose activation records its own disposal. */
+    const h = harness({ generation: "activation" })
+    /** The normalized answer, which the release must leave untouched. */
+    const answer = await h.dsh.spawnAgent({ label: "look", prompt: "go", parent: h.lead })
+    expect(answer).toEqual({ output: "researched", structured: undefined, stopReason: "completed" })
+    // Start, THEN one release. The recorded `true` is the ORDERING proof: the double records
+    // whether `result` had already settled when dispose ran, so a release fired too early is false.
+    expect(h.calls.map((call) => call.seam)).toEqual(["startActivation", "dispose"])
+    expect(h.calls[1]?.args[0]).toBe(true)
+    // Exactly once, and on the activation handle itself: disposal addresses THAT execution.
+    expect(h.calls.filter((call) => call.seam === "dispose")).toHaveLength(1)
+    /** The receiver dispose was invoked on — the activation handle the double handed out. */
+    const receiver = h.calls[1]?.receiver as Record<string, unknown>
+    expect(receiver.childId).toBe("child-021")
+    expect(typeof receiver.dispose).toBe("function")
+  })
+
+  test("0.2.1: a REJECTING dispose still returns the report — teardown failure is not the answer", async () => {
+    /** A 0.2.1 service whose dispose rejects, as the harness does on a cleanup failure. */
+    const h = harness({ generation: "activation", dispose: "reject" })
+    /** The report, which must survive the failed teardown unchanged. */
+    const answer = await h.dsh.spawnAgent({ label: "look", prompt: "go", parent: h.lead })
+    expect(answer).toEqual({ output: "researched", structured: undefined, stopReason: "completed" })
+    expect(h.calls.map((call) => call.seam)).toEqual(["startActivation", "dispose"])
+  })
+
+  test("0.2.1: a THROWING dispose still returns the report", async () => {
+    /** A 0.2.1 service whose dispose throws synchronously instead of returning a rejected promise. */
+    const h = harness({ generation: "activation", dispose: "throw" })
+    await expect(h.dsh.spawnAgent({ label: "look", prompt: "go", parent: h.lead }))
+      .resolves.toEqual({ output: "researched", structured: undefined, stopReason: "completed" })
+    // The synchronous throw is contained exactly like a rejection: the report is already settled.
+    expect(h.calls.map((call) => call.seam)).toEqual(["startActivation", "dispose"])
+  })
+
+  test("0.2.1: an activation WITHOUT dispose is tolerated, because the release is optional", async () => {
+    /** A 0.2.1-shaped service whose handle omits teardown, as a stub may. */
+    const h = harness({ generation: "activation", dispose: "absent" })
+    /** The report. */
+    const answer = await h.dsh.spawnAgent({ label: "look", prompt: "go", parent: h.lead })
+    expect(answer.output).toBe("researched")
+    // A missing member is a no-op, never a TypeError and never a fabricated release.
+    expect(h.calls.map((call) => call.seam)).toEqual(["startActivation"])
   })
 
   test("RETIRED: it calls start(mode, request) and forwards the fields that release still had", async () => {
@@ -309,6 +388,8 @@ describe("spawnAgent follows the generation too", () => {
     // A string `output` is passed through, which is why the projection accepts both shapes.
     expect(answer.output).toBe("plain text")
     expect(answer.stopReason).toBe("max-tokens")
+    // The retired run handle exposed no teardown member, so this arm stays EXACTLY as it was:
+    // one `start` call and no fabricated dispose.
     expect(h.calls.map((call) => call.seam)).toEqual(["start"])
     expect(h.calls[0]?.args[0]).toBe("spawn")
     /** The request the retired member was handed. */
@@ -334,6 +415,8 @@ describe("startContinuableAgent is the same seam, and keeps its SYNCHRONOUS thro
     /** The caller's own spec, which predates the released field. */
     const spec = { provider: "spawn", label: "member", request: { prompt: [], parent: h.lead }, signal: new AbortController().signal }
     await h.dsh.startContinuableAgent(spec)
+    // Start ONLY, and deliberately NO dispose: this is the DURABLE team seam, whose whole point is
+    // continuity, so the R2 one-shot release must never leak into it.
     expect(h.calls.map((call) => call.seam)).toEqual(["startActivation"])
     // The adapter owns exactly ONE field on this generation: the one the release made mandatory.
     expect(h.calls[0]?.args[0]).toEqual({ ...spec, delivery: "parent" })

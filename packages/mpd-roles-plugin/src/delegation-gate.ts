@@ -119,10 +119,11 @@ export function delegationGateDecision(input: DelegationGateInput): string | und
  */
 export function delegationRefusal(toolName: string): string {
   return "delegation gate: `" + toolName + "` is refused — the official spawn tools are not the delegation"
-    + " path under the MPD discipline. Delegate instead: `mpd_role_spawn` (single-call roster consult),"
+    + " path under the MPD discipline. Delegate instead: `mpd_role_spawn` (one-shot single-call roster consult),"
     + " `mpd_workmate_match` + `mpd_workmate_spawn` (durable instance), or Agent Teams for multi-member work"
-    + " (`agent_teams_plan`, persona from `mpd_role_persona`); `send_message` continues an existing"
-    + " continuable child. The gate covers the captain and every member session. `delegation.gate` in"
+    + " (`agent_teams_plan`, persona from `mpd_role_persona`); a consult is one-shot — `send_message`"
+    + " continues only an existing TEAM child, never a finished consult. The gate covers the captain and"
+    + " every member session. `delegation.gate` in"
     + " mpd.jsonc: \"captain\" limits it to the top-level session, \"allow\" releases it entirely."
 }
 

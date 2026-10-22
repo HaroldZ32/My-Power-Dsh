@@ -1,0 +1,15 @@
+prompt han=77
+sensitivity=undefined {"trigger":true,"signals":["B","E"]}
+sensitivity=easy {"trigger":true,"signals":["B","E"]}
+sensitivity=normal {"trigger":true,"signals":["B","E"]}
+sensitivity=strict {"trigger":false,"signals":[]}
+hello tiny           {"trigger":false,"signals":[]}
+hello large (easy)   {"trigger":true,"signals":["F"]}
+hello large (normal) {"trigger":false,"signals":[]}
+empty                {"trigger":false,"signals":[]}
+验证一下             {"trigger":false,"signals":[]}
+修复并验证 (easy)    {"trigger":true,"signals":["B"]}
+修复并验证 (normal)  {"trigger":false,"signals":[]}
+readWorkspaceScale(repoRoot)= true
+readWorkspaceScale(tmp)= false
+SENSITIVITY_THRESHOLDS={"easy":{"deliverableVerbs":2,"enumeratedLines":2,"actionVerbs":2,"clauseSteps":2,"cSubSignals":2,"cjkChars":24,"cjkVerbs":2,"workspaceScale":true},"normal":{"deliverableVerbs":4,"enumeratedLines":3,"actionVerbs":3,"clauseSteps":3,"cSubSignals":2,"cjkChars":60,"cjkVerbs":2,"workspaceScale":false},"strict":{"deliverableVerbs":6,"enumeratedLines":4,"actionVerbs":4,"clauseSteps":4,"cSubSignals":3,"cjkChars":80,"cjkVerbs":3,"workspaceScale":false}}

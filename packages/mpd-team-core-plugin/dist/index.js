@@ -525,6 +525,14 @@ async function startContinuableChild(subagents, spec, action) {
   const argument = member === "startActivation" ? { ...spec, delivery: "parent" } : spec;
   return subagents[member].call(subagents, argument);
 }
+async function disposeSettledConsult(activation) {
+  const dispose = activation?.dispose;
+  if (typeof dispose !== "function")
+    return;
+  try {
+    await dispose.call(activation);
+  } catch {}
+}
 var REPORTED_RETIRED_SPAWN_FIELDS = new Set;
 function warnRetiredSpawnFields(spec) {
   for (const field of ["persona", "toolFilter"]) {
@@ -1277,6 +1285,7 @@ function createDshAdapter(ctx, config = {}) {
           delivery: "parent"
         });
         const settled = await (activation?.result ?? {});
+        await disposeSettledConsult(activation);
         return {
           output: textOfOutput(settled.output),
           structured: settled.structured,
@@ -4227,6 +4236,59 @@ function callerIdentity(record, sessionId, title, lineage) {
   const ownMember = memberNamedBy(record, [sessionId]) ?? (Array.isArray(record.members) ? record.members : []).find((member) => member.name !== "" && title.includes(member.name));
   return ownMember === undefined ? { ancestry: lineage } : { ownMember, ancestry: [] };
 }
+var TODO_TOOL_NAME = "todo_write";
+var SEED_TIMEOUT_MS = 1e4;
+function seedSignal(upstream) {
+  try {
+    const platform = AbortSignal;
+    if (typeof platform?.timeout !== "function")
+      return upstream;
+    const bounded = platform.timeout(SEED_TIMEOUT_MS);
+    if (upstream === undefined)
+      return bounded;
+    return typeof platform.any === "function" ? platform.any([upstream, bounded]) : upstream;
+  } catch {
+    return upstream;
+  }
+}
+function hasTodoTool(dsh, agent) {
+  if (typeof dsh.hasTool !== "function")
+    return false;
+  try {
+    return dsh.hasTool(TODO_TOOL_NAME, agent) === true;
+  } catch {
+    return false;
+  }
+}
+async function bundleApprovalEffects(ctx, dsh, exec, plan) {
+  const objective = plan.description !== "" ? plan.description : plan.name;
+  try {
+    const bridge = ctx.get?.("mpdGoal");
+    if (bridge !== undefined && typeof bridge.anchor === "function") {
+      const outcome = await bridge.anchor(exec, { objective, source: "team" });
+      if (outcome?.ok === false)
+        dsh.rowLog("mpd-team-core", "goal anchor refused after approval: " + String(outcome.error ?? "unknown"));
+    }
+  } catch (error) {
+    dsh.rowLog("mpd-team-core", "goal anchor failed after approval: " + String(error?.message ?? error));
+  }
+  if (plan.tasks.length === 0)
+    return;
+  if (!hasTodoTool(dsh, exec.agent))
+    return;
+  try {
+    const result = await dsh.executeTool({
+      name: TODO_TOOL_NAME,
+      arguments: { todos: plan.tasks.map((task) => ({ content: task.subject, status: "pending" })) },
+      agent: exec.agent,
+      signal: seedSignal(exec.signal)
+    });
+    if (result.isError === true)
+      dsh.rowLog("mpd-team-core", "todo seed failed after approval: " + String(result.error ?? "the tool returned an error result"));
+  } catch (error) {
+    dsh.rowLog("mpd-team-core", "todo seed failed after approval: " + String(error?.message ?? error));
+  }
+}
 function apply(ctx) {
   const dsh = adapterFor(ctx);
   const disposers = [];
@@ -4696,6 +4758,7 @@ function apply(ctx) {
         writePlan(workspace, approved);
         if (stoppedAt === undefined)
           archivePlan(workspace, { ...approved });
+        await bundleApprovalEffects(ctx, dsh, exec, plan);
         return { plan: approved, team: approvedRecord, created, ...stoppedAt === undefined ? {} : { stoppedAt } };
       }
       throw new Error(`agent_teams_plan: unknown action "${action}" (create | add_member | create_task | edit | approve | delete | status)`);

@@ -1,0 +1,91 @@
+{
+  "lane": "R3 — project-init plugin (new package, host row)",
+  "wave": "team-gate-wave",
+  "stamp": "2026-10-22T02:40:17Z",
+  "host": "Linux 7.0.0-38-generic x86_64",
+  "baseCommit": "2718ff4b09b73b8b362f34d1e18733af0a150ffa",
+  "branch": "feature/team-gate-wave",
+  "author": "Senior Engineer (delegated lane R3)",
+  "contract": ".mpd/plans/team-gate-wave.md §R3",
+  "files": {
+    "created": [
+      "packages/mpd-project-init-plugin/src/index.ts",
+      "packages/mpd-project-init-plugin/dist/index.js",
+      "packages/mpd-project-init-plugin/package.json",
+      "packages/mpd-project-init-plugin/README.md",
+      "packages/mpd-project-init-plugin/README.zh-CN.md",
+      "packages/mpd-project-init-plugin/test/project-init.test.ts"
+    ],
+    "modified": [
+      "cordis.patch.yml",
+      "scripts/install-profile.ts",
+      "scripts/pack-mpd.ts"
+    ]
+  },
+  "symbols": {
+    "src/index.ts": [
+      "name = \"mpd-project-init\"",
+      "inject = dshSeamInject() (no required service)",
+      "Config",
+      "ProjectInitOptions",
+      "ProjectInitResult",
+      "ProjectInitInstall",
+      "AGENT_FILE / MARKER_FILE / LOG_FILE / LOG_NAME / INSTRUCTION_FILES / PROJECT_MANIFESTS",
+      "isProjectLike(root, entries)",
+      "isTopLevelSession(agent)",
+      "agentScaffold(at)",
+      "initializeProject(root, options)",
+      "installProjectInit(dsh, options)",
+      "apply(ctx, config)"
+    ],
+    "cordis.patch.yml": [
+      "plain insert row id: mpd-project-init, name: '@mpd-dsh/mpd/packages/mpd-project-init-plugin/dist/index.js', immediately below mpd-bootstrap; no id-target"
+    ],
+    "scripts/install-profile.ts": [
+      "rows[] gains { id: \"mpd-project-init\", name: p(\"packages/mpd-project-init-plugin/dist/index.js\"), config: {} }",
+      "--self-test row-set assertion extended to require mpd-project-init"
+    ],
+    "scripts/pack-mpd.ts": [
+      "PLUGIN_PKGS gains \"mpd-project-init-plugin\" (packed artifact closure)"
+    ]
+  },
+  "behaviour": {
+    "trigger": "one agent/pre-step listener per agent, registered in that agent's OWN scope via adapter.registerAgentPreStep; top-level classification runs at STEP time",
+    "topLevelPredicate": "child iff session.header.origin === \"subagent\" or Number(delegationDepth) >= 1; missing header fails closed; preset never read (T-92)",
+    "skipsSilent": ["HOME or filesystem root", "marker <ws>/.mpd/project-init.json", "AGENT.md/AGENTS.md/CLAUDE.md (case-insensitive)", "not project-like (visible content without .git or a project manifest)"],
+    "writes": ["<ws>/AGENT.md once (flag wx, never overwrite)", "<ws>/.mpd/project-init.json marker", "<ws>/.mpd/logs/mpd-project-init.log — ONE line"],
+    "bound": "the harness loads agent instructions at session start, so a file created during this session's first pre-step is injected in the NEXT session, never retroactively"
+  },
+  "gates": [
+    { "command": "bun test packages/mpd-project-init-plugin", "exit": 0, "observed": "17 pass / 0 fail, 66 expect() calls" },
+    { "command": "bun run typecheck", "exit": 0, "observed": "$ tsgo --noEmit — no diagnostics" },
+    { "command": "bun run verify:comments", "exit": 0, "observed": "VERDICT: PASS — 429 files, 37747 declarations inspected" },
+    { "command": "bun run verify:rows", "exit": 0, "observed": "ok: 36 row ids match the 2-file bundle patch layer (mpd-project-init included)" },
+    { "command": "bun run verify:docs", "exit": 0, "observed": "pairs=49 failed=0 violations=0 dead=0 — PASS" },
+    { "command": "bun run verify:manifest", "exit": 0, "observed": "row-module-paths 28 paths 0 missing; VERDICT: PASS" },
+    { "command": "node scripts/verify-no-host-override.ts", "exit": 0, "observed": "PASS: every id-target is bundle-owned (0 of 0 collide with 213 host ids)" },
+    { "command": "node scripts/install-profile.ts --self-test", "exit": 0, "observed": "ok: path model + row set + ... + id-target render verified" },
+    { "command": "node skills/dsh-qa/scripts/preset-conformance.ts --self-test", "exit": 0, "observed": "4/4 PASS arms, row parity 27/27, negative controls 4/4 reddened" },
+    { "command": "node scripts/pack-mpd.ts --out <tmp>", "exit": 0, "observed": "staged 2 patch files, 624 files; packed tree carries packages/mpd-project-init-plugin/{dist/index.js,README.md,README.zh-CN.md}" },
+    { "command": "node scripts/verify-dist-fresh.ts", "exit": 1, "observed": "MY target FRESH (packages/mpd-project-init-plugin/dist/index.js sha 3aa826ab83ce…); 23 of 33 targets STALE = adapter fan-out from another lane's mpd-dsh-adapter src edit (24 packages import it; bun build inlines imports). Integration task owns that rebuild." }
+  ],
+  "artifacts": {
+    "dist": "packages/mpd-project-init-plugin/dist/index.js",
+    "distSha256": "3aa826ab83ce38e835ac429427becfda35adb283d1eb6dd2e2e4e4c4b8862845",
+    "distBytes": 80497,
+    "builtWith": ".toolchain/node_modules/.bin/bun 1.4.0 (i.e. .toolchain/bun/bin/bun; package.json buildToolchain bun@1.4.0)",
+    "command": ".toolchain/node_modules/.bin/bun build packages/mpd-project-init-plugin/src/index.ts --target node --format esm --outfile packages/mpd-project-init-plugin/dist/index.js"
+  },
+  "unverified": [
+    "A real host-row MOUNTING boot (isolated DSH_HOME + sandbox HOME) that shows the row activating: the available profiles (~/.dsh/profiles/web, dsh-tui) do not link this checkout, so `node scripts/dump-config.ts --profile web|dsh-tui` composes neither; the pack-closure/plan assigns the mounting boot to the integration task. Composition-level proof only here: verify:rows parsed the patch, verify:manifest resolved every row module path, and pack staged the package.",
+    "No live behaviour observation of an AGENT.md write inside a real dsh session — the write path is proven by 17 unit tests against temp workspaces and a fake adapter, not by a harness session.",
+    "bun test packages (whole repo) and bun run verify:gates were NOT run by this lane: the shared tree carries other lanes' in-flight edits (mpd-dsh-adapter, mpd-team-core, mpd-workmate) and R1's skills/** edit reddens the vendor gate until the wave's single re-pin; the plan assigns those aggregates to the captain/integration.",
+    "node scripts/verify-pack-closure.ts not run: it compares against a re-pack stamp and the canonical dist/mpd-package was deliberately left untouched (pack ran with --out <tmp>).",
+    "Docker real-machine lane (release sweep) not run."
+  ],
+  "crossLaneNotes": [
+    "scripts/pack-mpd.ts is a source file outside the literal R3 list but required: its PLUGIN_PKGS list is what makes the packed artifact carry the new package. Entry added with a comment; pack exit 0.",
+    "cordis.patch.yml and scripts/install-profile.ts were both edited by this lane only; verify:rows proves the two row sets stayed in parity (36 ids).",
+    "skills/**, presets/mpd.patch.yml and AGENTS.md were NOT touched by this lane."
+  ]
+}

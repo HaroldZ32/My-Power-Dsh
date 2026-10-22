@@ -8,13 +8,13 @@
 // import at all, so the QA case and the unit tests can drive the frozen predicate and the two
 // notice builders without a boot.
 //
-// The frozen predicate is `trigger = explicit flag OR (matchedSignals >= 1)` with five signals,
+// The frozen predicate is `trigger = explicit flag OR (matchedSignals >= 1)` with six signals A–F,
 // reproduced from the retired implementation (`packages/mpd-agent-teams-plugin/lib/session-start.ts`,
-// read as the SPEC — never mounted or imported):
+// read as the SPEC — never mounted or imported) and extended by wave `team-gate-wave` (2026-10-22):
 //   A (hard) a `team:` prefix or a token-boundary `!team`; the marker is CONSUMED from the goal text;
-//   B (soft) >= 4 distinct deliverable verbs;
-//   C (soft) ONE signal that fires when >= 2 of its three sub-signals hold (>= 3 enumerated
-//            lines, >= 3 distinct action verbs, >= 3 action clauses);
+//   B (soft) distinct deliverable verbs — the bound is per {@link SENSITIVITY_THRESHOLDS} row;
+//   C (soft) ONE signal that fires when enough of its three sub-signals hold (enumerated lines,
+//            distinct action verbs, action clauses — 2-of-3 on easy/normal, 3-of-3 on strict);
 //   D (soft) an ACTIVE boulder work exists for the session workspace. REPAIRED 2026-10-07: D used
 //            to mean "some `.mpd/plans/*.md` exists", which MEASURABLY fired in EVERY session of
 //            this workspace — its one plan file outlives the work that produced it.
@@ -22,8 +22,14 @@
 //            B/C count clauses and verbs, and a Chinese one-liner enumerates with `、，。；：` and
 //            carries scale in CHARACTERS, so the user's own 159-Han-character instruction measured
 //            B=0, C=0, D=absent and staged nothing whatever the workload. E reads scale
-//            ({@link CJK_CHAR_MIN} Han characters) AND intent (>= {@link CJK_ACTION_VERB_MIN}
+//            ({@link CJK_CHAR_MIN} Han characters at NORMAL) AND intent (>= {@link CJK_ACTION_VERB_MIN}
 //            distinct action verbs), both calibrated over the frozen corpus.
+//   F (soft) WORKSPACE SCALE. ADDED 2026-10-22: one bounded root listing shows a project manifest,
+//            a project directory AND >= 8 visible entries. Evaluated on the `easy` row ONLY, so an
+//            eager default can fire on the SHAPE of a large repository without moving `normal`.
+//
+// `team.sensitivity` (`easy` DEFAULT | `normal` | `strict`) selects the row: EVERY bound the predicate
+// reads lives in {@link SENSITIVITY_THRESHOLDS}, and `normal` is the pre-2026-10-22 behaviour verbatim.
 //
 // What a TRIGGER does is resolved per call by the wiring: `team.gate` selects `mechanical` (the DEFAULT
 // again since 2026-10-20: stage an APPROVABLE SHELL through the `agent_teams_plan` tool), `advisory`
@@ -58,6 +64,126 @@ export const GATE_MODE_OFF: GateMode = "off"
 export const GATE_CONFIG_KEY = "team.gate"
 /** The mpd.jsonc key overriding the boulder state root (`mpd-boulder` honours the same one). */
 export const BOULDER_DIR_CONFIG_KEY = "boulder.dir"
+
+/**
+ * The three `team.sensitivity` profiles. They select the THRESHOLD ROW the predicate reads, so the
+ * gate's eagerness is configuration rather than four constants edited by taste.
+ *
+ * EASY is the DEFAULT (wave `team-gate-wave`, 2026-10-22): the user's measured complaint was that a
+ * large multi-package repository never staged a team, and a 77-Han-character work instruction
+ * (verbatim in the tests) fired ZERO signals because its verbs (降低/触发/创建/规范) were outside the
+ * lexicon. Eager by default is the requested direction; `normal` reproduces the pre-wave numbers
+ * EXACTLY, so a session that wants the old behaviour says so in one key.
+ */
+export type GateSensitivity = "easy" | "normal" | "strict"
+/** The default sensitivity: the eager row (see {@link GateSensitivity}). */
+export const GATE_SENSITIVITY_EASY: GateSensitivity = "easy"
+/** The historical row: the pre-2026-10-22 thresholds, unchanged. */
+export const GATE_SENSITIVITY_NORMAL: GateSensitivity = "normal"
+/** The most conservative row: 3-of-3 for signal C and the highest scale bounds. */
+export const GATE_SENSITIVITY_STRICT: GateSensitivity = "strict"
+/** The mpd.jsonc / row-config key selecting the sensitivity row, resolved PER CALL and never cached. */
+export const SENSITIVITY_CONFIG_KEY = "team.sensitivity"
+
+/**
+ * The `team.sensitivity` resolver: TOTAL and fail-safe in the EAGER direction.
+ *
+ * Any value that is not the exact string `normal` or `strict` reads {@link GATE_SENSITIVITY_EASY} —
+ * an absent key, a typo, a number, an object and the boolean `false` alike. The gate never throws on
+ * configuration. Eager is the fail-safe direction for this knob because the family's default is
+ * "stage an APPROVABLE shell that spawns nothing": the cost of an over-eager fire is one inert plan,
+ * while the cost of a silent gate is the very defect this wave measured.
+ * @param value - the raw `team.sensitivity` value from the config layer, of unknown type.
+ * @returns the threshold row the predicate must read.
+ */
+export function resolveSensitivity(value: unknown): GateSensitivity {
+  if (value === GATE_SENSITIVITY_NORMAL) return GATE_SENSITIVITY_NORMAL
+  if (value === GATE_SENSITIVITY_STRICT) return GATE_SENSITIVITY_STRICT
+  return GATE_SENSITIVITY_EASY
+}
+
+/**
+ * Which VERB LEXICON a sensitivity row reads.
+ *
+ * `pre-wave` is the predicate's exact pre-2026-10-22 vocabulary (8 English + the original 24 CJK
+ * deliverable verbs; 14 English + the same 24 CJK action verbs), so the `normal` row reproduces the
+ * old verdicts and not merely the old numbers. `expanded` is the wave's vocabulary (29 English
+ * deliverable additions + 46 CJK additions), which `easy` and `strict` read.
+ */
+export type GateLexiconName = "pre-wave" | "expanded"
+
+/**
+ * One sensitivity row: every threshold the predicate reads, in ONE object so a profile cannot be
+ * half-applied (the single-source-of-truth rule the wave contract states).
+ *
+ * The unnamed fields mirror signal C's sub-signals one-for-one: {@link SensitivityThresholds.enumeratedLines}
+ * is C1, {@link SensitivityThresholds.actionVerbs} is C2 (and signal E's verb conjunct),
+ * {@link SensitivityThresholds.clauseSteps} is C3, and {@link SensitivityThresholds.cSubSignals} is how
+ * many of the three must hold.
+ */
+export interface SensitivityThresholds {
+  /** Signal B: distinct deliverable-verb matches. */
+  readonly deliverableVerbs: number
+  /** Signal C1: enumerated (numbered / bulleted / table) lines. */
+  readonly enumeratedLines: number
+  /** Signal C2: distinct action-verb matches (signal E reads the same count). */
+  readonly actionVerbs: number
+  /** Signal C3: clauses that OPEN with an action verb. */
+  readonly clauseSteps: number
+  /** How many of C's three sub-signals must hold. */
+  readonly cSubSignals: number
+  /** Signal E: Han characters. */
+  readonly cjkChars: number
+  /** Signal E: distinct action-verb matches. */
+  readonly cjkVerbs: number
+  /** Whether signal F (workspace scale) is evaluated at all on this row. */
+  readonly workspaceScale: boolean
+  /** Which verb lexicon this row reads ({@link GateLexiconName}). */
+  readonly lexicon: GateLexiconName
+}
+
+/**
+ * THE THRESHOLD TABLE — the one source of truth for every sensitivity row.
+ *
+ * `normal` is BYTE-FOR-BYTE the pre-2026-10-22 behaviour (B=4, C1/C3=3, C2=3, C 2-of-3, E=60 chars /
+ * 2 verbs, F off), and the exported historical constants below are DERIVED from it rather than
+ * restated, so a future edit cannot leave the table and the constants disagreeing.
+ */
+export const SENSITIVITY_THRESHOLDS: Readonly<Record<GateSensitivity, SensitivityThresholds>> = {
+  easy: {
+    deliverableVerbs: 2,
+    enumeratedLines: 2,
+    actionVerbs: 2,
+    clauseSteps: 2,
+    cSubSignals: 2,
+    cjkChars: 24,
+    cjkVerbs: 2,
+    workspaceScale: true,
+    lexicon: "expanded",
+  },
+  normal: {
+    deliverableVerbs: 4,
+    enumeratedLines: 3,
+    actionVerbs: 3,
+    clauseSteps: 3,
+    cSubSignals: 2,
+    cjkChars: 60,
+    cjkVerbs: 2,
+    workspaceScale: false,
+    lexicon: "pre-wave",
+  },
+  strict: {
+    deliverableVerbs: 6,
+    enumeratedLines: 4,
+    actionVerbs: 4,
+    clauseSteps: 4,
+    cSubSignals: 3,
+    cjkChars: 80,
+    cjkVerbs: 3,
+    workspaceScale: false,
+    lexicon: "expanded",
+  },
+}
 
 /**
  * The conventional state-directory spellings a `boulder.dir` value may carry, which ALL mean "the
@@ -114,10 +240,44 @@ export const NO_TEAM_STAGED_PHRASE = "NO team was staged"
 export const SOLO_PERMISSION_SENTENCE = "- If the work does not warrant a team (a short or single-threaded task), continue solo"
 /** The sentence the shipped preset must NOT carry any more: an explicit flag is no longer merely advised. */
 export const DRIFTED_ADVISORY_SENTENCE = "routed to team mode"
-/** Signal B: deliverable verbs (English + CJK), counted by DISTINCT match. */
-export const DELIVERABLE_VERB_PATTERN = /(align|migrate|refactor|audit|overhaul|port|rewrite|consolidate|脱去|移除|剥离|删除|新建|搬迁|修复|校准|重建|验证|对齐|重构|迁移|审计|移植|梳理|全量|独立|强制|回归|设计|实现|改造|补充)/giu
-/** Signal C2: action verbs (English + CJK), counted by DISTINCT match. */
-export const ACTION_VERB_PATTERN = /\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|脱去|移除|剥离|删除|新建|搬迁|修复|校准|重建|验证|对齐|重构|迁移|审计|移植|梳理|全量|独立|强制|回归|设计|实现|改造|补充/giu
+/**
+ * THE PRE-WAVE LEXICONS — signal B's and signal C2/C3's verb sets EXACTLY as the predicate shipped
+ * them before wave `team-gate-wave` (2026-10-22).
+ *
+ * The `normal` row reads these, so `normal` reproduces the pre-wave PREDICATE byte-for-byte and not
+ * merely its thresholds: a text whose only deliverable verbs are wave additions (`implement`, `fix`,
+ * `test` matching inside `latest`, …) must not move a `normal` verdict. The sets are FROZEN here
+ * rather than derived from the expanded patterns, because "the original 8 English deliverable verbs"
+ * is a historical fact, not a formula.
+ */
+export const PRE_WAVE_DELIVERABLE_VERB_PATTERN = /(align|migrate|refactor|audit|overhaul|port|rewrite|consolidate|脱去|移除|剥离|删除|新建|搬迁|修复|校准|重建|验证|对齐|重构|迁移|审计|移植|梳理|全量|独立|强制|回归|设计|实现|改造|补充)/giu
+/** The pre-wave action-verb set (C2 and signal E's intent conjunct): the original 14 English + 24 CJK verbs. */
+export const PRE_WAVE_ACTION_VERB_PATTERN = /\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|脱去|移除|剥离|删除|新建|搬迁|修复|校准|重建|验证|对齐|重构|迁移|审计|移植|梳理|全量|独立|强制|回归|设计|实现|改造|补充/giu
+/** The pre-wave clause-opener set (C3), the regex twin of {@link PRE_WAVE_ACTION_VERB_PATTERN}. */
+export const PRE_WAVE_CLAUSE_ACTION_PATTERN = /^\s*(?:(?:and|then|also)\s+)?(?:\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|脱去|移除|剥离|删除|新建|搬迁|修复|校准|重建|验证|对齐|重构|迁移|审计|移植|梳理|全量|独立|强制|回归|设计|实现|改造|补充)/iu
+
+/**
+ * Signal B: THE EXPANDED deliverable-verb set (English + CJK), read by `easy` and `strict`.
+ *
+ * WAVE `team-gate-wave` (2026-10-22) EXPANDED the English half with the common asks the measured
+ * sessions actually used, and the CJK half with the verbs a Chinese work instruction uses to state
+ * DELIVERY (`降低` the threshold, `触发` the flow, `创建` the project, `规范` the behaviour): the
+ * user's own 77-Han-character first message fired ZERO signals because every one of its verbs was
+ * outside the lexicon. Matching stays SUBSTRING-based exactly as before (no `\b`), because the
+ * existing vocabulary relies on it to count inflections (`refactoring`, `migrations`), and distinct
+ * spellings — not occurrences — are what the threshold reads. The `normal` row does NOT read this
+ * pattern: it reads {@link PRE_WAVE_DELIVERABLE_VERB_PATTERN}, the frozen pre-wave set.
+ */
+export const DELIVERABLE_VERB_PATTERN = /(align|migrate|refactor|audit|overhaul|port|rewrite|consolidate|implement|add|build|change|check|verify|fix|create|update|remove|delete|move|rename|test|document|wire|integrate|deploy|release|review|investigate|diagnose|reproduce|benchmark|optimize|harden|validate|split|restructure|脱去|移除|剥离|删除|新建|搬迁|修复|校准|重建|验证|对齐|重构|迁移|审计|移植|梳理|全量|独立|强制|回归|设计|实现|改造|补充|降低|提高|提升|触发|创建|添加|增加|修改|调整|优化|统一|清理|简化|拆分|补全|支持|接入|升级|覆盖|整合|编排|打包|发布|部署|审查|评审|排查|定位|复现|编写|撰写|补写|重写|运行|执行|检查|核查|扩展|完善|精简|合并|替换|加固|校验|测量|记录|规范|抽取)/giu
+/**
+ * Signal C2: THE EXPANDED action-verb set (English + CJK), read by `easy` and `strict`.
+ *
+ * Its English half keeps the pre-wave 14-verb shape and gains NO deliverable asks — the expansion is
+ * vocabulary, not an action-classifier change. Only the CJK half grows (46 additions), because signal
+ * E's intent conjunct reads this same count, so a Chinese delivery verb absent here would keep E
+ * blind. The `normal` row reads {@link PRE_WAVE_ACTION_VERB_PATTERN} instead.
+ */
+export const ACTION_VERB_PATTERN = /\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|脱去|移除|剥离|删除|新建|搬迁|修复|校准|重建|验证|对齐|重构|迁移|审计|移植|梳理|全量|独立|强制|回归|设计|实现|改造|补充|降低|提高|提升|触发|创建|添加|增加|修改|调整|优化|统一|清理|简化|拆分|补全|支持|接入|升级|覆盖|整合|编排|打包|发布|部署|审查|评审|排查|定位|复现|编写|撰写|补写|重写|运行|执行|检查|核查|扩展|完善|精简|合并|替换|加固|校验|测量|记录|规范|抽取/giu
 /** Signal C1: numbered / bulleted / table rows that read as enumerated steps. */
 export const ENUMERATED_LINE_PATTERN = /^\s*(?:\d+[.)]|[-*|])\s/u
 /**
@@ -129,31 +289,63 @@ export const ENUMERATED_LINE_PATTERN = /^\s*(?:\d+[.)]|[-*|])\s/u
  * full-width sentence terminators `！？` — the same sentence-boundary class as `。；` for this count.
  */
 export const CLAUSE_SEPARATOR_PATTERN = /[\n\r;:,.、，。；：！？（）「」『』“”‘’【】]/u
-/** Signal C3: a clause that OPENS (optionally after a conjunction) with an action verb. */
-export const CLAUSE_ACTION_PATTERN = /^\s*(?:(?:and|then|also)\s+)?(?:\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|脱去|移除|剥离|删除|新建|搬迁|修复|校准|重建|验证|对齐|重构|迁移|审计|移植|梳理|全量|独立|强制|回归|设计|实现|改造|补充)/iu
-/** Signal B threshold: distinct deliverable-verb matches. */
-export const DELIVERABLE_VERB_MIN = 4
-/** Signal C1 and C3 threshold: enumerated lines / positional clauses. */
-export const ENUMERATED_LINE_MIN = 3
-/** Signal C2 threshold: distinct action-verb matches. */
-export const ACTION_VERB_MIN = 3
-/** Signal C: how many of its three sub-signals must hold (its own majority). */
-export const C_SUBSIGNAL_MIN = 2
+/**
+ * Signal C3: a clause that OPENS (optionally after a conjunction) with an action verb, over the
+ * EXPANDED lexicon ({@link ACTION_VERB_PATTERN}'s CJK additions included) — so a clause that opens
+ * with `降低` or `创建` counts exactly like one that opens with `align`. The `normal` row reads
+ * {@link PRE_WAVE_CLAUSE_ACTION_PATTERN}.
+ */
+export const CLAUSE_ACTION_PATTERN = /^\s*(?:(?:and|then|also)\s+)?(?:\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|脱去|移除|剥离|删除|新建|搬迁|修复|校准|重建|验证|对齐|重构|迁移|审计|移植|梳理|全量|独立|强制|回归|设计|实现|改造|补充|降低|提高|提升|触发|创建|添加|增加|修改|调整|优化|统一|清理|简化|拆分|补全|支持|接入|升级|覆盖|整合|编排|打包|发布|部署|审查|评审|排查|定位|复现|编写|撰写|补写|重写|运行|执行|检查|核查|扩展|完善|精简|合并|替换|加固|校验|测量|记录|规范|抽取)/iu
+/** One row's three verb lexicons, selected together so a row cannot mix vocabularies. */
+export interface GateLexicon {
+  /** Signal B's deliverable-verb pattern. */
+  readonly deliverable: RegExp
+  /** Signal C2 / signal E's action-verb pattern. */
+  readonly action: RegExp
+  /** Signal C3's clause-opener pattern. */
+  readonly clause: RegExp
+}
+/** The pre-wave lexicon: the `normal` row's exact historical vocabulary. */
+export const PRE_WAVE_LEXICON: GateLexicon = {
+  deliverable: PRE_WAVE_DELIVERABLE_VERB_PATTERN,
+  action: PRE_WAVE_ACTION_VERB_PATTERN,
+  clause: PRE_WAVE_CLAUSE_ACTION_PATTERN,
+}
+/** The expanded lexicon: the `easy` and `strict` rows' vocabulary. */
+export const EXPANDED_LEXICON: GateLexicon = {
+  deliverable: DELIVERABLE_VERB_PATTERN,
+  action: ACTION_VERB_PATTERN,
+  clause: CLAUSE_ACTION_PATTERN,
+}
+/** The lexicon a {@link SensitivityThresholds.lexicon} selector resolves through. */
+export const GATE_LEXICONS: Readonly<Record<GateLexiconName, GateLexicon>> = {
+  "pre-wave": PRE_WAVE_LEXICON,
+  expanded: EXPANDED_LEXICON,
+}
+/** Signal B threshold at NORMAL sensitivity, derived from the one table ({@link SENSITIVITY_THRESHOLDS}). */
+export const DELIVERABLE_VERB_MIN = SENSITIVITY_THRESHOLDS.normal.deliverableVerbs
+/** Signal C1 and C3 threshold at NORMAL sensitivity, derived from the one table. */
+export const ENUMERATED_LINE_MIN = SENSITIVITY_THRESHOLDS.normal.enumeratedLines
+/** Signal C2 threshold at NORMAL sensitivity, derived from the one table. */
+export const ACTION_VERB_MIN = SENSITIVITY_THRESHOLDS.normal.actionVerbs
+/** Signal C's majority width at NORMAL sensitivity, derived from the one table. */
+export const C_SUBSIGNAL_MIN = SENSITIVITY_THRESHOLDS.normal.cSubSignals
 /** Signal E: ONE Han character, so this pattern's occurrence COUNT is a text's CJK scale. */
 export const CJK_CHAR_PATTERN = /\p{Script=Han}/gu
 /**
- * Signal E threshold: Han characters. A CJK instruction states its scale in CHARACTERS where an
- * English one states it in clauses, so scale has to be read on its own axis. CALIBRATED over the
- * frozen corpus (measured margins in the evidence dir): the positive — the user's verbatim
- * instruction — carries 159 Han characters, and every frozen negative carries at most 22, so 60 is
- * the midpoint with 99 above and 38 below it.
+ * Signal E threshold at NORMAL sensitivity: Han characters, derived from the one table.
+ *
+ * A CJK instruction states its scale in CHARACTERS where an English one states it in clauses, so
+ * scale has to be read on its own axis. The NORMAL row is the calibration the 2026-10-07 wave
+ * measured: the 159-Han-character positive cleared it and every frozen negative stayed under it.
  */
-export const CJK_CHAR_MIN = 60
+export const CJK_CHAR_MIN = SENSITIVITY_THRESHOLDS.normal.cjkChars
 /**
- * Signal E threshold: distinct action-verb matches. Scale ALONE never fires E — a long Chinese
- * question that asks for no work must stay silent — which is what this second conjunct holds down.
+ * Signal E threshold at NORMAL sensitivity: distinct action verbs, derived from the one table.
+ * Scale ALONE never fires E — a long Chinese question that asks for no work must stay silent —
+ * which is what this second conjunct holds down.
  */
-export const CJK_ACTION_VERB_MIN = 2
+export const CJK_ACTION_VERB_MIN = SENSITIVITY_THRESHOLDS.normal.cjkVerbs
 /** The plan NAME cap: the staged shell's name is the goal's first line, clipped to this many chars. */
 export const GATE_PLAN_NAME_MAX = 60
 /** How much of the goal the staged shell's DESCRIPTION inlines, in chars. */
@@ -185,11 +377,16 @@ function enumeratedLineCount(text: string): number {
   return count
 }
 
-/** Clauses that OPEN with an action verb. */
-function clauseStepCount(text: string): number {
+/**
+ * Clauses that OPEN with an action verb.
+ * @param text - the goal text, split on {@link CLAUSE_SEPARATOR_PATTERN}.
+ * @param pattern - the row's clause-opener lexicon ({@link GateLexicon.clause}).
+ * @returns how many clauses open with a verb of that lexicon.
+ */
+function clauseStepCount(text: string, pattern: RegExp): number {
   /** Clauses that open with an action verb so far. */
   let count = 0
-  for (const clause of text.split(CLAUSE_SEPARATOR_PATTERN)) if (CLAUSE_ACTION_PATTERN.test(clause)) count += 1
+  for (const clause of text.split(CLAUSE_SEPARATOR_PATTERN)) if (pattern.test(clause)) count += 1
   return count
 }
 
@@ -225,6 +422,25 @@ export function consumeExplicitFlag(text: string): { flagged: boolean; text: str
 }
 
 /**
+ * Everything the predicate may be told beyond the goal text.
+ *
+ * `sensitivity` selects the threshold row ({@link resolveSensitivity}; absent reads `easy`).
+ * `workspaceScale` is signal F's INPUT — the caller's bounded root-listing verdict from
+ * {@link readWorkspaceScale} — and it is read ONLY on a row whose `workspaceScale` is `true`
+ * (`easy` today), so `normal`/`strict` keep exactly the five signals they had.
+ */
+export interface ComplexityGateInput {
+  /** Whether an explicit `team:` / `!team` marker was consumed (signal A). */
+  explicitFlag?: boolean
+  /** Whether an ACTIVE boulder work exists (signal D). */
+  activeBoulder?: boolean
+  /** The threshold row to read; any unknown or absent value resolves to `easy`. */
+  sensitivity?: GateSensitivity
+  /** Whether the workspace looks like a large project (signal F; evaluated on `easy` only). */
+  workspaceScale?: boolean
+}
+
+/**
  * Evaluate the frozen gate. `trigger = explicitFlag OR (matchedSignals >= 1)`.
  *
  * C is ONE signal: its own 2-of-3 majority is established FIRST, and C1/C2/C3 are never
@@ -237,28 +453,46 @@ export function consumeExplicitFlag(text: string): { flagged: boolean; text: str
  * E is the CJK-SCALE signal: {@link CJK_CHAR_MIN} Han characters AND {@link CJK_ACTION_VERB_MIN}
  * distinct action verbs. It is English-immune by construction (an ASCII text carries zero Han
  * characters), so adding it cannot move any frozen English verdict.
+ *
+ * F is the WORKSPACE-SCALE signal (2026-10-22): a bounded root listing shows at least one project
+ * manifest, at least one project directory AND at least eight visible entries. It is evaluated on
+ * the `easy` row ONLY, because eager triggering is the row's whole purpose: in a large project even
+ * a short greeting then stages the inert shell, which is exactly what the user asked for.
+ *
+ * EVERY row selects its thresholds AND its VERB LEXICON ({@link SensitivityThresholds.lexicon}):
+ * `normal` reads the pre-wave sets, so it reproduces the pre-2026-10-22 predicate exactly, while
+ * `easy`/`strict` read the expanded vocabulary.
+ *
+ * @param text - the goal text, with any explicit marker already consumed by the caller.
+ * @param input - the explicit-flag fact, the boulder verdict, the sensitivity row and F's input.
+ * @returns whether the gate triggered, and the fired signal letters in A–F order.
  */
 export function evaluateComplexityGate(
   text: string,
-  input: { explicitFlag?: boolean; activeBoulder?: boolean } = {},
+  input: ComplexityGateInput = {},
 ): { trigger: boolean; signals: string[] } {
   /** The goal text as given; a non-string reads as empty rather than throwing. */
   const source = String(text ?? "")
-  /** The fired signal letters, in A to E order, which is what the notice names. */
+  /** The threshold row this call reads; an absent or unknown sensitivity reads `easy`. */
+  const thresholds = SENSITIVITY_THRESHOLDS[resolveSensitivity(input.sensitivity)]
+  /** This row's verb lexicons: `normal` keeps the PRE-WAVE sets, `easy`/`strict` read the expanded ones. */
+  const lexicon = GATE_LEXICONS[thresholds.lexicon]
+  /** The fired signal letters, in A to F order, which is what the notice names. */
   const signals: string[] = []
   if (input.explicitFlag === true) signals.push("A")
-  if (distinctMatches(source, DELIVERABLE_VERB_PATTERN) >= DELIVERABLE_VERB_MIN) signals.push("B")
+  if (distinctMatches(source, lexicon.deliverable) >= thresholds.deliverableVerbs) signals.push("B")
   /** Distinct action-verb matches, which BOTH signal C2 and signal E read. */
-  const actionVerbs = distinctMatches(source, ACTION_VERB_PATTERN)
-  /** How many of signal C's three sub-signals hold (its own 2-of-3 majority). */
+  const actionVerbs = distinctMatches(source, lexicon.action)
+  /** How many of signal C's three sub-signals hold (its own majority, per the row). */
   const cSubSignals = [
-    enumeratedLineCount(source) >= ENUMERATED_LINE_MIN,
-    actionVerbs >= ACTION_VERB_MIN,
-    clauseStepCount(source) >= ENUMERATED_LINE_MIN,
+    enumeratedLineCount(source) >= thresholds.enumeratedLines,
+    actionVerbs >= thresholds.actionVerbs,
+    clauseStepCount(source, lexicon.clause) >= thresholds.clauseSteps,
   ].filter(Boolean).length
-  if (cSubSignals >= C_SUBSIGNAL_MIN) signals.push("C")
+  if (cSubSignals >= thresholds.cSubSignals) signals.push("C")
   if (input.activeBoulder === true) signals.push("D")
-  if (cjkCharCount(source) >= CJK_CHAR_MIN && actionVerbs >= CJK_ACTION_VERB_MIN) signals.push("E")
+  if (cjkCharCount(source) >= thresholds.cjkChars && actionVerbs >= thresholds.cjkVerbs) signals.push("E")
+  if (thresholds.workspaceScale && input.workspaceScale === true) signals.push("F")
   return { trigger: input.explicitFlag === true || signals.length >= 1, signals }
 }
 
@@ -329,6 +563,86 @@ export async function readBoulderGate(workspace: string, opts: BoulderGateOption
     }
   } catch {
     return { active: false }
+  }
+}
+
+/**
+ * The manifest FILENAMES that make a workspace root read as a project (signal F's first conjunct).
+ * Every entry is an exact basename the root listing must carry; the list spans the ecosystems this
+ * bundle's users work in without probing any of them (no recursion, no content read).
+ */
+export const WORKSPACE_MANIFESTS: readonly string[] = [
+  "package.json",
+  "pyproject.toml",
+  "Cargo.toml",
+  "go.mod",
+  "pom.xml",
+  "build.gradle",
+  "build.gradle.kts",
+  "composer.json",
+  "Gemfile",
+  "mix.exs",
+  "pubspec.yaml",
+  "CMakeLists.txt",
+]
+
+/**
+ * The DIRECTORY names that make a workspace root read as a multi-unit project (signal F's second
+ * conjunct). These are conventional top-level source roots — one is enough — and they are matched by
+ * NAME from the same single listing, never by recursing into them.
+ */
+export const WORKSPACE_PROJECT_DIRS: readonly string[] = [
+  "packages",
+  "src",
+  "apps",
+  "lib",
+  "services",
+  "plugins",
+  "crates",
+  "cmd",
+  "internal",
+  "modules",
+]
+
+/** Signal F: how many VISIBLE root entries (names not starting with `.`) a large workspace carries. */
+export const WORKSPACE_VISIBLE_ENTRIES_MIN = 8
+
+/** The seam {@link readWorkspaceScale} accepts: the directory lister, for tests and the QA case. */
+export interface WorkspaceScaleOptions {
+  /** The directory lister; defaults to `node:fs/promises`' `readdir` in name-only utf8 mode. */
+  readDir?: (path: string) => Promise<readonly string[]>
+}
+
+/**
+ * Whether a workspace root looks like a LARGE project — signal F, added by wave `team-gate-wave`.
+ *
+ * The probe is ONE bounded `readdir` of the root: no recursion, no file read, no `stat`. It answers
+ * `true` when the visible entries carry at least one {@link WORKSPACE_MANIFESTS} name, at least one
+ * {@link WORKSPACE_PROJECT_DIRS} name AND at least {@link WORKSPACE_VISIBLE_ENTRIES_MIN} entries in
+ * total. Dotfiles are excluded from every count, so a freshly initialized directory with `.git` and
+ * `.mpd` alone reads `false`.
+ *
+ * NON-THROWING BY CONTRACT: a missing directory, a permission error, a non-string and a non-array
+ * answer all read `false`. The gate must not break a step because a listing failed.
+ * @param workspace - the session workspace whose ROOT is listed.
+ * @param opts - the injectable lister, optional.
+ * @returns whether the workspace carries the project-manifest + project-dir + size shape.
+ */
+export async function readWorkspaceScale(workspace: string, opts: WorkspaceScaleOptions = {}): Promise<boolean> {
+  try {
+    /** The lister: the injected seam in a test, `node:fs/promises` in a boot. */
+    const list = opts.readDir ?? ((path: string): Promise<readonly string[]> => readDirFs(path, { encoding: "utf8", withFileTypes: false }))
+    /** Every root entry's basename, coerced to a string so a hostile lister cannot throw below. */
+    const entries = (await list(String(workspace ?? ""))).map((entry) => String(entry))
+    /** The entries a person would SEE in a file manager: dotfiles never count toward scale. */
+    const visible = entries.filter((name) => !name.startsWith("."))
+    /** How many project manifests sit at the root. */
+    const manifests = visible.filter((name) => WORKSPACE_MANIFESTS.includes(name)).length
+    /** How many conventional project directories sit at the root. */
+    const projectDirs = visible.filter((name) => WORKSPACE_PROJECT_DIRS.includes(name)).length
+    return manifests >= 1 && projectDirs >= 1 && visible.length >= WORKSPACE_VISIBLE_ENTRIES_MIN
+  } catch {
+    return false
   }
 }
 
@@ -491,7 +805,7 @@ export function gatePlanShell(input: { signals: readonly string[]; goal: string;
  * taxonomy stays two-valued: either a plan WAS staged and the mechanical notice names the id the
  * call returned, or nothing was staged and this text says so.
  *
- * @param signals - the fired signal letters, in A–E order.
+ * @param signals - the fired signal letters, in A–F order.
  * @param explicit - whether an explicit `team:` / `!team` marker was consumed from the goal.
  * @returns the notice text, always carrying {@link STARTUP_NOTICE_MARKER}.
  */
@@ -524,7 +838,7 @@ export function advisoryNoticeText(signals: readonly string[], explicit: boolean
 export function mechanicalNoticeText(input: {
   /** The plan id the `agent_teams_plan` call returned; may be empty when the call reported none. */
   planId: string
-  /** The fired signal letters, in A–E order. */
+  /** The fired signal letters, in A–F order. */
   signals: readonly string[]
   /** Whether an explicit `team:` / `!team` marker was consumed from the goal text. */
   explicit: boolean
