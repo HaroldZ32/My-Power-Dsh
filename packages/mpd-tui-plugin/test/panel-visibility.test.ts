@@ -1292,8 +1292,9 @@ describe("AC8b · MPD's own `⤢` control, drawn in each page's title row", () =
     expect(opened).toBe(1)
     // The host's PanelBar stops the event so the panel column's own click-to-focus does not also fire.
     expect(event.stopped).toBe(true)
-    // THE FOOTER NAMES IT: a control nobody is told about is a secret.
-    expect(chromeText(tree)).toContain(`${PANEL_FULLSCREEN_GLYPH} fullscreen`)
+    // THE FOOTER NAMES IT: a control nobody is told about is a secret. Since wave `tui-refresh` the
+    // word is abbreviated (`full`) so the POSITION TOKEN and this hint both survive a 26-cell footer.
+    expect(chromeText(tree)).toContain(`${PANEL_FULLSCREEN_GLYPH} full`)
   })
 
   test("the workmate page draws its own control, wired to the board scene", () => {
@@ -1375,7 +1376,7 @@ describe("AC8b · MPD's own `⤢` control, drawn in each page's title row", () =
     const text = chromeText(tree)
     // THE CONTROL IS THERE, and so is the hint that names it.
     expect(chromeByKey(tree, "title-fullscreen")).toBeDefined()
-    expect(text).toContain(`${PANEL_FULLSCREEN_GLYPH} fullscreen`)
+    expect(text).toContain(`${PANEL_FULLSCREEN_GLYPH} full`)
     /** The footer row itself, read by its own key. */
     const footer = chromeByKey(tree, "keys")
     expect(footer).toBeDefined()
@@ -1387,7 +1388,7 @@ describe("AC8b · MPD's own `⤢` control, drawn in each page's title row", () =
     // rule this page's rows go through — loses the glyph entirely at this width. The arm above is
     // therefore a statement about the ORDER, not about the glyph being unavoidable.
     /** The footer as it was drawn before this repair. */
-    const before = clampCells("↑↓/jk move · Enter pin · Esc unpin · ⤢ fullscreen", 26)
+    const before = clampCells("↑↓/jk move · Enter pin · Esc unpin · ⤢ full", 26)
     expect(before).not.toContain(PANEL_FULLSCREEN_GLYPH)
   })
 })

@@ -778,7 +778,10 @@ describe("the panel component (both sections, props kit only)", () => {
     const text = kit.text(component({ React: kit.React, ui: kit.ui, host: { snapshot: () => ({ subagents: [] }) } }))
     // AMENDED (clause C3): the host's sentence is clamped to the rich frame's interior like every other
     // row of that page, so the needle is its surviving prefix rather than the whole sentence.
-    expect(text).toContain("No subagents in the current se")
+    // AMENDED AGAIN (wave `tui-refresh`): the interior this frame gives its rows is one cell narrower —
+    // the vertical bar's cell is reserved out of the content width — so the needle is the prefix that
+    // survives at EVERY width this page is drawn at, not the one that happened to survive at 34 columns.
+    expect(text).toContain("No subagents in the current")
     // AMENDED (clause C3): the empty state is the RICH page's own sentence, which names the CALL that
     // fills the drawing rather than the retired renderer's `task dependency graph:` prefix. The claim is
     // unchanged — the page says WHY there is no drawing instead of showing an empty frame.

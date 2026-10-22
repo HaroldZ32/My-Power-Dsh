@@ -749,6 +749,16 @@ function createTeamComponent(
     const scrollXMax = Math.max(0, view.width - graphWidth)
     /** The horizontal offset for THIS render, clamped — the one value the rows and the rail both read. */
     const scrollXAt = Math.min(Math.max(0, scrollX), scrollXMax)
+    // THE VERTICAL AXIS GETS THE SAME TREATMENT (the far-edge defect this wave repairs). The state used
+    // to be read raw by the render loop, so `End` (which committed `Number.MAX_SAFE_INTEGER`) and a long
+    // wheel run pushed the window PAST the last row: the slice then started beyond the drawing and the
+    // scene drew an EMPTY graph — with no way back except scrolling up one tick at a time. A clamped
+    // value derived per render, and used by the loop, both hit tests and every vertical gesture, makes
+    // the far edge a real stop.
+    /** The furthest vertical offset that still fills the graph window; zero when the drawing fits. */
+    const scrollMax = Math.max(0, view.lines.length - graphWindow)
+    /** The vertical offset for THIS render, clamped — the one value the rows and both hit tests read. */
+    const scrollAt = Math.min(Math.max(0, scroll), scrollMax)
     if (viewRef !== undefined && viewRef !== null) viewRef.current = view
     /** The tasks the focus would move through, in DRAWING order, which is what the arrow keys walk. */
     const ordered = view.hits.map((hit) => hit.taskId)
@@ -774,16 +784,18 @@ function createTeamComponent(
         // THE ARROWS MOVE THE FOCUS; SHIFT MAKES THEM SCROLL (the user's own decision, clause T5). `←/→`
         // are NEW: they walk the SAME one-dimensional drawing order `↑/↓` already walk, because a true
         // two-dimensional neighbour walk would need a geometry contract nobody asked for.
-        else if (key?.upArrow === true || input === "k") (key?.shift === true ? setScroll(Math.max(0, scroll - 1)) : moveFocus(-1))
-        else if (key?.downArrow === true || input === "j") (key?.shift === true ? setScroll(scroll + 1) : moveFocus(1))
+        else if (key?.upArrow === true || input === "k") (key?.shift === true ? setScroll(Math.max(0, scrollAt - 1)) : moveFocus(-1))
+        else if (key?.downArrow === true || input === "j") (key?.shift === true ? setScroll(Math.min(scrollMax, scrollAt + 1)) : moveFocus(1))
         else if (key?.leftArrow === true || input === "h") (key?.shift === true ? setScrollX(Math.max(0, scrollXAt - 1)) : moveFocus(-1))
         else if (key?.rightArrow === true || input === "l") (key?.shift === true ? setScrollX(Math.min(scrollXMax, scrollXAt + 1)) : moveFocus(1))
         // PAGING: `PgUp`/`PgDn` page vertically and their SHIFT forms horizontally, and `Home`/`End` are
         // the vertical ends — the same four keys the `dag` panel answers, so the two surfaces agree.
-        else if (key?.pageUp === true) (key?.shift === true ? setScrollX(Math.max(0, scrollXAt - graphWidth)) : setScroll(Math.max(0, scroll - graphWindow)))
-        else if (key?.pageDown === true) (key?.shift === true ? setScrollX(Math.min(scrollXMax, scrollXAt + graphWidth)) : setScroll(scroll + graphWindow))
+        // EVERY VERTICAL MOVE GOES THROUGH `scrollAt`/`scrollMax`, so the far edge is a stop and not a
+        // value the next render has to recover from.
+        else if (key?.pageUp === true) (key?.shift === true ? setScrollX(Math.max(0, scrollXAt - graphWidth)) : setScroll(Math.max(0, scrollAt - graphWindow)))
+        else if (key?.pageDown === true) (key?.shift === true ? setScrollX(Math.min(scrollXMax, scrollXAt + graphWidth)) : setScroll(Math.min(scrollMax, scrollAt + graphWindow)))
         else if (key?.home === true) setScroll(0)
-        else if (key?.end === true) setScroll(Number.MAX_SAFE_INTEGER)
+        else if (key?.end === true) setScroll(scrollMax)
         else if (input === "g") { setScroll(0); setScrollX(0) }
         else if (input === "p") { nav.planFromTeam = false; openScene(BOARD_SCENE_ID) }
         else if (input === "a") {
@@ -892,7 +904,7 @@ function createTeamComponent(
       const graphWindow = Math.max(3, measured.window - 4)
       /** One host element per drawn graph row, each carrying its coloured spans. */
       const graphRows: unknown[] = []
-      for (let index = scroll; index < Math.min(view.lines.length, scroll + graphWindow); index += 1) {
+      for (let index = scrollAt; index < Math.min(view.lines.length, scrollAt + graphWindow); index += 1) {
         // THE HORIZONTAL WINDOW, through the ONE slicer (clause T3). It is applied HERE and nowhere
         // else in this scene: this is the DAG's own row list, and every other row the scene draws is
         // pushed through `surfaceText`/`surfaceBodyRow` at its full width (R8).
@@ -910,7 +922,7 @@ function createTeamComponent(
           const drawn = viewRef?.current
           if (drawn === undefined) return
           /** The task under the pointer, or none. */
-          const under = hitTest(drawn, Number(event?.localRow ?? -1) + scroll, Number(event?.localCol ?? -1) + scrollXAt)
+          const under = hitTest(drawn, Number(event?.localRow ?? -1) + scrollAt, Number(event?.localCol ?? -1) + scrollXAt)
           setHover(under)
         },
         onMouseLeave: () => setHover(undefined),
@@ -919,7 +931,7 @@ function createTeamComponent(
           const drawn = viewRef?.current
           if (drawn === undefined) return
           /** The task that was clicked, or none for blank space. */
-          const under = hitTest(drawn, Number(event?.localRow ?? -1) + scroll, Number(event?.localCol ?? -1) + scrollXAt)
+          const under = hitTest(drawn, Number(event?.localRow ?? -1) + scrollAt, Number(event?.localCol ?? -1) + scrollXAt)
           // Clicking the pinned task again, or blank space, UNPINS — the same gesture that pinned it.
           setPinned(under === undefined || under === pinned ? undefined : under)
           setHover(under)
@@ -933,7 +945,7 @@ function createTeamComponent(
           // no cause.
           /** The wheel's vertical delta in this plugin's own convention; positive scrolls down. */
           const deltaY = normalizeWheelDelta(Number(event?.deltaY ?? 0), wheelInvertOn())
-          if (deltaY !== 0) setScroll(Math.max(0, scroll + (deltaY > 0 ? 1 : -1)))
+          if (deltaY !== 0) setScroll(Math.max(0, Math.min(scrollMax, scrollAt + (deltaY > 0 ? 1 : -1))))
           /** The wheel's horizontal delta in the same convention; positive scrolls right. */
           const deltaX = normalizeWheelDelta(Number(event?.deltaX ?? 0), wheelInvertOn())
           if (deltaX !== 0) setScrollX(Math.max(0, Math.min(scrollXMax, scrollXAt + (deltaX > 0 ? 1 : -1))))

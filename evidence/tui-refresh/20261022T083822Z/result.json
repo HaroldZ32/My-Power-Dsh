@@ -1,0 +1,90 @@
+{
+  "wave": "tui-refresh",
+  "contract": ".mpd/plans/tui-refresh.md",
+  "branch": "fix/tui-refresh",
+  "base_commit": "46e3bf12",
+  "utc": "2026-10-22T08:40:34Z",
+  "source_sha256": {
+    "packages/mpd-tui-plugin/src/panel-dag.ts": "4b96f65934db00f33fa5ddfed2950f324a8264b187c59fce920ccc564f7bb70d",
+    "packages/mpd-tui-plugin/src/panel-core.ts": "0bd3aa115bae331135f87a6b05a0e53bde59ba95c82295eae9c40ca80320c0a2",
+    "packages/mpd-tui-plugin/src/scenes.ts": "2ccadcd8c4173d53f5023d79507c1d78ace2b2f3922698f4cf9fba04ef77eafd",
+    "packages/mpd-tui-plugin/src/panel-workmate.ts": "c8fce24d9e2bebeb0b9fff55fa0633854a702d9a0f9e72f4bd579438a1349369",
+    "packages/mpd-tui-plugin/src/panel.ts": "664bc13a70dd29385aa45abdd1a23d68c1f14c0f4f385b2bd5fa2fd4408bb606",
+    "packages/mpd-tui-plugin/dist/index.js": "ffe1c896f99021341f26aa8f3c28ba9118ed3732facc30acfd9ec6e67c4ff562"
+  },
+  "gates": [
+    {
+      "cmd": ".toolchain/node_modules/.bin/bun test packages/mpd-tui-plugin",
+      "exit": 0,
+      "observed": "534 pass / 0 fail — Ran 534 tests across 21 files. [12.37s]; 13,878 expect() calls"
+    },
+    {
+      "cmd": ".toolchain/node_modules/.bin/bun run typecheck",
+      "exit": 0,
+      "observed": "$ tsgo --noEmit (no diagnostics)"
+    },
+    {
+      "cmd": ".toolchain/node_modules/.bin/bun run verify:comments",
+      "exit": 0,
+      "observed": "VERDICT: PASS — every declaration in the family carries a precise comment and a full signature."
+    },
+    {
+      "cmd": ".toolchain/node_modules/.bin/bun run verify:docs",
+      "exit": 0,
+      "observed": "pairs=49 failed=0 violations=0 links=440 dead=0 — PASS"
+    },
+    {
+      "cmd": "node scripts/verify-dist-fresh.ts",
+      "exit": 0,
+      "observed": "ok: 33/33 targets fresh (each rebuilt twice, byte-identical) — 1 NOT COVERED file listed (prebuilt mpd-mcp-codegraph/dist/serve.js)"
+    },
+    {
+      "cmd": ".toolchain/node_modules/.bin/bun run verify:gates",
+      "exit": 0,
+      "observed": "PASS - 9/9 member gate(s) green"
+    },
+    {
+      "cmd": ".toolchain/node_modules/.bin/bun run test:qa",
+      "exit": 0,
+      "observed": "[test:qa] all self-tests passed"
+    }
+  ],
+  "build": {
+    "cmd": ".toolchain/node_modules/.bin/bun build packages/mpd-tui-plugin/src/index.ts --target node --format esm --outfile packages/mpd-tui-plugin/dist/index.js",
+    "exit": 0,
+    "observed": "Bundled 36 modules in 11ms — index.js 0.44 MB (entry point)"
+  },
+  "probe": {
+    "cmd": ".toolchain/node_modules/.bin/bun evidence/tui-refresh/20261022T083822Z/probe.ts",
+    "exit": 0,
+    "lines": [
+      "cadence DAG_PANEL_REFRESH_MS=2000",
+      "cols=26 mode=rail width=26 rows=4 drawn: T1=true T2=true T3=true T4=true",
+      "cols=36 mode=boxes width=36 rows=9 drawn: T1=true T2=true T3=true T4=true",
+      "title section=\"team DAG\"",
+      "height budget: frame=2 title=1 footer=1 => window=rows-4",
+      "footer both windows (first 26 cells): \"1/31 col 1/12 · ⤢ full · ↑\" cells=26",
+      "footer no window: \"⤢ full · ↑↓/jk · ⏎ pin · esc · ⇧↑↓←→\""
+    ]
+  },
+  "acceptance": {
+    "cadence": "DAG_PANEL_REFRESH_MS=2000; REAL HOST CLOCK arm intercepts setInterval: the page schedules 2000 (never 1000) and the callback fires inside a 2200 ms wait",
+    "fit": "boxesFitPanel: boxes only when width<=interior AND drawing rows<=window; 3-sibling rank at 26 cells -> rail with all four ids drawn; 36 cells -> boxes",
+    "rows": "windowRows = measured.rows - (frame 2 + title 1 + footer 1); arms assert total == measured at rows 10/12/24/40",
+    "gutter": "the bar's cell is always reserved out of the content width; arm asserts widest row + 1 <= interior while the bar is drawn",
+    "title": "frame borderText empty and the section rule renamed 'team DAG'; arm counts exactly one 'MPD' in the rendered page",
+    "footer": "dagFooterText: position first (vertical then 'col n/m'), compact hints; the 26-cell prefix carries the position and the horizontal token",
+    "fullscreen": "scrollMax/scrollAt per render, used by the render loop, both hitTests, wheel, shift+down/j, PgDn, End, Home; far-edge arms prove End and a 200-tick wheel run stop at the last row and Home returns byte-identically",
+    "chromeWheel": "frame-level onWheel + swallowWheelEvent on both sidebar pages; arm asserts exactly two bindings (rows + frame), that the frame's handler stops propagation and that the page moved",
+    "docs": "docs/tui.md + docs/tui.zh-CN.md §3.5; one troubleshooting row",
+    "audit": "workmate page, board/team scenes, subagents scene already at 2000 ms; dashboard-key.ts is a ZERO-ROW keyhook reading the projection at keypress time, so it needs no tick"
+  },
+  "bounds": [
+    "No real-terminal (dsh-tui PTY / Docker) capture of the 485x630 sidebar: the layout/row/gutter/title/wheel facts are proven through the host-double tests and the black-box probe, not through a repainted screen.",
+    "The page seeds this render's scroll band from the PREVIOUS render's row counts; after a content-size change the whole-box boundary can be off by one row for one tick (converges on the next render).",
+    "The horizontal window is unreachable on the DAG page now (a boxed drawing must fit the width), so its rail and 'col n/m' token are exercised by unit arms only.",
+    "panel-workmate.ts keeps its pre-wave height budget and full-width content (the same off-by-one / 1-cell-overflow class). Only its frame-level wheel containment was added; the rest is reported as a finding.",
+    "The plan scene's own setScroll(scroll + 1) remains unbounded (no End key there); slice keeps it harmless. Out of this contract's scope; reported.",
+    "The browser sidebar's partial-load fix (in-flight guard + retain-last-good) is explicitly out of scope in the contract and was not touched."
+  ]
+}

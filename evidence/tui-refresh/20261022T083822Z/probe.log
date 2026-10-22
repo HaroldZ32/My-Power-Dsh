@@ -1,0 +1,7 @@
+cadence DAG_PANEL_REFRESH_MS=2000
+cols=26 mode=rail width=26 rows=4 drawn: T1=true T2=true T3=true T4=true
+cols=36 mode=boxes width=36 rows=9 drawn: T1=true T2=true T3=true T4=true
+title section="team DAG"
+height budget: frame=2 title=1 footer=1 => window=rows-4
+footer both windows (first 26 cells): "1/31 col 1/12 · ⤢ full · ↑" cells=26
+footer no window: "⤢ full · ↑↓/jk · ⏎ pin · esc · ⇧↑↓←→"

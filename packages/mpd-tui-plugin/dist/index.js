@@ -5417,7 +5417,15 @@ function graphRow(kit, spans, options) {
     return row;
   return kit.React.createElement(kit.ui.Box, { key: options.key, onClick: options.onClick, flexDirection: "row" }, row);
 }
-function panelFrame(kit, title, children) {
+var PANEL_FRAME_BORDER_ROWS = 2;
+function swallowWheelEvent(event) {
+  if (event === null || typeof event !== "object")
+    return;
+  const stop = event.stopPropagation;
+  if (typeof stop === "function")
+    stop.call(event);
+}
+function panelFrame(kit, title, children, options = {}) {
   return kit.React.createElement(kit.ui.Box, {
     key: "frame",
     flexDirection: "column",
@@ -5425,6 +5433,7 @@ function panelFrame(kit, title, children) {
     height: "100%",
     borderStyle: DAG_CHROME.frameBorder,
     borderColor: toneColor("edge"),
+    ...options.onWheel === undefined ? {} : { onWheel: options.onWheel },
     ...title === "" ? {} : { borderText: { content: panelText(title, 80), position: "top", align: "start" } }
   }, ...children);
 }
@@ -7719,8 +7728,8 @@ function registerSettingsSection(ctx, tui, log, adapterOverride) {
 // packages/mpd-tui-plugin/src/panel-dag.ts
 var DAG_PANEL_TITLE = "MPD";
 var DAG_SECTION_HOST_TITLE = "Host subagents";
-var DAG_SECTION_DAG_TITLE = "MPD team DAG";
-var DAG_PANEL_REFRESH_MS = 1000;
+var DAG_SECTION_DAG_TITLE = "team DAG";
+var DAG_PANEL_REFRESH_MS = 2000;
 function dagPageOf(workflow) {
   if (workflow === undefined || !Array.isArray(workflow.tasks))
     return;
@@ -7791,11 +7800,48 @@ function viewFacts(view) {
   };
 }
 var LIST_ROWS = 24;
+function boxesFitPanel(view, cols, rows) {
+  if (view.width > cols)
+    return false;
+  if (rows === undefined)
+    return true;
+  return view.lines.length <= rows;
+}
+function dagFooterText(facts) {
+  const tokens = [];
+  if (facts.vertical !== undefined && facts.vertical.max > 0) {
+    tokens.push(`${Math.max(0, Math.floor(facts.vertical.offset)) + 1}/${Math.max(0, Math.floor(facts.vertical.max)) + 1}`);
+  }
+  if (facts.horizontal !== undefined && facts.horizontal.max > 0) {
+    tokens.push(`col ${Math.max(0, Math.floor(facts.horizontal.offset)) + 1}/${Math.max(0, Math.floor(facts.horizontal.max)) + 1}`);
+  }
+  const place = tokens.length === 0 ? "" : `${tokens.join(" ")} · `;
+  return `${place}${PANEL_FULLSCREEN_GLYPH} full · ↑↓/jk · ⏎ pin · esc · ⇧↑↓←→`;
+}
+function halfBoxRows(hits, dagStart, windowStart, windowRows) {
+  const blank = new Set;
+  if (!Array.isArray(hits) || hits.length === 0)
+    return blank;
+  const start = Math.max(0, Math.floor(Number.isFinite(windowStart) ? windowStart : 0));
+  const end = start + Math.max(1, Math.floor(Number.isFinite(windowRows) ? windowRows : 1));
+  for (const hit of hits) {
+    const top = dagStart + hit.row;
+    const bottom = dagStart + hit.rowEnd;
+    if (bottom < start || top >= end)
+      continue;
+    if (top >= start && bottom < end)
+      continue;
+    for (let row = Math.max(top, start);row <= Math.min(bottom, end - 1); row += 1)
+      blank.add(row - dagStart);
+  }
+  return blank;
+}
 function dagPanelLayout(tasks, cols, focus, rows, servedRanks) {
   const width = Math.max(8, Math.floor(Number.isFinite(cols) ? cols : 8));
   const boxes = layoutBoxesNatural(tasks, focus, rows === undefined ? undefined : { rows }, servedRanks);
-  if (boxes !== undefined && boxes.labelOverflow !== true)
+  if (boxes !== undefined && boxes.labelOverflow !== true && boxesFitPanel(boxes, width, rows)) {
     return { view: boxes, mode: "boxes", list: false, ...viewFacts(boxes) };
+  }
   if (tasks.length > LIST_ROWS) {
     const dense = layoutList(tasks, width, focus, servedRanks);
     return { view: dense, mode: "list", list: true, ...viewFacts(dense) };
@@ -7872,6 +7918,7 @@ function dagPanelKeyAction(event, order, focus, pinned = undefined) {
   return { consumed: true, focus: order[next] };
 }
 var DAG_FALLBACK_ROWS = 24;
+var DAG_FOOTER_ROWS = 1;
 function scrollRowIntoView(viewport, row) {
   if (row < viewport.offset) {
     viewport.scrollTo(row);
@@ -7987,7 +8034,8 @@ function createDagPanelComponent(readWorkflow, options) {
       return null;
     }
     const measured = usePanelSize(kit.ui, panelFloorColumns("dag"));
-    const contentCols = panelContentWidth(measured.cols);
+    const previousSizes = kit.React.useRef(undefined);
+    const contentCols = Math.max(1, panelContentWidth(measured.cols) - 1);
     const sessionId = panelSessionId(props?.host);
     let workflow;
     try {
@@ -8024,8 +8072,8 @@ function createDagPanelComponent(readWorkflow, options) {
       setCursor(next);
     };
     const focus = pinnedNow() ?? cursorNow();
-    const windowRows = Math.max(1, (measured.rows ?? DAG_FALLBACK_ROWS) - PANEL_CHROME_ROWS - PANEL_TITLE_ROW_ROWS);
-    const sizes = { contentRows: 1, viewportRows: 1, contentCols, viewportCols: contentCols };
+    const windowRows = Math.max(1, (measured.rows ?? DAG_FALLBACK_ROWS) - PANEL_FRAME_BORDER_ROWS - PANEL_TITLE_ROW_ROWS - DAG_FOOTER_ROWS);
+    const sizes = { contentRows: previousSizes.current?.contentRows ?? 1, viewportRows: previousSizes.current?.viewportRows ?? windowRows, contentCols, viewportCols: contentCols };
     const layout = page === undefined ? undefined : dagPanelLayout(page.tasks, contentCols, focus, windowRows, page.ranks);
     sizes.contentCols = layout?.view.width ?? contentCols;
     usePanelTick(kit, DAG_PANEL_REFRESH_MS, true);
@@ -8121,6 +8169,8 @@ function createDagPanelComponent(readWorkflow, options) {
       const baseGlyph = DAG_TONE_GLYPH.running ?? "◐";
       const breathe = runningGlyph(phase);
       const breathing = breathe !== baseGlyph;
+      const dagStart = children.length;
+      const blankRows = layout.mode === "boxes" ? halfBoxRows(layout.view.hits, dagStart, viewport.offset, windowRows) : new Set;
       for (let index = 0;index < layout.view.lines.length; index += 1) {
         for (const candidate of layout.view.hits) {
           if (index >= candidate.row && index <= candidate.rowEnd && !rowIndex.has(candidate.taskId))
@@ -8129,7 +8179,7 @@ function createDagPanelComponent(readWorkflow, options) {
         const row = layout.view.lines[index];
         const running = row.some((span) => span.tone === "running");
         const phased = running && breathing ? row.map((span) => span.text.includes(baseGlyph) ? { text: span.text.replace(baseGlyph, breathe), tone: span.tone } : span) : row;
-        const spans = sliceSpans(phased, viewport.colOffset, contentCols);
+        const spans = blankRows.has(index) ? [{ text: " ".repeat(contentCols), tone: "blank" }] : sliceSpans(phased, viewport.colOffset, contentCols);
         children.push(graphRow(kit, spans, {
           key: `row-${index}`,
           cols: contentCols,
@@ -8185,12 +8235,22 @@ function createDagPanelComponent(readWorkflow, options) {
     const contentRows = Math.max(children.length, 1);
     sizes.contentRows = contentRows;
     sizes.viewportRows = windowRows;
+    previousSizes.current = { contentRows, viewportRows: windowRows };
     const scroller = viewport;
-    const wheelBound = (boundKit, rows) => boundKit.React.createElement(boundKit.ui.Box, { key: "scroll", flexDirection: "column", onWheel: (event) => scroller.onWheel(event) }, ...rows);
-    const footer = textRow(kit, `${PANEL_FULLSCREEN_GLYPH} fullscreen · ↑↓/jk move · Enter pin · Esc unpin · ⇧↑↓/⇧←→ scroll${scroller.overflow ? ` ${scroller.offset + 1}/${scroller.max + 1}` : ""}`, { key: "keys", dim: true, maxCells: contentCols });
+    const wheelBound = (boundKit, rows) => boundKit.React.createElement(boundKit.ui.Box, { key: "scroll", flexDirection: "column", onWheel: (event) => {
+      swallowWheelEvent(event);
+      scroller.onWheel(event);
+    } }, ...rows);
+    const footer = textRow(kit, dagFooterText({
+      ...scroller.overflow ? { vertical: { offset: scroller.offset, max: scroller.max } } : {},
+      ...scroller.colOverflow ? { horizontal: { offset: scroller.colOffset, max: scroller.colMax } } : {}
+    }), { key: "keys", dim: true, maxCells: contentCols });
     const body = panelViewportBody(kit, children, scroller, true, wheelBound);
     const titleRow = usePanelTitleRow(kit, { key: "title", title: DAG_PANEL_TITLE, cols: contentCols, ...options?.openFullscreen === undefined ? {} : { open: options.openFullscreen } });
-    return panelFrame(kit, DAG_PANEL_TITLE, [titleRow, ...body, footer]);
+    return panelFrame(kit, "", [titleRow, ...body, footer], { onWheel: (event) => {
+      swallowWheelEvent(event);
+      scroller.onWheel(event);
+    } });
   };
 }
 
@@ -8781,7 +8841,10 @@ function createWorkmatePanelComponent(readLibrary, options) {
     const footer = textRow(kit, `${PANEL_FULLSCREEN_GLYPH} fullscreen · ↑↓/jk move · PgUp/PgDn${scroller.overflow ? ` ${scroller.offset + 1}/${scroller.max + 1}` : ""}`, { key: "keys", dim: true, maxCells: contentCols });
     const body = panelViewportBody(kit, [scrolled], scroller);
     const titleRow = usePanelTitleRow(kit, { key: "title", title: WORKMATE_PANEL_TITLE, cols: contentCols, ...options?.openFullscreen === undefined ? {} : { open: options.openFullscreen } });
-    return panelFrame(kit, WORKMATE_PANEL_TITLE, [titleRow, ...body, footer]);
+    return panelFrame(kit, WORKMATE_PANEL_TITLE, [titleRow, ...body, footer], { onWheel: (event) => {
+      swallowWheelEvent(event);
+      scroller.onWheel(event);
+    } });
   };
 }
 function registerWorkmatePanel(tui, deps) {
@@ -9066,6 +9129,8 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
     const view = layoutGraphNatural(graphTasks, focus, { rows: graphWindow }, modelRanks(workflow));
     const scrollXMax = Math.max(0, view.width - graphWidth);
     const scrollXAt = Math.min(Math.max(0, scrollX), scrollXMax);
+    const scrollMax = Math.max(0, view.lines.length - graphWindow);
+    const scrollAt = Math.min(Math.max(0, scroll), scrollMax);
     if (viewRef !== undefined && viewRef !== null)
       viewRef.current = view;
     const ordered = view.hits.map((hit) => hit.taskId);
@@ -9091,21 +9156,21 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
           setScrollX(0);
           refresh();
         } else if (key?.upArrow === true || input === "k")
-          key?.shift === true ? setScroll(Math.max(0, scroll - 1)) : moveFocus(-1);
+          key?.shift === true ? setScroll(Math.max(0, scrollAt - 1)) : moveFocus(-1);
         else if (key?.downArrow === true || input === "j")
-          key?.shift === true ? setScroll(scroll + 1) : moveFocus(1);
+          key?.shift === true ? setScroll(Math.min(scrollMax, scrollAt + 1)) : moveFocus(1);
         else if (key?.leftArrow === true || input === "h")
           key?.shift === true ? setScrollX(Math.max(0, scrollXAt - 1)) : moveFocus(-1);
         else if (key?.rightArrow === true || input === "l")
           key?.shift === true ? setScrollX(Math.min(scrollXMax, scrollXAt + 1)) : moveFocus(1);
         else if (key?.pageUp === true)
-          key?.shift === true ? setScrollX(Math.max(0, scrollXAt - graphWidth)) : setScroll(Math.max(0, scroll - graphWindow));
+          key?.shift === true ? setScrollX(Math.max(0, scrollXAt - graphWidth)) : setScroll(Math.max(0, scrollAt - graphWindow));
         else if (key?.pageDown === true)
-          key?.shift === true ? setScrollX(Math.min(scrollXMax, scrollXAt + graphWidth)) : setScroll(scroll + graphWindow);
+          key?.shift === true ? setScrollX(Math.min(scrollXMax, scrollXAt + graphWidth)) : setScroll(Math.min(scrollMax, scrollAt + graphWindow));
         else if (key?.home === true)
           setScroll(0);
         else if (key?.end === true)
-          setScroll(Number.MAX_SAFE_INTEGER);
+          setScroll(scrollMax);
         else if (input === "g") {
           setScroll(0);
           setScrollX(0);
@@ -9169,7 +9234,7 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
       children.push(surfaceText(surface, "graphhead", `task dependency graph${view.mode === "rail" ? " (rail)" : ""}${focusLabel}`, { dim: true }));
       const graphWindow2 = Math.max(3, measured.window - 4);
       const graphRows = [];
-      for (let index = scroll;index < Math.min(view.lines.length, scroll + graphWindow2); index += 1) {
+      for (let index = scrollAt;index < Math.min(view.lines.length, scrollAt + graphWindow2); index += 1) {
         const spans = sliceSpans(view.lines[index], scrollXAt, graphWidth).map((span, at) => React.createElement(ui.Text, { key: `s${at}`, color: toneColor(span.tone) }, span.text));
         graphRows.push(React.createElement(ui.Text, { key: `g${index}` }, ...spans));
       }
@@ -9180,7 +9245,7 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
           const drawn = viewRef?.current;
           if (drawn === undefined)
             return;
-          const under = hitTest(drawn, Number(event?.localRow ?? -1) + scroll, Number(event?.localCol ?? -1) + scrollXAt);
+          const under = hitTest(drawn, Number(event?.localRow ?? -1) + scrollAt, Number(event?.localCol ?? -1) + scrollXAt);
           setHover(under);
         },
         onMouseLeave: () => setHover(undefined),
@@ -9188,14 +9253,14 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
           const drawn = viewRef?.current;
           if (drawn === undefined)
             return;
-          const under = hitTest(drawn, Number(event?.localRow ?? -1) + scroll, Number(event?.localCol ?? -1) + scrollXAt);
+          const under = hitTest(drawn, Number(event?.localRow ?? -1) + scrollAt, Number(event?.localCol ?? -1) + scrollXAt);
           setPinned(under === undefined || under === pinned ? undefined : under);
           setHover(under);
         },
         onWheel: (event) => {
           const deltaY = normalizeWheelDelta(Number(event?.deltaY ?? 0), wheelInvertOn());
           if (deltaY !== 0)
-            setScroll(Math.max(0, scroll + (deltaY > 0 ? 1 : -1)));
+            setScroll(Math.max(0, Math.min(scrollMax, scrollAt + (deltaY > 0 ? 1 : -1))));
           const deltaX = normalizeWheelDelta(Number(event?.deltaX ?? 0), wheelInvertOn());
           if (deltaX !== 0)
             setScrollX(Math.max(0, Math.min(scrollXMax, scrollXAt + (deltaX > 0 ? 1 : -1))));

@@ -103,7 +103,7 @@ export const PANEL_ORDER = 10
  * The row budget this page assumes when the host reports no height at all.
  *
  * NOTE ON THE REFRESH CADENCE (frozen clause P.2.5): this module no longer owns one. The panel's tick
- * is `panel-dag.ts`'s `DAG_PANEL_REFRESH_MS` (1000 ms), because that page IS this panel's renderer
+ * is `panel-dag.ts`'s `DAG_PANEL_REFRESH_MS` (2000 ms), because that page IS this panel's renderer
  * after the clause C3 merge — a second cadence constant here would have been dead, and it was.
  */
 const MERGED_FALLBACK_ROWS = 24

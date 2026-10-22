@@ -1108,6 +1108,29 @@ describe("the team scene's focus", () => {
     ],
   })
 
+  /**
+   * A ten-task chain, whose boxed drawing is 57 rows — taller than the scene's own window on a 30-row
+   * terminal, which is what makes a VERTICAL wheel gesture observable at all.
+   *
+   * THE THREE-TASK FIXTURE ABOVE CANNOT DO IT ANY MORE (wave `tui-refresh`): the scene now clamps its
+   * vertical window to `max(0, drawingRows - graphWindow)`, so a drawing that already fits has nowhere to
+   * scroll — a wheel tick that moved it would be motion into blank rows, which is the far-edge defect
+   * this wave repaired.
+   * @returns the record the fixture host serves.
+   */
+  const longChain = (): Record<string, unknown> => ({
+    id: "focus-long",
+    name: "Long",
+    phase: "running",
+    members: [],
+    tasks: Array.from({ length: 10 }, (_entry, index) => ({
+      id: `w${index + 1}`,
+      subject: `task ${index + 1}`,
+      status: "pending",
+      dependencies: index === 0 ? [] : [`w${index}`],
+    })),
+  })
+
   test("↑/↓ moves the focus through the drawing, and the ▶ marker moves with it", () => {
     /** This arm's fixture workspace. */
     const workspace = teamFixture(chained())
@@ -1217,9 +1240,9 @@ describe("the team scene's focus", () => {
     expect(graphText(kit.last())).not.toContain("▶")
   })
 
-  test("the wheel scrolls the graph", () => {
-    /** This arm's fixture workspace. */
-    const workspace = teamFixture(chained())
+  test("the wheel scrolls the graph, and clamps at BOTH edges", () => {
+    /** This arm's fixture workspace: long enough that its drawing overflows the scene's window. */
+    const workspace = teamFixture(longChain())
     /** This arm's kit and the registered components. */
     const { kit, components } = mountScenes(workspace)
     /** The scene under test. */
@@ -1244,6 +1267,57 @@ describe("the team scene's focus", () => {
     expect(render(kit, scene)).toBe(before)
   })
 
+  test("FAR EDGE: `End` and a long wheel run stop at the last row, and `Home` returns", () => {
+    // THE DEFECT THIS LOCKS (wave `tui-refresh`): the scene read its raw `scroll` state in the render
+    // loop, so `End` (which committed `Number.MAX_SAFE_INTEGER`) and a long wheel run pushed the window
+    // PAST the last drawing row — the slice started beyond the drawing and the scene drew an EMPTY graph,
+    // with no way back except scrolling up one tick at a time. The clamped `scrollAt` is the stop.
+    /** This arm's fixture: a ten-rank chain, taller than the scene's window. */
+    const workspace = teamFixture(longChain())
+    /** The kit and the registered scenes. */
+    const { kit, components } = mountScenes(workspace)
+    /** The scene under test. */
+    const scene = components[TEAM_SCENE_ID]
+    /** The scene at the top of the drawing. */
+    const atTop = render(kit, scene)
+    // `End` reaches the far edge: the LAST task is on screen and the graph is not blank.
+    /** The scene after `End`. */
+    const afterEnd = pressAndRender(kit, scene, "", { end: true })
+    expect(graphText(kit.last())).not.toBe("")
+    expect(afterEnd).toContain("w10")
+    // …and the FIRST task has left the window, so this is a real move and not a one-row nudge.
+    expect(graphText(kit.last())).not.toContain("○ w1 ")
+    // A LONG WHEEL RUN STOPS AT THE SAME PLACE: 200 ticks cannot pass the far edge, so the drawing is
+    // byte-identical to the `End` frame — the clamp is idempotent, not merely bounded.
+    /** The far-edge drawing `End` produced, which the wheel run must reproduce. */
+    const farEdge = graphText(kit.last())
+    for (let tick = 0; tick < 200; tick += 1) kit.pointer("onWheel", { deltaY: 1 })
+    render(kit, scene)
+    expect(graphText(kit.last())).toBe(farEdge)
+    // `Home` comes back to the top, byte for byte.
+    expect(pressAndRender(kit, scene, "", { home: true })).toBe(atTop)
+  })
+
+  test("`⇧↓` and `PgDn` cannot scroll past the far edge either", () => {
+    // The TWO KEY GESTURES the contract names beside the wheel. Both are driven through the scene's own
+    // handler, so a caller that forgot the clamp (rather than the helper) is what these arms catch.
+    /** This arm's fixture workspace. */
+    const workspace = teamFixture(longChain())
+    /** The kit and the registered scenes. */
+    const { kit, components } = mountScenes(workspace)
+    /** The scene under test. */
+    const scene = components[TEAM_SCENE_ID]
+    render(kit, scene)
+    // `PgDn` a hundred times on a short drawing: the window must still SHOW rows, not slide off the end.
+    for (let press = 0; press < 100; press += 1) pressAndRender(kit, scene, "", { pageDown: true })
+    expect(graphText(kit.last())).not.toBe("")
+    /** The far-edge drawing the page-downs reached. */
+    const byPage = graphText(kit.last())
+    // `⇧↓` (one row at a time) lands on the same place, because both clamp to the same maximum.
+    for (let press = 0; press < 200; press += 1) pressAndRender(kit, scene, "", { downArrow: true, shift: true })
+    expect(graphText(kit.last())).toBe(byPage)
+  })
+
   test("with the `tui.wheelInvert` knob ON the SCENE's own wheel handler flips BOTH axes and still clamps", () => {
     // WHY THIS ARM DRIVES THE RENDERED HANDLER RATHER THAN THE HELPER. `normalizeWheelDelta` and
     // `scrollByWheel{,X}` each have their own arms above — but every one of them CALLS the helper
@@ -1261,8 +1335,8 @@ describe("the team scene's focus", () => {
       /** Everything after the graph's header, which is the drawing itself. */
       const drawingOf = (value: string): string => value.slice(value.indexOf("task dependency graph") + "task dependency graph".length)
       // ── the VERTICAL axis, on the chain the plain wheel arm above proves scrollable ──
-      /** This half's fixture workspace: the same three-task chain the sibling wheel arm uses. */
-      const chainWorkspace = teamFixture(chained())
+      /** This half's fixture workspace: the same long chain the sibling wheel arm uses. */
+      const chainWorkspace = teamFixture(longChain())
       /** This half's kit and the registered components. */
       const chainMount = mountScenes(chainWorkspace)
       /** The scene under test. */
