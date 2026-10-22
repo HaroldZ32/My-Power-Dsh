@@ -607,6 +607,14 @@ async function startContinuableChild(subagents, spec, action) {
   const argument = member === "startActivation" ? { ...spec, delivery: "parent" } : spec;
   return subagents[member].call(subagents, argument);
 }
+async function disposeSettledConsult(activation) {
+  const dispose = activation?.dispose;
+  if (typeof dispose !== "function")
+    return;
+  try {
+    await dispose.call(activation);
+  } catch {}
+}
 var REPORTED_RETIRED_SPAWN_FIELDS = new Set;
 function warnRetiredSpawnFields(spec) {
   for (const field of ["persona", "toolFilter"]) {
@@ -1359,6 +1367,7 @@ function createDshAdapter(ctx, config = {}) {
           delivery: "parent"
         });
         const settled = await (activation?.result ?? {});
+        await disposeSettledConsult(activation);
         return {
           output: textOfOutput(settled.output),
           structured: settled.structured,
@@ -2499,7 +2508,7 @@ note: ` + v.note) },
   });
   dsh.registerTool({
     name: "mpd_workmate_spawn",
-    description: "Reuse a workmate instance: spawn it as a single-call consult — one bounded delegation, one report — carrying its evolved persona + independent memory + note, on its own model route (readonly bases are mechanically denied write tools). The harness keeps the child CONTINUABLE: after the report it stays listed as inactive and `send_message` can continue it. The subagent must call mpd_workmate_reflect with a self-summary before finishing. This uses the SAME spawn mechanics as `mpd_role_spawn` (plus the library's persona/memory); for team work, instead add a member whose name equals the workmate name and give it the persona in the staged prompt yourself — the TEAM path injects no persona or memory.",
+    description: "Reuse a workmate instance: spawn it as a ONE-SHOT single-call consult — one bounded delegation, one report — carrying its evolved persona + independent memory + note, on its own model route (readonly bases are mechanically denied write tools). The activation is disposed once the report settles, so the consult is NOT reused: ask a new question with a NEW spawn, and rely on the workmate RECORD (persona/memory/note) for durable continuity, not on the child session (the harness catalog is append-only, so a settled child may still list as `inactive`). The subagent must call mpd_workmate_reflect with a self-summary before finishing. This uses the SAME spawn mechanics as `mpd_role_spawn` (plus the library's persona/memory); for team work, instead add a member whose name equals the workmate name and give it the persona in the staged prompt yourself — the TEAM path injects no persona or memory.",
     parameters: { type: "object", properties: { name: { type: "string", description: "workmate instance name" }, task: { type: "string" }, context: { type: "string", description: "optional context block" } }, required: ["name", "task"], additionalProperties: false },
     output: { schema: { type: "object", properties: { name: { type: "string" }, status: { type: "string", enum: ["complete", "error"] }, summary: { type: "string" }, recommendation: { type: "string" }, details: { type: "string" }, evidence: { type: "array", items: { type: "string" } }, stopReason: { type: "string" } }, required: ["name", "status", "summary"], additionalProperties: false }, render: (_a, v) => textBlock("workmate " + v.name + " (" + v.status + `)
 summary: ` + v.summary + (v.recommendation ? `

@@ -27,7 +27,9 @@
 > 通知，点名该调用返回的 plan id；此时**没有 spawn 任何东西**，该 shell 在 captain 用
 > `add_member` / `create_task` 扩展并用 `agent_teams_plan {action:"approve"}` 批准之前保持**惰性**。
 > `mpd.jsonc` 的 `team.gate` 选择 `mechanical`（默认）| `advisory` | `off`；在 `advisory` 下（或该工具
-> 未挂载时），那**一条**通知改为建议式并声明 `NO team was staged`。见 `docs/plan-0.1.7-adaptation.md` 与
+> 未挂载时），那**一条**通知改为建议式并声明 `NO team was staged`。自 2026-10-22 起，`team.sensitivity`
+> （`easy` 默认 | `normal` | `strict`）选择 §3 中**当前**的阈值表，且批准成功还会 anchor 一个持久化 goal
+> 并写入待办清单。见 `docs/plan-0.1.7-adaptation.md` 与
 > AGENTS.md §1。下文其余内容是该波次的冻结记录，按历史来读 —— 包括 `D_AUTOROUTE_ADVISORY` 决策与
 > `D_planArtifact` 信号行，二者均已于 2026-10-07 被取代（见信号表下方的日期注记）。
 
@@ -84,12 +86,39 @@
 > 及其 `NO team was staged` 文案，作为 `team.gate: "advisory"` 的降级路径保留下来。权威来源：AGENTS.md §1、
 > `presets/mpd.patch.yml` 与 `packages/mpd-roles-plugin/README.md`。
 
-**动词表已和谐化（行为变更，R3）。** `C2` 与 `C3` 现共用**同一**动词集：英文 14 个 —— `add, align,
-audit, build, change, check, consolidate, implement, migrate, overhaul, port, refactor, rewrite,
-verify`；中文 12 个 —— `设计, 实现, 验证, 改造, 补充, 对齐, 重构, 迁移, 审计, 移植, 梳理, 全量`。两者只差
-**角色**：`C2` 统计文本中任意位置出现的动词，`C3` 统计以动词**开头**的子句。R3 之前 `C2` 缺 `audit`、
-`C3` 缺 `consolidate|overhaul|port`，中英两表还差 7 条 —— 这些不对称已全部消除，不再有某个动词只属于
-`C2` 或只属于 `C3`。
+> **当前阈值 —— 2026-10-22（`team-gate-wave`）。** 发布版门从 `mpd.jsonc` 读取 `team.sensitivity`
+> （先读 live `mpdConfig`，再读行配置；未知或缺失一律解析为 `easy`，绝不抛错）。`easy` 是**默认**，
+> `normal` 精确复现本波次之前的五信号行为，`strict` 收紧每一项阈值：
+>
+> | 敏感度 | B 不同交付动词 | C 行 / 动词 / 子句（三取二） | E 汉字数 / 动词 | F 工作区规模 |
+> |---|---|---|---|---|
+> | easy（默认） | >= 2 | >= 2 / >= 2 / >= 2 | >= 24 / >= 2 | 开 |
+> | normal | >= 4 | >= 3 / >= 3 / >= 3 | >= 60 / >= 2 | 关 |
+> | strict | >= 6 | >= 4 / >= 4 / >= 4（三取三） | >= 80 / >= 3 | 关 |
+>
+> 信号 **F（工作区规模）** 是新信号，且只在 `easy` 下评估：一次**有界**的根目录 `readdir`（绝不递归）
+> 必须同时找到 `manifests >= 1`、`projectDirs >= 1`、`visibleEntries >= 8` —— manifests 为
+> `package.json, pyproject.toml, Cargo.toml, go.mod, pom.xml, build.gradle(.kts), composer.json,
+> Gemfile, mix.exs, pubspec.yaml, CMakeLists.txt`；项目目录为
+> `packages, src, apps, lib, services, plugins, crates, cmd, internal, modules`；可见条目指名字不以
+> `.` 开头的条目。任何读取错误都视为 `false`，绝不抛错。**F 刻意粗糙：** 在大工作区里，仅 F 一项就会让
+> `hello` 也触发，因此静默负向对照放在**很小的**工作区里（空提示或 `hello`、以及 `验证一下` 都保持
+> 静默）；这种过度触发是既定契约，不是缺陷。
+>
+> **动词表已扩展。** `B` 保留原有全部动词，并新增常见英文诉求
+> `implement, add, build, change, check, verify, fix, create, update, remove, delete, move, rename,
+> test, document, wire, integrate, deploy, release, review, investigate, diagnose, reproduce,
+> benchmark, optimize, harden, validate, split, restructure`（只计去重匹配）。中文集在本波次之前为
+> **24 个动词**，本次进一步扩展，新增 `降低, 提高, 触发, 创建, 修改, 调整, 优化, 规范` 等 R1 增项。
+> 启动行仍以 `sessionGate=<mode>` 为子串，并可追加 `sensitivity=<x>`。
+
+**动词表已和谐化（行为变更，R3；中文计数于 2026-10-22 修正）。** `C2` 与 `C3` 共用**同一**动词集。
+R3 时英文为 14 个 —— `add, align, audit, build, change, check, consolidate, implement, migrate,
+overhaul, port, refactor, rewrite, verify`；中文集在本波次之前实际为 **24 个**（本台账 R3 处印的
+「中文 12 个」是**计数错误**：源里是 24 个，不是 12 个）。两者只差**角色**：`C2` 统计文本中任意位置出现的
+动词，`C3` 统计以动词**开头**的子句。R3 之前 `C2` 缺 `audit`、`C3` 缺 `consolidate|overhaul|port`，中英两表
+还差 7 条 —— 这些不对称已全部消除，不再有某个动词只属于 `C2` 或只属于 `C3`。2026-10-22 的波次再次扩展
+两套动词表（见上方「当前阈值」块）。
 
 **为何阈值是 1（Option A）与已接受的代价。** 「两个计数信号」的门槛已被**取代**
 （`complexityGate.logicRevisionNote`）：冻结的 complex 提示 #1 与 #3 完全不携带 B/D/标记，C 是它们
@@ -124,6 +153,10 @@ staged**；captain 只在工作确实需要团队时自行用官方
 代价恰好相反：最丰富的一条 session-start 提示只命中 1 个去重 B 动词（`对齐`，阈值 4）与 1 个去重 C2
 动词（阈值 3），因此零信号。原始数据：`evidence/omo-parity-rate/`（`raw/prompts.jsonl`、
 `raw/probe-output.json`，并在 `evidence/omo-align/ledger-fix/` 中重跑）。
+
+> **关于上方触发率实测的 2026-10-22 注记。** 它测的是**本波次之前**的谓词与旧默认。现在默认
+> `team.sensitivity: "easy"` 且信号 F 开启，大工作区**按设计**就会触发，因此这些数字属于历史，不是当前的
+> 误触发占比；发布版门现在受约束的是「当前阈值」块里的小工作区负向对照。
 
 ## 4. mass-ulw 对齐（保留任务板模型）
 

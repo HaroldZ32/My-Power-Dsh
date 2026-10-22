@@ -118,6 +118,16 @@ data: {"rev":8}
   post, with `blocked_by` resolved from planned subjects to posted task ids and `owner` resolved from
   staged member names to spawned ids. A failure stops the sequence and names where — earlier work is
   kept and reported, never rolled back, because a spawned teammate cannot be un-spawned.
+- **ONE approval starts three mechanisms.** Once the team record is written — approval's last act
+  before it answers — approval also anchors the wave's **persisted goal** through the optional
+  `mpdGoal` service
+  (objective `plan.description || plan.name`, source `team`), and seeds the **TODO checklist** with one
+  `pending` item per staged task through `todo_write` when that tool is registered in the caller's own
+  view. Both are ADDITIONS to an approval that already succeeded: they run only on the real `approve`
+  path (`create`, `dry_run` and the empty-shell refusal never reach them), a refusal or a throw costs
+  **one log line**, and neither can fail the approval. The checklist write replaces the **whole** list —
+  correct at approval, because it starts a new wave — so a plan with no tasks seeds nothing rather than
+  clearing a list it did not create.
 - **A contract is what a task MEANT when it was claimed.** `attempt` is monotonic per task and is the
   only place "the Nth attempt at t4" is answerable: the official board's `revision` moves for every
   mutation, so it cannot stand in for an attempt.

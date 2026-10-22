@@ -1652,10 +1652,17 @@ export interface DshAdapter {
    */
   executeTool(input: { name: string; arguments?: unknown; callId?: string; signal?: AbortSignal; timeoutMs?: number; agent?: unknown }): Promise<DshToolCallResult>
   /**
-   * Run one single-call consult and normalize its answer onto {@link DshSpawnResult}.
+   * Run one ONE-SHOT single-call consult and normalize its answer onto {@link DshSpawnResult}.
    *
-   * The child is a harness CONTINUABLE session: it runs one bounded delegation, reports once,
-   * then stays listed as inactive and `send_message` can continue it.
+   * The child runs one bounded delegation and reports once; the moment `activation.result` settles,
+   * the adapter disposes that exact activation (best-effort, once), so the live child is released
+   * instead of accumulated. A failed teardown never changes the report and never throws.
+   *
+   * The honest bound on harness 0.2.1-rc.2: `dispose()` settles and releases the LIVE activation
+   * only, and the child catalog is append-only — the finished child may remain listed `inactive`
+   * and is technically cold-resumable. The CONTRACT is nevertheless one-shot: a new question means
+   * a NEW consult (or a workmate for durable continuity), never a resume of the finished child.
+   * {@link DshAdapter.startContinuableAgent} is the separate durable seam the team path keeps using.
    */
   spawnAgent(spec: DshSpawnSpec): Promise<DshSpawnResult>
   /**
@@ -2905,6 +2912,32 @@ async function startContinuableChild(subagents: any, spec: Record<string, unknow
 }
 
 /**
+ * Release ONE settled consult activation — the one-shot half of {@link DshAdapter.spawnAgent}.
+ *
+ * `activation.result` has already settled when this runs, so the report is captured and a failed
+ * teardown can no longer change it. The 0.2.1 handle documents `dispose()` as cancelling that exact
+ * activation and waiting for its descendants and their cleanup, and as REJECTING on a teardown
+ * failure — which is why the answer is swallowed here rather than surfaced: a consult that produced
+ * its report is not a failed consult, and cleanup is not the caller's answer. A handle with no
+ * `dispose` (the retired generation, a stub) is a no-op, and the call happens exactly once.
+ *
+ * The bound this does NOT claim: the harness child catalog is append-only, so the settled child may
+ * stay listed `inactive` and is technically cold-resumable. The CONTRACT is one-shot regardless.
+ * @param activation - the handle `startActivation` returned, read for its `dispose` member only.
+ */
+async function disposeSettledConsult(activation: unknown): Promise<void> {
+  /** The handle's own teardown member; only a callable may be invoked. */
+  const dispose = (activation as { dispose?: unknown } | undefined)?.dispose
+  if (typeof dispose !== "function") return
+  try {
+    // Awaited so the release is complete when the consult returns; the settled report is untouched.
+    await (dispose as () => unknown).call(activation)
+  } catch {
+    /* Best effort: the report already settled, and a teardown failure must never become the answer. */
+  }
+}
+
+/**
  * Retired start-request fields already reported, so the per-spawn warning is said ONCE per field
  * per process instead of on every role spawn.
  */
@@ -4149,6 +4182,10 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         })
         /** The settled result; a child FAILURE still resolves here, only teardown rejects. */
         const settled = (await (activation?.result ?? {})) as { output?: unknown; structured?: unknown; stopReason?: unknown }
+        // ONE-SHOT (R2): the report is captured, so release the exact activation ONCE. This is
+        // best-effort and cannot change the projection below; `startContinuableAgent` stays the
+        // durable seam, so team continuity is untouched.
+        await disposeSettledConsult(activation)
         return {
           output: textOfOutput(settled.output),
           structured: settled.structured,

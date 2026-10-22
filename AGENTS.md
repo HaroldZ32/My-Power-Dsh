@@ -92,10 +92,12 @@ replaced or deleted. License: **MIT** (`LICENSE.md`); third-party components kee
   remote MCP rows follow the same rule); and the two vendored env keys (`MPD_AST_GREP_SG_PATH`,
   `MPD_CODEGRAPH_BIN`) are read by upstream vendored code.
 - **Roster.** The 11 specialists are teammate instantiation templates — NOT presets — addressed by NAME,
-  never by their internal stable `id` (§13). Single-call consult: `mpd-roles-plugin` (one bounded
-  delegation, one report; the harness keeps the child CONTINUABLE — listed `inactive`, resumable with
-  `send_message`); team work: the **official Agent Teams plugin**; durable, evolving instances: the
-  **workmate library** (`mpd_workmate_spawn` — the same spawn mechanics, plus persona/memory).
+  never by their internal stable `id` (§13). Single-call consult: `mpd-roles-plugin` (ONE-SHOT — one
+  bounded delegation, one report, then the activation is disposed: never reused, so a new question means
+  a NEW spawn; the harness catalog is append-only, so a settled child may still list `inactive`); team
+  work: the **official Agent Teams plugin**; durable, evolving instances: the **workmate library**
+  (`mpd_workmate_spawn` — the same one-shot mechanics, plus persona/memory; what is durable is the
+  RECORD, never the child session).
 - **THE TEAM RECORD IS OURS (team-plane split, 2026-09-30).** `mpd-team-core-plugin` owns the team
   (roster, board, DAG, `kind`/`attempt`/`round`/`verdict`) in `.mpd/team/teams/<id>.json`, served as
   `mpdTeams` and over `/plugins/mpd-team/state`; `mpd-dsh-adapter` mediates the ONE execution seam,
@@ -122,14 +124,26 @@ replaced or deleted. License: **MIT** (`LICENSE.md`); third-party components kee
   gate stages a 0-member, 0-task plan shell through `agent_teams_plan`, which is INERT until the captain
   extends it (`add_member` / `create_task`) and approves it. An explicit `team:` / `!team` request also
   stages the shell (signal A) and has its marker CONSUMED from the goal text. `team.gate` in `mpd.jsonc`
-  selects `mechanical` (**the default again since the 2026-10-20 restore**) | `advisory` | `off`; with the
-  tool unmounted or under `advisory` the ONE notice says `NO team was staged` and the captain stages a team itself when the work
-  warrants one — or continues solo and says so. Signal D is an ACTIVE boulder work for this workspace
+  selects `mechanical` (**the default again since the 2026-10-20 restore**) | `advisory` | `off`, and
+  `team.sensitivity` (`easy` DEFAULT | `normal` | `strict`) selects the thresholds: `easy` fires at
+  B >= 2 deliverable verbs, C 2-of-3, E >= 24 Han chars / >= 2 verbs, and the NEW signal F — workspace
+  scale (a bounded root `readdir`: a manifest AND a project dir AND >= 8 visible entries; `easy` only);
+  `normal` reproduces the pre-2026-10-22 five-signal behaviour and `strict` tightens it. With the tool
+  unmounted or under `advisory` the ONE notice says `NO team was staged` and the captain stages a team
+  itself when the work warrants one — or continues solo and says so. **APPROVAL BUNDLES THREE
+  MECHANISMS:** on the `agent_teams_plan` approve success path, after real activation, the same approval
+  anchors a persisted goal (objective = the plan description, source `team`) and seeds `todo_write`
+  with one pending item per plan task — both non-fatal, one log line on failure, no new knobs. Signal D
+  is an ACTIVE boulder work for this workspace
   (`status: "active"` in `<workspace>/.mpd/boulder.json`, gitignored RUNTIME STATE); a plan FILE alone is
   NOT a signal. Softer signals and the retired path: `agent-references/overview-and-provenance.md`.
 - **The ONLY shipped preset is `mpd`** — the main working agent — which also carries the
   project-instruction convention: every session MUST attempt to read `AGENT.md` (falling back to
-  `AGENTS.md`, then `CLAUDE.md`) via `dsh-agent-instructions`.
+  `AGENTS.md`, then `CLAUDE.md`) via `dsh-agent-instructions`. **`mpd-project-init` (host row) closes
+  the empty-repo case**: a TOP-LEVEL session in a project-like directory with no instruction file writes
+  one generic English `AGENT.md` ONCE (via `wx`, a `<ws>/.mpd/project-init.json` marker and one log
+  line) and is silent for HOME/`/`, a non-project directory, or any existing `AGENT*`/`CLAUDE.md`
+  (case-insensitive); the file is injected from the NEXT session.
 
 ---
 

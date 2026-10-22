@@ -131,6 +131,12 @@ The only shipped preset is **MPD (Main Working Agent)**. Its conventions:
 - **Every project instruction file**: at session start the agent MUST attempt to read `AGENT.md`
   (falling back to `AGENTS.md`, then `CLAUDE.md`) — the preset configures
   `dsh-agent-instructions` with those candidate names.
+- **New-project bootstrap**: on a TOP-LEVEL session in a project-like directory that carries no
+  `AGENT.md`/`AGENTS.md`/`CLAUDE.md` (case-insensitive), the `mpd-project-init` host row writes one
+  generic English `AGENT.md` — with an obvious provenance comment and no invented facts — plus a
+  `<ws>/.mpd/project-init.json` marker and one line in `<ws>/.mpd/logs/mpd-project-init.log`. It writes
+  with `wx`, so it never overwrites, and it stays silent in HOME or `/`, in a non-project directory,
+  and once its marker exists. The file it writes is injected from the NEXT session.
 - **Native tool presentation**: the harness's own tools (bash/read/edit/…) are exposed directly.
 - The preset persona explains the specialists, team mode and the workmate library (see below), so
   the agent routes correctly without extra setup.
@@ -142,9 +148,9 @@ The only shipped preset is **MPD (Main Working Agent)**. Its conventions:
 | Explore a codebase | `mcp__ast_grep__*` (structural search/rewrite), `mcp__lsp__*` (cclsp: definitions, references, implementation, diagnostics, hover, workspace symbols, call hierarchy, rename), `mcp__codegraph__*` (project graph) | MCP tool servers; their tools appear as `mcp__<server>__<tool>`. Two more families are **not available by default**: `mcp__git__*` (a git toolbox, 28 tools) and `mcp__shell__*` (`run_process`, raw shell). Both rows ship `disabled: true`, so no such tool appears in a normal session — enable the one you want by flipping that row's `disabled:` to `false` in `cordis.patch.yml` and reinstalling the bundle. |
 | Edit safely | the write guard and output truncation (no configuration needed), `mpd_hashline_read/edit/format/restore`, `mpd_comment_check` | hash-anchored edits reject a stale anchor instead of writing to the wrong line |
 | Drive long work | `mpd_ulw` (light) / `mpd_ultrawork` (full discipline: plan gate, execution rounds, verification gate), or the equivalent `/ulw <objective>` / `/ultrawork <objective>` commands, `mpd_boulder_start/status/complete/task_timer/plan_progress/plans` | the commands inject the ULW autonomy directive — a run asks the user nothing and stages its own team when the work warrants one; `mpd_boulder_*` tracks progress of a plan markdown file across sessions |
-| Keep a long run going across turns | `mpd_goal_status`, `mpd_goal_anchor`, `mpd_goal_finish` (plus the host's `/goal` command and its goal round driver) | see §13.10: the **persisted goal** is the bundle's basis of continuous execution — a heavy ULW run or a plan-bound boulder work anchors one automatically (`goal.autoAnchor`), and it stays armed when the in-turn engine stops short of the objective |
+| Keep a long run going across turns | `mpd_goal_status`, `mpd_goal_anchor`, `mpd_goal_finish` (plus the host's `/goal` command and its goal round driver) | see §13.10: the **persisted goal** is the bundle's basis of continuous execution — a heavy ULW run, a plan-bound boulder work or an `agent_teams_plan` approval anchors one (`goal.autoAnchor` covers the long runs; a team approval anchors on its own), and it stays armed when the in-turn engine stops short of the objective |
 | Keep memory | `mpd_memory_write/read/reflect/reflect_complete/status`, `mpd_memory_save/recall` | the VCS-backed store can be git or svn; `mpd_memory_save/recall` is the simple key/value layer |
-| Consult a specialist | `mpd_roles_list`, `mpd_role_spawn`, `mpd_role_persona` | single-call consult subagents (continuable children); read-only roles are denied write tools |
+| Consult a specialist | `mpd_roles_list`, `mpd_role_spawn`, `mpd_role_persona` | ONE-SHOT single-call consult subagents (the activation is disposed after the report — ask a new question with a new spawn); read-only roles are denied write tools |
 | Keep an evolving agent | `mpd_workmate_list/init/spawn/reflect/match/rename/delete` | see §5 |
 | Run a team | `agent_teams_plan` (stage a plan, extend it, approve it), `spawn_teammate`, `send_message`, `list_agents`, `wait_agent`, `interrupt_agent`, `team_task_create/list/get/update` + the Web Agent Teams panel | see §6 |
 | Configure the bundle | `.mpd/mpd.jsonc`, `mpd_config_get`, `mpd_config_reload` | see §9 |
@@ -177,10 +183,12 @@ case, space or hyphen spelling: `Architect`, `deep worker`, `plan-reviewer`):
 Use them as single-call consults:
 
 - `mpd_roles_list` — list the roster.
-- `mpd_role_spawn { role, task, context? }` — run one bounded delegation with one specialist and
-  return one report; the child keeps the role's persona and model route, is labelled with the role's
-  name, and stays continuable (listed `inactive`, resumable with `send_message`); read-only roles are
-  mechanically denied the write tools.
+- `mpd_role_spawn { role, task, context? }` — run a ONE-SHOT single-call consult: one bounded
+  delegation, one report; the child keeps the role's persona and model route and is labelled with the
+  role's name, and the adapter disposes the activation once the report settles, so the consult is NOT
+  reused — ask a new question with a NEW spawn (the harness catalog is append-only, so a settled child
+  may still list as `inactive`, but the contract is one-shot). Read-only roles are mechanically denied
+  the write tools.
 - `mpd_role_persona { role }` — fetch the full persona text (e.g. to pass to a spawn surface that
   takes persona as text).
 
@@ -209,7 +217,7 @@ tool output, route or GUI ever exposes it.
 | Tool | Use |
 |---|---|
 | `mpd_workmate_list` | list instances (name, baseName, uses, updatedAt, note) |
-| `mpd_workmate_spawn { name, task, context? }` | single-call consult: the workmate runs one bounded delegation with its evolved persona + independent memory + note on its own model route in a continuable child; it is instructed to call `mpd_workmate_reflect` before its final report |
+| `mpd_workmate_spawn { name, task, context? }` | ONE-SHOT single-call consult: the workmate runs one bounded delegation with its evolved persona + independent memory + note on its own model route, and the activation is disposed once the report settles (durable continuity lives in the workmate RECORD, not the child session); it is instructed to call `mpd_workmate_reflect` before its final report |
 | `mpd_workmate_reflect { name, task, outcome, persona_delta?, note? }` | self-evolve after work: bounded memory append (oldest evicted), persona revision merge, note regenerate, `uses++` |
 | `mpd_workmate_match { task }` | rank notes against a task; below threshold → `matched: false` and the suggestion is to **initialize a NEW workmate** — never force a weak match |
 | `mpd_workmate_rename { name, new_name }` | rename an instance (moves its evolved identity) |
@@ -280,6 +288,27 @@ interrupt_agent { target }                                                # Lead
   is still what the team itself runs on. Under `team.gate: "advisory"`, or with `agent_teams_plan`
   unmounted, the gate stages nothing and says so in one notice, and the captain stages a team itself
   when the work warrants one.
+- **Sensitivity selects the thresholds.** `team.sensitivity` in `mpd.jsonc` is `easy` (the DEFAULT) |
+  `normal` | `strict`, and an unknown or missing value resolves to `easy`. `easy` keeps the
+  workspace-scale signal F and fires early; `normal` reproduces the pre-2026-10-22 five-signal
+  behaviour exactly, and `strict` tightens every threshold:
+
+  | Sensitivity | B distinct deliverable verbs | C lines / verbs / clauses (2-of-3) | E Han chars / verbs | F workspace scale |
+  |---|---|---|---|---|
+  | `easy` (default) | ≥ 2 | ≥ 2 / ≥ 2 / ≥ 2 | ≥ 24 / ≥ 2 | on |
+  | `normal` | ≥ 4 | ≥ 3 / ≥ 3 / ≥ 3 | ≥ 60 / ≥ 2 | off |
+  | `strict` | ≥ 6 | ≥ 4 / ≥ 4 / ≥ 4 (3-of-3) | ≥ 80 / ≥ 3 | off |
+
+  Signal F is a bounded root `readdir` (never recursive): a project manifest **and** a project
+  directory **and** at least 8 visible entries. It is evaluated only under `easy`, and it is
+  deliberately coarse — in a large workspace F alone fires even for `hello`. The silent negative
+  controls therefore live in a TINY workspace (an empty or `hello` prompt and `验证一下` stage
+  nothing).
+- **One approval starts three mechanisms.** On the `agent_teams_plan` approve SUCCESS path, after the
+  team is really activated, the same approval anchors a persisted goal (objective = the plan
+  description, source `team`) and seeds `todo_write` with one pending item per plan task (a whole-list
+  replace; no reseed when the plan has no tasks). Both effects are non-fatal — a failure logs one line
+  and never fails the approval — and there are no new knobs.
 - **The captain's reconnaissance and delegation guards are ON (restored 2026-10-20).** On the `mpd`
   preset's **top-level** session, `captain.investigation` (default `deny`) refuses `read` / `grep` /
   `glob` on SOURCE paths — the documentation band stays readable — and `delegation.gate` (default
@@ -898,7 +927,8 @@ mpd_goal_finish { "outcome": "complete" }
 **You rarely call these yourself.** With `goal.autoAnchor` on (the default), a heavy ULW run
 (`mpd_ultrawork` with `tier: "heavy"`, or `plan: true`) and a plan-bound `mpd_boulder_start` anchor a
 goal for their own objective before they start, so the run's objective — not the tool call — is the
-basis of continuous execution. When the run ends:
+basis of continuous execution. A team-plan APPROVAL anchors one too, beside the todo seeding it does
+(§6): one approval bundles the team record, the goal and the todo list. When the run ends:
 
 - `complete` → the goal is completed and the anchor record is dropped;
 - `blocked` → a blocked transition is attempted, and the harness may refuse it before its

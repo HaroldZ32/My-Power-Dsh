@@ -27,7 +27,7 @@ import { installAskUserQuestionGuard } from "./ask-user-guard.ts"
 import { DELEGATION_CONFIG_KEY, installDelegationGate } from "./delegation-gate.ts"
 import { installRosterSection } from "./roster-section.ts"
 import { installSessionGate } from "./session-gate.ts"
-import { BOULDER_DIR_CONFIG_KEY, GATE_CONFIG_KEY } from "./complexity-gate.ts"
+import { BOULDER_DIR_CONFIG_KEY, GATE_CONFIG_KEY, SENSITIVITY_CONFIG_KEY } from "./complexity-gate.ts"
 import { rowLogLine, DSH_SEAM_SUBAGENTS, DSH_SEAM_TOOLS, bundleRootOf, createLazyDshAdapter, dshAdapterIdentity, dshSeamInject, installChildPersonaSeam, restrictToolsTolerant, textBlock, withSupportedEffort, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /** The cordis plugin name, matched against this row's id in the bundle patch. */
@@ -38,14 +38,15 @@ export const inject = dshSeamInject(DSH_SEAM_TOOLS, DSH_SEAM_SUBAGENTS)
 /** The slice of a cordis context this row uses: the two seams, the `mpdRoles` provision and a logger. */
 type Ctx = { tools: any; subagents: any; provide: (n: string, v: any, check?: any) => void; get?: (k: string, strict?: boolean) => any; [k: string]: any }
 /**
- * The row config: the persona directory plus the four keys this row reads itself.
+ * The row config: the persona directory plus the five keys this row reads itself.
  *
- * `team.gate` (mechanical | advisory | off), `boulder.dir`, `captain.investigation` (deny | allow) and
- * `delegation.gate` (deny | captain | allow) mirror their `.mpd/mpd.jsonc` spellings, so a composition
- * without the config row mounted can still pin them in the patch. The two guard knobs are read PER
- * CALL through the same config layer, so a `mpd.jsonc` edit applies without a reinstall.
+ * `team.gate` (mechanical | advisory | off), `team.sensitivity` (easy | normal | strict),
+ * `boulder.dir`, `captain.investigation` (deny | allow) and `delegation.gate` (deny | captain |
+ * allow) mirror their `.mpd/mpd.jsonc` spellings, so a composition without the config row mounted can
+ * still pin them in the patch. Every knob is read PER CALL through the same config layer, so a
+ * `mpd.jsonc` edit applies without a reinstall.
  */
-type Config = { personasDir?: string; team?: { gate?: unknown }; boulder?: { dir?: unknown }; captain?: { investigation?: unknown }; delegation?: { gate?: unknown } }
+type Config = { personasDir?: string; team?: { gate?: unknown; sensitivity?: unknown }; boulder?: { dir?: unknown }; captain?: { investigation?: unknown }; delegation?: { gate?: unknown } }
 
 // Every entry must be a tool this profile actually registers: the harness
 // validates the WHOLE deny list at spawn time and rejects the child when any
@@ -748,7 +749,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
 
   dsh.registerTool({
     name: "mpd_role_spawn",
-    description: "Run ONE bounded delegation with a specialist and return one report — a single-call consult, not an ephemeral subagent: the harness keeps the child CONTINUABLE, so after the report it stays listed as inactive and `send_message` can continue it. It carries the role's persona, model route and read-only discipline (read-only roles get a write-tool deny filter). Roles, each named for what it does: " + rosterFunctionList() + ". The child is labelled with that name. `mpd_workmate_spawn` is the same spawn mechanics for a durable, evolving instance (plus its persona/memory from the library). For multi-member team work prefer the official Agent Teams tools (spawn_teammate + team_task_create) instead of repeated single-call consults: a teammate inherits the caller's model route, while THIS path applies the role's teamModels slot route.",
+    description: "Run ONE bounded delegation with a specialist and return one report — a ONE-SHOT single-call consult: the adapter disposes the activation once the report settles, so the consult is NOT reused — ask a new question with a NEW spawn (the harness catalog is append-only, so a settled child may still list as `inactive`, but the contract is one-shot). It carries the role's persona, model route and read-only discipline (read-only roles get a write-tool deny filter). Roles, each named for what it does: " + rosterFunctionList() + ". The child is labelled with that name. `mpd_workmate_spawn` is the same spawn mechanics for a durable, evolving instance (its persona/memory/note — not the child session — carry continuity). For multi-member team work prefer the official Agent Teams tools (spawn_teammate + team_task_create) instead of repeated single-call consults: a teammate inherits the caller's model route, while THIS path applies the role's teamModels slot route.",
     parameters: { type: "object", properties: { role: { type: "string", description: "role name (see mpd_roles_list), e.g. \"Architect\" or \"Deep Worker\"" }, task: { type: "string" }, context: { type: "string", description: "optional context block to include" }, model: { type: "string", description: "optional model override (default: the role's primary route)" } }, required: ["role", "task"], additionalProperties: false },
     output: { schema: { type: "object", properties: { role: { type: "string" }, status: { type: "string", enum: ["complete"] }, summary: { type: "string" }, recommendation: { type: "string" }, details: { type: "string" }, evidence: { type: "array", items: { type: "string" } }, stopReason: { type: "string" } }, required: ["role", "status", "summary"] }, render: (_a: unknown, v: any) => textBlock("role " + v.role + " (" + v.status + ")\nsummary: " + v.summary + (v.recommendation ? "\nrecommendation: " + v.recommendation : "") + (v.details ? "\ndetails: " + v.details : "") + (v.evidence?.length ? "\nevidence:\n- " + v.evidence.join("\n- ") : "")) },
     execute: async (args: any, exec: any) => {
@@ -860,6 +861,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     })()
     if (value !== undefined) return value
     if (key === GATE_CONFIG_KEY) return config.team?.gate
+    if (key === SENSITIVITY_CONFIG_KEY) return config.team?.sensitivity
     if (key === BOULDER_DIR_CONFIG_KEY) return config.boulder?.dir
     if (key === INVESTIGATION_CONFIG_KEY) return config.captain?.investigation
     if (key === DELEGATION_CONFIG_KEY) return config.delegation?.gate
@@ -958,7 +960,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     warnOnce("team-section:threw", "the roster prompt section could not be registered (" + errText(error) + ")")
   }
   try {
-    /** The gate's install outcome, whose MODE the team-plane boot signature reports below. */
+    /** The gate's install outcome, whose MODE and SENSITIVITY the team-plane boot signature reports below. */
     const gate = installSessionGate(dsh, {
       presets: ["mpd"],
       warn: (line) => warn(line),
@@ -971,7 +973,8 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       // un-approved plan for this session.
       stagedPlan: stagedPlanProbe(ctx),
     })
-    guardOutcome.push("sessionGate=" + gate.mode)
+    // The suffix is APPENDED so every existing `sessionGate=<mode>` substring assertion still holds.
+    guardOutcome.push("sessionGate=" + gate.mode + " sensitivity=" + gate.sensitivity)
   } catch (error) {
     guardOutcome.push("sessionGate=absent")
     warnOnce("team-gate:threw", "the session-start complexity gate could not be installed (" + errText(error) + ")")

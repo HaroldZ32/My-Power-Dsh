@@ -25,13 +25,14 @@ read-only discipline.
 - `mpdRoles` service (`ctx.get("mpdRoles")`): `list()` / `get(key)` — consumed by
   `mpd-modelchain-plugin` (chain lookup).
 - `mpd_roles_list` — the roster, one line per role: name, route, and what it does.
-- `mpd_role_spawn` — single-call consult: one bounded delegation with one role, one report. The
-  child (roster persona + route + write-deny toolFilter for read-only roles) is **labelled with the
-  role's name** (`Architect`, `Deep Worker`), never with `role-<id>-<random>`, and it is
-  **continuable**: the harness keeps it, so after the report it stays listed as `inactive` and
-  `send_message` can continue it. `mpd_workmate_spawn` is the same spawn mechanics for a durable,
-  evolving instance (plus persona/memory from the library); team work is the official
-  `spawn_teammate` path.
+- `mpd_role_spawn` — ONE-SHOT single-call consult: one bounded delegation with one role, one report.
+  The child (roster persona + route + write-deny toolFilter for read-only roles) is **labelled with
+  the role's name** (`Architect`, `Deep Worker`), never with `role-<id>-<random>`. The adapter
+  disposes the activation once the report settles, so the consult is **not reused**: ask a NEW
+  question with a NEW spawn. (The harness catalog is append-only, so a settled child may still list as
+  `inactive`; the contract is one-shot regardless.) `mpd_workmate_spawn` is the same one-shot spawn
+  mechanics for a durable, evolving instance — the RECORD's persona/memory/note carry continuity, not
+  the child session; team work is the official `spawn_teammate` path.
 - `mpd_role_persona` — fetch the persona text for spawn surfaces that take
   persona as text (the official Agent Teams `spawn_teammate` takes it as the
   teammate's `prompt`).
@@ -192,12 +193,26 @@ trigger = explicit flag OR (matchedSignals >= 1)
 ```
 
 with signals **A** (`team:` prefix or `!team`; the marker is CONSUMED from the goal text),
-**B** (≥ 4 distinct deliverable verbs), **C** (ONE signal, fired by ≥ 2 of its three
-sub-signals: ≥ 3 enumerated lines, ≥ 3 distinct action verbs, ≥ 3 action clauses) and **D** (an
+**B** (distinct deliverable verbs — the bound is per sensitivity row), **C** (ONE signal, fired by
+enough of its three sub-signals: enumerated lines, distinct action verbs, action clauses), **D** (an
 ACTIVE boulder work exists for the session workspace: `status: "active"` in `.mpd/boulder.json` —
 a plan FILE alone is NOT a signal, repaired 2026-10-07 because the retired plan-file probe fired
-in every session of this workspace). Every notice carries the marker
+in every session of this workspace), **E** (a CJK-scale instruction: Han characters AND distinct
+action verbs, the lexicon carrying the delivery vocabulary a Chinese instruction actually uses) and
+**F** (WORKSPACE SCALE: one bounded root listing finds a project manifest, a project directory and
+at least 8 visible entries — evaluated on the `easy` row only). Every notice carries the marker
 `[AgentTeams] Session-start team rule`.
+
+`team.sensitivity` in `mpd.jsonc` selects the threshold row (`easy` — the DEFAULT — | `normal` |
+`strict`); `normal` reproduces the pre-2026-10-22 predicate exactly — the same numbers AND the
+pre-wave verb lexicons (the wave's new English and CJK verbs are invisible on that row) — and an
+absent or unknown value reads `easy` (the gate never throws on configuration):
+
+| sensitivity | B distinct verbs | C lines / verbs / clauses | E Han chars / verbs | F workspace scale |
+|---|---|---|---|---|
+| `easy` (default) | ≥ 2 | ≥ 2 / ≥ 2 / ≥ 2 (2-of-3) | ≥ 24 / ≥ 2 | on |
+| `normal` | ≥ 4 | ≥ 3 / ≥ 3 / ≥ 3 (2-of-3) | ≥ 60 / ≥ 2 | off |
+| `strict` | ≥ 6 | ≥ 4 / ≥ 4 / ≥ 4 (3-of-3) | ≥ 80 / ≥ 3 | off |
 
 What a trigger DOES is selected per call by `team.gate` in `mpd.jsonc`: `mechanical` (**the DEFAULT since the
 2026-10-20 restore**) | `advisory` | `off`.

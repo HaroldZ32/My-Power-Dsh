@@ -219,6 +219,11 @@ const PLUGIN_PKGS: readonly string[] = [
   "mpd-codegraph-plugin", "mpd-hashline-plugin", "mpd-boulder-plugin",
   "mpd-config-plugin", "mpd-comment-checker-plugin", "mpd-memory-plugin",
   "mpd-roles-plugin", "mpd-bootstrap-plugin", "mpd-workmate-plugin",
+  // mpd-project-init-plugin is MOUNTED by the bundle patch (row `mpd-project-init`, R3):
+  // the one-time AGENT.md scaffold. Listed here for the same reason as every entry below —
+  // a patch-mounted package missing from this list would be silently dropped from the
+  // packed tree while the pack still exited 0.
+  "mpd-project-init-plugin",
   // mpd-verify-plugin is MOUNTED by the bundle patch (row `mpd-verify`): the verification law — the
   // guard, the ledger under `<workspace>/.mpd/verify/`, the five `mpd_verify_*` tools and the record
   // validator. Omitted from this list, `npm run pack` FAILS with "the packed tree has no counterpart"

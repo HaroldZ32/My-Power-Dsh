@@ -430,6 +430,12 @@ function buildPlan(o: PlanInputs): Plan {
       config: {}
     },
     {
+      // One-time project scaffold (R3), mirrored from the bundle patch: a plain INSERT with an
+      // empty config. It writes ONE AGENT.md into a fresh top-level workspace and never again.
+      id: "mpd-project-init", name: p("packages/mpd-project-init-plugin/dist/index.js"),
+      config: {}
+    },
+    {
       // DSH-TUI PLANE ADAPTER (R2/A2.2): the ONE contact surface with the TUI's own
       // seams, mirrored from the bundle patch (id, module path and empty config).
       // A plain INSERT, like the patch row: it overrides nothing, so it can never
@@ -663,7 +669,7 @@ function selfTest(): void {
   if (!rows.includes("mpd-hashline")) { console.error("[install-profile self-test] FAIL: mpd-hashline row"); process.exit(1) }
   // The assertion lists EVERY row this file is expected to write. A subset would pass while a row went
   // missing — the vacuous-assertion class this wave keeps hunting (captain ruling, 2026-10-07).
-  if (!rows.includes("mpd-roles") || !rows.includes("mpd-workmate") || !rows.includes("mpd-bootstrap") || !rows.includes("mpd-verify")) { console.error("[install-profile self-test] FAIL: mpd-roles/workmate/bootstrap/verify rows"); process.exit(1) }
+  if (!rows.includes("mpd-roles") || !rows.includes("mpd-workmate") || !rows.includes("mpd-bootstrap") || !rows.includes("mpd-verify") || !rows.includes("mpd-project-init")) { console.error("[install-profile self-test] FAIL: mpd-roles/workmate/bootstrap/verify/project-init rows"); process.exit(1) }
   // The two rows the parity gate proved were missing: the extension registry (new with
   // the extension interface) and the team-compact row (absent since it landed in the
   // patch). Both are pinned here so a future removal fails the self-test too.

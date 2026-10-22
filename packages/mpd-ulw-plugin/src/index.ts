@@ -36,7 +36,11 @@ import {
   NO_TEAM_STAGED_PHRASE,
   PLAN_EXTEND_ACTIONS,
   readBoulderGate,
+  readWorkspaceScale,
   resolveGateMode,
+  resolveSensitivity,
+  SENSITIVITY_CONFIG_KEY,
+  SENSITIVITY_THRESHOLDS,
   STAGED_PLAN_PHRASE,
   STAGING_TOOL_NAME,
   type GateMode,
@@ -50,7 +54,7 @@ export const inject = dshSeamInject(DSH_SEAM_TOOLS, DSH_SEAM_SUBAGENTS)
 /** The host context this row reads; the adapter owns the real seam surface. */
 type Ctx = { tools: any; subagents: any; get?: (k: string, strict?: boolean) => any; [k: string]: any }
 /** The row config keys, all optional because the resolver defaults every one. */
-type Config = { maxRounds?: number; planDir?: string; stateDir?: string; provider?: string; model?: string; reviewerModel?: string; maxReReviews?: number; team?: { gate?: unknown }; boulder?: { dir?: unknown } }
+type Config = { maxRounds?: number; planDir?: string; stateDir?: string; provider?: string; model?: string; reviewerModel?: string; maxReReviews?: number; team?: { gate?: unknown; sensitivity?: unknown }; boulder?: { dir?: unknown } }
 
 /**
  * The slice of the `mpdGoal` service this row consumes, declared STRUCTURALLY on purpose.
@@ -151,7 +155,7 @@ const DIRECTIVE = [
 export const ULW_ACTIVATION_DIRECTIVE = [
   "ULTRAWORK ACTIVATION (user-invoked; execute autonomously and ask the user nothing)",
   "1. TRIAGE FIRST: when the objective is unclear, or the task is investigate-first-then-execute, run one normal-MPD investigation round BEFORE the gate, a team or the loop; never open a team on a guess.",
-  "2. GATE: ALREADY EVALUATED MECHANICALLY — the SAME complexity predicate the session-start gate uses (an explicit `team:`/`!team` flag OR any matched signal A-E: A explicit flag, B deliverable verbs, C enumerated steps, D an active boulder work, E a CJK-scale instruction) was run by the plugin BEFORE this directive was injected, and its verdict is the TEAM GATE block below this objective. Never invent a second predicate.",
+  "2. GATE: ALREADY EVALUATED MECHANICALLY — the SAME complexity predicate the session-start gate uses (an explicit `team:`/`!team` flag OR any matched signal A-F: A explicit flag, B deliverable verbs, C enumerated steps, D an active boulder work, E a CJK-scale instruction, F large-workspace scale) was run by the plugin BEFORE this directive was injected, with the thresholds selected by `team.sensitivity` (easy | normal | strict), and its verdict is the TEAM GATE block below this objective. Never invent a second predicate.",
   "3. TEAM WHEN WARRANTED: the TEAM GATE block below carries the verdict, and when the gate staged a plan that plan is YOURS — extend it with `agent_teams_plan {action:\"add_member\"}` and `agent_teams_plan {action:\"create_task\"}`, then approve it YOURSELF with `agent_teams_plan {action:\"approve\"}`: no user confirmation and no plan review. A staged plan is INERT until approval. EXACTLY five `agent_teams_*` tools exist on this harness — `agent_teams_plan`, `agent_teams_task`, `agent_teams_dispatch`, `agent_teams_mail`, `agent_teams_control` — and every OTHER `agent_teams_*` name is retired and GONE (e.g. `agent_teams_create`, `agent_teams_add_member`, `agent_teams_create_task`, `agent_teams_approve`, `agent_teams_status`): never call a retired one, and never read the shared `agent_teams_` prefix as a reason to skip `agent_teams_plan`.",
   "4. LOOP TO COMPLETION: never stop early to ask the user; keep rounds until every success criterion is clean.",
   "5. FIX ON SIGHT: a defect the run finds is fixed in the same turn — never report-and-wait and never ask the user for approval.",
@@ -327,7 +331,7 @@ interface UlwGateAdapter {
  *
  * @param ctx - the host context; its `get` may be absent in a unit double.
  * @param config - the row config handed to `apply`.
- * @param key - the dot-path key, e.g. `team.gate` or `boulder.dir`.
+ * @param key - the dot-path key, e.g. `team.gate`, `team.sensitivity` or `boulder.dir`.
  * @returns the raw value, or `undefined` when neither layer declares it.
  */
 function gateConfigValue(ctx: Ctx, config: Config, key: string): unknown {
@@ -341,6 +345,7 @@ function gateConfigValue(ctx: Ctx, config: Config, key: string): unknown {
     // A config layer that refuses the lookup reads as ABSENT, which keeps the gate's default in force.
   }
   if (key === GATE_CONFIG_KEY) return config.team?.gate
+  if (key === SENSITIVITY_CONFIG_KEY) return config.team?.sensitivity
   if (key === BOULDER_DIR_CONFIG_KEY) return config.boulder?.dir
   return undefined
 }
@@ -546,10 +551,22 @@ async function evaluateUlwGate(dsh: UlwGateAdapter, ctx: Ctx, config: Config, in
     const workspace = ulwWorkspace(dsh, input.agent)
     /** Signal D's state root, resolved PER CALL from `boulder.dir` (never cached). */
     const boulderDir = gateConfigValue(ctx, config, BOULDER_DIR_CONFIG_KEY)
+    // THE THRESHOLD ROW IS THE SESSION GATE'S (repair 2026-10-22): the SAME predicate must read the
+    // SAME row, so `team.sensitivity` resolves PER CALL through this row's existing precedence — the
+    // mounted `mpdConfig` layer first, the row config second, `easy` for an absent/unknown value.
+    // Before this, the ULW gate always ran the eager default while the session-start gate honoured
+    // the configured row, so one session could judge the same objective two different ways.
+    /** The threshold row this activation's predicate reads. */
+    const sensitivity = resolveSensitivity(gateConfigValue(ctx, config, SENSITIVITY_CONFIG_KEY))
     /** What the workspace's boulder ledger says about an ACTIVE work (never throws). */
     const boulder = await readBoulderGate(workspace, typeof boulderDir === "string" && boulderDir !== "" ? { boulderDir } : {})
+    // SIGNAL F IS THE SESSION GATE'S TOO (repair 2026-10-22): the SAME bounded root listing, paid for
+    // ONLY on a row that evaluates F (`easy`), so `normal`/`strict` behaviour is byte-identical and
+    // never touches the filesystem here. `readWorkspaceScale` is non-throwing by contract.
+    /** Whether the workspace looks like a large project — signal F's input. */
+    const workspaceScale = SENSITIVITY_THRESHOLDS[sensitivity].workspaceScale ? await readWorkspaceScale(workspace) : false
     /** The frozen predicate's answer: whether it triggered, and which signals fired. */
-    const verdict = evaluateComplexityGate(objective, { explicitFlag: consumed.flagged, activeBoulder: boulder.active })
+    const verdict = evaluateComplexityGate(objective, { explicitFlag: consumed.flagged, activeBoulder: boulder.active, sensitivity, workspaceScale })
     /** The report this activation renders before the mechanical route fills in its outcome. */
     const base: UlwGateReport = { mode, trigger: verdict.trigger === true, signals: verdict.signals, explicit: consumed.flagged, staged: false, planId: "", alreadyStaged: false }
     // NOTHING FIRED, or the gate is ADVISORY: nothing is staged, and the trailing block says so.

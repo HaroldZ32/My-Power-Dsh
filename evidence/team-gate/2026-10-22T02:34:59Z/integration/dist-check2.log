@@ -1,0 +1,39 @@
+  FRESH   packages/mpd-better-sidebar-host/dist/index.js  sha 3dc2f177aa2e… 20ms  <- packages/mpd-better-sidebar-host/src/index.ts
+  FRESH   packages/mpd-bootstrap-plugin/dist/index.js  sha 5108d4478c21… 22ms  <- packages/mpd-bootstrap-plugin/src/index.ts
+  FRESH   packages/mpd-boulder-plugin/dist/index.js  sha 7a2f3e8b6d6a… 20ms  <- packages/mpd-boulder-plugin/src/index.ts
+  FRESH   packages/mpd-bundle-plugin/dist/index.js  sha c9b8e2f3db19… 18ms  <- packages/mpd-bundle-plugin/src/index.ts
+  FRESH   packages/mpd-codegraph-plugin/dist/index.js  sha 229389a1cc56… 22ms  <- packages/mpd-codegraph-plugin/src/index.ts
+  FRESH   packages/mpd-comment-checker-plugin/dist/index.js  sha 8b3b243c0bf3… 22ms  <- packages/mpd-comment-checker-plugin/src/index.ts
+  FRESH   packages/mpd-config-plugin/dist/index.js  sha 7bbcf3f99584… 25ms  <- packages/mpd-config-plugin/src/index.ts
+  FRESH   packages/mpd-dsh-adapter-plugin/dist/index.js  sha c30172fab8d7… 19ms  <- packages/mpd-dsh-adapter-plugin/src/index.ts
+  FRESH   packages/mpd-ext-plugin/dist/index.js  sha 3fe105621e5c… 22ms  <- packages/mpd-ext-plugin/src/index.ts
+  FRESH   packages/mpd-ext-plugin/dist/sdk.js  sha 7c68358d2560… 15ms  <- packages/mpd-ext-plugin/src/sdk.ts
+  FRESH   packages/mpd-goal-plugin/dist/index.js  sha 18164105a91f… 27ms  <- packages/mpd-goal-plugin/src/index.ts
+  FRESH   packages/mpd-graph-core/dist/index.js  sha 960ae872b06b… 14ms  <- packages/mpd-graph-core/src/index.ts
+  FRESH   packages/mpd-hashline-plugin/dist/index.js  sha e8c8152ec4e4… 21ms  <- packages/mpd-hashline-plugin/src/index.ts
+  FRESH   packages/mpd-mcp-astgrep/dist/cli.js  sha f11d1d0c501a… 17ms  <- packages/mpd-mcp-astgrep/src/cli.ts
+  FRESH   packages/mpd-mcp-astgrep/dist/launch.js  sha 3f02e8507b35… 15ms  <- packages/mpd-mcp-astgrep/src/launch.ts
+  FRESH   packages/mpd-mcp-codegraph/dist/launch.js  sha bfd3cc817a62… 15ms  <- packages/mpd-mcp-codegraph/src/launch.ts
+  FRESH   packages/mpd-mcp-gitbash/dist/launch.js  sha f46205751274… 15ms  <- packages/mpd-mcp-gitbash/src/launch.ts
+  FRESH   packages/mpd-mcp-lsp/dist/launch.js  sha d536d4d6311e… 16ms  <- packages/mpd-mcp-lsp/src/launch.ts
+  FRESH   packages/mpd-memory-plugin/dist/index.js  sha b7eebeeac57b… 22ms  <- packages/mpd-memory-plugin/src/index.ts
+  FRESH   packages/mpd-modelchain-plugin/dist/index.js  sha 77401a1df750… 21ms  <- packages/mpd-modelchain-plugin/src/index.ts
+  FRESH   packages/mpd-project-init-plugin/dist/index.js  sha 3aa826ab83ce… 20ms  <- packages/mpd-project-init-plugin/src/index.ts
+  FRESH   packages/mpd-qa-roles-probe/dist/index.js  sha fc0ba61a47c8… 22ms  <- packages/mpd-qa-roles-probe/src/index.ts
+  FRESH   packages/mpd-roles-plugin/dist/index.js  sha 1d0bcb1f1eb3… 23ms  <- packages/mpd-roles-plugin/src/index.ts
+  FRESH   packages/mpd-roster-provider-plugin/dist/index.js  sha f9d6dabe5883… 21ms  <- packages/mpd-roster-provider-plugin/src/index.ts
+  FRESH   packages/mpd-team-compact-plugin/dist/index.js  sha b120b1816995… 22ms  <- packages/mpd-team-compact-plugin/src/index.ts
+  FRESH   packages/mpd-team-core-plugin/dist/index.js  sha 94c137fed968… 24ms  <- packages/mpd-team-core-plugin/src/index.ts
+  FRESH   packages/mpd-team-watchdog-plugin/dist/index.js  sha b694a2b8338a… 22ms  <- packages/mpd-team-watchdog-plugin/src/index.ts
+  FRESH   packages/mpd-tools-plugin/dist/index.js  sha 34b9492ac5f8… 22ms  <- packages/mpd-tools-plugin/src/index.ts
+  FRESH   packages/mpd-tui-adapter-plugin/dist/index.js  sha 919e212b8d0c… 18ms  <- packages/mpd-tui-adapter-plugin/src/index.ts
+  FRESH   packages/mpd-tui-plugin/dist/index.js  sha 2d3d5eab65c2… 26ms  <- packages/mpd-tui-plugin/src/index.ts
+  STALE   packages/mpd-ulw-plugin/dist/index.js  <- packages/mpd-ulw-plugin/src/index.ts
+  FRESH   packages/mpd-verify-plugin/dist/index.js  sha e4a6d510ae98… 20ms  <- packages/mpd-verify-plugin/src/index.ts
+  FRESH   packages/mpd-workmate-plugin/dist/index.js  sha 4252eb19f620… 24ms  <- packages/mpd-workmate-plugin/src/index.ts
+[verify-dist-fresh] root: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh  (build: bun build <src> --target node --format esm --outfile <tmp>/<entry>.js)
+[verify-dist-fresh] build toolchain: bun 1.4.0 from the repository toolchain (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun) · recorded buildToolchain bun@1.4.0
+  STALE: packages/mpd-ulw-plugin/dist/index.js — committed packages/mpd-ulw-plugin/dist/index.js (117663 B, 55303bc2c946ceae…) != fresh build of packages/mpd-ulw-plugin/src/index.ts (118000 B, c6693beb7889b3c1…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-ulw-plugin/src/index.ts --target node --format esm --outfile packages/mpd-ulw-plugin/dist/index.js
+[verify-dist-fresh] NOT COVERED (1) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+[verify-dist-fresh] FAIL - 1 of 33 targets not fresh (STALE: 1) — 705ms

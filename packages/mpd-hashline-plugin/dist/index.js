@@ -1388,6 +1388,14 @@ async function startContinuableChild(subagents, spec, action) {
   const argument = member === "startActivation" ? { ...spec, delivery: "parent" } : spec;
   return subagents[member].call(subagents, argument);
 }
+async function disposeSettledConsult(activation) {
+  const dispose = activation?.dispose;
+  if (typeof dispose !== "function")
+    return;
+  try {
+    await dispose.call(activation);
+  } catch {}
+}
 var REPORTED_RETIRED_SPAWN_FIELDS = new Set;
 function warnRetiredSpawnFields(spec) {
   for (const field of ["persona", "toolFilter"]) {
@@ -2140,6 +2148,7 @@ function createDshAdapter(ctx, config = {}) {
           delivery: "parent"
         });
         const settled = await (activation?.result ?? {});
+        await disposeSettledConsult(activation);
         return {
           output: textOfOutput(settled.output),
           structured: settled.structured,

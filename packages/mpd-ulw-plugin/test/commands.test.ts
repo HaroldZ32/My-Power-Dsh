@@ -7,7 +7,7 @@
 // (predicate -> plan shell through `agent_teams_plan` -> trailing TEAM GATE block).
 import { test, expect } from "bun:test"
 import { createHash } from "node:crypto"
-import { mkdtempSync, readFileSync } from "node:fs"
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
 import { apply, activationDirective, ULW_ACTIVATION_DIRECTIVE, type UlwGateReport } from "../src/index.ts"
@@ -210,16 +210,20 @@ const OFF_REPORT: UlwGateReport = { mode: "off", trigger: false, signals: [], ex
  * their bytes stay deterministic.
  *
  * @param gate - the `team.gate` mode to configure, or undefined to leave the key unset (now `off`).
+ * @param sensitivity - the `team.sensitivity` row to configure, or undefined to leave the shipped
+ *   default (`easy`) in force.
  * @returns the row config handed to `apply`.
  */
-function workdirs(gate?: "mechanical" | "advisory" | "off"): NonNullable<Parameters<typeof apply>[1]> {
+function workdirs(gate?: "mechanical" | "advisory" | "off", sensitivity?: "easy" | "normal" | "strict"): NonNullable<Parameters<typeof apply>[1]> {
   // The temp root both directories live under.
   const dir = mkdtempSync(join(tmpdir(), "mpd-ulw-cmd-"))
   return {
     planDir: join(dir, "plans"),
     stateDir: join(dir, "state"),
     boulder: { dir: join(dir, "boulder") },
-    ...(gate === undefined ? {} : { team: { gate } }),
+    ...(gate === undefined && sensitivity === undefined
+      ? {}
+      : { team: { ...(gate === undefined ? {} : { gate }), ...(sensitivity === undefined ? {} : { sensitivity }) } }),
   }
 }
 
@@ -321,7 +325,10 @@ test("the activation directive carries the six autonomy behaviours in order", ()
   // Clause 2 states that the predicate was ALREADY evaluated mechanically, never that the model
   // should evaluate it: the plugin runs the SAME predicate the session-start gate uses.
   expect(directive).toContain("ALREADY EVALUATED MECHANICALLY")
-  expect(directive).toContain("explicit `team:`/`!team` flag OR any matched signal A-E")
+  expect(directive).toContain("explicit `team:`/`!team` flag OR any matched signal A-F")
+  // The head names the knob that selects the thresholds, so the model is told the verdict is
+  // row-dependent (the repair that made the ULW gate honour `team.sensitivity`).
+  expect(directive).toContain("`team.sensitivity` (easy | normal | strict)")
   expect(directive).toContain("Never invent a second predicate")
   // Clause 3 points at OUR plan plane (`agent_teams_plan` create / add_member / create_task /
   // approve), and the retired official-tool sentence is GONE.
@@ -361,7 +368,7 @@ test("the QA case's c3.2 probe still matches and the c3.3 probe it needs is the 
   const directive = activationDirective("make the widget ship")
   // C3.2 as it still ships in `skills/dsh-qa/scripts/ulw-command.ts` (`CLAUSE_PROBES` id "gate"):
   // the clause rewrite had to stay readable to the probe that guards it.
-  const c32 = /GATE:[\s\S]{0,120}complexity predicate[\s\S]{0,160}signal A-E/
+  const c32 = /GATE:[\s\S]{0,120}complexity predicate[\s\S]{0,160}signal A-F[\s\S]{0,240}team\.sensitivity/
   expect(c32.test(directive)).toBe(true)
   // C3.3 is the probe the SKILLS LANE must change (this package cannot edit `skills/**`): the
   // shipped probe still demands `spawn_teammate` + `team_task_create`, which the mpd plan plane
@@ -407,7 +414,9 @@ test("the gate is MECHANICAL: a tripping objective stages EXACTLY ONE plan and t
   // `approval:"automatic"` is the ULW label (the run approves the plan itself); the store records it.
   expect(stagingCalls[0].arguments?.approval).toBe("automatic")
   expect(String(stagingCalls[0].arguments?.name)).toBe(TRIPPING_OBJECTIVE.slice(0, 60))
-  expect(String(stagingCalls[0].arguments?.description)).toContain("complexity signals C")
+  // The expanded B lexicon now counts all THREE deliverable verbs (refactor/migrate/audit), so the
+  // shipped directive names B beside C — the predicate change, not a wording change.
+  expect(String(stagingCalls[0].arguments?.description)).toContain("complexity signals B/C")
   // The injected directive reports the plan id the CALL returned, never a claimed one.
   const text = textOf(submitted[0])
   expect(text).toContain("TEAM GATE: MECHANICAL")
@@ -520,8 +529,95 @@ test("a tripping objective that carries the explicit `team:` marker has the mark
   expect(stagingCalls.length).toBe(1)
   // The marker activated signal A AND was removed, so neither the objective nor the name carries it.
   expect(String(stagingCalls[0].arguments?.name)).toBe(TRIPPING_OBJECTIVE.slice(0, 60))
-  expect(textOf(submitted[0])).toContain("complexity signals A/C")
+  // Signal A from the consumed marker PLUS B (the expanded lexicon counts all three deliverable
+  // verbs) and C (the enumerated clauses) — the predicate's new verdict for this objective.
+  expect(textOf(submitted[0])).toContain("complexity signals A/B/C")
   expect(textOf(submitted[0])).toContain("OBJECTIVE: " + TRIPPING_OBJECTIVE)
+})
+
+test("team.sensitivity reaches the ULW gate: the easy row stages, the normal row stays silent", async () => {
+  // The two-verb CJK one-liner: signal B fires at `easy` (>= 2 distinct deliverable verbs) and does
+  // NOT fire at `normal` (>= 4). It is the exact probe the session-start suite pins in both
+  // directions, and the class of divergence this repair removes: the same objective must be judged
+  // by the same row on BOTH gates.
+  const objective = "修复并验证"
+  // THE EAGER DEFAULT: `team.gate` mechanical, no `team.sensitivity` anywhere.
+  const eager = makeHarness()
+  apply(eager.ctx, workdirs("mechanical"))
+  /** The command surface's answer, which must accept the activation. */
+  const eagerResult = await eager.commandsRegistered[0].handler({ rawInput: objective, agent: eager.agent })
+  expect(eagerResult.kind).toBe("success")
+  expect(eager.stagingCalls.length).toBe(1)
+  /** The directive the eager activation injected. */
+  const eagerText = textOf(eager.submitted[0])
+  expect(eagerText).toContain("complexity signals B")
+  expect(eagerText).toContain("a team PLAN was STAGED")
+  // THE HISTORICAL ROW: the SAME objective, the SAME `team.gate`, ONE key added — no B, no stage.
+  const normal = makeHarness()
+  apply(normal.ctx, workdirs("mechanical", "normal"))
+  /** The SAME command surface on the pinned row; the activation still starts, it just does not stage. */
+  const normalResult = await normal.commandsRegistered[0].handler({ rawInput: objective, agent: normal.agent })
+  expect(normalResult.kind).toBe("success")
+  expect(normal.stagingCalls.length).toBe(0)
+  /** The directive the pinned-row activation injected. */
+  const normalText = textOf(normal.submitted[0])
+  expect(normalText).toContain("no complexity signal fired for this objective")
+  expect(normalText).not.toContain("a team PLAN was STAGED")
+  expect(normalText).not.toContain("complexity signals B")
+  // THE DIVERGENCE IS GONE: two config layers, two different verdicts, one predicate.
+  expect(normalText).not.toBe(eagerText)
+})
+
+test("signal F reaches the ULW gate: a large workspace stages, a tiny one stays silent", async () => {
+  // A LARGE root: one manifest, one project directory and 8 visible entries — signal F's exact shape.
+  const largeDir = mkdtempSync(join(tmpdir(), "mpd-ulw-large-"))
+  writeFileSync(join(largeDir, "package.json"), '{ "name": "fixture", "private": true }\n')
+  for (const dir of ["packages", "src", "docs", "scripts", "skills", "tests"]) mkdirSync(join(largeDir, dir))
+  writeFileSync(join(largeDir, "AGENTS.md"), "# fixture\n")
+  // A TINY root: nothing a project-shaped probe can latch onto.
+  const tinyDir = mkdtempSync(join(tmpdir(), "mpd-ulw-tiny-"))
+  /**
+   * The fake agent with its session workspace pointed at one root.
+   *
+   * The adapter resolves `dsh.workspaceRoot({agent})` from `session.header.cwd`, so the signal-F
+   * probe reads the TEMP root instead of this checkout (which is itself a large workspace).
+   */
+  const agentAt = (base: FakeLiveAgent, cwd: string): FakeLiveAgent => ({ ...base, session: { header: { cwd } } })
+
+  // A: the two-verb CJK ask in the LARGE root fires B AND F (the literal arm requested).
+  const large = makeHarness()
+  apply(large.ctx, workdirs("mechanical"))
+  await large.commandsRegistered[0].handler({ rawInput: "修复并验证", agent: agentAt(large.agent, largeDir) })
+  expect(large.stagingCalls.length).toBe(1)
+  /** The directive one large-workspace activation injected. */
+  const largeText = textOf(large.submitted[0])
+  expect(largeText).toContain("complexity signals B/F")
+
+  // B: a SIGNAL-FREE prompt in the SAME large root stages on F ALONE — the clean discrimination.
+  const fOnly = makeHarness()
+  apply(fOnly.ctx, workdirs("mechanical"))
+  await fOnly.commandsRegistered[0].handler({ rawInput: "Reply with exactly: hello-ok", agent: agentAt(fOnly.agent, largeDir) })
+  expect(fOnly.stagingCalls.length).toBe(1)
+  expect(textOf(fOnly.submitted[0])).toContain("complexity signals F")
+
+  // C: the SAME signal-free prompt in the TINY root stays silent — F is the only thing that moved.
+  const tiny = makeHarness()
+  apply(tiny.ctx, workdirs("mechanical"))
+  await tiny.commandsRegistered[0].handler({ rawInput: "Reply with exactly: hello-ok", agent: agentAt(tiny.agent, tinyDir) })
+  expect(tiny.stagingCalls.length).toBe(0)
+  /** The directive a tiny-workspace activation injected. */
+  const tinyText = textOf(tiny.submitted[0])
+  expect(tinyText).toContain("no complexity signal fired for this objective")
+  expect(tinyText).not.toContain("a team PLAN was STAGED")
+
+  // D: the two-verb CJK ask is NOT a usable tiny-workspace control — B fires on `easy` whatever the
+  // workspace — so it still stages here, named so the pair above cannot be misread as an F-only proof.
+  const tinyCjk = makeHarness()
+  apply(tinyCjk.ctx, workdirs("mechanical"))
+  await tinyCjk.commandsRegistered[0].handler({ rawInput: "修复并验证", agent: agentAt(tinyCjk.agent, tinyDir) })
+  expect(tinyCjk.stagingCalls.length).toBe(1)
+  expect(textOf(tinyCjk.submitted[0])).toContain("complexity signals B")
+  expect(textOf(tinyCjk.submitted[0])).not.toContain("complexity signals B/F")
 })
 
 test("the pre-step gesture boundary injects the same directive and delegates to next()", async () => {

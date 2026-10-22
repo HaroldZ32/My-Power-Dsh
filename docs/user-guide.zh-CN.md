@@ -118,6 +118,11 @@ node scripts/install-profile.ts            # --dry-run 只打印计划，不写�
 
 - **项目指令文件**：会话开始时，智能体必须尝试读取 `AGENT.md`（回退到 `AGENTS.md`，再回退到
   `CLAUDE.md`）—— preset 就是通过 `dsh-agent-instructions` 配置了这几个候选名。
+- **新项目引导**：在**顶层**会话中，如果项目目录里没有 `AGENT.md`/`AGENTS.md`/`CLAUDE.md`
+  （大小写不敏感），`mpd-project-init` 宿主行会写入一份通用的英文 `AGENT.md`（带显眼的溯源注释，
+  不编造事实），同时写入 `<ws>/.mpd/project-init.json` 标记和一行
+  `<ws>/.mpd/logs/mpd-project-init.log` 日志。它用 `wx` 写入，绝不覆盖；在 HOME 或 `/`、非项目目录、
+  以及标记已存在时保持静默。它写入的文件从**下一个**会话开始才会被注入。
 - **原生工具呈现**：harness 自带的工具（bash/read/edit 等）直接暴露。
 - preset 的人设解释了专家名册、团队模式与 workmate 库（见下文），因此智能体无需额外配置就能
   正确路由。
@@ -129,9 +134,9 @@ node scripts/install-profile.ts            # --dry-run 只打印计划，不写�
 | 探索代码库 | `mcp__ast_grep__*`（结构化检索/改写）、`mcp__lsp__*`（cclsp：定义、引用、实现、诊断、悬停、工作区符号、调用层级、重命名）、`mcp__codegraph__*`（项目代码图） | MCP 工具服务器；它们的工具以 `mcp__<server>__<tool>` 形式出现。另外两个家族 **默认不可用**：`mcp__git__*`（git 工具箱，28 个工具）与 `mcp__shell__*`（`run_process`，裸 shell）。两行都自带 `disabled: true`，因此普通会话里不会出现这类工具 —— 想启用哪一个，就把该行的 `disabled:` 改成 `false`，然后重新安装 bundle。 |
 | 安全地修改 | 写入守卫与输出截断（无需配置）、`mpd_hashline_read/edit/format/restore`、`mpd_comment_check` | 哈希锚定编辑在锚点过期时会拒绝写入，而不是写到错误的行 |
 | 推进长任务 | `mpd_ulw`（轻量）/ `mpd_ultrawork`（完整纪律：计划关卡、执行轮次、验证关卡），或等价的 `/ulw <objective>` / `/ultrawork <objective>` 命令、`mpd_boulder_start/status/complete/task_timer/plan_progress/plans` | 两个命令会注入 ULW 自治指令 —— 该运行不向用户提问，并在工作确需团队时自行建队；`mpd_boulder_*` 跨会话跟踪某个计划 markdown 文件的进度 |
-| 让长任务跨轮继续 | `mpd_goal_status`、`mpd_goal_anchor`、`mpd_goal_finish`（以及宿主的 `/goal` 命令与它的 goal 轮次驱动器） | 见 §13.10：**持久化 goal** 是本 bundle 持续化执行的依据 —— heavy 档 ULW 运行或绑定 plan 的 boulder 工作会自动 anchor 一个（`goal.autoAnchor`），而当 turn 内引擎提前停下时它会保持启用 |
+| 让长任务跨轮继续 | `mpd_goal_status`、`mpd_goal_anchor`、`mpd_goal_finish`（以及宿主的 `/goal` 命令与它的 goal 轮次驱动器） | 见 §13.10：**持久化 goal** 是本 bundle 持续化执行的依据 —— heavy 档 ULW 运行、绑定 plan 的 boulder 工作或 `agent_teams_plan` 批准都会 anchor 一个（`goal.autoAnchor` 覆盖长任务；团队批准则自行 anchor），而当 turn 内引擎提前停下时它会保持启用 |
 | 保存记忆 | `mpd_memory_write/read/reflect/reflect_complete/status`、`mpd_memory_save/recall` | 版本库后端可以是 git 或 svn；`mpd_memory_save/recall` 是简单的键值层 |
-| 咨询专家 | `mpd_roles_list`、`mpd_role_spawn`、`mpd_role_persona` | 单次咨询子智能体（continuable 子会话）；只读角色会被禁用写入类工具 |
+| 咨询专家 | `mpd_roles_list`、`mpd_role_spawn`、`mpd_role_persona` | 一次性（ONE-SHOT）单次咨询子智能体（报告落定后 activation 即被释放 —— 新问题请用新的 spawn）；只读角色会被禁用写入类工具 |
 | 养一个会成长的智能体 | `mpd_workmate_list/init/spawn/reflect/match/rename/delete` | 见 §5 |
 | 运行一个团队 | `agent_teams_plan`（暂存计划、扩展它、批准它）、`spawn_teammate`、`send_message`、`list_agents`、`wait_agent`、`interrupt_agent`、`team_task_create/list/get/update` + Web 的 Agent Teams 面板 | 见 §6 |
 | 配置本 bundle | `.mpd/mpd.jsonc`、`mpd_config_get`、`mpd_config_reload` | 见 §9 |
@@ -163,9 +168,10 @@ node scripts/install-profile.ts            # --dry-run 只打印计划，不写�
 以单次咨询方式使用：
 
 - `mpd_roles_list` —— 列出名册。
-- `mpd_role_spawn { role, task, context? }` —— 用一位专家执行一次有界委派并返回一份报告；子会话保留该角色的
-  人设与模型路由，以角色名称为 label，并且是 continuable 的（以 `inactive` 列出，可用 `send_message`
-  继续）；只读角色会被机制性地禁用写入类工具。
+- `mpd_role_spawn { role, task, context? }` —— 一次性（ONE-SHOT）单次咨询：一次有界委派、一份报告；
+  子会话保留该角色的人设与模型路由，并以角色名称为 label；报告落定后适配器会释放 activation，因此这次
+  咨询**不会**被复用 —— 新问题请用**新的** spawn（harness 的 catalog 只追加，所以已落定的子会话仍可能
+  以 `inactive` 列出，但契约就是一次性的）。只读角色会被机制性地禁用写入类工具。
 - `mpd_role_persona { role }` —— 取出完整人设文本（例如传给只接受文本人设的 spawn 接口）。
 
 按工作量大小挑选工具：小而机械的改动交给 **Junior Engineer**，边界清晰且独立的一块交给
@@ -190,7 +196,7 @@ mpd_workmate_init   { base: <功能名>, name?: <独立名字>, note? }
 | 工具 | 用途 |
 |---|---|
 | `mpd_workmate_list` | 列出实例（name、baseName、uses、updatedAt、note） |
-| `mpd_workmate_spawn { name, task, context? }` | 单次咨询：workmate 在 continuable 子会话中、以自己的模型路由执行一次有界委派，并带上其演化后的人设 + 独立记忆 + 说明卡；它被要求在最终汇报前调用 `mpd_workmate_reflect` |
+| `mpd_workmate_spawn { name, task, context? }` | 一次性（ONE-SHOT）单次咨询：workmate 以自己的模型路由执行一次有界委派，并带上其演化后的人设 + 独立记忆 + 说明卡；报告落定后 activation 即被释放（持久连续性保存在 workmate 的**记录**里，而不是子会话）；它被要求在最终汇报前调用 `mpd_workmate_reflect` |
 | `mpd_workmate_reflect { name, task, outcome, persona_delta?, note? }` | 工作后自我演化：有上限的记忆追加（最旧的被淘汰）、人设修订合并、说明卡重生成、`uses++` |
 | `mpd_workmate_match { task }` | 针对任务给说明卡打分；低于阈值时返回 `matched: false`，并建议 **新建一个 workmate** —— 绝不强推弱匹配 |
 | `mpd_workmate_rename { name, new_name }` | 重命名实例（迁移它已演化的身份） |
@@ -253,6 +259,23 @@ interrupt_agent { target }                                                # 仅 
   平面是**我们的**（`mpd-team-core`），不属于官方 Agent Teams 插件：团队本身仍然跑在官方任务板上 ——
   `spawn_teammate` 与 `team_task_*` 生命周期。若 `team.gate: "advisory"`，或 `agent_teams_plan`
   没有挂载，门就不会 stage 任何东西，只用一条通知说明，并由 captain 在工作确需团队时自行建队。
+- **敏感度决定阈值。** `mpd.jsonc` 里的 `team.sensitivity` 取 `easy`（**默认**）| `normal` | `strict`；
+  未知或缺失的值一律解析为 `easy`。`easy` 保留工作区规模信号 F 并更早触发；`normal` 精确复现
+  2026-10-22 之前的五信号行为；`strict` 收紧每一项阈值：
+
+  | 敏感度 | B 不同交付动词 | C 行 / 动词 / 子句（三取二） | E 汉字数 / 动词 | F 工作区规模 |
+  |---|---|---|---|---|
+  | `easy`（默认） | ≥ 2 | ≥ 2 / ≥ 2 / ≥ 2 | ≥ 24 / ≥ 2 | 开 |
+  | `normal` | ≥ 4 | ≥ 3 / ≥ 3 / ≥ 3 | ≥ 60 / ≥ 2 | 关 |
+  | `strict` | ≥ 6 | ≥ 4 / ≥ 4 / ≥ 4（三取三） | ≥ 80 / ≥ 3 | 关 |
+
+  信号 F 是一次**有界**的根目录 `readdir`（绝不递归）：存在一个项目清单**且**存在一个项目目录**且**
+  至少有 8 个可见条目。它只在 `easy` 下评估，而且刻意粗糙 —— 在大工作区里，仅 F 一项就会让 `hello`
+  也触发。因此静默的负向对照放在**很小的**工作区里（空提示或 `hello`、以及 `验证一下` 都不会 stage）。
+- **一次批准启动三套机制。** 在 `agent_teams_plan` 批准**成功**路径上，团队真正激活之后，同一次批准还会
+  anchor 一个持久化 goal（objective = 计划描述，来源 `team`），并用 `todo_write` 按计划任务写入待办
+  （每个任务一条 pending；整表替换；计划没有任务时不写入）。两个副作用都是非致命的 —— 失败只记一行日志，
+  绝不让批准失败 —— 且不新增任何旋钮。
 - **captain 的侦察与委派守卫重新开启（2026-10-20 恢复）。** 在 `mpd` preset 的**顶层**会话里，
   `captain.investigation`（默认 `deny`）拒绝在**源码**路径上使用 `read` / `grep` / `glob` ——
   文档带仍然可读 —— `delegation.gate`（默认 `deny`）拒绝 harness 自带的通用 spawn 工具
@@ -814,7 +837,8 @@ mpd_goal_finish { "outcome": "complete" }
 
 **你很少需要自己调用它们。** 在 `goal.autoAnchor` 打开（默认）时，heavy 档 ULW 运行
 （`mpd_ultrawork` 的 `tier: "heavy"` 或 `plan: true`）与绑定 plan 的 `mpd_boulder_start` 会在开始前
-为各自的目标 anchor 一个 goal，于是"持续化执行的依据"是这次运行的目标，而不是某次工具调用。运行
+为各自的目标 anchor 一个 goal，于是"持续化执行的依据"是这次运行的目标，而不是某次工具调用。团队计划的
+**批准**也会 anchor 一个，并在同一路径写入待办（§6）：一次批准同时打包团队记录、goal 与待办清单。运行
 结束时：
 
 - `complete` → 完成 goal 并删除 anchor 记录；

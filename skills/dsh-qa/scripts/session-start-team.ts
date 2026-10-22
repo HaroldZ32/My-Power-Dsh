@@ -12,7 +12,7 @@
 // the BUILT dist the live boot really runs.
 //
 // THE CONTRACT THIS CASE ASSERTS (the shipped implementation is read as the source of truth):
-//   * the frozen predicate `trigger = explicit flag OR (matchedSignals >= 1)`, five signals A-E, and
+//   * the frozen predicate `trigger = explicit flag OR (matchedSignals >= 1)`, six signals A-F, and
 //     the marker `[AgentTeams] Session-start team rule`. E is the CJK-SCALE signal added by wave
 //     `de-vendor-and-verify-law` (2026-10-07): A-D are English-centric by construction (B/C count
 //     CLAUSES and VERBS, and a Chinese one-liner enumerates with `、，。；：`), so the user's own
@@ -20,6 +20,13 @@
 //     (`CJK_CHAR_MIN` Han characters) AND intent (`CJK_ACTION_VERB_MIN` distinct action verbs), both
 //     calibrated over the frozen corpus: the positive carries 159 Han characters, the longest control
 //     52, and the bound sits at 60;
+//   * `team.sensitivity` (`easy` DEFAULT | `normal` | `strict`) selects the threshold ROW: every bound
+//     the predicate reads lives in ONE table, `normal` reproduces the pre-2026-10-22 numbers, and an
+//     absent or unknown value reads `easy`. Signal F (workspace scale) is evaluated on the eager row
+//     ONLY: ONE bounded root `readdir` finding a project manifest, a project directory and >= 8
+//     visible entries. The user's VERBATIM first message (zero signals before the wave) must fire
+//     B/E now; the live arm runs every SILENT control in a TINY workspace and the SAME trivial
+//     greeting in a seeded LARGE one, where F must be the fired signal;
 //   * a session ALREADY LEADING A TEAM is never sent to stage one (C7): the guard reads the team
 //     RECORD (`leadSessionId` + a non-empty `members[]`), never a "did the gate fire before" flag,
 //     and injects NO notice in any mode — the measured defect staged `plan-20261007102357` while the
@@ -165,6 +172,36 @@ const PROBE_PLAN_ID: string = "plan-20260101000000"
 const CJK_CHAR_MIN_RESTATED: number = 60
 /** Signal E's restated intent bound (distinct action verbs). */
 const CJK_ACTION_VERB_MIN_RESTATED: number = 2
+/** The `easy` row's restated B bound (the shipped DEFAULT since 2026-10-22). */
+const EASY_DELIVERABLE_VERB_MIN_RESTATED: number = 2
+/** The `easy` row's restated signal-E scale bound, in Han characters. */
+const EASY_CJK_CHAR_MIN_RESTATED: number = 24
+/** The `normal` row's restated B bound — the historical number. */
+const NORMAL_DELIVERABLE_VERB_MIN_RESTATED: number = 4
+/** The `strict` row's restated B bound. */
+const STRICT_DELIVERABLE_VERB_MIN_RESTATED: number = 6
+/** The `strict` row's restated signal-E scale bound, in Han characters. */
+const STRICT_CJK_CHAR_MIN_RESTATED: number = 80
+/** The `team.sensitivity` config key, restated so a rename reddens here. */
+const SENSITIVITY_CONFIG_KEY_RESTATED: string = "team.sensitivity"
+/**
+ * The manifest filenames signal F needs at a workspace root, restated: the QA case must not inherit
+ * the product's list, or a shrunken list could hide a regression in both places at once.
+ */
+const WORKSPACE_MANIFEST_NAMES: readonly string[] = ["package.json", "pyproject.toml", "Cargo.toml", "go.mod", "pom.xml", "build.gradle", "build.gradle.kts", "composer.json", "Gemfile", "mix.exs", "pubspec.yaml", "CMakeLists.txt"]
+/**
+ * A LARGE workspace root listing — a manifest, a project directory and >= 8 visible entries — which
+ * is the exact shape signal F reads. Used BOTH by the offline reader arms and by the live F side.
+ */
+const LARGE_WORKSPACE_ENTRIES: readonly string[] = ["package.json", "packages", "src", "docs", "scripts", "skills", "tests", "AGENTS.md", ".git", ".mpd"]
+/**
+ * The user's VERBATIM first message from the measured missed-trigger session (2026-10-22) — the
+ * acceptance positive for the lexicon expansion AND the eager bounds. MEASURED BEFORE THE FIX:
+ * `{trigger:false, signals:[]}` (77 Han characters, ZERO lexicon verbs); it must fire signal E now.
+ */
+const USER_FIRST_MESSAGE: string = "降低触发team的阈值，目前大工程也很难自动触发两种阶梯的建队流程，然后非建队调用subagent时能调oneshot就调oneshot别留一堆可以复用的（也没见复用过），还有在空仓库创建新工程时，要创建AGENT.md以规范后续行为"
+/** The Han characters {@link USER_FIRST_MESSAGE} carries, measured with the Han script property. */
+const USER_FIRST_MESSAGE_HAN: number = 77
 /** The source kind the official team plugin tags an INBOUND TEAMMATE MESSAGE with (C8's reproducer). */
 const TEAM_MESSAGE_KIND: string = "team-message"
 /** The source kind the harness tags a RELAYED SUBAGENT message with (C8's second producer). */
@@ -195,7 +232,9 @@ const LOG: string[] = []
 export const SIMPLE_PROMPTS: readonly string[] = [
   "Reply with exactly: hello-ok",
   "What does the git-master skill do? Answer in one sentence.",
-  "Rename the variable `foo` to `bar` in src/util.ts and run its test.",
+  // ONE deliverable verb by construction: the eager row's B bound is >= 2, so the OLD
+  // "rename ... and run its test" wording is a B fire now (documented in the sensitivity arms).
+  "Rename the variable `foo` to `bar` in src/util.ts.",
 ]
 /** Soft-complex prompts: each must fire the gate and name at least one signal. */
 export const SOFT_COMPLEX_PROMPTS: readonly string[] = [
@@ -332,6 +371,36 @@ function seedFile(ws: string, rel: string, content: string): void {
 }
 
 /**
+ * Seed a LARGE workspace root — the exact shape signal F reads — into a side's sandbox workspace.
+ *
+ * The listing is {@link LARGE_WORKSPACE_ENTRIES} realised on disk: one manifest, six project
+ * directories, one visible markdown file and the conventional dot directories. The live F side
+ * proves the gate fires here; every silent side is asserted NOT to look like this.
+ * @param ws The side's sandbox workspace.
+ */
+function seedLargeWorkspace(ws: string): void {
+  seedFile(ws, "package.json", '{ "name": "mpd-qa-large-workspace", "private": true }\n')
+  for (const dir of ["packages", "src", "docs", "scripts", "skills", "tests"]) mkdirSync(join(ws, dir), { recursive: true })
+  seedFile(ws, "AGENTS.md", "# QA large-workspace fixture\n")
+}
+
+/**
+ * Whether a side's workspace is TINY — no project manifest at the root and fewer than 8 visible
+ * entries — which is the only shape in which a silent control proves anything on the eager default.
+ * @param ws The side's sandbox workspace.
+ * @returns whether the root carries the tiny shape; an unreadable root answers `false` (loud).
+ */
+function workspaceIsTiny(ws: string): boolean {
+  try {
+    // Every root entry a person would see: dotfiles never count toward workspace scale.
+    const visible = readdirSync(ws).filter((name: string) => !name.startsWith("."))
+    return visible.length < 8 && !visible.some((name: string) => WORKSPACE_MANIFEST_NAMES.includes(name))
+  } catch {
+    return false
+  }
+}
+
+/**
  * Every `agent_teams_*` token in one text that is NOT our own staging tool.
  * @param text The notice (or any text) whose retired vocabulary is judged.
  * @returns The offending tokens; empty means only `agent_teams_plan` (or nothing) was named.
@@ -392,6 +461,10 @@ interface GateInputs {
   readonly explicitFlag?: boolean
   /** Whether the caller's `readBoulderGate` read an ACTIVE work — signal D's only input. */
   readonly activeBoulder?: boolean
+  /** The threshold row to read; an absent or unknown value resolves to `easy`. */
+  readonly sensitivity?: string
+  /** Whether the caller's bounded root listing found a large project — signal F's only input. */
+  readonly workspaceScale?: boolean
 }
 
 /** What one workspace's boulder ledger says about an active work, as the pure module reports it. */
@@ -416,7 +489,7 @@ interface BoulderReadOptions {
 interface MechanicalNoticeInput {
   /** The plan id the staging call returned; the empty string is the "call reported none" arm. */
   readonly planId: string
-  /** The fired signal letters, in A-E order. */
+  /** The fired signal letters, in A-F order. */
   readonly signals: readonly string[]
   /** Whether an explicit `team:` / `!team` marker was consumed from the goal text. */
   readonly explicit: boolean
@@ -450,6 +523,28 @@ interface LeadingTeamOptions {
   readonly readFile?: (path: string) => Promise<string>
   /** The injected directory lister. */
   readonly readDir?: (path: string) => Promise<readonly string[]>
+}
+
+/** One `team.sensitivity` threshold row, as this case restates it. */
+interface SensitivityRow {
+  /** Signal B: distinct deliverable verbs. */
+  readonly deliverableVerbs: number
+  /** Signal C1: enumerated lines. */
+  readonly enumeratedLines: number
+  /** Signal C2: distinct action verbs. */
+  readonly actionVerbs: number
+  /** Signal C3: action clauses. */
+  readonly clauseSteps: number
+  /** How many of C's three sub-signals must hold. */
+  readonly cSubSignals: number
+  /** Signal E: Han characters. */
+  readonly cjkChars: number
+  /** Signal E: distinct action verbs. */
+  readonly cjkVerbs: number
+  /** Whether signal F is evaluated on this row. */
+  readonly workspaceScale: boolean
+  /** Which verb lexicon this row reads: `pre-wave` (normal) or `expanded` (easy/strict). */
+  readonly lexicon: string
 }
 
 /** The shipped gate module's surface, as this case drives it. */
@@ -492,6 +587,14 @@ interface GateModule {
   readonly CJK_CHAR_MIN: number
   /** Signal E's intent bound, in distinct action-verb matches. */
   readonly CJK_ACTION_VERB_MIN: number
+  /** The config key selecting the threshold row (`team.sensitivity`). */
+  readonly SENSITIVITY_CONFIG_KEY: string
+  /** The threshold table: ONE row per sensitivity, every bound the predicate reads. */
+  readonly SENSITIVITY_THRESHOLDS: Readonly<Record<string, SensitivityRow>>
+  /** Resolve the threshold row from one raw config value (an absent or unknown value reads `easy`). */
+  readonly resolveSensitivity: (value: unknown) => string
+  /** Whether one workspace root looks like a LARGE project (signal F; never throws). */
+  readonly readWorkspaceScale: (workspace: string, opts?: { readDir?: (path: string) => Promise<readonly string[]> }) => Promise<boolean>
   /** The user's OWN turn among the candidates, or `undefined` when none of them is the caller's. */
   readonly latestUserMessage: (candidates: readonly unknown[]) => { readonly message: unknown; readonly text: string } | undefined
   /** Whether THIS session already leads a team, read from the workspace's team records (never throws). */
@@ -575,6 +678,8 @@ interface SideSeed {
   readonly boulderStatus?: string
   /** The project `.mpd/mpd.jsonc` body to seed; `undefined` seeds no project config. */
   readonly mpdJsonc?: string
+  /** Seed a LARGE workspace root (signal F's shape) instead of leaving the workspace tiny. */
+  readonly largeWorkspace?: boolean
 }
 
 /** The whole expectation of one live side: how it is judged and what the boot must report. */
@@ -693,6 +798,7 @@ export async function contractProblems(gate: GateModule): Promise<string[]> {
     ["NO_TEAM_STAGED_PHRASE", gate.NO_TEAM_STAGED_PHRASE, ADVISORY_PHRASE],
     ["STAGING_TOOL_NAME", gate.STAGING_TOOL_NAME, STAGING_TOOL],
     ["GATE_CONFIG_KEY", gate.GATE_CONFIG_KEY, "team.gate"],
+    ["SENSITIVITY_CONFIG_KEY", gate.SENSITIVITY_CONFIG_KEY, SENSITIVITY_CONFIG_KEY_RESTATED],
     ["GATE_MODE_MECHANICAL", gate.GATE_MODE_MECHANICAL, GATE_MODE_MECHANICAL],
     ["GATE_MODE_ADVISORY", gate.GATE_MODE_ADVISORY, GATE_MODE_ADVISORY],
     ["GATE_MODE_OFF", gate.GATE_MODE_OFF, GATE_MODE_OFF],
@@ -722,6 +828,91 @@ export async function contractProblems(gate: GateModule): Promise<string[]> {
     const got = String(gate.resolveGateMode(input))
     if (got !== expected) problems.push(at("resolveGateMode") + JSON.stringify(input) + " must read " + expected + ", got " + got)
   }
+
+  // ── team.sensitivity: the threshold table, the resolver, and signal F (wave `team-gate-wave`) ──
+  /** The threshold rows this case restates independently of the implementation. */
+  const sensitivityTable: Record<string, SensitivityRow> = {
+    easy: { deliverableVerbs: EASY_DELIVERABLE_VERB_MIN_RESTATED, enumeratedLines: 2, actionVerbs: 2, clauseSteps: 2, cSubSignals: 2, cjkChars: EASY_CJK_CHAR_MIN_RESTATED, cjkVerbs: 2, workspaceScale: true, lexicon: "expanded" },
+    normal: { deliverableVerbs: NORMAL_DELIVERABLE_VERB_MIN_RESTATED, enumeratedLines: 3, actionVerbs: 3, clauseSteps: 3, cSubSignals: 2, cjkChars: CJK_CHAR_MIN_RESTATED, cjkVerbs: CJK_ACTION_VERB_MIN_RESTATED, workspaceScale: false, lexicon: "pre-wave" },
+    strict: { deliverableVerbs: STRICT_DELIVERABLE_VERB_MIN_RESTATED, enumeratedLines: 4, actionVerbs: 4, clauseSteps: 4, cSubSignals: 3, cjkChars: STRICT_CJK_CHAR_MIN_RESTATED, cjkVerbs: 3, workspaceScale: false, lexicon: "expanded" },
+  }
+  for (const [row, expected] of Object.entries(sensitivityTable)) {
+    // The shipped table's row for this sensitivity.
+    const actual = gate.SENSITIVITY_THRESHOLDS[row]
+    if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+      problems.push(at("sensitivity") + "the " + row + " row must be " + JSON.stringify(expected) + ", got " + JSON.stringify(actual))
+    }
+  }
+  // The resolver: the two named rows are exact and EVERYTHING else reads the eager default.
+  /** The raw values whose resolver answer this case pins. */
+  const sensitivityCases: Array<[unknown, string]> = [
+    ["normal", "normal"], ["strict", "strict"], ["easy", "easy"],
+    [undefined, "easy"], ["bogus", "easy"], ["EASY", "easy"], [false, "easy"], [0, "easy"], [{ x: 1 }, "easy"],
+  ]
+  for (const [input, expected] of sensitivityCases) {
+    // The row the shipped resolver answered for this raw value.
+    const got = String(gate.resolveSensitivity(input))
+    if (got !== expected) problems.push(at("resolveSensitivity") + JSON.stringify(input) + " must read " + expected + ", got " + got)
+  }
+  // THE ACCEPTANCE POSITIVE: the user's verbatim first message fired ZERO signals before the fix.
+  if (hanCount(USER_FIRST_MESSAGE) !== USER_FIRST_MESSAGE_HAN) {
+    problems.push(at("user-first-message") + "the verbatim message must carry " + String(USER_FIRST_MESSAGE_HAN) + " Han characters, got " + String(hanCount(USER_FIRST_MESSAGE)))
+  }
+  for (const row of ["easy"] as const) {
+    // The verdict on the measured missed-trigger message at the eager row.
+    const verdict = gate.evaluateComplexityGate(USER_FIRST_MESSAGE, { sensitivity: row })
+    if (verdict.trigger !== true || !verdict.signals.includes("E")) {
+      problems.push(at("user-first-message") + "the user's verbatim first message must trigger with signal E at `" + row + "`, got " + JSON.stringify(verdict))
+    }
+  }
+  // NORMAL IS THE PRE-WAVE PREDICATE, lexicon included: every verb of this message is a wave
+  // addition, so the measured PRE-CHANGE verdict (zero signals) must be reproduced exactly.
+  if (JSON.stringify(gate.evaluateComplexityGate(USER_FIRST_MESSAGE, { sensitivity: "normal" })) !== JSON.stringify({ trigger: false, signals: [] })) {
+    problems.push(at("user-first-message") + "the same message must stay SILENT at `normal` (pre-wave lexicon) — the row reproduces the pre-change verdict")
+  }
+  // STRICT stays silent on it, which proves the row really moves the bound (77 Han characters < 80).
+  if (gate.evaluateComplexityGate(USER_FIRST_MESSAGE, { sensitivity: "strict" }).trigger !== false) {
+    problems.push(at("user-first-message") + "the same message must stay silent at `strict` (77 Han characters < 80)")
+  }
+  // ── THE PER-ROW LEXICON: `normal` reproduces the PRE-WAVE predicate, not merely its numbers. ──
+  // Four WAVE-ONLY English deliverable verbs, packed into ONE clause so C cannot fire at normal
+  // (they are absent from the pre-wave ACTION set too): easy fires B, normal sees NOTHING.
+  /** Four English deliverable verbs the wave ADDED. */
+  const waveOnlyVerbs = "please fix create update and rename the helpers"
+  if (gate.evaluateComplexityGate(waveOnlyVerbs).signals.join("/") !== "B") {
+    problems.push(at("per-row-lexicon") + "four wave-only English verbs must fire B on the eager row, got " + JSON.stringify(gate.evaluateComplexityGate(waveOnlyVerbs)))
+  }
+  if (gate.evaluateComplexityGate(waveOnlyVerbs, { sensitivity: "normal" }).trigger !== false) {
+    problems.push(at("per-row-lexicon") + "the same four verbs must be INVISIBLE at `normal` (pre-wave lexicon), got " + JSON.stringify(gate.evaluateComplexityGate(waveOnlyVerbs, { sensitivity: "normal" })))
+  }
+  // The PRE-WAVE four still fire B at normal, so the selector is not a dead lexicon.
+  if (!gate.evaluateComplexityGate("align, migrate, refactor and audit the module", { sensitivity: "normal" }).signals.includes("B")) {
+    problems.push(at("per-row-lexicon") + "the original four deliverable verbs must still fire B at `normal`")
+  }
+  // THE SILENT CONTROLS on the DEFAULT row: `easy` changes the SHAPE that fires, not the language.
+  for (const control of ["", "Reply with exactly: hello-ok", "验证一下"]) {
+    // The default-row verdict for one silent control.
+    const verdict = gate.evaluateComplexityGate(control)
+    if (verdict.trigger !== false || verdict.signals.length !== 0) {
+      problems.push(at("sensitivity-negative") + JSON.stringify(control) + " must stay silent on the default row, got " + JSON.stringify(verdict))
+    }
+  }
+  // SIGNAL F, offline: the trivial greeting fires F in a large workspace and stays silent without it.
+  if (gate.evaluateComplexityGate("Reply with exactly: hello-ok", { workspaceScale: true }).signals.join("/") !== "F") {
+    problems.push(at("signal F") + "a trivial prompt in a LARGE workspace must fire signal F alone")
+  }
+  if (gate.evaluateComplexityGate("Reply with exactly: hello-ok", { workspaceScale: true, sensitivity: "normal" }).trigger !== false) {
+    problems.push(at("signal F") + "F must NOT be evaluated on the `normal` row")
+  }
+  // THE READER: ONE bounded root listing, non-throwing, and blind to dotfiles.
+  /** A lister seam answering one fixed root listing. */
+  const listingOf = (names: readonly string[]): { readDir: () => Promise<readonly string[]> } => ({ readDir: async (): Promise<readonly string[]> => names })
+  if (await gate.readWorkspaceScale("/ws", listingOf(LARGE_WORKSPACE_ENTRIES)) !== true) problems.push(at("signal F") + "a large-project root listing must read as a large workspace")
+  if (await gate.readWorkspaceScale("/ws", listingOf([".git", ".mpd"])) !== false) problems.push(at("signal F") + "a dotfiles-only root must NOT read as a large workspace")
+  if (await gate.readWorkspaceScale("/ws", listingOf(["package.json", "src"])) !== false) problems.push(at("signal F") + "the >= 8 visible-entry bound must hold")
+  if (await gate.readWorkspaceScale("/nonexistent-mpd-ws") !== false) problems.push(at("signal F") + "an unreadable root must read false, never throw")
+  // THIS repository's own shape must read large — the reason the gate now fires here without a word.
+  if (await gate.readWorkspaceScale(repoRoot) !== true) problems.push(at("signal F") + "this repository's root must read as a large workspace")
 
   // ── the frozen predicate, both directions, per prompt set ──
   // Direction 1: a SIMPLE prompt must NOT trigger and must match NO signal.
@@ -842,15 +1033,18 @@ export async function contractProblems(gate: GateModule): Promise<string[]> {
   if (Math.max(...hanNegative) >= gate.CJK_CHAR_MIN) problems.push(at("cjk-calibration") + "every negative control must stay UNDER the scale bound (" + String(gate.CJK_CHAR_MIN) + "), got " + JSON.stringify(hanNegative))
   // BOTH conjuncts, each isolated: scale with no action verb stays silent (the longest control), and
   // two action verbs with no scale stay silent too — so neither conjunct alone can carry the signal.
-  if (gate.evaluateComplexityGate("修复并验证").trigger !== false) problems.push(at("cjk-calibration") + "two action verbs with no scale must stay silent")
+  // The historical bound: two action verbs with no scale stay silent on the NORMAL row. On the eager
+  // default they now fire B (the >= 2 bound), which the sensitivity arms below pin in BOTH directions.
+  if (gate.evaluateComplexityGate("修复并验证", { sensitivity: "normal" }).trigger !== false) problems.push(at("cjk-calibration") + "two action verbs with no scale must stay silent on the NORMAL row")
+  if (gate.evaluateComplexityGate("修复并验证").signals.join("/") !== "B") problems.push(at("cjk-calibration") + "the SAME two verbs must fire signal B on the eager default")
   if (gate.evaluateComplexityGate(CJK_SIMPLE_PROMPTS[CJK_SIMPLE_PROMPTS.length - 1] ?? "").trigger !== false) problems.push(at("cjk-calibration") + "the scale-only control must stay silent")
 
   // ── DIRECTION 6 — THE TWO MEASURED DEFECTS OF 2026-10-07: an INBOUND AGENT MESSAGE judged as the
   // human turn (C8), and a session ALREADY LEADING A TEAM being sent to stage one (C7). ──
   /** A teammate report that signal C WOULD fire on if it were judged as a human turn. */
-  const reportText = "1. Audit the gates\n2. Implement the change\n3. Verify the boot"
-  if (gate.evaluateComplexityGate(reportText).signals.join("/") !== "C") {
-    problems.push(at("c8") + "the fixture report must be a text signal C fires on, else this arm is vacuous, got " + JSON.stringify(gate.evaluateComplexityGate(reportText)))
+  const reportText = "1. Audit the gates\n2. Implement the loader\n3. Verify the boot"
+  if (gate.evaluateComplexityGate(reportText, { sensitivity: "normal" }).signals.join("/") !== "C") {
+    problems.push(at("c8") + "the fixture report must be a text signal C fires on at the NORMAL row, else this arm is vacuous, got " + JSON.stringify(gate.evaluateComplexityGate(reportText, { sensitivity: "normal" })))
   }
   /** The fixture report as the OFFICIAL team plugin delivers it to the lead. */
   const deliveredReport = { id: "m-1", role: "user", content: [{ type: "text", text: reportText }], source: { kind: TEAM_MESSAGE_KIND } }
@@ -1175,6 +1369,7 @@ async function selfTest(): Promise<void> {
     ...EXPLICIT_PROMPTS.map((prompt): [string, string, boolean] => ["explicit", prompt, true]),
     ...CJK_COMPLEX_PROMPTS.map((prompt): [string, string, boolean] => ["cjk-positive", prompt, true]),
     ...CJK_SIMPLE_PROMPTS.map((prompt): [string, string, boolean] => ["cjk-negative", prompt, false]),
+    ["user-first-message", USER_FIRST_MESSAGE, true],
   ]
   for (const [label, prompt, want] of corpus) {
     // An EXPLICIT case is driven the way the WIRING drives it: the marker is consumed FIRST and the
@@ -1190,6 +1385,13 @@ async function selfTest(): Promise<void> {
   console.log("  calibration: positives han=" + JSON.stringify(CJK_COMPLEX_PROMPTS.map((prompt) => hanCount(prompt)))
     + " negatives han=" + JSON.stringify(CJK_SIMPLE_PROMPTS.map((prompt) => hanCount(prompt)))
     + " bound=" + String(gate.CJK_CHAR_MIN) + " verbs>=" + String(gate.CJK_ACTION_VERB_MIN))
+  console.log("  sensitivity: default=" + String(gate.resolveSensitivity(undefined)) + " rows=" + JSON.stringify(gate.SENSITIVITY_THRESHOLDS))
+  console.log("  first message: han=" + String(USER_FIRST_MESSAGE_HAN) + " easy=" + JSON.stringify(gate.evaluateComplexityGate(USER_FIRST_MESSAGE))
+    + " normal=" + JSON.stringify(gate.evaluateComplexityGate(USER_FIRST_MESSAGE, { sensitivity: "normal" }))
+    + " strict=" + JSON.stringify(gate.evaluateComplexityGate(USER_FIRST_MESSAGE, { sensitivity: "strict" })))
+  console.log("  signal F (injected listing): large=" + String(await gate.readWorkspaceScale("/ws", { readDir: async (): Promise<readonly string[]> => LARGE_WORKSPACE_ENTRIES }))
+    + " tiny=" + String(await gate.readWorkspaceScale("/ws", { readDir: async (): Promise<readonly string[]> => [".git", ".mpd"] }))
+    + " repoRoot=" + String(await gate.readWorkspaceScale(repoRoot)))
 
   console.log("[session-start-team self-test] ok: the shipped PURE gate module conforms to the MECHANICAL contract ("
     + SIMPLE_PROMPTS.length + " simple / " + SOFT_COMPLEX_PROMPTS.length + " soft-complex / " + EXPLICIT_PROMPTS.length + " explicit / "
@@ -1200,6 +1402,7 @@ async function selfTest(): Promise<void> {
     + ", advisory-only-mechanical " + confusedProblems.length + ", CJK-blind " + blindProblems.length + " problem(s))"
     + "; C7 (a session already leading a team) and C8 (an inbound `team-message`/`agent-message` is never the human turn) each driven BOTH ways"
     + "; the LIVE verdict and the REAL `.mpd/team` stage scan were each driven offline BOTH ways (a matching shell passes; a spawned record, a plan-id mismatch, a leaked notice and a non-shell staged plan all redden)"
+    + "; team.sensitivity's three rows and its easy fail-safe resolver, the PER-ROW LEXICON (four wave-only English verbs fire B at easy and are invisible at normal; the original four still fire B at normal), the user's VERBATIM first message (B/E at easy; SILENT at normal, which is the measured pre-change verdict, and at strict), and signal F both ways (a large root fires F alone; a tiny root and the injected listings stay silent)"
     + "; bundle mounts mpd-roles with the retired rows gone; preset carries the session-start convention (frozen marker + team.gate + the MECHANICAL default wording)")
 }
 
@@ -1252,7 +1455,7 @@ function classifyNotices(texts: readonly string[]): NoticeClassification {
   // The marked texts that name any `agent_teams_*` token but the staging tool.
   const retiredVocabulary = marked.filter((text) => retiredToolTokens(text).length > 0)
   // The fired-signal runs every marked notice named, in record order (both taxonomies share the prefix).
-  const signals = marked.map((text) => /complexity signals ([A-E](?:\/[A-E])*)/.exec(text)?.[1]).filter((value): value is string => value !== undefined)
+  const signals = marked.map((text) => /complexity signals ([A-F](?:\/[A-F])*)/.exec(text)?.[1]).filter((value): value is string => value !== undefined)
   // Every plan id any marked notice named, in record order.
   const planIds = marked.flatMap((text) => planIdsIn(text))
   return {
@@ -1535,6 +1738,9 @@ async function runReal(): Promise<void> {
       if (side.seed?.boulderStatus !== undefined) seedFile(sideWs, join(".mpd", "boulder.json"), boulderStateJson(side.seed.boulderStatus))
       // The seeded project config, when this side selects its `team.gate` mode that way.
       if (side.seed?.mpdJsonc !== undefined) seedFile(sideWs, join(".mpd", "mpd.jsonc"), side.seed.mpdJsonc)
+      // THE WORKSPACE SHAPE, SEEDED rather than inherited: signal F reads one bounded ROOT listing,
+      // so a large-workspace side must really look large.
+      if (side.seed?.largeWorkspace === true) seedLargeWorkspace(sideWs)
       // The gate is MECHANICAL by default again (2026-10-20 restore). A side whose SUBJECT is what a
       // MECHANICAL fire does still SEEDS that mode explicitly the way a user does — a project
       // `mpd.jsonc` — so the mode it measured is NAMED by the side rather than inherited. Seeded only
@@ -1607,6 +1813,11 @@ async function runReal(): Promise<void> {
       if (!isolation.ok) problems.push("workspace isolation violated: " + isolation.error)
       if (!ownKeyWritten) problems.push("this side's own session-store key was not written — the boot did not run in its sandbox workspace")
       if (!gateInstalled) problems.push("the row did not report `sessionGate=" + side.expectedMode + "` — the gate was NOT mounted for this mode on this boot (a different defect from a mounted-but-silent gate); boot line: " + JSON.stringify(bootLine.slice(0, 240)))
+      // A SILENT side must run in a TINY workspace: on the eager default signal F fires on the SHAPE
+      // of a large project, so a negative control executed here would prove nothing.
+      if ((side.expect === "none" || side.expect === "off") && !workspaceIsTiny(sideWs)) {
+        problems.push("this side must run in a TINY workspace (no project manifest, < 8 visible entries): signal F fires on a large root's SHAPE, so a negative control here would prove nothing")
+      }
       // The `mechanical-default` side exists to measure the resolver's DEFAULT; if its project config
       // actually supplies `team.gate`, the boot proved a seeded mode and the side must NOT pass.
       if (side.unsetGate === true && !gateKeyAbsent) {
@@ -1694,13 +1905,16 @@ async function runReal(): Promise<void> {
   // The two non-default modes, selected the way a USER selects them: a project `.mpd/mpd.jsonc`.
   steps.advisorySide = runSide("advisory-mode", [SOFT_COMPLEX_PROMPTS[0]], { expect: "advisory", expectedMode: GATE_MODE_ADVISORY, seed: { mpdJsonc: GATE_MODE_JSONC_ADVISORY } })
   steps.offSide = runSide("off-mode", [SOFT_COMPLEX_PROMPTS[0]], { expect: "off", expectedMode: GATE_MODE_OFF, seed: { mpdJsonc: GATE_MODE_JSONC_OFF } })
+  // SIGNAL F LIVE: the SAME trivial greeting the `simple` side proves SILENT in a tiny workspace must
+  // STAGE the shell in a LARGE one, with F named — the eager default's measured shape, both ways.
+  steps.largeWorkspaceSide = runSide("large-workspace", [SIMPLE_PROMPTS[0]], { expect: "stage", expectedMode: GATE_MODE_MECHANICAL, signal: "F", seed: { largeWorkspace: true } })
 
   // The folded verdict: EVERY side's `ok` must hold, which is what the run's exit code reports.
   const sides: LiveStep[] = [
     ...steps.simpleSide, ...steps.softComplexSide, ...steps.explicitSide, ...steps.mechanicalDefaultSide,
     ...steps.boulderActiveSide, ...steps.boulderCompletedSide,
     ...steps.advisorySide, ...steps.offSide,
-    ...steps.cjkPositiveSide, ...steps.cjkNegativeSide,
+    ...steps.cjkPositiveSide, ...steps.cjkNegativeSide, ...steps.largeWorkspaceSide,
   ]
   steps.verdicts = {
     ok: sides.every((r) => r.ok),
@@ -1718,6 +1932,7 @@ async function runReal(): Promise<void> {
     off: steps.offSide.map((r) => ({ notices: r.notices, stagedPlans: r.stagedPlans, teamRecords: r.teamRecords, modeLine: r.bootLine })),
     cjkPositive: steps.cjkPositiveSide.map((r) => ({ notices: r.notices, signals: r.signals, stagedPlans: r.stagedPlans, planIds: r.planIds, teamRecords: r.teamRecords, firedLine: r.firedLine })),
     cjkNegative: steps.cjkNegativeSide.map((r) => ({ notices: r.notices, stagedPlans: r.stagedPlans, teamRecords: r.teamRecords })),
+    largeWorkspace: steps.largeWorkspaceSide.map((r) => ({ notices: r.notices, signals: r.signals, stagedPlans: r.stagedPlans, planIds: r.planIds, teamRecords: r.teamRecords, firedLine: r.firedLine })),
   }
 
   // The run's single verdict: every ledger entry that carries an `ok` must have held.

@@ -55,7 +55,7 @@
 |---|---|
 | `mpd_workmate_list` | list instances (name, baseName, uses, updatedAt, note summary) |
 | `mpd_workmate_init` | instantiate a base specialist into an independently-named workmate |
-| `mpd_workmate_spawn` | single-call consult: one bounded delegation with the workmate's persona+memory+note in a continuable child, on its own model route (readonly bases deny write tools) |
+| `mpd_workmate_spawn` | ONE-SHOT single-call consult: one bounded delegation with the workmate's persona+memory+note, on its own model route (readonly bases deny write tools); the activation is disposed once the report settles, and durable continuity lives in the workmate record, not the child session |
 | `mpd_workmate_reflect` | self-evolve after work: memory append/evict, persona revision merge, note regen |
 | `mpd_workmate_match` | rank notes against a task; below threshold → suggest a new init |
 | `mpd_workmate_rename { name, new_name }` | 重命名实例：搬移目录键 + 元数据 + 索引键 + note 自引用（见下文） |
