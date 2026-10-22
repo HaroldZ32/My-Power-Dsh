@@ -1,0 +1,207 @@
+{
+  "version": 7,
+  "record": {
+    "identity": {
+      "formatVersion": 4,
+      "createdAt": 1792651933068,
+      "cwd": "/tmp/mpd-mount-TiFQeb/ws",
+      "isSeeded": false,
+      "inheritedEventCount": 0
+    },
+    "rows": {
+      "title": {
+        "ver": 1,
+        "seq": 23,
+        "val": "Reply with exactly: ok Your"
+      },
+      "titleInput": {
+        "ver": 3,
+        "seq": 23,
+        "val": {
+          "first": {
+            "seq": 8,
+            "text": "Reply with exactly: ok\nYour parent agent id is \"session-f50a97b9-1af5-4042-8e53-d62d9cbcbcff\". Before you finish, send your result to that agent with send_message({ agent_id: \"session-f50a97b9-1af5-4042-8e53-d62d9cbcbcff\", message: \"<self-contained result>\" }). The parent shares your workspace but does not automatically receive your transcript, tool output, or reasoning. Send earlier messages as well when a finding changes what the parent should do next; sending a message does not end your turn."
+          },
+          "count": 1,
+          "lastSeq": 8
+        }
+      },
+      "llmRetry": {
+        "ver": 1,
+        "seq": 23,
+        "val": {}
+      },
+      "sandboxMode": {
+        "ver": 1,
+        "seq": 23,
+        "val": "workspace-write"
+      },
+      "goal": {
+        "ver": 6,
+        "seq": 23,
+        "val": {
+          "current": null,
+          "seenGoalIds": [],
+          "failure": null
+        }
+      },
+      "tokenUsage": {
+        "ver": 2,
+        "seq": 23,
+        "val": {
+          "totals": {
+            "uncachedInputTokens": 6913,
+            "outputTokens": 95,
+            "cacheReadTokens": 44672,
+            "cacheWriteTokens": 0
+          },
+          "last": {
+            "turn": 1,
+            "step": 2,
+            "buckets": {
+              "uncachedInputTokens": 260,
+              "outputTokens": 2,
+              "cacheReadTokens": 25600,
+              "cacheWriteTokens": 0
+            }
+          }
+        }
+      },
+      "contextPressure": {
+        "ver": 5,
+        "seq": 23,
+        "val": {
+          "surfaceTokens": 4845,
+          "contextWindow": 1000000,
+          "pressureTokens": 25860,
+          "sampledSurfaceTokens": 4832
+        }
+      },
+      "contextBreakdown": {
+        "ver": 6,
+        "seq": 23,
+        "val": {
+          "systems": [
+            {
+              "seq": 7,
+              "tokens": 2017
+            }
+          ],
+          "surfaceTokens": 4845,
+          "breakdown": {
+            "systemTokens": 2017,
+            "toolsTokens": 20291,
+            "messageTokens": 2828
+          }
+        }
+      },
+      "todos": {
+        "ver": 2,
+        "seq": 23,
+        "val": null
+      },
+      "turnBoundary": {
+        "ver": 2,
+        "seq": 23,
+        "val": {
+          "openTurnStartSeq": null,
+          "lastStepStartSeq": 19,
+          "lastStepBoundary": {
+            "kind": "end",
+            "seq": 22
+          },
+          "lastTurn": 1
+        }
+      },
+      "inbox": {
+        "ver": 1,
+        "seq": 23,
+        "val": {
+          "next-turn": [],
+          "next-step": []
+        }
+      },
+      "userQuestions": {
+        "ver": 2,
+        "seq": 23,
+        "val": {
+          "inheritedEventCount": 0,
+          "timed": false,
+          "questions": {
+            "active": [],
+            "settled": []
+          }
+        }
+      },
+      "plan": {
+        "ver": 3,
+        "seq": 23,
+        "val": {
+          "active": false,
+          "wanted": null,
+          "running": null,
+          "activeAtLastHeader": false
+        }
+      },
+      "permissions": {
+        "ver": 2,
+        "seq": 23,
+        "val": {
+          "preset": null,
+          "sandbox": "workspace-write",
+          "approval": "never",
+          "seeded": false
+        }
+      },
+      "workingDirectory": {
+        "ver": 1,
+        "seq": 23,
+        "val": "/tmp/mpd-mount-TiFQeb/ws"
+      },
+      "subagentCatalog": {
+        "ver": 6,
+        "seq": 23,
+        "val": {
+          "inheritedEventCount": 0
+        }
+      },
+      "subagentTiming": {
+        "ver": 3,
+        "seq": 23,
+        "val": {
+          "descriptorSeen": true,
+          "settledMs": 1877,
+          "lastTurnCompleted": true
+        }
+      },
+      "subagent": {
+        "ver": 2,
+        "seq": 23,
+        "val": {
+          "identity": {
+            "mode": "continuable",
+            "label": "live-reviewer · team-20261022065213066-cj9p-002",
+            "seq": 0
+          }
+        }
+      },
+      "subagentModelSelectionPolicy": {
+        "ver": 1,
+        "seq": 23,
+        "val": null
+      },
+      "agentTeam": {
+        "ver": 4,
+        "seq": 23,
+        "val": {
+          "id": "2dad2a79-35bf-4755-a0a3-49f7da3dfcb7",
+          "members": [],
+          "tasks": [],
+          "messages": [],
+          "delivered": [],
+          "nextTaskNumber": 1
+        }
+      }
+    }
+  }
+}
