@@ -306,7 +306,8 @@ interrupt_agent { target }                                                # Lead
   nothing).
 - **One approval starts three mechanisms.** On the `agent_teams_plan` approve SUCCESS path, after the
   team is really activated, the same approval anchors a persisted goal (objective = the plan
-  description, source `team`) and seeds `todo_write` with one pending item per plan task (a whole-list
+  description, falling back to the plan NAME when the description is empty, source `team`) and seeds
+  `todo_write` with one pending item per plan task (a whole-list
   replace; no reseed when the plan has no tasks). Both effects are non-fatal — a failure logs one line
   and never fails the approval — and there are no new knobs.
 - **The captain's reconnaissance and delegation guards are ON (restored 2026-10-20).** On the `mpd`

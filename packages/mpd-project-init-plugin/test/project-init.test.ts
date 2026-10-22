@@ -65,6 +65,8 @@ interface FakeAdapter {
   registered: RegisteredListener[]
   /** Every `agent/*` event the row subscribed to. */
   events: string[]
+  /** The handler the row installed for each event, so a case can dispatch the lifecycle event itself. */
+  handlers: Map<string, (payload: unknown) => void>
   /** Every line the row sent to its file log. */
   logged: string[]
 }
@@ -78,7 +80,7 @@ interface FakeAdapter {
  */
 function fakeAdapter(agents: DshLiveAgent[], rootOf: (agent: unknown) => string, explode: boolean = false): FakeAdapter {
   /** The calls the row made, captured by the closures below. */
-  const state: FakeAdapter = { dsh: undefined as unknown as FakeAdapter["dsh"], registered: [], events: [], logged: [] }
+  const state: FakeAdapter = { dsh: undefined as unknown as FakeAdapter["dsh"], registered: [], events: [], handlers: new Map(), logged: [] }
   state.dsh = {
     registerAgentPreStep: (agent: unknown, listener: RegisteredListener["listener"]): (() => void) => {
       state.registered.push({ agent, listener })
@@ -87,8 +89,9 @@ function fakeAdapter(agents: DshLiveAgent[], rootOf: (agent: unknown) => string,
       }
     },
     liveAgents: (): DshLiveAgent[] => agents,
-    onEvent: (event: string): (() => void) => {
+    onEvent: (event: string, handler: (payload: unknown) => void): (() => void) => {
       state.events.push(event)
+      state.handlers.set(event, handler)
       return (): void => {
         // A no-op subscription: the row only needs it to exist.
       }
@@ -293,6 +296,29 @@ describe("installProjectInit", () => {
     expect(listener({}, {})).toBeUndefined()
     expect(fake.logged.some((line: string): boolean => line.includes("pre-step failed"))).toBe(true)
     expect(install.acted.has(captain)).toBe(true)
+  })
+
+  test("a disposed agent is dropped from BOTH the acted set and the disposer map", () => {
+    /** The workspace the disposed session carried. */
+    const root = tempRoot()
+    /** A top-level agent that runs one pre-step and is then disposed. */
+    const captain = { id: "captain", session: { header: { cwd: root, delegationDepth: 0 } } }
+    /** The fake adapter recording the lifecycle handler. */
+    const fake = fakeAdapter([captain], () => root)
+    /** The install outcome under test. */
+    const install = installProjectInit(fake.dsh)
+    /** The captain's pre-step listener, fired so `acted` gains an entry for a LIVE agent. */
+    const listener = fake.registered[0].listener
+    listener({}, {})
+    expect(install.acted.has(captain)).toBe(true)
+    // The disposal path must clear the acted entry too: it holds the agent HANDLE, so keeping it
+    // after disposal would retain a dead agent for the life of the process (CodeRabbit #3).
+    /** The `agent/disposed` handler the row subscribed. */
+    const disposed = fake.handlers.get("agent/disposed")
+    if (disposed === undefined) throw new Error("the row subscribed no agent/disposed handler")
+    disposed({ agent: captain })
+    expect(install.acted.has(captain)).toBe(false)
+    expect(install.disposers.has(captain)).toBe(false)
   })
 
   test("apply() installs the listeners through the mounted adapter", () => {

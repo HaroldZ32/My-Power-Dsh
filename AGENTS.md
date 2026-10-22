@@ -132,8 +132,9 @@ replaced or deleted. License: **MIT** (`LICENSE.md`); third-party components kee
   unmounted or under `advisory` the ONE notice says `NO team was staged` and the captain stages a team
   itself when the work warrants one — or continues solo and says so. **APPROVAL BUNDLES THREE
   MECHANISMS:** on the `agent_teams_plan` approve success path, after real activation, the same approval
-  anchors a persisted goal (objective = the plan description, source `team`) and seeds `todo_write`
-  with one pending item per plan task — both non-fatal, one log line on failure, no new knobs. Signal D
+  anchors a persisted goal (objective = the plan description, falling back to the plan NAME when the
+  description is empty, source `team`) and seeds `todo_write` with one pending item per plan task —
+  both non-fatal, one log line on failure, no new knobs. Signal D
   is an ACTIVE boulder work for this workspace
   (`status: "active"` in `<workspace>/.mpd/boulder.json`, gitignored RUNTIME STATE); a plan FILE alone is
   NOT a signal. Softer signals and the retired path: `agent-references/overview-and-provenance.md`.

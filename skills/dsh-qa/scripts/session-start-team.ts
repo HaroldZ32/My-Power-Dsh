@@ -1736,11 +1736,13 @@ async function runReal(): Promise<void> {
       mkdirSync(sideWs, { recursive: true })
       // The seeded boulder ledger, when this side exists to move signal D and nothing else.
       if (side.seed?.boulderStatus !== undefined) seedFile(sideWs, join(".mpd", "boulder.json"), boulderStateJson(side.seed.boulderStatus))
+      // THE WORKSPACE SHAPE, SEEDED rather than inherited: signal F reads one bounded ROOT listing,
+      // so a large-workspace side must really look large. Seeded BEFORE the mode pair below ON
+      // PURPOSE: an `if` between the `mpdJsonc` seed and its `else if` would bind that else to THIS
+      // branch (a dangling else), silently skipping the explicit `team.gate` seed on every large side.
+      if (side.seed?.largeWorkspace === true) seedLargeWorkspace(sideWs)
       // The seeded project config, when this side selects its `team.gate` mode that way.
       if (side.seed?.mpdJsonc !== undefined) seedFile(sideWs, join(".mpd", "mpd.jsonc"), side.seed.mpdJsonc)
-      // THE WORKSPACE SHAPE, SEEDED rather than inherited: signal F reads one bounded ROOT listing,
-      // so a large-workspace side must really look large.
-      if (side.seed?.largeWorkspace === true) seedLargeWorkspace(sideWs)
       // The gate is MECHANICAL by default again (2026-10-20 restore). A side whose SUBJECT is what a
       // MECHANICAL fire does still SEEDS that mode explicitly the way a user does — a project
       // `mpd.jsonc` — so the mode it measured is NAMED by the side rather than inherited. Seeded only

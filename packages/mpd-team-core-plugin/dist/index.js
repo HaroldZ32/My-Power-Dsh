@@ -4216,6 +4216,20 @@ function callerIdentity(record, sessionId, title, lineage) {
   return ownMember === undefined ? { ancestry: lineage } : { ownMember, ancestry: [] };
 }
 var TODO_TOOL_NAME = "todo_write";
+var SEED_TIMEOUT_MS = 1e4;
+function seedSignal(upstream) {
+  try {
+    const platform = AbortSignal;
+    if (typeof platform?.timeout !== "function")
+      return upstream;
+    const bounded = platform.timeout(SEED_TIMEOUT_MS);
+    if (upstream === undefined)
+      return bounded;
+    return typeof platform.any === "function" ? platform.any([upstream, bounded]) : upstream;
+  } catch {
+    return upstream;
+  }
+}
 function hasTodoTool(dsh, agent) {
   if (typeof dsh.hasTool !== "function")
     return false;
@@ -4245,7 +4259,8 @@ async function bundleApprovalEffects(ctx, dsh, exec, plan) {
     const result = await dsh.executeTool({
       name: TODO_TOOL_NAME,
       arguments: { todos: plan.tasks.map((task) => ({ content: task.subject, status: "pending" })) },
-      agent: exec.agent
+      agent: exec.agent,
+      signal: seedSignal(exec.signal)
     });
     if (result.isError === true)
       dsh.rowLog("mpd-team-core", "todo seed failed after approval: " + String(result.error ?? "the tool returned an error result"));

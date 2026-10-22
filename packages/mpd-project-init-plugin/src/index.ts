@@ -64,7 +64,7 @@ export interface ProjectInitResult {
 export interface ProjectInitInstall {
   /** Always true: a refused registration degrades per agent instead of failing the row. */
   installed: boolean
-  /** Agent handles already evaluated; the second pre-step of one agent never re-inspects. */
+  /** Agent handles already evaluated (one inspection each); a DISPOSED handle is removed, so no dead agent is retained. */
   acted: Set<unknown>
   /** One disposer per agent whose scope carries this row's listener. */
   disposers: Map<unknown, () => void>
@@ -356,11 +356,17 @@ export function installProjectInit(
   const disposers = new Map<unknown, () => void>()
 
   /**
-   * Tear one agent's listener down; a failed disposer must not break agent disposal.
+   * Release ONE disposed agent: forget its acted entry AND tear its listener down.
+   *
+   * BOTH registries are per-agent and both must let go. `acted` holds the agent HANDLE, so
+   * dropping only the disposer would retain a dead agent — its session header, messages and
+   * scope — for the life of the process (CodeRabbit finding #3 on PR #59). The acted entry is
+   * cleared unconditionally, so a handle that never registered a listener is not retained either.
    * @param agent the agent whose scope registration is released.
    * @returns nothing.
    */
   function release(agent: unknown): void {
+    acted.delete(agent)
     /** This agent's disposer, or undefined when it never carried a listener. */
     const dispose = disposers.get(agent)
     if (dispose === undefined) return
@@ -368,7 +374,7 @@ export function installProjectInit(
     try {
       dispose()
     } catch {
-      // A refused teardown is not worth a warning: the listener's `acted` guard is inert.
+      // A refused teardown is not worth a warning: both registries are already clear.
     }
   }
 

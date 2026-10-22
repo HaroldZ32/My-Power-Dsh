@@ -12,6 +12,11 @@
 // service and no `todo_write` tool must still approve, a plan with no tasks must not clear a
 // checklist it did not create, and a THROWING or error-answering effect must cost ONE log line —
 // never the approval.
+//
+// REPAIR (T7 / F-CR5, 2026-10-22) adds the two remaining NON-FATAL branch arms: an anchor that
+// ANSWERS `ok:false` (refusal logged, approval preserved) and a `hasTool` probe that THROWS (seed
+// skipped silently). F-CR4 is pinned by the seed-signal assertion in the whole-list arm: a caller
+// signal would REPLACE the adapter's timeout, so the seed must pass a bounded, composed one.
 import { afterEach, describe, expect, test } from "bun:test"
 import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
@@ -35,6 +40,8 @@ interface ToolCall {
   arguments: Record<string, unknown>
   /** The agent the call was attributed to. */
   agent: unknown
+  /** The cancellation the call ran under, recorded so the bounded seed (F-CR4) can be asserted. */
+  signal?: AbortSignal
 }
 
 /** The session id every arm approves from, so the fixtures share one Lead. */
@@ -46,10 +53,12 @@ afterEach(() => { for (const dir of sandboxes.splice(0)) rmSync(dir, { recursive
 
 /** What the stub composition offers, per arm. */
 interface HarnessOptions {
-  /** `ok` mounts a working `mpdGoal`; `absent` mounts no such row; `throw` makes its anchor reject. */
-  goal?: "ok" | "absent" | "throw"
+  /** `ok` mounts a working `mpdGoal`; `absent` mounts no row; `throw` rejects; `refuse` answers ok:false. */
+  goal?: "ok" | "absent" | "throw" | "refuse"
   /** Whether the adapter reports `todo_write` as registered in this agent's view. */
   todoTool?: boolean
+  /** Whether the `hasTool` probe THROWS instead of answering (the degrade step, F-CR5). */
+  hasToolThrows?: boolean
   /** Whether the `todo_write` call REJECTS instead of answering. */
   todoThrows?: boolean
   /** Whether the `todo_write` call answers a marked ERROR RESULT instead of succeeding. */
@@ -128,11 +137,12 @@ function harness(options: HarnessOptions = {}): Harness {
      * Record the anchor request and answer per this arm's configuration.
      * @param _exec - the tool exec the approval forwarded, never inspected.
      * @param input - the objective and source the anchor was asked for.
-     * @returns the anchor outcome; `throw` arms reject instead.
+     * @returns the anchor outcome; `throw` arms reject, `refuse` arms answer `ok:false`.
      */
-    anchor: async (_exec: unknown, input: { objective: string; source: string }): Promise<{ ok: boolean; created: boolean }> => {
+    anchor: async (_exec: unknown, input: { objective: string; source: string }): Promise<{ ok: boolean; created: boolean; error?: string }> => {
       goalCalls.push({ ...input })
       if (options.goal === "throw") throw new Error("goal seam unavailable")
+      if (options.goal === "refuse") return { ok: false, created: false, error: "the harness refused the anchor" }
       return { ok: true, created: true }
     },
   }
@@ -147,14 +157,18 @@ function harness(options: HarnessOptions = {}): Harness {
     teamListMembers: (): [] => [],
     teamListTasks: (): [] => [],
     capabilities: (): Record<string, never> => ({}),
-    hasTool: (name: string): boolean => name === "todo_write" && (options.todoTool ?? true),
+    hasTool: (name: string): boolean => {
+      // F-CR5: a THROWING probe is the DEGRADE step — the row must skip the seed, not log or fail.
+      if (options.hasToolThrows === true) throw new Error("the tool registry is unavailable")
+      return name === "todo_write" && (options.todoTool ?? true)
+    },
     /**
      * Record the request and answer per this arm's configuration.
-     * @param input - the tool call the approval made.
+     * @param input - the tool call the approval made, including its cancellation.
      * @returns a successful result, a marked error result, or (in a `throw` arm) nothing.
      */
-    executeTool: async (input: { name: string; arguments?: unknown; agent?: unknown }): Promise<{ ok: boolean; isError: boolean; value?: unknown; error?: string }> => {
-      toolCalls.push({ name: input.name, arguments: (input.arguments ?? {}) as Record<string, unknown>, agent: input.agent })
+    executeTool: async (input: { name: string; arguments?: unknown; agent?: unknown; signal?: AbortSignal }): Promise<{ ok: boolean; isError: boolean; value?: unknown; error?: string }> => {
+      toolCalls.push({ name: input.name, arguments: (input.arguments ?? {}) as Record<string, unknown>, agent: input.agent, ...(input.signal === undefined ? {} : { signal: input.signal }) })
       if (options.todoThrows === true) throw new Error("todo_write exploded")
       if (options.todoErrors === true) return { ok: false, isError: true, error: "the tool refused the write" }
       return { ok: true, isError: false, value: {} }
@@ -245,6 +259,10 @@ describe("R4 — approval bundles the durable goal and the todo checklist", () =
     })
     // The call is scoped to the LIVE agent, which is what the `hasTool` probe promised to execute.
     expect((h.toolCalls[0]?.agent as { session?: { id?: string } }).session?.id).toBe(LEAD)
+    // F-CR4: the write is BOUNDED and CANCELLABLE. A caller signal would make the adapter SKIP its
+    // own timeout, so the row passes a composed one instead — present here, and not yet aborted.
+    expect(h.toolCalls[0]?.signal).toBeInstanceOf(AbortSignal)
+    expect(h.toolCalls[0]?.signal?.aborted).toBe(false)
   })
 
   test("an empty plan description falls back to the plan NAME as the objective", async () => {
@@ -330,6 +348,31 @@ describe("R4 — approval bundles the durable goal and the todo checklist", () =
     expect(h.toolCalls).toHaveLength(1)
     expect(h.logLines).toHaveLength(1)
     expect(h.logLines[0]).toContain("todo seed failed after approval: the tool refused the write")
+    expect(activeTeamId(h.workspace, LEAD)).toBeDefined()
+  })
+
+  test("a REFUSED anchor logs one line and leaves the approval intact (F-CR5)", async () => {
+    /** This arm's composition: the goal row ANSWERS `ok:false` instead of anchoring. */
+    const h = harness({ goal: "refuse" })
+    /** The approval answer, which the refusal must not change. */
+    const answer = await approveWave(h)
+    expect(answer).toBeDefined()
+    expect(h.goalCalls).toHaveLength(1)
+    // Exactly ONE line, naming the harness's own reason; the seed still runs (independent effects).
+    expect(h.logLines).toEqual(["goal anchor refused after approval: the harness refused the anchor"])
+    expect(h.toolCalls).toHaveLength(1)
+    expect(activeTeamId(h.workspace, LEAD)).toBeDefined()
+  })
+
+  test("a THROWING hasTool probe skips the seed silently and leaves the approval intact (F-CR5)", async () => {
+    /** This arm's composition: the probe itself throws, the path a partial adapter would take. */
+    const h = harness({ hasToolThrows: true })
+    /** The approval answer, which a probe failure must not change. */
+    const answer = await approveWave(h)
+    expect(answer).toBeDefined()
+    expect(h.goalCalls).toHaveLength(1) // the anchor does not depend on the tool probe
+    expect(h.toolCalls).toHaveLength(0) // the seed was never attempted
+    expect(h.logLines).toEqual([]) // a probe miss is the DEGRADE step, not a failure
     expect(activeTeamId(h.workspace, LEAD)).toBeDefined()
   })
 })

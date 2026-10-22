@@ -1965,6 +1965,7 @@ function installProjectInit(dsh, options = {}) {
   const acted = new Set;
   const disposers = new Map;
   function release(agent) {
+    acted.delete(agent);
     const dispose = disposers.get(agent);
     if (dispose === undefined)
       return;

@@ -404,6 +404,49 @@ function callerIdentity(record: TeamRecord, sessionId: string, title: string, li
 const TODO_TOOL_NAME = "todo_write"
 
 /**
+ * The longest the bundled `todo_write` seed may take, in milliseconds.
+ *
+ * WHY THE ROW OWNS THIS BOUND. `dsh.executeTool` uses a caller `signal` INSTEAD of any timeout
+ * (`input.signal ?? timeoutSignal(input.timeoutMs ?? DEFAULT_TOOL_TIMEOUT_MS)` in the adapter), so a
+ * call that supplies neither is bounded only by the adapter's 120 s default. The seed is the LAST act
+ * of an approval that already succeeded, so it must not hold the answer for minutes: a whole-list
+ * checklist write is local and small, and 10 s is generous for it. {@link seedSignal} composes this
+ * bound with the caller's own cancellation.
+ */
+const SEED_TIMEOUT_MS = 10_000
+
+/**
+ * The cancellation the bundled `todo_write` seed runs under.
+ *
+ * BOTH sources, because the adapter accepts only ONE: `executeTool` computes
+ * `input.signal ?? timeoutSignal(input.timeoutMs ?? default)`, so a caller signal REPLACES the timeout
+ * (verified against the shipped adapter before this fix). Handing over `exec.signal` alone would let a
+ * wedged write outlive its turn; handing over a timeout alone would drop the caller's cancellation.
+ * Composition ends the seed on EITHER event. The goal ANCHOR is deliberately not wrapped this way:
+ * `mpdGoal.anchor` owns its own cancellation through the goal tools' contract.
+ * @param upstream - the approving call's own cancellation, when the harness supplied one.
+ * @returns the combined signal; a runtime without `AbortSignal.any`/`timeout` degrades to the caller's
+ *          own signal — exactly what this row passed before the bound existed.
+ */
+function seedSignal(upstream: AbortSignal | undefined): AbortSignal | undefined {
+  try {
+    /**
+     * The platform's signal constructors, read structurally: the type surface differs between the
+     * Node and Bun programs, and a partial runtime must degrade rather than fail an approval.
+     */
+    const platform = AbortSignal as unknown as { timeout?: (ms: number) => AbortSignal; any?: (signals: AbortSignal[]) => AbortSignal }
+    if (typeof platform?.timeout !== "function") return upstream
+    /** The bounded seed clock, minted per approval so two approvals never share one. */
+    const bounded = platform.timeout(SEED_TIMEOUT_MS)
+    if (upstream === undefined) return bounded
+    return typeof platform.any === "function" ? platform.any([upstream, bounded]) : upstream
+  } catch {
+    // A runtime that refuses the composition keeps the caller's signal — never "no cancellation".
+    return upstream
+  }
+}
+
+/**
  * The slice of the `mpdGoal` service this row consumes, declared STRUCTURALLY on purpose.
  *
  * The authoritative declaration is `packages/mpd-goal-plugin/src/index.ts` (`MpdGoalService`); a
@@ -486,6 +529,9 @@ async function bundleApprovalEffects(ctx: { get?: (id: string) => unknown }, dsh
       name: TODO_TOOL_NAME,
       arguments: { todos: plan.tasks.map((task) => ({ content: task.subject, status: "pending" })) },
       agent: exec.agent,
+      // BOUNDED AND CANCELLABLE: a caller signal would REPLACE the adapter's timeout, so the two are
+      // composed here instead of trusting either one alone.
+      signal: seedSignal(exec.signal),
     })
     if (result.isError === true) dsh.rowLog("mpd-team-core", "todo seed failed after approval: " + String(result.error ?? "the tool returned an error result"))
   } catch (error) {
