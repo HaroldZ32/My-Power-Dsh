@@ -432,6 +432,40 @@ export function graphRow(
 }
 
 /**
+ * The rows a page's own frame costs OUTSIDE the frame's children: its top and bottom border rows.
+ *
+ * A self-windowing page that budgets its window from the host's reported height must subtract these,
+ * and the number is named here rather than written as a literal at each call site: the DAG page used
+ * to subtract its title row and its chrome WITHOUT the two border rows, so the page drew one row more
+ * than the panel owned and the host clipped the last row — a footer-less look whose real cause was an
+ * off-by-one in this arithmetic.
+ */
+export const PANEL_FRAME_BORDER_ROWS = 2
+
+/** What a page may add to its frame beyond the border and the rows. */
+export interface PanelFrameOptions {
+  /**
+   * The wheel handler, bound on the FRAME so the gesture is contained wherever it lands.
+   *
+   * WHY THE FRAME AND NOT ONLY THE ROWS: the host hit-tests the element under the pointer, so a wheel
+   * over the title row, the border or the footer used to reach no MPD handler at all and fell through
+   * to the chat behind the panel — the chat scrolled while the pointer was over the sidebar. Binding on
+   * the frame puts one handler in the path of every cell the panel owns. A page that also binds its
+   * rows keeps them (the deepest handler wins); it must stop propagation there so one tick cannot
+   * scroll twice.
+   */
+  onWheel?: (event: unknown) => void
+}
+
+/** Stop one wheel event from reaching the host's own scroll handling (the chat behind the panel). */
+export function swallowWheelEvent(event: unknown): void {
+  if (event === null || typeof event !== "object") return
+  /** The host event's own propagation stopper, when this build carries one. */
+  const stop = (event as { stopPropagation?: unknown }).stopPropagation
+  if (typeof stop === "function") (stop as () => void).call(event)
+}
+
+/**
  * The bordered panel frame every page draws inside (frozen clause R6).
  *
  * The border style and colour come from `DAG_CHROME` — the frozen contract — so the frame is one edit
@@ -440,9 +474,10 @@ export function graphRow(
  * @param kit - the proved host kit.
  * @param title - the border title, already sanitized and short enough for the width.
  * @param children - the frame's rows, in draw order.
+ * @param options - the page's wheel containment, when it has a window to scroll.
  * @returns the frame element.
  */
-export function panelFrame(kit: PanelKit, title: string, children: readonly unknown[]): unknown {
+export function panelFrame(kit: PanelKit, title: string, children: readonly unknown[], options: PanelFrameOptions = {}): unknown {
   return kit.React.createElement(
     kit.ui.Box,
     {
@@ -452,6 +487,7 @@ export function panelFrame(kit: PanelKit, title: string, children: readonly unkn
       height: "100%",
       borderStyle: DAG_CHROME.frameBorder,
       borderColor: toneColor("edge"),
+      ...(options.onWheel === undefined ? {} : { onWheel: options.onWheel }),
       // THE BORDER TITLE IS AN OBJECT, NOT A STRING — measured against the installed host
       // (`lib/types/ink/render-border.js` `renderBorderToOutput`): the title is embedded only when
       // `style.borderText?.position === 'top'`, and a bare string has no `position`, so it takes the

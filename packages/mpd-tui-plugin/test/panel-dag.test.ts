@@ -39,13 +39,16 @@ import {
   dagPanelKeyAction,
   dagPanelLayout,
   dagRowClick,
+  DAG_PANEL_REFRESH_MS,
   DAG_PANEL_TITLE,
   DAG_SECTION_DAG_TITLE,
   DAG_SECTION_HOST_TITLE,
+  dagFooterText,
+  halfBoxRows,
   pinnedDetailLines,
   type DagPanelTask,
 } from "../src/panel-dag"
-import { clampScroll, gutterCells, legendLinesFor, normalizeWheelDelta, PANEL_CHROME_ROWS, panelContentWidth, panelKeysArmed, panelScrollKey, runningGlyph, scrollByWheel, scrollByWheelX, usePanelViewport } from "../src/panel-core"
+import { clampScroll, gutterCells, legendLinesFor, normalizeWheelDelta, PANEL_FRAME_BORDER_ROWS, PANEL_TITLE_ROW_ROWS, panelContentWidth, panelKeysArmed, panelScrollKey, runningGlyph, scrollByWheel, scrollByWheelX, usePanelViewport } from "../src/panel-core"
 import {
   createWorkmatePanelComponent,
   readWorkmateLibrary,
@@ -826,10 +829,12 @@ describe("the DAG page's layout choice", () => {
     expect(widest).toBe(cellWidth(`${DAG_TONE_GLYPH[real[0].visual] ?? "?"} ${real[0].id}`))
     expect(widest).toBeLessThanOrEqual(10)
     // BOXES AT A SIDEBAR WIDTH — the exact assertion the capture's `view rail` falsified. 44 is near the
-    // host's own split-width floor, so this is the narrow case, not a wide one.
+    // host's own split-width floor, so this is the narrow case, not a wide one. The row budget is the
+    // table's own 30: this five-rank drawing is 27 rows, so it FITS the window whole — which is this
+    // wave's other half of the boxes rule (`dagPanelLayout`'s `boxesFitPanel`).
     for (const cols of [44, 80, 140, 220]) {
       /** The layout at this panel width. */
-      const layout = dagPanelLayout(real, cols, undefined, 24)
+      const layout = dagPanelLayout(real, cols, undefined, 30)
       expect(`cols=${cols} mode=${layout.mode}`).toBe(`cols=${cols} mode=boxes`)
       // AND NOTHING IS CUT: every task's composed label is present WHOLE in the drawing, which is the
       // promise the rail fallback existed to keep. A cut label is the defect this arm's sibling measures.
@@ -852,6 +857,10 @@ describe("the DAG page's layout choice", () => {
     for (const cols of [44, 200]) {
       expect(`cols=${cols} mode=${dagPanelLayout(absurd, cols).mode}`).toBe(`cols=${cols} mode=rail`)
     }
+    // THE VERTICAL HALF OF THE SAME RULE (wave `tui-refresh`): the very board that draws boxes in a
+    // 30-row window is NOT boxed in a 24-row one, because this five-rank drawing is 27 rows and a boxed
+    // drawing the window must cut at its edge is a half box. The rail has no such edge.
+    expect(`short=${dagPanelLayout(real, 80, undefined, 24).mode}`).toBe("short=rail")
     // The threshold is the CAP, not a guess: a label one cell over the widest the box can write trips it,
     // and one cell under does not. Both sides are asserted so the boundary cannot drift silently.
     /** The natural-path cap and the label budget it implies, read from the drawing's own behaviour. */
@@ -1025,7 +1034,11 @@ describe("the running-node animation and its degradation", () => {
     /** One reading per frame: the frame index, its glyph, the label row, that row's cells, the page. */
     const measured = DAG_ANIM.runningFrames.map((_frame, phase) => {
       /** A host double whose clock answers EXACTLY this frame: phase = `floor(clock / intervalMs)`. */
-      const kit = makeKit({ columns: 80, animation: "value", clock: DAG_ANIM.intervalMs * phase })
+      // THE PANEL IS TALL AS WELL AS WIDE (wave `tui-refresh`): this fixture is a 12-rank chain, whose
+      // boxed drawing is 69 rows, and the layout now insists a boxed drawing FIT the window — so a
+      // 40-row panel would fall back to the rail and this arm would measure rail rows instead of a box
+      // label. The taller panel is what keeps the subject (a BOX label's width across the cycle).
+      const kit = makeKit({ columns: 80, rows: 120, animation: "value", clock: DAG_ANIM.intervalMs * phase })
       /** Every row this frame drew, in draw order. */
       const frameRows = kit.rows(render(page, kit, makeHost()))
       /** The drawn row carrying the running task's label, or "" when no row carries it. */
@@ -1340,7 +1353,11 @@ function workflowWithOwners(tasks: readonly DagPanelTask[], owners: Record<strin
  * @returns the layout the page drew.
  */
 function pageLayoutOf(tasks: readonly DagPanelTask[], rows: number): ReturnType<typeof dagPanelLayout> {
-  return dagPanelLayout(tasks, panelContentWidth(POINTER_PANEL_COLUMNS), undefined, Math.max(1, rows - PANEL_CHROME_ROWS))
+  // THE PAGE'S OWN ARITHMETIC, mirrored cell for cell: the frame's two borders AND the gutter's reserved
+  // cell come out of the reported width, and the window is `rows - (borders + title + footer)`. The
+  // drawing's box width is content-derived, so this only matters for a board near the fit boundary —
+  // which is exactly where a helper that guessed would disagree with the page.
+  return dagPanelLayout(tasks, panelContentWidth(POINTER_PANEL_COLUMNS) - 1, undefined, Math.max(1, rows - PANEL_FRAME_BORDER_ROWS - PANEL_TITLE_ROW_ROWS - 1))
 }
 
 /**
@@ -2021,18 +2038,21 @@ describe("the scrollbar and the self-windowed viewport", () => {
     expect(panelScrollKey(undefined)).toBeUndefined()
   })
 
-  test("the WHEEL HANDLER IS BOUND ONCE, on the page's own window", () => {
-    // The host hit-tests the deepest node under the pointer, so ONE handler on the content column is what
-    // keeps the dispatch path short; a handler per row would be hundreds of nodes deep on a big board.
+  test("the WHEEL IS BOUND TWICE — the content column AND the frame — never once per row", () => {
+    // The host hit-tests the deepest node under the pointer, so ONE handler on the content column keeps
+    // the dispatch path short (a handler per row would be hundreds of nodes deep on a big board).
+    // THE SECOND BINDING IS THE CHROME'S (wave `tui-refresh`): a wheel over the title row, the border or
+    // the footer reached no MPD handler at all and the chat behind the panel scrolled instead. The frame
+    // carries the same gesture and SWALLOWS it, so the count is exactly two and neither is per-row.
     /** The page. */
     const page = createDagPanelComponent(() => workflowOf(bigBoard(40))) as (props: unknown) => unknown
     /** The kit. */
     const kit = makeKit({ columns: 80, rows: 12, animation: "value" })
     /** The rendered tree. */
     const tree = render(page, kit, makeHost())
-    /** How many `onWheel` handlers the whole page carries. */
-    let handlers = 0
-    /** Counts them. */
+    /** Every element that declares `onWheel`, with its own React key. */
+    const handlers: string[] = []
+    /** Collects them. */
     const walk = (node: unknown): void => {
       if (node === null || node === undefined || typeof node !== "object") return
       if (Array.isArray(node)) {
@@ -2041,12 +2061,46 @@ describe("the scrollbar and the self-windowed viewport", () => {
       }
       /** This node as an element. */
       const element = node as Element
-      if (typeof element.props?.onWheel === "function") handlers += 1
+      if (typeof element.props?.onWheel === "function") handlers.push(String(element.props?.key ?? ""))
       walk(element.props?.children)
       walk(element.children)
     }
     walk(tree)
-    expect(handlers).toBe(1)
+    expect(handlers.length).toBe(2)
+    // ONE IS THE WINDOW, ONE IS THE FRAME — the two regions a pointer can be over.
+    expect(handlers).toContain("scroll")
+    expect(handlers).toContain("frame")
+  })
+
+  test("a wheel over the CHROME is contained: the frame swallows it and the page moves instead of the chat", () => {
+    // THE DEFECT THIS LOCKS: the wheel was bound only around the visible content slice, so a gesture
+    // over the title row, a border or the footer matched no MPD element and the host's own fall-through
+    // scrolled the CHAT behind the panel. The page is given a board it must scroll (12 rows of panel,
+    // 40 tasks), so the offset is observable.
+    /** The page under test. */
+    const page = createDagPanelComponent(() => workflowOf(bigBoard(40))) as (props: unknown) => unknown
+    /** The kit: short enough that the body overflows, so the gutter and the footer position exist. */
+    const kit = makeKit({ columns: 80, rows: 12, animation: "value" })
+    /** The host double. */
+    const host = makeHost()
+    // TWO RENDERS: the first has no previous measurement, so the page's own window (and the gutter that
+    // reserves a cell) is only complete on the second — the same convergence every scroll arm here uses.
+    render(page, kit, host)
+    /** The frame element, which is where the chrome's wheel handler lives. */
+    const frame = elementByKey(render(page, kit, host), "frame")
+    expect(typeof frame?.props?.onWheel).toBe("function")
+    /** The event the host would hand the frame: an object that records whether it was stopped. */
+    let stopped = 0
+    /** The wheel event double: a delta of one row plus a `stopPropagation` the page must call. */
+    const event = { deltaY: 1, stopPropagation: (): void => { stopped += 1 } }
+    ;(frame?.props?.onWheel as (value: unknown) => void)(event)
+    // THE CONTAINMENT IS THE ASSERTION: the frame's handler stopped the event there, so the host's
+    // fall-through (the chat's own scroll) never sees it.
+    expect(stopped).toBe(1)
+    // AND THE GESTURE DID THE PANEL'S WORK: the page committed a new offset, which the next render shows.
+    /** The footer's position token after the wheel, which is the page's own witness of its offset. */
+    const after = kit.text(render(page, kit, host))
+    expect(after).toContain("2/")
   })
 })
 
@@ -2134,29 +2188,28 @@ describe("R6: the frame's border title is a structured value, not a string", () 
     return elementByKey(render(page, kit, makeHost()), "frame")
   }
 
-  test("every page's frame carries { content, position: 'top', align } — and a bare string FAILS", () => {
-    /** The surviving pages, each with its own title — the MPD page and the workmate page. */
-    const pages: Array<{ name: string; page: (props: unknown) => unknown }> = [
-      { name: "dag", page: createDagPanelComponent(() => workflowFixture()) as (props: unknown) => unknown },
-      { name: "workmate", page: createWorkmatePanelComponent(() => libraryFixture()) as (props: unknown) => unknown },
-    ]
-    for (const entry of pages) {
-      /** A panel tall enough that nothing about this arm depends on scrolling. */
-      const kit = makeKit({ columns: 80, rows: 40, animation: "value" })
-      /** The frame's own props. */
-      const props = frameOf(entry.page, kit)?.props as Record<string, unknown> | undefined
-      expect(props).toBeDefined()
-      /** The border title, which must be the host's STRUCTURED form. */
-      const borderText = props?.borderText as { content?: unknown; position?: unknown; align?: unknown } | undefined
-      // THE SHAPE: an object with the three keys the host's renderer reads.
-      expect(typeof borderText).toBe("object")
-      expect(borderText?.position).toBe("top")
-      expect(borderText?.align).toBe("start")
-      expect(typeof borderText?.content).toBe("string")
-      expect((borderText?.content as string).length).toBeGreaterThan(0)
-      // THE FRAME IS BORDERED AT ALL, which is the other half of R6.
-      expect(typeof props?.borderStyle).toBe("string")
-    }
+  test("the WORKMATE page's frame carries { content, position: 'top', align } — and a bare string FAILS", () => {
+    // THE MPD PAGE IS NO LONGER ONE OF THEM, deliberately (wave `tui-refresh`): its title is drawn ONCE,
+    // in the title row that also carries the `⤢` control, and its frame is title-less so the screenshot's
+    // doubled heading cannot come back. The structured-border rule still binds the page that DOES carry
+    // a border title — the workmate page — and it is asserted here so `panelFrame`'s shape is still held.
+    /** The surviving page that titles its frame. */
+    const page = createWorkmatePanelComponent(() => libraryFixture()) as (props: unknown) => unknown
+    /** A panel tall enough that nothing about this arm depends on scrolling. */
+    const kit = makeKit({ columns: 80, rows: 40, animation: "value" })
+    /** The frame's own props. */
+    const props = frameOf(page, kit)?.props as Record<string, unknown> | undefined
+    expect(props).toBeDefined()
+    /** The border title, which must be the host's STRUCTURED form. */
+    const borderText = props?.borderText as { content?: unknown; position?: unknown; align?: unknown } | undefined
+    // THE SHAPE: an object with the three keys the host's renderer reads.
+    expect(typeof borderText).toBe("object")
+    expect(borderText?.position).toBe("top")
+    expect(borderText?.align).toBe("start")
+    expect(typeof borderText?.content).toBe("string")
+    expect((borderText?.content as string).length).toBeGreaterThan(0)
+    // THE FRAME IS BORDERED AT ALL, which is the other half of R6.
+    expect(typeof props?.borderStyle).toBe("string")
   })
 
   test("POSITIVE CONTROL: a bare string is NOT acceptable, and the check can tell", () => {
@@ -2524,7 +2577,9 @@ function drawnRows(tree: unknown): Element[] {
 describe("T2 · the panel body names both sections and draws a rule between them", () => {
   test("the labels are the contract's own ENGLISH names", () => {
     expect(DAG_SECTION_HOST_TITLE).toBe("Host subagents")
-    expect(DAG_SECTION_DAG_TITLE).toBe("MPD team DAG")
+    // THE DAG SECTION NO LONGER RE-ANNOUNCES `MPD` (wave `tui-refresh`): the page's own title row is the
+    // ONE place the panel's name is drawn, so a third `MPD` inside the body read as a third heading.
+    expect(DAG_SECTION_DAG_TITLE).toBe("team DAG")
   })
 
   test("each rule is the host's own titled-divider shape, drawn by the SHARED `surfaceRule`", () => {
@@ -2876,5 +2931,259 @@ describe("living-graph · the mode line names where the ranks came from", () => 
     const text = renderedPageText(() => workflowFixture())
     expect(text).toContain("ranks derived")
     expect(text).not.toContain("(host)")
+  })
+})
+
+// ── wave `tui-refresh` · the screenshot-confirmed sidebar/panel defects ─────────────────────────────
+//
+// The contract is `.mpd/plans/tui-refresh.md`. Every arm below is a defect that a 485x630 screenshot
+// showed on the merged panel: a duplicated heading, a node missing from a three-sibling rank, a box cut
+// in half by the window edge, a gutter that pushed a row past the interior, a clipped footer, and a
+// 1-second tick that was the only MPD surface not on the shared 2-second cadence.
+
+describe("tui-refresh · the 2 s cadence", () => {
+  test("the page's tick is TWO SECONDS — the same cadence every other MPD surface uses", () => {
+    expect(DAG_PANEL_REFRESH_MS).toBe(2000)
+  })
+
+  test("REAL HOST CLOCK: the page schedules that interval and it fires within ~2.2 s", async () => {
+    // WHY A REAL TIMER. A fake clock would only prove the page handed a number to a stub; the user's
+    // defect is that the panel does not refresh on a live session, so the arm waits on the REAL clock
+    // and counts the interval callbacks. The interval is captured rather than left pending, so this arm
+    // leaves no timer behind for a later arm (or the process) to trip over.
+    /** The periods the page asked the host to schedule, in milliseconds. */
+    const scheduled: number[] = []
+    /** How many times the scheduled callback ran. */
+    let fired = 0
+    /** Every timer this arm started, so the arm can clear them in `finally`. */
+    const timers: Array<ReturnType<typeof setInterval>> = []
+    /** The real scheduler, restored in `finally`. */
+    const realSetInterval = globalThis.setInterval
+    /** The real canceller, restored in `finally`. */
+    const realClearInterval = globalThis.clearInterval
+    globalThis.setInterval = ((fn: () => void, ms?: number): ReturnType<typeof setInterval> => {
+      scheduled.push(typeof ms === "number" ? ms : 0)
+      /** The real timer, wrapped so the callback is counted as well as run. */
+      const timer = realSetInterval(() => { fired += 1; fn() }, ms)
+      timers.push(timer)
+      return timer
+    }) as typeof setInterval
+    try {
+      /** The page under test, over the fixture board. */
+      const page = createDagPanelComponent(() => workflowFixture()) as (props: unknown) => unknown
+      /** The host kit double. */
+      const kit = makeKit({ columns: 80, rows: 40 })
+      render(page, kit, makeHost())
+      // The tick's effect is the page's own `usePanelTick`; running the queued effects is what schedules it.
+      kit.runEffects()
+      // THE CONSTANT REACHES THE HOST: one interval, at the page's two seconds, never the old one second.
+      expect(scheduled).toContain(2000)
+      expect(scheduled).not.toContain(1000)
+      // AND IT REALLY TICKS: 2.2 s on the real clock is one period plus the arm's own margin.
+      await new Promise((resolve) => setTimeout(resolve, 2200))
+      expect(fired).toBeGreaterThanOrEqual(1)
+    } finally {
+      for (const timer of timers) realClearInterval(timer as never)
+      globalThis.setInterval = realSetInterval
+      globalThis.clearInterval = realClearInterval
+    }
+  })
+})
+
+describe("tui-refresh · boxes are chosen only when the drawing fits the interior", () => {
+  /**
+   * A board whose middle rank holds THREE siblings — the exact shape the screenshot lost a node from.
+   * @returns the board, in the drawing's own vocabulary.
+   */
+  function threeSiblingTasks(): DagPanelTask[] {
+    return [
+      { id: "T1", subject: "requirements", kind: "requirement", visual: "completed", dependencies: [], failedDependencies: [], depth: 0 },
+      { id: "T2", subject: "engine", kind: "work", visual: "running", dependencies: ["T1"], failedDependencies: [], depth: 1 },
+      { id: "T3", subject: "surface", kind: "work", visual: "blocked", dependencies: ["T1"], failedDependencies: [], depth: 1 },
+      { id: "T4", subject: "review", kind: "review", visual: "open", dependencies: ["T1"], failedDependencies: [], depth: 1 },
+    ]
+  }
+
+  test("a 3-sibling rank in a 26-cell interior falls back instead of dropping a node", () => {
+    /** The board the screenshot's board had. */
+    const tasks = threeSiblingTasks()
+    // THE PREMISE, MEASURED: the boxed drawing is 36 cells (`3 * 10 + 2 * 3`), so a 26-cell interior
+    // cannot show its third box — which is exactly what the screenshot showed (T4 simply gone).
+    expect(layoutBoxesNatural(tasks)?.width).toBe(36)
+    /** The layout at the sidebar's real interior width. */
+    const narrow = dagPanelLayout(tasks, 26, undefined, 40)
+    expect(narrow.mode).toBe("rail")
+    // NO NODE IS DROPPED: every task id the board carries is drawn somewhere in the fallback.
+    /** The fallback drawing's text, joined across its rows. */
+    const drawn = narrow.view.lines.map((row) => row.map((span) => span.text).join("")).join("\n")
+    for (const task of tasks) expect(`narrow ${task.id}=${drawn.includes(task.id)}`).toBe(`narrow ${task.id}=true`)
+    // POSITIVE CONTROL: the SAME board at the width the drawing needs is boxed, so the fallback above is
+    // a fact about the geometry and not a layout that refuses boxes everywhere.
+    expect(dagPanelLayout(tasks, 36, undefined, 40).mode).toBe("boxes")
+  })
+
+  test("boxes imply BOTH fits: the drawing is never wider than the interior, nor taller than the window", () => {
+    // The invariant stated once, over the boards this suite already carries and a spread of widths and
+    // heights: a boxes layout that violates either fit is the class of defect this wave ended.
+    /** The boards under test, including the one the screenshot lost a node from. */
+    const boards = [threeSiblingTasks(), chainTasks().slice(0, 4), fanInTasks(), cjkTasks()]
+    for (const cols of [20, 26, 36, 44, 80]) {
+      for (const rows of [9, 15, 27, 60]) {
+        for (const board of boards) {
+          /** The layout at this geometry. */
+          const layout = dagPanelLayout(board, cols, undefined, rows)
+          if (layout.mode !== "boxes") continue
+          expect(layout.view.width).toBeLessThanOrEqual(cols)
+          expect(layout.view.lines.length).toBeLessThanOrEqual(rows)
+        }
+      }
+    }
+  })
+})
+
+describe("tui-refresh · the page's height budget", () => {
+  /**
+   * One rendered page's visible slice, after a converging second render.
+   * @param columns - the panel width the host reports.
+   * @param rows - the panel height the host reports.
+   * @returns the rows the window actually draws, and the whole tree.
+   */
+  function pageAt(columns: number, rows: number): { visible: Element[]; tree: unknown } {
+    /** The page under test. */
+    const page = createDagPanelComponent(() => workflowOf(bigBoard(40))) as (props: unknown) => unknown
+    /** The kit with the measured geometry. */
+    const kit = makeKit({ columns, rows })
+    /** The host double. */
+    const host = makeHost()
+    // TWO RENDERS: the page reserves the gutter cell from the previous render's measurements, which is
+    // the same convergence every scroll arm in this file uses.
+    render(page, kit, host)
+    /** The second render's tree. */
+    const tree = render(page, kit, host)
+    return { visible: drawnRows(tree), tree }
+  }
+
+  test("the window is `measured.rows - 4`: borders 2 + title 1 + footer 1, and the page never draws more", () => {
+    // THE OFF-BY-ONE THE SCREENSHOT SHOWED: the page subtracted 3, so a full frame was one row taller
+    // than the panel and the host clipped the last row — which is why the footer (the position token)
+    // was invisible.
+    expect(PANEL_FRAME_BORDER_ROWS).toBe(2)
+    expect(PANEL_TITLE_ROW_ROWS).toBe(1)
+    for (const rows of [10, 12, 24, 40]) {
+      /** This height's rendered page. */
+      const { visible } = pageAt(80, rows)
+      // THE EQUATION, in the panel's own terms: two border rows outside the children, the title row,
+      // the window and the footer must add up to what the host measured.
+      expect(`rows=${rows} total=${PANEL_FRAME_BORDER_ROWS + PANEL_TITLE_ROW_ROWS + visible.length + 1}`).toBe(`rows=${rows} total=${rows}`)
+      // …and never over it.
+      expect(visible.length).toBe(Math.max(1, rows - 4))
+    }
+  })
+
+  test("the gutter's cell is reserved: no row plus the bar exceeds the frame's interior", () => {
+    /** The panel width the host reports. */
+    const columns = 80
+    /** The frame's interior: the reported width minus its two border cells. */
+    const interior = panelContentWidth(columns)
+    /** A page tall enough to overflow, with the bar therefore on screen. */
+    const { visible, tree } = pageAt(columns, 12)
+    expect(elementByKey(tree, "gutter")).toBeDefined()
+    // EVERY row the body draws is one cell narrower than the interior, because the bar owns the last one.
+    /** The widest row the body draws. */
+    const widest = Math.max(...visible.map((row) => cellWidth(String((row.props?.children as unknown[] | undefined)?.[0] ?? ""))))
+    expect(widest + 1).toBeLessThanOrEqual(interior)
+  })
+})
+
+describe("tui-refresh · the title is drawn once", () => {
+  test("`MPD` appears exactly once in the rendered page, and the frame carries no second title", () => {
+    /** The page under test, on a board that draws. */
+    const page = createDagPanelComponent(() => workflowFixture()) as (props: unknown) => unknown
+    /** The kit, at the sidebar's own floor width. */
+    const kit = makeKit({ columns: 28, rows: 40, animation: "value" })
+    /** The rendered tree. */
+    const tree = render(page, kit, makeHost())
+    /** The page's flattened text. */
+    const text = kit.text(tree)
+    // ONCE, COUNTED: the host's panel-bar title is not in this tree, so any second occurrence is ours.
+    expect(text.split("MPD").length - 1).toBe(1)
+    // AND IT IS THE TITLE ROW THAT CARRIES IT (the one row that also carries the `⤢` control).
+    expect(kit.text(elementByKey(tree, "title"))).toContain("MPD")
+    expect(kit.text(elementByKey(tree, "title"))).toContain(PANEL_FULLSCREEN_GLYPH)
+    // THE FRAME IS TITLE-LESS on purpose; the section rule names the section without re-announcing the page.
+    expect(elementByKey(tree, "frame")?.props?.borderText).toBeUndefined()
+    expect((elementByKey(tree, "section-dag")?.props?.borderText as { content?: string } | undefined)?.content).toBe(DAG_SECTION_DAG_TITLE)
+  })
+})
+
+describe("tui-refresh · the footer keeps where you are", () => {
+  test("at the 26-cell floor the position and the horizontal token fit, and the hints follow", () => {
+    // THE FOOTER'S ORDER IS THE FIX: the host clamps a row from its END, so the position must come first.
+    // The composition is a pure function, which is what lets this arm drive BOTH windows: on the page a
+    // boxes drawing must fit the interior, so the horizontal window is only reachable by a layout that
+    // reports one — the token is still composed (and asserted) for that case.
+    /** The footer with both windows open. */
+    const both = dagFooterText({ vertical: { offset: 0, max: 30 }, horizontal: { offset: 0, max: 11 } })
+    expect(both.startsWith("1/31 col 1/12")).toBe(true)
+    // INSIDE 26 CELLS: the position and the horizontal token both survive the clamp the host applies.
+    expect(cellWidth(both.slice(0, 26))).toBe(26)
+    expect(both.slice(0, 26)).toContain("col 1/12")
+    // NO WINDOW OPEN: no position token at all, and the control still leads (the AC8b rule).
+    const none = dagFooterText({})
+    expect(none.startsWith(PANEL_FULLSCREEN_GLYPH)).toBe(true)
+    expect(none).not.toMatch(/\d+\/\d+/)
+    // AND THE PAGE DRAWS IT: a page that overflows shows a position in its own footer row.
+    /** The page under test, over a board it must window. */
+    const page = createDagPanelComponent(() => workflowOf(bigBoard(40))) as (props: unknown) => unknown
+    /** The kit, short enough that the body overflows. */
+    const kit = makeKit({ columns: 28, rows: 12 })
+    /** The host double. */
+    const host = makeHost()
+    render(page, kit, host)
+    /** The footer row's text. */
+    const footer = kit.text(elementByKey(render(page, kit, host), "keys"))
+    expect(footer.startsWith("1/")).toBe(true)
+    // The hints are COMPACT enough that the position is never the part that is cut.
+    expect(cellWidth(footer.slice(0, 26))).toBeLessThanOrEqual(26)
+  })
+})
+
+describe("tui-refresh · the vertical window never draws a half box", () => {
+  test("a box straddling the window's edge is drawn whole or not at all", () => {
+    // THE "T5 HALF" DEFECT: the body is a blind slice, so a box's top border could be the window's last
+    // row. `halfBoxRows` names the rows that must stay blank; the page applies it to every boxes render.
+    /** Two boxes: rows 0..2 and rows 6..8 in the drawing's own coordinates. */
+    const hits = [
+      { taskId: "T1", row: 0, rowEnd: 2, col: 0, colEnd: 9 },
+      { taskId: "T2", row: 6, rowEnd: 8, col: 0, colEnd: 9 },
+    ]
+    // The window ends on the FIRST box's label row: that box cannot be drawn whole.
+    expect([...halfBoxRows(hits, 0, 0, 2)].sort((a, b) => a - b)).toEqual([0, 1])
+    // A window that holds the first box completely blanks nothing.
+    expect(halfBoxRows(hits, 0, 0, 3).size).toBe(0)
+    // The window starting on the SECOND box's top border and ending inside it blanks its visible rows.
+    expect([...halfBoxRows(hits, 0, 6, 2)].sort((a, b) => a - b)).toEqual([6, 7])
+    // The page applies it: with a window that ends inside a box, no half box is drawn.
+    /** The page under test, on a tall board whose boxes start at the top of the body. */
+    const page = createDagPanelComponent(() => workflowOf(bigBoard(6))) as (props: unknown) => unknown
+    /** A kit whose window is one row short of the first box: the box's bottom border cannot show. */
+    const kit = makeKit({ columns: 80, rows: 18 })
+    /** The host double. */
+    const host = makeHost()
+    render(page, kit, host)
+    /** The second render, whose rows are the ones this assertion reads. */
+    const tree = render(page, kit, host)
+    /** The drawing's first two rows, which are the box's top border and its label. */
+    const rows = kit.rows(elementByKey(tree, "scroll")).filter((row) => row !== "")
+    // NO ROW IS A LONE TOP BORDER: every drawn row either is not a box border at all, or belongs to a
+    // box whose bottom border is drawn too. Asserted structurally: the first row of a box (a top border)
+    // must be followed, within the window, by the same box's bottom border.
+    /** The corner glyph a box's top border starts with. */
+    const top = DAG_CHARS.cornerDownRight
+    /** The corner glyph a box's bottom border starts with. */
+    const bottom = DAG_CHARS.cornerUpRight
+    /** The first row the window drew, which is the box's top border when a box starts there. */
+    const firstRow = rows[0] ?? ""
+    if (firstRow.includes(top)) expect(rows.some((row) => row.includes(bottom))).toBe(true)
   })
 })

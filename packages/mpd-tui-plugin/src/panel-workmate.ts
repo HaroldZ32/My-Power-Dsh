@@ -27,7 +27,7 @@ import { DAG_CHROME, WORKMATE_PANEL_MIN_COLUMNS, WORKMATE_PANEL_SLUG } from "./d
 // THE CHROME COMES FROM THE SHARED CORE, not a second implementation of it: the `⤢` control, its
 // hover treatment and the row it sits in are ONE definition, so the two MPD pages this bundle ships
 // (the MPD panel and this workmate page) cannot drift into two different-looking affordances.
-import { PANEL_FULLSCREEN_GLYPH, PANEL_TITLE_ROW_ROWS, usePanelTitleRow } from "./panel-core.js"
+import { PANEL_FULLSCREEN_GLYPH, PANEL_TITLE_ROW_ROWS, swallowWheelEvent, usePanelTitleRow } from "./panel-core.js"
 import type { PanelPageOptions } from "./panel.js"
 import {
   clampScroll,
@@ -523,7 +523,11 @@ export function createWorkmatePanelComponent(readLibrary: () => WorkmateLibrary,
     // name and MPD's `⤢`, both pinned, so the control is at the same cell however far the shelf scrolls.
     /** This page's chrome row: its title and the full-screen control. */
     const titleRow = usePanelTitleRow(kit, { key: "title", title: WORKMATE_PANEL_TITLE, cols: contentCols, ...(options?.openFullscreen === undefined ? {} : { open: options.openFullscreen }) })
-    return panelFrame(kit, WORKMATE_PANEL_TITLE, [titleRow, ...body, footer])
+    // THE FRAME CARRIES THE WHEEL TOO (wave `tui-refresh`): this is the sidebar's SECOND page, and a
+    // wheel over its title row, its border or its footer used to match no MPD element — the host then
+    // fell through to the chat behind the panel. `swallowWheelEvent` stops the gesture at the frame, so
+    // one tick can never scroll the shelf AND the chat.
+    return panelFrame(kit, WORKMATE_PANEL_TITLE, [titleRow, ...body, footer], { onWheel: (event: unknown): void => { swallowWheelEvent(event); scroller.onWheel(event) } })
   }
 }
 

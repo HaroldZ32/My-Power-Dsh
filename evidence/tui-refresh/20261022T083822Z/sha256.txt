@@ -1,0 +1,6 @@
+ffe1c896f99021341f26aa8f3c28ba9118ed3732facc30acfd9ec6e67c4ff562  packages/mpd-tui-plugin/dist/index.js
+4b96f65934db00f33fa5ddfed2950f324a8264b187c59fce920ccc564f7bb70d  packages/mpd-tui-plugin/src/panel-dag.ts
+0bd3aa115bae331135f87a6b05a0e53bde59ba95c82295eae9c40ca80320c0a2  packages/mpd-tui-plugin/src/panel-core.ts
+2ccadcd8c4173d53f5023d79507c1d78ace2b2f3922698f4cf9fba04ef77eafd  packages/mpd-tui-plugin/src/scenes.ts
+c8fce24d9e2bebeb0b9fff55fa0633854a702d9a0f9e72f4bd579438a1349369  packages/mpd-tui-plugin/src/panel-workmate.ts
+664bc13a70dd29385aa45abdd1a23d68c1f14c0f4f385b2bd5fa2fd4408bb606  packages/mpd-tui-plugin/src/panel.ts
