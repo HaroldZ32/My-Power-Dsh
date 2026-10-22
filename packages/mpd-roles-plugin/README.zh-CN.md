@@ -21,7 +21,7 @@
 
 - `mpdRoles` service（`ctx.get("mpdRoles")`）：`list()` / `get(key)` — 被 `mpd-modelchain-plugin` 消费（chain lookup）。
 - `mpd_roles_list` — roster，每个 role 一行：名称、route、做什么。
-- `mpd_role_spawn` — **一次性**单次咨询（one-shot single-call consult）：对一个 role 发起一次有界委派并返回一份报告。被生成的子智能体（roster persona + route + 对 read-only roles 的 write-deny toolFilter）**以该 role 的名称为 label**（`Architect`、`Deep Worker`），而不再是 `role-<id>-<random>`。报告落定后 adapter 会 dispose 该 activation，因此该次咨询**不可复用**：新问题请发起**新的** spawn。（harness 的 catalog 是只追加的，所以已结束的子会话仍可能以 `inactive` 列出；但契约始终是一次性的。）`mpd_workmate_spawn` 使用同样的**一次性** spawn 机制但作用于持久的、可演化的实例 —— 连续性由库中的 persona/memory/note **记录**承载，而不是子会话；团队工作是官方 `spawn_teammate` 路径。
+- `mpd_role_spawn` — **一次性**单次咨询（one-shot single-call consult）：对一个 role 发起一次有界委派并返回一份报告。被生成的子智能体（roster persona + route + 对 read-only roles 的 write-deny toolFilter）**以该 role 的名称为 label**（`Architect`、`Deep Worker`），而不再是 `role-<id>-<random>`。在提供 `startActivation` 的 host 上，报告落定后 adapter 会 dispose 该 activation —— 已退役的 `start` 回退路径**没有 activation 可 dispose** —— 因此无论走哪条路径，该次咨询都**不可复用**：新问题请发起**新的** spawn。（harness 的 catalog 是只追加的，所以已结束的子会话仍可能以 `inactive` 列出；但契约始终是一次性的。）`mpd_workmate_spawn` 使用同样的**一次性** spawn 机制但作用于持久的、可演化的实例 —— 连续性由库中的 persona/memory/note **记录**承载，而不是子会话；团队工作是官方 `spawn_teammate` 路径。
 - `mpd_role_persona` — 为需要将 persona 作为文本使用的 spawn surface 获取 persona 文本（官方 Agent Teams 的 `spawn_teammate` 会把它作为 teammate 的 `prompt`）。
 
 **两个 surface 共用同一套命名（名称统一）。** 名称就是 role 的身份：它既是 team mode 下 agent-teams 为成员取的名称，也是单次 `mpd_role_spawn` 产生的 label。称呼时任意拼写均可：`Architect`、`architect`、`Deep Worker`、`deep-worker`、`deepworker`、`Plan Reviewer`（大小写、空格、连字符、下划线均不敏感）。**任何 surface 都不再展示沿袭自上游的别称** —— role 只用它做什么来描述。

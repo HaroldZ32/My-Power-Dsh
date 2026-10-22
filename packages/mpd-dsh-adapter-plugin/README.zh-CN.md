@@ -91,13 +91,14 @@ identity）透传，由 staging 它的 session 的 Harness 解析路由生效（
 team-lead spawn 是 Lead 的路由），prompt 文本无法改变路由。若 description **点名**了名册成员，
 则通过 `mpd-roster-provider-plugin` 的 `teamModels.slot*` 契约路由。按成员路由同样作用于单次
 咨询路径（`mpd_role_spawn` / `mpd_workmate_spawn`），因为它们自行传入 `agentOptions`；这是
-roster/workmate 的 spawn 路径，并非 team 路径。该咨询是**一次性（one-shot）**的：报告落定后
-`spawnAgent` 会释放（dispose）**这次**激活（尽力而为；清理失败绝不改写报告），因此活着的子会话
-被释放而不是被不断堆积。诚实边界（harness 0.2.1-rc.2）：`dispose()` 只结算并释放**活动中的**
-激活，且子会话目录是只追加的 —— 已完成的子会话可能仍以 `inactive` 列出，技术上可被冷恢复。
-尽管如此，契约仍是一次性的：新问题就用新的咨询（需要持久连续性则用 workmate，其记录才是持久
-载体），绝不对已完成的子会话 `send_message`。团队 member 不受影响 —— team 路径继续使用独立的
-持久接缝（`startContinuableAgent`）。
+roster/workmate 的 spawn 路径，并非 team 路径。该咨询是**一次性（one-shot）**的：在暴露
+`startActivation` 的宿主上，报告落定后 `spawnAgent` 会释放（dispose）**这次**激活（尽力而为；
+清理失败绝不改写报告），因此活着的子会话被释放而不是被不断堆积；旧版 `start` 回退路径只返回
+`run.result`，没有可供释放的 activation。诚实边界（harness 0.2.1-rc.2）：`dispose()` 只结算并
+释放**活动中的**激活，且子会话目录是只追加的 —— 已完成的子会话可能仍以 `inactive` 列出，
+技术上可被冷恢复。尽管如此，契约仍是一次性的：新问题就用新的咨询（需要持久连续性则用 workmate，
+其记录才是持久载体），绝不对已完成的子会话 `send_message`。团队 member 不受影响 —— team 路径
+继续使用独立的持久接缝（`startContinuableAgent`）。
 
 ### D6 静态闸门（`test/no-direct-team-access.test.ts`）
 

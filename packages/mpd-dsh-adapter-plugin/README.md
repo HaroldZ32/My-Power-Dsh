@@ -103,13 +103,15 @@ spawn), and prompt text cannot change a route. A description that NAMES a roster
 through `mpd-roster-provider-plugin`'s `teamModels.slot*` contract. Per-member routing also
 applies on the single-call consult paths (`mpd_role_spawn` / `mpd_workmate_spawn`), which pass
 `agentOptions` themselves; this is the roster/workmate spawn path, not the team path. That consult
-is ONE-SHOT: `spawnAgent` disposes the exact activation once the report settles (best-effort; a
-failing teardown never changes the report), so the live child is released instead of accumulated.
-Honest bound on harness 0.2.1-rc.2: `dispose()` settles and releases the live activation only, and
-the child catalog is append-only — the finished child may still be listed `inactive` and is
-technically cold-resumable. The contract is one-shot regardless: a new question means a new consult
-(or a workmate for durable continuity), never a `send_message` into the finished child. Team members
-are unaffected — the team path keeps the separate durable seam (`startContinuableAgent`).
+is ONE-SHOT: on a host exposing `startActivation` the adapter disposes that exact activation once the
+report settles (best-effort; a failing teardown never changes the report), so the live child is
+released instead of accumulated; the retired `start` fallback returns only `run.result` and has no
+activation to dispose. Honest bound on harness 0.2.1-rc.2: `dispose()` settles and releases the live
+activation only, and the child catalog is append-only — the finished child may still be listed
+`inactive` and is technically cold-resumable. The contract is one-shot regardless: a new question
+means a new consult (or a workmate for durable continuity), never a `send_message` into the finished
+child. Team members are unaffected — the team path keeps the separate durable seam
+(`startContinuableAgent`).
 
 ### The D6 gate (`test/no-direct-team-access.test.ts`)
 

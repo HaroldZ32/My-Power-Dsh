@@ -27,10 +27,11 @@ read-only discipline.
 - `mpd_roles_list` — the roster, one line per role: name, route, and what it does.
 - `mpd_role_spawn` — ONE-SHOT single-call consult: one bounded delegation with one role, one report.
   The child (roster persona + route + write-deny toolFilter for read-only roles) is **labelled with
-  the role's name** (`Architect`, `Deep Worker`), never with `role-<id>-<random>`. The adapter
-  disposes the activation once the report settles, so the consult is **not reused**: ask a NEW
-  question with a NEW spawn. (The harness catalog is append-only, so a settled child may still list as
-  `inactive`; the contract is one-shot regardless.) `mpd_workmate_spawn` is the same one-shot spawn
+  the role's name** (`Architect`, `Deep Worker`), never with `role-<id>-<random>`. On a host that
+  exposes `startActivation` the adapter disposes the activation once the report settles — the retired
+  `start` fallback has NO activation to dispose — so either way the consult is **not reused**: ask a
+  NEW question with a NEW spawn. (The harness catalog is append-only, so a settled child may still list
+  as `inactive`; the contract is one-shot regardless.) `mpd_workmate_spawn` is the same one-shot spawn
   mechanics for a durable, evolving instance — the RECORD's persona/memory/note carry continuity, not
   the child session; team work is the official `spawn_teammate` path.
 - `mpd_role_persona` — fetch the persona text for spawn surfaces that take

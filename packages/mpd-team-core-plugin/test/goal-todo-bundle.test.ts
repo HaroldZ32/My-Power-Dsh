@@ -17,6 +17,12 @@
 // ANSWERS `ok:false` (refusal logged, approval preserved) and a `hasTool` probe that THROWS (seed
 // skipped silently). F-CR4 is pinned by the seed-signal assertion in the whole-list arm: a caller
 // signal would REPLACE the adapter's timeout, so the seed must pass a bounded, composed one.
+//
+// REPAIR (T15 / CR round 2, 2026-10-22) closes the hole that assertion left: the harness used to pass
+// `signal: undefined` on EVERY call, so an arm could only prove that SOME signal reached the write
+// (the 10 s timeout), never that CALLER cancellation propagates. `call` now forwards a real turn
+// signal, and the caller-cancellation arm aborts its controller and observes the forwarded signal
+// abort too.
 import { afterEach, describe, expect, test } from "bun:test"
 import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
@@ -82,9 +88,11 @@ interface Harness {
    * @param name - the registered tool name.
    * @param args - the tool arguments.
    * @param sessionId - the calling session.
+   * @param signal - the turn cancellation the harness reports, forwarded VERBATIM on the exec (a real
+   *                 signal is what lets an arm prove CALLER cancellation reaches an effect).
    * @returns the tool's own result, or its thrown refusal.
    */
-  call: (name: string, args: unknown, sessionId: string) => Promise<unknown>
+  call: (name: string, args: unknown, sessionId: string, signal?: AbortSignal) => Promise<unknown>
 }
 
 /**
@@ -194,13 +202,15 @@ function harness(options: HarnessOptions = {}): Harness {
     goalCalls,
     toolCalls,
     logLines,
-    call: async (name: string, args: unknown, sessionId: string) => {
+    call: async (name: string, args: unknown, sessionId: string, signal?: AbortSignal) => {
       /** The registered tool, or a thrown error naming what WAS registered. */
       const tool = tools.get(name)
       if (tool === undefined) throw new Error(`no tool ${name} (have ${[...tools.keys()].join(", ")})`)
       /** The calling agent in the shape the tool surface reads. */
       const agent = { session: { id: sessionId, header: {} } }
-      return tool.execute(args, { agent, signal: undefined })
+      // The turn's cancellation rides the exec VERBATIM, exactly as the harness passes it: `undefined`
+      // means "no cancellation was reported", a real signal means the turn can be cancelled mid-call.
+      return tool.execute(args, { agent, signal })
     },
   }
 }
@@ -222,11 +232,12 @@ async function stageWave(h: Harness, description: string = "ship the wave"): Pro
  * Stage the standard wave and approve it through the REAL plan tool, as {@link LEAD}.
  * @param h - the harness to drive.
  * @param description - the plan description the goal objective is expected to carry.
+ * @param signal - the approving turn's cancellation, when the arm must prove CALLER propagation.
  * @returns the approval answer, which still carries the plan and the team.
  */
-async function approveWave(h: Harness, description: string = "ship the wave"): Promise<unknown> {
+async function approveWave(h: Harness, description: string = "ship the wave", signal?: AbortSignal): Promise<unknown> {
   await stageWave(h, description)
-  return h.call("agent_teams_plan", { action: "approve" }, LEAD)
+  return h.call("agent_teams_plan", { action: "approve" }, LEAD, signal)
 }
 
 describe("R4 — approval bundles the durable goal and the todo checklist", () => {
@@ -263,6 +274,22 @@ describe("R4 — approval bundles the durable goal and the todo checklist", () =
     // own timeout, so the row passes a composed one instead — present here, and not yet aborted.
     expect(h.toolCalls[0]?.signal).toBeInstanceOf(AbortSignal)
     expect(h.toolCalls[0]?.signal?.aborted).toBe(false)
+  })
+
+  test("CALLER cancellation reaches the seed: the write's signal follows the approving turn (F-CR4)", async () => {
+    /** This arm's composition: a healthy couple, so the only new input is the CALLER's signal. */
+    const h = harness()
+    /** The approving turn's own cancellation — the thing that must reach the write. */
+    const turn = new AbortController()
+    await approveWave(h, "ship the wave", turn.signal)
+    // LIVE, not pre-aborted: the composed signal follows the caller for as long as the turn lives.
+    expect(h.toolCalls[0]?.signal?.aborted).toBe(false)
+    // Aborting the CALLER aborts the very signal the row handed to `todo_write`; had the row passed
+    // only its own timeout (the pre-T7 shape), this assertion is what would stay false.
+    turn.abort()
+    expect(h.toolCalls[0]?.signal?.aborted).toBe(true)
+    // The approval itself already stood; the abort changed only when the write would have ended.
+    expect(activeTeamId(h.workspace, LEAD)).toBeDefined()
   })
 
   test("an empty plan description falls back to the plan NAME as the objective", async () => {

@@ -55,7 +55,7 @@
 |---|---|
 | `mpd_workmate_list` | list instances (name, baseName, uses, updatedAt, note summary) |
 | `mpd_workmate_init` | instantiate a base specialist into an independently-named workmate |
-| `mpd_workmate_spawn` | 一次性（ONE-SHOT）单次咨询：以 workmate 的人设 + 记忆 + 说明卡执行一次有界委派，走它自己的模型路由（只读 base 会禁止写入类工具）；报告落定后 activation 即被释放，持久连续性保存在 workmate **记录**中，而不是子会话 |
+| `mpd_workmate_spawn` | 一次性（ONE-SHOT）单次咨询：以 workmate 的人设 + 记忆 + 说明卡执行一次有界委派，走它自己的模型路由（只读 base 会禁止写入类工具）；在支持 `startActivation` 的宿主上，报告落定后 activation 即被释放；旧版 `start` 回退路径不提供 activation，持久连续性保存在 workmate **记录**中，而不是子会话 |
 | `mpd_workmate_reflect` | self-evolve after work: memory append/evict, persona revision merge, note regen |
 | `mpd_workmate_match` | rank notes against a task; below threshold → suggest a new init |
 | `mpd_workmate_rename { name, new_name }` | 重命名实例：搬移目录键 + 元数据 + 索引键 + note 自引用（见下文） |

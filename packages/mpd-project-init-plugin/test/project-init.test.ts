@@ -67,6 +67,8 @@ interface FakeAdapter {
   events: string[]
   /** The handler the row installed for each event, so a case can dispatch the lifecycle event itself. */
   handlers: Map<string, (payload: unknown) => void>
+  /** Agent handles whose scope DISPOSER the row actually invoked — one entry per call. */
+  disposedAgents: unknown[]
   /** Every line the row sent to its file log. */
   logged: string[]
 }
@@ -80,12 +82,14 @@ interface FakeAdapter {
  */
 function fakeAdapter(agents: DshLiveAgent[], rootOf: (agent: unknown) => string, explode: boolean = false): FakeAdapter {
   /** The calls the row made, captured by the closures below. */
-  const state: FakeAdapter = { dsh: undefined as unknown as FakeAdapter["dsh"], registered: [], events: [], handlers: new Map(), logged: [] }
+  const state: FakeAdapter = { dsh: undefined as unknown as FakeAdapter["dsh"], registered: [], events: [], handlers: new Map(), disposedAgents: [], logged: [] }
   state.dsh = {
     registerAgentPreStep: (agent: unknown, listener: RegisteredListener["listener"]): (() => void) => {
       state.registered.push({ agent, listener })
+      // Record the teardown itself: a test must be able to prove the disposer RAN, not merely that
+      // the disposer map entry disappeared (CodeRabbit round 2).
       return (): void => {
-        // The fake records no teardown; the row's own `acted` guard is what the cases assert.
+        state.disposedAgents.push(agent)
       }
     },
     liveAgents: (): DshLiveAgent[] => agents,
@@ -311,14 +315,21 @@ describe("installProjectInit", () => {
     const listener = fake.registered[0].listener
     listener({}, {})
     expect(install.acted.has(captain)).toBe(true)
+    // A live agent's disposer must not have run yet: the fake records every invocation, so the
+    // assertions below prove the teardown RAN rather than merely that both map entries vanished.
+    expect(fake.disposedAgents.length).toBe(0)
     // The disposal path must clear the acted entry too: it holds the agent HANDLE, so keeping it
     // after disposal would retain a dead agent for the life of the process (CodeRabbit #3).
     /** The `agent/disposed` handler the row subscribed. */
     const disposed = fake.handlers.get("agent/disposed")
     if (disposed === undefined) throw new Error("the row subscribed no agent/disposed handler")
     disposed({ agent: captain })
+    expect(fake.disposedAgents).toEqual([captain])
     expect(install.acted.has(captain)).toBe(false)
     expect(install.disposers.has(captain)).toBe(false)
+    // Teardown is idempotent: a repeated disposal must not invoke the disposer a second time.
+    disposed({ agent: captain })
+    expect(fake.disposedAgents.length).toBe(1)
   })
 
   test("apply() installs the listeners through the mounted adapter", () => {

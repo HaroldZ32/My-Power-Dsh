@@ -1,0 +1,5 @@
+[2026-10-22T06:41:21.481Z] [mpd-roles] team plane: readOnlyGuard=installed deny=8 captainInvestigation=deny delegationGate=deny verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) askUserQuestion=installed rosterSection=agent-scoped order=605 sessionGate=off sensitivity=easy
+[2026-10-22T06:41:21.481Z] [mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+[2026-10-22T06:41:24.836Z] [mpd-roles] roster section registered for agent "session-6f51b600-e6f0-47c9-b88b-01c212d1a8bb" agentPreset=none — mpd:roster order=605
+[2026-10-22T06:41:24.836Z] [mpd-roles] session gate listener registered for agent "session-6f51b600-e6f0-47c9-b88b-01c212d1a8bb" agentPreset=none
+[2026-10-22T06:43:30.196Z] [mpd-roles] read-only child: applied 8 denials to its own tool scope
