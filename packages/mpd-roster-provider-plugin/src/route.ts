@@ -68,42 +68,6 @@ export function memberFromLabel(label: unknown, knownNames: readonly string[]): 
 }
 
 /**
- * The route a member takes, from the slot mapping and the configured slots.
- *
- * @param member - the roster member's functional name.
- * @param slotOf - the member's slot id (`slot1`…`slot4`), or `undefined` when it has none.
- * @param slots - the configured `teamModels` subtree.
- * @returns the route, or `undefined` when this member is not routed by slots at all.
- * @throws when the member HAS a slot but that slot is not fully configured — the rule the one-shot
- *   paths already follow: fail LOUDLY naming the member and the slot, never substitute and never
- *   clamp an effort.
- */
-export function routeForMember(
-  member: string,
-  slotOf: string | undefined,
-  slots: Record<string, unknown> | undefined,
-): SlotRoute | undefined {
-  if (slotOf === undefined) return undefined
-  /** The configured subtree for this member's slot, when the config layer supplies one. */
-  const slot = slots?.[slotOf] as Record<string, unknown> | undefined
-  if (slot === undefined || slot === null || typeof slot !== "object") {
-    throw new Error(`mpd-roster: ${member} is routed by ${slotOf}, but no ${slotOf} is configured for this workspace`)
-  }
-  /** The slot's provider id, trimmed; an empty string counts as unset, not as a route. */
-  const provider = typeof slot.provider === "string" ? slot.provider.trim() : ""
-  /** The slot's model id, trimmed; an empty string counts as unset, not as a route. */
-  const model = typeof slot.model === "string" ? slot.model.trim() : ""
-  /** The slot's optional effort keyword, trimmed; an empty string means the slot states no effort. */
-  const effort = typeof slot.reasoningEffort === "string" ? slot.reasoningEffort.trim() : ""
-  if (provider === "" || model === "") {
-    throw new Error(
-      `mpd-roster: ${member} is routed by ${slotOf}, but that slot is incomplete (provider=${provider === "" ? "unset" : provider}, model=${model === "" ? "unset" : model})`,
-    )
-  }
-  return { provider, model, ...(effort === "" ? {} : { reasoningEffort: effort }) }
-}
-
-/**
  * One request with the member's route applied to its `agentOptions`.
  *
  * The merge is deliberately narrow: it REPLACES provider/model/reasoningEffort and touches nothing

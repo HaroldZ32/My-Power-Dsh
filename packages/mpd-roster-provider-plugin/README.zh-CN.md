@@ -7,6 +7,11 @@
 槽位，没有通道能作用到队友身上。本包在不 fork 官方插件的前提下补上这一点：当队友的 `description`
 **点名**某位成员时，就施加该成员的槽位路由。
 
+槽位是**唯一**的路由来源（契约 `.mpd/plans/slot-single-source.md` §6）：`agentRoutes` 已删除；槽位未配置
+或格式错误时，会用结构化的 `SLOT_UNCONFIGURED` 失败**拒绝** spawn —— 在 `base.start` 之前抛出，因此本
+组合自己的 provider 根本不会被触达、也不会启动任何子会话；槽位自己的 `fallbacks` 链在应用路由前只消费
+一次（目录正面列出的第一条胜出）。`description` 没有点名任何名册成员的队友按原样透传：继承，保持不变。
+
 ## 原理
 
 harness 本身（不同于它的 team service）并不是限制所在：

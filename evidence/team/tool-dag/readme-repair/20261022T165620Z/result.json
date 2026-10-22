@@ -1,0 +1,42 @@
+{
+  "task": "T11 — repair mpd-team-core-plugin README action table (depend + complete/fail), both languages",
+  "sourceFinding": "T9 verdict, Medium docs finding: the agent_teams_task action table omitted the pre-existing complete/fail AND the new depend, and the 4,717-character figure was stale against the measured 4,971",
+  "utcStamp": "20261022T165620Z",
+  "scope": "packages/mpd-team-core-plugin/README.md + README.zh-CN.md ONLY (no src, no tests, no other package, no git, no dist)",
+  "files": [
+    "packages/mpd-team-core-plugin/README.md",
+    "packages/mpd-team-core-plugin/README.zh-CN.md"
+  ],
+  "changed": [
+    {
+      "section": "Tools table — agent_teams_task row",
+      "change": "action list corrected from claim/contract/release to claim/contract/release/complete/fail/depend; the cell now states complete/fail are the terminal verbs (owner-only, optional note/expected_revision, a FAIL releases its dependents) and depend's semantics: APPENDS blocked_by to an EXISTING row, idempotent no-op reported as such, refuses a terminal row, an unknown task_id, and a caller who is neither the row's owner nor the team's Lead, and reports a reference naming no task — kept verbatim in blockedBy, named in the answer, persisted as unresolvedBlockers",
+      "bothLanguages": true
+    },
+    {
+      "section": "Tools table — agent_teams_plan row",
+      "change": "documents the Amendment 2 behaviour: create_task persists a declared kind from task.kind or its top-level alias, and an unknown word is refused",
+      "bothLanguages": true
+    },
+    {
+      "section": "new paragraph after the tools table — 'The DAG is visible' / '依赖图是可见的'",
+      "change": "the status render's new per-row shape (summary line kept; one line per member with id/name/status; one line per task with id/owner/status/kind/blockedBy-or-dash/subject), edit's read form (staged tasks with subject/owner/blockedBy and id=-), and why depend exists (create_task mints a row; approval writes blockedBy once)",
+      "bothLanguages": true
+    },
+    {
+      "section": "'Why actions, not tools' / '为什么用 action 而不是更多工具'",
+      "change": "figure refreshed from 4,717 characters (~1,180 tokens) to 4,971 characters of a 5,000 budget (~1,240 tokens), measured 2026-10-23",
+      "bothLanguages": true
+    }
+  ],
+  "switchLinks": "intact and unedited under both titles (English -> ./README.zh-CN.md, 简体中文 -> ./README.md); verify:docs checks them",
+  "gate": {
+    "command": "bun run verify:docs",
+    "exit": 0,
+    "observed": "pairs=50 failed=0 violations=0 exempt=24 derived=3 links=445 checked=413 resolved=413 dead=0 — PASS"
+  },
+  "notDone": [
+    "no src/test/dist/git change in this task (the T8 code change and its evidence stay under evidence/team/tool-dag/20261022T164704Z/)",
+    "the duplicated '/agent-teams <what the team is for> stages a plan' paragraph that already existed in both files was left untouched (pre-existing, outside this repair)"
+  ]
+}

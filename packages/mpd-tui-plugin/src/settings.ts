@@ -12,17 +12,17 @@
 // plugin behaviour changes only after a restart" claim is DELETED, not softened — the
 // config row now arms a file watcher at mount AND subscribes to the entry-config
 // document, so its `state` re-resolves on every settings save and on a watched edit of
-// the project file. The model routes this section edits (`teamModels`, `agentRoutes`,
-// `modelchain`) are read PER USE (L2/L3), so the next spawn or resolve carries them —
+// the project file. The model routes this section edits (`teamModels`, `modelchain`) are read
+// PER USE (L2/L3), so the next spawn or resolve carries them —
 // no restart. What still waits for a boot is one class only: a knob some plugin
 // CAPTURED at its own mount instead of reading the live config service per use
 // (`BRIDGE_RESTART_LIMIT` carries that sentence, and neither front door claims more).
 //
 // SEE BEFORE YOU EDIT (R3): the section's own description carries
-// `effectiveModelSummary` — the four effective slot routes, the `agentRoutes`
-// overrides that are set and the configured `modelchain` chains — read from the
-// `mpdConfig` service AT SECTION-REQUEST TIME, so every `/settings` open shows the
-// effective config as of now.
+// `effectiveModelSummary` — the four effective slot routes and the configured
+// `modelchain` chains — read from the `mpdConfig` service AT SECTION-REQUEST TIME,
+// so every `/settings` open shows the effective config as of now. The per-member
+// `agentRoutes` half is DELETED with the layer (slot-single-source §3).
 //
 // The disclosure is not only in this header and the READMEs — it is carried by
 // the RENDERED METADATA too (t21): every field hint names its mpd.jsonc key, and
@@ -37,7 +37,7 @@ import type { PluginContextLike, SeamOutcome, SeamState, SettingsProviderLike, T
 // ONE source for the namespace schema, the twenty-two knobs and the disclosure: `mpd-config-plugin`
 // owns the namespace (design §10.1) and exports them; this package consumes them for its
 // guarded FALLBACK registration and for the section it declares.
-import { BRIDGE_DISCLOSURE, BRIDGE_NOT_LOST, SettingsSchema, SETTINGS_KNOBS, SETTINGS_NS, TEAM_MODEL_FALLBACK_OPTIONS, markVolatile } from "../../mpd-config-plugin/src/settings-schema"
+import { BRIDGE_DISCLOSURE, BRIDGE_NOT_LOST, SettingsSchema, SETTINGS_KNOBS, SETTINGS_NS, TEAM_MODEL_FALLBACK_OPTIONS, TEAM_MODEL_SLOT_GROUPS, TEAM_MODEL_SLOTS, markVolatile } from "../../mpd-config-plugin/src/settings-schema"
 
 // RE-EXPORTED so this row marks its OWN config volatile WITHOUT adding a second cross-package import
 // edge (the coupling inventory pins ONE edge per file, and it may only shrink).
@@ -238,15 +238,6 @@ function slotLeafOf(path: readonly string[]): TeamModelLeaf | undefined {
 }
 
 /**
- * The route leaf a knob path addresses — a team-model slot leaf OR an agentRoutes member leaf —
- * or undefined for every other knob. Both row families share the same three leaves and therefore
- * the same option projection, so one matcher feeds both.
- */
-function routeLeafOf(path: readonly string[]): TeamModelLeaf | undefined {
-  return slotLeafOf(path) ?? (path[0] === "agentRoutes" ? TEAM_MODEL_LEAVES.find((candidate) => candidate === path[2]) : undefined)
-}
-
-/**
  * Is the namespace already served? Probed through the provider's own read surface: `describe()`
  * is the documented way to enumerate served namespaces, with `get()` as the fallback for a
  * provider that answers only reads.
@@ -278,15 +269,100 @@ function configPluginPresent(ctx: PluginContextLike): boolean {
 }
 
 /**
+ * The `mpdConfig` surface the DISPLAY paths read: the raw keyed read plus the typed slot answer.
+ *
+ * Both members are optional because the service is resolved from a foreign context: an older
+ * composition may carry only `get` (the raw config) and a unit double may carry only one of them.
+ */
+export interface MpdConfigReadLike extends SlotResolutionServiceLike {
+  /** The raw keyed config read (`teamModels`, `modelchain`, …). */
+  get?(key?: string): unknown
+}
+
+/**
+ * The typed answer a slot-configuration read gives (contract AMENDMENT 1).
+ *
+ * `ok` carries the route and how many fallbacks the slot declares; `unconfigured` names the missing
+ * leaves; `invalid` is the service's own reject verdict; `unavailable` means the service cannot answer
+ * at all (not composed, method absent, or an unreadable value) — the state a DISPLAY renders as
+ * `<unavailable>` instead of inventing a route.
+ */
+export type SlotResolutionDisplay =
+  | { state: "ok"; route: string; fallbacks: number }
+  | { state: "unconfigured"; missing: string[] }
+  | { state: "invalid" }
+  | { state: "unavailable" }
+
+/** The minimal config-service slice a slot display needs; `slotResolutionOf` is the whole of it. */
+export interface SlotResolutionServiceLike {
+  /** The member's typed slot answer; absent on a composition that predates the amendment. */
+  slotResolutionOf?(member: string): unknown
+}
+
+/**
+ * Read one member's slot configuration into the DISPLAY shape, never throwing.
+ *
+ * THE SERVICE'S ANSWER IS NARROWED, NOT TRUSTED: a partial or older service may answer `undefined`, a
+ * bare route object or a different union, and the display must degrade rather than crash a dialog. An
+ * absent method — or a value that is none of the declared shapes — answers `unavailable`, which is the
+ * token the reader sees; a declared `ok:false` with `reason: "unconfigured"` answers `unconfigured`.
+ * @param service - the config service slice, or undefined when no config row is composed.
+ * @param member - the roster member whose slot is asked about (the amendment's argument).
+ * @returns the typed display answer.
+ */
+export function slotResolutionDisplay(service: SlotResolutionServiceLike | undefined, member: string): SlotResolutionDisplay {
+  if (service === undefined || service === null || typeof service.slotResolutionOf !== "function") return { state: "unavailable" }
+  /** The service's raw answer; a throw is the same fact as an absent answer for a display. */
+  let raw: unknown
+  try {
+    raw = service.slotResolutionOf(member)
+  } catch {
+    return { state: "unavailable" }
+  }
+  if (!isPlainTable(raw)) return { state: "unavailable" }
+  if (raw.ok === true) {
+    /** The route block the service positively resolved. */
+    const route = raw.route
+    if (!isPlainTable(route) || typeof route.provider !== "string" || typeof route.model !== "string") return { state: "invalid" }
+    // The effort is optional in the route; the fallback count is reported so a reader can tell a
+    // single-route slot from one carrying backups.
+    /** The effort fragment, when the route declares one. */
+    const effort = typeof route.reasoningEffort === "string" && route.reasoningEffort !== "" ? ` / ${route.reasoningEffort}` : ""
+    return {
+      state: "ok",
+      route: `${route.provider} / ${route.model}${effort}`,
+      fallbacks: Array.isArray(raw.fallbacks) ? raw.fallbacks.length : 0,
+    }
+  }
+  if (raw.ok === false) {
+    // THE SERVICE'S OWN DISCRIMINANT IS `status` (contract amendment 1: `unconfigured` | `invalid` |
+    // `unrouted`), not a generic reason. `unrouted` means no slot decides this member — for a display
+    // that is not an unconfigured SLOT, so it degrades to `<unavailable>` rather than claiming a slot
+    // the roster does not route.
+    if (raw.status === "invalid") return { state: "invalid" }
+    if (raw.status !== "unconfigured") return { state: "unavailable" }
+    // The missing leaves are REPORTED by the service; a value that carries none still says
+    // `unconfigured`, with an empty list rather than an invented one.
+    return {
+      state: "unconfigured",
+      missing: Array.isArray(raw.missing) ? raw.missing.filter((leaf): leaf is string => typeof leaf === "string") : [],
+    }
+  }
+  return { state: "unavailable" }
+}
+
+/**
  * The `mpdConfig` service the effective summary reads, or undefined when this composition mounts
  * no config row (the guarded-fallback world) or the lookup refuses. Probed PER CALL — the row's
  * fiber may activate after this one, the same race `configPluginPresent` tolerates.
+ * @param ctx - the plugin context the service is resolved from.
+ * @returns the service slice, or undefined when it is not composed.
  */
-function configServiceOf(ctx: PluginContextLike): { get?: (key?: string) => unknown } | undefined {
+export function configServiceOf(ctx: PluginContextLike): MpdConfigReadLike | undefined {
   try {
-    /** The service double, read only for its `get` member below. */
+    /** The service double, read only for the members above. */
     const service = typeof ctx.get === "function" ? ctx.get("mpdConfig") : undefined
-    return service !== null && typeof service === "object" ? (service as { get?: (key?: string) => unknown }) : undefined
+    return service !== null && typeof service === "object" ? (service as MpdConfigReadLike) : undefined
   } catch {
     return undefined
   }
@@ -306,50 +382,55 @@ function summaryLeaf(block: unknown, leaf: string): string {
 
 /**
  * The SEE-BEFORE-YOU-EDIT summary (R3): the current effective model config in one bounded line per
- * language — the four slot routes (defaults materialised by the service's keyed read), the
- * `agentRoutes` overrides that are actually set, and the configured `modelchain` chains. Read from
- * the LIVE `mpdConfig` service only (never a re-parse of mpd.jsonc), so it reflects every save and
- * watched edit the service has refreshed from.
+ * language — the four slot routes and the configured `modelchain` chains.
+ *
+ * THE PER-MEMBER OVERRIDE HALF IS GONE (`.mpd/plans/slot-single-source.md` §3): `agentRoutes` is
+ * deleted, so a summary that still printed it would advertise a layer no spawn reads. A slot the
+ * service reports as `unconfigured` prints the literal `<unconfigured>`; a composition whose service
+ * predates the typed read falls back to the RAW stored leaves, and a raw block with neither provider
+ * nor model is reported as `<unconfigured>` too — never as an invented route, and never as a throw.
  * @param config - the `mpdConfig` service double, or undefined when no config row is composed.
  * @returns the `{ en, zh }` pair the section's description carries; an explicit unavailability
  *   sentence when the service is absent.
  */
-export function effectiveModelSummary(config: { get?: (key?: string) => unknown } | undefined): { en: string; zh: string } {
+export function effectiveModelSummary(config: MpdConfigReadLike | undefined): { en: string; zh: string } {
   if (config === undefined || config === null || typeof config.get !== "function") {
     return {
       en: "effective values unavailable (no mpdConfig service in this composition)",
       zh: "生效值不可用（该组合没有 mpdConfig 服务）",
     }
   }
-  /** The slot routes, one `p/m/e` fragment per slot in slot order. */
+  /** The slot routes, one fragment per slot in slot order. */
   const slotFragments: string[] = []
   try {
-    /** The four slot blocks, defaults materialised by the keyed read. */
+    /** The four slot blocks, read RAW: the schema layer above them is gone with the default layer. */
     const slots = config.get("teamModels")
-    for (const slot of ["slot1", "slot2", "slot3", "slot4"]) {
-      /** This slot's block. */
+    for (const slot of TEAM_MODEL_SLOTS) {
+      /** The first member of the slot's group; the typed read is addressed by MEMBER (amendment 1). */
+      const member = TEAM_MODEL_SLOT_GROUPS[slot].members[0] ?? ""
+      /** This slot's typed answer; `unavailable` when the service has no typed read. */
+      const display = slotResolutionDisplay(config, member)
+      if (display.state === "ok") {
+        slotFragments.push(`${slot}:${display.route}`)
+        continue
+      }
+      if (display.state !== "unavailable") {
+        slotFragments.push(`${slot}:<${display.state}>`)
+        continue
+      }
+      /** This slot's RAW stored block, the fallback for an older composition. */
       const block = isPlainTable(slots) ? slots[slot] : undefined
-      slotFragments.push(`${slot}:${summaryLeaf(block, "provider")}/${summaryLeaf(block, "model")}/${summaryLeaf(block, "reasoningEffort") || "-"}`)
+      /** The raw provider leaf. */
+      const provider = summaryLeaf(block, "provider")
+      /** The raw model leaf. */
+      const model = summaryLeaf(block, "model")
+      // BOTH LEAVES EMPTY IS THE UNCONFIGURED STATE (the seed writes a full triple or nothing), so the
+      // summary prints the contract's own token instead of a `//`-looking empty route.
+      slotFragments.push(provider === "" && model === "" ? `${slot}:<unconfigured>` : `${slot}:${provider}/${model}/${summaryLeaf(block, "reasoningEffort") || "-"}`)
     }
   } catch {
     // An unreadable slot half renders as an explicit gap rather than a wrong route.
     slotFragments.length = 0
-  }
-  /** The set overrides as `Name(leaf=value, …)` fragments, in the table's own key order. */
-  const overrideFragments: string[] = []
-  try {
-    /** The stored agentRoutes table. */
-    const routes = config.get("agentRoutes")
-    if (isPlainTable(routes)) {
-      for (const [name, entry] of Object.entries(routes)) {
-        if (!isPlainTable(entry)) continue
-        /** This entry's SET leaves, in leaf order. */
-        const leaves = ["provider", "model", "reasoningEffort"].filter((leaf) => summaryLeaf(entry, leaf) !== "").map((leaf) => `${leaf}=${summaryLeaf(entry, leaf)}`)
-        if (leaves.length > 0) overrideFragments.push(`${name}(${leaves.join(", ")})`)
-      }
-    }
-  } catch {
-    // An unreadable overrides half renders as none-set rather than as a wrong claim.
   }
   /** The configured chains as `key→provider/model` fragments (the first hop, plus a +N marker). */
   const chainFragments: string[] = []
@@ -369,13 +450,11 @@ export function effectiveModelSummary(config: { get?: (key?: string) => unknown 
   }
   /** The slot half of the sentence; an explicit gap when the read failed. */
   const slotsText = slotFragments.length > 0 ? `slots ${slotFragments.join(" · ")}` : "slots unreadable"
-  /** The overrides half of the sentence. */
-  const routesText = overrideFragments.length > 0 ? overrideFragments.join(" · ") : "none set"
   /** The chains half of the sentence. */
-  const chainsText = chainFragments.length > 0 ? chainFragments.join(" · ") : "none configured (shipped defaults in force)"
+  const chainsText = chainFragments.length > 0 ? chainFragments.join(" · ") : "none configured"
   return {
-    en: `effective now — ${slotsText}; agentRoutes: ${routesText}; modelchain: ${chainsText}`,
-    zh: `当前生效 —— ${slotsText}；agentRoutes：${routesText}；modelchain：${chainsText}`,
+    en: `effective now — ${slotsText}; modelchain: ${chainsText}`,
+    zh: `当前生效 —— ${slotsText}；modelchain：${chainsText}`,
   }
 }
 
@@ -472,15 +551,17 @@ export const SETTINGS_FIELDS: readonly TuiSettingsFieldLike[] = SETTINGS_KNOBS.m
 
 /**
  * The field list the section is REGISTERED with: {@link declaredField} for every knob,
- * with the three leaves of each team-model slot AND of each agentRoutes member replaced by
- * {@link teamModelOptionLists}. A route field is therefore always a `select` with a non-empty
- * option list — the eleven member names arrive as ROWS (enumerated from the shared declaration),
- * never as a free-typed key.
+ * with the three leaves of each team-model slot replaced by {@link teamModelOptionLists}. A slot
+ * field is therefore always a `select` with a non-empty option list.
+ *
+ * THE `agentRoutes` ROW FAMILY IS GONE: the per-member override layer is deleted by
+ * `.mpd/plans/slot-single-source.md` §3, so the shared knob declaration no longer carries those
+ * paths and this builder has no route family to match besides `teamModels`.
  */
 export function settingsFields(lists: TeamModelOptionLists): readonly TuiSettingsFieldLike[] {
   return SETTINGS_KNOBS.map((knob) => {
-    /** The route leaf this knob addresses, undefined for the non-route knobs. */
-    const leaf = routeLeafOf(knob.path)
+    /** The slot leaf this knob addresses, undefined for the non-route knobs. */
+    const leaf = slotLeafOf(knob.path)
     /** The knob's declared field, before any route options are applied. */
     const field = declaredField(knob)
     return leaf === undefined ? field : { ...field, options: lists[leaf] }
@@ -492,8 +573,8 @@ export function settingsFields(lists: TeamModelOptionLists): readonly TuiSetting
  *
  * Every `hint` is built by {@link knobHint} and names its mpd.jsonc key; the user reading
  * `/settings` learns at the point of use what an edit writes. The twelve team-model slot hints
- * and the thirty-three agentRoutes hints LEAD with the knob's own human sentence from the shared
- * declaration (`knob.semantics`); the label carries the group or member name. The long disclosure
+ * LEAD with the knob's own human sentence from the shared declaration (`knob.semantics`); the
+ * label carries the group name. The long disclosure
  * is stated ONCE by the section's own description (which also carries the R3 effective summary at
  * registration time), never per row.
  *

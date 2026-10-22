@@ -4260,6 +4260,54 @@ function describePlan(plan) {
   const state = plan.approvedAt !== undefined ? "approved" : plan.discardedAt !== undefined ? "discarded" : "staged";
   return `${plan.planId} (${state}): ${plan.members.length} member(s), ${plan.tasks.length} task(s)`;
 }
+function fieldText(value) {
+  if (typeof value === "string")
+    return value === "" ? "-" : value;
+  return typeof value === "number" ? String(value) : "-";
+}
+function describeTaskLine(task) {
+  const row = task ?? {};
+  const blockedBy = Array.isArray(row.blockedBy) ? row.blockedBy.map(String).filter((entry) => entry !== "") : [];
+  const subject = typeof row.subject === "string" ? JSON.stringify(row.subject) : JSON.stringify("");
+  return `task id=${fieldText(row.id)} owner=${fieldText(row.owner)} status=${fieldText(row.status)} kind=${fieldText(row.kind)} blockedBy=${blockedBy.length === 0 ? "-" : blockedBy.join(",")} subject=${subject}`;
+}
+function describeStatus(value) {
+  const board = value ?? {};
+  const members = Array.isArray(board.members) ? board.members : [];
+  const tasks = Array.isArray(board.tasks) ? board.tasks : [];
+  const plan = board.plan ?? {};
+  const planId = typeof plan.planId === "string" && plan.planId !== "" ? plan.planId : "(none)";
+  const summary = `plan ${planId} · members ${members.length} · tasks ${tasks.length} · hold ${board.hold === null || board.hold === undefined ? "none" : "held"}`;
+  const lines = [summary];
+  for (const member of members) {
+    const row = member ?? {};
+    lines.push(`member id=${fieldText(row.id)} name=${fieldText(row.name)} status=${fieldText(row.status)}`);
+  }
+  for (const task of tasks)
+    lines.push(describeTaskLine(task));
+  return lines.join(`
+`);
+}
+function describeDepend(value) {
+  const answer = value ?? {};
+  const task = answer.task ?? {};
+  const blockedBy = Array.isArray(task.blockedBy) ? task.blockedBy.map(String).filter((entry) => entry !== "") : [];
+  const unresolved = Array.isArray(answer.unresolved) ? answer.unresolved.map(String) : [];
+  const added = Array.isArray(answer.added) ? answer.added.length : 0;
+  const edges = blockedBy.length === 0 ? "-" : blockedBy.join(",");
+  const outcome = answer.idempotent === true ? "unchanged; the reference was already an edge" : `appended ${added} edge(s)`;
+  return `${fieldText(answer.taskId)} blockedBy=[${edges}] (${outcome})` + (unresolved.length === 0 ? "" : ` — WARNING: ${unresolved.join(", ")} name(s) no task on this board; kept verbatim`);
+}
+function describeStagedPlan(plan) {
+  if (plan === undefined)
+    return "no staged plan";
+  const lines = plan.tasks.map((task) => {
+    const blockedBy = (task.blockedBy ?? []).filter((entry) => entry !== "");
+    return `staged task id=- owner=${task.owner ?? "-"} blockedBy=${blockedBy.length === 0 ? "-" : blockedBy.join(",")} subject=${JSON.stringify(task.subject)}`;
+  });
+  return [describePlan(plan), ...lines].join(`
+`);
+}
 function stringList(value) {
   return Array.isArray(value) ? value.map(String) : undefined;
 }
@@ -4556,22 +4604,23 @@ function apply(ctx) {
   }
   disposers.push(dsh.registerTool({
     name: "agent_teams_plan",
-    description: "The team PLAN. `create` stages a plan and spawns nothing; `add_member`/`create_task` append to it or to the live team; `edit` reads or replaces it; `approve` EXECUTES it through the TEAM EXECUTOR (NATIVE backend DEFAULT, official `dsh.team*` FALLBACK), REFUSING a plan with 0 members and 0 tasks; `delete` archives; `status` shows plan, halt, roster and board.",
+    description: "The team PLAN. `create` stages (spawns nothing); `add_member`/`create_task` append to it or the live team; `edit` reads or replaces it; `approve` EXECUTES through the TEAM EXECUTOR (native default, official fallback), REFUSING an EMPTY plan; `delete` archives; `status` shows plan, hold, roster and board.",
     parameters: {
       type: "object",
       properties: {
         action: { type: "string", enum: ["create", "add_member", "create_task", "edit", "approve", "delete", "status"], description: "What to do." },
-        name: { type: "string", description: "create: the team's name." },
+        name: { type: "string", description: "create: team name." },
         description: { type: "string", description: "create/edit: what the team is for." },
-        approval: { type: "string", enum: ["required", "automatic"], description: "create: `required` (default) waits for `approve`." },
-        replace: { type: "boolean", description: "create: required to replace an ALREADY APPROVED plan." },
-        member: { type: "object", description: "add_member: {name, prompt, description?, role?}; `prompt` is the teammate's instantiation prompt." },
+        approval: { type: "string", enum: ["required", "automatic"], description: "create: `required` (default) waits for approve." },
+        replace: { type: "boolean", description: "create: to replace an ALREADY APPROVED plan." },
+        member: { type: "object", description: "add_member: {name, prompt, description?, role?}; prompt is the instantiation prompt." },
         task: { type: "object", description: "create_task: {subject, description, blocked_by?, write_scopes?, owner?, kind?, coverageOf?, sourceTaskId?}." },
-        owner: { type: "string", description: "create_task: alias of `task.owner`." },
-        blocked_by: { type: "array", items: { type: "string" }, description: "create_task: alias of `task.blocked_by`." },
+        owner: { type: "string", description: "create_task: alias of task.owner." },
+        blocked_by: { type: "array", items: { type: "string" }, description: "create_task: alias of task.blocked_by." },
+        kind: { type: "string", description: "create_task: alias of task.kind." },
         members: { type: "array", items: { type: "object" }, description: "edit: replacement members." },
         tasks: { type: "array", items: { type: "object" }, description: "edit: replacement tasks." },
-        dry_run: { type: "boolean", description: "approve: report what would be created, and create nothing." }
+        dry_run: { type: "boolean", description: "approve: report what would be created; write nothing." }
       },
       required: ["action"],
       additionalProperties: false
@@ -4596,7 +4645,7 @@ function apply(ctx) {
           blockers: { type: "array", items: { type: "object" } }
         }
       },
-      render: (_args, value) => text(value?.archivedTo !== undefined ? `archived to ${value.archivedTo}` : value?.created !== undefined ? `approved ${value.plan?.planId ?? ""}: ${value.created.members?.length ?? 0} member(s), ${value.created.tasks?.length ?? 0} task(s)` + (value.stoppedAt === undefined ? "" : ` — STOPPED at ${value.stoppedAt}`) + (Array.isArray(value.created.unresolved) && value.created.unresolved.length > 0 ? ` — WARNING: ${value.created.unresolved.length} task(s) carry blockers that name no task (${value.created.unresolved.map((entry) => `${entry.taskId ?? "?"}:[${(entry.references ?? []).join(",")}]`).join(" ")}); they draw no edge` : "") : value?.members !== undefined ? `plan ${value.plan?.planId ?? "(none)"} · members ${value.members.length} · tasks ${value.tasks?.length ?? 0} · hold ${value.hold === null || value.hold === undefined ? "none" : "held"}` : typeof value?.appended === "string" ? value.appended : Array.isArray(value?.blockers) && value.blockers.length > 0 ? `task "${value.plan?.tasks?.at?.(-1)?.subject ?? ""}" staged${blockerSentence(value.blockers)}` : describePlan(value?.plan))
+      render: (_args, value) => text(value?.archivedTo !== undefined ? `archived to ${value.archivedTo}` : value?.created !== undefined ? `approved ${value.plan?.planId ?? ""}: ${value.created.members?.length ?? 0} member(s), ${value.created.tasks?.length ?? 0} task(s)` + (value.stoppedAt === undefined ? "" : ` — STOPPED at ${value.stoppedAt}`) + (Array.isArray(value.created.unresolved) && value.created.unresolved.length > 0 ? ` — WARNING: ${value.created.unresolved.length} task(s) carry blockers that name no task (${value.created.unresolved.map((entry) => `${entry.taskId ?? "?"}:[${(entry.references ?? []).join(",")}]`).join(" ")}); they draw no edge` : "") : value?.members !== undefined ? describeStatus(value) : typeof value?.appended === "string" ? value.appended : Array.isArray(value?.blockers) && value.blockers.length > 0 ? `task "${value.plan?.tasks?.at?.(-1)?.subject ?? ""}" staged${blockerSentence(value.blockers)}` : describeStagedPlan(value?.plan))
     },
     execute: async (args, exec) => {
       const action = String(args?.action ?? "");
@@ -4683,7 +4732,7 @@ function apply(ctx) {
         const blockedBy = stringList(raw.blocked_by ?? raw.blockedBy ?? args?.blocked_by);
         const writeScopes = stringList(raw.write_scopes ?? raw.writeScopes ?? args?.write_scopes);
         const owner = raw.owner ?? args?.owner;
-        const kind = parseTaskKind(raw.kind);
+        const kind = parseTaskKind(raw.kind ?? args?.kind);
         const coverageOf = raw.coverageOf;
         const sourceTaskId = raw.sourceTaskId;
         const plan = stagedPlan(workspace, sessionId);
@@ -4858,22 +4907,23 @@ function apply(ctx) {
   }));
   disposers.push(dsh.registerTool({
     name: "agent_teams_task",
-    description: "Shared board tasks: `claim` (freezes the contract), `contract`, `release`, and terminal `complete`/`fail` (owner-only; optional `note`/`expected_revision`; a FAIL unblocks its dependents).",
+    description: "Shared board tasks: `claim` (freezes the contract), `contract`, `release`, terminal `complete`/`fail` (owner-only; optional `note`/`expected_revision`; a FAIL unblocks dependents), `depend` (append `blocked_by`; owner or lead).",
     parameters: {
       type: "object",
       properties: {
-        action: { type: "string", enum: ["claim", "contract", "release", "complete", "fail"], description: "What to do." },
-        task_id: { type: "string", description: "the task id; `release` takes the task to free." },
-        claimant: { type: "string", description: "claim: who claims it (default: the caller)." },
-        note: { type: "string", description: "complete/fail: one line recorded on the row." },
-        expected_revision: { type: "number", description: "complete/fail/release: the revision you decided on; stale is refused." }
+        action: { type: "string", enum: ["claim", "contract", "release", "complete", "fail", "depend"], description: "What to do." },
+        task_id: { type: "string", description: "the task id." },
+        claimant: { type: "string", description: "claim: who claims (default: caller)." },
+        note: { type: "string", description: "complete/fail: one line on the row." },
+        expected_revision: { type: "number", description: "the revision you decided on; stale refused." },
+        blocked_by: { type: "array", items: { type: "string" }, description: "depend: blockers to append." }
       },
       required: ["action"],
       additionalProperties: false
     },
     output: {
-      schema: { type: "object", properties: { contract: { type: "object" }, contracts: { type: "array", items: { type: "object" } }, task: { type: "object" }, released: { type: "boolean" }, refused: { type: "string" }, taskId: { type: "string" }, status: { type: "string" }, closedBy: { type: "string" }, attempt: { type: "number" }, revision: { type: "number" }, dependents: { type: "array", items: { type: "object" } }, note: { oneOf: [{ type: "string" }, { type: "null" }] } } },
-      render: (_args, value) => text(value?.refused !== undefined ? `refused: ${value.refused}` : value?.released !== undefined ? value.released ? `${value.taskId} -> ${value.status ?? "pending"} (pairing freed)` : value.status !== undefined ? `${value.taskId} -> ${value.status} (no pairing to free)` : "that task was not dispatched" : value?.status !== undefined ? `${value.taskId} -> ${value.status} (by ${value.closedBy}, attempt ${value.attempt})` : value?.contract !== undefined ? `attempt ${value.contract.attempt} of ${value.contract.taskId} by ${value.contract.claimedBy}` : value?.contracts !== undefined ? `${value.contracts.length} contract(s)` : "no contract")
+      schema: { type: "object", properties: { contract: { type: "object" }, contracts: { type: "array", items: { type: "object" } }, task: { type: "object" }, released: { type: "boolean" }, refused: { type: "string" }, taskId: { type: "string" }, status: { type: "string" }, closedBy: { type: "string" }, attempt: { type: "number" }, revision: { type: "number" }, dependents: { type: "array", items: { type: "object" } }, note: { oneOf: [{ type: "string" }, { type: "null" }] }, added: { type: "array", items: { type: "string" } }, idempotent: { type: "boolean" }, unresolved: { type: "array", items: { type: "string" } } } },
+      render: (_args, value) => text(value?.refused !== undefined ? `refused: ${value.refused}` : value?.idempotent !== undefined ? describeDepend(value) : value?.released !== undefined ? value.released ? `${value.taskId} -> ${value.status ?? "pending"} (pairing freed)` : value.status !== undefined ? `${value.taskId} -> ${value.status} (no pairing to free)` : "that task was not dispatched" : value?.status !== undefined ? `${value.taskId} -> ${value.status} (by ${value.closedBy}, attempt ${value.attempt})` : value?.contract !== undefined ? `attempt ${value.contract.attempt} of ${value.contract.taskId} by ${value.contract.claimedBy}` : value?.contracts !== undefined ? `${value.contracts.length} contract(s)` : "no contract")
     },
     execute: async (args, exec) => {
       const { workspace, sessionId, lineage } = where(exec);
@@ -4897,6 +4947,52 @@ function apply(ctx) {
         const identity = callerIdentity(resolved.record, sessionId, title, lineage);
         const caller = [sessionId, title, String(membership?.name ?? ""), ...identity.ownMember === undefined ? [] : [identity.ownMember.name], ...identity.ancestry].filter((value) => value !== "");
         return releaseDispatchedTask(workspace, resolved.record, taskId, typeof args?.expected_revision === "number" ? args.expected_revision : undefined, caller, membership?.role === "lead");
+      }
+      if (action === "depend") {
+        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated);
+        if (resolved.record === undefined)
+          throw new Error(resolved.refusal ?? "no team record in this workspace — approve a plan first");
+        const taskId = String(args?.task_id ?? "");
+        if (taskId === "")
+          throw new Error("agent_teams_task depend: task_id is required");
+        const references = stringList(args?.blocked_by ?? args?.blockedBy) ?? [];
+        if (references.length === 0)
+          throw new Error("agent_teams_task depend: blocked_by is required");
+        const fresh = readTeam(workspace, resolved.record.teamId) ?? resolved.record;
+        const task = fresh.tasks.find((candidate) => candidate.id === taskId);
+        if (task === undefined)
+          return { taskId, refused: `no task "${taskId}" in team ${fresh.teamId}` };
+        const membership = (() => {
+          try {
+            return dsh.teamMembership(exec.agent);
+          } catch {
+            return;
+          }
+        })();
+        const title = sessionTitleOf(exec);
+        const identity = callerIdentity(fresh, sessionId, title, lineage);
+        const caller = [sessionId, title, String(membership?.name ?? ""), ...identity.ownMember === undefined ? [] : [identity.ownMember.name], ...identity.ancestry].filter((value) => value !== "");
+        const refusal = authorizeRelease(fresh, taskId, caller, membership?.role === "lead");
+        if (refusal !== undefined)
+          return { taskId, refused: refusal };
+        if (task.status === "completed" || task.status === "failed")
+          return { taskId, refused: `task ${taskId} is "${task.status}" and its edges are frozen` };
+        const merged = [...task.blockedBy];
+        const added = [];
+        for (const reference of references) {
+          const wired = resolveBlockers(fresh, [reference]).blockedBy[0];
+          if (merged.includes(wired))
+            continue;
+          merged.push(wired);
+          added.push(wired);
+        }
+        const outcome = resolveBlockers(fresh, merged);
+        if (added.length === 0)
+          return { taskId, task, idempotent: true, added, unresolved: outcome.unresolved };
+        const next = updateTeamTask(fresh, taskId, { blockedBy: merged }, now());
+        writeTeam(workspace, withDerivedPhase(next));
+        const view = next.tasks.find((candidate) => candidate.id === taskId) ?? task;
+        return { taskId, task: view, idempotent: false, added, unresolved: outcome.unresolved };
       }
       if (action === "contract") {
         if (args?.task_id === undefined)
@@ -4990,7 +5086,7 @@ function apply(ctx) {
           releasedFromDispatch
         };
       }
-      throw new Error(`agent_teams_task: unknown action "${action}" (claim | contract | release | complete | fail)`);
+      throw new Error(`agent_teams_task: unknown action "${action}" (claim | contract | release | complete | fail | depend)`);
     }
   }));
   disposers.push(dsh.registerTool({

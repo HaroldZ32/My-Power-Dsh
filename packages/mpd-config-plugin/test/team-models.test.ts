@@ -1,12 +1,14 @@
-// The four team-model slots of the `mpd` settings namespace: the schema defaults (A1), the twelve
-// knobs of the ONE declaration (A3, plus the declaration half of A6) and the config layer's
-// READ-PATH materialisation (A2). Plan of record §3.1; frozen contract §1.1/§2. Slot 4 is the
-// vision slot: its default is Vision Analyst's own route, so the option is behaviour-preserving.
+// The four team-model slots of the `mpd` settings namespace: NO default layer in the slot subtree
+// (A1), the twelve knobs of the ONE declaration (A3) and a read path that contains only what the
+// user wrote (A2). Contract `.mpd/plans/slot-single-source.md` §1-§2, §9, amendment 1.
 import { afterEach, describe, expect, test } from "bun:test"
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { apply, withTeamModelsDefaults } from "../src/index"
+import { apply, resolveTeamModelSlot, teamModelRouteOfMember, stripJsonc } from "../src/index"
+import { writeBackLeaves } from "../src/bridge"
+import * as schemaNamespace from "../src/settings-schema"
+import * as configNamespace from "../src/index"
 import {
   BRIDGE_DISCLOSURE,
   BRIDGE_NOT_LOST,
@@ -15,7 +17,6 @@ import {
   SettingsSchema,
   TEAM_MODEL_FALLBACK_OPTIONS,
   TEAM_MODEL_SLOTS,
-  TEAM_MODEL_SLOT_DEFAULTS,
   TEAM_MODEL_SLOT_GROUPS,
   TEAM_MODEL_SLOT_IMPACT,
   TEAM_MODEL_SLOT_IMPACT_OVERRIDES,
@@ -70,29 +71,32 @@ const KNOWN_CLASSES: Record<string, readonly string[]> = {
   slot4: ["Vision Analyst"],
 }
 
-describe("A1 — the schema carries the four slots with the frozen literal defaults", () => {
-  test("the defaults are provider deepseek-official / model deepseek-v4-flash at max, high, high — plus the vision slot 4", () => {
-    expect(TEAM_MODEL_SLOTS).toEqual(["slot1", "slot2", "slot3", "slot4"])
-    expect(TEAM_MODEL_SLOT_DEFAULTS.slot1).toEqual({ provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "max" })
-    expect(TEAM_MODEL_SLOT_DEFAULTS.slot2).toEqual({ provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "high" })
-    expect(TEAM_MODEL_SLOT_DEFAULTS.slot3).toEqual({ provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "high" })
-    // Behaviour-preserving by construction: slot 4's default IS Vision Analyst's former explicit route.
-    expect(TEAM_MODEL_SLOT_DEFAULTS.slot4).toEqual({ provider: "deepseek-official", model: "deepseek-v4-flash-vision-exp", reasoningEffort: "high" })
-  })
-
-  test("the schema resolves those defaults when a config supplies nothing", () => {
-    // Schema resolved from an EMPTY config: these defaults are what an unconfigured workspace gets.
+describe("A1 — NO default layer anywhere in the slot subtree (contract §2)", () => {
+  test("the schema carries no slot default: a workspace that configured nothing resolves four EMPTY slots", () => {
+    // The resolved config of a workspace that declared nothing: four empty slot objects, never a
+    // provider/model/effort — the built-in default layer this contract deletes.
     const resolved: any = (SettingsSchema as any)({})
-    expect(resolved.teamModels).toEqual(TEAM_MODEL_SLOT_DEFAULTS)
+    expect(Object.keys(resolved.teamModels)).toEqual([...TEAM_MODEL_SLOTS])
+    for (const slot of TEAM_MODEL_SLOTS) expect(resolved.teamModels[slot]).toEqual({})
+    // A partial declaration keeps ONLY the leaf the user wrote; no sibling leaf is filled in.
+    const partial: any = (SettingsSchema as any)({ teamModels: { slot2: { model: "deepseek-v4-pro" } } })
+    expect(partial.teamModels.slot2).toEqual({ model: "deepseek-v4-pro" })
   })
 
-  test("the schema merges a partial block over the per-slot defaults", () => {
-    // Schema resolved from a PARTIAL block: the declared leaf is overridden, its slot-mates keep the defaults.
-    const resolved: any = (SettingsSchema as any)({ teamModels: { slot2: { model: "deepseek-v4-pro" } } })
-    expect(resolved.teamModels.slot2).toEqual({ provider: "deepseek-official", model: "deepseek-v4-pro", reasoningEffort: "high" })
-    expect(resolved.teamModels.slot1).toEqual(TEAM_MODEL_SLOT_DEFAULTS.slot1)
-    expect(resolved.teamModels.slot3).toEqual(TEAM_MODEL_SLOT_DEFAULTS.slot3)
-    expect(resolved.teamModels.slot4).toEqual(TEAM_MODEL_SLOT_DEFAULTS.slot4)
+  test("the deleted layers stay deleted: no default table and no agentRoutes schema on the module", () => {
+    // The module namespace is the subject: a resurrected `TEAM_MODEL_SLOT_DEFAULTS` or
+    // `AGENT_ROUTES_SCHEMA` export reddens here instead of quietly re-entering the read path.
+    const schemaModule = schemaNamespace as Record<string, unknown>
+    expect(schemaModule.TEAM_MODEL_SLOT_DEFAULTS).toBeUndefined()
+    expect(schemaModule.AGENT_ROUTES_SCHEMA).toBeUndefined()
+    expect(schemaModule.AGENT_ROUTE_SCHEMA).toBeUndefined()
+    expect(schemaModule.AGENT_ROUTE_KNOBS).toBeUndefined()
+    expect(schemaModule.ROSTER_AGENT_NAMES).toBeUndefined()
+    expect(schemaModule.agentRouteEntryOfMember).toBeUndefined()
+    // The config module's own exports are the other half of the deletion.
+    const configModule = configNamespace as Record<string, unknown>
+    expect(configModule.withTeamModelsDefaults).toBeUndefined()
+    expect(configModule.agentRouteEntryOfMember).toBeUndefined()
   })
 })
 
@@ -101,16 +105,13 @@ describe("A3 — twelve knobs in the ONE declaration, in slot order", () => {
   const slotKnobs = SETTINGS_KNOBS.filter((knob) => knob.path[0] === "teamModels")
 
   test("exactly twelve new rows, after the original thirteen", () => {
-    // 59 = the thirteen original knobs + the twelve slot leaves + the thirty-three agentRoutes
-    // leaves (eleven roster members × provider/model/reasoningEffort, L4's front door) + the TUI
-    // surface's own `tui.dashboardKey` (declared LAST, so every index-keyed assertion in this file
-    // keeps its meaning). Updated deliberately with that one shared-schema addition — see the W2
-    // lane report, and the L4 lane report for the agentRoutes rows.
-    expect(SETTINGS_KNOBS).toHaveLength(59)
+    // 26 = the thirteen original knobs + the twelve slot leaves + the TUI surface's own
+    // `tui.dashboardKey` (declared LAST, so every index-keyed assertion in this file keeps its
+    // meaning). The thirty-three `agentRoutes` rows are GONE with the table itself (contract §3).
+    expect(SETTINGS_KNOBS).toHaveLength(26)
     expect(slotKnobs).toHaveLength(12)
-    // The agentRoutes rows: eleven members, three leaves each, enumerated from the slots' own
-    // membership (R2's no-free-typing front door) and placed AFTER the slot rows, BEFORE the TUI knob.
-    expect(SETTINGS_KNOBS.filter((knob) => knob.path[0] === "agentRoutes")).toHaveLength(33)
+    // The deleted table leaves no row behind: no knob path may address `agentRoutes`.
+    expect(SETTINGS_KNOBS.filter((knob) => knob.path[0] === "agentRoutes")).toHaveLength(0)
     expect(SETTINGS_KNOBS.slice(0, 13).map((knob) => [...knob.path])).toEqual([
       ["hashline", "maxDiffChars"],
       ["commentChecker", "autoCheck"],
@@ -269,78 +270,91 @@ describe("A3b — the vision slot carries its own copy, verbatim, in both langua
   })
 })
 
-describe("A2 — the resolved config carries the slots, with defaults, on the READ path", () => {
-  test("no teamModels anywhere: the service answers with the four complete defaults", () => {
-    // Fresh workspace and home with no config file, so all twelve leaves must come from the defaults.
+describe("A2 — the read path contains only what the user wrote (contract §2/§9)", () => {
+  test("a fresh workspace: no teamModels key in the raw read, and a TYPED unconfigured resolution", () => {
+    // Fresh workspace + isolated home: nothing the user could have declared.
     const { root, home } = sandbox()
     // The mounted config service, whose reads are the subject of every assertion below.
     const { service } = mount(root, home)
-    expect(service.get("teamModels")).toEqual(TEAM_MODEL_SLOT_DEFAULTS)
-    expect(service.get("teamModels.slot1")).toEqual(TEAM_MODEL_SLOT_DEFAULTS.slot1)
-    expect(service.get("teamModels.slot3.reasoningEffort")).toBe("high")
-    expect(service.get("teamModels.slot4")).toEqual(TEAM_MODEL_SLOT_DEFAULTS.slot4)
-    expect(service.get("teamModels.slot4.model")).toBe("deepseek-v4-flash-vision-exp")
-    // READ-path only: the parameterless service read stays the RAW merged file layers (the shape
-    // an existing wiring test pins), and nothing was materialised onto disk.
+    expect(service.get("teamModels")).toBeUndefined()
     expect(service.get()).not.toHaveProperty("teamModels")
+    // The TOTAL service surface (amendment 1): undefined, never an exception.
+    expect(service.teamModelRouteOf("Architect")).toBeUndefined()
+    expect(service.slotResolutionOf("Architect")).toMatchObject({ ok: false, status: "unconfigured", slot: "slot1", missing: ["provider", "model"] })
   })
 
-  test("a file that sets only slot2.model merges over ITS defaults and leaves slot1/slot3 untouched", () => {
+  test("a file that sets only slot2.model keeps exactly that leaf — and is still unconfigured", () => {
     // Sandbox whose project file this test writes the partial slot2 block into.
     const { root, file, home } = sandbox()
     writeFileSync(file, '{ "teamModels": { "slot2": { "model": "deepseek-v4-pro" } } }')
     // Mounted AFTER the write, so the apply-time load sees the block.
     const { service } = mount(root, home)
-    expect(service.get("teamModels.slot2")).toEqual({ provider: "deepseek-official", model: "deepseek-v4-pro", reasoningEffort: "high" })
-    expect(service.get("teamModels.slot1")).toEqual(TEAM_MODEL_SLOT_DEFAULTS.slot1)
-    expect(service.get("teamModels.slot3")).toEqual(TEAM_MODEL_SLOT_DEFAULTS.slot3)
+    expect(service.get("teamModels.slot2")).toEqual({ model: "deepseek-v4-pro" })
+    // Half-configured is UNCONFIGURED: the provider leaf is still missing, and it is named.
+    expect(service.slotResolutionOf("Researcher")).toMatchObject({ ok: false, status: "unconfigured", missing: ["provider"] })
   })
 
   test("project .mpd/mpd.jsonc outranks the user $DSH_HOME/mpd.jsonc layer, per leaf", () => {
-    // Sandbox for the precedence case: the SAME slot1 leaf is declared in both file layers.
+    // Sandbox for the precedence case: the SAME slot1 block is declared in both file layers.
     const { root, file, home } = sandbox()
     writeFileSync(join(home, "mpd.jsonc"), '{ "teamModels": { "slot1": { "provider": "user-provider", "model": "user-model" } } }')
     writeFileSync(file, '{ "teamModels": { "slot1": { "model": "project-model" } } }')
     // Mounted once both files exist; the per-leaf winner is what the reads must show.
     const { service } = mount(root, home)
-    // project wins the leaf it declares; the user value survives underneath for the leaf it does not
-    expect(service.get("teamModels.slot1")).toEqual({ provider: "user-provider", model: "project-model", reasoningEffort: "max" })
+    expect(service.get("teamModels.slot1")).toEqual({ provider: "user-provider", model: "project-model" })
+    expect(service.slotResolutionOf("Architect")).toMatchObject({ ok: true, route: { provider: "user-provider", model: "project-model" } })
   })
 
-  test("materialisation is a pure READ-path projection: no mutation of the raw config", () => {
+  test("a READ never seeds and never writes: the workspace file stays byte-identical", () => {
     // Sandbox holding one raw config file, whose bytes must be unchanged when the test ends.
     const { root, file, home } = sandbox()
-    // The exact bytes written to the project file, re-read at the end to prove no default leaked to disk.
+    // The exact bytes written to the project file, re-read at the end to prove nothing leaked to disk.
     const original = '{ "ulw": { "maxRounds": 3 } }'
     writeFileSync(file, original)
-    // A raw merged config with no teamModels at all: the input of the materialiser.
-    const raw = { ulw: { maxRounds: 3 } }
-    // The materialised projection: a NEW object, which is why the raw input above stays untouched.
-    const resolved = withTeamModelsDefaults(raw)
-    expect(raw).toEqual({ ulw: { maxRounds: 3 } }) // the input object is untouched
-    expect(resolved.teamModels).toEqual(TEAM_MODEL_SLOT_DEFAULTS)
-    expect(resolved.ulw).toEqual({ maxRounds: 3 })
-    // The service read is the second half of the claim: the projection happens on the read path too.
+    // Mounting the row runs the one-time seed; with NO catalog seam in the stub it writes nothing.
     const { service } = mount(root, home)
-    expect(service.get("teamModels")).toEqual(TEAM_MODEL_SLOT_DEFAULTS)
-    // a read never writes: the workspace file is byte-identical, so no default can leak into it
+    expect(service.get("teamModels")).toBeUndefined()
     expect(readFileSync(file, "utf8")).toBe(original)
   })
 
-  test("the mpd_config_get payload carries the slots verbatim (no key), and by key", async () => {
+  test("the mpd_config_get payload is the RAW config: absent stays absent, declared is verbatim", async () => {
     // Sandbox for the tool surface; the payload is read through the registered tool, not the service.
-    const { root, home } = sandbox()
+    const { root, file, home } = sandbox()
     // Registered tools, where the real `mpd_config_get` row is looked up by name.
     const { tools } = mount(root, home)
     // The registered get tool; a missing row would make every later call throw.
     const get = tools.find((tool) => tool.name === "mpd_config_get")
-    // Key-less read: its payload must carry the materialised slots verbatim.
+    // Key-less read on a fresh workspace: NO materialised default layer may appear (§9).
     const noKey = await get.execute({})
-    expect(noKey.config.teamModels).toEqual(TEAM_MODEL_SLOT_DEFAULTS)
+    expect(noKey.config).not.toHaveProperty("teamModels")
     expect(JSON.parse(JSON.stringify(noKey))).toEqual(noKey) // host lossless round-trip
-    // Single-slot read: the payload carries both the value and the whole materialised config.
+    // A declared block answers VERBATIM, fallback chain included — no leaf is rewritten.
+    writeFileSync(file, '{ "teamModels": { "slot3": { "provider": "gateway", "model": "gpt-x", "fallbacks": [{ "provider": "backup", "model": "b" }] } } }')
+    /** The keyed read of the declared slot. */
     const byKey = await get.execute({ key: "teamModels.slot3" })
-    expect(byKey.value).toEqual(TEAM_MODEL_SLOT_DEFAULTS.slot3)
-    expect(byKey.config.teamModels).toEqual(TEAM_MODEL_SLOT_DEFAULTS)
+    expect(byKey.value).toEqual({ provider: "gateway", model: "gpt-x", fallbacks: [{ provider: "backup", model: "b" }] })
+    expect(byKey.config.teamModels.slot3).toEqual({ provider: "gateway", model: "gpt-x", fallbacks: [{ provider: "backup", model: "b" }] })
+  })
+})
+
+describe("the deletion lock on the FILE (contract §3): a leftover agentRoutes block survives a save", () => {
+  test("saving an unrelated leaf leaves the old block byte-identical (no data loss)", () => {
+    // A workspace file shaped like an OLD one: an unrelated knob plus a full agentRoutes table.
+    /** The exact bytes a save of `ulw.maxRounds` must leave untouched around the block. */
+    const original = `{\n  "ulw": { "maxRounds": 3 },\n  "agentRoutes": { "Deep Worker": { "provider": "gateway", "model": "deepseek-v4-pro" } }\n}\n`
+    /** The file the writer targets (inside one sandbox workspace). */
+    const { root, file } = sandbox()
+    writeFileSync(file, original)
+    // The settings-document save writes ONE leaf; it never rewrites the file wholesale.
+    /** The writer's report for that single-leaf delta. */
+    const report = writeBackLeaves([{ root, file }], [{ path: ["ulw", "maxRounds"], value: 11 }])
+    expect(report.results[0]?.outcome).toBe("written")
+    /** The bytes after the save, where the untouched block must still be present verbatim. */
+    const text = readFileSync(file, "utf8")
+    expect(text).toContain('"agentRoutes": { "Deep Worker": { "provider": "gateway", "model": "deepseek-v4-pro" } }')
+    expect(JSON.parse(stripJsonc(text))).toEqual({
+      ulw: { maxRounds: 11 },
+      agentRoutes: { "Deep Worker": { provider: "gateway", model: "deepseek-v4-pro" } },
+    })
   })
 })

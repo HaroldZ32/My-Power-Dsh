@@ -1,0 +1,30 @@
+=== plan edit READ form (staged, before approval) ===
+plan-20261022164818433-wae0-001 (staged): 2 member(s), 3 task(s)
+staged task id=- owner=Senior Engineer blockedBy=- subject="core"
+staged task id=- owner=Reviewer blockedBy=- subject="review the core"
+staged task id=- owner=Senior Engineer blockedBy=- subject="integration"
+
+=== plan status (approved board) ===
+plan (none) · members 2 · tasks 3 · hold none
+member id=M1 name=Senior Engineer status=running
+member id=M2 name=Reviewer status=running
+task id=T1 owner=Senior Engineer status=pending kind=work blockedBy=- subject="core"
+task id=T2 owner=Reviewer status=pending kind=review blockedBy=- subject="review the core"
+task id=T3 owner=Senior Engineer status=pending kind=work blockedBy=- subject="integration"
+
+=== depend T2 <- T1 ===
+T2 blockedBy=[T1] (appended 1 edge(s))
+
+=== depend repeat (idempotent) ===
+T2 blockedBy=[T1] (unchanged; the reference was already an edge)
+
+=== depend with an unresolvable reference ===
+T2 blockedBy=[T1,the missing row] (appended 1 edge(s)) — WARNING: the missing row name(s) no task on this board; kept verbatim
+
+=== plan status after the edges landed ===
+plan (none) · members 2 · tasks 3 · hold none
+member id=M1 name=Senior Engineer status=running
+member id=M2 name=Reviewer status=running
+task id=T1 owner=Senior Engineer status=pending kind=work blockedBy=- subject="core"
+task id=T2 owner=Reviewer status=pending kind=review blockedBy=T1,the missing row subject="review the core"
+task id=T3 owner=Senior Engineer status=pending kind=work blockedBy=- subject="integration"

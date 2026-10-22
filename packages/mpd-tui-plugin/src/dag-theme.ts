@@ -251,6 +251,16 @@ export const DAG_ANIM = Object.freeze({
 export const WORKMATE_PANEL_SLUG = "workmate"
 
 /**
+ * The panel slug the WATCHDOG page registers under.
+ *
+ * It is a THIRD page rather than a section of the merged MPD panel because the watchdog is a
+ * WORKSPACE-scoped observation surface with its own acknowledge action: mixing it into the team page
+ * would put a write (the `mpd-tui` watermark) behind a page that otherwise never writes, and the
+ * contract asks for an independent page whose absence degrades on its own (`/mpd watchdog`).
+ */
+export const WATCHDOG_PANEL_SLUG = "watchdog"
+
+/**
  * The width floor the DAG page ASKS THE HOST FOR: the host's own minimum, never more.
  *
  * WHY 28 AND NOT 32 (measured against the installed host 2026-10-13 — this is not a taste call).
@@ -270,3 +280,6 @@ export const DAG_PANEL_MIN_COLUMNS = 28
 
 /** The width floor the workmate page asks the host for; the same reasoning as {@link DAG_PANEL_MIN_COLUMNS}. */
 export const WORKMATE_PANEL_MIN_COLUMNS = 28
+
+/** The width floor the watchdog page asks the host for; the same reasoning as {@link DAG_PANEL_MIN_COLUMNS}. */
+export const WATCHDOG_PANEL_MIN_COLUMNS = 28

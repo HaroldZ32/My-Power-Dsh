@@ -1,0 +1,16 @@
+### node scripts/verify-vendor.ts (T17 client.js re-pin)
+target: packages/mpd-bundle-plugin/client.js
+before: bd68a418cd2c9c2e7b86943b54e1581ea7f88cb8216ee43b84d40f79a9acb1c9
+after:  08e715422b614006fb0da1ae67c9e80ac4e1f184e73f4a21363f52cb66c964f3
+artifact size: 783526 bytes
+
+[verify-vendor] upstream identity: NOT CHECKED - no upstream subject exists (the pinned oh-my-openagent checkout is retired; see VENDOR_LOCK.json `_note`)
+[verify-vendor] asset OK: skills 382 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] asset OK: packages/mpd-hashline-plugin/src/vendor 8 files
+[verify-vendor] asset OK: packages/mpd-boulder-plugin/src/vendor 13 files
+[verify-vendor] asset OK: packages/mpd-schemastery 19 files
+[verify-vendor] asset OK: packages/mpd-bundle-plugin/adopted 2 files
+[verify-vendor] asset OK: packages/mpd-bundle-plugin/client.js 1 files
+[verify-vendor] PASS - 7 shipped asset(s) fingerprinted, upstream identity not checked
+[verify-vendor exit 0]

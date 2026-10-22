@@ -1,0 +1,5 @@
+EN — the added clause (packages/mpd-tui-plugin/README.md, Model menu (R3) row):
+Its slot panel also shows each slot's CURRENT configuration from the config service's typed `slotResolutionOf` answer (contract AMENDMENT 1): an unconfigured slot renders `<unconfigured>` and names its missing leaves, a malformed leaf renders `<invalid>`, and a composition with no config service renders `<unavailable>` — and the dialog NEVER wraps that read in a try/catch, so a degrade is a state the service reports rather than an exception swallowed on the display path 
+
+ZH — the mirrored clause (packages/mpd-tui-plugin/README.zh-CN.md, 模型菜单（R3） row):
+它的槽位面板还会通过配置服务的类型化 `slotResolutionOf` 答案（契约修订 1）显示每个槽位的**当前**配置：未配置的槽位渲染 `<unconfigured>` 并点名缺失的叶子，畸形叶子渲染 `<invalid>`，组合中没有配置服务时渲染 `<unavailable>` —— 并且对话框**从不**把这次读取包进 try/catch，因此降级是服务报告的状态，而不是在显示路径上被吞掉的异常 

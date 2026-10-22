@@ -497,12 +497,12 @@ describe("isolation and front-door parity", () => {
     // declaration the card exports, so it needs the transpiled text too.
     const { FIELDS } = (0, eval)("(" + CARD_JS + ")")((name: "react" | "locales") => ({ react: {}, locales: {} })[name] ?? {})
     expect(Array.isArray(FIELDS)).toBe(true)
-    // 59 = the shared list after the twelve team-model slot leaves and the thirty-three
-    // agentRoutes leaves joined it (13 scalar knobs + 12 slot leaves + 11 members x 3 route
-    // leaves) plus the TUI surface's own `tui.dashboardKey` (the Ctrl+A takeover toggle); the
-    // element-wise loop below is what makes this a no-drift pin, not a magic number.
-    expect(FIELDS).toHaveLength(59)
-    expect(SETTINGS_KNOBS).toHaveLength(59)
+    // 26 = the shared list (13 scalar knobs + 12 slot leaves + the TUI surface's own
+    // `tui.dashboardKey`). The thirty-three `agentRoutes` rows are GONE with the table itself
+    // (contract `.mpd/plans/slot-single-source.md` §3); the element-wise loop below is what makes
+    // this a no-drift pin, not a magic number.
+    expect(FIELDS).toHaveLength(26)
+    expect(SETTINGS_KNOBS).toHaveLength(26)
     expect(FIELDS.map((field: CardField) => field.path)).toEqual(SETTINGS_KNOBS.map((knob) => [...knob.path]))
     for (const [index, field] of FIELDS.entries()) {
       /** The shared declaration's knob at the same index. */
@@ -867,60 +867,38 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
     ])
   })
 
-  // ── R2/R3 (lane L4): the agentRoutes rows and the see-before-you-edit block ─────────────────
-  test("R2: the thirty-three agentRoutes rows render as catalog-driven SELECTS, one group per member", async () => {
-    /** The section value this arm renders: one slot triple plus one member override. */
+  // ── R2/R3 (lane L4): the per-member table is DELETED, and the see-before-you-edit block ──────
+  test("R2 DELETION LOCK: no agentRoutes row exists, and a leftover block is IGNORED (contract §3)", async () => {
+    // A section value that still carries a per-member table, exactly as an OLD workspace file does —
+    // the card must render NO row for it and must never write it (§3: ignored, never rewritten).
+    /** The section value this arm renders. */
     const section = { ...SLOT_SECTION, agentRoutes: { "Deep Worker": { model: "deepseek-v4-pro" } } }
     /** This arm's rendered tree and client. */
     const { tree, client } = await renderedTree(slotScope(section), catalogServices())
-    // The member rows are SELECTS driven by the same live catalog the slot pickers use.
-    expect(optionValues(controlOf(tree, "agentRoutes.Deep Worker.model"))).toEqual(["deepseek-v4-flash", "deepseek-v4-pro", "x-1"])
-    expect(optionValues(controlOf(tree, "agentRoutes.Architect.provider"))).toEqual(["deepseek-official", "other-provider"])
-    // One heading per roster member (eleven groups), in the mirrored roster order, each naming the
-    // slot the override sits on — the eleven names arrive as rows, never as a free-typed key.
-    const groups = elementsOf(tree, "div").filter((node) => node.props["data-mpd-agent-group"] !== undefined)
-    expect(groups.map((node) => node.props["data-mpd-agent-group"])).toEqual([
-      "Architect", "Planner", "Reviewer", "Lead", "Senior Engineer",
-      "Researcher", "Explorer", "Plan Reviewer",
-      "Deep Worker", "Junior Engineer",
-      "Vision Analyst",
-    ])
-    expect(textOf(tree)).toContain("Deep Worker — own route (overrides slot 3 · execution members)")
-    expect(textOf(tree)).toContain(EN["agentRoutes.impact"])
+    // NO control addresses the deleted table, under either spelling the old card used.
+    expect(controlOf(tree, "agentRoutes.Deep Worker.model")).toBeUndefined()
+    /** Every rendered control's key, so the absence above is asserted over the WHOLE tree. */
+    const rendered = JSON.stringify(tree)
+    expect(rendered).not.toContain("agentRoutes")
+    // The card's own field list carries no such path either.
+    expect(CARD.FIELDS.some((field: CardField) => field.path[0] === "agentRoutes")).toBe(false)
     client.restore()
   })
 
-  test("R2: an agentRoutes edit writes a three-deep SET, and a reset writes the UNSET", async () => {
-    /** Every mutation this arm's scope recorded. */
-    const calls: ScopeCall[] = []
-    /** This arm's client and section registration. */
-    const { registration } = mountedCard(fakeScope(READY, calls))
-    /** The section's host-facing face. */
-    const face = registration.inject()
-    face.edit("agentRoutes.Vision Analyst.model", "deepseek-v4-flash-vision-exp")
-    await face.save()
-    expect(calls).toHaveLength(1)
-    expect(calls[0].ops).toEqual([{ op: "set", path: ["agentRoutes", "Vision Analyst", "model"], value: "deepseek-v4-flash-vision-exp" }])
-    face.resetField("agentRoutes.Vision Analyst.model")
-    await face.save()
-    expect(calls).toHaveLength(2)
-    expect(calls[1].ops).toEqual([{ op: "unset", path: ["agentRoutes", "Vision Analyst", "model"] }])
-  })
-
-  test("R3: the see-before-you-edit block renders the four slots, the set overrides and the source notice", async () => {
-    /** The section value this arm renders: one slot triple plus one member override. */
-    const section = { ...SLOT_SECTION, agentRoutes: { "Deep Worker": { model: "deepseek-v4-pro" } } }
+  test("R3: the see-before-you-edit block renders the four slot STATES, and <unconfigured> where nothing is set", async () => {
+    /** The section value this arm renders: slot1 configured, the other three not. */
+    const section = { teamModels: { slot1: { provider: "deepseek-official", model: "deepseek-v4-pro", reasoningEffort: "max" } } }
     /** This arm's rendered tree and client. */
     const { tree, client } = await renderedTree(slotScope(section), catalogServices())
     /** The rendered section text, where the effective block must appear above the rows. */
     const text = textOf(tree)
     expect(text).toContain("Effective model config")
-    // slot 1 from the document; slots 2-4 from the declared default floor (nothing configured them)
+    // slot 1 is CONFIGURED: its route renders.
     expect(text).toContain("slot 1 · heavy members: deepseek-official / deepseek-v4-pro / max")
-    expect(text).toContain("slot 2 · analysis members: deepseek-official / deepseek-v4-flash / high")
-    expect(text).toContain("slot 4 · vision member: deepseek-official / deepseek-v4-flash-vision-exp / high")
-    // the set override states its leaves AND the member's effective route (the model over slot 3's)
-    expect(text).toContain("Deep Worker — override model=deepseek-v4-pro; effective deepseek-official / deepseek-v4-pro / high")
+    // slots 2-4 are UNCONFIGURED: NO default floor invents a route (contract §2), so each renders the
+    // <unconfigured> sentence with the leaves it still needs.
+    expect(text).toContain("<unconfigured> — missing provider, model")
+    expect(text).not.toContain("deepseek-v4-flash / high")
     // the document branch says the chains half is not shown and why
     expect(text).toContain("no configured chains — the shipped defaults are in force")
     expect(text).toContain("the live service route is unavailable")
@@ -928,23 +906,30 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
   })
 
   test("R3: the SERVICE branch projects the route body over the document and carries the chains", () => {
-    // The pure half of the projection: the live route's tables win over the document's, and the
-    // modelchain chains — which NO settings document holds — ride the service body alone.
+    // The pure half of the projection: the live route's slot blocks win over the document's, the
+    // deleted per-member table is not projected at all, and the modelchain chains — which NO
+    // settings document holds — ride the service body alone.
     /** The projection over a live route body beside a document value. */
     const effective = CARD.effectiveModelConfigOf(
       { teamModels: { slot1: { provider: "doc-provider", model: "doc-model", reasoningEffort: "max" } }, agentRoutes: { Architect: { provider: "doc-provider" } } },
       { body: { ok: true, slots: { slot2: { provider: "live", model: "live-model", reasoningEffort: "low" } }, agentRoutes: { "Deep Worker": { model: "deepseek-v4-pro" } }, modelchain: { sisyphus: [{ provider: "deepseek-official", model: "deepseek-v4-pro" }, { provider: "deepseek-official", model: "deepseek-v4-flash" }] } }, notice: "" },
     )
     expect(effective.source).toBe("service")
-    expect(effective.slots.slot2).toEqual({ provider: "live", model: "live-model", reasoningEffort: "low" })
-    expect(effective.slots.slot1.model).toBe("doc-model")
-    expect(effective.agentRoutes).toEqual({ "Deep Worker": { model: "deepseek-v4-pro" } })
+    // slot 2 comes from the SERVICE body: configured, its own route, no effort invented.
+    expect(effective.slots.slot2).toEqual({ status: "configured", provider: "live", model: "live-model", reasoningEffort: "low", missing: [] })
+    // slot 1 comes from the DOCUMENT (the body carries none): a usable route over the document's eyes.
+    expect(effective.slots.slot1).toEqual({ status: "configured", provider: "doc-provider", model: "doc-model", reasoningEffort: "max", missing: [] })
+    // slot 3 is configured by NEITHER surface: the typed unconfigured state, with the missing leaves.
+    expect(effective.slots.slot3).toEqual({ status: "unconfigured", provider: "", model: "", reasoningEffort: "", missing: ["provider", "model"] })
+    // The deleted table is NOT projected, even when both surfaces still carry it.
+    expect(effective).not.toHaveProperty("agentRoutes")
     expect(effective.modelchain.sisyphus).toHaveLength(2)
-    // The document branch: declared defaults floor the unset slots, and the notice rides.
+    // The document branch: NO default floor any more, so an unset slot stays unconfigured and the
+    // notice rides.
     /** The projection with no route answer. */
     const documentBranch = CARD.effectiveModelConfigOf({}, { body: undefined, notice: "no route" })
     expect(documentBranch.source).toBe("document")
-    expect(documentBranch.slots.slot3).toEqual({ provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "high" })
+    expect(documentBranch.slots.slot3).toEqual({ status: "unconfigured", provider: "", model: "", reasoningEffort: "", missing: ["provider", "model"] })
     expect(documentBranch.notice).toBe("no route")
     expect(CARD.MODEL_CONFIG_PATH).toBe("/plugins/mpd/model-config")
   })
@@ -1744,7 +1729,7 @@ describe("R2: the styled contract (the harness's own settings-form tokens)", () 
     const tree = await renderReady()
     /** Every knob the card declares, in declaration order. */
     const fields = CARD.FIELDS as CardField[]
-    expect(fields).toHaveLength(59)
+    expect(fields).toHaveLength(26)
     /** One rendered row per knob (a missing row is a failure, never a skip). */
     const rows = fields.map((field) => rowOf(tree, field.path.join(".")))
     expect(rows.filter((row) => row === undefined)).toEqual([])
@@ -1752,7 +1737,7 @@ describe("R2: the styled contract (the harness's own settings-form tokens)", () 
     // the FIRST field carries no separator; every field after it carries `.field + .field`
     expect(styleOf(rows[0]).borderTop).toBeUndefined()
     for (const row of rows.slice(1)) expect(styleOf(row).borderTop).toBe("0.5px solid var(--dsw-alias-border-l2, #0000001a)")
-    expect(rows.slice(1)).toHaveLength(58)
+    expect(rows.slice(1)).toHaveLength(25)
   })
 
   test("R2-F2: the label is 13px/500 primary over a 12px/1.5 tertiary hint", async () => {

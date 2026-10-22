@@ -7,6 +7,25 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
+/**
+ * A `mpdConfig`-shaped double that routes every base roster member to its SHIPPED chain head.
+ *
+ * The slot-single-source contract deletes the static-chain fallback for roster members, so a row with
+ * no config service refuses every base spawn (asserted in `team-models-routing.test.ts`). These arms
+ * are about labels, personas and deny lists, not routing, so they mount the slot system configured to
+ * the declared route and keep that property out of the way.
+ * @returns the service double the roster row reads for a member's route.
+ */
+function configDouble(): { teamModelRouteOf: (member: string) => { provider: string; model: string } | undefined } {
+  return {
+    teamModelRouteOf: (member: string) => {
+      /** The roster entry this name resolves to, when it is a base member. */
+      const role = ROLES.find((r) => r.name === member)
+      return role === undefined ? undefined : { ...role.chain[0] }
+    },
+  }
+}
+
 /** Apply the plugin to a recording ctx and return the surfaces the arms assert on. */
 function makePlugin(config?: Parameters<typeof apply>[1]): {
   tools: any[]
@@ -32,7 +51,9 @@ function makePlugin(config?: Parameters<typeof apply>[1]): {
         return { result: { structured: { role: "oracle", summary: "done", recommendation: "keep it simple", evidence: ["e1"] }, stopReason: "complete" } }
       }
     },
-    provide: (n: string, v: any) => { provided[n] = v }
+    provide: (n: string, v: any) => { provided[n] = v },
+    // The mounted slot system, configured to each base member's shipped route (see `configDouble`).
+    get: (n: string) => (n === "mpdConfig" ? configDouble() : undefined)
   }
   apply(ctx, config)
   return { tools, spawned, provided, exec: { agent: { id: "agent-1" }, signal: new AbortController().signal } }
@@ -371,8 +392,8 @@ function serviceCtx(): {
   warnings: string[]
   exec: { agent: { id: string }; signal: AbortSignal }
 } {
-  /** The lazily resolved cordis service map ctx.get reads. */
-  const services: Record<string, any> = {}
+  /** The lazily resolved cordis service map ctx.get reads, pre-seeded with the slot system. */
+  const services: Record<string, any> = { mpdConfig: configDouble() }
   /** Tool definitions the extension and roster plugins registered. */
   const tools: any[] = []
   /** Subagent specs recorded by the fake subagents.start. */

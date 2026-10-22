@@ -67,6 +67,14 @@ export interface CommandActions {
   openDag(): PanelRoute
   /** Open the INDEPENDENT workmate page (frozen R12), routed as {@link CommandActions.openDag}. */
   openWorkmate(): PanelRoute
+  /**
+   * Open the WATCHDOG page (`.mpd/plans/watchdog-tui-panel.md` §4).
+   *
+   * Unlike the two pages above it has NO full-screen fallback — no scene draws the incident list — so
+   * every outcome except `opened` is reported as an ABSENCE in one line, never routed to a surface that
+   * would show something else.
+   */
+  openWatchdog(): PanelRoute
   /** The plan-approval surface (frozen §3.2). */
   openPlan(): boolean
   /** The status line as text, for the `/mpd status` print path. */
@@ -162,6 +170,16 @@ function runAction(action: string, actions: CommandActions, session: SessionLike
   // noun (it is the host-facing panel id half), so it is not translated.
   if (action === "dag") return { kind: "success", text: clamp(pageLine("dag", actions.openDag())) }
   if (action === "workmate") return { kind: "success", text: clamp(pageLine("workmate", actions.openWorkmate())) }
+  // `/mpd watchdog` has no full-screen surface behind it, so its line must NOT claim a fallback panel
+  // opened: `opened` names the accepted host id, a refusal names the refusal, and everything else
+  // (no seam, no discovered id) is the one-line absence the contract requires.
+  if (action === "watchdog") {
+    /** How the routed open of the watchdog page ended, and the id it went to. */
+    const route = actions.openWatchdog()
+    if (route.outcome === "opened") return { kind: "success", text: clamp(t("watchdog.commandOpened", { id: route.id ?? "?" })) }
+    if (route.outcome === "refused" || route.outcome === "fallback") return { kind: "error", text: clamp(t("watchdog.commandRefused")) }
+    return { kind: "error", text: clamp(t("watchdog.commandAbsent")) }
+  }
   if (action === "plan") {
     return actions.openPlan()
       ? { kind: "success" }

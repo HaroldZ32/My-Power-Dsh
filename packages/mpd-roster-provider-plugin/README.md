@@ -8,6 +8,13 @@ forwards only `{ prompt, parent }` — so the mpd `teamModels` slots, which do r
 consult paths, had no way to reach a teammate. This package closes that gap **without forking the
 official plugin**: it applies a member's slot when the teammate `description` NAMES that member.
 
+The slot is the ONLY route source (`contract .mpd/plans/slot-single-source.md` §6): `agentRoutes` is
+deleted, a slot-routed member whose slot is unconfigured or malformed REFUSES the spawn with the
+structured `SLOT_UNCONFIGURED` failure — thrown before `base.start`, so the composition's own provider
+is never reached and no child is started — and the slot's own `fallbacks` chain is consumed once
+(catalog-positive first win) before the route is applied. A teammate whose `description` names no
+roster member is forwarded by identity: inheritance, unchanged.
+
 ## How it works
 
 The harness, unlike its team service, is not the limitation:

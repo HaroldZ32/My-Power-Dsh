@@ -11,54 +11,74 @@ commas) with prototype-pollution-safe merge.
 ## Known keys
 
 - `memory.vcs`: `git | svn | both` (Plan C / C6 memory engine).
-- `teamModels.slot{1,2,3,4}.{provider,model,reasoningEffort}`: the four team-model
-  slots — the default route of the agent-teams member classes (see below).
+- `teamModels.slot{1,2,3,4}.{provider,model,reasoningEffort?}`: the four team-model
+  slots — the ONE configured route of each member class, with an optional per-slot
+  `fallbacks` chain (see below). No default layer: an unset slot refuses its spawns.
 - `team.stateDir`, `hashline.enabled/guardEditTools`,
   `commentChecker.autoCheck/bin`, `modelchain.<role>`, `boulder.dir`,
   `ulw.maxRounds`.
 
 ## Team-model slots (`teamModels`)
 
-The **default model route of agent-teams members**, one slot per member class. Four
-slots, twelve leaves:
+**The ONE configured model route of every roster member**, one slot per member class.
+Four slots, twelve leaves plus each slot's own optional fallback chain:
 
-| Slot | Path | Default | Member class (agent-teams `tier`) |
-|---|---|---|---|
-| 1 | `teamModels.slot1.{provider,model,reasoningEffort}` | `deepseek-official` / `deepseek-v4-flash` / `max` | Architect, Planner, Reviewer, Lead, Senior Engineer (`tier: 1`) |
-| 2 | `teamModels.slot2.{provider,model,reasoningEffort}` | `deepseek-official` / `deepseek-v4-flash` / `high` | Researcher, Explorer, Plan Reviewer (`tier: 2`) |
-| 3 | `teamModels.slot3.{provider,model,reasoningEffort}` | `deepseek-official` / `deepseek-v4-flash` / `high` | Deep Worker, Junior Engineer (`tier: 3`) |
-| 4 | `teamModels.slot4.{provider,model,reasoningEffort}` | `deepseek-official` / `deepseek-v4-flash-vision-exp` / `high` | Vision Analyst (`tier: 4`) |
+| Slot | Path | Member class |
+|---|---|---|
+| 1 | `teamModels.slot1.{provider,model,reasoningEffort?}` | Architect, Planner, Reviewer, Lead, Senior Engineer |
+| 2 | `teamModels.slot2.{provider,model,reasoningEffort?}` | Researcher, Explorer, Plan Reviewer |
+| 3 | `teamModels.slot3.{provider,model,reasoningEffort?}` | Deep Worker, Junior Engineer |
+| 4 | `teamModels.slot4.{provider,model,reasoningEffort?}` | Vision Analyst (the model here MUST accept image input) |
 
-- **One literal carries the defaults** (`TEAM_MODEL_SLOT_DEFAULTS`), so the schema
-  defaults and the resolved config cannot drift.
-- **The READ path materialises them:** a workspace with no `.mpd/mpd.jsonc` at all
-  still resolves all twelve leaves — `get("teamModels.slot2")` (and the key-less
-  `mpd_config_get`) answers the defaults. The materialised object is a NEW value: the
-  raw merged file config is never mutated and the defaults never leak into the
-  settings-document write-back.
-- **Vision Analyst is slot 4's member:** it is routed through
-  `teamModels.slot4` (`deepseek-official` / `deepseek-v4-flash-vision-exp` / `high` by
-  default), so its vision model is editable like every other member's route — and the
-  slot's model MUST accept image input, because this member's whole value is reading
-  images.
-- **Restart semantics:** exactly like every other knob in this layer — a save through
-  the settings document reaches `<workspace>/.mpd/mpd.jsonc` immediately and the
-  config layer applies it to every workspace, while a RUNNING mpd plugin keeps the
-  config it read at `apply()`; the behaviour change waits for a restart.
-- **Front doors:** the twelve leaves are `select` knobs of the ONE 25-row declaration
-  (`SETTINGS_KNOBS`: the original 13 knobs plus these 12) in the TUI `/settings`
-  section and in the Web GUI card. Their option lists come from the live model
-  catalog (the adapter's `llmCatalog()` server-side, the host's client catalog on the
-  Web), falling back to `TEAM_MODEL_FALLBACK_OPTIONS` when that catalog is
-  unavailable or degraded — so a slot is always a selection, never free text.
-- **A broken slot is LOUD:** a member routed through a slot that cannot be resolved
-  (missing service, missing or incomplete slot, unknown model, an effort the model
-  does not offer among the efforts it declares) fails team creation naming the member
-  and the slot and writes no team state; an effort is never silently clamped. ONE
-  EXCEPTION is the model-capability adaptation: a model whose catalog entry declares
-  **no** reasoning efforts at all is sent none for that call, so it still runs — the
-  materialised slot default would otherwise fail a call no configuration error caused.
-  The runtime applies it through the adapter's `withSupportedEffort`.
+- **No default layer.** There is zero `.default()` in the slot subtree, and
+  `TEAM_MODEL_SLOT_DEFAULTS` / `withTeamModelsDefaults` are DELETED: a workspace that
+  configured nothing has no route, and an absent `teamModels` block reads as ABSENT
+  (`get("teamModels")` is `undefined`, `mpd_config_get` does not invent one).
+- **No override item.** `agentRoutes` is deleted from the schema, the knobs, the
+  resolver, the TUI dialog and the Web card. A leftover `agentRoutes` block in an old
+  `.mpd/mpd.jsonc` is IGNORED and never rewritten — saving an unrelated leaf leaves it
+  byte-identical.
+- **A slot may carry its OWN fallback chain:** `fallbacks: [{provider, model,
+  reasoningEffort?}, …]`, in precedence order. It is consumed ONCE before the spawn:
+  the first candidate the live catalog POSITIVELY lists wins ("not listed" is not
+  "unavailable"; with no positive listing the primary stands), the winner then passes
+  the effort adaptation, and a malformed entry is dropped with one log line, never
+  fatally.
+- **The read is TOTAL.** `mpdConfig.slotResolutionOf(member)` returns a typed union —
+  `ok` (route + fallbacks), `unconfigured` (missing leaves named), `invalid` (the
+  offending path named) or `unrouted` (no slot carries that member) — and NEVER throws,
+  so a display surface renders `<unconfigured>` instead of crashing.
+  `teamModelRouteOf(member)` stays total too: the route when `ok`, `undefined`
+  otherwise.
+- **An unusable slot REFUSES the spawn** with ONE structured `SLOT_UNCONFIGURED` error
+  naming the slot, its members, the missing leaves and both recovery paths
+  (`/mpd-model`, and `teamModels.slotN` in `.mpd/mpd.jsonc`), stating that nothing was
+  written and no child was started. Only the three spawn appliers (`mpd_role_spawn`,
+  `mpd_workmate_spawn`, the `mpd-roster` teammate provider) throw it; an effort is
+  never clamped. ONE EXCEPTION is the model-capability adaptation: a model whose
+  catalog entry declares **no** reasoning efforts at all is sent none for that call, so
+  it still runs (the adapter's `withSupportedEffort`).
+- **Initial config is FILE initialization, not a runtime default.** A workspace whose
+  `.mpd/mpd.jsonc` declares no `teamModels` is seeded ONCE at mount, from the
+  configured providers via the LLM catalog: model = the `deepseek-flash` family (an
+  exact `deepseek-flash`, else a close `*flash*` id), provider = a configured provider
+  that lists it, effort `slot1=max` and `slots 2-4=high`. One log line when it writes;
+  an existing block or user edit is never rewritten; the successful seed is durably
+  marked in `<ws>/.mpd/model-config-seed.json` (created with `wx`, never overwritten,
+  consulted before ANY attempt) so a block you delete on purpose is never re-seeded;
+  with no usable catalog nothing is written and the first spawn reports
+  `SLOT_UNCONFIGURED`.
+- **Front doors:** the twelve leaves are `select` knobs of the ONE 26-row declaration
+  (`SETTINGS_KNOBS`: the original 13 knobs, these 12, and the TUI surface's own knob)
+  in the TUI `/settings` section and in the Web GUI card, whose effective block shows
+  each slot's state (or `<unconfigured>` with the leaves it lacks). Their option lists
+  come from the live model catalog (the adapter's `llmCatalog()` server-side, the
+  host's client catalog on the Web), falling back to `TEAM_MODEL_FALLBACK_OPTIONS`
+  when that catalog is unavailable or degraded — so a slot is always a selection, never
+  free text.
+- **Restart semantics:** the model routes are read PER USE, so a save (or a watched
+  file edit) reaches the next spawn/resolve with no restart; `mpd_config_reload` forces
+  a re-read.
 
 ## Service / tools
 

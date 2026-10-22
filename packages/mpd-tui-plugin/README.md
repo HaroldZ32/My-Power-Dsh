@@ -20,14 +20,14 @@ would duplicate a loader entry id (the loader rejects duplicates outright).
 |---|---|---|
 | Status line | `ctx.tuiStatus` | one keyed `mpd` contribution above the prompt: `mpd: team … · boulder … · plans … · workmates …` |
 | Transcript renderers | `ctx.tuiRenderers` | the bundle's log-only session events (`agent-teams/*`, `mpd-tui/board-opened`) as plain text rows, live and on replay |
-| Settings section | `ctx.tuiSettingsSections` | the mpd.jsonc knobs — the original 13 plus the twelve `teamModels` slot leaves (25 in all), the slot leaves rendered as **catalog-driven selections** — declared as editable `/settings` fields, **bridged** to `<workspace>/.mpd/mpd.jsonc` (a save writes the file; the plugin behaviour needs a restart); every field hint says so on screen (see NOT CLAIMED #2) |
+| Settings section | `ctx.tuiSettingsSections` | the mpd.jsonc knobs — the original 13, the twelve `teamModels` slot leaves and the TUI's own `tui.dashboardKey` (26 in all; the per-member `agentRoutes` rows are gone with the override layer), the slot leaves rendered as **catalog-driven selections** — declared as editable `/settings` fields, **bridged** to `<workspace>/.mpd/mpd.jsonc` (a save writes the file; the plugin behaviour needs a restart); every field hint says so on screen (see NOT CLAIMED #2) |
 | Full-screen board | `ctx.tuiScenes` | team + task ledger, boulder work ledger, plans, workmate library; two extra rows for a routed team: `team-plan …` (staged only) and `team-hold held (…)` (only while a watchdog hold lasts) |
 | Team workflow scene | `ctx.tuiScenes` | `mpd-tui-team` — open with `/mpd team`, or `a` while the board is open: team id/name/phase, plan-review state, the watchdog hold, the roster (role/model/status/progress/current task) and the task DAG (kind/status/assignee/attempt/round/verdict/deps, depth-indented, `failed-dep=` marked) plus the mailbox tail |
 | Plan scene (approval, W6) | `ctx.tuiScenes` | `mpd-tui-plan` — open with `/mpd plan`. It renders the live board and carries the approval gate: type the EXACT phrase the pane shows (`approve plan-…`, served by the SAME projection the Web panel renders) and press `Ctrl+X`; `Ctrl+D` twice within 10 s discards the staged plan, `Ctrl+R` re-reads, `esc` goes back. The action is an `agent_teams_plan {action:"approve"\|"delete"}` call carrying the LIVE agent resolved from the adapter's own registry — a caller it cannot resolve is refused loudly, never fabricated (below) |
-| Command tree | `ctx.tuiCommandTrees` | `/mpd board`, `/mpd team`, `/mpd plan`, `/mpd status`, `/mpd panel`, `/mpd dag`, `/mpd workmate`, `/mpd workmates` completion, plus the `/mpd-model` root — both roots and every child carry BOTH languages in `descriptions`, resolved by the host with its own active `/lang` |
-| Model menu (R3) | `ctx.tuiDialogs` + the shared catalog/settings seam | **`/mpd-model`** — a real pick-list that walks slot → provider → model → reasoning effort and writes the picked route into the `mpd-config` entry the `/settings` section edits. The options are the section's OWN projection (`teamModelOptionLists`) over the same live catalog, so the menu and the rows cannot disagree; the outcome carries the same disclosure sentence the section carries. Cancelling any panel writes nothing |
+| Command tree | `ctx.tuiCommandTrees` | `/mpd board`, `/mpd team`, `/mpd plan`, `/mpd status`, `/mpd panel`, `/mpd dag`, `/mpd workmate`, `/mpd workmates`, `/mpd watchdog` completion, plus the `/mpd-model` root — both roots and every child carry BOTH languages in `descriptions`, resolved by the host with its own active `/lang` |
+| Model menu (R3) | `ctx.tuiDialogs` + the shared catalog/settings seam | **`/mpd-model`** — a real pick-list that walks slot → provider → model → reasoning effort and writes the picked route into the `mpd-config` entry the `/settings` section edits. The options are the section's OWN projection (`teamModelOptionLists`) over the same live catalog, so the menu and the rows cannot disagree; the outcome carries the same disclosure sentence the section carries. Cancelling any panel writes nothing. Its slot panel also shows each slot's CURRENT configuration from the config service's typed `slotResolutionOf` answer (contract AMENDMENT 1): an unconfigured slot renders `<unconfigured>` and names its missing leaves, a malformed leaf renders `<invalid>`, and a composition with no config service renders `<unavailable>` — and the dialog NEVER wraps that read in a try/catch, so a degrade is a state the service reports rather than an exception swallowed on the display path |
 | Shortcuts | `ctx.tuiShortcuts` | `alt+m` board · `alt+a` the subagents + team panel · `alt+t` team workflow · `alt+w` workmate picker · `alt+r` refresh the status line |
-| Sidebar pages (dsh-tui 0.13.0+, adapted to 0.16.1) | `ctx.tuiPanels` (through the adapter) | **TWO** pages since the 0.14.0 wave — `team` (`MPD`, `❖`, `order` 10, the merged RICH view: the host's curated subagent rows above the DAG page's frame/legend/keys/pin body) and `workmate` (`MPD workmate`, `⬢`, `order` 12). The standalone `dag` page is RETIRED and merged into `MPD` (user clause 「DAG页作为MPD面板」), so `/mpd dag` re-aims onto the `MPD` panel with the rich team scene as its fallback — no route, picker entry or `⤢` became a dead end. Both pages declare an icon (distinct from the host's eight builtin tabs) and no `compact`, and both ask `minColumns` 28. `alt+a`, `/mpd panel` and `/mpd subagents` route the MPD panel through `tuiPanels.open()` when the seam is bound; `/mpd dag` re-aims onto that same panel, and `/mpd workmate` routes its own page. EVERY refusal FALLS BACK to a full-screen surface (`mpd-tui-subagents` for the routed open, the RICH `mpd-tui-team` scene for the MPD page's own `⤢`, the board for `workmate`) — never a silent no-op — and each command prints a bilingual status line naming the surface and the final id it reached. See the reachability paragraph below: the host's own two switches are what put a page on screen |
+| Sidebar pages (dsh-tui 0.13.0+, adapted to 0.16.1) | `ctx.tuiPanels` (through the adapter) | **THREE** pages — `team` (`MPD`, `❖`, `order` 10, the merged RICH view: the host's curated subagent rows above the DAG page's frame/legend/keys/pin body), `workmate` (`MPD workmate`, `⬢`, `order` 12) and, since the watchdog wave, `watchdog` (`MPD watchdog`, `⚠`, `order` 13: per-team held state and phase, the `mpd-tui` unread count and the incident list, with `a`/`r`/scroll keys). The standalone `dag` page is RETIRED and merged into `MPD` (user clause 「DAG页作为MPD面板」), so `/mpd dag` re-aims onto the `MPD` panel with the rich team scene as its fallback — no route, picker entry or `⤢` became a dead end. All three pages declare an icon (distinct from the host's eight builtin tabs) and no `compact`, and all three ask `minColumns` 28. `alt+a`, `/mpd panel` and `/mpd subagents` route the MPD panel through `tuiPanels.open()` when the seam is bound; `/mpd dag` re-aims onto that same panel, and `/mpd workmate` routes its own page. EVERY refusal FALLS BACK to a full-screen surface (`mpd-tui-subagents` for the routed open, the RICH `mpd-tui-team` scene for the MPD page's own `⤢`, the board for `workmate`) — never a silent no-op — and each command prints a bilingual status line naming the surface and the final id it reached. See the reachability paragraph below: the host's own two switches are what put a page on screen |
 | Merged panel | `ctx.tuiScenes` | `mpd-tui-subagents` — the host's own subagent rows (with its running/completed/failed counts), the team body, and the task DAG whose every drawn edge ends in a directional `▼` with a legend under it: this is the FALLBACK surface — `alt+a` and `/mpd panel` land here when the host has no panel seam or refuses the open — and on a pre-0.13.0 host **`Ctrl+A`** reaches it whenever the workspace holds a team (the take-over below). `enter` opens the selected subagent's detail, `i` interrupts the selected live run, a click selects a row |
 | `Ctrl+A` take-over | a `ctx.tuiStatus` view + the adapter's host-input contact | `Ctrl+A` opens the merged panel instead of the host's own dashboard while the team projection holds a team with at least one task; with no team — or on a host whose input bus the adapter cannot reach — the key behaves exactly as before (`tui.dashboardKey`, default `true`; see NOT CLAIMED 7-9) |
 | Dialogs | `ctx.tuiDialogs` | the mediated workmate picker (`select`) |
@@ -37,7 +37,7 @@ Supporting surfaces (not one of the seven seams): the `/mpd` command on the
 harness command registry, the `mpd` settings namespace registration, and the
 log-only `mpd-tui/board-opened` session record.
 
-### Two sidebar pages (since the 0.14.0 wave): the merged rich page `MPD` and the workmate shelf
+### Three sidebar pages: the merged rich page `MPD`, the workmate shelf and the watchdog page
 
 **The badge and the one auto-open are published from APPLY, never from a page (G2, 2026-10-20).** dsh-tui mounts a
 plugin panel only while it is the ACTIVE page of its column, so a page-side badge could only ever decorate a page
@@ -46,9 +46,12 @@ one-shot `tuiPanels.open(id)`, armed through `whenBound("panels")` (a compositio
 nothing) and driven by the same `mpdTeams` feed the pages subscribe to. The badge ladder is `dagBadge` — one
 derivation for both surfaces — with a watchdog HOLD promoted to at least `warning`. `/mpd status` carries the
 matching deployment line (`panels: team=… workmate=… · seam bound · keeper …`), which names the host-assigned ids
-because nothing else can derive them.
+because nothing else can derive them. **The watchdog page has its own badge arm** (contract
+`.mpd/plans/watchdog-tui-panel.md` §7): a hold is a `warning`, an unread incident an `info`, the count is
+the sum, and the arm re-takes it on a 5 s poll as well as on every team-feed event — a hold is raised by
+the watchdog's own timer and touches no team record, so the feed alone would never announce it.
 
-The bundle contributes **TWO** pages through the host's `tuiPanels` seam, each with its own FROZEN
+The bundle contributes **THREE** pages through the host's `tuiPanels` seam, each with its own FROZEN
 descriptor (`*_DESCRIPTOR_FROZEN` at module scope) and each inside the host's own
 `MAX_PANELS_PER_PLUGIN = 4` budget:
 
@@ -56,8 +59,9 @@ descriptor (`*_DESCRIPTOR_FROZEN` at module scope) and each inside the host's ow
 |---|---|---|---|---|---|
 | `src/panel.ts` | `team` | `MPD` | `❖` | 10 | 28 |
 | `src/panel-workmate.ts` | `workmate` | `MPD workmate` | `⬢` | 12 | 28 |
+| `src/panel-watchdog.ts` | `watchdog` | `MPD watchdog` | `⚠` | 13 | 28 |
 
-**The third page this section used to table — `src/panel-dag.ts`'s standalone `dag` page — is RETIRED and
+**The page this section used to table — `src/panel-dag.ts`'s standalone `dag` page — is RETIRED and
 MERGED INTO the `MPD` panel** (the user's clause 「DAG页作为MPD面板」; the wave's record is `docs/tui.md`
 §11.6). One descriptor, one slug and one ordered position collapsed out of the two: the surviving slot
 renders the DAG page's rich body (frame, header + progress, legend, key-hint footer, click-to-pin detail
@@ -74,7 +78,8 @@ BOTH this package's `sanitize.cellWidth` and the host's `stringWidth`, because t
 registration whose icon is not exactly one cell. The merged page used to declare no icon and the host
 therefore drew the fallback letter `M`; the workmate page used to declare `◆`, which is byte-identical
 to the host's own `agents` tab and so was not a distinct symbol at all. Both are fixed here, and the
-whole set is asserted by the package suite — **against the host's own registry, not a literal list**.
+watchdog page declares `⚠` — one cell under both measures and none of the host's tabs. The whole set is
+asserted by the package suite — **against the host's own registry, not a literal list**.
 Whether the icon is PAINTED is a host fact that moved twice: 0.14.0's carousel `PanelBar` drew `○`/`●`
 dots instead (`grep -c icon …/PanelBar.js` was 0 on the installed 0.14.0), and **0.15.0 paints icons
 again** — an inactive tab draws `tab.icon ?? <the title's first character> ?? '?'` plus the unread
@@ -192,7 +197,9 @@ With both switches in place, `/panel <id>` switches to the page (`/panel toggle`
 other forms) and `Alt+Z` zooms it. Measured WITHOUT them: the bar reads `│ ‹ 待办 › ▸ ◆` and the host's
 live enable list is `toggle, focus, zoom, todo, jobs, agents`. Measured WITH them, at 120 columns, on the
 pre-merge THREE-page set: the bar carried `‹ MPD ›`, `‹ MPD DAG ›` and `‹ MPD workmate ›` and the page
-body rendered. **After the merge the bar carries TWO MPD tabs — `‹ MPD ›` and `‹ MPD workmate ›`.** The
+body rendered. **After the merge the bar carries TWO MPD tabs — `‹ MPD ›` and `‹ MPD workmate ›` — and
+with the watchdog wave a third (`‹ MPD watchdog ›`) joins them once the host's enable list names its
+discovered id.** The
 panel column
 exists only where the host splits — at 80 and 48 columns the same capture reports `split=false`, i.e. no
 panel column at all, which is the host's own threshold and not an MPD setting.
@@ -460,7 +467,9 @@ its base template, its use count, its description and its note, sorted newest-up
 order `mpd_workmate_list` serves, so the panel and the tool cannot disagree. The keyboard behaves as on
 the DAG page, and the empty state names the call that fills it:
 `no workmates yet — `mpd_workmate_init` creates one`. Its refresh tick is the same 2000 ms the DAG page
-uses (`WORKMATE_PANEL_REFRESH_MS`), so the two sidebar pages cannot disagree about how often they redraw.
+uses (`WORKMATE_PANEL_REFRESH_MS`), so the sidebar pages cannot disagree about how often they redraw;
+the watchdog page takes its own `WATCHDOG_PANEL_REFRESH_MS` (also 2000 ms), because it reads the
+watchdog service rather than the team projection.
 
 ### The dependency graph: arrows, the legend and the `Ctrl+A` take-over
 
@@ -631,6 +640,7 @@ soft probe, which is the host's documented idiom.
 | `shortcuts` | `true` | register the key bindings |
 | `panel` | `true` | contribute the MPD sidebar page (dsh-tui 0.13.0) and route `alt+a` / `/mpd panel` through it. Off ⇒ no registration is attempted (the aggregate reports the adapter's own `skipped("panels", …)` outcome naming the config) and both entry points keep the pre-panel path, the full-screen merged scene |
 | `workmate` | `true` | contribute the WORKMATE sidebar page — its OWN knob, INDEPENDENT of `panel`, so the two MPD pages toggle apart. Off ⇒ that page is never registered (the aggregate reports `skipped("panels", …)` naming `workmate: false`) and `/mpd workmate` keeps its full-screen surface, the board scene. because a page that is never registered cannot be re-added by anything — not the host's config re-apply, not the runtime enable keeper — this is the switch that STICKS; both knobs are restart-scoped, and BOTH are listed as CHECKBOXES in the harness `/settings` dialog, because the row config is marked volatile and that flag is what the dialog's `volatileForm` walk reads |
+| `watchdog` | `true` | contribute the WATCHDOG sidebar page — its OWN knob, INDEPENDENT of `panel` and `workmate`, so the three pages toggle apart. Off ⇒ the page is never registered (the aggregate reports the adapter's own `skipped("panels", …)` outcome naming `panel: false`) and `/mpd watchdog` reports the absence in one line: the page has NO full-screen fallback, because no scene draws the incident list. Restart-scoped like every row-config knob |
 | `panelAutoOpen` | `true` | open the MPD page ONCE when the first team becomes live in this process. The page is otherwise reachable only through `alt+a`, `/mpd panel` and the host's panel bar, so a user who knows none of them never sees the DAG. It never fires for a team that already existed at boot, fires at most once per process whatever the host answers, and never retries a refusal (the host rate-limits `open()` per plugin, one per 5 s). The BADGE stays a separate concern — it is published on every team-state change from apply, so turning this off does not silence warnings |
 | `dashboardKey` | `true` | arm the `Ctrl+A` take-over: with a team in the workspace `Ctrl+A` opens the merged panel, and with no team (or with this off) the key keeps the host's own meaning. UNLIKE every other knob here it is read PER KEYPRESS through the config layer, so a `/settings` save applies without a restart. The take-over itself arms once the host has handed this session its live input kit — i.e. after any MPD scene or panel render (NOT CLAIMED 12). **On a host that offers the sidebar panel seam (dsh-tui 0.13.0+) this knob is INERT** — the contact stays disarmed whatever it says, so it is meaningful on OLD hosts only |
 | `dialogs` | `true` | enable the mediated dialog facade |

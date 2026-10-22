@@ -1,0 +1,23 @@
+{
+  "task": "T14 — nit: name <unconfigured> in the TUI README dialog paragraph",
+  "agent": "Deep Worker (M2)",
+  "at": "2026-10-22T17:10:07Z",
+  "scope": "two README files only (no src, no dist, no git write)",
+  "files": [
+    "packages/mpd-tui-plugin/README.md",
+    "packages/mpd-tui-plugin/README.zh-CN.md"
+  ],
+  "change": {
+    "en": "The /mpd-model 'Model menu (R3)' row now states: the slot panel shows each slot's CURRENT configuration from the typed slotResolutionOf answer; unconfigured -> <unconfigured> naming its missing leaves; malformed leaf -> <invalid>; no config service -> <unavailable>; the read is NEVER wrapped in a try/catch.",
+    "zh": "The mirrored 模型菜单（R3） row states the same four facts in Simplified Chinese."
+  },
+  "gate": {
+    "cmd": "bun run verify:docs",
+    "exit": 0,
+    "observed": "pairs=50 failed=0 violations=0 links=445 dead=0 — PASS (log: verify-docs.log, exit: verify-docs.exit)"
+  },
+  "mtimes": {
+    "packages/mpd-tui-plugin/README.md": "2026-10-23 01:10:02.885816773 +0800 (73902 bytes)",
+    "packages/mpd-tui-plugin/README.zh-CN.md": "2026-10-23 01:10:02.886308616 +0800 (72935 bytes)"
+  }
+}

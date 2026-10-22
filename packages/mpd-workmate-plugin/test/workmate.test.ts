@@ -195,9 +195,10 @@ test("init → list → reflect → match lifecycle with a sandbox HOME", async 
 
 // ── C1/C2/C3: the omo alias is gone from the workmate place ─────────────────────────────────────
 
-// AC4 of the model-config-live-refresh wave (fix/model-config-live-refresh): `mpd_workmate_spawn`
-// re-resolves the BASE's route PER SPAWN from the live config, so a change saved between two
-// spawns is what the SECOND spawn runs on — the frozen `meta.provider/model` stay provenance.
+// AC4 of the model-config-live-refresh wave, re-aimed by the slot-single-source contract: a
+// `mpd_workmate_spawn` re-resolves its route PER SPAWN from the SLOT, so a change saved between two
+// spawns is what the SECOND spawn runs on — the frozen `meta.provider/model` are provenance only
+// (contract `.mpd/plans/slot-single-source.md` §5), and an unusable slot REFUSES the spawn (§7).
 describe("AC4 — the spawn route is re-resolved per spawn (R2)", () => {
   test("a config change between two spawns carries to the second, and meta stays provenance", async () => {
     /** The sandbox home the library lands under, never the real home. */
@@ -240,7 +241,7 @@ describe("AC4 — the spawn route is re-resolved per spawn (R2)", () => {
     expect(spawned[0].agentOptions.provider).toBe("deepseek-official")
     expect(spawned[0].agentOptions.model).toBe("deepseek-v4-flash")
     expect(spawned[0].agentOptions.reasoningEffort).toBe("high")
-    // The in-process config change — an `agentRoutes` save the config row picked up live. No
+    // The in-process config change — a `teamModels` save the config row picked up live. No
     // re-init, no restart: the NEXT spawn must carry the new route.
     liveRoute = { provider: "gateway", model: "deepseek-v4-pro", reasoningEffort: "low" }
     await byName("mpd_workmate_spawn").execute({ name: "route-probe", task: "second" }, exec)
@@ -254,18 +255,73 @@ describe("AC4 — the spawn route is re-resolved per spawn (R2)", () => {
     expect(meta.model).toBe("deepseek-v4-flash")
   })
 
-  test("without a config service the roster base chain routes the spawn (and provenance is the last resort)", async () => {
+  test("an UNCONFIGURED slot REFUSES the spawn — the frozen meta is never a route (§5)", async () => {
     /** The sandbox home the library lands under, never the real home. */
     sandboxHome()
     /** Every tool descriptor the plugin registered, in registration order. */
     const tools: any[] = []
-    /** The options of the spawn the case starts. */
+    /** The options of every spawn the case starts; the refusal must leave this EMPTY. */
     const spawned: any[] = []
-    /** The roster double whose Deep Worker chain head carries a DISTINCT model. */
-    const roles = {
-      list: () => [{ ...DEEP_WORKER, chain: [{ provider: "deepseek-official", model: "deepseek-v4-pro" }] }],
-      get: (k: string) => (k === "hephaestus" ? { ...DEEP_WORKER, chain: [{ provider: "deepseek-official", model: "deepseek-v4-pro" }] } : null),
+    /** A config double whose TOTAL resolution says the slot is unconfigured. */
+    const mpdConfig = {
+      slotResolutionOf: () => ({
+        ok: false,
+        status: "unconfigured",
+        slot: "slot3",
+        members: ["Deep Worker", "Junior Engineer"],
+        missing: ["provider", "model"],
+        code: "SLOT_UNCONFIGURED",
+        message: "SLOT_UNCONFIGURED: slot3 (Deep Worker, Junior Engineer) is not usable — missing teamModels.slot3.provider, teamModels.slot3.model; nothing was written and no child was started. Configure it with /mpd-model, or set teamModels.slot3 in .mpd/mpd.jsonc.",
+      }),
     }
+    /** The fake cordis context: the roster double, the unconfigured config service and a spawn sink. */
+    const ctx: any = {
+      get: (k: string) => (k === "mpdRoles" ? makeRoles() : k === "mpdConfig" ? mpdConfig : undefined),
+      tools: {
+        /** Records a tool registration instead of validating it — no harness sits behind this fake context. */
+        register(d: any): void { tools.push(d) }
+      },
+      subagents: {
+        /** Records the spawn options and answers a minimal structured report. */
+        start: async (_kind: string, opts: any) => {
+          spawned.push(opts)
+          return { result: { structured: { name: "alice", summary: "done" }, stopReason: "complete" } }
+        }
+      },
+      provide: () => { /* this case reads the tools, not the service */ }
+    }
+    apply(ctx)
+    /** Looks one registered tool up by its registered name. */
+    const byName = (n: string): any => tools.find((t) => t.name === n)
+    /** The minimal execution context the tools read. */
+    const exec = { agent: { id: "agent-1" }, signal: new AbortController().signal }
+    // Init succeeds even with no slot: the library is provenance, and a route is a SPAWN-time read.
+    await byName("mpd_workmate_init").execute({ base: "Deep Worker", name: "unconfigured-probe" }, exec)
+    // The spawn REFUSES with the canonical sentence (and the branchable code).
+    /** The refusal captured instead of thrown, so its message and code can be inspected. */
+    const refusal = await byName("mpd_workmate_spawn").execute({ name: "unconfigured-probe", task: "go" }, exec).then(() => null, (e: any) => e)
+    expect(refusal).not.toBeNull()
+    expect(String(refusal.message)).toContain("SLOT_UNCONFIGURED")
+    expect(String(refusal.message)).toContain("teamModels.slot3")
+    expect(refusal.code).toBe("SLOT_UNCONFIGURED")
+    // NOTHING ran, and the provenance values on disk were never substituted for a route.
+    expect(spawned).toEqual([])
+  })
+
+  test("no config service + no DECLARED route refuses; an extension base's own route still runs", async () => {
+    /** The sandbox home the library lands under, never the real home. */
+    sandboxHome()
+    /** Every tool descriptor the plugin registered, in registration order. */
+    const tools: any[] = []
+    /** The options of every spawn the case starts. */
+    const spawned: any[] = []
+    /** The roster double: a BASE member with a BLANK chain (the slot decides, and no slot is
+     *  mounted), plus an EXTENSION member whose own declaration IS its route. */
+    const base = { ...DEEP_WORKER, chain: [] as Array<{ provider: string; model: string }> }
+    /** An extension-shaped role: it declares its own route, which no slot routes. */
+    const extension = { ...DEEP_WORKER, name: "Code Reviewer", id: "extension:flows:Code Reviewer", chain: [{ provider: "ext-provider", model: "ext-model" }], readonly: false }
+    /** The roster double answering both shapes by name. */
+    const roles = { list: () => [base, extension], get: (k: string) => (k === base.id ? base : k === extension.id ? extension : null) }
     /** The fake cordis context: NO config service, the roster double, a spawn sink. */
     const ctx: any = {
       get: (k: string) => (k === "mpdRoles" ? roles : undefined),
@@ -287,12 +343,17 @@ describe("AC4 — the spawn route is re-resolved per spawn (R2)", () => {
     const byName = (n: string): any => tools.find((t) => t.name === n)
     /** The minimal execution context the tools read. */
     const exec = { agent: { id: "agent-1" }, signal: new AbortController().signal }
-    await byName("mpd_workmate_init").execute({ base: "Deep Worker", name: "roster-route" }, exec)
-    await byName("mpd_workmate_spawn").execute({ name: "roster-route", task: "go" }, exec)
-    // No config service: the roster base's CURRENT chain head is the route — already slot-spliced
-    // per call by the roles row, so a configured slot reaches the spawn even without the config row.
-    expect(spawned[0].agentOptions.provider).toBe("deepseek-official")
-    expect(spawned[0].agentOptions.model).toBe("deepseek-v4-pro")
+    await byName("mpd_workmate_init").execute({ base: "Deep Worker", name: "base-probe" }, exec)
+    /** The base member's refusal: no slot service and no declared route leaves nothing to run on. */
+    const refusal = await byName("mpd_workmate_spawn").execute({ name: "base-probe", task: "go" }, exec).then(() => null, (e: any) => e)
+    expect(refusal).not.toBeNull()
+    expect(String(refusal.message)).toContain("no route configured for Deep Worker")
+    expect(spawned).toEqual([])
+    // The EXTENSION base still runs, on ITS OWN declared route — never on a shipped default.
+    await byName("mpd_workmate_init").execute({ base: "Code Reviewer", name: "ext-probe" }, exec)
+    await byName("mpd_workmate_spawn").execute({ name: "ext-probe", task: "review" }, exec)
+    expect(spawned[0].agentOptions.provider).toBe("ext-provider")
+    expect(spawned[0].agentOptions.model).toBe("ext-model")
   })
 })
 

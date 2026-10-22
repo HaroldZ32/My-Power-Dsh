@@ -1,0 +1,81 @@
+{
+  "task": "T4 — Work — TUI watchdog panel + /mpd watchdog + /mpd-model cleanup + DAG decision record",
+  "contracts": [
+    ".mpd/plans/watchdog-tui-panel.md",
+    ".mpd/plans/slot-single-source.md §3"
+  ],
+  "agent": "Deep Worker (M2)",
+  "at": "2026-10-22T16:52:39Z",
+  "revision": "8213ebc7 (dev, working tree; no git write performed)",
+  "changed": {
+    "new": [
+      "packages/mpd-tui-plugin/src/panel-watchdog.ts — WATCHDOG_PANEL_DESCRIPTOR_FROZEN (slug watchdog, title MPD watchdog, icon ⚠, order 13, minColumns 28), createWatchdogPanelComponent, registerWatchdogPanel, incidentAge, watchdogTeamRows, watchdogIncidentLines, WatchdogPanelDeps",
+      "packages/mpd-tui-plugin/test/panel-watchdog.test.ts — 14 arms (descriptor, empty/incident/ack/absent/phase content, ack-once, refused ack, r/scroll keys, command opened/absent/refused)",
+      "docs/tui-dag-renderer.md + docs/tui-dag-renderer.zh-CN.md — bilingual DAG renderer decision record"
+    ],
+    "modified": [
+      "packages/mpd-tui-plugin/src/index.ts — imports/registers the watchdog page (config knob `watchdog`, default true), wires /mpd watchdog (openPage with no scene fallback), attention deps (watchdogPanelId + readWatchdog), outcome record watchdogPanel",
+      "packages/mpd-tui-plugin/src/commands.ts — CommandActions.openWatchdog + the watchdog branch (opened names the discovered id; refused/fallback; absent in one line)",
+      "packages/mpd-tui-plugin/src/command-trees.ts — `watchdog` action + bilingual completion child",
+      "packages/mpd-tui-plugin/src/i18n.ts — 19 watchdog panel/command strings (EN + zh-CN)",
+      "packages/mpd-tui-plugin/src/dag-theme.ts — WATCHDOG_PANEL_SLUG, WATCHDOG_PANEL_MIN_COLUMNS",
+      "packages/mpd-tui-plugin/src/panel-core.ts — panelFloorColumns('watchdog')",
+      "packages/mpd-tui-plugin/src/panel-attention.ts — watchdogAttentionBadge, optional watchdogPanelId/readWatchdog/watchdogPollMs, second badge on the watchdog page id, 5 s unref'd poll cleared by stop()",
+      "packages/mpd-tui-plugin/src/model-menu.ts — scope panel / clear branch / TARGET_* / readRouteTables / memberRouteText / targetPanelOptions DELETED; chain is slot → provider → model → effort writing teamModels.<slot>; slot descriptions show the typed slotResolutionOf answer (<unconfigured>|<invalid>|<unavailable>|route)",
+      "packages/mpd-tui-plugin/src/settings.ts — slotResolutionDisplay/SlotResolutionDisplay/SlotResolutionServiceLike + exported configServiceOf; effectiveModelSummary drops the agentRoutes half and renders <unconfigured> from the typed answer (raw-leaf fallback for an older service); routeLeafOf removed, settingsFields slot-only",
+      "packages/mpd-tui-plugin/test/{model-menu,panel-attention,plugin}.test.ts — arms updated for the 4-question chain, the no-agentRoutes lock, the third panel, the watchdog badge and the new summary; a cross-package arm narrows the REAL resolveTeamModelSlot union",
+      "packages/mpd-tui-plugin/README.md + README.zh-CN.md — three pages, watchdog page/command/config key, 26 /settings rows, refresh cadences",
+      "docs/tui.md + docs/tui.zh-CN.md — three-page inventory, watchdog page/command/keys/degradation, reachability line, /mpd-model cleanup, new §11.9 amendment"
+    ]
+  },
+  "commands": [
+    {
+      "cmd": ".toolchain/node_modules/.bin/bun test packages/mpd-tui-plugin",
+      "exit": 0,
+      "log": "tui-tests.log",
+      "observed": "553 pass / 0 fail, 13371 expect() calls, 22 files"
+    },
+    {
+      "cmd": "node_modules/.bin/tsgo --noEmit",
+      "exit": 0,
+      "log": "typecheck.log",
+      "observed": "no output (clean) — run after the slots lane landed their schema change"
+    },
+    {
+      "cmd": "node scripts/verify-docs-parity.ts",
+      "exit": 0,
+      "log": "docs-parity.log",
+      "observed": "pairs=50 failed=0 violations=0 links=445 dead=0 — PASS (the new EN/zh pair discovered and checked)"
+    },
+    {
+      "cmd": "node scripts/verify-comment-coverage.ts",
+      "exit": 1,
+      "log": "comments.log",
+      "observed": "4 violations, NONE in packages/mpd-tui-plugin (mpd-bundle-plugin/src/settings-card.ts, mpd-config-plugin/test/{seed,team-models}.test.ts, mpd-roster-provider-plugin/test/effort-adaptation.test.ts — other lanes' files)"
+    },
+    {
+      "cmd": ".toolchain/node_modules/.bin/bun test packages/mpd-tui-adapter-plugin/test/no-direct-tui-access.test.ts packages/mpd-dsh-adapter-plugin/test/no-terminal-writes.test.ts",
+      "exit": 0,
+      "log": "gate-rows.log",
+      "observed": "5 pass / 0 fail (the two contract gate rows)"
+    }
+  ],
+  "proof_rung": {
+    "reached": "unit/integration through doubles — host-kit React double (hooks, effects, rows), TuiAdapter double, and the plugin-contract composition arm that proves the row registers all THREE panels + the /mpd watchdog command in one apply",
+    "not_reached": [
+      "No live PTY render of the watchdog page: the host loads packages/*/dist/index.js, dist is the CAPTAIN's deliverable (contract: 'Dist rebuilt by the captain'), and rebuilding it is outside this lane's scope — so a live boot would have exercised the OLD bytes, not this change.",
+      "No tmux/dsh-tui sandbox lane run for the same reason (tui-mount installs the published/installed bundle)."
+    ],
+    "next_step_for_captain": "rebuild packages/mpd-tui-plugin/dist/index.js with .toolchain/node_modules/.bin/bun build packages/mpd-tui-plugin/src/index.ts --target node --format esm --outfile packages/mpd-tui-plugin/dist/index.js, restart dsh-tui, then run /mpd watchdog and capture the pane (the page, the tab badge, and `a` advancing the watermark) as the live rung."
+  },
+  "unproven_bounds": [
+    "The watchdog page has never been rendered by the real host: its layout/keys/ack are proven against a host-kit double that models the documented props contract, not against Ink on a PTY.",
+    "The phase half of a team row is read from the team projection; a held team that is NOT the projected team prints `?` (the service carries hold ids and incidents only — no per-team phase).",
+    "The 5 s attention poll is proven with a 20 ms period; production cadence and its cost are not measured on a live host.",
+    "The three-page registration is proven against the plugin-contract double; the host's MAX_PANELS_PER_PLUGIN=4 admission of a third page is a documented host budget, not a live measurement in this lane."
+  ],
+  "discoveries_outside_scope": [
+    "agent-references/seam-adapters.md still states 'The sidebar carries TWO pages, not three' — now false with the watchdog page; that file is outside this lane's write scope and needs its owner.",
+    "verify:comments is red on four files in the slots lane (packages/mpd-bundle-plugin/src/settings-card.ts, packages/mpd-config-plugin/test/seed.test.ts, packages/mpd-config-plugin/test/team-models.test.ts, packages/mpd-roster-provider-plugin/test/effort-adaptation.test.ts) — reported, not edited."
+  ]
+}

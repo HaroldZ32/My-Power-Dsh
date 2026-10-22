@@ -237,7 +237,8 @@ version-gated OFF (see above), which is the outcome the upstream ask was for.
 **What the 0.14.0 wave changed (wave `tui-014-adaptation`).** Three things, all of them in the consumer
 rather than in this seam:
 
-1. **The sidebar carries TWO pages, not three.** The rich page `panel-dag.ts` and the plain merged page
+1. **The sidebar carries TWO pages, not three — at 0.14.0** (a THIRD page joined in the 2026-10-23 wave;
+   see the paragraph after this list). The rich page `panel-dag.ts` and the plain merged page
    `panel.ts` collapsed into ONE registration — `team` / title `MPD` / icon `❖` / `order` 10 — which
    renders the DAG page's frame, header + progress, legend, key-hint footer, click-to-pin detail body and
    badge with the host's curated subagent rows above the drawing. The standalone `dag` registration is
@@ -268,6 +269,16 @@ rather than in this seam:
    `provenance`, a blank `hostVersion`, no `readBack`, or `activation === "act0"`, names the failed
    field, and points at `--ids a,b,c` — measured against the polluted version-1 record, whose sha256 is
    unchanged by the refused run.
+
+**The 2026-10-23 wave added a THIRD page.** `panel-watchdog.ts` registers `watchdog` / title `MPD
+watchdog` / icon `⚠` / `order` 13 / `minColumns` 28 beside `team` (order 10) and `workmate` (order 12), so
+the sidebar now carries three pages and the adapter's discovered id set carries three ids. The page reads
+the `mpdWatchdog` service (reader `mpd-tui`) and NEVER the watchdog store files; `/mpd watchdog` opens it
+with NO scene fallback — an absent seam is reported in one line instead of a silent fallback — and the page
+degrades to an explicit `watchdog: not available` state when the service is absent. The page's attention
+badge (hold = warning, unread = info) publishes to its OWN id, so an unread incident reaches the tab without
+touching the other two pages. The enable-list keeper is unchanged: the third id is one more discovered
+value, not a new rule.
 
 **What is NOT granted, and is measured rather than assumed.** The seam is a sidebar panel: it still
 cannot enter or extend the host's own subagent dashboard, so the dashboard itself is untouched. And the

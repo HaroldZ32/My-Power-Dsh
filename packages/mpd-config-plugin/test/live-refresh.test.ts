@@ -1,6 +1,8 @@
-// AC1 + AC3 of the model-config-live-refresh wave (fix/model-config-live-refresh): the
-// ENTRY-CONFIG live refresh (a save to the `mpd-config` entry document re-loads `state` with no
-// reload call, R1) and the `agentRoutes` precedence chain with its loud validation (R2).
+// AC1 + AC3 of the model-config-live-refresh wave (fix/model-config-live-refresh), re-aimed by the
+// slot-single-source contract: the ENTRY-CONFIG live refresh (a save to the `mpd-config` entry
+// document re-loads `state` with no reload call, R1) and the ONE-configured-route-per-slot rule
+// with its TYPED, never-throwing resolution (contract `.mpd/plans/slot-single-source.md` §1-§9,
+// amendment 1).
 //
 // The harness is the ADAPTER SEAM, keyed by namespace: unlike the legacy wiring double (which
 // keeps ONE listener), this one records a listener PER ns, because the row now subscribes TWO
@@ -10,8 +12,7 @@ import { afterEach, describe, expect, test } from "bun:test"
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { apply, agentRouteEntryOfMember, teamModelRouteOfMember, Config } from "../src/index"
-import { AGENT_ROUTES_SCHEMA, ROSTER_AGENT_NAMES, SettingsSchema, TEAM_MODEL_SLOT_DEFAULTS } from "../src/settings-schema"
+import { apply, resolveTeamModelSlot, teamModelRouteOfMember } from "../src/index"
 
 /** Temp paths created by this file's fixtures, drained by the shared `afterEach` so no run leaks state. */
 const temps: string[] = []
@@ -163,9 +164,9 @@ describe("AC1 — an entry-config save refreshes state with NO reload call (R1)"
     /** Fake adapter whose entry document starts UNSET (the apply-time row config stands). */
     const h = harness({ roots: [root] })
     apply(h.ctx)
-    /** The service under test, read BEFORE any save: the slot's built-in default. */
+    /** The service under test, read BEFORE any save: nothing is configured, and nothing is invented. */
     const service = h.provided.mpdConfig
-    expect(service.get("teamModels.slot3.model")).toBe(TEAM_MODEL_SLOT_DEFAULTS.slot3.model)
+    expect(service.get("teamModels")).toBeUndefined()
     // THE SAVE: both front doors write the ENTRY document (`configForms.get("mpd-config")`, the
     // TUI's `locateNamespace` default) — this is the path the retired-namespace world travels.
     h.saveEntry({ teamModels: { slot3: { provider: "deepseek-official", model: "deepseek-v4-pro", reasoningEffort: "low" } } })
@@ -173,11 +174,11 @@ describe("AC1 — an entry-config save refreshes state with NO reload call (R1)"
     // AC1: the new value is live WITHOUT any `mpd_config_reload` call — the subscription re-loaded state.
     expect(service.get("teamModels.slot3.model")).toBe("deepseek-v4-pro")
     expect(service.get("teamModels.slot3.reasoningEffort")).toBe("low")
-    // A LEAF the save did not touch keeps its layer: slot1 is still the default, not wiped.
-    expect(service.get("teamModels.slot1")).toEqual(TEAM_MODEL_SLOT_DEFAULTS.slot1)
+    // A slot the save did not touch stays ABSENT — no default layer fills it in (contract §2).
+    expect(service.get("teamModels.slot1")).toBeUndefined()
   })
 
-  test("an agentRoutes save through the entry document routes the member on the NEXT read", () => {
+  test("a teamModels save through the entry document routes the member on the NEXT read", () => {
     /** Sole live workspace, so the entry refresh resolves against a real root. */
     const { root } = sandbox()
     /** Fake adapter whose entry document starts UNSET. */
@@ -185,11 +186,14 @@ describe("AC1 — an entry-config save refreshes state with NO reload call (R1)"
     apply(h.ctx)
     /** The service under test. */
     const service = h.provided.mpdConfig
-    expect(service.teamModelRouteOf("Deep Worker")).toEqual({ provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "high" })
-    // The save: an `agentRoutes` entry for Deep Worker through the ENTRY document.
-    h.saveEntry({ agentRoutes: { "Deep Worker": { provider: "gateway", model: "deepseek-v4-pro" } } })
+    // Before the save the member has NO route: undefined, never a built-in one (amendment 1).
+    expect(service.teamModelRouteOf("Deep Worker")).toBeUndefined()
+    expect(service.slotResolutionOf("Deep Worker")).toMatchObject({ ok: false, status: "unconfigured", slot: "slot3" })
+    // The save: the slot that routes Deep Worker, fully configured, through the ENTRY document.
+    h.saveEntry({ teamModels: { slot3: { provider: "gateway", model: "deepseek-v4-pro", reasoningEffort: "low" } } })
     h.emitEntry()
-    expect(service.teamModelRouteOf("Deep Worker")).toEqual({ provider: "gateway", model: "deepseek-v4-pro", reasoningEffort: "high" })
+    expect(service.teamModelRouteOf("Deep Worker")).toEqual({ provider: "gateway", model: "deepseek-v4-pro", reasoningEffort: "low" })
+    expect(service.slotResolutionOf("Deep Worker")).toMatchObject({ ok: true, slot: "slot3", route: { provider: "gateway", model: "deepseek-v4-pro", reasoningEffort: "low" } })
   })
 
   test("the entry refresh SURVIVES a later tool reload (the override is not reverted to the apply-time config)", async () => {
@@ -267,76 +271,119 @@ describe("AC1 — an entry-config save refreshes state with NO reload call (R1)"
   })
 })
 
-describe("AC3 — agentRoutes beats the slot beats the default; validation is loud (R2)", () => {
-  test("the vocabulary is the roster's eleven base names, derived from the slot groups", () => {
-    expect(ROSTER_AGENT_NAMES).toEqual([
-      "Architect", "Planner", "Reviewer", "Lead", "Senior Engineer",
-      "Researcher", "Explorer", "Plan Reviewer",
-      "Deep Worker", "Junior Engineer",
-      "Vision Analyst",
-    ])
+describe("AC3 — ONE configured route per slot; the deleted layers stay deleted (contract §2-§9)", () => {
+  test("a configured slot resolves to exactly its own route, for every member it routes", () => {
+    /** One fully configured slot3, the slot both executors share. */
+    const config = { teamModels: { slot3: { provider: "gateway", model: "gpt-x", reasoningEffort: "low" } } }
+    expect(resolveTeamModelSlot("Deep Worker", config)).toEqual({
+      ok: true,
+      slot: "slot3",
+      route: { provider: "gateway", model: "gpt-x", reasoningEffort: "low" },
+      fallbacks: [],
+      fallbacksDropped: 0,
+    })
+    // BOTH members of the group resolve through the SAME slot — the membership is one declaration.
+    expect(teamModelRouteOfMember("Junior Engineer", config)).toEqual({ provider: "gateway", model: "gpt-x", reasoningEffort: "low" })
+    // A slot that states NO effort yields no effort: none is invented, none is defaulted.
+    expect(teamModelRouteOfMember("Junior Engineer", { teamModels: { slot3: { provider: "p", model: "m" } } })).toEqual({ provider: "p", model: "m" })
   })
 
-  test("agentRoutes[name] beats teamModels.slot{N} beats the built-in default, per leaf", () => {
-    // agentRoutes > DEFAULT (no explicit slot): the entry wins wholly.
-    expect(teamModelRouteOfMember("Deep Worker", { agentRoutes: { "Deep Worker": { provider: "gateway", model: "gpt-x", reasoningEffort: "low" } } }))
-      .toEqual({ provider: "gateway", model: "gpt-x", reasoningEffort: "low" })
-    // agentRoutes > EXPLICIT slot: the entry wins even against a configured slot.
-    expect(teamModelRouteOfMember("Deep Worker", {
-      teamModels: { slot3: { provider: "slot-provider", model: "slot-model", reasoningEffort: "off" } },
-      agentRoutes: { "Deep Worker": { provider: "route-provider", model: "route-model" } },
-    })).toEqual({ provider: "route-provider", model: "route-model", reasoningEffort: "off" })
-    // PARTIAL entry: an unset leaf falls through to the slot's leaf (the per-field precedence).
-    expect(teamModelRouteOfMember("Deep Worker", {
-      teamModels: { slot3: { provider: "slot-provider", model: "slot-model", reasoningEffort: "off" } },
-      agentRoutes: { "Deep Worker": { model: "route-model" } },
-    })).toEqual({ provider: "slot-provider", model: "route-model", reasoningEffort: "off" })
-    // slot{N} > default without any entry: the pre-existing precedence stands unchanged.
-    expect(teamModelRouteOfMember("Deep Worker", { teamModels: { slot3: { provider: "slot-provider", model: "slot-model" } } }))
-      .toEqual({ provider: "slot-provider", model: "slot-model", reasoningEffort: "high" })
-    expect(teamModelRouteOfMember("Deep Worker", {})).toEqual(TEAM_MODEL_SLOT_DEFAULTS.slot3)
-    // An EMPTY entry is inert ({} = no override), never an error.
-    expect(teamModelRouteOfMember("Deep Worker", { agentRoutes: { "Deep Worker": {} } })).toEqual(TEAM_MODEL_SLOT_DEFAULTS.slot3)
-    // A non-roster member is still not slot-routed at all.
-    expect(teamModelRouteOfMember("not-a-roster-member", { agentRoutes: { "Deep Worker": { model: "x" } } })).toBeUndefined()
+  test("an absent slot is TYPED unconfigured — the resolver and the service never throw (amendment 1)", () => {
+    /** The total resolution of a member whose slot the workspace never declared. */
+    const resolution = resolveTeamModelSlot("Deep Worker", {})
+    expect(resolution.ok).toBe(false)
+    if (resolution.ok || resolution.status === "unrouted") throw new Error("unreachable: the slot was not configured")
+    expect(resolution.status).toBe("unconfigured")
+    expect(resolution.slot).toBe("slot3")
+    expect(resolution.members).toEqual(["Deep Worker", "Junior Engineer"])
+    expect(resolution.missing).toEqual(["provider", "model"])
+    expect(resolution.code).toBe("SLOT_UNCONFIGURED")
+    // ONE structured failure: the slot, its members, both recovery paths, and the no-side-effect claim.
+    expect(resolution.message).toContain("SLOT_UNCONFIGURED")
+    expect(resolution.message).toContain("teamModels.slot3.provider")
+    expect(resolution.message).toContain("teamModels.slot3.model")
+    expect(resolution.message).toContain("/mpd-model")
+    expect(resolution.message).toContain(".mpd/mpd.jsonc")
+    expect(resolution.message).toContain("nothing was written and no child was started")
+    // The TOTAL route read answers undefined for it — a display path must never see an exception.
+    expect(teamModelRouteOfMember("Deep Worker", {})).toBeUndefined()
   })
 
-  test("a malformed entry fails the read LOUDLY, naming the member (hand-edited files have no schema)", () => {
-    // A non-object entry is the loudest class: the value cannot be a route at all.
-    expect(() => teamModelRouteOfMember("Deep Worker", { agentRoutes: { "Deep Worker": "deepseek-v4-pro" } })).toThrow(/agentRoutes\.Deep Worker/)
-    // An unknown leaf is rejected, never silently ignored.
-    expect(() => teamModelRouteOfMember("Deep Worker", { agentRoutes: { "Deep Worker": { provider: "p", modal: "typo" } } })).toThrow(/unknown leaf "modal"/)
-    // A non-string leaf is rejected with its own name.
-    expect(() => teamModelRouteOfMember("Deep Worker", { agentRoutes: { "Deep Worker": { model: 7 } } })).toThrow(/agentRoutes\.Deep Worker\.model/)
-    // The guard is reachable through the entry reader alone (the exported half of the validation).
-    expect(agentRouteEntryOfMember("Vision Analyst", { agentRoutes: { "Vision Analyst": { model: "deepseek-v4-flash-vision-exp" } } })).toEqual({ model: "deepseek-v4-flash-vision-exp" })
-    // A member with no entry resolves to an EMPTY entry — distinguishable from "no table".
-    expect(agentRouteEntryOfMember("Lead", { agentRoutes: { "Deep Worker": { model: "x" } } })).toEqual({})
+  test("model-without-provider is unconfigured, naming ONLY the missing leaf", () => {
+    /** A slot that states a model but no provider. */
+    const resolution = resolveTeamModelSlot("Researcher", { teamModels: { slot2: { model: "m" } } })
+    expect(resolution.ok).toBe(false)
+    if (resolution.ok || resolution.status === "unrouted") throw new Error("unreachable: the slot has no provider")
+    expect(resolution.status).toBe("unconfigured")
+    expect(resolution.missing).toEqual(["provider"])
+    expect(resolution.message).toContain("teamModels.slot2.provider")
+    expect(resolution.message).not.toContain("teamModels.slot2.model")
   })
 
-  test("the SCHEMA rejects an unknown agent name loudly — namespace and row config both", () => {
-    // The settings-namespace schema: an unknown NAME is a validation error, never a silent drop.
-    expect(() => (SettingsSchema as any)({ agentRoutes: { "Bogus Agent": { model: "deepseek-v4-pro" } } })).toThrow()
-    // The ROW CONFIG schema (what the loader validates the patch row and the settings editor
-    // validates a save against) inherits the same key union through the shared knob dict.
-    expect(() => (Config as any)({ agentRoutes: { "bogus": { model: "deepseek-v4-pro" } } })).toThrow()
-    // A malformed ENTRY value is equally loud at schema time.
-    expect(() => (SettingsSchema as any)({ agentRoutes: { "Deep Worker": "deepseek-v4-pro" } })).toThrow()
-    expect(() => (SettingsSchema as any)({ agentRoutes: { "Deep Worker": { model: 7 } } })).toThrow()
-    // The healthy table resolves: entries kept verbatim, absent names absent.
-    expect((SettingsSchema as any)({ agentRoutes: { "Deep Worker": { model: "deepseek-v4-pro" } } }).agentRoutes).toEqual({ "Deep Worker": { model: "deepseek-v4-pro" } })
-    expect((SettingsSchema as any)({}).agentRoutes).toEqual({})
-    // The standalone knob schema carries the same contract (the exported declaration under test).
-    expect(() => (AGENT_ROUTES_SCHEMA as any)({ "Not A Member": {} })).toThrow()
-    expect((AGENT_ROUTES_SCHEMA as any)({ "Plan Reviewer": { reasoningEffort: "max" } })).toEqual({ "Plan Reviewer": { reasoningEffort: "max" } })
+  test("a malformed leaf is `invalid`, naming its path — and still never throws", () => {
+    /** A slot whose model leaf is a number, which no route can use. */
+    const resolution = resolveTeamModelSlot("Vision Analyst", { teamModels: { slot4: { provider: "p", model: 7 } } })
+    expect(resolution.ok).toBe(false)
+    if (resolution.ok || resolution.status === "unrouted") throw new Error("unreachable: the model leaf is malformed")
+    expect(resolution.status).toBe("invalid")
+    expect(resolution.problem).toBe("teamModels.slot4.model")
+    expect(resolution.message).toContain("must be a string")
+    // A slot that is not an object at all is `invalid` too, and the sentence names the key.
+    const notObject = resolveTeamModelSlot("Vision Analyst", { teamModels: { slot4: "deepseek-v4-flash" } })
+    expect(notObject.ok).toBe(false)
+    if (notObject.ok || notObject.status === "unrouted") throw new Error("unreachable: the slot value is not an object")
+    expect(notObject.status).toBe("invalid")
+    expect(notObject.problem).toBe("teamModels.slot4")
+    // `null` is the JSON spelling of unset, so it is `unconfigured`, never `invalid`.
+    const nullLeaf = resolveTeamModelSlot("Vision Analyst", { teamModels: { slot4: { provider: "p", model: "m", reasoningEffort: null } } })
+    expect(nullLeaf).toMatchObject({ ok: true, route: { provider: "p", model: "m" } })
   })
 
-  test("the mpd_config_get tool's consumed-keys disclosure names agentRoutes", () => {
+  test("fallbacks are preserved in order; a malformed entry is dropped, never fatal (contract §8)", () => {
+    /** A slot carrying a two-entry chain whose second entry is malformed. */
+    const resolution = resolveTeamModelSlot("Architect", {
+      teamModels: { slot1: { provider: "p", model: "m", fallbacks: [{ provider: "bp1", model: "bm1", reasoningEffort: "low" }, { provider: "bp2" }, { provider: "bp3", model: "bm3", reasoningEffort: 9 }] } },
+    })
+    expect(resolution.ok).toBe(true)
+    if (!resolution.ok) throw new Error("unreachable: the slot is configured")
+    // Order is the user's own; only the well-formed entry survives; the drops are COUNTED.
+    expect(resolution.fallbacks).toEqual([{ provider: "bp1", model: "bm1", reasoningEffort: "low" }])
+    expect(resolution.fallbacksDropped).toBe(2)
+    // A fallbacks leaf that is not an array is dropped as a whole, and the run still resolves.
+    const container = resolveTeamModelSlot("Architect", { teamModels: { slot1: { provider: "p", model: "m", fallbacks: "nope" } } })
+    expect(container).toMatchObject({ ok: true, fallbacks: [], fallbacksDropped: 1 })
+  })
+
+  test("the deletion lock: a FULL agentRoutes block resolves identically to none", () => {
+    /** A leftover per-member route table, exactly as an OLD workspace file still carries it. */
+    const leftover = {
+      agentRoutes: {
+        Architect: { provider: "route-provider", model: "route-model", reasoningEffort: "low" },
+        "Deep Worker": { model: "route-model" },
+        "Vision Analyst": { provider: "route-provider" },
+      },
+    }
+    // The block is IGNORED: the resolution is byte-for-byte the one a workspace with no table gets.
+    expect(resolveTeamModelSlot("Deep Worker", leftover)).toEqual(resolveTeamModelSlot("Deep Worker", {}))
+    expect(resolveTeamModelSlot("Architect", leftover)).toEqual(resolveTeamModelSlot("Architect", {}))
+    expect(resolveTeamModelSlot("Vision Analyst", leftover)).toEqual(resolveTeamModelSlot("Vision Analyst", {}))
+    // And it cannot move a CONFIGURED slot either: the slot alone decides.
+    expect(teamModelRouteOfMember("Deep Worker", { ...leftover, teamModels: { slot3: { provider: "p", model: "m" } } })).toEqual({ provider: "p", model: "m" })
+  })
+
+  test("a member no slot routes is `unrouted` and answers no route (extension roles keep working)", () => {
+    expect(resolveTeamModelSlot("not-a-roster-member", { teamModels: { slot1: { provider: "p", model: "m" } } })).toEqual({ ok: false, status: "unrouted", slot: undefined })
+    expect(teamModelRouteOfMember("not-a-roster-member", { teamModels: { slot1: { provider: "p", model: "m" } } })).toBeUndefined()
+  })
+
+  test("the mpd_config_get disclosure names the slot leaves, and no longer the deleted table", () => {
     /** Every tool the row registered, captured by a minimal ctx the reader can walk. */
     const registered: any[] = []
     apply({ tools: { register: (t: any) => registered.push(t) }, provide: () => { /* no service needed here */ } } as any, {})
     /** The config-read tool, whose description is the knob surface's own documentation. */
     const tool = registered.find((t) => t.name === "mpd_config_get")
-    expect(String(tool.description)).toContain("agentRoutes")
+    expect(String(tool.description)).toContain("teamModels.slot1|slot2|slot3|slot4")
+    expect(String(tool.description)).toContain("fallbacks")
+    expect(String(tool.description)).not.toContain("agentRoutes")
   })
 })

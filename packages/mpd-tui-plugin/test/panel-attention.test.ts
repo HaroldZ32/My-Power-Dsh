@@ -8,7 +8,7 @@
 // APPEARED, a refusal never becoming a retry loop, and disposal leaving no subscriber behind.
 import { describe, expect, test } from "bun:test"
 
-import { armPanelAttention, attentionBadge, panelsSummaryLine, type PanelAttentionDeps } from "../src/panel-attention.js"
+import { armPanelAttention, attentionBadge, panelsSummaryLine, watchdogAttentionBadge, type PanelAttentionDeps } from "../src/panel-attention.js"
 import type { PanelBadge } from "../src/panel-core.js"
 import type { Log } from "../src/log.js"
 import type { TeamWorkflow } from "../src/team-state.js"
@@ -614,5 +614,134 @@ describe("the process-wide auto-open latch (a panel-seam re-bind)", () => {
     expect(second.opens()).toBe(0)
     expect(after.opened()).toBe(false)
     after.stop()
+  })
+})
+
+// ── the WATCHDOG half of the badge (contract `.mpd/plans/watchdog-tui-panel.md` §7) ──────────────
+//
+// A hold is raised by the watchdog's OWN timer and touches no team record, so the team feed carries no
+// event for the state change an operator most needs to see. The surface therefore publishes a SECOND
+// badge on the WATCHDOG page's own tab, and re-takes it on its own poll. These arms pin: the badge
+// ladder (hold > unread), the separate PAGE it is published to, the CLEAR path, that it never opens a
+// page, and that the poll is what carries a hold the feed never announced.
+describe("the watchdog page's own badge arm", () => {
+  /** One badge call, with the page it addressed. */
+  type BadgeCall = { readonly id: string; readonly badge: PanelBadge | null }
+
+  /** The two pages' routes, with every badge call recorded per id. */
+  function fakeTwoPages(): {
+    readonly deps: Pick<PanelAttentionDeps, "panelId" | "openPanel" | "badgePanel" | "watchdogPanelId">
+    readonly calls: BadgeCall[]
+    readonly opens: number
+  } {
+    /** Every badge call, in order. */
+    const calls: BadgeCall[] = []
+    /** How many open attempts were made (the watchdog half must never open anything). */
+    let opens = 0
+    return {
+      deps: {
+        panelId: (): string => "act1:team",
+        watchdogPanelId: (): string => "act1:watchdog",
+        openPanel: (): boolean => {
+          opens += 1
+          return true
+        },
+        badgePanel: (id: string, badge: PanelBadge | null): boolean => {
+          calls.push({ id, badge })
+          return true
+        },
+      },
+      calls,
+      /** How many open attempts were made (the watchdog half must never open anything). */
+      get opens(): number {
+        return opens
+      },
+    }
+  }
+
+  /** A watchdog view fixture. */
+  const view = (holds: readonly string[], unread: readonly unknown[] = []): never =>
+    ({ holds, unread }) as never
+
+  test("a hold is a warning and counts with the unread incidents; unread alone is info; nothing clears", () => {
+    expect(watchdogAttentionBadge(view([]))).toBeNull()
+    expect(watchdogAttentionBadge(view(["team-a"]))).toEqual({ level: "warning", unread: 1 })
+    expect(watchdogAttentionBadge(view([], [{}]))).toEqual({ level: "info", unread: 1 })
+    // The count is the SUM: the tab chip shows ONE number, and the operator asks "anything for me here?".
+    expect(watchdogAttentionBadge(view(["team-a", "team-b"], [{}, {}]))).toEqual({ level: "warning", unread: 4 })
+  })
+
+  test("the badge is published on the WATCHDOG page's id, and the team page keeps its own badge", () => {
+    /** The recorded routes. */
+    const pages = fakeTwoPages()
+    /** The surface under test: a failed task on the team page, a hold on the watchdog page. */
+    const attention = armPanelAttention({
+      ...pages.deps,
+      readWorkflow: () => workflow([{ visual: "failed" }]),
+      feed: undefined,
+      autoOpen: true,
+      readWatchdog: () => view(["team-a"]),
+      // The initial pass is the arm's only trigger, so no poll may disturb the call order.
+      watchdogPollMs: 0,
+      log: silentLog(),
+    })
+    // TWO pages, TWO badges: the team badge is the task ladder's, the watchdog badge the hold's.
+    expect(pages.calls).toEqual([
+      { id: "act1:team", badge: { level: "error", unread: 1 } },
+      { id: "act1:watchdog", badge: { level: "warning", unread: 1 } },
+    ])
+    // The watchdog half NEVER opens the page: the command and the tab are the operator's own choice.
+    expect(pages.opens).toBe(0)
+    attention.stop()
+  })
+
+  test("an emptied view CLEARS the watchdog badge — one null publish, not a stale number", () => {
+    /** The recorded routes. */
+    const pages = fakeTwoPages()
+    /** The view the surface reads; emptied after the first pass. */
+    let current: never = view(["team-a"])
+    /** The surface under test. */
+    const attention = armPanelAttention({
+      ...pages.deps,
+      readWorkflow: () => undefined,
+      feed: undefined,
+      autoOpen: false,
+      readWatchdog: () => current,
+      watchdogPollMs: 0,
+      log: silentLog(),
+    })
+    expect(pages.calls.at(-1)).toEqual({ id: "act1:watchdog", badge: { level: "warning", unread: 1 } })
+    current = view([])
+    attention.observe(false)
+    expect(pages.calls.at(-1)).toEqual({ id: "act1:watchdog", badge: null })
+    attention.stop()
+  })
+
+  test("the POLL re-takes the badge: a hold raised after arming reaches the closed tab", async () => {
+    /** The recorded routes. */
+    const pages = fakeTwoPages()
+    /** The view the surface reads: empty at arm, held once the test flips it. */
+    let current: never = view([])
+    /** The surface under test, polling far faster than production so the arm stays deterministic. */
+    const attention = armPanelAttention({
+      ...pages.deps,
+      readWorkflow: () => undefined,
+      feed: undefined,
+      autoOpen: false,
+      readWatchdog: () => current,
+      watchdogPollMs: 20,
+      log: silentLog(),
+    })
+    // The arm-time pass published the null badge (the clear), and nothing else yet.
+    expect(pages.calls.filter((call) => call.id === "act1:watchdog")).toEqual([{ id: "act1:watchdog", badge: null }])
+    current = view(["team-a"])
+    await new Promise((resolve) => setTimeout(resolve, 120))
+    expect(pages.calls.filter((call) => call.id === "act1:watchdog")).toContainEqual({ id: "act1:watchdog", badge: { level: "warning", unread: 1 } })
+    attention.stop()
+    // AFTER stop THE POLL IS GONE: no call arrives once the surface is retired.
+    /** How many calls had landed when the surface stopped. */
+    const settled = pages.calls.length
+    await new Promise((resolve) => setTimeout(resolve, 80))
+    expect(pages.calls.length).toBe(settled)
   })
 })

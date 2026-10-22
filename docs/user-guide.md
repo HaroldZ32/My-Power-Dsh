@@ -338,11 +338,17 @@ interrupt_agent { target }                                                # Lead
   on the team path through a tool guard in `mpd-roles-plugin` keyed on team membership, because the
   official `spawn_teammate` cannot take a per-teammate tool filter. Workers (Senior Engineer, Junior
   Engineer, Deep Worker, Lead, Reviewer) implement and verify.
-- **A teammate runs on the route of the session that staged it** — the captain's in a top-level spawn,
-  the Lead's in a team-lead spawn. `mpd-roster-provider` applies a roster member's `teamModels.slot*`
-  route only when the teammate `description` NAMES that member, and the single-call consult paths
-  (`mpd_role_spawn`, `mpd_workmate_spawn`) pass their route explicitly. Prompt text cannot change a
-  route: state the member's NAME in the `description`, not a model in the prompt.
+- **A slot is the ONE route of a roster member — and there is no built-in default.** Every route comes
+  from that member's `teamModels.slot{N}`: its configured `provider` + `model`, its optional
+  `reasoningEffort`, plus the slot's OWN optional `fallbacks` chain. `agentRoutes` is DELETED: a
+  leftover block in an old file is ignored and never rewritten. A slot that is not configured (or whose
+  leaf is malformed) REFUSES the spawn with ONE structured `SLOT_UNCONFIGURED` error naming the slot,
+  its members, the missing leaves and both recovery paths — nothing is written and no child is started.
+  The chain is consumed ONCE before the spawn: the first route the model catalog POSITIVELY lists wins
+  (a route nobody listed is not thereby unavailable), and the winner's effort is adapted. A teammate
+  `description` that NAMES a roster member is routed by that member's slot; any other teammate runs on
+  the route of the session that staged it (the captain's in a top-level spawn, the Lead's in a
+  team-lead spawn), and prompt text cannot change a route.
 - **Workmate-backed members are a prompt, not an injection.** Nothing carries a workmate's persona
   into a teammate automatically any more: initialize or pick the workmate
   (`mpd_workmate_init` / `mpd_workmate_match`), read what it should carry, and put that text into the
@@ -435,10 +441,9 @@ transcript line is claimed. The full list is §10 NOT-CLAIMED of [`tui.md`](tui.
 
 ### 7.2 The `/settings` screen and the `mpd.jsonc` bridge
 
-`/settings` edits the real `mpd.jsonc` knobs — 59 in all (the original 13, the twelve
-`teamModels` slot leaves and the 33 `agentRoutes` leaves — eleven members × three — plus the TUI
-surface's own knob; the model-route leaves are selection-only fields whose options come from the live
-model catalog, with the declared lists as fallback), among them `hashline.maxDiffChars`,
+`/settings` edits the real `mpd.jsonc` knobs — 26 in all (the original 13, the twelve `teamModels`
+slot leaves and the TUI surface's own knob; the slot leaves are selection-only fields whose options come
+from the live model catalog, with the declared lists as fallback), among them `hashline.maxDiffChars`,
 `commentChecker.autoCheck`, `ulw.maxRounds`, `memory.vcs`, `team.stateDir` and `boulder.dir` — under the
 harness settings namespace `mpd`. That namespace is served by `packages/mpd-config-plugin`, whose base
 is the workspace FILE value, so the screen opens on your file rather than on a schema default; a save
@@ -449,9 +454,8 @@ Two things to know before you rely on it:
 
 - **A save lands in the running process.** The config service re-resolves on every settings save and on
   a watched edit of `<workspace>/.mpd/mpd.jsonc`, and the model-config knobs (`modelchain.*`,
-  `teamModels.slot*`, `agentRoutes.*`) are resolved per use, so a saved change reaches the next
-  `mpd_config_get`, `mpd_modelchain_resolve` or spawn with **no restart** (`mpd_config_reload` forces a
-  re-read). The other knobs still follow the mount-time capture — §9.1 states it per knob. The
+  `teamModels.slot*`) are resolved per use, so a saved change reaches the next `mpd_config_get`,
+  `mpd_modelchain_resolve` or spawn with **no restart** (`mpd_config_reload` forces a re-read). The other knobs still follow the mount-time capture — §9.1 states it per knob. The
   on-screen hint says exactly this.
 - **Two named skip cases.** The settings path carries no workspace identity, so the write target is
   the live session workspaces at the moment of the save: with **no** live session the save is stored in
@@ -567,8 +571,7 @@ rather than by a graph-layout library.
 | `extensions.mcp.*` | mpd-ext | MCP bridge defaults: `enabled`, `connectTimeoutMs`, `toolCallTimeoutMs` |
 | `modelchain.*` | mpd-modelchain | provider/model chains per roster role |
 | `team.stateDir` | the mpd plugins that read legacy team records (watchdog web routes, compaction, the TUI team scene, the workmate in-use check) | where those records live (defaults to `.mpd/team`). The official team plugin does not read it |
-| `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate (via mpd-config) | the four **team-model slots**: `{provider, model, reasoningEffort}` per slot, defaulting to `deepseek-official` / `deepseek-v4-flash` at `max`/`high`/`high` (slot 4: `deepseek-official` / `deepseek-v4-flash-vision-exp` at `high`). Slot 1 routes Architect/Planner/Reviewer/Lead/Senior Engineer, slot 2 Researcher/Explorer/Plan Reviewer, slot 3 Deep Worker/Junior Engineer, slot 4 Vision Analyst — the vision member, whose slot model MUST accept image input. They are resolved by the single-call consult paths (`mpd_role_spawn`, `mpd_workmate_spawn`), which pass the route explicitly; a `spawn_teammate` teammate gets a slot only when its `description` NAMES a roster member, and any other teammate runs on the route of the session that staged it (§6). A slot that cannot be resolved fails the corresponding spawn **loudly** (the member and the slot are named, nothing is written) and an effort is never silently clamped; the ONE exception is a model whose live catalog entry declares NO reasoning efforts at all — it is sent none, so the spawn still runs (the runtime half of the adaptation the settings pickers already make). Editable as selection-only fields in **Settings → MPD** and the TUI `/settings` section, which show the current effective value before you edit it; a saved change is re-read in the running process — the next spawn or resolve carries it, no restart (`mpd_config_reload` forces it). |
-| `agentRoutes.<name>.*` | mpd-roles / mpd-workmate (via mpd-config) | per roster base NAME (`Architect`, `Researcher`, `Planner`, `Deep Worker`, `Senior Engineer`, `Lead`, `Explorer`, `Reviewer`, `Plan Reviewer`, `Vision Analyst`, `Junior Engineer`) → `{provider?, model?, reasoningEffort?}`, each leaf optional. **Precedence, per leaf:** `agentRoutes[<name>]` > that member's `teamModels.slot{N}` > the built-in default. A workmate re-resolves its base's route on every spawn (an in-flight task keeps the route it started with; the next task carries the change; the frozen `meta.provider`/`meta.model` is provenance only). An unknown member name or a malformed entry fails validation **loudly** — it is never silently ignored. Editable in **Settings → MPD** and the TUI `/settings` section, which show the current effective value before you edit it. |
+| `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate / mpd-roster-provider (via mpd-config) | the four **team-model slots**: ONE configured route per slot — `{provider, model, reasoningEffort?}` plus the slot's OWN optional `fallbacks: [{provider, model, reasoningEffort?}, …]`, in precedence order. **There is no built-in default layer** (`TEAM_MODEL_SLOT_DEFAULTS` is gone): a slot the workspace never configured has NO route, and every spawn it would route is REFUSED with ONE structured `SLOT_UNCONFIGURED` error naming the slot, its members, the missing leaves, and both recovery paths (`/mpd-model`, or `teamModels.slotN` in `.mpd/mpd.jsonc`) — nothing is written and no child is started. The fallback chain is consumed ONCE before the spawn: the first route the live catalog POSITIVELY lists wins ("not listed" is not "unavailable"; with no positive listing the primary stands), the winner then passes the reasoning-effort adaptation, and a malformed entry is dropped with one log line — never fatal. Slot 1 routes Architect/Planner/Reviewer/Lead/Senior Engineer, slot 2 Researcher/Explorer/Plan Reviewer, slot 3 Deep Worker/Junior Engineer, slot 4 Vision Analyst — the vision member, whose slot model MUST accept image input. A `spawn_teammate` teammate gets a slot only when its `description` NAMES a roster member; any other teammate runs on the route of the session that staged it (§6). An effort is never silently clamped; the ONE exception is a model whose catalog entry declares NO reasoning efforts at all — it is sent none, so the spawn still runs. **Initial config is FILE initialization, not a runtime default:** a workspace whose `.mpd/mpd.jsonc` declares no `teamModels` is seeded ONCE at mount, from your configured providers via the LLM catalog (model = the `deepseek-flash` family; slot1 `max`, slots 2-4 `high`), and an existing block or user edit is never rewritten; a successful seed is durably marked in `<workspace>/.mpd/model-config-seed.json` (created once, never overwritten, consulted before any attempt), so a block you delete on purpose is NEVER re-seeded — if the catalog is unavailable nothing is written and the first spawn reports `SLOT_UNCONFIGURED`. Editable as selection-only fields in **Settings → MPD** and the TUI `/settings` section (an unconfigured slot renders `<unconfigured>` with the leaves it lacks); a saved change is re-read in the running process, no restart (`mpd_config_reload` forces it). |
 
 `mpd-codegraph` is deliberately absent from this table: it takes `autoInit`, `initTimeoutMs`,
 `cooldownMs` and `binary` from its **bundle-patch row** options (read at apply time), and no plugin
@@ -587,7 +590,7 @@ Three things do not wait for that restart, and all are useful:
 
 - **The model-config knobs are live-refreshed in-process.** The config service re-resolves on every
   settings save and on a watched edit of `<workspace>/.mpd/mpd.jsonc`, and the model routes
-  (`modelchain.*`, `teamModels.slot*`, `agentRoutes.*`) are read per use, so the next
+  (`modelchain.*`, `teamModels.slot*`) are read per use, so the next
   `mpd_modelchain_resolve` call or the next single-call consult / workmate spawn / teammate start carries the
   new route with no restart. `mpd_config_reload` remains the manual fallback when you want to force a
   re-read.
@@ -609,8 +612,7 @@ Three things do not wait for that restart, and all are useful:
 | `modelchain.*` | mpd-modelchain | per call, from the live service | live — no restart: every `mpd_modelchain_resolve` re-reads the overlay, so a settings save or a file edit changes the next resolution; `mpd_config_reload` forces a re-read |
 | `extensions.enable` / `.disable` / `.mcp.*` | mpd-ext | when the plugin starts (process-level) | after a restart |
 | `team.stateDir` | the mpd plugins that read legacy team records, through the live service | per call | right after the service re-reads the file (`mpd_config_reload`, or any settings save). These are LEGACY records: the official team plugin keeps its roster, mailbox and board in the Lead's session log, not here |
-| `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate for the single-call consult paths (`mpd_role_spawn`, `mpd_workmate_spawn`), and mpd-roster-provider for a `spawn_teammate` whose `description` names a roster member | at spawn, from the live service | the next single-call consult: a settings save or a hand edit of `<workspace>/.mpd/mpd.jsonc` is re-read in-process, so no restart is needed; `mpd_config_reload` forces a re-read. A `spawn_teammate` teammate whose `description` NAMES a roster member IS routed by that member's slot through mpd-roster-provider-plugin; any other teammate runs on the route of the session that staged it, and prompt text cannot change a route |
-| `agentRoutes.<name>.*` | mpd-roles / mpd-workmate on the single-call consult paths, and the mpd-roster-provider route for a named `spawn_teammate` teammate | at spawn, from the live service | the next single-call consult or workmate spawn for that member: `agentRoutes[<name>]` outranks the member's `teamModels.slot{N}` leaf, which outranks the built-in default, per leaf. Unknown member names and malformed entries fail validation loudly |
+| `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate (single-call consult paths `mpd_role_spawn`, `mpd_workmate_spawn`) and mpd-roster-provider (a `spawn_teammate` whose `description` names a roster member) | at spawn, from the live service | live — no restart: a settings save or a hand edit of `<workspace>/.mpd/mpd.jsonc` is re-read in-process, so the NEXT spawn carries it; `mpd_config_reload` forces a re-read. ONE route per slot with no default layer: an unconfigured or malformed slot REFUSES the spawn with `SLOT_UNCONFIGURED` (nothing written, no child started), and the slot's own `fallbacks` chain is consumed once before the spawn. A `spawn_teammate` teammate whose `description` NAMES a roster member IS routed by that member's slot; any other teammate runs on the route of the session that staged it, and prompt text cannot change a route |
 | `watchdog.*` | mpd-team-watchdog | at mount, on a settings update, and every tick | live — no restart |
 
 `mpd-codegraph`'s knobs are the exception that proves the rule: they are patch-row options
@@ -740,8 +742,8 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp   # start from a working skele
 - **CodeGraph tools answer nothing** → run `/mpd-codegraph` to build `.codegraph/codegraph.db`, and
   install `@colbymchenry/codegraph` or set `MPD_DSH_CODEGRAPH_BIN` (its primary spelling
   `MPD_CODEGRAPH_BIN` is read first).
-- **A knob you saved does not apply** → the model-config knobs (`modelchain.*`, `teamModels.slot*`,
-  `agentRoutes.*`) are live-refreshed: re-read with `mpd_config_get` / `mpd_modelchain_resolve`, or force
+- **A knob you saved does not apply** → the model-config knobs (`modelchain.*`, `teamModels.slot*`)
+  are live-refreshed: re-read with `mpd_config_get` / `mpd_modelchain_resolve`, or force
   it with `mpd_config_reload`. Every other knob is captured at mount, so restart the session — and
   `mpd_config_get` proving the new value is NOT proof that a mount-captured plugin acts on it (§9.1
   lists which knobs are live instead).

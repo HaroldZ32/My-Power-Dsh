@@ -1,0 +1,33 @@
+### bun test packages/mpd-team-core-plugin
+(pass) AC-D5 — the bounds this fix must NOT widen > a session on the roster of TWO teams resolves NEITHER, and the refusal names them [4.13ms]
+
+ 293 pass
+ 0 fail
+ 1374 expect() calls
+Ran 293 tests across 20 files. [1316.00ms]
+[exit 0]
+
+### bun run typecheck
+16
+0
+[root typecheck: see result.json for the honest bound]
+
+### bun run verify:comments
+packages/mpd-config-plugin/test/team-models.test.ts (1)
+  332: comment — byKey
+
+packages/mpd-roster-provider-plugin/test/effort-adaptation.test.ts (1)
+  74: comment — slot
+
+packages/mpd-tui-plugin/test/panel-attention.test.ts (1)
+  655: comment — opens
+
+error: script "verify:comments" exited with code 1
+
+### tool-surface measurement
+agent_teams_plan 1742 desc 305
+agent_teams_task 880 desc 227
+agent_teams_dispatch 782 desc 357
+agent_teams_mail 982 desc 350
+agent_teams_control 489 desc 175
+TOTAL 4971

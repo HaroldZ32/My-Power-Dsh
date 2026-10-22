@@ -185,3 +185,85 @@ describe("AC2 — the overlay is re-read per call (R1)", () => {
     expect((await tool.execute({ role: "Architect" })).model).toBe("deepseek-flash")
   })
 })
+
+// ── the SLOT is the first route source for a roster member (contract §2/§9) ──────────────────────
+// `mpd_modelchain_resolve` is a DISPLAY surface: it reports the typed state — the slot's own route
+// when there is one, `<unconfigured>` when there is not — and NEVER throws (amendment 1).
+
+test("a configured SLOT is what the tool answers, with that slot's own chain", async () => {
+  /** Every tool definition the plugin registered, in registration order. */
+  const tools: any[] = []
+  /** The roster the tool resolves against: one role with its own static chain. */
+  const roster = rosterDouble([{ id: "sisyphus-junior", name: "Junior Engineer", chain: [{ provider: "deepseek-official", model: "deepseek-v4-flash" }] }])
+  /** The config service double: slot3 configured with one fallback. */
+  const mpdConfig = {
+    slotResolutionOf: () => ({ ok: true, slot: "slot3", route: { provider: "gateway", model: "smart", reasoningEffort: "low" }, fallbacks: [{ provider: "backup", model: "spare" }] }),
+  }
+  /** The minimal row context: a `register` sink plus a `get` answering both services. */
+  const ctx: any = {
+    tools: {
+      /** Keep the definition the plugin registers, so the test can call its `execute`. */
+      register(d: any): void { tools.push(d) },
+    },
+    get: (n: string) => (n === "mpdRoles" ? roster : n === "mpdConfig" ? mpdConfig : undefined),
+  }
+  apply(ctx, {})
+  /** The route the tool answered for the role. */
+  const res = await tools.find((t) => t.name === "mpd_modelchain_resolve").execute({ role: "Junior Engineer" })
+  // The slot beats the roster's static chain, and the chain is the slot's own (primary, then fallback).
+  expect(res.provider).toBe("gateway")
+  expect(res.model).toBe("smart")
+  expect(res.status).toBe("configured")
+  expect(res.chain).toEqual([{ provider: "gateway", model: "smart" }, { provider: "backup", model: "spare" }])
+})
+
+test("an UNCONFIGURED slot answers the typed state — never the stale static chain, never a throw", async () => {
+  /** Every tool definition the plugin registered, in registration order. */
+  const tools: any[] = []
+  /** The roster the tool resolves against: the role whose own chain must NOT be reported. */
+  const roster = rosterDouble([{ id: "sisyphus-junior", name: "Junior Engineer", chain: [{ provider: "deepseek-official", model: "deepseek-v4-flash" }] }])
+  /** The config service double: slot3 reports the typed refusal. */
+  const mpdConfig = {
+    slotResolutionOf: () => ({ ok: false, status: "unconfigured", slot: "slot3", members: ["Deep Worker", "Junior Engineer"], missing: ["provider", "model"], code: "SLOT_UNCONFIGURED", message: "SLOT_UNCONFIGURED: slot3 is not usable — missing teamModels.slot3.provider, teamModels.slot3.model" }),
+  }
+  /** The minimal row context: a `register` sink plus a `get` answering both services. */
+  const ctx: any = {
+    tools: {
+      /** Keep the definition the plugin registers, so the test can call its `execute`. */
+      register(d: any): void { tools.push(d) },
+    },
+    get: (n: string) => (n === "mpdRoles" ? roster : n === "mpdConfig" ? mpdConfig : undefined),
+  }
+  apply(ctx, {})
+  /** The answer the display must render instead of the deleted fallback. */
+  const res = await tools.find((t) => t.name === "mpd_modelchain_resolve").execute({ role: "Junior Engineer" })
+  expect(res.status).toBe("unconfigured")
+  expect(res.provider).toBe("")
+  expect(res.model).toBe("")
+  expect(res.chain).toEqual([])
+  expect(res.missing).toEqual(["provider", "model"])
+  expect(String(res.reason)).toContain("teamModels.slot3")
+})
+
+test("a slot service that REFUSES the lookup degrades to the roster's own chain, never a throw", async () => {
+  /** Every tool definition the plugin registered, in registration order. */
+  const tools: any[] = []
+  /** The roster the tool resolves against: an EXTENSION-shaped role with its own declared chain. */
+  const roster = rosterDouble([{ id: "extension:flows:Code Reviewer", name: "Code Reviewer", chain: [{ provider: "ext-provider", model: "ext-model" }] }])
+  /** The minimal row context whose `mpdConfig` lookup THROWS, as an agent-scoped ctx can. */
+  const ctx: any = {
+    tools: {
+      /** Keep the definition the plugin registers, so the test can call its `execute`. */
+      register(d: any): void { tools.push(d) },
+    },
+    get: (n: string) => {
+      if (n === "mpdConfig") throw new Error('cannot get property "mpdConfig" without inject')
+      return n === "mpdRoles" ? roster : undefined
+    },
+  }
+  apply(ctx, {})
+  /** The route the tool answered: the extension's own declared pair. */
+  const res = await tools.find((t) => t.name === "mpd_modelchain_resolve").execute({ role: "Code Reviewer" })
+  expect(res.provider).toBe("ext-provider")
+  expect(res.model).toBe("ext-model")
+})

@@ -19,7 +19,7 @@ export const COMMAND_ROOT = "mpd"
 export const MODEL_COMMAND = "mpd-model"
 
 /** Actions the `/mpd` grammar accepts (bare = picker, `<value>` = direct, `status` = print). */
-export const COMMAND_ACTIONS: readonly string[] = ["board", "team", "plan", "subagents", "panel", "dag", "workmate", "workmates", "status"]
+export const COMMAND_ACTIONS: readonly string[] = ["board", "team", "plan", "subagents", "panel", "dag", "workmate", "workmates", "watchdog", "status"]
 
 /**
  * One completion node: the English fallback the host holds in `description`, plus BOTH halves of
@@ -48,6 +48,7 @@ export const COMMAND_CHILDREN: readonly CommandChild[] = [
   { name: "dag", description: "Open the MPD panel on its dependency DAG, or the full-screen DAG scene", descriptions: { zh: "打开 MPD 面板的依赖 DAG 视图；无接缝时使用全屏 DAG 场景", en: "Open the MPD panel on its dependency DAG, or the full-screen DAG scene" } },
   { name: "workmate", description: "Open the workmate page (its own sidebar panel), or the full-screen fallback", descriptions: { zh: "打开 workmate 页面（独立侧栏面板）；无接缝时使用全屏回退", en: "Open the workmate page (its own sidebar panel), or the full-screen fallback" } },
   { name: "workmates", description: "List the durable workmate library", descriptions: { zh: "列出 workmate 库", en: "List the durable workmate library" } },
+  { name: "watchdog", description: "Open the watchdog page: holds, unread incidents and their acknowledgement", descriptions: { zh: "打开看门狗页面：暂停、未读事件与确认", en: "Open the watchdog page: holds, unread incidents and their acknowledgement" } },
   { name: "status", description: "Print the mpd status line", descriptions: { zh: "输出 MPD 状态行", en: "Print the mpd status line" } },
 ]
 

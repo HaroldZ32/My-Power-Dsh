@@ -244,6 +244,40 @@ export const TUI_TEXT = {
   "watchdog.acknowledgeHint": { zh: "把这些事件标记为已读，不再重复提示", en: "mark these incidents as read so they stop being replayed" },
   "watchdog.later": { zh: "稍后", en: "Later" },
   "watchdog.laterHint": { zh: "保持未读，下次启动再显示", en: "keep them unread; they will be shown again on the next start" },
+  /**
+   * The watchdog PANEL's own copy (the sidebar page `/mpd watchdog` opens).
+   *
+   * The incident KIND and CAUSE identifiers (`warn`, `escalate`, `silence-channel`, `tool-expired`, …)
+   * are DATA values the contract names verbatim, so they are printed as they are stored; every
+   * sentence AROUND them is localized here, because a Chinese screen must not show an English frame.
+   */
+  "watchdog.panelHeader": { zh: "看门狗 · 暂停 {held} · 未读 {unread}", en: "watchdog · {held} held · {unread} unread" },
+  "watchdog.panelAbsent": { zh: "watchdog: 不可用（not available —— 该组合没有 mpdWatchdog 服务）", en: "watchdog: not available (no mpdWatchdog service in this composition)" },
+  "watchdog.panelAbsentHint": { zh: "该面板只读看门狗服务；服务缺失时不显示任何事件", en: "this panel reads the watchdog service only; with the service absent it shows no incidents" },
+  "watchdog.panelEmpty": { zh: "无事件 —— 没有未读记录", en: "no incidents — nothing unread" },
+  "watchdog.panelTeamHeld": { zh: "团队 {team} · 已暂停 · 阶段 {phase}", en: "team {team} · held · phase {phase}" },
+  "watchdog.panelTeamIdle": { zh: "团队 {team} · 未暂停 · 阶段 {phase}", en: "team {team} · not held · phase {phase}" },
+  "watchdog.panelIncidents": { zh: "事件", en: "incidents" },
+  "watchdog.panelCause": { zh: "原因 {cause} · {ms}ms", en: "cause {cause} · {ms}ms" },
+  "watchdog.panelHold": { zh: "挂起 {outcome}", en: "hold {outcome}" },
+  "watchdog.panelReleased": { zh: "释放 {how}", en: "release {how}" },
+  "watchdog.panelKeys": { zh: "a 确认 · r 刷新 · ↑↓/jk 滚动", en: "a ack · r refresh · ↑↓/jk scroll" },
+  "watchdog.panelLegend": { zh: "✓ 已确认 · ○ 未确认", en: "✓ acked · ○ unread" },
+  "watchdog.panelAckDone": { zh: "已确认 {n} 条事件", en: "acknowledged {n} incident(s)" },
+  "watchdog.panelAckNoop": { zh: "没有新的可确认事件", en: "nothing new to acknowledge" },
+  "watchdog.panelAckFailed": { zh: "确认失败：{error}", en: "acknowledge failed: {error}" },
+  "watchdog.commandOpened": {
+    zh: "mpd 看门狗：宿主已接受 {id}；若没有出现面板，请在 /settings → 侧栏里把 {id} 加入面板列表，并按 Ctrl+B 展开",
+    en: "mpd watchdog: the host accepted {id}; if no panel appeared, add {id} to the panel list in /settings → side panel, then press Ctrl+B",
+  },
+  "watchdog.commandAbsent": {
+    zh: "mpd 看门狗：该宿主不提供面板接缝（dsh-tui 0.13.0+），看门狗面板无法打开",
+    en: "mpd watchdog: this host exposes no panel seam (dsh-tui 0.13.0+), so the watchdog panel cannot open",
+  },
+  "watchdog.commandRefused": {
+    zh: "mpd 看门狗：宿主拒绝了该面板的注册，看门狗面板无法打开",
+    en: "mpd watchdog: the host refused the panel registration, so the watchdog panel cannot open",
+  },
 } as const satisfies Record<string, Bilingual>
 
 /** One key of {@link TUI_TEXT}. */

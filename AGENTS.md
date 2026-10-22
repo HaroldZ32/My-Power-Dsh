@@ -640,17 +640,27 @@ slot, workmate) stay here, with the verifier's envelope.
   entry breaks every read-only spawn; since 2026-10-10 that validation is TOLERATED instead of fatal
   (`restrictToolsTolerant` prunes the names the harness reports as unknown, with exactly ONE logged
   retry). Full form, including the two enforcement surfaces: `agent-references/glossary.md`.
-- **team-model slot**: one of the FOUR configurable default model routes of the ROSTER members —
-  `teamModels.slot{1,2,3,4}.{provider,model,reasoningEffort}` in `mpd.jsonc` / the `mpd` settings
-  namespace. Slot 1 routes Architect/Planner/Reviewer/Lead/Senior Engineer, slot 2 Researcher/Explorer/
-  Plan Reviewer, slot 3 Deep Worker/Junior Engineer, slot 4 Vision Analyst (its model MUST accept image
-  input). A slot that cannot be resolved fails the spawn LOUDLY, writes no state and NEVER clamps an
-  effort; a slot whose model declares NO reasoning efforts is sent none (`withSupportedEffort` drops the
-  keyword, logging it). Slots apply to the single-call consult paths AND to an official `spawn_teammate` (routed
-  through `mpd-roster-provider-plugin`); because the team service does not forward identity, **a
-  teammate `description` that NAMES a roster member routes that member — any other teammate runs on the
-  route of the session that staged it (the captain's in a top-level spawn, the Lead's in a team-lead
-  spawn), and prompt text cannot change a route**. Long form: `agent-references/glossary.md`.
+- **team-model slot**: one of the FOUR configured model routes of the ROSTER members —
+  `teamModels.slot{1,2,3,4}.{provider,model,reasoningEffort?}` plus an optional `fallbacks` chain of the
+  slot's OWN, in `mpd.jsonc` / the `mpd` settings namespace. **ONE configured route per slot, NO
+  built-in default layer** (`TEAM_MODEL_SLOT_DEFAULTS`/`withTeamModelsDefaults` deleted, no `.default()`
+  in the slot subtree) and **no per-member override** (`agentRoutes` deleted; a leftover block is
+  IGNORED and never rewritten). Slot 1 routes Architect/Planner/Reviewer/Lead/Senior Engineer, slot 2
+  Researcher/Explorer/Plan Reviewer, slot 3 Deep Worker/Junior Engineer, slot 4 Vision Analyst (its
+  model MUST accept image input). An unconfigured or malformed slot REFUSES the spawn with ONE
+  structured `SLOT_UNCONFIGURED` error (slot, members, missing leaves, both recovery paths; nothing
+  written, no child started); the service read is TOTAL (typed union, never throws) so display surfaces
+  render `<unconfigured>`, and only the three spawn appliers throw. The chain is consumed ONCE before
+  the spawn (first catalog-POSITIVE route wins; not listed is not unavailable) and NEVER clamps an
+  effort; a model declaring NO reasoning efforts is sent none (`withSupportedEffort`). Initial config is
+  FILE initialization: a file declaring no `teamModels` is seeded ONCE from the configured providers
+  (`deepseek-flash` family; slot1 `max`, slots 2-4 `high`), then durably marked in
+  `<ws>/.mpd/model-config-seed.json` so a deleted block is never re-seeded. Slots apply to the single-call consult paths
+  AND to an official `spawn_teammate` (routed through `mpd-roster-provider-plugin`); because the team
+  service does not forward identity, **a teammate `description` that NAMES a roster member routes that
+  member — any other teammate runs on the route of the session that staged it (the captain's in a
+  top-level spawn, the Lead's in a team-lead spawn), and prompt text cannot change a route**. Long
+  form: `agent-references/glossary.md`.
 - **verifier's envelope**: the tool and path boundary a BOUND VERIFIER SEAT works inside. A seat is bound
   with `mpd_verify_seat`; the boundary it is meant to keep — no shell, no source-returning tools, no
   board mutation (`mpd_verify_*` excepted), reads path-scoped to the frozen docs AND the documentation

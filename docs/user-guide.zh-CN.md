@@ -302,10 +302,14 @@ interrupt_agent { target }                                                # 仅 
   `mpd-roles-plugin` 里以团队身份为键的工具守卫 —— 因为官方 `spawn_teammate` 无法接受按队友的
   工具过滤器。工作者（Senior Engineer、Junior Engineer、Deep Worker、Lead、Reviewer）负责实现与
   验证。
-- **队友跑在暂存它的那个会话的路由上** —— 顶层 spawn 是 captain 的路由，team-lead spawn 是 Lead 的
-  路由。只有当队友的 `description` **点名**名册成员时，`mpd-roster-provider` 才施加该成员的
-  `teamModels.slot*` 路由；**单次咨询**通道（`mpd_role_spawn`、`mpd_workmate_spawn`）则显式传入路由。
-  提示词文本无法改变路由：要在 `description` 里写成员**名字**，而不是在提示词里写模型。
+- **槽位是名册成员唯一的路由来源 —— 而且不再有内置默认层。** 一切路由都来自该成员的
+  `teamModels.slot{N}`：配置好的 `provider` + `model`、可选的 `reasoningEffort`，以及该槽位**自己**的
+  可选 `fallbacks` 链。`agentRoutes` 已**删除**：旧文件里残留的块会被忽略，且永远不会被改写。未配置
+  （或叶子格式错误）的槽位会用一个结构化的 `SLOT_UNCONFIGURED` 错误**拒绝** spawn，点名槽位、它路由的
+  成员、缺失的叶子与两条修复路径 —— 不写入任何内容，也不启动任何子会话。回退链在 spawn 之前**只消费
+  一次**：模型目录**正面列出**的第一条路由胜出（「未被列出」不等于「不可用」），胜出者再经过推理强度适配。
+  `description` **点名**名册成员的队友按该成员的槽位路由；其他队友运行在暂存它的那个会话的路由上
+  （顶层 spawn 是 captain 的，team-lead spawn 是 Lead 的），提示词文本无法改变路由。
 - **由 workmate 背书的成员是一段提示词，而不是自动注入。** 现在已经没有任何东西会把某个 workmate
   的人设自动带进队友：先初始化或挑出该 workmate（`mpd_workmate_init` / `mpd_workmate_match`），
   读出它应当携带的内容，再把那段文本放进 `spawn_teammate` 的提示词；事后用
@@ -388,9 +392,9 @@ host，直到你选择 `mpd` 为止（TUI 的 `/preset mpd`、Web Settings 的 `
 
 ### 7.2 `/settings` 界面与 `mpd.jsonc` 桥接
 
-`/settings` 编辑真实的 `mpd.jsonc` 旋钮 —— 共 59 个（原有 13 个、十二个 `teamModels` 槽位叶子与
-33 个 `agentRoutes` 叶子（十一名成员 × 三），再加 TUI 界面自身的一个旋钮；模型路由叶子是只可选择字段，
-选项来自实时模型目录，回退到声明列表），其中包括 `hashline.maxDiffChars`、
+`/settings` 编辑真实的 `mpd.jsonc` 旋钮 —— 共 26 个（原有 13 个、十二个 `teamModels` 槽位叶子，再加
+TUI 界面自身的一个旋钮；槽位叶子是只可选择字段，选项来自实时模型目录，回退到声明列表），
+其中包括 `hashline.maxDiffChars`、
 `commentChecker.autoCheck`、`ulw.maxRounds`、`memory.vcs`、`team.stateDir`、`boulder.dir` —— 它们位于 harness settings 命名空间
 `mpd` 之下。该命名空间由 `packages/mpd-config-plugin` 提供，其 base 是工作区**文件**里的值，所以界面
 打开时显示的是你的文件值而不是 schema 默认值；保存会**写入 `<workspace>/.mpd/mpd.jsonc`**（针对当时
@@ -401,7 +405,7 @@ host，直到你选择 `mpd` 为止（TUI 的 `/preset mpd`、Web Settings 的 `
 
 - **保存即在运行中的进程里生效。** 配置服务在每次设置保存时、以及监听到
   `<workspace>/.mpd/mpd.jsonc` 被编辑时都会重新解析，而模型配置旋钮（`modelchain.*`、
-  `teamModels.slot*`、`agentRoutes.*`）是**每次使用**时读取的，因此保存后的改动会到达下一次
+  `teamModels.slot*`）是**每次使用**时读取的，因此保存后的改动会到达下一次
   `mpd_config_get`、`mpd_modelchain_resolve` 或 spawn，**无需重启**（`mpd_config_reload` 可强制重读）。
   其余旋钮仍适用挂载时捕获的规则 —— §9.1 逐个旋钮说明。界面上的提示就是这么写的。
 - **两个具名跳过场景。** settings 路径本身不携带工作区身份，所以写入目标是保存那一刻存活的会话工作区：
@@ -498,8 +502,7 @@ Team 视图的这张图按团队状态提供的 rank 布局：每个 rank 一列
 | `extensions.mcp.*` | mpd-ext | MCP 桥默认值：`enabled`、`connectTimeoutMs`、`toolCallTimeoutMs` |
 | `modelchain.*` | mpd-modelchain | 各名册角色的 provider/model 链 |
 | `team.stateDir` | 读取旧版团队记录的 mpd 插件（看门狗 web 路由、压缩、TUI 团队界面、workmate 在用检查） | 这些记录的位置（默认 `.mpd/team`）。官方团队插件不读它 |
-| `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate（经 mpd-config） | 四个**团队模型槽位**：每个槽位是 `{provider, model, reasoningEffort}`，默认 `deepseek-official` / `deepseek-v4-flash`，推理强度依次为 `max`/`high`/`high`（槽位 4 默认 `deepseek-official` / `deepseek-v4-flash-vision-exp` / `high`）。槽位 1 路由 Architect/Planner/Reviewer/Lead/Senior Engineer，槽位 2 路由 Researcher/Explorer/Plan Reviewer，槽位 3 路由 Deep Worker/Junior Engineer，槽位 4 路由 Vision Analyst —— 视觉成员，其槽位模型**必须支持图像输入**。它们由**单次咨询**通道（`mpd_role_spawn`、`mpd_workmate_spawn`）解析，由这两条通道显式传入路由；而 `spawn_teammate` 队友只有在 `description` **点名**名册成员时才取用槽位，其他队友则跑在暂存它的那个会话的路由上（§6）。槽位解析失败会让对应的 spawn **大声失败**（指名成员与槽位，不写入任何内容），且推理强度**永远不会**被悄悄钳制。唯一的例外是：若该模型在实时目录中完全没有推理等级，则不发送任何等级，spawn 照常运行（这正是设置选择器早已采用的适配的运行时一半）。可在 **设置 → MPD** 与 TUI 的 `/settings` 区块中作为只可选择字段编辑，界面会在编辑前显示当前生效值；保存后的改动在运行中的进程里被重新读取 —— 下一次 spawn 或解析即携带新值，无需重启（`mpd_config_reload` 可强制重读）。 |
-| `agentRoutes.<name>.*` | mpd-roles / mpd-workmate（经 mpd-config） | 按名册 base **名字**（`Architect`、`Researcher`、`Planner`、`Deep Worker`、`Senior Engineer`、`Lead`、`Explorer`、`Reviewer`、`Plan Reviewer`、`Vision Analyst`、`Junior Engineer`）映射到 `{provider?, model?, reasoningEffort?}`，每个叶子都可选。**优先级（逐叶子）：** `agentRoutes[<name>]` > 该成员的 `teamModels.slot{N}` > 内置默认值。workmate 每次 spawn 都会重新解析其 base 的路由（进行中的任务保留启动时的路由，下一个任务携带新值；冻结的 `meta.provider`/`meta.model` 只是来源记录）。未知成员名或格式错误的条目会**大声**校验失败，绝不静默忽略。可在 **设置 → MPD** 与 TUI 的 `/settings` 区块中编辑，界面会在编辑前显示当前生效值。 |
+| `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate / mpd-roster-provider（经 mpd-config） | 四个**团队模型槽位**：每个槽位是**一条**配置好的路由 —— `{provider, model, reasoningEffort?}`，外加该槽位**自己**的可选 `fallbacks: [{provider, model, reasoningEffort?}, …]`（按优先级排列）。**不再有任何内置默认层**（`TEAM_MODEL_SLOT_DEFAULTS` 已删除）：工作区从未配置的槽位**没有**路由，它要路由的每一次 spawn 都会被**拒绝**，并给出一个结构化的 `SLOT_UNCONFIGURED` 错误，点名槽位、成员、缺失的叶子与两条修复路径（`/mpd-model`，或 `.mpd/mpd.jsonc` 里的 `teamModels.slotN`）—— 不写入任何内容，也不启动子会话。回退链在 spawn 前**只消费一次**：实时目录**正面列出**的第一条路由胜出（「未被列出」不等于「不可用」；没有任何正面列出时主路由保留），胜出者随后经过推理强度适配，格式错误的条目会被丢弃并记一行日志 —— 绝不致命。槽位 1 路由 Architect/Planner/Reviewer/Lead/Senior Engineer，槽位 2 路由 Researcher/Explorer/Plan Reviewer，槽位 3 路由 Deep Worker/Junior Engineer，槽位 4 路由 Vision Analyst —— 视觉成员，其槽位模型**必须支持图像输入**。`spawn_teammate` 队友只有在 `description` **点名**名册成员时才取用槽位；其他队友跑在暂存它的会话的路由上（§6）。推理强度永远不会被悄悄钳制；唯一例外是模型在目录里完全没有推理等级 —— 则不发送任何等级，spawn 照常运行。**初始配置是文件初始化，不是运行时默认值：** 若工作区的 `.mpd/mpd.jsonc` 未声明 `teamModels`，挂载时会**只播种一次**：通过 LLM 目录从你已配置的提供商中选取模型（`deepseek-flash` 家族；槽位 1 为 `max`，槽位 2-4 为 `high`），已存在的块或用户编辑**永不改写**；成功的播种会在 `<workspace>/.mpd/model-config-seed.json` 中留下**持久标记**（只创建一次、永不覆盖、在任何尝试之前先检查），因此你**故意删除**的块**永远不会**被重新播种；目录不可用时不写任何内容，第一次 spawn 报告 `SLOT_UNCONFIGURED`。可在 **设置 → MPD** 与 TUI 的 `/settings` 区块中作为只可选择字段编辑（未配置的槽位渲染为 `<unconfigured>` 并列出缺失的叶子）；保存后的改动在运行中的进程里被重新读取，无需重启（`mpd_config_reload` 可强制重读）。 |
 
 `mpd-codegraph` 刻意不在上表中：它的 `autoInit`、`initTimeoutMs`、`cooldownMs` 与 `binary` 来自
 它的 **bundle-patch 行** 配置（在 apply 时读取），没有任何插件通过 `mpd.jsonc` 读取
@@ -516,8 +519,8 @@ Team 视图的这张图按团队状态提供的 rank 布局：每个 rank 一列
 有三件事不必等这次重启，而且都很有用：
 
 - **模型配置旋钮在进程内实时刷新。** 配置服务在每次设置保存时、以及监听到
-  `<workspace>/.mpd/mpd.jsonc` 被编辑时都会重新解析，而模型路由（`modelchain.*`、`teamModels.slot*`、
-  `agentRoutes.*`）是**每次使用**时读取的，因此下一次 `mpd_modelchain_resolve` 调用、或下一次单次咨询
+  `<workspace>/.mpd/mpd.jsonc` 被编辑时都会重新解析，而模型路由（`modelchain.*`、`teamModels.slot*`）
+  是**每次使用**时读取的，因此下一次 `mpd_modelchain_resolve` 调用、或下一次单次咨询
   spawn / workmate spawn / 队友启动都会携带新路由，无需重启。`mpd_config_reload` 仍是需要强制重读时的
   手动兜底。
 - **回读永远是即时的。** `mpd_config_get` 与 `mpd_config_reload` 每次调用都重新读取各层并立刻报告
@@ -537,8 +540,7 @@ Team 视图的这张图按团队状态提供的 rank 布局：每个 rank 一列
 | `modelchain.*` | mpd-modelchain | 每次调用，从实时服务读取 | 实时生效 —— 无需重启：每次 `mpd_modelchain_resolve` 都会重读该 overlay，因此设置保存或文件编辑会改变下一次解析；`mpd_config_reload` 可强制重读 |
 | `extensions.enable` / `.disable` / `.mcp.*` | mpd-ext | 插件启动时（进程级） | 重启后 |
 | `team.stateDir` | 读取旧版团队记录的 mpd 插件，经实时服务解析 | 每次调用 | 服务重新读取文件之后立即生效（`mpd_config_reload`，或任意一次设置保存）。这些是**旧版**记录：官方团队插件把名册、邮箱与任务板保存在 Lead 的会话日志里，不在这里 |
-| `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate（单次咨询通道 `mpd_role_spawn`、`mpd_workmate_spawn`），以及 mpd-roster-provider（其 `description` 点名名册成员的 `spawn_teammate`） | spawn 时，从实时服务读取 | 下一次单次咨询：设置保存或手工编辑 `<workspace>/.mpd/mpd.jsonc` 都会在进程内被重新读取，因此无需重启；`mpd_config_reload` 可强制重读。若 `spawn_teammate` 队友的 `description` 点名的是一位名册成员，它就**会**经由 mpd-roster-provider-plugin 按该成员的槽位路由；其他队友运行在创建它的会话的路由上，提示词文本无法改变路由 |
-| `agentRoutes.<name>.*` | mpd-roles / mpd-workmate（单次咨询通道），以及为点名队友解析路由的 mpd-roster-provider | spawn 时，从实时服务读取 | 该成员的下一次单次咨询或 workmate spawn：逐叶子而言，`agentRoutes[<name>]` 优先于该成员的 `teamModels.slot{N}` 叶子，后者又优先于内置默认值。未知成员名与格式错误的条目会大声校验失败 |
+| `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate（单次咨询通道 `mpd_role_spawn`、`mpd_workmate_spawn`），以及 mpd-roster-provider（其 `description` 点名名册成员的 `spawn_teammate`） | spawn 时，从实时服务读取 | 实时生效，无需重启：设置保存或手工编辑 `<workspace>/.mpd/mpd.jsonc` 都会在进程内被重新读取，因此下一次 spawn 即携带新值；`mpd_config_reload` 可强制重读。每个槽位**只有一条**路由、没有默认层：未配置或格式错误的槽位会用 `SLOT_UNCONFIGURED` **拒绝** spawn（不写入任何内容、不启动子会话），而该槽位自己的 `fallbacks` 链在 spawn 前被消费一次。若 `spawn_teammate` 队友的 `description` 点名的是一位名册成员，它就**会**按该成员的槽位路由；其他队友运行在创建它的会话的路由上，提示词文本无法改变路由 |
 | `watchdog.*` | mpd-team-watchdog | 挂载时、settings 更新时、每个 tick | 实时生效 —— 无需重启 |
 
 `mpd-codegraph` 的旋钮是反证这条规则的例外：它们是 patch 行选项（`autoInit`、`initTimeoutMs`、
@@ -654,8 +656,8 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp   # 从一个可工作的骨�
 - **CodeGraph 工具什么都不返回** → 运行 `/mpd-codegraph` 生成 `.codegraph/codegraph.db`，并安装
   `@colbymchenry/codegraph` 或设置 `MPD_DSH_CODEGRAPH_BIN`（它的主拼写 `MPD_CODEGRAPH_BIN`
   会先被读取）。
-- **保存的旋钮没有生效** → 模型配置旋钮（`modelchain.*`、`teamModels.slot*`、`agentRoutes.*`）是
-  实时刷新的：用 `mpd_config_get` / `mpd_modelchain_resolve` 重新读取，或用 `mpd_config_reload` 强制重读。
+- **保存的旋钮没有生效** → 模型配置旋钮（`modelchain.*`、`teamModels.slot*`）是 live-refreshed 的：
+  用 `mpd_config_get` / `mpd_modelchain_resolve` 重新读取，或强制
   其余旋钮在挂载时捕获配置，需重启会话 —— 而且 `mpd_config_get` 显示新值**不等于**已挂载的插件已经在
   按它行动（§9.1 说明了哪些旋钮是实时生效的）。
 - **升级后某个文档链接 404** → 本次发布**重命名**了设计文档（它原名 `architecture.md`，

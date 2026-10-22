@@ -1225,12 +1225,134 @@ export async function withSupportedEffort(
   } catch {
     return route
   }
+  // ONE implementation of the adaptation rule: the helper below is what `resolveRunRoute` reuses
+  // against a catalog it already read, so the two entry points can never drift.
+  return adaptEffortWithCatalog(catalog, route)
+}
+
+/**
+ * The route a run ACTUALLY takes after its slot's fallback chain is consumed (contract §8).
+ *
+ * The chain is consumed ONCE, before the spawn: the first candidate the catalog POSITIVELY lists
+ * (provider listed AND model present) wins, and the winner is then adapted by the SAME
+ * effort rule {@link withSupportedEffort} applies. "Not listed" is NOT "unavailable" — when no
+ * candidate is positively listed the PRIMARY still stands, so a catalog that cannot see a route
+ * never silently moves a run.
+ */
+export interface DshRunRoute {
+  /** The route to send, after the model-capability effort adaptation. */
+  readonly route: DshEffortRoute
+  /** Which candidate won: `0` the primary, `1..n` the fallback's 1-based position in the chain. */
+  readonly index: number
+  /** True when a fallback won, so the caller logs the switch exactly once. */
+  readonly fallback: boolean
+  /** How many malformed fallback entries were ignored (never fatal). */
+  readonly dropped: number
+}
+
+/**
+ * Whether the catalog POSITIVELY lists this route: the provider AND the model both appear.
+ *
+ * This is the only check the fallback consumption may act on: a route nobody listed is NOT thereby
+ * unavailable (it may simply be configured outside the catalog), so it can never REASON a switch
+ * away from a primary that is listed — it only fails to WIN a fallback.
+ * @param catalog - the catalog the adapter projected.
+ * @param provider - the candidate's provider id.
+ * @param model - the candidate's model id.
+ * @returns true when the provider and the model are both listed.
+ */
+export function routePositivelyListed(catalog: DshLlmCatalog, provider: string, model: string): boolean {
+  return catalog.providers.some((p) => p.id === provider && p.models.some((m) => m.id === model))
+}
+
+/**
+ * The effort adaptation against an ALREADY-READ catalog: the one rule {@link withSupportedEffort}
+ * applies, kept here so a consumer that already paid for a catalog read does not pay twice.
+ * @param catalog - the catalog the adapter projected.
+ * @param route - the caller's route.
+ * @returns the SAME route when nothing is adapted, a copy without `reasoningEffort` otherwise.
+ */
+function adaptEffortWithCatalog(catalog: DshLlmCatalog, route: DshEffortRoute): DshEffortRoute {
+  /** The requested keyword; an absent or empty one is nothing to adapt. */
+  const effort = typeof route.reasoningEffort === "string" ? route.reasoningEffort : ""
+  if (effort === "") return route
   if (!modelDeclaresNoEffort(catalog, route.provider, route.model)) return route
   /** The route with the unusable keyword removed; every other field survives untouched. */
   const adapted: DshEffortRoute = { ...route }
   delete adapted.reasoningEffort
   rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${route.provider}/${route.model} declares no reasoning efforts — the "${effort}" effort is omitted (a keyword this model cannot take fails the call)`)
   return adapted
+}
+
+/**
+ * Consume ONE slot's fallback chain and adapt the winner's effort — the single entry point every
+ * spawn applier calls before a child is started (contract §8).
+ *
+ * Rules, in order:
+ *   1. a malformed fallback entry is DROPPED, counted and reported in ONE log line, never fatal;
+ *   2. the catalog is read ONCE (a rejecting or missing seam adapts nothing and keeps the primary);
+ *   3. the first candidate the catalog positively lists wins — the primary included, so a listed
+ *      primary is never displaced;
+ *   4. the winner passes the effort adaptation; ONE log line reports a fallback win.
+ * Never throws: a degraded host cannot fail a spawn here.
+ *
+ * @param dsh - the adapter (or a double) carrying the catalog read.
+ * @param primary - the slot's own configured route.
+ * @param fallbacks - the slot's fallback chain, in the user's order (unknown shapes are dropped).
+ * @returns the route to send plus which candidate won and how many entries were dropped.
+ */
+export async function resolveRunRoute(
+  dsh: { llmCatalog?: (() => Promise<DshLlmCatalog>) | undefined } | undefined,
+  primary: DshEffortRoute,
+  fallbacks: readonly unknown[] = [],
+): Promise<DshRunRoute> {
+  /** The well-formed fallback candidates, in the user's order. */
+  const wellFormed: DshEffortRoute[] = []
+  /** How many declared entries were dropped as malformed. */
+  let dropped = 0
+  for (const entry of Array.isArray(fallbacks) ? fallbacks : []) {
+    if (entry === null || typeof entry !== "object") { dropped += 1; continue }
+    /** The candidate read as the route shape it must be. */
+    const candidate = entry as { provider?: unknown; model?: unknown; reasoningEffort?: unknown }
+    if (typeof candidate.provider !== "string" || candidate.provider.trim() === ""
+      || typeof candidate.model !== "string" || candidate.model.trim() === ""
+      || (candidate.reasoningEffort !== undefined && candidate.reasoningEffort !== null && typeof candidate.reasoningEffort !== "string")) {
+      dropped += 1
+      continue
+    }
+    /** The candidate's optional effort keyword, trimmed; a blank one states none. */
+    const effort = typeof candidate.reasoningEffort === "string" ? candidate.reasoningEffort.trim() : ""
+    wellFormed.push({ provider: candidate.provider.trim(), model: candidate.model.trim(), ...(effort === "" ? {} : { reasoningEffort: effort }) })
+  }
+  /** The catalog as the host projects it, or undefined when the read is unavailable. */
+  let catalog: DshLlmCatalog | undefined
+  if (typeof dsh?.llmCatalog === "function") {
+    try {
+      catalog = await dsh.llmCatalog()
+    } catch {
+      catalog = undefined
+    }
+  }
+  /** The winning candidate's position: 0 is the primary, 1..n the fallback's 1-based index. */
+  let index = 0
+  // The primary wins whenever it is listed — or whenever nothing at all is positively listed, which
+  // is the "not listed is not unavailable" half of the rule.
+  if (catalog !== undefined && !routePositivelyListed(catalog, primary.provider, primary.model)) {
+    /** The first fallback the catalog positively lists, if any. */
+    const found = wellFormed.findIndex((candidate) => routePositivelyListed(catalog as DshLlmCatalog, candidate.provider, candidate.model))
+    if (found >= 0) index = found + 1
+  }
+  /** The winning candidate, before the effort adaptation. */
+  const winner = index === 0 ? primary : wellFormed[index - 1]
+  if (index > 0) {
+    rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${primary.provider}/${primary.model} is not listed by the model catalog — slot fallback #${index} (${winner.provider}/${winner.model}) wins for this run`)
+  }
+  if (dropped > 0) {
+    rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${dropped} malformed fallback entr${dropped === 1 ? "y was" : "ies were"} dropped from the slot's chain (never fatal — the run proceeds)`)
+  }
+  /** The route after the effort adaptation: the same catalog read, never a second one. */
+  const route = catalog === undefined ? winner : adaptEffortWithCatalog(catalog, winner)
+  return { route, index, fallback: index > 0, dropped }
 }
 
 /**

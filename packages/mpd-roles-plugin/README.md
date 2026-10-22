@@ -106,18 +106,22 @@ This row contributes the ROSTER side of that path — every call through `mpd-ds
 | a READ-ONLY teammate's discipline | a TOOL GUARD (below), registered through the adapter |
 | the session-start complexity gate | an `agent/pre-step` listener that STAGES an approvable plan shell when `team.gate` says `mechanical` — the DEFAULT again since 2026-10-20 (below) |
 
-**Model routing follows the label.** `TeamService` forwards only `{prompt, parent}` plus the
-descriptor label (the teammate's `description`), so the label is the only roster identity the
-request carries (`docs/plan-0.1.7-adaptation.md` §3). `mpd-roster-provider-plugin` applies a
-roster member's `teamModels.slot*` route ONLY when that description NAMES the member; every other
-teammate is not routed at all — the request passes through by identity, so the harness-resolved
+**Model routing comes from the slot, through the label.** `TeamService` forwards only `{prompt,
+parent}` plus the descriptor label (the teammate's `description`), so the label is the only roster
+identity the request carries (`docs/plan-0.1.7-adaptation.md` §3). `mpd-roster-provider-plugin`
+applies a roster member's `teamModels.slot*` route ONLY when that description NAMES the member; every
+other teammate is not routed at all — the request passes through by identity, so the harness-resolved
 route of the session that staged it stands (the captain's in a top-level spawn, the Lead's in a
 team-lead spawn). Prompt text cannot change a route. The same slots also apply to `mpd_role_spawn`
-/ `mpd_workmate_spawn`, which pass explicit `agentOptions`; the roster section says exactly that.
-The route's effort is additionally passed through the
-adapter's `withSupportedEffort` (`mpd-dsh-adapter-plugin`), so a slot whose model declares NO
-reasoning efforts at all is sent none — the spawn runs instead of failing on a keyword the
-provider cannot accept — while a model that declares efforts keeps the slot's keyword.
+/ `mpd_workmate_spawn`, which pass explicit `agentOptions`; the roster section says exactly that. A
+slot is the ONLY route source (contract `.mpd/plans/slot-single-source.md`): `agentRoutes` is deleted,
+and an unconfigured or malformed slot REFUSES the spawn with the structured `SLOT_UNCONFIGURED`
+failure the config row builds — naming the slot, its members, the missing leaves and both recovery
+paths — so no child is ever started on an invented route. The slot's own `fallbacks` chain is
+consumed once before the spawn (the first catalog-POSITIVE candidate wins), and the winning route's
+effort is passed through the adapter's `withSupportedEffort` (`mpd-dsh-adapter-plugin`), so a model
+declaring NO reasoning efforts at all is sent none — the spawn runs instead of failing on a keyword
+the provider cannot accept — while a model that declares efforts keeps the slot's keyword.
 
 ### A read-only teammate is denied mechanically
 

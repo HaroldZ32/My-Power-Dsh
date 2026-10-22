@@ -1859,15 +1859,25 @@ function overlayNow(ctx) {
 function chainsNow(ctx, config) {
   return { ...config?.chains ?? DEFAULT_CHAINS, ...overlayNow(ctx) };
 }
+function slotResolutionIn(ctx, member) {
+  try {
+    const service = ctx.get?.("mpdConfig");
+    if (typeof service?.slotResolutionOf !== "function")
+      return;
+    return service.slotResolutionOf(member);
+  } catch {
+    return;
+  }
+}
 function apply(ctx, config = {}) {
   const dsh = resolveDshAdapter(ctx);
   dsh.registerTool({
     name: "mpd_modelchain_resolve",
-    description: "Resolve the DeepSeek provider/model route for a roster role, addressed by its name (Architect, Researcher, Planner, Deep Worker, Senior Engineer, Lead, Explorer, Reviewer, Plan Reviewer, Vision Analyst, Junior Engineer) — the same names team mode uses. Chains come from the mpd-roles roster, with the adapted fallback chains behind them.",
+    description: "Resolve the DeepSeek provider/model route for a roster role, addressed by its name (Architect, Researcher, Planner, Deep Worker, Senior Engineer, Lead, Explorer, Reviewer, Plan Reviewer, Vision Analyst, Junior Engineer) — the same names team mode uses. A roster member resolves from its `teamModels` slot (the ONE configured route, plus that slot's own fallback chain) and reports `<unconfigured>` honestly when the slot is not configured; an extension role keeps its own declared chain.",
     parameters: { type: "object", properties: { role: { type: "string", description: "role name (see mpd_roles_list)" } }, required: ["role"] },
     output: {
-      schema: { type: "object", properties: { provider: { type: "string" }, model: { type: "string" }, chain: { type: "array", items: { type: "object", properties: { provider: { type: "string" }, model: { type: "string" } }, required: [] } } }, required: ["provider", "model"] },
-      render: (_args, value) => [{ type: "text", text: "role=" + _args?.role + " -> " + value.provider + "/" + value.model + " (chain " + value.chain.length + " entries)" }]
+      schema: { type: "object", properties: { provider: { type: "string" }, model: { type: "string" }, chain: { type: "array", items: { type: "object", properties: { provider: { type: "string" }, model: { type: "string" } }, required: [] } }, status: { type: "string" }, missing: { type: "array", items: { type: "string" } }, reason: { type: "string" } }, required: ["provider", "model"] },
+      render: (_args, value) => [{ type: "text", text: value.status === "unconfigured" ? "role=" + _args?.role + " -> <unconfigured> (missing " + (Array.isArray(value.missing) ? value.missing.join(", ") : "teamModels") + "; " + String(value.reason ?? "") + ")" : "role=" + _args?.role + " -> " + value.provider + "/" + value.model + " (chain " + value.chain.length + " entries)" + (value.status === undefined ? "" : " — " + value.status) }]
     },
     execute: async (args) => {
       const role = String(args?.role ?? "").trim();
@@ -1876,6 +1886,29 @@ function apply(ctx, config = {}) {
       const spec = rolesService?.get?.(role);
       if (spec === undefined || spec === null || roleNameKey(role) !== roleNameKey(String(spec.name ?? ""))) {
         throw new Error("mpd_modelchain_resolve: unknown role — use a roster NAME from mpd_roles_list" + (names.length > 0 ? " (" + names.join(", ") + ")" : " (the mpdRoles roster service answered no names — is the mpd-roles row mounted?)"));
+      }
+      const slot = slotResolutionIn(ctx, String(spec.name));
+      if (slot !== undefined && slot !== null && typeof slot === "object" && typeof slot.ok === "boolean") {
+        if (slot.ok) {
+          const provider = String(slot.route?.provider ?? "");
+          const model = String(slot.route?.model ?? "");
+          return {
+            provider,
+            model,
+            chain: [{ provider, model }, ...(slot.fallbacks ?? []).filter((hop) => isChainArray([hop]))],
+            status: "configured"
+          };
+        }
+        if (slot.status !== "unrouted") {
+          return {
+            provider: "",
+            model: "",
+            chain: [],
+            status: "unconfigured",
+            missing: (slot.missing ?? []).map(String),
+            reason: slot.slot === undefined || slot.slot === "" ? String(slot.message ?? "") : "teamModels." + String(slot.slot) + " is not configured — configure it with /mpd-model"
+          };
+        }
       }
       const configured = overlayNow(ctx)[String(spec.id)];
       if (isChainArray(configured)) {

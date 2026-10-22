@@ -4,8 +4,10 @@
 // §10.1 places the REGISTRATION in this package (it is the only module that can supply the
 // file-derived `base`); the TUI package keeps a guarded fallback for compositions without this
 // plugin. Both therefore read the schema and the field list from HERE, so the two front doors
-// cannot drift and the fifty-nine knobs (thirteen mpd knobs + twelve team-model slot leaves +
-// thirty-three agentRoutes leaves) stay one declaration.
+// cannot drift and the twenty-six knobs (thirteen mpd knobs + twelve team-model slot leaves + the
+// TUI surface's own knob) stay
+// one declaration. The per-member `agentRoutes` table is GONE (contract
+// `.mpd/plans/slot-single-source.md` §3): a member's route comes from its slot and nowhere else.
 import z from "../../mpd-schemastery"
 
 /** The settings namespace the section and the Web card both edit. */
@@ -14,29 +16,32 @@ export const SETTINGS_NS = "mpd"
 /** The four team-model slots, in display order (slot1 first). */
 export const TEAM_MODEL_SLOTS = ["slot1", "slot2", "slot3", "slot4"] as const
 
-/** One team-model slot: the provider, the model and the reasoning effort a member class stages on. */
-export interface TeamModelSlot {
-  /** Provider id the slot routes through, e.g. `deepseek-official`. */
+/** One configured model route: the three leaves a run is described by. */
+export interface ModelRoute {
+  /** Provider id the run goes through, e.g. `deepseek-official` or a gateway id. */
   readonly provider: string
   /** Model id that provider must offer; slot 4's model MUST accept image input. */
   readonly model: string
-  /** Reasoning effort (`off` / `low` / `high` / `max`); an unsupported level fails loudly, never clamped. */
-  readonly reasoningEffort: string
+  /** Optional effort keyword; absent means the route states none and none may be invented. */
+  readonly reasoningEffort?: string
 }
 
 /**
- * The four slot DEFAULTS — ONE literal declaration, so the schema defaults, the config layer's
- * READ-PATH materialisation and the tests cannot drift apart. Values are the frozen vocabulary of
- * the settings contract §1.1: provider `deepseek-official`, model `deepseek-v4-flash`, efforts
- * `max` / `high` / `high` for slot1 / slot2 / slot3 — i.e. the live behaviour of the member
- * classes before the slots existed. Slot 4 is the VISION slot and its default is Vision Analyst's
- * own route, unchanged by this option: `deepseek-v4-flash-vision-exp` at `high`.
+ * One team-model slot as the FILE may declare it: ONE configured route plus that slot's own
+ * optional fallback chain. Every leaf is optional because there is NO default layer any more
+ * (contract §2) — a workspace that never configured a slot has an EMPTY slot, and a spawn for a
+ * member it routes is REFUSED with `SLOT_UNCONFIGURED` (`resolveTeamModelSlot`), never run on a
+ * built-in route.
  */
-export const TEAM_MODEL_SLOT_DEFAULTS: Readonly<Record<(typeof TEAM_MODEL_SLOTS)[number], TeamModelSlot>> = {
-  slot1: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "max" },
-  slot2: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "high" },
-  slot3: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "high" },
-  slot4: { provider: "deepseek-official", model: "deepseek-v4-flash-vision-exp", reasoningEffort: "high" },
+export interface TeamModelSlot {
+  /** Provider half of the slot's configured route; absent means "not configured". */
+  readonly provider?: string
+  /** Model half of the slot's configured route; absent means "not configured". */
+  readonly model?: string
+  /** The slot's own effort keyword (`off` / `low` / `high` / `max`) when it states one. */
+  readonly reasoningEffort?: string
+  /** The slot's OWN fallback chain, consumed once before a spawn (contract §8); order is precedence. */
+  readonly fallbacks?: readonly ModelRoute[]
 }
 
 /**
@@ -51,12 +56,26 @@ export const TEAM_MODEL_FALLBACK_OPTIONS = {
   reasoningEffort: ["off", "low", "high", "max"],
 } as const
 
-/** One slot's three leaves as a schema block whose defaults come from {@link TEAM_MODEL_SLOT_DEFAULTS}. */
-function teamModelSlotSchema(slot: TeamModelSlot): Schemastery<TeamModelSlot> {
+/**
+ * One slot's three leaves as a schema block with NO default anywhere (contract §2).
+ *
+ * WHY `.required(false)` AND NOT A DEFAULT: the loader materialises this schema into the ROW config,
+ * `rowKnobLayer` copies the row knobs LAST, and a default here would therefore WIN over what the
+ * user wrote in `.mpd/mpd.jsonc` — the exact override this contract deletes. With no default the
+ * leaf is simply ABSENT from a resolved row config, so the read path contains only what the user
+ * wrote.
+ *
+ * `fallbacks` is deliberately NOT declared here: the vendored schemastery gives every `array(...)`
+ * an implicit `[]` default (MEASURED: `z.array(...)` resolves an absent leaf to `[]`, so the row
+ * config would then replace a file-declared chain with an empty one). The vendored `object`
+ * resolver merges unknown keys THROUGH, so a file's `fallbacks` survives a load without being
+ * declared — which is the behaviour the contract's additive fallback chain needs.
+ */
+function teamModelSlotSchema(): Schemastery<TeamModelSlot> {
   return z.object({
-    provider: z.string().default(slot.provider),
-    model: z.string().default(slot.model),
-    reasoningEffort: z.string().default(slot.reasoningEffort),
+    provider: z.string().required(false),
+    model: z.string().required(false),
+    reasoningEffort: z.string().required(false),
   })
 }
 
@@ -76,10 +95,10 @@ export interface TeamModelSlotGroup {
  * because it states an image-input constraint rather than a shared-route one), so a slot's copy is
  * declared once here and both front doors mirror it (the Web card cannot import this module).
  *
- * DECLARED ABOVE the schema on purpose (moved verbatim, wave fix/model-config-live-refresh):
- * `ROSTER_AGENT_NAMES` derives from it, and `agentRoutes`'s key schema derives from THAT — a
- * const the schema builder reads must already be initialised when the module evaluates the
- * `SettingsSchema` literal, or the import itself dies on the temporal dead zone.
+ * DECLARED ABOVE the schema on purpose (moved verbatim, wave fix/model-config-live-refresh): the
+ * per-slot headings and the knobs below read it while this module is still evaluating, and a const
+ * the schema builder reads must already be initialised at that moment or the import itself dies on
+ * the temporal dead zone.
  */
 export const TEAM_MODEL_SLOT_GROUPS: Readonly<Record<(typeof TEAM_MODEL_SLOTS)[number], TeamModelSlotGroup>> = {
   slot1: { zh: "重推理成员", en: "heavy members", members: ["Architect", "Planner", "Reviewer", "Lead", "Senior Engineer"] },
@@ -88,53 +107,8 @@ export const TEAM_MODEL_SLOT_GROUPS: Readonly<Record<(typeof TEAM_MODEL_SLOTS)[n
   slot4: { zh: "视觉成员", en: "vision member", members: ["Vision Analyst"] },
 }
 
-/**
- * The ELEVEN roster base names `agentRoutes` may key on, derived from the slots' own membership
- * declaration so the route table's vocabulary is the roster's vocabulary — ONE declaration, never
- * a second copy that can drift from the surfaces that route these members.
- */
-export const ROSTER_AGENT_NAMES: readonly string[] = Object.values(TEAM_MODEL_SLOT_GROUPS).flatMap((group) => [...group.members])
-
-/**
- * One per-base-agent route entry: every leaf is OPTIONAL because the precedence is per FIELD — a
- * leaf an entry leaves unset falls through to the member's `teamModels` slot value, so
- * `{ "Deep Worker": { "model": "deepseek-v4-pro" } }` changes the model and keeps the slot's
- * provider and effort.
- */
-export interface AgentRouteEntry {
-  /** Provider id this member is routed through; absent means "the slot's provider stands". */
-  readonly provider?: string
-  /** Model id; absent means "the slot's model stands". */
-  readonly model?: string
-  /** Reasoning effort (`off` / `low` / `high` / `max`); absent means "the slot's effort stands". */
-  readonly reasoningEffort?: string
-}
-
-/**
- * One entry's value schema: an object of optional strings.
- *
- * NOT exhaustive on unknown inner keys — the vendored `object` resolver merges extras through
- * rather than rejecting them — which is why the READ path (`agentRouteEntryOfMember`) re-validates
- * the exact three-leaf shape for the member it resolves; that guard is what makes a hand-edited
- * FILE entry (which never passes this schema) loud too.
- */
-export const AGENT_ROUTE_SCHEMA = z.object({
-  provider: z.string().required(false),
-  model: z.string().required(false),
-  reasoningEffort: z.string().required(false),
-})
-
-/**
- * The `agentRoutes` knob itself (R2): a dict keyed by the eleven roster base NAMES, defaulting to
- * empty. Validation is LOUD by construction: the KEY schema is a union of the eleven exact names,
- * so an unknown name throws at schema-validation time — the row-config load and every settings
- * save both pass through here — and a value that is not an object of optional strings throws the
- * same way.
- */
-export const AGENT_ROUTES_SCHEMA = z.dict(
-  AGENT_ROUTE_SCHEMA,
-  z.union(ROSTER_AGENT_NAMES.map((name) => z.const(name))),
-)
+/** The four slot ids, as a type a resolver can name. */
+export type TeamModelSlotId = (typeof TEAM_MODEL_SLOTS)[number]
 
 /**
  * The mpd.jsonc knob schema (mirrors the keys `packages/mpd-config-plugin` consumes). The
@@ -163,23 +137,17 @@ export const SettingsSchema = z.object({
   // leaf's whole point is that it has NO default, and `.default('')` would have materialised an
   // empty string that the consumers' guards would then read as a REAL root.
   boulder: z.object({ dir: z.string().required(false) }),
-  // The four team-model slots (§3.1 of the plan of record): each is the DEFAULT route of one
-  // member class — slot1 Architect/Planner/Reviewer/Lead/Senior Engineer, slot2 the analysts
-  // Researcher/Explorer/Plan Reviewer, slot3 the executors Deep Worker/Junior Engineer, slot4 the
-  // vision member Vision Analyst. The
-  // schema default is the L0 layer a fresh workspace resolves to; the read path materialises it
-  // (see `withTeamModelsDefaults`) so a consumer never has to apply defaults itself.
+  // The four team-model slots (contract `.mpd/plans/slot-single-source.md` §1-§2): each slot is
+  // ONE configured route plus its own optional fallback chain, and the subtree carries NO DEFAULT
+  // anywhere. The row-knob layer merges LAST, so a schema default here would be an override that
+  // wins over the user's file — the exact layer this contract deletes. An unconfigured slot stays
+  // ABSENT and every spawn it would route is refused with `SLOT_UNCONFIGURED`.
   teamModels: z.object({
-    slot1: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot1),
-    slot2: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot2),
-    slot3: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot3),
-    slot4: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot4),
+    slot1: teamModelSlotSchema(),
+    slot2: teamModelSlotSchema(),
+    slot3: teamModelSlotSchema(),
+    slot4: teamModelSlotSchema(),
   }),
-  // The per-base-agent route table (R2): one entry may carry a PARTIAL route for ONE member, and
-  // every leaf it sets outranks that member's `teamModels` slot leaf. Declared AFTER `teamModels`
-  // so the schema reads in precedence order; the front-door rows live in `SETTINGS_KNOBS` below
-  // (`AGENT_ROUTE_KNOBS`, added by L4 — the editing surface's lane, per this key's landing note).
-  agentRoutes: AGENT_ROUTES_SCHEMA,
   // The watchdog block is the §3 defaults table of the frozen contract and MUST stay byte-equal in
   // value to `packages/mpd-team-watchdog-plugin/src/machine.ts` `WATCHDOG_DEFAULTS` and to the
   // `mpd-team-watchdog` row config in `cordis.patch.yml` — those are the three
@@ -207,7 +175,7 @@ export const SettingsSchema = z.object({
 })
 
 /** The two-part disclosure every surface must be able to show (§D.2, and the "not lost" clause). */
-export const BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect in the RUNNING process — no restart: the config service re-resolves on every settings save and on a watched edit of the project file, and the model routes (teamModels, agentRoutes, modelchain) are read per use, so the next spawn or resolve carries them"
+export const BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect in the RUNNING process — no restart: the config service re-resolves on every settings save and on a watched edit of the project file, and the model routes (teamModels, modelchain) are read per use, so the next spawn or resolve carries them"
 
 /**
  * The RESTART half of the truth, REWORDED by wave fix/model-config-live-refresh (L1 landed the
@@ -423,111 +391,6 @@ const TEAM_MODEL_KNOBS: readonly SettingsKnob[] = TEAM_MODEL_SLOTS.flatMap((slot
   }))
 })
 
-/**
- * The per-leaf HUMAN sentence templates of an `agentRoutes` row. `{name}` is the roster member the
- * row overrides and `{group}` its slot's group name; the sentence states the R2 precedence (this
- * leaf outranks the member's slot), the LIVE effect (the member's next spawn/resolve — no restart)
- * and the fall-through of an unset leaf. One declaration; both front doors mirror it (the Web card
- * cannot import this module, so a parity test compares the copies).
- */
-const AGENT_ROUTE_LEAF_TEMPLATES: Readonly<Record<keyof typeof TEAM_MODEL_FALLBACK_OPTIONS, { readonly en: string; readonly zh: string }>> = {
-  provider: {
-    en: "The provider half of {name}'s OWN route override. An agentRoutes leaf outranks {name}'s team-model slot: it applies to {name} only, and LIVE — the member's next spawn or resolve carries it, no restart and no new team needed. An unset leaf falls through to the slot's provider; clearing every leaf returns {name} to the slot.",
-    zh: "{name} 专属路由覆盖的提供商。agentRoutes 的叶子优先于 {name} 的 team 模型槽位：只作用于 {name} 本人，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的提供商；清空全部叶子即恢复跟随槽位。",
-  },
-  model: {
-    en: "The model half of {name}'s OWN route override. It outranks the model of {name}'s team-model slot ({group}) and applies LIVE — the member's next spawn or resolve carries it, no restart and no new team needed. An unset leaf falls through to the slot's model; clearing every leaf returns {name} to the slot.",
-    zh: "{name} 专属路由覆盖的模型。优先于 {name} 所属槽位（{group}）的模型，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的模型；清空全部叶子即恢复跟随槽位。",
-  },
-  reasoningEffort: {
-    en: "The reasoning-effort half of {name}'s OWN route override (off / low / high / max). It outranks the effort of {name}'s team-model slot ({group}) and applies LIVE — the member's next spawn or resolve carries it. An unset leaf falls through to the slot's effort; an effort the chosen model does not support fails that member's spawn loudly, naming the member.",
-    zh: "{name} 专属路由覆盖的推理强度（off / low / high / max）。优先于 {name} 所属槽位（{group}）的推理强度，且即时生效——该成员下次生成/解析即携带新值。未设置的叶子回落到槽位的等级；该模型不支持的等级会让该成员的生成直接报错并点名。",
-  },
-}
-
-/**
- * The slot one roster member belongs to, so a per-member surface can name the layer its override
- * sits on. Derived from the groups' own membership (the same declaration the routing reads), so a
- * member the roster re-slots re-points every heading built from here.
- * @param name - the roster member's functional NAME.
- * @returns the slot id whose group carries the member, or undefined for a name no group routes.
- */
-export function agentRouteSlotOf(name: string): (typeof TEAM_MODEL_SLOTS)[number] | undefined {
-  return TEAM_MODEL_SLOTS.find((slot) => TEAM_MODEL_SLOT_GROUPS[slot].members.includes(name))
-}
-
-/**
- * One agentRoutes row's HUMAN sentence in `lang` — the same builder shape
- * {@link teamModelLeafSentence} has, so a front door renders the two row families the same way.
- * @param name - the roster member the row overrides.
- * @param leaf - the row's leaf (`provider` / `model` / `reasoningEffort`).
- * @param lang - the sentence's language.
- * @returns the sentence with `{name}` and `{group}` interpolated.
- */
-export function agentRouteLeafSentence(name: string, leaf: keyof typeof TEAM_MODEL_FALLBACK_OPTIONS, lang: "en" | "zh"): string {
-  /** The member's slot, whose group name the sentence interpolates (the name itself is literal). */
-  const slot = agentRouteSlotOf(name)
-  /** The group spelling the template interpolates; unknown names keep a neutral placeholder. */
-  const group = slot === undefined ? (lang === "zh" ? "未编组" : "ungrouped") : TEAM_MODEL_SLOT_GROUPS[slot][lang]
-  return AGENT_ROUTE_LEAF_TEMPLATES[leaf][lang].split("{name}").join(name).split("{group}").join(group)
-}
-
-/**
- * The heading a front door renders above ONE member's three agentRoutes rows, e.g.
- * `Architect — own route (overrides slot 1 · heavy members)`. It names the member and the slot the
- * override sits on, which is exactly what a reader needs before touching a row (R3).
- * @param name - the roster member the group edits.
- * @param lang - the heading's language.
- * @returns the heading string.
- */
-export function agentRouteGroupHeading(name: string, lang: "en" | "zh"): string {
-  /** The member's slot, whose 1-based number and group name the heading interpolates. */
-  const slot = agentRouteSlotOf(name)
-  if (slot === undefined) return lang === "zh" ? `${name} —— 专属路由` : `${name} — own route`
-  /** 1-based slot number, spelled the way the slot headings spell it. */
-  const index = TEAM_MODEL_SLOTS.indexOf(slot) + 1
-  return lang === "zh"
-    ? `${name} —— 专属路由（覆盖槽位 ${index} · ${TEAM_MODEL_SLOT_GROUPS[slot].zh}）`
-    : `${name} — own route (overrides slot ${index} · ${TEAM_MODEL_SLOT_GROUPS[slot].en})`
-}
-
-/**
- * The one-line impact sentence under an agentRoutes group heading: the R2 precedence in one breath,
- * shared by every member group (a per-member group needs no per-member variant).
- */
-export const AGENT_ROUTE_IMPACT: Readonly<Record<"en" | "zh", string>> = {
-  en: "A leaf set here applies to this member only and LIVE — the next spawn or resolve carries it; an unset leaf falls through to the member's slot, and clearing every leaf returns the member to the slot.",
-  zh: "在这里设置的叶子只作用于该成员本人且即时生效——下次生成/解析即携带；未设置的叶子回落到该成员的槽位，清空全部叶子即恢复跟随槽位。",
-}
-
-/**
- * The thirty-three agentRoutes knobs (R2's front door, added by L4): one provider/model/reasoning-
- * effort `select` row per roster member, enumerated from the slots' own membership so the eleven
- * names can never drift from the routing vocabulary and the user never free-types a name. Inserted
- * AFTER the team-model knobs (the schema reads in precedence order) and BEFORE the TUI surface's
- * own knob (which stays LAST for the index-keyed assertions over the original twenty-five).
- */
-const AGENT_ROUTE_KNOBS: readonly SettingsKnob[] = TEAM_MODEL_SLOTS.flatMap((slot) =>
-  TEAM_MODEL_SLOT_GROUPS[slot].members.flatMap((member) => {
-    // The member's three route leaves, in the fixed order both front doors render them.
-    const leaves: readonly { leaf: keyof typeof TEAM_MODEL_FALLBACK_OPTIONS; label: string; zh: string }[] = [
-      { leaf: "provider", label: "provider", zh: "提供商" },
-      { leaf: "model", label: "model", zh: "模型" },
-      { leaf: "reasoningEffort", label: "reasoning effort", zh: "推理强度" },
-    ]
-    return leaves.map(({ leaf, label, zh }) => ({
-      path: ["agentRoutes", member, leaf] as const,
-      label: `${member} ${label} (own route)`,
-      zh: `${member} ${zh}（专属路由）`,
-      kind: "select" as const,
-      options: TEAM_MODEL_FALLBACK_OPTIONS[leaf],
-      semantics: agentRouteLeafSentence(member, leaf, "en"),
-      semanticsZh: agentRouteLeafSentence(member, leaf, "zh"),
-      hint: knobHint(`agentRoutes.${member}.${leaf}`, agentRouteLeafSentence(member, leaf, "en")),
-    }))
-  }),
-)
-
 /** One knob: the decoded settings path plus the labels both front doors render. */
 export interface SettingsKnob {
   /** Decoded settings path this knob edits, root segment first. */
@@ -556,7 +419,7 @@ export interface SettingsKnob {
   readonly hint?: string
 }
 
-/** The fifty-nine knobs, in display order: the original thirteen, the twelve team-model slot leaves, the thirty-three agentRoutes leaves (eleven members × three), then the TUI surface's own knob. */
+/** The twenty-six knobs, in display order: the original thirteen, the twelve team-model slot leaves, then the TUI surface's own knob. */
 export const SETTINGS_KNOBS: readonly SettingsKnob[] = [
   { path: ["hashline", "maxDiffChars"], label: "Inline diff limit", zh: "行内 diff 上限", kind: "number" },
   { path: ["commentChecker", "autoCheck"], label: "Comment checker", zh: "注释检查", kind: "boolean" },
@@ -575,7 +438,6 @@ export const SETTINGS_KNOBS: readonly SettingsKnob[] = [
   // The per-member route-table rows (R2's front door, L4): enumerated from the slots' own
   // membership — the eleven roster NAMES, never a free-typed key — so an unknown name is
   // unrepresentable in the UI and the loud server-side validation stays the only reject path.
-  ...AGENT_ROUTE_KNOBS,
   // The TUI surface's own knob, LAST so every index-keyed assertion over the original thirteen and
   // the twelve slot leaves keeps its meaning. Its `hint` is the semantics sentence only — the
   // bridge/restart disclosure is appended by each front door's own hint builder, never hand-written.

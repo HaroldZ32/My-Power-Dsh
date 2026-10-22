@@ -1,0 +1,79 @@
+{
+  "wave": "slots-single-source",
+  "contract": ".mpd/plans/slot-single-source.md (incl. Amendment 1)",
+  "lane": "Senior Engineer — implementation lane (packages/mpd-config-plugin, mpd-roles-plugin, mpd-workmate-plugin, mpd-roster-provider-plugin, mpd-dsh-adapter-plugin, mpd-bundle-plugin, mpd-modelchain-plugin, docs/user-guide*, AGENTS.md §13, agent-references/glossary.md)",
+  "stamp_utc": "2026-10-22T17:01:51Z",
+  "what_changed": [
+    "mpd-config-plugin/src/settings-schema.ts: ModelRoute + TeamModelSlot (all leaves optional, per-slot `fallbacks`), TEAM_MODEL_SLOT_DEFAULTS deleted, ZERO .default() in the slot subtree, agentRoutes schema/knobs/templates/helpers deleted, knob list 59 -> 26",
+    "mpd-config-plugin/src/index.ts: `resolveTeamModelSlot(member, config): SlotResolution` (TOTAL union ok|unconfigured|invalid|unrouted, never throws), `slotUnconfiguredMessage`, `teamModelRouteOfMember` total, `withTeamModelsDefaults` + `agentRouteEntryOfMember` deleted, service exposes `slotResolutionOf` + `teamModelRouteOf` (both total) and `get()` is RAW, `rowKnobLayer` prunes the schema's empty-slot residue, one-time FILE seed (chooseSeedRoute/buildSeedBlock/seedTeamModelsFile + apply wiring)",
+    "mpd-dsh-adapter-plugin/src/index.ts: `resolveRunRoute(dsh, primary, fallbacks)` (one catalog read, catalog-POSITIVE first win, malformed entries dropped + one log line, winner passes a shared effort adaptation), `routePositivelyListed`, `withSupportedEffort` delegates to the shared helper",
+    "mpd-roles-plugin/src/index.ts: `mpd_role_spawn` has no `model` parameter, slot-only route via `slotResolution` + `resolveRunRoute`, structured SLOT_UNCONFIGURED refusal, `roleSurface` blanks a slot-routed member's chain when the resolution is not ok (extension roles keep their declared chain)",
+    "mpd-workmate-plugin/src/index.ts: `spawnRouteOf` slot-only (meta is provenance only), `declaredRouteOfBase` for extension bases, init records the slot route as provenance",
+    "mpd-roster-provider-plugin/src/index.ts: `routeFor` slot-only through the TOTAL service read, structured refusal BEFORE base.start, `start` consumes the fallback chain via `resolveRunRoute`; route.ts `routeForMember` deleted",
+    "mpd-bundle-plugin/src/settings-card.ts + model-config-web.ts: agentRoutes rows/table/effective lines/dictionary deleted, effective block renders per-slot STATE incl. `<unconfigured>` (defensive: never throws), web body = {slots raw, modelchain}",
+    "mpd-modelchain-plugin/src/index.ts: `mpd_modelchain_resolve` reports the typed slot state (configured route + chain, or `<unconfigured>` with missing leaves), never the stale static chain, never a throw",
+    "tests: 8 DoD arms added + old-semantics arms deleted (config AC1/AC3 rewritten, precedence.test.ts removed, card R2/R3 rewritten, workmate/roles/roster-provider/modelchain arms added)",
+    "docs (bilingual, same commit): docs/user-guide.md + .zh-CN.md, AGENTS.md §13, agent-references/glossary.md, READMEs of mpd-config/roles/roster-provider/bundle (EN + zh-CN)",
+    "derived (rebuilt locally, NOT a lane deliverable): packages/{mpd-config,mpd-dsh-adapter,mpd-modelchain,mpd-roles,mpd-roster-provider,mpd-workmate,mpd-team-core}-plugin/dist/index.js, packages/mpd-bundle-plugin/dist/index.js and packages/mpd-bundle-plugin/client.js"
+  ],
+  "commands": [
+    {
+      "cmd": ".toolchain/node_modules/.bin/bun run typecheck",
+      "exit": 0,
+      "note": "0 errors repo-wide"
+    },
+    {
+      "cmd": ".toolchain/node_modules/.bin/bun test packages",
+      "exit": 0,
+      "note": "2335 pass / 0 fail / 3 skip (2338 tests, 141 files) — final run after the last arm"
+    },
+    {
+      "cmd": ".toolchain/node_modules/.bin/bun run verify:docs",
+      "exit": 0,
+      "note": "pairs=50 failed=0 violations=0 links=445 dead=0 — PASS"
+    },
+    {
+      "cmd": ".toolchain/node_modules/.bin/bun run verify:rows",
+      "exit": 0,
+      "note": "36 row ids match the 2-file patch layer"
+    },
+    {
+      "cmd": "node scripts/verify-comment-coverage.ts",
+      "exit": 0,
+      "note": "VERDICT: PASS (435 files, 38985 declarations)"
+    },
+    {
+      "cmd": "node scripts/verify-manual-paths.ts",
+      "exit": 0,
+      "note": "PASS resolved=151 (AGENTS.md 60102 -> 60931 B, still 4605 B under the 65536 budget)"
+    },
+    {
+      "cmd": "node scripts/verify-no-host-override.ts",
+      "exit": 0,
+      "note": "PASS, 0 of 0 collisions"
+    },
+    {
+      "cmd": "node skills/dsh-qa/scripts/preset-conformance.ts --self-test",
+      "exit": 0,
+      "note": "32 harness rows conform; mpd preset 29 child rows; row parity 27/27"
+    },
+    {
+      "cmd": "node scripts/verify-dist-fresh.ts",
+      "exit": 1,
+      "note": "EXPECTED RED, NOT THIS LANE: the ONLY stale target is packages/mpd-tui-plugin/dist/index.js (owned by the TUI lane; its src changed, its dist is theirs to rebuild). Every target this lane touched is FRESH."
+    },
+    {
+      "cmd": "node scripts/verify-vendor.ts",
+      "exit": 1,
+      "note": "EXPECTED RED, CAPTAIN'S STEP: packages/mpd-bundle-plugin/client.js is a fingerprinted asset and the card half changed, so the combined client was rebuilt (node scripts/build-mpd-client.ts) and its sha256 moved. The single re-pin (node scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step) must land in the same commit (AGENTS.md §9/§11)."
+    }
+  ],
+  "unproven_bounds": [
+    "No REAL boot of the seed path was measured: the one-time seed needs a live LLM catalog, and this lane ran only unit mounts (stub adapters, no llm seam). Whether the seed wins the mount-time race against the llm row in a real `dsh` boot is UNPROVEN here; the documented degradation (write nothing, log once, first spawn reports SLOT_UNCONFIGURED) is what the unit arms prove.",
+    "No browser rendered the Web card: the presentation arms run in the offline hook runtime over the BUILT client.js, not a real browser. `<unconfigured>` is proven at the projection/render-tree level only.",
+    "No PTY/TUI run: /mpd-model's agentRoutes removal and its four-question dialog belong to the TUI lane (packages/mpd-tui-plugin), not this lane; the contract's `/mpd-model asks exactly four questions` arm is NOT proven here.",
+    "packages/mpd-tui-plugin/README{,.zh-CN}.md (listed in the contract's docs set) belong to the TUI lane and were not edited here.",
+    "The `mpd_role_spawn` extension-role path still uses the EXTENSION's own declared chain (not a slot, not a built-in default); the contract's §4 wording deletes `spec.chain[0]` for ROSTER members, which this lane did — the extension case is a deliberate, documented read of the same sentence.",
+    "Cross-lane mechanical edit: packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts had one frozen line updated because the TUI lane added two names (TEAM_MODEL_SLOT_GROUPS, TEAM_MODEL_SLOTS) to its existing config-schema import — same edge, same target, so the coupling set did not grow."
+  ]
+}

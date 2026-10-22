@@ -1,0 +1,55 @@
+{
+  "wave": "slots-single-source",
+  "task": "T13 — repair of T5 findings F1 (workmate READMEs) + F3 (durable seed marker)",
+  "contract": ".mpd/plans/slot-single-source.md §5, §10 (+ Amendment 1)",
+  "stamp_utc": "2026-10-22T17:12:49Z",
+  "F1_workmate_readmes": {
+    "files": ["packages/mpd-workmate-plugin/README.md", "packages/mpd-workmate-plugin/README.zh-CN.md"],
+    "mtimes": { "README.md": "Oct 23 01:10", "README.zh-CN.md": "Oct 23 01:10", "previous": "Oct 22 22:08" },
+    "what_changed": [
+      "NEW section '## Model routing (the slot is the only source)' / '## 模型路由（槽位是唯一来源）': route from the base's team-model slot ONLY (per-spawn slotResolutionOf read), slot `provider`+`model`(+effort) with its own `fallbacks` chain consumed once, `meta.provider/meta.model` are PROVENANCE ONLY, an unconfigured/malformed slot REFUSES with the structured `SLOT_UNCONFIGURED` (spawnAgent never reached), an EXTENSION base uses its OWN declared route (or fails with 'no route configured for <base>')",
+      "the `mpd_workmate_spawn` tool-row claim 'on its own model route' / '走它自己的模型路由' REPLACED by the slot wording (both languages): 0 occurrences of the old claim remain",
+      "the library-layout line for meta.json now says provider/model are PROVENANCE — never a route",
+      "slot/槽位 now appears 10 times (EN) / 9 times (zh) where it appeared 0 times before"
+    ]
+  },
+  "F3_durable_seed_marker": {
+    "marker_path": "<workspace>/.mpd/model-config-seed.json",
+    "exports": ["SEED_MARKER_FILE", "seedMarkerFor(root)", "seedTeamModelsOnce(projectFile, markerFile, catalog)", "teamModelsDeclaredIn(file)"],
+    "behaviour": [
+      "the MARKER is consulted BEFORE any attempt (a seeded-once workspace, block deleted or not, is never seeded again)",
+      "a declared `teamModels` block is the second guard and costs NO catalog read (seedAt checks it before dsh.llmCatalog)",
+      "a successful seed writes the block first, then creates the marker with `wx` (exclusive create; EEXIST is success, never an overwrite), and logs ONE line naming both paths",
+      "an unavailable catalog writes neither the block nor the marker, and logs at most ONE line per process (reload retries the attempt, never the line)",
+      "an unparsable project file is refused untouched and unmarked"
+    ],
+    "four_properties_asserted": [
+      { "property": "PROPERTY 1 — no attempt when a block exists", "arm": "seedTeamModelsOnce returns {status:'declared'}, file byte-identical, NO marker", "exit": 0 },
+      { "property": "PROPERTY 2 — no attempt when the marker exists even with the block deleted", "arm": "marker present + block absent => {status:'marked'}, file and marker byte-identical", "exit": 0 },
+      { "property": "PROPERTY 3 — one marker, never overwritten (and one log line per process on the mount path)", "arm": "first seed writes block+marker; second call {status:'marked'}; mounted row logs exactly ONE seed line, reloads and a second mount add NONE", "exit": 0 },
+      { "property": "PROPERTY 4 — no write and no marker while the catalog is unavailable", "arm": "{status:'no-catalog'} (empty catalog AND undefined), file absent, marker absent; mounted row says 'nothing was written' exactly ONCE across apply + reloads", "exit": 0 }
+    ],
+    "test_file": "packages/mpd-config-plugin/test/seed-marker.test.ts (10 arms)"
+  },
+  "docs_updated": [
+    "docs/user-guide.md + docs/user-guide.zh-CN.md — the teamModels row's seed sentence now names the durable marker and 'a block you delete on purpose is NEVER re-seeded'",
+    "agent-references/glossary.md — 'ONE-TIME IS DURABLE' paragraph",
+    "packages/mpd-config-plugin/README.md + README.zh-CN.md — the seed bullet names the marker",
+    "AGENTS.md §13 — +99 bytes (60,931 -> 61,030 B), under the captain's +200 B cap and 4,506 B under the 65,536 budget"
+  ],
+  "commands": [
+    { "cmd": ".toolchain/node_modules/.bin/bun run typecheck", "exit": 0 },
+    { "cmd": ".toolchain/node_modules/.bin/bun test packages", "exit": 0, "note": "2345 pass / 0 fail / 3 skip (2348 tests, 142 files)" },
+    { "cmd": ".toolchain/node_modules/.bin/bun run verify:docs", "exit": 0, "note": "pairs=50 failed=0 violations=0" },
+    { "cmd": "node scripts/verify-comment-coverage.ts", "exit": 0, "note": "PASS (436 files)" },
+    { "cmd": "node scripts/verify-manual-paths.ts", "exit": 0, "note": "PASS (AGENTS.md edits audited)" },
+    { "cmd": ".toolchain/node_modules/.bin/bun run verify:rows", "exit": 0 },
+    { "cmd": "node scripts/verify-no-host-override.ts", "exit": 0 },
+    { "cmd": "node scripts/verify-dist-fresh.ts", "exit": 1, "note": "EXPECTED RED, NOT THIS LANE: the only stale target is packages/mpd-tui-plugin/dist/index.js (TUI lane/Deep Worker T14). mpd-config-plugin's dist IS rebuilt and fresh." }
+  ],
+  "unproven_bounds": [
+    "The seed still has not run against a REAL LLM catalog: the mount-level arms drive a real adapter over an `llm` service double (the production projection path), not a live provider. A real-boot race with the llm row remains unmeasured.",
+    "The marker is per WORKSPACE ROOT; a workspace whose `config.projectFile` points outside `<ws>/.mpd` still gets its marker at the standard `<ws>/.mpd` path (the seed's block goes to the overridden file). That asymmetry is deliberate but not separately tested.",
+    "No browser/PTY proof here; F2 (packages/mpd-tui-plugin) is Deep Worker's T14 and was not touched."
+  ]
+}

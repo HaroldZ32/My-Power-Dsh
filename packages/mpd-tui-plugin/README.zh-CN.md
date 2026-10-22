@@ -19,14 +19,14 @@ Cordis 插件行（`mpd-tui`），其模块说明符由 bundle patch 持有：
 |---|---|---|
 | 状态行 | `ctx.tuiStatus` | 提示框上方一个键控的 `mpd` 贡献：`mpd: team … · boulder … · plans … · workmates …` |
 | 条目渲染器 | `ctx.tuiRenderers` | 本包的 log-only 会话事件（`agent-teams/*`、`mpd-tui/board-opened`）渲染为纯文本行，实时与回放同路径 |
-| 设置区块 | `ctx.tuiSettingsSections` | 把 mpd.jsonc 的可调项 —— 原有 13 个加上十二个 `teamModels` 槽位叶子（共 25 个），其中槽位叶子渲染为**由模型目录驱动的选择项** —— 声明为 `/settings` 中可编辑的字段，**已与 `<workspace>/.mpd/mpd.jsonc` 打通**（保存会写入文件；插件行为需重启后生效）；每个字段的提示在界面上直接写明（见"明确不声明"第 2 条） |
+| 设置区块 | `ctx.tuiSettingsSections` | 把 mpd.jsonc 的可调项 —— 原有 13 个、十二个 `teamModels` 槽位叶子与 TUI 自己的 `tui.dashboardKey`（共 26 个；按成员的 `agentRoutes` 行已随覆盖层一起删除），其中槽位叶子渲染为**由模型目录驱动的选择项** —— 声明为 `/settings` 中可编辑的字段，**已与 `<workspace>/.mpd/mpd.jsonc` 打通**（保存会写入文件；插件行为需重启后生效）；每个字段的提示在界面上直接写明（见"明确不声明"第 2 条） |
 | 全屏场景 | `ctx.tuiScenes` | 团队与任务账本、boulder 工作账本、计划、workmate 库；已路由团队在面板上多两行：`team-plan …`（仅 staged 时）与 `team-hold held (…)`（仅看门狗 hold 持续期间） |
 | 团队工作流场景 | `ctx.tuiScenes` | `mpd-tui-team` —— 用 `/mpd team` 打开，或在面板中按 `a`：团队 id/名称/阶段、计划审阅状态、看门狗 hold、成员表（角色/模型/状态/进度/当前任务）以及任务 DAG（kind/状态/负责人/尝试/轮次/判定/依赖，按深度缩进，标 `failed-dep=`）与邮箱尾部 |
 | 计划场景（批准流程，W6） | `ctx.tuiScenes` | `mpd-tui-plan` —— 用 `/mpd plan` 打开。它渲染实时任务板，并承载批准闸门：逐字输入该面板显示的**确切**短语（`approve plan-…`，由 Web 面板渲染的**同一份**投影提供），再按 `Ctrl+X`；10 秒内按两次 `Ctrl+D` 丢弃已 stage 的 plan，`Ctrl+R` 重新读取，`esc` 返回。该动作是一次 `agent_teams_plan {action:"approve"\|"delete"}` 调用，携带从适配器**自身注册表**解析出的**实时** agent —— 解析不出调用方时一律**响亮拒绝**，绝不伪造（见下） |
-| 命令树 | `ctx.tuiCommandTrees` | `/mpd board`、`/mpd team`、`/mpd plan`、`/mpd status`、`/mpd panel`、`/mpd dag`、`/mpd workmate`、`/mpd workmates` 补全，以及 `/mpd-model` 根；两个根与每个子项都在 `descriptions` 中同时提供中英双语，由宿主按其当前 `/lang` 解析 |
-| 模型菜单（R3） | `ctx.tuiDialogs` + 共享的目录/设置接缝 | **`/mpd-model`** —— 一个真正的选择式菜单，依次选择 槽位 → 提供商 → 模型 → 推理强度，并把所选路由写入 `/settings` 区块所编辑的 `mpd-config` 条目。选项来自该区块**自己**的投影（`teamModelOptionLists`）与同一份实时模型目录，因此菜单与设置行不可能互相矛盾；输出结果携带与区块完全相同的披露语句。任一档取消即不写入任何内容 |
+| 命令树 | `ctx.tuiCommandTrees` | `/mpd board`、`/mpd team`、`/mpd plan`、`/mpd status`、`/mpd panel`、`/mpd dag`、`/mpd workmate`、`/mpd workmates`、`/mpd watchdog` 补全，以及 `/mpd-model` 根；两个根与每个子项都在 `descriptions` 中同时提供中英双语，由宿主按其当前 `/lang` 解析 |
+| 模型菜单（R3） | `ctx.tuiDialogs` + 共享的目录/设置接缝 | **`/mpd-model`** —— 一个真正的选择式菜单，依次选择 槽位 → 提供商 → 模型 → 推理强度，并把所选路由写入 `/settings` 区块所编辑的 `mpd-config` 条目。选项来自该区块**自己**的投影（`teamModelOptionLists`）与同一份实时模型目录，因此菜单与设置行不可能互相矛盾；输出结果携带与区块完全相同的披露语句。任一档取消即不写入任何内容。它的槽位面板还会通过配置服务的类型化 `slotResolutionOf` 答案（契约修订 1）显示每个槽位的**当前**配置：未配置的槽位渲染 `<unconfigured>` 并点名缺失的叶子，畸形叶子渲染 `<invalid>`，组合中没有配置服务时渲染 `<unavailable>` —— 并且对话框**从不**把这次读取包进 try/catch，因此降级是服务报告的状态，而不是在显示路径上被吞掉的异常 |
 | 快捷键 | `ctx.tuiShortcuts` | `alt+m` 打开面板 · `alt+a` 子代理 + 团队面板 · `alt+t` 团队工作流 · `alt+w` workmate 选择器 · `alt+r` 立即刷新状态行 |
-| 侧栏页面（dsh-tui 0.13.0+，已适配 0.16.1） | `ctx.tuiPanels`（经适配器） | 自 0.14.0 波次起是**两个**页面 —— `team`（`MPD`、`❖`、`order` 10，合并的**富**视图：宿主自己整理的子代理行位于 DAG 页的外框/图例/按键/钉住正文之上）与 `workmate`（`MPD workmate`、`⬢`、`order` 12）。独立的 `dag` 页已**退役**并合并进 `MPD`（用户条款「DAG页作为MPD面板」），因此 `/mpd dag` 改瞄到 `MPD` 面板、以富形态团队场景作为回退 —— 没有任何路由、选择器条目或 `⤢` 变成死路。两个页面都声明图标（与宿主的八个内置标签页不同）、都不声明 `compact`，且都请求 `minColumns` 28。接缝已绑定时，`alt+a`、`/mpd panel` 与 `/mpd subagents` 经 `tuiPanels.open()` 路由到 MPD 面板；`/mpd dag` 改瞄到同一面板，`/mpd workmate` 路由到它自己的页面。**任何**拒绝都会回退到一个全屏界面（路由回退用 `mpd-tui-subagents`，MPD 页自己的 `⤢` 用富形态 `mpd-tui-team` 场景，`workmate` 用看板场景）—— 绝不静默无操作 —— 每条命令都会打印一行双语状态，点名它到达的界面与最终 id。页面能否出现在屏幕上由宿主自己的两个开关决定，见下方"如何到达"一段 |
+| 侧栏页面（dsh-tui 0.13.0+，已适配 0.16.1） | `ctx.tuiPanels`（经适配器） | **三个**页面 —— `team`（`MPD`、`❖`、`order` 10，合并的**富**视图：宿主自己整理的子代理行位于 DAG 页的外框/图例/按键/钉住正文之上）、`workmate`（`MPD workmate`、`⬢`、`order` 12）与看门狗波次新增的 `watchdog`（`MPD watchdog`、`⚠`、`order` 13：每团队的暂停状态与阶段、`mpd-tui` 未读数与事件列表，配 `a`/`r`/滚动键）。独立的 `dag` 页已**退役**并合并进 `MPD`（用户条款「DAG页作为MPD面板」），因此 `/mpd dag` 改瞄到 `MPD` 面板、以富形态团队场景作为回退 —— 没有任何路由、选择器条目或 `⤢` 变成死路。三个页面都声明图标（与宿主的八个内置标签页不同）、都不声明 `compact`，且都请求 `minColumns` 28。接缝已绑定时，`alt+a`、`/mpd panel` 与 `/mpd subagents` 经 `tuiPanels.open()` 路由到 MPD 面板；`/mpd dag` 改瞄到同一面板，`/mpd workmate` 路由到它自己的页面。**任何**拒绝都会回退到一个全屏界面（路由回退用 `mpd-tui-subagents`，MPD 页自己的 `⤢` 用富形态 `mpd-tui-team` 场景，`workmate` 用看板场景）—— 绝不静默无操作 —— 每条命令都会打印一行双语状态，点名它到达的界面与最终 id。页面能否出现在屏幕上由宿主自己的两个开关决定，见下方"如何到达"一段 |
 | 合并面板 | `ctx.tuiScenes` | `mpd-tui-subagents`——宿主自己的子代理行（含其 运行中/已完成/失败 计数）、团队正文，以及每条**已绘制**依赖边都以方向箭头 `▼` 收尾、下方带图例的任务 DAG：它是**回退**界面 —— 宿主没有面板接缝、或拒绝了打开请求时，`alt+a` 与 `/mpd panel` 落到这里；在 0.13.0 之前的宿主上，工作区存在团队时也可用 **`Ctrl+A`** 打开（见下方接管说明）。`enter` 打开选中子代理的详情，`i` 中断选中的活跃运行，鼠标点击选中行 |
 | `Ctrl+A` 接管 | 一个 `ctx.tuiStatus` 视图 + 适配器的宿主输入接触面 | 当团队投影含有一个至少带一项任务的团队时，`Ctrl+A` 打开合并面板而非宿主自带的 dashboard；没有团队时——或宿主输入总线无法被适配器触达时——该键行为与今天完全一致（`tui.dashboardKey`，默认 `true`；见"明确不声明"第 7–9 条） |
 | 对话框 | `ctx.tuiDialogs` | 托管式 workmate 选择器（`select`） |
@@ -35,7 +35,7 @@ Cordis 插件行（`mpd-tui`），其模块说明符由 bundle patch 持有：
 支撑面（不属于上述七个接缝）：harness 命令注册表上的 `/mpd` 命令、`mpd` 设置
 命名空间注册、以及 log-only 的 `mpd-tui/board-opened` 会话记录。
 
-### 两个侧栏页面（0.14.0 波次起）：合并的富页面 `MPD` 与 workmate 书架
+### 三个侧栏页面：合并的富页面 `MPD`、workmate 书架与看门狗页
 
 **徽标与那一次自动开页从 apply 侧发布，从不由页面发布（G2，2026-10-20）。** dsh-tui 只在插件面板是所在栏的
 **当前激活页**时挂载它，所以页面侧的徽标只能装饰用户已经在看的那一页。`src/panel-attention.ts` 持有宿主侧
@@ -43,17 +43,20 @@ Cordis 插件行（`mpd-tui`），其模块说明符由 bundle patch 持有：
 组合什么都不注册），并由页面同样订阅的 `mpdTeams` 推送驱动。徽标阶梯就是 `dagBadge` —— 两个界面共用同一条
 推导 —— 同时把 watchdog 的 HOLD 提升到至少 `warning`。`/mpd status` 带有对应的部署行
 （`panels: team=… workmate=… · seam bound · keeper …`），它点名宿主分配的 id，因为除此之外没有任何东西能
-推导出它们。
+推导出它们。**看门狗页有自己的徽标分支**（契约 `.mpd/plans/watchdog-tui-panel.md` §7）：暂停是 `warning`、
+未读事件是 `info`，数量取和，并且除了每个团队 feed 事件外还以 5 秒轮询重取 —— 暂停由看门狗自己的定时器
+造成、不触碰任何团队记录，只靠 feed 永远不会通告它。
 
-本包通过宿主的 `tuiPanels` 接缝贡献**两个**页面，每个页面都有自己在模块作用域**冻结**的描述符
+本包通过宿主的 `tuiPanels` 接缝贡献**三个**页面，每个页面都有自己在模块作用域**冻结**的描述符
 （`*_DESCRIPTOR_FROZEN`），且都在宿主自己的 `MAX_PANELS_PER_PLUGIN = 4` 配额之内：
 
 | 模块 | slug（宿主会用本次激活的插件 id 加前缀） | 标题 | 图标 | `order` | `minColumns` |
 |---|---|---|---|---|---|
 | `src/panel.ts` | `team` | `MPD` | `❖` | 10 | 28 |
 | `src/panel-workmate.ts` | `workmate` | `MPD workmate` | `⬢` | 12 | 28 |
+| `src/panel-watchdog.ts` | `watchdog` | `MPD watchdog` | `⚠` | 13 | 28 |
 
-**本节过去列出的第三个页面——`src/panel-dag.ts` 那个独立的 `dag` 页——已退役并合并进 `MPD` 面板**
+**本节过去列出的那个页面——`src/panel-dag.ts` 那个独立的 `dag` 页——已退役并合并进 `MPD` 面板**
 （用户条款「DAG页作为MPD面板」；本波次的记录见 `docs/tui.md` §11.6）。两个描述符、两个 slug、两个排序位
 最终只留下**一个**：存活槽位渲染的是 DAG 页的富正文（外框、表头 + 进度、图例、按键页脚、点击钉住的详情体、
 三种布局、徽标），宿主自己整理的子代理行画在图形**上方**、同处一个外框之内；那份单独的朴素合并渲染器被
@@ -66,16 +69,16 @@ Cordis 插件行（`mpd-tui`），其模块说明符由 bundle patch 持有：
 `♥`（companion）——并且在**本包的 `sanitize.cellWidth`
 与宿主的 `stringWidth` 下都恰好是一个单元格**，因为图标不是恰好一格的注册会被宿主**拒绝**。合并页过去
 不声明图标，于是宿主画出兜底字母 `M`；workmate 页过去声明 `◆`，它与宿主自己的 `agents` 标签页逐字节
-相同，根本算不上"独特的符号"。两者都在此修正，整套图标由包测试套件**对着宿主自己的注册表**断言，而不是
-对着一个字面量清单。图标**是否被画出来**则是一个变动过两次的宿主事实：0.14.0 的轮播 `PanelBar` 画的是
+相同，根本算不上"独特的符号"。两者都在此修正；看门狗页声明 `⚠` —— 在两种度量下都是一格，且不属于宿主的任何标签页。整套图标由包测试
+套件**对着宿主自己的注册表**断言，而不是对着一个字面量清单。图标**是否被画出来**则是一个变动过两次的宿主事实：0.14.0 的轮播 `PanelBar` 画的是
 `○`/`●` 圆点（已安装 0.14.0 上 `grep -c icon …/PanelBar.js` 为 0），而 **0.15.0 重新绘制图标** ——
 非活动标签画 `tab.icon ?? <标题首字符> ?? '?'` 外加未读数，因此本 bundle 的 `❖` 与 `⬢` 重新回到标签栏，
 bundle 侧没有任何改动。
 
-两个页面的 `apiVersion` 都是 1（唯一被接受的值），且都**不声明 `compact`**：宿主会校验并保存
+三个页面的 `apiVersion` 都是 1（唯一被接受的值），且都**不声明 `compact`**：宿主会校验并保存
 那个行槽位，却**不挂载**它的渲染槽位，声明它就等于主张一个宿主永远不会绘制的界面。
 
-**两页都向宿主请求 `minColumns` 28 —— 那正是宿主自己的底线 —— 而这个数字就是"面板看不见"这一缺陷的
+**三个页面都向宿主请求 `minColumns` 28 —— 那正是宿主自己的底线 —— 而这个数字就是"面板看不见"这一缺陷的
 修复。** 宿主的 `components/sidePanel/PanelHost.js` 会计算
 `tooNarrow = def.minColumns !== undefined && width < def.minColumns`，为真时用一条 `panel-too-narrow`
 提示**顶替**页面正文；而 `components/sidePanel/dimensions.js` 在分栏阈值处把面板列固定为它自己的
@@ -163,7 +166,8 @@ id 指向宿主拥有的行）：
 `toggle, focus, zoom, todo, jobs, agents`。**设好**时的实测（120 列，这是合并**前**那套三个页面的集合）：
 标签栏出现
 `‹ MPD ›`、`‹ MPD DAG ›` 与 `‹ MPD workmate ›`，页面正文渲染出来。**合并之后标签栏只有两个 MPD 标签页
-—— `‹ MPD ›` 与 `‹ MPD workmate ›`。** 面板列只在宿主分栏处存在 ——
+—— `‹ MPD ›` 与 `‹ MPD workmate ›` —— 而看门狗波次之后，第三个标签页（`‹ MPD watchdog ›`）会在宿主的
+启用列表写下它发现的 id 后加入。** 面板列只在宿主分栏处存在 ——
 同一份抓取在 80 列与 48 列上报 `split=false`，即根本没有面板列：那是宿主自己的阈值，不是 MPD 的设置项。
 
 出于同样的原因，`/mpd panel` 的句子刻意保守：*"宿主已接受 {id}；若没有出现面板，请在 /settings → 侧栏
@@ -374,7 +378,8 @@ id、侧栏也打开时，本波（DAG 高亮）的真机 PTY 抓取里标签栏
 条目印出 `name · key`、它的 BASE 模板、使用次数、描述与 note，并按最近更新优先排序 —— 与
 `mpd_workmate_list` 提供的顺序相同，因此面板与工具不可能给出不同说法。键盘行为与 DAG 页一致，空状态点名
 填满它的调用：`no workmates yet — `mpd_workmate_init` creates one`。它的刷新节拍与 DAG 页相同的 2000 ms
-（`WORKMATE_PANEL_REFRESH_MS`），因此两个侧栏页面不可能对"多久重绘一次"给出不同说法。
+（`WORKMATE_PANEL_REFRESH_MS`），因此各侧栏页面不可能对"多久重绘一次"给出不同说法；看门狗页用
+自己的 `WATCHDOG_PANEL_REFRESH_MS`（同样是 2000 ms），因为它读的是看门狗服务而不是团队投影。
 
 ### 依赖图：箭头、图例与 `Ctrl+A` 接管
 
@@ -512,6 +517,7 @@ harness 接缝（tools、skills、agent registry、subagents）不在此处直�
 | `shortcuts` | `true` | 注册快捷键 |
 | `panel` | `true` | 贡献 MPD 侧栏页（dsh-tui 0.13.0）并把 `alt+a` / `/mpd panel` 路由到它。关闭 ⇒ 不再尝试注册（聚合行上报适配器自己的 `skipped("panels", …)` 结果并点名该配置），两个入口都保持面板出现之前的路径：全屏合并场景 |
 | `workmate` | `true` | 贡献 WORKMATE 侧栏页 —— 它**自己的**开关，与 `panel` **相互独立**，因此 MPD 的两个页可以分别开关。关闭 ⇒ 该页完全不注册（聚合行上报 `skipped("panels", …)` 并点名 `workmate: false`），`/mpd workmate` 保持它的全屏界面（看板场景）。因为「从未注册的页」不可能被任何东西加回来 —— 宿主的配置重写不会、运行时的启用保持器也不会 —— 所以这个开关**能真正留住**；两个开关都需要重启生效，而且**两者都作为勾选框出现在宿主的 `/settings` 对话框里** —— 因为该行配置被标记为 volatile，而那个标记正是对话框 `volatileForm` 遍历所读的字段 |
+| `watchdog` | `true` | 贡献 WATCHDOG 侧栏页 —— 它**自己的**开关，与 `panel`、`workmate` **相互独立**，因此三个页可以分别开关。关闭 ⇒ 该页完全不注册（聚合行上报适配器自己的 `skipped("panels", …)` 并点名 `panel: false`），`/mpd watchdog` 用一行报告缺失：该页**没有**全屏回退，因为没有场景绘制事件列表。与每个行配置开关一样需要重启生效 |
 | `panelAutoOpen` | `true` | 在本进程内**第一次**出现活跃团队时，把 MPD 页打开一次。否则该页只能通过 `alt+a`、`/mpd panel` 与宿主的页签栏到达，不知道这些入口的用户永远看不到 DAG。它不会为启动时就已存在的团队触发；无论宿主如何回答，每进程至多一次；被拒绝即不重试（宿主对 `open()` 有每插件 5 秒一次的限速）。**徽标**是另一件事 —— 它在每次团队状态变化时从 apply 侧发布，因此关掉本项不会让告警失效 |
 | `dashboardKey` | `true` | 启用 `Ctrl+A` 接管：工作区存在团队时 `Ctrl+A` 打开合并面板；无团队（或本项关闭）时该键保持宿主原有含义。与本节其它旋钮不同，它**每次按键**都通过配置层重新读取，因此 `/settings` 保存后**无需重启**即生效。接管本身会在宿主把活的输入 kit 交给本会话之后就绪——即任意一次 MPD 场景/面板渲染之后（见"明确不声明"第 12 条）。**在提供侧栏面板接缝的宿主（dsh-tui 0.13.0+）上本旋钮是惰性的** —— 无论它说什么，接触面都保持解除武装，因此它只在旧宿主上有意义 |
 | `dialogs` | `true` | 启用托管对话框门面 |

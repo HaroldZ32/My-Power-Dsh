@@ -37,7 +37,7 @@
 
 | 产物 | 路径 | 说明 |
 |---|---|---|
-| TUI 界面包 | `packages/mpd-tui-plugin/` | TUI 原生界面：**两个侧栏页面**（`src/panel.ts`——标题 `MPD`，主入口，且自 0.14.0 波次起它本身就是富形态 DAG 页，§3.3/§3.4——与 `src/panel-workmate.ts`）、状态行、`/settings` 区块、全屏场景、`/mpd` 命令树、快捷键、受中介的对话框、**宿主未投影**的转写渲染器注册（明确不声明第 10 条），以及"就绪但未激活"的决策事件接缝。 |
+| TUI 界面包 | `packages/mpd-tui-plugin/` | TUI 原生界面：**三个侧栏页面**（`src/panel.ts`——标题 `MPD`，主入口，且自 0.14.0 波次起它本身就是富形态 DAG 页，§3.3/§3.4——、`src/panel-workmate.ts`，以及 2026-10-23 看门狗波次新增的 `src/panel-watchdog.ts`）、状态行、`/settings` 区块、全屏场景、`/mpd` 命令树、快捷键、受中介的对话框、**宿主未投影**的转写渲染器注册（明确不声明第 10 条），以及"就绪但未激活"的决策事件接缝。 |
 | 准入清单 | `dsh-plugin.json`（仓库根目录） | 整个 bundle 的**唯一**一份 Community v0.15 清单——这是刻意的偏离（见 §7）。 |
 | 环境描述符 | `dsh-distribution.json`（仓库根目录） | 面向 dsh-distribution 元协议（Draft）的 `DistributionDescriptor`。 |
 | TUI 组合 | `cordis.patch.yml` | 新增 `mpd-tui` 行与 `dsh-tui` 花名册默认值，使 TUI 会话默认使用 **mpd** 预设。 |
@@ -107,9 +107,11 @@ dsh-tui 自 0.12.0 起就暴露的十四条接缝，加上 0.13.0 新增的侧�
 
 ### 3.1 Web 界面的设置界面（设置 → MPD）
 
-同样的 59 个可调项 —— 原有 13 个、十二个 `teamModels` 槽位叶子与 33 个 `agentRoutes` 叶子
-（十一名成员 × 三），路由叶子渲染为联动的模型 + 推理强度选择器，另加 TUI 界面自身的一个开关 ——
-也能在 Web 界面里编辑：**设置 → MPD**，即设置对话框中独立的一栏——它不再位于"插件"
+共享 schema 声明的同一组可调项 —— 原有 13 个、十二个 `teamModels` 槽位叶子（渲染为联动的模型 + 推理强度
+选择器），另加 TUI 界面自身的一个开关 —— 也能在 Web 界面里编辑。三十三个 `agentRoutes` 叶子已随
+按成员覆盖层一起**删除**（`.mpd/plans/slot-single-source.md` §3）：Web 卡片与 `/mpd-model` 对话框都不再
+显示成员覆盖表，既有 `.mpd/mpd.jsonc` 里遗留的块会被忽略且绝不重写，`/mpd-model` 只问
+槽位 → 提供商 → 模型 → 推理强度，并写入 `teamModels.<slot>`：**设置 → MPD**，即设置对话框中独立的一栏——它不再位于"插件"
 标签页内。该栏按宿主自有栏目（section）的注册方式注册（`ctx.slots.inject("settings.section", …)` →
 `ctx.slots.register({ name: "settings.section", id: "mpd", order: 20, label: () => t("nav"), locale, inject }, Section)`，
 形状取自 `dsh-client-ui-settings-models/lib/client.js:2936` 的实测）：设置外壳收集该列表槽位、按 `order`
@@ -128,8 +130,8 @@ revision 驱动 scope 写入、拒绝非法草稿、带原因渲染为只读—�
 
 **证据级别——本环境未见证：** **真实浏览器渲染**（宿主在真实页面中分发该 key）与**点击驱动的保存**。
 本环境没有浏览器可执行文件；通道以 `cardClaim.W3.witnessed === false` 记录这一点及原因，本页重复该结论，
-绝不暗示相反。要自己看到它：启动 `dsh web`，打开界面，进入 **设置 → MPD**，应看到带 59 个可调项（团队
-模型槽位与按成员路由提供由目录驱动的选择）的
+绝不暗示相反。要自己看到它：启动 `dsh web`，打开界面，进入 **设置 → MPD**，应看到带 schema 各项（团队
+模型槽位提供由目录驱动的选择）的
 `mpd` 栏，编辑一项并保存——恰好一个活动会话时，工作区的 `<workspace>/.mpd/mpd.jsonc` 会在保留注释的
 前提下改变；否则打通功能会大声拒绝（`no-live-session` / `ambiguous-multi-root`）并说明取值并未丢失。
 
@@ -189,21 +191,31 @@ TUI 会话仍然拥有的东西：`/mpd team` 场景、`/mpd plan` 场景与状�
 
 ### 3.3 侧栏面板接缝——主入口，以及它诚实的边界
 
-`packages/mpd-tui-plugin/` 通过 `ctx.tuiPanels` 接缝注册**两个**右侧栏页面——`src/panel.ts`（slug
+`packages/mpd-tui-plugin/` 通过 `ctx.tuiPanels` 接缝注册**三个**右侧栏页面——`src/panel.ts`（slug
 `team`、标题 `MPD`、单格图标 `❖`、`order` 10）承载那份**富形态的合并视图**（宿主自己整理的子代理快照行
 在**上方**，**本会话**自己团队的 MPD 依赖 DAG 在下方（见 §3.4），两者同处 DAG 页自己的外框、表头 + 进度、图例、按键页脚
-与点击钉住的详情体之内）；以及 `src/panel-workmate.ts`（slug `workmate`、标题 `MPD workmate`、图标 `⬢`、
-`order` 12，见 §3.4）。**本节过去描述的第三个页面——`src/panel-dag.ts` 那个独立的 `dag` 页——已被 0.14.0
+与点击钉住的详情体之内）；`src/panel-workmate.ts`（slug `workmate`、标题 `MPD workmate`、图标 `⬢`、
+`order` 12，见 §3.4）；以及 2026-10-23 看门狗波次新增的 `src/panel-watchdog.ts`（slug `watchdog`、
+标题 `MPD watchdog`、图标 `⚠`、`order` 13、`minColumns` 28）。看门狗页渲染团队看门狗的持久状态：**每支团队**
+的**暂停状态与阶段**、`mpd-tui` 读者的未读数，以及近期事件（种类、相对时间、团队 / 任务 / 尝试、原因与 `ms`、
+挂起结果与确认状态）；`a` 确认到当前显示的最新事件（只推进 `mpd-tui` 水位，一次按键一次）、`r` 刷新、
+`↑↓` / `jk`（外加 `PgUp`/`PgDn`/`Home`/`End`）滚动。它的数据源是经本包自己的前门访问的 `mpdWatchdog`
+服务——**绝不**直接读 `.mpd/team/watchdog/*.jsonl` 文件——因此服务缺失时渲染显式的
+`watchdog: 不可用` 状态，没有事件时渲染显式空状态，任何渲染路径都不抛错。`/mpd watchdog` 经
+`openPanel(handle.id())` 打开它；该页**没有全屏回退**（没有任何场景绘制事件列表），所以面板接缝缺失时只用
+一行**报告缺失**，而不是路由到另一个界面。该页还会从 apply 侧的关注面获得**自己的**徽标（暂停 = `warning`、
+未读事件 = `info`），该关注面除了每个团队 feed 事件外，还以 5 秒轮询重取——暂停由看门狗自己的定时器造成，
+不触碰任何团队记录，只靠 feed 永远不会通告它。**本节过去描述的那个页面——`src/panel-dag.ts` 那个独立的 `dag` 页——已被 0.14.0
 波次退役并合并进 MPD 面板**（用户条款「DAG页作为MPD面板」，§11.6 有记录）：两个描述符、两个 slug、两个排
 序位最终只留下**一个**，而存活槽位渲染的正是 DAG 页的渲染体。**用户能触达的入口没有一个变成死路**：
 `/mpd dag` 改瞄到 MPD 面板——DAG 页**就是**这个面板——而 `/mpd panel`、`/mpd subagents`、`alt+a` 本来就
 都走同一个槽位（旧的 `Ctrl+A` 宿主输入接触面在提供该接缝的宿主上**保持惰性**；在它确实就绪的老宿主上，
-它打开的就是合并的 subagents 场景，与以往一致）。存活的两个页面 `apiVersion` 都是 1，都**不带 `compact`**——宿主会校验
+它打开的就是合并的 subagents 场景，与以往一致）。三个页面 `apiVersion` 都是 1，都**不带 `compact`**——宿主会校验
 并保存描述符的 `compact` 槽位，但**不挂载**它的渲染槽，声明它就等于声明一个无法渲染的界面——并且都请求
 **`minColumns` 28**，即宿主自己的底线。最终面板
 id 是**从宿主自身的 `list()` 回读中发现的**，绝不自行拼接：`<pluginId>:<slug>`，合并前真机实测为
 `act1:team`、`act1:dag`、`act1:workmate`（该 plain loader 行不携带任何 Component 身份，前缀由宿主加上）。
-记录下来的集合就是**实际注册成功**的那些 id，因此现在只带存活的两个，不再有第三个。
+记录下来的集合就是**实际注册成功**的那些 id，因此现在带的是当前三个——`team`、`workmate` 与 `watchdog`——而不含已退役的 `dag` 页。
 
 **可达性规则——宿主自己的两个开关，而本 bundle 无法代设。** 注册了页面并不等于页面可见。在已安装宿主上，
 启用列表位于宿主**自己**的行配置里（`dsh-tui.sidePanel.panels` —— 0.13.0 上是 `todo,jobs,agents`，
@@ -213,7 +225,7 @@ id 是**从宿主自身的 `list()` 回读中发现的**，绝不自行拼接：
 的步骤，既写进文档，也由命令自己打印：
 
 1. 在 `/settings` → 侧栏 → *启用的面板* 里加入该页的最终 id（id 可从宿主的 `/panel ` 补全列表得知，或直接
-   读 `/mpd panel` / `/mpd dag` / `/mpd workmate` 打印的那一行）；
+   读 `/mpd panel` / `/mpd dag` / `/mpd workmate` / `/mpd watchdog` 打印的那一行）；
 2. 打开侧栏——`Ctrl+B`——或开启 *启动时展开侧栏*。
 
 **启用列表还必须挺过宿主自己的配置重应用；现在它挺得住，靠的是两条路径。** 宿主自己会追加注册成功的 id
@@ -300,11 +312,13 @@ activation}`，记录器**拒绝**生成任何无法追溯到已安装宿主包�
 agents`。**设好**时的实测（120 列，这是本波次替换掉的**三页**集合）：标签栏出现 `‹ MPD ›`、
 `‹ MPD DAG ›` 与 `‹ MPD workmate ›`，页面正文渲染出来（`evidence/tui/dag-port/verification/pty/frozen/`）。
 **合并之后标签栏只有两个 MPD 标签页**——`‹ MPD ›` 与 `‹ MPD workmate ›`——上面两条路由依旧各自解析到存活
-界面（本波次自己的记录见 §11.6）。面板列只在宿主分栏处存在——同一份抓取在 80 列
+界面（本波次自己的记录见 §11.6）。**2026-10-23 看门狗波次之后，第三个 MPD 标签页**
+（`‹ MPD watchdog ›`）可在宿主的启用列表写下它发现的 id 后加入；上面那两个宿主开关对它同样适用。面板列只在宿主分栏处存在——同一份抓取在 80 列
 与 48 列上报 `split=false`，因此那里无论列表怎么写都不可能有页面可见。
 
 `alt+a`、**`/mpd panel`** 与 **`/mpd subagents`** 在接缝已绑定时把 MPD 面板经 `tuiPanels.open()` 打开，
-**`/mpd dag`** 改瞄到**同一个**面板（它渲染的就是 DAG 页），**`/mpd workmate`** 打开它自己的页面。
+**`/mpd dag`** 改瞄到**同一个**面板（它渲染的就是 DAG 页），**`/mpd workmate`** 打开它自己的页面，**`/mpd watchdog`** 打开看门狗页——它是唯一没有全屏界面兜底的页面，
+因此没有面板接缝的宿主得到的是**一行缺失报告**，而不是一个假装是它的别的界面。
 **任何**拒绝情形——每插件每 5000 ms 只允许一次打开、宿主
 已不再持有的 id、或没有存活的 panel 消费者——都会回退到一个全屏界面，并且打印出的那一行会说明实际到达的
 界面；这条路径上没有任何静默的空操作。回退目标按路由区分，刻意不是同一个场景：MPD 面板自己的 `⤢` 打开的是
@@ -598,7 +612,7 @@ settings 安装器同样保持 base 固定。这一固定不再意味着 mpd 的
   两种跳过情形下**都不改动任何文件**，而且这次编辑**没有丢失**：它已存入宿主全局 settings 文档，配置层
   会立刻对所有工作区生效——只有**文件写入**在等"恰好一个实机会话"。TUI 状态行与 Web 卡片都写明了这一条。
 - **生效时机** —— 模型配置的消费者通过实时 `mpdConfig` 服务按次解析（`mpd_modelchain_resolve`
-  每次调用；槽位 / `agentRoutes` 路由在 spawn 时），而该服务在每次设置保存时、以及监听到项目文件被编辑时
+  每次调用；槽位路由在 spawn 时），而该服务在每次设置保存时、以及监听到项目文件被编辑时
   都会重新解析，因此保存的编辑**在下一次解析或 spawn 时即生效，无需重启**（`mpd_config_reload`
   可强制重读）；仍在插件 `apply()` 时捕获配置的消费者，正是桥接报告 `applies: 'live'` 所记的例外，
   由用户指南 §9.1 逐个旋钮列出。界面提示就是这么写的。
@@ -1227,3 +1241,19 @@ TUI 车道使用配置好的 `TUI_VERSION`（默认 `0.16.1`）与 `MPD_E2E_DSH_
 宿主的 peer 范围排除该 harness，宿主的 `dsh plugin --profile dsh-tui add <host>` 会被拒绝，
 `tui.pluginAddHost` 为 `false`，车道以红色结束——它**不**检查 peer 范围，也**不**记录
 `tui.hostPeerBound` 行。
+
+### 11.9 看门狗面板波次之后的修订（2026-10-23）
+
+本波次给团队看门狗一个一等 TUI 界面，并收尾模型设置的清理：
+
+| 主题 | 之前 | 之后 |
+|---|---|---|
+| §3.3 面板清单 | 两个侧栏页面（`team`、`workmate`） | **三个** —— `team`（`order` 10）、`workmate`（`order` 12）与 **`watchdog`**（`MPD watchdog`、图标 `⚠`、`order` 13、`minColumns` 28）。由 `src/panel-watchdog.ts` 经本行自己的 `tuiPanels` 接缝注册；它自己的行配置开关是 `watchdog`（默认开启） |
+| 看门狗可见性 | 一条状态行提示、每次附加时的一次确认对话框，以及 board/team/subagents 场景里的一行 `HELD` | **面板**（每团队暂停状态与阶段、`mpd-tui` 未读数、事件列表含种类 / 相对时间 / 团队·任务·尝试 / 原因与 `ms` / 挂起结果 / 确认状态；`a`/`r`/滚动键）、**自己的标签页徽标**（暂停 = `warning`、未读 = `info`，5 秒轮询重取）与 **`/mpd watchdog`** |
+| `/mpd-model` | 槽位 → **范围** → 提供商 → 模型 → 推理强度，含成员覆盖与清除分支（`agentRoutes`） | 槽位 → 提供商 → 模型 → 推理强度；未配置的槽位从配置服务的类型化 `slotResolutionOf` 读作 `<unconfigured>`，老组合读作 `<unavailable>`；**没有**成员分支，也**不写** `agentRoutes` |
+| DAG 渲染器决策 | 隐含（“就是字符网格”） | 记录在 [`tui-dag-renderer.md`](./tui-dag-renderer.zh-CN.md)（英文版 [`/tui-dag-renderer.md`](./tui-dag-renderer.md)）：notcurses **不可行**，宿主的 `ui.Image` 路径是有界、不可交互、且必须带单元格回退的位图，参考实现 `dsh-blender-plugin` 不含任何图形代码——因此本波次 DAG 仍是字符网格，自研渲染器推迟 |
+
+**诚实的边界。** 本波次的证据是本包自己的测试套件（含新增的 `test/panel-watchdog.test.ts` 各项）与仓库门禁；
+**没有对看门狗页做实时 PTY 抓取**——契约的最低一档（一个真正挂载、注册了面板与命令的启动）由插件契约项证明，
+页面内容则由宿主 kit 替身证明。决策记录里的 `ui.Image` 清单读取自已安装宿主自身的类型声明（0.16.1），
+而不是来自一次真实渲染。

@@ -1,5 +1,5 @@
 // packages/mpd-config-plugin/src/index.ts
-import { existsSync as existsSync2, readFileSync as readFileSync2, watch } from "node:fs";
+import { existsSync as existsSync2, mkdirSync as mkdirSync3, readFileSync as readFileSync2, watch, writeFileSync as writeFileSync2 } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname as dirname2, join as join3, resolve as resolve4 } from "node:path";
 
@@ -2675,22 +2675,16 @@ defineMethod("transform", [
 // packages/mpd-config-plugin/src/settings-schema.ts
 var SETTINGS_NS = "mpd";
 var TEAM_MODEL_SLOTS = ["slot1", "slot2", "slot3", "slot4"];
-var TEAM_MODEL_SLOT_DEFAULTS = {
-  slot1: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "max" },
-  slot2: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "high" },
-  slot3: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "high" },
-  slot4: { provider: "deepseek-official", model: "deepseek-v4-flash-vision-exp", reasoningEffort: "high" }
-};
 var TEAM_MODEL_FALLBACK_OPTIONS = {
   provider: ["deepseek-official"],
   model: ["deepseek-v4-flash", "deepseek-v4-flash-vision-exp", "deepseek-v4-pro", "deepseek-flash"],
   reasoningEffort: ["off", "low", "high", "max"]
 };
-function teamModelSlotSchema(slot) {
+function teamModelSlotSchema() {
   return Schema.object({
-    provider: Schema.string().default(slot.provider),
-    model: Schema.string().default(slot.model),
-    reasoningEffort: Schema.string().default(slot.reasoningEffort)
+    provider: Schema.string().required(false),
+    model: Schema.string().required(false),
+    reasoningEffort: Schema.string().required(false)
   });
 }
 var TEAM_MODEL_SLOT_GROUPS = {
@@ -2699,13 +2693,6 @@ var TEAM_MODEL_SLOT_GROUPS = {
   slot3: { zh: "执行型成员", en: "execution members", members: ["Deep Worker", "Junior Engineer"] },
   slot4: { zh: "视觉成员", en: "vision member", members: ["Vision Analyst"] }
 };
-var ROSTER_AGENT_NAMES = Object.values(TEAM_MODEL_SLOT_GROUPS).flatMap((group) => [...group.members]);
-var AGENT_ROUTE_SCHEMA = Schema.object({
-  provider: Schema.string().required(false),
-  model: Schema.string().required(false),
-  reasoningEffort: Schema.string().required(false)
-});
-var AGENT_ROUTES_SCHEMA = Schema.dict(AGENT_ROUTE_SCHEMA, Schema.union(ROSTER_AGENT_NAMES.map((name) => Schema.const(name))));
 var SettingsSchema = Schema.object({
   hashline: Schema.object({ maxDiffChars: Schema.number().default(20000) }),
   commentChecker: Schema.object({ autoCheck: Schema.boolean().default(true) }),
@@ -2714,12 +2701,11 @@ var SettingsSchema = Schema.object({
   team: Schema.object({ stateDir: Schema.string().default(".mpd/team") }),
   boulder: Schema.object({ dir: Schema.string().required(false) }),
   teamModels: Schema.object({
-    slot1: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot1),
-    slot2: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot2),
-    slot3: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot3),
-    slot4: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot4)
+    slot1: teamModelSlotSchema(),
+    slot2: teamModelSlotSchema(),
+    slot3: teamModelSlotSchema(),
+    slot4: teamModelSlotSchema()
   }),
-  agentRoutes: AGENT_ROUTES_SCHEMA,
   watchdog: Schema.object({
     enabled: Schema.boolean().default(true),
     warnSilenceMs: Schema.number().default(600000),
@@ -2731,7 +2717,7 @@ var SettingsSchema = Schema.object({
   }),
   tui: Schema.object({ dashboardKey: Schema.boolean().default(true) })
 });
-var BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect in the RUNNING process — no restart: the config service re-resolves on every settings save and on a watched edit of the project file, and the model routes (teamModels, agentRoutes, modelchain) are read per use, so the next spawn or resolve carries them";
+var BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect in the RUNNING process — no restart: the config service re-resolves on every settings save and on a watched edit of the project file, and the model routes (teamModels, modelchain) are read per use, so the next spawn or resolve carries them";
 var BRIDGE_NOT_LOST = "the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session";
 function markVolatile(schema) {
   const node = schema;
@@ -2814,45 +2800,6 @@ var TEAM_MODEL_KNOBS = TEAM_MODEL_SLOTS.flatMap((slot) => {
     hint: knobHint(`teamModels.${slot}.${leaf}`, teamModelLeafSentence(slot, leaf, "en"))
   }));
 });
-var AGENT_ROUTE_LEAF_TEMPLATES = {
-  provider: {
-    en: "The provider half of {name}'s OWN route override. An agentRoutes leaf outranks {name}'s team-model slot: it applies to {name} only, and LIVE — the member's next spawn or resolve carries it, no restart and no new team needed. An unset leaf falls through to the slot's provider; clearing every leaf returns {name} to the slot.",
-    zh: "{name} 专属路由覆盖的提供商。agentRoutes 的叶子优先于 {name} 的 team 模型槽位：只作用于 {name} 本人，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的提供商；清空全部叶子即恢复跟随槽位。"
-  },
-  model: {
-    en: "The model half of {name}'s OWN route override. It outranks the model of {name}'s team-model slot ({group}) and applies LIVE — the member's next spawn or resolve carries it, no restart and no new team needed. An unset leaf falls through to the slot's model; clearing every leaf returns {name} to the slot.",
-    zh: "{name} 专属路由覆盖的模型。优先于 {name} 所属槽位（{group}）的模型，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的模型；清空全部叶子即恢复跟随槽位。"
-  },
-  reasoningEffort: {
-    en: "The reasoning-effort half of {name}'s OWN route override (off / low / high / max). It outranks the effort of {name}'s team-model slot ({group}) and applies LIVE — the member's next spawn or resolve carries it. An unset leaf falls through to the slot's effort; an effort the chosen model does not support fails that member's spawn loudly, naming the member.",
-    zh: "{name} 专属路由覆盖的推理强度（off / low / high / max）。优先于 {name} 所属槽位（{group}）的推理强度，且即时生效——该成员下次生成/解析即携带新值。未设置的叶子回落到槽位的等级；该模型不支持的等级会让该成员的生成直接报错并点名。"
-  }
-};
-function agentRouteSlotOf(name) {
-  return TEAM_MODEL_SLOTS.find((slot) => TEAM_MODEL_SLOT_GROUPS[slot].members.includes(name));
-}
-function agentRouteLeafSentence(name, leaf, lang) {
-  const slot = agentRouteSlotOf(name);
-  const group = slot === undefined ? lang === "zh" ? "未编组" : "ungrouped" : TEAM_MODEL_SLOT_GROUPS[slot][lang];
-  return AGENT_ROUTE_LEAF_TEMPLATES[leaf][lang].split("{name}").join(name).split("{group}").join(group);
-}
-var AGENT_ROUTE_KNOBS = TEAM_MODEL_SLOTS.flatMap((slot) => TEAM_MODEL_SLOT_GROUPS[slot].members.flatMap((member) => {
-  const leaves = [
-    { leaf: "provider", label: "provider", zh: "提供商" },
-    { leaf: "model", label: "model", zh: "模型" },
-    { leaf: "reasoningEffort", label: "reasoning effort", zh: "推理强度" }
-  ];
-  return leaves.map(({ leaf, label, zh }) => ({
-    path: ["agentRoutes", member, leaf],
-    label: `${member} ${label} (own route)`,
-    zh: `${member} ${zh}（专属路由）`,
-    kind: "select",
-    options: TEAM_MODEL_FALLBACK_OPTIONS[leaf],
-    semantics: agentRouteLeafSentence(member, leaf, "en"),
-    semanticsZh: agentRouteLeafSentence(member, leaf, "zh"),
-    hint: knobHint(`agentRoutes.${member}.${leaf}`, agentRouteLeafSentence(member, leaf, "en"))
-  }));
-}));
 var SETTINGS_KNOBS = [
   { path: ["hashline", "maxDiffChars"], label: "Inline diff limit", zh: "行内 diff 上限", kind: "number" },
   { path: ["commentChecker", "autoCheck"], label: "Comment checker", zh: "注释检查", kind: "boolean" },
@@ -2868,13 +2815,8 @@ var SETTINGS_KNOBS = [
   { path: ["watchdog", "toolInFlightMaxMs"], label: "Tool-in-flight bound (ms, 0 = no bound)", zh: "工具在飞上限（毫秒，0 表示不设上限）", kind: "number", hint: "how long ONE tool call may run before it stops explaining a silent member: past this bound the call is reported ONCE as a `tool-expired` incident (a warning — never a scene, never a hold, never an escalation), and `0` disables the bound" },
   { path: ["watchdog", "holdTtlMs"], label: "Hold TTL (ms, 0 = no expiry)", zh: "暂停持有有效期（毫秒，0 表示不设有效期）", kind: "number", hint: "how long a watchdog hold may stay latched before it auto-releases: past this bound the hold releases itself and changes ZERO team bytes, and activity newer than the hold releases it sooner — `0` disables the expiry" },
   ...TEAM_MODEL_KNOBS,
-  ...AGENT_ROUTE_KNOBS,
   { path: ["tui", "dashboardKey"], label: "Ctrl+A dependency view (old dsh-tui builds)", zh: "Ctrl+A 依赖视图（旧版 dsh-tui）", kind: "boolean", hint: "applies to hosts WITHOUT the sidebar panel seam (dsh-tui before 0.13.0) only: while MPD's team projection has a team with at least one task, Ctrl+A opens MPD's merged dependency view instead of the host's subagent dashboard, and with no team Ctrl+A keeps opening the host dashboard — on a host that offers the panel seam, Ctrl+A always keeps its host dashboard meaning and the merged view opens through alt+a and /mpd panel" }
 ];
-
-// packages/mpd-config-plugin/src/bridge.ts
-import { existsSync, mkdirSync as mkdirSync2, readFileSync, renameSync as renameSync2, statSync as statSync2, unlinkSync, writeFileSync } from "node:fs";
-import { dirname, join as join2 } from "node:path";
 
 // packages/mpd-config-plugin/src/jsonc-edit.ts
 var DELETE = Symbol.for("mpd.jsonc.delete");
@@ -3308,6 +3250,8 @@ function readJsonc(raw) {
 }
 
 // packages/mpd-config-plugin/src/bridge.ts
+import { existsSync, mkdirSync as mkdirSync2, readFileSync, renameSync as renameSync2, statSync as statSync2, unlinkSync, writeFileSync } from "node:fs";
+import { dirname, join as join2 } from "node:path";
 var DEFAULT_BRIDGE_OPTIONS = { writeBack: true, retries: 3 };
 function createdFileHeader(now = new Date) {
   return `// mpd.jsonc — written by the mpd settings bridge (${now.toISOString()})
@@ -3604,6 +3548,19 @@ function withoutMarker(section) {
   return rest;
 }
 var ROUTING_KEYS = ["projectFile", "userFile", "writeBack", "settingsBridge"];
+function withoutEmptySlots(block) {
+  if (!isPlainObject2(block))
+    return;
+  const kept = {};
+  for (const [slot, value] of Object.entries(block)) {
+    if (isPlainObject2(value) && Object.keys(value).length === 0)
+      continue;
+    if (value === undefined)
+      continue;
+    kept[slot] = value;
+  }
+  return Object.keys(kept).length === 0 ? undefined : kept;
+}
 function rowKnobLayer(config) {
   const source = config;
   const layer = {};
@@ -3612,6 +3569,12 @@ function rowKnobLayer(config) {
       continue;
     if (value === undefined)
       continue;
+    if (key === "teamModels") {
+      const kept = withoutEmptySlots(value);
+      if (kept !== undefined)
+        layer[key] = kept;
+      continue;
+    }
     layer[key] = value;
   }
   return layer;
@@ -3641,15 +3604,6 @@ function loadConfig(config, root, settingsSection, rowKnobsOverride) {
     merged = deepMerge(merged, rowKnobs);
   return { config: merged, files: files.filter((f) => existsSync2(f)), errors, settingsApplied };
 }
-function withTeamModelsDefaults(config) {
-  const raw = isPlainObject2(config) ? config : {};
-  const declared = isPlainObject2(raw.teamModels) ? raw.teamModels : {};
-  const teamModels = {};
-  for (const slot of TEAM_MODEL_SLOTS) {
-    teamModels[slot] = { ...TEAM_MODEL_SLOT_DEFAULTS[slot], ...isPlainObject2(declared[slot]) ? declared[slot] : {} };
-  }
-  return { ...raw, teamModels };
-}
 function teamModelSlotOfMember(member) {
   const key = String(member ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "");
   if (key === "")
@@ -3660,49 +3614,79 @@ function teamModelSlotOfMember(member) {
   }
   return;
 }
-function agentRouteEntryOfMember(member, config) {
-  const table = config?.agentRoutes;
-  if (!isPlainObject2(table))
-    return {};
-  const memberKey = String(member ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "");
-  const raw = Object.entries(table).find(([key]) => key.toLowerCase().replace(/[^a-z0-9]+/g, "") === memberKey)?.[1];
-  if (raw === undefined)
-    return {};
-  if (!isPlainObject2(raw)) {
-    throw new Error(`mpd-config: agentRoutes.${member} must be an object of optional provider/model/reasoningEffort strings, but it is ${JSON.stringify(raw)}`);
+var SLOT_UNCONFIGURED_CODE = "SLOT_UNCONFIGURED";
+function missingLeavesOf(declared) {
+  const missing = [];
+  for (const leaf of ["provider", "model"]) {
+    const value = declared[leaf];
+    if (typeof value !== "string" || value.trim() === "")
+      missing.push(leaf);
   }
-  const entry = {};
-  for (const [key, value] of Object.entries(raw)) {
-    if (key !== "provider" && key !== "model" && key !== "reasoningEffort") {
-      throw new Error(`mpd-config: agentRoutes.${member} carries an unknown leaf "${key}" — only provider, model and reasoningEffort are route leaves`);
+  return missing;
+}
+function slotUnconfiguredMessage(slot, members, detail) {
+  return SLOT_UNCONFIGURED_CODE + ": " + slot + " (" + members.join(", ") + ") is not usable — " + detail + "; nothing was written and no child was started. Configure it with /mpd-model, or set teamModels." + slot + " in .mpd/mpd.jsonc.";
+}
+function sanitizeFallbacks(raw) {
+  const fallbacks = [];
+  let dropped = 0;
+  if (raw === undefined || raw === null)
+    return { fallbacks, dropped };
+  if (!Array.isArray(raw))
+    return { fallbacks, dropped: 1 };
+  for (const entry of raw) {
+    if (!isPlainObject2(entry) || typeof entry.provider !== "string" || typeof entry.model !== "string" || entry.provider.trim() === "" || entry.model.trim() === "" || entry.reasoningEffort !== undefined && entry.reasoningEffort !== null && typeof entry.reasoningEffort !== "string") {
+      dropped += 1;
+      continue;
     }
+    const effort = typeof entry.reasoningEffort === "string" ? entry.reasoningEffort.trim() : "";
+    fallbacks.push({ provider: entry.provider.trim(), model: entry.model.trim(), ...effort === "" ? {} : { reasoningEffort: effort } });
+  }
+  return { fallbacks, dropped };
+}
+function slotValueOf(slot, config) {
+  const table = config?.teamModels;
+  if (!isPlainObject2(table))
+    return;
+  return table[slot];
+}
+function resolveTeamModelSlot(member, config) {
+  const slot = teamModelSlotOfMember(member);
+  if (slot === undefined)
+    return { ok: false, status: "unrouted", slot: undefined };
+  const members = TEAM_MODEL_SLOT_GROUPS[slot].members;
+  const declared = slotValueOf(slot, config);
+  const missingAll = ["provider", "model"];
+  if (declared === undefined || declared === null) {
+    const missingPaths = missingAll.map((leaf) => "teamModels." + slot + "." + leaf);
+    return { ok: false, status: "unconfigured", slot, members, missing: missingAll, code: SLOT_UNCONFIGURED_CODE, message: slotUnconfiguredMessage(slot, members, "missing " + missingPaths.join(", ")) };
+  }
+  if (!isPlainObject2(declared)) {
+    return { ok: false, status: "invalid", slot, members, missing: missingAll, problem: "teamModels." + slot, code: SLOT_UNCONFIGURED_CODE, message: slotUnconfiguredMessage(slot, members, "teamModels." + slot + " must be an object, but it is " + JSON.stringify(declared)) };
+  }
+  for (const leaf of ["provider", "model", "reasoningEffort"]) {
+    const value = declared[leaf];
     if (value === undefined || value === null)
       continue;
     if (typeof value !== "string") {
-      throw new Error(`mpd-config: agentRoutes.${member}.${key} must be a string, but it is ${JSON.stringify(value)}`);
+      const path = "teamModels." + slot + "." + leaf;
+      return { ok: false, status: "invalid", slot, members, missing: missingLeavesOf(declared), problem: path, code: SLOT_UNCONFIGURED_CODE, message: slotUnconfiguredMessage(slot, members, path + " must be a string, but it is " + JSON.stringify(value)) };
     }
-    const trimmed = value.trim();
-    if (trimmed !== "")
-      entry[key] = trimmed;
   }
-  return entry;
+  const missing = missingLeavesOf(declared);
+  if (missing.length > 0) {
+    const missingPaths = missing.map((leaf) => "teamModels." + slot + "." + leaf);
+    return { ok: false, status: "unconfigured", slot, members, missing, code: SLOT_UNCONFIGURED_CODE, message: slotUnconfiguredMessage(slot, members, "missing " + missingPaths.join(", ")) };
+  }
+  const provider = String(declared.provider).trim();
+  const model = String(declared.model).trim();
+  const effort = typeof declared.reasoningEffort === "string" ? declared.reasoningEffort.trim() : "";
+  const { fallbacks, dropped } = sanitizeFallbacks(declared.fallbacks);
+  return { ok: true, slot, route: { provider, model, ...effort === "" ? {} : { reasoningEffort: effort } }, fallbacks, fallbacksDropped: dropped };
 }
 function teamModelRouteOfMember(member, config) {
-  const slot = teamModelSlotOfMember(member);
-  if (slot === undefined)
-    return;
-  const agentEntry = agentRouteEntryOfMember(member, config);
-  const value = withTeamModelsDefaults(config).teamModels?.[slot];
-  const provider = typeof value?.provider === "string" ? value.provider.trim() : "";
-  const model = typeof value?.model === "string" ? value.model.trim() : "";
-  const effort = typeof value?.reasoningEffort === "string" ? value.reasoningEffort.trim() : "";
-  if (provider === "" || model === "") {
-    throw new Error(`mpd-config: ${member} is routed by ${slot}, but that slot is incomplete (provider=${provider === "" ? "unset" : provider}, model=${model === "" ? "unset" : model})`);
-  }
-  const routedProvider = agentEntry.provider ?? provider;
-  const routedModel = agentEntry.model ?? model;
-  const routedEffort = agentEntry.reasoningEffort ?? effort;
-  return { provider: routedProvider, model: routedModel, ...routedEffort === "" ? {} : { reasoningEffort: routedEffort } };
+  const resolution = resolveTeamModelSlot(member, config);
+  return resolution.ok ? resolution.route : undefined;
 }
 var knobDict = SettingsSchema.dict ?? {};
 var Config = markVolatile(Schema.object({
@@ -3713,6 +3697,99 @@ var Config = markVolatile(Schema.object({
   ...knobDict
 }));
 apply.Config = Config;
+var SEED_MODEL_ID = "deepseek-flash";
+function chooseSeedRoute(catalog) {
+  const pairs = [];
+  for (const provider of catalog?.providers ?? []) {
+    if (typeof provider?.id !== "string" || provider.id.trim() === "")
+      continue;
+    for (const model of provider.models ?? []) {
+      if (typeof model?.id !== "string" || model.id.trim() === "")
+        continue;
+      pairs.push({ provider: provider.id.trim(), model: model.id.trim() });
+    }
+  }
+  const exact = pairs.find((pair) => pair.model === SEED_MODEL_ID);
+  if (exact !== undefined)
+    return exact;
+  return pairs.find((pair) => pair.model.toLowerCase().includes("flash"));
+}
+function buildSeedBlock(route) {
+  return {
+    slot1: { provider: route.provider, model: route.model, reasoningEffort: "max" },
+    slot2: { provider: route.provider, model: route.model, reasoningEffort: "high" },
+    slot3: { provider: route.provider, model: route.model, reasoningEffort: "high" },
+    slot4: { provider: route.provider, model: route.model, reasoningEffort: "high" }
+  };
+}
+function seedTeamModelsFile(file, route) {
+  const raw = existsSync2(file) ? readFileSync2(file, "utf8") : undefined;
+  if (raw !== undefined) {
+    const parsed = parseJsoncChecked(raw);
+    if (parsed.ok !== true)
+      return { outcome: "unreadable", detail: parsed.detail };
+    const root = isPlainObject2(parsed.value) ? parsed.value : {};
+    if (Object.prototype.hasOwnProperty.call(root, "teamModels"))
+      return { outcome: "declared" };
+  }
+  const base = raw ?? `{}
+`;
+  const edited = surgicalEdit(base, ["teamModels"], buildSeedBlock(route), { insert: true });
+  if (edited.ok !== true)
+    return { outcome: "unreadable", detail: edited.reason };
+  if (!edited.changed)
+    return { outcome: "declared" };
+  mkdirSync3(dirname2(file), { recursive: true });
+  writeFileSync2(file, edited.text, "utf8");
+  return { outcome: "seeded" };
+}
+var SEED_MARKER_FILE = "model-config-seed.json";
+function seedMarkerFor(root) {
+  return join3(root, ".mpd", SEED_MARKER_FILE);
+}
+function teamModelsDeclaredIn(file) {
+  if (!existsSync2(file))
+    return "absent";
+  const parsed = parseJsoncChecked(readFileSync2(file, "utf8"));
+  if (parsed.ok !== true)
+    return "unreadable";
+  const root = isPlainObject2(parsed.value) ? parsed.value : {};
+  return Object.prototype.hasOwnProperty.call(root, "teamModels") ? "declared" : "absent";
+}
+function seedTeamModelsOnce(projectFile, markerFile, catalog) {
+  if (existsSync2(markerFile))
+    return { status: "marked" };
+  const declared = teamModelsDeclaredIn(projectFile);
+  if (declared === "declared")
+    return { status: "declared" };
+  if (declared === "unreadable")
+    return { status: "unreadable", detail: "the project file does not parse" };
+  const route = chooseSeedRoute(catalog);
+  if (route === undefined)
+    return { status: "no-catalog", detail: "the catalog lists no deepseek-flash model" };
+  const written = seedTeamModelsFile(projectFile, route);
+  if (written.outcome === "unreadable")
+    return { status: "unreadable", detail: written.detail };
+  if (written.outcome === "declared")
+    return { status: "declared" };
+  try {
+    mkdirSync3(dirname2(markerFile), { recursive: true });
+    writeFileSync2(markerFile, JSON.stringify({ seededAt: new Date().toISOString(), provider: route.provider, model: route.model }, null, 2) + `
+`, { flag: "wx" });
+  } catch (error) {
+    if (error?.code !== "EEXIST")
+      return { status: "seeded", route, detail: "the seed wrote the file but could not record its marker: " + String(error?.message ?? error) };
+  }
+  return { status: "seeded", route };
+}
+function parseJsoncChecked(text) {
+  try {
+    const value = parseJsonc(text);
+    return { ok: true, value };
+  } catch (error) {
+    return { ok: false, detail: String(error?.message ?? error) };
+  }
+}
 function apply(ctx, config = {}) {
   markVolatile(Config);
   const dsh = resolveDshAdapter(ctx);
@@ -3789,6 +3866,7 @@ function apply(ctx, config = {}) {
   const reloadAt = (root) => {
     state = loadConfig(config, root, readSection(), entryKnobs);
     reconcile(root);
+    seedAt(root);
     return state.config;
   };
   function reload(exec) {
@@ -4058,8 +4136,9 @@ function apply(ctx, config = {}) {
     get: (key) => {
       if (key === undefined)
         return state.config;
-      return key.split(".").reduce((acc, part) => acc == null ? undefined : acc[part], withTeamModelsDefaults(state.config));
+      return key.split(".").reduce((acc, part) => acc == null ? undefined : acc[part], state.config);
     },
+    slotResolutionOf: (member) => resolveTeamModelSlot(member, state.config),
     teamModelRouteOf: (member) => teamModelRouteOfMember(member, state.config),
     reload,
     states: () => ({
@@ -4074,12 +4153,12 @@ function apply(ctx, config = {}) {
   });
   dsh.registerTool({
     name: "mpd_config_get",
-    description: "Read the resolved mpd.jsonc runtime config (project .mpd/mpd.jsonc merged over user $DSH_HOME/mpd.jsonc). Consumed keys: memory.vcs/memory.dir/memory.agentSlug/memory.reflectionEvery, team.gate/team.stateDir/team.sensitivity, captain.investigation, delegation.gate, hashline.guardEditTools/hashline.maxDiffChars/hashline.registryFile, commentChecker.autoCheck/commentChecker.bin/commentChecker.timeoutMs/commentChecker.maxMessageChars, modelchain.<chainKey>, boulder.dir, ulw.maxRounds/ulw.planDir/ulw.stateDir/ulw.provider/ulw.model/ulw.reviewerModel/ulw.maxReReviews, goal.enabled/goal.autoAnchor/goal.autoRounds, teamModels.slot1|slot2|slot3|slot4.provider/model/reasoningEffort, agentRoutes.<name>.provider/model/reasoningEffort.",
+    description: "Read the resolved mpd.jsonc runtime config (project .mpd/mpd.jsonc merged over user $DSH_HOME/mpd.jsonc). Consumed keys: memory.vcs/memory.dir/memory.agentSlug/memory.reflectionEvery, team.gate/team.stateDir/team.sensitivity, captain.investigation, delegation.gate, hashline.guardEditTools/hashline.maxDiffChars/hashline.registryFile, commentChecker.autoCheck/commentChecker.bin/commentChecker.timeoutMs/commentChecker.maxMessageChars, modelchain.<chainKey>, boulder.dir, ulw.maxRounds/ulw.planDir/ulw.stateDir/ulw.provider/ulw.model/ulw.reviewerModel/ulw.maxReReviews, goal.enabled/goal.autoAnchor/goal.autoRounds, teamModels.slot1|slot2|slot3|slot4.provider/model/reasoningEffort/fallbacks.",
     parameters: { type: "object", properties: { key: { type: "string", description: "Optional dot-path to a single key, e.g. memory.vcs" } }, additionalProperties: false },
     output: { schema: { type: "object", properties: { config: { type: "object" }, key: { type: "string" }, value: {} }, required: ["config"] }, render: (_a, v) => textBlock(v.key ? "mpd config " + v.key + ": " + JSON.stringify(v.value, null, 1) : "mpd config: " + JSON.stringify(v.config, null, 1)) },
     execute: async (args, exec) => {
       reload(exec);
-      const resolved = withTeamModelsDefaults(state.config);
+      const resolved = state.config;
       const key = args?.key ? String(args.key) : undefined;
       const value = key ? key.split(".").reduce((acc, part) => acc == null ? undefined : acc[part], resolved) ?? null : null;
       return key === undefined ? { config: resolved } : { config: resolved, key, value };
@@ -4095,20 +4174,80 @@ function apply(ctx, config = {}) {
       return { files: state.files, errors: state.errors, config: cfg };
     }
   });
+  let seedPending = true;
+  let seedWarned = false;
+  const seedAt = (root) => {
+    if (!seedPending)
+      return;
+    const file = projectFileFor(root);
+    const marker = seedMarkerFor(root);
+    if (existsSync2(marker)) {
+      seedPending = false;
+      return;
+    }
+    const declared = teamModelsDeclaredIn(file);
+    if (declared === "declared") {
+      seedPending = false;
+      return;
+    }
+    if (declared === "unreadable") {
+      seedPending = false;
+      if (!seedWarned)
+        warn(`[mpd-config] could not seed ${file}: the project file does not parse — nothing was written`);
+      seedWarned = true;
+      return;
+    }
+    if (typeof dsh.llmCatalog !== "function") {
+      seedPending = false;
+      if (!seedWarned)
+        warn("[mpd-config] team-model slots are not configured and the adapter has no catalog seam — nothing was written; the first spawn reports SLOT_UNCONFIGURED");
+      seedWarned = true;
+      return;
+    }
+    Promise.resolve(dsh.llmCatalog()).then((catalog) => {
+      const result = seedTeamModelsOnce(file, marker, catalog);
+      if (result.status === "no-catalog") {
+        if (!seedWarned)
+          warn("[mpd-config] team-model slots are not configured and the model catalog lists no deepseek-flash model — nothing was written; the first spawn reports SLOT_UNCONFIGURED");
+        seedWarned = true;
+        return;
+      }
+      seedPending = false;
+      if (result.status === "seeded")
+        warn(`[mpd-config] seeded ${file} with all four team-model slots (provider=${result.route?.provider ?? "?"}, model=${result.route?.model ?? "?"}; slot1=max, slots 2-4=high) from the configured catalog — marked once in ${marker}`);
+      else if (result.status === "unreadable")
+        warn(`[mpd-config] could not seed ${file}: ${result.detail ?? "unreadable"} — nothing was written`);
+    }).catch((error) => {
+      seedPending = false;
+      if (!seedWarned)
+        warn("[mpd-config] the model catalog read failed, so the one-time team-model seed wrote nothing: " + String(error?.message ?? error));
+      seedWarned = true;
+    });
+  };
+  seedAt(readRoot());
 }
 export {
   Config,
   ENTRY_CONFIG_ID,
+  SEED_MARKER_FILE,
+  SEED_MODEL_ID,
   SETTINGS_NS,
-  agentRouteEntryOfMember,
+  SLOT_UNCONFIGURED_CODE,
   apply,
+  buildSeedBlock,
+  chooseSeedRoute,
   deepMerge,
   inject,
   loadConfig,
   name,
   parseJsonc,
+  resolveTeamModelSlot,
+  seedMarkerFor,
+  seedTeamModelsFile,
+  seedTeamModelsOnce,
+  slotUnconfiguredMessage,
   stripJsonc,
   teamModelRouteOfMember,
   teamModelSlotOfMember,
-  withTeamModelsDefaults
+  teamModelsDeclaredIn
 };
