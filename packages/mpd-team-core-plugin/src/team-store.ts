@@ -858,6 +858,43 @@ export function casReleaseTask(fresh: TeamRecord, taskId: string, expectedRevisi
   return { applied: true, record: updateTeamTask(fresh, taskId, { status: "pending", owner: "", resetStartedAt: true }, now) }
 }
 
+/**
+ * Decide whether one caller may RELEASE a task: this team's Lead, or the task's own owner.
+ *
+ * WHY THIS EXISTS (PR #60 review, F1/CWE-862). A release frees TWO things — the dispatch pairing in
+ * the ledger and the task's claim — and `releaseDispatchedTask` used to do both for ANY caller. A
+ * member resolves its team through the roster arm (`resolveTeamRecord` arm 3), so every teammate could
+ * reopen a row another member had claimed: the task went back to `pending` and the work was silently
+ * unbooked. The terminal verbs already gate ownership (`casCloseTask`); this is that same gate for the
+ * release, with the SAME rule and the SAME comparator, so the two verbs cannot disagree about who the
+ * caller is.
+ *
+ * The Lead is read from BOTH sources the close gate uses: the roster flag the caller's composition
+ * supplied (`lead`, which is `false` wherever the official service cannot mount) and the record's own
+ * durable Lead identity (`leadSessionId` plus the churn history). A task that is GONE is decided the
+ * same way: there is no owner to match, so only the Lead may free its stale pairing — the dispatch
+ * pass's own reconcile prunes such a row anyway — and a non-lead gets the store's standing sentence.
+ *
+ * @param record - the record the release was resolved against.
+ * @param taskId - the task the caller names.
+ * @param caller - every spelling that identifies the calling session.
+ * @param lead - true when the ROSTER says the caller leads this team.
+ * @returns undefined when the release may proceed; the sentence to refuse with otherwise.
+ */
+export function authorizeRelease(record: TeamRecord, taskId: string, caller: readonly string[], lead: boolean): string | undefined {
+  /** The task as the caller's board holds it, or undefined when it is gone. */
+  const task = record.tasks.find((candidate) => candidate.id === taskId)
+  /** Whether the caller leads this team: the roster's flag, or the record's own Lead identity. */
+  const isLead = lead || recordNamesLead(record, caller)
+  if (task === undefined) return isLead ? undefined : `task ${taskId} is no longer on the board`
+  /** Whether any of the caller's own spellings IS the recorded owner, through the ONE comparator. */
+  const isOwner = task.owner !== undefined && task.owner !== "" && caller.some((candidate) => nameMatches(candidate, String(task.owner)))
+  if (isOwner || isLead) return undefined
+  return task.owner === undefined || task.owner === ""
+    ? `task ${taskId} has no owner and this caller is not this team's lead`
+    : `task ${taskId} is owned by "${String(task.owner)}" and this caller is neither that owner nor this team's lead`
+}
+
 /** What one terminal-verb call decided, and what it unblocked. */
 export type CasCloseOutcome = {
   /** True when the record was patched; persist {@link CasCloseOutcome.record}. */

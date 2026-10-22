@@ -79,6 +79,7 @@ import {
   activeTeamId,
   addTeamMember,
   addTeamTask,
+  authorizeRelease,
   bindActiveTeam,
   blockingDependencies,
   casClaimTask,
@@ -830,22 +831,33 @@ export function apply(ctx: any): void {
    * terminal or missing task row makes it stale by definition, so the ledger half is repaired even
    * when the task half refuses.
    *
+   * WHO MAY RELEASE (PR #60 review F1/CWE-862) is decided BEFORE either half writes: this team's Lead
+   * or the task's own owner, through the store's own {@link authorizeRelease}. An unauthorized caller
+   * must not unbook the pairing either, so the refusal returns before the ledger is touched — the
+   * ledger-half repair above applies to an AUTHORIZED caller only.
+   *
    * The TEAM is resolved by the CALLER before this runs: the ledger is team-scoped, and an ambiguous
    * roster must refuse rather than guess which team's row to free.
    * @param workspace - the workspace the team lives in.
    * @param record - the team record the release was resolved against.
    * @param taskId - the task to reopen.
    * @param expectedRevision - the revision the caller decided on, or undefined for no CAS.
+   * @param caller - every spelling that identifies the calling session, never a name it typed.
+   * @param lead - true when the ROSTER says the caller leads this team.
    * @returns what each half did; see {@link TaskReleaseResult}.
    */
-  const releaseDispatchedTask = (workspace: string, record: TeamRecord, taskId: string, expectedRevision: number | undefined): TaskReleaseResult => {
+  const releaseDispatchedTask = (workspace: string, record: TeamRecord, taskId: string, expectedRevision: number | undefined, caller: readonly string[], lead: boolean): TaskReleaseResult => {
+    // Re-read immediately before deciding, the dispatch pass's own discipline: the record was opened
+    // before this call and a concurrent write may have moved the task's owner or revision. The SAME
+    // reading serves the authorization and the CAS below — nothing writes the team record between them.
+    /** The record as it stands on disk right now. */
+    const fresh = readTeam(workspace, record.teamId) ?? record
+    /** Why this caller may not release the task, or undefined when it may. */
+    const refusal = authorizeRelease(fresh, taskId, caller, lead)
+    if (refusal !== undefined) return { released: false, taskId, refused: refusal }
     /** The ledger half: only THIS team's pairing is freed. */
     const freed = release(readLedger(workspace), record.teamId, taskId)
     if (freed.released) writeLedger(workspace, freed.ledger)
-    // Re-read immediately before the CAS, the dispatch pass's own discipline: the record was opened
-    // before this call and a concurrent write may have moved the task's revision.
-    /** The record as it stands on disk right now. */
-    const fresh = readTeam(workspace, record.teamId) ?? record
     /** The task half's decision, or the refusal and its reason. */
     const outcome = casReleaseTask(fresh, taskId, expectedRevision, now())
     if (!outcome.applied) return { released: freed.released, taskId, refused: outcome.reason }
@@ -1437,14 +1449,21 @@ export function apply(ctx: any): void {
     },
     output: {
       schema: { type: "object", properties: { contract: { type: "object" }, contracts: { type: "array", items: { type: "object" } }, task: { type: "object" }, released: { type: "boolean" }, refused: { type: "string" }, taskId: { type: "string" }, status: { type: "string" }, closedBy: { type: "string" }, attempt: { type: "number" }, revision: { type: "number" }, dependents: { type: "array", items: { type: "object" } }, note: { oneOf: [{ type: "string" }, { type: "null" }] } } },
+      // THE RELEASE BRANCH COMES FIRST (PR #60 review F2). A successful release ALSO answers the task's
+      // new `status` (`pending`), so with `status` checked first the CLOSE line was printed for a
+      // release that closed nothing: `T1 -> pending (by undefined, attempt undefined)`. The release
+      // line renders BOTH halves honestly — whether a pairing was freed, and where the row now stands.
       render: (_args: any, value: any) =>
         text(
           value?.refused !== undefined ? `refused: ${value.refused}`
-            : value?.status !== undefined ? `${value.taskId} -> ${value.status} (by ${value.closedBy}, attempt ${value.attempt})`
-            : value?.released !== undefined ? (value.released ? "released" : "that task was not dispatched")
-            : value?.contract !== undefined ? `attempt ${value.contract.attempt} of ${value.contract.taskId} by ${value.contract.claimedBy}`
-            : value?.contracts !== undefined ? `${value.contracts.length} contract(s)`
-            : "no contract",
+            : value?.released !== undefined
+              ? (value.released
+                ? `${value.taskId} -> ${value.status ?? "pending"} (pairing freed)`
+                : (value.status !== undefined ? `${value.taskId} -> ${value.status} (no pairing to free)` : "that task was not dispatched"))
+              : value?.status !== undefined ? `${value.taskId} -> ${value.status} (by ${value.closedBy}, attempt ${value.attempt})`
+              : value?.contract !== undefined ? `attempt ${value.contract.attempt} of ${value.contract.taskId} by ${value.contract.claimedBy}`
+              : value?.contracts !== undefined ? `${value.contracts.length} contract(s)`
+              : "no contract",
         ),
     },
     execute: async (args: any, exec: DshToolExec) => {
@@ -1465,7 +1484,22 @@ export function apply(ctx: any): void {
         /** The task this release names; the empty string is refused by the task half. */
         const taskId = String(args?.task_id ?? "")
         if (taskId === "") throw new Error("agent_teams_task release: task_id is required")
-        return releaseDispatchedTask(workspace, resolved.record, taskId, typeof args?.expected_revision === "number" ? args.expected_revision : undefined)
+        // ── WHO MAY RELEASE (PR #60 review F1, CWE-862) ───────────────────────
+        // The caller's identity is built EXACTLY as the close branch builds it: its own session id, the
+        // session TITLE, the official membership name when there is one, its OWN roster row, and the
+        // ancestry `callerIdentity` narrows (a spawned member borrows none). `claimant` is never read
+        // here — accepting a name the caller TYPES would let any agent release any row by naming it.
+        /** The caller's team identity from the OFFICIAL plane, when that service is mounted at all. */
+        const membership = ((): { role?: string; name?: string } | undefined => {
+          try { return dsh.teamMembership(exec.agent) as { role?: string; name?: string } | undefined } catch { return undefined }
+        })()
+        /** The session header title the harness gives this caller (the persona prompt prefix). */
+        const title = sessionTitleOf(exec)
+        /** The caller's team identity: its member row, and the ancestry it may present. */
+        const identity = callerIdentity(resolved.record, sessionId, title, lineage)
+        /** The caller's own spellings. */
+        const caller = [sessionId, title, String(membership?.name ?? ""), ...(identity.ownMember === undefined ? [] : [identity.ownMember.name]), ...identity.ancestry].filter((value) => value !== "")
+        return releaseDispatchedTask(workspace, resolved.record, taskId, typeof args?.expected_revision === "number" ? args.expected_revision : undefined, caller, membership?.role === "lead")
       }
 
       if (action === "contract") {
@@ -1504,12 +1538,22 @@ export function apply(ctx: any): void {
         }, claimant, now())
         /** The record after the claim: owned, in flight, and carrying the new attempt counter. */
         const claimed = updateTeamTask(record, task.id, { status: "in_progress", owner: claimant === "" ? undefined : claimant, attempt: contract.attempt }, now())
-        // THE PHASE IS RE-DERIVED, because a claim can take a SETTLED team out of `idle` (R2): the
-        // stored phase is what a reader trusts, and leaving it idle beside an in-flight row is the
-        // exact drift `withDerivedPhase` exists to prevent.
-        writeTeam(workspace, withDerivedPhase(claimed))
+        /** The roster row the claimant names, when the claimant IS a member of this team. */
+        const claimedMember = memberNamedBy(claimed, [claimant])
+        // THE CLAIMED MEMBER IS `running` AGAIN (PR #60 review F3). This path used to write the task and
+        // nothing else, so a SETTLED member woken by a Lead message and claiming its own row stayed
+        // `inactive`: the workmate in-use gate read it as free, and `settleMember` only settles a
+        // `running` row, so nothing ever corrected it. The roster row is resolved from the claimant's
+        // spelling and flipped exactly as a dispatch pass flips the member it paired; a `failed` or
+        // `provisioning` row is deliberately left alone, and a claimant the roster does not name is a
+        // no-op. THE PHASE IS RE-DERIVED either way, because a claim can take a SETTLED team out of
+        // `idle` (R2): the stored phase is what a reader trusts, and leaving it idle beside an in-flight
+        // row is the exact drift `withDerivedPhase` exists to prevent.
+        /** The record to persist: the claim, plus the member flip when a settled row was named. */
+        const next = withDerivedPhase(claimedMember?.status === "inactive" ? updateTeamMember(claimed, claimedMember.id, { status: "running" }) : claimed)
+        writeTeam(workspace, next)
         /** This task as the record now holds it. */
-        const view = claimed.tasks.find((candidate) => candidate.id === task.id) ?? task
+        const view = next.tasks.find((candidate) => candidate.id === task.id) ?? task
         return { contract, task: view }
       }
 
@@ -1667,7 +1711,21 @@ export function apply(ctx: any): void {
         // NO CAS REVISION ON THIS SURFACE: `expected_revision` lives on `agent_teams_task release`, where
         // the caller has just read the row. This one is the captain's "free that pairing", and it must
         // always be able to repair a stale row.
-        return releaseDispatchedTask(workspace, resolved.record, taskId, undefined)
+        // WHO MAY RELEASE is the SAME rule as the task surface (PR #60 review F1, CWE-862), built from
+        // the same identity spellings the close branch uses — a member's own roster row, the session
+        // title, the official membership name and the narrowed ancestry. A member resolves its team
+        // through the roster arm, so without this gate every teammate could unbook a stranger's pairing.
+        /** The caller's team identity from the OFFICIAL plane, when that service is mounted at all. */
+        const membership = ((): { role?: string; name?: string } | undefined => {
+          try { return dsh.teamMembership(exec.agent) as { role?: string; name?: string } | undefined } catch { return undefined }
+        })()
+        /** The session header title the harness gives this caller (the persona prompt prefix). */
+        const title = sessionTitleOf(exec)
+        /** The caller's team identity: its member row, and the ancestry it may present. */
+        const identity = callerIdentity(resolved.record, sessionId, title, lineage)
+        /** The caller's own spellings; no name the caller TYPES is accepted here either. */
+        const caller = [sessionId, title, String(membership?.name ?? ""), ...(identity.ownMember === undefined ? [] : [identity.ownMember.name]), ...identity.ancestry].filter((value) => value !== "")
+        return releaseDispatchedTask(workspace, resolved.record, taskId, undefined, caller, membership?.role === "lead")
       }
 
       /** The workspace hold, if any; its reason refuses the WHOLE pass inside `planDispatch`. */

@@ -159,8 +159,11 @@ None. The plugin declares `tools` and `commands` and resolves both through the a
   in one workspace that mint the same task ids never shadow each other; a team's rows are pruned when
   its record reaches the terminal phase, and a pre-scoping bare-key row is dropped and reported on the
   first pass. `release` frees the pairing **and** returns the task row to `pending` (clearing the
-  owner and the start clock), so a released task can be dispatched again. Entries for tasks that were
-  deleted or completed out of band are pruned first, so a member is never left "busy" forever.
+  owner and the start clock), so a released task can be dispatched again. **Who may release is the
+  close gate's own rule: the team's Lead or the task's own owner.** An unauthorized release is
+  refused **before** the pairing is freed, so a teammate can neither reopen nor unbook another
+  member's row. Entries for tasks that were deleted or completed out of band are pruned first, so a
+  member is never left "busy" forever.
   **Settlement** writes a member `inactive` once it owns no open task — deterministically after a
   `complete`/`fail`, and at the member's own turn boundary — which is what lets the derived phase
   reach `idle` and the compaction pass see a finished team. It runs when a captain or a lane calls

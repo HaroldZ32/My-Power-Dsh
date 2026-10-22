@@ -681,3 +681,52 @@ describe("a release that lands while a dispatch pass is in flight is never rever
     expect(ledger[ledgerKey(teamId, "T1")]).toBeUndefined()
   })
 })
+
+// PR #60 REVIEW F2 — a successful release must PAINT the release, not a close that never happened.
+//
+// THE MEASURED DEFECT: the tool render checked `status` before `released`, and a release answers the
+// task's NEW `status` (`pending`) — so the captain read `T1 -> pending (by undefined, attempt
+// undefined)`, a close line for a verb that closed nothing. The release branch is now FIRST, and it
+// renders both halves: whether a pairing was freed, and where the row now stands.
+describe("PR #60 F2 — the release line is rendered, and the close line is not stolen", () => {
+  test("a freed pairing paints `pairing freed`; a claim-only release paints `no pairing to free`", async () => {
+    /** The harness under test; its fixed session (`sess-1`) is the Lead the approval binds. */
+    const h = harness()
+    sandboxes.push(h.workspace)
+    await staged(h)
+    await h.call("agent_teams_plan", { action: "approve" })
+    /** The pass that books T1's pairing, which is what makes the first release a real one. */
+    const pass = await h.call("agent_teams_dispatch", { action: "run" }) as { pairs?: Array<{ taskId?: string }> }
+    expect(pass.pairs?.map((pair) => pair.taskId)).toEqual(["T1"])
+    /** The tool's own renderer (declared under `output`), the text a captain actually reads. */
+    const render = (h.tools.get("agent_teams_task") as unknown as { output?: { render?: (args: unknown, value: unknown) => Array<{ text?: string }> } }).output?.render
+    /** The release's own answer: the task half landed, and a pairing really was freed. */
+    const released = await h.call("agent_teams_task", { action: "release", task_id: "T1" }) as { released?: boolean; status?: string }
+    expect(released.released).toBe(true)
+    expect(released.status).toBe("pending")
+    /** The painted line for the successful release. */
+    const painted = (render?.({}, released) ?? []).map((part) => part.text ?? "").join("")
+    // THE FIX ITSELF: the release line, naming BOTH halves — and never the close line's phantom author.
+    expect(painted).toBe("T1 -> pending (pairing freed)")
+    expect(painted).not.toContain("by undefined")
+    // The SECOND release shape: a row claimed through this tool holds no pairing, so the task half
+    // lands while the ledger half has nothing to free — the line must SAY which half was missing.
+    await h.call("agent_teams_task", { action: "claim", task_id: "T1" })
+    /** The claim-only row's release. */
+    const claimOnly = await h.call("agent_teams_task", { action: "release", task_id: "T1" }) as { released?: boolean; status?: string; refused?: string }
+    expect(claimOnly.refused).toBeUndefined()
+    expect(claimOnly.released).toBe(false)
+    expect(claimOnly.status).toBe("pending")
+    /** The painted line for the release with no pairing to free. */
+    const paintedClaimOnly = (render?.({}, claimOnly) ?? []).map((part) => part.text ?? "").join("")
+    expect(paintedClaimOnly).toBe("T1 -> pending (no pairing to free)")
+    // A REAL closure still paints the close line: the reordered branches must not swallow it.
+    /** The closure of the remaining row, through the same tool. */
+    const closed = await h.call("agent_teams_task", { action: "complete", task_id: "T2" }) as { status?: string; closedBy?: string }
+    expect(closed.status).toBe("completed")
+    expect(closed.closedBy).toBe("lead")
+    /** The painted line for the closure. */
+    const paintedClose = (render?.({}, closed) ?? []).map((part) => part.text ?? "").join("")
+    expect(paintedClose).toContain("T2 -> completed (by lead, attempt")
+  })
+})

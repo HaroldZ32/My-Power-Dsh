@@ -2332,6 +2332,16 @@ function casReleaseTask(fresh, taskId, expectedRevision, now) {
   }
   return { applied: true, record: updateTeamTask(fresh, taskId, { status: "pending", owner: "", resetStartedAt: true }, now) };
 }
+function authorizeRelease(record, taskId, caller, lead) {
+  const task = record.tasks.find((candidate) => candidate.id === taskId);
+  const isLead = lead || recordNamesLead(record, caller);
+  if (task === undefined)
+    return isLead ? undefined : `task ${taskId} is no longer on the board`;
+  const isOwner = task.owner !== undefined && task.owner !== "" && caller.some((candidate) => nameMatches(candidate, String(task.owner)));
+  if (isOwner || isLead)
+    return;
+  return task.owner === undefined || task.owner === "" ? `task ${taskId} has no owner and this caller is not this team's lead` : `task ${taskId} is owned by "${String(task.owner)}" and this caller is neither that owner nor this team's lead`;
+}
 function casCloseTask(fresh, input) {
   const task = fresh.tasks.find((candidate) => candidate.id === input.taskId);
   if (task === undefined)
@@ -4451,11 +4461,14 @@ function apply(ctx) {
     return healed === resolved.record ? resolved : { ...resolved, record: healed };
   };
   const recordFor = (workspace, sessionId, lineage = []) => resolveTeam(workspace, sessionId, lineage).record;
-  const releaseDispatchedTask = (workspace, record, taskId, expectedRevision) => {
+  const releaseDispatchedTask = (workspace, record, taskId, expectedRevision, caller, lead) => {
+    const fresh = readTeam(workspace, record.teamId) ?? record;
+    const refusal = authorizeRelease(fresh, taskId, caller, lead);
+    if (refusal !== undefined)
+      return { released: false, taskId, refused: refusal };
     const freed = release(readLedger(workspace), record.teamId, taskId);
     if (freed.released)
       writeLedger(workspace, freed.ledger);
-    const fresh = readTeam(workspace, record.teamId) ?? record;
     const outcome = casReleaseTask(fresh, taskId, expectedRevision, now());
     if (!outcome.applied)
       return { released: freed.released, taskId, refused: outcome.reason };
@@ -4860,7 +4873,7 @@ function apply(ctx) {
     },
     output: {
       schema: { type: "object", properties: { contract: { type: "object" }, contracts: { type: "array", items: { type: "object" } }, task: { type: "object" }, released: { type: "boolean" }, refused: { type: "string" }, taskId: { type: "string" }, status: { type: "string" }, closedBy: { type: "string" }, attempt: { type: "number" }, revision: { type: "number" }, dependents: { type: "array", items: { type: "object" } }, note: { oneOf: [{ type: "string" }, { type: "null" }] } } },
-      render: (_args, value) => text(value?.refused !== undefined ? `refused: ${value.refused}` : value?.status !== undefined ? `${value.taskId} -> ${value.status} (by ${value.closedBy}, attempt ${value.attempt})` : value?.released !== undefined ? value.released ? "released" : "that task was not dispatched" : value?.contract !== undefined ? `attempt ${value.contract.attempt} of ${value.contract.taskId} by ${value.contract.claimedBy}` : value?.contracts !== undefined ? `${value.contracts.length} contract(s)` : "no contract")
+      render: (_args, value) => text(value?.refused !== undefined ? `refused: ${value.refused}` : value?.released !== undefined ? value.released ? `${value.taskId} -> ${value.status ?? "pending"} (pairing freed)` : value.status !== undefined ? `${value.taskId} -> ${value.status} (no pairing to free)` : "that task was not dispatched" : value?.status !== undefined ? `${value.taskId} -> ${value.status} (by ${value.closedBy}, attempt ${value.attempt})` : value?.contract !== undefined ? `attempt ${value.contract.attempt} of ${value.contract.taskId} by ${value.contract.claimedBy}` : value?.contracts !== undefined ? `${value.contracts.length} contract(s)` : "no contract")
     },
     execute: async (args, exec) => {
       const { workspace, sessionId, lineage } = where(exec);
@@ -4873,7 +4886,17 @@ function apply(ctx) {
         const taskId = String(args?.task_id ?? "");
         if (taskId === "")
           throw new Error("agent_teams_task release: task_id is required");
-        return releaseDispatchedTask(workspace, resolved.record, taskId, typeof args?.expected_revision === "number" ? args.expected_revision : undefined);
+        const membership = (() => {
+          try {
+            return dsh.teamMembership(exec.agent);
+          } catch {
+            return;
+          }
+        })();
+        const title = sessionTitleOf(exec);
+        const identity = callerIdentity(resolved.record, sessionId, title, lineage);
+        const caller = [sessionId, title, String(membership?.name ?? ""), ...identity.ownMember === undefined ? [] : [identity.ownMember.name], ...identity.ancestry].filter((value) => value !== "");
+        return releaseDispatchedTask(workspace, resolved.record, taskId, typeof args?.expected_revision === "number" ? args.expected_revision : undefined, caller, membership?.role === "lead");
       }
       if (action === "contract") {
         if (args?.task_id === undefined)
@@ -4901,8 +4924,10 @@ function apply(ctx) {
           revision: task.revision
         }, claimant, now());
         const claimed = updateTeamTask(record, task.id, { status: "in_progress", owner: claimant === "" ? undefined : claimant, attempt: contract.attempt }, now());
-        writeTeam(workspace, withDerivedPhase(claimed));
-        const view = claimed.tasks.find((candidate) => candidate.id === task.id) ?? task;
+        const claimedMember = memberNamedBy(claimed, [claimant]);
+        const next = withDerivedPhase(claimedMember?.status === "inactive" ? updateTeamMember(claimed, claimedMember.id, { status: "running" }) : claimed);
+        writeTeam(workspace, next);
+        const view = next.tasks.find((candidate) => candidate.id === task.id) ?? task;
         return { contract, task: view };
       }
       if (action === "complete" || action === "fail") {
@@ -4998,7 +5023,17 @@ function apply(ctx) {
         const taskId = String(args?.task_id ?? "");
         if (taskId === "")
           throw new Error("agent_teams_dispatch release: task_id is required");
-        return releaseDispatchedTask(workspace, resolved.record, taskId, undefined);
+        const membership = (() => {
+          try {
+            return dsh.teamMembership(exec.agent);
+          } catch {
+            return;
+          }
+        })();
+        const title = sessionTitleOf(exec);
+        const identity = callerIdentity(resolved.record, sessionId, title, lineage);
+        const caller = [sessionId, title, String(membership?.name ?? ""), ...identity.ownMember === undefined ? [] : [identity.ownMember.name], ...identity.ancestry].filter((value) => value !== "");
+        return releaseDispatchedTask(workspace, resolved.record, taskId, undefined, caller, membership?.role === "lead");
       }
       const hold = readHold(workspace);
       const reaped = reapReapedTeams(workspace, now());
