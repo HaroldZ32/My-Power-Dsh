@@ -8,17 +8,19 @@ vendored body also carried the review points a captain actually works with: a te
 user can read and approve *before* anybody exists, a task contract frozen at claim time, a halt, and an
 archive. Those live here.
 
-The roster and the board are **never** duplicated: they stay the official service's, read and written
-through `mpd-dsh-adapter`. This plugin keeps only what the official service has no field for, under
-`<workspace>/.mpd/team/`.
+**The mpd record is the authoritative team truth.** The roster and the board live in
+`<workspace>/.mpd/team/teams/<teamId>.json`, written and read by this plugin; the official Agent Teams
+service is the **fallback** for a composition that runs the official executor, reached only through
+`mpd-dsh-adapter`, and no surface here treats `dsh.teamLiveTeams()` as truth. The sidecar files under
+`<workspace>/.mpd/team/` are the workflow state *around* that record, never a second copy of it.
 
 ## Tools
 
 | Tool | `action` values | What it does |
 |---|---|---|
 | `agent_teams_plan` | `create`, `add_member`, `create_task`, `edit`, `approve`, `delete`, `status` | stage a team as a PLAN; `approve` EXECUTES it through the TEAM EXECUTOR — the native backend over `ctx.subagents.startContinuable` is the DEFAULT and the official `dsh.team*` calls are the FALLBACK, so the official plugin need not be mounted — resolves `blocked_by`/`owner` against the mpd record, and REFUSES a plan with 0 members and 0 tasks; `delete` archives; `status` shows the record beside the official readout when that backend is active |
-| `agent_teams_task` | `claim`, `contract`, `release` | claim on the official board AND freeze the task's contract with a monotonic `attempt`; read it back; free a dispatched task |
-| `agent_teams_dispatch` | `run`, `release` | pair ready tasks with idle members, tell each member its task, and RECORD the pairing |
+| `agent_teams_task` | `claim`, `contract`, `release` | claim the task on the mpd record AND freeze its contract with a monotonic `attempt`; read it back; `release` frees the pairing and reopens the row to `pending` |
+| `agent_teams_dispatch` | `run`, `release` | pair ready tasks with idle members, tell each member its task, and RECORD the pairing in the TEAM-SCOPED ledger; `release` frees it and reopens the row |
 | `agent_teams_mail` | `send`, `unread`, `read`, `summary` | the team mailbox: durable, with a read state the official one cannot provide |
 | `agent_teams_control` | `halt`, `resume` | a hold that stops new dispatch and nothing else |
 
@@ -153,9 +155,19 @@ None. The plugin declares `tools` and `commands` and resolves both through the a
   does nothing else: no member is interrupted and no task is rewritten.
 - `agent_teams_dispatch` pairs ONE task with ONE member per pass and records the pairing in
   `.mpd/team/dispatch.json`, so a second pass cannot hand the same task to a second teammate — a
-  message is not a ledger. Entries for tasks that were deleted or completed out of band are pruned
-  first, so a member is never left "busy" forever. It runs when a captain or a lane calls it; it is
-  not a background timer.
+  message is not a ledger. The ledger is **team-scoped** (each row is `teamId::taskId`), so two teams
+  in one workspace that mint the same task ids never shadow each other; a team's rows are pruned when
+  its record reaches the terminal phase, and a pre-scoping bare-key row is dropped and reported on the
+  first pass. `release` frees the pairing **and** returns the task row to `pending` (clearing the
+  owner and the start clock), so a released task can be dispatched again. **Who may release is the
+  close gate's own rule: the team's Lead or the task's own owner.** An unauthorized release is
+  refused **before** the pairing is freed, so a teammate can neither reopen nor unbook another
+  member's row. Entries for tasks that were deleted or completed out of band are pruned first, so a
+  member is never left "busy" forever.
+  **Settlement** writes a member `inactive` once it owns no open task — deterministically after a
+  `complete`/`fail`, and at the member's own turn boundary — which is what lets the derived phase
+  reach `idle` and the compaction pass see a finished team. It runs when a captain or a lane calls
+  it; it is not a background timer.
 - `agent_teams_approve` cannot be rolled back.
 - The mailbox has no unread count: the official inbox exposes no read state, and inventing one would
   misreport it.

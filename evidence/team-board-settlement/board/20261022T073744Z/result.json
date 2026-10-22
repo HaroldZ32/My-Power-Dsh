@@ -1,0 +1,136 @@
+{
+  "wave": "board-settlement-wave",
+  "task": "T2",
+  "owner": "Senior Engineer (board-writer)",
+  "contract": ".mpd/plans/team-board-settlement.md",
+  "branch": "fix/team-board-settlement",
+  "baseCommit": "46e3bf12",
+  "recordedAt": "2026-10-22T07:37:44Z",
+  "lane": "packages/mpd-team-core-plugin (src + test + README) + evidence/team-board-settlement/board",
+  "requirements": {
+    "R1": {
+      "claim": "team-scoped dispatch ledger + terminal prune + legacy-key drop",
+      "implemented": [
+        "dispatch.ts: DispatchAssignment.teamId (required) + DISPATCH_KEY_SEPARATOR + ledgerKey(teamId, taskId) + ledgerOfTeam(ledger, teamId)",
+        "assign(ledger, {teamId,taskId,memberId,memberName}, now) / release(ledger, teamId, taskId) / reconcile(ledger, teamId, tasks) / forgetTeam(ledger, teamId)",
+        "reconcile drops rows with no teamId (LEGACY) and reports their task ids in `forgotten`; every OTHER team's rows pass through untouched (pruning them would erase a live pairing)",
+        "index.ts: both `release` surfaces resolve the team via resolveForWrite BEFORE touching the ledger (ambiguous roster => refuse); complete/fail and the dispatch pass use the team-scoped release/reconcile/assign/ledgerOfTeam",
+        "reapReapedTeams (team-lifecycle.ts, the ONE terminal write path) reports the ended ids; the dispatch run prunes each ended team's rows with forgetTeam and reports them in `forgotten`",
+        "C7-1 unchanged: a task may only pair with a member of its own team"
+      ],
+      "tests": [
+        "dispatch.test.ts: two teams in one workspace never shadow each other (pure); release removes only the named team's row; LEGACY bare-key drop + idempotence; forgetTeam terminal prune",
+        "board-settlement.test.ts: tool-level two-teams arm (both teams dispatch their OWN T1; beta's release leaves alpha's row and board untouched); a legacy file row is dropped, reported in `forgotten`, and the new team still dispatches T1; terminal-phase prune through the reap path",
+        "team-record.test.ts: the T7 concurrent-release arm updated to COMPOSITE keys"
+      ]
+    },
+    "R2": {
+      "claim": "settleMember + deterministic/event settlement + idleMembers",
+      "implemented": [
+        "team-store.ts#settleMember(record, sessionId, now): member by executorRef; `inactive` ONLY when it owns no in_progress|claimed task (both owner spellings); SAME record when nothing matches or still busy",
+        "index.ts complete|fail: settles the CLOSED TASK'S OWNER in the same write as the closure (owner spelling -> roster row -> executorRef)",
+        "index.ts: detached `dsh.onEvent(\"agent/turn-stopping\")` listener keyed by payload.agent.session.id === member.executorRef; returns undefined (serial-dispatch safety), does its work in a detached block, RE-READS the record before writing, writes only on identity change",
+        "agent_teams_dispatch claim path flips the paired member back to `running` (and re-derives the phase)",
+        "idleMembers accepts `inactive` as free, so settlement cannot empty the dispatch pool"
+      ],
+      "tests": [
+        "team-store.test.ts: settle when no owned open task; stay running while one is open (name AND executorRef spellings, claimed and in_progress); identity no-ops (unknown session / absent handle / already settled); settle-every-member => derivePhase idle",
+        "board-settlement.test.ts: deterministic settlement after complete (owner settles, other member stays running; closing the whole board => derivePhase idle, stored phase idle, projectMpdTeam + teamIsFinished TRUE); a member with an open task is not settled; the turn-stopping EVENT settles and returns undefined; the event is inert for an unknown session/open work; a SETTLED member is dispatchable again and the claim flips it back to running",
+        "team-record.test.ts: the 'every member running' arm now proves the spawn state AND the settle-to-idle transition through the real closure"
+      ]
+    },
+    "R3": {
+      "claim": "casReleaseTask + release resets the row on both surfaces",
+      "implemented": [
+        "team-store.ts#casReleaseTask(fresh, taskId, expectedRevision, now): claimed|in_progress -> pending, clears owner + startedAt (TaskPatch.resetStartedAt; a plain reopen still keeps the clock), CAS on revision, terminal rows refused, pending rows refused",
+        "index.ts#releaseDispatchedTask: frees the ledger row AND reopens the task row; BOTH release surfaces use it; the team is resolved first",
+        "no new task state: `claimed` is still never written at dispatch time, `in_progress` keeps its one meaning, `attempt` is not reset"
+      ],
+      "tests": [
+        "team-store.test.ts: reopen (pending/unowned/startedAt cleared/revision bumped/attempt kept) and readyTasks sees it; a later claim restarts the clock; terminal + double-release refusals; CAS + unknown-id arms",
+        "board-settlement.test.ts: dispatch -> release -> status/owner/startedAt reset + the next pass re-dispatches it; a terminal row refused with 'already terminal'; an undispatched row refused with 'holds no dispatch to release'"
+      ]
+    },
+    "stale code header + README": {
+      "implemented": [
+        "src/index.ts header: the mpd record IS the authoritative team truth; the official service is the FALLBACK for a composition that runs it; no mpd surface treats dsh.teamLiveTeams() as truth",
+        "README.md + README.zh-CN.md: the authoritative-record statement replaces 'never duplicated / stay the official service's'; the tool table's task/dispatch rows and the Known-limits bullet state the team-scoped ledger, the terminal prune, the legacy drop, release-reopens and settlement->idle"
+      ],
+      "note": "docs/design*.md and docs/feature-audit*.md (R4's doc half) are the docs lane's (T3) scope and were NOT touched here"
+    }
+  },
+  "gates": [
+    {
+      "command": "bun test packages/mpd-team-core-plugin",
+      "exit": 0,
+      "summary": "275 pass / 0 fail / 1266 expect() / 19 files",
+      "log": "tests.log"
+    },
+    {
+      "command": "bun test packages/mpd-team-compact-plugin packages/mpd-team-watchdog-plugin packages/mpd-workmate-plugin",
+      "exit": 0,
+      "summary": "214 pass / 0 fail / 19 files (record consumers unaffected)",
+      "log": "adjacent.log"
+    },
+    {
+      "command": "bun test packages/mpd-tui-plugin packages/mpd-dsh-adapter-plugin",
+      "exit": 0,
+      "summary": "766 pass / 0 fail / 36 files (TUI + adapter unaffected)",
+      "log": "tui-adapter.log"
+    },
+    {
+      "command": "bun run typecheck",
+      "exit": 0,
+      "summary": "tsgo --noEmit: no diagnostics",
+      "log": "typecheck.log"
+    },
+    {
+      "command": "bun run verify:comments",
+      "exit": 0,
+      "summary": "VERDICT: PASS \u2014 430 files, 38392 declarations, 17913 inline callbacks out of family",
+      "log": "comments.log"
+    },
+    {
+      "command": "bun run verify:docs",
+      "exit": 0,
+      "summary": "pairs=49 failed=0 violations=0 links=440 dead=0 \u2014 PASS (covers the README pair edited here AND the docs lane's in-flight docs edits)",
+      "log": "docs.log"
+    }
+  ],
+  "measured": {
+    "coreTestsBefore": "254 pass / 0 fail at 46e3bf12",
+    "coreTestsAfter": "275 pass / 0 fail (+21 arms)",
+    "toolSurfaceChars": {
+      "before": 5162,
+      "after": 4919,
+      "budget": 5000,
+      "note": "the dispatch tool's own text was tightened to stay under the surface budget; expected_revision stays on agent_teams_task release only"
+    },
+    "ledgerKeyFormat": "teamId + \"::\" + taskId (both sides are mpd-minted ids that contain no colon)"
+  },
+  "filesChanged": [
+    "packages/mpd-team-core-plugin/src/dispatch.ts",
+    "packages/mpd-team-core-plugin/src/team-store.ts",
+    "packages/mpd-team-core-plugin/src/index.ts",
+    "packages/mpd-team-core-plugin/README.md",
+    "packages/mpd-team-core-plugin/README.zh-CN.md",
+    "packages/mpd-team-core-plugin/test/dispatch.test.ts",
+    "packages/mpd-team-core-plugin/test/close-and-dispatch.test.ts",
+    "packages/mpd-team-core-plugin/test/team-record.test.ts",
+    "packages/mpd-team-core-plugin/test/team-store.test.ts",
+    "packages/mpd-team-core-plugin/test/board-settlement.test.ts (new)"
+  ],
+  "bounds": [
+    "dist/ was NOT rebuilt: this lane was explicitly forbidden to touch dist. The package's src changed, so node scripts/verify-dist-fresh.ts will report packages/mpd-team-core-plugin STALE until the integration task (T4) rebuilds dist with the pinned bun 1.4.0.",
+    "No LIVE dsh boot: the arms drive the REAL plugin code through the real tools with a stub executor in a sandbox workspace. The live approve->dispatch->close->idle exercise belongs to T4's integration run and is NOT claimed here.",
+    "CONCURRENT CROSS-TEAM WRITES are not serialized: two dispatch passes for two teams that both run across their own `await send(...)` can still lose a row at the final whole-file write (the T7 merge narrows the window but is per-pass). This is the pre-existing single-file ledger race, not introduced by R1 \u2014 one file, no lock.",
+    "The turn-boundary listener scans the workspace's team records on every turn-stopping event (the same scan mpd-team-compact-plugin already performs on that event). Settlement lands only for a session whose executorRef is on a roster.",
+    "docs/design*.md + docs/feature-audit*.md are T3's scope; no skills/**, docs/** or dist file was touched here.",
+    "No git write commands were run (branch/commit/PR are the captain's)."
+  ],
+  "designNotes": [
+    "readLedger/writeLedger stay FILE-level (workspace only): they are the one atomic-file seam, and a team-scoped READ would make every writer merge rows it never read. The teamId is threaded through the PURE helpers they feed (reconcile/ledgerOfTeam/assign/release/forgetTeam) and through both tools, which is where the scoping can be enforced without a lossy write.",
+    "The terminal-phase prune is anchored on the reap's OWN report: reapReapedTeams (team-lifecycle.ts) is the terminal write path, and its returned ids are what the dispatch run hands to forgetTeam. No second terminal write path exists (grep: `phase: \"ended\"` is written in exactly one place).",
+    "The phase is re-derived on BOTH claim paths (agent_teams_task claim and the dispatch claim) because settlement makes `idle -> active` reachable; without it the stored phase could disagree with a running member/task row."
+  ]
+}

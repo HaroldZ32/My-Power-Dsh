@@ -1,0 +1,5 @@
+[pack-mpd] validator: generated packages/mpd-ext-plugin/dist/validator.js (9 exports) from the shipped bundle
+[pack-mpd] staged 2 patch file(s): cordis.patch.yml, presets/mpd.patch.yml
+[pack-mpd] launcher dependencies: 4 shipped launcher(s) resolve 5 npm package(s), every one declared in the packed manifest
+[pack-mpd] modes normalized: 624 files (644: 608, 755: 16)
+[pack-mpd] staged package -> /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/dist/mpd-package  (out-dir source: default (<repo>/dist/mpd-package))

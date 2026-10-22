@@ -20,11 +20,12 @@
 // call), and the two store arms call `casCloseTask` straight, which is the pure decision the tool
 // delegates to. No arm restates the resolution rule — each one reads the board back from disk.
 import { afterEach, describe, expect, test } from "bun:test"
-import { mkdtempSync, rmSync } from "node:fs"
+import { mkdtempSync, readFileSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { apply, TEAMS_SERVICE, type MpdTeamsService } from "../src/index.ts"
-import { activeTeamId, addTeamMember, addTeamTask, casCloseTask, createTeam, readTeam, updateTeamMember, writeTeam } from "../src/team-store.ts"
+import { activeTeamId, addTeamMember, addTeamTask, casCloseTask, createTeam, readTeam, settleMember, updateTeamMember, writeTeam } from "../src/team-store.ts"
+import { ledgerKey, type DispatchLedger } from "../src/dispatch.ts"
 
 /** One captured tool registration, with `execute` kept so an arm can actually drive it. */
 interface Tool {
@@ -187,6 +188,42 @@ function statusOnDisk(workspace: string, teamId: string, taskId: string): string
   return readTeam(workspace, teamId)?.tasks.find((candidate) => candidate.id === taskId)?.status
 }
 
+/**
+ * The dispatch ledger as this workspace has it ON DISK.
+ *
+ * Read straight from the documented sidecar path (`<workspace>/.mpd/team/dispatch.json`, named in
+ * `src/index.ts`) rather than through a helper the fix could move, so an arm asserts the bytes a
+ * release actually left behind.
+ * @param workspace - the sandbox workspace.
+ * @returns the parsed ledger; an absent or unreadable file is an empty ledger.
+ */
+function ledgerOnDisk(workspace: string): DispatchLedger {
+  try {
+    /** The parsed ledger, accepted only when it is a plain object — the rule `readLedger` applies. */
+    const raw = JSON.parse(readFileSync(join(workspace, ".mpd", "team", "dispatch.json"), "utf8")) as DispatchLedger
+    return raw !== null && typeof raw === "object" ? raw : {}
+  } catch {
+    return {}
+  }
+}
+
+/**
+ * Approve the team and dispatch BOTH of its ready tasks through the REAL dispatch tool, as {@link LEAD}.
+ *
+ * A release-authorization arm needs a pairing the ledger really holds: the pre-fix release freed that
+ * row BEFORE it looked at who was calling, so an arm without one could not prove the pairing survived.
+ * @param h - the harness to dispatch in.
+ * @returns the approved team's id.
+ */
+async function dispatchedBoth(h: Harness): Promise<string> {
+  /** The approved team, whose two ready tasks the pass must pair. */
+  const teamId = await approveTeam(h)
+  /** The pass's own answer. */
+  const pass = await h.call("agent_teams_dispatch", { action: "run" }, LEAD) as { pairs?: Array<{ taskId?: string }> }
+  expect(pass.pairs?.map((pair) => pair.taskId).sort()).toEqual(["T1", "T2"])
+  return teamId
+}
+
 describe("AC-D5a — a member session resolves its own team", () => {
   test("a teammate is on the ROSTER, not in the index, and the tool path resolves it", async () => {
     /** The harness this arm drives. */
@@ -306,6 +343,122 @@ describe("AC-D5b — the team's LEAD closes any task of its own team", () => {
     const refused = casCloseTask(record, { taskId: "T1", status: "completed", caller: ["child-Senior-Engineer"], lead: false, now: NOW })
     expect(refused.applied).toBe(false)
     if (!refused.applied) expect(refused.reason).toBe('task T1 is owned by "Plan Reviewer" and this caller is neither that owner nor this team\'s lead')
+  })
+})
+
+// PR #60 REVIEW F1 (CWE-862) — a release frees TWO things, and NEITHER is a teammate's to take.
+//
+// THE MEASURED DEFECT: `releaseDispatchedTask` freed the ledger pairing and then reset the task row
+// with NO caller authorization at all, while `resolveForWrite` resolves a team through the MEMBER arm.
+// Any teammate could therefore reopen a row another member had claimed — the work silently unbooked
+// and the pairing gone. The rule the captain set is the close gate's own: the LEAD, or the task's OWNER.
+describe("PR #60 F1 — only the Lead or the task's own owner may release", () => {
+  test("a member that owns NEITHER the task nor the lead role is refused, and NOTHING is unbooked", async () => {
+    /** The harness under test. */
+    const h = harness()
+    /** The approved team, with BOTH tasks dispatched so the ledger really holds a pairing. */
+    const teamId = await dispatchedBoth(h)
+    /** The session id of the "Reviewer" member, which owns T2 and NOT T1. */
+    const reviewer = handleOf(h.workspace, teamId, "Reviewer")
+    // THE PRECONDITION: T1 is ANOTHER member's claimed row with a live pairing on the ledger.
+    expect(statusOnDisk(h.workspace, teamId, "T1")).toBe("in_progress")
+    expect(ledgerOnDisk(h.workspace)[ledgerKey(teamId, "T1")]).toBeDefined()
+    /** The refusal, in the exact shape the task surface returns it. */
+    const answer = await h.call("agent_teams_task", { action: "release", task_id: "T1" }, reviewer) as { released?: boolean; refused?: string; taskId?: string }
+    // THE EXACT SENTENCE — the same rule and wording the close gate already used, never a bare refusal.
+    expect(answer.refused).toBe('task T1 is owned by "Senior Engineer" and this caller is neither that owner nor this team\'s lead')
+    expect(answer.released).toBe(false)
+    expect(answer.taskId).toBe("T1")
+    // NOTHING WAS UNBOOKED: the task row and the pairing are exactly as they were.
+    expect(statusOnDisk(h.workspace, teamId, "T1")).toBe("in_progress")
+    expect(readTeam(h.workspace, teamId)?.tasks.find((task) => task.id === "T1")?.owner).toBe("Senior Engineer")
+    expect(ledgerOnDisk(h.workspace)[ledgerKey(teamId, "T1")]).toBeDefined()
+    // THE SECOND SURFACE IS THE SAME RULE: `agent_teams_dispatch release` refuses the same caller, and
+    // the pairing still survives it — the gap this fix closes exists on BOTH verbs.
+    /** The refusal as the dispatch surface returns it. */
+    const dispatchAnswer = await h.call("agent_teams_dispatch", { action: "release", task_id: "T1" }, reviewer) as { released?: boolean; refused?: string }
+    expect(dispatchAnswer.refused).toBe('task T1 is owned by "Senior Engineer" and this caller is neither that owner nor this team\'s lead')
+    expect(dispatchAnswer.released).toBe(false)
+    expect(statusOnDisk(h.workspace, teamId, "T1")).toBe("in_progress")
+    expect(ledgerOnDisk(h.workspace)[ledgerKey(teamId, "T1")]).toBeDefined()
+  })
+
+  test("the task's OWNER releases its own task, and the pairing really is freed", async () => {
+    /** The harness under test. */
+    const h = harness()
+    /** The approved, fully dispatched team. */
+    const teamId = await dispatchedBoth(h)
+    /** The session id of the "Senior Engineer" member, which owns T1. */
+    const member = handleOf(h.workspace, teamId, "Senior Engineer")
+    /** The owner's own release. */
+    const answer = await h.call("agent_teams_task", { action: "release", task_id: "T1" }, member) as { released?: boolean; refused?: string; status?: string }
+    expect(answer.refused).toBeUndefined()
+    expect(answer.released).toBe(true)
+    expect(answer.status).toBe("pending")
+    // BOTH HALVES LANDED: the row is pending with no owner, and the pairing is gone.
+    expect(statusOnDisk(h.workspace, teamId, "T1")).toBe("pending")
+    expect(readTeam(h.workspace, teamId)?.tasks.find((task) => task.id === "T1")?.owner).toBeUndefined()
+    expect(ledgerOnDisk(h.workspace)[ledgerKey(teamId, "T1")]).toBeUndefined()
+    // The OTHER task's pairing is untouched: a release frees ONE row.
+    expect(ledgerOnDisk(h.workspace)[ledgerKey(teamId, "T2")]).toBeDefined()
+    // THE OTHER OWNER SPELLING: a row this member claimed ITSELF is owned by its executorRef (its
+    // session id), not by the roster name — the same member must still be allowed to release it.
+    await h.call("agent_teams_task", { action: "claim", task_id: "T1" }, member)
+    expect(readTeam(h.workspace, teamId)?.tasks.find((task) => task.id === "T1")?.owner).toBe(member)
+    /** The second release, decided against a session-id owner and a ledger row that was never booked. */
+    const claimOnly = await h.call("agent_teams_task", { action: "release", task_id: "T1" }, member) as { released?: boolean; refused?: string; status?: string }
+    expect(claimOnly.refused).toBeUndefined()
+    expect(claimOnly.status).toBe("pending")
+    expect(statusOnDisk(h.workspace, teamId, "T1")).toBe("pending")
+  })
+
+  test("the Lead releases ANY task of its own team", async () => {
+    /** The harness under test. */
+    const h = harness()
+    /** The approved, fully dispatched team. */
+    const teamId = await dispatchedBoth(h)
+    /** The Lead's release of a row another member owns. */
+    const answer = await h.call("agent_teams_task", { action: "release", task_id: "T2" }, LEAD) as { released?: boolean; refused?: string; status?: string }
+    expect(answer.refused).toBeUndefined()
+    expect(answer.released).toBe(true)
+    expect(answer.status).toBe("pending")
+    expect(statusOnDisk(h.workspace, teamId, "T2")).toBe("pending")
+    expect(ledgerOnDisk(h.workspace)[ledgerKey(teamId, "T2")]).toBeUndefined()
+    // The member's own row is left for the member (or a later pass), not swept along by the override.
+    expect(statusOnDisk(h.workspace, teamId, "T1")).toBe("in_progress")
+    expect(ledgerOnDisk(h.workspace)[ledgerKey(teamId, "T1")]).toBeDefined()
+  })
+})
+
+// PR #60 REVIEW F3 — a claim must leave the member RUNNING, not silently settled.
+//
+// THE MEASURED DEFECT: only the dispatch claim flipped a member to `running`. A settled member woken
+// by a Lead message and claiming its OWN task through `agent_teams_task` stayed `inactive`, so the
+// workmate in-use gate treated it as free, and `settleMember` only ever settles a `running` row — so
+// nothing corrected the record afterwards.
+describe("PR #60 F3 — a settled member that claims its own task is running again", () => {
+  test("claim through agent_teams_task flips an `inactive` row back to `running`", async () => {
+    /** The harness under test. */
+    const h = harness()
+    /** The approved team. */
+    const teamId = await approveTeam(h)
+    /** The session id of the "Senior Engineer" member. */
+    const member = handleOf(h.workspace, teamId, "Senior Engineer")
+    /** The record exactly as approval left it, so settlement is applied to real state. */
+    const approved = readTeam(h.workspace, teamId)
+    if (approved === undefined) throw new Error("the approval wrote no record to settle")
+    // SETTLE the member by the store's own rule: it owns no OPEN task yet, so it is written `inactive`.
+    writeTeam(h.workspace, settleMember(approved, member, NOW))
+    expect(readTeam(h.workspace, teamId)?.members.find((candidate) => candidate.name === "Senior Engineer")?.status).toBe("inactive")
+    /** The claim's own answer. */
+    const claimed = await h.call("agent_teams_task", { action: "claim", task_id: "T1" }, member) as { contract?: { claimedBy?: string }; task?: { owner?: string; status?: string } }
+    expect(claimed.contract?.claimedBy).toBe(member)
+    expect(claimed.task?.owner).toBe(member)
+    expect(claimed.task?.status).toBe("in_progress")
+    // THE FIX: the row the claim resurrected is `running` again, so the in-use gate sees it busy.
+    expect(readTeam(h.workspace, teamId)?.members.find((candidate) => candidate.name === "Senior Engineer")?.status).toBe("running")
+    // ONLY the claimant's row moved: the untouched member is where approval left it.
+    expect(readTeam(h.workspace, teamId)?.members.find((candidate) => candidate.name === "Reviewer")?.status).toBe("running")
   })
 })
 

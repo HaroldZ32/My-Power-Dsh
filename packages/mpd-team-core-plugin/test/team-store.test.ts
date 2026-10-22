@@ -16,6 +16,7 @@ import {
   blockingDependencies,
   casClaimTask,
   casCloseTask,
+  casReleaseTask,
   createTeam,
   cycleIds,
   deleteTeam,
@@ -27,6 +28,7 @@ import {
   readTeamsIndex,
   readyTasks,
   sanitizeId,
+  settleMember,
   summariseTeam,
   taskDepths,
   taskVisual,
@@ -526,5 +528,163 @@ describe("the compare-and-set claim (T2)", () => {
     /** The board with T1 completed. */
     const done: TeamRecord = { ...opened, tasks: [{ ...opened.tasks[0], status: "completed" }] }
     expect(casClaimTask(done, "T1", "Senior Engineer", expected, NOW)).toEqual({ applied: false, reason: 'task T1 is now "completed"' })
+  })
+})
+
+
+describe("member settlement (R2)", () => {
+  // THE DEFECT: a member is written `running` at spawn and NOTHING wrote it back, so `derivePhase`
+  // read a ghost team as `active` forever, the finished-team predicate never fired and the TUI drew
+  // members working after the board was closed. Settlement is the missing write; the pool must keep
+  // accepting the settled member, or settling would empty the dispatch pool it feeds.
+  /** The seeded record APPROVED with both members spawned and running, each carrying its handle. */
+  function running(): TeamRecord {
+    /** The seeded record. */
+    const record = seeded()
+    /** The record after both members were spawned. */
+    return {
+      ...record,
+      approvedAt: NOW.toISOString(),
+      members: record.members.map((member) => ({ ...member, status: "running" as const, executorRef: "child-" + member.name.replace(/\s+/g, "-") })),
+    }
+  }
+
+  test("a member that owns no OPEN task settles to `inactive`, and the pool accepts it", () => {
+    /** The record with both members running and no task in flight. */
+    const record = running()
+    // A `pending` owned task is NOT open work: the row is on the board but nothing is running.
+    /** The Senior Engineer's row after settlement. */
+    const settled = settleMember(record, record.members[0].executorRef!, LATER)
+    expect(settled.members[0].status).toBe("inactive")
+    // The other member is untouched: settlement is per session, never a bulk pass.
+    expect(settled.members[1].status).toBe("running")
+    // THE POOL: an inactive member is free, so the dispatch pass can still pair it.
+    expect(idleMembers(settled).map((member) => member.name)).toContain("Senior Engineer")
+  })
+
+  test("a member that still OWNS an open task keeps `running` — settlement cannot strand work", () => {
+    /** The record with both members spawned. */
+    const record = running()
+    /** The board with T1 claimed by the Senior Engineer, under its DISPLAY NAME. */
+    const byName = updateTeamTask(record, "T1", { status: "in_progress", owner: "Senior Engineer" }, LATER)
+    expect(settleMember(byName, record.members[0].executorRef!, LATER)).toBe(byName)
+    /** The board with T1 claimed under the member's EXECUTOR HANDLE, the other spelling the board stamps. */
+    const byHandle = updateTeamTask(record, "T1", { status: "in_progress", owner: record.members[0].executorRef! }, LATER)
+    expect(settleMember(byHandle, record.members[0].executorRef!, LATER)).toBe(byHandle)
+    // A `claimed` (not yet in_progress) row is open work too.
+    /** The board with T1 claimed but not started. */
+    const claimed = updateTeamTask(record, "T1", { status: "claimed", owner: "Senior Engineer" }, LATER)
+    expect(settleMember(claimed, record.members[0].executorRef!, LATER)).toBe(claimed)
+  })
+
+  test("nothing to settle returns the SAME record — an unknown session, an absent handle, a settled member", () => {
+    /** The record with both members running. */
+    const record = running()
+    // A session that names no member.
+    expect(settleMember(record, "child-nobody", LATER)).toBe(record)
+    // A member with NO recorded handle can never be named by an event, so it never settles.
+    /** The record with the first member's handle removed. */
+    const handleless: TeamRecord = { ...record, members: [{ ...record.members[0], executorRef: undefined }, record.members[1]] }
+    expect(settleMember(handleless, "child-Senior-Engineer", LATER)).toBe(record === handleless ? record : handleless)
+    // An already-settled member is not rewritten (identity is the caller's "do not write" signal).
+    /** The record after a first settlement. */
+    const once = settleMember(record, record.members[0].executorRef!, LATER)
+    expect(settleMember(once, record.members[0].executorRef!, LATER)).toBe(once)
+  })
+
+  test("settle every member => the approved team derives `idle` (the compaction pass can see a finished team)", () => {
+    /** The record with both members running, as an approval leaves it. */
+    const record = withDerivedPhase(running())
+    // While a member is running the record cannot read idle, however its board looks.
+    expect(derivePhase(record)).toBe("active")
+    // Closing the board (no open task) and settling BOTH members is the whole transition.
+    /** The record after both settlements. */
+    const settled = record.members.reduce((acc, member) => settleMember(acc, member.executorRef!, LATER), record)
+    expect(settled.members.map((member) => member.status)).toEqual(["inactive", "inactive"])
+    expect(derivePhase(withDerivedPhase(settled))).toBe("idle")
+  })
+})
+
+describe("task release (R3)", () => {
+  // THE DEFECT: `release` was LEDGER-ONLY. The pairing was deleted while the task stayed `in_progress`,
+  // and because `readyTasks`/`casClaimTask` are pending-only the row could never be dispatched again.
+  /** A one-member board with T1 claimed and in flight, as a dispatch pass leaves it. */
+  function claimed(): TeamRecord {
+    /** The record with one running member and one task. */
+    const record = {
+      ...addTeamTask(createTeam(sandbox, { name: "wave", description: "release", leadSessionId: "s1" }, NOW), { subject: "core", description: "own it", kind: "work" }, NOW),
+      approvedAt: NOW.toISOString(),
+      members: [{ id: "M1", name: "Senior Engineer", description: "implements", status: "running" as const, spawnedAt: NOW.toISOString(), executorRef: "child-1" }],
+    }
+    /** The claim's outcome, asserted so a broken fixture cannot silently weaken the arms below. */
+    const claim = casClaimTask(record, "T1", "Senior Engineer", record.tasks[0].revision, NOW)
+    expect(claim.applied).toBe(true)
+    if (!claim.applied) throw new Error("fixture: the claim was refused")
+    writeTeam(sandbox, claim.record)
+    return claim.record
+  }
+
+  test("a release REOPENS the row for a later dispatch: pending, unowned, clock cleared, attempt kept", () => {
+    /** The record with T1 in flight. */
+    const inFlight = claimed()
+    expect(inFlight.tasks[0].status).toBe("in_progress")
+    expect(inFlight.tasks[0].startedAt).toBe(NOW.toISOString())
+    /** The release outcome. */
+    const released = casReleaseTask(inFlight, "T1", undefined, LATER)
+    expect(released.applied).toBe(true)
+    if (!released.applied) throw new Error("fixture: the release was refused")
+    /** The reopened row. */
+    const row = released.record.tasks[0]
+    expect(row.status).toBe("pending")
+    // The owner and the started clock are GONE (not blanked), and no finish stamp was invented.
+    expect("owner" in row).toBe(false)
+    expect("startedAt" in row).toBe(false)
+    expect("finishedAt" in row).toBe(false)
+    // The revision moved (a CAS target for the next caller); the attempt did NOT reset.
+    expect(row.revision).toBe(inFlight.tasks[0].revision + 1)
+    expect(row.attempt ?? 0).toBe(0)
+    // DISPATCHABLE AGAIN: the pool's own readiness rule sees the row.
+    expect(readyTasks(released.record).map((task) => task.id)).toEqual(["T1"])
+    // A later claim starts a NEW clock, which is why the release cleared it.
+    /** The second claim on the reopened row. */
+    const reclaimed = casClaimTask(released.record, "T1", "Reviewer", released.record.tasks[0].revision, new Date(LATER.getTime() + 1000))
+    expect(reclaimed.applied).toBe(true)
+    if (reclaimed.applied) expect(reclaimed.record.tasks[0].startedAt).toBe(new Date(LATER.getTime() + 1000).toISOString())
+  })
+
+  test("a TERMINAL row is refused, and a DOUBLE release is a no-op with the right refusal", () => {
+    /** The record with T1 in flight. */
+    const inFlight = claimed()
+    /** The board with T1 completed. */
+    const done = updateTeamTask(inFlight, "T1", { status: "completed" }, LATER)
+    /** The terminal refusal. */
+    const terminal = casReleaseTask(done, "T1", undefined, LATER)
+    expect(terminal.applied).toBe(false)
+    if (!terminal.applied) expect(terminal.reason).toBe('task T1 is already terminal ("completed") and cannot be released')
+    // A cancelled or failed row is terminal in exactly the same way.
+    expect(casReleaseTask(updateTeamTask(inFlight, "T1", { status: "failed" }, LATER), "T1", undefined, LATER).applied).toBe(false)
+    // The first release succeeds; the second has nothing to free and SAYS so.
+    /** The successfully released record. */
+    const first = casReleaseTask(inFlight, "T1", undefined, LATER)
+    if (!first.applied) throw new Error("fixture: the first release was refused")
+    /** The second release against the reopened row. */
+    const second = casReleaseTask(first.record, "T1", undefined, new Date(LATER.getTime() + 1000))
+    expect(second.applied).toBe(false)
+    if (!second.applied) expect(second.reason).toBe('task T1 is "pending" and holds no dispatch to release')
+  })
+
+  test("CAS and unknown-id arms: a stale revision is refused with both numbers, a gone task says so", () => {
+    /** The record with T1 in flight. */
+    const inFlight = claimed()
+    /** The revision the caller based its decision on. */
+    const expected = inFlight.tasks[0].revision
+    // A concurrent NOTE edit moves the revision under the caller.
+    writeTeam(sandbox, updateTeamTask(inFlight, "T1", { note: "moved on" }, LATER))
+    /** The stale release. */
+    const stale = casReleaseTask(readTeam(sandbox, inFlight.teamId)!, "T1", expected, LATER)
+    expect(stale.applied).toBe(false)
+    if (!stale.applied) expect(stale.reason).toContain(`revision ${expected} -> ${expected + 1}`)
+    // An unknown id is not an error, it is a refusal with its own sentence.
+    expect(casReleaseTask(inFlight, "T9", undefined, LATER)).toEqual({ applied: false, reason: "task T9 is no longer on the board" })
   })
 })

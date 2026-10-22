@@ -18,8 +18,8 @@
 | 领域 | 上游 spec | 状态 | 位置 / 说明 |
 |---|---|---|---|
 | Agent roster（11） | sisyphus, sisyphus-junior, hephaestus, oracle, librarian, explore, metis, momus, atlas, multimodal-looker, prometheus | ✅ | mpd-roles-plugin roster，使用常规显示名（Senior Engineer, Junior Engineer, Deep Worker, Architect, Researcher, Explorer, Reviewer, Plan Reviewer, Lead, Vision Analyst, Planner）；一次性咨询走 `mpd_role_spawn`，队友模板由 Lead 用官方 `spawn_teammate` 按名字创建（persona 文本取自 `mpd_role_persona`） |
-| 团队模式 | 11-agent 编排、mailbox、tasklist、state、worktree、tmux | ✅ | **官方** Agent Teams 插件，由本 bundle 的 `mpd-agent-team` / `mpd-tool-agent-team` / `mpd-ui-agent-team` 三行挂载（三个已声明 `dependencies`）：持久可续队友（`spawn_teammate`，fresh 或 fork）、带唤醒的持久逐成员邮箱（`send_message`、`list_agents`、`wait_agent`、`interrupt_agent`）、带依赖与就绪判定的 compare-and-set 共享任务板（`team_task_*`），以及会话头部里的 Web 名册/任务板面板。团队状态保存在 **Lead 的会话日志**里 —— 没有 `.mpd/team` 记录，也没有 worktree 或 tmux 集成（上游的 worktree/tmux 两项记为 ➖）。已退役的内置 `dsh-agent-teams` 主体只作为来源记录保留；见下文小节 |
-| Workmate 库 | 持久演化 agent 池（~/.mpd/workmate），base→instance、自反思、note 复用、重命名/删除 | ✅ | mpd-workmate-plugin：roster BASE → 独立命名 instance（persona/memory/note，大小封顶：8/8/1.5 KiB）；工作后自总结（mpd_workmate_reflect）；note 匹配复用（mpd_workmate_match，阈值 0.35——弱匹配不得强用，应新建 workmate）；一次性复用走 mpd_workmate_spawn；**重命名**（mpd_workmate_rename —— 搬移目录键 + meta + 索引键 + note 自引用 + renamedFrom，绝不重新实例化）与**删除**（mpd_workmate_delete —— 先归档到 `.archive/<key>-<stamp>/`，只有 purge + confirm === name 才彻底移除；恢复靠手动 `mv` 搬回，产品内没有恢复功能）；两种变更在该 workmate 被进行中的 spawn（或**旧版** `.mpd/team` 记录）占用时都以 409 `in-use` 拒绝并列出阻塞团队，且与变更处于同一同步块；名称仅限 ASCII `[a-z0-9_-]`（CJK/大写在任何 fs 调用前即拒绝；Unicode 延后）。路由：`POST /plugins/mpd-workmate/{rename,delete}`，遵循 §D 状态/reason 矩阵。团队参与靠**提示词**：队友之所以带着 workmate 的 persona/memory，是因为 captain 把它们放进了 `spawn_teammate` 的提示词 —— 自动 memberPersona 注入属于已退役的内置插件。库按设计位于用户 HOME（QA 用 HOME=<sandbox> 启动）。GUI：该库是一个 DSH-better-sidebar Tab（`mpd-workmate`），仅此一处 —— 浮层与页脚开关已移除，侧边栏是它唯一的宿主；该 Tab 带 zh/en 的重命名/删除控件。Evidence：evidence/plan-f/workmate-library、evidence/workmate/rename-delete-core、evidence/workmate/rename-delete-gui、evidence/workmate/rename-delete-verify |
+| 团队模式 | 11-agent 编排、mailbox、tasklist、state、worktree、tmux | ✅ | **官方** Agent Teams 插件提供**运行时**，由本 bundle 的 `mpd-agent-team` / `mpd-tool-agent-team` / `mpd-ui-agent-team` 三行挂载（三个已声明 `dependencies`）：队友经 `spawn_teammate`（fresh 或 fork）生成，是**一次性（ONE-SHOT）咨询** —— 一次有界委派、一份报告，报告落定后激活即被**销毁**，已落定的子会话绝不再续（只追加的目录仍可能把它**列为** `inactive`）；带唤醒的逐成员邮箱（`send_message`、`list_agents`、`wait_agent`、`interrupt_agent`）、带依赖与就绪判定的 compare-and-set 共享任务板（`team_task_*`），以及会话头部里的 Web 名册/任务板面板。**团队真相是 mpd 自有的记录** `<workspace>/.mpd/team/teams/<teamId>.json`（`mpd-team-core-plugin`）：名册、任务板、DAG、`kind`/`attempt`/`round`/`verdict` 与每个执行器句柄，被每个 mpd 界面读取；官方平面自己的名册/邮箱/任务板状态（保存在 Lead 的会话日志里，经 `dsh.teamLiveTeams()` 读回）只是"由官方执行器运行的 composition"那个受控 **FALLBACK**。没有 worktree 或 tmux 集成（上游的 worktree/tmux 两项记为 ➖）。已退役的内置 `dsh-agent-teams` 主体只作为来源记录保留；见下文小节 |
+| Workmate 库 | 持久演化 agent 池（~/.mpd/workmate），base→instance、自反思、note 复用、重命名/删除 | ✅ | mpd-workmate-plugin：roster BASE → 独立命名 instance（persona/memory/note，大小封顶：8/8/1.5 KiB）；工作后自总结（mpd_workmate_reflect）；note 匹配复用（mpd_workmate_match，阈值 0.35——弱匹配不得强用，应新建 workmate）；一次性复用走 mpd_workmate_spawn；**重命名**（mpd_workmate_rename —— 搬移目录键 + meta + 索引键 + note 自引用 + renamedFrom，绝不重新实例化）与**删除**（mpd_workmate_delete —— 先归档到 `.archive/<key>-<stamp>/`，只有 purge + confirm === name 才彻底移除；恢复靠手动 `mv` 搬回，产品内没有恢复功能）；两种变更在该 workmate 被进行中的 spawn（或**任一布局**的团队记录 —— 今天批准的团队所写的 mpd 自有 `.mpd/team/teams/<teamId>.json`，以及仍被尊重的已退役 `.mpd/team/<teamId>/team.json`）占用时都以 409 `in-use` 拒绝并列出阻塞团队，且与变更处于同一同步块；名称仅限 ASCII `[a-z0-9_-]`（CJK/大写在任何 fs 调用前即拒绝；Unicode 延后）。路由：`POST /plugins/mpd-workmate/{rename,delete}`，遵循 §D 状态/reason 矩阵。团队参与靠**提示词**：队友之所以带着 workmate 的 persona/memory，是因为 captain 把它们放进了 `spawn_teammate` 的提示词 —— 自动 memberPersona 注入属于已退役的内置插件。库按设计位于用户 HOME（QA 用 HOME=<sandbox> 启动）。GUI：该库是一个 DSH-better-sidebar Tab（`mpd-workmate`），仅此一处 —— 浮层与页脚开关已移除，侧边栏是它唯一的宿主；该 Tab 带 zh/en 的重命名/删除控件。Evidence：evidence/plan-f/workmate-library、evidence/workmate/rename-delete-core、evidence/workmate/rename-delete-gui、evidence/workmate/rename-delete-verify |
 | ultrawork / ulw loop | plan->execute->verify 纪律、模式、hashline 编辑 | ✅ | mpd_ultrawork v2 引擎：discovery waves（2 次无果即停）、逐 criterion PIN->RED->GREEN->SURFACE->CLEAN、plan gate + verification gate（最多 2 次 re-review）+ quality gate ledger、可选 hyperplan 对抗波、subagent barrier（evidence/plan-c/c2-ultrawork；确定性引擎测试）。mpd_ulw 保留为轻量别名；可作为 `/ulw <objective>` / `/ultrawork <objective>` 直接调用（等价；工作确需团队时该运行自行以 `approval="automatic"` 建队）；execute-verify 中可接 hashline/comment-checker 钩子 |
 | /goal 与 goal rounds | 上游 /goal 带持久状态 | ✅ | DSH 原生 goal + tool-goal + command-goal + goal-round-driver |
 | ralph loop | 全新 agent 迭代 | ➖ | Harness 已**把 `tool-ralph` 行从 0.2.1 的 `standard` preset 中移除**（`tool-subagent-codex` / `tool-subagent-claude-code` 随之而去），而 `mpd` preset 与 `standard` 逐行保持一致，因此本 bundle 的任何 preset 都不再组合它 —— 在仍然提供该行的 harness 上，`ralph` 工具仍可调用。该行承载的全新 agent 循环纪律由 `mpd_ultrawork` 的执行轮次与 Agent Teams 成员承担 |
@@ -55,15 +55,16 @@
 - model-core 深度：有意跳过（用户决策，D-C9）。
 - tmux 团队可视化：由官方 Agent Teams 面板（会话头部里的 Web 名册/任务板视图）取代。
 
-## 已退役的 dsh-agent-teams：版本与**保留**主体尚未跟进的上游差距
+## 已退役（2026-09-27）并已移除（2026-10-07）的 dsh-agent-teams：版本历史与**保留**主体尚未跟进的上游差距
 
-**请把本节读作保留代码的历史，而不是随包能力。** 内置的 `agent-teams` 主体（含其 `_deps/` 闭包，
+**请把本节读作历史，绝不是随包能力：本节描述的主体已退役（2026-09-27）并被移除（2026-10-07），
+其中没有任何东西存在于当前代码树中。** 内置的 `agent-teams` 主体（含其 `_deps/` 闭包，
 共 768 个文件）已在 de-vendor 波次（2026-10-07）中从 `packages/mpd-agent-teams-plugin/` **删除**；
 自 0.1.7-rc.2 起就没有任何 loader 行挂载它 —— 那一次由官方 Agent Teams 插件取代（见上文团队模式行、
 `docs/plan-0.1.7-adaptation.md`，以及 `docs/design.md`、`docs/independence.md` §5 与
 `LICENSE-NOTICES.md` 中的删除记录）。
 
-保留版本为 `0.1.16-rc.3-mpd`：**0.1.14 本体** + 该宿主世代所需的上游 **0.1.16-rc.3** 增量 ——
+最后保留的版本是 `0.1.16-rc.3-mpd` —— **0.1.14 本体** + 该宿主世代所需的上游 **0.1.16-rc.3** 增量 ——
 `lib/harness-compat.ts`（在 harness **0.1.5-rc.2+** 上经公开的
 `ctx.subagents.prompt(request, signal)` 可续投递面进行团队投递，Alpha.2 的 `followup` 与
 Alpha.5…0.1.2-rc.1 的符号键控 FIFO 队列 `Symbol.for('dsh.subagent.queuePrompt')` 仅作为
@@ -77,9 +78,16 @@ Alpha.5…0.1.2-rc.1 的符号键控 FIFO 队列 `Symbol.for('dsh.subagent.queue
 （`failMemberOpenAttempt`），以及持久性修复（settled 队伍锁释放、可选任务字段空白归一化、
 队长 `claim_task` 守卫、parked attempt 恢复幂等）。证据：`evidence/agent-teams/scheduler-wakeup-fix/`。
 
-**保留**主体有两处上游增量暂未采纳（两者都不影响随包会话 —— 它们跑在官方插件上）：
+**该版本已退役（2026-09-27）并被移除（2026-10-07）。** 官方 Agent Teams 插件于 2026-09-27 取代它，
+此后它再未被任何 loader 行挂载，而 de-vendor 波次又在 2026-10-07 删除了
+`packages/mpd-agent-teams-plugin/` —— 上文点名的 `lib/…` 路径在当前代码树中已不存在，没有 loader 行
+挂载它们，被采纳主体的仅存部分已作为我们自己的代码迁入新址：`packages/mpd-schemastery/**` 的
+schemastery 校验器，以及作为视图库保留的已采纳浏览器 bundle（`docs/design.md` §7）。本节全部内容
+（包括下面两处从未采纳的增量）都是移除时留下的记录，仅供溯源。
 
-| 上游增量 | 暂不采纳的原因 | 采纳所需工作 |
+**保留**主体在移除前有两处上游增量从未采纳（两者都不可能影响随包会话 —— 它们跑在官方插件上）：
+
+| 上游增量 | 当时不采纳的原因 | 当时采纳所需工作 |
 | --- | --- | --- |
-| 浏览器 bundle 0.1.14 → 0.1.16-rc.3（`lib/client.js`） | 出货 client 是 npm 预构建产物；其增量是 client-runtime → `store`/`ui-chat`/`ui-conversation` 的导入适配，以及成员模型徽章的位置/样式调整，属 UI 打磨而非功能缺失 | 用 rc.3 构建替换 `lib/client.js`(+`.map`)，重跑 `scripts/patch-agent-teams-client.ts`（导出桥），重钉 `test/export-bridge.test.ts` 的 class map，并重新验证侧边栏页面一致性与 `web-client-adapt`/`agent-teams-sidebar` QA |
+| 浏览器 bundle 0.1.14 → 0.1.16-rc.3（`lib/client.js`） | 该主体出货的 client 是 npm 预构建产物；其增量是 client-runtime → `store`/`ui-chat`/`ui-conversation` 的导入适配，以及成员模型徽章的位置/样式调整，属 UI 打磨而非功能缺失 | 用 rc.3 构建替换 `lib/client.js`(+`.map`)，重跑 `scripts/patch-agent-teams-client.ts`（导出桥），重钉 `test/export-bridge.test.ts` 的 class map，并重新验证侧边栏页面一致性与 `web-client-adapt`/`agent-teams-sidebar` QA |
 | 精简固定团队指令（#138） | 本仓的 usage 文本带有 MPD 专属规则（roster profile、workmate backing、Web 审批控制消息），上游的精简核心协议没有这些；改写会改变每个会话的系统提示 | 按上游精简协议重写 `usageSectionText` 并保留 MPD 规则，然后重跑能力/提示相关 QA |

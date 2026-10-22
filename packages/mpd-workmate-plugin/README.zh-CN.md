@@ -101,8 +101,11 @@ mv ~/.mpd/workmate/.archive/<name>-<stamp> ~/.mpd/workmate/<name>
 
 两种变更在该 workmate **正在被使用时都会被拒绝**，且不做任何改动：`409 in-use`，并带一个
 `blocking` 列表，逐一列出阻塞的团队 id + 成员。"正在被使用"指二者之一：本进程内有一个正在
-进行的 `mpd_workmate_spawn`，或者 `<workspace>/.mpd/team/<teamId>/team.json` 下存在一个未归档
-的团队记录、其成员包含它。解除阻塞要等运行中的 spawn 结束，**并且**归档（或退休）那些团队，
+进行的 `mpd_workmate_spawn`，或者某个团队的成员列表包含它。扫描会同时读取工作区可能持有的
+两种记录布局：mpd 自有的 `<workspace>/.mpd/team/teams/<teamId>.json`（权威记录），以及已退役
+的旧版 `<workspace>/.mpd/team/<teamId>/team.json`。团队一旦结束就不再阻塞（mpd 自有记录看
+`endedAt`；已归档的旧版团队没有 `team.json`），而 mpd 自有记录中状态为 `inactive` 或 `failed`
+的成员已经落定，同样不再阻塞。解除阻塞要等运行中的 spawn 结束，**并且**归档（或退休）那些团队，
 然后重试变更。注意其必然结果：若某个团队记录的成员名等于某个 roster 角色名，就会阻塞与之相同
 的键——因此只要这类记录存在，把任何东西重命名为 `architect` 都会被拒绝。
 
