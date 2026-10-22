@@ -1,0 +1,7 @@
+# Pre-existing failure baseline (untouched dev 2718ff4b)
+# command: bun test packages/mpd-mcp-shared/log-sink.test.ts packages/mpd-better-sidebar-host
+# purpose: prove the sidebar host-contract failure predates this wave
+(fail) the sidebar host contract > the shim injects the HOST's own list MINUS the probed Web runtime seam [57.87ms]
+ 19 pass
+ 1 fail
+Ran 20 tests across 2 files. [666.00ms]

@@ -14,9 +14,11 @@
 //   <workspace>/.mpd/team/dispatch.json              the dispatch ledger (who is working what)
 //   <workspace>/.mpd/team/archive/<planId>/          what was staged, kept
 //
-// The sidecar is NEVER a second source of team truth: the roster and the board stay the official
-// service's, read and written through the ADAPTER, and `agent_teams_status` prints both halves
-// side by side so a reader can see which is which.
+// THE RECORD IS THE AUTHORITATIVE TEAM TRUTH. The roster and the board live in
+// `.mpd/team/teams/<teamId>.json`, written and read by THIS row; the official Agent Teams service is
+// the FALLBACK for a composition that runs the official executor (reached only through the adapter's
+// `dsh.team*` seams), and NO mpd surface treats `dsh.teamLiveTeams()` as truth. The sidecar files
+// below are the workflow state AROUND that record, never a second copy of it.
 //
 // NAMING. The tools keep the retired `agent_teams_*` names on purpose. They are the vocabulary
 // this bundle's captains, skills and docs already use, and a plan/task contract is the same
@@ -38,7 +40,10 @@ import {
 import {
   assign,
   dispatchMessage,
+  forgetTeam,
   isReadonlyMemberName,
+  ledgerKey,
+  ledgerOfTeam,
   planDispatch,
   readonlyMemberKeys,
   reconcile,
@@ -74,10 +79,12 @@ import {
   activeTeamId,
   addTeamMember,
   addTeamTask,
+  authorizeRelease,
   bindActiveTeam,
   blockingDependencies,
   casClaimTask,
   casCloseTask,
+  casReleaseTask,
   createTeam,
   idleMembers,
   memberNamedBy,
@@ -91,6 +98,7 @@ import {
   readTeam,
   recordNamesLead,
   recordNamesMember,
+  settleMember,
   rememberLead,
   summariseTeam,
   taskDepths,
@@ -196,7 +204,35 @@ export interface WatchdogHoldRead {
   reason?: string
 }
 
-/** The dispatch ledger path: `<workspace>/.mpd/team/dispatch.json`. */
+/**
+ * What one task release did: both halves a release must free, plus the refusal when a half would not.
+ *
+ * A release is TWO writes now (R3): the dispatch ledger row and the task row. Either half can be
+ * absent on its own — a task claimed through `agent_teams_task` never had a ledger row, and a ledger
+ * row can outlive a row that reached a terminal status out of band — so the result reports each half
+ * rather than folding them into one boolean.
+ */
+export interface TaskReleaseResult {
+  /** True when a ledger pairing was actually there and was freed. */
+  released: boolean
+  /** The task the call named. */
+  taskId: string
+  /** The task's status AFTER the reset (`pending` on success); absent when the row refused. */
+  status?: string
+  /** The task's revision after the reset, so a caller can chain a claim against it. */
+  revision?: number
+  /** Why the TASK row would not reset; the ledger half is still reported beside it. */
+  refused?: string
+}
+
+/**
+ * The dispatch ledger path: `<workspace>/.mpd/team/dispatch.json`.
+ *
+ * ONE file holds EVERY team of the workspace. The rows are keyed by `teamId + "::" + taskId`
+ * (`dispatch.ts#ledgerKey`) and each row carries its own `teamId`, so a caller scopes the file by the
+ * pure helpers rather than by path — which is what stops a new team reusing `T1..Tn` from inheriting
+ * a dead team's pairings.
+ */
 const dispatchPath = (workspace: string): string => join(workspace, ".mpd", "team", "dispatch.json")
 
 /** Read the ledger; a missing or unreadable file is an empty ledger, never a crash. */
@@ -398,6 +434,146 @@ function callerIdentity(record: TeamRecord, sessionId: string, title: string, li
   const ownMember = memberNamedBy(record, [sessionId])
     ?? (Array.isArray(record.members) ? record.members : []).find((member) => member.name !== "" && title.includes(member.name))
   return ownMember === undefined ? { ancestry: lineage } : { ownMember, ancestry: [] }
+}
+
+/** The tool whose WHOLE-LIST write carries a wave's checklist; probed before it is ever called. */
+const TODO_TOOL_NAME = "todo_write"
+
+/**
+ * The longest the bundled `todo_write` seed may take, in milliseconds.
+ *
+ * WHY THE ROW OWNS THIS BOUND. `dsh.executeTool` uses a caller `signal` INSTEAD of any timeout
+ * (`input.signal ?? timeoutSignal(input.timeoutMs ?? DEFAULT_TOOL_TIMEOUT_MS)` in the adapter), so a
+ * call that supplies neither is bounded only by the adapter's 120 s default. The seed is the LAST act
+ * of an approval that already succeeded, so it must not hold the answer for minutes: a whole-list
+ * checklist write is local and small, and 10 s is generous for it. {@link seedSignal} composes this
+ * bound with the caller's own cancellation.
+ */
+const SEED_TIMEOUT_MS = 10_000
+
+/**
+ * The cancellation the bundled `todo_write` seed runs under.
+ *
+ * BOTH sources, because the adapter accepts only ONE: `executeTool` computes
+ * `input.signal ?? timeoutSignal(input.timeoutMs ?? default)`, so a caller signal REPLACES the timeout
+ * (verified against the shipped adapter before this fix). Handing over `exec.signal` alone would let a
+ * wedged write outlive its turn; handing over a timeout alone would drop the caller's cancellation.
+ * Composition ends the seed on EITHER event. The goal ANCHOR is deliberately not wrapped this way:
+ * `mpdGoal.anchor` owns its own cancellation through the goal tools' contract.
+ * @param upstream - the approving call's own cancellation, when the harness supplied one.
+ * @returns the combined signal; a runtime without `AbortSignal.any`/`timeout` degrades to the caller's
+ *          own signal — exactly what this row passed before the bound existed.
+ */
+function seedSignal(upstream: AbortSignal | undefined): AbortSignal | undefined {
+  try {
+    /**
+     * The platform's signal constructors, read structurally: the type surface differs between the
+     * Node and Bun programs, and a partial runtime must degrade rather than fail an approval.
+     */
+    const platform = AbortSignal as unknown as { timeout?: (ms: number) => AbortSignal; any?: (signals: AbortSignal[]) => AbortSignal }
+    if (typeof platform?.timeout !== "function") return upstream
+    /** The bounded seed clock, minted per approval so two approvals never share one. */
+    const bounded = platform.timeout(SEED_TIMEOUT_MS)
+    if (upstream === undefined) return bounded
+    return typeof platform.any === "function" ? platform.any([upstream, bounded]) : upstream
+  } catch {
+    // A runtime that refuses the composition keeps the caller's signal — never "no cancellation".
+    return upstream
+  }
+}
+
+/**
+ * The slice of the `mpdGoal` service this row consumes, declared STRUCTURALLY on purpose.
+ *
+ * The authoritative declaration is `packages/mpd-goal-plugin/src/index.ts` (`MpdGoalService`); a
+ * source import would add a cross-package coupling the independence inventory may only SHRINK, and
+ * the two rows meet through a SERVICE at runtime anyway. A composition without the goal row leaves
+ * `ctx.get("mpdGoal")` undefined, and an approval simply anchors no goal.
+ */
+interface GoalBridge {
+  /**
+   * Put a durable goal in place, keeping any unfinished goal already current.
+   * @param exec - the tool exec carrying the calling agent, forwarded verbatim.
+   * @param input - the objective the goal carries and the token naming what asked for it.
+   * @returns the anchor outcome; `ok:false` carries the harness's own refusal in `error`.
+   */
+  anchor(exec: unknown, input: { objective: string; source: string }): Promise<{ ok: boolean; created: boolean; goal?: { id?: string } | null; error?: string; note?: string }>
+}
+
+/**
+ * Whether `todo_write` is registered in the CALLING agent's own view.
+ *
+ * The probe is `hasTool` WITH the live agent, exactly like the roster gate's `hasStagingTool`: that
+ * is the view that would EXECUTE the call (host globals + the preset plane mounted as the scope's
+ * parent), so a probe and the call it promises cannot come from different planes. A missing seam (a
+ * partial adapter double) or a throwing probe reads FALSE — the degrade step, never a throw.
+ * @param dsh - the adapter facade.
+ * @param agent - the live agent whose own view is probed.
+ * @returns true only when the adapter answered positively for that agent's view.
+ */
+function hasTodoTool(dsh: DshAdapter, agent: unknown): boolean {
+  if (typeof dsh.hasTool !== "function") return false
+  try {
+    return dsh.hasTool(TODO_TOOL_NAME, agent) === true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Bundle the durable GOAL and the TODO checklist into ONE successful approval (wave requirement 4).
+ *
+ * WHY HERE. Approval is the one moment a wave stops being text and becomes work, so it is the only
+ * place the three mechanisms can start TOGETHER: the team record is already written (and the plan
+ * archived unless a member's spawn stopped the sequence) by the time this runs, and the caller is
+ * about to read "approved". Both effects are ADDITIONS to an approval that has already succeeded —
+ * each is wrapped on its own, a failure logs ONE line and never changes the result, and a composition
+ * without the service or the tool simply skips the effect rather than failing the wave.
+ * @param ctx - the cordis context, read for the optional `mpdGoal` service.
+ * @param dsh - the adapter facade: the tool probe, the internal call and the row log.
+ * @param exec - the approving call's exec, carrying the live agent the effects are attributed to.
+ * @param plan - the plan this approval built the team from.
+ */
+async function bundleApprovalEffects(ctx: { get?: (id: string) => unknown }, dsh: DshAdapter, exec: DshToolExec, plan: StagedPlan): Promise<void> {
+  // ── 1. THE DURABLE GOAL ────────────────────────────────────────────────────
+  // The objective a later reader sees is what the team is FOR; the plan's name is the fallback a
+  // plan staged without a description leaves, so the goal is never created with an empty objective.
+  /** The objective the goal carries: the plan's description, falling back to its name. */
+  const objective = plan.description !== "" ? plan.description : plan.name
+  try {
+    /** The goal row's service; absent in a composition that does not mount that row. */
+    const bridge = ctx.get?.("mpdGoal") as GoalBridge | undefined
+    if (bridge !== undefined && typeof bridge.anchor === "function") {
+      /** The anchor outcome; the service KEEPS any unfinished goal already current. */
+      const outcome = await bridge.anchor(exec, { objective, source: "team" })
+      if (outcome?.ok === false) dsh.rowLog("mpd-team-core", "goal anchor refused after approval: " + String(outcome.error ?? "unknown"))
+    }
+  } catch (error) {
+    // Never fatal: the approval already happened, so a broken bridge costs one diagnostic line.
+    dsh.rowLog("mpd-team-core", "goal anchor failed after approval: " + String((error as Error)?.message ?? error))
+  }
+  // ── 2. THE TODO CHECKLIST ──────────────────────────────────────────────────
+  // ONE pending item per staged task, written through `todo_write` — a WHOLE-LIST replace, which is
+  // the right effect here and only here: an approval starts a new wave, so the checklist it seeds
+  // IS the wave's checklist. A plan with NO tasks seeds nothing, because writing `[]` would ERASE a
+  // checklist the captain already holds, the opposite of what this requirement asks for.
+  if (plan.tasks.length === 0) return
+  if (!hasTodoTool(dsh, exec.agent)) return
+  try {
+    /** The harness's own result; a marked error is logged, never thrown at the approval. */
+    const result = await dsh.executeTool({
+      name: TODO_TOOL_NAME,
+      arguments: { todos: plan.tasks.map((task) => ({ content: task.subject, status: "pending" })) },
+      agent: exec.agent,
+      // BOUNDED AND CANCELLABLE: a caller signal would REPLACE the adapter's timeout, so the two are
+      // composed here instead of trusting either one alone.
+      signal: seedSignal(exec.signal),
+    })
+    if (result.isError === true) dsh.rowLog("mpd-team-core", "todo seed failed after approval: " + String(result.error ?? "the tool returned an error result"))
+  } catch (error) {
+    // Same rule as the anchor: the wave is already approved, so one line and no rethrow.
+    dsh.rowLog("mpd-team-core", "todo seed failed after approval: " + String((error as Error)?.message ?? error))
+  }
 }
 
 /** Row entry point: build the adapter once, then register the five tools and the `/agent-teams` command. */
@@ -644,6 +820,53 @@ export function apply(ctx: any): void {
    * @returns the record, or undefined when this session has no single team.
    */
   const recordFor = (workspace: string, sessionId: string, lineage: readonly string[] = []): TeamRecord | undefined => resolveTeam(workspace, sessionId, lineage).record
+
+  /**
+   * Release ONE dispatched task: the ledger row AND the task row.
+   *
+   * WHY BOTH (R3). `release` used to delete only the ledger pairing, leaving the task `in_progress`;
+   * `readyTasks`/`casClaimTask` are pending-only, so a released task could never be dispatched again.
+   * The task row now returns to `pending` through `casReleaseTask` (CAS on the caller's revision when
+   * one is supplied), and the LEDGER row is freed first — a ledger row is a cache of "in flight" and a
+   * terminal or missing task row makes it stale by definition, so the ledger half is repaired even
+   * when the task half refuses.
+   *
+   * WHO MAY RELEASE (PR #60 review F1/CWE-862) is decided BEFORE either half writes: this team's Lead
+   * or the task's own owner, through the store's own {@link authorizeRelease}. An unauthorized caller
+   * must not unbook the pairing either, so the refusal returns before the ledger is touched — the
+   * ledger-half repair above applies to an AUTHORIZED caller only.
+   *
+   * The TEAM is resolved by the CALLER before this runs: the ledger is team-scoped, and an ambiguous
+   * roster must refuse rather than guess which team's row to free.
+   * @param workspace - the workspace the team lives in.
+   * @param record - the team record the release was resolved against.
+   * @param taskId - the task to reopen.
+   * @param expectedRevision - the revision the caller decided on, or undefined for no CAS.
+   * @param caller - every spelling that identifies the calling session, never a name it typed.
+   * @param lead - true when the ROSTER says the caller leads this team.
+   * @returns what each half did; see {@link TaskReleaseResult}.
+   */
+  const releaseDispatchedTask = (workspace: string, record: TeamRecord, taskId: string, expectedRevision: number | undefined, caller: readonly string[], lead: boolean): TaskReleaseResult => {
+    // Re-read immediately before deciding, the dispatch pass's own discipline: the record was opened
+    // before this call and a concurrent write may have moved the task's owner or revision. The SAME
+    // reading serves the authorization and the CAS below — nothing writes the team record between them.
+    /** The record as it stands on disk right now. */
+    const fresh = readTeam(workspace, record.teamId) ?? record
+    /** Why this caller may not release the task, or undefined when it may. */
+    const refusal = authorizeRelease(fresh, taskId, caller, lead)
+    if (refusal !== undefined) return { released: false, taskId, refused: refusal }
+    /** The ledger half: only THIS team's pairing is freed. */
+    const freed = release(readLedger(workspace), record.teamId, taskId)
+    if (freed.released) writeLedger(workspace, freed.ledger)
+    /** The task half's decision, or the refusal and its reason. */
+    const outcome = casReleaseTask(fresh, taskId, expectedRevision, now())
+    if (!outcome.applied) return { released: freed.released, taskId, refused: outcome.reason }
+    // The phase is re-derived on the write: reopening the last open task takes a team out of `idle`.
+    writeTeam(workspace, withDerivedPhase(outcome.record))
+    /** The reopened task as the record now holds it. */
+    const view = outcome.record.tasks.find((candidate) => candidate.id === taskId)
+    return { released: freed.released, taskId, status: view?.status, revision: view?.revision }
+  }
 
   /**
    * The ONE graph model for one team, or the workspace principal when the caller named none.
@@ -1193,6 +1416,14 @@ export function apply(ctx: any): void {
         // The plan is archived so the STAGING slot is free for the next wave while the approved
         // plan stays readable; the record is what every surface reads from here on.
         if (stoppedAt === undefined) archivePlan(workspace, { ...approved })
+        // ── WAVE REQUIREMENT 4: ONE APPROVAL, THREE MECHANISMS ────────────────
+        // The team RECORD exists (it is written above even when a spawn stopped the sequence), so
+        // this is the moment the wave's durable GOAL and its TODO checklist start too — bundled
+        // here instead of left to the captain's next turn. The effects are deliberately AFTER the
+        // persistence: `dry_run` returned earlier, `create`/`add_member`/`edit` never reach this
+        // line, and an approval that throws (empty shell, already approved, executor refusal) does
+        // not leak a goal or a checklist. NON-FATAL by contract: see {@link bundleApprovalEffects}.
+        await bundleApprovalEffects(ctx, dsh, exec, plan)
         return { plan: approved, team: approvedRecord, created, ...(stoppedAt === undefined ? {} : { stoppedAt }) }
       }
 
@@ -1211,21 +1442,28 @@ export function apply(ctx: any): void {
         task_id: { type: "string", description: "the task id; `release` takes the task to free." },
         claimant: { type: "string", description: "claim: who claims it (default: the caller)." },
         note: { type: "string", description: "complete/fail: one line recorded on the row." },
-        expected_revision: { type: "number", description: "complete/fail: the revision you decided on; stale is refused." },
+        expected_revision: { type: "number", description: "complete/fail/release: the revision you decided on; stale is refused." },
       },
       required: ["action"],
       additionalProperties: false,
     },
     output: {
       schema: { type: "object", properties: { contract: { type: "object" }, contracts: { type: "array", items: { type: "object" } }, task: { type: "object" }, released: { type: "boolean" }, refused: { type: "string" }, taskId: { type: "string" }, status: { type: "string" }, closedBy: { type: "string" }, attempt: { type: "number" }, revision: { type: "number" }, dependents: { type: "array", items: { type: "object" } }, note: { oneOf: [{ type: "string" }, { type: "null" }] } } },
+      // THE RELEASE BRANCH COMES FIRST (PR #60 review F2). A successful release ALSO answers the task's
+      // new `status` (`pending`), so with `status` checked first the CLOSE line was printed for a
+      // release that closed nothing: `T1 -> pending (by undefined, attempt undefined)`. The release
+      // line renders BOTH halves honestly — whether a pairing was freed, and where the row now stands.
       render: (_args: any, value: any) =>
         text(
           value?.refused !== undefined ? `refused: ${value.refused}`
-            : value?.status !== undefined ? `${value.taskId} -> ${value.status} (by ${value.closedBy}, attempt ${value.attempt})`
-            : value?.released !== undefined ? (value.released ? "released" : "that task was not dispatched")
-            : value?.contract !== undefined ? `attempt ${value.contract.attempt} of ${value.contract.taskId} by ${value.contract.claimedBy}`
-            : value?.contracts !== undefined ? `${value.contracts.length} contract(s)`
-            : "no contract",
+            : value?.released !== undefined
+              ? (value.released
+                ? `${value.taskId} -> ${value.status ?? "pending"} (pairing freed)`
+                : (value.status !== undefined ? `${value.taskId} -> ${value.status} (no pairing to free)` : "that task was not dispatched"))
+              : value?.status !== undefined ? `${value.taskId} -> ${value.status} (by ${value.closedBy}, attempt ${value.attempt})`
+              : value?.contract !== undefined ? `attempt ${value.contract.attempt} of ${value.contract.taskId} by ${value.contract.claimedBy}`
+              : value?.contracts !== undefined ? `${value.contracts.length} contract(s)`
+              : "no contract",
         ),
     },
     execute: async (args: any, exec: DshToolExec) => {
@@ -1237,10 +1475,31 @@ export function apply(ctx: any): void {
       const action = String(args?.action ?? "")
 
       if (action === "release") {
-        /** The pruned ledger and whether a pairing was actually there to free. */
-        const { ledger, released } = release(readLedger(workspace), String(args?.task_id ?? ""))
-        if (released) writeLedger(workspace, ledger)
-        return { released }
+        // THE TEAM IS RESOLVED FIRST (R3). The ledger is team-scoped, so the team must be known before
+        // a row can be named at all; on an ambiguous roster `resolveForWrite` carries the refusal that
+        // names the teams, and the release REFUSES rather than guessing which team's row to free.
+        /** The team this release works on, or the sentence saying why none resolved. */
+        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated)
+        if (resolved.record === undefined) throw new Error(resolved.refusal ?? "no team record in this workspace — approve a plan first")
+        /** The task this release names; the empty string is refused by the task half. */
+        const taskId = String(args?.task_id ?? "")
+        if (taskId === "") throw new Error("agent_teams_task release: task_id is required")
+        // ── WHO MAY RELEASE (PR #60 review F1, CWE-862) ───────────────────────
+        // The caller's identity is built EXACTLY as the close branch builds it: its own session id, the
+        // session TITLE, the official membership name when there is one, its OWN roster row, and the
+        // ancestry `callerIdentity` narrows (a spawned member borrows none). `claimant` is never read
+        // here — accepting a name the caller TYPES would let any agent release any row by naming it.
+        /** The caller's team identity from the OFFICIAL plane, when that service is mounted at all. */
+        const membership = ((): { role?: string; name?: string } | undefined => {
+          try { return dsh.teamMembership(exec.agent) as { role?: string; name?: string } | undefined } catch { return undefined }
+        })()
+        /** The session header title the harness gives this caller (the persona prompt prefix). */
+        const title = sessionTitleOf(exec)
+        /** The caller's team identity: its member row, and the ancestry it may present. */
+        const identity = callerIdentity(resolved.record, sessionId, title, lineage)
+        /** The caller's own spellings. */
+        const caller = [sessionId, title, String(membership?.name ?? ""), ...(identity.ownMember === undefined ? [] : [identity.ownMember.name]), ...identity.ancestry].filter((value) => value !== "")
+        return releaseDispatchedTask(workspace, resolved.record, taskId, typeof args?.expected_revision === "number" ? args.expected_revision : undefined, caller, membership?.role === "lead")
       }
 
       if (action === "contract") {
@@ -1279,9 +1538,22 @@ export function apply(ctx: any): void {
         }, claimant, now())
         /** The record after the claim: owned, in flight, and carrying the new attempt counter. */
         const claimed = updateTeamTask(record, task.id, { status: "in_progress", owner: claimant === "" ? undefined : claimant, attempt: contract.attempt }, now())
-        writeTeam(workspace, claimed)
+        /** The roster row the claimant names, when the claimant IS a member of this team. */
+        const claimedMember = memberNamedBy(claimed, [claimant])
+        // THE CLAIMED MEMBER IS `running` AGAIN (PR #60 review F3). This path used to write the task and
+        // nothing else, so a SETTLED member woken by a Lead message and claiming its own row stayed
+        // `inactive`: the workmate in-use gate read it as free, and `settleMember` only settles a
+        // `running` row, so nothing ever corrected it. The roster row is resolved from the claimant's
+        // spelling and flipped exactly as a dispatch pass flips the member it paired; a `failed` or
+        // `provisioning` row is deliberately left alone, and a claimant the roster does not name is a
+        // no-op. THE PHASE IS RE-DERIVED either way, because a claim can take a SETTLED team out of
+        // `idle` (R2): the stored phase is what a reader trusts, and leaving it idle beside an in-flight
+        // row is the exact drift `withDerivedPhase` exists to prevent.
+        /** The record to persist: the claim, plus the member flip when a settled row was named. */
+        const next = withDerivedPhase(claimedMember?.status === "inactive" ? updateTeamMember(claimed, claimedMember.id, { status: "running" }) : claimed)
+        writeTeam(workspace, next)
         /** This task as the record now holds it. */
-        const view = claimed.tasks.find((candidate) => candidate.id === task.id) ?? task
+        const view = next.tasks.find((candidate) => candidate.id === task.id) ?? task
         return { contract, task: view }
       }
 
@@ -1341,14 +1613,30 @@ export function apply(ctx: any): void {
           now: now(),
         })
         if (!outcome.applied) return { refused: outcome.reason, taskId }
-        writeTeam(workspace, withDerivedPhase(outcome.record))
+        // R2: SETTLE THE CLOSED TASK'S OWNER DETERMINISTICALLY, in the SAME write as the closure. The
+        // owner may be recorded by NAME (a planned owner) while `settleMember` is keyed by the one
+        // durable handle (`executorRef`), so the roster row is resolved first. A member that still owns
+        // another open task is left `running` by the store's own gate — this call cannot over-settle.
+        /** The record after the closure, settled for the member that owned the closed task. */
+        let next = outcome.record
+        /** The closed task's recorded owner, in whichever spelling the board stamped. */
+        const ownerSpelling = outcome.task.owner
+        if (ownerSpelling !== undefined && ownerSpelling !== "") {
+          /** The roster row that owner names, if any. */
+          const owner = memberNamedBy(outcome.record, [ownerSpelling])
+          /** The session handle settlement is keyed by; absent while nothing was ever spawned. */
+          const ownerHandle = owner?.executorRef
+          if (ownerHandle !== undefined && ownerHandle !== "") next = settleMember(outcome.record, ownerHandle, now())
+        }
+        writeTeam(workspace, withDerivedPhase(next))
         // A FAILED ROW IS RELEASED FROM THE DISPATCH LEDGER, so the repair can be dispatched again on the
         // next pass: the pairing is what makes a member look busy, and a closed row must not hold one.
+        // TEAM-SCOPED: only this team's row is freed, never a same-named task of another team.
         /** Whether this closure also freed a dispatch pairing. */
         let releasedFromDispatch = false
         if (outcome.status === "failed") {
           /** The ledger after freeing this row's pairing, and whether one was there to free. */
-          const freed = release(readLedger(workspace), taskId)
+          const freed = release(readLedger(workspace), record.teamId, taskId)
           if (freed.released) { writeLedger(workspace, freed.ledger); releasedFromDispatch = true }
         }
         rowLogLine("mpd-team-core", `[mpd-team-core] task ${taskId} ${outcome.status} by ${outcome.closedBy}`)
@@ -1371,14 +1659,14 @@ export function apply(ctx: any): void {
   disposers.push(dsh.registerTool({
     name: "agent_teams_dispatch",
     description:
-      "Pair READY shared tasks with IDLE members. `run` pairs each ready task with one idle member, tells that member to work it, and RECORDS the pairing — so a second pass can never hand the same task to two members. Tasks it does not pair are reported with the reason (blocked, completed, already dispatched, no free member). `release` frees a pairing.",
+      "Pair READY shared tasks with IDLE members. `run` pairs each ready task with one idle member and RECORDS the pairing (no second pass can hand it to another member; the ledger is TEAM-SCOPED, so two teams in one workspace never shadow each other). Unpaired tasks are reported with their reason. `release` frees a pairing and reopens the task row to `pending`.",
     parameters: {
       type: "object",
       properties: {
         action: { type: "string", enum: ["run", "release"], description: "What to do." },
         task_id: { type: "string", description: "release: the task to free." },
-        dry_run: { type: "boolean", description: "run: report the pairing and send nothing." },
-        limit: { type: "number", description: "run: cap the pairs in this pass (0 or omitted = no cap)." },
+        dry_run: { type: "boolean", description: "run: report, send nothing." },
+        limit: { type: "number", description: "run: cap pairs (0/omitted = no cap)." },
       },
       required: ["action"],
       additionalProperties: false,
@@ -1387,12 +1675,16 @@ export function apply(ctx: any): void {
       // `refused` and `holdRead` are declared because BOTH really appear: a pass with no team record
       // is refused, and a watchdog hold that could not be read is REPORTED rather than guessed at.
       // `reaped` is the C7-3 consistency pass's own report: the team ids it marked terminal on disk.
-      schema: { type: "object", properties: { pairs: { type: "array", items: { type: "object" } }, skipped: { type: "array", items: { type: "object" } }, halted: { type: "string" }, refused: { type: "string" }, holdRead: { type: "string" }, forgotten: { type: "array", items: { type: "string" } }, reaped: { type: "array", items: { type: "string" } }, released: { type: "boolean" } } },
+      // `forgotten` carries what the prune dropped: this team's dead rows, LEGACY bare-key rows, and
+      // the rows of any team the reap just marked terminal.
+      schema: { type: "object", properties: { pairs: { type: "array", items: { type: "object" } }, skipped: { type: "array", items: { type: "object" } }, halted: { type: "string" }, refused: { type: "string" }, holdRead: { type: "string" }, forgotten: { type: "array", items: { type: "string" } }, reaped: { type: "array", items: { type: "string" } }, released: { type: "boolean" }, taskId: { type: "string" }, status: { type: "string" }, revision: { type: "number" } } },
       render: (_args: any, value: any) =>
         text(
-          value?.released !== undefined ? (value.released ? "released" : "that task was not dispatched")
+          // `refused` is checked FIRST: a release whose task half refused still carries `released`, and
+          // reporting the ledger half alone would present a half-done release as a whole one.
+          value?.refused !== undefined ? `refused: ${value.refused}`
+            : value?.released !== undefined ? (value.released ? "released" : "that task was not dispatched")
             : value?.halted !== undefined ? `halted: ${value.halted}`
-            : value?.refused !== undefined ? `refused: ${value.refused}`
             : (value?.pairs?.length ?? 0) === 0 ? "nothing to dispatch" + ((value?.skipped?.length ?? 0) === 0 ? "" : " (" + value.skipped.map((row: any) => row.subject + ": " + row.reason).join("; ") + ")")
             : value.pairs.map((pair: any) => `${pair.subject} -> ${pair.memberName}` + (typeof pair.note === "string" && pair.note !== "" ? ` [${pair.note}]` : "")).join("\n"),
         ),
@@ -1403,11 +1695,37 @@ export function apply(ctx: any): void {
       /** The requested action, stringified so a non-string argument can only miss, never throw. */
       const action = String(args?.action ?? "")
 
+      /** Whether this caller is a recorded delegation child (the C7-4 F5 heal guard). */
+      const delegated = sessionIsDelegatedChild(exec)
+
       if (action === "release") {
-        /** The pruned ledger and whether a pairing was actually there to free. */
-        const { ledger, released } = release(readLedger(workspace), String(args?.task_id ?? ""))
-        if (released) writeLedger(workspace, ledger)
-        return { released }
+        // RESOLVE THE TEAM BEFORE TOUCHING THE LEDGER (R3). The ledger is team-scoped, so a bare task id
+        // cannot name a row; and a session on several rosters must be REFUSED rather than guessed at,
+        // because freeing the wrong team's pairing would let that team dispatch the task twice.
+        /** The team this release works on, or the sentence saying why none resolved. */
+        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated)
+        if (resolved.record === undefined) throw new Error(resolved.refusal ?? "no team record in this workspace — approve a plan first")
+        /** The task this release names. */
+        const taskId = String(args?.task_id ?? "")
+        if (taskId === "") throw new Error("agent_teams_dispatch release: task_id is required")
+        // NO CAS REVISION ON THIS SURFACE: `expected_revision` lives on `agent_teams_task release`, where
+        // the caller has just read the row. This one is the captain's "free that pairing", and it must
+        // always be able to repair a stale row.
+        // WHO MAY RELEASE is the SAME rule as the task surface (PR #60 review F1, CWE-862), built from
+        // the same identity spellings the close branch uses — a member's own roster row, the session
+        // title, the official membership name and the narrowed ancestry. A member resolves its team
+        // through the roster arm, so without this gate every teammate could unbook a stranger's pairing.
+        /** The caller's team identity from the OFFICIAL plane, when that service is mounted at all. */
+        const membership = ((): { role?: string; name?: string } | undefined => {
+          try { return dsh.teamMembership(exec.agent) as { role?: string; name?: string } | undefined } catch { return undefined }
+        })()
+        /** The session header title the harness gives this caller (the persona prompt prefix). */
+        const title = sessionTitleOf(exec)
+        /** The caller's team identity: its member row, and the ancestry it may present. */
+        const identity = callerIdentity(resolved.record, sessionId, title, lineage)
+        /** The caller's own spellings; no name the caller TYPES is accepted here either. */
+        const caller = [sessionId, title, String(membership?.name ?? ""), ...(identity.ownMember === undefined ? [] : [identity.ownMember.name]), ...identity.ancestry].filter((value) => value !== "")
+        return releaseDispatchedTask(workspace, resolved.record, taskId, undefined, caller, membership?.role === "lead")
       }
 
       /** The workspace hold, if any; its reason refuses the WHOLE pass inside `planDispatch`. */
@@ -1420,6 +1738,20 @@ export function apply(ctx: any): void {
       // scopes the PAIRING ("send nothing"), and a ghost left on disk is the defect itself.
       /** The team ids this pass marked terminal on disk. */
       const reaped = reapReapedTeams(workspace, now())
+      // A TERMINAL RECORD KEEPS NO DISPATCH ROWS (R1). The prune is anchored on the ONE terminal write
+      // path above: the ids it reports are the teams that just ended, and their ledger rows are dropped
+      // here so a later team reusing `T1..Tn` cannot inherit a dead pairing. Reported in `forgotten`.
+      /** The ledger after dropping every ended team's rows. */
+      let ledgerAfterReap = readLedger(workspace)
+      /** The task ids the terminal prune forgot, across every team it ended. */
+      const terminalForgotten: string[] = []
+      for (const endedTeamId of reaped) {
+        /** The ledger with this ended team's rows left out. */
+        const dropped = forgetTeam(ledgerAfterReap, endedTeamId)
+        ledgerAfterReap = dropped.ledger
+        terminalForgotten.push(...dropped.forgotten)
+      }
+      if (terminalForgotten.length > 0) writeLedger(workspace, ledgerAfterReap)
       // The WATCHDOG's hold is a second, per-team pause. It is composed into the same refusal so a
       // caller reads one sentence whichever hold stopped the pass.
       /** This session's team, which names the team a watchdog hold would apply to. */
@@ -1463,7 +1795,10 @@ export function apply(ctx: any): void {
         writeScopes: task.writeScopes,
         ...(task.owner === undefined ? {} : { ownerName: task.owner }),
       }))
-      /** The roster, in the dispatch engine's shape; the engine pairs only with `inactive` (idle). */
+      // The roster, in the dispatch engine's shape; the engine pairs only with `inactive` (idle).
+      // `idleMembers` counts a SETTLED member (`inactive`) as free, which is what keeps the pool
+      // non-empty once R2 writes settlement — the reason settlement and this projection ship together.
+      /** The members free to take work right now, by the store's own rule. */
       const idle = new Set(idleMembers(opened).map((member) => member.name))
       // C7-2's SOURCE, read PER CALL and never copied: mpd-roles-plugin's OWN published service, whose
       // `readonly` flag is the same one that decides whether a spawn passes `READONLY_DENY`. The guard
@@ -1494,18 +1829,23 @@ export function apply(ctx: any): void {
         readonly: isReadonlyMemberName(member.name, readonlyKeys) || (member.role !== undefined && isReadonlyMemberName(member.role, readonlyKeys)),
       }))
       // PRUNE FIRST: a task deleted or completed out of band must not keep its member busy forever.
-      const pruned = reconcile(readLedger(workspace), tasks)
+      // TEAM-SCOPED (R1): this team's rows are pruned against THIS board, other teams' rows pass
+      // through untouched, and a LEGACY bare-key row is dropped and reported in `forgotten`.
+      const pruned = reconcile(readLedger(workspace), opened.teamId, tasks)
+      /** Everything this pass forgot: the ended teams' rows plus the prune's own drops, deduplicated. */
+      const forgotten = [...new Set([...terminalForgotten, ...pruned.forgotten])]
       /** The pure decision for this pass: the pairs to dispatch and a reason for every task left out. */
       const plan = planDispatch({
         tasks,
         members,
-        ledger: pruned.ledger,
+        // ONLY this team's rows: another team's pairing must not book a member of this roster.
+        ledger: ledgerOfTeam(pruned.ledger, opened.teamId),
         ...(holdReason === undefined ? {} : { hold: holdReason }),
         ...(typeof args?.limit === "number" ? { limit: args.limit } : {}),
       })
       if (plan.halted !== undefined || args?.dry_run === true || plan.pairs.length === 0) {
         if (pruned.forgotten.length > 0) writeLedger(workspace, pruned.ledger)
-        return { ...plan, forgotten: pruned.forgotten, ...(holdNote === undefined ? {} : { holdRead: holdNote }), ...(reaped.length === 0 ? {} : { reaped }) }
+        return { ...plan, forgotten, ...(holdNote === undefined ? {} : { holdRead: holdNote }), ...(reaped.length === 0 ? {} : { reaped }) }
       }
       // The pass's OWN view of the ledger: the pre-await prune, extended by each accepted pairing.
       // It is deliberately NOT what gets written — the merge before the write (T7) re-reads the file
@@ -1553,8 +1893,14 @@ export function apply(ctx: any): void {
           }
           // The FRESH record, carrying this one pairing and everything a concurrent writer added.
           record = claimed.record
+          // THE PAIRED MEMBER IS `running` AGAIN (R2). Settlement writes `inactive` once a member owns
+          // no open task, so a pass that pairs a settled member must flip the row back — otherwise the
+          // record would report idle work and the next settlement pass could race the claim.
+          // The phase is re-derived with the claim: pairing a SETTLED member takes the team out of
+          // `idle`, and a stored phase that disagrees with the row is a ghost a reader would trust.
+          record = withDerivedPhase(updateTeamMember(record, pair.memberName, { status: "running" }))
           writeTeam(workspace, record)
-          ledger = assign(ledger, pair, now())
+          ledger = assign(ledger, { teamId: opened.teamId, taskId: pair.taskId, memberId: pair.memberId, memberName: pair.memberName }, now())
           sent.push(pair)
         } catch (error) {
           skipped.push({ taskId: pair.taskId, subject: pair.subject, reason: `the message to ${pair.memberName} failed: ${String((error as Error)?.message ?? error)}` })
@@ -1567,16 +1913,16 @@ export function apply(ctx: any): void {
       // and the freed task could never be dispatched again. So the map is re-read, re-pruned against
       // the SAME board this pass decided on, and only this pass's OWN accepted operations are applied.
       /** The ledger as it stands on disk right now, pruned by the rule `pruned` was built with. */
-      const fresh = reconcile(readLedger(workspace), tasks)
+      const fresh = reconcile(readLedger(workspace), opened.teamId, tasks)
       /** The merged ledger: everything a concurrent writer left, plus this pass's own pairings. */
       const merged: DispatchLedger = { ...fresh.ledger }
       // DELIBERATE CONFLICT RULE: when the fresh read shows that a task THIS PASS ASSIGNED was
       // meanwhile released, the pass's assignment still wins — the send really went out, so recording
       // it is the honest outcome, and dropping it would leave a delivered task unowned on the board.
       // Only `sent` is re-applied; an entry this pass merely inherited is never resurrected.
-      for (const pair of sent) merged[pair.taskId] = ledger[pair.taskId]
+      for (const pair of sent) merged[ledgerKey(opened.teamId, pair.taskId)] = ledger[ledgerKey(opened.teamId, pair.taskId)]
       writeLedger(workspace, merged)
-      return { pairs: sent, skipped, forgotten: pruned.forgotten, ...(holdNote === undefined ? {} : { holdRead: holdNote }), ...(reaped.length === 0 ? {} : { reaped }) }
+      return { pairs: sent, skipped, forgotten, ...(holdNote === undefined ? {} : { holdRead: holdNote }), ...(reaped.length === 0 ? {} : { reaped }) }
     },
   }))
 
@@ -1900,6 +2246,61 @@ export function apply(ctx: any): void {
         dsh.onServiceBound(["subagents"], () => reportExecutor())
       } catch { /* an adapter without the seam keeps the apply-time line */ }
     } catch { /* a read-only workspace must not break the boot */ }
+  }
+
+  // ── R2: THE TURN-BOUNDARY SETTLEMENT — the backstop the deterministic call cannot cover ──────
+  //
+  // `complete`/`fail` settles the CLOSED TASK'S OWNER, which covers a member closing its own row. The
+  // other order — the Lead closes a member's stranded row, or the row is repaired out of band — leaves
+  // the member `running` with nothing to do, and NOTHING else in the process would ever write
+  // `inactive`: `derivePhase` stayed `active`, the compaction pass could never read a team as finished,
+  // the TUI drew a member working forever, and the workmate in-use gate never released. This listener
+  // settles the member when ITS OWN TURN ENDS — the one instant the harness reports a session between
+  // turns for a session that wants nothing.
+  //
+  // SERIAL-DISPATCH SAFETY (binding): `agent/turn-stopping` is a `serial` dispatch — a listener that
+  // RETURNS a value BAILS the rest of the chain, and a returned promise is awaited. This handler
+  // therefore returns NOTHING, contains its own failures, and does the work in a detached async block;
+  // the record is RE-READ inside that block (never the snapshot a tool call opened) and written only
+  // when the settlement actually changed it (identity is the store's "nothing changed" signal).
+  if (typeof dsh.onEvent === "function") {
+    /** The disposer the event bus handed back, pushed so a row reload cannot leave a stale listener. */
+    const offTurnStopping = dsh.onEvent("agent/turn-stopping", (payload: unknown): undefined => {
+      try {
+        /** The agent whose turn is ending, taken from the payload instead of a registry lookup. */
+        const agent = (payload as { agent?: { session?: { id?: unknown; header?: { cwd?: unknown } } } } | undefined)?.agent
+        /** The settling session id, which is the `executorRef` a member row records. */
+        const sessionId = String(agent?.session?.id ?? "")
+        if (sessionId === "") return undefined
+        /** The session's own cwd, which outranks the process-wide workspace root on every event path. */
+        const cwd = String(agent?.session?.header?.cwd ?? "")
+        /** The workspace this settlement belongs to. */
+        const workspace = cwd !== "" ? cwd : dsh.workspaceRoot()
+        if (workspace === "") return undefined
+        void (async () => {
+          try {
+            for (const team of listTeams(workspace)) {
+              if (!team.members.some((member) => member.executorRef === sessionId)) continue
+              /** The record as it stands on disk RIGHT NOW, never a snapshot from an earlier read. */
+              const fresh = readTeam(workspace, team.teamId)
+              if (fresh === undefined) continue
+              /** The record after settlement; the SAME object when the member still owns open work. */
+              const settled = settleMember(fresh, sessionId, now())
+              if (settled === fresh) continue
+              writeTeam(workspace, withDerivedPhase(settled))
+              rowLogLine("mpd-team-core", `[mpd-team-core] member ${sessionId} settled to inactive in ${team.teamId}`)
+            }
+          } catch (error) {
+            rowLogLine("mpd-team-core", `[mpd-team-core] turn-boundary settlement failed: ${String((error as Error)?.message ?? error)}`)
+          }
+        })()
+      } catch (error) {
+        rowLogLine("mpd-team-core", `[mpd-team-core] turn-boundary listener failed: ${String((error as Error)?.message ?? error)}`)
+      }
+      // A `serial` listener that returns a value BAILS the chain; `undefined` is the only safe answer.
+      return undefined
+    })
+    if (typeof offTurnStopping === "function") disposers.push(offTurnStopping)
   }
 
   if (typeof ctx?.on === "function") ctx.on("dispose", () => { for (const dispose of disposers) { try { dispose() } catch { /* already gone */ } } })

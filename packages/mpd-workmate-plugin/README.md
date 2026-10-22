@@ -77,7 +77,7 @@ its functional name.
 |---|---|
 | `mpd_workmate_list` | list instances (name, baseName, uses, updatedAt, note summary) |
 | `mpd_workmate_init` | instantiate a base specialist into an independently-named workmate |
-| `mpd_workmate_spawn` | single-call consult: one bounded delegation with the workmate's persona+memory+note in a continuable child, on its own model route (readonly bases deny write tools) |
+| `mpd_workmate_spawn` | ONE-SHOT single-call consult: one bounded delegation with the workmate's persona+memory+note, on its own model route (readonly bases deny write tools); on a host exposing `startActivation` the activation is disposed once the report settles (the retired `start` fallback has none to dispose), and durable continuity lives in the workmate record, not the child session |
 | `mpd_workmate_reflect` | self-evolve after work: memory append/evict, persona revision merge, note regen |
 | `mpd_workmate_match` | rank notes against a task; below threshold → suggest a new init |
 | `mpd_workmate_rename { name, new_name }` | rename the instance: moves directory key + metadata + index key + note self-reference (see below) |
@@ -129,12 +129,16 @@ The instance is then listed and addressable again (the directory name is the key
 
 Both mutations are **refused while the workmate is in use**, and nothing is changed:
 `409 in-use` with a `blocking` list naming every blocking team id + member. "In use" means
-either an in-flight `mpd_workmate_spawn` of that workmate in this process, or a
-non-archived team record under `<workspace>/.mpd/team/<teamId>/team.json` whose members
-include it. Clear the block by letting running spawns finish **and** archiving (or
-retiring) those teams — then repeat the mutation. Note the consequence: a team record
-whose member is named after a roster role blocks the matching key, so renaming anything
-*to* `architect` is refused while such a record exists.
+either an in-flight `mpd_workmate_spawn` of that workmate in this process, or a team whose
+member list includes it. The scan reads BOTH layouts a workspace may hold: the mpd-owned
+`<workspace>/.mpd/team/teams/<teamId>.json` record (the authoritative one) and the retired
+legacy `<workspace>/.mpd/team/<teamId>/team.json`. A team stops blocking once it has ended
+(`endedAt` on the mpd-owned record; an archived legacy team has no `team.json`), and an
+mpd-owned member whose status is `inactive` or `failed` has settled and no longer blocks
+either. Clear the block by letting running spawns finish **and** archiving (or retiring)
+those teams — then repeat the mutation. Note the consequence: a team record whose member is
+named after a roster role blocks the matching key, so renaming anything *to* `architect` is
+refused while such a record exists.
 
 ### HTTP routes (web profile)
 

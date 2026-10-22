@@ -13,7 +13,7 @@ import { join } from "node:path"
 import { apply, TEAMS_SERVICE, type MpdTeamsService } from "../src/index"
 import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 import { listTeams, readTeam, taskDepths, teamRoot, updateTeamTask, writeTeam } from "../src/team-store"
-import type { DispatchLedger } from "../src/dispatch"
+import { ledgerKey, type DispatchLedger } from "../src/dispatch"
 
 /** One captured tool registration, with `execute` kept so an arm can actually drive it. */
 interface Tool {
@@ -253,7 +253,18 @@ describe("approval builds an mpd-owned team record", () => {
     expect(record.members.map((member) => member.id)).toEqual(["M1", "M2"])
     // ...while the backend's handle is recorded for the calls that must name it.
     expect(record.members.map((member) => member.executorRef)).toEqual(["child-Senior-Engineer", "child-Reviewer"])
+    // `running` is the SPAWN state, not a permanent one (R2). Approval spawns both members, so both are
+    // running here; once a member owns no OPEN task the record settles it to `inactive`, which is the
+    // write that lets `derivePhase` reach `idle` and the compaction pass see a finished team. This arm
+    // closes both rows through the REAL tools, so the deterministic settlement is proved where it is
+    // wired (the closure), not only in the store's unit arms.
     expect(record.members.every((member) => member.status === "running")).toBe(true)
+    await h.call("agent_teams_task", { action: "complete", task_id: "T1" })
+    await h.call("agent_teams_task", { action: "complete", task_id: "T2" })
+    /** The record after both closures settled their owners. */
+    const settled = listTeams(h.workspace)[0]
+    expect(settled.members.map((member) => member.status)).toEqual(["inactive", "inactive"])
+    expect(settled.phase).toBe("idle")
   })
 
   test("NO BOARD IS MIRRORED: the mpd record IS the board, so a task keeps our id and only our id", async () => {
@@ -647,7 +658,11 @@ describe("a release that lands while a dispatch pass is in flight is never rever
     /** The seeding pass's result, which must record T1 and nothing else. */
     const seeded = (await h.call("agent_teams_dispatch", { action: "run", limit: 1 })) as { pairs?: Array<{ taskId: string }> }
     expect(seeded.pairs?.map((pair) => pair.taskId)).toEqual(["T1"])
-    expect(Object.keys(ledgerOnDisk(h.workspace)).sort()).toEqual(["T1"])
+    // THE COMPOSITE KEY IS THE CONTRACT (R1): a ledger row is team + task, never the bare task id a
+    // second team would inherit.
+    /** The team the approval minted, which is the team half of every ledger key below. */
+    const teamId = listTeams(h.workspace)[0].teamId
+    expect(Object.keys(ledgerOnDisk(h.workspace)).sort()).toEqual([ledgerKey(teamId, "T1")])
     releaseMidPass = true
     /** The pass under test: it pairs T3 while the concurrent release frees T1. */
     const dispatched = (await h.call("agent_teams_dispatch", { action: "run" })) as { pairs?: Array<{ taskId: string }> }
@@ -657,12 +672,61 @@ describe("a release that lands while a dispatch pass is in flight is never rever
     expect(ledgerAtSend).toEqual([])
     /** The ledger as the pass left it on disk. */
     const ledger = ledgerOnDisk(h.workspace)
-    // THE ASSERTION THIS ARM EXISTS FOR. Pre-fix this is ["T1","T3"]: the pass's stale pre-await
-    // snapshot restored the very entry the release had removed a moment earlier.
-    expect(Object.keys(ledger).sort()).toEqual(["T3"])
+    // THE ASSERTION THIS ARM EXISTS FOR. Pre-fix this is both rows: the pass's stale pre-await snapshot
+    // restored the very entry the release had removed a moment earlier.
+    expect(Object.keys(ledger).sort()).toEqual([ledgerKey(teamId, "T3")])
     // And the pass's OWN just-sent pairing is still recorded — the fix MERGES the fresh ledger with
     // this pass's accepted operations instead of discarding either half.
-    expect(ledger.T3?.memberName).toBe("Reviewer")
-    expect(ledger.T1).toBeUndefined()
+    expect(ledger[ledgerKey(teamId, "T3")]?.memberName).toBe("Reviewer")
+    expect(ledger[ledgerKey(teamId, "T1")]).toBeUndefined()
+  })
+})
+
+// PR #60 REVIEW F2 — a successful release must PAINT the release, not a close that never happened.
+//
+// THE MEASURED DEFECT: the tool render checked `status` before `released`, and a release answers the
+// task's NEW `status` (`pending`) — so the captain read `T1 -> pending (by undefined, attempt
+// undefined)`, a close line for a verb that closed nothing. The release branch is now FIRST, and it
+// renders both halves: whether a pairing was freed, and where the row now stands.
+describe("PR #60 F2 — the release line is rendered, and the close line is not stolen", () => {
+  test("a freed pairing paints `pairing freed`; a claim-only release paints `no pairing to free`", async () => {
+    /** The harness under test; its fixed session (`sess-1`) is the Lead the approval binds. */
+    const h = harness()
+    sandboxes.push(h.workspace)
+    await staged(h)
+    await h.call("agent_teams_plan", { action: "approve" })
+    /** The pass that books T1's pairing, which is what makes the first release a real one. */
+    const pass = await h.call("agent_teams_dispatch", { action: "run" }) as { pairs?: Array<{ taskId?: string }> }
+    expect(pass.pairs?.map((pair) => pair.taskId)).toEqual(["T1"])
+    /** The tool's own renderer (declared under `output`), the text a captain actually reads. */
+    const render = (h.tools.get("agent_teams_task") as unknown as { output?: { render?: (args: unknown, value: unknown) => Array<{ text?: string }> } }).output?.render
+    /** The release's own answer: the task half landed, and a pairing really was freed. */
+    const released = await h.call("agent_teams_task", { action: "release", task_id: "T1" }) as { released?: boolean; status?: string }
+    expect(released.released).toBe(true)
+    expect(released.status).toBe("pending")
+    /** The painted line for the successful release. */
+    const painted = (render?.({}, released) ?? []).map((part) => part.text ?? "").join("")
+    // THE FIX ITSELF: the release line, naming BOTH halves — and never the close line's phantom author.
+    expect(painted).toBe("T1 -> pending (pairing freed)")
+    expect(painted).not.toContain("by undefined")
+    // The SECOND release shape: a row claimed through this tool holds no pairing, so the task half
+    // lands while the ledger half has nothing to free — the line must SAY which half was missing.
+    await h.call("agent_teams_task", { action: "claim", task_id: "T1" })
+    /** The claim-only row's release. */
+    const claimOnly = await h.call("agent_teams_task", { action: "release", task_id: "T1" }) as { released?: boolean; status?: string; refused?: string }
+    expect(claimOnly.refused).toBeUndefined()
+    expect(claimOnly.released).toBe(false)
+    expect(claimOnly.status).toBe("pending")
+    /** The painted line for the release with no pairing to free. */
+    const paintedClaimOnly = (render?.({}, claimOnly) ?? []).map((part) => part.text ?? "").join("")
+    expect(paintedClaimOnly).toBe("T1 -> pending (no pairing to free)")
+    // A REAL closure still paints the close line: the reordered branches must not swallow it.
+    /** The closure of the remaining row, through the same tool. */
+    const closed = await h.call("agent_teams_task", { action: "complete", task_id: "T2" }) as { status?: string; closedBy?: string }
+    expect(closed.status).toBe("completed")
+    expect(closed.closedBy).toBe("lead")
+    /** The painted line for the closure. */
+    const paintedClose = (render?.({}, closed) ?? []).map((part) => part.text ?? "").join("")
+    expect(paintedClose).toContain("T2 -> completed (by lead, attempt")
   })
 })

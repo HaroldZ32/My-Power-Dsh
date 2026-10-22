@@ -439,12 +439,12 @@ control is MPD's and it is declared on the page itself.
   substrate `mpd-team-core` also serves over the SSE route `/plugins/mpd-team/events` — and disposes it
   on unmount. Measured on a real dsh-tui 0.14.0 PTY: a record rewrite under an OPEN, untouched sidebar
   reached the terminal in **76–85 ms** across six trials
-  (`evidence/tui/session-scope-and-push/2026-10-08T08-22-12Z/pty-latency/`), against a fallback tick of
-  **1000 ms** (`DAG_PANEL_REFRESH_MS`) — six samples inside a 9 ms band at ~80 ms is not tick sampling.
-  The feed watches the teams directory, so a change made by this session's agent or by ANOTHER PROCESS
-  is seen; the 1000 ms sidebar tick and the 2000 ms scene tick stay, unchanged, as the fallback for a
-  composition without a feed. No `mpdTeams` row, no `subscribe`, or a throwing one costs the push and
-  never the page.
+  (`evidence/tui/session-scope-and-push/2026-10-08T08-22-12Z/pty-latency/`) — a 0.14.0-era record. AT
+  THAT MEASUREMENT the fallback tick was **1000 ms** (`DAG_PANEL_REFRESH_MS`), and six samples inside a
+  9 ms band at ~80 ms is not tick sampling. The feed watches the teams directory, so a change made by
+  this session's agent or by ANOTHER PROCESS is seen; the LIVE cadence is stated once, in §3.5 — one
+  **2000 ms** tick on every MPD surface, the fallback for a composition without a feed. No `mpdTeams`
+  row, no `subscribe`, or a throwing one costs the push and never the page.
 
 - **Vertical and adaptive.** Rank is the VERTICAL axis (top→bottom) and every size is computed from the
   panel the host measured — there is no fixed pixel or cell constant deciding the layout, which was the
@@ -524,6 +524,47 @@ control is MPD's and it is declared on the page itself.
 columns, `42px` nodes), CSS ellipsis, `overflow:auto`, native tooltips, DOM reads and `fetch` polling —
 none has a terminal equivalent, so none is faked. The WEB DAG remains the semantic reference and was not
 modified beyond the rank-derivation and edge-routing repairs its own legibility required.
+
+### 3.5 Refresh cadence, repaint recovery and mouse input
+
+**Every MPD TUI surface refreshes on a fixed 2-second tick.** The merged sidebar panel
+(`DAG_PANEL_REFRESH_MS`), the workmate page (`WORKMATE_PANEL_REFRESH_MS`), the board/team scenes and
+the subagents scene all use the same cadence; the sidebar panel used to be the only 1-second surface.
+The TUI reads a **local, synchronous** projection (`readDashboardWorkflow`) — `mpd-tui-plugin` makes no
+HTTP or `EventSource` call — so the tick is a **repaint self-heal** (a lost cell, a slow terminal, a
+frame the host drew half of), never a data-fetch retry. A damaged frame repairs itself within two
+seconds, and a panel is never left showing the moment it was opened.
+
+**The sidebar draws a DAG only when the picture fits it.** A boxed drawing is chosen only when the
+natural width AND the row count fit the panel's interior; otherwise the page falls back to the rail (or
+the dense list on a busy board). That is why a narrow sidebar shows a tree instead of a horizontally
+windowed graph: a rank that does not fit is a rank the reader cannot see, so the page never shows one.
+A box that would straddle the window's edge is drawn whole or not at all, the vertical bar's cell is
+reserved out of the content width, and the page's title is drawn **once** (the title row, which also
+carries the `⤢` control).
+
+**When the screen looks wrong:**
+
+- **`Ctrl+L` forces a host repaint.** dsh-tui clears and redraws; use it when cells are missing after an
+  SSH reconnect, a resize the host never saw, or a terminal that dropped a frame.
+- **`r` recovers a full-screen graph.** The full-screen team scene clamps its vertical window at the
+  last row, so `End` and a long wheel run stop at the bottom instead of sliding the drawing away; `r`
+  re-reads the record and returns the window to the top, and `Home`/`g` returns without a re-read.
+- **`DSH_TUI_DISABLE_MOUSE=1` disables the in-app click and selection handling ONLY.** On the pinned
+  host dsh-tui 0.16.1 `lib/types/utils/fullscreen.js#isMouseClicksDisabled` feeds
+  `App.js#handleMouseEvent`, which RETURNS before its click branch and leaves wheel scroll intact, while
+  `AlternateScreen.js` enables mouse reporting unconditionally — so mouse REPORTING and WHEEL scrolling
+  stay explicitly ACTIVE with the flag set, and it is not the remedy for a wheel the shell consumes
+  (send that to the terminal / tmux / fullscreen lever instead, see the tmux bullet below). Keyboard
+  gestures — the focus walk, the scroll keys, `Esc` to unpin, `⤢` to open the scene — keep working.
+- **tmux:** keep the pane's size honest with `set -g aggressive-resize on`, and give the host a UTF-8
+  terminfo with `set -g default-terminal 'tmux-256color'`. Outside tmux, `TERM` must name a UTF-8
+  capable terminal (e.g. `xterm-256color`) and the locale must be UTF-8 (`LANG=…UTF-8`) or the CJK width
+  measurement is wrong; the font must carry the box-drawing set this drawing uses (`╭ ╮ ╰ ╯ ─ │ ▼ ◐`) and
+  the panel's own glyphs (`⤢ ❖ ⬢`), or the terminal substitutes a fallback box.
+- **The sidebar's wheel is clamped to the panel.** The wheel is bound on the panel's frame as well as on
+  its content, and the frame stops the event: a wheel over the title row, a border or the footer scrolls
+  the panel and never the chat behind it.
 
 ## 4. Admission and distribution artifacts
 

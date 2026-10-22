@@ -1,0 +1,40 @@
+# R1 post-change gates (observed on this working tree, 2026-10-22)
+
+Working tree is SHARED: it also carries other lanes' edits (team-core, adapter, docs). The commands
+below were run after the last R1 edit and their observed results are quoted verbatim.
+
+$ bun run typecheck
+$ tsgo --noEmit
+(exit 0, no diagnostics)
+
+$ bun test packages/mpd-roles-plugin packages/mpd-config-plugin
+ 273 pass
+ 1 fail
+ 1344 expect() calls
+ Ran 274 tests across 16 files.
+ (fail) F1 shipped artifact > the committed dist is the byte-identical product of a canonical build (T-62)
+
+  BOUND: that single failure is the EXPECTED consequence of editing `packages/mpd-roles-plugin/src`
+  without rebuilding `dist/` — T-88 puts every `packages/*/dist/**` rebuild in the INTEGRATION task,
+  and the captain rebuilds with the pinned bun. No source/test gate is red.
+
+$ bun run verify:comments
+  scanned 429 TypeScript file(s) of 429 in the source set; inspected 37835 declaration(s)
+  VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+
+$ bun run verify:docs
+  [verify-docs-parity] root=… pairs=49 failed=0 violations=0 exempt=24 derived=3 links=440 dead=0 — PASS
+
+$ node skills/dsh-qa/scripts/session-start-team.ts --self-test
+  exit 0 — full output at ./self-test.log (corpus table, the sensitivity rows, the user's verbatim
+  first message at easy/normal/strict, and signal F both ways).
+
+$ node -e '<predicate smoke; see ./predicate-smoke.txt>'
+  exit 0 — full output at ./predicate-smoke.txt.
+
+NOT RUN in this lane (declared bounds, not passes):
+  * the POST-CHANGE live `session-start-team.ts` case: it boots the BUILT dist, and the dist rebuild
+    belongs to the integration step. The live arm gains a new `large-workspace` side (signal F) and a
+    tiny-workspace assertion on every silent side, so it must be run AFTER the rebuild.
+  * `bun run verify:dist-fresh`, `bun run verify:gates`, `verify:pack-closure`, Docker — all read or
+    depend on the rebuilt `dist/`; integration owns them.

@@ -781,8 +781,8 @@ interface WebCurveGeometry {
   height: number
   /** The inset every box keeps inside its column. */
   inset: number
-  /** One entry per node, in column-major order. */
-  nodes: Array<{ task: { id: string }; rank: number; row: number }>
+  /** One entry per node, in column-major order; `top` is the CENTRED placement the web layout chose. */
+  nodes: Array<{ task: { id: string }; rank: number; row: number; top: number }>
   /** One entry per drawn dependency, in board order. */
   edges: Array<{ parent: string; child: string; witness: string; segments: Array<{ key: string; rect: CurveRect }>; curve: WebCurve; marker: CurveRect; pointsLeft: boolean }>
 }
@@ -858,16 +858,6 @@ function loadWebCurve(): WebCurveModule {
   return factory({}).createTeamView({ react: createHookRuntime().react, statePath: "/p", planPath: "/p", taskPath: "/t", pollMs: 60_000 })
 }
 
-/** The y of a box's top, from its row and the view's own GEO table — the render's own expression. */
-function webBoxTop(row: number): number {
-  return WEB_GEO.pad + row * (WEB_GEO.nodeHeight + WEB_GEO.nodeGap)
-}
-
-/** The y of a box's vertical middle, which is where an edge attaches. */
-function webBoxMiddle(row: number): number {
-  return webBoxTop(row) + WEB_GEO.nodeHeight / 2
-}
-
 /** The x of a box's left border, for a column inset. */
 function webBorderLeft(rank: number, inset: number): number {
   return rank * WEB_GEO.column + inset
@@ -905,8 +895,8 @@ describe("W5 · every arrival tip touches the border its edge arrives at", () =>
     for (const board of CURVE_BOARDS) {
       /** The geometry of this board, at the freeze's declared radius. */
       const geometry = loadWebCurve().layout(curveRows(board))
-      /** Every box, by task id, from the layout's own rank/row and the view's own GEO table. */
-      const boxes = new Map(geometry.nodes.map(node => [node.task.id, { rank: node.rank, row: node.row }]))
+      /** Every box, by task id, from the layout's own placement (`top` is the drawn one since D1). */
+      const boxes = new Map(geometry.nodes.map(node => [node.task.id, { rank: node.rank, row: node.row, top: node.top }]))
       for (const edge of geometry.edges) {
         /** The dependent's placement. */
         const child = boxes.get(edge.child)
@@ -917,9 +907,13 @@ describe("W5 · every arrival tip touches the border its edge arrives at", () =>
         const border = edge.pointsLeft ? webBorderRight(child.rank, geometry.inset) : webBorderLeft(child.rank, geometry.inset)
         // The equality, through a template literal so the failure names the edge and both numbers.
         expect(`${edge.witness} tipX=${edge.curve.tip.x} border=${border}`).toBe(`${edge.witness} tipX=${border} border=${border}`)
-        // AND ON THE DEPENDENT'S OWN MIDDLE: an arrival at the right x but the wrong y would touch the
-        // border and still read as an edge into empty space.
-        expect(`${edge.witness} tipY=${edge.curve.tip.y}`).toBe(`${edge.witness} tipY=${webBoxMiddle(child.row)}`)
+        // AND INSIDE THE DEPENDENT'S OWN BOX: an arrival at the right x but outside the box's height
+        // would touch the border and still read as an edge into empty space. THE ATTACHMENT IS A PORT,
+        // NOT THE MIDDLE (D1): a node with several incident edges spreads them over distinct ys inside
+        // its height, so the frozen `webBoxMiddle(row)` no longer names the arrival (and D1 also
+        // CENTRES every column's stack, which moved `row`'s y altogether). What the model guarantees —
+        // and what this arm now asserts — is that the tip lies strictly inside the box it names.
+        expect(`${edge.witness} tipY-inside=${edge.curve.tip.y > child.top && edge.curve.tip.y < child.top + WEB_GEO.nodeHeight}`).toBe(`${edge.witness} tipY-inside=true`)
         // The last sample IS the tip: the curve is a polyline into the arrival point, not into a
         // rectangle that happens to contain it.
         /** The polyline's final sample. */
@@ -997,9 +991,14 @@ describe("W6 · `radius = 0` reproduces the straight orthogonal path", () => {
       /** The blocker's placement. */
       const parent = geometry.nodes.find(node => node.task.id === edge.parent)
       if (parent === undefined) throw new Error(`the layout drew ${edge.witness} from a task it placed no box for`)
-      /** Where the straight path begins: the blocker's own border at its middle. */
+      /** Where the straight path begins: the blocker's own border, at its own port (D1). */
       const startX = edge.pointsLeft ? webBorderLeft(parent.rank, geometry.inset) : webBorderRight(parent.rank, geometry.inset)
-      expect(`${edge.witness} start=${points[0].x},${points[0].y}`).toBe(`${edge.witness} start=${startX},${webBoxMiddle(parent.row)}`)
+      // THE Y IS THE BLOCKER'S OWN PORT, not its middle: a node with several incident edges spreads
+      // them inside its height, and every column's stack is CENTRED (D1), so `pad + row * (h + gap)`
+      // no longer describes where the path leaves. The arm keeps its subject — the path really begins
+      // ON the blocker's border — and states the port model's guarantee: strictly inside the box.
+      expect(`${edge.witness} startX=${points[0].x}`).toBe(`${edge.witness} startX=${startX}`)
+      expect(`${edge.witness} startY-inside=${points[0].y > parent.top && points[0].y < parent.top + WEB_GEO.nodeHeight}`).toBe(`${edge.witness} startY-inside=true`)
       /** The polyline's final sample. */
       const last = points[points.length - 1]
       expect(`${edge.witness} end=${last.x},${last.y}`).toBe(`${edge.witness} end=${edge.curve.tip.x},${edge.curve.tip.y}`)

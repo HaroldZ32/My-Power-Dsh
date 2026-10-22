@@ -1,0 +1,46 @@
+# wave web-dag-sidebar-028 — command log
+utc=2026-10-21T08:14:44Z commit=83796fb40d3686eef28c0a07603cf2a8dc9cad11 branch=feature/web-dag-sidebar-028
+
+## bun test packages/mpd-bundle-plugin packages/mpd-team-core-plugin packages/mpd-tui-plugin packages/mpd-better-sidebar-host
+(pass) team-view D2: elapsed formatting and the ticker > formats Xs, Xm Ys and Xh Ym, and dashes a record that cannot answer [35.69ms]
+(pass) team-view D2: elapsed formatting and the ticker > ticks once a second ONLY while a running task is visible, and cleans the interval up [0.19ms]
+(pass) team-view D2: elapsed formatting and the ticker > the drawing stays CJK-free while the card shows the raw subject [36.24ms]
+
+ 985 pass
+ 0 fail
+ 31337 expect() calls
+Ran 985 tests across 49 files. [14.47s]
+
+## bun run typecheck
+$ tsgo --noEmit
+
+## bun run verify:gates
+[verify-gates] member graph-model: exit=0 PASS - 193ms
+[verify-gates] member workflows :: node ./scripts/verify-workflows.ts
+[verify-gates] workflows out| [verify-workflows] audited 3 workflow file(s) under /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.github/workflows
+[verify-gates] workflows out| [verify-workflows] PASS - every workflow is loadable YAML with a sane job/step shape
+[verify-gates] member workflows: exit=0 PASS - 41ms
+[verify-gates] PASS - 9/9 member gate(s) green
+
+## node scripts/verify-vendor.ts
+[verify-vendor] asset OK: packages/mpd-bundle-plugin/adopted 2 files
+[verify-vendor] asset OK: packages/mpd-bundle-plugin/client.js 1 files
+[verify-vendor] PASS - 7 shipped asset(s) fingerprinted, upstream identity not checked
+
+## CodeRabbit repairs (defa50ea)
+bun test packages/mpd-bundle-plugin packages/mpd-team-core-plugin packages/mpd-tui-plugin packages/mpd-better-sidebar-host -> 986 pass, 0 fail, 31346 expect() calls
+bun run typecheck -> exit 0
+bun run verify:gates -> 9/9 PASS
+node scripts/verify-vendor.ts -> 7/7 assets fingerprinted (client.js sha256 f446e783...fffdd)
+bun run verify:docs -> pairs 48, failed 0
+
+## CodeRabbit F5/F6 repairs (ea8f1e19)
+bun test packages/mpd-bundle-plugin packages/mpd-team-core-plugin packages/mpd-tui-plugin packages/mpd-better-sidebar-host -> 988 pass, 0 fail, 31392 expect() calls
+bun run typecheck -> exit 0
+bun run verify:gates -> 9/9 PASS
+node scripts/verify-vendor.ts -> 7/7 assets fingerprinted (client.js sha256 bd68a418...c1c9)
+
+## Final verifier record rec-20261021T093756-c7c3c5 (ea8f1e19)
+tests -> 2196 pass, 3 skip, 0 fail, 39180 expect() calls, 2199 tests / 134 files
+four-package suite -> 988 pass, 0 fail
+gates -> 9/9 PASS; docs 48/0; comments 426/426; vendor 7/7 (client.js bd68a418...c1c9); dist fresh

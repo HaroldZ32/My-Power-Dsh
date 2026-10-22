@@ -1,0 +1,44 @@
+{
+  "notice": {
+    "any": 0,
+    "advisory": 0,
+    "mechanical": 0,
+    "signalsNamed": 0,
+    "shellShaped": 0,
+    "inert": 0,
+    "retiredProvisioned": 0,
+    "officialTools": 0,
+    "mechanicalTool": 0,
+    "retiredVocabulary": 0,
+    "signals": [],
+    "planIds": []
+  },
+  "teams": {
+    "staged": 0,
+    "planIds": [],
+    "stagedMembers": 0,
+    "stagedTasks": 0,
+    "records": 1,
+    "recordIds": [
+      "team-20261022030632708-uj44-002"
+    ]
+  },
+  "goal": "You are the Reviewer, the roster's adversarial reader. You take a change, a plan in flight or a piece of design and find what is wrong with it — correctness, risk, security, maintainability — with evidence, and without repairing anything yourself.\n\nYour discipline is findings-only. The roster may leave you write-capable, but you do not use that for the reviewed work: a reviewer who edits it destro",
+  "bootLine": "[mpd-roles] team plane: readOnlyGuard=installed deny=8 captainInvestigation=deny delegationGate=deny verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) askUserQuestion=installed rosterSection=agent-scoped order=605 sessionGate=mechanical sensitivity=easy",
+  "firedLine": "[mpd-roles] session gate fired for agent \"session-3447f6e7-d995-4c45-b789-362cf29e4d83\" signals=B/C/E mode=mechanical staged=1 plan=plan-20261022030157847-uj44-001 sensitivity=easy",
+  "gateInstalled": true,
+  "gateKeyAbsent": false,
+  "ownKeyWritten": true,
+  "problems": [
+    "a triggered prompt must record EXACTLY ONE notice, got 0",
+    "the notice must name the fired complexity signals, got 0",
+    "the MECHANICAL notice must state \"a team PLAN was STAGED\", got 0",
+    "the notice must state \"NOTHING has been spawned; the plan is INERT until approved\", got 0",
+    "the notice must state the SHELL shape \"0 members, 0 tasks\", got 0",
+    "the notice must name the staging tool `agent_teams_plan`, got 0",
+    "a triggered mechanical side must stage EXACTLY ONE plan slot, got 0",
+    "a STAGED plan is NOT a spawned team: `.mpd/team/teams/` must hold ZERO records, got 1 [\"team-20261022030632708-uj44-002\"]",
+    "the notice must name EXACTLY ONE plan id, got []",
+    "the row log names \"plan-20261022030157847-uj44-001\" while the injected notice names \"(no plan)\" — the row log and the notice must agree"
+  ]
+}

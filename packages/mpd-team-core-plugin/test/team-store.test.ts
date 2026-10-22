@@ -15,6 +15,8 @@ import {
   bindActiveTeam,
   blockingDependencies,
   casClaimTask,
+  casCloseTask,
+  casReleaseTask,
   createTeam,
   cycleIds,
   deleteTeam,
@@ -26,6 +28,7 @@ import {
   readTeamsIndex,
   readyTasks,
   sanitizeId,
+  settleMember,
   summariseTeam,
   taskDepths,
   taskVisual,
@@ -271,6 +274,139 @@ describe("the derived state", () => {
   })
 })
 
+describe("the task lifecycle stamps", () => {
+  // A TASK RECORD HAD ONLY `createdAt`/`updatedAt`, and `updatedAt` moves on EVERY patch — a note edit
+  // included — so it can never answer "when did this row start, and when did it finish". The two
+  // stamps below are derived by the ONE seam every claim and every terminal verb funnels through, so
+  // a status and the instants beside it cannot disagree.
+
+  test("a claim stamps `startedAt` ONCE, and a later claim does not restart the clock", () => {
+    /** The seeded record, whose first task has never run. */
+    const record = seeded()
+    // The TOOL-claim shape: `agent_teams_task claim` patches status, owner and attempt through this
+    // same function, so this arm is the tool path rather than a private shortcut.
+    /** The record after the claim. */
+    const claimed = updateTeamTask(record, "T1", { status: "in_progress", owner: "Senior Engineer", attempt: 1 }, NOW)
+    expect(claimed.tasks[0].startedAt).toBe(NOW.toISOString())
+    // A row that has not finished carries NO `finishedAt` KEY at all: an explicit `undefined` would
+    // serialize away and make a reader's own `in` check lie about the record it just read.
+    expect(Object.prototype.hasOwnProperty.call(claimed.tasks[0], "finishedAt")).toBe(false)
+    // A SECOND claim keeps the FIRST instant: the clock is when the work began, not when it was last
+    // touched — which is the one thing `updatedAt` could never express.
+    /** The record after a later re-claim. */
+    const reclaimed = updateTeamTask(claimed, "T1", { status: "in_progress" }, LATER)
+    expect(reclaimed.tasks[0].startedAt).toBe(NOW.toISOString())
+    expect(reclaimed.tasks[0].updatedAt).toBe(LATER.toISOString())
+    // The DISPATCH path funnels through the same seam, so it stamps the same field.
+    /** The compare-and-set claim the dispatch pass would make, decided against the fresh revision. */
+    const dispatched = casClaimTask(record, "T1", "Senior Engineer", record.tasks[0].revision, LATER)
+    expect(dispatched.applied).toBe(true)
+    if (dispatched.applied) expect(dispatched.record.tasks[0].startedAt).toBe(LATER.toISOString())
+  })
+
+  test("a terminal verb stamps `finishedAt`, and a later note patch does NOT move it", () => {
+    /** The seeded record after a claim. */
+    const running = updateTeamTask(seeded(), "T1", { status: "in_progress" }, NOW)
+    // The TOOL-close shape: `agent_teams_task complete` reaches `casCloseTask`, which patches through
+    // `updateTeamTask` — so the stamp is the transition's own instant, never a caller's guess.
+    /** The closure as the terminal verb decides it. */
+    const closed = casCloseTask(running, { taskId: "T1", status: "completed", caller: ["Senior Engineer"], lead: false, now: LATER })
+    expect(closed.applied).toBe(true)
+    if (!closed.applied) return
+    expect(closed.record.tasks[0].startedAt).toBe(NOW.toISOString())
+    expect(closed.record.tasks[0].finishedAt).toBe(LATER.toISOString())
+    /** A later instant, so a re-stamp by a non-transition patch would be visible. */
+    const laterStill = new Date("2026-09-30T12:30:00.000Z")
+    // A NOTE-only patch moves `updatedAt` and must not fabricate — or move — a finish.
+    /** The closed row after the note-only patch. */
+    const noted = updateTeamTask(closed.record, "T1", { note: "landed" }, laterStill)
+    expect(noted.tasks[0].updatedAt).toBe(laterStill.toISOString())
+    expect(noted.tasks[0].finishedAt).toBe(LATER.toISOString())
+    // A BLOCKER edit is the same kind of patch: no status, so neither lifecycle key appears.
+    /** The still-pending second task after a blocker-only patch. */
+    const blocked = updateTeamTask(closed.record, "T2", { blockedBy: ["T1"] }, laterStill)
+    expect(Object.prototype.hasOwnProperty.call(blocked.tasks[1], "startedAt")).toBe(false)
+    expect(Object.prototype.hasOwnProperty.call(blocked.tasks[1], "finishedAt")).toBe(false)
+  })
+
+  test("a FAILED close stamps `finishedAt` too; reopening DELETES it and the next claim restarts the clock", () => {
+    /** The seeded record, whose first task is failed before it ever ran. */
+    const failed = updateTeamTask(seeded(), "T1", { status: "failed" }, NOW)
+    expect(failed.tasks[0].finishedAt).toBe(NOW.toISOString())
+    // A row failed before it ever ran did not START, so `startedAt` is not invented for it.
+    expect(Object.prototype.hasOwnProperty.call(failed.tasks[0], "startedAt")).toBe(false)
+    // REOPENING deletes the finish: the row is back on the board, not finished.
+    /** The row reopened to pending. */
+    const reopened = updateTeamTask(failed, "T1", { status: "pending" }, LATER)
+    expect(Object.prototype.hasOwnProperty.call(reopened.tasks[0], "finishedAt")).toBe(false)
+    // Reopening straight into `in_progress` starts the clock at THAT moment (there was no earlier
+    // start), and still carries no finish.
+    /** The reopened row after a fresh claim. */
+    const reworked = updateTeamTask(reopened, "T1", { status: "in_progress" }, LATER)
+    expect(reworked.tasks[0].startedAt).toBe(LATER.toISOString())
+    expect(Object.prototype.hasOwnProperty.call(reworked.tasks[0], "finishedAt")).toBe(false)
+    /** A later instant for the second closure. */
+    const laterStill = new Date("2026-09-30T12:30:00.000Z")
+    /** The second close, whose span is the second attempt's. */
+    const again = updateTeamTask(reworked, "T1", { status: "completed" }, laterStill)
+    expect(again.tasks[0].startedAt).toBe(LATER.toISOString())
+    expect(again.tasks[0].finishedAt).toBe(laterStill.toISOString())
+  })
+
+  test("a CANCELLED row does not retain a prior finish, and is never stamped one of its own", () => {
+    // THE EDGE CASE (CodeRabbit): `cancelled` is terminal but no work ever ran to a finish of its own,
+    // so a row cancelled AFTER a completion must not keep the earlier instant — a hover card would
+    // otherwise show a cancelled task with a stale elapsed time and a finished-looking stamp.
+    /** A task completed, so it carries a real finish. */
+    const completed = updateTeamTask(seeded(), "T1", { status: "in_progress" }, NOW)
+    /** The same task completed at the later instant. */
+    const finished = updateTeamTask(completed, "T1", { status: "completed" }, LATER)
+    expect(finished.tasks[0].finishedAt).toBe(LATER.toISOString())
+    /** The row after it is cancelled. */
+    const cancelled = updateTeamTask(finished, "T1", { status: "cancelled" }, NOW)
+    // ABSENT, not blanked: the key is DELETED, so no explicit `undefined` reaches the serialized record
+    // and the next reader's own `in` check tells the truth.
+    expect(Object.prototype.hasOwnProperty.call(cancelled.tasks[0], "finishedAt")).toBe(false)
+    expect(JSON.stringify(cancelled.tasks[0])).not.toContain("finishedAt")
+    // The START is history and survives: the row did begin work, and only the finish is withdrawn.
+    expect(cancelled.tasks[0].startedAt).toBe(NOW.toISOString())
+    // Cancelling a row that NEVER finished does not invent a finish either.
+    /** A pending row that is cancelled outright. */
+    const dropped = updateTeamTask(seeded(), "T1", { status: "cancelled" }, NOW)
+    expect(Object.prototype.hasOwnProperty.call(dropped.tasks[0], "finishedAt")).toBe(false)
+    expect(Object.prototype.hasOwnProperty.call(dropped.tasks[0], "startedAt")).toBe(false)
+  })
+
+  test("a hand-built legacy record with NO lifecycle fields still reads, and stamps from the next claim", () => {
+    // THE UPGRADE CASE: records written before this wave carry neither field. Reading one must not
+    // throw, its rows must still classify, and nothing may be normalized in from thin air.
+    /** A record with a finished task, as the current store writes it. */
+    const current = updateTeamTask(seeded(), "T1", { status: "completed" }, LATER)
+    // The bytes an OLDER mpd wrote: the lifecycle keys simply do not exist. The JSON round-trip is the
+    // same serialization a real record goes through, so this is a hand-built legacy record, not a
+    // stripped live object.
+    /** The same record with every lifecycle key removed. */
+    const legacy = JSON.parse(JSON.stringify(current)) as TeamRecord
+    delete legacy.tasks[0].finishedAt
+    writeTeam(sandbox, legacy)
+    /** The legacy record as the store reads it back. */
+    const reread = readTeam(sandbox, legacy.teamId)
+    expect(reread).toBeDefined()
+    expect(Object.prototype.hasOwnProperty.call(reread?.tasks[0] ?? {}, "finishedAt")).toBe(false)
+    expect(Object.prototype.hasOwnProperty.call(reread?.tasks[0] ?? {}, "startedAt")).toBe(false)
+    // The serialized record carries neither NAME, so a reader cannot mistake an absent stamp for one
+    // that was written as `undefined`.
+    expect(JSON.stringify(reread)).not.toContain("finishedAt")
+    expect(JSON.stringify(reread)).not.toContain("startedAt")
+    // The board still classifies the row, and the next claim stamps the start like any other row.
+    expect(taskVisual(reread!.tasks[0], reread!.tasks)).toBe("completed")
+    /** The legacy row reopened and claimed. */
+    const claimed = updateTeamTask(reread!, "T1", { status: "in_progress" }, NOW)
+    expect(claimed.tasks[0].startedAt).toBe(NOW.toISOString())
+    expect(Object.prototype.hasOwnProperty.call(claimed.tasks[0], "finishedAt")).toBe(false)
+  })
+})
+
 describe("the index and the files", () => {
   test("an unknown index version reads as EMPTY rather than throwing", () => {
     /** The index directory, which nothing else in this arm creates. */
@@ -392,5 +528,163 @@ describe("the compare-and-set claim (T2)", () => {
     /** The board with T1 completed. */
     const done: TeamRecord = { ...opened, tasks: [{ ...opened.tasks[0], status: "completed" }] }
     expect(casClaimTask(done, "T1", "Senior Engineer", expected, NOW)).toEqual({ applied: false, reason: 'task T1 is now "completed"' })
+  })
+})
+
+
+describe("member settlement (R2)", () => {
+  // THE DEFECT: a member is written `running` at spawn and NOTHING wrote it back, so `derivePhase`
+  // read a ghost team as `active` forever, the finished-team predicate never fired and the TUI drew
+  // members working after the board was closed. Settlement is the missing write; the pool must keep
+  // accepting the settled member, or settling would empty the dispatch pool it feeds.
+  /** The seeded record APPROVED with both members spawned and running, each carrying its handle. */
+  function running(): TeamRecord {
+    /** The seeded record. */
+    const record = seeded()
+    /** The record after both members were spawned. */
+    return {
+      ...record,
+      approvedAt: NOW.toISOString(),
+      members: record.members.map((member) => ({ ...member, status: "running" as const, executorRef: "child-" + member.name.replace(/\s+/g, "-") })),
+    }
+  }
+
+  test("a member that owns no OPEN task settles to `inactive`, and the pool accepts it", () => {
+    /** The record with both members running and no task in flight. */
+    const record = running()
+    // A `pending` owned task is NOT open work: the row is on the board but nothing is running.
+    /** The Senior Engineer's row after settlement. */
+    const settled = settleMember(record, record.members[0].executorRef!, LATER)
+    expect(settled.members[0].status).toBe("inactive")
+    // The other member is untouched: settlement is per session, never a bulk pass.
+    expect(settled.members[1].status).toBe("running")
+    // THE POOL: an inactive member is free, so the dispatch pass can still pair it.
+    expect(idleMembers(settled).map((member) => member.name)).toContain("Senior Engineer")
+  })
+
+  test("a member that still OWNS an open task keeps `running` — settlement cannot strand work", () => {
+    /** The record with both members spawned. */
+    const record = running()
+    /** The board with T1 claimed by the Senior Engineer, under its DISPLAY NAME. */
+    const byName = updateTeamTask(record, "T1", { status: "in_progress", owner: "Senior Engineer" }, LATER)
+    expect(settleMember(byName, record.members[0].executorRef!, LATER)).toBe(byName)
+    /** The board with T1 claimed under the member's EXECUTOR HANDLE, the other spelling the board stamps. */
+    const byHandle = updateTeamTask(record, "T1", { status: "in_progress", owner: record.members[0].executorRef! }, LATER)
+    expect(settleMember(byHandle, record.members[0].executorRef!, LATER)).toBe(byHandle)
+    // A `claimed` (not yet in_progress) row is open work too.
+    /** The board with T1 claimed but not started. */
+    const claimed = updateTeamTask(record, "T1", { status: "claimed", owner: "Senior Engineer" }, LATER)
+    expect(settleMember(claimed, record.members[0].executorRef!, LATER)).toBe(claimed)
+  })
+
+  test("nothing to settle returns the SAME record — an unknown session, an absent handle, a settled member", () => {
+    /** The record with both members running. */
+    const record = running()
+    // A session that names no member.
+    expect(settleMember(record, "child-nobody", LATER)).toBe(record)
+    // A member with NO recorded handle can never be named by an event, so it never settles.
+    /** The record with the first member's handle removed. */
+    const handleless: TeamRecord = { ...record, members: [{ ...record.members[0], executorRef: undefined }, record.members[1]] }
+    expect(settleMember(handleless, "child-Senior-Engineer", LATER)).toBe(record === handleless ? record : handleless)
+    // An already-settled member is not rewritten (identity is the caller's "do not write" signal).
+    /** The record after a first settlement. */
+    const once = settleMember(record, record.members[0].executorRef!, LATER)
+    expect(settleMember(once, record.members[0].executorRef!, LATER)).toBe(once)
+  })
+
+  test("settle every member => the approved team derives `idle` (the compaction pass can see a finished team)", () => {
+    /** The record with both members running, as an approval leaves it. */
+    const record = withDerivedPhase(running())
+    // While a member is running the record cannot read idle, however its board looks.
+    expect(derivePhase(record)).toBe("active")
+    // Closing the board (no open task) and settling BOTH members is the whole transition.
+    /** The record after both settlements. */
+    const settled = record.members.reduce((acc, member) => settleMember(acc, member.executorRef!, LATER), record)
+    expect(settled.members.map((member) => member.status)).toEqual(["inactive", "inactive"])
+    expect(derivePhase(withDerivedPhase(settled))).toBe("idle")
+  })
+})
+
+describe("task release (R3)", () => {
+  // THE DEFECT: `release` was LEDGER-ONLY. The pairing was deleted while the task stayed `in_progress`,
+  // and because `readyTasks`/`casClaimTask` are pending-only the row could never be dispatched again.
+  /** A one-member board with T1 claimed and in flight, as a dispatch pass leaves it. */
+  function claimed(): TeamRecord {
+    /** The record with one running member and one task. */
+    const record = {
+      ...addTeamTask(createTeam(sandbox, { name: "wave", description: "release", leadSessionId: "s1" }, NOW), { subject: "core", description: "own it", kind: "work" }, NOW),
+      approvedAt: NOW.toISOString(),
+      members: [{ id: "M1", name: "Senior Engineer", description: "implements", status: "running" as const, spawnedAt: NOW.toISOString(), executorRef: "child-1" }],
+    }
+    /** The claim's outcome, asserted so a broken fixture cannot silently weaken the arms below. */
+    const claim = casClaimTask(record, "T1", "Senior Engineer", record.tasks[0].revision, NOW)
+    expect(claim.applied).toBe(true)
+    if (!claim.applied) throw new Error("fixture: the claim was refused")
+    writeTeam(sandbox, claim.record)
+    return claim.record
+  }
+
+  test("a release REOPENS the row for a later dispatch: pending, unowned, clock cleared, attempt kept", () => {
+    /** The record with T1 in flight. */
+    const inFlight = claimed()
+    expect(inFlight.tasks[0].status).toBe("in_progress")
+    expect(inFlight.tasks[0].startedAt).toBe(NOW.toISOString())
+    /** The release outcome. */
+    const released = casReleaseTask(inFlight, "T1", undefined, LATER)
+    expect(released.applied).toBe(true)
+    if (!released.applied) throw new Error("fixture: the release was refused")
+    /** The reopened row. */
+    const row = released.record.tasks[0]
+    expect(row.status).toBe("pending")
+    // The owner and the started clock are GONE (not blanked), and no finish stamp was invented.
+    expect("owner" in row).toBe(false)
+    expect("startedAt" in row).toBe(false)
+    expect("finishedAt" in row).toBe(false)
+    // The revision moved (a CAS target for the next caller); the attempt did NOT reset.
+    expect(row.revision).toBe(inFlight.tasks[0].revision + 1)
+    expect(row.attempt ?? 0).toBe(0)
+    // DISPATCHABLE AGAIN: the pool's own readiness rule sees the row.
+    expect(readyTasks(released.record).map((task) => task.id)).toEqual(["T1"])
+    // A later claim starts a NEW clock, which is why the release cleared it.
+    /** The second claim on the reopened row. */
+    const reclaimed = casClaimTask(released.record, "T1", "Reviewer", released.record.tasks[0].revision, new Date(LATER.getTime() + 1000))
+    expect(reclaimed.applied).toBe(true)
+    if (reclaimed.applied) expect(reclaimed.record.tasks[0].startedAt).toBe(new Date(LATER.getTime() + 1000).toISOString())
+  })
+
+  test("a TERMINAL row is refused, and a DOUBLE release is a no-op with the right refusal", () => {
+    /** The record with T1 in flight. */
+    const inFlight = claimed()
+    /** The board with T1 completed. */
+    const done = updateTeamTask(inFlight, "T1", { status: "completed" }, LATER)
+    /** The terminal refusal. */
+    const terminal = casReleaseTask(done, "T1", undefined, LATER)
+    expect(terminal.applied).toBe(false)
+    if (!terminal.applied) expect(terminal.reason).toBe('task T1 is already terminal ("completed") and cannot be released')
+    // A cancelled or failed row is terminal in exactly the same way.
+    expect(casReleaseTask(updateTeamTask(inFlight, "T1", { status: "failed" }, LATER), "T1", undefined, LATER).applied).toBe(false)
+    // The first release succeeds; the second has nothing to free and SAYS so.
+    /** The successfully released record. */
+    const first = casReleaseTask(inFlight, "T1", undefined, LATER)
+    if (!first.applied) throw new Error("fixture: the first release was refused")
+    /** The second release against the reopened row. */
+    const second = casReleaseTask(first.record, "T1", undefined, new Date(LATER.getTime() + 1000))
+    expect(second.applied).toBe(false)
+    if (!second.applied) expect(second.reason).toBe('task T1 is "pending" and holds no dispatch to release')
+  })
+
+  test("CAS and unknown-id arms: a stale revision is refused with both numbers, a gone task says so", () => {
+    /** The record with T1 in flight. */
+    const inFlight = claimed()
+    /** The revision the caller based its decision on. */
+    const expected = inFlight.tasks[0].revision
+    // A concurrent NOTE edit moves the revision under the caller.
+    writeTeam(sandbox, updateTeamTask(inFlight, "T1", { note: "moved on" }, LATER))
+    /** The stale release. */
+    const stale = casReleaseTask(readTeam(sandbox, inFlight.teamId)!, "T1", expected, LATER)
+    expect(stale.applied).toBe(false)
+    if (!stale.applied) expect(stale.reason).toContain(`revision ${expected} -> ${expected + 1}`)
+    // An unknown id is not an error, it is a refusal with its own sentence.
+    expect(casReleaseTask(inFlight, "T9", undefined, LATER)).toEqual({ applied: false, reason: "task T9 is no longer on the board" })
   })
 })

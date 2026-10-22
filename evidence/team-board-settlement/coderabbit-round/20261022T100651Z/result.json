@@ -1,0 +1,120 @@
+{
+  "wave": "team-board-settlement",
+  "round": "coderabbit-round",
+  "task": "PR #60 — fix the THREE CodeRabbit findings (F1/F2/F3)",
+  "owner": "Senior Engineer",
+  "branch": "fix/team-board-settlement",
+  "baseCommit": "8abcfafa",
+  "recordedAt": "2026-10-22T10:06:51Z",
+  "lane": "packages/mpd-team-core-plugin (src + test + README + dist) + this evidence directory",
+  "noGitWrites": true,
+  "findings": {
+    "F1": {
+      "severity": "Major (security, CWE-862)",
+      "claim": "release frees the ledger pairing and resets the task row with NO caller authorization; any teammate can reopen another member's claimed/in_progress task through the member resolution arm",
+      "implemented": [
+        "team-store.ts#authorizeRelease(record, taskId, caller, lead): string | undefined — the allowed arm is the LEAD (the caller's roster flag OR the record's own leadSessionId/leadHistory) or the task's OWNER; the owner comparison is the private nameMatches the close gate uses; a task that is GONE is allowed only for the Lead (the store's standing sentence is returned otherwise); an unowned task yields 'has no owner and this caller is not this team's lead'; an owned stranger's task yields the close gate's own sentence",
+        "index.ts#releaseDispatchedTask: new caller/lead parameters; the fresh record is read FIRST and authorizeRelease runs BEFORE either write — an unauthorized caller returns {released:false, taskId, refused} and the ledger row is NOT touched; the same fresh reading feeds casReleaseTask",
+        "index.ts agent_teams_task release branch: caller built exactly as the close branch does — sessionId, sessionTitleOf(exec), the guarded dsh.teamMembership name, callerIdentity(ownMember.name), narrowed ancestry; claimant is deliberately NOT read; lead = membership?.role === 'lead'",
+        "index.ts agent_teams_dispatch release branch: the SAME identity construction and the SAME lead source; no CAS revision (unchanged)"
+      ],
+      "tests": [
+        "member-close.test.ts (F1): a Reviewer member releasing T1 (owned by Senior Engineer, dispatched with a live ledger pairing) is refused with the EXACT sentence and the task row + ledger row are unchanged; the agent_teams_dispatch release surface refuses the same caller with the same sentence and the same unchanged bytes; the OWNER releases its own task successfully (both halves: row pending, ledger row gone, the other task's pairing untouched) through BOTH owner spellings — the roster name a dispatch stamps and the executorRef/session id a tool claim stamps; the LEAD releases any task successfully"
+      ]
+    },
+    "F2": {
+      "severity": "Minor (render)",
+      "claim": "agent_teams_task output.render checks `status` before `released`, so a successful release prints `T1 -> pending (by undefined, attempt undefined)`",
+      "implemented": [
+        "index.ts agent_teams_task output.render: `released` is checked FIRST (after `refused`); released true -> `${taskId} -> ${status ?? 'pending'} (pairing freed)`; released false with a status -> `${taskId} -> ${status} (no pairing to free)`; released false without status -> 'that task was not dispatched'; the close branch (status without released) is unchanged and still renders",
+        "NO schema change; the agent_teams_dispatch render is untouched (already correct)"
+      ],
+      "tests": [
+        "team-record.test.ts (F2): a real dispatched release renders exactly 'T1 -> pending (pairing freed)' and never 'by undefined'; a claim-only release (row reset, no pairing) renders 'T1 -> pending (no pairing to free)'; a real closure still renders the close line 'T2 -> completed (by lead, attempt ...)'"
+      ]
+    },
+    "F3": {
+      "severity": "Minor (state)",
+      "claim": "the tool claim path writes the task row without touching the member row; a settled member woken by a Lead message and claiming its own task stays `inactive`",
+      "implemented": [
+        "index.ts agent_teams_task claim branch: memberNamedBy(claimed, [claimant]) resolves the claimant's roster row; when its status is `inactive` the persisted record is withDerivedPhase(updateTeamMember(claimed, member.id, {status:'running'})); `failed` and `provisioning` rows are left untouched; the phase is re-derived either way; the returned task view is read from the record actually written",
+        "claimant spelling confirmed: `String(args?.claimant ?? sessionId)` — so a member claiming its own row presents its OWN session id, which the roster matches through its recorded executorRef (and a name the Lead typed matches the member's name)"
+      ],
+      "tests": [
+        "member-close.test.ts (F3): the member is settled through team-store#settleMember (written `inactive`), then claims its own task through agent_teams_task; the persisted row is `running` again and the other member's row is untouched"
+      ]
+    }
+  },
+  "docs": {
+    "readmeEn": "packages/mpd-team-core-plugin/README.md — Known limits: who may release (the Lead or the task's own owner) and that an unauthorized release is refused BEFORE the pairing is freed",
+    "readmeZh": "packages/mpd-team-core-plugin/README.zh-CN.md — the same statement in 简体中文 (lockstep)"
+  },
+  "dist": {
+    "command": ".toolchain/node_modules/.bin/bun build packages/mpd-team-core-plugin/src/index.ts --target node --format esm --outfile packages/mpd-team-core-plugin/dist/index.js",
+    "observed": "Bundled 18 modules in 9ms; index.js 221.59 KB (entry point)",
+    "note": "the only rebuilt target: every importer of this package's src is a type-only import (mpd-tui-plugin, mpd-workmate-plugin), so no dependent dist inlines these bytes"
+  },
+  "gates": {
+    "tests": {
+      "command": ".toolchain/node_modules/.bin/bun test packages/mpd-team-core-plugin",
+      "exit": 0,
+      "observed": "280 pass, 0 fail, 1317 expect() calls, 19 files"
+    },
+    "typecheck": {
+      "command": "bun run typecheck",
+      "exit": 0,
+      "observed": "tsgo --noEmit, no diagnostics"
+    },
+    "comments": {
+      "command": "bun run verify:comments",
+      "exit": 0,
+      "observed": "VERDICT: PASS — 430/430 files, 38438 declarations"
+    },
+    "docs": {
+      "command": "bun run verify:docs",
+      "exit": 0,
+      "observed": "pairs=49 failed=0 violations=0 links=440 dead=0 — PASS"
+    },
+    "distFresh": {
+      "command": "node scripts/verify-dist-fresh.ts",
+      "exit": 0,
+      "observed": "ok: 33/33 targets fresh (each rebuilt twice, byte-identical); build toolchain bun 1.4.0 from .toolchain"
+    },
+    "aggregate": {
+      "command": "bun run verify:gates",
+      "exit": 0,
+      "observed": "PASS - 9/9 member gate(s) green"
+    },
+    "qa": {
+      "command": "bun run test:qa",
+      "exit": 0,
+      "observed": "all self-tests passed"
+    },
+    "build": {
+      "command": "pinned bun build of packages/mpd-team-core-plugin",
+      "exit": 0,
+      "observed": "Bundled 18 modules"
+    },
+    "testsPathBun": {
+      "command": "bun test packages/mpd-team-core-plugin",
+      "exit": 0,
+      "observed": "PATH bun 1.4.2: 280 pass, 0 fail, 1317 expect() calls, 19 files"
+    }
+  },
+  "bounds": [
+    "A non-Lead release of a task id that is NO LONGER on the board is refused ('task X is no longer on the board') and therefore no longer frees a stale ledger pairing; the Lead keeps the repair, and the dispatch pass's own reconcile prunes such rows. This is deliberate under the 'Lead or owner' rule and is written down in authorizeRelease's doc comment.",
+    "The identity plumbing (sessionTitleOf, callerIdentity, the guarded teamMembership read, the caller-spelling array) is copied from the close branch rather than extracted into a shared helper, on the contract's instruction not to invent helpers; the full array now appears three times (the close branch and the two release sites), and a future refactor could unify it.",
+    "authorizeRelease decides against the record re-read at the top of releaseDispatchedTask; the ledger write happens after it. A concurrent owner change landing between the ledger read and the CAS is still bounded by casReleaseTask's revision CAS, but the authorization itself is not revision-fenced.",
+    "Gates were run on a DIRTY tree (the wave's own edits uncommitted), which is the intended pre-commit state; the captain commits. No git write commands were issued.",
+    "One earlier evidence capture reported a non-zero exit before any log file existed; it was a shell artifact (a command substitution on a per-call fresh /tmp failed, which short-circuited `&&` so the gate never ran and its `$?` was recorded). Re-run directly and captured cleanly here; the package suite was additionally run five consecutive times, all 280 pass / exit 0."
+  ],
+  "filesChanged": [
+    "packages/mpd-team-core-plugin/src/team-store.ts",
+    "packages/mpd-team-core-plugin/src/index.ts",
+    "packages/mpd-team-core-plugin/test/member-close.test.ts",
+    "packages/mpd-team-core-plugin/test/team-record.test.ts",
+    "packages/mpd-team-core-plugin/README.md",
+    "packages/mpd-team-core-plugin/README.zh-CN.md",
+    "packages/mpd-team-core-plugin/dist/index.js"
+  ]
+}

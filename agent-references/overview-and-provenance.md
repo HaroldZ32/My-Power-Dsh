@@ -45,7 +45,9 @@ declared in `README.md` and `LICENSE-NOTICES.md`.
 - **Roster.** The 11 specialists are teammate instantiation templates — NOT presets — addressed by NAME
   and described by what they do, never by their internal stable `id`. One-shot consult goes through
   `mpd-roles-plugin` (`mpd_roles_list` / `mpd_role_spawn` / `mpd_role_persona`, `mpdRoles` service
-  consumed by `mpd_modelchain_resolve`); team work uses the **official Agent Teams plugin**
+  consumed by `mpd_modelchain_resolve`) and is ONE-SHOT: the adapter disposes the activation once the
+  report settles, so a consult is never reused — a new question means a NEW spawn (the harness catalog
+  is append-only, so a settled child may still list `inactive`); team work uses the **official Agent Teams plugin**
   (`@deepseek-ai/dsh-experimental-agent-team` + `-tool-agent-team` + `-client-ui-agent-team`, mounted
   by this bundle's `mpd-agent-team` / `mpd-tool-agent-team` / `mpd-ui-agent-team` rows: the
   `spawn_teammate` / `send_message` / `list_agents` / `wait_agent` / `interrupt_agent` / `team_task_*`
@@ -119,12 +121,25 @@ declared in `README.md` and `LICENSE-NOTICES.md`.
   itself at the moment the work warrants one — or continues solo and says so. Signal D is an ACTIVE
   boulder work for this workspace (`status: "active"` in `.mpd/boulder.json`) — a plan FILE alone is NOT
   a signal, repaired 2026-10-07 because the retired plan-file probe fired in every session of this
-  workspace. The gate is implemented by `mpd-roles-plugin` on the official plugin's seams (the retired
+  workspace. Since 2026-10-22 `team.sensitivity` (`easy` DEFAULT | `normal` | `strict`; an unknown or
+  missing value resolves to `easy`) selects the thresholds — `easy` fires at B >= 2, C 2-of-3, E >= 24
+  Han chars / >= 2 verbs, and the NEW signal F (workspace scale: a bounded root `readdir` finding a
+  manifest, a project dir and >= 8 visible entries; `easy` only); `normal` reproduces the pre-wave
+  five-signal behaviour exactly and `strict` tightens it. F is deliberately coarse — in a large
+  workspace it fires on its own even for `hello` — so the silent negative controls live in a tiny
+  workspace. On the `agent_teams_plan` APPROVE success path the approval also anchors a persisted goal
+  (objective = the plan description, source `team`) and seeds `todo_write` from the plan tasks —
+  non-fatal, one log line on failure, no new knobs. The gate is implemented by `mpd-roles-plugin` on the official plugin's seams (the retired
   `sessionTeamPolicy.mode: "auto"` unconditional-provisioning path is gone with the plugin that owned
   it).
 - **The ONLY shipped preset is `mpd`** — the main working agent — which also carries the
   project-instruction convention: every session MUST attempt to read `AGENT.md` (falling back to
-  `AGENTS.md`, then `CLAUDE.md`) via `dsh-agent-instructions`.
+  `AGENTS.md`, then `CLAUDE.md`) via `dsh-agent-instructions`. **`mpd-project-init` (host row) closes the
+  empty-repo case**: a TOP-LEVEL session in a project-like directory with no instruction file writes one
+  generic English `AGENT.md` ONCE (via `wx`, plus `<ws>/.mpd/project-init.json` and one line in
+  `<ws>/.mpd/logs/mpd-project-init.log`) and is silent for HOME/`/`, a non-project directory, a marker
+  already present, or any existing `AGENT*`/`CLAUDE.md` (case-insensitive); the file is injected from
+  the NEXT session.
 
 ---
 
@@ -195,7 +210,7 @@ short form wins for the rule, and this file wins for the detail.
   gitignored RUNTIME STATE and not a shipped repo path) — a plan FILE alone is NOT a signal (repaired
   2026-10-07). Softer signals and the retired path are in the historical block above.
 
-## Gate default — CURRENT STATE (2026-10-20)
+## Gate default — CURRENT STATE (2026-10-22)
 
 The verbatim blocks above are HISTORICAL SNAPSHOTS of `AGENTS.md` (the 2026-10-06 §1 body and the wave E
 long forms), pinned by the byte counts and sha256 recorded in `evidence/gates/agents-budget/`. Quote them
@@ -203,5 +218,7 @@ as history, never as the live default.
 
 **Current state:** the session-start complexity gate ships **ON**, and `team.gate` in `mpd.jsonc` defaults
 to **`mechanical`** again since the 2026-10-20 restore (it had been `off` since the 2026-10-17 rollback).
-`AGENTS.md` §1 is the binding statement; this section exists so a reader of the historical bytes cannot
-mistake them for what runs today.
+Since 2026-10-22 `team.sensitivity` defaults to **`easy`** (the stricter `normal`/`strict` are opt-in) and
+adds the workspace-scale signal F under `easy`; an `agent_teams_plan` approval now bundles the team
+record, a persisted goal and the todo list. `AGENTS.md` §1 is the binding statement; this section exists
+so a reader of the historical bytes cannot mistake them for what runs today.

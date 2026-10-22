@@ -526,6 +526,14 @@ async function startContinuableChild(subagents, spec, action) {
   const argument = member === "startActivation" ? { ...spec, delivery: "parent" } : spec;
   return subagents[member].call(subagents, argument);
 }
+async function disposeSettledConsult(activation) {
+  const dispose = activation?.dispose;
+  if (typeof dispose !== "function")
+    return;
+  try {
+    await dispose.call(activation);
+  } catch {}
+}
 var REPORTED_RETIRED_SPAWN_FIELDS = new Set;
 function warnRetiredSpawnFields(spec) {
   for (const field of ["persona", "toolFilter"]) {
@@ -1278,6 +1286,7 @@ function createDshAdapter(ctx, config = {}) {
           delivery: "parent"
         });
         const settled = await (activation?.result ?? {});
+        await disposeSettledConsult(activation);
         return {
           output: textOfOutput(settled.output),
           structured: settled.structured,
@@ -1757,6 +1766,52 @@ var GATE_MODE_ADVISORY = "advisory";
 var GATE_MODE_OFF = "off";
 var GATE_CONFIG_KEY = "team.gate";
 var BOULDER_DIR_CONFIG_KEY = "boulder.dir";
+var GATE_SENSITIVITY_EASY = "easy";
+var GATE_SENSITIVITY_NORMAL = "normal";
+var GATE_SENSITIVITY_STRICT = "strict";
+var SENSITIVITY_CONFIG_KEY = "team.sensitivity";
+function resolveSensitivity(value) {
+  if (value === GATE_SENSITIVITY_NORMAL)
+    return GATE_SENSITIVITY_NORMAL;
+  if (value === GATE_SENSITIVITY_STRICT)
+    return GATE_SENSITIVITY_STRICT;
+  return GATE_SENSITIVITY_EASY;
+}
+var SENSITIVITY_THRESHOLDS = {
+  easy: {
+    deliverableVerbs: 2,
+    enumeratedLines: 2,
+    actionVerbs: 2,
+    clauseSteps: 2,
+    cSubSignals: 2,
+    cjkChars: 24,
+    cjkVerbs: 2,
+    workspaceScale: true,
+    lexicon: "expanded"
+  },
+  normal: {
+    deliverableVerbs: 4,
+    enumeratedLines: 3,
+    actionVerbs: 3,
+    clauseSteps: 3,
+    cSubSignals: 2,
+    cjkChars: 60,
+    cjkVerbs: 2,
+    workspaceScale: false,
+    lexicon: "pre-wave"
+  },
+  strict: {
+    deliverableVerbs: 6,
+    enumeratedLines: 4,
+    actionVerbs: 4,
+    clauseSteps: 4,
+    cSubSignals: 3,
+    cjkChars: 80,
+    cjkVerbs: 3,
+    workspaceScale: false,
+    lexicon: "expanded"
+  }
+};
 var WORKSPACE_ROOT_SPELLINGS = [".", "./", ".mpd", ".mpd/", "./.mpd", "./.mpd/"];
 function resolveBoulderDir(value) {
   if (typeof value !== "string")
@@ -1772,18 +1827,35 @@ var STAGED_PLAN_PHRASE = "a team PLAN was STAGED";
 var ALREADY_STAGED_PLAN_PHRASE = "a team PLAN is ALREADY STAGED";
 var INERT_PLAN_PHRASE = "NOTHING has been spawned; the plan is INERT until approved";
 var NO_TEAM_STAGED_PHRASE = "NO team was staged";
-var DELIVERABLE_VERB_PATTERN = /(align|migrate|refactor|audit|overhaul|port|rewrite|consolidate|脱去|移除|剥离|删除|新建|搬迁|修复|校准|重建|验证|对齐|重构|迁移|审计|移植|梳理|全量|独立|强制|回归|设计|实现|改造|补充)/giu;
-var ACTION_VERB_PATTERN = /\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|脱去|移除|剥离|删除|新建|搬迁|修复|校准|重建|验证|对齐|重构|迁移|审计|移植|梳理|全量|独立|强制|回归|设计|实现|改造|补充/giu;
+var PRE_WAVE_DELIVERABLE_VERB_PATTERN = /(align|migrate|refactor|audit|overhaul|port|rewrite|consolidate|脱去|移除|剥离|删除|新建|搬迁|修复|校准|重建|验证|对齐|重构|迁移|审计|移植|梳理|全量|独立|强制|回归|设计|实现|改造|补充)/giu;
+var PRE_WAVE_ACTION_VERB_PATTERN = /\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|脱去|移除|剥离|删除|新建|搬迁|修复|校准|重建|验证|对齐|重构|迁移|审计|移植|梳理|全量|独立|强制|回归|设计|实现|改造|补充/giu;
+var PRE_WAVE_CLAUSE_ACTION_PATTERN = /^\s*(?:(?:and|then|also)\s+)?(?:\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|脱去|移除|剥离|删除|新建|搬迁|修复|校准|重建|验证|对齐|重构|迁移|审计|移植|梳理|全量|独立|强制|回归|设计|实现|改造|补充)/iu;
+var DELIVERABLE_VERB_PATTERN = /(align|migrate|refactor|audit|overhaul|port|rewrite|consolidate|implement|add|build|change|check|verify|fix|create|update|remove|delete|move|rename|test|document|wire|integrate|deploy|release|review|investigate|diagnose|reproduce|benchmark|optimize|harden|validate|split|restructure|脱去|移除|剥离|删除|新建|搬迁|修复|校准|重建|验证|对齐|重构|迁移|审计|移植|梳理|全量|独立|强制|回归|设计|实现|改造|补充|降低|提高|提升|触发|创建|添加|增加|修改|调整|优化|统一|清理|简化|拆分|补全|支持|接入|升级|覆盖|整合|编排|打包|发布|部署|审查|评审|排查|定位|复现|编写|撰写|补写|重写|运行|执行|检查|核查|扩展|完善|精简|合并|替换|加固|校验|测量|记录|规范|抽取)/giu;
+var ACTION_VERB_PATTERN = /\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|脱去|移除|剥离|删除|新建|搬迁|修复|校准|重建|验证|对齐|重构|迁移|审计|移植|梳理|全量|独立|强制|回归|设计|实现|改造|补充|降低|提高|提升|触发|创建|添加|增加|修改|调整|优化|统一|清理|简化|拆分|补全|支持|接入|升级|覆盖|整合|编排|打包|发布|部署|审查|评审|排查|定位|复现|编写|撰写|补写|重写|运行|执行|检查|核查|扩展|完善|精简|合并|替换|加固|校验|测量|记录|规范|抽取/giu;
 var ENUMERATED_LINE_PATTERN = /^\s*(?:\d+[.)]|[-*|])\s/u;
 var CLAUSE_SEPARATOR_PATTERN = /[\n\r;:,.、，。；：！？（）「」『』“”‘’【】]/u;
-var CLAUSE_ACTION_PATTERN = /^\s*(?:(?:and|then|also)\s+)?(?:\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|脱去|移除|剥离|删除|新建|搬迁|修复|校准|重建|验证|对齐|重构|迁移|审计|移植|梳理|全量|独立|强制|回归|设计|实现|改造|补充)/iu;
-var DELIVERABLE_VERB_MIN = 4;
-var ENUMERATED_LINE_MIN = 3;
-var ACTION_VERB_MIN = 3;
-var C_SUBSIGNAL_MIN = 2;
+var CLAUSE_ACTION_PATTERN = /^\s*(?:(?:and|then|also)\s+)?(?:\b(?:add|align|audit|build|change|check|consolidate|implement|migrate|overhaul|port|refactor|rewrite|verify)\b|脱去|移除|剥离|删除|新建|搬迁|修复|校准|重建|验证|对齐|重构|迁移|审计|移植|梳理|全量|独立|强制|回归|设计|实现|改造|补充|降低|提高|提升|触发|创建|添加|增加|修改|调整|优化|统一|清理|简化|拆分|补全|支持|接入|升级|覆盖|整合|编排|打包|发布|部署|审查|评审|排查|定位|复现|编写|撰写|补写|重写|运行|执行|检查|核查|扩展|完善|精简|合并|替换|加固|校验|测量|记录|规范|抽取)/iu;
+var PRE_WAVE_LEXICON = {
+  deliverable: PRE_WAVE_DELIVERABLE_VERB_PATTERN,
+  action: PRE_WAVE_ACTION_VERB_PATTERN,
+  clause: PRE_WAVE_CLAUSE_ACTION_PATTERN
+};
+var EXPANDED_LEXICON = {
+  deliverable: DELIVERABLE_VERB_PATTERN,
+  action: ACTION_VERB_PATTERN,
+  clause: CLAUSE_ACTION_PATTERN
+};
+var GATE_LEXICONS = {
+  "pre-wave": PRE_WAVE_LEXICON,
+  expanded: EXPANDED_LEXICON
+};
+var DELIVERABLE_VERB_MIN = SENSITIVITY_THRESHOLDS.normal.deliverableVerbs;
+var ENUMERATED_LINE_MIN = SENSITIVITY_THRESHOLDS.normal.enumeratedLines;
+var ACTION_VERB_MIN = SENSITIVITY_THRESHOLDS.normal.actionVerbs;
+var C_SUBSIGNAL_MIN = SENSITIVITY_THRESHOLDS.normal.cSubSignals;
 var CJK_CHAR_PATTERN = /\p{Script=Han}/gu;
-var CJK_CHAR_MIN = 60;
-var CJK_ACTION_VERB_MIN = 2;
+var CJK_CHAR_MIN = SENSITIVITY_THRESHOLDS.normal.cjkChars;
+var CJK_ACTION_VERB_MIN = SENSITIVITY_THRESHOLDS.normal.cjkVerbs;
 var GATE_PLAN_NAME_MAX = 60;
 var GATE_PLAN_EXCERPT_MAX = 500;
 var GATE_PLAN_NAME_FALLBACK = "session-start complexity gate team";
@@ -1801,10 +1873,10 @@ function enumeratedLineCount(text) {
       count += 1;
   return count;
 }
-function clauseStepCount(text) {
+function clauseStepCount(text, pattern) {
   let count = 0;
   for (const clause of text.split(CLAUSE_SEPARATOR_PATTERN))
-    if (CLAUSE_ACTION_PATTERN.test(clause))
+    if (pattern.test(clause))
       count += 1;
   return count;
 }
@@ -1825,23 +1897,27 @@ function consumeExplicitFlag(text) {
 }
 function evaluateComplexityGate(text, input = {}) {
   const source = String(text ?? "");
+  const thresholds = SENSITIVITY_THRESHOLDS[resolveSensitivity(input.sensitivity)];
+  const lexicon = GATE_LEXICONS[thresholds.lexicon];
   const signals = [];
   if (input.explicitFlag === true)
     signals.push("A");
-  if (distinctMatches(source, DELIVERABLE_VERB_PATTERN) >= DELIVERABLE_VERB_MIN)
+  if (distinctMatches(source, lexicon.deliverable) >= thresholds.deliverableVerbs)
     signals.push("B");
-  const actionVerbs = distinctMatches(source, ACTION_VERB_PATTERN);
+  const actionVerbs = distinctMatches(source, lexicon.action);
   const cSubSignals = [
-    enumeratedLineCount(source) >= ENUMERATED_LINE_MIN,
-    actionVerbs >= ACTION_VERB_MIN,
-    clauseStepCount(source) >= ENUMERATED_LINE_MIN
+    enumeratedLineCount(source) >= thresholds.enumeratedLines,
+    actionVerbs >= thresholds.actionVerbs,
+    clauseStepCount(source, lexicon.clause) >= thresholds.clauseSteps
   ].filter(Boolean).length;
-  if (cSubSignals >= C_SUBSIGNAL_MIN)
+  if (cSubSignals >= thresholds.cSubSignals)
     signals.push("C");
   if (input.activeBoulder === true)
     signals.push("D");
-  if (cjkCharCount(source) >= CJK_CHAR_MIN && actionVerbs >= CJK_ACTION_VERB_MIN)
+  if (cjkCharCount(source) >= thresholds.cjkChars && actionVerbs >= thresholds.cjkVerbs)
     signals.push("E");
+  if (thresholds.workspaceScale && input.workspaceScale === true)
+    signals.push("F");
   return { trigger: input.explicitFlag === true || signals.length >= 1, signals };
 }
 async function readBoulderGate(workspace, opts = {}) {
@@ -1866,6 +1942,45 @@ async function readBoulderGate(workspace, opts = {}) {
     };
   } catch {
     return { active: false };
+  }
+}
+var WORKSPACE_MANIFESTS = [
+  "package.json",
+  "pyproject.toml",
+  "Cargo.toml",
+  "go.mod",
+  "pom.xml",
+  "build.gradle",
+  "build.gradle.kts",
+  "composer.json",
+  "Gemfile",
+  "mix.exs",
+  "pubspec.yaml",
+  "CMakeLists.txt"
+];
+var WORKSPACE_PROJECT_DIRS = [
+  "packages",
+  "src",
+  "apps",
+  "lib",
+  "services",
+  "plugins",
+  "crates",
+  "cmd",
+  "internal",
+  "modules"
+];
+var WORKSPACE_VISIBLE_ENTRIES_MIN = 8;
+async function readWorkspaceScale(workspace, opts = {}) {
+  try {
+    const list = opts.readDir ?? ((path) => readDirFs(path, { encoding: "utf8", withFileTypes: false }));
+    const entries = (await list(String(workspace ?? ""))).map((entry) => String(entry));
+    const visible = entries.filter((name) => !name.startsWith("."));
+    const manifests = visible.filter((name) => WORKSPACE_MANIFESTS.includes(name)).length;
+    const projectDirs = visible.filter((name) => WORKSPACE_PROJECT_DIRS.includes(name)).length;
+    return manifests >= 1 && projectDirs >= 1 && visible.length >= WORKSPACE_VISIBLE_ENTRIES_MIN;
+  } catch {
+    return false;
   }
 }
 var TEAM_RECORDS_DIR = join2(".mpd", "team", "teams");
@@ -1954,7 +2069,7 @@ var DIRECTIVE = [
 var ULW_ACTIVATION_DIRECTIVE = [
   "ULTRAWORK ACTIVATION (user-invoked; execute autonomously and ask the user nothing)",
   "1. TRIAGE FIRST: when the objective is unclear, or the task is investigate-first-then-execute, run one normal-MPD investigation round BEFORE the gate, a team or the loop; never open a team on a guess.",
-  "2. GATE: ALREADY EVALUATED MECHANICALLY — the SAME complexity predicate the session-start gate uses (an explicit `team:`/`!team` flag OR any matched signal A-E: A explicit flag, B deliverable verbs, C enumerated steps, D an active boulder work, E a CJK-scale instruction) was run by the plugin BEFORE this directive was injected, and its verdict is the TEAM GATE block below this objective. Never invent a second predicate.",
+  "2. GATE: ALREADY EVALUATED MECHANICALLY — the SAME complexity predicate the session-start gate uses (an explicit `team:`/`!team` flag OR any matched signal A-F: A explicit flag, B deliverable verbs, C enumerated steps, D an active boulder work, E a CJK-scale instruction, F large-workspace scale) was run by the plugin BEFORE this directive was injected, with the thresholds selected by `team.sensitivity` (easy | normal | strict), and its verdict is the TEAM GATE block below this objective. Never invent a second predicate.",
   '3. TEAM WHEN WARRANTED: the TEAM GATE block below carries the verdict, and when the gate staged a plan that plan is YOURS — extend it with `agent_teams_plan {action:"add_member"}` and `agent_teams_plan {action:"create_task"}`, then approve it YOURSELF with `agent_teams_plan {action:"approve"}`: no user confirmation and no plan review. A staged plan is INERT until approval. EXACTLY five `agent_teams_*` tools exist on this harness — `agent_teams_plan`, `agent_teams_task`, `agent_teams_dispatch`, `agent_teams_mail`, `agent_teams_control` — and every OTHER `agent_teams_*` name is retired and GONE (e.g. `agent_teams_create`, `agent_teams_add_member`, `agent_teams_create_task`, `agent_teams_approve`, `agent_teams_status`): never call a retired one, and never read the shared `agent_teams_` prefix as a reason to skip `agent_teams_plan`.',
   "4. LOOP TO COMPLETION: never stop early to ask the user; keep rounds until every success criterion is clean.",
   "5. FIX ON SIGHT: a defect the run finds is fixed in the same turn — never report-and-wait and never ask the user for approval.",
@@ -2014,6 +2129,8 @@ function gateConfigValue(ctx, config, key) {
   } catch {}
   if (key === GATE_CONFIG_KEY)
     return config.team?.gate;
+  if (key === SENSITIVITY_CONFIG_KEY)
+    return config.team?.sensitivity;
   if (key === BOULDER_DIR_CONFIG_KEY)
     return config.boulder?.dir;
   return;
@@ -2097,8 +2214,10 @@ async function evaluateUlwGate(dsh, ctx, config, input) {
   try {
     const workspace = ulwWorkspace(dsh, input.agent);
     const boulderDir = gateConfigValue(ctx, config, BOULDER_DIR_CONFIG_KEY);
+    const sensitivity = resolveSensitivity(gateConfigValue(ctx, config, SENSITIVITY_CONFIG_KEY));
     const boulder = await readBoulderGate(workspace, typeof boulderDir === "string" && boulderDir !== "" ? { boulderDir } : {});
-    const verdict = evaluateComplexityGate(objective, { explicitFlag: consumed.flagged, activeBoulder: boulder.active });
+    const workspaceScale = SENSITIVITY_THRESHOLDS[sensitivity].workspaceScale ? await readWorkspaceScale(workspace) : false;
+    const verdict = evaluateComplexityGate(objective, { explicitFlag: consumed.flagged, activeBoulder: boulder.active, sensitivity, workspaceScale });
     const base = { mode, trigger: verdict.trigger === true, signals: verdict.signals, explicit: consumed.flagged, staged: false, planId: "", alreadyStaged: false };
     if (verdict.trigger !== true || mode !== GATE_MODE_MECHANICAL)
       return { objective, report: base };

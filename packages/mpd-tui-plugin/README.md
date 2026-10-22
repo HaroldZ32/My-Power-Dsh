@@ -255,9 +255,10 @@ new record — immediately for the scenes, which keep their projection in a stat
 re-render for the pages, which read per render. Measured on the real dsh-tui 0.14.0 PTY: a record rewrite
 under an OPEN, untouched sidebar reached the terminal in **76–85 ms** across six trials
 (`evidence/tui/session-scope-and-push/2026-10-08T08-22-12Z/pty-latency/`). The ticks stay, unchanged, as
-the fallback: the sidebar pages tick at **1000 ms** (`DAG_PANEL_REFRESH_MS`), the board, team, plan and
-merged scenes at **2000 ms**, and the workmate page at **2000 ms** because a library changes on a tool
-call rather than on a keypress. No `mpdTeams` row, no `subscribe`, or a throwing one costs the push and
+the fallback: **every MPD surface ticks at 2000 ms** — the sidebar pages, the board, team, plan and
+merged scenes, and the workmate page — because the projection is local and synchronous, so the tick is a
+repaint self-heal rather than a data-fetch retry (the sidebar panel's `DAG_PANEL_REFRESH_MS` was the last
+1000 ms surface and moved to the shared cadence in wave `tui-refresh`). No `mpdTeams` row, no `subscribe`, or a throwing one costs the push and
 never the page.
 
 **Entry points, and the ONE routed open.** `alt+a` and the new `/mpd panel` subcommand both land on
@@ -408,6 +409,14 @@ workspace keeps the empty states.
 - **Scrolling, and both rails DRAG (AC7).** The body is self-windowed with a PERMANENT proportional
   gutter while content overflows, plus wheel and `PgUp`/`PgDn`/`Home`/`End`. Permanence is the host's
   own rule: an auto-hiding gutter changes the content width and rewraps every row the moment it appears.
+  **Since wave `tui-refresh` the sidebar chooses a BOXED drawing only when it fits the panel on BOTH axes**
+  (natural width AND row count); a rank that does not fit falls back to the rail or the dense list, so the
+  sidebar never silently windows a graph. The horizontal rail stays implemented for a drawing that reports
+  a wider width; the page's own layout no longer produces one. The bar's cell is reserved out of the
+  content width, the height budget counts the frame's two border rows plus the title row plus the footer
+  (so the page's total equals the host's measured height), a box that would straddle the window edge is
+  drawn whole or not at all, the title is drawn ONCE (the title row, which also carries `⤢`), and the
+  wheel is bound on the frame as well as the content so a gesture over the chrome cannot scroll the chat.
   The VERTICAL gutter and the HORIZONTAL rail (drawn only while the drawing is wider than the panel)
   each scrub under a mouse drag through the host's own drag protocol — `onDragStart`/`onDragMove`/
   `onDragEnd` with the `localRow`/`localCol` the host recomputes from the element's own rect — mapped
@@ -450,8 +459,8 @@ or an instance with no note costs a row or a field, never the page. Each entry d
 its base template, its use count, its description and its note, sorted newest-updated first — the same
 order `mpd_workmate_list` serves, so the panel and the tool cannot disagree. The keyboard behaves as on
 the DAG page, and the empty state names the call that fills it:
-`no workmates yet — `mpd_workmate_init` creates one`. Its refresh tick is 2000 ms against the DAG
-page's 1000 ms, because a library changes on a tool call rather than on a keypress.
+`no workmates yet — `mpd_workmate_init` creates one`. Its refresh tick is the same 2000 ms the DAG page
+uses (`WORKMATE_PANEL_REFRESH_MS`), so the two sidebar pages cannot disagree about how often they redraw.
 
 ### The dependency graph: arrows, the legend and the `Ctrl+A` take-over
 

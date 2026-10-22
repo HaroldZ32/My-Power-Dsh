@@ -15,7 +15,7 @@
 // answer the same question and must not disagree — but it is computed here from the RECORD, which is
 // why it can carry `kind`, `attempt`, `round` and `verdict` at all.
 import type { GraphModel } from "../../mpd-graph-core/src/index.ts"
-import type { TeamRecord } from "./team-store"
+import type { TeamRecord, TaskStatus, TaskVisual } from "./team-store"
 import { blockingDependencies, cycleIds, derivePhase, idleMembers, listTeams, memberProgress, readyTasks, summariseTeam, taskVisual, activeTeamId } from "./team-store"
 import { listContracts, readHold, readPlan, type StagedPlan } from "./plan-store"
 import { readMailbox, readRecords } from "./mailbox-store"
@@ -112,6 +112,23 @@ export interface TeamWebTask {
   round?: number
   /** Review verdict. */
   verdict?: string
+  /**
+   * ISO-8601 UTC instant this task first entered `in_progress`; ABSENT until it does.
+   *
+   * The hover card's elapsed time is `startedAt` -> `finishedAt` (or now, while the row is running).
+   * `updatedAt` is deliberately NOT served: it moves on every patch and is not a finish stamp.
+   */
+  startedAt?: string
+  /** ISO-8601 UTC instant this task reached `completed`/`failed`; ABSENT while it is not terminal. */
+  finishedAt?: string
+  /**
+   * A COARSE completion percentage, 0-100, derived read-side from the task's own status and visual.
+   *
+   * IT IS NOT MEASURED WORK, and the whole model is the mapping in {@link taskProgress}: `completed`
+   * 100, `running` 50, `claimed` 10, `pending` 0, `failed`/`cancelled` 0. It exists so a Web surface
+   * has a bar to draw; no reader should treat it as the share of work actually done.
+   */
+  progress: number
   /** Blockers, in board order. */
   blockedBy: string[]
   /** Blockers that FAILED — reported beside the state, which is the OPT-1 rule. */
@@ -244,6 +261,24 @@ export function buildWorkspaceTeams(teams: readonly TeamRecord[], activeId: stri
 }
 
 /**
+ * The COARSE progress a Web surface draws for one task, 0-100.
+ *
+ * IT IS NOT MEASURED WORK. The entire model is this mapping: `completed` 100, `running` (the visual
+ * word for `in_progress`) 50, `claimed` 10, `pending` 0, `failed`/`cancelled` 0. Both arguments are
+ * needed because the VISUAL vocabulary collapses a claimed row into `running` while the STATUS is what
+ * tells the two apart — and every other visual word (`blocked`, `open`) means no work has begun, so it
+ * is 0. A row whose status is still `pending` reads `open` or `blocked`, and is 0 as well.
+ * @param status - the task's stored status.
+ * @param visual - the visual state {@link taskVisual} derived for the same task.
+ * @returns the percentage, always an integer in 0-100.
+ */
+export function taskProgress(status: TaskStatus, visual: TaskVisual): number {
+  if (visual === "completed") return 100
+  if (visual === "running") return status === "claimed" ? 10 : 50
+  return 0
+}
+
+/**
  * Project one record into the browser payload.
  *
  * PURE, so the whole projection is testable without a server, a socket or a session — and so the
@@ -297,25 +332,37 @@ export function buildTeamState(
   if (model !== undefined) for (const node of model.nodes) rankOf.set(node.id, node.depth)
   /** The board, drawn in rank order so the browser can lay it out without re-sorting. */
   const tasks: TeamWebTask[] = record.tasks
-    .map((task) => ({
-      id: task.id,
-      subject: task.subject,
-      ...(task.kind === undefined ? {} : { kind: task.kind }),
-      status: task.status,
-      // The VISUAL state is derived HERE, by the same function the TUI uses, so the two surfaces
-      // cannot disagree about what `blocked` means across a refresh.
-      visual: taskVisual(task, record.tasks),
-      ...(task.owner === undefined ? {} : { owner: task.owner }),
-      ...(task.attempt === undefined ? {} : { attempt: task.attempt }),
-      ...(task.round === undefined ? {} : { round: task.round }),
-      ...(task.verdict === undefined ? {} : { verdict: task.verdict }),
-      blockedBy: [...task.blockedBy],
-      // OPT-1: a failed blocker does NOT block, and it is reported BESIDE the state so a reader can
-      // see that a task is dispatchable only because a prerequisite gave up.
-      failedBy: blockingDependencies(record.tasks, task.blockedBy).failed,
-      depth: summary.depths.get(task.id) ?? 0,
-      ...(model === undefined ? {} : { rank: rankOf.get(task.id) ?? 0 }),
-    }))
+    .map((task) => {
+      // The VISUAL state is derived ONCE here, by the same function the TUI uses, so the two surfaces
+      // cannot disagree about what `blocked` means across a refresh — and `progress` is derived from
+      // this very value, so a bar and a colour can never tell two stories about one row.
+      /** The visual state this task is drawn with. */
+      const visual = taskVisual(task, record.tasks)
+      return {
+        id: task.id,
+        subject: task.subject,
+        ...(task.kind === undefined ? {} : { kind: task.kind }),
+        status: task.status,
+        visual,
+        ...(task.owner === undefined ? {} : { owner: task.owner }),
+        ...(task.attempt === undefined ? {} : { attempt: task.attempt }),
+        ...(task.round === undefined ? {} : { round: task.round }),
+        ...(task.verdict === undefined ? {} : { verdict: task.verdict }),
+        // THE LIFECYCLE STAMPS travel ONLY when the record carries them, through a conditional spread:
+        // a task that never started or never finished has NO such key, so a browser's `in` check is
+        // honest and the payload never emits an explicit `undefined` (which is not lossless JSON).
+        ...(task.startedAt === undefined ? {} : { startedAt: task.startedAt }),
+        ...(task.finishedAt === undefined ? {} : { finishedAt: task.finishedAt }),
+        // COARSE, status-derived progress — never measured work; see `taskProgress` for the mapping.
+        progress: taskProgress(task.status, visual),
+        blockedBy: [...task.blockedBy],
+        // OPT-1: a failed blocker does NOT block, and it is reported BESIDE the state so a reader can
+        // see that a task is dispatchable only because a prerequisite gave up.
+        failedBy: blockingDependencies(record.tasks, task.blockedBy).failed,
+        depth: summary.depths.get(task.id) ?? 0,
+        ...(model === undefined ? {} : { rank: rankOf.get(task.id) ?? 0 }),
+      }
+    })
     .sort((left, right) => left.depth - right.depth)
   return {
     ok: true,

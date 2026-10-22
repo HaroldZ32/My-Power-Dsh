@@ -1,0 +1,5 @@
+[2026-10-22T03:24:54.265Z] [mpd-roles] team plane: readOnlyGuard=installed deny=8 captainInvestigation=deny delegationGate=deny verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) askUserQuestion=installed rosterSection=agent-scoped order=605 sessionGate=advisory sensitivity=easy
+[2026-10-22T03:24:54.265Z] [mpd-roles] mpdRoles provided (base roles: 11) | adapterIdentity=mounted:mpdDsh
+[2026-10-22T03:24:57.275Z] [mpd-roles] roster section registered for agent "session-b71fba58-e3e3-4824-b649-3761627f5416" agentPreset=none — mpd:roster order=605
+[2026-10-22T03:24:57.276Z] [mpd-roles] session gate listener registered for agent "session-b71fba58-e3e3-4824-b649-3761627f5416" agentPreset=none
+[2026-10-22T03:24:58.326Z] [mpd-roles] session gate fired for agent "session-b71fba58-e3e3-4824-b649-3761627f5416" signals=B/C mode=advisory staged=0 sensitivity=easy

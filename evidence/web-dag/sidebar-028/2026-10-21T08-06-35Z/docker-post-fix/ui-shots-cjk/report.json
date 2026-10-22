@@ -1,0 +1,811 @@
+{
+  "base": "http://127.0.0.1:3080",
+  "workspace": "/data/ws",
+  "viewport": [
+    1600,
+    1000
+  ],
+  "steps": [
+    {
+      "name": "01-first-run",
+      "ok": true,
+      "file": "/data-out/shots/01-first-run.png"
+    },
+    {
+      "name": "02-home",
+      "ok": true,
+      "file": "/data-out/shots/02-home.png"
+    },
+    {
+      "name": "03-plugins",
+      "ok": true,
+      "file": "/data-out/shots/03-plugins.png"
+    },
+    {
+      "name": "04-settings-mpd",
+      "ok": true,
+      "file": "/data-out/shots/04-settings-mpd.png"
+    },
+    {
+      "name": "05-settings-agent-presets",
+      "ok": true,
+      "file": "/data-out/shots/05-settings-agent-presets.png"
+    },
+    {
+      "name": "06-team-panel",
+      "ok": true,
+      "file": "/data-out/shots/06-team-panel.png"
+    },
+    {
+      "name": "06b-team-board-seed",
+      "ok": true,
+      "file": "/data-out/shots/06b-team-board.png"
+    },
+    {
+      "name": "07-team-graph-interaction",
+      "ok": true,
+      "file": "/data-out/shots/07-team-graph-hover.png"
+    },
+    {
+      "name": "08-dag-curve",
+      "ok": true,
+      "file": "/data-out/shots/08-dag-curve.png curves=6"
+    }
+  ],
+  "readmeShots": [
+    {
+      "name": "web-plugins-installed",
+      "ok": true,
+      "file": "/data-out/readme/en/web-plugins-installed.png",
+      "rect": [
+        436,
+        796,
+        1008,
+        98
+      ]
+    },
+    {
+      "name": "web-settings-mpd",
+      "ok": true,
+      "file": "/data-out/readme/en/web-settings-mpd.png",
+      "rect": [
+        596,
+        0,
+        596,
+        660
+      ]
+    },
+    {
+      "name": "web-agent-presets",
+      "ok": true,
+      "file": "/data-out/readme/en/web-agent-presets.png",
+      "rect": [
+        596,
+        138,
+        596,
+        817
+      ]
+    },
+    {
+      "name": "web-team-board",
+      "ok": true,
+      "file": "/data-out/readme/en/web-team-board.png",
+      "rect": [
+        881,
+        38,
+        719,
+        962
+      ]
+    }
+  ],
+  "consoleErrors": [],
+  "pageErrors": [],
+  "failedRequests": [
+    "http://127.0.0.1:3080/plugins/events — net::ERR_ABORTED",
+    "http://127.0.0.1:3080/plugins/events — net::ERR_ABORTED"
+  ],
+  "mpdConsole": [
+    "log: [mpd] settings section: form status=loading value=absent writable=false mode=undefined",
+    "log: [mpd] settings section: form updated status=ready value=present",
+    "log: [mpd] settings section: form updated status=ready value=present",
+    "warning: [mpd] model catalog: declared fallback — live catalog unavailable (no session is bound)",
+    "log: [mpd] settings section: form status=loading value=absent writable=false mode=undefined",
+    "log: [mpd] settings section: form updated status=ready value=present",
+    "log: [mpd] settings section: form updated status=ready value=present",
+    "warning: [mpd] model catalog: declared fallback — live catalog unavailable (no session is bound)",
+    "log: [mpd] settings section: form status=loading value=absent writable=false mode=undefined",
+    "log: [mpd] settings section: form updated status=ready value=present",
+    "log: [mpd] settings section: form updated status=ready value=present",
+    "warning: [mpd] model catalog: declared fallback — live catalog unavailable (no session is bound)",
+    "info: [mpd] team sidebar session: session-3773061c-6415-41be-a227-5f07ec3ac3e1"
+  ],
+  "firstRunText": "New Session\nPlugins\nAutomation tasks\nWorkspaces\nws\nNew Session\nMore\nInto the Unknown\nPreview\nws\nStandard mode\nDescribe what you want to build, / commands, @ files or sessions\nWorkspace Write\nSelect model\nGet started\nSign in to your DeepSeek account or add an API Key to get started. Your projects and files are stored locally.\nAdd API Key\nSign in",
+  "gatesDismissedOnHome": 0,
+  "controls": [
+    "New session",
+    "Collapse sidebar",
+    "New Session",
+    "Plugins",
+    "Automation tasks",
+    "Search sessions",
+    "View options",
+    "Add workspace",
+    "Workspace actions for ws",
+    "New session in ws",
+    "More",
+    "Open right sidebar",
+    "ws",
+    "Standard mode",
+    "Add files or run commands",
+    "Workspace Write",
+    "Select model",
+    "Send message",
+    "New tab",
+    "Split",
+    "Fullscreen",
+    "Collapse right sidebar"
+  ],
+  "homeText": "New Session\nPlugins\nAutomation tasks\nWorkspaces\nws\nNew Session\nMore\nInto the Unknown\nPreview\nws\nStandard mode\nDescribe what you want to build, / commands, @ files or sessions\nWorkspace Write\nSelect model",
+  "composerPresetNames": [
+    "Standard mode",
+    "MPD (Main Working Agent)",
+    "The my-power-dsh main agent: reads AGENT.md/AGENTS.md/CLAUDE.md for every project, works natively, consults the specialists in single calls (Architect/Researcher/Planner/Deep Worker/Senior Engineer/Lead/Explorer/Reviewer/Plan Reviewer/Vision Analyst/Junior Engineer) via mpd_role_spawn, and runs teams through the official @deepseek-ai/dsh-experimental-agent-team plugin.",
+    "Standard mode",
+    "Includes all Standard mode capabilities. Better suited to tasks that call tools in batches and then filter, organize, deduplicate, count, or summarize the results.",
+    "The agent uses a terminal and image reading, with context compaction. Useful for testing and comparing its basic performance.",
+    "Customize DSH through conversation. Let the agent write plugins that add features or UI, or combine tools and prompts to create your own mode."
+  ],
+  "pluginsClick": "clicked",
+  "pluginsText": "New Session\nPlugins\nAutomation tasks\nWorkspaces\nws\nNew Session\nMore\nPlugins\nInstall, enable, and configure plugins\nAdd plugin\nBuilt-in plugin settings\nSubagent\nSet Subagent recursion depth, count, and models.\nWeb search\nSet up the DeepSeek search provider.\nAgent loop\nControl how the Agent dispatches tool calls.\nShell\nLimit how long each command may run and how much it may output.\nExperimental plugins\nMore\nAgent Teams\nExperimental\nEnable team collaboration, team tools, the member roster, and the shared task board.\nVoice input\nExperimental\nTranscribe recordings locally with SenseVoice; first use requires installing dependencies\nAuto Authorization Review\nExperimental\nAdd an Auto review permission mode that uses the model to assess authorization before each tool call.\nDeveloper Tools\nExperimental\nInspect and debug raw session data, grouped chat messages, and the NodeJS backend.\nInstalled plugins\n@mpd-dsh/mpd\nmy-power-dsh: a DeepSeek Harness plugin bundle (@mpd-dsh/mpd) carrying the specialist roster and the model-chain vocabulary on DSH-native plumbing (upstream reference: oh-my-openagent 8c57e46 — historical, no synchronisation owed)",
+  "settingsClick": "menu(aria)->clicked",
+  "settingsNav": [
+    "General",
+    "Models",
+    "Built-in plugins",
+    "Agent presets",
+    "MPD"
+  ],
+  "mpdClick": "clicked",
+  "mpdSectionText": "New Session\nPlugins\nAutomation tasks\nWorkspaces\nws\nNew Session\nMore\nInto the Unknown\nPreview\nws\nStandard mode\nDescribe what you want to build, / commands, @ files or sessions\nWorkspace Write\nSelect model\nSettings\nGeneral\nModels\nBuilt-in plugins\nAgent presets\nMPD\nOpen configuration file\nClose\nMPD bundle\nThe mpd.jsonc knobs this bundle's plugins read. namespace mpd · live after save — the model routes resolve per use, no restart\nThe \"MPD (Main Working Agent)\" preset is this bundle's main agent: it reads the project's AGENT.md/AGENTS.md/CLAUDE.md, works natively, consults the 11 specialists through mpd_role_spawn, and runs teams on the official Agent Teams plugin. Its description in the preset picker is supplied by the harness as plain text and is not localizable.\ndeclared fallback — live catalog unavailable (the model directory for this session reports no provider)\na save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect in the RUNNING process — no restart: the config service re-resolves on every settings save and on a watched edit of the project file, and the model routes (teamModels, agentRoutes, modelchain) are read per use, so the next spawn or resolve carries them\nthe restart wording now applies only to a knob some plugin captured at its own mount instead of reading the live config service per use — the model routes above are not such knobs; a captured knob keeps its captured value until the next dsh boot\nthe value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session\nif no session is live, the save stays in settings — not written to any .mpd/mpd.jsonc\nEffective model config — what a change here modifies (read live, no restart)\nslot 1 · heavy members: deepseek-official / deepseek-v4-flash / max\nslot 2 · analysis members: deepseek-official / deepseek-v4-flash / high\nslot 3 · execution members: deepseek-official / deepseek-v4-flash / high\nslot 4 · vision member: deepseek-official / deepseek-v4-flash-vision-exp / high\nagentRoutes: no member overrides set — every member follows its slot\nmodelchain: no configured chains — the shipped defaults are in force\nread from the live config service — refreshed at mount, after card saves, and on settings-document updates\nInline diff limit\nmpd.jsonc hashline.maxDiffChars\nReset to the file value\nComment checker\nmpd.jsonc commentChecker.autoCheck\nReset to the file value\nUltrawork rounds\nmpd.jsonc ulw.maxRounds\nReset to the file value\nMemory backend\nmpd.jsonc memory.vcs\n—\ngit\nsvn\nReset to the file value\nTeam state directory\nmpd.jsonc team.stateDir\nReset to the file value\nBoulder directory\nmpd.jsonc boulder.dir\nReset to the file value\nWatchdog enabled\nmpd.jsonc watchdog.enabled\nReset to the file value\nSilence warning threshold (ms)\nmpd.jsonc watchdog.warnSilenceMs\nReset to the file value\nWatchdog tick interval (ms)\nmpd.jsonc watchdog.tickIntervalMs\nReset to the file value\nWarn streak before escalation\nmpd.jsonc watchdog.warnStreakToEscalate\nReset to the file value\nAction on escalation\nmpd.jsonc watchdog.actionOnEscalate\n—\npause\nwarn-only\nReset to the file value\nTool-in-flight bound (ms, 0 = no bound)\nhow long ONE tool call may run before it stops explaining a silent member: past this bound the call is reported ONCE as a `tool-expired` incident (a warning — never a scene, never a hold, never an escalation), and `0` disables the bound\nmpd.jsonc watchdog.toolInFlightMaxMs\nReset to the file value\nHold TTL (ms, 0 = no expiry)\nhow long a watchdog hold may stay latched before it auto-releases: past this bound the hold releases itself and changes ZERO team bytes, and activity newer than the hold releases it sooner — `0` disables the expiry\nmpd.jsonc watchdog.holdTtlMs\nReset to the file value\ndeclared fallback — live catalog unavailable (the model directory for this session reports no provider)\nSlot 1 — heavy members (Architect, Planner, Reviewer, Lead, Senior Engineer)\nWhen a team is created these members start on this slot's provider · model · reasoning effort; an unusable value fails team creation loudly, naming the member and the slot.\nSlot 1 provider (heavy members)\nThe provider half of this slot. The slots are the default model route of team members: when a team is created, the heavy members (Architect, Planner, Reviewer, Lead, Senior Engineer) start on this slot's provider + model + reasoning effort. What changing it does: those members take the new route at the next team creation, and an unusable value makes team creation FAIL loudly, naming the member and the slot — it never silently substitutes another model. Vision Analyst is the vision member: slot 4 drives it.\nmpd.jsonc teamModels.slot1.provider) — declared fallback: the model directory for this session reports no provider\n—\ndeepseek-official\nReset to the file value\nSlot 1 model (heavy members)\nThis slot's model. Together with the provider above, it decides the model the heavy members (Architect, Planner, Reviewer, Lead, Senior Engineer) start on. What changing it does: same as above — effective at the next team creation; a model the provider does not offer makes team creation fail with the member and slot named.\nmpd.jsonc teamModels.slot1.model) — declared fallback: the model directory for this session reports no provider\n—\ndeepseek-v4-flash\ndeepseek-v4-flash-vision-exp\ndeepseek-v4-pro\ndeepseek-flash\nReset to the file value\nSlot 1 reasoning effort (heavy members)\nThis slot's reasoning effort (off / low / high / max). It sets how much the heavy members (Architect, Planner, Reviewer, Lead, Senior Engineer) think when a team is created: max is the strongest, high the usual balance, low cheaper, off disables reasoning. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot. EXCEPTION: a model whose catalog entry declares no reasoning efforts at all is sent none — its call still runs.\nmpd.jsonc teamModels.slot1.reasoningEffort) — declared fallback: the model directory for this session reports no provider\n—\noff\nlow\nhigh\nmax\nReset to the file value\nSlot 2 — analysis members (Researcher, Explorer, Plan Reviewer)\nWhen a team is created these members start on this slot's provider · model · reasoning effort; an unusable value fails team creation loudly, naming the member and the slot.\nSlot 2 provider (analysis members)\nThe provider half of this slot. The slots are the default model route of team members: when a team is created, the analysis members (Researcher, Explorer, Plan Reviewer) start on this slot's provider + model + reasoning effort. What changing it does: those members take the new route at the next team creation, and an unusable value makes team creation FAIL loudly, naming the member and the slot — it never silently substitutes another model. Vision Analyst is the vision member: slot 4 drives it.\nmpd.jsonc teamModels.slot2.provider) — declared fallback: the model directory for this session reports no provider\n—\ndeepseek-official\nReset to the file value\nSlot 2 model (analysis members)\nThis slot's model. Together with the provider above, it decides the model the analysis members (Researcher, Explorer, Plan Reviewer) start on. What changing it does: same as above — effective at the next team creation; a model the provider does not offer makes team creation fail with the member and slot named.\nmpd.jsonc teamModels.slot2.model) — declared fallback: the model directory for this session reports no provider\n—\ndeepseek-v4-flash\ndeepseek-v4-flash-vision-exp\ndeepseek-v4-pro\ndeepseek-flash\nReset to the file value\nSlot 2 reasoning effort (analysis members)\nThis slot's reasoning effort (off / low / high / max). It sets how much the analysis members (Researcher, Explorer, Plan Reviewer) think when a team is created: max is the strongest, high the usual balance, low cheaper, off disables reasoning. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot. EXCEPTION: a model whose catalog entry declares no reasoning efforts at all is sent none — its call still runs.\nmpd.jsonc teamModels.slot2.reasoningEffort) — declared fallback: the model directory for this session reports no provider\n—\noff\nlow\nhigh\nmax\nReset to the file value\nSlot 3 — execution members (Deep Worker, Junior Engineer)\nWhen a team is created these members start on this slot's provider · model · reasoning effort; an unusable value fails team creation loudly, naming the member and the slot.\nSlot 3 provider (execution members)\nThe provider half of this slot. The slots are the default model route of team members: when a team is created, the execution members (Deep Worker, Junior Engineer) start on this slot's provider + model + reasoning effort. What changing it does: those members take the new route at the next team creation, and an unusable value makes team creation FAIL loudly, naming the member and the slot — it never silently substitutes another model. Vision Analyst is the vision member: slot 4 drives it.\nmpd.jsonc teamModels.slot3.provider) — declared fallback: the model directory for this session reports no provider\n—\ndeepseek-official\nReset to the file value\nSlot 3 model (execution members)\nThis slot's model. Together with the provider above, it decides the model the execution members (Deep Worker, Junior Engineer) start on. What changing it does: same as above — effective at the next team creation; a model the provider does not offer makes team creation fail with the member and slot named.\nmpd.jsonc teamModels.slot3.model) — declared fallback: the model directory for this session reports no provider\n—\ndeepseek-v4-flash\ndeepseek-v4-flash-vision-exp\ndeepseek-v4-pro\ndeepseek-flash\nReset to the file value\nSlot 3 reasoning effort (execution members)\nThis slot's reasoning effort (off / low / high / max). It sets how much the execution members (Deep Worker, Junior Engineer) think when a team is created: max is the strongest, high the usual balance, low cheaper, off disables reasoning. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot. EXCEPTION: a model whose catalog entry declares no reasoning efforts at all is sent none — its call still runs.\nmpd.jsonc teamModels.slot3.reasoningEffort) — declared fallback: the model directory for this session reports no provider\n—\noff\nlow\nhigh\nmax\nReset to the file value\nSlot 4 — vision member (Vision Analyst)\nWhen a team is created Vision Analyst starts on this slot's provider · model · reasoning effort; the model here MUST accept image input or image analysis fails; an unusable value fails team creation loudly, naming the member and the slot.\nSlot 4 provider (vision member)\nThe provider half of this slot. It drives Vision Analyst only (the one member that reads images, diagrams and screenshots). What changing it does: effective at the next team creation; an unusable value fails team creation loudly, naming the member and the slot. The model here must be a vision model that accepts image input (for example deepseek-v4-flash-vision-exp) — a text-only model breaks image analysis.\nmpd.jsonc teamModels.slot4.provider) — declared fallback: the model directory for this session reports no provider\n—\ndeepseek-official\nReset to the file value\nSlot 4 model (vision member)\nThis slot's model. It MUST accept image input: Vision Analyst's whole value is reading images, and a text-only model makes its image tasks fail. What changing it does: effective at the next team creation.\nmpd.jsonc teamModels.slot4.model) — declared fallback: the model directory for this session reports no provider\n—\ndeepseek-v4-flash\ndeepseek-v4-flash-vision-exp\ndeepseek-v4-pro\ndeepseek-flash\nReset to the file value\nSlot 4 reasoning effort (vision member)\nThis slot's reasoning effort (off / low / high / max). It sets how much Vision Analyst thinks while reading an image. What changing it does: effective at the next team creation; an effort the chosen model does not support fails team creation and names this slot. EXCEPTION: a model whose catalog entry declares no reasoning efforts at all is sent none — its call still runs.\nmpd.jsonc teamModels.slot4.reasoningEffort) — declared fallback: the model directory for this session reports no provider\n—\noff\nlow\nhigh\nmax\nReset to the file value\nArchitect — own route (overrides slot 1 · heavy members)\nA leaf set here applies to this member only and LIVE — the next spawn or resolve carries it; an unset leaf falls through to the member's slot, and clearing every leaf returns the member to the slot.\nArchitect provider (own route)\nThe provider half of Architect's OWN route override. An agentRoutes leaf outranks Architect's team-model slot: it applies to Architect only, and LIVE — the member's next spawn or resolve carries it, no restart and no new team needed. An unset leaf falls through to the slot's provider; clearing every leaf returns Architect to the slot.\nmpd.jsonc agentRoutes.Architect.provider) — declared fallback: the model directory for this session reports no provider\n—\ndeepseek-official\nReset to the file value\nArchitect model (own route)\nThe model half of Architect's OWN route override. It outranks the model of Architect's team-model slot (heavy members) and applies LIVE — the member's next spawn or resolve carries it, no restart and no new team needed. An unset leaf falls through to the slot's model; clearing every leaf returns Architect to the slot.\nmpd.jsonc agentRoutes.Architect.model) — declared fallback: the model directory for this session reports no provider\n—\ndeepseek-v4-flash\ndeepseek-v4-flash-vision-exp\ndeepseek-v4-pro\ndeepseek-flash\nReset to the file value\nArchitect reasoning effort (own route)\nThe reasoning-effort half of Architect's OWN route override (off / low / high / max). It outranks the effort of Architect's team-model slot (heavy members) and applies LIVE — the member's next spawn or resolve carries it. An unset leaf falls through to the slot's effort; an effort the chosen model does not support fails that member's spawn loudly, naming the member.\nmpd.jsonc agentRoutes.Architect.reasoningEffort) — declared fallback: the model directory for this session reports no provider\n—\noff\nlow\nhigh\nmax\nReset to the file value\nPlanner — own route (overrides slot 1 · heavy members)\nA leaf set here applies to this member only and LIVE — the next spawn or resolve carries it; an unset leaf falls through to the member's slot, and clearing every leaf returns the member to the slot.\nPlanner provider (own route)\nThe provider half of Planner's OWN route override. An agentRoutes leaf outranks Planner's team-model slot: it applies to Planner only, and LIVE — the member's next spawn or resolve carries it, no restart and no new team needed. An unset leaf falls through to the slot's provider; clearing every leaf returns Planner to the slot.\nmpd.jsonc agentRoutes.Planner.provider) — declared fallback: the model directory for this session reports no provider\n—\ndeepseek-official\nReset to the file value\nPlanner model (own route)\nThe model half of Planner's OWN route override. It outranks the model of Planner's team-model slot (heavy members) and applies LIVE — the member's next spawn or resolve carries it, no restart and no new team needed. An unset leaf falls through to the slot's model; clearing every leaf returns Planner to the slot.\nmpd.jsonc agentRoutes.Planner.model) — declared fallback: the model directory for this session reports no provider\n—\ndeepseek-v4-flash\ndeepseek-v4-flash-vision-exp\ndeepseek-v4-pro\ndeepseek-flash\nReset to the file value\nPlanner reasoning effort (own route)\nThe reasoning-effort half of Planner's OWN route override (off / low / high / max). It outranks the effort of Planner's team-model slot (heavy members) and applies LIVE — the member's next spawn or resolve carries it. An unset leaf falls through to the slot's effort; an effort the chosen model does not support fails that member's spawn loudly, naming the member.\nmpd.jsonc agentRoutes.Planner.reasoningEffort) — declared fallback: the model directory for this session reports no provider\n—\noff\nlow\nhigh\nmax\nReset to the file value\nReviewer — own route (overrides slot 1 · heavy members)\nA leaf set here applies to this member only and LIVE — the next spawn or resolve carries it; an unset leaf falls through to the member's slot, and clearing every leaf returns the member to the slot.\nReviewer provider (own route)\nThe provider half of Reviewer's OWN route override. An agentRoutes leaf outranks Reviewer's team-model slot: it applies to Reviewer only, and LIVE — the member's next spawn or resolve carries it, no restart and no new team needed. An unset leaf falls through to the slot's provider; clearing every leaf returns Reviewer to the slot.\nmpd.jsonc agentRoutes.Reviewer.provider) — declared fallback: the model directory for this session reports no provider\n—\ndeepseek-official\nReset to the file value\nReviewer model (own route)\nThe model half of Reviewer's OWN route override. It outranks the model of Reviewer's team-model slot (heavy members) and applies LIVE — the member's next spawn or resolve carries it, no restart and no new team needed. An unset leaf falls through to the slot's model; clearing every leaf returns Reviewer to the slot.\nmpd.jsonc agentRoutes.Reviewer.model) — declared fallback: the model directory for this session reports no provider\n—\ndeepseek-v4-flash\ndeepseek-v4-flash-vision-exp\ndeepseek-v4-pro\ndeepseek-flash\nReset to the file value\nReviewer reasoning effort (own route)\nThe reasoning-effort half of Reviewer's OWN route override (off / low / high / max). It outranks the effort of Reviewer's team-model slot (heavy members) and applies LIVE — the member's next spawn or resolve carries it. An unset leaf falls through to the slot's effort; an effort the chosen model does not support fails that member's spawn loudly, naming the member.\nmpd.jsonc agentRoutes.Reviewer.reasoningEffort) — declared fallback: the model directory for this session reports no provider\n—\noff\nlow\nhigh\nmax\nReset to the file value\nLead — own route (overrides slot 1 · heavy members)\nA leaf set here applies to this member only and LIVE — the next spawn or resolve carries it; an unset leaf falls through to the member's slot, and clearing every leaf returns the member to the slot.\nLead provider (own route)\nThe provider half of Lead's OWN route override. An agentRoutes leaf outranks Lead's team-model slot: it applies to Lead only, and LIVE — the member's next spawn or resolve carries it, no restart and no new team needed. An unset leaf falls through to the slot's provider; clearing every leaf returns Lead to the slot.\nmpd.jsonc agentRoutes.Lead.provider) — declared fallback: the model directory for this session reports no provider\n—\ndeepseek-official\nReset to the file value\nLead model (own route)\nThe model half of Lead's OWN route override. It outranks the model of Lead's team-model slot (heavy members) and applies LIVE — the member's next spawn or resolve carries it, no restart and no new team needed. An unset leaf falls through to the slot's model; clearing every leaf returns Lead to the slot.\nmpd.jsonc agentRoutes.Lead.model) — declared fallback: the model directory for this session reports no provider\n—\ndeepseek-v4-flash\ndeepseek-v4-flash-vision-exp\ndeepseek-v4-pro\ndeepseek-flash\nReset to the file value\nLead reasoning effort (own route)\nThe reasoning-effort half of Lead's OWN route override (off / low / high / max). It outranks the effort of Lead's team-model slot (heavy members) and applies LIVE — the member's next spawn or resolve carries it. An unset leaf falls through to the slot's effort; an effort the chosen model does not support fails that member's spawn loudly, naming the member.\nmpd.jsonc agentRoutes.Lead.reasoningEffort) — declared fallback: the model d",
+  "mpdControls": [
+    {
+      "label": "",
+      "kind": "input",
+      "value": ""
+    },
+    {
+      "label": "",
+      "kind": "input",
+      "value": ""
+    },
+    {
+      "label": "Inline diff limitmpd.jsonc hashline.maxDiffCharsReset to the file value",
+      "kind": "input",
+      "value": "20000"
+    },
+    {
+      "label": "Comment checkermpd.jsonc commentChecker.autoCheckReset to the file value",
+      "kind": "input",
+      "value": "true"
+    },
+    {
+      "label": "Ultrawork roundsmpd.jsonc ulw.maxRoundsReset to the file value",
+      "kind": "input",
+      "value": "6"
+    },
+    {
+      "label": "Memory backendmpd.jsonc memory.vcs—gitsvnReset to the file value",
+      "kind": "select",
+      "value": "git"
+    },
+    {
+      "label": "Team state directorympd.jsonc team.stateDirReset to the file value",
+      "kind": "input",
+      "value": ".mpd/team"
+    },
+    {
+      "label": "Boulder directorympd.jsonc boulder.dirReset to the file value",
+      "kind": "input",
+      "value": ""
+    },
+    {
+      "label": "Watchdog enabledmpd.jsonc watchdog.enabledReset to the file value",
+      "kind": "input",
+      "value": "true"
+    },
+    {
+      "label": "Silence warning threshold (ms)mpd.jsonc watchdog.warnSilenceMsReset to the file value",
+      "kind": "input",
+      "value": "600000"
+    },
+    {
+      "label": "Watchdog tick interval (ms)mpd.jsonc watchdog.tickIntervalMsReset to the file value",
+      "kind": "input",
+      "value": "15000"
+    },
+    {
+      "label": "Warn streak before escalationmpd.jsonc watchdog.warnStreakToEscalateReset to the file value",
+      "kind": "input",
+      "value": "6"
+    },
+    {
+      "label": "Action on escalationmpd.jsonc watchdog.actionOnEscalate—pausewarn-onlyReset to the file value",
+      "kind": "select",
+      "value": "warn-only"
+    },
+    {
+      "label": "Tool-in-flight bound (ms, 0 = no bound)how long ONE tool call may run before it stops explaining a silent member: past t",
+      "kind": "input",
+      "value": "900000"
+    },
+    {
+      "label": "Hold TTL (ms, 0 = no expiry)how long a watchdog hold may stay latched before it auto-releases: past this bound the hold ",
+      "kind": "input",
+      "value": "900000"
+    },
+    {
+      "label": "Slot 1 provider (heavy members)The provider half of this slot. The slots are the default model route of team members: wh",
+      "kind": "select",
+      "value": "deepseek-official"
+    },
+    {
+      "label": "Slot 1 model (heavy members)This slot's model. Together with the provider above, it decides the model the heavy members ",
+      "kind": "select",
+      "value": "deepseek-v4-flash"
+    },
+    {
+      "label": "Slot 1 reasoning effort (heavy members)This slot's reasoning effort (off / low / high / max). It sets how much the heavy",
+      "kind": "select",
+      "value": "max"
+    },
+    {
+      "label": "Slot 2 provider (analysis members)The provider half of this slot. The slots are the default model route of team members:",
+      "kind": "select",
+      "value": "deepseek-official"
+    },
+    {
+      "label": "Slot 2 model (analysis members)This slot's model. Together with the provider above, it decides the model the analysis me",
+      "kind": "select",
+      "value": "deepseek-v4-flash"
+    },
+    {
+      "label": "Slot 2 reasoning effort (analysis members)This slot's reasoning effort (off / low / high / max). It sets how much the an",
+      "kind": "select",
+      "value": "high"
+    },
+    {
+      "label": "Slot 3 provider (execution members)The provider half of this slot. The slots are the default model route of team members",
+      "kind": "select",
+      "value": "deepseek-official"
+    },
+    {
+      "label": "Slot 3 model (execution members)This slot's model. Together with the provider above, it decides the model the execution ",
+      "kind": "select",
+      "value": "deepseek-v4-flash"
+    },
+    {
+      "label": "Slot 3 reasoning effort (execution members)This slot's reasoning effort (off / low / high / max). It sets how much the e",
+      "kind": "select",
+      "value": "high"
+    },
+    {
+      "label": "Slot 4 provider (vision member)The provider half of this slot. It drives Vision Analyst only (the one member that reads ",
+      "kind": "select",
+      "value": "deepseek-official"
+    },
+    {
+      "label": "Slot 4 model (vision member)This slot's model. It MUST accept image input: Vision Analyst's whole value is reading image",
+      "kind": "select",
+      "value": "deepseek-v4-flash-vision-exp"
+    },
+    {
+      "label": "Slot 4 reasoning effort (vision member)This slot's reasoning effort (off / low / high / max). It sets how much Vision An",
+      "kind": "select",
+      "value": "high"
+    },
+    {
+      "label": "Architect provider (own route)The provider half of Architect's OWN route override. An agentRoutes leaf outranks Architec",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Architect model (own route)The model half of Architect's OWN route override. It outranks the model of Architect's team-m",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Architect reasoning effort (own route)The reasoning-effort half of Architect's OWN route override (off / low / high / ma",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Planner provider (own route)The provider half of Planner's OWN route override. An agentRoutes leaf outranks Planner's te",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Planner model (own route)The model half of Planner's OWN route override. It outranks the model of Planner's team-model s",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Planner reasoning effort (own route)The reasoning-effort half of Planner's OWN route override (off / low / high / max). ",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Reviewer provider (own route)The provider half of Reviewer's OWN route override. An agentRoutes leaf outranks Reviewer's",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Reviewer model (own route)The model half of Reviewer's OWN route override. It outranks the model of Reviewer's team-mode",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Reviewer reasoning effort (own route)The reasoning-effort half of Reviewer's OWN route override (off / low / high / max)",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Lead provider (own route)The provider half of Lead's OWN route override. An agentRoutes leaf outranks Lead's team-model ",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Lead model (own route)The model half of Lead's OWN route override. It outranks the model of Lead's team-model slot (heav",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Lead reasoning effort (own route)The reasoning-effort half of Lead's OWN route override (off / low / high / max). It out",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Senior Engineer provider (own route)The provider half of Senior Engineer's OWN route override. An agentRoutes leaf outra",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Senior Engineer model (own route)The model half of Senior Engineer's OWN route override. It outranks the model of Senior",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Senior Engineer reasoning effort (own route)The reasoning-effort half of Senior Engineer's OWN route override (off / low",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Researcher provider (own route)The provider half of Researcher's OWN route override. An agentRoutes leaf outranks Resear",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Researcher model (own route)The model half of Researcher's OWN route override. It outranks the model of Researcher's tea",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Researcher reasoning effort (own route)The reasoning-effort half of Researcher's OWN route override (off / low / high / ",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Explorer provider (own route)The provider half of Explorer's OWN route override. An agentRoutes leaf outranks Explorer's",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Explorer model (own route)The model half of Explorer's OWN route override. It outranks the model of Explorer's team-mode",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Explorer reasoning effort (own route)The reasoning-effort half of Explorer's OWN route override (off / low / high / max)",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Plan Reviewer provider (own route)The provider half of Plan Reviewer's OWN route override. An agentRoutes leaf outranks ",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Plan Reviewer model (own route)The model half of Plan Reviewer's OWN route override. It outranks the model of Plan Revie",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Plan Reviewer reasoning effort (own route)The reasoning-effort half of Plan Reviewer's OWN route override (off / low / h",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Deep Worker provider (own route)The provider half of Deep Worker's OWN route override. An agentRoutes leaf outranks Deep",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Deep Worker model (own route)The model half of Deep Worker's OWN route override. It outranks the model of Deep Worker's ",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Deep Worker reasoning effort (own route)The reasoning-effort half of Deep Worker's OWN route override (off / low / high ",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Junior Engineer provider (own route)The provider half of Junior Engineer's OWN route override. An agentRoutes leaf outra",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Junior Engineer model (own route)The model half of Junior Engineer's OWN route override. It outranks the model of Junior",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Junior Engineer reasoning effort (own route)The reasoning-effort half of Junior Engineer's OWN route override (off / low",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Vision Analyst provider (own route)The provider half of Vision Analyst's OWN route override. An agentRoutes leaf outrank",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Vision Analyst model (own route)The model half of Vision Analyst's OWN route override. It outranks the model of Vision A",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Vision Analyst reasoning effort (own route)The reasoning-effort half of Vision Analyst's OWN route override (off / low /",
+      "kind": "select",
+      "value": ""
+    },
+    {
+      "label": "Ctrl+A dependency view (old dsh-tui builds)applies to hosts WITHOUT the sidebar panel seam (dsh-tui before 0.13.0) only:",
+      "kind": "input",
+      "value": "true"
+    }
+  ],
+  "presetsClick": "clicked",
+  "agentPresetsText": "New Session\nPlugins\nAutomation tasks\nWorkspaces\nws\nNew Session\nMore\nInto the Unknown\nPreview\nws\nStandard mode\nDescribe what you want to build, / commands, @ files or sessions\nWorkspace Write\nSelect model\nSettings\nGeneral\nModels\nBuilt-in plugins\nAgent presets\nMPD\nOpen configuration file\nClose\nAgent presets\nChoose the agent’s tools and how it works. Use Standard mode for everyday tasks, or Creator mode to add capabilities to DSH.\nBUILT-IN\nStandard mode\nNew task default\nstandard\nWork with code, files, and information. Suitable for most tasks, with search, editing, terminal commands, and other tools available as needed.\nMode details\nHow to use\nPTC mode\nBuilt-in\nptc\nIncludes all Standard mode capabilities. Better suited to tasks that call tools in batches and then filter, organize, deduplicate, count, or summarize the results.\nMode details\nHow to use\nMinimal mode\nBuilt-in\nminimal\nThe agent uses a terminal and image reading, with context compaction. Useful for testing and comparing its basic performance.\nMode details\nHow to use\nCreator mode\nBuilt-in\ncordis\nCustomize DSH through conversation. Let the agent write plugins that add features or UI, or combine tools and prompts to create your own mode.\nMode details\nHow to use\nCUSTOM\nMPD (Main Working Agent)\nCustom\nmpd\nThe my-power-dsh main agent: reads AGENT.md/AGENTS.md/CLAUDE.md for every project, works natively, consults the specialists in single calls (Architect/Researcher/Planner/Deep Worker/Senior Engineer/Lead/Explorer/Reviewer/Plan Reviewer/Vision Analyst/Junior Engineer) via mpd_role_spawn, and runs teams through the official @deepseek-ai/dsh-experimental-agent-team plugin.\nLet the agent help me create a preset",
+  "browserLocale": "",
+  "sessionCreate": {
+    "status": 200,
+    "body": "{\"type\":\"server-response\",\"rpcId\":\"capture-1792570353692\",\"result\":{\"ok\":true,\"value\":{\"sessionId\":\"session-bfd98069-afd6-4632-b19e-d858db09ad7f\",\"agentPreset\":\"mpd\"}}}"
+  },
+  "sessionId": "session-bfd98069-afd6-4632-b19e-d858db09ad7f",
+  "sidebarButton": 1,
+  "teamTabClick": "clicked",
+  "teamPanelText": "New Session\nPlugins\nAutomation tasks\nWorkspaces\nws\nNew Session\nMore\nInto the Unknown\nPreview\nws\nStandard mode\nDescribe what you want to build, / commands, @ files or sessions\nWorkspace Write\nSelect model\nTeam\ncjk-board\nactive\nteam-2026-10-05T22-30-00.000Z\napproved 2026-10-05T22:30:00.000Z\nworkspace ws\n1 running · 1 ready · 2 blocked\n2/6 complete · 1 running / 1 ready\nProgress 33%\nnative executor\nMEMBERS (5)\nlead\nLead\n1/1\ndeepseek-official/deepseek-v4-pro\nweb-team-gui\nSenior Engineer\n0/1\ndeepseek-official/deepseek-flash\ncurrent T3\nweb-settings-card\nSenior Engineer\n0/1\ndeepseek-official/deepseek-flash\ncurrent T4\ntui-model-i18n\nSenior Engineer\n0/0\ndeepseek-official/deepseek-flash\nui-reviewer\nReviewer\n1/2\ndeepseek-official/deepseek-v4-pro\ncurrent T5\nTASKS (6)\n✓\nT1\nREQ\nfix styles\n✓\nT2\nWRK\n#2\n◐\nT3\nWRK\nlogin\n○\nT4\nWRK\n#4\n○\nT6\nINT\n#6\n○\nT5\nREV\n#5",
+  "teamRouteRequests": [],
+  "teamPanelSession": "",
+  "teamPanelNodesAfterSeed": 6,
+  "teamTabId": "team-2026-10-05T22-30-00.000Z",
+  "teamGraph": "ranks=3 edges=6",
+  "teamNodes": [
+    "T1",
+    "T2",
+    "T3",
+    "T4",
+    "T6",
+    "T5"
+  ],
+  "teamEdges": [
+    "T3<-T1",
+    "T4<-T1",
+    "T4<-T2",
+    "T5<-T3",
+    "T6<-T3",
+    "T5<-T4"
+  ],
+  "teamFixtureSubjects": [
+    "fix 登录页 styles",
+    "冻结验收契约",
+    "修复 login 页面的截断",
+    "完成 ✅ 收尾",
+    "构建头部与进度条",
+    "！？。"
+  ],
+  "teamFixtureTasks": [
+    {
+      "id": "T1",
+      "subject": "fix 登录页 styles"
+    },
+    {
+      "id": "T2",
+      "subject": "冻结验收契约"
+    },
+    {
+      "id": "T3",
+      "subject": "修复 login 页面的截断"
+    },
+    {
+      "id": "T4",
+      "subject": "完成 ✅ 收尾"
+    },
+    {
+      "id": "T5",
+      "subject": "构建头部与进度条"
+    },
+    {
+      "id": "T6",
+      "subject": "！？。"
+    }
+  ],
+  "teamFixtureSubjectsCjk": [
+    "登",
+    "录",
+    "页",
+    "冻",
+    "结",
+    "验",
+    "收",
+    "契",
+    "约",
+    "修",
+    "复",
+    "页",
+    "面",
+    "的",
+    "截",
+    "断",
+    "完",
+    "成",
+    "收",
+    "尾",
+    "构",
+    "建",
+    "头",
+    "部",
+    "与",
+    "进",
+    "度",
+    "条",
+    "！",
+    "？",
+    "。"
+  ],
+  "teamHoverReachable": true,
+  "teamRanks": {
+    "T1": 0,
+    "T2": 0,
+    "T3": 1,
+    "T4": 1,
+    "T6": 2,
+    "T5": 2
+  },
+  "teamForwardEdges": [
+    "T3<-T1",
+    "T4<-T1",
+    "T4<-T2",
+    "T5<-T3",
+    "T6<-T3",
+    "T5<-T4"
+  ],
+  "teamHoverTarget": "T5",
+  "teamFocusWhileHovered": "chain",
+  "teamFocusAfterLeave": "none",
+  "teamNodeBoxes": [
+    {
+      "id": "T1",
+      "x": 905,
+      "y": 574,
+      "w": 144,
+      "h": 42
+    },
+    {
+      "id": "T2",
+      "x": 905,
+      "y": 626,
+      "w": 144,
+      "h": 42
+    },
+    {
+      "id": "T3",
+      "x": 1073,
+      "y": 574,
+      "w": 144,
+      "h": 42
+    },
+    {
+      "id": "T4",
+      "x": 1073,
+      "y": 626,
+      "w": 144,
+      "h": 42
+    },
+    {
+      "id": "T6",
+      "x": 1241,
+      "y": 574,
+      "w": 144,
+      "h": 42
+    },
+    {
+      "id": "T5",
+      "x": 1241,
+      "y": 626,
+      "w": 144,
+      "h": 42
+    }
+  ],
+  "teamNodeOverlaps": [],
+  "teamDetailAfterClick": "T5",
+  "dagCurves": [
+    {
+      "edge": "T3<-T1",
+      "route": "156,19,12,1;168,14,1,5;168,14,13,1|R175,10,5,8",
+      "d": "M 156 19 L 165.5 19 Q 168 19 168 16.5 L 168 16.5 C 168 16.5 170.5 14 180 14",
+      "tip": "180,10,0,8",
+      "head": "1"
+    },
+    {
+      "edge": "T4<-T1",
+      "route": "156,31,23,1;179,31,1,35;179,66,2,1|R175,62,5,8",
+      "d": "M 156 31 L 173 31 Q 179 31 179 37 L 179 66 L 180 66",
+      "tip": "180,62,0,8",
+      "head": "1"
+    },
+    {
+      "edge": "T4<-T2",
+      "route": "156,77,1,1;157,77,1,1;157,78,24,1|R175,74,5,8",
+      "d": "M 156 77 L 156.5 77 Q 157 77 157 77.5 L 157 78 L 180 78",
+      "tip": "180,74,0,8",
+      "head": "1"
+    },
+    {
+      "edge": "T5<-T3",
+      "route": "324,38,23,1;347,38,1,33;347,71,2,1|R343,67,5,8",
+      "d": "M 324 38 L 341 38 Q 347 38 347 44 L 347 71 L 348 71",
+      "tip": "348,67,0,8",
+      "head": "1"
+    },
+    {
+      "edge": "T6<-T3",
+      "route": "324,26,12,1;336,25,1,1;336,25,13,1|R343,21,5,8",
+      "d": "M 324 26 L 335.5 26 Q 336 26 336 25.5 L 336 25 L 348 25",
+      "tip": "348,21,0,8",
+      "head": "1"
+    },
+    {
+      "edge": "T5<-T4",
+      "route": "324,90,1,1;325,83,1,7;325,83,24,1|R343,79,5,8",
+      "d": "M 324 90 L 324.5 90 Q 325 90 325 89.5 L 325 86.5 C 325 86.5 328.5 83 348 83",
+      "tip": "348,79,0,8",
+      "head": "1"
+    }
+  ],
+  "dagNodeBoxes": [
+    {
+      "id": "T1",
+      "lx": 12,
+      "ly": 4,
+      "lw": 144,
+      "lh": 42,
+      "vx": 905,
+      "vy": 574,
+      "vw": 144,
+      "vh": 42,
+      "text": "✓T1REQfix styles"
+    },
+    {
+      "id": "T2",
+      "lx": 12,
+      "ly": 56,
+      "lw": 144,
+      "lh": 42,
+      "vx": 905,
+      "vy": 626,
+      "vw": 144,
+      "vh": 42,
+      "text": "✓T2WRK#2"
+    },
+    {
+      "id": "T3",
+      "lx": 180,
+      "ly": 4,
+      "lw": 144,
+      "lh": 42,
+      "vx": 1073,
+      "vy": 574,
+      "vw": 144,
+      "vh": 42,
+      "text": "◐T3WRKlogin"
+    },
+    {
+      "id": "T4",
+      "lx": 180,
+      "ly": 56,
+      "lw": 144,
+      "lh": 42,
+      "vx": 1073,
+      "vy": 626,
+      "vw": 144,
+      "vh": 42,
+      "text": "○T4WRK#4"
+    },
+    {
+      "id": "T6",
+      "lx": 348,
+      "ly": 4,
+      "lw": 144,
+      "lh": 42,
+      "vx": 1241,
+      "vy": 574,
+      "vw": 144,
+      "vh": 42,
+      "text": "○T6INT#6"
+    },
+    {
+      "id": "T5",
+      "lx": 348,
+      "ly": 56,
+      "lw": 144,
+      "lh": 42,
+      "vx": 1241,
+      "vy": 626,
+      "vw": 144,
+      "vh": 42,
+      "text": "○T5REV#5"
+    }
+  ],
+  "dagDrawingText": "✓T1REQfix styles✓T2WRK#2◐T3WRKlogin○T4WRK#4○T6INT#6○T5REV#5",
+  "dagDetailText": "\n.mpd-dag-node { position: absolute; left: 0; top: 0; box-sizing: border-box; overflow: hidden; cursor: pointer; border: 0.5px solid rgba(17,24,39,.22); border-radius: 6px; padding: 3px 5px; font-family: var(--dsw-font-mono, ui-monospace, monospace); font-size: 10px; line-height: 1.3; color: #111827; background: var(--dsw-alias-bg-layer-1, #ffffff); background: linear-gradient(180deg, rgba(255,255,255,.92) 0%, rgba(255,255,255,.62) 55%, rgba(238,243,251,.58) 100%); -webkit-backdrop-filter: blur(14px) saturate(1.25); backdrop-filter: blur(14px) saturate(1.25); box-shadow: inset 0 1px 0 rgba(255,255,255,.95), inset 0 -1px 0 rgba(17,24,39,.06), 0 1px 2px rgba(16,24,40,.08), 0 6px 18px rgba(16,24,40,.12); transition: transform 420ms cubic-bezier(.2,.8,.2,1), opacity 200ms, border-color 200ms, box-shadow 200ms; will-change: transform; }\n@keyframes mpd-dag-breathe { 0%, 100% { box-shadow: inset 0 1px 0 rgba(255,255,255,.95), inset 0 -1px 0 rgba(17,24,39,.06), 0 0 0 1px rgba(77,107,254,.55), 0 0 0 5px rgba(77,107,254,.20), 0 8px 24px rgba(77,107,254,.30); border-color: rgba(77,107,254,.75); } 50% { box-shadow: inset 0 1px 0 rgba(255,255,255,.95), inset 0 -1px 0 rgba(17,24,39,.06), 0 0 0 2px rgba(77,107,254,.90), 0 0 0 9px rgba(77,107,254,.32), 0 10px 30px rgba(77,107,254,.40); border-color: rgba(77,107,254,.95); } }\n.mpd-dag-node[data-visual=\"running\"] { animation: mpd-dag-breathe 2.4s ease-in-out infinite; }\n.mpd-dag-tip { position: fixed; z-index: 2147483000; pointer-events: none; box-sizing: border-box; padding: 8px 10px; border: 0.5px solid rgba(17,24,39,.45); border-radius: 10px; background: rgba(255,255,255,.78); color: #111; font-family: var(--dsw-font-mono, ui-monospace, monospace); font-size: 11px; line-height: 1.4; box-shadow: 0 6px 22px rgba(16,24,40,.18); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }\n.mpd-dag-tip[data-pinned=\"true\"] { background: #ffffff; opacity: 1; }\n.mpd-dag-tip-row { display: flex; gap: 6px; justify-content: space-between; white-space: nowrap; overflow: hidden; }\n.mpd-dag-tip-label { color: #4b5563; }\n.mpd-dag-tip-subject { display: block; flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; margin-top: 2px; text-align: right; }\n.mpd-dag-tip-bar { height: 5px; border-radius: 3px; background: rgba(17,24,39,.12); overflow: hidden; margin-top: 4px; }\n.mpd-dag-tip-fill { height: 100%; background: #111; }\n@keyframes mpd-dag-dash { to { stroke-dashoffset: -12; } }\n.mpd-dag-flow { stroke-dasharray: 6 6; animation: mpd-dag-dash 1s linear infinite; }\n@media (prefers-reduced-motion: reduce) { .mpd-dag-node { transition: none; } .mpd-dag-node[data-visual=\"running\"] { animation: none; } .mpd-dag-flow { animation: none; } }\ncjk-boardactiveteam-2026-10-05T22-30-00.000Zapproved 2026-10-05T22:30:00.000Zworkspace ws1 running · 1 ready · 2 blocked2/6 complete · 1 running / 1 readyProgress 33%native executorMEMBERS (5)leadLead1/1deepseek-official/deepseek-v4-proweb-team-guiSenior Engineer0/1deepseek-official/deepseek-flashcurrent T3web-settings-cardSenior Engineer0/1deepseek-official/deepseek-flashcurrent T4tui-model-i18nSenior Engineer0/0deepseek-official/deepseek-flashui-reviewerReviewer1/2deepseek-official/deepseek-v4-procurrent T5TASKS (6)✓T1REQfix styles✓T2WRK#2◐T3WRKlogin○T4WRK#4○T6INT#6○T5REV#5statusblockedownerui-reviewerelapsed-task构建头部与进度条progress 0%构建头部与进度条closeT5 · REV · ○ blockedownerui-reviewerblocked byT3, T4dependents—No frozen acceptance contract was served for this task.",
+  "dagDetailPins": [
+    {
+      "id": "T1",
+      "subject": "fix 登录页 styles",
+      "ideographs": true,
+      "text": "fix 登录页 stylescloseT1 · REQ · ✓ completedownerleadblocked by—dependentsT3, T4No frozen acceptance contract was served for this task.",
+      "keeps": true
+    },
+    {
+      "id": "T6",
+      "subject": "！？。",
+      "ideographs": false,
+      "text": "！？。closeT6 · INT · ○ blockedblocked byT3dependents—No frozen acceptance contract was served for this task.",
+      "keeps": true
+    }
+  ],
+  "dagScroller": {
+    "clientWidth": 695,
+    "scrollWidth": 695,
+    "clientHeight": 102,
+    "scrollHeight": 110
+  },
+  "mpdBindingProbe": {
+    "diffLimit": "20000",
+    "autoCheck": "true",
+    "controls": 61
+  },
+  "checks": {
+    "mpdPresetOffered": true,
+    "pluginsShowsInstalledBundle": true,
+    "presetsShowMpdDefault": true,
+    "mpdSectionRendered": true,
+    "sessionCreatedOnMpdPreset": true,
+    "teamPanelShowsRoster": true,
+    "teamGraphDrewEdges": true,
+    "dagEdgesAreCurves": true,
+    "dagOnePathPerEdge": true,
+    "dagTipIsZeroWidth": true,
+    "dagTipTouchesBorder": true,
+    "dagDrawingHasNoCjk": true,
+    "dagDetailKeepsCjk": true,
+    "teamGraphEdgesResolve": true,
+    "teamGraphHoverFocusChain": true,
+    "teamGraphNodesDoNotOverlap": true,
+    "teamGraphClickPinsDetail": true,
+    "mpdControlsBound": true
+  },
+  "ok": true,
+  "visibleText": "New Session\nPlugins\nAutomation tasks\nWorkspaces\nws\nNew Session\nMore\nInto the Unknown\nPreview\nws\nStandard mode\nDescribe what you want to build, / commands, @ files or sessions\nWorkspace Write\nSelect model\nTeam\ncjk-board\nactive\nteam-2026-10-05T22-30-00.000Z\napproved 2026-10-05T22:30:00.000Z\nworkspace ws\n1 running · 1 ready · 2 blocked\n2/6 complete · 1 running / 1 ready\nProgress 33%\nnative executor\nMEMBERS (5)\nlead\nLead\n1/1\ndeepseek-official/deepseek-v4-pro\nweb-team-gui\nSenior Engineer\n0/1\ndeepseek-official/deepseek-flash\ncurrent T3\nweb-settings-card\nSenior Engineer\n0/1\ndeepseek-official/deepseek-flash\ncurrent T4\ntui-model-i18n\nSenior Engineer\n0/0\ndeepseek-official/deepseek-flash\nui-reviewer\nReviewer\n1/2\ndeepseek-official/deepseek-v4-pro\ncurrent T5\nTASKS (6)\n✓\nT1\nREQ\nfix styles\n✓\nT2\nWRK\n#2\n◐\nT3\nWRK\nlogin\n○\nT4\nWRK\n#4\n○\nT6\nINT\n#6\n○\nT5\nREV\n#5\n！？。\nclose\nT6 · INT · ○ blocked\nblocked by\nT3\ndependents\n—\nNo frozen acceptance contract was served for this task."
+}

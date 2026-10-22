@@ -1,0 +1,229 @@
+{
+  "version": 7,
+  "record": {
+    "identity": {
+      "formatVersion": 4,
+      "createdAt": 1792656492086,
+      "cwd": "/tmp/mpd-mount-QT3Eju/ws",
+      "isSeeded": false,
+      "inheritedEventCount": 0
+    },
+    "rows": {
+      "title": {
+        "ver": 1,
+        "seq": 114,
+        "val": "Live settlement check plan"
+      },
+      "titleInput": {
+        "ver": 3,
+        "seq": 114,
+        "val": {
+          "first": {
+            "seq": 8,
+            "text": "Use the agent_teams_plan tool. Create a plan named live-settle with description 'Live settlement check'. Add exactly one member: name live-reviewer, description 'Reviewer - complete your task', prompt 'Use the agent_teams_task tool with action complete for the task assigned to you, then reply DONE'. Create exactly one task: subject 'Complete the live settlement', owner live-reviewer. Approve the plan. Then use the agent_teams_dispatch tool with action run to dispatch the ready task. Do not ask questions; reply DONE when finished."
+          },
+          "count": 1,
+          "lastSeq": 8
+        }
+      },
+      "llmRetry": {
+        "ver": 1,
+        "seq": 114,
+        "val": {}
+      },
+      "sandboxMode": {
+        "ver": 1,
+        "seq": 114,
+        "val": "workspace-write"
+      },
+      "goal": {
+        "ver": 6,
+        "seq": 114,
+        "val": {
+          "current": {
+            "goal": {
+              "id": "goal-8882b060-8c84-44c9-ba20-ae92a7c2d620",
+              "revision": 1,
+              "objective": "Live settlement check",
+              "phase": "active",
+              "maxGoalRounds": 32
+            },
+            "roundsStarted": 0,
+            "createdAt": 1792656502160,
+            "updatedAt": 1792656502160
+          },
+          "seenGoalIds": [
+            "goal-8882b060-8c84-44c9-ba20-ae92a7c2d620"
+          ],
+          "failure": null
+        }
+      },
+      "tokenUsage": {
+        "ver": 2,
+        "seq": 114,
+        "val": {
+          "totals": {
+            "uncachedInputTokens": 27452,
+            "outputTokens": 1954,
+            "cacheReadTokens": 401408,
+            "cacheWriteTokens": 0
+          },
+          "last": {
+            "turn": 1,
+            "step": 15,
+            "buckets": {
+              "uncachedInputTokens": 231,
+              "outputTokens": 281,
+              "cacheReadTokens": 29568,
+              "cacheWriteTokens": 0
+            }
+          }
+        }
+      },
+      "contextPressure": {
+        "ver": 5,
+        "seq": 114,
+        "val": {
+          "surfaceTokens": 8073,
+          "contextWindow": 1000000,
+          "pressureTokens": 29799,
+          "sampledSurfaceTokens": 7762
+        }
+      },
+      "contextBreakdown": {
+        "ver": 6,
+        "seq": 114,
+        "val": {
+          "systems": [
+            {
+              "seq": 7,
+              "tokens": 2869
+            }
+          ],
+          "surfaceTokens": 8073,
+          "breakdown": {
+            "systemTokens": 2869,
+            "toolsTokens": 21063,
+            "messageTokens": 5204
+          }
+        }
+      },
+      "todos": {
+        "ver": 2,
+        "seq": 114,
+        "val": [
+          {
+            "content": "Complete the live settlement",
+            "status": "pending"
+          }
+        ]
+      },
+      "turnBoundary": {
+        "ver": 2,
+        "seq": 114,
+        "val": {
+          "openTurnStartSeq": null,
+          "lastStepStartSeq": 109,
+          "lastStepBoundary": {
+            "kind": "end",
+            "seq": 113
+          },
+          "lastTurn": 1
+        }
+      },
+      "inbox": {
+        "ver": 1,
+        "seq": 114,
+        "val": {
+          "next-turn": [],
+          "next-step": []
+        }
+      },
+      "userQuestions": {
+        "ver": 2,
+        "seq": 114,
+        "val": {
+          "inheritedEventCount": 0,
+          "timed": false,
+          "questions": {
+            "active": [],
+            "settled": []
+          }
+        }
+      },
+      "plan": {
+        "ver": 3,
+        "seq": 114,
+        "val": {
+          "active": false,
+          "wanted": null,
+          "running": null,
+          "activeAtLastHeader": false
+        }
+      },
+      "permissions": {
+        "ver": 2,
+        "seq": 114,
+        "val": {
+          "preset": "workspace-write",
+          "sandbox": "workspace-write",
+          "approval": "ask",
+          "seeded": false
+        }
+      },
+      "workingDirectory": {
+        "ver": 1,
+        "seq": 114,
+        "val": "/tmp/mpd-mount-QT3Eju/ws"
+      },
+      "subagentCatalog": {
+        "ver": 6,
+        "seq": 114,
+        "val": {
+          "inheritedEventCount": 0,
+          "head": {
+            "values": [
+              {
+                "version": 0,
+                "childId": "53e4c97a-b723-4ac8-b9c6-628b27cd7eb2",
+                "childCreatedAt": 1792656502140,
+                "mode": "continuable",
+                "label": "live-reviewer · team-20261022080822136-e9cz-003"
+              }
+            ]
+          }
+        }
+      },
+      "subagentTiming": {
+        "ver": 3,
+        "seq": 114,
+        "val": {
+          "descriptorSeen": false,
+          "settledMs": 0
+        }
+      },
+      "subagent": {
+        "ver": 2,
+        "seq": 114,
+        "val": {}
+      },
+      "subagentModelSelectionPolicy": {
+        "ver": 1,
+        "seq": 114,
+        "val": null
+      },
+      "agentTeam": {
+        "ver": 4,
+        "seq": 114,
+        "val": {
+          "id": "session-b9cd8150-4175-473e-b8cf-2d375111f252",
+          "members": [],
+          "tasks": [],
+          "messages": [],
+          "delivered": [],
+          "nextTaskNumber": 1
+        }
+      }
+    }
+  }
+}

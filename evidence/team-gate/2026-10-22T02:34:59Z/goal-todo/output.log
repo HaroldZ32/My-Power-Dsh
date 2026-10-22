@@ -1,0 +1,90 @@
+# R4 evidence — goal + todo bundled into the agent_teams_plan APPROVE success path
+# repo: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh
+# UTC: 2026-10-22T02:37:54Z  local: 2026-10-22T10:37:54+0800
+# lane: R4 — packages/mpd-team-core-plugin (src/index.ts, test/goal-todo-bundle.test.ts, README pair)
+
+## 1) bun test packages/mpd-team-core-plugin/test/goal-todo-bundle.test.ts
+(pass) R4 — approval bundles the durable goal and the todo checklist > ONE anchor, with the plan description and source `team`, and the approval answer unchanged [4.69ms]
+(pass) R4 — approval bundles the durable goal and the todo checklist > ONE whole-list todo_write, seeded pending from the task subjects and scoped to the live agent [0.96ms]
+(pass) R4 — approval bundles the durable goal and the todo checklist > an empty plan description falls back to the plan NAME as the objective [0.93ms]
+(pass) R4 — approval bundles the durable goal and the todo checklist > NEGATIVE CONTROL: `create`/`create_task` and a `dry_run` approval anchor and seed NOTHING [0.85ms]
+(pass) R4 — approval bundles the durable goal and the todo checklist > NEGATIVE CONTROL: the gate's inert shell cannot approve, so it anchors nothing [0.29ms]
+(pass) R4 — approval bundles the durable goal and the todo checklist > a composition without `mpdGoal` or `todo_write` still approves, and logs nothing [0.85ms]
+(pass) R4 — approval bundles the durable goal and the todo checklist > a plan with NO tasks seeds no todo list (a whole-list write would clear the captain's) [0.88ms]
+(pass) R4 — approval bundles the durable goal and the todo checklist > a THROWING effect costs ONE log line each and never the approval [0.99ms]
+(pass) R4 — approval bundles the durable goal and the todo checklist > an ERROR-RESULT todo_write also costs one log line and never the approval [0.83ms]
+
+ 9 pass
+ 0 fail
+ 38 expect() calls
+Ran 9 tests across 1 file. [132.00ms]
+exit=0
+
+## 2) bun test packages/mpd-team-core-plugin   (whole package)
+
+ 242 pass
+ 0 fail
+ 1066 expect() calls
+Ran 242 tests across 18 files. [1095.00ms]
+exit=0
+
+## 3) bun run typecheck   (repo-wide; FAILURE IS A SIBLING LANE, see result.json)
+$ tsgo --noEmit
+exit=0
+
+## 4) bun run verify:docs   (FAILURE IS A SIBLING LANE, see result.json)
+FAIL package-no-readme:packages/mpd-project-init-plugin — package directory mpd-project-init-plugin has no README (not an exempt package)
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=48 failed=1 violations=1 exempt=24 derived=3 links=438 dead=0 — FAIL
+exit=1
+
+## 5) bun run verify:comments   (remaining violation is a SIBLING LANE, see result.json)
+
+packages/mpd-dsh-adapter-plugin/test/adapter-subagent-seam-generations.test.ts (1)
+  342: comment — receiver
+
+packages/mpd-project-init-plugin/test/project-init.test.ts (1)
+  79: parameter-type — fakeAdapter
+
+error: script "verify:comments" exited with code 1
+exit=1
+
+## 6) files touched by this lane
+ M packages/mpd-team-core-plugin/README.md
+ M packages/mpd-team-core-plugin/README.zh-CN.md
+ M packages/mpd-team-core-plugin/src/index.ts
+?? packages/mpd-team-core-plugin/test/goal-todo-bundle.test.ts
+ packages/mpd-team-core-plugin/README.md       |   9 +++
+ packages/mpd-team-core-plugin/README.zh-CN.md |   6 ++
+ packages/mpd-team-core-plugin/src/index.ts    | 102 ++++++++++++++++++++++++++
+ 3 files changed, 117 insertions(+)
+
+## 7) FINAL settled re-run after wording-only edits (source comment + README pair)
+# UTC: 2026-10-22T02:38:44Z  local: 2026-10-22T10:38:44+0800
+--- bun test packages/mpd-team-core-plugin
+
+ 242 pass
+ 0 fail
+ 1066 expect() calls
+Ran 242 tests across 18 files. [1097.00ms]
+exit=0
+--- bun run typecheck
+$ tsgo --noEmit
+exit=0
+--- verify:comments (violations OUTSIDE mpd-team-core-plugin only)
+VERDICT: FAIL — 1 violation(s) across 1 file(s).
+packages/mpd-project-init-plugin/test/project-init.test.ts (1)
+  79: parameter-type — fakeAdapter
+exit=1
+--- verify:docs
+[verify-docs-parity] links=440 checked=408 resolved=408 dead=0 exemptProvenance=0 absentSite=0 ignoredExternal=26 ignoredAnchorOnly=6 files=119
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=49 failed=0 violations=0 exempt=24 derived=3 links=440 dead=0 — PASS
+exit=0
+--- package file list / diff stat
+ M packages/mpd-team-core-plugin/README.md
+ M packages/mpd-team-core-plugin/README.zh-CN.md
+ M packages/mpd-team-core-plugin/src/index.ts
+?? packages/mpd-team-core-plugin/test/goal-todo-bundle.test.ts
+ packages/mpd-team-core-plugin/README.md       |  10 +++
+ packages/mpd-team-core-plugin/README.zh-CN.md |   6 ++
+ packages/mpd-team-core-plugin/src/index.ts    | 102 ++++++++++++++++++++++++++
+ 3 files changed, 118 insertions(+)

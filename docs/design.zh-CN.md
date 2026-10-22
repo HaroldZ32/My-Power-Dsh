@@ -209,7 +209,7 @@ patch 文件（`presets/mpd.patch.yml`）再携带一个
 | `mpd-web-compat` | mpd-bundle-plugin | web + dsh-tui | web-compat 自引用行：使 `@mpd-dsh/mpd` 成为 loader entry（只有存在该确切名字的 entry，web client 才会加载）；承载合并 web client | no-op apply；`./client` | — |
 | `mpd-dsh-adapter` | mpd-dsh-adapter-plugin | web + dsh-tui | 与 Harness 接缝的**唯一**接触面：工具注册/guard/post-execute/execute、子代理 spawn、skill provider + 目录、preset 解析、能力探测 | 服务 `mpdDsh` | `defaultTimeoutMs`、`quiet` |
 | `mpd-config` | mpd-config-plugin | web + dsh-tui | 最小 `mpd.jsonc` 运行时配置层（工程 `.mpd/mpd.jsonc` 覆盖用户 `$DSH_HOME/mpd.jsonc`）；持有设置回写（§7b） | `mpd_config_get`、`mpd_config_reload`；服务 `mpdConfig` | `projectFile`、`userFile` |
-| `mpd-team-watchdog` | mpd-team-watchdog-plugin | web + dsh-tui | 面向成员**与** captain 的逐步/逐工具心跳存储、基于 `watchdog.*` 旋钮的 WARN→ESCALATE 状态机、可原子恢复的场景快照，以及写在 `<workspace>/.mpd/team/watchdog/` 下（它**自己的**命名空间：官方 Team 服务把团队状态保存在 Lead 会话日志，看门狗经由适配器读名册）的持久 hold/incident 边车文件；有意挂载在 HOST 面，使预设作用域的心跳不可能漏看被卡住的 captain | `session-watchdog-status`、`session-watchdog-hold`、`session-watchdog-resume` | `stateDir`、`warnSilenceMs`、`tickIntervalMs`、`warnStreakToEscalate`、`actionOnEscalate`、`toolInFlightMaxMs`、`holdTtlMs` |
+| `mpd-team-watchdog` | mpd-team-watchdog-plugin | web + dsh-tui | 面向成员**与** captain 的逐步/逐工具心跳存储、基于 `watchdog.*` 旋钮的 WARN→ESCALATE 状态机、可原子恢复的场景快照，以及写在 `<workspace>/.mpd/team/watchdog/` 下（它**自己的**命名空间：看门狗**先**读 MPD 团队记录 —— `.mpd/team/teams/<teamId>.json`，经 `mpdTeams`，即权威平面 —— 只把官方实时读数当作"由官方执行器运行的 composition"的回退）的持久 hold/incident 边车文件；有意挂载在 HOST 面，使预设作用域的心跳不可能漏看被卡住的 captain | `session-watchdog-status`、`session-watchdog-hold`、`session-watchdog-resume` | `stateDir`、`warnSilenceMs`、`tickIntervalMs`、`warnStreakToEscalate`、`actionOnEscalate`、`toolInFlightMaxMs`、`holdTtlMs` |
 | `mpd-tools` | mpd-tools-plugin | web + dsh-tui | 写保护（禁止静默覆盖）、工具输出截断（token 预算）、编辑错误恢复提示 | 仅 waterfall | `writeGuard`、`truncateMaxBytes`、`recoveryHint` |
 | `mpd-modelchain` | mpd-modelchain-plugin | web + dsh-tui | roster 角色的 DeepSeek 路由解析 + 键值记忆注释 | `mpd_modelchain_resolve`、`mpd_memory_save`、`mpd_memory_recall` | — |
 | `mpd-ext` | mpd-ext-plugin | web + dsh-tui | 扩展接口：一份冻结的描述符契约、两个面（代码 `register()` + 数据面 `mpd-ext.json`）、按生命周期划分的发现、skills/flows provider、运行时 stdio MCP 桥、扩展 role | `mpd_ext_list`、`mpd_ext_show`、`mpd_flow_list`、`mpd_flow_show`；服务 `mpdExtensions` | `quiet` + 惰性 `mpd.jsonc` 层（`extensions.enable`、`extensions.disable`、`extensions.mcp.*`） |
@@ -261,8 +261,11 @@ key**。
   `meta.json` 保留内部 `baseId` 作为溯源，而所有工具输出、路由与界面都会剥离它。
 - 工作后 `mpd_workmate_reflect` 追加有界 memory 条目（最旧淘汰）、合并 persona 修订、
   重生成 note（保留特长 + 最新任务）、`uses` 加一。
-- `mpd_workmate_spawn` 以单次咨询复用实例：一次有界委派、一份报告 —— persona + memory + note + 任务，
-  走实例自身路由（continuable 子会话）；子会话被指示在最终报告前调用 `mpd_workmate_reflect`。
+- `mpd_workmate_spawn` 以单次咨询复用实例 —— **一次性（ONE-SHOT），绝不可续**：一次有界委派、
+  一份报告，报告落定后其激活即被**销毁**，因此后续追问是新的一次 spawn，绝不是往已落定的子会话
+  `send_message`；harness 目录是只追加的，所以已落定的子会话在报告之后仍可能被**列为** `inactive`。
+  persona + memory + note + 任务走实例自身路由，子会话被指示在最终报告前调用
+  `mpd_workmate_reflect` —— 得以延续的是**记录**（persona/memory/note），绝不是会话本身。
 - `mpd_workmate_match` 对 note 打分（关键词重叠 + base 名加成，阈值 0.35）；低于阈值
   → `matched: false` + "新建 workmate"（绝不强行弱匹配）。
 - `mpd_workmate_rename { name, new_name }` **搬移**已演化的身份 —— 目录键**就是**身份，
@@ -274,15 +277,17 @@ key**。
   归档根没有 `meta.json`，也不是可寻址的键），两条路径都会删除索引键，而 purge 额外要求
   `confirm === name`。失败的删除会恢复索引键，因此绝不会留下被部分移除的实例。
 - **使用中闸门（单一同步块）**：`assertNotBusy` 同时检查进程内的 `Map<key, count>`
-  （在 `mpd_workmate_spawn` 中围绕 `dsh.spawnAgent` 增减、在 `finally` 中释放）与对
-  `<cwd>/.mpd/team/<teamId>/team.json` **直接子目录**的只读扫描 —— 只针对**旧版**记录，因为官方
-  Team 服务不会留下这种文件（归档团队位于
-  `.mpd/team/archive/**`，按构造被排除）；重命名还会检查目标键。闸门、冲突守卫与变更之间
-  没有 `await`，因此任何 spawn 或 reflect 都无法插队 —— 无需锁文件。这里**从不**写
-  `.mpd/team` 状态（那曾是已退役插件的状态；官方服务把名册、邮箱与任务板保存在 Lead 的会话
-  日志里），且读取失败时**放行**。
+  （在 `mpd_workmate_spawn` 中围绕 `dsh.spawnAgent` 增减、在 `finally` 中释放）与对本工作区团队记录
+  **两种布局**的只读扫描 —— 工作区可能仍留有其中任一种：`.mpd/team/teams/<teamId>.json`
+  （mpd **自有**记录，`mpd-team-core-plugin/src/team-store.ts`，今天批准的团队写的就是它；仅当团队
+  没有 `endedAt` 且该成员状态既非 `inactive` 也非 `failed` 时才算占用）与
+  `.mpd/team/<teamId>/team.json`（**已退役**内置插件的记录，原样扫描，好让仍留有它的工作区照常
+  工作；归档团队位于 `.mpd/team/archive/**`，按构造被排除）；重命名还会检查目标键。闸门、冲突守卫与
+  变更之间没有 `await`，因此任何 spawn 或 reflect 都无法插队 —— 无需锁文件。这里**从不**写
+  `.mpd/team` 状态（该记录属于 `mpd-team-core`，本行只读取它），且读取失败时**放行**。
 - 团队模式：会话智能体就是 Lead。它按成员逐个调用 `spawn_teammate`（名字、描述，以及由
-  `mpd_role_persona` 文本加任务拼成的提示词），用 `team_task_create` 给每人开一条通道，再用
+  `mpd_role_persona` 文本加任务拼成的提示词 —— 每次 spawn 都是一次性咨询：干完自己那条通道即落定，
+  绝不再续，后续追问是新的一次 spawn），用 `team_task_create` 给每人开一条通道，再用
   `team_task_list` / `team_task_get` / `team_task_update`（对任务 `revision` 做 compare-and-set）
   与邮箱工具驱动任务板。两条实测边界是设计的一部分，不是遗漏：队友跑在**暂存它的那个会话**的路由上
   —— 顶层 spawn 是 captain 的路由，team-lead spawn 是 Lead 的路由 —— 因为 `TeamService` 只把提示词与
@@ -328,7 +333,7 @@ key**。
 
 | 路径 | 拥有者 | 说明 |
 |---|---|---|
-| `<workspace>/.mpd/team/` | 旧版团队记录 + 看门狗**自己的**命名空间 | 官方 Team 服务把名册、邮箱与任务板保存在 Lead 的会话日志里，因此没有任何随包行会在这里写团队记录；看门狗在它下面维护 `<stateDir>/watchdog/{heartbeat,scene,hold,incidents.jsonl}`，而 workmate 在用检查仍会读取存在的旧版 `team.json` |
+| `<workspace>/.mpd/team/` | mpd-team-core（记录 + 其工作流边车）+ mpd-team-watchdog（它**自己的**命名空间） | `teams/<teamId>.json` 是**权威**团队记录 —— 名册、任务板、DAG、`kind`/`attempt`/`round`/`verdict` 以及每个成员/任务的执行器句柄 —— 由 mpd-team-core 写入，被每个 mpd 界面读取（TUI、web、看门狗、compact、workmate 在用闸门）。旁边是工作流边车：`dispatch.json`（按团队作用域的派发账本）、`staging/<sessionId>.json`（暂存中的 plan）、`contracts/<taskId>.json`（冻结的契约 + attempt）、`hold.json`（工作区停机）、`archive/<planId>/`（暂存过的内容，批准或 `delete` 之后保留）。看门狗在同一根下维护 `<stateDir>/watchdog/{heartbeat,scene,hold,incidents.jsonl}`。已退役内置插件的"一团队一目录" `<teamId>/team.json` 是**只读**旧版，仍保留它的工作区照常工作；**官方** Team 服务把它的名册/邮箱/任务板保存在 Lead 的会话日志里，但那个平面只是执行器后端，绝不是团队真相 |
 | `<workspace>/.mpd/team-compact/` | mpd-team-compact | 已结束团队成员上下文的压缩审计 |
 | `<workspace>/.mpd/plans/` | mpd-boulder / mpd-ulw | 计划 markdown 文件 |
 | `<workspace>/.mpd/memory.json` | mpd-modelchain | 键值注释 |

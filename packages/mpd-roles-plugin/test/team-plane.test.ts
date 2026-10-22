@@ -39,7 +39,11 @@ import {
   MISSING_PLAN_ID_PHRASE,
   readBoulderGate,
   readLeadingTeam,
+  readWorkspaceScale,
   resolveGateMode,
+  resolveSensitivity,
+  SENSITIVITY_CONFIG_KEY,
+  SENSITIVITY_THRESHOLDS,
   sessionQualifies,
   STAGED_PLAN_PHRASE,
   STAGING_TOOL_NAME,
@@ -52,15 +56,20 @@ import { installRosterSection, ROSTER_SECTION_NAME, rosterSectionText } from "..
 const WORKSPACE = join(tmpdir(), "mpd-team-plane-ws")
 
 /**
- * The EXPLICIT `team.gate: "mechanical"` opt-in every arm whose SUBJECT is the staging route drives.
+ * The EXPLICIT `team.gate: "mechanical"` opt-in every arm whose SUBJECT is the staging route drives,
+ * with the threshold row pinned to `normal`.
  *
  * REPURPOSED 2026-10-17 and RESTORED 2026-10-20: `mechanical` is the DEFAULT again
  * (`.mpd/plans/restore-guard-discipline.md`), yet an arm asserting what a TRIGGER does still asks for
  * that mode the way a user does — through a `team.gate` config value — instead of relying on a default
- * it does not measure. Everything else stays `undefined`, so `boulder.dir` and friends keep their own
- * defaults.
+ * it does not measure. SENSITIVITY IS PINNED TOO (2026-10-22): `easy` is the shipped default now, and
+ * these arms were written against the NORMAL thresholds — pinning the row keeps each arm measuring
+ * the staging route it was built for instead of a threshold that may move again. A dedicated arm
+ * below drives the `easy` default (including signal F).
  */
-const MECHANICAL_OPT_IN = (key: string): unknown => (key === GATE_CONFIG_KEY ? GATE_MODE_MECHANICAL : undefined)
+const MECHANICAL_OPT_IN = (key: string): unknown => (key === GATE_CONFIG_KEY
+  ? GATE_MODE_MECHANICAL
+  : key === SENSITIVITY_CONFIG_KEY ? "normal" : undefined)
 
 /** A qualifying mpd top-level session. */
 function mpdAgent(id: string = "lead-1", header: Record<string, unknown> = {}): {
@@ -311,21 +320,35 @@ describe("the frozen complexity predicate (Option A: explicit flag OR >= 1 match
     expect(consumeExplicitFlag('!team please leave "!team" alone')).toEqual({ flagged: true, text: 'please leave "!team" alone' })
   })
 
-  test("signal B: >= 4 DISTINCT deliverable verbs", () => {
-    expect(evaluateComplexityGate("align, migrate, refactor and audit the module").signals).toContain("B")
+  test("signal B: the bound is the sensitivity row's (normal = the historical >= 4)", () => {
+    // NORMAL: the pre-2026-10-22 numbers, unchanged.
+    expect(evaluateComplexityGate("align, migrate, refactor and audit the module", { sensitivity: "normal" }).signals).toContain("B")
     expect(evaluateComplexityGate("align align align align").signals).not.toContain("B")
-    expect(evaluateComplexityGate("align and migrate only").signals).not.toContain("B")
+    expect(evaluateComplexityGate("align and migrate only", { sensitivity: "normal" }).signals).not.toContain("B")
+    // EASY (the shipped default): the same two distinct verbs fire B...
+    expect(evaluateComplexityGate("align and migrate only").signals).toContain("B")
+    // ...while STRICT needs six.
+    expect(evaluateComplexityGate("align and migrate only", { sensitivity: "strict" }).signals).not.toContain("B")
+    expect(evaluateComplexityGate("align migrate refactor audit overhaul port", { sensitivity: "strict" }).signals).toContain("B")
   })
 
-  test("signal C: ONE signal, fired by its own 2-of-3 majority (never counted as C1/C2/C3)", () => {
-    // Three action clauses on one line (the documented frozen-prompt shape).
-    const clauses = "Check the tests, build the package, verify the output."
-    /** The gate verdict for one three-clause prompt. */
-    const verdict = evaluateComplexityGate(clauses)
+  test("signal C: ONE signal, fired by its own majority (2-of-3 on easy/normal, 3-of-3 on strict)", () => {
+    // Three action clauses on one line (the documented frozen-prompt shape); this wording carries
+    // exactly three deliverable verbs, so NORMAL sees C alone and EASY's B bound makes it B/C.
+    const clauses = "Check the first item, build the package, verify the output."
+    /** The gate verdict for one three-clause prompt at the historical row. */
+    const verdict = evaluateComplexityGate(clauses, { sensitivity: "normal" })
     expect(verdict.signals).toEqual(["C"])
     expect(verdict.trigger).toBe(true)
+    // The SAME prompt on the eager default also fires B (three deliverable verbs >= 2).
+    expect(evaluateComplexityGate(clauses).signals).toEqual(["B", "C"])
     // A bulleted list alone satisfies C1 but not the majority.
     expect(evaluateComplexityGate("- one\n- two\n- three").signals).toEqual([])
+    // STRICT needs all THREE sub-signals: C1 (3 bulleted lines) + C2 (3 action verbs) is 2-of-3,
+    // which fires on normal and must NOT fire on strict.
+    const twoOfThree = "- audit\n- build\n- check"
+    expect(evaluateComplexityGate(twoOfThree, { sensitivity: "normal" }).signals).toContain("C")
+    expect(evaluateComplexityGate(twoOfThree, { sensitivity: "strict" }).signals).not.toContain("C")
   })
 
   test("signal D reads an ACTIVE boulder work, never a plan FILE", () => {
@@ -563,8 +586,10 @@ describe("session-start gate: scope, one-shot settlement and the advisory inject
     expect(notice.content[0].text).toContain("plan-staged-1")
     expect(notice.content[0].text).toContain(INERT_PLAN_PHRASE)
     expect(notice.content[0].text).not.toContain("NO team was staged")
-    // The REPORT line carries the mode and the staged flag (the boot signature a lane asserts).
-    expect(lines.join("\n")).toContain("signals=C mode=mechanical staged=1 plan=plan-staged-1")
+    // The REPORT line carries the mode, the staged flag and the resolved sensitivity row (the boot
+    // signature a lane asserts). The signal set is the row's own: `normal` reads the PRE-WAVE lexicon,
+    // which does not know check/build/verify/test, so this prompt is C alone there.
+    expect(lines.join("\n")).toContain("signals=C mode=mechanical staged=1 plan=plan-staged-1 sensitivity=normal")
     // THE POSITIVE CONTROL for the probe's loudness: an ANSWERED "none staged" stages in silence.
     expect(warnings).toEqual([])
     // The claimed user turn is still there (and unchanged: a SOFT signal has no marker).
@@ -1243,7 +1268,7 @@ describe("signal E: a CJK-scale instruction fires where the English-centric sign
     expect(evaluateComplexityGate(scaleOnly).trigger).toBe(false)
     // Verbs alone: the lexicon present, far below the scale bound.
     expect(evaluateComplexityGate("验证一下").trigger).toBe(false)
-    expect(evaluateComplexityGate("修复并验证").trigger).toBe(false)
+    expect(evaluateComplexityGate("修复并验证", { sensitivity: "normal" }).trigger).toBe(false)
   })
 
   test("the frozen Chinese NEGATIVE controls stay silent (the language fix is not a blanket 'fires on CJK')", () => {
@@ -1261,6 +1286,149 @@ describe("signal E: a CJK-scale instruction fires where the English-centric sign
   })
 })
 
+// ── team.sensitivity + signal F (wave `team-gate-wave`, Lane R1) ──
+describe("team.sensitivity and signal F: the eager default, with `normal` pinned to the old numbers", () => {
+  /**
+   * The user's VERBATIM first message from the measured missed-trigger session (2026-10-22).
+   *
+   * MEASURED BEFORE THE FIX: `{trigger:false, signals:[]}` — 77 Han characters (above signal E's
+   * 60-character normal bound) but ZERO lexicon verbs, because 降低/触发/创建/规范 were outside the
+   * 24-verb list. It is the acceptance positive for both halves of the repair (the expanded lexicon
+   * AND the eager bounds).
+   */
+  const USER_FIRST_MESSAGE = "降低触发team的阈值，目前大工程也很难自动触发两种阶梯的建队流程，然后非建队调用subagent时能调oneshot就调oneshot别留一堆可以复用的（也没见复用过），还有在空仓库创建新工程时，要创建AGENT.md以规范后续行为"
+
+  test("resolveSensitivity: the two named rows are exact; every other value is easy (never throws)", () => {
+    expect(resolveSensitivity("normal")).toBe("normal")
+    expect(resolveSensitivity("strict")).toBe("strict")
+    // The fail-safe direction is EAGER for this knob: an inert shell is cheap, a silent gate is the
+    // measured defect. Neither `false` nor `0` disarms it.
+    for (const value of [undefined, null, "easy", "EASY", "bogus", "", 0, false, true, {}, []]) {
+      expect(resolveSensitivity(value)).toBe("easy")
+    }
+  })
+
+  test("the threshold table is the one source of truth (easy / normal / strict)", () => {
+    expect(SENSITIVITY_THRESHOLDS).toEqual({
+      easy: { deliverableVerbs: 2, enumeratedLines: 2, actionVerbs: 2, clauseSteps: 2, cSubSignals: 2, cjkChars: 24, cjkVerbs: 2, workspaceScale: true, lexicon: "expanded" },
+      normal: { deliverableVerbs: 4, enumeratedLines: 3, actionVerbs: 3, clauseSteps: 3, cSubSignals: 2, cjkChars: 60, cjkVerbs: 2, workspaceScale: false, lexicon: "pre-wave" },
+      strict: { deliverableVerbs: 6, enumeratedLines: 4, actionVerbs: 4, clauseSteps: 4, cSubSignals: 3, cjkChars: 80, cjkVerbs: 3, workspaceScale: false, lexicon: "expanded" },
+    })
+  })
+
+  test("the user's verbatim first message fires on easy only — normal reads the pre-wave lexicon", () => {
+    // THE ACCEPTANCE POSITIVE: the eager default carries it through E (and B, whose expanded lexicon
+    // knows 降低/触发/创建/规范).
+    for (const input of [{}, { sensitivity: "easy" as const }]) {
+      /** The shipped predicate's verdict on the measured missed-trigger message. */
+      const verdict = evaluateComplexityGate(USER_FIRST_MESSAGE, input)
+      expect(verdict.trigger).toBe(true)
+      expect(verdict.signals).toContain("E")
+      expect(verdict.signals).toContain("B")
+    }
+    // NORMAL IS THE PRE-WAVE PREDICATE: every verb of this message is a wave addition, so the row
+    // reproduces the measured PRE-CHANGE verdict exactly — zero signals, no trigger.
+    expect(evaluateComplexityGate(USER_FIRST_MESSAGE, { sensitivity: "normal" })).toEqual({ trigger: false, signals: [] })
+    // STRICT is a deliberate opt-in: the same message stays silent there (77 Han < 80).
+    expect(evaluateComplexityGate(USER_FIRST_MESSAGE, { sensitivity: "strict" }).trigger).toBe(false)
+  })
+
+  test("the per-row lexicon is real: four WAVE-ONLY English verbs fire B on easy and nothing on normal", () => {
+    // Packed into ONE clause with no clause-opener: these four verbs are absent from the pre-wave
+    // DELIVERABLE set and from the pre-wave ACTION set, so `normal` cannot fire B, C2 or C3.
+    const waveOnly = "please fix create update and rename the helpers"
+    expect(evaluateComplexityGate(waveOnly).signals).toEqual(["B"])
+    expect(evaluateComplexityGate(waveOnly, { sensitivity: "normal" })).toEqual({ trigger: false, signals: [] })
+    // …and the PRE-WAVE four still fire B on the normal row, so the selector is not a dead lexicon.
+    const preWaveOnly = "align, migrate, refactor and audit the module"
+    expect(evaluateComplexityGate(preWaveOnly, { sensitivity: "normal" }).signals).toContain("B")
+    // A wave-only verb that is NOT a word on its own proves the substring semantics are unchanged:
+    // `latest` counts as `test` on the expanded row and is invisible to the pre-wave row.
+    expect(evaluateComplexityGate("use the latest build, check it, fix it").signals).toContain("B")
+    expect(evaluateComplexityGate("use the latest build, check it, fix it", { sensitivity: "normal" }).signals).not.toContain("B")
+  })
+
+  test("the silent controls stay silent on the default row (and the old 2-verb CJK negative is a B fire)", () => {
+    expect(evaluateComplexityGate("").signals).toEqual([])
+    expect(evaluateComplexityGate("Reply with exactly: hello-ok").signals).toEqual([])
+    expect(evaluateComplexityGate("验证一下").signals).toEqual([])
+    expect(evaluateComplexityGate("这个函数是干什么的？").signals).toEqual([])
+    // THE DOCUMENTED BOUNDARY: two distinct CJK verbs fire B at `easy`'s >= 2 and stay silent at the
+    // historical >= 4. This is the eager row's accepted cost, named here so it cannot drift silently.
+    expect(evaluateComplexityGate("修复并验证").signals).toEqual(["B"])
+    expect(evaluateComplexityGate("修复并验证", { sensitivity: "normal" }).signals).toEqual([])
+  })
+
+  test("signal F: a large workspace fires the trivial prompt on easy only", () => {
+    expect(evaluateComplexityGate("Reply with exactly: hello-ok", { workspaceScale: true })).toEqual({ trigger: true, signals: ["F"] })
+    expect(evaluateComplexityGate("Reply with exactly: hello-ok", { workspaceScale: false })).toEqual({ trigger: false, signals: [] })
+    expect(evaluateComplexityGate("Reply with exactly: hello-ok", { workspaceScale: true, sensitivity: "normal" })).toEqual({ trigger: false, signals: [] })
+    expect(evaluateComplexityGate("Reply with exactly: hello-ok", { workspaceScale: true, sensitivity: "strict" })).toEqual({ trigger: false, signals: [] })
+  })
+
+  test("readWorkspaceScale: a manifest AND a project dir AND >= 8 visible entries", async () => {
+    /** A lister that answers one fixed root listing. */
+    const lister = (names: readonly string[]): { readDir: () => Promise<readonly string[]> } => ({ readDir: async () => names })
+    // The repository shape: package.json + packages/ + 7 more visible entries.
+    expect(await readWorkspaceScale("/ws", lister(["package.json", "packages", "src", "docs", "scripts", "skills", "tests", ".git", ".mpd", "README.md"]))).toBe(true)
+    // A manifest but NO project directory.
+    expect(await readWorkspaceScale("/ws", lister(["package.json", "a", "b", "c", "d", "e", "f", "g"]))).toBe(false)
+    // A project directory but NO manifest.
+    expect(await readWorkspaceScale("/ws", lister(["src", "a", "b", "c", "d", "e", "f", "g"]))).toBe(false)
+    // Both, but only SEVEN visible entries (dotfiles never count).
+    expect(await readWorkspaceScale("/ws", lister(["package.json", "src", "a", "b", "c", "d", "e", ".git", ".mpd"]))).toBe(false)
+    // Dotfiles only: a freshly initialized directory.
+    expect(await readWorkspaceScale("/ws", lister([".git", ".mpd", ".gitignore"]))).toBe(false)
+    // The empty and unreadable answers.
+    expect(await readWorkspaceScale("/ws", lister([]))).toBe(false)
+    expect(await readWorkspaceScale("/ws", { readDir: async () => { throw new Error("EACCES") } })).toBe(false)
+    expect(await readWorkspaceScale("/ws", { readDir: async () => null as never })).toBe(false)
+  })
+
+  test("this repository's own root reads as a large workspace — F alone would fire here", async () => {
+    /** The repo root, derived from this test file's own location. */
+    const repoRoot = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))))
+    expect(await readWorkspaceScale(repoRoot)).toBe(true)
+  })
+
+  test("the wiring resolves the row per call: default easy, a pinned normal, and easy fires F alone", async () => {
+    // The DEFAULT row: no `team.sensitivity` anywhere reads easy on the install snapshot.
+    /** A plain harness with no config layer. */
+    const plain = planeHarness({ tools: [STAGING_TOOL_NAME] })
+    /** The install outcome whose snapshot must report the eager default. */
+    const plainInstall = installSessionGate(plain.dsh as never, { warn: () => {} })
+    expect(plainInstall.sensitivity).toBe("easy")
+    // A pinned row reports itself on the install snapshot too.
+    /** A harness whose configValue pins the historical row. */
+    const pinned = planeHarness({ tools: [STAGING_TOOL_NAME] })
+    expect(installSessionGate(pinned.dsh as never, { warn: () => {}, configValue: MECHANICAL_OPT_IN }).sensitivity).toBe("normal")
+
+    // SIGNAL F THROUGH THE WIRING: a trivial greeting in a LARGE workspace stages the shell on the
+    // default row, with F as the fired signal — and the SAME prompt/listing stays silent on `normal`.
+    /** The large root listing the F probe reads (`readLeadingTeam` gets an empty answer). */
+    const largeRoot = ["package.json", "packages", "src", "docs", "scripts", "skills", "tests", "AGENTS.md", ".git", ".mpd"]
+    /** A reader that answers the workspace ROOT with the large listing and every other path empty. */
+    const readDir = async (path: string): Promise<readonly string[]> => (path === WORKSPACE ? largeRoot : [])
+    /** The eager harness: the shipped default, nothing pinned. */
+    const eager = planeHarness({ tools: [STAGING_TOOL_NAME] })
+    installSessionGate(eager.dsh as never, { warn: () => {}, readDir })
+    /** The trivial greeting the gate must judge. */
+    const hello = userMessage("Reply with exactly: hello-ok")
+    /** The step decision for the eager fire. */
+    const eagerOut: any = await eager.steps[0].listener({ messages: [hello], turn: 1, step: 1 }, { kind: "enter", messages: [hello] })
+    expect(eager.toolCalls).toHaveLength(1)
+    expect((eager.toolCalls[0].arguments as { description: string }).description).toContain("complexity signals F")
+    expect(eagerOut.messages).toHaveLength(2)
+    /** The historical harness: the same listing, `normal` pinned. */
+    const historical = planeHarness({ tools: [STAGING_TOOL_NAME] })
+    installSessionGate(historical.dsh as never, { warn: () => {}, readDir, configValue: MECHANICAL_OPT_IN })
+    /** The step decision for the pinned row, which must abstain. */
+    const historicalOut: any = await historical.steps[0].listener({ messages: [hello], turn: 1, step: 1 }, { kind: "enter", messages: [hello] })
+    expect(historicalOut).toBeUndefined()
+    expect(historical.toolCalls).toHaveLength(0)
+  })
+})
+
 describe("C8: an inbound agent message is never judged as the human turn", () => {
   /** One user-role message with a text block and an optional producer-owned source kind. */
   const message = (text: string, kind?: string): unknown => ({
@@ -1269,11 +1437,11 @@ describe("C8: an inbound agent message is never judged as the human turn", () =>
     ...(kind === undefined ? {} : { source: { kind } }),
   })
   /** A teammate report that WOULD fire signal C if it were judged as a human turn. */
-  const REPORT = "1. Audit the gates\n2. Implement the change\n3. Verify the boot"
+  const REPORT = "1. Audit the gates\n2. Implement the loader\n3. Verify the boot"
 
   test("a `team-message` and a relayed `agent-message` are excluded; the SAME text as a human turn is not", () => {
     // The falsifiability twin first: judged as the caller's own turn, this text fires signal C.
-    expect(evaluateComplexityGate(REPORT).signals).toEqual(["C"])
+    expect(evaluateComplexityGate(REPORT, { sensitivity: "normal" }).signals).toEqual(["C"])
     // Tagged as a teammate report (the official team plugin's own source shape), it is not the goal.
     expect(latestUserMessage([message(REPORT, "team-message")])).toBeUndefined()
     expect(latestUserMessage([message(REPORT, "agent-message")])).toBeUndefined()
@@ -1347,7 +1515,7 @@ describe("C7: a session already LEADING a team is never sent to stage one", () =
 
   test("WIRING: a session already leading a team stages NOTHING and injects NO notice", async () => {
     /** A strong prompt that fires signal C on its own — the "even on a strong human prompt" arm. */
-    const strong = "1. Audit the gates\n2. Implement the change\n3. Verify the boot"
+    const strong = "1. Audit the gates\n2. Implement the loader\n3. Verify the boot"
     /** One team record naming `leadSessionId` with the given member count. */
     const recordJson = (leadSessionId: string, members: number): string => JSON.stringify({
       teamId: "team-1",

@@ -75,7 +75,7 @@ describe("owner-first dispatch", () => {
   })
   test("a BUSY owner falls back positionally AND the fallback is reported, never silent", () => {
     /** The owner is already working another task, so its id is in the ledger as busy. */
-    const ledger = assign({}, { taskId: "T0", memberId: "m2", memberName: "Reviewer" }, NOW)
+    const ledger = assign({}, { teamId: "team-a", taskId: "T0", memberId: "m2", memberName: "Reviewer" }, NOW)
     /** The dispatch plan this arm asserts on. */
     const plan = planDispatch({
       tasks: [{ id: "T1", subject: "review the lane", status: "pending", ready: true, ownerName: "Reviewer" }],

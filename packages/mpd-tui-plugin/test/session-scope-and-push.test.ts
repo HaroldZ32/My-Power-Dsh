@@ -524,7 +524,7 @@ describe("PART P · the push re-renders a mounted surface", () => {
     page.unmount()
   })
 
-  test("T-P2a `subscribe` ABSENT: the surface still renders and its 1000 ms tick still refreshes", async () => {
+  test("T-P2a `subscribe` ABSENT: the surface still renders and its 2000 ms tick still refreshes", async () => {
     /** The live board. */
     let records = [record("sess-B", "team-b", "wave-b", "B's integration task")]
     /** A service face with NO feed member at all — the pre-Lane-S composition. */
@@ -537,7 +537,9 @@ describe("PART P · the push re-renders a mounted surface", () => {
     expect(teams.subscribeCalls).toBe(0)
     // THE FALLBACK IS EXACTLY WHAT IT WAS: no push, and the page's own tick re-reads it.
     records = [record("sess-B", "team-b", "wave-b-ticked", "B's ticked task")]
-    await new Promise((resolve) => setTimeout(resolve, 1200))
+    // THE WAIT IS THE PAGE'S OWN CADENCE PLUS A MARGIN (wave `tui-refresh`: the merged page ticks at
+    // 2000 ms, the same as every other MPD surface), so this arm fails if the tick is raised or dropped.
+    await new Promise((resolve) => setTimeout(resolve, 2200))
     expect(page.text()).toContain("wave-b-ticked")
     page.unmount()
   })

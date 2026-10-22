@@ -237,7 +237,7 @@ COMPOSITION ONLY — it never executes plugin code, so it is never load evidence
 | `mpd-web-compat` | mpd-bundle-plugin | web + dsh-tui | web-compat self-row: makes `@mpd-dsh/mpd` a loader entry (the web client loads only for an entry of that exact name); hosts the combined web client | no-op apply; `./client` | — |
 | `mpd-dsh-adapter` | mpd-dsh-adapter-plugin | web + dsh-tui | THE single contact surface with harness seams: tool registration/guard/post-execute/execute, subagent spawn, skill provider + catalog, preset resolve, capability probing | service `mpdDsh` | `defaultTimeoutMs`, `quiet` |
 | `mpd-config` | mpd-config-plugin | web + dsh-tui | minimal `mpd.jsonc` runtime config layer (project `.mpd/mpd.jsonc` merged over user `$DSH_HOME/mpd.jsonc`); owns the settings write-back (§7b) | `mpd_config_get`, `mpd_config_reload`; service `mpdConfig` | `projectFile`, `userFile` |
-| `mpd-team-watchdog` | mpd-team-watchdog-plugin | web + dsh-tui | per-step/per-tool heartbeat store for members AND the captain, the WARN→ESCALATE machine over the `watchdog.*` knobs, the atomic restorable scene snapshot, and the durable hold/incident sidecars under `<workspace>/.mpd/team/watchdog/` (its OWN namespace: the official Team service keeps team state in the Lead session log, and the watchdog reads the roster through the adapter); mounted on the HOST plane on purpose, so a preset-scoped tick cannot fail to witness a wedged captain | `session-watchdog-status`, `session-watchdog-hold`, `session-watchdog-resume` | `stateDir`, `warnSilenceMs`, `tickIntervalMs`, `warnStreakToEscalate`, `actionOnEscalate`, `toolInFlightMaxMs`, `holdTtlMs` |
+| `mpd-team-watchdog` | mpd-team-watchdog-plugin | web + dsh-tui | per-step/per-tool heartbeat store for members AND the captain, the WARN→ESCALATE machine over the `watchdog.*` knobs, the atomic restorable scene snapshot, and the durable hold/incident sidecars under `<workspace>/.mpd/team/watchdog/` (its OWN namespace: the watchdog reads the MPD TEAM RECORD first — `.mpd/team/teams/<teamId>.json` through `mpdTeams`, the authoritative plane — and treats the official live readout only as the fallback for a composition that runs the official executor); mounted on the HOST plane on purpose, so a preset-scoped tick cannot fail to witness a wedged captain | `session-watchdog-status`, `session-watchdog-hold`, `session-watchdog-resume` | `stateDir`, `warnSilenceMs`, `tickIntervalMs`, `warnStreakToEscalate`, `actionOnEscalate`, `toolInFlightMaxMs`, `holdTtlMs` |
 | `mpd-tools` | mpd-tools-plugin | web + dsh-tui | write guard (no silent clobber), tool-output truncation (token budget), edit-error recovery guidance | waterfalls only | `writeGuard`, `truncateMaxBytes`, `recoveryHint` |
 | `mpd-modelchain` | mpd-modelchain-plugin | web + dsh-tui | DeepSeek route resolution for roster roles + key/value memory notes | `mpd_modelchain_resolve`, `mpd_memory_save`, `mpd_memory_recall` | — |
 | `mpd-ext` | mpd-ext-plugin | web + dsh-tui | the extension interface: one frozen descriptor contract, two planes (code `register()` + data-plane `mpd-ext.json`), lifecycle-split discovery, skills/flows providers, the runtime stdio MCP bridge, extension roles | `mpd_ext_list`, `mpd_ext_show`, `mpd_flow_list`, `mpd_flow_show`; service `mpdExtensions` | `quiet` + the lazy `mpd.jsonc` layer (`extensions.enable`, `extensions.disable`, `extensions.mcp.*`) |
@@ -293,9 +293,13 @@ mechanism — the plugin never touches API keys**.
 - After work, `mpd_workmate_reflect` appends a bounded memory entry (oldest evicted),
   merges a persona revision, regenerates the note (specialty kept + latest task), bumps
   `uses`.
-- `mpd_workmate_spawn` reuses the instance as a single-call consult: one bounded delegation,
-  one report — persona + memory + note + task on the instance's own route in a continuable
-  child; the child is instructed to call `mpd_workmate_reflect` before its final report.
+- `mpd_workmate_spawn` reuses the instance as a single-call consult — **ONE-SHOT, never resumable**:
+  one bounded delegation, one report, and its activation is DISPOSED once that report settles, so a
+  follow-up question is a NEW spawn and never a `send_message` into the settled child; the harness
+  catalog is append-only, so a settled child may still be LISTED as `inactive` after its report.
+  persona + memory + note + task run on the instance's own route, and the child is instructed to call
+  `mpd_workmate_reflect` before its final report — what carries over is the RECORD
+  (persona/memory/note), never the session.
 - `mpd_workmate_match` scores notes (keyword overlap + base-name boost, threshold 0.35);
   below threshold → `matched: false` + "initialize a new workmate" (never force a weak
   match).
@@ -312,16 +316,21 @@ mechanism — the plugin never touches API keys**.
   A failed delete restores the index key, so it never leaves a partially removed instance.
 - **In-use gate (one synchronous block)**: `assertNotBusy` checks an in-process
   `Map<key, count>` incremented around `dsh.spawnAgent` in `mpd_workmate_spawn` (released in
-  `finally`) plus a READ-ONLY scan of direct children of `<cwd>/.mpd/team/<teamId>/team.json` —
-  LEGACY records only, because the official Team service keeps no such file (archived teams live
-  under `.mpd/team/archive/**` and are excluded by construction);
+  `finally`) plus a READ-ONLY scan of the workspace's team records in BOTH layouts the bundle has
+  had, because a workspace may still hold either: `.mpd/team/teams/<teamId>.json` — the mpd-OWNED
+  record (`mpd-team-core-plugin/src/team-store.ts`), which is what a team approved today writes, a
+  member counting as busy only while its team has no `endedAt` and its status is neither `inactive`
+  nor `failed` — and `.mpd/team/<teamId>/team.json`, the RETIRED vendored plugin's record, scanned
+  unchanged so a workspace that still carries one keeps working (archived teams live under
+  `.mpd/team/archive/**` and are excluded by construction);
   rename gates the target key too. The gate, the collision guard and the mutation run with no
-  `await` between them, so no spawn or reflect can interleave — no lock file. Writing
-  `.mpd/team` state is never done here (that was the retired plugin's state; the official service
-  keeps roster, mailbox and board in the Lead's session log), and a read
-  error fails OPEN.
+  `await` between them, so no spawn or reflect can interleave — no lock file. Writing `.mpd/team`
+  state is never done HERE (that record belongs to `mpd-team-core`, and this row only reads it), and
+  a read error fails OPEN.
 - Team mode: the session agent is the Lead. It calls `spawn_teammate` once per member (name,
-  description, and a prompt built from `mpd_role_persona` text plus the task), opens each lane with
+  description, and a prompt built from `mpd_role_persona` text plus the task — each spawn is a
+  ONE-SHOT consult that works its lane and settles, never resumed, and a follow-up is a NEW spawn),
+  opens each lane with
   `team_task_create`, and drives the board with `team_task_list` / `team_task_get` /
   `team_task_update` (compare-and-set on the task `revision`) and the mailbox tools. Two measured
   bounds are part of the design, not an omission: a teammate runs on the route of the session that
@@ -377,7 +386,7 @@ yet.
 
 | Path | Owner | Notes |
 |---|---|---|
-| `<workspace>/.mpd/team/` | legacy team records + the watchdog's OWN namespace | the official Team service keeps the roster, the mailbox and the board in the Lead's session log, so no shipped row writes a team record here; the watchdog keeps `<stateDir>/watchdog/{heartbeat,scene,hold,incidents.jsonl}` under it, and the workmate in-use check still reads legacy `team.json` files when present |
+| `<workspace>/.mpd/team/` | mpd-team-core (the record + its workflow sidecars) + mpd-team-watchdog (its OWN namespace) | `teams/<teamId>.json` is the AUTHORITATIVE team record — roster, board, DAG, `kind`/`attempt`/`round`/`verdict` and every member/task executor handle — written by mpd-team-core and read by every mpd surface (TUI, web, watchdog, compact, the workmate in-use gate). Beside it the workflow sidecars: `dispatch.json` (the team-scoped dispatch ledger), `staging/<sessionId>.json` (a staged plan), `contracts/<taskId>.json` (the frozen contract + attempt), `hold.json` (the workspace halt) and `archive/<planId>/` (what was staged, kept after approval or `delete`). The watchdog keeps `<stateDir>/watchdog/{heartbeat,scene,hold,incidents.jsonl}` under the same root. The retired vendored plugin's one-directory-per-team `<teamId>/team.json` is READ-ONLY legacy, kept working for a workspace that still carries one; the OFFICIAL Team service keeps its own roster/mailbox/board in the Lead's session log, but that plane is the executor backend, never the team truth |
 | `<workspace>/.mpd/team-compact/` | mpd-team-compact | the compaction audit for a finished team's member contexts |
 | `<workspace>/.mpd/plans/` | mpd-boulder / mpd-ulw | plan markdown files |
 | `<workspace>/.mpd/memory.json` | mpd-modelchain | key/value notes |

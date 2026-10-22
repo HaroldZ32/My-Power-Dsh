@@ -34,7 +34,9 @@
 > NOTHING spawned and the shell INERT until the captain extends it (`add_member` / `create_task`) and
 > approves it with `agent_teams_plan {action:"approve"}`. `team.gate` in `mpd.jsonc` selects
 > `mechanical` (the default) | `advisory` | `off`; under `advisory`, or with that tool unmounted, the
-> ONE notice is advisory and says `NO team was staged`.
+> ONE notice is advisory and says `NO team was staged`. Since 2026-10-22 `team.sensitivity`
+> (`easy` default | `normal` | `strict`) selects the CURRENT threshold table in §3, and an approve
+> success also anchors a persisted goal and seeds the todo list.
 > See `docs/plan-0.1.7-adaptation.md` and AGENTS.md §1. Everything else below is that wave's frozen
 > record, read as history — including the `D_AUTOROUTE_ADVISORY` decision and the `D_planArtifact`
 > signal row, both superseded on 2026-10-07 (see the dated note under the signal table).
@@ -94,12 +96,43 @@ least two of its three sub-signals hold, so `C1`/`C2`/`C3` are never top-level s
 > `team.gate: "advisory"` fallback. Authority: AGENTS.md §1, `presets/mpd.patch.yml` and
 > `packages/mpd-roles-plugin/README.md`.
 
-**Harmonized verb tables (behaviour change, R3).** `C2` and `C3` now carry ONE shared verb set:
-14 English — `add, align, audit, build, change, check, consolidate, implement, migrate, overhaul,
-port, refactor, rewrite, verify` — and 12 CJK — `设计, 实现, 验证, 改造, 补充, 对齐, 重构, 迁移, 审计,
-移植, 梳理, 全量`. They differ only in **role**: `C2` counts a verb anywhere in the text, `C3` counts a
+> **CURRENT THRESHOLDS — 2026-10-22 (`team-gate-wave`).** The shipped gate reads `team.sensitivity`
+> from `mpd.jsonc` (live `mpdConfig` first, row config second; an unknown or missing value resolves to
+> `easy`, never throws). `easy` is the DEFAULT, `normal` reproduces the pre-wave five-signal behaviour
+> exactly, and `strict` tightens every threshold:
+>
+> | sensitivity | B distinct deliverable verbs | C lines / verbs / clauses (2-of-3) | E Han chars / verbs | F workspace scale |
+> |---|---|---|---|---|
+> | easy (default) | >= 2 | >= 2 / >= 2 / >= 2 | >= 24 / >= 2 | on |
+> | normal | >= 4 | >= 3 / >= 3 / >= 3 | >= 60 / >= 2 | off |
+> | strict | >= 6 | >= 4 / >= 4 / >= 4 (3-of-3) | >= 80 / >= 3 | off |
+>
+> Signal **F (workspace scale)** is NEW and is evaluated only under `easy`: a BOUNDED root `readdir`
+> (never recursive) must find `manifests >= 1` AND `projectDirs >= 1` AND `visibleEntries >= 8` —
+> manifests `package.json, pyproject.toml, Cargo.toml, go.mod, pom.xml, build.gradle(.kts),
+> composer.json, Gemfile, mix.exs, pubspec.yaml, CMakeLists.txt`; project dirs
+> `packages, src, apps, lib, services, plugins, crates, cmd, internal, modules`; a visible entry is one
+> whose name does not start with `.`. Any read error means `false`, never a throw. **F is deliberately
+> coarse:** in a large workspace it fires on its own even for `hello`, so the silent negative controls
+> live in a TINY workspace (an empty or `hello` prompt and `验证一下` stay silent); that over-triggering
+> is the accepted contract, not a defect.
+>
+> **The verb tables are EXPANDED.** `B` keeps every verb it had and gains the common English asks
+> `implement, add, build, change, check, verify, fix, create, update, remove, delete, move, rename,
+> test, document, wire, integrate, deploy, release, review, investigate, diagnose, reproduce,
+> benchmark, optimize, harden, validate, split, restructure` (distinct matches only). The CJK set,
+> carried as **24 verbs** before this wave, is extended further with `降低, 提高, 触发, 创建, 修改,
+> 调整, 优化, 规范` and the rest of the R1 additions. The boot line keeps `sessionGate=<mode>` as a
+> substring and may append `sensitivity=<x>`.
+
+**Harmonized verb tables (behaviour change, R3; CJK count corrected 2026-10-22).** `C2` and `C3`
+share ONE verb set. At R3 it read 14 English — `add, align, audit, build, change, check, consolidate,
+implement, migrate, overhaul, port, refactor, rewrite, verify` — and the CJK set, which the pre-wave
+source carried as **24 verbs** (the "12 CJK" this ledger printed at R3 was a counting error: the source
+held 24, not 12). They differ only in **role**: `C2` counts a verb anywhere in the text, `C3` counts a
 clause that OPENS with one. Before R3, `C2` lacked `audit`, `C3` lacked `consolidate|overhaul|port`,
 and the CJK sets differed by 7 entries — all eliminated, so no verb is silently C2-only or C3-only.
+The 2026-10-22 wave expands both sets again (see the CURRENT THRESHOLDS block above).
 
 **Why the threshold is 1 (Option A), and the accepted cost.** A two-counted-signal bar is
 **superseded** (`complexityGate.logicRevisionNote`): the frozen complex prompts #1 and #3 carry no
@@ -142,6 +175,11 @@ false-positive share is **13.9%** overall (n=20) and **45.1%** for the session-s
 matched exactly 1 distinct B verb (`对齐`, threshold 4) and 1 distinct C2 verb (threshold 3), so it
 produced no signal at all. Raw data: `evidence/omo-parity-rate/` (`raw/prompts.jsonl`,
 `raw/probe-output.json`, re-run in `evidence/omo-align/ledger-fix/`).
+
+> **2026-10-22 note on the rate study above.** It measured the PRE-wave predicate on the old default.
+> With `team.sensitivity: "easy"` as the default and signal F on, a large workspace triggers by
+> DESIGN, so these figures are historical, not the current false-positive share; the tiny-workspace
+> negative controls in the CURRENT THRESHOLDS block are what the shipped gate is held to now.
 
 ## 4. mass-ulw alignment (task-board model kept)
 

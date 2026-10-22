@@ -3859,12 +3859,16 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory: // mpd bundle 
               
                                                                                  
                        
+                                                               
+                                         
                                                                          
                                    
                                                     
                  
                                                                    
                    
+                                                                                                        
+                        
                                                       
                                                                          
                                                                                    
@@ -3893,6 +3897,13 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory: // mpd bundle 
   const TEAM_TAB_ID = "mpd-agent-teams";
   /** The tab's position among the sidebar's own tabs. */
   const TEAM_TAB_ORDER = 85;
+  /**
+   * The suffix that turns the primary tab id into its bottom-workbench duplicate's id.
+   *
+   * A SEPARATE TYPE, not a second surface of one type: 0.28's `bottomOnly` keeps a type out of the
+   * native right Sidebar, so the workbench twin needs its own id (and its own minted tab state).
+   */
+  const BOTTOM_TAB_SUFFIX = ":bottom";
   /** The locale namespace this page's dictionaries are registered under. */
   const TEAM_LOCALE_NAMESPACE = "mpdAgentTeams";
 
@@ -3909,6 +3920,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory: // mpd bundle 
   /** The Simplified-Chinese dictionary (the page's own labels, not the harness's). */
   const zh                                     = {
     "tab.title": "团队看门狗",
+    "tab.description": "看门狗事件与活动",
     "panel.subtitle": "只看门狗视图 —— 花名册与任务板由官方 Agent Teams 客户端提供。",
     "panel.loading": "加载中…",
     "panel.empty": "没有卡住的团队：没有 hold，也没有未读事件。",
@@ -3924,6 +3936,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory: // mpd bundle 
   /** The English dictionary, key-complete against `zh` (the key-set source of truth). */
   const en                                     = {
     "tab.title": "Team watchdog",
+    "tab.description": "Watchdog incidents and activity",
     "panel.subtitle": "Watchdog view only — the roster and task board belong to the official Agent Teams client.",
     "panel.loading": "Loading…",
     "panel.empty": "No stuck team: no hold and no unread incident.",
@@ -4201,9 +4214,14 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory: // mpd bundle 
       /** The translator this registration closes over (the title and body both use it). */
       const t = translatorFor(ctx);
       ctx.effect(() => ctx.locale.register(TEAM_LOCALE_NAMESPACE, { zh, en }), "mpd-agent-teams: dictionaries");
-      ctx.effect(() => service.registerTab({
+      /**
+       * The PRIMARY descriptor. The bottom-workbench twin is derived from it, which is what keeps
+       * title, icon, order, `single`, the badge and the body identical between the two surfaces.
+       */
+      const descriptor                = {
         id: TEAM_TAB_ID,
         title: () => t("tab.title"),
+        description: () => t("tab.description"),
         icon: (size        ) => react.createElement("span", { "aria-hidden": true, style: { fontSize: size, lineHeight: 1 } }, "\u{1F6A8}"),
         order: TEAM_TAB_ORDER,
         single: true,
@@ -4222,7 +4240,31 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/team-page", factory: // mpd bundle 
           }
         },
         component: (props         ) => react.createElement(TeamPageView, Object.assign({ t }, props))
-      }), "mpd-agent-teams: sidebar tab");
+      };
+      ctx.effect(() => service.registerTab(descriptor), "mpd-agent-teams: sidebar tab");
+      // THE BOTTOM WORKBENCH TWIN (0.28 `bottomOnly`). Registered through the SAME betterSidebar
+      // path as the primary — this function is only reached from the `betterSidebar` injection, so a
+      // profile without that host never registers it. Idempotent PER ID, like the primary above.
+      const bottomId = TEAM_TAB_ID + BOTTOM_TAB_SUFFIX;
+      /** Whether the twin is already present; a throwing `getTab` means "cannot tell". */
+      let bottomPresent = false;
+      try {
+        bottomPresent = typeof service.getTab === "function" && service.getTab(bottomId) !== undefined;
+      } catch {
+        bottomPresent = false;
+      }
+      if (!bottomPresent) {
+        try {
+          ctx.effect(() => service.registerTab({
+            ...descriptor,
+            id: bottomId,
+            bottomOnly: true,
+            createTab: () => ({ tab: { id: bottomId, type: bottomId, title: t("tab.title") } }),
+          }), "mpd-agent-teams: bottom tab");
+        } catch (error) {
+          console.warn("[mpd] team watchdog bottom tab registration failed: " + String(error));
+        }
+      }
       ctx.effect(() => {
         startPolling();
         return () => { stopPolling(); };
@@ -6885,12 +6927,16 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
               
                          
                        
+                                                                                       
+                                         
                                                                          
                                    
                                                     
                  
                                                                    
                    
+                                                                                                        
+                        
                                                                              
                       
    
@@ -7181,6 +7227,22 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     "kind.rev": "REV",
     "kind.fix": "FIX",
     "kind.int": "INT",
+    // ── D2: the hover card's vocabulary, verbatim from `team-view.ts`'s EN table ──
+    // A rendered state is localized for the CARD only; the drawing keeps the payload's ASCII word.
+    "visual.completed": "completed",
+    "visual.running": "running",
+    "visual.blocked": "blocked",
+    "visual.failed": "failed",
+    "visual.cancelled": "cancelled",
+    "visual.open": "open",
+    "visual.planned": "planned",
+    "tip.status": "status",
+    "tip.owner": "owner",
+    "tip.elapsed": "elapsed",
+    "tip.task": "task",
+    "tip.progress": "progress",
+    "tip.unassigned": "unassigned",
+    "tip.notStarted": "not started",
     // THE ROSTER ROLES. These are product names carried by the record (`member.role`), so English is the
     // identity mapping and Chinese is a DISPLAY-only rendering — the record itself is never rewritten.
     // Without this the panel renders a Chinese shell around English role chips, which is the one place a
@@ -7253,6 +7315,21 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     "kind.rev": "评审",
     "kind.fix": "修复",
     "kind.int": "集成",
+    // ── D2：悬停卡片的词汇 ────────────────────────────────────────
+    "visual.completed": "已完成",
+    "visual.running": "进行中",
+    "visual.blocked": "受阻",
+    "visual.failed": "失败",
+    "visual.cancelled": "已取消",
+    "visual.open": "未开始",
+    "visual.planned": "计划中",
+    "tip.status": "状态",
+    "tip.owner": "负责人",
+    "tip.elapsed": "耗时",
+    "tip.task": "任务",
+    "tip.progress": "进度",
+    "tip.unassigned": "未分配",
+    "tip.notStarted": "尚未开始",
     "Lead": "队长",
     "Architect": "架构师",
     "Researcher": "研究员",
@@ -7428,6 +7505,41 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     }
   }
 
+  /**
+   * The suffix that turns one primary tab id into its bottom-workbench duplicate's id.
+   *
+   * A SEPARATE TYPE, not a second surface of one type: 0.28's `bottomOnly` keeps a type out of the
+   * native right Sidebar, so the workbench twin must be its own registration and its own id. The
+   * suffix makes the relationship readable in the host's tab list and in a diagnostic.
+   */
+  const BOTTOM_TAB_SUFFIX = ":bottom";
+
+  /**
+   * Register the bottom-workbench twin of one primary descriptor (0.28 `bottomOnly`).
+   *
+   * The twin carries the SAME body, title, icon, order and `single`, and differs only in its id and
+   * `bottomOnly`; it is registered through the same `ctx.betterSidebar` path as the primary, so a
+   * profile without that host never reaches this function at all. Idempotent PER ID: a provider
+   * remount re-fires the injecting scope and the host throws on a duplicate id.
+   * @param ctx - the injection scope, which owns the disposer.
+   * @param sidebar - the better-sidebar service.
+   * @param primary - the already-built primary descriptor to twin.
+   * @param label - the effect label, so a teardown names the tab it removed.
+   * @returns whether the duplicate was registered (or was already present).
+   */
+  function registerBottomTab(ctx               , sidebar                , primary                      , label        )          {
+    /** The duplicate's own id, derived from the primary so the pair can never drift apart. */
+    const id = primary.id + BOTTOM_TAB_SUFFIX;
+    if (sidebarAlreadyHasTab(sidebar, id)) return true;
+    try {
+      ctx.effect(() => sidebar.registerTab({ ...primary, id, bottomOnly: true }), label);
+      return true;
+    } catch (error) {
+      console.warn("[mpd] bottom-workbench tab registration failed for " + id + ": " + String(error));
+      return false;
+    }
+  }
+
   /** The `/list` route the library page reads. */
   const LIST_URL = "/plugins/mpd-workmate/list";
   /** The `/init` route that creates one workmate. */
@@ -7454,6 +7566,13 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   // every tab in the same place.
   /** The workmate tab's title, resolved at registration time. */
   const SIDEBAR_TAB_TITLE = "Workmates";
+  /**
+   * The workmate surfaces' one-line purpose.
+   *
+   * ONE constant for the better-sidebar descriptor AND the official right sidebar's guide entry, so
+   * the two secondary surfaces cannot describe the same page differently.
+   */
+  const SIDEBAR_TAB_DESCRIPTION = "Durable agents from your library";
 
   // Dictionary namespace for the workmate page. zh is the key-set source of truth;
   // en is checked complete against it.
@@ -8028,6 +8147,15 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   const TEAM_PAGE_TAB_ID = "mpd-team";
   /** Where the team tab sits among the host's tabs: before the watchdog page, after the builtins. */
   const TEAM_TAB_ORDER = 80;
+  /** The team tab's title, shared by the better-sidebar descriptor and its bottom-workbench twin. */
+  const TEAM_TAB_TITLE = "Team";
+  /**
+   * The team surfaces' one-line purpose.
+   *
+   * The same sentence is the English `mpdTeamSidebar.guide.description` the official right sidebar's
+   * guide entry resolves, so both secondary surfaces describe the page identically.
+   */
+  const TEAM_TAB_DESCRIPTION = "Roster and shared task progress for this session";
 
   /**
    * Register the MPD TEAM tab on `dsh-better-sidebar` — the PREFERRED host.
@@ -8047,14 +8175,21 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     /** The shared view, or undefined when this host has no React to build it with. */
     const view = teamViewOf();
     if (view === undefined) return false;
-    ctx.effect(() => sidebar.registerTab({
+    /**
+     * The PRIMARY descriptor. The bottom-workbench twin is derived from it verbatim, which is what
+     * keeps title, icon, order, `single` and the body identical between the two surfaces.
+     */
+    const descriptor                       = {
       id: TEAM_PAGE_TAB_ID,
-      title: () => "Team",
+      title: () => TEAM_TAB_TITLE,
+      description: TEAM_TAB_DESCRIPTION,
       icon: () => "◆",
       order: TEAM_TAB_ORDER,
       single: true,
       component: (props         ) => view.TeamView(props),
-    }), "mpd: team sidebar tab");
+    };
+    ctx.effect(() => sidebar.registerTab(descriptor), "mpd: team sidebar tab");
+    registerBottomTab(ctx, sidebar, descriptor, "mpd: team bottom tab");
     return true;
   }
 
@@ -8073,14 +8208,21 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     // that lost it, instead of reporting a failure the user sees as "the tab is gone".
     if (sidebarAlreadyHasTab(sidebar, SIDEBAR_TAB_ID)) return true;
     try {
-      ctx.effect(() => sidebar.registerTab({
+      /**
+       * The PRIMARY descriptor. The bottom-workbench twin is derived from it verbatim, which is what
+       * keeps title, icon, order, `single` and the body identical between the two surfaces.
+       */
+      const descriptor                       = {
         id: SIDEBAR_TAB_ID,
         title: () => SIDEBAR_TAB_TITLE,
+        description: SIDEBAR_TAB_DESCRIPTION,
         icon: (size        ) => react.createElement("span", { "aria-hidden": true, style: { fontSize: size, lineHeight: 1 } }, "\u{1F916}"),
         order: 90,
         single: true,
         component: (props                                  ) => react.createElement(WorkmateLibraryView, { t: translateFor({ t: props && props.t }) }),
-      }), "mpd-workmate: sidebar tab");
+      };
+      ctx.effect(() => sidebar.registerTab(descriptor), "mpd-workmate: sidebar tab");
+      registerBottomTab(ctx, sidebar, descriptor, "mpd-workmate: bottom tab");
       return true;
     } catch (error) {
       console.warn("[mpd] workmate sidebar tab registration failed: " + String(error));
@@ -10487,6 +10629,14 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
                                                                   
                                                          
                                                                       
+       
+                                                                    
+      
+                                                                                                        
+                                                                                                    
+                                                                                                      
+       
+                                                                     
    
 
   /**
@@ -10595,6 +10745,44 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
                                                                                                      
        
                      
+       
+                                                                                        
+      
+                                                                                                      
+                                                                                                      
+       
+                      
+       
+                                                                                                      
+      
+                                                                                                   
+                                                                                           
+       
+                       
+       
+                                                                                        
+      
+                                                                                                     
+                                                                                                    
+                                   
+       
+                     
+   
+
+  /**
+   * Where the hover card is and which task it describes.
+   *
+   * The position is the browser's own `clientX/clientY` plus a 14px offset, already clamped against
+   * `window.innerWidth/innerHeight`; the card itself is `position: fixed`, so viewport coordinates are
+   * the only thing it needs and no layout measurement is ever taken.
+   */
+                      
+                                                                                 
+              
+                                                             
+             
+                                                             
+             
    
 
   /**
@@ -10876,7 +11064,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
                      
                                                                      
                  
-                                                                           
+                                                                                           
                   
                                                                                            
                                
@@ -10892,7 +11080,13 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
                     
                                                                                                        
                         
-                                                                                                   
+       
+                                               
+      
+                                                                                                    
+                                                                                                     
+                                                            
+       
                    
        
                                                                                
@@ -10914,6 +11108,37 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
                         
                                                                                                            
                                 
+       
+                                                                                                   
+      
+                                                                                                      
+                                                                                                   
+                                                                                         
+       
+                   
+       
+                                                                                
+      
+                                                                                                      
+                                                                                                     
+                                                                                                    
+                                                                                             
+       
+                           
+   
+
+  /** One pair of different edges whose runs are collinear and share more than half a pixel. */
+                         
+                                                               
+             
+                                          
+             
+                                                                                                    
+                                          
+                                                                                      
+              
+                                              
+                   
    
 
   /** The style bag this view uses; the host supplies the tokens, the literals are fallbacks. */
@@ -10934,11 +11159,46 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     edge: { position: "absolute", background: "var(--dsw-alias-border-l2, #d8dde5)" },
     // THE BOX INSET IS NOT WRITTEN HERE: it comes from the geometry (`graph.inset`), because the
     // busiest gutter's lanes are paid for out of it and a literal would detach every box from the
-    // edges routed against it. The node's background is OPAQUE so that a run can only ever be hidden
-    // by a box, never show through it.
-    node: { position: "absolute", boxSizing: "border-box", height: "42px", overflow: "hidden", cursor: "pointer", border: "0.5px solid var(--dsw-alias-border-l2, #d8dde5)", borderRadius: "var(--dsw-radius-sm, 4px)", padding: "3px 5px", background: "var(--dsw-alias-bg-layer-1, #ffffff)", fontFamily: "var(--dsw-font-mono, ui-monospace, monospace)", fontSize: "10px", lineHeight: 1.3 },
+    // edges routed against it. THE BACKGROUND IS NOT INLINE EITHER: the frosted-glass class in
+    // `DAG_CSS` owns it, and an inline background would beat the stylesheet and make the glass a lie.
+    node: { position: "absolute", boxSizing: "border-box", height: "42px", overflow: "hidden", cursor: "pointer", border: "0.5px solid var(--dsw-alias-border-l2, #d8dde5)", borderRadius: "var(--dsw-radius-sm, 4px)", padding: "3px 5px", fontFamily: "var(--dsw-font-mono, ui-monospace, monospace)", fontSize: "10px", lineHeight: 1.3 },
     nodeTop: { display: "flex", gap: "4px", alignItems: "baseline", whiteSpace: "nowrap", overflow: "hidden" },
   }
+
+  /**
+   * THE DAG'S SCOPED STYLESHEET, rendered ONCE at the panel root as `<style data-mpd-dag-css="1">`.
+   *
+   * WHY A STYLESHEET RATHER THAN MORE INLINE STYLE OBJECTS. Three effects the contract asks for cannot
+   * be expressed inline: `backdrop-filter` needs a class the browser can gate on `@supports`-free
+   * support, `@keyframes` need a rule block, and `prefers-reduced-motion` needs a media query. The
+   * element is rendered OUTSIDE `[data-mpd-graph]` on purpose, so no drawing text rule applies to it.
+   *
+   * ASCII ONLY: this string is served into a DOM the CJK-free drawing sits in, and a stray full-width
+   * codepoint here would be invisible in review while still failing the drawing's own range scan.
+   *
+   * The node keeps its inline border width/colour and opacity (pinned 1px, idle 0.5px, dimmed 0.4);
+   * this stylesheet supplies the MATERIAL (glass, shadow, motion) and never the geometry. Position is
+   * `translate3d(...)` from the render so a rank change animates instead of jumping.
+   *
+   * REDUCED MOTION ALSO HIDES THE SMIL OVERLAY: CSS can stop a keyframe but cannot stop an SVG
+   * `animateMotion`, so the media query sets `[data-mpd-flow] { display: none; }`. The dependency
+   * path and its static arrowhead live in the edge group and stay visible; only the moving arrow goes.
+   */
+  const DAG_CSS = `
+.mpd-dag-node { position: absolute; left: 0; top: 0; box-sizing: border-box; overflow: hidden; cursor: pointer; border: 0.5px solid rgba(17,24,39,.22); border-radius: 6px; padding: 3px 5px; font-family: var(--dsw-font-mono, ui-monospace, monospace); font-size: 10px; line-height: 1.3; color: #111827; background: var(--dsw-alias-bg-layer-1, #ffffff); background: linear-gradient(180deg, rgba(255,255,255,.92) 0%, rgba(255,255,255,.62) 55%, rgba(238,243,251,.58) 100%); -webkit-backdrop-filter: blur(14px) saturate(1.25); backdrop-filter: blur(14px) saturate(1.25); box-shadow: inset 0 1px 0 rgba(255,255,255,.95), inset 0 -1px 0 rgba(17,24,39,.06), 0 1px 2px rgba(16,24,40,.08), 0 6px 18px rgba(16,24,40,.12); transition: transform 420ms cubic-bezier(.2,.8,.2,1), opacity 200ms, border-color 200ms, box-shadow 200ms; will-change: transform; }
+@keyframes mpd-dag-breathe { 0%, 100% { box-shadow: inset 0 1px 0 rgba(255,255,255,.95), inset 0 -1px 0 rgba(17,24,39,.06), 0 0 0 1px rgba(77,107,254,.55), 0 0 0 5px rgba(77,107,254,.20), 0 8px 24px rgba(77,107,254,.30); border-color: rgba(77,107,254,.75); } 50% { box-shadow: inset 0 1px 0 rgba(255,255,255,.95), inset 0 -1px 0 rgba(17,24,39,.06), 0 0 0 2px rgba(77,107,254,.90), 0 0 0 9px rgba(77,107,254,.32), 0 10px 30px rgba(77,107,254,.40); border-color: rgba(77,107,254,.95); } }
+.mpd-dag-node[data-visual="running"] { animation: mpd-dag-breathe 2.4s ease-in-out infinite; }
+.mpd-dag-tip { position: fixed; z-index: 2147483000; pointer-events: none; box-sizing: border-box; padding: 8px 10px; border: 0.5px solid rgba(17,24,39,.45); border-radius: 10px; background: rgba(255,255,255,.78); color: #111; font-family: var(--dsw-font-mono, ui-monospace, monospace); font-size: 11px; line-height: 1.4; box-shadow: 0 6px 22px rgba(16,24,40,.18); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+.mpd-dag-tip[data-pinned="true"] { background: #ffffff; opacity: 1; }
+.mpd-dag-tip-row { display: flex; gap: 6px; justify-content: space-between; white-space: nowrap; overflow: hidden; }
+.mpd-dag-tip-label { color: #4b5563; }
+.mpd-dag-tip-subject { display: block; flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; margin-top: 2px; text-align: right; }
+.mpd-dag-tip-bar { height: 5px; border-radius: 3px; background: rgba(17,24,39,.12); overflow: hidden; margin-top: 4px; }
+.mpd-dag-tip-fill { height: 100%; background: #111; }
+@keyframes mpd-dag-dash { to { stroke-dashoffset: -12; } }
+.mpd-dag-flow { stroke-dasharray: 6 6; animation: mpd-dag-dash 1s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .mpd-dag-node { transition: none; } .mpd-dag-node[data-visual="running"] { animation: none; } .mpd-dag-flow { animation: none; } [data-mpd-flow] { display: none; } }
+`
 
   /** The colour token each rendered state draws in — a MEANING mapped to a host token, never a literal. */
   const TONE                         = {
@@ -10955,6 +11215,19 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
 
   /** The key each kind abbreviation resolves through, so the abbreviation is bilingual too. */
   const KIND_KEY                         = { requirement: "kind.req", work: "kind.wrk", review: "kind.rev", repair: "kind.fix", integration: "kind.int" }
+
+  /** The key each RENDERED state resolves through in the hover card, so its status is localized. */
+  const VISUAL_KEY                         = { completed: "visual.completed", running: "visual.running", blocked: "visual.blocked", failed: "visual.failed", cancelled: "visual.cancelled", open: "visual.open", planned: "visual.planned" }
+
+  /**
+   * The DOCUMENTED coarse progress of a record STATUS, used only when the payload carries no
+   * numeric `progress` (a legacy server).
+   *
+   * `claimed` is 10 while `in_progress` is 50 — the distinction a status-aware fallback exists for:
+   * a claimed task is DRAWN as running, so a visual-only fallback would report 50 for work nobody
+   * has started yet. Statuses outside this table (or an absent status) degrade to the visual rule.
+   */
+  const STATUS_PROGRESS                         = { completed: 100, in_progress: 50, claimed: 10, pending: 0, blocked: 0, failed: 0, cancelled: 0 }
 
   /** The key each lifecycle phase resolves through, so a phase label is localized like every other word. */
   const PHASE_KEY                         = { staged: "phase.staged", active: "phase.active", idle: "phase.idle", ended: "phase.ended" }
@@ -11012,6 +11285,23 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     "kind.rev": "REV",
     "kind.fix": "FIX",
     "kind.int": "INT",
+    // ── D2: the hover card's vocabulary ────────────────────────────────────────
+    // The visual state is localized BESIDE the payload's own word: the record keeps `running`, while
+    // the card prints the reader's language. Every key here has a zh twin in `web-client.ts`.
+    "visual.completed": "completed",
+    "visual.running": "running",
+    "visual.blocked": "blocked",
+    "visual.failed": "failed",
+    "visual.cancelled": "cancelled",
+    "visual.open": "open",
+    "visual.planned": "planned",
+    "tip.status": "status",
+    "tip.owner": "owner",
+    "tip.elapsed": "elapsed",
+    "tip.task": "task",
+    "tip.progress": "progress",
+    "tip.unassigned": "unassigned",
+    "tip.notStarted": "not started",
   }
 
   /**
@@ -11061,6 +11351,44 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   /** The arrival marker's height in pixels, which is the triangle's base. */
   const MARK_H = 8
   /**
+   * The preferred spacing between two PORTS of the SHIPPED capacity fallback, in pixels.
+   *
+   * Kept as the crowded tier's pitch: a node with seven to eleven incident edges still uses it, and
+   * {@link portStepOf} widens the pitch for smaller fan-in (the D2 repair below) while every tier
+   * stays a MULTIPLE OF FOUR so each spread offset is EVEN.
+   */
+  const PORT_STEP = 4
+  /**
+   * The port pitch for a node with `count` incident edges, in pixels.
+   *
+   * D2 REPAIR (Docker UI capture 2026-10-21): the old single 4px pitch put the two arrivals of a
+   * 2-incoming fan-in 4px apart, so their 8px arrowheads merged into one thick arrow and the fan-in
+   * read as a single dependency. The pitch now WIDENS for small fan-in and only falls back when the
+   * 42px box cannot hold it. Every tier is a MULTIPLE OF FOUR, so every spread offset stays EVEN,
+   * which is what leaves the rank-parity channel (`shift` below) systematic rather than a per-node
+   * nudge. A node with one incident edge still attaches at its border middle.
+   *
+   *   2..4 edges  -> 12px: two arrivals sit at +/-6 (a 12px gap), three at -12/0/+12, four at
+   *                  +/-6/+/-18 (all inside the +/-20 clamp; an 8px arrowhead cannot overlap).
+   *   5..6 edges  -> 8px: five at 0/+/-8/+/-16, six at +/-4/+/-12/+/-20. On an ODD rank the +/-
+   *                  20 offsets clamp to +/-18, so the two outermost gaps shrink to 6px — the
+   *                  documented crowded-node bound; the ports stay distinct and `overlaps` stays [].
+   *   7..11 edges -> the shipped 4px pitch (eleven ports, the last count that fits 4px).
+   *   12+ edges   -> the 2px capacity fallback; its own collapse bound is {@link PORT_STEP}'s story.
+   *
+   * @param count - how many edges touch this node (incoming plus outgoing).
+   * @returns the pitch in pixels; 0 for a node with fewer than two incident edges.
+   */
+  const portStepOf = (count        )         => count < 2 ? 0 : count <= 4 ? 12 : count <= 6 ? 8 : count <= 11 ? PORT_STEP : 2
+  /**
+   * The vertical pitch of the crossing band's rows, in pixels.
+   *
+   * A rank-skipping edge crosses the intermediate columns ABOVE or BELOW every box, on its own row;
+   * this is the distance between two such rows and between the nearest row and the box area. Eight
+   * keeps two 1px runs visibly apart without spending a whole node height of canvas per long edge.
+   */
+  const BAND_STEP = 8
+  /**
    * The corner radius every bend of a drawn edge is filleted with, in pixels — the ONE declared knob.
    *
    * Read only through {@link curveOf}'s `radius` argument, and echoed on every drawn curve so the control
@@ -11086,10 +11414,47 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   const borderLeft = (rank        , inset        )         => rank * GEO.column + inset
   /** The x of the RIGHT border of a node in one column, for that same inset. */
   const borderRight = (rank        , inset        )         => rank * GEO.column + GEO.column - inset
-  /** The y of a box's top, from its row inside the column — the SAME expression the node renders with. */
-  const boxTop = (row        )         => GEO.pad + row * (GEO.nodeHeight + GEO.nodeGap)
-  /** The y of a box's vertical MIDDLE, which is where an edge attaches. */
-  const boxMiddle = (row        )         => boxTop(row) + GEO.nodeHeight / 2
+  /**
+   * Every collinear overlap between two DIFFERENT edges' runs, by pure arithmetic over the routes.
+   *
+   * This is the mechanical meaning of "the lines do not overlap": two horizontal runs collide when
+   * they share a y and their x intervals share more than half a pixel; two vertical runs collide when
+   * they share an x and their y intervals do. Half a pixel is the tolerance because a run is one pixel
+   * thick and two runs that merely ABUT — a corner, or a run touching the lane its own riser stands on
+   * — share a boundary, not a stretch; counting that would report every legitimate corner as a defect.
+   * @param edges - the routed edges, in draw order.
+   * @returns one entry per overlapping pair, in edge order and then in run order.
+   */
+  const overlapAudit = (edges             )                => {
+    /** The overlaps found so far. */
+    const found                = []
+    for (let first = 0; first < edges.length; first += 1) {
+      for (let second = first + 1; second < edges.length; second += 1) {
+        for (const left of edges[first].segments) {
+          for (const right of edges[second].segments) {
+            /** The first run being compared. */
+            const a = left.rect
+            /** The second run. */
+            const b = right.rect
+            // A one-pixel run is horizontal when its height is 1 and vertical when its width is 1. A
+            // degenerate run (both 1) qualifies as both, which is harmless: two dots on one point
+            // really do coincide, and reporting them twice still means "not empty".
+            if (a.height === 1 && b.height === 1 && Math.abs(a.top - b.top) < 0.5) {
+              /** How much of the two x intervals is shared. */
+              const shared = Math.min(a.left + a.width, b.left + b.width) - Math.max(a.left, b.left)
+              if (shared > 0.5) found.push({ a: edges[first].witness, b: edges[second].witness, orientation: "horizontal", at: a.top, overlap: shared })
+            }
+            if (a.width === 1 && b.width === 1 && Math.abs(a.left - b.left) < 0.5) {
+              /** How much of the two y intervals is shared. */
+              const shared = Math.min(a.top + a.height, b.top + b.height) - Math.max(a.top, b.top)
+              if (shared > 0.5) found.push({ a: edges[first].witness, b: edges[second].witness, orientation: "vertical", at: a.left, overlap: shared })
+            }
+          }
+        }
+      }
+    }
+    return found
+  }
   /** How far a member's current task is truncated before it is drawn. */
   /**
    * Read the session id off the host's own sidebar DOM marker, as a LAST resort.
@@ -11122,6 +11487,14 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
 
   /** How much of a task subject a node or a member card shows before it ellipsizes. */
   const SUBJECT_MAX = 30
+  /** How far the hover card sits from the pointer, in pixels, on both axes. */
+  const TIP_OFFSET = 14
+  /** The hover card's fixed width, in pixels, so its subject can ellipsize instead of wrapping. */
+  const TIP_WIDTH = 240
+  /** The card's estimated height, in pixels, used only to clamp it inside a short viewport. */
+  const TIP_HEIGHT = 104
+  /** How much of a subject the hover card shows before its own ellipsis takes over. */
+  const TIP_SUBJECT_MAX = 42
   /** The colour a focused edge draws in — a token with its literal fallback, like every other value here. */
   const FOCUS_EDGE = "var(--dsw-alias-label-secondary, #5b6472)"
   /**
@@ -11164,6 +11537,21 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
                                                                                  
          
                                                                                                
+         
+                                                                                                    
+                                                                                   
+                                                  
+                                                                            
+         
+                                                         
+         
+                                                                                                  
+                                                                                   
+                                                                                                 
+                                                                                      
+                                                                                   
+         
+                                                                                                                  
       {
       /** The dependencies this closure reads on every call, plus the plan, task and events routes when given. */
       const { react, statePath, planPath, taskPath, eventsPath } = deps
@@ -11389,6 +11777,176 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         const key = KIND_KEY[kind]
         return key === undefined ? "" : EN[key]
       }
+      /** Resolve a rendered state through the translator, so the hover card never prints a raw enum. */
+      const visualLabelOf = (visual        )         => t(VISUAL_KEY[visual] ?? "visual.open")
+      /**
+       * Format a duration the way the hover card shows it: seconds, minutes+seconds, or hours+minutes.
+       * @param milliseconds - the elapsed span; negative values are clamped to zero.
+       * @returns `Xs`, `Xm Ys`, or `Xh Ym`.
+       */
+      const formatDuration = (milliseconds        )         => {
+        /** Whole seconds, never negative, so a clock skew cannot print a negative span. */
+        const total = Math.max(0, Math.floor(milliseconds / 1000))
+        if (total < 60) return total + "s"
+        /** Whole minutes, with the remaining seconds for the sub-hour form. */
+        const minutes = Math.floor(total / 60)
+        if (minutes < 60) return minutes + "m " + (total % 60) + "s"
+        return Math.floor(minutes / 60) + "h " + (minutes % 60) + "m"
+      }
+      /**
+       * The elapsed time of one task, in the card's own vocabulary.
+       *
+       * A RUNNING task measures `startedAt` -> `now` (the ticker's clock); a finished one measures
+       * `startedAt` -> `finishedAt`. A dash is the honest answer when either needed stamp is absent
+       * or malformed: `updatedAt` is not a finish stamp, and inventing a span from it would lie.
+       * @param task - the task whose stamps are read; only the three fields the card needs are typed.
+       * @param nowMs - the ticker's epoch milliseconds, defaulted for the direct test call.
+       * @returns the formatted span, or `-` when the record cannot answer.
+       */
+      const formatElapsed = (task                                                             , nowMs         = Date.now())         => {
+        if (typeof task.startedAt !== "string" || task.startedAt === "") return "-"
+        /** The parsed start instant, or NaN when the record carries a malformed stamp. */
+        const start = Date.parse(task.startedAt)
+        if (!Number.isFinite(start)) return "-"
+        if (task.visual === "running") {
+          /** A running task ends at a stamped finish when one somehow exists, otherwise at `now`. */
+          const runningEnd = typeof task.finishedAt === "string" && task.finishedAt !== "" ? Date.parse(task.finishedAt) : NaN
+          return formatDuration((Number.isFinite(runningEnd) ? runningEnd : nowMs) - start)
+        }
+        if (typeof task.finishedAt !== "string" || task.finishedAt === "") return "-"
+        /** The parsed finish instant, or NaN when the record carries a malformed stamp. */
+        const finish = Date.parse(task.finishedAt)
+        return Number.isFinite(finish) ? formatDuration(finish - start) : "-"
+      }
+      /**
+       * The clamped coarse progress of one task, 0-100.
+       *
+       * A served numeric `progress` always wins. A legacy payload without one falls back to the
+       * record's STATUS first (see {@link STATUS_PROGRESS}), because `claimed` and `in_progress` both
+       * DRAW as running but mean 10 and 50; only an absent or unknown status degrades to the visual
+       * rule (completed 100, running 50, anything else 0).
+       * @param task - the task, whose served `progress` (or status) decides the number.
+       * @returns the integer percent, rounded and clamped to 0..100.
+       */
+      const progressOf = (task          )         => {
+        /** The served number, when the payload carried one. */
+        const servedValue = typeof task.progress === "number" && Number.isFinite(task.progress) ? task.progress : undefined
+        /** The status-derived fallback, when the record carries a status the table knows. */
+        const statusFallback = typeof task.status === "string" && task.status !== "" ? STATUS_PROGRESS[task.status] : undefined
+        /** The visual-derived degrade for a payload with neither a served number nor a known status. */
+        const visualFallback = task.visual === "completed" ? 100 : task.visual === "running" ? 50 : 0
+        return Math.max(0, Math.min(100, Math.round(servedValue ?? statusFallback ?? visualFallback)))
+      }
+      /**
+       * The viewport anchor of the hover card: the event's own `clientX/clientY` plus the 14px offset.
+       *
+       * ALL DOM ACCESS IS GUARDED. The offline harness and a non-browser host have no `window`, and
+       * the card then keeps the raw point; a browser clamps it so the fixed card cannot run off the
+       * viewport. No measurement API is used, which is the prohibition that outlived the SVG amendment.
+       * @param event - the React mouse/focus event, typed leniently because a synthetic host may pass
+       *   nothing at all (the existing hover arms drive `onMouseEnter()` with no argument).
+       * @returns the clamped `{ x, y }` viewport point.
+       */
+      const tipPoint = (event         )                           => {
+        /** The event bag, narrowed leniently for exactly the two coordinates this card reads. */
+        const source = (event ?? {})                                            
+        /** The raw pointer x, 0 when the event carries none (a keyboard focus). */
+        const rawX = typeof source.clientX === "number" && Number.isFinite(source.clientX) ? source.clientX : 0
+        /** The raw pointer y, 0 when the event carries none (a keyboard focus). */
+        const rawY = typeof source.clientY === "number" && Number.isFinite(source.clientY) ? source.clientY : 0
+        /** The offset x, which is what an unclamped viewport would show. */
+        let x = rawX + TIP_OFFSET
+        /** The offset y, which is what an unclamped viewport would show. */
+        let y = rawY + TIP_OFFSET
+        try {
+          if (typeof window !== "undefined") {
+            /** The viewport width; unusable values are ignored rather than clamped against. */
+            const width = window.innerWidth
+            /** The viewport height; unusable values are ignored rather than clamped against. */
+            const height = window.innerHeight
+            if (Number.isFinite(width) && width > 0) x = Math.min(x, Math.max(TIP_OFFSET, width - TIP_WIDTH - TIP_OFFSET))
+            if (Number.isFinite(height) && height > 0) y = Math.min(y, Math.max(TIP_OFFSET, height - TIP_HEIGHT - TIP_OFFSET))
+          }
+        } catch {
+          // A host whose `window` getter throws keeps the unclamped point; the card still renders.
+        }
+        return { x: Math.max(0, x), y: Math.max(0, y) }
+      }
+      /**
+       * Place the hover card OUTSIDE `[data-mpd-graph]`: into `document.body` when the host's React
+       * copy exposes `createPortal` and a body exists, otherwise inline at the panel root.
+       *
+       * The inline fallback is still a SIBLING of the graph, never a descendant, which is what keeps
+       * the raw subject in the card legal while the drawing itself stays CJK-free.
+       * @param element - the card element to place.
+       * @returns the portal when one was created, or the element itself.
+       */
+      const portalOf = (element         )          => {
+        /** The host's optional portal primitive. */
+        const portal = react.createPortal
+        if (typeof portal !== "function") return element
+        try {
+          /** The document body, or undefined outside a browser. */
+          const body = typeof document === "undefined" ? undefined : document.body
+          return body === undefined || body === null ? element : portal(element, body)
+        } catch {
+          return element
+        }
+      }
+      /**
+       * The hover card itself: localized status, owner, elapsed time, a truncated subject and a
+       * coarse progress bar with its numeric percent.
+       *
+       * The card is `position: fixed` and `pointer-events: none`, so it follows the pointer without
+       * stealing the hover that keeps it open. Its own material (semi-transparent vs opaque when the
+       * task is pinned) lives in `DAG_CSS`; this function only publishes the anchor and the content.
+       * @param task - the hovered task, looked up in the DRAWN tasks so a ghost works too.
+       * @param at - the clamped viewport anchor from {@link tipPoint}.
+       * @param isPinned - whether this task is the pinned one, which makes the card opaque.
+       * @param nowMs - the ticker's clock, which keeps the elapsed row honest.
+       * @returns the card element, portal-wrapped when the host supports it.
+       */
+      const tipCardOf = (task          , at                          , isPinned         , nowMs        )          => {
+        /** The clamped coarse completion this card prints and draws. */
+        const percent = progressOf(task)
+        /** The elapsed text; a dash means the record cannot answer. */
+        const elapsed = formatElapsed(task, nowMs)
+        /**
+         * Whether that dash means NEVER STARTED, rather than a start with no finish or a malformed
+         * stamp. Only this case gets the "not started" sublabel: labelling a completed task with a
+         * missing `finishedAt` as "not started" would be false, because it clearly did start.
+         */
+        const neverStarted = elapsed === "-" && (typeof task.startedAt !== "string" || task.startedAt === "")
+        /**
+         * One label/value row of the card.
+         * @param key - the row's React key.
+         * @param label - the already-localized label.
+         * @param value - the value text, which may be payload data.
+         * @param title - the hover title, when the row has more to say (e.g. "not started").
+         * @returns the row element.
+         */
+        const row = (key        , label        , value        , title         )          => react.createElement("div", { key, className: "mpd-dag-tip-row", ...(title === undefined ? {} : { title }) },
+          react.createElement("span", { key: "label", className: "mpd-dag-tip-label" }, label),
+          react.createElement("span", { key: "value" }, value))
+        /** The card: fixed anchor, fixed width, and the pinned flag the stylesheet reads. */
+        const card = react.createElement("div", {
+          key: "tip-card",
+          "data-mpd-tip-card": "1",
+          "data-pinned": isPinned ? "true" : "false",
+          className: "mpd-dag-tip",
+          style: { left: at.x + "px", top: at.y + "px", width: TIP_WIDTH + "px" },
+        },
+          row("tip-status", t("tip.status"), visualLabelOf(task.visual)),
+          row("tip-owner", t("tip.owner"), task.owner === undefined || task.owner === "" ? t("tip.unassigned") : task.owner),
+          row("tip-elapsed", t("tip.elapsed"), elapsed, neverStarted ? t("tip.notStarted") : undefined),
+          react.createElement("div", { key: "tip-subject-row", className: "mpd-dag-tip-row" },
+            react.createElement("span", { key: "tip-subject-label", className: "mpd-dag-tip-label" }, t("tip.task")),
+            react.createElement("span", { key: "tip-subject", className: "mpd-dag-tip-subject", title: task.subject }, short(task.subject, TIP_SUBJECT_MAX))),
+          react.createElement("div", { key: "tip-progress", className: "mpd-dag-tip-row" }, t("tip.progress") + " " + percent + "%"),
+          react.createElement("div", { key: "tip-bar", className: "mpd-dag-tip-bar" },
+            react.createElement("div", { key: "tip-fill", className: "mpd-dag-tip-fill", style: { width: percent + "%" } })))
+        return portalOf(card)
+      }
       /** The style of one member's status dot: a CSS circle, never a raster avatar or a mascot. */
       const memberDot = (status        )                         => ({
         width: "7px",
@@ -11611,8 +12169,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
       }
 
       /**
-       * Compute the whole DAG geometry from the board alone: rank columns, node boxes, and every
-       * drawn edge ROUTED as a chain of adjacent-rank hops.
+       * Compute the whole DAG geometry from the board alone: rank columns, centred node boxes, and
+       * every drawn edge ROUTED in the gutters, with the rank-skipping ones crossing a top/bottom band.
        *
        * THE RANKS ARE SERVED, NEVER RE-DERIVED HERE. The host computes them ONCE with the shared core
        * (`mpd-graph-core`) and publishes each task's rank beside the board; this function decides only
@@ -11633,16 +12191,28 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
        *     the boxes rather than behind them.
        *
        * THE FIX, all of it standard layered-graph practice:
-       *   1. DUMMY ROWS. An edge spanning more than one rank is expanded into a chain of adjacent-rank
-       *      hops, one reserved row per intermediate rank. Nothing occupies that row, so each hop runs
-       *      along a real corridor: the vertical runs stand in the gutters between columns and every
-       *      crossing of an intermediate column happens at the reserved row. No edge can cross a box.
-       *   2. A MEASURED GUTTER. The box inset is derived from the busiest gutter's lane count, so the
-       *      gutter is wide enough for every lane; the spacing is then computed FROM that gutter. Two
-       *      lanes can never share a column — and a lane that cannot be given one is COUNTED in
-       *      `laneOverflow` rather than silently stacked.
-       *   3. THE ROUTES TRAVEL OUT OF THIS FUNCTION, so the render paints them and a test can assert
-       *      them: the geometry is one object, and `data-mpd-box`/`data-mpd-route` publish it.
+       *   1. BARYCENTER SWEEPS. Each column is ordered by the mean row of its neighbours (parents
+       *      first, then children), stable on ties, so fewer edges cross — and R19's numeric order
+       *      survives wherever no edge argues for a move.
+       *   2. A CENTRED, SYMMETRIC BOARD. Every column's stack is centred on the graph's `centerY`, and
+       *      the canvas is padded identically above and below, so a 1-node column in a 5-row graph
+       *      stands on the midline instead of hugging the top.
+       *   3. PORTS ON A COLUMN CHANNEL. A node with several incident edges spreads them over distinct
+       *      ys inside its own height, ordered by the counterpart's y; one edge keeps the border
+       *      middle. Every port also carries its column's PARITY CHANNEL (even ranks on odd pixels,
+       *      odd ranks on even ones), so the two sides of any gutter can never produce the same attachment
+       *      y — which is what makes "no two horizontal runs are collinear" a proof rather than a hope.
+       *   4. A CROSSING BAND. An edge spanning more than one rank never passes through a column: it
+       *      rises in the gutter beside its blocker, crosses the intermediate columns on its OWN row
+       *      above or below every box (half the edges above, half below, mirrored by midpoint y), then
+       *      descends beside its dependant. No route can enter a box.
+       *   5. A MEASURED GUTTER. The box inset is derived from the busiest gutter's lane count, so the
+       *      gutter is wide enough for every lane; the spacing is then computed FROM that gutter, and
+       *      lanes are allocated in y order with mirrored offsets. A lane that cannot be given its own
+       *      column is COUNTED in `laneOverflow` rather than silently stacked.
+       *   6. THE ROUTES TRAVEL OUT OF THIS FUNCTION, so the render paints them and a test can assert
+       *      them: the geometry is one object, and `data-mpd-box`/`data-mpd-route` publish it. The
+       *      `overlaps` audit reports every collinear pair the router failed to separate.
        * @param tasks - the board, in the order the route served it.
        * @param radius - the corner radius the painted curves are built with, defaulting to
        *   {@link EDGE_RADIUS}; `0` is clause W6's control and emits the straight orthogonal polyline.
@@ -11758,71 +12328,232 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
           nextOrdinal += 1
           ordinalOf[task.id] = nextOrdinal
         }
-        /** Every node's box, before the reserved rows are known — its `row` is final, its `top` is not. */
+        // ── THE DEPENDENCY SET, AS IDS, BEFORE THE COLUMNS ARE ORDERED ────────────────────────────
+        // The barycenter sweeps below need the edges, and they must run BEFORE the boxes are placed;
+        // so the edge set is resolved to ids here, in the order the serving source gives it. The
+        // model's edge set wins when one is served and the board's own `blockedBy` is the degrade —
+        // the same rule the ranks follow.
+        /** Every id the drawing contains, so an edge naming a box that is not there draws nothing. */
+        const drawnIds = new Set(drawing.map((task) => task.id))
+        /** Every dependency to route, as a parent id and a child id, in serving order. */
+        const links                                           = []
+        if (served !== undefined && Array.isArray(served.edges)) {
+          for (const edge of served.edges) {
+            if (!drawnIds.has(edge.from) || !drawnIds.has(edge.to)) continue
+            links.push({ parent: edge.from, child: edge.to })
+          }
+        } else {
+          for (const column of columns) {
+            for (const task of column) {
+              // A RECORD MAY CARRY NO BLOCKER LIST AT ALL (a minimal fixture, an older payload), so
+              // the list is read defensively rather than trusted to be an array.
+              /** This task's blocker references, empty when the record carries none. */
+              const blocked = Array.isArray(task.blockedBy) ? task.blockedBy : []
+              for (const blockerId of blocked) if (drawnIds.has(blockerId)) links.push({ parent: blockerId, child: task.id })
+            }
+          }
+        }
+        /** The rank every id draws in, which is the bucket it landed in — never a second derivation. */
+        const rankById = new Map                ()
+        columns.forEach((column, rank) => { for (const task of column) rankById.set(task.id, rank) })
+        /** Where each id currently sits inside its column; the sweeps rewrite it as they re-order. */
+        const rowById = new Map                ()
+        /** Read every row position off the CURRENT column order. */
+        const reindex = ()       => {
+          for (const column of columns) column.forEach((task, index) => rowById.set(task.id, index))
+        }
+        reindex()
+        /**
+         * Order ONE column by the barycenter of its neighbours in ONE adjacent rank.
+         *
+         * Stable on ties and on a node with no neighbour in that rank (its own row is the key), which is
+         * what keeps R19's numeric within-column order intact wherever no edge argues for a move. Called
+         * with `rank - 1` it orders by PARENTS, with `rank + 1` by CHILDREN.
+         * @param rank - the column to re-order.
+         * @param neighbourRank - the adjacent rank whose rows are averaged.
+         * @returns nothing; `columns[rank]` is re-ordered in place and `rowById` re-read.
+         */
+        const barycenter = (rank        , neighbourRank        )       => {
+          /** The mean row of one task's neighbours in `neighbourRank`, or its own row when it has none. */
+          const weightOf = (task          )         => {
+            /** The sum of the neighbours' rows. */
+            let total = 0
+            /** How many neighbours contributed. */
+            let count = 0
+            for (const link of links) {
+              // The counterpart this link joins to the task, from either end.
+              /** The other end of this link, when it touches the task at all. */
+              const counterpart = link.child === task.id ? link.parent : link.parent === task.id ? link.child : undefined
+              if (counterpart === undefined || rankById.get(counterpart) !== neighbourRank) continue
+              total += rowById.get(counterpart) ?? 0
+              count += 1
+            }
+            return count === 0 ? (rowById.get(task.id) ?? 0) : total / count
+          }
+          /** One weight per task, read before the sort so the comparator sees a single snapshot. */
+          const weight = new Map(columns[rank].map((task) => [task.id, weightOf(task)]))
+          columns[rank] = [...columns[rank]].sort((left, right) => (weight.get(left.id) ?? 0) - (weight.get(right.id) ?? 0))
+          columns[rank].forEach((task, index) => rowById.set(task.id, index))
+        }
+        // TWO ROUNDS, PARENTS THEN CHILDREN: the first pulls every column toward its blockers, the
+        // second toward its dependants, and the second round lets the first's moves settle. The count
+        // stays SMALL on purpose — a board is re-laid out on every poll, so an unbounded relaxation
+        // would spend the reader's frame budget on a crossing count nobody asked to optimise.
+        for (let round = 0; round < 2; round += 1) {
+          for (let rank = 1; rank < columns.length; rank += 1) barycenter(rank, rank - 1)
+          for (let rank = columns.length - 2; rank >= 0; rank -= 1) barycenter(rank, rank + 1)
+        }
+        // ── THE CROSSING BAND: HALF THE RANK-SKIPPING EDGES ABOVE, HALF BELOW ────────────────────
+        /** The dependencies that skip at least one rank, which the crossing band must carry. */
+        const longLinks = links.filter((link) => Math.abs((rankById.get(link.parent) ?? 0) - (rankById.get(link.child) ?? 0)) >= 2)
+        /** How many long edges cross on the top band; the odd one out goes on top, mirroring by midpoint. */
+        const topCount = Math.ceil(longLinks.length / 2)
+        /** How many cross on the bottom band. */
+        const bottomCount = longLinks.length - topCount
+        /** The rows each band must hold; both bands are padded to the same count so the canvas is symmetric. */
+        const bandRows = Math.max(topCount, bottomCount)
+        /** How much vertical room ONE band takes, which is also how far the boxes move down for it. */
+        const bandExtent = bandRows * BAND_STEP
+        /** The tallest column's box count, which is what sets the box area's height. */
+        let tallestBoxes = 0
+        for (const column of columns) tallestBoxes = Math.max(tallestBoxes, column.length)
+        /** The box area's height, never zero so an empty board still has one box's worth of canvas. */
+        const boxAreaHeight = Math.max(tallestBoxes, 1) * GEO.nodeHeight + (Math.max(tallestBoxes, 1) - 1) * GEO.nodeGap
+        /**
+         * The y every column's stack is centred on, which is also the canvas's own horizontal midline.
+         *
+         * Derived, never written down: the box area is `boxAreaHeight` tall and sits below the top band,
+         * so its centre is `pad + bandExtent + boxAreaHeight / 2`. At one row this is `pad + 21 = 25`,
+         * which is exactly what keeps a single-node column's `top` at the frozen `4`.
+         */
+        const centerY = GEO.pad + bandExtent + boxAreaHeight / 2
+        /**
+         * The y a column's stack starts at, so that stack's own centre lands on {@link centerY}.
+         * @param count - how many boxes the column holds.
+         * @returns the `top` of that column's first box.
+         */
+        const stackTop = (count        )         => centerY - (count * GEO.nodeHeight + (count - 1) * GEO.nodeGap) / 2
+        /** Every node's box, its stack CENTRED on the graph's midline — `row` and `top` are now final. */
         const nodes              = []
         for (let rank = 0; rank < columns.length; rank += 1) {
           for (let row = 0; row < columns[rank].length; row += 1) {
-            nodes.push({ task: columns[rank][row], rank, row, ordinal: ordinalOf[columns[rank][row].id] ?? 0, top: boxTop(row) })
+            nodes.push({
+              task: columns[rank][row],
+              rank,
+              row,
+              ordinal: ordinalOf[columns[rank][row].id] ?? 0,
+              top: stackTop(columns[rank].length) + row * (GEO.nodeHeight + GEO.nodeGap),
+            })
           }
         }
         /** The node each task id names, so an edge resolves both of its boxes in one lookup. */
         const nodeOf                            = {}
         for (const node of nodes) nodeOf[node.task.id] = node
 
-        // ── THE DEPENDENCIES TO DRAW ──────────────────────────────────────────────────────────────
-        // THE MODEL'S EDGE SET WHEN IT IS SERVED, the board's own references only when it is not — the
-        // same degrade rule as the ranks. The model MERGES the board's edges with the plan's, so a
-        // plan-declared dependency is drawn and nothing the board carries is lost. An edge naming a
-        // node this drawing does not carry is skipped: the payload serves ids raw, and an edge into a
-        // box that is not there would be a picture of a dependency the record lacks.
+        // ── THE DEPENDENCIES TO DRAW, NOW RESOLVED TO BOXES ───────────────────────────────────────
+        // The ids above were already filtered to the drawing, so this is a lookup rather than a second
+        // rule; the ORDER is the serving source's, which is what `data-mpd-edge` counts in.
         /** The dependencies to route, in the order the serving source gives them. */
         const wants                                                              = []
-        if (served !== undefined && Array.isArray(served.edges)) {
-          for (const edge of served.edges) {
-            /** The blocker's box, when this drawing carries that node. */
-            const parent = nodeOf[edge.from]
-            /** The blocked task's box, when this drawing carries that node. */
-            const child = nodeOf[edge.to]
-            if (parent === undefined || child === undefined) continue
-            wants.push({ parent, child, key: parent.task.id + ">" + child.task.id })
-          }
-        } else {
-          for (const node of nodes) {
-            // A RECORD MAY CARRY NO BLOCKER LIST AT ALL (a minimal fixture, an older payload), so the
-            // list is read defensively rather than trusted to be an array.
-            /** This task's blocker references, empty when the record carries none. */
-            const blocked = Array.isArray(node.task.blockedBy) ? node.task.blockedBy : []
-            for (const blockerId of blocked) {
-              /** The blocker's own box; a blocker the board does not carry draws no edge. */
-              const parent = nodeOf[blockerId]
-              if (parent === undefined) continue
-              wants.push({ parent, child: node, key: parent.task.id + ">" + node.task.id })
-            }
-          }
+        for (const link of links) {
+          /** The blocker's box; every drawn id has one, and the check is the defensive half. */
+          const parent = nodeOf[link.parent]
+          /** The blocked task's box. */
+          const child = nodeOf[link.child]
+          if (parent === undefined || child === undefined) continue
+          wants.push({ parent, child, key: parent.task.id + ">" + child.task.id })
         }
 
-        // ── DUMMY ROWS: one reserved row per (long edge × intermediate rank) ──────────────────────
-        /** The reserved row each long edge owns in each rank it crosses. */
-        const reserved = new Map                             ()
-        /** How many rows each rank's column must hold: its boxes, plus the rows reserved inside it. */
-        const slots           = columns.map((column) => column.length)
+        // ── PORTS: every incident edge gets its own attachment y inside the node ─────────────────
+        // THE PRIMARY ANTI-OVERLAP DEVICE, in two halves. (a) A node with SEVERAL incident edges
+        // spreads them over distinct ys inside its own height, ordered by the counterpart's y, so two
+        // edges meeting one box never share a lead-out/lead-in y; one edge keeps the border middle.
+        // (b) Every port carries its COLUMN's parity channel (see `shift` below), so the two
+        // borders of any gutter can never share an anchor y either. Together they are what make
+        // "no two different edges' horizontal runs are collinear" hold for every board shape.
+        /** Every edge touching each node, with the counterpart whose row orders the ports. */
+        const incident                                                                 = {}
+        for (const node of nodes) incident[node.task.id] = []
         for (const want of wants) {
-          /** The lower rank this edge touches. */
-          const lo = Math.min(want.parent.rank, want.child.rank)
-          /** The higher rank it touches. */
-          const hi = Math.max(want.parent.rank, want.child.rank)
-          if (hi - lo < 2) continue
-          /** This edge's own reserved rows, one per rank strictly between its two ends. */
-          const mine = reserved.get(want.key) ?? new Map                ()
-          for (let rank = lo + 1; rank < hi; rank += 1) {
-            mine.set(rank, slots[rank])
-            slots[rank] += 1
-          }
-          reserved.set(want.key, mine)
+          incident[want.parent.task.id].push({ key: want.key, counterpart: want.child })
+          incident[want.child.task.id].push({ key: want.key, counterpart: want.parent })
         }
+        /** The attachment y of each node's edge, keyed by task id and then by edge key. */
+        const portOf                                         = {}
+        for (const node of nodes) {
+          /** This node's incident edges, ordered by the counterpart's middle and then by key. */
+          const ordered = [...incident[node.task.id]].sort((left, right) => {
+            /** The difference of the two counterparts' vertical middles. */
+            const delta = (left.counterpart.top + GEO.nodeHeight / 2) - (right.counterpart.top + GEO.nodeHeight / 2)
+            if (delta !== 0) return delta
+            return left.key < right.key ? -1 : left.key > right.key ? 1 : 0
+          })
+          /** How many ports this node must spread. */
+          const count = ordered.length
+          /**
+           * The pitch between two ports, widened for small fan-in and narrowed only when the box
+           * needs the room (see {@link portStepOf}).
+           */
+          const step = portStepOf(count)
+          /**
+           * The parity of this node's spread offsets. EVERY tier above except the 2px capacity
+           * fallback is a multiple of four, so each offset is EVEN and the spread parity is zero; a
+           * two-pixel pitch is an odd multiple of one and inherits the COUNT's parity instead.
+           */
+          const spreadParity = step % 4 === 0 ? 0 : count % 2 === 0 ? 1 : 0
+          /**
+           * This column's PARITY CHANNEL: even ranks attach on odd pixels, odd ranks on even ones.
+           *
+           * THE HORIZONTAL ANTI-COLLINEARITY DEVICE, and it is systematic rather than a nudge. Every
+           * box middle has the SAME parity — `centerY` is `pad + bandExtent + boxAreaHeight / 2` with an
+           * odd half-area term, and a stack top subtracts an odd half-stack, so all middles are odd.
+           * `shift` lifts this node's spread by 0 or 1 so that the FINAL parity depends only on the
+           * RANK, however many ports the node has: `(rank − spreadParity) mod 2`. Two neighbouring
+           * columns therefore can NEVER produce the same attachment y, and their nearest ys are a
+           * whole pixel apart.
+           *
+           * Every horizontal run in a gutter is anchored at one of that gutter's two borders, each
+           * border belongs to exactly ONE column, and within a column the boxes are disjoint — so two
+           * runs anchored at the same border cannot share a y either. Therefore no two different
+           * edges' horizontal runs can be collinear, which is precisely what `overlaps` measures.
+           */
+          const shift = ((node.rank - spreadParity) % 2 + 2) % 2
+          /** The furthest a spread offset may stand, chosen with the offsets' OWN parity for the clamp. */
+          let limit = 20 - shift
+          if ((limit - spreadParity) % 2 !== 0) limit -= 1
+          portOf[node.task.id] = {}
+          ordered.forEach((entry, index) => {
+            /** The spread offset from the border middle, clamped a pixel inside the box. */
+            const base = Math.max(-limit, Math.min(limit, (index - (count - 1) / 2) * step))
+            portOf[node.task.id][entry.key] = node.top + GEO.nodeHeight / 2 + base + shift
+          })
+        }
+        /** The edge each key names, so a gutter's key list can be ordered by its run's y. */
+        const wantOf = new Map(wants.map((want) => [want.key, want]))
+
+        // ── THE CROSSING ROWS: half the long edges above the boxes, half below ───────────────────
+        // This replaces the old DUMMY ROWS. A reserved row per intermediate column pushed every
+        // rank-skipping edge BELOW the board and made the picture read as a one-sided comb; the band
+        // splits them by midpoint y instead, so a symmetric board draws symmetric crossings.
+        /** The midpoint of a long edge's two attachments, which is the y the band split is made on. */
+        const midpointOf = (want                                                      )         =>
+          (portOf[want.parent.task.id][want.key] + portOf[want.child.task.id][want.key]) / 2
+        /** The long edges, ordered by midpoint y and then by key, so the split is deterministic. */
+        const longWants = wants
+          .filter((want) => Math.abs(want.parent.rank - want.child.rank) >= 2)
+          .sort((left, right) => midpointOf(left) - midpointOf(right) || (left.key < right.key ? -1 : left.key > right.key ? 1 : 0))
+        /** The band row each long edge crosses on, keyed by its edge key. */
+        const bandRow = new Map                ()
+        longWants.forEach((want, index) => {
+          /** How far this edge's row stands from the box area: 1 is the nearest row. */
+          const distance = index < topCount ? index + 1 : index - topCount + 1
+          bandRow.set(want.key, index < topCount
+            ? GEO.pad + bandExtent - distance * BAND_STEP
+            : GEO.pad + bandExtent + boxAreaHeight + distance * BAND_STEP)
+        })
 
         // ── LANES: one per hop, per gutter, always distinct ──────────────────────────────────────
-        /** The edge keys crossing each gutter, gutter by gutter, in board order. */
+        /** The edge keys crossing each gutter, gutter by gutter. */
         const crossing             = []
         for (let rank = 0; rank + 1 < rankCount; rank += 1) crossing.push([])
         /** The same-rank edges' own keys per column, which have no gutter between their ends. */
@@ -11838,19 +12569,68 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
           }
           for (let rank = lo; rank < hi; rank += 1) if (crossing[rank] !== undefined) crossing[rank].push(want.key)
         }
+        /**
+         * The y at which one edge's vertical run stands in one gutter, which is the order the lanes are
+         * allocated in: the lane nearest the gutter's centre belongs to the run nearest the midline.
+         * @param want - the edge, resolved to its boxes.
+         * @param gutter - the gutter's index.
+         * @returns the run's midpoint y.
+         */
+        const hopY = (want                                                      , gutter        )         => {
+          /** The attachment the edge leaves at. */
+          const fromY = portOf[want.parent.task.id][want.key]
+          /** The attachment it arrives at. */
+          const toY = portOf[want.child.task.id][want.key]
+          if (Math.abs(want.parent.rank - want.child.rank) < 2) return (fromY + toY) / 2
+          /** The gutter at the parent's end, which is where the first riser stands. */
+          const parentGutter = want.parent.rank < want.child.rank ? want.parent.rank : want.parent.rank - 1
+          return gutter === parentGutter
+            ? (fromY + (bandRow.get(want.key) ?? fromY)) / 2
+            : ((bandRow.get(want.key) ?? toY) + toY) / 2
+        }
         /** The lane index each edge takes in each gutter. */
         const laneIndex = new Map                ()
         /** How many lanes the busiest gutter must carry, which is what sizes the inset. */
         let maxLanes = 0
         for (let rank = 0; rank < crossing.length; rank += 1) {
+          // Y ORDER, because the allocation below mirrors its offsets about the gutter's centre: the
+          // topmost run takes the centre lane and the rest alternate outward, so two runs that nearly
+          // touch are never handed the same neighbour.
+          crossing[rank] = [...crossing[rank]].sort((left, right) => {
+            /** The first edge's run midpoint in this gutter. */
+            const first = wantOf.get(left)
+            /** The second edge's. */
+            const second = wantOf.get(right)
+            /** The difference of those midpoints. */
+            const delta = (first === undefined ? 0 : hopY(first, rank)) - (second === undefined ? 0 : hopY(second, rank))
+            if (delta !== 0) return delta
+            return left < right ? -1 : left > right ? 1 : 0
+          })
           maxLanes = Math.max(maxLanes, crossing[rank].length)
           crossing[rank].forEach((key, index) => laneIndex.set(rank + "@" + key, index))
         }
         // THE GUTTER IS DERIVED FROM THE LANES, not written down: a box keeps `inset` on each side of
         // its column, two neighbouring boxes therefore stand `2 * inset` apart, and the busiest gutter
         // asks for enough of that room to give every lane its preferred spacing plus a clearance.
-        /** The inset every box keeps inside its column at this board's lane count. */
-        const inset = Math.max(GEO.inset, Math.min(MAX_INSET, Math.ceil((maxLanes * LANE_STEP + LANE_CLEARANCE * 2) / 2)))
+        // A SAME-RANK EDGE also eats that room — it wraps around the right of its own column — so the
+        // inset pays for the busier of the two demands. Measured on the flat one-column board (every
+        // served depth 0): without this the fourteen wrap-around lanes collapsed onto the last pixel
+        // and the audit reported four collinear vertical pairs.
+        /** The most same-rank edges ONE column carries, which is the other claim on the inset. */
+        let maxLevel = 0
+        for (const keys of levelKeys) maxLevel = Math.max(maxLevel, keys.length)
+        /**
+         * How far the busiest gutter's lanes reach from its centre: the number of x values a same-rank
+         * lane must dodge before the first free one. EXACT, so the level lanes below always find room
+         * instead of silently clamping onto a crossing lane (a collinear vertical pair).
+         */
+        const laneReach = Math.max(0, Math.ceil((maxLanes - 1) / 2))
+        /** The inset every box keeps inside its column, at this board's lane counts. */
+        const inset = Math.max(
+          GEO.inset,
+          Math.min(MAX_INSET, Math.ceil((maxLanes * LANE_STEP + LANE_CLEARANCE * 2) / 2)),
+          Math.min(MAX_INSET, maxLevel + laneReach + LANE_CLEARANCE),
+        )
         /** The measured gutter between two neighbouring columns' boxes. */
         const gutter = inset * 2
         /** How far a lane may stand from a gutter's centre and still clear both boxes. */
@@ -11860,10 +12640,6 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         /** How many hops could not be given a distinct column, which a page must be able to report. */
         let laneOverflow = 0
         for (const keys of crossing) laneOverflow += Math.max(0, keys.length - capacity)
-        // A same-rank dependency has no gutter between its ends, so it runs around the RIGHT of its
-        // column, in the inset space no box occupies. Its lanes are counted here so an overflow there
-        // is reported on the same terms.
-        for (const keys of levelKeys) laneOverflow += Math.max(0, keys.length - halfBand)
 
         /** The x of the LEFT border of a box in one column, at this board's inset. */
         const leftOf = (rank        )         => borderLeft(rank, inset)
@@ -11889,6 +12665,45 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
           /** The furthest a lane may stand here, which only a REPORTED overflow reaches. */
           const bound = Math.max(0, Math.min(halfBand, reach * step))
           return (rank + 1) * GEO.column + Math.max(-bound, Math.min(bound, offset * step))
+        }
+        // A same-rank dependency has no gutter between its ends, so it runs around the RIGHT of its
+        // column, in the inset space no box occupies. Its lane must be DISTINCT from every crossing
+        // lane of that gutter — a shared x with an overlapping y is a collinear run — so it takes the
+        // first free inset column rather than a fixed slot.
+        /** Every x a crossing lane already took, which a same-rank lane must avoid. */
+        const usedLaneX = new Set        ()
+        for (let rank = 0; rank < crossing.length; rank += 1) for (const key of crossing[rank]) usedLaneX.add(laneX(rank, key))
+        /** The x each same-rank edge took, keyed by `<rank>@<edge key>`. */
+        const levelLane = new Map                ()
+        for (let rank = 0; rank < levelKeys.length; rank += 1) {
+          /** One column's same-rank edges, ordered by the parent's port so the picture is stable. */
+          const ordered = [...levelKeys[rank]].sort((left, right) => {
+            /** The first edge's departure y. */
+            const first = wantOf.get(left)
+            /** The second edge's departure y. */
+            const second = wantOf.get(right)
+            /** The difference of those departure ys. */
+            const delta = (first === undefined ? 0 : portOf[first.parent.task.id][first.key])
+              - (second === undefined ? 0 : portOf[second.parent.task.id][second.key])
+            if (delta !== 0) return delta
+            return left < right ? -1 : left > right ? 1 : 0
+          })
+          // THE CANDIDATES RUN FROM ONE CLEARANCE OFF THE BOX TO THE COLUMN'S LAST INSET PIXEL, which
+          // is `halfBand` columns wide — the same room the inset above pays for, minus the clearance.
+          /** The furthest inset column a same-rank lane may take. */
+          const last = rightOf(rank) + halfBand
+          for (const key of ordered) {
+            /** The first inset column neither a crossing lane nor an earlier level edge took. */
+            let x = rightOf(rank) + LANE_CLEARANCE
+            while (x <= last && usedLaneX.has(x)) x += 1
+            if (x > last) {
+              // A gutter with no free inset column left: report it on the same terms as a lane overflow.
+              laneOverflow += 1
+              x = last
+            }
+            usedLaneX.add(x)
+            levelLane.set(rank + "@" + key, x)
+          }
         }
         /**
          * One horizontal run that STOPS where the next element starts, from either side.
@@ -11918,32 +12733,26 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
           const forward = want.parent.rank <= want.child.rank
           /** Whether both ends sit in the SAME column, which is a cyclic board's shape. */
           const level = want.parent.rank === want.child.rank
-          /** The x the edge leaves the blocker's own border at, at that border's middle. */
+          /** The x the edge leaves the blocker's own border at; its y is the blocker's port below. */
           const fromX = forward ? rightOf(want.parent.rank) : leftOf(want.parent.rank)
           /** The x it arrives at on the blocked task's border. */
           const toX = level ? rightOf(want.child.rank) : forward ? leftOf(want.child.rank) : rightOf(want.child.rank)
-          /** The y it leaves at: the blocker's vertical middle. */
-          const fromY = boxMiddle(want.parent.row)
-          /** The y it arrives at: the blocked task's vertical middle. */
-          const toY = boxMiddle(want.child.row)
-          /** The reserved rows this edge owns, empty for an adjacent-rank edge. */
-          const mine = reserved.get(want.key)
+          /** The y it leaves at: the blocker's own PORT for this edge, its middle when it has one edge. */
+          const fromY = portOf[want.parent.task.id][want.key]
+          /** The y it arrives at: the dependant's own port, its middle when it has one edge. */
+          const toY = portOf[want.child.task.id][want.key]
           /** The painted runs, in draw order. */
           const segments                                         = []
           /** The x the path currently stands at, starting on the blocker's border. */
           let x = fromX
-          /** The y the path currently stands at, starting at the blocker's middle. */
+          /** The y the path currently stands at, starting on the blocker's port. */
           let y = fromY
-          /** How many vertical runs have been painted, which numbers their keys. */
-          let risers = 0
-          /** How many intermediate-column crossings have been painted, which numbers their keys. */
-          let crossings = 0
           /**
            * The route's own VERTICES, in travel order, starting on the blocker's border.
            *
            * Recorded here because this is where the route is walked: the painted curve is a
-           * parametrisation of THESE points, never a second routing of its own, so a change to a lane or
-           * a reserved row moves the picture and the assertion together.
+           * parametrisation of THESE points, never a second routing of its own, so a change to a lane,
+           * a port or a band row moves the picture and the assertion together.
            */
           const waypoints               = [{ x: fromX, y: fromY }]
           /**
@@ -11962,47 +12771,58 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
             if (last !== undefined && last.x === point.x && last.y === point.y) return
             waypoints.push(point)
           }
+          /** The rank distance between the two boxes, which decides the route's SHAPE. */
+          const span = Math.abs(want.parent.rank - want.child.rank)
           if (level) {
             // A SAME-RANK DEPENDENCY: no gutter lies between its ends, so the path leaves the blocker's
             // right border, steps into the inset space to the RIGHT of the column — which no box
-            // occupies — runs down to the blocked task's row and comes back in on its right border.
-            /** This edge's own slot in that inset space. */
-            const slot = Math.max(0, Math.min(Math.max(0, halfBand - 1), levelKeys[want.parent.rank].indexOf(want.key)))
-            /** The x that slot stands at, one clearance off the column's own boxes. */
-            const lane = rightOf(want.parent.rank) + LANE_CLEARANCE + slot
+            // occupies — runs down to the blocked task's port and comes back in on its right border.
+            /** The x this edge's run stands at, chosen to avoid every crossing lane of that gutter. */
+            const lane = levelLane.get(want.parent.rank + "@" + want.key) ?? rightOf(want.parent.rank) + LANE_CLEARANCE
             segments.push({ key: "out", rect: run(x, lane, y) })
             mark({ x: lane, y })
             segments.push({ key: "riser", rect: runV(lane, y, toY) })
             mark({ x: lane, y: toY })
             x = lane
             y = toY
+          } else if (span >= 2) {
+            // A RANK-SKIPPING EDGE CROSSES IN THE TOP OR BOTTOM BAND, never through a column: the path
+            // leaves the blocker, rises (or falls) in the gutter beside it to THIS edge's own band row,
+            // makes ONE run across every intermediate column on that row, then descends in the gutter
+            // beside the dependant. The keys are the frozen vocabulary: out/riser/cross1/riser2/in.
+            /** The gutter at the parent's end, where the first riser stands. */
+            const firstGutter = forward ? want.parent.rank : want.parent.rank - 1
+            /** The gutter at the child's end, where the second riser stands. */
+            const lastGutter = forward ? want.child.rank - 1 : want.child.rank
+            /** This edge's own crossing row, which no other long edge shares. */
+            const row = bandRow.get(want.key) ?? GEO.pad + bandExtent
+            /** The lane it rises in, beside its blocker. */
+            const laneOut = laneX(firstGutter, want.key)
+            /** The lane it descends in, beside its dependant. */
+            const laneIn = laneX(lastGutter, want.key)
+            segments.push({ key: "out", rect: run(x, laneOut, y) })
+            mark({ x: laneOut, y })
+            segments.push({ key: "riser", rect: runV(laneOut, y, row) })
+            mark({ x: laneOut, y: row })
+            segments.push({ key: "cross1", rect: run(laneOut, laneIn, row) })
+            mark({ x: laneIn, y: row })
+            segments.push({ key: "riser2", rect: runV(laneIn, row, toY) })
+            mark({ x: laneIn, y: toY })
+            x = laneIn
+            y = toY
           } else {
-            /** The gutters this path walks, in walk order: downhill forward, uphill for a back edge. */
-            const walk           = []
-            for (let rank = Math.min(want.parent.rank, want.child.rank); rank < Math.max(want.parent.rank, want.child.rank); rank += 1) walk.push(rank)
-            if (!forward) walk.reverse()
-            for (let index = 0; index < walk.length; index += 1) {
-              /** The gutter this hop's vertical run stands in. */
-              const lane = laneX(walk[index], want.key)
-              // The horizontal run that reaches the lane: the LEAD-OUT leaves the blocker's border, and
-              // a later one crosses an intermediate column at the row reserved in it — which is the
-              // whole point of the reservation, and why no horizontal can meet a box.
-              if (risers === 0) segments.push({ key: "out", rect: run(x, lane, y) })
-              else {
-                crossings += 1
-                segments.push({ key: "cross" + crossings, rect: run(x, lane, y) })
-              }
-              mark({ x: lane, y })
-              /** The y this hop ends at: the blocked task's middle last, a reserved row in between. */
-              const next = index === walk.length - 1
-                ? toY
-                : boxMiddle(mine?.get(forward ? walk[index] + 1 : walk[index]) ?? 0)
-              risers += 1
-              segments.push({ key: risers === 1 ? "riser" : "riser" + risers, rect: runV(lane, y, next) })
-              mark({ x: lane, y: next })
-              x = lane
-              y = next
-            }
+            // AN ADJACENT-RANK DEPENDENCY: one gutter lies between the boxes, so the path leaves the
+            // blocker's border, runs down (or up) that gutter's own lane and arrives in one hop.
+            /** The gutter this hop's vertical run stands in. */
+            const gutter = forward ? want.parent.rank : want.parent.rank - 1
+            /** That gutter's own lane for this edge. */
+            const lane = laneX(gutter, want.key)
+            segments.push({ key: "out", rect: run(x, lane, y) })
+            mark({ x: lane, y })
+            segments.push({ key: "riser", rect: runV(lane, y, toY) })
+            mark({ x: lane, y: toY })
+            x = lane
+            y = toY
           }
           // The lead-in lands ON the blocked task's border — covering that border's pixel, because this
           // end meets a BOX rather than another run — and the arrowhead's tip sits on the same x.
@@ -12048,14 +12868,15 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
           })
         }
 
-        /** The tallest column's slot count, which is how tall the grid must be. */
-        let tallest = 0
-        for (const count of slots) tallest = Math.max(tallest, count)
+        /** How many boxes each column holds; a long edge no longer reserves a row inside a column. */
+        const slots = columns.map((column) => column.length)
         return {
           columns,
           rankCount,
           width: rankCount * GEO.column,
-          height: Math.max(tallest * (GEO.nodeHeight + GEO.nodeGap) - GEO.nodeGap + GEO.pad * 2, GEO.nodeHeight + GEO.pad * 2),
+          // SYMMETRIC BY CONSTRUCTION: the same pad at both ends and the same band extent above and
+          // below, so the canvas's own middle IS `centerY` — the value every stack is centred on.
+          height: 2 * GEO.pad + 2 * bandExtent + boxAreaHeight,
           gridTemplateColumns: "repeat(" + rankCount + ", " + GEO.column + "px)",
           nodes,
           edges,
@@ -12067,6 +12888,8 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
           ranksDerived,
           unresolved,
           unresolvedRecorded,
+          centerY,
+          overlaps: overlapAudit(edges),
         }
       }
 
@@ -12186,9 +13009,10 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
        * wave's contract amendment (the prohibition was always measurement, never SVG).
        * @param edge - the routed edge, straight off the geometry.
        * @param tinted - whether BOTH of its ends are inside the hover halo.
+       * @param flowing - whether this edge is completed -> running, which adds the dash-flow class.
        * @returns the edge's group, its path and its arrival arrowhead.
        */
-      const edgeOf = (edge           , tinted         )          => {
+      const edgeOf = (edge           , tinted         , flowing         )          => {
         /** The colour every run of this edge draws in; a focused edge reads brighter. */
         const base = tinted ? FOCUS_EDGE : CSS.edge.background
         /** The arrowhead's own box, whose tip end is the border the dependency arrives at. */
@@ -12221,6 +13045,11 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
             // flattened polyline the containment arm measures is built from exactly this `d`.
             "data-mpd-curve": edge.curve.d,
             d: edge.curve.d,
+            // THE FLOW CLASS IS PIXEL-UNIT, ON PURPOSE (D2 repair, Docker 2026-10-21): the old
+            // `pathLength="100"` normalisation shrank the 6px dashes to ~1.4px on a short hop, so it
+            // was removed and `stroke-dasharray: 6 6` now reads at 6px ON EVERY EDGE LENGTH. A
+            // non-flow edge carries NO class — it is static, as the contract requires.
+            className: flowing ? "mpd-dag-flow" : undefined,
             fill: "none",
             // THE TINT IS THE STROKE (clause W7): the box this edge used to fill with a colour is now
             // painted by a line, so the focus halo has to travel through the stroke and the head's fill.
@@ -12239,6 +13068,35 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
           }),
         )
       }
+
+      /**
+       * The completed -> running motion overlay: a small arrow polygon riding the SAME `d` the main
+       * path draws, as an SVG `animateMotion` in a separate `<g data-mpd-flow>`.
+       *
+       * SEPARATE ON PURPOSE. It carries none of the counted attributes (`data-mpd-edge`,
+       * `data-mpd-curve`, `data-mpd-tip`, `data-mpd-head`), so "one path and one head per drawn edge"
+       * stays a statement about the EDGE groups while this layer only adds motion. `rotate="auto"`
+       * turns the arrow with the path's own tangent, and the 1.6s loop is the wave's declared tempo.
+       * @param edge - the routed edge whose parent is completed and whose child is running.
+       * @returns the overlay group; the caller appends it AFTER every edge group in the same SVG.
+       */
+      const flowOf = (edge           )          => react.createElement("g", {
+        key: "flow:" + edge.parent + ">" + edge.child,
+        "data-mpd-flow": edge.witness,
+      },
+        react.createElement("polygon", {
+          key: "flow-arrow",
+          points: "-5,-4 5,0 -5,4",
+          fill: TONE.running,
+          stroke: "none",
+        },
+          react.createElement("animateMotion", {
+            key: "flow-motion",
+            path: edge.curve.d,
+            dur: "1.6s",
+            repeatCount: "indefinite",
+            rotate: "auto",
+          })))
 
       /**
        * One rectangle as the comma-joined text `data-mpd-route` publishes.
@@ -12389,6 +13247,10 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         const [hover, setHoverState] = react.useState(null                 )
         /** The pinned task's id, which drives the detail body; null when nothing is pinned. */
         const [pinned, setPinnedState] = react.useState(null                 )
+        /** The hover card's state: which drawn task it describes and where the pointer is, or null. */
+        const [tip, setTipState] = react.useState(null                   )                                                      
+        /** The ticker's clock, read by the elapsed row; a number from the first render onward. */
+        const [clock, setClockState] = react.useState(Date.now())                                    
         // The handlers below are closures of THIS render, so they always write through this render's
         // setters; the factory-scope names are what the detail body and the edges reach.
         setPinned = setPinnedState                                 
@@ -12397,6 +13259,17 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         const current = store             
         /** The last readable payload, or null while there is none. */
         const state = current.state
+        // THE CLOCK RUNS ONLY WHILE A RUNNING TASK IS VISIBLE: the card's elapsed row is the only
+        // consumer, so an idle panel must not re-render once a second. The effect owns its cleanup,
+        // which clears the interval on unmount or the moment the last running task settles.
+        /** Whether any task on the served board is running, which is the ticker's whole reason to exist. */
+        const runningVisible = state !== null && state.tasks.some((task) => task.visual === "running")
+        react.useEffect(() => {
+          if (!runningVisible) return undefined
+          /** The one-second tick that keeps a running task's elapsed row honest. */
+          const timer = setInterval(() => setClockState(Date.now()), 1000)
+          return () => clearInterval(timer)
+        }, [runningVisible])
         if (state === null) {
           // THE ROOT CARRIES THE TEAM ID, and `""` while there is none: the host asserts on a stable
           // marker for the tab, so every path out of this view writes it — including the two that have
@@ -12468,6 +13341,9 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         // reading a highlight that tinted one node and dimmed no other.
         /** Whether the hovered node's halo reaches at least one other node. */
         const chainActive = focusing && Object.keys(focus).length > 1
+        /** The RENDERED state of every drawn task, so the flow overlay reads what the boxes show. */
+        const visualById                         = {}
+        for (const node of graph.nodes) visualById[node.task.id] = node.task.visual
         /** The drawn edges, PAINTED FROM THE LAYOUT'S OWN ROUTES: one per dependency on the board. */
         // A `blockedBy` id the board does not carry draws NOTHING: the payload serves the list raw,
         // while the rank projection drops unknown ids, so an entry naming a ghost is reachable in real
@@ -12475,19 +13351,29 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         // record does not have. The layout already applied that rule, so the count here is the count
         // the `data-mpd-graph` witness announces.
         const edges            = []
+        /** The completed -> running overlays, appended AFTER every edge group so they paint on top. */
+        const flows            = []
         for (const edge of graph.edges) {
           // THE TINT IS A HOVER FACT, so it is decided here and not in the geometry: an edge reads
           // brighter only while BOTH of its ends are inside the halo, which is what makes a chain
           // readable as a path rather than as two unrelated highlights.
-          edges.push(edgeOf(edge, focus[edge.parent] === true && focus[edge.child] === true))
+          /** Whether this dependency leaves a COMPLETED task for a RUNNING one — the one moving arrow. */
+          const flowing = visualById[edge.parent] === "completed" && visualById[edge.child] === "running"
+          edges.push(edgeOf(edge, focus[edge.parent] === true && focus[edge.child] === true, flowing))
+          if (flowing) flows.push(flowOf(edge))
         }
         // THE PINNED LOOKUP SEARCHES WHAT IS DRAWN, not the board: a plan-only GHOST is clickable, and
         // a board-only lookup made the click set `aria-pressed` while `detailSection` never ran — the
         // pin fell through the same crack the halo and the edges were fixed for.
         /** The pinned node's own record, or undefined when the pinned id is no longer drawn. */
         const pinnedTask = pinned === null ? undefined : drawingTasks.find((candidate) => candidate.id === pinned)
+        /** The hover card's task, also looked up in what is DRAWN; undefined closes the card. */
+        const tipTask = tip === null ? undefined : drawingTasks.find((candidate) => candidate.id === tip.id)
         /** The panel's elements, in render order. */
         const children            = [
+          // ONE SCOPED STYLESHEET AT THE PANEL ROOT, outside `[data-mpd-graph]`: the material, the
+          // keyframes and the reduced-motion block live here, never in the drawing's own subtree.
+          react.createElement("style", { key: "dag-css", "data-mpd-dag-css": "1" }, DAG_CSS),
           react.createElement("div", { key: "head", style: CSS.head }, team.name),
           react.createElement("div", { key: "sub", style: CSS.row },
             react.createElement("span", { key: "phase", style: CSS.chip }, team.phase),
@@ -12580,19 +13466,24 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
                 height: graph.height,
                 viewBox: "0 0 " + graph.width + " " + graph.height,
                 style: { ...CSS.edgeLayer, width: graph.width + "px", height: graph.height + "px" },
-              }, edges),
+              }, edges.concat(flows)),
               graph.columns.map((column, rank) => react.createElement("div", {
                 key: "col-" + rank,
                 "data-mpd-rank": String(rank),
                 style: { ...CSS.column, width: GEO.column + "px", height: graph.height + "px" },
               },
-              column.map((task, row) => react.createElement("div", {
+              column.map((task) => react.createElement("div", {
                 key: "node-" + task.id,
                 "data-mpd-node": task.id,
+                // THE FROSTED-GLASS CLASS AND THE RENDERED STATE both live on the card: the class is
+                // the stylesheet's hook (`backdrop-filter`, breathing, transition), the attribute is
+                // the data the breathing selector keys on. Neither changes the inline semantics below.
+                className: "mpd-dag-node",
+                "data-visual": task.visual,
                 // THE BOX'S OWN RECTANGLE, published so the geometry can be ASSERTED from what was
                 // actually rendered: an edge's runs and every box come out of the same object, and a
                 // test proves no run crosses a box without re-deriving a single number.
-                "data-mpd-box": (rank * GEO.column + graph.inset) + "," + boxTop(row) + "," + (GEO.column - graph.inset * 2) + "," + GEO.nodeHeight,
+                "data-mpd-box": (rank * GEO.column + graph.inset) + "," + nodeOf[task.id].top + "," + (GEO.column - graph.inset * 2) + "," + GEO.nodeHeight,
                 // THE BOX'S RANK, published as its own value: `data-mpd-box` already carries it inside
                 // the x coordinate, but a verifier comparing the served rank against the drawn rank
                 // should not have to invert `rank * column + inset` to read it.
@@ -12606,21 +13497,32 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
                 title: task.subject + (task.attempt === undefined ? "" : " · " + t("task.attempt") + " " + task.attempt),
                 style: {
                   ...CSS.node,
-                  // THE INSET IS THE LAYOUT'S, not the stylesheet's: it is the width the busiest
-                  // gutter's lanes were paid for out of, so a fixed 4px here would detach every box
-                  // from the geometry the edges were routed against.
-                  left: graph.inset + "px",
-                  right: graph.inset + "px",
-                  top: boxTop(row) + "px",
+                  // THE POSITION IS A TRANSFORM, not `left/top`, so a rank change is ANIMATED by the
+                  // class's 420ms transition instead of jumping. The numbers are the LAYOUT's own:
+                  // `left/top` zero the box inside its column, and `translate3d` carries the column's
+                  // inset and the node's top — the same values `data-mpd-box` publishes below, so the
+                  // asserted rectangle and the painted one cannot drift.
+                  left: "0px",
+                  top: "0px",
+                  width: (GEO.column - graph.inset * 2) + "px",
+                  transform: "translate3d(" + graph.inset + "px," + nodeOf[task.id].top + "px,0)",
                   borderColor: focusing && focus[task.id] !== true ? CSS.edge.background : toneOf(task.visual),
                   opacity: focusing && focus[task.id] !== true ? "0.4" : "1",
                   borderWidth: pinned === task.id ? "1px" : "0.5px",
                 },
-                  // THE HOVER CHAIN LIVES ON THE NODE ITSELF: the host drives it with a real mouse move,
-                  // so `onMouseEnter`/`onMouseLeave` here are the only writers — no document listener,
-                  // no layout effect, and therefore nothing that can outlive this element.
-                  onMouseEnter: () => { if (setHover !== null) setHover(task.id) },
-                  onMouseLeave: () => { if (setHover !== null) setHover(null) },
+                  // THE HOVER CHAIN AND THE HOVER CARD LIVE ON THE NODE ITSELF: the host drives both
+                  // with a real mouse move, so these handlers are the only writers — no document
+                  // listener, no layout effect, and therefore nothing that can outlive this element.
+                  //
+                  // FOCUS DOES NOT OPEN THE CARD (D2 repair, Docker 2026-10-21): a FocusEvent has
+                  // no `clientX/clientY`, so the old `onFocus` overwrote a real pointer anchor with
+                  // the (14,14) fallback and parked the card in the viewport's top-left corner the
+                  // moment a click focused the node. Keyboard access is the PIN (Enter/Space opens
+                  // the detail body); `onBlur` still closes a card the pointer left open.
+                  onMouseEnter: (event         ) => { if (setHover !== null) setHover(task.id); setTipState({ id: task.id, ...tipPoint(event) }) },
+                  onMouseMove: (event         ) => { setTipState({ id: task.id, ...tipPoint(event) }) },
+                  onMouseLeave: () => { if (setHover !== null) setHover(null); setTipState(null) },
+                  onBlur: () => { setTipState(null) },
                   onClick: () => { if (setPinned !== null) setPinned(pinned === task.id ? null : task.id) },
                   onKeyDown: (event                  ) => {
                     if (event?.key !== "Enter" && event?.key !== " ") return
@@ -12638,6 +13540,11 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
                 // map, the grid, the padded wrapper, the graph element, and `children.push`.
                 ))))))))
         }
+        // THE HOVER CARD IS A SIBLING OF THE GRAPH, never a descendant: it portals to `document.body`
+        // when the host supports that, and stays an inline `position: fixed` element otherwise. Either
+        // way the raw subject it shows sits OUTSIDE the CJK-free drawing subtree, and the pinned task
+        // makes the same card opaque (`data-pinned`) without a second component.
+        if (tipTask !== undefined && tip !== null) children.push(tipCardOf(tipTask, tip, pinned === tipTask.id, clock))
         if (pinnedTask !== undefined) children.push(detailSection(pinnedTask, tasks, current.contracts[pinnedTask.id], state.model?.edges))
         for (const problem of state.problems) {
           children.push(react.createElement("div", { key: "p-" + problem, style: { ...CSS.dim, marginTop: "6px" } }, problem))
@@ -12645,7 +13552,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         return react.createElement("div", { "data-mpd-team-tab": team.id, style: CSS.panel }, children)
       }
 
-      return { TeamView, start, read, layout, graphSafeLabel, curveOf }
+      return { TeamView, start, read, layout, graphSafeLabel, curveOf, overlapAudit, formatElapsed }
     },
   }
   })();
@@ -12868,9 +13775,9 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     };
     ctx.effect(() => ctx.locale.register("mpdTeamSidebar", {
       en: {
-        "type.label": "Team",
-        "guide.title": "Team",
-        "guide.description": "Roster and shared task progress for this session",
+        "type.label": TEAM_TAB_TITLE,
+        "guide.title": TEAM_TAB_TITLE,
+        "guide.description": TEAM_TAB_DESCRIPTION,
         // The shared view's own copy. Registered from the SAME table the fallback reads, so the two
         // cannot drift: a key added to the view and forgotten here still renders English instead of
         // a raw key, which is the failure mode this pairing exists to make impossible.
@@ -12949,13 +13856,15 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
       id: WORKMATE_TAB_ID,
       kind: WORKMATE_TAB_KIND,
       priority: "extension",
-      title: () => "Workmates",
+      // SAME strings as the better-sidebar descriptor above, by constant rather than by copy: the
+      // fallback is a second surface of one page, not a second description of it.
+      title: () => SIDEBAR_TAB_TITLE,
       guide: [{
         id: "new",
         commandId: WORKMATE_COMMAND_ID,
         order: 41,
-        title: () => "Workmates",
-        description: () => "Durable agents from your library",
+        title: () => SIDEBAR_TAB_TITLE,
+        description: () => SIDEBAR_TAB_DESCRIPTION,
       }],
     }), "mpd-workmate-sidebar:type");
     registered += 1;

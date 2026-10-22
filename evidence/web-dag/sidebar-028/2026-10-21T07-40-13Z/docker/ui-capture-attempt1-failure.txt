@@ -1,0 +1,37 @@
+# Transcription — first Web-capture attempt (failed before the rerun)
+
+The first `docker exec ui-ui-1 bash -lc 'MPD_UI_LANG= bash /data/run-capture.sh'` (2026-10-21 ~15:50 +08:00)
+exited 1 and wrote NO screenshots. Its stdout/stderr was redirected to `ui-capture.log`, which the
+successful rerun later overwrote; this file preserves the observed failure lines verbatim.
+
+```
+seeded workspace ws-mpd-ui -> /data/ws
+token-len=43
+[capture] bound the board to 126 session(s)
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+browserType.launch: Target page, context or browser has been closed
+Browser logs:
+
+<launching> /data/pw-browsers/chromium_headless_shell-1148/chrome-linux/headless_shell ... --no-sandbox
+<launched> pid=7345
+[pid=7345][err] /data/pw-browsers/chromium_headless_shell-1148/chrome-linux/headless_shell: error while loading shared libraries: libnss3.so: cannot open shared object file: No such file or directory
+[pid=7345] <process did exit: exitCode=127, signal=null>
+    at /data/capture.mts:447:32
+
+Node.js v24.21.0
+EXIT=1
+```
+
+Repair applied INSIDE the container only (no repository edit):
+
+```
+docker exec ui-ui-1 bash -lc 'cd /data && npx playwright install-deps chromium'   # exit 0
+# then: ldconfig -p | grep -c libnss3.so  ->  1
+```
+
+The rerun then exited 0 and produced the screenshot set — see `ui-capture.log` and `ui-shots/report.json`.
+Root cause is recorded in `docker-report.md` §4 item 3 (`docker/ui/entrypoint.sh` guards
+`playwright install-deps` on `libglib-2.0.so.0`, which the base image already provides).

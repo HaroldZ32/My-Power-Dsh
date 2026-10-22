@@ -1,0 +1,706 @@
+{
+  "ok": true,
+  "sandbox": "/tmp/mpd-sst-Soq6pp",
+  "steps": {
+    "settled": {
+      "ok": true,
+      "rev": "96c6511aeaecee679b7716caf9f4662e2419e404",
+      "gateHash": "f177ec32ca6d2975f20cce1a84b635b29c0e8f31878f6d1984e10e9db3571660",
+      "wiringHash": "af85e39c9b9d06863a678e82ad8094fcdef58e0dddf6e17fab8ae749995addb2",
+      "measuredAt": "2026-10-22T03:33:20.891Z"
+    },
+    "installer": {
+      "ok": true,
+      "exit": 0
+    },
+    "patchRow": {
+      "ok": true,
+      "mountsRoles": true,
+      "retiredAgentTeamsRow": false
+    },
+    "cjkPositiveSide": [
+      {
+        "prompt": "脱去该项目对于Oh-my-openagent与dsh-agent-teams项目的源码的所有依赖及检查，文档里只写参考鸣谢与License；验证当前工作量门，现在貌似用户只要不提，不论如何都不会建队；不论如何工作量，帮我找一个办法尽量避免面向用户的主代理去直接写/验证代码，做这些事情由子代理去干，并且该插件的PRESET硬要求无论什么模式下，A写出来的一部分代码必须由B验证，两agent必须独立，且要求不直接看代码只看文档，若有问题打回去改",
+        "expect": "stage",
+        "expectedMode": "mechanical",
+        "exited": 0,
+        "notices": 1,
+        "advisory": 0,
+        "mechanical": 1,
+        "officialTools": 0,
+        "mechanicalTool": 1,
+        "retiredVocabulary": 0,
+        "retiredProvisioned": 0,
+        "signals": [
+          "B/C/E"
+        ],
+        "planIds": [
+          "plan-20261022033329449-ly0j-001"
+        ],
+        "stagedPlans": 1,
+        "stagedPlanIds": [
+          "plan-20261022033329449-ly0j-001"
+        ],
+        "stagedMembers": 0,
+        "stagedTasks": 0,
+        "teamRecords": 0,
+        "teamRecordIds": [],
+        "sessionRecords": 349,
+        "sessionFrames": 163,
+        "isolation": true,
+        "ownKeyWritten": true,
+        "gateInstalled": true,
+        "gateKeyAbsent": false,
+        "bootLine": "[mpd-roles] team plane: readOnlyGuard=installed deny=8 captainInvestigation=deny delegationGate=deny verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) askUserQuestion=installed rosterSection=agent-scoped order=605 sessi",
+        "firedLine": "[mpd-roles] session gate fired for agent \"session-a1ac4fba-1f4a-452d-858b-587cf01802a4\" signals=B/C/E mode=mechanical staged=1 plan=plan-20261022033329449-ly0j-001 sensitivity=easy",
+        "problems": [],
+        "ok": true
+      }
+    ],
+    "cjkNegativeSide": [
+      {
+        "prompt": "这个函数是干什么的？",
+        "expect": "none",
+        "expectedMode": "mechanical",
+        "exited": 0,
+        "notices": 0,
+        "advisory": 0,
+        "mechanical": 0,
+        "officialTools": 0,
+        "mechanicalTool": 0,
+        "retiredVocabulary": 0,
+        "retiredProvisioned": 0,
+        "signals": [],
+        "planIds": [],
+        "stagedPlans": 0,
+        "stagedPlanIds": [],
+        "stagedMembers": 0,
+        "stagedTasks": 0,
+        "teamRecords": 0,
+        "teamRecordIds": [],
+        "sessionRecords": 54,
+        "sessionFrames": 24,
+        "isolation": true,
+        "ownKeyWritten": true,
+        "gateInstalled": true,
+        "gateKeyAbsent": false,
+        "bootLine": "[mpd-roles] team plane: readOnlyGuard=installed deny=8 captainInvestigation=deny delegationGate=deny verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) askUserQuestion=installed rosterSection=agent-scoped order=605 sessi",
+        "firedLine": "",
+        "problems": [],
+        "ok": true
+      },
+      {
+        "prompt": "读一下 AGENTS.md 的第一节，然后告诉我它说了什么",
+        "expect": "none",
+        "expectedMode": "mechanical",
+        "exited": 0,
+        "notices": 0,
+        "advisory": 0,
+        "mechanical": 0,
+        "officialTools": 0,
+        "mechanicalTool": 0,
+        "retiredVocabulary": 0,
+        "retiredProvisioned": 0,
+        "signals": [],
+        "planIds": [],
+        "stagedPlans": 0,
+        "stagedPlanIds": [],
+        "stagedMembers": 0,
+        "stagedTasks": 0,
+        "teamRecords": 0,
+        "teamRecordIds": [],
+        "sessionRecords": 42,
+        "sessionFrames": 21,
+        "isolation": true,
+        "ownKeyWritten": true,
+        "gateInstalled": true,
+        "gateKeyAbsent": false,
+        "bootLine": "[mpd-roles] team plane: readOnlyGuard=installed deny=8 captainInvestigation=deny delegationGate=deny verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) askUserQuestion=installed rosterSection=agent-scoped order=605 sessi",
+        "firedLine": "",
+        "problems": [],
+        "ok": true
+      },
+      {
+        "prompt": "请解释一下这个项目里 preset 和 profile 到底有什么区别，为什么会这样设计，以及这样做对我们有什么好处和坏处，最后用三句话总结一下",
+        "expect": "none",
+        "expectedMode": "mechanical",
+        "exited": 0,
+        "notices": 0,
+        "advisory": 0,
+        "mechanical": 0,
+        "officialTools": 0,
+        "mechanicalTool": 0,
+        "retiredVocabulary": 0,
+        "retiredProvisioned": 0,
+        "signals": [],
+        "planIds": [],
+        "stagedPlans": 0,
+        "stagedPlanIds": [],
+        "stagedMembers": 0,
+        "stagedTasks": 0,
+        "teamRecords": 0,
+        "teamRecordIds": [],
+        "sessionRecords": 286,
+        "sessionFrames": 146,
+        "isolation": true,
+        "ownKeyWritten": true,
+        "gateInstalled": true,
+        "gateKeyAbsent": false,
+        "bootLine": "[mpd-roles] team plane: readOnlyGuard=installed deny=8 captainInvestigation=deny delegationGate=deny verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) askUserQuestion=installed rosterSection=agent-scoped order=605 sessi",
+        "firedLine": "",
+        "problems": [],
+        "ok": true
+      }
+    ],
+    "simpleSide": [
+      {
+        "prompt": "Reply with exactly: hello-ok",
+        "expect": "none",
+        "expectedMode": "mechanical",
+        "exited": 0,
+        "notices": 0,
+        "advisory": 0,
+        "mechanical": 0,
+        "officialTools": 0,
+        "mechanicalTool": 0,
+        "retiredVocabulary": 0,
+        "retiredProvisioned": 0,
+        "signals": [],
+        "planIds": [],
+        "stagedPlans": 0,
+        "stagedPlanIds": [],
+        "stagedMembers": 0,
+        "stagedTasks": 0,
+        "teamRecords": 0,
+        "teamRecordIds": [],
+        "sessionRecords": 22,
+        "sessionFrames": 7,
+        "isolation": true,
+        "ownKeyWritten": true,
+        "gateInstalled": true,
+        "gateKeyAbsent": false,
+        "bootLine": "[mpd-roles] team plane: readOnlyGuard=installed deny=8 captainInvestigation=deny delegationGate=deny verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) askUserQuestion=installed rosterSection=agent-scoped order=605 sessi",
+        "firedLine": "",
+        "problems": [],
+        "ok": true
+      },
+      {
+        "prompt": "What does the git-master skill do? Answer in one sentence.",
+        "expect": "none",
+        "expectedMode": "mechanical",
+        "exited": 0,
+        "notices": 0,
+        "advisory": 0,
+        "mechanical": 0,
+        "officialTools": 0,
+        "mechanicalTool": 0,
+        "retiredVocabulary": 0,
+        "retiredProvisioned": 0,
+        "signals": [],
+        "planIds": [],
+        "stagedPlans": 0,
+        "stagedPlanIds": [],
+        "stagedMembers": 0,
+        "stagedTasks": 0,
+        "teamRecords": 0,
+        "teamRecordIds": [],
+        "sessionRecords": 28,
+        "sessionFrames": 13,
+        "isolation": true,
+        "ownKeyWritten": true,
+        "gateInstalled": true,
+        "gateKeyAbsent": false,
+        "bootLine": "[mpd-roles] team plane: readOnlyGuard=installed deny=8 captainInvestigation=deny delegationGate=deny verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) askUserQuestion=installed rosterSection=agent-scoped order=605 sessi",
+        "firedLine": "",
+        "problems": [],
+        "ok": true
+      },
+      {
+        "prompt": "Rename the variable `foo` to `bar` in src/util.ts.",
+        "expect": "none",
+        "expectedMode": "mechanical",
+        "exited": 0,
+        "notices": 0,
+        "advisory": 0,
+        "mechanical": 0,
+        "officialTools": 0,
+        "mechanicalTool": 0,
+        "retiredVocabulary": 0,
+        "retiredProvisioned": 0,
+        "signals": [],
+        "planIds": [],
+        "stagedPlans": 0,
+        "stagedPlanIds": [],
+        "stagedMembers": 0,
+        "stagedTasks": 0,
+        "teamRecords": 0,
+        "teamRecordIds": [],
+        "sessionRecords": 88,
+        "sessionFrames": 43,
+        "isolation": true,
+        "ownKeyWritten": true,
+        "gateInstalled": true,
+        "gateKeyAbsent": false,
+        "bootLine": "[mpd-roles] team plane: readOnlyGuard=installed deny=8 captainInvestigation=deny delegationGate=deny verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) askUserQuestion=installed rosterSection=agent-scoped order=605 sessi",
+        "firedLine": "",
+        "problems": [],
+        "ok": true
+      }
+    ],
+    "softComplexSide": [
+      {
+        "prompt": "Align the bundle with upstream: audit the orchestration surface, then implement the routing change.",
+        "expect": "stage",
+        "expectedMode": "mechanical",
+        "exited": 0,
+        "notices": 1,
+        "advisory": 0,
+        "mechanical": 1,
+        "officialTools": 0,
+        "mechanicalTool": 1,
+        "retiredVocabulary": 0,
+        "retiredProvisioned": 0,
+        "signals": [
+          "B/C"
+        ],
+        "planIds": [
+          "plan-20261022034307029-lf5k-001"
+        ],
+        "stagedPlans": 1,
+        "stagedPlanIds": [
+          "plan-20261022034307029-lf5k-001"
+        ],
+        "stagedMembers": 0,
+        "stagedTasks": 0,
+        "teamRecords": 0,
+        "teamRecordIds": [],
+        "sessionRecords": 331,
+        "sessionFrames": 160,
+        "isolation": true,
+        "ownKeyWritten": true,
+        "gateInstalled": true,
+        "gateKeyAbsent": false,
+        "bootLine": "[mpd-roles] team plane: readOnlyGuard=installed deny=8 captainInvestigation=deny delegationGate=deny verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) askUserQuestion=installed rosterSection=agent-scoped order=605 sessi",
+        "firedLine": "[mpd-roles] session gate fired for agent \"session-a7720fb0-d2a8-40e3-b728-21ea3ae32c11\" signals=B/C mode=mechanical staged=1 plan=plan-20261022034307029-lf5k-001 sensitivity=easy",
+        "problems": [],
+        "ok": true
+      },
+      {
+        "prompt": "1. Read the patch file\n2. Audit the gates\n3. Implement the change\n4. Verify the boot",
+        "expect": "stage",
+        "expectedMode": "mechanical",
+        "exited": 0,
+        "notices": 1,
+        "advisory": 0,
+        "mechanical": 1,
+        "officialTools": 0,
+        "mechanicalTool": 1,
+        "retiredVocabulary": 0,
+        "retiredProvisioned": 0,
+        "signals": [
+          "B/C"
+        ],
+        "planIds": [
+          "plan-20261022034447637-miju-001"
+        ],
+        "stagedPlans": 1,
+        "stagedPlanIds": [
+          "plan-20261022034447637-miju-001"
+        ],
+        "stagedMembers": 0,
+        "stagedTasks": 0,
+        "teamRecords": 0,
+        "teamRecordIds": [],
+        "sessionRecords": 275,
+        "sessionFrames": 122,
+        "isolation": true,
+        "ownKeyWritten": true,
+        "gateInstalled": true,
+        "gateKeyAbsent": false,
+        "bootLine": "[mpd-roles] team plane: readOnlyGuard=installed deny=8 captainInvestigation=deny delegationGate=deny verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) askUserQuestion=installed rosterSection=agent-scoped order=605 sessi",
+        "firedLine": "[mpd-roles] session gate fired for agent \"session-293bca80-ac25-403c-93b3-04c4baadfdd8\" signals=B/C mode=mechanical staged=1 plan=plan-20261022034447637-miju-001 sensitivity=easy",
+        "problems": [],
+        "ok": true
+      }
+    ],
+    "mechanicalDefaultSide": [
+      {
+        "prompt": "Align the bundle with upstream: audit the orchestration surface, then implement the routing change.",
+        "expect": "stage",
+        "expectedMode": "mechanical",
+        "exited": 0,
+        "notices": 1,
+        "advisory": 0,
+        "mechanical": 1,
+        "officialTools": 0,
+        "mechanicalTool": 1,
+        "retiredVocabulary": 0,
+        "retiredProvisioned": 0,
+        "signals": [
+          "B/C"
+        ],
+        "planIds": [
+          "plan-20261022034643690-tnb5-001"
+        ],
+        "stagedPlans": 1,
+        "stagedPlanIds": [
+          "plan-20261022034643690-tnb5-001"
+        ],
+        "stagedMembers": 0,
+        "stagedTasks": 0,
+        "teamRecords": 0,
+        "teamRecordIds": [],
+        "sessionRecords": 469,
+        "sessionFrames": 217,
+        "isolation": true,
+        "ownKeyWritten": true,
+        "gateInstalled": true,
+        "gateKeyAbsent": true,
+        "bootLine": "[mpd-roles] team plane: readOnlyGuard=installed deny=8 captainInvestigation=deny delegationGate=deny verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) askUserQuestion=installed rosterSection=agent-scoped order=605 sessi",
+        "firedLine": "[mpd-roles] session gate fired for agent \"session-0be6dcc5-01f1-4459-862c-5febd5e9f7e0\" signals=B/C mode=mechanical staged=1 plan=plan-20261022034643690-tnb5-001 sensitivity=easy",
+        "problems": [],
+        "ok": true
+      }
+    ],
+    "explicitSide": [
+      {
+        "prompt": "team: fix the flaky test",
+        "expect": "stage",
+        "expectedMode": "mechanical",
+        "exited": 0,
+        "notices": 1,
+        "advisory": 0,
+        "mechanical": 1,
+        "officialTools": 0,
+        "mechanicalTool": 1,
+        "retiredVocabulary": 0,
+        "retiredProvisioned": 0,
+        "signals": [
+          "A/B"
+        ],
+        "planIds": [
+          "plan-20261022035028422-c6km-001"
+        ],
+        "markerConsumed": true,
+        "stagedPlans": 1,
+        "stagedPlanIds": [
+          "plan-20261022035028422-c6km-001"
+        ],
+        "stagedMembers": 0,
+        "stagedTasks": 0,
+        "teamRecords": 0,
+        "teamRecordIds": [],
+        "sessionRecords": 355,
+        "sessionFrames": 166,
+        "isolation": true,
+        "ownKeyWritten": true,
+        "gateInstalled": true,
+        "gateKeyAbsent": false,
+        "bootLine": "[mpd-roles] team plane: readOnlyGuard=installed deny=8 captainInvestigation=deny delegationGate=deny verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) askUserQuestion=installed rosterSection=agent-scoped order=605 sessi",
+        "firedLine": "[mpd-roles] session gate fired for agent \"session-9dfdb90d-b239-4bf5-a375-4c5770ddfbb8\" signals=A/B mode=mechanical staged=1 plan=plan-20261022035028422-c6km-001 sensitivity=easy",
+        "problems": [],
+        "ok": true
+      }
+    ],
+    "boulderActiveSide": [
+      {
+        "prompt": "Reply with exactly: boulder-ok",
+        "expect": "stage",
+        "expectedMode": "mechanical",
+        "exited": 0,
+        "notices": 1,
+        "advisory": 0,
+        "mechanical": 1,
+        "officialTools": 0,
+        "mechanicalTool": 1,
+        "retiredVocabulary": 0,
+        "retiredProvisioned": 0,
+        "signals": [
+          "D"
+        ],
+        "planIds": [
+          "plan-20261022035241951-57xp-001"
+        ],
+        "stagedPlans": 1,
+        "stagedPlanIds": [
+          "plan-20261022035241951-57xp-001"
+        ],
+        "stagedMembers": 0,
+        "stagedTasks": 0,
+        "teamRecords": 0,
+        "teamRecordIds": [],
+        "sessionRecords": 23,
+        "sessionFrames": 9,
+        "isolation": true,
+        "ownKeyWritten": true,
+        "gateInstalled": true,
+        "gateKeyAbsent": false,
+        "bootLine": "[mpd-roles] team plane: readOnlyGuard=installed deny=8 captainInvestigation=deny delegationGate=deny verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) askUserQuestion=installed rosterSection=agent-scoped order=605 sessi",
+        "firedLine": "[mpd-roles] session gate fired for agent \"session-4ce37d7a-188b-4235-99aa-d62dcafb6e84\" signals=D mode=mechanical staged=1 plan=plan-20261022035241951-57xp-001 sensitivity=easy",
+        "problems": [],
+        "ok": true
+      }
+    ],
+    "boulderCompletedSide": [
+      {
+        "prompt": "Reply with exactly: boulder-ok",
+        "expect": "none",
+        "expectedMode": "mechanical",
+        "exited": 0,
+        "notices": 0,
+        "advisory": 0,
+        "mechanical": 0,
+        "officialTools": 0,
+        "mechanicalTool": 0,
+        "retiredVocabulary": 0,
+        "retiredProvisioned": 0,
+        "signals": [],
+        "planIds": [],
+        "stagedPlans": 0,
+        "stagedPlanIds": [],
+        "stagedMembers": 0,
+        "stagedTasks": 0,
+        "teamRecords": 0,
+        "teamRecordIds": [],
+        "sessionRecords": 22,
+        "sessionFrames": 9,
+        "isolation": true,
+        "ownKeyWritten": true,
+        "gateInstalled": true,
+        "gateKeyAbsent": false,
+        "bootLine": "[mpd-roles] team plane: readOnlyGuard=installed deny=8 captainInvestigation=deny delegationGate=deny verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) askUserQuestion=installed rosterSection=agent-scoped order=605 sessi",
+        "firedLine": "",
+        "problems": [],
+        "ok": true
+      }
+    ],
+    "advisorySide": [
+      {
+        "prompt": "Align the bundle with upstream: audit the orchestration surface, then implement the routing change.",
+        "expect": "advisory",
+        "expectedMode": "advisory",
+        "exited": 0,
+        "notices": 1,
+        "advisory": 1,
+        "mechanical": 0,
+        "officialTools": 1,
+        "mechanicalTool": 0,
+        "retiredVocabulary": 0,
+        "retiredProvisioned": 0,
+        "signals": [
+          "B/C"
+        ],
+        "planIds": [],
+        "stagedPlans": 0,
+        "stagedPlanIds": [],
+        "stagedMembers": 0,
+        "stagedTasks": 0,
+        "teamRecords": 0,
+        "teamRecordIds": [],
+        "sessionRecords": 355,
+        "sessionFrames": 172,
+        "isolation": true,
+        "ownKeyWritten": true,
+        "gateInstalled": true,
+        "gateKeyAbsent": false,
+        "bootLine": "[mpd-roles] team plane: readOnlyGuard=installed deny=8 captainInvestigation=deny delegationGate=deny verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) askUserQuestion=installed rosterSection=agent-scoped order=605 sessi",
+        "firedLine": "[mpd-roles] session gate fired for agent \"session-fb4da4dc-49cb-44c0-82ad-c9a7dc73a65a\" signals=B/C mode=advisory staged=0 sensitivity=easy",
+        "problems": [],
+        "ok": true
+      }
+    ],
+    "offSide": [
+      {
+        "prompt": "Align the bundle with upstream: audit the orchestration surface, then implement the routing change.",
+        "expect": "off",
+        "expectedMode": "off",
+        "exited": 0,
+        "notices": 0,
+        "advisory": 0,
+        "mechanical": 0,
+        "officialTools": 0,
+        "mechanicalTool": 0,
+        "retiredVocabulary": 0,
+        "retiredProvisioned": 0,
+        "signals": [],
+        "planIds": [],
+        "stagedPlans": 0,
+        "stagedPlanIds": [],
+        "stagedMembers": 0,
+        "stagedTasks": 0,
+        "teamRecords": 0,
+        "teamRecordIds": [],
+        "sessionRecords": 260,
+        "sessionFrames": 121,
+        "isolation": true,
+        "ownKeyWritten": true,
+        "gateInstalled": true,
+        "gateKeyAbsent": false,
+        "bootLine": "[mpd-roles] team plane: readOnlyGuard=installed deny=8 captainInvestigation=deny delegationGate=deny verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) askUserQuestion=installed rosterSection=agent-scoped order=605 sessi",
+        "firedLine": "",
+        "problems": [],
+        "ok": true
+      }
+    ],
+    "largeWorkspaceSide": [
+      {
+        "prompt": "Reply with exactly: hello-ok",
+        "expect": "stage",
+        "expectedMode": "mechanical",
+        "exited": 0,
+        "notices": 1,
+        "advisory": 0,
+        "mechanical": 1,
+        "officialTools": 0,
+        "mechanicalTool": 1,
+        "retiredVocabulary": 0,
+        "retiredProvisioned": 0,
+        "signals": [
+          "F"
+        ],
+        "planIds": [
+          "plan-20261022035709196-vrfi-001"
+        ],
+        "stagedPlans": 1,
+        "stagedPlanIds": [
+          "plan-20261022035709196-vrfi-001"
+        ],
+        "stagedMembers": 0,
+        "stagedTasks": 0,
+        "teamRecords": 0,
+        "teamRecordIds": [],
+        "sessionRecords": 23,
+        "sessionFrames": 8,
+        "isolation": true,
+        "ownKeyWritten": true,
+        "gateInstalled": true,
+        "gateKeyAbsent": true,
+        "bootLine": "[mpd-roles] team plane: readOnlyGuard=installed deny=8 captainInvestigation=deny delegationGate=deny verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) askUserQuestion=installed rosterSection=agent-scoped order=605 sessi",
+        "firedLine": "[mpd-roles] session gate fired for agent \"session-6bf1cc21-0fbb-40db-b459-f90a0752dee8\" signals=F mode=mechanical staged=1 plan=plan-20261022035709196-vrfi-001 sensitivity=easy",
+        "problems": [],
+        "ok": true
+      }
+    ],
+    "verdicts": {
+      "ok": true,
+      "sides": 16,
+      "failed": [],
+      "simpleNotices": [
+        0,
+        0,
+        0
+      ],
+      "softNotices": [
+        1,
+        1
+      ],
+      "softPlanIds": [
+        [
+          "plan-20261022034307029-lf5k-001"
+        ],
+        [
+          "plan-20261022034447637-miju-001"
+        ]
+      ],
+      "mechanicalDefault": [
+        {
+          "notices": 1,
+          "planIds": [
+            "plan-20261022034643690-tnb5-001"
+          ],
+          "stagedPlans": 1,
+          "teamRecords": 0,
+          "gateKeyAbsent": true,
+          "bootLine": "[mpd-roles] team plane: readOnlyGuard=installed deny=8 captainInvestigation=deny delegationGate=deny verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) askUserQuestion=installed rosterSection=agent-scoped order=605 sessi",
+          "firedLine": "[mpd-roles] session gate fired for agent \"session-0be6dcc5-01f1-4459-862c-5febd5e9f7e0\" signals=B/C mode=mechanical staged=1 plan=plan-20261022034643690-tnb5-001 sensitivity=easy"
+        }
+      ],
+      "mechanicalDefaultGateKeyAbsent": true,
+      "explicitMarkerConsumed": [
+        true
+      ],
+      "boulderActive": [
+        {
+          "notices": 1,
+          "signals": [
+            "D"
+          ],
+          "stagedPlans": 1,
+          "teamRecords": 0,
+          "planIds": [
+            "plan-20261022035241951-57xp-001"
+          ]
+        }
+      ],
+      "boulderCompleted": [
+        {
+          "notices": 0,
+          "stagedPlans": 0,
+          "teamRecords": 0
+        }
+      ],
+      "advisory": [
+        {
+          "notices": 1,
+          "advisory": 1,
+          "stagedPlans": 0,
+          "teamRecords": 0
+        }
+      ],
+      "off": [
+        {
+          "notices": 0,
+          "stagedPlans": 0,
+          "teamRecords": 0,
+          "modeLine": "[mpd-roles] team plane: readOnlyGuard=installed deny=8 captainInvestigation=deny delegationGate=deny verifyGate=absent reason=withdrawn:2026-10-17-user-ruling(verify.mode) askUserQuestion=installed rosterSection=agent-scoped order=605 sessi"
+        }
+      ],
+      "cjkPositive": [
+        {
+          "notices": 1,
+          "signals": [
+            "B/C/E"
+          ],
+          "stagedPlans": 1,
+          "planIds": [
+            "plan-20261022033329449-ly0j-001"
+          ],
+          "teamRecords": 0,
+          "firedLine": "[mpd-roles] session gate fired for agent \"session-a1ac4fba-1f4a-452d-858b-587cf01802a4\" signals=B/C/E mode=mechanical staged=1 plan=plan-20261022033329449-ly0j-001 sensitivity=easy"
+        }
+      ],
+      "cjkNegative": [
+        {
+          "notices": 0,
+          "stagedPlans": 0,
+          "teamRecords": 0
+        },
+        {
+          "notices": 0,
+          "stagedPlans": 0,
+          "teamRecords": 0
+        },
+        {
+          "notices": 0,
+          "stagedPlans": 0,
+          "teamRecords": 0
+        }
+      ],
+      "largeWorkspace": [
+        {
+          "notices": 1,
+          "signals": [
+            "F"
+          ],
+          "stagedPlans": 1,
+          "planIds": [
+            "plan-20261022035709196-vrfi-001"
+          ],
+          "teamRecords": 0,
+          "firedLine": "[mpd-roles] session gate fired for agent \"session-6bf1cc21-0fbb-40db-b459-f90a0752dee8\" signals=F mode=mechanical staged=1 plan=plan-20261022035709196-vrfi-001 sensitivity=easy"
+        }
+      ]
+    }
+  },
+  "totalSteps": 15
+}

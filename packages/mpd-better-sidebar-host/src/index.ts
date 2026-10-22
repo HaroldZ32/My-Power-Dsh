@@ -22,47 +22,46 @@
 // path outside the package is not portable into the packed layout, where the host sits beside this
 // package's parent directory rather than two levels up.
 //
-// THE WEB RUNTIME SEAM WAS RENAMED IN HARNESS 0.2.1-rc.2 (measured 2026-10-17, both closures):
-//   • 0.2.0-rc.2 `@deepseek-ai/dsh-web-app` does `ctx.provide("webRuntime", resolveLanTrust(host,
-//     trustedHosts))`, i.e. `{ lanAddresses, trustedHosts }`;
-//   • 0.2.1-rc.2 the SAME package does `ctx.provide("webApp", { getAdvertisedUrl })` — `webRuntime`
-//     appears NOWHERE in that closure (recursive grep → 0 hits), and no service exposes
-//     `trustedHosts` as a bind-dependent runtime value any more (the fence moved into
-//     `dsh-client-connection`'s own `isTrustedApiRequest(request, trustedHosts, bindHost, protocol)`,
-//     fed from its own config; the LAN-literal derivation left `dsh-web-app` entirely).
+// THE SEAM MOVED TWICE (measured in both closure shapes):
+//   • 0.2.0-rc.2 provided `webRuntime = { lanAddresses, trustedHosts }`, and `dsh-better-sidebar@0.24.1`
+//     fenced `/sidebar/api` with `isTrustedApiRequest(req, ctx.webRuntime.trustedHosts)`;
+//   • 0.2.1-rc.2 provides no `webRuntime` at all — `@deepseek-ai/dsh-web-app` now provides only
+//     `webApp = { getAdvertisedUrl }`, and the LAST generation of this shim therefore probed for a
+//     member no pinned host read any more.
 //
-// The pinned host (`dsh-better-sidebar@0.24.1`) needs EXACTLY ONE member of the old service: its
-// `/sidebar/api` fence is `isTrustedApiRequest(req, ctx.webRuntime.trustedHosts)`. So this shim now
-// runs ONE seam probe at apply time: it prefers the 0.2.1 name, falls back to the 0.2.0 name, mounts
-// the host only when the member really exists, and otherwise DISABLES ITSELF with the reason spelled —
-// a row that waits for a service no build provides is the defect this probe removes.
-import { createRequire } from "node:module"
+// THE 0.28 CONTRACT (measured 2026-10-21 in `dsh-better-sidebar@0.28.0`'s `lib/index.js`):
+//   • `inject = ['webServer', 'sessions', 'connection', 'tools']`;
+//   • the `/sidebar/api` fence is `ctx.connection.requestRejection(req) === undefined`.
+// `connection` is a cordis Service provided by `@deepseek-ai/dsh-client-connection`, i.e. by harness
+// 0.2.1-rc.1+ (the host's peer floor and this bundle's pinned 0.2.1-rc.2 both satisfy it). So the shim
+// now restates `connection` in its inject list and mounts the host as soon as that service exists; the
+// only self-disable left is the honest "this composition provides no connection service" one.
 import { dirname, join } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 // The host-plane seams this row injects, named by their adapter constants: the same single source of
-// truth the other rows use, so a harness rename lands in the adapter only. `DSH_SEAM_WEB_RUNTIME` is
-// the OLD generation's name and is deliberately NOT in the inject list below — the probe reads it.
-import { DSH_SEAM_SESSIONS, DSH_SEAM_TOOLS, DSH_SEAM_WEB_RUNTIME, DSH_SEAM_WEB_SERVER, dshSeamInject, rowLogLine } from "../../mpd-dsh-adapter-plugin/src/index"
+// truth the other rows use, so a harness rename lands in the adapter only.
+import { DSH_SEAM_SESSIONS, DSH_SEAM_TOOLS, DSH_SEAM_WEB_SERVER, rowLogLine } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /**
- * The 0.2.1-rc.2 name of the Web GUI service: `@deepseek-ai/dsh-web-app` provides `webApp` as
- * `{ getAdvertisedUrl }`.
+ * The 0.28 host's fourth injected seam: the carrier-neutral connection service whose
+ * `requestRejection` is the sidebar's `/sidebar/api` fence.
  *
  * LOCAL ON PURPOSE: `packages/mpd-dsh-adapter-plugin` owns the seam vocabulary and this constant
- * belongs there as soon as a second consumer needs it; this row is the only prober today, so the name
- * lives beside the probe instead of widening the adapter in a lane that may not edit it.
+ * belongs there as soon as a second consumer needs it; this row is the only consumer today, so the name
+ * lives beside its inject list instead of widening the adapter in a lane that may not edit it.
  */
-export const DSH_SEAM_WEB_APP = "webApp"
+export const DSH_SEAM_CONNECTION = "connection"
 
 /**
- * The ONE member of the Web runtime service the pinned sidebar host actually calls.
+ * The ONE member of the connection service the pinned sidebar host actually calls.
  *
- * Measured in `dsh-better-sidebar@0.24.1` (`lib/index.js`): its `/sidebar/api` fence is
- * `isTrustedApiRequest(req, ctx.webRuntime.trustedHosts)`. No other member of that service is read.
+ * Measured in `dsh-better-sidebar@0.28.0` (`lib/index.js`): the fence is
+ * `ctx.connection.requestRejection(req) === undefined`. No other member of that service is read by the
+ * fence.
  */
-export interface WebRuntimeTrustLike {
-  /** Non-loopback authorities the host's browser-trust fence accepts, `host` or `host:port`. */
-  readonly trustedHosts: readonly string[]
+export interface ConnectionFenceLike {
+  /** Applies the Host/Origin and live-peer fence; `undefined` means the request is admitted. */
+  requestRejection?: (request: unknown) => unknown
 }
 
 /** The smallest context surface the seam probe needs: a SOFT service read. */
@@ -73,74 +72,61 @@ export interface SoftProbeContext {
 
 /** Why the probe armed nothing — the reason a disabled row writes down. */
 export type SidebarSeamReason =
-  /** `webApp` exists but carries no `trustedHosts` (the measured 0.2.1-rc.2 shape). */
-  | "web-app-without-member"
-  /** `webApp` carries the member, but the pinned host reads it from `ctx.webRuntime` BY NAME. */
-  | "web-app-under-another-name"
-  /** Neither service is provided. */
+  /** No `connection` service is provided in this composition. */
   | "absent"
 
 /**
  * What the row's ONE seam probe decided, and the evidence behind it.
  *
- * `detail` ALWAYS names both candidates, so an operator reading the boot line can tell "the harness
- * renamed the service" from "this composition never had one".
+ * `detail` always names the probed service and whether it carries the fence member, so an operator
+ * reading the boot line can tell "the harness renamed or dropped the service" from "this composition
+ * never had one".
  */
 export type SidebarSeamDecision =
   | {
-    /** The 0.2.0-generation name is armed; the host will read `ctx.webRuntime.trustedHosts`. */
-    readonly armed: "webRuntime"
-    /** The probed service, narrowed to the member the host reads. */
-    readonly service: WebRuntimeTrustLike
-    /** The boot line's evidence, naming both candidates. */
+    /** The 0.28 connection service is present; the host may mount against it. */
+    readonly armed: "connection"
+    /** The probed service, as carried for diagnostics only. */
+    readonly service: ConnectionFenceLike
+    /** The boot line's evidence: presence plus whether the fence member is callable. */
     readonly detail: string
   }
   | {
     /** Nothing was armed; the row contributes no sidebar and must say why. */
     readonly armed: "none"
-    /** Which of the three measured situations applies. */
+    /** Which situation applies. */
     readonly reason: SidebarSeamReason
-    /** The boot line's evidence, naming both candidates. */
+    /** The boot line's evidence: the probed service's absence. */
     readonly detail: string
   }
 
 /**
- * Decide whether this composition can drive the pinned host, from the two measured service names.
+ * Decide whether this composition can drive the pinned 0.28 host.
  *
- * The order is the NEWEST generation first: `webApp` is probed before `webRuntime`, and a `webApp`
- * that does not carry `trustedHosts` (every measured 0.2.1 build) cannot be armed. A future `webApp`
- * that DOES carry the member is still not armed, because the pinned host reads `ctx.webRuntime` by
- * name — aliasing one service onto another service's name is a compatibility view this row does not
- * build, so the probe reports that case honestly instead of guessing.
+ * The probe arms on PRESENCE, not on the member: the host declares `connection` itself, so a real
+ * loader hands it a real service, and a shape that lacks `requestRejection` fails loudly inside the
+ * host's own apply (reported as `seam NOT mounted`) instead of being silently reinterpreted here. The
+ * member is still inspected so the boot line says which case the operator is in.
  * @param ctx - the row's context (or any object with a soft `get`).
  * @returns the decision, carrying the service when armed and the reason when not.
  */
 export function probeSidebarSeam(ctx: SoftProbeContext): SidebarSeamDecision {
-  /** The 0.2.1 name's value; undefined when this composition does not provide it. */
-  const webApp = softProbe(ctx, DSH_SEAM_WEB_APP)
-  /** The 0.2.0 name's value; undefined when this composition does not provide it. */
-  const webRuntime = softProbe(ctx, DSH_SEAM_WEB_RUNTIME)
-  /** The trusted-host view of the 0.2.1 service, undefined unless it really carries the member. */
-  const appTrust = trustOf(webApp)
-  /** The trusted-host view of the 0.2.0 service, undefined unless it really carries the member. */
-  const runtimeTrust = trustOf(webRuntime)
-  /** The line every decision carries: both candidates, in probe order, and what each offers. */
-  const seen = `${DSH_SEAM_WEB_APP}=${describeService(webApp, appTrust)}, ${DSH_SEAM_WEB_RUNTIME}=${describeService(webRuntime, runtimeTrust)}`
-  // A `webApp` that carries the member is reported as unusable rather than silently aliased: the host
-  // reads the OLD name, and faking that name for a service shaped like it would hide a real rename.
-  if (appTrust !== undefined) {
-    return { armed: "none", reason: "web-app-under-another-name", detail: `${seen} — the pinned host reads ctx.${DSH_SEAM_WEB_RUNTIME} by name, so arming ${DSH_SEAM_WEB_APP} would need a context view this row does not build` }
+  /** The 0.28 service's value; undefined when this composition does not provide it. */
+  const connection = softProbe(ctx, DSH_SEAM_CONNECTION)
+  if (connection === undefined) {
+    return {
+      armed: "none",
+      reason: "absent",
+      detail: `${DSH_SEAM_CONNECTION}=absent — the 0.28 sidebar host fences /sidebar/api through ctx.${DSH_SEAM_CONNECTION}.requestRejection, so it cannot mount without that service`,
+    }
   }
-  // THE FALLBACK: when the newest name cannot drive the host, the OLD name still can — this is the
-  // generation the pinned host was written against, and the probe arms it whenever the member exists.
-  if (runtimeTrust !== undefined) {
-    return { armed: "webRuntime", service: runtimeTrust, detail: seen }
+  /** Whether the service carries the fence member the host calls. */
+  const hasFence = typeof (connection as ConnectionFenceLike | null)?.requestRejection === "function"
+  return {
+    armed: "connection",
+    service: connection as ConnectionFenceLike,
+    detail: `${DSH_SEAM_CONNECTION}=${hasFence ? "present with requestRejection()" : "present without requestRejection() — the 0.28 host calls it, so its apply will report the failure"}`,
   }
-  // The 0.2.1 shape: the new service exists, the member does not, and no older provider is present.
-  if (webApp !== undefined) {
-    return { armed: "none", reason: "web-app-without-member", detail: `${seen} — 0.2.1-rc.2's WebApp declares only getAdvertisedUrl() and no bind-dependent trustedHosts` }
-  }
-  return { armed: "none", reason: "absent", detail: `${seen} — neither the Web GUI service nor the older Web runtime service is provided in this composition` }
 }
 
 /**
@@ -161,35 +147,8 @@ function softProbe(ctx: SoftProbeContext, name: string): unknown {
 }
 
 /**
- * The trusted-host view of one probed service value, or undefined when it does not carry the member.
- * @param value - the probed value, of unknown shape.
- * @returns the value narrowed to `trustedHosts`, or undefined when the member is missing or malformed.
- */
-function trustOf(value: unknown): WebRuntimeTrustLike | undefined {
-  if (typeof value !== "object" || value === null) return undefined
-  /** The member read, unchecked until the array and every entry are known to be strings. */
-  const trusted = (value as { trustedHosts?: unknown }).trustedHosts
-  if (!Array.isArray(trusted)) return undefined
-  if (!trusted.every((entry: unknown): boolean => typeof entry === "string")) return undefined
-  // The array and its entries are checked above; the cast names the member this row relies on.
-  return value as WebRuntimeTrustLike
-}
-
-/**
- * Render one probed candidate for the boot line.
- * @param value - the probed value, undefined when the service is absent.
- * @param trust - its trusted-host view, undefined when the member is missing.
- * @returns `absent`, `present without trustedHosts`, or the member's authority count.
- */
-function describeService(value: unknown, trust: WebRuntimeTrustLike | undefined): string {
-  if (value === undefined) return "absent"
-  if (trust === undefined) return "present without trustedHosts"
-  return `present with trustedHosts(${String(trust.trustedHosts.length)})`
-}
-
-/**
- * Resolve the sidebar host: beside this package's parent first (a checkout install), then upward
- * through the usual node_modules chain (a packed install or a profile that has its own copy).
+ * Resolve the sidebar host: from the bundle's own `node_modules` (a checkout install), which is the
+ * layout the bundle controls; a packed install materializes the same package there.
  */
 function hostUrl(): string {
   /** This module's own directory, which is `dist/` in a built install. */
@@ -249,27 +208,22 @@ export async function loadSidebarHost(): Promise<SidebarHost> {
 export const name = "mpd-better-sidebar-host"
 
 /**
- * THE HOST'S OWN INJECT LIST, restated — MINUS the Web runtime seam, which is PROBED, not injected.
+ * THE HOST'S OWN INJECT LIST, restated — the module the loader reads the dependencies from is THIS one.
  *
  * Measured: with an empty list the host applied and then threw `cannot get property "webServer"
- * without inject`, i.e. the host was loaded and starved of the services it declares.
+ * without inject`, i.e. the host was loaded and starved of the services it declares. The order is the
+ * host's own (0.28.0: `webServer`, `sessions`, `connection`, `tools`) and `connection` is built into
+ * this array directly because the adapter constant for it does not exist yet (see
+ * {@link DSH_SEAM_CONNECTION}).
  *
- * WHY `webRuntime` LEFT THIS LIST (the defect this row fixes, measured 2026-10-17): cordis delays a
- * row's apply until every injected service is ACTIVE, and harness 0.2.1-rc.2 provides no `webRuntime`
- * at all — the row therefore never applied and the boot printed
- * `mpd-better-sidebar ... pending (waiting for service: webRuntime)`. The name is now resolved by
- * {@link probeSidebarSeam} at apply time, and the host is mounted inside a scoped inject that declares
- * it, so the property is available to the host on the generation that still provides it.
- *
- * It is restated rather than imported because a static import would have to name a path that exists
- * in BOTH install layouts (the checkout ships the host under `<bundle>/node_modules`, a packed
- * install gets it in the profile's), and the dynamic import that solves that cannot produce a static
- * export. The bundle PINS the host's version (`dsh-better-sidebar@0.24.1`), and
- * `test/host-contract.test.ts` compares this list with the shipped package's own (minus the probed
- * seam) whenever that package is resolvable — so a version bump that changes the list fails a test
- * instead of starving the host in silence.
+ * It is restated rather than imported because a static import would have to name a path that exists in
+ * BOTH install layouts (the checkout ships the host under `<bundle>/node_modules`, a packed install
+ * gets it in the profile's), and the dynamic import that solves that cannot produce a static export.
+ * The bundle PINS the host's version (`dsh-better-sidebar@0.28.0`), and `test/host-contract.test.ts`
+ * compares this list with the shipped package's own whenever that package is resolvable — so a version
+ * bump that changes the list fails a test instead of starving the host in silence.
  */
-export const inject: string[] = dshSeamInject(DSH_SEAM_WEB_SERVER, DSH_SEAM_SESSIONS, DSH_SEAM_TOOLS)
+export const inject: string[] = [DSH_SEAM_WEB_SERVER, DSH_SEAM_SESSIONS, DSH_SEAM_CONNECTION, DSH_SEAM_TOOLS]
 
 /**
  * Emit one row diagnostic: the adapter's workspace log line ALWAYS, the plane's logger when present.
@@ -328,9 +282,10 @@ async function mountHost(host: SidebarHost, scoped: SidebarApplyContext, config:
 /**
  * Import the host and delegate one cordis apply to it through the probed seam.
  *
- * The row ALWAYS applies (its inject list names only services both generations provide), and it either
- * mounts the host inside the armed scope or writes down why it disabled itself. It never waits for a
- * service that no build provides, and it never claims a sidebar it did not mount.
+ * The row ALWAYS applies when `connection` is present (its inject list names only services the 0.28
+ * host itself declares), and it either mounts the host inside the armed scope or writes down why it
+ * disabled itself. It never waits for a service that no build provides, and it never claims a sidebar
+ * it did not mount.
  * @param ctx - the row's context.
  * @param config - the row config, forwarded to the host untouched.
  * @throws when the host module exports no `apply` at all (a packaging defect, not a seam decision).
@@ -348,7 +303,7 @@ export async function apply(ctx: SidebarApplyContext, config: unknown): Promise<
   // ARMED IS NOT MOUNTED. This line records the PROBE DECISION; the mount happens later, inside the
   // injected scope, and reports its own outcome (`seam MOUNTED` / `seam NOT mounted`). A deployment
   // line must not claim more than has happened by the time it is written.
-  say(ctx, "info", `seam ARMED (decision only; the mount is reported separately): ${DSH_SEAM_WEB_RUNTIME}.trustedHosts (${String(decision.service.trustedHosts.length)} trusted authorities); ${decision.detail}`)
+  say(ctx, "info", `seam ARMED (decision only; the mount is reported separately): ${decision.detail}`)
   /** The host module, imported once through the memoizing loader. */
   let host: SidebarHost
   try {
@@ -363,15 +318,14 @@ export async function apply(ctx: SidebarApplyContext, config: unknown): Promise<
     return
   }
   // THE MOUNT SCOPE IS AN INJECTED ONE. Cordis v4 exposes a service as a context PROPERTY only to a
-  // scope that declared it in `inject` (measured: `ctx.webRuntime` on a non-injecting scope throws
-  // `cannot get property "webRuntime" without inject` even while the service is registered), and the
-  // pinned host reads `ctx.webRuntime.trustedHosts` on every request. Handing the host the row's own
-  // ctx would therefore surface as a per-request throw; the scoped inject makes the property real.
+  // scope that declared it in `inject`, and the 0.28 host reads `ctx.connection.requestRejection` on
+  // every request. Handing the host the row's own ctx would therefore surface as a per-request throw;
+  // the scoped inject makes the property real.
   try {
-    ctx.inject([DSH_SEAM_WEB_RUNTIME], (scoped: SidebarApplyContext): void => {
+    ctx.inject([DSH_SEAM_CONNECTION], (scoped: SidebarApplyContext): void => {
       void mountHost(host, scoped, config)
     })
   } catch (error) {
-    say(ctx, "warn", `seam NOT mounted: could not inject ${DSH_SEAM_WEB_RUNTIME}: ${messageOf(error)}`)
+    say(ctx, "warn", `seam NOT mounted: could not inject ${DSH_SEAM_CONNECTION}: ${messageOf(error)}`)
   }
 }

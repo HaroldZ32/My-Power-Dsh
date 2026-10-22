@@ -1,0 +1,92 @@
+# PR #60 CodeRabbit round — F1 / F2 / F3
+
+Branch: fix/team-board-settlement
+Base commit: 8abcfafa (clean checkout)
+Recorded: 2026-10-22T10:06:51Z
+No git write commands were issued; the captain commits.
+
+## What changed (by symbol)
+
+F1 — release authorization (Major, security / CWE-862)
+  packages/mpd-team-core-plugin/src/team-store.ts
+    + authorizeRelease(record, taskId, caller, lead): string | undefined
+        allowed: this team's LEAD (roster flag OR the record's own leadSessionId/leadHistory)
+                 or the task's OWNER (private nameMatches, the close gate's comparator)
+        refused: a stranger -> the close gate's own sentence
+                 no owner     -> "task X has no owner and this caller is not this team's lead"
+                 task gone    -> only the Lead may free the stale pairing
+  packages/mpd-team-core-plugin/src/index.ts
+    ~ releaseDispatchedTask(..., caller, lead): the record is re-read FIRST and authorizeRelease
+      runs at the TOP, BEFORE the ledger write — an unauthorized caller unbooks nothing.
+    ~ agent_teams_task release: caller = [sessionId, sessionTitleOf(exec), membership name,
+      ownMember.name, narrowed ancestry]; lead = membership?.role === "lead" (the close branch's
+      own sources; `claimant` is never read).
+    ~ agent_teams_dispatch release: the SAME construction and the SAME lead source.
+
+F2 — release render (Minor)
+  packages/mpd-team-core-plugin/src/index.ts  agent_teams_task output.render
+    `released` is now checked BEFORE `status` (after `refused`):
+      released true                     -> `${taskId} -> ${status ?? "pending"} (pairing freed)`
+      released false, status present    -> `${taskId} -> ${status} (no pairing to free)`
+      released false, no status         -> "that task was not dispatched"
+    The close line is unchanged and no schema changed; the dispatch render is untouched.
+
+F3 — settled member claim (Minor, state)
+  packages/mpd-team-core-plugin/src/index.ts  agent_teams_task claim
+    memberNamedBy(claimed, [claimant]) resolves the claimant's roster row; when it is `inactive`
+    the written record is withDerivedPhase(updateTeamMember(..., {status:"running"})).
+    `failed` / `provisioning` rows are left alone; the phase is re-derived either way.
+
+Docs
+  packages/mpd-team-core-plugin/README.md + README.zh-CN.md — who may release (the Lead or the
+  task's own owner) and that an unauthorized release is refused BEFORE the pairing is freed (EN/zh
+  in lockstep).
+
+Dist
+  .toolchain/node_modules/.bin/bun build packages/mpd-team-core-plugin/src/index.ts \
+    --target node --format esm --outfile packages/mpd-team-core-plugin/dist/index.js
+  -> Bundled 18 modules; index.js 221.59 KB. No dependent dist rebuilds owed (every importer of
+     this package's src imports it type-only).
+
+## Tests added (existing arms untouched)
+
+  test/member-close.test.ts
+    F1 (a) a member that owns NEITHER the task nor the lead role is refused with the exact sentence,
+           and the task row AND ledger row are unchanged — on BOTH release surfaces
+    F1 (b) the task's OWNER releases its own task: row pending, pairing freed, other pairing intact —
+           through BOTH owner spellings (the roster name a dispatch stamps, and the executorRef /
+           session id a tool claim stamps)
+    F1 (c) the LEAD releases ANY task: same success shape
+    F3 (d) a settled member claiming its own task through the tool is `running` again; the other
+           member's row is untouched
+  test/team-record.test.ts
+    F2     a real dispatched release paints "T1 -> pending (pairing freed)", never "by undefined";
+           a claim-only release paints "T1 -> pending (no pairing to free)"; a real closure still
+           paints the close line
+
+## Gates (logs beside this file; `.exit` holds the code)
+
+  build                       exit 0  Bundled 18 modules in 9ms
+  tests                       exit 0  280 pass, 0 fail, 1317 expect() calls, 19 files
+  tests (literal gate command, PATH bun 1.4.2)  exit 0  same 280 pass / 0 fail
+  typecheck                   exit 0  tsgo --noEmit, no diagnostics
+  verify:comments             exit 0  VERDICT: PASS — 430/430 files, 38438 declarations
+  verify:docs                 exit 0  pairs=49 failed=0 violations=0 links=440 dead=0 — PASS
+  verify-dist-fresh           exit 0  33/33 targets fresh (rebuilt twice, byte-identical), bun 1.4.0
+  verify:gates                exit 0  PASS - 9/9 member gate(s) green
+  test:qa                     exit 0  all self-tests passed
+
+## Bounds
+
+- A non-Lead release of a task id that is NO LONGER on the board is refused and no longer frees a
+  stale ledger pairing; the Lead keeps that repair and the dispatch pass's own reconcile prunes
+  such rows. Deliberate under the "Lead or owner" rule, documented in authorizeRelease.
+- The caller-identity array is copied from the close branch instead of being extracted (the
+  contract forbade inventing helpers); it now appears in three places.
+- Authorization decides against the record re-read at the top of releaseDispatchedTask; the ledger
+  write follows it. A concurrent owner change is still bounded by casReleaseTask's revision CAS,
+  but the authorization itself is not revision-fenced.
+- Gates ran on the wave's own DIRTY tree (pre-commit, as intended). An earlier capture recorded a
+  non-zero exit before any log existed: a command substitution on the per-call fresh /tmp failed,
+  short-circuiting `&&` so the gate never ran. Re-run directly, captured cleanly here; the package
+  suite was also run five consecutive times, all 280 pass / exit 0.

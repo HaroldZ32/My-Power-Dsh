@@ -50,6 +50,10 @@ mpd-dsh/
 │   ├── mpd-modelchain-plugin/    # B4: mpd_modelchain_resolve + mpd_memory_save/recall
 │   ├── mpd-codegraph-plugin/     # binary resolve + project init + the mpd-codegraph command
 │   ├── mpd-bootstrap-plugin/     # serves <bundle>/skills by reference; cleans legacy (<=0.2.6) copies
+│   ├── mpd-project-init-plugin/  # host row: a TOP-LEVEL session in a project-like dir with no
+│   │                             #   AGENT.md/AGENTS.md/CLAUDE.md writes one AGENT.md ONCE (wx + a
+│   │                             #   .mpd/project-init.json marker + a log line); silent for HOME/root,
+│   │                             #   non-project dirs and existing files; injected from the NEXT session
 │   ├── mpd-team-watchdog-plugin/ # stall detection: the member record-stream fold, heartbeat store,
 │   │                             #   WARN->ESCALATE ladder, preserving hold (NEW DISPATCH only)
 │   ├── mpd-team-compact-plugin/  # compacts FINISHED teams (never the captain); ledger in .mpd/team-compact

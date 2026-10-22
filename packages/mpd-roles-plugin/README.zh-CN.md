@@ -21,7 +21,7 @@
 
 - `mpdRoles` service（`ctx.get("mpdRoles")`）：`list()` / `get(key)` — 被 `mpd-modelchain-plugin` 消费（chain lookup）。
 - `mpd_roles_list` — roster，每个 role 一行：名称、route、做什么。
-- `mpd_role_spawn` — single-call consult：对一个 role 发起一次有界委派并返回一份报告。被生成的子智能体（roster persona + route + 对 read-only roles 的 write-deny toolFilter）**以该 role 的名称为 label**（`Architect`、`Deep Worker`），而不再是 `role-<id>-<random>`；它是 **continuable** 的：harness 会保留它，报告之后仍以 `inactive` 列出，可用 `send_message` 继续。`mpd_workmate_spawn` 使用同样的 spawn 机制但作用于持久的、可演化的实例（外加库中的 persona/memory）；团队工作是官方 `spawn_teammate` 路径。
+- `mpd_role_spawn` — **一次性**单次咨询（one-shot single-call consult）：对一个 role 发起一次有界委派并返回一份报告。被生成的子智能体（roster persona + route + 对 read-only roles 的 write-deny toolFilter）**以该 role 的名称为 label**（`Architect`、`Deep Worker`），而不再是 `role-<id>-<random>`。在提供 `startActivation` 的 host 上，报告落定后 adapter 会 dispose 该 activation —— 已退役的 `start` 回退路径**没有 activation 可 dispose** —— 因此无论走哪条路径，该次咨询都**不可复用**：新问题请发起**新的** spawn。（harness 的 catalog 是只追加的，所以已结束的子会话仍可能以 `inactive` 列出；但契约始终是一次性的。）`mpd_workmate_spawn` 使用同样的**一次性** spawn 机制但作用于持久的、可演化的实例 —— 连续性由库中的 persona/memory/note **记录**承载，而不是子会话；团队工作是官方 `spawn_teammate` 路径。
 - `mpd_role_persona` — 为需要将 persona 作为文本使用的 spawn surface 获取 persona 文本（官方 Agent Teams 的 `spawn_teammate` 会把它作为 teammate 的 `prompt`）。
 
 **两个 surface 共用同一套命名（名称统一）。** 名称就是 role 的身份：它既是 team mode 下 agent-teams 为成员取的名称，也是单次 `mpd_role_spawn` 产生的 label。称呼时任意拼写均可：`Architect`、`architect`、`Deep Worker`、`deep-worker`、`deepworker`、`Plan Reviewer`（大小写、空格、连字符、下划线均不敏感）。**任何 surface 都不再展示沿袭自上游的别称** —— role 只用它做什么来描述。
@@ -69,7 +69,7 @@
 
 ### 委派闸门与侦察 guard（2026-10-20 恢复）
 
-本行在只读 guard 之外安装**两道** `tools.guard` 回调：**captain 侦察 guard**（`mpd` preset 的顶层 session 委派侦察，因此对**源码**路径的 `read`/`grep`/`glob` 会被拒绝，而文档带 —— `.mpd/**`、`docs/**`、`evidence/**`、`agent-references/**` 以及根目录的说明/概览文件 —— 保持可读；开关 `captain.investigation`，默认 `"deny"` | `"allow"`）与**委派闸门**（对 `subagent`、`subagent_fork`、`workflow` 的调用被拒绝，拒绝文本点名 `mpd_role_spawn`、workmate 库、Agent Teams 与 `send_message`；开关 `delegation.gate`，默认 `"deny"` | `"captain"` | `"allow"`）。
+本行在只读 guard 之外安装**两道** `tools.guard` 回调：**captain 侦察 guard**（`mpd` preset 的顶层 session 委派侦察，因此对**源码**路径的 `read`/`grep`/`glob` 会被拒绝，而文档带 —— `.mpd/**`、`docs/**`、`evidence/**`、`agent-references/**` 以及根目录的说明/概览文件 —— 保持可读；开关 `captain.investigation`，默认 `"deny"` | `"allow"`）与**委派闸门**（对 `subagent`、`subagent_fork`、`workflow` 的调用被拒绝，拒绝文本点名 `mpd_role_spawn`、workmate 库、Agent Teams 与 `send_message`，并明确限定：`send_message` 只能继续**已存在的 TEAM 子会话**，绝不用于已结束的咨询（consult 是一次性的）；开关 `delegation.gate`，默认 `"deny"` | `"captain"` | `"allow"`）。
 
 **委派闸门的 preset 豁免只适用于顶层 session。** 别的 preset（包括部署默认的 `cordis`）的**顶层** session 保留自己的 spawn 习惯；而**成员与子 session 不论运行哪个 preset 都继续受门控** —— 它们的委派属于 captain 的路径，子 session 的 preset 不得重新打开官方 spawn 工具。侦察 guard 由 `sessionIsMpdCaptain` 限定（顶层 **且** `mpd` preset），因此对任何 rank 的非 `mpd` session 都不生效。闸门按不依赖 preset 的 `sessionRank` 判定，其 mode 在该范围内决定覆盖面：`deny`（默认）覆盖 `mpd` preset 的顶层 session 以及每个成员/子/无 header 的 session，`captain` 只约束顶层 session，`allow` 则完全放行。
 
@@ -95,7 +95,15 @@
 trigger = explicit flag OR (matchedSignals >= 1)
 ```
 
-信号为 **A**（`team:` 前缀或 `!team`；标记会从目标文本中被**消费**）、**B**（≥ 4 个不同的交付动词）、**C**（**一个**信号，由其三路子信号中的 ≥ 2 路触发：≥ 3 条枚举行、≥ 3 个不同动作动词、≥ 3 个动作小句）与 **D**（session 工作区存在**正在进行**的 boulder 工作：`.mpd/boulder.json` 中 `status: "active"` —— 仅有 plan **文件**并不构成信号；2026-10-07 修复，因为旧的文件探测在本工作区的每个 session 都会触发）。每一条通知都携带标记 `[AgentTeams] Session-start team rule`。
+信号为 **A**（`team:` 前缀或 `!team`；标记会从目标文本中被**消费**）、**B**（不同交付动词 —— 阈值随 sensitivity 行而定）、**C**（**一个**信号，由其三路子信号中的足够多路触发：枚举行、不同动作动词、动作小句）、**D**（session 工作区存在**正在进行**的 boulder 工作：`.mpd/boulder.json` 中 `status: "active"` —— 仅有 plan **文件**并不构成信号；2026-10-07 修复，因为旧的文件探测在本工作区的每个 session 都会触发）、**E**（CJK 规模指令：Han 字符数**且**不同动作动词数；词表已包含中文指令实际使用的交付类动词）与 **F**（**工作区规模**：一次有界根目录 `readdir` 能找到一个项目清单文件、一个项目目录且可见条目 ≥ 8 —— 仅在 `easy` 行求值）。每一条通知都携带标记 `[AgentTeams] Session-start team rule`。
+
+`mpd.jsonc` 的 `team.sensitivity` 选择阈值行（`easy` —— **默认** | `normal` | `strict`）：`normal` 精确复现 2026-10-22 之前的**谓词** —— 同样的数值**以及**同一套 wave 之前的动词词表（本 wave 新增的英文与 CJK 动词在该行不可见）；缺失或未知的取值一律读作 `easy`（闸门不会因配置抛错）：
+
+| sensitivity | B 不同动词 | C 行 / 动词 / 小句 | E Han 字符 / 动词 | F 工作区规模 |
+|---|---|---|---|---|
+| `easy`（默认） | ≥ 2 | ≥ 2 / ≥ 2 / ≥ 2（2-of-3） | ≥ 24 / ≥ 2 | 开 |
+| `normal` | ≥ 4 | ≥ 3 / ≥ 3 / ≥ 3（2-of-3） | ≥ 60 / ≥ 2 | 关 |
+| `strict` | ≥ 6 | ≥ 4 / ≥ 4 / ≥ 4（3-of-3） | ≥ 80 / ≥ 3 | 关 |
 
 触发后**做什么**由 `mpd.jsonc` 的 `team.gate` 按调用决定：`mechanical`（**自 2026-10-20 恢复起为默认**）| `advisory` | `off`。
 

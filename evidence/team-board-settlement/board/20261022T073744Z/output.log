@@ -1,0 +1,55 @@
+# T2 evidence — board settlement wave (R1-R3 + stale code header/README)
+
+Recorded: 2026-10-22T07:37:44Z · branch fix/team-board-settlement · base 46e3bf12
+Contract: .mpd/plans/team-board-settlement.md
+
+## $ bun test packages/mpd-team-core-plugin
+
+```
+ 275 pass
+ 0 fail
+ 1266 expect() calls
+Ran 275 tests across 19 files. [1261.00ms]
+```
+
+## $ bun test packages/mpd-team-compact-plugin packages/mpd-team-watchdog-plugin packages/mpd-workmate-plugin
+
+```
+ 214 pass
+ 0 fail
+ 1338 expect() calls
+Ran 214 tests across 19 files. [2.58s]
+```
+
+## $ bun test packages/mpd-tui-plugin packages/mpd-dsh-adapter-plugin
+
+```
+ 766 pass
+ 0 fail
+ 14782 expect() calls
+Ran 766 tests across 36 files. [10.65s]
+```
+
+## $ bun run typecheck
+
+```
+$ tsgo --noEmit
+```
+
+## $ bun run verify:comments
+
+```
+$ node scripts/verify-comment-coverage.ts
+# verify-comment-coverage
+
+scanned 430 TypeScript file(s) of 430 in the source set; inspected 38392 declaration(s); skipped 17913 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+```
+
+## $ bun run verify:docs
+
+```
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=49 failed=0 violations=0 exempt=24 derived=3 links=440 dead=0 — PASS
+```
+

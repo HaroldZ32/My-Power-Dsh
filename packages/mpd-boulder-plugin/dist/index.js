@@ -1187,6 +1187,14 @@ async function startContinuableChild(subagents, spec, action) {
   const argument = member === "startActivation" ? { ...spec, delivery: "parent" } : spec;
   return subagents[member].call(subagents, argument);
 }
+async function disposeSettledConsult(activation) {
+  const dispose = activation?.dispose;
+  if (typeof dispose !== "function")
+    return;
+  try {
+    await dispose.call(activation);
+  } catch {}
+}
 var REPORTED_RETIRED_SPAWN_FIELDS = new Set;
 function warnRetiredSpawnFields(spec) {
   for (const field of ["persona", "toolFilter"]) {
@@ -1939,6 +1947,7 @@ function createDshAdapter(ctx, config = {}) {
           delivery: "parent"
         });
         const settled = await (activation?.result ?? {});
+        await disposeSettledConsult(activation);
         return {
           output: textOfOutput(settled.output),
           structured: settled.structured,
@@ -2412,6 +2421,41 @@ function probeMpdDsh(ctx, strict) {
 
 // packages/mpd-roles-plugin/src/complexity-gate.ts
 import { join as join5 } from "node:path";
+var SENSITIVITY_THRESHOLDS = {
+  easy: {
+    deliverableVerbs: 2,
+    enumeratedLines: 2,
+    actionVerbs: 2,
+    clauseSteps: 2,
+    cSubSignals: 2,
+    cjkChars: 24,
+    cjkVerbs: 2,
+    workspaceScale: true,
+    lexicon: "expanded"
+  },
+  normal: {
+    deliverableVerbs: 4,
+    enumeratedLines: 3,
+    actionVerbs: 3,
+    clauseSteps: 3,
+    cSubSignals: 2,
+    cjkChars: 60,
+    cjkVerbs: 2,
+    workspaceScale: false,
+    lexicon: "pre-wave"
+  },
+  strict: {
+    deliverableVerbs: 6,
+    enumeratedLines: 4,
+    actionVerbs: 4,
+    clauseSteps: 4,
+    cSubSignals: 3,
+    cjkChars: 80,
+    cjkVerbs: 3,
+    workspaceScale: false,
+    lexicon: "expanded"
+  }
+};
 var WORKSPACE_ROOT_SPELLINGS = [".", "./", ".mpd", ".mpd/", "./.mpd", "./.mpd/"];
 function resolveBoulderDir(value) {
   if (typeof value !== "string")
@@ -2421,6 +2465,12 @@ function resolveBoulderDir(value) {
     return;
   return trimmed;
 }
+var DELIVERABLE_VERB_MIN = SENSITIVITY_THRESHOLDS.normal.deliverableVerbs;
+var ENUMERATED_LINE_MIN = SENSITIVITY_THRESHOLDS.normal.enumeratedLines;
+var ACTION_VERB_MIN = SENSITIVITY_THRESHOLDS.normal.actionVerbs;
+var C_SUBSIGNAL_MIN = SENSITIVITY_THRESHOLDS.normal.cSubSignals;
+var CJK_CHAR_MIN = SENSITIVITY_THRESHOLDS.normal.cjkChars;
+var CJK_ACTION_VERB_MIN = SENSITIVITY_THRESHOLDS.normal.cjkVerbs;
 var TEAM_RECORDS_DIR = join5(".mpd", "team", "teams");
 
 // packages/mpd-boulder-plugin/src/index.ts

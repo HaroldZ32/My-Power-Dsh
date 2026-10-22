@@ -1,0 +1,229 @@
+{
+  "version": 7,
+  "record": {
+    "identity": {
+      "formatVersion": 4,
+      "createdAt": 1792641907089,
+      "cwd": "/tmp/mpd-mount-joT5sZ/ws",
+      "isSeeded": false,
+      "inheritedEventCount": 0
+    },
+    "rows": {
+      "title": {
+        "ver": 1,
+        "seq": 69,
+        "val": "Agent teams live mount check"
+      },
+      "titleInput": {
+        "ver": 3,
+        "seq": 69,
+        "val": {
+          "first": {
+            "seq": 8,
+            "text": "Use the agent_teams_plan tool. If a plan shell was staged for this session, extend it; otherwise create a plan named live-check with description 'Live mount check'. Add exactly one member: name live-reviewer, description 'Reviewer - reply with exactly: ok', prompt 'Reply with exactly: ok'. Create exactly one task: subject 'Reply with ok', owner live-reviewer. Then approve the plan with agent_teams_plan action approve. Do not ask questions; after approving, reply DONE."
+          },
+          "count": 1,
+          "lastSeq": 8
+        }
+      },
+      "llmRetry": {
+        "ver": 1,
+        "seq": 69,
+        "val": {}
+      },
+      "sandboxMode": {
+        "ver": 1,
+        "seq": 69,
+        "val": "workspace-write"
+      },
+      "goal": {
+        "ver": 6,
+        "seq": 69,
+        "val": {
+          "current": {
+            "goal": {
+              "id": "goal-5347e364-3c3d-4a8e-9185-1ebe5b1fca0f",
+              "revision": 1,
+              "objective": "Staged mechanically by the mpd session-start complexity gate on complexity signals B.\nThis is a SHELL: 0 members and 0 tasks, because at the first pre-step there is no decomposition yet.\nGoal excerpt: Use the agent_teams_plan tool. If a plan shell was staged for this session, extend it; otherwise create a plan named live-check with description 'Live mount check'. Add exactly one member: name live-reviewer, description 'Reviewer - reply with exactly: ok', prompt 'Reply with exactly: ok'. Create exactly one task: subject 'Reply with ok', owner live-reviewer. Then approve the plan with agent_teams_plan action approve. Do not ask questions; after approving, reply DONE.\nExtend it with `agent_teams_plan {action:\"add_member\"}` (each member's prompt comes from `mpd_role_persona`) and `agent_teams_plan {action:\"create_task\"}`, then approve it with `agent_teams_plan {action:\"approve\"}` — approval is what spawns the members.\nNOTHING has been spawned; the plan is INERT until approved.",
+              "phase": "active",
+              "maxGoalRounds": 32
+            },
+            "roundsStarted": 0,
+            "createdAt": 1792641915610,
+            "updatedAt": 1792641915610
+          },
+          "seenGoalIds": [
+            "goal-5347e364-3c3d-4a8e-9185-1ebe5b1fca0f"
+          ],
+          "failure": null
+        }
+      },
+      "tokenUsage": {
+        "ver": 2,
+        "seq": 69,
+        "val": {
+          "totals": {
+            "uncachedInputTokens": 4052,
+            "outputTokens": 1384,
+            "cacheReadTokens": 221184,
+            "cacheWriteTokens": 0
+          },
+          "last": {
+            "turn": 1,
+            "step": 8,
+            "buckets": {
+              "uncachedInputTokens": 214,
+              "outputTokens": 138,
+              "cacheReadTokens": 28672,
+              "cacheWriteTokens": 0
+            }
+          }
+        }
+      },
+      "contextPressure": {
+        "ver": 5,
+        "seq": 69,
+        "val": {
+          "surfaceTokens": 7253,
+          "contextWindow": 1000000,
+          "pressureTokens": 28886,
+          "sampledSurfaceTokens": 7097
+        }
+      },
+      "contextBreakdown": {
+        "ver": 6,
+        "seq": 69,
+        "val": {
+          "systems": [
+            {
+              "seq": 7,
+              "tokens": 2869
+            }
+          ],
+          "surfaceTokens": 7253,
+          "breakdown": {
+            "systemTokens": 2869,
+            "toolsTokens": 21042,
+            "messageTokens": 4384
+          }
+        }
+      },
+      "todos": {
+        "ver": 2,
+        "seq": 69,
+        "val": [
+          {
+            "content": "Reply with ok",
+            "status": "pending"
+          }
+        ]
+      },
+      "turnBoundary": {
+        "ver": 2,
+        "seq": 69,
+        "val": {
+          "openTurnStartSeq": null,
+          "lastStepStartSeq": 65,
+          "lastStepBoundary": {
+            "kind": "end",
+            "seq": 68
+          },
+          "lastTurn": 1
+        }
+      },
+      "inbox": {
+        "ver": 1,
+        "seq": 69,
+        "val": {
+          "next-turn": [],
+          "next-step": []
+        }
+      },
+      "userQuestions": {
+        "ver": 2,
+        "seq": 69,
+        "val": {
+          "inheritedEventCount": 0,
+          "timed": false,
+          "questions": {
+            "active": [],
+            "settled": []
+          }
+        }
+      },
+      "plan": {
+        "ver": 3,
+        "seq": 69,
+        "val": {
+          "active": false,
+          "wanted": null,
+          "running": null,
+          "activeAtLastHeader": false
+        }
+      },
+      "permissions": {
+        "ver": 2,
+        "seq": 69,
+        "val": {
+          "preset": "workspace-write",
+          "sandbox": "workspace-write",
+          "approval": "ask",
+          "seeded": false
+        }
+      },
+      "workingDirectory": {
+        "ver": 1,
+        "seq": 69,
+        "val": "/tmp/mpd-mount-joT5sZ/ws"
+      },
+      "subagentCatalog": {
+        "ver": 6,
+        "seq": 69,
+        "val": {
+          "inheritedEventCount": 0,
+          "head": {
+            "values": [
+              {
+                "version": 0,
+                "childId": "21ffa646-5a1d-487b-b5b5-523ec654c242",
+                "childCreatedAt": 1792641915590,
+                "mode": "continuable",
+                "label": "live-reviewer · team-20261022040515586-w3md-002"
+              }
+            ]
+          }
+        }
+      },
+      "subagentTiming": {
+        "ver": 3,
+        "seq": 69,
+        "val": {
+          "descriptorSeen": false,
+          "settledMs": 0
+        }
+      },
+      "subagent": {
+        "ver": 2,
+        "seq": 69,
+        "val": {}
+      },
+      "subagentModelSelectionPolicy": {
+        "ver": 1,
+        "seq": 69,
+        "val": null
+      },
+      "agentTeam": {
+        "ver": 4,
+        "seq": 69,
+        "val": {
+          "id": "session-3a2c34dd-e3f4-46f5-a007-e69c494258cb",
+          "members": [],
+          "tasks": [],
+          "messages": [],
+          "delivered": [],
+          "nextTaskNumber": 1
+        }
+      }
+    }
+  }
+}

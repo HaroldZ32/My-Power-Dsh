@@ -1,0 +1,37 @@
+{
+  "startedAt": "2026-10-21T07:40:16.046Z",
+  "finishedAt": "2026-10-21T07:49:19.647Z",
+  "docker": "Docker version 29.9.1, build dfc520d",
+  "compose": "Docker Compose version v5.6.0",
+  "image": "mpd-docker-e2e:local",
+  "imageMiB": 489,
+  "buildxConfig": "/tmp/mpd-docker-e2e-buildx-mMlERM",
+  "liveRequested": false,
+  "browserEnabled": true,
+  "requiredPrefixes": [
+    "ui."
+  ],
+  "excludedRequired": [
+    "ui.teamBoard"
+  ],
+  "unmeasured": [
+    "ui.replyRendered"
+  ],
+  "teamRowsMissing": [],
+  "steps": [
+    {
+      "id": "driver-build",
+      "cmd": "docker compose -f /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/docker/docker-compose.yml build",
+      "status": 0
+    },
+    {
+      "id": "driver-run",
+      "cmd": "docker compose -f /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/docker/docker-compose.yml run --rm -T -e MPD_E2E_BROWSER=1 mpd-client",
+      "status": 1,
+      "signal": null
+    }
+  ],
+  "containerExit": 1,
+  "verdict": "ok=false complete=false passed=82 failed=2 null=38 FAILED=[pack.staticCoherence,pack.distFreshRebuild] NULL=[qa.mcpCall,oneclick.scratchRepo,oneclick.requiredPaths,oneclick.filesAllowlist,oneclick.distByteIdentical,live.credentialStaged,live.credentialScoped,live.credentialRemoved,live.web.turnStarted,live.web.turnCompleted,live.web.noErrorTurns,live.web.noPromptVariableError,live.web.noMalformedToolJson,live.web.toolCallsParsed,live.web.mpdToolCalled,live.web.assistantReplied,live.tui.turnStarted,live.tui.turnCompleted,live.tui.noErrorTurns,live.tui.noPromptVariableError,live.tui.noMalformedToolJson,live.tui.toolCallsParsed,live.tui.mpdToolCalled,live.tui.assistantReplied,live.headless.turnStarted,live.headless.turnCompleted,live.headless.noErrorTurns,live.headless.noPromptVariableError,live.headless.noMalformedToolJson,live.headless.toolCallsParsed,live.headless.mpdToolCalled,live.headless.assistantReplied,live.teamRecord,live.nativeExecutor,live.headlessPresetRow,boot.llmTurn,ui.replyRendered,ui.teamBoard]",
+  "exitCode": 3
+}

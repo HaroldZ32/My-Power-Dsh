@@ -38,13 +38,13 @@ import { DAG_CHROME, DAG_KIND_ABBREV, DAG_PANEL_MIN_COLUMNS, DAG_TONE_GLYPH } fr
 // treatment and the title row it sits in are ONE definition, so the two MPD pages this bundle ships
 // (the MPD panel, which is THIS page, and the workmate page) cannot drift into two different-looking
 // affordances (and the host cannot draw one for either of them).
-import { PANEL_FULLSCREEN_GLYPH, PANEL_TITLE_ROW_ROWS, usePanelTitleRow } from "./panel-core.js"
+import { PANEL_FRAME_BORDER_ROWS, PANEL_FULLSCREEN_GLYPH, PANEL_TITLE_ROW_ROWS, swallowWheelEvent, usePanelTitleRow } from "./panel-core.js"
 // THE HOST'S CURATED SUBAGENT ROWS ARE READ THROUGH THE SCENE'S OWN PROJECTION, never re-derived here:
 // `subagentSectionRows` owns the field reads, the empty state and the counts, and this page renders
 // its answer inside its own frame (frozen clause C3). `surfaceRule` is the SAME titled rule the scene
 // draws between ITS sections: one divider primitive, so this page cannot invent a second-looking one.
 import { subagentSectionRows, surfaceRule, type SubagentSectionRow } from "./subagent-scene.js"
-import { hitTest, layoutBoxesNatural, layoutList, layoutRail, legendLines, sliceSpans, type GraphTask, type GraphView } from "./graph.js"
+import { hitTest, layoutBoxesNatural, layoutList, layoutRail, legendLines, sliceSpans, type GraphHit, type GraphTask, type GraphView } from "./graph.js"
 import type { TeamWorkflow } from "./team-state.js"
 import { modelRanks, modelRows, NO_SESSION_TEAM_MARKER, WORKSPACE_SCOPE_MARKER, type TeamFeedAccessor } from "./team-state.js"
 import {
@@ -60,7 +60,6 @@ import {
   panelFrame,
   panelKeyEvent,
   panelKeysArmed,
-  PANEL_CHROME_ROWS,
   panelKit,
   panelSessionId,
   panelSnapshot,
@@ -115,14 +114,28 @@ export const DAG_SECTION_HOST_TITLE = "Host subagents"
  * The English name of this page's MPD DRAWING section, drawn in the titled rule that separates it from
  * the host's rows above.
  *
+ * THE NAME NO LONGER OPENS WITH `MPD`, and that is the point: the page already carries its title once
+ * (the title row's `MPD`, the only occurrence a reader needs) and the frame's border title used to
+ * repeat it, so a third `MPD` inside the body read as three headings for one page. The section is
+ * still NAMED — `team DAG` says which section it is without re-announcing whose panel this is.
+ *
  * IT IS DRAWN UNCONDITIONALLY, so the drawing below is always named even when the host's own section is
  * showing nothing but its empty state (the contract's empty-state clause) — which is why the two rules
  * are pushed at different points rather than as one pair.
  */
-export const DAG_SECTION_DAG_TITLE = "MPD team DAG"
+export const DAG_SECTION_DAG_TITLE = "team DAG"
 
-/** The tick this page re-reads its source on. A sidebar is passive, so the page owns its own clock. */
-export const DAG_PANEL_REFRESH_MS = 1000
+/**
+ * The tick this page re-reads its source on. A sidebar is passive, so the page owns its own clock.
+ *
+ * TWO SECONDS, THE SAME CADENCE AS EVERY OTHER MPD SURFACE (`WORKMATE_PANEL_REFRESH_MS`, the board and
+ * team scenes, the subagents scene). The page used to tick at one second — the only MPD surface that
+ * did — so the merged panel refreshed twice as often as the scenes it shares a vocabulary with, for a
+ * local synchronous projection that has nothing new to say between two seconds and one. A partial
+ * screen (a slow terminal repaint, a lost cell over SSH) still SELF-HEALS, one second later than
+ * before; a test that waits ~2.2 s proves the tick is observable on a real timer.
+ */
+export const DAG_PANEL_REFRESH_MS = 2000
 
 /**
  * One task as this page draws and details it: the drawing's own shape plus the facts a pinned detail
@@ -356,31 +369,135 @@ const LIST_ROWS = 24
 
 
 /**
+ * Whether a natural-width boxed drawing may be shown INSIDE this panel — both axes, no windowing.
+ *
+ * THE RULE THIS PINS (the sidebar defect the screenshot confirmed): a boxed DAG is chosen only when it
+ * fits the panel it is drawn in. The page used to accept every natural drawing and window it, so a
+ * three-sibling rank in a 26-cell sidebar interior — `3 * 10 + 2 * 3` = 36 cells — drew its first two
+ * boxes and pushed the third off-window entirely, with the footer carrying no horizontal position to
+ * say so: the user's board showed T2 and T3 while T4 was simply gone.
+ *
+ * THE VERTICAL HALF is the same rule on the other axis: a boxed drawing taller than the window is cut
+ * by the window's own edge, and the row that straddles that edge draws a top border and a label with no
+ * bottom border (the "T5 drawn half" look). A drawing that cannot be shown WHOLE is not shown as boxes;
+ * the rail and the list have no such edge, so nothing is ever half-drawn.
+ * @param view - the drawing the layout produced.
+ * @param cols - the cells the panel may draw in.
+ * @param rows - the rows the page's window can show; omitted means the caller has no vertical budget.
+ * @returns true when the whole drawing fits, i.e. when boxes are the honest choice.
+ */
+function boxesFitPanel(view: GraphView, cols: number, rows: number | undefined): boolean {
+  if (view.width > cols) return false
+  if (rows === undefined) return true
+  return view.lines.length <= rows
+}
+
+/** Where the page's window stands, as the pinned footer reports it. */
+export interface DagFooterFacts {
+  /** The vertical window, present only while the page overflows its window. */
+  vertical?: { offset: number; max: number }
+  /** The horizontal window, present only while the drawing is wider than the window. */
+  horizontal?: { offset: number; max: number }
+}
+
+/**
+ * The page's pinned footer, composed so the POSITION LEADS and the hints stay short.
+ *
+ * WHY THE ORDER IS THE CONTRACT (item 7): the host clamps a row from its END, so a hint list that picked
+ * up where the position left off was the first thing cut — and at the 28-column floor this page has 26
+ * content cells while the old hint list alone ran past 60. The one fact that tells a reader the drawing
+ * continues (where they are) must therefore survive any width, so it comes first; the keys are compact
+ * enough that 26 cells still show the control and the first two hints.
+ *
+ * The horizontal token names its own axis (`col n/m`): two bare `n/m` pairs on one row would read as one
+ * position, and the whole point of the second token is that the DRAWING's window is a different axis
+ * from the page's.
+ * @param facts - the windows that are open; an absent window contributes no token at all.
+ * @returns the footer's text, never wider than its caller's budget by construction (the caller clamps).
+ */
+export function dagFooterText(facts: DagFooterFacts): string {
+  /** The tokens that say where the reader is, in the order they are read. */
+  const tokens: string[] = []
+  if (facts.vertical !== undefined && facts.vertical.max > 0) {
+    tokens.push(`${Math.max(0, Math.floor(facts.vertical.offset)) + 1}/${Math.max(0, Math.floor(facts.vertical.max)) + 1}`)
+  }
+  if (facts.horizontal !== undefined && facts.horizontal.max > 0) {
+    tokens.push(`col ${Math.max(0, Math.floor(facts.horizontal.offset)) + 1}/${Math.max(0, Math.floor(facts.horizontal.max)) + 1}`)
+  }
+  /** The position prefix, empty when neither window is open. */
+  const place = tokens.length === 0 ? "" : `${tokens.join(" ")} · `
+  return `${place}${PANEL_FULLSCREEN_GLYPH} full · ↑↓/jk · ⏎ pin · esc · ⇧↑↓←→`
+}
+
+/**
+ * The drawing rows a render must NOT paint, because their box straddles the window's own edge.
+ *
+ * THE DEFECT THIS ENDS (the screenshot's "T5 half"): the body is a blind slice of the page's rows, so a
+ * three-row box whose top border lands on the window's last visible row draws its top border and its
+ * label and then stops — a box with no bottom, which a reader has to interpret rather than read. The
+ * vertical window is therefore RANK-ALIGNED in the only sense this page can guarantee: a box is drawn
+ * WHOLE or not at all. A box that only partly intersects the window keeps its row budget (the rows stay
+ * in the page, blanked) so the scroll position, the gutter and every click row stay where they were.
+ *
+ * DECIDING IT HERE RATHER THAN IN THE LAYOUT is what makes the rule hold at every scroll position: the
+ * window moves while the drawing does not, so the set is a fact about THIS render's offset. A drawing
+ * that fits the window whole (the only kind the layout accepts as boxes) has nothing to blank until the
+ * reader scrolls, which is exactly the case this exists for.
+ * @param hits - the drawing's own rectangles, in its local rows.
+ * @param dagStart - the page row the drawing's first line occupies.
+ * @param windowStart - the first page row the window shows.
+ * @param windowRows - how many page rows the window shows.
+ * @returns the drawing-local row indices to blank; empty when every visible box is whole.
+ */
+export function halfBoxRows(hits: readonly GraphHit[], dagStart: number, windowStart: number, windowRows: number): Set<number> {
+  /** The rows to blank, in the DRAWING's coordinates. */
+  const blank = new Set<number>()
+  if (!Array.isArray(hits) || hits.length === 0) return blank
+  /** The first page row the window shows, floored. */
+  const start = Math.max(0, Math.floor(Number.isFinite(windowStart) ? windowStart : 0))
+  /** One past the last page row the window shows. */
+  const end = start + Math.max(1, Math.floor(Number.isFinite(windowRows) ? windowRows : 1))
+  for (const hit of hits) {
+    /** The box's first page row. */
+    const top = dagStart + hit.row
+    /** The box's last page row, inclusive. */
+    const bottom = dagStart + hit.rowEnd
+    // ENTIRELY OUTSIDE: the slice does not draw it at all, so there is nothing to blank.
+    if (bottom < start || top >= end) continue
+    // WHOLE: every row of the box is inside the window, which is the half a reader can read.
+    if (top >= start && bottom < end) continue
+    for (let row = Math.max(top, start); row <= Math.min(bottom, end - 1); row += 1) blank.add(row - dagStart)
+  }
+  return blank
+}
+
+/**
  * Lay the board out for the measured panel.
  *
  * THE MODE IS A FACT ABOUT THE GEOMETRY, never a guess about the terminal — but the geometry it is a
- * fact about is now the CONTENT (frozen clause T1). This page used to predict the drawing module's
- * fit-width formula (`boxGrid`, a second rank derivation) and to gate on a hand-rolled `widestLabel`
- * that recomposed the label itself. Both are GONE: natural width means the box is sized by the labels
- * it must carry, so the panel no longer has to guess whether they fit, and a second label composer is
- * exactly the drift clause C2 forbids.
+ * fact about is now the CONTENT *and* the box the content must fit in (frozen clause T1, wave
+ * `tui-refresh`). This page used to predict the drawing module's fit-width formula (`boxGrid`, a second
+ * rank derivation) and to gate on a hand-rolled `widestLabel` that recomposed the label itself. Both are
+ * GONE: natural width means the box is sized by the labels it must carry, and the panel no longer has to
+ * guess whether they fit.
  *
  * THE LADDER, in order:
- *   1. `layoutBoxesNatural` — the DRAWING at its own width, which may be wider than this panel. The
- *      page windows it and pans (R8: the horizontal axis belongs to the drawing), so narrowness is no
- *      longer a reason to refuse a box;
+ *   1. `layoutBoxesNatural` — the DRAWING at its own width, and ONLY when that whole drawing fits this
+ *      panel on both axes (see {@link boxesFitPanel}). A narrow sidebar must never silently window its
+ *      DAG: a rank that does not fit is a rank the reader cannot see, and a box cut by the window's edge
+ *      is a broken box;
  *   2. `layoutList` — the rank-grouped table with progress bars — takes over a BUSY board, the case it
  *      was written for;
  *   3. `layoutRail` — the forest, for everything else.
  *
- * `labelOverflow` is what still refuses a box, and it is the ONLY refusal left: the drawing reports
- * when the natural width cap held a box below the widest label, and this page then falls back rather
- * than break its own promise that a boxed label is never cut. It is a REPORTED fact from the layout instead
- * of a prediction, which is why the fallback cannot disagree with what was drawn.
+ * `labelOverflow` is the other refusal: the drawing reports when the natural width cap held a box below
+ * the widest label, and this page then falls back rather than break its own promise that a boxed label is
+ * never cut. It is a REPORTED fact from the layout instead of a prediction, which is why the fallback
+ * cannot disagree with what was drawn.
  * @param tasks - the board to draw.
- * @param cols - the cells the panel measured; the VIEWPORT, never the drawing's width.
+ * @param cols - the cells the panel measured; the interior the drawing must fit, never the drawing's width.
  * @param focus - the task to light, with its dependency chain.
- * @param rows - the rows the panel can show, which buys the roomy box form when there is room.
+ * @param rows - the rows the page's window can show; the vertical half of the same fit test.
  * @param servedRanks - the SERVED rank of each task id when the host published a model; omitted
  *   means the drawing derives them through the core, exactly as it did before this wave.
  * @returns the drawing and the mode that produced it.
@@ -390,7 +507,9 @@ export function dagPanelLayout(tasks: readonly DagPanelTask[], cols: number, foc
   const width = Math.max(8, Math.floor(Number.isFinite(cols) ? cols : 8))
   /** The boxed DAG at its natural width, absent when the board refuses to be drawn as boxes. */
   const boxes = layoutBoxesNatural(tasks, focus, rows === undefined ? undefined : { rows }, servedRanks)
-  if (boxes !== undefined && boxes.labelOverflow !== true) return { view: boxes, mode: "boxes", list: false, ...viewFacts(boxes) }
+  if (boxes !== undefined && boxes.labelOverflow !== true && boxesFitPanel(boxes, width, rows)) {
+    return { view: boxes, mode: "boxes", list: false, ...viewFacts(boxes) }
+  }
   if (tasks.length > LIST_ROWS) {
     /** The dense table, for a board with more rows than a rail can show legibly. */
     const dense = layoutList(tasks, width, focus, servedRanks)
@@ -558,6 +677,16 @@ export function dagPanelKeyAction(
 
 /** The row budget a page assumes when the host reports no height at all. */
 const DAG_FALLBACK_ROWS = 24
+
+/**
+ * The rows this page's pinned footer costs, drawn OUTSIDE the scrolling window.
+ *
+ * Named rather than written as a `1` in the height budget, because that budget is an equation the reader
+ * has to be able to check against the frame: two border rows plus the title row plus this footer must
+ * add up to the host's measured height, or the last row is clipped (the "no footer" look this wave
+ * repairs).
+ */
+const DAG_FOOTER_ROWS = 1
 
 /**
  * Scroll the viewport the least amount that puts one row inside it.
@@ -828,7 +957,7 @@ export interface DagPageOptions {
    * Resolves the LIVE team-state feed for the calling session's workspace, per render.
    *
    * Optional so a unit arm can build the page without one: an absent accessor simply means this page
-   * keeps its 1000 ms tick and nothing else changes. The composition root supplies a function whose
+   * keeps its 2 s tick and nothing else changes. The composition root supplies a function whose
    * returned subscribe has a STABLE identity while the service is bound — see `useTeamFeed`.
    */
   subscribeTeams?: TeamFeedAccessor
@@ -858,8 +987,29 @@ export function createDagPanelComponent(readWorkflow: (sessionId?: string) => Te
     }
     /** The panel's measured geometry; the single geometry hook call of this component. */
     const measured = usePanelSize(kit.ui, panelFloorColumns("dag"))
-    /** The cells this page may DRAW IN: the reported width minus the frame's own two border cells. */
-    const contentCols = panelContentWidth(measured.cols)
+    /**
+     * The measurements the PREVIOUS render published, used to seed this render's band before the rows exist.
+     *
+     * WHY A SEED IS NEEDED AT ALL: the whole-box rule below reads the page's own scroll OFFSET while the
+     * rows are being built, and the offset is clamped against the page's sizes. A placeholder of "one
+     * row" would clamp every render's window to zero and blank the wrong rows the moment the reader
+     * scrolls. Seeding from the last render's numbers keeps one generation of geometry for every read in
+     * this render; the current numbers are published at the end, for the next one.
+     */
+    const previousSizes = kit.React.useRef(undefined) as { current: { contentRows: number; viewportRows: number } | undefined }
+    /**
+     * The cells this page may DRAW IN: the reported width minus the frame's two border cells, minus ONE
+     * more for the vertical bar's own cell.
+     *
+     * THE BAR'S CELL IS ALWAYS RESERVED (the measured gutter defect): when the bar is on screen it is a
+     * 1-cell sibling of the content inside the frame, so content rows at the full interior width push it
+     * past the frame's right border and it is clipped — the user's scrollbar simply missing. Reserving
+     * it unconditionally rather than "only while the bar shows" is deliberate: whether the bar shows is a
+     * fact about the page's HEIGHT, which is only known after the rows are built, and a width derived
+     * from that fact would flip as the layout's own mode changed the row count — one cell of unused
+     * width is the cheap, STABLE side of that trade.
+     */
+    const contentCols = Math.max(1, panelContentWidth(measured.cols) - 1)
     // THE SESSION ID IS READ, NOT DISCARDED (the defect's other half). The host's snapshot was already
     // read here on every render and thrown away; its `sessionId` is what makes this page able to ask
     // for ITS OWN session's team. The read is contained by `panelSnapshot`, and an unavailable id is a
@@ -929,17 +1079,28 @@ export function createDagPanelComponent(readWorkflow: (sessionId?: string) => Te
     }
     /** The task the drawing lights: the CLICK PIN outranks the keyboard cursor while it exists. */
     const focus = pinnedNow() ?? cursorNow()
-    /** The window height this panel affords, from the height the host reported (its title row and footer
-     * are drawn OUTSIDE the window, which is why they are subtracted here). */
-    const windowRows = Math.max(1, (measured.rows ?? DAG_FALLBACK_ROWS) - PANEL_CHROME_ROWS - PANEL_TITLE_ROW_ROWS)
-    // THE LAYOUT IS TOLD THE ROWS, so the drawing can choose the roomy five-row box when the panel has
-    // the room for it and the compressed three-row one when it does not — one decision per drawing, made
-    // before any box is placed, which is what keeps two boxes in one rank from having different heights.
+    /**
+     * The rows the window can show, from the height the host reported.
+     *
+     * THE CHROME IS COUNTED AS IT IS DRAWN, and that arithmetic is the whole of the "footer is cut"
+     * defect: the frame's two border rows, the title row and the footer row sit OUTSIDE the scrolling
+     * window, so the window is `measured.rows - 4`. The page used to subtract `PANEL_CHROME_ROWS` plus
+     * the title row (3), which is one row more than the panel owns — the frame then drew `rows + 1`
+     * rows, the host clipped the last one, and the reader lost the footer's position token. The frame
+     * is `height: 100%`, so the page's TOTAL is exactly `measured.rows` when the window is full, and
+     * that equality is asserted in `panel-dag.test.ts`.
+     */
+    const windowRows = Math.max(1, (measured.rows ?? DAG_FALLBACK_ROWS) - PANEL_FRAME_BORDER_ROWS - PANEL_TITLE_ROW_ROWS - DAG_FOOTER_ROWS)
+    // THE LAYOUT IS TOLD THE ROWS, so a drawing that cannot be shown whole is not drawn as boxes (see
+    // `dagPanelLayout`): the vertical half of the fit test is spent HERE, before any box is placed.
     // THE SIZES OBJECT IS THE PAGE'S ONE LIVE MUTABLE FACT SET, and it must EXIST before the layout
-    // because the layout's decisions (mode, box form, `labelOverflow`) are it. The row counts are filled
-    // in after the rows are built, exactly as before; the DRAWING's column count is known right here.
+    // because the layout's decisions (mode, box form, `labelOverflow`) are it. It is SEEDED with the
+    // previous render's counts, not with placeholders: the offset read below (the whole-box window) is a
+    // fact about the page as it stands, and a placeholder would report a one-row page on every render.
+    // The row counts are then overwritten with this render's OWN numbers after the rows are built; the
+    // DRAWING's column count is known right here.
     /** The sizes the hook and every later closure read; written by this render, before anything reads it. */
-    const sizes: { contentRows: number; viewportRows: number; contentCols?: number; viewportCols?: number } = { contentRows: 1, viewportRows: 1, contentCols: contentCols, viewportCols: contentCols }
+    const sizes: { contentRows: number; viewportRows: number; contentCols?: number; viewportCols?: number } = { contentRows: previousSizes.current?.contentRows ?? 1, viewportRows: previousSizes.current?.viewportRows ?? windowRows, contentCols: contentCols, viewportCols: contentCols }
     /** The drawing for this render, at the natural width and for the height THIS panel measured. */
     const layout = page === undefined ? undefined : dagPanelLayout(page.tasks, contentCols, focus, windowRows, page.ranks)
     // THE DRAWING'S OWN WIDTH, once it has been laid out: what the window may pan across. It is the
@@ -1134,6 +1295,21 @@ export function createDagPanelComponent(readWorkflow: (sessionId?: string) => Te
       const breathe = runningGlyph(phase)
       /** Whether the breath changes the glyph this render (it is static at the orbit's head). */
       const breathing = breathe !== baseGlyph
+      /**
+       * The page row the DRAWING's first line occupies, in the column the viewport windows.
+       *
+       * Captured before the loop because the whole-box rule needs the drawing's pages rows, and the
+       * loop is the only place they are known: every drawing line is exactly one child here.
+       */
+      const dagStart = children.length
+      /**
+       * The drawing rows this render must leave blank because their box straddles the window edge.
+       *
+       * BOXES ONLY: the rail and the list draw one line per task, so a line cut by the window's edge
+       * loses nothing but the rest of the row — there is no box to break in half. In boxes mode the
+       * set is what makes the window rank-aligned (see {@link halfBoxRows}).
+       */
+      const blankRows = layout.mode === "boxes" ? halfBoxRows(layout.view.hits, dagStart, viewport.offset, windowRows) : new Set<number>()
       for (let index = 0; index < layout.view.lines.length; index += 1) {
         // THE ROW IS RECORDED IN THE PAGE'S OWN COLUMN COORDINATES, not in the drawing's: the header and
         // the other chrome rows were pushed BEFORE this loop, so the drawing's line `index` sits at
@@ -1160,7 +1336,13 @@ export function createDagPanelComponent(readWorkflow: (sessionId?: string) => Te
         // panel, so every DAG row is cut to the columns the page's ONE viewport says are on screen. Only
         // the DAG's rows — see R8, which is why the legend, the detail body and the footer below are
         // pushed unwindowed.
-        const spans = sliceSpans(phased, viewport.colOffset, contentCols)
+        //
+        // A ROW WHOSE BOX THE WINDOW WOULD CUT IS DRAWN AS BLANK, at the window's own width so the column
+        // cannot move: a half box is not a picture of anything, and the gutter already says the page
+        // continues past the edge. This is the vertical half of the same rule the width guard applies —
+        // a box is shown whole or not shown as a box (see {@link halfBoxRows}).
+        /** The row's spans: the drawing's own, or a window-wide blank when its box would be cut. */
+        const spans = blankRows.has(index) ? [{ text: " ".repeat(contentCols), tone: "blank" }] : sliceSpans(phased, viewport.colOffset, contentCols)
         // THE TASK THIS ROW BELONGS TO IS NO LONGER RESOLVED HERE, and that is the fix: the row band
         // cannot tell two boxes of one rank apart. The handler below resolves the pointer THROUGH THE
         // DRAWING at click time, with this row's own index and the pointer's own column.
@@ -1286,27 +1468,36 @@ export function createDagPanelComponent(readWorkflow: (sessionId?: string) => Te
     // Publish this render's measurements, which is what every getter and every later closure clamps against.
     sizes.contentRows = contentRows
     sizes.viewportRows = windowRows
+    // THE NEXT RENDER'S WIDTH BUDGET READS THESE (the gutter cell), so they are published where the
+    // page's equations are complete — after the rows exist and before anything draws them.
+    previousSizes.current = { contentRows: contentRows, viewportRows: windowRows }
     /** The same handle, named for what it does here: the window this render draws. */
     const scroller = viewport
-    // THE WHEEL IS BOUND TO THE WINDOW, not to each row: the host hit-tests the deepest node under the
-    // pointer, so binding it once around the VISIBLE slice keeps ONE handler in the dispatch path. The
-    // slice itself belongs to `panelViewportBody`, which is why the wrapper is passed TO it rather than
-    // built here — wrapping the whole column and handing that back in made this page window TWICE (the
-    // body then cut a one-element array at the row offset) and rendered an EMPTY panel whose footer still
-    // read `6/82`. Measured exactly that way; one slice, one place.
+    // THE WHEEL IS BOUND IN TWO PLACES ON PURPOSE, and the pair is what contains the gesture.
+    //
+    // ON THE ROWS: the host hit-tests the deepest node under the pointer, so binding once around the
+    // VISIBLE slice keeps ONE handler in the dispatch path for a wheel over content. The slice itself
+    // belongs to `panelViewportBody`, which is why the wrapper is passed TO it rather than built here —
+    // wrapping the whole column and handing that back in made this page window TWICE (the body then cut
+    // a one-element array at the row offset) and rendered an EMPTY panel whose footer still read
+    // `6/82`. Measured exactly that way; one slice, one place.
+    //
+    // ON THE FRAME: a wheel over the title row, the border, the footer or the gutter used to reach NO
+    // MPD handler — the host fell through to the chat behind the panel and scrolled it while the pointer
+    // was over the sidebar. The frame handler covers every cell the panel owns; `swallowWheelEvent` stops
+    // the event there, so the same tick can never scroll the panel AND the chat.
     /** The wheel binding, applied by the body to the rows it is about to draw. */
     const wheelBound = (boundKit: PanelKit, rows: readonly unknown[]): unknown =>
-      boundKit.React.createElement(boundKit.ui.Box, { key: "scroll", flexDirection: "column", onWheel: (event: unknown): void => scroller.onWheel(event) }, ...rows)
+      boundKit.React.createElement(boundKit.ui.Box, { key: "scroll", flexDirection: "column", onWheel: (event: unknown): void => { swallowWheelEvent(event); scroller.onWheel(event) } }, ...rows)
     // THE FOOTER HINTS (R6/R11): the keys this page handles, and the panel's own `⤢` full-screen control
-    // — named here because this hint row is the only place a reader learns that control exists.
-    //
-    // THE `⤢` HINT LEADS THE ROW (AC8b, measured): the host clamps a row from its END, and at the
-    // 28-column floor this page has 26 content cells while the key hints alone run past 40 — so a hint
-    // that trailed them was the first thing cut, and the control was invisible exactly at the width
-    // where a reader is most likely to want the full-screen escape. Leading with it costs the tail of
-    // the key hints at the narrowest widths and nothing at all at every width where they fit.
+    // — named here because this hint row is the only place a reader learns that control exists. The
+    // composition itself lives in {@link dagFooterText}, which is what the arm asserts: the position
+    // first, then the control, then the compact hints.
     /** The pinned footer, carrying the scroll position so the reader can see where they are. */
-    const footer = textRow(kit, `${PANEL_FULLSCREEN_GLYPH} fullscreen · ↑↓/jk move · Enter pin · Esc unpin · ⇧↑↓/⇧←→ scroll${scroller.overflow ? ` ${scroller.offset + 1}/${scroller.max + 1}` : ""}`, { key: "keys", dim: true, maxCells: contentCols })
+    const footer = textRow(kit, dagFooterText({
+      ...(scroller.overflow ? { vertical: { offset: scroller.offset, max: scroller.max } } : {}),
+      ...(scroller.colOverflow ? { horizontal: { offset: scroller.colOffset, max: scroller.colMax } } : {}),
+    }), { key: "keys", dim: true, maxCells: contentCols })
     /** The visible slice plus its reserved gutter column. */
     const body = panelViewportBody(kit, children, scroller, true, wheelBound)
     // THE TITLE ROW IS OUTSIDE THE WINDOW, immediately under the frame's top border: the page's own
@@ -1319,7 +1510,15 @@ export function createDagPanelComponent(readWorkflow: (sessionId?: string) => Te
     // `definition.capabilities?.fullscreen === true` — so no plugin panel ever gets the host's own `⤢`.
     /** This page's chrome row: its title and the full-screen control. */
     const titleRow = usePanelTitleRow(kit, { key: "title", title: DAG_PANEL_TITLE, cols: contentCols, ...(options?.openFullscreen === undefined ? {} : { open: options.openFullscreen }) })
-    return panelFrame(kit, DAG_PANEL_TITLE, [titleRow, ...body, footer])
+    // THE TITLE IS DRAWN ONCE (the duplicated-heading defect): the frame carries NO border title here,
+    // because the title row below its top border already says `MPD` and the section rule says which
+    // part of the page follows. Three headings for one panel — the host's panel-bar title, the frame's
+    // border text, this row — is what the screenshot showed as a doubled `MPD`, and the row is the one
+    // that must survive: it is the only one that also carries the `⤢` control.
+    //
+    // THE FRAME CARRIES THE WHEEL, so a gesture over the title, the border or the footer is still the
+    // panel's (see `wheelBound` above) and can never fall through to the chat behind the panel.
+    return panelFrame(kit, "", [titleRow, ...body, footer], { onWheel: (event: unknown): void => { swallowWheelEvent(event); scroller.onWheel(event) } })
   }
 }
 
