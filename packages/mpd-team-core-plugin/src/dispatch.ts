@@ -16,6 +16,13 @@
 // A teammate that finishes its task reports it; the ledger entry is what says a task is in flight, so
 // `releaseTask` is the one call that frees a pairing again.
 //
+// THE LEDGER IS TEAM-SCOPED (R1, 2026-10-22). A workspace holds ONE dispatch file and several teams,
+// and teams mint their task ids from the same `T1..Tn` space — so a ledger keyed by the bare task id
+// made a NEW team inherit the PREVIOUS one's pairings: `agent_teams_dispatch` answered "already
+// dispatched to <a member of the old team>" and never recorded the new pairing. Every entry now
+// CARRIES its team id and is keyed by `teamId + SEPARATOR + taskId`; the pure helpers below take the
+// team as an argument, so one team's pass can neither read nor erase another team's rows.
+//
 // The two C7 guards (plan amendment 2026-10-14) live HERE, in the pure decision, because this is the
 // ONE place a task×member pairing is decided: `agent_teams_dispatch` hands this function one team's
 // board and roster, and every pairing it returns is what the pass then delivers and records.
@@ -26,7 +33,7 @@
 
 /** One shared task, as the board reports it. */
 export interface DispatchTask {
-  /** Board task id; the ledger is keyed by exactly this value. */
+  /** Board task id; the ledger key pairs it with the team id ({@link ledgerKey}). */
   id: string
   /** The task's one-line title, echoed into the dispatch message and every skip reason. */
   subject: string
@@ -186,7 +193,14 @@ export function pairingRefusal(task: DispatchTask, member: DispatchMember): stri
 
 /** One recorded pairing: which member is working which task, since when. */
 export interface DispatchAssignment {
-  /** The dispatched task's id — also the ledger key that makes it claimed. */
+  /**
+   * The team the pairing belongs to.
+   *
+   * PART OF THE ENTRY, not only of the key, so a reader can scope a row without parsing a string and
+   * an entry written by an older build (no `teamId`) is recognisable as the LEGACY row it is.
+   */
+  teamId: string
+  /** The dispatched task's id — also half of the ledger key that makes it claimed. */
   taskId: string
   /** Session id of the member that owns the task, which is what makes that member busy. */
   memberId: string
@@ -196,8 +210,46 @@ export interface DispatchAssignment {
   assignedAt: string
 }
 
-/** The dispatch ledger: the sidecar that makes "in flight" knowable. */
+/** The dispatch ledger: the sidecar that makes "in flight" knowable, for every team in one workspace. */
 export type DispatchLedger = Record<string, DispatchAssignment>
+
+/**
+ * The separator between the team id and the task id in a ledger key.
+ *
+ * A team id is `team-<stamp>-<suffix>` and a task id is `T<n>`, so neither side contains `::`. The
+ * separator is never parsed back anyway: every entry carries its own `teamId`, and the key exists only
+ * so two teams reusing one task id cannot collide.
+ */
+export const DISPATCH_KEY_SEPARATOR = "::"
+
+/**
+ * The ledger key one pairing is stored under: the team id, the separator and the task id.
+ * @param teamId - the team the pairing belongs to.
+ * @param taskId - the task the pairing records.
+ * @returns the composite key.
+ */
+export function ledgerKey(teamId: string, taskId: string): string {
+  return teamId + DISPATCH_KEY_SEPARATOR + taskId
+}
+
+/**
+ * One team's view of a ledger: its own entries, keyed as stored.
+ *
+ * The dispatch engine must never see another team's rows: `busy` and `claimed` are computed from the
+ * ledger, so a foreign row would book a member this team does not own (or claim a task id it has not
+ * dispatched). The rows of other teams stay in the FILE untouched — pruning is their own pass's work.
+ * @param ledger - the whole ledger as read from disk.
+ * @param teamId - the team whose rows are wanted.
+ * @returns a new ledger holding only that team's entries.
+ */
+export function ledgerOfTeam(ledger: DispatchLedger, teamId: string): DispatchLedger {
+  /** The team-scoped view being built. */
+  const view: DispatchLedger = {}
+  for (const [key, entry] of Object.entries(ledger)) {
+    if (entry?.teamId === teamId) view[key] = entry
+  }
+  return view
+}
 
 /** What one pass decided, and why it decided nothing for the rest. */
 export interface DispatchPlan {
@@ -258,6 +310,7 @@ export function dispatchMessage(task: DispatchTask, description: string): string
 export function planDispatch(input: {
   tasks: readonly DispatchTask[]
   members: readonly DispatchMember[]
+  /** The ledger as ONE team sees it ({@link ledgerOfTeam}): other teams' rows must not book this pass. */
   ledger: DispatchLedger
   /** The halt reason when the team is held; a non-empty string refuses the whole pass. */
   hold?: string
@@ -267,14 +320,14 @@ export function planDispatch(input: {
   if (input.hold !== undefined && input.hold !== "") {
     return { pairs: [], skipped: [], halted: input.hold }
   }
-  /** Member ids already holding a task, so one pass never double-books a member. */
+  /** Member ids already holding a task, so one pass never double-books a member (this team's rows only). */
   const busy = new Set(
     Object.values(input.ledger)
       .filter((entry) => entry.taskId !== "" && entry.memberId !== "")
       .map((entry) => entry.memberId),
   )
-  /** Task ids the ledger already records, so a second pass cannot re-dispatch a task. */
-  const claimed = new Set(Object.keys(input.ledger))
+  /** Task ids the ledger already records, so a second pass cannot re-dispatch a task (this team's view). */
+  const claimed = new Set(Object.values(input.ledger).map((entry) => entry.taskId))
   /** Roster members that are idle and unbooked — the pool this pass draws from. */
   const candidates = input.members.filter((member) => member.status === "inactive" && !busy.has(member.id))
   /** The decision being built; every considered task lands in one of its two lists. */
@@ -294,7 +347,7 @@ export function planDispatch(input: {
       continue
     }
     if (claimed.has(task.id)) {
-      plan.skipped.push({ taskId: task.id, subject: task.subject, reason: `already dispatched to ${input.ledger[task.id]?.memberName ?? "a member"}` })
+      plan.skipped.push({ taskId: task.id, subject: task.subject, reason: `already dispatched to ${Object.values(input.ledger).find((entry) => entry.taskId === task.id)?.memberName ?? "a member"}` })
       continue
     }
     if (task.ready !== true) {
@@ -376,50 +429,111 @@ function refusalSummary(task: DispatchTask, members: readonly DispatchMember[]):
 }
 
 /** Record one pairing. Returns a NEW ledger; the caller owns persisting it. */
-export function assign(ledger: DispatchLedger, pair: { taskId: string; memberId: string; memberName: string }, now: Date): DispatchLedger {
+export function assign(ledger: DispatchLedger, pair: { teamId: string; taskId: string; memberId: string; memberName: string }, now: Date): DispatchLedger {
   return {
     ...ledger,
-    [pair.taskId]: { taskId: pair.taskId, memberId: pair.memberId, memberName: pair.memberName, assignedAt: now.toISOString() },
+    [ledgerKey(pair.teamId, pair.taskId)]: {
+      teamId: pair.teamId,
+      taskId: pair.taskId,
+      memberId: pair.memberId,
+      memberName: pair.memberName,
+      assignedAt: now.toISOString(),
+    },
   }
 }
 
 /**
- * Free one pairing, so the task can be dispatched again.
+ * Free one team's pairing, so the task can be dispatched again.
  *
+ * ONLY that team's row is removed: a release is issued from one team's board and must never free a
+ * same-named task of another team in the same workspace.
+ * @param ledger - the whole ledger.
+ * @param teamId - the team whose pairing is freed.
+ * @param taskId - the task the pairing records.
  * @returns the new ledger and whether an entry was actually there.
  */
-export function release(ledger: DispatchLedger, taskId: string): { ledger: DispatchLedger; released: boolean } {
-  if (ledger[taskId] === undefined) return { ledger, released: false }
+export function release(ledger: DispatchLedger, teamId: string, taskId: string): { ledger: DispatchLedger; released: boolean } {
+  /** The composite key this release names; nothing else is touched. */
+  const key = ledgerKey(teamId, taskId)
+  if (ledger[key] === undefined) return { ledger, released: false }
   /** A copy, so releasing never mutates the caller's own ledger. */
   const next = { ...ledger }
-  delete next[taskId]
+  delete next[key]
   return { ledger: next, released: true }
 }
 
 /**
- * Drop ledger entries for tasks that no longer exist, or that are terminal.
+ * Drop every entry that belongs to a team whose record is TERMINAL.
  *
- * A board is edited by people: a task can be deleted or completed out of band. Without this the
- * ledger would keep its member "busy" forever and the team would drain to a standstill — the failure
- * the retired scheduler hit and never recovered from.
- *
- * @returns the pruned ledger and the ids it forgot.
+ * Anchored on the ONE terminal write path (`team-lifecycle.ts#reapReapedTeams`), which reports the
+ * team ids it ended; this consumer prunes their rows, so a later team that reuses the ids cannot
+ * inherit a dead pairing. LEGACY rows are NOT this function's business — they belong to no team and
+ * are dropped (and reported) by {@link reconcile} on the first pass that touches the ledger.
+ * @param ledger - the whole ledger.
+ * @param teamId - the terminal team whose rows are forgotten.
+ * @returns the new ledger and the task ids it forgot.
  */
-export function reconcile(ledger: DispatchLedger, tasks: readonly DispatchTask[]): { ledger: DispatchLedger; forgotten: string[] } {
+export function forgetTeam(ledger: DispatchLedger, teamId: string): { ledger: DispatchLedger; forgotten: string[] } {
+  /** The ledger with the ended team's rows left out. */
+  const next: DispatchLedger = {}
+  /** The task ids dropped, reported so the caller can log the loss. */
+  const forgotten: string[] = []
+  for (const [key, entry] of Object.entries(ledger)) {
+    if (entry?.teamId !== teamId) {
+      next[key] = entry
+      continue
+    }
+    forgotten.push(typeof entry.taskId === "string" && entry.taskId !== "" ? entry.taskId : key)
+  }
+  return { ledger: next, forgotten }
+}
+
+/**
+ * Prune ONE team's ledger rows against its own board, and drop the LEGACY rows no team owns.
+ *
+ * A board is edited by people: a task can be deleted or reach a terminal status out of band. Without
+ * this the ledger would keep its member "busy" forever and the team would drain to a standstill — the
+ * failure the retired scheduler hit and never recovered from.
+ *
+ * TWO SCOPES, stated because the difference is the fix:
+ *   * THIS team's rows are pruned against THIS team's board;
+ *   * every OTHER team's rows are COPIED THROUGH untouched (pruning them here would erase a live
+ *     pairing of a team this pass knows nothing about);
+ *   * a row with NO `teamId` is a LEGACY row from the pre-R1 bare-key ledger. It cannot be attributed
+ *     to any team, so it is DROPPED and reported in `forgotten` — the whole migration, on the first
+ *     pass, with no script to run.
+ * @param ledger - the whole ledger as read from disk.
+ * @param teamId - the team whose own rows are pruned.
+ * @param tasks - that team's board, as the dispatch engine sees it.
+ * @returns the pruned ledger and the task ids it forgot.
+ */
+export function reconcile(ledger: DispatchLedger, teamId: string, tasks: readonly DispatchTask[]): { ledger: DispatchLedger; forgotten: string[] } {
   /** The board indexed by task id, so the prune costs one lookup per ledger entry. */
   const byId = new Map(tasks.map((task) => [task.id, task]))
-  /** The pruned ledger; only live, non-terminal tasks survive. */
+  /** The pruned ledger; live rows of every team survive. */
   const next: DispatchLedger = {}
   /** Task ids dropped from the ledger, reported so a caller can log the loss. */
   const forgotten: string[] = []
-  for (const [taskId, entry] of Object.entries(ledger)) {
-    /** The board's current record for this entry; absent means the task no longer exists. */
-    const task = byId.get(taskId)
-    if (task === undefined || task.status === "completed") {
-      forgotten.push(taskId)
+  for (const [key, entry] of Object.entries(ledger)) {
+    // THE LEGACY DROP: no team id means the row was written before the ledger was team-scoped. It is
+    // reported by TASK id (the key's only readable half) so the caller's `forgotten` list stays usable.
+    if (typeof entry?.teamId !== "string" || entry.teamId === "") {
+      forgotten.push(typeof entry?.taskId === "string" && entry.taskId !== "" ? entry.taskId : key)
       continue
     }
-    next[taskId] = entry
+    if (entry.teamId !== teamId) {
+      next[key] = entry
+      continue
+    }
+    /** The board's current record for this entry; absent means the task no longer exists. */
+    const task = byId.get(entry.taskId)
+    // TERMINAL, not only `completed`: a failed or cancelled row has no work in flight either, and a
+    // row that kept its pairing would hold the member out of the pool until the next release.
+    if (task === undefined || task.status === "completed" || task.status === "failed" || task.status === "cancelled") {
+      forgotten.push(entry.taskId)
+      continue
+    }
+    next[key] = entry
   }
   return { ledger: next, forgotten }
 }

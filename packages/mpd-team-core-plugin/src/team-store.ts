@@ -685,6 +685,15 @@ export interface TaskPatch {
   blockedBy?: string[]
   /** The closing note a terminal verb records; an empty string clears it. */
   note?: string
+  /**
+   * Delete `startedAt` as part of this patch.
+   *
+   * ONLY a task RELEASE sets this ({@link casReleaseTask}): abandoning a dispatch means the next claim
+   * is a NEW attempt whose clock must start at that claim, while a plain reopen keeps the original
+   * instant (`updateTeamTask`'s transition rule). A boolean rather than an instant, so no caller can
+   * hand-write a clock reading into the record.
+   */
+  resetStartedAt?: boolean
 }
 
 /**
@@ -750,6 +759,9 @@ export function updateTeamTask(record: TeamRecord, taskId: string, patch: TaskPa
       // `undefined` out of the serialized record.
       if (patch.status === "pending" || patch.status === "claimed" || patch.status === "in_progress" || patch.status === "cancelled") delete next.finishedAt
     }
+    // APPLIED LAST, so an explicit reset wins over any stamp the same patch just wrote. The release is
+    // the one caller: the row it reopens is a DIFFERENT attempt, so the next claim restarts the clock.
+    if (patch.resetStartedAt === true) delete next.startedAt
     return next
   })
   return touched ? { ...record, tasks } : record
@@ -804,6 +816,46 @@ export function casClaimTask(
   // that is a plan-time intent, not a claim. A concurrent CLAIM is still caught by the revision
   // above, because every mpd-side mutation — a claim included — bumps it.
   return { applied: true, record: updateTeamTask(fresh, taskId, { owner, status: "in_progress" }, now) }
+}
+
+/**
+ * Decide one task RELEASE against the FRESHEST on-disk record.
+ *
+ * WHY THIS EXISTS (R3). `release` used to be LEDGER-ONLY: the dispatch row was deleted while the task
+ * stayed `in_progress`, and because `readyTasks`/`casClaimTask` are pending-only, the row could NEVER be
+ * dispatched again — a released task was lost to the board. A release now returns the row to `pending`
+ * and clears the owner and the started clock, so the next pass may pair it with a member again.
+ *
+ * THE RULES, each deliberate:
+ *   * `claimed | in_progress` is the only releasable state. A `pending` row holds no dispatch (a second
+ *     release is a no-op WITH a refusal, never a silent success), and a terminal row is refused.
+ *   * CAS on `expectedRevision`, when the caller supplies one: a stale release must not clobber a
+ *     concurrent claim.
+ *   * `startedAt` is DELETED (via `resetStartedAt`) rather than kept: the released attempt is abandoned,
+ *     so the later claim is a NEW attempt and its clock starts then.
+ *   * `attempt` is NOT reset (monotonic across claims, releases and closures) and `claimed` is NOT
+ *     written at dispatch time — no new task state is invented, and `in_progress` keeps its ONE meaning.
+ *
+ * @param fresh - the record re-read from disk immediately before this call.
+ * @param taskId - the mpd task id to reopen.
+ * @param expectedRevision - the revision the caller decided on; omitted means "whatever is there".
+ * @param now - the instant to stamp as `updatedAt`.
+ * @returns the record to persist, or the refusal with its reason.
+ */
+export function casReleaseTask(fresh: TeamRecord, taskId: string, expectedRevision: number | undefined, now: Date): CasTaskOutcome {
+  /** The task as it stands on disk, or undefined when it is gone. */
+  const task = fresh.tasks.find((candidate) => candidate.id === taskId)
+  if (task === undefined) return { applied: false, reason: `task ${taskId} is no longer on the board` }
+  if (expectedRevision !== undefined && task.revision !== expectedRevision) {
+    return { applied: false, reason: `task ${taskId} changed under you (revision ${expectedRevision} -> ${task.revision}); re-read it and retry` }
+  }
+  if (task.status === "completed" || task.status === "failed" || task.status === "cancelled") {
+    return { applied: false, reason: `task ${taskId} is already terminal ("${task.status}") and cannot be released` }
+  }
+  if (task.status !== "claimed" && task.status !== "in_progress") {
+    return { applied: false, reason: `task ${taskId} is "${task.status}" and holds no dispatch to release` }
+  }
+  return { applied: true, record: updateTeamTask(fresh, taskId, { status: "pending", owner: "", resetStartedAt: true }, now) }
 }
 
 /** What one terminal-verb call decided, and what it unblocked. */
@@ -1083,6 +1135,49 @@ export function updateTeamMember(record: TeamRecord, key: string, patch: MemberP
 }
 
 /**
+ * Settle one member: mark it `inactive` once it owns no open task.
+ *
+ * WHY THIS EXISTS (R2). A member is written `running` when the executor reports its session, and
+ * NOTHING wrote it back: `derivePhase` read the ghost as activity forever, the finished-team predicate
+ * the compaction pass derives never fired, the TUI drew a team working forever, and the workmate
+ * in-use gate never released. Settlement is the missing write, and it is deliberately NARROW — a member
+ * that still owns an `in_progress`/`claimed` task KEEPS its `running` row.
+ *
+ * KEYED BY `executorRef` because that is the ONE durable handle the harness reports an event with (a
+ * session id). A member with no recorded handle, or a session that names no member, matches nothing and
+ * the SAME record comes back — identity is the caller's "nothing changed, do not write" signal.
+ *
+ * @param record - the record to read; it is never mutated.
+ * @param sessionId - the settling session, matched against the member's `executorRef`.
+ * @param now - the settlement instant, following the store's mutation convention: the caller settles
+ *   with the ONE clock reading it already took for the closure that released the member. The member row
+ *   has no per-transition stamp, so no instant reaches the record.
+ * @returns a new record with that member `inactive`; the SAME record when nothing settled.
+ */
+export function settleMember(record: TeamRecord, sessionId: string, now: Date): TeamRecord {
+  /** The member this session is, by the one handle the record keeps for it. */
+  const member = record.members.find((candidate) => candidate.executorRef === sessionId)
+  // A session that names no member (or a member with no recorded handle) settles nothing: absent
+  // evidence is not a settlement, and writing one would mark a member free that may be working.
+  if (member === undefined) return record
+  // A member already inactive (or failed) is not settled again; only a live `running` row is.
+  if (member.status !== "running") return record
+  /**
+   * Whether this member still owns work. BOTH spellings the board may have stamped are checked —
+   * its display name (a planned owner) and its executor handle (a session claim).
+   */
+  const ownsOpenTask = record.tasks.some((task) => (task.status === "in_progress" || task.status === "claimed")
+    && (task.owner === member.name || (member.executorRef !== undefined && task.owner === member.executorRef)))
+  if (ownsOpenTask) return record
+  // `now` is the store's mutation convention — the caller settles with the ONE clock reading it already
+  // took for the closure — not a value written to the record: a member row has `spawnedAt` and no
+  // per-transition stamp, and inventing one would be a schema change the frozen contract does not ask
+  // for. The phase is derived at WRITE time by the caller (`withDerivedPhase`), which needs no clock.
+  void now
+  return { ...record, members: record.members.map((candidate) => candidate.id === member.id ? { ...candidate, status: "inactive" as const } : candidate) }
+}
+
+/**
  * Derive the phase from what the record actually shows, so a phase can never drift from it.
  *
  * `ended` is sticky (an explicit end outranks any leftover state), `staged` is the pre-approval
@@ -1090,7 +1185,10 @@ export function updateTeamMember(record: TeamRecord, key: string, patch: MemberP
  * `idle`. A record that was never approved never becomes `active`, however its members look.
  *
  * `provisioning` COUNTS as in flight: after approval a member sits in `provisioning` until the
- * executor reports a session back, and that window is work happening, not an idle team.
+ * executor reports a session back, and that window is work happening, not an idle team. `inactive` is
+ * what {@link settleMember} writes once a member owns no open task, so the closure of the last task
+ * plus the settlement is exactly what turns an approved record `idle` (and only then can the
+ * compaction pass read a team as finished).
  * @param record - the record to read.
  * @returns the phase to store and to show.
  */
@@ -1385,11 +1483,20 @@ export function readyTasks(record: TeamRecord): TeamTaskRecord[] {
   return record.tasks.filter((task) => task.status === "pending" && blockingDependencies(record.tasks, task.blockedBy).blocking.length === 0)
 }
 
-/** The members free to take work: provisioned, and with no task in flight. */
+/**
+ * The members free to take work: no task in flight, and a status that is not a failure or a spawn.
+ *
+ * `inactive` IS FREE (R2). Settlement writes it when a member owns no open task, and before the
+ * settlement existed the pool was `running`-only — so settling a member would have emptied the very
+ * pool that must pick the next task up. `provisioning` stays busy (its spawn is in flight) and
+ * `failed` stays out (a dead member is not a candidate).
+ * @param record - the record to read.
+ * @returns the free members, in roster order.
+ */
 export function idleMembers(record: TeamRecord): TeamMemberRecord[] {
   /** Every spelling a task in flight may have stamped: the member's name or its executor handle. */
   const busy = new Set(record.tasks.filter((task) => task.status === "in_progress" || task.status === "claimed").map((task) => task.owner).filter((owner): owner is string => owner !== undefined))
-  return record.members.filter((member) => member.status === "running"
+  return record.members.filter((member) => (member.status === "running" || member.status === "inactive")
     && !busy.has(member.name)
     // A member whose claim stamped its handle is BUSY; matching only the name would let dispatch book
     // a second task onto it (the same two-spelling defect `memberProgress` documents).

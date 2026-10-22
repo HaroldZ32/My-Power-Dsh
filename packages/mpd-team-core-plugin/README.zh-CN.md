@@ -6,16 +6,18 @@
 可续接的队友——别的都没有。而被退役的自研体还带有队长真正要用的那些评审点：一支在**任何人存在之前**就能被阅读、
 编辑、批准的暂存计划，认领时冻结的任务契约，暂停，以及归档。这些东西现在住在这里。
 
-名册与看板**绝不**复制：它们始终属于官方服务，经 `mpd-dsh-adapter` 读写。本插件只保存官方服务没有字段承载的
-东西，位置是 `<workspace>/.mpd/team/`。
+**mpd 记录才是团队的权威真相。** 名册与看板存放在 `<workspace>/.mpd/team/teams/<teamId>.json`，由本插件读写；
+官方 Agent Teams 服务只是运行官方执行器的组合里的**回退**，且只经 `mpd-dsh-adapter` 访问——这里没有任何界面把
+`dsh.teamLiveTeams()` 当作真相。`<workspace>/.mpd/team/` 下的边车文件是环绕该记录的**工作流状态**，绝不是它的
+第二份拷贝。
 
 ## 工具
 
 | 工具 | `action` 取值 | 作用 |
 |---|---|---|
 | `agent_teams_plan` | `create`、`add_member`、`create_task`、`edit`、`approve`、`delete`、`status` | 把团队暂存成**计划**；`approve` 通过**团队执行器**执行它（原生后端 `ctx.subagents.startContinuable` 是**默认**，官方 `dsh.team*` 调用是**回退**），并按 mpd 记录解析 `blocked_by`/`owner`；0 成员且 0 任务的计划会被**拒绝**；`delete` 归档；`status` 在该后端生效时把记录与官方读数并排给出 |
-| `agent_teams_task` | `claim`、`contract`、`release` | 在官方看板认领**并**冻结契约（单调 `attempt`）；读回契约；释放已派发任务 |
-| `agent_teams_dispatch` | `run`、`release` | 把就绪任务与空闲成员配对、通知成员、并**记录配对** |
+| `agent_teams_task` | `claim`、`contract`、`release` | 在 mpd 记录上认领任务**并**冻结契约（单调 `attempt`）；读回契约；`release` 释放配对并把任务行退回 `pending` |
+| `agent_teams_dispatch` | `run`、`release` | 把就绪任务与空闲成员配对、通知成员、并在**按团队分键的台账**里记录配对；`release` 释放配对并重开任务行 |
 | `agent_teams_mail` | `send`、`unread`、`read`、`summary` | 团队信箱：durable，且带官方**给不了**的已读状态 |
 | `agent_teams_control` | `halt`、`resume` | 只停派工、别的什么都不做的暂停 |
 
@@ -126,7 +128,11 @@ data: {"rev":8}
 
 - 暂停会**停住派工**（`agent_teams_dispatch` 整趟拒绝并说明原因），别的什么都不做：不打断成员，也不改任务。
 - `agent_teams_dispatch` 每趟只把一个任务配给一个成员，并把配对记进 `.mpd/team/dispatch.json`，所以第二趟不可能把同一个
-  任务再交给另一个队友——**消息不是台账**。被删除或已在外部完成的任务，其台账条目会先被清理，成员因此永远不会被"永久占用"。
-  它由队长或调度 lane 调用时运行，**不是一个后台定时器**。
+  任务再交给另一个队友——**消息不是台账**。台账**按团队分键**（每行 `teamId::taskId`），所以同一工作区里两个团队即使铸造出
+  相同的任务 id 也不会互相遮蔽；团队记录进入终态后其台账行会被清理，分键之前留下的裸键行会在第一趟被丢弃并报告。
+  `release` 释放配对，**同时**把任务行退回 `pending`（清空负责人与开始时间），被释放的任务因此可以重新派工。
+  被删除或已在外部完成的任务，其台账条目会先被清理，成员因此永远不会被"永久占用"。**成员结算**会在成员不再持有任何未关任务时
+  把它写成 `inactive`——`complete`/`fail` 之后确定性地做一次，以及在该成员自己的回合边界上做一次——这正是推导出的阶段能到达
+  `idle`、压缩流程能看见"已完成的团队"的前提。它由队长或调度 lane 调用时运行，**不是一个后台定时器**。
 - `agent_teams_approve` 无法回滚。
 - 信箱没有未读数：官方收件箱不暴露已读状态，硬造一个只会报错数。

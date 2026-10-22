@@ -1,0 +1,44 @@
+{
+  "task": "T3 — R4 (F-6): stale docs in the team-plane settlement wave — design/{en,zh} + feature-audit/{en,zh}",
+  "lane": "R4 docs only; packages/** and skills/** untouched (the source-header/README half of R4 belongs to another lane)",
+  "branch": "fix/team-board-settlement",
+  "base_commit": "46e3bf12",
+  "generated_at": "2026-10-22T07:22:30Z",
+  "verdict": "PASS",
+  "claims_fixed": [
+    "design EN/zh: the workmate consult is ONE-SHOT (activation disposed once the report settles; the append-only catalog may still list the settled child `inactive`; a follow-up is a NEW spawn, never `send_message` into the settled child; what carries over is the RECORD, never the session)",
+    "design EN/zh: the team-mode bullet says each `spawn_teammate` is likewise a ONE-SHOT consult that settles (never resumed; a follow-up is a NEW spawn)",
+    "design EN/zh: the `.mpd/team` state table names the REAL writers — `teams/<teamId>.json` (the authoritative record), `dispatch.json` (the team-scoped ledger), `staging/`, `contracts/`, `hold.json`, `archive/` — plus the watchdog's own `watchdog/` namespace; the retired one-directory-per-team `<teamId>/team.json` is READ-ONLY legacy, and the official plane is the executor backend, never the truth",
+    "design EN/zh: the workmate in-use gate covers BOTH layouts — the mpd-owned `.mpd/team/teams/<teamId>.json` (busy until `endedAt` or member status `inactive`/`failed`) and the retired `.mpd/team/<teamId>/team.json`; the row reads that state and never writes it",
+    "design EN/zh: the watchdog row now says it reads the MPD TEAM RECORD first (through `mpdTeams`) with the official live readout only as the fallback",
+    "feature-audit EN/zh: 'durable continuable teammates' becomes ONE-SHOT consults + the `<workspace>/.mpd/team/teams/<teamId>.json` record truth; the workmate `in-use` clause names both record layouts",
+    "feature-audit EN/zh: the RETIRED `0.1.16-rc.3-mpd` section is marked RETIRED (2026-09-27) and REMOVED (2026-10-07) — heading, intro, 'The last retained version was', a new removal paragraph, and the deltas table reframed as a removal-time record ('never adopted', 'would have taken')"
+  ],
+  "lockstep": "EN and zh-CN twins edited in the same working tree, one commit; both gate runs below cover the pair set",
+  "measured": {
+    "files": {
+      "docs/design.md": "31b979f00212265141bf430ebfb4741472bce2e0a4f9ee98f2718249f82e30e3",
+      "docs/design.zh-CN.md": "4eae70c591603e16845ac6aff85f0e13c9e56609b4621169c7e2397f7eded393",
+      "docs/feature-audit.md": "1cd819edbcd1a0b82326441104e0b84387acbed4025bb53bae118705be438d47",
+      "docs/feature-audit.zh-CN.md": "156abfa60cb975ef0ce7a188f87411100890656e3588bf6facda311151664764"
+    },
+    "diffstat": "4 files changed, 74 insertions(+), 43 deletions(-)"
+  },
+  "gates": {
+    "bun run verify:docs": {
+      "exit": 0,
+      "log": "docs-parity.log",
+      "quote": "[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=49 failed=0 violations=0 exempt=24 derived=3 links=440 dead=0 — PASS"
+    },
+    "node scripts/verify-manual-paths.ts": {
+      "exit": 0,
+      "log": "manual-paths.log",
+      "quote": "[verify-manual-paths] PASS resolved=151 over-report=73 under-report=75 declared=2 (every audited path exists; the DECLARED anticipatory class is named with its reason and counted apart; the two matcher-error directions above are reported, not merged)"
+    }
+  },
+  "bounds": [
+    "The two gates above are the R4 doc gates. `bun test packages/*` / `typecheck` / `verify:comments` / `dist-fresh` belong to the code lanes (R1-R3) and to the integration lane; this lane changed no source.",
+    "The 'one-shot' wording states the CURRENT mechanics (activation disposed once the report settles) — it is a documentation corollary of the harness contract recorded in AGENTS.md §1/§13, not a new measurement made in this lane.",
+    "No git write command was run: the four files and this evidence directory are left uncommitted for the captain's single git writer."
+  ]
+}
