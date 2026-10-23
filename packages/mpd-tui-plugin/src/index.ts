@@ -61,6 +61,7 @@ import { armPanelAttention, panelsSummaryLine, type PanelAttention } from "./pan
 import { readDashboardWorkflow, registerDashboardKey } from "./dashboard-key.js"
 import { registerPanelSurface, takeoverArmed } from "./panel.js"
 import type { PanelOpenOutcome } from "./panel.js"
+import type { PageUnavailableReason } from "./commands.js"
 import { requestSubagentDetail, takeSubagentDetailRequest } from "./subagent-scene.js"
 import { registerWorkmatePanel } from "./panel-workmate.js"
 import { registerWatchdogPanel } from "./panel-watchdog.js"
@@ -860,7 +861,12 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
   // id), so the trigger means "a team became live in this workspace". The page stays session-accurate —
   // it draws `no team in this session` when the trigger came from another session — rather than this
   // surface inventing a session it cannot see.
-  if (resolved.panel) {
+  //
+  // THE WATCHDOG KNOB ARMS THIS TOO (CodeRabbit #13 on PR #62): the two page knobs are INDEPENDENT, so
+  // `panel: false, watchdog: true` must still badge the watchdog page and run its poll. With `panel`
+  // off, `panel.id()` is undefined, so the MPD-page badge and the auto-open skip by construction
+  // (`publishTo` answers false, `address === undefined` returns early); only the watchdog half acts.
+  if (resolved.panel || resolved.watchdog) {
     tui.whenBound("panels", (_service, scope): void => {
       // A RE-BIND REPLACES THE SURFACE: release the previous subscription before the new arm, so a
       // late event cannot reach a page this activation no longer owns.
@@ -977,23 +983,37 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
     return { ...routed, id: panel.id() }
   }
   /**
-   * The SAME arbitration for the two independent pages (frozen R1/R12).
+   * The SAME arbitration for the independent pages (frozen R1/R12), with its refusals KEPT APART.
    *
    * `panel.ts` owns this route for the merged view; the pages answer it identically — the panel when
    * the host offers the seam, its registration was confirmed and the host accepted the open, else the
    * page's own full-screen surface — so a new page cannot make the routing honest for one surface and
    * a silent no-op for another. The four outcomes are `panel.ts`'s own vocabulary.
-   * @param page - the registered page seam: its discovered id and its full-screen fallback.
-   * @returns how the routed open ended, and the id it went to.
+   *
+   * THREE DIFFERENT FACTS MUST NOT COLLAPSE INTO `unavailable` (CodeRabbit #12 on PR #62):
+   *   * `refused` — the seam is bound and the host turned the page's REGISTRATION down (its own fix);
+   *   * `fallback` — the registration was fine and the host declined THIS OPEN (a different fact);
+   *   * `unavailable` with a `reason` — no seam at all, the page disabled by its own knob, or an id not
+   *     discovered yet. The reason travels to the caller so a command line names the right one.
+   * @param page - the registered page seam: its id, its full-screen fallback, and the two facts that
+   *   tell a refusal from an absence (whether its knob disabled it, and its registration outcome).
+   * @returns how the routed open ended, the id it went to, and — for `unavailable` — why.
    */
-  const openPage = (page: { id(): string | undefined; openScene(): boolean }): PanelOpenOutcome & { id: string | undefined } => {
+  const openPage = (page: { id(): string | undefined; openScene(): boolean; disabled?(): boolean; outcome?(): SeamOutcome }): PanelOpenOutcome & { id: string | undefined; reason?: PageUnavailableReason } => {
+    // A PAGE ITS OWN KNOB SWITCHED OFF IS NOT A HOST LIMIT: name the knob and stop.
+    if (page.disabled?.() === true) return { outcome: "unavailable", sceneOpened: false, id: undefined, reason: "disabled" }
     /** The final host id, read PER CALL: the seam may have bound since the last invocation. */
     const id = page.id()
-    if (!tui.panelSeamBound() || id === undefined) return { outcome: "unavailable", sceneOpened: page.openScene(), id }
+    // A BOUND SEAM WITH NO ID IS EITHER A REFUSED REGISTRATION OR AN UNREAD ONE — never "no seam".
+    if (tui.panelSeamBound() && id === undefined && page.outcome?.().state === "refused") {
+      return { outcome: "refused", sceneOpened: page.openScene(), id }
+    }
+    if (!tui.panelSeamBound()) return { outcome: "unavailable", sceneOpened: page.openScene(), id, reason: "seam-absent" }
+    if (id === undefined) return { outcome: "unavailable", sceneOpened: page.openScene(), id, reason: "not-yet" }
     if (typeof tui.panels()?.open !== "function") {
       // A bound seam with no `open` member cannot satisfy the request at all — the scene is the surface
       // and the line must not read as a host refusal.
-      return { outcome: "unavailable", sceneOpened: page.openScene(), id }
+      return { outcome: "unavailable", sceneOpened: page.openScene(), id, reason: "seam-absent" }
     }
     /** The host's answer; a boolean only because the seam was bound at call time. */
     const result = tui.openPanel(id)
@@ -1069,12 +1089,12 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
           // the surface that carries the DAG page's appearance (C5) rather than the one that carries the
           // host's rows. `openPage` is the existing helper, so this route cannot drift from the others.
           /** How the routed open of the MPD panel ended: the DAG page lives inside it. */
-          const route = openPage({ id: (): string | undefined => panel.id(), openScene: (): boolean => scene.openTeam() })
+          const route = openPage({ id: (): string | undefined => panel.id(), openScene: (): boolean => scene.openTeam(), disabled: (): boolean => panel.panel === undefined, outcome: (): SeamOutcome => panel.outcome() })
           return { outcome: route.outcome, id: route.id }
         },
         openWorkmate: () => {
           /** How the routed open of the workmate page ended. */
-          const route = openPage(workmatePanel)
+          const route = openPage({ id: (): string | undefined => workmatePanel.id(), openScene: (): boolean => workmatePanel.openScene(), disabled: (): boolean => workmatePanel.panel === undefined, outcome: (): SeamOutcome => workmatePanel.outcome() })
           return { outcome: route.outcome, id: route.id }
         },
         // `/mpd watchdog`: the page has NO full-screen scene (no scene draws the incident list), so a
@@ -1082,7 +1102,7 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
         // routed to a surface that would show a different thing (contract §4).
         openWatchdog: () => {
           /** How the routed open of the watchdog page ended; `sceneOpened` is always false for it. */
-          const route = openPage({ id: (): string | undefined => watchdogPanel.id(), openScene: (): boolean => false })
+          const route = openPage({ id: (): string | undefined => watchdogPanel.id(), openScene: (): boolean => false, disabled: (): boolean => watchdogPanel.panel === undefined, outcome: (): SeamOutcome => watchdogPanel.outcome() })
           return { outcome: route.outcome, id: route.id }
         },
         statusText: () => boardSummary(workspaceRoot, home, teamViews, teamRecords) + String.fromCharCode(10) + panelsSummary(),

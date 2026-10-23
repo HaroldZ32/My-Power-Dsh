@@ -2021,3 +2021,67 @@ describe("the live-service read is sequenced and re-run on a settings-scope upda
     expect((mount.state().effective as { slots: Record<string, { model: string }> }).slots.slot1.model).toBe("newer")
   })
 })
+
+// ── CodeRabbit #4/#5 on PR #62: an `invalid` slot is NOT `<unconfigured>`, and leaves are trimmed ──
+describe("the effective block distinguishes a MALFORMED slot from an unconfigured one (#4/#5)", () => {
+  /**
+   * A minimal createElement for the pure render arms: the projection plus the card's OWN dictionary
+   * is what the sentence is judged on, and a plain tree needs no hook runtime.
+   * @param type - the element's tag.
+   * @param props - the element's props.
+   * @param children - the element's children.
+   * @returns a tree node the text collector can walk.
+   */
+  function el(type: string, props: Record<string, unknown>, ...children: unknown[]): TreeNode {
+    return { type, props: { ...props, children }, key: props.key ?? null } as TreeNode
+  }
+
+  test("#4: a non-string leaf projects as `invalid` with the offending path named", () => {
+    /** The projection over a service body whose slot4 reasoningEffort is a NUMBER. */
+    const effective = CARD.effectiveModelConfigOf({}, {
+      body: { ok: true, slots: { slot4: { provider: "p", model: "m", reasoningEffort: 7 } }, modelchain: {} },
+      notice: "",
+    })
+    expect(effective.slots.slot4).toEqual({
+      status: "invalid",
+      provider: "p",
+      model: "m",
+      reasoningEffort: "",
+      missing: [],
+      problem: "teamModels.slot4.reasoningEffort is not a string",
+    })
+  })
+
+  test("#4: a slot that is not an OBJECT projects as `invalid` too", () => {
+    /** The projection over a slot whose value is a bare string. */
+    const effective = CARD.effectiveModelConfigOf({ teamModels: { slot2: "deepseek-v4-flash" } }, { body: undefined, notice: "" })
+    expect(effective.slots.slot2).toMatchObject({ status: "invalid", problem: "teamModels.slot2 is not an object" })
+  })
+
+  test("#4: the INVALID line renders its own sentence in BOTH locales — never `<unconfigured>`", () => {
+    /** The projection that produces one invalid slot and three unconfigured ones. */
+    const effective = CARD.effectiveModelConfigOf({}, {
+      body: { ok: true, slots: { slot1: { provider: "p", model: "m", reasoningEffort: 7 } }, modelchain: {} },
+      notice: "",
+    })
+    /** The EN block text. */
+    const en = textOf(CARD.effectiveChildrenOf(effective, (key: string) => EN[key] ?? key, el) as TreeNode)
+    expect(en).toContain("<invalid> — teamModels.slot1.reasoningEffort is not a string")
+    expect(en).not.toContain("missing -")
+    // The other three slots are genuinely unconfigured and keep THAT sentence (the control).
+    expect(en).toContain("<unconfigured> — missing provider, model")
+    /** The zh block text, which must carry the Chinese sentence with the same path. */
+    const zh = textOf(CARD.effectiveChildrenOf(effective, (key: string) => ZH[key] ?? key, el) as TreeNode)
+    expect(zh).toContain("「无效」——teamModels.slot1.reasoningEffort is not a string")
+    expect(zh).toContain("「未配置」——缺少 provider, model")
+  })
+
+  test("#5: WHITESPACE-ONLY leaves count as missing, exactly as the resolver trims them", () => {
+    /** The projection over a slot whose provider is blank spaces. */
+    const effective = CARD.effectiveModelConfigOf({ teamModels: { slot3: { provider: "   ", model: "m" } } }, { body: undefined, notice: "" })
+    expect(effective.slots.slot3).toMatchObject({ status: "unconfigured", missing: ["provider"] })
+    /** The render text, which must ask for the provider leaf. */
+    const en = textOf(CARD.effectiveChildrenOf(effective, (key: string) => EN[key] ?? key, el) as TreeNode)
+    expect(en).toContain("missing provider")
+  })
+})

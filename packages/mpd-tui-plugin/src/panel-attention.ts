@@ -281,13 +281,14 @@ export function armPanelAttention(deps: PanelAttentionDeps): PanelAttention {
    */
   const publish = (next: PanelBadge | null): boolean | undefined => publishTo(id(), next)
   /**
-   * One observation pass, as {@link PanelAttention.observe} documents.
-   * @param event - whether a feed notification caused this pass.
+   * Publish BOTH badges for one projection: the MPD page's, then the watchdog page's.
+   *
+   * Extracted so the POLL can publish without the auto-open edge (CodeRabbit #15): a poll tick that
+   * ran the edge logic would set `wasLive` between a team write and the feed's coalesced delivery (50
+   * ms by default), and the feed pass would then see no appearance — silently losing the one auto-open.
+   * @param workflow - the projection this pass read.
    */
-  const observe = (event: boolean): void => {
-    if (stopped) return
-    /** The current projection, re-read per pass: a page-scoped surface would be a frame stale. */
-    const workflow = read()
+  const publishBadges = (workflow: TeamWorkflow | undefined): void => {
     /** The badge this state earns. */
     const next = attentionBadge(workflow)
     if (!settled || !sameBadge(last, next)) {
@@ -320,16 +321,36 @@ export function armPanelAttention(deps: PanelAttentionDeps): PanelAttention {
         }
       }
     }
+  }
+  /**
+   * The POLL's pass: badges only. It must NOT touch `wasLive` or the auto-open edge, or a tick landing
+   * inside the feed's coalescing window would consume the one-shot auto-open (CodeRabbit #15).
+   */
+  const observeBadges = (): void => {
+    if (stopped) return
+    publishBadges(read())
+  }
+  /**
+   * One observation pass, as {@link PanelAttention.observe} documents.
+   * @param event - whether a feed notification caused this pass.
+   */
+  const observe = (event: boolean): void => {
+    if (stopped) return
+    /** The current projection, re-read per pass: a page-scoped surface would be a frame stale. */
+    const workflow = read()
+    // THE BADGES ARE THE SAME WORK IN BOTH MODES: publish them, then run the edge below.
+    publishBadges(workflow)
     // AUTO-OPEN IS AN EDGE, NOT A STATE (CodeRabbit finding, 2026-10-20): a team that already existed
     // when this surface armed is NOT an appearance, and the first feed event after it (a status change,
     // a task update) must not open the page for it. `wasLive` carries the previous pass's answer and is
-    // updated on EVERY pass, including the arm-time one.
+    // updated on EVERY OBSERVATION pass (the arm-time one included) — and, since #15, NEVER by the poll.
     /** Whether this pass sees a live team (a team with at least one task). */
     const live = workflow !== undefined && workflow.tasks.length > 0
-    /** Whether a live team APPEARED since the previous pass. */
+    /** Whether a live team APPEARED since the previous OBSERVATION pass. */
     const appeared = live && !wasLive
     wasLive = live
     if (!event || !deps.autoOpen || opened || deps.autoOpenLatch?.spent === true || !appeared) return
+
     /** The discovered id at the moment the first live team was seen. */
     const address = id()
     if (address === undefined) return
@@ -391,7 +412,7 @@ export function armPanelAttention(deps: PanelAttentionDeps): PanelAttention {
     const period = deps.watchdogPollMs ?? WATCHDOG_BADGE_POLL_MS
     if (period > 0) {
       try {
-        pollTimer = setInterval((): void => observe(false), period)
+        pollTimer = setInterval((): void => observeBadges(), period)
         /** The timer's `unref`, when this runtime exposes one. */
         const unref = (pollTimer as { unref?: () => void }).unref
         if (typeof unref === "function") unref.call(pollTimer)

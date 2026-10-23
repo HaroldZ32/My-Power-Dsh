@@ -45,6 +45,7 @@ export { markVolatile }
 import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import type { DshAdapter, DshLlmCatalog } from "../../mpd-dsh-adapter-plugin/src/index.js"
 import type { Log } from "./log.js"
+import { stripControl } from "./sanitize.js"
 import { serviceOf } from "../../mpd-tui-adapter-plugin/src/index.js"
 
 export { SETTINGS_NS }
@@ -328,9 +329,15 @@ export function slotResolutionDisplay(service: SlotResolutionServiceLike | undef
     // single-route slot from one carrying backups.
     /** The effort fragment, when the route declares one. */
     const effort = typeof route.reasoningEffort === "string" && route.reasoningEffort !== "" ? ` / ${route.reasoningEffort}` : ""
+    // THE ROUTE IS CONFIGURATION, NOT TRUSTED TEXT (CodeRabbit #14): every component comes from
+    // `.mpd/mpd.jsonc`, and the composed sentence is handed to a dialog renderer this plugin does not
+    // own. The repository's WHITESPACE-PRESERVING sanitizer is applied here — the " / " separators must
+    // survive — so a control character in a provider or model id can never reach the terminal.
+    /** The composed route sentence, control characters stripped. */
+    const routeText = stripControl(`${route.provider} / ${route.model}${effort}`)
     return {
       state: "ok",
-      route: `${route.provider} / ${route.model}${effort}`,
+      route: routeText,
       fallbacks: Array.isArray(raw.fallbacks) ? raw.fallbacks.length : 0,
     }
   }

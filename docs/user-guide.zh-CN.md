@@ -657,7 +657,7 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp   # 从一个可工作的骨�
   `@colbymchenry/codegraph` 或设置 `MPD_DSH_CODEGRAPH_BIN`（它的主拼写 `MPD_CODEGRAPH_BIN`
   会先被读取）。
 - **保存的旋钮没有生效** → 模型配置旋钮（`modelchain.*`、`teamModels.slot*`）是 live-refreshed 的：
-  用 `mpd_config_get` / `mpd_modelchain_resolve` 重新读取，或强制
+  用 `mpd_config_get` / `mpd_modelchain_resolve` 重新读取，或用 `mpd_config_reload` 强制重读。
   其余旋钮在挂载时捕获配置，需重启会话 —— 而且 `mpd_config_get` 显示新值**不等于**已挂载的插件已经在
   按它行动（§9.1 说明了哪些旋钮是实时生效的）。
 - **升级后某个文档链接 404** → 本次发布**重命名**了设计文档（它原名 `architecture.md`，

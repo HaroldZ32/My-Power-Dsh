@@ -122,8 +122,10 @@ The same knobs the shared schema declares — the original 13, the twelve `teamM
 Web GUI. The thirty-three `agentRoutes` leaves are **gone** with the per-member override layer
 (`.mpd/plans/slot-single-source.md` §3): neither the Web card nor the `/mpd-model` dialog shows a member
 override table any more, a leftover block in an existing `.mpd/mpd.jsonc` is ignored and never rewritten,
-and `/mpd-model` asks slot → provider → model → reasoning effort only, writing `teamModels.<slot>`: **Settings → MPD**, its own top-level section of
-the settings dialog — it no longer lives inside the Plugins tab. The section registers the way the
+and `/mpd-model` asks slot → provider → model → reasoning effort only, writing `teamModels.<slot>`.
+
+**Settings → MPD** is its own top-level section of the settings dialog — it no longer lives inside the
+Plugins tab. The section registers the way the
 host's own sections do (`ctx.slots.inject("settings.section", …)` →
 `ctx.slots.register({ name: "settings.section", id: "mpd", order: 20, label: () => t("nav"), locale, inject }, Section)`,
 the shape measured from `dsh-client-ui-settings-models/lib/client.js:2936`): the settings shell

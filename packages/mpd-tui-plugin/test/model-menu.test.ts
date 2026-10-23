@@ -631,3 +631,22 @@ describe("R3: the /mpd-model pick-list chain", () => {
     expect(MODEL_COMMAND_DESCRIPTIONS.en.length).toBeGreaterThan(0)
   })
 })
+
+// ── CodeRabbit #14 (PR #62): the route sentence is CONFIGURATION and must be sanitized ───────────
+describe("the slot's current-route sentence strips control characters (whitespace preserved)", () => {
+  /** A config-service double exposing the contract's typed slot answer. */
+  const slotServiceDouble = (answer: (member: string) => unknown): { slotResolutionOf: (member: string) => unknown } => ({ slotResolutionOf: answer })
+
+  test("a control character in a provider/model id never reaches the dialog description", () => {
+    /** The typed answer whose provider and model carry BEL and NUL characters. */
+    const display = slotResolutionDisplay(slotServiceDouble(() => ({
+      ok: true,
+      route: { provider: "pro\u0007v", model: "mo\u0000del", reasoningEffort: "hi\u001bgh" },
+      fallbacks: [],
+    })), "Architect")
+    // The typed state survives; the CONTROL characters do not, and the " / " separators are intact.
+    expect(display.state).toBe("ok")
+    expect(display.state === "ok" ? display.route : "").toBe("pro v / mo del / hi gh")
+    expect(display.state === "ok" ? display.route : "").not.toMatch(/[\u0000-\u001f]/u)
+  })
+})

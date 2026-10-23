@@ -111,8 +111,9 @@ dsh-tui 自 0.12.0 起就暴露的十四条接缝，加上 0.13.0 新增的侧�
 选择器），另加 TUI 界面自身的一个开关 —— 也能在 Web 界面里编辑。三十三个 `agentRoutes` 叶子已随
 按成员覆盖层一起**删除**（`.mpd/plans/slot-single-source.md` §3）：Web 卡片与 `/mpd-model` 对话框都不再
 显示成员覆盖表，既有 `.mpd/mpd.jsonc` 里遗留的块会被忽略且绝不重写，`/mpd-model` 只问
-槽位 → 提供商 → 模型 → 推理强度，并写入 `teamModels.<slot>`：**设置 → MPD**，即设置对话框中独立的一栏——它不再位于"插件"
-标签页内。该栏按宿主自有栏目（section）的注册方式注册（`ctx.slots.inject("settings.section", …)` →
+槽位 → 提供商 → 模型 → 推理强度，并写入 `teamModels.<slot>`。
+
+**设置 → MPD** 是设置对话框中独立的一栏 —— 它不再位于「插件」标签页内。该栏按宿主自有栏目（section）的注册方式注册（`ctx.slots.inject("settings.section", …)` →
 `ctx.slots.register({ name: "settings.section", id: "mpd", order: 20, label: () => t("nav"), locale, inject }, Section)`，
 形状取自 `dsh-client-ui-settings-models/lib/client.js:2936` 的实测）：设置外壳收集该列表槽位、按 `order`
 排序并渲染当前激活项，因此 `order: 20` 让 MPD 排在 `general`（0）、`models`（10）、`plugins`（15）之后，

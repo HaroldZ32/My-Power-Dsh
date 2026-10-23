@@ -745,3 +745,37 @@ describe("the watchdog page's own badge arm", () => {
     expect(pages.calls.length).toBe(settled)
   })
 })
+
+// ── CodeRabbit #15 (PR #62): the watchdog POLL must not consume the one-shot auto-open ───────────
+describe("the watchdog poll publishes badges but never moves the auto-open edge", () => {
+  test("a poll tick that sees the live team first does NOT swallow the feed's appearance", async () => {
+    /** The team feed. */
+    const feed = fakeFeed()
+    /** The panel routes (its badge answers `true`, so the surface settles). */
+    const panel = fakePanel()
+    /** The workflow the surface reads: empty at arm, a live team once the arm flips it. */
+    let current: TeamWorkflow | undefined = workflow([])
+    /** The surface under test, polling far faster than production so the arm is deterministic. */
+    const attention = armPanelAttention({
+      ...panel.deps,
+      readWorkflow: () => current,
+      feed: feed.accessor,
+      autoOpen: true,
+      // The watchdog read is what ARMS the poll; this arm only cares about the poll's side effects.
+      readWatchdog: () => ({ holds: [], unread: [] }),
+      watchdogPollMs: 5,
+      log: silentLog(),
+    })
+    // The team becomes live BETWEEN feed notifications; a poll tick is guaranteed to observe it first.
+    current = workflow([{ visual: "running" }])
+    await new Promise((resolve) => setTimeout(resolve, 40))
+    // THE POLL NEVER AUTO-OPENS BY ITSELF (auto-open is a feed-edge decision) …
+    expect(panel.opens()).toBe(0)
+    // … AND IT DID NOT CONSUME THE EDGE: the coalesced feed pass still sees the appearance and opens
+    // exactly once. Before #15 the poll set `wasLive` and this assertion read 0.
+    feed.fire()
+    expect(panel.opens()).toBe(1)
+    expect(attention.opened()).toBe(true)
+    attention.stop()
+  })
+})

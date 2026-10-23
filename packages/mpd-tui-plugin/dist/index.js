@@ -119,6 +119,14 @@ var TUI_TEXT = {
   "watchdog.commandRefused": {
     zh: "mpd 看门狗：宿主拒绝了该面板的注册，看门狗面板无法打开",
     en: "mpd watchdog: the host refused the panel registration, so the watchdog panel cannot open"
+  },
+  "watchdog.commandOpenRefused": {
+    zh: "mpd 看门狗：宿主这次拒绝打开该面板（注册仍在）；请在侧栏面板列表里选择它，或稍后重试",
+    en: "mpd watchdog: the host declined this open (the registration still stands); pick it in the side panel list, or try again"
+  },
+  "watchdog.commandDisabled": {
+    zh: "mpd 看门狗：看门狗页面已被 mpd-tui 行配置关闭（watchdog: false），请启用后重试",
+    en: "mpd watchdog: the watchdog page is disabled by the mpd-tui row config (watchdog: false); enable it and try again"
   }
 };
 var EFFORT_LABELS = {
@@ -7548,9 +7556,10 @@ function slotResolutionDisplay(service, member) {
     if (!isPlainTable(route) || typeof route.provider !== "string" || typeof route.model !== "string")
       return { state: "invalid" };
     const effort = typeof route.reasoningEffort === "string" && route.reasoningEffort !== "" ? ` / ${route.reasoningEffort}` : "";
+    const routeText = stripControl(`${route.provider} / ${route.model}${effort}`);
     return {
       state: "ok",
-      route: `${route.provider} / ${route.model}${effort}`,
+      route: routeText,
       fallbacks: Array.isArray(raw.fallbacks) ? raw.fallbacks.length : 0
     };
   }
@@ -8344,10 +8353,7 @@ function armPanelAttention(deps) {
     }
   };
   const publish = (next) => publishTo(id(), next);
-  const observe = (event) => {
-    if (stopped)
-      return;
-    const workflow = read();
+  const publishBadges = (workflow) => {
     const next = attentionBadge(workflow);
     if (!settled || !sameBadge(last, next)) {
       const result = publish(next);
@@ -8367,6 +8373,17 @@ function armPanelAttention(deps) {
         }
       }
     }
+  };
+  const observeBadges = () => {
+    if (stopped)
+      return;
+    publishBadges(read());
+  };
+  const observe = (event) => {
+    if (stopped)
+      return;
+    const workflow = read();
+    publishBadges(workflow);
     const live = workflow !== undefined && workflow.tasks.length > 0;
     const appeared = live && !wasLive;
     wasLive = live;
@@ -8415,7 +8432,7 @@ function armPanelAttention(deps) {
     const period = deps.watchdogPollMs ?? WATCHDOG_BADGE_POLL_MS;
     if (period > 0) {
       try {
-        pollTimer = setInterval(() => observe(false), period);
+        pollTimer = setInterval(() => observeBadges(), period);
         const unref = pollTimer.unref;
         if (typeof unref === "function")
           unref.call(pollTimer);
@@ -9119,9 +9136,12 @@ function createWatchdogPanelComponent(deps, options) {
     const band = clampScroll(viewport.offset, contentRows, viewport.viewportRows);
     sizes.contentRows = contentRows;
     sizes.viewportRows = windowRows;
-    const scrolled = kit.React.createElement(kit.ui.Box, { key: "scroll", flexDirection: "column", onWheel: (event) => viewport.onWheel(event) }, ...children.slice(band.offset, band.offset + windowRows));
+    const wheelBound = (boundKit, rows) => boundKit.React.createElement(boundKit.ui.Box, { key: "scroll", flexDirection: "column", onWheel: (event) => {
+      swallowWheelEvent(event);
+      viewport.onWheel(event);
+    } }, ...rows);
     const footer = textRow(kit, `${t("watchdog.panelKeys")}${viewport.overflow ? ` ${String(viewport.offset + 1)}/${String(viewport.max + 1)}` : ""} · ${t("watchdog.panelLegend")}`, { key: "keys", dim: true, maxCells: contentCols });
-    const body = panelViewportBody(kit, [scrolled], viewport);
+    const body = panelViewportBody(kit, children, viewport, true, wheelBound);
     const titleRow = usePanelTitleRow(kit, {
       key: "title",
       title: WATCHDOG_PANEL_TITLE,
@@ -9148,7 +9168,7 @@ function registerWatchdogPanel(tui, deps) {
     outcome: () => {
       if (panel !== undefined)
         return panel.outcome();
-      return tui.skipped("panels", "the watchdog sidebar page is disabled by the mpd-tui row config (panel: false)").outcome();
+      return tui.skipped("panels", "the watchdog sidebar page is disabled by the mpd-tui row config (watchdog: false)").outcome();
     }
   };
 }
@@ -10282,8 +10302,12 @@ function runAction(action, actions, session) {
     const route = actions.openWatchdog();
     if (route.outcome === "opened")
       return { kind: "success", text: clamp(t("watchdog.commandOpened", { id: route.id ?? "?" })) };
-    if (route.outcome === "refused" || route.outcome === "fallback")
+    if (route.outcome === "fallback")
+      return { kind: "error", text: clamp(t("watchdog.commandOpenRefused")) };
+    if (route.outcome === "refused")
       return { kind: "error", text: clamp(t("watchdog.commandRefused")) };
+    if (route.reason === "disabled")
+      return { kind: "error", text: clamp(t("watchdog.commandDisabled")) };
     return { kind: "error", text: clamp(t("watchdog.commandAbsent")) };
   }
   if (action === "plan") {
@@ -10808,7 +10832,7 @@ function apply(ctx, config = {}) {
     },
     log
   });
-  if (resolved.panel) {
+  if (resolved.panel || resolved.watchdog) {
     tui.whenBound("panels", (_service, scope) => {
       try {
         panelAttention?.stop();
@@ -10869,11 +10893,18 @@ function apply(ctx, config = {}) {
     return { ...routed, id: panel.id() };
   };
   const openPage = (page) => {
+    if (page.disabled?.() === true)
+      return { outcome: "unavailable", sceneOpened: false, id: undefined, reason: "disabled" };
     const id = page.id();
-    if (!tui.panelSeamBound() || id === undefined)
-      return { outcome: "unavailable", sceneOpened: page.openScene(), id };
+    if (tui.panelSeamBound() && id === undefined && page.outcome?.().state === "refused") {
+      return { outcome: "refused", sceneOpened: page.openScene(), id };
+    }
+    if (!tui.panelSeamBound())
+      return { outcome: "unavailable", sceneOpened: page.openScene(), id, reason: "seam-absent" };
+    if (id === undefined)
+      return { outcome: "unavailable", sceneOpened: page.openScene(), id, reason: "not-yet" };
     if (typeof tui.panels()?.open !== "function") {
-      return { outcome: "unavailable", sceneOpened: page.openScene(), id };
+      return { outcome: "unavailable", sceneOpened: page.openScene(), id, reason: "seam-absent" };
     }
     const result = tui.openPanel(id);
     if (result.opened() === true)
@@ -10911,15 +10942,15 @@ function apply(ctx, config = {}) {
       return { outcome: route.outcome, id: route.id };
     },
     openDag: () => {
-      const route = openPage({ id: () => panel.id(), openScene: () => scene.openTeam() });
+      const route = openPage({ id: () => panel.id(), openScene: () => scene.openTeam(), disabled: () => panel.panel === undefined, outcome: () => panel.outcome() });
       return { outcome: route.outcome, id: route.id };
     },
     openWorkmate: () => {
-      const route = openPage(workmatePanel);
+      const route = openPage({ id: () => workmatePanel.id(), openScene: () => workmatePanel.openScene(), disabled: () => workmatePanel.panel === undefined, outcome: () => workmatePanel.outcome() });
       return { outcome: route.outcome, id: route.id };
     },
     openWatchdog: () => {
-      const route = openPage({ id: () => watchdogPanel.id(), openScene: () => false });
+      const route = openPage({ id: () => watchdogPanel.id(), openScene: () => false, disabled: () => watchdogPanel.panel === undefined, outcome: () => watchdogPanel.outcome() });
       return { outcome: route.outcome, id: route.id };
     },
     statusText: () => boardSummary(workspaceRoot, home, teamViews, teamRecords) + String.fromCharCode(10) + panelsSummary(),

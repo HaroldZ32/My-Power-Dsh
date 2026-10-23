@@ -423,3 +423,50 @@ describe("contract amendment 2 — the LIVE create_task carries `kind`", () => {
     expect(readTeam(h.workspace, teamId)?.tasks.length).toBe(before)
   })
 })
+
+// ── CodeRabbit #11 (PR #62): the append-only verb must refuse a self-edge and a cycle ────────────
+describe("agent_teams_task depend — a self-edge or a cycle is REFUSED before any write", () => {
+  test("a SELF-EDGE is refused by name, and the row is untouched", async () => {
+    /** The harness this arm drives. */
+    const h = harness()
+    /** The approved team. */
+    const teamId = await approveBoard(h)
+    /** The row's revision before the refused call (a write would move it). */
+    const before = taskOnDisk(h.workspace, teamId, "T2")?.revision
+    /** The refusal a row blocking ITSELF answers with. */
+    const answer = (await h.call("agent_teams_task", { action: "depend", task_id: "T2", blocked_by: ["T2"] })) as { refused?: string }
+    expect(answer.refused).toContain("cannot be its own blocker")
+    // NOTHING was written: no edge, no revision bump.
+    expect(taskOnDisk(h.workspace, teamId, "T2")?.blockedBy).toEqual([])
+    expect(taskOnDisk(h.workspace, teamId, "T2")?.revision).toBe(before)
+    // The self-edge is refused by SUBJECT spelling too — the resolution path is the same one.
+    /** The refusal when the reference is the row's own subject. */
+    const bySubject = (await h.call("agent_teams_task", { action: "depend", task_id: "T2", blocked_by: ["review the core"] })) as { refused?: string }
+    expect(bySubject.refused).toContain("cannot be its own blocker")
+    expect(taskOnDisk(h.workspace, teamId, "T2")?.blockedBy).toEqual([])
+  })
+
+  test("a CYCLE is refused: a blocker that already depends on the row cannot be wired under it", async () => {
+    /** The harness this arm drives. */
+    const h = harness()
+    /** The approved team. */
+    const teamId = await approveBoard(h)
+    // T2 already depends on T1; making T1 depend on T2 would close the cycle.
+    await h.call("agent_teams_task", { action: "depend", task_id: "T2", blocked_by: ["T1"] })
+    /** T1's revision before the refused call. */
+    const before = taskOnDisk(h.workspace, teamId, "T1")?.revision
+    /** The refusal the cycle answers with. */
+    const answer = (await h.call("agent_teams_task", { action: "depend", task_id: "T1", blocked_by: ["T2"] })) as { refused?: string }
+    expect(answer.refused).toContain("cycle")
+    expect(answer.refused).toContain("T2")
+    // The whole call is refused BEFORE any write: T1 keeps NO edge and keeps its revision.
+    expect(taskOnDisk(h.workspace, teamId, "T1")?.blockedBy).toEqual([])
+    expect(taskOnDisk(h.workspace, teamId, "T1")?.revision).toBe(before)
+    // And a TRANSITIVE cycle is caught too: wire T3 behind T2, then T1 behind T3 closes a 3-node loop.
+    await h.call("agent_teams_task", { action: "depend", task_id: "T3", blocked_by: ["T2"] })
+    /** The refusal of the transitive case. */
+    const transitive = (await h.call("agent_teams_task", { action: "depend", task_id: "T1", blocked_by: ["T3"] })) as { refused?: string }
+    expect(transitive.refused).toContain("cycle")
+    expect(taskOnDisk(h.workspace, teamId, "T1")?.blockedBy).toEqual([])
+  })
+})

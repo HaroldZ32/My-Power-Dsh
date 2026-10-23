@@ -546,6 +546,30 @@ describe("the acknowledge key (contract §3)", () => {
       expect(() => host.listeners[0](event)).not.toThrow()
     }
   })
+
+  test("after ONE scroll step the body still DRAWS the incidents (CodeRabbit #16/#18)", () => {
+    /** A view tall enough to overflow a short panel, so scrolling actually moves the window. */
+    const view: WatchdogView = { holds: [], unread: Array.from({ length: 12 }, (_value, index) => incident({ id: `inc-${String(index)}`, at: NOW - index * 60_000 })) }
+    /** The deps double. */
+    const double = depsDouble({ view })
+    /** A SHORT panel, so the list overflows. */
+    const kit = makeKit(40, 12)
+    /** The host recorder, whose first listener is the page's key handler. */
+    const host = makeHost()
+    /** The page component under test. */
+    const component = createWatchdogPanelComponent(double.deps)
+    // The first render + its effects install the key listener and publish the viewport.
+    kit.rows(render(kit, host, component))
+    kit.runEffects()
+    // ONE step down: offset 1. Before #16 the body sliced its own one-element window AGAIN and drew
+    // NOTHING while the footer still reported a later position — so this arm renders again and reads
+    // the rows, which the old "does not throw" assertion could never catch.
+    host.listeners[0]({ input: "j" })
+    /** The rows of the post-scroll render. */
+    const afterScroll = kit.rows(render(kit, host, component)).join("\n")
+    expect(afterScroll).toContain("escalate")
+    expect(afterScroll).toContain("team-a")
+  })
 })
 
 describe("the /mpd watchdog command (contract §4)", () => {
@@ -554,7 +578,7 @@ describe("the /mpd watchdog command (contract §4)", () => {
    * @param openWatchdog - the routed-open answer for this arm.
    * @returns the registered `/mpd` command definition.
    */
-  function captureCommand(openWatchdog: () => { outcome: "opened" | "fallback" | "refused" | "unavailable"; id: string | undefined }): {
+  function captureCommand(openWatchdog: () => { outcome: "opened" | "fallback" | "refused" | "unavailable"; id: string | undefined; reason?: "seam-absent" | "disabled" | "not-yet" }): {
     handler: (invocation: { rawInput: string }) => Promise<{ kind: string; text?: string }>
   } {
     /** Every command definition the adapter received, in order. */
@@ -605,4 +629,44 @@ describe("the /mpd watchdog command (contract §4)", () => {
       expect(String(result.text)).toContain("refused")
     })
   })
+
+// ── CodeRabbit #12 (PR #62): an open refusal, a registration refusal and a disabled page are
+// THREE different facts, and each gets its own line ────────────────────────────────────────────
+describe("the /mpd watchdog command keeps its refusals APART", () => {
+  test("the host DECLINED THE OPEN — the line does not blame the registration", async () => {
+    await withLangAsync("en", async () => {
+      /** The recorded `/mpd` command whose route refused the OPEN. */
+      const command = captureCommand(() => ({ outcome: "fallback", id: "act0:watchdog" }))
+      /** The command's rendered result. */
+      const result = await command.handler({ rawInput: "watchdog" })
+      expect(result.kind).toBe("error")
+      expect(String(result.text)).toContain("declined this open")
+      expect(String(result.text)).not.toContain("refused the panel registration")
+    })
+  })
+
+  test("the REGISTRATION was refused — its own line, not the open one", async () => {
+    await withLangAsync("en", async () => {
+      /** The recorded `/mpd` command whose registration settled `refused`. */
+      const command = captureCommand(() => ({ outcome: "refused", id: undefined }))
+      /** The command's rendered result. */
+      const result = await command.handler({ rawInput: "watchdog" })
+      expect(result.kind).toBe("error")
+      expect(String(result.text)).toContain("refused the panel registration")
+      expect(String(result.text)).not.toContain("declined this open")
+    })
+  })
+
+  test("the page is DISABLED by its own knob — the line names `watchdog: false`, not a missing seam", async () => {
+    await withLangAsync("en", async () => {
+      /** The recorded `/mpd` command whose page its knob switched off. */
+      const command = captureCommand(() => ({ outcome: "unavailable", id: undefined, reason: "disabled" }))
+      /** The command's rendered result. */
+      const result = await command.handler({ rawInput: "watchdog" })
+      expect(result.kind).toBe("error")
+      expect(String(result.text)).toContain("watchdog: false")
+      expect(String(result.text)).not.toContain("no panel seam")
+    })
+  })
+})
 })

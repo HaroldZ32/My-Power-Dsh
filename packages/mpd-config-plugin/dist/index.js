@@ -3579,9 +3579,12 @@ function rowKnobLayer(config) {
   }
   return layer;
 }
-function loadConfig(config, root, settingsSection, rowKnobsOverride) {
+function userFileFor(config) {
   const dshHome = process.env.DSH_HOME ?? join3(homedir(), ".dsh");
-  const userFile = config.userFile ? resolve4(config.userFile) : join3(dshHome, "mpd.jsonc");
+  return config.userFile ? resolve4(config.userFile) : join3(dshHome, "mpd.jsonc");
+}
+function loadConfig(config, root, settingsSection, rowKnobsOverride) {
+  const userFile = userFileFor(config);
   const projectFile = config.projectFile ? resolve4(config.projectFile) : join3(root, ".mpd", "mpd.jsonc");
   const files = [userFile, projectFile];
   let merged = {};
@@ -3866,7 +3869,7 @@ function apply(ctx, config = {}) {
   const reloadAt = (root) => {
     state = loadConfig(config, root, readSection(), entryKnobs);
     reconcile(root);
-    seedAt(root);
+    seedRoots([root]);
     return state.config;
   };
   function reload(exec) {
@@ -4174,57 +4177,94 @@ function apply(ctx, config = {}) {
       return { files: state.files, errors: state.errors, config: cfg };
     }
   });
-  let seedPending = true;
-  let seedWarned = false;
-  const seedAt = (root) => {
-    if (!seedPending)
+  const seedStates = new Map;
+  const seedStateOf = (root) => {
+    const existing = seedStates.get(root);
+    if (existing !== undefined)
+      return existing;
+    const fresh = { state: "pending", warned: false };
+    seedStates.set(root, fresh);
+    return fresh;
+  };
+  const declaresTeamModelsAboveTheProjectFile = () => {
+    if (teamModelsDeclaredIn(userFileFor(config)) !== "absent")
+      return true;
+    if (isPlainObject2(bridge.section) && Object.prototype.hasOwnProperty.call(bridge.section, "teamModels"))
+      return true;
+    const rowKnobs = entryKnobs ?? rowKnobLayer(config);
+    if (isPlainObject2(rowKnobs) && Object.prototype.hasOwnProperty.call(rowKnobs, "teamModels"))
+      return true;
+    return false;
+  };
+  const seedRoots = (roots) => {
+    const pending = [...new Set(roots.filter((root) => typeof root === "string" && root !== ""))].filter((root) => seedStateOf(root).state === "pending");
+    if (pending.length === 0)
       return;
-    const file = projectFileFor(root);
-    const marker = seedMarkerFor(root);
-    if (existsSync2(marker)) {
-      seedPending = false;
-      return;
+    const warnOnceFor = (root, line) => {
+      const record = seedStateOf(root);
+      if (record.warned)
+        return;
+      record.warned = true;
+      warn(line);
+    };
+    const toAttempt = [];
+    for (const root of pending) {
+      const file = projectFileFor(root);
+      if (existsSync2(seedMarkerFor(root))) {
+        seedStateOf(root).state = "done";
+        continue;
+      }
+      const declared = teamModelsDeclaredIn(file);
+      if (declared === "declared") {
+        seedStateOf(root).state = "done";
+        continue;
+      }
+      if (declared === "unreadable") {
+        seedStateOf(root).state = "done";
+        warnOnceFor(root, "[mpd-config] could not seed " + file + ": the project file does not parse — nothing was written");
+        continue;
+      }
+      if (declaresTeamModelsAboveTheProjectFile()) {
+        seedStateOf(root).state = "done";
+        continue;
+      }
+      toAttempt.push(root);
     }
-    const declared = teamModelsDeclaredIn(file);
-    if (declared === "declared") {
-      seedPending = false;
+    if (toAttempt.length === 0)
       return;
-    }
-    if (declared === "unreadable") {
-      seedPending = false;
-      if (!seedWarned)
-        warn(`[mpd-config] could not seed ${file}: the project file does not parse — nothing was written`);
-      seedWarned = true;
-      return;
-    }
     if (typeof dsh.llmCatalog !== "function") {
-      seedPending = false;
-      if (!seedWarned)
-        warn("[mpd-config] team-model slots are not configured and the adapter has no catalog seam — nothing was written; the first spawn reports SLOT_UNCONFIGURED");
-      seedWarned = true;
+      for (const root of toAttempt) {
+        seedStateOf(root).state = "done";
+        warnOnceFor(root, "[mpd-config] team-model slots are not configured for " + root + " and the adapter has no catalog seam — nothing was written; the first spawn reports SLOT_UNCONFIGURED");
+      }
       return;
     }
     Promise.resolve(dsh.llmCatalog()).then((catalog) => {
-      const result = seedTeamModelsOnce(file, marker, catalog);
-      if (result.status === "no-catalog") {
-        if (!seedWarned)
-          warn("[mpd-config] team-model slots are not configured and the model catalog lists no deepseek-flash model — nothing was written; the first spawn reports SLOT_UNCONFIGURED");
-        seedWarned = true;
-        return;
+      for (const root of toAttempt) {
+        if (seedStateOf(root).state !== "pending")
+          continue;
+        const file = projectFileFor(root);
+        const marker = seedMarkerFor(root);
+        const result = seedTeamModelsOnce(file, marker, catalog);
+        if (result.status === "no-catalog") {
+          warnOnceFor(root, "[mpd-config] team-model slots are not configured for " + root + " and the model catalog lists no deepseek-flash model — nothing was written; the first spawn reports SLOT_UNCONFIGURED");
+          continue;
+        }
+        seedStateOf(root).state = "done";
+        if (result.status === "seeded") {
+          warn("[mpd-config] seeded " + file + " with all four team-model slots (provider=" + (result.route?.provider ?? "?") + ", model=" + (result.route?.model ?? "?") + "; slot1=max, slots 2-4=high) from the configured catalog — marked once in " + marker);
+          reloadAt(root);
+        } else if (result.status === "unreadable") {
+          warnOnceFor(root, "[mpd-config] could not seed " + file + ": " + (result.detail ?? "unreadable") + " — nothing was written");
+        }
       }
-      seedPending = false;
-      if (result.status === "seeded")
-        warn(`[mpd-config] seeded ${file} with all four team-model slots (provider=${result.route?.provider ?? "?"}, model=${result.route?.model ?? "?"}; slot1=max, slots 2-4=high) from the configured catalog — marked once in ${marker}`);
-      else if (result.status === "unreadable")
-        warn(`[mpd-config] could not seed ${file}: ${result.detail ?? "unreadable"} — nothing was written`);
     }).catch((error) => {
-      seedPending = false;
-      if (!seedWarned)
-        warn("[mpd-config] the model catalog read failed, so the one-time team-model seed wrote nothing: " + String(error?.message ?? error));
-      seedWarned = true;
+      for (const root of toAttempt) {
+        warnOnceFor(root, "[mpd-config] the model catalog read failed, so the one-time team-model seed wrote nothing for " + root + ": " + String(error?.message ?? error));
+      }
     });
   };
-  seedAt(readRoot());
+  seedRoots(dsh.workspaceRootsAll());
 }
 export {
   Config,
@@ -4249,5 +4289,6 @@ export {
   stripJsonc,
   teamModelRouteOfMember,
   teamModelSlotOfMember,
-  teamModelsDeclaredIn
+  teamModelsDeclaredIn,
+  userFileFor
 };

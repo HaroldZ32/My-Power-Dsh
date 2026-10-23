@@ -1666,9 +1666,44 @@ export function apply(ctx: any): void {
         const merged = [...task.blockedBy]
         /** The entries this call actually APPENDED, in caller order. */
         const added: string[] = []
+        /**
+         * Whether `fromId`'s own blocker chain REACHES `targetId` (CodeRabbit #11).
+         *
+         * The board is append-only, so a cycle it stores is permanent: the row would stay `pending`
+         * forever (`readyTasks` never releases it) with no verb able to remove the edge. The walk is
+         * over the FRESH record, whose edges are already cycle-free, so it terminates.
+         * @param fromId - the task id whose ancestors are walked.
+         * @param targetId - the id that must not appear among them.
+         * @returns true when the chain from `fromId` reaches `targetId`.
+         */
+        const chainReaches = (fromId: string, targetId: string): boolean => {
+          /** The ids already visited, so a malformed stored cycle cannot hang the walk. */
+          const seen = new Set<string>()
+          /** The ids still to expand. */
+          const queue: string[] = [fromId]
+          while (queue.length > 0) {
+            /** The next id to expand. */
+            const id = queue.pop() as string
+            if (id === targetId) return true
+            if (seen.has(id)) continue
+            seen.add(id)
+            /** The stored row for that id, when the board holds one. */
+            const row = fresh.tasks.find((candidate) => candidate.id === id)
+            if (row === undefined) continue
+            for (const parent of resolveBlockers(fresh, row.blockedBy).blockedBy) queue.push(parent)
+          }
+          return false
+        }
         for (const reference of references) {
           /** What this one reference resolves to on the board as it stands. */
           const wired = resolveBlockers(fresh, [reference]).blockedBy[0]
+          // A SELF-EDGE is refused before any write: the row could never become ready, and this verb
+          // cannot remove the edge afterwards. The verb's OWN refusal idiom (`refused`, nothing
+          // written) is used, so the renderer paints it like every other refusal.
+          if (wired === taskId) return { taskId, refused: `task ${taskId} cannot be its own blocker — a self-edge would leave it pending forever, and depend can never remove an edge` }
+          // A CYCLE is refused for the same reason: a blocker that already depends (directly or
+          // transitively) on this row would make both rows permanently unready.
+          if (chainReaches(wired, taskId)) return { taskId, refused: `${wired} already depends on ${taskId}, so blocking ${taskId} on it would create a cycle — depend appends edges and can never remove one` }
           if (merged.includes(wired)) continue
           merged.push(wired)
           added.push(wired)

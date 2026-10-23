@@ -1,0 +1,47 @@
+{
+  "pr": 62,
+  "lane": "T20 — CodeRabbit reconciliation",
+  "stamp_utc": "2026-10-23T01:57:24Z",
+  "scope": ["packages/mpd-config-plugin", "packages/mpd-bundle-plugin", "packages/mpd-modelchain-plugin", "packages/mpd-team-core-plugin", "packages/mpd-tui-plugin", "docs/", "evidence/coderabbit/"],
+  "disposition": {
+    "1": { "status": "FIXED", "path": "docs/tui.md:125", "change": "§3.1's merged sentence split after \"writing `teamModels.<slot>`.\" — the Settings → MPD location is its own sentence/paragraph again" },
+    "2": { "status": "FIXED", "path": "docs/tui.zh-CN.md:114", "change": "same split in the zh half (kept in sync)" },
+    "3": { "status": "FIXED", "path": "docs/user-guide.zh-CN.md:660", "change": "truncated clause restored: \"或用 `mpd_config_reload` 强制重读。\"" },
+    "4": { "status": "FIXED", "path": "packages/mpd-bundle-plugin/src/settings-card.ts (generated client.js:5084)", "change": "distinct `effective.slotInvalid` sentence in BOTH locales; `EffectiveRoute.problem` names the offending path; `slotStateOf` reports `invalid` for a non-string leaf AND for a non-object slot; client.js regenerated. Arms: 4 in test/settings-card.test.ts" },
+    "5": { "status": "FIXED", "path": "packages/mpd-bundle-plugin/src/settings-card.ts:734", "change": "`slotStateOf` TRIMS provider/model/effort before the missing check (whitespace-only = missing), matching the resolver; arm added" },
+    "6": { "status": "FIXED", "path": "packages/mpd-config-plugin/src/index.ts:1472", "change": "process-wide `seedPending`/`seedWarned` replaced by a per-root `RootSeedState` map; `seedRoots(roots)` decides per root (marker → declared block → higher layers → catalog), one catalog read per batch, one line per root; the mount seeds `dsh.workspaceRootsAll()` and NEVER the exec-less fallback root. Arms: two roots each seeded+marked with ONE catalog read; the fallback root never seeded (no file/marker/log); no live root seeds nothing at mount and the first reload seeds; the previous single-root arms still pass" },
+    "7": { "status": "FIXED", "path": "packages/mpd-config-plugin/src/index.ts:1506", "change": "`declaresTeamModelsAboveTheProjectFile()` (user file via the new shared `userFileFor(config)`, the settings section, the row-knob layer) makes the seed stand down — no project block, no marker — so it never shadows a higher layer; arms: user-layer declaration and L4 row-knob declaration each stop the seed" },
+    "8": { "status": "FIXED", "path": "packages/mpd-config-plugin/src/index.ts:1532", "change": "after a successful seed the root is reloaded (`reloadAt(root)`), so `slotResolutionOf`/`teamModelRouteOf` resolve the seeded slots with NO explicit reload; arm: a workspace with no `.mdp` dir resolves ok right after the async write" },
+    "9": { "status": "FIXED", "path": "packages/mpd-modelchain-plugin/src/index.ts:199", "change": "orphaned `apply` doc comment deleted; the one above `apply` stays" },
+    "10": { "status": "DEFERRED", "path": "packages/mpd-team-core-plugin/src/index.ts:1658", "reason": "captain's instruction: a structural refactor (extract the caller-identity block into one helper) is its own risk at review time; the four copies are unchanged and the finding stays open" },
+    "11": { "status": "FIXED", "path": "packages/mpd-team-core-plugin/src/index.ts:1675", "change": "`depend` refuses a SELF-EDGE and a CYCLE (a blocker whose chain reaches the row, transitive via `chainReaches`) BEFORE any write, in the verb's own `{refused}` idiom; arms: self-edge by id and by subject (revision unchanged), 2-node cycle, 3-node transitive cycle (revision unchanged)" },
+    "12": { "status": "FIXED", "path": "packages/mpd-tui-plugin/src/commands.ts:181 (+ index.ts openPage, i18n.ts)", "change": "an OPEN refusal (`fallback`) has its own line (`watchdog.commandOpenRefused`), a REGISTRATION refusal (`refused`) is preserved instead of collapsing into `unavailable` (openPage now consults the page's own `disabled()`/`outcome()` and carries a `reason`), and a page its knob disabled names `watchdog: false` (`watchdog.commandDisabled`); three new arms" },
+    "13": { "status": "FIXED", "path": "packages/mpd-tui-plugin/src/index.ts:901", "change": "the attention surface arms on `resolved.panel || resolved.watchdog`; arms: panel:false+watchdog:true badges the watchdog page (and not the team page), both false arms nothing" },
+    "14": { "status": "FIXED", "path": "packages/mpd-tui-plugin/src/model-menu.ts:172 (+ settings.ts slotResolutionDisplay)", "change": "the route sentence composed from CONFIGURATION is passed through the repository's whitespace-preserving sanitizer (`stripControl`); arm: BEL/NUL/ESC in provider/model/effort are gone while the \" / \" separators survive" },
+    "15": { "status": "FIXED", "path": "packages/mpd-tui-plugin/src/panel-attention.ts:394", "change": "badge publishing extracted (`publishBadges`); the watchdog POLL runs a badges-only pass that never touches `wasLive` or the auto-open edge; arm: a poll tick that observes the live team first does not swallow the feed's appearance (opens === 1)" },
+    "16": { "status": "FIXED", "path": "packages/mpd-tui-plugin/src/panel-watchdog.ts:435", "change": "the page passes its FULL row list plus a `wheelBound` wrapper to `panelViewportBody` (ONE slice, the DAG page's pattern), so offset >= 1 no longer draws an empty body" },
+    "17": { "status": "FIXED", "path": "packages/mpd-tui-plugin/src/panel-watchdog.ts:489 (+ deps.enabled comment, README + README.zh-CN)", "change": "the disabled diagnostic now says `watchdog: false` (both the string and the `enabled` doc comment); both README config tables updated in the same change; arm: the `watchdogPanel` skip detail names `watchdog: false` and NOT `panel: false`" },
+    "18": { "status": "FIXED", "path": "packages/mpd-tui-plugin/test/panel-watchdog.test.ts:548", "change": "the scroll arm now RE-RENDERS after `{ input: \"j\" }` and asserts the body still draws the incidents (`escalate`, `team-a`) — the assertion the empty-body defect could not survive" }
+  },
+  "docs_extra": "packages/mpd-config-plugin/README{,.zh-CN}.md document the #7 higher-layer guard",
+  "client_artifact": { "path": "packages/mpd-bundle-plugin/client.js", "bytes": 787352, "sha256": "0bd4c942ddc0fbe5fc1f8085dcd7a2b8810a9f9f84d383d78ee3a5df5e27c20b", "note": "regenerated with `node scripts/build-mpd-client.ts`; VENDOR_LOCK.json NOT edited (captain's hand edit)" },
+  "dist_rebuilt": ["mpd-config-plugin", "mpd-bundle-plugin", "mpd-modelchain-plugin", "mpd-team-core-plugin", "mpd-tui-plugin"],
+  "gates": [
+    { "cmd": ".toolchain/node_modules/.bin/bun run typecheck", "exit": 0 },
+    { "cmd": ".toolchain/node_modules/.bin/bun test packages", "exit": 0, "note": "2366 pass / 0 fail / 3 skip (2369 tests, 142 files)" },
+    { "cmd": ".toolchain/node_modules/.bin/bun run verify:docs", "exit": 0 },
+    { "cmd": "node scripts/verify-comment-coverage.ts", "exit": 0 },
+    { "cmd": "node scripts/verify-manual-paths.ts", "exit": 0, "note": "AGENTS.md unchanged this lane; run for the docs/README edits" },
+    { "cmd": ".toolchain/node_modules/.bin/bun run verify:rows", "exit": 0 },
+    { "cmd": "node scripts/verify-no-host-override.ts", "exit": 0 },
+    { "cmd": "node skills/dsh-qa/scripts/preset-conformance.ts --self-test", "exit": 0 },
+    { "cmd": "node scripts/verify-dist-fresh.ts", "exit": 0, "note": "33/33 targets fresh (the previously stale TUI dist was rebuilt in this lane)" },
+    { "cmd": "node scripts/verify-vendor.ts", "exit": 1, "note": "EXPECTED: ONLY `packages/mpd-bundle-plugin/client.js` (a fingerprinted asset) — the captain makes the single-file hand edit with the size+sha above" }
+  ],
+  "unproven_bounds": [
+    "#10 is deliberately open (deferred refactor); the caller-identity copies remain duplicated by design this wave.",
+    "No real browser rendered the regenerated client.js: the #4/#5 arms run in the offline hook runtime over the source + the pure projection, not a browser.",
+    "No PTY run drove the TUI fixes end to end; #13/#15/#16 are proven at the seam/component level (apply-side badge calls, poll timing, rendered rows).",
+    "The seed's #6/#7/#8 arms use the real adapter over `llm`/`agents` service doubles — no live provider catalog."
+  ]
+}

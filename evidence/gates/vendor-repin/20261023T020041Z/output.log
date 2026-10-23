@@ -1,0 +1,19 @@
+### T21 — client.js fingerprint re-pin after T20's regeneration
+target: packages/mpd-bundle-plugin/client.js
+from: 08e715422b614006fb0da1ae67c9e80ac4e1f184e73f4a21363f52cb66c964f3
+to:   0bd4c942ddc0fbe5fc1f8085dcd7a2b8810a9f9f84d383d78ee3a5df5e27c20b
+
+measured: 0bd4c942ddc0fbe5fc1f8085dcd7a2b8810a9f9f84d383d78ee3a5df5e27c20b  packages/mpd-bundle-plugin/client.js
+size: 787352 bytes
+
+### node scripts/verify-vendor.ts
+[verify-vendor] upstream identity: NOT CHECKED - no upstream subject exists (the pinned oh-my-openagent checkout is retired; see VENDOR_LOCK.json `_note`)
+[verify-vendor] asset OK: skills 382 files
+[verify-vendor] asset OK: packages/mpd-mcp-codegraph/dist/serve.js 1 files
+[verify-vendor] asset OK: packages/mpd-hashline-plugin/src/vendor 8 files
+[verify-vendor] asset OK: packages/mpd-boulder-plugin/src/vendor 13 files
+[verify-vendor] asset OK: packages/mpd-schemastery 19 files
+[verify-vendor] asset OK: packages/mpd-bundle-plugin/adopted 2 files
+[verify-vendor] asset OK: packages/mpd-bundle-plugin/client.js 1 files
+[verify-vendor] PASS - 7 shipped asset(s) fingerprinted, upstream identity not checked
+[verify-vendor exit 0]

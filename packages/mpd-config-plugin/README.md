@@ -67,7 +67,9 @@ Four slots, twelve leaves plus each slot's own optional fallback chain:
   marked in `<ws>/.mpd/model-config-seed.json` (created with `wx`, never overwritten,
   consulted before ANY attempt) so a block you delete on purpose is never re-seeded;
   with no usable catalog nothing is written and the first spawn reports
-  `SLOT_UNCONFIGURED`.
+  `SLOT_UNCONFIGURED`. The seed also stands down when a layer ABOVE the project file already
+  configures the slots (the user file, the settings document, the row knobs): the project
+  file must never shadow them.
 - **Front doors:** the twelve leaves are `select` knobs of the ONE 26-row declaration
   (`SETTINGS_KNOBS`: the original 13 knobs, these 12, and the TUI surface's own knob)
   in the TUI `/settings` section and in the Web GUI card, whose effective block shows

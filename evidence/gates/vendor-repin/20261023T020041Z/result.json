@@ -1,0 +1,40 @@
+{
+  "task": "T21 — re-pin the single-file client.js fingerprint after T20's regeneration (CodeRabbit fixes)",
+  "utcStamp": "20261023T020041Z",
+  "scope": "VENDOR_LOCK.json ONLY (no rebuild, no git, no other asset entry, no formatting change)",
+  "asset": "packages/mpd-bundle-plugin/client.js",
+  "measurement": {
+    "command": "sha256sum packages/mpd-bundle-plugin/client.js && stat -c %s packages/mpd-bundle-plugin/client.js",
+    "measuredAt": "2026-10-23T02:00:45Z (UTC)",
+    "sha256": "0bd4c942ddc0fbe5fc1f8085dcd7a2b8810a9f9f84d383d78ee3a5df5e27c20b",
+    "sizeBytes": 787352,
+    "matchesTheRequestedValue": true,
+    "note": "the measured sha and size equal the values supplied with the task exactly, so the edit proceeded (the instruction was to stop and report on any mismatch)"
+  },
+  "change": {
+    "file": "VENDOR_LOCK.json",
+    "field": "assets[\"packages/mpd-bundle-plugin/client.js\"].sha256",
+    "from": "08e715422b614006fb0da1ae67c9e80ac4e1f184e73f4a21363f52cb66c964f3",
+    "to": "0bd4c942ddc0fbe5fc1f8085dcd7a2b8810a9f9f84d383d78ee3a5df5e27c20b",
+    "diffLines": "+1 -1",
+    "oneFieldOnly": true,
+    "untouched": ["fileCount: 1", "the `source` sentence", "every other asset entry", "the file's formatting/indentation", "lockedAt", "verification"]
+  },
+  "gate": {
+    "command": "node scripts/verify-vendor.ts",
+    "exit": 0,
+    "observed": "asset OK on all 7 shipped assets (skills 382 files; mpd-mcp-codegraph/dist/serve.js 1; mpd-hashline-plugin/src/vendor 8; mpd-boulder-plugin/src/vendor 13; mpd-schemastery 19; mpd-bundle-plugin/adopted 2; mpd-bundle-plugin/client.js 1) — 'PASS - 7 shipped asset(s) fingerprinted, upstream identity not checked'"
+  },
+  "evidence": {
+    "dir": "evidence/gates/vendor-repin/20261023T020041Z",
+    "files": {
+      "output.log": "full verify-vendor run with the measured sha/size and the exit code",
+      "vendor-diff.txt": "the one-line VENDOR_LOCK.json diff",
+      "artifact-sha256.txt": "the measured artifact hash + size + the lock field read back"
+    }
+  },
+  "notDone": [
+    "no rebuild of client.js (T20 produced the artifact; this task only follows it in the lock)",
+    "no git write (the captain is the only git writer)"
+  ]
+}

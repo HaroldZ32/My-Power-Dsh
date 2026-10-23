@@ -54,7 +54,8 @@ Plan C / C7 —— 极简的 `mpd.jsonc` 运行时配置层。
   强度为 `slot1=max`、`slots 2-4=high`。写入时记一行日志；已存在的块或用户编辑永不改写；成功的播种会在
   `<ws>/.mpd/model-config-seed.json` 留下持久标记（以 `wx` 创建、永不覆盖、在任何尝试之前先检查），
   因此你故意删除的块永远不会被重新播种；目录不可用时
-  不写入任何内容，第一次 spawn 报告 `SLOT_UNCONFIGURED`。
+  不写入任何内容，第一次 spawn 报告 `SLOT_UNCONFIGURED`。若**高于项目文件**的某一层（用户文件、
+  设置文档、行配置）已配置槽位，播种同样会停手：项目文件绝不能遮蔽它们。
 - **两个前端：** 这十二个叶子是唯一 26 行声明（`SETTINGS_KNOBS`：原有 13 个 knob、这 12 个，再加
   TUI 界面自身的一个 knob）中的 `select` 项，出现在 TUI 的 `/settings` 区块与 Web 界面卡片中；卡片的
   「当前生效」块会显示每个槽位的状态（未配置时显示 `<unconfigured>` 与缺失的叶子）。它们的选项列表来自

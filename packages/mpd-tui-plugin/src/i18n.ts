@@ -278,6 +278,14 @@ export const TUI_TEXT = {
     zh: "mpd 看门狗：宿主拒绝了该面板的注册，看门狗面板无法打开",
     en: "mpd watchdog: the host refused the panel registration, so the watchdog panel cannot open",
   },
+  "watchdog.commandOpenRefused": {
+    zh: "mpd 看门狗：宿主这次拒绝打开该面板（注册仍在）；请在侧栏面板列表里选择它，或稍后重试",
+    en: "mpd watchdog: the host declined this open (the registration still stands); pick it in the side panel list, or try again",
+  },
+  "watchdog.commandDisabled": {
+    zh: "mpd 看门狗：看门狗页面已被 mpd-tui 行配置关闭（watchdog: false），请启用后重试",
+    en: "mpd watchdog: the watchdog page is disabled by the mpd-tui row config (watchdog: false); enable it and try again",
+  },
 } as const satisfies Record<string, Bilingual>
 
 /** One key of {@link TUI_TEXT}. */

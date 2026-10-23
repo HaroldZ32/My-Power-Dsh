@@ -4979,8 +4979,30 @@ function apply(ctx) {
           return { taskId, refused: `task ${taskId} is "${task.status}" and its edges are frozen` };
         const merged = [...task.blockedBy];
         const added = [];
+        const chainReaches = (fromId, targetId) => {
+          const seen = new Set;
+          const queue = [fromId];
+          while (queue.length > 0) {
+            const id = queue.pop();
+            if (id === targetId)
+              return true;
+            if (seen.has(id))
+              continue;
+            seen.add(id);
+            const row = fresh.tasks.find((candidate) => candidate.id === id);
+            if (row === undefined)
+              continue;
+            for (const parent of resolveBlockers(fresh, row.blockedBy).blockedBy)
+              queue.push(parent);
+          }
+          return false;
+        };
         for (const reference of references) {
           const wired = resolveBlockers(fresh, [reference]).blockedBy[0];
+          if (wired === taskId)
+            return { taskId, refused: `task ${taskId} cannot be its own blocker — a self-edge would leave it pending forever, and depend can never remove an edge` };
+          if (chainReaches(wired, taskId))
+            return { taskId, refused: `${wired} already depends on ${taskId}, so blocking ${taskId} on it would create a cycle — depend appends edges and can never remove one` };
           if (merged.includes(wired))
             continue;
           merged.push(wired);

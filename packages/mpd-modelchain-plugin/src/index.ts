@@ -190,13 +190,6 @@ export function chainsNow(ctx: Ctx, config: Config): Record<string, Array<{ prov
 }
 
 /**
- * Register the route resolver and the two memory tools, with the role chains resolved PER CALL
- * from the live config (never a closure frozen at apply).
- *
- * @param ctx - the row context; the roster and config services are read lazily, never declared as deps.
- * @param config - row overrides for the memory file and the chain table.
- */
-/**
  * The TOTAL slot resolution of one roster member, when the config row exposes it (contract
  * `.mpd/plans/slot-single-source.md` §9 + amendment 1).
  *

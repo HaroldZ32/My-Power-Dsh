@@ -334,6 +334,8 @@
     reasoningEffort: string
     /** The required leaves the slot is missing, in sentence order ([] when configured). */
     missing: string[]
+    /** The offending path for an `invalid` state, e.g. `teamModels.slot4.model is not a string` (#4). */
+    problem?: string
   }
 
   /**
@@ -697,7 +699,7 @@
       /** The service's state for this slot, when the route body carries one. */
       const fromService = isTable(body.slots) ? body.slots[slot] : undefined
       /** The state the card renders for this slot. */
-      slots[slot] = isTable(fromService) ? slotStateOf(fromService) : slotStateOf(leafOf(section, ["teamModels", slot]))
+      slots[slot] = isTable(fromService) ? slotStateOf(fromService, slot) : slotStateOf(leafOf(section, ["teamModels", slot]), slot)
     }
     /** The configured modelchain chains, only ever from the service read (the document carries none). */
     const modelchain: Record<string, Array<{ provider: string; model: string }>> = {}
@@ -718,23 +720,35 @@
    * One slot's state from the raw block a surface reported: the route it states and what it lacks.
    *
    * The SAME rule the config row's resolver applies (contract §7/§9), restated here because the card
-   * may not import that package: `provider` and `model` must be non-blank strings; `reasoningEffort`
-   * is optional, and a present-but-blank one states no effort. A present non-string leaf is `invalid`.
+   * may not import that package: `provider` and `model` must be non-blank strings — WHITESPACE-ONLY
+   * counts as missing, exactly as the resolver trims (CodeRabbit #5) — while `reasoningEffort` is
+   * optional and a present-but-blank one states no effort. A present non-string leaf, or a slot that
+   * is not an object at all, is `invalid` with the offending path named (CodeRabbit #4).
    * @param block - the raw slot block, of unknown shape.
+   * @param slot - the slot id the block belongs to, used only to spell an `invalid` problem path.
    * @returns the state the effective block renders.
    */
-  function slotStateOf(block: unknown): EffectiveRoute {
-    /** The slot's provider leaf, or "" when absent. */
-    const provider = routeLeaf(block, "provider")
-    /** The slot's model leaf, or "" when absent. */
-    const model = routeLeaf(block, "model")
-    /** The slot's effort leaf, or "" when absent. */
-    const reasoningEffort = routeLeaf(block, "reasoningEffort")
+  function slotStateOf(block: unknown, slot?: string): EffectiveRoute {
+    /** The slot's provider leaf, trimmed; whitespace alone is UNSET, as the resolver treats it. */
+    const provider = routeLeaf(block, "provider").trim()
+    /** The slot's model leaf, trimmed. */
+    const model = routeLeaf(block, "model").trim()
+    /** The slot's effort leaf, trimmed. */
+    const reasoningEffort = routeLeaf(block, "reasoningEffort").trim()
     /** The required leaves the slot does not state. */
     const missing = [provider === "" ? "provider" : "", model === "" ? "model" : ""].filter((leaf) => leaf !== "")
-    /** A leaf that is PRESENT but not a string is a malformed slot, not a missing one. */
-    const malformed = isTable(block) && ["provider", "model", "reasoningEffort"].some((leaf) => block[leaf] !== undefined && block[leaf] !== null && typeof block[leaf] !== "string")
-    if (malformed) return { status: "invalid", provider, model, reasoningEffort, missing }
+    // A block that is neither absent nor an object is malformed at the SLOT level (the resolver's
+    // `teamModels.slotN must be an object` refusal, mirrored here for the display).
+    if (block !== undefined && block !== null && !isTable(block)) {
+      return { status: "invalid", provider, model, reasoningEffort, missing, problem: "teamModels." + (slot ?? "slotN") + " is not an object" }
+    }
+    /** The leaf that is PRESENT but not a string, if any — a malformed slot, not a missing one. */
+    const malformedLeaf = isTable(block)
+      ? ["provider", "model", "reasoningEffort"].find((leaf) => block[leaf] !== undefined && block[leaf] !== null && typeof block[leaf] !== "string")
+      : undefined
+    if (malformedLeaf !== undefined) {
+      return { status: "invalid", provider, model, reasoningEffort, missing, problem: "teamModels." + (slot ?? "slotN") + "." + malformedLeaf + " is not a string" }
+    }
     if (missing.length > 0) return { status: "unconfigured", provider, model, reasoningEffort, missing }
     return { status: "configured", provider, model, reasoningEffort, missing: [] }
   }
@@ -769,14 +783,17 @@
       const state = effective.slots?.[slot] ?? { status: "unconfigured" as const, provider: "", model: "", reasoningEffort: "", missing: ["provider", "model"] }
       // A DISPLAY NEVER THROWS AND NEVER INVENTS A ROUTE (contract §9): a slot that is unusable —
       // or whose projected state is older than this renderer, which a mixed client rollout can
-      // produce — renders as unconfigured with the leaves it lacks, never as an empty string and
-      // never as a thrown exception.
+      // produce — renders as its OWN typed sentence, never as an empty string and never as a throw.
       /** The leaves this line names when the slot is not configured. */
       const missing = Array.isArray(state.missing) ? state.missing : ["provider", "model"]
-      /** The sentence this line renders: the route, or the unconfigured text with its missing leaves. */
+      /** The sentence this line renders: the route, the malformed-slot text, or the unconfigured text. */
       const text = state.status === "configured"
         ? interpolate(t("effective.slot." + slot), { route: routeText(state) })
-        : interpolate(t("effective.slotUnconfigured"), { leaves: missing.length === 0 ? "-" : missing.join(", ") })
+        // CodeRabbit #4: an `invalid` slot has its OWN sentence. It is NOT the `<unconfigured>` one:
+        // provider and model may well be present, and what is wrong is a MALFORMED leaf (named).
+        : state.status === "invalid"
+          ? interpolate(t("effective.slotInvalid"), { problem: typeof state.problem === "string" && state.problem !== "" ? state.problem : "teamModels." + slot })
+          : interpolate(t("effective.slotUnconfigured"), { leaves: missing.length === 0 ? "-" : missing.join(", ") })
       lines.push(createElement(
         "p",
         { key: "effective.slot." + slot, style: SKIN.helpText, "data-mpd-effective-slot": slot, "data-mpd-slot-status": state.status },
@@ -2046,6 +2063,10 @@
     // so the state the spawn would refuse on is visible before it happens.
     en["effective.slotUnconfigured"] = "<unconfigured> — missing {leaves}; configure them here and save, or the next spawn is refused with SLOT_UNCONFIGURED"
     zh["effective.slotUnconfigured"] = "「未配置」——缺少 {leaves}；请在此填写并保存，否则下次生成会被 SLOT_UNCONFIGURED 拒绝"
+    // The MALFORMED state is its own sentence (CodeRabbit #4): provider/model may be present, so
+    // calling it <unconfigured> would send the reader looking for leaves that are already set.
+    en["effective.slotInvalid"] = "<invalid> — {problem}; fix it here and save — until then the next spawn is refused with SLOT_UNCONFIGURED"
+    zh["effective.slotInvalid"] = "「无效」——{problem}；请在此修正并保存 —— 在那之前下一次 spawn 会被 SLOT_UNCONFIGURED 拒绝"
     en.effectiveChain = "modelchain.{key} → {chain}"
     zh.effectiveChain = "modelchain.{key} → {chain}"
     en.effectiveNoChains = "modelchain: no configured chains — the shipped defaults are in force"

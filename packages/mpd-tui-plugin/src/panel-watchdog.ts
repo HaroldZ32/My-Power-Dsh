@@ -45,6 +45,7 @@ import {
   usePanelTick,
   usePanelTitleRow,
   usePanelViewport,
+  type PanelKit,
   type PanelPropsLike,
 } from "./panel-core.js"
 import type { PanelPageOptions } from "./panel.js"
@@ -125,7 +126,7 @@ export interface WatchdogTeamHead {
  * captured its answer at apply would show the state of the boot forever.
  */
 export interface WatchdogPanelDeps {
-  /** Whether the row config contributes this surface at all (the `panel` knob, default true). */
+  /** Whether the row config contributes this surface at all (the `watchdog` knob, default true). */
   enabled: boolean
   /** Whether the `mpdWatchdog` service is mounted right now (the front door's own answer). */
   available(): boolean
@@ -419,12 +420,13 @@ export function createWatchdogPanelComponent(deps: WatchdogPanelDeps, options?: 
     // Publish this render's measurements, which is what every getter and every later closure clamps against.
     sizes.contentRows = contentRows
     sizes.viewportRows = windowRows
-    /** The visible slice of the rows, inside the page's own wheel handler. */
-    const scrolled = kit.React.createElement(
-      kit.ui.Box,
-      { key: "scroll", flexDirection: "column", onWheel: (event: unknown): void => viewport.onWheel(event) },
-      ...children.slice(band.offset, band.offset + windowRows),
-    )
+    // THE WHEEL BINDING is passed TO the body rather than applied here (CodeRabbit #16): this page
+    // used to slice its own window AND hand the one-element result to `panelViewportBody`, which
+    // sliced again at the same offset — at offset 1 the body became EMPTY while the footer still
+    // reported a later position. One slice, one place (the DAG page's own pattern).
+    /** The wheel binding, applied by the body to the rows it is about to draw. */
+    const wheelBound = (boundKit: PanelKit, rows: readonly unknown[]): unknown =>
+      boundKit.React.createElement(boundKit.ui.Box, { key: "scroll", flexDirection: "column", onWheel: (event: unknown): void => { swallowWheelEvent(event); viewport.onWheel(event) } }, ...rows)
     /** The pinned footer: the keys this page handles and where the window sits. */
     const footer = textRow(
       kit,
@@ -432,7 +434,7 @@ export function createWatchdogPanelComponent(deps: WatchdogPanelDeps, options?: 
       { key: "keys", dim: true, maxCells: contentCols },
     )
     /** The visible slice plus its reserved gutter column. */
-    const body = panelViewportBody(kit, [scrolled], viewport)
+    const body = panelViewportBody(kit, children, viewport, true, wheelBound)
     /** This page's chrome row; `options.open` is forwarded only when the caller has a surface to offer. */
     const titleRow = usePanelTitleRow(kit, {
       key: "title",
@@ -486,7 +488,7 @@ export function registerWatchdogPanel(tui: TuiAdapter, deps: WatchdogPanelDeps):
       if (panel !== undefined) return panel.outcome()
       // A surface this row deliberately did not activate: the adapter's own skipped vocabulary, so the
       // aggregate line names the reason instead of an invented state.
-      return tui.skipped("panels", "the watchdog sidebar page is disabled by the mpd-tui row config (panel: false)").outcome()
+      return tui.skipped("panels", "the watchdog sidebar page is disabled by the mpd-tui row config (watchdog: false)").outcome()
     },
   }
 }

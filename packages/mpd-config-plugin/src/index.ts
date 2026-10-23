@@ -231,6 +231,21 @@ function rowKnobLayer(config: Config): Record<string, unknown> {
 }
 
 /**
+ * The USER config layer's file for a row config: a row override wins, else `<DSH_HOME>/mpd.jsonc`.
+ *
+ * ONE resolver for BOTH consumers — the merge (`loadConfig`) and the seed's "is any layer above the
+ * project file configured?" guard — so the layer a seed declines to override is exactly the layer
+ * the merge reads (CodeRabbit #7).
+ * @param config - the row config, whose optional `userFile` overrides the conventional path.
+ * @returns the absolute user-layer path.
+ */
+export function userFileFor(config: Config): string {
+  // DSH home for the user layer: the env override first, else the per-user default.
+  const dshHome = process.env.DSH_HOME ?? join(homedir(), ".dsh")
+  return config.userFile ? resolve(config.userFile) : join(dshHome, "mpd.jsonc")
+}
+
+/**
  * Resolve the config for ONE workspace root by deep-merging every layer for it, lowest
  * precedence first, and report which files actually contributed.
  *
@@ -254,10 +269,8 @@ function rowKnobLayer(config: Config): Record<string, unknown> {
  * @returns the merged config plus the file/error state consumers assert on.
  */
 function loadConfig(config: Config, root: string, settingsSection?: unknown, rowKnobsOverride?: Record<string, unknown>): { config: any; files: string[]; errors: string[]; settingsApplied: boolean } {
-  // DSH home for the user layer: the env override first, else the per-user default.
-  const dshHome = process.env.DSH_HOME ?? join(homedir(), ".dsh")
-  // User layer file: an explicit row override wins, else `<DSH_HOME>/mpd.jsonc`.
-  const userFile = config.userFile ? resolve(config.userFile) : join(dshHome, "mpd.jsonc")
+  // User layer file: the ONE resolver the seed's higher-layer guard also reads.
+  const userFile = userFileFor(config)
   // Project layer file: an explicit row override wins, else `<root>/.mpd/mpd.jsonc`.
   const projectFile = config.projectFile ? resolve(config.projectFile) : join(root, ".mpd", "mpd.jsonc")
   // Layer order: user first, then project — `deepMerge` lets the LATER layer win.
@@ -958,7 +971,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     reconcile(root)
     // The one-time seed retries here ONLY while it still owes an attempt (the llm registry mounts
     // after this row in a real boot); a workspace that already declares the block is left alone.
-    seedAt(root)
+    seedRoots([root])
     return state.config
   }
 
@@ -1468,76 +1481,151 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   })
 
   // ── the ONE-TIME seed (contract §10): file initialization, never a runtime default ────────────
-  /** Whether the seed still owes this process an attempt (it retries only while the catalog is down). */
-  let seedPending = true
-  /** Whether the catalog-unavailable line has been said once (the contract's "log once"). */
-  let seedWarned = false
+  // ONE ATTEMPT PER WORKSPACE ROOT (CodeRabbit #6). A single process-wide flag let the first decided
+  // attempt suppress every other workspace — a multi-root process seeded only one of them, and the
+  // mount-time attempt could be consumed by a fallback CWD root that is not a workspace at all. The
+  // record below is keyed by ROOT, so each live workspace gets its own attempt, its own durable
+  // marker and its own line.
+  /** One workspace root's seed state: `pending` may still be attempted, `done` never is again. */
+  interface RootSeedState {
+    /** Whether this root still owes an attempt (it stays pending while the catalog is down). */
+    state: "pending" | "done"
+    /** Whether this root's "nothing was written" line has been said (one line per root). */
+    warned: boolean
+  }
+  /** The per-root seed record; entries are created lazily, so a root seen once keeps its state. */
+  const seedStates = new Map<string, RootSeedState>()
 
   /**
-   * Seed all four slots into ONE workspace's project file from the catalog's flash-family model.
-   *
-   * Called at apply and retried by `reloadAt` while `seedPending` is set: the llm registry can mount
-   * AFTER this row in a real boot, so a mount-time read may legitimately find no catalog — the
-   * contract's degradation is "write nothing, log once, let the first spawn report
-   * SLOT_UNCONFIGURED", and the retry is how a later catalog still gets the one seed in. The DURABLE
-   * marker (`<ws>/.mpd/model-config-seed.json`) is consulted FIRST, so a workspace seeded once is
-   * never seeded again — a deliberate deletion of the block stays deleted.
-   * @param root - the workspace root whose project file is the seed target.
+   * The seed state of one workspace root, created `pending` on first sight.
+   * @param root - the workspace root.
+   * @returns the mutable record for that root.
    */
-  const seedAt = (root: string): void => {
-    if (!seedPending) return
-    /** The project file this root reads and the seed writes (the row's own override honoured). */
-    const file = projectFileFor(root)
-    /** The durable one-time marker for this workspace. */
-    const marker = seedMarkerFor(root)
-    // THE MARKER BEATS THE FILE STATE: a seeded-once workspace whose block was deleted on purpose
-    // must not be re-seeded (contract §10 + the captain's F3).
-    if (existsSync(marker)) {
-      seedPending = false
-      return
+  const seedStateOf = (root: string): RootSeedState => {
+    /** The existing record, or a fresh pending one stored under this root. */
+    const existing = seedStates.get(root)
+    if (existing !== undefined) return existing
+    /** The fresh record for this root: it owes one attempt and has said nothing yet. */
+    const fresh: RootSeedState = { state: "pending", warned: false }
+    seedStates.set(root, fresh)
+    return fresh
+  }
+
+  /**
+   * Whether any layer ABOVE the project file already declares `teamModels` (CodeRabbit #7).
+   *
+   * `loadConfig` applies the user file BEFORE the project file, so a user-only
+   * `$DSH_HOME/mpd.jsonc` declaration would be OVERRIDDEN by the block a seed writes into the
+   * project file. The same holds for the settings document and the row-knob layer. The seed
+   * therefore writes nothing when any merged layer declares the block: an unreadable user layer is
+   * treated as a declaration too, because "could not prove otherwise" must never overwrite.
+   * @returns true when the seed must stand down.
+   */
+  const declaresTeamModelsAboveTheProjectFile = (): boolean => {
+    // The user layer, resolved exactly as `loadConfig` resolves it (one helper, no drift).
+    if (teamModelsDeclaredIn(userFileFor(config)) !== "absent") return true
+    // The settings document (L3), as last read; a raw section that declares the block wins.
+    if (isPlainObject(bridge.section) && Object.prototype.hasOwnProperty.call(bridge.section, "teamModels")) return true
+    // The row-knob layer (L4): the entry document's saved overrides, else the apply-time row config.
+    const rowKnobs = entryKnobs ?? rowKnobLayer(config)
+    if (isPlainObject(rowKnobs) && Object.prototype.hasOwnProperty.call(rowKnobs, "teamModels")) return true
+    return false
+  }
+
+  /**
+   * Run the one-time seed for the ROOTS that still owe an attempt (per-root, CodeRabbit #6).
+   *
+   * The CHEAP guards run first, per root and WITHOUT any catalog read: a root already marked, already
+   * configured in its project file, or configured by a layer above it is decided locally and costs
+   * nothing. Only the roots that survive are attempted, with ONE shared catalog read per batch (a
+   * boot with several workspaces must not pay N reads). A root whose catalog answer is unavailable
+   * stays PENDING and says ONE line — the retry comes from `reloadAt`, and the llm registry can mount
+   * after this row.
+   * @param roots - the workspace roots to consider; blank/duplicate entries are ignored.
+   */
+  const seedRoots = (roots: readonly string[]): void => {
+    /** The distinct roots that still owe an attempt. */
+    const pending = [...new Set(roots.filter((root) => typeof root === "string" && root !== ""))].filter((root) => seedStateOf(root).state === "pending")
+    if (pending.length === 0) return
+    /** Say one line for ONE root, at most once for that root. */
+    const warnOnceFor = (root: string, line: string): void => {
+      /** This root's record, whose `warned` flag makes the line idempotent. */
+      const record = seedStateOf(root)
+      if (record.warned) return
+      record.warned = true
+      warn(line)
     }
-    // A configured workspace costs NO catalog read at all: the block is the first guard after the
-    // marker, exactly as `seedTeamModelsOnce` orders them.
-    /** The project file's declaration state, read before any catalog work. */
-    const declared = teamModelsDeclaredIn(file)
-    if (declared === "declared") {
-      seedPending = false
-      return
+    /** The roots that survived every local guard and therefore need the catalog. */
+    const toAttempt: string[] = []
+    for (const root of pending) {
+      /** The project file this root reads and the seed writes (the row's own override honoured). */
+      const file = projectFileFor(root)
+      // THE MARKER BEATS THE FILE STATE: a seeded-once workspace whose block was deleted on purpose
+      // must not be re-seeded (contract §10 + the captain's F3).
+      if (existsSync(seedMarkerFor(root))) { seedStateOf(root).state = "done"; continue }
+      /** The project file's declaration state, read before any catalog work. */
+      const declared = teamModelsDeclaredIn(file)
+      if (declared === "declared") { seedStateOf(root).state = "done"; continue }
+      if (declared === "unreadable") {
+        seedStateOf(root).state = "done"
+        warnOnceFor(root, "[mpd-config] could not seed " + file + ": the project file does not parse — nothing was written")
+        continue
+      }
+      // A layer ABOVE the project file already configures the slots: writing a project block would
+      // override that lower-precedence source, so the seed stands down WITHOUT a marker (the
+      // workspace is configured by its own owner, and re-checking is cheap and correct).
+      if (declaresTeamModelsAboveTheProjectFile()) { seedStateOf(root).state = "done"; continue }
+      toAttempt.push(root)
     }
-    if (declared === "unreadable") {
-      seedPending = false
-      if (!seedWarned) warn(`[mpd-config] could not seed ${file}: the project file does not parse — nothing was written`)
-      seedWarned = true
-      return
-    }
+    if (toAttempt.length === 0) return
     if (typeof dsh.llmCatalog !== "function") {
-      seedPending = false
-      if (!seedWarned) warn("[mpd-config] team-model slots are not configured and the adapter has no catalog seam — nothing was written; the first spawn reports SLOT_UNCONFIGURED")
-      seedWarned = true
+      for (const root of toAttempt) {
+        seedStateOf(root).state = "done"
+        warnOnceFor(root, "[mpd-config] team-model slots are not configured for " + root + " and the adapter has no catalog seam — nothing was written; the first spawn reports SLOT_UNCONFIGURED")
+      }
       return
     }
     // Fire-and-forget: the seed must never delay (or fail) the row's own activation.
     void Promise.resolve(dsh.llmCatalog()).then((catalog: SeedCatalogLike | undefined) => {
-      /** The one attempt's decision, with the durable-marker protocol inside it. */
-      const result = seedTeamModelsOnce(file, marker, catalog)
-      // A missing catalog keeps the attempt PENDING so a later reload can still seed once; the
-      // warning itself is said at most once per process (`seedWarned`).
-      if (result.status === "no-catalog") {
-        if (!seedWarned) warn("[mpd-config] team-model slots are not configured and the model catalog lists no deepseek-flash model — nothing was written; the first spawn reports SLOT_UNCONFIGURED")
-        seedWarned = true
-        return
+      for (const root of toAttempt) {
+        // A concurrent batch may have decided this root in the meantime (reload during boot).
+        if (seedStateOf(root).state !== "pending") continue
+        /** The project file this root reads and the seed writes. */
+        const file = projectFileFor(root)
+        /** The durable one-time marker for this workspace. */
+        const marker = seedMarkerFor(root)
+        /** The one attempt's decision, with the durable-marker protocol inside it. */
+        const result = seedTeamModelsOnce(file, marker, catalog)
+        // A missing catalog keeps the attempt PENDING so a later reload can still seed once; the
+        // line itself is said at most once per root (`warnOnceFor`).
+        if (result.status === "no-catalog") {
+          warnOnceFor(root, "[mpd-config] team-model slots are not configured for " + root + " and the model catalog lists no deepseek-flash model — nothing was written; the first spawn reports SLOT_UNCONFIGURED")
+          continue
+        }
+        seedStateOf(root).state = "done"
+        if (result.status === "seeded") {
+          // ONE line per root for a real write, naming the file and the durable marker beside it.
+          warn("[mpd-config] seeded " + file + " with all four team-model slots (provider=" + (result.route?.provider ?? "?") + ", model=" + (result.route?.model ?? "?") + "; slot1=max, slots 2-4=high) from the configured catalog — marked once in " + marker)
+          // CodeRabbit #8: the write happened AFTER the mount read and, on a workspace with no
+          // `.mpd` directory, after the watcher declined to arm — so the resolved state is one
+          // generation behind until an explicit reload. Reload THIS root now, so the very first
+          // spawn already resolves the seeded slots instead of reporting SLOT_UNCONFIGURED.
+          reloadAt(root)
+        } else if (result.status === "unreadable") {
+          warnOnceFor(root, "[mpd-config] could not seed " + file + ": " + (result.detail ?? "unreadable") + " — nothing was written")
+        }
       }
-      seedPending = false
-      // ONE line per process for a real write, naming the file and the durable marker beside it.
-      if (result.status === "seeded") warn(`[mpd-config] seeded ${file} with all four team-model slots (provider=${result.route?.provider ?? "?"}, model=${result.route?.model ?? "?"}; slot1=max, slots 2-4=high) from the configured catalog — marked once in ${marker}`)
-      else if (result.status === "unreadable") warn(`[mpd-config] could not seed ${file}: ${result.detail ?? "unreadable"} — nothing was written`)
     }).catch((error: unknown) => {
-      seedPending = false
-      if (!seedWarned) warn("[mpd-config] the model catalog read failed, so the one-time team-model seed wrote nothing: " + String((error as Error)?.message ?? error))
-      seedWarned = true
+      for (const root of toAttempt) {
+        // The catalog read failed: this root still owes an attempt (kept pending), and says so once.
+        warnOnceFor(root, "[mpd-config] the model catalog read failed, so the one-time team-model seed wrote nothing for " + root + ": " + String((error as Error)?.message ?? error))
+      }
     })
   }
 
-  // One attempt for the mount-time root; `reloadAt` retries only while nothing was decided.
-  seedAt(readRoot())
+  // Seed the LIVE workspace roots at mount. The exec-less FALLBACK root is deliberately NOT seeded
+  // (CodeRabbit #6): a process started outside a workspace must never write `<cwd>/.mpd/mpd.jsonc`.
+  // When no session is live yet, nothing is attempted here and the first `reloadAt` of a session
+  // root performs the one attempt for that root.
+  seedRoots(dsh.workspaceRootsAll())
 }

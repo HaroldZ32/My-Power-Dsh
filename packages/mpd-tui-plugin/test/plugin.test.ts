@@ -154,9 +154,11 @@ function allServices(overrides: Record<string, any> = {}): {
     commands: [],
     decisions: [],
     views: [],
-    // The sidebar panel seam's own log: one entry per registration, and one per open request.
+    // The sidebar panel seam's own log: one entry per registration, one per open request, and one
+    // per badge publish (which is what proves the attention surface ARMED).
     panels: [],
     panelOpens: [],
+    badges: [],
   }
   /** How many times a recorded disposer was called. */
   const disposed = { count: 0 }
@@ -254,6 +256,11 @@ function allServices(overrides: Record<string, any> = {}): {
         /** Opens one of this activation's panels: the double always accepts. */
         open(id: string): boolean {
           calls.panelOpens.push(id)
+          return true
+        },
+        /** Publishes a badge (the host's own member the attention surface calls); recorded. */
+        badge(id: string, badge: unknown): boolean {
+          calls.badges.push({ id, badge })
           return true
         },
         /** Names the activation prefix a test wants (the real host's `act<N>` fallback form). */
@@ -1707,5 +1714,52 @@ describe("R1.5 · the wheel-invert reader falls back to the row config when the 
       // throwing layer installed for whatever runs after it.
       setWheelInvertRead((): boolean => false)
     }
+  })
+})
+
+// ── CodeRabbit #13 (PR #62): the watchdog knob is INDEPENDENT of `panel` ────────────────────────
+describe("the watchdog badge arms on its OWN knob, not on `panel`", () => {
+  test("panel:false + watchdog:true still arms the attention surface and badges the watchdog page", () => {
+    /** The recording services. */
+    const { services, calls } = allServices()
+    /** The host double over those services. */
+    const host = hostDouble(services)
+    // The merged panel is OFF, its page ON: the two knobs are independent by contract.
+    mod.apply(host.ctx as never, { statusIntervalMs: 0, panel: false, watchdog: true })
+    // THE ARM PROOF: the arm-time pass published the watchdog page's badge (null here — no incidents
+    // in this double — which is still a CALL, and a call is what the old gate never made).
+    expect(calls.badges.some((entry) => entry.id === "act0:watchdog")).toBe(true)
+    // And the MPD page is NOT badged: with `panel` off there is no discovered id for it.
+    expect(calls.badges.some((entry) => entry.id === "act0:team")).toBe(false)
+  })
+
+  test("panel:false + watchdog:false arms NOTHING (no badge call at all)", () => {
+    /** The recording services. */
+    const { services, calls } = allServices()
+    /** The host double over those services. */
+    const host = hostDouble(services)
+    mod.apply(host.ctx as never, { statusIntervalMs: 0, panel: false, watchdog: false })
+    // NEITHER page needs a badge surface, so the attention surface is not armed at all (the workmate
+    // page keeps its own knob and is not part of this route).
+    expect(calls.badges).toEqual([])
+  })
+})
+
+// ── CodeRabbit #17 (PR #62): the watchdog page's diagnostic names ITS knob ──────────────────────
+describe("the watchdog page's skip diagnostic names `watchdog`, never `panel`", () => {
+  test("watchdog:false skips only that page, and the record names the right knob", () => {
+    /** The recording services. */
+    const { services, calls } = allServices()
+    /** The host double over those services. */
+    const host = hostDouble(services)
+    /** The report of a composition that disabled the watchdog page. */
+    const report = mod.apply(host.ctx as never, { statusIntervalMs: 0, watchdog: false })
+    // THE OTHER TWO PAGES STAY: the knobs are independent.
+    expect(calls.panels.map((entry: { id: string }) => entry.id)).toEqual(["team", "workmate"])
+    /** The skip's own record: `absent`, naming the knob an operator must switch on. */
+    const skipped = outcomeOf(report, "watchdogPanel")
+    expect(skipped.state).toBe("absent")
+    expect(String(skipped.detail)).toContain("watchdog: false")
+    expect(String(skipped.detail)).not.toContain("panel: false")
   })
 })

@@ -132,12 +132,17 @@ interface Mounted {
 
 /**
  * Mount the config row over a real adapter whose `ctx.llm` answers (or fails) the catalog read.
- * @param root - the workspace root the row resolves.
+ *
+ * `roots` models the LIVE session registry (`ctx.get("agents")`): the seed attempts exactly the
+ * roots it lists (CodeRabbit #6 — the exec-less fallback root is never seeded), while
+ * `DSH_WORKSPACE_ROOT` only supplies the fallback the row itself resolves.
+ * @param root - the fallback workspace root (`DSH_WORKSPACE_ROOT`).
  * @param home - the isolated `DSH_HOME`.
  * @param catalog - the providers the llm double lists, or `"throw"` to make the read reject.
+ * @param roots - the LIVE workspace roots; defaults to `[root]`.
  * @returns the service, the captured log lines and the catalog-read counter.
  */
-function mount(root: string, home: string, catalog: { id: string; models: string[] }[] | "throw"): Mounted {
+function mount(root: string, home: string, catalog: { id: string; models: string[] }[] | "throw", roots: string[] = [root], rowConfig: Record<string, unknown> = {}): Mounted {
   process.env.DSH_HOME = home
   process.env.DSH_WORKSPACE_ROOT = root
   /** Every tool the row registered. */
@@ -158,14 +163,17 @@ function mount(root: string, home: string, catalog: { id: string; models: string
     listModels: async (provider: string) => (catalog === "throw" ? [] : (catalog.find((p) => p.id === provider)?.models ?? []).map((id) => ({ id }))),
     resolveModelInfo: async (_provider: string, model: string) => ({ id: model, reasoning: { efforts: [{ id: "max" }, { id: "high" }] } }),
   }
-  /** The permissive cordis ctx: tools, the llm service and the logger the row writes through. */
+  /** The live-session registry double the adapter reads its workspace roots from. */
+  const agents = { list: (): unknown[] => roots.map((cwd) => ({ session: { header: { cwd } } })) }
+  /** The permissive cordis ctx: tools, the llm service, the live roots and the logger. */
   const ctx: any = {
     tools: { register: (t: any): void => { tools.push(t) } },
     provide: (_n: string, v: any): void => { service = v },
-    get: (n: string): unknown => (n === "llm" ? llm : undefined),
+    get: (n: string): unknown => (n === "llm" ? llm : n === "agents" ? agents : undefined),
     logger: { warn: (message: string): void => { logs.push(String(message)) } },
   }
-  apply(ctx, {})
+  // The row config is the L4 layer the seed guard consults; an arm may declare `teamModels` here.
+  apply(ctx, rowConfig as Parameters<typeof apply>[1])
   return { service, logs, catalogReads: () => reads }
 }
 
@@ -256,5 +264,130 @@ describe("the mounted row: ONE log line per process, and the marker beats the fi
     expect(unavailable()).toHaveLength(1)
     expect(existsSync(file)).toBe(false)
     expect(existsSync(marker)).toBe(false)
+  })
+})
+
+// ── CodeRabbit #6/#7/#8 on PR #62: per-root attempts, the higher-layer guard, and the reload ─────
+describe("the seed is PER ROOT (CodeRabbit #6) and respects the layers above it (#7), then reloads (#8)", () => {
+  test("#6: TWO live roots get their own attempt, file and marker — one shared catalog read", async () => {
+    /** The first live workspace. */
+    const a = workspace()
+    /** The second live workspace, fully independent of the first. */
+    const b = workspace()
+    /** One isolated home shared by both roots (the user layer is process-wide by design). */
+    const home = join(a.root, "..", "home")
+    mkdirSync(home, { recursive: true })
+    // The fallback root is A, and the registry lists BOTH: both must be seeded, neither twice.
+    /** The mounted row over the two live roots. */
+    const h = mount(a.root, home, [{ id: "deepseek-official", models: ["deepseek-flash"] }], [a.root, b.root])
+    await settled()
+    for (const fixture of [a, b]) {
+      expect(existsSync(fixture.file)).toBe(true)
+      expect(existsSync(fixture.marker)).toBe(true)
+      expect(JSON.parse(stripJsonc(readFileSync(fixture.file, "utf8"))).teamModels.slot2).toBeDefined()
+    }
+    // ONE line per root, and the batch paid for exactly ONE catalog read.
+    /** The seed lines the row emitted. */
+    const seedLines = (): string[] => h.logs.filter((line) => line.includes("seeded"))
+    expect(seedLines()).toHaveLength(2)
+    expect(seedLines()[0]).toContain(a.marker)
+    expect(seedLines()[1]).toContain(b.marker)
+    expect(h.catalogReads()).toBe(1)
+  })
+
+  test("#6: the exec-less FALLBACK root is never seeded; only the LIVE root is", async () => {
+    /** The fallback root: what the row resolves with no exec, and what must stay untouched. */
+    const fallback = workspace()
+    /** The live session's workspace, the only seed target. */
+    const live = workspace()
+    /** One isolated home. */
+    const home = join(fallback.root, "..", "home")
+    mkdirSync(home, { recursive: true })
+    // DSH_WORKSPACE_ROOT is the fallback; the registry holds ONLY the live root.
+    /** The mounted row whose fallback root differs from the live one. */
+    const h = mount(fallback.root, home, [{ id: "deepseek-official", models: ["deepseek-flash"] }], [live.root])
+    await settled()
+    expect(existsSync(live.file)).toBe(true)
+    expect(existsSync(live.marker)).toBe(true)
+    // The fallback root got NEITHER a file NOR a marker: a process started outside a workspace must
+    // never write `<cwd>/.mpd/mpd.jsonc`.
+    expect(existsSync(fallback.file)).toBe(false)
+    expect(existsSync(fallback.marker)).toBe(false)
+    expect(h.logs.filter((line) => line.includes(fallback.root))).toEqual([])
+  })
+
+  test("#6: with NO live root at mount nothing is attempted at all (the first reload seeds)", async () => {
+    /** The fallback root of a process with no session yet. */
+    const fallback = workspace()
+    /** One isolated home. */
+    const home = join(fallback.root, "..", "home")
+    mkdirSync(home, { recursive: true })
+    /** The mounted row whose registry is EMPTY. */
+    const h = mount(fallback.root, home, [{ id: "deepseek-official", models: ["deepseek-flash"] }], [])
+    await settled()
+    expect(existsSync(fallback.file)).toBe(false)
+    expect(existsSync(fallback.marker)).toBe(false)
+    expect(h.catalogReads()).toBe(0)
+    // The first session's reload performs the ONE attempt for that root.
+    h.service.reload({ agent: { session: { header: { cwd: fallback.root } } } })
+    await settled()
+    expect(existsSync(fallback.file)).toBe(true)
+    expect(existsSync(fallback.marker)).toBe(true)
+    expect(h.logs.filter((line) => line.includes("seeded"))).toHaveLength(1)
+  })
+
+  test("#7: a USER-LAYER teamModels declaration stops the seed before any project write", async () => {
+    /** A fresh live workspace with no project file. */
+    const { root, file, marker } = workspace()
+    /** The isolated home whose USER layer declares the block. */
+    const home = join(root, "..", "home")
+    mkdirSync(home, { recursive: true })
+    writeFileSync(join(home, "mpd.jsonc"), `{\n  "teamModels": { "slot1": { "provider": "user-p", "model": "user-m" } }\n}\n`)
+    /** The mounted row whose live root is the workspace. */
+    const h = mount(root, home, [{ id: "deepseek-official", models: ["deepseek-flash"] }])
+    await settled()
+    // The project file is LOWER precedence than the user file: a block here would override it.
+    expect(existsSync(file)).toBe(false)
+    expect(existsSync(marker)).toBe(false)
+    expect(h.logs.filter((line) => line.includes("seeded"))).toEqual([])
+  })
+
+  test("#7: a ROW-KNOB-LAYER (L4) teamModels declaration stops the seed too", async () => {
+    /** A fresh live workspace with no project file. */
+    const { root, file, marker } = workspace()
+    /** The isolated home. */
+    const home = join(root, "..", "home")
+    mkdirSync(home, { recursive: true })
+    /** The mounted row whose OWN config (L4) declares the block. */
+    const h = mount(root, home, [{ id: "deepseek-official", models: ["deepseek-flash"] }], [root], { teamModels: { slot1: { provider: "row-p", model: "row-m" } } })
+    await settled()
+    // The row-knob layer is ABOVE the project file, so a project block here would be shadowed.
+    expect(existsSync(file)).toBe(false)
+    expect(existsSync(marker)).toBe(false)
+    expect(h.logs.filter((line) => line.includes("seeded"))).toEqual([])
+  })
+
+  test("#8: the seeded block RESOLVES without an explicit reload (the write reloads its root)", async () => {
+    /** A bare workspace with NO `.mpd` directory: the mount read and the watcher both see nothing. */
+    const dir = mkdtempSync(join(tmpdir(), "mpd-seed-noreload-"))
+    temps.push(dir)
+    /** The live workspace root, created WITHOUT `.mpd`. */
+    const root = join(dir, "ws")
+    mkdirSync(root, { recursive: true })
+    /** The project file the seed must create. */
+    const file = join(root, ".mpd", "mpd.jsonc")
+    /** The marker the seed must create beside it. */
+    const marker = join(root, ".mpd", SEED_MARKER_FILE)
+    /** The isolated home. */
+    const home = join(dir, "home")
+    mkdirSync(home, { recursive: true })
+    /** The mounted row whose live root is this bare workspace. */
+    const h = mount(root, home, [{ id: "deepseek-official", models: ["deepseek-flash"] }])
+    await settled()
+    expect(existsSync(file)).toBe(true)
+    expect(existsSync(marker)).toBe(true)
+    // THE #8 POINT: the row's own resolved state is NOT one generation behind — no reload call here.
+    expect(h.service.slotResolutionOf("Architect")).toMatchObject({ ok: true, route: { provider: "deepseek-official", model: "deepseek-flash" } })
+    expect(h.service.teamModelRouteOf("Vision Analyst")).toEqual({ provider: "deepseek-official", model: "deepseek-flash", reasoningEffort: "high" })
   })
 })
