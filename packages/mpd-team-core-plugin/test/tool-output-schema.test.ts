@@ -232,6 +232,11 @@ describe("an EMPTY plan cannot be approved (D4a)", () => {
       expect(refusal?.message).toContain("EMPTY")
       expect(refusal?.message).toContain("add_member")
       expect(refusal?.message).toContain("create_task")
+      // …AND the trailing clause (R13, Amendment 2) names the dependency answer the very next
+      // `create_task` demands, so obeying this sentence stages a working call instead of a second refusal.
+      expect(refusal?.message).toContain("blocked_by: [...]")
+      expect(refusal?.message).toContain("possibly []")
+      expect(refusal?.message).toContain("independent: true")
       // NOTHING was created, and the plan is still staged: the captain can fill it and approve again.
       expect(listTeams(f.workspace)).toEqual([])
       /** The still-staged plan, read back through the tool. */
@@ -251,11 +256,15 @@ describe("an EMPTY plan cannot be approved (D4a)", () => {
   test("a plan with EITHER a member or a task still approves — the guard refuses nothing else", async () => {
     // THE OTHER DIRECTION, so the new refusal cannot over-reach: a task-only plan (a captain posting
     // the board first) is a legitimate plan, and so is a member-only one.
+    // THE CONTROL'S INTENT IS UNCHANGED (R5/R8, `.mpd/plans/task-dependency-guard.md`): one task with
+    // no members must still approve. The ONLY adaptation is the dependency answer the new contract
+    // requires — `blocked_by: []` declares the task a genuine root, so the plan is still a single,
+    // unordered, scope-free task and nothing about the "refuses nothing else" claim is weakened.
     /** The harness under test, for the task-only plan. */
     const taskOnly = fixture()
     try {
       await taskOnly.call("agent_teams_plan", { action: "create", name: "tasks only", description: "board first" })
-      await taskOnly.call("agent_teams_plan", { action: "create_task", task: { subject: "solo", description: "one task" } })
+      await taskOnly.call("agent_teams_plan", { action: "create_task", task: { subject: "solo", description: "one task", blocked_by: [] } })
       /** The approved plan. */
       const approved = await taskOnly.call("agent_teams_plan", { action: "approve" })
       expect((approved.created as { tasks: unknown[] }).tasks.length).toBe(1)
@@ -293,7 +302,7 @@ describe("every action's value satisfies its declared output contract", () => {
       // Stage, approve and re-read: the measured failing case 2 (seq 213) — the summary's `depths`.
       await f.call("agent_teams_plan", { action: "create", name: "wave", description: "why" })
       await f.call("agent_teams_plan", { action: "add_member", member: { name: "Reviewer", description: "judges", prompt: "You review." } })
-      await f.call("agent_teams_plan", { action: "create_task", task: { subject: "T", description: "d", owner: "Reviewer" } })
+      await f.call("agent_teams_plan", { action: "create_task", task: { subject: "T", description: "d", owner: "Reviewer", blocked_by: [] } })
       await f.call("agent_teams_plan", { action: "approve" })
       /** The status payload with a real team record behind it. */
       const full = await f.call("agent_teams_plan", { action: "status" })
@@ -315,7 +324,7 @@ describe("every action's value satisfies its declared output contract", () => {
       await f.call("agent_teams_plan", { action: "status" })
       await f.call("agent_teams_plan", { action: "create", name: "wave", description: "why" })
       await f.call("agent_teams_plan", { action: "add_member", member: { name: "Senior Engineer", description: "implements", prompt: "You implement." } })
-      await f.call("agent_teams_plan", { action: "create_task", task: { subject: "core", description: "own it" } })
+      await f.call("agent_teams_plan", { action: "create_task", task: { subject: "core", description: "own it", blocked_by: [] } })
       await f.call("agent_teams_plan", { action: "edit", description: "restated" })
       await f.call("agent_teams_plan", { action: "approve", dry_run: true })
       await f.call("agent_teams_plan", { action: "approve" })
@@ -342,7 +351,7 @@ describe("create_task carries owner and blocked_by from BOTH spellings", () => {
     try {
       await f.call("agent_teams_plan", { action: "create", name: "wave", description: "why" })
       await f.call("agent_teams_plan", { action: "add_member", member: { name: "Reviewer", description: "judges", prompt: "You review." } })
-      await f.call("agent_teams_plan", { action: "create_task", task: { subject: "review", description: "judge it", owner: "Reviewer" } })
+      await f.call("agent_teams_plan", { action: "create_task", task: { subject: "review", description: "judge it", owner: "Reviewer", blocked_by: [] } })
       /** The staged plan, which must carry the owner at once. */
       const stagedPlan = await f.call("agent_teams_plan", { action: "edit" })
       expect(stagedPlan.plan.tasks[0].owner).toBe("Reviewer")
@@ -364,8 +373,8 @@ describe("create_task carries owner and blocked_by from BOTH spellings", () => {
     try {
       await f.call("agent_teams_plan", { action: "create", name: "wave", description: "why" })
       await f.call("agent_teams_plan", { action: "add_member", member: { name: "Reviewer", description: "judges", prompt: "You review." } })
-      await f.call("agent_teams_plan", { action: "create_task", task: { subject: "first", description: "d", owner: "Reviewer" } })
-      await f.call("agent_teams_plan", { action: "create_task", task: { subject: "second", description: "d", owner: "Reviewer" } })
+      await f.call("agent_teams_plan", { action: "create_task", task: { subject: "first", description: "d", owner: "Reviewer", blocked_by: [] } })
+      await f.call("agent_teams_plan", { action: "create_task", task: { subject: "second", description: "d", owner: "Reviewer", blocked_by: [] } })
       await f.call("agent_teams_plan", { action: "approve" })
       /** The board, whose FIRST task is left in progress by a dispatch pass below. */
       const record = readTeam(f.workspace, listTeams(f.workspace)[0].teamId)
@@ -374,7 +383,7 @@ describe("create_task carries owner and blocked_by from BOTH spellings", () => {
       // task with the same owner: a busy member is not a reason to drop the owner the caller stated.
       await f.call("agent_teams_plan", { action: "create", name: "wave-2", description: "next" })
       await f.call("agent_teams_plan", { action: "add_member", member: { name: "Reviewer", description: "judges", prompt: "You review." } })
-      await f.call("agent_teams_plan", { action: "create_task", task: { subject: "third", description: "d", owner: "Reviewer" } })
+      await f.call("agent_teams_plan", { action: "create_task", task: { subject: "third", description: "d", owner: "Reviewer", blocked_by: [] } })
       await f.call("agent_teams_plan", { action: "approve" })
       /** The SECOND board, which must carry the owner too. */
       const second = readTeam(f.workspace, listTeams(f.workspace)[0].teamId)
@@ -389,7 +398,7 @@ describe("create_task carries owner and blocked_by from BOTH spellings", () => {
     const f = fixture()
     try {
       await f.call("agent_teams_plan", { action: "create", name: "wave", description: "why" })
-      await f.call("agent_teams_plan", { action: "create_task", task: { subject: "unowned", description: "d" } })
+      await f.call("agent_teams_plan", { action: "create_task", task: { subject: "unowned", description: "d", blocked_by: [] } })
       /** The staged plan's own task row. */
       const stagedPlan = await f.call("agent_teams_plan", { action: "edit" })
       expect(Object.hasOwn(stagedPlan.plan.tasks[0], "owner")).toBe(false)
@@ -411,7 +420,7 @@ describe("create_task carries owner and blocked_by from BOTH spellings", () => {
       await f.call("agent_teams_plan", { action: "create", name: "wave", description: "why" })
       await f.call("agent_teams_plan", { action: "add_member", member: { name: "TuiAdapter Engineer", description: "Lane A", prompt: "You build." } })
       await f.call("agent_teams_plan", { action: "add_member", member: { name: "PanelScene Worker", description: "Lane C", prompt: "You merge." } })
-      await f.call("agent_teams_plan", { action: "create_task", owner: "TuiAdapter Engineer", task: { subject: "W2-T1 Lane A", description: "the adapter" } })
+      await f.call("agent_teams_plan", { action: "create_task", owner: "TuiAdapter Engineer", task: { subject: "W2-T1 Lane A", description: "the adapter", blocked_by: [] } })
       await f.call("agent_teams_plan", { action: "create_task", owner: "PanelScene Worker", blocked_by: ["W2-T1 Lane A"], task: { subject: "W2-T3 Lane C", description: "the scene" } })
       /** The staged plan, whose second task must name the first as its blocker. */
       const stagedPlan = await f.call("agent_teams_plan", { action: "edit" })

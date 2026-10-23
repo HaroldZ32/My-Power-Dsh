@@ -19,6 +19,8 @@ Plan C / C2 — 在 DSH subagent seam 上的固定策略 ultrawork 引擎（v2�
 5. **就地修复（Fix on sight）**——运行中发现的缺陷在当轮立即修复；绝不上报后等待，也绝不请求用户批准。
 6. **有证据才收尾**——只有当 verification gate 与 quality-gate ledger 双双通过后才报告完成。
 
+**官方团队路径会绕过 mpd 的依赖守卫。** `spawn_teammate` + 官方 `team_task_create` 从不经过 mpd 的 `create_task`/`approve`，所以 mpd 的规则——显式依赖答案、`approve` 对「写作用域重叠且没有边」的拒绝、`claim` 的就绪检查——**管不到**它们；官方一侧只说写作用域重叠是「advisory, not a lock」。因此 captain 在这条路径上须**手动**遵守：为每个任务声明 `blocked_by`，并把没有边的任务理解为「并行执行」——每条有序的 lane 在派工前都要先补上边。
+
 ## 策略——形态来自上游，措辞是我们的
 
 这套纪律的**形态**来自上游：它依据**已记录的**上游 ultrawork 纪律（base 8c57e46）重新表达。此处发布的**措辞**是本包自己的——**没有找到、也没有复制任何上游提示词、策略或错误文本**；下列条款只在本 bundle 中成立（`mpd` 工具箱、本 harness 上的五个 `agent_teams_*` 工具、`.mpd/ulw`、`mpdConfig` 键）。

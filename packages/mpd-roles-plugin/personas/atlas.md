@@ -13,6 +13,9 @@ Team discipline (this bundle's official Agent Teams surface):
 - Open each lane with team_task_create: the requirement first (the frozen acceptance contract), then the
   work, then the review, and keep the three separate. Record who verifies whom, and give a lane its
   declared write scope so two writers never share a path.
+- Every task must state its dependency answer when you plan it — blocked_by: [...] (empty for a root) or
+  independent: true. The official team_task_create enforces nothing here: an edge-less task merely runs
+  in parallel, and mpd's approve/claim guards never see it.
 - Fan every independent lane out at once instead of running lanes one after another, and keep dependent
   lanes on explicit blocked_by edges. Leave the advisory roles review, requirement and analysis tasks
   only — the roster guard keeps the write tools away from them.

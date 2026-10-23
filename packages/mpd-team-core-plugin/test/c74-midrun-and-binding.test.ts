@@ -187,8 +187,8 @@ async function approveTeam(h: Harness): Promise<string> {
   await h.call("agent_teams_plan", { action: "create", name: "the wave", description: "one wave" }, LEAD)
   await h.call("agent_teams_plan", { action: "add_member", member: { name: "Senior Engineer", description: "implements", prompt: "You implement." } }, LEAD)
   await h.call("agent_teams_plan", { action: "add_member", member: { name: "Reviewer", description: "judges", prompt: "You review." } }, LEAD)
-  await h.call("agent_teams_plan", { action: "create_task", task: { subject: "the lane work", description: "own the record", owner: "Senior Engineer" } }, LEAD)
-  await h.call("agent_teams_plan", { action: "create_task", task: { subject: "the review", description: "judge it", owner: "Reviewer" } }, LEAD)
+  await h.call("agent_teams_plan", { action: "create_task", task: { subject: "the lane work", description: "own the record", owner: "Senior Engineer", blocked_by: [] } }, LEAD)
+  await h.call("agent_teams_plan", { action: "create_task", task: { subject: "the review", description: "judge it", owner: "Reviewer", blocked_by: [] } }, LEAD)
   await h.call("agent_teams_plan", { action: "approve" }, LEAD)
   /** The team the approval bound to the Lead session. */
   const teamId = activeTeamId(h.workspace, LEAD)
@@ -224,7 +224,7 @@ describe("C7-4 F1 — a mid-run append lands on the APPROVED record", () => {
     /** How many tasks the board held BEFORE the append. */
     const before = readTeam(h.workspace, teamId)?.tasks.length ?? 0
     /** The tool's own answer, which says where the row landed. */
-    const answer = await h.call("agent_teams_plan", { action: "create_task", task: { subject: "the repair", description: "fix it", kind: "repair", coverageOf: "C7-4 F1", sourceTaskId: "T1" } }, LEAD) as { appended?: string; task?: { id?: string; subject?: string } }
+    const answer = await h.call("agent_teams_plan", { action: "create_task", task: { subject: "the repair", description: "fix it", kind: "repair", coverageOf: "C7-4 F1", sourceTaskId: "T1", blocked_by: [] } }, LEAD) as { appended?: string; task?: { id?: string; subject?: string } }
     // THE DEFECT: before the fix this exact call threw "no team is staged in this session".
     expect(answer.appended).toContain("live team " + teamId)
     // READ BACK FROM DISK: the row is on the APPROVED record, not in a staging file.
@@ -265,7 +265,7 @@ describe("C7-4 F1 — a mid-run append lands on the APPROVED record", () => {
     const stranded: StagedPlan = { version: 1, planId: "plan-stranded-1", sessionId: LEAD, name: "x", description: "", approval: "required", members: [], tasks: [], stagedAt: NOW.toISOString(), approvedAt: NOW.toISOString() }
     writePlan(h.workspace, stranded)
     /** The thrown refusal, captured so the arm can quote the sentence. */
-    const failure = await h.call("agent_teams_plan", { action: "create_task", task: { subject: "x", description: "d" } }, LEAD).then(() => undefined, (error: unknown) => error)
+    const failure = await h.call("agent_teams_plan", { action: "create_task", task: { subject: "x", description: "d", blocked_by: [] } }, LEAD).then(() => undefined, (error: unknown) => error)
     expect(failure).toBeInstanceOf(Error)
     expect(String((failure as Error).message)).toBe("plan plan-stranded-1 is already approved; stage a new one to change the team")
   })
@@ -274,7 +274,7 @@ describe("C7-4 F1 — a mid-run append lands on the APPROVED record", () => {
     /** The harness this arm drives. */
     const h = harness()
     /** The thrown refusal for a session that belongs to nothing. */
-    const failure = await h.call("agent_teams_plan", { action: "create_task", task: { subject: "x", description: "d" } }, "sess-nobody").then(() => undefined, (error: unknown) => error)
+    const failure = await h.call("agent_teams_plan", { action: "create_task", task: { subject: "x", description: "d", blocked_by: [] } }, "sess-nobody").then(() => undefined, (error: unknown) => error)
     expect(failure).toBeInstanceOf(Error)
     expect(String((failure as Error).message)).toBe("no team is staged in this session — call agent_teams_create first")
   })

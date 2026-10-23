@@ -184,8 +184,8 @@ async function approveTeam(h: Harness): Promise<string> {
   await h.call("agent_teams_plan", { action: "create", name: "the wave", description: "one wave" }, LEAD)
   await h.call("agent_teams_plan", { action: "add_member", member: { name: "Senior Engineer", description: "implements", prompt: "You implement." } }, LEAD)
   await h.call("agent_teams_plan", { action: "add_member", member: { name: "Reviewer", description: "judges", prompt: "You review." } }, LEAD)
-  await h.call("agent_teams_plan", { action: "create_task", task: { subject: "the lane work", description: "own the record", owner: "Senior Engineer" } }, LEAD)
-  await h.call("agent_teams_plan", { action: "create_task", task: { subject: "the review", description: "judge it", owner: "Reviewer" } }, LEAD)
+  await h.call("agent_teams_plan", { action: "create_task", task: { subject: "the lane work", description: "own the record", owner: "Senior Engineer", blocked_by: [] } }, LEAD)
+  await h.call("agent_teams_plan", { action: "create_task", task: { subject: "the review", description: "judge it", owner: "Reviewer", blocked_by: [] } }, LEAD)
   await h.call("agent_teams_plan", { action: "approve" }, LEAD)
   /** The team the approval bound to the Lead session. */
   const teamId = activeTeamId(h.workspace, LEAD)
@@ -259,7 +259,7 @@ describe("F-A (CWE-862) — the live append arms require the LEAD", () => {
     /** The record's bytes BEFORE the refused call. */
     const before = recordBytes(h.workspace, teamId)
     /** The thrown refusal, captured so the arm can quote the sentence. */
-    const failure = await h.call("agent_teams_plan", { action: "create_task", task: { subject: "sneak", description: "d", owner: "Reviewer", writeScopes: ["packages/**"] } }, member, { origin: "subagent", delegationDepth: 1 }).then(() => undefined, (error: unknown) => error)
+    const failure = await h.call("agent_teams_plan", { action: "create_task", task: { subject: "sneak", description: "d", owner: "Reviewer", writeScopes: ["packages/**"], blocked_by: [] } }, member, { origin: "subagent", delegationDepth: 1 }).then(() => undefined, (error: unknown) => error)
     expect(failure).toBeInstanceOf(Error)
     expect(String((failure as Error).message)).toBe(`only the Lead of team ${teamId} may append to its live roster or board`)
     // NOTHING WAS WRITTEN: not one byte of the record moved, and no task was minted.
@@ -295,7 +295,7 @@ describe("F-A (CWE-862) — the live append arms require the LEAD", () => {
     const member = await h.call("agent_teams_plan", { action: "add_member", member: { name: "Guard", description: "writes", prompt: "You write." } }, LEAD) as { appended?: string }
     expect(member.appended).toContain("live team " + teamId)
     /** The Lead's board append. */
-    const task = await h.call("agent_teams_plan", { action: "create_task", task: { subject: "the repair", description: "fix it", owner: "Guard", writeScopes: ["packages/mpd-team-core-plugin/src"] } }, LEAD) as { appended?: string }
+    const task = await h.call("agent_teams_plan", { action: "create_task", task: { subject: "the repair", description: "fix it", owner: "Guard", writeScopes: ["packages/mpd-team-core-plugin/src"], blocked_by: [] } }, LEAD) as { appended?: string }
     expect(task.appended).toContain("live team " + teamId)
     // READ BACK FROM DISK: both appends are on the live record, not in a staging file.
     expect(readTeam(h.workspace, teamId)?.members.map((row) => row.name)).toEqual(["Senior Engineer", "Reviewer", "Guard"])
@@ -443,7 +443,7 @@ describe("F-D — archive evidence is keyed by the record's OWN plan", () => {
     await h.call("agent_teams_plan", { action: "create", name: "the wave", description: "one wave" }, LEAD)
     await h.call("agent_teams_plan", { action: "add_member", member: { name: "Senior Engineer", description: "implements", prompt: "You implement." } }, LEAD)
     await h.call("agent_teams_plan", { action: "add_member", member: { name: "Reviewer", description: "judges", prompt: "You review." } }, LEAD)
-    await h.call("agent_teams_plan", { action: "create_task", task: { subject: "the lane work", description: "d", owner: "Senior Engineer" } }, LEAD)
+    await h.call("agent_teams_plan", { action: "create_task", task: { subject: "the lane work", description: "d", owner: "Senior Engineer", blocked_by: [] } }, LEAD)
     /** The approval's own answer: it stopped, so `archivePlan` never ran for this plan. */
     const approval = await h.call("agent_teams_plan", { action: "approve" }, LEAD) as { stoppedAt?: string; team?: TeamRecord }
     expect(approval.stoppedAt).toContain("Reviewer")
@@ -521,7 +521,7 @@ describe("F-J — the staged arm carries kind/coverageOf/sourceTaskId", () => {
     const h = harness()
     await h.call("agent_teams_plan", { action: "create", name: "the wave", description: "one wave" }, LEAD)
     await h.call("agent_teams_plan", { action: "add_member", member: { name: "Reviewer", description: "judges", prompt: "You review." } }, LEAD)
-    await h.call("agent_teams_plan", { action: "create_task", task: { subject: "the repair", description: "fix it", kind: "repair", coverageOf: "C7-4 F1", sourceTaskId: "T1", owner: "Reviewer" } }, LEAD)
+    await h.call("agent_teams_plan", { action: "create_task", task: { subject: "the repair", description: "fix it", kind: "repair", coverageOf: "C7-4 F1", sourceTaskId: "T1", owner: "Reviewer", blocked_by: [] } }, LEAD)
     /** The staged plan read back through the tool, before any approval. */
     const staged = await h.call("agent_teams_plan", { action: "edit" }, LEAD) as { plan?: { tasks?: Array<{ kind?: string; coverageOf?: string; sourceTaskId?: string }> } }
     expect(staged.plan?.tasks?.[0]?.kind).toBe("repair")
@@ -542,7 +542,7 @@ describe("F-J — the staged arm carries kind/coverageOf/sourceTaskId", () => {
     const h = harness()
     await h.call("agent_teams_plan", { action: "create", name: "the wave", description: "one wave" }, LEAD)
     await h.call("agent_teams_plan", { action: "add_member", member: { name: "Reviewer", description: "judges", prompt: "You review." } }, LEAD)
-    await h.call("agent_teams_plan", { action: "create_task", task: { subject: "plain work", description: "do it" } }, LEAD)
+    await h.call("agent_teams_plan", { action: "create_task", task: { subject: "plain work", description: "do it", blocked_by: [] } }, LEAD)
     await h.call("agent_teams_plan", { action: "approve" }, LEAD)
     /** The team the approval bound. */
     const teamId = activeTeamId(h.workspace, LEAD)

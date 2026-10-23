@@ -63,8 +63,10 @@ here for the full body; where the two differ, the manual wins.
   completion (`1 changed path(s) not covered by inScope`). Two halves: pre-declare the derived path on
   the task whose edits redden it — the hop rule applied BEFORE the refusal — and treat the mid-wave
   escape as a HOP requested with the exact amendment text in ONE message and no work attached; a LANE
-  must not declare a `dist/**` pattern for itself (the platform's `inScope overlaps` validator refused
-  exactly that, measured), because the declaration belongs at plan time.
+  must not declare a `dist/**` pattern for itself: on the OFFICIAL plane write-scope overlap is ADVISORY
+  ("advisory, not a lock"), and on the mpd record plane `approve` REFUSES two tasks whose scopes overlap
+  with no dependency path between them, so an unordered `dist/**` declaration is refused rather than
+  silently accepted — the declaration belongs at plan time.
 - **Preset/row conformance against the INSTALLED harness** (`preset-conformance`, required for any
   preset/patch/overlay change): a row config is validated with the installed plugin's own schemastery
   `Config`, because that is what the loader runs. Two failure modes, only one loud: a MISSING REQUIRED

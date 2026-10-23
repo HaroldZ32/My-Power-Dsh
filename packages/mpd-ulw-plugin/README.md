@@ -33,6 +33,13 @@ An activated ULW run asks the user nothing:
 6. **Close out on proof** — done only after the verification gate and the quality-gate
    ledger both approve.
 
+**The official team path bypasses the mpd dependency guard.** `spawn_teammate` + the official
+`team_task_create` never pass through mpd's `create_task`/`approve`, so the mpd rules — an explicit
+dependency answer, an `approve` refusal on overlapping write scopes with no edge, a `claim` readiness
+check — cannot gate them; the official plane only says write-scope overlap is "advisory, not a lock".
+The rule the captain follows HERE is therefore manual: declare each task's `blocked_by`, and treat an
+edge-less task as meaning "runs in parallel" — give every ordered lane its edge before dispatching.
+
 ## Policy — upstream shape, our wording
 
 The discipline's SHAPE is upstream's: it is re-expressed from the **documented** upstream ultrawork

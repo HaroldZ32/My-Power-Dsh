@@ -224,8 +224,8 @@ function harness(options: HarnessOptions = {}): Harness {
 async function stageWave(h: Harness, description: string = "ship the wave"): Promise<void> {
   await h.call("agent_teams_plan", { action: "create", name: "the wave", description }, LEAD)
   await h.call("agent_teams_plan", { action: "add_member", member: { name: "Senior Engineer", description: "implements", prompt: "You implement." } }, LEAD)
-  await h.call("agent_teams_plan", { action: "create_task", task: { subject: "the lane work", description: "own the record", owner: "Senior Engineer" } }, LEAD)
-  await h.call("agent_teams_plan", { action: "create_task", task: { subject: "the review", description: "judge it" } }, LEAD)
+  await h.call("agent_teams_plan", { action: "create_task", task: { subject: "the lane work", description: "own the record", owner: "Senior Engineer", blocked_by: [] } }, LEAD)
+  await h.call("agent_teams_plan", { action: "create_task", task: { subject: "the review", description: "judge it", blocked_by: [] } }, LEAD)
 }
 
 /**
@@ -297,7 +297,7 @@ describe("R4 — approval bundles the durable goal and the todo checklist", () =
     const h = harness()
     await h.call("agent_teams_plan", { action: "create", name: "named wave", description: "" }, LEAD)
     await h.call("agent_teams_plan", { action: "add_member", member: { name: "Reviewer", description: "judges", prompt: "You review." } }, LEAD)
-    await h.call("agent_teams_plan", { action: "create_task", task: { subject: "the review", description: "judge it" } }, LEAD)
+    await h.call("agent_teams_plan", { action: "create_task", task: { subject: "the review", description: "judge it", blocked_by: [] } }, LEAD)
     await h.call("agent_teams_plan", { action: "approve" }, LEAD)
     expect(h.goalCalls).toEqual([{ objective: "named wave", source: "team" }])
   })
@@ -325,6 +325,9 @@ describe("R4 — approval bundles the durable goal and the todo checklist", () =
     let failure: unknown
     try { await h.call("agent_teams_plan", { action: "approve" }, LEAD) } catch (error) { failure = error }
     expect(String((failure as Error).message)).toContain("is EMPTY")
+    // The sentence now also names the dependency answer (R13, Amendment 2); the arm's intent is
+    // unchanged — the refusal is the empty-plan one and it anchors nothing.
+    expect(String((failure as Error).message)).toContain("independent: true")
     expect(h.goalCalls).toHaveLength(0)
     expect(h.toolCalls).toHaveLength(0)
   })

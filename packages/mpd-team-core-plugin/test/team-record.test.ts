@@ -188,7 +188,7 @@ async function staged(h: Harness): Promise<void> {
   await h.call("agent_teams_plan", { action: "add_member", member: { name: "Senior Engineer", description: "implements", prompt: "You implement.", role: "Senior Engineer" } })
   await h.call("agent_teams_plan", { action: "add_member", member: { name: "Reviewer", description: "judges", prompt: "You review.", role: "Reviewer" } })
   // The second task is blocked by the first task's SUBJECT, which is how a captain writes it.
-  await h.call("agent_teams_plan", { action: "create_task", task: { subject: "core", description: "own the record", write_scopes: ["packages/**"], owner: "Senior Engineer" } })
+  await h.call("agent_teams_plan", { action: "create_task", task: { subject: "core", description: "own the record", blocked_by: [], write_scopes: ["packages/**"], owner: "Senior Engineer" } })
   await h.call("agent_teams_plan", { action: "create_task", task: { subject: "review the core", description: "judge it", blocked_by: ["core"], owner: "Reviewer" } })
 }
 
@@ -351,7 +351,7 @@ describe("approval builds an mpd-owned team record", () => {
     const h = harness()
     sandboxes.push(h.workspace)
     await h.call("agent_teams_plan", { action: "create", name: "positions", description: "d" })
-    await h.call("agent_teams_plan", { action: "create_task", task: { subject: "first", description: "d" } })
+    await h.call("agent_teams_plan", { action: "create_task", task: { subject: "first", description: "d", blocked_by: [] } })
     await h.call("agent_teams_plan", { action: "create_task", task: { subject: "second", description: "d", blocked_by: ["1"] } })
     await h.call("agent_teams_plan", { action: "create_task", task: { subject: "third", description: "d", blocked_by: ["2"] } })
     await h.call("agent_teams_plan", { action: "approve" })
@@ -374,13 +374,18 @@ describe("approval builds an mpd-owned team record", () => {
     const h = harness()
     sandboxes.push(h.workspace)
     await h.call("agent_teams_plan", { action: "create", name: "reading", description: "d" })
-    await h.call("agent_teams_plan", { action: "create_task", task: { subject: "core", description: "d" } })
+    await h.call("agent_teams_plan", { action: "create_task", task: { subject: "core", description: "d", blocked_by: [] } })
     /** What the second task's call answered. */
-    const answer = (await h.call("agent_teams_plan", { action: "create_task", task: { subject: "review", description: "d", blocked_by: ["core", "1", "T2", "the review task"] } })) as { blockers?: Array<{ reference: string; form: string }> }
+    // THE `board-id` FORM STAYS A board-id FORM, but it must NOT name the task it is written on: R1
+    // (`.mpd/plans/task-dependency-guard.md`) now refuses a self-reference at create time, and `T2` on
+    // the plan's second task IS that task. `T9` is still shaped like a board id (so the write-time
+    // reading still says `board-id`) while naming a task this plan does not have — which is exactly the
+    // "accepted and reported, never silently dropped" case this arm is about.
+    const answer = (await h.call("agent_teams_plan", { action: "create_task", task: { subject: "review", description: "d", blocked_by: ["core", "1", "T9", "the review task"] } })) as { blockers?: Array<{ reference: string; form: string }> }
     expect(answer.blockers).toEqual([
       { reference: "core", form: "subject" },
       { reference: "1", form: "position" },
-      { reference: "T2", form: "board-id" },
+      { reference: "T9", form: "board-id" },
       { reference: "the review task", form: "unknown" },
     ])
     /** The tool's own renderer (declared under `output`), which is the text a captain actually reads. */
@@ -391,7 +396,7 @@ describe("approval builds an mpd-owned team record", () => {
     expect(painted).toContain("no task this plan can resolve")
     // A task with NO blockers keeps the answer quiet: the reading is a report, not a banner.
     /** What a blocker-free task answers. */
-    const plain = (await h.call("agent_teams_plan", { action: "create_task", task: { subject: "plain", description: "d" } })) as { blockers?: unknown }
+    const plain = (await h.call("agent_teams_plan", { action: "create_task", task: { subject: "plain", description: "d", blocked_by: [] } })) as { blockers?: unknown }
     expect(plain.blockers).toBeUndefined()
   })
 
@@ -650,7 +655,7 @@ describe("a release that lands while a dispatch pass is in flight is never rever
     sandboxes.push(h.workspace)
     await staged(h)
     // A THIRD task, UNBLOCKED, so a later pass still has something to pair once T1 is claimed.
-    await h.call("agent_teams_plan", { action: "create_task", task: { subject: "second opinion", description: "an unblocked second task", owner: "Reviewer" } })
+    await h.call("agent_teams_plan", { action: "create_task", task: { subject: "second opinion", description: "an unblocked second task", owner: "Reviewer", blocked_by: [] } })
     await h.call("agent_teams_plan", { action: "approve" })
     // PASS 1 seeds the ledger through the tool itself: `limit: 1` pairs ONLY the first ready task, so
     // T1 is legitimately recorded as dispatched while T3 stays ready for the pass under test. No

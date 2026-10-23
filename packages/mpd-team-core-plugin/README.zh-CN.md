@@ -23,6 +23,8 @@
 
 `/agent-teams <这支团队是干什么的>` 按当前目标暂存计划。
 
+**依赖守卫（mpd 记录面）。** 每次 `create_task` **必须**声明它的依赖答案——`blocked_by: [...]`（数组，可为空：显式声明为根）或 `independent: true`；两者都不给、给非数组、两个别名互相矛盾、自环或有环，一律**拒绝**并点名该任务。`approve` 会**拒绝**两个写作用域重叠（去掉尾部 `/**` 后相等，或在**段边界**上互为前缀；`**` 与 `.` 覆盖全部；空作用域列表永不重叠）、且彼此之间**没有**依赖路径的任务，并引用这一对任务与两种补救：补一条边，或让作用域互不相交。`claim` 会**拒绝**声明阻塞尚未满足的任务，用的是 `agent_teams_dispatch` **同一套**就绪判定；`complete`/`fail`/`release` 仍保持可用；按 OPT-1，**失败**的阻塞仍然释放其依赖方。**旁路如实说明，不予隐瞒：** `spawn_teammate` + 官方 `team_task_create` 从不经过 mpd 的 `create_task`/`approve`，所以以上规则**管不到**它们——官方一侧只说写作用域重叠是「advisory, not a lock」。走那条路的 captain 须自己为每个任务声明 `blocked_by`；没有边的任务就是「并行执行」。
+
 **依赖图是可见的。** `agent_teams_plan {action:"status"}` 保留原来的一行摘要
 （`plan <id> · members N · tasks N · hold …`），并**每个成员一行**（`id`、`name`、`status`）、
 **每个任务一行**（`id`、`owner`、`status`、`kind`、`blockedBy`——没有则 `-`——以及 `subject`），

@@ -789,7 +789,8 @@ exact call.
 # (a) staging the plan: the gate already staged the shell, the captain extends it and approves it
 agent_teams_plan { "action": "create", "name": "docs-wave", "description": "Rewrite the install chapter", "approval": "required" }
 agent_teams_plan { "action": "add_member", "member": { "name": "senior-1", "description": "Owns the README pair", "prompt": "<mpd_role_persona text>" } }
-agent_teams_plan { "action": "create_task", "task": { "subject": "Rewrite the install chapter", "description": "Cover both profiles and the packed package.", "write_scopes": ["README.md"] } }
+agent_teams_plan { "action": "create_task", "task": { "subject": "Rewrite the install chapter", "description": "Cover both profiles and the packed package.", "blocked_by": [], "write_scopes": ["README.md"] } }
+agent_teams_plan { "action": "create_task", "task": { "subject": "Verify the README pair", "description": "Run the docs gate and report the raw output.", "blocked_by": ["<root task>"], "write_scopes": [] } }
 agent_teams_plan { "action": "status" }
 agent_teams_plan { "action": "approve" }                              # ← THIS is what spawns the members and posts the tasks
 
@@ -816,9 +817,13 @@ mpd_team_compact_run {}
 mpd_team_compact_status {}
 ```
 
-Team names are permanent and are never reused. `write_scopes` are advisory (workspace-relative
-prefixes): overlapping in-progress tasks are warned about, never blocked. A task update based on an
-outdated `revision` is rejected — that rejection is the mechanism that stops a reassigned task from
+Team names are permanent and are never reused. Every `create_task` answers the dependency question —
+`blocked_by: []` is a genuine root, `blocked_by: ["<root task>"]` depends on it, and `independent: true`
+is the other spelling — and on the mpd record plane `agent_teams_plan {action:"approve"}` REFUSES two
+tasks whose write scopes overlap with no dependency path between them. On the official Agent Teams plane
+(`spawn_teammate` + `team_task_create`) write-scope overlap is ADVISORY, "advisory, not a lock", and the
+mpd guard never sees those tasks. A task update based on an outdated `revision` is rejected — that
+rejection is the mechanism that stops a reassigned task from
 accepting a late result. No teammate exists before the plan that names it is APPROVED, and the
 quality discipline is whatever the captain puts in the task description.
 

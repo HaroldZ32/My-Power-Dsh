@@ -697,7 +697,8 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp   # 从一个可工作的骨�
 # (a) 暂存计划：门已经 stage 了 shell，captain 扩展它并批准它
 agent_teams_plan { "action": "create", "name": "docs-wave", "description": "重写安装章节", "approval": "required" }
 agent_teams_plan { "action": "add_member", "member": { "name": "senior-1", "description": "Owns the README pair", "prompt": "<mpd_role_persona 文本>" } }
-agent_teams_plan { "action": "create_task", "task": { "subject": "重写安装章节", "description": "覆盖两个 profile 与打包产物。", "write_scopes": ["README.md"] } }
+agent_teams_plan { "action": "create_task", "task": { "subject": "重写安装章节", "description": "覆盖两个 profile 与打包产物。", "blocked_by": [], "write_scopes": ["README.md"] } }
+agent_teams_plan { "action": "create_task", "task": { "subject": "验证 README 文档对", "description": "跑文档关卡并贴出原始输出。", "blocked_by": ["<root task>"], "write_scopes": [] } }
 agent_teams_plan { "action": "status" }
 agent_teams_plan { "action": "approve" }                              # ← 就是这一步 spawn 成员并发布任务
 
@@ -724,9 +725,12 @@ mpd_team_compact_run {}
 mpd_team_compact_status {}
 ```
 
-队友名字是永久的，且永不复用。`write_scopes` 只是提示（工作区相对前缀）：进行中的任务范围重叠只会
-收到警告，不会被阻塞。基于过期 `revision` 的任务更新会被拒绝 —— 正是这道拒绝让被改派的任务不再接受
-迟到的结果。在点名它的计划获得**批准**之前，不存在任何队友；质量纪律则由 captain 写进任务描述里。
+队友名字是永久的，且永不复用。每个 `create_task` 都要回答依赖问题 —— `blocked_by: []` 表示真正的
+根任务，`blocked_by: ["<root task>"]` 表示依赖它，另一种写法是 `independent: true` —— 并且在 mpd
+record 平面上，`agent_teams_plan {action:"approve"}` 会**拒绝**两个写范围重叠、且彼此之间没有依赖
+路径的任务。在官方 Agent Teams 平面上（`spawn_teammate` + `team_task_create`），写范围重叠只是
+提示（"advisory, not a lock"），mpd 的守卫根本看不到那些任务。基于过期 `revision` 的任务更新会被拒绝 ——
+正是这道拒绝让被改派的任务不再接受迟到的结果。在点名它的计划获得**批准**之前，不存在任何队友；质量纪律则由 captain 写进任务描述里。
 
 ### 13.2 ULW 循环与它的关卡
 

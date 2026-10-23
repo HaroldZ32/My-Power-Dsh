@@ -26,6 +26,19 @@ service is the **fallback** for a composition that runs the official executor, r
 
 `/agent-teams <what the team is for>` stages a plan from the current goal.
 
+**The dependency guard (mpd record plane).** Every `create_task` MUST state its dependency answer —
+`blocked_by: [...]` (an array, possibly empty: an explicit root) or `independent: true`; omitting both,
+a non-array value, two disagreeing spellings, a self-edge or a cycle are all REFUSED, naming the task.
+`approve` REFUSES two tasks whose declared write scopes overlap (a trailing `/**` stripped, then equal
+or a prefix at a segment boundary; `**` and `.` cover everything; an empty scope list never overlaps)
+with no dependency path between them, quoting the pair and both remedies — add the edge, or make the
+scopes disjoint. `claim` REFUSES a task whose declared blockers are not satisfied, through the SAME
+readiness predicate `agent_teams_dispatch` uses, while `complete`/`fail`/`release` stay open; an OPT-1
+FAILED blocker still releases its dependents. **Bypass, stated rather than hidden:** `spawn_teammate` +
+the official `team_task_create` never pass through mpd's `create_task`/`approve`, so none of this gates
+them — the official plane only says write-scope overlap is "advisory, not a lock". A captain planning
+on that path declares each task's `blocked_by` itself, and an edge-less task means "runs in parallel".
+
 **The DAG is visible.** `agent_teams_plan {action:"status"}` keeps its one-line summary
 (`plan <id> · members N · tasks N · hold …`) and prints one line per member (`id`, `name`, `status`) and
 one line per task (`id`, `owner`, `status`, `kind`, `blockedBy` — or `-` — and `subject`), so a flat
