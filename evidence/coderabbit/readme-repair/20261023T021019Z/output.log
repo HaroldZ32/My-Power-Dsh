@@ -1,0 +1,15 @@
+### T22 — docs repair (depend self-edge/cycle refusals + the settings card's invalid slot)
+stamp: 20261023T021019Z
+
+### files edited
+ packages/mpd-bundle-plugin/README.md          | 7 ++++++-
+ packages/mpd-bundle-plugin/README.zh-CN.md    | 6 +++++-
+ packages/mpd-team-core-plugin/README.md       | 2 +-
+ packages/mpd-team-core-plugin/README.zh-CN.md | 2 +-
+ 4 files changed, 13 insertions(+), 4 deletions(-)
+
+### bun run verify:docs
+[verify-docs-parity] links=445 checked=413 resolved=413 dead=0 exemptProvenance=0 absentSite=0 ignoredExternal=26 ignoredAnchorOnly=6 files=121
+
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=50 failed=0 violations=0 exempt=24 derived=3 links=445 dead=0 — PASS
+[verify:docs exit 0]

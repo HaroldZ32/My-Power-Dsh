@@ -76,7 +76,12 @@ existing `team-page.ts` pattern, never a declared inject — and when a probe is
 is bound, or `directoryFor` throws, the card falls back to the DECLARED option lists and the
 section still renders. Nothing about a slot is settable only by typing. The see-before-you-edit block shows each slot's STATE and renders
 `<unconfigured>` (naming the leaves it still needs) when the workspace configured none — there is no
-default floor to invent a route — and the deleted per-member `agentRoutes` rows are gone from the
+default floor to invent a route — while an INVALID slot (a leaf present but malformed, e.g. a
+non-string, or a slot that is not an object) renders its OWN sentence in both languages instead of
+`<unconfigured>`: `EffectiveRoute.problem` names the offending leaf (`teamModels.slotN.leaf is not a
+string`, or `teamModels.slotN is not an object`), and the `missing` check TRIMS every leaf, so a
+whitespace-only leaf counts as MISSING rather than as configured — a malformed slot must never read as
+absent. The deleted per-member `agentRoutes` rows are gone from the
 card entirely (a leftover block in an old file is IGNORED, never rendered and never rewritten). A browser module cannot
 import the TS declaration, so the card mirrors it and a test pins the declared metadata (path,
 label, zh, kind, declared options, human sentences) element-wise. Each slot row LEADS with its
