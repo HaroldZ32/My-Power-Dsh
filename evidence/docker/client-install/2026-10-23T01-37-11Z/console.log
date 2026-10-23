@@ -1,0 +1,201 @@
+ Image mpd-docker-e2e:local Building 
+ Image mpd-docker-e2e:local Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 1.05kB done
+#1 DONE 0.0s
+
+#2 [mpd-oneclick internal] load build definition from Dockerfile
+#2 transferring dockerfile: 6.95kB done
+#2 DONE 0.0s
+
+#3 [mpd-client internal] load metadata for docker.io/library/ubuntu:24.04
+#3 DONE 0.0s
+
+#4 [mpd-oneclick internal] load metadata for docker.io/library/node:24-bookworm
+#4 DONE 0.0s
+
+#5 [mpd-oneclick node-runtime 1/1] FROM docker.io/library/node:24-bookworm@sha256:64af3819f9275802414d7cdc38c27e9d82bd564dec4d4da87d008255d36c63b4
+#5 resolve docker.io/library/node:24-bookworm@sha256:64af3819f9275802414d7cdc38c27e9d82bd564dec4d4da87d008255d36c63b4 0.0s done
+#5 DONE 0.0s
+
+#6 [mpd-oneclick stage-1  1/12] FROM docker.io/library/ubuntu:24.04@sha256:a853f94d226358a79c740cfc7bce0c289748f3fe3488d921d038ccd752c61b60
+#6 resolve docker.io/library/ubuntu:24.04@sha256:a853f94d226358a79c740cfc7bce0c289748f3fe3488d921d038ccd752c61b60 0.0s done
+#6 DONE 0.0s
+
+#7 [mpd-oneclick internal] load build context
+#7 transferring context: 33.97MB 0.1s
+#7 transferring context: 73.10MB 0.2s done
+#7 DONE 0.3s
+
+#8 [mpd-oneclick stage-1  2/12] COPY --from=node-runtime /usr/local /usr/local
+#8 CACHED
+
+#9 [mpd-client stage-1  3/12] COPY . /src/
+#9 DONE 0.3s
+
+#10 [mpd-oneclick stage-1  4/12] COPY docker/entrypoint.sh /opt/mpd-e2e/entrypoint.sh
+#10 DONE 0.1s
+
+#11 [mpd-client stage-1  5/12] COPY docker/probe.ts /opt/mpd-e2e/probe.ts
+#11 DONE 0.1s
+
+#12 [mpd-client stage-1  6/12] COPY docker/lib/ /opt/mpd-e2e/lib/
+#12 DONE 0.1s
+
+#13 [mpd-oneclick stage-1  7/12] COPY docker/tui-lane.sh /opt/mpd-e2e/tui-lane.sh
+#13 DONE 0.1s
+
+#14 [mpd-client stage-1  8/12] COPY docker/ui/entrypoint.sh /opt/mpd-e2e/ui-entrypoint.sh
+#14 DONE 0.1s
+
+#15 [mpd-client stage-1  9/12] COPY docker/ui/capture.mts /opt/mpd-e2e/capture.mts
+#15 DONE 0.1s
+
+#16 [mpd-oneclick stage-1 10/12] COPY docker/ui/run-capture.sh /opt/mpd-e2e/run-capture.sh
+#16 DONE 0.1s
+
+#17 [mpd-oneclick stage-1 11/12] RUN chmod 0755 /opt/mpd-e2e/entrypoint.sh /opt/mpd-e2e/tui-lane.sh /opt/mpd-e2e/ui-entrypoint.sh  && chmod 0755 /opt/mpd-e2e/capture.mts /opt/mpd-e2e/run-capture.sh  && mkdir -p /work /out /data /src
+#17 DONE 0.3s
+
+#18 [mpd-oneclick stage-1 12/12] WORKDIR /work
+#18 DONE 0.1s
+
+#19 [mpd-oneclick] exporting to image
+#19 exporting layers
+#19 exporting layers 2.1s done
+#19 exporting manifest sha256:ab1f8fdac3f68ca2e077d4dc35917c95c19634cce86bae53293f5cfb8d404892 0.0s done
+#19 exporting config sha256:ad5160fc3957a3cae532e37fcf04574981801b3d73a1729a6292f8ab85c11636 0.0s done
+#19 exporting attestation manifest sha256:f3e5840bb8245f529ae171008297668ac2ca30478fb2b2f348546550db1f65cf 0.0s done
+#19 exporting manifest list sha256:cd1fa662be32e755c1b9c15a3e922fb535317d4ead5335806b820a153a76cc1d
+#19 exporting manifest list sha256:cd1fa662be32e755c1b9c15a3e922fb535317d4ead5335806b820a153a76cc1d 0.0s done
+#19 naming to docker.io/library/mpd-docker-e2e:local done
+#19 unpacking to docker.io/library/mpd-docker-e2e:local
+#19 unpacking to docker.io/library/mpd-docker-e2e:local 0.8s done
+#19 DONE 3.0s
+
+#20 [mpd-client] exporting to image
+#20 exporting layers 2.1s done
+#20 exporting manifest sha256:068a57daf3e4e7ef3596035e5041a85737a74241028a5f04f96df3d1a83c8330 0.0s done
+#20 exporting config sha256:d7c52edde5decc03eaf55700ca10f82897221336fbc1862f0b055a0fc92be993 0.0s done
+#20 exporting attestation manifest sha256:dde6c399b2f045bbd76f4701dfab173c1862d9364d35de44f21a4c0afc9d805e 0.0s done
+#20 exporting manifest list sha256:ab42bbf2a8b6425ccadc73c6f8efb5b249c33467c4d5191db383e53d9d74e0a3 0.0s done
+#20 naming to docker.io/library/mpd-docker-e2e:local done
+#20 unpacking to docker.io/library/mpd-docker-e2e:local 0.7s done
+#20 DONE 3.0s
+
+#21 [mpd-client] resolving provenance for metadata file
+#21 DONE 0.0s
+
+#22 [mpd-oneclick] resolving provenance for metadata file
+#22 DONE 0.0s
+ Image mpd-docker-e2e:local Built 
+ Image mpd-docker-e2e:local Built 
+ Container docker-mpd-client-run-5eb66dffeefb Creating 
+ Container docker-mpd-client-run-5eb66dffeefb Created 
+===== Docker client-install E2E — 2026-10-23T01:37:17Z =====
+ubuntu image : ubuntu 24.04
+app dir      : /opt/mpd   (copy of /src)
+HOME         : /root/sandbox-home
+DSH_HOME     : /root/sandbox-dsh
+pins         : nodePin=24.19.0 dsh=0.2.1-rc.2 pnpm=11.23.0
+[record] ubuntu.version=true — the base image is ubuntu:24.04
+===== STEP 01b-npm-registry =====
+$ node -e 
+  const registry = process.argv[1]
+  const probeUrl = process.argv[2]
+  const mirror = process.argv[3]
+  const label = process.argv[4]
+  const out = process.argv[5]
+  const tarballPath = process.argv[6]
+  const knob = process.argv[7]
+  const fs = await import("node:fs")
+  const probe = async (target) => {
+    const started = Date.now()
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 20000)
+    try {
+      const response = await fetch(target, { signal: controller.signal })
+      await response.text()
+      clearTimeout(timer)
+      return { ok: response.status === 200, ms: Date.now() - started, status: "http=" + response.status }
+    } catch (error) {
+      clearTimeout(timer)
+      return { ok: false, ms: Date.now() - started, status: String(error).slice(0, 80) }
+    }
+  }
+  // ONE RANGED GET of the artifact the install will really fetch. `206` is the answer a registry that
+  // honours Range gives; `200` with bytes is accepted too, because some mirrors stream the whole object
+  // to a Range request — and in that case the reader below still takes a SINGLE chunk and cancels, so
+  // the cost stays a chunk rather than a tarball. A body of 0 bytes is a failure, never a pass.
+  const tarballProbe = async (base) => {
+    const started = Date.now()
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 20000)
+    try {
+      const response = await fetch(base + tarballPath, { signal: controller.signal, headers: { Range: "bytes=0-1023" } })
+      const reader = response.body === null ? null : response.body.getReader()
+      const chunk = reader === null ? null : await reader.read()
+      if (reader !== null) await reader.cancel()
+      const bytes = chunk !== null && chunk.value !== undefined ? chunk.value.byteLength : 0
+      clearTimeout(timer)
+      return { ok: (response.status === 206 || response.status === 200) && bytes > 0, ms: Date.now() - started, status: "http=" + response.status + " bytes=" + bytes }
+    } catch (error) {
+      clearTimeout(timer)
+      return { ok: false, ms: Date.now() - started, status: String(error).slice(0, 80) }
+    }
+  }
+  const tarballRead = async (base) => {
+    if (knob === "") return { ok: true, skipped: true, reading: "skipped reason=no-registry-knob (the operator named no registry with MPD_E2E_NPM_REGISTRY, so the scoped METADATA probe above is the whole transport decision; the ranged GET is opt-in and this run paid no network for it)" }
+    const reading = await tarballProbe(base)
+    return { ok: reading.ok, skipped: false, reading: reading.status + " ms=" + reading.ms + (reading.ok ? "" : " FAILED") }
+  }
+  const settle = (chosen, route, detail, tarball) => {
+    fs.writeFileSync(out, chosen + "\n" + route + "\n" + tarball + "\n")
+    console.log("REGISTRY=" + chosen + " ROUTE=" + route + " " + detail)
+    console.log("TARBALL=" + tarball)
+  }
+  const first = await probe(probeUrl)
+  if (first.ok) {
+    const arm = await tarballRead(registry)
+    if (!arm.ok) {
+      // THE FALLBACK COMES BEFORE THE VERDICT (CodeRabbit finding on PR #42, 2026-10-15): this branch
+      // used to settle on the OFFICIAL/OPERATOR registry and exit 1, and the caller ignores that status
+      // with `|| true` — so every later install kept resolving through the very registry whose tarball
+      // blackholed. Metadata answering proves NOTHING about tarballs, so the MIRROR is probed for BOTH
+      // before the probe settles: when its metadata AND its ranged GET both answer, the install travels
+      // on the mirror; when the mirror fails too, the failure behaviour below is unchanged.
+      const fallback = await probe(mirror + "/@deepseek-ai%2fdsh")
+      if (fallback.ok) {
+        const mirrorArm = await tarballRead(mirror)
+        if (mirrorArm.ok) {
+          settle(mirror, "mirror-fallback-after-tarball-blackhole", "officialProbe=" + first.status + " officialTarball=" + arm.reading + " mirrorMs=" + fallback.ms + " mirrorTarball=" + mirrorArm.reading, mirrorArm.reading + " (the " + label + " registry answered METADATA while its TARBALL blackholed, so the install travels on the fallback mirror instead of stalling)")
+          process.exit(0)
+        }
+      }
+      settle(registry, label + "-tarball-blackholed", "probeMs=" + first.ms + " tarball=" + arm.reading, arm.reading + " (the METADATA endpoint answered and the TARBALL did not: a registry in this state stalls the install, so the probe FAILS here instead)")
+      process.exit(1)
+    }
+    settle(registry, label + "-ok", "probeMs=" + first.ms + " tarball=" + arm.reading, arm.reading)
+    process.exit(0)
+  }
+  const second = await probe(mirror + "/@deepseek-ai%2fdsh")
+  if (second.ok) {
+    const arm = await tarballRead(mirror)
+    if (!arm.ok) {
+      settle(mirror, "mirror-tarball-blackholed", "officialProbe=" + first.status + " mirrorMs=" + second.ms + " tarball=" + arm.reading, arm.reading + " (the FALLBACK mirror answered METADATA and not its TARBALL, so the probe FAILS here instead of stalling later)")
+      process.exit(1)
+    }
+    settle(mirror, "mirror-fallback", "officialProbe=" + first.status + " officialProbeMs=" + first.ms + " mirrorMs=" + second.ms + " tarball=" + arm.reading, arm.reading)
+    process.exit(0)
+  }
+  settle(registry, "both-unreachable", "officialProbe=" + first.status + " mirrorProbe=" + second.status, "not reached: no registry answered METADATA")
+ https://registry.npmjs.org https://registry.npmjs.org/@deepseek-ai%2fdsh https://registry.npmmirror.com official-registry /work/npm-registry.txt /@deepseek-ai/dsh/-/dsh-0.2.1-rc.2.tgz  (timeout 900s)
+REGISTRY=https://registry.npmjs.org ROUTE=official-registry-ok probeMs=2441 tarball=skipped reason=no-registry-knob (the operator named no registry with MPD_E2E_NPM_REGISTRY, so the scoped METADATA probe above is the whole transport decision; the ranged GET is opt-in and this run paid no network for it)
+TARBALL=skipped reason=no-registry-knob (the operator named no registry with MPD_E2E_NPM_REGISTRY, so the scoped METADATA probe above is the whole transport decision; the ranged GET is opt-in and this run paid no network for it)
+[step 01b-npm-registry] exit=0 seconds=2
+REGISTRY=https://registry.npmjs.org ROUTE=official-registry-ok probeMs=2441 tarball=skipped reason=no-registry-knob (the operator named no registry with MPD_E2E_NPM_REGISTRY, so the scoped METADATA probe above is the whole transport decision; the ranged GET is opt-in and this run paid no network for it)
+TARBALL=skipped reason=no-registry-knob (the operator named no registry with MPD_E2E_NPM_REGISTRY, so the scoped METADATA probe above is the whole transport decision; the ranged GET is opt-in and this run paid no network for it)
+
+----- apt: curl git ca-certificates unzip xz-utils -----
+===== STEP 01-apt-update =====
+$ apt-get update (timeout 900s)

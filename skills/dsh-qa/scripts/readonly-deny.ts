@@ -643,6 +643,12 @@ function selfTest(): void {
   // The case's OWN bytes: criterion 4 and 6 are CODE-shape claims, so they are asserted against the
   // file rather than trusted to a reader's summary of the file.
   const ownSource = readFileSync(fileURLToPath(import.meta.url), "utf8")
+  // THE SLOT FIXTURE IS APPARATUS (contract `.mpd/plans/slot-single-source.md` §2): with the built-in
+  // team-model default layer deleted, a sandbox that does not DECLARE slot1's route spawns NO child in a
+  // credential-free Docker container, so every mechanism/control arm would observe nothing. The needle is
+  // assembled from fragments so THIS check's own bytes cannot satisfy it (the vacuity trap above).
+  const slotFixtureNeedle = '{"teamModels":{"slot1":{"provider":"deepseek-official","model":"' + "deepseek-v4-flash" + '"}}}'
+  checks.push(["the probe sandbox DECLARES slot1's route (no built-in default layer exists any more)", ownSource.includes(slotFixtureNeedle)])
   checks.push(["this case's source carries no OpenAI streaming-object shape", !ownSource.includes(OPENAI_CHUNK_NEEDLE)])
   // RE-POINTED 2026-10-17: `spawnDriven` used to key on the ADAPTER-PROBE `filterSent` line, whose probe
   // patched a `subagents.start(` path the product no longer takes — the verification lane measured it
@@ -853,6 +859,16 @@ function runReal(): Promise<void> {
     async function probe(tag: string, { reInjectDeadNames }: ProbeOptions): Promise<ProbeAnswer> {
       // The lane's own sandbox: two homes, a workspace and the child environment.
       const { dshHome, ws, env } = makeSandbox(tag)
+      // THE SLOT ROUTE IS CONFIGURED, NOT DEFAULTED (contract `.mpd/plans/slot-single-source.md` §2).
+      // The built-in team-model default layer is GONE, so a sandbox that never declares `teamModels`
+      // has NO slot route: in a credential-free Docker container the catalog is empty, the one-time
+      // seed writes nothing, and `mpd_role_spawn` refuses with SLOT_UNCONFIGURED — no child is ever
+      // started, so this case's mechanism/control arms observe nothing (measured: childRequests 0,
+      // deny never attempted). Architect is slot1, and the local auth stub intercepts transport, so
+      // the model id never has to answer. ONE write covers BOTH lanes (positive and diagnostic).
+      const rootConfig = join(ws, ".mpd", "mpd.jsonc")
+      mkdirSync(dirname(rootConfig), { recursive: true })
+      writeFileSync(rootConfig, '{"teamModels":{"slot1":{"provider":"deepseek-official","model":"deepseek-v4-flash"}}}\n')
       // The isolated install, which materializes the profile this lane mutates.
       const inst = await runAsync(process.execPath, [join(repoRoot, "scripts", "install-profile.ts"), "--yes", "--dsh-home", dshHome, "--profile", "mpd-headless", "--skip-toolchain"], { env, timeout: 600000 })
       if (inst.status !== 0) return { ok: false, reason: "install failed", out: inst.out }
