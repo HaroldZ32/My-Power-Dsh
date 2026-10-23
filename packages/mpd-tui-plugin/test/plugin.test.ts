@@ -27,6 +27,7 @@ import { SETTINGS_KNOBS, TEAM_MODEL_FALLBACK_OPTIONS, TEAM_MODEL_SLOT_GROUPS, te
 import { TRANSCRIPT_TYPES } from "../src/renderers"
 import { PANEL_ICON } from "../src/panel"
 import { WORKMATE_PANEL_ICON } from "../src/panel-workmate"
+import { WATCHDOG_PANEL_ICON } from "../src/panel-watchdog"
 import { COMMAND_ACTIONS, MODEL_COMMAND } from "../src/command-trees"
 import { BRIDGE_DISCLOSURE, BRIDGE_NO_WORKSPACE_NOTICE, BRIDGE_NOT_LOST, effectiveModelSummary, registerSettingsSection, SECTION_NOTICE, SETTINGS_FIELDS, SETTINGS_SECTION, teamModelOptionLists } from "../src/settings"
 import { createLog } from "../src/log"
@@ -153,9 +154,11 @@ function allServices(overrides: Record<string, any> = {}): {
     commands: [],
     decisions: [],
     views: [],
-    // The sidebar panel seam's own log: one entry per registration, and one per open request.
+    // The sidebar panel seam's own log: one entry per registration, one per open request, and one
+    // per badge publish (which is what proves the attention surface ARMED).
     panels: [],
     panelOpens: [],
+    badges: [],
   }
   /** How many times a recorded disposer was called. */
   const disposed = { count: 0 }
@@ -255,6 +258,11 @@ function allServices(overrides: Record<string, any> = {}): {
           calls.panelOpens.push(id)
           return true
         },
+        /** Publishes a badge (the host's own member the attention surface calls); recorded. */
+        badge(id: string, badge: unknown): boolean {
+          calls.badges.push({ id, badge })
+          return true
+        },
         /** Names the activation prefix a test wants (the real host's `act<N>` fallback form). */
         setActivation(next: number): void {
           activation = next
@@ -337,6 +345,9 @@ describe("plugin contract", () => {
       panel: true,
       // The workmate page's OWN knob: independent of `panel`, so the two sidebar pages toggle apart.
       workmate: true,
+      // The watchdog page's OWN knob: independent of the other two pages, so turning one off never
+      // takes the incident view with it.
+      watchdog: true,
       // The one-shot auto-open's own knob (G2): on by default, so a user who never reads the docs still
       // MEETS the page the first time a team becomes live; turning it off keeps the badge.
       panelAutoOpen: true,
@@ -434,14 +445,14 @@ describe("full composition (every service injected)", () => {
       expect(injected).toContain(id)
     }
 
-    // tuiPanels: exactly TWO sidebar panels (frozen clause C3) — the MPD panel, which RENDERS the DAG
-    // page, and the workmate page — each with the frozen descriptor of its own module, and each final id
-    // DISCOVERED from the host's own `list()` read-back (never composed on this side). THE COUNT IS THE
-    // CLAUSE: the standalone merged page and the standalone DAG page do not both survive, so a third
-    // registration here would be the "both survive" the clause forbids. The host budgets a plugin at four
-    // (`MAX_PANELS_PER_PLUGIN`), so two is well inside it and this assertion is what keeps a third from
-    // being added unnoticed.
-    expect(calls.panels).toHaveLength(2)
+    // tuiPanels: exactly THREE sidebar panels — the MPD panel, which RENDERS the DAG page, the
+    // workmate page, and the WATCHDOG page (`.mpd/plans/watchdog-tui-panel.md` §1) — each with the
+    // frozen descriptor of its own module, and each final id DISCOVERED from the host's own `list()`
+    // read-back (never composed on this side). THE COUNT IS THE CONTRACT: the standalone merged page
+    // and the standalone DAG page do not both survive (clause C3), while the watchdog page is a THIRD
+    // surface with its own knob. The host budgets a plugin at four (`MAX_PANELS_PER_PLUGIN`), so three
+    // is well inside it and this assertion is what keeps a fourth from being added unnoticed.
+    expect(calls.panels).toHaveLength(3)
     expect(calls.panels[0].apiVersion).toBe(1)
     expect(calls.panels[0].id).toBe("team")
     expect(calls.panels[0].title).toBe("MPD")
@@ -479,6 +490,18 @@ describe("full composition (every service injected)", () => {
     expect(typeof calls.panels[1].component).toBe("function")
     expect(outcomeOf(report, "workmatePanel").state).toBe("confirmed")
     expect(String(outcomeOf(report, "workmatePanel").detail)).toContain("act0:workmate")
+    // The watchdog page: the THIRD surface, ordered after both of the others and asking for the same
+    // one-cell icon rule and the same 28-cell floor.
+    expect(calls.panels[2].apiVersion).toBe(1)
+    expect(calls.panels[2].id).toBe("watchdog")
+    expect(calls.panels[2].title).toBe("MPD watchdog")
+    expect(calls.panels[2].icon).toBe(WATCHDOG_PANEL_ICON)
+    expect(new Set(calls.panels.map((entry) => entry.icon)).size).toBe(3)
+    expect(calls.panels[2].minColumns).toBe(28)
+    expect(calls.panels[2].order).toBeGreaterThan(calls.panels[1].order)
+    expect(typeof calls.panels[2].component).toBe("function")
+    expect(outcomeOf(report, "watchdogPanel").state).toBe("confirmed")
+    expect(String(outcomeOf(report, "watchdogPanel").detail)).toContain("act0:watchdog")
 
     // tuiStatus: one live keyed contribution under the conventions' key.
     expect(STATUS_KEY).toBe("mpd-tui")
@@ -503,14 +526,12 @@ describe("full composition (every service injected)", () => {
     // The section is keyed by the ENTRY the settings machinery serves it under, not by the retired
     // namespace name: measured on a live boot, values resolved for "mpd-config" and never for "mpd".
     expect(calls.sections[0].ns).toBe("mpd-config")
-    // 59 = the ONE shared declaration's knob count (SETTINGS_KNOBS in mpd-config-plugin): the
-    // thirteen original mpd knobs, the twelve team-model slot leaves (4 slots x provider / model /
-    // reasoningEffort), the thirty-three agentRoutes leaves (11 roster members x the same three,
-    // R2's front door — enumerated from the declaration, never free-typed) and the TUI surface's
-    // own `tui.dashboardKey` (the Ctrl+A takeover toggle, which this section renders through the
-    // SAME declaredField path as every other row). The per-field assertions below are the other
-    // half of the no-drift pair.
-    expect(calls.sections[0].fields).toHaveLength(59)
+    // THE COUNT COMES FROM THE SHARED DECLARATION, never from a literal here: the section's fields
+    // ARE `SETTINGS_KNOBS` (the original mpd knobs, the twelve team-model slot leaves and the TUI
+    // surface's own `tui.dashboardKey`, rendered through the SAME `declaredField` path). A hard-coded
+    // count is what made this arm redden on an unrelated schema change — the per-field assertions
+    // below are the other half of the no-drift pair and they say WHICH row drifted.
+    expect(calls.sections[0].fields).toHaveLength(SETTINGS_KNOBS.length)
     for (const field of calls.sections[0].fields) {
       expect(field.hint).toContain("mpd.jsonc")
       // The disclosure is stated ONCE on the surface (the section's own description), never per row.
@@ -990,8 +1011,9 @@ describe("the Ctrl+A takeover wiring (W2)", () => {
     const host = hostDouble(services)
     /** The report of a composition that disabled the MPD page. */
     const report = mod.apply(host.ctx as never, { statusIntervalMs: 0, panel: false })
-    // THE TWO PAGES TOGGLE APART: exactly ONE panel is registered, and it is the workmate page.
-    expect(calls.panels).toHaveLength(1)
+    // THE PAGES TOGGLE APART: the MPD page is gone, while the workmate and watchdog pages stay.
+    expect(calls.panels).toHaveLength(2)
+    expect(calls.panels.map((entry) => entry.id)).toEqual(["workmate", "watchdog"])
     /** The skip's own record: `absent`, naming the knob. */
     const skipped = outcomeOf(report, "panel")
     expect(skipped.state).toBe("absent")
@@ -1011,7 +1033,8 @@ describe("the Ctrl+A takeover wiring (W2)", () => {
     /** The report of a composition that disabled the workmate page. */
     const report = mod.apply(host.ctx as never, { statusIntervalMs: 0, workmate: false })
     // THE MIRROR of the arm above: this is what makes "independent" falsifiable rather than decorative.
-    expect(calls.panels).toHaveLength(1)
+    expect(calls.panels).toHaveLength(2)
+    expect(calls.panels.map((entry) => entry.id)).toEqual(["team", "watchdog"])
     /** The skip's own record: `absent`, naming the WORKMATE knob and not the MPD one. */
     const skipped = outcomeOf(report, "workmatePanel")
     expect(skipped.state).toBe("absent")
@@ -1510,9 +1533,10 @@ describe("settings section disclosure (t21)", () => {
 
   test("R3: the registered section's description carries the EFFECTIVE model config from the mpdConfig service", async () => {
     // The see-before-you-edit half of the TUI surface (AC5): the section's own description — the
-    // one prose surface a TUI section has — states the four effective slot routes, the agentRoutes
-    // overrides that are set and the configured modelchain chains, read from the LIVE service at
-    // section-request time. The disclosure constants ride the same line, ahead of the summary.
+    // one prose surface a TUI section has — states the four effective slot routes and the configured
+    // modelchain chains, read from the LIVE service at section-request time. The per-member
+    // `agentRoutes` half is DELETED with the layer (slot-single-source §3), so the sentence must not
+    // mention it. The disclosure constants ride the same line, ahead of the summary.
     /** The recording services and the call log. */
     const { services, calls } = allServices()
     /** A host double with every service composed. */
@@ -1522,15 +1546,13 @@ describe("settings section disclosure (t21)", () => {
         ? { llmCatalog: async () => TWO_PROVIDER_CATALOG }
         : name === "mpdConfig"
           ? {
-              /** The keyed config reads the summary projects (defaults materialised, as the service does). */
+              /** The keyed config reads the summary projects (the raw file-derived leaves). */
               get: (key?: string): unknown =>
                 key === "teamModels"
                   ? { slot1: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "max" }, slot2: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "high" }, slot3: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "high" }, slot4: { provider: "deepseek-official", model: "deepseek-v4-flash-vision-exp", reasoningEffort: "high" } }
-                  : key === "agentRoutes"
-                    ? { "Deep Worker": { model: "deepseek-v4-pro" } }
-                    : key === "modelchain"
-                      ? { sisyphus: [{ provider: "deepseek-official", model: "deepseek-v4-pro" }, { provider: "deepseek-official", model: "deepseek-v4-flash" }] }
-                      : undefined,
+                  : key === "modelchain"
+                    ? { sisyphus: [{ provider: "deepseek-official", model: "deepseek-v4-pro" }, { provider: "deepseek-official", model: "deepseek-v4-flash" }] }
+                    : undefined,
             }
           : undefined
     mod.apply(host.ctx as never, { statusIntervalMs: 0 })
@@ -1541,11 +1563,36 @@ describe("settings section disclosure (t21)", () => {
     const en = String(section.descriptions?.en)
     expect(en).toContain(BRIDGE_DISCLOSURE)
     expect(en).toContain("effective now — slots slot1:deepseek-official/deepseek-v4-flash/max")
-    expect(en).toContain("agentRoutes: Deep Worker(model=deepseek-v4-pro)")
     expect(en).toContain("modelchain: sisyphus→deepseek-official/deepseek-v4-pro (+1)")
+    // The deleted override layer is named NOWHERE on the surface.
+    expect(en).not.toContain("agentRoutes")
     // The zh half carries the same values under its own words.
     expect(String(section.descriptions?.zh)).toContain("当前生效")
-    expect(String(section.descriptions?.zh)).toContain("Deep Worker(model=deepseek-v4-pro)")
+    expect(String(section.descriptions?.zh)).toContain("modelchain：sisyphus")
+  })
+
+  test("R3: the effective summary shows <unconfigured> from the typed slot answer", () => {
+    // Contract AMENDMENT 1: a slot the service reports unconfigured must read as the literal token,
+    // while a slot it resolves positively shows its route (plus its fallback count). The typed read
+    // WINS over the raw leaves — a slot that is configured in the file but rejected by the resolver is
+    // not a route the user should trust.
+    /** A service whose typed read answers slot1 ok, slot2 unconfigured, slot3 invalid, slot4 absent. */
+    const service = {
+      get: (key?: string): unknown => (key === "teamModels" ? { slot1: { provider: "raw", model: "raw-model" } } : undefined),
+      slotResolutionOf: (member: string): unknown => {
+        if (member === "Architect") return { ok: true, route: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "max" }, fallbacks: [{ provider: "deepseek-official", model: "deepseek-v4-pro" }] }
+        if (member === "Researcher") return { ok: false, status: "unconfigured", missing: ["provider", "model"] }
+        if (member === "Deep Worker") return { ok: false, status: "invalid" }
+        return undefined
+      },
+    }
+    /** The summary over that service. */
+    const summary = effectiveModelSummary(service)
+    expect(summary.en).toContain("slot1:deepseek-official / deepseek-v4-flash / max")
+    expect(summary.en).toContain("slot2:<unconfigured>")
+    expect(summary.en).toContain("slot3:<invalid>")
+    // The fourth slot answered nothing usable, so the RAW block decides: no provider/model = unconfigured.
+    expect(summary.en).toContain("slot4:<unconfigured>")
   })
 
   test("R3: the effective summary degrades honestly when no config service is composed", () => {
@@ -1557,7 +1604,8 @@ describe("settings section disclosure (t21)", () => {
     /** A service whose every read throws, answered the same honest way. */
     const broken = effectiveModelSummary({ get: () => { throw new Error("boom") } })
     expect(broken.en).toContain("slots unreadable")
-    expect(broken.en).toContain("agentRoutes: none set")
+    // Deleted with the layer: the summary names no per-member override table.
+    expect(broken.en).not.toContain("agentRoutes")
     expect(broken.en).toContain("modelchain: none configured")
   })
 
@@ -1666,5 +1714,52 @@ describe("R1.5 · the wheel-invert reader falls back to the row config when the 
       // throwing layer installed for whatever runs after it.
       setWheelInvertRead((): boolean => false)
     }
+  })
+})
+
+// ── CodeRabbit #13 (PR #62): the watchdog knob is INDEPENDENT of `panel` ────────────────────────
+describe("the watchdog badge arms on its OWN knob, not on `panel`", () => {
+  test("panel:false + watchdog:true still arms the attention surface and badges the watchdog page", () => {
+    /** The recording services. */
+    const { services, calls } = allServices()
+    /** The host double over those services. */
+    const host = hostDouble(services)
+    // The merged panel is OFF, its page ON: the two knobs are independent by contract.
+    mod.apply(host.ctx as never, { statusIntervalMs: 0, panel: false, watchdog: true })
+    // THE ARM PROOF: the arm-time pass published the watchdog page's badge (null here — no incidents
+    // in this double — which is still a CALL, and a call is what the old gate never made).
+    expect(calls.badges.some((entry) => entry.id === "act0:watchdog")).toBe(true)
+    // And the MPD page is NOT badged: with `panel` off there is no discovered id for it.
+    expect(calls.badges.some((entry) => entry.id === "act0:team")).toBe(false)
+  })
+
+  test("panel:false + watchdog:false arms NOTHING (no badge call at all)", () => {
+    /** The recording services. */
+    const { services, calls } = allServices()
+    /** The host double over those services. */
+    const host = hostDouble(services)
+    mod.apply(host.ctx as never, { statusIntervalMs: 0, panel: false, watchdog: false })
+    // NEITHER page needs a badge surface, so the attention surface is not armed at all (the workmate
+    // page keeps its own knob and is not part of this route).
+    expect(calls.badges).toEqual([])
+  })
+})
+
+// ── CodeRabbit #17 (PR #62): the watchdog page's diagnostic names ITS knob ──────────────────────
+describe("the watchdog page's skip diagnostic names `watchdog`, never `panel`", () => {
+  test("watchdog:false skips only that page, and the record names the right knob", () => {
+    /** The recording services. */
+    const { services, calls } = allServices()
+    /** The host double over those services. */
+    const host = hostDouble(services)
+    /** The report of a composition that disabled the watchdog page. */
+    const report = mod.apply(host.ctx as never, { statusIntervalMs: 0, watchdog: false })
+    // THE OTHER TWO PAGES STAY: the knobs are independent.
+    expect(calls.panels.map((entry: { id: string }) => entry.id)).toEqual(["team", "workmate"])
+    /** The skip's own record: `absent`, naming the knob an operator must switch on. */
+    const skipped = outcomeOf(report, "watchdogPanel")
+    expect(skipped.state).toBe("absent")
+    expect(String(skipped.detail)).toContain("watchdog: false")
+    expect(String(skipped.detail)).not.toContain("panel: false")
   })
 })

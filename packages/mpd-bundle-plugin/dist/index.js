@@ -8,7 +8,6 @@ function buildModelConfigBody(config) {
     return {
       ok: true,
       slots: config.get("teamModels") ?? {},
-      agentRoutes: config.get("agentRoutes") ?? {},
       modelchain: config.get("modelchain") ?? {}
     };
   } catch (error) {

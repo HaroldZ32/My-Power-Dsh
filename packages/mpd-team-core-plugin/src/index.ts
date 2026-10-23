@@ -98,6 +98,7 @@ import {
   readTeam,
   recordNamesLead,
   recordNamesMember,
+  resolveBlockers,
   settleMember,
   rememberLead,
   summariseTeam,
@@ -270,6 +271,116 @@ function describePlan(plan: StagedPlan | undefined): string {
   /** The plan's lifecycle word, derived in approval-before-discard order so it cannot be both. */
   const state = plan.approvedAt !== undefined ? "approved" : plan.discardedAt !== undefined ? "discarded" : "staged"
   return `${plan.planId} (${state}): ${plan.members.length} member(s), ${plan.tasks.length} task(s)`
+}
+
+/**
+ * One raw board field as text, or `-` when it is absent.
+ *
+ * A `status` call may answer from the mpd record (every field present) or, in a composition with no
+ * record, from the official readout whose rows carry a different vocabulary — so the renderer reads
+ * every field defensively instead of assuming the record's shape.
+ * @param value - the raw value at one key.
+ * @returns the string form, or `-` when the key carries nothing printable.
+ */
+function fieldText(value: unknown): string {
+  if (typeof value === "string") return value === "" ? "-" : value
+  return typeof value === "number" ? String(value) : "-"
+}
+
+/**
+ * The task line the `status` render prints: id, owner, status, kind, blockedBy and subject.
+ *
+ * THE LINE IS THE POINT (contract: team-tool plan surface §1). The status VALUE always carried the
+ * full task records, but the printed form was one summary line, so a flat board and a wired one
+ * looked identical to the operator staging the wave.
+ * @param task - one raw board row, from either plane.
+ * @returns the single-line description.
+ */
+function describeTaskLine(task: unknown): string {
+  /** The row read as a record, because the value crosses a tool boundary untyped. */
+  const row = (task ?? {}) as Record<string, unknown>
+  /** The blocker entries that can be printed; an empty or absent list renders as `-`. */
+  const blockedBy = Array.isArray(row.blockedBy) ? row.blockedBy.map(String).filter((entry) => entry !== "") : []
+  /** The subject, quoted so a multi-word title stays one readable field. */
+  const subject = typeof row.subject === "string" ? JSON.stringify(row.subject) : JSON.stringify("")
+  return `task id=${fieldText(row.id)} owner=${fieldText(row.owner)} status=${fieldText(row.status)} kind=${fieldText(row.kind)} blockedBy=${blockedBy.length === 0 ? "-" : blockedBy.join(",")} subject=${subject}`
+}
+
+/**
+ * The full `status` render: the established summary line, then one line per member and per task.
+ * @param value - the status branch's value.
+ * @returns the multi-line text a caller reads.
+ */
+function describeStatus(value: unknown): string {
+  /** The status payload read as a record. */
+  const board = (value ?? {}) as Record<string, unknown>
+  /** The roster rows, from whichever plane answered. */
+  const members = Array.isArray(board.members) ? board.members : []
+  /** The board rows, from whichever plane answered. */
+  const tasks = Array.isArray(board.tasks) ? board.tasks : []
+  /** The staged/approved plan, when this session has one. */
+  const plan = (board.plan ?? {}) as Record<string, unknown>
+  /** The summary line's plan id, or `(none)` when nothing is staged. */
+  const planId = typeof plan.planId === "string" && plan.planId !== "" ? plan.planId : "(none)"
+  /** The one-line summary the status view always printed, kept as the heading. */
+  const summary = `plan ${planId} · members ${members.length} · tasks ${tasks.length} · hold ${board.hold === null || board.hold === undefined ? "none" : "held"}`
+  /** The heading followed by one line per member and one per task. */
+  const lines = [summary]
+  for (const member of members) {
+    /** One member row read as a record. */
+    const row = (member ?? {}) as Record<string, unknown>
+    lines.push(`member id=${fieldText(row.id)} name=${fieldText(row.name)} status=${fieldText(row.status)}`)
+  }
+  for (const task of tasks) lines.push(describeTaskLine(task))
+  return lines.join("\n")
+}
+
+/**
+ * The `depend` render: the row's edge set after the call, plus a loud line for references that name
+ * nothing on this board.
+ *
+ * The unresolved half is the same R21 discipline the write-time blocker reading follows: the text is
+ * KEPT verbatim on the row (it is the only record of what the caller meant), so the answer must say
+ * out loud that it drew no edge instead of letting it read as a real one.
+ * @param value - the depend branch's value.
+ * @returns the single-line text a caller reads.
+ */
+function describeDepend(value: unknown): string {
+  /** The answer read as a record. */
+  const answer = (value ?? {}) as Record<string, unknown>
+  /** The updated row this call echoes. */
+  const task = (answer.task ?? {}) as Record<string, unknown>
+  /** The row's blockers after the call, in stored order. */
+  const blockedBy = Array.isArray(task.blockedBy) ? task.blockedBy.map(String).filter((entry) => entry !== "") : []
+  /** The stored references that matched no task id and no subject. */
+  const unresolved = Array.isArray(answer.unresolved) ? answer.unresolved.map(String) : []
+  /** How many edges this call actually appended. */
+  const added = Array.isArray(answer.added) ? answer.added.length : 0
+  /** The row's edge set as text; `-` when it carries none. */
+  const edges = blockedBy.length === 0 ? "-" : blockedBy.join(",")
+  /** The edge sentence, naming a no-op as a no-op rather than a silent success. */
+  const outcome = answer.idempotent === true ? "unchanged; the reference was already an edge" : `appended ${added} edge(s)`
+  return `${fieldText(answer.taskId)} blockedBy=[${edges}] (${outcome})` + (unresolved.length === 0 ? "" : ` — WARNING: ${unresolved.join(", ")} name(s) no task on this board; kept verbatim`)
+}
+
+/**
+ * The staged-plan render: the summary line, then one line per staged task.
+ *
+ * STAGED ROWS HAVE NO ID — approval mints `T1…` when the task reaches the board — so the id column
+ * prints `-` rather than a number the record may later contradict. The lines carry subject, owner and
+ * blockedBy, which is the DAG a captain needs to see BEFORE approving.
+ * @param plan - the staged plan to render, or undefined when none is staged.
+ * @returns the multi-line text a caller reads.
+ */
+function describeStagedPlan(plan: StagedPlan | undefined): string {
+  if (plan === undefined) return "no staged plan"
+  /** One line per staged task, in plan order. */
+  const lines = plan.tasks.map((task) => {
+    /** The blockers as written, or `-` when the task carries none. */
+    const blockedBy = (task.blockedBy ?? []).filter((entry) => entry !== "")
+    return `staged task id=- owner=${task.owner ?? "-"} blockedBy=${blockedBy.length === 0 ? "-" : blockedBy.join(",")} subject=${JSON.stringify(task.subject)}`
+  })
+  return [describePlan(plan), ...lines].join("\n")
 }
 
 /**
@@ -967,26 +1078,28 @@ export function apply(ctx: any): void {
   disposers.push(dsh.registerTool({
     name: "agent_teams_plan",
     description:
-      "The team PLAN. `create` stages a plan and spawns nothing; `add_member`/`create_task` append to it or to the live team; `edit` reads or replaces it; `approve` EXECUTES it through the TEAM EXECUTOR (NATIVE backend DEFAULT, official `dsh.team*` FALLBACK), REFUSING a plan with 0 members and 0 tasks; `delete` archives; `status` shows plan, halt, roster and board.",
+      "The team PLAN. `create` stages (spawns nothing); `add_member`/`create_task` append to it or the live team; `edit` reads or replaces it; `approve` EXECUTES through the TEAM EXECUTOR (native default, official fallback), REFUSING an EMPTY plan; `delete` archives; `status` shows plan, hold, roster and board.",
     parameters: {
       type: "object",
       properties: {
         action: { type: "string", enum: ["create", "add_member", "create_task", "edit", "approve", "delete", "status"], description: "What to do." },
-        name: { type: "string", description: "create: the team's name." },
+        name: { type: "string", description: "create: team name." },
         description: { type: "string", description: "create/edit: what the team is for." },
-        approval: { type: "string", enum: ["required", "automatic"], description: "create: `required` (default) waits for `approve`." },
-        replace: { type: "boolean", description: "create: required to replace an ALREADY APPROVED plan." },
-        member: { type: "object", description: "add_member: {name, prompt, description?, role?}; `prompt` is the teammate's instantiation prompt." },
+        approval: { type: "string", enum: ["required", "automatic"], description: "create: `required` (default) waits for approve." },
+        replace: { type: "boolean", description: "create: to replace an ALREADY APPROVED plan." },
+        member: { type: "object", description: "add_member: {name, prompt, description?, role?}; prompt is the instantiation prompt." },
         // The canonical shape stays in the description because the context budget below is binding:
         // only the keys a caller really put somewhere else are declared as their own properties. The
-        // C7-4 F1 requirement-chain fields (kind/coverageOf/sourceTaskId) ride inside `task` for the
-        // same reason — declaring three more top-level aliases costs every turn's context.
+        // C7-4 F1 requirement-chain fields (kind/coverageOf/sourceTaskId) ride inside `task`; `kind`
+        // gained its own alias because a live call sent it BESIDE `task` and the arm read the nested
+        // key only, silently storing `work` (contract amendment 2).
         task: { type: "object", description: "create_task: {subject, description, blocked_by?, write_scopes?, owner?, kind?, coverageOf?, sourceTaskId?}." },
-        owner: { type: "string", description: "create_task: alias of `task.owner`." },
-        blocked_by: { type: "array", items: { type: "string" }, description: "create_task: alias of `task.blocked_by`." },
+        owner: { type: "string", description: "create_task: alias of task.owner." },
+        blocked_by: { type: "array", items: { type: "string" }, description: "create_task: alias of task.blocked_by." },
+        kind: { type: "string", description: "create_task: alias of task.kind." },
         members: { type: "array", items: { type: "object" }, description: "edit: replacement members." },
         tasks: { type: "array", items: { type: "object" }, description: "edit: replacement tasks." },
-        dry_run: { type: "boolean", description: "approve: report what would be created, and create nothing." },
+        dry_run: { type: "boolean", description: "approve: report what would be created; write nothing." },
       },
       required: ["action"],
       additionalProperties: false,
@@ -1030,14 +1143,14 @@ export function apply(ctx: any): void {
               + (Array.isArray(value.created.unresolved) && value.created.unresolved.length > 0
                 ? ` — WARNING: ${value.created.unresolved.length} task(s) carry blockers that name no task (${value.created.unresolved.map((entry: { taskId?: string; references?: string[] }) => `${entry.taskId ?? "?"}:[${(entry.references ?? []).join(",")}]`).join(" ")}); they draw no edge`
                 : "")
-            : value?.members !== undefined ? `plan ${value.plan?.planId ?? "(none)"} · members ${value.members.length} · tasks ${value.tasks?.length ?? 0} · hold ${value.hold === null || value.hold === undefined ? "none" : "held"}`
+            : value?.members !== undefined ? describeStatus(value)
             // The F1 live-team append says WHAT it appended and to which team, instead of the misleading
             // "no plan staged" the staged-plan render would answer for a call that never had one.
             : typeof value?.appended === "string" ? value.appended
             // The task-writing branches answer with the blockers reading, which is the sentence that
             // tells a captain at WRITE time whether their references can resolve (R21).
             : Array.isArray(value?.blockers) && value.blockers.length > 0 ? `task "${value.plan?.tasks?.at?.(-1)?.subject ?? ""}" staged${blockerSentence(value.blockers)}`
-            : describePlan(value?.plan),
+            : describeStagedPlan(value?.plan),
         ),
     },
     execute: async (args: any, exec: DshToolExec) => {
@@ -1165,8 +1278,12 @@ export function apply(ctx: any): void {
         /** The owning teammate's display name, from the nested key or its top-level alias. */
         const owner = raw.owner ?? args?.owner
         /** The requirement-chain fields (C7-4 F1), declared inside `task` to keep the context budget. */
+        // BOTH SPELLINGS, ONE READING (contract amendment 2, 2026-10-23): the doc comment above has
+        // always promised `task.kind` OR its top-level alias, but only the nested key was read — so a
+        // live `create_task` carrying `kind` beside `task` (the spelling the `owner`/`blocked_by`
+        // aliases invite) silently reached the board as `work`. The nested key still wins.
         /** The parsed task kind, refused at this boundary when the word is unknown. */
-        const kind = parseTaskKind(raw.kind)
+        const kind = parseTaskKind(raw.kind ?? args?.kind)
         /** The user clause this task serves, when the caller named one. */
         const coverageOf = raw.coverageOf
         /** The task a repair row was opened from, when the caller named one. */
@@ -1434,21 +1551,22 @@ export function apply(ctx: any): void {
   disposers.push(dsh.registerTool({
     name: "agent_teams_task",
     description:
-      "Shared board tasks: `claim` (freezes the contract), `contract`, `release`, and terminal `complete`/`fail` (owner-only; optional `note`/`expected_revision`; a FAIL unblocks its dependents).",
+      "Shared board tasks: `claim` (freezes the contract), `contract`, `release`, terminal `complete`/`fail` (owner-only; optional `note`/`expected_revision`; a FAIL unblocks dependents), `depend` (append `blocked_by`; owner or lead).",
     parameters: {
       type: "object",
       properties: {
-        action: { type: "string", enum: ["claim", "contract", "release", "complete", "fail"], description: "What to do." },
-        task_id: { type: "string", description: "the task id; `release` takes the task to free." },
-        claimant: { type: "string", description: "claim: who claims it (default: the caller)." },
-        note: { type: "string", description: "complete/fail: one line recorded on the row." },
-        expected_revision: { type: "number", description: "complete/fail/release: the revision you decided on; stale is refused." },
+        action: { type: "string", enum: ["claim", "contract", "release", "complete", "fail", "depend"], description: "What to do." },
+        task_id: { type: "string", description: "the task id." },
+        claimant: { type: "string", description: "claim: who claims (default: caller)." },
+        note: { type: "string", description: "complete/fail: one line on the row." },
+        expected_revision: { type: "number", description: "the revision you decided on; stale refused." },
+        blocked_by: { type: "array", items: { type: "string" }, description: "depend: blockers to append." },
       },
       required: ["action"],
       additionalProperties: false,
     },
     output: {
-      schema: { type: "object", properties: { contract: { type: "object" }, contracts: { type: "array", items: { type: "object" } }, task: { type: "object" }, released: { type: "boolean" }, refused: { type: "string" }, taskId: { type: "string" }, status: { type: "string" }, closedBy: { type: "string" }, attempt: { type: "number" }, revision: { type: "number" }, dependents: { type: "array", items: { type: "object" } }, note: { oneOf: [{ type: "string" }, { type: "null" }] } } },
+      schema: { type: "object", properties: { contract: { type: "object" }, contracts: { type: "array", items: { type: "object" } }, task: { type: "object" }, released: { type: "boolean" }, refused: { type: "string" }, taskId: { type: "string" }, status: { type: "string" }, closedBy: { type: "string" }, attempt: { type: "number" }, revision: { type: "number" }, dependents: { type: "array", items: { type: "object" } }, note: { oneOf: [{ type: "string" }, { type: "null" }] }, added: { type: "array", items: { type: "string" } }, idempotent: { type: "boolean" }, unresolved: { type: "array", items: { type: "string" } } } },
       // THE RELEASE BRANCH COMES FIRST (PR #60 review F2). A successful release ALSO answers the task's
       // new `status` (`pending`), so with `status` checked first the CLOSE line was printed for a
       // release that closed nothing: `T1 -> pending (by undefined, attempt undefined)`. The release
@@ -1456,6 +1574,7 @@ export function apply(ctx: any): void {
       render: (_args: any, value: any) =>
         text(
           value?.refused !== undefined ? `refused: ${value.refused}`
+            : value?.idempotent !== undefined ? describeDepend(value)
             : value?.released !== undefined
               ? (value.released
                 ? `${value.taskId} -> ${value.status ?? "pending"} (pairing freed)`
@@ -1500,6 +1619,106 @@ export function apply(ctx: any): void {
         /** The caller's own spellings. */
         const caller = [sessionId, title, String(membership?.name ?? ""), ...(identity.ownMember === undefined ? [] : [identity.ownMember.name]), ...identity.ancestry].filter((value) => value !== "")
         return releaseDispatchedTask(workspace, resolved.record, taskId, typeof args?.expected_revision === "number" ? args.expected_revision : undefined, caller, membership?.role === "lead")
+      }
+
+      if (action === "depend") {
+        // APPEND-ONLY EDGES (contract: team-tool plan surface §2). The board could grow a row mid-run
+        // but never GROW AN EDGE: `create_task` was the only writer of `blockedBy`, and it mints a NEW
+        // row — so a lane added after approval could not depend on anything and the DAG stayed flat.
+        // This verb wires an EXISTING row and never removes an edge.
+        /** The team this call works on, or the sentence saying why none resolved. */
+        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated)
+        if (resolved.record === undefined) throw new Error(resolved.refusal ?? "no team record in this workspace — approve a plan first")
+        /** The row the caller named. */
+        const taskId = String(args?.task_id ?? "")
+        if (taskId === "") throw new Error("agent_teams_task depend: task_id is required")
+        /** The references to append; `blocked_by` is the documented spelling, its camel twin accepted. */
+        const references = stringList(args?.blocked_by ?? args?.blockedBy) ?? []
+        if (references.length === 0) throw new Error("agent_teams_task depend: blocked_by is required")
+        // Re-read immediately before deciding, the release branch's own discipline: the record was
+        // opened above and a concurrent write may have closed the row or moved its revision.
+        /** The record as it stands on disk right now. */
+        const fresh = readTeam(workspace, resolved.record.teamId) ?? resolved.record
+        /** The task as the FRESH record holds it, or the refusal that names what is missing. */
+        const task = fresh.tasks.find((candidate) => candidate.id === taskId)
+        if (task === undefined) return { taskId, refused: `no task "${taskId}" in team ${fresh.teamId}` }
+        // ── WHO MAY WIRE A ROW: the release gate, reused (PR #60 F1 rule) ─────────
+        // The caller's identity is built EXACTLY as `release` builds it: its own session id, the session
+        // TITLE, the official membership name when there is one, its OWN roster row, and the ancestry
+        // `callerIdentity` narrows. A name the caller TYPES is never read.
+        /** The caller's team identity from the OFFICIAL plane, when that service is mounted at all. */
+        const membership = ((): { role?: string; name?: string } | undefined => {
+          try { return dsh.teamMembership(exec.agent) as { role?: string; name?: string } | undefined } catch { return undefined }
+        })()
+        /** The session header title the harness gives this caller (the persona prompt prefix). */
+        const title = sessionTitleOf(exec)
+        /** The caller's team identity: its member row, and the ancestry it may present. */
+        const identity = callerIdentity(fresh, sessionId, title, lineage)
+        /** The caller's own spellings. */
+        const caller = [sessionId, title, String(membership?.name ?? ""), ...(identity.ownMember === undefined ? [] : [identity.ownMember.name]), ...identity.ancestry].filter((value) => value !== "")
+        /** Why this caller may not wire the row, or undefined when it may. */
+        const refusal = authorizeRelease(fresh, taskId, caller, membership?.role === "lead")
+        if (refusal !== undefined) return { taskId, refused: refusal }
+        // A TERMINAL ROW KEEPS ITS VERDICT: a closure is a fact about work that already happened, so a
+        // closed row's edge set is frozen instead of being rewired after the fact.
+        if (task.status === "completed" || task.status === "failed") return { taskId, refused: `task ${taskId} is "${task.status}" and its edges are frozen` }
+        /** The blocker list with the new references appended; an existing edge is never removed. */
+        const merged = [...task.blockedBy]
+        /** The entries this call actually APPENDED, in caller order. */
+        const added: string[] = []
+        /**
+         * Whether `fromId`'s own blocker chain REACHES `targetId` (CodeRabbit #11).
+         *
+         * The board is append-only, so a cycle it stores is permanent: the row would stay `pending`
+         * forever (`readyTasks` never releases it) with no verb able to remove the edge. The walk is
+         * over the FRESH record, whose edges are already cycle-free, so it terminates.
+         * @param fromId - the task id whose ancestors are walked.
+         * @param targetId - the id that must not appear among them.
+         * @returns true when the chain from `fromId` reaches `targetId`.
+         */
+        const chainReaches = (fromId: string, targetId: string): boolean => {
+          /** The ids already visited, so a malformed stored cycle cannot hang the walk. */
+          const seen = new Set<string>()
+          /** The ids still to expand. */
+          const queue: string[] = [fromId]
+          while (queue.length > 0) {
+            /** The next id to expand. */
+            const id = queue.pop() as string
+            if (id === targetId) return true
+            if (seen.has(id)) continue
+            seen.add(id)
+            /** The stored row for that id, when the board holds one. */
+            const row = fresh.tasks.find((candidate) => candidate.id === id)
+            if (row === undefined) continue
+            for (const parent of resolveBlockers(fresh, row.blockedBy).blockedBy) queue.push(parent)
+          }
+          return false
+        }
+        for (const reference of references) {
+          /** What this one reference resolves to on the board as it stands. */
+          const wired = resolveBlockers(fresh, [reference]).blockedBy[0]
+          // A SELF-EDGE is refused before any write: the row could never become ready, and this verb
+          // cannot remove the edge afterwards. The verb's OWN refusal idiom (`refused`, nothing
+          // written) is used, so the renderer paints it like every other refusal.
+          if (wired === taskId) return { taskId, refused: `task ${taskId} cannot be its own blocker — a self-edge would leave it pending forever, and depend can never remove an edge` }
+          // A CYCLE is refused for the same reason: a blocker that already depends (directly or
+          // transitively) on this row would make both rows permanently unready.
+          if (chainReaches(wired, taskId)) return { taskId, refused: `${wired} already depends on ${taskId}, so blocking ${taskId} on it would create a cycle — depend appends edges and can never remove one` }
+          if (merged.includes(wired)) continue
+          merged.push(wired)
+          added.push(wired)
+        }
+        /** What the merged list resolves to: the stored entries, and the ones nothing answered. */
+        const outcome = resolveBlockers(fresh, merged)
+        // IDEMPOTENT: re-adding an edge is a NO-OP, reported as such — a second call must not move the
+        // row's revision or rewrite the record, or two callers wiring the same edge would race.
+        if (added.length === 0) return { taskId, task, idempotent: true, added, unresolved: outcome.unresolved }
+        /** The record carrying the appended edges; the store recomputes `unresolvedBlockers` beside them. */
+        const next = updateTeamTask(fresh, taskId, { blockedBy: merged }, now())
+        writeTeam(workspace, withDerivedPhase(next))
+        /** The updated row, echoed with both its `blockedBy` and its `unresolvedBlockers`. */
+        const view = next.tasks.find((candidate) => candidate.id === taskId) ?? task
+        return { taskId, task: view, idempotent: false, added, unresolved: outcome.unresolved }
       }
 
       if (action === "contract") {
@@ -1652,7 +1871,7 @@ export function apply(ctx: any): void {
         }
       }
 
-      throw new Error(`agent_teams_task: unknown action "${action}" (claim | contract | release | complete | fail)`)
+      throw new Error(`agent_teams_task: unknown action "${action}" (claim | contract | release | complete | fail | depend)`)
     },
   }))
 

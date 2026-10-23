@@ -32,17 +32,25 @@ import type { PanelOutcome } from "./panel.js"
 import { panelStatusLine } from "./panel.js"
 import { t } from "./i18n.js"
 
+/** Why a routed open answered `unavailable`: no seam at all, the page's own knob off, or no id yet. */
+export type PageUnavailableReason = "seam-absent" | "disabled" | "not-yet"
+
 /**
  * How one routed panel open ended, plus the id it went to.
  *
  * `outcome` is the panel surface's own three-state answer (see `panel.ts`), carried through the
- * command layer unchanged so the two entry points cannot disagree about which surface opened.
+ * command layer unchanged so the two entry points cannot disagree about which surface opened. Since
+ * CodeRabbit #12 on PR #62 the three ways to end at `unavailable` are NAMED instead of collapsed:
+ * "this host has no panel seam", "the page's knob is off" and "the registration has not landed yet"
+ * send a reader to three different fixes.
  */
 export interface PanelRoute {
   /** The surface the routed open ended on. */
   readonly outcome: PanelOutcome
   /** The final host panel id, when one was discovered. */
   readonly id: string | undefined
+  /** Why the route was `unavailable`; absent for the other three outcomes. */
+  readonly reason?: PageUnavailableReason
 }
 
 /** What the command needs from the rest of the plugin. */
@@ -67,6 +75,14 @@ export interface CommandActions {
   openDag(): PanelRoute
   /** Open the INDEPENDENT workmate page (frozen R12), routed as {@link CommandActions.openDag}. */
   openWorkmate(): PanelRoute
+  /**
+   * Open the WATCHDOG page (`.mpd/plans/watchdog-tui-panel.md` §4).
+   *
+   * Unlike the two pages above it has NO full-screen fallback — no scene draws the incident list — so
+   * every outcome except `opened` is reported as an ABSENCE in one line, never routed to a surface that
+   * would show something else.
+   */
+  openWatchdog(): PanelRoute
   /** The plan-approval surface (frozen §3.2). */
   openPlan(): boolean
   /** The status line as text, for the `/mpd status` print path. */
@@ -162,6 +178,22 @@ function runAction(action: string, actions: CommandActions, session: SessionLike
   // noun (it is the host-facing panel id half), so it is not translated.
   if (action === "dag") return { kind: "success", text: clamp(pageLine("dag", actions.openDag())) }
   if (action === "workmate") return { kind: "success", text: clamp(pageLine("workmate", actions.openWorkmate())) }
+  // `/mpd watchdog` has no full-screen surface behind it, so its line must NOT claim a fallback panel
+  // opened: `opened` names the accepted host id, a refusal names the refusal, and everything else
+  // (no seam, no discovered id) is the one-line absence the contract requires.
+  if (action === "watchdog") {
+    /** How the routed open of the watchdog page ended, and the id it went to. */
+    const route = actions.openWatchdog()
+    if (route.outcome === "opened") return { kind: "success", text: clamp(t("watchdog.commandOpened", { id: route.id ?? "?" })) }
+    // THE HOST DECLINED THIS OPEN (CodeRabbit #12): the registration stands, so the fix is
+    // "press again / check the panel bar", not "the host refused the registration".
+    if (route.outcome === "fallback") return { kind: "error", text: clamp(t("watchdog.commandOpenRefused")) }
+    // THE REGISTRATION ITSELF WAS REFUSED (a bound seam whose handle settled `refused`).
+    if (route.outcome === "refused") return { kind: "error", text: clamp(t("watchdog.commandRefused")) }
+    // THE PAGE'S OWN KNOB IS OFF — not a host limit, so the line names the knob to switch on.
+    if (route.reason === "disabled") return { kind: "error", text: clamp(t("watchdog.commandDisabled")) }
+    return { kind: "error", text: clamp(t("watchdog.commandAbsent")) }
+  }
   if (action === "plan") {
     return actions.openPlan()
       ? { kind: "success" }

@@ -61,8 +61,10 @@ import { armPanelAttention, panelsSummaryLine, type PanelAttention } from "./pan
 import { readDashboardWorkflow, registerDashboardKey } from "./dashboard-key.js"
 import { registerPanelSurface, takeoverArmed } from "./panel.js"
 import type { PanelOpenOutcome } from "./panel.js"
+import type { PageUnavailableReason } from "./commands.js"
 import { requestSubagentDetail, takeSubagentDetailRequest } from "./subagent-scene.js"
 import { registerWorkmatePanel } from "./panel-workmate.js"
+import { registerWatchdogPanel } from "./panel-watchdog.js"
 import { boardSummary, registerScene, type PlanActionOutcome, type PlanActions } from "./scenes.js"
 import { readPlanView, type MpdPlanView, type TeamWorkflow } from "./team-state.js"
 import { liveTeamViews, mpdTeamRecords, type MpdTeamsLike, type TeamFeedAccessor, type TeamFeedSubscribe, type TeamFeedSubscribeMember, type TeamSourceDeps } from "./team-state.js"
@@ -115,6 +117,14 @@ export type Config = {
    * MPD page keeps. Restart-scoped, like every row-config knob.
    */
   workmate?: boolean
+  /**
+   * Contribute the WATCHDOG sidebar page (dsh-tui 0.13.0+).
+   *
+   * ITS OWN knob, independent of `panel` and `workmate`: with it off the page is never registered and
+   * `/mpd watchdog` reports the absence in one line (there is no full-screen surface that draws the
+   * incident list). Restart-scoped, like every row-config knob.
+   */
+  watchdog?: boolean
   /**
    * Open the MPD sidebar page ONCE when the first team becomes live in this process (default on).
    *
@@ -186,6 +196,9 @@ export const Config: Schemastery<Config> = markVolatile(z.object({
   // switch stick: nothing — not the runtime enable keeper, not the config re-apply — can resurrect a
   // panel that was never registered.
   workmate: z.boolean().default(true),
+  // The THIRD sidebar page's own knob (the watchdog page), independent of the other two for the same
+  // reason: a page that is never registered cannot be resurrected by the runtime enable keeper.
+  watchdog: z.boolean().default(true),
   panelAutoOpen: z.boolean().default(true),
   dashboardKey: z.boolean().default(true),
   wheelInvert: z.boolean().default(false),
@@ -218,6 +231,8 @@ export interface ResolvedConfig {
   panel: boolean
   /** Whether the workmate sidebar page is contributed — its OWN knob, independent of `panel`. */
   workmate: boolean
+  /** Whether the watchdog sidebar page is contributed — its OWN knob, independent of `panel`. */
+  watchdog: boolean
   /** Whether the MPD page auto-opens once on the first live team of this process. */
   panelAutoOpen: boolean
   /** Whether the Ctrl+A takeover may intercept at all (the per-press floor of the toggle). */
@@ -254,6 +269,7 @@ export function resolveConfig(config: Config = {}): ResolvedConfig {
     dialogs: bool(config.dialogs, true),
     panel: bool(config.panel, true),
     workmate: bool(config.workmate, true),
+    watchdog: bool(config.watchdog, true),
     panelAutoOpen: bool(config.panelAutoOpen, true),
     dashboardKey: bool(config.dashboardKey, true),
     // TODAY'S BEHAVIOUR IS THE DEFAULT: `false` means the raw host delta is used unchanged, which is what
@@ -803,6 +819,33 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
     openScene: () => scene.open(),
     log,
   })
+  // ── the WATCHDOG page (frozen contract `.mpd/plans/watchdog-tui-panel.md`) ──
+  // A THIRD page, registered through the SAME seam and the SAME front door the status line reads: it
+  // shows the holds, the `mpd-tui` unread incidents and their acknowledge/refresh/scroll keys, so an
+  // operator who does not read `.mpd/team/watchdog/incidents.jsonl` still sees what was recorded. It
+  // has NO full-screen fallback — no scene presents the incident list — and that absence is reported
+  // by `/mpd watchdog` in one line instead of being papered over with a scene that cannot show it.
+  //
+  // THE READS ARE THE FRONT DOOR'S OWN (service-only, never the store files): `available()` says
+  // whether `mpdWatchdog` is mounted, `view()` is the durable read, and `acknowledge()` advances ONLY
+  // the `mpd-tui` watermark. Every one of them is a live closure, because the service binds after this
+  // row applies.
+  const watchdogPanel = registerWatchdogPanel(tui, {
+    // ITS OWN KNOB, independent of the other two pages (see `watchdog` in the row config).
+    enabled: resolved.watchdog,
+    available: () => watchdogFrontDoor.available(),
+    read: () => watchdogFrontDoor.view(),
+    acknowledge: (upTo: number) => watchdogFrontDoor.acknowledge(upTo),
+    // The PHASE half of a held team's row: the same team projection the other MPD pages draw, read per
+    // render. A composition without the team reader still gets every watchdog fact; the phase cell
+    // prints `?` rather than inventing a word.
+    readTeam: () => {
+      /** The current projection for this workspace. */
+      const workflow = readDashboardWorkflow(workspaceRoot, () => watchdogFrontDoor.view().holds, teamViews, teamRecords, () => teamsService)
+      return workflow?.team === undefined ? undefined : { id: workflow.team.id, phase: workflow.team.phase }
+    },
+    log,
+  })
   // ── the panel's ATTENTION SURFACE (G2 of the stateless-deployment wave) ─────
   // THE BADGE AND THE ONE AUTO-OPEN ARE PUBLISHED FROM APPLY, not from the page, because dsh-tui
   // mounts a plugin panel only while it is the ACTIVE page: a page-side badge could only ever decorate a
@@ -818,7 +861,12 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
   // id), so the trigger means "a team became live in this workspace". The page stays session-accurate —
   // it draws `no team in this session` when the trigger came from another session — rather than this
   // surface inventing a session it cannot see.
-  if (resolved.panel) {
+  //
+  // THE WATCHDOG KNOB ARMS THIS TOO (CodeRabbit #13 on PR #62): the two page knobs are INDEPENDENT, so
+  // `panel: false, watchdog: true` must still badge the watchdog page and run its poll. With `panel`
+  // off, `panel.id()` is undefined, so the MPD-page badge and the auto-open skip by construction
+  // (`publishTo` answers false, `address === undefined` returns early); only the watchdog half acts.
+  if (resolved.panel || resolved.watchdog) {
     tui.whenBound("panels", (_service, scope): void => {
       // A RE-BIND REPLACES THE SURFACE: release the previous subscription before the new arm, so a
       // late event cannot reach a page this activation no longer owns.
@@ -852,6 +900,11 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
           }
         },
         readWorkflow: (): TeamWorkflow | undefined => readDashboardWorkflow(workspaceRoot, () => watchdogFrontDoor.view().holds, teamViews, teamRecords, () => teamsService),
+        // THE WATCHDOG PAGE'S OWN BADGE (contract §7): the same durable view the page renders, so the
+        // tab chip and the page can never disagree. The id is read per pass — the page's registration
+        // may settle after this surface arms.
+        watchdogPanelId: (): string | undefined => watchdogPanel.id(),
+        readWatchdog: () => watchdogFrontDoor.view(),
         feed: teamFeed,
         autoOpen: resolved.panelAutoOpen,
         autoOpenLatch,
@@ -930,23 +983,37 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
     return { ...routed, id: panel.id() }
   }
   /**
-   * The SAME arbitration for the two independent pages (frozen R1/R12).
+   * The SAME arbitration for the independent pages (frozen R1/R12), with its refusals KEPT APART.
    *
    * `panel.ts` owns this route for the merged view; the pages answer it identically — the panel when
    * the host offers the seam, its registration was confirmed and the host accepted the open, else the
    * page's own full-screen surface — so a new page cannot make the routing honest for one surface and
    * a silent no-op for another. The four outcomes are `panel.ts`'s own vocabulary.
-   * @param page - the registered page seam: its discovered id and its full-screen fallback.
-   * @returns how the routed open ended, and the id it went to.
+   *
+   * THREE DIFFERENT FACTS MUST NOT COLLAPSE INTO `unavailable` (CodeRabbit #12 on PR #62):
+   *   * `refused` — the seam is bound and the host turned the page's REGISTRATION down (its own fix);
+   *   * `fallback` — the registration was fine and the host declined THIS OPEN (a different fact);
+   *   * `unavailable` with a `reason` — no seam at all, the page disabled by its own knob, or an id not
+   *     discovered yet. The reason travels to the caller so a command line names the right one.
+   * @param page - the registered page seam: its id, its full-screen fallback, and the two facts that
+   *   tell a refusal from an absence (whether its knob disabled it, and its registration outcome).
+   * @returns how the routed open ended, the id it went to, and — for `unavailable` — why.
    */
-  const openPage = (page: { id(): string | undefined; openScene(): boolean }): PanelOpenOutcome & { id: string | undefined } => {
+  const openPage = (page: { id(): string | undefined; openScene(): boolean; disabled?(): boolean; outcome?(): SeamOutcome }): PanelOpenOutcome & { id: string | undefined; reason?: PageUnavailableReason } => {
+    // A PAGE ITS OWN KNOB SWITCHED OFF IS NOT A HOST LIMIT: name the knob and stop.
+    if (page.disabled?.() === true) return { outcome: "unavailable", sceneOpened: false, id: undefined, reason: "disabled" }
     /** The final host id, read PER CALL: the seam may have bound since the last invocation. */
     const id = page.id()
-    if (!tui.panelSeamBound() || id === undefined) return { outcome: "unavailable", sceneOpened: page.openScene(), id }
+    // A BOUND SEAM WITH NO ID IS EITHER A REFUSED REGISTRATION OR AN UNREAD ONE — never "no seam".
+    if (tui.panelSeamBound() && id === undefined && page.outcome?.().state === "refused") {
+      return { outcome: "refused", sceneOpened: page.openScene(), id }
+    }
+    if (!tui.panelSeamBound()) return { outcome: "unavailable", sceneOpened: page.openScene(), id, reason: "seam-absent" }
+    if (id === undefined) return { outcome: "unavailable", sceneOpened: page.openScene(), id, reason: "not-yet" }
     if (typeof tui.panels()?.open !== "function") {
       // A bound seam with no `open` member cannot satisfy the request at all — the scene is the surface
       // and the line must not read as a host refusal.
-      return { outcome: "unavailable", sceneOpened: page.openScene(), id }
+      return { outcome: "unavailable", sceneOpened: page.openScene(), id, reason: "seam-absent" }
     }
     /** The host's answer; a boolean only because the seam was bound at call time. */
     const result = tui.openPanel(id)
@@ -1022,12 +1089,20 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
           // the surface that carries the DAG page's appearance (C5) rather than the one that carries the
           // host's rows. `openPage` is the existing helper, so this route cannot drift from the others.
           /** How the routed open of the MPD panel ended: the DAG page lives inside it. */
-          const route = openPage({ id: (): string | undefined => panel.id(), openScene: (): boolean => scene.openTeam() })
+          const route = openPage({ id: (): string | undefined => panel.id(), openScene: (): boolean => scene.openTeam(), disabled: (): boolean => panel.panel === undefined, outcome: (): SeamOutcome => panel.outcome() })
           return { outcome: route.outcome, id: route.id }
         },
         openWorkmate: () => {
           /** How the routed open of the workmate page ended. */
-          const route = openPage(workmatePanel)
+          const route = openPage({ id: (): string | undefined => workmatePanel.id(), openScene: (): boolean => workmatePanel.openScene(), disabled: (): boolean => workmatePanel.panel === undefined, outcome: (): SeamOutcome => workmatePanel.outcome() })
+          return { outcome: route.outcome, id: route.id }
+        },
+        // `/mpd watchdog`: the page has NO full-screen scene (no scene draws the incident list), so a
+        // host without the panel seam is reported as an absence in the command's own line rather than
+        // routed to a surface that would show a different thing (contract §4).
+        openWatchdog: () => {
+          /** How the routed open of the watchdog page ended; `sceneOpened` is always false for it. */
+          const route = openPage({ id: (): string | undefined => watchdogPanel.id(), openScene: (): boolean => false, disabled: (): boolean => watchdogPanel.panel === undefined, outcome: (): SeamOutcome => watchdogPanel.outcome() })
           return { outcome: route.outcome, id: route.id }
         },
         statusText: () => boardSummary(workspaceRoot, home, teamViews, teamRecords) + String.fromCharCode(10) + panelsSummary(),
@@ -1095,6 +1170,10 @@ export function apply(ctx: PluginContextLike, config: Config = {}): ApplyReport 
   // registration: its id would now be the SAME `<pluginId>:team` the `panel` entry already reports.
   outcomes.push({ id: "workmatePanel", outcome: workmatePanel.outcome() })
   log.debug(`sidebar workmate page id: ${workmatePanel.id() ?? "(not discovered)"}`)
+  // The watchdog page reports its own entry for the same reason, one slug further (`<pluginId>:watchdog`):
+  // a single discovered id per registration is the only fact an operator cannot reconstruct.
+  outcomes.push({ id: "watchdogPanel", outcome: watchdogPanel.outcome() })
+  log.debug(`sidebar watchdog page id: ${watchdogPanel.id() ?? "(not discovered)"}`)
   // The takeover ROLE is reported under its own name (it rides the status seam, which reports
   // separately above), so the aggregate line names it instead of hiding a second `status` entry.
   outcomes.push({ id: "dashboardKey", outcome: dashboardKey.outcome() })
@@ -1136,6 +1215,9 @@ async function pickAction(log: Log, dialogs: ReturnType<typeof createDialogs>): 
     { id: "dag", label: "DAG", description: "the dependency DAG as its own sidebar page" },
     { id: "workmate", label: "Workmate", description: "the workmate library as its own sidebar page" },
     { id: "workmates", label: "Workmates", description: "list the durable workmate library" },
+    // The watchdog page is the third independent one: its `/mpd watchdog` child exists, so the bare
+    // form must offer it too.
+    { id: "watchdog", label: "Watchdog", description: "the watchdog page: holds, unread incidents, acknowledge" },
     { id: "status", label: "Status", description: "print the mpd status line" },
   ])
   if (choice !== undefined) log.debug(`/mpd picker chose ${scalarText(choice, 40) ?? "?"}`)

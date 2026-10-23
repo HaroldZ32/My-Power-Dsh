@@ -25,7 +25,7 @@
 import { expect, test } from "bun:test"
 import { apply } from "../src/index"
 import { ROLES } from "../src/roles.data"
-import { teamModelRouteOfMember, teamModelSlotOfMember } from "../../mpd-config-plugin/src/index"
+import { resolveTeamModelSlot, teamModelRouteOfMember, teamModelSlotOfMember } from "../../mpd-config-plugin/src/index"
 import { createDshAdapter, type DshLlmCatalog } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /** The route the fake config service answers, and the two members it is declared for. */
@@ -92,18 +92,16 @@ test("the slot membership is the ONE declaration the settings front doors alread
   expect(teamModelSlotOfMember("not-a-roster-member")).toBeUndefined()
 })
 
-test("the config read resolves a configured slot over its schema defaults", () => {
+test("a configured slot is the member's route; an ABSENT slot is typed unconfigured (contract §2)", () => {
   /** The route the config read answers for a slot the caller configured explicitly. */
   const route = teamModelRouteOfMember("Architect", { teamModels: { slot1: SLOT_ROUTE } })
   expect(route).toEqual(SLOT_ROUTE)
-  // A workspace that declares NO `teamModels` block still answers the slot's own default, which is the
-  // documented pre-slot behaviour — so an unconfigured workspace is never in a "no route" state.
-  const fallback = teamModelRouteOfMember("Architect", {})
-  expect(fallback?.provider).toBe("deepseek-official")
-  expect(fallback?.model).toBe("deepseek-v4-flash")
-  expect(fallback?.reasoningEffort).toBe("max")
-  // A member the roster does not slot-route stays unrouted: `undefined`, never a substituted default.
-  expect(teamModelRouteOfMember("not-a-roster-member", {})).toBeUndefined()
+  // NO default layer: a workspace that declares NO `teamModels` block has NO route — never the
+  // shipped `deepseek-official` route the static roster table carries.
+  expect(teamModelRouteOfMember("Architect", {})).toBeUndefined()
+  expect(resolveTeamModelSlot("Architect", {})).toMatchObject({ ok: false, status: "unconfigured", slot: "slot1", missing: ["provider", "model"] })
+  // A member the roster does not slot-route is `unrouted`: never a substituted default.
+  expect(resolveTeamModelSlot("not-a-roster-member", {})).toEqual({ ok: false, status: "unrouted", slot: undefined })
 })
 
 test("a saved slot route BECOMES the roster's route for the member it drives", () => {
@@ -159,16 +157,75 @@ test("CONTROL: the same slot on a model that DECLARES that effort keeps it", asy
   expect(spawned[0].agentOptions?.reasoningEffort).toBe("max")
 })
 
-test("NEGATIVE CONTROL: with NO config service mounted the static roster chain stands", async () => {
+test("NEGATIVE CONTROL: with NO config service a base member REFUSES — no static-chain fallback, no child", async () => {
   /** The same row mounted with NO config service at all: the control half of this file. */
   const { provided, tools, spawned } = mounted()
   /** The shipped chain for the first roster role, read straight off the declared table. */
   const staticChain = ROLES.find((r) => r.name === "Architect")!.chain[0]
-  expect(primaryOf(provided, "Architect")).toEqual({ provider: staticChain.provider, model: staticChain.model })
+  // The DISPLAY half: a base member's chain is BLANK, because the shipped route is not a route any
+  // spawn may run on (contract §4 deletes the `spec.chain[0]` fallback for roster members).
+  expect(provided.mpdRoles.get("Architect").chain).toEqual([])
   /** The one-shot spawn tool this row registered. */
   const spawnTool = tools.find((t) => t?.name === "mpd_role_spawn")
-  await spawnTool.execute({ role: "Architect", task: "do the thing" }, { agent: { id: "agent-1" }, signal: new AbortController().signal })
-  // The spawn carries the STATIC pair and no effort at all: the slots are not configured here, so no
-  // route and no effort keyword may be invented — which is what makes the arm above falsifiable.
-  expect(spawned[0].agentOptions).toEqual({ provider: staticChain.provider, model: staticChain.model })
+  /** The refusal the spawn must raise, carrying the branchable code. */
+  let refusal: any
+  try {
+    await spawnTool.execute({ role: "Architect", task: "do the thing" }, { agent: { id: "agent-1" }, signal: new AbortController().signal })
+  } catch (error) {
+    refusal = error
+  }
+  expect(refusal).toBeDefined()
+  expect(String(refusal.message)).toContain("SLOT_UNCONFIGURED")
+  expect(refusal.code).toBe("SLOT_UNCONFIGURED")
+  // NOTHING was started: the refusal precedes the spawn call, so the shipped chain never runs.
+  expect(spawned).toEqual([])
+  expect(staticChain.provider).toBe("deepseek-official")
+})
+
+test("mpd_role_spawn declares NO model parameter — the slot is the only route (§4)", () => {
+  /** The tools this arm's mount registered. */
+  const { tools } = mounted((member) => (ROUTED_MEMBERS.includes(member) ? SLOT_ROUTE : undefined))
+  /** The one-shot spawn tool whose schema is the subject. */
+  const spawnTool = tools.find((t) => t?.name === "mpd_role_spawn")
+  expect(spawnTool).toBeDefined()
+  // The deleted caller override: a `model` property would be a SECOND route source.
+  expect(spawnTool.parameters.properties).not.toHaveProperty("model")
+  expect(spawnTool.parameters.required).toEqual(["role", "task"])
+  // The other two properties survive, so the absence above is not a vacuous empty object.
+  expect(Object.keys(spawnTool.parameters.properties).sort()).toEqual(["context", "role", "task"])
+})
+
+test("mpd_roles_list reports provider/model NULL for a slot-routed member with no slot (§9)", async () => {
+  /** The tools behind a config service that answers the TYPED unconfigured state. */
+  const { tools } = (() => {
+    /** Every tool definition the mount registered. */
+    const registered: any[] = []
+    /** The config service double: nothing is configured for any member. */
+    const mpdConfig = {
+      slotResolutionOf: (member: string) => ({ ok: false, status: "unconfigured", slot: "slot1", members: [member], missing: ["provider", "model"], code: "SLOT_UNCONFIGURED", message: "SLOT_UNCONFIGURED: slot1 is not usable" }),
+    }
+    /** A permissive ctx with the roster answered by a spawn sink this arm never reaches. */
+    const ctx: any = {
+      tools: {
+        /** Keep each definition the row registers. */
+        register(d: any): void { registered.push(d) },
+      },
+      subagents: {
+        /** Never reached in this arm; present so the row applies. */
+        start: async () => ({ result: { structured: {}, stopReason: "complete" } }),
+      },
+      provide: () => { /* no service reads in this arm */ },
+      get: (n: string) => (n === "mpdConfig" ? mpdConfig : undefined),
+    }
+    apply(ctx, {})
+    return { tools: registered }
+  })()
+  /** The listed roster, read through the real tool. */
+  const list = await tools.find((t) => t.name === "mpd_roles_list").execute({}, {})
+  /** The Architect row, whose slot the double reports as unusable. */
+  const architect = list.roles.find((r: any) => r.name === "Architect")
+  // A display NEVER throws and NEVER reports a route the spawn would refuse: the typed state wins.
+  expect(architect).toBeDefined()
+  expect(architect.provider).toBeNull()
+  expect(architect.model).toBeNull()
 })

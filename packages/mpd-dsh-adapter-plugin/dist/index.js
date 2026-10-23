@@ -258,12 +258,61 @@ async function withSupportedEffort(dsh, route) {
   } catch {
     return route;
   }
+  return adaptEffortWithCatalog(catalog, route);
+}
+function routePositivelyListed(catalog, provider, model) {
+  return catalog.providers.some((p) => p.id === provider && p.models.some((m) => m.id === model));
+}
+function adaptEffortWithCatalog(catalog, route) {
+  const effort = typeof route.reasoningEffort === "string" ? route.reasoningEffort : "";
+  if (effort === "")
+    return route;
   if (!modelDeclaresNoEffort(catalog, route.provider, route.model))
     return route;
   const adapted = { ...route };
   delete adapted.reasoningEffort;
   rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${route.provider}/${route.model} declares no reasoning efforts — the "${effort}" effort is omitted (a keyword this model cannot take fails the call)`);
   return adapted;
+}
+async function resolveRunRoute(dsh, primary, fallbacks = []) {
+  const wellFormed = [];
+  let dropped = 0;
+  for (const entry of Array.isArray(fallbacks) ? fallbacks : []) {
+    if (entry === null || typeof entry !== "object") {
+      dropped += 1;
+      continue;
+    }
+    const candidate = entry;
+    if (typeof candidate.provider !== "string" || candidate.provider.trim() === "" || typeof candidate.model !== "string" || candidate.model.trim() === "" || candidate.reasoningEffort !== undefined && candidate.reasoningEffort !== null && typeof candidate.reasoningEffort !== "string") {
+      dropped += 1;
+      continue;
+    }
+    const effort = typeof candidate.reasoningEffort === "string" ? candidate.reasoningEffort.trim() : "";
+    wellFormed.push({ provider: candidate.provider.trim(), model: candidate.model.trim(), ...effort === "" ? {} : { reasoningEffort: effort } });
+  }
+  let catalog;
+  if (typeof dsh?.llmCatalog === "function") {
+    try {
+      catalog = await dsh.llmCatalog();
+    } catch {
+      catalog = undefined;
+    }
+  }
+  let index = 0;
+  if (catalog !== undefined && !routePositivelyListed(catalog, primary.provider, primary.model)) {
+    const found = wellFormed.findIndex((candidate) => routePositivelyListed(catalog, candidate.provider, candidate.model));
+    if (found >= 0)
+      index = found + 1;
+  }
+  const winner = index === 0 ? primary : wellFormed[index - 1];
+  if (index > 0) {
+    rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${primary.provider}/${primary.model} is not listed by the model catalog — slot fallback #${index} (${winner.provider}/${winner.model}) wins for this run`);
+  }
+  if (dropped > 0) {
+    rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${dropped} malformed fallback entr${dropped === 1 ? "y was" : "ies were"} dropped from the slot's chain (never fatal — the run proceeds)`);
+  }
+  const route = catalog === undefined ? winner : adaptEffortWithCatalog(catalog, winner);
+  return { route, index, fallback: index > 0, dropped };
 }
 function textBlock(content) {
   return [{ type: "text", text: typeof content === "string" ? content : String(content ?? "") }];
@@ -1955,8 +2004,10 @@ export {
   modelDeclaresNoEffort,
   name,
   resolveDshAdapter,
+  resolveRunRoute,
   restrictAgentToolsRetained,
   restrictToolsTolerant,
+  routePositivelyListed,
   rowLogLine,
   textBlock,
   userMessage,

@@ -1,0 +1,24 @@
+### T19 — readonly-deny slot fixture (skills/dsh-qa/scripts/readonly-deny.ts)
+stamp: 20261023T013613Z
+
+### node skills/dsh-qa/scripts/readonly-deny.ts --self-test
+[readonly-deny self-test] ok: 48 checks
+[self-test exit 0]
+
+### falsifiability probe: the new pin flips false when the fixture write is deleted
+fixture present in the case source: true
+needle after deleting the writeFileSync line: false
+
+### bun run typecheck
+$ tsgo --noEmit
+[typecheck exit 0]
+
+### bun run verify:comments
+scanned 436 TypeScript file(s) of 436 in the source set; inspected 39064 declaration(s); skipped 18458 inline callback(s) as out of family
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.
+[comments exit 0]
+
+### node scripts/verify-vendor.ts (EXPECTED RED: the wave's skills/** edits move the corpus treeSha; the captain's single re-pin owns it — repin-vendor deliberately NOT run)
+[verify-vendor] upstream identity: NOT CHECKED - no upstream subject exists (the pinned oh-my-openagent checkout is retired; see VENDOR_LOCK.json `_note`)
+[verify-vendor] FAIL - asset skills treeSha mismatch
+[vendor exit 1]

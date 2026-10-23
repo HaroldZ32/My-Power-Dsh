@@ -1115,26 +1115,59 @@ function modelDeclaresNoEffort(catalog, provider, model) {
   const entry = catalog.providers.find((p) => p.id === provider)?.models.find((m) => m.id === model);
   return entry !== undefined && Array.isArray(entry.efforts) && entry.efforts.length === 0;
 }
-async function withSupportedEffort(dsh, route) {
-  if (route === undefined)
-    return route;
+function routePositivelyListed(catalog, provider, model) {
+  return catalog.providers.some((p) => p.id === provider && p.models.some((m) => m.id === model));
+}
+function adaptEffortWithCatalog(catalog, route) {
   const effort = typeof route.reasoningEffort === "string" ? route.reasoningEffort : "";
   if (effort === "")
     return route;
-  if (typeof dsh?.llmCatalog !== "function")
-    return route;
-  let catalog;
-  try {
-    catalog = await dsh.llmCatalog();
-  } catch {
-    return route;
-  }
   if (!modelDeclaresNoEffort(catalog, route.provider, route.model))
     return route;
   const adapted = { ...route };
   delete adapted.reasoningEffort;
   rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${route.provider}/${route.model} declares no reasoning efforts — the "${effort}" effort is omitted (a keyword this model cannot take fails the call)`);
   return adapted;
+}
+async function resolveRunRoute(dsh, primary, fallbacks = []) {
+  const wellFormed = [];
+  let dropped = 0;
+  for (const entry of Array.isArray(fallbacks) ? fallbacks : []) {
+    if (entry === null || typeof entry !== "object") {
+      dropped += 1;
+      continue;
+    }
+    const candidate = entry;
+    if (typeof candidate.provider !== "string" || candidate.provider.trim() === "" || typeof candidate.model !== "string" || candidate.model.trim() === "" || candidate.reasoningEffort !== undefined && candidate.reasoningEffort !== null && typeof candidate.reasoningEffort !== "string") {
+      dropped += 1;
+      continue;
+    }
+    const effort = typeof candidate.reasoningEffort === "string" ? candidate.reasoningEffort.trim() : "";
+    wellFormed.push({ provider: candidate.provider.trim(), model: candidate.model.trim(), ...effort === "" ? {} : { reasoningEffort: effort } });
+  }
+  let catalog;
+  if (typeof dsh?.llmCatalog === "function") {
+    try {
+      catalog = await dsh.llmCatalog();
+    } catch {
+      catalog = undefined;
+    }
+  }
+  let index = 0;
+  if (catalog !== undefined && !routePositivelyListed(catalog, primary.provider, primary.model)) {
+    const found = wellFormed.findIndex((candidate) => routePositivelyListed(catalog, candidate.provider, candidate.model));
+    if (found >= 0)
+      index = found + 1;
+  }
+  const winner = index === 0 ? primary : wellFormed[index - 1];
+  if (index > 0) {
+    rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${primary.provider}/${primary.model} is not listed by the model catalog — slot fallback #${index} (${winner.provider}/${winner.model}) wins for this run`);
+  }
+  if (dropped > 0) {
+    rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${dropped} malformed fallback entr${dropped === 1 ? "y was" : "ies were"} dropped from the slot's chain (never fatal — the run proceeds)`);
+  }
+  const route = catalog === undefined ? winner : adaptEffortWithCatalog(catalog, winner);
+  return { route, index, fallback: index > 0, dropped };
 }
 function textBlock(content) {
   return [{ type: "text", text: typeof content === "string" ? content : String(content ?? "") }];
@@ -3251,7 +3284,7 @@ function apply(ctx, config = {}) {
     }
     return [...outcome.applied];
   };
-  const teamModelRoute = (member) => {
+  const slotResolution = (member) => {
     const live = (() => {
       try {
         return ctx.get?.(CONFIG_SERVICE, false);
@@ -3259,23 +3292,47 @@ function apply(ctx, config = {}) {
         return;
       }
     })();
-    if (typeof live?.teamModelRouteOf !== "function")
-      return;
-    const value = live.teamModelRouteOf(member);
-    if (value === undefined || value === null || typeof value !== "object")
-      return;
-    return {
-      provider: String(value.provider ?? ""),
-      model: String(value.model ?? ""),
-      ...typeof value.reasoningEffort === "string" && value.reasoningEffort !== "" ? { reasoningEffort: value.reasoningEffort } : {}
-    };
+    if (typeof live?.slotResolutionOf === "function") {
+      const value = live.slotResolutionOf(member);
+      if (value !== undefined && value !== null && typeof value === "object" && typeof value.ok === "boolean")
+        return value;
+    }
+    if (typeof live?.teamModelRouteOf === "function") {
+      const route = live.teamModelRouteOf(member);
+      if (route !== undefined && route !== null && typeof route === "object") {
+        return { ok: true, slot: "", route, fallbacks: [] };
+      }
+    }
+    if (ROLES.some((r) => r.name === member)) {
+      return {
+        ok: false,
+        status: "unconfigured",
+        slot: "",
+        members: [member],
+        missing: ["provider", "model"],
+        code: "SLOT_UNCONFIGURED",
+        message: "SLOT_UNCONFIGURED: " + member + "'s team-model slot is not configured — the mpdConfig service answered no slot (is the mpd-config row mounted?); nothing was written and no child was started. Configure it with /mpd-model, or set teamModels.<slot> for this member in .mpd/mpd.jsonc."
+      };
+    }
+    return { ok: false, status: "unrouted", slot: undefined };
+  };
+  const throwSlotUnconfigured = (resolution) => {
+    if (resolution.ok)
+      throw new Error("mpd_role_spawn: internal error — a usable slot was passed to the refusal helper");
+    if (resolution.status === "unrouted")
+      throw new Error("mpd_role_spawn: internal error — an unrouted member was passed to the refusal helper");
+    const error = new Error(resolution.message);
+    error.code = resolution.code;
+    throw error;
   };
   const roleSurface = (exec) => {
     const base = ROLES.map((r) => {
       const chain = r.chain.map((c) => ({ ...c }));
-      const route = teamModelRoute(r.name);
-      if (route !== undefined)
-        chain.splice(0, chain.length, { provider: route.provider, model: route.model });
+      const resolution = slotResolution(r.name);
+      if (resolution.ok)
+        chain.splice(0, chain.length, { provider: resolution.route.provider, model: resolution.route.model });
+      else if (resolution.status !== "unrouted")
+        chain.splice(0, chain.length);
       return {
         id: r.id,
         name: r.name,
@@ -3356,7 +3413,7 @@ refused (` + v.refused.length + `):
   dsh.registerTool({
     name: "mpd_role_spawn",
     description: "Run ONE bounded delegation with a specialist and return one report — a ONE-SHOT single-call consult: the adapter disposes the activation once the report settles, so the consult is NOT reused — ask a new question with a NEW spawn (the harness catalog is append-only, so a settled child may still list as `inactive`, but the contract is one-shot). It carries the role's persona, model route and read-only discipline (read-only roles get a write-tool deny filter). Roles, each named for what it does: " + rosterFunctionList() + ". The child is labelled with that name. `mpd_workmate_spawn` is the same spawn mechanics for a durable, evolving instance (its persona/memory/note — not the child session — carry continuity). For multi-member team work prefer the official Agent Teams tools (spawn_teammate + team_task_create) instead of repeated single-call consults: a teammate inherits the caller's model route, while THIS path applies the role's teamModels slot route.",
-    parameters: { type: "object", properties: { role: { type: "string", description: 'role name (see mpd_roles_list), e.g. "Architect" or "Deep Worker"' }, task: { type: "string" }, context: { type: "string", description: "optional context block to include" }, model: { type: "string", description: "optional model override (default: the role's primary route)" } }, required: ["role", "task"], additionalProperties: false },
+    parameters: { type: "object", properties: { role: { type: "string", description: 'role name (see mpd_roles_list), e.g. "Architect" or "Deep Worker"' }, task: { type: "string" }, context: { type: "string", description: "optional context block to include" } }, required: ["role", "task"], additionalProperties: false },
     output: { schema: { type: "object", properties: { role: { type: "string" }, status: { type: "string", enum: ["complete"] }, summary: { type: "string" }, recommendation: { type: "string" }, details: { type: "string" }, evidence: { type: "array", items: { type: "string" } }, stopReason: { type: "string" } }, required: ["role", "status", "summary"] }, render: (_a, v) => textBlock("role " + v.role + " (" + v.status + `)
 summary: ` + v.summary + (v.recommendation ? `
 recommendation: ` + v.recommendation : "") + (v.details ? `
@@ -3373,10 +3430,16 @@ evidence:
       if (!task)
         throw new Error("mpd_role_spawn: task required");
       const persona = spec.persona;
-      const configuredRoute = teamModelRoute(spec.name);
-      const slotRoute = await withSupportedEffort(dsh, configuredRoute);
-      const provider = slotRoute?.provider ?? spec.chain[0]?.provider ?? "deepseek-official";
-      const model = typeof args?.model === "string" && args.model.trim() ? args.model.trim() : slotRoute?.model ?? spec.chain[0]?.model;
+      const resolution = slotResolution(spec.name);
+      if (!resolution.ok && resolution.status !== "unrouted")
+        throwSlotUnconfigured(resolution);
+      const primary = resolution.ok ? resolution.route : spec.chain[0] === undefined ? undefined : { provider: spec.chain[0].provider, model: spec.chain[0].model };
+      if (primary === undefined) {
+        throw new Error("mpd_role_spawn: " + spec.name + " has no configured route — an extension role must declare provider+model, and a roster member needs its teamModels slot configured (/mpd-model)");
+      }
+      const run = await resolveRunRoute(dsh, primary, resolution.ok ? resolution.fallbacks ?? [] : []);
+      const provider = run.route.provider;
+      const model = run.route.model;
       const prompt = persona + `
 
 Task: ` + task + (args?.context ? `
@@ -3394,7 +3457,7 @@ Work with the tools your role requires (read-only roles must never modify anythi
         model,
         persona,
         outputSchema: REPORT_SCHEMA,
-        ...slotRoute?.reasoningEffort === undefined ? {} : { agentOptions: { reasoningEffort: slotRoute.reasoningEffort } },
+        ...run.route.reasoningEffort === undefined ? {} : { agentOptions: { reasoningEffort: run.route.reasoningEffort } },
         ...spec.readonly ? { toolFilter: { deny: validatedReadonlyDeny(exec.agent) } } : {}
       });
       const st = result.structured ?? {};

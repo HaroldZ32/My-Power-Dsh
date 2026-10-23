@@ -1,0 +1,61 @@
+[driver] Docker version 29.9.1, build dfc520d / Docker Compose version v5.6.0
+[driver] docker mode: ROOTLESS (["name=seccomp,profile=builtin","name=rootless","name=cgroupns"])
+[driver] BUILDX_CONFIG=/tmp/mpd-docker-e2e-buildx-BYJVZe (private, writable: the sandbox denies ~/.docker/buildx)
+[driver] $ docker compose -f /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/docker/docker-compose.yml build
+ Image mpd-docker-e2e:local Building 
+ Image mpd-docker-e2e:local Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 1.05kB done
+#1 DONE 0.0s
+
+#2 [mpd-client internal] load build definition from Dockerfile
+#2 transferring dockerfile: 6.95kB done
+#2 DONE 0.0s
+
+#3 [mpd-client internal] load metadata for docker.io/library/node:24-bookworm
+#3 DONE 0.0s
+
+#4 [mpd-oneclick internal] load metadata for docker.io/library/ubuntu:24.04
+#4 DONE 0.0s
+
+#5 [mpd-client stage-1  1/12] FROM docker.io/library/ubuntu:24.04@sha256:a853f94d226358a79c740cfc7bce0c289748f3fe3488d921d038ccd752c61b60
+#5 resolve docker.io/library/ubuntu:24.04@sha256:a853f94d226358a79c740cfc7bce0c289748f3fe3488d921d038ccd752c61b60 0.0s done
+#5 DONE 0.0s
+
+#6 [mpd-oneclick node-runtime 1/1] FROM docker.io/library/node:24-bookworm@sha256:64af3819f9275802414d7cdc38c27e9d82bd564dec4d4da87d008255d36c63b4
+#6 resolve docker.io/library/node:24-bookworm@sha256:64af3819f9275802414d7cdc38c27e9d82bd564dec4d4da87d008255d36c63b4 0.0s done
+#6 DONE 0.0s
+
+#7 [mpd-oneclick internal] load build context
+#7 transferring context: 34.20MB 0.1s
+#7 transferring context: 72.77MB 0.2s done
+#7 DONE 0.3s
+
+#8 [mpd-client stage-1  2/12] COPY --from=node-runtime /usr/local /usr/local
+#8 CACHED
+
+#9 [mpd-client stage-1  3/12] COPY . /src/
+#9 DONE 0.3s
+
+#10 [mpd-oneclick stage-1  4/12] COPY docker/entrypoint.sh /opt/mpd-e2e/entrypoint.sh
+#10 DONE 0.1s
+
+#11 [mpd-oneclick stage-1  5/12] COPY docker/probe.ts /opt/mpd-e2e/probe.ts
+#11 DONE 0.1s
+
+#12 [mpd-oneclick stage-1  6/12] COPY docker/lib/ /opt/mpd-e2e/lib/
+#12 DONE 0.1s
+
+#13 [mpd-client stage-1  7/12] COPY docker/tui-lane.sh /opt/mpd-e2e/tui-lane.sh
+#13 DONE 0.1s
+
+#14 [mpd-oneclick stage-1  8/12] COPY docker/ui/entrypoint.sh /opt/mpd-e2e/ui-entrypoint.sh
+#14 DONE 0.1s
+
+#15 [mpd-client stage-1  9/12] COPY docker/ui/capture.mts /opt/mpd-e2e/capture.mts
+#15 DONE 0.1s
+
+#16 [mpd-client stage-1 10/12] COPY docker/ui/run-capture.sh /opt/mpd-e2e/run-capture.sh
+#16 DONE 0.1s
+
+#17 [mpd-client stage-1 11/12] RUN chmod 0755 /opt/mpd-e2e/entrypoint.sh /opt/mpd-e2e/tui-lane.sh /opt/mpd-e2e/ui-entrypoint.sh  && chmod 0755 /opt/mpd-e2e/capture.mts /opt/mpd-e2e/run-capture.sh  && mkdir -p /work /out /data /src

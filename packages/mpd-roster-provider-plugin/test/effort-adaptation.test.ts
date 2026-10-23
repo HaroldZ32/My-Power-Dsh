@@ -66,9 +66,19 @@ function mounted(): Mount {
     subagentProvider: (name: string) => (name === "spawn" ? base : undefined),
     registerSubagentProvider: (registered: unknown) => { provider = registered as Mount["provider"] },
   }
+  /** The member → slot table the config double answers with (the slots this file declares). */
+  const SLOT_OF: Record<string, keyof typeof SLOTS> = { Architect: "slot1", "Deep Worker": "slot3" }
+  /** The config service double: the TOTAL slot resolution the row reads, per member. */
+  const mpdConfig = {
+    slotResolutionOf: (member: string) => {
+      /** The slot id this member is routed by, or undefined when it is unrouted. */
+      const slot = SLOT_OF[member]
+      return slot === undefined ? { ok: false as const, status: "unrouted" as const } : { ok: true as const, route: { ...SLOTS[slot] }, fallbacks: [] }
+    },
+  }
   /** The cordis-shaped ctx, resolving the adapter and the config service by name. */
   const ctx: any = {
-    get: (name: string) => (name === "mpdDsh" ? dsh : name === "mpdConfig" ? { get: (key: string) => (key === "teamModels" ? SLOTS : undefined) } : undefined),
+    get: (name: string) => (name === "mpdDsh" ? dsh : name === "mpdConfig" ? mpdConfig : undefined),
     // A disposal subscription the row may register; returning a no-op keeps the arm free of teardown.
     on: () => undefined,
   }

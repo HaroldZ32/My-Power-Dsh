@@ -1,0 +1,48 @@
+{
+  "task": "T19 — readonly-deny: declare slot1's route in the probe sandbox (same class as T18)",
+  "utcStamp": "20261023T013613Z",
+  "scope": "skills/dsh-qa/scripts/readonly-deny.ts ONLY (single-skills-writer: no other file under skills/ touched; no git, no dist, no repin-vendor)",
+  "rootCause": "The case spawns Architect (read-only roster member, slot1) but its sandbox never declared teamModels. Before this wave the deleted built-in slot-default layer supplied the route; now, in a credential-free Docker container the catalog is empty, the one-time seed writes nothing, and mpd_role_spawn refuses with SLOT_UNCONFIGURED — so no child exists and the mechanism/control arms correctly observe nothing (childRequests: 0, deny never attempted). The assertions were right; the FIXTURE was missing.",
+  "fix": {
+    "symbol": "runReal() -> probe()",
+    "where": "inside probe(), immediately after `const { dshHome, ws, env } = makeSandbox(tag)` and BEFORE the `dsh --profile mpd-headless` boot the same function performs",
+    "written": "<ws>/.mpd/mpd.jsonc",
+    "content": "{\"teamModels\":{\"slot1\":{\"provider\":\"deepseek-official\",\"model\":\"deepseek-v4-flash\"}}}",
+    "covers": "both lanes — the positive lane and the diagnostic/re-injection lane share probe(), so ONE write configures both",
+    "assertionsRelaxed": "NONE — the change is 16 insertions, 0 deletions"
+  },
+  "addedSelfTestPin": {
+    "symbol": "selfTest()",
+    "what": "one presence pin: the probe sandbox DECLARES slot1's route (no built-in default layer exists any more). The needle is assembled from fragments so the check's own bytes cannot satisfy it (the file's documented vacuity trap).",
+    "falsifiability": "measured in-session: the needle is present in the case source, and after deleting the `writeFileSync(rootConfig` line in memory the needle goes false — the pin reddens when the fixture is removed."
+  },
+  "gates": [
+    {
+      "command": "node skills/dsh-qa/scripts/readonly-deny.ts --self-test",
+      "exit": 0,
+      "observed": "[readonly-deny self-test] ok: 48 checks (47 before the added pin)"
+    },
+    {
+      "command": "bun run typecheck",
+      "exit": 0,
+      "observed": "tsgo --noEmit, no diagnostics"
+    },
+    {
+      "command": "bun run verify:comments",
+      "exit": 0,
+      "observed": "VERDICT: PASS — every declaration in the family carries a precise comment and a full signature (436 files scanned)"
+    },
+    {
+      "command": "node scripts/verify-vendor.ts",
+      "exit": 1,
+      "observed": "FAIL - asset skills treeSha mismatch",
+      "expected": true,
+      "note": "the wave's skills/** edits move the corpus treeSha; the captain owns the wave's single re-pin in the same commit. repin-vendor was deliberately NOT run."
+    }
+  ],
+  "notDone": [
+    "the LIVE case was not executed — it needs the Docker container (the captain runs the Docker lane and cites it)",
+    "no repin-vendor (captain's step), no git, no dist",
+    "no other file under skills/ was touched"
+  ]
+}

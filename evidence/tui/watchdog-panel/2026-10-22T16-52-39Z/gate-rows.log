@@ -1,0 +1,92 @@
+bun test v1.4.0 (34cbb9a40)
+
+packages/mpd-tui-adapter-plugin/test/no-direct-tui-access.test.ts:
+NO-DIRECT-TUI-ACCESS — D6 static gate for the DSH-TUI plane (.mpd/plans/mpd-seam-convergence.md A2.2)
+band: packages/mpd-*/src/**/*.ts, minus packages/mpd-tui-adapter-plugin (the ONE sanctioned route)
+scanned: 30 package(s), 154 .ts file(s)
+declared out-of-band: every non-.ts file under a scanned src/ (currently the .gitkeep placeholders) — printed, never failed
+RESULT: PASS (0 findings)
+NO-DIRECT-TUI-ACCESS — D6 static gate for the DSH-TUI plane (.mpd/plans/mpd-seam-convergence.md A2.2)
+band: packages/mpd-*/src/**/*.ts, minus packages/mpd-tui-adapter-plugin (the ONE sanctioned route)
+scanned: 30 package(s), 154 .ts file(s)
+declared out-of-band: every non-.ts file under a scanned src/ (currently the .gitkeep placeholders) — printed, never failed
+RESULT: PASS (0 findings)
+(pass) no direct DSH-TUI seam access outside the TUI adapter (A2.2) [911.17ms]
+SELF-TEST — no-direct-tui-access (negative control over a seeded fixture tree)
+  ok   the seeded band yields exactly the five seeded violations
+  ok   the comment-only mention is not a finding
+  ok   the aliased receiver is caught (an alias is not a different seam)
+  ok   the string forms are caught (get / inject / serviceOf)
+  ok   the adapter package is excluded by identity
+  ok   the non-.ts fixture file is reported out of band, never as a finding
+  ok   the scan covers the adapter package's siblings
+SELF-TEST: PASS (7/7 checks)
+(pass) the gate reddens on a seeded violation (negative control) [1.82ms]
+(pass) the forbidden list tracks the adapter's seam table [3.61ms]
+
+packages/mpd-dsh-adapter-plugin/test/no-terminal-writes.test.ts:
+# no-terminal-writes
+
+band: 34 package root(s), 159 TypeScript file(s) read; 24 non-TypeScript file(s) NOT COVERED
+
+DECLARED EXEMPT — 12 file(s), out of band by declaration, never silently:
+  - packages/mpd-mcp-shared/log-sink.ts (0 hit(s)) — THE sink: this is the one file allowed to touch process.stderr.write and console — it is what converts them into a log file [requires "process.stderr.write"]
+  - packages/mpd-mcp-astgrep/src/launch.ts (0 hit(s)) — silenced MCP launcher: installTerminalSilence runs before the adopted server's dynamic import, so its diagnostics are captured [requires "installTerminalSilence(\"mpd-mcp-astgrep\")"]
+  - packages/mpd-mcp-astgrep/src/protocol.ts (1 hit(s)) — the ast_grep MCP server's own protocol writer: this file IS the stdio JSON-RPC loop, so fd 1 is the client channel the row spawns it with, never a terminal [requires "process.stdout.write"]
+  - packages/mpd-mcp-codegraph/src/launch.ts (7 hit(s)) — silenced MCP launcher (also carries the MCP protocol's own stdout writer for the unavailable-server fallback, which legitimately owns fd 1) [requires "installTerminalSilence(\"mpd-mcp-codegraph\")"]
+  - packages/mpd-mcp-shared/unavailable-server.ts (1 hit(s)) — the SHARED unavailable-server fallback (de-omo wave B2): this file IS the stdio JSON-RPC loop a row keeps when its declared dependency cannot be loaded, so fd 1 is the client channel the row spawned it with, never a terminal; its diagnostics go through the caller's log sink, not through any terminal writer [requires "process.stdout.write"]
+  - packages/mpd-mcp-gitbash/src/launch.ts (0 hit(s)) — silenced MCP launcher: installTerminalSilence runs before the adopted server's dynamic import, so its diagnostics are captured [requires "installTerminalSilence(\"mpd-mcp-gitbash\")"]
+  - packages/mpd-mcp-lsp/src/launch.ts (0 hit(s)) — silenced MCP launcher: installTerminalSilence runs before the adopted server's dynamic import, so its diagnostics are captured [requires "installTerminalSilence(\"mpd-mcp-lsp\")"]
+  - packages/mpd-bundle-plugin/src/web-client.ts (17 hit(s)) — browser client factory bundled by scripts/build-mpd-client.ts into the WEB client, where `console` is the browser console (no terminal, no TUI)
+  - packages/mpd-bundle-plugin/src/settings-card.ts (10 hit(s)) — browser client factory bundled by scripts/build-mpd-client.ts into the WEB client, where `console` is the browser console (no terminal, no TUI)
+  - packages/mpd-bundle-plugin/src/team-page.ts (3 hit(s)) — browser client factory bundled by scripts/build-mpd-client.ts into the WEB client, where `console` is the browser console (no terminal, no TUI)
+  - packages/mpd-bundle-plugin/src/team-view.ts (0 hit(s)) — browser client factory bundled by scripts/build-mpd-client.ts into the WEB client, where `console` is the browser console (no terminal, no TUI)
+  - packages/mpd-qa-roles-probe/src/index.ts (20 hit(s)) — QA-ONLY probe row (never mounted in a shipped session): its stdout IS its machine-readable contract, and the QA lanes read those lines back [requires "console.log"]
+
+SWEEP INVENTORY — 0 file(s) with frozen debt (may only shrink; phase 2 removes them):
+  (empty: no MPD runtime path carries terminal writes any more)
+
+VERDICT: PASS — every terminal write in the band is exempt, inventoried, or absent.
+# no-terminal-writes
+
+band: 34 package root(s), 159 TypeScript file(s) read; 24 non-TypeScript file(s) NOT COVERED
+
+DECLARED EXEMPT — 12 file(s), out of band by declaration, never silently:
+  - packages/mpd-mcp-shared/log-sink.ts (0 hit(s)) — THE sink: this is the one file allowed to touch process.stderr.write and console — it is what converts them into a log file [requires "process.stderr.write"]
+  - packages/mpd-mcp-astgrep/src/launch.ts (0 hit(s)) — silenced MCP launcher: installTerminalSilence runs before the adopted server's dynamic import, so its diagnostics are captured [requires "installTerminalSilence(\"mpd-mcp-astgrep\")"]
+  - packages/mpd-mcp-astgrep/src/protocol.ts (1 hit(s)) — the ast_grep MCP server's own protocol writer: this file IS the stdio JSON-RPC loop, so fd 1 is the client channel the row spawns it with, never a terminal [requires "process.stdout.write"]
+  - packages/mpd-mcp-codegraph/src/launch.ts (7 hit(s)) — silenced MCP launcher (also carries the MCP protocol's own stdout writer for the unavailable-server fallback, which legitimately owns fd 1) [requires "installTerminalSilence(\"mpd-mcp-codegraph\")"]
+  - packages/mpd-mcp-shared/unavailable-server.ts (1 hit(s)) — the SHARED unavailable-server fallback (de-omo wave B2): this file IS the stdio JSON-RPC loop a row keeps when its declared dependency cannot be loaded, so fd 1 is the client channel the row spawned it with, never a terminal; its diagnostics go through the caller's log sink, not through any terminal writer [requires "process.stdout.write"]
+  - packages/mpd-mcp-gitbash/src/launch.ts (0 hit(s)) — silenced MCP launcher: installTerminalSilence runs before the adopted server's dynamic import, so its diagnostics are captured [requires "installTerminalSilence(\"mpd-mcp-gitbash\")"]
+  - packages/mpd-mcp-lsp/src/launch.ts (0 hit(s)) — silenced MCP launcher: installTerminalSilence runs before the adopted server's dynamic import, so its diagnostics are captured [requires "installTerminalSilence(\"mpd-mcp-lsp\")"]
+  - packages/mpd-bundle-plugin/src/web-client.ts (17 hit(s)) — browser client factory bundled by scripts/build-mpd-client.ts into the WEB client, where `console` is the browser console (no terminal, no TUI)
+  - packages/mpd-bundle-plugin/src/settings-card.ts (10 hit(s)) — browser client factory bundled by scripts/build-mpd-client.ts into the WEB client, where `console` is the browser console (no terminal, no TUI)
+  - packages/mpd-bundle-plugin/src/team-page.ts (3 hit(s)) — browser client factory bundled by scripts/build-mpd-client.ts into the WEB client, where `console` is the browser console (no terminal, no TUI)
+  - packages/mpd-bundle-plugin/src/team-view.ts (0 hit(s)) — browser client factory bundled by scripts/build-mpd-client.ts into the WEB client, where `console` is the browser console (no terminal, no TUI)
+  - packages/mpd-qa-roles-probe/src/index.ts (20 hit(s)) — QA-ONLY probe row (never mounted in a shipped session): its stdout IS its machine-readable contract, and the QA lanes read those lines back [requires "console.log"]
+
+SWEEP INVENTORY — 0 file(s) with frozen debt (may only shrink; phase 2 removes them):
+  (empty: no MPD runtime path carries terminal writes any more)
+
+VERDICT: PASS — every terminal write in the band is exempt, inventoried, or absent.
+(pass) no new terminal writes in an MPD runtime path (R5) [81.62ms]
+# no-terminal-writes --self-test
+
+[ok] comment-stripped scan finds exactly the four real writes, at their ORIGINAL lines
+[ok] the ORIGINAL line text is reported, not the stripped one
+[ok] a non-`.ts` file is counted as NOT COVERED and never fails the run
+[ok] the package-ROOT launcher band is walked too
+[ok] a test file is out of band even though it calls console.log
+[ok] the declared exempt file WITH its anchor is classified exempt, not unfrozen
+[ok] the declared exempt file WITHOUT its anchor is STALE and its hits are NOT exempt
+[ok] with an EMPTY inventory a previously-frozen path is UNFROZEN again, and nothing is stale
+[ok] the ceiling rule still bites on a SEEDED table (the negative control for the shrink-only rule)
+[ok] the seeded fixture is RED (the gate would fail on it)
+
+VERDICT: PASS (10/10 checks)
+(pass) the gate reddens on a seeded violation (negative control) [1.15ms]
+
+ 5 pass
+ 0 fail
+ 21 expect() calls
+Ran 5 tests across 2 files. [2.22s]

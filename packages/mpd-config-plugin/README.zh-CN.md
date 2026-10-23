@@ -11,43 +11,58 @@ Plan C / C7 —— 极简的 `mpd.jsonc` 运行时配置层。
 ## 已知 key
 
 - `memory.vcs`：`git | svn | both`（Plan C / C6 memory 引擎）。
-- `teamModels.slot{1,2,3,4}.{provider,model,reasoningEffort}`：四个团队模型槽位 ——
-  agent-teams 成员类别的默认路由（见下）。
+- `teamModels.slot{1,2,3,4}.{provider,model,reasoningEffort?}`：四个团队模型槽位 ——
+  每个成员类别唯一一条配置好的路由，可带该槽位自己的 `fallbacks` 链（见下）。没有默认层：
+  未配置的槽位会拒绝它的 spawn。
 - `team.stateDir`、`hashline.enabled/guardEditTools`、
   `commentChecker.autoCheck/bin`、`modelchain.<role>`、`boulder.dir`、
   `ulw.maxRounds`。
 
 ## 团队模型槽位（`teamModels`）
 
-**agent-teams 成员的默认模型路由**，每个成员类别一个槽位。四个槽位、十二个叶子：
+**每位名册成员唯一一条配置好的模型路由**，每个成员类别一个槽位。四个槽位、十二个叶子，
+外加每个槽位自己的可选回退链：
 
-| 槽位 | 路径 | 默认值 | 成员类别（agent-teams `tier`） |
-|---|---|---|---|
-| 1 | `teamModels.slot1.{provider,model,reasoningEffort}` | `deepseek-official` / `deepseek-v4-flash` / `max` | Architect、Planner、Reviewer、Lead、Senior Engineer（`tier: 1`） |
-| 2 | `teamModels.slot2.{provider,model,reasoningEffort}` | `deepseek-official` / `deepseek-v4-flash` / `high` | Researcher、Explorer、Plan Reviewer（`tier: 2`） |
-| 3 | `teamModels.slot3.{provider,model,reasoningEffort}` | `deepseek-official` / `deepseek-v4-flash` / `high` | Deep Worker、Junior Engineer（`tier: 3`） |
-| 4 | `teamModels.slot4.{provider,model,reasoningEffort}` | `deepseek-official` / `deepseek-v4-flash-vision-exp` / `high` | Vision Analyst（`tier: 4`） |
+| 槽位 | 路径 | 成员类别 |
+|---|---|---|
+| 1 | `teamModels.slot1.{provider,model,reasoningEffort?}` | Architect、Planner、Reviewer、Lead、Senior Engineer |
+| 2 | `teamModels.slot2.{provider,model,reasoningEffort?}` | Researcher、Explorer、Plan Reviewer |
+| 3 | `teamModels.slot3.{provider,model,reasoningEffort?}` | Deep Worker、Junior Engineer |
+| 4 | `teamModels.slot4.{provider,model,reasoningEffort?}` | Vision Analyst（本槽位的模型**必须支持图像输入**） |
 
-- **默认值只有一处字面声明**（`TEAM_MODEL_SLOT_DEFAULTS`），因此 schema 默认值与解析出的配置
-  不可能漂移。
-- **读取路径会物化默认值：** 一个完全没有 `.mpd/mpd.jsonc` 的工作区同样能解析出全部十二个叶子 ——
-  `get("teamModels.slot2")`（以及不带 key 的 `mpd_config_get`）即返回默认值。物化结果是**新对象**：
-  原始合并后的文件配置永不被改写，默认值也不会泄漏进 settings 文档的回写。
-- **Vision Analyst 属于槽位 4：** 它通过 `teamModels.slot4` 路由（默认
-  `deepseek-official` / `deepseek-v4-flash-vision-exp` / `high`），因此它的视觉模型和其他成员的
-  路由一样可编辑 —— 并且本槽位的模型**必须支持图像输入**，因为读图正是该成员的全部价值。
-- **重启语义：** 与本层其他 knob 完全一致 —— 通过 settings 文档保存的值会立即落到
-  `<workspace>/.mpd/mpd.jsonc` 并由配置层应用到每个工作区，而**正在运行**的 mpd 插件仍使用它
-  在 `apply()` 时读到的配置；行为变更需要重启。
-- **两个前端：** 这十二个叶子是唯一 25 行声明（`SETTINGS_KNOBS`：原有 13 个 knob 加这 12 个）中的
-  `select` 项，出现在 TUI 的 `/settings` 区块与 Web 界面卡片中。它们的选项列表来自实时模型目录
-  （服务端走适配器的 `llmCatalog()`，Web 侧走宿主自身的客户端目录），目录不可用或降级时回退到
-  `TEAM_MODEL_FALLBACK_OPTIONS` —— 因此槽位永远是选择，不是自由输入。
-- **槽位损坏会大声失败：** 走槽位解析失败的成员（服务缺失、槽位缺失或不完整、模型未知、推理强度
-  不在该模型声明的等级之内）会让创建团队直接失败，并指名成员与槽位，且不写入任何团队状态；推理强度
-  **永远不会**被悄悄钳制。唯一的例外是模型能力适配：若某模型的目录条目**完全没有**推理等级，则该次调用
-  不发送任何等级、照常运行 —— 否则被物化的槽位默认值会让一个并非配置错误导致的调用失败。运行时通过
-  适配器的 `withSupportedEffort` 实现该适配。
+- **没有默认层。** 槽位子树里没有任何 `.default()`，`TEAM_MODEL_SLOT_DEFAULTS` 与
+  `withTeamModelsDefaults` 已**删除**：从未配置的工作区没有路由，未声明的 `teamModels` 块读出来就是
+  **不存在**（`get("teamModels")` 为 `undefined`，`mpd_config_get` 不会凭空造一个）。
+- **没有覆盖项。** `agentRoutes` 已从 schema、knob 列表、解析器、TUI 对话框与 Web 卡片中删除。
+  旧 `.mpd/mpd.jsonc` 里残留的 `agentRoutes` 块会被**忽略**且永不改写 —— 保存一个无关叶子后它逐字节不变。
+- **槽位可带自己的回退链：** `fallbacks: [{provider, model, reasoningEffort?}, …]`，按优先级排列。
+  它在 spawn 之前**只消费一次**：实时目录**正面列出**的第一条候选胜出（「未被列出」不等于「不可用」；
+  没有任何正面列出时主路由保留），胜出者随后经过推理强度适配，格式错误的条目被丢弃并记一行日志，
+  绝不致命。
+- **读取是全域的（TOTAL）。** `mpdConfig.slotResolutionOf(member)` 返回一个有类型的联合 ——
+  `ok`（路由 + 回退链）、`unconfigured`（点名缺失的叶子）、`invalid`（点名出错的路径）或
+  `unrouted`（没有槽位托管该成员）—— 并且**永不抛异常**，因此展示面渲染 `<unconfigured>` 而不是崩溃。
+  `teamModelRouteOf(member)` 同样是全域的：`ok` 时给路由，否则 `undefined`。
+- **不可用的槽位会拒绝 spawn**，给出一个结构化的 `SLOT_UNCONFIGURED` 错误，点名槽位、成员、缺失的叶子
+  与两条修复路径（`/mpd-model`，以及 `.mpd/mpd.jsonc` 里的 `teamModels.slotN`），并说明未写入任何内容、
+  未启动任何子会话。只有三条 spawn 施加者（`mpd_role_spawn`、`mpd_workmate_spawn`、`mpd-roster`
+  队友 provider）会抛出它；推理强度永远不会被钳制。唯一的例外是模型能力适配：目录条目**完全没有**
+  推理等级的模型不会收到任何等级，调用照常运行（适配器的 `withSupportedEffort`）。
+- **初始配置是文件初始化，而不是运行时默认值。** 若工作区的 `.mpd/mpd.jsonc` 未声明 `teamModels`，
+  挂载时会**只播种一次**：通过 LLM 目录从已配置的提供商中选取 —— 模型取 `deepseek-flash` 家族
+  （优先精确的 `deepseek-flash`，否则取近似的 `*flash*` id），提供商取列出该模型的已配置提供商，
+  强度为 `slot1=max`、`slots 2-4=high`。写入时记一行日志；已存在的块或用户编辑永不改写；成功的播种会在
+  `<ws>/.mpd/model-config-seed.json` 留下持久标记（以 `wx` 创建、永不覆盖、在任何尝试之前先检查），
+  因此你故意删除的块永远不会被重新播种；目录不可用时
+  不写入任何内容，第一次 spawn 报告 `SLOT_UNCONFIGURED`。若**高于项目文件**的某一层（用户文件、
+  设置文档、行配置）已配置槽位，播种同样会停手：项目文件绝不能遮蔽它们。
+- **两个前端：** 这十二个叶子是唯一 26 行声明（`SETTINGS_KNOBS`：原有 13 个 knob、这 12 个，再加
+  TUI 界面自身的一个 knob）中的 `select` 项，出现在 TUI 的 `/settings` 区块与 Web 界面卡片中；卡片的
+  「当前生效」块会显示每个槽位的状态（未配置时显示 `<unconfigured>` 与缺失的叶子）。它们的选项列表来自
+  实时模型目录（服务端走适配器的 `llmCatalog()`，Web 侧走宿主自身的客户端目录），目录不可用或降级时
+  回退到 `TEAM_MODEL_FALLBACK_OPTIONS` —— 因此槽位永远是选择，不是自由输入。
+- **重启语义：** 模型路由按次读取，所以一次保存（或监听到的文件编辑）会让下一次 spawn/解析就携带新值，
+  无需重启；`mpd_config_reload` 可强制重读。
 
 ## 服务 / 工具
 

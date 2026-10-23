@@ -1,22 +1,15 @@
-// The routing decision, driven without a harness, a ctx or a model. The arms are the ones that
-// decide whether a teammate lands on the model the user configured — including the two ways that
-// could go silently wrong: matching a member the label never named, and half-configuring a slot.
+// The routing decision, driven without a harness, a ctx or a model: which member a teammate label
+// names, and how a resolved route is applied. The slot RESOLUTION itself lives in the config row now
+// (contract `.mpd/plans/slot-single-source.md` §6: the slot is the only source), so the arms that
+// pinned the deleted precedence chain are gone; `slot-route.test.ts` covers the provider end to end.
 import { describe, expect, test } from "bun:test"
-import { applyRoute, labelOf, memberFromLabel, routeForMember } from "../src/route"
-import type { RoutableRequest, SlotRoute } from "../src/route"
+import { applyRoute, labelOf, memberFromLabel } from "../src/route"
+import type { RoutableRequest } from "../src/route"
 import { TEAM_MODEL_SLOT_GROUPS } from "../../mpd-config-plugin/src/settings-schema"
 
 // Every roster name the label matcher may return, flattened out of the four slot groups: this is the
 // vocabulary a teammate description has to name to be routed at all.
 const NAMES: readonly string[] = Object.values(TEAM_MODEL_SLOT_GROUPS).flatMap((group) => [...group.members])
-// The configured `teamModels` subtree: all four slots complete, so a slot-routed member has a route
-// of its own to resolve and the half-configured arms below stand out against a working table.
-const SLOTS: Record<string, SlotRoute> = {
-  slot1: { provider: "deepseek-official", model: "deepseek-v4-pro", reasoningEffort: "max" },
-  slot2: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "high" },
-  slot3: { provider: "gateway", model: "fast", reasoningEffort: "off" },
-  slot4: { provider: "deepseek-official", model: "deepseek-v4-flash-vision-exp", reasoningEffort: "high" },
-}
 
 describe("reading the member out of the descriptor label", () => {
   test("a description that NAMES a member routes it, before any separator", () => {
@@ -43,36 +36,6 @@ describe("reading the member out of the descriptor label", () => {
     // The roster vocabulary plus the shorter "Reviewer", so a prefix match would be observable here.
     const extended = [...NAMES, "Reviewer"]
     expect(memberFromLabel("Plan Reviewer — read it", extended)).toBe("Plan Reviewer")
-  })
-})
-
-describe("resolving the slot route", () => {
-  test("every roster member maps to a slot, and a complete slot resolves to its own route", () => {
-    // The roster as the slot table declares it, re-derived so the count below guards that table.
-    const members = Object.values(TEAM_MODEL_SLOT_GROUPS).flatMap((group) => [...group.members])
-    expect(members).toHaveLength(11)
-    for (const [slot, group] of Object.entries(TEAM_MODEL_SLOT_GROUPS)) {
-      for (const member of group.members) {
-        expect(routeForMember(member, slot, SLOTS)).toEqual(SLOTS[slot as keyof typeof SLOTS])
-      }
-    }
-  })
-
-  test("a member with NO slot inherits — the route is undefined, not a default", () => {
-    expect(routeForMember("Nobody", undefined, SLOTS)).toBeUndefined()
-  })
-
-  test("an INCOMPLETE slot fails LOUDLY naming the member and the slot, never substituting", () => {
-    expect(() => routeForMember("Architect", "slot1", { slot1: { provider: "p" } })).toThrow(/Architect is routed by slot1.*incomplete/)
-    expect(() => routeForMember("Architect", "slot1", { slot1: { provider: "", model: "m" } })).toThrow(/provider=unset/)
-    expect(() => routeForMember("Vision Analyst", "slot4", {})).toThrow(/no slot4 is configured/)
-  })
-
-  test("an effort the slot does not state is OMITTED, so the harness keeps its own resolution", () => {
-    // A slot stating provider and model but no effort: the resolved route must carry no effort key.
-    const route = routeForMember("Deep Worker", "slot3", { slot3: { provider: "p", model: "m" } })
-    expect(route).toEqual({ provider: "p", model: "m" })
-    expect("reasoningEffort" in (route ?? {})).toBe(false)
   })
 })
 

@@ -92,7 +92,42 @@ var TUI_TEXT = {
   "watchdog.acknowledge": { zh: "确认", en: "Acknowledge" },
   "watchdog.acknowledgeHint": { zh: "把这些事件标记为已读，不再重复提示", en: "mark these incidents as read so they stop being replayed" },
   "watchdog.later": { zh: "稍后", en: "Later" },
-  "watchdog.laterHint": { zh: "保持未读，下次启动再显示", en: "keep them unread; they will be shown again on the next start" }
+  "watchdog.laterHint": { zh: "保持未读，下次启动再显示", en: "keep them unread; they will be shown again on the next start" },
+  "watchdog.panelHeader": { zh: "看门狗 · 暂停 {held} · 未读 {unread}", en: "watchdog · {held} held · {unread} unread" },
+  "watchdog.panelAbsent": { zh: "watchdog: 不可用（not available —— 该组合没有 mpdWatchdog 服务）", en: "watchdog: not available (no mpdWatchdog service in this composition)" },
+  "watchdog.panelAbsentHint": { zh: "该面板只读看门狗服务；服务缺失时不显示任何事件", en: "this panel reads the watchdog service only; with the service absent it shows no incidents" },
+  "watchdog.panelEmpty": { zh: "无事件 —— 没有未读记录", en: "no incidents — nothing unread" },
+  "watchdog.panelTeamHeld": { zh: "团队 {team} · 已暂停 · 阶段 {phase}", en: "team {team} · held · phase {phase}" },
+  "watchdog.panelTeamIdle": { zh: "团队 {team} · 未暂停 · 阶段 {phase}", en: "team {team} · not held · phase {phase}" },
+  "watchdog.panelIncidents": { zh: "事件", en: "incidents" },
+  "watchdog.panelCause": { zh: "原因 {cause} · {ms}ms", en: "cause {cause} · {ms}ms" },
+  "watchdog.panelHold": { zh: "挂起 {outcome}", en: "hold {outcome}" },
+  "watchdog.panelReleased": { zh: "释放 {how}", en: "release {how}" },
+  "watchdog.panelKeys": { zh: "a 确认 · r 刷新 · ↑↓/jk 滚动", en: "a ack · r refresh · ↑↓/jk scroll" },
+  "watchdog.panelLegend": { zh: "✓ 已确认 · ○ 未确认", en: "✓ acked · ○ unread" },
+  "watchdog.panelAckDone": { zh: "已确认 {n} 条事件", en: "acknowledged {n} incident(s)" },
+  "watchdog.panelAckNoop": { zh: "没有新的可确认事件", en: "nothing new to acknowledge" },
+  "watchdog.panelAckFailed": { zh: "确认失败：{error}", en: "acknowledge failed: {error}" },
+  "watchdog.commandOpened": {
+    zh: "mpd 看门狗：宿主已接受 {id}；若没有出现面板，请在 /settings → 侧栏里把 {id} 加入面板列表，并按 Ctrl+B 展开",
+    en: "mpd watchdog: the host accepted {id}; if no panel appeared, add {id} to the panel list in /settings → side panel, then press Ctrl+B"
+  },
+  "watchdog.commandAbsent": {
+    zh: "mpd 看门狗：该宿主不提供面板接缝（dsh-tui 0.13.0+），看门狗面板无法打开",
+    en: "mpd watchdog: this host exposes no panel seam (dsh-tui 0.13.0+), so the watchdog panel cannot open"
+  },
+  "watchdog.commandRefused": {
+    zh: "mpd 看门狗：宿主拒绝了该面板的注册，看门狗面板无法打开",
+    en: "mpd watchdog: the host refused the panel registration, so the watchdog panel cannot open"
+  },
+  "watchdog.commandOpenRefused": {
+    zh: "mpd 看门狗：宿主这次拒绝打开该面板（注册仍在）；请在侧栏面板列表里选择它，或稍后重试",
+    en: "mpd watchdog: the host declined this open (the registration still stands); pick it in the side panel list, or try again"
+  },
+  "watchdog.commandDisabled": {
+    zh: "mpd 看门狗：看门狗页面已被 mpd-tui 行配置关闭（watchdog: false），请启用后重试",
+    en: "mpd watchdog: the watchdog page is disabled by the mpd-tui row config (watchdog: false); enable it and try again"
+  }
 };
 var EFFORT_LABELS = {
   off: { zh: "关闭", en: "off" },
@@ -5289,8 +5324,10 @@ var DAG_ANIM = Object.freeze({
   runningFrames: RUNNING_FRAMES
 });
 var WORKMATE_PANEL_SLUG = "workmate";
+var WATCHDOG_PANEL_SLUG = "watchdog";
 var DAG_PANEL_MIN_COLUMNS = 28;
 var WORKMATE_PANEL_MIN_COLUMNS = 28;
+var WATCHDOG_PANEL_MIN_COLUMNS = 28;
 
 // packages/mpd-tui-plugin/src/panel-core.ts
 var PANEL_ROW_MAX_CELLS = 4000;
@@ -5881,6 +5918,8 @@ function panelFloorColumns(which) {
     return DAG_PANEL_MIN_COLUMNS;
   if (which === "workmate")
     return WORKMATE_PANEL_MIN_COLUMNS;
+  if (which === "watchdog")
+    return WATCHDOG_PANEL_MIN_COLUMNS;
   return DAG_PANEL_MIN_COLUMNS;
 }
 var PANEL_FULLSCREEN_GLYPH = "⤢";
@@ -7266,22 +7305,16 @@ function registerRenderers(ctx, tui, log) {
 // packages/mpd-config-plugin/src/settings-schema.ts
 var SETTINGS_NS = "mpd";
 var TEAM_MODEL_SLOTS = ["slot1", "slot2", "slot3", "slot4"];
-var TEAM_MODEL_SLOT_DEFAULTS = {
-  slot1: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "max" },
-  slot2: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "high" },
-  slot3: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "high" },
-  slot4: { provider: "deepseek-official", model: "deepseek-v4-flash-vision-exp", reasoningEffort: "high" }
-};
 var TEAM_MODEL_FALLBACK_OPTIONS = {
   provider: ["deepseek-official"],
   model: ["deepseek-v4-flash", "deepseek-v4-flash-vision-exp", "deepseek-v4-pro", "deepseek-flash"],
   reasoningEffort: ["off", "low", "high", "max"]
 };
-function teamModelSlotSchema(slot) {
+function teamModelSlotSchema() {
   return Schema.object({
-    provider: Schema.string().default(slot.provider),
-    model: Schema.string().default(slot.model),
-    reasoningEffort: Schema.string().default(slot.reasoningEffort)
+    provider: Schema.string().required(false),
+    model: Schema.string().required(false),
+    reasoningEffort: Schema.string().required(false)
   });
 }
 var TEAM_MODEL_SLOT_GROUPS = {
@@ -7290,13 +7323,6 @@ var TEAM_MODEL_SLOT_GROUPS = {
   slot3: { zh: "执行型成员", en: "execution members", members: ["Deep Worker", "Junior Engineer"] },
   slot4: { zh: "视觉成员", en: "vision member", members: ["Vision Analyst"] }
 };
-var ROSTER_AGENT_NAMES = Object.values(TEAM_MODEL_SLOT_GROUPS).flatMap((group) => [...group.members]);
-var AGENT_ROUTE_SCHEMA = Schema.object({
-  provider: Schema.string().required(false),
-  model: Schema.string().required(false),
-  reasoningEffort: Schema.string().required(false)
-});
-var AGENT_ROUTES_SCHEMA = Schema.dict(AGENT_ROUTE_SCHEMA, Schema.union(ROSTER_AGENT_NAMES.map((name) => Schema.const(name))));
 var SettingsSchema = Schema.object({
   hashline: Schema.object({ maxDiffChars: Schema.number().default(20000) }),
   commentChecker: Schema.object({ autoCheck: Schema.boolean().default(true) }),
@@ -7305,12 +7331,11 @@ var SettingsSchema = Schema.object({
   team: Schema.object({ stateDir: Schema.string().default(".mpd/team") }),
   boulder: Schema.object({ dir: Schema.string().required(false) }),
   teamModels: Schema.object({
-    slot1: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot1),
-    slot2: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot2),
-    slot3: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot3),
-    slot4: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot4)
+    slot1: teamModelSlotSchema(),
+    slot2: teamModelSlotSchema(),
+    slot3: teamModelSlotSchema(),
+    slot4: teamModelSlotSchema()
   }),
-  agentRoutes: AGENT_ROUTES_SCHEMA,
   watchdog: Schema.object({
     enabled: Schema.boolean().default(true),
     warnSilenceMs: Schema.number().default(600000),
@@ -7322,7 +7347,7 @@ var SettingsSchema = Schema.object({
   }),
   tui: Schema.object({ dashboardKey: Schema.boolean().default(true) })
 });
-var BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect in the RUNNING process — no restart: the config service re-resolves on every settings save and on a watched edit of the project file, and the model routes (teamModels, agentRoutes, modelchain) are read per use, so the next spawn or resolve carries them";
+var BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect in the RUNNING process — no restart: the config service re-resolves on every settings save and on a watched edit of the project file, and the model routes (teamModels, modelchain) are read per use, so the next spawn or resolve carries them";
 var BRIDGE_NOT_LOST = "the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session";
 function markVolatile(schema) {
   const node = schema;
@@ -7405,45 +7430,6 @@ var TEAM_MODEL_KNOBS = TEAM_MODEL_SLOTS.flatMap((slot) => {
     hint: knobHint(`teamModels.${slot}.${leaf}`, teamModelLeafSentence(slot, leaf, "en"))
   }));
 });
-var AGENT_ROUTE_LEAF_TEMPLATES = {
-  provider: {
-    en: "The provider half of {name}'s OWN route override. An agentRoutes leaf outranks {name}'s team-model slot: it applies to {name} only, and LIVE — the member's next spawn or resolve carries it, no restart and no new team needed. An unset leaf falls through to the slot's provider; clearing every leaf returns {name} to the slot.",
-    zh: "{name} 专属路由覆盖的提供商。agentRoutes 的叶子优先于 {name} 的 team 模型槽位：只作用于 {name} 本人，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的提供商；清空全部叶子即恢复跟随槽位。"
-  },
-  model: {
-    en: "The model half of {name}'s OWN route override. It outranks the model of {name}'s team-model slot ({group}) and applies LIVE — the member's next spawn or resolve carries it, no restart and no new team needed. An unset leaf falls through to the slot's model; clearing every leaf returns {name} to the slot.",
-    zh: "{name} 专属路由覆盖的模型。优先于 {name} 所属槽位（{group}）的模型，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的模型；清空全部叶子即恢复跟随槽位。"
-  },
-  reasoningEffort: {
-    en: "The reasoning-effort half of {name}'s OWN route override (off / low / high / max). It outranks the effort of {name}'s team-model slot ({group}) and applies LIVE — the member's next spawn or resolve carries it. An unset leaf falls through to the slot's effort; an effort the chosen model does not support fails that member's spawn loudly, naming the member.",
-    zh: "{name} 专属路由覆盖的推理强度（off / low / high / max）。优先于 {name} 所属槽位（{group}）的推理强度，且即时生效——该成员下次生成/解析即携带新值。未设置的叶子回落到槽位的等级；该模型不支持的等级会让该成员的生成直接报错并点名。"
-  }
-};
-function agentRouteSlotOf(name) {
-  return TEAM_MODEL_SLOTS.find((slot) => TEAM_MODEL_SLOT_GROUPS[slot].members.includes(name));
-}
-function agentRouteLeafSentence(name, leaf, lang) {
-  const slot = agentRouteSlotOf(name);
-  const group = slot === undefined ? lang === "zh" ? "未编组" : "ungrouped" : TEAM_MODEL_SLOT_GROUPS[slot][lang];
-  return AGENT_ROUTE_LEAF_TEMPLATES[leaf][lang].split("{name}").join(name).split("{group}").join(group);
-}
-var AGENT_ROUTE_KNOBS = TEAM_MODEL_SLOTS.flatMap((slot) => TEAM_MODEL_SLOT_GROUPS[slot].members.flatMap((member) => {
-  const leaves = [
-    { leaf: "provider", label: "provider", zh: "提供商" },
-    { leaf: "model", label: "model", zh: "模型" },
-    { leaf: "reasoningEffort", label: "reasoning effort", zh: "推理强度" }
-  ];
-  return leaves.map(({ leaf, label, zh }) => ({
-    path: ["agentRoutes", member, leaf],
-    label: `${member} ${label} (own route)`,
-    zh: `${member} ${zh}（专属路由）`,
-    kind: "select",
-    options: TEAM_MODEL_FALLBACK_OPTIONS[leaf],
-    semantics: agentRouteLeafSentence(member, leaf, "en"),
-    semanticsZh: agentRouteLeafSentence(member, leaf, "zh"),
-    hint: knobHint(`agentRoutes.${member}.${leaf}`, agentRouteLeafSentence(member, leaf, "en"))
-  }));
-}));
 var SETTINGS_KNOBS = [
   { path: ["hashline", "maxDiffChars"], label: "Inline diff limit", zh: "行内 diff 上限", kind: "number" },
   { path: ["commentChecker", "autoCheck"], label: "Comment checker", zh: "注释检查", kind: "boolean" },
@@ -7459,7 +7445,6 @@ var SETTINGS_KNOBS = [
   { path: ["watchdog", "toolInFlightMaxMs"], label: "Tool-in-flight bound (ms, 0 = no bound)", zh: "工具在飞上限（毫秒，0 表示不设上限）", kind: "number", hint: "how long ONE tool call may run before it stops explaining a silent member: past this bound the call is reported ONCE as a `tool-expired` incident (a warning — never a scene, never a hold, never an escalation), and `0` disables the bound" },
   { path: ["watchdog", "holdTtlMs"], label: "Hold TTL (ms, 0 = no expiry)", zh: "暂停持有有效期（毫秒，0 表示不设有效期）", kind: "number", hint: "how long a watchdog hold may stay latched before it auto-releases: past this bound the hold releases itself and changes ZERO team bytes, and activity newer than the hold releases it sooner — `0` disables the expiry" },
   ...TEAM_MODEL_KNOBS,
-  ...AGENT_ROUTE_KNOBS,
   { path: ["tui", "dashboardKey"], label: "Ctrl+A dependency view (old dsh-tui builds)", zh: "Ctrl+A 依赖视图（旧版 dsh-tui）", kind: "boolean", hint: "applies to hosts WITHOUT the sidebar panel seam (dsh-tui before 0.13.0) only: while MPD's team projection has a team with at least one task, Ctrl+A opens MPD's merged dependency view instead of the host's subagent dashboard, and with no team Ctrl+A keeps opening the host dashboard — on a host that offers the panel seam, Ctrl+A always keeps its host dashboard meaning and the merged view opens through alt+a and /mpd panel" }
 ];
 
@@ -7534,9 +7519,6 @@ function slotLeafOf(path) {
   const leaf = path[2];
   return TEAM_MODEL_LEAVES.find((candidate) => candidate === leaf);
 }
-function routeLeafOf(path) {
-  return slotLeafOf(path) ?? (path[0] === "agentRoutes" ? TEAM_MODEL_LEAVES.find((candidate) => candidate === path[2]) : undefined);
-}
 function isServed(provider) {
   try {
     if (typeof provider.describe === "function") {
@@ -7557,6 +7539,41 @@ function configPluginPresent(ctx) {
   } catch {
     return false;
   }
+}
+function slotResolutionDisplay(service, member) {
+  if (service === undefined || service === null || typeof service.slotResolutionOf !== "function")
+    return { state: "unavailable" };
+  let raw;
+  try {
+    raw = service.slotResolutionOf(member);
+  } catch {
+    return { state: "unavailable" };
+  }
+  if (!isPlainTable(raw))
+    return { state: "unavailable" };
+  if (raw.ok === true) {
+    const route = raw.route;
+    if (!isPlainTable(route) || typeof route.provider !== "string" || typeof route.model !== "string")
+      return { state: "invalid" };
+    const effort = typeof route.reasoningEffort === "string" && route.reasoningEffort !== "" ? ` / ${route.reasoningEffort}` : "";
+    const routeText = stripControl(`${route.provider} / ${route.model}${effort}`);
+    return {
+      state: "ok",
+      route: routeText,
+      fallbacks: Array.isArray(raw.fallbacks) ? raw.fallbacks.length : 0
+    };
+  }
+  if (raw.ok === false) {
+    if (raw.status === "invalid")
+      return { state: "invalid" };
+    if (raw.status !== "unconfigured")
+      return { state: "unavailable" };
+    return {
+      state: "unconfigured",
+      missing: Array.isArray(raw.missing) ? raw.missing.filter((leaf) => typeof leaf === "string") : []
+    };
+  }
+  return { state: "unavailable" };
 }
 function configServiceOf(ctx) {
   try {
@@ -7583,26 +7600,25 @@ function effectiveModelSummary(config) {
   const slotFragments = [];
   try {
     const slots = config.get("teamModels");
-    for (const slot of ["slot1", "slot2", "slot3", "slot4"]) {
+    for (const slot of TEAM_MODEL_SLOTS) {
+      const member = TEAM_MODEL_SLOT_GROUPS[slot].members[0] ?? "";
+      const display = slotResolutionDisplay(config, member);
+      if (display.state === "ok") {
+        slotFragments.push(`${slot}:${display.route}`);
+        continue;
+      }
+      if (display.state !== "unavailable") {
+        slotFragments.push(`${slot}:<${display.state}>`);
+        continue;
+      }
       const block = isPlainTable(slots) ? slots[slot] : undefined;
-      slotFragments.push(`${slot}:${summaryLeaf(block, "provider")}/${summaryLeaf(block, "model")}/${summaryLeaf(block, "reasoningEffort") || "-"}`);
+      const provider = summaryLeaf(block, "provider");
+      const model = summaryLeaf(block, "model");
+      slotFragments.push(provider === "" && model === "" ? `${slot}:<unconfigured>` : `${slot}:${provider}/${model}/${summaryLeaf(block, "reasoningEffort") || "-"}`);
     }
   } catch {
     slotFragments.length = 0;
   }
-  const overrideFragments = [];
-  try {
-    const routes = config.get("agentRoutes");
-    if (isPlainTable(routes)) {
-      for (const [name, entry] of Object.entries(routes)) {
-        if (!isPlainTable(entry))
-          continue;
-        const leaves = ["provider", "model", "reasoningEffort"].filter((leaf) => summaryLeaf(entry, leaf) !== "").map((leaf) => `${leaf}=${summaryLeaf(entry, leaf)}`);
-        if (leaves.length > 0)
-          overrideFragments.push(`${name}(${leaves.join(", ")})`);
-      }
-    }
-  } catch {}
   const chainFragments = [];
   try {
     const chains = config.get("modelchain");
@@ -7617,11 +7633,10 @@ function effectiveModelSummary(config) {
     }
   } catch {}
   const slotsText = slotFragments.length > 0 ? `slots ${slotFragments.join(" · ")}` : "slots unreadable";
-  const routesText = overrideFragments.length > 0 ? overrideFragments.join(" · ") : "none set";
-  const chainsText = chainFragments.length > 0 ? chainFragments.join(" · ") : "none configured (shipped defaults in force)";
+  const chainsText = chainFragments.length > 0 ? chainFragments.join(" · ") : "none configured";
   return {
-    en: `effective now — ${slotsText}; agentRoutes: ${routesText}; modelchain: ${chainsText}`,
-    zh: `当前生效 —— ${slotsText}；agentRoutes：${routesText}；modelchain：${chainsText}`
+    en: `effective now — ${slotsText}; modelchain: ${chainsText}`,
+    zh: `当前生效 —— ${slotsText}；modelchain：${chainsText}`
   };
 }
 function declaredField(knob) {
@@ -7645,7 +7660,7 @@ function wheelInvertFrom(config, floor) {
 var SETTINGS_FIELDS = SETTINGS_KNOBS.map(declaredField);
 function settingsFields(lists) {
   return SETTINGS_KNOBS.map((knob) => {
-    const leaf = routeLeafOf(knob.path);
+    const leaf = slotLeafOf(knob.path);
     const field2 = declaredField(knob);
     return leaf === undefined ? field2 : { ...field2, options: lists[leaf] };
   });
@@ -8255,6 +8270,7 @@ function createDagPanelComponent(readWorkflow, options) {
 }
 
 // packages/mpd-tui-plugin/src/panel-attention.ts
+var WATCHDOG_BADGE_POLL_MS = 5000;
 function sameBadge(left, right) {
   if (left === null || right === null)
     return left === right;
@@ -8272,17 +8288,36 @@ function attentionBadge(workflow) {
     return { level: "warning", unread: Math.max(fromTasks.unread, holds) };
   return fromTasks;
 }
+function watchdogAttentionBadge(view) {
+  const held = view.holds.length;
+  const unread = view.unread.length;
+  if (held === 0 && unread === 0)
+    return null;
+  return { level: held > 0 ? "warning" : "info", unread: held + unread };
+}
 function armPanelAttention(deps) {
   let last = null;
   let settled = false;
+  let lastWatchdog = null;
+  let settledWatchdog = false;
   let opened = false;
   let wasLive = false;
   let stopped = false;
+  let pollTimer = undefined;
   let release;
   let badgeMissing = false;
   const id = () => {
     try {
       return deps.panelId();
+    } catch {
+      return;
+    }
+  };
+  const watchdogId = () => {
+    if (deps.watchdogPanelId === undefined)
+      return;
+    try {
+      return deps.watchdogPanelId();
     } catch {
       return;
     }
@@ -8294,8 +8329,16 @@ function armPanelAttention(deps) {
       return;
     }
   };
-  const publish = (next) => {
-    const address = id();
+  const readWatchdog = () => {
+    if (deps.readWatchdog === undefined)
+      return { holds: [], unread: [] };
+    try {
+      return deps.readWatchdog();
+    } catch {
+      return { holds: [], unread: [] };
+    }
+  };
+  const publishTo = (address, next) => {
     if (address === undefined)
       return false;
     try {
@@ -8309,10 +8352,8 @@ function armPanelAttention(deps) {
       return false;
     }
   };
-  const observe = (event) => {
-    if (stopped)
-      return;
-    const workflow = read();
+  const publish = (next) => publishTo(id(), next);
+  const publishBadges = (workflow) => {
     const next = attentionBadge(workflow);
     if (!settled || !sameBadge(last, next)) {
       const result = publish(next);
@@ -8321,6 +8362,28 @@ function armPanelAttention(deps) {
         settled = true;
       }
     }
+    if (deps.readWatchdog !== undefined) {
+      const watchdogAddress = watchdogId();
+      const nextWatchdog = watchdogAttentionBadge(readWatchdog());
+      if (watchdogAddress !== undefined && (!settledWatchdog || !sameBadge(lastWatchdog, nextWatchdog))) {
+        const result = publishTo(watchdogAddress, nextWatchdog);
+        if (result === true || result === undefined && badgeMissing) {
+          lastWatchdog = nextWatchdog;
+          settledWatchdog = true;
+        }
+      }
+    }
+  };
+  const observeBadges = () => {
+    if (stopped)
+      return;
+    publishBadges(read());
+  };
+  const observe = (event) => {
+    if (stopped)
+      return;
+    const workflow = read();
+    publishBadges(workflow);
     const live = workflow !== undefined && workflow.tasks.length > 0;
     const appeared = live && !wasLive;
     wasLive = live;
@@ -8365,6 +8428,19 @@ function armPanelAttention(deps) {
   };
   attach();
   observe(false);
+  if (deps.readWatchdog !== undefined) {
+    const period = deps.watchdogPollMs ?? WATCHDOG_BADGE_POLL_MS;
+    if (period > 0) {
+      try {
+        pollTimer = setInterval(() => observeBadges(), period);
+        const unref = pollTimer.unref;
+        if (typeof unref === "function")
+          unref.call(pollTimer);
+      } catch {
+        pollTimer = undefined;
+      }
+    }
+  }
   return {
     observe,
     resubscribe() {
@@ -8383,6 +8459,12 @@ function armPanelAttention(deps) {
       if (stopped)
         return;
       stopped = true;
+      if (pollTimer !== undefined) {
+        try {
+          clearInterval(pollTimer);
+        } catch {}
+        pollTimer = undefined;
+      }
       const disposer = release;
       release = undefined;
       if (disposer === undefined)
@@ -8862,6 +8944,232 @@ function registerWorkmatePanel(tui, deps) {
       return tui.skipped("panels", "the workmate sidebar page is disabled by the mpd-tui row config (workmate: false)").outcome();
     },
     openScene: () => deps.openScene()
+  };
+}
+
+// packages/mpd-tui-plugin/src/panel-watchdog.ts
+var WATCHDOG_PANEL_ID = WATCHDOG_PANEL_SLUG;
+var WATCHDOG_PANEL_TITLE = "MPD watchdog";
+var WATCHDOG_PANEL_ICON = "⚠";
+var WATCHDOG_PANEL_ORDER = 13;
+var WATCHDOG_PANEL_REFRESH_MS = 2000;
+var WATCHDOG_FALLBACK_ROWS = 24;
+var WATCHDOG_PANEL_DESCRIPTOR_FROZEN = {
+  apiVersion: 1,
+  id: WATCHDOG_PANEL_ID,
+  title: WATCHDOG_PANEL_TITLE,
+  icon: WATCHDOG_PANEL_ICON,
+  minColumns: WATCHDOG_PANEL_MIN_COLUMNS,
+  order: WATCHDOG_PANEL_ORDER
+};
+function incidentAge(at, now) {
+  if (typeof at !== "number" || !Number.isFinite(at) || at <= 0)
+    return "?";
+  const delta = Math.max(0, now - at);
+  if (delta < 1000)
+    return "<1s";
+  if (delta < 60000)
+    return `${String(Math.floor(delta / 1000))}s`;
+  if (delta < 3600000)
+    return `${String(Math.floor(delta / 60000))}m`;
+  if (delta < 86400000)
+    return `${String(Math.floor(delta / 3600000))}h`;
+  return `${String(Math.floor(delta / 86400000))}d`;
+}
+function watchdogTeamRows(view, readTeam2) {
+  const ids = new Set;
+  for (const team2 of view.holds)
+    ids.add(team2);
+  for (const record of view.unread)
+    ids.add(record.teamId);
+  let team;
+  try {
+    team = readTeam2?.();
+  } catch {
+    team = undefined;
+  }
+  const rows = [];
+  for (const id of [...ids].sort((left, right) => left.localeCompare(right))) {
+    rows.push({ id, held: view.holds.includes(id), phase: team !== undefined && team.id === id ? team.phase : "?" });
+  }
+  return rows;
+}
+function watchdogTeamLine(row) {
+  return row.held ? t("watchdog.panelTeamHeld", { team: row.id, phase: row.phase }) : t("watchdog.panelTeamIdle", { team: row.id, phase: row.phase });
+}
+function watchdogIncidentLines(record, now) {
+  const acknowledged = record.acknowledgedBy.includes("mpd-tui");
+  return {
+    first: `${record.kind} · ${incidentAge(record.at, now)} · ${acknowledged ? "✓" : "○"}`,
+    second: [record.teamId, record.taskId ?? "", record.attemptId ?? ""].filter((part) => part !== "").join(" · "),
+    third: [
+      t("watchdog.panelCause", { cause: record.cause.kind, ms: record.cause.ms }),
+      t("watchdog.panelHold", { outcome: record.hold }),
+      ...record.cause.release === undefined ? [] : [t("watchdog.panelReleased", { how: record.cause.release })]
+    ].join(" · ")
+  };
+}
+function createWatchdogPanelComponent(deps, options) {
+  return function MpdTuiWatchdogPanel(props) {
+    const kit = panelKit(props?.React, props?.ui);
+    if (kit === undefined) {
+      return null;
+    }
+    const measured = usePanelSize(kit.ui, panelFloorColumns("watchdog"));
+    const contentCols = panelContentWidth(measured.cols);
+    const flash = kit.React.useState(undefined);
+    const flashText = typeof flash[0] === "string" ? flash[0] : undefined;
+    const setFlash = flash[1];
+    const refresh = kit.React.useState(0);
+    const setRefresh = refresh[1];
+    const lastAck = kit.React.useRef(0);
+    let view;
+    let available = false;
+    try {
+      available = deps.available();
+      view = available ? deps.read() : { holds: [], unread: [] };
+    } catch {
+      available = false;
+      view = { holds: [], unread: [] };
+    }
+    const teams = watchdogTeamRows(view, deps.readTeam);
+    const keysArmed = panelKeysArmed(props?.focused, props?.visible, props?.host);
+    usePanelTick(kit, WATCHDOG_PANEL_REFRESH_MS, true);
+    const windowRows = Math.max(1, (measured.rows ?? WATCHDOG_FALLBACK_ROWS) - PANEL_CHROME_ROWS - PANEL_TITLE_ROW_ROWS);
+    const sizes = { contentRows: 1, viewportRows: 1 };
+    const viewport = usePanelViewport(kit, () => sizes);
+    const acknowledgeShown = () => {
+      if (!available)
+        return;
+      const shown = view.unread;
+      if (shown.length === 0) {
+        setFlash(t("watchdog.panelAckNoop"));
+        return;
+      }
+      const upTo = shown.reduce((max, record) => Math.max(max, record.at), 0);
+      if (!Number.isFinite(upTo) || upTo <= lastAck.current) {
+        setFlash(t("watchdog.panelAckNoop"));
+        return;
+      }
+      try {
+        const result = deps.acknowledge(upTo);
+        if (result.ok) {
+          lastAck.current = Math.max(lastAck.current, upTo);
+          setFlash(t("watchdog.panelAckDone", { n: shown.length }));
+        } else {
+          setFlash(t("watchdog.panelAckFailed", { error: result.error ?? "?" }));
+        }
+      } catch (error) {
+        setFlash(t("watchdog.panelAckFailed", { error: String(error?.message ?? error) }));
+      }
+    };
+    usePanelKeys(kit, props?.host, keysArmed, (event) => {
+      const bare = event;
+      if (bare === null || bare === undefined || typeof bare !== "object")
+        return;
+      const gesture = panelScrollKey(bare);
+      if (gesture !== undefined) {
+        if (typeof bare.preventDefault === "function")
+          bare.preventDefault();
+        if (gesture === "top")
+          viewport.scrollTo(0);
+        else if (gesture === "bottom")
+          viewport.scrollTo(Number.MAX_SAFE_INTEGER);
+        else
+          viewport.scrollBy((gesture === "pageUp" ? -1 : 1) * viewport.viewportRows);
+        return;
+      }
+      const input = typeof bare.input === "string" ? bare.input : "";
+      const flags = bare.key ?? {};
+      const wantsAck = input === "a" || input === "A";
+      const wantsRefresh = input === "r" || input === "R";
+      const forward = flags.downArrow === true || input === "j" || input === "J";
+      const backward = flags.upArrow === true || input === "k" || input === "K";
+      if (!wantsAck && !wantsRefresh && !forward && !backward)
+        return;
+      if (typeof bare.preventDefault === "function")
+        bare.preventDefault();
+      if (wantsAck) {
+        acknowledgeShown();
+        return;
+      }
+      if (wantsRefresh) {
+        setFlash(undefined);
+        setRefresh(Date.now());
+        return;
+      }
+      viewport.scrollBy(forward ? 1 : -1);
+    });
+    const children = [];
+    if (!available) {
+      children.push(textRow(kit, t("watchdog.panelAbsent"), { key: "absent", tone: "failed", maxCells: contentCols }));
+      children.push(textRow(kit, t("watchdog.panelAbsentHint"), { key: "absent-hint", dim: true, maxCells: contentCols }));
+    } else {
+      children.push(textRow(kit, t("watchdog.panelHeader", { held: view.holds.length, unread: view.unread.length }), {
+        key: "header",
+        bold: true,
+        tone: "chain",
+        maxCells: contentCols
+      }));
+      for (const row of teams) {
+        children.push(textRow(kit, watchdogTeamLine(row), {
+          key: `team-${row.id}`,
+          ...row.held ? { tone: "blocked" } : { dim: true },
+          maxCells: contentCols
+        }));
+      }
+      children.push(textRow(kit, t("watchdog.panelIncidents"), { key: "incidents", dim: true, bold: true, maxCells: contentCols }));
+      if (view.unread.length === 0) {
+        children.push(textRow(kit, t("watchdog.panelEmpty"), { key: "empty", dim: true, maxCells: contentCols }));
+      } else {
+        for (const record of view.unread) {
+          const lines = watchdogIncidentLines(record, Date.now());
+          children.push(textRow(kit, lines.first, { key: `${record.id}-1`, bold: true, maxCells: contentCols }));
+          children.push(textRow(kit, lines.second, { key: `${record.id}-2`, maxCells: contentCols }));
+          children.push(textRow(kit, lines.third, { key: `${record.id}-3`, dim: true, maxCells: contentCols }));
+        }
+      }
+    }
+    if (flashText !== undefined)
+      children.push(textRow(kit, flashText, { key: "flash", tone: "completed", maxCells: contentCols }));
+    const contentRows = Math.max(children.length, 1);
+    const band = clampScroll(viewport.offset, contentRows, viewport.viewportRows);
+    sizes.contentRows = contentRows;
+    sizes.viewportRows = windowRows;
+    const wheelBound = (boundKit, rows) => boundKit.React.createElement(boundKit.ui.Box, { key: "scroll", flexDirection: "column", onWheel: (event) => {
+      swallowWheelEvent(event);
+      viewport.onWheel(event);
+    } }, ...rows);
+    const footer = textRow(kit, `${t("watchdog.panelKeys")}${viewport.overflow ? ` ${String(viewport.offset + 1)}/${String(viewport.max + 1)}` : ""} · ${t("watchdog.panelLegend")}`, { key: "keys", dim: true, maxCells: contentCols });
+    const body = panelViewportBody(kit, children, viewport, true, wheelBound);
+    const titleRow = usePanelTitleRow(kit, {
+      key: "title",
+      title: WATCHDOG_PANEL_TITLE,
+      cols: contentCols,
+      ...options?.openFullscreen === undefined ? {} : { open: options.openFullscreen }
+    });
+    return panelFrame(kit, WATCHDOG_PANEL_TITLE, [titleRow, ...body, footer], {
+      onWheel: (event) => {
+        swallowWheelEvent(event);
+        viewport.onWheel(event);
+      }
+    });
+  };
+}
+function registerWatchdogPanel(tui, deps) {
+  const panel = deps.enabled ? tui.registerPanel({
+    ...WATCHDOG_PANEL_DESCRIPTOR_FROZEN,
+    component: createWatchdogPanelComponent(deps)
+  }) : undefined;
+  return {
+    panel,
+    registered: () => panel !== undefined && panel.id() !== undefined,
+    id: () => panel?.id(),
+    outcome: () => {
+      if (panel !== undefined)
+        return panel.outcome();
+      return tui.skipped("panels", "the watchdog sidebar page is disabled by the mpd-tui row config (watchdog: false)").outcome();
+    }
   };
 }
 
@@ -9622,7 +9930,7 @@ function boardSummary(workspaceRoot, home, teamViews, teamRecords) {
 // packages/mpd-tui-plugin/src/command-trees.ts
 var COMMAND_ROOT = "mpd";
 var MODEL_COMMAND = "mpd-model";
-var COMMAND_ACTIONS = ["board", "team", "plan", "subagents", "panel", "dag", "workmate", "workmates", "status"];
+var COMMAND_ACTIONS = ["board", "team", "plan", "subagents", "panel", "dag", "workmate", "workmates", "watchdog", "status"];
 var COMMAND_CHILDREN = [
   { name: "board", description: "Open the mpd board scene", descriptions: { zh: "打开 MPD 面板", en: "Open the mpd board scene" } },
   { name: "team", description: "Open the team workflow scene", descriptions: { zh: "打开团队工作流面板", en: "Open the team workflow scene" } },
@@ -9632,6 +9940,7 @@ var COMMAND_CHILDREN = [
   { name: "dag", description: "Open the MPD panel on its dependency DAG, or the full-screen DAG scene", descriptions: { zh: "打开 MPD 面板的依赖 DAG 视图；无接缝时使用全屏 DAG 场景", en: "Open the MPD panel on its dependency DAG, or the full-screen DAG scene" } },
   { name: "workmate", description: "Open the workmate page (its own sidebar panel), or the full-screen fallback", descriptions: { zh: "打开 workmate 页面（独立侧栏面板）；无接缝时使用全屏回退", en: "Open the workmate page (its own sidebar panel), or the full-screen fallback" } },
   { name: "workmates", description: "List the durable workmate library", descriptions: { zh: "列出 workmate 库", en: "List the durable workmate library" } },
+  { name: "watchdog", description: "Open the watchdog page: holds, unread incidents and their acknowledgement", descriptions: { zh: "打开看门狗页面：暂停、未读事件与确认", en: "Open the watchdog page: holds, unread incidents and their acknowledgement" } },
   { name: "status", description: "Print the mpd status line", descriptions: { zh: "输出 MPD 状态行", en: "Print the mpd status line" } }
 ];
 var COMMAND_ROOT_DESCRIPTIONS = {
@@ -9989,6 +10298,18 @@ function runAction(action, actions, session) {
     return { kind: "success", text: clamp(pageLine("dag", actions.openDag())) };
   if (action === "workmate")
     return { kind: "success", text: clamp(pageLine("workmate", actions.openWorkmate())) };
+  if (action === "watchdog") {
+    const route = actions.openWatchdog();
+    if (route.outcome === "opened")
+      return { kind: "success", text: clamp(t("watchdog.commandOpened", { id: route.id ?? "?" })) };
+    if (route.outcome === "fallback")
+      return { kind: "error", text: clamp(t("watchdog.commandOpenRefused")) };
+    if (route.outcome === "refused")
+      return { kind: "error", text: clamp(t("watchdog.commandRefused")) };
+    if (route.reason === "disabled")
+      return { kind: "error", text: clamp(t("watchdog.commandDisabled")) };
+    return { kind: "error", text: clamp(t("watchdog.commandAbsent")) };
+  }
   if (action === "plan") {
     return actions.openPlan() ? { kind: "success" } : { kind: "error", text: t("command.planMissing") };
   }
@@ -10026,39 +10347,14 @@ var MENU_TEXT = {
   titleModel: { zh: "MPD 模型", en: "MPD model" },
   titleEffort: { zh: "MPD 推理强度", en: "MPD reasoning effort" },
   slotHint: { zh: "该槽位驱动的成员组：{group}", en: "the member group this slot drives: {group}" },
+  slotCurrent: { zh: "当前：{route}", en: "current: {route}" },
+  slotFallbacks: { zh: "（另有 {n} 个回退）", en: " (+{n} fallbacks)" },
+  slotUnconfigured: { zh: "当前：<unconfigured>", en: "current: <unconfigured>" },
+  slotInvalid: { zh: "当前：<invalid>", en: "current: <invalid>" },
+  slotUnavailable: { zh: "当前：<unavailable>", en: "current: <unavailable>" },
   providerHint: { zh: "该槽位的提供商；模型列表来自它", en: "this slot's provider; the model list comes from it" },
   modelHint: { zh: "该槽位的模型", en: "this slot's model" },
   effortHint: { zh: "该槽位的推理强度", en: "this slot's reasoning effort" },
-  titleTarget: { zh: "应用到哪个范围", en: "apply to which scope" },
-  targetSlotLabel: { zh: "整个槽位", en: "the whole slot" },
-  targetClearLabel: { zh: "清除成员覆盖", en: "clear member overrides" },
-  targetSlotHint: {
-    zh: "整个槽位——该组的所有成员（写入 teamModels，作为这组成员的默认路由）",
-    en: "the whole slot — every member of the group (writes teamModels, the group's default route)"
-  },
-  targetMemberHint: {
-    zh: "仅该成员（写入 agentRoutes，优先于槽位）。当前生效：{route}",
-    en: "this member only (writes agentRoutes, over the slot). effective now: {route}"
-  },
-  targetRouteUnreadable: { zh: "（存储值不可读）", en: " (stored values unreadable)" },
-  targetClearHint: {
-    zh: "清除本组成员的专属覆盖（删除 agentRoutes 条目，成员恢复跟随槽位）",
-    en: "clear this group's member overrides (removes their agentRoutes entries; the members fall back to the slot)"
-  },
-  memberWrote: {
-    zh: "mpd-model: 成员 {name} 的专属路由已设置 提供商 {provider} · 模型 {model} · 推理强度 {effort}；{disclosure}。{notLost}",
-    en: "mpd-model: member {name} own route set to provider {provider} · model {model} · reasoning effort {effort}; {disclosure}. {notLost}"
-  },
-  clearedWrote: {
-    zh: "mpd-model: 已清除 {count} 个成员覆盖叶子（{names}）——这些成员恢复跟随各自槽位",
-    en: "mpd-model: cleared {count} override leaf/leaves ({names}) — those members follow their slots again"
-  },
-  clearedNone: {
-    zh: "mpd-model: 该组成员没有可清除的专属覆盖，未写入任何设置",
-    en: "mpd-model: this group's members carry no overrides to clear — nothing was written"
-  },
-  sealedByCancelTarget: { zh: "mpd-model: 已取消范围选择，未写入任何设置", en: "mpd-model: the scope panel was cancelled — nothing was written" },
-  sealedByNoMember: { zh: "mpd-model: 未知成员“{member}”，未写入任何设置", en: 'mpd-model: unknown member "{member}" — nothing was written' },
   sealedByDialogs: {
     zh: "mpd-model: 该组合没有对话框接缝（无界面嵌入），未打开菜单，也未写入任何设置",
     en: "mpd-model: this composition has no dialogs seam (a headless embedder) — no menu was opened and nothing was written"
@@ -10097,13 +10393,25 @@ function say(key, lang, params = {}) {
 function short(value) {
   return scalarText(value, 60) ?? value;
 }
-function slotPanelOptions(lang) {
+function slotCurrentText(lang, display) {
+  if (display.state === "ok") {
+    return say("slotCurrent", lang, { route: display.route }) + (display.fallbacks > 0 ? say("slotFallbacks", lang, { n: String(display.fallbacks) }) : "");
+  }
+  if (display.state === "unconfigured")
+    return pick(MENU_TEXT.slotUnconfigured, lang);
+  if (display.state === "invalid")
+    return pick(MENU_TEXT.slotInvalid, lang);
+  return pick(MENU_TEXT.slotUnavailable, lang);
+}
+function slotPanelOptions(lang, displays) {
   return TEAM_MODEL_SLOTS.map((slot, index) => {
     const group = TEAM_MODEL_SLOT_GROUPS[slot];
+    const hint = say("slotHint", lang, { group: lang === "en" ? group.en : group.zh });
+    const current = displays?.[slot];
     return {
       id: slot,
       label: `${index + 1}. ${lang === "en" ? group.en : group.zh}`,
-      description: say("slotHint", lang, { group: lang === "en" ? group.en : group.zh })
+      description: current === undefined ? hint : `${hint} · ${slotCurrentText(lang, current)}`
     };
   });
 }
@@ -10209,38 +10517,17 @@ async function openModelMenu(tui, log, options = {}) {
   }
   const lists = teamModelOptionLists(catalog);
   log.info(`/${MODEL_COMMAND} catalog=${catalogWhy === undefined ? "live" : "fallback"}` + ` provider=${lists.source.provider}(${lists.provider.length}) model=${lists.source.model}(${lists.model.length})` + ` reasoningEffort=${lists.source.reasoningEffort}(${lists.reasoningEffort.length})`);
-  const slot = await dialogs.select(say("titleSlot", lang), slotPanelOptions(lang), PANEL_TIMEOUT_MS);
+  const slotService = options.slotService ?? configServiceOf(options.ctx);
+  const slotDisplays = {};
+  for (const candidate of TEAM_MODEL_SLOTS) {
+    const member = TEAM_MODEL_SLOT_GROUPS[candidate].members[0] ?? "";
+    slotDisplays[candidate] = slotResolutionDisplay(slotService, member);
+  }
+  const slot = await dialogs.select(say("titleSlot", lang), slotPanelOptions(lang, slotDisplays), PANEL_TIMEOUT_MS);
   if (slot === undefined)
     return { kind: "error", text: say("sealedByCancelSlot", lang) };
   if (!TEAM_MODEL_SLOTS.includes(slot))
     return { kind: "error", text: say("sealedByNoSlot", lang, { slot: short(slot) }) };
-  const tables = readRouteTables(adapter);
-  const scope = await dialogs.select(say("titleTarget", lang), targetPanelOptions(slot, tables, lang), PANEL_TIMEOUT_MS);
-  if (scope === undefined)
-    return { kind: "error", text: say("sealedByCancelTarget", lang) };
-  const scopeGroup = TEAM_MODEL_SLOT_GROUPS[slot];
-  const member = scope === TARGET_SLOT || scope === TARGET_CLEAR ? undefined : String(scope);
-  if (member !== undefined && !scopeGroup.members.includes(member)) {
-    return { kind: "error", text: say("sealedByNoMember", lang, { member: short(member) }) };
-  }
-  if (scope === TARGET_CLEAR) {
-    if (typeof adapter.settingsMutate !== "function")
-      return { kind: "error", text: say("sealedByNoNamespace", lang) };
-    const clearOps = scopeGroup.members.flatMap((name) => ["provider", "model", "reasoningEffort"].filter((leaf) => tables.agentRoutes[name]?.[leaf] !== undefined).map((leaf) => ({ op: "unset", path: ["agentRoutes", name, leaf] })));
-    if (clearOps.length === 0)
-      return { kind: "success", text: say("clearedNone", lang) };
-    let entryRevision;
-    try {
-      entryRevision = adapter.settingsReader?.(SETTINGS_ENTRY)?.describe()?.revision;
-    } catch {}
-    const cleared = await adapter.settingsMutate(SETTINGS_ENTRY, clearOps, entryRevision);
-    if (!cleared.ok)
-      return { kind: "error", text: say("sealedByRefused", lang, { error: short(cleared.error) }) };
-    const clearedNames = [...new Set(clearOps.map((op) => op.path[1]))].join(", ");
-    log.info(`/${MODEL_COMMAND} cleared agentRoutes for ${clearedNames} (${String(clearOps.length)} leaf/leaves)`);
-    return { kind: "success", text: say("clearedWrote", lang, { count: String(clearOps.length), names: clearedNames }) };
-  }
-  const writePrefix = member === undefined ? [TEAM_MODELS_PREFIX, slot] : ["agentRoutes", member];
   const provider = await dialogs.select(say("titleProvider", lang), lists.provider.map((option) => ({ id: option.value, label: option.label, description: say("providerHint", lang) })), PANEL_TIMEOUT_MS);
   if (provider === undefined)
     return { kind: "error", text: say("sealedByCancelProvider", lang) };
@@ -10252,30 +10539,23 @@ async function openModelMenu(tui, log, options = {}) {
   const effort = await dialogs.select(say("titleEffort", lang), efforts.map((option) => ({ id: option.value, label: option.label, description: say("effortHint", lang) })), PANEL_TIMEOUT_MS);
   if (effort === undefined)
     return { kind: "error", text: say("sealedByCancelEffort", lang) };
-  const target = member === undefined ? locateNamespace(adapter, slot) : { namespace: SETTINGS_ENTRY, revision: (() => {
-    try {
-      return adapter.settingsReader?.(SETTINGS_ENTRY)?.describe()?.revision;
-    } catch {
-      return;
-    }
-  })() };
+  const target = locateNamespace(adapter, slot);
   if (typeof adapter.settingsMutate !== "function")
     return { kind: "error", text: say("sealedByNoNamespace", lang) };
   const ops = ["provider", "model", "reasoningEffort"].map((leaf) => ({
     op: "set",
-    path: [...writePrefix, leaf],
+    path: [TEAM_MODELS_PREFIX, slot, leaf],
     value: leaf === "provider" ? provider : leaf === "model" ? model : effort
   }));
   const written = await adapter.settingsMutate(target.namespace, ops, target.revision);
   if (!written.ok)
     return { kind: "error", text: say("sealedByRefused", lang, { error: short(written.error) }) };
-  log.info(`/${MODEL_COMMAND} wrote ${target.namespace}.${writePrefix.join(".")} = ${provider}/${model}/${effort}`);
+  log.info(`/${MODEL_COMMAND} wrote ${target.namespace}.${[TEAM_MODELS_PREFIX, slot].join(".")} = ${provider}/${model}/${effort}`);
   const fallback = catalogWhy === undefined ? "" : ` · ${say("catalogFallback", lang, { why: catalogWhy })}`;
   return {
     kind: "success",
-    text: `${say(member === undefined ? "wrote" : "memberWrote", lang, {
+    text: `${say("wrote", lang, {
       slot,
-      name: member ?? "",
       provider: short(provider),
       model: short(model),
       effort: short(effort),
@@ -10283,76 +10563,6 @@ async function openModelMenu(tui, log, options = {}) {
       notLost: BRIDGE_NOT_LOST
     })}${fallback}`
   };
-}
-function readRouteTables(adapter) {
-  let value;
-  for (const namespace of [SETTINGS_ENTRY, MODEL_NAMESPACE]) {
-    const reader = adapter.settingsReader?.(namespace);
-    if (reader === undefined)
-      continue;
-    try {
-      value = reader.get();
-    } catch {
-      value = undefined;
-    }
-    if (value !== undefined)
-      break;
-  }
-  const slots = {};
-  for (const slot of TEAM_MODEL_SLOTS)
-    slots[slot] = storedSlot(value, slot);
-  const agentRoutes = {};
-  for (const candidate of [value, isRecord2(value) ? value.user : undefined, isRecord2(value) ? value.value : undefined]) {
-    if (!isRecord2(candidate))
-      continue;
-    const table = candidate["agentRoutes"];
-    if (!isRecord2(table))
-      continue;
-    for (const [name, entry] of Object.entries(table)) {
-      if (agentRoutes[name] !== undefined)
-        continue;
-      if (!isRecord2(entry))
-        continue;
-      const leaves = {};
-      for (const leaf of ["provider", "model", "reasoningEffort"]) {
-        const found = entry[leaf];
-        if (typeof found === "string" && found.length > 0)
-          leaves[leaf] = found;
-      }
-      if (Object.keys(leaves).length > 0)
-        agentRoutes[name] = leaves;
-    }
-  }
-  return { slots, agentRoutes };
-}
-function memberRouteText(tables, member, slot) {
-  const base = tables.slots[slot] ?? {};
-  const entry = tables.agentRoutes[member] ?? {};
-  const route = (leaf) => entry[leaf] ?? base[leaf] ?? "";
-  return `${route("provider") || "-"} / ${route("model") || "-"} / ${route("reasoningEffort") || "-"}`;
-}
-var TARGET_SLOT = "slot";
-var TARGET_CLEAR = "clear";
-function targetPanelOptions(slot, tables, lang) {
-  const group = TEAM_MODEL_SLOT_GROUPS[slot];
-  if (group === undefined)
-    return [];
-  const options = [
-    { id: TARGET_SLOT, label: `1. ${pick(MENU_TEXT.targetSlotLabel, lang)}`, description: say("targetSlotHint", lang) }
-  ];
-  for (const [index, member] of group.members.entries()) {
-    options.push({
-      id: member,
-      label: `${index + 2}. ${member}`,
-      description: say("targetMemberHint", lang, { route: memberRouteText(tables, member, slot) })
-    });
-  }
-  options.push({
-    id: TARGET_CLEAR,
-    label: `${group.members.length + 2}. ${pick(MENU_TEXT.targetClearLabel, lang)}`,
-    description: say("targetClearHint", lang)
-  });
-  return options;
 }
 
 // packages/mpd-tui-plugin/src/index.ts
@@ -10369,6 +10579,7 @@ var Config = markVolatile(Schema.object({
   dialogs: Schema.boolean().default(true),
   panel: Schema.boolean().default(true),
   workmate: Schema.boolean().default(true),
+  watchdog: Schema.boolean().default(true),
   panelAutoOpen: Schema.boolean().default(true),
   dashboardKey: Schema.boolean().default(true),
   wheelInvert: Schema.boolean().default(false),
@@ -10391,6 +10602,7 @@ function resolveConfig(config = {}) {
     dialogs: bool(config.dialogs, true),
     panel: bool(config.panel, true),
     workmate: bool(config.workmate, true),
+    watchdog: bool(config.watchdog, true),
     panelAutoOpen: bool(config.panelAutoOpen, true),
     dashboardKey: bool(config.dashboardKey, true),
     wheelInvert: bool(config.wheelInvert, false),
@@ -10609,7 +10821,18 @@ function apply(ctx, config = {}) {
     openScene: () => scene.open(),
     log
   });
-  if (resolved.panel) {
+  const watchdogPanel = registerWatchdogPanel(tui, {
+    enabled: resolved.watchdog,
+    available: () => watchdogFrontDoor.available(),
+    read: () => watchdogFrontDoor.view(),
+    acknowledge: (upTo) => watchdogFrontDoor.acknowledge(upTo),
+    readTeam: () => {
+      const workflow = readDashboardWorkflow(workspaceRoot, () => watchdogFrontDoor.view().holds, teamViews, teamRecords, () => teamsService);
+      return workflow?.team === undefined ? undefined : { id: workflow.team.id, phase: workflow.team.phase };
+    },
+    log
+  });
+  if (resolved.panel || resolved.watchdog) {
     tui.whenBound("panels", (_service, scope) => {
       try {
         panelAttention?.stop();
@@ -10634,6 +10857,8 @@ function apply(ctx, config = {}) {
           }
         },
         readWorkflow: () => readDashboardWorkflow(workspaceRoot, () => watchdogFrontDoor.view().holds, teamViews, teamRecords, () => teamsService),
+        watchdogPanelId: () => watchdogPanel.id(),
+        readWatchdog: () => watchdogFrontDoor.view(),
         feed: teamFeed,
         autoOpen: resolved.panelAutoOpen,
         autoOpenLatch,
@@ -10668,11 +10893,18 @@ function apply(ctx, config = {}) {
     return { ...routed, id: panel.id() };
   };
   const openPage = (page) => {
+    if (page.disabled?.() === true)
+      return { outcome: "unavailable", sceneOpened: false, id: undefined, reason: "disabled" };
     const id = page.id();
-    if (!tui.panelSeamBound() || id === undefined)
-      return { outcome: "unavailable", sceneOpened: page.openScene(), id };
+    if (tui.panelSeamBound() && id === undefined && page.outcome?.().state === "refused") {
+      return { outcome: "refused", sceneOpened: page.openScene(), id };
+    }
+    if (!tui.panelSeamBound())
+      return { outcome: "unavailable", sceneOpened: page.openScene(), id, reason: "seam-absent" };
+    if (id === undefined)
+      return { outcome: "unavailable", sceneOpened: page.openScene(), id, reason: "not-yet" };
     if (typeof tui.panels()?.open !== "function") {
-      return { outcome: "unavailable", sceneOpened: page.openScene(), id };
+      return { outcome: "unavailable", sceneOpened: page.openScene(), id, reason: "seam-absent" };
     }
     const result = tui.openPanel(id);
     if (result.opened() === true)
@@ -10710,11 +10942,15 @@ function apply(ctx, config = {}) {
       return { outcome: route.outcome, id: route.id };
     },
     openDag: () => {
-      const route = openPage({ id: () => panel.id(), openScene: () => scene.openTeam() });
+      const route = openPage({ id: () => panel.id(), openScene: () => scene.openTeam(), disabled: () => panel.panel === undefined, outcome: () => panel.outcome() });
       return { outcome: route.outcome, id: route.id };
     },
     openWorkmate: () => {
-      const route = openPage(workmatePanel);
+      const route = openPage({ id: () => workmatePanel.id(), openScene: () => workmatePanel.openScene(), disabled: () => workmatePanel.panel === undefined, outcome: () => workmatePanel.outcome() });
+      return { outcome: route.outcome, id: route.id };
+    },
+    openWatchdog: () => {
+      const route = openPage({ id: () => watchdogPanel.id(), openScene: () => false, disabled: () => watchdogPanel.panel === undefined, outcome: () => watchdogPanel.outcome() });
       return { outcome: route.outcome, id: route.id };
     },
     statusText: () => boardSummary(workspaceRoot, home, teamViews, teamRecords) + String.fromCharCode(10) + panelsSummary(),
@@ -10743,6 +10979,8 @@ function apply(ctx, config = {}) {
   log.debug(`sidebar panel id: ${panel.id() ?? "(not discovered)"}`);
   outcomes.push({ id: "workmatePanel", outcome: workmatePanel.outcome() });
   log.debug(`sidebar workmate page id: ${workmatePanel.id() ?? "(not discovered)"}`);
+  outcomes.push({ id: "watchdogPanel", outcome: watchdogPanel.outcome() });
+  log.debug(`sidebar watchdog page id: ${watchdogPanel.id() ?? "(not discovered)"}`);
   outcomes.push({ id: "dashboardKey", outcome: dashboardKey.outcome() });
   record(trees);
   record(shortcuts);
@@ -10765,6 +11003,7 @@ async function pickAction(log, dialogs) {
     { id: "dag", label: "DAG", description: "the dependency DAG as its own sidebar page" },
     { id: "workmate", label: "Workmate", description: "the workmate library as its own sidebar page" },
     { id: "workmates", label: "Workmates", description: "list the durable workmate library" },
+    { id: "watchdog", label: "Watchdog", description: "the watchdog page: holds, unread incidents, acknowledge" },
     { id: "status", label: "Status", description: "print the mpd status line" }
   ]);
   if (choice !== undefined)

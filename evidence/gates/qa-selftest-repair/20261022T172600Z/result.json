@@ -1,0 +1,77 @@
+{
+  "task": "T18 — repair the model-config-live-refresh self-test to the slot single-source contract",
+  "utcStamp": "20261022T172600Z",
+  "scope": "skills/dsh-qa/scripts/model-config-live-refresh.ts ONLY (single-skills-writer: no other file under skills/ touched; no git, no dist, no repin-vendor)",
+  "failureRepaired": "node skills/dsh-qa/scripts/model-config-live-refresh.ts --self-test FAILED with `self-test: the shipped slot3 default parses from settings-schema.ts` — the case still pinned TEAM_MODEL_SLOT_DEFAULTS, which the wave deleted on purpose (slot-single-source contract §2).",
+  "changed": [
+    {
+      "symbol": "selfTest()",
+      "what": "replaced the deleted-default pins with the NEW contract's pins; no live-refresh arm was deleted",
+      "newPins": [
+        "the shipped schema has NO built-in slot default table (TEAM_MODEL_SLOT_DEFAULTS is gone)",
+        "the shipped sources DECLARE no per-member agentRoutes table (only a doc comment names its absence)",
+        "the slot subtree's three leaves are `z.string().required(false)` with NO `.default()` — asserted on teamModelSlotSchema()'s OWN extracted body",
+        "the four slots are built by teamModelSlotSchema(), never by an inline default literal",
+        "BASELINE_MODEL / AFTER_MODEL / EXPECTED_PROVIDER are members of the shipped declared option lists; BASELINE_MODEL != AFTER_MODEL",
+        "the service exposes the per-call TOTAL slotResolutionOf (typed SlotResolution) and exports the union as ok:true | ok:false arms",
+        "resolveTeamModelSlot's OWN body carries NO throw (the resolution RETURNS every refusal)",
+        "the service exposes the TOTAL teamModelRouteOf (route or undefined) and returns undefined for every unusable slot",
+        "mpd_role_spawn declares NO `model` parameter (its extracted parameter block), and its model comes from `run.route.model`",
+        "the seed marker is `model-config-seed.json` at `<ws>/.mpd/model-config-seed.json`, the MARKER guard precedes the declared-block guard (a deleted block is never re-seeded), and a declared block is never rewritten",
+        "the pre-existing live-refresh machinery pins kept: entry-config subscription, entry-config state reload"
+      ],
+      "removedPins": [
+        "the shipped slot3 default parses from settings-schema.ts (the deleted contract)",
+        "BASELINE_MODEL equals the shipped slot3 default model (deleted contract)",
+        "EXPECTED_PROVIDER equals the shipped slot3 default provider (deleted contract)",
+        "AFTER_MODEL is a member of the shipped model enum (replaced by the declared model/provider option-list pins)",
+        "the service exposes the per-call teamModelRouteOf read (superseded by the stronger signature-precise TOTAL pin)"
+      ]
+    },
+    {
+      "symbol": "runReal() and its header/constants/verdict labels",
+      "what": "the LIVE arms are kept; the FIXTURE is adapted to the new contract. The sandbox's read-root `.mpd/mpd.jsonc` now DECLARES slot3's configured route (provider deepseek-official + model deepseek-v4-flash) before the boot, because the built-in default layer is gone (without it phase A would be refused with SLOT_UNCONFIGURED). Phase D's hand edit now writes the provider beside the model so the file's route stays whole. Labels/comments that said 'slot DEFAULT model' now say 'workspace CONFIGURED slot3 route'.",
+      "armsKept": [
+        "A baseline (spawn on the configured slot3 model)",
+        "B save through settings/mutate(ns=mpd-config)",
+        "C after-save spawn on the saved model, same boot pid",
+        "D file-edit control through the watched .mpd/mpd.jsonc",
+        "the provider-side stub cross-check, isolation, real-record and no-restart verdicts"
+      ]
+    }
+  ],
+  "gates": [
+    {
+      "command": "node skills/dsh-qa/scripts/model-config-live-refresh.ts --self-test",
+      "exit": 0,
+      "observed": "[model-config-live-refresh self-test] ok: 33 checks"
+    },
+    {
+      "command": ".toolchain/node_modules/.bin/bun run test:qa",
+      "exit": 0,
+      "observed": "51 runner entries (49 case scripts + 2 extensions/mpd-ext CLI steps), every one green, final line `[test:qa] all self-tests passed`"
+    },
+    {
+      "command": "bun run typecheck",
+      "exit": 0,
+      "observed": "tsgo --noEmit, no diagnostics"
+    },
+    {
+      "command": "bun run verify:comments",
+      "exit": 0,
+      "observed": "VERDICT: PASS — every declaration in the family carries a precise comment and a full signature (436 files scanned)"
+    },
+    {
+      "command": "node scripts/verify-vendor.ts",
+      "exit": 1,
+      "observed": "FAIL - asset skills treeSha mismatch",
+      "expected": true,
+      "note": "this edit is a skills/** change, so the corpus treeSha necessarily moved. The captain owns the wave's single re-pin and it must land in the same commit; repin-vendor was deliberately NOT run by this task (explicit instruction)."
+    }
+  ],
+  "notDone": [
+    "the LIVE lane was not executed (it needs a dsh binary and a real boot; test:qa runs --self-test only) — the fixture adaptation is unverified against a real boot",
+    "no repin-vendor (captain's step), no git, no dist rebuild",
+    "no other file under skills/ was touched"
+  ]
+}

@@ -1,0 +1,13 @@
+diff --git a/VENDOR_LOCK.json b/VENDOR_LOCK.json
+index 6c9c2c32..8614030c 100644
+--- a/VENDOR_LOCK.json
++++ b/VENDOR_LOCK.json
+@@ -34,7 +34,7 @@
+     },
+     "packages/mpd-bundle-plugin/client.js": {
+       "fileCount": 1,
+-      "sha256": "bd68a418cd2c9c2e7b86943b54e1581ea7f88cb8216ee43b84d40f79a9acb1c9",
++      "sha256": "08e715422b614006fb0da1ae67c9e80ac4e1f184e73f4a21363f52cb66c964f3",
+       "source": "combined web client DERIVED from packages/mpd-bundle-plugin/adopted/** by scripts/build-mpd-client.ts; rebuild it, never rewrite this fingerprint"
+     }
+   },

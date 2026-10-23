@@ -1,0 +1,43 @@
+{
+  "task": "T22 — docs repair: depend's self-edge/cycle refusals (team-core) + the settings card's invalid slot (bundle)",
+  "utcStamp": "20261023T021019Z",
+  "scope": "the FOUR README files below only (no src, no dist, no git)",
+  "files": [
+    "packages/mpd-team-core-plugin/README.md",
+    "packages/mpd-team-core-plugin/README.zh-CN.md",
+    "packages/mpd-bundle-plugin/README.md",
+    "packages/mpd-bundle-plugin/README.zh-CN.md"
+  ],
+  "switchLinks": "intact and unedited in all four files (team-core: `**English** | [中文](./README.zh-CN.md)` / `[English](./README.md) | **简体中文**`; bundle: `**English** | [中文](./README.zh-CN.md)` / `**中文** | [English](./README.md)`); verify:docs resolves them",
+  "changed": [
+    {
+      "half": "(a) team-core `agent_teams_task` depend entry",
+      "files": ["packages/mpd-team-core-plugin/README.md", "packages/mpd-team-core-plugin/README.zh-CN.md"],
+      "what": "the depend sentence now also names the NEW refusals from 6bbf5165: a SELF-EDGE and ANY CYCLE (2-node or transitive) are refused, every refusal returns BEFORE any write so `blockedBy` and `revision` are unchanged, and the reason is stated — a cyclic edge could never satisfy the readiness rule and depend appends only, so the row would be permanently not-ready",
+      "sourceChecked": "packages/mpd-team-core-plugin/src/index.ts — the depend branch returns `{taskId, refused}` for `wired === taskId` (self-edge) and for `chainReaches(wired, taskId)` (cycle) before the single `updateTeamTask`/`writeTeam` pair, so nothing is written"
+    },
+    {
+      "half": "(b) bundle-plugin settings card, invalid slot",
+      "files": ["packages/mpd-bundle-plugin/README.md", "packages/mpd-bundle-plugin/README.zh-CN.md"],
+      "what": "documents the `invalid` state beside `<unconfigured>`: an invalid slot (a leaf present but malformed, e.g. non-string, or a slot that is not an object) renders its OWN sentence in both languages instead of `<unconfigured>`; `EffectiveRoute.problem` names the offending leaf (`teamModels.slotN.leaf is not a string`, or `teamModels.slotN is not an object`); the `missing` check TRIMS every leaf, so a whitespace-only leaf counts as MISSING rather than configured; a malformed slot must never read as absent",
+      "sourceChecked": "packages/mpd-bundle-plugin/src/settings-card.ts — `EffectiveRoute.status: configured | unconfigured | invalid`, `problem` spelled exactly as documented, `slotStateOf` trims each leaf before the missing check and renders `effective.slotInvalid` (its own EN + ZH sentence) rather than the unconfigured sentence"
+    }
+  ],
+  "gate": {
+    "command": "bun run verify:docs",
+    "exit": 0,
+    "observed": "pairs=50 failed=0 violations=0 exempt=24 derived=3 links=445 checked=413 resolved=413 dead=0 — PASS"
+  },
+  "evidence": {
+    "dir": "evidence/coderabbit/readme-repair/20261023T021019Z",
+    "files": {
+      "output.log": "the edited-file stat + the full verify:docs verdict with its exit code",
+      "readme-diff.txt": "the diff of all four README files",
+      "result.json": "this record"
+    }
+  },
+  "notDone": [
+    "no src change (the code already had both behaviours; only the docs lagged)",
+    "no dist, no git (the captain is the only git writer)"
+  ]
+}

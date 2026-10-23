@@ -18,19 +18,29 @@ service is the **fallback** for a composition that runs the official executor, r
 
 | Tool | `action` values | What it does |
 |---|---|---|
-| `agent_teams_plan` | `create`, `add_member`, `create_task`, `edit`, `approve`, `delete`, `status` | stage a team as a PLAN; `approve` EXECUTES it through the TEAM EXECUTOR — the native backend over `ctx.subagents.startContinuable` is the DEFAULT and the official `dsh.team*` calls are the FALLBACK, so the official plugin need not be mounted — resolves `blocked_by`/`owner` against the mpd record, and REFUSES a plan with 0 members and 0 tasks; `delete` archives; `status` shows the record beside the official readout when that backend is active |
-| `agent_teams_task` | `claim`, `contract`, `release` | claim the task on the mpd record AND freeze its contract with a monotonic `attempt`; read it back; `release` frees the pairing and reopens the row to `pending` |
+| `agent_teams_plan` | `create`, `add_member`, `create_task`, `edit`, `approve`, `delete`, `status` | stage a team as a PLAN; `approve` EXECUTES it through the TEAM EXECUTOR — the native backend over `ctx.subagents.startContinuable` is the DEFAULT and the official `dsh.team*` calls are the FALLBACK, so the official plugin need not be mounted — resolves `blocked_by`/`owner` against the mpd record, persists a declared `kind` from `task.kind` or its top-level alias (an unknown word is refused), and REFUSES a plan with 0 members and 0 tasks; `delete` archives; `status` shows the record beside the official readout when that backend is active |
+| `agent_teams_task` | `claim`, `contract`, `release`, `complete`, `fail`, `depend` | claim the task on the mpd record AND freeze its contract with a monotonic `attempt`; read it back; `release` frees the pairing and reopens the row to `pending`; `complete`/`fail` are the terminal verbs (owner-only, optional `note`/`expected_revision`, a `FAIL` releases its dependents); `depend` APPENDS `blocked_by` edges to an EXISTING row — idempotent (a re-added reference is a reported no-op), refused for a terminal row, for an unknown `task_id`, for a caller who is neither the row's owner nor the team's Lead, and for a SELF-EDGE or ANY CYCLE (2-node or transitive); every refusal returns BEFORE any write, so `blockedBy` and `revision` are unchanged — a cyclic edge could never satisfy the readiness rule, and `depend` appends only, so the row would be permanently not-ready — and it reports a reference that names no task: kept verbatim in `blockedBy`, named in the answer, and persisted on the row as `unresolvedBlockers` |
 | `agent_teams_dispatch` | `run`, `release` | pair ready tasks with idle members, tell each member its task, and RECORD the pairing in the TEAM-SCOPED ledger; `release` frees it and reopens the row |
 | `agent_teams_mail` | `send`, `unread`, `read`, `summary` | the team mailbox: durable, with a read state the official one cannot provide |
 | `agent_teams_control` | `halt`, `resume` | a hold that stops new dispatch and nothing else |
 
 `/agent-teams <what the team is for>` stages a plan from the current goal.
 
+**The DAG is visible.** `agent_teams_plan {action:"status"}` keeps its one-line summary
+(`plan <id> · members N · tasks N · hold …`) and prints one line per member (`id`, `name`, `status`) and
+one line per task (`id`, `owner`, `status`, `kind`, `blockedBy` — or `-` — and `subject`), so a flat
+board and a wired one no longer look alike. `edit`'s read form prints the staged tasks with `subject`,
+`owner` and `blockedBy`, and `id=-` on every row: approval is what mints the `T1…` ids. Because
+`create_task` mints a row and approval writes `blockedBy` once, `agent_teams_task {action:"depend"}` is
+the append-only verb that lets a lane added mid-run enter an existing DAG instead of becoming another
+unconnected row.
+
 **Why actions, not tools.** Every tool's name, description and parameter schema sits in the model's
 context on EVERY turn. The hand-written surface had grown to 14 tools costing 7,643 characters
 (~1,900 tokens) before a word of the actual task; the actions are steps of one workflow, so they are
-`action` values now — 5 tools, 4,717 characters (~1,180 tokens). `test/tool-surface.test.ts` pins both
-the budget and the action sets, so a new tool has to justify itself against that number.
+`action` values now — 5 tools, **4,971 characters of a 5,000 budget** (~1,240 tokens), measured
+2026-10-23. `test/tool-surface.test.ts` pins both the budget and the action sets, so a new tool has to
+justify itself against that number.
 
 `/agent-teams <what the team is for>` stages a plan from the current goal.
 

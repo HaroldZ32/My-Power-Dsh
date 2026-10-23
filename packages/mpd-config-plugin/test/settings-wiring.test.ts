@@ -10,7 +10,6 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 import { apply } from "../src/index"
-import { TEAM_MODEL_SLOT_DEFAULTS } from "../src/settings-schema"
 
 /** Temp paths created by this file's fixtures, drained by the shared `afterEach` so no run leaks state. */
 const temps: string[] = []
@@ -340,9 +339,14 @@ describe("read-in precedence (design §1.1/§10.4, U12)", () => {
     apply(h.ctx)
     expect(h.provided.mpdConfig.get("ulw.maxRounds")).toBe(4)
     expect(h.provided.mpdConfig.states().settings.served).toBe(false)
-    // the registration line is the ONLY log: the seams this harness provides are all present
-    expect(h.logs).toHaveLength(1)
+    // TWO lines, both declared: the registration line, and the one-time seed's "nothing was
+    // written" line — this stub provides NO llm seam, which is the contract's documented
+    // catalog-unavailable degradation (\`.mpd/plans/slot-single-source.md\` §10: "write nothing, log
+    // once, and let the first spawn report SLOT_UNCONFIGURED"). Nothing else may be logged.
+    expect(h.logs).toHaveLength(2)
     expect(h.logs[0]).toContain('registered the "mpd" namespace with the file-derived base')
+    expect(h.logs[1]).toContain("[mpd-config] team-model slots are not configured")
+    expect(h.logs[1]).toContain("nothing was written")
   })
 })
 
@@ -701,24 +705,27 @@ describe("the file-derived base under the captain's cardinality rule (§10.1 + r
   })
 })
 
-describe("the team-model slots are a READ-path projection only (A2)", () => {
-  test("a fully absent .mpd/mpd.jsonc still resolves the three slot defaults", async () => {
+describe("the team-model slots have NO read-path default layer (contract §2/§9)", () => {
+  test("a fully absent .mpd/mpd.jsonc resolves NO slot: an absent block is ABSENT", async () => {
     // No `.mpd` directory at all: the workspace has no file for the layer to read.
     /** Bare workspace with no `.mpd` directory at all; `mkdtempSync` guarantees it exists and is empty. */
     const bare = mkdtempSync(join(tmpdir(), "mpd-wiring-bare-"))
     temps.push(bare)
-    /** Fake adapter whose only live root holds no config file, the materialisation case. */
+    /** Fake adapter whose only live root holds no config file — the no-default-layer case. */
     const h = harness({ roots: [bare] })
     apply(h.ctx)
     expect(h.provided.mpdConfig.states().files).toEqual([])
-    expect(h.provided.mpdConfig.get("teamModels")).toEqual(TEAM_MODEL_SLOT_DEFAULTS)
-    expect(h.provided.mpdConfig.get("teamModels.slot1")).toEqual(TEAM_MODEL_SLOT_DEFAULTS.slot1)
-    // … and the tool consumer sees the same resolved view.
+    // The deleted default layer: no provider/model/effort is invented for a workspace that wrote none.
+    expect(h.provided.mpdConfig.get("teamModels")).toBeUndefined()
+    expect(h.provided.mpdConfig.get("teamModels.slot1")).toBeUndefined()
+    // The typed state is what a display surface renders: unconfigured, with the missing leaves named.
+    expect(h.provided.mpdConfig.slotResolutionOf("Architect")).toMatchObject({ ok: false, status: "unconfigured", slot: "slot1", missing: ["provider", "model"] })
+    // … and the tool consumer sees the same RAW view (no materialised block).
     /** The `mpd_config_get` tool the row registered, executed below as a consumer would. */
     const get = h.registered.find((tool: any) => tool.name === "mpd_config_get")
-    /** That tool's answer for a key-less call, which must carry the materialised slots. */
+    /** That tool's answer for a key-less call, which must NOT carry an invented slot block. */
     const payload = await get.execute({})
-    expect(payload.config.teamModels).toEqual(TEAM_MODEL_SLOT_DEFAULTS)
+    expect(payload.config).not.toHaveProperty("teamModels")
     await h.settle()
   })
 
@@ -731,18 +738,18 @@ describe("the team-model slots are a READ-path projection only (A2)", () => {
     apply(h.ctx)
     // A save of an UNRELATED knob through the settings document: the bridge writes that leaf and
     // only that leaf, because its delta comes from the settings document, never from the resolved
-    // config — so the materialised slot defaults cannot leak into the workspace file.
+    // config — so no slot leaf can leak into the workspace file.
     h.setUser({ ulw: { maxRounds: 11 } })
     h.emit("update")
     await h.settle()
-    /** The written file, whose whole text is inspected for any trace of the slot defaults. */
+    /** The written file, whose whole text is inspected for any trace of a slot block. */
     const text = readFileSync(file, "utf8")
     expect(text).toContain('"maxRounds": 11')
     expect(text).not.toContain("teamModels")
     expect(JSON.parse(text.replace(/^\s*\/\/.*$/gm, ""))).toEqual({ ulw: { maxRounds: 11 } })
     expect(h.provided.mpdConfig.states().writeback.writtenTo).toEqual([file])
-    // the READ path still answers with the slots, materialised and never written back
-    expect(h.provided.mpdConfig.get("teamModels")).toEqual(TEAM_MODEL_SLOT_DEFAULTS)
+    // the READ path still answers NO slot, and the raw read carries none either
+    expect(h.provided.mpdConfig.get("teamModels")).toBeUndefined()
     expect(h.provided.mpdConfig.get()).not.toHaveProperty("teamModels")
   })
 
@@ -760,7 +767,8 @@ describe("the team-model slots are a READ-path projection only (A2)", () => {
       ulw: { maxRounds: 3 },
       teamModels: { slot2: { model: "deepseek-v4-pro" } },
     })
-    expect(h.provided.mpdConfig.get("teamModels.slot2")).toEqual({ provider: "deepseek-official", model: "deepseek-v4-pro", reasoningEffort: "high" })
-    expect(h.provided.mpdConfig.get("teamModels.slot1")).toEqual(TEAM_MODEL_SLOT_DEFAULTS.slot1)
+    // The saved leaf is served VERBATIM — no sibling leaf is filled in by a default.
+    expect(h.provided.mpdConfig.get("teamModels.slot2")).toEqual({ model: "deepseek-v4-pro" })
+    expect(h.provided.mpdConfig.get("teamModels.slot1")).toBeUndefined()
   })
 })

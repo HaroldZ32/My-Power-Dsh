@@ -1,0 +1,9 @@
+measured at 2026-10-23T02:00:45Z (UTC)
+0bd4c942ddc0fbe5fc1f8085dcd7a2b8810a9f9f84d383d78ee3a5df5e27c20b  packages/mpd-bundle-plugin/client.js
+size: 787352 bytes
+lock field read back:
+{
+  "fileCount": 1,
+  "sha256": "0bd4c942ddc0fbe5fc1f8085dcd7a2b8810a9f9f84d383d78ee3a5df5e27c20b",
+  "source": "combined web client DERIVED from packages/mpd-bundle-plugin/adopted/** by scripts/build-mpd-client.ts; rebuild it, never rewrite this fingerprint"
+}

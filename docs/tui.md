@@ -42,7 +42,7 @@ work below was measured on 0.10.1 and is re-verified in the Docker end-to-end te
 
 | Artifact | Path | What it is |
 |---|---|---|
-| TUI surface package | `packages/mpd-tui-plugin/` | The TUI-native surfaces: the **two sidebar pages** (`src/panel.ts` — title `MPD`, the primary entry point and, since the 0.14.0 wave, the rich DAG page itself, §3.3/§3.4 — and `src/panel-workmate.ts`), status line, `/settings` section, full-screen scenes, `/mpd` command tree, keyboard shortcuts, mediated dialogs, a transcript-renderer **registration the host does not project** (NOT-CLAIMED #10), and the decision-event seam built ready-but-not-activated. |
+| TUI surface package | `packages/mpd-tui-plugin/` | The TUI-native surfaces: the **three sidebar pages** (`src/panel.ts` — title `MPD`, the primary entry point and, since the 0.14.0 wave, the rich DAG page itself, §3.3/§3.4 — `src/panel-workmate.ts`, and `src/panel-watchdog.ts` since the 2026-10-23 watchdog wave), status line, `/settings` section, full-screen scenes, `/mpd` command tree, keyboard shortcuts, mediated dialogs, a transcript-renderer **registration the host does not project** (NOT-CLAIMED #10), and the decision-event seam built ready-but-not-activated. |
 | Admission manifest | `dsh-plugin.json` (repo root) | ONE bundle-level Community v0.15 manifest for the whole bundle — a deliberate deviation (see §7). |
 | Environment descriptor | `dsh-distribution.json` (repo root) | A `DistributionDescriptor` for the dsh-distribution meta-protocol (Draft). |
 | TUI composition | `cordis.patch.yml` | Adds the `mpd-tui` row and the `dsh-tui` roster default so a TUI session starts on the **mpd** preset. |
@@ -117,10 +117,15 @@ change was needed for the seam surface**. §11.6 records what 0.14.0 does change
 
 ### 3.1 The Web GUI settings UI (Settings → MPD)
 
-The same 59 knobs — the original 13, the twelve `teamModels` slot leaves and the 33 `agentRoutes`
-leaves (eleven members × three), the route leaves rendered as dependent model + effort pickers, plus
-the TUI surface's own switch — are editable in the Web GUI: **Settings → MPD**, its own top-level section of
-the settings dialog — it no longer lives inside the Plugins tab. The section registers the way the
+The same knobs the shared schema declares — the original 13, the twelve `teamModels` slot leaves
+(rendered as dependent model + effort pickers) and the TUI surface's own switch — are editable in the
+Web GUI. The thirty-three `agentRoutes` leaves are **gone** with the per-member override layer
+(`.mpd/plans/slot-single-source.md` §3): neither the Web card nor the `/mpd-model` dialog shows a member
+override table any more, a leftover block in an existing `.mpd/mpd.jsonc` is ignored and never rewritten,
+and `/mpd-model` asks slot → provider → model → reasoning effort only, writing `teamModels.<slot>`.
+
+**Settings → MPD** is its own top-level section of the settings dialog — it no longer lives inside the
+Plugins tab. The section registers the way the
 host's own sections do (`ctx.slots.inject("settings.section", …)` →
 `ctx.slots.register({ name: "settings.section", id: "mpd", order: 20, label: () => t("nav"), locale, inject }, Section)`,
 the shape measured from `dsh-client-ui-settings-models/lib/client.js:2936`): the settings shell
@@ -146,7 +151,7 @@ authenticated settings API (`web-settings-bridge.ts` W1–W13).
 live page) and a **click-driven save**. No browser binary exists in this environment; the lane records
 `cardClaim.W3.witnessed === false` with the reason, and this page repeats that instead of implying
 otherwise. To see it yourself: start `dsh web`, open the GUI, go to **Settings → MPD**, expect the
-`mpd` section with the 59 knobs (the team-model slots and the per-member routes offer catalog-derived selections), change
+`mpd` section with the schema's knobs (the team-model slots offer catalog-derived selections), change
 one and Save — with exactly one live
 session the workspace's `<workspace>/.mpd/mpd.jsonc` changes with comments intact; otherwise the bridge
 refuses loudly (`no-live-session` / `ambiguous-multi-root`) and states that the value is not lost.
@@ -220,12 +225,26 @@ limit, not a configuration mistake.
 
 ### 3.3 The sidebar panel seam — the primary entry point, and its honest bound
 
-`packages/mpd-tui-plugin/` registers **TWO** right-sidebar pages through the `ctx.tuiPanels` seam —
+`packages/mpd-tui-plugin/` registers **THREE** right-sidebar pages through the `ctx.tuiPanels` seam —
 `src/panel.ts` (slug `team`, title `MPD`, one-cell icon `❖`, `order` 10) with the **rich merged** body
 (the host's own curated subagent snapshot rows ABOVE the MPD dependency DAG for the calling session's
 own team (§3.4), inside the DAG page's own frame, header + progress, legend, key-hint footer and
-click-to-pin detail body) and `src/panel-workmate.ts` (slug `workmate`, title `MPD workmate`, icon `⬢`, `order` 12,
-described in §3.4). **The third page this section used to describe — `src/panel-dag.ts`'s standalone
+click-to-pin detail body), `src/panel-workmate.ts` (slug `workmate`, title `MPD workmate`, icon `⬢`, `order` 12,
+described in §3.4) and — since the 2026-10-23 watchdog wave — `src/panel-watchdog.ts` (slug
+`watchdog`, title `MPD watchdog`, icon `⚠`, `order` 13, `minColumns` 28). The watchdog page renders the
+team watchdog's durable state: per team its **held state and phase**, the `mpd-tui` unread count and the
+recent incidents (kind, relative age, team / task / attempt, cause with `ms`, hold outcome and ack
+state), with `a` acknowledging up to the newest incident shown (advancing ONLY the `mpd-tui` watermark,
+once per press), `r` refreshing and `↑↓` / `jk` (plus `PgUp`/`PgDn`/`Home`/`End`) scrolling. Its data
+source is the `mpdWatchdog` service through this package's own front door — never the
+`.mpd/team/watchdog/*.jsonl` files — so a missing service renders the explicit
+`watchdog: not available` state, no incidents renders an explicit empty state, and no render path
+throws. `/mpd watchdog` opens it through `openPanel(handle.id())`; the page has **no full-screen
+fallback** (no scene draws the incident list), so an absent panel seam is REPORTED in one line instead
+of being routed to a different surface. The page also raises its OWN badge (a hold is a `warning`, an
+unread incident an `info`) from the apply-side attention surface, which re-takes it on a 5 s poll as
+well as on every team-feed event — a hold is raised by the watchdog's own timer and touches no team
+record, so the feed alone would never announce it. **The page this section used to describe — `src/panel-dag.ts`'s standalone
 `dag` page — was RETIRED by the 0.14.0 wave and merged INTO the MPD panel** (the user's clause
 「DAG页作为MPD面板」, recorded in §11.6): ONE descriptor, ONE slug and ONE ordered position collapsed out
 of the two, and the DAG page's rendering is what the surviving slot renders. **Nothing a user can reach
@@ -233,13 +252,13 @@ became a dead end**: `/mpd dag` re-aims onto the MPD panel — the DAG page IS t
 `/mpd panel`, `/mpd subagents` and `alt+a` already routed through the same slot (the legacy `Ctrl+A`
 host-input contact is INERT on a host that offers this seam, and where it does arm — an old host — it
 opens the merged subagents scene exactly as before).
-Both surviving pages are `apiVersion` 1, both declare **no `compact`** — the host validates and stores a
+All three pages are `apiVersion` 1, none declares **`compact`** — the host validates and stores a
 descriptor's `compact` slot but does not mount its render slot, so declaring one would claim a surface
-that cannot render — and both ask for **`minColumns` 28**, the host's own floor. The final panel id is
+that cannot render — and all three ask for **`minColumns` 28**, the host's own floor. The final panel id is
 **discovered from the host's own `list()` read-back**, never composed: `<pluginId>:<slug>`, measured on
 the real host before the merge as `act1:team`, `act1:dag` and `act1:workmate`, where that plain loader row
 the host prefixes carries no Component identity. The recorded set is what ACTUALLY registered, so it now
-carries the two surviving ids and no third one.
+carries the three current ids — `team`, `workmate` and `watchdog` — and not the retired `dag` page.
 
 **The reachability rule — the two host switches, which the bundle cannot set.** A registered page is not
 a visible page. On the installed host the enable list lives in the host's OWN row config
@@ -251,8 +270,8 @@ in that list for a plugin that registers it later, while the sidebar itself star
 host-owned row, so the remedy is user steps, documented and printed by the command itself:
 
 1. add the page's final id in `/settings` → side panel → *Enabled panels* (the id is discoverable from
-   the host's `/panel ` completion list, or from the line `/mpd panel` / `/mpd dag` / `/mpd workmate`
-   prints);
+   the host's `/panel ` completion list, or from the line `/mpd panel` / `/mpd dag` / `/mpd workmate` /
+   `/mpd watchdog` prints);
 2. open the sidebar — `Ctrl+B` — or turn on *Side panel starts open*.
 
 **The enable list also has to survive the host's own config re-apply, and it now does, two ways.** The
@@ -371,14 +390,17 @@ use, so the user sees what would be written before `--apply` writes anything.
 Measured without them: the bar reads `‹ 待办 › ▸ ◆` and the host's live enable list is
 `toggle, focus, zoom, todo, jobs, agents`. Measured with them, at 120 columns, on the THREE-page set this
 wave replaced: the bar carried `‹ MPD ›`, `‹ MPD DAG ›` and `‹ MPD workmate ›` and the page body renders
-(`evidence/tui/dag-port/verification/pty/frozen/`). **After the merge the bar carries TWO MPD tabs** —
+(`evidence/tui/dag-port/verification/pty/frozen/`). **After the merge the bar carried TWO MPD tabs** —
 `‹ MPD ›` and `‹ MPD workmate ›` — and both routes above still resolve (see §11.6 for the wave's own
-record). The panel column exists only where the host splits — the same capture reports `split=false` at 80
+record). **With the 2026-10-23 watchdog wave a third MPD tab can join them** (`‹ MPD watchdog ›`) once
+the host's enable list names its discovered id; the two host switches above apply to it unchanged. The panel column exists only where the host splits — the same capture reports `split=false` at 80
 and 48 columns, so no page can be visible there whatever the list says.
 
 `alt+a`, **`/mpd panel`** and **`/mpd subagents`** route the MPD panel through `tuiPanels.open()` while
 the seam is bound, **`/mpd dag`** re-aims onto that SAME panel (the DAG page is what it renders), and
-**`/mpd workmate`** routes the workmate page. On **any** refusal — the one-open-per-plugin-per-5000 ms
+**`/mpd workmate`** routes the workmate page, and **`/mpd watchdog`** routes the watchdog page — the one
+page with no full-screen surface behind it, so a host without the panel seam gets the absence stated in
+one line rather than a different surface pretending to be it. On **any** refusal — the one-open-per-plugin-per-5000 ms
 rate limit, an id the host no longer owns, or no live panel consumer — each route falls back to a
 full-screen surface and the printed line names the surface actually reached; nothing on that path is a
 silent no-op. The fallbacks are per route and deliberately not one scene: the MPD panel's own `⤢` opens
@@ -730,7 +752,7 @@ live-resolved **value**.
   config layer applies it to every workspace immediately — only the FILE WRITE waits for exactly one
   live session. The TUI status line and the Web card both carry that clause.
 - **Timing** — the model-config consumers resolve through the live `mpdConfig` service per use
-  (`mpd_modelchain_resolve` per call; slot/`agentRoutes` routing at spawn), and the service re-resolves
+  (`mpd_modelchain_resolve` per call; slot routing at spawn), and the service re-resolves
   on every settings save and on a watched edit of the project file, so a saved edit **reaches the next
   resolve or spawn with no restart** (`mpd_config_reload` forces a re-read). Consumers that still
   capture at plugin `apply()` are the exception the bridge report's `applies: 'live'` documents, and
@@ -1496,3 +1518,20 @@ The TUI lane uses the configured `TUI_VERSION` (default `0.16.1`) and `MPD_E2E_D
 `dsh plugin --profile dsh-tui add <host>` is refused, `tui.pluginAddHost` is `false`, and the lane ends
 red — it does NOT inspect peer ranges and does NOT record a `tui.hostPeerBound` row.
 
+### 11.9 Amendment after the watchdog-panel wave (2026-10-23)
+
+This wave gives the team watchdog a first-class TUI surface and finishes the model-settings cleanup:
+
+| Subject | Before | After |
+|---|---|---|
+| §3.3 panel inventory | TWO sidebar pages (`team`, `workmate`) | **THREE** — `team` (`order` 10), `workmate` (`order` 12) and **`watchdog`** (`MPD watchdog`, icon `⚠`, `order` 13, `minColumns` 28). Registered from `src/panel-watchdog.ts` through the row's own `tuiPanels` seam; its own row-config knob is `watchdog` (default on) |
+| Watchdog visibility | a status-line notice, one acknowledge dialog per attach, and a `HELD` row inside the board/team/subagents scenes | the **panel** (per-team held state and phase, the `mpd-tui` unread count, the incident list with kind, relative age, team/task/attempt, cause with `ms`, hold outcome and ack state; `a`/`r`/scroll keys), its **own tab badge** (hold = `warning`, unread = `info`, re-taken on a 5 s poll) and **`/mpd watchdog`** |
+| `/mpd-model` | slot → **scope** → provider → model → effort, with a member-override and a clear branch (`agentRoutes`) | slot → provider → model → effort; an unconfigured slot reads `<unconfigured>` from the config service's typed `slotResolutionOf`, an older composition `<unavailable>`; **no** member branch and **no** `agentRoutes` write |
+| The DAG renderer decision | implicit (“it is a character grid”) | recorded in [`tui-dag-renderer.md`](./tui-dag-renderer.md): notcurses is **not viable**, the host `ui.Image` path is a bounded, non-interactive raster with a mandatory cell fallback, the reference `dsh-blender-plugin` ships no graphics code — so the DAG stays a character grid this wave and a self-built renderer is deferred |
+
+**Honest bounds.** The evidence for this wave is the package's own suite (including the new
+`test/panel-watchdog.test.ts` arms) plus the repository gates; **no live PTY capture of the watchdog page
+was taken** — the contract's minimum rung (a mounted boot that registers the panel and the command) is
+what the plugin-contract arm proves, and the page's content is proven through the host-kit double. The
+`ui.Image` inventory in the decision record is read from the installed host's own type declarations
+(0.16.1), not from a rendered image.

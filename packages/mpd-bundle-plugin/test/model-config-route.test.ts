@@ -3,8 +3,10 @@
 // WHAT IS ASSERTED HERE: the route the Web settings card fetches for its see-before-you-edit block
 // really registers beside the watchdog routes (driving the REAL `apply` from `dist/index.js` over a
 // cordis-shaped ctx, the same shape `watchdog-routes-boot.test.ts` uses) and answers the three
-// effective tables from the `mpdConfig` service — read PER REQUEST, so a save made between two GETs
-// changes the answer without any restart. The refusal arm pins the card's declared degradation: a
+// two effective tables from the `mpdConfig` service — read PER REQUEST, so a save made between two
+// GETs changes the answer without any restart. The slot blocks are served RAW (no default layer,
+// contract §2/§9): a slot the workspace never configured is ABSENT from the body, which is what lets
+// the card render <unconfigured> instead of an invented route. The refusal arm pins the card's declared degradation: a
 // composition without the config row answers 503 with a reason, never a wrong payload.
 //
 // WHAT IS NOT ASSERTED: that a browser renders the card. No browser exists in this environment;
@@ -81,11 +83,10 @@ function fakeRes(): FakeRes {
 }
 
 describe("the effective model-config route", () => {
-  test("registers beside the watchdog routes and answers the three tables from the service", async () => {
+  test("registers beside the watchdog routes and answers the two tables from the service", async () => {
     /** The mutable resolved tables, so a later arm can change them between two GETs. */
     const tables = {
       teamModels: { slot1: { provider: "deepseek-official", model: "deepseek-v4-pro", reasoningEffort: "max" } },
-      agentRoutes: { "Deep Worker": { model: "deepseek-v4-pro" } },
       modelchain: { sisyphus: [{ provider: "deepseek-official", model: "deepseek-v4-pro" }] },
     }
     /** The host whose config service reads the tables above. */
@@ -103,8 +104,26 @@ describe("the effective model-config route", () => {
     const body = JSON.parse(res.body)
     expect(body.ok).toBe(true)
     expect(body.slots.slot1.model).toBe("deepseek-v4-pro")
-    expect(body.agentRoutes["Deep Worker"]).toEqual({ model: "deepseek-v4-pro" })
+    // The deleted table is GONE from the payload (contract §3) — not merely empty.
+    expect(body).not.toHaveProperty("agentRoutes")
     expect(body.modelchain.sisyphus).toEqual([{ provider: "deepseek-official", model: "deepseek-v4-pro" }])
+  })
+
+  test("an UNCONFIGURED slot is ABSENT from the body, never filled in with a default", async () => {
+    /** A workspace that declares only slot3: the other slots must not appear at all. */
+    const tables = { teamModels: { slot3: { provider: "p", model: "m" } } }
+    /** The host whose config service reads exactly that block. */
+    const host = fakeHost({ get: (key) => (key === undefined ? tables : tables[key as keyof typeof tables]) })
+    apply(host.ctx)
+    /** The route this arm drives. */
+    const route = host.routes.get(MODEL_CONFIG_PATH)!
+    /** The response double the handler writes into. */
+    const res = host.res()
+    await route.handler({}, res)
+    /** The parsed body the route answered with. */
+    const body = JSON.parse(res.body)
+    expect(body.slots).toEqual({ slot3: { provider: "p", model: "m" } })
+    expect(body.slots).not.toHaveProperty("slot1")
   })
 
   test("the answer is read PER REQUEST: a changed service value changes the next GET (live refresh)", async () => {

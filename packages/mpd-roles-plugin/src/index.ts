@@ -28,7 +28,7 @@ import { DELEGATION_CONFIG_KEY, installDelegationGate } from "./delegation-gate.
 import { installRosterSection } from "./roster-section.ts"
 import { installSessionGate } from "./session-gate.ts"
 import { BOULDER_DIR_CONFIG_KEY, GATE_CONFIG_KEY, SENSITIVITY_CONFIG_KEY } from "./complexity-gate.ts"
-import { rowLogLine, DSH_SEAM_SUBAGENTS, DSH_SEAM_TOOLS, bundleRootOf, createLazyDshAdapter, dshAdapterIdentity, dshSeamInject, installChildPersonaSeam, restrictToolsTolerant, textBlock, withSupportedEffort, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { rowLogLine, DSH_SEAM_SUBAGENTS, DSH_SEAM_TOOLS, bundleRootOf, createLazyDshAdapter, dshAdapterIdentity, dshSeamInject, installChildPersonaSeam, restrictToolsTolerant, textBlock, resolveRunRoute, type DshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /** The cordis plugin name, matched against this row's id in the bundle patch. */
 export const name = "mpd-roles"
@@ -227,6 +227,37 @@ const EXTENSIONS_SERVICE = "mpdExtensions"
 
 /** The cordis service `mpd-config-plugin` provides, read PER CALL for `team.gate` and `boulder.dir`. */
 const CONFIG_SERVICE = "mpdConfig"
+
+/** The config service slice this row reads (structural: the config module is a SERVICE, never an import). */
+interface ConfigServiceLike {
+  /** The TOTAL typed slot resolution the slot-single-source wave exposes. */
+  slotResolutionOf?: (member: string) => unknown
+  /** The older total route read, kept for a composition running a stale config-row dist. */
+  teamModelRouteOf?: (member: string) => unknown
+}
+
+/** One route as this row sends it to the provider. */
+interface LiveRoute {
+  /** Provider id the child run is started on. */
+  provider: string
+  /** Model id that provider runs. */
+  model: string
+  /** The slot's effort keyword, absent when the slot states none. */
+  reasoningEffort?: string
+}
+
+/**
+ * The TOTAL slot resolution ONE member has, as the config service reports it (contract amendment 1).
+ *
+ * Mirrored structurally rather than imported: a cross-package relative import would be a new entry in
+ * the frozen coupling inventory. The `ok` discriminant is what the two callers branch on — a spawn
+ * applier refuses `unconfigured`/`invalid`, a display surface renders them, and `unrouted` means
+ * "slots do not decide this member's route" (an extension role).
+ */
+type LiveSlotResolution =
+  | { readonly ok: true; readonly slot: string; readonly route: LiveRoute; readonly fallbacks?: readonly unknown[] }
+  | { readonly ok: false; readonly status: "unconfigured" | "invalid"; readonly slot: string; readonly members: readonly string[]; readonly missing?: readonly string[]; readonly problem?: string; readonly code: string; readonly message: string }
+  | { readonly ok: false; readonly status: "unrouted"; readonly slot: undefined }
 
 /** The cordis service `mpd-team-core-plugin` provides; the gate's staged-plan probe reads it. */
 const TEAMS_SERVICE = "mpdTeams"
@@ -554,49 +585,87 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   }
 
   /**
-   * The `teamModels` slot route one roster member is configured to run on, read PER CALL.
+   * The TOTAL slot resolution of one roster member, read PER CALL from the live config service.
    *
-   * THE DEFECT THIS REPAIRS (measured on a real machine, 2026-10-12). Both live profiles carried a
-   * SAVED `teamModels` block in the `mpd-config` row config (`company-api` / `deepseek-flash`, written
-   * from the settings front doors), and `mpd-config-plugin` served it resolved — but the ONLY reader was
-   * `mpd-roster-provider-plugin`, which routes an OFFICIAL `spawn_teammate`. Every single-call consult path kept
-   * the STATIC `roles.data.ts` chain, so `mpd_role_spawn` ran on the shipped `deepseek-official` route
-   * even when the user had configured a gateway provider: on that machine no key exists for
-   * `deepseek-official`, so the spawn died with `MISSING_CREDENTIAL` and the save looked inert on web,
-   * desktop and TUI alike. `mpd_role_spawn`'s OWN tool description and `roster-section.ts` both promise
-   * the opposite ("THIS path applies the role's teamModels slot route").
+   * THE DEFECT THIS READS FOR (measured on a real machine, 2026-10-12). Both live profiles carried
+   * a SAVED `teamModels` block in the `mpd-config` row config, and `mpd-config-plugin` served it —
+   * but the ONLY reader was `mpd-roster-provider-plugin`, so every single-call consult path kept
+   * the STATIC `roles.data.ts` chain and ignored the user's save. From the slot-single-source wave on
+   * the slot is the ONLY route source for a roster member: this read is what makes a saved slot take
+   * effect here, and an unusable slot is what makes the spawn REFUSE loudly.
    *
    * The membership map stays in `mpd-config-plugin` — the ONE declaration the settings card, the TUI
    * section and the roster provider already share — and is reached here as a SERVICE, never as an
-   * import: a new cross-package relative import would be a new entry in the frozen coupling inventory
-   * (`packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts`, which may only
-   * shrink).
+   * import: a new cross-package relative import would be a new entry in the frozen coupling
+   * inventory (`packages/mpd-dsh-adapter-plugin/test/cross-package-coupling-inventory.test.ts`,
+   * which may only shrink).
+   *
+   * TOTALITY (contract amendment 1): the service method never throws, and a display caller
+   * (`roleSurface`) must be able to render the state it returns.
    *
    * @param member - the roster member's functional name.
-   * @returns the configured route, or `undefined` when the roster does not slot-route this member (or no
-   *   config service is mounted) — the static roster chain then stands unchanged.
-   * @throws when the member IS slot-routed and its slot is incomplete; the service's own loud failure is
-   *   never swallowed here, because the registered contract is to name the member and the slot.
+   * @returns the typed resolution: a usable route plus its fallback chain, or why it is unusable,
+   *   or `unrouted` (an extension role, or no config service mounted).
    */
-  const teamModelRoute = (member: string): { provider: string; model: string; reasoningEffort?: string } | undefined => {
+  const slotResolution = (member: string): LiveSlotResolution => {
     /** The live config service, absent until the `mpd-config` row has applied. */
-    const live = ((): { teamModelRouteOf?: (m: string) => unknown } | undefined => {
+    const live = ((): ConfigServiceLike | undefined => {
       try {
-        return ctx.get?.(CONFIG_SERVICE, false) as { teamModelRouteOf?: (m: string) => unknown } | undefined
+        return ctx.get?.(CONFIG_SERVICE, false) as ConfigServiceLike | undefined
       } catch {
         // A config service that refuses the lookup reads as ABSENT, never as a boot failure.
         return undefined
       }
     })()
-    if (typeof live?.teamModelRouteOf !== "function") return undefined
-    // Deliberately NOT wrapped: an incomplete configured slot must reach the caller as the loud error.
-    const value = live.teamModelRouteOf(member) as { provider?: unknown; model?: unknown; reasoningEffort?: unknown } | undefined | null
-    if (value === undefined || value === null || typeof value !== "object") return undefined
-    return {
-      provider: String(value.provider ?? ""),
-      model: String(value.model ?? ""),
-      ...(typeof value.reasoningEffort === "string" && value.reasoningEffort !== "" ? { reasoningEffort: value.reasoningEffort } : {}),
+    if (typeof live?.slotResolutionOf === "function") {
+      /** The service's TOTAL answer, trusted when it has the union's shape. */
+      const value = live.slotResolutionOf(member) as LiveSlotResolution | undefined
+      if (value !== undefined && value !== null && typeof value === "object" && typeof value.ok === "boolean") return value
     }
+    // VERSION SKEW (a stale config-row dist): the older total route read still answers, and a
+    // throw from the pre-wave contract propagates exactly as it did before this wave.
+    if (typeof live?.teamModelRouteOf === "function") {
+      /** The older read's route, or undefined when it has none to report. */
+      const route = live.teamModelRouteOf(member) as LiveRoute | undefined | null
+      if (route !== undefined && route !== null && typeof route === "object") {
+        return { ok: true, slot: "", route, fallbacks: [] }
+      }
+    }
+    // A BASE roster member with no readable slot has NO route source left: the static
+    // `roles.data.ts` chain is not a default layer (contract §2/§4), so the answer is the typed
+    // refusal rather than a silent fallback to the shipped route. An EXTENSION role is genuinely
+    // `unrouted`: its route is its extension's own declaration, not a slot.
+    if (ROLES.some((r) => r.name === member)) {
+      return {
+        ok: false,
+        status: "unconfigured",
+        slot: "",
+        members: [member],
+        missing: ["provider", "model"],
+        code: "SLOT_UNCONFIGURED",
+        message: "SLOT_UNCONFIGURED: " + member + "'s team-model slot is not configured — the mpdConfig service answered no slot (is the mpd-config row mounted?); nothing was written and no child was started. Configure it with /mpd-model, or set teamModels.<slot> for this member in .mpd/mpd.jsonc.",
+      }
+    }
+    return { ok: false, status: "unrouted", slot: undefined }
+  }
+
+  /**
+   * Throw the ONE structured `SLOT_UNCONFIGURED` failure a spawn refuses on (contract §7).
+   *
+   * The canonical sentence (slot, members, missing/malformed leaves, both recovery paths, and the
+   * "nothing was written and no child was started" guarantee) is BUILT by the config service and
+   * carried in the union, so every consumer reports the same words. This helper only attaches the
+   * machine-readable `code` so a caller can branch without parsing prose.
+   * @param resolution - the unusable resolution the service returned.
+   * @returns never; it always throws.
+   */
+  const throwSlotUnconfigured = (resolution: LiveSlotResolution): never => {
+    if (resolution.ok) throw new Error("mpd_role_spawn: internal error — a usable slot was passed to the refusal helper")
+    if (resolution.status === "unrouted") throw new Error("mpd_role_spawn: internal error — an unrouted member was passed to the refusal helper")
+    /** The thrown error, carrying both the canonical message and the branchable code. */
+    const error = new Error(resolution.message)
+    ;(error as Error & { code?: string }).code = resolution.code
+    throw error
   }
 
   /** The roster as THIS call sees it. Resolved per call (never an apply-time cache). */
@@ -605,12 +674,15 @@ export function apply(ctx: Ctx, config: Config = {}): void {
     const base: ResolvedRole[] = ROLES.map((r) => {
       /** The static chain for this role, copied so no caller can mutate the roster table. */
       const chain: Array<{ provider: string; model: string }> = r.chain.map((c) => ({ ...c }))
-      /** The slot route the user configured for this member, when the roster slot-routes it. */
-      const route = teamModelRoute(r.name)
-      // THE CONFIGURED SLOT IS AUTHORITATIVE for a member it routes: the chain becomes that ONE route,
-      // so `mpd_roles_list`, an `mpd_role_spawn`, a workmate initialized from this base AND
-      // `mpd_modelchain_resolve` (which prefers `spec.chain`) all report the value the user saved.
-      if (route !== undefined) chain.splice(0, chain.length, { provider: route.provider, model: route.model })
+      /** The TOTAL slot resolution the config service reports for this member, read PER CALL. */
+      const resolution = slotResolution(r.name)
+      // THE SLOT IS AUTHORITATIVE for a member it routes (contract §2-§3): a usable slot makes the
+      // chain that ONE route, so `mpd_roles_list`, a workmate initialized from this base AND
+      // `mpd_modelchain_resolve` (which prefers `spec.chain`) all report what the user saved.
+      if (resolution.ok) chain.splice(0, chain.length, { provider: resolution.route.provider, model: resolution.route.model })
+      // AN UNUSABLE SLOT BLANKS THE CHAIN (amendment 1 §5): keeping the static route here would let a
+      // display surface — and `mpd_modelchain_resolve` — report a route no spawn may ever use.
+      else if (resolution.status !== "unrouted") chain.splice(0, chain.length)
       return {
         id: r.id,
         name: r.name,
@@ -750,7 +822,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
   dsh.registerTool({
     name: "mpd_role_spawn",
     description: "Run ONE bounded delegation with a specialist and return one report — a ONE-SHOT single-call consult: the adapter disposes the activation once the report settles, so the consult is NOT reused — ask a new question with a NEW spawn (the harness catalog is append-only, so a settled child may still list as `inactive`, but the contract is one-shot). It carries the role's persona, model route and read-only discipline (read-only roles get a write-tool deny filter). Roles, each named for what it does: " + rosterFunctionList() + ". The child is labelled with that name. `mpd_workmate_spawn` is the same spawn mechanics for a durable, evolving instance (its persona/memory/note — not the child session — carry continuity). For multi-member team work prefer the official Agent Teams tools (spawn_teammate + team_task_create) instead of repeated single-call consults: a teammate inherits the caller's model route, while THIS path applies the role's teamModels slot route.",
-    parameters: { type: "object", properties: { role: { type: "string", description: "role name (see mpd_roles_list), e.g. \"Architect\" or \"Deep Worker\"" }, task: { type: "string" }, context: { type: "string", description: "optional context block to include" }, model: { type: "string", description: "optional model override (default: the role's primary route)" } }, required: ["role", "task"], additionalProperties: false },
+    parameters: { type: "object", properties: { role: { type: "string", description: "role name (see mpd_roles_list), e.g. \"Architect\" or \"Deep Worker\"" }, task: { type: "string" }, context: { type: "string", description: "optional context block to include" } }, required: ["role", "task"], additionalProperties: false },
     output: { schema: { type: "object", properties: { role: { type: "string" }, status: { type: "string", enum: ["complete"] }, summary: { type: "string" }, recommendation: { type: "string" }, details: { type: "string" }, evidence: { type: "array", items: { type: "string" } }, stopReason: { type: "string" } }, required: ["role", "status", "summary"] }, render: (_a: unknown, v: any) => textBlock("role " + v.role + " (" + v.status + ")\nsummary: " + v.summary + (v.recommendation ? "\nrecommendation: " + v.recommendation : "") + (v.details ? "\ndetails: " + v.details : "") + (v.evidence?.length ? "\nevidence:\n- " + v.evidence.join("\n- ") : "")) },
     execute: async (args: any, exec: any) => {
       /** The roster as this call sees it: base specialists plus extension roles. */
@@ -763,19 +835,31 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       if (!task) throw new Error("mpd_role_spawn: task required")
       /** The role's persona text, sent both inside the prompt and as the subagent's persona. */
       const persona = spec.persona
-      /** The configured slot route for this member, when the roster slot-routes it (and any effort it states). */
-      const configuredRoute = teamModelRoute(spec.name)
-      // THE MODEL-CAPABILITY ADAPTATION: a slot is read MATERIALISED over its schema defaults, so a slot
-      // whose model declares no reasoning efforts at all would hand the provider a keyword it cannot
-      // accept and fail the whole spawn. `withSupportedEffort` drops exactly that keyword (logging it)
-      // and leaves every other route — including an unsupported effort on a model that DOES declare
-      // efforts — untouched, so a configuration error stays visible instead of being papered over.
-      /** The slot route as this spawn will actually send it. */
-      const slotRoute = await withSupportedEffort(dsh, configuredRoute)
-      /** The primary route's provider, falling back to the deployment default. */
-      const provider = slotRoute?.provider ?? spec.chain[0]?.provider ?? "deepseek-official"
-      /** The model for this spawn: the caller's override when given, else the role's primary. */
-      const model = typeof args?.model === "string" && args.model.trim() ? args.model.trim() : slotRoute?.model ?? spec.chain[0]?.model
+      /** The TOTAL slot resolution for this member — the ONE route source a roster member has. */
+      const resolution = slotResolution(spec.name)
+      // AN UNUSABLE SLOT REFUSES THE SPAWN (contract §7): ONE structured SLOT_UNCONFIGURED failure
+      // naming the slot, its members, the missing leaves and both recovery paths — and NOTHING is
+      // written and no child is started, because the spawn below is never reached.
+      if (!resolution.ok && resolution.status !== "unrouted") throwSlotUnconfigured(resolution)
+      /** The primary route: the slot's when it is usable. An EXTENSION role is not slot-routed, so
+       *  its own declared chain (its extension's route, not a roster default) is the primary. */
+      const primary: LiveRoute | undefined = resolution.ok
+        ? resolution.route
+        : spec.chain[0] === undefined ? undefined : { provider: spec.chain[0].provider, model: spec.chain[0].model }
+      if (primary === undefined) {
+        throw new Error("mpd_role_spawn: " + spec.name + " has no configured route — an extension role must declare provider+model, and a roster member needs its teamModels slot configured (/mpd-model)")
+      }
+      // THE ONE PRE-SPAWN CONSUMPTION (contract §8): the slot's fallback chain, resolved ONCE against
+      // the model catalog (first positively-listed candidate wins), then the effort adaptation. A
+      // model whose catalog entry declares no reasoning efforts loses the keyword instead of failing
+      // the call; an unsupported effort on a model that DOES declare efforts stays VISIBLE, because
+      // clamping it would hide a configuration error.
+      /** The route this spawn actually sends. */
+      const run = await resolveRunRoute(dsh, primary, resolution.ok ? resolution.fallbacks ?? [] : [])
+      /** The primary route's provider. */
+      const provider = run.route.provider
+      /** The model for this spawn: the slot's (or its winning fallback's) — there is NO caller override. */
+      const model = run.route.model
       /** The assembled prompt: persona, task, optional context and the report instruction. */
       const prompt = persona + "\n\nTask: " + task + (args?.context ? "\n\nContext:\n" + String(args.context) : "") + "\n\nWork with the tools your role requires (read-only roles must never modify anything). End with ONLY the structured report (role/summary/recommendation/details/evidence)."
       /** The spawn result, whose structured report is echoed into this tool's output. */
@@ -788,10 +872,11 @@ export function apply(ctx: Ctx, config: Config = {}): void {
         model,
         persona,
         outputSchema: REPORT_SCHEMA,
-        // The slot's OWN effort keyword rides along when it states one — AFTER the catalog adaptation
-        // above dropped a keyword the target model cannot take. The contract still forbids clamping or
-        // inventing an effort, so an absent keyword passes nothing and the harness keeps its resolution.
-        ...(slotRoute?.reasoningEffort === undefined ? {} : { agentOptions: { reasoningEffort: slotRoute.reasoningEffort } }),
+        // The slot's OWN effort keyword rides along when its resolved route states one — AFTER the
+        // fallback consumption and the effort adaptation above. The contract still forbids clamping
+        // or inventing an effort, so an absent keyword passes nothing and the harness keeps its own
+        // resolution.
+        ...(run.route.reasoningEffort === undefined ? {} : { agentOptions: { reasoningEffort: run.route.reasoningEffort } }),
         ...(spec.readonly ? { toolFilter: { deny: validatedReadonlyDeny(exec.agent) } } : {})
       })
       /** The structured report, or an empty object when the subagent answered none. */

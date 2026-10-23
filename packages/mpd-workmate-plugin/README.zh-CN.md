@@ -17,7 +17,7 @@
 ~/.mpd/workmate/
   index.json                    # fast library index
   <name>/
-    meta.json                   # name, baseId + baseName（内部溯源）, provider/model, readonly, uses, lastTask, renamedFrom
+    meta.json                   # name, baseId + baseName（内部溯源）, provider/model（仅来源记录——永不作为路由）, readonly, uses, lastTask, renamedFrom
     persona.md                  # evolving persona (seeded from base)
     memory.md                   # independent memory (append + evict)
     note.md                     # short searchable note card
@@ -55,7 +55,7 @@
 |---|---|
 | `mpd_workmate_list` | list instances (name, baseName, uses, updatedAt, note summary) |
 | `mpd_workmate_init` | instantiate a base specialist into an independently-named workmate |
-| `mpd_workmate_spawn` | 一次性（ONE-SHOT）单次咨询：以 workmate 的人设 + 记忆 + 说明卡执行一次有界委派，走它自己的模型路由（只读 base 会禁止写入类工具）；在支持 `startActivation` 的宿主上，报告落定后 activation 即被释放；旧版 `start` 回退路径不提供 activation，持久连续性保存在 workmate **记录**中，而不是子会话 |
+| `mpd_workmate_spawn` | 一次性（ONE-SHOT）单次咨询：以 workmate 的人设 + 记忆 + 说明卡执行一次有界委派，走 base 的**团队模型槽位**路由（见 *模型路由*；槽位未配置或格式错误时会以 `SLOT_UNCONFIGURED` **拒绝**，且 `meta.provider/model` 永不决定路由；只读 base 会禁止写入类工具）；在支持 `startActivation` 的宿主上，报告落定后 activation 即被释放；旧版 `start` 回退路径不提供 activation，持久连续性保存在 workmate **记录**中，而不是子会话 |
 | `mpd_workmate_reflect` | self-evolve after work: memory append/evict, persona revision merge, note regen |
 | `mpd_workmate_match` | rank notes against a task; below threshold → suggest a new init |
 | `mpd_workmate_rename { name, new_name }` | 重命名实例：搬移目录键 + 元数据 + 索引键 + note 自引用（见下文） |
@@ -66,6 +66,23 @@
 `get(oldKey)` 为 `null`、`get(newKey)` 为完整详情。`renamedFrom` 携带先前的键，并且**仅作信息
 展示**——它从不用于解析名称，因此之后用旧键调用会以 `no workmate named "<oldKey>"` 失败且没有任何
 副作用，而不会静默复活旧目录。
+
+## 模型路由（槽位是唯一来源）
+
+spawn 的路由来自 base 的**团队模型槽位**，别无他处（契约 `.mpd/plans/slot-single-source.md` §5）：
+
+- `mpd_workmate_spawn` 每次 spawn 都读取 `mpdConfig.slotResolutionOf(baseName)`，因此两次 spawn 之间
+  保存的改动，会由**第二次** spawn 携带。路由就是槽位的 `provider` + `model`（外加可选的
+  `reasoningEffort`），而槽位自己的 `fallbacks` 链在 spawn 前只消费一次（目录正面列出的第一条候选
+  胜出），随后胜出者的推理强度再经过模型能力适配。
+- **`meta.provider` / `meta.model` 只是来源记录（PROVENANCE）。** 它们记录实例诞生时的路由，
+  **永不**决定 spawn。也不存在默认层：`roles.data.ts` 里随包发布的链不是任何 spawn 可以运行的路由。
+- **未配置或格式错误的槽位会拒绝 spawn**，给出一个结构化的 `SLOT_UNCONFIGURED` 失败，点名槽位、成员、
+  缺失的叶子与两条修复路径（`/mpd-model`，以及 `.mpd/mpd.jsonc` 里的 `teamModels.slotN`）——
+  不写入任何内容，也不启动子会话（`spawnAgent` 根本不会被触达）。
+- **扩展 base**（由扩展贡献、没有任何槽位路由的 role）使用**它自己声明的**路由 —— 即其扩展声明的
+  provider/model —— 若扩展没有声明，则以 `no route configured for <base>` 失败。`mpd_workmate_init`
+  会把那条路由作为来源记录保存下来。
 
 ## 重命名与删除
 
