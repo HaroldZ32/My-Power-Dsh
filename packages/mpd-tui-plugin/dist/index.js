@@ -6144,10 +6144,16 @@ function drawBoxes(tasks, ranks, widest, nodeWidth, form, focus, plan, widestLab
   });
   const byId = new Map(tasks.map((task) => [task.id, task]));
   const centreOf = (id) => (column.get(id) ?? 0) + Math.floor((nodeWidth - 1) / 2);
-  const boxCovers = (rank, col) => drawn[rank].some((task) => {
-    const left = column.get(task.id) ?? 0;
-    return col >= left && col <= left + nodeWidth - 1;
+  const covered = drawn.map((rank) => {
+    const cells = new Set;
+    for (const task of rank) {
+      const left = column.get(task.id) ?? 0;
+      for (let col = left;col < left + nodeWidth; col++)
+        cells.add(col);
+    }
+    return cells;
   });
+  const boxCovers = (rank, col) => covered[rank].has(col);
   const edges = [];
   for (const task of tasks) {
     const toRank = rankOf.get(task.id);

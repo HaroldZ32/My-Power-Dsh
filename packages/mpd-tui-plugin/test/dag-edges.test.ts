@@ -1,7 +1,8 @@
 // THE EDGE-FIDELITY ARMS of the frozen contract `.mpd/plans/dag-edges-contract.md` (2026-10-23).
 //
-// SEVEN ARMS: the contract's FIVE, each RED on the pre-fix tree and GREEN after it, plus TWO repair
-// arms added after the Reviewer's finding (2026-10-23) and named so the close-out can cite them:
+// EIGHT ARMS: the contract's FIVE, each RED on the pre-fix tree and GREEN after it, plus THREE repair
+// arms added after the Reviewer's and CodeRabbit's findings (2026-10-23) and named so the close-out can
+// cite them:
 //   1. a GAP-2 edge — a blocker and its dependent TWO OR MORE ranks apart — is DRAWN, and the run can
 //      be followed cell by cell from the blocker's bottom border to the dependent's `▼`;
 //   2. an EMPTY rank bucket consumes NO rows and breaks no edge (served ranks {0,2} and {0,2,4});
@@ -13,7 +14,9 @@
 //   5b. a pinned board's off-chain LONG edge still ends in a visible `edge` arrowhead (the LANE path's
 //      own terminus, which ARM 5's adjacent-rank fixture never reaches);
 //   6. an unresolved blocker id is REPORTED in the page's `unresolved` list and contributes NO drawn
-//      run or edge — the silent-filter defect one layer up from the drawing.
+//      run or edge — the silent-filter defect one layer up from the drawing;
+//   7. the FIT-WIDTH path never hands back a drawing wider than `cols`: a skip edge's appended lane
+//      used to make it `cols + 1`, and the guard refuses instead (the natural path still pans).
 //
 // WHY A WALK AND NOT A ROW PROBE. The pre-existing arm asserted that SOME row carried a `┬`, which any
 // other box's border also satisfies — so the drawing could lose an edge and still pass. Every arm here
@@ -567,5 +570,45 @@ describe("ARM 6 — an unresolved blocker id is reported and contributes no draw
     const control = dagPanelLayout([panelTask("U1"), panelTask("U2", ["U1"]), panelTask("U3")], 120)
     expect(control.unresolved).toEqual([])
     expect(linesOf(layout.view)).toEqual(linesOf(control.view))
+  })
+})
+
+// ── 7. the fit-width contract refuses a lane past `cols` ───────────────────
+
+describe("ARM 7 — the fit-width layout never hands back a drawing wider than its cols", () => {
+  test("a skip edge A→C beside A→B→C is REFUSED at cols 16..34 instead of returning cols + 1", () => {
+    // THE DEFECT: one task per rank makes `nodeWidth` equal `cols`, so every column inside the drawing
+    // is a box column and the lane for the rank-0 → rank-2 edge can only be appended on the right. On
+    // 30309c96 the view came back at `cols + 1` — past the width the caller offered — although the
+    // fit-width contract says this path refuses rather than hands back a squeezed or overflowing view.
+    /** A three-rank chain whose leaf ALSO rests on the root, so A → C needs a lane over rank 1. */
+    const board: GraphTask[] = [task("A"), task("B", ["A"]), task("C", ["A", "B"])]
+    /** The widths the violation covers: from the minimum box to the fit-width cap, `nodeWidth` is `cols`. */
+    const colsRange = Array.from({ length: 19 }, (_, index) => 16 + index)
+    /** What the fit-width path answers at each width: its view width, or the refusal the contract owes. */
+    const answers = colsRange.map((cols) => layoutBoxes(board, cols)?.width ?? "refused")
+    // RED ON 30309c96: this reads [17, 18, …, 35], exactly `cols + 1` at every width.
+    expect(answers).toEqual(colsRange.map(() => "refused"))
+  })
+
+  test("a board that really fits still draws, at or below its cols, with no lane appended", () => {
+    // THE CONTROL: the same three tasks without the skip edge fit exactly, so the guard must not have
+    // turned the whole fit-width path into a refusal.
+    /** The same chain with no rank-0 → rank-2 edge, so no lane is ever needed. */
+    const chain: GraphTask[] = [task("A"), task("B", ["A"]), task("C", ["B"])]
+    for (const cols of [16, 20, 24, 28, 34, 60]) {
+      /** The drawing at this width. */
+      const view = layoutBoxes(chain, cols)
+      expect(view === undefined ? "refused" : "drawn").toBe("drawn")
+      if (view === undefined) continue
+      expect(view.width).toBeLessThanOrEqual(cols)
+      // EVERY TASK IS STILL DRAWN: the guard refuses a drawing, it never drops a box from one.
+      expect(view.hits.map((hit) => hit.taskId)).toEqual(["A", "B", "C"])
+    }
+    // …and a normal multi-edge board that fits is unaffected too.
+    /** The adjacent-edge board at a comfortable width. */
+    const adjacent = layoutBoxes([task("A1"), task("A2"), task("B1", ["A1", "A2"]), task("C1", ["B1"])], 40)
+    expect(adjacent === undefined ? "refused" : "drawn").toBe("drawn")
+    if (adjacent !== undefined) expect(adjacent.width).toBeLessThanOrEqual(40)
   })
 })

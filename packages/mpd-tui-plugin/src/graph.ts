@@ -671,7 +671,8 @@ export function dependencyChain(tasks: readonly GraphTask[], id: string): Set<st
  * @param focus - the task to light, with its dependency chain.
  * @param servedRanks - the SERVED rank of each task id when the host published a model; omitted
  *   means the core derives them (the standalone-fixture path).
- * @returns the view, or `undefined` when even the narrowest boxes would not fit.
+ * @returns the view, or `undefined` when the boxes do not fit `cols` — either below the minimum node
+ *   width, or because the long-edge lane pass appended a column past `cols`.
  */
 export function layoutBoxes(tasks: readonly GraphTask[], cols: number, focus?: string, servedRanks?: ReadonlyMap<string, number>): GraphView | undefined {
   /** What the board's references resolve to, and therefore how it is ranked. */
@@ -699,7 +700,14 @@ export function layoutBoxes(tasks: readonly GraphTask[], cols: number, focus?: s
   /** The box width that fits `widest` boxes in `cols`; below the minimum there is no room. */
   const nodeWidth = Math.min(MAX_NODE_WIDTH, Math.floor((cols - NODE_GAP * (widest - 1)) / widest))
   if (nodeWidth < MIN_NODE_WIDTH) return undefined
-  return drawBoxes(tasks, ranks, widest, nodeWidth, 3, focus, plan)
+  /** The finished drawing, whose long-edge lane pass may have appended columns on the right. */
+  const view = drawBoxes(tasks, ranks, widest, nodeWidth, 3, focus, plan)
+  // THE FIT-WIDTH CONTRACT: a skip edge with no free column between its ends appends a lane past the
+  // drawing (measured: one task per rank at cols 16..34 came back `cols + 1`), which is exactly the
+  // overflow this path promises never to return. Refusing keeps `layoutGraph`'s rail fallback; the
+  // NATURAL path is untouched and keeps its wider drawing for the caller to pan.
+  if (view.width > cols) return undefined
+  return view
 }
 
 /**
@@ -875,12 +883,26 @@ function drawBoxes(
    * the border's centre, which reads as an off-by-one in the drawing itself.
    */
   const centreOf = (id: string): number => (column.get(id) ?? 0) + Math.floor((nodeWidth - 1) / 2)
-  /** Whether one drawn rank's boxes cover a column — the test a long edge's LANE has to pass. */
-  const boxCovers = (rank: number, col: number): boolean => drawn[rank].some((task) => {
-    /** The box's left column, which the placement above fixed. */
-    const left = column.get(task.id) ?? 0
-    return col >= left && col <= left + nodeWidth - 1
+  /**
+   * The columns each DRAWN rank's boxes occupy, derived ONCE from the placement above.
+   *
+   * The lane search below asks "is this column clear at every intermediate rank" for every candidate
+   * column of every long edge, on every panel refresh — the page ticks every two seconds. Scanning a
+   * rank's tasks for each of those questions repeats the same arithmetic; the set answers with one
+   * `has`, and it is built from `column` and `nodeWidth` so it cannot drift from the boxes drawn.
+   */
+  const covered: Array<Set<number>> = drawn.map((rank) => {
+    /** The columns this rank's boxes occupy, borders included. */
+    const cells = new Set<number>()
+    for (const task of rank) {
+      /** The box's left column, which the placement above fixed. */
+      const left = column.get(task.id) ?? 0
+      for (let col = left; col < left + nodeWidth; col++) cells.add(col)
+    }
+    return cells
   })
+  /** Whether one drawn rank's boxes cover a column — the test a long edge's LANE has to pass. */
+  const boxCovers = (rank: number, col: number): boolean => covered[rank].has(col)
   /** Every blocker → dependent EDGE whose two ends are BOTH on the board, with their drawn ranks. */
   const edges: Array<{ from: string; to: string; fromRank: number; toRank: number }> = []
   for (const task of tasks) {
@@ -959,7 +981,11 @@ function drawBoxes(
     laneRows.set(best, claimed)
     lanes.push({ ...edge, lane: best })
   }
-  /** The drawn width: exactly what the widest rank occupies, plus the lanes a long edge had to add. */
+  /**
+   * The drawn width: exactly what the widest rank occupies, plus the lanes a long edge had to add.
+   * The FIT-WIDTH entry point refuses a view wider than its `cols`; the natural one keeps this width
+   * and lets its caller pan.
+   */
   const width = baseWidth + extraLanes
 
   /** The accumulated direction mask per cell. */
@@ -1364,8 +1390,9 @@ export function layoutList(tasks: readonly GraphTask[], cols: number, focus?: st
  * Draw the board at one width, choosing the view that fits.
  *
  * The preference is BOXES, then RAIL: a rail is always legible, and boxes are the view that answers
- * the question the graph exists for. `layoutBoxes` returns undefined rather than a squeezed drawing,
- * so this decision is a fact about the geometry instead of a guess about the terminal.
+ * the question the graph exists for. `layoutBoxes` returns undefined rather than a squeezed or
+ * over-wide drawing (its long-edge lane pass can append a column past `cols`), so this decision is a
+ * fact about the geometry instead of a guess about the terminal.
  * @param tasks - the board to draw.
  * @param cols - the cells available.
  * @param focus - the task to light, with its dependency chain.

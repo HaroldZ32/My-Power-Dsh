@@ -1,0 +1,8 @@
+# GATE — dist build
+# command: .toolchain/node_modules/.bin/bun build packages/mpd-tui-plugin/src/index.ts --target node --format esm --outfile packages/mpd-tui-plugin/dist/index.js
+# bun: 1.4.0 (PINNED)
+# exit: 0
+Bundled 37 modules in 10ms
+
+  index.js  0.45 MB  (entry point)
+
