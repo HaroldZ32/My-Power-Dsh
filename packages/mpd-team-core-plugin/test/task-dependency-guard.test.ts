@@ -487,6 +487,54 @@ describe("R2 — approve refuses overlapping write scopes with no dependency pat
     expect(taskOnDisk(silent.workspace, teamId, "T2")?.blockedBy).toEqual([])
   })
 
+  test("R2 trailing slash (i) `docs/` covers `docs/x`, so an unordered pair is REFUSED", async () => {
+    /** The harness this arm drives. */
+    const h = harness()
+    await stagePlan(h)
+    // A captain who declares `docs/` means the whole directory, so `docs/x` is inside it.
+    await h.call("agent_teams_plan", { action: "create_task", task: { subject: "docs owner", description: "d", blocked_by: [], write_scopes: ["docs/"] } })
+    await h.call("agent_teams_plan", { action: "create_task", task: { subject: "docs x owner", description: "d", blocked_by: [], write_scopes: ["docs/x"] } })
+    /** The refusal. */
+    const refusal = await refusalOf(h.call("agent_teams_plan", { action: "approve" }))
+    expect(refusal).toBeDefined()
+    /** The sentence the caller reads, naming both scopes AS DECLARED so neither trailing slash is lost. */
+    const message = String(refusal?.message)
+    expect(message).toContain(`"docs/" and "docs/x"`)
+    expect(message).toContain("T1")
+    expect(message).toContain("T2")
+    // A refused approval mints NO team.
+    expect(listTeams(h.workspace)).toEqual([])
+  })
+
+  test("R2 trailing slash (ii) `docs/` and `docs` are the SAME scope, so the plan is REFUSED", async () => {
+    /** The harness this arm drives. */
+    const h = harness()
+    await stagePlan(h)
+    await h.call("agent_teams_plan", { action: "create_task", task: { subject: "slashed", description: "d", blocked_by: [], write_scopes: ["docs/"] } })
+    await h.call("agent_teams_plan", { action: "create_task", task: { subject: "plain", description: "d", blocked_by: [], write_scopes: ["docs"] } })
+    /** The refusal. */
+    const refusal = await refusalOf(h.call("agent_teams_plan", { action: "approve" }))
+    expect(refusal).toBeDefined()
+    /** The pair as declared, which is the same path under the trailing-slash normalisation. */
+    const message = String(refusal?.message)
+    expect(message).toContain(`"docs/" and "docs"`)
+    expect(message).toContain("T1")
+    expect(message).toContain("T2")
+    expect(listTeams(h.workspace)).toEqual([])
+  })
+
+  test("R2 trailing slash (iii) `docs/` and `docss` respect the SEGMENT boundary, so the plan APPROVES", async () => {
+    /** The harness this arm drives. */
+    const h = harness()
+    await stagePlan(h)
+    // `docss` is a DIFFERENT path: stripping the slash must not turn the prefix check into a string scan.
+    await h.call("agent_teams_plan", { action: "create_task", task: { subject: "docs owner", description: "d", blocked_by: [], write_scopes: ["docs/"] } })
+    await h.call("agent_teams_plan", { action: "create_task", task: { subject: "docss owner", description: "d", blocked_by: [], write_scopes: ["docss"] } })
+    /** The approved team: both rows are on the board and neither depends on the other. */
+    const teamId = await approveStaged(h)
+    expect(readTeam(h.workspace, teamId)?.tasks.map((task) => task.subject)).toEqual(["docs owner", "docss owner"])
+  })
+
   test("a DANGLING reference stays a WARNING at approval, never a refusal", async () => {
     /** The harness this arm drives. */
     const h = harness()
@@ -522,6 +570,36 @@ describe("R3 — claim obeys the readiness predicate dispatch already uses", () 
     // BEFORE `claimContract`, so a refused claim leaves no attempt behind for a later reader to trust.
     expect(taskOnDisk(h.workspace, teamId, "T2")?.status).toBe("pending")
     expect(readTeam(h.workspace, teamId)?.tasks.find((task) => task.id === "T2")?.owner).toBeUndefined()
+    expect(listContracts(h.workspace)).toEqual([])
+  })
+
+  test("a DANGLING blocker is REFUSED with the executable recovery (fail, then a replacement row)", async () => {
+    /** The harness this arm drives. */
+    const h = harness()
+    await stagePlan(h)
+    // A reference naming no row is a WARNING at approval and an unsatisfiable blocker at claim time.
+    await h.call("agent_teams_plan", { action: "create_task", task: { subject: "stranded", description: "d", blocked_by: ["nowhere"] } })
+    /** The approved team. */
+    const teamId = await approveStaged(h)
+    /** The refusal. */
+    const refusal = await refusalOf(h.call("agent_teams_task", { action: "claim", task_id: "T1", claimant: "Reviewer" }))
+    expect(refusal).toBeDefined()
+    /** The sentence the caller reads. */
+    const message = String(refusal?.message)
+    // The dangling text AND the row it strands are both named, so the reader knows what to act on.
+    expect(message).toContain("nowhere")
+    expect(message).toContain("stranded")
+    expect(message).toContain("T1")
+    // The recovery is EXECUTABLE: fail THIS row, then have the Lead append a replacement carrying a
+    // corrected blocked_by. A failed row cannot be reopened, and re-creating the dangling reference is
+    // not an answer — so neither stale instruction may survive.
+    expect(message).toContain(`agent_teams_task {action:"fail", task_id:"T1"}`)
+    expect(message).toContain("REPLACEMENT")
+    expect(message).toContain(`agent_teams_plan {action:"create_task"`)
+    expect(message).not.toContain("re-open")
+    expect(message).not.toContain("re-create the row")
+    // The refusal runs before the freeze, so the row is still pending and claimable by nobody.
+    expect(taskOnDisk(h.workspace, teamId, "T1")?.status).toBe("pending")
     expect(listContracts(h.workspace)).toEqual([])
   })
 

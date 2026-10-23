@@ -21,11 +21,13 @@ An activated ULW run asks the user nothing:
    explicit `team:` / `!team` flag OR any matched signal (A explicit flag, B deliverable
    verbs, C enumerated steps, D an existing `.mpd/plans` artifact). Never a second predicate.
 3. **A team when warranted** — a fired gate (or genuinely complex work) means the run stages the
-   team ITSELF with the OFFICIAL Agent Teams tools: `spawn_teammate({name, description, prompt})`
-   per roster member, then `team_task_create({subject, description, blocked_by?, write_scopes?})`
-   for the DAG — a captain-designed roster/DAG, run without user confirmation. The retired
-   `agent_teams_create` / `agent_teams_*` tools do not exist on harness 0.1.7; team state is the
-   Lead session's own.
+   team ITSELF, and the DEFAULT is the staged-plan path: `agent_teams_plan` with `add_member` per
+   roster member, then `create_task` for each DAG node (carrying its dependency answer), then
+   `approve` — a captain-designed roster/DAG, run without user confirmation. A captain may instead
+   choose the OFFICIAL tools: `spawn_teammate({name, description, prompt})` per roster member, then
+   the official `team_task_create({subject, description, blocked_by?, write_scopes?})` for the DAG —
+   on that alternative the dependency declaration is manual. The retired `agent_teams_create` /
+   `agent_teams_*` tools do not exist on harness 0.1.7; team state is the Lead session's own.
 4. **Loop to completion** — never stop early to ask; rounds continue until every success
    criterion is clean.
 5. **Fix on sight** — a defect the run finds is fixed in the same turn; never
@@ -33,12 +35,18 @@ An activated ULW run asks the user nothing:
 6. **Close out on proof** — done only after the verification gate and the quality-gate
    ledger both approve.
 
-**The official team path bypasses the mpd dependency guard.** `spawn_teammate` + the official
-`team_task_create` never pass through mpd's `create_task`/`approve`, so the mpd rules — an explicit
-dependency answer, an `approve` refusal on overlapping write scopes with no edge, a `claim` readiness
-check — cannot gate them; the official plane only says write-scope overlap is "advisory, not a lock".
-The rule the captain follows HERE is therefore manual: declare each task's `blocked_by`, and treat an
-edge-less task as meaning "runs in parallel" — give every ordered lane its edge before dispatching.
+**The NORMAL ULW flow — extending the staged plan through `agent_teams_plan` — is the GUARDED one.**
+Stage the team with `agent_teams_plan`: `add_member` per roster member, then `create_task` for each DAG
+node, then `approve`. The guard is the TOOL's, not advice: `create_task` REQUIRES the dependency answer
+(`blocked_by: [...]`, an explicit empty root, or `independent: true`), and `approve` REFUSES two tasks
+whose declared write scopes overlap with no dependency path between them (naming the pair and the two
+remedies).
+
+**The bypass, scoped explicitly: a captain who instead calls `spawn_teammate` + the official
+`team_task_create` directly.** Those calls never pass through mpd's `create_task`/`approve`, so none of
+the rules above gate them; the official plane only says write-scope overlap is "advisory, not a lock".
+On that path an edge-less task means "runs in parallel", and declaring each task's `blocked_by` is
+manual — give every ordered lane its edge before dispatching.
 
 ## Policy — upstream shape, our wording
 

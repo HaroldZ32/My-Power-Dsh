@@ -14,12 +14,14 @@ Plan C / C2 — 在 DSH subagent seam 上的固定策略 ultrawork 引擎（v2�
 
 1. **先甄别（Triage first）**——目标不清晰、或属于「先调查再执行」的任务，先跑一轮普通 MPD 调查，再进入 gate、团队或循环。
 2. **同一复杂度 gate**——运行评估与 session-start gate 相同的判定式：显式 `team:` / `!team` 标记，或任一命中信号（A 显式标记、B 交付类动词、C 枚举步骤、D 已存在的 `.mpd/plans` 计划文件）。绝不另立第二套判定。
-3. **需要时才建团队**——gate 触发（或工作确实复杂）时，由本次运行**自己**用官方 Agent Teams 工具建团：每个 roster 成员一次 `spawn_teammate({name, description, prompt})`，再用 `team_task_create({subject, description, blocked_by?, write_scopes?})` 建出 DAG——由 captain 自行设计并直接运行，无需用户确认。0.1.7 上已不存在 `agent_teams_create` / `agent_teams_*` 工具；团队状态就是 Lead 会话自身的状态。
+3. **需要时才建团队**——gate 触发（或工作确实复杂）时，由本次运行**自己**建团，**默认**走已暂存计划这条路径：用 `agent_teams_plan` 为每个 roster 成员 `add_member`，再为每个 DAG 节点 `create_task`（带上它的依赖答案），最后 `approve`——由 captain 自行设计并直接运行，无需用户确认。captain 也可以改选**官方工具**：每个 roster 成员一次 `spawn_teammate({name, description, prompt})`，再用官方 `team_task_create({subject, description, blocked_by?, write_scopes?})` 建出 DAG——在这条替代路径上，依赖声明须手动完成。0.1.7 上已不存在 `agent_teams_create` / `agent_teams_*` 工具；团队状态就是 Lead 会话自身的状态。
 4. **循环至完成**——绝不中途停下询问；持续迭代直到每条成功标准都干净。
 5. **就地修复（Fix on sight）**——运行中发现的缺陷在当轮立即修复；绝不上报后等待，也绝不请求用户批准。
 6. **有证据才收尾**——只有当 verification gate 与 quality-gate ledger 双双通过后才报告完成。
 
-**官方团队路径会绕过 mpd 的依赖守卫。** `spawn_teammate` + 官方 `team_task_create` 从不经过 mpd 的 `create_task`/`approve`，所以 mpd 的规则——显式依赖答案、`approve` 对「写作用域重叠且没有边」的拒绝、`claim` 的就绪检查——**管不到**它们；官方一侧只说写作用域重叠是「advisory, not a lock」。因此 captain 在这条路径上须**手动**遵守：为每个任务声明 `blocked_by`，并把没有边的任务理解为「并行执行」——每条有序的 lane 在派工前都要先补上边。
+**ULW 的正常流程——通过 `agent_teams_plan` 扩展已暂存的计划——正是「受守卫」的那条。** 用 `agent_teams_plan` 组队：每个 roster 成员一次 `add_member`，再为每个 DAG 节点 `create_task`，最后 `approve`。守卫在**工具**里，而不是建议：`create_task` **要求**给出依赖答案（`blocked_by: [...]`、显式的空根，或 `independent: true`），而 `approve` **拒绝**两个声明的写作用域重叠、且彼此之间没有依赖路径的任务（会点名这一对并给出两种补救）。
+
+**绕过路径——明确限定范围：captain 改为直接调用 `spawn_teammate` + 官方 `team_task_create`。** 这些调用从不经过 mpd 的 `create_task`/`approve`，所以上述规则都**管不到**它们；官方一侧只说写作用域重叠是「advisory, not a lock」。在这条路径上，没有边的任务意味着「并行执行」，每个任务的 `blocked_by` 须**手动**声明——每条有序的 lane 在派工前都要先补上边。
 
 ## 策略——形态来自上游，措辞是我们的
 

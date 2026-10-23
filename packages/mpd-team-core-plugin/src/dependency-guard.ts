@@ -11,7 +11,7 @@
 // filesystem, and so `create_task`, `approve` and `claim` reason over the SAME graph. Approval maps a
 // staged plan onto board ids `T1…Tn` in plan order (see the approve arm's `planAlias`), which is why a
 // plan's own 1-based POSITION and the id it will mint are the same string here.
-import type { StagedPlan } from "./plan-store"
+import type { StagedPlan } from "./plan-store.ts"
 
 /**
  * One task as the guard sees it: the id it carries (or will carry), its subject, and what it declares
@@ -32,13 +32,20 @@ export function planTaskId(index: number): string {
 }
 
 /**
- * A write scope with the one normalisation R2 names: a trailing `/**` is the whole subtree whose
- * parent path is the scope itself, so `packages/x/**` and `packages/x` name the same paths.
+ * A write scope with R2's normalisation: a trailing `/**` and any trailing slashes name the subtree
+ * whose path is the scope itself, so `packages/x/**`, `packages/x/` and `packages/x` are one scope.
+ *
+ * A non-empty declaration that normalises to nothing (`/`, `/**`) names the workspace ROOT, so it takes
+ * the universal meaning `.` already carries. An EMPTY declaration still names no path at all: callers
+ * rely on that when they mean "no scope", and inventing a whole-workspace collision would refuse a
+ * legitimate plan.
  * @param scope - one declared scope, as written.
  * @returns the normalised scope.
  */
 export function normalizeScope(scope: string): string {
-  return scope.replace(/\/\*\*$/u, "")
+  /** The scope with a trailing `/**` and then every trailing slash removed. */
+  const normalized = scope.replace(/\/\*\*$/u, "").replace(/\/+$/u, "")
+  return normalized === "" && scope !== "" ? "." : normalized
 }
 
 /**
@@ -53,10 +60,11 @@ export function scopeCoversEverything(normalized: string): boolean {
 /**
  * Whether two declared write scopes overlap, in the frozen definition (R2).
  *
- * Overlap = strip a trailing `/**`, then equal, or one is a path prefix of the other at a SEGMENT
- * boundary (so `packages/x` covers `packages/x/y` but never `packages/xy`); `**` and `.` cover
- * everything. An empty entry names no path and therefore overlaps nothing — a caller that wrote `""`
- * declared no scope, and inventing a whole-workspace collision for it would refuse a legitimate plan.
+ * Overlap = strip a trailing `/**` and any trailing slashes, then equal, or one is a path prefix of the
+ * other at a SEGMENT boundary (so `packages/x` covers `packages/x/y` but never `packages/xy`); `**` and
+ * `.` cover everything. An empty entry names no path and therefore overlaps nothing — a caller that
+ * wrote `""` declared no scope, and inventing a whole-workspace collision for it would refuse a
+ * legitimate plan.
  * @param first - one declared scope.
  * @param second - the other declared scope.
  * @returns true when the two scopes could touch the same files.

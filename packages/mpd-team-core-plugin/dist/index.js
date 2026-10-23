@@ -2756,7 +2756,8 @@ function planTaskId(index) {
   return "T" + String(index + 1);
 }
 function normalizeScope(scope) {
-  return scope.replace(/\/\*\*$/u, "");
+  const normalized = scope.replace(/\/\*\*$/u, "").replace(/\/+$/u, "");
+  return normalized === "" && scope !== "" ? "." : normalized;
 }
 function scopeCoversEverything(normalized) {
   return normalized === "**" || normalized === ".";
@@ -4544,7 +4545,7 @@ function assertClaimReady(board, task) {
   };
   const dangling = blocking.filter((id) => !board.some((candidate) => candidate.id === id));
   const first = blocking[0];
-  throw new Error(`task ${namedTask(task.id, task.subject)} is BLOCKED by ${blocking.map(label).join(", ")}: ${blocking.length === 1 ? "the declared blocker is" : "the declared blockers are"} not satisfied, and agent_teams_dispatch refuses the same pairing through the same readiness predicate (its reason reads "not ready (blocked by ${blocking.join(", ")})"). Fix: close ${first} first with agent_teams_task {action:"complete", task_id:"${first}"} — or use {action:"fail", task_id:"${first}"} if it will never be done, because a failed blocker releases its dependents (OPT-1) — then claim ${task.id} again.` + (dangling.length === 0 ? "" : ` NOTE: ${dangling.join(", ")} name(s) no task on this board (a dangling reference that can never be satisfied): re-create the row with the corrected blocked_by, or close this row with fail and re-open it.`));
+  throw new Error(`task ${namedTask(task.id, task.subject)} is BLOCKED by ${blocking.map(label).join(", ")}: ${blocking.length === 1 ? "the declared blocker is" : "the declared blockers are"} not satisfied, and agent_teams_dispatch refuses the same pairing through the same readiness predicate (its reason reads "not ready (blocked by ${blocking.join(", ")})"). Fix: close ${first} first with agent_teams_task {action:"complete", task_id:"${first}"} — or use {action:"fail", task_id:"${first}"} if it will never be done, because a failed blocker releases its dependents (OPT-1) — then claim ${task.id} again.` + (dangling.length === 0 ? "" : ` NOTE: ${dangling.join(", ")} name(s) no task on this board (a dangling reference that can never be satisfied), so ${namedTask(task.id, task.subject)} can never be claimed. Fix: fail this row with agent_teams_task {action:"fail", task_id:"${task.id}"}, then have the team's Lead append a REPLACEMENT task with agent_teams_plan {action:"create_task", task:{subject, description, blocked_by:[...]}} that carries the corrected blocked_by. A failed row is never reopened, and re-creating the dangling reference will not make it satisfiable.`));
 }
 function adapterFor(ctx) {
   const mounted = typeof ctx?.get === "function" ? ctx.get("mpdDsh") : undefined;
