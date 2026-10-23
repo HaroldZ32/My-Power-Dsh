@@ -348,10 +348,12 @@ workspace keeps the empty states.
   the drawing is REUSED from `graph.ts` rather than re-implemented: `layoutBoxes` (one bordered box per
   task), `layoutRail` (an indented forest) and `layoutList` (a rank-grouped table with progress bars —
   the view that had no caller until this page). `dagPanelLayout` picks the mode from the width the panel
-  actually measured: `boxes` REFUSES rather than draw a squeezed box, the rail takes over while a forest
-  still fits its row budget, and `list` is the dense fallback for a narrow, busy board. Nothing here
-  decides how wide anything is; the user's decision for this wave was 纵向，但不要固定尺寸 (vertical
-  ranks, no fixed sizes).
+  actually measured: `boxes` whenever the panel can show TWO node columns of the drawing (`2 * nodeWidth
+  + NODE_GAP`, read off the drawing's own boxes) or the drawing already fits, `list` as the dense
+  fallback for a narrow, busy board, and the rail for everything narrower than that. A drawing wider or
+  taller than the panel is NOT refused — the page pans and scrolls it, and the footer names the position.
+  Nothing here decides how wide anything is; the user's decision for this wave was 纵向，但不要固定尺寸
+  (vertical ranks, no fixed sizes).
 - **Rank is DERIVED from the graph, never trusted from a served `depth` (R17).** The drawing computes
   each rank itself as the longest chain of blockers that RESOLVE on the board; a served `depth` is at
   most a hint. This repairs a measured, silent lie: the live board's blocker references were plan
@@ -416,10 +418,12 @@ workspace keeps the empty states.
 - **Scrolling, and both rails DRAG (AC7).** The body is self-windowed with a PERMANENT proportional
   gutter while content overflows, plus wheel and `PgUp`/`PgDn`/`Home`/`End`. Permanence is the host's
   own rule: an auto-hiding gutter changes the content width and rewraps every row the moment it appears.
-  **Since wave `tui-refresh` the sidebar chooses a BOXED drawing only when it fits the panel on BOTH axes**
-  (natural width AND row count); a rank that does not fit falls back to the rail or the dense list, so the
-  sidebar never silently windows a graph. The horizontal rail stays implemented for a drawing that reports
-  a wider width; the page's own layout no longer produces one. The bar's cell is reserved out of the
+  **The sidebar chooses a BOXED drawing whenever two node columns fit** (or the drawing fits whole), and
+  a drawing wider or taller than the panel is reached through the horizontal pan and the vertical scroll
+  — the footer names where the reader is (`col n/m` and the row token). Only a panel too narrow for two
+  columns falls back, to the dense list above `LIST_ROWS` tasks or to the rail below it; the whole-fit
+  rule of wave `tui-refresh` is GONE, because trading the graph away for a fit is what left a 20-task
+  board rendering `view rail` with no lines. The bar's cell is reserved out of the
   content width, the height budget counts the frame's two border rows plus the title row plus the footer
   (so the page's total equals the host's measured height), a box that would straddle the window edge is
   drawn whole or not at all, the title is drawn ONCE (the title row, which also carries `⤢`), and the
@@ -479,7 +483,12 @@ indented forest for a narrow terminal) and `list` (a rank-grouped table for a ve
 DRAWN dependency edge ends in a directional arrowhead — `▼` in `boxes`, `▸` in `rail` — pointing INTO the
 dependent, and a fan-in of several blockers still shows exactly ONE arrow: the merged entry is written as
 text rather than as a junction, because no direction bit can say "…and the dependency points into this
-box". Both callers (the team scene and the merged panel) render `legendLines(width)` directly under the
+box". **EVERY on-board edge is drawn at ANY rank distance**: a long edge runs down a LANE (a column no
+box of the intervening ranks occupies, appended to the right when the drawing is full) with one
+horizontal jog in the band below its blocker and one above its dependent, and an EMPTY rank bucket
+consumes no rows at all — the buckets are compacted for the drawing while `rankPlan`/`bucketRanks` keep
+the holes the web plane reads. With a task pinned, the off-chain CONNECTORS keep the visible `edge`
+tone (never `inactive` + `dimColor`): the boxes and labels may mute, the lines never do. Both callers (the team scene and the merged panel) render `legendLines(width)` directly under the
 drawing; it names both marks and the focus marker, and it drops a sentence rather than cutting one when
 the terminal is narrow. **ONE STATE KEY, NOT TWO**: `legendLines` contributes only that arrow/focus
 sentence, and the six-state key under it is composed once by `panel-core.ts`'s `legendLinesFor` — the
@@ -493,9 +502,12 @@ task, with a served `depth` used only as a hint when nothing resolves at all —
 a page can surface both instead of hiding them. Two further measured defects are fixed INSIDE the
 drawing: a wide (CJK) glyph occupies two cells, so the cell after it now renders as nothing rather than
 as a space — a boxed line used to lose its closing border after any wide character — and the narrow
-floor is honest: `layoutBoxes` returns `undefined` rather than draw a box narrower than `MIN_NODE_WIDTH`
-(16), and the DAG page asks for a label area of at least `MIN_BOX_LABEL_CELLS` (32) before it elects the
-boxed view, so a narrow panel degrades to the rail or the list instead of clipping a box.
+floor is the drawing's own TWO COLUMN floor: the page elects the boxed view whenever two node columns
+fit (`2 * nodeWidth + NODE_GAP`, with `nodeWidth` read off the drawing's own boxes) or the drawing
+already fits whole, and a drawing wider or taller than the panel is reached through its horizontal pan
+and vertical scroll, whose position the footer names (`col n/m` and the row token above it); only a
+panel too narrow for two node columns degrades — to the dense list once the board carries more than
+`LIST_ROWS` tasks, otherwise to the rail — instead of clipping a box.
 
 `Ctrl+A` opens the merged panel — the host's own subagent rows with their counts, the team body and that
 DAG — whenever the workspace's team projection holds a team with at least one task. The host's built-in

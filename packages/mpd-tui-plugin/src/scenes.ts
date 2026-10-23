@@ -50,7 +50,7 @@ import {
   type MpdTeamsLike,
   type TeamSourceDeps,
 } from "./team-state.js"
-import { hitTest, layoutGraph, layoutGraphNatural, legendLines, sliceSpans } from "./graph.js"
+import { boxesFitWidth, hitTest, layoutGraph, layoutGraphNatural, layoutRail, legendLines, sliceSpans } from "./graph.js"
 import { gutterCellsX, legendLinesFor, normalizeWheelDelta, toneColor, useTeamFeed, visualTone, wheelInvertOn } from "./panel-core.ts"
 import { statusMarker } from "./status.js"
 import {
@@ -743,8 +743,15 @@ function createTeamComponent(
     // it. The vertical budget is the scene's own graph window, which is what buys the roomy box form.
     /** The rows of the graph that fit the window. */
     const graphWindow = Math.max(3, measured.window - 4)
-    /** The drawing for this render, at its own width. */
-    const view = layoutGraphNatural(graphTasks, focus, { rows: graphWindow }, modelRanks(workflow))
+    /** The ranks the host's model served, when it published one; the scene never re-derives its own. */
+    const servedRanks = modelRanks(workflow)
+    /** The boxed drawing for this render, at its own width — the scene's picture unless it is too narrow. */
+    const boxes = layoutGraphNatural(graphTasks, focus, { rows: graphWindow }, servedRanks)
+    // THE FULL-SCREEN SCENE OBEYS THE PANEL'S RULE (clause A3): boxes while two node columns of the
+    // drawing fit, and the rail only for a terminal that genuinely cannot show them. Before this the
+    // scene had no rule of its own and inherited the layout's rank cap, so a deep board fell back to a
+    // rail — the lines that "disappear even in full screen" the user reported.
+    const view = boxesFitWidth(boxes, graphWidth) ? boxes : layoutRail(graphTasks, graphWidth, focus, servedRanks)
     /** The furthest horizontal offset that still fills the viewport; zero when the drawing fits. */
     const scrollXMax = Math.max(0, view.width - graphWidth)
     /** The horizontal offset for THIS render, clamped — the one value the rows and the rail both read. */

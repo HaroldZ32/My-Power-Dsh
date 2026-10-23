@@ -699,25 +699,33 @@ describe("the DAG page's layout choice", () => {
   })
 
   test("a busy narrow board reaches the dense list, which had no caller before this page", () => {
-    /** A board with more rows than a rail can show legibly. */
+    /** A board with more rows than a rail can show legibly: a 30-task chain plus two more roots. */
     const busy: DagPanelTask[] = []
-    for (let index = 1; index <= 30; index += 1) {
+    for (let index = 1; index <= 32; index += 1) {
       busy.push({
         id: `B${index}`,
         subject: `broad task ${index}`,
         kind: "work",
         visual: "open",
-        dependencies: index === 1 ? [] : [`B${index - 1}`],
+        dependencies: index === 1 || index > 30 ? [] : [`B${index - 1}`],
         failedDependencies: [],
         depth: index - 1,
       })
     }
-    /** The layout for that board at the floor. */
-    const dense = dagPanelLayout(busy, DAG_PANEL_MIN_COLUMNS)
+    // RE-POINTED FOR CLAUSE A3, DELIBERATELY. The list used to be reached at the host's 28-cell floor
+    // because a 30-rank drawing was refused by `MAX_BOX_RANKS` — a rank cap this contract REMOVES (a
+    // tall drawing is scrolled). What still reaches the list is the case the clause keeps: a busy board
+    // in a panel too narrow for two node columns AND for the drawing itself. This board's natural
+    // drawing is 36 cells (`3 * 10 + 2 * 3`), so a 22-cell panel gets the dense table.
+    /** The layout for that board below the two-column floor. */
+    const dense = dagPanelLayout(busy, 22)
     expect(dense.mode).toBe("list")
     expect(dense.list).toBe(true)
     // The list view is the rank-grouped table, whose own header is the `rank` rule.
     expect(dense.view.lines.flat().map((span) => span.text).join("\n")).toContain("rank")
+    // AND AT THE HOST'S OWN FLOOR THE SAME BOARD IS BOXED — 28 cells show two ten-cell columns, which
+    // is the half the removed rank cap used to deny.
+    expect(dagPanelLayout(busy, DAG_PANEL_MIN_COLUMNS).mode).toBe("boxes")
   })
 
   test("EVERY drawn row fits the panel, wide glyphs included", () => {
@@ -857,10 +865,12 @@ describe("the DAG page's layout choice", () => {
     for (const cols of [44, 200]) {
       expect(`cols=${cols} mode=${dagPanelLayout(absurd, cols).mode}`).toBe(`cols=${cols} mode=rail`)
     }
-    // THE VERTICAL HALF OF THE SAME RULE (wave `tui-refresh`): the very board that draws boxes in a
-    // 30-row window is NOT boxed in a 24-row one, because this five-rank drawing is 27 rows and a boxed
-    // drawing the window must cut at its edge is a half box. The rail has no such edge.
-    expect(`short=${dagPanelLayout(real, 80, undefined, 24).mode}`).toBe("short=rail")
+    // THE VERTICAL HALF OF THE OLD RULE IS GONE (clause A3, amended deliberately here): the very board
+    // that draws boxes in a 30-row window is STILL boxed in a 24-row one, because a drawing taller than
+    // the window is reached by the page's own scroll — and `halfBoxRows` blanks a box the window would
+    // cut, so a tall drawing can never show a half box either. Refusing it was the 因噎废食 the user
+    // named: this five-rank board used to lose its lines in a short window.
+    expect(`short=${dagPanelLayout(real, 80, undefined, 24).mode}`).toBe("short=boxes")
     // The threshold is the CAP, not a guess: a label one cell over the widest the box can write trips it,
     // and one cell under does not. Both sides are asserted so the boundary cannot drift silently.
     /** The natural-path cap and the label budget it implies, read from the drawing's own behaviour. */
@@ -2990,7 +3000,7 @@ describe("tui-refresh · the 2 s cadence", () => {
   })
 })
 
-describe("tui-refresh · boxes are chosen only when the drawing fits the interior", () => {
+describe("tui-refresh · boxes are chosen whenever two node columns fit, and the WINDOW is what fits", () => {
   /**
    * A board whose middle rank holds THREE siblings — the exact shape the screenshot lost a node from.
    * @returns the board, in the drawing's own vocabulary.
@@ -3004,27 +3014,45 @@ describe("tui-refresh · boxes are chosen only when the drawing fits the interio
     ]
   }
 
-  test("a 3-sibling rank in a 26-cell interior falls back instead of dropping a node", () => {
+  test("a 3-sibling rank in a 26-cell interior KEEPS its boxes, and the third node is one pan away", () => {
     /** The board the screenshot's board had. */
     const tasks = threeSiblingTasks()
     // THE PREMISE, MEASURED: the boxed drawing is 36 cells (`3 * 10 + 2 * 3`), so a 26-cell interior
-    // cannot show its third box — which is exactly what the screenshot showed (T4 simply gone).
+    // cannot show all three boxes at once.
     expect(layoutBoxesNatural(tasks)?.width).toBe(36)
     /** The layout at the sidebar's real interior width. */
     const narrow = dagPanelLayout(tasks, 26, undefined, 40)
-    expect(narrow.mode).toBe("rail")
-    // NO NODE IS DROPPED: every task id the board carries is drawn somewhere in the fallback.
-    /** The fallback drawing's text, joined across its rows. */
-    const drawn = narrow.view.lines.map((row) => row.map((span) => span.text).join("")).join("\n")
-    for (const task of tasks) expect(`narrow ${task.id}=${drawn.includes(task.id)}`).toBe(`narrow ${task.id}=true`)
-    // POSITIVE CONTROL: the SAME board at the width the drawing needs is boxed, so the fallback above is
-    // a fact about the geometry and not a layout that refuses boxes everywhere.
+    // RE-POINTED FOR CLAUSE A3, DELIBERATELY: the drawing is NOT refused for being wider than the
+    // panel. Two ten-cell columns fit 26 cells, so the DAG is drawn and the page pans — refusing it was
+    // the over-wide rule the user named 因噎废食, and it is what made their graph disappear.
+    expect(narrow.mode).toBe("boxes")
+    expect(narrow.view.width).toBe(36)
+    // NO NODE IS DROPPED: every task the board carries sits in the drawing, and the ones past the
+    // interior's edge are reached by the pan — the window at the drawing's right edge shows them while
+    // the first window does not.
+    /** The window at the drawing's left edge, cut the way the page cuts it. */
+    const near = narrow.view.lines.map((row) => sliceSpans(row, 0, 26).map((span) => span.text).join("")).join("\n")
+    /** The window at the drawing's right edge — the pan the footer names as `col 11/…`. */
+    const far = narrow.view.lines.map((row) => sliceSpans(row, 36 - 26, 26).map((span) => span.text).join("")).join("\n")
+    // THE THIRD SIBLING is exactly the node the old refusal cost the user: outside the first window,
+    // inside the panned one.
+    expect(`near T4=${near.includes("T4")}`).toBe("near T4=false")
+    expect(`far T4=${far.includes("T4")}`).toBe("far T4=true")
+    // …and every task is somewhere in the drawing, so the layout dropped no node of its own.
+    /** The whole drawing's text, joined across its rows. */
+    const whole = narrow.view.lines.map((row) => row.map((span) => span.text).join("")).join("\n")
+    for (const task of tasks) expect(`${task.id} drawn=${whole.includes(` ${task.id}`)}`).toBe(`${task.id} drawn=true`)
+    // POSITIVE CONTROL: at the width the whole drawing needs there is no pan to make, and the drawing
+    // is the same one — the mode is a fact about the PANEL, never a different picture.
     expect(dagPanelLayout(tasks, 36, undefined, 40).mode).toBe("boxes")
   })
 
-  test("boxes imply BOTH fits: the drawing is never wider than the interior, nor taller than the window", () => {
-    // The invariant stated once, over the boards this suite already carries and a spread of widths and
-    // heights: a boxes layout that violates either fit is the class of defect this wave ended.
+  test("boxes rest on the TWO-COLUMN floor, and the WINDOW is what fits — not the drawing", () => {
+    // REWRITTEN FOR CLAUSE A3, DELIBERATELY: this arm used to pin the removed policy ("a boxes layout
+    // is never wider than the interior nor taller than the window"). The contract replaces it with two
+    // facts that must hold together: a boxed layout satisfies the two-column width floor (or fits
+    // wholly), and every drawn row is cut to the interior — a drawing wider or taller than the panel is
+    // reached through the pan and the scroll, never by shrinking or dropping it.
     /** The boards under test, including the one the screenshot lost a node from. */
     const boards = [threeSiblingTasks(), chainTasks().slice(0, 4), fanInTasks(), cjkTasks()]
     for (const cols of [20, 26, 36, 44, 80]) {
@@ -3033,8 +3061,13 @@ describe("tui-refresh · boxes are chosen only when the drawing fits the interio
           /** The layout at this geometry. */
           const layout = dagPanelLayout(board, cols, undefined, rows)
           if (layout.mode !== "boxes") continue
-          expect(layout.view.width).toBeLessThanOrEqual(cols)
-          expect(layout.view.lines.length).toBeLessThanOrEqual(rows)
+          // THE WIDTH POLICY, read off the drawing's own node width: two columns fit, or it fits whole.
+          /** The one box width this drawing uses. */
+          const nodeWidth = layout.view.hits[0].colEnd - layout.view.hits[0].col + 1
+          expect(`cols=${cols} twoColumns=${2 * nodeWidth + 3 <= cols || layout.view.width <= cols}`).toBe(`cols=${cols} twoColumns=true`)
+          // AND THE WINDOW IS THE INTERIOR: whatever the drawing's width, the visible slice is the
+          // panel's own, at every row of it.
+          for (const row of layout.view.lines) expect(cellWidth(sliceSpans(row, 0, cols).map((span) => span.text).join(""))).toBe(cols)
         }
       }
     }

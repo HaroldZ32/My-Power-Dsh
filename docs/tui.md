@@ -506,6 +506,17 @@ control is MPD's and it is declared on the page itself.
   lets a rank of three nodes fit a 40-cell sidebar.
 - **The box is the compact three-row form** (top border, content, bottom border) with the ROUNDED
   corners. One form per drawing, so two boxes in one rank can never have different heights.
+- **Every blocker → dependent edge is drawn, at ANY rank distance.** A long edge is routed through a
+  LANE — a column no box of the intervening ranks occupies, appended to the right of the drawing when
+  every column inside it is taken — with one horizontal jog in the connector band below the blocker and
+  one in the band above the dependent, so the run is continuous from the blocker's bottom border (`┬`)
+  into the dependent's single `▼`. A fan-in still shows exactly ONE arrowhead per dependent, because
+  every converging parent writes that one cell.
+- **An EMPTY rank bucket consumes no rows.** A served rank ladder with holes in it (0, 2, 4 — what a
+  host whose `depth` is a plan ordinal serves) is COMPACTED for the drawing, so two boxes that are one
+  rank apart stand one connector band apart and no edge has to cross a rank that holds no box. The
+  plan's own buckets keep their holes: `rankPlan`/`bucketRanks` are shared with the web plane, so the
+  compaction lives in the drawing.
 - **A click resolves through the drawing's own hit rectangle, COLUMN included.** Both boxes of a rank
   share one row band, so a row-only lookup pins the leftmost box of that rank — measured, and the
   reason a user clicking a task watched the highlight land on its neighbour. The pointer's own column
@@ -514,6 +525,10 @@ control is MPD's and it is declared on the page itself.
   upstream dependency chain render BOLD, and everything else renders in the muted tone AND with the
   host's `dimColor` flag — because the dark theme's `inactive` and `subtle` are close enough that a
   colour-only grey-out is invisible.
+  **The CONNECTORS are never dimmed.** A box and its label may mute, but an off-chain line keeps the
+  drawing's visible connector tone (`edge`, the `promptBorder` key) instead of `inactive` + `dimColor`:
+  the two greys above read as one, which is how the user's lines "disappeared" a second time with a
+  task pinned. The chain's own edges stay the loud `chain` tone.
 - **Clicking the pinned task a second time opens that member's work page**: MPD's full-screen
   subagents scene, positioned on the detail view of the task's owner. The owner (`assignee`) is matched
   against the host's curated subagent rows; when nothing matches, MPD says so through the host's toast
@@ -557,13 +572,17 @@ HTTP or `EventSource` call — so the tick is a **repaint self-heal** (a lost ce
 frame the host drew half of), never a data-fetch retry. A damaged frame repairs itself within two
 seconds, and a panel is never left showing the moment it was opened.
 
-**The sidebar draws a DAG only when the picture fits it.** A boxed drawing is chosen only when the
-natural width AND the row count fit the panel's interior; otherwise the page falls back to the rail (or
-the dense list on a busy board). That is why a narrow sidebar shows a tree instead of a horizontally
-windowed graph: a rank that does not fit is a rank the reader cannot see, so the page never shows one.
-A box that would straddle the window's edge is drawn whole or not at all, the vertical bar's cell is
-reserved out of the content width, and the page's title is drawn **once** (the title row, which also
-carries the `⤢` control).
+**The sidebar draws the DAG whenever two node columns fit, and the WINDOW is what fits.** A boxed
+drawing is chosen when the panel can show two node columns of it (`2 * nodeWidth + NODE_GAP`, the
+`boxesFitWidth` test) or when the whole drawing already fits; a drawing WIDER or TALLER than the panel
+is reached through the page's own horizontal pan and vertical scroll, whose position the footer names
+(`col n/m`, and the row token above it). Only a panel too narrow for two node columns falls back — to
+the dense list when the board carries more than `LIST_ROWS` tasks, otherwise to the rail — and the
+full-screen team scene obeys the same rule. The whole-drawing fit rule this replaces (commit
+`95c836b9`) traded the graph away for a fit: a 20-task board rendered `view rail` with no dependency
+lines at all, and a short window dropped the lines from a 5-task board. A box that would straddle the
+window's edge is drawn whole or not at all, the vertical bar's cell is reserved out of the content
+width, and the page's title is drawn **once** (the title row, which also carries the `⤢` control).
 
 **When the screen looks wrong:**
 
