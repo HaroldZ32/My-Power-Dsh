@@ -44,7 +44,7 @@ import { PANEL_FRAME_BORDER_ROWS, PANEL_FULLSCREEN_GLYPH, PANEL_TITLE_ROW_ROWS, 
 // its answer inside its own frame (frozen clause C3). `surfaceRule` is the SAME titled rule the scene
 // draws between ITS sections: one divider primitive, so this page cannot invent a second-looking one.
 import { subagentSectionRows, surfaceRule, type SubagentSectionRow } from "./subagent-scene.js"
-import { hitTest, layoutBoxesNatural, layoutList, layoutRail, legendLines, sliceSpans, type GraphHit, type GraphTask, type GraphView } from "./graph.js"
+import { boxesFitWidth, hitTest, layoutBoxesNatural, layoutList, layoutRail, legendLines, sliceSpans, type GraphHit, type GraphTask, type GraphView } from "./graph.js"
 import type { TeamWorkflow } from "./team-state.js"
 import { modelRanks, modelRows, NO_SESSION_TEAM_MARKER, WORKSPACE_SCOPE_MARKER, type TeamFeedAccessor } from "./team-state.js"
 import {
@@ -369,27 +369,24 @@ const LIST_ROWS = 24
 
 
 /**
- * Whether a natural-width boxed drawing may be shown INSIDE this panel — both axes, no windowing.
+ * Whether the boxed drawing is the honest choice for a panel this wide.
  *
- * THE RULE THIS PINS (the sidebar defect the screenshot confirmed): a boxed DAG is chosen only when it
- * fits the panel it is drawn in. The page used to accept every natural drawing and window it, so a
- * three-sibling rank in a 26-cell sidebar interior — `3 * 10 + 2 * 3` = 36 cells — drew its first two
- * boxes and pushed the third off-window entirely, with the footer carrying no horizontal position to
- * say so: the user's board showed T2 and T3 while T4 was simply gone.
+ * THE WIDTH IS THE ONLY REFUSAL LEFT (frozen contract `dag-edges`, clause A3), and it is a floor on
+ * the PANEL, never on the drawing: a panel that can show two node columns gets the DAG, and a drawing
+ * wider than that panel is reached through the page's EXISTING horizontal pan — which the footer names
+ * (`col n/m`) and the horizontal rail under the drawing scrubs.
  *
- * THE VERTICAL HALF is the same rule on the other axis: a boxed drawing taller than the window is cut
- * by the window's own edge, and the row that straddles that edge draws a top border and a label with no
- * bottom border (the "T5 drawn half" look). A drawing that cannot be shown WHOLE is not shown as boxes;
- * the rail and the list have no such edge, so nothing is ever half-drawn.
- * @param view - the drawing the layout produced.
+ * THE WHOLE-FIT RULE THIS REPLACES (commit `95c836b9`) refused any drawing that did not fit BOTH axes,
+ * so a board with lines was downgraded to a rail with none — the user's 20-task board read `view rail`
+ * on a panel with room for seven columns, and their 5-task board fell back too. The vertical half is
+ * gone for the same reason: a drawing taller than the window is reached by the page's own scroll, and
+ * `halfBoxRows` already blanks a box that would be cut rather than drawing half of one.
+ * @param view - the drawing the layout produced, for the one box width it uses.
  * @param cols - the cells the panel may draw in.
- * @param rows - the rows the page's window can show; omitted means the caller has no vertical budget.
- * @returns true when the whole drawing fits, i.e. when boxes are the honest choice.
+ * @returns true when two node columns fit, i.e. when boxes are the honest choice.
  */
-function boxesFitPanel(view: GraphView, cols: number, rows: number | undefined): boolean {
-  if (view.width > cols) return false
-  if (rows === undefined) return true
-  return view.lines.length <= rows
+function boxesFitPanel(view: GraphView, cols: number): boolean {
+  return boxesFitWidth(view, cols)
 }
 
 /** Where the page's window stands, as the pinned footer reports it. */
@@ -482,12 +479,12 @@ export function halfBoxRows(hits: readonly GraphHit[], dagStart: number, windowS
  * guess whether they fit.
  *
  * THE LADDER, in order:
- *   1. `layoutBoxesNatural` — the DRAWING at its own width, and ONLY when that whole drawing fits this
- *      panel on both axes (see {@link boxesFitPanel}). A narrow sidebar must never silently window its
- *      DAG: a rank that does not fit is a rank the reader cannot see, and a box cut by the window's edge
- *      is a broken box;
- *   2. `layoutList` — the rank-grouped table with progress bars — takes over a BUSY board, the case it
- *      was written for;
+ *   1. `layoutBoxesNatural` — the DRAWING at its own width, whenever the panel can show TWO node
+ *      columns (see {@link boxesFitPanel}). A drawing wider or taller than the panel is no longer a
+ *      reason to refuse it: the page's horizontal pan and vertical scroll reach the rest of it, and the
+ *      footer names where the reader is;
+ *   2. `layoutList` — the rank-grouped table with progress bars — takes over a BUSY board below that
+ *      floor, the case it was written for;
  *   3. `layoutRail` — the forest, for everything else.
  *
  * `labelOverflow` is the other refusal: the drawing reports when the natural width cap held a box below
@@ -495,9 +492,10 @@ export function halfBoxRows(hits: readonly GraphHit[], dagStart: number, windowS
  * never cut. It is a REPORTED fact from the layout instead of a prediction, which is why the fallback
  * cannot disagree with what was drawn.
  * @param tasks - the board to draw.
- * @param cols - the cells the panel measured; the interior the drawing must fit, never the drawing's width.
+ * @param cols - the cells the panel measured; what the mode's width floor is measured against.
  * @param focus - the task to light, with its dependency chain.
- * @param rows - the rows the page's window can show; the vertical half of the same fit test.
+ * @param rows - the rows the page's window can show; forwarded to the drawing's (now ignored) budget,
+ *   because the WINDOW is what clips a tall drawing — the mode no longer tests it.
  * @param servedRanks - the SERVED rank of each task id when the host published a model; omitted
  *   means the drawing derives them through the core, exactly as it did before this wave.
  * @returns the drawing and the mode that produced it.
@@ -507,7 +505,7 @@ export function dagPanelLayout(tasks: readonly DagPanelTask[], cols: number, foc
   const width = Math.max(8, Math.floor(Number.isFinite(cols) ? cols : 8))
   /** The boxed DAG at its natural width, absent when the board refuses to be drawn as boxes. */
   const boxes = layoutBoxesNatural(tasks, focus, rows === undefined ? undefined : { rows }, servedRanks)
-  if (boxes !== undefined && boxes.labelOverflow !== true && boxesFitPanel(boxes, width, rows)) {
+  if (boxes !== undefined && boxes.labelOverflow !== true && boxesFitPanel(boxes, width)) {
     return { view: boxes, mode: "boxes", list: false, ...viewFacts(boxes) }
   }
   if (tasks.length > LIST_ROWS) {
@@ -689,29 +687,38 @@ const DAG_FALLBACK_ROWS = 24
 const DAG_FOOTER_ROWS = 1
 
 /**
- * Scroll the viewport the least amount that puts one row inside it.
+ * Scroll the viewport the least amount that puts one ROW — or one whole BOX — inside it.
  *
  * The focus invariant, expressed as arithmetic rather than as a heuristic: a row above the window moves
- * the offset UP to it, a row below moves the offset DOWN until the row is its last visible line, and a
- * row already inside changes nothing (scrolling a page that already shows the focus would be motion the
- * user did not ask for).
+ * the offset UP to it, a row below moves the offset DOWN until its LAST line is the window's last line,
+ * and a row already inside changes nothing (scrolling a page that already shows the focus would be
+ * motion the user did not ask for).
+ *
+ * THE UNIT IS THE BOX when the drawing draws boxes (clause A3): a tall drawing is now reached by this
+ * scroll instead of being refused, and the page blanks a box the window would cut, so bringing only the
+ * box's TOP row into view could land on a picture of nothing. Asking for the offset that shows the
+ * box's LAST row is exactly right in both cases — `height` is 1 for a one-row drawing, where the
+ * formula is the original `row - viewportRows + 1`.
  * @param viewport - this render's viewport (its `scrollTo` clamps).
- * @param row - the row to bring into view.
+ * @param row - the row (or the box's top row) to bring into view.
+ * @param height - how many rows the unit occupies, top row included; 1 when it is a single row.
  */
-function scrollRowIntoView(viewport: { offset: number; viewportRows: number; max: number; scrollTo: (next: number) => void }, row: number): void {
+function scrollRowIntoView(viewport: { offset: number; viewportRows: number; max: number; scrollTo: (next: number) => void }, row: number, height: number = 1): void {
   if (row < viewport.offset) {
     viewport.scrollTo(row)
     return
   }
-  if (row >= viewport.offset + viewport.viewportRows) {
-    // THE PUSH IS CLAMPED TO THE BAND, and that clamp is the whole point: `row - viewportRows + 1` is
-    // the largest offset that still shows the row, but it is only reachable while the content has a
+  /** The unit's last row, which is the line that has to end up on screen. */
+  const last = row + Math.max(1, Math.floor(height)) - 1
+  if (last >= viewport.offset + viewport.viewportRows) {
+    // THE PUSH IS CLAMPED TO THE BAND, and that clamp is the whole point: `last - viewportRows + 1` is
+    // the smallest offset that still shows the unit, but it is only reachable while the content has a
     // full page below it. On the LAST page of a board it asks for an offset the page cannot honour, and
     // the reader is left one window short of the very row the walk just focused — measured on this
     // suite: a 40-task walk focused `B40` at the last row and asked for exactly that offset, which
     // showed every row EXCEPT `B40`. `max` is the band's own furthest offset, so the correction comes
     // from the one place that defines it rather than from arithmetic re-derived here.
-    viewport.scrollTo(Math.min(row - viewport.viewportRows + 1, viewport.max))
+    viewport.scrollTo(Math.min(last - viewport.viewportRows + 1, viewport.max))
   }
 }
 
@@ -1091,8 +1098,9 @@ export function createDagPanelComponent(readWorkflow: (sessionId?: string) => Te
      * that equality is asserted in `panel-dag.test.ts`.
      */
     const windowRows = Math.max(1, (measured.rows ?? DAG_FALLBACK_ROWS) - PANEL_FRAME_BORDER_ROWS - PANEL_TITLE_ROW_ROWS - DAG_FOOTER_ROWS)
-    // THE LAYOUT IS TOLD THE ROWS, so a drawing that cannot be shown whole is not drawn as boxes (see
-    // `dagPanelLayout`): the vertical half of the fit test is spent HERE, before any box is placed.
+    // THE LAYOUT IS TOLD THE ROWS, and it no longer refuses a drawing for exceeding them (clause A3):
+    // this page's OWN window is what clips a tall drawing, and `halfBoxRows` blanks the box that would
+    // be cut — so a DAG deeper than the sidebar is scrolled, not downgraded to a rail.
     // THE SIZES OBJECT IS THE PAGE'S ONE LIVE MUTABLE FACT SET, and it must EXIST before the layout
     // because the layout's decisions (mode, box form, `labelOverflow`) are it. It is SEEDED with the
     // previous render's counts, not with placeholders: the offset read below (the whole-box window) is a
@@ -1167,7 +1175,7 @@ export function createDagPanelComponent(readWorkflow: (sessionId?: string) => Te
         // never be outside the rendered window, so the two features cooperate instead of competing.
         /** The row the newly focused task draws on, when this drawing has one. */
         const at = rowIndex.get(action.focus)
-        if (at !== undefined) scrollRowIntoView(viewport, at)
+        if (at !== undefined) scrollRowIntoView(viewport, at, layout?.mode === "boxes" ? layout.view.boxRows : 1)
       }
       // A PIN OUTRANKS THE CURSOR while it exists, so pinning takes the same live value the walk just
       // moved to — pinning the RENDERED focus would pin the previous task on a fast walk.

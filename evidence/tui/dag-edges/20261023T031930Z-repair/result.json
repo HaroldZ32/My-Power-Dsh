@@ -1,0 +1,136 @@
+{
+  "contract": ".mpd/plans/dag-edges-contract.md",
+  "wave": "dag-edges",
+  "pass": "repair after independent review (bounded; not a new wave)",
+  "branch": "fix/dag-edges",
+  "startedUtc": "2026-10-23T03:19:30Z",
+  "finishedUtc": "2026-10-23T03:21:53Z",
+  "writer": "Senior Engineer (one bounded repair lane); NOT committed — the captain commits",
+  "review": {
+    "recordId": "rec-20261023T031449-2fda92",
+    "loopId": "loop-20261023T024651-aba578",
+    "verdict": "PASS",
+    "finding": {
+      "id": "rec-20261023T031449-2fda92/medium-readme-narrow-floor",
+      "severity": "Medium",
+      "subject": "README.md §'The engine DERIVES what it draws' (and README.zh-CN.md, same paragraph) still stated the REMOVED refusal: a DAG page asking for MIN_BOX_LABEL_CELLS (32) before electing boxes, plus a MIN_NODE_WIDTH (16) narrow floor — contradicting docs/tui.md §3.5, the same file's two-column rule, and the 23-cell boxed panel asserted by ARM 4; the 16-cell claim cannot hold alongside the 10-cell boxes in drawing.txt.",
+      "closedBy": "R1",
+      "note": "The verify record is a PASS and carries no structured finding row; this id cites the review record plus the Medium's own subject. The three nits are addressed by R2 and R3."
+    }
+  },
+  "scope": {
+    "changed": [
+      "packages/mpd-tui-plugin/README.md",
+      "packages/mpd-tui-plugin/README.zh-CN.md",
+      "packages/mpd-tui-plugin/test/dag-edges.test.ts (two arms added; the file itself is new/untracked from the wave)",
+      "evidence/tui/dag-edges/20261023T031930Z-repair/ (new)"
+    ],
+    "notTouched": [
+      "packages/mpd-tui-plugin/src/** — no edit, so no dist rebuild (the src/dist changes already in the working tree belong to the wave, not to this repair)",
+      "packages/mpd-tui-plugin/dist/index.js — not rebuilt",
+      "docs/tui.md, docs/tui.zh-CN.md — already carry the two-column rule; unchanged by this pass",
+      "evidence/tui/dag-edges/20261023T024907Z/** — original evidence intact; its result.json was cited by the Reviewer and was NOT edited",
+      ".git — read-only status/log/show only; no commit, no branch change"
+    ]
+  },
+  "repairs": {
+    "R1": {
+      "subject": "Rewrite the stale narrow-floor paragraph in both READMEs to the two-column floor + pan/scroll rule.",
+      "en": "packages/mpd-tui-plugin/README.md:505-509 — the paragraph now says the narrow floor is the drawing's own TWO COLUMN floor: boxes whenever two node columns fit (`2 * nodeWidth + NODE_GAP`, `nodeWidth` read off the drawing's own boxes) or the drawing already fits whole; a wider/taller drawing is reached through horizontal pan + vertical scroll with the footer naming the position (`col n/m` and the row token); only a panel too narrow for two node columns degrades — dense list past `LIST_ROWS`, otherwise the rail — instead of clipping a box.",
+      "zh": "packages/mpd-tui-plugin/README.zh-CN.md:405-409 — semantically identical Chinese twin of the same rule.",
+      "removed": [
+        "the MIN_BOX_LABEL_CELLS (32) label-area refusal",
+        "MIN_NODE_WIDTH (16) as the DAG page's narrow floor"
+      ],
+      "consistency": [
+        "docs/tui.md §3.5 'The sidebar draws the DAG whenever two node columns fit, and the WINDOW is what fits'",
+        "docs/tui.zh-CN.md §3.5 (same rule)",
+        "packages/mpd-tui-plugin/README.md 'Vertical and adaptive, with no fixed size anywhere' (two-column rule)",
+        "packages/mpd-tui-plugin/README.md 'Scrolling, and both rails DRAG (AC7)' (same rule, same footer tokens)"
+      ],
+      "gate": "bun run verify:docs — exit 0 (pairs=50 failed=0 violations=0 dead=0)"
+    },
+    "R2": {
+      "file": "packages/mpd-tui-plugin/test/dag-edges.test.ts",
+      "arms": [
+        "ARM 5b — an off-chain LONG edge's arrowhead carries `edge`, and the pin's own does not (line 514): a GAP-2 P2→C2 lane edge under a C1 pin; asserts the run is connected, the off-chain arrowhead is `{▼, edge}`, the focus arrowhead is `{▼, focus}`, and the geometric premise (10 rows between P2's bottom border and C2's top border).",
+        "ARM 6 — an unresolved blocker id is reported and contributes no drawn edge (line 543): GHOST1/GHOST2 are reported in the page layout's `unresolved` list (sorted), no hit rectangle belongs to a ghost, exactly ONE arrowhead (the resolvable U1→U2 edge) remains, and the drawing is byte-identical to the same board with the ghost references removed."
+      ],
+      "result": "13 pass / 0 fail in the file (11 before + 2 new)",
+      "notClaimed": "The two repair arms were not re-run against HEAD's source bytes, so no RED-on-HEAD claim is made for them; the header lists only the contract's original five as red-green."
+    },
+    "R3": {
+      "dir": "evidence/tui/dag-edges/20261023T031930Z-repair/",
+      "drawing": "drawing.txt",
+      "renderer": "render-drawing.ts",
+      "changes": [
+        "The no-op 40-cell window on a 23-cell drawing is replaced by a 12-cell crop at BOTH ends of the pan (offset 0 and offset 11); every cropped row is measured exactly 12 cells, and the two windows show different boxes (T2 at cols 0..9 vs T3 at cols 13..22).",
+        "Added the narrowest LEGAL boxed panel (23 cells = 2 * 10 + 3) over the 62-cell GAP-2 board: mode boxes, footer `1/27 col 1/40` at offset 0 vs `1/27 col 40/40` at offset 39, every window 23 cells — a real pan in a state dagPanelLayout actually produces.",
+        "Header wording fixed: it now says the TASKS are verbatim (id/kind/blockedBy, visual mapped from each task's status) under an AUTHORED served-rank fixture, and states that the record carries NO rank field (deviation D2)."
+      ],
+      "originalEvidence": "evidence/tui/dag-edges/20261023T024907Z/ was left intact (not edited, not overwritten)."
+    }
+  },
+  "gates": [
+    {
+      "gate": "package tests",
+      "command": "bun test packages/mpd-tui-plugin",
+      "exit": 0,
+      "result": "575 pass / 0 fail, 14620 expect() calls, 23 files [12.25s] (wave baseline: 573 pass; delta = ARM 5b + ARM 6)",
+      "log": "evidence/tui/dag-edges/20261023T031930Z-repair/suite.log"
+    },
+    {
+      "gate": "docs parity",
+      "command": "bun run verify:docs",
+      "exit": 0,
+      "result": "pairs=50 failed=0 violations=0 exempt=24 derived=3 links=445 dead=0 — PASS",
+      "log": "evidence/tui/dag-edges/20261023T031930Z-repair/docs.log"
+    },
+    {
+      "gate": "declaration comments",
+      "command": "bun run verify:comments",
+      "exit": 0,
+      "result": "437 files / 39299 declarations (wave baseline 39294; +5 = the new test declarations) — PASS",
+      "log": "evidence/tui/dag-edges/20261023T031930Z-repair/comments.log"
+    },
+    {
+      "gate": "typecheck (extra, not required by the repair brief)",
+      "command": "bun run typecheck",
+      "exit": 0,
+      "result": "tsgo --noEmit clean",
+      "log": "evidence/tui/dag-edges/20261023T031930Z-repair/typecheck.log"
+    },
+    {
+      "gate": "evidence renderer",
+      "command": "bun evidence/tui/dag-edges/20261023T031930Z-repair/render-drawing.ts",
+      "exit": 0,
+      "result": "the drawing, both pan blocks and the wide board rendered from source (no dist)",
+      "log": "evidence/tui/dag-edges/20261023T031930Z-repair/drawing.txt"
+    }
+  ],
+  "artifacts": {
+    "drawing": {
+      "path": "evidence/tui/dag-edges/20261023T031930Z-repair/drawing.txt",
+      "sha256": "177808349aeb44da5359101fddb33066bf2aa993a54dce2b93112d9331af5621"
+    },
+    "renderer": {
+      "path": "evidence/tui/dag-edges/20261023T031930Z-repair/render-drawing.ts",
+      "sha256": "81a64689eb80939bc74ad164f9055fe91e77ab1985c4506819abf50e719d4594"
+    },
+    "logs": [
+      "evidence/tui/dag-edges/20261023T031930Z-repair/suite.log",
+      "evidence/tui/dag-edges/20261023T031930Z-repair/docs.log",
+      "evidence/tui/dag-edges/20261023T031930Z-repair/comments.log",
+      "evidence/tui/dag-edges/20261023T031930Z-repair/typecheck.log"
+    ]
+  },
+  "bounds": [
+    "Unit-level capture of the drawing and the page's layout choice (GraphView.lines/hits/tones, dagFooterText). No real-PTY capture was taken in this repair pass, so the claim is 'the drawing, the mode, the crops and the footer tokens are these', not 'a terminal rendered it'.",
+    "The 12-cell crop block is CROP ARITHMETIC, not a legal boxed-panel state: 12 content cells is below this drawing's 23-cell two-column floor, where dagPanelLayout would choose the rail. drawing.txt labels that bound in place, and the separate 23-cell block is the legal pan.",
+    "The served-rank map is an AUTHORED fixture, not a record field (the record carries none; D2 explains why 0/2/4/6 is used instead of the contract's literal 0/2/4).",
+    "No dist rebuild: no src file was edited by this pass. packages/mpd-tui-plugin/dist/index.js remains the wave's artifact.",
+    "EN/zh semantic identity was checked by reading both paragraphs; verify:docs checks the pair structure, switch link, CJK content and link resolution, NOT semantic equivalence.",
+    "Residual defects found OUTSIDE the repair scope and reported rather than fixed: (a) packages/mpd-tui-plugin/src/panel.ts still names the deleted `MIN_BOX_LABEL_CELLS` gate in a comment — a src edit would force a dist rebuild, which the repair brief forbids; (b) the gitignored release pack dist/mpd-package/packages/mpd-tui-plugin/README{,.zh-CN}.md still carries the stale paragraph until the next `node scripts/pack-mpd.ts` release step (it is not tracked and is not part of the commit).",
+    "The two repair arms are GREEN now (13/13 in the file); no RED-on-HEAD capture was made for them, and none is claimed."
+  ]
+}

@@ -356,8 +356,39 @@ const NATURAL_MAX_NODE_WIDTH = 64
  * cap); the floor only stops a board of one-character ids from drawing boxes too cramped to read.
  */
 const NATURAL_MIN_NODE_WIDTH = 10
-/** Ranks at or above this count are drawn as the list, because boxes stop being readable. */
-const MAX_BOX_RANKS = 12
+/**
+ * Whether a panel of `cols` cells can show TWO NODE COLUMNS of this drawing — the ONE width test left
+ * in the boxes-versus-rail choice (frozen contract `dag-edges`, clause A3).
+ *
+ * WHY THE WHOLE-FIT REFUSALS ARE GONE. The page reaches a drawing WIDER than itself through its
+ * existing horizontal pan (the footer names `col n/m`) and a TALLER one through its vertical scroll, so
+ * neither axis is a reason to downgrade the picture: trading the graph away for a whole-fit rule is
+ * what the user named 因噎废食, and it is why a 20-task board rendered `view rail` with no lines at
+ * all, and a fifth of a 5-task board's edges went missing. What remains is the case the user's own
+ * directive keeps — a panel so narrow that two node columns cannot be shown.
+ *
+ * THE TWO COLUMNS ARE MEASURED AT THE NODE WIDTH THIS DRAWING USES (`2 * nodeWidth + NODE_GAP`,
+ * clause A3's own formula), read off its hit rectangles rather than assumed: the natural path sizes a
+ * box by its label, so a panel of 26 content cells comfortably shows two ten-cell columns, and
+ * refusing it would be the same over-wide rule wearing a smaller constant. `MIN_NODE_WIDTH` (16) is
+ * the FIT-WIDTH path's own constant, while every panel and every scene draws the NATURAL path.
+ *
+ * AND A DRAWING THAT ALREADY FITS IS NEVER REFUSED. The two-column floor is there to stop the graph
+ * being taken away from a panel that has the room; a narrower panel showing a small drawing WHOLE has
+ * the room for that drawing, so the rail would be a worse picture bought for no reason.
+ * @param view - the drawing that would be shown: its width and the one box width it uses.
+ * @param cols - the panel's content width in cells; a nonsense value never earns boxes.
+ * @returns true when the drawing fits, or when two of its own node columns do.
+ */
+export function boxesFitWidth(view: Pick<GraphView, "hits" | "width">, cols: number): boolean {
+  /** The measured width, floored and guarded so a non-finite number cannot pass the comparison. */
+  const cells = Number.isFinite(cols) ? Math.floor(cols) : 0
+  // THE WHOLE DRAWING FITS: there is nothing to pan, so nothing to refuse.
+  if (view.width <= cells) return true
+  /** The one box width this drawing uses, or zero for a drawing that carries no box at all. */
+  const nodeWidth = view.hits.length === 0 ? 0 : view.hits[0].colEnd - view.hits[0].col + 1
+  return 2 * nodeWidth + NODE_GAP <= cells
+}
 
 /** The four directions a cell can be entered from, as bits. */
 const UP = 1, DOWN = 2, LEFT = 4, RIGHT = 8
@@ -562,6 +593,45 @@ function toneOf(task: GraphTask, focus: string | undefined, chain: ReadonlySet<s
 }
 
 /**
+ * The tone ONE connector carries (clause A4).
+ *
+ * THE PIN MUST NEVER HIDE THE GRAPH. With a task pinned the drawing used to paint every off-chain
+ * connector `dim`, and `dim` resolves to the host's `inactive` grey UNDER a `dimColor` flag — the same
+ * grey a reader sees as background, which is the second reason the user's lines "disappeared". The
+ * chain brightness is unchanged (both ends lit ⇒ `chain`); everything else is now the visible `edge`
+ * tone. The BOXES and LABELS may still go dim: narrowing the picture is what a pin is for, and losing
+ * the graph is not.
+ * @param from - the blocker's task id.
+ * @param to - the dependent's task id.
+ * @param focus - the pinned task, when there is one.
+ * @param chain - the pinned task's dependency chain, when there is one.
+ * @returns the connector's tone.
+ */
+function edgeToneOf(from: string, to: string, focus: string | undefined, chain: ReadonlySet<string> | undefined): GraphTone {
+  if (focus === undefined) return "edge"
+  /** Whether an id is lit by the pin: the focus itself, or a task it rests on. */
+  const lit = (id: string): boolean => id === focus || chain?.has(id) === true
+  return lit(from) && lit(to) ? "chain" : "edge"
+}
+
+/**
+ * The tone the `▼` carries (clause A4, the arrowhead being the connector's own terminus).
+ *
+ * An off-chain arrowhead follows its connector to the visible tone, because an edge whose line is
+ * drawn and whose terminus is invisible reads as a line stopping short of the box. Everything the pin
+ * lights keeps the tone it always had — the dependent's own state colour, or `chain`/`focus`.
+ * @param child - the dependent the arrow points into.
+ * @param focus - the pinned task, when there is one.
+ * @param chain - the pinned task's dependency chain, when there is one.
+ * @param entryTone - the tone the dependent's own box carries.
+ * @returns the arrowhead's tone.
+ */
+function arrowToneOf(child: GraphTask, focus: string | undefined, chain: ReadonlySet<string> | undefined, entryTone: GraphTone): GraphTone {
+  if (focus === undefined) return entryTone
+  return child.id === focus || chain?.has(child.id) === true ? entryTone : "edge"
+}
+
+/**
  * The transitive DEPENDENCIES of one task — what a focus lights up.
  *
  * Only the UPSTREAM direction: the question a focus asks is "what does this rest on", and a task
@@ -601,7 +671,8 @@ export function dependencyChain(tasks: readonly GraphTask[], id: string): Set<st
  * @param focus - the task to light, with its dependency chain.
  * @param servedRanks - the SERVED rank of each task id when the host published a model; omitted
  *   means the core derives them (the standalone-fixture path).
- * @returns the view, or `undefined` when even the narrowest boxes would not fit.
+ * @returns the view, or `undefined` when the boxes do not fit `cols` — either below the minimum node
+ *   width, or because the long-edge lane pass appended a column past `cols`.
  */
 export function layoutBoxes(tasks: readonly GraphTask[], cols: number, focus?: string, servedRanks?: ReadonlyMap<string, number>): GraphView | undefined {
   /** What the board's references resolve to, and therefore how it is ranked. */
@@ -618,13 +689,25 @@ export function layoutBoxes(tasks: readonly GraphTask[], cols: number, focus?: s
   }
   /** The ranks, in draw order. */
   const ranks = plan.ranks
-  if (ranks.length > MAX_BOX_RANKS) return undefined
-  /** The count of tasks in the busiest rank, which sets the box width. */
+  /**
+   * The count of tasks in the busiest rank, which sets the box width.
+   *
+   * NO RANK COUNT REFUSES THIS DRAWING ANY MORE (clause A3): `MAX_BOX_RANKS` used to answer `undefined`
+   * for a deep board at every width, which is precisely how a long DAG reached the rail. A drawing
+   * taller than the panel is reached by the caller's own vertical scroll instead.
+   */
   const widest = ranks.reduce((max, rank) => Math.max(max, rank.length), 1)
   /** The box width that fits `widest` boxes in `cols`; below the minimum there is no room. */
   const nodeWidth = Math.min(MAX_NODE_WIDTH, Math.floor((cols - NODE_GAP * (widest - 1)) / widest))
   if (nodeWidth < MIN_NODE_WIDTH) return undefined
-  return drawBoxes(tasks, ranks, widest, nodeWidth, 3, focus, plan)
+  /** The finished drawing, whose long-edge lane pass may have appended columns on the right. */
+  const view = drawBoxes(tasks, ranks, widest, nodeWidth, 3, focus, plan)
+  // THE FIT-WIDTH CONTRACT: a skip edge with no free column between its ends appends a lane past the
+  // drawing (measured: one task per rank at cols 16..34 came back `cols + 1`), which is exactly the
+  // overflow this path promises never to return. Refusing keeps `layoutGraph`'s rail fallback; the
+  // NATURAL path is untouched and keeps its wider drawing for the caller to pan.
+  if (view.width > cols) return undefined
+  return view
 }
 
 /**
@@ -673,8 +756,13 @@ export function layoutBoxesNatural(tasks: readonly GraphTask[], focus?: string, 
   const plan = rankPlan(tasks, servedRanks)
   /** The ranks, in draw order; an empty board still gets a view, so the page can say "nothing here". */
   const ranks = plan.ranks
-  if (ranks.length > MAX_BOX_RANKS) return undefined
-  /** The count of tasks in the busiest rank, which sets the drawing's total width. */
+  /**
+   * The count of tasks in the busiest rank, which sets the drawing's total width.
+   *
+   * NO RANK COUNT REFUSES THIS DRAWING ANY MORE (clause A3): the scene and the panel both reach a
+   * drawing taller than themselves through their own vertical scroll, so a rank cap could only ever
+   * downgrade the picture to a rail — the user's `view rail` screenshot at full screen.
+   */
   const widest = ranks.reduce((max, rank) => Math.max(max, rank.length), 1)
   /** The widest label the drawing would write, measured with the composer it paints with. */
   const label = widestLabelCells(tasks, focus)
@@ -733,8 +821,6 @@ function drawBoxes(
 ): GraphView {
   /** The focus's chain, or undefined when nothing is focused. */
   const chain = focus === undefined ? undefined : dependencyChain(tasks, focus)
-  /** The drawn width: exactly what the widest rank occupies. */
-  const width = widest * (nodeWidth + NODE_GAP) - NODE_GAP
   /** The row a box's padding sits on above its content, and the row its content sits on. */
   const padTop = form === 5 ? 1 : 0
   /**
@@ -757,9 +843,20 @@ function drawBoxes(
   /** How many rows one rank's box occupies plus the connector rows that carry its edges forward. */
   const RANK_STRIDE = bottomRow + 4
 
+  /**
+   * THE RANKS THE DRAWING USES, with every EMPTY bucket dropped (clause A2).
+   *
+   * WHY THE COMPACTION LIVES HERE AND NOT IN `rankPlan`. The plan's buckets are index-equal to the
+   * SERVED rank (`bucketRanks` keeps one array per rank so the web plane's column index is the rank
+   * itself), and that contract is shared with the web view — so the served map keeps its holes and the
+   * DRAWING closes them. A bucket with no task therefore consumes no rows here, which is what removes
+   * the six-row hole the user read as a broken graph, and no edge has to cross a rank that holds no box.
+   */
+  const drawn = ranks.filter((rank) => rank.length > 0)
+
   /** Each task's left column, laid out rank by rank. */
   const column = new Map<string, number>()
-  for (const rank of ranks) {
+  for (const rank of drawn) {
     // Order within a rank by the BARYCENTRE of the parents already placed, which is what keeps a
     // chain roughly vertical instead of zig-zagging across the drawing.
     /** The rank in draw order, carrying the mean parent column as its sort key. */
@@ -770,6 +867,126 @@ function drawBoxes(
     }).sort((left, right) => left.key - right.key || left.index - right.index)
     ordered.forEach((entry, index) => column.set(entry.task.id, index * (nodeWidth + NODE_GAP)))
   }
+
+  /** The drawn rank of every placed task, so an edge's two endpoints can be located without a scan. */
+  const rankOf = new Map<string, number>()
+  drawn.forEach((rank, index) => { for (const task of rank) rankOf.set(task.id, index) })
+  /** Task lookup by id, for the long edges' own tones and labels. */
+  const byId = new Map(tasks.map((task) => [task.id, task]))
+  /**
+   * The centre column of one task's box.
+   *
+   * THE LEFT-MIDDLE CELL when the width is EVEN, and that is not a rounding detail: the `▼` and the
+   * `┬`/`┴` beneath it must sit on the column a reader reads as the box's mid-line, and the hit
+   * rectangle's own centre — `floor((left + right) / 2)` — is what a reviewer (and a pointer) measures
+   * against. A `floor(width / 2)` that rounds the other way lands the arrowhead one column right of
+   * the border's centre, which reads as an off-by-one in the drawing itself.
+   */
+  const centreOf = (id: string): number => (column.get(id) ?? 0) + Math.floor((nodeWidth - 1) / 2)
+  /**
+   * The columns each DRAWN rank's boxes occupy, derived ONCE from the placement above.
+   *
+   * The lane search below asks "is this column clear at every intermediate rank" for every candidate
+   * column of every long edge, on every panel refresh — the page ticks every two seconds. Scanning a
+   * rank's tasks for each of those questions repeats the same arithmetic; the set answers with one
+   * `has`, and it is built from `column` and `nodeWidth` so it cannot drift from the boxes drawn.
+   */
+  const covered: Array<Set<number>> = drawn.map((rank) => {
+    /** The columns this rank's boxes occupy, borders included. */
+    const cells = new Set<number>()
+    for (const task of rank) {
+      /** The box's left column, which the placement above fixed. */
+      const left = column.get(task.id) ?? 0
+      for (let col = left; col < left + nodeWidth; col++) cells.add(col)
+    }
+    return cells
+  })
+  /** Whether one drawn rank's boxes cover a column — the test a long edge's LANE has to pass. */
+  const boxCovers = (rank: number, col: number): boolean => covered[rank].has(col)
+  /** Every blocker → dependent EDGE whose two ends are BOTH on the board, with their drawn ranks. */
+  const edges: Array<{ from: string; to: string; fromRank: number; toRank: number }> = []
+  for (const task of tasks) {
+    /** The dependent's drawn rank; a task the placement did not reach has no edge to draw. */
+    const toRank = rankOf.get(task.id)
+    if (toRank === undefined) continue
+    for (const id of task.dependencies) {
+      /** The blocker's drawn rank; an id no drawn task carries stays in the unresolved report. */
+      const fromRank = rankOf.get(id)
+      if (fromRank === undefined || fromRank >= toRank) continue
+      edges.push({ from: id, to: task.id, fromRank, toRank })
+    }
+  }
+  /**
+   * A LANE FOR EVERY LONG EDGE (clause A1): a column that no box of the ranks BETWEEN its two ends
+   * occupies, so a run at ANY rank distance never has to cross a picture.
+   *
+   * The run keeps the band language the adjacent edges already use — one horizontal jog in the band
+   * below the blocker, one in the band above the dependent — and adds the vertical lane between them.
+   * A lane past the drawing's own width is appended on the right, which is the only case in which a
+   * long edge widens the picture; the panel already pans, so nothing is lost off the edge.
+   */
+  const lanes: Array<{ from: string; to: string; fromRank: number; toRank: number; lane: number }> = []
+  /** The rows each chosen lane already occupies, so two trunks share a column only when they must. */
+  const laneRows = new Map<number, Set<number>>()
+  /** The drawing's own width, before any lane had to be appended. */
+  const baseWidth = widest * (nodeWidth + NODE_GAP) - NODE_GAP
+  /** The lanes appended to the right of the drawing for long edges no free column could hold. */
+  let extraLanes = 0
+  for (const edge of edges) {
+    // THE ADJACENT LINKS KEEP THEIR OWN BAND GEOMETRY, byte for byte: this pass adds nothing to them.
+    if (edge.toRank === edge.fromRank + 1) continue
+    /** The row the run leaves the blocker's bottom border on, then jogs horizontally. */
+    const leaveRow = edge.fromRank * RANK_STRIDE + bottomRow + 2
+    /** The row the run jogs back to the dependent's centre and drops its arrowhead from. */
+    const enterRow = edge.toRank * RANK_STRIDE - 2
+    /** The blocker's centre column, where its band stub starts. */
+    const fromCentre = centreOf(edge.from)
+    /** The dependent's centre column, where its `▼` must land. */
+    const toCentre = centreOf(edge.to)
+    /** The middle of the two centres: the lane reads best as near to a straight line as it can. */
+    const middle = (fromCentre + toCentre) / 2
+    /** The best lane found so far, or -1. */
+    let best = -1
+    /** Its distance from the middle, so a closer free column replaces it. */
+    let bestCost = Number.POSITIVE_INFINITY
+    for (let col = 0; col <= baseWidth + extraLanes; col += 1) {
+      /** Whether every intermediate rank leaves this column to the run. */
+      let clear = true
+      for (let rank = edge.fromRank + 1; rank < edge.toRank && clear; rank += 1) clear = !boxCovers(rank, col)
+      if (!clear) continue
+      /** The rows already taken at this column by an earlier trunk. */
+      const taken = laneRows.get(col)
+      /** Whether this trunk's rows collide with them; a shared column would merge two edges into one. */
+      let free = true
+      for (let row = leaveRow; row <= enterRow && free; row += 1) free = taken?.has(row) !== true
+      if (!free) continue
+      /** How far this column sits from the middle of the two centres. */
+      const cost = Math.abs(col - middle)
+      if (cost < bestCost) { best = col; bestCost = cost }
+    }
+    if (best < 0) {
+      // NO COLUMN WAS FREE AT ALL, so the run gets a fresh lane on the right edge rather than being
+      // dropped: the drawing grows by one column per such edge.
+      best = baseWidth + extraLanes
+      extraLanes += 1
+    } else if (best >= baseWidth + extraLanes) {
+      // THE LANE SITS PAST THE DRAWING — a one-column board has no free column inside itself, so the
+      // only lane it can offer is the one just outside. The canvas MUST grow to hold it, or `link`
+      // would silently refuse every cell of the run and the edge would vanish exactly as before.
+      extraLanes = best - baseWidth + 1
+    }
+    /** The rows this trunk claims, so a later long edge picks a different column when it can. */
+    const claimed = laneRows.get(best) ?? new Set<number>()
+    for (let row = leaveRow; row <= enterRow; row += 1) claimed.add(row)
+    laneRows.set(best, claimed)
+    lanes.push({ ...edge, lane: best })
+  }
+  /**
+   * The drawn width: exactly what the widest rank occupies, plus the lanes a long edge had to add.
+   * The FIT-WIDTH entry point refuses a view wider than its `cols`; the natural one keeps this width
+   * and lets its caller pan.
+   */
+  const width = baseWidth + extraLanes
 
   /** The accumulated direction mask per cell. */
   const mask: number[][] = []
@@ -825,22 +1042,38 @@ function drawBoxes(
     }
   }
   /**
-   * The centre column of one task's box.
+   * Draw one straight run between two waypoints of a long edge.
    *
-   * THE LEFT-MIDDLE CELL when the width is EVEN, and that is not a rounding detail: the `▼` and the
-   * `┬`/`┴` beneath it must sit on the column a reader reads as the box's mid-line, and the hit
-   * rectangle's own centre — `floor((left + right) / 2)` — is what a reviewer (and a pointer) measures
-   * against. A `floor(width / 2)` that rounds the other way lands the arrowhead one column right of
-   * the border's centre, which reads as an off-by-one in the drawing itself.
+   * ONE ARITHMETIC FOR BOTH AXES: every cell gets the bit pointing at the NEXT cell and the bit
+   * pointing back at the PREVIOUS one, so a vertical trunk, a horizontal jog and a one-cell stub are
+   * the same call — and the mask can never disagree with the geometry it was derived from.
    */
-  const centreOf = (id: string): number => (column.get(id) ?? 0) + Math.floor((nodeWidth - 1) / 2)
+  const run = (fromRow: number, fromCol: number, toRow: number, toCol: number, at: GraphTone): void => {
+    /** How many steps the run takes: the longer of the two axes. */
+    const steps = Math.max(Math.abs(toRow - fromRow), Math.abs(toCol - fromCol))
+    /** The row a step moves by. */
+    const stepRow = Math.sign(toRow - fromRow)
+    /** The column a step moves by. */
+    const stepCol = Math.sign(toCol - fromCol)
+    for (let step = 0; step <= steps; step += 1) {
+      /** The cell this step writes. */
+      const row = fromRow + stepRow * step
+      /** Its column. */
+      const col = fromCol + stepCol * step
+      /** The bit toward the NEXT cell, when there is one. */
+      const ahead = step === steps ? 0 : stepRow < 0 ? UP : stepRow > 0 ? DOWN : stepCol < 0 ? LEFT : RIGHT
+      /** The bit toward the PREVIOUS cell, when there is one. */
+      const behind = step === 0 ? 0 : stepRow < 0 ? DOWN : stepRow > 0 ? UP : stepCol < 0 ? RIGHT : LEFT
+      link(row, col, ahead | behind, at)
+    }
+  }
   /** Every rectangle the pointer can land in. */
   /** One rectangle per box, so the pointer can resolve to a task. */
   const hits: GraphHit[] = []
-  for (let rank = 0; rank < ranks.length; rank++) {
+  for (let rank = 0; rank < drawn.length; rank++) {
     /** The row this rank's top border sits on. */
     const top = rank * RANK_STRIDE
-    for (const task of ranks[rank]) {
+    for (const task of drawn[rank]) {
       /** The box's left column. */
       const left = column.get(task.id) ?? 0
       /** The box's right column, inclusive. */
@@ -865,17 +1098,19 @@ function drawBoxes(
       for (const char of clampCells(stripControl(" " + body), labelCells)) { label(top + contentRow, cursor, char, at); cursor += cellWidth(char) }
       // An edge LEAVES from the middle of the bottom border, which is what makes the `┬` read as
       // "this box has children" without a separate stub row: `DOWN|LEFT|RIGHT` is exactly that tee.
-            if (ranks[rank + 1]?.some((child) => child.dependencies.includes(task.id)) === true) link(top + bottomRow, centreOf(task.id), DOWN, at)
+      // THE EXIT IS TESTED AGAINST EVERY DEEPER RANK (clause A1), not only the one below: a board whose
+      // only dependent sits two ranks down used to draw a plain `───` border and no line at all.
+      if (edges.some((candidate) => candidate.from === task.id && candidate.fromRank === rank)) link(top + bottomRow, centreOf(task.id), DOWN, at)
       hits.push({ taskId: task.id, row: top, rowEnd: top + bottomRow, col: left, colEnd: right })
     }
-    if (rank + 1 >= ranks.length) break
+    if (rank + 1 >= drawn.length) break
     /** The three connector rows between this rank and the next. */
     const stubTop = top + bottomRow + 1, bus = top + bottomRow + 2, stubBottom = top + bottomRow + 3
     /** The next rank's top border: the row the `▼`'s one-cell tip must touch. */
     const childTop = top + RANK_STRIDE
-    for (const child of ranks[rank + 1]) {
+    for (const child of drawn[rank + 1]) {
       /** This child's blockers that live in the rank above. */
-      const parents = child.dependencies.filter((id) => ranks[rank].some((parent) => parent.id === id))
+      const parents = child.dependencies.filter((id) => drawn[rank].some((parent) => parent.id === id))
       if (parents.length === 0) continue
       /** This child's centre column. */
       const centre = centreOf(child.id)
@@ -885,14 +1120,12 @@ function drawBoxes(
       // The edge ENDS here, in the arrowhead. Every converging parent writes this SAME cell, so a
       // fan-in still shows exactly ONE `▼`; it is text rather than a junction because a mask bit can
       // say "connected", never "…and the dependency points INTO this box".
-      label(stubBottom, centre, ARROW_DOWN, entryTone)
+      label(stubBottom, centre, ARROW_DOWN, arrowToneOf(child, focus, chain, entryTone))
       for (const id of parents) {
         /** The parent's centre column. */
         const from = centreOf(id)
-        /** The tone this EDGE carries: bright only while BOTH of its ends are inside the chain. */
-        const edgeTone: GraphTone = focus === undefined
-          ? "edge"
-          : ((id === focus || chain?.has(id) === true) && (child.id === focus || chain?.has(child.id) === true)) ? "chain" : "dim"
+        /** The tone this EDGE carries: bright while BOTH of its ends are inside the chain. */
+        const edgeTone: GraphTone = edgeToneOf(id, child.id, focus, chain)
         link(stubTop, from, UP | DOWN, edgeTone)
         if (from === centre) { link(bus, from, UP | DOWN, edgeTone); continue }
         link(bus, from, UP, edgeTone); link(bus, centre, DOWN, edgeTone)
@@ -900,6 +1133,51 @@ function drawBoxes(
         link(bus, Math.min(from, centre), RIGHT, edgeTone); link(bus, Math.max(from, centre), LEFT, edgeTone)
       }
     }
+  }
+  // THE LONG EDGES, AT ANY RANK DISTANCE (clause A1). Drawn AFTER the bands above so an adjacent edge's
+  // geometry — the shape that already worked — stays byte-identical; every write here only ADDS mask
+  // bits, which is what lets a long run merge with a band it happens to cross.
+  for (const edge of lanes) {
+    /** The blocker's bottom border, where the run leaves its box. */
+    const exitRow = edge.fromRank * RANK_STRIDE + bottomRow
+    /** The band row the run jogs horizontally on, below the blocker. */
+    const leaveRow = exitRow + 2
+    /** The band row the run jogs horizontally on, above the dependent. */
+    const enterRow = edge.toRank * RANK_STRIDE - 2
+    /** The row the arrowhead sits on: one above the dependent's top border. */
+    const arrowRow = edge.toRank * RANK_STRIDE - 1
+    /** The dependent's top border, whose entry cell becomes a `┴`. */
+    const childTop = edge.toRank * RANK_STRIDE
+    /** The blocker's centre column. */
+    const from = centreOf(edge.from)
+    /** The dependent's centre column. */
+    const to = centreOf(edge.to)
+    /** The tone this edge carries: `chain` while the pin lights both ends, the visible `edge` otherwise. */
+    const at = edgeToneOf(edge.from, edge.to, focus, chain)
+    /** The dependent's own task, for its entry tone and its arrowhead. */
+    const child = byId.get(edge.to) as GraphTask
+    /** The dependent's own tone, or the chain/dim treatment when something is focused. */
+    const entryTone = toneOf(child, focus, chain)
+    /** The run's waypoints: out of the box, across to the lane, down, back, and into the arrowhead. */
+    const points: ReadonlyArray<readonly [number, number]> = [
+      [exitRow, from],
+      [leaveRow, from],
+      [leaveRow, edge.lane],
+      [enterRow, edge.lane],
+      [enterRow, to],
+      [arrowRow, to],
+    ]
+    for (let index = 1; index < points.length; index += 1) {
+      /** The waypoint the run comes from. */
+      const [fromRow, fromPoint] = points[index - 1]
+      /** The waypoint this step reaches. */
+      const [toRow, toPoint] = points[index]
+      run(fromRow, fromPoint, toRow, toPoint, at)
+    }
+    // The dependent's own border carries the entry, exactly as an adjacent edge writes it, and the run
+    // ends in the same ONE `▼` — so a long edge cannot ship a second arrowhead through its lane.
+    link(childTop, to, UP, entryTone)
+    label(arrowRow, to, ARROW_DOWN, arrowToneOf(child, focus, chain, entryTone))
   }
   /** The rendered rows: trailing blanks trimmed, runs of one tone collapsed into spans. */
   const lines: GraphSpan[][] = []
@@ -1112,8 +1390,9 @@ export function layoutList(tasks: readonly GraphTask[], cols: number, focus?: st
  * Draw the board at one width, choosing the view that fits.
  *
  * The preference is BOXES, then RAIL: a rail is always legible, and boxes are the view that answers
- * the question the graph exists for. `layoutBoxes` returns undefined rather than a squeezed drawing,
- * so this decision is a fact about the geometry instead of a guess about the terminal.
+ * the question the graph exists for. `layoutBoxes` returns undefined rather than a squeezed or
+ * over-wide drawing (its long-edge lane pass can append a column past `cols`), so this decision is a
+ * fact about the geometry instead of a guess about the terminal.
  * @param tasks - the board to draw.
  * @param cols - the cells available.
  * @param focus - the task to light, with its dependency chain.

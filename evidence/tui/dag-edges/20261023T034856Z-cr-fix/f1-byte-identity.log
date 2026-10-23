@@ -1,0 +1,13 @@
+# F1 — BEHAVIOR-PRESERVING PROOF: the same probe script, 30309c96 source vs working tree
+# probe: 10 drawings — fit-width (adjacent, derived, focus, CJK) and natural (long-edge lane inside a gap,
+#        appended right-edge lane, derived ranks, focus, CJK); every line, width and hit rectangle is printed.
+# BEFORE script: .mpd/tmp/cr-fix-before/render.ts (imports the git-archive 30309c96 src tree)
+# AFTER  script: .mpd/tmp/render-after.ts (imports the working tree)
+# command: .toolchain/node_modules/.bin/bun <script> --no-skip > <file>
+# bun: 1.4.0 (pinned toolchain)
+#
+$ sha256sum before-f1.json: 03eba068c6e82701c636dbb818878d374e33ad05fcddec050ce19827b11b911d
+$ sha256sum after-f1.json:  03eba068c6e82701c636dbb818878d374e33ad05fcddec050ce19827b11b911d
+#
+$ diff -u before-f1.json after-f1.json
+F1 BYTE-IDENTICAL (empty diff above)

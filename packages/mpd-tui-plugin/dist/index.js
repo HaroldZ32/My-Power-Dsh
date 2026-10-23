@@ -5988,7 +5988,13 @@ var NATURAL_RAIL_FALLBACK_COLS = 80;
 var NODE_GAP = 3;
 var NATURAL_MAX_NODE_WIDTH = 64;
 var NATURAL_MIN_NODE_WIDTH = 10;
-var MAX_BOX_RANKS = 12;
+function boxesFitWidth(view, cols) {
+  const cells = Number.isFinite(cols) ? Math.floor(cols) : 0;
+  if (view.width <= cells)
+    return true;
+  const nodeWidth = view.hits.length === 0 ? 0 : view.hits[0].colEnd - view.hits[0].col + 1;
+  return 2 * nodeWidth + NODE_GAP <= cells;
+}
 var UP = 1;
 var DOWN = 2;
 var LEFT = 4;
@@ -6075,6 +6081,17 @@ function toneOf(task, focus, chain) {
   }
   return chain.has(task.id) ? toneOf(task, undefined, undefined) : "dim";
 }
+function edgeToneOf(from2, to, focus, chain) {
+  if (focus === undefined)
+    return "edge";
+  const lit = (id) => id === focus || chain?.has(id) === true;
+  return lit(from2) && lit(to) ? "chain" : "edge";
+}
+function arrowToneOf(child, focus, chain, entryTone) {
+  if (focus === undefined)
+    return entryTone;
+  return child.id === focus || chain?.has(child.id) === true ? entryTone : "edge";
+}
 function dependencyChain(tasks, id) {
   const byId = new Map(tasks.map((task) => [task.id, task]));
   const seen = new Set;
@@ -6093,8 +6110,6 @@ function dependencyChain(tasks, id) {
 function layoutBoxesNatural(tasks, focus, budget, servedRanks) {
   const plan = rankPlan(tasks, servedRanks);
   const ranks = plan.ranks;
-  if (ranks.length > MAX_BOX_RANKS)
-    return;
   const widest = ranks.reduce((max, rank) => Math.max(max, rank.length), 1);
   const label = widestLabelCells(tasks, focus);
   const nodeWidth = Math.max(NATURAL_MIN_NODE_WIDTH, Math.min(NATURAL_MAX_NODE_WIDTH, label + 4));
@@ -6108,20 +6123,94 @@ function layoutBoxesNatural(tasks, focus, budget, servedRanks) {
 }
 function drawBoxes(tasks, ranks, widest, nodeWidth, form, focus, plan, widestLabel) {
   const chain = focus === undefined ? undefined : dependencyChain(tasks, focus);
-  const width = widest * (nodeWidth + NODE_GAP) - NODE_GAP;
   const padTop = form === 5 ? 1 : 0;
   const labelCells = nodeWidth - 2;
   const contentRow = padTop + 1;
   const bottomRow = form === 5 ? 4 : 2;
   const RANK_STRIDE = bottomRow + 4;
+  const drawn = ranks.filter((rank) => rank.length > 0);
   const column = new Map;
-  for (const rank of ranks) {
+  for (const rank of drawn) {
     const ordered = rank.map((task, index) => {
       const parents = task.dependencies.filter((id) => column.has(id)).map((id) => column.get(id));
       return { task, index, key: parents.length === 0 ? Number.MAX_SAFE_INTEGER : parents.reduce((sum, at) => sum + at, 0) / parents.length };
     }).sort((left, right) => left.key - right.key || left.index - right.index);
     ordered.forEach((entry, index) => column.set(entry.task.id, index * (nodeWidth + NODE_GAP)));
   }
+  const rankOf = new Map;
+  drawn.forEach((rank, index) => {
+    for (const task of rank)
+      rankOf.set(task.id, index);
+  });
+  const byId = new Map(tasks.map((task) => [task.id, task]));
+  const centreOf = (id) => (column.get(id) ?? 0) + Math.floor((nodeWidth - 1) / 2);
+  const covered = drawn.map((rank) => {
+    const cells = new Set;
+    for (const task of rank) {
+      const left = column.get(task.id) ?? 0;
+      for (let col = left;col < left + nodeWidth; col++)
+        cells.add(col);
+    }
+    return cells;
+  });
+  const boxCovers = (rank, col) => covered[rank].has(col);
+  const edges = [];
+  for (const task of tasks) {
+    const toRank = rankOf.get(task.id);
+    if (toRank === undefined)
+      continue;
+    for (const id of task.dependencies) {
+      const fromRank = rankOf.get(id);
+      if (fromRank === undefined || fromRank >= toRank)
+        continue;
+      edges.push({ from: id, to: task.id, fromRank, toRank });
+    }
+  }
+  const lanes = [];
+  const laneRows = new Map;
+  const baseWidth = widest * (nodeWidth + NODE_GAP) - NODE_GAP;
+  let extraLanes = 0;
+  for (const edge of edges) {
+    if (edge.toRank === edge.fromRank + 1)
+      continue;
+    const leaveRow = edge.fromRank * RANK_STRIDE + bottomRow + 2;
+    const enterRow = edge.toRank * RANK_STRIDE - 2;
+    const fromCentre = centreOf(edge.from);
+    const toCentre = centreOf(edge.to);
+    const middle = (fromCentre + toCentre) / 2;
+    let best = -1;
+    let bestCost = Number.POSITIVE_INFINITY;
+    for (let col = 0;col <= baseWidth + extraLanes; col += 1) {
+      let clear = true;
+      for (let rank = edge.fromRank + 1;rank < edge.toRank && clear; rank += 1)
+        clear = !boxCovers(rank, col);
+      if (!clear)
+        continue;
+      const taken = laneRows.get(col);
+      let free = true;
+      for (let row = leaveRow;row <= enterRow && free; row += 1)
+        free = taken?.has(row) !== true;
+      if (!free)
+        continue;
+      const cost = Math.abs(col - middle);
+      if (cost < bestCost) {
+        best = col;
+        bestCost = cost;
+      }
+    }
+    if (best < 0) {
+      best = baseWidth + extraLanes;
+      extraLanes += 1;
+    } else if (best >= baseWidth + extraLanes) {
+      extraLanes = best - baseWidth + 1;
+    }
+    const claimed = laneRows.get(best) ?? new Set;
+    for (let row = leaveRow;row <= enterRow; row += 1)
+      claimed.add(row);
+    laneRows.set(best, claimed);
+    lanes.push({ ...edge, lane: best });
+  }
+  const width = baseWidth + extraLanes;
   const mask = [];
   const text = [];
   const tone = [];
@@ -6165,11 +6254,22 @@ function drawBoxes(tasks, ranks, widest, nodeWidth, form, focus, plan, widestLab
       wide[row][over] = true;
     }
   };
-  const centreOf = (id) => (column.get(id) ?? 0) + Math.floor((nodeWidth - 1) / 2);
+  const run = (fromRow, fromCol, toRow, toCol, at) => {
+    const steps = Math.max(Math.abs(toRow - fromRow), Math.abs(toCol - fromCol));
+    const stepRow = Math.sign(toRow - fromRow);
+    const stepCol = Math.sign(toCol - fromCol);
+    for (let step = 0;step <= steps; step += 1) {
+      const row = fromRow + stepRow * step;
+      const col = fromCol + stepCol * step;
+      const ahead = step === steps ? 0 : stepRow < 0 ? UP : stepRow > 0 ? DOWN : stepCol < 0 ? LEFT : RIGHT;
+      const behind = step === 0 ? 0 : stepRow < 0 ? DOWN : stepRow > 0 ? UP : stepCol < 0 ? RIGHT : LEFT;
+      link(row, col, ahead | behind, at);
+    }
+  };
   const hits = [];
-  for (let rank = 0;rank < ranks.length; rank++) {
+  for (let rank = 0;rank < drawn.length; rank++) {
     const top = rank * RANK_STRIDE;
-    for (const task of ranks[rank]) {
+    for (const task of drawn[rank]) {
       const left = column.get(task.id) ?? 0;
       const right = left + nodeWidth - 1;
       const at = toneOf(task, focus, chain);
@@ -6191,25 +6291,25 @@ function drawBoxes(tasks, ranks, widest, nodeWidth, form, focus, plan, widestLab
         label(top + contentRow, cursor, char, at);
         cursor += cellWidth(char);
       }
-      if (ranks[rank + 1]?.some((child) => child.dependencies.includes(task.id)) === true)
+      if (edges.some((candidate) => candidate.from === task.id && candidate.fromRank === rank))
         link(top + bottomRow, centreOf(task.id), DOWN, at);
       hits.push({ taskId: task.id, row: top, rowEnd: top + bottomRow, col: left, colEnd: right });
     }
-    if (rank + 1 >= ranks.length)
+    if (rank + 1 >= drawn.length)
       break;
     const stubTop = top + bottomRow + 1, bus = top + bottomRow + 2, stubBottom = top + bottomRow + 3;
     const childTop = top + RANK_STRIDE;
-    for (const child of ranks[rank + 1]) {
-      const parents = child.dependencies.filter((id) => ranks[rank].some((parent) => parent.id === id));
+    for (const child of drawn[rank + 1]) {
+      const parents = child.dependencies.filter((id) => drawn[rank].some((parent) => parent.id === id));
       if (parents.length === 0)
         continue;
       const centre = centreOf(child.id);
       const entryTone = toneOf(child, focus, chain);
       link(childTop, centre, UP, entryTone);
-      label(stubBottom, centre, ARROW_DOWN, entryTone);
+      label(stubBottom, centre, ARROW_DOWN, arrowToneOf(child, focus, chain, entryTone));
       for (const id of parents) {
         const from2 = centreOf(id);
-        const edgeTone = focus === undefined ? "edge" : (id === focus || chain?.has(id) === true) && (child.id === focus || chain?.has(child.id) === true) ? "chain" : "dim";
+        const edgeTone = edgeToneOf(id, child.id, focus, chain);
         link(stubTop, from2, UP | DOWN, edgeTone);
         if (from2 === centre) {
           link(bus, from2, UP | DOWN, edgeTone);
@@ -6224,18 +6324,45 @@ function drawBoxes(tasks, ranks, widest, nodeWidth, form, focus, plan, widestLab
       }
     }
   }
+  for (const edge of lanes) {
+    const exitRow = edge.fromRank * RANK_STRIDE + bottomRow;
+    const leaveRow = exitRow + 2;
+    const enterRow = edge.toRank * RANK_STRIDE - 2;
+    const arrowRow = edge.toRank * RANK_STRIDE - 1;
+    const childTop = edge.toRank * RANK_STRIDE;
+    const from2 = centreOf(edge.from);
+    const to = centreOf(edge.to);
+    const at = edgeToneOf(edge.from, edge.to, focus, chain);
+    const child = byId.get(edge.to);
+    const entryTone = toneOf(child, focus, chain);
+    const points = [
+      [exitRow, from2],
+      [leaveRow, from2],
+      [leaveRow, edge.lane],
+      [enterRow, edge.lane],
+      [enterRow, to],
+      [arrowRow, to]
+    ];
+    for (let index = 1;index < points.length; index += 1) {
+      const [fromRow, fromPoint] = points[index - 1];
+      const [toRow, toPoint] = points[index];
+      run(fromRow, fromPoint, toRow, toPoint, at);
+    }
+    link(childTop, to, UP, entryTone);
+    label(arrowRow, to, ARROW_DOWN, arrowToneOf(child, focus, chain, entryTone));
+  }
   const lines = [];
   for (let row = 0;row < mask.length; row++) {
     const cells = [];
-    let run = null;
+    let run2 = null;
     for (let col = 0;col < width; col++) {
       const char = wide[row][col] ? "" : text[row][col] ?? JUNCTION[mask[row][col]] ?? " ";
       const at = toneAt(row, col) ?? "blank";
-      if (run !== null && run.tone === at)
-        run.text += char;
+      if (run2 !== null && run2.tone === at)
+        run2.text += char;
       else {
-        run = { text: char, tone: at };
-        cells.push(run);
+        run2 = { text: char, tone: at };
+        cells.push(run2);
       }
     }
     while (cells.length > 0 && (cells[cells.length - 1].text ?? "").trim() === "")
@@ -7815,12 +7942,8 @@ function viewFacts(view) {
   };
 }
 var LIST_ROWS = 24;
-function boxesFitPanel(view, cols, rows) {
-  if (view.width > cols)
-    return false;
-  if (rows === undefined)
-    return true;
-  return view.lines.length <= rows;
+function boxesFitPanel(view, cols) {
+  return boxesFitWidth(view, cols);
 }
 function dagFooterText(facts) {
   const tokens = [];
@@ -7854,7 +7977,7 @@ function halfBoxRows(hits, dagStart, windowStart, windowRows) {
 function dagPanelLayout(tasks, cols, focus, rows, servedRanks) {
   const width = Math.max(8, Math.floor(Number.isFinite(cols) ? cols : 8));
   const boxes = layoutBoxesNatural(tasks, focus, rows === undefined ? undefined : { rows }, servedRanks);
-  if (boxes !== undefined && boxes.labelOverflow !== true && boxesFitPanel(boxes, width, rows)) {
+  if (boxes !== undefined && boxes.labelOverflow !== true && boxesFitPanel(boxes, width)) {
     return { view: boxes, mode: "boxes", list: false, ...viewFacts(boxes) };
   }
   if (tasks.length > LIST_ROWS) {
@@ -7934,13 +8057,14 @@ function dagPanelKeyAction(event, order, focus, pinned = undefined) {
 }
 var DAG_FALLBACK_ROWS = 24;
 var DAG_FOOTER_ROWS = 1;
-function scrollRowIntoView(viewport, row) {
+function scrollRowIntoView(viewport, row, height = 1) {
   if (row < viewport.offset) {
     viewport.scrollTo(row);
     return;
   }
-  if (row >= viewport.offset + viewport.viewportRows) {
-    viewport.scrollTo(Math.min(row - viewport.viewportRows + 1, viewport.max));
+  const last = row + Math.max(1, Math.floor(height)) - 1;
+  if (last >= viewport.offset + viewport.viewportRows) {
+    viewport.scrollTo(Math.min(last - viewport.viewportRows + 1, viewport.max));
   }
 }
 function headerFacts(page, cols) {
@@ -8125,7 +8249,7 @@ function createDagPanelComponent(readWorkflow, options) {
         moveCursor(action.focus);
         const at = rowIndex.get(action.focus);
         if (at !== undefined)
-          scrollRowIntoView(viewport, at);
+          scrollRowIntoView(viewport, at, layout?.mode === "boxes" ? layout.view.boxRows : 1);
       }
       if (action.pin === true)
         movePin(cursorNow());
@@ -9434,7 +9558,9 @@ function createTeamComponent(workspaceRoot, holds, nav, openScene, teamViews, te
     const measured = measureTerminal2(ui);
     const graphWidth = Math.max(20, measured.cols - 4);
     const graphWindow = Math.max(3, measured.window - 4);
-    const view = layoutGraphNatural(graphTasks, focus, { rows: graphWindow }, modelRanks(workflow));
+    const servedRanks = modelRanks(workflow);
+    const boxes = layoutGraphNatural(graphTasks, focus, { rows: graphWindow }, servedRanks);
+    const view = boxesFitWidth(boxes, graphWidth) ? boxes : layoutRail(graphTasks, graphWidth, focus, servedRanks);
     const scrollXMax = Math.max(0, view.width - graphWidth);
     const scrollXAt = Math.min(Math.max(0, scrollX), scrollXMax);
     const scrollMax = Math.max(0, view.lines.length - graphWindow);

@@ -1,0 +1,9 @@
+# GATE — declaration comments
+# command: bun run verify:comments
+# exit: 0
+$ node scripts/verify-comment-coverage.ts
+# verify-comment-coverage
+
+scanned 437 TypeScript file(s) of 437 in the source set; inspected 39308 declaration(s); skipped 18598 inline callback(s) as out of family
+
+VERDICT: PASS — every declaration in the family carries a precise comment and a full signature.

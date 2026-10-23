@@ -1,0 +1,87 @@
+# RED BEFORE — ARM 7 against the WAVE'S OWN source (commit 30309c96)
+# scratch tree: .mpd/tmp/cr-fix-before/packages/mpd-tui-plugin/src
+#   built by: git archive 30309c96 packages/mpd-tui-plugin/src | tar -xf - -C .mpd/tmp/cr-fix-before
+#   packages/mpd-graph-core symlinked to the real (unchanged) package
+# graph.ts sha256 at 30309c96: bcf3b65be6b60687d8335a450831dfee9c5c6807aff9143668f725dc04b9f8d9
+# new test file sha256: 4e516bcfc98bae382e7a723c737294e0210e80b5af0b18db8dca4a4d4bb6beb8 (copied into the scratch tree unchanged)
+# command: .toolchain/node_modules/.bin/bun test ./.mpd/tmp/cr-fix-before/packages/mpd-tui-plugin/test/dag-edges.test.ts
+# bun: 1.4.0 (pinned toolchain)
+# observed: 14 pass / 1 fail — ARM 7 receives widths 17..35 for cols 16..34, i.e. cols + 1
+# exit: 1
+bun test v1.4.0 (34cbb9a40)
+
+.mpd/tmp/cr-fix-before/packages/mpd-tui-plugin/test/dag-edges.test.ts:
+(pass) ARM 1 — every on-board blocker → dependent edge is drawn, at any rank distance > a GAP-2 edge (T7 → T10, T9 → T10) has a connected run and ONE ▼ at T10 [5.05ms]
+(pass) ARM 1 — every on-board blocker → dependent edge is drawn, at any rank distance > a long edge over a FULL intermediate rank keeps its lane, and a ONE-COLUMN board grows one [0.88ms]
+(pass) ARM 1 — every on-board blocker → dependent edge is drawn, at any rank distance > adjacent-rank output is BYTE-IDENTICAL to the shape that already worked [0.62ms]
+(pass) ARM 2 — an empty rank bucket consumes no rows and breaks no edge > served ranks {0,2}: the dependent sits ONE connector band below its blocker [0.35ms]
+(pass) ARM 2 — an empty rank bucket consumes no rows and breaks no edge > served ranks {0,2,4}: every link is drawn and the drawing is exactly as tall as its ranks [0.42ms]
+(pass) ARM 3 — the 5-task record board draws every link > served ranks 0,2,4,6 (holes at 1,3,5): T1→{T2,T3}→T4→T5 all arrive [1.66ms]
+(pass) ARM 3 — the 5-task record board draws every link > the DERIVED ranks of the same record draw the same five links [0.74ms]
+(pass) ARM 4 — a wide drawing is BOXES while two node columns fit, and the page pans > a drawing wider than the panel is still boxes, and the window pans across it [0.49ms]
+(pass) ARM 4 — a wide drawing is BOXES while two node columns fit, and the page pans > the footer names the COLUMN position, and the row position, while the page overflows [0.06ms]
+(pass) ARM 4 — a wide drawing is BOXES while two node columns fit, and the page pans > a panel narrower than two node columns falls back, and the busy board still reaches the list [3.09ms]
+(pass) ARM 5 — a pinned board draws off-chain connectors in the visible edge tone > an off-chain connector carries `edge`, the chain keeps `chain`, and the boxes may stay dim [0.48ms]
+(pass) ARM 5 — a pinned board draws off-chain connectors in the visible edge tone > ARM 5b — an off-chain LONG edge's arrowhead carries `edge`, and the pin's own does not [0.51ms]
+(pass) ARM 6 — an unresolved blocker id is reported and contributes no drawn edge > the page names the missing ids, draws the resolvable edge, and skips the ghosts [0.49ms]
+586 |     /** The widths the violation covers: from the minimum box to the fit-width cap, `nodeWidth` is `cols`. */
+587 |     const colsRange = Array.from({ length: 19 }, (_, index) => 16 + index)
+588 |     /** What the fit-width path answers at each width: its view width, or the refusal the contract owes. */
+589 |     const answers = colsRange.map((cols) => layoutBoxes(board, cols)?.width ?? "refused")
+590 |     // RED ON 30309c96: this reads [17, 18, …, 35], exactly `cols + 1` at every width.
+591 |     expect(answers).toEqual(colsRange.map(() => "refused"))
+                          ^
+error: expect(received).toEqual(expected)
+
+  [
+-   "refused",
+-   "refused",
+-   "refused",
+-   "refused",
+-   "refused",
+-   "refused",
+-   "refused",
+-   "refused",
+-   "refused",
+-   "refused",
+-   "refused",
+-   "refused",
+-   "refused",
+-   "refused",
+-   "refused",
+-   "refused",
+-   "refused",
+-   "refused",
+-   "refused",
++   17,
++   18,
++   19,
++   20,
++   21,
++   22,
++   23,
++   24,
++   25,
++   26,
++   27,
++   28,
++   29,
++   30,
++   31,
++   32,
++   33,
++   34,
++   35,
+  ]
+
+- Expected  - 19
++ Received  + 19
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/tmp/cr-fix-before/packages/mpd-tui-plugin/test/dag-edges.test.ts:591:21)
+(fail) ARM 7 — the fit-width layout never hands back a drawing wider than its cols > a skip edge A→C beside A→B→C is REFUSED at cols 16..34 instead of returning cols + 1 [3.41ms]
+(pass) ARM 7 — the fit-width layout never hands back a drawing wider than its cols > a board that really fits still draws, at or below its cols, with no lane appended [0.64ms]
+
+ 14 pass
+ 1 fail
+ 268 expect() calls
+Ran 15 tests across 1 file. [37.00ms]
