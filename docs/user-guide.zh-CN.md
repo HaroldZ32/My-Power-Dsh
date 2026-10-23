@@ -140,7 +140,7 @@ node scripts/install-profile.ts            # --dry-run 只打印计划，不写�
 | 保存记忆 | `mpd_memory_write/read/reflect/reflect_complete/status`、`mpd_memory_save/recall` | 版本库后端可以是 git 或 svn；`mpd_memory_save/recall` 是简单的键值层 |
 | 咨询专家 | `mpd_roles_list`、`mpd_role_spawn`、`mpd_role_persona` | 一次性（ONE-SHOT）单次咨询子智能体（报告落定后 activation 即被释放 —— 新问题请用新的 spawn）；只读角色会被禁用写入类工具 |
 | 养一个会成长的智能体 | `mpd_workmate_list/init/spawn/reflect/match/rename/delete` | 见 §5 |
-| 运行一个团队 | `agent_teams_plan`（暂存计划、扩展它、批准它）、`spawn_teammate`、`send_message`、`list_agents`、`wait_agent`、`interrupt_agent`、`team_task_create/list/get/update` + Web 的 Agent Teams 面板 | 见 §6 |
+| 运行一个团队 | `agent_teams_plan`（暂存计划、扩展它、批准它）、`agent_teams_task`（在任务板上 claim / complete / fail）、`agent_teams_dispatch`、`send_message`、`list_agents`、`wait_agent`、`interrupt_agent` + Web 的 Agent Teams 面板 | 见 §6 |
 | 配置本 bundle | `.mpd/mpd.jsonc`、`mpd_config_get`、`mpd_config_reload` | 见 §9 |
 | 扩展本 bundle | `mpd_ext_list`、`mpd_ext_show`、`mpd_flow_list`、`mpd_flow_show` | 见 §10 |
 | 解析模型路由 | `mpd_modelchain_resolve` | 解析某位专家会使用的 provider/model |
@@ -239,16 +239,23 @@ UI 上是刻意的单向操作，恢复就是上面那条 `mv`。
 
 ## 6. 团队模式
 
-团队模式跑在 harness 的**官方 Agent Teams 插件**上，由本 bundle 的 `mpd-agent-team` /
-`mpd-tool-agent-team` / `mpd-ui-agent-team` 三行挂载（行清单见 [`design.md`](design.md)）。
-你的会话智能体就是 **Lead**（captain）：它创建具名队友、把任务开在共享任务板上，并亲自整合结果。
+**团队平面是 mpd 的 RECORD**，而不是官方插件：成员名册、任务板与每个任务都存放在
+`.mpd/team/teams/<id>.json`，由 `mpdTeams` 提供。本 bundle 的 `mpd-agent-team` /
+`mpd-tool-agent-team` / `mpd-ui-agent-team` 三行提供队友的**执行**与 **UI** 面 —— 官方服务及其
+九个面向模型的工具，以及 Web 端的名册/任务板面板 —— 其中两个执行行在 TUI 组合里被**禁用**：
+dsh-tui 宿主拒绝团队服务那个绑定在 root 上的投影（行清单见 [`design.md`](design.md)）。五个官方
+撰写动词 —— `spawn_teammate`、`team_task_create`、`team_task_list`、`team_task_get`、
+`team_task_update` —— 在工具边界被**拒绝**，所以下面的计划是唯一的门。这个闭合止步于**工具**
+边界：某一行直接调用团队**服务**（官方执行器回退路径）不构成工具调用，因此**不受**门禁 —— 这是
+唯一声明的边界。你的会话智能体就是 **Lead**（captain）：它 stage 计划、spawn 具名队友、把任务
+开在 mpd 任务板上，并亲自整合结果。
 
 ```text
 agent_teams_plan { action }                                                # 仅 Lead：create | add_member | create_task | edit | approve | delete | status
-spawn_teammate { name, description, prompt, context: "fresh" | "fork" }   # 仅 Lead
-team_task_create { subject, description, blocked_by?, write_scopes? }
-team_task_get { task_id } / team_task_list { status?, owner?, ready? }
-team_task_update { task_id, expected_revision, action }                   # compare-and-set
+agent_teams_plan { action: "add_member", member } / { action: "create_task", task }   # 仅 Lead；每个任务都要声明 blocked_by 或 independent
+agent_teams_plan { action: "status" }                                      # 计划与任务板上的每个任务
+agent_teams_task { task_id, action, expected_revision? }                   # 任务板：claim | release | complete | fail
+agent_teams_dispatch { action: "run", limit?, dry_run? }                  # 把就绪任务与空闲成员配对
 send_message { target, message } / list_agents { } / wait_agent { timeout_ms }
 interrupt_agent { target }                                                # 仅 Lead
 ```
@@ -258,8 +265,10 @@ interrupt_agent { target }                                                # 仅 
   0 成员、0 任务，且处于**惰性**状态：不会 spawn 任何东西。captain 扩展它
   （`add_member` / `create_task`），再用 `agent_teams_plan {action:"approve"}` 批准 —— 这才是
   spawn 成员并发布任务的动作；`action:"status"` 读回计划，`action:"delete"` 将其归档。这个 plan
-  平面是**我们的**（`mpd-team-core`），不属于官方 Agent Teams 插件：团队本身仍然跑在官方任务板上 ——
-  `spawn_teammate` 与 `team_task_*` 生命周期。若 `team.gate: "advisory"`，或 `agent_teams_plan`
+  平面是**我们的**（`mpd-team-core`），而 mpd RECORD 是唯一的任务板：`agent_teams_task` 驱动它，
+  `agent_teams_plan {action:"status"}` 把它读回来。五个官方撰写动词 —— `spawn_teammate`、
+  `team_task_create`、`team_task_list`、`team_task_get`、`team_task_update` —— 在工具边界被
+  **拒绝**，所以上面的计划是唯一的门。若 `team.gate: "advisory"`，或 `agent_teams_plan`
   没有挂载，门就不会 stage 任何东西，只用一条通知说明，并由 captain 在工作确需团队时自行建队。
 - **敏感度决定阈值。** `mpd.jsonc` 里的 `team.sensitivity` 取 `easy`（**默认**）| `normal` | `strict`；
   未知或缺失的值一律解析为 `easy`。`easy` 保留工作区规模信号 F 并更早触发；`normal` 精确复现
@@ -287,9 +296,8 @@ interrupt_agent { target }                                                # 仅 
   `write` / `edit` / `bash` **不受**该门限制，验证法则的写入守卫（`verify.mode`）仍处于撤销状态：
   由 captain 写代码，由**另一个**智能体记录判决。两个旋钮都在 `mpd` 设置命名空间下（§9）：
   `captain.investigation` 取 `deny` | `allow`，`delegation.gate` 取 `deny` | `captain`（仅顶层会话）| `allow`。
-- **任务板是 compare-and-set 的。** `team_task_update` 要带上你读到的 `expected_revision`，过期
-  revision 会得到错误而不是覆盖更新的工作。动作有 `claim`、`release`、`edit`、
-  `set_dependencies`、`complete`、`reopen`、`reassign`、`delete`。
+- **任务板是 compare-and-set 的。** `agent_teams_task` 要带上你读到的 `expected_revision`，过期
+  revision 会得到错误而不是覆盖更新的工作。动作有 `claim`、`release`、`complete`、`fail`。
 - **`write_scopes` 只是提示。** 两个进行中的任务如果计划触碰重叠路径，只会收到警告；任务板从不阻止
   认领，也从不授权写入，而 bash/格式化器/代码生成器会绕过一切检查 —— 由 Lead 协调归属并审阅最终
   diff。
@@ -299,7 +307,7 @@ interrupt_agent { target }                                                # 仅 
   `noProgress`。
 - **只读成员就是只读的。** Architect、Researcher、Planner、Explorer、Plan Reviewer 与
   Vision Analyst 会被拒绝那八个写入工具：`mpd_role_spawn` 通道通过 `toolFilter.deny`，团队通道通过
-  `mpd-roles-plugin` 里以团队身份为键的工具守卫 —— 因为官方 `spawn_teammate` 无法接受按队友的
+  `mpd-roles-plugin` 里以团队身份为键的工具守卫 —— 因为团队的 spawn 接缝不接受按队友的
   工具过滤器。工作者（Senior Engineer、Junior Engineer、Deep Worker、Lead、Reviewer）负责实现与
   验证。
 - **槽位是名册成员唯一的路由来源 —— 而且不再有内置默认层。** 一切路由都来自该成员的
@@ -312,7 +320,7 @@ interrupt_agent { target }                                                # 仅 
   （顶层 spawn 是 captain 的，team-lead spawn 是 Lead 的），提示词文本无法改变路由。
 - **由 workmate 背书的成员是一段提示词，而不是自动注入。** 现在已经没有任何东西会把某个 workmate
   的人设自动带进队友：先初始化或挑出该 workmate（`mpd_workmate_init` / `mpd_workmate_match`），
-  读出它应当携带的内容，再把那段文本放进 `spawn_teammate` 的提示词；事后用
+  读出它应当携带的内容，再把那段文本放进 `agent_teams_plan {action:"add_member"}` 的提示词；事后用
   `mpd_workmate_reflect` 记录结果（§5）。
 - **扩展 role 不是团队成员**：扩展可以贡献一个能被 `mpd_role_spawn` / `mpd_role_persona` 使用的
   role，但队友名册就是 captain 按名字创建出来的那些人，所以扩展 role 不会自己变成队友（见 §10）。
@@ -320,15 +328,15 @@ interrupt_agent { target }                                                # 仅 
 ### 调用形态
 
 ```text
-# 创建一个队友和它的一条任务
-spawn_teammate { "name": "senior-1", "description": "Owns the README pair", "prompt": "<人设 + 任务>", "context": "fresh" }
-team_task_create { "subject": "重写安装章节", "description": "…", "blocked_by": [], "write_scopes": ["README.md"] }
+# 在计划上创建一个队友和它的一条任务
+agent_teams_plan { "action": "add_member", "member": { "name": "senior-1", "description": "Owns the README pair", "prompt": "<人设 + 任务>" } }
+agent_teams_plan { "action": "create_task", "task": { "subject": "重写安装章节", "description": "…", "blocked_by": [], "write_scopes": ["README.md"] } }
 
-# 操作任务板（任何成员；Lead 还可以改派）
-team_task_list { "ready": true }
-team_task_get { "task_id": "task-3" }
-team_task_update { "task_id": "task-3", "expected_revision": 2, "action": "claim" }
-team_task_update { "task_id": "task-3", "expected_revision": 3, "action": "complete" }
+# 操作任务板（任何成员）
+agent_teams_plan { "action": "status" }
+agent_teams_task { "task_id": "task-3", "action": "claim", "expected_revision": 2 }
+agent_teams_task { "task_id": "task-3", "action": "complete", "expected_revision": 3 }
+agent_teams_dispatch { "action": "run" }
 
 # 协调
 list_agents { }
@@ -502,7 +510,7 @@ Team 视图的这张图按团队状态提供的 rank 布局：每个 rank 一列
 | `extensions.mcp.*` | mpd-ext | MCP 桥默认值：`enabled`、`connectTimeoutMs`、`toolCallTimeoutMs` |
 | `modelchain.*` | mpd-modelchain | 各名册角色的 provider/model 链 |
 | `team.stateDir` | 读取旧版团队记录的 mpd 插件（看门狗 web 路由、压缩、TUI 团队界面、workmate 在用检查） | 这些记录的位置（默认 `.mpd/team`）。官方团队插件不读它 |
-| `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate / mpd-roster-provider（经 mpd-config） | 四个**团队模型槽位**：每个槽位是**一条**配置好的路由 —— `{provider, model, reasoningEffort?}`，外加该槽位**自己**的可选 `fallbacks: [{provider, model, reasoningEffort?}, …]`（按优先级排列）。**不再有任何内置默认层**（`TEAM_MODEL_SLOT_DEFAULTS` 已删除）：工作区从未配置的槽位**没有**路由，它要路由的每一次 spawn 都会被**拒绝**，并给出一个结构化的 `SLOT_UNCONFIGURED` 错误，点名槽位、成员、缺失的叶子与两条修复路径（`/mpd-model`，或 `.mpd/mpd.jsonc` 里的 `teamModels.slotN`）—— 不写入任何内容，也不启动子会话。回退链在 spawn 前**只消费一次**：实时目录**正面列出**的第一条路由胜出（「未被列出」不等于「不可用」；没有任何正面列出时主路由保留），胜出者随后经过推理强度适配，格式错误的条目会被丢弃并记一行日志 —— 绝不致命。槽位 1 路由 Architect/Planner/Reviewer/Lead/Senior Engineer，槽位 2 路由 Researcher/Explorer/Plan Reviewer，槽位 3 路由 Deep Worker/Junior Engineer，槽位 4 路由 Vision Analyst —— 视觉成员，其槽位模型**必须支持图像输入**。`spawn_teammate` 队友只有在 `description` **点名**名册成员时才取用槽位；其他队友跑在暂存它的会话的路由上（§6）。推理强度永远不会被悄悄钳制；唯一例外是模型在目录里完全没有推理等级 —— 则不发送任何等级，spawn 照常运行。**初始配置是文件初始化，不是运行时默认值：** 若工作区的 `.mpd/mpd.jsonc` 未声明 `teamModels`，挂载时会**只播种一次**：通过 LLM 目录从你已配置的提供商中选取模型（`deepseek-flash` 家族；槽位 1 为 `max`，槽位 2-4 为 `high`），已存在的块或用户编辑**永不改写**；成功的播种会在 `<workspace>/.mpd/model-config-seed.json` 中留下**持久标记**（只创建一次、永不覆盖、在任何尝试之前先检查），因此你**故意删除**的块**永远不会**被重新播种；目录不可用时不写任何内容，第一次 spawn 报告 `SLOT_UNCONFIGURED`。可在 **设置 → MPD** 与 TUI 的 `/settings` 区块中作为只可选择字段编辑（未配置的槽位渲染为 `<unconfigured>` 并列出缺失的叶子）；保存后的改动在运行中的进程里被重新读取，无需重启（`mpd_config_reload` 可强制重读）。 |
+| `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate / mpd-roster-provider（经 mpd-config） | 四个**团队模型槽位**：每个槽位是**一条**配置好的路由 —— `{provider, model, reasoningEffort?}`，外加该槽位**自己**的可选 `fallbacks: [{provider, model, reasoningEffort?}, …]`（按优先级排列）。**不再有任何内置默认层**（`TEAM_MODEL_SLOT_DEFAULTS` 已删除）：工作区从未配置的槽位**没有**路由，它要路由的每一次 spawn 都会被**拒绝**，并给出一个结构化的 `SLOT_UNCONFIGURED` 错误，点名槽位、成员、缺失的叶子与两条修复路径（`/mpd-model`，或 `.mpd/mpd.jsonc` 里的 `teamModels.slotN`）—— 不写入任何内容，也不启动子会话。回退链在 spawn 前**只消费一次**：实时目录**正面列出**的第一条路由胜出（「未被列出」不等于「不可用」；没有任何正面列出时主路由保留），胜出者随后经过推理强度适配，格式错误的条目会被丢弃并记一行日志 —— 绝不致命。槽位 1 路由 Architect/Planner/Reviewer/Lead/Senior Engineer，槽位 2 路由 Researcher/Explorer/Plan Reviewer，槽位 3 路由 Deep Worker/Junior Engineer，槽位 4 路由 Vision Analyst —— 视觉成员，其槽位模型**必须支持图像输入**。团队成员只有在 `description` **点名**名册成员时才取用槽位；其他成员跑在暂存它的会话的路由上（§6）。推理强度永远不会被悄悄钳制；唯一例外是模型在目录里完全没有推理等级 —— 则不发送任何等级，spawn 照常运行。**初始配置是文件初始化，不是运行时默认值：** 若工作区的 `.mpd/mpd.jsonc` 未声明 `teamModels`，挂载时会**只播种一次**：通过 LLM 目录从你已配置的提供商中选取模型（`deepseek-flash` 家族；槽位 1 为 `max`，槽位 2-4 为 `high`），已存在的块或用户编辑**永不改写**；成功的播种会在 `<workspace>/.mpd/model-config-seed.json` 中留下**持久标记**（只创建一次、永不覆盖、在任何尝试之前先检查），因此你**故意删除**的块**永远不会**被重新播种；目录不可用时不写任何内容，第一次 spawn 报告 `SLOT_UNCONFIGURED`。可在 **设置 → MPD** 与 TUI 的 `/settings` 区块中作为只可选择字段编辑（未配置的槽位渲染为 `<unconfigured>` 并列出缺失的叶子）；保存后的改动在运行中的进程里被重新读取，无需重启（`mpd_config_reload` 可强制重读）。 |
 
 `mpd-codegraph` 刻意不在上表中：它的 `autoInit`、`initTimeoutMs`、`cooldownMs` 与 `binary` 来自
 它的 **bundle-patch 行** 配置（在 apply 时读取），没有任何插件通过 `mpd.jsonc` 读取
@@ -540,7 +548,7 @@ Team 视图的这张图按团队状态提供的 rank 布局：每个 rank 一列
 | `modelchain.*` | mpd-modelchain | 每次调用，从实时服务读取 | 实时生效 —— 无需重启：每次 `mpd_modelchain_resolve` 都会重读该 overlay，因此设置保存或文件编辑会改变下一次解析；`mpd_config_reload` 可强制重读 |
 | `extensions.enable` / `.disable` / `.mcp.*` | mpd-ext | 插件启动时（进程级） | 重启后 |
 | `team.stateDir` | 读取旧版团队记录的 mpd 插件，经实时服务解析 | 每次调用 | 服务重新读取文件之后立即生效（`mpd_config_reload`，或任意一次设置保存）。这些是**旧版**记录：官方团队插件把名册、邮箱与任务板保存在 Lead 的会话日志里，不在这里 |
-| `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate（单次咨询通道 `mpd_role_spawn`、`mpd_workmate_spawn`），以及 mpd-roster-provider（其 `description` 点名名册成员的 `spawn_teammate`） | spawn 时，从实时服务读取 | 实时生效，无需重启：设置保存或手工编辑 `<workspace>/.mpd/mpd.jsonc` 都会在进程内被重新读取，因此下一次 spawn 即携带新值；`mpd_config_reload` 可强制重读。每个槽位**只有一条**路由、没有默认层：未配置或格式错误的槽位会用 `SLOT_UNCONFIGURED` **拒绝** spawn（不写入任何内容、不启动子会话），而该槽位自己的 `fallbacks` 链在 spawn 前被消费一次。若 `spawn_teammate` 队友的 `description` 点名的是一位名册成员，它就**会**按该成员的槽位路由；其他队友运行在创建它的会话的路由上，提示词文本无法改变路由 |
+| `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate（单次咨询通道 `mpd_role_spawn`、`mpd_workmate_spawn`），以及 mpd-roster-provider（其 `description` 点名名册成员的团队成员） | spawn 时，从实时服务读取 | 实时生效，无需重启：设置保存或手工编辑 `<workspace>/.mpd/mpd.jsonc` 都会在进程内被重新读取，因此下一次 spawn 即携带新值；`mpd_config_reload` 可强制重读。每个槽位**只有一条**路由、没有默认层：未配置或格式错误的槽位会用 `SLOT_UNCONFIGURED` **拒绝** spawn（不写入任何内容、不启动子会话），而该槽位自己的 `fallbacks` 链在 spawn 前被消费一次。若团队成员的 `description` 点名的是一位名册成员，它就**会**按该成员的槽位路由；其他成员运行在创建它的会话的路由上，提示词文本无法改变路由 |
 | `watchdog.*` | mpd-team-watchdog | 挂载时、settings 更新时、每个 tick | 实时生效 —— 无需重启 |
 
 `mpd-codegraph` 的旋钮是反证这条规则的例外：它们是 patch 行选项（`autoInit`、`initTimeoutMs`、
@@ -597,8 +605,8 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp   # 从一个可工作的骨�
 - **没有 reload。** 修改扩展的 manifest 或资源后，会在下一次 `dsh` 启动时生效；`mpd_ext_list`
   刻意没有对应的重载工具。
 - **扩展 role 不是团队成员。** 它们可以通过 `mpd_role_spawn` / `mpd_role_persona` 使用，也可以
-  作为 workmate 的基础模板，但队友名册是固定的：只有 captain 用 `spawn_teammate` 按名字创建的
-  才是队友。
+  作为 workmate 的基础模板，但队友名册是固定的：只有 captain 把它按名字加进一份已批准的计划，
+  它才是队友。
 - **`extensions.*` 配置是进程级的**，在插件启动时读取 —— 它不是按会话隔离的。
 - **第四方 MCP 服务器是一个子进程。** 它绝不会从你的宿主环境继承名字形如凭据的变量；它需要什么
   就在 manifest 的 `env` 中声明。
@@ -672,7 +680,7 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp   # 从一个可工作的骨�
 **记录**的两条 **宿主命令** —— `/settings`（宿主 TUI 设置界面，其 MPD 区块由本 bundle 扩展）与
 `/goal`（宿主 goal 命令，由 `mpd` preset 挂载）。除此之外没有别的命令 —— 特别地，**不存在
 `/roster` 命令**（名册要通过 `mpd_roles_list` 工具访问），也**不存在 `/agent-teams` 命令**
-（团队工作由官方的 `spawn_teammate` / `team_task_*` 工具驱动；注册那条命令的内置插件已不再挂载）。
+（团队工作由 `agent_teams_plan` / `agent_teams_task` 工具驱动；注册那条命令的内置插件已不再挂载）。
 
 | 命令 | 作用 | 可用位置 |
 |---|---|---|
@@ -702,21 +710,21 @@ agent_teams_plan { "action": "create_task", "task": { "subject": "验证 README 
 agent_teams_plan { "action": "status" }
 agent_teams_plan { "action": "approve" }                              # ← 就是这一步 spawn 成员并发布任务
 
-# (b) 建队：每位成员一次 spawn，每条通道一个任务
-spawn_teammate { "name": "senior-1", "description": "Owns the README pair", "prompt": "<mpd_role_persona 文本> + 重写安装章节。用户要能用一条命令从检出目录安装；用 bun run verify:docs 验证。", "context": "fresh" }
-team_task_create { "subject": "重写安装章节", "description": "覆盖两个 profile 与打包产物。", "blocked_by": [], "write_scopes": ["README.md"] }
-team_task_create { "subject": "验证 README 文档对", "description": "跑文档关卡并贴出原始输出。", "blocked_by": ["task-1"], "write_scopes": [] }
+# (b) 建队：扩展计划，每位成员一条成员记录、每条通道一个任务
+agent_teams_plan { "action": "add_member", "member": { "name": "senior-1", "description": "Owns the README pair", "prompt": "<mpd_role_persona 文本> + 重写安装章节。用户要能用一条命令从检出目录安装；用 bun run verify:docs 验证。" } }
+agent_teams_plan { "action": "create_task", "task": { "subject": "重写安装章节", "description": "覆盖两个 profile 与打包产物。", "blocked_by": [], "write_scopes": ["README.md"] } }
+agent_teams_plan { "action": "create_task", "task": { "subject": "验证 README 文档对", "description": "跑文档关卡并贴出原始输出。", "blocked_by": ["<root task>"], "write_scopes": [] } }
+agent_teams_plan { "action": "approve" }                              # ← 就是这一步 spawn 成员并发布任务
 
 # (c) 操作任务板（compare-and-set：每次更新前都重新读一次）
-team_task_list { "ready": true }
-team_task_get { "task_id": "task-1" }                                  // → revision
-team_task_update { "task_id": "task-1", "expected_revision": 1, "action": "claim" }
-team_task_update { "task_id": "task-1", "expected_revision": 2, "action": "complete" }
+agent_teams_plan { "action": "status" }                                // → 任务板，带 revision
+agent_teams_task { "task_id": "task-1", "action": "claim", "expected_revision": 1 }
+agent_teams_task { "task_id": "task-1", "action": "complete", "expected_revision": 2 }
 
 # (d) 推动一个正在运行的团队
 list_agents {}
 send_message { "target": "senior-1", "message": "先落 README 的修改，再做使用者指南。" }
-team_task_update { "task_id": "task-1", "expected_revision": 2, "action": "reassign", "owner": "junior-1" }   // 仅 Lead
+agent_teams_dispatch { "action": "run" }
 wait_agent { "timeout_ms": 60000 }
 interrupt_agent { "target": "senior-1" }                               // 仅 Lead；收件箱保留
 
@@ -728,8 +736,9 @@ mpd_team_compact_status {}
 队友名字是永久的，且永不复用。每个 `create_task` 都要回答依赖问题 —— `blocked_by: []` 表示真正的
 根任务，`blocked_by: ["<root task>"]` 表示依赖它，另一种写法是 `independent: true` —— 并且在 mpd
 record 平面上，`agent_teams_plan {action:"approve"}` 会**拒绝**两个写范围重叠、且彼此之间没有依赖
-路径的任务。在官方 Agent Teams 平面上（`spawn_teammate` + `team_task_create`），写范围重叠只是
-提示（"advisory, not a lock"），mpd 的守卫根本看不到那些任务。基于过期 `revision` 的任务更新会被拒绝 ——
+路径的任务。会话通过这些工具创作的每个任务都活在那份 mpd record 上，所以写范围重叠在那里会被
+**拒绝**，而不是「只是提示」。这项闭合止于**工具边界**：直接调用团队**服务**的插件行（官方执行器
+回退路径）不是工具调用，**不**受这道门约束 —— 这就是那条已声明的边界。基于过期 `revision` 的任务更新会被拒绝 ——
 正是这道拒绝让被改派的任务不再接受迟到的结果。在点名它的计划获得**批准**之前，不存在任何队友；质量纪律则由 captain 写进任务描述里。
 
 ### 13.2 ULW 循环与它的关卡
@@ -839,18 +848,16 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp --with-mcp
 
 ```text
 # Lead（会话智能体）
-team_task_list {}                                                # 活跃任务板，带 revision
-team_task_get { "task_id": "task-5" }                            # 冻结在该 revision 上的单个任务
-team_task_update { "task_id": "task-5", "expected_revision": 4, "action": "reassign", "owner": "junior-1" }
+agent_teams_plan { "action": "status" }                          # 计划中的成员与活跃任务板，带 revision
+agent_teams_dispatch { "action": "run" }                          # 把就绪任务与空闲成员配对
 send_message { "target": "junior-1", "message": "task-5 需要设计文档的链接目标。" }
 list_agents {}                                                   # target 与可用状态
 wait_agent { "timeout_ms": 60000 }                               # 下一次名册/消息/任务变化
 interrupt_agent { "target": "junior-1" }                         # 停下当前轮次，保留收件箱
 
 # 成员
-team_task_update { "task_id": "task-5", "expected_revision": 4, "action": "claim" }
-team_task_update { "task_id": "task-5", "expected_revision": 5, "action": "edit", "description": "…进度 + 证据…" }
-team_task_update { "task_id": "task-5", "expected_revision": 6, "action": "complete" }
+agent_teams_task { "task_id": "task-5", "action": "claim", "expected_revision": 4 }
+agent_teams_task { "task_id": "task-5", "action": "complete", "expected_revision": 5, "note": "…进度 + 证据…" }
 send_message { "target": "lead", "message": "task-5 完成：`bun run verify:docs` 通过。" }
 ```
 
@@ -927,7 +934,7 @@ mcp__grep_app__searchGitHub { "query": "registerTool({", "language": ["TypeScrip
 
 | 你使用的功能 | 来源 | 许可 / 版本 | 记录位置 |
 |---|---|---|---|
-| 团队模式 —— `spawn_teammate`、`send_message`、`list_agents`、`wait_agent`、`interrupt_agent`、`team_task_*` 任务板与 Web 面板 | **官方** `@deepseek-ai/dsh-experimental-agent-team` / `-tool-agent-team` / `-client-ui-agent-team` 三个包，由本 bundle 的 `mpd-agent-team` / `mpd-tool-agent-team` / `mpd-ui-agent-team` 行挂载 | MIT（harness 包组）；声明在 `package.json` 的 `dependencies` | `cordis.patch.yml`；`README.md`（*这次安装挂载了哪些插件*） |
+| 团队模式 —— 队友执行平面、`send_message`、`list_agents`、`wait_agent`、`interrupt_agent` 与 Web 面板 | **官方** `@deepseek-ai/dsh-experimental-agent-team` / `-tool-agent-team` / `-client-ui-agent-team` 三个包，由本 bundle 的 `mpd-agent-team` / `mpd-tool-agent-team` / `mpd-ui-agent-team` 行挂载 | MIT（harness 包组）；声明在 `package.json` 的 `dependencies` | `cordis.patch.yml`；`README.md`（*这次安装挂载了哪些插件*） |
 | 被采纳（随后退役、再被**删除**）的内置 `agent-teams` 主体 | **dsh-agent-teams**，作者 程序员阿江（Relakkes）—— 曾被整体采纳并作为一等主代码 | MIT；采纳版本 `0.1.16-rc.3-mpd`（`0.1.14` 主体 + 回移的 `0.1.16-rc.3` 增量）；自 0.1.7-rc.2 起**没有任何行挂载它**，去 vendor 波（2026-10-07）又删除了 `packages/mpd-agent-teams-plugin/**` —— 仅有两块被迁移的产物以我们自己的代码形式存续：`packages/mpd-schemastery/**` 与位于 `packages/mpd-bundle-plugin/adopted/agent-teams-client.js` 的采纳浏览器 bundle | `LICENSE-NOTICES.md` 的 *dsh-agent-teams* 一节 |
 | 11 位专家名册、模型链词汇、队友 / workmate BASE 模板 | **oh-my-openagent**，作者 code-yeongyu，固定于提交 `8c57e46`（v5.0.0-beta.20）—— 这里只是**名称与词汇**的历史来源；persona 文本已在 D 波改从宽松许可来源取材 | MIT（本仓库自己的作品）；名称所来自的那个上游当时是 SUL-1.0，仅作历史记录 | `LICENSE-NOTICES.md`；`VENDOR_LOCK.json` |
 | 随包服务的技能语料（19 个技能，含本仓库自有的 `dsh-qa` 与 `cordis-dev`） | 16 个移植技能改从 **lazycodex** 取材（同一作者对 oh-my-openagent 语料的 MIT 再许可）；`cordis-dev` 由本仓库撰写，改写自 DeepSeek Harness 的创造模式 preset skills（`@deepseek-ai/dsh-agent-preset`，MIT） | MIT —— 再取样的语料为 `Copyright (c) 2026 Yeongyu Kim`；引用的 harness 材料是 MIT 且不再分发 | `VENDOR_LOCK.json` `assets.skills`；`LICENSE-NOTICES.md` |

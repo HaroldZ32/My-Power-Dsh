@@ -82,9 +82,10 @@ recorded deviations. Read the ledger before you rely on the TUI for a Web capabi
   *mechanically* rather than by convention.
 - **A workmate library that accumulates** — instantiate a specialist as a durable agent under
   `~/.mpd/workmate/`; it self-summarizes after each session, evolving its own persona and memory.
-- **Real multi-agent teams** — the harness's official Agent Teams plugin, driven by the `mpd` rows:
-  `spawn_teammate`, a shared task board with a compare-and-set lifecycle, a durable mailbox, and a
-  Web panel and a TUI scene that read the same live record.
+- **Real multi-agent teams** — the harness's official Agent Teams plugin, driven by the `mpd` rows
+  through the `agent_teams_plan` door and the `agent_teams_task` / `agent_teams_dispatch` board; the
+  official authoring verbs (`spawn_teammate`, `team_task_*`) are REFUSED at the tool boundary. A
+  durable mailbox, a Web panel and a TUI scene read the same live record.
 - **A durable plan ledger** — ULW rounds with per-criterion PIN → RED → GREEN → SURFACE → CLEAN, a
   boulder ledger anchored to a plan file, and a persisted goal that survives across sessions.
 - **Memory and edits that hold up** — a VCS-backed memory store with a reflection state machine, plus
@@ -148,10 +149,12 @@ the install mounts — is in the [user guide](./docs/user-guide.md#1-install).
    `mpd_role_spawn { role: "Architect", task: "review the module boundaries in src/" }`.
 4. **Keep the good one.** `mpd_workmate_init { base: "Architect", name: "system-architect" }`, then
    reuse it with `mpd_workmate_spawn { name: "system-architect", task: "…" }`.
-5. **Scale to a team.** Ask for one, or describe work that warrants one: the captain spawns each
-   member with `spawn_teammate` and opens its lane with `team_task_create`, then drives it with
-   `send_message` / `wait_agent`. Watch the roster and the shared board in the Web panel's **Agent
-   Teams** view, or in the TUI's `/mpd team` scene.
+5. **Scale to a team.** Ask for one, or describe work that warrants one: the captain stages a plan with
+   `agent_teams_plan` (`add_member` → `create_task`, each task declaring its dependency answer —
+   `blocked_by` or `independent: true` — → `approve`), then drives the board with `agent_teams_task`
+   and `agent_teams_dispatch` plus `send_message` / `wait_agent`; the official `spawn_teammate` /
+   `team_task_*` verbs are REFUSED at the tool boundary. Watch the roster and the shared board in the
+   Web panel's **Agent Teams** view, or in the TUI's `/mpd team` scene.
 6. **Teach it a capability.** Put an extension directory into `<workspace>/.mpd/extensions/` and check
    it with `mpd_ext_list`.
 
@@ -183,7 +186,7 @@ version:
 | Work with an agent that knows your project rules | the **`mpd` preset** | [user guide §2](./docs/user-guide.md#2-the-mpd-preset) |
 | Get a scoped second opinion | the **specialist roster** — `mpd_role_spawn` | [user guide §4](./docs/user-guide.md#4-specialists-the-roster) |
 | Keep a specialist that accumulates knowledge | the **workmate library** — `mpd_workmate_*` | [user guide §5](./docs/user-guide.md#5-workmate-library-durable-evolving-specialists) |
-| Run a real multi-agent workflow | **team mode** — `spawn_teammate` + `team_task_*` | [user guide §6](./docs/user-guide.md#6-team-mode) |
+| Run a real multi-agent workflow | **team mode** — `agent_teams_plan` → `agent_teams_task` / `agent_teams_dispatch` (the official `spawn_teammate` / `team_task_*` verbs are REFUSED) | [user guide §6](./docs/user-guide.md#6-team-mode) |
 | Drive a long objective to done | the **ULW loop** — `/ulw` | [user guide §13.2](./docs/user-guide.md#132-the-ulw-loop-and-its-gates) |
 | Track a multi-step plan durably | the **boulder ledger** — `mpd_boulder_*` | [user guide §13.6](./docs/user-guide.md#136-the-boulder-ledger) |
 | Remember facts across sessions | the **memory engine** — `mpd_memory_*` | [user guide §13.7](./docs/user-guide.md#137-memory) |

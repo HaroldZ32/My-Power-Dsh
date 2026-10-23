@@ -33,10 +33,11 @@ read-only discipline.
   NEW question with a NEW spawn. (The harness catalog is append-only, so a settled child may still list
   as `inactive`; the contract is one-shot regardless.) `mpd_workmate_spawn` is the same one-shot spawn
   mechanics for a durable, evolving instance — the RECORD's persona/memory/note carry continuity, not
-  the child session; team work is the official `spawn_teammate` path.
+  the child session; team work is the mpd plan plane (`agent_teams_plan`), never the official
+  `spawn_teammate`, which the team door guard refuses.
 - `mpd_role_persona` — fetch the persona text for spawn surfaces that take
-  persona as text (the official Agent Teams `spawn_teammate` takes it as the
-  teammate's `prompt`).
+  persona as text (a teammate staged with `agent_teams_plan` `add_member` takes it as
+  the member's `prompt`; `spawn_teammate` itself is refused at the tool boundary).
 
 **One vocabulary for both surfaces (name unification).** The role's name is its
 identity: it is the member name agent-teams stages in team mode, and it is the label a
@@ -88,7 +89,7 @@ same way, and an extension that is disabled by config contributes no role at all
 roles are resolved per call from `mpdExtensions`, not when an agent scope is created, so they
 are not named in the `mpd:roster` section below. They stay fully usable: single-call consult through
 `mpd_role_spawn`, as a **workmate BASE template**, and a Lead that knows one can still stage
-it with `spawn_teammate` by passing its `mpd_role_persona` text.
+it with `agent_teams_plan` `add_member` by passing its `mpd_role_persona` text as the prompt.
 
 ## Team mode
 
@@ -96,13 +97,14 @@ Multi-member team work is NOT built here: **staging** runs on the mpd plan plane
 owned by `mpd-team-core-plugin`) and the members themselves ride the **official Agent Teams plugin**
 (`@deepseek-ai/dsh-experimental-agent-team` + `-tool-agent-team` + `-client-ui-agent-team`,
 mounted by this bundle's `mpd-agent-team` / `mpd-tool-agent-team` / `mpd-ui-agent-team` rows),
-whose Lead creates teammates with `spawn_teammate` and opens their lanes with `team_task_create`.
+whose Lead stages teammates and opens their lanes with `agent_teams_plan` (`add_member` /
+`create_task`); the official `spawn_teammate` and `team_task_create` are REFUSED by the team door guard.
 This row contributes the ROSTER side of that path — every call through `mpd-dsh-adapter`:
 
 | Contract | How this row implements it |
 |---|---|
 | the roster reaches the Lead | an **AGENT-SCOPED** `mpd:roster` system-prompt section (order `605`, immediately after the harness's `TEAM_POLICY` at 600), registered for a top-level `mpd` session only — never host-plane (that would inject the roster into every session this process serves), never a teammate's or another preset's session |
-| a teammate's persona | the section names `spawn_teammate` and `mpd_role_persona`: the Lead passes the member's persona text as the prompt |
+| a teammate's persona | the section names `agent_teams_plan`'s `add_member` and `mpd_role_persona`: the Lead passes the member's persona text as the staged prompt |
 | a READ-ONLY teammate's discipline | a TOOL GUARD (below), registered through the adapter |
 | the session-start complexity gate | an `agent/pre-step` listener that STAGES an approvable plan shell when `team.gate` says `mechanical` — the DEFAULT again since 2026-10-20 (below) |
 

@@ -618,6 +618,8 @@ export const REFACTOR_TEAM_MODE_ADDENDUM = `
 
 Team mode is enabled for this session. The rules below **override Phase 4-6** above. Follow this protocol instead of the in-session step-by-step execution. The current session is the team **Lead**; team members are continuable subagents spawned from it.
 
+**Tool surface (2026-10-23).** The retired vendored verbs this protocol inherits from upstream — \`team_create\`, \`team_list\`, \`team_status\`, \`team_send_message\`, \`team_shutdown_request\`, \`team_approve_shutdown\`, \`team_delete\` — belonged to the \`agent-teams\` body removed on 2026-10-07 and answer nowhere: they are HISTORY, not calls. The OFFICIAL Agent Teams authoring verbs (\`spawn_teammate\`, \`team_task_create\`, \`team_task_list\`, \`team_task_get\`, \`team_task_update\`) are REFUSED at the tool boundary by this bundle's team door, so the old \`team_task_update(status=…)\` spelling above is history too. Drive the mpd RECORD instead: stage with \`agent_teams_plan\`, drive with \`agent_teams_task\`, pair with \`agent_teams_dispatch\`, message a member with \`send_message\`. The bound, stated once: a ROW that calls the team SERVICE directly (the official-executor fallback) is not a tool call and is NOT gated.
+
 ## Phase 4 override: Plan agent staffing requirement
 
 When invoking the Plan agent in Phase 4.1, append this additional requirement to the prompt:
@@ -653,9 +655,9 @@ Record the chosen path in the TodoWrite list.
 
 **Precondition checks** (fail hard if any step fails):
 
-1. Load the \`team-mode\` skill via the \`skill\` tool for lifecycle, message protocol, and limits.
-2. Call \`team_list\` and verify no active \`refactor-squad\` run exists; if one does, shutdown + delete the orphan before proceeding.
-3. If \`.mpd/teams/refactor-squad/config.json\` is missing, write it using the spec below.
+1. The lifecycle, message protocol and limits are the mpd team plane's: \`agent_teams_plan\` stages, \`agent_teams_task\` drives, \`agent_teams_dispatch\` pairs, \`send_message\` reports. (The upstream \`team-mode\` skill is not served by this corpus.)
+2. Call \`agent_teams_plan {action:"status"}\` and verify no LIVE \`refactor-squad\` team or staged plan is bound to this session; if one is, close its rows and compact it (Phase 6) before proceeding.
+3. If \`.mpd/teams/refactor-squad/config.json\` is missing, write it using the spec below — it is the DECLARATION the plan's \`add_member\` calls are staged from, not a file the harness reads.
 
 **Team spec** (\`.mpd/teams/refactor-squad/config.json\`):
 
@@ -667,13 +669,13 @@ Record the chosen path in the TodoWrite list.
     {
       "kind": "category",
       "category": "quick",
-      "prompt": "You handle mechanical refactoring steps (LSP rename, extract variable, inline, simple move, signature change). Use LSP tools for correctness. Apply the task description's per-step instructions verbatim — no scope expansion. After edits, run lsp_diagnostics on touched files. Report via team_send_message(teamRunId=<id>, to=\"lead\", summary=<files touched>, body=<lsp status + diff summary>) + team_task_update(status=completed). Never run tests — the external verifier handles that. Never git add, never --continue."
+      "prompt": "You handle mechanical refactoring steps (LSP rename, extract variable, inline, simple move, signature change). Use LSP tools for correctness. Apply the task description's per-step instructions verbatim — no scope expansion. After edits, run lsp_diagnostics on touched files. Report via send_message(agent_id=<lead>, message=<files touched + lsp status + diff summary>) + agent_teams_task {action:\"complete\", task_id:<the task id from your dispatch message>}. Never run tests — the external verifier handles that. Never git add, never --continue."
     },
     { "kind": "category", "category": "quick", "prompt": "Same contract as peer quick worker." },
     {
       "kind": "category",
       "category": "unspecified-low",
-      "prompt": "You handle logic-preserving refactors that need reasoning (extract function, restructure conditional, pattern transformation, cross-file API change). Read the task description's plan step carefully. Use the ast-grep skill helper or sg CLI to preview structural rewrites first, review the preview, then execute. If the step is ambiguous or would require out-of-scope changes, STOP and send team_send_message(teamRunId=<id>, to=\"lead\", summary=\"UNCLEAR\", body=<reason>) + team_task_update(status=pending). Same reporting contract as peer quick workers. Never run tests."
+      "prompt": "You handle logic-preserving refactors that need reasoning (extract function, restructure conditional, pattern transformation, cross-file API change). Read the task description's plan step carefully. Use the ast-grep skill helper or sg CLI to preview structural rewrites first, review the preview, then execute. If the step is ambiguous or would require out-of-scope changes, STOP and send send_message(agent_id=<lead>, message=\"UNCLEAR: <reason>\") + agent_teams_task {action:\"release\", task_id:<the task id from your dispatch message>} so the row reopens for reassignment. Same reporting contract as peer quick workers. Never run tests."
     },
     { "kind": "category", "category": "unspecified-low", "prompt": "Same contract as peer unspecified-low worker." }
   ]
@@ -687,30 +689,31 @@ Rationale for this composition:
 
 **Team lifecycle** (one team, reused until Phase 6 cleanup):
 
-1. \`team_create(teamName="refactor-squad")\`. Record \`teamRunId\`.
-2. Broadcast the refactor Intent Card ONCE (keep task descriptions slim):
+1. \`agent_teams_plan {action:"create", name:"refactor-squad", description:<one line: the refactor wave this plan serves>}\`. Record the plan id.
+2. Stage the four workers: one \`agent_teams_plan {action:"add_member", member:{name, prompt, description}}\` call per worker, with the prompts taken verbatim from the team spec above.
+3. For each plan step, \`agent_teams_plan {action:"create_task", task:{subject:"refactor step <N>: <short>", description=<per-step instructions from plan, including target files and line ranges, rollback strategy>, blocked_by:<from plan's per_step_assignment> or independent:true}}\` — every task must declare its dependency answer.
+4. \`agent_teams_plan {action:"approve"}\` — this is what spawns the members and posts the tasks; no teammate exists before it.
+5. Broadcast the refactor Intent Card ONCE to every member (keep task descriptions slim; there is no \`*\` recipient — one call per member):
    \`\`\`
-   team_send_message(
-     teamRunId=<id>, to="*", kind="announcement",
-     summary="refactor-intent",
-     body=<codemap summary + constraints + established patterns from Phase 2>
+   send_message(
+     agent_id=<member>,
+     message=<codemap summary + constraints + established patterns from Phase 2>
    )
    \`\`\`
-3. Broadcast the verification spec ONCE:
+6. Broadcast the verification spec ONCE, the same way:
    \`\`\`
-   team_send_message(
-     teamRunId=<id>, to="*", kind="announcement",
-     summary="verify-spec",
-     body=<exact test/typecheck/lint commands + expected pass counts + regression indicators from Phase 3.4>
+   send_message(
+     agent_id=<member>,
+     message=<exact test/typecheck/lint commands + expected pass counts + regression indicators from Phase 3.4>
    )
    \`\`\`
-4. For each plan step, \`team_task_create(teamRunId=<id>, subject="refactor step <N>: <short>", description=<per-step instructions from plan, including target files and line ranges, rollback strategy>, blockedBy=<from plan's per_step_assignment>)\`.
 
 **Lead monitoring loop**:
 
 While any team task is \`pending | claimed | in_progress\`:
 
-- Wait for \`<system-reminder>\` or member messages. Avoid tight polling; a single \`team_status\` check is acceptable if no notification arrives within roughly 10 seconds of expected completion.
+- Run \`agent_teams_dispatch {action:"run"}\` whenever a row turns terminal — the approval, a completion, a release — so ready tasks pair with idle members.
+- Wait for \`<system-reminder>\` or member messages. Avoid tight polling; a single \`agent_teams_plan {action:"status"}\` check is acceptable if no notification arrives within roughly 10 seconds of expected completion.
 - On a worker completion report, immediately dispatch an **external verifier** — verification runs OUTSIDE the team because team-member category routing downcasts to the category worker:
   \`\`\`
   task(
@@ -724,7 +727,7 @@ While any team task is \`pending | claimed | in_progress\`:
   If \`deep\` is unavailable, fall back to \`category="unspecified-high"\`. Do not create a commit checkpoint until the verifier returns PASS.
 - On a verifier PASS: make the commit checkpoint for that step (see original 5.3). Proceed.
 - On a verifier FAIL: Lead decides:
-  - **Retry with fix hint**: \`team_task_update(status=pending)\` on the original step + \`team_send_message(teamRunId=<id>, to=<original member>, summary="retry", body=<specific failure from verifier>)\`. Runtime reassigns.
+  - **Retry with fix hint**: \`agent_teams_task {action:"release", task_id:<the original step>}\` + \`send_message(agent_id=<the original member>, message=<specific failure from verifier>)\`. The row reopens to \`pending\` and the next \`agent_teams_dispatch {action:"run"}\` reassigns it.
   - **Escalate**: after three FAIL cycles on the same step, STOP and consult the user with full evidence.
 - On a member UNCLEAR message: re-harvest context via a targeted \`task()\` outside the team, broadcast an updated Intent Card fragment, then reassign.
 
@@ -734,13 +737,13 @@ Proceed to Phase 6 only when every team task is \`completed\` AND every paired v
 
 If Phase 5 used the team path, dismantle \`refactor-squad\` BEFORE producing the 6.6 summary. Every exit path — success, escalation, abort — must cleanup; orphan teams poison the next session's precondition check.
 
-1. \`team_shutdown_request\` for each member, then \`team_approve_shutdown\` if members do not self-approve within a reasonable window.
-2. \`team_delete(teamRunId=<id>)\`.
-3. \`team_list\` to confirm no residual \`refactor-squad\` run.
+1. Close every non-terminal row with \`agent_teams_task {action:"complete"|"fail", task_id:<id>}\` — a \`pending\` row would be dispatched again by the next \`agent_teams_dispatch {action:"run"}\`, and this plane has no per-member shutdown verb.
+2. \`mpd_team_compact_run {}\` — it compacts the members of the FINISHED team (every task terminal and every member idle) and writes the audit record under \`.mpd/team-compact/\`.
+3. \`agent_teams_plan {action:"status"}\` to confirm the board is clean and no staged \`refactor-squad\` plan remains. There is no end-team verb here: \`agent_teams_plan {action:"delete"}\` archives only an UNAPPROVED staged plan, and a team's record turns terminal when the lifecycle reaper ends it.
 
 The \`.mpd/teams/refactor-squad/config.json\` declaration stays on disk; next session reuses it.
 
-Append to the 6.6 summary a "Dispatch path" line and, when team path was used, team metrics (teamRunId, tasks created, verifier runs, team lifetime).
+Append to the 6.6 summary a "Dispatch path" line and, when team path was used, team metrics (plan id, tasks created, verifier runs, team lifetime).
 
 ## MUST NOT (team mode)
 

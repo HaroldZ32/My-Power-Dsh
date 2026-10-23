@@ -48,8 +48,9 @@ Documentation updated by the docs writers: `AGENTS.md` §5 rules 3 and 5, §7 T-
 
 ## 5. Declared bounds
 
-- The official plane (`spawn_teammate` + `team_task_create`) is NOT gated by mpd; the rule there is
-  manual and is documented as such (R7).
+- ~~The official plane (`spawn_teammate` + `team_task_create`) is NOT gated by mpd; the rule there is
+  manual and is documented as such (R7).~~ **SUPERSEDED by the team-door wave (2026-10-23/24, contract
+  Amendment 3 / R16–R18).** The official plane IS gated at the TOOL boundary now — see §9.
 - `evidence/merge-20261022/` is pre-existing and unrelated to this wave.
 
 ## 6. QA real case — runner note (measured 2026-10-23)
@@ -89,3 +90,42 @@ evidence ids are reproduced above and in the `gates-*.log` files.
   2026-10-23 runs) ship `result.json` only; the declared `{result.json, output.log}` pair exists from
   `2026-10-23T10-19-01-361Z` onward.
 - `evidence/merge-20261022/` is pre-existing and unrelated to this wave.
+
+## 10. The team door — one front door (2026-10-23/24, Amendment 3 / R16–R18)
+
+A `tools.guard` in `packages/mpd-team-core-plugin/src/team-door-guard.ts` REFUSES `spawn_teammate`,
+`team_task_create`, `team_task_list`, `team_task_get`, `team_task_update` by whole name, with a
+one-paragraph refusal naming the mpd RECORD, the three guarantees the official board lacks, and the
+replacement verbs. Everything else — every doc, README twin, persona, skill and the QA contract — now
+names `agent_teams_plan` / `agent_teams_task` / `agent_teams_dispatch` as the only door.
+
+**The set was narrowed from "all nine official tools" for a MEASURED reason.** `send_message`,
+`list_agents`, `wait_agent` and `interrupt_agent` are ALSO base global harness rows, mounted by this bundle's own preset
+(`presets/mpd.patch.yml`), and the harness appends a "call `send_message`" instruction to every continuable
+child's prompt (`dsh-subagent`). A name-based guard cannot tell the base row from the official one, so
+denying them would refuse our own plumbing, and `interrupt_agent` is the only model-facing single-agent
+stop. Those four (`send_message`, `list_agents`, `wait_agent`, `interrupt_agent`) stay; result delivery never depended on them (the harness's `notifySettlement` injects a
+child's closing text and structured result into the parent).
+
+Scope decision (R18): the door denies for EVERY agent and has NO preset bypass — deliberately unlike the
+delegation gate. Its subject is a WORKSPACE-scoped record (one board per workspace), and the repo's own
+T-92 measurement is that the deployment's top-level session carries `agentPreset:"cordis"`, so a
+preset-keyed release would no-op the door exactly where it must bind.
+
+**The declared bound (R17):** the closure is at the TOOL boundary. A ROW that calls the team SERVICE
+directly (the official-executor fallback) is not a tool call and is NOT gated. No live-harness boot proves
+a refusal is surfaced to a model either — the evidence is unit/registration level plus the `tools.guard`
+precedent already used by five rows.
+
+## 11. Gate logs in this wave's tail
+
+| log | what it holds |
+|---|---|
+| `gates-teamdoor.log` | first sweep after the guard: `vendor=1` (the `client.js` fingerprint) and `verify:gates=1`; everything else 0 |
+| `gates-teamdoor2.log` | after the fingerprint pin: 14/14 exit 0 |
+| `gates-teamdoor3.log` | after the FAIL repairs + the wave's final single skills re-pin: **16/16 exit 0** |
+
+`client.js`'s fingerprint (`0bd4c94…` → `f636bb8…`) changed because its SOURCE changed; the build was
+proved deterministic first (three consecutive builds, identical sha256), and only that artifact's pin was
+updated — `repin-vendor` lists build artifacts as POLICY (never rewritten) while `verify-vendor` enforces
+them, so this one is a captain step, as the repo's own history shows.

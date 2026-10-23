@@ -76,6 +76,7 @@ import {
 // wire shape; the graph and scope reasoning lives in its own module so `create_task`, `approve` and
 // `claim` cannot drift into three definitions of "ready" or "overlapping".
 import { boardDependencyEdges, dependencyCycle, dependencyPath, planDependencyEdges, planGraphDefect, planReferenceTarget, planTaskId, scopeClashes } from "./dependency-guard.ts"
+import { installTeamDoorGuard } from "./team-door-guard.ts"
 import { planForSession, registerTeamRoutes, TEAM_ROUTES, type TeamWebPlan } from "./team-web"
 import { GraphModels } from "./graph-model"
 import type { GraphModel } from "../../mpd-graph-core/src/index.ts"
@@ -891,6 +892,8 @@ export function apply(ctx: any): void {
   const dsh = adapterFor(ctx)
   /** Registration disposers, run together on row disposal and counted in the boot line below. */
   const disposers: Array<() => void> = []
+  /** How many TOOLS this apply() registered, counted as they happen so the boot line never guesses a number. */
+  let toolRegistrations = 0
   /** The clock seam: one place to substitute in a test, and the reason every store takes a `Date`. */
   const now = (): Date => new Date()
 
@@ -1273,6 +1276,7 @@ export function apply(ctx: any): void {
   // What is preserved: every action the old surface exposed, unchanged in meaning. What changed: how
   // many places the model must read to find it.
 
+  toolRegistrations += 1
   disposers.push(dsh.registerTool({
     name: "agent_teams_plan",
     description:
@@ -1799,6 +1803,7 @@ export function apply(ctx: any): void {
     },
   }))
 
+  toolRegistrations += 1
   disposers.push(dsh.registerTool({
     name: "agent_teams_task",
     description:
@@ -2134,6 +2139,7 @@ export function apply(ctx: any): void {
     },
   }))
 
+  toolRegistrations += 1
   disposers.push(dsh.registerTool({
     name: "agent_teams_dispatch",
     description:
@@ -2410,6 +2416,7 @@ export function apply(ctx: any): void {
   // anywhere in it, so a captain's real question ("did they SEE it?") has no answer there. This
   // sidecar owns the whole `sent → delivered → read` lifecycle; delivery still rides the official
   // transport so a member really receives the message. `mailbox-store.ts` holds the rules.
+  toolRegistrations += 1
   disposers.push(dsh.registerTool({
     name: "agent_teams_mail",
     description:
@@ -2542,6 +2549,7 @@ export function apply(ctx: any): void {
     },
   }))
 
+  toolRegistrations += 1
   disposers.push(dsh.registerTool({
     name: "agent_teams_control",
     description:
@@ -2597,6 +2605,15 @@ export function apply(ctx: any): void {
     },
   }))
 
+  // ── THE TEAM DOOR: mpd is the SINGLE team front door ─────────────────────────
+  // ONE `tools.guard` registration (process-wide and monotonic) refuses the five official AUTHORING verbs
+  // and teaches the mpd door in the refusal itself — the whole contract and the reason the delegation
+  // gate's preset bypass is NOT mirrored live in `./team-door-guard.ts`. It is installed HERE, after the
+  // tool/command surface and before the boot line, so the line below can report it without guessing.
+  /** The door's outcome: a composition without the `tools.guard` seam warns once instead of failing. */
+  const teamDoor = installTeamDoorGuard(dsh, { warn: (line: string): void => { rowLogLine("mpd-team-core", line) } })
+  if (teamDoor.dispose !== undefined) disposers.push(teamDoor.dispose)
+
   // A durable sidecar that survives a reload is the only thing this plugin keeps; report it once
   // so a boot log shows the plane is live without a tool call.
   const root = (() => { try { return dsh.workspaceRoot() } catch { return "" } })()
@@ -2629,7 +2646,7 @@ export function apply(ctx: any): void {
         const view = (() => { try { return executor() } catch (error) { return { kind: "unavailable", reason: String((error as Error)?.message ?? error) } } })()
         rowLogLine("mpd-team-core", `[mpd-team-core] team executor: ${view.kind} (${view.reason})`)
       }
-      rowLogLine("mpd-team-core", `[mpd-team-core] team workflow plane: staged=${pending} hold=${readHold(root) === undefined ? "none" : "held"} registrations=${disposers.length} (${disposers.length - 1} tools + the /agent-teams command)`)
+      rowLogLine("mpd-team-core", `[mpd-team-core] team workflow plane: staged=${pending} hold=${readHold(root) === undefined ? "none" : "held"} registrations=${disposers.length} (${toolRegistrations} tools + the /agent-teams command${teamDoor.installed ? " + the team-door guard" : ""})`)
       reportExecutor()
       // ── THE WEB ROUTE: the mpd team, served to the browser ───────────────────
       // Registered through the adapter's `webServerOf()` (never a raw ctx service read), and

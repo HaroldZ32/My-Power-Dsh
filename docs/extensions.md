@@ -369,10 +369,13 @@ row applied after the roster). It then behaves like a base specialist:
   a workmate BASE template;
 - `provider` + `model` (supplied together) become its route; both absent means the roster's default.
 
-**A role never becomes a teammate on its own.** The teammate roster is what the Lead creates by name
-with the official `spawn_teammate` tool, which is a model-facing tool call rather than a registration
-surface, so an extension cannot add a member to it from a plugin. Spawn an extension role
-one-shot or as a workmate base.
+**A role never becomes a teammate on its own.** The teammate roster is what the Lead adds to a plan by
+name with `agent_teams_plan {action:"add_member"}` and approves, which is a model-facing tool call
+rather than a registration surface, so an extension cannot add a member to it from a plugin. The five
+official AUTHORING verbs — `spawn_teammate`, `team_task_create`, `team_task_list`, `team_task_get`,
+`team_task_update` — are REFUSED at the tool boundary, and the mpd RECORD is the only board; the bound
+is that a row calling the team SERVICE directly (the official-executor fallback) is not a tool call and
+is not gated. Spawn an extension role one-shot or as a workmate base.
 
 ## 6. Failure and collision policy
 
@@ -521,7 +524,8 @@ Stated plainly, so nobody discovers them from a failure:
 - **No extension-contributed agent presets** — the preset plane is deliberately out of scope (no
   clean runtime seam).
 - **Extension roles never become teammates by themselves** — a teammate exists only when the Lead
-  spawns it by name with the official `spawn_teammate` tool.
+  adds it by name with `agent_teams_plan {action:"add_member"}` and approves the plan (the official
+  `spawn_teammate` tool is REFUSED at the tool boundary, §5).
 - **No reload** — restart dsh; a failed MCP server is retried on the next boot.
 - **`extensions.*` config is process-level, not per session** (§4.3), because `mpdConfig` is an
   apply-time process-level snapshot.

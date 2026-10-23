@@ -34,10 +34,19 @@ or a prefix at a segment boundary; `**` and `.` cover everything; an empty scope
 with no dependency path between them, quoting the pair and both remedies — add the edge, or make the
 scopes disjoint. `claim` REFUSES a task whose declared blockers are not satisfied, through the SAME
 readiness predicate `agent_teams_dispatch` uses, while `complete`/`fail`/`release` stay open; an OPT-1
-FAILED blocker still releases its dependents. **Bypass, stated rather than hidden:** `spawn_teammate` +
-the official `team_task_create` never pass through mpd's `create_task`/`approve`, so none of this gates
-them — the official plane only says write-scope overlap is "advisory, not a lock". A captain planning
-on that path declares each task's `blocked_by` itself, and an edge-less task means "runs in parallel".
+FAILED blocker still releases its dependents. **The door is closed at the tool boundary:** the team door
+guard REFUSES the five official authoring verbs by whole name — `spawn_teammate`, `team_task_create`,
+`team_task_list`, `team_task_get`, `team_task_update` — so no TOOL can author a task on the official
+board (`send_message`, `list_agents`, `wait_agent` and `interrupt_agent` stay, for agent communication).
+**The bound, declared once:** a ROW that calls the team SERVICE directly (the official-executor fallback)
+is not a tool call and is NOT gated. **The door denies for EVERY agent and has NO preset bypass —
+deliberately (R18).** The delegation gate releases a foreign-preset top-level session; this door does
+not, because its subject is a WORKSPACE-scoped board — one `.mpd/team/teams/<id>.json` RECORD per
+workspace — so releasing a foreign-preset session would let the official board and the mpd RECORD diverge
+inside the SAME workspace, and this repository's own measurement (T-92, `complexity-gate.ts`) is that the
+deployment's top-level session carries `agentPreset: "cordis"`: a preset-keyed release would release
+exactly the session the door must bind. The mpd RECORD is still the only board, so every rule above runs
+on every task a session can create through these tools.
 
 **The DAG is visible.** `agent_teams_plan {action:"status"}` keeps its one-line summary
 (`plan <id> · members N · tasks N · hold …`) and prints one line per member (`id`, `name`, `status`) and
@@ -134,9 +143,9 @@ data: {"rev":8}
 
 ## Semantics
 
-- **A plan is a review point, not a queue.** `agent_teams_create` writes a plan and returns; the only
-  thing that creates a teammate is `agent_teams_approve`. `dry_run: true` reports exactly what approval
-  would do without doing it.
+- **A plan is a review point, not a queue.** `agent_teams_plan {action:"create"}` writes a plan and
+  returns; the only thing that creates a teammate is `agent_teams_plan {action:"approve"}`.
+  `dry_run: true` reports exactly what approval would do without doing it.
 - **One staged plan per session.** Staging again replaces the unapproved plan (the previous one is
   archived); replacing an *approved* plan needs `replace: true`, because that is a deliberate act.
 - **Approval is transactional in its reporting, not in its effects.** Members spawn first, then tasks
@@ -191,6 +200,6 @@ None. The plugin declares `tools` and `commands` and resolves both through the a
   `complete`/`fail`, and at the member's own turn boundary — which is what lets the derived phase
   reach `idle` and the compaction pass see a finished team. It runs when a captain or a lane calls
   it; it is not a background timer.
-- `agent_teams_approve` cannot be rolled back.
+- `agent_teams_plan {action:"approve"}` cannot be rolled back.
 - The mailbox has no unread count: the official inbox exposes no read state, and inventing one would
   misreport it.

@@ -21,8 +21,8 @@
 
 - `mpdRoles` service（`ctx.get("mpdRoles")`）：`list()` / `get(key)` — 被 `mpd-modelchain-plugin` 消费（chain lookup）。
 - `mpd_roles_list` — roster，每个 role 一行：名称、route、做什么。
-- `mpd_role_spawn` — **一次性**单次咨询（one-shot single-call consult）：对一个 role 发起一次有界委派并返回一份报告。被生成的子智能体（roster persona + route + 对 read-only roles 的 write-deny toolFilter）**以该 role 的名称为 label**（`Architect`、`Deep Worker`），而不再是 `role-<id>-<random>`。在提供 `startActivation` 的 host 上，报告落定后 adapter 会 dispose 该 activation —— 已退役的 `start` 回退路径**没有 activation 可 dispose** —— 因此无论走哪条路径，该次咨询都**不可复用**：新问题请发起**新的** spawn。（harness 的 catalog 是只追加的，所以已结束的子会话仍可能以 `inactive` 列出；但契约始终是一次性的。）`mpd_workmate_spawn` 使用同样的**一次性** spawn 机制但作用于持久的、可演化的实例 —— 连续性由库中的 persona/memory/note **记录**承载，而不是子会话；团队工作是官方 `spawn_teammate` 路径。
-- `mpd_role_persona` — 为需要将 persona 作为文本使用的 spawn surface 获取 persona 文本（官方 Agent Teams 的 `spawn_teammate` 会把它作为 teammate 的 `prompt`）。
+- `mpd_role_spawn` — **一次性**单次咨询（one-shot single-call consult）：对一个 role 发起一次有界委派并返回一份报告。被生成的子智能体（roster persona + route + 对 read-only roles 的 write-deny toolFilter）**以该 role 的名称为 label**（`Architect`、`Deep Worker`），而不再是 `role-<id>-<random>`。在提供 `startActivation` 的 host 上，报告落定后 adapter 会 dispose 该 activation —— 已退役的 `start` 回退路径**没有 activation 可 dispose** —— 因此无论走哪条路径，该次咨询都**不可复用**：新问题请发起**新的** spawn。（harness 的 catalog 是只追加的，所以已结束的子会话仍可能以 `inactive` 列出；但契约始终是一次性的。）`mpd_workmate_spawn` 使用同样的**一次性** spawn 机制但作用于持久的、可演化的实例 —— 连续性由库中的 persona/memory/note **记录**承载，而不是子会话；团队工作走 mpd 的 plan 平面（`agent_teams_plan`），绝不走官方的 `spawn_teammate` —— 它已被团队之门守卫拒绝。
+- `mpd_role_persona` — 为需要将 persona 作为文本使用的 spawn surface 获取 persona 文本（用 `agent_teams_plan` 的 `add_member` stage 的 teammate 会把它作为成员的 `prompt`；`spawn_teammate` 本身在工具边界上被拒绝）。
 
 **两个 surface 共用同一套命名（名称统一）。** 名称就是 role 的身份：它既是 team mode 下 agent-teams 为成员取的名称，也是单次 `mpd_role_spawn` 产生的 label。称呼时任意拼写均可：`Architect`、`architect`、`Deep Worker`、`deep-worker`、`deepworker`、`Plan Reviewer`（大小写、空格、连字符、下划线均不敏感）。**任何 surface 都不再展示沿袭自上游的别称** —— role 只用它做什么来描述。
 
@@ -41,16 +41,16 @@
 
 拒绝是响亮且隔离的：名称已被基础 role 或另一个扩展占用的 role，会在 `mpd_roles_list` 的 `refused` 列表中报告并记录一次日志 —— 它绝不会拖垮名册或启动。persona 文件不可读的 role 同样被拒绝；被配置禁用的扩展则完全不贡献 role。
 
-**已明确的边界 —— roster 段落只列出 BASE 名册。** 扩展贡献的 role 是按调用（`mpdExtensions`）解析的，而不是在 agent scope 创建时解析，因此它们不会出现在下方的 `mpd:roster` 段落中。它们依然完全可用：可通过 `mpd_role_spawn` 单次咨询（single-call consult）、可作为 **workmate BASE 模板**，而且知道它的 Lead 仍可用 `spawn_teammate` 并传入 `mpd_role_persona` 的文本把它 stage 为 teammate。
+**已明确的边界 —— roster 段落只列出 BASE 名册。** 扩展贡献的 role 是按调用（`mpdExtensions`）解析的，而不是在 agent scope 创建时解析，因此它们不会出现在下方的 `mpd:roster` 段落中。它们依然完全可用：可通过 `mpd_role_spawn` 单次咨询（single-call consult）、可作为 **workmate BASE 模板**，而且知道它的 Lead 仍可用 `agent_teams_plan` 的 `add_member` 并传入 `mpd_role_persona` 的文本作为 prompt 把它 stage 为 teammate。
 
 ## Team mode
 
-多成员 team work 并非在此构建：**staging** 走 mpd 的 plan 平面（`agent_teams_plan`，由 `mpd-team-core-plugin` 拥有），而成员本身由**官方 Agent Teams 插件**承载（`@deepseek-ai/dsh-experimental-agent-team` + `-tool-agent-team` + `-client-ui-agent-team`，由本 bundle 的 `mpd-agent-team` / `mpd-tool-agent-team` / `mpd-ui-agent-team` 行挂载）；其 Lead 用 `spawn_teammate` 创建 teammate，用 `team_task_create` 为其开卡。本行贡献该路径的**名册一侧** —— 每一次调用都经由 `mpd-dsh-adapter`：
+多成员 team work 并非在此构建：**staging** 走 mpd 的 plan 平面（`agent_teams_plan`，由 `mpd-team-core-plugin` 拥有），而成员本身由**官方 Agent Teams 插件**承载（`@deepseek-ai/dsh-experimental-agent-team` + `-tool-agent-team` + `-client-ui-agent-team`，由本 bundle 的 `mpd-agent-team` / `mpd-tool-agent-team` / `mpd-ui-agent-team` 行挂载）；其 Lead 用 `agent_teams_plan`（`add_member` / `create_task`）stage teammate 并为其开卡；官方的 `spawn_teammate` 与 `team_task_create` 已被团队之门守卫**拒绝**。本行贡献该路径的**名册一侧** —— 每一次调用都经由 `mpd-dsh-adapter`：
 
 | 契约 | 本行的实现方式 |
 |---|---|
 | 名册送达到 Lead | 一个 **AGENT 作用域**的 `mpd:roster` 系统提示段落（顺序 `605`，紧跟 Harness 的 `TEAM_POLICY`（600）之后），只对顶层 `mpd` session 注册 —— 绝不在 host 平面（那会把名册注入本进程服务的每一个 session），也绝不进入 teammate 或其它 preset 的 session |
-| teammate 的 persona | 该段落点名 `spawn_teammate` 与 `mpd_role_persona`：Lead 把成员的 persona 文本作为 prompt 传入 |
+| teammate 的 persona | 该段落点名 `agent_teams_plan` 的 `add_member` 与 `mpd_role_persona`：Lead 把成员的 persona 文本作为 stage 时的 prompt 传入 |
 | 只读 teammate 的纪律 | 一道 TOOL GUARD（见下），经适配器注册 |
 | session 启动复杂度闸门 | 一个 `agent/pre-step` 监听器：当 `team.gate` 为 `mechanical` 时 **stage** 一个可批准的 plan shell —— 自 2026-10-20 起**重新成为默认**（见下） |
 

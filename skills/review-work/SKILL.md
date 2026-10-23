@@ -64,11 +64,11 @@ A lane's role is what it is called by: the roster is the single naming system (`
 
 ## Degrade matrix (declared, not implied)
 
-The official team path is the primary one. Each fallback below is a DECLARED degrade, and the lane labels itself with the path it took, so a reader can tell which guarantees were actually in force.
+The mpd team path is the primary one. Each fallback below is a DECLARED degrade, and the lane labels itself with the path it took, so a reader can tell which guarantees were actually in force.
 
 | Condition | Panel behaviour | What the lane can still reach |
 |---|---|---|
-| The official team tools are absent (no `spawn_teammate` in this session's tool list) | spawn each lane one-shot with `mpd_role_spawn`, one call per lane, same roster role; the roster's model-slot route applies on that path | PASS / FAIL / INCONCLUSIVE - the persona and the read-only guard still apply |
+| The mpd team plane is unmounted (no `agent_teams_plan` in this session's tool list) | spawn each lane one-shot with `mpd_role_spawn`, one call per lane, same roster role; the roster's model-slot route applies on that path | PASS / FAIL / INCONCLUSIVE - the persona and the read-only guard still apply |
 | A lane's model slot cannot be resolved | that lane alone is INCONCLUSIVE and NAMES the member and the slot; never substitute another model, and never clamp an effort | INCONCLUSIVE only |
 | `mpd-roles-plugin` is unmounted (`mpd_role_persona` / `mpd_role_spawn` are not offered) | spawn plain `subagent` lanes, each labelled `panel=advisory`; they carry no persona and no read-only guard | FAIL or INCONCLUSIVE only - a `panel=advisory` lane can NEVER produce a PASS |
 
@@ -175,12 +175,12 @@ Any FAIL ends the review here: report **REVIEW FAILED** with the failing rows an
 
 Launch all three lanes in ONE turn, in the background, with `context: fresh` so a lane never inherits the author's reasoning as its own starting assumption.
 
-### Per lane: the official team path (primary)
+### Per lane: the mpd team path (primary)
 
 For each of the three reviewer lanes, in this order:
 
 1. **Fetch the persona as TEXT** - `mpd_role_persona {role: "Architect"}` (then `Reviewer`, then `Explorer`). The persona is the lane's operating discipline; paste it into the member's prompt together with the brief below, so the member gets the real role instructions rather than a label.
-2. **Spawn ONE teammate per lane** with `spawn_teammate`. The member's `name` IS the roster name (`Architect`, `Reviewer`, `Explorer`), and its `description` MUST BEGIN with that same roster name: the roster provider applies a member's `teamModels.slot*` only when the description NAMES that member, so `"Architect - quality and architecture lane"` routes the Architect model slot; any other teammate runs on the route of the session that stages it (the captain's in a top-level spawn, the Lead's in a team-lead spawn), and prompt text cannot change a route. That prefix is the whole routing contract, not decoration.
+2. **Stage ONE member per lane** with `agent_teams_plan {action:"add_member"}` (then `create_task` per lane and `approve`). The official `spawn_teammate` / `team_task_create` calls are REFUSED at the tool boundary by the team-door guard. The member's `name` IS the roster name (`Architect`, `Reviewer`, `Explorer`), and its `description` MUST BEGIN with that same roster name: the roster provider applies a member's `teamModels.slot*` only when the description NAMES that member, so `"Architect - quality and architecture lane"` routes the Architect model slot; any other teammate runs on the route of the session that stages it (the captain's in a top-level spawn, the Lead's in a team-lead spawn), and prompt text cannot change a route. That prefix is the whole routing contract, not decoration.
 3. **Create one task per lane on the shared board** - the lane's deliverable, its acceptance anchor, its evidence requirement and its write scope (read-only: findings only). One task per lane keeps requirement, work and review separable, and gives the merge table one row per task rather than one row per agent.
 4. **Hand the member the brief** (below) in the spawn prompt, not in a follow-up message.
 

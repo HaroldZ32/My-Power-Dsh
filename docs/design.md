@@ -98,8 +98,9 @@ adds rows to any profile it is installed into. It contributes:
   client plugin's own panel, §7).
 
 The specialist roster's 11 specialists are **not presets**: they live as a specialist roster
-(`mpd-roles-plugin`) and as teammate instantiation templates the Lead spawns by name with the
-official `spawn_teammate` tool, taking each member's persona text from `mpd_role_persona`.
+(`mpd-roles-plugin`) and as teammate instantiation templates the Lead adds to a plan by name with
+`agent_teams_plan {action:"add_member"}` and approves, taking each member's persona text from
+`mpd_role_persona`. The official `spawn_teammate` tool is REFUSED at the tool boundary (§5).
 
 ## 2. Bundle and package structure
 
@@ -252,13 +253,13 @@ COMPOSITION ONLY — it never executes plugin code, so it is never load evidence
 | `mpd-memory` | mpd-memory-plugin | web + dsh-tui | VCS-backed memory (git/svn) + reflection state machine | `mpd_memory_write`, `mpd_memory_read`, `mpd_memory_reflect`, `mpd_memory_reflect_complete`, `mpd_memory_status` | `vcs`, `dir`, `agentSlug`, `reflectionEvery` |
 | `mpd-workmate` | mpd-workmate-plugin | web + dsh-tui | durable evolving agent library under `~/.mpd/workmate/` (mutations rename/delete, archive-first) | `mpd_workmate_list/init/spawn/reflect/match/rename/delete`; service `mpdWorkmate` (`list`/`get`/`read`/`rename`/`delete`); web routes `GET /plugins/mpd-workmate/{list,roster,get}` + `POST /plugins/mpd-workmate/{init,rename,delete}` | — |
 | `mpd-team-core` | mpd-team-core-plugin | web + dsh-tui | THE TEAM RECORD + WORKFLOW around the official runtime: the PLAN plane (`agent_teams_plan` stages a plan the user can read and approve BEFORE anybody exists, and approval EXECUTES it through the `TeamExecutor` seam), the task contract + monotonic `attempt`, the durable mailbox, the hold, and the archive; kept under `<workspace>/.mpd/team/` and served as `mpdTeams` + `/plugins/mpd-team/state` | `agent_teams_plan`, `agent_teams_task`, `agent_teams_dispatch`, `agent_teams_mail`, `agent_teams_control`; service `mpdTeams` | — |
-| `mpd-roster-provider` | mpd-roster-provider-plugin | web + dsh-tui | per-member MODEL ROUTING for official teammates: registers the `mpd-roster` subagent provider the team tool row points at, so a `spawn_teammate` teammate whose `description` NAMES a roster member is routed by that member's `teamModels` slot — any other teammate runs on the route of the session that staged it, because the official `TeamService` forwards only `{prompt, parent}`, so a provider (not a per-teammate option) is the only seam and a name in the prompt cannot change a route | no model-facing tools; registers subagent provider `mpd-roster` | `baseProvider` |
+| `mpd-roster-provider` | mpd-roster-provider-plugin | web + dsh-tui | per-member MODEL ROUTING for official teammates: registers the `mpd-roster` subagent provider the team tool row points at, so a teammate the team SERVICE raises whose `description` NAMES a roster member is routed by that member's `teamModels` slot — any other teammate runs on the route of the session that staged it, because the official `TeamService` forwards only `{prompt, parent}`, so a provider (not a per-teammate option) is the only seam and a name in the prompt cannot change a route (the official `spawn_teammate` tool that used to request such a raise is REFUSED at the tool boundary, §5) | no model-facing tools; registers subagent provider `mpd-roster` | `baseProvider` |
 | `mpd-team-compact` | mpd-team-compact-plugin | web + dsh-tui | compacts a FINISHED team's members (every task terminal AND every member idle) through each member's OWN scoped context; the captain is left to the human `/compact`; audit lands under `<workspace>/.mpd/team-compact/` and this row never writes `.mpd/team` | `mpd_team_compact_run`, `mpd_team_compact_status` | — |
 | `mpd-bootstrap` | mpd-bootstrap-plugin | web + dsh-tui | asset provisioning BY REFERENCE: registers `<bundle>/skills` as a skill provider through the adapter (rank 600 `bundled`) and removes the version-stamped home copies written by bundle <= 0.2.6 | effect only | `skillsDir`, `skipSkills`, `skipPresets`, `skipLegacyCleanup` |
 | `mpd-tui-adapter` | mpd-tui-adapter-plugin | web + dsh-tui | THE single contact surface with the DSH-TUI plane: every `ctx.tui*` seam, the harness `commands` registry and the `settings` provider reach an mpd plugin through this one package (the seam-id table is `TUI_SEAMS`: FIFTEEN `tui*` services — the fourteen 0.12.0 exposed plus the `tuiPanels` registry 0.13.0 added), binder = ONE deferred `ctx.inject([id], …)` per seam, probe = `ctx.get(id, false)`, and a seam that never binds degrades to `absent` instead of failing the boot; it also owns the R5 file log sink | service `mpdTui` | — |
 | `mpd-tui` | mpd-tui-plugin | web + dsh-tui (active in dsh-tui, degrades elsewhere) | the dsh-tui edition's native surface: binds the host's activation-gated TUI seams and probes each one with `ctx.get(id, false)` + warn-once degrade, so a web/headless composition loses the TUI surfaces and not the boot (§7b) | no model-facing tools; TUI status / settings section / board / command tree / shortcuts / dialogs / transcript renderer | — |
 | `mpd-agent-team` | @deepseek-ai/dsh-experimental-agent-team | web + dsh-tui | the OFFICIAL Agent Teams domain service (`ctx.agentTeams`): the implicit-root roster, the durable peer mailbox and the shared task board; roster, mailbox and task state are persisted in the LEAD's session log | service `agentTeams` | `maxMembers: 16`, `maxTasks: 256`, `maxPendingMessagesPerMember: 64`, `maxMessageBytes: 32768`, `disposalTimeoutMs: 5000` |
-| `mpd-tool-agent-team` | @deepseek-ai/dsh-experimental-tool-agent-team | web + dsh-tui | the nine scoped model-facing tools every member receives — `spawn_teammate`, `send_message`, `list_agents`, `wait_agent`, `interrupt_agent`, `team_task_create/list/get/update` — plus the `team:policy` prompt section | those nine tools | `freshProvider: spawn`, `forkProvider: fork` |
+| `mpd-tool-agent-team` | @deepseek-ai/dsh-experimental-tool-agent-team | web + dsh-tui | the nine scoped model-facing tools every member receives — `spawn_teammate`, `send_message`, `list_agents`, `wait_agent`, `interrupt_agent`, `team_task_create/list/get/update` — plus the `team:policy` prompt section; the five AUTHORING verbs (`spawn_teammate`, `team_task_create/list/get/update`) are REFUSED at the tool boundary (§5), so `send_message`, `list_agents`, `wait_agent` and `interrupt_agent` are the four that stay | the nine tools (five REFUSED, four stay) | `freshProvider: spawn`, `forkProvider: fork` |
 | `mpd-ui-agent-team` | @deepseek-ai/dsh-experimental-client-ui-agent-team | web (inert host export elsewhere) | the official Web roster, shared task board and teammate-navigation panel in the conversation header; read-only (no spawn/rename/delete/interrupt and no task-mutation control) | `/client` browser half | — |
 | `mpd-better-sidebar` | dsh-better-sidebar (an OPTIONAL PEER the bundle never installs; entry id is `mpd-`-prefixed on purpose, never the package's own `better-sidebar` or an aggregate's id) | web (the guard disables it when no enabled `@deepseek-ai/dsh-host-webserver` entry exists, `dsh-tui` included) | mounts the community sidebar bundle that HOSTS the Workmates tab where it is resolvable, so the tab exists without a second manual plugin install — and its ABSENCE is a normal composition, not a broken install: the same two mpd panels register into the harness's own right sidebar (§7); the guard is order-independent and disables the row where ANY composed patch layer already names the package — every declared bundle layer's `dsh.bundle.patch` (e.g. the `@linxin666/dsh-web-all` aggregate), `<profileDir>/cordis.patch.yml`, `$DSH_HOME/cordis.patch.yml`, and every `--patch` overlay path read from `process.argv` (both spellings, repeatable) — where `dsh-better-sidebar` is itself a bundle layer, where the package is unresolvable, or where no enabled `@deepseek-ai/dsh-host-webserver` ENTRY exists (a webserver row disabled by an expression does not count). A foreign layer suppresses the row only when its patch contains a ROW that mounts the package — a row naming `dsh-better-sidebar` whose `disabled` is not literally `true` (YAML comments are stripped first); a mention inside a comment, or a row that is literally `disabled: true`, mounts nothing and does not suppress our mount, and any form the row scanner cannot parse falls back to the conservative behaviour (treated as a mount), because a false disable costs the sidebar while a false enable kills the boot with `duplicate prefix route`. Every path degrades to "no sidebar" with one log line, never a dead boot | sidebar host + its tab registry (`ctx.betterSidebar`) | `disabled: !!js` mount guard |
 
@@ -327,20 +328,32 @@ mechanism — the plugin never touches API keys**.
   `await` between them, so no spawn or reflect can interleave — no lock file. Writing `.mpd/team`
   state is never done HERE (that record belongs to `mpd-team-core`, and this row only reads it), and
   a read error fails OPEN.
-- Team mode: the session agent is the Lead. It calls `spawn_teammate` once per member (name,
-  description, and a prompt built from `mpd_role_persona` text plus the task — each spawn is a
-  ONE-SHOT consult that works its lane and settles, never resumed, and a follow-up is a NEW spawn),
-  opens each lane with
-  `team_task_create`, and drives the board with `team_task_list` / `team_task_get` /
-  `team_task_update` (compare-and-set on the task `revision`) and the mailbox tools. Two measured
+- Team mode: the session agent is the Lead, and the door is a PLAN, not a spawn. It stages one member
+  per specialist with `agent_teams_plan {action:"add_member"}` (name, description, and a prompt built
+  from `mpd_role_persona` text plus the task), opens each lane with
+  `agent_teams_plan {action:"create_task"}` — every task MUST state its dependency answer,
+  `blocked_by: [...]` (possibly empty) or `independent: true`, and approval REFUSES two tasks whose
+  declared write scopes overlap with no dependency path between them — and approves the plan with
+  `agent_teams_plan {action:"approve"}`, which is what raises the members and posts the tasks. From
+  there the mpd RECORD (`.mpd/team/teams/<teamId>.json`) is the ONLY board: `agent_teams_task`
+  (`claim` / `contract` / `release` / `complete` / `fail`, compare-and-set on the task `revision`)
+  drives it, `claim` REFUSES a task whose blockers are unsatisfied, `agent_teams_dispatch` pairs each
+  ready task with an idle member, `agent_teams_plan {action:"status"}` reads it back and
+  `agent_teams_mail` is the mailbox. Because the official board carries none of those guarantees, the
+  five official AUTHORING verbs — `spawn_teammate`, `team_task_create`, `team_task_list`,
+  `team_task_get`, `team_task_update` — are REFUSED at the tool boundary for EVERY agent;
+  `send_message`, `list_agents`, `wait_agent` and `interrupt_agent` stay for agent communication.
+  Bound: the door is a `tools.guard` on TOOL CALLS, so a ROW that calls the team SERVICE
+  directly (the official-executor fallback) is not a tool call and is NOT gated. Two measured
   bounds are part of the design, not an omission: a teammate runs on the route of the session that
   staged it — the captain's in a top-level spawn, the Lead's in a team-lead spawn — because
   `TeamService` forwards only the prompt and the parent to the subagent registry, and the `teamModels`
   slots apply only when the `description` NAMES a roster member (prompt text cannot change a route);
   and a read-only roster member's write tools are denied by the `mpd-roles` guard keyed on team
   membership, because
-  `spawn_teammate` cannot take a per-teammate tool filter. Persona and workmate memory are NOT
-  injected automatically — they travel in the prompt text.
+  the official `spawn_teammate` tool (now REFUSED at the tool boundary) cannot take a per-teammate
+  tool filter. Persona and workmate memory are NOT injected automatically — they travel in the prompt
+  text.
 
 ### Extension → skills, flows, MCP tools and roles
 
@@ -371,8 +384,9 @@ so a data-plane directory and a code-plane plugin row produce identical registry
 - **Roles** are resolved per call by `mpd-roles` (a lazy merge of the base roster with
   extension-contributed roles at lookup time, never an apply-time merge), so an extension role is
   usable through `mpd_role_spawn` / `mpd_role_persona` and as a workmate base template. It never
-  becomes a teammate on its own: a teammate exists only when the Lead spawns it by name with
-  `spawn_teammate`.
+  becomes a teammate on its own: a teammate exists only when the Lead names it in a plan with
+  `agent_teams_plan {action:"add_member"}` and approves that plan; the official `spawn_teammate` tool
+  that used to be that door is REFUSED at the tool boundary (§5).
 - Four tools inspect all of it — `mpd_ext_list`, `mpd_ext_show`, `mpd_flow_list`, `mpd_flow_show` —
   and `scripts/mpd-ext.ts` (`validate` / `scaffold` / `list`) shares the same runtime validator.
 

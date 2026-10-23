@@ -54,7 +54,7 @@ export function rosterSectionText(members: readonly SectionRosterMember[]): stri
     "## MPD specialist roster",
     "The specialists this deployment stages as teammates, addressed by NAME:",
     ...lines,
-    "Create one with `spawn_teammate` (name = the member name, description = its responsibility, prompt = the persona text from `mpd_role_persona`); `team_task_create` opens its lane on the shared board. A teammate cannot take a model or tool filter: a `teamModels` slot applies when the description NAMES a roster member, and on the single-call `mpd_role_spawn`; any other teammate inherits YOUR model route (the staging session's), and prompt text cannot change a route. A read-only member's write tools are denied by the roster guard.",
+    "Create one with `agent_teams_plan` {action:\"add_member\"} (prompt = the persona text from `mpd_role_persona`) → {action:\"create_task\"} (each task carrying its dependency answer: `blocked_by` or `independent: true`) → {action:\"approve\"}; drive with `agent_teams_task`/`agent_teams_dispatch`. A teammate cannot take a model or tool filter: a `teamModels` slot applies when the description NAMES a roster member, and on the single-call `mpd_role_spawn`; any other teammate inherits YOUR model route (the staging session's), and prompt text cannot change a route. A read-only member's write tools are denied by the roster guard.",
   ].join("\n")
 }
 

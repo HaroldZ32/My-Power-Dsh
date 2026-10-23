@@ -83,6 +83,40 @@ test("persona assets exist for every role and contain real instructions", () => 
   }
 })
 
+/**
+ * The Lead persona is INJECTED into every Lead teammate and is read before any document, so it is a
+ * runtime instruction. The team-door guard REFUSES the official authoring verbs at the tool
+ * boundary, which turns an instruction to use them into a call that can only fail — so this arm
+ * pins the ONE door's vocabulary, the absence of the refused pair and of the retired "the guards
+ * never see it" claim, and the measured length (3154 chars on 2026-10-23 after the rewrite; 2938
+ * before it, so the cap is that rewrite's budget and not room to grow).
+ */
+test("the Lead persona names the ONE team door, never the refused official verbs", async () => {
+  /** A fresh apply whose persona tool returns exactly the text a staging surface receives. */
+  const { tools } = makePlugin()
+  /** The mpd_role_persona definition, addressed by the member NAME a team surface passes. */
+  const persona = tools.find((t) => t.name === "mpd_role_persona")
+  /** The Lead (atlas) persona text as the staging surface receives it. */
+  const text = (await persona.execute({ role: "Lead" }, {})).persona
+  // Every step of the surviving door, in the order the persona spells it.
+  for (const step of ['{action:"add_member"}', '{action:"create_task"}', '{action:"approve"}', '{action:"status"}']) {
+    expect(text).toContain(step)
+  }
+  expect(text).toContain("agent_teams_plan")
+  expect(text).toContain("agent_teams_task")
+  expect(text).toContain("agent_teams_dispatch")
+  expect(text).toContain("mpd_role_persona")
+  // A task's dependency answer is now REFUSED-when-omitted, so the persona must ask for it —
+  // and the retired claim that the guards never see a task must not survive anywhere in the text.
+  expect(text).toContain("blocked_by")
+  expect(text).toContain("independent: true")
+  expect(text).not.toContain("spawn_teammate")
+  expect(text).not.toContain("team_task_create")
+  expect(text).not.toContain("never see it")
+  expect(text).not.toContain("enforces nothing")
+  expect(text.length).toBeLessThanOrEqual(3200)
+})
+
 test("normalizeRoleKey: canonical, chain keys and legacy mpd- ids", () => {
   expect(normalizeRoleKey("oracle")).toBe("oracle")
   expect(normalizeRoleKey("mpd-oracle")).toBe("oracle")
@@ -185,6 +219,32 @@ test("no surface advertises an upstream alias: names plus what a role does", asy
     expect(list.output.render({}, listRes)[0].text).toContain(role.name)
   }
   expect(spawned[0].label).toBe("Plan Reviewer")
+})
+
+/**
+ * The team-door guard REFUSES the official authoring verbs at the tool boundary, so a description
+ * that advertises them is a runtime instruction to fail. These descriptions are read before any
+ * document, so they must name the ONE surviving door — and only the mpd path may be offered.
+ */
+test("the tool descriptions name the mpd team door, never the refused official pair", () => {
+  /** A fresh apply whose three roster tool definitions are the advertised surface. */
+  const { tools } = makePlugin()
+  /** The list definition, located by name rather than index. */
+  const list = tools.find((t) => t.name === "mpd_roles_list")
+  /** The spawn definition, likewise. */
+  const spawn = tools.find((t) => t.name === "mpd_role_spawn")
+  /** The persona definition, likewise. */
+  const persona = tools.find((t) => t.name === "mpd_role_persona")
+  for (const tool of [list, spawn, persona]) {
+    expect(tool.description).not.toContain("spawn_teammate")
+    expect(tool.description).not.toContain("team_task_create")
+  }
+  // Every surface that points at team work names the plan door and the board tools that drive it.
+  expect(list.description).toContain("agent_teams_plan")
+  expect(list.description).toContain("dependency answer")
+  expect(spawn.description).toContain("agent_teams_plan")
+  expect(spawn.description).toContain("`agent_teams_task`/`agent_teams_dispatch`")
+  expect(persona.description).toContain("agent_teams_plan")
 })
 
 /**

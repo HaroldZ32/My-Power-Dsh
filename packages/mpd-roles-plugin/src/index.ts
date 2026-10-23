@@ -1,13 +1,16 @@
 // mpd-roles-plugin: the specialists live as a SPECIALIST ROSTER, not as
 // presets. Each role = { stable id (chain key), normal display name, persona
 // text, DeepSeek model chain, read-only discipline }. Consumers: mpd_role_spawn
-// (single-call specialist consult from anywhere), mpd_role_persona (text for spawn surfaces —
-// the official Agent Teams `spawn_teammate` takes it as the teammate's prompt), and
-// the mpdRoles service (mpd-modelchain chain lookup). Team mode is the OFFICIAL Agent
-// Teams plugin (`spawn_teammate` + `team_task_create`), which THIS row feeds: it
-// registers the read-only tool guard, the agent-scoped roster section, the
-// `ask_user_question` boundary guard, the captain's reconnaissance ban, the delegation
-// gate and the session-start gate (MECHANICAL by default since the 2026-10-20 restore).
+// (single-call specialist consult from anywhere), mpd_role_persona (the text a team surface
+// passes as a staged member's prompt), and the mpdRoles service (mpd-modelchain chain
+// lookup). Team authoring is the mpd plan plane — `agent_teams_plan` add_member (that
+// persona text) → create_task (its dependency answer) → approve, driven by
+// `agent_teams_task` / `agent_teams_dispatch` and read by `agent_teams_plan {action:"status"}`
+// — which THIS row feeds: it registers the read-only tool guard, the agent-scoped roster
+// section, the `ask_user_question` boundary guard, the captain's reconnaissance ban, the
+// delegation gate and the session-start gate (MECHANICAL by default since the 2026-10-20
+// restore). The official authoring verbs are REFUSED at the tool boundary, so the mpd
+// RECORD is the only board.
 // ADDRESSING CONTRACT: a role is addressed by its normal display NAME — the member
 // name in team mode, the label of a single-call mpd_role_spawn, and what every
 // description/render lists. The stable `id` is an INTERNAL key (modelchain chain key,
@@ -807,7 +810,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
 
   dsh.registerTool({
     name: "mpd_roles_list",
-    description: "List the specialist roster — the SAME normal-named specialists team mode stages as teammates, each named for what it does: " + rosterFunctionList() + ". Address a role by that name (any case, space or hyphen spelling). Use this before mpd_role_spawn; for team work stage the roster with spawn_teammate + team_task_create (persona text from mpd_role_persona) instead of repeated single-call consults.",
+    description: "List the specialist roster — the SAME normal-named specialists team mode stages as teammates, each named for what it does: " + rosterFunctionList() + ". Address a role by that name (any case, space or hyphen spelling). Use this before mpd_role_spawn; for team work stage the roster with `agent_teams_plan` (add_member with the persona text from mpd_role_persona → create_task with its dependency answer → approve) instead of repeated single-call consults.",
     parameters: { type: "object", properties: {} },
     output: { schema: { type: "object", properties: { roles: { type: "array", items: { type: "object" } }, count: { type: "integer" }, refused: { type: "array", items: { type: "object", properties: { extension: { type: "string" }, name: { type: "string" }, reason: { type: "string" } }, required: ["extension", "name", "reason"] } } }, required: ["roles", "count"] }, render: (_a: unknown, v: any) => textBlock("roster (" + v.count + "):\n" + v.roles.map((r: any) => "- " + r.name + " [" + r.model + (r.readonly ? " readonly" : "") + (r.extension ? " extension:" + r.extension : "") + "] — " + r.description).join("\n") + (Array.isArray(v.refused) && v.refused.length > 0 ? "\nrefused (" + v.refused.length + "):\n" + v.refused.map((r: any) => "- " + r.name + " (" + r.extension + ") — " + r.reason).join("\n") : "")) },
     execute: async (_args: any, exec: any) => {
@@ -821,7 +824,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
 
   dsh.registerTool({
     name: "mpd_role_spawn",
-    description: "Run ONE bounded delegation with a specialist and return one report — a ONE-SHOT single-call consult: the adapter disposes the activation once the report settles, so the consult is NOT reused — ask a new question with a NEW spawn (the harness catalog is append-only, so a settled child may still list as `inactive`, but the contract is one-shot). It carries the role's persona, model route and read-only discipline (read-only roles get a write-tool deny filter). Roles, each named for what it does: " + rosterFunctionList() + ". The child is labelled with that name. `mpd_workmate_spawn` is the same spawn mechanics for a durable, evolving instance (its persona/memory/note — not the child session — carry continuity). For multi-member team work prefer the official Agent Teams tools (spawn_teammate + team_task_create) instead of repeated single-call consults: a teammate inherits the caller's model route, while THIS path applies the role's teamModels slot route.",
+    description: "Run ONE bounded delegation with a specialist and return one report — a ONE-SHOT single-call consult: the adapter disposes the activation once the report settles, so the consult is NOT reused — ask a new question with a NEW spawn (the harness catalog is append-only, so a settled child may still list as `inactive`, but the contract is one-shot). It carries the role's persona, model route and read-only discipline (read-only roles get a write-tool deny filter). Roles, each named for what it does: " + rosterFunctionList() + ". The child is labelled with that name. `mpd_workmate_spawn` is the same spawn mechanics for a durable, evolving instance (its persona/memory/note — not the child session — carry continuity). For multi-member team work prefer the mpd team path (`agent_teams_plan`: add_member → create_task with its dependency answer → approve; drive with `agent_teams_task`/`agent_teams_dispatch`) instead of repeated single-call consults: a teammate inherits the caller's model route, while THIS path applies the role's teamModels slot route.",
     parameters: { type: "object", properties: { role: { type: "string", description: "role name (see mpd_roles_list), e.g. \"Architect\" or \"Deep Worker\"" }, task: { type: "string" }, context: { type: "string", description: "optional context block to include" } }, required: ["role", "task"], additionalProperties: false },
     output: { schema: { type: "object", properties: { role: { type: "string" }, status: { type: "string", enum: ["complete"] }, summary: { type: "string" }, recommendation: { type: "string" }, details: { type: "string" }, evidence: { type: "array", items: { type: "string" } }, stopReason: { type: "string" } }, required: ["role", "status", "summary"] }, render: (_a: unknown, v: any) => textBlock("role " + v.role + " (" + v.status + ")\nsummary: " + v.summary + (v.recommendation ? "\nrecommendation: " + v.recommendation : "") + (v.details ? "\ndetails: " + v.details : "") + (v.evidence?.length ? "\nevidence:\n- " + v.evidence.join("\n- ") : "")) },
     execute: async (args: any, exec: any) => {
@@ -887,7 +890,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
 
   dsh.registerTool({
     name: "mpd_role_persona",
-    description: "Return the full persona text of one roster role, addressed by its name (\"Architect\", \"Deep Worker\", \"Plan Reviewer\"). Use it when a spawn surface takes the persona as TEXT — e.g. the prompt of a spawn_teammate teammate whose name is that same name — so the member gets the real role instructions instead of a bare label.",
+    description: "Return the full persona text of one roster role, addressed by its name (\"Architect\", \"Deep Worker\", \"Plan Reviewer\"). Use it when a spawn surface takes the persona as TEXT — e.g. the prompt of a teammate staged with `agent_teams_plan` add_member whose name is that same name — so the member gets the real role instructions instead of a bare label.",
     parameters: { type: "object", properties: { role: { type: "string", description: "role name (see mpd_roles_list)" } }, required: ["role"] },
     output: { schema: { type: "object", properties: { role: { type: "string" }, persona: { type: "string" }, chars: { type: "integer" } }, required: ["role", "persona", "chars"] }, render: (_a: unknown, v: any) => textBlock("persona " + v.role + " (" + v.chars + " chars):\n" + v.persona) },
     execute: async (args: any, exec: any) => {

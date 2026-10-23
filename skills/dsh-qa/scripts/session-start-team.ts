@@ -47,10 +47,13 @@
 //     MECHANICAL notice naming the id the call RETURNED, stating `a team PLAN was STAGED` and that the
 //     plan is INERT until approved. STAGING IS NOT SPAWNING, and the notice must never claim a team;
 //   * the ADVISORY notice (mode `advisory`, or EVERY degradation of the mechanical route) is the ONLY
-//     text that says `NO team was staged`, and the only one that must name the OFFICIAL staging tools
-//     (`spawn_teammate`, `team_task_create`). The retired `agent_teams_*` vocabulary is scoped PER
-//     TEXT: the advisory text may name NONE of it, while the mechanical text may name exactly ONE
-//     member of the family — `agent_teams_plan`, our own staging tool;
+//     text that says `NO team was staged`, and it must carry the SURVIVING-DOOR instruction:
+//     `agent_teams_plan` with `{action:"add_member"}` / `{action:"create_task"}` (each task declaring its
+//     dependency answer — `blocked_by` or `independent: true`) / `{action:"approve"}`, driven with
+//     `agent_teams_task` and `agent_teams_dispatch`. The retired `agent_teams_*` vocabulary is scoped PER
+//     TEXT — the advisory text may name NONE of it, while the mechanical text names exactly
+//     `agent_teams_plan` — and the OFFICIAL pair (`spawn_teammate`, `team_task_create`) is asserted
+//     ABSENT from EVERY notice, because the team-door guard REFUSES those calls at the tool boundary;
 //   * an untriggered (simple) session gets NO notice at all — the falsifiability arm;
 //   * the explicit marker is CONSUMED from the goal text and counts as signal A;
 //   * scope: a TOP-LEVEL session (a seeded fork — parent link, `isSeeded`, depth 0 — included) whose
@@ -130,10 +133,24 @@ const RETIRED_PROVISIONED_PHRASE: string = "is staged in this workspace"
 const PLAN_NAME_FALLBACK: string = "session-start complexity gate team"
 /** The plan-name cap: a long goal first line must be CLIPPED to this many characters. */
 const PLAN_NAME_MAX: number = 60
-/** The OFFICIAL staging tools the ADVISORY notice must name (the mechanical one names our tool). */
-const OFFICIAL_TOOLS: readonly string[] = ["spawn_teammate", "team_task_create"]
-/** Our OWN staging tool — the ONE `agent_teams_*` token any notice of this gate may name. */
+/**
+ * The OFFICIAL authoring tools the team-door guard REFUSES, so no notice of this gate may offer them:
+ * naming one sends the captain into a refusal at the tool boundary.
+ */
+const REFUSED_OFFICIAL_TOOLS: readonly string[] = ["spawn_teammate", "team_task_create"]
+/** Our OWN staging tool — the surviving door every notice of this gate must name. */
 const STAGING_TOOL: string = "agent_teams_plan"
+/** The mpd record plane's BOARD tool, which the surviving-door instruction must name. */
+const BOARD_TOOL: string = "agent_teams_task"
+/** The dispatch tool that pairs a ready task with its declared owner. */
+const DISPATCH_TOOL: string = "agent_teams_dispatch"
+/**
+ * The clauses the surviving-door instruction carries: the plan tool, its three actions in call order,
+ * the dependency answer every `create_task` declares, and the two board tools that drive the team.
+ */
+const DOOR_CLAUSE_TOKENS: readonly string[] = [STAGING_TOOL, "add_member", "create_task", "approve", "blocked_by", "independent: true", BOARD_TOOL, DISPATCH_TOOL]
+/** The `agent_teams_*` tokens that SURVIVE — the plan door plus the two board tools. */
+const SURVIVING_AGENT_TEAMS_TOOLS: readonly string[] = [STAGING_TOOL, BOARD_TOOL, DISPATCH_TOOL]
 /** Every `agent_teams_*` token in a text, matched as whole tokens (never `/g` + `.test`, stateful). */
 const AGENT_TEAMS_TOKEN_PATTERN: RegExp = /agent_teams_[a-z_]*/gu
 /**
@@ -401,12 +418,35 @@ function workspaceIsTiny(ws: string): boolean {
 }
 
 /**
- * Every `agent_teams_*` token in one text that is NOT our own staging tool.
+ * Every `agent_teams_*` token in one text that is NOT one of the THREE that survive.
+ *
+ * The survivors are `agent_teams_plan` (the door) and `agent_teams_task` / `agent_teams_dispatch`
+ * (the board). Everything else in the family belongs to the deleted vendored body — `agent_teams_create`,
+ * `agent_teams_add_member`, `agent_teams_create_task`, … — so an allowlist keeps the genuinely retired
+ * names retired without mistaking the board tools for them.
  * @param text The notice (or any text) whose retired vocabulary is judged.
- * @returns The offending tokens; empty means only `agent_teams_plan` (or nothing) was named.
+ * @returns The offending tokens; empty means only the surviving door and board tools (or nothing) were named.
  */
 function retiredToolTokens(text: string): string[] {
-  return (text.match(AGENT_TEAMS_TOKEN_PATTERN) ?? []).filter((token) => token !== STAGING_TOOL)
+  return (text.match(AGENT_TEAMS_TOKEN_PATTERN) ?? []).filter((token) => !SURVIVING_AGENT_TEAMS_TOOLS.includes(token))
+}
+
+/**
+ * The surviving-door clauses one text does NOT carry.
+ * @param text The advisory notice (or any text) judged against the door's full instruction.
+ * @returns The missing clauses; empty means the plan tool, its three actions, the dependency answer and both board tools are all stated.
+ */
+function missingDoorClauses(text: string): string[] {
+  return DOOR_CLAUSE_TOKENS.filter((token) => !text.includes(token))
+}
+
+/**
+ * The REFUSED official authoring tools one text offers.
+ * @param text The notice (or any text) judged for the refused pair.
+ * @returns The refused names the text mentions; empty means neither is offered.
+ */
+function refusedOfficialTools(text: string): string[] {
+  return REFUSED_OFFICIAL_TOOLS.filter((tool) => text.includes(tool))
 }
 
 /**
@@ -425,7 +465,7 @@ function planIdsIn(text: string): string[] {
 function mechanicalNoticeFixture(): NoticeClassification {
   return {
     any: 1, advisory: 0, mechanical: 1, signalsNamed: 1, shellShaped: 1, inert: 1,
-    retiredProvisioned: 0, officialTools: 0, mechanicalTool: 1, retiredVocabulary: 0,
+    retiredProvisioned: 0, survivingDoor: 0, refusedOfficial: 0, mechanicalTool: 1, retiredVocabulary: 0,
     signals: ["D"], planIds: [PROBE_PLAN_ID],
   }
 }
@@ -641,11 +681,13 @@ interface NoticeClassification {
   readonly inert: number
   /** How many marked texts still carry the retired PROVISIONING sentence. */
   readonly retiredProvisioned: number
-  /** How many marked ADVISORY texts name every official staging tool. */
-  readonly officialTools: number
+  /** How many marked ADVISORY texts carry the WHOLE surviving-door instruction (plan tool, three actions, dependency answer, board tools). */
+  readonly survivingDoor: number
+  /** How many marked texts still name a REFUSED official tool (`spawn_teammate`, `team_task_create`) — must be ZERO. */
+  readonly refusedOfficial: number
   /** How many marked MECHANICAL texts name our staging tool `agent_teams_plan`. */
   readonly mechanicalTool: number
-  /** How many marked texts name any `agent_teams_*` token OTHER than the staging tool. */
+  /** How many marked texts name any `agent_teams_*` token outside the surviving door and board tools. */
   readonly retiredVocabulary: number
   /** The fired-signal runs the notices named, in record order (e.g. `["D"]`). */
   readonly signals: string[]
@@ -1131,12 +1173,23 @@ export async function contractProblems(gate: GateModule): Promise<string[]> {
     if (body.includes(STAGED_PLAN_PHRASE) || body.includes(ALREADY_STAGED_PLAN_PHRASE)) {
       problems.push(at("notice/" + label) + "the ADVISORY notice must NEVER claim a staged plan (the two-taxonomy rule)")
     }
-    for (const tool of OFFICIAL_TOOLS) if (!body.includes(tool)) problems.push(at("notice/" + label) + "the notice must name the official tool `" + tool + "`")
+    // The SURVIVING DOOR: the plan tool, its three actions, the dependency answer and the board tools.
+    const doorMissing = missingDoorClauses(body)
+    if (doorMissing.length > 0) problems.push(at("notice/" + label) + "the notice must carry the surviving-door instruction (`" + STAGING_TOOL + "` add_member/create_task/approve, the dependency answer `blocked_by`/`independent: true`, and `" + BOARD_TOOL + "`/" + DISPATCH_TOOL + "`), missing " + JSON.stringify(doorMissing))
+    // The REFUSED pair is ABSENT: offering either sends the captain into a tool-boundary refusal.
+    const refused = refusedOfficialTools(body)
+    if (refused.length > 0) problems.push(at("notice/" + label) + "the ADVISORY notice must NOT name a REFUSED official tool, got " + JSON.stringify(refused))
     // The retired family is judged PER TEXT: on the advisory text NONE of it may appear.
     const retired = retiredToolTokens(body)
     if (retired.length > 0) problems.push(at("notice/" + label) + "the ADVISORY notice must not name the RETIRED agent_teams_* vocabulary, got " + JSON.stringify(retired))
     if (body.includes(RETIRED_PROVISIONED_PHRASE)) problems.push(at("notice/" + label) + "the retired PROVISIONING sentence must be gone (the gate stages no team)")
   }
+  // FALSIFIABILITY: the door and absence checks must REDDEN on a text that omits a clause or offers the
+  // refused pair, and the retired list must still catch the deleted body's names while sparing the board.
+  if (missingDoorClauses("`" + STAGING_TOOL + "` {action:\"approve\"}").length === 0) problems.push(at("notice/door") + "a text carrying only the plan tool must report the missing door clauses")
+  if (refusedOfficialTools("use `spawn_teammate`").length !== 1) problems.push(at("notice/door") + "a text offering a REFUSED official tool must be caught")
+  if (retiredToolTokens("`" + BOARD_TOOL + "` and `" + DISPATCH_TOOL + "`").length !== 0) problems.push(at("notice/door") + "the board and dispatch tools must NOT read as retired vocabulary")
+  if (retiredToolTokens("`agent_teams_create`").join(",") !== "agent_teams_create") problems.push(at("notice/door") + "the genuinely retired `agent_teams_create` must still read as retired vocabulary")
 
   // ── the MECHANICAL notice: the marker, the STAGED sentence, the RETURNED id, the inert bound ──
   // The shipped builder, driven with an id this case chose — so the notice cannot pass by echoing a
@@ -1149,11 +1202,14 @@ export async function contractProblems(gate: GateModule): Promise<string[]> {
   if (!mechanical.includes(NOTICE_SHELL_PHRASE)) problems.push(at("notice/mechanical") + "the notice must state the SHELL shape " + JSON.stringify(NOTICE_SHELL_PHRASE))
   if (!mechanical.includes(STAGING_TOOL)) problems.push(at("notice/mechanical") + "the notice must name the tool it calls (`" + STAGING_TOOL + "`)")
   if (mechanical.includes(ADVISORY_PHRASE)) problems.push(at("notice/mechanical") + "the MECHANICAL notice must not ALSO state " + JSON.stringify(ADVISORY_PHRASE) + " — the two-taxonomy rule")
-  // The mechanical text names our OWN plane, so the retired family is scoped to every token EXCEPT
-  // `agent_teams_plan`: the assertion stays alive (a retired `agent_teams_spawn` still reddens) instead
-  // of being weakened into nothing by the one legitimate token.
+  // The mechanical text names our OWN plane, so the retired family is scoped to every token EXCEPT the
+  // survivors (`agent_teams_plan` plus the two board tools): the assertion stays alive (a retired
+  // `agent_teams_spawn` still reddens) instead of being weakened into nothing by the legitimate tokens.
   const mechanicalRetired = retiredToolTokens(mechanical)
-  if (mechanicalRetired.length > 0) problems.push(at("notice/mechanical") + "the MECHANICAL notice may name ONLY `" + STAGING_TOOL + "`, got " + JSON.stringify(mechanicalRetired))
+  if (mechanicalRetired.length > 0) problems.push(at("notice/mechanical") + "the MECHANICAL notice may name ONLY the surviving tools (" + SURVIVING_AGENT_TEAMS_TOOLS.join(", ") + "), got " + JSON.stringify(mechanicalRetired))
+  // The REFUSED pair is absent on this route too: the mechanical notice never offers it either.
+  const mechanicalRefused = refusedOfficialTools(mechanical)
+  if (mechanicalRefused.length > 0) problems.push(at("notice/mechanical") + "the MECHANICAL notice must NOT name a REFUSED official tool, got " + JSON.stringify(mechanicalRefused))
   if (mechanical.includes(RETIRED_PROVISIONED_PHRASE)) problems.push(at("notice/mechanical") + "the retired PROVISIONING sentence must be gone on the mechanical route too")
   // The skipped-staging twin: an already-staged plan is NAMED, and the notice says no second stage ran.
   const already = String(gate.mechanicalNoticeText({ planId: PROBE_PLAN_ID, signals: ["C"], explicit: false, alreadyStaged: true }) ?? "")
@@ -1377,9 +1433,11 @@ async function selfTest(): Promise<void> {
   // The preset's session-start prose was rewritten by the parallel preset lane, so the literal heading
   // "SESSION STARTUP RULE" no longer exists. What this arm must protect is the CONVENTION, not one
   // wording — and the convention's vocabulary-stable tokens are the FROZEN notice marker (frozen in
-  // `complexity-gate.ts`), the knob `team.gate`, its MECHANICAL default, and the OFFICIAL staging tool.
+  // `complexity-gate.ts`), the knob `team.gate`, its MECHANICAL default, and the SURVIVING staging tool
+  // (`agent_teams_plan`) — the official pair is REFUSED at the tool boundary, so pinning it here would
+  // pin a door the guard has closed.
   // Old assertion, kept here as the recorded reason: `preset.includes("SESSION STARTUP RULE")`.
-  for (const token of ["[AgentTeams] Session-start team rule", "team.gate", "spawn_teammate"]) {
+  for (const token of ["[AgentTeams] Session-start team rule", "team.gate", STAGING_TOOL]) {
     if (!preset.includes(token)) fail("the mpd preset no longer states the session-start convention: missing " + JSON.stringify(token))
   }
   if (!/default[^\n]{0,60}mechanical|mechanical[^\n]{0,60}default/i.test(preset)) fail("the mpd preset must state that `team.gate` defaults to `mechanical` — the session-start rule is ON by default since the 2026-10-20 restore")
@@ -1423,7 +1481,7 @@ async function selfTest(): Promise<void> {
     + SIMPLE_PROMPTS.length + " simple / " + SOFT_COMPLEX_PROMPTS.length + " soft-complex / " + EXPLICIT_PROMPTS.length + " explicit / "
     + CJK_COMPLEX_PROMPTS.length + " cjk-positive / " + CJK_SIMPLE_PROMPTS.length + " cjk-negative / 1 boulder-probe prompt, both ways; "
     + "signal D through the INJECTED reader AND the real filesystem, the mode's MECHANICAL fail-safe default (undefined/bogus/0 -> mechanical; advisory/off/false explicit opt-outs), the shell builder's honest bounds, "
-    + "both notices with the retired vocabulary scoped per text, and the session scope)"
+    + "both notices with the surviving door named, the refused official pair absent and the retired vocabulary scoped per text, and the session scope)"
     + "; FOUR negative controls reddened (always-trigger " + triggerProblems.length + ", always-silent " + silentProblems.length
     + ", advisory-only-mechanical " + confusedProblems.length + ", CJK-blind " + blindProblems.length + " problem(s))"
     + "; C7 (a session already leading a team) and C8 (an inbound `team-message`/`agent-message` is never the human turn) each driven BOTH ways"
@@ -1474,11 +1532,13 @@ function classifyNotices(texts: readonly string[]): NoticeClassification {
   const mechanical = marked.filter((text) => text.includes(STAGED_PLAN_PHRASE) || text.includes(ALREADY_STAGED_PLAN_PHRASE))
   // The marked texts that still carry the retired PROVISIONING sentence.
   const retiredProvisioned = marked.filter((text) => text.includes(RETIRED_PROVISIONED_PHRASE))
-  // The marked ADVISORY texts that name every official staging tool.
-  const officialTools = advisory.filter((text) => OFFICIAL_TOOLS.every((tool) => text.includes(tool)))
+  // The marked ADVISORY texts that carry the whole surviving-door instruction.
+  const survivingDoor = advisory.filter((text) => missingDoorClauses(text).length === 0)
+  // The marked texts that still name a REFUSED official authoring tool.
+  const refusedOfficial = marked.filter((text) => refusedOfficialTools(text).length > 0)
   // The marked MECHANICAL texts that name OUR staging tool.
   const mechanicalTool = mechanical.filter((text) => text.includes(STAGING_TOOL))
-  // The marked texts that name any `agent_teams_*` token but the staging tool.
+  // The marked texts that name any `agent_teams_*` token outside the surviving door and board tools.
   const retiredVocabulary = marked.filter((text) => retiredToolTokens(text).length > 0)
   // The fired-signal runs every marked notice named, in record order (both taxonomies share the prefix).
   const signals = marked.map((text) => /complexity signals ([A-F](?:\/[A-F])*)/.exec(text)?.[1]).filter((value): value is string => value !== undefined)
@@ -1492,7 +1552,8 @@ function classifyNotices(texts: readonly string[]): NoticeClassification {
     shellShaped: marked.filter((text) => text.includes(NOTICE_SHELL_PHRASE)).length,
     inert: marked.filter((text) => text.includes(INERT_PLAN_PHRASE)).length,
     retiredProvisioned: retiredProvisioned.length,
-    officialTools: officialTools.length,
+    survivingDoor: survivingDoor.length,
+    refusedOfficial: refusedOfficial.length,
     mechanicalTool: mechanicalTool.length,
     retiredVocabulary: retiredVocabulary.length,
     signals,
@@ -1631,7 +1692,8 @@ export function evaluateSide({ expect, notice, teams, markerConsumed, expectedSi
   }
   // Both triggered routes record EXACTLY ONE notice; the retired family is judged on EVERY side.
   if (notice.any !== 1) problems.push("a triggered prompt must record EXACTLY ONE notice, got " + notice.any)
-  if (notice.retiredVocabulary !== 0) problems.push("the notice must not name the RETIRED agent_teams_* vocabulary (only `" + STAGING_TOOL + "` is ours)")
+  if (notice.retiredVocabulary !== 0) problems.push("the notice must not name the RETIRED agent_teams_* vocabulary (the survivors are " + SURVIVING_AGENT_TEAMS_TOOLS.join(", ") + ")")
+  if (notice.refusedOfficial !== 0) problems.push("the notice must not name a REFUSED official tool (" + REFUSED_OFFICIAL_TOOLS.join(", ") + ") — the team-door guard rejects those calls")
   if (notice.retiredProvisioned !== 0) problems.push("the retired PROVISIONING notice must not come back")
   if (notice.signalsNamed !== 1) problems.push("the notice must name the fired complexity signals, got " + notice.signalsNamed)
   if (expectedSignal !== undefined && !notice.signals.some((run) => run.split("/").includes(expectedSignal))) {
@@ -1640,7 +1702,7 @@ export function evaluateSide({ expect, notice, teams, markerConsumed, expectedSi
   if (expect === "advisory") {
     if (notice.advisory !== 1) problems.push("the ADVISORY notice must state " + JSON.stringify(ADVISORY_PHRASE) + ", got " + notice.advisory)
     if (notice.mechanical !== 0) problems.push("the ADVISORY route must never claim a staged plan, got " + notice.mechanical)
-    if (notice.officialTools !== 1) problems.push("the ADVISORY notice must name BOTH official tools (" + OFFICIAL_TOOLS.join(", ") + "), got " + notice.officialTools)
+    if (notice.survivingDoor !== 1) problems.push("the ADVISORY notice must carry the surviving-door instruction (`" + STAGING_TOOL + "` add_member/create_task/approve, the dependency answer, `" + BOARD_TOOL + "`/" + DISPATCH_TOOL + "`), got " + notice.survivingDoor)
     if (teams.staged !== 0) problems.push("the gate is ADVISORY: it must stage NO plan, got " + teams.staged)
     if (teams.records !== 0) problems.push("the gate stages nothing, so it spawns no team record, got " + teams.records)
     return { ok: problems.length === 0, problems }
@@ -1918,7 +1980,7 @@ async function runReal(): Promise<void> {
       results.push({
         prompt: prompts[index], expect: side.expect, expectedMode: side.expectedMode, exited: live.status, branch: verdict.branch,
         notices: notice.any, advisory: notice.advisory, mechanical: notice.mechanical,
-        officialTools: notice.officialTools, mechanicalTool: notice.mechanicalTool,
+        survivingDoor: notice.survivingDoor, refusedOfficial: notice.refusedOfficial, mechanicalTool: notice.mechanicalTool,
         retiredVocabulary: notice.retiredVocabulary, retiredProvisioned: notice.retiredProvisioned,
         signals: notice.signals, planIds: notice.planIds, markerConsumed,
         stagedPlans: teams.staged, stagedPlanIds: teams.planIds, stagedMembers: teams.stagedMembers, stagedTasks: teams.stagedTasks,

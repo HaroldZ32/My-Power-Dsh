@@ -64,48 +64,34 @@ Branch depending on what's available.
 
 ### Path A: Team mode ENABLED
 
-When the `team_*` tools are present, create a **debug-squad** team and split investigation across members working on different evidence sources. This is the right default whenever you have ≥3 hypotheses and any of them would take >10 minutes to investigate single-threaded.
+When `agent_teams_plan` is present, stage a **debug-squad** team and split investigation across members working on different evidence sources. This is the right default whenever you have ≥3 hypotheses and any of them would take >10 minutes to investigate single-threaded.
 
-**Team spec** — write to `.mpd/teams/debug-squad/config.json`:
+**Team spec** — staged through `agent_teams_plan`, never written to a file: the plan writes the team RECORD (`.mpd/team/teams/<id>.json`), and that record is the only board.
 
-```json
-{
-  "name": "debug-squad",
-  "lead": { "kind": "subagent_type", "subagent_type": "Deep Worker" },
-  "members": [
-    {
-      "kind": "category",
-      "category": "deep-low",
-      "prompt": "You are the Runtime State Inspector. Your job: attach to the live process, hit breakpoints, read program state (variables, heap, goroutines, stack, registers depending on runtime), and report observed values verbatim. Never guess — if you don't see the value, say so. Report back via team_send_message with file:line / address references and captured values. Never edit source code. Never run git commands. If you need an instrumentation statement added (breakpoint(), debugger;, dbg!, etc.), ask the Lead first."
-    },
-    {
-      "kind": "category",
-      "category": "deep-low",
-      "prompt": "You are the Log Archaeologist. Your job: grep server logs, stderr streams, SDK-internal debug output (DEBUG env, RUST_LOG, GODEBUG, PYTHONASYNCIODEBUG), and correlate timestamps. Produce a timeline of events with latencies. Flag anything that looks like a silent catch, a swallowed rejection, a panic recovered-and-ignored, a success response that contains failure signals (HTTP 200 with empty body, stopReason=error, exit 0 with error-in-stdout). Never edit source code."
-    },
-    {
-      "kind": "category",
-      "category": "deep-low",
-      "prompt": "You are the Reproduction Engineer. Your job: build the smallest reliable repro — a curl command, a vitest/pytest/go test, a tmux script, a Playwright script for browser bugs, a pwntools script for binary targets. It must reproduce on first try and be copy-pasteable by the Lead. Document exact input, expected output, observed output. Save repro artifacts under /tmp/ and tell the Lead to journal them. If the bug is browser-based you MUST use Playwright CLI — do not simulate with curl."
-    },
-    {
-      "kind": "category",
-      "category": "deep-low",
-      "prompt": "You are the Trace Correlator. Your job: take findings from the other members and cross-link them. Build a causal chain from symptom to suspected cause. Identify missing evidence. Propose the next single most-decisive runtime query. Never edit source code; only reason across already-captured evidence. If hypotheses diverge sharply after correlation, tell the Lead immediately — that is the signal for the Oracle Triple."
-    }
-  ]
-}
+```text
+agent_teams_plan { action: "create", name: "debug-squad", description: "<the bug, one line>" }
+agent_teams_plan { action: "add_member", member: { name, prompt } }                    # once per role below
+agent_teams_plan { action: "create_task", task: { subject, description, blocked_by } } # once per hypothesis / experiment
+agent_teams_plan { action: "approve" }                                                 # spawns the members, posts the tasks
 ```
 
-**Assignment rule**: one hypothesis → one `team_task_create`. Give each hypothesis to the member whose evidence source is most likely to confirm or refute it. Broadcast the full hypothesis list once via `team_send_message(to="*")` so members know what the others are testing.
+The four members — a roster NAME in the prompt routes that member:
+
+- **Runtime State Inspector** — attach to the live process, hit breakpoints, read program state (variables, heap, goroutines, stack, registers depending on runtime), and report observed values verbatim. Never guess: if you don't see the value, say so. Report with `send_message(agent_id=<lead>)` plus file:line / address references and captured values — there is no broadcast recipient. Never edit source code. Never run git commands. If you need an instrumentation statement added (`breakpoint()`, `debugger;`, `dbg!`, etc.), ask the Lead first.
+- **Log Archaeologist** — grep server logs, stderr streams, SDK-internal debug output (`DEBUG`, `RUST_LOG`, `GODEBUG`, `PYTHONASYNCIODEBUG`), and correlate timestamps. Produce a timeline of events with latencies. Flag anything that looks like a silent catch, a swallowed rejection, a panic recovered-and-ignored, a success response that contains failure signals (HTTP 200 with empty body, `stopReason=error`, exit 0 with error-in-stdout). Never edit source code.
+- **Reproduction Engineer** — build the smallest reliable repro: a curl command, a vitest/pytest/go test, a tmux script, a Playwright script for browser bugs, a pwntools script for binary targets. It must reproduce on first try and be copy-pasteable by the Lead. Document exact input, expected output, observed output. Save repro artifacts under `/tmp/` and tell the Lead to journal them. If the bug is browser-based you MUST use Playwright CLI — do not simulate with curl.
+- **Trace Correlator** — take findings from the other members and cross-link them. Build a causal chain from symptom to suspected cause. Identify missing evidence. Propose the next single most-decisive runtime query. Never edit source code; only reason across already-captured evidence. If hypotheses diverge sharply after correlation, tell the Lead immediately — that is the signal for the Oracle Triple.
+
+**Assignment rule**: one hypothesis → one `agent_teams_plan {action:"create_task"}`. Answer the dependency question on every task: `blocked_by: [...]` (an empty list is a genuine root), or `independent: true` when the hypotheses are independent. Give each hypothesis to the member whose evidence source is most likely to confirm or refute it, then pair work with `agent_teams_dispatch {action:"run"}` or an explicit `agent_teams_task {task_id, action:"claim"}`. Put the full hypothesis list in each task description instead of broadcasting it: `send_message` takes ONE named recipient (`agent_id=…`), and there is no `*` recipient.
 
 **Lead responsibilities**:
 - Maintain the journal (members do not write to it).
 - Approve any source-code edits (including `debugger;` / `breakpoint()` / `dbg!` statements).
 - Synthesize member reports into updated hypothesis statuses.
-- Decide when to disband: `team_shutdown_request` → `team_approve_shutdown` → `team_delete`.
+- Drive the board: `agent_teams_task {task_id, action:"claim" | "complete" | "fail"}` — `complete`/`fail` are owner-only, and a `fail` releases its dependents.
+- Decide when to close: `agent_teams_task {task_id, action:"complete" | "fail"}` on every task, then `mpd_team_compact_run`. Every task then holds a terminal status, the team is finished and its members are compacted together. There is no end-team verb — the retired `team_*` family (`team_send_message`, `team_shutdown_request`, `team_approve_shutdown`, `team_delete`) spells nothing on this plane.
 
-**Team does NOT include Oracle** — Oracle is a hard-reject team member type. Oracle is used separately in Phase 4 (see `04-oracle-triple.md`).
+**Team does NOT include Oracle** — the squad has no Oracle member; Oracle is used separately in Phase 4 (see `04-oracle-triple.md`).
 
 ### Path B: Team mode DISABLED
 

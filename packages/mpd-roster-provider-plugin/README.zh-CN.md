@@ -2,10 +2,15 @@
 
 [English](./README.md) | **简体中文**
 
-为**官方 Agent Teams 队友**提供逐成员模型路由。用 `spawn_teammate` 起的队友跑在**暂存它的那个会话**的
-路由上，而官方 `TeamService` 只转发 `{ prompt, parent }`——于是能路由一次性咨询路径的 mpd `teamModels`
+为**官方 Agent Teams 队友**提供逐成员模型路由。队友跑在**暂存它的那个会话**的路由上，而官方
+`TeamService` 只转发 `{ prompt, parent }`——于是能路由一次性咨询路径的 mpd `teamModels`
 槽位，没有通道能作用到队友身上。本包在不 fork 官方插件的前提下补上这一点：当队友的 `description`
 **点名**某位成员时，就施加该成员的槽位路由。
+
+**边界。** 五个官方**创作类**动词 —— `spawn_teammate`、`team_task_create`、`team_task_list`、
+`team_task_get`、`team_task_update` —— 在工具边界被**拒绝**，且 mpd **记录**是唯一的任务板（入口是
+`agent_teams_plan`，由 `agent_teams_task` / `agent_teams_dispatch` 驱动）。因此这里的路由服务于
+**行**直接调用团队**服务**所升起的队友（官方执行器回退路径）：那不是工具调用，**不受**这道门约束。
 
 槽位是**唯一**的路由来源（契约 `.mpd/plans/slot-single-source.md` §6）：`agentRoutes` 已删除；槽位未配置
 或格式错误时，会用结构化的 `SLOT_UNCONFIGURED` 失败**拒绝** spawn —— 在 `base.start` 之前抛出，因此本
@@ -19,8 +24,9 @@ harness 本身（不同于它的 team service）并不是限制所在：
 - `SubagentContinuationManager.startContinuable` 会把 `request.agentOptions` 解析成
   provider/model/reasoningEffort 并交给 **provider**，而构造这次 run 的正是 provider；
 - provider 是一个插件自己能注册的小类（`ctx.subagents.registerProvider`）；
-- provider 的**名字来自行配置**，不是工具参数：官方 `spawn_teammate` 永远发送
-  `provider: context === "fork" ? config.forkProvider : config.freshProvider`。
+- provider 的**名字来自行配置**，不是工具参数：官方 `spawn_teammate`（现已在工具边界被**拒绝**）
+  永远发送 `provider: context === "fork" ? config.forkProvider : config.freshProvider`，而直接经团队
+  服务升起队友的行解析同一份行配置。
 
 因此本包注册一个名为 `mpd-roster` 的 provider，它**委托给组合里原有的 provider**，并在途中施加该成员的槽位路由；
 bundle 把自己那条 `mpd-tool-agent-team` 行的 `freshProvider` 指向它。

@@ -239,7 +239,11 @@ artifact until the next `npm run pack` — re-pack before judging a packed CLI.
 What does **not** exist in v1, so that you do not plan around it: `mpd_ext_reload`, YAML flows, MCP
 resources or prompts, a GUI panel, a marketplace or remote download, extension-contributed agent
 presets, and extension roles becoming teammates on their own (a teammate exists only when the Lead
-spawns it by name with the official `spawn_teammate` tool).
+adds it by name with `agent_teams_plan {action:"add_member"}` and approves the plan). The five
+official AUTHORING verbs — `spawn_teammate`, `team_task_create`, `team_task_list`, `team_task_get`,
+`team_task_update` — are REFUSED at the tool boundary, and the mpd RECORD is the only board; the bound
+is that a row calling the team SERVICE directly (the official-executor fallback) is not a tool call and
+is not gated.
 
 ## 8. Troubleshooting
 

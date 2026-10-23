@@ -2,11 +2,17 @@
 
 **English** | [中文](./README.zh-CN.md)
 
-Per-member model routing for **official Agent Teams teammates**. A teammate created by
-`spawn_teammate` runs on the route of the session that staged it, and the official `TeamService`
-forwards only `{ prompt, parent }` — so the mpd `teamModels` slots, which do route the one-shot
-consult paths, had no way to reach a teammate. This package closes that gap **without forking the
-official plugin**: it applies a member's slot when the teammate `description` NAMES that member.
+Per-member model routing for **official Agent Teams teammates**. A teammate runs on the route of the
+session that staged it, and the official `TeamService` forwards only `{ prompt, parent }` — so the mpd
+`teamModels` slots, which do route the one-shot consult paths, had no way to reach a teammate. This
+package closes that gap **without forking the official plugin**: it applies a member's slot when the
+teammate `description` NAMES that member.
+
+**Bound.** The five official AUTHORING verbs — `spawn_teammate`, `team_task_create`,
+`team_task_list`, `team_task_get`, `team_task_update` — are REFUSED at the tool boundary, and the mpd
+RECORD is the only board (the door is `agent_teams_plan`, driven by `agent_teams_task` /
+`agent_teams_dispatch`). This routing therefore serves a teammate a ROW raises by calling the team
+SERVICE directly (the official-executor fallback): that is not a tool call and is NOT gated.
 
 The slot is the ONLY route source (`contract .mpd/plans/slot-single-source.md` §6): `agentRoutes` is
 deleted, a slot-routed member whose slot is unconfigured or malformed REFUSES the spawn with the
@@ -22,8 +28,10 @@ The harness, unlike its team service, is not the limitation:
 - `SubagentContinuationManager.startContinuable` resolves `request.agentOptions` into
   provider/model/reasoningEffort and passes them to the **provider**, which is what constructs the run.
 - a provider is a small class a plugin registers itself (`ctx.subagents.registerProvider`).
-- the provider NAME is **row config**, not a tool argument: the official `spawn_teammate` tool always
-  sends `provider: context === "fork" ? config.forkProvider : config.freshProvider`.
+- the provider NAME is **row config**, not a tool argument: the official `spawn_teammate` tool (now
+  REFUSED at the tool boundary) always sent
+  `provider: context === "fork" ? config.forkProvider : config.freshProvider`, and a row that raises a
+  teammate through the team service resolves the same row config.
 
 So this package registers a provider named `mpd-roster` that **delegates to the composition's own
 provider** and applies the member's slot route on the way through, and the bundle points its

@@ -23,11 +23,12 @@ An activated ULW run asks the user nothing:
 3. **A team when warranted** — a fired gate (or genuinely complex work) means the run stages the
    team ITSELF, and the DEFAULT is the staged-plan path: `agent_teams_plan` with `add_member` per
    roster member, then `create_task` for each DAG node (carrying its dependency answer), then
-   `approve` — a captain-designed roster/DAG, run without user confirmation. A captain may instead
-   choose the OFFICIAL tools: `spawn_teammate({name, description, prompt})` per roster member, then
-   the official `team_task_create({subject, description, blocked_by?, write_scopes?})` for the DAG —
-   on that alternative the dependency declaration is manual. The retired `agent_teams_create` /
-   `agent_teams_*` tools do not exist on harness 0.1.7; team state is the Lead session's own.
+   `approve` — a captain-designed roster/DAG, run without user confirmation. That is the ONLY way in:
+   this bundle's team plane is the mpd RECORD, the official Agent Teams tools are REFUSED at the tool
+   boundary (`spawn_teammate`, `team_task_create`, `team_task_list`, `team_task_get`,
+   `team_task_update`), and `send_message` / `list_agents` / `wait_agent` / `interrupt_agent` remain
+   for agent communication. The retired `agent_teams_create` / `agent_teams_*` tools do not exist on
+   harness 0.1.7 either; team state is the mpd RECORD.
 4. **Loop to completion** — never stop early to ask; rounds continue until every success
    criterion is clean.
 5. **Fix on sight** — a defect the run finds is fixed in the same turn; never
@@ -42,11 +43,14 @@ node, then `approve`. The guard is the TOOL's, not advice: `create_task` REQUIRE
 whose declared write scopes overlap with no dependency path between them (naming the pair and the two
 remedies).
 
-**The bypass, scoped explicitly: a captain who instead calls `spawn_teammate` + the official
-`team_task_create` directly.** Those calls never pass through mpd's `create_task`/`approve`, so none of
-the rules above gate them; the official plane only says write-scope overlap is "advisory, not a lock".
-On that path an edge-less task means "runs in parallel", and declaring each task's `blocked_by` is
-manual — give every ordered lane its edge before dispatching.
+**There is no bypass at the TOOL boundary: the team door closes it there.** The mpd RECORD
+(`<workspace>/.mpd/team/teams/<teamId>.json`, served as `mpdTeams`) is this bundle's team plane and
+`agent_teams_plan` is the way in; the team-door guard REFUSES `spawn_teammate`, `team_task_create`,
+`team_task_list`, `team_task_get` and `team_task_update` on every session, while `send_message` /
+`list_agents` / `wait_agent` / `interrupt_agent` stay for agent communication. **The bound, stated once:**
+a ROW that calls the team SERVICE directly (the official-executor fallback) is not a tool call and is NOT
+gated. So no task a TOOL authors can reach a board without its dependency answer: `create_task` requires
+it, and `approve` refuses an overlapping write scope with no dependency path.
 
 ## Policy — upstream shape, our wording
 

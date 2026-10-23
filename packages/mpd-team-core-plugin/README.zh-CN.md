@@ -23,7 +23,7 @@
 
 `/agent-teams <这支团队是干什么的>` 按当前目标暂存计划。
 
-**依赖守卫（mpd 记录面）。** 每次 `create_task` **必须**声明它的依赖答案——`blocked_by: [...]`（数组，可为空：显式声明为根）或 `independent: true`；两者都不给、给非数组、两个别名互相矛盾、自环或有环，一律**拒绝**并点名该任务。`approve` 会**拒绝**两个写作用域重叠（去掉尾部 `/**` 后相等，或在**段边界**上互为前缀；`**` 与 `.` 覆盖全部；空作用域列表永不重叠）、且彼此之间**没有**依赖路径的任务，并引用这一对任务与两种补救：补一条边，或让作用域互不相交。`claim` 会**拒绝**声明阻塞尚未满足的任务，用的是 `agent_teams_dispatch` **同一套**就绪判定；`complete`/`fail`/`release` 仍保持可用；按 OPT-1，**失败**的阻塞仍然释放其依赖方。**旁路如实说明，不予隐瞒：** `spawn_teammate` + 官方 `team_task_create` 从不经过 mpd 的 `create_task`/`approve`，所以以上规则**管不到**它们——官方一侧只说写作用域重叠是「advisory, not a lock」。走那条路的 captain 须自己为每个任务声明 `blocked_by`；没有边的任务就是「并行执行」。
+**依赖守卫（mpd 记录面）。** 每次 `create_task` **必须**声明它的依赖答案——`blocked_by: [...]`（数组，可为空：显式声明为根）或 `independent: true`；两者都不给、给非数组、两个别名互相矛盾、自环或有环，一律**拒绝**并点名该任务。`approve` 会**拒绝**两个写作用域重叠（去掉尾部 `/**` 后相等，或在**段边界**上互为前缀；`**` 与 `.` 覆盖全部；空作用域列表永不重叠）、且彼此之间**没有**依赖路径的任务，并引用这一对任务与两种补救：补一条边，或让作用域互不相交。`claim` 会**拒绝**声明阻塞尚未满足的任务，用的是 `agent_teams_dispatch` **同一套**就绪判定；`complete`/`fail`/`release` 仍保持可用；按 OPT-1，**失败**的阻塞仍然释放其依赖方。**这道门在工具边界上已经关上：** 团队之门守卫按完整名称**拒绝**官方五个创作动词——`spawn_teammate`、`team_task_create`、`team_task_list`、`team_task_get`、`team_task_update`——因此没有任何**工具**能在官方看板上创作任务（`send_message`、`list_agents`、`wait_agent`、`interrupt_agent` 保留，用于 agent 之间的通信）。**这条边界只说一次：**直接调用团队**服务**的插件行（官方执行器回退路径）不是工具调用，**不**受这道门约束。**这道门对每一个 agent 都拒绝，且没有任何 preset 豁免——这是刻意的（R18）。** 委派门会放行一个外 preset 的顶层会话；这道门不放行，因为它的对象是**工作区作用域**的看板——每个工作区一份 `.mpd/team/teams/<id>.json` 记录——放行外 preset 会话会让官方看板与 mpd RECORD 在**同一个**工作区里分叉；而且本仓库自己的测量（T-92，`complexity-gate.ts`）表明：部署的顶层会话带有 `agentPreset: "cordis"`，按 preset 放行恰好会放行这道门必须约束的那个会话。mpd RECORD 仍然是唯一的看板，所以以上每条规则都作用于会话通过这些工具能创建的每一个任务。
 
 **依赖图是可见的。** `agent_teams_plan {action:"status"}` 保留原来的一行摘要
 （`plan <id> · members N · tasks N · hold …`），并**每个成员一行**（`id`、`name`、`status`）、
@@ -106,7 +106,7 @@ data: {"rev":8}
 
 ## 语义
 
-- **计划是评审点，不是队列。** `agent_teams_create` 只写计划就返回；唯一能造出队友的动作是 `agent_teams_approve`。
+- **计划是评审点，不是队列。** `agent_teams_plan {action:"create"}` 只写计划就返回；唯一能造出队友的动作是 `agent_teams_plan {action:"approve"}`。
   `dry_run: true` 会如实报告批准将要做什么，但什么都不做。
 - **每个会话只有一份暂存计划。** 再次暂存会替换未批准的那份（旧的进归档）；替换**已批准**的计划需要
   `replace: true`，因为那是一个刻意的动作。
@@ -146,5 +146,5 @@ data: {"rev":8}
   被删除或已在外部完成的任务，其台账条目会先被清理，成员因此永远不会被"永久占用"。**成员结算**会在成员不再持有任何未关任务时
   把它写成 `inactive`——`complete`/`fail` 之后确定性地做一次，以及在该成员自己的回合边界上做一次——这正是推导出的阶段能到达
   `idle`、压缩流程能看见"已完成的团队"的前提。它由队长或调度 lane 调用时运行，**不是一个后台定时器**。
-- `agent_teams_approve` 无法回滚。
+- `agent_teams_plan {action:"approve"}` 无法回滚。
 - 信箱没有未读数：官方收件箱不暴露已读状态，硬造一个只会报错数。

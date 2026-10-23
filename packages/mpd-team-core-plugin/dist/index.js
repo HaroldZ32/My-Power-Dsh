@@ -2879,6 +2879,35 @@ function scopeClashes(plan) {
   return clashes;
 }
 
+// packages/mpd-team-core-plugin/src/team-door-guard.ts
+var TEAM_DOOR_TOOLS = ["spawn_teammate", "team_task_create", "team_task_list", "team_task_get", "team_task_update"];
+function teamDoorRefusal(toolName) {
+  return "team door: `" + toolName + "` is refused — this workspace's team plane is the mpd RECORD " + "(`<workspace>/.mpd/team/teams/<teamId>.json`, served as `mpdTeams`), so the official board is NOT " + "guarded here: it asks no required dependency answer for a task, refuses no write-scope overlap at " + "approve, and gates no claim readiness. Author on the RECORD with `agent_teams_plan " + '{action:"add_member"|"create_task"|"approve"}`, drive it with `agent_teams_task ' + '{action:"claim"|"complete"|"fail"}`, and read it with `agent_teams_plan {action:"status"}` — ' + "every session in this composition carries those tools, so no lane is left without a door.";
+}
+function installTeamDoorGuard(dsh, options) {
+  try {
+    if (dsh.capabilities().toolsGuard !== true) {
+      options.warn("the harness exposes no tools.guard seam — the team door is NOT installed " + "(the official team authoring tools stay available beside the mpd RECORD, so an authoring call " + "is advice-only; mounting a harness with `tools.guard` installs it with no config change)");
+      return { installed: false, reason: "no-guard-seam" };
+    }
+    const door = new Set(TEAM_DOOR_TOOLS);
+    const dispose = dsh.guardTool((exec) => {
+      try {
+        const name = String(exec?.name ?? "");
+        if (!door.has(name))
+          return;
+        return teamDoorRefusal(name);
+      } catch {
+        return;
+      }
+    });
+    return { installed: true, ...typeof dispose === "function" ? { dispose } : {} };
+  } catch (error) {
+    options.warn("installing the team door failed (" + (error instanceof Error ? error.message : String(error)) + ")");
+    return { installed: false, reason: "install-failed" };
+  }
+}
+
 // packages/mpd-team-core-plugin/src/team-web.ts
 var TEAM_STATE_PATH = "/plugins/mpd-team/state";
 var TEAM_PLAN_PATH = "/plugins/mpd-team/plan";
@@ -4633,6 +4662,7 @@ async function bundleApprovalEffects(ctx, dsh, exec, plan) {
 function apply(ctx) {
   const dsh = adapterFor(ctx);
   const disposers = [];
+  let toolRegistrations = 0;
   const now = () => new Date;
   const feed = new ChangeFeed({ warn: (line) => {
     rowLogLine("mpd-team-core", line);
@@ -4818,6 +4848,7 @@ function apply(ctx) {
       rowLogLine("mpd-team-core", `[mpd-team-core] publishing the ${TEAMS_SERVICE} service failed: ${String(error?.message ?? error)}`);
     }
   }
+  toolRegistrations += 1;
   disposers.push(dsh.registerTool({
     name: "agent_teams_plan",
     description: "The team PLAN. `create` stages (spawns nothing); `add_member`/`create_task` append to it or the live team; `edit` reads or replaces it; `approve` EXECUTES through the TEAM EXECUTOR (native default, official fallback), REFUSING an EMPTY plan; `delete` archives; `status` shows plan, hold, roster and board.",
@@ -5128,6 +5159,7 @@ function apply(ctx) {
       throw new Error(`agent_teams_plan: unknown action "${action}" (create | add_member | create_task | edit | approve | delete | status)`);
     }
   }));
+  toolRegistrations += 1;
   disposers.push(dsh.registerTool({
     name: "agent_teams_task",
     description: "Shared board tasks: `claim` (freezes the contract), `contract`, `release`, terminal `complete`/`fail` (owner-only; optional `note`/`expected_revision`; a FAIL unblocks dependents), `depend` (append `blocked_by`; owner or lead).",
@@ -5335,6 +5367,7 @@ function apply(ctx) {
       throw new Error(`agent_teams_task: unknown action "${action}" (claim | contract | release | complete | fail | depend)`);
     }
   }));
+  toolRegistrations += 1;
   disposers.push(dsh.registerTool({
     name: "agent_teams_dispatch",
     description: "Pair READY shared tasks with IDLE members. `run` pairs each ready task with one idle member and RECORDS the pairing (no second pass can hand it to another member; the ledger is TEAM-SCOPED, so two teams in one workspace never shadow each other). Unpaired tasks are reported with their reason. `release` frees a pairing and reopens the task row to `pending`.",
@@ -5480,6 +5513,7 @@ function apply(ctx) {
       return { pairs: sent, skipped, forgotten, ...holdNote === undefined ? {} : { holdRead: holdNote }, ...reaped.length === 0 ? {} : { reaped } };
     }
   }));
+  toolRegistrations += 1;
   disposers.push(dsh.registerTool({
     name: "agent_teams_mail",
     description: "The team mailbox. `send` messages one member (through the official transport) and records it; `unread` lists what a member has NOT acknowledged; `read` acknowledges ids; `summary` counts total/unread/undelivered per member. Delivery and reading are separate facts: a message the transport accepted is still unread until the recipient acknowledges it.",
@@ -5568,6 +5602,7 @@ ${result.message.body}`, exec.signal);
       };
     }
   }));
+  toolRegistrations += 1;
   disposers.push(dsh.registerTool({
     name: "agent_teams_control",
     description: 'Halt or resume the team. `halt` stops NEW DISPATCH and leaves the team and every teammate alive (use agent_teams_plan action:"delete" to end a team). `resume` clears the hold.',
@@ -5612,6 +5647,11 @@ Add members and tasks with agent_teams_plan {action: "add_member" | "create_task
       };
     }
   }));
+  const teamDoor = installTeamDoorGuard(dsh, { warn: (line) => {
+    rowLogLine("mpd-team-core", line);
+  } });
+  if (teamDoor.dispose !== undefined)
+    disposers.push(teamDoor.dispose);
   const root = (() => {
     try {
       return dsh.workspaceRoot();
@@ -5633,7 +5673,7 @@ Add members and tasks with agent_teams_plan {action: "add_member" | "create_task
         })();
         rowLogLine("mpd-team-core", `[mpd-team-core] team executor: ${view.kind} (${view.reason})`);
       };
-      rowLogLine("mpd-team-core", `[mpd-team-core] team workflow plane: staged=${pending} hold=${readHold(root) === undefined ? "none" : "held"} registrations=${disposers.length} (${disposers.length - 1} tools + the /agent-teams command)`);
+      rowLogLine("mpd-team-core", `[mpd-team-core] team workflow plane: staged=${pending} hold=${readHold(root) === undefined ? "none" : "held"} registrations=${disposers.length} (${toolRegistrations} tools + the /agent-teams command${teamDoor.installed ? " + the team-door guard" : ""})`);
       reportExecutor();
       const workspaceForRequest = (sessionId) => {
         if (sessionId === "")

@@ -23,6 +23,19 @@ teammate lived in the vendored `dsh-agent-teams` body, which no loader row has m
 Re-establishing it belongs to the OFFICIAL team path, `mpd-roster-provider-plugin`, which already routes
 a teammate whose description names a roster member. The block below predates this note and is history.
 
+**LIVE AMENDMENT (2026-10-23, team door):** the official `spawn_teammate` TOOL is now REFUSED at the
+tool boundary — together with `team_task_create`, `team_task_list`, `team_task_get` and
+`team_task_update`; `send_message` / `list_agents` / `wait_agent` / `interrupt_agent` stay for agent
+communication, and `AGENTS.md` §5 rule 5 / §13 carry the binding wording. The roster and slot bullets
+below still name `spawn_teammate` as the teammate surface, and their slot claim ("an official
+`spawn_teammate` teammate") survives only for the SERVICE-level path — a row that raises a teammate
+through the team service — because the TOOL that used to reach it is refused. What is live and unchanged:
+the slot applies to the single-call consult paths (`mpd_role_spawn`, `mpd_workmate_spawn`, which pass an
+explicit `agentOptions`), the roster is addressed by NAME only, and the eight-name read-only deny list is
+unchanged on both enforcement surfaces. The bound, stated once: the refusal is a TOOL-boundary
+rule, so a ROW that calls the team SERVICE directly (the official-executor fallback) is not a tool call
+and is not gated.
+
 ## The former §13 body (verbatim)
 
 ## 13. Glossary

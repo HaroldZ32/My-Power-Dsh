@@ -5,10 +5,11 @@
 // were renamed to plain functional names. Hand-maintained since the one-time
 // migration generator (scripts/gen-roles.mjs) lost its input preset tree.
 // Consumer surfaces: mpd_roles_list / mpd_role_spawn (roster lookup),
-// mpd_role_persona (text for spawn surfaces — the official Agent Teams
-// `spawn_teammate` takes it as the teammate's prompt), and mpd_modelchain_resolve
-// (chain lookup). Team mode is the OFFICIAL Agent Teams plugin, whose Lead stages
-// these members BY NAME (`spawn_teammate` + `team_task_create`).
+// mpd_role_persona (the text a team surface passes as a staged member's prompt), and
+// mpd_modelchain_resolve (chain lookup). Team authoring is the mpd plan plane, whose Lead
+// stages these members BY NAME with `agent_teams_plan` add_member (that persona text) →
+// create_task (its dependency answer) → approve, and drives them with `agent_teams_task` /
+// `agent_teams_dispatch`. The official authoring verbs are REFUSED at the tool boundary.
 export interface MpdRoleSpec {
   /** The STABLE chain key — also the `personas/<id>.md` file name and the workmate `meta.baseId`. INTERNAL: no tool output, description, render, web route or GUI ever exposes it. */
   id: string

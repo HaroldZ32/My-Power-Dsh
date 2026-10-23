@@ -24,8 +24,10 @@ import {
 import {
   advisoryNoticeText,
   ALREADY_STAGED_PLAN_PHRASE,
+  BOARD_TOOL_NAME,
   consumeExplicitFlag,
   consumeFlagFromMessage,
+  DISPATCH_TOOL_NAME,
   DRIFTED_ADVISORY_SENTENCE,
   evaluateComplexityGate,
   GATE_CONFIG_KEY,
@@ -37,6 +39,7 @@ import {
   latestUserMessage,
   mechanicalNoticeText,
   MISSING_PLAN_ID_PHRASE,
+  PLAN_EXTEND_ACTIONS,
   readBoulderGate,
   readLeadingTeam,
   readWorkspaceScale,
@@ -367,11 +370,24 @@ describe("the frozen complexity predicate (Option A: explicit flag OR >= 1 match
     expect(text.startsWith(STARTUP_NOTICE_MARKER)).toBe(true)
     expect(text).toContain("complexity signals B/C")
     expect(text).toContain("NO team was staged")
-    expect(text).toContain("spawn_teammate")
-    expect(text).toContain("team_task_create")
-    expect(text).toContain("`mpd_role_persona`")
+    // The ONE surviving door: stage through `agent_teams_plan` (add_member -> create_task carrying
+    // its dependency answer -> approve), then drive through the board tools.
+    expect(text).toContain(STAGING_TOOL_NAME)
+    expect(text).toContain('{action:"' + PLAN_EXTEND_ACTIONS[0] + '"}')
+    expect(text).toContain('{action:"' + PLAN_EXTEND_ACTIONS[1] + '"}')
+    expect(text).toContain('{action:"approve"}')
+    expect(text).toContain("`blocked_by` or `independent: true`")
+    expect(text).toContain(BOARD_TOOL_NAME)
+    expect(text).toContain(DISPATCH_TOOL_NAME)
+    // The REFUSED door is named nowhere: the team-door guard rejects both calls at the tool
+    // boundary and the mpd record is the board, so offering them would be a false instruction.
+    expect(text).not.toContain("spawn_teammate")
+    expect(text).not.toContain("team_task_create")
     // The retired vocabulary must not come back.
     expect(text).not.toContain("agent_teams_create")
+    // Length discipline: this text is INJECTED at session start, so it stays one sentence per
+    // bullet and may not grow into a paragraph (measured 690 chars on 2026-10-23).
+    expect(text.length).toBeLessThanOrEqual(700)
     expect(advisoryNoticeText(["A"], true)).toContain("CONSUMED")
   })
 
@@ -388,6 +404,9 @@ describe("the frozen complexity predicate (Option A: explicit flag OR >= 1 match
     // A shell WITH an id IS extendable and approvable: the instruction must be present.
     expect(text).toContain("Extend it with")
     expect(text).toContain('{action:"approve"}')
+    // The create_task step states the dependency answer the advisory text also carries and
+    // `approve` refuses to infer (`blocked_by` or `independent: true`).
+    expect(text).toContain("`blocked_by` or `independent: true`")
     // An id the call did NOT report is never invented: the notice states the LOUD failure and that the
     // staged shell cannot be approved — never the advisory "nothing was staged" taxonomy.
     const missingId = mechanicalNoticeText({ planId: "", signals: ["C"], explicit: false, alreadyStaged: false })
@@ -398,6 +417,8 @@ describe("the frozen complexity predicate (Option A: explicit flag OR >= 1 match
     // approve it; the only instruction is to report the failure.
     expect(missingId).not.toContain("Extend it with")
     expect(missingId).not.toContain('{action:"approve"}')
+    // …and it must not state a create_task requirement it forbids acting on.
+    expect(missingId).not.toContain("blocked_by")
     expect(missingId).toContain("report this failure")
     // The idempotence branch says the gate did NOT stage again.
     const skipped = mechanicalNoticeText({ planId: "plan-xyz", signals: ["B"], explicit: false, alreadyStaged: true })
@@ -997,20 +1018,32 @@ describe("session-start gate: scope, one-shot settlement and the advisory inject
 })
 
 describe("roster section: agent-scoped teammate templates for the mpd Lead", () => {
-  test("the text names every member, its read-only flag, and how to instantiate one", () => {
+  test("the text names every member, its read-only flag, and how to instantiate one through the ONE door", () => {
     /** The rendered roster section, scanned for every member and the instantiation line. */
     const text = rosterSectionText(memberFixtures)
     for (const role of ROLES) expect(text).toContain(role.name)
     expect(text).toContain("[read-only]")
     expect(text).toContain("[writes]")
-    expect(text).toContain("spawn_teammate")
+    // The ONE surviving door: `agent_teams_plan` add_member -> create_task carrying its dependency
+    // answer -> approve, then the mpd board tool and dispatch drive the team.
+    expect(text).toContain("agent_teams_plan")
+    expect(text).toContain('{action:"add_member"}')
+    expect(text).toContain('{action:"create_task"}')
+    expect(text).toContain('{action:"approve"}')
+    expect(text).toContain("`blocked_by` or `independent: true`")
+    expect(text).toContain("`agent_teams_task`/`agent_teams_dispatch`")
     expect(text).toContain("mpd_role_persona")
-    expect(text).toContain("team_task_create")
+    // The REFUSED pair is named nowhere: the team-door guard rejects both calls at the tool
+    // boundary, so offering them in an injected section is a runtime instruction to fail.
+    expect(text).not.toContain("spawn_teammate")
+    expect(text).not.toContain("team_task_create")
     // The measured routing bound is stated, never promised away.
     expect(text).toContain("inherits YOUR model route")
     expect(text).toContain("mpd_role_spawn")
-    // Compact: one line per member plus a header and the instantiation line.
+    // Compact: one line per member plus a header and the instantiation line, and the whole
+    // injected block stays inside its measured budget (1644 chars on 2026-10-23).
     expect(text.split("\n").length).toBeLessThanOrEqual(ROLES.length + 3)
+    expect(text.length).toBeLessThanOrEqual(1700)
   })
 
   test("registered ONCE per qualifying live agent, and only for mpd top-level sessions", () => {

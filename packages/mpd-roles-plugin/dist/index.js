@@ -279,6 +279,8 @@ function resolveBoulderDir(value) {
 }
 var STAGING_TOOL_NAME = "agent_teams_plan";
 var PLAN_EXTEND_ACTIONS = ["add_member", "create_task"];
+var BOARD_TOOL_NAME = "agent_teams_task";
+var DISPATCH_TOOL_NAME = "agent_teams_dispatch";
 var STAGED_PLAN_PHRASE = "a team PLAN was STAGED";
 var ALREADY_STAGED_PLAN_PHRASE = "a team PLAN is ALREADY STAGED";
 var INERT_PLAN_PHRASE = "NOTHING has been spawned; the plan is INERT until approved";
@@ -499,7 +501,7 @@ Active plan artifact (signal D): ` + input.planPath),
 }
 function advisoryNoticeText(signals, explicit) {
   const matched = signals.length === 0 ? "complexity signals" : "complexity signals " + signals.join("/");
-  return STARTUP_NOTICE_MARKER + ": this session shows " + matched + ", and " + NO_TEAM_STAGED_PHRASE + " — the gate is ADVISORY " + "and stages nothing while complexity is merely being judged." + (explicit ? "\n- The explicit `team:` / `!team` marker was CONSUMED from the goal text: the request is a reason to stage, not a staged team." : "") + "\n- Stage a team yourself at the moment the work actually warrants one: `spawn_teammate` creates each roster teammate" + " (its prompt text comes from `mpd_role_persona`) and `team_task_create` opens its lane on the shared board; then tell" + " the user the Web plan is ready for review." + `
+  return STARTUP_NOTICE_MARKER + ": this session shows " + matched + ", and " + NO_TEAM_STAGED_PHRASE + " — the gate is ADVISORY " + "and stages nothing while complexity is merely being judged." + (explicit ? "\n- The explicit `team:` / `!team` marker was CONSUMED from the goal text: the request is a reason to stage, not a staged team." : "") + "\n- Stage a team yourself when the work warrants one: `" + STAGING_TOOL_NAME + '` {action:"' + PLAN_EXTEND_ACTIONS[0] + '"} → {action:"' + PLAN_EXTEND_ACTIONS[1] + '"} (each task carrying its dependency answer: `blocked_by` or `independent: true`)' + ' → {action:"approve"}; drive the team with `' + BOARD_TOOL_NAME + "` and `" + DISPATCH_TOOL_NAME + "`." + `
 ` + SOLO_PERMISSION_SENTENCE + " — and say so in one line." + `
 - A team is NOT a precondition of this session, and you may not create a second team while leading one.`;
 }
@@ -507,7 +509,7 @@ function mechanicalNoticeText(input) {
   const matched = input.signals.length === 0 ? "complexity signals" : "complexity signals " + input.signals.join("/");
   const missingId = input.planId === "";
   const id = !missingId ? input.planId : MISSING_PLAN_ID_PHRASE + (input.alreadyStaged ? " — the returned shell's id could not be read, so it CANNOT be approved; report this failure" : " — the shell was staged but CANNOT be approved, so report this failure");
-  const nextStep = !missingId ? "\n- Extend it with `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[0] + "\"}` (each member's prompt comes from `mpd_role_persona`)" + " and `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[1] + '"}`, then approve it with `' + STAGING_TOOL_NAME + ' {action:"approve"}` — approval is what spawns the members and posts the tasks.' : input.alreadyStaged ? `
+  const nextStep = !missingId ? "\n- Extend it with `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[0] + "\"}` (each member's prompt comes from `mpd_role_persona`)" + " and `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[1] + '"} (each task carrying its dependency answer: `blocked_by` or `independent: true`), then approve it with `' + STAGING_TOOL_NAME + ' {action:"approve"}` — approval is what spawns the members and posts the tasks.' : input.alreadyStaged ? `
 - Do NOT attempt to extend or approve it, and do NOT stage again: the returned shell's id could not be read, so report this failure instead.` : `
 - Do NOT attempt to extend or approve it: the staging call returned no id, so report this failure and re-stage before continuing.`;
   return STARTUP_NOTICE_MARKER + ": this session shows " + matched + ", and " + (input.alreadyStaged ? ALREADY_STAGED_PLAN_PHRASE : STAGED_PLAN_PHRASE) + " — " + id + " (0 members, 0 tasks: a SHELL, not a team)." + (input.alreadyStaged ? `
@@ -834,7 +836,7 @@ function rosterSectionText(members) {
     "## MPD specialist roster",
     "The specialists this deployment stages as teammates, addressed by NAME:",
     ...lines,
-    "Create one with `spawn_teammate` (name = the member name, description = its responsibility, prompt = the persona text from `mpd_role_persona`); `team_task_create` opens its lane on the shared board. A teammate cannot take a model or tool filter: a `teamModels` slot applies when the description NAMES a roster member, and on the single-call `mpd_role_spawn`; any other teammate inherits YOUR model route (the staging session's), and prompt text cannot change a route. A read-only member's write tools are denied by the roster guard."
+    'Create one with `agent_teams_plan` {action:"add_member"} (prompt = the persona text from `mpd_role_persona`) → {action:"create_task"} (each task carrying its dependency answer: `blocked_by` or `independent: true`) → {action:"approve"}; drive with `agent_teams_task`/`agent_teams_dispatch`. A teammate cannot take a model or tool filter: a `teamModels` slot applies when the description NAMES a roster member, and on the single-call `mpd_role_spawn`; any other teammate inherits YOUR model route (the staging session\'s), and prompt text cannot change a route. A read-only member\'s write tools are denied by the roster guard.'
   ].join(`
 `);
 }
@@ -3396,7 +3398,7 @@ function apply(ctx, config = {}) {
   });
   dsh.registerTool({
     name: "mpd_roles_list",
-    description: "List the specialist roster — the SAME normal-named specialists team mode stages as teammates, each named for what it does: " + rosterFunctionList() + ". Address a role by that name (any case, space or hyphen spelling). Use this before mpd_role_spawn; for team work stage the roster with spawn_teammate + team_task_create (persona text from mpd_role_persona) instead of repeated single-call consults.",
+    description: "List the specialist roster — the SAME normal-named specialists team mode stages as teammates, each named for what it does: " + rosterFunctionList() + ". Address a role by that name (any case, space or hyphen spelling). Use this before mpd_role_spawn; for team work stage the roster with `agent_teams_plan` (add_member with the persona text from mpd_role_persona → create_task with its dependency answer → approve) instead of repeated single-call consults.",
     parameters: { type: "object", properties: {} },
     output: { schema: { type: "object", properties: { roles: { type: "array", items: { type: "object" } }, count: { type: "integer" }, refused: { type: "array", items: { type: "object", properties: { extension: { type: "string" }, name: { type: "string" }, reason: { type: "string" } }, required: ["extension", "name", "reason"] } } }, required: ["roles", "count"] }, render: (_a, v) => textBlock("roster (" + v.count + `):
 ` + v.roles.map((r) => "- " + r.name + " [" + r.model + (r.readonly ? " readonly" : "") + (r.extension ? " extension:" + r.extension : "") + "] — " + r.description).join(`
@@ -3412,7 +3414,7 @@ refused (` + v.refused.length + `):
   });
   dsh.registerTool({
     name: "mpd_role_spawn",
-    description: "Run ONE bounded delegation with a specialist and return one report — a ONE-SHOT single-call consult: the adapter disposes the activation once the report settles, so the consult is NOT reused — ask a new question with a NEW spawn (the harness catalog is append-only, so a settled child may still list as `inactive`, but the contract is one-shot). It carries the role's persona, model route and read-only discipline (read-only roles get a write-tool deny filter). Roles, each named for what it does: " + rosterFunctionList() + ". The child is labelled with that name. `mpd_workmate_spawn` is the same spawn mechanics for a durable, evolving instance (its persona/memory/note — not the child session — carry continuity). For multi-member team work prefer the official Agent Teams tools (spawn_teammate + team_task_create) instead of repeated single-call consults: a teammate inherits the caller's model route, while THIS path applies the role's teamModels slot route.",
+    description: "Run ONE bounded delegation with a specialist and return one report — a ONE-SHOT single-call consult: the adapter disposes the activation once the report settles, so the consult is NOT reused — ask a new question with a NEW spawn (the harness catalog is append-only, so a settled child may still list as `inactive`, but the contract is one-shot). It carries the role's persona, model route and read-only discipline (read-only roles get a write-tool deny filter). Roles, each named for what it does: " + rosterFunctionList() + ". The child is labelled with that name. `mpd_workmate_spawn` is the same spawn mechanics for a durable, evolving instance (its persona/memory/note — not the child session — carry continuity). For multi-member team work prefer the mpd team path (`agent_teams_plan`: add_member → create_task with its dependency answer → approve; drive with `agent_teams_task`/`agent_teams_dispatch`) instead of repeated single-call consults: a teammate inherits the caller's model route, while THIS path applies the role's teamModels slot route.",
     parameters: { type: "object", properties: { role: { type: "string", description: 'role name (see mpd_roles_list), e.g. "Architect" or "Deep Worker"' }, task: { type: "string" }, context: { type: "string", description: "optional context block to include" } }, required: ["role", "task"], additionalProperties: false },
     output: { schema: { type: "object", properties: { role: { type: "string" }, status: { type: "string", enum: ["complete"] }, summary: { type: "string" }, recommendation: { type: "string" }, details: { type: "string" }, evidence: { type: "array", items: { type: "string" } }, stopReason: { type: "string" } }, required: ["role", "status", "summary"] }, render: (_a, v) => textBlock("role " + v.role + " (" + v.status + `)
 summary: ` + v.summary + (v.recommendation ? `
@@ -3466,7 +3468,7 @@ Work with the tools your role requires (read-only roles must never modify anythi
   });
   dsh.registerTool({
     name: "mpd_role_persona",
-    description: 'Return the full persona text of one roster role, addressed by its name ("Architect", "Deep Worker", "Plan Reviewer"). Use it when a spawn surface takes the persona as TEXT — e.g. the prompt of a spawn_teammate teammate whose name is that same name — so the member gets the real role instructions instead of a bare label.',
+    description: 'Return the full persona text of one roster role, addressed by its name ("Architect", "Deep Worker", "Plan Reviewer"). Use it when a spawn surface takes the persona as TEXT — e.g. the prompt of a teammate staged with `agent_teams_plan` add_member whose name is that same name — so the member gets the real role instructions instead of a bare label.',
     parameters: { type: "object", properties: { role: { type: "string", description: "role name (see mpd_roles_list)" } }, required: ["role"] },
     output: { schema: { type: "object", properties: { role: { type: "string" }, persona: { type: "string" }, chars: { type: "integer" } }, required: ["role", "persona", "chars"] }, render: (_a, v) => textBlock("persona " + v.role + " (" + v.chars + ` chars):
 ` + v.persona) },

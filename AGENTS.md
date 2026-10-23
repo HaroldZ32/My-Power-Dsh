@@ -335,10 +335,15 @@ lands (§9/§11).
      contract — members edit files and run gates, the captain commits — plus review. A session is a child
      only when the harness RECORDED a subagent origin or a delegation depth ≥ 1, so the user's own
      session (`parentSession` + `isSeeded`, depth `0`, no `origin: "subagent"`) is the CAPTAIN.
-     **The guard stops at the mpd record plane:** `spawn_teammate` + the official `team_task_create`
-     never pass through mpd's create/approve, so an edge-less task there means "runs in parallel" —
-     announcing these rules without that bypass is a false claim, and a captain on that path declares
-     each task's `blocked_by` itself.
+     **The old bypass is CLOSED at the tool boundary (2026-10-23).** The team-door guard REFUSES the
+     five official authoring verbs — `spawn_teammate`, `team_task_create`, `team_task_list`,
+     `team_task_get`, `team_task_update` — while `send_message`, `list_agents`, `wait_agent` and
+     `interrupt_agent` stay for agent communication (they are also base global harness rows this preset
+     mounts, and the harness tells every continuable child to call `send_message`). The mpd RECORD is
+     still the only board, so every rule above runs on every task a session can create. **The closure
+     stops at the TOOL boundary:** a ROW that calls the team SERVICE directly (the official-executor
+     fallback) is not a tool call and is NOT gated — the bound, and the no-preset-bypass divergence,
+     are stated in `packages/mpd-team-core-plugin/README.md`.
 
 ---
 
@@ -673,7 +678,8 @@ slot, workmate) stay here, with the verifier's envelope.
   FILE initialization: a file declaring no `teamModels` is seeded ONCE from the configured providers
   (`deepseek-flash` family; slot1 `max`, slots 2-4 `high`), then durably marked in
   `<ws>/.mpd/model-config-seed.json` so a deleted block is never re-seeded. Slots apply to the single-call consult paths
-  AND to an official `spawn_teammate` (routed through `mpd-roster-provider-plugin`); because the team
+  AND to an official `spawn_teammate` (routed through `mpd-roster-provider-plugin`; that TOOL is now
+  REFUSED at the tool boundary — §5 rule 5); because the team
   service does not forward identity, **a teammate `description` that NAMES a roster member routes that
   member — any other teammate runs on the route of the session that staged it (the captain's in a
   top-level spawn, the Lead's in a team-lead spawn), and prompt text cannot change a route**. Long

@@ -213,7 +213,10 @@ bun scripts/mpd-ext.ts --validator                           # 本次运行实�
 
 v1 中**不存在**、因此不要围绕它做规划的东西：`mpd_ext_reload`、YAML 流程、MCP resources/prompts、
 图形面板、应用市场或远程下载、由扩展贡献的 agent preset，以及扩展角色自己变成队友（只有 Lead 用
-官方 `spawn_teammate` 按名字创建，才存在队友）。
+`agent_teams_plan {action:"add_member"}` 按名字加入并批准 plan，才存在队友）。五个官方**创作类**动词
+—— `spawn_teammate`、`team_task_create`、`team_task_list`、`team_task_get`、`team_task_update` ——
+在工具边界被**拒绝**，且 mpd **记录**是唯一的任务板；其边界是：直接调用团队**服务**的行（官方执行器
+回退路径）不是工具调用，**不受**这道门约束。
 
 ## 8. 故障排查
 
