@@ -577,10 +577,16 @@ lane hold this line.
    - **LAST: the Docker real-machine lane — `--live` with `DEEPSEEK_API_KEY` exported, and
      `--require-docker` so it cannot skip silently** — `node scripts/docker-e2e.ts --mode source
      --require-docker --live` then `--mode oneclick --require-docker --live`. Run it AFTER the last
-     write, and cite the stamps it writes. `--live` WITHOUT a key in the environment is a hard exit 3
+     write, and cite the stamps it writes. **The CREDENTIAL-FREE source run is REQUIRED in EVERY sweep
+     as well** — `node scripts/docker-e2e.ts --mode source --require-docker --no-browser` — because a
+     credentialed run CANNOT see the paths that depend on an EMPTY model catalog: a QA case that
+     silently relied on the deleted built-in slot defaults stayed green through two weeks of
+     `liveRequested:true` runs and reddened only on the credential-free one (2026-10-23, PR #62).
+     Cite BOTH stamps. The credential-free run is a REGRESSION gate, while its `ui.*` rows stay NULL
+     and are NOT evidence of the UI. `--live` WITHOUT a key in the environment is a hard exit 3
      BEFORE the build, and a credential-free browser-enabled run records `ui.replyRendered` as a DECLARED
      BOUND that the required-arm gate turns into exit 3 by design — the credential-free spelling is
-     `--no-browser` (exit 0, every `ui.*` NULL, NOT release evidence).
+     `--no-browser` (exit 0, every `ui.*` NULL).
    - **Release-checklist line (VENDOR_LOCK pairing rule):** `VENDOR_LOCK.json` lands in the SAME commit
      as every `skills/**` change that invalidates its `treeSha`; with the single-skills-writer rule (§9)
      that is exactly ONE re-pin per wave — verify the wave's single re-pin is present and that no

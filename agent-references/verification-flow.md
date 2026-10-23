@@ -73,7 +73,11 @@ not running the thing it was asked to verify.
 a model reply: the turn's failure panel names the missing credential, so `ui.replyRendered` is recorded
 as a DECLARED BOUND (`null` with that reason) and the required-arm gate then turns it into exit 3 BY
 DESIGN — that exit is the gate working, not a pass. The credential-free spelling is `--no-browser`
-(exit 0, every `ui.*` row NULL, NOT release evidence). `--live` without a key in the environment is a
+(exit 0, every `ui.*` row NULL, NOT release evidence **of the UI — but this run is REQUIRED in every
+sweep as a REGRESSION gate**: a credentialed run cannot see the paths that depend on an EMPTY model
+catalog, which is how a QA case silently relying on the deleted built-in slot defaults stayed green
+through two weeks of `liveRequested:true` runs and reddened only on the credential-free one, 2026-10-23,
+PR #62). `--live` without a key in the environment is a
 hard exit 3 BEFORE the build. Exit 3 therefore means any of: no usable Docker under `--require-docker`,
 a required arm unmeasured, or `--live` without a key.
 
