@@ -81,6 +81,7 @@ row is `node` for `preset-conformance`, and §11 keeps `node` for its self-test.
 |---|---|
 | `gates-routing.log` | the sweep after the team-member routing fix + the CodeRabbit reconciliation: **17/17 exit 0** (`verify:gates` 9/9, vendor, dist 33/33 after the adapter fan-out rebuilt 24 targets, docs, manifest, comments, rows, typecheck, `bun test packages`, `test:qa`, pack-closure, `review-panel`, the real `preset-conformance` mount, no-host-override, manual-paths, `team-dispatch-guard`, `session-start-team --self-test`) |
 | `gates-final-teamdoor.log` | the sweep after the team-door wave's FAIL repairs: 8/8 exit 0 |
+| `gates-routing-repair.log` | the re-check after the routing wave's FAIL repairs: **15/15 exit 0** — the 17/17 set minus `team-dispatch-guard` and `session-start-team --self-test` (`verify:gates` 9/9, vendor, dist, docs, manifest, comments, rows, typecheck, `bun test packages`, `test:qa`, pack-closure, `review-panel`, the real `preset-conformance` mount, no-host-override, manual-paths) |
 
 **Declared bound for the routing wave (R19/R20): NO live harness boot proves that a member actually
 routes on its slot.** The strongest evidence is unit level: `packages/mpd-dsh-adapter-plugin/test/team-route.test.ts`
@@ -99,9 +100,9 @@ session's.
 | `loop-20261023T093358-1bb644` | **PASS** (risk LOW–MEDIUM) — R1–R12, 8 non-blocking findings | `rec-20261023T095022-1d01d1` |
 | `loop-20261023T095953-f21edc` | **PASS** (risk LOW) — Amendment 2 (R13/R14/R15) + the runner correction; 6 of the 8 findings closed, 1 partial, 1 remaining | `rec-20261023T101738-ee2535` |
 | `loop-20261023T162757-41e222` | **FAIL** then **PASS** (risk LOW) — Amendment 3 (the team door); 4 findings → repaired → re-verified; also re-filed the ten gate ids under the loop | `rec-20261023T164913-8ab77f` → `rec-20261023T173741-3e5a08` |
-| `loop-20261024T074520-f517f0` | **FAIL** (risk MEDIUM) — Amendment 4 (routing) + the CodeRabbit reconciliation; 5 doc findings (2 High) → repaired in the next commit → re-verified | `rec-20261024T080425-cdfd41` |
+| `loop-20261024T074520-f517f0` | **FAIL** (risk MEDIUM) — Amendment 4 (routing) + the CodeRabbit reconciliation; 5 doc findings (2 High) → repaired in the next commit → re-verified | `rec-20261024T080425-cdfd41` → `rec-20261024T084645-32c014` |
 
-Both records live under `.mpd/verify/records/` (gitignored by `.mpd/`); the numbers and the cited
+All records live under `.mpd/verify/records/` (gitignored by `.mpd/`); the numbers and the cited
 evidence ids are reproduced above and in the `gates-*.log` files.
 
 ## 9. Remaining, declared
