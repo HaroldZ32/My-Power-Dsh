@@ -1,0 +1,187 @@
+{
+  "round": "2026-10-24 skills dead-token sweep — round 2 (task 1 token + a TRUTHFUL final evidence bundle; verifier finding X1)",
+  "branch": "fix/task-dependency-guard",
+  "head_at_measurement": "7ad6190e82887d205664f6027419c9d142cd2e2a",
+  "working_tree_state_at_measurement": "ONE uncommitted edit on top of HEAD: skills/ultimate-browsing/references/insane-search/README.md:45 Bash -> bash (task 1). Nothing else is modified (git status: `M` on that file only).",
+  "baseline": {
+    "label": "BEFORE = the baseline BEFORE this whole skills wave",
+    "rev": "09622f6a",
+    "full": "09622f6a7bf867a26c52643f2d5c0becee1571d7",
+    "why_this_rev": "09622f6a is the parent of e5bbd592, the first commit of the wave; so the baseline predates every skills edit of the wave (e5bbd592 + 7ad6190e + this round's uncommitted edit)."
+  },
+  "measurement_protocol": {
+    "before": "git grep -nE <pattern> 09622f6a -- skills/   (the '09622f6a:' prefix stripped; the file's FIRST line labels it as the pre-wave baseline)",
+    "after": "grep -rnE <pattern> skills/   (run on the FINAL working tree, AFTER both gates were run and AFTER every skills edit had landed)",
+    "why_this_bundle_cannot_go_stale": "Both sides are anchored to ONE skills-tree hash, and that hash is what the AFTER side was measured on: `find skills -type f | sort | xargs sha256sum | sha256sum` = 35ccad7837b86f9661f1ac30b80d0e45625a3f140098395b0c7e73e0632b7130. It was read before the gates (2026-10-24T12:56:23Z), after the gates (12:57:46Z), before the AFTER greps (12:57:57Z) and again after the bundle was written (13:11:04Z) — all four readings are identical. A later skills edit changes that hash, so a reader who re-measures it immediately sees that THIS record no longer describes the tree; the record never silently claims a different tree.",
+    "ordering": "task-1 edit -> gates (review-panel, verify:docs) -> re-hash -> AFTER greps -> result.json + this bundle -> re-hash (identical). The gate logs therefore describe the same tree the AFTER counts do.",
+    "grep_semantics": "BEFORE uses git grep at a COMMIT (tracked files only, corpus as committed at 09622f6a). AFTER uses a recursive grep over the WORKING tree, so it also sees the three gitignored materialized reference files under skills/frontend/references/design/ that a bare checkout does not have; every family reports the tracked-only AFTER total beside the worktree total."
+  },
+  "patterns": {
+    "A_dead_tool_tokens": "TodoWrite|Lsp[A-Z]|lsp_[a-z]|codegraph_|kill_bash|task_output|monitor\\(|\\bRead\\b|\\bWrite\\b|\\bEdit\\b|\\bBash\\b|\\bGlob\\b|\\bGrep\\b|MultiEdit|NotebookEdit",
+    "B_skill_pointers": "mass-ulw|ulw-loop|open-design|imagegen|mpd-agent-toolkit",
+    "C_delegation_family": "subagent|subagent_type|task\\(category|task\\(subagent_type|oracle|librarian|momus|metis|workflow",
+    "A_final_group_compilation": "The A pattern's final group is compiled as `\\bRead\\b|\\bWrite\\b|\\bEdit\\b|\\bBash\\b|\\bGlob\\b|\\bGrep\\b|MultiEdit|NotebookEdit` — the word-boundary arms the previous round already used — so `Readable`/`Editing` do not match while the capitalized Claude-Code names do. Same pattern on both sides."
+  },
+  "greps": {
+    "A_dead_tool_tokens": {
+      "before": {"lines": 370, "files": 115, "md_lines": 215, "md_files": 67},
+      "after": {"lines": 329, "files": 115, "md_lines": 174, "md_files": 67},
+      "after_tracked_only": 322,
+      "delta": "48 tracked lines cleared by the wave (370 -> 322) and 7 lines added by gitignored materialized references (322 -> 329 worktree). Per-file clearers: refactor/SKILL.md -22, init-deep/SKILL.md -10, remove-ai-slops/SKILL.md -6, ulw-execute/SKILL.md -3, bundled-js-binary.md -2, ultimate-browsing insane-search README -2 (both its tokens: `Read`->`read`, `Bash`->`bash`), partial-runtime-evidence.md -1, programming/SKILL.md -1, go/backend-stack.md -1; additions: gitignored design/ambience-skill.md +5, design/component-catalogs.md +2."
+    },
+    "B_skill_pointers": {
+      "before": {"lines": 47, "files": 11, "md_lines": 45, "md_files": 9},
+      "after": {"lines": 34, "files": 8, "md_lines": 33, "md_files": 7},
+      "after_tracked_only": 33,
+      "delta": "14 tracked lines cleared (47 -> 33) and 1 gitignored line added (design/component-catalogs.md). Clearers: ulw-research/SKILL.md -7, review-work/SKILL.md -2, frontend/SKILL.md -1, design/README.md -1, print-paged-media.md -1, ulw-execute/SKILL.md -1, ulw-plan/scripts/scaffold-plan.ts -1."
+    },
+    "C_delegation_family": {
+      "before": {"lines": 307, "files": 72, "md_lines": 203, "md_files": 53},
+      "after": {"lines": 220, "files": 71, "md_lines": 115, "md_files": 52},
+      "after_tracked_only": 220,
+      "delta": "87 lines cleared (307 -> 220), all in tracked files (no gitignored C matches). Clearers: refactor/SKILL.md -21, visual-qa/SKILL.md -16, ulw-research/SKILL.md -15, init-deep/SKILL.md -9, ulw-execute/SKILL.md -6, ulw-plan/references/full-workflow.md -6, 02-investigate.md -4, 04-oracle-triple.md -3, ulw-plan/SKILL.md -3, remove-ai-slops/SKILL.md -2, debugging/SKILL.md -1, partial-runtime-evidence.md -1."
+    }
+  },
+  "retired_arms_cleared": {
+    "method": "line counts per arm, overlaps allowed, BEFORE 09622f6a -> AFTER final worktree",
+    "A": {"TodoWrite": "6 -> 0", "lsp_[a-z]": "20 -> 0", "kill_bash": "1 -> 0", "task_output": "1 -> 0", "monitor(": "0 -> 0", "MultiEdit": "0 -> 0", "NotebookEdit": "0 -> 0", "Lsp[A-Z]": "11 -> 5", "codegraph_": "16 -> 16", "\\bRead\\b": "132 -> 131", "\\bWrite\\b": "128 -> 125", "\\bEdit\\b": "28 -> 24", "\\bBash\\b": "24 -> 21", "\\bGlob\\b": "4 -> 4", "\\bGrep\\b": "8 -> 7"},
+    "B": {"mass-ulw": "3 -> 0", "ulw-loop": "9 -> 0", "mpd-agent-toolkit": "3 -> 0", "open-design": "12 -> 10", "imagegen": "25 -> 24"},
+    "C": {"subagent_type": "10 -> 0", "task(category": "4 -> 0", "task(subagent_type": "3 -> 0", "subagent": "139 -> 69", "oracle": "76 -> 58", "workflow": "103 -> 97", "librarian": "14 -> 2", "momus": "8 -> 7", "metis": "3 -> 1"}
+  },
+  "survivors": {
+    "method": "Disjoint line partition, first matching rule wins; produced by greps/classify-survivors.py, full output in greps/counts.txt. `partition_sum == total` and `unclassified == 0` for every family, so EVERY survivor line is classified.",
+    "A": {
+      "total": 329,
+      "buckets": [
+        {"class": "A1_mounted_codegraph_surface", "lines": 16, "note": "the mounted codegraph MCP tool name — `mcp__codegraph__codegraph_explore` (14 lines), a concatenated spelling `\"mcp__\" + SERVER_NAME + \"__codegraph_explore\"` in codegraph-smoke.ts:84, and one shorthand `mcp__codegraph__explore` at dsh-qa/SKILL.md:88 — the `codegraph_` arm matches the mounted name, so this arm can never reach 0"},
+        {"class": "A2_ast_grep_schema_vocabulary", "lines": 3, "note": "skills/ast-grep/references/yaml-rules.md only: 1 line where Bash/C/Cpp/... are ast-grep LANGUAGE enum values, 2 lines where `Glob` is the glob-pattern word in the `files`/`ignores` schema rows"},
+        {"class": "A3_powershell_cmdlet", "lines": 54, "note": "PowerShell `Write-Host`/`Write-Output`/`Write-Report`/... in *.ps1 scripts"},
+        {"class": "A4_html_test_fixture", "lines": 18, "note": "skills/ultimate-browsing/engine/tests/fixtures/wayback_snapshot.html — saved HTML fixture (`Edit this page`, ...)"},
+        {"class": "A5_script_identifier_or_string", "lines": 74, "note": "*.ts/*.mjs/*.sh/*.py identifiers, API calls and string literals: `executeLspDiagnostics`, `disposeDefaultLspManager`, `mcpLspDependency`, `httperr.Write`, `WriteTimeout`, demo prompts quoting English verbs"},
+        {"class": "A6_english_prose_in_docs", "lines": 164, "note": "ordinary English verbs in *.md prose ('Read the deliverables', '## Bash / Shell', 'Write the gate')"}
+      ],
+      "partition_sum": 329
+    },
+    "B": {
+      "total": 34,
+      "buckets": [
+        {"class": "B1_mass_ulw", "lines": 0},
+        {"class": "B2_ulw_loop", "lines": 0},
+        {"class": "B3_open_design_upstream", "lines": 10, "note": "upstream provenance/URLs/negations: frontend ATTRIBUTION.md (3), design/_INDEX.md link, design/README.md 'no `open-design` library', design/component-catalogs.md (gitignored materialized file), frontend/.gitignore comment"},
+        {"class": "B4_imagegen_reference_file_name", "lines": 24, "note": "references to the `imagegen-*.md` reference FILE names (design/_INDEX.md, design/README.md, frontend/SKILL.md, ATTRIBUTION.md) plus one explicit negation (`no `imagegen` skill is shipped`) and two plain-English 'imagegen file' uses — a shipped reference-file name, not a mounted skill"},
+        {"class": "B5_mpd_agent_toolkit", "lines": 0},
+        {"class": "B6_path_component_only", "lines": 0}
+      ],
+      "partition_sum": 34
+    },
+    "C": {
+      "total": 220,
+      "buckets": [
+        {"class": "C1_retired_verb_subagent_type", "lines": 0},
+        {"class": "C2_retired_verb_task_category", "lines": 0},
+        {"class": "C3_retired_verb_task_subagent_type", "lines": 0},
+        {"class": "C4_subagent_vocabulary", "lines": 69, "note": "the English/legacy vocabulary 'subagent' in prose and in harness identifiers (`ctx.subagents`, `subagent-scene.ts`, `origin:\"subagent\"`), plus explicit legacy->mounted mapping rows (e.g. ulw-research/SKILL.md:12 'explorer/librarian `subagent(...)`' -> `mpd_role_spawn(...)`) which must print the legacy name to be meaningful"},
+        {"class": "C5_oracle_methodology", "lines": 57, "note": "the 'Oracle Triple' debugging methodology concept name (04-oracle-triple.md, 00-setup.md, ...), not a tool"},
+        {"class": "C6_librarian", "lines": 0},
+        {"class": "C7_momus_state_key", "lines": 6, "note": "the durable state keys `momus`/`independent` in ulw-plan/scripts/scaffold-plan.ts"},
+        {"class": "C8_metis", "lines": 0},
+        {"class": "C9_workflow_word_or_skill_name", "lines": 88, "note": "the English word `workflow`, `.github/workflows/` paths, and the `full-workflow.md` skill reference-file name"},
+        {"class": "C10_unclassified", "lines": 0}
+      ],
+      "partition_sum": 220,
+      "arm_overlaps_note": "Arm-level counts with overlaps allowed (in greps/counts.txt): subagent 69, oracle 58, librarian 2, momus 7, metis 1, workflow 97. The 2 `librarian` lines are the C4 legacy-mapping row at ulw-research/SKILL.md:12 and the QA fixture role list at skills/dsh-qa/scripts/preset-register.ts:30; the single `metis` line is that same fixture string."
+    }
+  },
+  "changed_tokens": [
+    {"token": "Write -> write", "file": "skills/programming/references/go/backend-stack.md", "line": 512, "before": "- **Headers MUST be set before the first `Write`.**", "after": "- **Headers MUST be set before the first write.**", "landed": "commit 7ad6190e (the post-snapshot drift the verifier's X1 finding named)"},
+    {"token": "Read -> read", "file": "skills/ultimate-browsing/references/insane-search/README.md", "line": 286, "before": "... Claude는 필요할 때만 해당 파일을 `Read`하고, ...", "after": "... Claude는 필요할 때만 해당 파일을 `read`하고, ...", "landed": "commit 7ad6190e (the second post-snapshot drift the verifier named)"},
+    {"token": "Bash -> bash", "file": "skills/ultimate-browsing/references/insane-search/README.md", "line": 45, "before": "- engine은 `run_in_background=true`로 Bash 툴에서 띄워둔다 — 격자는 그대로 돌되 블로킹하지 않음", "after": "- engine은 `run_in_background=true`로 bash 툴에서 띄워둔다 — 격자는 그대로 돌되 블로킹하지 않음", "landed": "THIS round, task 1 — uncommitted working-tree edit; exactly one token changed, the Korean sentence is not translated and no other byte of the file moved (git diff: 1 insertion / 1 deletion)."}
+  ],
+  "files_changed": [
+    "skills/debugging/ATTRIBUTION.md",
+    "skills/debugging/SKILL.md",
+    "skills/debugging/references/methodology/00-setup.md",
+    "skills/debugging/references/methodology/02-investigate.md",
+    "skills/debugging/references/methodology/04-oracle-triple.md",
+    "skills/debugging/references/methodology/partial-runtime-evidence.md",
+    "skills/debugging/references/runtimes/bundled-js-binary.md",
+    "skills/frontend/SKILL.md",
+    "skills/frontend/references/design/README.md",
+    "skills/frontend/references/design/_INDEX.md",
+    "skills/frontend/references/design/design-system-architecture.md",
+    "skills/frontend/references/design/print-paged-media.md",
+    "skills/init-deep/SKILL.md",
+    "skills/programming/SKILL.md",
+    "skills/programming/references/go/backend-stack.md",
+    "skills/refactor/ATTRIBUTION.md",
+    "skills/refactor/SKILL.md",
+    "skills/remove-ai-slops/SKILL.md",
+    "skills/review-work/SKILL.md",
+    "skills/ultimate-browsing/references/insane-search/README.md",
+    "skills/ulw-execute/SKILL.md",
+    "skills/ulw-plan/SKILL.md",
+    "skills/ulw-plan/references/full-workflow.md",
+    "skills/ulw-plan/references/intent-clear.md",
+    "skills/ulw-plan/references/intent-unclear.md",
+    "skills/ulw-plan/scripts/scaffold-plan.ts",
+    "skills/ulw-research/SKILL.md",
+    "skills/visual-qa/SKILL.md"
+  ],
+  "files_changed_command": "git diff --name-only 09622f6a -- skills/",
+  "files_changed_count": 28,
+  "files_changed_this_repair_round": [
+    "skills/debugging/ATTRIBUTION.md",
+    "skills/debugging/references/methodology/partial-runtime-evidence.md",
+    "skills/debugging/references/runtimes/bundled-js-binary.md",
+    "skills/init-deep/SKILL.md",
+    "skills/programming/SKILL.md",
+    "skills/programming/references/go/backend-stack.md",
+    "skills/refactor/ATTRIBUTION.md",
+    "skills/refactor/SKILL.md",
+    "skills/remove-ai-slops/SKILL.md",
+    "skills/ultimate-browsing/references/insane-search/README.md",
+    "skills/ulw-execute/SKILL.md",
+    "skills/ulw-plan/references/full-workflow.md",
+    "skills/ulw-research/SKILL.md"
+  ],
+  "files_changed_this_repair_round_command": "git diff --name-only e5bbd592 -- skills/  (e5bbd592 = the pre-repair commit: the state the stale 1215Z snapshot was compared against) => 13 files, the set the verifier measured.",
+  "gates": {
+    "review_panel": {
+      "command": "node skills/dsh-qa/scripts/review-panel.ts",
+      "exit": 0,
+      "observed": "checks: 15  failed: 0 (every check `ok`) ... [review-panel] PASS",
+      "evidence": "evidence/skills-dead-tokens/2026-10-24T1245Z/review-panel.log",
+      "script_own_record": "evidence/restore/s1/2026-10-24T12-56-29-630Z (written BY the gate itself)"
+    },
+    "verify_docs": {
+      "command": "bun run verify:docs   (bun 1.4.2; package script: node scripts/verify-docs-parity.ts)",
+      "exit": 0,
+      "observed": "[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=50 failed=0 violations=0 exempt=24 derived=3 links=445 dead=0 — PASS",
+      "evidence": "evidence/skills-dead-tokens/2026-10-24T1245Z/verify-docs.log"
+    },
+    "verify_vendor_not_requested_but_recorded": {
+      "command": "node scripts/verify-vendor.ts",
+      "exit": 1,
+      "observed": "[verify-vendor] FAIL - asset skills treeSha mismatch",
+      "expected": "YES — every skills/** edit invalidates the corpus treeSha; AGENTS.md §9/§11 requires the captain's SINGLE re-pin (`node scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step`) in the same commit. No re-pin was run by this writer.",
+      "evidence": "evidence/skills-dead-tokens/2026-10-24T1245Z/verify-vendor.log"
+    }
+  },
+  "diff": {
+    "this_round_numstat": "diff/this-round-numstat.txt (git diff --numstat 09622f6a -- skills/; 28 files)",
+    "files_changed_09622f6a": "diff/files-changed-09622f6a.txt",
+    "full_diff": "diff/this-round.diff (git diff 09622f6a -- skills/)",
+    "counts": "greps/counts.txt (machine output of greps/classify-survivors.py)"
+  },
+  "limits": [
+    "1122Z RE-INDENT DECLARATION: the 1122Z snapshot (evidence/skills-dead-tokens/2026-10-24T1122Z/result.json) was corrected for ONE stale `limits` line by RE-INDENTING the whole file, so its diff looks like a full-file rewrite while the only SEMANTIC change is that one key. Declared here; nothing was re-indented in THIS round and the 1122Z file was not touched by this writer.",
+    "skills/ast-grep/references/yaml-rules.md keeps `Bash` / `C` / `Cpp` on purpose: they are ast-grep LANGUAGE names (YAML rule `language` enum), not agent tools. Its 3 surviving A-lines are exactly that enum line plus 2 rows where `Glob` is the glob-pattern word of the `files`/`ignores` schema fields.",
+    "No live boot was run: this bundle proves the CHECKOUT text only, never the served/cached skill corpus (the verifier's M3 bound still stands).",
+    "BEFORE covers TRACKED files at commit 09622f6a; AFTER covers the whole working tree, including three gitignored materialized reference files under skills/frontend/references/design/ that a bare checkout does not have. Tracked-only AFTER totals: A 322, B 33, C 220 (worktree A 329, B 34, C 220).",
+    "FILE-COUNT EXPECTATION: the brief expected `files_changed` of 13-14. The command it named (`git diff --name-only 09622f6a -- skills/`) measures the WHOLE wave and yields 28; 13 is the ROUND-relative set (`git diff --name-only e5bbd592 -- skills/`) and is recorded beside it as files_changed_this_repair_round. Both numbers are measured, neither is estimated.",
+    "verify-vendor exit 1 is expected until the captain's single re-pin; recorded, not fixed.",
+    "The mounted codegraph tool is spelled `mcp__codegraph__codegraph_explore`; skills/dsh-qa/SKILL.md:88 abbreviates it as `mcp__codegraph__explore` (a case-table shorthand). Reported as an out-of-scope observation, not fixed here.",
+    "The `imagegen-*.md` files that shipped SKILL.md files reference are materialized at pack time and are absent from the worktree (skills/frontend/.gitignore ignores references/design/*.md except the project-original list) — declared, not fixed; the same applies to the gitignored open-design/taste-skill design band.",
+    "Out of scope and NOT addressed by this writer: M1 (momus/independent residual declaration in the frozen plan), M3 (served-corpus vs checkout bound), N2 (R25 wording of the frontend design band)."
+  ]
+}

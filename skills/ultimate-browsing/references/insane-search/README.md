@@ -42,7 +42,7 @@
 세 조건 모두 참일 때 Claude는 **병렬 경로**를 시작한다:
 
 **"병렬"의 실행 의미** (Claude 도구 호출이 순차이므로 명확화):
-- engine은 `run_in_background=true`로 Bash 툴에서 띄워둔다 — 격자는 그대로 돌되 블로킹하지 않음
+- engine은 `run_in_background=true`로 bash 툴에서 띄워둔다 — 격자는 그대로 돌되 블로킹하지 않음
 - Claude는 그 사이 foreground에서 MCP Playwright 정찰 루트를 진행
 - engine이 먼저 성공해도 좋고, MCP 정찰로 얻은 API가 먼저 성공해도 좋음. 빠른 쪽 결과 채택
 

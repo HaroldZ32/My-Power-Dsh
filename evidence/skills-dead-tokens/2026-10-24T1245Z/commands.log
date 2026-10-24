@@ -1,0 +1,97 @@
+# commands.log — audit trail for evidence/skills-dead-tokens/2026-10-24T1245Z
+
+Writer: the single `skills/**` writer of this round (Senior Engineer seat).
+Branch `fix/task-dependency-guard`, HEAD `7ad6190e82887d205664f6027419c9d142cd2e2a` + ONE
+uncommitted edit (task 1). Times are UTC, from `date -u`.
+
+## 0. Tree anchor (the sandwich)
+
+    treehash() { find skills -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1; }
+
+    T0 after the task-1 edit, before the gates  2026-10-24T12:56:23Z  35ccad7837b86f9661f1ac30b80d0e45625a3f140098395b0c7e73e0632b7130
+    T1 after both gates                         2026-10-24T12:57:46Z  35ccad7837b86f9661f1ac30b80d0e45625a3f140098395b0c7e73e0632b7130
+    T2 before the AFTER greps                   2026-10-24T12:57:57Z  35ccad7837b86f9661f1ac30b80d0e45625a3f140098395b0c7e73e0632b7130
+    T3 after result.json was written            2026-10-24T13:11:04Z  35ccad7837b86f9661f1ac30b80d0e45625a3f140098395b0c7e73e0632b7130
+    T4 before this log (last artifact)          2026-10-24T13:13:28Z  35ccad7837b86f9661f1ac30b80d0e45625a3f140098395b0c7e73e0632b7130
+
+`skills` holds 384 files on disk at every one of these readings. The hash covers the WHOLE
+working tree (tracked + gitignored materialized references), which is exactly what the AFTER
+greps read.
+
+## 1. Task 1 — the one-token sweep in the vendored README
+
+    git diff -- skills/ultimate-browsing/references/insane-search/README.md
+    => 1 file changed, 1 insertion(+), 1 deletion(-)
+    - engine은 `run_in_background=true`로 Bash 툴에서 띄워둔다 — 격자는 그대로 돌되 블로킹하지 않음
+    + engine은 `run_in_background=true`로 bash 툴에서 띄워둔다 — 격자는 그대로 돌되 블로킹하지 않음
+
+The sentence is not translated; no other byte of the file moved.
+
+## 2. Gates (run on the final tree, exit codes quoted)
+
+    node skills/dsh-qa/scripts/review-panel.ts            exit 0
+      checks: 15  failed: 0 (every check `ok`) ... [review-panel] PASS
+      -> evidence/skills-dead-tokens/2026-10-24T1245Z/review-panel.log
+      the gate wrote its own record: evidence/restore/s1/2026-10-24T12-56-29-630Z
+
+    bun run verify:docs                                    exit 0     (bun 1.4.2)
+      [verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=50 failed=0
+      violations=0 exempt=24 derived=3 links=445 dead=0 — PASS
+      -> evidence/skills-dead-tokens/2026-10-24T1245Z/verify-docs.log
+
+    node scripts/verify-vendor.ts                          exit 1     (expected, see limits)
+      [verify-vendor] FAIL - asset skills treeSha mismatch
+      -> evidence/skills-dead-tokens/2026-10-24T1245Z/verify-vendor.log
+
+The three `*.log` files are the gates' VERBATIM stdout+stderr; the wrapper's own `exit=N` line was
+removed from the two copied logs so nothing but tool output remains. The exit codes live here and
+in result.json/gates.
+
+## 3. BEFORE (pre-wave baseline 09622f6a = parent of e5bbd592)
+
+    A='TodoWrite|Lsp[A-Z]|lsp_[a-z]|codegraph_|kill_bash|task_output|monitor\(|\bRead\b|\bWrite\b|\bEdit\b|\bBash\b|\bGlob\b|\bGrep\b|MultiEdit|NotebookEdit'
+    B='mass-ulw|ulw-loop|open-design|imagegen|mpd-agent-toolkit'
+    C='subagent|subagent_type|task\(category|task\(subagent_type|oracle|librarian|momus|metis|workflow'
+
+    git grep -nE "$A" 09622f6a -- skills/ | sed 's/^09622f6a://'   -> 370 lines / 115 files / 215 md lines / 67 md files
+    git grep -nE "$B" 09622f6a -- skills/ | sed 's/^09622f6a://'   ->  47 lines /  11 files /  45 md lines /  9 md files
+    git grep -nE "$C" 09622f6a -- skills/ | sed 's/^09622f6a://'   -> 307 lines /  72 files / 203 md lines / 53 md files
+
+Each `greps/*-before.txt` carries that command (and the "pre-wave baseline" label) as its FIRST
+line, then the matches.
+
+## 4. AFTER (the FINAL working tree)
+
+    grep -rnE "$A" skills/   -> 329 lines / 115 files / 174 md lines / 67 md files
+    grep -rnE "$B" skills/   ->  34 lines /   8 files /  33 md lines /  7 md files
+    grep -rnE "$C" skills/   -> 220 lines /  71 files / 115 md lines / 52 md files
+
+    tracked-only AFTER (git grep over the working tree; drops the 3 gitignored design refs):
+    git grep -nE "$A" -- skills/ | wc -l   -> 322
+    git grep -nE "$B" -- skills/ | wc -l   ->  33
+    git grep -nE "$C" -- skills/ | wc -l   -> 220
+
+## 5. Survivor classification (machine-checkable)
+
+    python3 evidence/skills-dead-tokens/2026-10-24T1245Z/greps/classify-survivors.py > .../greps/counts.txt
+    exit 0; every family reports `residual=0  unclassified=0` with `partition_sum == total`:
+      A 329 = 16 mounted-codegraph + 3 ast-grep-schema vocabulary + 54 PowerShell cmdlet
+              + 18 HTML fixture + 74 script identifier/string + 164 English prose
+      B  34 = 10 open-design upstream + 24 imagegen reference-file name (all other arms 0)
+      C 220 = 69 subagent vocabulary + 57 oracle methodology + 6 momus state key
+              + 88 workflow word/skill name (all three retired verbs 0)
+
+## 6. files_changed (the REAL final set)
+
+    git diff --name-only 09622f6a -- skills/     -> 28 files   (whole wave; the brief expected 13-14)
+    git diff --numstat 09622f6a -- skills/       -> diff/this-round-numstat.txt (28 rows)
+    git diff --name-only e5bbd592 -- skills/     -> 13 files   (round-relative; the verifier's "13")
+    Both recorded in result.json; `files_changed` is the first command's 28.
+
+## 7. Scope
+
+Only two paths were written by this writer: the vendored README (task 1) and this evidence dir.
+`git status --porcelain` reports exactly one modified tracked file
+(`M skills/ultimate-browsing/references/insane-search/README.md`) plus the new untracked evidence
+dir. The only other write in the workspace is the review-panel gate's OWN record dir
+`evidence/restore/s1/2026-10-24T12-56-29-630Z`, produced by running the required gate.
