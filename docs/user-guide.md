@@ -336,9 +336,12 @@ interrupt_agent { target }                                                # Lead
 - **The board's compare-and-set is asymmetric.** `release` and `complete`/`fail` honour
   `expected_revision` — a stale value is refused with both revisions and no write; `claim`, `contract`
   and `depend` do not read it, so `claim` always freezes a new attempt from its own read.
-- **`write_scopes` are advisory.** Two in-progress tasks that plan to touch overlapping paths raise a
-  warning; the board never blocks a claim and never authorizes a write, and bash/formatters/codegen
-  bypass every check — the Lead coordinates ownership and reviews the final diff.
+- **`write_scopes` never authorize a write, and UNORDERED overlap is REFUSED on the record plane.**
+  On the mpd RECORD plane `agent_teams_plan {action:"approve"}` REFUSES two tasks whose declared scopes
+  overlap with no dependency path between them, naming the pair and the two remedies — add the edge, or
+  make the scopes disjoint; on the OFFICIAL plane overlap is advisory, not a lock. `claim` never
+  authorizes a write, and bash/formatters/codegen bypass every check — the declared bound — so the Lead
+  coordinates ownership and reviews the final diff.
 - **Messages are durable.** `send_message` answers `accepted` (delivered now) or `queued` (stored and
   waiting), and a queued message must never be resent. `list_agents` reports each member's `target` and
   availability (`inactive` means no turn is executing, not that the work is done); `wait_agent` answers
@@ -509,7 +512,9 @@ strings, the state scopes and the explicit NOT-CLAIMED list, read [`tui.md`](tui
   service's projection, not the mpd record — so updates appear while the panel stays open.
   It lists the roster (durable names and phases: `running`, `inactive`, `provisioning`, `failed`) and
   the shared task board (task identity, owner, blockers, readiness, advisory write scopes and overlap
-  warnings), and it navigates into a teammate's conversation. It is **read-only**: the panel cannot
+  warnings — that is the OFFICIAL plane's reading, where overlap is advisory, while the mpd RECORD
+  board the Team page renders REFUSES unordered overlap, §6), and it navigates into a teammate's
+  conversation. It is **read-only**: the panel cannot
   spawn, rename, delete or interrupt a teammate and offers no task-mutation control — those belong to
   the tools in §6. Peer messages are not shown; the panel shows roster and tasks only. If the plugin
   was enabled in an already-open conversation, reload the page once to receive the projection. In a
@@ -977,10 +982,12 @@ send_message { "target": "lead", "message": "T5 done: `bun run verify:docs` pass
 
 Only `release` and `complete`/`fail` carry the `expected_revision` the caller read, and a stale one is
 refused with a typed error, so a reassigned task cannot silently accept a late result; `claim`,
-`contract` and `depend` take no revision. `write_scopes` warn about overlap
-and never authorize a write, so report what you changed in the task description (or a message) rather
-than relying on the scope list. A result is not accepted because a teammate says so: the Lead waits
-for the team (`wait_agent`, then re-read) and verifies the diff before answering.
+`contract` and `depend` take no revision. `approve` REFUSES two staged tasks whose declared write
+scopes overlap with no dependency path between them — add the edge, or make the scopes disjoint.
+Overlap is advisory on the OFFICIAL plane only. `write_scopes` never authorize a write, while
+bash/formatters/codegen bypass the check, so report what you changed in the task description (or a
+message) rather than relying on the scope list. A result is not accepted because a teammate says so:
+the Lead waits for the team (`wait_agent`, then re-read) and verifies the diff before answering.
 
 ### 13.10 The persisted goal (continuous execution)
 

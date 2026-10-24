@@ -29,7 +29,7 @@ Generate hierarchical AGENTS.md files. Root + complexity-scored subdirectories.
 **todo_write ALL phases. Mark in_progress → completed in real-time.**
 ```
 todo_write({ todos: [
-  { "content": "Fire explore agents + LSP/ast-grep map + read existing", "status": "pending" },
+  { "content": "Issue serial Explorer consults + LSP/ast-grep map + read existing", "status": "pending" },
   { "content": "Score directories, determine locations", "status": "pending" },
   { "content": "Generate AGENTS.md files (root + subdirs)", "status": "pending" },
   { "content": "Deduplicate, validate, trim", "status": "pending" }
@@ -118,7 +118,7 @@ If `--create-new`: Read all existing first (preserve context) → then delete al
 
 #### 3. Code Map - drive LSP AND ast-grep (do NOT skip)
 
-Highest-signal source for the CODE MAP and the Symbol/Export/Reference scoring rows. Complementary, not alternatives - run BOTH when present, alongside the explore agents.
+Highest-signal source for the CODE MAP and the Symbol/Export/Reference scoring rows. Complementary, not alternatives - run BOTH when present, alongside the Explorer consults.
 
 **LSP** - the mounted surface is `mcp__lsp__*`; model-facing names are `mcp__lsp__find_definition`, `mcp__lsp__find_references`, `mcp__lsp__find_workspace_symbols`, `mcp__lsp__get_diagnostics`, `mcp__lsp__get_hover`, `mcp__lsp__rename_symbol`, `mcp__lsp__rename_symbol_strict`, `mcp__lsp__find_implementation`, `mcp__lsp__prepare_call_hierarchy`:
 - `mcp__lsp__get_diagnostics` on each entry point -> the server answers, and its current errors come back with the file.

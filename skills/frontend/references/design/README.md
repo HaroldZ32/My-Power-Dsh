@@ -22,7 +22,7 @@ A combined directory of all 83 reference files is at `_INDEX.md`. **Read that in
 
 ## Beyond the curated set
 
-For broader brand/style coverage the curated files in this directory are the whole catalogue: no `open-design` library is mounted, so a brand the index does not cover resolves to the nearest Layer B file or a Layer A mood match, with the substitution recorded in `DESIGN.md`.
+For broader brand/style coverage the curated files in this directory are the whole catalogue: no `open-design` library is mounted, so a brand the user NAMED that the index does not cover falls back to a Layer A mood match only — never another brand's tokens — with the substitution recorded in `DESIGN.md`.
 
 When the request explicitly mentions Open Design, Claude Design alternatives, design-system libraries, or a brand/style that is not covered by this skill's curated reference set, answer from the curated set and keep this skill responsible for routing discipline, design-system gating, and frontend execution quality.
 

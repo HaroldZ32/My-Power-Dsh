@@ -13,7 +13,7 @@
 // THE LABEL SPLIT IS NOT RESTATED HERE. `rosterNameHead` in the shared adapter is the ONE
 // implementation (the native team executor reads the same rule), so the official path and the
 // native path cannot disagree about what "the head of a description" means.
-import { rosterNameHead } from "../../mpd-dsh-adapter-plugin/src/index"
+import { rosterNameHead } from "../../mpd-dsh-adapter-plugin/src/index.ts"
 
 /** One member's resolved route, as the mpd `teamModels` slots declare it. */
 export interface SlotRoute {

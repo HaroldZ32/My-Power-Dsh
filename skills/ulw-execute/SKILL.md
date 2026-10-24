@@ -205,7 +205,7 @@ A worker done claim is never final: each implementation sub-task returns a `Done
 
 Rules:
 - `confirmed` is the only pass verdict. `false-positive`, `needs-fix`, and `needs-human-review` all block checkbox completion.
-- The verifier must be independent from the executor: use a reviewer consult — `mpd_role_spawn(role="Reviewer")`, or `role="Architect"` for an architectural verdict — or a fresh reviewer lane on the team plane, or root only when root did not implement or materially rewrite that task.
+- The verifier must be independent from the executor: a READ-LEVEL pass (architecture, design, findings judged from evidence already on disk) goes to `mpd_role_spawn(role="Architect")` or `role="Reviewer"`; a COMMAND-LEVEL pass (probes and repro commands actually run) needs a write-capable role — `mpd_role_spawn(role="Senior Engineer")`, else `role="Deep Worker"` — because Architect and Reviewer are read-only and cannot run bash. Or a fresh reviewer lane on the team plane, or root only when root did not implement or materially rewrite that task.
 - A worker done claim must be independently verified before it becomes checkbox completion.
 - On any non-confirmed verdict, append the feedback to the ledger, reset the checkbox work to in-progress, and re-dispatch the executor with the exact failure.
 - The verifier must probe the applicable adversarial keys, including `stale_state`, `dirty_worktree`, and `misleading_success_output`, before allowing `FullyDone`.

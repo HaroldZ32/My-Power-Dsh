@@ -299,9 +299,11 @@ interrupt_agent { target }                                                # 仅 
 - **任务板的 compare-and-set 是不对称的。** `release` 与 `complete`/`fail` 会遵守
   `expected_revision` —— 过期值会被拒绝，并同时返回两个 revision 且不写入；`claim`、`contract`
   与 `depend` 不读它，所以 `claim` 总是从自己读到的最新状态冻结一个新的 attempt。
-- **`write_scopes` 只是提示。** 两个进行中的任务如果计划触碰重叠路径，只会收到警告；任务板从不阻止
-  认领，也从不授权写入，而 bash/格式化器/代码生成器会绕过一切检查 —— 由 Lead 协调归属并审阅最终
-  diff。
+- **`write_scopes` 从不授权写入，而 mpd RECORD 平面上无序的重叠会被拒绝。**
+  在 mpd RECORD 平面上，`agent_teams_plan {action:"approve"}` 会**拒绝**两个声明写范围重叠、且彼此
+  之间没有依赖路径的任务，并点名这一对与两条补救方式 —— 补上依赖边，或让两个范围互不重叠；在官方
+  （OFFICIAL）平面上重叠只是提示，不是锁。`claim` 从不授权写入，而 bash/格式化器/代码生成器会绕过
+  一切检查 —— 这就是那条已声明的边界 —— 由 Lead 协调归属并审阅最终 diff。
 - **消息是持久的。** `send_message` 回答 `accepted`（已投递）或 `queued`（已落盘、排队中），排队
   中的消息绝不要重发。`list_agents` 报告每位成员的 `target` 与可用状态（`inactive` 表示当前没有
   轮次在执行，不是工作已完成）；当没有其他成员在运行或创建中时，`wait_agent` 立刻回答
@@ -451,9 +453,10 @@ TUI 界面自身的一个旋钮；槽位叶子是只可选择字段，选项来�
   在会话头部增加一个 **Agent Teams** 动作。它读的是共享会话存储里 Lead 会话的 `agentTeam` 投影 ——
   那是**官方服务**的投影，不是 mpd RECORD —— 所以面板打开期间名册或任务变化就会刷新。它列出名册
   （持久名字与阶段：`running`、`inactive`、`provisioning`、`failed`）与共享任务板（任务标识、归属、
-  前置、就绪状态、提示性写入范围与重叠
-  警告），并能跳进某位队友的会话。它是**只读**的：面板不能创建、改名、删除或中断队友，也没有任务
-  修改控件 —— 那些属于 §6 里的工具。它不展示点对点消息，只展示名册与任务。如果插件是在一个已经
+  前置、就绪状态、提示性写入范围与重叠警告 —— 那是官方（OFFICIAL）平面的读法，重叠在那里只是
+  提示，而 Team 页面所渲染的 mpd RECORD 任务板会**拒绝**无序重叠，见 §6），并能跳进某位队友的
+  会话。它是**只读**的：面板不能创建、改名、删除或中断队友，也没有任务修改控件 —— 那些属于
+  §6 里的工具。它不展示点对点消息，只展示名册与任务。如果插件是在一个已经
   打开的会话里才启用的，刷新一次页面以接收投影。在 TUI 组合里官方服务那两行
   （`mpd-agent-team`、`mpd-tool-agent-team`）被禁用，因此这块面板没有 TUI 对应物。
 - **Workmates 侧边栏标签页**：workmate 库作为标签页贡献给 **DSH-better-sidebar**
@@ -873,9 +876,12 @@ send_message { "target": "lead", "message": "T5 完成：`bun run verify:docs` �
 ```
 
 只有 `release` 与 `complete`/`fail` 需要带上调用者读到的 `expected_revision`，过期值会以带类型的错误
-被拒绝，因此被改派的任务无法悄悄接受迟到的结果；`claim`、`contract` 与 `depend` 不接收 revision。`write_scopes` 只对重叠发出警告，从不授权写入，所以请在任务描述（或消息）里
-报告你改了什么，而不是依赖那份范围清单。结果不会因为队友自己说完成就被接受：Lead 会先等团队
-（`wait_agent`，然后重新读状态），并在作答前核对 diff。
+被拒绝，因此被改派的任务无法悄悄接受迟到的结果；`claim`、`contract` 与 `depend` 不接收 revision。
+`approve` 会**拒绝**两个声明写范围重叠、且彼此之间没有依赖路径的暂存任务 —— 补上依赖边，或让两个
+范围互不重叠。重叠只在官方（OFFICIAL）平面上是提示。`write_scopes` 从不授权写入，而
+bash/格式化器/代码生成器会绕过该检查，所以请在任务描述（或消息）里报告你改了什么，而不是依赖那份
+范围清单。结果不会因为队友自己说完成就被接受：Lead 会先等团队（`wait_agent`，然后重新读状态），
+并在作答前核对 diff。
 
 ### 13.10 持久化 goal（持续化执行）
 

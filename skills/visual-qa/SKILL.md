@@ -197,7 +197,7 @@ This independent review is REQUIRED before any "done" claim. Do not self-review 
 
 Dispatch through `mpd_role_spawn`: one `Architect` consult for Pass A, one `Vision Analyst` consult for Pass B. `mpd_role_spawn` is ONE-SHOT and synchronous — each returns its report as the tool result — so the two passes run SERIALLY: there is no background child, no `job_output`, and no mid-flight steering. (The harness's generic spawn tools are REFUSED in an mpd session, `delegation.gate:"deny"`.)
 
-Issue the two calls one after the other, each returning its report before the next is issued. Each consult is read-only: it reviews and reports, it cannot modify files. Each returns PASS, REVISE, or FAIL with concrete, located findings. Pass A proves the surface is a real design-system implementation, not a mock-only or faked-image substitute, and judges behaviour: motion, states, keyboard, platform (checklist G-J). Pass B directly opens screenshots and judges what is seen: layout, hierarchy, text, targets, themes, consistency (checklist A-F), reference fidelity and CJK.
+Issue the two calls one after the other, each returning its report before the next is issued. Each consult is read-only: it reviews and reports, it cannot modify files. Each returns PASS, REVISE, or FAIL with concrete, located findings. Pass A proves the surface is a real design-system implementation, not a mock-only or faked-image substitute, and judges behaviour: motion, states, keyboard, platform (checklist G-J). Pass B judges what is seen — layout, hierarchy, text, targets, themes, consistency (checklist A-F), reference fidelity and CJK — from the pixels the Lead puts in the task, or from the script evidence when none were attached (a limit it declares in its deliverable).
 
 Paste evidence directly into each consult's `task`: source code, the plain-text TUI captures, the script JSON, and the screenshot paths plus your described observations for web. There is no fork and no parent history: the `task` carries everything the reviewer needs. Require each blocking finding to be tagged `[product]` (the rendered UI is wrong) or `[evidence]` (the capture artifact is defective - wrong signature, partial compositing, stale file); the loop treats the two differently. The two passes differ in depth by charter, not by any model or effort setting: the mounted spawn surface has no effort knob (only an optional `model` override).
 
@@ -257,7 +257,7 @@ VERIFY: cite the capture or clip behind every verdict.
 mpd_role_spawn(role="Vision Analyst",
   task="""
 TASK: Visual QA pass B - visual fidelity and CJK precision (read-only).
-TIER INTENT: Treat this as the focused visual pass. Directly open the screenshots with the available image-viewing tool (`view_image`, `look_at`, or browser inspection) before judging. Anchor every claim to the script evidence, source code, and captures.
+TIER INTENT: Treat this as the focused visual pass. The spawn surface carries a TEXT prompt only — no image content block and no `view_image`/`look_at` tool exists here — so a screenshot PATH in this task is not an image you can see. The Lead captures the screenshots and then takes exactly ONE of two honest paths, named in your deliverable: (a) the Lead attaches the images to this task where the surface carries image content, or describes each capture in words (page, region, what is visible), so your judgement rests on a stated observation; or (b) your verdict is limited to the script evidence and source code below, and you declare that limit — "pixels not inspected" — in EVIDENCE TRACE. Never claim to have looked at a file that did not reach you; anchor every claim to what actually did.
 
 INTENT:
 {What the user requested and the mock or baseline to match.}
@@ -280,7 +280,7 @@ CHECKLIST (sections A-F, pasted verbatim):
 {Paste checklist sections A, B, C, D, E, F from the skill.}
 
 USE THE EVIDENCE:
-- Web (image-diff): start from diffRatio and similarityScore, then directly open every screenshot path and inspect every hotspots[] entry (gridX, gridY, x, y, width, height, diffRatio). Explain the visual cause of each flagged region from the pixels and source/content together.
+- Web (image-diff): start from diffRatio and similarityScore, then walk every hotspots[] entry (gridX, gridY, x, y, width, height, diffRatio). Explain the visual cause of each flagged region from the pixels you received and the source/content together; where the pixels did not reach you, write "pixels not inspected" for that region and judge from the script evidence.
 - TUI (tui-check): inspect maxWidth vs expectedColumns, every overflowLines[] entry, borderMisaligned, and wideCharColumns[].
 
 CHECK:
@@ -304,7 +304,7 @@ EVIDENCE TRACE: each hotspot or overflow line mapped to its visual cause
 FINDINGS: for each, [product|evidence] [severity] what is wrong, where (hotspot grid or capture line:col), and the concrete fix
 BLOCKING: items that must be fixed; empty if PASS
 SCOPE: read-only; never edit files.
-VERIFY: anchor every claim to the script JSON, source code, and captures; open the screenshots yourself.
+VERIFY: anchor every claim to the script JSON, source code, and the captures you actually received; never claim to have opened a screenshot that was not attached.
 """
 )
 ```
@@ -354,7 +354,7 @@ Captured: {N pages} x {390, 1440[, 1920]} x {light, dark} + scrolled-end + motio
 
 Run this step IN ADDITION to Steps 1-4 when the original user task has a concrete visual target: "clone this site", "move this Figma design to code", "rebuild this screen", "make it look exactly like X", or "build this Imagen/Stitch/generated mockup and overview". For these tasks the normal dual-consult is necessary but NOT sufficient. After it returns, run the following TWO additional MANDATORY verifications and LOOP until BOTH pass.
 
-1. Pixel-perfect design-compare (Vision Analyst). Issue a focused, read-only `mpd_role_spawn(role="Vision Analyst", task=...)` consult. It must crop/zoom BOTH the reference (target / Figma export / source-site screenshot / generated page snapshot) and the ACTUAL screenshot into matching regions and read them **pixel-by-pixel** - header, nav, each card, spacing, type ramp, color tokens - not at a glance. It must also compare the overview text or annotations against the rendered content and DOM text. Anchor every claim with the bundled tool:
+1. Pixel-perfect design-compare (Vision Analyst). Issue a focused, read-only `mpd_role_spawn(role="Vision Analyst", task=...)` consult. The spawn surface carries a TEXT prompt only — no image content block and no `view_image`/`look_at` tool — so a screenshot PATH in the task is not an image the analyst can see; name which of the two honest paths you took in the deliverable, exactly as at Pass B: (a) you attach the reference and ACTUAL captures to the task, or describe each in words (page, region, what is visible), and the analyst compares matching regions - header, nav, each card, spacing, type ramp, color tokens - region by region against those observations and the source, not at a glance; or (b) where the pixels did not reach it, it writes "pixels not inspected" for that region and judges from the script evidence, and never claims a look that did not happen. It must also compare the overview text or annotations against the rendered content and DOM text. Anchor every claim with the bundled tool:
 
 ```
 node "$SKILL_DIR/scripts/visual-qa.mjs" image-diff <reference.png> <actual.png>

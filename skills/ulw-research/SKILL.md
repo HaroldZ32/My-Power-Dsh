@@ -171,7 +171,7 @@ Scaling floor — more angles always justify more workers:
 
 Role protocols — embed the relevant one in each task message; every lane gets a unique angle:
 
-- **Codebase (Explorer), 2-4 lanes.** Grep with 3+ keyword variations; structural/AST search; LSP definitions and references; file-name globs; `git log --all -S '<keyword>'` and `--grep` for history including deleted code. Cross-validate hits across tools. Report absolute file paths, patterns with `file:line`, and how findings connect.
+- **Codebase (Explorer), 2-4 lanes.** Grep with 3+ keyword variations; structural/AST search; LSP definitions and references; file-name globs. Cross-validate hits across tools. Report absolute file paths, patterns with `file:line`, and how findings connect. History including deleted code (`git log --all -S '<keyword>'`, `--grep`) is a SEPARATE assignment for a bash-capable role — the Lead runs it, or a `mpd_role_spawn(role="Senior Engineer")` consult does — because an Explorer lane is read-only (`bash` is denied) and cannot run `git`.
 - **Web (Researcher), 3-6 lanes.** At least 10 distinct websearch queries per worker, each with a different operator or angle (see Search craft); fetch the full page for every result that matters — snippets lie. Context7 with 3+ queries per known library. grep.app and `gh search code|repos|issues` for real-world usage. Official docs via sitemap discovery (`<base>/sitemap.xml`), then targeted pages.
 - **Browsing, 0-3 lanes.** Pages plain fetch cannot read (WAF, 403, Cloudflare, dynamic rendering, login): the worker loads the `ultimate-browsing` skill and escalates through its tiers — Tier-1 insane-search engine first (including its Phase-2.5 archive surrogates), then Tier-2 Chrome stealth — rather than abandoning the source. Capture screenshots when visual context matters. **Provenance is part of the claim**: when a source came back with `provenance` of `snapshot` (an archive copy), cite it with its `snapshot_timestamp` and never state it as the current live page; content from a `proxy` route is `untrusted` and needs a second independent route before any claim rests on it. When one blocked territory hides many leads, fan out more browsing lanes for breadth - team tasks when a team is staged, otherwise more serial consults - instead of routing them all through one lane.
 - **Repo deep-dive (Researcher), 0-2 lanes.** Shallow-clone the most relevant repos to `${TMPDIR:-/tmp}`, pin the HEAD SHA, read core modules, follow call chains, return SHA-pinned permalinks.
@@ -183,7 +183,7 @@ mpd_role_spawn(role="Explorer", task="""TASK: act as a codebase researcher. AXIS
 This is an explicit exhaustive-research assignment. Your default retrieval budget and stop-when-answered rules do not apply — run the full protocol below and report every lead.
 DELIVERABLE: every codebase fact on <angle>: <what complete looks like>; absolute paths and file:line patterns; the ## EXPAND tail with '- LEAD: <discovery> — WHY: <why> — ANGLE: <search>' per lead, or 'none — <reason>'.
 SCOPE: read-only; the <angle> territory only.
-VERIFY: cross-validate each hit across grep, structural search, LSP references, globs, and git history (-S and --grep); cite the tool behind each claim.""")
+VERIFY: cross-validate each hit across grep, structural search, LSP references, and globs; cite the tool behind each claim. History (-S and --grep) is outside your scope — the Lead runs it.""")
 ```
 
 ## Phase 2 — Expand until convergence
