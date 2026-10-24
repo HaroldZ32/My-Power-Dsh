@@ -47,7 +47,7 @@ From [Leonxlnx/taste-skill](https://github.com/Leonxlnx/taste-skill).
 
 1. **At most one *style* skill at a time** (`taste-skill`, `gpt-tasteskill`, `minimalist-skill`, `brutalist-skill`, `soft-skill`, `redesign-skill`, `image-to-code-skill`). They encode opposite philosophies — picking two creates contradictions.
 2. **`output-skill.md` and `stitch-skill.md` stack on top of any style skill.** They add discipline and output format, not visual direction.
-3. **`image-to-code-skill.md` pairs with one imagegen skill** for the full flow.
+3. **`image-to-code-skill.md` pairs with one `imagegen-*.md` reference file** for the full flow.
 4. **Imagegen skills are image-only.** Do not load them when the user actually wants code.
 
 ---

@@ -42,7 +42,7 @@
 세 조건 모두 참일 때 Claude는 **병렬 경로**를 시작한다:
 
 **"병렬"의 실행 의미** (Claude 도구 호출이 순차이므로 명확화):
-- engine은 `run_in_background=true`로 Bash 툴에서 띄워둔다 — 격자는 그대로 돌되 블로킹하지 않음
+- engine은 `run_in_background=true`로 bash 툴에서 띄워둔다 — 격자는 그대로 돌되 블로킹하지 않음
 - Claude는 그 사이 foreground에서 MCP Playwright 정찰 루트를 진행
 - engine이 먼저 성공해도 좋고, MCP 정찰로 얻은 API가 먼저 성공해도 좋음. 빠른 쪽 결과 채택
 
@@ -283,7 +283,7 @@ yt-dlp --write-sub --write-auto-sub --sub-lang "en,ko" --skip-download -o "/tmp/
 
 ## 관련 문서 (references/) — 언제 무엇을 읽을지
 
-이 섹션은 **참조 파일 선택 가이드**다. 문제가 생겼을 때 어떤 `references/*.md`를 열어야 할지 결정하는 기준으로 쓴다. Claude는 필요할 때만 해당 파일을 `Read`하고, 선제적으로 전부 읽지 않는다.
+이 섹션은 **참조 파일 선택 가이드**다. 문제가 생겼을 때 어떤 `references/*.md`를 열어야 할지 결정하는 기준으로 쓴다. Claude는 필요할 때만 해당 파일을 `read`하고, 선제적으로 전부 읽지 않는다.
 
 ### A. Engine 확장·진단 (하네스 내부)
 

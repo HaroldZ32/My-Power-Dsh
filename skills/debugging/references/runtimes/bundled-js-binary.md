@@ -28,7 +28,7 @@ If yes → **stop following `native-binary.md` and follow this**. Triage and dyn
   [1] Triage           →  identify the bundler (Bun? pkg? Deno? Electron? PyInstaller?)
   [2] Locate the bundle → find where the embedded source archive starts
   [3] Extract           → dump source to disk so you can grep / read it
-  [4] Source-level static analysis (rg + Read, NOT Ghidra)
+  [4] Source-level static analysis (`rg` + `read`, NOT Ghidra)
   [5] Runtime verification → debug logs, --inspect, partial-evidence patterns
   [6] Fix / report
 ```
@@ -214,7 +214,7 @@ Use the `eszip` Rust crate or the `@deno/eszip` JS port to walk the archive afte
 
 ---
 
-## [4] Source-level static analysis — `rg` + `Read`, not Ghidra
+## [4] Source-level static analysis — `rg` + `read`, not Ghidra
 
 Once you have the source on disk, treat it as a normal codebase:
 

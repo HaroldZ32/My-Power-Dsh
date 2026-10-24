@@ -20,11 +20,11 @@ The library lives flat in this directory (`references/design/`, max depth 1) and
 
 A combined directory of all 83 reference files is at `_INDEX.md`. **Read that index before loading anything** unless the routing is obvious — it has the full mood-mapping and stacking rules in one place.
 
-## Open Design Library
+## Beyond the curated set
 
-For broader brand/style coverage, load the `open-design` skill — the local `nexu-io/open-design` library (150+ design systems).
+For broader brand/style coverage the curated files in this directory are the whole catalogue: no `open-design` library is mounted, so a brand the index does not cover resolves to the nearest Layer B file or a Layer A mood match, with the substitution recorded in `DESIGN.md`.
 
-Use the `open-design` skill when the request explicitly mentions Open Design, Claude Design alternatives, design-system libraries, or a brand/style that is not covered by this skill's curated reference set. Treat Open Design as the expanded reference library; keep this skill responsible for routing discipline, design-system gating, and frontend execution quality.
+When the request explicitly mentions Open Design, Claude Design alternatives, design-system libraries, or a brand/style that is not covered by this skill's curated reference set, answer from the curated set and keep this skill responsible for routing discipline, design-system gating, and frontend execution quality.
 
 ## Phase 0 — Design System Gate (MANDATORY, runs before routing)
 
@@ -38,7 +38,7 @@ Before touching any UI code, before routing to any reference, before even thinki
 
 1. Read `design-system-architecture.md` — it defines the exact structure.
 2. Identify the branch: greenfield setup, existing UI with implicit patterns/components, or existing UI with no reusable component layer.
-3. **Greenfield setup:** if the user gave no concrete visual reference, use `_INDEX.md` to shortlist 2-3 plausible Layer B references, then read exactly one Layer A style skill and one Layer B brand/design-system reference in full — every line, no partial reads; use `open-design` only when the curated set has no fit. Open `DESIGN.md` with a `## 0. Research Log` recording each research lane's deliverable (embedded-reference shortlist + pick, lazyweb screens viewed, imagen drafts — see the SKILL.md workflow); a lane with no line did not run. Treat those references as source material, not mood labels: extract tokens, layout grammar, component anatomy, interaction states, motion, and taste decisions into `DESIGN.md`, then recombine them into project-specific primitives. Customize for the user's product and content, but do not freestyle past the selected references; never copy logos, trademarked assets, or brand-specific copy.
+3. **Greenfield setup:** if the user gave no concrete visual reference, use `_INDEX.md` to shortlist 2-3 plausible Layer B references, then read exactly one Layer A style skill and one Layer B brand/design-system reference in full — every line, no partial reads; when the curated set has no fit, take the nearest Layer B reference and record why (no `open-design` library is mounted). Open `DESIGN.md` with a `## 0. Research Log` recording each research lane's deliverable (embedded-reference shortlist + pick, lazyweb screens viewed, imagen drafts — see the SKILL.md workflow); a lane with no line did not run. Treat those references as source material, not mood labels: extract tokens, layout grammar, component anatomy, interaction states, motion, and taste decisions into `DESIGN.md`, then recombine them into project-specific primitives. Customize for the user's product and content, but do not freestyle past the selected references; never copy logos, trademarked assets, or brand-specific copy.
    - **Commit a distinctive direction BEFORE extracting tokens.** In 1-2 sentences, name the atmosphere, the signature material, the color story, and the one moment a visitor will remember. For an expressive brief, sketch 2-3 genuinely different directions and pick the boldest one you can defend with the loaded reference; do not average them, because the average IS the generic default this skill exists to beat. A locked, never-revisited one-shot decision is how a page ends up flat.
    - **The reference's distinctive material MUST survive extraction (expressive briefs).** The common failure is loading a rich reference and then distilling it into a generic dark-SaaS token set. Your `DESIGN.md` must carry the *non-default* decisions forward and name which reference each came from: the actual elevation recipe (the specific layers that make a surface read as glass/glossy, not a single blur), a multi-stop perceptual color ramp (not one brand hex reused at varied opacity), the explicit display/body/mono type choices, and one signature interaction. Self-check before writing code: if your `DESIGN.md` could describe any generic dark SaaS, you flattened the reference — go back and put the specific material in.
 4. **Existing UI with implicit patterns/components:** extract the colors, typography, spacing, primitives, states, and motion already in use. Write `DESIGN.md` to codify what exists before changing UI code.
@@ -193,7 +193,7 @@ Triggers: an animated, shader, particle, or grid background; a hero that must fe
 2. **`taste-skill.md` and `gpt-tasteskill.md` are also style-skills** — do not stack them with `minimalist`, `brutalist`, or `soft`. They are alternative defaults at different intensity levels.
 3. **`output-skill.md` and `stitch-skill.md` stack on top of any style skill.** They add discipline and output format, not visual direction.
 4. **`redesign-skill.md` replaces a style-skill** when the task is auditing, not building. Stack a Layer B brand if the user wants a specific direction.
-5. **`image-to-code-skill.md` pairs with one imagegen skill** for the full flow.
+5. **`image-to-code-skill.md` pairs with one `imagegen-*.md` reference file** for the full flow.
 6. **Layer B (brand DESIGN.md) is orthogonal to Layer A.** You can pair any Layer A skill with any Layer B brand. Use Layer B as the source of color/type/component tokens; let Layer A drive the execution discipline.
 7. **`layout-skill.md` stacks on top of any style skill** for app-shell / dashboard / split-pane work. It owns spatial structure and scroll ownership only — no visual direction — so it never conflicts with the style skill you picked.
 8. **`interaction-skill.md` stacks on top of any style skill** for interaction/motion work. It owns interaction mechanics — springs, layout morphs, enter/exit orchestration, reduced motion — and no visual direction, so it never conflicts with the style skill either.
@@ -205,7 +205,7 @@ Triggers: an animated, shader, particle, or grid background; a hero that must fe
 - **Don't mark state with a coloured accent border.** `border-l-2 border-primary` on the selected row, a primary outline on the focused card — on a rounded surface that is the generic AI tell. State is ink-alpha washes, a glyph for selection, tonal layering for focus; `focus-visible` rings are the only coloured edge. Includes pre-existing instances on surfaces you touch.
 - **Don't ignore the user's named brand.** If they say "Linear-style" and you build something that doesn't match Linear's actual aesthetic (purple, ultra-tight spacing, mono accents, etc.), you have failed the routing.
 - **Don't apply a Layer B brand verbatim if the project is not that brand.** The DESIGN.md captures *inspiration* — extract the tokens (palette, type scale, component patterns) and apply them to the project's own content. Do not copy logos or trademarked imagery.
-- **Don't use imagegen skills to write code.** They are explicitly image-only. The agent has been observed trying to "describe" the image as React code — that is the wrong skill, switch to `image-to-code-skill.md` instead.
+- **Don't use the `imagegen-*.md` references to write code.** They are explicitly image-only. The agent has been observed trying to "describe" the image as React code — that is the wrong skill, switch to `image-to-code-skill.md` instead.
 - **Don't suppress style differences with `as any` or `@ts-ignore` to make a borrowed component work.** That is type-safety slop. Adapt the component cleanly.
 
 ## Execution checklist after routing

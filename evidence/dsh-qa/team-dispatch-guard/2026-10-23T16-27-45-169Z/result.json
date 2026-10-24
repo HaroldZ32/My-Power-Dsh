@@ -1,0 +1,132 @@
+{
+  "case": "team-dispatch-guard",
+  "ok": true,
+  "arms": [
+    {
+      "id": "a",
+      "claim": "cross-team pairing REFUSED, naming both team ids",
+      "ok": true,
+      "observed": "refused a CROSS-TEAM pairing: task T1 belongs to team-a while member \"qa-reader-writer\" belongs to team-b"
+    },
+    {
+      "id": "b",
+      "claim": "write task × read-only member REFUSED, reason reported",
+      "ok": true,
+      "observed": "refused a WRITE-TASK-ON-READ-ONLY pairing: task T5 has write scopes (packages/x) while member \"Plan Reviewer\" is a read-only specialist"
+    },
+    {
+      "id": "c",
+      "claim": "terminal/archived team SKIPPED, live team resolves, none when only a ghost, and the archive arm keys by the record's OWN plan id",
+      "ok": true,
+      "observed": "resolved=team-live onlyGhost=(none) archiveReaped=false archiveLiveKept=true legacyKeyIgnored=true"
+    },
+    {
+      "id": "d",
+      "claim": "NEGATIVE CONTROL: a valid same-team write-capable pairing still SUCCEEDS",
+      "ok": true,
+      "observed": "[[\"T2\",\"m-w\"]]"
+    },
+    {
+      "id": "b-real",
+      "claim": "REAL store: the write task is refused the read-only member, reason reported",
+      "ok": true,
+      "observed": "refused a WRITE-TASK-ON-READ-ONLY pairing: task T1 has write scopes (packages/x) while member \"Plan Reviewer\" is a read-only specialist"
+    },
+    {
+      "id": "d-real",
+      "claim": "REAL store NEGATIVE CONTROL: the same task pairs with the write-capable member",
+      "ok": true,
+      "observed": "[\"sess-w\"]"
+    },
+    {
+      "id": "c-real",
+      "claim": "REAL store: the bound phantom resolves NOTHING and is marked terminal with a reason",
+      "ok": true,
+      "observed": "resolved=(none) reaped=[\"team-phantom\"] phase=ended"
+    },
+    {
+      "id": "registry-real",
+      "claim": "REAL store: the terminal team's OWN bound lead no longer resolves it",
+      "ok": true,
+      "observed": "bound=team-phantom resolved=(none)"
+    },
+    {
+      "id": "f1",
+      "claim": "mid-run create_task appends to the LIVE APPROVED record with kind/coverageOf/sourceTaskId",
+      "ok": true,
+      "observed": "appended=task T3 \"the repair\" appended to the live team team-20261023162745157-ymgq-002 kind=repair coverageOf=C7-4 F1 sourceTaskId=T1"
+    },
+    {
+      "id": "f1-neg-staged-approved",
+      "claim": "NEGATIVE CONTROL: a staged-but-approved plan still refuses",
+      "ok": true,
+      "observed": "plan plan-stranded-1 is already approved; stage a new one to change the team"
+    },
+    {
+      "id": "f1-neg-no-team",
+      "claim": "NEGATIVE CONTROL: no staged plan and no live team keeps the standing sentence",
+      "ok": true,
+      "observed": "no team is staged in this session — call agent_teams_create first"
+    },
+    {
+      "id": "f2",
+      "claim": "a member session whose id IS the executorRef closes a row owned by its NAME",
+      "ok": true,
+      "observed": "refused=(none) closedBy=owner status=completed"
+    },
+    {
+      "id": "f2-neg",
+      "claim": "NEGATIVE CONTROL: a roster member still cannot close a row it does not own",
+      "ok": true,
+      "observed": "task T1 is owned by \"Senior Engineer\" and this caller is neither that owner nor this team's lead"
+    },
+    {
+      "id": "f3",
+      "claim": "mailbox summary is FILTERED to the resolved team and labelled scope:team",
+      "ok": true,
+      "observed": "scope=team ids=[\"M1\"]"
+    },
+    {
+      "id": "f3-neg",
+      "claim": "NEGATIVE CONTROL: no resolved team answers scope:workspace and the WHOLE fold",
+      "ok": true,
+      "observed": "scope=workspace ids=[\"foreign-sess\"]"
+    },
+    {
+      "id": "f4",
+      "claim": "two mints in the SAME millisecond differ (team and plan)",
+      "ok": true,
+      "observed": "teamA=team-20261014120000000-ymgq-00b teamB=team-20261014120000000-ymgq-00c planA=plan-20261014120000000-ymgq-00d planB=plan-20261014120000000-ymgq-00e"
+    },
+    {
+      "id": "f4-neg-team",
+      "claim": "NEGATIVE CONTROL: a colliding TEAM id reddens (createTeam refuses an existing id)",
+      "ok": true,
+      "observed": "team id \"team-fixed-1\" already exists in this workspace — refusing to overwrite a team record"
+    },
+    {
+      "id": "f4-neg-plan",
+      "claim": "NEGATIVE CONTROL: a colliding PLAN id reddens (archivePlan refuses an existing archive)",
+      "ok": true,
+      "observed": "plan id \"plan-20261014120000000-ymgq-00f\" is already archived in this workspace — refusing to overwrite an archived plan"
+    },
+    {
+      "id": "f5",
+      "claim": "a forked lead session resolves and closes as lead, and the heal PERSISTS (history + registry)",
+      "ok": true,
+      "observed": "closedBy=lead history=[\"lead-fork-2\"] bound=team-20261023162745167-ymgq-00h"
+    },
+    {
+      "id": "f5-neg-unbound",
+      "claim": "NEGATIVE CONTROL: an unbound session with no history is still refused",
+      "ok": true,
+      "observed": "no team record in this workspace — approve a plan first"
+    },
+    {
+      "id": "f5-neg-child",
+      "claim": "NEGATIVE CONTROL: a delegation CHILD of the lead is NOT healed into the lead history",
+      "ok": true,
+      "observed": "no team record in this workspace — approve a plan first; history=[\"lead-fork-2\"]"
+    }
+  ]
+}

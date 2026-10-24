@@ -1,0 +1,241 @@
+diff --git a/skills/debugging/ATTRIBUTION.md b/skills/debugging/ATTRIBUTION.md
+index a5e7d96f..4e3bca78 100644
+--- a/skills/debugging/ATTRIBUTION.md
++++ b/skills/debugging/ATTRIBUTION.md
+@@ -19,7 +19,7 @@
+ 
+ ### Local adaptations in this repository (NOT upstream)
+ 
+-our frontmatter `description`; the DSH debug-squad team protocol in `references/methodology/02-investigate.md`; the `subagent(...)` / `job_output(...)` dispatch examples in `references/methodology/04-oracle-triple.md` and `references/methodology/partial-runtime-evidence.md`; and `references/tools/playwright-cli.md` with its Playwright-CLI instruction, kept in place of upstream's `tools/browser-qa.md`, which names the upstream author's own in-house Codex browser library.
++our frontmatter `description`; the DSH debug-squad team protocol in `references/methodology/02-investigate.md`; the `mpd_role_spawn(...)` consult examples in `references/methodology/04-oracle-triple.md` and `references/methodology/partial-runtime-evidence.md`, rewritten from upstream's `subagent(...)` / `job_output(...)` dispatch examples; and `references/tools/playwright-cli.md` with its Playwright-CLI instruction, kept in place of upstream's `tools/browser-qa.md`, which names the upstream author's own in-house Codex browser library.
+ 
+ ### MIT License (verbatim from the source repository's LICENSE)
+ 
+diff --git a/skills/debugging/references/methodology/partial-runtime-evidence.md b/skills/debugging/references/methodology/partial-runtime-evidence.md
+index 8058beae..cced3c6d 100644
+--- a/skills/debugging/references/methodology/partial-runtime-evidence.md
++++ b/skills/debugging/references/methodology/partial-runtime-evidence.md
+@@ -173,7 +173,7 @@ SKEPTICAL FINAL VERIFICATION — be critical, look for reasons the task is incom
+ <bullet list of every concrete claim in the deliverable>
+ 
+ ## Where to look
+-<paths the Oracle should Read / Bash to verify>
++<paths the Oracle should `read` / `bash` to verify>
+ 
+ ## Your job
+ 1. Read the deliverables.
+diff --git a/skills/debugging/references/runtimes/bundled-js-binary.md b/skills/debugging/references/runtimes/bundled-js-binary.md
+index a64c8073..cf58cd5e 100644
+--- a/skills/debugging/references/runtimes/bundled-js-binary.md
++++ b/skills/debugging/references/runtimes/bundled-js-binary.md
+@@ -28,7 +28,7 @@ If yes → **stop following `native-binary.md` and follow this**. Triage and dyn
+   [1] Triage           →  identify the bundler (Bun? pkg? Deno? Electron? PyInstaller?)
+   [2] Locate the bundle → find where the embedded source archive starts
+   [3] Extract           → dump source to disk so you can grep / read it
+-  [4] Source-level static analysis (rg + Read, NOT Ghidra)
++  [4] Source-level static analysis (`rg` + `read`, NOT Ghidra)
+   [5] Runtime verification → debug logs, --inspect, partial-evidence patterns
+   [6] Fix / report
+ ```
+@@ -214,7 +214,7 @@ Use the `eszip` Rust crate or the `@deno/eszip` JS port to walk the archive afte
+ 
+ ---
+ 
+-## [4] Source-level static analysis — `rg` + `Read`, not Ghidra
++## [4] Source-level static analysis — `rg` + `read`, not Ghidra
+ 
+ Once you have the source on disk, treat it as a normal codebase:
+ 
+diff --git a/skills/init-deep/SKILL.md b/skills/init-deep/SKILL.md
+index 8b63db4d..e6216cf4 100644
+--- a/skills/init-deep/SKILL.md
++++ b/skills/init-deep/SKILL.md
+@@ -28,12 +28,12 @@ Generate hierarchical AGENTS.md files. Root + complexity-scored subdirectories.
+ <critical>
+ **todo_write ALL phases. Mark in_progress → completed in real-time.**
+ ```
+-todo_write([
++todo_write({ todos: [
+   { "content": "Fire explore agents + LSP/ast-grep map + read existing", "status": "pending" },
+   { "content": "Score directories, determine locations", "status": "pending" },
+   { "content": "Generate AGENTS.md files (root + subdirs)", "status": "pending" },
+   { "content": "Deduplicate, validate, trim", "status": "pending" }
+-])
++] })
+ ```
+ </critical>
+ 
+@@ -91,7 +91,7 @@ mpd_role_spawn(role="Explorer", task="TASK: find shared utilities across directo
+ ### Main Session: Structural Analysis
+ 
+ **Between consults**, main session does:
+-#### 1. Bash Structural Analysis
++#### 1. Structural Analysis with `bash`
+ ```bash
+ # Directory depth + file counts
+ find . -type d -not -path '*/\\.*' -not -path '*/node_modules/*' -not -path '*/venv/*' -not -path '*/dist/*' -not -path '*/build/*' | awk -F/ '{print NF-1}' | sort -n | uniq -c
+@@ -109,7 +109,7 @@ find . -type f \\( -name "AGENTS.md" -o -name "CLAUDE.md" \\) -not -path '*/node
+ #### 2. Read Existing AGENTS.md
+ ```
+ For each existing file found:
+-  Read(filePath=file)
++  read(filePath=file)
+   Extract: key insights, conventions, anti-patterns
+   Store in EXISTING_AGENTS map
+ ```
+@@ -182,8 +182,8 @@ AGENTS_LOCATIONS = [
+ **Mark "generate" as in_progress.**
+ 
+ <critical>
+-**File Writing Rule**: If AGENTS.md already exists at the target path → use `Edit` tool. If it does NOT exist → use `Write` tool.
+-NEVER use Write to overwrite an existing file. ALWAYS check existence first via `Read` or discovery results.
++**File Writing Rule**: If AGENTS.md already exists at the target path → use the `edit` tool. If it does NOT exist → use the `write` tool.
++NEVER use `write` to overwrite an existing file. ALWAYS check existence first via `read` or discovery results.
+ </critical>
+ 
+ ### Root AGENTS.md (Full Treatment)
+diff --git a/skills/programming/SKILL.md b/skills/programming/SKILL.md
+index c74be146..d8403ab5 100644
+--- a/skills/programming/SKILL.md
++++ b/skills/programming/SKILL.md
+@@ -18,7 +18,7 @@ This skill is an index. The hard per-language rules live under `references/`. Lo
+ 1. **Identify the language** from the file extension or the user's request.
+ 2. **STOP** and read the matching reference set:
+ 
+-   | File / Language | MANDATORY reading (load `Read` tool on every file below) |
++   | File / Language | MANDATORY reading (open every file below with the `read` tool) |
+    |---|---|
+    | `.py`, `.pyi`, "Python" | `references/python/README.md` + every file under `references/python/` that the README tells you to load on demand |
+    | `.rs`, `Cargo.toml`, "Rust" | `references/rust/README.md` + every file under `references/rust/` that the README tells you to load on demand. **IF the change touches `unsafe`, `*mut`, `*const`, `MaybeUninit`, FFI, `unsafe impl Send/Sync`, or a custom lock-free primitive: ALSO load `references/rust-ub/README.md` plus every file under `references/rust-ub/`.** |
+diff --git a/skills/refactor/ATTRIBUTION.md b/skills/refactor/ATTRIBUTION.md
+index 97843371..f6d50279 100644
+--- a/skills/refactor/ATTRIBUTION.md
++++ b/skills/refactor/ATTRIBUTION.md
+@@ -19,7 +19,7 @@
+ 
+ ### Local adaptations in this repository (NOT upstream)
+ 
+-our frontmatter `description`; the DSH team-mode protocol (roster personas fetched with `mpd_role_persona`, the `agent_teams_*` lifecycle, `.mpd/team/archive`) kept in place of upstream's Codex team instructions; `subagent(...)` / `job_output(...)` dispatch examples.
++our frontmatter `description`; the DSH team-mode protocol (roster personas fetched with `mpd_role_persona`, the `agent_teams_*` lifecycle, `.mpd/team/archive`) kept in place of upstream's Codex team instructions; the serial `mpd_role_spawn(...)` consult examples, rewritten from upstream's `subagent(...)` / `job_output(...)` dispatch examples.
+ 
+ ### MIT License (verbatim from the source repository's LICENSE)
+ 
+diff --git a/skills/refactor/SKILL.md b/skills/refactor/SKILL.md
+index af81ec8b..1f7953d1 100644
+--- a/skills/refactor/SKILL.md
++++ b/skills/refactor/SKILL.md
+@@ -82,14 +82,14 @@ Should I proceed with [recommendation], or would you prefer differently?
+ **IMMEDIATELY after understanding the request, create todos:**
+ 
+ \`\`\`
+-todo_write([
++todo_write({ todos: [
+   { "content": "PHASE 1: Codebase Analysis - issue serial Explorer consults", "status": "pending" },
+   { "content": "PHASE 2: Build Codemap - map dependencies and impact zones", "status": "pending" },
+   { "content": "PHASE 3: Test Assessment - analyze test coverage and verification strategy", "status": "pending" },
+   { "content": "PHASE 4: Plan Generation - issue the Planner consult for a detailed refactoring plan", "status": "pending" },
+   { "content": "PHASE 5: Execute Refactoring - step-by-step with continuous verification", "status": "pending" },
+   { "content": "PHASE 6: Final Verification - full test suite and regression check", "status": "pending" }
+-])
++] })
+ \`\`\`
+ 
+ ---
+@@ -164,7 +164,7 @@ python3 scripts/ast_grep_helper.py search 'function $NAME($$$) { $$$ }' --lang t
+ sg --pattern '[old_pattern]' --rewrite '[new_pattern]' --lang ts src/
+ \`\`\`
+ 
+-### Grep for Text Patterns:
++### Text-pattern search with `grep`:
+ 
+ \`\`\`
+ grep(pattern="[search_term]", path="src/", include="*.ts")
+@@ -372,14 +372,14 @@ After the Planner consult returns:
+ Convert the Planner's output into granular todos:
+ 
+ \`\`\`
+-todo_write([
++todo_write({ todos: [
+   // Each step from the plan becomes a todo
+   { "content": "Step 1: [description]", "status": "pending" },
+   { "content": "Verify Step 1: run tests", "status": "pending" },
+   { "content": "Step 2: [description]", "status": "pending" },
+   { "content": "Verify Step 2: run tests", "status": "pending" },
+   // ... continue for all steps
+-])
++] })
+ \`\`\`
+ 
+ **Mark phase-4 as completed.**
+@@ -419,7 +419,7 @@ python3 scripts/ast_grep_helper.py replace '[pattern]' '[rewrite]' --lang ts pat
+ 
+ **For Structural Changes:**
+ \`\`\`typescript
+-// Use Edit tool for precise changes
++// Use the `edit` tool for precise changes
+ edit(filePath, oldString, newString)
+ \`\`\`
+ 
+diff --git a/skills/remove-ai-slops/SKILL.md b/skills/remove-ai-slops/SKILL.md
+index ff513d5a..fdd5fe71 100644
+--- a/skills/remove-ai-slops/SKILL.md
++++ b/skills/remove-ai-slops/SKILL.md
+@@ -235,8 +235,8 @@ If any gate fails or any checklist item flips:
+ 
+ 1. Identify the specific change that caused the failure.
+ 2. Explain why it broke things.
+-3. `git checkout` the affected file (or use `git diff` + targeted `Edit` to revert just the problematic hunk).
+-4. If genuine slop remains after revert, edit the file directly yourself — in parallel per file via multiple Edit calls — applying only the changes you can prove are safe.
++3. `git checkout` the affected file (or use `git diff` + targeted `edit` to revert just the problematic hunk).
++4. If genuine slop remains after revert, edit the file directly yourself — separate `edit` calls per file (the mounted write path is `read` / `write` / `edit`; there is no multi-edit batching tool and no notebook editor) — applying only the changes you can prove are safe.
+ 5. Re-run the failing gate and re-walk the checklist for the affected file.
+ 6. Repeat until all gates green AND checklist clean.
+ 
+diff --git a/skills/ulw-execute/SKILL.md b/skills/ulw-execute/SKILL.md
+index ad9848a8..786c7a86 100644
+--- a/skills/ulw-execute/SKILL.md
++++ b/skills/ulw-execute/SKILL.md
+@@ -11,7 +11,7 @@ Translate any OpenCode/Codex-only tool name in an inherited example to its DeepS
+ | --- | --- |
+ | worker / reviewer `task(...)` | `mpd_role_spawn(role="<Roster Name>", task="TASK: … DELIVERABLE: … SCOPE: … VERIFY: …")` — ONE-SHOT consult: synchronous, one bounded delegation, one report. `context` carries the needed history; there is no `run_in_background`, `persona`, `agentOptions` or `description` |
+ | `subagent_fork(...)` | no mounted equivalent — a one-shot consult inherits no parent history; pass the needed context in `mpd_role_spawn`'s `context` |
+-| `job_output(task_id="...")` | no mounted equivalent: a one-shot consult returns its report as the tool result, so N SERIAL `mpd_role_spawn` calls replace a background burst; the team plane replaces genuinely concurrent lanes |
++| `job_output(task_id="...")` | no mounted equivalent: a one-shot consult returns its report as the tool result, so N SERIAL `mpd_role_spawn` calls can still cover the work, at the cost of concurrency; the team plane is the concurrency path |
+ | `task_id` continuation / re-task one child | a one-shot consult cannot be resumed — ask a NEW `mpd_role_spawn` and pass the prior report in `context`; for a team use `send_message(agent_id=<member>)` |
+ | `workflow` runs | the mpd team plane: `agent_teams_plan {action:"create"}` → one `add_member` per lane → one `create_task` per lane carrying `blocked_by` edges → `{action:"approve"}` → `agent_teams_dispatch {action:"run"}`. There is NO node-level `retry`/`amend`/`send`: a failed node is `agent_teams_task {action:"fail"}` plus a `kind:"repair"` row with `sourceTaskId`, and steering is `send_message(agent_id=<member>)` |
+ | `team_*(...)` | the mpd team plane (this bundle's team plane is the mpd RECORD): stage and approve with `agent_teams_plan` (`add_member` / `create_task` / `approve`), drive with `agent_teams_task` (`claim` / `complete` / `fail`) and `agent_teams_dispatch`, read with `agent_teams_plan {action:"status"}`. The official Agent Teams authoring tools — `spawn_teammate`, `team_task_create`, `team_task_list`, `team_task_get`, `team_task_update` — are REFUSED at the tool boundary by the team-door guard; `send_message` / `list_agents` / `wait_agent` / `interrupt_agent` remain for agent communication |
+@@ -25,7 +25,7 @@ Exploration/implementation consults use the fast flash model; plan and reviewer
+ 
+ ### Consult reliability (DSH)
+ 
+-Every consult task is a self-contained executable assignment (`TASK / DELIVERABLE / SCOPE / VERIFY`). `mpd_role_spawn` is SYNCHRONOUS: the report is the tool result, so there is no background child, no `job_output` poll and no `WORKING:`/`BLOCKED:` message to require. Two truthful topologies replace the old background burst: **(a)** N SERIAL `mpd_role_spawn` calls, one report each, when the lanes are independent; **(b)** the mpd team plane when the lanes are genuinely concurrent, where `agent_teams_dispatch` pairs ready tasks with members and `send_message` steers a member mid-flight. A consult that returns without its deliverable is recorded inconclusive (never a pass) and re-issued as a smaller task naming the missing deliverable.
++Every consult task is a self-contained executable assignment (`TASK / DELIVERABLE / SCOPE / VERIFY`). `mpd_role_spawn` is SYNCHRONOUS: the report is the tool result, so there is no background child, no `job_output` poll and no `WORKING:`/`BLOCKED:` message to require. Two truthful topologies replace the old background burst: **(a)** N SERIAL `mpd_role_spawn` calls, one report each, when the lanes are independent — the work still gets covered, but with no concurrency; **(b)** the mpd team plane when the lanes are genuinely concurrent, where `agent_teams_dispatch` pairs ready tasks with members and `send_message` steers a member mid-flight. A consult that returns without its deliverable is recorded inconclusive (never a pass) and re-issued as a smaller task naming the missing deliverable.
+ 
+ ## ABSOLUTE RULE: YOU ARE AN ORCHESTRATOR — NEVER THE IMPLEMENTER
+ 
+diff --git a/skills/ulw-plan/references/full-workflow.md b/skills/ulw-plan/references/full-workflow.md
+index cfc86f56..96e2e437 100644
+--- a/skills/ulw-plan/references/full-workflow.md
++++ b/skills/ulw-plan/references/full-workflow.md
+@@ -16,7 +16,7 @@ You are Prometheus, a planning consultant. You turn a vague or large request int
+ A plan is decision-complete when the implementer needs ZERO judgment calls: every decision made, every ambiguity resolved, every pattern referenced with a concrete path. The executor has NO interview context - be exhaustive.
+ 
+ ## Phase 0 - Classify
+-Size interview depth: **Trivial** (single file, obvious) - one or two confirms, then propose. **Standard** (1-5 files, clear feature/refactor) - full explore + interview/research + Metis. **Architecture** (system design, 5+ modules, long-term impact) - deep explore + external research + the dynamic adversarial lanes (see `intent-unclear.md`).
++Size interview depth: **Trivial** (single file, obvious) - one or two confirms, then propose. **Standard** (1-5 files, clear feature/refactor) - full explore + interview/research + a `mpd_role_spawn(role="Planner", task="gap analysis …")` consult. **Architecture** (system design, 5+ modules, long-term impact) - deep explore + external research + the dynamic adversarial lanes (see `intent-unclear.md`).
+ 
+ ## Phase 1 - Ground (explore before asking)
+ Eliminate unknowns by discovering facts, not by asking. Before your first question, fan out parallel read-only research and keep working while it runs. Two kinds of unknowns: **discoverable facts** (repo/system truth) become research-and-cite; **preferences/tradeoffs** (user intent, not derivable from code) are the only things the CLEAR path brings to the user, and the things the UNCLEAR path resolves to best-practice defaults. Retrieval budget: stop exploring a question once collected evidence answers it, or after two research waves add no new useful facts.
+diff --git a/skills/ulw-research/SKILL.md b/skills/ulw-research/SKILL.md
+index 640ea642..cc6b9a11 100644
+--- a/skills/ulw-research/SKILL.md
++++ b/skills/ulw-research/SKILL.md
+@@ -14,7 +14,7 @@ Translate any OpenCode/Codex-only tool name to its DeepSeek Harness equivalent:
+ | rigorous reviewer | `mpd_role_spawn(role="Plan Reviewer" \| "Architect", task=...)` |
+ | implementation / QA worker | `mpd_role_spawn(role="Deep Worker" \| "Senior Engineer" \| "Junior Engineer", task=...)` |
+ | `subagent_fork(...)` | no mounted equivalent — pass the needed parent context in `mpd_role_spawn`'s `context` |
+-| `job_output(task_id="...")` | no mounted equivalent: a one-shot consult returns its report as the tool result, so N SERIAL consults replace a background burst; the team plane replaces genuinely concurrent lanes |
++| `job_output(task_id="...")` | no mounted equivalent: a one-shot consult returns its report as the tool result, so N SERIAL consults can still cover the work, at the cost of concurrency; the team plane is the concurrency path |
+ | `team_*(...)` | the mpd team plane (this bundle's team plane is the mpd RECORD): stage and approve with `agent_teams_plan` (`add_member` / `create_task` / `approve`), drive with `agent_teams_task` (`claim` / `complete` / `fail`) and `agent_teams_dispatch`, read with `agent_teams_plan {action:"status"}`. The official Agent Teams authoring tools — `spawn_teammate`, `team_task_create`, `team_task_list`, `team_task_get`, `team_task_update` — are REFUSED at the tool boundary by the team-door guard; `send_message` / `list_agents` / `wait_agent` / `interrupt_agent` remain for agent communication |
+ 
+ Role-specific behavior goes in a self-contained `task`. `mpd_role_spawn` is ONE-SHOT: the child starts with only the `task` (and optional `context`) you give it, and no channel inherits full parent history — pass the needed context in `context`. Include any required context, files, diffs, constraints, and skill names directly in `task`. The specialists live in the mpd-roles ROSTER (`mpd_roles_list` prints them; address one by its NAME: Architect/Researcher/Planner/Deep Worker/Senior Engineer/Lead/Explorer/Reviewer/Plan Reviewer/Vision Analyst/Junior Engineer): spawn one with `mpd_role_spawn(role=..., task=...)` (roster persona + model route + read-only discipline applied automatically). A roster NAME is the ONLY accepted input — the internal stable id and the legacy `mpd-` form are refused; for a parallel team use the mpd team plane (`agent_teams_plan` per member + `agent_teams_task` for the board + `agent_teams_dispatch` + `send_message`) instead of repeated spawns — the official Agent Teams authoring tools (`spawn_teammate`, `team_task_create`, `team_task_list`, `team_task_get`, `team_task_update`) are REFUSED at the tool boundary; a teammate runs on the route of the session that stages it (yours in a top-level spawn), and a roster slot applies only when the teammate's description NAMES that member — prompt text cannot change a route; when a spawn surface takes the persona as TEXT, fetch it with `mpd_role_persona(role=...)` first.

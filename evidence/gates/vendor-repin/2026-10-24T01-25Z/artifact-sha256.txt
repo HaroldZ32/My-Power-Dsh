@@ -1,0 +1,9 @@
+# client.js artifact pin — determinism record
+# date: 2026-10-24T01:25Z  branch: fix/task-dependency-guard
+# command: node scripts/build-mpd-client.ts   (run three times in a row)
+# before: 0bd4c942ddc0fbe5fc1f8085dcd7a2b8810a9f9f84d383d78ee3a5df5e27c20b
+build1  f636bb8b643688370ff93b458ed247144e2b4a3a1ab49d0b1761d0c1ce70d77f
+build2  f636bb8b643688370ff93b458ed247144e2b4a3a1ab49d0b1761d0c1ce70d77f
+build3  f636bb8b643688370ff93b458ed247144e2b4a3a1ab49d0b1761d0c1ce70d77f
+# identical: yes -> VENDOR_LOCK.json pin updated to build1 (one artifact only)
+# why: the SOURCE changed (packages/mpd-bundle-plugin/src/{web-client,team-view}.ts)

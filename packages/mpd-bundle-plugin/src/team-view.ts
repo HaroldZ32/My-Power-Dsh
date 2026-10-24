@@ -654,7 +654,7 @@
     "members.empty": "No member was raised for this team.",
     "members.current": "current",
     "task.title": "TASKS",
-    "task.empty": "No shared task yet — the captain posts them with team_task_create.",
+    "task.empty": "No shared task yet — the captain posts them with agent_teams_plan {action:\"create_task\", blocked_by:[…]}.",
     "task.cycle": "CYCLE",
     "task.blockedBy": "blocked by",
     "task.unresolved": "unresolved blockers",

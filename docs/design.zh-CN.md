@@ -82,8 +82,8 @@ profile 添加行。它贡献：
 - 一个合并的 web client（workmate 库页；团队界面是官方客户端插件自己的面板，§7）。
 
 专家名册中的 11 个专家**不是预设**：它们作为专家名册（`mpd-roles-plugin`）存在，
-也作为队友实例化模板存在 —— Lead 用官方 `spawn_teammate` 按名字创建，人设文本取自
-`mpd_role_persona`。
+也作为队友实例化模板存在 —— Lead 用 `agent_teams_plan {action:"add_member"}` 按名字加入
+plan 并批准，人设文本取自 `mpd_role_persona`。官方 `spawn_teammate` 工具在工具边界被**拒绝**（§5）。
 
 ## 2. Bundle 与包结构
 
@@ -224,13 +224,13 @@ patch 文件（`presets/mpd.patch.yml`）再携带一个
 | `mpd-memory` | mpd-memory-plugin | web + dsh-tui | VCS 支撑的记忆（git/svn）+ 反思状态机 | `mpd_memory_write`、`mpd_memory_read`、`mpd_memory_reflect`、`mpd_memory_reflect_complete`、`mpd_memory_status` | `vcs`、`dir`、`agentSlug`、`reflectionEvery` |
 | `mpd-workmate` | mpd-workmate-plugin | web + dsh-tui | `~/.mpd/workmate/` 下的持久化可演化代理库（变更操作 rename/delete，删除默认先归档） | `mpd_workmate_list/init/spawn/reflect/match/rename/delete`；服务 `mpdWorkmate`（`list`/`get`/`read`/`rename`/`delete`）；web 路由 `GET /plugins/mpd-workmate/{list,roster,get}` + `POST /plugins/mpd-workmate/{init,rename,delete}` | — |
 | `mpd-team-core` | mpd-team-core-plugin | web + dsh-tui | 官方运行时之外的**团队记录 + 工作流**：plan 平面（`agent_teams_plan` 暂存一份"在任何人存在之前"用户就能读到并批准的 plan，批准即经由 `TeamExecutor` 接缝**执行**它）、任务契约 + 单调 `attempt`、持久点对点邮箱、hold 与归档；保存在 `<workspace>/.mpd/team/`，并以 `mpdTeams` 与 `/plugins/mpd-team/state` 提供 | `agent_teams_plan`、`agent_teams_task`、`agent_teams_dispatch`、`agent_teams_mail`、`agent_teams_control`；服务 `mpdTeams` | — |
-| `mpd-roster-provider` | mpd-roster-provider-plugin | web + dsh-tui | 官方队友的**按成员模型路由**：注册 team tool 行指向的 `mpd-roster` subagent provider，使 `spawn_teammate` 队友在其 `description` **点名**名册成员时由该成员的 `teamModels` 槽位路由 —— 其他队友跑在暂存它的那个会话的路由上，因为官方 `TeamService` 只转发 `{prompt, parent}`，因此 provider（而非按队友选项）是唯一的接缝，且提示词里写名字无法改变路由 | 无面向模型的工具；注册 subagent provider `mpd-roster` | `baseProvider` |
+| `mpd-roster-provider` | mpd-roster-provider-plugin | web + dsh-tui | 官方执行器的**历史/回退**路由：注册 `mpd-tool-agent-team` 行指向的 `mpd-roster` subagent provider，使**团队服务**升起、且描述符 label 点名名册成员的队友由该成员的 `teamModels` 槽位路由。在**默认**（原生执行器）组合里它**不路由任何东西** —— 发起该路径的官方 `spawn_teammate` **工具**已在工具边界被**拒绝**（§5）—— 四个槽位改由原生 `TeamExecutor` 抵达团队成员：身份优先级 `role` → `description` 的头部 → 整个 `name`；匹配不到的成员、或槽位未配置的成员，会**继承暂存会话的路由**，只记一行日志、绝不抛错 | 无面向模型的工具；注册 subagent provider `mpd-roster` | `baseProvider` |
 | `mpd-team-compact` | mpd-team-compact-plugin | web + dsh-tui | 对**已结束**的团队做成员压缩（所有任务终态且所有成员 idle），经由每个成员**自己的**作用域上下文执行；captain 交由人类 `/compact` 处理；审计落在 `<workspace>/.mpd/team-compact/`，该行从不写 `.mpd/team` | `mpd_team_compact_run`、`mpd_team_compact_status` | — |
 | `mpd-bootstrap` | mpd-bootstrap-plugin | web + dsh-tui | 按引用供给：经由适配器把 `<bundle>/skills` 注册为 skill provider（rank 600 `bundled`），并清理 bundle <= 0.2.6 写入 home 的带版本戳副本 | 仅 effect | `skillsDir`、`skipSkills`、`skipPresets`、`skipLegacyCleanup` |
 | `mpd-tui-adapter` | mpd-tui-adapter-plugin | web + dsh-tui | 与 DSH-TUI 平面的**唯一**接触面：每个 `ctx.tui*` 接缝、harness 的 `commands` registry 与 `settings` provider 都经由这一个包触达 mpd 插件（接缝 id 表为 `TUI_SEAMS`：**十五个** `tui*` 服务 —— 0.12.0 起暴露的十四个，加上 0.13.0 新增的 `tuiPanels` registry），binder = 每个接缝一次延迟 `ctx.inject([id], …)`，probe = `ctx.get(id, false)`，永不绑定的接缝降级为 `absent` 而不是让启动失败；R5 文件日志汇聚点也由它拥有 | 服务 `mpdTui` | — |
 | `mpd-tui` | mpd-tui-plugin | web + dsh-tui（在 dsh-tui 中生效，其他 composition 降级） | dsh-tui 版本的原生界面：绑定 host 的激活门控 TUI 接缝，并用 `ctx.get(id, false)` + warn-once 降级逐个探测，因此 web/headless composition 失去的是 TUI 界面而不是启动（§7b） | 无面向模型的工具；TUI 状态行 / 设置区块 / 看板 / 命令树 / 快捷键 / 对话框 / 转录渲染器 | — |
 | `mpd-agent-team` | @deepseek-ai/dsh-experimental-agent-team | web + dsh-tui | **官方** Agent Teams 域服务（`ctx.agentTeams`）：隐式根名册、持久点对点邮箱与共享任务板；名册、邮箱与任务状态都持久化在 **Lead 的会话日志**里 | 服务 `agentTeams` | `maxMembers: 16`、`maxTasks: 256`、`maxPendingMessagesPerMember: 64`、`maxMessageBytes: 32768`、`disposalTimeoutMs: 5000` |
-| `mpd-tool-agent-team` | @deepseek-ai/dsh-experimental-tool-agent-team | web + dsh-tui | 每位成员都会收到的九个面向模型的工具 —— `spawn_teammate`、`send_message`、`list_agents`、`wait_agent`、`interrupt_agent`、`team_task_create/list/get/update` —— 以及 `team:policy` 提示词小节 | 上述九个工具 | `freshProvider: spawn`、`forkProvider: fork` |
+| `mpd-tool-agent-team` | @deepseek-ai/dsh-experimental-tool-agent-team | web + dsh-tui | 每位成员都会收到的九个面向模型的工具 —— `spawn_teammate`、`send_message`、`list_agents`、`wait_agent`、`interrupt_agent`、`team_task_create/list/get/update` —— 以及 `team:policy` 提示词小节；五个**创作类**动词（`spawn_teammate`、`team_task_create/list/get/update`）在工具边界被**拒绝**（§5），因此留下的是 `send_message`、`list_agents`、`wait_agent`、`interrupt_agent` 这四个 | 九个工具（五个被**拒绝**，四个保留） | `freshProvider: spawn`、`forkProvider: fork` |
 | `mpd-ui-agent-team` | @deepseek-ai/dsh-experimental-client-ui-agent-team | web（其他 composition 中 host 导出惰性） | 会话头部里的官方 Web 名册、共享任务板与队友导航面板；只读（没有创建/改名/删除/中断控件，也没有任务修改控件） | `/client` 浏览器半边 | — |
 | `mpd-better-sidebar` | dsh-better-sidebar（bundle **从不安装**的可选 peer；entry id 有意带 `mpd-` 前缀，绝不复用该包自己的 `better-sidebar`，也不复用聚合包的 id） | web（当不存在已启用的 `@deepseek-ai/dsh-host-webserver` 条目时，守卫会禁用它，`dsh-tui` 亦然） | 在可解析处挂载**承载** Workmates 标签页的社区侧边栏 bundle，因此无需第二次手动安装插件 —— 而它的**缺席**是正常组合而非安装损坏：同样这两张 mpd 面板会注册进 harness 自带的右侧边栏（§7）；守卫与层序无关：只要**任何被组合的 patch 层**已经点名该包 —— 每个已声明 bundle 层自身的 `dsh.bundle.patch`（例如 `@linxin666/dsh-web-all` 聚合包）、`<profileDir>/cordis.patch.yml`、`$DSH_HOME/cordis.patch.yml`，以及从 `process.argv` 读到的每个 `--patch` 覆盖层路径（两种写法、可重复）—— 或者当 `dsh-better-sidebar` 本身就是一个 bundle 层、当该包无法解析、当不存在**已启用**的 `@deepseek-ai/dsh-host-webserver` 条目（被表达式禁用的 webserver 行不算）时，本行就会禁用。外部层只有在其 patch 里含有**真正挂载该包的行**时才会抑制本行 —— 即某行的 `name` 为 `dsh-better-sidebar` 且其 `disabled` 不是字面量 `true`（匹配前先剥离 YAML 注释）；注释里的提及、或字面量 `disabled: true` 的行都不挂载任何东西，因此不会抑制我们的挂载；行扫描器无法解析的形式一律回退到保守行为（视作挂载）—— 误禁只损失侧边栏，误启用会让启动以 `duplicate prefix route` 直接失败。以上每条路径都只打印一行日志并降级为"没有侧边栏"，绝不让启动失败 | 侧边栏宿主 + 它的 tab 注册表（`ctx.betterSidebar`） | `disabled: !!js` 挂载守卫 |
 
@@ -285,16 +285,27 @@ key**。
   工作；归档团队位于 `.mpd/team/archive/**`，按构造被排除）；重命名还会检查目标键。闸门、冲突守卫与
   变更之间没有 `await`，因此任何 spawn 或 reflect 都无法插队 —— 无需锁文件。这里**从不**写
   `.mpd/team` 状态（该记录属于 `mpd-team-core`，本行只读取它），且读取失败时**放行**。
-- 团队模式：会话智能体就是 Lead。它按成员逐个调用 `spawn_teammate`（名字、描述，以及由
-  `mpd_role_persona` 文本加任务拼成的提示词 —— 每次 spawn 都是一次性咨询：干完自己那条通道即落定，
-  绝不再续，后续追问是新的一次 spawn），用 `team_task_create` 给每人开一条通道，再用
-  `team_task_list` / `team_task_get` / `team_task_update`（对任务 `revision` 做 compare-and-set）
-  与邮箱工具驱动任务板。两条实测边界是设计的一部分，不是遗漏：队友跑在**暂存它的那个会话**的路由上
-  —— 顶层 spawn 是 captain 的路由，team-lead spawn 是 Lead 的路由 —— 因为 `TeamService` 只把提示词与
-  父会话转发给 subagent 注册表；而 `teamModels` 槽位仅在 `description` **点名**名册成员时生效
-  （提示词文本无法改变路由）；只读名册成员的写入工具由 `mpd-roles` 上以团队身份为键的守卫拒绝，因为
-  `spawn_teammate` 无法接受按队友的工具过滤器。persona 与 workmate 记忆**不会**被自动注入 ——
-  它们随提示词文本一起传递。
+- 团队模式：会话智能体就是 Lead，而入口是一份 **plan**，不是一次 spawn。它用
+  `agent_teams_plan {action:"add_member"}` 为每位专家暂存一个成员（名字、描述，以及由
+  `mpd_role_persona` 文本加任务拼成的提示词），用 `agent_teams_plan {action:"create_task"}` 给每人
+  开一条通道 —— 每个任务都**必须**声明自己的依赖答案：`blocked_by: [...]`（可为空）或
+  `independent: true`；而批准会**拒绝**两个声明的写入范围重叠、且彼此之间没有依赖路径的任务 ——
+  再用 `agent_teams_plan {action:"approve"}` 批准该 plan，真正升起成员、发布任务的就是这一步。
+  此后 mpd **记录**（`.mpd/team/teams/<teamId>.json`）是**唯一**的任务板：`agent_teams_task`
+  （`claim` / `contract` / `release` / `complete` / `fail`，对任务 `revision` 做 compare-and-set）
+  驱动它，`claim` 会**拒绝**阻塞项未满足的任务，`agent_teams_dispatch` 把每个就绪任务配给空闲成员，
+  `agent_teams_plan {action:"status"}` 把它读回，`agent_teams_mail` 是邮箱。因为官方任务板不携带
+  上述任何保证，五个官方**创作类**动词 —— `spawn_teammate`、`team_task_create`、`team_task_list`、
+  `team_task_get`、`team_task_update` —— 对**每个**智能体都在工具边界被**拒绝**；`send_message`、
+  `list_agents`、`wait_agent`、`interrupt_agent` 保留，用于智能体间通信。边界：这道门是
+  施加在**工具调用**上的 `tools.guard`，因此直接调用团队**服务**的行（官方执行器回退路径）不是
+  工具调用，**不受**这道门约束。两条实测边界是设计的一部分，不是遗漏：团队成员的 `teamModels` 槽位由
+  **原生**执行器按身份优先级 `role` → `description` 的头部 → 整个 `name` 解析；匹配不到的成员、或槽位
+  未配置的成员，会**继承暂存会话的路由**（顶层 spawn 是 captain 的，team-lead spawn 是 Lead 的），
+  只记一行日志、绝不抛错。`mpd-roster-provider` 行只服务于官方**服务**级回退路径，其
+  `spawn_teammate` **工具**已在工具边界被拒绝；只读名册成员的写入工具由 `mpd-roles` 上以团队身份为键的
+  守卫拒绝，因为官方 `spawn_teammate` 工具（现已在工具边界被**拒绝**）无法接受按队友的工具过滤器。
+  persona 与 workmate 记忆**不会**被自动注入 —— 它们随提示词文本一起传递。
 
 ### 扩展 → skills、flows、MCP 工具与 roles
 
@@ -319,8 +330,9 @@ key**。
   被包容的 —— 该服务器被记录为 `unavailable`/`failed`，并带上它的 stderr 尾部。
 - **roles** 由 `mpd-roles` 在每次调用时解析（在查询时把基础名册与扩展贡献的 role 惰性合并，绝不
   在 apply 时合并），因此扩展 role 可以通过 `mpd_role_spawn` / `mpd_role_persona` 使用，也可以
-  作为 workmate 的基础模板。它永远不会自己变成队友：只有 Lead 用 `spawn_teammate`
-  按名字创建出来，才存在队友。
+  作为 workmate 的基础模板。它永远不会自己变成队友：只有 Lead 用
+  `agent_teams_plan {action:"add_member"}` 把它加入 plan 并批准该 plan，才存在队友；过去作为这道门的
+  官方 `spawn_teammate` 工具已在工具边界被**拒绝**（§5）。
 - 四个工具可以检查这一切 —— `mpd_ext_list`、`mpd_ext_show`、`mpd_flow_list`、`mpd_flow_show` ——
   而 `scripts/mpd-ext.ts`（`validate` / `scaffold` / `list`）共享同一个运行时校验器。
 

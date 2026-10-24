@@ -327,8 +327,8 @@ async function approveTeam(h: Harness): Promise<string> {
   await h.call("agent_teams_plan", { action: "create", name: "the wave", description: "one wave" }, LEAD)
   await h.call("agent_teams_plan", { action: "add_member", member: { name: "Senior Engineer", description: "implements", prompt: "You implement." } }, LEAD)
   await h.call("agent_teams_plan", { action: "add_member", member: { name: "Reviewer", description: "judges", prompt: "You review." } }, LEAD)
-  await h.call("agent_teams_plan", { action: "create_task", task: { subject: "the lane work", description: "own the record", owner: "Senior Engineer" } }, LEAD)
-  await h.call("agent_teams_plan", { action: "create_task", task: { subject: "the review", description: "judge it", owner: "Reviewer" } }, LEAD)
+  await h.call("agent_teams_plan", { action: "create_task", task: { subject: "the lane work", description: "own the record", owner: "Senior Engineer", blocked_by: [] } }, LEAD)
+  await h.call("agent_teams_plan", { action: "create_task", task: { subject: "the review", description: "judge it", owner: "Reviewer", blocked_by: [] } }, LEAD)
   await h.call("agent_teams_plan", { action: "approve" }, LEAD)
   /** The team the approval bound to the Lead session. */
   const teamId = activeTeamId(h.workspace, LEAD)
@@ -390,7 +390,7 @@ export async function c74Arms(): Promise<Arm[]> {
       /** The approved team. */
       const teamId = await approveTeam(h)
       /** The tool's own answer for the append. */
-      const answer = await h.call("agent_teams_plan", { action: "create_task", task: { subject: "the repair", description: "fix it", kind: "repair", coverageOf: "C7-4 F1", sourceTaskId: "T1" } }, LEAD) as { appended?: string }
+      const answer = await h.call("agent_teams_plan", { action: "create_task", task: { subject: "the repair", description: "fix it", kind: "repair", coverageOf: "C7-4 F1", sourceTaskId: "T1", blocked_by: [] } }, LEAD) as { appended?: string }
       /** The row read back from DISK. */
       const minted = readTeam(h.workspace, teamId)?.tasks.at(-1)
       out.push({ id: "f1", claim: "mid-run create_task appends to the LIVE APPROVED record with kind/coverageOf/sourceTaskId", ok: (answer.appended ?? "").includes("live team " + teamId) && minted?.kind === "repair" && minted?.coverageOf === "C7-4 F1" && minted?.sourceTaskId === "T1", observed: `appended=${answer.appended ?? "(none)"} kind=${minted?.kind} coverageOf=${minted?.coverageOf} sourceTaskId=${minted?.sourceTaskId}` })
@@ -403,14 +403,14 @@ export async function c74Arms(): Promise<Arm[]> {
       const stranded: StagedPlan = { version: 1, planId: "plan-stranded-1", sessionId: LEAD, name: "x", description: "", approval: "required", members: [], tasks: [], stagedAt: NOW.toISOString(), approvedAt: NOW.toISOString() }
       writePlan(staged.workspace, stranded)
       /** The refusal sentence. */
-      const strandedFailure = await refusalOf(staged.call("agent_teams_plan", { action: "create_task", task: { subject: "x", description: "d" } }, LEAD))
+      const strandedFailure = await refusalOf(staged.call("agent_teams_plan", { action: "create_task", task: { subject: "x", description: "d", blocked_by: [] } }, LEAD))
       out.push({ id: "f1-neg-staged-approved", claim: "NEGATIVE CONTROL: a staged-but-approved plan still refuses", ok: String(strandedFailure?.message) === "plan plan-stranded-1 is already approved; stage a new one to change the team", observed: String(strandedFailure?.message ?? "(no refusal)") })
 
       // NEGATIVE CONTROL: no staged plan and no live team keeps the standing sentence.
       /** A third fixture with no team at all. */
       const none = harness(sandbox())
       /** The refusal sentence. */
-      const noneFailure = await refusalOf(none.call("agent_teams_plan", { action: "create_task", task: { subject: "x", description: "d" } }, "sess-nobody"))
+      const noneFailure = await refusalOf(none.call("agent_teams_plan", { action: "create_task", task: { subject: "x", description: "d", blocked_by: [] } }, "sess-nobody"))
       out.push({ id: "f1-neg-no-team", claim: "NEGATIVE CONTROL: no staged plan and no live team keeps the standing sentence", ok: String(noneFailure?.message) === "no team is staged in this session — call agent_teams_create first", observed: String(noneFailure?.message ?? "(no refusal)") })
     }
 

@@ -1,0 +1,12 @@
+1	1	skills/debugging/references/methodology/00-setup.md
+3	3	skills/frontend/SKILL.md
+6	6	skills/frontend/references/design/README.md
+1	1	skills/frontend/references/design/_INDEX.md
+1	1	skills/frontend/references/design/design-system-architecture.md
+1	1	skills/frontend/references/design/print-paged-media.md
+47	51	skills/init-deep/SKILL.md
+82	90	skills/refactor/SKILL.md
+22	24	skills/remove-ai-slops/SKILL.md
+10	10	skills/review-work/SKILL.md
+4	1	skills/ulw-plan/scripts/scaffold-plan.ts
+81	74	skills/ulw-research/SKILL.md

@@ -170,6 +170,12 @@ function taskOnDisk(workspace: string, teamId: string, taskId: string): TeamTask
  *
  * The board is FLAT unless `chain` asks otherwise: three rows and no edges is exactly the shape the
  * defect left behind, so every `depend` arm starts from the state it must change.
+ *
+ * THE `chain=false` ARM KEEPS ITS MEANING (R1, `.mpd/plans/task-dependency-guard.md`): the flag used to
+ * decide whether T2's `blocked_by` KEY existed at all, which is no longer allowed — every task must
+ * state its dependency answer. It now decides the ANSWER'S CONTENT instead: `blocked_by: []` is the
+ * explicit "this is a root", so the flat arm still approves a genuinely edgeless board (and the `depend`
+ * arms below still start from zero edges), while the visible-DAG arm still gets its one edge.
  * @param h - the harness to approve in.
  * @param chain - true to wire T2 behind T1 at staging time, which the visible-DAG arm needs.
  * @returns the approved team's id.
@@ -178,9 +184,9 @@ async function approveBoard(h: Harness, chain: boolean = false): Promise<string>
   await h.call("agent_teams_plan", { action: "create", name: "the wave", description: "one wave" })
   await h.call("agent_teams_plan", { action: "add_member", member: { name: "Senior Engineer", description: "implements", prompt: "You implement." } })
   await h.call("agent_teams_plan", { action: "add_member", member: { name: "Reviewer", description: "judges", prompt: "You review." } })
-  await h.call("agent_teams_plan", { action: "create_task", task: { subject: "core", description: "own the record", owner: "Senior Engineer" } })
-  await h.call("agent_teams_plan", { action: "create_task", task: { subject: "review the core", description: "judge it", owner: "Reviewer", kind: "review", ...(chain ? { blocked_by: ["core"] } : {}) } })
-  await h.call("agent_teams_plan", { action: "create_task", task: { subject: "integration", description: "land it", owner: "Senior Engineer" } })
+  await h.call("agent_teams_plan", { action: "create_task", task: { subject: "core", description: "own the record", owner: "Senior Engineer", blocked_by: [] } })
+  await h.call("agent_teams_plan", { action: "create_task", task: { subject: "review the core", description: "judge it", owner: "Reviewer", kind: "review", blocked_by: chain ? ["core"] : [] } })
+  await h.call("agent_teams_plan", { action: "create_task", task: { subject: "integration", description: "land it", owner: "Senior Engineer", blocked_by: [] } })
   await h.call("agent_teams_plan", { action: "approve" })
   /** The team the approval bound to the Lead session. */
   const teamId = activeTeamId(h.workspace, LEAD)
@@ -216,7 +222,7 @@ describe("the plan surface RENDERS the DAG", () => {
     const h = harness()
     await h.call("agent_teams_plan", { action: "create", name: "staged", description: "d" })
     await h.call("agent_teams_plan", { action: "add_member", member: { name: "Reviewer", description: "judges", prompt: "You review." } })
-    await h.call("agent_teams_plan", { action: "create_task", task: { subject: "core", description: "d" } })
+    await h.call("agent_teams_plan", { action: "create_task", task: { subject: "core", description: "d", blocked_by: [] } })
     await h.call("agent_teams_plan", { action: "create_task", task: { subject: "review the core", description: "d", blocked_by: ["core"], owner: "Reviewer" } })
     /** The text the tool paints for the read form. */
     const painted = h.render("agent_teams_plan", await h.call("agent_teams_plan", { action: "edit" }))
@@ -374,7 +380,7 @@ describe("contract amendment 2 — the LIVE create_task carries `kind`", () => {
     /** The harness this arm drives. */
     const h = harness()
     await h.call("agent_teams_plan", { action: "create", name: "kinds", description: "d" })
-    for (const kind of TASK_KINDS) await h.call("agent_teams_plan", { action: "create_task", task: { subject: `staged ${kind}`, description: "d", kind } })
+    for (const kind of TASK_KINDS) await h.call("agent_teams_plan", { action: "create_task", task: { subject: `staged ${kind}`, description: "d", kind, blocked_by: [] } })
     await h.call("agent_teams_plan", { action: "approve" })
     /** The team the approval bound to the Lead session. */
     const teamId = activeTeamId(h.workspace, LEAD)
@@ -392,9 +398,9 @@ describe("contract amendment 2 — the LIVE create_task carries `kind`", () => {
     const teamId = await approveBoard(h)
     for (const kind of TASK_KINDS) {
       // The documented spelling: inside `task`.
-      await h.call("agent_teams_plan", { action: "create_task", task: { subject: `nested ${kind}`, description: "d", kind } })
+      await h.call("agent_teams_plan", { action: "create_task", task: { subject: `nested ${kind}`, description: "d", kind, blocked_by: [] } })
       // The spelling a live call used: beside `task`, where the `owner`/`blocked_by` aliases live.
-      await h.call("agent_teams_plan", { action: "create_task", task: { subject: `alias ${kind}`, description: "d" }, kind })
+      await h.call("agent_teams_plan", { action: "create_task", task: { subject: `alias ${kind}`, description: "d", blocked_by: [] }, kind })
     }
     /** The stored kinds of the appended rows, in board order — read from DISK. */
     const stored = (readTeam(h.workspace, teamId)?.tasks ?? []).slice(3).map((task) => task.kind)
@@ -411,10 +417,10 @@ describe("contract amendment 2 — the LIVE create_task carries `kind`", () => {
     /** The record's bytes BEFORE the refused calls — a refusal must leave them untouched. */
     const bytesBefore = readFileSync(teamRecordPath(h.workspace, teamId), "utf8")
     /** The failure a nested unknown kind raises. */
-    const nested = await h.call("agent_teams_plan", { action: "create_task", task: { subject: "bad", description: "d", kind: "nonsense" } }).then(() => undefined, (error: unknown) => error as Error)
+    const nested = await h.call("agent_teams_plan", { action: "create_task", task: { subject: "bad", description: "d", kind: "nonsense", blocked_by: [] } }).then(() => undefined, (error: unknown) => error as Error)
     expect(nested?.message).toContain("unknown task kind")
     /** The failure a top-level unknown kind raises. */
-    const alias = await h.call("agent_teams_plan", { action: "create_task", task: { subject: "bad", description: "d" }, kind: "nonsense" }).then(() => undefined, (error: unknown) => error as Error)
+    const alias = await h.call("agent_teams_plan", { action: "create_task", task: { subject: "bad", description: "d", blocked_by: [] }, kind: "nonsense" }).then(() => undefined, (error: unknown) => error as Error)
     expect(alias?.message).toContain("unknown task kind")
     // NOTHING LANDED: a refusal is not a coerced row, and the record is byte-unchanged.
     expect(readTeam(h.workspace, teamId)?.tasks.length).toBe(before)

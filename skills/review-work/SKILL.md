@@ -10,8 +10,8 @@ The panel, the merge table, the degrade matrix and the lane contracts in this sk
 
 
 When `review-work` is used as a final implementation, PR, or `$ulw-execute`
-gate, the selected review is blocking. A timeout, missing deliverable, ack-only response,
-explicit `BLOCKED:`, or inconclusive lane is not a pass. Treat that lane as
+gate, the selected review is blocking. A timeout, missing deliverable, an explicit `BLOCKED:`
+report, or an inconclusive lane is not a pass. Treat that lane as
 failed, investigate the underlying uncertainty with the `debugging` skill when
 runtime behavior may be wrong, fix with evidence, and rerun the affected lane
 before claiming completion, creating or handing off a PR, or merging.
@@ -26,7 +26,7 @@ fresh applicable lane records.
 A rejecting lane must name its blockers inline in its final message — each
 blocker cites the violated goal criterion or requirement plus an evidence
 pointer. A bare REJECT/FAIL token without findings is not a verdict; treat it
-as an inconclusive lane (one bounded respawn, then record it inconclusive with
+as an inconclusive lane (one bounded re-run, then record it inconclusive with
 that reason).
 
 When reviewing a PR or branch, collect diff, file contents, and verification
@@ -64,13 +64,13 @@ A lane's role is what it is called by: the roster is the single naming system (`
 
 ## Degrade matrix (declared, not implied)
 
-The official team path is the primary one. Each fallback below is a DECLARED degrade, and the lane labels itself with the path it took, so a reader can tell which guarantees were actually in force.
+The mpd team path is the primary one. Each fallback below is a DECLARED degrade, and the lane labels itself with the path it took, so a reader can tell which guarantees were actually in force.
 
 | Condition | Panel behaviour | What the lane can still reach |
 |---|---|---|
-| The official team tools are absent (no `spawn_teammate` in this session's tool list) | spawn each lane one-shot with `mpd_role_spawn`, one call per lane, same roster role; the roster's model-slot route applies on that path | PASS / FAIL / INCONCLUSIVE - the persona and the read-only guard still apply |
+| The mpd team plane is unmounted (no `agent_teams_plan` in this session's tool list) | run each lane one-shot with `mpd_role_spawn`, one call per lane, same roster role; the roster's model-slot route applies on that path | PASS / FAIL / INCONCLUSIVE - the persona and the read-only guard still apply |
 | A lane's model slot cannot be resolved | that lane alone is INCONCLUSIVE and NAMES the member and the slot; never substitute another model, and never clamp an effort | INCONCLUSIVE only |
-| `mpd-roles-plugin` is unmounted (`mpd_role_persona` / `mpd_role_spawn` are not offered) | spawn plain `subagent` lanes, each labelled `panel=advisory`; they carry no persona and no read-only guard | FAIL or INCONCLUSIVE only - a `panel=advisory` lane can NEVER produce a PASS |
+| `mpd-roles-plugin` is unmounted (`mpd_role_persona` / `mpd_role_spawn` are not offered) | run each lane through the workmate library - `mpd_workmate_init(base="Architect"\|"Reviewer"\|"Explorer")` when no matching instance exists, then `mpd_workmate_spawn` one per lane - or stage workmate-named members on the team plane. The harness `subagent` tool is REFUSED in an mpd session (`delegation.gate:"deny"`), so there is no plain-spawn fallback: label every such lane `panel=advisory` | FAIL or INCONCLUSIVE only - the workmate carries its own persona and memory (and its read-only base's deny list), but without the roster tool the lane cannot prove it ran the roster persona or slot route, and a `panel=advisory` lane can NEVER produce a PASS |
 
 Two more rules hold across the matrix:
 
@@ -149,9 +149,9 @@ For GOAL, CONSTRAINTS, BACKGROUND - review the full conversation history. The us
 
 ## Phase 1: Manual QA (you run it)
 
-You are the QA lane. Do not delegate hands-on QA to a sub-agent: the orchestrator owns the real-surface proof, exactly as the ulw-loop final gate records `manualQa` under the main session.
+You are the QA lane. Do not delegate hands-on QA to a reviewer lane: the orchestrator owns the real-surface proof, exactly as the `ulw-execute` final gate records `manualQa` under the main session.
 
-1. **Reuse first.** If this session already captured real-surface evidence for the FINAL tree (an ultrawork or ulw-loop evidence directory, a `visual-qa` verdict on this same build), consume it as QA rows instead of re-running. A fix committed after a capture stales that capture: re-run the rows it covered.
+1. **Reuse first.** If this session already captured real-surface evidence for the FINAL tree (an ultrawork or `ulw-execute` evidence directory, a `visual-qa` verdict on this same build), consume it as QA rows instead of re-running. A fix committed after a capture stales that capture: re-run the rows it covered.
 2. **Pick the channel that faithfully exercises the surface** and capture the artifact:
    - HTTP: `curl -i` (or an API request context) - status line, headers, body.
    - CLI / TUI: a real pty - drive the command and keep the transcript; for color or layout evidence render through a browser-based terminal, never a `tmux capture-pane` dump.
@@ -173,16 +173,18 @@ Any FAIL ends the review here: report **REVIEW FAILED** with the failing rows an
 
 ## Phase 2: Launch the three reviewer lanes
 
-Launch all three lanes in ONE turn, in the background, with `context: fresh` so a lane never inherits the author's reasoning as its own starting assumption.
+Stage all three lanes in ONE turn on the team plane - they are genuinely concurrent - and give each a FRESH member session: a lane never inherits the author's reasoning as its own starting assumption, and the brief below carries the only context it gets.
 
-### Per lane: the official team path (primary)
+### Per lane: the mpd team path (primary)
+
+Before the first lane, ensure a plan is staged: call `agent_teams_plan {action:"status"}`. The session-start gate stages a plan shell only on a trigger, so when `status` reports no plan staged (a session-start shell, when present, is suitable - `add_member` extends it), call `agent_teams_plan {action:"create", name:"review-work", description:<the change set under review>}` (pass `replace:true` when `status` reports an already-approved plan; without it the tool refuses to stage a second plan over it).
 
 For each of the three reviewer lanes, in this order:
 
 1. **Fetch the persona as TEXT** - `mpd_role_persona {role: "Architect"}` (then `Reviewer`, then `Explorer`). The persona is the lane's operating discipline; paste it into the member's prompt together with the brief below, so the member gets the real role instructions rather than a label.
-2. **Spawn ONE teammate per lane** with `spawn_teammate`. The member's `name` IS the roster name (`Architect`, `Reviewer`, `Explorer`), and its `description` MUST BEGIN with that same roster name: the roster provider applies a member's `teamModels.slot*` only when the description NAMES that member, so `"Architect - quality and architecture lane"` routes the Architect model slot; any other teammate runs on the route of the session that stages it (the captain's in a top-level spawn, the Lead's in a team-lead spawn), and prompt text cannot change a route. That prefix is the whole routing contract, not decoration.
-3. **Create one task per lane on the shared board** - the lane's deliverable, its acceptance anchor, its evidence requirement and its write scope (read-only: findings only). One task per lane keeps requirement, work and review separable, and gives the merge table one row per task rather than one row per agent.
-4. **Hand the member the brief** (below) in the spawn prompt, not in a follow-up message.
+2. **Stage ONE member per lane** with `agent_teams_plan {action:"add_member"}` (then one `create_task` per lane with `independent: true` - the parallel lanes have no blockers - and `approve`). The official Agent Teams authoring tools are REFUSED at the tool boundary by the team-door guard (see `agent-references/troubleshooting.md` for the exact names). The member's `name` IS the roster name (`Architect`, `Reviewer`, `Explorer`), and its `description` MUST BEGIN with that same roster name: the team executor resolves a member's `teamModels.slot*` from its `role` when it is staged with one, and otherwise from the HEAD of that description, so `"Architect - quality and architecture lane"` routes the Architect model slot. An unmatched member inherits the route of the session that stages it (the captain's in a top-level spawn, the Lead's in a team-lead spawn), and prompt text cannot change a route.
+3. **Create one task per lane on the shared board** - the lane's deliverable, its acceptance anchor, its evidence requirement and its write scope (read-only: findings only). Every `create_task` states its dependency answer inside `task`: `independent: true` for the parallel reviewer lanes, or explicit `blocked_by: [...]` edges where one lane must wait; omitting both is REFUSED. One task per lane keeps requirement, work and review separable, and gives the merge table one row per task rather than one row per agent.
+4. **Hand the member the brief** (below) in the member's instantiation prompt, not in a follow-up message.
 
 The two fallbacks live in the degrade matrix above; use them only under their stated condition, and label the lane with the path it took.
 
@@ -209,7 +211,7 @@ FORBIDDEN: editing any file; fixing anything; a PASS without evidence.
 
 ### Waiting, silence and respawn
 
-Wait for completions in bounded cycles, and preserve each lane's result immediately as it arrives - never lose a PASS/FAIL because another lane is slow. Do not treat a timeout, an ack-only reply or an empty child result as a PASS. If a lane stays silent past its bound, send ONE followup, then record the lane INCONCLUSIVE and respawn a smaller reviewer for that exact lane and that exact question. If it is still unfinished after that retry, close the still-running member if that is safe, keep the lane INCONCLUSIVE, and emit the final report with the incomplete lane named in the merge table. Do not spin in repeated wait/followup cycles, and do not use `send_message` as an interrupt: queued followups are not cancellation.
+Wait for the board to reach terminal states in bounded cycles (`agent_teams_plan {action:"status"}`), and preserve each lane's result immediately as it arrives - never lose a PASS/FAIL because another lane is slow. Do not treat a timeout, an ack-only reply or an empty member result as a PASS. If a lane stays silent past its bound, send ONE followup with `send_message(agent_id=<member>)`; if it is still unfinished, record the lane INCONCLUSIVE, close its board row with `agent_teams_task {action:"fail"}` and open a `kind:"repair"` row with `sourceTaskId` for a smaller reviewer on that exact lane and that exact question, then emit the final report with the incomplete lane named in the merge table. Do not spin in repeated wait/followup cycles, and do not use `send_message` as an interrupt: queued followups are not cancellation.
 
 After every lane has reached a terminal state and before delivering the verdict, tear down the review worktree: `git worktree unlock <path>` followed by `git worktree remove <path>`. The lanes run inside that worktree, so removing it earlier destroys their working directory; a crashed review leaves the locked tree as a recoverable marker for manual cleanup.
 

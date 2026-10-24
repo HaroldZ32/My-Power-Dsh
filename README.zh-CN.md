@@ -13,8 +13,8 @@
 
 **my-power-dsh** 是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（DSH）的一个插件
 套件。一条安装命令，就把一套普通的 DSH 变成真正能干活的工作环境：一个会读你项目规则的主智能体、
-十一位可咨询可委派的专家、一个会记住自己学过什么的持久 workmate 库、跑在 harness 官方 Agent Teams 插件
-上的多智能体团队、一份按需加载的技能库、用于代码理解的 MCP 服务，以及一套让别的包也能贡献能力的扩展接口。
+十一位可咨询可委派的专家、一个会记住自己学过什么的持久 workmate 库、跑在本 bundle 自己的团队记录上的
+多智能体团队、一份按需加载的技能库、用于代码理解的 MCP 服务，以及一套让别的包也能贡献能力的扩展接口。
 
 **同一个产品，两个端。** 下面写的每一项都同时存在于 **DSH Web GUI** 和 **DSH-TUI** 终端版里——
 同一份安装、同一个 `.mpd/` 状态、同一套工具、同一个 `mpd` preset。没有任何东西被分叉；一个能力也不会
@@ -73,8 +73,11 @@ Chromium 驱动真实应用截取；终端图把**真实 TUI 在真实 PTY 上�
   队友模板，只读的那些是被**机械地**禁用写入工具，而不是靠自觉。
 - **会积累的 workmate 库**——把一位专家实例化成 `~/.mpd/workmate/` 下的持久智能体；它每次干活后自我总结，
   演化自己的 persona 与记忆。
-- **真正的多智能体团队**——跑在 harness 官方 Agent Teams 插件上，由 `mpd` 的各行驱动：`spawn_teammate`、
-  带 compare-and-set 生命周期的共享任务板、持久信箱，以及一个 Web 面板和一个 TUI 场景同时读同一份活跃记录。
+- **真正的多智能体团队**——团队平面是 **mpd 记录**（`.mpd/team/teams/<id>.json`，以 `mpdTeams` 提供），
+  默认由适配器的**原生** `TeamExecutor` 后端执行；`mpd` 的各行经 `agent_teams_plan` 这道门与
+  `agent_teams_task` / `agent_teams_dispatch` 任务板驱动它，官方的撰写动词（`spawn_teammate`、
+  `team_task_*`）在工具边界被**拒绝**。官方 `dsh.team*` 服务只是给运行官方执行器的组合用的封闭回退
+  （在 TUI 组合里它的行是禁用的）。持久信箱、Web 面板与 TUI 场景同时读同一份活跃记录。
 - **持久的计划台账**——ULW 轮次，每条验收标准走 PIN → RED → GREEN → SURFACE → CLEAN；锚定到计划文件的
   boulder 台账；以及能跨会话存活的持久 goal。
 - **记忆与编辑都经得起时间**——VCS 托管的记忆库加一台反思状态机，外加哈希锚定编辑、写入守卫与声明注释关卡。
@@ -133,9 +136,11 @@ dsh plugin --profile web add .
    `mpd_role_spawn { role: "Architect", task: "review the module boundaries in src/" }`。
 4. **把好用的留下来。** `mpd_workmate_init { base: "Architect", name: "system-architect" }`，之后用
    `mpd_workmate_spawn { name: "system-architect", task: "…" }` 复用。
-5. **升级成团队。** 直接要一个，或者把一件确实值得组队的事说清楚：captain 会用 `spawn_teammate`
-   生成每位成员、用 `team_task_create` 开出它的通道，再用 `send_message` / `wait_agent` 驱动它。
-   在 Web 面板的 **Agent Teams** 视图里，或者 TUI 的 `/mpd team` 场景里看名册和共享任务板。
+5. **升级成团队。** 直接要一个，或者把一件确实值得组队的事说清楚：captain 会用 `agent_teams_plan`
+   暂存计划（`add_member` → `create_task`，每个任务都要声明它的依赖答案 —— `blocked_by` 或
+   `independent: true` —— → `approve`），再用 `agent_teams_task` 与 `agent_teams_dispatch` 加上
+   `send_message` / `wait_agent` 驱动任务板；官方的 `spawn_teammate` / `team_task_*` 动词在工具边界被
+   **拒绝**。在本套件的 **Team** 侧边栏视图里，或者 TUI 的 `/mpd team` 场景里看名册和共享任务板。
 6. **教它一项新能力。** 把扩展目录放进 `<workspace>/.mpd/extensions/`，用 `mpd_ext_list` 检查。
 
 第一分钟就值得知道的两条命令：
@@ -153,8 +158,8 @@ dsh plugin --profile web add .
 
 ![DSH-TUI 按键状态行的一小条：mpd 那一行列出团队与进度、boulder、计划数和 workmate 数。](./docs/assets/images/zh-CN/tui-status-line.png)
 
-状态行、`/mpd` 命令树和 `/settings` 分区是终端原生界面；它们在 Web 那边对应的是 Agent Teams 面板、
-Workmates 页签和设置里的 MPD 分区。
+状态行、`/mpd` 命令树和 `/settings` 分区是终端原生界面；它们在 Web 那边对应的是本套件的 **Team** 视图
+（外加 **Team watchdog**）、Workmates 页签和设置里的 MPD 分区。
 
 ## 用法
 
@@ -165,7 +170,7 @@ Workmates 页签和设置里的 MPD 分区。
 | 用会读项目规则的智能体干活 | **`mpd` preset** | [使用者指南 §2](./docs/user-guide.zh-CN.md#2-mpd-preset) |
 | 要一个受约束的第二意见 | **专家名册** —— `mpd_role_spawn` | [使用者指南 §4](./docs/user-guide.zh-CN.md#4-专家名册) |
 | 让一位专家积累知识 | **workmate 库** —— `mpd_workmate_*` | [使用者指南 §5](./docs/user-guide.zh-CN.md#5-workmate-库持久会演化的专家) |
-| 跑真正的多智能体流程 | **团队模式** —— `spawn_teammate` + `team_task_*` | [使用者指南 §6](./docs/user-guide.zh-CN.md#6-团队模式) |
+| 跑真正的多智能体流程 | **团队模式** —— `agent_teams_plan` → `agent_teams_task` / `agent_teams_dispatch`（官方的 `spawn_teammate` / `team_task_*` 动词被**拒绝**） | [使用者指南 §6](./docs/user-guide.zh-CN.md#6-团队模式) |
 | 把长目标推到完工 | **ULW 循环** —— `/ulw` | [使用者指南 §13.2](./docs/user-guide.zh-CN.md#132-ulw-循环与它的关卡) |
 | 持久跟踪多步计划 | **boulder 台账** —— `mpd_boulder_*` | [使用者指南 §13.6](./docs/user-guide.zh-CN.md#136-boulder-台账) |
 | 跨会话记住事实 | **记忆引擎** —— `mpd_memory_*` | [使用者指南 §13.7](./docs/user-guide.zh-CN.md#137-记忆) |
