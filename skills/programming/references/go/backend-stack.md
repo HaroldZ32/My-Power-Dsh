@@ -509,7 +509,7 @@ func (h *Handler) StreamChat(c *gin.Context) {
 
 Key facts:
 
-- **Headers MUST be set before the first `Write`.** Otherwise gin auto-sets `Content-Type: text/plain`.
+- **Headers MUST be set before the first write.** Otherwise gin auto-sets `Content-Type: text/plain`.
 - **`c.Writer.(http.Flusher)` is the streaming primitive.** Without `flusher.Flush()`, the response is buffered and arrives as one blob at the end.
 - **Always respond to `<-ctx.Done()`.** A disconnected client must stop upstream work — otherwise you generate tokens for nothing.
 - **The trailing `\n\n` per event is wire-mandatory** for SSE parsing. Missing it = the client never sees the event.

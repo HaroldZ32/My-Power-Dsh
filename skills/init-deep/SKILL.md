@@ -28,12 +28,12 @@ Generate hierarchical AGENTS.md files. Root + complexity-scored subdirectories.
 <critical>
 **todo_write ALL phases. Mark in_progress → completed in real-time.**
 ```
-todo_write([
+todo_write({ todos: [
   { "content": "Fire explore agents + LSP/ast-grep map + read existing", "status": "pending" },
   { "content": "Score directories, determine locations", "status": "pending" },
   { "content": "Generate AGENTS.md files (root + subdirs)", "status": "pending" },
   { "content": "Deduplicate, validate, trim", "status": "pending" }
-])
+] })
 ```
 </critical>
 
@@ -91,7 +91,7 @@ mpd_role_spawn(role="Explorer", task="TASK: find shared utilities across directo
 ### Main Session: Structural Analysis
 
 **Between consults**, main session does:
-#### 1. Bash Structural Analysis
+#### 1. Structural Analysis with `bash`
 ```bash
 # Directory depth + file counts
 find . -type d -not -path '*/\\.*' -not -path '*/node_modules/*' -not -path '*/venv/*' -not -path '*/dist/*' -not -path '*/build/*' | awk -F/ '{print NF-1}' | sort -n | uniq -c
@@ -109,7 +109,7 @@ find . -type f \\( -name "AGENTS.md" -o -name "CLAUDE.md" \\) -not -path '*/node
 #### 2. Read Existing AGENTS.md
 ```
 For each existing file found:
-  Read(filePath=file)
+  read(filePath=file)
   Extract: key insights, conventions, anti-patterns
   Store in EXISTING_AGENTS map
 ```
@@ -182,8 +182,8 @@ AGENTS_LOCATIONS = [
 **Mark "generate" as in_progress.**
 
 <critical>
-**File Writing Rule**: If AGENTS.md already exists at the target path → use `Edit` tool. If it does NOT exist → use `Write` tool.
-NEVER use Write to overwrite an existing file. ALWAYS check existence first via `Read` or discovery results.
+**File Writing Rule**: If AGENTS.md already exists at the target path → use the `edit` tool. If it does NOT exist → use the `write` tool.
+NEVER use `write` to overwrite an existing file. ALWAYS check existence first via `read` or discovery results.
 </critical>
 
 ### Root AGENTS.md (Full Treatment)

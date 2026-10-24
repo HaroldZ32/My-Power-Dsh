@@ -82,14 +82,14 @@ Should I proceed with [recommendation], or would you prefer differently?
 **IMMEDIATELY after understanding the request, create todos:**
 
 \`\`\`
-todo_write([
+todo_write({ todos: [
   { "content": "PHASE 1: Codebase Analysis - issue serial Explorer consults", "status": "pending" },
   { "content": "PHASE 2: Build Codemap - map dependencies and impact zones", "status": "pending" },
   { "content": "PHASE 3: Test Assessment - analyze test coverage and verification strategy", "status": "pending" },
   { "content": "PHASE 4: Plan Generation - issue the Planner consult for a detailed refactoring plan", "status": "pending" },
   { "content": "PHASE 5: Execute Refactoring - step-by-step with continuous verification", "status": "pending" },
   { "content": "PHASE 6: Final Verification - full test suite and regression check", "status": "pending" }
-])
+] })
 \`\`\`
 
 ---
@@ -164,7 +164,7 @@ python3 scripts/ast_grep_helper.py search 'function $NAME($$$) { $$$ }' --lang t
 sg --pattern '[old_pattern]' --rewrite '[new_pattern]' --lang ts src/
 \`\`\`
 
-### Grep for Text Patterns:
+### Text-pattern search with `grep`:
 
 \`\`\`
 grep(pattern="[search_term]", path="src/", include="*.ts")
@@ -372,14 +372,14 @@ After the Planner consult returns:
 Convert the Planner's output into granular todos:
 
 \`\`\`
-todo_write([
+todo_write({ todos: [
   // Each step from the plan becomes a todo
   { "content": "Step 1: [description]", "status": "pending" },
   { "content": "Verify Step 1: run tests", "status": "pending" },
   { "content": "Step 2: [description]", "status": "pending" },
   { "content": "Verify Step 2: run tests", "status": "pending" },
   // ... continue for all steps
-])
+] })
 \`\`\`
 
 **Mark phase-4 as completed.**
@@ -419,7 +419,7 @@ python3 scripts/ast_grep_helper.py replace '[pattern]' '[rewrite]' --lang ts pat
 
 **For Structural Changes:**
 \`\`\`typescript
-// Use Edit tool for precise changes
+// Use the `edit` tool for precise changes
 edit(filePath, oldString, newString)
 \`\`\`
 

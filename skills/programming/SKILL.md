@@ -18,7 +18,7 @@ This skill is an index. The hard per-language rules live under `references/`. Lo
 1. **Identify the language** from the file extension or the user's request.
 2. **STOP** and read the matching reference set:
 
-   | File / Language | MANDATORY reading (load `Read` tool on every file below) |
+   | File / Language | MANDATORY reading (open every file below with the `read` tool) |
    |---|---|
    | `.py`, `.pyi`, "Python" | `references/python/README.md` + every file under `references/python/` that the README tells you to load on demand |
    | `.rs`, `Cargo.toml`, "Rust" | `references/rust/README.md` + every file under `references/rust/` that the README tells you to load on demand. **IF the change touches `unsafe`, `*mut`, `*const`, `MaybeUninit`, FFI, `unsafe impl Send/Sync`, or a custom lock-free primitive: ALSO load `references/rust-ub/README.md` plus every file under `references/rust-ub/`.** |

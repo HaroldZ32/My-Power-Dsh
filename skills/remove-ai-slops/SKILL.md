@@ -235,8 +235,8 @@ If any gate fails or any checklist item flips:
 
 1. Identify the specific change that caused the failure.
 2. Explain why it broke things.
-3. `git checkout` the affected file (or use `git diff` + targeted `Edit` to revert just the problematic hunk).
-4. If genuine slop remains after revert, edit the file directly yourself — in parallel per file via multiple Edit calls — applying only the changes you can prove are safe.
+3. `git checkout` the affected file (or use `git diff` + targeted `edit` to revert just the problematic hunk).
+4. If genuine slop remains after revert, edit the file directly yourself — separate `edit` calls per file (the mounted write path is `read` / `write` / `edit`; there is no multi-edit batching tool and no notebook editor) — applying only the changes you can prove are safe.
 5. Re-run the failing gate and re-walk the checklist for the affected file.
 6. Repeat until all gates green AND checklist clean.
 

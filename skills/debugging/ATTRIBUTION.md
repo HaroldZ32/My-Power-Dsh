@@ -19,7 +19,7 @@
 
 ### Local adaptations in this repository (NOT upstream)
 
-our frontmatter `description`; the DSH debug-squad team protocol in `references/methodology/02-investigate.md`; the `subagent(...)` / `job_output(...)` dispatch examples in `references/methodology/04-oracle-triple.md` and `references/methodology/partial-runtime-evidence.md`; and `references/tools/playwright-cli.md` with its Playwright-CLI instruction, kept in place of upstream's `tools/browser-qa.md`, which names the upstream author's own in-house Codex browser library.
+our frontmatter `description`; the DSH debug-squad team protocol in `references/methodology/02-investigate.md`; the `mpd_role_spawn(...)` consult examples in `references/methodology/04-oracle-triple.md` and `references/methodology/partial-runtime-evidence.md`, rewritten from upstream's `subagent(...)` / `job_output(...)` dispatch examples; and `references/tools/playwright-cli.md` with its Playwright-CLI instruction, kept in place of upstream's `tools/browser-qa.md`, which names the upstream author's own in-house Codex browser library.
 
 ### MIT License (verbatim from the source repository's LICENSE)
 

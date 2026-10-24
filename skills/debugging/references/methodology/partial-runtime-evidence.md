@@ -173,7 +173,7 @@ SKEPTICAL FINAL VERIFICATION — be critical, look for reasons the task is incom
 <bullet list of every concrete claim in the deliverable>
 
 ## Where to look
-<paths the Oracle should Read / Bash to verify>
+<paths the Oracle should `read` / `bash` to verify>
 
 ## Your job
 1. Read the deliverables.
