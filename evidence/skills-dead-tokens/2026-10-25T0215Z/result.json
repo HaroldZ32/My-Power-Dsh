@@ -348,5 +348,9 @@
  ],
  "supersedes": [
   "evidence/skills-dead-tokens/2026-10-24T1245Z/"
- ]
+ ],
+ "superseded_by": [
+  "evidence/skills-dead-tokens/2026-10-25T0355Z/"
+ ],
+ "superseded_by_reason": "This bundle's tree hash 08b8e12f310e375c78787504d88e221442413f8bf7a3c4e71087ee4a2d898e2a is the PRE-repair tree (the parent commit's content), so it cannot describe the corpus after the repair land. The repair round re-measured the post-repair tree in 2026-10-25T0355Z. No measurement in THIS file was rewritten — this field and the reason are the only additions, and every number above still describes the tree it was read from."
 }

@@ -119,11 +119,11 @@ Do NOT let an expressive brief fall through to `taste-skill`. Then map the phras
 |---|---|
 | "minimal", "clean", "Notion-like", "Linear-like", "editorial", "boring is good" | `minimalist-skill.md` |
 | "brutalist", "raw", "Swiss", "experimental", "industrial", "anti-design", "unstyled" | `brutalist-skill.md` |
-| "premium", "luxury", "calm", "expensive", "elegant", "spa", "boutique", "glossy", "glassy", "liquid glass", "startup-grade", "make it beautiful/pretty" | `soft-skill.md` + a high-craft Layer B (`supabase` / `linear.app` / `vercel` / `stripe`) |
+| "premium", "luxury", "calm", "expensive", "elegant", "spa", "boutique", "glossy", "glassy", "liquid glass", "startup-grade", "make it beautiful/pretty" | `soft-skill.md`, plus a high-craft Layer B (`supabase` / `linear.app` / `vercel` / `stripe`) ONLY when the user named NO brand (greenfield). A brand the user NAMED that this catalogue lacks keeps `soft-skill.md` as a Layer A mood match ALONE — never another brand's tokens. |
 | "Awwwards-level", "wow factor", "magnetic", "scroll-triggered", "high-variance", "cinematic", "make it crazy" | `gpt-tasteskill.md` + `ambience-skill.md` for the backgrounds and scroll scenes its sections 5 and 7 demand |
 | Neutral or operational — internal tool, dashboard, admin, "just make it usable" with no surface ambition | `taste-skill.md` as Layer A, plus the greenfield `_INDEX.md` shortlist → exactly one Layer B reference |
 
-You may also load a brand DESIGN.md from Layer B as a *concrete reference* if the user's mood maps cleanly (see the "Mood-based shortcuts" section in `_INDEX.md`).
+You may also load a brand DESIGN.md from Layer B as a *concrete reference* — source material whose tokens you extract — only when the user named NO brand and the mood maps cleanly (see the "Mood-based shortcuts" section in `_INDEX.md`). That latitude never covers a brand the user NAMED: a named brand's OWN catalogue file is the only Layer B token source, and when the catalogue lacks it the output is a Layer A mood match alone, never another brand's tokens.
 
 ### Step 3 — Is this a *redesign* of existing UI, not a fresh build?
 

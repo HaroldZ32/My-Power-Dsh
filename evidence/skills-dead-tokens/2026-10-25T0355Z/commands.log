@@ -1,0 +1,391 @@
+# commands.log — audit trail for evidence/skills-dead-tokens/2026-10-25T0355Z
+#
+# Written by ./log-helper.sh, which appends each command and the exit code THE SHELL OBSERVED
+# immediately after it ran (`run "<cmd>"`). No exit code below is retyped by hand.
+#
+# Seat: the SINGLE skills/** writer of this round (Senior Engineer). Branch
+# fix/task-dependency-guard, HEAD bb5a4ca7afa6271a86cb95f6d1fb5acdae6f76cb (== the BEFORE anchor
+# of every A/B/C reading, because every edit of this round is UNCOMMITTED).
+#
+# THE DIRECTORY LABEL IS NOT AN INSTANT. `2026-10-25T0355Z` is the spelling the round's contract
+# prescribed; it carries the seat's LOCAL wall clock (UTC+08:00). Every timestamp INSIDE this
+# bundle — readings.txt, result.json's `created_at` and `measured_at`, this log's headings — is
+# true UTC read from `date -u`, with no local-clock-as-Z anywhere.
+#
+# BOOTSTRAP NOTE (the only command not in this file): log-helper.sh itself was created with the
+# editor tool, and this header was written with it, before the first `run` call — a log cannot
+# contain the command that creates it. T1 in readings.txt was taken with the same pipeline
+# expanded inline before the helper existed; T1b repeats it THROUGH treehash() and prints the
+# same sha256 and the same file count, so the reading is reproducible from the logged command.
+
+## §1 — tree anchor: one reading per DISTINCT moment, each with sha256 AND file count
+
+# Reading ids, in the order they were taken; each is a separate wall-clock moment, not a copy:
+#   T1  after every edit of this round (all six contract edit sites applied)   [inline pipeline]
+#   T1b same tree, re-read through treehash()                                  [helper]
+#   T2  after the three gates ran (review-panel, verify:docs, verify-vendor)
+#   T3  after the A/B/C greps and the survivor classification
+#   T4  after result.json was written
+#   T5  after commands.log was written (this file — hence the final reading closes the log)
+# A bare label with no sha256/files is NOT a reading and does not appear in readings.txt.
+
+### T1b — same tree as T1, read again through treehash()
+
+$ find skills -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum
+  exit=0
+$ find skills -type f | wc -l
+  exit=0
+$ date -u +%Y-%m-%dT%H:%M:%SZ
+  exit=0
+$ reading T1b_same_tree_via_helper
+  exit=0
+
+## §2 — the required gates, run on the FINAL tree (stdout+stderr captured verbatim; the exit code below is the shell's own)
+
+$ node skills/dsh-qa/scripts/review-panel.ts > "$BUNDLE/review-panel.log" 2>&1
+  exit=0
+$ bun run verify:docs > "$BUNDLE/verify-docs.log" 2>&1
+  exit=0
+$ node scripts/verify-vendor.ts > "$BUNDLE/verify-vendor.log" 2>&1
+  exit=1
+### T2 — after all three gates ran (the sandwich: T1b == T2 proves the gates left skills/** byte-identical)
+
+$ find skills -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum
+  exit=0
+$ find skills -type f | wc -l
+  exit=0
+$ reading T2_after_the_three_gates
+  exit=0
+
+## §3 — A/B/C greps: BEFORE at HEAD bb5a4ca7afa6271a86cb95f6d1fb5acdae6f76cb, AFTER on the final working tree
+
+# The three patterns are BYTE-IDENTICAL to the 0215Z round so the two bundles are comparable.
+#   A=TodoWrite|Lsp[A-Z]|lsp_[a-z]|codegraph_|kill_bash|task_output|monitor\(|\bRead\b|\bWrite\b|\bEdit\b|\bBash\b|\bGlob\b|\bGrep\b|MultiEdit|NotebookEdit|view_image|look_at
+#   B=mass-ulw|ulw-loop|open-design|imagegen|mpd-agent-toolkit
+#   C=subagent|subagent_type|task\(category|task\(subagent_type|oracle|librarian|momus|metis|workflow
+# BEFORE reads the COMMIT (git grep: tracked files only). AFTER reads the WORKING tree recursively,
+# so it also sees the gitignored materialized references under skills/frontend/references/design/.
+# Each file carries a 2-line `#` header naming its anchor; the classifier skips `#` lines.
+
+### A — dead tool tokens
+
+$ printf "# BEFORE anchor: HEAD bb5a4ca7afa6271a86cb95f6d1fb5acdae6f76cb (git grep over the commit; every edit of this round is uncommitted)\n# pattern: TodoWrite|Lsp[A-Z]|lsp_[a-z]|codegraph_|kill_bash|task_output|monitor\(|\bRead\b|\bWrite\b|\bEdit\b|\bBash\b|\bGlob\b|\bGrep\b|MultiEdit|NotebookEdit|view_image|look_at\n" > "$BUNDLE/greps/A-dead-tool-tokens-before.txt"
+  exit=0
+$ git grep -nE "$A" HEAD -- skills/ | sed "s/^HEAD://" >> "$BUNDLE/greps/A-dead-tool-tokens-before.txt"
+  exit=0
+$ awk -F: '!/^#/ {n++; f[$1]=1; if ($1 ~ /\.md$/) {m++; mf[$1]=1}} END {printf "A before: lines=%d files=%d md_lines=%d md_files=%d\n", n, length(f), m, length(mf)}' "$BUNDLE/greps/A-dead-tool-tokens-before.txt"
+  exit=0
+$ printf "# AFTER anchor: the FINAL working tree, skills sha256=b3783b3b78d74c4bb7af8f14ec1bb053730d1d75f39c6345ccd223868623f08b 384 files, measured 2026-10-24T20:00:52Z (reading T2)\n# pattern: TodoWrite|Lsp[A-Z]|lsp_[a-z]|codegraph_|kill_bash|task_output|monitor\(|\bRead\b|\bWrite\b|\bEdit\b|\bBash\b|\bGlob\b|\bGrep\b|MultiEdit|NotebookEdit|view_image|look_at\n" > "$BUNDLE/greps/A-dead-tool-tokens-after.txt"
+  exit=0
+$ grep -rnE "$A" skills/ >> "$BUNDLE/greps/A-dead-tool-tokens-after.txt"
+  exit=0
+$ awk -F: '!/^#/ {n++; f[$1]=1; if ($1 ~ /\.md$/) {m++; mf[$1]=1}} END {printf "A after:  lines=%d files=%d md_lines=%d md_files=%d\n", n, length(f), m, length(mf)}' "$BUNDLE/greps/A-dead-tool-tokens-after.txt"
+  exit=0
+### B — skill pointers
+
+$ printf "# BEFORE anchor: HEAD bb5a4ca7afa6271a86cb95f6d1fb5acdae6f76cb (git grep over the commit)\n# pattern: mass-ulw|ulw-loop|open-design|imagegen|mpd-agent-toolkit\n" > "$BUNDLE/greps/B-skill-pointers-before.txt"
+  exit=0
+$ git grep -nE "$B" HEAD -- skills/ | sed "s/^HEAD://" >> "$BUNDLE/greps/B-skill-pointers-before.txt"
+  exit=0
+$ awk -F: '!/^#/ {n++; f[$1]=1; if ($1 ~ /\.md$/) {m++; mf[$1]=1}} END {printf "B before: lines=%d files=%d md_lines=%d md_files=%d\n", n, length(f), m, length(mf)}' "$BUNDLE/greps/B-skill-pointers-before.txt"
+  exit=0
+$ printf "# AFTER anchor: the FINAL working tree, skills sha256=b3783b3b78d74c4bb7af8f14ec1bb053730d1d75f39c6345ccd223868623f08b 384 files\n# pattern: mass-ulw|ulw-loop|open-design|imagegen|mpd-agent-toolkit\n" > "$BUNDLE/greps/B-skill-pointers-after.txt"
+  exit=0
+$ grep -rnE "$B" skills/ >> "$BUNDLE/greps/B-skill-pointers-after.txt"
+  exit=0
+$ awk -F: '!/^#/ {n++; f[$1]=1; if ($1 ~ /\.md$/) {m++; mf[$1]=1}} END {printf "B after:  lines=%d files=%d md_lines=%d md_files=%d\n", n, length(f), m, length(mf)}' "$BUNDLE/greps/B-skill-pointers-after.txt"
+  exit=0
+### C — delegation family
+
+$ printf "# BEFORE anchor: HEAD bb5a4ca7afa6271a86cb95f6d1fb5acdae6f76cb (git grep over the commit)\n# pattern: subagent|subagent_type|task\(category|task\(subagent_type|oracle|librarian|momus|metis|workflow\n" > "$BUNDLE/greps/C-delegation-family-before.txt"
+  exit=0
+$ git grep -nE "$C" HEAD -- skills/ | sed "s/^HEAD://" >> "$BUNDLE/greps/C-delegation-family-before.txt"
+  exit=0
+$ awk -F: '!/^#/ {n++; f[$1]=1; if ($1 ~ /\.md$/) {m++; mf[$1]=1}} END {printf "C before: lines=%d files=%d md_lines=%d md_files=%d\n", n, length(f), m, length(mf)}' "$BUNDLE/greps/C-delegation-family-before.txt"
+  exit=0
+$ printf "# AFTER anchor: the FINAL working tree, skills sha256=b3783b3b78d74c4bb7af8f14ec1bb053730d1d75f39c6345ccd223868623f08b 384 files\n# pattern: subagent|subagent_type|task\(category|task\(subagent_type|oracle|librarian|momus|metis|workflow\n" > "$BUNDLE/greps/C-delegation-family-after.txt"
+  exit=0
+$ grep -rnE "$C" skills/ >> "$BUNDLE/greps/C-delegation-family-after.txt"
+  exit=0
+$ awk -F: '!/^#/ {n++; f[$1]=1; if ($1 ~ /\.md$/) {m++; mf[$1]=1}} END {printf "C after:  lines=%d files=%d md_lines=%d md_files=%d\n", n, length(f), m, length(mf)}' "$BUNDLE/greps/C-delegation-family-after.txt"
+  exit=0
+### tracked-only AFTER totals (git grep over the working tree; the worktree/AFTER gap is the two gitignored materialized references)
+
+$ git grep -nE "$A" -- skills/ | wc -l
+  exit=0
+$ git grep -nE "$B" -- skills/ | wc -l
+  exit=0
+$ git grep -nE "$C" -- skills/ | wc -l
+  exit=0
+### per-changed-file check: does any of the five edited files GAIN an A, B or C line?
+# format: file  A(head->tree)  B(head->tree)  C(head->tree)
+
+$ for f in skills/frontend/SKILL.md skills/frontend/references/design/README.md skills/ulw-research/SKILL.md skills/ulw-execute/SKILL.md skills/ulw-plan/SKILL.md; do printf "%-52s A %s->%s  B %s->%s  C %s->%s\n" "$f" "$(git show HEAD:$f | grep -cE "$A" || true)" "$(grep -cE "$A" $f || true)" "$(git show HEAD:$f | grep -cE "$B" || true)" "$(grep -cE "$B" $f || true)" "$(git show HEAD:$f | grep -cE "$C" || true)" "$(grep -cE "$C" $f || true)"; done
+  exit=0
+### survivor partition (disjoint buckets; residual and unclassified MUST be 0)
+
+$ python3 "$BUNDLE/greps/classify-survivors.py" > "$BUNDLE/greps/counts.txt" 2>&1
+  exit=0
+### T3 — after the six greps, the tracked-only totals and the survivor classification
+
+$ find skills -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum
+  exit=0
+$ reading T3_after_greps_and_classification
+  exit=0
+
+## §4 — the round's diff (this round ONLY: HEAD is the pre-round tree because every edit is uncommitted)
+
+$ git diff HEAD -- skills/ > "$BUNDLE/diff/this-round.diff"
+  exit=0
+$ git diff --numstat HEAD -- skills/ > "$BUNDLE/diff/this-round-numstat.txt"
+  exit=0
+$ git diff --name-only HEAD -- skills/ > "$BUNDLE/diff/files-changed-this-round.txt"
+  exit=0
+$ git diff --name-only 09622f6a -- skills/ | wc -l
+  exit=0
+
+### every changed line with its NEW text (generated, then re-read from the tree and compared)
+
+$ python3 "$BUNDLE/diff/gen-changed-lines.py" > "$BUNDLE/diff/changed-lines.txt" 2>&1
+  exit=0
+
+## §5 — state facts recorded in result.json
+
+$ git status --porcelain -- skills/
+  exit=0
+$ git show -s --format="%H %cI %s" HEAD
+  exit=0
+$ python3 -c "import json;d=json.load(open(\"VENDOR_LOCK.json\"));import sys;[print(a.get(\"name\") or a.get(\"path\"), a.get(\"treeSha\",\"\")[:64], a.get(\"fileCount\",\"\")) for a in d.get(\"assets\",[]) if \"skills\" in str(a.get(\"path\",\"\"))]"
+  exit=1
+$ python3 -c "import json;d=json.load(open(\"VENDOR_LOCK.json\"));print(list(d.keys()));a=d[\"assets\"];print(type(a));print(json.dumps(a if isinstance(a,dict) else a[:2])[:600])"
+  exit=0
+$ python3 -c "import json;d=json.load(open(\"VENDOR_LOCK.json\"));s=d[\"assets\"][\"skills\"];print(\"pinned fileCount=%s\" % s[\"fileCount\"]);print(\"pinned treeSha=%s\" % s[\"treeSha\"])"
+  exit=0
+
+### created_at (TRUE UTC, from date -u) — captured immediately before result.json is written
+
+$ date -u +%Y-%m-%dT%H:%M:%SZ
+  exit=0
+$ grep -nE "checks|PASS|evidence ->|^\[review-panel\]" "$BUNDLE/review-panel.log" | head -8
+  exit=0
+$ grep -nE "^\[verify-docs-parity\] root=" "$BUNDLE/verify-docs.log"
+  exit=0
+$ grep -nE "FAIL|asset OK: .*skills|treeSha" "$BUNDLE/verify-vendor.log" | head -4
+  exit=0
+
+## §6 — post-edit sweep: every PAIRING instruction in the two frontend files, and whether it is scoped
+
+$ grep -nE "pair|Pair" skills/frontend/SKILL.md skills/frontend/references/design/README.md | cut -c1-400
+  exit=0
+$ python3 -c "import json;d=json.load(open(\"$BUNDLE/result.json\"));print(\"json ok, top-level keys=\",len(d));print(\"supersedes=\",d[\"supersedes\"]);print(\"created_at=\",d[\"created_at\"])"
+  exit=0
+
+### T4 — after result.json was written (and after its two provenance fields were corrected in place; no measurement field was touched)
+
+$ python3 -c "import json;json.load(open(\"$BUNDLE/result.json\"));print(\"result.json parses\")"
+  exit=0
+$ find skills -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum
+  exit=0
+$ reading T4_after_result_json
+  exit=0
+
+## §7 — the R27 bundle gets `superseded_by` and NOTHING ELSE
+
+# R27 = evidence/skills-dead-tokens/2026-10-25T0215Z. Its measurements are frozen: this round adds
+# ONE field and rewrites no number. Proof below: the diff of that file is a pure addition at EOF.
+
+$ cp evidence/skills-dead-tokens/2026-10-25T0215Z/result.json /tmp/r27-before.json
+  exit=0
+$ sha256sum evidence/skills-dead-tokens/2026-10-25T0215Z/result.json
+  exit=0
+$ python3 -c "import json;d=json.load(open(\"evidence/skills-dead-tokens/2026-10-25T0215Z/result.json\"));print(\"R27 parses; superseded_by=\",d[\"superseded_by\"]);print(\"tree hash still:\",d[\"tree_anchor\"][\"sha256\"])"
+  exit=0
+$ diff -u /tmp/r27-before.json evidence/skills-dead-tokens/2026-10-25T0215Z/result.json
+  exit=2
+$ git status --porcelain -- evidence/skills-dead-tokens/
+  exit=0
+$ git ls-files evidence/skills-dead-tokens/2026-10-25T0215Z/
+  exit=0
+$ git diff -- evidence/skills-dead-tokens/2026-10-25T0215Z/result.json > "$BUNDLE/diff/r27-superseded-by.diff"
+  exit=0
+$ git diff --numstat -- evidence/skills-dead-tokens/2026-10-25T0215Z/result.json
+  exit=0
+
+## §8 — What changed this round: 5 files, 6 changed lines (6 insertions / 6 deletions)
+
+# Sections §8-§11 are NARRATIVE appended with `cat >> commands.log` heredocs. Every NUMBER in them
+# was produced by a command logged ABOVE this point, and every quoted line's byte-exact new text is
+# in diff/changed-lines.txt (`checked=6 mismatched=0`). Nothing here is a new measurement.
+
+BLOCKER 1 — the frontend decision tree, three unconditional pairing sites scoped to greenfield:
+
+  (a) skills/frontend/SKILL.md:65   the `soft-skill.md` Layer A row
+      was: premium/luxury/calm/expensive/elegant/glossy surfaces — pair with a high-craft Layer B
+            (supabase, linear.app, vercel, stripe)                                   [UNCONDITIONAL]
+      now: "… — when the user named NO brand (greenfield), pair with a high-craft Layer B
+            (supabase, linear.app, vercel, stripe); this row never licenses a substitute brand: a
+            brand the user NAMED that the catalogue lacks gets this Layer A mood match ALONE, never
+            another brand's tokens (see the Layer B section)."
+
+  (b) skills/frontend/references/design/README.md:122   Step 2's mood table row
+      was: `soft-skill.md` + a high-craft Layer B (supabase / linear.app / vercel / stripe)
+      now: "`soft-skill.md`, plus a high-craft Layer B (…) ONLY when the user named NO brand
+            (greenfield). A brand the user NAMED that this catalogue lacks keeps `soft-skill.md` as
+            a Layer A mood match ALONE — never another brand's tokens."
+
+  (c) skills/frontend/references/design/README.md:126   the "concrete reference" permission
+      was: "You may also load a brand DESIGN.md from Layer B as a *concrete reference* if the user's
+            mood maps cleanly (…)" — while this same file defines a loaded reference as SOURCE
+            MATERIAL whose tokens are extracted, so it licensed a substitute brand's tokens.
+      now: "You may also load a brand DESIGN.md from Layer B as a *concrete reference* — source
+            material whose tokens you extract — only when the user named NO brand and the mood maps
+            cleanly (…). That latitude never covers a brand the user NAMED: a named brand's OWN
+            catalogue file is the only Layer B token source, and when the catalogue lacks it the
+            output is a Layer A mood match alone, never another brand's tokens."
+
+MEDIUM — the reviewable claim that `mpd_role_spawn` applies "read-only discipline" to every specialist:
+
+  skills/ulw-research/SKILL.md:20
+      was: "(roster persona + model route + read-only discipline applied automatically)"
+      now: "(the roster persona and model route are applied automatically, plus the mechanical
+            read-only deny list for the six mechanically read-only roles — Architect, Researcher,
+            Planner, Explorer, Plan Reviewer, Vision Analyst; `Reviewer` is write-capable and
+            findings-only by DISCIPLINE, so never treat a Reviewer lane as unable to run commands)"
+  skills/ulw-execute/SKILL.md:20
+      was: "`mpd_role_spawn(role=..., task=...)` applies the roster persona + model route +
+            read-only discipline."                                    (and line 208 of the SAME file
+                                                                       already said the opposite)
+      now: "… applies the roster persona and model route, plus the mechanical read-only deny list for
+            the six mechanically read-only roles (Architect/Researcher/Planner/Explorer/Plan
+            Reviewer/Vision Analyst) — `Reviewer` is write-capable and findings-only by DISCIPLINE,
+            not by a fence, so it CAN run a command-level pass (Phase 4's verifier rule)."
+
+NIT — the label
+
+  skills/ulw-plan/SKILL.md:93
+      was: `Reviewer` (gap analysis)      <- the gap-analysis consult is PLANNER's (same line)
+      now: `Reviewer` (adversarial review) <- identical to references/full-workflow.md:251
+      NOT edited: skills/ulw-plan/references/full-workflow.md already carried the target wording
+      (line 251) and is therefore absent from `git diff --name-only HEAD -- skills/`.
+
+## §9 — A/B/C: BEFORE at HEAD, AFTER on the final tree, and the survivor partitions
+
+# Both sides were re-measured on THIS tree. Nothing is carried over from R27's numbers; the R27
+# comparison below is a cross-check, not the source.
+
+  family                  BEFORE (HEAD bb5a4ca7)      AFTER (final worktree)      tracked-only AFTER
+  A dead tool tokens      321 lines / 113 files       328 lines / 115 files       321
+                          md 166 / 65                 md 173 / 67
+  B skill pointers         33 lines /   7 files        34 lines /   8 files        33
+                          md  32 /  6                 md  33 /  7
+  C delegation family     220 lines /  71 files       220 lines /  71 files       220
+                          md 115 / 52                 md 115 / 52
+
+  worktree - tracked = 328-321 = 7 A lines over 2 .md files; 34-33 = 1 B line. Those are exactly the
+  two GITIGNORED materialized references (ambience-skill.md: +5 A; component-catalogs.md: +2 A, +1 B),
+  which `git grep` at a commit cannot see. The tracked corpus is 321 / 33 / 220 on BOTH sides, so the
+  round's own delta is 0 / 0 / 0.
+
+  survivor partition (greps/counts.txt), residual and unclassified MUST be 0:
+    A 328 = 163 English prose + 74 script identifier/string + 54 PowerShell cmdlet + 18 HTML fixture
+            + 16 mounted-codegraph + 3 ast-grep-schema + 0 removed-dead-image-name    residual=0 unclassified=0
+    B  34 =  24 imagegen reference-file name + 10 open-design upstream                  residual=0 unclassified=0
+    C 220 =  88 workflow word/skill name + 69 subagent vocabulary + 57 oracle methodology
+            + 6 momus state key (the three retired verbs 0)                             residual=0 unclassified=0
+    removed_arms_after: view_image 0, look_at 0.
+
+  per-changed-file check: no edited file gained or cleared an A, B or C line (all five read X->X).
+
+## §10 — Scope of the writes in this round
+
+  Written by this seat: the 5 skill files named in §8, and this evidence directory
+  (evidence/skills-dead-tokens/2026-10-25T0355Z/**), plus the ONE added field in
+  evidence/skills-dead-tokens/2026-10-25T0215Z/result.json (diff/r27-superseded-by.diff: +5 -1, and
+  the single `-` line is `]` gaining a comma).
+
+  NOT written: skills/ulw-plan/references/full-workflow.md (in scope, needed no change); any tracked
+  path outside skills/ and evidence/skills-dead-tokens/; VENDOR_LOCK.json — the single re-pin is the
+  captain's step.
+
+  The only other writes in the workspace are gate-owned: the review-panel record directory
+  evidence/restore/s1/2026-10-24T20-00-31-841Z, produced by running the required gate.
+
+## §11 — Limits (what this bundle does NOT prove)
+
+- No live boot: the CHECKOUT text is proven, never the served/cached skill corpus a session loads.
+- verify-vendor exit 1 is expected until the captain's single re-pin (AGENTS §9/§11); recorded, not repaired.
+- review-panel (skills/review-work/**) and verify:docs (the docs band) do NOT police the five edited
+  files; their exit 0 is a no-regression observation, not a check of the new wording. The wording is
+  evidenced by the byte-exact listing + the greps, and by reading.
+- The A/B/C families are a FIXED pattern set, blind to a leak phrased without those tokens: the three
+  BLOCKER-1 sites were found by review, not by a grep. Two residual candidates are reported in
+  result.json `findings_outside_this_rounds_scope` and were deliberately NOT edited (design/README.md:197
+  "pair any Layer A with any Layer B brand"; ulw-execute/SKILL.md:145 routing frontend IMPLEMENTATION to
+  the mechanically read-only Vision Analyst).
+- The directory label is not an instant; `created_at` is the true-UTC field.
+
+### T5 — after commands.log was written (closes the sandwich on the final artifacts)
+
+$ find skills -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum
+  exit=0
+$ reading T5_after_commands_log
+  exit=0
+$ git status --porcelain -- skills/
+  exit=0
+$ python3 -c "import json;json.load(open(\"$BUNDLE/result.json\"));print(\"result.json parses\")"
+  exit=0
+$ python3 -c "import json;json.load(open(\"evidence/skills-dead-tokens/2026-10-25T0215Z/result.json\"));print(\"R27 result.json parses\")"
+  exit=0
+
+## §12 — Closing block: the readings, and why this block changes no reading
+
+# Appended AFTER T5, which is why T5 is the last TREE reading. This block writes only to
+# evidence/skills-dead-tokens/2026-10-25T0355Z/commands.log; the tree hash covers `skills/` and
+# nothing else, so appending here cannot move it. That asymmetry is stated rather than hidden.
+
+  readings.txt — 6 readings at 6 DISTINCT moments, each with its sha256 AND its file count:
+
+    T1_after_all_edits                2026-10-24T19:58:40Z  b3783b3b…f08b  files=384
+    T1b_same_tree_via_helper          2026-10-24T20:00:17Z  b3783b3b…f08b  files=384
+    T2_after_the_three_gates          2026-10-24T20:00:52Z  b3783b3b…f08b  files=384
+    T3_after_greps_and_classification 2026-10-24T20:04:42Z  b3783b3b…f08b  files=384
+    T4_after_result_json              2026-10-24T20:11:58Z  b3783b3b…f08b  files=384
+    T5_after_commands_log             2026-10-24T20:14:58Z  b3783b3b…f08b  files=384
+
+  full sha256 at every reading: b3783b3b78d74c4bb7af8f14ec1bb053730d1d75f39c6345ccd223868623f08b
+  file count at every reading: 384   (382 tracked + the 2 gitignored materialized references)
+
+  FINAL STATE, checked immediately before this block:
+    `git status --porcelain -- skills/`  ->  exactly 5 ` M` rows, the 5 files of §8, nothing else
+    result.json (this bundle)            ->  parses
+    result.json (2026-10-25T0215Z)       ->  parses, `superseded_by` present, its own tree hash
+                                             still 08b8e12f… (measurements untouched: +5 -1 diff)
+
+  THE ONE-LINE ANSWER a reader takes away: the corpus the repair produced hashes to
+  b3783b3b78d74c4bb7af8f14ec1bb053730d1d75f39c6345ccd223868623f08b over 384 files, the two
+  required gates exit 0 on it, verify-vendor exits 1 as the re-pin rule predicts, and the A/B/C
+  tracked totals (321 / 33 / 220) are unchanged by the round's own edits.
+$ reading T6_final_audit_reread
+  exit=0
+
+## §12a — auditors' re-read AFTER the closing block
+
+  T6_final_audit_reread   2026-10-24T20:16:12Z  b3783b3b78d74c4bb7af8f14ec1bb053730d1d75f39c6345ccd223868623f08b  files=384
+
+  It is the SEVENTH reading and it equals the other six. It is appended to readings.txt as well, and
+  result.json's `readings_protocol` names it. Taken AFTER §12 and after result.json's protocol field was
+  corrected, so it also proves those two edits left `skills/` untouched (they are under evidence/).
+
+## §13 — last read-only confirmation (no write, no new tree reading)
+
+$ git status --porcelain -- skills/
+  exit=0
+$ git status --porcelain -- evidence/skills-dead-tokens/
+  exit=0
+$ grep -c "Reviewer\` is write-capable and findings-only by DISCIPLINE, not by a fence, so it CAN run a command-level pass (Phase 4.s verifier rule)" skills/ulw-execute/SKILL.md
+  exit=0
+$ awk "NR>=1 && /Phase 4.s verifier rule/ {print \"line \" NR \": \" \$0}" skills/ulw-execute/SKILL.md | cut -c1-200
+  exit=0
+
+  T6 remains the LAST tree reading. §13 and this line were appended after it and write only to this
+  log, which the tree hash does not cover (it covers `skills/`). No skills/** byte changed after T6.
