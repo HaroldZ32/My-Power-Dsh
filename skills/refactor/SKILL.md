@@ -684,7 +684,7 @@ Record the chosen path in the TodoWrite list.
 
 Rationale for this composition:
 - **4 workers = team mode's parallel cap.** 5+ just queues.
-- **No verifier team member.** Verification must come from a DIFFERENT agent working from the frozen contract, and none of these authoring roles is a verifier — the verifier runs OUTSIDE the team as a \`task(category="deep-high")\`, with \`unspecified-high\` as its fallback.
+- **No verifier team member.** Verification must come from a DIFFERENT agent working from the frozen contract, and none of these authoring roles is a verifier — the verifier runs OUTSIDE the team through \`mpd_role_spawn\` (the ONE-SHOT consult): \`role="Senior Engineer"\` when the step must RUN commands (tests, builds), because the roster's \`Reviewer\` is READ-ONLY (its deny list includes \`bash\`) and cannot execute a suite; \`role="Reviewer"\` when the verification only READS the contract and the implementation.
 - **Junior Engineer × 2** for mechanical edits, **Senior Engineer × 2** for reasoning edits. The team executor resolves each member's slot from its \`role\` when staged with one, otherwise from the head of its \`description\`: each description STARTS with that roster name (\`role\` is optional, so the description head is the fallback), so the mechanical pair routes through the Junior Engineer slot and the reasoning pair through the Senior Engineer slot, and an unmatched member inherits the staging session's route. \`prompt\` carries instructions only and cannot change a route.
 
 **Team lifecycle** (one team, reused until Phase 6 cleanup):
@@ -716,21 +716,19 @@ While any team task is \`pending | claimed | in_progress\`:
 - Wait for \`<system-reminder>\` or member messages. Avoid tight polling; a single \`agent_teams_plan {action:"status"}\` check is acceptable if no notification arrives within roughly 10 seconds of expected completion.
 - On a worker report, immediately dispatch an **external verifier** — verification runs OUTSIDE the team so a different agent checks the frozen contract rather than the implementation:
   \`\`\`
-  task(
-    category="deep-high",
-    load_skills=[],
-    run_in_background=true,
-    description="verify step <N>",
-    prompt=<files touched + verify-spec commands + instruction to return "PASS" or "FAIL:<failing test + specific error + suggested revert hunks>">
+  mpd_role_spawn(
+    role="Senior Engineer",
+    task=<files touched + verify-spec commands + instruction to return "PASS" or "FAIL:<failing test + specific error + suggested revert hunks>">,
+    context=<the frozen contract + the step's acceptance criteria>
   )
   \`\`\`
-  If \`deep\` is unavailable, fall back to \`category="unspecified-high"\`. Do not create a commit checkpoint until the verifier returns PASS.
+  The verifier must EXECUTE the suite, so it needs a write-capable role: \`Senior Engineer\`, or \`Deep Worker\` if that route is unconfigured. Do not create a commit checkpoint until the verifier returns PASS.
 - On a verifier PASS: close the row with \`agent_teams_task {action:"complete", task_id:<the original step>}\` (the Lead may close a member's row), then make the commit checkpoint for that step (see original 5.3). Proceed.
 - On a verifier FAIL: Lead decides by the row's state — a completed row is NEVER released:
   - **Row still claimed or in progress (the normal case)**: \`agent_teams_task {action:"release", task_id:<the original step>}\` + \`send_message(agent_id=<the original member>, message=<specific failure from verifier>)\`. The row reopens to \`pending\` and the next \`agent_teams_dispatch {action:"run"}\` reassigns it. The worker never closes its own row, so this is the arm that runs.
   - **Row already completed when the FAIL lands**: do not release it — the store refuses a terminal row (\`already terminal ("completed") and cannot be released\`). Open a NEW row with \`agent_teams_plan {action:"create_task", task:{subject:"repair step <N>: <short>", description:<the verifier's failing test + specific error + fix hint>, kind:"repair", sourceTaskId:"<the completed task id>", coverageOf:<the user clause the step serves>, independent:true}}\`; use \`blocked_by:[...]\` instead of \`independent:true\` when another open row must close first. \`sourceFindingIds\` is NOT a board field — it lives on the verify plane's repair record (\`.mpd/verify/repairs/<id>.json\`), so cite findings by their repair id.
   - **Escalate**: after three FAIL cycles on the same step, STOP and consult the user with full evidence.
-- On a member UNCLEAR message: re-harvest context via a targeted \`task()\` outside the team, broadcast an updated Intent Card fragment, then reassign.
+- On a member UNCLEAR message: re-harvest context via a targeted \`mpd_role_spawn(role="Senior Engineer", task=…)\` outside the team, broadcast an updated Intent Card fragment, then reassign.
 
 Proceed to Phase 6 only when every team task is \`completed\` AND every paired verifier task returned PASS.
 
@@ -753,5 +751,5 @@ Append to the 6.6 summary a "Dispatch path" line and, when team path was used, t
 - Do not recreate the team mid-session.
 - Do not run tests from Lead — the external verifier owns that lane.
 - Do not release a completed row: a post-completion FAIL opens a \`kind:"repair"\` row with \`sourceTaskId\`.
-- Do not put verifier roles (\`oracle\` / \`momus\`) or \`librarian\` into the team roster — use them via \`mpd_role_spawn\`/\`subagent\` OUTSIDE the team when needed (verifiers run on the pro model).
+- Do not put verifier roles (\`oracle\` / \`momus\`) or \`librarian\` into the team roster — use them OUTSIDE the team when needed via \`mpd_role_spawn\` (the ONE-SHOT consult) or the workmate library (\`mpd_workmate_spawn\`), never the harness \`subagent\` tool, which an mpd session REFUSES (\`delegation.gate:"deny"\`); verifiers run on the pro model.
 `

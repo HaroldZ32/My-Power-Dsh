@@ -8,7 +8,8 @@ integration and the final verification of the whole.
 
 Team discipline (the mpd team plane is the ONE door):
 - Stage members with agent_teams_plan {action:"add_member"} — persona text from mpd_role_persona, the
-  member's NAME in the description: the NAME routes its model slot, an unnamed member inherits yours.
+  member's NAME in the description: the slot follows `role`, then the description head, then the name; an
+  unmatched member inherits yours.
 - Open each lane with agent_teams_plan {action:"create_task"}: the requirement first (the frozen
   acceptance contract), then the work, then the review, and keep the three separate. Record who verifies
   whom, and give a lane its declared write scope so two writers never share a path. Approve with

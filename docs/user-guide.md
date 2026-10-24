@@ -154,7 +154,7 @@ The only shipped preset is **MPD (Main Working Agent)**. Its conventions:
 | Keep memory | `mpd_memory_write/read/reflect/reflect_complete/status`, `mpd_memory_save/recall` | the VCS-backed store can be git or svn; `mpd_memory_save/recall` is the simple key/value layer |
 | Consult a specialist | `mpd_roles_list`, `mpd_role_spawn`, `mpd_role_persona` | ONE-SHOT single-call consult subagents (the activation is disposed after the report — ask a new question with a new spawn); read-only roles are denied write tools |
 | Keep an evolving agent | `mpd_workmate_list/init/spawn/reflect/match/rename/delete` | see §5 |
-| Run a team | `agent_teams_plan` (stage a plan, extend it, approve it), `agent_teams_task` (claim / complete / fail the board), `agent_teams_dispatch`, `send_message`, `list_agents`, `wait_agent`, `interrupt_agent` + the Web Agent Teams panel | see §6 |
+| Run a team | `agent_teams_plan` (stage a plan, extend it, approve it), `agent_teams_task` (claim / complete / fail the board), `agent_teams_dispatch`, `send_message`, `list_agents`, `wait_agent`, `interrupt_agent` + the **Team** view, the bundle's Web team surface (`/plugins/mpd-team/state`); the **Agent Teams** panel in the conversation header is the harness's own, separate and read-only projection | see §6 and §8 |
 | Configure the bundle | `.mpd/mpd.jsonc`, `mpd_config_get`, `mpd_config_reload` | see §9 |
 | Extend the bundle | `mpd_ext_list`, `mpd_ext_show`, `mpd_flow_list`, `mpd_flow_show` | see §10 |
 | Resolve a model route | `mpd_modelchain_resolve` | resolves the provider/model a specialist would use |
@@ -380,7 +380,7 @@ agent_teams_plan { "action": "create_task", "task": { "subject": "Rewrite the in
 
 # work the board (any member)
 agent_teams_plan { "action": "status" }
-agent_teams_task { "task_id": "T3", "action": "claim", "expected_revision": 2 }
+agent_teams_task { "task_id": "T3", "action": "claim" }
 agent_teams_task { "task_id": "T3", "action": "complete", "expected_revision": 3 }
 agent_teams_dispatch { "action": "run" }
 
@@ -422,7 +422,7 @@ pipe.
 
 | Web surface | TUI equivalent |
 |---|---|
-| Agent Teams panel (conversation header) | the `tuiPanels` sidebar page (`MPD`, opened with `alt+a` / `/mpd panel`) — the `tuiScenes` full-screen board plus the keyed `tuiStatus` line remain the fallback |
+| **Team** view — the bundle's own sidebar page, served from `/plugins/mpd-team/state`; the official **Agent Teams** panel in the conversation header is a separate, read-only projection and has no TUI counterpart | the `tuiPanels` sidebar page (`MPD`, opened with `alt+a` / `/mpd panel`) — the `tuiScenes` full-screen board plus the keyed `tuiStatus` line remain the fallback |
 | Workmates sidebar tab | the `tuiPanels` `workmate` page, plus the `/mpd` command tree (`tuiCommandTrees`) and `tuiDialogs` |
 | Settings → MPD section | the `/settings` section (`tuiSettingsSections`) |
 | — | `tuiShortcuts` keyboard shortcuts |
@@ -495,16 +495,26 @@ strings, the state scopes and the explicit NOT-CLAIMED list, read [`tui.md`](tui
 
 ## 8. Web GUI
 
-- **Agent Teams** (the team surface): the official client plugin
-  `@deepseek-ai/dsh-experimental-client-ui-agent-team`, mounted by this bundle's `mpd-ui-agent-team`
-  row, adds an **Agent Teams** action to the conversation header. It reads the Lead session's
-  `agentTeam` projection from the shared session store, so updates appear while the panel stays open.
+- **Team** (the team surface this bundle drives, and the authoritative one): the bundle's own sidebar
+  page (tab id `mpd-team`, title **Team**) reads `<workspace>/.mpd/team/teams/<id>.json` through the
+  bundle's `/plugins/mpd-team/state` route, so it renders the mpd RECORD: the team's identity and
+  phase, the roster with model routes and per-member task counts, the board's task DAG (§8.1) and the
+  staged plan before an approval. It never reads the official service's projection, and the TUI
+  renders the same record (§7.1). It registers in whichever sidebar host the composition provides
+  (below).
+- **Agent Teams** (a different, read-only surface — the harness's own, not the team surface): the
+  official client plugin `@deepseek-ai/dsh-experimental-client-ui-agent-team`, mounted by this
+  bundle's `mpd-ui-agent-team` row, adds an **Agent Teams** action to the conversation header. It
+  reads the Lead session's `agentTeam` projection from the shared session store — the OFFICIAL
+  service's projection, not the mpd record — so updates appear while the panel stays open.
   It lists the roster (durable names and phases: `running`, `inactive`, `provisioning`, `failed`) and
   the shared task board (task identity, owner, blockers, readiness, advisory write scopes and overlap
   warnings), and it navigates into a teammate's conversation. It is **read-only**: the panel cannot
   spawn, rename, delete or interrupt a teammate and offers no task-mutation control — those belong to
   the tools in §6. Peer messages are not shown; the panel shows roster and tasks only. If the plugin
-  was enabled in an already-open conversation, reload the page once to receive the projection.
+  was enabled in an already-open conversation, reload the page once to receive the projection. In a
+  TUI composition the official service rows (`mpd-agent-team`, `mpd-tool-agent-team`) are disabled,
+  so this panel has no TUI counterpart.
 - **Workmates sidebar tab**: the workmate library is contributed as a tab to **DSH-better-sidebar**
   (the community sidebar bundle, an optional peer mounted when it is present), so it lives where that
   sidebar's own pages do — tab strip, `+` menu, and the sidebar's own enable/disable switch. The page
@@ -523,8 +533,8 @@ strings, the state scopes and the explicit NOT-CLAIMED list, read [`tui.md`](tui
   resolvable and disables itself otherwise — so nothing is owed as a second install step: without that
   host the SAME page registers into the HARNESS's own right sidebar and stays reachable, and with no
   sidebar seam at all the mpd panels report themselves once, by name. Team work still runs through the
-  official team tools, and the workmate library is still fully usable through the `mpd_workmate_*`
-  tools.
+  `agent_teams_*` board on the mpd record (§6), and the workmate library is still fully usable through
+  the `mpd_workmate_*` tools.
 - **Two sidebar surfaces when the community host is present (0.28)**: every mpd page — the Team view,
   the Workmates library and the AgentTeams watchdog — is registered **twice** against
   `dsh-better-sidebar`: the primary tab (`mpd-team`, `mpd-workmate`, `mpd-agent-teams`) and a
@@ -813,9 +823,9 @@ agent_teams_plan { "action": "create_task", "task": { "subject": "Rewrite the in
 agent_teams_plan { "action": "create_task", "task": { "subject": "Verify the README pair", "description": "Run the docs gate and report the raw output.", "blocked_by": ["<root task>"], "write_scopes": [] } }
 agent_teams_plan { "action": "approve" }                              # ← THIS is what spawns the members and posts the tasks
 
-# (c) working the board (compare-and-set: re-read before every update)
+# (c) working the board (compare-and-set: release / complete / fail re-read before the update)
 agent_teams_plan { "action": "status" }                                // → the board, with revisions
-agent_teams_task { "task_id": "T1", "action": "claim", "expected_revision": 1 }
+agent_teams_task { "task_id": "T1", "action": "claim" }
 agent_teams_task { "task_id": "T1", "action": "complete", "expected_revision": 2 }
 
 # (d) driving a running team
@@ -960,7 +970,7 @@ wait_agent { "timeout_ms": 60000 }                               # next roster/m
 interrupt_agent { "target": "junior-1" }                         # stop the current turn, keep the inbox
 
 # member
-agent_teams_task { "task_id": "T5", "action": "claim", "expected_revision": 4 }
+agent_teams_task { "task_id": "T5", "action": "claim" }
 agent_teams_task { "task_id": "T5", "action": "complete", "expected_revision": 5, "note": "…progress + evidence…" }
 send_message { "target": "lead", "message": "T5 done: `bun run verify:docs` passes." }
 ```

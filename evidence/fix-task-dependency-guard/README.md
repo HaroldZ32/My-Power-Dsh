@@ -38,8 +38,10 @@ Red recipe actually run by the implementing writer:
 
 ## 4. Where the rules are written down
 
-Frozen contract: `.mpd/plans/task-dependency-guard.md` (R1–R12 plus Amendment 2's R13–R15, both
-amendments disclosed in the file).
+Frozen contract: `.mpd/plans/task-dependency-guard.md` — **R1–R22 in FOUR disclosed amendments**:
+R1–R12 (body), R13–R15 (Amendment 2), **R16–R18 (Amendment 3, the team door)**, **R19–R22 (Amendment 4,
+team-member model routing)**. The amendments live in the same file and supersede the body where they say
+so (R16 supersedes R7; R21 records that R19 closes the regression R16 introduced).
 Documentation updated by the docs writers: `AGENTS.md` §5 rules 3 and 5, §7 T-88, §12 pointer;
 `agent-references/troubleshooting.md`, `agent-references/qa-discipline.md`;
 `packages/mpd-team-core-plugin/README{,.zh-CN}.md`; `packages/mpd-ulw-plugin/README{,.zh-CN}.md`;
@@ -73,12 +75,31 @@ row is `node` for `preset-conformance`, and §11 keeps `node` for its self-test.
 | `gates-postrepair.log` | after R13/R14: `preset-conformance=1` under `bun` with `EROFS`, everything else 0 |
 | `gates-final2.log` | after the runner correction: **12/12 exit 0**, including `node …/preset-conformance.ts` and `bun …/team-dispatch-guard.ts` |
 
+## 7b. The routing wave's log (Amendment 4)
+
+| log | what it holds |
+|---|---|
+| `gates-routing.log` | the sweep after the team-member routing fix + the CodeRabbit reconciliation: **17/17 exit 0** (`verify:gates` 9/9, vendor, dist 33/33 after the adapter fan-out rebuilt 24 targets, docs, manifest, comments, rows, typecheck, `bun test packages`, `test:qa`, pack-closure, `review-panel`, the real `preset-conformance` mount, no-host-override, manual-paths, `team-dispatch-guard`, `session-start-team --self-test`) |
+| `gates-final-teamdoor.log` | the sweep after the team-door wave's FAIL repairs: 8/8 exit 0 |
+
+**Declared bound for the routing wave (R19/R20): NO live harness boot proves that a member actually
+routes on its slot.** The strongest evidence is unit level: `packages/mpd-dsh-adapter-plugin/test/team-route.test.ts`
+(identity precedence, the `·` boundary, unconfigured → `unusable` without a throw) and
+`test/team-executor.test.ts` (a matched member's `agentOptions` deep-equals the slot's route while the
+subagent `provider` stays `spawn`; two members → two slots; an unmatched member's request carries NO
+`agentOptions` key; an unconfigured slot still raises the member and writes exactly ONE log line), plus an
+empirical cordis probe proving the adapter row can resolve `mpdConfig`. The closing lookup is one approved
+member on a real boot, reading the child session's `request/header` provider/model against the staging
+session's.
+
 ## 8. Independent verdicts
 
 | loop | verdict | record |
 |---|---|---|
 | `loop-20261023T093358-1bb644` | **PASS** (risk LOW–MEDIUM) — R1–R12, 8 non-blocking findings | `rec-20261023T095022-1d01d1` |
 | `loop-20261023T095953-f21edc` | **PASS** (risk LOW) — Amendment 2 (R13/R14/R15) + the runner correction; 6 of the 8 findings closed, 1 partial, 1 remaining | `rec-20261023T101738-ee2535` |
+| `loop-20261023T162757-41e222` | **FAIL** then **PASS** (risk LOW) — Amendment 3 (the team door); 4 findings → repaired → re-verified; also re-filed the ten gate ids under the loop | `rec-20261023T164913-8ab77f` → `rec-20261023T173741-3e5a08` |
+| `loop-20261024T074520-f517f0` | **FAIL** (risk MEDIUM) — Amendment 4 (routing) + the CodeRabbit reconciliation; 5 doc findings (2 High) → repaired in the next commit → re-verified | `rec-20261024T080425-cdfd41` |
 
 Both records live under `.mpd/verify/records/` (gitignored by `.mpd/`); the numbers and the cited
 evidence ids are reproduced above and in the `gates-*.log` files.

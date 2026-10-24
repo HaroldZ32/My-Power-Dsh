@@ -108,19 +108,22 @@ This row contributes the ROSTER side of that path — every call through `mpd-ds
 | a READ-ONLY teammate's discipline | a TOOL GUARD (below), registered through the adapter |
 | the session-start complexity gate | an `agent/pre-step` listener that STAGES an approvable plan shell when `team.gate` says `mechanical` — the DEFAULT again since 2026-10-20 (below) |
 
-**Model routing comes from the slot, by member identity.** The native team executor resolves a
+**Model routing comes from the four slots, by member identity.** The native team executor resolves a
 staged member's `teamModels.slot*` route by identity precedence — the member's `role` first, then
 the head of its `description`, then its whole `name` (`agent_teams_plan` forwards `role`, and the
-descriptor label still carries the description; `docs/plan-0.1.7-adaptation.md` §3). A member it
-cannot match INHERITS the staging session's model route (the captain's in a top-level spawn, the
-Lead's in a team-lead spawn), with one log line and never a throw. Prompt text cannot change a
-route. On the official-executor fallback, `mpd-roster-provider-plugin` applies the same slot from
-the description label. The same slots also apply to `mpd_role_spawn`
-/ `mpd_workmate_spawn`, which pass explicit `agentOptions`; the roster section says exactly that. A
-slot is the ONLY route source (contract `.mpd/plans/slot-single-source.md`): `agentRoutes` is deleted,
-and an unconfigured or malformed slot REFUSES the spawn with the structured `SLOT_UNCONFIGURED`
-failure the config row builds — naming the slot, its members, the missing leaves and both recovery
-paths — so no child is ever started on an invented route. The slot's own `fallbacks` chain is
+descriptor label still carries the description; `docs/plan-0.1.7-adaptation.md` §3). The TEAM path
+never refuses: a member whose identity matches nothing, a member whose slot is unconfigured or
+invalid, and a composition without `mpdConfig` all INHERIT the staging session's model route (the
+captain's in a top-level spawn, the Lead's in a team-lead spawn), with exactly ONE log line and
+never a throw — `approve` is a batch raise of N members in a loop, so a slot must never leave a team
+half-built. Prompt text cannot change a route. On the official-executor fallback,
+`mpd-roster-provider-plugin` applies the same slot from the description label. The same four slots
+also apply to the single-call appliers `mpd_role_spawn` / `mpd_workmate_spawn`, which pass explicit
+`agentOptions`; the roster section says exactly that. ONLY those single-call appliers refuse: a slot
+is the ONLY route source (contract `.mpd/plans/slot-single-source.md`), `agentRoutes` is deleted,
+and an unconfigured or malformed slot refuses there with the structured `SLOT_UNCONFIGURED` failure
+the config row builds — naming the slot, its members, the missing leaves and both recovery paths —
+so no child is ever started on an invented route. The slot's own `fallbacks` chain is
 consumed once before the spawn (the first catalog-POSITIVE candidate wins), and the winning route's
 effort is passed through the adapter's `withSupportedEffort` (`mpd-dsh-adapter-plugin`), so a model
 declaring NO reasoning efforts at all is sent none — the spawn runs instead of failing on a keyword
@@ -128,7 +131,7 @@ the provider cannot accept — while a model that declares efforts keeps the slo
 
 ### A read-only teammate is denied mechanically
 
-The seven-name deny list is enforced on BOTH paths, from ONE exported constant
+The eight-name deny list is enforced on BOTH paths, from ONE exported constant
 (`READONLY_DENY`), so the two can never drift:
 
 - **single-call consult** — `mpd_role_spawn` passes `toolFilter: { deny: READONLY_DENY }` (unchanged);

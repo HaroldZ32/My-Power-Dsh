@@ -54,11 +54,11 @@
 | 只读 teammate 的纪律 | 一道 TOOL GUARD（见下），经适配器注册 |
 | session 启动复杂度闸门 | 一个 `agent/pre-step` 监听器：当 `team.gate` 为 `mechanical` 时 **stage** 一个可批准的 plan shell —— 自 2026-10-20 起**重新成为默认**（见下） |
 
-**模型路由来自槽位，经成员身份解析。** 原生 team executor 按身份优先级解析已 stage 成员的 `teamModels.slot*` 路由 —— 先取成员的 `role`，再取其 `description` 的头部，最后取完整的 `name`（`agent_teams_plan` 会转发 `role`，descriptor label 仍携带 description；`docs/plan-0.1.7-adaptation.md` §3）。无法匹配任何名册身份的成员**继承** staging 它的 session 的模型路由（顶层 spawn 是队长的路由，team-lead spawn 是 Lead 的路由），只记一行日志、绝不抛错。prompt 文本无法改变路由。在 official-executor 回退路径上，`mpd-roster-provider-plugin` 从 description label 应用同一槽位。同一组槽位也作用于 `mpd_role_spawn` / `mpd_workmate_spawn`（它们会传入显式的 `agentOptions`）；名册段落如实说明这一点。槽位是**唯一**的路由来源（契约 `.mpd/plans/slot-single-source.md`）：`agentRoutes` 已删除，未配置或格式错误的槽位会用配置行构造的结构化 `SLOT_UNCONFIGURED` 失败**拒绝** spawn —— 点名槽位、成员、缺失的叶子与两条修复路径 —— 因此绝不会在凭空捏造的路由上启动子会话。槽位自己的 `fallbacks` 链在 spawn 前只消费一次（目录正面列出的第一条候选胜出），胜出路由的推理强度再经过适配器的 `withSupportedEffort`（`mpd-dsh-adapter-plugin`）：若槽位的模型**完全没有**推理等级，则不发送任何等级 —— spawn 照常运行，而不是因 provider 无法接受的关键字失败；而声明了推理等级的模型则保留槽位的等级。
+**模型路由来自四个槽位，经成员身份解析。** 原生 team executor 按身份优先级解析已 stage 成员的 `teamModels.slot*` 路由 —— 先取成员的 `role`，再取其 `description` 的头部，最后取完整的 `name`（`agent_teams_plan` 会转发 `role`，descriptor label 仍携带 description；`docs/plan-0.1.7-adaptation.md` §3）。**TEAM 路径绝不拒绝**：无法匹配任何名册身份的成员、槽位未配置或无效的成员，以及没有 `mpdConfig` 的组合，都会**继承** staging 它的 session 的模型路由（顶层 spawn 是队长的路由，team-lead spawn 是 Lead 的路由），只记**恰好一行**日志、绝不抛错 —— `approve` 是在循环中一次拉起 N 个成员的批量操作，槽位绝不能让 team 建到一半。prompt 文本无法改变路由。在 official-executor 回退路径上，`mpd-roster-provider-plugin` 从 description label 应用同一槽位。同一组四个槽位也作用于单次调用应用器 `mpd_role_spawn` / `mpd_workmate_spawn`（它们会传入显式的 `agentOptions`）；名册段落如实说明这一点。**只有这些单次调用应用器会拒绝**：槽位是**唯一**的路由来源（契约 `.mpd/plans/slot-single-source.md`），`agentRoutes` 已删除，未配置或格式错误的槽位会使单次调用 spawn 以配置行构造的结构化 `SLOT_UNCONFIGURED` 失败 —— 点名槽位、成员、缺失的叶子与两条修复路径 —— 因此绝不会在凭空捏造的路由上启动子会话。槽位自己的 `fallbacks` 链在 spawn 前只消费一次（目录正面列出的第一条候选胜出），胜出路由的推理强度再经过适配器的 `withSupportedEffort`（`mpd-dsh-adapter-plugin`）：若槽位的模型**完全没有**推理等级，则不发送任何等级 —— spawn 照常运行，而不是因 provider 无法接受的关键字失败；而声明了推理等级的模型则保留槽位的等级。
 
 ### 只读 teammate 会被机械地拒绝
 
-那七个名称的拒绝清单在**两条**路径上生效，且共用**同一个**导出常量（`READONLY_DENY`），因此二者永远不会漂移：
+那八个名称的拒绝清单在**两条**路径上生效，且共用**同一个**导出常量（`READONLY_DENY`），因此二者永远不会漂移：
 
 - **单次咨询路径** —— `mpd_role_spawn` 传入 `toolFilter: { deny: READONLY_DENY }`（保持不变）；
 - **team 路径** —— 一道 tool guard 经适配器解析**调用方** agent 的团队身份（`dsh.teamMembership(exec.agent)`）：当身份为 `teammate`，且其面向模型的名号经归一化（小写、每段非字母数字 → `-`，可选一个尾部 `-<数字>` 团队唯一后缀）后命中某个**只读**名册成员时，清单中的任何工具名都会被拒绝。拒绝信息会点名该成员与规则，并指向 Lead 或某个 worker 成员。Lead、worker 成员、非团队 agent 以及无法解析的身份一律放行；该 guard 从不抛错、从不改动状态、也从不放宽。

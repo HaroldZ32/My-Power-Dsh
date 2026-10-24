@@ -140,7 +140,7 @@ node scripts/install-profile.ts            # --dry-run 只打印计划，不写�
 | 保存记忆 | `mpd_memory_write/read/reflect/reflect_complete/status`、`mpd_memory_save/recall` | 版本库后端可以是 git 或 svn；`mpd_memory_save/recall` 是简单的键值层 |
 | 咨询专家 | `mpd_roles_list`、`mpd_role_spawn`、`mpd_role_persona` | 一次性（ONE-SHOT）单次咨询子智能体（报告落定后 activation 即被释放 —— 新问题请用新的 spawn）；只读角色会被禁用写入类工具 |
 | 养一个会成长的智能体 | `mpd_workmate_list/init/spawn/reflect/match/rename/delete` | 见 §5 |
-| 运行一个团队 | `agent_teams_plan`（暂存计划、扩展它、批准它）、`agent_teams_task`（在任务板上 claim / complete / fail）、`agent_teams_dispatch`、`send_message`、`list_agents`、`wait_agent`、`interrupt_agent` + Web 的 Agent Teams 面板 | 见 §6 |
+| 运行一个团队 | `agent_teams_plan`（暂存计划、扩展它、批准它）、`agent_teams_task`（在任务板上 claim / complete / fail）、`agent_teams_dispatch`、`send_message`、`list_agents`、`wait_agent`、`interrupt_agent` + **Team** 视图 —— 本 bundle 自己的 Web 团队界面（`/plugins/mpd-team/state`）；会话头部的 **Agent Teams** 面板是 harness 自己的、独立的只读投影 | 见 §6 与 §8 |
 | 配置本 bundle | `.mpd/mpd.jsonc`、`mpd_config_get`、`mpd_config_reload` | 见 §9 |
 | 扩展本 bundle | `mpd_ext_list`、`mpd_ext_show`、`mpd_flow_list`、`mpd_flow_show` | 见 §10 |
 | 解析模型路由 | `mpd_modelchain_resolve` | 解析某位专家会使用的 provider/model |
@@ -338,7 +338,7 @@ agent_teams_plan { "action": "create_task", "task": { "subject": "重写安装�
 
 # 操作任务板（任何成员）
 agent_teams_plan { "action": "status" }
-agent_teams_task { "task_id": "T3", "action": "claim", "expected_revision": 2 }
+agent_teams_task { "task_id": "T3", "action": "claim" }
 agent_teams_task { "task_id": "T3", "action": "complete", "expected_revision": 3 }
 agent_teams_dispatch { "action": "run" }
 
@@ -375,7 +375,7 @@ host，直到你选择 `mpd` 为止（TUI 的 `/preset mpd`、Web Settings 的 `
 
 | Web 界面 | TUI 等价物 |
 |---|---|
-| Agent Teams 面板（会话头部） | `tuiPanels` 侧栏页面（`MPD`，用 `alt+a` / `/mpd panel` 打开）—— `tuiScenes` 全屏看板 + 带 key 的 `tuiStatus` 状态行仍是回退 |
+| **Team** 视图 —— bundle 自己的侧栏页面，由 `/plugins/mpd-team/state` 提供；会话头部的官方 **Agent Teams** 面板是另一个只读投影，没有 TUI 对应物 | `tuiPanels` 侧栏页面（`MPD`，用 `alt+a` / `/mpd panel` 打开）—— `tuiScenes` 全屏看板 + 带 key 的 `tuiStatus` 状态行仍是回退 |
 | Workmates 侧边栏标签页 | `tuiPanels` 的 `workmate` 页面，外加 `/mpd` 命令树（`tuiCommandTrees`）与 `tuiDialogs` |
 | 设置 → MPD 栏 | `/settings` 分区（`tuiSettingsSections`） |
 | — | `tuiShortcuts` 快捷键 |
@@ -441,14 +441,21 @@ TUI 界面自身的一个旋钮；槽位叶子是只可选择字段，选项来�
 
 ## 8. Web GUI
 
-- **Agent Teams**（团队界面）：官方客户端插件
+- **Team**（本 bundle 驱动的团队界面，也是权威界面）：bundle 自己的侧栏页面（页签 id `mpd-team`，
+  标题 **Team**）通过 bundle 自己的 `/plugins/mpd-team/state` 路由读取
+  `<workspace>/.mpd/team/teams/<id>.json`，因此渲染的就是 mpd RECORD：团队的身份与阶段、带模型路由与
+  每人任务数的名册、任务板的任务 DAG（§8.1），以及批准前的待批计划。它从不读官方服务的投影，而 TUI
+  渲染的是同一份记录（§7.1）。它会注册进当前组合所提供的那个侧边栏宿主（见下文）。
+- **Agent Teams**（另一块界面，只读 —— harness 自己的，不是团队界面）：官方客户端插件
   `@deepseek-ai/dsh-experimental-client-ui-agent-team`（由本 bundle 的 `mpd-ui-agent-team` 行挂载）
-  在会话头部增加一个 **Agent Teams** 动作。它读的是共享会话存储里 Lead 会话的 `agentTeam` 投影，
-  所以面板打开期间名册或任务变化就会刷新。它列出名册（持久名字与阶段：`running`、`inactive`、
-  `provisioning`、`failed`）与共享任务板（任务标识、归属、前置、就绪状态、提示性写入范围与重叠
+  在会话头部增加一个 **Agent Teams** 动作。它读的是共享会话存储里 Lead 会话的 `agentTeam` 投影 ——
+  那是**官方服务**的投影，不是 mpd RECORD —— 所以面板打开期间名册或任务变化就会刷新。它列出名册
+  （持久名字与阶段：`running`、`inactive`、`provisioning`、`failed`）与共享任务板（任务标识、归属、
+  前置、就绪状态、提示性写入范围与重叠
   警告），并能跳进某位队友的会话。它是**只读**的：面板不能创建、改名、删除或中断队友，也没有任务
   修改控件 —— 那些属于 §6 里的工具。它不展示点对点消息，只展示名册与任务。如果插件是在一个已经
-  打开的会话里才启用的，刷新一次页面以接收投影。
+  打开的会话里才启用的，刷新一次页面以接收投影。在 TUI 组合里官方服务那两行
+  （`mpd-agent-team`、`mpd-tool-agent-team`）被禁用，因此这块面板没有 TUI 对应物。
 - **Workmates 侧边栏标签页**：workmate 库作为标签页贡献给 **DSH-better-sidebar**
   （社区侧边栏 bundle，存在时才挂载的可选 peer），因此它和该侧边栏
   自己的页面在一起 —— 标签条、`+` 菜单，以及侧边栏自己的启用/禁用开关。页面列出
@@ -462,8 +469,8 @@ TUI 界面自身的一个旋钮；槽位叶子是只可选择字段，选项来�
 - **workmate 页面住在哪里**：它是一张侧边栏页面。社区宿主是**可选 peer**，bundle 从不安装它 ——
   `mpd-better-sidebar` 行在 `dsh-better-sidebar` 可解析的位置挂载它，否则自行禁用 —— 因此也不欠你
   第二次手动安装：没有该宿主时，**同一张**页面会注册进 **HARNESS 自带的**右侧边栏并保持可访问；若
-  连侧边栏接缝都不存在，mpd 各面板会各自按名字报告一次。团队工作仍然可以通过官方团队工具运行，
-  workmate 库也仍然可以通过 `mpd_workmate_*` 工具完整使用。
+  连侧边栏接缝都不存在，mpd 各面板会各自按名字报告一次。团队工作仍然可以通过 mpd record 上的
+  `agent_teams_*` 任务板运行（§6），workmate 库也仍然可以通过 `mpd_workmate_*` 工具完整使用。
 - **社区宿主存在时有两个侧边栏表面（0.28）**：每张 mpd 页面 —— Team 视图、Workmates 库与
   AgentTeams 看门狗 —— 都会向 `dsh-better-sidebar` 注册**两次**：主标签页（`mpd-team`、
   `mpd-workmate`、`mpd-agent-teams`）以及一个**底部工作台孪生**（`mpd-team:bottom`、
@@ -720,9 +727,9 @@ agent_teams_plan { "action": "create_task", "task": { "subject": "重写安装�
 agent_teams_plan { "action": "create_task", "task": { "subject": "验证 README 文档对", "description": "跑文档关卡并贴出原始输出。", "blocked_by": ["<root task>"], "write_scopes": [] } }
 agent_teams_plan { "action": "approve" }                              # ← 就是这一步 spawn 成员并发布任务
 
-# (c) 操作任务板（compare-and-set：每次更新前都重新读一次）
+# (c) 操作任务板（compare-and-set：`release` / `complete` / `fail` 在更新前重新读一次）
 agent_teams_plan { "action": "status" }                                // → 任务板，带 revision
-agent_teams_task { "task_id": "T1", "action": "claim", "expected_revision": 1 }
+agent_teams_task { "task_id": "T1", "action": "claim" }
 agent_teams_task { "task_id": "T1", "action": "complete", "expected_revision": 2 }
 
 # (d) 推动一个正在运行的团队
@@ -860,7 +867,7 @@ wait_agent { "timeout_ms": 60000 }                               # 下一次名�
 interrupt_agent { "target": "junior-1" }                         # 停下当前轮次，保留收件箱
 
 # 成员
-agent_teams_task { "task_id": "T5", "action": "claim", "expected_revision": 4 }
+agent_teams_task { "task_id": "T5", "action": "claim" }
 agent_teams_task { "task_id": "T5", "action": "complete", "expected_revision": 5, "note": "…进度 + 证据…" }
 send_message { "target": "lead", "message": "T5 完成：`bun run verify:docs` 通过。" }
 ```
