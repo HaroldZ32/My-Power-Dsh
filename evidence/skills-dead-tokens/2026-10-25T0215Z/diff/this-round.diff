@@ -1,0 +1,208 @@
+diff --git a/skills/frontend/SKILL.md b/skills/frontend/SKILL.md
+index d7575bab..8e504d27 100644
+--- a/skills/frontend/SKILL.md
++++ b/skills/frontend/SKILL.md
+@@ -34,7 +34,7 @@ Every implementation must choose one of these branches before UI code changes:
+    - **Live site or URL reference** (the user names a site to clone or gives a URL): load `references/design/clone-from-url.md`. Drive a real browser and extract the runtime truth via `getComputedStyle` — tokens, layout geometry, default/hover/focus/active states, transitions and keyframes, and downloaded assets — into `DESIGN.md`, then clone-code reusable primitives against that contract.
+    Final QA for both runs `/visual-qa` in reference-fidelity mode: compare the actual UI against the reference pixel-by-pixel and verify the code is an extensible design-system implementation, not a screenshot-matched one-off.
+ 2. **Greenfield or fresh setup:** if the user gave no concrete visual reference, design research is a build step with named deliverables — not exploration to be budgeted. Exploration-stop instincts ("enough exploration", two-wave caps) do not apply here. Fire every research lane IN PARALLEL before `DESIGN.md` is written, and open `DESIGN.md` with a `## 0. Research Log` section recording each lane's deliverable — a lane with no Research Log line did not run. Skip a lane only when its tool or network is genuinely unavailable, and name the skip in `DESIGN.md`:
+-   - **Embedded references:** use `references/design/_INDEX.md` to shortlist 2-3 plausible Layer B references, then read exactly one Layer A style skill and one Layer B reference in full — every line, no partial reads (they are 200-500 lines; a sliced read produces the flattened token set this gate exists to prevent). Log the shortlist, the pick, and why. When the curated set has no fit, pick the nearest Layer B reference from that shortlist and record why — no `open-design` library is mounted; add `ui-ux-db` lookups for palette/type/domain questions.
++   - **Embedded references:** use `references/design/_INDEX.md` to shortlist 2-3 plausible Layer B references, then read exactly one Layer A style skill and one Layer B reference in full — every line, no partial reads (they are 200-500 lines; a sliced read produces the flattened token set this gate exists to prevent). Log the shortlist, the pick, and why. When the user named NO brand and the curated set has no fit, pick the nearest Layer B reference from that shortlist and record why — this greenfield latitude never covers a brand the user NAMED: a named brand that the catalogue lacks falls back to a Layer A mood match and never to another brand's tokens. No `open-design` library is mounted; add `ui-ux-db` lookups for palette/type/domain questions.
+    - **Lazyweb real-product screens:** READ `references/design/lazyweb.md` FIRST and run its recipe verbatim — do not improvise curl calls against lazyweb.com; the recipe mints its own anonymous token. Log the queries run, how many screens you actually VIEWED, and the layout grammar harvested — never pixel copies.
+    - **StyleGallery spatial patterns:** read `references/design/stylegallery.md` and fetch the pattern whose primary spatial problem matches the screen. Log the pattern adopted and the element that owns the scroll.
+    - **Imagen concept drafts:** generate 2-3 imagen concept drafts, each seeded with the loaded Layer A + Layer B tokens (palette, type, material); pick the strongest and treat the chosen draft as the reference-fidelity contract. Log the draft paths and the pick.
+diff --git a/skills/frontend/references/design/README.md b/skills/frontend/references/design/README.md
+index 37271a4c..807a24c1 100644
+--- a/skills/frontend/references/design/README.md
++++ b/skills/frontend/references/design/README.md
+@@ -38,7 +38,7 @@ Before touching any UI code, before routing to any reference, before even thinki
+ 
+ 1. Read `design-system-architecture.md` — it defines the exact structure.
+ 2. Identify the branch: greenfield setup, existing UI with implicit patterns/components, or existing UI with no reusable component layer.
+-3. **Greenfield setup:** if the user gave no concrete visual reference, use `_INDEX.md` to shortlist 2-3 plausible Layer B references, then read exactly one Layer A style skill and one Layer B brand/design-system reference in full — every line, no partial reads; when the curated set has no fit, take the nearest Layer B reference and record why (no `open-design` library is mounted). Open `DESIGN.md` with a `## 0. Research Log` recording each research lane's deliverable (embedded-reference shortlist + pick, lazyweb screens viewed, imagen drafts — see the SKILL.md workflow); a lane with no line did not run. Treat those references as source material, not mood labels: extract tokens, layout grammar, component anatomy, interaction states, motion, and taste decisions into `DESIGN.md`, then recombine them into project-specific primitives. Customize for the user's product and content, but do not freestyle past the selected references; never copy logos, trademarked assets, or brand-specific copy.
++3. **Greenfield setup:** if the user gave no concrete visual reference, use `_INDEX.md` to shortlist 2-3 plausible Layer B references, then read exactly one Layer A style skill and one Layer B brand/design-system reference in full — every line, no partial reads; when the user named NO brand and the curated set has no fit, take the nearest Layer B reference and record why (no `open-design` library is mounted); a brand the user NAMED is the other case — if the catalogue lacks it, fall back to a Layer A mood match and never to another brand's tokens. Open `DESIGN.md` with a `## 0. Research Log` recording each research lane's deliverable (embedded-reference shortlist + pick, lazyweb screens viewed, imagen drafts — see the SKILL.md workflow); a lane with no line did not run. Treat those references as source material, not mood labels: extract tokens, layout grammar, component anatomy, interaction states, motion, and taste decisions into `DESIGN.md`, then recombine them into project-specific primitives. Customize for the user's product and content, but do not freestyle past the selected references; never copy logos, trademarked assets, or brand-specific copy.
+    - **Commit a distinctive direction BEFORE extracting tokens.** In 1-2 sentences, name the atmosphere, the signature material, the color story, and the one moment a visitor will remember. For an expressive brief, sketch 2-3 genuinely different directions and pick the boldest one you can defend with the loaded reference; do not average them, because the average IS the generic default this skill exists to beat. A locked, never-revisited one-shot decision is how a page ends up flat.
+    - **The reference's distinctive material MUST survive extraction (expressive briefs).** The common failure is loading a rich reference and then distilling it into a generic dark-SaaS token set. Your `DESIGN.md` must carry the *non-default* decisions forward and name which reference each came from: the actual elevation recipe (the specific layers that make a surface read as glass/glossy, not a single blur), a multi-stop perceptual color ramp (not one brand hex reused at varied opacity), the explicit display/body/mono type choices, and one signature interaction. Self-check before writing code: if your `DESIGN.md` could describe any generic dark SaaS, you flattened the reference — go back and put the specific material in.
+ 4. **Existing UI with implicit patterns/components:** extract the colors, typography, spacing, primitives, states, and motion already in use. Write `DESIGN.md` to codify what exists before changing UI code.
+diff --git a/skills/frontend/references/design/design-system-architecture.md b/skills/frontend/references/design/design-system-architecture.md
+index 526a6ecb..b9edb613 100644
+--- a/skills/frontend/references/design/design-system-architecture.md
++++ b/skills/frontend/references/design/design-system-architecture.md
+@@ -216,7 +216,7 @@ New debt is recorded here at the moment it is accepted — never silently.
+ 
+ ### For New Projects
+ 
+-1. **Select references before taste** — no visual reference means `_INDEX.md` shortlist of 2-3 Layer B candidates, then exactly one Layer A style skill and one Layer B brand/design-system reference. When the curated set has no fit, take the nearest Layer B reference and record why — no `open-design` library is mounted.
++1. **Select references before taste** — no visual reference means `_INDEX.md` shortlist of 2-3 Layer B candidates, then exactly one Layer A style skill and one Layer B brand/design-system reference. When the user named NO brand and the curated set has no fit, take the nearest Layer B reference and record why — no `open-design` library is mounted. A brand the user NAMED is not this case: when the catalogue lacks it, fall back to a Layer A mood match, never a substitute brand's tokens.
+ 2. **Assemble from references** — extract tokens, layout grammar, component anatomy, states, motion, and taste decisions, then recombine them into project-specific primitives. Customize for the user's product; never copy logos, trademarked assets, or brand-specific copy.
+ 3. **Define the system** — atmosphere, palette, typography, spacing, and one depth strategy, grounded in the selected references and product semantics. Sanity-check the palette and type pairing with one `ui-ux-db` domain search (CLI in `references/ui-ux-db/README.md`).
+ 4. **Document initial primitives** — only components you are about to build, including variants and states.
+diff --git a/skills/init-deep/SKILL.md b/skills/init-deep/SKILL.md
+index 97061dcc..a93f1802 100644
+--- a/skills/init-deep/SKILL.md
++++ b/skills/init-deep/SKILL.md
+@@ -292,7 +292,7 @@ Hierarchy:
+ ## Anti-Patterns
+ 
+ - **Static agent count**: MUST vary agents based on project size/depth
+-- **Sequential execution**: MUST parallel (explore + LSP + ast-grep concurrent)
++- **Parallel fan-out fiction**: the consults are SYNCHRONOUS one-shot spawns — the main session runs the LSP, ast-grep and codegraph queries ITSELF and folds each `Explorer` report before issuing the next consult; concurrency exists only on the team plane, and only when the lanes are genuinely independent
+ - **Ignoring existing**: ALWAYS read existing first, even with --create-new
+ - **Over-documenting**: Not every dir needs AGENTS.md
+ - **Redundancy**: Child never repeats parent
+diff --git a/skills/refactor/SKILL.md b/skills/refactor/SKILL.md
+index 1f7953d1..cacbb76d 100644
+--- a/skills/refactor/SKILL.md
++++ b/skills/refactor/SKILL.md
+@@ -585,7 +585,7 @@ Use \`ast-grep\` skill helper or \`sg\` CLI for structural transformations.
+ ## Agents (roster roles, via \`mpd_role_spawn\`)
+ - \`Explorer\`: Codebase pattern discovery
+ - \`Planner\`: Detailed refactoring plan generation
+-- \`Reviewer\` / \`Architect\`: Read-only consultation for contract/correctness or architectural decisions and debugging
++- \`Reviewer\` / \`Architect\`: Consultation for contract/correctness or architectural decisions and debugging — \`Architect\` is mechanically read-only (no \`bash\`), while \`Reviewer\` is write-capable and findings-only by DISCIPLINE, so it can run the commands a verdict needs and still reports without editing
+ - \`Researcher\`: **Use proactively** when encountering deprecated methods or library migration tasks. Query official docs and OSS examples for modern replacements.
+ 
+ ## Deprecated Code & Library Migration
+@@ -676,7 +676,7 @@ Record the chosen path in the todo_write list.
+ 
+ Rationale for this composition:
+ - **4 workers = team mode's parallel cap.** 5+ just queues.
+-- **No verifier team member.** Verification must come from a DIFFERENT agent working from the frozen contract, and none of these authoring roles is a verifier — the verifier runs OUTSIDE the team through \`mpd_role_spawn\` (the ONE-SHOT consult): \`role="Senior Engineer"\` when the step must RUN commands (tests, builds), because the roster's \`Reviewer\` is READ-ONLY (its deny list includes \`bash\`) and cannot execute a suite; \`role="Reviewer"\` when the verification only READS the contract and the implementation.
++- **No verifier team member.** Verification must come from a DIFFERENT agent working from the frozen contract, and none of these authoring roles is a verifier — the verifier runs OUTSIDE the team through \`mpd_role_spawn\` (the ONE-SHOT consult): \`role="Reviewer"\` when the step must RUN commands (tests, builds) — the roster's \`Reviewer\` is write-capable and findings-only by DISCIPLINE, not by a deny list, so it can execute a suite — or \`role="Senior Engineer"\` / \`role="Deep Worker"\` when you want a role that also edits; \`role="Architect"\` when the verification only READS the contract and the implementation, because \`Architect\` is mechanically read-only (\`bash\` is denied).
+ - **Junior Engineer × 2** for mechanical edits, **Senior Engineer × 2** for reasoning edits. The team executor resolves each member's slot from its \`role\` when staged with one, otherwise from the head of its \`description\`: each description STARTS with that roster name (\`role\` is optional, so the description head is the fallback), so the mechanical pair routes through the Junior Engineer slot and the reasoning pair through the Senior Engineer slot, and an unmatched member inherits the staging session's route. \`prompt\` carries instructions only and cannot change a route.
+ 
+ **Team lifecycle** (one team, reused until Phase 6 cleanup):
+@@ -743,5 +743,5 @@ Append to the 6.6 summary a "Dispatch path" line and, when team path was used, t
+ - Do not recreate the team mid-session.
+ - Do not run tests from Lead — the external verifier owns that lane.
+ - Do not release a completed row: a post-completion FAIL opens a \`kind:"repair"\` row with \`sourceTaskId\`.
+-- Do not put verifier roles (\`Reviewer\` — or \`Architect\` for an architectural review — and \`Plan Reviewer\`) or \`Researcher\` into the team roster — use them OUTSIDE the team when needed via \`mpd_role_spawn\` (the ONE-SHOT consult) or the workmate library (\`mpd_workmate_spawn\`), never the harness \`subagent\` tool, which an mpd session REFUSES (\`delegation.gate:"deny"\`); verifiers run on the pro model.
++- Do not put verifier roles (\`Reviewer\` — or \`Architect\` for an architectural review — and \`Plan Reviewer\`) or \`Researcher\` into the team roster — use them OUTSIDE the team when needed via \`mpd_role_spawn\` (the ONE-SHOT consult) or the workmate library (\`mpd_workmate_spawn\`), never the harness \`subagent\` tool, which an mpd session REFUSES (\`delegation.gate:"deny"\`); a verifier takes its route from its roster team-model slot and the call cannot choose one.
+ `
+diff --git a/skills/ulw-execute/SKILL.md b/skills/ulw-execute/SKILL.md
+index 3c28e214..e24f7a77 100644
+--- a/skills/ulw-execute/SKILL.md
++++ b/skills/ulw-execute/SKILL.md
+@@ -21,7 +21,7 @@ Role-specific behavior goes inside the consult's `task` (self-contained `TASK /
+ 
+ ### Model tiering (DeepSeek V4)
+ 
+-Exploration/implementation consults use the fast flash model; plan and reviewer consults use the pro model — pass the route with `mpd_role_spawn`'s optional `model` override. There is no effort knob: the route's configured reasoning effort applies and no spawn surface here can pin a different one. Reasoning-heavy gates (plan review, verification, quality gate) always run on pro.
++A consult's model route is a CONFIGURATION choice, never a per-call one: the roster's team-model slot (`teamModels.slot{1,2,3,4}` in `mpd.jsonc`) decides the route — provider, model and its configured reasoning effort — and the consult cannot override it, because `mpd_role_spawn` accepts only `role`, `task` and `context` and has no `model` parameter at all. To move a class of consult to a stronger or cheaper route, change the slot; there is no effort knob either, and no spawn surface here can pin a different one. Reasoning-heavy gates (plan review, verification, quality gate) are therefore only ever as strong as the slot that serves their roles.
+ 
+ ### Consult reliability (DSH)
+ 
+@@ -205,7 +205,7 @@ A worker done claim is never final: each implementation sub-task returns a `Done
+ 
+ Rules:
+ - `confirmed` is the only pass verdict. `false-positive`, `needs-fix`, and `needs-human-review` all block checkbox completion.
+-- The verifier must be independent from the executor: a READ-LEVEL pass (architecture, design, findings judged from evidence already on disk) goes to `mpd_role_spawn(role="Architect")` or `role="Reviewer"`; a COMMAND-LEVEL pass (probes and repro commands actually run) needs a write-capable role — `mpd_role_spawn(role="Senior Engineer")`, else `role="Deep Worker"` — because Architect and Reviewer are read-only and cannot run bash. Or a fresh reviewer lane on the team plane, or root only when root did not implement or materially rewrite that task.
++- The verifier must be independent from the executor: a READ-LEVEL pass (architecture, design, findings judged from evidence already on disk) goes to `mpd_role_spawn(role="Architect")` — mechanically read-only (no `bash`), so it cannot touch what it judges; a COMMAND-LEVEL pass (probes and repro commands actually run) goes to `role="Reviewer"` (write-capable and findings-only by DISCIPLINE, not by a fence — it can run `bash` and still reports without editing) or to `role="Senior Engineer"`, else `role="Deep Worker"` — choose for capability plus independence from the executor. Or a fresh reviewer lane on the team plane, or root only when root did not implement or materially rewrite that task.
+ - A worker done claim must be independently verified before it becomes checkbox completion.
+ - On any non-confirmed verdict, append the feedback to the ledger, reset the checkbox work to in-progress, and re-dispatch the executor with the exact failure.
+ - The verifier must probe the applicable adversarial keys, including `stale_state`, `dirty_worktree`, and `misleading_success_output`, before allowing `FullyDone`.
+@@ -225,7 +225,7 @@ When all top-level checkboxes in `## TODOs` and `## Final Verification Wave` are
+ 
+ 1. Run the plan's final verification commands.
+ 2. Record a self-review in the notepad: re-read the diff, run diagnostics, and capture evidence for every acceptance criterion. Run your own manual QA on the real surface.
+-3. Only when the user demanded strict, rigorous, or high-accuracy review, spawn ONE rigorous reviewer — `mpd_role_spawn(role="Architect", task=...)` on the pro model; otherwise your self-review is the final verification.
++3. Only when the user demanded strict, rigorous, or high-accuracy review, spawn ONE rigorous reviewer — `mpd_role_spawn(role="Architect", task=...)`, on whatever route the roster slot gives it; otherwise your self-review is the final verification.
+ 4. Finish the PR/branch lifecycle from its task-owned worktree: sync `.mpd/` state back to the main repo, create or update the PR, wait for review/verification gates, merge by default unless explicitly opted out, and remove the worktree only after successful merge or explicit handoff.
+ 5. Remove or mark the Boulder work as completed.
+ 6. Print an `ORCHESTRATION COMPLETE` block with the plan path, verification commands, artifacts, and cleanup receipts.
+diff --git a/skills/ulw-research/SKILL.md b/skills/ulw-research/SKILL.md
+index 1ffd9184..b135df98 100644
+--- a/skills/ulw-research/SKILL.md
++++ b/skills/ulw-research/SKILL.md
+@@ -83,7 +83,7 @@ Research lanes (`Explorer`, `Researcher`, browsing) differ by surface, but assum
+ - **Read-only.** The read-only roster roles cannot write files. Never ask a lane to write the journal or any session file — every journal write is yours.
+ - **No recursion — consults AND members.** A one-shot consult cannot spawn its own consult, and a team member must not re-orchestrate: a member researches its axis and reports; it never stands up its own team, loads this skill, or fans out a research swarm of its own. Depth comes from YOUR expansion waves. Say so in every task message — a lane that starts its own research protocol burns the run's budget on duplicated orchestration and returns nothing you can cite.
+ - **Built-in brakes.** Lanes often ship with their own retrieval budgets ("stop when answered") and rigid output templates. Your task message must explicitly lift the budget and demand the EXPAND tail, or the lane returns a thin single-pass answer with no leads.
+-- **Capability routing.** There is no effort knob: the roster slot route sets the model and its configured reasoning effort, and `mpd_role_spawn` accepts only an optional `model` override. Route saturation research to the stronger roles (`Deep Worker`, `Senior Engineer`, `Architect`) rather than trying to raise an effort; when the route cannot change, narrow each lane's scope and add more lanes instead.
++- **Capability routing.** There is no effort knob: the roster slot route sets the model and its configured reasoning effort, and `mpd_role_spawn` takes no model parameter — the call cannot override the slot. Route saturation research to the stronger roles (`Deep Worker`, `Senior Engineer`, `Architect`) rather than trying to raise an effort; when the route cannot change, narrow each lane's scope and add more lanes instead.
+ 
+ ### The task-message contract
+ 
+@@ -172,9 +172,9 @@ Scaling floor — more angles always justify more workers:
+ Role protocols — embed the relevant one in each task message; every lane gets a unique angle:
+ 
+ - **Codebase (Explorer), 2-4 lanes.** Grep with 3+ keyword variations; structural/AST search; LSP definitions and references; file-name globs. Cross-validate hits across tools. Report absolute file paths, patterns with `file:line`, and how findings connect. History including deleted code (`git log --all -S '<keyword>'`, `--grep`) is a SEPARATE assignment for a bash-capable role — the Lead runs it, or a `mpd_role_spawn(role="Senior Engineer")` consult does — because an Explorer lane is read-only (`bash` is denied) and cannot run `git`.
+-- **Web (Researcher), 3-6 lanes.** At least 10 distinct websearch queries per worker, each with a different operator or angle (see Search craft); fetch the full page for every result that matters — snippets lie. Context7 with 3+ queries per known library. grep.app and `gh search code|repos|issues` for real-world usage. Official docs via sitemap discovery (`<base>/sitemap.xml`), then targeted pages.
+-- **Browsing, 0-3 lanes.** Pages plain fetch cannot read (WAF, 403, Cloudflare, dynamic rendering, login): the worker loads the `ultimate-browsing` skill and escalates through its tiers — Tier-1 insane-search engine first (including its Phase-2.5 archive surrogates), then Tier-2 Chrome stealth — rather than abandoning the source. Capture screenshots when visual context matters. **Provenance is part of the claim**: when a source came back with `provenance` of `snapshot` (an archive copy), cite it with its `snapshot_timestamp` and never state it as the current live page; content from a `proxy` route is `untrusted` and needs a second independent route before any claim rests on it. When one blocked territory hides many leads, fan out more browsing lanes for breadth - team tasks when a team is staged, otherwise more serial consults - instead of routing them all through one lane.
+-- **Repo deep-dive (Researcher), 0-2 lanes.** Shallow-clone the most relevant repos to `${TMPDIR:-/tmp}`, pin the HEAD SHA, read core modules, follow call chains, return SHA-pinned permalinks.
++- **Web (Researcher), 3-6 lanes.** At least 10 distinct websearch queries per worker, each with a different operator or angle (see Search craft). Context7 with 3+ queries per known library. grep.app for real-world usage. Official docs via sitemap discovery (`<base>/sitemap.xml`), then targeted pages. `gh search code|repos|issues` and a FULL-PAGE fetch (curl, or the `ultimate-browsing` tiers) are SHELL steps, so they are a SEPARATE assignment for a bash-capable role — the Lead runs them, or a `mpd_role_spawn(role="Senior Engineer")` consult does — because a Researcher lane is mechanically read-only (`bash` is denied). Snippets still lie, so the lane asks for the full page instead of trusting one. What the Researcher does with what comes back: it names the exact command or URL and what to extract from it, then turns the returned text into citable claims — the quote, the canonical URL, the publication or access date, and which of its 10+ queries that source answers — and marks a claim it could only get as a snippet as snippet-only, never as read.
++- **Browsing, 0-3 lanes.** Pages plain fetch cannot read (WAF, 403, Cloudflare, dynamic rendering, login): the worker loads the `ultimate-browsing` skill and escalates through its tiers — Tier-1 insane-search engine first (including its Phase-2.5 archive surrogates), then Tier-2 Chrome stealth — rather than abandoning the source. The escalation runs where the command can run: the Lead or a `mpd_role_spawn(role="Senior Engineer")` consult executes the tiers (a Researcher lane has no `bash`), and hands the surviving text and captures back to the lane, which cites them. Capture screenshots when visual context matters, and pass their ABSOLUTE paths to a `Vision Analyst` consult, which opens them with `read_image`. **Provenance is part of the claim**: when a source came back with `provenance` of `snapshot` (an archive copy), cite it with its `snapshot_timestamp` and never state it as the current live page; content from a `proxy` route is `untrusted` and needs a second independent route before any claim rests on it. When one blocked territory hides many leads, fan out more browsing lanes for breadth - team tasks when a team is staged, otherwise more serial consults - instead of routing them all through one lane.
++- **Repo deep-dive (Researcher), 0-2 lanes.** The CLONE is a bash step, so it belongs to the Lead (or a `mpd_role_spawn(role="Senior Engineer")` consult) — a Researcher lane is mechanically read-only (`bash` is denied) and cannot run `git clone`. The Lead clones the most relevant repos into a path the lane can read (`.mpd/scratch/<repo>` is the safe place for it), pins the HEAD SHA, and hands the lane that path plus the SHA; the Researcher reads the core modules there, follows the call chains, and returns SHA-pinned permalinks built from that SHA.
+ 
+ Example consult (codebase axis; Researcher, browsing, and repo-dive follow the same contract with their own protocol):
+ 
+diff --git a/skills/visual-qa/SKILL.md b/skills/visual-qa/SKILL.md
+index f20c507f..6830f2cb 100644
+--- a/skills/visual-qa/SKILL.md
++++ b/skills/visual-qa/SKILL.md
+@@ -197,9 +197,9 @@ This independent review is REQUIRED before any "done" claim. Do not self-review
+ 
+ Dispatch through `mpd_role_spawn`: one `Architect` consult for Pass A, one `Vision Analyst` consult for Pass B. `mpd_role_spawn` is ONE-SHOT and synchronous — each returns its report as the tool result — so the two passes run SERIALLY: there is no background child, no `job_output`, and no mid-flight steering. (The harness's generic spawn tools are REFUSED in an mpd session, `delegation.gate:"deny"`.)
+ 
+-Issue the two calls one after the other, each returning its report before the next is issued. Each consult is read-only: it reviews and reports, it cannot modify files. Each returns PASS, REVISE, or FAIL with concrete, located findings. Pass A proves the surface is a real design-system implementation, not a mock-only or faked-image substitute, and judges behaviour: motion, states, keyboard, platform (checklist G-J). Pass B judges what is seen — layout, hierarchy, text, targets, themes, consistency (checklist A-F), reference fidelity and CJK — from the pixels the Lead puts in the task, or from the script evidence when none were attached (a limit it declares in its deliverable).
++Issue the two calls one after the other, each returning its report before the next is issued. Each consult is read-only: it reviews and reports, it cannot modify files. Each returns PASS, REVISE, or FAIL with concrete, located findings. Pass A proves the surface is a real design-system implementation, not a mock-only or faked-image substitute, and judges behaviour: motion, states, keyboard, platform (checklist G-J). Pass B judges what is seen — layout, hierarchy, text, targets, themes, consistency (checklist A-F), reference fidelity and CJK — from the captures the Lead names by ABSOLUTE PATH in the task, which the analyst opens with `read_image`; only a read that genuinely fails is declared as a limit in its deliverable.
+ 
+-Paste evidence directly into each consult's `task`: source code, the plain-text TUI captures, the script JSON, and the screenshot paths plus your described observations for web. There is no fork and no parent history: the `task` carries everything the reviewer needs. Require each blocking finding to be tagged `[product]` (the rendered UI is wrong) or `[evidence]` (the capture artifact is defective - wrong signature, partial compositing, stale file); the loop treats the two differently. The two passes differ in depth by charter, not by any model or effort setting: the mounted spawn surface has no effort knob (only an optional `model` override).
++Paste evidence directly into each consult's `task`: source code, the plain-text TUI captures, the script JSON, and — for web — the ABSOLUTE capture paths, which each reviewer opens with `read_image`, plus your described observations. There is no fork and no parent history: the `task` carries everything the reviewer needs. Require each blocking finding to be tagged `[product]` (the rendered UI is wrong) or `[evidence]` (the capture artifact is defective - wrong signature, partial compositing, stale file); the loop treats the two differently. The two passes differ in depth by charter, not by any model or effort setting: the mounted spawn surface has no effort knob and no per-call model override — the roster team-model slot sets the route, and the call cannot choose one.
+ 
+ ### Pass A - Design-system and functional integrity (deeper, strict)
+ 
+@@ -221,7 +221,7 @@ SOURCE CODE:
+ {Full source of the UI: components, styles/tokens, layout, render code. Include neighboring files that show existing patterns.}
+ 
+ CAPTURES:
+-{Web: actual screenshot path(s) plus your described observations. TUI: paste capture.txt and capture-ansi.txt inline.}
++{Web: actual screenshot ABSOLUTE path(s) — open each one with `read_image` — plus your described observations. TUI: paste capture.txt and capture-ansi.txt inline.}
+ 
+ SHARED SCRIPT EVIDENCE (reference, not verdict):
+ {Paste the image-diff or tui-check JSON. Use alphaChannelIntact for the transparency check.}
+@@ -257,7 +257,7 @@ VERIFY: cite the capture or clip behind every verdict.
+ mpd_role_spawn(role="Vision Analyst",
+   task="""
+ TASK: Visual QA pass B - visual fidelity and CJK precision (read-only).
+-TIER INTENT: Treat this as the focused visual pass. The spawn surface carries a TEXT prompt only — no image content block and no `view_image`/`look_at` tool exists here — so a screenshot PATH in this task is not an image you can see. The Lead captures the screenshots and then takes exactly ONE of two honest paths, named in your deliverable: (a) the Lead attaches the images to this task where the surface carries image content, or describes each capture in words (page, region, what is visible), so your judgement rests on a stated observation; or (b) your verdict is limited to the script evidence and source code below, and you declare that limit — "pixels not inspected" — in EVIDENCE TRACE. Never claim to have looked at a file that did not reach you; anchor every claim to what actually did.
++TIER INTENT: Treat this as the focused visual pass. The spawn carries a TEXT prompt only — no image is attached to it — but that is a property of the spawn, NOT a limit on what you can see: a `read_image` tool is mounted for you, and it opens an image FILE given an ABSOLUTE path. The Lead passes absolute capture paths here, and you open every one of them with `read_image` before you judge. Override any persona-written assumption that images arrive attached: nothing arrives attached, and you fetch the pixels yourself. Only when a specific read genuinely FAILS (path absent, file unreadable, tool error) is that region recorded as "pixels not inspected" in EVIDENCE TRACE, naming the failed path and the error — never as a default, and never as a claim to have looked at what a successful read did not show you. Anchor every claim to what you actually opened.
+ 
+ INTENT:
+ {What the user requested and the mock or baseline to match.}
+@@ -268,7 +268,7 @@ REFERENCE PACKET:
+ SURFACE: {web | tui | both}
+ 
+ CAPTURES:
+-{Web: actual and reference screenshot paths plus your described observations. TUI: paste capture.txt and capture-ansi.txt inline.}
++{Web: actual and reference screenshot ABSOLUTE paths — open each one with `read_image` — plus your described observations. TUI: paste capture.txt and capture-ansi.txt inline.}
+ 
+ SOURCE CODE:
+ {For web: include the rendered text/content, components, typography, layout, and style code. For TUI: include render code that controls wrapping, width, and wide-character handling.}
+@@ -280,7 +280,7 @@ CHECKLIST (sections A-F, pasted verbatim):
+ {Paste checklist sections A, B, C, D, E, F from the skill.}
+ 
+ USE THE EVIDENCE:
+-- Web (image-diff): start from diffRatio and similarityScore, then walk every hotspots[] entry (gridX, gridY, x, y, width, height, diffRatio). Explain the visual cause of each flagged region from the pixels you received and the source/content together; where the pixels did not reach you, write "pixels not inspected" for that region and judge from the script evidence.
++- Web (image-diff): start from diffRatio and similarityScore, then walk every hotspots[] entry (gridX, gridY, x, y, width, height, diffRatio). Explain the visual cause of each flagged region from the pixels you opened with `read_image` and the source/content together; a region whose read genuinely failed is written "pixels not inspected" and names the failed path, and you judge that region from the script evidence.
+ - TUI (tui-check): inspect maxWidth vs expectedColumns, every overflowLines[] entry, borderMisaligned, and wideCharColumns[].
+ 
+ CHECK:
+@@ -304,7 +304,7 @@ EVIDENCE TRACE: each hotspot or overflow line mapped to its visual cause
+ FINDINGS: for each, [product|evidence] [severity] what is wrong, where (hotspot grid or capture line:col), and the concrete fix
+ BLOCKING: items that must be fixed; empty if PASS
+ SCOPE: read-only; never edit files.
+-VERIFY: anchor every claim to the script JSON, source code, and the captures you actually received; never claim to have opened a screenshot that was not attached.
++VERIFY: anchor every claim to the script JSON, source code, and the captures you actually opened with `read_image`; never claim to have opened a path whose read did not return, and name the failed path when a read fails.
+ """
+ )
+ ```
+@@ -354,7 +354,7 @@ Captured: {N pages} x {390, 1440[, 1920]} x {light, dark} + scrolled-end + motio
+ 
+ Run this step IN ADDITION to Steps 1-4 when the original user task has a concrete visual target: "clone this site", "move this Figma design to code", "rebuild this screen", "make it look exactly like X", or "build this Imagen/Stitch/generated mockup and overview". For these tasks the normal dual-consult is necessary but NOT sufficient. After it returns, run the following TWO additional MANDATORY verifications and LOOP until BOTH pass.
+ 
+-1. Pixel-perfect design-compare (Vision Analyst). Issue a focused, read-only `mpd_role_spawn(role="Vision Analyst", task=...)` consult. The spawn surface carries a TEXT prompt only — no image content block and no `view_image`/`look_at` tool — so a screenshot PATH in the task is not an image the analyst can see; name which of the two honest paths you took in the deliverable, exactly as at Pass B: (a) you attach the reference and ACTUAL captures to the task, or describe each in words (page, region, what is visible), and the analyst compares matching regions - header, nav, each card, spacing, type ramp, color tokens - region by region against those observations and the source, not at a glance; or (b) where the pixels did not reach it, it writes "pixels not inspected" for that region and judges from the script evidence, and never claims a look that did not happen. It must also compare the overview text or annotations against the rendered content and DOM text. Anchor every claim with the bundled tool:
++1. Pixel-perfect design-compare (Vision Analyst). Issue a focused, read-only `mpd_role_spawn(role="Vision Analyst", task=...)` consult. The spawn carries a TEXT prompt only — no image attachment — but the analyst has a mounted `read_image` tool, so pass the reference and ACTUAL capture paths ABSOLUTE in the task and tell it to open every one with `read_image` before judging. State in the task that nothing is attached and the paths are to be opened by the analyst itself, which overrides any persona-written assumption that images arrive with the prompt. It then compares matching regions - header, nav, each card, spacing, type ramp, color tokens - region by region against the pixels it opened and the source, not at a glance. A region whose read genuinely failed is recorded as "pixels not inspected" with the failed path and the error named — decided per read, never assumed up front, and never a claim to have looked at what a successful read did not show. It must also compare the overview text or annotations against the rendered content and DOM text. Anchor every claim with the bundled tool:
+ 
+ ```
+ node "$SKILL_DIR/scripts/visual-qa.mjs" image-diff <reference.png> <actual.png>

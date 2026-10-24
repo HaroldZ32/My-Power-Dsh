@@ -1,0 +1,184 @@
+{
+ "round": "2026-10-25 F1-F6 truth repair on the served skill corpus (Reviewer capability, read_image, the model-override premise, frontend Layer B scope, ulw-research shell routing, init-deep topology) + the F7 re-anchored snapshot",
+ "branch": "fix/task-dependency-guard",
+ "head_at_measurement": "cc432c9e583f6bf91df8b79037aabddc1827ed28",
+ "head_at_measurement_time_utc": "2026-10-24T18:16:00Z",
+ "working_tree_state_at_measurement": "8 modified tracked files, all under skills/ (the F1-F6 set); every other tracked path is clean. Untracked: this evidence directory plus the review-panel gate's own record dirs.",
+ "tree_anchor": {
+  "named_command": "find skills -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1",
+  "sha256": "08b8e12f310e375c78787504d88e221442413f8bf7a3c4e71087ee4a2d898e2a",
+  "files": 384,
+  "covers": "the WHOLE working tree under skills/ (tracked + the gitignored materialized design references), which is exactly what the AFTER greps read",
+  "readings": [
+   {"id": "T_grep", "what": "read inside the AFTER grep headers (source: greps/*-after.txt line 1)", "utc": "2026-10-24T18:15:42Z", "sha256": "08b8e12f310e375c78787504d88e221442413f8bf7a3c4e71087ee4a2d898e2a", "files": 384},
+   {"id": "T_a", "what": "before the two required gates were re-run for the sandwich", "utc": "2026-10-24T18:18:42Z", "sha256": "08b8e12f310e375c78787504d88e221442413f8bf7a3c4e71087ee4a2d898e2a", "files": 384},
+   {"id": "T_b", "what": "after review-panel AND verify:docs", "utc": "2026-10-24T18:18:42Z", "sha256": "08b8e12f310e375c78787504d88e221442413f8bf7a3c4e71087ee4a2d898e2a", "files": 384},
+   {"id": "T_c", "what": "after verify-vendor", "utc": "2026-10-24T18:18:43Z", "sha256": "08b8e12f310e375c78787504d88e221442413f8bf7a3c4e71087ee4a2d898e2a", "files": 384},
+   {"id": "T_d", "what": "after commands.log was written", "utc": "2026-10-24T18:21:56Z", "sha256": "08b8e12f310e375c78787504d88e221442413f8bf7a3c4e71087ee4a2d898e2a", "files": 384},
+   {"id": "T_e", "what": "after result.json was written", "utc": "2026-10-24T18:24:33Z", "sha256": "08b8e12f310e375c78787504d88e221442413f8bf7a3c4e71087ee4a2d898e2a", "files": 384}
+  ],
+  "sandwich_bound": "No reading was taken before the FIRST gate run (18:14:19Z). The sandwich covers the re-run at T_a..T_b and proves the gates left skills/** byte-identical; T_grep (the AFTER counts) equals every later reading, so the counts describe the final tree."
+ },
+ "timestamp_label": {
+  "directory_name": "2026-10-25T0215Z",
+  "declared_meaning": "the contract asked for `evidence/skills-dead-tokens/2026-10-25T<HHMM>Z/`; the date and HHMM are the SEAT'S LOCAL wall clock (Asia/Shanghai, UTC+08:00) at creation (2026-10-25T02:13:19+08:00), NOT UTC",
+  "true_utc_instant_of_creation": "2026-10-24T18:13:19Z",
+  "every_internal_timestamp": "true UTC with a `Z` suffix",
+  "why": "the label is the contract's spelling; the measurements are UTC. Declared so no reader mistakes the label for an instant."
+ },
+ "baseline": {
+  "round_anchor": {
+   "label": "BEFORE as the contract names it — the pre-ROUND baseline `HEAD`",
+   "rev": "cc432c9e583f6bf91df8b79037aabddc1827ed28",
+   "why": "everything the earlier wave had already landed is inside this anchor, so the BEFORE->AFTER delta below measures THIS round only"
+  },
+  "wave_anchor": {
+   "label": "BEFORE of the whole skills wave, kept for continuity with the 1122Z / 1215Z / 1245Z rounds",
+   "rev": "09622f6a7bf867a26c52643f2d5c0becee1571d7",
+   "why": "09622f6a is the parent of e5bbd592, the wave's first commit; `files_changed` is measured against it because the contract names that command"
+  }
+ },
+ "measurement_protocol": {
+  "before": "git grep -nE <pattern> HEAD -- skills/  (round anchor; the `HEAD:` prefix stripped) and git grep -nE <pattern> 09622f6a -- skills/  (wave anchor)",
+  "after": "grep -rnE <pattern> skills/  (the FINAL working tree, after the F1-F6 edits and after both required gates ran)",
+  "ordering": "edits -> gates (review-panel, verify:docs, verify-vendor) -> hash sandwich -> AFTER greps + classify -> result.json + commands.log -> re-hash (identical)",
+  "grep_semantics": "BEFORE uses git grep at a COMMIT (tracked files only). AFTER uses a recursive grep over the WORKING tree, so it also sees the two gitignored materialized reference files under skills/frontend/references/design/ (`ambience-skill.md` +5, `component-catalogs.md` +2); every family reports the tracked-only AFTER total beside the worktree total.",
+  "frozen_by_the_hash": "both sides are anchored to the ONE skills tree hash in tree_anchor; a later skills edit changes it, so this record can never silently describe a different tree"
+ },
+ "patterns": {
+  "A_dead_tool_tokens": "TodoWrite|Lsp[A-Z]|lsp_[a-z]|codegraph_|kill_bash|task_output|monitor\\(|\\bRead\\b|\\bWrite\\b|\\bEdit\\b|\\bBash\\b|\\bGlob\\b|\\bGrep\\b|MultiEdit|NotebookEdit|view_image|look_at",
+  "B_skill_pointers": "mass-ulw|ulw-loop|open-design|imagegen|mpd-agent-toolkit",
+  "C_delegation_family": "subagent|subagent_type|task\\(category|task\\(subagent_type|oracle|librarian|momus|metis|workflow",
+  "A_extension_this_round": "`view_image` and `look_at` were APPENDED to A (F7) so their REMOVAL from skills/visual-qa/SKILL.md is evidenced rather than merely asserted. The same extended pattern is applied to both BEFORE anchors and to AFTER."
+ },
+ "greps": {
+  "A_dead_tool_tokens": {
+   "before_round_anchor": {"lines": 324, "files": 113, "md_lines": 169, "md_files": 65},
+   "before_wave_anchor": {"lines": 371, "files": 115, "note": "the old A without view_image|look_at read 370/115 at this rev; one line carries both names, so the extension adds exactly 1 line, 0 files"},
+   "after": {"lines": 328, "files": 115, "md_lines": 173, "md_files": 67},
+   "after_tracked_only": 321,
+   "delta_tracked_round": -3,
+   "cleared_lines": [
+    "skills/visual-qa/SKILL.md:260 — carried `view_image`/`look_at` in a false claim that no image tool exists; rewritten to the real `read_image` path",
+    "skills/visual-qa/SKILL.md:357 — same false claim at the Step 5 pixel-perfect item; rewritten",
+    "skills/refactor/SKILL.md:588 — `Read-only` for the Reviewer/Architect pair; rewritten to the true capability split"
+   ],
+   "per_file_check": "for all 8 changed files, `git show HEAD:<file> | grep -cE` vs `grep -cE` on the tree: visual-qa 3->1, refactor 6->5, the other six unchanged. No changed file GAINED an A line."
+  },
+  "B_skill_pointers": {
+   "before_round_anchor": {"lines": 33, "files": 7, "md_lines": 32, "md_files": 6},
+   "before_wave_anchor": {"lines": 47, "files": 11},
+   "after": {"lines": 34, "files": 8, "md_lines": 33, "md_files": 7},
+   "after_tracked_only": 33,
+   "delta_tracked_round": 0,
+   "note": "the +1 worktree line is a gitignored materialized reference (component-catalogs.md); every changed file's B count is identical before and after"
+  },
+  "C_delegation_family": {
+   "before_round_anchor": {"lines": 220, "files": 71, "md_lines": 115, "md_files": 52},
+   "before_wave_anchor": {"lines": 307, "files": 72},
+   "after": {"lines": 220, "files": 71, "md_lines": 115, "md_files": 52},
+   "after_tracked_only": 220,
+   "delta_tracked_round": 0,
+   "note": "unchanged in total and per file"
+  },
+  "removed_arms_after": {"view_image": 0, "look_at": 0, "before_round_anchor_lines_carrying_either": 2, "before_wave_anchor_lines_carrying_either": 1}
+ },
+ "survivors": {
+  "script": "greps/classify-survivors.py",
+  "counts_file": "greps/counts.txt",
+  "invariant": "per family, partition_sum == total, residual == 0, unclassified == 0",
+  "A": {
+   "total": 328,
+   "partition": {
+    "A6_english_prose_in_docs": 163,
+    "A5_script_identifier_or_string": 74,
+    "A3_powershell_cmdlet": 54,
+    "A4_html_test_fixture": 18,
+    "A1_mounted_codegraph_surface": 16,
+    "A2_ast_grep_schema_vocabulary": 3,
+    "A0_removed_dead_image_name": 0
+   }
+  },
+  "B": {"total": 34, "partition": {"B4_imagegen_reference_file_name": 24, "B3_open_design_upstream": 10, "B1_mass_ulw": 0, "B2_ulw_loop": 0, "B5_mpd_agent_toolkit": 0}},
+  "C": {"total": 220, "partition": {"C9_workflow_word_or_skill_name": 88, "C4_subagent_vocabulary": 69, "C5_oracle_methodology": 57, "C7_momus_state_key": 6, "C1_retired_verb_subagent_type": 0, "C2_retired_verb_task_category": 0, "C3_retired_verb_task_subagent_type": 0, "C6_librarian": 0, "C8_metis": 0}},
+  "why_each_survivor_is_not_a_live_reference": {
+   "A": "16 mounted `mcp__codegraph__*` names; 3 ast-grep LANGUAGE-enum / schema-field rows; 54 PowerShell cmdlets in the ast-grep smoke script; 18 HTML fixture lines; 74 identifiers and strings inside script fixtures; 163 English prose lines (the words `read`/`write`/`bash` used as verbs, and the ast-grep enum). Zero `view_image`/`look_at`.",
+   "B": "10 upstream-provenance mentions of nexu-io/open-design and 24 `imagegen` reference-FILE names the pack step materializes — named files, not mounted skills.",
+   "C": "88 uses of the word `workflow`/`.github/workflows` and the panel's own name; 69 `subagent` vocabulary lines describing what is NOT used; 57 Oracle-Triple methodology pages; 6 `momus` state keys in the plan scaffolder. All three RETIRED verbs are 0."
+  }
+ },
+ "files_changed": {
+  "command": "git diff --name-only 09622f6a -- skills/",
+  "count": 28,
+  "list_file": "diff/files-changed-09622f6a.txt",
+  "numstat_file": "diff/wave-numstat.txt",
+  "this_round": {
+   "command": "git diff --name-only HEAD -- skills/",
+   "count": 8,
+   "files": [
+    "skills/frontend/SKILL.md",
+    "skills/frontend/references/design/README.md",
+    "skills/frontend/references/design/design-system-architecture.md",
+    "skills/init-deep/SKILL.md",
+    "skills/refactor/SKILL.md",
+    "skills/ulw-execute/SKILL.md",
+    "skills/ulw-research/SKILL.md",
+    "skills/visual-qa/SKILL.md"
+   ],
+   "insertions": 22,
+   "deletions": 22,
+   "note": "the residual 20 of the 28 wave files were changed by the three earlier rounds, not this one; both numbers are measured, neither estimated"
+  },
+  "changed_lines_file": "diff/changed-lines.txt",
+  "changed_lines_verification": "22 lines re-read from the tree and compared byte-for-byte against the listed new text: checked=22 mismatched=0"
+ },
+ "gates": [
+  {"gate": "review-panel", "command": "node skills/dsh-qa/scripts/review-panel.ts", "exit": 0, "result": "checks: 15  failed: 0 -> [review-panel] PASS", "log": "review-panel.log", "own_records": ["evidence/restore/s1/2026-10-24T18-14-19-896Z", "evidence/restore/s1/2026-10-24T18-18-42-860Z"]},
+  {"gate": "docs", "command": "bun run verify:docs", "exit": 0, "result": "pairs=50 failed=0 violations=0 exempt=24 derived=3 links=445 dead=0 — PASS", "log": "verify-docs.log"},
+  {"gate": "vendor", "command": "node scripts/verify-vendor.ts", "exit": 1, "result": "[verify-vendor] FAIL - asset skills treeSha mismatch", "expected": true, "why": "single-skills-writer rule: a skills/** edit invalidates the corpus treeSha and the CAPTAIN's one re-pin lands in the committing wave. Recorded, not fixed.", "log": "verify-vendor.log"}
+ ],
+ "findings_applied": {
+  "F1_reviewer_capability": {
+   "files": ["skills/ulw-execute/SKILL.md:208", "skills/refactor/SKILL.md:588", "skills/refactor/SKILL.md:679"],
+   "settled_fact_used": "roles.data.ts gives Reviewer readonly:false; the mechanically read-only set is exactly Architect, Researcher, Planner, Explorer, Plan Reviewer, Vision Analyst",
+   "now_says": "Architect is mechanically read-only (no bash) and keeps the read-level pass; Reviewer is write-capable and findings-only by DISCIPLINE, so a command-level pass may go to Reviewer, Senior Engineer or Deep Worker, chosen for capability + independence"
+  },
+  "F2_image_access": {
+   "files": ["skills/visual-qa/SKILL.md:200", ":202", ":224", ":260", ":271", ":283", ":307", ":357"],
+   "settled_fact_used": "read_image is mounted and is not in the eight-name deny list; a Vision Analyst opens an image file given an absolute path",
+   "now_says": "the spawn attaches no image (text prompt only), but the Lead passes ABSOLUTE capture paths and the analyst opens them with read_image, overriding any persona assumption about attachments; 'pixels not inspected' is reserved for a GENUINE failed read, with the failed path and error named",
+   "dead_names_removed": ["view_image", "look_at"]
+  },
+  "F3_model_override": {
+   "files": ["skills/ulw-execute/SKILL.md:24", "skills/ulw-execute/SKILL.md:228", "skills/ulw-research/SKILL.md:86", "skills/refactor/SKILL.md:746", "skills/visual-qa/SKILL.md:202"],
+   "settled_fact_used": "mpd_role_spawn's schema is {role, task, context?} with additionalProperties:false — there is no `model` parameter; the teamModels slot is the ONE route",
+   "now_says": "the tier is a CONFIGURATION choice: the slot decides the route and the consult cannot override it",
+   "scope_note": "F3 named the ulw-execute paragraph; the same false premise lived in three further files that are ALSO in this round's write scope (ulw-research, refactor, visual-qa), so each one-clause site was corrected rather than left contradicting the settled fact"
+  },
+  "F4_layer_b_scope": {
+   "files": ["skills/frontend/SKILL.md:37", "skills/frontend/references/design/README.md:41", "skills/frontend/references/design/design-system-architecture.md:219"],
+   "now_says": "the 'nearest Layer B' latitude is scoped to the case where the user named NO brand (greenfield); a NAMED brand that the catalogue lacks falls back to a Layer A mood match and never to another brand's tokens"
+  },
+  "F5_researcher_shell": {
+   "files": ["skills/ulw-research/SKILL.md:175", "skills/ulw-research/SKILL.md:176", "skills/ulw-research/SKILL.md:177"],
+   "now_says": "`gh search code|repos|issues`, full-page fetches, the browsing tiers and the shallow clone are bash steps belonging to the Lead or a Senior Engineer consult (the pattern the git-history step already used); the Researcher names the exact command/URL, then turns the returned text into citable claims (quote, canonical URL, date, which query it answers) and marks snippet-only claims as such",
+   "scope_note": "the Browsing bullet (line 176) carries bash steps too and sat one line from the named sites; routed the same way, no role invented"
+  },
+  "F6_init_deep_topology": {
+   "files": ["skills/init-deep/SKILL.md:295"],
+   "now_says": "the anti-pattern is now the PARALLEL FAN-OUT FICTION: consults are synchronous one-shot spawns, the main session runs the LSP / ast-grep / codegraph queries itself and folds each report before the next; concurrency exists only on the team plane, only for genuinely independent lanes"
+  }
+ },
+ "verification_of_the_three_settled_facts": {
+  "role_capability": "packages/mpd-roles-plugin/src/roles.data.ts parsed: READONLY = Architect, Researcher, Planner, Explorer, Plan Reviewer, Vision Analyst; WRITE-CAPABLE = Deep Worker, Senior Engineer, Lead, Reviewer, Junior Engineer",
+  "read_image": "docs/user-guide.md §13.3 lists the deny list as exactly write, edit, mpd_hashline_edit, bash, mcp__ast_grep__rewrite, mcp__ast_grep__scan, mcp__lsp__rename_symbol, mcp__lsp__rename_symbol_strict — `read_image` is not among them",
+  "no_model_parameter": "packages/mpd-roles-plugin/src/index.ts:828 declares parameters {role, task, context} with additionalProperties:false — no `model`"
+ },
+ "limits": [
+  "No live boot was run: this bundle proves the CHECKOUT text, never the served/cached skill corpus.",
+  "verify-vendor exit 1 is expected until the captain's single re-pin; it is recorded, not repaired here.",
+  "The `mpd_role_spawn` schema was read from source; the `dist/` twin was not exercised by a boot in this round.",
+  "The directory label carries the seat's local wall clock with the contract's `Z` spelling; the true UTC instant is declared in timestamp_label.",
+  "Out of scope and NOT touched: residual `optional model override` / `read-only Reviewer` wordings in OTHER skills files outside this round's file set (e.g. other skills/*/SKILL.md not named by F1-F6) were not edited; a repository-wide sweep is a separate finding."
+ ]
+}

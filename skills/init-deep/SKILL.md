@@ -292,7 +292,7 @@ Hierarchy:
 ## Anti-Patterns
 
 - **Static agent count**: MUST vary agents based on project size/depth
-- **Sequential execution**: MUST parallel (explore + LSP + ast-grep concurrent)
+- **Parallel fan-out fiction**: the consults are SYNCHRONOUS one-shot spawns — the main session runs the LSP, ast-grep and codegraph queries ITSELF and folds each `Explorer` report before issuing the next consult; concurrency exists only on the team plane, and only when the lanes are genuinely independent
 - **Ignoring existing**: ALWAYS read existing first, even with --create-new
 - **Over-documenting**: Not every dir needs AGENTS.md
 - **Redundancy**: Child never repeats parent

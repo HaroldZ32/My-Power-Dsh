@@ -197,9 +197,9 @@ This independent review is REQUIRED before any "done" claim. Do not self-review 
 
 Dispatch through `mpd_role_spawn`: one `Architect` consult for Pass A, one `Vision Analyst` consult for Pass B. `mpd_role_spawn` is ONE-SHOT and synchronous — each returns its report as the tool result — so the two passes run SERIALLY: there is no background child, no `job_output`, and no mid-flight steering. (The harness's generic spawn tools are REFUSED in an mpd session, `delegation.gate:"deny"`.)
 
-Issue the two calls one after the other, each returning its report before the next is issued. Each consult is read-only: it reviews and reports, it cannot modify files. Each returns PASS, REVISE, or FAIL with concrete, located findings. Pass A proves the surface is a real design-system implementation, not a mock-only or faked-image substitute, and judges behaviour: motion, states, keyboard, platform (checklist G-J). Pass B judges what is seen — layout, hierarchy, text, targets, themes, consistency (checklist A-F), reference fidelity and CJK — from the pixels the Lead puts in the task, or from the script evidence when none were attached (a limit it declares in its deliverable).
+Issue the two calls one after the other, each returning its report before the next is issued. Each consult is read-only: it reviews and reports, it cannot modify files. Each returns PASS, REVISE, or FAIL with concrete, located findings. Pass A proves the surface is a real design-system implementation, not a mock-only or faked-image substitute, and judges behaviour: motion, states, keyboard, platform (checklist G-J). Pass B judges what is seen — layout, hierarchy, text, targets, themes, consistency (checklist A-F), reference fidelity and CJK — from the captures the Lead names by ABSOLUTE PATH in the task, which the analyst opens with `read_image`; only a read that genuinely fails is declared as a limit in its deliverable.
 
-Paste evidence directly into each consult's `task`: source code, the plain-text TUI captures, the script JSON, and the screenshot paths plus your described observations for web. There is no fork and no parent history: the `task` carries everything the reviewer needs. Require each blocking finding to be tagged `[product]` (the rendered UI is wrong) or `[evidence]` (the capture artifact is defective - wrong signature, partial compositing, stale file); the loop treats the two differently. The two passes differ in depth by charter, not by any model or effort setting: the mounted spawn surface has no effort knob (only an optional `model` override).
+Paste evidence directly into each consult's `task`: source code, the plain-text TUI captures, the script JSON, and — for web — the ABSOLUTE capture paths, which each reviewer opens with `read_image`, plus your described observations. There is no fork and no parent history: the `task` carries everything the reviewer needs. Require each blocking finding to be tagged `[product]` (the rendered UI is wrong) or `[evidence]` (the capture artifact is defective - wrong signature, partial compositing, stale file); the loop treats the two differently. The two passes differ in depth by charter, not by any model or effort setting: the mounted spawn surface has no effort knob and no per-call model override — the roster team-model slot sets the route, and the call cannot choose one.
 
 ### Pass A - Design-system and functional integrity (deeper, strict)
 
@@ -221,7 +221,7 @@ SOURCE CODE:
 {Full source of the UI: components, styles/tokens, layout, render code. Include neighboring files that show existing patterns.}
 
 CAPTURES:
-{Web: actual screenshot path(s) plus your described observations. TUI: paste capture.txt and capture-ansi.txt inline.}
+{Web: actual screenshot ABSOLUTE path(s) — open each one with `read_image` — plus your described observations. TUI: paste capture.txt and capture-ansi.txt inline.}
 
 SHARED SCRIPT EVIDENCE (reference, not verdict):
 {Paste the image-diff or tui-check JSON. Use alphaChannelIntact for the transparency check.}
@@ -257,7 +257,7 @@ VERIFY: cite the capture or clip behind every verdict.
 mpd_role_spawn(role="Vision Analyst",
   task="""
 TASK: Visual QA pass B - visual fidelity and CJK precision (read-only).
-TIER INTENT: Treat this as the focused visual pass. The spawn surface carries a TEXT prompt only — no image content block and no `view_image`/`look_at` tool exists here — so a screenshot PATH in this task is not an image you can see. The Lead captures the screenshots and then takes exactly ONE of two honest paths, named in your deliverable: (a) the Lead attaches the images to this task where the surface carries image content, or describes each capture in words (page, region, what is visible), so your judgement rests on a stated observation; or (b) your verdict is limited to the script evidence and source code below, and you declare that limit — "pixels not inspected" — in EVIDENCE TRACE. Never claim to have looked at a file that did not reach you; anchor every claim to what actually did.
+TIER INTENT: Treat this as the focused visual pass. The spawn carries a TEXT prompt only — no image is attached to it — but that is a property of the spawn, NOT a limit on what you can see: a `read_image` tool is mounted for you, and it opens an image FILE given an ABSOLUTE path. The Lead passes absolute capture paths here, and you open every one of them with `read_image` before you judge. Override any persona-written assumption that images arrive attached: nothing arrives attached, and you fetch the pixels yourself. Only when a specific read genuinely FAILS (path absent, file unreadable, tool error) is that region recorded as "pixels not inspected" in EVIDENCE TRACE, naming the failed path and the error — never as a default, and never as a claim to have looked at what a successful read did not show you. Anchor every claim to what you actually opened.
 
 INTENT:
 {What the user requested and the mock or baseline to match.}
@@ -268,7 +268,7 @@ REFERENCE PACKET:
 SURFACE: {web | tui | both}
 
 CAPTURES:
-{Web: actual and reference screenshot paths plus your described observations. TUI: paste capture.txt and capture-ansi.txt inline.}
+{Web: actual and reference screenshot ABSOLUTE paths — open each one with `read_image` — plus your described observations. TUI: paste capture.txt and capture-ansi.txt inline.}
 
 SOURCE CODE:
 {For web: include the rendered text/content, components, typography, layout, and style code. For TUI: include render code that controls wrapping, width, and wide-character handling.}
@@ -280,7 +280,7 @@ CHECKLIST (sections A-F, pasted verbatim):
 {Paste checklist sections A, B, C, D, E, F from the skill.}
 
 USE THE EVIDENCE:
-- Web (image-diff): start from diffRatio and similarityScore, then walk every hotspots[] entry (gridX, gridY, x, y, width, height, diffRatio). Explain the visual cause of each flagged region from the pixels you received and the source/content together; where the pixels did not reach you, write "pixels not inspected" for that region and judge from the script evidence.
+- Web (image-diff): start from diffRatio and similarityScore, then walk every hotspots[] entry (gridX, gridY, x, y, width, height, diffRatio). Explain the visual cause of each flagged region from the pixels you opened with `read_image` and the source/content together; a region whose read genuinely failed is written "pixels not inspected" and names the failed path, and you judge that region from the script evidence.
 - TUI (tui-check): inspect maxWidth vs expectedColumns, every overflowLines[] entry, borderMisaligned, and wideCharColumns[].
 
 CHECK:
@@ -304,7 +304,7 @@ EVIDENCE TRACE: each hotspot or overflow line mapped to its visual cause
 FINDINGS: for each, [product|evidence] [severity] what is wrong, where (hotspot grid or capture line:col), and the concrete fix
 BLOCKING: items that must be fixed; empty if PASS
 SCOPE: read-only; never edit files.
-VERIFY: anchor every claim to the script JSON, source code, and the captures you actually received; never claim to have opened a screenshot that was not attached.
+VERIFY: anchor every claim to the script JSON, source code, and the captures you actually opened with `read_image`; never claim to have opened a path whose read did not return, and name the failed path when a read fails.
 """
 )
 ```
@@ -354,7 +354,7 @@ Captured: {N pages} x {390, 1440[, 1920]} x {light, dark} + scrolled-end + motio
 
 Run this step IN ADDITION to Steps 1-4 when the original user task has a concrete visual target: "clone this site", "move this Figma design to code", "rebuild this screen", "make it look exactly like X", or "build this Imagen/Stitch/generated mockup and overview". For these tasks the normal dual-consult is necessary but NOT sufficient. After it returns, run the following TWO additional MANDATORY verifications and LOOP until BOTH pass.
 
-1. Pixel-perfect design-compare (Vision Analyst). Issue a focused, read-only `mpd_role_spawn(role="Vision Analyst", task=...)` consult. The spawn surface carries a TEXT prompt only — no image content block and no `view_image`/`look_at` tool — so a screenshot PATH in the task is not an image the analyst can see; name which of the two honest paths you took in the deliverable, exactly as at Pass B: (a) you attach the reference and ACTUAL captures to the task, or describe each in words (page, region, what is visible), and the analyst compares matching regions - header, nav, each card, spacing, type ramp, color tokens - region by region against those observations and the source, not at a glance; or (b) where the pixels did not reach it, it writes "pixels not inspected" for that region and judges from the script evidence, and never claims a look that did not happen. It must also compare the overview text or annotations against the rendered content and DOM text. Anchor every claim with the bundled tool:
+1. Pixel-perfect design-compare (Vision Analyst). Issue a focused, read-only `mpd_role_spawn(role="Vision Analyst", task=...)` consult. The spawn carries a TEXT prompt only — no image attachment — but the analyst has a mounted `read_image` tool, so pass the reference and ACTUAL capture paths ABSOLUTE in the task and tell it to open every one with `read_image` before judging. State in the task that nothing is attached and the paths are to be opened by the analyst itself, which overrides any persona-written assumption that images arrive with the prompt. It then compares matching regions - header, nav, each card, spacing, type ramp, color tokens - region by region against the pixels it opened and the source, not at a glance. A region whose read genuinely failed is recorded as "pixels not inspected" with the failed path and the error named — decided per read, never assumed up front, and never a claim to have looked at what a successful read did not show. It must also compare the overview text or annotations against the rendered content and DOM text. Anchor every claim with the bundled tool:
 
 ```
 node "$SKILL_DIR/scripts/visual-qa.mjs" image-diff <reference.png> <actual.png>

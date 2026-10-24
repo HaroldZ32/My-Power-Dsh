@@ -21,7 +21,7 @@ Role-specific behavior goes inside the consult's `task` (self-contained `TASK / 
 
 ### Model tiering (DeepSeek V4)
 
-Exploration/implementation consults use the fast flash model; plan and reviewer consults use the pro model — pass the route with `mpd_role_spawn`'s optional `model` override. There is no effort knob: the route's configured reasoning effort applies and no spawn surface here can pin a different one. Reasoning-heavy gates (plan review, verification, quality gate) always run on pro.
+A consult's model route is a CONFIGURATION choice, never a per-call one: the roster's team-model slot (`teamModels.slot{1,2,3,4}` in `mpd.jsonc`) decides the route — provider, model and its configured reasoning effort — and the consult cannot override it, because `mpd_role_spawn` accepts only `role`, `task` and `context` and has no `model` parameter at all. To move a class of consult to a stronger or cheaper route, change the slot; there is no effort knob either, and no spawn surface here can pin a different one. Reasoning-heavy gates (plan review, verification, quality gate) are therefore only ever as strong as the slot that serves their roles.
 
 ### Consult reliability (DSH)
 
@@ -205,7 +205,7 @@ A worker done claim is never final: each implementation sub-task returns a `Done
 
 Rules:
 - `confirmed` is the only pass verdict. `false-positive`, `needs-fix`, and `needs-human-review` all block checkbox completion.
-- The verifier must be independent from the executor: a READ-LEVEL pass (architecture, design, findings judged from evidence already on disk) goes to `mpd_role_spawn(role="Architect")` or `role="Reviewer"`; a COMMAND-LEVEL pass (probes and repro commands actually run) needs a write-capable role — `mpd_role_spawn(role="Senior Engineer")`, else `role="Deep Worker"` — because Architect and Reviewer are read-only and cannot run bash. Or a fresh reviewer lane on the team plane, or root only when root did not implement or materially rewrite that task.
+- The verifier must be independent from the executor: a READ-LEVEL pass (architecture, design, findings judged from evidence already on disk) goes to `mpd_role_spawn(role="Architect")` — mechanically read-only (no `bash`), so it cannot touch what it judges; a COMMAND-LEVEL pass (probes and repro commands actually run) goes to `role="Reviewer"` (write-capable and findings-only by DISCIPLINE, not by a fence — it can run `bash` and still reports without editing) or to `role="Senior Engineer"`, else `role="Deep Worker"` — choose for capability plus independence from the executor. Or a fresh reviewer lane on the team plane, or root only when root did not implement or materially rewrite that task.
 - A worker done claim must be independently verified before it becomes checkbox completion.
 - On any non-confirmed verdict, append the feedback to the ledger, reset the checkbox work to in-progress, and re-dispatch the executor with the exact failure.
 - The verifier must probe the applicable adversarial keys, including `stale_state`, `dirty_worktree`, and `misleading_success_output`, before allowing `FullyDone`.
@@ -225,7 +225,7 @@ When all top-level checkboxes in `## TODOs` and `## Final Verification Wave` are
 
 1. Run the plan's final verification commands.
 2. Record a self-review in the notepad: re-read the diff, run diagnostics, and capture evidence for every acceptance criterion. Run your own manual QA on the real surface.
-3. Only when the user demanded strict, rigorous, or high-accuracy review, spawn ONE rigorous reviewer — `mpd_role_spawn(role="Architect", task=...)` on the pro model; otherwise your self-review is the final verification.
+3. Only when the user demanded strict, rigorous, or high-accuracy review, spawn ONE rigorous reviewer — `mpd_role_spawn(role="Architect", task=...)`, on whatever route the roster slot gives it; otherwise your self-review is the final verification.
 4. Finish the PR/branch lifecycle from its task-owned worktree: sync `.mpd/` state back to the main repo, create or update the PR, wait for review/verification gates, merge by default unless explicitly opted out, and remove the worktree only after successful merge or explicit handoff.
 5. Remove or mark the Boulder work as completed.
 6. Print an `ORCHESTRATION COMPLETE` block with the plan path, verification commands, artifacts, and cleanup receipts.

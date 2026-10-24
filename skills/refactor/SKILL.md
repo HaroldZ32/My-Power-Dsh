@@ -585,7 +585,7 @@ Use \`ast-grep\` skill helper or \`sg\` CLI for structural transformations.
 ## Agents (roster roles, via \`mpd_role_spawn\`)
 - \`Explorer\`: Codebase pattern discovery
 - \`Planner\`: Detailed refactoring plan generation
-- \`Reviewer\` / \`Architect\`: Read-only consultation for contract/correctness or architectural decisions and debugging
+- \`Reviewer\` / \`Architect\`: Consultation for contract/correctness or architectural decisions and debugging — \`Architect\` is mechanically read-only (no \`bash\`), while \`Reviewer\` is write-capable and findings-only by DISCIPLINE, so it can run the commands a verdict needs and still reports without editing
 - \`Researcher\`: **Use proactively** when encountering deprecated methods or library migration tasks. Query official docs and OSS examples for modern replacements.
 
 ## Deprecated Code & Library Migration
@@ -676,7 +676,7 @@ Record the chosen path in the todo_write list.
 
 Rationale for this composition:
 - **4 workers = team mode's parallel cap.** 5+ just queues.
-- **No verifier team member.** Verification must come from a DIFFERENT agent working from the frozen contract, and none of these authoring roles is a verifier — the verifier runs OUTSIDE the team through \`mpd_role_spawn\` (the ONE-SHOT consult): \`role="Senior Engineer"\` when the step must RUN commands (tests, builds), because the roster's \`Reviewer\` is READ-ONLY (its deny list includes \`bash\`) and cannot execute a suite; \`role="Reviewer"\` when the verification only READS the contract and the implementation.
+- **No verifier team member.** Verification must come from a DIFFERENT agent working from the frozen contract, and none of these authoring roles is a verifier — the verifier runs OUTSIDE the team through \`mpd_role_spawn\` (the ONE-SHOT consult): \`role="Reviewer"\` when the step must RUN commands (tests, builds) — the roster's \`Reviewer\` is write-capable and findings-only by DISCIPLINE, not by a deny list, so it can execute a suite — or \`role="Senior Engineer"\` / \`role="Deep Worker"\` when you want a role that also edits; \`role="Architect"\` when the verification only READS the contract and the implementation, because \`Architect\` is mechanically read-only (\`bash\` is denied).
 - **Junior Engineer × 2** for mechanical edits, **Senior Engineer × 2** for reasoning edits. The team executor resolves each member's slot from its \`role\` when staged with one, otherwise from the head of its \`description\`: each description STARTS with that roster name (\`role\` is optional, so the description head is the fallback), so the mechanical pair routes through the Junior Engineer slot and the reasoning pair through the Senior Engineer slot, and an unmatched member inherits the staging session's route. \`prompt\` carries instructions only and cannot change a route.
 
 **Team lifecycle** (one team, reused until Phase 6 cleanup):
@@ -743,5 +743,5 @@ Append to the 6.6 summary a "Dispatch path" line and, when team path was used, t
 - Do not recreate the team mid-session.
 - Do not run tests from Lead — the external verifier owns that lane.
 - Do not release a completed row: a post-completion FAIL opens a \`kind:"repair"\` row with \`sourceTaskId\`.
-- Do not put verifier roles (\`Reviewer\` — or \`Architect\` for an architectural review — and \`Plan Reviewer\`) or \`Researcher\` into the team roster — use them OUTSIDE the team when needed via \`mpd_role_spawn\` (the ONE-SHOT consult) or the workmate library (\`mpd_workmate_spawn\`), never the harness \`subagent\` tool, which an mpd session REFUSES (\`delegation.gate:"deny"\`); verifiers run on the pro model.
+- Do not put verifier roles (\`Reviewer\` — or \`Architect\` for an architectural review — and \`Plan Reviewer\`) or \`Researcher\` into the team roster — use them OUTSIDE the team when needed via \`mpd_role_spawn\` (the ONE-SHOT consult) or the workmate library (\`mpd_workmate_spawn\`), never the harness \`subagent\` tool, which an mpd session REFUSES (\`delegation.gate:"deny"\`); a verifier takes its route from its roster team-model slot and the call cannot choose one.
 `

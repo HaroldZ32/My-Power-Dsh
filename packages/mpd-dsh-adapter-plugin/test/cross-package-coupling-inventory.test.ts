@@ -255,7 +255,7 @@ export const FROZEN_COUPLINGS: readonly string[] = [
   "packages/mpd-ext-plugin/src/registry.ts :: import { ROLES, ROLE_BY_ID } from \"../../mpd-roles-plugin/src/roles.data\"",
   // mpd-roster-provider -> mpd-config: the slot membership has ONE declaration for both settings
   // front doors, which is the whole reason this coupling is allowed to exist.
-  "packages/mpd-roster-provider-plugin/src/index.ts :: import { TEAM_MODEL_SLOT_GROUPS } from \"../../mpd-config-plugin/src/settings-schema\"",
+  "packages/mpd-roster-provider-plugin/src/index.ts :: import { TEAM_MODEL_SLOT_GROUPS } from \"../../mpd-config-plugin/src/settings-schema.ts\"",
   // The TUI plane's typed reads of the team record and the watchdog's incident shape. The
   // `import type` entries are ERASED by the build and create no runtime edge; they stay frozen
   // because they are still a source-level dependency on a sibling's internal module path.
