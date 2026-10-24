@@ -158,8 +158,9 @@ For tasks where the deliverable is an **artifact, not a bug fix** (reverse engin
 ### Pattern
 
 ```
-subagent(description="oracle", run_in_background=false,
-     prompt="""
+mpd_role_spawn(role="Reviewer",
+     context="""[original task + what I produced + specific claims to verify + where to look]
+
 SKEPTICAL FINAL VERIFICATION — be critical, look for reasons the task is incomplete or wrong.
 
 ## Original task
@@ -179,8 +180,8 @@ SKEPTICAL FINAL VERIFICATION — be critical, look for reasons the task is incom
 2. Spot-check each claim against the source/evidence the deliverable cites.
 3. Identify any unsubstantiated claims, missing pieces, or factual errors.
 4. End with PASS / FAIL / PARTIAL with specific gaps.
-Be skeptical. Don't rubber-stamp.
-""")
+Be skeptical. Don't rubber-stamp.""",
+     task="TASK: skeptical final verification of the artifacts named in context. DELIVERABLE: PASS / FAIL / PARTIAL with specific gaps. SCOPE: read-only; no edits. VERIFY: cite the artifact and source behind every claim you rate.")
 ```
 
 ### Why this differs from the Oracle Triple
@@ -188,7 +189,7 @@ Be skeptical. Don't rubber-stamp.
 | | Oracle Triple (debug) | Verification Oracle (artifact) |
 |---|---|---|
 | Trigger | 2 failed hypothesis rounds | About to declare "done" |
-| Count | 3 in parallel, orthogonal framings | 1 sequential, focused review |
+| Count | 3 serial consults, orthogonal framings | 1 consult, focused review |
 | Goal | Break out of mental box | Catch unsubstantiated claims |
 | Tone of prompt | Brainstorm wide alternatives | Skeptical audit |
 | Iteration | Reset hypothesis set after | Fix gaps, re-invoke until PASS |

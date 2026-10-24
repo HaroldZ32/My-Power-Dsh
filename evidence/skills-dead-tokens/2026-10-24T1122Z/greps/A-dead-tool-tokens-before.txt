@@ -1,0 +1,36 @@
+skills/init-deep/SKILL.md:29:**TodoWrite ALL phases. Mark in_progress → completed in real-time.**
+skills/init-deep/SKILL.md:31:TodoWrite([
+skills/init-deep/SKILL.md:50:**Equip every consult with the code graph**: any task touching structure, entry points, dependencies, or hotspots MUST query `codegraph_*` (explore/search/callers/callees/impact) and `lsp_symbols` when present, and ground its claims in that data instead of guessing from conventions. Richer real-graph context per consult = a more accurate project map.
+skills/init-deep/SKILL.md:53:mpd_role_spawn(role="Explorer", task="TASK: map the real project layout via codegraph_explore/codegraph_files. DELIVERABLE: deviations from standard patterns. SCOPE: read-only. VERIFY: name the query behind each claim.")
+skills/init-deep/SKILL.md:54:mpd_role_spawn(role="Explorer", task="TASK: find entry points and trace reach via codegraph_callees + lsp_symbols. DELIVERABLE: non-standard organization. SCOPE: read-only. VERIFY: cite the symbol and its caller/callee edge.")
+skills/init-deep/SKILL.md:58:mpd_role_spawn(role="Explorer", task="TASK: find test patterns/configs; codegraph_callers on core modules to see what is covered. DELIVERABLE: unique conventions. SCOPE: read-only. VERIFY: cite the test path.")
+skills/init-deep/SKILL.md:123:**LSP** - check `lsp_status`; model-facing names are `lsp_status`/`lsp_symbols`/`lsp_find_references`/`lsp_goto_definition` (some harnesses drop the `lsp_` prefix):
+skills/init-deep/SKILL.md:124:- `lsp_symbols` scope="document" on each entry point -> file outline.
+skills/init-deep/SKILL.md:125:- `lsp_symbols` scope="workspace", query by kind (class/interface/function) -> symbol inventory.
+skills/init-deep/SKILL.md:126:- `lsp_find_references` on top exports (line/character from the symbols result) -> reference centrality.
+skills/init-deep/SKILL.md:128:**codegraph** - when `codegraph_*` tools exist (check `codegraph_status`); a first-class peer to LSP, NOT a last resort:
+skills/init-deep/SKILL.md:129:- `codegraph_explore` -> overview; `codegraph_callers`/`codegraph_callees`/`codegraph_impact` -> centrality + blast radius for the scoring matrix; `codegraph_search`/`codegraph_files` -> symbol/file inventory.
+skills/remove-ai-slops/SKILL.md:97:| Typecheck | `lsp_diagnostics` on changed files + project type-checker | zero new errors |
+skills/remove-ai-slops/SKILL.md:105:### Phase 0: Plan with TodoWrite
+skills/remove-ai-slops/SKILL.md:282:  - Typecheck (lsp_diagnostics + project): PASS (0 new errors on changed files)
+skills/remove-ai-slops/SKILL.md:324:- If correctness depends on further inspection, keep using `lsp_diagnostics`, the test runner, and direct file reads until the result is grounded.
+skills/refactor/SKILL.md:85:TodoWrite([
+skills/refactor/SKILL.md:145:LspGotoDefinition(filePath, line, character)  // Where is it defined?
+skills/refactor/SKILL.md:148:LspFindReferences(filePath, line, character, includeDeclaration=true)
+skills/refactor/SKILL.md:151:LspDocumentSymbols(filePath)  // Hierarchical outline
+skills/refactor/SKILL.md:152:LspWorkspaceSymbols(filePath, query="[target_symbol]")  // Search by name
+skills/refactor/SKILL.md:155:lsp_diagnostics(filePath)  // Errors, warnings before we start
+skills/refactor/SKILL.md:309:1. lsp_diagnostics → zero new errors
+skills/refactor/SKILL.md:376:TodoWrite([
+skills/refactor/SKILL.md:401:3. Verify lsp_diagnostics is baseline
+skills/refactor/SKILL.md:408:lsp_prepare_rename(filePath, line, character)  // Validate rename is possible
+skills/refactor/SKILL.md:409:lsp_rename(filePath, line, character, newName)  // Execute rename
+skills/refactor/SKILL.md:431:lsp_diagnostics(filePath)  // Must be clean or same as baseline
+skills/refactor/SKILL.md:511:  lsp_diagnostics(file)  // Must all be clean
+skills/refactor/SKILL.md:544:- Skip lsp_diagnostics check after changes
+skills/refactor/SKILL.md:577:- **Understand before changing**: \`LspGotoDefinition\` to grasp context
+skills/refactor/SKILL.md:578:- **Impact analysis**: \`LspFindReferences\` to map all usages before modification
+skills/refactor/SKILL.md:579:- **Safe refactoring**: \`lsp_prepare_rename\` → \`lsp_rename\` for symbol renames
+skills/refactor/SKILL.md:580:- **Continuous verification**: \`lsp_diagnostics\` after every change
+skills/refactor/SKILL.md:645:Record the chosen path in the TodoWrite list.
+skills/refactor/SKILL.md:665:      "prompt": "You handle mechanical refactoring steps (LSP rename, extract variable, inline, simple move, signature change). Use LSP tools for correctness. Apply the task description's per-step instructions verbatim — no scope expansion. After edits, run lsp_diagnostics on touched files. Report via send_message(agent_id=<lead>, message=<files touched + lsp status + diff summary>). Do NOT close the row: the Lead closes it once the external verifier returns PASS. Never run tests — the external verifier handles that. Never git add, never --continue."

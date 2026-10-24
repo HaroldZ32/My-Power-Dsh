@@ -86,7 +86,7 @@ Goal: <one-sentence user request>
 ## Failed hypothesis round counter
 - Round 1: <result>
 - Round 2: <result>
-<!-- At 2 consecutive failures, invoke Oracle Triple (see 04-oracle-triple.md). -->
+- At 2 consecutive failed rounds, invoke the Oracle Triple (04-oracle-triple.md) instead of starting round 3 in the same frame.
 
 ## Artifacts to revert
 <!-- Every temp edit, tmux session, fixture, env override, saved debugger session goes here

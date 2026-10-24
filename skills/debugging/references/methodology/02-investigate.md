@@ -95,19 +95,19 @@ The four members — each `description` STARTS with the roster role (the name mu
 
 ### Path B: Team mode DISABLED
 
-Fan out async explore/deep subagents instead. Same rule: one hypothesis per subagent.
+Issue SERIAL one-shot consults instead. Same rule: one hypothesis per consult — `role="Explorer"` for a runtime-state or log/timing investigation, `role="Deep Worker"` for a reproduction minimizer. Each call returns its report as the tool result, so there is no background burst and no completion notification; synthesize as each returns. The harness's generic spawn tools are REFUSED in an mpd session (`delegation.gate:"deny"`).
 
 ```
-task(subagent_type="explore", load_skills=[], run_in_background=true,
-     prompt="[CONTEXT: bug summary + which hypothesis you own + what state to look at]
-     Runtime state investigation for hypothesis 1: ...")
-task(subagent_type="explore", load_skills=[], run_in_background=true,
-     prompt="Log/timing investigation for hypothesis 2: ...")
-task(category="deep-low", load_skills=[], run_in_background=true,
-     prompt="Reproduction minimizer for hypothesis 3: ...")
+mpd_role_spawn(role="Explorer",
+     context="[bug summary + which hypothesis you own + what state to look at]",
+     task="TASK: runtime state investigation for hypothesis 1: ... DELIVERABLE: ... SCOPE: ... VERIFY: ...")
+mpd_role_spawn(role="Explorer",
+     task="TASK: log/timing investigation for hypothesis 2: ... DELIVERABLE: ... SCOPE: ... VERIFY: ...")
+mpd_role_spawn(role="Deep Worker",
+     task="TASK: reproduction minimizer for hypothesis 3: ... DELIVERABLE: ... SCOPE: ... VERIFY: ...")
 ```
 
-End your response, wait for completion notifications, then synthesize.
+Synthesize once every consult has returned.
 
 ---
 

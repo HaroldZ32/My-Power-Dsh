@@ -1,6 +1,6 @@
 ---
 name: remove-ai-slops
-description: "Remove AI-generated code smells (slop) from branch changes or an explicit file list. Locks behavior with regression tests FIRST, then runs categorized cleanup via parallel `deep` agents in batches of 5, then verifies with quality gates. Covers 10 slop categories including performance equivalences, excessive complexity (object annotations, if/elif variant chains), and oversized modules (250+ pure LOC with mandatory modular refactoring). MUST USE when the user asks to \"remove slop\", \"clean AI code\", \"deslop\", \"clean up AI-generated code\", \"remove AI slop\", or wants to clean up AI-generated patterns from recent changes. Triggers - \"remove ai slops\", \"clean ai code\", \"deslop\", \"cleanup AI generated\", \"remove AI slop\", \"clean up AI-generated code\", \"strip slop\", \"ai-slop cleanup\"."
+description: "Remove AI-generated code smells (slop) from branch changes or an explicit file list. Locks behavior with regression tests FIRST, then runs categorized cleanup via serial `Deep Worker` consults in batches of 5, then verifies with quality gates. Covers 10 slop categories including performance equivalences, excessive complexity (object annotations, if/elif variant chains), and oversized modules (250+ pure LOC with mandatory modular refactoring). MUST USE when the user asks to \"remove slop\", \"clean AI code\", \"deslop\", \"clean up AI-generated code\", \"remove AI slop\", or wants to clean up AI-generated patterns from recent changes. Triggers - \"remove ai slops\", \"clean ai code\", \"deslop\", \"cleanup AI generated\", \"remove AI slop\", \"clean up AI-generated code\", \"strip slop\", \"ai-slop cleanup\"."
 ---
 
 # Remove AI Slops Skill
@@ -94,7 +94,7 @@ A pass is complete only when all applicable gates are green. Skip gates that are
 |---|---|---|
 | Regression tests | project's test runner | all green |
 | Lint | project's linter | zero errors (warnings OK if pre-existing) |
-| Typecheck | `lsp_diagnostics` on changed files + project type-checker | zero new errors |
+| Typecheck | `mcp__lsp__get_diagnostics` on changed files + project type-checker | zero new errors |
 | Unit/integration tests | project's test runner | all green (pre-existing failures noted, not introduced) |
 | Static/security scan | project's scanner | zero new findings, or `N/A` if not configured |
 
@@ -102,7 +102,7 @@ A pass is complete only when all applicable gates are green. Skip gates that are
 
 ## Process
 
-### Phase 0: Plan with TodoWrite
+### Phase 0: Plan with todo_write
 
 Create todos for all phases below. Mark `in_progress` one at a time.
 
@@ -140,7 +140,7 @@ Only code that lands on **Simplify in place** proceeds to the smell categories. 
 
 For a diff that **fixes a bug**, grep the callers of every shared function it touches. Prefer one root-cause fix at the shared seam over repeated guards at each caller — a per-caller patch that leaves a sibling caller broken is a partial fix, not a cleanup.
 
-Then produce an explicit plan **before** spawning the removal agents:
+Then produce an explicit plan **before** issuing the removal consults:
 
 ```
 File: src/foo.py
@@ -160,31 +160,28 @@ File: src/bar.py
 
 Order rule (safest → riskiest): comments → dead code → defensive → duplication → complexity → abstraction/boundary → performance → tests → oversized-modules. This minimizes blast radius of any one change.
 
-### Phase 4: Parallel slop removal via `deep` agents in batches of 5
+### Phase 4: Slop removal via `Deep Worker` consults in batches of 5
 
-Files are processed by `deep` category agents with the `remove-ai-slops` skill loaded, **batched 5 at a time in parallel**. The executable skill name is `remove-ai-slops`. The `deep` category gives the agent enough thoroughness to correctly evaluate the 9 categories and respect the KEEP rules without slipping into surface fixes; the 5-wide batch is the sweet spot — more than 5 creates result-merging noise and context contention, fewer wastes parallelism.
+Files are processed by `mpd_role_spawn(role="Deep Worker")` consults with the `remove-ai-slops` skill NAMED in `task` (there is no `load_skills` argument, and no `category`). The Deep Worker role is the mounted equivalent of a `deep` agent: enough thoroughness to evaluate the 9 categories and respect the KEEP rules without slipping into surface fixes; 5 files per batch is the sweet spot — more creates result-merging noise, fewer wastes time. `mpd_role_spawn` is ONE-SHOT and synchronous: the report IS the tool result, so there is no background child, no `<system-reminder>` completion and no `job_output` to poll.
 
 **Batching protocol** (strict):
 
 1. Slice the in-scope file list into chunks of up to 5 files.
-2. For each chunk, launch all `task` calls **in a single message**, every one with `run_in_background=true`.
-3. End your turn. Wait for the system to send `<system-reminder>` notifications as each task finishes.
-4. Once all 5 in the batch complete, collect each result via `job_output(task_id=...)`.
-5. Launch the next batch of 5. Repeat until every file is processed.
-6. If total files ≤ 5, launch all in one batch.
+2. For each chunk, issue ONE `mpd_role_spawn` call per file, SERIALLY; every call's `task` names the `remove-ai-slops` skill and the file.
+3. Each call returns its report as the tool result — that report is the completion signal.
+4. Once all 5 in the batch have returned, fold their reports and launch the next batch.
+5. Repeat until every file is processed. If total files ≤ 5, one batch is the whole run.
+6. For files that are genuinely concurrent and touch disjoint scopes, use the mpd team plane instead: `agent_teams_plan` `create` → one `add_member` per lane → one `create_task` per file with `independent:true` → `approve` → `agent_teams_dispatch {action:"run"}`. A failed node is `agent_teams_task {action:"fail"}` plus a `kind:"repair"` row with `sourceTaskId`.
 
-**Never** launch all files at once when there are more than 5; **never** launch them serially when more than one remains in the current batch.
+**Never** issue more than 5 consults for one batch; **never** start the next batch before the current one has returned.
 
 **Per-file invocation** (one of the 5 in a batch):
 
 ```
-subagent(
-  description="Slop removal: {filename}",
-  run_in_background=true,
-  persona="<fetch via mpd_role_persona(role=Deep Worker)>",
-  agentOptions={model: "deepseek-v4-pro"},
-  prompt="""
-Remove AI slops from: {file_path}
+mpd_role_spawn(
+  role="Deep Worker",
+  task="""
+TASK: remove AI slops from {file_path}, loading this skill's own rules (the `remove-ai-slops` skill).
 
 First run the deletion ladder from Phase 3 on this file (delete entirely / reuse existing repo code / platform-stdlib-native / simplify in place); only code that must exist proceeds to smell removal.
 
@@ -199,13 +196,14 @@ Hard constraints:
 - Do NOT introduce new abstractions or dependencies.
 - Diff stays minimal and scoped to slop removal.
 
-Report changes grouped by category. For each change, give before/after, why-slop, why-safe.
-For each skipped issue, give reason.
+DELIVERABLE: changes grouped by category; for each change give before/after, why-slop, why-safe; for each skipped issue give the reason.
+SCOPE: {file_path} only.
+VERIFY: the file's covering tests and quality gates stay green; skip anything you cannot prove equivalent.
 """
 )
 ```
 
-**Batch failure handling**: a DSH `job_output` read that is still `[status: running]` only means no new output arrived, not that a subagent failed. For long passes, require each child to send `WORKING: <file> - <current phase>` and `BLOCKED: <reason>` only when it cannot progress. Treat a running child as alive. Mark a file for retry only when the child is completed without the deliverable, ack-only after followup, explicitly `BLOCKED:`, or no longer running. Do NOT block the remaining 4 in that batch; collect successful results and retry the failed file once later. If retry also fails, escalate that file under "Issues Found & Fixed" in the final report.
+**Batch failure handling**: a consult that returns without the deliverable is not a completed file. Mark a file for retry only when its report is missing the deliverable, is ack-only, explicitly says `BLOCKED:`, or the call failed. The other files' reports have already returned, so do NOT abandon the rest of the batch: retry the failed file once later. If retry also fails, escalate that file under "Issues Found & Fixed" in the final report.
 
 ### Phase 5: Verify with quality gates + critical review
 
@@ -281,7 +279,7 @@ Per-File Results (each cut shows what replaces it):
 Quality Gates:
   - Regression tests: PASS (12 tests, 0 failed)
   - Lint: PASS
-  - Typecheck (lsp_diagnostics + project): PASS (0 new errors on changed files)
+  - Typecheck (mcp__lsp__get_diagnostics + project): PASS (0 new errors on changed files)
   - Unit/integration tests: PASS (45 tests, 0 failed)
   - Static/security scan: N/A (not configured)
 
@@ -323,7 +321,7 @@ Final Status: CLEAN | ISSUES FIXED | REQUIRES ATTENTION
 - When a tool call fails, retry with adjusted parameters.
 - Never silently skip a failed tool call.
 - Never claim a gate passed without running it and reading the output.
-- If correctness depends on further inspection, keep using `lsp_diagnostics`, the test runner, and direct file reads until the result is grounded.
+- If correctness depends on further inspection, keep using `mcp__lsp__get_diagnostics`, the test runner, and direct file reads until the result is grounded.
 
 ---
 

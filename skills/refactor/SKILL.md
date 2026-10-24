@@ -32,7 +32,7 @@ Performs intelligent, deterministic refactoring with full codebase awareness. Un
 1. **Understands your intent** - Analyzes what you actually want to achieve
 2. **Maps the codebase** - Builds a definitive codemap before touching anything
 3. **Assesses risk** - Evaluates test coverage and determines verification strategy
-4. **Plans meticulously** - Creates a detailed plan with Plan agent
+4. **Plans meticulously** - Creates a detailed plan with a `Planner` consult
 5. **Executes precisely** - Step-by-step refactoring with LSP and AST-grep
 6. **Verifies constantly** - Runs tests after each change to ensure zero regression
 
@@ -82,13 +82,13 @@ Should I proceed with [recommendation], or would you prefer differently?
 **IMMEDIATELY after understanding the request, create todos:**
 
 \`\`\`
-TodoWrite([
-  {"id": "phase-1", "content": "PHASE 1: Codebase Analysis - launch parallel explore agents", "status": "pending", "priority": "high"},
-  {"id": "phase-2", "content": "PHASE 2: Build Codemap - map dependencies and impact zones", "status": "pending", "priority": "high"},
-  {"id": "phase-3", "content": "PHASE 3: Test Assessment - analyze test coverage and verification strategy", "status": "pending", "priority": "high"},
-  {"id": "phase-4", "content": "PHASE 4: Plan Generation - invoke Plan agent for detailed refactoring plan", "status": "pending", "priority": "high"},
-  {"id": "phase-5", "content": "PHASE 5: Execute Refactoring - step-by-step with continuous verification", "status": "pending", "priority": "high"},
-  {"id": "phase-6", "content": "PHASE 6: Final Verification - full test suite and regression check", "status": "pending", "priority": "high"}
+todo_write([
+  { "content": "PHASE 1: Codebase Analysis - issue serial Explorer consults", "status": "pending" },
+  { "content": "PHASE 2: Build Codemap - map dependencies and impact zones", "status": "pending" },
+  { "content": "PHASE 3: Test Assessment - analyze test coverage and verification strategy", "status": "pending" },
+  { "content": "PHASE 4: Plan Generation - issue the Planner consult for a detailed refactoring plan", "status": "pending" },
+  { "content": "PHASE 5: Execute Refactoring - step-by-step with continuous verification", "status": "pending" },
+  { "content": "PHASE 6: Final Verification - full test suite and regression check", "status": "pending" }
 ])
 \`\`\`
 
@@ -98,71 +98,60 @@ TodoWrite([
 
 **Mark phase-1 as in_progress.**
 
-## 1.1: Launch Parallel Explore Agents (BACKGROUND)
+## 1.1: Issue Explore Consults
 
-Fire ALL of these simultaneously using DSH \`subagent\` with \`run_in_background: true\` (DSH: \`subagent(description=..., prompt=..., run_in_background: true, persona="<fetch via mpd_role_persona(role=Explorer)>")\`):
+Issue these as SERIAL \`mpd_role_spawn(role="Explorer", ...)\` consults - each returns its report as the tool result, so there is no \`run_in_background\` and no \`job_output\`. When team mode is active (see the addendum), stage them as team tasks instead.
 
 \`\`\`
-// Agent 1: Find the refactoring target
-subagent(
-  subagent_type="explore",
-  run_in_background=true,
-  prompt="Find all occurrences and definitions of [TARGET].
-  Report: file paths, line numbers, usage patterns."
+// Consult 1: Find the refactoring target
+mpd_role_spawn(
+  role="Explorer",
+  task="TASK: find all occurrences and definitions of [TARGET]. DELIVERABLE: file paths, line numbers, usage patterns. SCOPE: read-only. VERIFY: cite each hit from a real search."
 )
 
-// Agent 2: Find related code
-subagent(
-  subagent_type="explore",
-  run_in_background=true,
-  prompt="Find all code that imports, uses, or depends on [TARGET].
-  Report: dependency chains, import graphs."
+// Consult 2: Find related code
+mpd_role_spawn(
+  role="Explorer",
+  task="TASK: find all code that imports, uses, or depends on [TARGET]. DELIVERABLE: dependency chains, import graphs. SCOPE: read-only. VERIFY: cite the import edge."
 )
 
-// Agent 3: Find similar patterns
-subagent(
-  subagent_type="explore",
-  run_in_background=true,
-  prompt="Find similar code patterns to [TARGET] in the codebase.
-  Report: analogous implementations, established conventions."
+// Consult 3: Find similar patterns
+mpd_role_spawn(
+  role="Explorer",
+  task="TASK: find similar code patterns to [TARGET] in the codebase. DELIVERABLE: analogous implementations, established conventions. SCOPE: read-only. VERIFY: cite each analogue."
 )
 
-// Agent 4: Find tests
-subagent(
-  subagent_type="explore",
-  run_in_background=true,
-  prompt="Find all test files related to [TARGET].
-  Report: test file paths, test case names, coverage indicators."
+// Consult 4: Find tests
+mpd_role_spawn(
+  role="Explorer",
+  task="TASK: find all test files related to [TARGET]. DELIVERABLE: test file paths, test case names, coverage indicators. SCOPE: read-only. VERIFY: cite the test file."
 )
 
-// Agent 5: Architecture context
-subagent(
-  subagent_type="explore",
-  run_in_background=true,
-  prompt="Find architectural patterns and module organization around [TARGET].
-  Report: module boundaries, layer structure, design patterns in use."
+// Consult 5: Architecture context
+mpd_role_spawn(
+  role="Explorer",
+  task="TASK: find architectural patterns and module organization around [TARGET]. DELIVERABLE: module boundaries, layer structure, design patterns in use. SCOPE: read-only. VERIFY: cite the module and the pattern."
 )
 \`\`\`
 
-## 1.2: Direct Tool Exploration (WHILE AGENTS RUN)
+## 1.2: Direct Tool Exploration (BETWEEN CONSULTS)
 
-While background agents are running, use direct tools:
+Between consults, use direct tools:
 
 ### LSP Tools for Precise Analysis:
 
 \`\`\`typescript
 // Find definition(s)
-LspGotoDefinition(filePath, line, character)  // Where is it defined?
+mcp__lsp__find_definition(filePath, line, character)  // Where is it defined?
 
 // Find ALL usages across workspace
-LspFindReferences(filePath, line, character, includeDeclaration=true)
+mcp__lsp__find_references(filePath, line, character, includeDeclaration=true)
 
-// Get file structure
-LspDocumentSymbols(filePath)  // Hierarchical outline
-LspWorkspaceSymbols(filePath, query="[target_symbol]")  // Search by name
+// Find symbols by name (the mounted LSP ships no per-file outline tool)
+mcp__lsp__find_workspace_symbols(query="[target_symbol]")  // Search by name
 
 // Get current diagnostics
-lsp_diagnostics(filePath)  // Errors, warnings before we start
+mcp__lsp__get_diagnostics(filePath)  // Errors, warnings before we start
 \`\`\`
 
 ### AST-Grep Skill for Pattern Analysis:
@@ -181,15 +170,11 @@ sg --pattern '[old_pattern]' --rewrite '[new_pattern]' --lang ts src/
 grep(pattern="[search_term]", path="src/", include="*.ts")
 \`\`\`
 
-## 1.3: Collect Background Results
+## 1.3: Fold the consult reports
 
-\`\`\`
-job_output(task_id="[agent_1_id]")
-job_output(task_id="[agent_2_id]")
-...
-\`\`\`
+Each \`mpd_role_spawn\` returns its report as the tool result: there is no \`job_output\` to poll and no \`agent_*_id\`. Fold every report into the codemap below; a report that returned without its deliverable is re-issued once with the missing field named.
 
-**Mark phase-1 as completed after all results collected.**
+**Mark phase-1 as completed after every report is folded.**
 
 ---
 
@@ -268,14 +253,17 @@ ls -la *_test.go
 
 \`\`\`
 // Find all tests related to target
-subagent(
-  run_in_background=false,  // Need this synchronously; DSH: subagent(description=..., prompt=..., run_in_background: false, persona="<fetch via mpd_role_persona(role=Explorer)>")
-  prompt="Analyze test coverage for [TARGET]:
+mpd_role_spawn(
+  role="Explorer",
+  task="TASK: analyze test coverage for [TARGET]:
   1. Which test files cover this code?
   2. What test cases exist?
   3. Are there integration tests?
   4. What edge cases are tested?
-  5. Estimated coverage percentage?"
+  5. Estimated coverage percentage?
+  DELIVERABLE: the five answers with test paths.
+  SCOPE: read-only.
+  VERIFY: cite the test file behind every claim."
 )
 \`\`\`
 
@@ -317,7 +305,7 @@ Which approach do you prefer?
 
 ### Verification Checkpoints
 After each refactoring step:
-1. lsp_diagnostics → zero new errors
+1. mcp__lsp__get_diagnostics → zero new errors
 2. Run test command → all pass
 3. Type check → clean
 
@@ -331,16 +319,16 @@ After each refactoring step:
 
 ---
 
-# PHASE 4: PLAN GENERATION (PLAN AGENT)
+# PHASE 4: PLAN GENERATION (PLANNER CONSULT)
 
 **Mark phase-4 as in_progress.**
 
-## 4.1: Invoke Plan Agent
+## 4.1: Issue the Planner consult
 
 \`\`\`
-Task(
-  subagent_type="plan",
-  prompt="Create a detailed refactoring plan:
+mpd_role_spawn(
+  role="Planner",
+  task="TASK: create a detailed refactoring plan:
 
   ## Refactoring Goal
   [User's original request]
@@ -362,13 +350,17 @@ Task(
   3. Order steps by dependency (what must happen first)
   4. Specify exact files and line ranges for each step
   5. Include rollback strategy for each step
-  6. Define commit checkpoints"
+  6. Define commit checkpoints
+
+  DELIVERABLE: the plan, with every step atomic, independently verifiable, dependency-ordered, and paired with its rollback.
+  SCOPE: planning only; no edits.
+  VERIFY: every step names the files it touches and the command that proves it."
 )
 \`\`\`
 
 ## 4.2: Review and Validate Plan
 
-After receiving plan from Plan agent:
+After the Planner consult returns:
 
 1. **Verify completeness**: All identified files addressed?
 2. **Verify safety**: Each step reversible?
@@ -377,15 +369,15 @@ After receiving plan from Plan agent:
 
 ## 4.3: Register Detailed Todos
 
-Convert Plan agent output into granular todos:
+Convert the Planner's output into granular todos:
 
 \`\`\`
-TodoWrite([
+todo_write([
   // Each step from the plan becomes a todo
-  {"id": "refactor-1", "content": "Step 1: [description]", "status": "pending", "priority": "high"},
-  {"id": "verify-1", "content": "Verify Step 1: run tests", "status": "pending", "priority": "high"},
-  {"id": "refactor-2", "content": "Step 2: [description]", "status": "pending", "priority": "medium"},
-  {"id": "verify-2", "content": "Verify Step 2: run tests", "status": "pending", "priority": "medium"},
+  { "content": "Step 1: [description]", "status": "pending" },
+  { "content": "Verify Step 1: run tests", "status": "pending" },
+  { "content": "Step 2: [description]", "status": "pending" },
+  { "content": "Verify Step 2: run tests", "status": "pending" },
   // ... continue for all steps
 ])
 \`\`\`
@@ -405,15 +397,15 @@ For EACH refactoring step:
 ### Pre-Step
 1. Mark step todo as \`in_progress\`
 2. Read current file state
-3. Verify lsp_diagnostics is baseline
+3. Verify mcp__lsp__get_diagnostics is baseline
 
 ### Execute Step
 Use appropriate tool:
 
 **For Symbol Renames:**
 \`\`\`typescript
-lsp_prepare_rename(filePath, line, character)  // Validate rename is possible
-lsp_rename(filePath, line, character, newName)  // Execute rename
+mcp__lsp__rename_symbol_strict(filePath, line, character, newName, dry_run=true)  // Validate rename is possible
+mcp__lsp__rename_symbol_strict(filePath, line, character, newName)  // Execute rename
 \`\`\`
 
 **For Pattern Transformations:**
@@ -435,7 +427,7 @@ edit(filePath, oldString, newString)
 
 \`\`\`typescript
 // 1. Check diagnostics
-lsp_diagnostics(filePath)  // Must be clean or same as baseline
+mcp__lsp__get_diagnostics(filePath)  // Must be clean or same as baseline
 
 // 2. Run tests
 bash("bun test")  // Or appropriate test command
@@ -458,7 +450,7 @@ If ANY verification fails:
 4. **OPTIONS**:
    - Fix the issue and retry
    - Skip this step (if optional)
-   - Consult oracle agent for help
+   - Consult a `Reviewer` (contract/correctness) or `Architect` (architecture) for help
    - Ask user for guidance
 
 **NEVER proceed to next step with broken tests.**
@@ -515,7 +507,7 @@ bun run build  # or npm run build, etc.
 \`\`\`typescript
 // Check all changed files
 for (file of changedFiles) {
-  lsp_diagnostics(file)  // Must all be clean
+  mcp__lsp__get_diagnostics(file)  // Must all be clean
 }
 \`\`\`
 
@@ -548,7 +540,7 @@ All existing tests pass. No new errors introduced.
 # CRITICAL RULES
 
 ## NEVER DO
-- Skip lsp_diagnostics check after changes
+- Skip mcp__lsp__get_diagnostics check after changes
 - Proceed with failing tests
 - Make changes without understanding impact
 - Use \`as any\`, \`@ts-ignore\`, \`@ts-expect-error\`
@@ -581,26 +573,26 @@ You already know these tools. Use them intelligently:
 
 ## LSP Tools
 Leverage LSP tools for precision analysis. Key patterns:
-- **Understand before changing**: \`LspGotoDefinition\` to grasp context
-- **Impact analysis**: \`LspFindReferences\` to map all usages before modification
-- **Safe refactoring**: \`lsp_prepare_rename\` → \`lsp_rename\` for symbol renames
-- **Continuous verification**: \`lsp_diagnostics\` after every change
+- **Understand before changing**: \`mcp__lsp__find_definition\` to grasp context
+- **Impact analysis**: \`mcp__lsp__find_references\` to map all usages before modification
+- **Safe refactoring**: \`mcp__lsp__rename_symbol_strict\` with \`dry_run\` first, then applied — for symbol renames
+- **Continuous verification**: \`mcp__lsp__get_diagnostics\` after every change
 
 ## AST-Grep
 Use \`ast-grep\` skill helper or \`sg\` CLI for structural transformations.
 **Critical**: Always preview first, review, then execute.
 
-## Agents
-- \`explore\`: Parallel codebase pattern discovery
-- \`plan\`: Detailed refactoring plan generation
-- \`oracle\`: Read-only consultation for complex architectural decisions and debugging
-- \`librarian\`: **Use proactively** when encountering deprecated methods or library migration tasks. Query official docs and OSS examples for modern replacements.
+## Agents (roster roles, via \`mpd_role_spawn\`)
+- \`Explorer\`: Codebase pattern discovery
+- \`Planner\`: Detailed refactoring plan generation
+- \`Reviewer\` / \`Architect\`: Read-only consultation for contract/correctness or architectural decisions and debugging
+- \`Researcher\`: **Use proactively** when encountering deprecated methods or library migration tasks. Query official docs and OSS examples for modern replacements.
 
 ## Deprecated Code & Library Migration
 When you encounter deprecated methods/APIs during refactoring:
-1. Fire \`librarian\` to find the recommended modern alternative
+1. Issue a \`Researcher\` consult (\`mpd_role_spawn(role="Researcher", task=...)\`) to find the recommended modern alternative
 2. **DO NOT auto-upgrade to latest version** unless user explicitly requests migration
-3. If user requests library migration, use \`librarian\` to fetch latest API docs before making changes
+3. If user requests library migration, use a \`Researcher\` consult to fetch latest API docs before making changes
 
 ---
 
@@ -616,13 +608,13 @@ export const REFACTOR_TEAM_MODE_ADDENDUM = `
 
 # Team Mode Protocol (active when the agent_teams_* tools are present)
 
-Team mode is enabled for this session. The rules below **override Phase 4-6** above. Follow this protocol instead of the in-session step-by-step execution. The current session is the team **Lead**; team members are continuable subagents spawned from it.
+Team mode is enabled for this session. The rules below **override Phase 4-6** above. Follow this protocol instead of the in-session step-by-step execution. The current session is the team **Lead**; team members are continuable sessions spawned from it.
 
 **Tool surface (2026-10-23).** The retired vendored verbs this protocol inherits from upstream — \`team_create\`, \`team_list\`, \`team_status\`, \`team_send_message\`, \`team_shutdown_request\`, \`team_approve_shutdown\`, \`team_delete\` — belonged to the \`agent-teams\` body removed on 2026-10-07 and answer nowhere: they are HISTORY, not calls. The OFFICIAL Agent Teams authoring verbs (\`spawn_teammate\`, \`team_task_create\`, \`team_task_list\`, \`team_task_get\`, \`team_task_update\`) are REFUSED at the tool boundary by this bundle's team door, so the old \`team_task_update(status=…)\` spelling above is history too. Drive the mpd RECORD instead: stage with \`agent_teams_plan\`, drive with \`agent_teams_task\`, pair with \`agent_teams_dispatch\`, message a member with \`send_message\`. The bound, stated once: a ROW that calls the team SERVICE directly (the official-executor fallback) is not a tool call and is NOT gated.
 
-## Phase 4 override: Plan agent staffing requirement
+## Phase 4 override: Planner staffing requirement
 
-When invoking the Plan agent in Phase 4.1, append this additional requirement to the prompt:
+When issuing the Planner consult in Phase 4.1, append this additional requirement to the task:
 
 \`\`\`
 7. (REQUIRED when team mode is active) Output a Team Staffing Recommendation section with these fields — missing fields fail Phase 5.0:
@@ -634,7 +626,7 @@ When invoking the Plan agent in Phase 4.1, append this additional requirement to
    - rationale for the composition
 \`\`\`
 
-**Classification rules** the plan agent must apply to each step:
+**Classification rules** the Planner must apply to each step:
 - \`mechanical\`: edits without call-site logic — LSP rename, extract variable, inline, simple move, signature change.
 - \`reasoning\`: logic-preserving refactors — extract function, restructure conditional, pattern transformation, cross-file API change.
 - Both kinds run on the \`Deep Worker\` implementation role (mpd-roles roster) in DSH; the label only routes a step to a mechanical or reasoning worker.
@@ -649,7 +641,7 @@ Then choose the path:
 - **Team path (5.1-T)**: when the plan recommends \`team\` AND \`file_independent_steps >= 3\`. Members execute in parallel, Lead orchestrates, a \`deep\` verifier lives outside the team.
 - **Legacy path (5.1-L)**: otherwise. Use the original 5.1 / 5.2 / 5.3 flow from above.
 
-Record the chosen path in the TodoWrite list.
+Record the chosen path in the todo_write list.
 
 ## Phase 5.1-T: \`refactor-squad\` team execution
 
@@ -664,12 +656,12 @@ Record the chosen path in the TodoWrite list.
 \`\`\`json
 {
   "name": "refactor-squad",
-  "lead": { "kind": "subagent_type", "subagent_type": "Lead" },
+  "lead": { "kind": "roster_role", "role": "Lead" },
   "members": [
     {
       "name": "Mechanical Refactorer A",
       "description": "Junior Engineer - mechanical refactoring lane",
-      "prompt": "You handle mechanical refactoring steps (LSP rename, extract variable, inline, simple move, signature change). Use LSP tools for correctness. Apply the task description's per-step instructions verbatim — no scope expansion. After edits, run lsp_diagnostics on touched files. Report via send_message(agent_id=<lead>, message=<files touched + lsp status + diff summary>). Do NOT close the row: the Lead closes it once the external verifier returns PASS. Never run tests — the external verifier handles that. Never git add, never --continue."
+      "prompt": "You handle mechanical refactoring steps (LSP rename, extract variable, inline, simple move, signature change). Use LSP tools for correctness. Apply the task description's per-step instructions verbatim — no scope expansion. After edits, run mcp__lsp__get_diagnostics on touched files. Report via send_message(agent_id=<lead>, message=<files touched + lsp status + diff summary>). Do NOT close the row: the Lead closes it once the external verifier returns PASS. Never run tests — the external verifier handles that. Never git add, never --continue."
     },
     { "name": "Mechanical Refactorer B", "description": "Junior Engineer - mechanical refactoring lane (peer)", "prompt": "Same contract as peer mechanical worker." },
     {

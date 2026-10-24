@@ -1,0 +1,124 @@
+{
+  "round": "2026-10-24 skills dead-token round (second skills writer pass; previous round's 15 delegation-family files not re-edited)",
+  "branch": "fix/task-dependency-guard",
+  "scope_note": "BEFORE = working tree at this round's start (previous round already applied); AFTER = working tree at end of this round.",
+  "commands": {
+    "grep_A_dead_tool_tokens": "grep -rnE 'TodoWrite|Lsp[A-Z]|lsp_|codegraph_|kill_bash|task_output|monitor\\(' skills/ | grep -vE 'mcp__lsp__|mcp__codegraph__|__codegraph_explore|mcpLsp|LSP_DEPENDENCY|executeLspDiagnostics|disposeDefaultLspManager'",
+    "grep_B_dangling_skill_pointers": "grep -rnE 'mass-ulw|ulw-loop|open-design|imagegen|mpd-agent-toolkit' skills/",
+    "review_panel": "node skills/dsh-qa/scripts/review-panel.ts",
+    "verify_docs": "bun run verify:docs",
+    "verify_vendor": "node scripts/verify-vendor.ts"
+  },
+  "grep_counts": {
+    "A_dead_tool_tokens": {
+      "before": 36,
+      "after": 0
+    },
+    "B_skill_pointer_tokens": {
+      "before": 46,
+      "after": 34,
+      "after_composition": "5 ATTRIBUTION.md provenance lines, 1 .gitignore provenance comment, 17 materialized imagegen-*.md / image-to-code-skill.md reference-file names, 7 explicit 'NOT mounted' negations + 2 upstream-URL provenance lines (+1 line counted in two categories), 1 live `open-design` pointer in an IGNORED materialized file (component-catalogs.md:18)"
+    }
+  },
+  "files_changed_this_round": [
+    {
+      "path": "skills/debugging/references/methodology/00-setup.md",
+      "added": 1,
+      "removed": 1
+    },
+    {
+      "path": "skills/frontend/references/design/design-system-architecture.md",
+      "added": 1,
+      "removed": 1
+    },
+    {
+      "path": "skills/frontend/references/design/_INDEX.md",
+      "added": 1,
+      "removed": 1
+    },
+    {
+      "path": "skills/frontend/references/design/print-paged-media.md",
+      "added": 1,
+      "removed": 1
+    },
+    {
+      "path": "skills/frontend/references/design/README.md",
+      "added": 6,
+      "removed": 6
+    },
+    {
+      "path": "skills/frontend/SKILL.md",
+      "added": 3,
+      "removed": 3
+    },
+    {
+      "path": "skills/init-deep/SKILL.md",
+      "added": 12,
+      "removed": 12
+    },
+    {
+      "path": "skills/refactor/SKILL.md",
+      "added": 20,
+      "removed": 21
+    },
+    {
+      "path": "skills/remove-ai-slops/SKILL.md",
+      "added": 4,
+      "removed": 4
+    },
+    {
+      "path": "skills/review-work/SKILL.md",
+      "added": 2,
+      "removed": 2
+    },
+    {
+      "path": "skills/ulw-plan/scripts/scaffold-plan.ts",
+      "added": 4,
+      "removed": 1
+    },
+    {
+      "path": "skills/ulw-research/SKILL.md",
+      "added": 7,
+      "removed": 7
+    }
+  ],
+  "files_changed_totals": {
+    "files": 12,
+    "added": 62,
+    "removed": 60
+  },
+  "gates": {
+    "review_panel": {
+      "exit": 0,
+      "observed": "[review-panel] PASS — checks: 15 failed: 0",
+      "evidence": "evidence/skills-dead-tokens/2026-10-24T1122Z/review-panel.log"
+    },
+    "verify_docs": {
+      "exit": 0,
+      "observed": "pairs=50 failed=0 violations=0 exempt=24 derived=3 links=445 dead=0 — PASS",
+      "evidence": "evidence/skills-dead-tokens/2026-10-24T1122Z/verify-docs.log"
+    },
+    "verify_vendor": {
+      "exit": 1,
+      "observed": "[verify-vendor] FAIL - asset skills treeSha mismatch",
+      "expected": "YES — the wave's skills edits invalidate the corpus treeSha; the captain re-pins once (node scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step), per AGENTS.md §9/§11"
+    }
+  },
+  "scaffold_plan_json_keys": {
+    "choice": "ANNOTATE (not relabel)",
+    "why": "The keys are a durable on-disk state contract: drafts already written carry `momus:`/`independent:` lanes, and no migration tool exists; nothing dispatches a role by those names, so an annotation preserves the contract while naming what executes each lane. The doc annotation at skills/ulw-plan/references/full-workflow.md:188 was already present from the previous round (not re-edited); this round added the matching source annotation above the emitter in scaffold-plan.ts and fixed the last dead pointer in that file (line 392).",
+    "doc_annotation": "skills/ulw-plan/references/full-workflow.md:188 (pre-existing, verified)",
+    "script_annotation_added": "skills/ulw-plan/scripts/scaffold-plan.ts (3 comment lines above buildDraft's reviewState)"
+  },
+  "findings_out_of_scope": [
+    "skills/frontend/references/design/component-catalogs.md:18 still carries an `open-design` skill pointer, but the file is GITIGNORED (`git check-ignore` -> skills/frontend/.gitignore:7 references/design/*.md) and untracked: it is not part of the shipped corpus (verify-vendor fingerprints `git ls-files`), so the edit was reverted rather than left as an uncommittable delta. Same class: every materialized `references/design/*.md`.",
+    "skills/ulw-execute/SKILL.md, skills/ulw-research/SKILL.md (mass-ulw site) and skills/ulw-plan/references/full-workflow.md already had their monitor/kill_bash/task_output/mass-ulw/oracle sites fixed by the previous round; verified at HEAD vs working tree, not re-edited.",
+    "No shipped gate covers tool-name existence in skills/**: review-panel.ts polices review-work's panel DATA only."
+  ],
+  "limits": [
+    "`todo_write([...])` keeps the inherited illustrative object fields (id/priority) per the brief's 'a call keeps its arguments'; the mounted schema takes {content,status} only.",
+    "LspDocumentSymbols has no mounted equivalent (no per-file outline tool), so the two-line outline/workspace-symbols pair collapsed to one `mcp__lsp__find_workspace_symbols` line with a comment saying so.",
+    "LspWorkspaceSymbols' `filePath` argument was dropped: the mounted tool takes only `query`.",
+    "No live boot was run to prove the mcp__lsp__*/mcp__codegraph__* rows mount; names were taken as given by the brief and are the ones this session mounts."
+  ]
+}

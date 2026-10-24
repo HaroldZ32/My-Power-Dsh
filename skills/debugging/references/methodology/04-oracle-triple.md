@@ -30,17 +30,18 @@ The three framings below are chosen to cover distinct bug-cause categories:
 - **B (system-boundary)** — causes living at integration seams, not in the code being read.
 - **C (invariant-violation)** — assumptions load-bearing to current hypotheses that may themselves be false.
 
-Spawn all three in parallel.
+Issue all three as SERIAL consults, one report each.
 
 ---
 
 ## The three prompts
 
-```
-subagent(description="oracle", run_in_background=true,
-     prompt="[CONTEXT: bug description + evidence captured so far, verbatim, with file:line refs]
+`mpd_role_spawn` is ONE-SHOT and synchronous, so the Triple is three SERIAL calls, not a parallel spawn: the roster's **Architect** owns deep debugging. Each consult's `context` carries the bug description and the evidence captured so far, verbatim, with file:line refs; its `task` carries one framing and ends with the deliverable.
 
-     Framing A — OBVIOUS-BUT-MISSED.
+```
+mpd_role_spawn(role="Architect",
+     context="[bug description + evidence captured so far, verbatim, with file:line refs]",
+     task="""TASK: Framing A — OBVIOUS-BUT-MISSED.
      What is the most embarrassing, most obvious cause that a senior engineer would spot in 30 seconds and we've overlooked? Consider:
      - typos, off-by-one
      - wrong variable name / wrong constant / wrong import
@@ -48,13 +49,13 @@ subagent(description="oracle", run_in_background=true,
      - attached to the wrong instance of the service
      - test harness running different code than the app
      - editing src/ while running dist/
+     DELIVERABLE: exactly three candidate causes ranked by likelihood, with one sentence each explaining why our evidence is consistent with each.
+     SCOPE: read-only analysis; no file edits.
+     VERIFY: name the observation behind every claim.""")
 
-     Give me exactly three candidate causes ranked by likelihood, with one sentence each explaining why our evidence is consistent with each.")
-
-subagent(description="oracle", run_in_background=true,
-     prompt="[CONTEXT: bug description + evidence captured so far]
-
-     Framing B — SYSTEM-BOUNDARY.
+mpd_role_spawn(role="Architect",
+     context="[bug description + evidence captured so far]",
+     task="""TASK: Framing B — SYSTEM-BOUNDARY.
      What if the bug is NOT in the code we've been reading, but at a boundary? Consider:
      - third-party SDK behavior that contradicts its docs
      - middleware that mutates the request or response
@@ -64,19 +65,20 @@ subagent(description="oracle", run_in_background=true,
      - shared-library version mismatch (system lib vs bundled lib)
      - ABI difference (native addons, glibc versions, musl vs glibc)
      - wrong transport (HTTP/1.1 vs HTTP/2, TLS version negotiation)
+     DELIVERABLE: three candidate causes, each naming the specific boundary and the specific contract assumption that might be violated.
+     SCOPE: read-only analysis; no file edits.
+     VERIFY: name the boundary and the evidence that points at it.""")
 
-     Give me three candidate causes, each naming the specific boundary and the specific contract assumption that might be violated.")
-
-subagent(description="oracle", run_in_background=true,
-     prompt="[CONTEXT: bug description + evidence captured so far]
-
-     Framing C — INVARIANT-VIOLATION.
+mpd_role_spawn(role="Architect",
+     context="[bug description + evidence captured so far]",
+     task="""TASK: Framing C — INVARIANT-VIOLATION.
      Which invariants that we've been ASSUMING TRUE might actually be false?
      Enumerate the five assumptions most load-bearing to our current hypotheses, then for each:
      - describe the smallest runtime query that would falsify it
      - predict what the observable would be if the invariant holds vs if it fails
-
-     We want at least one of these queries to be decisive.")
+     DELIVERABLE: five load-bearing assumptions, each with its falsification query and the two predicted observables; at least one query must be decisive.
+     SCOPE: read-only analysis; no file edits.
+     VERIFY: each query names the exact observable and how to read it.""")
 ```
 
 ---
