@@ -11,6 +11,8 @@ uncommitted edit (task 1). Times are UTC, from `date -u`.
     T0 after the task-1 edit, before the gates  2026-10-24T12:56:23Z  35ccad7837b86f9661f1ac30b80d0e45625a3f140098395b0c7e73e0632b7130
     T1 after both gates                         2026-10-24T12:57:46Z  35ccad7837b86f9661f1ac30b80d0e45625a3f140098395b0c7e73e0632b7130
     T2 before the AFTER greps                   2026-10-24T12:57:57Z  35ccad7837b86f9661f1ac30b80d0e45625a3f140098395b0c7e73e0632b7130
+    T2b read inside the AFTER grep headers      2026-10-24T12:57:58Z  35ccad7837b86f9661f1ac30b80d0e45625a3f140098395b0c7e73e0632b7130
+        (source: the header line of greps/B-skill-pointers-after.txt and greps/C-delegation-family-after.txt)
     T3 after result.json was written            2026-10-24T13:11:04Z  35ccad7837b86f9661f1ac30b80d0e45625a3f140098395b0c7e73e0632b7130
     T4 before this log (last artifact)          2026-10-24T13:13:28Z  35ccad7837b86f9661f1ac30b80d0e45625a3f140098395b0c7e73e0632b7130
 
