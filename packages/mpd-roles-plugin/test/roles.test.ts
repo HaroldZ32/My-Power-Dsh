@@ -244,6 +244,16 @@ test("the tool descriptions name the mpd team door, never the refused official p
   expect(list.description).toContain("dependency answer")
   expect(spawn.description).toContain("agent_teams_plan")
   expect(spawn.description).toContain("`agent_teams_task`/`agent_teams_dispatch`")
+  // THE MODEL-ROUTE SENTENCE IS THE CONTRACT (2026-10-24). The old claim — a team teammate
+  // "inherits the caller's model route" — became FALSE once the team executor resolved a staged
+  // member's `teamModels` slot. What is true: THIS path applies the role's slot, a staged member is
+  // routed the same way by the team executor (`role` first, then the description's head), and ONLY
+  // an unmatched member inherits the staging session's route.
+  expect(spawn.description).toContain("THIS path applies the role's `teamModels` slot")
+  expect(spawn.description).toContain("routed the same way by the team executor")
+  expect(spawn.description).toContain("its `role` first, then its `description` head")
+  expect(spawn.description).toContain("only an UNMATCHED member inherits the staging session's route")
+  expect(spawn.description).not.toContain("a teammate inherits the caller's model route")
   expect(persona.description).toContain("agent_teams_plan")
 })
 

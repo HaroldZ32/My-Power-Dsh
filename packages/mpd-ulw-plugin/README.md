@@ -27,8 +27,11 @@ An activated ULW run asks the user nothing:
    this bundle's team plane is the mpd RECORD, the official Agent Teams tools are REFUSED at the tool
    boundary (`spawn_teammate`, `team_task_create`, `team_task_list`, `team_task_get`,
    `team_task_update`), and `send_message` / `list_agents` / `wait_agent` / `interrupt_agent` remain
-   for agent communication. The retired `agent_teams_create` / `agent_teams_*` tools do not exist on
-   harness 0.1.7 either; team state is the mpd RECORD.
+   for agent communication. The retired VENDORED family (`agent_teams_create`, `agent_teams_add_member`,
+   `agent_teams_create_task`, `agent_teams_approve`, `agent_teams_status`, `agent_teams_send_message`,
+   `agent_teams_shutdown*`, `agent_teams_delete`) does not exist on harness 0.1.7 either — the five live
+   tools are `agent_teams_plan`, `agent_teams_task`, `agent_teams_dispatch`, `agent_teams_mail` and
+   `agent_teams_control`; team state is the mpd RECORD.
 4. **Loop to completion** — never stop early to ask; rounds continue until every success
    criterion is clean.
 5. **Fix on sight** — a defect the run finds is fixed in the same turn; never

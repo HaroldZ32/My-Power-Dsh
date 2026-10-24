@@ -36,6 +36,27 @@ unchanged on both enforcement surfaces. The bound, stated once: the refusal is a
 rule, so a ROW that calls the team SERVICE directly (the official-executor fallback) is not a tool call
 and is not gated.
 
+**LIVE AMENDMENT (2026-10-24, team-member routing):** the FOUR `teamModels.slot{1..4}` routes apply to
+BOTH the single-call consults (`mpd_role_spawn`, `mpd_workmate_spawn`, which pass an explicit
+`agentOptions`) AND team members: the NATIVE team executor — the DEFAULT backend — resolves a member's
+route by identity precedence **`role` → the HEAD of its `description` → the whole `name`**, asks the
+config service for the first candidate it recognizes, and applies that member's slot (its own
+`fallbacks` chain consumed once). A member it cannot match, a member whose slot is unconfigured or
+invalid, or a composition with no `mpdConfig` service INHERITS the staging session's route (the
+captain's in a top-level spawn, the Lead's in a team-lead spawn) with ONE log line and NO throw —
+`approve` raises N members in a loop, so a slot never leaves a team half-built. `mpd-team-core` forwards
+the staged `member.role`, so a member staged with a role is matched on that first channel. The
+single-call appliers still REFUSE an unusable slot with `SLOT_UNCONFIGURED`; the team path never does.
+`mpd-roster-provider-plugin` remains wired ONLY to the official `spawn_teammate` path
+(`mpd-tool-agent-team`'s `freshProvider`), and that TOOL is REFUSED by the team-door guard, so in a
+DEFAULT composition the package routes NOTHING — it is the historical/fallback wiring for a composition
+that runs the official executor and whose ROW raises teammates through the team service. The routing
+rule of the verbatim block below ("a description that NAMES a roster member routes that member; any
+other teammate runs on the route of the session that staged it") is therefore NOT the whole rule: the
+native executor's precedence above decides (an explicit `role` routes even when the description names
+nobody), and inheritance is the fallback for UNMATCHED members or unusable slots only. This supersedes
+the routing half of the 2026-10-23 note above.
+
 ## The former §13 body (verbatim)
 
 ## 13. Glossary

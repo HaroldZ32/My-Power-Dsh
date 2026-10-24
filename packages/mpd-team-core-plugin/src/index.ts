@@ -1452,6 +1452,10 @@ export function apply(ctx: any): void {
             name: added.name,
             description: added.description === "" ? added.name : added.description,
             prompt: input.prompt === "" ? added.description : input.prompt,
+            // THE SAME IDENTITY CONTRACT AS APPROVAL: the role is the executor's first roster
+            // channel, so a member appended to a LIVE roster is routed by its slot — not by the
+            // staging session that happens to be running this append.
+            ...(added.role === undefined ? {} : { role: added.role }),
             ...(exec.signal === undefined ? {} : { signal: exec.signal }),
           })
           /** The record re-read immediately before the handle is written, so the raise cannot clobber a concurrent write. */
@@ -1748,10 +1752,11 @@ export function apply(ctx: any): void {
         let stoppedAt: string | undefined
         for (const member of record.members) {
           try {
-            // THE EXECUTOR RAISES THE MEMBER. On the native backend this passes the member's
-            // PROVIDER and its `agentOptions` as ordinary arguments — the two things the official
-            // tool row cannot forward — so a roster slot route, a persona and the read-only deny
-            // list reach a teammate directly, and nothing here needs the official plugin mounted.
+            // THE EXECUTOR RAISES THE MEMBER. On the native backend the member's ROLE travels as an
+            // ordinary argument and the executor turns it into the child's `agentOptions` — the two
+            // things the official tool row cannot forward — so a roster slot route, a persona and the
+            // read-only deny list reach a teammate directly, and nothing here needs the official
+            // plugin mounted.
             /** The backend's answer, whose handle the record keeps BESIDE our own member id. */
             const spawned = await executor().spawn(exec.agent, {
               teamId: record.teamId,
@@ -1759,9 +1764,12 @@ export function apply(ctx: any): void {
               name: member.name,
               description: member.description === "" ? member.name : member.description,
               prompt: plan.members.find((staged) => staged.name === member.name)?.prompt ?? member.description,
-              ...(member.route === undefined ? {} : { provider: member.route }),
-              // The roster role travels as the identity the native provider's route reads, which is
-              // the same signal the official row had to smuggle through the teammate DESCRIPTION.
+              // THE ROLE IS THE ROUTE'S FIRST IDENTITY CHANNEL, not a decoration: the native executor
+              // matches it against the roster before the description's head and the name, and an
+              // unmatched member inherits the staging session's route. `TeamMemberRecord.route` is
+              // written by NO production path (only the store's input type admits it), so this arm
+              // forwards no `provider` — the route is the executor's to resolve.
+              ...(member.role === undefined ? {} : { role: member.role }),
               ...(exec.signal === undefined ? {} : { signal: exec.signal }),
             })
             created.members.push({ name: member.name, id: spawned.handle })

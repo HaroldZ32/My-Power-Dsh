@@ -96,13 +96,17 @@ registry, keeps one entry per Lead, and degrades to `[]` — never to a throw.
 
 **Model routing on the teammate path (plan §3):** `teamSpawnTeammate` is the harness's own
 `spawnTeammate`, whose `SubagentStartRequest` carries no `agentOptions`, `persona` or
-`toolFilter`. A teammate whose description does NOT name a roster member is not routed by this
-bundle at all: the request passes through by identity, so the harness-resolved route of the
-session that staged it stands (the captain's in a top-level spawn, the Lead's in a team-lead
-spawn), and prompt text cannot change a route. A description that NAMES a roster member is routed
-through `mpd-roster-provider-plugin`'s `teamModels.slot*` contract. Per-member routing also
-applies on the single-call consult paths (`mpd_role_spawn` / `mpd_workmate_spawn`), which pass
-`agentOptions` themselves; this is the roster/workmate spawn path, not the team path. That consult
+`toolFilter`. That is the OFFICIAL fallback path: it passes through by identity, so only
+`mpd-roster-provider-plugin`'s official-path provider can route it, and the `spawn_teammate` TOOL that
+armed it is now REFUSED at the tool boundary (historical/fallback only). The DEFAULT native
+`TeamExecutor.spawn` resolves the member's `teamModels` slot ITSELF, by identity precedence `role` →
+the head of `description` → the whole `name`: a matched member with a usable slot runs on that slot
+(its `fallbacks` consumed once), while an UNMATCHED member, one whose slot is unconfigured, or a
+composition with no `mpdConfig` service INHERITS the staging session's route (the captain's in a
+top-level spawn, the Lead's in a team-lead spawn) with ONE log line and NO throw — `approve` raises N
+members in a loop, so a slot never leaves a team half-built. Per-member routing also applies on the
+single-call consult paths (`mpd_role_spawn` / `mpd_workmate_spawn`), which pass `agentOptions`
+themselves; those appliers still REFUSE an unusable slot with `SLOT_UNCONFIGURED`. That consult
 is ONE-SHOT: on a host exposing `startActivation` the adapter disposes that exact activation once the
 report settles (best-effort; a failing teardown never changes the report), so the live child is
 released instead of accumulated; the retired `start` fallback returns only `run.result` and has no

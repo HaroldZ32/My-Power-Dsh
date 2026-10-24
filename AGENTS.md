@@ -302,7 +302,9 @@ lands (§9/§11).
      withdrawn knob: `agent-references/verification-flow.md`, "§5 rule 2 — the captain's tool pack".**
   3. **Keep requirement / task / review SEPARATE.** A dispatched piece of work gets a requirement task
      (the frozen acceptance contract), a work task and a review task rather than one lumped
-     implementation task; finding-driven work uses `kind=repair` + `sourceTaskId`/`sourceFindingIds`, and
+     implementation task; finding-driven work uses `kind=repair` + `sourceTaskId` (+ `coverageOf`) on the
+     BOARD — `sourceFindingIds` is NOT a board field, it belongs to the verify plane's repair record
+     (`.mpd/verify/repairs/<id>.json`) — and
      `coverageOf` names the user clause a task serves. **Every task MUST declare its dependency answer** —
      `blocked_by: [...]` (possibly empty, an explicit root) or `independent: true`; omitting both is
      REFUSED, and `approve` REFUSES two tasks whose declared write scopes overlap with no dependency path
@@ -669,21 +671,22 @@ slot, workmate) stay here, with the verifier's envelope.
   in the slot subtree) and **no per-member override** (`agentRoutes` deleted; a leftover block is
   IGNORED and never rewritten). Slot 1 routes Architect/Planner/Reviewer/Lead/Senior Engineer, slot 2
   Researcher/Explorer/Plan Reviewer, slot 3 Deep Worker/Junior Engineer, slot 4 Vision Analyst (its
-  model MUST accept image input). An unconfigured or malformed slot REFUSES the spawn with ONE
-  structured `SLOT_UNCONFIGURED` error (slot, members, missing leaves, both recovery paths; nothing
+  model MUST accept image input). An unconfigured or malformed slot REFUSES a single-call spawn with
+  ONE structured `SLOT_UNCONFIGURED` error (slot, members, missing leaves, both recovery paths; nothing
   written, no child started); the service read is TOTAL (typed union, never throws) so display surfaces
-  render `<unconfigured>`, and only the three spawn appliers throw. The chain is consumed ONCE before
+  render `<unconfigured>`, and only the spawn appliers throw. The chain is consumed ONCE before
   the spawn (first catalog-POSITIVE route wins; not listed is not unavailable) and NEVER clamps an
   effort; a model declaring NO reasoning efforts is sent none (`withSupportedEffort`). Initial config is
   FILE initialization: a file declaring no `teamModels` is seeded ONCE from the configured providers
   (`deepseek-flash` family; slot1 `max`, slots 2-4 `high`), then durably marked in
   `<ws>/.mpd/model-config-seed.json` so a deleted block is never re-seeded. Slots apply to the single-call consult paths
-  AND to an official `spawn_teammate` (routed through `mpd-roster-provider-plugin`; that TOOL is now
-  REFUSED at the tool boundary — §5 rule 5); because the team
-  service does not forward identity, **a teammate `description` that NAMES a roster member routes that
-  member — any other teammate runs on the route of the session that staged it (the captain's in a
-  top-level spawn, the Lead's in a team-lead spawn), and prompt text cannot change a route**. Long
-  form: `agent-references/glossary.md`.
+  AND to team members: the team executor resolves a member's route by identity precedence **`role` →
+  the HEAD of its `description` → its whole `name`**, and a member it cannot match — or one whose slot
+  is unconfigured — **INHERITS the staging session's route** (the captain's in a top-level spawn, the
+  Lead's in a team-lead spawn) with ONE log line and no throw; only a spawn applier REFUSES an unusable
+  slot (`SLOT_UNCONFIGURED`). `mpd-roster-provider-plugin` is wired only to the official
+  `spawn_teammate` path, which the team-door guard REFUSES (§5 rule 5), so it routes nothing in a
+  default composition. Long form: `agent-references/glossary.md`.
 - **verifier's envelope**: the tool and path boundary a BOUND VERIFIER SEAT works inside. A seat is bound
   with `mpd_verify_seat`; the boundary it is meant to keep — no shell, no source-returning tools, no
   board mutation (`mpd_verify_*` excepted), reads path-scoped to the frozen docs AND the documentation

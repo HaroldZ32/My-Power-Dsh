@@ -14,8 +14,8 @@
 **my-power-dsh** is a plugin bundle for the [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)
 (DSH). One install turns a plain DSH setup into a working environment for real coding work: a main
 agent that reads your project rules, eleven specialists you can consult or delegate to, a library of
-durable "workmate" agents that remember what they learned, multi-agent teams on the harness's own
-Agent Teams plugin, a served skill corpus, MCP servers for code intelligence, and an extension
+durable "workmate" agents that remember what they learned, multi-agent teams that run on this
+bundle's own team record, a served skill corpus, MCP servers for code intelligence, and an extension
 interface other packages can contribute to.
 
 **It is one product on two surfaces.** Everything below exists in the **DSH Web GUI** *and* in the
@@ -82,10 +82,13 @@ recorded deviations. Read the ledger before you rely on the TUI for a Web capabi
   *mechanically* rather than by convention.
 - **A workmate library that accumulates** — instantiate a specialist as a durable agent under
   `~/.mpd/workmate/`; it self-summarizes after each session, evolving its own persona and memory.
-- **Real multi-agent teams** — the harness's official Agent Teams plugin, driven by the `mpd` rows
-  through the `agent_teams_plan` door and the `agent_teams_task` / `agent_teams_dispatch` board; the
-  official authoring verbs (`spawn_teammate`, `team_task_*`) are REFUSED at the tool boundary. A
-  durable mailbox, a Web panel and a TUI scene read the same live record.
+- **Real multi-agent teams** — the team plane is the **mpd RECORD** (`.mpd/team/teams/<id>.json`,
+  served as `mpdTeams`), executed by the adapter's **native** `TeamExecutor` backend by DEFAULT; `mpd`
+  rows drive it through the `agent_teams_plan` door and the `agent_teams_task` / `agent_teams_dispatch`
+  board, and the official authoring verbs (`spawn_teammate`, `team_task_*`) are REFUSED at the tool
+  boundary. The official `dsh.team*` service is only the contained FALLBACK for a composition that runs
+  the official executor (its rows are disabled in a TUI composition). A durable mailbox, a Web panel
+  and a TUI scene read the same live record.
 - **A durable plan ledger** — ULW rounds with per-criterion PIN → RED → GREEN → SURFACE → CLEAN, a
   boulder ledger anchored to a plan file, and a persisted goal that survives across sessions.
 - **Memory and edits that hold up** — a VCS-backed memory store with a reflection state machine, plus
@@ -153,8 +156,8 @@ the install mounts — is in the [user guide](./docs/user-guide.md#1-install).
    `agent_teams_plan` (`add_member` → `create_task`, each task declaring its dependency answer —
    `blocked_by` or `independent: true` — → `approve`), then drives the board with `agent_teams_task`
    and `agent_teams_dispatch` plus `send_message` / `wait_agent`; the official `spawn_teammate` /
-   `team_task_*` verbs are REFUSED at the tool boundary. Watch the roster and the shared board in the
-   Web panel's **Agent Teams** view, or in the TUI's `/mpd team` scene.
+   `team_task_*` verbs are REFUSED at the tool boundary. Watch the roster and the shared board in this
+   bundle's **Team** sidebar view, or in the TUI's `/mpd team` scene.
 6. **Teach it a capability.** Put an extension directory into `<workspace>/.mpd/extensions/` and check
    it with `mpd_ext_list`.
 
@@ -174,7 +177,8 @@ use the Architect to review the retry logic in src/queue.ts
 ![A strip of the DSH-TUI's keyed status line: the mpd row naming the team and its progress, boulder, plans and workmates.](./docs/assets/images/tui-status-line.png)
 
 The status line, the `/mpd` command tree and the `/settings` section are terminal-native surfaces;
-their Web counterparts are the Agent Teams panel, the Workmates tab and Settings → MPD.
+their Web counterparts are the bundle's **Team** / **Team watchdog** views, the Workmates tab and
+Settings → MPD.
 
 ## Usage
 

@@ -274,6 +274,83 @@ async function resolveRunRoute(dsh, primary, fallbacks = []) {
   const route = catalog === undefined ? winner : adaptEffortWithCatalog(catalog, winner);
   return { route, index, fallback: index > 0, dropped };
 }
+function rosterNameHead(label) {
+  if (typeof label !== "string")
+    return "";
+  return label.split(/[—–:|]|\s-\s/)[0]?.trim() ?? "";
+}
+function memberIdentityCandidates(identity) {
+  const candidates = [];
+  if (typeof identity?.role === "string" && identity.role.trim() !== "")
+    candidates.push(identity.role.trim());
+  const head = rosterNameHead(identity?.description);
+  if (head !== "")
+    candidates.push(head);
+  if (typeof identity?.name === "string" && identity.name.trim() !== "")
+    candidates.push(identity.name.trim());
+  const seen = new Set;
+  const unique = [];
+  for (const candidate of candidates) {
+    const key = candidate.toLowerCase();
+    if (seen.has(key))
+      continue;
+    seen.add(key);
+    unique.push(candidate);
+  }
+  return unique;
+}
+function resolveTeamMemberRoute(identity, slotResolutionOf) {
+  if (typeof slotResolutionOf !== "function")
+    return { status: "no-config-service" };
+  for (const candidate of memberIdentityCandidates(identity)) {
+    let answer;
+    try {
+      answer = slotResolutionOf(candidate);
+    } catch {
+      continue;
+    }
+    if (answer === null || typeof answer !== "object")
+      continue;
+    const slotAnswer = answer;
+    if (slotAnswer.ok === true) {
+      const provider = typeof slotAnswer.route?.provider === "string" ? slotAnswer.route.provider.trim() : "";
+      const model = typeof slotAnswer.route?.model === "string" ? slotAnswer.route.model.trim() : "";
+      const slot = typeof slotAnswer.slot === "string" ? slotAnswer.slot : "";
+      if (provider === "" || model === "") {
+        return {
+          status: "unusable",
+          member: candidate,
+          ...slot === "" ? {} : { slot },
+          reason: "invalid",
+          detail: typeof slotAnswer.message === "string" && slotAnswer.message !== "" ? slotAnswer.message : `the mpdConfig service reported a usable slot for ${candidate} but returned no provider/model route`
+        };
+      }
+      const effort = typeof slotAnswer.route?.reasoningEffort === "string" ? slotAnswer.route.reasoningEffort.trim() : "";
+      return {
+        status: "routed",
+        member: candidate,
+        slot,
+        route: { provider, model, ...effort === "" ? {} : { reasoningEffort: effort } },
+        fallbacks: Array.isArray(slotAnswer.fallbacks) ? slotAnswer.fallbacks : []
+      };
+    }
+    if (slotAnswer.ok === false) {
+      if (slotAnswer.status === "unrouted")
+        continue;
+      if (slotAnswer.status === "unconfigured" || slotAnswer.status === "invalid") {
+        const detail = typeof slotAnswer.message === "string" && slotAnswer.message !== "" ? slotAnswer.message : `the mpdConfig service reported ${slotAnswer.status} for ${candidate}`;
+        return {
+          status: "unusable",
+          member: candidate,
+          ...typeof slotAnswer.slot === "string" && slotAnswer.slot !== "" ? { slot: slotAnswer.slot } : {},
+          reason: slotAnswer.status,
+          detail
+        };
+      }
+    }
+  }
+  return { status: "unmatched" };
+}
 function textBlock(content) {
   return [{ type: "text", text: typeof content === "string" ? content : String(content ?? "") }];
 }
@@ -690,6 +767,31 @@ function createDshAdapter(ctx, config = {}) {
       return;
     }
   };
+  const configSlotResolver = () => {
+    const config2 = service("mpdConfig");
+    if (config2 === undefined || config2 === null)
+      return;
+    if (typeof config2.slotResolutionOf !== "function" && typeof config2.teamModelRouteOf !== "function")
+      return;
+    return (member) => {
+      if (typeof config2.slotResolutionOf === "function") {
+        try {
+          const answer = config2.slotResolutionOf.call(config2, member);
+          if (answer !== null && typeof answer === "object" && typeof answer.ok === "boolean")
+            return answer;
+        } catch {}
+      }
+      if (typeof config2.teamModelRouteOf === "function") {
+        try {
+          const route = config2.teamModelRouteOf.call(config2, member);
+          if (route !== null && typeof route === "object")
+            return { ok: true, slot: "", route, fallbacks: [] };
+        } catch {}
+        return { ok: false, status: "unrouted", slot: undefined };
+      }
+      return;
+    };
+  };
   function requireService(serviceName, needed) {
     const found = service(serviceName);
     if (found === undefined || found === null) {
@@ -892,13 +994,24 @@ function createDshAdapter(ctx, config = {}) {
         if (!ready)
           throw new Error(`mpd-dsh-adapter: no team executor is available — ${reason}`);
         const subagents = requireService("subagents", `cannot raise team member "${request.name}"`);
+        let agentOptions = request.agentOptions;
+        if (agentOptions === undefined) {
+          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configSlotResolver());
+          if (outcome.status === "routed") {
+            const resolved = await resolveRunRoute({ llmCatalog }, outcome.route, outcome.fallbacks);
+            agentOptions = resolved.route;
+          } else {
+            const line = outcome.status === "unusable" ? `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — its slot is unusable: ${outcome.detail}` : outcome.status === "no-config-service" ? `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — no mpdConfig service is mounted (is the mpd-config row present?)` : `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — its role, description head and name name no roster member`;
+            rowLogLine("mpd-dsh-adapter", line);
+          }
+        }
         const spec = {
           provider: typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn",
           label: `${request.name} · ${request.teamId}`,
           request: {
             prompt: textBlock(request.prompt),
             parent: caller,
-            ...request.agentOptions === undefined ? {} : { agentOptions: request.agentOptions }
+            ...agentOptions === undefined ? {} : { agentOptions }
           },
           signal: request.signal ?? neverAborted()
         };

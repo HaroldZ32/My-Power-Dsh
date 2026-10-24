@@ -2,24 +2,31 @@
 
 **English** | [中文](./README.zh-CN.md)
 
-Per-member model routing for **official Agent Teams teammates**. A teammate runs on the route of the
-session that staged it, and the official `TeamService` forwards only `{ prompt, parent }` — so the mpd
-`teamModels` slots, which do route the one-shot consult paths, had no way to reach a teammate. This
-package closes that gap **without forking the official plugin**: it applies a member's slot when the
-teammate `description` NAMES that member.
+Per-member model routing for the **official Agent Teams fallback path**. This row is HISTORICAL wiring:
+in a DEFAULT composition it routes **nothing**, because the native `TeamExecutor` resolves team members'
+slots itself and the official `spawn_teammate` TOOL that reaches this package's provider is REFUSED at
+the tool boundary. The default rule: a member's `teamModels` slot is resolved by identity precedence
+`role` → the head of `description` → the whole `name`; an UNMATCHED member, or one whose slot is
+unconfigured, INHERITS the staging session's route (the captain's in a top-level spawn, the Lead's in a
+team-lead spawn) with one log line and no throw. This package remains the contained fallback for a
+composition that runs the official executor and whose ROW raises teammates through the team service:
+there the official `TeamService` forwards only `{ prompt, parent }`, so it applies a member's slot when
+the teammate's descriptor label names that member.
 
 **Bound.** The five official AUTHORING verbs — `spawn_teammate`, `team_task_create`,
 `team_task_list`, `team_task_get`, `team_task_update` — are REFUSED at the tool boundary, and the mpd
 RECORD is the only board (the door is `agent_teams_plan`, driven by `agent_teams_task` /
-`agent_teams_dispatch`). This routing therefore serves a teammate a ROW raises by calling the team
-SERVICE directly (the official-executor fallback): that is not a tool call and is NOT gated.
+`agent_teams_dispatch`). This routing therefore serves only a teammate a ROW raises by calling the team
+SERVICE directly (the official-executor fallback): that is not a tool call and is NOT gated — and a
+DEFAULT (native-executor) composition never takes this path at all.
 
 The slot is the ONLY route source (`contract .mpd/plans/slot-single-source.md` §6): `agentRoutes` is
-deleted, a slot-routed member whose slot is unconfigured or malformed REFUSES the spawn with the
-structured `SLOT_UNCONFIGURED` failure — thrown before `base.start`, so the composition's own provider
-is never reached and no child is started — and the slot's own `fallbacks` chain is consumed once
-(catalog-positive first win) before the route is applied. A teammate whose `description` names no
-roster member is forwarded by identity: inheritance, unchanged.
+deleted; on THIS path, a slot-routed member whose slot is unconfigured or malformed REFUSES the spawn
+with the structured `SLOT_UNCONFIGURED` failure — thrown before `base.start`, so the composition's own
+provider is never reached and no child is started — and the slot's own `fallbacks` chain is consumed
+once (catalog-positive first win) before the route is applied. A teammate whose label names no roster
+member is forwarded by identity (inheritance). The DEFAULT native executor does not throw: it INHERITS
+the staging session's route with one log line and no throw.
 
 ## How it works
 
@@ -39,12 +46,15 @@ provider** and applies the member's slot route on the way through, and the bundl
 
 ## Which member a teammate is
 
-The team service forwards no name — `request` is `{ prompt, parent }` — so the identity channel is the
-descriptor **label**, i.e. the teammate's `description`. The contract is:
+The team service forwards no name — `request` is `{ prompt, parent }` — so the identity channel on THIS
+path is the descriptor **label**, i.e. the teammate's `description`, and only its HEAD is read. The
+DEFAULT native path has three channels and reads them in this order: `role` → the description head →
+the whole `name`. `rosterNameHead` in the adapter is the ONE head-splitting implementation, so the two
+paths cannot disagree about what "the head of a description" means. The contract is therefore:
 
-> A description that NAMES a roster member routes that member; any other teammate runs on the route of
-> the session that staged it (the captain's in a top-level spawn, the Lead's in a team-lead spawn), and
-> prompt text cannot change a route.
+> A member whose identity names a roster member is routed by that member's slot; an UNMATCHED member,
+> or one whose slot is unconfigured, INHERITS the route of the session that staged it (the captain's in
+> a top-level spawn, the Lead's in a team-lead spawn). Prompt text cannot create an identity.
 
 The name is the text before the first separator (`—`, `–`, `:`, `|`, ` - `), matched
 case-insensitively and longest-name-first, so `"Senior Engineer — implements the parser"` routes
@@ -65,10 +75,12 @@ render — is imported, never restated:
 
 ## Failure
 
-A member that HAS a slot whose provider or model is unset **fails the spawn loudly, naming the member
-and the slot**, writes no state, and never clamps an effort — the rule the one-shot paths already
-follow. A teammate whose label names no roster member is not routed at all: it runs on the staging
-session's route, which is what every teammate did before this row existed.
+On the official SERVICE path, a member that HAS a slot whose provider or model is unset **fails that
+spawn loudly, naming the member and the slot**, writes no state, and never clamps an effort — the rule
+the one-shot paths already follow. In the DEFAULT native composition a slot can never fail a teammate:
+an unusable slot is reported in ONE log line and the member inherits the staging session's route. A
+teammate whose identity names no roster member is not routed by this package: it is forwarded by
+identity.
 
 ### The reasoning-effort adaptation
 
@@ -92,6 +104,7 @@ evidence of anything. Nothing is ever substituted FOR the effort, so this is not
 
 - Routing is resolved at SPAWN time from the live config; changing a slot affects the next teammate,
   not one already running.
-- A teammate whose label names no roster member is not routed: it runs on the route of the session that
-  staged it. That is a property of the one identity channel the team service forwards, not a policy
-  choice, and prompt text cannot change it.
+- A teammate whose identity names no roster member, or whose slot is unconfigured, INHERITS the route
+  of the session that staged it, and the native executor logs that once. On this official path the only
+  identity channel is the descriptor label the team service forwards, so prompt text cannot create one.
+- In a DEFAULT composition this package routes nothing: the native `TeamExecutor` owns the decision.

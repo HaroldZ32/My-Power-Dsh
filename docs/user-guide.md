@@ -282,7 +282,7 @@ and integrates the results.
 agent_teams_plan { action }                                                # Lead only: create | add_member | create_task | edit | approve | delete | status
 agent_teams_plan { action: "add_member", member } / { action: "create_task", task }   # Lead only; each task declares blocked_by or independent
 agent_teams_plan { action: "status" }                                      # the plan and every task on the board
-agent_teams_task { task_id, action, expected_revision? }                   # the board: claim | release | complete | fail
+agent_teams_task { task_id, action, expected_revision? }                   # the board: claim | contract | depend | release | complete | fail
 agent_teams_dispatch { action: "run", limit?, dry_run? }                  # pair ready tasks with idle members
 send_message { target, message } / list_agents { } / wait_agent { timeout_ms }
 interrupt_agent { target }                                                # Lead only
@@ -333,9 +333,9 @@ interrupt_agent { target }                                                # Lead
   stays withdrawn: the captain writes code, a different agent records the verdict. Both knobs live under
   the `mpd` settings namespace (§9); `captain.investigation` takes `deny` | `allow`, `delegation.gate`
   takes `deny` | `captain` (the top-level session only) | `allow`.
-- **The board is compare-and-set.** `agent_teams_task` carries the `expected_revision` you read and
-  answers a stale revision with an error instead of overwriting newer work. Actions: `claim`,
-  `release`, `complete`, `fail`.
+- **The board's compare-and-set is asymmetric.** `release` and `complete`/`fail` honour
+  `expected_revision` — a stale value is refused with both revisions and no write; `claim`, `contract`
+  and `depend` do not read it, so `claim` always freezes a new attempt from its own read.
 - **`write_scopes` are advisory.** Two in-progress tasks that plan to touch overlapping paths raise a
   warning; the board never blocks a claim and never authorizes a write, and bash/formatters/codegen
   bypass every check — the Lead coordinates ownership and reviews the final diff.
@@ -352,13 +352,17 @@ interrupt_agent { target }                                                # Lead
   from that member's `teamModels.slot{N}`: its configured `provider` + `model`, its optional
   `reasoningEffort`, plus the slot's OWN optional `fallbacks` chain. `agentRoutes` is DELETED: a
   leftover block in an old file is ignored and never rewritten. A slot that is not configured (or whose
-  leaf is malformed) REFUSES the spawn with ONE structured `SLOT_UNCONFIGURED` error naming the slot,
-  its members, the missing leaves and both recovery paths — nothing is written and no child is started.
+  leaf is malformed) REFUSES a SINGLE-CALL spawn (`mpd_role_spawn` / `mpd_workmate_spawn`) with ONE
+  structured `SLOT_UNCONFIGURED` error naming the slot, its members, the missing leaves and both
+  recovery paths — nothing is written and no child is started.
   The chain is consumed ONCE before the spawn: the first route the model catalog POSITIVELY lists wins
-  (a route nobody listed is not thereby unavailable), and the winner's effort is adapted. A teammate
-  `description` that NAMES a roster member is routed by that member's slot; any other teammate runs on
-  the route of the session that staged it (the captain's in a top-level spawn, the Lead's in a
-  team-lead spawn), and prompt text cannot change a route.
+  (a route nobody listed is not thereby unavailable), and the winner's effort is adapted. The FOUR
+  slots apply to those single-call consults AND to team members: the team executor resolves a member's
+  slot by identity precedence **`role` → the HEAD of `description` → the whole `name`**. A member it
+  cannot match, or one whose slot is unconfigured, INHERITS the staging session's route (the captain's
+  in a top-level spawn, the Lead's in a team-lead spawn) with ONE log line and NO throw — a slot never
+  leaves a team half-built. `mpd-roster-provider` serves only the official `spawn_teammate` path, which
+  the team-door guard refuses, so it routes nothing in a default composition.
 - **Workmate-backed members are a prompt, not an injection.** Nothing carries a workmate's persona
   into a teammate automatically any more: initialize or pick the workmate
   (`mpd_workmate_init` / `mpd_workmate_match`), read what it should carry, and put that text into the
@@ -376,8 +380,8 @@ agent_teams_plan { "action": "create_task", "task": { "subject": "Rewrite the in
 
 # work the board (any member)
 agent_teams_plan { "action": "status" }
-agent_teams_task { "task_id": "task-3", "action": "claim", "expected_revision": 2 }
-agent_teams_task { "task_id": "task-3", "action": "complete", "expected_revision": 3 }
+agent_teams_task { "task_id": "T3", "action": "claim", "expected_revision": 2 }
+agent_teams_task { "task_id": "T3", "action": "complete", "expected_revision": 3 }
 agent_teams_dispatch { "action": "run" }
 
 # coordinate
@@ -581,7 +585,7 @@ rather than by a graph-layout library.
 | `extensions.mcp.*` | mpd-ext | MCP bridge defaults: `enabled`, `connectTimeoutMs`, `toolCallTimeoutMs` |
 | `modelchain.*` | mpd-modelchain | provider/model chains per roster role |
 | `team.stateDir` | the mpd plugins that read legacy team records (watchdog web routes, compaction, the TUI team scene, the workmate in-use check) | where those records live (defaults to `.mpd/team`). The official team plugin does not read it |
-| `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate / mpd-roster-provider (via mpd-config) | the four **team-model slots**: ONE configured route per slot — `{provider, model, reasoningEffort?}` plus the slot's OWN optional `fallbacks: [{provider, model, reasoningEffort?}, …]`, in precedence order. **There is no built-in default layer** (`TEAM_MODEL_SLOT_DEFAULTS` is gone): a slot the workspace never configured has NO route, and every spawn it would route is REFUSED with ONE structured `SLOT_UNCONFIGURED` error naming the slot, its members, the missing leaves, and both recovery paths (`/mpd-model`, or `teamModels.slotN` in `.mpd/mpd.jsonc`) — nothing is written and no child is started. The fallback chain is consumed ONCE before the spawn: the first route the live catalog POSITIVELY lists wins ("not listed" is not "unavailable"; with no positive listing the primary stands), the winner then passes the reasoning-effort adaptation, and a malformed entry is dropped with one log line — never fatal. Slot 1 routes Architect/Planner/Reviewer/Lead/Senior Engineer, slot 2 Researcher/Explorer/Plan Reviewer, slot 3 Deep Worker/Junior Engineer, slot 4 Vision Analyst — the vision member, whose slot model MUST accept image input. A team member gets a slot only when its `description` NAMES a roster member; any other member runs on the route of the session that staged it (§6). An effort is never silently clamped; the ONE exception is a model whose catalog entry declares NO reasoning efforts at all — it is sent none, so the spawn still runs. **Initial config is FILE initialization, not a runtime default:** a workspace whose `.mpd/mpd.jsonc` declares no `teamModels` is seeded ONCE at mount, from your configured providers via the LLM catalog (model = the `deepseek-flash` family; slot1 `max`, slots 2-4 `high`), and an existing block or user edit is never rewritten; a successful seed is durably marked in `<workspace>/.mpd/model-config-seed.json` (created once, never overwritten, consulted before any attempt), so a block you delete on purpose is NEVER re-seeded — if the catalog is unavailable nothing is written and the first spawn reports `SLOT_UNCONFIGURED`. Editable as selection-only fields in **Settings → MPD** and the TUI `/settings` section (an unconfigured slot renders `<unconfigured>` with the leaves it lacks); a saved change is re-read in the running process, no restart (`mpd_config_reload` forces it). |
+| `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate / mpd-dsh-adapter (native team executor) / mpd-roster-provider (official fallback) (via mpd-config) | the four **team-model slots**: ONE configured route per slot — `{provider, model, reasoningEffort?}` plus the slot's OWN optional `fallbacks: [{provider, model, reasoningEffort?}, …]`, in precedence order. **There is no built-in default layer** (`TEAM_MODEL_SLOT_DEFAULTS` is gone): a slot the workspace never configured has NO route, and every single-call spawn it would route is REFUSED with ONE structured `SLOT_UNCONFIGURED` error naming the slot, its members, the missing leaves, and both recovery paths (`/mpd-model`, or `teamModels.slotN` in `.mpd/mpd.jsonc`) — nothing is written and no child is started. The fallback chain is consumed ONCE before the spawn: the first route the live catalog POSITIVELY lists wins ("not listed" is not "unavailable"; with no positive listing the primary stands), the winner then passes the reasoning-effort adaptation, and a malformed entry is dropped with one log line — never fatal. Slot 1 routes Architect/Planner/Reviewer/Lead/Senior Engineer, slot 2 Researcher/Explorer/Plan Reviewer, slot 3 Deep Worker/Junior Engineer, slot 4 Vision Analyst — the vision member, whose slot model MUST accept image input. A team member's slot is resolved by identity precedence `role` → the HEAD of its `description` → its whole `name`; a member it cannot match, or one whose slot is unconfigured, INHERITS the staging session's route with one log line and no throw (§6), and `mpd-roster-provider` routes only on the official-executor fallback path, which the team-door guard refuses in a default composition. An effort is never silently clamped; the ONE exception is a model whose catalog entry declares NO reasoning efforts at all — it is sent none, so the spawn still runs. **Initial config is FILE initialization, not a runtime default:** a workspace whose `.mpd/mpd.jsonc` declares no `teamModels` is seeded ONCE at mount, from your configured providers via the LLM catalog (model = the `deepseek-flash` family; slot1 `max`, slots 2-4 `high`), and an existing block or user edit is never rewritten; a successful seed is durably marked in `<workspace>/.mpd/model-config-seed.json` (created once, never overwritten, consulted before any attempt), so a block you delete on purpose is NEVER re-seeded — if the catalog is unavailable nothing is written and the first spawn reports `SLOT_UNCONFIGURED`. Editable as selection-only fields in **Settings → MPD** and the TUI `/settings` section (an unconfigured slot renders `<unconfigured>` with the leaves it lacks); a saved change is re-read in the running process, no restart (`mpd_config_reload` forces it). |
 
 `mpd-codegraph` is deliberately absent from this table: it takes `autoInit`, `initTimeoutMs`,
 `cooldownMs` and `binary` from its **bundle-patch row** options (read at apply time), and no plugin
@@ -622,7 +626,7 @@ Three things do not wait for that restart, and all are useful:
 | `modelchain.*` | mpd-modelchain | per call, from the live service | live — no restart: every `mpd_modelchain_resolve` re-reads the overlay, so a settings save or a file edit changes the next resolution; `mpd_config_reload` forces a re-read |
 | `extensions.enable` / `.disable` / `.mcp.*` | mpd-ext | when the plugin starts (process-level) | after a restart |
 | `team.stateDir` | the mpd plugins that read legacy team records, through the live service | per call | right after the service re-reads the file (`mpd_config_reload`, or any settings save). These are LEGACY records: the official team plugin keeps its roster, mailbox and board in the Lead's session log, not here |
-| `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate (single-call consult paths `mpd_role_spawn`, `mpd_workmate_spawn`) and mpd-roster-provider (a team member whose `description` names a roster member) | at spawn, from the live service | live — no restart: a settings save or a hand edit of `<workspace>/.mpd/mpd.jsonc` is re-read in-process, so the NEXT spawn carries it; `mpd_config_reload` forces a re-read. ONE route per slot with no default layer: an unconfigured or malformed slot REFUSES the spawn with `SLOT_UNCONFIGURED` (nothing written, no child started), and the slot's own `fallbacks` chain is consumed once before the spawn. A team member whose `description` NAMES a roster member IS routed by that member's slot; any other member runs on the route of the session that staged it, and prompt text cannot change a route |
+| `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate (single-call consult paths `mpd_role_spawn`, `mpd_workmate_spawn`), mpd-dsh-adapter (native team executor: every team member), and mpd-roster-provider (official-executor fallback only) | at spawn, from the live service | live — no restart: a settings save or a hand edit of `<workspace>/.mpd/mpd.jsonc` is re-read in-process, so the NEXT spawn carries it; `mpd_config_reload` forces a re-read. ONE route per slot with no default layer: an unconfigured or malformed slot REFUSES a single-call spawn with `SLOT_UNCONFIGURED` (nothing written, no child started), while a team member never fails on its slot, and the slot's own `fallbacks` chain is consumed once before the spawn. A team member's slot is resolved by `role` → the HEAD of its `description` → its whole `name`; an UNMATCHED member, or one whose slot is unconfigured, INHERITS the staging session's route with one log line and no throw |
 | `watchdog.*` | mpd-team-watchdog | at mount, on a settings update, and every tick | live — no restart |
 
 `mpd-codegraph`'s knobs are the exception that proves the rule: they are patch-row options
@@ -765,20 +769,19 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp   # start from a working skele
 ## 12. Command reference
 
 Every slash command a session can use, with where each one works. The table carries two classes: the
-**four commands this bundle contributes** (`mpd-ulw` registers `/ulw` and `/ultrawork`,
-`mpd-codegraph` registers `/mpd-codegraph`, and `mpd-tui` registers `/mpd`), and the **two
-HOST-provided commands the bundle only documents** — `/settings`, the host's TUI settings screen
-(whose MPD section the bundle extends), and `/goal`, the host goal command the `mpd` preset mounts.
-Nothing else exists — in particular **there is no `/roster` command** (the roster is reached with the
-`mpd_roles_list` tool) and **no `/agent-teams` command** (team work is driven by the `agent_teams_plan`
-/ `agent_teams_task` tools; the retired vendored plugin that registered that command is no
-longer mounted).
+**five commands this bundle contributes** (`mpd-ulw` registers `/ulw` and `/ultrawork`,
+`mpd-codegraph` registers `/mpd-codegraph`, `mpd-tui` registers `/mpd`, and the team row registers
+`/agent-teams`), and the **two HOST-provided commands the bundle only documents** — `/settings`, the
+host's TUI settings screen (whose MPD section the bundle extends), and `/goal`, the host goal command
+the `mpd` preset mounts. Nothing else exists — in particular **there is no `/roster` command** (the
+roster is reached with the `mpd_roles_list` tool).
 
 | Command | What it does | Where |
 |---|---|---|
 | `/ulw <objective>` | starts the ultrawork loop on the objective — the same engine as `mpd_ulw`, at the lighter default tier | Web + TUI |
 | `/ultrawork <objective>` | identical to `/ulw` (both submit the ULW activation directive as your own next turn) | Web + TUI |
 | `/mpd-codegraph` | resolves the codegraph binary and initialises/refreshes the project index under `.codegraph/` | Web + TUI |
+| `/agent-teams <what the team is for>` | the team row registers exactly ONE command: it stages a required-approval plan from the text (nobody is spawned until you approve it) and prints usage when called without arguments | Web + TUI |
 | `/mpd` | the TUI command tree over bundle state: a bare `/mpd` opens the picker, `/mpd <value>` goes direct, `/mpd status` prints the summary | **TUI only** — under Web the registration is refused and nothing is exposed |
 | `/settings` | the host's settings screen; the MPD section edits your `mpd.jsonc` | **TUI only** |
 | `/goal` | the host's goal command, mounted by the `mpd` preset (the Web overlay disables the host's own `tool-goal` / `command-goal` rows, so the preset carries both) | Web + TUI |
@@ -812,8 +815,8 @@ agent_teams_plan { "action": "approve" }                              # ← THIS
 
 # (c) working the board (compare-and-set: re-read before every update)
 agent_teams_plan { "action": "status" }                                // → the board, with revisions
-agent_teams_task { "task_id": "task-1", "action": "claim", "expected_revision": 1 }
-agent_teams_task { "task_id": "task-1", "action": "complete", "expected_revision": 2 }
+agent_teams_task { "task_id": "T1", "action": "claim", "expected_revision": 1 }
+agent_teams_task { "task_id": "T1", "action": "complete", "expected_revision": 2 }
 
 # (d) driving a running team
 list_agents {}
@@ -951,19 +954,20 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp --with-mcp
 # Lead (the session agent)
 agent_teams_plan { "action": "status" }                          # the planned members and the active board, with revisions
 agent_teams_dispatch { "action": "run" }                          # pair ready tasks with idle members
-send_message { "target": "junior-1", "message": "task-5 needs the design-doc link target." }
+send_message { "target": "junior-1", "message": "T5 needs the design-doc link target." }
 list_agents {}                                                   # targets + availability
 wait_agent { "timeout_ms": 60000 }                               # next roster/message/task edge
 interrupt_agent { "target": "junior-1" }                         # stop the current turn, keep the inbox
 
 # member
-agent_teams_task { "task_id": "task-5", "action": "claim", "expected_revision": 4 }
-agent_teams_task { "task_id": "task-5", "action": "complete", "expected_revision": 5, "note": "…progress + evidence…" }
-send_message { "target": "lead", "message": "task-5 done: `bun run verify:docs` passes." }
+agent_teams_task { "task_id": "T5", "action": "claim", "expected_revision": 4 }
+agent_teams_task { "task_id": "T5", "action": "complete", "expected_revision": 5, "note": "…progress + evidence…" }
+send_message { "target": "lead", "message": "T5 done: `bun run verify:docs` passes." }
 ```
 
-Every mutation carries the `expected_revision` the caller read; a stale one is refused with a typed
-error, so a reassigned task cannot silently accept a late result. `write_scopes` warn about overlap
+Only `release` and `complete`/`fail` carry the `expected_revision` the caller read, and a stale one is
+refused with a typed error, so a reassigned task cannot silently accept a late result; `claim`,
+`contract` and `depend` take no revision. `write_scopes` warn about overlap
 and never authorize a write, so report what you changed in the task description (or a message) rather
 than relying on the scope list. A result is not accepted because a teammate says so: the Lead waits
 for the team (`wait_agent`, then re-read) and verifies the diff before answering.

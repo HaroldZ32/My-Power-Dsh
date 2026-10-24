@@ -254,7 +254,7 @@ dsh-tui 宿主拒绝团队服务那个绑定在 root 上的投影（行清单见
 agent_teams_plan { action }                                                # 仅 Lead：create | add_member | create_task | edit | approve | delete | status
 agent_teams_plan { action: "add_member", member } / { action: "create_task", task }   # 仅 Lead；每个任务都要声明 blocked_by 或 independent
 agent_teams_plan { action: "status" }                                      # 计划与任务板上的每个任务
-agent_teams_task { task_id, action, expected_revision? }                   # 任务板：claim | release | complete | fail
+agent_teams_task { task_id, action, expected_revision? }                   # 任务板：claim | contract | depend | release | complete | fail
 agent_teams_dispatch { action: "run", limit?, dry_run? }                  # 把就绪任务与空闲成员配对
 send_message { target, message } / list_agents { } / wait_agent { timeout_ms }
 interrupt_agent { target }                                                # 仅 Lead
@@ -296,8 +296,9 @@ interrupt_agent { target }                                                # 仅 
   `write` / `edit` / `bash` **不受**该门限制，验证法则的写入守卫（`verify.mode`）仍处于撤销状态：
   由 captain 写代码，由**另一个**智能体记录判决。两个旋钮都在 `mpd` 设置命名空间下（§9）：
   `captain.investigation` 取 `deny` | `allow`，`delegation.gate` 取 `deny` | `captain`（仅顶层会话）| `allow`。
-- **任务板是 compare-and-set 的。** `agent_teams_task` 要带上你读到的 `expected_revision`，过期
-  revision 会得到错误而不是覆盖更新的工作。动作有 `claim`、`release`、`complete`、`fail`。
+- **任务板的 compare-and-set 是不对称的。** `release` 与 `complete`/`fail` 会遵守
+  `expected_revision` —— 过期值会被拒绝，并同时返回两个 revision 且不写入；`claim`、`contract`
+  与 `depend` 不读它，所以 `claim` 总是从自己读到的最新状态冻结一个新的 attempt。
 - **`write_scopes` 只是提示。** 两个进行中的任务如果计划触碰重叠路径，只会收到警告；任务板从不阻止
   认领，也从不授权写入，而 bash/格式化器/代码生成器会绕过一切检查 —— 由 Lead 协调归属并审阅最终
   diff。
@@ -313,11 +314,14 @@ interrupt_agent { target }                                                # 仅 
 - **槽位是名册成员唯一的路由来源 —— 而且不再有内置默认层。** 一切路由都来自该成员的
   `teamModels.slot{N}`：配置好的 `provider` + `model`、可选的 `reasoningEffort`，以及该槽位**自己**的
   可选 `fallbacks` 链。`agentRoutes` 已**删除**：旧文件里残留的块会被忽略，且永远不会被改写。未配置
-  （或叶子格式错误）的槽位会用一个结构化的 `SLOT_UNCONFIGURED` 错误**拒绝** spawn，点名槽位、它路由的
+  （或叶子格式错误）的槽位会用一个结构化的 `SLOT_UNCONFIGURED` 错误**拒绝单次 spawn**，点名槽位、它路由的
   成员、缺失的叶子与两条修复路径 —— 不写入任何内容，也不启动任何子会话。回退链在 spawn 之前**只消费
   一次**：模型目录**正面列出**的第一条路由胜出（「未被列出」不等于「不可用」），胜出者再经过推理强度适配。
-  `description` **点名**名册成员的队友按该成员的槽位路由；其他队友运行在暂存它的那个会话的路由上
-  （顶层 spawn 是 captain 的，team-lead spawn 是 Lead 的），提示词文本无法改变路由。
+  **四个槽位**同时作用于这些单次咨询**和团队成员**：团队执行器按身份优先级 **`role` → `description`
+  的头部 → 整个 `name`** 解析成员的槽位。匹配不到的成员、或槽位未配置的成员，会**继承暂存它的那个
+  会话的路由**（顶层 spawn 是 captain 的，team-lead spawn 是 Lead 的），只记一行日志、**绝不抛错**——
+  槽位绝不会让团队半途而废。`mpd-roster-provider` 只服务于官方 `spawn_teammate` 通道，而该通道被
+  团队门禁拒绝，所以在默认组合里它不路由任何东西。
 - **由 workmate 背书的成员是一段提示词，而不是自动注入。** 现在已经没有任何东西会把某个 workmate
   的人设自动带进队友：先初始化或挑出该 workmate（`mpd_workmate_init` / `mpd_workmate_match`），
   读出它应当携带的内容，再把那段文本放进 `agent_teams_plan {action:"add_member"}` 的提示词；事后用
@@ -334,8 +338,8 @@ agent_teams_plan { "action": "create_task", "task": { "subject": "重写安装�
 
 # 操作任务板（任何成员）
 agent_teams_plan { "action": "status" }
-agent_teams_task { "task_id": "task-3", "action": "claim", "expected_revision": 2 }
-agent_teams_task { "task_id": "task-3", "action": "complete", "expected_revision": 3 }
+agent_teams_task { "task_id": "T3", "action": "claim", "expected_revision": 2 }
+agent_teams_task { "task_id": "T3", "action": "complete", "expected_revision": 3 }
 agent_teams_dispatch { "action": "run" }
 
 # 协调
@@ -510,7 +514,7 @@ Team 视图的这张图按团队状态提供的 rank 布局：每个 rank 一列
 | `extensions.mcp.*` | mpd-ext | MCP 桥默认值：`enabled`、`connectTimeoutMs`、`toolCallTimeoutMs` |
 | `modelchain.*` | mpd-modelchain | 各名册角色的 provider/model 链 |
 | `team.stateDir` | 读取旧版团队记录的 mpd 插件（看门狗 web 路由、压缩、TUI 团队界面、workmate 在用检查） | 这些记录的位置（默认 `.mpd/team`）。官方团队插件不读它 |
-| `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate / mpd-roster-provider（经 mpd-config） | 四个**团队模型槽位**：每个槽位是**一条**配置好的路由 —— `{provider, model, reasoningEffort?}`，外加该槽位**自己**的可选 `fallbacks: [{provider, model, reasoningEffort?}, …]`（按优先级排列）。**不再有任何内置默认层**（`TEAM_MODEL_SLOT_DEFAULTS` 已删除）：工作区从未配置的槽位**没有**路由，它要路由的每一次 spawn 都会被**拒绝**，并给出一个结构化的 `SLOT_UNCONFIGURED` 错误，点名槽位、成员、缺失的叶子与两条修复路径（`/mpd-model`，或 `.mpd/mpd.jsonc` 里的 `teamModels.slotN`）—— 不写入任何内容，也不启动子会话。回退链在 spawn 前**只消费一次**：实时目录**正面列出**的第一条路由胜出（「未被列出」不等于「不可用」；没有任何正面列出时主路由保留），胜出者随后经过推理强度适配，格式错误的条目会被丢弃并记一行日志 —— 绝不致命。槽位 1 路由 Architect/Planner/Reviewer/Lead/Senior Engineer，槽位 2 路由 Researcher/Explorer/Plan Reviewer，槽位 3 路由 Deep Worker/Junior Engineer，槽位 4 路由 Vision Analyst —— 视觉成员，其槽位模型**必须支持图像输入**。团队成员只有在 `description` **点名**名册成员时才取用槽位；其他成员跑在暂存它的会话的路由上（§6）。推理强度永远不会被悄悄钳制；唯一例外是模型在目录里完全没有推理等级 —— 则不发送任何等级，spawn 照常运行。**初始配置是文件初始化，不是运行时默认值：** 若工作区的 `.mpd/mpd.jsonc` 未声明 `teamModels`，挂载时会**只播种一次**：通过 LLM 目录从你已配置的提供商中选取模型（`deepseek-flash` 家族；槽位 1 为 `max`，槽位 2-4 为 `high`），已存在的块或用户编辑**永不改写**；成功的播种会在 `<workspace>/.mpd/model-config-seed.json` 中留下**持久标记**（只创建一次、永不覆盖、在任何尝试之前先检查），因此你**故意删除**的块**永远不会**被重新播种；目录不可用时不写任何内容，第一次 spawn 报告 `SLOT_UNCONFIGURED`。可在 **设置 → MPD** 与 TUI 的 `/settings` 区块中作为只可选择字段编辑（未配置的槽位渲染为 `<unconfigured>` 并列出缺失的叶子）；保存后的改动在运行中的进程里被重新读取，无需重启（`mpd_config_reload` 可强制重读）。 |
+| `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate / mpd-dsh-adapter（原生团队执行器）/ mpd-roster-provider（官方回退）（经 mpd-config） | 四个**团队模型槽位**：每个槽位是**一条**配置好的路由 —— `{provider, model, reasoningEffort?}`，外加该槽位**自己**的可选 `fallbacks: [{provider, model, reasoningEffort?}, …]`（按优先级排列）。**不再有任何内置默认层**（`TEAM_MODEL_SLOT_DEFAULTS` 已删除）：工作区从未配置的槽位**没有**路由，它要路由的每一次单次 spawn 都会被**拒绝**，并给出一个结构化的 `SLOT_UNCONFIGURED` 错误，点名槽位、成员、缺失的叶子与两条修复路径（`/mpd-model`，或 `.mpd/mpd.jsonc` 里的 `teamModels.slotN`）—— 不写入任何内容，也不启动子会话。回退链在 spawn 前**只消费一次**：实时目录**正面列出**的第一条路由胜出（「未被列出」不等于「不可用」；没有任何正面列出时主路由保留），胜出者随后经过推理强度适配，格式错误的条目会被丢弃并记一行日志 —— 绝不致命。槽位 1 路由 Architect/Planner/Reviewer/Lead/Senior Engineer，槽位 2 路由 Researcher/Explorer/Plan Reviewer，槽位 3 路由 Deep Worker/Junior Engineer，槽位 4 路由 Vision Analyst —— 视觉成员，其槽位模型**必须支持图像输入**。团队成员的槽位按身份优先级 `role` → `description` 的头部 → 整个 `name` 解析；匹配不到名册成员的、或槽位未配置的成员，会**继承暂存它的会话的路由**（§6），只记一行日志、绝不抛错；`mpd-roster-provider` 只在官方执行器回退通道上路由，而该通道在默认组合里被团队门禁拒绝。推理强度永远不会被悄悄钳制；唯一例外是模型在目录里完全没有推理等级 —— 则不发送任何等级，spawn 照常运行。**初始配置是文件初始化，不是运行时默认值：** 若工作区的 `.mpd/mpd.jsonc` 未声明 `teamModels`，挂载时会**只播种一次**：通过 LLM 目录从你已配置的提供商中选取模型（`deepseek-flash` 家族；槽位 1 为 `max`，槽位 2-4 为 `high`），已存在的块或用户编辑**永不改写**；成功的播种会在 `<workspace>/.mpd/model-config-seed.json` 中留下**持久标记**（只创建一次、永不覆盖、在任何尝试之前先检查），因此你**故意删除**的块**永远不会**被重新播种；目录不可用时不写任何内容，第一次 spawn 报告 `SLOT_UNCONFIGURED`。可在 **设置 → MPD** 与 TUI 的 `/settings` 区块中作为只可选择字段编辑（未配置的槽位渲染为 `<unconfigured>` 并列出缺失的叶子）；保存后的改动在运行中的进程里被重新读取，无需重启（`mpd_config_reload` 可强制重读）。 |
 
 `mpd-codegraph` 刻意不在上表中：它的 `autoInit`、`initTimeoutMs`、`cooldownMs` 与 `binary` 来自
 它的 **bundle-patch 行** 配置（在 apply 时读取），没有任何插件通过 `mpd.jsonc` 读取
@@ -548,7 +552,7 @@ Team 视图的这张图按团队状态提供的 rank 布局：每个 rank 一列
 | `modelchain.*` | mpd-modelchain | 每次调用，从实时服务读取 | 实时生效 —— 无需重启：每次 `mpd_modelchain_resolve` 都会重读该 overlay，因此设置保存或文件编辑会改变下一次解析；`mpd_config_reload` 可强制重读 |
 | `extensions.enable` / `.disable` / `.mcp.*` | mpd-ext | 插件启动时（进程级） | 重启后 |
 | `team.stateDir` | 读取旧版团队记录的 mpd 插件，经实时服务解析 | 每次调用 | 服务重新读取文件之后立即生效（`mpd_config_reload`，或任意一次设置保存）。这些是**旧版**记录：官方团队插件把名册、邮箱与任务板保存在 Lead 的会话日志里，不在这里 |
-| `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate（单次咨询通道 `mpd_role_spawn`、`mpd_workmate_spawn`），以及 mpd-roster-provider（其 `description` 点名名册成员的团队成员） | spawn 时，从实时服务读取 | 实时生效，无需重启：设置保存或手工编辑 `<workspace>/.mpd/mpd.jsonc` 都会在进程内被重新读取，因此下一次 spawn 即携带新值；`mpd_config_reload` 可强制重读。每个槽位**只有一条**路由、没有默认层：未配置或格式错误的槽位会用 `SLOT_UNCONFIGURED` **拒绝** spawn（不写入任何内容、不启动子会话），而该槽位自己的 `fallbacks` 链在 spawn 前被消费一次。若团队成员的 `description` 点名的是一位名册成员，它就**会**按该成员的槽位路由；其他成员运行在创建它的会话的路由上，提示词文本无法改变路由 |
+| `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate（单次咨询通道 `mpd_role_spawn`、`mpd_workmate_spawn`），mpd-dsh-adapter（原生团队执行器：每个团队成员），以及 mpd-roster-provider（仅官方执行器回退） | spawn 时，从实时服务读取 | 实时生效，无需重启：设置保存或手工编辑 `<workspace>/.mpd/mpd.jsonc` 都会在进程内被重新读取，因此下一次 spawn 即携带新值；`mpd_config_reload` 可强制重读。每个槽位**只有一条**路由、没有默认层：未配置或格式错误的槽位会用 `SLOT_UNCONFIGURED` **拒绝单次 spawn**（不写入任何内容、不启动子会话），而团队成员绝不因槽位失败；该槽位自己的 `fallbacks` 链在 spawn 前被消费一次。团队成员的槽位按 `role` → `description` 的头部 → 整个 `name` 解析；匹配不到名册成员的、或槽位未配置的成员，会**继承暂存它的会话的路由**，只记一行日志、绝不抛错 |
 | `watchdog.*` | mpd-team-watchdog | 挂载时、settings 更新时、每个 tick | 实时生效 —— 无需重启 |
 
 `mpd-codegraph` 的旋钮是反证这条规则的例外：它们是 patch 行选项（`autoInit`、`initTimeoutMs`、
@@ -674,19 +678,19 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp   # 从一个可工作的骨�
 
 ## 12. 命令参考
 
-会话中可用的全部斜杠命令，以及各自生效的位置。表里有两类：本 bundle **贡献的四条命令**
+会话中可用的全部斜杠命令，以及各自生效的位置。表里有两类：本 bundle **贡献的五条命令**
 （`mpd-ulw` 注册 `/ulw` 与 `/ultrawork`，`mpd-codegraph` 注册 `/mpd-codegraph`，`mpd-tui` 注册
-`/mpd`），以及本 bundle 只是
+`/mpd`，团队行注册 `/agent-teams`），以及本 bundle 只是
 **记录**的两条 **宿主命令** —— `/settings`（宿主 TUI 设置界面，其 MPD 区块由本 bundle 扩展）与
 `/goal`（宿主 goal 命令，由 `mpd` preset 挂载）。除此之外没有别的命令 —— 特别地，**不存在
-`/roster` 命令**（名册要通过 `mpd_roles_list` 工具访问），也**不存在 `/agent-teams` 命令**
-（团队工作由 `agent_teams_plan` / `agent_teams_task` 工具驱动；注册那条命令的内置插件已不再挂载）。
+`/roster` 命令**（名册要通过 `mpd_roles_list` 工具访问）。
 
 | 命令 | 作用 | 可用位置 |
 |---|---|---|
 | `/ulw <objective>` | 针对该目标启动 ultrawork 循环 —— 与 `mpd_ulw` 同一引擎，使用较轻的默认档位 | Web + TUI |
 | `/ultrawork <objective>` | 与 `/ulw` 完全相同（两者都会把 ULW 激活指令作为你的下一条用户消息提交） | Web + TUI |
 | `/mpd-codegraph` | 解析 codegraph 二进制并在 `.codegraph/` 下初始化/刷新项目索引 | Web + TUI |
+| `/agent-teams <what the team is for>` | 团队行恰好只注册这一条命令：它按文本 stage 一份需要批准的 plan（在你批准之前不会 spawn 任何人），不带参数调用时打印用法 | Web + TUI |
 | `/mpd` | TUI 上覆盖 bundle 状态的命令树：裸 `/mpd` 打开选择器，`/mpd <value>` 直接进入，`/mpd status` 打印摘要 | **仅 TUI** —— 在 Web 下注册被拒绝，什么都不会暴露 |
 | `/settings` | 宿主的设置界面；MPD 区块编辑你的 `mpd.jsonc` | **仅 TUI** |
 | `/goal` | 宿主的 goal 命令，由 `mpd` preset 挂载（Web overlay 会禁用宿主自带的 `tool-goal` / `command-goal` 行，因此由 preset 承载） | Web + TUI |
@@ -718,8 +722,8 @@ agent_teams_plan { "action": "approve" }                              # ← 就�
 
 # (c) 操作任务板（compare-and-set：每次更新前都重新读一次）
 agent_teams_plan { "action": "status" }                                // → 任务板，带 revision
-agent_teams_task { "task_id": "task-1", "action": "claim", "expected_revision": 1 }
-agent_teams_task { "task_id": "task-1", "action": "complete", "expected_revision": 2 }
+agent_teams_task { "task_id": "T1", "action": "claim", "expected_revision": 1 }
+agent_teams_task { "task_id": "T1", "action": "complete", "expected_revision": 2 }
 
 # (d) 推动一个正在运行的团队
 list_agents {}
@@ -850,19 +854,19 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp --with-mcp
 # Lead（会话智能体）
 agent_teams_plan { "action": "status" }                          # 计划中的成员与活跃任务板，带 revision
 agent_teams_dispatch { "action": "run" }                          # 把就绪任务与空闲成员配对
-send_message { "target": "junior-1", "message": "task-5 需要设计文档的链接目标。" }
+send_message { "target": "junior-1", "message": "T5 需要设计文档的链接目标。" }
 list_agents {}                                                   # target 与可用状态
 wait_agent { "timeout_ms": 60000 }                               # 下一次名册/消息/任务变化
 interrupt_agent { "target": "junior-1" }                         # 停下当前轮次，保留收件箱
 
 # 成员
-agent_teams_task { "task_id": "task-5", "action": "claim", "expected_revision": 4 }
-agent_teams_task { "task_id": "task-5", "action": "complete", "expected_revision": 5, "note": "…进度 + 证据…" }
-send_message { "target": "lead", "message": "task-5 完成：`bun run verify:docs` 通过。" }
+agent_teams_task { "task_id": "T5", "action": "claim", "expected_revision": 4 }
+agent_teams_task { "task_id": "T5", "action": "complete", "expected_revision": 5, "note": "…进度 + 证据…" }
+send_message { "target": "lead", "message": "T5 完成：`bun run verify:docs` 通过。" }
 ```
 
-每次修改都要带上调用者读到的 `expected_revision`；过期值会以带类型的错误被拒绝，因此被改派的任务
-无法悄悄接受迟到的结果。`write_scopes` 只对重叠发出警告，从不授权写入，所以请在任务描述（或消息）里
+只有 `release` 与 `complete`/`fail` 需要带上调用者读到的 `expected_revision`，过期值会以带类型的错误
+被拒绝，因此被改派的任务无法悄悄接受迟到的结果；`claim`、`contract` 与 `depend` 不接收 revision。`write_scopes` 只对重叠发出警告，从不授权写入，所以请在任务描述（或消息）里
 报告你改了什么，而不是依赖那份范围清单。结果不会因为队友自己说完成就被接受：Lead 会先等团队
 （`wait_agent`，然后重新读状态），并在作答前核对 diff。
 

@@ -667,30 +667,30 @@ Record the chosen path in the TodoWrite list.
   "lead": { "kind": "subagent_type", "subagent_type": "Lead" },
   "members": [
     {
-      "kind": "category",
-      "category": "quick",
-      "prompt": "You handle mechanical refactoring steps (LSP rename, extract variable, inline, simple move, signature change). Use LSP tools for correctness. Apply the task description's per-step instructions verbatim — no scope expansion. After edits, run lsp_diagnostics on touched files. Report via send_message(agent_id=<lead>, message=<files touched + lsp status + diff summary>) + agent_teams_task {action:\"complete\", task_id:<the task id from your dispatch message>}. Never run tests — the external verifier handles that. Never git add, never --continue."
+      "name": "Mechanical Refactorer A",
+      "description": "Junior Engineer - mechanical refactoring lane",
+      "prompt": "You handle mechanical refactoring steps (LSP rename, extract variable, inline, simple move, signature change). Use LSP tools for correctness. Apply the task description's per-step instructions verbatim — no scope expansion. After edits, run lsp_diagnostics on touched files. Report via send_message(agent_id=<lead>, message=<files touched + lsp status + diff summary>). Do NOT close the row: the Lead closes it once the external verifier returns PASS. Never run tests — the external verifier handles that. Never git add, never --continue."
     },
-    { "kind": "category", "category": "quick", "prompt": "Same contract as peer quick worker." },
+    { "name": "Mechanical Refactorer B", "description": "Junior Engineer - mechanical refactoring lane (peer)", "prompt": "Same contract as peer mechanical worker." },
     {
-      "kind": "category",
-      "category": "unspecified-low",
-      "prompt": "You handle logic-preserving refactors that need reasoning (extract function, restructure conditional, pattern transformation, cross-file API change). Read the task description's plan step carefully. Use the ast-grep skill helper or sg CLI to preview structural rewrites first, review the preview, then execute. If the step is ambiguous or would require out-of-scope changes, STOP and send send_message(agent_id=<lead>, message=\"UNCLEAR: <reason>\") + agent_teams_task {action:\"release\", task_id:<the task id from your dispatch message>} so the row reopens for reassignment. Same reporting contract as peer quick workers. Never run tests."
+      "name": "Reasoning Refactorer A",
+      "description": "Senior Engineer - reasoning refactoring lane",
+      "prompt": "You handle logic-preserving refactors that need reasoning (extract function, restructure conditional, pattern transformation, cross-file API change). Read the task description's plan step carefully. Use the ast-grep skill helper or sg CLI to preview structural rewrites first, review the preview, then execute. If the step is ambiguous or would require out-of-scope changes, STOP and send send_message(agent_id=<lead>, message=\"UNCLEAR: <reason>\") + agent_teams_task {action:\"release\", task_id:<the task id from your dispatch message>} so the row reopens for reassignment. Same reporting contract as peer mechanical workers. Never run tests."
     },
-    { "kind": "category", "category": "unspecified-low", "prompt": "Same contract as peer unspecified-low worker." }
+    { "name": "Reasoning Refactorer B", "description": "Senior Engineer - reasoning refactoring lane (peer)", "prompt": "Same contract as peer reasoning worker." }
   ]
 }
 \`\`\`
 
 Rationale for this composition:
 - **4 workers = team mode's parallel cap.** 5+ just queues.
-- **No verifier team member.** Verification needs \`deep-high\` reasoning (or \`unspecified-high\` fallback). In-team category routing downcasts to the category worker, which is weaker than required — the verifier runs OUTSIDE the team as a \`task(category="deep-high")\`.
-- **quick × 2** for mechanical edits, **unspecified-low × 2** for reasoning edits — mirrors the plan's split.
+- **No verifier team member.** Verification must come from a DIFFERENT agent working from the frozen contract, and none of these authoring roles is a verifier — the verifier runs OUTSIDE the team as a \`task(category="deep-high")\`, with \`unspecified-high\` as its fallback.
+- **Junior Engineer × 2** for mechanical edits, **Senior Engineer × 2** for reasoning edits. The team executor resolves each member's slot from its \`role\` when staged with one, otherwise from the head of its \`description\`: each description STARTS with that roster name (\`role\` is optional, so the description head is the fallback), so the mechanical pair routes through the Junior Engineer slot and the reasoning pair through the Senior Engineer slot, and an unmatched member inherits the staging session's route. \`prompt\` carries instructions only and cannot change a route.
 
 **Team lifecycle** (one team, reused until Phase 6 cleanup):
 
 1. \`agent_teams_plan {action:"create", name:"refactor-squad", description:<one line: the refactor wave this plan serves>}\`. Record the plan id.
-2. Stage the four workers: one \`agent_teams_plan {action:"add_member", member:{name, prompt, description}}\` call per worker, with the prompts taken verbatim from the team spec above.
+2. Stage the four workers: one \`agent_teams_plan {action:"add_member", member:{name, description, prompt}}\` call per worker, with each \`description\` STARTING with the roster role from the team spec above (that head is the routing key) and each \`prompt\` taken verbatim from it.
 3. For each plan step, \`agent_teams_plan {action:"create_task", task:{subject:"refactor step <N>: <short>", description=<per-step instructions from plan, including target files and line ranges, rollback strategy>, blocked_by:<from plan's per_step_assignment> or independent:true}}\` — every task must declare its dependency answer.
 4. \`agent_teams_plan {action:"approve"}\` — this is what spawns the members and posts the tasks; no teammate exists before it.
 5. Broadcast the refactor Intent Card ONCE to every member (keep task descriptions slim; there is no \`*\` recipient — one call per member):
@@ -714,7 +714,7 @@ While any team task is \`pending | claimed | in_progress\`:
 
 - Run \`agent_teams_dispatch {action:"run"}\` whenever a row turns terminal — the approval, a completion, a release — so ready tasks pair with idle members.
 - Wait for \`<system-reminder>\` or member messages. Avoid tight polling; a single \`agent_teams_plan {action:"status"}\` check is acceptable if no notification arrives within roughly 10 seconds of expected completion.
-- On a worker completion report, immediately dispatch an **external verifier** — verification runs OUTSIDE the team because team-member category routing downcasts to the category worker:
+- On a worker report, immediately dispatch an **external verifier** — verification runs OUTSIDE the team so a different agent checks the frozen contract rather than the implementation:
   \`\`\`
   task(
     category="deep-high",
@@ -725,9 +725,10 @@ While any team task is \`pending | claimed | in_progress\`:
   )
   \`\`\`
   If \`deep\` is unavailable, fall back to \`category="unspecified-high"\`. Do not create a commit checkpoint until the verifier returns PASS.
-- On a verifier PASS: make the commit checkpoint for that step (see original 5.3). Proceed.
-- On a verifier FAIL: Lead decides:
-  - **Retry with fix hint**: \`agent_teams_task {action:"release", task_id:<the original step>}\` + \`send_message(agent_id=<the original member>, message=<specific failure from verifier>)\`. The row reopens to \`pending\` and the next \`agent_teams_dispatch {action:"run"}\` reassigns it.
+- On a verifier PASS: close the row with \`agent_teams_task {action:"complete", task_id:<the original step>}\` (the Lead may close a member's row), then make the commit checkpoint for that step (see original 5.3). Proceed.
+- On a verifier FAIL: Lead decides by the row's state — a completed row is NEVER released:
+  - **Row still claimed or in progress (the normal case)**: \`agent_teams_task {action:"release", task_id:<the original step>}\` + \`send_message(agent_id=<the original member>, message=<specific failure from verifier>)\`. The row reopens to \`pending\` and the next \`agent_teams_dispatch {action:"run"}\` reassigns it. The worker never closes its own row, so this is the arm that runs.
+  - **Row already completed when the FAIL lands**: do not release it — the store refuses a terminal row (\`already terminal ("completed") and cannot be released\`). Open a NEW row with \`agent_teams_plan {action:"create_task", task:{subject:"repair step <N>: <short>", description:<the verifier's failing test + specific error + fix hint>, kind:"repair", sourceTaskId:"<the completed task id>", coverageOf:<the user clause the step serves>, independent:true}}\`; use \`blocked_by:[...]\` instead of \`independent:true\` when another open row must close first. \`sourceFindingIds\` is NOT a board field — it lives on the verify plane's repair record (\`.mpd/verify/repairs/<id>.json\`), so cite findings by their repair id.
   - **Escalate**: after three FAIL cycles on the same step, STOP and consult the user with full evidence.
 - On a member UNCLEAR message: re-harvest context via a targeted \`task()\` outside the team, broadcast an updated Intent Card fragment, then reassign.
 
@@ -751,5 +752,6 @@ Append to the 6.6 summary a "Dispatch path" line and, when team path was used, t
 - Do not inline the Intent Card or verify-spec into task descriptions — rely on the broadcasts.
 - Do not recreate the team mid-session.
 - Do not run tests from Lead — the external verifier owns that lane.
+- Do not release a completed row: a post-completion FAIL opens a \`kind:"repair"\` row with \`sourceTaskId\`.
 - Do not put verifier roles (\`oracle\` / \`momus\`) or \`librarian\` into the team roster — use them via \`mpd_role_spawn\`/\`subagent\` OUTSIDE the team when needed (verifiers run on the pro model).
 `
