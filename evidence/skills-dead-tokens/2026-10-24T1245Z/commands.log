@@ -66,7 +66,7 @@ line, then the matches.
     grep -rnE "$B" skills/   ->  34 lines /   8 files /  33 md lines /  7 md files
     grep -rnE "$C" skills/   -> 220 lines /  71 files / 115 md lines / 52 md files
 
-    tracked-only AFTER (git grep over the working tree; drops the 3 gitignored design refs):
+    tracked-only AFTER (git grep over the working tree; drops the two gitignored design refs (`ambience-skill.md`, `component-catalogs.md`)):
     git grep -nE "$A" -- skills/ | wc -l   -> 322
     git grep -nE "$B" -- skills/ | wc -l   ->  33
     git grep -nE "$C" -- skills/ | wc -l   -> 220
