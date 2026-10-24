@@ -84,13 +84,13 @@ When exploration is exhausted and the unknowns are answered, record the gate in 
 
 ## Delegation (DeepSeek Harness)
 
-Fan out read-only research before deciding. Every consult names TASK / DELIVERABLE / SCOPE / VERIFY inside `task`, states the role by its roster NAME, and includes only the context the child needs. `mpd_role_spawn` is ONE-SHOT and synchronous: the report is the tool result, there is no background child, and the role's read-only discipline applies automatically:
+Fan out read-only research before deciding. Every consult names TASK / DELIVERABLE / SCOPE / VERIFY inside `task`, states the role by its roster NAME, and includes only the context the child needs. `mpd_role_spawn` is ONE-SHOT and synchronous: the report is the tool result, there is no background child, and each role's discipline (mechanically read-only, or findings-only by DISCIPLINE for `Reviewer`) applies automatically:
 
 ```
 mpd_role_spawn(role="Explorer", task="TASK: map the implementation surface. DELIVERABLE: ... SCOPE: ... VERIFY: ...")
 ```
 
-Roles - the ONLY roles you may consult (all read-only, plus `Architect` for the high-accuracy review): `Explorer` (internal patterns/conventions/tests), `Researcher` (external docs/contracts), `Reviewer` (gap analysis), `Plan Reviewer` (high-accuracy plan review), `Planner` (the mandatory gap-analysis consult). Never dispatch an implementer role (`Deep Worker` / `Junior Engineer`) - planning consults no implementers - and never instruct a child to edit files. Genuinely concurrent research lanes use the mpd team plane (`agent_teams_plan` `create` → one `add_member` per lane → one `create_task` with `blocked_by` → `approve` → `agent_teams_dispatch {action:"run"}`); otherwise issue SERIAL one-shot consults. Full delegation discipline is in `references/full-workflow.md`.
+Roles - the ONLY roles you may consult: `Explorer` (internal patterns/conventions/tests), `Researcher` (external docs/contracts), `Planner` (the mandatory gap-analysis consult) and `Plan Reviewer` (high-accuracy plan review) are mechanically read-only; `Reviewer` (gap analysis) is write-capable and findings-only by DISCIPLINE, not by a fence — it can run commands and still reports without editing; `Architect` (mechanically read-only) covers the architectural high-accuracy review. Never dispatch an implementer role (`Deep Worker` / `Junior Engineer`) - planning consults no implementers - and never instruct a child to edit files. Genuinely concurrent research lanes use the mpd team plane (`agent_teams_plan` `create` → one `add_member` per lane → one `create_task` with `blocked_by` → `approve` → `agent_teams_dispatch {action:"run"}`); otherwise issue SERIAL one-shot consults. Full delegation discipline is in `references/full-workflow.md`.
 
 ## Stop rules
 

@@ -104,13 +104,13 @@ Phrasings: "make it look like Linear", "Stripe-style buttons", "Notion-feel side
 
 **Then also load Layer A** — usually `taste-skill.md` for execution discipline (the design system says *what*, the taste-skill says *how* to write the React/CSS without slop).
 
-If the user names a brand not in the index, fall back to Step 2 + a mood-based shortcut from the index.
+If the user names a brand not in the index, fall back to a Layer A mood match only — never another brand's tokens — with the substitution recorded in `DESIGN.md`.
 
 ### Step 2 — Read the brief's ambition, THEN map style/mood
 
 Decide the lane by **ambition first** — this is what your output gets judged on, and the wrong read is how a high-craft request ships clean-but-flat:
 
-- **Expressive brief** — any surface-ambition signal: "glossy", "glassy", "liquid glass", "premium", "luxe", "startup-grade", "brand-grade", "make it beautiful / pretty / wow", or a named product company to feel like. The page is a showcase and rich material IS the deliverable. Commit to a high-craft Layer A (`soft-skill` or `gpt-tasteskill`) and ALWAYS pair a high-craft Layer B exemplar (`supabase`, `linear.app`, `vercel`, `stripe`) as the token source. This lane OVERRIDES any default "keep it quiet / utilitarian" instinct.
+- **Expressive brief** — any surface-ambition signal: "glossy", "glassy", "liquid glass", "premium", "luxe", "startup-grade", "brand-grade", "make it beautiful / pretty / wow", or a named product company to feel like. The page is a showcase and rich material IS the deliverable. Commit to a high-craft Layer A (`soft-skill` or `gpt-tasteskill`); when the user named NO brand (greenfield), ALWAYS pair a high-craft Layer B exemplar (`supabase`, `linear.app`, `vercel`, `stripe`) as the token source — a brand the user NAMED takes its own catalogue file as the token source (Step 1), or the Layer A mood match when the catalogue lacks it, never another brand's tokens. This lane OVERRIDES any default "keep it quiet / utilitarian" instinct.
 - **Operational brief** — internal tool, dashboard, admin, "just make it usable". Restraint is correct here and `taste-skill` is the right default.
 
 Do NOT let an expressive brief fall through to `taste-skill`. Then map the phrasing:

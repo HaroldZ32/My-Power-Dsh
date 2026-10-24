@@ -353,5 +353,7 @@
   "The mounted codegraph tool is spelled `mcp__codegraph__codegraph_explore`; skills/dsh-qa/SKILL.md:88 abbreviates it as `mcp__codegraph__explore` (a case-table shorthand). Reported as an out-of-scope observation, not fixed here.",
   "The `imagegen-*.md` files that shipped SKILL.md files reference are materialized at pack time and are absent from the worktree (skills/frontend/.gitignore ignores references/design/*.md except the project-original list) — declared, not fixed; the same applies to the gitignored open-design/taste-skill design band.",
   "Out of scope and NOT addressed by this writer: M1 (momus/independent residual declaration in the frozen plan), M3 (served-corpus vs checkout bound), N2 (R25 wording of the frontend design band)."
- ]
+ ],
+ "superseded_by": "evidence/skills-dead-tokens/2026-10-25T0215Z/ — that bundle is the OPERATIVE one (contract R27): it re-measures the final tree and anchors to it. This bundle remains as history; its \"nothing else is modified\" line described the tree at ITS measurement moment (7ad6190e + one uncommitted edit), not the final one.",
+ "superseded_at": "2026-10-25T02:15Z"
 }
