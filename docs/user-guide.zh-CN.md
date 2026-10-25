@@ -552,9 +552,13 @@ Team 视图的这张图按团队状态提供的 rank 布局：每个 rank 一列
   手动兜底。
 - **回读永远是即时的。** `mpd_config_get` 与 `mpd_config_reload` 每次调用都重新读取各层并立刻报告
   新的解析值 —— 这是你确认编辑确实落地的办法，即使已挂载的消费方仍持有它挂载时捕获的值。
-- **`watchdog.*` 是实时重读的。** 看门狗在挂载时、收到 settings 文档更新时、以及每个 tick 都会
-  重新解析自己的旋钮，所以文件改动在**本进程内**即可生效、无需重启；
-  `session-watchdog-status` 会打印每个旋钮的 LIVE vs FILE 取值以及 `restartRequired` 标志。
+- **`watchdog.*` 从文件实时重读——表单保存到不了这些旋钮。** 看门狗在挂载时、收到**旧 `mpd` 命名空间**的
+  `settings/document-updated` 时（本 bundle 固定的 harness 上命名空间模型已退役，因此该事件不会触发）、以及每个
+  tick 都会重新解析自己的旋钮。真正能实时到达它的是 `<workspace>/.mpd/mpd.jsonc` 的编辑：该行在每次解析时
+  自己解析这个文件，并在**本进程内**应用发生移动的那一层、无需重启。经 `/settings` 或 Web 卡片的保存写入的是
+  `mpd-config` **entry** 文档，而该行不读它，因此这些旋钮保持旧值；要改就读文件，或改
+  `mpd-team-watchdog` 行配置（需要一次启动）。`session-watchdog-status` 会打印每个旋钮的 LIVE vs FILE 取值
+  以及 `restartRequired` 标志。
 
 | 旋钮 | 谁读取 | 何时读取 | 何时生效 |
 |---|---|---|---|
@@ -568,7 +572,7 @@ Team 视图的这张图按团队状态提供的 rank 布局：每个 rank 一列
 | `extensions.enable` / `.disable` / `.mcp.*` | mpd-ext | 插件启动时（进程级） | 重启后 |
 | `team.stateDir` | 读取旧版团队记录的 mpd 插件，经实时服务解析 | 每次调用 | 服务重新读取文件之后立即生效（`mpd_config_reload`，或任意一次设置保存）。这些是**旧版**记录：官方团队插件把名册、邮箱与任务板保存在 Lead 的会话日志里，不在这里 |
 | `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate（单次咨询通道 `mpd_role_spawn`、`mpd_workmate_spawn`），mpd-dsh-adapter（原生团队执行器：每个团队成员），以及 mpd-roster-provider（仅官方执行器回退） | spawn 时，从实时服务读取 | 实时生效，无需重启：设置保存或手工编辑 `<workspace>/.mpd/mpd.jsonc` 都会在进程内被重新读取，因此下一次 spawn 即携带新值；`mpd_config_reload` 可强制重读。每个槽位**只有一条**路由、没有默认层：未配置或格式错误的槽位会用 `SLOT_UNCONFIGURED` **拒绝单次 spawn**（不写入任何内容、不启动子会话），而团队成员绝不因槽位失败；该槽位自己的 `fallbacks` 链在 spawn 前被消费一次。团队成员的槽位按 `role` → `description` 的头部 → 整个 `name` 解析；匹配不到名册成员的、或槽位未配置的成员，会**继承暂存它的会话的路由**，只记一行日志、绝不抛错 |
-| `watchdog.*` | mpd-team-watchdog | 挂载时、settings 更新时、每个 tick | 实时生效 —— 无需重启 |
+| `watchdog.*` | mpd-team-watchdog | 挂载时、旧 `mpd` 命名空间的 `settings/document-updated`（此处已退役）、以及每个 tick —— 该行还会自行解析 `<workspace>/.mpd/mpd.jsonc` | 文件编辑实时生效 —— 无需重启；表单保存（`/settings`、Web 卡片）在本 harness 上**到不了**这些旋钮（该行不读 `mpd-config` entry） |
 
 `mpd-codegraph` 的旋钮是反证这条规则的例外：它们是 patch 行选项（`autoInit`、`initTimeoutMs`、
 `cooldownMs`、`binary`），只能改行并重新安装。

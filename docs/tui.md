@@ -775,8 +775,10 @@ registration, and its own settings installers keep their base fixed the same way
 **not** make every saved knob wait for a restart, and the no-restart wording must not be read as
 blanket: the config service is live (it re-resolves on every settings save and on a watched edit of
 the project file), and each knob's answer depends on WHERE its consumer reads it. Read from the live
-service per use — LIVE, no restart: `teamModels.slot*`, `modelchain.*`, `watchdog.*`, `team.stateDir`,
-`team.gate`, `team.sensitivity`, `captain.investigation`, `delegation.gate`; `tui.dashboardKey` is
+service per use — LIVE, no restart: `teamModels.slot*`, `modelchain.*`, `team.stateDir`,
+`team.gate`, `team.sensitivity`, `captain.investigation`, `delegation.gate`; `watchdog.*` is live too,
+but from the ROW's own read of `<workspace>/.mpd/mpd.jsonc` (it does not read the `mpd-config` entry, so
+a FORM save does not reach it — user-guide §9.1); `tui.dashboardKey` is
 live in BOTH directions while the `mpd-tui` ROW config left the Ctrl+A takeover enabled at mount (a
 saved `false` and then a saved `true` both reach the per-press read), and ONE-WAY only when the ROW
 config disabled the takeover (`dashboardKey: false`): that composition never registers the contact at

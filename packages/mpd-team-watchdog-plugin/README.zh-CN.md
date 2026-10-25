@@ -195,14 +195,21 @@ streak 以 `<teamId>\0<taskId>\0<attemptId>` 为键，其中 `attemptId` 是**�
 
 ### 旋钮
 
-旋钮按优先级来自三层：本行自己的配置（默认层）、经适配器的实时 settings 读取 —— `settingsReader("mpd")`，
-它在被钉住的 harness 上**无人提供**：`settingsRegister("mpd", …)` 被**拒绝**（`settingsModelRetired`），
-旋钮改由本行的配置以 `mpd-config` 这个 entry（`ENTRY_CONFIG_ID`）提供，因此没有任何命名空间被注册 ——
-以及工作区的 `.mpd/mpd.jsonc` **文件层**，它被实时观测，并在它才是移动的那一层时叠加。全部旋钮都会在
-**每个 tick**以及 `settings/document-updated` 时重新读取，因此只要改动到达某一层，无需重启宿主即可生效，
+旋钮按优先级来自三层：bundle patch 里**本行自己的配置**（默认层 —— 是 WATCHDOG 这一行，不是 config
+那一行）、经适配器的 settings 读取 —— `settingsReader("mpd")`，它在被钉住的 harness 上**无人提供**：因为
+`settingsRegister("mpd", …)` 被**拒绝**（`settingsModelRetired`），且没有任何东西注册命名空间 —— 以及
+工作区的 `.mpd/mpd.jsonc` **文件层**，它被实时观测，并在它才是移动的那一层时叠加。全部旋钮都会在
+**每个 tick** 重新读取，此外还有针对旧 `mpd` **命名空间**的 `settings/document-updated`（该命名空间
+在此已退役，因此该事件不会触发），因此只要改动到达某一层，无需重启宿主即可生效，
 而改变节奏会替换那唯一的定时器。之所以按 tick 重读是有意为之：settings 值不是挂载时的快照，也没有任何
 机制保证它会在本行 apply 之前到达，若本行先完成 apply，在此之前就只能停留在自身默认值上，直到它读取的
 某一层发生变化。
+
+**在被钉住的 harness 上，前门表单的保存到不了这些旋钮。** 两个前门写的是 **CONFIG 那一行自己的配置** ——
+即 `mpd-config` 这个 entry 文档（`ENTRY_CONFIG_ID`），由宿主持久化 —— 而**本行**既不读那个文档，也读不到
+被提供的命名空间：它要的是 `mpd` 命名空间，拿到的却是空。因此在 TUI `/settings` 区块或 Web 卡片里做的
+保存不会改动这些值；真正能改的是本行自己的 patch 配置，或手工编辑的 `<workspace>/.mpd/mpd.jsonc`
+（文件层，实时生效）。这是一个**已记录的代码缺口**，并非在声称 settings 那一半是实时的。
 
 | 旋钮 | 默认值 | 含义 |
 |---|---|---|

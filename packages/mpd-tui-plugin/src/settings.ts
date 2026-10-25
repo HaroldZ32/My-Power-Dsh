@@ -15,9 +15,12 @@
 // watcher at mount AND subscribes to the entry-config document, so its `state` re-resolves on
 // every settings save and on a watched edit of the project file. WHICH knobs that reaches in a
 // RUNNING process is NOT blanket: the model routes this section edits (`teamModels`,
-// `modelchain`), `watchdog.*`, `team.stateDir`, `team.gate`/`team.sensitivity`,
-// `captain.investigation` and `delegation.gate` are read PER USE, so the next spawn, tick or
-// guarded call carries them; `tui.dashboardKey` is live one way (false disables at once).
+// `modelchain`), `team.stateDir`, `team.gate`/`team.sensitivity`, `captain.investigation` and
+// `delegation.gate` are read PER USE, so the next spawn or guarded call carries them;
+// `tui.dashboardKey` is live one way (false disables at once). `watchdog.*` is the EXCEPTION and is
+// NOT in that list: the watchdog engine never reads the config service — it re-reads the legacy
+// (unserved) `mpd` namespace, the row config and the workspace FILE layer every tick, so a hand edit
+// of `.mpd/mpd.jsonc` reaches it and a save from this form does not (reviewer T20-F2, AMENDMENT 6).
 // A knob some plugin CAPTURED at its own mount — `hashline.*`, `commentChecker.*`, `ulw.*`,
 // `memory.*`, `boulder.dir`, `goal.*` — still waits for the next boot, which
 // `BRIDGE_RESTART_LIMIT` names, and SECTION_NOTICE below renders BOTH halves.

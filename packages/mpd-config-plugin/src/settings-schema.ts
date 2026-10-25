@@ -197,17 +197,22 @@ export const SettingsSchema = z.object({
  * independent read of the CONSUMERS (not of this string) split the knobs in two, and both halves are
  * named here so no reader has to guess:
  *   · LIVE (read per use): `teamModels.slot*` (the spawn resolver reads the service per spawn, in
- *     `createDshAdapter`'s slot resolver), `modelchain.*`, `watchdog.*` (the engine re-reads the
- *     namespace on every tick and reports a per-knob restart flag, §7.2), `team.stateDir` (read per
- *     call in mpd-bundle), `team.gate`/`team.sensitivity` (`complexity-gate.ts`),
- *     `captain.investigation` (`captain-investigation.ts`) and `delegation.gate`
- *     (`delegation-gate.ts`) — the gates' own docs say the value is "picked up LIVE, T-18";
+ *     `createDshAdapter`'s slot resolver), `modelchain.*`, `team.stateDir` (read per call in
+ *     mpd-bundle), `team.gate`/`team.sensitivity` (`complexity-gate.ts`), `captain.investigation`
+ *     (`captain-investigation.ts`) and `delegation.gate` (`delegation-gate.ts`) — the gates' own docs
+ *     say the value is "picked up LIVE, T-18";
+ *   · a SCOPED EXCEPTION, never a live group: `watchdog.*`. The engine does not read the config
+ *     service at all — `refreshKnobs` (mpd-team-watchdog `engine.ts`) re-reads `settingsReader("mpd")`
+ *     (the LEGACY namespace, which `settingsRegister` REFUSES on this host), the row config and the
+ *     workspace `.mpd/mpd.jsonc` FILE layer on every tick, and its subscription is
+ *     `onSettingsDocumentUpdated("mpd", …)`, which an ENTRY-config save never fires. So a hand edit of
+ *     the file reaches these knobs and a settings-FORM save does not (reviewer T20-F2 / AMENDMENT 6);
  *   · ONE-WAY: `tui.dashboardKey` — a saved false disables the Ctrl+A takeover at once, while a
  *     saved true cannot arm a takeover the ROW CONFIG disabled (that toggle's floor is mount-time).
  * The MOUNT-CAPTURED half lives in {@link BRIDGE_RESTART_LIMIT}, because the two sentences must be
  * read together; {@link BRIDGE_SECTION_NOTICE} renders both plus the not-lost clause.
  */
-export const BRIDGE_DISCLOSURE = "a save from this form persists in the HOST's settings document and writes NO .mpd/mpd.jsonc — the host owns that store and this row re-reads it on every save; a <workspace>/.mpd/mpd.jsonc write happens only on a host that still serves the RETIRED legacy `mpd` namespace, where each save's changed leaves go to the live session workspace(s). The config service re-resolves on every settings save and on a watched edit of the project file, and WHICH knobs take the new value in the RUNNING process — no restart — depends on how each one reads it: teamModels.slot*, modelchain.*, watchdog.*, team.stateDir, team.gate, team.sensitivity, captain.investigation and delegation.gate are read per use, and tui.dashboardKey is live ONE WAY (a saved false disables the Ctrl+A takeover at once; a saved true cannot arm a takeover the row config disabled)"
+export const BRIDGE_DISCLOSURE = "a save from this form persists in the HOST's settings document and writes NO .mpd/mpd.jsonc — the host owns that store and this row re-reads it on every save; a <workspace>/.mpd/mpd.jsonc write happens only on a host that still serves the RETIRED legacy `mpd` namespace, where each save's changed leaves go to the live session workspace(s). The config service re-resolves on every settings save and on a watched edit of the project file, and WHICH knobs take the new value in the RUNNING process — no restart — depends on how each one reads it: teamModels.slot*, modelchain.*, team.stateDir, team.gate, team.sensitivity, captain.investigation and delegation.gate are read per use, and tui.dashboardKey is live ONE WAY (a saved false disables the Ctrl+A takeover at once; a saved true cannot arm a takeover the row config disabled). EXCEPTION: the watchdog's knobs are re-read every tick from the row config and the .mpd/mpd.jsonc FILE layer, so a hand edit reaches them and a save from this form never does (the legacy `mpd` namespace they also read is unserved on this host)"
 
 /**
  * The MOUNT-CAPTURED half of the same truth: the knobs whose plugins read the config ONCE inside

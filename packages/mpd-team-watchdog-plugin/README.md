@@ -235,16 +235,25 @@ nothing to wait for).
 
 ### The knobs
 
-The knobs resolve from three layers: this row's own config (the DEFAULTS layer), the live settings
-read through the adapter — `settingsReader("mpd")`, which on the pinned harness is **unserved**:
-`settingsRegister("mpd", …)` is REFUSED (`settingsModelRetired`), and the knobs are served as this
-row's config under the entry `mpd-config` (`ENTRY_CONFIG_ID`) instead, so nothing registers a
-namespace — and the workspace `.mpd/mpd.jsonc` FILE layer, observed live and overlaid when it is the
-layer that moved. All of them are re-read **on every tick** and on `settings/document-updated`, so a
-change that reaches a layer takes effect without a host restart, and a cadence change replaces the
-single tick interval. The per-tick re-read is deliberate: the settings value is not a mount-time
-snapshot and nothing guarantees it arrives before this row applies, so a row that applied first would
-otherwise sit on its own defaults until a layer it reads changes.
+The knobs resolve from three layers: **this row's own config** in the bundle patch (the DEFAULTS layer
+— the WATCHDOG row, not the config row), the settings read through the adapter —
+`settingsReader("mpd")`, which on the pinned harness is **unserved** because `settingsRegister("mpd",
+…)` is REFUSED (`settingsModelRetired`) and nothing registers a namespace, and the workspace
+`.mpd/mpd.jsonc` FILE layer, observed live and overlaid when it is the layer that moved. All of them
+are re-read **on every tick**, and on a `settings/document-updated` for the legacy `mpd` NAMESPACE
+(retired here, so that event never fires), so a change that reaches a layer
+takes effect without a host restart, and a cadence change replaces the single tick interval. The
+per-tick re-read is deliberate: the settings value is not a mount-time snapshot and nothing guarantees
+it arrives before this row applies, so a row that applied first would otherwise sit on its own defaults
+until a layer it reads changes.
+
+**On the pinned harness a settings-FORM save does not reach these knobs.** The two front doors write
+the CONFIG row's own config — the `mpd-config` entry document (`ENTRY_CONFIG_ID`), persisted by the
+host — while THIS row reads neither that document nor a served namespace: it asks for the `mpd`
+namespace and gets nothing. A save made in the TUI `/settings` section or the Web card therefore
+leaves these values alone; what actually changes them is this row's own patch config, or a hand-edited
+`<workspace>/.mpd/mpd.jsonc` (the FILE layer, live). That is a recorded CODE gap, not a claim that the
+settings half is live.
 
 | Knob | Default | Meaning |
 |---|---|---|

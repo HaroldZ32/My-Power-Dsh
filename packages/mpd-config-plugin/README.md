@@ -115,14 +115,20 @@ re-read on every resolution and a mount-time `watchRoot` watcher picks the edit 
 
 **The READ-BACK is live; the EFFECT is per knob.** `mpd_config_get` / `mpd_config_reload` re-read the
 layers on every call and report the new value at once, but a consumer that captured its configuration
-at `apply()` still acts on the old one. Two groups, and this section states BOTH — never only the
-promising half (`docs/user-guide.md` §9.1 is the per-knob authority):
+at `apply()` still acts on the old one. Two groups plus one special case, and this section states them
+all — never only the promising half (`docs/user-guide.md` §9.1 is the per-knob table):
 
 - **live in the running process** — the model routes (`teamModels.slot*`, `modelchain.*`),
-  `watchdog.*`, `team.gate` / `team.sensitivity`, the `team.stateDir` reader, and the two guards
+  `team.gate` / `team.sensitivity`, the `team.stateDir` reader, and the two guards
   `captain.investigation` / `delegation.gate` (each reads the row's own `configValue` per decision);
 - **captured at `apply()`, so they need the next `dsh` boot** — `hashline.*`, `commentChecker.*`,
-  `ulw.*`, `memory.*`, `boulder.dir`, `goal.*`.
+  `ulw.*`, `memory.*`, `boulder.dir`, `goal.*`;
+- **ONE special case — `watchdog.*`** — its ROW CONFIG is the defaults layer captured at mount, and the
+  workspace `<workspace>/.mpd/mpd.jsonc` FILE layer is re-read on every knob refresh (at mount, on a
+  `settings/document-updated` for the `mpd` namespace — a legacy host — and once per tick), so a hand
+  edit of that file IS live. A front-door `/settings` save does NOT reach its knobs: the engine reads
+  `settingsReader("mpd")` and never the `mpd-config` ENTRY document the form saves, so the stored value
+  is the declaration while the knob values come from the row config and the file.
 
 A settings-only save is never LOST: the host settings document keeps the value and the config layer
 applies it to every workspace immediately — and because this path writes no file, it never waits for a

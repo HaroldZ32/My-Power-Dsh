@@ -191,7 +191,7 @@ export function sectionDigest(section: unknown): string | null {
  * namespace (and, below that, to the row defaults). It is pure, so the merge rule is testable
  * without a boot, a settings service or a file.
  *
- * @param namespaceValue - `settingsReader("mpd").get()`, the live namespace snapshot.
+ * @param namespaceValue - `settingsReader("mpd").get()` — the LEGACY namespace snapshot, which is UNSERVED on the pinned host (its registration is refused), so this normally carries nothing
  * @param fileSection - the `watchdog` object parsed out of the workspace's `.mpd/mpd.jsonc`.
  * @returns a namespace-shaped value with the file layer applied on top.
  */

@@ -195,3 +195,53 @@ artifact lag. Logs: `t17-*.log`.
 **Not mine in T16-F1:** the five DOC sites the reviewer listed (`packages/mpd-tui-plugin/README*`,
 `packages/mpd-bundle-plugin/README*`, `docs/user-guide.md` + zh, `docs/tui.md` + zh, `docs/design.md` +
 zh) belong to the docs/README lanes; this task covered the constant + mirror + QA copy + pins.
+
+## 8. T28 — `watchdog.*` is NOT a live group (T20-F2 / AMENDMENT 6)
+
+**The code fact, re-verified in this session** (not restated from the review): the watchdog never reads
+the config service. `packages/mpd-team-watchdog-plugin/src/engine.ts` reads
+`dsh.settingsReader("mpd")` (the LEGACY namespace, whose `settingsRegister("mpd", …)` is REFUSED on the
+pinned host), the row config, and `<workspace>/.mpd/mpd.jsonc` parsed by `config-file.ts` on every
+`refreshKnobs` call (apply + the `"mpd"` document subscription + once per tick). `mpdConfig` and the
+`mpd-config` ENTRY id appear NOWHERE in the package, and `onSettingsDocumentUpdated("mpd", …)` is never
+fired by an entry-config save. So a hand edit of the file reaches a running watchdog; a settings-FORM
+save does not reach it at all.
+
+**Disclosure corrected** (`packages/mpd-config-plugin/src/settings-schema.ts`, `BRIDGE_DISCLOSURE`,
+now 1075 chars): `watchdog.*` left the live list —
+`teamModels.slot*, modelchain.*, team.stateDir, team.gate, team.sensitivity, captain.investigation and
+delegation.gate are read per use, and tui.dashboardKey is live ONE WAY (…)` — and the honest exception
+was added:
+> EXCEPTION: the watchdog's knobs are re-read every tick from the row config and the .mpd/mpd.jsonc FILE
+> layer, so a hand edit reaches them and a save from this form never does (the legacy `mpd` namespace
+> they also read is unserved on this host)
+
+Mirrored byte-identically in `packages/mpd-bundle-plugin/src/settings-card.ts` and in the QA copy
+`TUI_DISCLOSURE_LIVE` (drift-checked against the schema source). `BRIDGE_SECTION_NOTICE` is now 1723
+chars — see the pane bound in §4, which this lengthens.
+
+**Engine header corrected** (`packages/mpd-team-watchdog-plugin/src/engine.ts`): a new KNOB SOURCES
+paragraph names the three layers, marks the FILE layer as the one that is genuinely live, marks the
+`mpd` namespace read as UNSERVED, and records the consequence for the disclosure; the layer-precedence
+field comment no longer claims "the settings front door is the tie-breaker" unconditionally; the
+`refreshKnobs` premise no longer says a `.mpd/mpd.jsonc` edit only lands at the next boot. Also
+`machine.ts`'s two `@param namespaceValue` docs stopped calling that read "the live namespace snapshot".
+`packages/mpd-tui-plugin/src/settings.ts`'s header dropped `watchdog.*` from its per-use list.
+
+**Pins retargeted (presence of the exception + absence of the old placement):**
+`packages/mpd-config-plugin/test/settings-defaults.test.ts` (`LIVE_GROUPS` loses `watchdog.*`, plus a
+dedicated arm pinning both halves of the exception and the absence of `modelchain.*, watchdog.*`),
+`packages/mpd-tui-plugin/test/plugin.test.ts` (same pair), and `skills/dsh-qa/scripts/tui-panels.ts`
+(the `/settings` row now pins the EXCEPTION clause and the "hand edit reaches them" clause in place of
+`/watchdog\.\*/`).
+
+**Observed:** `typecheck` 0 · `verify:comments` PASS · `verify:manifest` PASS · `test:qa` all self-tests
+passed · `bun test packages` 2457 pass / 6 skip / **3 fail**, all three the SAME artifact-bound
+comparison against the BUILT `client.js` (`R2-D1`, `the disclosure sentences are unchanged …`, `G-2`) ·
+`verify-dist-fresh` **3 of 33 STALE** (`mpd-config-plugin`, `mpd-roster-provider-plugin`,
+`mpd-tui-plugin`). Both are the captain's rebuild step; every SOURCE-level assertion is green.
+Logs: `t28-*.log`.
+
+**Left to the docs/README lanes** (part of the same T20-F2 finding, outside this task): the watchdog
+bullet + table row in `docs/user-guide.md` §9.1 (+ zh) and the "READ-BACK is live" live-group sentence in
+`packages/mpd-config-plugin/README.md` (+ zh) still list `watchdog.*` as live.

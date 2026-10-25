@@ -631,6 +631,78 @@ Diff: 2 files, **55 insertions, 28 deletions** (T22 + T23 together on this READM
 3. Nothing outside the watchdog README pair was edited; `src/**` untouched; only the two gates this lane
    requires were run.
 
+---
+
+# T27 (finding T24-F2) — state the form-save consequence, stop conflating two row configs
+
+**Defect (two problems in my T22/T23 text).**
+
+1. It stated the MECHANISM but not the CONSEQUENCE: a settings-FORM save (TUI `/settings` section or the
+   Web card) does **not** reach these knobs on the pinned harness.
+2. The sentence "the knobs are served as this row's config under the entry `mpd-config`
+   (`ENTRY_CONFIG_ID`) instead" conflated the WATCHDOG row's own config with the CONFIG row's entry
+   document.
+
+**Code evidence (re-checked this pass; unchanged since T22)**
+
+- `readNamespaceValue` still reads `dsh.settingsReader("mpd")` and nothing else; `grep` over
+  `packages/mpd-team-watchdog-plugin/src/*.ts` finds **no** `ENTRY_CONFIG_ID` and no `mpdConfig` read.
+- The adapter's `settingsReader(namespace)` → `settings.get(namespace)`; `mpd-config` serves the knobs as
+  its ROW config under the entry `mpd-config` (`registerNamespace` in `mpd-config-plugin/src/index.ts`
+  warns exactly that when `settingsRegister(SETTINGS_NS, …)` is refused and sets
+  `settingsModelRetired`).
+- `docs/user-guide.md` §9.1 has since been corrected by the docs lane to the same truth ("**`watchdog.*`
+  is re-read live from the FILE — a FORM save does not reach it.**" and the table row "live for a FILE
+  edit — no restart; a FORM save (`/settings`, Web card) does NOT reach these knobs on this harness (the
+  row does not read the `mpd-config` entry)"). The README now agrees with it.
+
+**New text (EN + zh)**
+
+- Three layers, now explicitly disambiguated: "**this row's own config** in the bundle patch (the
+  DEFAULTS layer — the WATCHDOG row, not the config row)", the settings read `settingsReader("mpd")`
+  (unserved: `settingsRegister("mpd", …)` REFUSED, `settingsModelRetired`, nothing registers a
+  namespace), and the `.mpd/mpd.jsonc` FILE layer (layer-that-moved-wins).
+- Re-read cadence sharpened so the event key cannot be misread: "**on every tick**, and on a
+  `settings/document-updated` for the legacy `mpd` NAMESPACE (retired here, so that event never fires)".
+- New paragraph stating the consequence: "**On the pinned harness a settings-FORM save does not reach
+  these knobs.** The two front doors write the CONFIG row's own config — the `mpd-config` entry document
+  (`ENTRY_CONFIG_ID`), persisted by the host — while THIS row reads neither that document nor a served
+  namespace… what actually changes them is this row's own patch config, or a hand-edited
+  `<workspace>/.mpd/mpd.jsonc` (the FILE layer, live). That is a recorded CODE gap, not a claim that the
+  settings half is live."
+- zh twin: the same three layers with the WATCHDOG/config-row distinction, the same retired-event
+  clause, and the same consequence paragraph.
+
+Kept unchanged as instructed: the three-layer description, the layer-that-moved-wins behaviour and the
+residue semantics (`noteKnobDivergence` / `restartRequired`).
+
+**Checks re-run (quoted, with exit codes)**
+
+`bun run verify:docs` — **exit 0**, log `evidence/audit-20261025/pkg-readmes-b/verify-docs-t27.log`
+
+```
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=50 failed=0 violations=0 exempt=24 derived=3 links=447 dead=0 — PASS
+```
+
+`bun run verify:manifest` — **exit 0**, log `evidence/audit-20261025/pkg-readmes-b/verify-manifest-t27.log`
+
+```
+ok    packed-content: npm pack --dry-run lists 1044 file(s); 0 required path(s) absent
+
+VERDICT: PASS — the install-time rules and the packaging contract hold.
+```
+
+Diff for the watchdog pair (T22 + T23 + T27 together): see `git diff --stat`; this pass alone added 28
+insertions / 14 deletions before the final alignment edit.
+
+**Bounds**
+
+1. The consequence paragraph is a DOC statement of a recorded CODE gap; the gap itself remains (the row
+   reads neither the `mpd-config` entry nor a served namespace), and I did not touch `src/**`.
+2. The README now matches `docs/user-guide.md` §9.1's corrected watchdog text; I did not edit that file.
+3. Only the two gates this lane requires were run.
+
+
 
 
 

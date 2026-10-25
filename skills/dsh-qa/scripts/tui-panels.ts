@@ -334,7 +334,9 @@ export const SURFACES: readonly SurfaceSpec[] = [
       /take the new value in the RUNNING process/,
       /teamModels\.slot\*/,
       /modelchain\.\*/,
-      /watchdog\.\*/,
+      // `watchdog.*` is NOT a live group (T20-F2): the row pins its scope-qualified EXCEPTION instead.
+      /EXCEPTION: the watchdog's knobs are re-read every tick from the row config and the \.mpd\/mpd\.jsonc FILE layer/,
+      /a hand edit reaches them and a save from this form never does/,
       /team\.stateDir/,
       /team\.gate/,
       /team\.sensitivity/,

@@ -83,10 +83,11 @@ Plan C / C7 —— 极简的 `mpd.jsonc` 运行时配置层。
 
 本包承担 harness settings 打通中配置这一侧。**在用的保存路径是 ENTRY 文档；`mpd.jsonc` 回写是已退役的 legacy 路径。** TUI 的 `/settings` 区块与 Web 界面卡片都保存本行的 `mpd-config` ENTRY 文档（`ENTRY_CONFIG_ID`、`configForms.get("mpd-config")`），而该存储归**宿主**所有：本行的 `onSettingsDocumentUpdated(ENTRY_CONFIG_ID, …)` 监听器从中重新加载 `state`，并刻意**不写任何工作区文件**。`<workspace>/.mpd/mpd.jsonc` 的写入只存在于 **LEGACY** 的 `mpd` 命名空间（`SETTINGS_NS`），而钉住的 harness **拒绝**它的注册 —— `settingsModelRetired`，启动时只有一行警告："the legacy file write-back and override clearing are dormant" —— 因此在钉住的宿主上这条路径从不运行。对 `<workspace>/.mpd/mpd.jsonc` 的**手工编辑仍然会被读到**：文件层在每次解析时都会重新读取，挂载时安装的 `watchRoot` 监视器也会经同一个 150 毫秒防抖把这次编辑送进 `state`。
 
-**读回（READ-BACK）是实时的；生效（EFFECT）按旋钮而异。** `mpd_config_get` / `mpd_config_reload` 每次调用都重读各层并立刻报告新值，但在 `apply()` 时已捕获配置的消费方仍旧按旧值行事。两组都在此写明 —— 绝不只写好看的那一半（逐旋钮的权威表是 `docs/user-guide.md` §9.1）：
+**读回（READ-BACK）是实时的；生效（EFFECT）按旋钮而异。** `mpd_config_get` / `mpd_config_reload` 每次调用都重读各层并立刻报告新值，但在 `apply()` 时已捕获配置的消费方仍旧按旧值行事。两组加一个特例都在此写明 —— 绝不只写好看的那一半（逐旋钮的表是 `docs/user-guide.md` §9.1）：
 
-- **在运行中的进程里实时生效** —— 模型路由（`teamModels.slot*`、`modelchain.*`）、`watchdog.*`、`team.gate` / `team.sensitivity`、`team.stateDir` 的读取方，以及两道守卫 `captain.investigation` / `delegation.gate`（每次决策都读本行自己的 `configValue`）；
-- **在 `apply()` 时被捕获，因此需要下一次 `dsh` 启动** —— `hashline.*`、`commentChecker.*`、`ulw.*`、`memory.*`、`boulder.dir`、`goal.*`。
+- **在运行中的进程里实时生效** —— 模型路由（`teamModels.slot*`、`modelchain.*`）、`team.gate` / `team.sensitivity`、`team.stateDir` 的读取方，以及两道守卫 `captain.investigation` / `delegation.gate`（每次决策都读本行自己的 `configValue`）；
+- **在 `apply()` 时被捕获，因此需要下一次 `dsh` 启动** —— `hashline.*`、`commentChecker.*`、`ulw.*`、`memory.*`、`boulder.dir`、`goal.*`；
+- **一个特例 —— `watchdog.*`**：它的 ROW CONFIG 是挂载时捕获的默认层，而工作区 `<workspace>/.mpd/mpd.jsonc` 的**文件层**在每次旋钮重读时都会重新读取（挂载时、`mpd` 命名空间的 `settings/document-updated` 事件上 —— 仅限 legacy 宿主 —— 以及每个 tick），因此对该文件的手工编辑**是实时生效的**。而前门 `/settings` 的保存**不会**抵达它的旋钮：引擎读取 `settingsReader("mpd")`，从不读表单保存的 `mpd-config` ENTRY 文档 —— 存下的值只是声明，旋钮值来自行配置与文件。
 
 只保存在 settings 的编辑**绝不会丢失**：值留在宿主 settings 文档里，配置层立刻将其应用到每个工作区 —— 而且因为这条路径不写文件，它从不等候活动会话。
 

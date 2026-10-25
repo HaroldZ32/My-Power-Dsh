@@ -373,3 +373,46 @@ those twelve again (`packages/mpd-ulw-plugin/README{,.zh-CN}.md`), so the count 
   already-swept `mpd-tui-plugin` / `mpd-bundle-plugin` README wording, not against a live settings
   save. No pin was added (the finding notes the pair is unpinned; a pin is a QA/src change outside this
   task's write scope).
+
+## 7. T24-F1 repair — `watchdog.*` removed from the unqualified live group
+
+- **Finding.** T24-F1 (HIGH, from the re-verification of `a743b720`): AMENDMENT 6 records that a
+  settings-FORM save does NOT reach the watchdog's knobs — `packages/mpd-team-watchdog-plugin/src/`
+  reads `settingsReader("mpd")` (whose registration the pinned harness refuses), its row config and the
+  `.mpd/mpd.jsonc` folder layer, and never the `mpd-config` ENTRY document — yet §6's new paragraph
+  listed `watchdog.*` under "live in the running process". Reconciliation: **STILL-VALID → FIXED**.
+- **Change (EN + zh).** `watchdog.*` is gone from the live bullet. A third bullet now states the special
+  case: its **ROW CONFIG** is the defaults layer captured at mount; the workspace
+  `<workspace>/.mpd/mpd.jsonc` **FILE layer** is re-read on every knob refresh (at mount, on a
+  `settings/document-updated` for the `mpd` namespace — a legacy host — and once per tick), so a hand
+  edit of that file IS live; a front-door `/settings` save does **NOT** reach its knobs, because the
+  engine reads `settingsReader("mpd")` and never the `mpd-config` ENTRY document the form saves — the
+  stored value is the declaration, while the knob values come from the row config and the file. The
+  intro now says "Two groups plus one special case", and the `docs/user-guide.md` pointer reads
+  "per-knob table" instead of "per-knob authority" (see the open item below). Every other group is
+  unchanged.
+- **Proof symbols** (all read this session, `packages/mpd-team-watchdog-plugin/src/`):
+  `readNamespaceValue` (`dsh.settingsReader("mpd")` — the only settings read); `readNamespaceKnobs`;
+  `knobDefaults()` ("The row config as the knobs' DEFAULTS layer"); `refreshKnobs` (namespace/file
+  digests, "the layer that MOVED wins", `overlayWatchdogSection` on the file layer); the subscription
+  `onSettingsDocumentUpdated("mpd", …)`; `tickOnce`'s per-tick `refreshKnobs()`; and `config-file.ts`'s
+  `PROJECT_CONFIG_FILE` (`.mpd/mpd.jsonc`) / `readWatchdogSection` ("the engine calls
+  `readWatchdogSection` on every knob refresh"). A `grep` over that package's `src/**` finds no
+  `mpdConfig` and no `ENTRY_CONFIG_ID`.
+- **Gate.** `bun run verify:docs` → **exit 0**,
+  `pairs=50 failed=0 violations=0 links=447 dead=0 — PASS` (measured **2026-10-25T14:25:45Z**; an
+  earlier attempt from inside the package directory correctly failed with
+  `error: Script not found "verify:docs"` — the gate runs from the repo root).
+- **Files touched.** `packages/mpd-config-plugin/README.md` and
+  `packages/mpd-config-plugin/README.zh-CN.md` only. No `src/**`, no `docs/**`, no git writes.
+- **Open item — RESOLVED CONCURRENTLY by another lane (recorded, not edited by me).** When this
+  repair started, `docs/user-guide.md` §9.1 still claimed `watchdog.*` is re-read "on a
+  settings-document update … live — no restart" in its bullet and table row (EN+zh), and T24-F1
+  recorded that this collided with AMENDMENT 2's "canonical, do not edit" instruction. `docs/**` is
+  outside this task's write scope. Re-checked read-only at the final measurement: the docs lane has
+  since landed the matching wording — §9.1 now says "**`watchdog.*` is re-read live from the FILE — a
+  FORM save does not reach it**" and its table row reads "live for a FILE edit — no restart; a FORM
+  save (`/settings`, Web card) does NOT reach these knobs on this harness (the row does not read the
+  `mpd-config` entry)" (zh mirrors it) — so the README caveat and §9.1 now agree. No action remains for
+  this lane; the captain owns the docs commit. `bun run verify:docs` was green on the tree including
+  those docs edits (14:26:20Z).

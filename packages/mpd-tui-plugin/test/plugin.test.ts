@@ -1656,7 +1656,10 @@ describe("settings section disclosure (t21)", () => {
     expect(BRIDGE_DISCLOSURE).toContain("WHICH knobs take the new value in the RUNNING process — no restart — depends on how each one reads it")
     expect(BRIDGE_DISCLOSURE).toContain("are read per use")
     // The named LIVE groups, so a rewrite that quietly drops one reddens here.
-    for (const live of ["teamModels.slot*", "modelchain.*", "watchdog.*", "team.stateDir", "team.gate", "captain.investigation", "delegation.gate"]) expect(BRIDGE_DISCLOSURE).toContain(live)
+    for (const live of ["teamModels.slot*", "modelchain.*", "team.stateDir", "team.gate", "captain.investigation", "delegation.gate"]) expect(BRIDGE_DISCLOSURE).toContain(live)
+    // `watchdog.*` is NOT a live group (T20-F2): it is a scope-qualified exception, pinned as such.
+    expect(BRIDGE_DISCLOSURE).not.toContain("modelchain.*, watchdog.*")
+    expect(BRIDGE_DISCLOSURE).toContain("EXCEPTION: the watchdog's knobs are re-read every tick from the row config and the .mpd/mpd.jsonc FILE layer")
     // The one-way toggle, stated as one-way rather than as a promise.
     expect(BRIDGE_DISCLOSURE).toContain("tui.dashboardKey is live ONE WAY")
     // THE EXCEPTION IS PINNED, group by group: at least one mount-captured name must always appear,

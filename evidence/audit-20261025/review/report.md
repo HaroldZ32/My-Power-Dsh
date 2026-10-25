@@ -492,5 +492,89 @@ green and the notice-readability bound stays declared.
 pins, but the owning package's README pair (plus the watchdog README pair's namespace premise) still
 teaches the retired model and a blanket restart; two README pairs close it.**
 
+---
+
+# T24 — FINAL RE-VERIFICATION: README CONTRACTS + AMENDMENT 6 (`a743b720`) — 2026-10-25T14:22Z — **FAIL (AMENDMENT 6's truth is not propagated)**
+
+Commit `a743b720` repairs the two README pairs T20 named, and I verified both repairs from the files:
+
+- **T20-F1 (config README pair) — CLOSED.** `packages/mpd-config-plugin/README.md` + zh now state: the
+  live save path is the `mpd-config` ENTRY document, the host owns it, no workspace file is written, the
+  `<workspace>/.mpd/mpd.jsonc` write-back is the RETIRED legacy `mpd`-namespace path whose registration
+  the pinned harness REFUSES ("dormant"), and a hand edit of the file is still read. The old legacy
+  bullets sit under "### The LEGACY namespace path (DORMANT on the pinned host)", the boundary sentence
+  says the pinned host never runs it, the stale "shipped hint says 'after a restart'" is gone, and the
+  blanket timing is replaced by the per-knob split with `§9.1` as the authority. Both languages.
+- **T20-F2's headline (watchdog README pair) — CLOSED in part.** The "`mpd` settings namespace is the
+  live authority … registered *deferred*" paragraph is gone; the README now says the namespace is
+  **unserved** (`settingsRegister("mpd")` REFUSED), the knobs come from the row config, the workspace
+  file layer and that unserved read, and §7.2/§7.3's file-vs-settings story is corrected. Both languages.
+  The replacement wording carries the two problems below.
+
+## Finding 1 (HIGH — AMENDMENT 6's recorded consequence is still contradicted in two shipped docs)
+
+AMENDMENT 6 records, from the code: "**a settings-form save (the TUI `/settings` section or the Web
+card) does not reach the watchdog's knobs at all** — an entry save writes no file (Amendment 5), and the
+namespace it reads is unserved. Only a hand-edited `.mpd/mpd.jsonc` (or the row config) reaches it."
+and "**This wave must not claim the watchdog's settings half is live.**" I re-confirmed the code:
+`packages/mpd-team-watchdog-plugin/src/engine.ts` reads only `dsh.settingsReader("mpd")` (`SETTINGS_NS`,
+unserved) plus the row config and the workspace file; it never calls the config service
+(`mpdConfig.get`/`ENTRY_CONFIG_ID` appears nowhere in the package) and its document subscription is
+`onSettingsDocumentUpdated("mpd", …)`, so a front-door save of the `mpd-config` ENTRY fires nothing for
+it. Yet two shipped surfaces still claim the opposite:
+
+1. `docs/user-guide.md` §9.1 — the bullet "**`watchdog.*` is re-read live.** The watchdog re-resolves its
+   knobs at mount, **on a settings-document update** and once per tick…" and the canonical table row
+   "`watchdog.*` | mpd-team-watchdog | at mount, on a settings update, and every tick | **live — no
+   restart**" (EN, and the zh twin at the same bullets/rows). The "on a settings update" half is false for
+   front-door saves, and the table answers "when a saved knob takes effect" with exactly the claim the
+   amendment forbids.
+2. `packages/mpd-config-plugin/README.md` + zh — **this commit's own new paragraph** "**The READ-BACK is
+   live; the EFFECT is per knob**" lists `watchdog.*` under "**live in the running process**" (EN around
+   the live-group sentence; zh the same). In a section explicitly about what a settings save does, that is
+   the forbidden claim: the form's entry save does not reach the watchdog's knobs.
+
+**Why it matters:** a user lowers `watchdog.warnSilenceMs` (or changes the escalation) in `/settings`,
+the canonical guide says it is live, and nothing happens — the exact operator surprise the amendment
+exists to record. **Direction:** qualify §9.1's watchdog bullet and table row (what IS live is the FILE
+layer + the row config; a settings-form save does not reach these knobs, the entry document only carries
+their declaration, and the code gap is AMENDMENT 6), and move or qualify `watchdog.*` in the config
+README's live group. Note the collision the captain must resolve: AMENDMENT 2 told lanes §9.1 is the
+canonical per-knob table and "do not edit it"; AMENDMENT 6 makes one of its rows untrue, so either that
+instruction is amended or the edit is authorized explicitly.
+
+## Finding 2 (MEDIUM — the watchdog README pair does not state the consequence, and its replacement sentence re-invites the wrong inference)
+
+`packages/mpd-team-watchdog-plugin/README.md` (and the zh twin) now explains the layers but never states
+AMENDMENT 6's operational consequence ("a settings-form save does not reach these knobs; only a
+hand-edited `.mpd/mpd.jsonc` or this row's config does"), while its replacement sentence reads "the knobs
+are served as this row's config **under the entry `mpd-config` (`ENTRY_CONFIG_ID`)** instead" (zh: "旋钮
+改由本行的配置以 `mpd-config` 这个 entry……提供") — which conflates the watchdog's OWN row config with the
+CONFIG row's entry document, the exact inference the amendment forbids. **Direction:** separate the two
+entities ("this row's config" vs "the `mpd-config` entry that the front doors save and this row never
+reads"), and add the one-sentence consequence; the amendment's disposition says the pair "states this
+truthfully" — it states the mechanism, not the consequence.
+
+## Verified clean (my own runs on `a743b720`, all exit 0)
+
+`docs` `ev-20261025T142102-5b9a8f` (pairs 50, links 447, dead 0) · `comments`
+`ev-20261025T142102-fc5c39` · `rows` `ev-20261025T142105-fb89b9` (36) · `typecheck`
+`ev-20261025T142105-431c08` · `tests` `ev-20261025T142107-406f66` (**2465 tests / 6 declared skips / 0
+fail** / 40 690 expects) · `manifest` `ev-20261025T142140-ee7ff2`; plus `verify:vendor` PASS (7 assets),
+`verify-dist-fresh` **33/33 fresh**, `verify-no-host-override` PASS. The commit is README/evidence-only
+(no src, no dist, no client, no VENDOR_LOCK change), consistent with AMENDMENT 6's "the CODE gap is
+recorded, not fixed". Evidence integrity: modifies only the two package-lane reports and my own report
+(my T20 append committed verbatim); no historical `result.json`/`output.log` touched.
+
+**Bounds:** no Docker/live-LLM/own-PTY run in this pass; `tui-panels`' real TTY lane still has no
+post-repair stamp (self-test/static model green, readability bound declared); the review lane reads the
+implementation by mandate, so no blindness basis is claimed.
+
+**Verdict on `a743b720`: FAIL — both T20 findings' substance is repaired in the two README pairs, but
+AMENDMENT 6's own truth is still contradicted by the canonical §9.1 watchdog row and by the config
+README's new "live" list, and the watchdog README's replacement wording omits the consequence and
+conflates the two row configs. Qualifying those three surfaces (no code change) closes it.**
+
+
 
 

@@ -631,9 +631,15 @@ Three things do not wait for that restart, and all are useful:
 - **The read-back is always immediate.** `mpd_config_get` and `mpd_config_reload` re-read the layers
   on every call and report the new resolved value right away. That is how you verify an edit landed,
   even while an already-mounted consumer still holds its captured value.
-- **`watchdog.*` is re-read live.** The watchdog re-resolves its knobs at mount, on a settings-document
-  update and once per tick, so a file edit reaches it in THIS process with no restart;
-  `session-watchdog-status` prints the per-knob LIVE vs FILE value with its `restartRequired` flag.
+- **`watchdog.*` is re-read live from the FILE — a FORM save does not reach it.** The watchdog
+  re-resolves its knobs at mount, on a `settings/document-updated` for the **legacy `mpd` NAMESPACE**
+  (the namespace model is RETIRED on the harness this bundle pins, so that event never fires here), and
+  once per tick. What reaches it live is a `<workspace>/.mpd/mpd.jsonc` edit: the row parses that file
+  itself on every resolution and applies the layer that moved, in THIS process, with no restart. A save
+  through `/settings` or the Web card goes to the `mpd-config` ENTRY document, which this row does not
+  read, so those knobs keep their old values; edit the file, or change the `mpd-team-watchdog` row
+  config (a boot). `session-watchdog-status` prints the per-knob LIVE vs FILE value with its
+  `restartRequired` flag.
 
 | Knob | Who reads it | Read when | Takes effect |
 |---|---|---|---|
@@ -647,7 +653,7 @@ Three things do not wait for that restart, and all are useful:
 | `extensions.enable` / `.disable` / `.mcp.*` | mpd-ext | when the plugin starts (process-level) | after a restart |
 | `team.stateDir` | the mpd plugins that read legacy team records, through the live service | per call | right after the service re-reads the file (`mpd_config_reload`, or any settings save). These are LEGACY records: the official team plugin keeps its roster, mailbox and board in the Lead's session log, not here |
 | `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate (single-call consult paths `mpd_role_spawn`, `mpd_workmate_spawn`), mpd-dsh-adapter (native team executor: every team member), and mpd-roster-provider (official-executor fallback only) | at spawn, from the live service | live — no restart: a settings save or a hand edit of `<workspace>/.mpd/mpd.jsonc` is re-read in-process, so the NEXT spawn carries it; `mpd_config_reload` forces a re-read. ONE route per slot with no default layer: an unconfigured or malformed slot REFUSES a single-call spawn with `SLOT_UNCONFIGURED` (nothing written, no child started), while a team member never fails on its slot, and the slot's own `fallbacks` chain is consumed once before the spawn. A team member's slot is resolved by `role` → the HEAD of its `description` → its whole `name`; an UNMATCHED member, or one whose slot is unconfigured, INHERITS the staging session's route with one log line and no throw |
-| `watchdog.*` | mpd-team-watchdog | at mount, on a settings update, and every tick | live — no restart |
+| `watchdog.*` | mpd-team-watchdog | at mount, on a `settings/document-updated` for the legacy `mpd` NAMESPACE (retired here), and every tick — the row also parses `<workspace>/.mpd/mpd.jsonc` itself | live for a FILE edit — no restart; a FORM save (`/settings`, Web card) does NOT reach these knobs on this harness (the row does not read the `mpd-config` entry) |
 
 `mpd-codegraph`'s knobs are the exception that proves the rule: they are patch-row options
 (`autoInit`, `initTimeoutMs`, `cooldownMs`, `binary`), so they change only by editing the row and

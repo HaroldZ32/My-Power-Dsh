@@ -81,7 +81,7 @@ describe("D-09 — memory.vcs accepts the mode the memory row honours", () => {
 const MOUNT_CAPTURED = ["hashline.*", "commentChecker.*", "ulw.*", "memory.*", "boulder.dir", "goal.*"]
 
 /** The knobs READ per use, i.e. the groups that reach the running process. */
-const LIVE_GROUPS = ["teamModels.slot*", "modelchain.*", "watchdog.*", "team.stateDir", "team.gate", "team.sensitivity", "captain.investigation", "delegation.gate"]
+const LIVE_GROUPS = ["teamModels.slot*", "modelchain.*", "team.stateDir", "team.gate", "team.sensitivity", "captain.investigation", "delegation.gate"]
 
 describe("D-18 — the disclosure tells the SCOPED truth, and states BOTH halves", () => {
   test("the live half names every group that reads the config service per use", () => {
@@ -89,6 +89,17 @@ describe("D-18 — the disclosure tells the SCOPED truth, and states BOTH halves
     // The one-way toggle is stated as one-way: a saved false disables, a saved true cannot arm.
     expect(BRIDGE_DISCLOSURE).toContain("tui.dashboardKey is live ONE WAY")
     expect(BRIDGE_DISCLOSURE).toContain("cannot arm a takeover the row config disabled")
+  })
+
+  test("the watchdog is a SCOPE-QUALIFIED EXCEPTION, never a member of the live list", () => {
+    // Reviewer T20-F2 / AMENDMENT 6: the engine reads the legacy (unserved) `mpd` namespace, the row
+    // config and the FILE layer every tick — never the config service — so a settings-FORM save does
+    // not reach `watchdog.*` at all. Listing it among the "read per use" groups was the forbidden
+    // claim; this arm pins both halves of the honest sentence and the ABSENCE of the old placement.
+    expect(BRIDGE_DISCLOSURE).toContain("EXCEPTION: the watchdog's knobs are re-read every tick from the row config and the .mpd/mpd.jsonc FILE layer")
+    expect(BRIDGE_DISCLOSURE).toContain("a hand edit reaches them and a save from this form never does")
+    expect(BRIDGE_DISCLOSURE).not.toContain("modelchain.*, watchdog.*")
+    for (const group of LIVE_GROUPS) expect(group).not.toBe("watchdog.*")
   })
 
   test("the exception half names every mount-captured group, so it cannot silently vanish", () => {

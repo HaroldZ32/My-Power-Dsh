@@ -577,6 +577,42 @@ through `ctx.settingsScope.bind({ namespace: 'mpd' }).mutate(…)`, while
 mismatch in a different claim class. `docs/design.md`'s row "- `mpd-config` … owns the settings
 write-back (§7b)" is now disambiguated by §7b itself.
 
+### T25 — T24-F1: the §9.1 watchdog row overclaims form-save reach (repair pass 8) — DONE
+
+Code truth (opened this session): `packages/mpd-team-watchdog-plugin/src/engine.ts`
+`refreshKnobs()` takes its namespace layer from `readNamespaceValue(dsh)` =
+`dsh.settingsReader("mpd")?.get()` — the **legacy `mpd` settings namespace** — plus its OWN parse of
+`<workspace>/.mpd/mpd.jsonc` (`readWatchdogSection`, per resolution). Its settings subscription is
+`onSettingsDocumentUpdated("mpd", …)` — the legacy NAMESPACE, not the `mpd-config` ENTRY document that
+both front doors actually save (T19's evidence). On the harness this bundle pins the namespace model is
+RETIRED (`settingsRegister` refused — T19), so `settingsReader("mpd")` yields nothing and that event
+never fires. Therefore: a `/settings` / Web-card FORM save does **not** reach `watchdog.*`; a
+`<workspace>/.mpd/mpd.jsonc` edit does, live (the row applies the layer that moved in-process); the
+`mpd-team-watchdog` row config needs a boot. The engine's own `knobDivergence()` / `restartRequired`
+reflects exactly this layer comparison.
+
+Changed (EN + zh):
+
+- `docs/user-guide.md` §9.1: the **`watchdog.*` bullet** now says the knobs are re-read live from the
+  FILE and that a form save does not reach them (naming the retired `mpd` namespace and the
+  `mpd-config` entry the row does not read), and the **§9.1 row** now reads "at mount, on a
+  `settings/document-updated` for the legacy `mpd` NAMESPACE (retired here), and every tick — the row
+  also parses `<workspace>/.mpd/mpd.jsonc` itself | live for a FILE edit — no restart; a FORM save …
+  does NOT reach these knobs on this harness". `docs/user-guide.zh-CN.md` mirrors both.
+- `docs/tui.md` §6.2 + zh: the LIVE list no longer lumps `watchdog.*` in with the knobs read from the
+  live config service; it is called live **from the row's own file read**, with the form-save exclusion
+  and a pointer to user-guide §9.1.
+
+Verification: `bun run verify:docs` → `pairs=50 failed=0 violations=0 exempt=24 derived=3 links=447
+dead=0 — PASS`, **exit 0**.
+
+Reported, NOT fixed (CODE lane — the hint constant is not a doc): `BRIDGE_DISCLOSURE`
+(`packages/mpd-config-plugin/src/settings-schema.ts`) lists `watchdog.*` among the knobs that "take the
+new value in the RUNNING process" after a form save; for the same reason above that is untrue of a form
+save — it needs the same distinction (form ≠ file) or `watchdog.*` should come out of that list. The
+watchdog's own header comment ("the `mpd`-namespace knobs … the live authority (AC-11)") is likewise
+stale on the retired-namespace host.
+
 ## Bounds of this lane's evidence
 
 - No git command was run; the captain commits. Nothing under `packages/**`, `.mpd/**`, `skills/**` or
