@@ -647,6 +647,55 @@ are correctly fixed and gated, but two package README pairs (`mpd-tui-plugin`, `
 each) still list `watchdog.*` as settings-live; moving it out with the same exception sentence closes
 it.**
 
+---
+
+# T31 — FINAL RE-VERIFICATION: `watchdog.*` OUT OF THE LIVE SERIES (`6938d11e`) — 2026-10-25T14:47Z — **PASS**
+
+Commit `6938d11e` is README-only (four files + evidence) and closes both T29 findings. I verified each
+fix from the files, in both languages:
+
+- **`packages/mpd-tui-plugin/README.md` — FIXED in BOTH places.** The settings-section table cell no
+  longer lists `watchdog.*` in the live series; it now ends "…and `watchdog.*` is NEITHER: live from a
+  hand-edited `<workspace>/.mpd/mpd.jsonc`, but a `/settings` save never reaches those knobs." The later
+  per-knob section drops it from "live in the running process" and adds a third bullet "**NEITHER half:
+  `watchdog.*`** — the watchdog row reads `settingsReader(\"mpd\")` (refused on the pinned harness,
+  `settingsModelRetired`) and parses `<workspace>/.mpd/mpd.jsonc` ITSELF, so a hand edit of that FILE
+  applies with no restart while a `/settings` save never reaches these knobs." The zh twin carries all
+  three places with the same meaning.
+- **`packages/mpd-bundle-plugin/README.md` — FIXED.** The disclosure paragraph drops `watchdog.*` from
+  the live series and adds "…and `watchdog.*` is NEITHER half: its own row reads `settingsReader(\"mpd\")`
+  (refused here) and parses `<workspace>/.mpd/mpd.jsonc` itself, so a hand edit of that file is live
+  while a form save never reaches those knobs". The zh twin matches.
+- **Full re-sweep — CLEAN.** I grepped every EN `docs/*.md`, `packages/*/README.md` and
+  `agent-references/*.md` for a `watchdog.*` mention co-located with a live/no-restart claim: the only
+  hits are the corrected ones (§9.1's bullet/row, `docs/tui.md` §7.2's scoped "live too … from the
+  ROW's own read" sentence, the config README's "ONE special case", the watchdog README's consequence
+  paragraph, the two pairs this commit fixes) plus unrelated inventory/count prose. The disclosure
+  constants (schema, card mirror, QA `TUI_DISCLOSURE_LIVE`) and `engine.ts`/`machine.ts` comments
+  already carry the same truth from `a43f92ab`, and no code changed here. `watchdog.*` is now
+  **consistently** "neither half" across every surface: row config + hand-edited FILE live; a settings
+  FORM save does not reach it (AMENDMENT 6's recorded code gap).
+- **Evidence:** the commit adds `evidence/audit-20261025/pkg-readmes-b/verify-docs-t30.log` (pairs=50,
+  dead=0, PASS) and `verify-manifest-t30.log` (VERDICT PASS); it modifies no historical record.
+
+## Gates I ran on the committed tree (fresh ids, all exit 0)
+
+`docs` `ev-20261025T144607-d60dd6` (pairs 50, links 447, dead 0) · `comments`
+`ev-20261025T144608-67f30c` · `rows` `ev-20261025T144610-606253` (36) · `typecheck`
+`ev-20261025T144610-920663` · `tests` `ev-20261025T144620-3c011c` (**2466 tests / 6 declared skips / 0
+fail** / 40 700 expects) · `manifest` `ev-20261025T144656-84f603`; plus `verify:vendor` PASS (7 assets),
+`verify-dist-fresh` **33/33 fresh**, `verify-no-host-override` PASS. Working tree: HEAD `6938d11e`, only
+pre-existing/parallel untracked evidence dirs (the captain's final Docker lanes in progress).
+
+**Bounds:** no Docker/live-LLM/own-PTY run this pass; `tui-panels`' real TTY lane still has no
+post-repair stamp (self-test/static model green, readability bound declared). The review lane reads the
+implementation by mandate, so no blindness basis is claimed.
+
+**Verdict on `6938d11e`: PASS — both T29 findings are closed correctly in EN and zh, no surface still
+claims the watchdog's settings half is live, the one truth (row config + file layer live; form save does
+not reach) is now stated everywhere, and every gate is green.**
+
+
 
 
 
