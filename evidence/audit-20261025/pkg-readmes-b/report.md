@@ -702,6 +702,75 @@ insertions / 14 deletions before the final alignment edit.
 2. The README now matches `docs/user-guide.md` §9.1's corrected watchdog text; I did not edit that file.
 3. Only the two gates this lane requires were run.
 
+---
+
+# T30 — remove `watchdog.*` from the live series (tui + bundle-plugin READMEs, EN+zh)
+
+**Defect (the last residual of the watchdog truth).** My P-11/P-13 (then T7) work listed `watchdog.*`
+inside the LIVE "takes effect in the running process" series in four places across two README pairs.
+AMENDMENT 6/7 established the opposite: a front-door `/settings` save does NOT reach `watchdog.*` — the
+watchdog reads `settingsReader("mpd")` (refused on the pinned host, `settingsModelRetired`) and its own
+parse of `<workspace>/.mpd/mpd.jsonc`; its knobs are live from the FILE layer and its row config, never
+from a form save.
+
+**Sites fixed (EN + zh)**
+
+1. `packages/mpd-tui-plugin/README.md` + `.zh-CN.md` — settings-section table cell: `watchdog.*` removed
+   from the live series, with the exception added in the same sentence — "`watchdog.*` is NEITHER: live
+   from a hand-edited `<workspace>/.mpd/mpd.jsonc`, but a `/settings` save never reaches those knobs".
+2. Same pair — the NOT CLAIMED #2 bullet list: `watchdog.*` removed from "live in the running process",
+   and a THIRD bullet added — "**NEITHER half: `watchdog.*`** — the watchdog row reads
+   `settingsReader("mpd")` (refused on the pinned harness, `settingsModelRetired`) and parses
+   `<workspace>/.mpd/mpd.jsonc` ITSELF, so a hand edit of that FILE applies with no restart while a
+   `/settings` save never reaches these knobs."
+3. `packages/mpd-bundle-plugin/README.md` + `.zh-CN.md` — the disclosure paragraph: `watchdog.*` removed
+   from the RUNNING-process series, with the same exception inline ("`watchdog.*` is NEITHER half: its own
+   row reads `settingsReader("mpd")` (refused here) and parses `<workspace>/.mpd/mpd.jsonc` itself, so a
+   hand edit of that file is live while a form save never reaches those knobs").
+
+Unchanged as instructed: the model routes, the team-gate knobs, the `team.stateDir` reader and the two
+guards stay in the live series; the mount-captured group (`hashline.*`, `commentChecker.*`, `ulw.*`,
+`memory.*`, `boulder.dir`, `goal.*`) is untouched.
+
+**Verification that no live-series claim remains:**
+
+```
+$ grep -n "watchdog\.\*" packages/mpd-tui-plugin/README.md packages/mpd-tui-plugin/README.zh-CN.md \
+      packages/mpd-bundle-plugin/README.md packages/mpd-bundle-plugin/README.zh-CN.md
+```
+
+Five hits, ALL of them the new "neither half" exception (2 tui EN/zh bullets + 1 tui EN cell + 1 tui zh
+cell + 1 bundle EN paragraph + 1 bundle zh sentence) — none in a "takes effect in the running process"
+list.
+
+**Checks re-run (quoted, with exit codes)**
+
+`bun run verify:docs` — **exit 0**, log `evidence/audit-20261025/pkg-readmes-b/verify-docs-t30.log`
+
+```
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=50 failed=0 violations=0 exempt=24 derived=3 links=447 dead=0 — PASS
+```
+
+`bun run verify:manifest` — **exit 0**, log `evidence/audit-20261025/pkg-readmes-b/verify-manifest-t30.log`
+
+```
+ok    packed-content: npm pack --dry-run lists 1044 file(s); 0 required path(s) absent
+
+VERDICT: PASS — the install-time rules and the packaging contract hold.
+```
+
+Diff for the four files in this pass: **17 insertions, 10 deletions** (measured after the earlier work
+had been committed).
+
+**Bounds**
+
+1. Text only; `src/**` untouched, and the recorded code gap (the watchdog reads neither the `mpd-config`
+   entry nor a served namespace) remains.
+2. This makes the two README pairs agree with `docs/user-guide.md` §9.1 ("`watchdog.*` is re-read live
+   from the FILE — a FORM save does not reach it"), which I did not edit.
+3. Only the two gates this lane requires were run.
+
+
 
 
 

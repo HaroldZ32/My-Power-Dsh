@@ -575,6 +575,79 @@ AMENDMENT 6's own truth is still contradicted by the canonical §9.1 watchdog ro
 README's new "live" list, and the watchdog README's replacement wording omits the consequence and
 conflates the two row configs. Qualifying those three surfaces (no code change) closes it.**
 
+---
+
+# T29 — FINAL RE-VERIFICATION: THE WATCHDOG TRUTH ACROSS ALL SURFACES (`a43f92ab`) — 2026-10-25T14:42Z — **FAIL (two package README pairs still say the settings half is live)**
+
+Commit `a43f92ab` implements AMENDMENT 7's three carriers and goes further into the code-adjacent
+surfaces. I verified each from the files:
+
+- **T25 (§9.1) — DONE.** `docs/user-guide.md` §9.1's bullet is now "**`watchdog.*` is re-read live from
+  the FILE — a FORM save does not reach it.**" with the legacy-namespace retirement, the file-layer
+  live read, the entry-document non-read and the "edit the file, or change the row config (a boot)"
+  remedy; the table row says "live for a FILE edit — no restart; a FORM save … does NOT reach these
+  knobs on this harness". Both languages.
+- **T26 (mpd-config README) — DONE.** The live group no longer names `watchdog.*`; a "**ONE special
+  case — `watchdog.*`**" bullet states the row-config defaults layer, the live FILE layer and the
+  form-save non-reach with the engine's `settingsReader("mpd")` reason. Both languages.
+- **T27 (watchdog README) — DONE.** "this row's own config … the WATCHDOG row, not the config row"
+  separates the two rows, and a dedicated paragraph states "**On the pinned harness a settings-FORM save
+  does not reach these knobs** … That is a recorded CODE gap, not a claim that the settings half is
+  live." Both languages.
+- **Beyond the carriers, correctly:** `docs/tui.md` + zh scope `watchdog.*` to "the ROW's own read of
+  `<workspace>/.mpd/mpd.jsonc>` (it does not read the `mpd-config` entry, so a FORM save does not reach
+  it — user-guide §9.1)"; the disclosure `BRIDGE_DISCLOSURE` drops `watchdog.*` from the live series and
+  adds an `EXCEPTION:` sentence (1075 chars, byte-identical in the schema, the card mirror and the QA
+  `TUI_DISCLOSURE_LIVE`), with a new pin in `settings-defaults.test.ts` ("the watchdog is a
+  SCOPE-QUALIFIED EXCEPTION, never a member of the live list", including the `modelchain.*, watchdog.*`
+  absence); `engine.ts`/`machine.ts` gain truthful comments only (**no behaviour change** — confirmed by
+  the diff: comments and doc text, no logic); `dist`/`client.js`/`VENDOR_LOCK` re-anchored; the
+  post-change real case `evidence/mpd-bridge/tui-settings-bridge/20261025T143343Z/result.json` is
+  `ok: true`, 11/11.
+
+## Finding (HIGH — the "stop saying it is" sweep misses two package README pairs)
+
+Two package contracts — both untouched by this commit — still list `watchdog.*` as a settings-live
+member, contradicting AMENDMENT 6 ("this wave must not claim the watchdog's settings half is live") and
+AMENDMENT 7's ruling:
+
+1. `packages/mpd-tui-plugin/README.md` + `README.zh-CN.md` — the settings-section row says "…WHICH knobs
+   then act without a restart is per knob: the model routes, **`watchdog.*`**, `team.gate`/
+   `team.sensitivity`, the `team.stateDir` reader and the two guards take effect in the running
+   process…" (zh the same), and the later section repeats it: "**live in the running process** — …,
+   **`watchdog.*`**, …" (zh: "**在运行中的进程里即生效** —— …、`watchdog.*`、…").
+2. `packages/mpd-bundle-plugin/README.md` + `README.zh-CN.md` — the disclosure paragraph says "…the
+   disclosure is SCOPED per knob … the model routes, **`watchdog.*`**, the team-gate knobs, the
+   `team.stateDir` reader and the two guards act in the RUNNING process, while `hashline.*`, … are
+   captured at `apply()`…" (zh: "模型路由、**`watchdog.*`**、团队闸门开关、`team.stateDir` 读取方与两个守卫在
+   **运行中的进程**里生效…").
+
+**Why it matters:** these two pairs describe the very settings section/card whose disclosure now states
+the opposite, so a TUI or web developer reading the package contract still learns that a `/settings`
+save reaches `watchdog.*` live. The wave's own standard is that it must not say so, and the corrected
+§9.1/config README/watchdog README/disclosure all now say otherwise — the tree contradicts itself.
+**Direction:** in both pairs, move `watchdog.*` out of the live series and state the same exception
+sentence the four corrected surfaces use (row config + file layer live; the form save does not reach it
+— AMENDMENT 6); a cheap guard would extend the existing settings-defaults pin (or a docs test) to
+`not.toContain` the two README live lists. No code change.
+
+## Verified clean (my own runs on `a43f92ab`, all exit 0)
+
+`docs` `ev-20261025T144109-3e5ac9` (pairs 50, links 447, dead 0) · `comments`
+`ev-20261025T144109-a16803` · `rows` `ev-20261025T144112-9e9733` (36) · `typecheck`
+`ev-20261025T144112-36bb9c` · `tests` `ev-20261025T144115-1545e0` (**2466 tests / 6 declared skips / 0
+fail** / 40 700 expects — one new arm) · `manifest` `ev-20261025T144149-66d755`; plus `verify:vendor`
+PASS (7 assets), `verify-dist-fresh` **33/33 fresh**, `verify-no-host-override` PASS. Evidence integrity:
+the commit modifies the code/docs and the five lane reports, adds no rewritten historical record.
+`tui-panels`' real TTY lane still has no post-repair stamp (self-test/static model green, readability
+bound declared); no Docker/live-LLM/own-PTY run this pass.
+
+**Verdict on `a43f92ab`: FAIL — the amendment's three carriers and the disclosure/§9.1/tui.md surfaces
+are correctly fixed and gated, but two package README pairs (`mpd-tui-plugin`, `mpd-bundle-plugin`, EN+zh
+each) still list `watchdog.*` as settings-live; moving it out with the same exception sentence closes
+it.**
+
+
 
 
 
