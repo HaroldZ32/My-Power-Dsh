@@ -1,5 +1,6 @@
 import { test, expect } from "bun:test"
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync } from "node:fs"
+import { spawnSync } from "node:child_process"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
 import { apply } from "../src/index.ts"
@@ -161,12 +162,18 @@ test("mpd_memory_reflect_complete refuses when no reflection is due", async () =
   }
 })
 
-test("svn backend REAL svn CLI: repo create, checkout, commit, log", async () => {
-  /** The child-process module, imported here for the two real-CLI probes. */
-  const { spawnSync } = await import("node:child_process")
-  /** The `svn --version` probe that decides whether this arm can run at all. */
-  const probe = spawnSync("svn", ["--version", "--quiet"], { encoding: "utf8" })
-  if (probe.status !== 0) return // svn not installed: skip (documented)
+/** Why the two real-Subversion arms cannot run in a bare checkout: the Subversion toolchain is absent. */
+const SVN_TOOLCHAIN_ABSENT = "svn/svnadmin not installed; the real-CLI arms need the Subversion toolchain"
+
+/** One-time `svn --version --quiet` probe; the real-CLI arm runs only when the CLI answers. */
+const svnCliAvailable: boolean = spawnSync("svn", ["--version", "--quiet"], { encoding: "utf8" }).status === 0
+
+/** One-time `svnadmin --version --quiet` probe; the both-backends arm runs only when svnadmin answers. */
+const svnAdminAvailable: boolean = spawnSync("svnadmin", ["--version", "--quiet"], { encoding: "utf8" }).status === 0
+
+// skipIf, never a bare early return: a body that returns before its first assertion is reported PASS by
+// bun and proves nothing, so an absent toolchain must surface as SKIP with this documented reason.
+test.skipIf(!svnCliAvailable)(`svn backend REAL svn CLI: repo create, checkout, commit, log (${SVN_TOOLCHAIN_ABSENT})`, async () => {
   /** The throwaway workspace this arm's memory store lives under. */
   const dir = mkdtempSync(join(tmpdir(), "mpd-mem-svn-real-"))
   /** The captured tools and the ambient-root restorer for this arm. */
@@ -195,12 +202,7 @@ test("svn backend REAL svn CLI: repo create, checkout, commit, log", async () =>
   restore()
 })
 
-test("both vcs: commits to git and svn", async () => {
-  /** The child-process module, imported here for the `svnadmin` probe. */
-  const { spawnSync } = await import("node:child_process")
-  /** The `svnadmin --version` probe that decides whether this arm can run at all. */
-  const probe = spawnSync("svnadmin", ["--version", "--quiet"], { encoding: "utf8" })
-  if (probe.status !== 0) return // svn not installed: skip (documented)
+test.skipIf(!svnAdminAvailable)(`both vcs: commits to git and svn (${SVN_TOOLCHAIN_ABSENT})`, async () => {
   /** The throwaway workspace this arm's memory store lives under. */
   const dir = mkdtempSync(join(tmpdir(), "mpd-mem-both-"))
   /** The captured tools and the ambient-root restorer for this arm. */

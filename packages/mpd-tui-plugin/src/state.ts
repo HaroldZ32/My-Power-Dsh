@@ -28,6 +28,35 @@ const MAX_WORKMATES = 200
 const MAX_TASKS = 5000
 /** Problem notes kept for display; further ones are dropped, not queued. */
 const MAX_PROBLEMS = 5
+/** Cap on one problem note's own text, so a pathological error message cannot widen the board row. */
+const MAX_PROBLEM_CHARS = 120
+
+/** The errno code a filesystem throw carries, or undefined for a JSON syntax error or a non-filesystem throw. */
+function errnoOf(error: unknown): string | undefined {
+  /** The code field, read structurally because a throw's type is not guaranteed. */
+  const code = (error as { code?: unknown } | undefined)?.code
+  return typeof code === "string" ? code : undefined
+}
+
+/** True for "nothing is there": every reader treats an absent section as EMPTY, never as a fault. */
+function isMissing(error: unknown): boolean {
+  return errnoOf(error) === "ENOENT"
+}
+
+/**
+ * One bounded problem note for a section that could not be read.
+ *
+ * The errno code is preferred because it names the fault precisely (EACCES / ENOTDIR / EISDIR);
+ * a parse error has no code, so its message is used instead.
+ * @param section - the section the note is about, e.g. `plans`.
+ * @param error - what the read threw.
+ * @returns one line, capped at `MAX_PROBLEM_CHARS` after the section label.
+ */
+function problemNote(section: string, error: unknown): string {
+  /** The unbounded fault text the note starts from. */
+  const raw = errnoOf(error) ?? (error instanceof Error ? error.message : "unreadable")
+  return `${section}: ${raw.slice(0, MAX_PROBLEM_CHARS)}`
+}
 
 /** The live team as the board and status line show it, projected from the official readout. */
 export interface TeamSummary {
@@ -234,7 +263,7 @@ function readRecordTeam(record: TeamRecord): TeamSummary {
 }
 
 /** `.mpd/plans/*.md` — the plan files a boulder work can be bound to. */
-function readPlans(root: string): { count: number; newest?: string } {
+function readPlans(root: string, problems: string[]): { count: number; newest?: string } {
   /** Path of the plan directory under this workspace root. */
   const dir = join(root, ".mpd", "plans")
   try {
@@ -243,13 +272,15 @@ function readPlans(root: string): { count: number; newest?: string } {
       .filter((name) => name.endsWith(".md"))
       .sort()
     return { count: names.length, newest: scalarText(names[names.length - 1], 120) }
-  } catch {
+  } catch (error) {
+    // An unreadable plan directory must not render as "no plans": say so, one bounded note.
+    if (!isMissing(error)) problems.push(problemNote("plans", error))
     return { count: 0 }
   }
 }
 
 /** `$HOME/.mpd/workmate/<key>/meta.json` — the durable workmate library. */
-function readWorkmates(home: string): { count: number; names: string[] } {
+function readWorkmates(home: string, problems: string[]): { count: number; names: string[] } {
   /** Path of the durable workmate library under this home directory. */
   const dir = join(home, ".mpd", "workmate")
   try {
@@ -267,13 +298,17 @@ function readWorkmates(home: string): { count: number; names: string[] } {
         /** The instance's display name, falling back to its directory key. */
         const label = isRecord(meta) ? scalarText(meta.name ?? name, 60) : undefined
         present.push(label ?? scalarText(name, 60) ?? "?")
-      } catch {
-        // Orphan directory (no meta.json): not an addressable instance.
+      } catch (error) {
+        // An orphan directory (no meta.json) is not an addressable instance and not a fault; a
+        // metadata file that IS there but cannot be read or parsed is a fault the board must show.
+        if (!isMissing(error)) problems.push(problemNote("workmate " + (scalarText(name, 60) ?? "?"), error))
       }
     }
     present.sort()
     return { count: present.length, names: present }
-  } catch {
+  } catch (error) {
+    // Same treatment as the plan directory: an unreadable library is a note, not a silent zero.
+    if (!isMissing(error)) problems.push(problemNote("workmates", error))
     return { count: 0, names: [] }
   }
 }
@@ -291,8 +326,8 @@ export function readBoardState(workspace: string, home: string = homedir(), view
   const state: BoardState = {
     workspace,
     home,
-    plans: readPlans(workspace),
-    workmates: readWorkmates(home),
+    plans: readPlans(workspace, problems),
+    workmates: readWorkmates(home, problems),
     problems,
   }
   // THE PRIMARY SOURCE FIRST: the mpd record, when this workspace holds one. The official readout

@@ -4586,7 +4586,13 @@ function taskDepths(tasks) {
       return 0;
     visiting.add(taskId);
     const dependencies = [...task.dependencies].filter((id) => byId.has(id)).sort();
-    const depth = dependencies.length === 0 ? 0 : 1 + Math.max(...dependencies.map(depthOf));
+    let deepest = 0;
+    for (const id of dependencies) {
+      const depth2 = depthOf(id);
+      if (depth2 > deepest)
+        deepest = depth2;
+    }
+    const depth = dependencies.length === 0 ? 0 : 1 + deepest;
     visiting.delete(taskId);
     depths.set(taskId, depth);
     return depth;
@@ -5170,6 +5176,18 @@ var MAX_TEAMS2 = 20;
 var MAX_WORKMATES = 200;
 var MAX_TASKS2 = 5000;
 var MAX_PROBLEMS2 = 5;
+var MAX_PROBLEM_CHARS = 120;
+function errnoOf(error) {
+  const code = error?.code;
+  return typeof code === "string" ? code : undefined;
+}
+function isMissing(error) {
+  return errnoOf(error) === "ENOENT";
+}
+function problemNote(section, error) {
+  const raw = errnoOf(error) ?? (error instanceof Error ? error.message : "unreadable");
+  return `${section}: ${raw.slice(0, MAX_PROBLEM_CHARS)}`;
+}
 function readJson(path) {
   return JSON.parse(readFileSync3(path, "utf8"));
 }
@@ -5298,16 +5316,18 @@ function readBoulder(root, problems) {
   }
   return summary;
 }
-function readPlans(root) {
+function readPlans(root, problems) {
   const dir = join4(root, ".mpd", "plans");
   try {
     const names = readdirSync2(dir).filter((name) => name.endsWith(".md")).sort();
     return { count: names.length, newest: scalarText(names[names.length - 1], 120) };
-  } catch {
+  } catch (error) {
+    if (!isMissing(error))
+      problems.push(problemNote("plans", error));
     return { count: 0 };
   }
 }
-function readWorkmates(home) {
+function readWorkmates(home, problems) {
   const dir = join4(home, ".mpd", "workmate");
   try {
     const names = readdirSync2(dir, { withFileTypes: true }).filter((entry) => entry.isDirectory() && !entry.name.startsWith(".")).map((entry) => entry.name).slice(0, MAX_WORKMATES);
@@ -5317,11 +5337,16 @@ function readWorkmates(home) {
         const meta = readJson(join4(dir, name, "meta.json"));
         const label = isRecord(meta) ? scalarText(meta.name ?? name, 60) : undefined;
         present.push(label ?? scalarText(name, 60) ?? "?");
-      } catch {}
+      } catch (error) {
+        if (!isMissing(error))
+          problems.push(problemNote("workmate " + (scalarText(name, 60) ?? "?"), error));
+      }
     }
     present.sort();
     return { count: present.length, names: present };
-  } catch {
+  } catch (error) {
+    if (!isMissing(error))
+      problems.push(problemNote("workmates", error));
     return { count: 0, names: [] };
   }
 }
@@ -5330,8 +5355,8 @@ function readBoardState(workspace, home = homedir3(), views = [], records = []) 
   const state = {
     workspace,
     home,
-    plans: readPlans(workspace),
-    workmates: readWorkmates(home),
+    plans: readPlans(workspace, problems),
+    workmates: readWorkmates(home, problems),
     problems
   };
   try {
@@ -7623,9 +7648,9 @@ var TEAM_MODEL_SLOT_GROUPS = {
 };
 var SettingsSchema = Schema.object({
   hashline: Schema.object({ maxDiffChars: Schema.number().default(20000) }),
-  commentChecker: Schema.object({ autoCheck: Schema.boolean().default(true) }),
+  commentChecker: Schema.object({ autoCheck: Schema.boolean().default(false) }),
   ulw: Schema.object({ maxRounds: Schema.number().default(6) }),
-  memory: Schema.object({ vcs: Schema.union([Schema.const("git"), Schema.const("svn")]).default("git") }),
+  memory: Schema.object({ vcs: Schema.union([Schema.const("git"), Schema.const("svn"), Schema.const("both")]).default("git") }),
   team: Schema.object({ stateDir: Schema.string().default(".mpd/team") }),
   boulder: Schema.object({ dir: Schema.string().required(false) }),
   teamModels: Schema.object({
@@ -7645,7 +7670,8 @@ var SettingsSchema = Schema.object({
   }),
   tui: Schema.object({ dashboardKey: Schema.boolean().default(true) })
 });
-var BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect in the RUNNING process — no restart: the config service re-resolves on every settings save and on a watched edit of the project file, and the model routes (teamModels, modelchain) are read per use, so the next spawn or resolve carries them";
+var BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s); the config service re-resolves on every settings save and on a watched edit of the project file, and WHICH knobs take the new value in the RUNNING process — no restart — depends on how each one reads it: teamModels.slot*, modelchain.*, watchdog.*, team.stateDir, team.gate, team.sensitivity, captain.investigation and delegation.gate are read per use, and tui.dashboardKey is live ONE WAY (a saved false disables the Ctrl+A takeover at once; a saved true cannot arm a takeover the row config disabled)";
+var BRIDGE_RESTART_LIMIT = "the other half of that list, so nobody reads it as a blanket: hashline.*, commentChecker.*, ulw.*, memory.*, boulder.dir and goal.* are captured by their plugins at mount instead of reading the live config service per use, so a new value for any of them waits for the next dsh boot (the file and the settings document still receive it at once, and each row names the key it writes)";
 var BRIDGE_NOT_LOST = "the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session";
 function markVolatile(schema) {
   const node = schema;
@@ -7669,7 +7695,7 @@ function knobHint(key, semantics) {
   const pointer = `mpd.jsonc ${key}`;
   return semantics === undefined || semantics.length === 0 ? pointer : `${semantics} (${pointer})`;
 }
-var BRIDGE_SECTION_NOTICE = `${BRIDGE_DISCLOSURE} ${BRIDGE_NOT_LOST}`;
+var BRIDGE_SECTION_NOTICE = `${BRIDGE_DISCLOSURE} ${BRIDGE_RESTART_LIMIT} ${BRIDGE_NOT_LOST}`;
 var TEAM_MODEL_LEAF_TEMPLATES = {
   provider: {
     en: "The provider half of this slot. The slots are the default model route of team members: when a team is created, the {group} ({members}) start on this slot's provider + model + reasoning effort. What changing it does: those members take the new route at the next team creation, and an unusable value makes team creation FAIL loudly, naming the member and the slot — it never silently substitutes another model. Vision Analyst is the vision member: slot 4 drives it.",
@@ -7732,7 +7758,7 @@ var SETTINGS_KNOBS = [
   { path: ["hashline", "maxDiffChars"], label: "Inline diff limit", zh: "行内 diff 上限", kind: "number" },
   { path: ["commentChecker", "autoCheck"], label: "Comment checker", zh: "注释检查", kind: "boolean" },
   { path: ["ulw", "maxRounds"], label: "Ultrawork rounds", zh: "Ultrawork 轮数", kind: "number" },
-  { path: ["memory", "vcs"], label: "Memory backend", zh: "记忆后端", kind: "select", options: ["git", "svn"] },
+  { path: ["memory", "vcs"], label: "Memory backend", zh: "记忆后端", kind: "select", options: ["git", "svn", "both"] },
   { path: ["team", "stateDir"], label: "Team state directory", zh: "团队状态目录", kind: "text" },
   { path: ["boulder", "dir"], label: "Boulder directory", zh: "Boulder 目录", kind: "text" },
   { path: ["watchdog", "enabled"], label: "Watchdog enabled", zh: "看门狗启用", kind: "boolean" },
@@ -7963,7 +7989,7 @@ function settingsFields(lists) {
     return leaf === undefined ? field2 : { ...field2, options: lists[leaf] };
   });
 }
-var SECTION_NOTICE = `${BRIDGE_DISCLOSURE} ${BRIDGE_NOT_LOST}`;
+var SECTION_NOTICE = `${BRIDGE_DISCLOSURE} ${BRIDGE_RESTART_LIMIT} ${BRIDGE_NOT_LOST}`;
 var SETTINGS_SECTION = {
   ns: SETTINGS_ENTRY,
   title: "MPD bundle",

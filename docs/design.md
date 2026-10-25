@@ -29,7 +29,7 @@ is added:
 - a **patch layer** that inserts the bundle's rows into any profile the bundle is installed into,
   plus a second patch file that ships the bundle's own `mpd` preset ADDITIVELY there — the bundle
   id-targets no host row, so making `mpd` the deployment default is a user action (§2, §6c),
-- **33 inserted plugin rows** (6 MCP client rows, 23 `mpd-*` plugin rows including the
+- **35 inserted plugin rows** (7 MCP client rows, 24 `mpd-*` plugin rows including the
   `mpd-web-compat` self-row, the 3 official Agent Teams rows, and the `mpd-better-sidebar` host row
   that mounts the bundle's OPTIONAL sidebar peer where it is resolvable), and the services, tools,
   commands, routes and state each one owns (§4),
@@ -82,8 +82,8 @@ session's request header. my-power-dsh ships as an **npm bundle** (`@mpd-dsh/mpd
 `dsh.bundle.patch` array (`cordis.patch.yml` then `presets/mpd.patch.yml`)
 adds rows to any profile it is installed into. It contributes:
 
-- **33 inserted rows** in TWO additive patch layers: 6 MCP client rows (local ast-grep,
-  git-bash [disabled by default], LSP, codegraph; remote context7, grep.app), 23 `mpd-*`
+- **35 inserted rows** in TWO additive patch layers: 7 MCP client rows (local ast-grep,
+  git-bash [disabled by default], LSP, codegraph; remote context7, grep.app), 24 `mpd-*`
   plugin rows (including the `mpd-web-compat` self-row that makes the bundle a loader entry),
   the 3 OFFICIAL Agent Teams rows, and the `mpd-better-sidebar` row that mounts the
   bundle's OPTIONAL sidebar peer (the community sidebar host) where it is resolvable — §4 lists every
@@ -135,9 +135,10 @@ Manifest invariants (why they exist):
   `docs/plan-e.md`). That body was main code plus its own vendored closure
   (`packages/mpd-agent-teams-plugin/_deps/`), and since 0.1.7-rc.2 no row mounted it — which is why
   the de-vendor wave (2026-10-07) could delete it without moving a single row.
-- **THREE `dependencies` entries — the three official Agent Teams packages**
+- **FOUR `dependencies` entries — the three official Agent Teams packages**
   (`@deepseek-ai/dsh-experimental-agent-team`, `-tool-agent-team`,
-  `-client-ui-agent-team`). `dsh-better-sidebar` is deliberately NOT one of them: it is an OPTIONAL
+  `-client-ui-agent-team`) plus `@dsh-std/sdk` (`0.1.1-rc.2`, the scoped helpers for DSH Standard
+  facet activation modules, resolved from `dependencies` like the rest). `dsh-better-sidebar` is deliberately NOT one of them: it is an OPTIONAL
   PEER (+ a `devDependency`), a COMPATIBILITY host the bundle never installs, because its `node-pty`
   postinstall would break the build-script-free dependency closure (§8); its absence is a normal,
   intended composition, not a broken install. Declaring a dependency mounts nothing on its own, and a row
@@ -208,9 +209,9 @@ to bare package names.
 ## 4. Plugin inventory
 
 **Every row of `cordis.patch.yml`, by composition.** The patch layer is
-additive and carries **33 `insert` rows** (counted as `- id:` entries at the 4-space depth of the
+additive and carries **35 `insert` rows** (counted as `- id:` entries at the 4-space depth of the
 file's five top-level `insert:` lists; `node scripts/verify-rows-parity.ts` reads back the SAME list —
-`ok: 34 row ids match the 2-file bundle patch layer`, i.e. these 33 plus the `preset-mpd` row of the
+`ok: 36 row ids match the 2-file bundle patch layer`, i.e. these 35 plus the `preset-mpd` row of the
 second file); the bundle's SECOND patch file
 (`presets/mpd.patch.yml`) carries one more insert, the `preset-mpd` row, and both files are listed
 in the manifest's `dsh.bundle.patch` ARRAY. `node scripts/verify-rows-parity.ts` asserts that this

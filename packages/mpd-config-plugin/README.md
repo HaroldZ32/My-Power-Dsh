@@ -10,11 +10,13 @@ commas) with prototype-pollution-safe merge.
 
 ## Known keys
 
-- `memory.vcs`: `git | svn | both` (Plan C / C6 memory engine).
+- `memory.vcs`: `git | svn | both` (Plan C / C6 memory engine; `both` commits to each backend).
+  `both` is selectable in Settings as well: the `SettingsSchema` union and the `SETTINGS_KNOBS`
+  option list both carry it.
 - `teamModels.slot{1,2,3,4}.{provider,model,reasoningEffort?}`: the four team-model
   slots — the ONE configured route of each member class, with an optional per-slot
   `fallbacks` chain (see below). No default layer: an unset slot refuses its spawns.
-- `team.stateDir`, `hashline.enabled/guardEditTools`,
+- `team.stateDir`, `hashline.guardEditTools/maxDiffChars/registryFile`,
   `commentChecker.autoCheck/bin`, `modelchain.<role>`, `boulder.dir`,
   `ulw.maxRounds`.
 

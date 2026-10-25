@@ -29,7 +29,7 @@ import { PANEL_ICON } from "../src/panel"
 import { WORKMATE_PANEL_ICON } from "../src/panel-workmate"
 import { WATCHDOG_PANEL_ICON } from "../src/panel-watchdog"
 import { COMMAND_ACTIONS, MODEL_COMMAND } from "../src/command-trees"
-import { BRIDGE_DISCLOSURE, BRIDGE_NO_WORKSPACE_NOTICE, BRIDGE_NOT_LOST, effectiveModelSummary, registerSettingsSection, SECTION_NOTICE, SETTINGS_FIELDS, SETTINGS_SECTION, teamModelOptionLists } from "../src/settings"
+import { BRIDGE_DISCLOSURE, BRIDGE_NO_WORKSPACE_NOTICE, BRIDGE_NOT_LOST, BRIDGE_RESTART_LIMIT, effectiveModelSummary, registerSettingsSection, SECTION_NOTICE, SETTINGS_FIELDS, SETTINGS_SECTION, teamModelOptionLists } from "../src/settings"
 import { createLog } from "../src/log"
 import { AMBIGUOUS_MULTI_ROOT_NOTICE, NO_LIVE_SESSION_NOTICE, readBoardState, statusLine } from "../src/state"
 import { SHORTCUT_BINDINGS } from "../src/shortcuts"
@@ -1450,9 +1450,23 @@ describe("settings section disclosure (t21)", () => {
       expect(field.hint).not.toContain(BRIDGE_NOT_LOST)
     }
     expect(SECTION_NOTICE).toContain(BRIDGE_DISCLOSURE)
+    expect(SECTION_NOTICE).toContain(BRIDGE_RESTART_LIMIT)
     expect(SECTION_NOTICE).toContain(BRIDGE_NOT_LOST)
-    expect(String(SETTINGS_SECTION.descriptions?.zh)).toContain(BRIDGE_DISCLOSURE)
-    expect(String(SETTINGS_SECTION.descriptions?.en)).toContain(BRIDGE_DISCLOSURE)
+    // D-18's ORIGIN: the TUI section description rendered only the promising half for two waves
+    // because this constant was `DISCLOSURE + NOT_LOST`. The arm now pins the EXCEPTION on the
+    // rendered description itself — a distinctive mount-captured phrase, in BOTH locales — so the
+    // half cannot silently disappear from what a user actually sees.
+    for (const locale of ["en", "zh"] as const) {
+      /** The section description the host renders for that locale. */
+      const description = String(SETTINGS_SECTION.descriptions?.[locale])
+      expect(description).toContain(BRIDGE_DISCLOSURE)
+      expect(description).toContain(BRIDGE_RESTART_LIMIT)
+      // A specific mount-captured GROUP, not merely the word "restart": the class must be named.
+      expect(description).toContain("hashline.*")
+      expect(description).toContain("commentChecker.*")
+      // The blanket claim never survives on the rendered surface.
+      expect(description).not.toContain("takes effect in the RUNNING process — no restart")
+    }
   })
 
   test("every slot hint LEADS with the knob's human sentence, then its key", () => {
@@ -1629,14 +1643,25 @@ describe("settings section disclosure (t21)", () => {
     }
   })
 
-  test("the marker itself states the bridge write and the LIVE effect — the restart claim is gone", () => {
-    // Reworded by wave fix/model-config-live-refresh (L1 landed the live refresh): the marker keeps
-    // the BRIDGE half (a save writes the workspace file) and now states the LIVE half (the model
-    // routes resolve per use, no restart). The old "takes effect … after a restart" claim is
-    // DELETED, not softened — a hint that kept it would be a lie.
+  test("the marker states the bridge write, the LIVE groups and the MOUNT-CAPTURED exception", () => {
+    // D-18 (audit wave 2026-10-25): a consumer-side read proved the previous blanket "takes effect in
+    // the RUNNING process — no restart" false for the knobs a plugin captures at apply(), so the
+    // sentence NAMES the live groups AND the one-way toggle, and BRIDGE_RESTART_LIMIT names the
+    // captured groups. Both directions are pinned: the blanket claim must never come back.
     expect(BRIDGE_DISCLOSURE).toContain("a save writes <workspace>/.mpd/mpd.jsonc")
-    expect(BRIDGE_DISCLOSURE).toContain("takes effect in the RUNNING process — no restart")
-    expect(BRIDGE_DISCLOSURE).toContain("read per use")
+    expect(BRIDGE_DISCLOSURE).toContain("WHICH knobs take the new value in the RUNNING process — no restart — depends on how each one reads it")
+    expect(BRIDGE_DISCLOSURE).toContain("are read per use")
+    // The named LIVE groups, so a rewrite that quietly drops one reddens here.
+    for (const live of ["teamModels.slot*", "modelchain.*", "watchdog.*", "team.stateDir", "team.gate", "captain.investigation", "delegation.gate"]) expect(BRIDGE_DISCLOSURE).toContain(live)
+    // The one-way toggle, stated as one-way rather than as a promise.
+    expect(BRIDGE_DISCLOSURE).toContain("tui.dashboardKey is live ONE WAY")
+    // THE EXCEPTION IS PINNED, group by group: at least one mount-captured name must always appear,
+    // in BOTH halves (the disclosure points at it, the restart limit lists it).
+    for (const captured of ["hashline.*", "commentChecker.*", "ulw.*", "memory.*", "boulder.dir", "goal.*"]) expect(BRIDGE_RESTART_LIMIT).toContain(captured)
+    expect(BRIDGE_RESTART_LIMIT).toContain("instead of reading the live config service per use")
+    expect(BRIDGE_RESTART_LIMIT).toContain("waits for the next dsh boot")
+    // The BLANKET sentence is gone, and the not-lost clause survives.
+    expect(BRIDGE_DISCLOSURE).not.toContain("takes effect in the RUNNING process — no restart")
     expect(BRIDGE_DISCLOSURE).not.toContain("after a restart")
     expect(BRIDGE_DISCLOSURE).not.toContain("not bridged")
     expect(BRIDGE_DISCLOSURE).not.toContain("does not rewrite")

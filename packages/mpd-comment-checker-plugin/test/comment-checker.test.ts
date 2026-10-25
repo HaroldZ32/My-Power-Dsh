@@ -1,4 +1,4 @@
-import { test, expect } from "bun:test"
+import { describe, test, expect } from "bun:test"
 import { chmodSync, existsSync, mkdtempSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
@@ -13,22 +13,95 @@ import type { DshPostDecision, DshPostResult, DshTextBlock, DshToolExec } from "
 const BINARY: string | null = resolveBinary({})
 /** Whether the suite must skip: the detector is a ~51MB optionalDependency, absent in a bare checkout. */
 const SKIP = !BINARY || !existsSync(BINARY)
+/**
+ * The documented reason the three detector arms below skip, carried INTO their titles.
+ *
+ * A skip is a fact a reader must be able to interpret: bun prints the skipped title and nothing else,
+ * so a bare `(skip) clean file passes` left the reader unable to tell "not installed here" from "the
+ * product is broken". Naming the missing instrument is what makes the gap legible instead of silent.
+ */
+const SKIP_REASON = "skipped: detector binary absent — run the installer with --with-comment-checker or set MPD_DSH_COMMENT_CHECKER_BIN"
 
-test.skipIf(SKIP)("binary resolves from toolchain", () => {
+test.skipIf(SKIP)(`binary resolves from toolchain (${SKIP_REASON})`, () => {
   expect(BINARY).toBeTruthy()
 })
 
-test.skipIf(SKIP)("comment file triggers detection (exit 2)", () => {
+test.skipIf(SKIP)(`comment file triggers detection (exit 2) (${SKIP_REASON})`, () => {
   /** The detector's verdict for a file whose only content is a line comment. */
   const res = runCheck(BINARY!, hookInputFor(join(tmpdir(), "a.js"), "// hello comment\nlet x = 1\n"), 30000)
   expect(res.hasComments).toBe(true)
   expect(res.message).toContain("COMMENT/DOCSTRING DETECTED")
 })
 
-test.skipIf(SKIP)("clean file passes (exit 0)", () => {
+test.skipIf(SKIP)(`clean file passes (exit 0) (${SKIP_REASON})`, () => {
   /** The detector's verdict for a file with no comments at all. */
   const res = runCheck(BINARY!, hookInputFor(join(tmpdir(), "b.js"), "let x = 1\nconst y = 2\n"), 30000)
   expect(res.hasComments).toBe(false)
+})
+
+// ── the contract that needs NO detector binary ────────────────────────────────────────────────────
+// The three arms above prove the plugin against the REAL detector and therefore vanish in a bare
+// checkout, which left this package's core contract (what payload the detector is handed, which
+// binary is chosen, and what an exit status MEANS) untested wherever the 51MB dependency is absent.
+// These arms pin those three without it: two are pure, and the third drives a 3-line shell stub.
+describe("the core contract, proved without the detector binary", () => {
+  test("the payload is the detector's PostToolUse contract (pure: no process involved)", () => {
+    /** The payload the row builds for one edited file. */
+    const payload = hookInputFor("/ws/a.js", "let x = 1\n", "/ws")
+    expect(payload.hook_event_name).toBe("PostToolUse")
+    expect(payload.tool_name).toBe("Write")
+    // The session workspace travels as `cwd`; it is metadata for the binary, never a read path.
+    expect(payload.cwd).toBe("/ws")
+    // The two fields the detector actually reads: WHICH file and its NEW content.
+    expect(payload.tool_input).toEqual({ file_path: "/ws/a.js", content: "let x = 1\n" })
+  })
+
+  test("an explicit config.binary WINS, and a path that is not on disk changes nothing", () => {
+    /** The temp directory holding this arm's stand-in binary. */
+    const dir = mkdtempSync(join(tmpdir(), "mpd-cc-pick-"))
+    /** A file that EXISTS: `resolveBinary` validates existence, it does not run the candidate. */
+    const explicit = join(dir, "detector")
+    writeFileSync(explicit, "#!/bin/sh\nexit 0\n")
+    chmodSync(explicit, 0o755)
+    expect(resolveBinary({ binary: explicit })).toBe(explicit)
+    // A declared-but-absent override is not a candidate at all: resolution falls through to the
+    // SAME answer an unconfigured call gets, rather than to the missing path.
+    expect(resolveBinary({ binary: join(dir, "absent") })).toBe(resolveBinary({}))
+  })
+
+  // A POSIX SHELL STUB CANNOT BE SPAWNED ON WIN32 — the same declared bound the autoCheck arm states:
+  // the row executes the resolved binary DIRECTLY (no shell), and win32 has no shebang mechanism.
+  test.skipIf(process.platform === "win32")("the exit-code → verdict mapping (a stub process, not the detector)", () => {
+    /** The temp directory holding this arm's exit-status stubs. */
+    const dir = mkdtempSync(join(tmpdir(), "mpd-cc-verdict-"))
+    /**
+     * Write one stub that prints a status-named marker on stderr and exits with `status`.
+     * @param status - the exit status the stub reports.
+     * @returns the stub's path.
+     */
+    const stub = (status: number): string => {
+      /** This status's stub file. */
+      const path = join(dir, `stub-${status}.sh`)
+      writeFileSync(path, `#!/bin/sh\ncat > /dev/null\nprintf 'MARKER-%s\\n' "${status}" >&2\nexit ${status}\n`)
+      chmodSync(path, 0o755)
+      return path
+    }
+    /** The payload every stub is fed, unread by them (they only echo the status). */
+    const input = hookInputFor("/ws/a.js", "// c\n")
+    // exit 0 = clean, and the success path carries NO message.
+    expect(runCheck(stub(0), input, 30000)).toEqual({ hasComments: false, message: "" })
+    // exit 2 = comments found, and the binary's own text is what the caller renders.
+    /** The exit-2 verdict. */
+    const found = runCheck(stub(2), input, 30000)
+    expect(found.hasComments).toBe(true)
+    expect(found.message).toContain("MARKER-2")
+    // ANY OTHER status is NOT a silent clean: it reads as an unexpected exit, message included.
+    /** The exit-7 verdict, the branch that once had no test at all. */
+    const odd = runCheck(stub(7), input, 30000)
+    expect(odd.hasComments).toBe(false)
+    expect(odd.message).toContain("unexpected exit 7")
+    expect(odd.message).toContain("MARKER-7")
+  })
 })
 
 // ── E8: the autoCheck hook resolves the edited path against the SESSION workspace ─────────────────

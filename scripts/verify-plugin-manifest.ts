@@ -20,8 +20,9 @@
 // The gate also asserts the packaging contract that makes the one-command install behave like the
 // installed bundles beside it: the declared patch files exist, every module path a row names
 // resolves inside the package, the `files` allowlist admits every path the runtime needs (and
-// excludes the frozen `evidence/` tree), and the display metadata the plugin inventory reads is
-// present.
+// excludes the frozen `evidence/` tree), the display metadata the plugin inventory reads is
+// present, and `dsh-distribution.json`'s COMPONENT REFS hold together (every `urn:dsh:*:mpd:*@<v>`
+// self-urn carries `distribution.version`, every `dependsOn` names a declared id — D-19).
 //
 // Modes:
 //   node scripts/verify-plugin-manifest.ts                 scan this repository's manifest
@@ -352,6 +353,112 @@ function checkVersionCoherence(manifest: Record<string, unknown>, violations: Vi
   return results
 }
 
+/** The version suffix of a self-referencing urn: `urn:dsh:<kind>:mpd:<name>@<version>`. */
+const SELF_URN = /^urn:dsh:[a-z-]+:mpd:[a-z0-9-]+@(.+)$/
+
+/** One distribution component as the ref check reads it (every field is read defensively). */
+interface DistributionComponent {
+  /** The component's own id, which a sibling's `dependsOn` names. */
+  readonly id?: unknown
+  /** The reference: a self-urn for this bundle's parts, a `pkg:` spec for anything else. */
+  readonly ref?: unknown
+  /** The ids this component depends on. */
+  readonly dependsOn?: unknown
+}
+
+/**
+ * The component rows a distribution document declares, across its protocols.
+ * @param doc - the parsed `dsh-distribution.json`, or undefined when unreadable.
+ * @returns every `spec.components` row, in declaration order; `[]` when the document carries none.
+ */
+function distributionComponentsOf(doc: Record<string, unknown> | undefined): DistributionComponent[] {
+/** The document's protocols, read defensively so a malformed file yields no rows instead of a throw. */
+  const protocols = doc?.protocols
+  if (!Array.isArray(protocols)) return []
+/** Every component row collected so far. */
+  const rows: DistributionComponent[] = []
+  for (const protocol of protocols) {
+    if (typeof protocol !== "object" || protocol === null) continue
+/** This protocol's `spec`, which is where `components` lives. */
+    const spec = (protocol as { spec?: unknown }).spec
+    if (typeof spec !== "object" || spec === null) continue
+/** This protocol's component list, when it declares one. */
+    const components = (spec as { components?: unknown }).components
+    if (!Array.isArray(components)) continue
+    for (const row of components) if (typeof row === "object" && row !== null) rows.push(row as DistributionComponent)
+  }
+  return rows
+}
+
+/**
+ * Assert the distribution's COMPONENT REFS hold together, the two ways they can dangle.
+ *
+ * D-19 (audit wave 2026-10-25): every check in this gate read the document's `distribution.version`
+ * and nothing else, so SIX self-urn refs (1 distribution + 5 components) sat at `0.15.1` through
+ * two releases without a gate noticing — a reader following the composition resolved an older
+ * release. The two predicates:
+ *   1. every SELF-URN ref (`urn:dsh:*:mpd:*@<v>`) carries `distribution.version`;
+ *   2. every `dependsOn` entry names a component id the SAME document declares.
+ * A `pkg:` ref is deliberately out of scope (the host's own version is the host's business), and a
+ * document that declares no `distribution.version` is reported as un-comparable instead of passing
+ * silently.
+ *
+ * @param doc - the parsed `dsh-distribution.json`, or undefined when it cannot be read.
+ * @param violations - Collector every finding is appended to.
+ * @returns one result per predicate.
+ */
+function checkComponentRefs(doc: Record<string, unknown> | undefined, violations: Violation[]): CheckResult[] {
+/** The component rows under check. */
+  const rows = distributionComponentsOf(doc)
+/** The version every self-urn must carry; undefined when the document declares none. */
+  const version = readPath(doc, ["distribution", "version"])
+/** The component ids this document declares, which `dependsOn` may name. */
+  const ids = new Set(rows.map((row) => row.id).filter((id): id is string => typeof id === "string"))
+/** Self-urn refs whose suffix disagrees with `distribution.version`. */
+  const stale: string[] = []
+/** How many self-urn refs were compared, so the detail line can state its own coverage. */
+  let compared = 0
+  for (const row of rows) {
+    if (typeof row.ref !== "string") continue
+/** The version suffix this ref carries; undefined for a `pkg:` ref, which is out of scope. */
+    const declared = SELF_URN.exec(row.ref)?.[1]
+    if (declared === undefined) continue
+    if (version === undefined) continue
+    compared += 1
+    if (declared !== version) stale.push(`${row.ref} (distribution.version is ${version})`)
+  }
+  for (const entry of stale) {
+    violations.push({ file: "dsh-distribution.json", rule: "component-ref", detail: `a self-referencing component ref is stale: ${entry}` })
+  }
+/** `dependsOn` edges naming an id this document does not declare. */
+  const dangling: string[] = []
+  for (const row of rows) {
+    if (!Array.isArray(row.dependsOn)) continue
+    for (const dependency of row.dependsOn) {
+      if (typeof dependency !== "string" || ids.has(dependency)) continue
+      dangling.push(`${typeof row.id === "string" ? row.id : "?"} -> ${dependency}`)
+    }
+  }
+  for (const entry of dangling) {
+    violations.push({ file: "dsh-distribution.json", rule: "component-ref", detail: `a component dependsOn an id the document does not declare: ${entry}` })
+  }
+  /** The version predicate's result, stated with its own coverage. */
+  const versionResult: CheckResult = {
+    id: "component-ref-version",
+    ok: stale.length === 0,
+    detail: version === undefined
+      ? `${rows.length} component row(s), 0 comparable: the document declares no distribution.version`
+      : `${compared} self-urn ref(s) compared against distribution.version ${version}, ${stale.length} stale`,
+  }
+  /** The dependency predicate's result. */
+  const dependencyResult: CheckResult = {
+    id: "component-ref-dependencies",
+    ok: dangling.length === 0,
+    detail: `${ids.size} declared component id(s), ${dangling.length} dangling dependsOn edge(s)`,
+  }
+  return [versionResult, dependencyResult]
+}
+
 /**
  * Assert the packaging contract a one-command install rests on: declared patch files exist, every row
  * module path resolves, the `files` allowlist admits every runtime path and `evidence/` stays out.
@@ -570,7 +677,36 @@ function selfTest(): number {
   const versionControlClean = versionControlViolations.length === 0
   if (!(versionHit && versionControlClean)) failures += 1
   console.log(`${versionHit && versionControlClean ? "ok  " : "FAIL"}  version-coherence: expected rule version-coherence ${versionHit ? "fired" : "MISSING"}; clean control ${versionControlClean ? "green" : "RED"}`)
-  console.log(failures === 0 ? "self-test PASS (6 arms, each with a clean control)" : `self-test FAIL (${failures} arm(s))`)
+  // 7th arm: the COMPONENT-REF predicate (D-19). Its mutant carries a self-urn one release behind AND
+  // a dependsOn naming an id the document never declares; the control is the REAL distribution
+  // document, which must be clean — that half is what keeps the arm honest as releases bump.
+/** Violations the component-ref mutant produced. */
+  const refViolations: Violation[] = []
+/** The mutant document: one stale self-urn, one dangling dependency, one component that is fine. */
+  const refMutant: Record<string, unknown> = {
+    distribution: { version: "1.2.3" },
+    protocols: [{ spec: { components: [
+      { id: "bundle", ref: "urn:dsh:distribution:mpd:my-power-dsh@1.0.0", dependsOn: ["ghost"] },
+      { id: "plugins", ref: "urn:dsh:component:mpd:plugins@1.2.3", dependsOn: ["bundle"] },
+      // A `pkg:` ref is out of scope by design: its version is the HOST's, never this bundle's.
+      { id: "host-tui", ref: "pkg:npm/@deepseek-harness-tui/dsh-tui@0.16.1" },
+    ] } }],
+  }
+/** The mutant's own results, kept so the arm exercises the same path the scan uses. */
+  const refMutantResults = checkComponentRefs(refMutant, refViolations)
+/** Whether BOTH predicates fired: the stale self-urn and the dangling dependency. */
+  const refHit = refViolations.filter((violation) => violation.rule === "component-ref").length === 2
+    && refMutantResults.some((result) => result.id === "component-ref-version" && !result.ok)
+    && refMutantResults.some((result) => result.id === "component-ref-dependencies" && !result.ok)
+/** Violations the clean control produced. */
+  const refControlViolations: Violation[] = []
+/** The control: the repository's REAL distribution document. */
+  const refControlResults = checkComponentRefs(readJsonFile(join(repoRoot, "dsh-distribution.json")), refControlViolations)
+/** Whether the real document passes both predicates — the half a release bump would redden. */
+  const refControlClean = refControlViolations.length === 0 && refControlResults.every((result) => result.ok)
+  if (!(refHit && refControlClean)) failures += 1
+  console.log(`${refHit && refControlClean ? "ok  " : "FAIL"}  component-ref: expected rule component-ref ${refHit ? "fired twice" : "MISSING"}; clean control ${refControlClean ? "green" : "RED"}`)
+  console.log(failures === 0 ? "self-test PASS (7 arms, each with a clean control)" : `self-test FAIL (${failures} arm(s))`)
   return failures === 0 ? 0 : 1
 }
 
@@ -599,7 +735,7 @@ function main(): number {
 /** Every violation the scan produced. */
   const violations: Violation[] = []
 /** The rule results and the packaging results, in report order. */
-  const results = [...checkHardRules(manifest, "package.json", violations), ...checkVersionCoherence(manifest, violations), ...checkPackaging(manifest, violations)]
+  const results = [...checkHardRules(manifest, "package.json", violations), ...checkVersionCoherence(manifest, violations), ...checkComponentRefs(readJsonFile(join(repoRoot, "dsh-distribution.json")), violations), ...checkPackaging(manifest, violations)]
   if (argv.includes("--pack")) {
     /** The declared patch files, re-read so this arm does not depend on the earlier one. */
     const patches = patchFilesOf(manifest)

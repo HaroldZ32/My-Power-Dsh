@@ -21,10 +21,15 @@ compacted.
   — the AUTHORITATIVE plane, and the only one a composition on the DEFAULT native executor has),
   with the OFFICIAL Agent Teams readout (`dsh.teamLiveTeams()`) as the fallback. Neither plane
   exposes a "finished team" predicate, so the trigger is DERIVED from BOTH halves — every task
-  terminal AND no member active (`teamListTasks` / `teamListMembers` on the official plane). The
-  terminal vocabulary is mirrored in `src/index.ts` (`TERMINAL_TASK_STATUSES`, official
-  `TeamTaskStatus = pending | in_progress | completed | deleted`) because the official package is not
-  resolvable by a bare specifier from this repository (measured `MODULE_NOT_FOUND`).
+  terminal AND no member active (`teamListTasks` / `teamListMembers` on the official plane). The set
+  the pass treats as terminal is `TERMINAL_TASK_STATUSES` in `src/index.ts`: **completed, deleted,
+  failed, cancelled**. The harness's own union is `TeamTaskStatus = pending | in_progress | completed
+  | deleted`, and its terminal half is `completed` + `deleted`; `deleted` is in the set because
+  `listTasks` hides deleted rows, so a board the service reports as all-completed is terminal with or
+  without it. `failed` and `cancelled` are NOT in that union — they are tolerated so that a harness
+  release adding a terminal status can never make this module's destructive pass fire on unfinished
+  work. The set is mirrored HERE because the official package is not resolvable by a bare specifier
+  from this repository (measured `MODULE_NOT_FOUND`).
 - **Who** — members only. The captain is never compacted (that is the user's `/compact`).
 - **Barrier** — wait for every member to go idle, then compact them together.
 - **Method** — an unconditional explicit `compactNow`. A null answer means "no safely compactable

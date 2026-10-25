@@ -519,8 +519,10 @@ a future harness (this release does not validate `parameters` at registration).
 Stated plainly, so nobody discovers them from a failure:
 
 - **stdio MCP only** — no HTTP/SSE transports, no MCP resources or prompts (tools only).
-- **JSON flow files only** — YAML flows are a follow-up; a flow is declarative, with no execution
-  state machine.
+- **JSON flow files only, BY DESIGN** — a closed product decision, not a pending one: a flow corpus is
+  read with `JSON.parse` (`packages/mpd-ext-plugin/src/flows.ts`), the zero-dependency rule forbids the
+  runtime ever gaining a YAML parser, and YAML is **not planned**. A flow is declarative, with no
+  execution state machine.
 - **No extension-contributed agent presets** — the preset plane is deliberately out of scope (no
   clean runtime seam).
 - **Extension roles never become teammates by themselves** — a teammate exists only when the Lead

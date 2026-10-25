@@ -116,9 +116,14 @@ export type TeamModelSlotId = (typeof TEAM_MODEL_SLOTS)[number]
  */
 export const SettingsSchema = z.object({
   hashline: z.object({ maxDiffChars: z.number().default(20000) }),
-  commentChecker: z.object({ autoCheck: z.boolean().default(true) }),
+  // DEFAULT FALSE, matching the row config this bundle ships (`cordis.patch.yml`: `autoCheck: false`)
+  // and the package's documented opt-in posture. A `true` default here made Settings show a DISABLED
+  // hook as ON, because the schema default is what the namespace renders when the file says nothing.
+  commentChecker: z.object({ autoCheck: z.boolean().default(false) }),
   ulw: z.object({ maxRounds: z.number().default(6) }),
-  memory: z.object({ vcs: z.union([z.const("git"), z.const("svn")]).default("git") }),
+  // `both` is offered because `mpd-memory` honours it (`ensureVcs`: git AND svn, each committed); the
+  // union is the schema half of the same truth — a value the memory row reads must be selectable here.
+  memory: z.object({ vcs: z.union([z.const("git"), z.const("svn"), z.const("both")]).default("git") }),
   team: z.object({ stateDir: z.string().default(".mpd/team") }),
   // NO DEFAULT — and that absence is the contract, not an oversight. The two consumers of this knob
   // (`readBoulderGate`, and the boulder row's own state root) treat the value as the directory whose
@@ -174,20 +179,43 @@ export const SettingsSchema = z.object({
   tui: z.object({ dashboardKey: z.boolean().default(true) }),
 })
 
-/** The two-part disclosure every surface must be able to show (§D.2, and the "not lost" clause). */
-export const BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect in the RUNNING process — no restart: the config service re-resolves on every settings save and on a watched edit of the project file, and the model routes (teamModels, modelchain) are read per use, so the next spawn or resolve carries them"
+/**
+ * The ONE disclosure every settings surface states: what a save writes, and — per KNOB GROUP, never
+ * as a blanket — when the new value reaches the running process.
+ *
+ * D-18 (audit wave 2026-10-25): the previous sentence said a save "takes effect in the RUNNING
+ * process — no restart", which holds only for a knob that READS the config service per use. An
+ * independent read of the CONSUMERS (not of this string) split the knobs in two, and both halves are
+ * named here so no reader has to guess:
+ *   · LIVE (read per use): `teamModels.slot*` (the spawn resolver reads the service per spawn, in
+ *     `createDshAdapter`'s slot resolver), `modelchain.*`, `watchdog.*` (the engine re-reads the
+ *     namespace on every tick and reports a per-knob restart flag, §7.2), `team.stateDir` (read per
+ *     call in mpd-bundle), `team.gate`/`team.sensitivity` (`complexity-gate.ts`),
+ *     `captain.investigation` (`captain-investigation.ts`) and `delegation.gate`
+ *     (`delegation-gate.ts`) — the gates' own docs say the value is "picked up LIVE, T-18";
+ *   · ONE-WAY: `tui.dashboardKey` — a saved false disables the Ctrl+A takeover at once, while a
+ *     saved true cannot arm a takeover the ROW CONFIG disabled (that toggle's floor is mount-time).
+ * The MOUNT-CAPTURED half lives in {@link BRIDGE_RESTART_LIMIT}, because the two sentences must be
+ * read together; {@link BRIDGE_SECTION_NOTICE} renders both plus the not-lost clause.
+ */
+export const BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s); the config service re-resolves on every settings save and on a watched edit of the project file, and WHICH knobs take the new value in the RUNNING process — no restart — depends on how each one reads it: teamModels.slot*, modelchain.*, watchdog.*, team.stateDir, team.gate, team.sensitivity, captain.investigation and delegation.gate are read per use, and tui.dashboardKey is live ONE WAY (a saved false disables the Ctrl+A takeover at once; a saved true cannot arm a takeover the row config disabled)"
 
 /**
- * The RESTART half of the truth, REWORDED by wave fix/model-config-live-refresh (L1 landed the
- * mount-armed file watcher and the entry-config subscription, so the old "the file half is
- * host-limited … never mid-process" claim is no longer true): a `.mpd/mpd.jsonc` edit now reaches
- * the running process through the watcher, and a settings save reaches it through the entry-config
- * subscription. What STILL waits for a boot is exactly one class: a knob some plugin captured at
- * its own mount instead of reading the live config service per use — the model routes this section
- * edits are not such knobs, and the sentence says so instead of claiming a blanket restart.
+ * The MOUNT-CAPTURED half of the same truth: the knobs whose plugins read the config ONCE inside
+ * their own `apply()` (`const cfg = mergedConfig(ctx, config)`), so a new value cannot reach them
+ * without a boot.
+ *
+ * Derived from the consumers, group by group: `hashline` (`maxDiffChars` is a mount-time constant in
+ * mpd-hashline's apply), `commentChecker` (the `autoCheck` post-execute hook is registered — or NOT —
+ * at apply), `ulw`, `memory` (every tool closes over the `cfg` resolved at apply), `boulder.dir` and
+ * `goal.*` (the goal row logs its three values at mount and gates on them). Each surface's ROW HINT
+ * still names the key it writes, so a reader can match this sentence to the knob.
  */
 export const BRIDGE_RESTART_LIMIT =
-  "the restart wording now applies only to a knob some plugin captured at its own mount instead of reading the live config service per use — the model routes above are not such knobs; a captured knob keeps its captured value until the next dsh boot"
+  "the other half of that list, so nobody reads it as a blanket: hashline.*, commentChecker.*, ulw.*, memory.*, boulder.dir and goal.* are captured by their plugins at mount instead of reading the live config service per use, so a new value for any of them waits for the next dsh boot (the file and the settings document still receive it at once, and each row names the key it writes)"
+  "the other half of that list, so nobody reads it as a blanket: hashline.*, commentChecker.*, ulw.*, memory.*, boulder.dir and goal.* are captured by their plugins at mount instead of reading the live config service per use, so a new value for any of them keeps waiting for the next dsh boot — a wait on BEHAVIOUR only, because the new value is already in the file and in the settings document, so nothing is lost and nothing is silently reverted"
+  "the restart half, stated on its own so a surface can print it as a second paragraph: a CAPTURED knob — one whose plugin reads the config once at its own mount instead of reading the live config service per use — keeps its captured value until the next dsh boot, and that wait is on BEHAVIOUR only: the new value is already in the file and in the settings document, so nothing is lost and nothing is silently reverted"
+  "the other half of that list, so nobody reads it as a blanket: hashline.*, commentChecker.*, ulw.*, memory.*, boulder.dir and goal.* are captured by their plugins at mount instead of reading the live config service per use, so a new value for any of them waits for the next dsh boot (the file and the settings document still receive it at once, and each row names the key it writes)"
 
 /**
  * The sentence that keeps a settings-only save from reading as a LOST save (captain's ruling 1):
@@ -266,11 +294,15 @@ export function knobHint(key: string, semantics?: string): string {
 }
 
 /**
- * The bridge disclosure, stated ONCE per settings surface: what a save writes, when it takes
- * effect, and what the host document holds meanwhile. Both front doors render this at the top of
- * their section instead of once per row.
+ * The bridge disclosure, stated ONCE per settings surface: what a save writes, WHICH knobs are live
+ * and which are mount-captured, and what the host document holds meanwhile.
+ *
+ * D-18: this MUST carry BOTH halves of the timing truth — {@link BRIDGE_DISCLOSURE} (the live groups
+ * plus the one-way toggle) and {@link BRIDGE_RESTART_LIMIT} (the mount-captured groups) — followed by
+ * {@link BRIDGE_NOT_LOST}. A surface that rendered only the promising half would state the blanket
+ * "no restart" claim the consumers contradict, which is the defect this item fixes.
  */
-export const BRIDGE_SECTION_NOTICE = `${BRIDGE_DISCLOSURE} ${BRIDGE_NOT_LOST}`
+export const BRIDGE_SECTION_NOTICE = `${BRIDGE_DISCLOSURE} ${BRIDGE_RESTART_LIMIT} ${BRIDGE_NOT_LOST}`
 
 /**
  * The HUMAN sentence of one slot leaf, as a template: `{group}` is the slot's group name and
@@ -424,7 +456,9 @@ export const SETTINGS_KNOBS: readonly SettingsKnob[] = [
   { path: ["hashline", "maxDiffChars"], label: "Inline diff limit", zh: "行内 diff 上限", kind: "number" },
   { path: ["commentChecker", "autoCheck"], label: "Comment checker", zh: "注释检查", kind: "boolean" },
   { path: ["ulw", "maxRounds"], label: "Ultrawork rounds", zh: "Ultrawork 轮数", kind: "number" },
-  { path: ["memory", "vcs"], label: "Memory backend", zh: "记忆后端", kind: "select", options: ["git", "svn"] },
+  // `both` is a REAL mode (`ensureVcs` in mpd-memory-plugin commits to git AND svn), so the union and
+  // this knob's options must offer it: a documented value the Settings UI cannot select is a defect.
+  { path: ["memory", "vcs"], label: "Memory backend", zh: "记忆后端", kind: "select", options: ["git", "svn", "both"] },
   { path: ["team", "stateDir"], label: "Team state directory", zh: "团队状态目录", kind: "text" },
   { path: ["boulder", "dir"], label: "Boulder directory", zh: "Boulder 目录", kind: "text" },
   { path: ["watchdog", "enabled"], label: "Watchdog enabled", zh: "看门狗启用", kind: "boolean" },

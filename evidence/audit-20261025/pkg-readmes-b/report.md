@@ -1,0 +1,393 @@
+# Lane report — `pkg-readmes-b` (P-11 … P-17)
+
+Branch: `fix/audit-20261025`
+Contract: `.mpd/plans/audit-20261025-fixes.md` §7 "PACKAGE READMEs — GROUP B" (items P-11 … P-17).
+Scope edited (12 files, EN + zh twin each): `packages/mpd-tui-plugin`, `packages/mpd-bundle-plugin`,
+`packages/mpd-mcp-lsp`, `packages/mpd-team-compact-plugin`, `packages/mpd-team-core-plugin`,
+`packages/mpd-verify-plugin` — `README.md` + `README.zh-CN.md` only. No `src/**`, no `dist/**`,
+no `VENDOR_LOCK.json`, no git write command.
+
+Every new sentence below is derived from a symbol opened in this session; the zh twin says the same
+thing (not a translation of the stale claim). Symbols are cited by name, never by line number (T-55).
+
+---
+
+## P-11 (MEDIUM) — the settings bridge needs no restart
+
+**Claim before** (`packages/mpd-tui-plugin/README.md`, three sites in EN, three in the zh twin):
+
+1. settings table row: "**bridged** to `<workspace>/.mpd/mpd.jsonc` (a save writes the file; the plugin
+   behaviour needs a restart); every field hint says so on screen";
+2. NOT CLAIMED #2 heading: "**The `/settings` section IS bridged to `<workspace>/.mpd/mpd.jsonc`, and
+   the behaviour change needs a restart.**";
+3. the on-screen quote: "…carries `a save writes <workspace>/.mpd/mpd.jsonc for the live session
+   workspace(s) and takes effect for the mpd plugins after a restart (this knob is read at plugin
+   mount)`, followed by the clause that a settings-only save is never a lost save";
+   zh twin (stronger and more wrong): "保存会写入文件；插件行为需重启后生效".
+
+**New text (EN)** — the table cell now says "a save writes the file and takes effect in the RUNNING
+process — no restart: the config service re-resolves on every settings save and on a watched edit of
+the project file, and the model routes are read per use"; NOT CLAIMED #2 is retitled "…and a save
+takes effect in the RUNNING process" and now states: the config row arms a file watcher at mount
+(`watchRoot`) and subscribes to the entry-config document, so its `state` re-resolves on every
+settings save and on a watched edit of the project file; the model routes (`teamModels`,
+`modelchain`) are read PER USE; what still waits for a boot is exactly ONE class — a knob some plugin
+CAPTURED at its own mount (`BRIDGE_RESTART_LIMIT`).
+
+**Code evidence**
+
+- `BRIDGE_DISCLOSURE` (`packages/mpd-config-plugin/src/settings-schema.ts`) — verbatim: "…takes effect
+  in the RUNNING process — no restart: the config service re-resolves on every settings save and on a
+  watched edit of the project file, and the model routes (teamModels, modelchain) are read per use, so
+  the next spawn or resolve carries them".
+- `BRIDGE_RESTART_LIMIT` (same file) — narrows the residual class to "a knob some plugin captured at
+  its own mount instead of reading the live config service per use — the model routes above are not
+  such knobs".
+- `packages/mpd-tui-plugin/src/settings.ts` header — "the old 'a RUNNING session's plugin behaviour
+  changes only after a restart' claim is DELETED, not softened — the config row now arms a file
+  watcher at mount AND subscribes to the entry-config document, so its `state` re-resolves on every
+  settings save and on a watched edit of the project file."
+- `watchRoot` (`packages/mpd-config-plugin/src/index.ts`) — the mount-armed per-file watcher; the row's
+  own warning text repeats the same truth ("the settings value still applies in the RUNNING process
+  (no restart …) … only a knob some plugin captured at its own mount keeps its captured value until
+  the next dsh boot").
+- `packages/mpd-tui-plugin/test/plugin.test.ts` asserts `BRIDGE_DISCLOSURE` contains both "takes
+  effect in the RUNNING process — no restart" and "read per use", so the shipped sentence is pinned.
+
+**Also corrected in the same paragraph (P-13's per-row rule, same helper):** "only then state the key
+and that disclosure" → "only then state the key", because the disclosure is not per row (see P-13).
+
+**Removed, deliberately:** "The base is **fixed for the process lifetime** (the host exposes no
+disposal handle for a live registration) — the honest reason the sentence below says 'after a
+restart'". No reader in the current source states that any more, and `settings.ts` says the restart
+claim is deleted. The new text therefore makes **no claim at all** about the `base`'s lifetime (its
+cardinality rule is kept and unchanged) — the lane rule is "if you cannot settle it, write less".
+
+---
+
+## P-12 (LOW) — the seam count, and the page count
+
+**Claim before:** "Supporting surfaces (not one of the seven seams): the `/mpd` command on the harness
+command registry, the `mpd` settings namespace registration, and the log-only
+`mpd-tui/board-opened` session record." zh: "支撑面（不属于上述七个接缝）…".
+Plus the zh `workmate` knob row: "因此 MPD 的两个页可以分别开关 … 两个开关都需要重启生效".
+
+**New text** — "Seam count and what sits outside it: the adapter's `TUI_SEAMS` table declares EIGHTEEN
+entries — fifteen real `tui*` services, one **phantom** id (`tuiPrompt`, in `PHANTOM_SEAM_KEYS`: no
+dsh-tui build declares it) and the two harness services `commands` and `settings`. The `/mpd` command
+on the harness command registry and the `mpd` settings namespace registration are those last two,
+while the log-only `mpd-tui/board-opened` session record is not a seam at all — it is appended only
+after the event type is verified known to a reachable `dsh-session` copy."
+
+**Code evidence**
+
+- `TUI_SEAMS` (`packages/mpd-tui-adapter-plugin/src/index.ts`) — 18 keys: `scenes`, `status`,
+  `renderers`, `settingsSections`, `shortcuts`, `dialogs`, `commandTrees`, `pluginHost`, `toast`,
+  `themes`, `pluginStorage`, `messageObserver`, `effectLedger`, `workspaces`, `panels`, `prompt`,
+  `commands`, `settings`. Sixteen carry a `tui*` id; `PHANTOM_SEAM_KEYS = ["prompt"]` marks
+  `tuiPrompt` as the one no measured host declares, leaving **fifteen real `tui*` seams** + 1 phantom
+  + the 2 harness services = 18.
+- `packages/mpd-tui-plugin/src/i18n.ts` states the same fifteen ("`TUI_SEAMS` names fifteen `tui*`
+  services").
+- The old sentence was also self-contradictory: `commands` and `settings` are *in* the table, so they
+  were never "supporting surfaces".
+- The `mpd-tui/board-opened` record: the `sessionEvents` knob description — "append the log-only
+  `mpd-tui/board-opened` record, and only after the event type is verified known to a reachable
+  `dsh-session` copy".
+- Three pages: the table's sidebar-pages row says **THREE** pages (`team`, `workmate`, `watchdog`) and
+  three page knobs exist in the same README's knob table — `panel`, `workmate`, `watchdog`.
+
+**Contract-premise correction (recorded, not silently absorbed):** the contract says to fix the zh
+`workmate` row "that says 'MPD 的两个页' where EN says three". In fact the **EN** row said "the two MPD
+pages toggle apart" and "both knobs are restart-scoped" as well — the stale count was in BOTH twins,
+not just zh. Both now say three, and the row now names independence from `panel` **and** `watchdog`
+(symmetry with the `watchdog` row, which already said "INDEPENDENT of `panel` and `workmate`").
+
+---
+
+## P-13 (MEDIUM) — the Web card's restart claim and the per-row disclosure
+
+**Claim before** (`packages/mpd-bundle-plugin/README.md`):
+(a) "both state the same bridge disclosure — a save writes `<workspace>/.mpd/mpd.jsonc` for the live
+session workspace(s) **and the mpd plugins act on it after a restart**" (zh: "mpd 插件在重启后按其生效");
+(b) "the human sentence renders at full readability **with the mandatory disclosure line dimmer
+beneath it**. Both doors … carry the disclosure plus the not-lost clause AFTER that human sentence:
+the TUI builds `<human sentence> mpd.jsonc <key> — <disclosure> <not-lost>`, and the card mirrors the
+same declaration in the same order."
+
+**New text** — (a) "…and takes effect in the RUNNING process, with no restart (`BRIDGE_DISCLOSURE`:
+the same string in `settings-schema.ts` and in `settings-card.ts`)"; (b) "Both doors name the dotted
+`mpd.jsonc` key through ONE helper — the hint is `<human sentence> (mpd.jsonc <key>)`, and a knob with
+no human sentence keeps the pointer alone (`knobHint` in the TUI, `hintOf` on the card) — while the
+bridge disclosure and the not-lost clause are stated ONCE per SECTION, never per row: the TUI carries
+`SECTION_NOTICE` = `BRIDGE_DISCLOSURE` + `BRIDGE_NOT_LOST` in the section's own description, and the
+card renders its disclosure block once at the top (`data-mpd-disclosure`)."
+
+**Code evidence**
+
+- `BRIDGE_DISCLOSURE` in `packages/mpd-bundle-plugin/src/settings-card.ts` — byte-identical to
+  `settings-schema.ts`'s string (the card's own comment says so: "byte-identical to the TUI's
+  BRIDGE_DISCLOSURE").
+- `knobHint(key, semantics)` (`packages/mpd-config-plugin/src/settings-schema.ts`) — returns
+  `` `${semantics} (${pointer})` `` where `pointer = \`mpd.jsonc ${key}\``, and the pointer alone when
+  there is no human sentence.
+- `hintOf(field, lang)` (`settings-card.ts`) — the same shape on the card: `${sentence} (${pointer})`.
+- `SECTION_NOTICE` (`packages/mpd-tui-plugin/src/settings.ts`) — `= ${BRIDGE_DISCLOSURE} ${BRIDGE_NOT_LOST}`,
+  carried in the section's `descriptions` (asserted by `test/plugin.test.ts`, which also asserts a
+  per-row `field.hint` does **not** contain `BRIDGE_DISCLOSURE`).
+- `BRIDGE_NOT_LOST` (`settings-schema.ts`) — "the value is never lost: it is stored in the host settings
+  document and the config layer applies it to every workspace immediately — only the file write waits
+  for exactly one live session".
+- The card's disclosure block: one `<div>` with the four paragraphs tagged `data-mpd-disclosure`
+  (`bridge`, `restart`, `not-lost`, `workspace`), commented "THE DISCLOSURE, ONCE, in its own `.help`
+  block"; the not-lost paragraph's comment says it "used to ride every row's hint".
+
+---
+
+## P-14 (LOW) — the catalog split was off by one
+
+**Claim before:** "…README/install page). **45 rows**." / "…checked one. **16 rows**." (zh: 共 45 行 / 共 16 行),
+under a **59 rows** total.
+
+**New text:** **44 rows** / **15 rows** (zh 共 44 行 / 共 15 行). The 59-row total was already correct.
+
+**Code evidence — measured by importing the catalog, not by counting text**
+
+```
+$ bun -e 'const m = await import("./packages/mpd-mcp-lsp/src/server-catalog.ts"); …'
+TOTAL 59
+counts {"primary":44,"unverified":15}
+uniqueIds 59
+violations 0
+```
+
+`LANGUAGE_SERVERS` (`packages/mpd-mcp-lsp/src/server-catalog.ts`) holds 59 entries, 44 marked
+`verification: "primary"` and 15 marked `"unverified"`; `validateServerCatalog` reports 0 violations.
+
+**Why the old numbers were wrong, and how to reproduce the trap:** `grep -c 'verification: "primary"'`
+prints 45 and `grep -c 'verification: "unverified"'` prints 16, because the interface field
+`readonly verification: "primary" | "unverified"` on ONE line matches **both** patterns. The old
+45/16 pair is exactly that off-by-one on each side (and sums to 61, not the 59 the same paragraph
+states). A grep cannot settle this count; the import can.
+
+---
+
+## P-15 (LOW) — the terminal set
+
+**Claim before:** "The terminal vocabulary is mirrored in `src/index.ts` (`TERMINAL_TASK_STATUSES`,
+official `TeamTaskStatus = pending | in_progress | completed | deleted`) because the official package is
+not resolvable…". The parenthesised union is the **full** status union, not the terminal set, so the
+sentence never states what the pass actually treats as terminal.
+
+**New text:** the set is `TERMINAL_TASK_STATUSES`: **completed, deleted, failed, cancelled**; the
+harness union's terminal half is `completed` + `deleted`; `deleted` is in the set because `listTasks`
+hides deleted rows; `failed`/`cancelled` are NOT in the union and are tolerated so a harness release
+adding a terminal status can never make the module's destructive pass fire on unfinished work.
+
+**Code evidence**
+
+- `TERMINAL_TASK_STATUSES` (`packages/mpd-team-compact-plugin/src/index.ts`) =
+  `["completed", "deleted", "failed", "cancelled"]`.
+- Its doc comment supplies every clause above verbatim in substance: the official
+  `TeamTaskStatus = "pending" | "in_progress" | "completed" | "deleted"`, "its terminal half is
+  `completed` + `deleted`", "`deleted` is included because `listTasks` hides deleted rows, so a board
+  the service reports as all-`completed` is terminal with or without it", and "`failed`/`cancelled` are
+  NOT in the official union; they are tolerated so a harness release that adds a terminal status cannot
+  make this module's destructive pass fire on unfinished work".
+- `terminalTaskStatuses()` returns that constant, and the pass uses it (`apply`'s local
+  `terminalStatuses`).
+
+---
+
+## P-16 (LOW) — two stale team-core statements
+
+### (a) "The mailbox has no unread count"
+
+**Claim before:** "The mailbox has no unread count: the official inbox exposes no read state, and
+inventing one would misreport it." (zh: "信箱没有未读数：官方收件箱不暴露已读状态，硬造一个只会报错数。")
+This contradicted the SAME README's Semantics section ("**THE MAILBOX IS OURS** … `agent_teams_mail`
+owns `sent → delivered → read`") — it conflated the official plane's limit with this row's own store.
+
+**New text:** the **OFFICIAL** inbox has no unread count (its durable state is `messages` +
+`delivered`, a read state is not observable anywhere in it); that is a limit of that plane only — the
+mpd mailbox counts unread (`unreadOf`, `summarise` → `MailSummary.unread`, computed oldest-first) and
+`agent_teams_mail {action:"unread"|"summary"}` reports it.
+
+**Code evidence** (`packages/mpd-team-core-plugin/src/mailbox-store.ts`): `MailMessage.readAt`,
+`MailboxRecord` carrying `t: "read"`, `unreadOf` (`filter(readAt === undefined)`), `summarise` →
+`MailSummary { total, unread, undelivered, oldestUnread }`, `markDelivered`/`markRead`; the file header
+states the official mailbox keeps `state.messages` + `state.delivered` "and NOTHING ELSE", while "WHAT
+IS OURS: `sent → delivered → read`". The tool row in the same README already advertised
+`send`/`unread`/`read`/`summary`.
+
+### (b) "native backend over `ctx.subagents.startContinuable` is the DEFAULT"
+
+**Claim before:** "…the native backend over `ctx.subagents.startContinuable` is the DEFAULT and the
+official `dsh.team*` calls are the FALLBACK" (zh: "原生后端 `ctx.subagents.startContinuable` 是**默认**").
+
+**New text:** the native backend raises a durable child through `ctx.subagents.startActivation` on the
+pinned host (harness 0.2.1+) and keeps the retired `ctx.subagents.startContinuable` only as the
+older-host fallback (`CONTINUABLE_START_MEMBERS`, probed newest-first by `continuableStartMember`),
+while the official `dsh.team*` calls are the FALLBACK.
+
+**Code evidence** (`packages/mpd-dsh-adapter-plugin/src/index.ts`):
+`CONTINUABLE_START_MEMBERS = ["startActivation", "startContinuable"]` ("the members that can raise a
+durable child, NEWEST generation first"); `continuableStartMember` probes that order and returns the
+first callable one; `startContinuableChild` calls the member and adds `delivery: "parent"` only on the
+`startActivation` arm; the header states "Harness 0.2.1-rc.2 REMOVED `SubagentRuntime.startContinuable()`
+and `.start()`". The `startContinuable`/`.start` arm therefore cannot be the default on the pinned host.
+
+---
+
+## P-17 (LOW) — the guard claim
+
+**Claim before:** bound 7 — "…both were refused before… The band still refuses `packages/*/src/**`,
+`packages/*/test/**` and any `..`-carrying spelling." (zh: "该可读带**仍然**拒绝 …"), while the SAME
+README's bound 1 and its tool table say the guard is **withdrawn** (`installVerifyGuard` not installed).
+
+**New text:** "That readable band is PROSE, not a fence: no shipped row installs `installVerifyGuard`,
+so nothing refuses `packages/*/src/**`, `packages/*/test/**` or a `..`-carrying spelling — a seat keeps
+to the band because the discipline says so, which is bound 1's point."
+
+**Code evidence:** `installVerifyGuard` is **defined** in
+`packages/mpd-roles-plugin/src/verify-guard.ts` and referenced elsewhere only by
+`packages/mpd-verify-plugin/test/row.test.ts` (imports + 4 calls) and one comment in
+`packages/mpd-roles-plugin/src/ask-user-guard.ts`. `grep -rl installVerifyGuard packages/*/src/`
+returns `verify-guard.ts` (the definition) and `ask-user-guard.ts` (a comment) — **no `apply()` calls
+it**, so no shipped composition installs it. The README's own table row already said the `mpd-roles`
+row "NO LONGER INSTALLS it", and bound 1 says the row is "bookkeeping only". The two halves now agree.
+
+---
+
+## Checks run (quoted, with exit codes)
+
+`bun run verify:docs` — **exit 0**, log: `evidence/audit-20261025/pkg-readmes-b/verify-docs.log`
+
+```
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=50 failed=0 violations=0 exempt=24 derived=3 links=447 dead=0 — PASS
+```
+
+`bun run verify:manifest` — **exit 0**, log: `evidence/audit-20261025/pkg-readmes-b/verify-manifest.log`
+
+```
+ok    cordis-dependency: 9 declared dependency name(s) across dependencies/peerDependencies/optionalDependencies, none of them cordis
+ok    lifecycle-script: 20 script name(s), none carrying preinstall/install/postinstall/prepare
+ok    version:dsh-plugin.json: version = 0.15.4
+ok    version:dsh-distribution.json: distribution.version = 0.15.4
+ok    bundle-patch-files: 2 patch file(s) declared, 0 missing
+ok    row-module-paths: 28 module path(s) named by the patch files, 0 missing, 0 patch file(s) unreadable
+ok    files-allowlist: 25 pattern(s); 0 required path(s) not admitted
+ok    evidence-excluded: the frozen evidence/ tree stays out of the published package
+ok    packed-content: npm pack --dry-run lists 1042 file(s); 0 required path(s) absent
+
+VERDICT: PASS — the install-time rules and the packaging contract hold.
+```
+
+`git diff --stat` for the 12 files: **84 insertions, 60 deletions**; `git status` shows **no** file of
+mine outside the declared scope (the other modified paths belong to the other lanes — `docs/**`,
+`packages/mpd-bundle/README*`, `mpd-config`/`mpd-modelchain`/`mpd-ulw`/`mpd-codegraph`/
+`mpd-comment-checker` READMEs, and `src/**`).
+
+## Honest bounds — what I did not prove
+
+1. **No `dist/**` rebuild, by contract.** Docs-only change, so no `dist` or vendor re-pin was needed; I
+   did not run `verify-dist-fresh` or `verify-vendor`.
+2. **I ran the two gates this lane requires, not the full sweep** (`verify:gates`, tests, typecheck,
+   pack closure, Docker). Those belong to the captain's sweep.
+3. **The tree is shared.** Between my two `verify:manifest` runs another lane added
+   `packages/mpd-team-core-plugin/test/adapter-identity.test.ts` (untracked, visible in `git status`),
+   which moved the pack file count 1041 → 1042. Both runs exited 0; the delta is not mine.
+4. **The `/settings` editor `base` lifetime is left unclaimed.** I removed the "fixed for the process
+   lifetime" sentence rather than re-derive it: no current reader states it, and I could not settle
+   whether the host registration re-derives a base after mount. The new text therefore claims only what
+   `BRIDGE_DISCLOSURE` / `BRIDGE_RESTART_LIMIT` / `settings.ts` state. If the base turns out to be
+   mount-fixed, only the DISPLAYED base could lag — the plugin behaviour is read per use, which is what
+   the README now says.
+5. **Untouched claims I did not audit** (outside P-11…P-17): the "26 in all / original 13 / twelve
+   `teamModels` slot leaves" knob arithmetic, the sidebar `minColumns`/order/icon values, the `pollMs`
+   interval, and the workmate-tab ids. They were not in my item list and I made no assertion about them.
+6. **Contract-premise corrections** (recorded above, not silently absorbed): P-14's true split (44+15)
+   was confirmed by import, and the README's 45/16 was the type-declaration grep trap; P-12's stale
+   "two pages" count existed in the EN twin too, not only in zh.
+7. **Verification law:** this report is the WRITER's evidence. A DIFFERENT agent must record the verdict
+   against `.mpd/plans/audit-20261025-fixes.md`; nothing here is a PASS claim from a verifier.
+
+---
+
+# REPAIR (task T7) — the blanket "no restart" claim was FALSE
+
+**Defect.** My first pass on P-11 / P-13 replaced a false "needs a restart" claim with an equally false
+BLANKET "takes effect in the RUNNING process — no restart". I had trusted the shipped constant
+(`BRIDGE_DISCLOSURE`) instead of reading the CONSUMERS. The captain's independent consumer read
+established the correct shape and this lane repaired it. The old claim was wrong in the dangerous
+direction: it promised immediacy for knobs a plugin captures at `apply()`.
+
+**The truth (now stated in all four files).** The config service re-resolves immediately — the
+READ-BACK is live (`mpd_config_get` reports a new value at once) — but a consumer reads its
+configuration through the config service when it **mounts** (`apply()`). So the EFFECT is per knob:
+
+- **live in the running process:** the model routes (`teamModels.slot*`, `modelchain.*`),
+  `watchdog.*`, `team.gate` / `team.sensitivity`, the `team.stateDir` reader, and the two guards
+  `captain.investigation` / `delegation.gate`. `tui.dashboardKey` is live ONE-WAY (read per keypress,
+  but the take-over arms only after the host hands the session its live input kit).
+- **captured at `apply()`, so they need the next `dsh` boot:** `hashline.*` (`maxDiffChars`,
+  `guardEditTools`, `registryFile`), `commentChecker.*`, `ulw.*`, `memory.*`, `boulder.dir`, `goal.*`.
+- The per-knob authority is **`docs/user-guide.md` §9.1** ("When a saved knob takes effect"), cited in
+  both READMEs; the READMEs claim no more than that table.
+- The not-lost clause is KEPT: a settings-only save is never lost — the host settings document keeps the
+  value and the config layer applies it to every workspace immediately; only the FILE WRITE waits for a
+  live session.
+- The disclosure is described by its SHAPE (scoped, both halves rendered), never by quoting the old
+  constants verbatim — the code lane is simultaneously scoping `BRIDGE_DISCLOSURE` /
+  `BRIDGE_RESTART_LIMIT` and the card mirror.
+
+**Code evidence for the per-knob split (opened this session)**
+
+| Knob group | Proof in the tree |
+|---|---|
+| `hashline.*` mount-captured | `packages/mpd-hashline-plugin/src/index.ts`: `apply(ctx, config)` and `const maxDiffChars = cfg.maxDiffChars ?? 4000` inside it — the value is frozen at mount |
+| `ulw.*` mount-captured | `packages/mpd-ulw-plugin/src/index.ts`: `apply(ctx, config)` and `const maxRounds = cfg.maxRounds ?? 6` inside it |
+| `delegation.gate` live | `packages/mpd-roles-plugin/src/delegation-gate.ts` — the options doc says the reader is the row's `configValue`, "so a `.mpd/mpd.jsonc` edit is therefore picked up LIVE, T-18" |
+| `captain.investigation` live | `packages/mpd-roles-plugin/src/captain-investigation.ts`: `installCaptainInvestigationGuard` calls `options.configValue(INVESTIGATION_CONFIG_KEY)` both at install (boot line) and inside the per-decision answer |
+| `team.sensitivity` live | `packages/mpd-roles-plugin/src/session-gate.ts`: `resolveSensitivity(configValue(SENSITIVITY_CONFIG_KEY))` runs per gate invocation |
+| `team.gate` live | `packages/mpd-roles-plugin/src/complexity-gate.ts`: "What a TRIGGER does is resolved per call by the wiring" |
+| the whole table | `docs/user-guide.md` §9.1 rows: `hashline.*`/`commentChecker.*`/`ulw.*`/`goal.*`/`memory.*`/`boulder.dir` "at mount → after a restart"; `modelchain.*`/`teamModels.slot*`/`watchdog.*`/`team.stateDir` live |
+
+**Files changed by the repair (4, EN + zh)**
+
+- `packages/mpd-tui-plugin/README.md` + `README.zh-CN.md` — settings table cell, the NOT CLAIMED #2
+  heading, and the two-group body (read-back vs effect, per-knob list, one-way `dashboardKey`, §9.1
+  citation, not-lost clause kept).
+- `packages/mpd-bundle-plugin/README.md` + `README.zh-CN.md` — the "TUI counterpart" disclosure sentence
+  (scoped, not blanket) and the disclosure-shape paragraph, which now states that the card/section
+  renders **BOTH halves** — the live half AND the mount-captured exception — not just the promising one.
+
+**Checks re-run after the repair (quoted, with exit codes)**
+
+`bun run verify:docs` — **exit 0**, log: `evidence/audit-20261025/pkg-readmes-b/verify-docs-repair.log`
+
+```
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=50 failed=0 violations=0 exempt=24 derived=3 links=449 dead=0 — PASS
+```
+
+`bun run verify:manifest` — **exit 0**, log: `evidence/audit-20261025/pkg-readmes-b/verify-manifest-repair.log`
+
+```
+ok    evidence-excluded: the frozen evidence/ tree stays out of the published package
+ok    packed-content: npm pack --dry-run lists 1043 file(s); 0 required path(s) absent
+
+VERDICT: PASS — the install-time rules and the packaging contract hold.
+```
+
+**Bounds of the repair**
+
+1. The `link`/`pack` counters moved between runs (447 → 449 links, 1042 → 1043 packed files) because the
+   tree is shared with the other lanes (`docs/user-guide.md`, `settings-schema.ts`, a new test file);
+   both gates still exited 0 and `dead=0`.
+2. Bound 4 above is now RESOLVED in the direction the repair implies: I no longer imply the editor base
+   is live or fixed — the README claims nothing about the base's lifetime, only the per-knob EFFECT.
+3. `goal.*` is stated as mount-captured per §9.1's row; I did not open `mpd-goal-plugin`'s own `apply()`
+   in this repair pass — the §9.1 table is the cited authority for that row, and the captain's consumer
+   read agrees with it.
+4. I still ran ONLY the two gates this lane requires; the full sweep remains the captain's.
+

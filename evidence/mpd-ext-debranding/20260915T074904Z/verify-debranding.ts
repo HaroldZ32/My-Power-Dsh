@@ -2,8 +2,12 @@
 // t33 evidence — de-branding verification.
 //
 // Checks, from the files on disk:
-//   1. the docs' quoted snippets MATCH the shipped example verbatim (skill description, flow id /
-//      title / description / whenToUse) — in BOTH languages;
+//   1. BOUNDED quote check: the docs' quoted SKILL description + `name:` line and the four quoted FLOW
+//      keys (`id` / `title` / `description` / `whenToUse`) appear VERBATIM in both languages. The docs
+//      also quote `mcp` / `roles` snippet fields, and those are NOT probed here — this checker never
+//      read them (declared bound, see `bounds` in the emitted report; narrowing the claim rather than
+//      extending the probe is deliberate: the example tree it measured no longer exists, so a new arm
+//      here would be green on absence, not on parity);
 //   2. the user-visible surface carries ZERO RTL/EDA tokens (the contract's exact grep, run here);
 //   3. the shipped example still contributes the four kinds with the canonical names;
 //   4. the canonical rename is complete: no old name survives in the user-visible surface;
@@ -32,11 +36,14 @@ const run = (cmd) => {
   }
 };
 
-// 1. quoted-snippet parity -----------------------------------------------------------------
+// 1. quoted-snippet parity (BOUNDED: the skill description + name and the four flow keys only) ------
 const skill = read("extensions/mpd-ext-example/skills/change-triage/SKILL.md");
 const skillDescription = skill.match(/^description: "(.*)"$/m)?.[1] ?? "";
 const skillName = skill.match(/^name: (.*)$/m)?.[1] ?? "";
 const flow = JSON.parse(read("extensions/mpd-ext-example/flows/change-triage-flow.json"));
+// The probe's OWN subject list, so the printed detail and the emitted bound cannot drift from it.
+const PROBED_FIELDS = ["skill description", "skill frontmatter name", "flow id", "flow title", "flow description", "flow whenToUse"];
+const UNPROBED_FIELDS = ["docs' quoted mcp snippet fields", "docs' quoted roles snippet fields"];
 for (const doc of ["docs/extensions.md", "docs/extensions.zh-CN.md"]) {
   const text = read(doc);
   const missing = [];
@@ -44,7 +51,7 @@ for (const doc of ["docs/extensions.md", "docs/extensions.zh-CN.md"]) {
   if (!text.includes(`name: ${skillName}`)) missing.push(`skill frontmatter name (${skillName})`);
   for (const key of ["id", "title", "description", "whenToUse"])
     if (!text.includes(`"${key}": "${flow[key]}"`)) missing.push(`flow ${key} verbatim`);
-  if (missing.length === 0) ok(`quotes.${doc}`, "quoted snippets match the shipped example verbatim");
+  if (missing.length === 0) ok(`quotes.${doc}`, `probed fields match the shipped example verbatim: ${PROBED_FIELDS.join(", ")} (NOT probed: ${UNPROBED_FIELDS.join(", ")})`);
   else bad(`quotes.${doc}`, `missing: ${missing.join(", ")}`);
 }
 
@@ -87,6 +94,15 @@ const report = {
   grepCommand: `grep -rniE '${TOKENS}' ${GREP_TARGETS} | grep -v '^docs/plan-tui-edition'`,
   grepOutput: grep.out === "" ? "(empty)" : grep.out,
   shippedExample: { skillDescription, flowId: flow.id, role: manifest.contributes.roles[0].name, server: manifest.contributes.mcp[0].serverName },
+  // What the quote arm above actually compared, and what it did NOT — so no reader can lift the
+  // `quotes.*` pass into a claim that EVERY doc snippet matched.
+  bounds: {
+    quoteProbe: "the four flow keys and the skill description + frontmatter name only",
+    quoteProbedFields: PROBED_FIELDS,
+    quoteNotProbed: UNPROBED_FIELDS,
+    why: "narrowing, not extending: the example tree this run measured has since been replaced, so a new probe here would pass on absence instead of parity",
+    historical: "this record is historical evidence; do not edit its result.json/output.log, and do not cite it for a current-state claim (see evidence/extensions/SUPERSEDED.md)",
+  },
   checks,
 };
 const failed = checks.filter((c) => c.status === "failed");

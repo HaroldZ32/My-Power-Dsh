@@ -60,8 +60,13 @@ panels hold two streams.
 `mpd` settings namespace the TUI edition renders as its `/settings` section
 (`packages/mpd-tui-plugin/src/settings.ts`): labels, hints and zh descriptions are mirrored
 between the two front doors, a test asserts the two lists stay identical, and both state the same
-bridge disclosure — a save writes `<workspace>/.mpd/mpd.jsonc` for the live session workspace(s)
-and the mpd plugins act on it after a restart. The browser reaches the bridge only through the
+bridge disclosure — a save writes `<workspace>/.mpd/mpd.jsonc` for the live session workspace(s), and
+the disclosure is SCOPED per knob instead of promising a blanket restart: the model routes,
+`watchdog.*`, the team-gate knobs, the `team.stateDir` reader and the two guards act in the RUNNING
+process, while `hashline.*`, `commentChecker.*`, `ulw.*`, `memory.*`, `boulder.dir` and `goal.*` are
+captured at `apply()` and need the next `dsh` boot (`docs/user-guide.md` §9.1 is the per-knob
+authority; the same declaration in `settings-schema.ts` and in `settings-card.ts`). The browser
+reaches the bridge only through the
 public settings seam; the write-back itself belongs to `packages/mpd-config-plugin`. Rebuild the
 combined client (`node scripts/build-mpd-client.ts`) after touching either half.
 
@@ -86,11 +91,16 @@ card entirely (a leftover block in an old file is IGNORED, never rendered and ne
 import the TS declaration, so the card mirrors it and a test pins the declared metadata (path,
 label, zh, kind, declared options, human sentences) element-wise. Each slot row LEADS with its
 group and its own human sentence: the label names the group (`Slot 2 provider (analysis members)`),
-a group heading with a one-line impact sits above each slot's three rows, and the human sentence
-renders at full readability with the mandatory disclosure line dimmer beneath it. Both doors name
-the dotted `mpd.jsonc` key and carry the disclosure plus the not-lost clause AFTER that human
-sentence: the TUI builds `<human sentence> mpd.jsonc <key> — <disclosure> <not-lost>`, and the card
-mirrors the same declaration in the same order.
+and a group heading with a one-line impact sits above each slot's three rows. Both doors name the
+dotted `mpd.jsonc` key through ONE helper — the hint is `<human sentence> (mpd.jsonc <key>)`, and a
+knob with no human sentence keeps the pointer alone (`knobHint` in the TUI, `hintOf` on the card) —
+while the bridge disclosure and the not-lost clause are stated ONCE per SECTION, never per row: the
+TUI carries `SECTION_NOTICE` in the section's own description, and the card renders its disclosure
+block once at the top (`data-mpd-disclosure`). **Both halves are rendered, not just the promising
+one**: the LIVE half (the knobs whose behaviour a save changes in the running process) AND the
+mount-captured exception (the knobs that need the next `dsh` boot) — the card's block carries the
+scoped statement, and its copy in `settings-card.ts` stays byte-identical to the TUI's, so a reader
+of either front door learns that the EFFECT is per knob (`docs/user-guide.md` §9.1).
 
 ## Config
 

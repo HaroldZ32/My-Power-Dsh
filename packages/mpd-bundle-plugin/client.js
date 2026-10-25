@@ -4378,22 +4378,21 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
   const MODEL_CONFIG_PATH = "/plugins/mpd/model-config"
 
   /**
-   * The disclosure both front doors state (byte-identical to the TUI's BRIDGE_DISCLOSURE and to the
-   * shared schema's). REWORDED by wave fix/model-config-live-refresh: the config service now
-   * re-resolves on every settings save (entry-config subscription) and on a watched edit of the
-   * project file, and the model routes are read per use — so the old "takes effect … after a
-   * restart" claim is deleted, not softened; a hint that kept it would be a lie.
+   * The disclosure both front doors state (byte-identical to the shared schema's
+   * `BRIDGE_DISCLOSURE`). D-18 (audit wave 2026-10-25): a consumer-side read disproved the previous
+   * blanket promise — a save was said to take effect in the running process with no restart, full
+   * stop — because the knobs a plugin captures at its own mount never see the new value. The sentence
+   * therefore NAMES the live groups and the one-way toggle, and the mount-captured groups follow in
+   * the second paragraph; neither paragraph promises the blanket behaviour.
    */
-  const BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect in the RUNNING process — no restart: the config service re-resolves on every settings save and on a watched edit of the project file, and the model routes (teamModels, modelchain) are read per use, so the next spawn or resolve carries them"
+  const BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s); the config service re-resolves on every settings save and on a watched edit of the project file, and WHICH knobs take the new value in the RUNNING process — no restart — depends on how each one reads it: teamModels.slot*, modelchain.*, watchdog.*, team.stateDir, team.gate, team.sensitivity, captain.investigation and delegation.gate are read per use, and tui.dashboardKey is live ONE WAY (a saved false disables the Ctrl+A takeover at once; a saved true cannot arm a takeover the row config disabled)"
   /**
-   * The RESTART half of the truth (byte-identical to
-   * `packages/mpd-config-plugin/src/settings-schema.ts` `BRIDGE_RESTART_LIMIT`) and rendered as the
-   * card's second disclosure paragraph. What still waits for a boot after the live-refresh wave is
-   * exactly one class of knob — one some plugin CAPTURED at its own mount instead of reading the
-   * live config service per use — and the model routes this card edits are not such knobs; the
-   * sentence says so instead of claiming the blanket restart the old text did.
+   * The MOUNT-CAPTURED half of the truth (byte-identical to
+   * `packages/mpd-config-plugin/src/settings-schema.ts` `BRIDGE_RESTART_LIMIT`), rendered as the
+   * card's second disclosure paragraph together with the first — never alone: a reader who saw only
+   * the live half would read the blanket claim the consumers contradict.
    */
-  const BRIDGE_RESTART_LIMIT = "the restart wording now applies only to a knob some plugin captured at its own mount instead of reading the live config service per use — the model routes above are not such knobs; a captured knob keeps its captured value until the next dsh boot"
+  const BRIDGE_RESTART_LIMIT = "the other half of that list, so nobody reads it as a blanket: hashline.*, commentChecker.*, ulw.*, memory.*, boulder.dir and goal.* are captured by their plugins at mount instead of reading the live config service per use, so a new value for any of them waits for the next dsh boot (the file and the settings document still receive it at once, and each row names the key it writes)"
   /** The third disclosure paragraph: what a save means when no session is live. */
   const NO_WORKSPACE_NOTICE = "if no session is live, the save stays in settings — not written to any .mpd/mpd.jsonc"
   // The clause that keeps a settings-only save from reading as a lost one (same sentence the TUI
@@ -4924,7 +4923,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/settings-card", factory: // mpd set
     { path: ["hashline", "maxDiffChars"], label: "Inline diff limit", zh: "行内 diff 上限", kind: "number" },
     { path: ["commentChecker", "autoCheck"], label: "Comment checker", zh: "注释检查", kind: "boolean" },
     { path: ["ulw", "maxRounds"], label: "Ultrawork rounds", zh: "Ultrawork 轮数", kind: "number" },
-    { path: ["memory", "vcs"], label: "Memory backend", zh: "记忆后端", kind: "select", options: ["git", "svn"] },
+    { path: ["memory", "vcs"], label: "Memory backend", zh: "记忆后端", kind: "select", options: ["git", "svn", "both"] },
     { path: ["team", "stateDir"], label: "Team state directory", zh: "团队状态目录", kind: "text" },
     { path: ["boulder", "dir"], label: "Boulder directory", zh: "Boulder 目录", kind: "text" },
     { path: ["watchdog", "enabled"], label: "Watchdog enabled", zh: "看门狗启用", kind: "boolean" },
@@ -8150,22 +8149,21 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   const MODEL_CONFIG_PATH = "/plugins/mpd/model-config"
 
   /**
-   * The disclosure both front doors state (byte-identical to the TUI's BRIDGE_DISCLOSURE and to the
-   * shared schema's). REWORDED by wave fix/model-config-live-refresh: the config service now
-   * re-resolves on every settings save (entry-config subscription) and on a watched edit of the
-   * project file, and the model routes are read per use — so the old "takes effect … after a
-   * restart" claim is deleted, not softened; a hint that kept it would be a lie.
+   * The disclosure both front doors state (byte-identical to the shared schema's
+   * `BRIDGE_DISCLOSURE`). D-18 (audit wave 2026-10-25): a consumer-side read disproved the previous
+   * blanket promise — a save was said to take effect in the running process with no restart, full
+   * stop — because the knobs a plugin captures at its own mount never see the new value. The sentence
+   * therefore NAMES the live groups and the one-way toggle, and the mount-captured groups follow in
+   * the second paragraph; neither paragraph promises the blanket behaviour.
    */
-  const BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect in the RUNNING process — no restart: the config service re-resolves on every settings save and on a watched edit of the project file, and the model routes (teamModels, modelchain) are read per use, so the next spawn or resolve carries them"
+  const BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s); the config service re-resolves on every settings save and on a watched edit of the project file, and WHICH knobs take the new value in the RUNNING process — no restart — depends on how each one reads it: teamModels.slot*, modelchain.*, watchdog.*, team.stateDir, team.gate, team.sensitivity, captain.investigation and delegation.gate are read per use, and tui.dashboardKey is live ONE WAY (a saved false disables the Ctrl+A takeover at once; a saved true cannot arm a takeover the row config disabled)"
   /**
-   * The RESTART half of the truth (byte-identical to
-   * `packages/mpd-config-plugin/src/settings-schema.ts` `BRIDGE_RESTART_LIMIT`) and rendered as the
-   * card's second disclosure paragraph. What still waits for a boot after the live-refresh wave is
-   * exactly one class of knob — one some plugin CAPTURED at its own mount instead of reading the
-   * live config service per use — and the model routes this card edits are not such knobs; the
-   * sentence says so instead of claiming the blanket restart the old text did.
+   * The MOUNT-CAPTURED half of the truth (byte-identical to
+   * `packages/mpd-config-plugin/src/settings-schema.ts` `BRIDGE_RESTART_LIMIT`), rendered as the
+   * card's second disclosure paragraph together with the first — never alone: a reader who saw only
+   * the live half would read the blanket claim the consumers contradict.
    */
-  const BRIDGE_RESTART_LIMIT = "the restart wording now applies only to a knob some plugin captured at its own mount instead of reading the live config service per use — the model routes above are not such knobs; a captured knob keeps its captured value until the next dsh boot"
+  const BRIDGE_RESTART_LIMIT = "the other half of that list, so nobody reads it as a blanket: hashline.*, commentChecker.*, ulw.*, memory.*, boulder.dir and goal.* are captured by their plugins at mount instead of reading the live config service per use, so a new value for any of them waits for the next dsh boot (the file and the settings document still receive it at once, and each row names the key it writes)"
   /** The third disclosure paragraph: what a save means when no session is live. */
   const NO_WORKSPACE_NOTICE = "if no session is live, the save stays in settings — not written to any .mpd/mpd.jsonc"
   // The clause that keeps a settings-only save from reading as a lost one (same sentence the TUI
@@ -8696,7 +8694,7 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
     { path: ["hashline", "maxDiffChars"], label: "Inline diff limit", zh: "行内 diff 上限", kind: "number" },
     { path: ["commentChecker", "autoCheck"], label: "Comment checker", zh: "注释检查", kind: "boolean" },
     { path: ["ulw", "maxRounds"], label: "Ultrawork rounds", zh: "Ultrawork 轮数", kind: "number" },
-    { path: ["memory", "vcs"], label: "Memory backend", zh: "记忆后端", kind: "select", options: ["git", "svn"] },
+    { path: ["memory", "vcs"], label: "Memory backend", zh: "记忆后端", kind: "select", options: ["git", "svn", "both"] },
     { path: ["team", "stateDir"], label: "Team state directory", zh: "团队状态目录", kind: "text" },
     { path: ["boulder", "dir"], label: "Boulder directory", zh: "Boulder 目录", kind: "text" },
     { path: ["watchdog", "enabled"], label: "Watchdog enabled", zh: "看门狗启用", kind: "boolean" },

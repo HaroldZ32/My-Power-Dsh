@@ -19,8 +19,12 @@
   读取（`mpdTeams.list(workspace)`，即 `.mpd/team/teams/<id>.json`——**权威**平面，也是运行**默认**原生
   执行器的组合唯一拥有的平面），并以**官方** Agent Teams 实时读数（`dsh.teamLiveTeams()`）兜底。两个平面
   都不提供“团队已结束”判定，因此触发条件由**两半**推导——每个任务都已终结 **且** 没有成员在活动
-  （官方平面上的 `teamListTasks` / `teamListMembers`）。终结状态词表镜像在 `src/index.ts`
-  （`TERMINAL_TASK_STATUSES`，官方 `TeamTaskStatus = pending | in_progress | completed | deleted`），
+  （官方平面上的 `teamListTasks` / `teamListMembers`）。本流程视为“已终结”的集合是 `src/index.ts` 里的
+  `TERMINAL_TASK_STATUSES`：**completed、deleted、failed、cancelled**。宿主自己的联合类型是
+  `TeamTaskStatus = pending | in_progress | completed | deleted`，其终结的一半是 `completed` + `deleted`；
+  `deleted` 在集合内，是因为 `listTasks` 会隐藏已删除行 —— 于是服务报告为“全部 completed”的任务板，
+  有它没它都是终结的。`failed` 与 `cancelled` **不在**那个联合类型里 —— 容忍它们是为了安全：将来某个
+  harness 版本新增终结状态时，绝不能让本模块的破坏性流程在未完成的工作上触发。该集合镜像在**这里**，
   因为本仓库无法用裸模块名解析官方包（实测 `MODULE_NOT_FOUND`）。
 - **对象** —— 只处理成员。captain 永远不会被压缩（那是用户的 `/compact`）。
 - **屏障** —— 等待所有成员空闲，然后一起压缩。

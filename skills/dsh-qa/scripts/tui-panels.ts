@@ -46,19 +46,19 @@ const SLUG = "tui-panels"
  * The tmux pane geometry this lane drives.
  *
  * WIDENED 220 -> 320 (measured 2026-10-06, 0.13.0) and 320 -> 560 (measured 2026-10-14, 0.15.0).
- * The `/settings` section renders its ONE long disclosure hint on a single line and the host
- * ellipsizes it to the pane width (`… ` before the `╮` border), so a clause past the cut is simply
- * not painted. The disclosure was 315 columns when the 320-wide pane was chosen; commit cc5387e0
- * (`fix(model-config): live-refresh model routes in-process …`) rewrote `SECTION_NOTICE` to
- * "… takes effect in the RUNNING process — no restart: the config service re-resolves on every
- * settings save and on a watched edit of the project file, and the model routes (teamModels,
- * agentRoutes, modelchain) are read per use, so the next spawn or resolve carries them …", which is
- * ~520 columns with the knob prefix — at 320 the visible line still ended at `are read pe…` and the
- * last clause (`never lost`) was BEYOND the cut (measured: the arm's only missing pattern was
- * `/never lost/`). At 560 the whole disclosure fits and all four frozen phrases match. WIDENING is
- * chosen over weakening the expectation: the four-clause disclosure stays asserted VERBATIM, so a
- * regression that dropped a clause still reddens, whereas accepting a prefix plus a truncation marker
- * would let exactly that regression through.
+ * The `/settings` section renders its disclosure on a single line and the host ellipsizes it to the
+ * pane width (`… ` before the `╮` border), so a clause past the cut is simply not painted. At the
+ * 320-wide pane the visible line ended at `are read pe…` and the last clause (`never lost`) was
+ * BEYOND the cut (measured: the arm's only missing pattern was `/never lost/`).
+ *
+ * D-18 (audit wave 2026-10-25): the disclosure is now SCOPED — `SECTION_NOTICE` = BRIDGE_DISCLOSURE
+ * (the LIVE groups: a save is served in the RUNNING process for the knobs read per use) +
+ * BRIDGE_RESTART_LIMIT (the MOUNT-CAPTURED groups: a knob a plugin captures at its own `apply()` keeps
+ * its captured value until the next boot) + BRIDGE_NOT_LOST. Both halves are asserted below, and the
+ * retired blanket sentence ("takes effect in the RUNNING process — no restart", the claim the captured
+ * class contradicts) is asserted ABSENT. The pane is wider than the text, so no clause is cut;
+ * WIDENING is chosen over weakening the expectation, because a regression that dropped a clause must
+ * still redden rather than pass as a prefix.
  */
 const PANE_WIDTH = 560
 /** The pane height, kept at the lane's original 50 rows so the number of visible transcript rows is unchanged. */
@@ -150,6 +150,11 @@ export interface SurfaceRow {
   readonly pattern: RegExp
   /** Every pattern that must match in the SAME capture; overrides `pattern` when present. */
   readonly allPatterns?: readonly RegExp[]
+  /**
+   * Patterns that must NOT appear in the judged text (D-18: the retired blanket "no restart"
+   * sentence). A hit makes the row UNRENDERED, so a claim the product deleted cannot quietly return.
+   */
+  readonly absentPatterns?: readonly RegExp[]
   /** The structural store proof a `source: "store"` row must ALSO satisfy; ignored by pane rows. */
   readonly storeProof?: StoreProof
   /** Human-readable statement of what a match proves, recorded per result. */
@@ -184,6 +189,8 @@ export interface SurfaceResult {
   readonly missingPatterns: string[]
   /** The structural store proof that did NOT hold, stringified; `[]` for pane rows that declare none. */
   readonly missingProof: string[]
+  /** The RETIRED sentences the capture did show; empty when the row rendered. */
+  readonly foundRetired: string[]
   /** True when at least one pattern was required and every one of them matched. */
   readonly rendered: boolean
   /** Number of characters the store half of the judged text carried, `0` for pane rows. */
@@ -292,10 +299,14 @@ export const SURFACES: readonly SurfaceSpec[] = [
     allPatterns: [
       /MPD 插件包|MPD bundle/,
       /a save writes <workspace>\/\.mpd\/mpd\.jsonc for the live session workspace\(s\)/,
-      /takes effect in the RUNNING process — no restart/,
+      // The LIVE half, then the MOUNT-CAPTURED half (D-18): a surface that dropped either one reddens.
+      /take the new value in the RUNNING process/,
+      /captured by their plugins at mount/,
       /never lost/,
     ],
-    label: `the /settings section rendered WITH its bridge+no-restart+never-lost disclosure (pane widened to ${PANE_WIDTH} so the hint is not cut)`,
+    // The retired BLANKET sentence must never come back on the rendered surface.
+    absentPatterns: [/takes effect in the RUNNING process — no restart/],
+    label: `the /settings section rendered WITH its bridge+live-groups+captured-groups+never-lost disclosure (pane widened to ${PANE_WIDTH} so no clause is cut)`,
   },
   { surface: "tuiDialogs", step: "dialog", source: "pane", pre: ["Escape"], keys: ["M-w"], waitMs: 8000, pattern: /mpd workmates/, label: "the managed select dialog appeared" },
 ]
@@ -328,18 +339,21 @@ export function evaluateSurfaces(panes: readonly PaneText[], surfaces: readonly 
     const required = surface.allPatterns ?? [surface.pattern].filter((entry) => entry !== undefined)
     // The required patterns this capture did not match, stringified for the report.
     const missing = required.filter((entry) => !entry.test(text)).map((entry) => String(entry))
+    // The retired patterns the capture DID show: any hit keeps the row unrendered.
+    const foundRetired = (surface.absentPatterns ?? []).filter((entry) => entry.test(text)).map((entry) => String(entry))
     // The structural store proof a store row additionally declares; absent for every pane row.
     const missingProof = surface.source !== "store" || surface.storeProof === undefined || store === undefined
       ? []
       : storeProofFindings(store, surface.storeProof, surface.step)
     // A row renders only when it required at least one pattern, matched every one, and satisfied its proof.
-    const rendered = required.length > 0 && missing.length === 0 && missingProof.length === 0
+    const rendered = required.length > 0 && missing.length === 0 && missingProof.length === 0 && foundRetired.length === 0
     results.push({
       ...surface,
       pattern: String(surface.pattern),
       requiredPatterns: required.map((entry) => String(entry)),
       missingPatterns: missing,
       missingProof,
+      foundRetired,
       rendered,
       sourceChars: storeText.length,
       paneChars: paneText.length,
@@ -490,7 +504,7 @@ function fixturePanes(): PaneText[] {
     { name: "cmd-panel", text: "> /mpd panel\n" },
     { name: "scene", text: "MPD board\n team: none\n q/Esc to close\n" },
     { name: "renderer", text: "mpd board\n board opened via command at 2026-09-15T00:00:00.000Z\n" },
-    { name: "settings", text: "插件设置\n ╭─ MPD 插件包 (mpd) ─╮\n │ ❯ 行内 diff 上限  20000 │\n  mpd.jsonc hashline.maxDiffChars — a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect in the RUNNING process — no restart: the config service re-resolves on every settings save and on a watched edit of the project file, and the model routes (teamModels, agentRoutes, modelchain) are read per use, so the next spawn or resolve carries them the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session   Enter\n" },
+    { name: "settings", text: "插件设置\n ╭─ MPD 插件包 (mpd) ─╮\n │ ❯ 行内 diff 上限  20000 │\n  mpd.jsonc hashline.maxDiffChars — " + "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s); the config service re-resolves on every settings save and on a watched edit of the project file, and WHICH knobs take the new value in the RUNNING process — no restart — depends on how each one reads it: teamModels.slot*, modelchain.*, watchdog.*, team.stateDir, team.gate, team.sensitivity, captain.investigation and delegation.gate are read per use, and tui.dashboardKey is live ONE WAY (a saved false disables the Ctrl+A takeover at once; a saved true cannot arm a takeover the row config disabled) the other half of that list, so nobody reads it as a blanket: hashline.*, commentChecker.*, ulw.*, memory.*, boulder.dir and goal.* are captured by their plugins at mount instead of reading the live config service per use, so a new value for any of them waits for the next dsh boot (the file and the settings document still receive it at once, and each row names the key it writes) the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session   Enter\n" },
     { name: "dialog", text: "mpd workmates\n qa-tui-probe\n" },
   ]
 }
@@ -572,6 +586,17 @@ function selfTest(): void {
   // The engine re-run with ONLY an expectation that cannot appear; it must go red.
   const control = evaluateSurfaces(fixturePanes(), [], [{ surface: "negative-control", step: "boot", source: "pane", pattern: /MPD-PANELS-CONTROL-CANNOT-APPEAR/, label: "impossible expectation" }], storeFixture)
   check(!control.ok, "the negative control must fail on an expectation that cannot appear")
+
+  // THE RETIRED-SENTENCE CONTROL (D-18): an `absentPatterns` row matches the reference panes, so the
+  // new field must be able to REDDEN — otherwise the settlement row could hide a returned claim.
+/** A probe row that requires a phrase the settings pane carries and forbids one it also carries. */
+  const retiredProbe = { surface: "retired-sentence-control", step: "settings", source: "pane" as const, pattern: /MPD 插件包|MPD bundle/, allPatterns: [/MPD 插件包|MPD bundle/], absentPatterns: [/never lost/], label: "a retired sentence the settings pane still shows" }
+  /** The probe's verdict on the reference panes, which must be RED with exactly one retired hit. */
+  const retiredHit = evaluateSurfaces(fixturePanes(), [], [retiredProbe], storeFixture)
+  check(!retiredHit.ok && (retiredHit.results[0]?.foundRetired.length ?? 0) === 1, "the absentPatterns field must REDDEN a row whose retired sentence is present")
+/** The same probe with a sentence the pane does NOT carry: it must stay green. */
+  const retiredClear = evaluateSurfaces(fixturePanes(), [], [{ ...retiredProbe, absentPatterns: [/MPD-PANELS-CONTROL-CANNOT-APPEAR/] }], storeFixture)
+  check(retiredClear.ok, "absentPatterns must NOT redden on a sentence the capture never showed")
 
   // THE MODEL-ECHO SCOPE: a warm root's neighbour record must be out of scope, its OWN record must not.
   const neighbour: UserMessageRecord = { sessionId: "old", seq: 1, text: "/mpd workmates" }

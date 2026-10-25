@@ -65,6 +65,14 @@ afterEach(() => {
 const REPO = join(import.meta.dir, "..", "..", "..")
 
 /**
+ * This clone's own default-team record, when the checkout still carries one.
+ *
+ * A fresh clone has none, so the arm that reads it must SKIP (never PASS from an early return: a body
+ * that returns before its first assertion proves nothing).
+ */
+const SESSION_TEAM_RECORD = join(REPO, ".mpd", "team", "mpd-default-8d65a2b2", "team.json")
+
+/**
  * The OFFICIAL live views a fixture registers, keyed by workspace.
  *
  * 0.1.7: the TUI reads the harness's own readout (through the adapter), NOT the retired
@@ -282,6 +290,23 @@ describe("team-workflow projection (read-only, from the OFFICIAL live readout)",
     expect(text).toContain("t4 [-] unblocked · pending")
   })
 
+  test("a pathologically WIDE dependency list yields a depth instead of a stack overflow", () => {
+    // 1,000,000 edges is past the spread-call argument ceiling on this engine: the pre-fix body
+    // `1 + Math.max(...dependencies.map(depthOf))` evaluated exactly that call and threw
+    // `RangeError: Maximum call stack size exceeded` (measured on bun 1.4.2 / JSC, 2026-10-25).
+    const FAN_IN = 1_000_000
+    /** The hub's dependency list: every edge names the one root task, so the PATH length stays 1. */
+    const dependencies: string[] = []
+    for (let index = 0; index < FAN_IN; index += 1) dependencies.push("root")
+    /** The two-row DAG under test: one root, and a hub that depends on it many times over. */
+    const tasks = [{ id: "root", dependencies: [] as string[] }, { id: "hub", dependencies }]
+    /** The computed depth per task id — a loop now, so the width costs no stack. */
+    const depths = taskDepths(tasks)
+    expect(depths.get("root")).toBe(0)
+    // A depth is a PATH length, never an edge count: the duplicated edges cannot inflate it.
+    expect(depths.get("hub")).toBe(1)
+  })
+
   test("a pending task behind an UNFINISHED dependency renders BLOCKED", () => {
     /** This arm's fixture workspace. */
     const workspace = teamFixture({
@@ -338,16 +363,13 @@ describe("team-workflow projection (read-only, from the OFFICIAL live readout)",
     expect(workflow.tasks.every((task) => Number.isInteger(task.depth))).toBe(true)
   })
 
-  test("the REAL record of this session's own team projects without a hand-built object", () => {
-    /** The retired record path of a real session's team, when this clone has one. */
-    const path = join(REPO, ".mpd", "team", "mpd-default-8d65a2b2", "team.json")
-    if (!existsSync(path)) return // absent in a fresh clone: the fixture tests above carry the load
+  test.skipIf(!existsSync(SESSION_TEAM_RECORD))("the REAL record of this session's own team projects without a hand-built object", () => {
     /** The repository root, used as this arm's workspace. */
     const workspace = join(REPO)
     /** The projection of the real record. */
     const workflow = readTeamWorkflow(workspace, [], viewsOf(workspace))
     /** The record file itself, for the id/name/phase cross-check. */
-    const raw = JSON.parse(readFileSync(path, "utf8")) as { id: string; name: string; phase: string; members: unknown[]; tasks: unknown[] }
+    const raw = JSON.parse(readFileSync(SESSION_TEAM_RECORD, "utf8")) as { id: string; name: string; phase: string; members: unknown[]; tasks: unknown[] }
     expect(workflow.team?.id).toBe(raw.id)
     expect(workflow.team?.name).toBe(raw.name)
     expect(workflow.team?.phase).toBe(raw.phase)

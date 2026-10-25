@@ -3,9 +3,15 @@
 //
 // It asserts the TUI SURFACE against the built bytes, which is what this environment can
 // witness without a TTY:
-//   • every `/settings` hint carries the true post-bridge disclosure (a save writes
-//     `<workspace>/.mpd/mpd.jsonc` for the live session workspace(s) and takes effect in the
-//     RUNNING process — no restart) and the pre-t35 "not bridged" sentence is DELETED;
+//   • the SECTION states the disclosure ONCE, above the rows — never per hint — and that disclosure
+//     is the SCOPED truth (D-18, audit wave 2026-10-25): a save writes `<workspace>/.mpd/mpd.jsonc`
+//     for the live session workspace(s); WHICH knobs reach the RUNNING process depends on how each
+//     one reads the config, so the sentence names the live groups (`teamModels.slot*`,
+//     `modelchain.*`, `watchdog.*`, `team.stateDir`, `team.gate`/`team.sensitivity`,
+//     `captain.investigation`, `delegation.gate`) and the mount-captured exception (`hashline.*`,
+//     `commentChecker.*`, `ulw.*`, `memory.*`, `boulder.dir`, `goal.*`) that waits for the next
+//     boot. The pre-t35 "not bridged" sentence stays DELETED, and so does the blanket
+//     "takes effect in the RUNNING process — no restart" claim the exception contradicts;
 //   • the §D.2 `no-live-session` RUNTIME NOTICE is present in the built bytes AND wired into
 //     the status-line composition (a notice merely defined would be invisible on screen);
 //   • the TUI package still performs ZERO filesystem writes.

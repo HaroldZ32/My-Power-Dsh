@@ -15,7 +15,6 @@ How to build, test, QA, pack and release this repository.
 ├── scripts/
 │   ├── pack-mpd.ts       assemble dist/mpd-package/ (Plan D bundle)
 │   ├── build-mpd-client.ts  compose the combined web client (client.js)
-│   ├── build-mcp.ts      offline build of the ast-grep/git-bash/lsp MCP servers
 │   ├── repin-vendor.ts   re-derive the VENDOR_LOCK asset fingerprints (dry-run default; --check asserts, --write applies)
 │   ├── install-profile.ts    legacy installer (default dry-run; --dsh-home for QA)
 │   ├── mpd-ext.ts        extension developer CLI: validate / scaffold / list / --self-test
@@ -66,7 +65,19 @@ measured 2026-10-21). `0.28.0` requires harness **DSH 0.2.1-rc.1+** (this reposi
 `0.2.1-rc.2`) and fences its routes through the `connection` service, whose inject list the
 `packages/mpd-better-sidebar-host` shim restates. A packed install gets it from pnpm.
 
-MCP servers are built by `node scripts/build-mcp.ts` (offline from in-repo sources).
+**There is NO MCP build step.** The MCP servers come from DECLARED npm packages, started by thin
+launchers that resolve them wherever the installing profile materialized them: `cclsp` (the LSP
+server) and the git/shell pair `@cyanheads/git-mcp-server` + `mcp-server-commands` through
+`resolveDependencyEntry` in `packages/mpd-mcp-shared/dependency-entry.ts`, while the adopted ast-grep
+and codegraph artifacts ship beside their launchers in each package's `dist/`. The `ast-grep` BINARY
+is the one executable resolved at runtime rather than imported: `resolveAstGrepBinary` in
+`packages/mpd-mcp-shared/bin-resolve.ts` tries (1) a caller-set `MPD_AST_GREP_SG_PATH` — the launcher
+leaves an existing pin untouched — then (2) `$MPD_AST_GREP_BIN_DIR/{ast-grep,sg}`, (3) the package's
+own `bin` entry through `createRequire`, (4) `<bundle>/.toolchain/node_modules/.bin`, and (5)
+`<bundle>/node_modules/.bin`; when no candidate passes its `--version` probe the launcher leaves the
+env unset and the adopted server reports its own `BINARY_NOT_FOUND`. A checkout therefore needs no MCP
+build step at all: the retired `scripts/build-mcp.ts` and its `vendor/mcp-src/**` snapshot are gone
+(de-omo wave B2).
 
 **Extension assets need no build.** `packages/mpd-ext-plugin` is an ordinary plugin package
 (rebuild its `dist/` after a source change like any other), while the packages that *use* the
@@ -125,11 +136,11 @@ The QA skill is `skills/dsh-qa` (`SKILL.md`). Every case script ships `--self-te
 | `preset-conformance` | every harness-owned row config (preset + bundle patch + QA overlays) conforms to the INSTALLED harness schemas, the `mpd` preset's row set equals the installed `standard` preset's, and a real session created with `agentPreset: "mpd"` MOUNTS — with a negative control that must fail | `node skills/dsh-qa/scripts/preset-conformance.ts` |
 | `software-smoke` | software dev flow: a REAL headless mpd session (local OpenAI-shaped stub, throwaway key — no provider credential) writes a tiny deterministic game with the `write` tool and runs it with the `bash` tool in a SANDBOX workspace; the case replays the REAL transcript through its own oracle (legality, optimality, winner, determinism) and requires the mutation control to go RED | `node skills/dsh-qa/scripts/software-smoke.ts` |
 | `tui-mount` | the REAL dsh-TUI boot: the bundle as the third patch layer (`dsh.profile.bundles` = [dsh-base, dsh-tui, @mpd-dsh/mpd]), the `mpd-tui` row composed, ZERO apply-crash signatures in the raw log, the status line rendered, and the boot's own session record carrying `agentPreset: "mpd"` | `bun skills/dsh-qa/scripts/tui-mount.ts` |
-| `tui-panels` | each of the seven activation-gated TUI surfaces really RENDERS (status line, `/mpd status`, the `/mpd` completion tree, the board scene, the renderer row, the `/settings` section with its bridge+restart disclosure, and the managed dialog) — a surface that renders nothing FAILS the lane; the lane also proves `/mpd` never reached the model, and re-runs its engine on a deliberately impossible expectation as a negative control | `bun skills/dsh-qa/scripts/tui-panels.ts` |
+| `tui-panels` | each of the seven activation-gated TUI surfaces really RENDERS (status line, `/mpd status`, the `/mpd` completion tree, the board scene, the renderer row, the `/settings` section whose notice renders ALL THREE disclosure halves (`BRIDGE_DISCLOSURE` + `BRIDGE_RESTART_LIMIT` + `BRIDGE_NOT_LOST`: bridge + live-refresh + mount-captured exception + "never lost"), and the managed dialog) — a surface that renders nothing FAILS the lane; the lane also proves `/mpd` never reached the model, and re-runs its engine on a deliberately impossible expectation as a negative control | `bun skills/dsh-qa/scripts/tui-panels.ts` |
 | `tui-admission` | the HOST's own pinned admission algorithm against the bundle-level `dsh-plugin.json`: vendored `@dsh-std/manifest` parse + projection + the host's `validatePlugin` + five-state `negotiate`, then the host's `/plugins check` driven inside a live TUI; the spec-data root must RESOLVE first, and three negative controls are recorded | `bun skills/dsh-qa/scripts/tui-admission.ts` |
 | `tui-distribution` | `dsh-distribution.json` validated by the dsh-distribution protocol's OWN conformance CLI from an in-sandbox copy of the protocol repo; when its build cannot complete, the exact blocker is recorded and the descriptor is marked NOT fully validated rather than approximated as a pass | `bun skills/dsh-qa/scripts/tui-distribution.ts` |
 | `tui-spec-conformance` | the HOST's own pinned conformance suite against our manifest and a captured host descriptor, with the suite revision and every input digest recorded, and the three-way sha256 identity of the payload re-measured | `bun skills/dsh-qa/scripts/tui-spec-conformance.ts` |
-| `tui-settings-bridge` | the TUI arm of the settings bridge, judged against the BUILT bytes: every `/settings` hint carries the post-bridge disclosure (`a save writes <workspace>/.mpd/mpd.jsonc … after a restart`), the pre-bridge "not bridged" sentence is DELETED, the `no-live-session` runtime notice is present AND wired into the status-line composition, and the TUI dist performs ZERO filesystem writes | `bun skills/dsh-qa/scripts/tui-settings-bridge.ts` |
+| `tui-settings-bridge` | the TUI arm of the settings bridge, judged against the BUILT bytes: the built bytes carry the bridge disclosure (`a save writes <workspace>/.mpd/mpd.jsonc`) AND its LIVE half (`take the new value in the RUNNING process` — the retired `… after a restart` wording is what its negative control rejects); the pre-bridge "not bridged" sentence is DELETED; the `no-live-session` runtime notice is present AND wired into the status-line composition; the hint carries the "never lost" clause; and the package's OWN modules in the TUI dist perform ZERO filesystem writes. It asserts no per-knob restart bound — that table is `docs/user-guide.md` §9.1 | `bun skills/dsh-qa/scripts/tui-settings-bridge.ts` |
 | `ask-user-question-audit` (**new**) | a REPORTING tool, not a lane: it decodes one dsh session log (concatenated zstd frames, frame by frame through `lib/session-evidence.ts`) and enumerates every `ask_user_question` `tool/call`, classifying each as `ok`, `structurally-broken` (every broken clause named, e.g. `question-text-missing` / `options-not-array`) or `unparseable-arguments`, then pairs the call with the record that closed it (a `tool/result` carrying its call id in either session shape, and/or a continued question's `user-question-reply` user message). The rules are a LOCAL restatement of the D1 guard — never an import of plugin code — and results whose call id could not be read are counted, so "unpaired" is never silently read as "never answered". It exits 0 after reporting, 2 on a usage error and 1 on an undecodable log; `--self-test` is offline (synthetic concatenated-zstd frames, one assertion per rule, both result shapes, both answer pairings, both CLI exit codes) | `node skills/dsh-qa/scripts/ask-user-question-audit.ts <session-log.jsonl.zstd>` (or `--self-test`) |
 
 | `extension-lifecycle` (**new**) | the extension interface on a REAL mounted boot (sandboxed `DSH_HOME` + `HOME` + session cwd; the rows are composed from THIS checkout, and the model step is answered by a local OpenAI-shaped stub, so no provider credential is needed): a data-plane extension in `<sandbox-ws>/.mpd/extensions/` appears in `mpd_ext_list`, its flow loads, its role spawns, a broken extension of each kind leaves the good ones working, and two sessions with different cwds on one host see only their own project extensions | `bun skills/dsh-qa/scripts/extension-lifecycle.ts` |
@@ -232,8 +243,10 @@ evidence.
 - `scripts/repin-vendor.ts` re-derives the asset fingerprints `VENDOR_LOCK.json` carries: `--check`
   asserts, `--write` applies, and it refuses this repository's own lock without
   `--i-know-this-is-the-captains-step`, because a wave's single re-pin is the captain's
-  commit-time step (AGENTS.md §9/§11). The MCP servers' sources are snapshotted in-repo at
-  `vendor/mcp-src/**` as the build-time input for `node scripts/build-mcp.ts`.
+  commit-time step (AGENTS.md §9/§11). The MCP servers' sources are NOT snapshotted in-repo: the
+  `vendor/mcp-src/**` tree and its `node scripts/build-mcp.ts` build step were deleted with the de-omo
+  wave B2, and the servers are declared npm packages the launchers resolve at start
+  (`packages/mpd-mcp-shared/dependency-entry.ts`).
 - `VENDOR_LOCK.json` pins the upstream commit/version + asset fingerprints;
   `verify-vendor.ts` blocks on mismatch. Upstream is never chased — a baseline change
   needs a deliberate branch + evidence.

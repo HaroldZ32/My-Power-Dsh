@@ -50,10 +50,10 @@ plus the bare `extensions`, the `command` argv cclsp spawns, the `citations` eac
 and a `verification` mark.
 
 - **`verification: "primary"`** — every fact traces to a document that was actually fetched (the
-  package registry's own metadata, the repository's licence file, or its README/install page). 45 rows.
+  package registry's own metadata, the repository's licence file, or its README/install page). 44 rows.
 - **`verification: "unverified"`** — at least one fact could NOT be pinned to such a document. The
   row's caveat opens with `UNVERIFIED` and says which part is weak, so neither this README nor the
-  generated config can present a weak row as a checked one. 16 rows.
+  generated config can present a weak row as a checked one. 15 rows.
 
 A citation is not decoration: `test/server-catalog.test.ts` drives the same validator the launcher
 relies on and reddens when a row loses any required field or names an empty licence string, and

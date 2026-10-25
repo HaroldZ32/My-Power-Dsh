@@ -40,7 +40,7 @@
 | TUI 界面包 | `packages/mpd-tui-plugin/` | TUI 原生界面：**三个侧栏页面**（`src/panel.ts`——标题 `MPD`，主入口，且自 0.14.0 波次起它本身就是富形态 DAG 页，§3.3/§3.4——、`src/panel-workmate.ts`，以及 2026-10-23 看门狗波次新增的 `src/panel-watchdog.ts`）、状态行、`/settings` 区块、全屏场景、`/mpd` 命令树、快捷键、受中介的对话框、**宿主未投影**的转写渲染器注册（明确不声明第 10 条），以及"就绪但未激活"的决策事件接缝。 |
 | 准入清单 | `dsh-plugin.json`（仓库根目录） | 整个 bundle 的**唯一**一份 Community v0.15 清单——这是刻意的偏离（见 §7）。 |
 | 环境描述符 | `dsh-distribution.json`（仓库根目录） | 面向 dsh-distribution 元协议（Draft）的 `DistributionDescriptor`。 |
-| TUI 组合 | `cordis.patch.yml` | 新增 `mpd-tui` 行与 `dsh-tui` 花名册默认值，使 TUI 会话默认使用 **mpd** 预设。 |
+| TUI 组合 | `cordis.patch.yml` + `presets/mpd.patch.yml` | 新增 `mpd-tui` 行，并以追加方式注册 **mpd** 预设；部署默认值仍归宿主（`standard`），因此在选定 `mpd` 之前，TUI 会话使用 `standard`（§2）。 |
 | 本页 | `docs/tui.md`、`docs/tui.zh-CN.md` | 以上内容的人工说明。 |
 
 Web 版本不受影响：同一个 bundle 仍可安装到 web profile。
@@ -57,15 +57,23 @@ TUI 包刻意不带 `cordis.patch.yml`——第二次挂载会产生重复的 lo
 
 安装后的组合实测（t5，`evidence/tui/composition/20260915T053445Z/`）：
 `dsh.profile.bundles` = `["@deepseek-ai/dsh-base", "@deepseek-harness-tui/dsh-tui", "@mpd-dsh/mpd"]`，
-本 bundle 是**第三个** patch 层；bundle patch 贡献 24 行；真实启动日志中应用期崩溃特征计数为
+本 bundle 是**第三个** patch 层；两文件 bundle patch 层声明 **36** 行（`cordis.patch.yml` 35 行、
+`presets/mpd.patch.yml` 1 行，即 `bun run verify:rows` 打印的行数）；真实启动日志中应用期崩溃特征计数为
 **0**（`unsupported JSON schema`、`JsonSchemaError`、`plugin tree failed to load`、
 `failed to apply loader entry`、`Error:`）；没有重复的 loader entry id。**证据级别：**
 `Observed`（一次被记录的真实 dsh-TUI 启动，加上宿主自身的 `--dump-config`）。仅有
 `--dump-config` 只能证明组合，不能证明加载——崩溃特征计数来自真实启动。
 
-TUI 会话默认使用 **mpd** 预设，由 id 定向的 `agent-preset-registry` 行（`default: mpd`）与
-`presets/mpd.patch.yml` 中的 `preset-mpd` 行共同承载（依据是抓取到的会话
-记录，而不是 patch 文本）。
+TUI 会话解析的是**宿主**的默认预设，而不是 `mpd`：承载部署 `default` 的那一行由宿主层声明
+（Web 平面是 `@deepseek-ai/dsh-web-app` 的 `agent-preset-registry`，TUI 平面是
+`@deepseek-harness-tui/dsh-tui` 的 `dsh-tui-agent-preset-registry`），而本 bundle 对两者都不发 id 定向——
+`node scripts/verify-no-host-override.ts` 会在任何 id 落在宿主层声明集合内的 id 定向上让构建失败，而当初
+携带 `config.default: mpd` 的两处 id 定向已按 2026-10-02 的"严格零覆盖"决定移除（被移除的块记录在
+`cordis.patch.yml` 里）。因此 `mpd` 是**可用但需主动选择**的：在 TUI 里 `/preset mpd`（宿主的
+`presetPrefs.js` 会把它持久化到 `~/.dsh-tui/agent-preset.json`）、在宿主的 `dsh-tui` 行上显式写
+`preset: mpd`（或 `DSH_TUI_PRESET=mpd`）、Web 设置里的 `selectedDefault`，或者一键助手
+`node scripts/set-default-preset.ts --yes`（默认试运行）。每条通道及其取舍都记录在
+[`preset-default.zh-CN.md`](preset-default.zh-CN.md) 中。
 
 任何实机通道的前提：stdout 不是 TTY 时 `dsh-tui` 拒绝启动
 （`dsh-tui requires an interactive terminal (stdout must be a TTY)`），因此 QA 通道必须在 tmux
@@ -606,11 +614,19 @@ profile 安装的插件无法注册 `tui.dsh/v1alpha1#DecisionEvents`：在宿�
 | **多于一个** | **不虚构任何文件 base**：`base: undefined`，原因 `ambiguous-multi-root`，逐一点名全部候选并写入 `states()`。在恰好一个工作区活动之前，该命名空间显示 schema 默认值；此状态下的保存会被**拒绝**（见下），因此这种歧义不可能落到磁盘 |
 
 **base 在整个进程生命周期内固定**——宿主对一次活动注册**不提供任何注销（disposal）句柄**，它自己的
-settings 安装器同样保持 base 固定。这一固定不再意味着 mpd 的模型配置需要重启后才生效：界面上的句子现在
-写作"**在运行中的进程里生效——无需重启**"（配置服务在每次设置保存时、以及监听到项目文件被编辑时都会重新
-解析，且模型路由是每次使用时读取的）。插件真正使用的是**已解析的值（resolved value）**加上配置层的
-**逐次调用文件读取**：L1/L2 文件层在每次解析时都会被重新读取，因此即便 base 被冻结，**按工作区读取仍然
-解析各自会话自己的文件**。本页没有任何句子承诺 **base** 会被实时刷新——只承诺**值**会被实时解析。
+settings 安装器同样保持 base 固定。固定 base **并不**表示每个已保存的旋钮都要等重启，而"无需重启"这句
+也**不能一概而论**：配置服务本身是实时的（每次设置保存、以及监听到项目文件被编辑时都会重新解析），每个
+旋钮的答案取决于**它的消费者在哪里读取**。由消费者每次使用时从实时服务读取 —— **实时生效、无需重启**：
+`teamModels.slot*`、`modelchain.*`、`watchdog.*`、`team.stateDir`、`team.gate`、`team.sensitivity`、
+`captain.investigation`、`delegation.gate`；`tui.dashboardKey` 是**单向**的（按键时的读取可以在运行中
+关掉 Ctrl+A 接管，但接管接触点本身在 `apply()` 时注册，重新打开要等下一次启动）。在行自己的
+`apply()` 里被捕获 —— **需要重启**、捕获值保持到下一次 `dsh` 启动：`hashline.*`、`commentChecker.*`、
+`ulw.*`、`memory.*`、`boulder.dir`、`goal.*` 与 `extensions.*`。本 bundle 自己的提示常量把两半都写了
+出来 —— `BRIDGE_DISCLOSURE`（实时条款，点名模型路由）与 `BRIDGE_RESTART_LIMIT`（边界），而**逐旋钮的
+权威表是 [`user-guide.zh-CN.md`](user-guide.zh-CN.md) §9.1**。插件真正使用的是**已解析的值
+（resolved value）**加上配置层的**逐次调用文件读取**：L1/L2 文件层在每次解析时都会被重新读取，因此即便
+base 被冻结，**按工作区读取仍然解析各自会话自己的文件**。本页没有任何句子承诺 **base** 会被实时刷新——
+只承诺**值**会被实时解析。
 
 - **读入优先级** —— L0 schema 默认值 < L1 `$DSH_HOME/mpd.jsonc` < L2 `<workspace>/.mpd/mpd.jsonc` <
   **L3 settings 用户区段**（运行期以其为准）；此后若**文件**被再次编辑，重叠的 settings 叶子会被
@@ -628,8 +644,14 @@ settings 安装器同样保持 base 固定。这一固定不再意味着 mpd 的
 - **生效时机** —— 模型配置的消费者通过实时 `mpdConfig` 服务按次解析（`mpd_modelchain_resolve`
   每次调用；槽位路由在 spawn 时），而该服务在每次设置保存时、以及监听到项目文件被编辑时
   都会重新解析，因此保存的编辑**在下一次解析或 spawn 时即生效，无需重启**（`mpd_config_reload`
-  可强制重读）；仍在插件 `apply()` 时捕获配置的消费者，正是桥接报告 `applies: 'live'` 所记的例外，
-  由用户指南 §9.1 逐个旋钮列出。界面提示就是这么写的。
+  可强制重读）。这里有**两个不同的 `applies` 答案，不能混为一谈**：`BridgeReport.applies`
+  （`packages/mpd-config-plugin/src/bridge.ts`）的类型是 `"live"`，它逐次保存地记录**已解析的值**进入了
+  **运行中的进程**；而**命名空间级**的答案在每一个承载它的表面上都是 `"restart"`——服务自己的
+  `states().applies`（D-18，`packages/mpd-config-plugin/src/index.ts`）、`mpd-config` 的
+  `dsh.settingsRegister(…)`、以及本包的 `registerSettingsNamespace(…)` 都回答/传入 `restart`——因为该
+  命名空间整体并非全实时：`BRIDGE_RESTART_LIMIT` 点名的旋钮是在各自行内的 `apply()` 里被捕获的。因此
+  报告里的 `live` **并不**覆盖每个消费者的行为，逐旋钮的权威表是用户指南 §9.1。TUI 区块提示承载
+  **全部三段**（`SECTION_NOTICE` = `BRIDGE_DISCLOSURE` + `BRIDGE_RESTART_LIMIT` + `BRIDGE_NOT_LOST`）。
 - **退化目标会大声报错** —— 文件缺失（创建并带头部注释）、只读（`denied` + 路径 + errno，settings 编辑
   仍然成功）、并发（重试 ×3 后 `conflict`，人的文件保持原样）、无法解析（`unparsable`，绝不"修复"）。
 
@@ -743,7 +765,7 @@ profile 安装的插件无法到达的准入路径（§6.1），因此不是本�
 
 | 包 | 角色 | 分类 | 实测见证 |
 |---|---|---|---|
-| `mpd-bundle` | 组合层（bundle patch 本身） | usable | 组合配置含 `mpd-tui` 与 `agent-preset-registry` id-target；真实启动 0 崩溃特征 |
+| `mpd-bundle` | 组合层（bundle patch 本身） | usable | 组合配置含 `mpd-tui`；真实启动 0 崩溃特征。本行曾记录的 `agent-preset-registry` id-target 已于 2026-10-02 按"严格零覆盖"决定移除 —— 以 §2 为准 |
 | `mpd-dsh-adapter-plugin` | 与宿主接缝的唯一接触面 | usable | 应用期日志 `[mpd-dsh-adapter] mpdDsh provided` |
 | `mpd-config-plugin` | mpd.jsonc 运行时配置层 | usable | 工具 `mpd_config_get`、`mpd_config_reload` |
 | `mpd-tools-plugin` | 写入守卫 / 截断 / waterfall | usable | 组合行 `mpd-tools` 及其配置；不拥有工具名 |
@@ -862,7 +884,7 @@ profile 安装的插件无法到达的准入路径（§6.1），因此不是本�
 
 | 结论组 | 本页主张的级别 | 状态与证据 |
 |---|---|---|
-| 安装 / 三层结构 / 24 行 / 0 崩溃特征 / mpd 预设默认值 | Observed | 有证据——t5 `evidence/tui/composition/20260915T053445Z/`，并由 t8（`evidence/tui/live/20260915T063140Z/lanes/tui-mount/`）与 t9（`…/conformance/20260915T064521Z/09-mount-boot.log`、`10-mount-boot-clean-root.log`）重跑 |
+| 安装 / 三层结构 / 36 行 / 0 崩溃特征 / mpd 预设**可用**（非默认） | Observed | 三层结构与 0 崩溃特征两半仍以 t5 `evidence/tui/composition/20260915T053445Z/` 的实测为准，并由 t8（`evidence/tui/live/20260915T063140Z/lanes/tui-mount/`）与 t9（`…/conformance/20260915T064521Z/09-mount-boot.log`、`10-mount-boot-clean-root.log`）重跑；行数与预设默认值两条已被 §2 取代 —— 36 行（`cordis.patch.yml` 35 + `presets/mpd.patch.yml` 1），且部署默认仍归宿主 |
 | 清单被解析、投影、协商（`waiting_authorization`）、真实 `/plugins check` | Parsed + Negotiated | 有证据——t9 `…/conformance/20260915T064521Z/01-admission-static.log`（清单 `84ed4a5d…`、入口 `5dce2563…`）与 `02-admission-live.log` |
 | 逐包台账 | Observed（逐包） | 有证据——`ledger.json`（t5）；其结构由 t8 复核 |
 | 插件契约形态（无默认导出、清理、软探测） | Tested（单元） | 有证据——`evidence/tui/plugin/20260915T054343Z/`（t4）；547 个包测试通过（t9） |

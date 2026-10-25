@@ -1900,6 +1900,68 @@ function createDshAdapter(ctx, config = {}) {
   };
   return adapter;
 }
+var SERVICE_NAME = "mpdDsh";
+var ADAPTER_IDENTITY_FALLBACK = "fallback:createDshAdapter";
+function adapterPendingWarning() {
+  return "ADAPTER NOT YET ACTIVE: " + SERVICE_NAME + " is registered in this composition but its provider fiber" + " is not ACTIVE yet (the loader applies sibling rows concurrently; cordis answers undefined for a non-ACTIVE" + " provider). This call is served by a TEMPORARY adapter and every later call re-probes, so the mounted" + " adapter is picked up as soon as it activates — this transient miss needs NO row-order change (T-50).";
+}
+function adapterFallbackWarning() {
+  return "ADAPTER FALLBACK (adapterIdentity=" + ADAPTER_IDENTITY_FALLBACK + "): " + SERVICE_NAME + " is not provided" + " in this composition, so this row built its OWN adapter beside the tree's: it bypasses the mounted adapter" + " (the one-contact-surface rule, AGENTS.md §6), it does NOT inherit the adapter row's config (defaultTimeoutMs)" + " and it keeps its own per-instance caches (the per-agent compaction-engine memo). This boot keeps working," + " which is exactly why the branch is loud — fix the ROW ORDER (this row must sit BELOW mpd-dsh-adapter); the" + " canonical note lives in packages/mpd-ext-plugin/src/index.ts (resolveAdapter).";
+}
+function probeMpdDsh(ctx, strict) {
+  const get = ctx?.get;
+  if (typeof get !== "function")
+    return { missing: true };
+  try {
+    const value = get.call(ctx, SERVICE_NAME, strict);
+    return value === undefined || value === null ? { missing: true } : { value, missing: false };
+  } catch {
+    return { missing: true };
+  }
+}
+function createLazyDshAdapter(ctx, options) {
+  const warning = (line) => {
+    try {
+      (options.warn ?? ((text) => rowLogLine("mpd-dsh-adapter", "[" + options.label + "] " + text)))(line);
+    } catch {}
+  };
+  let mounted;
+  let temporary;
+  let warnedPending = false;
+  let warnedMissing = false;
+  const resolve3 = () => {
+    if (mounted !== undefined)
+      return mounted;
+    const active = probeMpdDsh(ctx, true);
+    if (active.value !== undefined) {
+      mounted = active.value;
+      return mounted;
+    }
+    temporary ??= createDshAdapter(ctx);
+    if (!probeMpdDsh(ctx, false).missing) {
+      if (!warnedPending) {
+        warnedPending = true;
+        warning(adapterPendingWarning());
+      }
+      return temporary;
+    }
+    if (!warnedMissing) {
+      warnedMissing = true;
+      warning(adapterFallbackWarning());
+    }
+    return temporary;
+  };
+  return new Proxy({}, {
+    get(_target, property) {
+      const impl = resolve3();
+      const value = impl[property];
+      return typeof value === "function" ? value.bind(impl) : value;
+    },
+    has(_target, property) {
+      return property in resolve3();
+    }
+  });
+}
 
 // packages/mpd-team-core-plugin/src/mailbox-store.ts
 import { appendFileSync, existsSync, mkdirSync as mkdirSync2, readFileSync } from "node:fs";
@@ -4748,8 +4810,7 @@ function assertClaimReady(board, task) {
   throw new Error(`task ${namedTask(task.id, task.subject)} is BLOCKED by ${blocking.map(label).join(", ")}: ${blocking.length === 1 ? "the declared blocker is" : "the declared blockers are"} not satisfied, and agent_teams_dispatch refuses the same pairing through the same readiness predicate (its reason reads "not ready (blocked by ${blocking.join(", ")})"). Fix: close ${first} first with agent_teams_task {action:"complete", task_id:"${first}"} — or use {action:"fail", task_id:"${first}"} if it will never be done, because a failed blocker releases its dependents (OPT-1) — then claim ${task.id} again.` + (dangling.length === 0 ? "" : ` NOTE: ${dangling.join(", ")} name(s) no task on this board (a dangling reference that can never be satisfied), so ${namedTask(task.id, task.subject)} can never be claimed. Fix: fail this row with agent_teams_task {action:"fail", task_id:"${task.id}"}, then have the team's Lead append a REPLACEMENT task with agent_teams_plan {action:"create_task", task:{subject, description, blocked_by:[...]}} that carries the corrected blocked_by. A failed row is never reopened, and re-creating the dangling reference will not make it satisfiable.`));
 }
 function adapterFor(ctx) {
-  const mounted = typeof ctx?.get === "function" ? ctx.get("mpdDsh") : undefined;
-  return mounted ?? createDshAdapter(ctx);
+  return createLazyDshAdapter(ctx, { label: "mpd-team-core" });
 }
 function sessionIdOf(exec) {
   const agent = exec?.agent;

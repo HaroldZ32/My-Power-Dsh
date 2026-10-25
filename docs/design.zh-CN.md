@@ -25,7 +25,7 @@ my-power-dsh 的详细设计：它设计什么、遵循哪些设计原则、如�
 - 一层 **patch**：把 bundle 的各行插入到安装该 bundle 的任意 profile 中；并用第二个 patch 文件把
   bundle 自带的 `mpd` 预设**增量**交付到这些 composition —— bundle 不对任何 host 行做 id-target，
   因此把 `mpd` 设为部署默认是**使用者**的动作（§2、§6c），
-- **33 个插入行**（6 个 MCP client 行、23 个 `mpd-*` 插件行（含 `mpd-web-compat` 自引用行）、
+- **35 个插入行**（7 个 MCP client 行、24 个 `mpd-*` 插件行（含 `mpd-web-compat` 自引用行）、
   3 个官方 Agent Teams 行，以及挂载 bundle **可选** peer 的 `mpd-better-sidebar` 宿主行——该 peer
   可解析时才挂载），
   以及每一行各自拥有的服务、工具、命令、路由与状态（§4），
@@ -70,8 +70,8 @@ bundle**（`@mpd-dsh/mpd`）交付，其 `dsh.bundle.patch` 数组
 （先是 `cordis.patch.yml`，再是 `presets/mpd.patch.yml`）向它安装到的任意
 profile 添加行。它贡献：
 
-- **33 个插入行**，分布在**两层**增量 patch 中：6 个 MCP client 行（本地 ast-grep、git-bash
-  [默认禁用]、LSP、codegraph；远端 context7、grep.app）、23 个 `mpd-*` 插件行（含使 bundle 成为
+- **35 个插入行**，分布在**两层**增量 patch 中：7 个 MCP client 行（本地 ast-grep、git-bash
+  [默认禁用]、LSP、codegraph；远端 context7、grep.app）、24 个 `mpd-*` 插件行（含使 bundle 成为
   loader entry 的 `mpd-web-compat` 自引用行）、3 个**官方** Agent Teams 行，以及挂载 bundle
   **可选**侧边栏 peer（社区侧边栏宿主，可解析处才挂载）的 `mpd-better-sidebar` 行——§4 逐一列出。
   第二个 patch 文件贡献的是 `preset-mpd` 行，
@@ -116,8 +116,10 @@ Manifest 不变式（为什么存在）：
   （E4 缺陷，见 `docs/plan-e.md`）。该主体是主代码 + 自带 vendored closure
   （`packages/mpd-agent-teams-plugin/_deps/`），而从 0.1.7-rc.2 起**没有任何行挂载它** —— 这正是
   去 vendor 波（2026-10-07）能够在不改动任何一行的情况下把它删除的原因。
-- **`dependencies` 只有三个条目 —— 三个官方 Agent Teams 包**
-  （`@deepseek-ai/dsh-experimental-agent-team`、`-tool-agent-team`、`-client-ui-agent-team`）。
+- **`dependencies` 有四个条目 —— 三个官方 Agent Teams 包**
+  （`@deepseek-ai/dsh-experimental-agent-team`、`-tool-agent-team`、`-client-ui-agent-team`），
+  加上 `@dsh-std/sdk`（`0.1.1-rc.2`，DSH Standard facet 激活模块的 scoped 辅助库，与其他依赖一样
+  从 `dependencies` 解析）。
   `dsh-better-sidebar` **有意不在其中**：它是**可选 peer**（外加 `devDependency`），一个 bundle
   从不安装的**兼容性**宿主 —— 因为它的 `node-pty` postinstall 会破坏"无构建脚本"的依赖闭包（§8）；
   它的缺席是正常且有意的组合，而不是损坏的安装。
@@ -179,9 +181,9 @@ client 永远不会出现在 boot graph 中（可复现验证；证据
 ## 4. 插件清单
 
 **`cordis.patch.yml` 的每一行，按 composition 列出。** patch 层是增量的，
-共携带 **33 个 `insert` 行**（计数方式：统计该文件五个顶层 `insert:` 列表下 4 空格深度的
+共携带 **35 个 `insert` 行**（计数方式：统计该文件五个顶层 `insert:` 列表下 4 空格深度的
 `- id:` 条目；`node scripts/verify-rows-parity.ts` 读回的是**同一份**清单 ——
-`ok: 34 row ids match the 2-file bundle patch layer`，即这 33 行加上第二个文件的 `preset-mpd`
+`ok: 36 row ids match the 2-file bundle patch layer`，即这 35 行加上第二个文件的 `preset-mpd`
 行）；本 bundle 的**第二个**
 patch 文件（`presets/mpd.patch.yml`）再携带一个
 插入行 —— `preset-mpd` —— 两个文件都列在 manifest 的 `dsh.bundle.patch` **数组**里。

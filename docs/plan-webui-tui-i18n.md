@@ -298,24 +298,38 @@ screenshots. A capture that predates the change it claims to verify is a stale-e
 8. **The stale malformed-board artifact** (reviewer F2) and the `homeShowsMpdPreset` claim I had
    falsely called pre-existing (F1) — both re-shot/re-anchored, both reports now `ok:true`.
 
-**STILL OPEN, each with its cause named and none attributed to this wave's code:**
+**RESOLVED SINCE — each item keeps its original cause (none attributed to this wave's code) and names
+the measured artifact that closed it:**
 
 1. **`test:qa` 3 of 48 red.** `bundle-lifecycle` is the sandbox refusing pnpm's store operation lock
    (`os error 30`); `preset-register` and `extension-lifecycle` are model behaviour on cases that
    drive a headless agent (the first's agent chatted instead of working; the second's harness passed
    while the agent's actions did not match its assertions). This branch carries zero files under
    `mpd-ext-plugin`, and the real mount proof (`preset-conformance` with a negative control) PASSES.
+   **Closed by:** `.toolchain/node_modules/.bin/bun run test:qa` → exit 0, `51 runner entries
+   (49 case scripts + 2 extensions/mpd-ext CLI steps), every one green`, final line
+   `[test:qa] all self-tests passed` (`evidence/gates/qa-selftest-repair/20261022T172600Z/result.json`).
 2. **`verify:docker`: 63 passed / 3 failed / 28 null.** The three are TUI-lane arms of the host-contact
    take-over, whose entry point this branch does not touch, and whose own code documents the contact
    as conditional — it arms only after the session has rendered an MPD scene, which is exactly what
    the failing arm reports (`phaseA=no-mpd-panel`). `tui.noDirectTuiSeam` (on a byte-identical copy of
    the INSTALLED tree), `tui.boot` (real PTY) and `tui.mergedPanelOrder` all PASS.
+   **Closed by:** the `--mode oneclick` lane
+   `evidence/docker/client-install-oneclick/2026-10-25T09-51-46Z/result.json` (`ok: true`, 108 passed /
+   0 failed / 14 null), whose 22 `tui.*` arms are ALL true — including the three named here. The 14
+   nulls are the declared build/pack/`ui.*` bounds, not TUI arms.
 3. **`--mode oneclick` not run**, and the source lane's first attempt died on a transient `bun`
    download (a fresh container reached the same URL with HTTP 200 seconds later). Both belong to a
    release sweep on a machine with stable egress.
+   **Closed by:** the lane HAS run since that note — `scripts/docker-e2e.ts` routes `--mode oneclick`
+   to `evidence/docker/client-install-oneclick/` (its `caseSlug`), where 54 stamps exist and 29 are
+   green, from `2026-09-28T16-32-12Z` through `2026-10-25T09-51-46Z`.
 4. **`node scripts/pack-mpd.ts` not re-run**, so `dist/mpd-package/` is behind this branch's sources.
    §11 makes the pack a release step and the closure gate reports it as its own
    `CONTENT-DRIFT-EXPECTED` class (exit 0).
+   **Closed by:** `dist/mpd-package/package.json` now carries the root version (`0.15.4`, measured
+   2026-10-25); whether every packed BYTE is fresh stays the subject of the pack-closure gate, as it
+   was written.
 
 ### 8-i18n-gap. R4's boundary: the preset's name and description are the HARNESS's to localize
 

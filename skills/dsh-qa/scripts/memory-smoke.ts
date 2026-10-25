@@ -87,6 +87,10 @@ async function runReal(): Promise<void> {
   const memRoot = join(ws, ".mpd", "memory", "agents")
   // The store facts the memory step asserts: committed entries, a real git repo, a due reflection.
   let entries = 0, repoOk = false, dueSeen = false
+  // Reflection states this case could NOT read. A malformed file must be REPORTED: substituting
+  // `false` silently made a broken state file read as "no reflection is due" — a product failure
+  // wearing the costume of a quiet negative.
+  const problems: string[] = []
   if (existsSync(memRoot)) {
     for (const agent of readdirSync(memRoot)) {
       // The agent's committed memory directory inside its own repo clone.
@@ -99,16 +103,25 @@ async function runReal(): Promise<void> {
           // untyped expression did (an absent counter compares false rather than throwing).
           const r = JSON.parse(readFileSync(join(memRoot, agent, "runtime", "reflection.json"), "utf8")) as { steps: number };
           dueSeen = dueSeen || r.steps >= 1
-        } catch { }
+        } catch (error) {
+          // Non-fatal by design (the case keeps running), but named: the agent and the parse error
+          // both reach result.json and the console, so a reader can tell an unreadable state file
+          // from a state that genuinely says "not due".
+          const message = String((error as Error)?.message ?? error)
+          problems.push("reflection.json unreadable (agent " + agent + "): " + message.slice(0, 160))
+        }
       }
     }
   }
-  steps.memory = { ok: entries >= 1 && repoOk && dueSeen, entries, repoOk, dueSeen }
+  steps.memory = { ok: entries >= 1 && repoOk && dueSeen, entries, repoOk, dueSeen, problems }
   // Whether every step held, which is the case's whole verdict.
   const allOk = Object.values(steps).every((s) => s.ok)
   writeFileSync(join(outDir, "result.json"), JSON.stringify({ ok: allOk, sandbox, steps }, null, 2))
   writeFileSync(join(outDir, "output.log"), out)
   console.log("[memory-smoke] ok=" + allOk + " -> " + outDir)
+  // Printed OUTSIDE the per-step line, whose 220-char slice would cut a long one: a state file this
+  // case could not read is exactly the diagnostic a reader needs, so it gets its own line.
+  for (const problem of problems) console.error("[memory-smoke] problem: " + problem)
   for (const [k, v] of Object.entries(steps)) console.log("  " + k + ": " + JSON.stringify(v).slice(0, 220))
   if (!allOk) process.exit(1)
   console.log("[memory-smoke] PASS")

@@ -2280,7 +2280,8 @@ function cleanLegacyCopies(ctx, corpus, presets, config) {
       let ids = [];
       try {
         ids = readdirSync(presets).map((entry) => entry.endsWith(".patch.yml") ? entry.slice(0, -".patch.yml".length) : entry).filter((id) => id === "mpd" || id.startsWith("mpd-"));
-      } catch {
+      } catch (error) {
+        warn(ctx, `legacy preset cleanup: could not list ${presets}: ${String(error?.message ?? error)}`);
         ids = [];
       }
       for (const id of ids) {

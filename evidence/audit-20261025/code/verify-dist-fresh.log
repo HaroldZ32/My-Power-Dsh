@@ -1,0 +1,44 @@
+  FRESH   packages/mpd-better-sidebar-host/dist/index.js  sha bcc91bc3beb6… 20ms  <- packages/mpd-better-sidebar-host/src/index.ts
+  STALE   packages/mpd-bootstrap-plugin/dist/index.js  <- packages/mpd-bootstrap-plugin/src/index.ts
+  FRESH   packages/mpd-boulder-plugin/dist/index.js  sha 921e2fb938bf… 23ms  <- packages/mpd-boulder-plugin/src/index.ts
+  FRESH   packages/mpd-bundle-plugin/dist/index.js  sha f6a0337699c7… 22ms  <- packages/mpd-bundle-plugin/src/index.ts
+  FRESH   packages/mpd-codegraph-plugin/dist/index.js  sha 73ff8abf1bf7… 21ms  <- packages/mpd-codegraph-plugin/src/index.ts
+  FRESH   packages/mpd-comment-checker-plugin/dist/index.js  sha db51deab43e1… 22ms  <- packages/mpd-comment-checker-plugin/src/index.ts
+  STALE   packages/mpd-config-plugin/dist/index.js  <- packages/mpd-config-plugin/src/index.ts
+  FRESH   packages/mpd-dsh-adapter-plugin/dist/index.js  sha cd8d6c160af2… 22ms  <- packages/mpd-dsh-adapter-plugin/src/index.ts
+  FRESH   packages/mpd-ext-plugin/dist/index.js  sha 87c80ee2a9e2… 22ms  <- packages/mpd-ext-plugin/src/index.ts
+  FRESH   packages/mpd-ext-plugin/dist/sdk.js  sha 7c68358d2560… 14ms  <- packages/mpd-ext-plugin/src/sdk.ts
+  FRESH   packages/mpd-goal-plugin/dist/index.js  sha 38a6dedb2c6a… 24ms  <- packages/mpd-goal-plugin/src/index.ts
+  FRESH   packages/mpd-graph-core/dist/index.js  sha 960ae872b06b… 13ms  <- packages/mpd-graph-core/src/index.ts
+  FRESH   packages/mpd-hashline-plugin/dist/index.js  sha 501231b84e17… 20ms  <- packages/mpd-hashline-plugin/src/index.ts
+  FRESH   packages/mpd-mcp-astgrep/dist/cli.js  sha f11d1d0c501a… 15ms  <- packages/mpd-mcp-astgrep/src/cli.ts
+  FRESH   packages/mpd-mcp-astgrep/dist/launch.js  sha 3f02e8507b35… 14ms  <- packages/mpd-mcp-astgrep/src/launch.ts
+  FRESH   packages/mpd-mcp-codegraph/dist/launch.js  sha bfd3cc817a62… 14ms  <- packages/mpd-mcp-codegraph/src/launch.ts
+  FRESH   packages/mpd-mcp-gitbash/dist/launch.js  sha f46205751274… 13ms  <- packages/mpd-mcp-gitbash/src/launch.ts
+  FRESH   packages/mpd-mcp-lsp/dist/launch.js  sha d536d4d6311e… 15ms  <- packages/mpd-mcp-lsp/src/launch.ts
+  STALE   packages/mpd-memory-plugin/dist/index.js  <- packages/mpd-memory-plugin/src/index.ts
+  FRESH   packages/mpd-modelchain-plugin/dist/index.js  sha 6340046ee245… 21ms  <- packages/mpd-modelchain-plugin/src/index.ts
+  FRESH   packages/mpd-project-init-plugin/dist/index.js  sha de02273f9eb8… 23ms  <- packages/mpd-project-init-plugin/src/index.ts
+  FRESH   packages/mpd-qa-roles-probe/dist/index.js  sha e47353fe1850… 22ms  <- packages/mpd-qa-roles-probe/src/index.ts
+  FRESH   packages/mpd-roles-plugin/dist/index.js  sha 7b2a48331aa8… 25ms  <- packages/mpd-roles-plugin/src/index.ts
+  STALE   packages/mpd-roster-provider-plugin/dist/index.js  <- packages/mpd-roster-provider-plugin/src/index.ts
+  FRESH   packages/mpd-team-compact-plugin/dist/index.js  sha 947ed88f10d1… 25ms  <- packages/mpd-team-compact-plugin/src/index.ts
+  STALE   packages/mpd-team-core-plugin/dist/index.js  <- packages/mpd-team-core-plugin/src/index.ts
+  FRESH   packages/mpd-team-watchdog-plugin/dist/index.js  sha 509eb539bbc0… 23ms  <- packages/mpd-team-watchdog-plugin/src/index.ts
+  FRESH   packages/mpd-tools-plugin/dist/index.js  sha 71fe51050115… 22ms  <- packages/mpd-tools-plugin/src/index.ts
+  FRESH   packages/mpd-tui-adapter-plugin/dist/index.js  sha 919e212b8d0c… 19ms  <- packages/mpd-tui-adapter-plugin/src/index.ts
+  STALE   packages/mpd-tui-plugin/dist/index.js  <- packages/mpd-tui-plugin/src/index.ts
+  FRESH   packages/mpd-ulw-plugin/dist/index.js  sha b26fa0fd3dd3… 25ms  <- packages/mpd-ulw-plugin/src/index.ts
+  FRESH   packages/mpd-verify-plugin/dist/index.js  sha 982ffbd7c145… 23ms  <- packages/mpd-verify-plugin/src/index.ts
+  FRESH   packages/mpd-workmate-plugin/dist/index.js  sha 47650003604d… 28ms  <- packages/mpd-workmate-plugin/src/index.ts
+[verify-dist-fresh] root: /home/haroldzhao/MyProj/DshProj/My-Power-Dsh  (build: bun build <src> --target node --format esm --outfile <tmp>/<entry>.js)
+[verify-dist-fresh] build toolchain: bun 1.4.0 from the repository toolchain (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.toolchain/node_modules/.bin/bun) · recorded buildToolchain bun@1.4.0
+  STALE: packages/mpd-bootstrap-plugin/dist/index.js — committed packages/mpd-bootstrap-plugin/dist/index.js (93351 B, fd820283730be2d2…) != fresh build of packages/mpd-bootstrap-plugin/src/index.ts (93466 B, ae54a6931d737495…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-bootstrap-plugin/src/index.ts --target node --format esm --outfile packages/mpd-bootstrap-plugin/dist/index.js
+  STALE: packages/mpd-config-plugin/dist/index.js — committed packages/mpd-config-plugin/dist/index.js (181108 B, 82ddf4b0ffe83369…) != fresh build of packages/mpd-config-plugin/src/index.ts (181826 B, 5fdd14443756118c…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-config-plugin/src/index.ts --target node --format esm --outfile packages/mpd-config-plugin/dist/index.js
+  STALE: packages/mpd-memory-plugin/dist/index.js — committed packages/mpd-memory-plugin/dist/index.js (94083 B, 7b7ee9490d3a1ed4…) != fresh build of packages/mpd-memory-plugin/src/index.ts (94002 B, f55b3037e2e0affb…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-memory-plugin/src/index.ts --target node --format esm --outfile packages/mpd-memory-plugin/dist/index.js
+  STALE: packages/mpd-roster-provider-plugin/dist/index.js — committed packages/mpd-roster-provider-plugin/dist/index.js (127574 B, 072a8b3964426e30…) != fresh build of packages/mpd-roster-provider-plugin/src/index.ts (128289 B, 48064fb7f2804964…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-roster-provider-plugin/src/index.ts --target node --format esm --outfile packages/mpd-roster-provider-plugin/dist/index.js
+  STALE: packages/mpd-team-core-plugin/dist/index.js — committed packages/mpd-team-core-plugin/dist/index.js (252541 B, 8007a1bbbf68f9ad…) != fresh build of packages/mpd-team-core-plugin/src/index.ts (255223 B, b7285dd1a25f7ee4…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-team-core-plugin/src/index.ts --target node --format esm --outfile packages/mpd-team-core-plugin/dist/index.js
+  STALE: packages/mpd-tui-plugin/dist/index.js — committed packages/mpd-tui-plugin/dist/index.js (456797 B, 35e14504b5f63af3…) != fresh build of packages/mpd-tui-plugin/src/index.ts (458403 B, 1c1db71216d65255…) — rebuild from the repository root (a package-directory build is flagged: bun writes the entry path relative to cwd): bun build packages/mpd-tui-plugin/src/index.ts --target node --format esm --outfile packages/mpd-tui-plugin/dist/index.js
+[verify-dist-fresh] NOT COVERED (1) — committed dist files no target maps to, listed so nothing is silently skipped:
+  packages/mpd-mcp-codegraph/dist/serve.js — sha-pinned prebuilt vendored at pack time (packages/mpd-mcp-codegraph/README.md) — no local src/
+[verify-dist-fresh] FAIL - 6 of 33 targets not fresh (STALE: 6) — 731ms

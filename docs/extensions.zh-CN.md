@@ -414,7 +414,7 @@ bun scripts/mpd-ext.ts --self-test   # scaffold -> validate -> list，仅使用�
 直说在前，免得有人从失败里才发现：
 
 - **仅 stdio MCP**——不支持 HTTP/SSE 传输，不支持 MCP resources 或 prompts（只有工具）。
-- **仅 JSON flow 文件**——YAML flow 属于后续项；flow 是声明式的，没有执行状态机。
+- **仅 JSON flow 文件，且这是刻意的**——这是一项已关闭的产品决定，不是待办：flow 语料用 `JSON.parse` 读取（`packages/mpd-ext-plugin/src/flows.ts`），零依赖规则禁止运行时引入 YAML 解析器，因此 YAML **不在计划内**。flow 是声明式的，没有执行状态机。
 - **不支持扩展贡献 agent preset**——preset 面被刻意排除在范围外（没有干净的运行时 seam）。
 - **扩展 role 不会自己变成 teammate**——只有 Lead 用 `agent_teams_plan {action:"add_member"}` 按名字加入并批准 plan，才存在队友（官方 `spawn_teammate` 工具在工具边界被**拒绝**，§5）。
 - **没有 reload**——重启 dsh；失败的 MCP server 会在下次启动时重试。

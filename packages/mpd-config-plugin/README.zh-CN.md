@@ -10,11 +10,13 @@ Plan C / C7 —— 极简的 `mpd.jsonc` 运行时配置层。
 
 ## 已知 key
 
-- `memory.vcs`：`git | svn | both`（Plan C / C6 memory 引擎）。
+- `memory.vcs`：`git | svn | both`（Plan C / C6 memory 引擎；`both` 会向两个后端各提交一次）。
+  在 Settings 中同样可以直接选中 `both`：`SettingsSchema` 的 union 与 `SETTINGS_KNOBS` 的 option
+  列表都已包含它。
 - `teamModels.slot{1,2,3,4}.{provider,model,reasoningEffort?}`：四个团队模型槽位 ——
   每个成员类别唯一一条配置好的路由，可带该槽位自己的 `fallbacks` 链（见下）。没有默认层：
   未配置的槽位会拒绝它的 spawn。
-- `team.stateDir`、`hashline.enabled/guardEditTools`、
+- `team.stateDir`、`hashline.guardEditTools/maxDiffChars/registryFile`、
   `commentChecker.autoCheck/bin`、`modelchain.<role>`、`boulder.dir`、
   `ulw.maxRounds`。
 

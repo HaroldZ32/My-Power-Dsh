@@ -48,7 +48,7 @@
   "subscriptions": [],
   "license": "MIT",
   "source": {
-    "repository": "https://gitee.com/nop_chip/my-power-dsh"
+    "repository": "https://github.com/HaroldZ32/My-Power-Dsh"
   },
   "compat": {
     "hosts": [

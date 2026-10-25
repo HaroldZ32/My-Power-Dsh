@@ -329,13 +329,18 @@ describe("W2 (static): the BUILT and served client carries the SECTION registrat
   })
 
   test("the disclosure copy is the same sentence the TUI states, and no stale claim survives", () => {
-    // Reworded by wave fix/model-config-live-refresh (L1 landed the live refresh): the copy keeps
-    // the bridge half and now states the LIVE half; the "after a restart" claim is DELETED, not
-    // softened, and the "not bridged" lie stays gone.
+    // D-18 (audit wave 2026-10-25): the copy keeps the bridge half, NAMES the live groups and the
+    // one-way toggle, and names the mount-captured groups in the second paragraph. The BLANKET
+    // "takes effect in the RUNNING process — no restart" sentence is gone for good — pinned as an
+    // absence, because it is exactly the claim a consumer-side read contradicted.
     expect(CARD_SOURCE).toContain("a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s)")
-    expect(CARD_SOURCE).toContain("takes effect in the RUNNING process — no restart")
-    expect(CARD_SOURCE).toContain("read per use")
+    expect(CARD_SOURCE).toContain("WHICH knobs take the new value in the RUNNING process — no restart")
+    expect(CARD_SOURCE).toContain("are read per use")
+    // at least one mount-captured group in the exception half, + the boot wording
+    expect(CARD_SOURCE).toContain("hashline.*, commentChecker.*, ulw.*, memory.*")
+    expect(CARD_SOURCE).toContain("waits for the next dsh boot")
     expect(CARD_SOURCE).toContain("never lost")
+    expect(CARD_SOURCE).not.toContain("takes effect in the RUNNING process — no restart")
     expect(CARD_SOURCE).not.toContain("after a restart")
     expect(CARD_SOURCE).not.toContain("not bridged")
   })
@@ -1845,7 +1850,7 @@ describe("R2: the styled contract (the harness's own settings-form tokens)", () 
     expect(hovered.color).toBe("var(--dsw-alias-label-secondary, #5b6472)")
   })
 
-  test("R2-D1: the disclosure is ONE `.help` block — the SAME four sentences, hint-sized, 8px apart", async () => {
+  test("R2-D1: the disclosure is ONE `.help` block — the SAME four paragraphs, hint-sized, 8px apart", async () => {
     /** This arm's rendered tree. */
     const tree = await renderReady()
     // TWO `.help` blocks exist since R3 (the disclosure and the effective-model-config block
@@ -1858,14 +1863,27 @@ describe("R2: the styled contract (the harness's own settings-form tokens)", () 
     for (const p of paragraphs) expect(styleOf(p)).toMatchObject({ margin: 0, fontSize: 12, lineHeight: 1.6, color: "var(--dsw-alias-label-tertiary, #8a94a6)" })
     /** The four sentences, as rendered. */
     const sentences = paragraphs.map((p) => textOf(p))
-    // NOTHING was dropped or shortened: each paragraph is present and states the LIVE truth the
-    // reworded constants carry (the restart claim is gone; the capture-class limit states itself)
+    // NOTHING was dropped or shortened: all four paragraphs are present, and together they state the
+    // SCOPED truth (D-18): the live half NAMES its groups, the exception half NAMES the captured
+    // groups, and the blanket "no restart" claim appears nowhere on the rendered surface.
     expect(sentences.every((sentence) => sentence.length > 0)).toBe(true)
     expect(sentences[0]).toContain("a save writes <workspace>/.mpd/mpd.jsonc")
-    expect(sentences[0]).toContain("no restart")
-    expect(sentences[1]).toContain("captured at its own mount")
+    // The live half: the sentence qualifies itself instead of promising a blanket no-restart.
+    expect(sentences[0]).toContain("WHICH knobs take the new value in the RUNNING process — no restart — depends on how each one reads it")
+    expect(sentences[0]).toContain("teamModels.slot*")
+    expect(sentences[0]).toContain("tui.dashboardKey is live ONE WAY")
+    expect(sentences[0]).not.toContain("takes effect in the RUNNING process — no restart")
+    // The exception half, through a specific mount-captured group (not just the word "restart").
+    expect(sentences[1]).toContain("are captured by their plugins at mount")
+    expect(sentences[1]).toContain("hashline.*")
+    expect(sentences[1]).toContain("waits for the next dsh boot")
     expect(sentences[2]).toContain("never lost")
     expect(sentences[3]).toContain("if no session is live")
+    // CARD/TUI PARITY OF MEANING, not of a literal copy: both surfaces state the same constants, so
+    // the card's own copy must equal them (it cannot import the module — the client bytes may not
+    // carry the symbol — so the equality is asserted on the rendered text).
+    expect(sentences[0]).toBe(BRIDGE_DISCLOSURE)
+    expect(sentences[2]).toBe(BRIDGE_NOT_LOST)
     // and it reads as a NOTE beside the fields, not as a second body of prose: the title and the
     // description keep their own sizes above it
     expect(styleOf(elementsOf(tree, "h3")[0])).toMatchObject({ fontSize: 16, fontWeight: 500, color: "var(--dsw-alias-label-primary, #1c1c1e)" })

@@ -8,7 +8,7 @@
 
 | Tool | Purpose |
 |---|---|
-| `mpd_modelchain_resolve` | 为名册角色解析 provider/model 路由，按角色 NAME 寻址（`Senior Engineer`、`Architect`、`Plan Reviewer` 等，大小写与分隔符任意）。优先返回名册自身的 `chain[0]`；该角色没有自己的链时才回落到内置/已配置的链表。内部键 —— 稳定 id、legacy 的 `mpd-<id>` 形式、camelCase 链键 —— 会被**响亮拒绝**，错误中只列出名册名称；未知角色或未给出角色同样被拒绝，而不再静默地返回通用默认链。 |
+| `mpd_modelchain_resolve` | 为名册角色解析 provider/model 路由，按角色 NAME 寻址（`Senior Engineer`、`Architect`、`Plan Reviewer` 等，大小写与分隔符任意）。优先级是**槽位优先**（`slotResolutionIn`）：被 `teamModels` 槽位路由的成员**只**从自己的槽位作答 —— 槽位主路由加上该槽位自己的 `fallbacks`，`status: "configured"` —— 而被路由但**不可用**的槽位（叶子缺失或格式错误）返回空的 `provider`/`model`、`status: "unconfigured"`，并在 reason 里点名出问题的 `teamModels.slotN`，**绝不**回落到内置路由。只有 `unrouted` 成员（没有任何槽位承载它，例如 extension 角色）才依次落到实时的 `modelchain.<id>` overlay、名册自身的 `chain[0]`、以及合并后的内置/已配置表。内部键 —— 稳定 id、legacy 的 `mpd-<id>` 形式、camelCase 链键 —— 会被**响亮拒绝**，错误中只列出名册名称；未知角色或未给出角色同样被拒绝，而不再静默地返回通用默认链。 |
 | `mpd_memory_save` | Persist a key/value note in `<workspace>/.mpd/memory.json`. |
 | `mpd_memory_recall` | Read notes by key/substring. |
 
@@ -18,12 +18,22 @@
 
 ## 配置
 
-无；该行是无状态的。
+两个 key，都可选（`Config = { memoryFile?, chains? }`）：
+
+- `memoryFile` —— 记忆存储的路径，相对调用会话的工作区根解析；缺省即工具自己使用的默认值
+  `<workspace>/.mpd/memory.json`（`memoryPath`）。
+- `chains` —— 一张按角色的链表（`Record<roleKey, Array<{provider, model}>>`），**逐 key** 覆盖内置的
+  `DEFAULT_CHAINS`：表里没有的 key 仍由 `resolveRole` 从内置表、再到 `sisyphus` 作答。经 `mpdConfig`
+  读到的实时 `modelchain.<key>` 叶子优先于两者，且按调用读取。
+
+该行不保留其它状态；链表在每次调用时重新解析（`chainsNow`、`overlayNow`），绝不在 `apply` 时冻结。
 
 ## 用法
 
 ```text
-mpd_modelchain_resolve { role: "Senior Engineer" }   # -> { provider: "deepseek-official", model: "deepseek-v4-flash", ... }
+mpd_modelchain_resolve { role: "Senior Engineer" }
+#   槽位已配置 -> { provider, model, chain: [主路由, ...fallbacks], status: "configured" }
+#   槽位不可用 -> { provider: "", model: "", chain: [], status: "unconfigured", missing: [...], reason }
 mpd_memory_save { key: "goal", value: "..." }
 mpd_memory_recall { key: "goal" }
 ```

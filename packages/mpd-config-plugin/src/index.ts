@@ -1439,9 +1439,15 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       writeback: bridge.report ?? null,
       migration: bridge.migration,
       cleared: bridge.cleared,
-      // The model-config knobs are live-refreshed (see `BridgeReport.applies`); a knob a plugin
-      // captured at its own mount still waits for the next `dsh` boot, named per knob in §9.1.
-      applies: "live",
+      // THE NAMESPACE-LEVEL ANSWER IS "restart", not "live" (D-18). The RESOLVED value does reach the
+      // running process (`BridgeReport.applies` records that per save), but the namespace as a whole
+      // is NOT fully live: the plugins listed in `BRIDGE_RESTART_LIMIT` capture their knobs inside
+      // their own `apply()`. Both registrations already say `restart` —
+      // `settingsRegister(SETTINGS_NS, …, { applies: "restart" })` here and
+      // `tui.registerSettingsNamespace(…, { applies: "restart" })` in mpd-tui — and the host's schema
+      // option is PER NAMESPACE (one `applies` word, no per-knob channel), so "live" here was the one
+      // answer no consumer supports.
+      applies: "restart",
     }),
   })
 

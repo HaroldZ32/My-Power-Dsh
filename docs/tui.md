@@ -45,7 +45,7 @@ work below was measured on 0.10.1 and is re-verified in the Docker end-to-end te
 | TUI surface package | `packages/mpd-tui-plugin/` | The TUI-native surfaces: the **three sidebar pages** (`src/panel.ts` — title `MPD`, the primary entry point and, since the 0.14.0 wave, the rich DAG page itself, §3.3/§3.4 — `src/panel-workmate.ts`, and `src/panel-watchdog.ts` since the 2026-10-23 watchdog wave), status line, `/settings` section, full-screen scenes, `/mpd` command tree, keyboard shortcuts, mediated dialogs, a transcript-renderer **registration the host does not project** (NOT-CLAIMED #10), and the decision-event seam built ready-but-not-activated. |
 | Admission manifest | `dsh-plugin.json` (repo root) | ONE bundle-level Community v0.15 manifest for the whole bundle — a deliberate deviation (see §7). |
 | Environment descriptor | `dsh-distribution.json` (repo root) | A `DistributionDescriptor` for the dsh-distribution meta-protocol (Draft). |
-| TUI composition | `cordis.patch.yml` | Adds the `mpd-tui` row and the `dsh-tui` roster default so a TUI session starts on the **mpd** preset. |
+| TUI composition | `cordis.patch.yml` + `presets/mpd.patch.yml` | Adds the `mpd-tui` row and registers the **mpd** preset additively; the deployment default stays the host's (`standard`), so a TUI session starts on `standard` until `mpd` is selected (§2). |
 | These docs | `docs/tui.md`, `docs/tui.zh-CN.md` | Human-facing description of the above. |
 
 The web edition is untouched: the same bundle still installs into a web profile.
@@ -62,15 +62,26 @@ second mount would duplicate a loader entry id, which the loader rejects outrigh
 
 Measured composition after that install (t5, `evidence/tui/composition/20260915T053445Z/`):
 `dsh.profile.bundles` = `["@deepseek-ai/dsh-base", "@deepseek-harness-tui/dsh-tui", "@mpd-dsh/mpd"]`
-— this bundle is the **third** patch layer; the bundle patch contributes 24 rows; the live boot
+— this bundle is the **third** patch layer; the two-file bundle patch layer declares **36** rows
+(35 in `cordis.patch.yml`, 1 in `presets/mpd.patch.yml` — the row count `bun run verify:rows`
+prints); the live boot
 logged **0** apply-crash signatures (`unsupported JSON schema`, `JsonSchemaError`, `plugin tree
 failed to load`, `failed to apply loader entry`, `Error:`); no duplicate loader entry id.
 **Backed at:** `Observed` (a recorded live dsh-TUI boot plus the host's own `--dump-config`).
 `--dump-config` alone proves composition only — the crash-signature count comes from the live boot.
 
-A TUI session defaults to the **mpd** preset, carried by the id-targeted `agent-preset-registry` row
-(`default: mpd`) together with the `preset-mpd` row in `presets/mpd.patch.yml` (measured from a
-captured session record, not from the patch text).
+A TUI session resolves the HOST's default preset, not `mpd`: the row that holds the deployment
+`default` is declared by a host layer (`agent-preset-registry` by `@deepseek-ai/dsh-web-app` on the web
+plane, `dsh-tui-agent-preset-registry` by `@deepseek-harness-tui/dsh-tui` on the TUI plane), and this
+bundle ships no id-target against either — `node scripts/verify-no-host-override.ts` fails the build on
+any id-target whose id a host layer declares, and the two id-targets that used to carry
+`config.default: mpd` were removed under the strict zero-override decision of 2026-10-02 (the removed
+blocks are recorded in `cordis.patch.yml`). `mpd` is therefore available but OPT-IN: `/preset mpd` in
+the TUI (the host's `presetPrefs.js` persists it to `~/.dsh-tui/agent-preset.json`), an explicit
+`preset: mpd` on the host's `dsh-tui` row (or `DSH_TUI_PRESET=mpd`), the Web Settings
+`selectedDefault`, or the one-command helper `node scripts/set-default-preset.ts --yes` (dry-run by
+default). Every channel is documented, with its trade-offs, in
+[`preset-default.md`](preset-default.md).
 
 Requirement for any live lane: `dsh-tui` refuses to boot when stdout is not a TTY
 (`dsh-tui requires an interactive terminal (stdout must be a TTY)`), so the QA lanes must drive the
@@ -744,14 +755,22 @@ under a cardinality rule:
 | **more than one** | **no file base is invented**: `base: undefined`, reason `ambiguous-multi-root`, a warn naming every candidate, surfaced by `states()`. The namespace shows the schema defaults until exactly one workspace is live; a save in that state is REFUSED (below), so the ambiguity cannot reach disk |
 
 **The base is fixed for the process lifetime** — the host exposes **no disposal handle** for a live
-registration, and its own settings installers keep their base fixed the same way. That fix no longer
-implies a restart for the mpd model configuration: the shipped sentence now says the save **takes effect
-in the RUNNING process — no restart** (the config service re-resolves on every settings save and on a
-watched edit of the project file, and the model routes are read per use). What the plugins actually use
-is the **resolved value** plus the config layer's **per-call file reads**: the L1/L2 file layers are
-re-read on every resolution, so the **per-workspace read-in still resolves each session's own file**
-even while the base is frozen. No sentence on this page promises a live-refreshed **base** — only a
-live-resolved **value**.
+registration, and its own settings installers keep their base fixed the same way. A fixed base does
+**not** make every saved knob wait for a restart, and the no-restart wording must not be read as
+blanket: the config service is live (it re-resolves on every settings save and on a watched edit of
+the project file), and each knob's answer depends on WHERE its consumer reads it. Read from the live
+service per use — LIVE, no restart: `teamModels.slot*`, `modelchain.*`, `watchdog.*`, `team.stateDir`,
+`team.gate`, `team.sensitivity`, `captain.investigation`, `delegation.gate`; `tui.dashboardKey` is
+ONE-WAY (its per-press read can turn the Ctrl+A takeover OFF live, but the contact itself is
+registered at `apply()`, so turning it back ON waits for a boot). Captured inside a row's own
+`apply()` — RESTART, the captured value keeps until the next `dsh` boot: `hashline.*`,
+`commentChecker.*`, `ulw.*`, `memory.*`, `boulder.dir`, `goal.*` and `extensions.*`. The bundle's own
+hint constants state both halves — `BRIDGE_DISCLOSURE` (the live clause, naming the model routes) and
+`BRIDGE_RESTART_LIMIT` (the bound) — and the **canonical per-knob table is
+[`user-guide.md`](user-guide.md) §9.1**. What the plugins actually use is the **resolved value** plus
+the config layer's **per-call file reads**: the L1/L2 file layers are re-read on every resolution, so
+the **per-workspace read-in still resolves each session's own file** even while the base is frozen. No
+sentence on this page promises a live-refreshed **base** — only a live-resolved **value**.
 
 - **Read-in precedence** — L0 schema defaults < L1 `$DSH_HOME/mpd.jsonc` < L2
   `<workspace>/.mpd/mpd.jsonc` < **L3 the settings user section**, which is authoritative at runtime; a
@@ -773,10 +792,17 @@ live-resolved **value**.
 - **Timing** — the model-config consumers resolve through the live `mpdConfig` service per use
   (`mpd_modelchain_resolve` per call; slot routing at spawn), and the service re-resolves
   on every settings save and on a watched edit of the project file, so a saved edit **reaches the next
-  resolve or spawn with no restart** (`mpd_config_reload` forces a re-read). Consumers that still
-  capture at plugin `apply()` are the exception the bridge report's `applies: 'live'` documents, and
-  are named per knob in the user guide's §9.1. The
-  on-screen hint says exactly this.
+  resolve or spawn with no restart** (`mpd_config_reload` forces a re-read). Two different `applies`
+  answers exist and must not be conflated: `BridgeReport.applies`
+  (`packages/mpd-config-plugin/src/bridge.ts`) is typed `"live"` and records, per save, that the
+  RESOLVED VALUE reaches the RUNNING process, while the NAMESPACE-level answer is `"restart"` on every
+  surface that carries one — the service's own `states().applies` (D-18,
+  `packages/mpd-config-plugin/src/index.ts`), `dsh.settingsRegister(…)` in `mpd-config`, and this
+  package's `registerSettingsNamespace(…)` all answer/pass `restart` — because the namespace as a
+  whole is not fully live: the knobs `BRIDGE_RESTART_LIMIT` names are captured inside their own
+  `apply()`. The report's `live` therefore does NOT cover every consumer's behaviour, and the
+  canonical per-knob table is the user guide's §9.1. The TUI section notice carries ALL THREE halves
+  (`SECTION_NOTICE` = `BRIDGE_DISCLOSURE` + `BRIDGE_RESTART_LIMIT` + `BRIDGE_NOT_LOST`).
 - **Degenerate targets are loud** — missing (created with a header comment), read-only (`denied` + path +
   errno, the settings edit still succeeds), concurrent (retry ×3 then `conflict`, the human's file left
   untouched), unparsable (`unparsable`, never repaired).
@@ -907,7 +933,7 @@ as a current capability.
 
 | Package | Role | Class | Live witness |
 |---|---|---|---|
-| `mpd-bundle` | composition layer (the bundle patch itself) | usable | composed config rows incl. `mpd-tui` and the `agent-preset-registry` id-target; live boot with 0 crash signatures |
+| `mpd-bundle` | composition layer (the bundle patch itself) | usable | composed config rows incl. `mpd-tui`; live boot with 0 crash signatures. The `agent-preset-registry` id-target this row once recorded was REMOVED on 2026-10-02 under the strict zero-override decision — superseded by §2 |
 | `mpd-dsh-adapter-plugin` | single contact surface with the harness seams | usable | apply-time log line `[mpd-dsh-adapter] mpdDsh provided` |
 | `mpd-config-plugin` | mpd.jsonc runtime config layer | usable | tools `mpd_config_get`, `mpd_config_reload` |
 | `mpd-tools-plugin` | write guard / truncation / waterfall | usable | composed row `mpd-tools` with its config; owns no tool name |
@@ -1053,7 +1079,7 @@ citation of the delivered artifact.
 
 | Statement group | Level claimed here | Status / evidence |
 |---|---|---|
-| Install / triple layering / 24 rows / 0 crash signatures / mpd preset default | Observed | backed — t5 `evidence/tui/composition/20260915T053445Z/`, re-run by t8 (`evidence/tui/live/20260915T063140Z/lanes/tui-mount/`) and t9 (`…/conformance/20260915T064521Z/09-mount-boot.log`, `10-mount-boot-clean-root.log`) |
+| Install / triple layering / 36 rows / 0 crash signatures / mpd preset AVAILABLE (not the default) | Observed | the layering and crash-signature halves stand as measured at t5 `evidence/tui/composition/20260915T053445Z/`, re-run by t8 (`evidence/tui/live/20260915T063140Z/lanes/tui-mount/`) and t9 (`…/conformance/20260915T064521Z/09-mount-boot.log`, `10-mount-boot-clean-root.log`); the row count and the preset claim are SUPERSEDED by §2 — 36 rows (35 `cordis.patch.yml` + 1 `presets/mpd.patch.yml`), and the deployment default stays the host's |
 | Manifest parsed, projected, negotiated (`waiting_authorization`), live `/plugins check` | Parsed + Negotiated | backed — t9 `…/conformance/20260915T064521Z/01-admission-static.log` (manifest `84ed4a5d…`, entry `5dce2563…`) and `02-admission-live.log` |
 | Per-package ledger | Observed (per package) | backed — `ledger.json` (t5); its structure re-checked by t8 |
 | Plugin contract shape (no default export, cleanup, soft probes) | Tested (unit) | backed — `evidence/tui/plugin/20260915T054343Z/` (t4); 547 package tests pass (t9) |
