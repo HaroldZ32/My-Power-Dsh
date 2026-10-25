@@ -1,0 +1,36 @@
+{
+  "startedAt": "2026-10-25T09:51:46.753Z",
+  "finishedAt": "2026-10-25T10:09:19.331Z",
+  "docker": "Docker version 29.9.2, build a82e528",
+  "compose": "Docker Compose version v5.6.1",
+  "image": "mpd-docker-e2e:local",
+  "imageMiB": 495,
+  "buildxConfig": "/tmp/mpd-docker-e2e-buildx-feGaZr",
+  "liveRequested": true,
+  "browserEnabled": false,
+  "requiredPrefixes": [
+    "live.",
+    "boot.llmTurn"
+  ],
+  "excludedRequired": [
+    "ui.teamBoard"
+  ],
+  "unmeasured": [],
+  "teamRowsMissing": [],
+  "steps": [
+    {
+      "id": "driver-build",
+      "cmd": "docker compose -f /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/docker/docker-compose.yml build",
+      "status": 0
+    },
+    {
+      "id": "driver-run",
+      "cmd": "docker compose -f /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/docker/docker-compose.yml run --rm -T -e MPD_E2E_INSTALL_MODE=oneclick -e MPD_E2E_INSTALL_SPEC=github:HaroldZ32/My-Power-Dsh#v0.15.4 -e DEEPSEEK_API_KEY -e MPD_E2E_LIVE=1 mpd-oneclick",
+      "status": 0,
+      "signal": null
+    }
+  ],
+  "containerExit": 0,
+  "verdict": "ok=true complete=false passed=108 failed=0 null=14 NULL=[build.bunInstall,build.dists,pack.distFreshRebuild,pack.rebuildToolchain,pack.distFreshRebuildControl,ui.loads,ui.workspaceSelected,ui.composerPresent,ui.promptSent,ui.replyRendered,ui.mpdSettingsSection,ui.teamPanel,ui.noConsoleErrors,ui.teamBoard]",
+  "exitCode": 0
+}
