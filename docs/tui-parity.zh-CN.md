@@ -116,7 +116,7 @@
 
 **D1 —— 真实提交后批准判定行曾不可见（严重度 medium；先实测为未修复，后由 t8 关闭——这里把**两种状态**都记录下来，因为第一种状态正是本波次发现的东西）。** 契约 §4.5 把成功渲染钉为 `approved: <teamId> running · members <n> · tasks <n>`。在真实宿主上实测（E1 Arm 2 的首次运行）：批准**确实提交**——记录从 `phase: staged → running`、`approvedAt` 被写入、`planReviewState` 被删除，这是只有采用的 `approveStagedTeam` 才会留下的签名——而面板显示的是提交后的空状态，因为调用后的重新读取已看不到 staged 记录。Arm 1（录制替身）**确实**渲染了工具的结构化结果，这正是为什么它是真实宿主的偏差、而不是场景的渲染缺陷。**修复（t8，`repair`，Senior Engineer）：** 已结束但不再可用的记录现在会把运行时产出的消息渲染为第一行正文（`packages/mpd-tui-plugin/src/scenes.ts:731-750`），并重建了该包的 dist。**修复后重新实测：** 本波次自己的通道重跑报告 `arm2.outcome = approved-by-the-adopted-runtime/verdict-visible`、`outcomeLines.approved = "approved: mpd-fixture-1 running · members 2 · tasks 2"`、`findings: []`（`evidence/tui/team-surface-verify/2026-09-16T14-24-22.312Z/result.json`）。首次读数作为这次测量的历史保留在本台账中，而不作为当前状态。
 
-**D2 —— 一个冻结行标签在 Web 侧找不到可定位锚点（严重度 low；责任方：冻结契约；仍未修复）。** 强制行 `activity-panel/merge-autonomous-plan` 被保留（漏掉一行就是缺陷），但该标签本身在采用的客户端字节里无法定位：对 `packages/mpd-agent-teams-plugin/lib/client.js` 与 `lib/client/**` 做 `autonomous|merge` 的大小写不敏感搜索，在该树被删除之前命中数为零（这些路径是历史锚点 —— 见顶部横幅）。因此该行锚定到最近的**实测** Web 界面——批准前的计划编辑器动作块（`lib/index.ts:405-475`）与该插件的 edit-plan 工具（`lib/tools.ts:759`）。这里选择记录而不是悄悄改名：把本页与契约对照的读者能够看到这处不一致及其原因。
+**D2 —— 一个冻结行标签在 Web 侧找不到可定位锚点（严重度 low；责任方：冻结契约；已由去 vendor 波次关闭 —— 已无主体）。** 强制行 `activity-panel/merge-autonomous-plan` 被保留（漏掉一行就是缺陷），但该标签本身在采用的客户端字节里无法定位：对 `packages/mpd-agent-teams-plugin/lib/client.js` 与 `lib/client/**` 做 `autonomous|merge` 的大小写不敏感搜索，在该树被删除之前命中数为零（这些路径是历史锚点 —— 见顶部横幅）。因此该行锚定到最近的**实测** Web 界面——批准前的计划编辑器动作块（`lib/index.ts:405-475`）与该插件的 edit-plan 工具（`lib/tools.ts:759`）。这里选择记录而不是悄悄改名：把本页与契约对照的读者能够看到这处不一致及其原因。
 
 **D3 —— 该通道的受认可判定运行描述的是过期的通道字节（严重度 medium；实测后在同一波次内解决）。** t3 第一次尝试的判定运行记录了测量它的通道摘要 `skills/dsh-qa/scripts/tui-team-surface.ts` → `21a9eb5c14a30410…`，而磁盘上的文件摘要是 `91a05314c38f263cc8c481174dfa3debd6b7e6914512dc94857c1064f792cf2f`，其修改时间（UTC 14:16:22）**晚于** t3 自身的最后更新（UTC 14:14:56）。因此在活动树上重新计算的语料库指纹是 `303e1631…`，而**不是** t3 报告要求 captain 固定的 `303e163148af…`。当时记录了两项后果：固定 `303e163148af…` 会让 `verify-vendor` 继续为红；该判定运行已不再描述磁盘上的通道字节。**解决（实测而非假定）：** 采用了本页的独立重算值——captain 把 `VENDOR_LOCK.json` 的 `assets.skills` 重新固定为 `fileCount 319 / treeSha 303e1631…`，与 `skills/**` 变更同处一次提交；`verify-vendor` 现于冻结树上报告 PASS；t3 也按当前通道字节**重试**（第二次尝试）并转绿。留下来的是一条规则而不是缺陷：判定运行中的通道摘要把该判定绑定到测量它的那些字节上，之后的任何改动都会让这个绑定失效。证据：`evidence/tui/team-surface-integrate/2026-09-16T14-17-24.000Z/raw/fingerprint.log`、`REVISION.json`，以及同目录的 `gates.result.json`（`verifyVendor.exitCode = 0`）。
 
@@ -134,7 +134,7 @@
 8. **`mpdWatchdog` 缺席** → hold 行被省略，绝不渲染成「未 hold」。
 9. **`alt+t`** 只是尽力而为且可能被拒绝；`/mpd team` 才是保底入口。
 
-**从 t4 独立评审与 captain 裁定（风险类别 (c)）带过来的具名限制 —— 已被**控制**、**未修复**、且刻意不属于本波次：** 一个**无界的 `dependencies` 数组**仍可能让投影在深度遍历深处抛错（`Math.max(...)` 展开），从而退化为受控的读取失败行，而不是它本应渲染的 §5.5 注释。它不会让 TUI 循环崩溃——读取路径会捕获它并渲染失败行——这正是它属于「已控制」而非阻塞的原因。它**不**属于本波次，本页任何地方都**没有**把它描述为已修复。它超出范围的原因：加依赖上限必须改动冻结的 §5.5 上限清单（`MAX_TASKS`、`MAX_TEAMS`、`MAX_PROBLEMS`），那是接口而非实现。把它记录在此，就是本波次唯一可用的补救。
+**从 t4 独立评审与 captain 裁定（风险类别 (c)）带过来的具名限制 —— 已于 2026-10-25 解决（此前为「已控制、未修复」，历史刻意保留）：** 一个**无界的 `dependencies` 数组**过去可能让投影在深度遍历深处抛错（`Math.max(...)` 展开），从而退化为受控的读取失败行，而不是它本应渲染的 §5.5 注释。它不会让 TUI 循环崩溃——读取路径会捕获它并渲染失败行——这正是它当时属于「已控制」而非阻塞的原因。2026-10-25 的审计波次把该展开替换为 `taskDepths`（`packages/mpd-tui-plugin/src/team-state.ts`）内的受控循环，并由一条 1,000,000 条边的测试臂钉住，因此深度遍历不再因病态长的依赖数组抛错。冻结的 §5.5 上限清单（`MAX_TASKS`、`MAX_TEAMS`、`MAX_PROBLEMS`）与失败行本身均未改变：这次修的是实现，不是接口。
 
 **本波次自身新增：** 团队场景的各行是在套件层级（E2）与场景注册（E1 A1）上证实的，而非团队场景的活动面板截图；`alt+t` 仍未被演练；此外本页不声称任何 Web 浏览器渲染（本环境没有浏览器二进制——Web 一列与契约 §2 一样只引用源码）。
 

@@ -405,8 +405,8 @@ analysis, the delta-registry mechanics and every adapter API signature — is in
   relative specifier carries the explicit `.ts` extension**; `import type` for type-only imports; no
   `tsconfig`-`paths` mapping. `packages/*/src` differs in FORM only (`bun build` → `dist/*.js`,
   extensionless specifiers), and a genuine CommonJS module is spelled `.cts`. The ONLY JavaScript left is
-  **57 files**, for a MEASURED reason (a shipped bundle sits under `node_modules`, where Node refuses to
-  strip types): 33 `packages/*/dist/**` build artifacts, 2 browser bundles and 22 vendored skill-corpus
+  **58 files**, for a MEASURED reason (a shipped bundle sits under `node_modules`, where Node refuses to
+  strip types): 34 `packages/*/dist/**` build artifacts, 2 browser bundles and 22 vendored skill-corpus
   files — the list is in `agent-references/troubleshooting.md`.
 - **Every declaration is documented and every named function is fully typed — binding, enforced by §4's
   `verify:comments`.** A comment states the contract, unit, invariant or reason — never a restatement of
@@ -504,8 +504,10 @@ lane hold this line.
 ### Primary flow: ONE command, no extra step
 
 - **The USER-facing install is ONE command against the PUBLISHED package — no clone, no build:**
-  `dsh plugin --profile web add github:HaroldZ32/My-Power-Dsh` (or `… add @mpd-dsh/mpd` once it is on the
-  registry). pnpm packs it through the manifest's **`files` allowlist**, then `reconcile` reads the
+  `dsh plugin --profile web add @mpd-dsh/mpd` — LIVE on the registry at **0.15.4** (measured
+  2026-10-25); `dsh plugin --profile web add github:HaroldZ32/My-Power-Dsh` is the same one command
+  from the repository (and the Docker lane's proof spec, §4). pnpm packs it through the manifest's
+  **`files` allowlist**, then `reconcile` reads the
   installed package's `dsh.bundle.patch` files, validates that they load, and appends the package name to
   `dsh.profile.bundles`. Proof: the live lane `node scripts/docker-e2e.ts --mode oneclick --spec
   github:HaroldZ32/My-Power-Dsh` on a bare `ubuntu:24.04`.

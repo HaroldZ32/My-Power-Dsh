@@ -25,7 +25,7 @@ my-power-dsh 的详细设计：它设计什么、遵循哪些设计原则、如�
 - 一层 **patch**：把 bundle 的各行插入到安装该 bundle 的任意 profile 中；并用第二个 patch 文件把
   bundle 自带的 `mpd` 预设**增量**交付到这些 composition —— bundle 不对任何 host 行做 id-target，
   因此把 `mpd` 设为部署默认是**使用者**的动作（§2、§6c），
-- **33 个插入行**（6 个 MCP client 行、23 个 `mpd-*` 插件行（含 `mpd-web-compat` 自引用行）、
+- **35 个插入行**（7 个 MCP client 行、24 个 `mpd-*` 插件行（含 `mpd-web-compat` 自引用行）、
   3 个官方 Agent Teams 行，以及挂载 bundle **可选** peer 的 `mpd-better-sidebar` 宿主行——该 peer
   可解析时才挂载），
   以及每一行各自拥有的服务、工具、命令、路由与状态（§4），
@@ -70,11 +70,13 @@ bundle**（`@mpd-dsh/mpd`）交付，其 `dsh.bundle.patch` 数组
 （先是 `cordis.patch.yml`，再是 `presets/mpd.patch.yml`）向它安装到的任意
 profile 添加行。它贡献：
 
-- **33 个插入行**，分布在**两层**增量 patch 中：6 个 MCP client 行（本地 ast-grep、git-bash
-  [默认禁用]、LSP、codegraph；远端 context7、grep.app）、23 个 `mpd-*` 插件行（含使 bundle 成为
+- **两层增量 patch 合计 36 个插入行。** 宿主层 `cordis.patch.yml` 承载 35 个：7 个 MCP client 行
+  （本地 ast-grep、git-bash 这一对 `mcp-git` + `mcp-shell`——两者均默认禁用——LSP、codegraph；
+  远端 context7、grep.app）、24 个 `mpd-*` 插件行（含使 bundle 成为
   loader entry 的 `mpd-web-compat` 自引用行）、3 个**官方** Agent Teams 行，以及挂载 bundle
   **可选**侧边栏 peer（社区侧边栏宿主，可解析处才挂载）的 `mpd-better-sidebar` 行——§4 逐一列出。
-  第二个 patch 文件贡献的是 `preset-mpd` 行，
+  第二层 `presets/mpd.patch.yml` 只贡献 `preset-mpd` 这一行——合计 36 行，即 `bun run verify:rows`
+  打印的数字，
 - **完全没有任何 id-target**。bundle 增量交付自己的 `mpd` 预设，也不覆盖任何 host 行，因此部署默认
   仍属于 host；设置它是使用者通过文档记载渠道完成的动作（`docs/preset-default.md`，§6c），
 - Harness 适配器（`mpd-dsh-adapter`）：所有其他行都经由它调用，
@@ -116,8 +118,10 @@ Manifest 不变式（为什么存在）：
   （E4 缺陷，见 `docs/plan-e.md`）。该主体是主代码 + 自带 vendored closure
   （`packages/mpd-agent-teams-plugin/_deps/`），而从 0.1.7-rc.2 起**没有任何行挂载它** —— 这正是
   去 vendor 波（2026-10-07）能够在不改动任何一行的情况下把它删除的原因。
-- **`dependencies` 只有三个条目 —— 三个官方 Agent Teams 包**
-  （`@deepseek-ai/dsh-experimental-agent-team`、`-tool-agent-team`、`-client-ui-agent-team`）。
+- **`dependencies` 有四个条目 —— 三个官方 Agent Teams 包**
+  （`@deepseek-ai/dsh-experimental-agent-team`、`-tool-agent-team`、`-client-ui-agent-team`），
+  加上 `@dsh-std/sdk`（`0.1.1-rc.2`，DSH Standard facet 激活模块的 scoped 辅助库，与其他依赖一样
+  从 `dependencies` 解析）。
   `dsh-better-sidebar` **有意不在其中**：它是**可选 peer**（外加 `devDependency`），一个 bundle
   从不安装的**兼容性**宿主 —— 因为它的 `node-pty` postinstall 会破坏"无构建脚本"的依赖闭包（§8）；
   它的缺席是正常且有意的组合，而不是损坏的安装。
@@ -179,9 +183,9 @@ client 永远不会出现在 boot graph 中（可复现验证；证据
 ## 4. 插件清单
 
 **`cordis.patch.yml` 的每一行，按 composition 列出。** patch 层是增量的，
-共携带 **33 个 `insert` 行**（计数方式：统计该文件五个顶层 `insert:` 列表下 4 空格深度的
+共携带 **35 个 `insert` 行**（计数方式：统计该文件五个顶层 `insert:` 列表下 4 空格深度的
 `- id:` 条目；`node scripts/verify-rows-parity.ts` 读回的是**同一份**清单 ——
-`ok: 34 row ids match the 2-file bundle patch layer`，即这 33 行加上第二个文件的 `preset-mpd`
+`ok: 36 row ids match the 2-file bundle patch layer`，即这 35 行加上第二个文件的 `preset-mpd`
 行）；本 bundle 的**第二个**
 patch 文件（`presets/mpd.patch.yml`）再携带一个
 插入行 —— `preset-mpd` —— 两个文件都列在 manifest 的 `dsh.bundle.patch` **数组**里。
@@ -517,7 +521,8 @@ base 选择器；`GET /plugins/mpd-workmate/get?name=` —— persona/memory/not
   （`tuiSettingsSections`）、全屏看板（`tuiScenes`）、`/mpd` 命令树（`tuiCommandTrees`）、快捷键
   （`tuiShortcuts`）、受管对话框（`tuiDialogs`）以及 transcript renderer 的注册（`tuiRenderers`；宿主
   不为 bundle 的 renderer 事件投射任何行）。所有注册都通过 `ctx.effect` 释放。
-- **不做**：完全不写文件系统 —— settings 回写位于 `packages/mpd-config-plugin`（见下），而 TUI 包的
+- **不做**：完全不写文件系统 —— 旧命名空间回写位于 `packages/mpd-config-plugin`（见下；在固定的宿主上
+  已休眠），而 entry-config 保存在两个包里都不写文件，TUI 包的
   零写入属性由它自己的 lane 断言（`tui-settings-bridge.ts` 的 T7 检查）。它也不主张任何已准入的
   Component 身份：bundle 级 `dsh-plugin.json` 声明 host facet，而宿主自身的准入对四个默认拒绝的
   decision-event 权限给出 `waiting_authorization`，因此 effect ledger 把这次注册记为 `undeclared`
@@ -528,7 +533,14 @@ base 选择器；`GET /plugins/mpd-workmate/get?name=` —— persona/memory/not
 的 `<workspace>/.mpd/mpd.jsonc` 值，一个都没有时取挂载时（无 exec）根，多个时给出
 `ambiguous-multi-root`（绝不臆造 base）—— 并且由它负责**回写**：触发源是宿主
 `settings/document-updated(ns, revision)` 事件中 `source === 'update'` 的那一支，在锁 + 原始字节
-compare-and-swap + 同目录临时文件 + 原子 rename 下完成。（2）**宿主提供的 `tuiSettingsSections` 接缝**
+compare-and-swap + 同目录临时文件 + 原子 rename 下完成。**在本 bundle 所固定的 harness 上，该命名空间
+模型已退役，刚刚描述的全部都是那条休眠路径。** 两扇前门改为保存本行的 config **entry**
+（`configForms.get("mpd-config")`）：entry 文档是**宿主自己的**存储，所以持久化是宿主的事，保存的
+override 成为最顶层（L4），由 `onSettingsDocumentUpdated(ENTRY_CONFIG_ID)` 在进程内重新加载——这条路径
+**不执行任何 `<workspace>/.mpd/mpd.jsonc` 写入**，这是刻意的：该文档还承载表单物化出的默认值，把它们
+投影进文件会污染它。该宿主上 `settingsRegister` 会被拒绝，桥接会记录 "the namespace-registry model is
+RETIRED … The legacy file write-back and override clearing are dormant"，这就是当前状态。（2）**宿主提供的
+`tuiSettingsSections` 接缝**
 负责渲染该分区：TUI 包为命名空间 `mpd` 注册一个分区（对缺少 config 插件的组合保留一个带保护的
 fallback），宿主把这次注册绑定到它自己的 `/settings` 界面 —— 这个"提供方/宿主"分工正是界面能按文件值
 打开、而 TUI 包自身从不读文件的原因。（3）**状态发布方**是 TUI 包的 `tuiStatus` 键：每个键都取自会话
@@ -559,7 +571,8 @@ fallback），宿主把这次注册绑定到它自己的 `/settings` 界面 —�
   应用的改动必须在下次启动时验证。
 - **两条配置路径，生效时机不同。** `mpd.jsonc` 各层（schema 默认值 → patch 行的 `config` → 文件）
   在插件挂载时读取一次，因此 `.mpd/mpd.jsonc` 的改动在下次启动时生效；设置文档路径（TUI
-  `/settings` 界面、回写与 `settings/document-updated` 重读）才是实时路径（§6c、§7b）。
+  `/settings` 界面、`settings/document-updated` 上的 entry-config 重读，以及在仍提供旧命名空间的宿主上的
+  回写）才是实时路径（§6c、§7b）。
 - **watchdog hold 目前是契约，还不是互锁。** 该行拥有 `session-watchdog-hold` / `-resume` 与持久
   hold 记录；让**官方**派发门控真正遵守 hold 是后续任务。在此之前 hold 只被记录与上报，而停下队友当前
   轮次的是官方 `interrupt_agent`（仅 Lead）（§4）。

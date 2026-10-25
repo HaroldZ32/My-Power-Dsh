@@ -26,7 +26,7 @@
 // what makes a migration unreadable.
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
-import { rowLogLine, createDshAdapter, dshSeamInject, DSH_SEAM_COMMANDS, DSH_SEAM_TOOLS, type DshAdapter, type DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
+import { rowLogLine, createLazyDshAdapter, dshSeamInject, DSH_SEAM_COMMANDS, DSH_SEAM_TOOLS, type DshAdapter, type DshToolExec } from "../../mpd-dsh-adapter-plugin/src/index"
 import {
   inboxOf,
   markDelivered,
@@ -646,13 +646,15 @@ function assertClaimReady(board: readonly TeamTaskRecord[], task: TeamTaskRecord
 }
 
 /**
- * Resolve the adapter once per call: the mounted `mpdDsh` service when there is one, and a
- * standalone instance otherwise (unit tests, or a composition that mounts this plugin alone).
+ * The adapter facade for THIS apply.
+ *
+ * LAZY, like every other row that reaches the shared adapter: the facade probes `mpdDsh` on each use
+ * and caches only a successful STRICT read, so a sibling row's provider that is still starting cannot
+ * hand this row a private adapter for the session. The one-time diagnostic line (`mounted:` /
+ * `pending:` / `fallback:`) is the shared resolver's, labelled with this row's id.
  */
 function adapterFor(ctx: any): DshAdapter {
-  /** The mounted adapter service, when this composition has one. */
-  const mounted = typeof ctx?.get === "function" ? ctx.get("mpdDsh") : undefined
-  return (mounted as DshAdapter | undefined) ?? createDshAdapter(ctx)
+  return createLazyDshAdapter(ctx, { label: "mpd-team-core" })
 }
 
 /** The calling session's id, or `"workspace"` when the surface has no session (a web route). */

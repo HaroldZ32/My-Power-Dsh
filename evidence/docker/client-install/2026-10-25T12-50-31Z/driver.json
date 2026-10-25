@@ -1,0 +1,33 @@
+{
+  "startedAt": "2026-10-25T12:50:31.575Z",
+  "finishedAt": "2026-10-25T12:56:28.771Z",
+  "docker": "Docker version 29.9.2, build a82e528",
+  "compose": "Docker Compose version v5.6.1",
+  "image": "mpd-docker-e2e:local",
+  "imageMiB": 495,
+  "buildxConfig": "/tmp/mpd-docker-e2e-buildx-oSmGGL",
+  "liveRequested": false,
+  "browserEnabled": false,
+  "requiredPrefixes": [],
+  "excludedRequired": [
+    "ui.teamBoard"
+  ],
+  "unmeasured": [],
+  "teamRowsMissing": [],
+  "steps": [
+    {
+      "id": "driver-build",
+      "cmd": "docker compose -f /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/docker/docker-compose.yml build",
+      "status": 0
+    },
+    {
+      "id": "driver-run",
+      "cmd": "docker compose -f /home/haroldzhao/MyProj/DshProj/My-Power-Dsh/docker/docker-compose.yml run --rm -T mpd-client",
+      "status": 1,
+      "signal": null
+    }
+  ],
+  "containerExit": 1,
+  "verdict": "ok=false complete=false passed=75 failed=2 null=45 FAILED=[pack.staticCoherence,pack.distFreshRebuild] NULL=[qa.mcpCall,oneclick.scratchRepo,oneclick.requiredPaths,oneclick.filesAllowlist,oneclick.distByteIdentical,live.credentialStaged,live.credentialScoped,live.credentialRemoved,live.web.turnStarted,live.web.turnCompleted,live.web.noErrorTurns,live.web.noPromptVariableError,live.web.noMalformedToolJson,live.web.toolCallsParsed,live.web.mpdToolCalled,live.web.assistantReplied,live.tui.turnStarted,live.tui.turnCompleted,live.tui.noErrorTurns,live.tui.noPromptVariableError,live.tui.noMalformedToolJson,live.tui.toolCallsParsed,live.tui.mpdToolCalled,live.tui.assistantReplied,live.headless.turnStarted,live.headless.turnCompleted,live.headless.noErrorTurns,live.headless.noPromptVariableError,live.headless.noMalformedToolJson,live.headless.toolCallsParsed,live.headless.mpdToolCalled,live.headless.assistantReplied,live.teamRecord,live.nativeExecutor,live.headlessPresetRow,boot.llmTurn,ui.loads,ui.workspaceSelected,ui.composerPresent,ui.promptSent,ui.replyRendered,ui.mpdSettingsSection,ui.teamPanel,ui.noConsoleErrors,ui.teamBoard]",
+  "exitCode": 1
+}

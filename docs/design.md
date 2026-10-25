@@ -29,7 +29,7 @@ is added:
 - a **patch layer** that inserts the bundle's rows into any profile the bundle is installed into,
   plus a second patch file that ships the bundle's own `mpd` preset ADDITIVELY there — the bundle
   id-targets no host row, so making `mpd` the deployment default is a user action (§2, §6c),
-- **33 inserted plugin rows** (6 MCP client rows, 23 `mpd-*` plugin rows including the
+- **35 inserted plugin rows** (7 MCP client rows, 24 `mpd-*` plugin rows including the
   `mpd-web-compat` self-row, the 3 official Agent Teams rows, and the `mpd-better-sidebar` host row
   that mounts the bundle's OPTIONAL sidebar peer where it is resolvable), and the services, tools,
   commands, routes and state each one owns (§4),
@@ -82,12 +82,14 @@ session's request header. my-power-dsh ships as an **npm bundle** (`@mpd-dsh/mpd
 `dsh.bundle.patch` array (`cordis.patch.yml` then `presets/mpd.patch.yml`)
 adds rows to any profile it is installed into. It contributes:
 
-- **33 inserted rows** in TWO additive patch layers: 6 MCP client rows (local ast-grep,
-  git-bash [disabled by default], LSP, codegraph; remote context7, grep.app), 23 `mpd-*`
+- **36 inserted rows across the TWO additive patch layers.** The host layer `cordis.patch.yml` carries
+  35: 7 MCP client rows (local ast-grep, the git-bash pair `mcp-git` + `mcp-shell` — both disabled by
+  default — LSP, codegraph; remote context7, grep.app), 24 `mpd-*`
   plugin rows (including the `mpd-web-compat` self-row that makes the bundle a loader entry),
   the 3 OFFICIAL Agent Teams rows, and the `mpd-better-sidebar` row that mounts the
   bundle's OPTIONAL sidebar peer (the community sidebar host) where it is resolvable — §4 lists every
-  one of them. The second patch file contributes the `preset-mpd` row,
+  one of them. The second layer, `presets/mpd.patch.yml`, contributes the single `preset-mpd` row —
+  36 in total, the number `bun run verify:rows` prints,
 - **no id-target at all.** The bundle ships its `mpd` preset additively and overrides no host row, so
   the deployment default stays the host's; setting it is the user's action through the documented
   channels (`docs/preset-default.md`, §6c),
@@ -135,9 +137,10 @@ Manifest invariants (why they exist):
   `docs/plan-e.md`). That body was main code plus its own vendored closure
   (`packages/mpd-agent-teams-plugin/_deps/`), and since 0.1.7-rc.2 no row mounted it — which is why
   the de-vendor wave (2026-10-07) could delete it without moving a single row.
-- **THREE `dependencies` entries — the three official Agent Teams packages**
+- **FOUR `dependencies` entries — the three official Agent Teams packages**
   (`@deepseek-ai/dsh-experimental-agent-team`, `-tool-agent-team`,
-  `-client-ui-agent-team`). `dsh-better-sidebar` is deliberately NOT one of them: it is an OPTIONAL
+  `-client-ui-agent-team`) plus `@dsh-std/sdk` (`0.1.1-rc.2`, the scoped helpers for DSH Standard
+  facet activation modules, resolved from `dependencies` like the rest). `dsh-better-sidebar` is deliberately NOT one of them: it is an OPTIONAL
   PEER (+ a `devDependency`), a COMPATIBILITY host the bundle never installs, because its `node-pty`
   postinstall would break the build-script-free dependency closure (§8); its absence is a normal,
   intended composition, not a broken install. Declaring a dependency mounts nothing on its own, and a row
@@ -208,9 +211,9 @@ to bare package names.
 ## 4. Plugin inventory
 
 **Every row of `cordis.patch.yml`, by composition.** The patch layer is
-additive and carries **33 `insert` rows** (counted as `- id:` entries at the 4-space depth of the
+additive and carries **35 `insert` rows** (counted as `- id:` entries at the 4-space depth of the
 file's five top-level `insert:` lists; `node scripts/verify-rows-parity.ts` reads back the SAME list —
-`ok: 34 row ids match the 2-file bundle patch layer`, i.e. these 33 plus the `preset-mpd` row of the
+`ok: 36 row ids match the 2-file bundle patch layer`, i.e. these 35 plus the `preset-mpd` row of the
 second file); the bundle's SECOND patch file
 (`presets/mpd.patch.yml`) carries one more insert, the `preset-mpd` row, and both files are listed
 in the manifest's `dsh.bundle.patch` ARRAY. `node scripts/verify-rows-parity.ts` asserts that this
@@ -601,8 +604,9 @@ What that plugin does — and what it deliberately does not:
   (`tuiShortcuts`), managed dialogs (`tuiDialogs`) and the transcript-renderer registration
   (`tuiRenderers`; the host projects no row for the bundle's renderer event). Every registration is
   disposed through `ctx.effect`.
-- **Does not** write to the filesystem at all — the settings write-back lives in
-  `packages/mpd-config-plugin` (below), and the TUI package's zero-write property is asserted by its own
+- **Does not** write to the filesystem at all — the legacy namespace write-back lives in
+  `packages/mpd-config-plugin` (below; dormant on the pinned host), an entry-config save writes no file in
+  either package, and the TUI package's zero-write property is asserted by its own
   lane (`tui-settings-bridge.ts`, check T7). It also claims no admitted Component identity: the
   bundle-level `dsh-plugin.json` declares the host facet, and the host's own admission answers
   `waiting_authorization` for the four default-deny decision-event permissions, so the effect ledger
@@ -614,7 +618,15 @@ provider** is `packages/mpd-config-plugin`: it registers the `mpd` namespace thr
 when exactly one session root is live, the mount-time (exec-less) root when none is, and
 `ambiguous-multi-root` (no invented base) when several are — and it owns the **write-back**, triggered
 by the host's `settings/document-updated(ns, revision)` event filtered to `source === 'update'`, under
-a lock plus compare-and-swap, a sibling temp file and an atomic rename. (2) The **host-served
+a lock plus compare-and-swap, a sibling temp file and an atomic rename. **On the harness this bundle
+pins that namespace model is RETIRED, and everything just described is the dormant path.** Both front
+doors save this row's config ENTRY instead (`configForms.get("mpd-config")`): the entry document is the
+HOST's own store, so persistence is the host's, the saved override becomes the top layer (L4) and
+`onSettingsDocumentUpdated(ENTRY_CONFIG_ID)` re-loads it in-process — with **no**
+`<workspace>/.mpd/mpd.jsonc` write on that path, by design, because the document also carries the form's
+materialised defaults and projecting them into the file would pollute it. `settingsRegister` is refused
+on this host and the bridge logs "the namespace-registry model is RETIRED … The legacy file write-back
+and override clearing are dormant", which is the current state. (2) The **host-served
 `tuiSettingsSections` seam** is what renders the section: the TUI package registers a section for the
 namespace `mpd` (with a guarded fallback for compositions that lack the config plugin) and the host
 binds that registration to its own `/settings` screen — that provider/host split is why the screen can
@@ -648,8 +660,9 @@ document should carry, stated rather than left to be discovered:
   invisible until `dsh` restarts; an edit applied mid-session must be verified on the next boot.
 - **Two configuration paths with different latency.** The `mpd.jsonc` layers (schema defaults → the
   patch row's `config` → the file) are read once at plugin mount, so a `.mpd/mpd.jsonc` edit lands
-  at the next boot; the settings document path (the TUI `/settings` screen, the write-back and the
-  `settings/document-updated` re-read) is the live path (§6c, §7b).
+  at the next boot; the settings document path (the TUI `/settings` screen, the entry-config re-read on
+  `settings/document-updated`, and — on a host that still serves the legacy namespace — its write-back)
+  is the live path (§6c, §7b).
 - **The watchdog hold is a contract, not yet an interlock.** The row owns
   `session-watchdog-hold` / `-resume` and the durable hold record; wiring the OFFICIAL dispatch
   gates that honour a hold is a later task. Until then a hold is recorded and reported, and a

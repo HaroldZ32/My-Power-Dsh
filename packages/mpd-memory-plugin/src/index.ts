@@ -1,8 +1,9 @@
 // C6 mpd-memory-plugin: git/svn-backed memory engine with a reflection state machine.
 // mpd-owned code: the engine's semantics — markdown memory files with frontmatter (description/
-// kind/aliases/read_only), a journal plus a facts queue, and a step-count reflection reducer —
-// are RE-EXPRESSED here from the DOCUMENTED BEHAVIOUR of the upstream project `memory-core`
-// (base 8c57e46, SUL-1.0); no upstream source is translated.
+// kind/aliases/read_only), a journal, and a step-count reflection reducer — are RE-EXPRESSED here
+// from the DOCUMENTED BEHAVIOUR of the upstream project `memory-core` (base 8c57e46, SUL-1.0); no
+// upstream source is translated. The upstream facts queue is NOT carried: the package README documents
+// the layout slot but no tool reads, writes or counts it, so no status answer advertises one.
 // HISTORY: an earlier draft of the reducer mirrored upstream's state-machine vocabulary
 // (`reflected_completed_steps`, `steps_since_last_successful_reflection`, `reservation`,
 // `completeTransition`); de-omo wave F replaced it with the vocabulary below and left a READ-ONLY
@@ -262,8 +263,6 @@ export function apply(ctx: Ctx, config: Config = {}): void {
 
   /** Path of the reflection state file inside the agent's runtime directory. */
   function statePath(d: any): string { return join(d.runtime, "reflection.json") }
-  /** Path of the append-only facts queue; declared for the store's documented layout, no tool writes it yet. */
-  function factsPath(d: any): string { return join(d.runtime, "facts.jsonl") }
   /** Path of the append-only journal, one JSON record per tool effect. */
   function journalPath(d: any): string { return join(d.runtime, "journal.jsonl") }
 
@@ -404,7 +403,7 @@ export function apply(ctx: Ctx, config: Config = {}): void {
 
   dsh.registerTool({
     name: "mpd_memory_status",
-    description: "Show memory engine status: vcs mode, repo paths, entry count, journal/facts line counts, reflection counters.",
+    description: "Show memory engine status: vcs mode, repo paths, entry count, journal line count, reflection counters.",
     parameters: { type: "object", properties: {} },
     output: { schema: { type: "object", properties: { vcs: { type: "string" }, root: { type: "string" }, entries: { type: "integer" }, journalLines: { type: "integer" }, reflection: { type: "object" } }, required: ["vcs", "root", "entries"] }, render: (_a: unknown, v: any) => textBlock("memory status: vcs=" + v.vcs + " root=" + v.root + " entries=" + v.entries + " journal=" + v.journalLines + "\nreflection: " + JSON.stringify(v.reflection)) },
     execute: async (_args: any, exec: any) => {

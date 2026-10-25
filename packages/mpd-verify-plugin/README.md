@@ -124,6 +124,8 @@ and `verify.dir`.
    no read is observed in any process.
 7. **A bound verifier may read `evidence/**` and every `packages/*/README.md` (and its `.zh-CN` twin)**
    while it is blind — both were refused before, which left a verdict resting on artifact
-   existence/size/sha256 instead of their content. The band still refuses `packages/*/src/**`,
-   `packages/*/test/**` and any `..`-carrying spelling. An `evidence/**` artifact may EMBED source frames
+   existence/size/sha256 instead of their content. That readable band is PROSE, not a fence: no
+   shipped row installs `installVerifyGuard`, so nothing refuses `packages/*/src/**`,
+   `packages/*/test/**` or a `..`-carrying spelling — a seat keeps to the band because the discipline
+   says so, which is bound 1's point. An `evidence/**` artifact may EMBED source frames
    (a gate log tail), so reading one is **controlled black-box evidence**, which bound 3 already states.

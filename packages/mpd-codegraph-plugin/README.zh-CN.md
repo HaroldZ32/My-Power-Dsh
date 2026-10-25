@@ -37,8 +37,11 @@ CodeGraph（仓库/代码智能索引）集成：解析 `codegraph` 二进制，
 |---|---|---|
 | `autoInit` | boolean | `true` |
 | `initTimeoutMs` | number | `60000` |
-| `cooldownMs` | number | — |
+| `cooldownMs` | number | `900000`（`15 * 60_000`，即 15 分钟） |
 | `binary` | string | resolved per above |
+
+`cooldownMs` 是一次失败的 `codegraph init` 之后、跳过下一次尝试的窗口 —— `cooldownFresh` 用
+`.codegraph/init.cooldown` 标记的年龄与它比较，因此损坏的二进制不会在每次启动时重试。
 
 ## 环境变量
 

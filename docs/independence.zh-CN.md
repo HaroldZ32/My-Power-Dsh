@@ -21,21 +21,27 @@
 ### 1.1 一个包就是一个单元
 
 `packages/` 下的每个目录都是自洽单元：一棵 `src/` 源码树（一个或多个入口）、它自己的 `dist/`
-产物，以及**需要时才有的**清单。2026-10-02 实测：**30 个包目录，其中 26 个自带 `package.json`。**
+产物，以及**需要时才有的**清单。2026-10-25 实测：**34 个包目录，其中 31 个自带 `package.json`**
+（`ls -d packages/*/ | wc -l`；`ls packages/*/package.json | wc -l`）。
 
-没有清单的四个并不是独立性的例外，而是元数据放在别处的包：`mpd-codegraph-plugin` 由自己的行
-经 bundle 的 `exports` 映射挂载，两个 MCP 服务器（`mpd-mcp-codegraph`、`mpd-mcp-shared`）经各自的
-`launch.ts` 启动，而 `mpd-tui-adapter-plugin` 正是本波次新建的包。**本树中没有任何包把本树的另一个包
-声明为依赖** —— 不在 `dependencies`、不在 `devDependencies`、不在 `peerDependencies`、也不在
-`optionalDependencies`。实测：26 份清单里的 `@mpd-dsh/*` 规格符数量为零。本仓库里的每一条跨包边界
+没有清单的三个并不是独立性的例外，而是元数据放在别处的包：`mpd-codegraph-plugin` 由自己的行经
+bundle 的 `exports` 通配（`./packages/*`）挂载，MCP 启动器目录 `mpd-mcp-codegraph` 通过由自身
+`src/launch.ts` 构建的 `dist/launch.js`、由 `mcp-codegraph` 行点名启动，而 `mpd-mcp-shared` 是被
+启动器以相对路径（`../../mpd-mcp-shared/…`）引入的共享源码模块树，构建时内联进各消费方的
+`dist/`。**本树中没有任何包把本树的另一个包声明为依赖** —— 不在 `dependencies`、不在
+`devDependencies`、不在 `peerDependencies`、也不在 `optionalDependencies`。2026-10-25 实测：
+31 份清单里的 `@mpd-dsh/*` 规格符数量为零。本仓库里的每一条跨包边界
 都是**源码级相对 import**，这正是下面两节的主题。
 
 ### 1.2 一个包对应一行
 
 包通过被写进两个随包发布的补丁层之一而成为能力 —— `cordis.patch.yml`（宿主平面）或
 `presets/mpd.patch.yml`（预设平面）—— 而绝不通过改动宿主、手写 home 目录，或把行推进另一层
-（AGENTS.md §8）。2026-10-02 实测：`cordis.patch.yml` 中有 **23 个不同的
-`packages/*/dist/*.js` 行目标**。行只寻址包内的路径，绝不伸手进另一个包的内部去改它的配置。
+（AGENTS.md §8）。2026-10-25 实测：`cordis.patch.yml` 中有 **24 个不同的
+`packages/*/dist/*.js` 行目标**（按 `name:` 字段计数：
+`grep -oE "name: '@mpd-dsh/mpd/packages/[a-z0-9-]+/dist/[A-Za-z0-9._-]+\.js'" cordis.patch.yml | sort -u | wc -l`
+输出 24；若对**任意出现**的 `dist/` 路径计数则为 28，多出的 4 个是四个 MCP 启动器写在行 `args:` 里的
+`dist/launch.js`，它们不是行目标）。行只寻址包内的路径，绝不伸手进另一个包的内部去改它的配置。
 
 ## 2. 无运行时改写，无运行期交接
 

@@ -15,7 +15,6 @@
 ├── scripts/
 │   ├── pack-mpd.ts       组装 dist/mpd-package/（Plan D bundle）
 │   ├── build-mpd-client.ts  组合合并 web client（client.js）
-│   ├── build-mcp.ts      ast-grep/git-bash/lsp MCP 服务器离线构建
 │   ├── repin-vendor.ts   重新推导 VENDOR_LOCK 的资产指纹（默认 dry-run；--check 只断言，--write 写入）
 │   ├── install-profile.ts    旧式安装器（默认 dry-run；--dsh-home 供 QA）
 │   ├── mpd-ext.ts        扩展开发者 CLI：validate / scaffold / list / --self-test
@@ -60,7 +59,7 @@ manifest 声明了一个外部运行时依赖 `dsh-better-sidebar`（承载 mpd 
 （本仓库固定 `0.2.1-rc.2`），并通过 `connection` 服务做路由围栏；`packages/mpd-better-sidebar-host`
 适配层重述的正是它的注入列表。打包安装则由 pnpm 负责。
 
-MCP 服务器由 `node scripts/build-mcp.ts` 构建（从仓库内源码离线构建）。
+**没有 MCP 构建步骤。** MCP 服务器来自**声明式**的 npm 包，由薄启动器在安装 profile 实际物化它们的位置解析后启动：`cclsp`（LSP 服务器）与 git/shell 这一对 `@cyanheads/git-mcp-server` + `mcp-server-commands` 通过 `packages/mpd-mcp-shared/dependency-entry.ts` 的 `resolveDependencyEntry` 解析，而采纳的 ast-grep 与 codegraph 产物随各自启动器一起放在该包的 `dist/` 内。唯一在运行时解析（而非 import）的可执行文件是 `ast-grep` **二进制**：`packages/mpd-mcp-shared/bin-resolve.ts` 的 `resolveAstGrepBinary` 依次尝试 (1) 调用方已设的 `MPD_AST_GREP_SG_PATH`——启动器不会改动既有固定值——然后是 (2) `$MPD_AST_GREP_BIN_DIR/{ast-grep,sg}`、(3) 通过 `createRequire` 读该包自己的 `bin` 入口、(4) `<bundle>/.toolchain/node_modules/.bin`、(5) `<bundle>/node_modules/.bin`；候选都没通过 `--version` 探针时，启动器保持环境变量未设，由被采纳的服务器报出它自己的 `BINARY_NOT_FOUND`。因此检出目录**完全不需要** MCP 构建步骤：退役的 `scripts/build-mcp.ts` 及其 `vendor/mcp-src/**` 快照已随 de-omo 波次 B2 删除。
 
 **扩展资产不需要构建。** `packages/mpd-ext-plugin` 是一个普通插件包（改源码后与其他包一样重建
 `dist/`），而*使用*该接口的包以普通目录形式放在 `extensions/<id>/`（内含 `mpd-ext.json` 清单与
@@ -112,11 +111,11 @@ QA skill 是 `skills/dsh-qa`（`SKILL.md`）。每个 case 脚本都带 `--self-
 | `web-client-adapt` | `@mpd-dsh/mpd` 的 boot-graph client entry + client.js id + workmate host 路由（含 client 的重命名/删除 URL） | `node skills/dsh-qa/scripts/web-client-adapt.ts` |
 | `preset-conformance` | 每一个 Harness 自有行配置（preset + bundle patch + QA overlay）都与**已安装**的 Harness schema 相符，`mpd` preset 的行集合与已安装 `standard` preset 完全一致，并且以 `agentPreset: "mpd"` 真实创建的会话确实**挂载成功** —— 并带一个必须失败的负向对照 | `node skills/dsh-qa/scripts/preset-conformance.ts` |
 | `tui-mount` | **真实** dsh-TUI 启动：bundle 作为第三层 patch 层（`dsh.profile.bundles` = [dsh-base, dsh-tui, @mpd-dsh/mpd]）、`mpd-tui` 行已被组合、原始日志中**零**条 apply-crash 特征、状态行已渲染，且该次启动自己产生的会话记录携带 `agentPreset: "mpd"` | `bun skills/dsh-qa/scripts/tui-mount.ts` |
-| `tui-panels` | 七个需激活的 TUI 界面**确实渲染**（状态行、`/mpd status`、`/mpd` 补全树、看板场景、renderer 行、带桥接+重启披露的 `/settings` 分区，以及受管对话框）—— 渲染不出内容的界面直接判该 lane FAIL；该 lane 还证明 `/mpd` 从未到达模型，并在同一批 pane 上用一条不可能成立的期望重跑引擎作为负向对照 | `bun skills/dsh-qa/scripts/tui-panels.ts` |
+| `tui-panels` | 七个需激活的 TUI 界面**确实渲染**（状态行、`/mpd status`、`/mpd` 补全树、看板场景、renderer 行、其通知承载**全部三段**披露（`BRIDGE_DISCLOSURE` + `BRIDGE_RESTART_LIMIT` + `BRIDGE_NOT_LOST`：桥接 + 实时刷新 + 挂载期捕获例外 + "never lost"）的 `/settings` 分区，以及受管对话框）—— 渲染不出内容的界面直接判该 lane FAIL；该 lane 还证明 `/mpd` 从未到达模型，并在同一批 pane 上用一条不可能成立的期望重跑引擎作为负向对照 | `bun skills/dsh-qa/scripts/tui-panels.ts` |
 | `tui-admission` | 用**宿主自己的**固定版准入算法检验 bundle 级 `dsh-plugin.json`：vendored `@dsh-std/manifest` 解析 + 投影 + 宿主的 `validatePlugin` + 五态 `negotiate`，再在真实 TUI 内驱动宿主的 `/plugins check`；spec 数据根必须先**解析成功**，并记录三条负向对照 | `bun skills/dsh-qa/scripts/tui-admission.ts` |
 | `tui-distribution` | 用 dsh-distribution 协议**自带**的一致性 CLI（在沙箱内拷贝协议仓库）校验 `dsh-distribution.json`；构建无法完成时逐字记录具体阻塞点，并把该描述符标记为**未完全验证**，而不是近似成通过 | `bun skills/dsh-qa/scripts/tui-distribution.ts` |
 | `tui-spec-conformance` | 用**宿主自己**的固定版一致性套件检验我们的 manifest 与捕获到的 host descriptor，记录套件 revision 与每一份输入摘要，并重新测量载荷的三方 sha256 一致性 | `bun skills/dsh-qa/scripts/tui-spec-conformance.ts` |
-| `tui-settings-bridge` | settings 桥接的 TUI 分支，判定对象是**构建后的字节**：每条 `/settings` 提示都带桥接后的真实披露（`a save writes <workspace>/.mpd/mpd.jsonc … after a restart`）、桥接前那句 "not bridged" 已**删除**、`no-live-session` 运行时提示既存在又已接入状态行组合，且 TUI dist **零**文件系统写入 | `bun skills/dsh-qa/scripts/tui-settings-bridge.ts` |
+| `tui-settings-bridge` | settings 桥接的 TUI 分支，判定对象是**构建后的字节**：构建字节既含桥接披露（入口保存由宿主持久化、**不写**工作区文件；只有 legacy `mpd` 命名空间的回写才写 `<workspace>/.mpd/mpd.jsonc`）又含它的**实时那一半**（`take the new value in the RUNNING process` —— 已退役的 `… after a restart` 措辞正是其负向对照所拒绝的）；桥接前那句 "not bridged" 已**删除**；`no-live-session` 运行时提示既存在又已接入状态行组合；提示含 "never lost" 条款；且 TUI dist 中该包**自有模块零**文件系统写入。它不主张逐旋钮的重启边界——那张表在 `docs/user-guide.md` §9.1 | `bun skills/dsh-qa/scripts/tui-settings-bridge.ts` |
 | `ask-user-question-audit`（**新增**） | 报告工具，不是 lane：解码一份 dsh 会话日志（拼接的 zstd 帧，逐帧经 `lib/session-evidence.ts`），枚举每一条 `ask_user_question` `tool/call`，把每条判为 `ok`、`structurally-broken`（逐条点出规则名，如 `question-text-missing` / `options-not-array`）或 `unparseable-arguments`，再与该调用的收尾记录配对（两种会话形态下带同一 callId 的 `tool/result`，以及/或者续问的 `user-question-reply` 用户消息）。规则是 D1 守卫的**本地复述**——绝不 import 插件代码——并且读不出 callId 的 result 会被计数上报，所以「未配对」永远不会被悄悄读成「从未作答」。报告完 exit 0，用法错误 exit 2，日志无法解码 exit 1；`--self-test` 离线（合成拼接 zstd 帧、每条规则一条断言、两种 result 形态、两种作答配对、两种 CLI 退出码） | `node skills/dsh-qa/scripts/ask-user-question-audit.ts <session-log.jsonl.zstd>`（或 `--self-test`） |
 
 | `extension-lifecycle`（**新增**） | 在**真实挂载启动**上验证扩展接口（沙箱 `DSH_HOME` + `HOME` + 会话 cwd；各行均从**本检出**组合，且模型步骤由本地 OpenAI 形状的 stub 应答，因此不需要 provider 凭据）：放进 `<sandbox-ws>/.mpd/extensions/` 的数据面扩展出现在 `mpd_ext_list` 中、它的 flow 可加载、它的 role 可 spawn；每一种坏扩展都不会影响正常扩展，且同一主机上两个 cwd 不同的会话只看到各自工作区的工程扩展 | `bun skills/dsh-qa/scripts/extension-lifecycle.ts` |
@@ -207,8 +206,9 @@ shell 子进程没有 —— 在 case 命令里显式导出）。
 
 - `scripts/repin-vendor.ts` 重新推导 `VENDOR_LOCK.json` 所载的资产指纹：`--check` 只断言，
   `--write` 写入，而没有 `--i-know-this-is-the-captains-step` 时会拒绝写本仓库自己的锁文件 ——
-  因为每一波的那一次 re-pin 是 captain 在提交时执行的步骤（AGENTS.md §9/§11）。MCP 服务器的源码以
-  `vendor/mcp-src/**` 形式快照在本仓库内，作为 `node scripts/build-mcp.ts` 的构建期输入。
+  因为每一波的那一次 re-pin 是 captain 在提交时执行的步骤（AGENTS.md §9/§11）。MCP 服务器的源码**不再**
+  以快照形式存在本仓库：`vendor/mcp-src/**` 树及其 `node scripts/build-mcp.ts` 构建步骤已随 de-omo 波次
+  B2 删除，服务器是声明式的 npm 包，由启动器在启动时解析（`packages/mpd-mcp-shared/dependency-entry.ts`）。
 - `VENDOR_LOCK.json` 钉住上游 commit/version + 资产指纹；`verify-vendor.ts` 不匹配即
   阻塞。从不追上游 —— 基线变更需要专门分支 + 证据。
 

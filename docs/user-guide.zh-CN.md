@@ -19,9 +19,11 @@ cd <repo> && dsh plugin --profile dsh-tui add .    # 终端界面（DSH-TUI）
 语料库以及扩展根目录。没有别的步骤 —— 不需要打包，也不需要复制。重启 `dsh`，然后在
 **MPD（Main Working Agent）** preset 上开启会话。
 
-本 bundle 声明了**三个**运行时依赖 —— 提供团队模式的三个官方 Agent Teams 包
-（`@deepseek-ai/dsh-experimental-agent-team` 及其 `-tool-agent-team`、`-client-ui-agent-team`
-两个同级包）。**`dsh-better-sidebar`**（即承载 Workmates 标签页的社区侧边栏 bundle）**有意不在
+本 bundle 声明了**四个**运行时依赖 —— 即 `package.json` 的 `dependencies` 里的四个条目：提供团队模式的
+三个官方 Agent Teams 包（`@deepseek-ai/dsh-experimental-agent-team` 及其 `-tool-agent-team`、
+`-client-ui-agent-team` 两个同级包），加上 `@dsh-std/sdk`（`0.1.1-rc.2`）—— DSH Standard facet 激活
+模块的 scoped 辅助库，与其他已声明依赖一样由包管理器解析，不随本仓库分发。
+**`dsh-better-sidebar`**（即承载 Workmates 标签页的社区侧边栏 bundle）**有意不在
 其中**：它是可选 peer（外加一个 `devDependency`），bundle 从不安装它，它的缺席是正常的组合状态，
 而不是安装损坏（§8）。检出目录安装会直接读取
 本仓库，因此请先把仓库依赖落到本地：
@@ -256,8 +258,8 @@ agent_teams_plan { action: "add_member", member } / { action: "create_task", tas
 agent_teams_plan { action: "status" }                                      # 计划与任务板上的每个任务
 agent_teams_task { task_id, action, expected_revision? }                   # 任务板：claim | contract | depend | release | complete | fail
 agent_teams_dispatch { action: "run", limit?, dry_run? }                  # 把就绪任务与空闲成员配对
-send_message { target, message } / list_agents { } / wait_agent { timeout_ms }
-interrupt_agent { target }                                                # 仅 Lead
+send_message { agent_id, message } / list_agents { } / wait_agent { timeout_ms }
+interrupt_agent { agent_id }                                              # 仅 Lead
 ```
 
 - **暂存的就是一份需要你批准的计划，而且它跑在「我们的」平面上。** 在 `team.gate: "mechanical"`
@@ -305,7 +307,7 @@ interrupt_agent { target }                                                # 仅 
   （OFFICIAL）平面上重叠只是提示，不是锁。`claim` 从不授权写入，而 bash/格式化器/代码生成器会绕过
   一切检查 —— 这就是那条已声明的边界 —— 由 Lead 协调归属并审阅最终 diff。
 - **消息是持久的。** `send_message` 回答 `accepted`（已投递）或 `queued`（已落盘、排队中），排队
-  中的消息绝不要重发。`list_agents` 报告每位成员的 `target` 与可用状态（`inactive` 表示当前没有
+  中的消息绝不要重发。`list_agents` 报告每位成员的 `agent_id` 与可用状态（`inactive` 表示当前没有
   轮次在执行，不是工作已完成）；当没有其他成员在运行或创建中时，`wait_agent` 立刻回答
   `noProgress`。
 - **只读成员就是只读的。** Architect、Researcher、Planner、Explorer、Plan Reviewer 与
@@ -346,9 +348,9 @@ agent_teams_dispatch { "action": "run" }
 
 # 协调
 list_agents { }
-send_message { "target": "senior-1", "message": "先落 README 的修改，再做使用者指南。" }
+send_message { "agent_id": "senior-1", "message": "先落 README 的修改，再做使用者指南。" }
 wait_agent { "timeout_ms": 60000 }
-interrupt_agent { "target": "senior-1" }     # 仅 Lead：停下当前轮次，保留收件箱
+interrupt_agent { "agent_id": "senior-1" }     # 仅 Lead：停下当前轮次，保留收件箱
 ```
 
 §13.1 是可照抄的完整走法 —— 创建成员与任务、操作任务板、改派、收尾一波。
@@ -409,11 +411,13 @@ host，直到你选择 `mpd` 为止（TUI 的 `/preset mpd`、Web Settings 的 `
 `/settings` 编辑真实的 `mpd.jsonc` 旋钮 —— 共 26 个（原有 13 个、十二个 `teamModels` 槽位叶子，再加
 TUI 界面自身的一个旋钮；槽位叶子是只可选择字段，选项来自实时模型目录，回退到声明列表），
 其中包括 `hashline.maxDiffChars`、
-`commentChecker.autoCheck`、`ulw.maxRounds`、`memory.vcs`、`team.stateDir`、`boulder.dir` —— 它们位于 harness settings 命名空间
-`mpd` 之下。该命名空间由 `packages/mpd-config-plugin` 提供，其 base 是工作区**文件**里的值，所以界面
-打开时显示的是你的文件值而不是 schema 默认值；保存会**写入 `<workspace>/.mpd/mpd.jsonc`**（针对当时
-存活的会话工作区），并保留注释、键顺序与尾随逗号 —— 与 Web GUI 卡片触发的是同一条回写路径（
-[`tui.zh-CN.md`](tui.zh-CN.md) §3.1）。
+`commentChecker.autoCheck`、`ulw.maxRounds`、`memory.vcs`、`team.stateDir`、`boulder.dir` —— 通过
+harness **自带的**表单编辑这一行的 config entry（`configForms.get("mpd-config")`；Web GUI 卡片用的是
+同一个 entry）。**在本 bundle 所固定的这个 harness 上，entry 保存由宿主持久化，且不会执行任何
+`<workspace>/.mpd/mpd.jsonc` 写入**：保存下来的 override 就是最顶层的配置层，并在进程内生效；而把表单
+物化出的默认值投影进你的文件会污染它。文件回写属于**已退役**的 settings 命名空间路径——
+`packages/mpd-config-plugin` 仍实现它，但该 harness 上 `settingsRegister` 会被拒绝，因此这条路径处于
+**休眠**状态。
 
 在依赖它之前需要知道两件事：
 
@@ -421,11 +425,12 @@ TUI 界面自身的一个旋钮；槽位叶子是只可选择字段，选项来�
   `<workspace>/.mpd/mpd.jsonc` 被编辑时都会重新解析，而模型配置旋钮（`modelchain.*`、
   `teamModels.slot*`）是**每次使用**时读取的，因此保存后的改动会到达下一次
   `mpd_config_get`、`mpd_modelchain_resolve` 或 spawn，**无需重启**（`mpd_config_reload` 可强制重读）。
-  其余旋钮仍适用挂载时捕获的规则 —— §9.1 逐个旋钮说明。界面上的提示就是这么写的。
-- **两个具名跳过场景。** settings 路径本身不携带工作区身份，所以写入目标是保存那一刻存活的会话工作区：
-  没有任何存活会话时，保存只写入宿主 settings 文档并报告 `no-live-session`；有**多于一个**存活工作区时
-  会被拒绝为 `ambiguous-multi-root`，并逐一列出候选。这两种情况下**不会改动任何文件**，而值**不会丢失**
-  —— 它保存在 settings 文档中，配置层立即对所有工作区生效；只有文件写入在等待"恰好一个"存活会话。
+  其余旋钮仍适用挂载时捕获的规则 —— §9.1 逐个旋钮说明。
+- **旧命名空间回写路径有两个具名跳过场景（在本 harness 上已休眠）。** 这条路径本身不携带工作区身份，
+  所以它的写入目标是保存那一刻存活的会话工作区：没有任何存活会话时，保存只写入宿主 settings 文档并报告
+  `no-live-session`；有**多于一个**存活工作区时会被拒绝为 `ambiguous-multi-root`，并逐一列出候选。这两种
+  情况下**不会改动任何文件**，而值**不会丢失**——它保存在 settings 文档中，配置层立即对所有工作区生效；
+  只有文件写入在等待"恰好一个"存活会话。**entry 保存永远不会走到这段代码。**
 
 `mpd.jsonc` 中重复的键会编辑其**最后**一次出现（即 `JSON.parse` 读到的那一个），诊断信息会列出每一处
 出现所在行；重复的中间对象则被拒绝为 `ambiguous-intermediate`，文件保持逐字节不变（
@@ -547,9 +552,13 @@ Team 视图的这张图按团队状态提供的 rank 布局：每个 rank 一列
   手动兜底。
 - **回读永远是即时的。** `mpd_config_get` 与 `mpd_config_reload` 每次调用都重新读取各层并立刻报告
   新的解析值 —— 这是你确认编辑确实落地的办法，即使已挂载的消费方仍持有它挂载时捕获的值。
-- **`watchdog.*` 是实时重读的。** 看门狗在挂载时、收到 settings 文档更新时、以及每个 tick 都会
-  重新解析自己的旋钮，所以文件改动在**本进程内**即可生效、无需重启；
-  `session-watchdog-status` 会打印每个旋钮的 LIVE vs FILE 取值以及 `restartRequired` 标志。
+- **`watchdog.*` 从文件实时重读——表单保存到不了这些旋钮。** 看门狗在挂载时、收到**旧 `mpd` 命名空间**的
+  `settings/document-updated` 时（本 bundle 固定的 harness 上命名空间模型已退役，因此该事件不会触发）、以及每个
+  tick 都会重新解析自己的旋钮。真正能实时到达它的是 `<workspace>/.mpd/mpd.jsonc` 的编辑：该行在每次解析时
+  自己解析这个文件，并在**本进程内**应用发生移动的那一层、无需重启。经 `/settings` 或 Web 卡片的保存写入的是
+  `mpd-config` **entry** 文档，而该行不读它，因此这些旋钮保持旧值；要改就读文件，或改
+  `mpd-team-watchdog` 行配置（需要一次启动）。`session-watchdog-status` 会打印每个旋钮的 LIVE vs FILE 取值
+  以及 `restartRequired` 标志。
 
 | 旋钮 | 谁读取 | 何时读取 | 何时生效 |
 |---|---|---|---|
@@ -563,7 +572,7 @@ Team 视图的这张图按团队状态提供的 rank 布局：每个 rank 一列
 | `extensions.enable` / `.disable` / `.mcp.*` | mpd-ext | 插件启动时（进程级） | 重启后 |
 | `team.stateDir` | 读取旧版团队记录的 mpd 插件，经实时服务解析 | 每次调用 | 服务重新读取文件之后立即生效（`mpd_config_reload`，或任意一次设置保存）。这些是**旧版**记录：官方团队插件把名册、邮箱与任务板保存在 Lead 的会话日志里，不在这里 |
 | `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate（单次咨询通道 `mpd_role_spawn`、`mpd_workmate_spawn`），mpd-dsh-adapter（原生团队执行器：每个团队成员），以及 mpd-roster-provider（仅官方执行器回退） | spawn 时，从实时服务读取 | 实时生效，无需重启：设置保存或手工编辑 `<workspace>/.mpd/mpd.jsonc` 都会在进程内被重新读取，因此下一次 spawn 即携带新值；`mpd_config_reload` 可强制重读。每个槽位**只有一条**路由、没有默认层：未配置或格式错误的槽位会用 `SLOT_UNCONFIGURED` **拒绝单次 spawn**（不写入任何内容、不启动子会话），而团队成员绝不因槽位失败；该槽位自己的 `fallbacks` 链在 spawn 前被消费一次。团队成员的槽位按 `role` → `description` 的头部 → 整个 `name` 解析；匹配不到名册成员的、或槽位未配置的成员，会**继承暂存它的会话的路由**，只记一行日志、绝不抛错 |
-| `watchdog.*` | mpd-team-watchdog | 挂载时、settings 更新时、每个 tick | 实时生效 —— 无需重启 |
+| `watchdog.*` | mpd-team-watchdog | 挂载时、旧 `mpd` 命名空间的 `settings/document-updated`（此处已退役）、以及每个 tick —— 该行还会自行解析 `<workspace>/.mpd/mpd.jsonc` | 文件编辑实时生效 —— 无需重启；表单保存（`/settings`、Web 卡片）在本 harness 上**到不了**这些旋钮（该行不读 `mpd-config` entry） |
 
 `mpd-codegraph` 的旋钮是反证这条规则的例外：它们是 patch 行选项（`autoInit`、`initTimeoutMs`、
 `cooldownMs`、`binary`），只能改行并重新安装。
@@ -688,9 +697,9 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp   # 从一个可工作的骨�
 
 ## 12. 命令参考
 
-会话中可用的全部斜杠命令，以及各自生效的位置。表里有两类：本 bundle **贡献的五条命令**
+会话中可用的全部斜杠命令，以及各自生效的位置。表里有两类：本 bundle **贡献的六条命令**
 （`mpd-ulw` 注册 `/ulw` 与 `/ultrawork`，`mpd-codegraph` 注册 `/mpd-codegraph`，`mpd-tui` 注册
-`/mpd`，团队行注册 `/agent-teams`），以及本 bundle 只是
+`/mpd` 与模型选择菜单 `/mpd-model`，团队行注册 `/agent-teams`），以及本 bundle 只是
 **记录**的两条 **宿主命令** —— `/settings`（宿主 TUI 设置界面，其 MPD 区块由本 bundle 扩展）与
 `/goal`（宿主 goal 命令，由 `mpd` preset 挂载）。除此之外没有别的命令 —— 特别地，**不存在
 `/roster` 命令**（名册要通过 `mpd_roles_list` 工具访问）。
@@ -702,6 +711,7 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp   # 从一个可工作的骨�
 | `/mpd-codegraph` | 解析 codegraph 二进制并在 `.codegraph/` 下初始化/刷新项目索引 | Web + TUI |
 | `/agent-teams <what the team is for>` | 团队行恰好只注册这一条命令：它按文本 stage 一份需要批准的 plan（在你批准之前不会 spawn 任何人），不带参数调用时打印用法 | Web + TUI |
 | `/mpd` | TUI 上覆盖 bundle 状态的命令树：裸 `/mpd` 打开选择器，`/mpd <value>` 直接进入，`/mpd status` 打印摘要 | **仅 TUI** —— 在 Web 下注册被拒绝，什么都不会暴露 |
+| `/mpd-model` | 打开宿主的选项列表式模型菜单：依次选择槽位 → 提供商 → 模型 → 推理强度，并把 `teamModels.<slot>.<leaf>` 写入 `/settings` 编辑的同一个配置条目；在任一面板取消都不写入，而没有对话框接缝的组合会说明这一点、不打开菜单 | **仅 TUI** |
 | `/settings` | 宿主的设置界面；MPD 区块编辑你的 `mpd.jsonc` | **仅 TUI** |
 | `/goal` | 宿主的 goal 命令，由 `mpd` preset 挂载（Web overlay 会禁用宿主自带的 `tool-goal` / `command-goal` 行，因此由 preset 承载） | Web + TUI |
 
@@ -737,10 +747,10 @@ agent_teams_task { "task_id": "T1", "action": "complete", "expected_revision": 2
 
 # (d) 推动一个正在运行的团队
 list_agents {}
-send_message { "target": "senior-1", "message": "先落 README 的修改，再做使用者指南。" }
+send_message { "agent_id": "senior-1", "message": "先落 README 的修改，再做使用者指南。" }
 agent_teams_dispatch { "action": "run" }
 wait_agent { "timeout_ms": 60000 }
-interrupt_agent { "target": "senior-1" }                               // 仅 Lead；收件箱保留
+interrupt_agent { "agent_id": "senior-1" }                               // 仅 Lead；收件箱保留
 
 # (e) 收尾一波
 mpd_team_compact_run {}
@@ -864,15 +874,15 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp --with-mcp
 # Lead（会话智能体）
 agent_teams_plan { "action": "status" }                          # 计划中的成员与活跃任务板，带 revision
 agent_teams_dispatch { "action": "run" }                          # 把就绪任务与空闲成员配对
-send_message { "target": "junior-1", "message": "T5 需要设计文档的链接目标。" }
-list_agents {}                                                   # target 与可用状态
+send_message { "agent_id": "junior-1", "message": "T5 需要设计文档的链接目标。" }
+list_agents {}                                                   # agent_id 与可用状态
 wait_agent { "timeout_ms": 60000 }                               # 下一次名册/消息/任务变化
-interrupt_agent { "target": "junior-1" }                         # 停下当前轮次，保留收件箱
+interrupt_agent { "agent_id": "junior-1" }                       # 停下当前轮次，保留收件箱
 
 # 成员
 agent_teams_task { "task_id": "T5", "action": "claim" }
 agent_teams_task { "task_id": "T5", "action": "complete", "expected_revision": 5, "note": "…进度 + 证据…" }
-send_message { "target": "lead", "message": "T5 完成：`bun run verify:docs` 通过。" }
+send_message { "agent_id": "lead", "message": "T5 完成：`bun run verify:docs` 通过。" }
 ```
 
 只有 `release` 与 `complete`/`fail` 需要带上调用者读到的 `expected_revision`，过期值会以带类型的错误
@@ -955,7 +965,7 @@ mcp__grep_app__searchGitHub { "query": "registerTool({", "language": ["TypeScrip
 | 被采纳（随后退役、再被**删除**）的内置 `agent-teams` 主体 | **dsh-agent-teams**，作者 程序员阿江（Relakkes）—— 曾被整体采纳并作为一等主代码 | MIT；采纳版本 `0.1.16-rc.3-mpd`（`0.1.14` 主体 + 回移的 `0.1.16-rc.3` 增量）；自 0.1.7-rc.2 起**没有任何行挂载它**，去 vendor 波（2026-10-07）又删除了 `packages/mpd-agent-teams-plugin/**` —— 仅有两块被迁移的产物以我们自己的代码形式存续：`packages/mpd-schemastery/**` 与位于 `packages/mpd-bundle-plugin/adopted/agent-teams-client.js` 的采纳浏览器 bundle | `LICENSE-NOTICES.md` 的 *dsh-agent-teams* 一节 |
 | 11 位专家名册、模型链词汇、队友 / workmate BASE 模板 | **oh-my-openagent**，作者 code-yeongyu，固定于提交 `8c57e46`（v5.0.0-beta.20）—— 这里只是**名称与词汇**的历史来源；persona 文本已在 D 波改从宽松许可来源取材 | MIT（本仓库自己的作品）；名称所来自的那个上游当时是 SUL-1.0，仅作历史记录 | `LICENSE-NOTICES.md`；`VENDOR_LOCK.json` |
 | 随包服务的技能语料（19 个技能，含本仓库自有的 `dsh-qa` 与 `cordis-dev`） | 16 个移植技能改从 **lazycodex** 取材（同一作者对 oh-my-openagent 语料的 MIT 再许可）；`cordis-dev` 由本仓库撰写，改写自 DeepSeek Harness 的创造模式 preset skills（`@deepseek-ai/dsh-agent-preset`，MIT） | MIT —— 再取样的语料为 `Copyright (c) 2026 Yeongyu Kim`；引用的 harness 材料是 MIT 且不再分发 | `VENDOR_LOCK.json` `assets.skills`；`LICENSE-NOTICES.md` |
-| `mcp__ast_grep__*` | **ast-grep** —— 可选依赖 `@ast-grep/cli` | MIT；`0.45.2`；运行时解析，不再分发 | `package.json` 的 `optionalDependencies`；`MPD_AST_GREP_SG_PATH` / `MPD_AST_GREP_BIN_DIR` |
+| `mcp__ast_grep__*` | **ast-grep** —— **不是**声明依赖；CLI 由 `resolveAstGrepBinary` 在运行时解析（调用方环境固定值 → `$MPD_AST_GREP_BIN_DIR` → 该包自身的 `bin` 入口 → `.toolchain/node_modules/.bin` → `node_modules/.bin`） | MIT；`0.45.2`；不再分发 | `packages/mpd-mcp-shared/bin-resolve.ts`；`MPD_AST_GREP_SG_PATH` / `MPD_AST_GREP_BIN_DIR` |
 | `mcp__codegraph__*` 与 `mpd-codegraph` 行 | **codegraph**，作者 Yeongyu Kim —— 可选依赖 `@colbymchenry/codegraph` | MIT；`1.5.0`；预构建服务器已搬运并做 sha256 固定 | `packages/mpd-mcp-codegraph/LICENSE` + `NOTICE`；`VENDOR_LOCK.json` |
 | `mpd_comment_check` | **comment-checker**，作者 code-yeongyu（`@code-yeongyu/comment-checker`） | MIT；`0.8.0`；**不**随包分发 —— 按需安装到 `.toolchain`（`--with-comment-checker`） | `LICENSE-NOTICES.md`；`MPD_DSH_COMMENT_CHECKER_BIN` |
 | DSH-STD 协议族 —— `@dsh-std/sdk` `0.1.1-rc.2`，本 bundle 唯一一个 DSH-STD **依赖**（adapter 属于可选的自装插件，见下文） | **dsh-std**（https://github.com/T-Auto/dsh-std）—— 声明式 npm 依赖，绝非搬运进来的代码 | MIT —— `Copyright (c) 2026 DSH Standard contributors`；安装时解析，不再分发 | `package.json` 的 `dependencies`；`LICENSE-NOTICES.md` |

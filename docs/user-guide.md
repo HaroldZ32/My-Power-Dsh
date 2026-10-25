@@ -20,9 +20,12 @@ and the `exports` map live in its manifest, so this one command installs every p
 `mpd` preset, the whole skill corpus and the extension root. Nothing else to run — no pack step,
 no copy step. Restart `dsh`, then start a session on the **MPD (Main Working Agent)** preset.
 
-The bundle declares **three** runtime dependencies — the three official Agent Teams packages that
-provide team mode (`@deepseek-ai/dsh-experimental-agent-team`, its `-tool-agent-team` and
-`-client-ui-agent-team` siblings). **`dsh-better-sidebar`**, the community sidebar bundle that hosts
+The bundle declares **four** runtime dependencies — the four entries in `package.json`'s
+`dependencies`: the three official Agent Teams packages that provide team mode
+(`@deepseek-ai/dsh-experimental-agent-team`, its `-tool-agent-team` and `-client-ui-agent-team`
+siblings) plus `@dsh-std/sdk` (`0.1.1-rc.2`), the scoped helpers for DSH Standard facet activation
+modules, resolved by the package manager like any other declared dependency and not vendored.
+**`dsh-better-sidebar`**, the community sidebar bundle that hosts
 the Workmates tab, is deliberately **not** one of them: it is an optional peer (plus a
 `devDependency`) the bundle never installs, and its absence is a normal composition, not a broken
 install (§8). A checkout install reads this repository,
@@ -284,8 +287,8 @@ agent_teams_plan { action: "add_member", member } / { action: "create_task", tas
 agent_teams_plan { action: "status" }                                      # the plan and every task on the board
 agent_teams_task { task_id, action, expected_revision? }                   # the board: claim | contract | depend | release | complete | fail
 agent_teams_dispatch { action: "run", limit?, dry_run? }                  # pair ready tasks with idle members
-send_message { target, message } / list_agents { } / wait_agent { timeout_ms }
-interrupt_agent { target }                                                # Lead only
+send_message { agent_id, message } / list_agents { } / wait_agent { timeout_ms }
+interrupt_agent { agent_id }                                              # Lead only
 ```
 
 - **Staging is a plan you approve, and it runs on OUR plane.** With `team.gate: "mechanical"` (the
@@ -343,7 +346,7 @@ interrupt_agent { target }                                                # Lead
   authorizes a write, and bash/formatters/codegen bypass every check — the declared bound — so the Lead
   coordinates ownership and reviews the final diff.
 - **Messages are durable.** `send_message` answers `accepted` (delivered now) or `queued` (stored and
-  waiting), and a queued message must never be resent. `list_agents` reports each member's `target` and
+  waiting), and a queued message must never be resent. `list_agents` reports each member's `agent_id` and
   availability (`inactive` means no turn is executing, not that the work is done); `wait_agent` answers
   `noProgress` immediately when no other member is running or provisioning.
 - **Read-only members stay read-only.** Architect, Researcher, Planner, Explorer, Plan Reviewer and
@@ -389,9 +392,9 @@ agent_teams_dispatch { "action": "run" }
 
 # coordinate
 list_agents { }
-send_message { "target": "senior-1", "message": "Land the README edit before the guide." }
+send_message { "agent_id": "senior-1", "message": "Land the README edit before the guide." }
 wait_agent { "timeout_ms": 60000 }
-interrupt_agent { "target": "senior-1" }     # Lead only: stop the turn, keep the inbox
+interrupt_agent { "agent_id": "senior-1" }     # Lead only: stop the turn, keep the inbox
 ```
 
 §13.1 is the literal walkthrough — creating members and tasks, driving the board, reassigning,
@@ -461,25 +464,27 @@ transcript line is claimed. The full list is §10 NOT-CLAIMED of [`tui.md`](tui.
 `/settings` edits the real `mpd.jsonc` knobs — 26 in all (the original 13, the twelve `teamModels`
 slot leaves and the TUI surface's own knob; the slot leaves are selection-only fields whose options come
 from the live model catalog, with the declared lists as fallback), among them `hashline.maxDiffChars`,
-`commentChecker.autoCheck`, `ulw.maxRounds`, `memory.vcs`, `team.stateDir` and `boulder.dir` — under the
-harness settings namespace `mpd`. That namespace is served by `packages/mpd-config-plugin`, whose base
-is the workspace FILE value, so the screen opens on your file rather than on a schema default; a save
-**writes `<workspace>/.mpd/mpd.jsonc`** for the live session workspace, preserving comments, key order
-and trailing commas — the same write-back the Web GUI card triggers (§3.1 of [`tui.md`](tui.md)).
+`commentChecker.autoCheck`, `ulw.maxRounds`, `memory.vcs`, `team.stateDir` and `boulder.dir` — through
+the harness's OWN form for this row's config entry (`configForms.get("mpd-config")`; the Web GUI card
+uses the same entry). **On the harness this bundle pins, an entry save is persisted by the HOST and
+performs NO `<workspace>/.mpd/mpd.jsonc` write**: the saved override is the top config layer and takes
+effect in-process, and projecting the form's materialised defaults into your file would pollute it. The
+file write-back is the retired settings-NAMESPACE path — `packages/mpd-config-plugin` still implements
+it, but `settingsRegister` is refused on this harness and that path is **dormant**.
 
 Two things to know before you rely on it:
 
 - **A save lands in the running process.** The config service re-resolves on every settings save and on
   a watched edit of `<workspace>/.mpd/mpd.jsonc`, and the model-config knobs (`modelchain.*`,
   `teamModels.slot*`) are resolved per use, so a saved change reaches the next `mpd_config_get`,
-  `mpd_modelchain_resolve` or spawn with **no restart** (`mpd_config_reload` forces a re-read). The other knobs still follow the mount-time capture — §9.1 states it per knob. The
-  on-screen hint says exactly this.
-- **Two named skip cases.** The settings path carries no workspace identity, so the write target is
-  the live session workspaces at the moment of the save: with **no** live session the save is stored in
-  the host settings document and reported as `no-live-session`; with **more than one** live workspace it
-  is refused as `ambiguous-multi-root` and every candidate is named. In both cases **no file is
-  changed** and the value is **not lost** — it lives in the settings document and the config layer
-  applies it to every workspace immediately; only the file write waits for exactly one live session.
+  `mpd_modelchain_resolve` or spawn with **no restart** (`mpd_config_reload` forces a re-read). The other knobs still follow the mount-time capture — §9.1 states it per knob.
+- **The legacy namespace write-back has two named skip cases (dormant on this harness).** That path
+  carries no workspace identity, so its write target is the live session workspaces at the moment of
+  the save: with **no** live session the save is stored in the host settings document and reported as
+  `no-live-session`; with **more than one** live workspace it is refused as `ambiguous-multi-root` and
+  every candidate is named. In both cases **no file is changed** and the value is **not lost** — it
+  lives in the settings document and the config layer applies it to every workspace immediately; only
+  the file write waits for exactly one live session. An ENTRY save never reaches this code.
 
 A duplicated key in `mpd.jsonc` is edited at its **last** occurrence (the one `JSON.parse` reads) and
 the diagnostic names every occurrence line; a duplicated intermediate object is refused as
@@ -626,9 +631,15 @@ Three things do not wait for that restart, and all are useful:
 - **The read-back is always immediate.** `mpd_config_get` and `mpd_config_reload` re-read the layers
   on every call and report the new resolved value right away. That is how you verify an edit landed,
   even while an already-mounted consumer still holds its captured value.
-- **`watchdog.*` is re-read live.** The watchdog re-resolves its knobs at mount, on a settings-document
-  update and once per tick, so a file edit reaches it in THIS process with no restart;
-  `session-watchdog-status` prints the per-knob LIVE vs FILE value with its `restartRequired` flag.
+- **`watchdog.*` is re-read live from the FILE — a FORM save does not reach it.** The watchdog
+  re-resolves its knobs at mount, on a `settings/document-updated` for the **legacy `mpd` NAMESPACE**
+  (the namespace model is RETIRED on the harness this bundle pins, so that event never fires here), and
+  once per tick. What reaches it live is a `<workspace>/.mpd/mpd.jsonc` edit: the row parses that file
+  itself on every resolution and applies the layer that moved, in THIS process, with no restart. A save
+  through `/settings` or the Web card goes to the `mpd-config` ENTRY document, which this row does not
+  read, so those knobs keep their old values; edit the file, or change the `mpd-team-watchdog` row
+  config (a boot). `session-watchdog-status` prints the per-knob LIVE vs FILE value with its
+  `restartRequired` flag.
 
 | Knob | Who reads it | Read when | Takes effect |
 |---|---|---|---|
@@ -642,7 +653,7 @@ Three things do not wait for that restart, and all are useful:
 | `extensions.enable` / `.disable` / `.mcp.*` | mpd-ext | when the plugin starts (process-level) | after a restart |
 | `team.stateDir` | the mpd plugins that read legacy team records, through the live service | per call | right after the service re-reads the file (`mpd_config_reload`, or any settings save). These are LEGACY records: the official team plugin keeps its roster, mailbox and board in the Lead's session log, not here |
 | `teamModels.slot{1,2,3,4}.*` | mpd-roles / mpd-workmate (single-call consult paths `mpd_role_spawn`, `mpd_workmate_spawn`), mpd-dsh-adapter (native team executor: every team member), and mpd-roster-provider (official-executor fallback only) | at spawn, from the live service | live — no restart: a settings save or a hand edit of `<workspace>/.mpd/mpd.jsonc` is re-read in-process, so the NEXT spawn carries it; `mpd_config_reload` forces a re-read. ONE route per slot with no default layer: an unconfigured or malformed slot REFUSES a single-call spawn with `SLOT_UNCONFIGURED` (nothing written, no child started), while a team member never fails on its slot, and the slot's own `fallbacks` chain is consumed once before the spawn. A team member's slot is resolved by `role` → the HEAD of its `description` → its whole `name`; an UNMATCHED member, or one whose slot is unconfigured, INHERITS the staging session's route with one log line and no throw |
-| `watchdog.*` | mpd-team-watchdog | at mount, on a settings update, and every tick | live — no restart |
+| `watchdog.*` | mpd-team-watchdog | at mount, on a `settings/document-updated` for the legacy `mpd` NAMESPACE (retired here), and every tick — the row also parses `<workspace>/.mpd/mpd.jsonc` itself | live for a FILE edit — no restart; a FORM save (`/settings`, Web card) does NOT reach these knobs on this harness (the row does not read the `mpd-config` entry) |
 
 `mpd-codegraph`'s knobs are the exception that proves the rule: they are patch-row options
 (`autoInit`, `initTimeoutMs`, `cooldownMs`, `binary`), so they change only by editing the row and
@@ -784,9 +795,10 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp   # start from a working skele
 ## 12. Command reference
 
 Every slash command a session can use, with where each one works. The table carries two classes: the
-**five commands this bundle contributes** (`mpd-ulw` registers `/ulw` and `/ultrawork`,
-`mpd-codegraph` registers `/mpd-codegraph`, `mpd-tui` registers `/mpd`, and the team row registers
-`/agent-teams`), and the **two HOST-provided commands the bundle only documents** — `/settings`, the
+**six commands this bundle contributes** (`mpd-ulw` registers `/ulw` and `/ultrawork`,
+`mpd-codegraph` registers `/mpd-codegraph`, `mpd-tui` registers `/mpd` and the model pick-list
+`/mpd-model`, and the team row registers `/agent-teams`), and the **two HOST-provided commands the
+bundle only documents** — `/settings`, the
 host's TUI settings screen (whose MPD section the bundle extends), and `/goal`, the host goal command
 the `mpd` preset mounts. Nothing else exists — in particular **there is no `/roster` command** (the
 roster is reached with the `mpd_roles_list` tool).
@@ -798,6 +810,7 @@ roster is reached with the `mpd_roles_list` tool).
 | `/mpd-codegraph` | resolves the codegraph binary and initialises/refreshes the project index under `.codegraph/` | Web + TUI |
 | `/agent-teams <what the team is for>` | the team row registers exactly ONE command: it stages a required-approval plan from the text (nobody is spawned until you approve it) and prints usage when called without arguments | Web + TUI |
 | `/mpd` | the TUI command tree over bundle state: a bare `/mpd` opens the picker, `/mpd <value>` goes direct, `/mpd status` prints the summary | **TUI only** — under Web the registration is refused and nothing is exposed |
+| `/mpd-model` | opens the host's pick-list model menu: walks slot → provider → model → reasoning effort and writes `teamModels.<slot>.<leaf>` into the same config entry `/settings` edits; a cancel at any panel writes nothing, and a composition with no dialogs seam says so instead of opening a menu | **TUI only** |
 | `/settings` | the host's settings screen; the MPD section edits your `mpd.jsonc` | **TUI only** |
 | `/goal` | the host's goal command, mounted by the `mpd` preset (the Web overlay disables the host's own `tool-goal` / `command-goal` rows, so the preset carries both) | Web + TUI |
 
@@ -835,10 +848,10 @@ agent_teams_task { "task_id": "T1", "action": "complete", "expected_revision": 2
 
 # (d) driving a running team
 list_agents {}
-send_message { "target": "senior-1", "message": "Land the README edit before the guide." }
+send_message { "agent_id": "senior-1", "message": "Land the README edit before the guide." }
 agent_teams_dispatch { "action": "run" }
 wait_agent { "timeout_ms": 60000 }
-interrupt_agent { "target": "senior-1" }                               // Lead only; the inbox is kept
+interrupt_agent { "agent_id": "senior-1" }                               // Lead only; the inbox is kept
 
 # (e) finishing a wave
 mpd_team_compact_run {}
@@ -969,15 +982,15 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp --with-mcp
 # Lead (the session agent)
 agent_teams_plan { "action": "status" }                          # the planned members and the active board, with revisions
 agent_teams_dispatch { "action": "run" }                          # pair ready tasks with idle members
-send_message { "target": "junior-1", "message": "T5 needs the design-doc link target." }
-list_agents {}                                                   # targets + availability
+send_message { "agent_id": "junior-1", "message": "T5 needs the design-doc link target." }
+list_agents {}                                                   # agent ids + availability
 wait_agent { "timeout_ms": 60000 }                               # next roster/message/task edge
-interrupt_agent { "target": "junior-1" }                         # stop the current turn, keep the inbox
+interrupt_agent { "agent_id": "junior-1" }                       # stop the current turn, keep the inbox
 
 # member
 agent_teams_task { "task_id": "T5", "action": "claim" }
 agent_teams_task { "task_id": "T5", "action": "complete", "expected_revision": 5, "note": "…progress + evidence…" }
-send_message { "target": "lead", "message": "T5 done: `bun run verify:docs` passes." }
+send_message { "agent_id": "lead", "message": "T5 done: `bun run verify:docs` passes." }
 ```
 
 Only `release` and `complete`/`fail` carry the `expected_revision` the caller read, and a stale one is
@@ -1066,7 +1079,7 @@ other people's. The authoritative record, with the full licence texts, is
 | The adopted (then retired, then DELETED) vendored `agent-teams` body | **dsh-agent-teams** by 程序员阿江 (Relakkes) — adopted outright as first-class main code | MIT; adopted package version `0.1.16-rc.3-mpd` (a `0.1.14` body with the audited `0.1.16-rc.3` deltas backported); NO row mounted it since 0.1.7-rc.2, and the de-vendor wave (2026-10-07) removed `packages/mpd-agent-teams-plugin/**` — two relocated pieces survive as our own code: `packages/mpd-schemastery/**` and the adopted browser bundle at `packages/mpd-bundle-plugin/adopted/agent-teams-client.js` | `LICENSE-NOTICES.md` §*dsh-agent-teams* |
 | The 11-specialist roster, the model-chain vocabulary, the teammate / workmate BASE templates | **oh-my-openagent** by code-yeongyu, pinned at commit `8c57e46` (v5.0.0-beta.20) — historical provenance for the NAMES and the vocabulary; the persona texts were re-sourced under permissive licences in wave D | MIT (this repository's own work); the upstream those names came from was SUL-1.0, recorded as history only | `LICENSE-NOTICES.md`; `VENDOR_LOCK.json` |
 | The served skill corpus (19 skills, incl. the repo's own `dsh-qa` and `cordis-dev`) | the 16 ported skills are re-sourced from **lazycodex** (the same author's MIT re-license of the oh-my-openagent corpus); `cordis-dev` is written here, adapting the DeepSeek Harness's 创造模式 preset skills (`@deepseek-ai/dsh-agent-preset`, MIT) | MIT — `Copyright (c) 2026 Yeongyu Kim` for the re-sourced corpus; the referenced harness material is MIT and not redistributed | `VENDOR_LOCK.json` `assets.skills`; `LICENSE-NOTICES.md` |
-| `mcp__ast_grep__*` | **ast-grep** — the optional dependency `@ast-grep/cli` | MIT; `0.45.2`; resolved at runtime, not redistributed | `package.json` `optionalDependencies`; `MPD_AST_GREP_SG_PATH` / `MPD_AST_GREP_BIN_DIR` |
+| `mcp__ast_grep__*` | **ast-grep** — NOT a declared dependency; the CLI is resolved at runtime by `resolveAstGrepBinary` (a caller env pin, `$MPD_AST_GREP_BIN_DIR`, the package's own `bin` entry, `.toolchain/node_modules/.bin`, then `node_modules/.bin`) | MIT; `0.45.2`; not redistributed | `packages/mpd-mcp-shared/bin-resolve.ts`; `MPD_AST_GREP_SG_PATH` / `MPD_AST_GREP_BIN_DIR` |
 | `mcp__codegraph__*` and the `mpd-codegraph` row | **codegraph** by Yeongyu Kim — the optional dependency `@colbymchenry/codegraph` | MIT; `1.5.0`; the prebuilt server is vendored and sha256-pinned | `packages/mpd-mcp-codegraph/LICENSE` + `NOTICE`; `VENDOR_LOCK.json` |
 | `mpd_comment_check` | **comment-checker** by code-yeongyu (`@code-yeongyu/comment-checker`) | MIT; `0.8.0`; **not** redistributed — installed on demand into `.toolchain` (`--with-comment-checker`) | `LICENSE-NOTICES.md`; `MPD_DSH_COMMENT_CHECKER_BIN` |
 | The DSH-STD protocol family — `@dsh-std/sdk` `0.1.1-rc.2`, the one DSH-STD **dependency** of this bundle (the adapter is an optional self-install, below) | **dsh-std** (https://github.com/T-Auto/dsh-std) — a declared npm dependency, never a vendored body | MIT — `Copyright (c) 2026 DSH Standard contributors`; resolved at install time, not redistributed | `package.json` `dependencies`; `LICENSE-NOTICES.md` |

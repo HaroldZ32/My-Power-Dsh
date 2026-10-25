@@ -22,16 +22,19 @@ The contract has five clauses, and each one has an executable witness:
 ### 1.1 One package, one unit
 
 Every directory under `packages/` is a self-contained unit: a `src/` tree with one or more entries,
-its own `dist/` artifacts, and a manifest **when it needs one**. Measured 2026-10-02: **30 package
-directories, 26 of them carrying their own `package.json`.**
+its own `dist/` artifacts, and a manifest **when it needs one**. Measured 2026-10-25:
+**34 package directories, 31 of them carrying their own `package.json`**
+(`ls -d packages/*/ | wc -l`; `ls packages/*/package.json | wc -l`).
 
-The four that carry none are not exceptions to independence, they are packages whose metadata lives
-elsewhere: `mpd-codegraph-plugin` is mounted by its own row through the bundle's `exports` map, the
-two MCP servers (`mpd-mcp-codegraph`, `mpd-mcp-shared`) are launched through their own
-`launch.ts`, and `mpd-tui-adapter-plugin` is being created by this same wave. **No package in this
+The three that carry none are not exceptions to independence, they are packages whose metadata lives
+elsewhere: `mpd-codegraph-plugin` is mounted by its own row through the bundle's `exports` wildcard
+(`./packages/*`), the MCP launcher directory `mpd-mcp-codegraph` is started through the
+`dist/launch.js` built from its own `src/launch.ts` and named by the `mcp-codegraph` row, and
+`mpd-mcp-shared` is a shared source module tree the launchers import by relative path
+(`../../mpd-mcp-shared/…`), inlined into each consumer's `dist/` at build time. **No package in this
 tree declares another package of this tree as a dependency** — not in `dependencies`, not in
-`devDependencies`, not in `peerDependencies`, not in `optionalDependencies`. Measured: zero
-`@mpd-dsh/*` specifiers across all 26 manifests. Every cross-package edge in this repository is a
+`devDependencies`, not in `peerDependencies`, not in `optionalDependencies`. Measured 2026-10-25:
+zero `@mpd-dsh/*` specifiers across all 31 manifests. Every cross-package edge in this repository is a
 **source-level relative import**, which is what the next two sections are about.
 
 ### 1.2 One package, one row
@@ -39,9 +42,12 @@ tree declares another package of this tree as a dependency** — not in `depende
 A package becomes a capability by being named as a row in one of the two shipped patch layers —
 `cordis.patch.yml` (the host plane) or `presets/mpd.patch.yml` (the preset plane) — and never by
 editing the harness, by writing a home directory by hand, or by pushing a row into another layer
-(AGENTS.md §8). Measured 2026-10-02: **23 distinct `packages/*/dist/*.js` row targets** in
-`cordis.patch.yml`. A row addresses a path inside the package; it never reaches into another
-package's internals to reconfigure it.
+(AGENTS.md §8). Measured 2026-10-25: **24 distinct `packages/*/dist/*.js` row targets** in
+`cordis.patch.yml` (counted by `name:` value:
+`grep -oE "name: '@mpd-dsh/mpd/packages/[a-z0-9-]+/dist/[A-Za-z0-9._-]+\.js'" cordis.patch.yml | sort -u | wc -l`
+prints 24; a grep for EVERY `dist/` path returns 28 because the four MCP launchers' `dist/launch.js`
+paths also appear in row `args:`, and those are not row targets). A row addresses a path inside the
+package; it never reaches into another package's internals to reconfigure it.
 
 ## 2. No runtime override, no runtime handoff
 

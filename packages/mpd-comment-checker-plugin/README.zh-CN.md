@@ -8,9 +8,11 @@ Plan C / C4 —— 在 DSH 工具接缝上的注释/docstring 检测（opt-in �
 `@code-yeongyu/comment-checker` 0.8.0（MIT，github.com/code-yeongyu/go-claude-code-comment-checker）
 中运行，插件负责解析它并在每次检查时 spawn。原生 tree-sitter
 二进制：按原样使用（UNMODIFIED）并声明为 `@mpd-dsh/mpd` bundle 的 optionalDependency
-（策略：第三方包是依赖，绝不 vendored 复制）。解析顺序：依赖（通过 createRequire
-按包相对定位）-> `MPD_DSH_COMMENT_CHECKER_BIN` -> 本地 checkout QA 的 dev-toolchain
-回退。
+（策略：第三方包是依赖，绝不 vendored 复制）。解析顺序（`resolveBinary`）：显式
+`config.binary`（`commentChecker.bin` 叶子）-> `MPD_DSH_COMMENT_CHECKER_BIN` -> 已安装的
+optional 依赖（按包相对 `createRequire`，再取其 `vendor/<platform>/comment-checker`）->
+本地 checkout QA 的 `.toolchain` 副本。每个候选都必须真实存在于磁盘；全都不存在时，
+工具调用报错，post-edit 钩子则保持原决定不变。
 
 ## 工具 / 钩子
 
@@ -30,7 +32,8 @@ post-edit 钩子（默认关闭）。
 @code-yeongyu/comment-checker@0.8.0`）把同一个 pinned 二进制装进仓库本地 toolchain；
 插件随后会回退到
 `.toolchain/node_modules/@code-yeongyu/comment-checker/vendor/<platform>/comment-checker`。
-将 `MPD_DSH_COMMENT_CHECKER_BIN` 设为绝对路径可覆盖解析顺序。
+在插件 config 中设 `commentChecker.bin`（或环境变量 `MPD_DSH_COMMENT_CHECKER_BIN`）为绝对路径，
+可覆盖上面的各项来源。
 
 ## 构建 / 测试
 

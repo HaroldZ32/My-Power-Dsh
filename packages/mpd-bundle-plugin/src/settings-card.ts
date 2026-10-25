@@ -73,28 +73,27 @@
   const MODEL_CONFIG_PATH = "/plugins/mpd/model-config"
 
   /**
-   * The disclosure both front doors state (byte-identical to the TUI's BRIDGE_DISCLOSURE and to the
-   * shared schema's). REWORDED by wave fix/model-config-live-refresh: the config service now
-   * re-resolves on every settings save (entry-config subscription) and on a watched edit of the
-   * project file, and the model routes are read per use — so the old "takes effect … after a
-   * restart" claim is deleted, not softened; a hint that kept it would be a lie.
+   * The disclosure both front doors state (byte-identical to the shared schema's
+   * `BRIDGE_DISCLOSURE`). D-18 (audit wave 2026-10-25): a consumer-side read disproved the previous
+   * blanket promise — a save was said to take effect in the running process with no restart, full
+   * stop — because the knobs a plugin captures at its own mount never see the new value. The sentence
+   * therefore NAMES the live groups and the one-way toggle, and the mount-captured groups follow in
+   * the second paragraph; neither paragraph promises the blanket behaviour.
    */
-  const BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect in the RUNNING process — no restart: the config service re-resolves on every settings save and on a watched edit of the project file, and the model routes (teamModels, modelchain) are read per use, so the next spawn or resolve carries them"
+  const BRIDGE_DISCLOSURE = "a save from this form persists in the HOST's settings document and writes NO .mpd/mpd.jsonc — the host owns that store and this row re-reads it on every save; a <workspace>/.mpd/mpd.jsonc write happens only on a host that still serves the RETIRED legacy `mpd` namespace, where each save's changed leaves go to the live session workspace(s). The config service re-resolves on every settings save and on a watched edit of the project file, and WHICH knobs take the new value in the RUNNING process — no restart — depends on how each one reads it: teamModels.slot*, modelchain.*, team.stateDir, team.gate, team.sensitivity, captain.investigation and delegation.gate are read per use, and tui.dashboardKey is live ONE WAY (a saved false disables the Ctrl+A takeover at once; a saved true cannot arm a takeover the row config disabled). EXCEPTION: the watchdog's knobs are re-read every tick from the row config and the .mpd/mpd.jsonc FILE layer, so a hand edit reaches them and a save from this form never does (the legacy `mpd` namespace they also read is unserved on this host)"
   /**
-   * The RESTART half of the truth (byte-identical to
-   * `packages/mpd-config-plugin/src/settings-schema.ts` `BRIDGE_RESTART_LIMIT`) and rendered as the
-   * card's second disclosure paragraph. What still waits for a boot after the live-refresh wave is
-   * exactly one class of knob — one some plugin CAPTURED at its own mount instead of reading the
-   * live config service per use — and the model routes this card edits are not such knobs; the
-   * sentence says so instead of claiming the blanket restart the old text did.
+   * The MOUNT-CAPTURED half of the truth (byte-identical to
+   * `packages/mpd-config-plugin/src/settings-schema.ts` `BRIDGE_RESTART_LIMIT`), rendered as the
+   * card's second disclosure paragraph together with the first — never alone: a reader who saw only
+   * the live half would read the blanket claim the consumers contradict.
    */
-  const BRIDGE_RESTART_LIMIT = "the restart wording now applies only to a knob some plugin captured at its own mount instead of reading the live config service per use — the model routes above are not such knobs; a captured knob keeps its captured value until the next dsh boot"
+  const BRIDGE_RESTART_LIMIT = "the other half of that list, so nobody reads it as a blanket: hashline.*, commentChecker.*, ulw.*, memory.*, boulder.dir and goal.* are captured by their plugins at mount instead of reading the live config service per use, so a new value for any of them waits for the next dsh boot (the settings document receives it at once, and the file does too only on a host that still serves the legacy `mpd` namespace; each row names the key it writes)"
   /** The third disclosure paragraph: what a save means when no session is live. */
   const NO_WORKSPACE_NOTICE = "if no session is live, the save stays in settings — not written to any .mpd/mpd.jsonc"
   // The clause that keeps a settings-only save from reading as a lost one (same sentence the TUI
   // hint and the status line carry).
   /** The not-lost clause rendered under the two disclosures. */
-  const NOT_LOST = "the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session"
+  const NOT_LOST = "the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — and because this path writes no file, it never waits for a live session"
 
   // ── types for the seams this factory crosses ────────────────────────────────
   /** The subset of React this card uses; the host injects the real module at boot. */
@@ -314,7 +313,7 @@
 
   /** The three disclosure strings the card states once at its top. */
   interface Disclosure {
-    /** The bridge disclosure (a save writes the workspace's mpd.jsonc). */
+    /** The bridge disclosure (where a save persists, and which knobs it reaches). */
     BRIDGE_DISCLOSURE: string
     /** The host's mount-time limitation. */
     BRIDGE_RESTART_LIMIT: string
@@ -619,7 +618,7 @@
     { path: ["hashline", "maxDiffChars"], label: "Inline diff limit", zh: "行内 diff 上限", kind: "number" },
     { path: ["commentChecker", "autoCheck"], label: "Comment checker", zh: "注释检查", kind: "boolean" },
     { path: ["ulw", "maxRounds"], label: "Ultrawork rounds", zh: "Ultrawork 轮数", kind: "number" },
-    { path: ["memory", "vcs"], label: "Memory backend", zh: "记忆后端", kind: "select", options: ["git", "svn"] },
+    { path: ["memory", "vcs"], label: "Memory backend", zh: "记忆后端", kind: "select", options: ["git", "svn", "both"] },
     { path: ["team", "stateDir"], label: "Team state directory", zh: "团队状态目录", kind: "text" },
     { path: ["boulder", "dir"], label: "Boulder directory", zh: "Boulder 目录", kind: "text" },
     { path: ["watchdog", "enabled"], label: "Watchdog enabled", zh: "看门狗启用", kind: "boolean" },

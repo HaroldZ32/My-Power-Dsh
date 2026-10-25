@@ -48,10 +48,10 @@ cclsp 自己的十二个名字，本 bundle **原样使用**——不存在任�
 以及一个 `verification` 标记。
 
 - **`verification: "primary"`**——每个事实都可追溯到一份**确实被取回**的文档（包注册表自身的
-  元数据、仓库的许可证文件、或其 README/安装页）。共 45 行。
+  元数据、仓库的许可证文件、或其 README/安装页）。共 44 行。
 - **`verification: "unverified"`**——至少有一个事实无法钉到这样的文档上。该行的 caveat 以
   `UNVERIFIED` 开头并说明哪一部分较弱，因此无论本 README 还是生成的配置都不会把弱行当作已核验
-  的行。共 16 行。
+  的行。共 15 行。
 
 引用不是装饰：`test/server-catalog.test.ts` 驱动启动器所用的同一个校验器，一旦某行缺失任一必需
 字段或许可证字符串为空就会变红；`test/language-coverage.test.ts` 把目录表钉在 ≥40 种语言的下限、

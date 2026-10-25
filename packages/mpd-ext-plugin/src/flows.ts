@@ -8,7 +8,9 @@
 // looser (`a-` or `a--b` are legal extension ids and illegal skill names), so a
 // violating flow is rejected loudly per file instead of being emitted.
 //
-// v1 is JSON-only (zero-dependency rule; YAML is a documented follow-up) and
+// v1 is JSON only BY DESIGN (zero-dependency rule); YAML is NOT planned. A flow corpus is read with
+// `JSON.parse`, and the runtime must never gain a YAML parser dependency — so this is a closed product
+// decision, not a pending one. The plane stays
 // declarative: nothing here executes a step, spawns anything or keeps state.
 import { readFileSync, readdirSync } from "node:fs"
 import { basename, join } from "node:path"

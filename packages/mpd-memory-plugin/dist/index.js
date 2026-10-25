@@ -2080,9 +2080,6 @@ function apply(ctx, config = {}) {
   function statePath(d) {
     return join2(d.runtime, "reflection.json");
   }
-  function factsPath(d) {
-    return join2(d.runtime, "facts.jsonl");
-  }
   function journalPath(d) {
     return join2(d.runtime, "journal.jsonl");
   }
@@ -2207,7 +2204,7 @@ REFLECTION DUE` : "")) },
   });
   dsh.registerTool({
     name: "mpd_memory_status",
-    description: "Show memory engine status: vcs mode, repo paths, entry count, journal/facts line counts, reflection counters.",
+    description: "Show memory engine status: vcs mode, repo paths, entry count, journal line count, reflection counters.",
     parameters: { type: "object", properties: {} },
     output: { schema: { type: "object", properties: { vcs: { type: "string" }, root: { type: "string" }, entries: { type: "integer" }, journalLines: { type: "integer" }, reflection: { type: "object" } }, required: ["vcs", "root", "entries"] }, render: (_a, v) => textBlock("memory status: vcs=" + v.vcs + " root=" + v.root + " entries=" + v.entries + " journal=" + v.journalLines + `
 reflection: ` + JSON.stringify(v.reflection)) },
