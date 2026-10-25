@@ -1,0 +1,233 @@
+{
+ "round": "R28 — verification repair after R27: BLOCKER 1 (the three frontend Layer-B pairing sites scoped to the greenfield case), the MEDIUM (the read-only-discipline claim in ulw-research + ulw-execute), the NIT (the ulw-plan Reviewer label), and THIS bundle re-measured on the tree that contains all of it",
+ "supersedes": [
+  "evidence/skills-dead-tokens/2026-10-25T0215Z/"
+ ],
+ "supersedes_reason": "R27 (2026-10-25T0215Z) recorded the tree hash 08b8e12f310e375c78787504d88e221442413f8bf7a3c4e71087ee4a2d898e2a, which is the hash of the PRE-repair tree (the parent commit's content): the bundle therefore anchored a tree that no longer exists once the repair lands. This bundle re-measures AFTER every edit of the repair round, and R27's measurements are NOT rewritten — only a `superseded_by` field was added to its result.json.",
+ "created_at": "2026-10-24T20:07:12Z",
+ "created_at_provenance": "the value above is the stdout of `date -u +%Y-%m-%dT%H:%M:%SZ` in commands.log §5, the fact-collection step this file sits behind; no local wall clock and no zone-shifted instant appears in this bundle. The reading that FOLLOWS the write (T4) is the upper bound on the write's own instant.",
+ "directory_label": {
+  "value": "2026-10-25T0355Z",
+  "is_an_instant": false,
+  "note": "the spelling is the one the round's contract prescribed for the directory NAME. It is a label, not a measurement: it carries the seat's local wall clock (UTC+08:00) at creation, 2026-10-25 03:58 +08:00. Every timestamp INSIDE this bundle — created_at, readings.txt, commands.log headings — is true UTC from `date -u`. R27's `timestamp_label` block (declaring a local-clock-as-Z label) is deliberately NOT reproduced."
+ },
+ "branch": "fix/task-dependency-guard",
+ "head_at_measurement": {
+  "rev": "bb5a4ca7afa6271a86cb95f6d1fb5acdae6f76cb",
+  "committed_at": "2026-10-25T03:23:57+08:00",
+  "subject": "fix(skills,evidence): close the frontend/ulw-plan residuals and the record nits",
+  "role": "the BEFORE anchor of every A/B/C reading below. Every edit of this round is UNCOMMITTED, so HEAD IS the pre-round tree — proven by `git status --porcelain -- skills/`, which lists exactly the 5 modified files and nothing else."
+ },
+ "working_tree_state_at_measurement": "5 modified tracked files, all under skills/ (the 5 listed in files_changed); no tracked path outside skills/ is modified; `git status --porcelain -- skills/` lists exactly those 5 ` M` rows and no untracked row. Untracked elsewhere: this evidence directory, the review-panel gate's own record directory, and pre-existing QA record directories that this round did not create.",
+ "tree_anchor": {
+  "named_command": "find skills -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum",
+  "sha256": "b3783b3b78d74c4bb7af8f14ec1bb053730d1d75f39c6345ccd223868623f08b",
+  "files": 384,
+  "covers": "the WHOLE working tree under skills/ — 382 tracked files plus the 2 gitignored materialized design references (ambience-skill.md, component-catalogs.md). This is exactly what the AFTER greps read, which is why the worktree/AFTER totals and the tracked-only totals differ by 7 (A) and 1 (B) lines.",
+  "readings_artifact": "readings.txt",
+  "readings_protocol": "readings.txt is APPEND-ONLY and each line is `id  sha256  files=N  <true UTC>` written by reading() in log-helper.sh — no reading is a bare label, and every one carries its sha256 AND its file count. Readings T1, T1b, T2 and T3 existed when this file was written; T4 (after this file), T5 (after commands.log) and T6 (the final auditors' re-read after commands.log's closing block) were appended to readings.txt afterwards. All seven print the SAME sha256 and files=384, which is the whole point of the sandwich — and the two later edits to THIS file and to commands.log sit under evidence/, not under skills/, so they cannot move a hash that covers skills/ only.",
+  "readings_at_write": [
+   "T1_after_all_edits 2026-10-24T19:58:40Z b3783b3b78d74c4bb7af8f14ec1bb053730d1d75f39c6345ccd223868623f08b files=384",
+   "T1b_same_tree_via_helper 2026-10-24T20:00:17Z b3783b3b78d74c4bb7af8f14ec1bb053730d1d75f39c6345ccd223868623f08b files=384",
+   "T2_after_the_three_gates 2026-10-24T20:00:52Z b3783b3b78d74c4bb7af8f14ec1bb053730d1d75f39c6345ccd223868623f08b files=384",
+   "T3_after_greps_and_classification 2026-10-24T20:04:42Z b3783b3b78d74c4bb7af8f14ec1bb053730d1d75f39c6345ccd223868623f08b files=384"
+  ],
+  "sandwich": "T1/T1b stand BEFORE the gates, T2 AFTER them, T3 after the greps: three distinct moments, one hash, so the gates, the greps and the classification all describe one tree. T4/T5 close the sandwich on the final artifacts."
+ },
+ "gates": {
+  "review-panel": {
+   "command": "node skills/dsh-qa/scripts/review-panel.ts",
+   "exit": 0,
+   "log": "review-panel.log",
+   "summary": "checks: 15  failed: 0 -> [review-panel] PASS",
+   "record_dir": "evidence/restore/s1/2026-10-24T20-00-31-841Z",
+   "scope_note": "this gate polices skills/review-work/** and the roster; the round's 5 files sit outside that tree, so the PASS is a NO-REGRESSION observation, not a check of the new wording."
+  },
+  "verify:docs": {
+   "command": "bun run verify:docs",
+   "exit": 0,
+   "log": "verify-docs.log",
+   "summary": "[verify-docs-parity] pairs=50 failed=0 violations=0 exempt=24 derived=3 links=445 dead=0 — PASS",
+   "scope_note": "the docs gate does not discover the skills/ corpus, so its exit 0 proves the round broke no documented pair or link — it does not validate the skill prose."
+  },
+  "verify:vendor": {
+   "command": "node scripts/verify-vendor.ts",
+   "exit": 1,
+   "log": "verify-vendor.log",
+   "summary": "[verify-vendor] FAIL - asset skills treeSha mismatch",
+   "expected": true,
+   "why": "the single-skills-writer rule (AGENTS §9/§11): every skills/** edit invalidates the corpus fingerprint, and the CAPTAIN's ONE re-pin lands in the committing wave. Not repaired here, by rule.",
+   "pinned": "VENDOR_LOCK.json assets.skills = { fileCount: 382, treeSha: 7b5567c20a17c3abdbc8f97ef5bf77a4dc144fe3365fe13209d2eecba0d04513 }",
+   "bound": "the pin's 382 files are the TRACKED corpus; this bundle's contract hash covers 384 worktree files. The two numbers are not interchangeable and this bundle does not claim the pinned treeSha would equal the contract's hash after a re-pin."
+  }
+ },
+ "patterns": {
+  "A_dead_tool_tokens": "TodoWrite|Lsp[A-Z]|lsp_[a-z]|codegraph_|kill_bash|task_output|monitor\\(|\\bRead\\b|\\bWrite\\b|\\bEdit\\b|\\bBash\\b|\\bGlob\\b|\\bGrep\\b|MultiEdit|NotebookEdit|view_image|look_at",
+  "B_skill_pointers": "mass-ulw|ulw-loop|open-design|imagegen|mpd-agent-toolkit",
+  "C_delegation_family": "subagent|subagent_type|task\\(category|task\\(subagent_type|oracle|librarian|momus|metis|workflow",
+  "comparability": "the three patterns are BYTE-IDENTICAL to the R27 bundle, and the classifier's rules are identical too, so the two partitions can be read side by side. This round needed no new arm: it added no tool name, no skill pointer and no delegation vocabulary."
+ },
+ "greps": {
+  "protocol": "BEFORE = `git grep -nE <pattern> HEAD -- skills/` (a COMMIT: tracked files only). AFTER = `grep -rnE <pattern> skills/` (the FINAL WORKING tree: tracked + the 2 gitignored materialized references). Each file carries a 2-line `#` header naming its anchor; the classifier skips `#` lines.",
+  "A_dead_tool_tokens": {
+   "before_head": { "lines": 321, "files": 113, "md_lines": 166, "md_files": 65 },
+   "after_worktree": { "lines": 328, "files": 115, "md_lines": 173, "md_files": 67 },
+   "after_tracked_only": 321,
+   "delta_tracked_lines_round": 0,
+   "arithmetic": "328 - 321 = 7 worktree-only lines, and 173 - 166 = 7 md lines over 67 - 65 = 2 md files: exactly the two gitignored materialized references (ambience-skill.md +5, component-catalogs.md +2). The tracked corpus is unchanged at 321, so this round added and removed ZERO A lines."
+  },
+  "B_skill_pointers": {
+   "before_head": { "lines": 33, "files": 7, "md_lines": 32, "md_files": 6 },
+   "after_worktree": { "lines": 34, "files": 8, "md_lines": 33, "md_files": 7 },
+   "after_tracked_only": 33,
+   "delta_tracked_lines_round": 0,
+   "arithmetic": "the single worktree-only line is the gitignored component-catalogs.md `imagegen` reference name; tracked stays 33."
+  },
+  "C_delegation_family": {
+   "before_head": { "lines": 220, "files": 71, "md_lines": 115, "md_files": 52 },
+   "after_worktree": { "lines": 220, "files": 71, "md_lines": 115, "md_files": 52 },
+   "after_tracked_only": 220,
+   "delta_tracked_lines_round": 0,
+   "arithmetic": "identical on both sides; the two gitignored references carry no C line."
+  },
+  "per_changed_file": {
+   "method": "for each of the 5 edited files, `git show HEAD:<f> | grep -cE <pattern>` vs `grep -cE <pattern> <f>`",
+   "result": "frontend/SKILL.md A 5->5 B 5->5 C 4->4; frontend/references/design/README.md A 9->9 B 14->14 C 5->5; ulw-research/SKILL.md A 9->9 B 1->1 C 2->2; ulw-execute/SKILL.md A 4->4 B 0->0 C 3->3; ulw-plan/SKILL.md A 3->3 B 0->0 C 7->7",
+   "claim": "no edited file gained OR cleared an A, B or C line — the round changed wording, it did not move the dead-token surface in either direction"
+  },
+  "removed_arms_after": { "view_image": 0, "look_at": 0, "note": "the two names R27 removed must still read 0; they do" }
+ },
+ "survivors": {
+  "script": "greps/classify-survivors.py",
+  "counts_file": "greps/counts.txt",
+  "invariant": "per family, partition_sum == total, residual == 0, unclassified == 0",
+  "A": {
+   "total": 328,
+   "partition": {
+    "A6_english_prose_in_docs": 163,
+    "A5_script_identifier_or_string": 74,
+    "A3_powershell_cmdlet": 54,
+    "A4_html_test_fixture": 18,
+    "A1_mounted_codegraph_surface": 16,
+    "A2_ast_grep_schema_vocabulary": 3,
+    "A0_removed_dead_image_name": 0
+   }
+  },
+  "B": {
+   "total": 34,
+   "partition": {
+    "B4_imagegen_reference_file_name": 24,
+    "B3_open_design_upstream": 10,
+    "B1_mass_ulw": 0,
+    "B2_ulw_loop": 0,
+    "B5_mpd_agent_toolkit": 0
+   }
+  },
+  "C": {
+   "total": 220,
+   "partition": {
+    "C9_workflow_word_or_skill_name": 88,
+    "C4_subagent_vocabulary": 69,
+    "C5_oracle_methodology": 57,
+    "C7_momus_state_key": 6,
+    "C1_retired_verb_subagent_type": 0,
+    "C2_retired_verb_task_category": 0,
+    "C3_retired_verb_task_subagent_type": 0,
+    "C6_librarian": 0,
+    "C8_metis": 0
+   }
+  },
+  "identity_with_R27": "all 17 bucket counts are IDENTICAL to R27's partition (163/74/54/18/16/3/0, 24/10/0/0/0, 88/69/57/6/0/0/0/0/0). Two independent rounds landing on the same partition is the strongest available evidence that neither round's edits perturbed the dead-token surface.",
+  "why_each_survivor_is_not_a_live_reference": {
+   "A": "16 mounted `mcp__codegraph__*` names; 3 ast-grep LANGUAGE-enum/schema rows; 54 PowerShell cmdlets in the ast-grep smoke script; 18 HTML fixture lines; 74 identifiers/strings inside script fixtures; 163 English prose lines using read/write/bash as verbs. Zero `view_image`/`look_at`.",
+   "B": "10 upstream-provenance mentions of nexu-io/open-design and 24 `imagegen` reference-FILE names the pack step materializes — named files, not mounted skills.",
+   "C": "88 uses of the word `workflow`/`.github/workflows`; 69 `subagent` vocabulary lines describing what is NOT used; 57 Oracle-Triple methodology pages; 6 `momus` state keys in the plan scaffolder. All three RETIRED verbs are 0."
+  }
+ },
+ "files_changed": {
+  "this_round": 5,
+  "insertions": 6,
+  "deletions": 6,
+  "numstat_command": "git diff --numstat HEAD -- skills/  ->  diff/this-round-numstat.txt",
+  "list": [
+   "skills/frontend/SKILL.md  1/1",
+   "skills/frontend/references/design/README.md  2/2",
+   "skills/ulw-execute/SKILL.md  1/1",
+   "skills/ulw-plan/SKILL.md  1/1",
+   "skills/ulw-research/SKILL.md  1/1"
+  ],
+  "wave_scope": "`git diff --name-only 09622f6a -- skills/ | wc -l` -> 28, the same 28 files R27 recorded: this round edited files ALREADY inside the wave and added no new one. The wave anchor is not re-measured here (R27 holds those numbers); only the round anchor HEAD is."
+ },
+ "changed_lines_artifact": {
+  "file": "diff/changed-lines.txt",
+  "format": "<path>:<line>: <new text> — the line number is the line in the NEW file, taken from the -U0 hunk headers",
+  "self_check": "diff/gen-changed-lines.py re-reads each cited line from the working tree and compares it byte for byte; it printed `checked=6 mismatched=0` and exited 0. The 6 added lines are the 6 changed lines (design/README.md was edited at two sites)."
+ },
+ "what_changed_this_round": {
+  "BLOCKER_1a_frontend_skill_soft_row": {
+   "file": "skills/frontend/SKILL.md:65",
+   "was": "an UNCONDITIONAL instruction: premium/luxury/calm/expensive/elegant/glossy surfaces — pair with a high-craft Layer B (supabase, linear.app, vercel, stripe).",
+   "now": "conditioned on `when the user named NO brand (greenfield)`, and it closes the other branch explicitly: `this row never licenses a substitute brand: a brand the user NAMED that the catalogue lacks gets this Layer A mood match ALONE, never another brand's tokens (see the Layer B section)`.",
+   "why_this_is_the_fix": "the same file already stated the named-brand rule two paragraphs later (the Layer B section, line 76) and in the Phase-2 greenfield bullet (line 37); the table row was the one place an agent reading top-down hit the pairing FIRST and unconditionally. The two statements are now additive instead of contradictory."
+  },
+  "BLOCKER_1b_design_readme_step2_mood_row": {
+   "file": "skills/frontend/references/design/README.md:122",
+   "was": "`soft-skill.md` + a high-craft Layer B (supabase / linear.app / vercel / stripe) for the whole premium/luxury/glossy mood row — no brand condition.",
+   "now": "`soft-skill.md`, plus a high-craft Layer B ONLY when the user named NO brand (greenfield). A brand the user NAMED that this catalogue lacks keeps `soft-skill.md` as a Layer A mood match ALONE — never another brand's tokens.",
+   "why_this_is_the_fix": "Step 2's prose (line 113) was already scoped this way in the previous round while its own table still said the opposite; an agent that skips prose and reads the table got the leak. The table now matches the prose."
+  },
+  "BLOCKER_1c_design_readme_concrete_reference": {
+   "file": "skills/frontend/references/design/README.md:126",
+   "was": "`You may also load a brand DESIGN.md from Layer B as a *concrete reference* if the user's mood maps cleanly` — and this same file defines a loaded reference as SOURCE MATERIAL whose tokens are extracted, so the sentence licensed another brand's tokens for a mere mood.",
+   "now": "`as a *concrete reference* — source material whose tokens you extract — only when the user named NO brand and the mood maps cleanly`. That latitude never covers a brand the user NAMED: a named brand's OWN catalogue file is the only Layer B token source, and when the catalogue lacks it the output is a Layer A mood match alone, never another brand's tokens.",
+   "why_this_is_the_fix": "this was the widest of the three: it did not merely suggest a pairing, it authorised loading a SUBSTITUTE brand file as token truth. Scoping it to the no-brand case removes the last route by which a named-but-absent brand could end up wearing another brand's palette."
+  },
+  "MEDIUM_ulw_research_readonly_claim": {
+   "file": "skills/ulw-research/SKILL.md:20",
+   "was": "`(roster persona + model route + read-only discipline applied automatically)` — false for Reviewer, which is write-capable and findings-only by DISCIPLINE, and the file's own shell-routing bullets (lines 174-177) contradict it.",
+   "now": "`(the roster persona and model route are applied automatically, plus the mechanical read-only deny list for the six mechanically read-only roles — Architect, Researcher, Planner, Explorer, Plan Reviewer, Vision Analyst; Reviewer is write-capable and findings-only by DISCIPLINE, so never treat a Reviewer lane as unable to run commands)`.",
+   "settled_fact_used": "mechanically read-only = Architect, Researcher, Planner, Explorer, Plan Reviewer, Vision Analyst; Reviewer is write-capable and findings-only by discipline (packages/mpd-roles-plugin/src/roles.data.ts)."
+  },
+  "MEDIUM_ulw_execute_readonly_claim": {
+   "file": "skills/ulw-execute/SKILL.md:20",
+   "was": "`mpd_role_spawn(role=..., task=...) applies the roster persona + model route + read-only discipline` — the same false universal, and it contradicted this same file's Phase-4 verifier rule (line 208), which correctly calls Reviewer write-capable.",
+   "now": "`applies the roster persona and model route, plus the mechanical read-only deny list for the six mechanically read-only roles (Architect/Researcher/Planner/Explorer/Plan Reviewer/Vision Analyst) — Reviewer is write-capable and findings-only by DISCIPLINE, not by a fence, so it CAN run a command-level pass (Phase 4's verifier rule)`.",
+   "why_this_is_the_fix": "the self-contradiction is now a cross-reference: line 20 and line 208 state one rule."
+  },
+  "NIT_ulw_plan_reviewer_label": {
+   "file": "skills/ulw-plan/SKILL.md:93",
+   "was": "`Reviewer` (gap analysis) — the gap-analysis consult belongs to Planner (same line, `Planner` (the mandatory gap-analysis consult)), and full-workflow.md:251 labels Reviewer (adversarial review).",
+   "now": "`Reviewer` (adversarial review) — identical to full-workflow.md:251.",
+   "no_edit_needed": "skills/ulw-plan/references/full-workflow.md already said (adversarial review) at line 251 and (Planner ... the gap-analysis consult) at 251/19/142; it is in this round's scope only as the ALIGNMENT TARGET and was left untouched — `git diff --name-only HEAD -- skills/` does not list it."
+  },
+  "changed_line_text_is_verbatim_in": "diff/changed-lines.txt"
+ },
+ "cross_checks": {
+  "tracked_totals_equal_R27": "A 321, B 33, C 220 are exactly R27's `after_tracked_only` values (321 / 33 / 220). The worktree totals (328 / 34 / 220) are R27's `after` totals too. Both sides agree, which is why the delta attributed to this round is 0 in all three families.",
+  "A_delta_vs_previous_anchor_explained": "R27's before_round_anchor read 324 A lines at cc432c9e; HEAD is now bb5a4ca7, the commit in which R27's own edits landed (-3 net A lines: visual-qa 3->1 and refactor 6->5). 324 - 3 = 321, which is this bundle's BEFORE. No unexplained movement.",
+  "wave_file_set_stable": "the wave against 09622f6a is still 28 files, so this round added nothing to the wave's file surface.",
+  "gate_sandwich": "T1b (before the gates) == T2 (after the three gates) == T3 (after the greps): the required gates and the measurement steps left skills/** byte-identical."
+ },
+ "limits": [
+  "No live boot was run: this bundle proves the CHECKOUT text of the skill corpus, never the served/cached copy a harness session would load.",
+  "verify-vendor exits 1 by design until the captain's single re-pin; it is recorded here, not repaired (AGENTS §9/§11).",
+  "review-panel and verify:docs do not police the skills/ prose: their exit 0 is a no-regression observation over their own subjects (skills/review-work/** and the docs band), not a proof that the new wording is correct. The wording is verified by reading the bytes (diff/changed-lines.txt) and by the greps, not by a gate.",
+  "The A/B/C families are a fixed pattern set: a leak phrased without any of those tokens is invisible to them. The three BLOCKER-1 sites were found by review, not by a grep, and this bundle does not claim the corpus is free of further leaks — see the findings below.",
+  "The directory label is not an instant (created_at is the true-UTC field).",
+  "This round edited 5 of the 6 files in its declared scope; ulw-plan/references/full-workflow.md needed no change and was left byte-identical."
+ ],
+ "findings_outside_this_rounds_scope": [
+  {
+   "where": "skills/frontend/references/design/README.md:197",
+   "what": "`Layer B (brand DESIGN.md) is orthogonal to Layer A. You can pair any Layer A skill with any Layer B brand.`",
+   "why_it_matters": "read in isolation this is the same 'pair freely' licence BLOCKER 1 was about. It is defensible as an A-x-B STACKING rule (which Layer B file to load is fixed by Step 1), and it was NOT one of the three named sites, so this round left it alone rather than widen its own scope. A reviewer may want a fourth scoping clause here.",
+   "severity": "LOW / judgement call"
+  },
+  {
+   "where": "skills/ulw-execute/SKILL.md:145",
+   "what": "the delegation router sends `visual-engineering, frontend, UI/UX, styling` to `Vision Analyst`, which is mechanically READ-ONLY (its deny list includes `write`/`edit`/`bash`).",
+   "why_it_matters": "a plan annotated for frontend IMPLEMENTATION routed there cannot edit a file. Either the annotation means visual ANALYSIS in that taxonomy, or the row is a fourth false capability premise of the same family as the MEDIUM. Not edited: it is a routing decision, not the claim the MEDIUM named.",
+   "severity": "MEDIUM (needs an owner's decision)"
+  }
+ ]
+}

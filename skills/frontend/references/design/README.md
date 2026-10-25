@@ -20,11 +20,11 @@ The library lives flat in this directory (`references/design/`, max depth 1) and
 
 A combined directory of all 83 reference files is at `_INDEX.md`. **Read that index before loading anything** unless the routing is obvious — it has the full mood-mapping and stacking rules in one place.
 
-## Open Design Library
+## Beyond the curated set
 
-For broader brand/style coverage, load the `open-design` skill — the local `nexu-io/open-design` library (150+ design systems).
+For broader brand/style coverage the curated files in this directory are the whole catalogue: no `open-design` library is mounted, so a brand the user NAMED that the index does not cover falls back to a Layer A mood match only — never another brand's tokens — with the substitution recorded in `DESIGN.md`.
 
-Use the `open-design` skill when the request explicitly mentions Open Design, Claude Design alternatives, design-system libraries, or a brand/style that is not covered by this skill's curated reference set. Treat Open Design as the expanded reference library; keep this skill responsible for routing discipline, design-system gating, and frontend execution quality.
+When the request explicitly mentions Open Design, Claude Design alternatives, design-system libraries, or a brand/style that is not covered by this skill's curated reference set, answer from the curated set and keep this skill responsible for routing discipline, design-system gating, and frontend execution quality.
 
 ## Phase 0 — Design System Gate (MANDATORY, runs before routing)
 
@@ -38,7 +38,7 @@ Before touching any UI code, before routing to any reference, before even thinki
 
 1. Read `design-system-architecture.md` — it defines the exact structure.
 2. Identify the branch: greenfield setup, existing UI with implicit patterns/components, or existing UI with no reusable component layer.
-3. **Greenfield setup:** if the user gave no concrete visual reference, use `_INDEX.md` to shortlist 2-3 plausible Layer B references, then read exactly one Layer A style skill and one Layer B brand/design-system reference in full — every line, no partial reads; use `open-design` only when the curated set has no fit. Open `DESIGN.md` with a `## 0. Research Log` recording each research lane's deliverable (embedded-reference shortlist + pick, lazyweb screens viewed, imagen drafts — see the SKILL.md workflow); a lane with no line did not run. Treat those references as source material, not mood labels: extract tokens, layout grammar, component anatomy, interaction states, motion, and taste decisions into `DESIGN.md`, then recombine them into project-specific primitives. Customize for the user's product and content, but do not freestyle past the selected references; never copy logos, trademarked assets, or brand-specific copy.
+3. **Greenfield setup:** if the user gave no concrete visual reference, use `_INDEX.md` to shortlist 2-3 plausible Layer B references, then read exactly one Layer A style skill and one Layer B brand/design-system reference in full — every line, no partial reads; when the user named NO brand and the curated set has no fit, take the nearest Layer B reference and record why (no `open-design` library is mounted); a brand the user NAMED is the other case — if the catalogue lacks it, fall back to a Layer A mood match and never to another brand's tokens. Open `DESIGN.md` with a `## 0. Research Log` recording each research lane's deliverable (embedded-reference shortlist + pick, lazyweb screens viewed, imagen drafts — see the SKILL.md workflow); a lane with no line did not run. Treat those references as source material, not mood labels: extract tokens, layout grammar, component anatomy, interaction states, motion, and taste decisions into `DESIGN.md`, then recombine them into project-specific primitives. Customize for the user's product and content, but do not freestyle past the selected references; never copy logos, trademarked assets, or brand-specific copy.
    - **Commit a distinctive direction BEFORE extracting tokens.** In 1-2 sentences, name the atmosphere, the signature material, the color story, and the one moment a visitor will remember. For an expressive brief, sketch 2-3 genuinely different directions and pick the boldest one you can defend with the loaded reference; do not average them, because the average IS the generic default this skill exists to beat. A locked, never-revisited one-shot decision is how a page ends up flat.
    - **The reference's distinctive material MUST survive extraction (expressive briefs).** The common failure is loading a rich reference and then distilling it into a generic dark-SaaS token set. Your `DESIGN.md` must carry the *non-default* decisions forward and name which reference each came from: the actual elevation recipe (the specific layers that make a surface read as glass/glossy, not a single blur), a multi-stop perceptual color ramp (not one brand hex reused at varied opacity), the explicit display/body/mono type choices, and one signature interaction. Self-check before writing code: if your `DESIGN.md` could describe any generic dark SaaS, you flattened the reference — go back and put the specific material in.
 4. **Existing UI with implicit patterns/components:** extract the colors, typography, spacing, primitives, states, and motion already in use. Write `DESIGN.md` to codify what exists before changing UI code.
@@ -104,13 +104,13 @@ Phrasings: "make it look like Linear", "Stripe-style buttons", "Notion-feel side
 
 **Then also load Layer A** — usually `taste-skill.md` for execution discipline (the design system says *what*, the taste-skill says *how* to write the React/CSS without slop).
 
-If the user names a brand not in the index, fall back to Step 2 + a mood-based shortcut from the index.
+If the user names a brand not in the index, fall back to a Layer A mood match only — never another brand's tokens — with the substitution recorded in `DESIGN.md`.
 
 ### Step 2 — Read the brief's ambition, THEN map style/mood
 
 Decide the lane by **ambition first** — this is what your output gets judged on, and the wrong read is how a high-craft request ships clean-but-flat:
 
-- **Expressive brief** — any surface-ambition signal: "glossy", "glassy", "liquid glass", "premium", "luxe", "startup-grade", "brand-grade", "make it beautiful / pretty / wow", or a named product company to feel like. The page is a showcase and rich material IS the deliverable. Commit to a high-craft Layer A (`soft-skill` or `gpt-tasteskill`) and ALWAYS pair a high-craft Layer B exemplar (`supabase`, `linear.app`, `vercel`, `stripe`) as the token source. This lane OVERRIDES any default "keep it quiet / utilitarian" instinct.
+- **Expressive brief** — any surface-ambition signal: "glossy", "glassy", "liquid glass", "premium", "luxe", "startup-grade", "brand-grade", "make it beautiful / pretty / wow", or a named product company to feel like. The page is a showcase and rich material IS the deliverable. Commit to a high-craft Layer A (`soft-skill` or `gpt-tasteskill`); when the user named NO brand (greenfield), ALWAYS pair a high-craft Layer B exemplar (`supabase`, `linear.app`, `vercel`, `stripe`) as the token source — a brand the user NAMED takes its own catalogue file as the token source (Step 1), or the Layer A mood match when the catalogue lacks it, never another brand's tokens. This lane OVERRIDES any default "keep it quiet / utilitarian" instinct.
 - **Operational brief** — internal tool, dashboard, admin, "just make it usable". Restraint is correct here and `taste-skill` is the right default.
 
 Do NOT let an expressive brief fall through to `taste-skill`. Then map the phrasing:
@@ -119,11 +119,11 @@ Do NOT let an expressive brief fall through to `taste-skill`. Then map the phras
 |---|---|
 | "minimal", "clean", "Notion-like", "Linear-like", "editorial", "boring is good" | `minimalist-skill.md` |
 | "brutalist", "raw", "Swiss", "experimental", "industrial", "anti-design", "unstyled" | `brutalist-skill.md` |
-| "premium", "luxury", "calm", "expensive", "elegant", "spa", "boutique", "glossy", "glassy", "liquid glass", "startup-grade", "make it beautiful/pretty" | `soft-skill.md` + a high-craft Layer B (`supabase` / `linear.app` / `vercel` / `stripe`) |
+| "premium", "luxury", "calm", "expensive", "elegant", "spa", "boutique", "glossy", "glassy", "liquid glass", "startup-grade", "make it beautiful/pretty" | `soft-skill.md`, plus a high-craft Layer B (`supabase` / `linear.app` / `vercel` / `stripe`) ONLY when the user named NO brand (greenfield). A brand the user NAMED that this catalogue lacks keeps `soft-skill.md` as a Layer A mood match ALONE — never another brand's tokens. |
 | "Awwwards-level", "wow factor", "magnetic", "scroll-triggered", "high-variance", "cinematic", "make it crazy" | `gpt-tasteskill.md` + `ambience-skill.md` for the backgrounds and scroll scenes its sections 5 and 7 demand |
 | Neutral or operational — internal tool, dashboard, admin, "just make it usable" with no surface ambition | `taste-skill.md` as Layer A, plus the greenfield `_INDEX.md` shortlist → exactly one Layer B reference |
 
-You may also load a brand DESIGN.md from Layer B as a *concrete reference* if the user's mood maps cleanly (see the "Mood-based shortcuts" section in `_INDEX.md`).
+You may also load a brand DESIGN.md from Layer B as a *concrete reference* — source material whose tokens you extract — only when the user named NO brand and the mood maps cleanly (see the "Mood-based shortcuts" section in `_INDEX.md`). That latitude never covers a brand the user NAMED: a named brand's OWN catalogue file is the only Layer B token source, and when the catalogue lacks it the output is a Layer A mood match alone, never another brand's tokens.
 
 ### Step 3 — Is this a *redesign* of existing UI, not a fresh build?
 
@@ -193,7 +193,7 @@ Triggers: an animated, shader, particle, or grid background; a hero that must fe
 2. **`taste-skill.md` and `gpt-tasteskill.md` are also style-skills** — do not stack them with `minimalist`, `brutalist`, or `soft`. They are alternative defaults at different intensity levels.
 3. **`output-skill.md` and `stitch-skill.md` stack on top of any style skill.** They add discipline and output format, not visual direction.
 4. **`redesign-skill.md` replaces a style-skill** when the task is auditing, not building. Stack a Layer B brand if the user wants a specific direction.
-5. **`image-to-code-skill.md` pairs with one imagegen skill** for the full flow.
+5. **`image-to-code-skill.md` pairs with one `imagegen-*.md` reference file** for the full flow.
 6. **Layer B (brand DESIGN.md) is orthogonal to Layer A.** You can pair any Layer A skill with any Layer B brand. Use Layer B as the source of color/type/component tokens; let Layer A drive the execution discipline.
 7. **`layout-skill.md` stacks on top of any style skill** for app-shell / dashboard / split-pane work. It owns spatial structure and scroll ownership only — no visual direction — so it never conflicts with the style skill you picked.
 8. **`interaction-skill.md` stacks on top of any style skill** for interaction/motion work. It owns interaction mechanics — springs, layout morphs, enter/exit orchestration, reduced motion — and no visual direction, so it never conflicts with the style skill either.
@@ -205,7 +205,7 @@ Triggers: an animated, shader, particle, or grid background; a hero that must fe
 - **Don't mark state with a coloured accent border.** `border-l-2 border-primary` on the selected row, a primary outline on the focused card — on a rounded surface that is the generic AI tell. State is ink-alpha washes, a glyph for selection, tonal layering for focus; `focus-visible` rings are the only coloured edge. Includes pre-existing instances on surfaces you touch.
 - **Don't ignore the user's named brand.** If they say "Linear-style" and you build something that doesn't match Linear's actual aesthetic (purple, ultra-tight spacing, mono accents, etc.), you have failed the routing.
 - **Don't apply a Layer B brand verbatim if the project is not that brand.** The DESIGN.md captures *inspiration* — extract the tokens (palette, type scale, component patterns) and apply them to the project's own content. Do not copy logos or trademarked imagery.
-- **Don't use imagegen skills to write code.** They are explicitly image-only. The agent has been observed trying to "describe" the image as React code — that is the wrong skill, switch to `image-to-code-skill.md` instead.
+- **Don't use the `imagegen-*.md` references to write code.** They are explicitly image-only. The agent has been observed trying to "describe" the image as React code — that is the wrong skill, switch to `image-to-code-skill.md` instead.
 - **Don't suppress style differences with `as any` or `@ts-ignore` to make a borrowed component work.** That is type-safety slop. Adapt the component cleanly.
 
 ## Execution checklist after routing

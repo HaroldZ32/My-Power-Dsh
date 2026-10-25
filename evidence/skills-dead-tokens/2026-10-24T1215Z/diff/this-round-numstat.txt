@@ -1,0 +1,11 @@
+1	1	skills/debugging/ATTRIBUTION.md
+1	1	skills/debugging/references/methodology/partial-runtime-evidence.md
+2	2	skills/debugging/references/runtimes/bundled-js-binary.md
+6	6	skills/init-deep/SKILL.md
+1	1	skills/programming/SKILL.md
+1	1	skills/refactor/ATTRIBUTION.md
+6	6	skills/refactor/SKILL.md
+2	2	skills/remove-ai-slops/SKILL.md
+2	2	skills/ulw-execute/SKILL.md
+1	1	skills/ulw-plan/references/full-workflow.md
+1	1	skills/ulw-research/SKILL.md

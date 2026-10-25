@@ -1,0 +1,172 @@
+# commands.log — audit trail for evidence/skills-dead-tokens/2026-10-25T0215Z
+
+Writer: the SINGLE `skills/**` writer of this round (Senior Engineer seat). Nothing else in the tree was
+written except this evidence directory and the two gate-owned records named in §2.
+Branch `fix/task-dependency-guard`, HEAD `cc432c9e583f6bf91df8b79037aabddc1827ed28` (+ the 8 uncommitted
+skills files this round edits). Every string below was produced by the command quoted beside it.
+
+## 0. Timestamp label (READ THIS FIRST) and the tree anchor sandwich
+
+The directory label `2026-10-25T0215Z` follows the spelling the round's contract requested and carries the
+SEAT'S LOCAL wall clock (UTC+08:00) at creation — `2026-10-25T02:13:19+08:00`. The TRUE UTC instant is
+`2026-10-24T18:13:19Z`, and every timestamp INSIDE this bundle (headings, `measured` fields, result.json)
+is that true UTC with a `Z` suffix. The label is a label; the measurements are UTC.
+
+    treehash() { find skills -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1; }
+
+    T_grep read inside the AFTER grep headers  2026-10-24T18:15:42Z  08b8e12f310e375c78787504d88e221442413f8bf7a3c4e71087ee4a2d898e2a
+    T_a    before re-running the two gates     2026-10-24T18:18:42Z  08b8e12f310e375c78787504d88e221442413f8bf7a3c4e71087ee4a2d898e2a
+    T_b    after  review-panel AND verify:docs 2026-10-24T18:18:42Z  08b8e12f310e375c78787504d88e221442413f8bf7a3c4e71087ee4a2d898e2a
+    T_c    after  verify-vendor               2026-10-24T18:18:43Z  08b8e12f310e375c78787504d88e221442413f8bf7a3c4e71087ee4a2d898e2a
+    T_d    after commands.log was written     2026-10-24T18:21:56Z  08b8e12f310e375c78787504d88e221442413f8bf7a3c4e71087ee4a2d898e2a
+    T_e    after result.json was written      2026-10-24T18:24:33Z  08b8e12f310e375c78787504d88e221442413f8bf7a3c4e71087ee4a2d898e2a
+    T_f    after BOTH records were written     2026-10-24T18:25:03Z  08b8e12f310e375c78787504d88e221442413f8bf7a3c4e71087ee4a2d898e2a
+
+    `skills` holds 384 files at every one of these readings.
+
+PEELED ORDER, declared rather than implied: the AFTER greps were taken at T_grep, which sits AFTER the
+first gate run (18:14:19Z, its own record dir) and BEFORE the sandwich re-run at T_a..T_c. T_grep, T_a, T_b,
+T_c, T_d, T_e and T_f are all the SAME hash, so the gate logs, the AFTER counts and this record describe one
+tree. The gates write only under `evidence/` (verify-vendor writes nothing), which is why re-running them
+between two identical readings is the strongest available check that they left `skills/**` untouched.
+Bound: no pre-gate reading was captured before the FIRST gate run; the sandwich proves the second one.
+
+## 1. What changed (F1-F6) — 22 lines in 8 files
+
+    git diff --numstat HEAD -- skills/     -> diff/this-round-numstat.txt   (8 files, 22 insertions, 22 deletions)
+
+    F1 skills/ulw-execute/SKILL.md:208   the verifier rule: Architect mechanically read-only; Reviewer
+                                         write-capable and findings-only by DISCIPLINE; a command-level pass
+                                         may go to Reviewer, Senior Engineer or Deep Worker
+       skills/refactor/SKILL.md:588      the roster bullet: same correction for the Reviewer/Architect pair
+       skills/refactor/SKILL.md:679      the "no verifier team member" rationale: Reviewer CAN run a suite;
+                                         Architect is the read-level choice (bash denied)
+    F2 skills/visual-qa/SKILL.md:200     Pass B judges from captures named by ABSOLUTE PATH, opened with read_image
+       skills/visual-qa/SKILL.md:224     Pass A CAPTURES: absolute paths to open with read_image
+       skills/visual-qa/SKILL.md:260     Pass B TIER INTENT: read_image is mounted; override persona
+                                         attachment assumptions; "pixels not inspected" only on a failed read
+       skills/visual-qa/SKILL.md:271     Pass B CAPTURES: absolute paths to open with read_image
+       skills/visual-qa/SKILL.md:283     USE THE EVIDENCE web bullet: opened pixels; failed read is the exception
+       skills/visual-qa/SKILL.md:307     Pass B VERIFY: opened with read_image, failed path named
+       skills/visual-qa/SKILL.md:357     Step 5 pixel-perfect item: absolute paths + read_image, dead names gone
+    F3 skills/ulw-execute/SKILL.md:24    the model override sentence DELETED; slot decides the route, the consult
+                                         cannot override it (no `model` parameter)
+       skills/ulw-execute/SKILL.md:228   "on the pro model" removed (same false premise)
+       skills/ulw-research/SKILL.md:86   "optional `model` override" removed (same false premise)
+       skills/refactor/SKILL.md:746      "verifiers run on the pro model" -> the slot decides (same false premise)
+       skills/visual-qa/SKILL.md:202     "(only an optional `model` override)" -> no per-call override (same)
+    F4 skills/frontend/SKILL.md:37                                 nearest-Layer-B scoped to the NO-brand case
+       skills/frontend/references/design/README.md:41             same, greenfield step
+       skills/frontend/references/design/design-system-architecture.md:219  same, "select references before taste"
+    F5 skills/ulw-research/SKILL.md:175  gh search + full-page fetch routed to the Lead / Senior Engineer;
+                                         what the Researcher does with the returned text is stated
+       skills/ulw-research/SKILL.md:176  browsing tiers execute where bash exists; captures go to a Vision
+                                         Analyst by absolute path
+       skills/ulw-research/SKILL.md:177  the shallow clone belongs to the Lead/Senior Engineer; the lane reads
+                                         the checkout it is handed
+    F6 skills/init-deep/SKILL.md:295     "Sequential execution: MUST parallel" -> the serial-consult topology
+
+Every changed line's NEW text, verified byte-identical against the tree (22/22):
+
+    diff/changed-lines.txt   format `path:line: <new text>`; checked with a python split-on-two-colons pass,
+                             `checked=22 mismatched=0`
+
+`diff/this-round.diff` is the whole ORIGINAL diff for the round (not the listing). `diff/wave-numstat.txt`
+is the wave against `09622f6a` (28 files) and `diff/files-changed-09622f6a.txt` its name list.
+
+## 2. Gates (run on the final tree, exit codes quoted)
+
+    node skills/dsh-qa/scripts/review-panel.ts            exit 0
+      checks: 15  failed: 0   -> [review-panel] PASS
+      the gate's own record: evidence/restore/s1/2026-10-24T18-14-19-896Z and .../2026-10-24T18-18-42-860Z
+      (two records from two runs; the second is the sandwich run)
+      -> evidence/skills-dead-tokens/2026-10-25T0215Z/review-panel.log
+
+    bun run verify:docs                                   exit 0
+      [verify-docs-parity] pairs=50 failed=0 violations=0 exempt=24 derived=3 links=445 dead=0 — PASS
+      -> evidence/skills-dead-tokens/2026-10-25T0215Z/verify-docs.log
+
+    node scripts/verify-vendor.ts                         exit 1   EXPECTED
+      [verify-vendor] FAIL - asset skills treeSha mismatch
+      -> evidence/skills-dead-tokens/2026-10-25T0215Z/verify-vendor.log
+      This is the single-skills-writer rule (AGENTS §9/§11): a `skills/**` edit invalidates the corpus
+      `treeSha` and the CAPTAIN's one re-pin lands in the committing wave. Not fixed here, by rule.
+
+The three `*.log` files are the tools' VERBATIM stdout+stderr; the `exit=N` echo was issued outside the
+redirect, so no wrapper text is in them.
+
+## 3. BEFORE — two anchors, the same patterns on both sides
+
+    A='TodoWrite|Lsp[A-Z]|lsp_[a-z]|codegraph_|kill_bash|task_output|monitor\(|\bRead\b|\bWrite\b|\bEdit\b|\bBash\b|\bGlob\b|\bGrep\b|MultiEdit|NotebookEdit|view_image|look_at'
+    B='mass-ulw|ulw-loop|open-design|imagegen|mpd-agent-toolkit'
+    C='subagent|subagent_type|task\(category|task\(subagent_type|oracle|librarian|momus|metis|workflow'
+
+The A family gained `view_image|look_at` this round (F7): the two retired image-viewing names F2 removed.
+
+  (a) ROUND anchor — the pre-round baseline the contract names (`HEAD`), i.e. everything the wave had
+      already landed:
+
+        git grep -nE "$A" HEAD -- skills/ | sed 's/^HEAD://'   -> 324 lines / 113 files / 169 md lines / 65 md files
+        git grep -nE "$B" HEAD -- skills/ | sed 's/^HEAD://'   ->  33 lines /   7 files /  32 md lines /  6 md files
+        git grep -nE "$C" HEAD -- skills/ | sed 's/^HEAD://'   -> 220 lines /  71 files / 115 md lines / 52 md files
+        -> greps/*-before.txt (each file's first line names this anchor)
+
+  (b) WAVE anchor — `09622f6a`, the rev the three earlier rounds measured, so the numbers stay comparable
+      (extended A included):
+
+        A 371 lines / 115 files      B 47 lines / 11 files      C 307 lines / 72 files
+
+      The old A (without `view_image|look_at`) read 370 / 115 at this rev; one line carries both names, so
+      the extended A adds exactly 1 line and 0 files — arithmetic, not a recount of another round's log.
+
+## 4. AFTER — the FINAL working tree at tree sha256 08b8e12f… (384 files)
+
+    grep -rnE "$A" skills/   -> 328 lines / 115 files / 173 md lines / 67 md files
+    grep -rnE "$B" skills/   ->  34 lines /   8 files /  33 md lines /  7 md files
+    grep -rnE "$C" skills/   -> 220 lines /  71 files / 115 md lines / 52 md files
+
+    tracked-only AFTER (git grep over the working tree; drops the gitignored materialized design refs
+    `ambience-skill.md` +5 and `component-catalogs.md` +2):
+    A 321   B 33   C 220
+
+TRACKED delta HEAD -> final: A −3, B 0, C 0. The three cleared A lines, per file:
+
+    skills/visual-qa/SKILL.md   HEAD 3 -> 1   the two lines that spelled `view_image`/`look_at` are gone
+    skills/refactor/SKILL.md    HEAD 6 -> 5   :588 no longer claims the Reviewer/Architect pair is "Read-only"
+    (all six other changed files: identical A/B/C counts per file)
+
+No changed file gained an A, B or C line — checked per file with `git show HEAD:<file> | grep -cE` against
+`grep -cE` on the tree (no DELTA printed for B and C, and the A gains are exactly zero).
+
+## 5. Survivor classification (machine-checkable)
+
+    python3 evidence/skills-dead-tokens/2026-10-25T0215Z/greps/classify-survivors.py > .../greps/counts.txt
+    exit 0; `residual=0  unclassified=0` and `partition_sum == total` in all three families:
+      A 328 = 163 English prose + 74 script identifier/string + 54 PowerShell cmdlet + 18 HTML fixture
+              + 16 mounted-codegraph + 3 ast-grep-schema vocabulary + 0 removed-dead-image-name
+      B  34 = 24 imagegen reference-file name + 10 open-design upstream (every other arm 0)
+      C 220 = 88 workflow word/skill name + 69 subagent vocabulary + 57 oracle methodology
+              + 6 momus state key (the three retired verbs 0)
+    removed_arms_after: view_image 0, look_at 0.
+
+## 6. files_changed
+
+    git diff --name-only 09622f6a -- skills/   -> 28 files   (the WHOLE wave; the contract names this command)
+    git diff --name-only HEAD     -- skills/   ->  8 files   (THIS round: the F1-F6 set)
+    Both lists and both numstats are in diff/.
+
+## 7. Scope
+
+Written by this writer: the 8 skill files above and this evidence directory. The only other writes in the
+workspace are the review-panel gate's OWN record directories (`evidence/restore/s1/2026-10-24T18-14-19-896Z`,
+`.../2026-10-24T18-18-42-860Z`), produced by running the required gate. `git status --porcelain -- skills/`
+shows exactly the 8 `M` rows and nothing else.
+
+## 8. Limits (what this bundle does NOT prove)
+
+- No live boot was run: this bundle proves the CHECKOUT text, never the served/cached skill corpus.
+- `verify-vendor` exit 1 stands until the captain's single re-pin (rule, not a defect).
+- The `mpd_role_spawn` schema is read from `packages/mpd-roles-plugin/src/index.ts`; its `dist/` twin was
+  not exercised by a boot here.
+- The directory label's timezone is declared in §0; a reader who greps for a UTC `2026-10-25` will find
+  local-wall-clock time, not UTC.

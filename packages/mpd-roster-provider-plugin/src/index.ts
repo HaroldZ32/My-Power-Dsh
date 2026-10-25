@@ -29,12 +29,12 @@
 // IDENTITY is the one thing the team service does not forward: `request` is `{ prompt, parent }` and
 // the member's name survives only as the descriptor LABEL (the teammate's `description`). See
 // `route.ts` for the matching rule and its conservatism.
-import { rowLogLine, DSH_SEAM_SUBAGENTS, dshSeamInject, resolveRunRoute, type DshAdapter, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { rowLogLine, DSH_SEAM_SUBAGENTS, dshSeamInject, resolveRunRoute, type DshAdapter, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index.ts"
 // THE single declaration of which member a slot routes. Imported rather than restated: the slots'
 // membership is a contract shared with both settings front doors, and a second copy here is exactly
 // how a routing table drifts from the one the user edits.
-import { TEAM_MODEL_SLOT_GROUPS } from "../../mpd-config-plugin/src/settings-schema"
-import { applyRoute, labelOf, memberFromLabel, type RoutableRequest, type SlotRoute } from "./route"
+import { TEAM_MODEL_SLOT_GROUPS } from "../../mpd-config-plugin/src/settings-schema.ts"
+import { applyRoute, labelOf, memberFromLabel, type RoutableRequest, type SlotRoute } from "./route.ts"
 
 /** The plugin id the bundle row mounts this module under. */
 export const name = "mpd-roster-provider"

@@ -19,7 +19,7 @@
 
 ### Local adaptations in this repository (NOT upstream)
 
-our frontmatter `description`; the DSH team-mode protocol (roster personas fetched with `mpd_role_persona`, the `agent_teams_*` lifecycle, `.mpd/team/archive`) kept in place of upstream's Codex team instructions; `subagent(...)` / `job_output(...)` dispatch examples.
+our frontmatter `description`; the DSH team-mode protocol (roster personas fetched with `mpd_role_persona`, the `agent_teams_*` lifecycle, `.mpd/team/archive`) kept in place of upstream's Codex team instructions; the serial `mpd_role_spawn(...)` consult examples, rewritten from upstream's `subagent(...)` / `job_output(...)` dispatch examples.
 
 ### MIT License (verbatim from the source repository's LICENSE)
 

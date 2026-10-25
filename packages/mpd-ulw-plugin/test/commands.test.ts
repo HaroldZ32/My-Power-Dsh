@@ -336,6 +336,16 @@ test("the activation directive carries the six autonomy behaviours in order", ()
   expect(directive).toContain("agent_teams_plan {action:\"approve\"}")
   expect(directive).not.toContain("spawn_teammate")
   expect(directive).not.toContain("team_task_create")
+  // R12: the plan tool REFUSES a `create_task` that states no dependency answer, so the sentence that
+  // tells a captain to extend the plan must state the answer it has to send — the tool and the
+  // instruction that produces the call may never contradict each other. Pinned verbatim (both accepted
+  // spellings included), so the clause cannot silently vanish from the frozen head.
+  expect(directive).toContain("must state its dependency answer")
+  expect(directive).toContain("`blocked_by: [...]` (`[]` for a genuine root) or `independent: true`")
+  expect(directive).toContain("REFUSES a task that states neither")
+  // …and it lives INSIDE clause 3 (between TEAM WHEN WARRANTED and LOOP TO COMPLETION), not elsewhere.
+  expect(directive.indexOf("must state its dependency answer")).toBeGreaterThan(directive.indexOf("TEAM WHEN WARRANTED"))
+  expect(directive.indexOf("must state its dependency answer")).toBeLessThan(directive.indexOf("LOOP TO COMPLETION"))
   // THE PREFIX-VS-FAMILY TRAP (independent review, 2026-10-06): the retired family is named
   // EXPLICITLY, and the shared `agent_teams_` prefix is explicitly declared NOT to be a retirement
   // signal — the old blanket sentence ("the retired `agent_teams_*` tools do not exist") is gone,

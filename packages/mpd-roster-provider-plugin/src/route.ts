@@ -10,6 +10,11 @@
 // is what constructs the run. So a bundle-owned provider can supply the route the team service
 // never sends, and that is what this package registers (`mpd-roster`).
 
+// THE LABEL SPLIT IS NOT RESTATED HERE. `rosterNameHead` in the shared adapter is the ONE
+// implementation (the native team executor reads the same rule), so the official path and the
+// native path cannot disagree about what "the head of a description" means.
+import { rosterNameHead } from "../../mpd-dsh-adapter-plugin/src/index.ts"
+
 /** One member's resolved route, as the mpd `teamModels` slots declare it. */
 export interface SlotRoute {
   /** Provider id the member's teammate must run on (`deepseek-official`, `gateway`, …). */
@@ -42,20 +47,18 @@ export interface RoutableRequest {
  * The contract is therefore: **a description that names a roster member routes that member; one
  * that does not is NOT routed here — `routeFor` returns `undefined`, `applyRoute` returns the request
  * by identity, and the harness-resolved route of the session that staged it stands.** The name is
- * the text before the first separator
- * (`—`, `-`, `:`, `|`) and is matched case-insensitively, so
- * `"Senior Engineer — implements the parser"` routes Senior Engineer while
- * `"check the vendored corpus"` routes nothing. Matching is deliberately conservative: a wrong
- * guess would silently move a teammate onto a model nobody chose.
+ * the head {@link rosterNameHead} extracts (the text before `—`, `–`, `:`, `|` or ` - `; `·` is NOT
+ * a separator) and is matched case-insensitively, so `"Senior Engineer — implements the parser"`
+ * routes Senior Engineer while `"check the vendored corpus"` routes nothing. Matching is
+ * deliberately conservative: a wrong guess would silently move a teammate onto a model nobody chose.
  *
  * @param label - the descriptor label (or the request's own `label`).
  * @param knownNames - the roster's functional names.
  * @returns the matching roster name, or `undefined` when the label names none.
  */
 export function memberFromLabel(label: unknown, knownNames: readonly string[]): string | undefined {
-  if (typeof label !== "string") return undefined
   /** The text before the first separator, trimmed; a member name must be the WHOLE head to match. */
-  const head = label.split(/[—–:|]|\s-\s/)[0]?.trim() ?? ""
+  const head = rosterNameHead(label)
   if (head === "") return undefined
   /** The head lower-cased once, since the comparison below is case-insensitive. */
   const needle = head.toLowerCase()

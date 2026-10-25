@@ -222,6 +222,10 @@ export function resolveBoulderDir(value: unknown): string | undefined {
 export const STAGING_TOOL_NAME = "agent_teams_plan"
 /** The plan-extension actions the mechanical notice names, in the order it names them. */
 export const PLAN_EXTEND_ACTIONS: readonly string[] = ["add_member", "create_task"]
+/** The board tool the advisory notice names for a task's lifecycle (claim/complete/fail): the mpd record is the board. */
+export const BOARD_TOOL_NAME = "agent_teams_task"
+/** The tool the advisory notice names for pairing a ready task with an idle member. */
+export const DISPATCH_TOOL_NAME = "agent_teams_dispatch"
 /** The mechanical notice's phrase for a plan THIS fire staged. */
 export const STAGED_PLAN_PHRASE = "a team PLAN was STAGED"
 /** The mechanical notice's phrase when a plan was already staged (the gate skipped staging). */
@@ -805,6 +809,10 @@ export function gatePlanShell(input: { signals: readonly string[]; goal: string;
  * taxonomy stays two-valued: either a plan WAS staged and the mechanical notice names the id the
  * call returned, or nothing was staged and this text says so.
  *
+ * The staging sentence names the ONE surviving door — `agent_teams_plan` — and the board tools that
+ * drive it. It must NOT offer `spawn_teammate` / `team_task_create`: the team-door guard REFUSES
+ * them at the tool boundary and the mpd record is the board.
+ *
  * @param signals - the fired signal letters, in A–F order.
  * @param explicit - whether an explicit `team:` / `!team` marker was consumed from the goal.
  * @returns the notice text, always carrying {@link STARTUP_NOTICE_MARKER}.
@@ -815,9 +823,9 @@ export function advisoryNoticeText(signals: readonly string[], explicit: boolean
   return STARTUP_NOTICE_MARKER + ": this session shows " + matched + ", and " + NO_TEAM_STAGED_PHRASE + " — the gate is ADVISORY "
     + "and stages nothing while complexity is merely being judged."
     + (explicit ? "\n- The explicit `team:` / `!team` marker was CONSUMED from the goal text: the request is a reason to stage, not a staged team." : "")
-    + "\n- Stage a team yourself at the moment the work actually warrants one: `spawn_teammate` creates each roster teammate"
-    + " (its prompt text comes from `mpd_role_persona`) and `team_task_create` opens its lane on the shared board; then tell"
-    + " the user the Web plan is ready for review."
+    + "\n- Stage a team yourself when the work warrants one: `" + STAGING_TOOL_NAME + "` {action:\"" + PLAN_EXTEND_ACTIONS[0]
+    + "\"} → {action:\"" + PLAN_EXTEND_ACTIONS[1] + "\"} (each task carrying its dependency answer: `blocked_by` or `independent: true`)"
+    + " → {action:\"approve\"}; drive the team with `" + BOARD_TOOL_NAME + "` and `" + DISPATCH_TOOL_NAME + "`."
     + "\n" + SOLO_PERMISSION_SENTENCE + " — and say so in one line."
     + "\n- A team is NOT a precondition of this session, and you may not create a second team while leading one."
 }
@@ -829,7 +837,8 @@ export function advisoryNoticeText(signals: readonly string[], explicit: boolean
  * reported as {@link MISSING_PLAN_ID_PHRASE} plus the explicit statement that the staged shell cannot
  * be approved, rather than invented. The notice states outright that the plan
  * is INERT until approved, because "a team was created" is the exact false claim this gate must not
- * invite.
+ * invite. Its extension sentence also states the dependency answer every `create_task` must carry
+ * (`blocked_by` or `independent: true`), the one field `approve` refuses to infer.
  *
  * @param input - the returned plan id, the fired signals, the explicit-flag fact, and whether the
  *   gate SKIPPED staging because this session already had a plan staged.
@@ -867,7 +876,7 @@ export function mechanicalNoticeText(input: {
    */
   const nextStep = !missingId
     ? "\n- Extend it with `" + STAGING_TOOL_NAME + " {action:\"" + PLAN_EXTEND_ACTIONS[0] + "\"}` (each member's prompt comes from `mpd_role_persona`)"
-      + " and `" + STAGING_TOOL_NAME + " {action:\"" + PLAN_EXTEND_ACTIONS[1] + "\"}`, then approve it with `"
+      + " and `" + STAGING_TOOL_NAME + " {action:\"" + PLAN_EXTEND_ACTIONS[1] + "\"} (each task carrying its dependency answer: `blocked_by` or `independent: true`), then approve it with `"
       + STAGING_TOOL_NAME + " {action:\"approve\"}` — approval is what spawns the members and posts the tasks."
     : input.alreadyStaged
       ? "\n- Do NOT attempt to extend or approve it, and do NOT stage again: the returned shell's id could not be read, so report this failure instead."

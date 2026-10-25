@@ -11,7 +11,7 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { apply, TEAMS_SERVICE, type MpdTeamsService } from "../src/index"
-import { createDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { createDshAdapter, type DshTeamSpawnRequest } from "../../mpd-dsh-adapter-plugin/src/index"
 import { listTeams, readTeam, taskDepths, teamRoot, updateTeamTask, writeTeam } from "../src/team-store"
 import { ledgerKey, type DispatchLedger } from "../src/dispatch"
 
@@ -39,6 +39,8 @@ interface Harness {
   tools: Map<string, Tool>
   /** Every executor call, in order. */
   calls: ExecutorCall[]
+  /** Every team-spawn request the PLUGIN handed the executor, in order — the request BEFORE any route resolution. */
+  spawnRequests: DshTeamSpawnRequest[]
   /** The `mpdTeams` service the plugin published, or undefined when it published none. */
   service: MpdTeamsService | undefined
   /** Every `(teamId, workspace)` the dispatch gate asked the watchdog about, in order (T1). */
@@ -76,6 +78,8 @@ function harness(options: StubOptions = {}): Harness {
   const tools = new Map<string, Tool>()
   /** Every call the harness double observed, in order. */
   const calls: ExecutorCall[] = []
+  /** Every spawn request the plugin built, captured before the real executor resolves the member's route. */
+  const spawnRequests: DshTeamSpawnRequest[] = []
   /** The service the plugin published. */
   let service: MpdTeamsService | undefined
   /** Every query the dispatch gate sent the watchdog, so the ARGUMENTS are pinned and not just the verdict. */
@@ -153,7 +157,20 @@ function harness(options: StubOptions = {}): Harness {
     // NO `agentTeams` is mounted anywhere in this harness: `ctx.get("agentTeams")` answers
     // undefined, so the executor's choice must land on the native default. An arm asserting the
     // old official behaviour would fail here rather than pass against a half-migrated path.
-    teamExecutor: () => createDshAdapter({ get: (name: string) => (name === "subagents" ? subagents : undefined) } as never).teamExecutor(),
+    // THE REAL EXECUTOR IS WRAPPED, not replaced: the plugin's own contract is the REQUEST it builds
+    // (the executor resolves the member's `teamModels` route from that request's identity), so an arm
+    // reads the request here and the harness double below still sees the real native spawn.
+    teamExecutor: () => {
+      /** The native default over the harness double, built once per call so the request wrapper is fresh. */
+      const real = createDshAdapter({ get: (name: string) => (name === "subagents" ? subagents : undefined) } as never).teamExecutor()
+      return {
+        ...real,
+        spawn: (caller: unknown, request: DshTeamSpawnRequest) => {
+          spawnRequests.push(request)
+          return real.spawn(caller, request)
+        },
+      }
+    },
     teamListMembers: () => [],
     teamListTasks: () => [],
     capabilities: () => ({}),
@@ -170,7 +187,7 @@ function harness(options: StubOptions = {}): Harness {
   /** The exec payload every tool call carries; the session id is what binds the record. */
   const exec = { agent: { session: { id: "sess-1" } }, signal: undefined }
   return {
-    workspace, tools, calls, exec, holdQueries,
+    workspace, tools, calls, exec, holdQueries, spawnRequests,
     /** The `mpdTeams` service the plugin published; read through a getter because `apply` runs after this literal is built. */
     get service(): MpdTeamsService | undefined { return service },
     call: async (name: string, args: unknown) => {
@@ -188,7 +205,7 @@ async function staged(h: Harness): Promise<void> {
   await h.call("agent_teams_plan", { action: "add_member", member: { name: "Senior Engineer", description: "implements", prompt: "You implement.", role: "Senior Engineer" } })
   await h.call("agent_teams_plan", { action: "add_member", member: { name: "Reviewer", description: "judges", prompt: "You review.", role: "Reviewer" } })
   // The second task is blocked by the first task's SUBJECT, which is how a captain writes it.
-  await h.call("agent_teams_plan", { action: "create_task", task: { subject: "core", description: "own the record", write_scopes: ["packages/**"], owner: "Senior Engineer" } })
+  await h.call("agent_teams_plan", { action: "create_task", task: { subject: "core", description: "own the record", blocked_by: [], write_scopes: ["packages/**"], owner: "Senior Engineer" } })
   await h.call("agent_teams_plan", { action: "create_task", task: { subject: "review the core", description: "judge it", blocked_by: ["core"], owner: "Reviewer" } })
 }
 
@@ -291,12 +308,12 @@ describe("approval builds an mpd-owned team record", () => {
     expect(h.calls.map((call) => call.method)).toEqual(["startContinuable", "startContinuable"])
   })
 
-  test("the member's ROUTE reaches the executor as an ordinary argument", async () => {
+  test("the member's IDENTITY reaches the executor as an ordinary argument", async () => {
     // This is the whole reason the native default exists: the official tool row forwards only
-    // `{ prompt, parent }`, so a per-member model route had to arrive through ROW CONFIG
-    // (`freshProvider`) and a member's identity had to be encoded in its DESCRIPTION. Here the
-    // route is a spawn argument, which is what lets a roster slot, a persona and the read-only
-    // deny list apply to a teammate directly.
+    // `{ prompt, parent }`, so a member's identity had to be encoded in its DESCRIPTION and its
+    // route had to arrive through ROW CONFIG (`freshProvider`). Here the ROLE is a spawn argument,
+    // which is what lets the executor resolve the roster's slot, a persona and the read-only deny
+    // list apply to a teammate directly.
     /** The harness under test. */
     const h = harness()
     sandboxes.push(h.workspace)
@@ -311,6 +328,52 @@ describe("approval builds an mpd-owned team record", () => {
     expect(specs[0].request.parent).toEqual({ session: { id: "sess-1" } })
     // The prompt travels as content blocks, which is what the continuation manager takes.
     expect(specs[0].request.prompt[0].text).toBe("You implement.")
+  })
+
+  test("approval forwards each member's ROLE, and never a provider", async () => {
+    // THE CALLER'S HALF OF THE ROUTING CONTRACT (2026-10-24): the executor reads the member's role
+    // FIRST, then its description head, then its name, and maps the match to that member's
+    // `teamModels` slot. The plugin's job is to SEND that identity and nothing else — the route
+    // belongs to the executor, which is exactly why no `provider` may travel from here.
+    /** The harness under test. */
+    const h = harness()
+    sandboxes.push(h.workspace)
+    await staged(h)
+    await h.call("agent_teams_plan", { action: "approve" })
+    // The roles the two staged members declared, in spawn order, verbatim.
+    expect(h.spawnRequests.map((request) => request.role)).toEqual(["Senior Engineer", "Reviewer"])
+    // THE DEAD SPREAD IS GONE: no production path ever wrote `TeamMemberRecord.route` (only the
+    // store's own input type admits it), so a `provider` here would be the plugin inventing a
+    // caller-chosen route the executor must not second-guess.
+    expect(h.spawnRequests.every((request) => !("provider" in request))).toBe(true)
+  })
+
+  test("a member staged WITHOUT a role omits the field, and still sends no provider", async () => {
+    /** The harness under test. */
+    const h = harness()
+    sandboxes.push(h.workspace)
+    await h.call("agent_teams_plan", { action: "create", name: "anonymous", description: "no roles staged" })
+    await h.call("agent_teams_plan", { action: "add_member", member: { name: "Helper", description: "helps", prompt: "You help." } })
+    await h.call("agent_teams_plan", { action: "approve" })
+    expect(h.spawnRequests.length).toBe(1)
+    // ABSENT, not empty: an empty string would be an identity channel the executor had to ignore.
+    expect("role" in h.spawnRequests[0]).toBe(false)
+    expect("provider" in h.spawnRequests[0]).toBe(false)
+  })
+
+  test("the LIVE add_member arm forwards the role the same way approval does", async () => {
+    /** The harness under test. */
+    const h = harness()
+    sandboxes.push(h.workspace)
+    await staged(h)
+    await h.call("agent_teams_plan", { action: "approve" })
+    await h.call("agent_teams_plan", { action: "add_member", member: { name: "Explorer", description: "finds", prompt: "You find.", role: "Explorer" } })
+    await h.call("agent_teams_plan", { action: "add_member", member: { name: "Helper", description: "helps", prompt: "You help." } })
+    // The two appends are the LAST two requests, after the two members approval raised.
+    expect(h.spawnRequests.map((request) => request.name)).toEqual(["Senior Engineer", "Reviewer", "Explorer", "Helper"])
+    expect(h.spawnRequests[2].role).toBe("Explorer")
+    expect("role" in h.spawnRequests[3]).toBe(false)
+    expect(h.spawnRequests.every((request) => !("provider" in request))).toBe(true)
   })
 
   test("a spawn that fails STOPS the approval but still leaves the team on record", async () => {
@@ -351,7 +414,7 @@ describe("approval builds an mpd-owned team record", () => {
     const h = harness()
     sandboxes.push(h.workspace)
     await h.call("agent_teams_plan", { action: "create", name: "positions", description: "d" })
-    await h.call("agent_teams_plan", { action: "create_task", task: { subject: "first", description: "d" } })
+    await h.call("agent_teams_plan", { action: "create_task", task: { subject: "first", description: "d", blocked_by: [] } })
     await h.call("agent_teams_plan", { action: "create_task", task: { subject: "second", description: "d", blocked_by: ["1"] } })
     await h.call("agent_teams_plan", { action: "create_task", task: { subject: "third", description: "d", blocked_by: ["2"] } })
     await h.call("agent_teams_plan", { action: "approve" })
@@ -374,13 +437,18 @@ describe("approval builds an mpd-owned team record", () => {
     const h = harness()
     sandboxes.push(h.workspace)
     await h.call("agent_teams_plan", { action: "create", name: "reading", description: "d" })
-    await h.call("agent_teams_plan", { action: "create_task", task: { subject: "core", description: "d" } })
+    await h.call("agent_teams_plan", { action: "create_task", task: { subject: "core", description: "d", blocked_by: [] } })
     /** What the second task's call answered. */
-    const answer = (await h.call("agent_teams_plan", { action: "create_task", task: { subject: "review", description: "d", blocked_by: ["core", "1", "T2", "the review task"] } })) as { blockers?: Array<{ reference: string; form: string }> }
+    // THE `board-id` FORM STAYS A board-id FORM, but it must NOT name the task it is written on: R1
+    // (`.mpd/plans/task-dependency-guard.md`) now refuses a self-reference at create time, and `T2` on
+    // the plan's second task IS that task. `T9` is still shaped like a board id (so the write-time
+    // reading still says `board-id`) while naming a task this plan does not have — which is exactly the
+    // "accepted and reported, never silently dropped" case this arm is about.
+    const answer = (await h.call("agent_teams_plan", { action: "create_task", task: { subject: "review", description: "d", blocked_by: ["core", "1", "T9", "the review task"] } })) as { blockers?: Array<{ reference: string; form: string }> }
     expect(answer.blockers).toEqual([
       { reference: "core", form: "subject" },
       { reference: "1", form: "position" },
-      { reference: "T2", form: "board-id" },
+      { reference: "T9", form: "board-id" },
       { reference: "the review task", form: "unknown" },
     ])
     /** The tool's own renderer (declared under `output`), which is the text a captain actually reads. */
@@ -391,7 +459,7 @@ describe("approval builds an mpd-owned team record", () => {
     expect(painted).toContain("no task this plan can resolve")
     // A task with NO blockers keeps the answer quiet: the reading is a report, not a banner.
     /** What a blocker-free task answers. */
-    const plain = (await h.call("agent_teams_plan", { action: "create_task", task: { subject: "plain", description: "d" } })) as { blockers?: unknown }
+    const plain = (await h.call("agent_teams_plan", { action: "create_task", task: { subject: "plain", description: "d", blocked_by: [] } })) as { blockers?: unknown }
     expect(plain.blockers).toBeUndefined()
   })
 
@@ -650,7 +718,7 @@ describe("a release that lands while a dispatch pass is in flight is never rever
     sandboxes.push(h.workspace)
     await staged(h)
     // A THIRD task, UNBLOCKED, so a later pass still has something to pair once T1 is claimed.
-    await h.call("agent_teams_plan", { action: "create_task", task: { subject: "second opinion", description: "an unblocked second task", owner: "Reviewer" } })
+    await h.call("agent_teams_plan", { action: "create_task", task: { subject: "second opinion", description: "an unblocked second task", owner: "Reviewer", blocked_by: [] } })
     await h.call("agent_teams_plan", { action: "approve" })
     // PASS 1 seeds the ledger through the tool itself: `limit: 1` pairs ONLY the first ready task, so
     // T1 is legitimately recorded as dispatched while T3 stays ready for the pass under test. No

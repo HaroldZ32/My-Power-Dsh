@@ -21,17 +21,39 @@ An activated ULW run asks the user nothing:
    explicit `team:` / `!team` flag OR any matched signal (A explicit flag, B deliverable
    verbs, C enumerated steps, D an existing `.mpd/plans` artifact). Never a second predicate.
 3. **A team when warranted** — a fired gate (or genuinely complex work) means the run stages the
-   team ITSELF with the OFFICIAL Agent Teams tools: `spawn_teammate({name, description, prompt})`
-   per roster member, then `team_task_create({subject, description, blocked_by?, write_scopes?})`
-   for the DAG — a captain-designed roster/DAG, run without user confirmation. The retired
-   `agent_teams_create` / `agent_teams_*` tools do not exist on harness 0.1.7; team state is the
-   Lead session's own.
+   team ITSELF, and the DEFAULT is the staged-plan path: `agent_teams_plan` with `add_member` per
+   roster member, then `create_task` for each DAG node (carrying its dependency answer), then
+   `approve` — a captain-designed roster/DAG, run without user confirmation. That is the ONLY way in:
+   this bundle's team plane is the mpd RECORD, the official Agent Teams tools are REFUSED at the tool
+   boundary (`spawn_teammate`, `team_task_create`, `team_task_list`, `team_task_get`,
+   `team_task_update`), and `send_message` / `list_agents` / `wait_agent` / `interrupt_agent` remain
+   for agent communication. The retired VENDORED family (`agent_teams_create`, `agent_teams_add_member`,
+   `agent_teams_create_task`, `agent_teams_approve`, `agent_teams_status`, `agent_teams_send_message`,
+   `agent_teams_shutdown*`, `agent_teams_delete`) does not exist on harness 0.1.7 either — the five live
+   tools are `agent_teams_plan`, `agent_teams_task`, `agent_teams_dispatch`, `agent_teams_mail` and
+   `agent_teams_control`; team state is the mpd RECORD.
 4. **Loop to completion** — never stop early to ask; rounds continue until every success
    criterion is clean.
 5. **Fix on sight** — a defect the run finds is fixed in the same turn; never
    report-and-wait, never ask for approval.
 6. **Close out on proof** — done only after the verification gate and the quality-gate
    ledger both approve.
+
+**The NORMAL ULW flow — extending the staged plan through `agent_teams_plan` — is the GUARDED one.**
+Stage the team with `agent_teams_plan`: `add_member` per roster member, then `create_task` for each DAG
+node, then `approve`. The guard is the TOOL's, not advice: `create_task` REQUIRES the dependency answer
+(`blocked_by: [...]`, an explicit empty root, or `independent: true`), and `approve` REFUSES two tasks
+whose declared write scopes overlap with no dependency path between them (naming the pair and the two
+remedies).
+
+**There is no bypass at the TOOL boundary: the team door closes it there.** The mpd RECORD
+(`<workspace>/.mpd/team/teams/<teamId>.json`, served as `mpdTeams`) is this bundle's team plane and
+`agent_teams_plan` is the way in; the team-door guard REFUSES `spawn_teammate`, `team_task_create`,
+`team_task_list`, `team_task_get` and `team_task_update` on every session, while `send_message` /
+`list_agents` / `wait_agent` / `interrupt_agent` stay for agent communication. **The bound, stated once:**
+a ROW that calls the team SERVICE directly (the official-executor fallback) is not a tool call and is NOT
+gated. So no task a TOOL authors can reach a board without its dependency answer: `create_task` requires
+it, and `approve` refuses an overlapping write scope with no dependency path.
 
 ## Policy — upstream shape, our wording
 

@@ -1,0 +1,33 @@
+=== A dead-tool-token survivors ===
+survivor_lines=328
+  A6_english_prose_in_docs            163   e.g. skills/ast-grep/references/recipes.md:306: ## Bash / Shell
+  A5_script_identifier_or_string       74   e.g. skills/ast-grep/tests/smoke.sh:2: # Smoke test for the ast-grep skill on POSIX (macOS / Linux / WSL / Git Bash).
+  A3_powershell_cmdlet                 54   e.g. skills/ast-grep/tests/smoke.ps1:13: function Pass([string]$msg) { Write-Host "PASS: $msg" }
+  A4_html_test_fixture                 18   e.g. skills/ultimate-browsing/engine/tests/fixtures/wayback_snapshot.html:39: <link rel="alternate" type="application/x-wiki" title="Edit this page" href="/web/20241227132135/https://en.wikipedia.or
+  A1_mounted_codegraph_surface         16   e.g. skills/init-deep/SKILL.md:50: **Equip every consult with the code graph**: any task touching structure, entry points, dependencies, or hotspots MUST q
+  A2_ast_grep_schema_vocabulary         3   e.g. skills/ast-grep/references/yaml-rules.md:53: | `language` | yes | One of: `Bash`, `C`, `Cpp`, `CSharp`, `Css`, `Elixir`, `Go`, `Haskell`, `Html`, `Java`, `JavaScript
+  partition_sum=328  total=328  residual=0  unclassified=0
+  arm_counts(overlaps allowed)={'Lsp[A-Z]': 5, 'codegraph_': 16, '\\bRead\\b': 130, '\\bWrite\\b': 125, '\\bEdit\\b': 24, '\\bBash\\b': 21, '\\bGlob\\b': 4, '\\bGrep\\b': 7}
+  tracked_only_after=321  worktree_after=328  gitignored_lines=7
+
+=== B skill-pointer survivors ===
+survivor_lines=34
+  B4_imagegen_reference_file_name      24   e.g. skills/ulw-research/SKILL.md:327: - **Generated visuals when — and only when — the session really has an image tool** (no `imagegen` skill is shipped; `fr
+  B3_open_design_upstream              10   e.g. skills/frontend/references/design/_INDEX.md:73: Most Layer B files are materialized from [nexu-io/open-design](https://github.com/nexu-io/open-design) (see `ATTRIBUTION
+  partition_sum=34  total=34  residual=0  unclassified=0
+  arm_counts(overlaps allowed)={'open-design': 10, 'imagegen': 24}
+  tracked_only_after=33  worktree_after=34  gitignored_lines=1
+
+=== C delegation-family survivors ===
+survivor_lines=220
+  C9_workflow_word_or_skill_name       88   e.g. skills/ast-grep/README.md:81: └── .github/workflows/ci.yml       matrix CI: macos / ubuntu / windows × py 3.9-3.13
+  C4_subagent_vocabulary               69   e.g. skills/debugging/ATTRIBUTION.md:22: our frontmatter `description`; the DSH debug-squad team protocol in `references/methodology/02-investigate.md`; the `mpd
+  C5_oracle_methodology                57   e.g. skills/debugging/references/methodology/00-setup.md:89: - At 2 consecutive failed rounds, invoke the Oracle Triple (04-oracle-triple.md) instead of starting round 3 in the same
+  C7_momus_state_key                    6   e.g. skills/ulw-plan/scripts/scaffold-plan.ts:286: 	// The lane ids `momus` / `independent` are the durable keys already written into drafts on disk;
+  partition_sum=220  total=220  residual=0  unclassified=0
+  arm_counts(overlaps allowed)={'subagent': 69, 'oracle': 58, 'librarian': 2, 'momus': 7, 'metis': 1, 'workflow': 97}
+  tracked_only_after=220  worktree_after=220  gitignored_lines=0
+
+=== removed_arms_after (must both be 0) ===
+  view_image   0
+  look_at      0

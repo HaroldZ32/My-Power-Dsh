@@ -23,7 +23,7 @@ export interface StagedMember {
   description: string
   /** The full instantiation prompt the teammate receives once the plan is approved. */
   prompt: string
-  /** Optional rostered role label, carried for readability — model routing does not read it. */
+  /** Optional rostered role label — the FIRST identity the team executor matches against the roster when it resolves this member's model slot (then the description's head, then the name). */
   role?: string
 }
 
