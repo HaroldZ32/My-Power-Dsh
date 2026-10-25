@@ -1,0 +1,100 @@
+=== git status (touched paths)
+ M CHANGELOG.md
+ M packages/mpd-better-sidebar-host/README.md
+ M packages/mpd-better-sidebar-host/README.zh-CN.md
+ M packages/mpd-better-sidebar-host/src/index.ts
+
+=== src diff
+diff --git a/packages/mpd-better-sidebar-host/src/index.ts b/packages/mpd-better-sidebar-host/src/index.ts
+index 70b28774..635904da 100644
+--- a/packages/mpd-better-sidebar-host/src/index.ts
++++ b/packages/mpd-better-sidebar-host/src/index.ts
+@@ -32,10 +32,12 @@
+ // THE 0.28 CONTRACT (measured 2026-10-21 in `dsh-better-sidebar@0.28.0`'s `lib/index.js`):
+ //   • `inject = ['webServer', 'sessions', 'connection', 'tools']`;
+ //   • the `/sidebar/api` fence is `ctx.connection.requestRejection(req) === undefined`.
+-// `connection` is a cordis Service provided by `@deepseek-ai/dsh-client-connection`, i.e. by harness
+-// 0.2.1-rc.1+ (the host's peer floor and this bundle's pinned 0.2.1-rc.2 both satisfy it). So the shim
+-// now restates `connection` in its inject list and mounts the host as soon as that service exists; the
+-// only self-disable left is the honest "this composition provides no connection service" one.
++// `connection` is a cordis Service provided by `@deepseek-ai/dsh-client-connection`, i.e. by any harness
++// at or past the host's peer floor (0.2.1-rc.1+). So the shim restates `connection` in its inject list
++// and mounts the host as soon as that service exists — in every composition whose installed harness
++// satisfies the host's peer floor and the pin this bundle declares alike. No version literal is named
++// here on purpose: the shipped pin moves with each host bump, and only this policy stays true. The only
++// self-disable left is the honest "this composition provides no connection service" one.
+ import { dirname, join } from "node:path"
+ import { fileURLToPath, pathToFileURL } from "node:url"
+ // The host-plane seams this row injects, named by their adapter constants: the same single source of
+
+=== CHANGELOG diff (v0.15.5 entry only)
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index 93aa0ddb..9f05b34a 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -14,6 +14,59 @@ Further reading:
+ - [`VENDOR_LOCK.json`](./VENDOR_LOCK.json) — the pinned upstream baseline each release is measured
+   against.
+ 
++## v0.15.5 — the host pair moves to DeepSeek Harness 0.2.1-rc.3 + dsh-tui 0.17.0, and a README table says which pair each release was verified on
++
++Patch release over v0.15.4. A pin-and-documents wave: **no plugin behaviour changed**. The bundle now
++pins DeepSeek Harness **0.2.1-rc.3** and dsh-tui **0.17.0** — the pair whose declared peer bands admit
++each other — and the README finally states that correspondence in one table, in both languages.
++
++**Changed — the host pair is now 0.2.1-rc.3 + 0.17.0.** The three `@deepseek-ai/dsh-experimental-*`
++dependencies (`agent-team`, `client-ui-agent-team`, `tool-agent-team`) move to `0.2.1-rc.3`, and
++`bun.lock` is regenerated from the repo root with the pinned `bun@1.4.0`; `dsh-plugin.json`
++`compat.hosts` and the `host-tui` ref in `dsh-distribution.json` move to `0.17.0`. The atomicity is the
++point: 0.17.0's own peer ranges extend to `0.2.1-rc.3` (36 of its 39 `@deepseek-ai/dsh-*` peers append
++it), while 0.16.1 never declared rc.3, so the two bumps cannot be split. **No compatibility fix was
++owed**, and none was made: measured against the published artifacts, the rc.2→rc.3 umbrella is
++byte-identical under `lib/` and the sampled `.js` files and `.d.ts` surfaces this bundle binds are
++identical, while dsh-tui 0.17.0 keeps all fifteen `tui*` seam declarations and the
++`registry-0.15.json` profile byte-identical. That is why `manifestVersion`/`$schema` stay `0.15` and
++the adapter's version gates (`PANEL_CSV_HOST_OWNED_SINCE = "0.16.1"`,
++`PANEL_CSV_SELF_HEAL_SINCE = "0.15.0"`) and their fixtures did NOT move: those record WHEN the host
++changed behaviour, not which host is current.
++
++**Added — the README version-correspondence table.** `README.md` and `README.zh-CN.md` both carry one
++table right after Install: the release, the DeepSeek Harness it was built and verified against, and its
++DSH-TUI row — six releases from 0.14.0 through 0.15.5, every cell read from its release tag
++(`git show v<release>:package.json`, `dsh-plugin.json`'s `compat`, `dsh-distribution.json`'s `host-tui`),
++not inferred. The section also says where the two pins live (`package.json` for the harness,
++`dsh-plugin.json` `compat.hosts` + `dsh-distribution.json` for the TUI) and that a newer host is not
++claimed until a release row names it.
++
++**Changed — the Docker and QA carriers follow the pair.** Both Docker lanes, the UI stack, the four
++`presets/mpd.patch.yml` comments, `docker/README.md` + zh-CN and the `skills/dsh-qa` TUI carriers (the
++host-spec default and every `npm i -g …` remedy) now name `0.17.0` / `0.2.1-rc.3`, so a lane run
++tomorrow installs the pair this release pins. Historical measurements — the 0.16.1 peer-band
++statements, `docs/tui-dag-renderer.md`'s declaration reads, the `>= 0.16.1` range statements and every
++dated 2026 measurement — are deliberately left as history.
++
++**Changed — docs.** `AGENTS.md` §8, `docs/user-guide.md` + zh-CN, `docs/development.md` + zh-CN,
++`docs/tui.md` + zh-CN (preamble, plus the new §11.10 amendment for this wave), and the two README
++badges now name the new pair. `@dsh-std/sdk` stays at `0.1.1-rc.2`: it is a separate community line,
++not part of this host pair.
++
++**Fixed — stale prose the pin bump invalidated.** A comment-only pass over the claim sites this wave
++falsified, so a reader is never told a version this release does not pin: the docblock above
++`PANEL_CSV_HOST_OWNED_SINCE` in `packages/mpd-tui-adapter-plugin` now separates the two facts it had
++merged — 0.16.1 is the release that INTRODUCED host ownership (a permanent gate floor, so the constant
++never moves), while the ADMITTED host is declared in `dsh-plugin.json` `compat.hosts` (0.17.0 since this
++release); `packages/mpd-tui-plugin/README.md` + zh-CN move their "adapted to" target to `0.17.0`; and
++`packages/mpd-better-sidebar-host/README.md` + zh-CN move their current-pin literal to `0.2.1-rc.3`. The
++module header of `packages/mpd-better-sidebar-host/src/index.ts` stops naming a pin literal in its
++`connection` rationale and states the policy instead — the row mounts wherever the host's peer floor
++(`0.2.1-rc.1+`) and this bundle's own pin both admit the installed harness — so a later bump cannot make
++it false. No constant, fixture, test, exported symbol or behaviour moved, and
++`node scripts/verify-dist-fresh.ts` proves the comment-only edits leave every committed `packages/*/dist`
++byte-identical to a fresh build (33/33 targets fresh, each rebuilt twice).
+ ## v0.15.4 — the dependency guard, one team door, and a corpus that names only mounted channels
+ 
+ Patch release over v0.15.2 (**v0.15.3 was skipped and never released**). Four waves: the board now
+
+=== hashes
+19f5b349d34d4068d1f9dc6ebbb62673  CHANGELOG.md
+e38bceb7e49f4f05dd2d34c049c41547  packages/mpd-better-sidebar-host/src/index.ts
+185c806f4b300fb879c09e721eab91f9  packages/mpd-better-sidebar-host/dist/index.js
+2026-10-25T15:59:31Z

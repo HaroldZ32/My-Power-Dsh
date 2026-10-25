@@ -1,0 +1,109 @@
+=== rc.2 survivors in the tracked human-facing doc band ===
+CHANGELOG.md:304:## v0.14.0 — DeepSeek Harness 0.2.1-rc.2 + dsh-tui 0.16.1, one shared plan→graph model, and a real-team acceptance lane
+CHANGELOG.md:307:**0.2.1-rc.2** and dsh-tui **0.16.1**; the plan→graph model is computed once in the host plane and drawn
+CHANGELOG.md:315:**Changed — the harness seam (0.2.1-rc.2).**
+README.md:158:| 0.15.4 | 0.2.1-rc.2 | 0.16.1 | |
+README.md:159:| 0.15.2 | 0.2.1-rc.2 | 0.16.1 | |
+README.md:160:| 0.15.1 | 0.2.1-rc.2 | 0.16.1 | |
+README.md:161:| 0.15.0 | 0.2.1-rc.2 | 0.16.1 | |
+README.md:162:| 0.14.0 | 0.2.1-rc.2 | 0.16.1 | the harness-0.2.1 adaptation release |
+README.zh-CN.md:141:| 0.15.4 | 0.2.1-rc.2 | 0.16.1 | |
+README.zh-CN.md:142:| 0.15.2 | 0.2.1-rc.2 | 0.16.1 | |
+README.zh-CN.md:143:| 0.15.1 | 0.2.1-rc.2 | 0.16.1 | |
+README.zh-CN.md:144:| 0.15.0 | 0.2.1-rc.2 | 0.16.1 | |
+README.zh-CN.md:145:| 0.14.0 | 0.2.1-rc.2 | 0.16.1 | harness 0.2.1 适配发布 |
+agent-references/troubleshooting.md:83:| a captain expects an overlapping write scope to be refused when a TASK is created | nothing refuses it: there is NO write-scope validator in either mounted official build (checked 2026-10-23 for `.mpd/plans/task-dependency-guard.md` R6 — the "the validator checks the new task's scope against every OPEN sibling WRITE task" belief this row used to carry was FALSE, and the wave-4 collision rules below it never ran). The OFFICIAL plane only ADVISES: its own wording is "Write-scope overlap is advisory, not a lock", so a task declared with a scope another lane also holds is accepted. The guard is on the MPD RECORD plane and fires at APPROVAL: `agent_teams_plan {action:"approve"}` REFUSES two tasks whose normalised scopes overlap (a trailing `/**` stripped, then equal or a path prefix at a SEGMENT boundary; `**` and `.` cover everything; an empty scope list never overlaps) while NEITHER depends on the other, naming the pair and both remedies — add a `blocked_by` edge so one runs after the other, or make the scopes disjoint (`packages/mpd-team-core-plugin/src/dependency-guard.ts`). Absence basis: a direct string check of both mounted official 0.2.1-rc.2 builds on 2026-10-23 — `grep -c` of the stale validator's `inScope` / `overlaps` wording returns 0 for `node_modules/@deepseek-ai/dsh-experimental-tool-agent-team/lib/index.js` and for `~/.dsh/profiles/dsh-tui/node_modules/@deepseek-ai/dsh-experimental-tool-agent-team/lib/index.js` — while both carry the wording "Write-scope overlap is advisory, not a lock". The probes under `evidence/repro-missing-blocked-by/` prove only the reproduced claim-path and edge-less defects; on the official tool path a scope clash is warned about, never gated. |
+docker/README.md:100:    `0.2.0-rc.2` baseline and the `0.2.1` wave; `0.16.1` declared those bands only up to `0.2.1-rc.2`,
+docker/README.zh-CN.md:87:    基线与 `0.2.1` 这一波；`0.16.1` 的范围只到 `0.2.1-rc.2`，`0.15.0` 只覆盖到 `0.2.0-rc.2`，`0.11.2` 只到 `0.2.0-rc.1`，那时
+docs/tui.md:11:first dsh-tui release whose declared peer bands included harness `0.2.1-rc.2` (all 36 of its
+docs/tui.md:1578:0.16.1 is the first dsh-tui release whose declared peers admit harness `0.2.1-rc.2`: all 36
+docs/tui.md:1579:`@deepseek-ai/dsh-*` peers carry that band (e.g. `dsh-agent: … || 0.2.0-rc.2 || 0.2.1-rc.2`,
+docs/tui.md:1580:`dsh-app-boot: 0.2.0-rc.2 || 0.2.1-rc.2`), while 0.15.0 enumerated the same family only up to
+docs/tui.md:1588:| §3.3 / §7 — the pin carriers and `MPD_E2E_DSH_VERSION` | `0.15.0` carriers; `MPD_E2E_DSH_VERSION` stayed `0.2.0-rc.2` | **`0.16.1` carriers and harness `0.2.1-rc.2`**: both Docker lanes (`MPD_E2E_TUI_VERSION`, `MPD_E2E_DSH_VERSION`), `dsh-distribution.json`'s `host-tui` ref (`…@0.16.1`) and `dsh-plugin.json`'s `compat.hosts` (`…@0.16.1`, moved off the stale `0.10.1`). `MPD_E2E_DSH_VERSION` now defaults to `0.2.1-rc.2` because the host's peer band admits it |
+docs/tui.md:1591:`0.2.1-rc.2`) pins. It records `tui.hostInstall`, `tui.pluginAddHost`, `tui.pluginAddBundle` and
+docs/tui.md:1622:| §3.3 / §7 — the pin carriers and `MPD_E2E_DSH_VERSION` | `0.16.1` carriers, harness `0.2.1-rc.2` | **`0.17.0` carriers and harness `0.2.1-rc.3`**: both Docker lanes (`MPD_E2E_TUI_VERSION`, `MPD_E2E_DSH_VERSION`), the UI stack (`MPD_UI_TUI_VERSION`, `MPD_UI_DSH_VERSION`), `dsh-distribution.json`'s `host-tui` ref (`…@0.17.0`), `dsh-plugin.json`'s `compat.hosts` (`…@0.17.0`), the QA host spec in `skills/dsh-qa/scripts/tui-mount.ts` and every `npm i -g @deepseek-harness-tui/dsh-tui@…` PREREQ remedy. The harness pin itself lives in `package.json`'s three `@deepseek-ai/dsh-experimental-*` dependencies (`0.2.1-rc.3`) |
+docs/tui.zh-CN.md:10:harness `0.2.1-rc.2` 的 dsh-tui 版本（其 36 个 `@deepseek-ai/dsh-*` peer 全部列出该版本），§11.8 是
+docs/tui.zh-CN.md:1286:0.16.1 是第一个声明 peer 接受 harness `0.2.1-rc.2` 的 dsh-tui 版本：36 个 `@deepseek-ai/dsh-*` peer
+docs/tui.zh-CN.md:1287:全部带该段（例如 `dsh-agent: … || 0.2.0-rc.2 || 0.2.1-rc.2`、
+docs/tui.zh-CN.md:1288:`dsh-app-boot: 0.2.0-rc.2 || 0.2.1-rc.2`），而 0.15.0 的同一族只列到 `0.2.0-rc.2`——这正是
+docs/tui.zh-CN.md:1296:| §3.3 / §7 —— 版本钉住载体与 `MPD_E2E_DSH_VERSION` | 载体为 `0.15.0`；`MPD_E2E_DSH_VERSION` 保持 `0.2.0-rc.2` | **载体为 `0.16.1`，harness 为 `0.2.1-rc.2`**：两条 Docker 车道（`MPD_E2E_TUI_VERSION`、`MPD_E2E_DSH_VERSION`）、`dsh-distribution.json` 的 `host-tui` 引用（`…@0.16.1`）与 `dsh-plugin.json` 的 `compat.hosts`（`…@0.16.1`，从陈旧的 `0.10.1` 移来）。`MPD_E2E_DSH_VERSION` 现默认 `0.2.1-rc.2`，因为宿主的 peer 带接受它 |
+docs/tui.zh-CN.md:1298:TUI 车道使用配置好的 `TUI_VERSION`（默认 `0.16.1`）与 `MPD_E2E_DSH_VERSION`（默认 `0.2.1-rc.2`）
+docs/tui.zh-CN.md:1328:| §3.3 / §7 —— 版本钉住载体与 `MPD_E2E_DSH_VERSION` | 载体为 `0.16.1`，harness 为 `0.2.1-rc.2` | **载体为 `0.17.0`，harness 为 `0.2.1-rc.3`**：两条 Docker 车道（`MPD_E2E_TUI_VERSION`、`MPD_E2E_DSH_VERSION`）、UI 那套 stack（`MPD_UI_TUI_VERSION`、`MPD_UI_DSH_VERSION`）、`dsh-distribution.json` 的 `host-tui` 引用（`…@0.17.0`）、`dsh-plugin.json` 的 `compat.hosts`（`…@0.17.0`），以及 `skills/dsh-qa/scripts/tui-mount.ts` 的宿主规格和每一处 `npm i -g @deepseek-harness-tui/dsh-tui@…` 的 PREREQ 补救串。harness 的 pin 本身记在 `package.json` 的三个 `@deepseek-ai/dsh-experimental-*` 依赖里（`0.2.1-rc.3`） |
+packages/mpd-bundle/README.md:100:  GONE: harness 0.2.1-rc.2's schema no longer declares it, so the row does not set it.
+packages/mpd-bundle/README.zh-CN.md:38:- 官方 `mpd-agent-team` 行携带 patch 中的上限：`maxMembers: 16`、`maxTasks: 256`、`maxMessageBytes: 32768`、`disposalTimeoutMs: 5000`。`maxPendingMessagesPerMember` 已**移除**：harness 0.2.1-rc.2 的 schema 不再声明它，因此该行不再设置。
+packages/mpd-dsh-adapter-plugin/README.md:113:activation to dispose. Honest bound on harness 0.2.1-rc.2: `dispose()` settles and releases the live
+packages/mpd-dsh-adapter-plugin/README.zh-CN.md:100:`run.result`，没有可供释放的 activation。诚实边界（harness 0.2.1-rc.2）：`dispose()` 只结算并
+
+=== 0.16.1 survivors in the same band ===
+CHANGELOG.md:28:it), while 0.16.1 never declared rc.3, so the two bumps cannot be split. **No compatibility fix was
+CHANGELOG.md:33:the adapter's version gates (`PANEL_CSV_HOST_OWNED_SINCE = "0.16.1"`,
+CHANGELOG.md:48:tomorrow installs the pair this release pins. Historical measurements — the 0.16.1 peer-band
+CHANGELOG.md:49:statements, `docs/tui-dag-renderer.md`'s declaration reads, the `>= 0.16.1` range statements and every
+CHANGELOG.md:194:the TUI sidebar deployment stateless on dsh-tui ≥ 0.16.1 with a panel attention badge, and teaches the
+CHANGELOG.md:240:- **On dsh-tui ≥ 0.16.1 the deployment is stateless.** `hostOwnsPanelCsv` gates a READ-ONLY stand-down:
+CHANGELOG.md:294:  stateless ≥ 0.16.1 deployment.
+CHANGELOG.md:295:- The `tui.md` pair's preamble target is REWRITTEN to dsh-tui **0.16.1** and points at §11.8 (the 0.14.0
+CHANGELOG.md:297:  `packages/mpd-tui-plugin/README` halves read "adapted to 0.16.1".
+CHANGELOG.md:304:## v0.14.0 — DeepSeek Harness 0.2.1-rc.2 + dsh-tui 0.16.1, one shared plan→graph model, and a real-team acceptance lane
+CHANGELOG.md:307:**0.2.1-rc.2** and dsh-tui **0.16.1**; the plan→graph model is computed once in the host plane and drawn
+CHANGELOG.md:405:  instead of reading as merely absent. The target then moved to dsh-tui **0.16.1** (the
+README.md:158:| 0.15.4 | 0.2.1-rc.2 | 0.16.1 | |
+README.md:159:| 0.15.2 | 0.2.1-rc.2 | 0.16.1 | |
+README.md:160:| 0.15.1 | 0.2.1-rc.2 | 0.16.1 | |
+README.md:161:| 0.15.0 | 0.2.1-rc.2 | 0.16.1 | |
+README.md:162:| 0.14.0 | 0.2.1-rc.2 | 0.16.1 | the harness-0.2.1 adaptation release |
+README.zh-CN.md:141:| 0.15.4 | 0.2.1-rc.2 | 0.16.1 | |
+README.zh-CN.md:142:| 0.15.2 | 0.2.1-rc.2 | 0.16.1 | |
+README.zh-CN.md:143:| 0.15.1 | 0.2.1-rc.2 | 0.16.1 | |
+README.zh-CN.md:144:| 0.15.0 | 0.2.1-rc.2 | 0.16.1 | |
+README.zh-CN.md:145:| 0.14.0 | 0.2.1-rc.2 | 0.16.1 | harness 0.2.1 适配发布 |
+docker/README.md:100:    `0.2.0-rc.2` baseline and the `0.2.1` wave; `0.16.1` declared those bands only up to `0.2.1-rc.2`,
+docker/README.md:105:    `0.16.1`, `0.15.0`, `0.14.0`, `0.13.0` and `0.12.0` were the pins before it, kept as history.
+docker/README.zh-CN.md:87:    基线与 `0.2.1` 这一波；`0.16.1` 的范围只到 `0.2.1-rc.2`，`0.15.0` 只覆盖到 `0.2.0-rc.2`，`0.11.2` 只到 `0.2.0-rc.1`，那时
+docker/README.zh-CN.md:89:    `tui-logs/add-host.log` 捕获引用宿主自己的拒绝原文，而不是用一句歉意换绿。此前的 `0.16.1`、
+docs/tui-dag-renderer.md:49:The host does expose an image primitive (`ui.Image`, read from the installed dsh-tui **0.16.1** type
+docs/tui-dag-renderer.md:114:- **Read from the installed host**: dsh-tui **0.16.1**'s own type declarations
+docs/tui-dag-renderer.zh-CN.md:42:宿主确实暴露了图像原语（`ui.Image`，读取自已安装的 dsh-tui **0.16.1** 类型声明）。它自己的契约就排除了 DAG：
+docs/tui-dag-renderer.zh-CN.md:99:- **读取自已安装的宿主**：dsh-tui **0.16.1** 自己的类型声明
+docs/tui.md:10:touched. **The pin before it was 0.16.1, and that statement stays readable as history**: 0.16.1 is the
+docs/tui.md:32:those carriers moved again in the 0.14.0 and 0.16.1 waves: §11.8 — not this paragraph — states the
+docs/tui.md:609:  host dsh-tui 0.16.1 `lib/types/utils/fullscreen.js#isMouseClicksDisabled` feeds
+docs/tui.md:1467:**AMENDED 2026-10-20 — on a host that OWNS the enable list (`>= 0.16.1`) the adapter is READ-ONLY.** 0.16.1's
+docs/tui.md:1474:(`standing down READ-ONLY on host 0.16.1 …`). The 0.15.x path keeps the S1 migration byte-for-byte — the 0.16.0
+docs/tui.md:1576:### 11.8 Amendment after the DSH-TUI 0.16.1 adaptation wave (2026-10-18)
+docs/tui.md:1578:0.16.1 is the first dsh-tui release whose declared peers admit harness `0.2.1-rc.2`: all 36
+docs/tui.md:1582:profile. The target moves to **0.16.1**; the following supersedes §11.7 where it disagrees:
+docs/tui.md:1586:| This page's target host (§ preamble) | **0.14.0** | **0.16.1** |
+docs/tui.md:1587:| §3 seam inventory | fifteen `tui*` seams, unchanged 0.13.0→0.15.0 | **still fifteen, and 0.16.1 breaks nothing in the adapter**: the same six `Tui*Like` shapes, `close(): void` + `active.id`, `tuiPanels`, `tuiPrompt` still a phantom, and `lib/types/ui.js` still exports `useStdin`; the only addition is the `EFFECT_LEDGER_NAME` const, which neither the adapter nor the bundle declares or consumes. No adapter code change was needed |
+docs/tui.md:1588:| §3.3 / §7 — the pin carriers and `MPD_E2E_DSH_VERSION` | `0.15.0` carriers; `MPD_E2E_DSH_VERSION` stayed `0.2.0-rc.2` | **`0.16.1` carriers and harness `0.2.1-rc.2`**: both Docker lanes (`MPD_E2E_TUI_VERSION`, `MPD_E2E_DSH_VERSION`), `dsh-distribution.json`'s `host-tui` ref (`…@0.16.1`) and `dsh-plugin.json`'s `compat.hosts` (`…@0.16.1`, moved off the stale `0.10.1`). `MPD_E2E_DSH_VERSION` now defaults to `0.2.1-rc.2` because the host's peer band admits it |
+docs/tui.md:1590:The TUI lane uses the configured `TUI_VERSION` (default `0.16.1`) and `MPD_E2E_DSH_VERSION` (default
+docs/tui.md:1612:(0.16.1), not from a rendered image.
+docs/tui.md:1620:| This page's target host (§ preamble) | **0.16.1** | **0.17.0** — the first dsh-tui release whose declared peer bands admit harness `0.2.1-rc.3`: 36 of its 39 `@deepseek-ai/dsh-*` peers append the `0.2.1-rc.3` band, which no 0.16.1 peer list carries (read from the published 0.17.0 tarball) |
+docs/tui.md:1621:| §3 seam inventory | fifteen `tui*` seams, unchanged 0.13.0→0.16.1 | **still fifteen, and 0.17.0 breaks nothing in the adapter**: the fifteen seam declarations under `lib/types/dsh-adapter/` are byte-identical, `dsh-adapter/plugin-host.d.ts` and `adapter/standard/negotiate.d.ts` are byte-identical, and `tui-profile/registry/registry-0.15.json` plus every shipped contract file are byte-identical — so the admission profile stays **v0.15** and `manifestVersion`/`$schema` do NOT move. The real 0.17.0 additions are additive or outside this path: panel kit components `Markdown`/`CodeBlock` (`panels.d.ts`), the two host panel-CSV helpers consolidated into `tuiDisplayPrefs.applySidePanelPanels`, a Windows notification channel and a new `cli/` tree |
+docs/tui.md:1622:| §3.3 / §7 — the pin carriers and `MPD_E2E_DSH_VERSION` | `0.16.1` carriers, harness `0.2.1-rc.2` | **`0.17.0` carriers and harness `0.2.1-rc.3`**: both Docker lanes (`MPD_E2E_TUI_VERSION`, `MPD_E2E_DSH_VERSION`), the UI stack (`MPD_UI_TUI_VERSION`, `MPD_UI_DSH_VERSION`), `dsh-distribution.json`'s `host-tui` ref (`…@0.17.0`), `dsh-plugin.json`'s `compat.hosts` (`…@0.17.0`), the QA host spec in `skills/dsh-qa/scripts/tui-mount.ts` and every `npm i -g @deepseek-harness-tui/dsh-tui@…` PREREQ remedy. The harness pin itself lives in `package.json`'s three `@deepseek-ai/dsh-experimental-*` dependencies (`0.2.1-rc.3`) |
+docs/tui.md:1623:| The adapter's version gates | `PANEL_CSV_HOST_OWNED_SINCE = "0.16.1"`, `PANEL_CSV_SELF_HEAL_SINCE = "0.15.0"`, the `hostVersion` fixtures `0.14.0/0.15.0/0.16.0/0.17.0` | **unchanged** — they encode WHEN the host changed behaviour, never which host is current, so a blanket version replace would corrupt them |
+docs/tui.md:1624:| "on dsh-tui >= 0.16.1 …" range statements (§6.2 and the user guide) | a gate threshold | **unchanged** — a range, not a target version |
+docs/tui.zh-CN.md:9:**此前的钉定版本是 0.16.1，那段表述作为历史保持可读**：0.16.1 是第一个在声明的 peer 范围里包含
+docs/tui.zh-CN.md:27:`0.13.0`）。**这两类载体在 0.14.0 与 0.16.1 波次中又移动过——当前生效的取值由 §11.8 那一节给出，而不是本节。**
+docs/tui.zh-CN.md:487:- **`DSH_TUI_DISABLE_MOUSE=1` 只关闭应用内的点击与选区处理。** 在钉住的宿主 dsh-tui 0.16.1 上，
+docs/tui.zh-CN.md:1205:**2026-10-20 修订 —— 在**拥有**启用清单的宿主（`>= 0.16.1`）上，适配器是**只读**的。** 0.16.1 的
+docs/tui.zh-CN.md:1210:都不跑**，并留一行说明（`standing down READ-ONLY on host 0.16.1 …`）。0.15.x 路径逐字节保留 S1 迁移——
+docs/tui.zh-CN.md:1284:### 11.8 DSH-TUI 0.16.1 适配波次之后的修订（2026-10-18）
+docs/tui.zh-CN.md:1286:0.16.1 是第一个声明 peer 接受 harness `0.2.1-rc.2` 的 dsh-tui 版本：36 个 `@deepseek-ai/dsh-*` peer
+docs/tui.zh-CN.md:1290:**0.16.1**；以下各条在与 §11.7 冲突处取代它：
+docs/tui.zh-CN.md:1294:| 本页对标宿主（§ 前言） | **0.14.0** | **0.16.1** |
+docs/tui.zh-CN.md:1295:| §3 接缝清单 | 十五个 `tui*` 接缝，0.13.0→0.15.0 不变 | **仍是十五个，且 0.16.1 没有破坏适配器的任何东西**：同样六个 `Tui*Like` 形状、`close(): void` + `active.id`、`tuiPanels`、`tuiPrompt` 仍是 phantom、`lib/types/ui.js` 仍导出 `useStdin`；唯一新增是 `EFFECT_LEDGER_NAME` 常量，适配器与 bundle 都不声明、不消费。适配器代码无需改动 |
+docs/tui.zh-CN.md:1296:| §3.3 / §7 —— 版本钉住载体与 `MPD_E2E_DSH_VERSION` | 载体为 `0.15.0`；`MPD_E2E_DSH_VERSION` 保持 `0.2.0-rc.2` | **载体为 `0.16.1`，harness 为 `0.2.1-rc.2`**：两条 Docker 车道（`MPD_E2E_TUI_VERSION`、`MPD_E2E_DSH_VERSION`）、`dsh-distribution.json` 的 `host-tui` 引用（`…@0.16.1`）与 `dsh-plugin.json` 的 `compat.hosts`（`…@0.16.1`，从陈旧的 `0.10.1` 移来）。`MPD_E2E_DSH_VERSION` 现默认 `0.2.1-rc.2`，因为宿主的 peer 带接受它 |
+docs/tui.zh-CN.md:1298:TUI 车道使用配置好的 `TUI_VERSION`（默认 `0.16.1`）与 `MPD_E2E_DSH_VERSION`（默认 `0.2.1-rc.2`）
+docs/tui.zh-CN.md:1317:页面内容则由宿主 kit 替身证明。决策记录里的 `ui.Image` 清单读取自已安装宿主自身的类型声明（0.16.1），
+docs/tui.zh-CN.md:1326:| 本页对标宿主（§ 前言） | **0.16.1** | **0.17.0** —— 第一个在声明的 peer 范围里接受 harness `0.2.1-rc.3` 的 dsh-tui 版本：其 39 个 `@deepseek-ai/dsh-*` peer 中有 36 个追加了 `0.2.1-rc.3` 这一段，而 0.16.1 的 peer 列表里没有这一段（读取自已发布的 0.17.0 tarball） |
+docs/tui.zh-CN.md:1327:| §3 接缝清单 | 十五个 `tui*` 接缝，0.13.0→0.16.1 不变 | **仍是十五个，且 0.17.0 没有破坏适配器的任何东西**：`lib/types/dsh-adapter/` 下的十五个接缝声明逐字节相同，`dsh-adapter/plugin-host.d.ts` 与 `adapter/standard/negotiate.d.ts` 逐字节相同，`tui-profile/registry/registry-0.15.json` 及随包发布的全部契约文件也逐字节相同——因此准入 profile 仍是 **v0.15**，`manifestVersion`/`$schema` **不移动**。0.17.0 真正的改动要么是增量的、要么不在本路径上：面板 kit 组件 `Markdown`/`CodeBlock`（`panels.d.ts`）、两个宿主 panel-CSV 辅助函数合并进 `tuiDisplayPrefs.applySidePanelPanels`、一个 Windows 通知通道，以及一棵新的 `cli/` 目录树 |
+docs/tui.zh-CN.md:1328:| §3.3 / §7 —— 版本钉住载体与 `MPD_E2E_DSH_VERSION` | 载体为 `0.16.1`，harness 为 `0.2.1-rc.2` | **载体为 `0.17.0`，harness 为 `0.2.1-rc.3`**：两条 Docker 车道（`MPD_E2E_TUI_VERSION`、`MPD_E2E_DSH_VERSION`）、UI 那套 stack（`MPD_UI_TUI_VERSION`、`MPD_UI_DSH_VERSION`）、`dsh-distribution.json` 的 `host-tui` 引用（`…@0.17.0`）、`dsh-plugin.json` 的 `compat.hosts`（`…@0.17.0`），以及 `skills/dsh-qa/scripts/tui-mount.ts` 的宿主规格和每一处 `npm i -g @deepseek-harness-tui/dsh-tui@…` 的 PREREQ 补救串。harness 的 pin 本身记在 `package.json` 的三个 `@deepseek-ai/dsh-experimental-*` 依赖里（`0.2.1-rc.3`） |
+docs/tui.zh-CN.md:1329:| 适配器的版本闸门 | `PANEL_CSV_HOST_OWNED_SINCE = "0.16.1"`、`PANEL_CSV_SELF_HEAL_SINCE = "0.15.0"`，以及 `hostVersion` 夹具 `0.14.0/0.15.0/0.16.0/0.17.0` | **不变** —— 它们编码的是宿主**何时**改变行为，而不是当前宿主是哪个；盲目全量替换版本号会把它们改坏 |
+docs/tui.zh-CN.md:1330:| “在 dsh-tui >= 0.16.1 上……”这类范围表述（§6.2 与使用者指南） | 一个闸门阈值 | **不变** —— 这是范围，不是目标版本 |
+docs/user-guide.md:454:- **On dsh-tui ≥ 0.16.1 the deployment is stateless.** That host OWNS the sidebar enable list: its
+docs/user-guide.zh-CN.md:403:- **在 dsh-tui ≥ 0.16.1 上部署是 STATELESS 的。** 该宿主**自己掌管**侧栏启用清单：它的注册表在注册时
+packages/mpd-tui-adapter-plugin/README.md:117:**The enable-list keeper is READ-ONLY on a host that owns the list (`>= 0.16.1`, 2026-10-20).** The keeper
+packages/mpd-tui-adapter-plugin/README.md:121:0.16.1 owns the list outright (it enables a panel on registration and removes it on dispose), and every write
+packages/mpd-tui-adapter-plugin/README.zh-CN.md:96:**在拥有启用清单的宿主（`>= 0.16.1`，2026-10-20）上，启用清单守卫是只读的。** 该守卫只为一件缺陷而生：
+packages/mpd-tui-adapter-plugin/README.zh-CN.md:99:0.16.1 则完全拥有清单（注册即启用、dispose 即移除），任何残余写入都只会与那个注册表赛跑，于是

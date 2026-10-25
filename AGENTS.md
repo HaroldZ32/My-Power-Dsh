@@ -525,7 +525,7 @@ lane hold this line.
   (the transitive `node-pty` postinstall that OLDER releases pulled is the historical reason; it has been
   gone since 0.24.1, measured 2026-10-02, and 0.28.0 ships no install script either, measured 2026-10-21
   — its row's mount guard disables it when absent). 0.28.0 requires harness 0.2.1-rc.1+ (this repo pins
-  0.2.1-rc.2), injects `["webServer","sessions","connection","tools"]`, and contributes each mpd sidebar
+  0.2.1-rc.3), injects `["webServer","sessions","connection","tools"]`, and contributes each mpd sidebar
   page twice — the primary tab plus a `bottomOnly` bottom-workbench twin (`<id>:bottom`) — with the
   official right sidebar as the fallback when the package is absent. `@ast-grep/cli` +
   `@code-yeongyu/comment-checker` left `optionalDependencies`.

@@ -1,0 +1,39 @@
+CMD: TMPDIR=.mpd/tmp/bun-tmp BUN_INSTALL_CACHE_DIR=.mpd/tmp/bun-cache ./.toolchain/node_modules/.bin/bun install
+bun install v1.4.0 (34cbb9a40)
+Resolving dependencies
+Resolved, downloaded and extracted [19]
+warn: incorrect peer dependency "@deepseek-ai/cordis@4.0.2"
+
+warn: incorrect peer dependency "@deepseek-ai/dsh-llm@0.1.7-rc.2"
+
+warn: incorrect peer dependency "@deepseek-ai/dsh-agent@0.1.5-rc.2"
+
+warn: incorrect peer dependency "@deepseek-ai/dsh-session@0.1.5-rc.2"
+
+warn: incorrect peer dependency "@deepseek-ai/dsh-subagent@0.1.5-rc.2"
+
+warn: incorrect peer dependency "@deepseek-ai/dsh-session-projection@0.1.5-rc.2"
+
+warn: incorrect peer dependency "@deepseek-ai/dsh-session-persistence@0.1.7-rc.2"
+
+warn: incorrect peer dependency "@deepseek-ai/cordis@4.0.2"
+
+warn: incorrect peer dependency "@deepseek-ai/cordis@4.0.2"
+
+warn: incorrect peer dependency "@deepseek-ai/dsh-agent@0.1.5-rc.2"
+
+warn: incorrect peer dependency "@deepseek-ai/dsh-tools@0.1.5-rc.2"
+
+warn: incorrect peer dependency "@deepseek-ai/dsh-session@0.1.5-rc.2"
+
+warn: incorrect peer dependency "@deepseek-ai/dsh-system-prompt@0.1.5-rc.2"
+
+warn: incorrect peer dependency "@deepseek-ai/cordis@4.0.2"
+Saved lockfile
+
++ @deepseek-ai/dsh-experimental-agent-team@0.2.1-rc.3
++ @deepseek-ai/dsh-experimental-client-ui-agent-team@0.2.1-rc.3
++ @deepseek-ai/dsh-experimental-tool-agent-team@0.2.1-rc.3
+
+5 packages installed [2.15s]
+EXIT=0

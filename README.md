@@ -2,10 +2,10 @@
 
 **English** | [中文](./README.zh-CN.md)
 
-[![Version](https://img.shields.io/badge/version-0.15.4-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
+[![Version](https://img.shields.io/badge/version-0.15.5-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
 [![npm](https://img.shields.io/badge/npm-%40mpd--dsh%2Fmpd-CB3837.svg)](https://www.npmjs.com/package/@mpd-dsh/mpd)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE.md)
-[![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-0.2.1--rc.2-4B32C3.svg)](#acknowledgements)
+[![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-0.2.1--rc.3-4B32C3.svg)](#acknowledgements)
 [![Platforms](https://img.shields.io/badge/platforms-Web%20GUI%20%7C%20DSH--TUI-informational.svg)](#one-plugin-two-surfaces)
 [![Runtime](https://img.shields.io/badge/runtime-Bun%201.4.0-black.svg)](https://bun.sh)
 [![Gates](https://github.com/HaroldZ32/My-Power-Dsh/actions/workflows/gates.yml/badge.svg)](https://github.com/HaroldZ32/My-Power-Dsh/actions/workflows/gates.yml)
@@ -143,6 +143,24 @@ dsh plugin --profile web add .
 Full install detail — the packed artifact, the `dsh-tui` launcher, the dependency closure and what
 the install mounts — is in the [user guide](./docs/user-guide.md#1-install).
 
+## Version compatibility
+
+Each row is the host pair a release was **built and verified against** — the Docker real-machine
+lanes run the install and the mount on exactly that pair. The harness pin lives in
+[`package.json`](./package.json) (the three `@deepseek-ai/dsh-experimental-*` dependencies) and the
+DSH-TUI pin in [`dsh-plugin.json`](./dsh-plugin.json) `compat.hosts` plus the `host-tui` ref in
+[`dsh-distribution.json`](./dsh-distribution.json). A newer host is not claimed until a release row
+names it: pin both.
+
+| `@mpd-dsh/mpd` | DeepSeek Harness | DSH-TUI | Notes |
+|---|---|---|---|
+| 0.15.5 | 0.2.1-rc.3 | 0.17.0 | this release |
+| 0.15.4 | 0.2.1-rc.2 | 0.16.1 | |
+| 0.15.2 | 0.2.1-rc.2 | 0.16.1 | |
+| 0.15.1 | 0.2.1-rc.2 | 0.16.1 | |
+| 0.15.0 | 0.2.1-rc.2 | 0.16.1 | |
+| 0.14.0 | 0.2.1-rc.2 | 0.16.1 | the harness-0.2.1 adaptation release |
+
 ## Quick start
 
 1. **Install**, restart `dsh`, and start a session on the **MPD (Main Working Agent)** preset.
@@ -213,7 +231,7 @@ library, which is HOME-scoped at `~/.mpd/workmate/`. See
 
 ## Status and known limitations
 
-- **Built and verified against a prerelease harness.** The bundle is tested against **0.2.1-rc.2**.
+- **Built and verified against a prerelease harness.** The bundle is tested against **0.2.1-rc.3**.
   Expect breakage while upstream stabilizes, and pin the harness version you use.
 - **The TUI surface trails the Web surface in named places, not everywhere.** The rows of the table
   above that do not read "same facts" are open deviations, each recorded with its evidence in
@@ -258,7 +276,7 @@ bilingual (English and 简体中文).
 ## Changelog
 
 Release notes live in [`CHANGELOG.md`](./CHANGELOG.md), newest first, one section per released
-version (the current release is **v0.15.4**). Annotated tags are listed under
+version (the current release is **v0.15.5**). Annotated tags are listed under
 [Releases](https://github.com/HaroldZ32/My-Power-Dsh/releases).
 
 ## Acknowledgements

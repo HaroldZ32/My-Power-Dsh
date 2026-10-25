@@ -62,7 +62,7 @@ install reads this repository. Where
 build scripts (only the sidebar's terminal panel degrades; the transitive `node-pty` this flag used to
 be needed for is gone since `0.24.1`, measured 2026-10-02, and `0.28.0` ships no install script,
 measured 2026-10-21). `0.28.0` requires harness **DSH 0.2.1-rc.1+** (this repository pins
-`0.2.1-rc.2`) and fences its routes through the `connection` service, whose inject list the
+`0.2.1-rc.3`) and fences its routes through the `connection` service, whose inject list the
 `packages/mpd-better-sidebar-host` shim restates. A packed install gets it from pnpm.
 
 **There is NO MCP build step.** The MCP servers come from DECLARED npm packages, started by thin

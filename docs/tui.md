@@ -4,10 +4,13 @@
 
 This page describes the **DSH-TUI edition** of the my-power-dsh bundle: what it ships, how to
 install it, what the per-package compatibility measurement found, and what it explicitly does
-**not** claim. It targets `@deepseek-harness-tui/dsh-tui` **0.16.1** and its built-in admission
-profile — the first dsh-tui release whose declared peers admit DeepSeek Harness `0.2.1-rc.2`. §11.8
+**not** claim. It targets `@deepseek-harness-tui/dsh-tui` **0.17.0** and its built-in admission
+profile — the first dsh-tui release whose declared peers admit DeepSeek Harness `0.2.1-rc.3`. §11.10
 is this wave's amendment: it records the move, the unchanged seam inventory and the carriers it
-touched. **The pin before it was 0.14.0, and that statement stays readable as history**: 0.14.0 is
+touched. **The pin before it was 0.16.1, and that statement stays readable as history**: 0.16.1 is the
+first dsh-tui release whose declared peer bands included harness `0.2.1-rc.2` (all 36 of its
+`@deepseek-ai/dsh-*` peers listed it), and §11.8 is that wave's amendment.
+**The pin before it was 0.14.0, and that statement stays readable as history**: 0.14.0 is
 the release that adds the **Claude backend peer** (`@anthropic-ai/claude-agent-sdk` 0.3.287) and the
 `ws` runtime dependency, an **eighth** builtin sidebar panel (`btw`) and a **carousel** `PanelBar`
 that draws the active tab's title plus `○`/`●` dots and no longer paints a plugin's declared icon;
@@ -1607,3 +1610,20 @@ was taken** — the contract's minimum rung (a mounted boot that registers the p
 what the plugin-contract arm proves, and the page's content is proven through the host-kit double. The
 `ui.Image` inventory in the decision record is read from the installed host's own type declarations
 (0.16.1), not from a rendered image.
+
+### 11.10 Amendment after the DSH-TUI 0.17.0 adaptation wave (2026-10-25)
+
+This wave moves the pin pair to the host re-certified against it, and changes no plugin source:
+
+| Subject | Before | After |
+|---|---|---|
+| This page's target host (§ preamble) | **0.16.1** | **0.17.0** — the first dsh-tui release whose declared peer bands admit harness `0.2.1-rc.3`: 36 of its 39 `@deepseek-ai/dsh-*` peers append the `0.2.1-rc.3` band, which no 0.16.1 peer list carries (read from the published 0.17.0 tarball) |
+| §3 seam inventory | fifteen `tui*` seams, unchanged 0.13.0→0.16.1 | **still fifteen, and 0.17.0 breaks nothing in the adapter**: the fifteen seam declarations under `lib/types/dsh-adapter/` are byte-identical, `dsh-adapter/plugin-host.d.ts` and `adapter/standard/negotiate.d.ts` are byte-identical, and `tui-profile/registry/registry-0.15.json` plus every shipped contract file are byte-identical — so the admission profile stays **v0.15** and `manifestVersion`/`$schema` do NOT move. The real 0.17.0 additions are additive or outside this path: panel kit components `Markdown`/`CodeBlock` (`panels.d.ts`), the two host panel-CSV helpers consolidated into `tuiDisplayPrefs.applySidePanelPanels`, a Windows notification channel and a new `cli/` tree |
+| §3.3 / §7 — the pin carriers and `MPD_E2E_DSH_VERSION` | `0.16.1` carriers, harness `0.2.1-rc.2` | **`0.17.0` carriers and harness `0.2.1-rc.3`**: both Docker lanes (`MPD_E2E_TUI_VERSION`, `MPD_E2E_DSH_VERSION`), the UI stack (`MPD_UI_TUI_VERSION`, `MPD_UI_DSH_VERSION`), `dsh-distribution.json`'s `host-tui` ref (`…@0.17.0`), `dsh-plugin.json`'s `compat.hosts` (`…@0.17.0`), the QA host spec in `skills/dsh-qa/scripts/tui-mount.ts` and every `npm i -g @deepseek-harness-tui/dsh-tui@…` PREREQ remedy. The harness pin itself lives in `package.json`'s three `@deepseek-ai/dsh-experimental-*` dependencies (`0.2.1-rc.3`) |
+| The adapter's version gates | `PANEL_CSV_HOST_OWNED_SINCE = "0.16.1"`, `PANEL_CSV_SELF_HEAL_SINCE = "0.15.0"`, the `hostVersion` fixtures `0.14.0/0.15.0/0.16.0/0.17.0` | **unchanged** — they encode WHEN the host changed behaviour, never which host is current, so a blanket version replace would corrupt them |
+| "on dsh-tui >= 0.16.1 …" range statements (§6.2 and the user guide) | a gate threshold | **unchanged** — a range, not a target version |
+
+**Honest bounds.** No live PTY capture was taken for this wave: it is a pin-and-documents wave whose own
+evidence is the release-tag sweep, the three-carrier coherence check and the repository gates. The
+Docker real-machine lanes carry the new defaults, and running them is the release sweep's step (§4 of
+the repository manual), not this wave's.

@@ -1,0 +1,2 @@
+# CMD: node_modules/.bin/tsgo --noEmit (root typecheck)
+EXIT=0

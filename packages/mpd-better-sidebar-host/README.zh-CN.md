@@ -36,7 +36,7 @@ cordis 从"行所命名的那个模块"（也就是本包）取**声明的** `in
 
 `dsh-better-sidebar@0.28.0` 用 `ctx.connection.requestRejection(req) === undefined` 为 `/sidebar/api` 做围栏，
 并在自己的 inject 列表里声明 `connection`。该服务由 harness **0.2.1-rc.1+** 的
-`@deepseek-ai/dsh-client-connection` 提供 —— 本仓库固定的是 `0.2.1-rc.2`，因此在所有受支持的组合里该行都会挂载。
+`@deepseek-ai/dsh-client-connection` 提供 —— 本仓库固定的是 `0.2.1-rc.3`，因此在所有受支持的组合里该行都会挂载。
 适配层以服务**存在**为条件武装，把宿主挂进一个声明了该服务的注入作用域；否则用
 `[mpd-better-sidebar] disabled: … [reason=absent]` 自行禁用并点出缺失的服务。它绝不会等待一个没有构建会提供的服务。
 
