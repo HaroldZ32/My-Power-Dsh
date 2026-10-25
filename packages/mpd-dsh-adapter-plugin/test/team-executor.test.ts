@@ -15,8 +15,11 @@
 //     on the roster that no later call could reach;
 //   * when NEITHER backend serves, every call refuses with a sentence instead of a TypeError.
 import { afterEach, describe, expect, test } from "bun:test"
+import { existsSync, mkdtempSync, readFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 
-import { createDshAdapter, type DshCapabilities, type DshTeamExecutor } from "../src/index"
+import { createDshAdapter, type DshCapabilities, type DshTeamExecutor, type DshTeamSlotAnswer } from "../src/index"
 
 /** One recorded call on a backend double: the seam name, its receiver, and its arguments. */
 interface Call {
@@ -38,6 +41,8 @@ interface DoubleOptions {
   childId?: string
   /** The handle an official spawn answers with; `""` models the same contradiction there. */
   memberId?: string
+  /** The `mpdConfig` service double the spawn resolves the member's route through, when one exists. */
+  config?: { slotResolutionOf?: (member: string) => unknown; teamModelRouteOf?: (member: string) => unknown }
 }
 
 /** The doubles one arm drives, plus the executor the adapter hands back. */
@@ -116,6 +121,7 @@ function harness(options: DoubleOptions = {}): Harness {
     get: (name: string): unknown => {
       if (name === "subagents") return subagents
       if (name === "agentTeams") return options.official === false ? undefined : agentTeams
+      if (name === "mpdConfig") return options.config
       return undefined
     },
   }
@@ -131,7 +137,7 @@ function harness(options: DoubleOptions = {}): Harness {
 }
 
 /** Restore the env after every arm, so an override cannot leak into the next one. */
-afterEach(() => { delete process.env[OVERRIDE] })
+afterEach(() => { delete process.env[OVERRIDE]; delete process.env.DSH_WORKSPACE_ROOT })
 
 /** The member request every spawn arm uses. */
 const REQUEST = {
@@ -141,6 +147,66 @@ const REQUEST = {
   description: "the researcher",
   prompt: "You research.",
 } as const
+
+/** The slot-1 route a matched roster member must receive as the child's `agentOptions`. */
+const SLOT_ONE_ROUTE = { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "max" } as const
+
+/** The slot-3 route, so two members can prove they receive DIFFERENT routes. */
+const SLOT_THREE_ROUTE = { provider: "gateway", model: "smart-worker" } as const
+
+/** The usable slot answers the routing arms resolve against, keyed by roster member. */
+const ROUTED_ANSWERS: Readonly<Record<string, DshTeamSlotAnswer>> = {
+  Architect: { ok: true, slot: "slot1", route: SLOT_ONE_ROUTE, fallbacks: [] },
+  "Senior Engineer": { ok: true, slot: "slot1", route: SLOT_ONE_ROUTE, fallbacks: [] },
+  "Deep Worker": { ok: true, slot: "slot3", route: SLOT_THREE_ROUTE, fallbacks: [] },
+}
+
+/** The canonical unconfigured answer; its MESSAGE is the one line a spawn must quote. */
+const UNCONFIGURED_ANSWER: DshTeamSlotAnswer = {
+  ok: false,
+  status: "unconfigured",
+  slot: "slot3",
+  code: "SLOT_UNCONFIGURED",
+  message: "SLOT_UNCONFIGURED: slot3 is not usable — missing teamModels.slot3.provider, teamModels.slot3.model",
+}
+
+/**
+ * A config-service double over a member->answer table, mirroring the live service's total read:
+ * a member it knows answers that entry, every other name answers `unrouted`.
+ * @param answers - the member entries this double serves.
+ * @returns the service surface the adapter resolves through `service("mpdConfig")`.
+ */
+function configWith(answers: Readonly<Record<string, DshTeamSlotAnswer>>): { slotResolutionOf: (member: string) => unknown } {
+  /** The entries keyed the way the real service normalizes them: lower-cased. */
+  const byName = new Map(Object.entries(answers).map(([member, answer]) => [member.toLowerCase(), answer] as const))
+  return { slotResolutionOf: (member: string): unknown => byName.get(member.toLowerCase()) ?? { ok: false, status: "unrouted", slot: undefined } }
+}
+
+/** A fresh workspace root for ONE arm's row log, so the arm starts with no recorded line. */
+function freshLogRoot(): string {
+  return mkdtempSync(join(tmpdir(), "mpd-team-executor-"))
+}
+
+/** The adapter row's log lines under one workspace root; an absent file means nothing was written. */
+function logLinesOf(root: string): string[] {
+  /** The sink's documented path: `<root>/.mpd/logs/<name>.log`. */
+  const file = join(root, ".mpd", "logs", "mpd-dsh-adapter.log")
+  if (!existsSync(file)) return []
+  return readFileSync(file, "utf8").split("\n").filter((line) => line !== "")
+}
+
+/** The start spec the native double received for one recorded call. */
+interface RecordedSpec {
+  /** The spec-level provider; kept at `spawn` and never confused with the child's route. */
+  provider: string
+  /** The child request, where a resolved route lands as `agentOptions` (or is omitted entirely). */
+  request: { agentOptions?: unknown }
+}
+
+/** Read the native start spec out of one recorded call. */
+function recordedSpec(call: Call | undefined): RecordedSpec {
+  return call?.args[0] as RecordedSpec
+}
 
 describe("which backend is chosen", () => {
   test("NATIVE is the default, and the reason says so", () => {
@@ -281,6 +347,107 @@ describe("the native backend", () => {
     /** The harness whose provider list is read. */
     const h = harness()
     expect(Array.isArray(h.executor.providers())).toBe(true)
+  })
+})
+
+// THE DEFECT THIS DESCRIBE CLOSES: every native teammate inherited the STAGING session's route,
+// because `spawn` consulted no `teamModels` slot. These arms pin the resolved-route contract and
+// the fallback policy that must never turn one unusable slot into a half-built team.
+describe("the native member route (teamModels -> agentOptions)", () => {
+  test("a matched member's request carries the slot route, while spec.provider stays spawn", async () => {
+    process.env.DSH_WORKSPACE_ROOT = freshLogRoot()
+    /** The harness whose config service routes Senior Engineer on slot 1. */
+    const h = harness({ config: configWith(ROUTED_ANSWERS) })
+    await h.executor.spawn(h.lead, { ...REQUEST, memberId: "M2", name: "M2", description: "Senior Engineer — implements the parser" })
+    /** The spec the native double received. */
+    const spec = recordedSpec(h.calls[0])
+    expect(spec.request.agentOptions).toEqual(SLOT_ONE_ROUTE)
+    // A DIFFERENT field: the spec-level provider names the subagent provider, not the model route.
+    expect(spec.provider).toBe("spawn")
+  })
+
+  test("two members get the two different slots their identities name", async () => {
+    process.env.DSH_WORKSPACE_ROOT = freshLogRoot()
+    /** The harness whose config service routes two different members on two different slots. */
+    const h = harness({ config: configWith(ROUTED_ANSWERS) })
+    await h.executor.spawn(h.lead, { ...REQUEST, memberId: "M1", name: "Architect", description: "Architect — designs the seam" })
+    await h.executor.spawn(h.lead, { ...REQUEST, memberId: "M2", name: "deep-worker", description: "Deep Worker — builds the fixture" })
+    /** The first member's route. */
+    const first = recordedSpec(h.calls[0]).request.agentOptions
+    /** The second member's route. */
+    const second = recordedSpec(h.calls[1]).request.agentOptions
+    expect(first).toEqual(SLOT_ONE_ROUTE)
+    expect(second).toEqual(SLOT_THREE_ROUTE)
+    expect(first).not.toEqual(second)
+  })
+
+  test("an unmatched member's request has NO agentOptions key at all", async () => {
+    process.env.DSH_WORKSPACE_ROOT = freshLogRoot()
+    /** The harness whose config service routes the roster but names no "helper". */
+    const h = harness({ config: configWith(ROUTED_ANSWERS) })
+    await h.executor.spawn(h.lead, { ...REQUEST, name: "helper", description: "does odd jobs" })
+    /** The request the manager received. */
+    const request = recordedSpec(h.calls[0]).request as Record<string, unknown>
+    // OMITTED, not `agentOptions: undefined`: today's inheritance must arrive as no key at all.
+    expect("agentOptions" in request).toBe(false)
+  })
+
+  test("an unconfigured slot still raises the member and writes exactly ONE log line quoting the message", async () => {
+    /** The fresh root this arm's row log is read from. */
+    const root = freshLogRoot()
+    process.env.DSH_WORKSPACE_ROOT = root
+    /** The harness whose config service says Junior Engineer's slot is unconfigured. */
+    const h = harness({ config: configWith({ "Junior Engineer": UNCONFIGURED_ANSWER }) })
+    /** The raise that must still succeed: `approve` raises members in a loop, so a throw here
+     *  would leave a half-built team. */
+    const result = await h.executor.spawn(h.lead, { ...REQUEST, name: "junior", description: "Junior Engineer — builds the fixture" })
+    expect(result).toEqual({ handle: "child-1", executor: "native" })
+    /** The request the manager received. */
+    const request = recordedSpec(h.calls[0]).request as Record<string, unknown>
+    expect("agentOptions" in request).toBe(false)
+    /** Every line this spawn wrote to the adapter row log. */
+    const lines = logLinesOf(root)
+    expect(lines.length).toBe(1)
+    expect(lines[0]).toContain(String(UNCONFIGURED_ANSWER.message))
+  })
+
+  test("a composition with NO config service inherits, and still writes exactly ONE line", async () => {
+    /** The fresh root this arm's row log is read from. */
+    const root = freshLogRoot()
+    process.env.DSH_WORKSPACE_ROOT = root
+    /** The harness whose ctx exposes no mpdConfig service at all. */
+    const h = harness()
+    /** The raise, which must not throw merely because routing is unavailable. */
+    const result = await h.executor.spawn(h.lead, { ...REQUEST, name: "Architect", description: "Architect — designs" })
+    expect(result).toEqual({ handle: "child-1", executor: "native" })
+    /** The request the manager received. */
+    const request = recordedSpec(h.calls[0]).request as Record<string, unknown>
+    expect("agentOptions" in request).toBe(false)
+    expect(logLinesOf(root).length).toBe(1)
+  })
+
+  test("a caller-supplied agentOptions WINS: resolution is skipped and nothing is logged", async () => {
+    /** The fresh root this arm's row log is read from. */
+    const root = freshLogRoot()
+    process.env.DSH_WORKSPACE_ROOT = root
+    /** The route the CALLER resolved; the config service would route this member elsewhere. */
+    const callerRoute = { provider: "caller", model: "caller-model" }
+    /** The harness whose config service routes Architect on slot 1. */
+    const h = harness({ config: configWith(ROUTED_ANSWERS) })
+    await h.executor.spawn(h.lead, { ...REQUEST, name: "Architect", description: "Architect — designs", agentOptions: callerRoute })
+    expect(recordedSpec(h.calls[0]).request.agentOptions).toEqual(callerRoute)
+    // Skipped means SKIPPED: not even a fallback line, so a caller's route is never second-guessed.
+    expect(logLinesOf(root)).toEqual([])
+  })
+
+  test("VERSION SKEW: a config service exposing only teamModelRouteOf still routes", async () => {
+    process.env.DSH_WORKSPACE_ROOT = freshLogRoot()
+    /** The pre-wave service surface: a raw route read, no typed slot resolution. */
+    const legacy = { teamModelRouteOf: (member: string): unknown => (member.toLowerCase() === "architect" ? { provider: "legacy", model: "old-model" } : undefined) }
+    /** The harness driven by the older service. */
+    const h = harness({ config: legacy })
+    await h.executor.spawn(h.lead, { ...REQUEST, name: "Architect", description: "Architect — designs" })
+    expect(recordedSpec(h.calls[0]).request.agentOptions).toEqual({ provider: "legacy", model: "old-model" })
   })
 })
 

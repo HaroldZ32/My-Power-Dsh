@@ -23,6 +23,17 @@ import type { Log } from "./log.js"
 import type { PanelBadge } from "./panel-core.js"
 import { dagBadge } from "./panel-dag.js"
 import type { TeamFeedAccessor, TeamWorkflow } from "./team-state.js"
+import type { WatchdogView } from "./watchdog.js"
+
+/**
+ * How often the watchdog half of the badge is re-taken when the caller asks for a poll.
+ *
+ * WHY A POLL AND NOT ONLY THE FEED: a hold is raised by the watchdog's OWN timer after a silence
+ * window, and that write never touches the team record — so the team feed carries no event for it,
+ * which is exactly the moment a closed page must start asking for attention. Five seconds is the
+ * watchdog's own observation scale rounded up; each pass is one synchronous service read.
+ */
+export const WATCHDOG_BADGE_POLL_MS = 5000
 
 /**
  * What the attention surface needs from the composition.
@@ -59,6 +70,27 @@ export interface PanelAttentionDeps {
    * binding". Omitted by a unit arm that wants the per-surface behaviour.
    */
   readonly autoOpenLatch?: { spent: boolean }
+  /**
+   * The WATCHDOG page's final host id, read per call; omitted when this composition has no such page.
+   *
+   * The watchdog badge is published on that page's OWN tab: an operator who is not looking at it must
+   * see the tab asking for attention, which is the same reason the MPD page's badge is published from
+   * here rather than from the page body.
+   */
+  readonly watchdogPanelId?: () => string | undefined
+  /**
+   * The durable watchdog view the badge is derived from; omitted disables the watchdog half entirely.
+   *
+   * Contract `.mpd/plans/watchdog-tui-panel.md` §7: unread incidents and holds raise the panel's
+   * attention ladder. The read is the front door's own service read — never a store file — and it is
+   * contained by that read, so a broken store answers the empty view rather than throwing here.
+   */
+  readonly readWatchdog?: () => WatchdogView
+  /**
+   * How often the watchdog badge is re-taken; {@link WATCHDOG_BADGE_POLL_MS} when omitted, `0` disables
+   * the poll (the initial pass and every team-feed event still publish).
+   */
+  readonly watchdogPollMs?: number
   /** Diagnostics; never a terminal. */
   readonly log: Log
 }
@@ -129,6 +161,25 @@ export function attentionBadge(workflow: TeamWorkflow | undefined): PanelBadge |
 }
 
 /**
+ * The badge the WATCHDOG page earns: a hold is `warning`, unread incidents alone are `info`.
+ *
+ * The count is the sum, because the host's tab chip shows ONE number and an operator asking "is there
+ * anything for me here?" is answered by the whole queue: every held team and every incident the
+ * `mpd-tui` reader has not acknowledged. `null` means nothing to report — and it is the value that
+ * CLEARS a badge a previous observation left behind.
+ * @param view - the durable view this pass read (the empty view when the service is absent).
+ * @returns the badge to publish, or `null`.
+ */
+export function watchdogAttentionBadge(view: WatchdogView): PanelBadge | null {
+  /** How many teams the watchdog currently holds. */
+  const held = view.holds.length
+  /** How many incidents this reader has not acknowledged. */
+  const unread = view.unread.length
+  if (held === 0 && unread === 0) return null
+  return { level: held > 0 ? "warning" : "info", unread: held + unread }
+}
+
+/**
  * Arm the panel's attention surface: publish the badge on every team-state change, and auto-open the
  * panel once when a team first becomes live.
  *
@@ -150,12 +201,18 @@ export function armPanelAttention(deps: PanelAttentionDeps): PanelAttention {
    * arming must publish exactly once, the null badge included, which is what clears it.
    */
   let settled = false
+  /** The last WATCHDOG badge this surface settled; null before its first settle (same reason as above). */
+  let lastWatchdog: PanelBadge | null = null
+  /** Whether the watchdog half has ever settled, so its FIRST pass publishes (the null badge included). */
+  let settledWatchdog = false
   /** Whether the one-shot auto-open already fired, whatever the host answered. */
   let opened = false
   /** Whether the PREVIOUS pass saw a live team, which is what turns a state into an APPEARANCE. */
   let wasLive = false
   /** Whether {@link PanelAttention.stop} retired this surface. */
   let stopped = false
+  /** The watchdog badge poll, once one was scheduled. */
+  let pollTimer: ReturnType<typeof setInterval> | undefined = undefined
   /** The feed's own unsubscribe, once a subscription landed. */
   let release: (() => void) | undefined
   /** Whether the "the host exposes no badge member" degrade was already said. */
@@ -168,6 +225,15 @@ export function armPanelAttention(deps: PanelAttentionDeps): PanelAttention {
       return undefined
     }
   }
+  /** The WATCHDOG page's final id; undefined on a composition that registers no such page. */
+  const watchdogId = (): string | undefined => {
+    if (deps.watchdogPanelId === undefined) return undefined
+    try {
+      return deps.watchdogPanelId()
+    } catch {
+      return undefined
+    }
+  }
   /** The workspace projection, or undefined when the read fails (never a throw into the feed). */
   const read = (): TeamWorkflow | undefined => {
     try {
@@ -176,15 +242,25 @@ export function armPanelAttention(deps: PanelAttentionDeps): PanelAttention {
       return undefined
     }
   }
+  /** The durable watchdog view, or the empty view when the read is absent or throws. */
+  const readWatchdog = (): WatchdogView => {
+    if (deps.readWatchdog === undefined) return { holds: [], unread: [] }
+    try {
+      return deps.readWatchdog()
+    } catch {
+      return { holds: [], unread: [] }
+    }
+  }
   /**
-   * Publish one badge, tolerating a host that offers no badge member.
+   * Publish one badge TO ONE PAGE, tolerating a host that offers no badge member.
+   * @param address - the discovered panel id, or undefined when nothing is registered to address.
    * @param next - the badge to publish, or `null` to clear.
-   * @returns `true` accepted, `false` a callable host refused it, `undefined` the host has no badge
-   *   member (the fact {@link badgeMissing} remembers so the retry stops).
+   * @returns `true` accepted, `false` a callable host refused it (or there is no address), `undefined`
+   *   the host has no badge member (the fact {@link badgeMissing} remembers so the retry stops).
    */
-  const publish = (next: PanelBadge | null): boolean | undefined => {
-    /** The discovered id; an unbound seam has nothing to address yet — a refusal, not an absence. */
-    const address = id()
+  const publishTo = (address: string | undefined, next: PanelBadge | null): boolean | undefined => {
+    // AN UNREGISTERED PAGE IS NOT A REFUSAL TO RETRY FOREVER: nothing can be addressed yet, so the call
+    // is skipped and the next pass (a re-bind, a registration that landed late) tries again.
     if (address === undefined) return false
     try {
       /** The host's own answer, kept three-valued so a refusal can retry and an absence cannot. */
@@ -199,13 +275,20 @@ export function armPanelAttention(deps: PanelAttentionDeps): PanelAttention {
     }
   }
   /**
-   * One observation pass, as {@link PanelAttention.observe} documents.
-   * @param event - whether a feed notification caused this pass.
+   * Publish one badge on the MPD page, tolerating a host that offers no badge member.
+   * @param next - the badge to publish, or `null` to clear.
+   * @returns the host's three-valued answer, as {@link publishTo} documents.
    */
-  const observe = (event: boolean): void => {
-    if (stopped) return
-    /** The current projection, re-read per pass: a page-scoped surface would be a frame stale. */
-    const workflow = read()
+  const publish = (next: PanelBadge | null): boolean | undefined => publishTo(id(), next)
+  /**
+   * Publish BOTH badges for one projection: the MPD page's, then the watchdog page's.
+   *
+   * Extracted so the POLL can publish without the auto-open edge (CodeRabbit #15): a poll tick that
+   * ran the edge logic would set `wasLive` between a team write and the feed's coalesced delivery (50
+   * ms by default), and the feed pass would then see no appearance — silently losing the one auto-open.
+   * @param workflow - the projection this pass read.
+   */
+  const publishBadges = (workflow: TeamWorkflow | undefined): void => {
     /** The badge this state earns. */
     const next = attentionBadge(workflow)
     if (!settled || !sameBadge(last, next)) {
@@ -220,16 +303,54 @@ export function armPanelAttention(deps: PanelAttentionDeps): PanelAttention {
         settled = true
       }
     }
+    // THE WATCHDOG HALF (contract §7): unread incidents and holds raise the WATCHDOG page's own badge,
+    // on the same pass. It is a SEPARATE badge on a SEPARATE page — merging it into the MPD badge would
+    // make one tab's count describe two surfaces — and it settles independently, so a host that refuses
+    // one badge call cannot stall the other's state tracking.
+    if (deps.readWatchdog !== undefined) {
+      /** The discovered watchdog page id; undefined when the page is not registered (yet). */
+      const watchdogAddress = watchdogId()
+      /** The badge this watchdog view earns. */
+      const nextWatchdog = watchdogAttentionBadge(readWatchdog())
+      if (watchdogAddress !== undefined && (!settledWatchdog || !sameBadge(lastWatchdog, nextWatchdog))) {
+        /** The host's own three-valued answer for the watchdog page. */
+        const result = publishTo(watchdogAddress, nextWatchdog)
+        if (result === true || (result === undefined && badgeMissing)) {
+          lastWatchdog = nextWatchdog
+          settledWatchdog = true
+        }
+      }
+    }
+  }
+  /**
+   * The POLL's pass: badges only. It must NOT touch `wasLive` or the auto-open edge, or a tick landing
+   * inside the feed's coalescing window would consume the one-shot auto-open (CodeRabbit #15).
+   */
+  const observeBadges = (): void => {
+    if (stopped) return
+    publishBadges(read())
+  }
+  /**
+   * One observation pass, as {@link PanelAttention.observe} documents.
+   * @param event - whether a feed notification caused this pass.
+   */
+  const observe = (event: boolean): void => {
+    if (stopped) return
+    /** The current projection, re-read per pass: a page-scoped surface would be a frame stale. */
+    const workflow = read()
+    // THE BADGES ARE THE SAME WORK IN BOTH MODES: publish them, then run the edge below.
+    publishBadges(workflow)
     // AUTO-OPEN IS AN EDGE, NOT A STATE (CodeRabbit finding, 2026-10-20): a team that already existed
     // when this surface armed is NOT an appearance, and the first feed event after it (a status change,
     // a task update) must not open the page for it. `wasLive` carries the previous pass's answer and is
-    // updated on EVERY pass, including the arm-time one.
+    // updated on EVERY OBSERVATION pass (the arm-time one included) — and, since #15, NEVER by the poll.
     /** Whether this pass sees a live team (a team with at least one task). */
     const live = workflow !== undefined && workflow.tasks.length > 0
-    /** Whether a live team APPEARED since the previous pass. */
+    /** Whether a live team APPEARED since the previous OBSERVATION pass. */
     const appeared = live && !wasLive
     wasLive = live
     if (!event || !deps.autoOpen || opened || deps.autoOpenLatch?.spent === true || !appeared) return
+
     /** The discovered id at the moment the first live team was seen. */
     const address = id()
     if (address === undefined) return
@@ -282,6 +403,25 @@ export function armPanelAttention(deps: PanelAttentionDeps): PanelAttention {
   // header): a team that already existed before this process started is not an appearance, and it
   // seeds `wasLive` so the next event cannot turn it into one.
   observe(false)
+  // THE WATCHDOG POLL, when the composition supplies a watchdog read. A hold is raised by the
+  // watchdog's OWN timer and touches no team record, so the team feed carries no event for the one
+  // state change an operator most needs to see; the poll is what publishes that badge. `unref` (when
+  // the host's timer supports it) keeps a passive badge from holding a process open.
+  if (deps.readWatchdog !== undefined) {
+    /** The requested period; `0` is the caller's explicit "no poll". */
+    const period = deps.watchdogPollMs ?? WATCHDOG_BADGE_POLL_MS
+    if (period > 0) {
+      try {
+        pollTimer = setInterval((): void => observeBadges(), period)
+        /** The timer's `unref`, when this runtime exposes one. */
+        const unref = (pollTimer as { unref?: () => void }).unref
+        if (typeof unref === "function") unref.call(pollTimer)
+      } catch {
+        // A runtime that refuses a timer keeps the feed-driven and initial passes; nothing else is lost.
+        pollTimer = undefined
+      }
+    }
+  }
   return {
     observe,
     /** Re-resolve the feed and re-publish; see {@link PanelAttention.resubscribe}. */
@@ -302,6 +442,16 @@ export function armPanelAttention(deps: PanelAttentionDeps): PanelAttention {
     stop(): void {
       if (stopped) return
       stopped = true
+      // THE POLL DIES WITH THE SURFACE: a panel-seam re-bind arms a new surface, and two intervals
+      // publishing badges would double every count and outlive the fiber the old one belonged to.
+      if (pollTimer !== undefined) {
+        try {
+          clearInterval(pollTimer)
+        } catch {
+          // already cleared
+        }
+        pollTimer = undefined
+      }
       /** The feed's unsubscribe, taken so a throwing one cannot be run twice. */
       const disposer = release
       release = undefined

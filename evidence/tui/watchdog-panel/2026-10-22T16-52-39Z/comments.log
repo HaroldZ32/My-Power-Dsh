@@ -1,0 +1,26 @@
+# verify-comment-coverage
+
+scanned 435 TypeScript file(s) of 435 in the source set; inspected 38979 declaration(s); skipped 18408 inline callback(s) as out of family
+
+VERDICT: FAIL — 8 violation(s) across 6 file(s).
+
+packages/mpd-modelchain-plugin/test/modelchain.test.ts (3)
+  204: comment — register
+  228: comment — register
+  249: comment — register
+
+packages/mpd-bundle-plugin/src/settings-card.ts (1)
+  615: comment — FIELDS
+
+packages/mpd-config-plugin/test/seed.test.ts (1)
+  43: comment — catalog
+
+packages/mpd-config-plugin/test/team-models.test.ts (1)
+  332: comment — byKey
+
+packages/mpd-modelchain-plugin/src/index.ts (1)
+  223: comment — apply
+
+packages/mpd-roster-provider-plugin/test/effort-adaptation.test.ts (1)
+  74: comment — slot
+

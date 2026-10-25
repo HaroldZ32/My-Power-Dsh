@@ -1,7 +1,8 @@
-// The effective model-config route (R3, wave fix/model-config-live-refresh, lane L4): one
-// READ-ONLY exact-path route the Web settings card fetches so its see-before-you-edit block can
-// show the CURRENT EFFECTIVE model config — the four team-model slot routes (defaults
-// materialised), the stored `agentRoutes` table and the configured `modelchain.<key>` chains.
+// The effective model-config route (R3, wave fix/model-config-live-refresh, lane L4; re-aimed by
+// the slot-single-source contract): one READ-ONLY exact-path route the Web settings card fetches so
+// its see-before-you-edit block can show the CURRENT EFFECTIVE model config — the four team-model
+// slot BLOCKS exactly as the workspace declares them (no default layer) and the configured
+// `modelchain.<key>` chains. The per-member `agentRoutes` table is gone (contract §3).
 //
 // WHY A ROUTE AT ALL: those values live in the `mpdConfig` service (node side), and the modelchain
 // half exists in NO settings document — the `mpd-modelchain` row declares no volatile Config, so
@@ -25,10 +26,8 @@ export interface ConfigServiceLike {
 interface ModelConfigOk {
   /** The success marker the card's projection keys on. */
   ok: true
-  /** The four slot routes, keyed `slot1`…`slot4`, schema defaults materialised by the service. */
+  /** The `teamModels` blocks exactly as declared, keyed `slot1`…`slot4` — ABSENT when unset. */
   slots: unknown
-  /** The stored agentRoutes table ({} when nothing is set). */
-  agentRoutes: unknown
   /** The configured `modelchain` chains ({} when none are). */
   modelchain: unknown
 }
@@ -46,7 +45,7 @@ interface ModelConfigUnavailable {
  * reflects the service's CURRENT state (L1's watcher and entry-config subscription refresh it —
  * a save made seconds ago is what this route serves next).
  * @param config - the `mpdConfig` service, or undefined when the row is not composed.
- * @returns the JSON body: the three effective tables, or the refusal reason.
+ * @returns the JSON body: the two effective tables, or the refusal reason.
  */
 export function buildModelConfigBody(config: ConfigServiceLike | undefined): ModelConfigOk | ModelConfigUnavailable {
   if (config === undefined || config === null || typeof config.get !== "function") {
@@ -55,10 +54,9 @@ export function buildModelConfigBody(config: ConfigServiceLike | undefined): Mod
   try {
     return {
       ok: true,
-      // A KEYED read materialises the teamModels defaults (the service's own contract), so the
-      // card sees complete slots even for a workspace that never configured them.
+      // The RAW declared block (contract §2/§9): a slot the workspace never configured is ABSENT
+      // here, and the card renders it as <unconfigured> — there is no default layer to materialise.
       slots: config.get("teamModels") ?? {},
-      agentRoutes: config.get("agentRoutes") ?? {},
       modelchain: config.get("modelchain") ?? {},
     }
   } catch (error) {

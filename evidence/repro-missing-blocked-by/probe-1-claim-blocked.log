@@ -1,0 +1,26 @@
+=== PROBE 1: claim a task whose blocker is still pending ===
+runner: bun 1.4.2 / node v26.3.0
+plugin under test: packages/mpd-team-core-plugin/src/index.ts (source, not dist)
+create_task T2 answer (blockers reading): {"plan":{"version":1,"planId":"plan-20261023090105932-lgg2-001","sessionId":"lead-session","name":"probe-1","description":"claim a blocked task","approval":"required","members":[{"name":"Senior Engineer","description":"implements","prompt":"You implement."},{"name":"Reviewer","description":"judges","prompt":"You review."}],"tasks":[{"subject":"write the core","description":"own the implementation","kind":"work","owner":"Senior Engineer"},{"subject":"review the core","description":"judge the implementation","kind":"review","blockedBy":["T1"],"owner":"Reviewer"}],"stagedAt":"2026-10-23T09:01:05.932Z"},"blockers":[{"reference":"T1","form":"board-id"}]}
+approval.answer.created: {"members":[{"name":"Senior Engineer","id":"child-Senior-Engineer"},{"name":"Reviewer","id":"child-Reviewer"}],"tasks":[{"subject":"write the core","id":"T1"},{"subject":"review the core","id":"T2"}]}
+approval.answer.plan.created.unresolved present: false
+approval.render: approved plan-20261023090105932-lgg2-001: 2 member(s), 2 task(s)
+board after approval (disk): [{"id":"T1","status":"pending","owner":"Senior Engineer","blockedBy":[]},{"id":"T2","status":"pending","owner":"Reviewer","blockedBy":["T1"]}]
+readyTasks after approval (disk): ["T1"]
+
+--- contrast: agent_teams_dispatch {action:"run", dry_run:true} ---
+dispatch.pairs: [{"taskId":"T1","subject":"write the core","memberId":"child-Senior-Engineer","memberName":"Senior Engineer"}]
+dispatch.skipped: [{"taskId":"T2","subject":"review the core","reason":"not ready (blocked by T1)"}]
+dispatch refused to pair T2 while T1 is pending: true
+
+--- code path: agent_teams_task {action:"claim", task_id:"T2", claimant:"Reviewer"} ---
+T1 status at the instant of the claim: pending
+claim.success: true
+claim.contract: {"version":1,"taskId":"T2","subject":"review the core","description":"judge the implementation","blockedBy":["T1"],"writeScopes":[],"attempt":1,"claimedBy":"Reviewer","claimedAt":"2026-10-23T09:01:05.935Z","revision":1}
+claim.task (echo): {"id":"T2","subject":"review the core","description":"judge the implementation","kind":"review","status":"in_progress","blockedBy":["T1"],"writeScopes":[],"createdAt":"2026-10-23T09:01:05.934Z","updatedAt":"2026-10-23T09:01:05.935Z","revision":2,"owner":"Reviewer","attempt":1,"startedAt":"2026-10-23T09:01:05.935Z"}
+board after claim (disk): [{"id":"T1","status":"pending","owner":"Senior Engineer","blockedBy":[]},{"id":"T2","status":"in_progress","owner":"Reviewer","blockedBy":["T1"],"startedAt":"2026-10-23T09:01:05.935Z"}]
+T2 status/startedAt after claim: {"status":"in_progress","startedAt":"2026-10-23T09:01:05.935Z"}
+T1 status after claim: {"status":"pending"}
+
+T2 startedAt stamped: true
+CONCLUSION: DEFECT REPRODUCED — claim on T2 (blocked by pending T1) SUCCEEDED and T2 is in_progress; T2.startedAt=2026-10-23T09:01:05.935Z; T1=pending; dispatch REFUSED to pair T2

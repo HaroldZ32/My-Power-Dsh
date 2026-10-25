@@ -215,6 +215,141 @@ function dshSeamInject(...names) {
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
 var TEAM_TASK_METHODS = ["createTask", "getTask", "listTasks", "updateTask"];
+function modelDeclaresNoEffort(catalog, provider, model) {
+  const entry = catalog.providers.find((p) => p.id === provider)?.models.find((m) => m.id === model);
+  return entry !== undefined && Array.isArray(entry.efforts) && entry.efforts.length === 0;
+}
+function routePositivelyListed(catalog, provider, model) {
+  return catalog.providers.some((p) => p.id === provider && p.models.some((m) => m.id === model));
+}
+function adaptEffortWithCatalog(catalog, route) {
+  const effort = typeof route.reasoningEffort === "string" ? route.reasoningEffort : "";
+  if (effort === "")
+    return route;
+  if (!modelDeclaresNoEffort(catalog, route.provider, route.model))
+    return route;
+  const adapted = { ...route };
+  delete adapted.reasoningEffort;
+  rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${route.provider}/${route.model} declares no reasoning efforts — the "${effort}" effort is omitted (a keyword this model cannot take fails the call)`);
+  return adapted;
+}
+async function resolveRunRoute(dsh, primary, fallbacks = []) {
+  const wellFormed = [];
+  let dropped = 0;
+  for (const entry of Array.isArray(fallbacks) ? fallbacks : []) {
+    if (entry === null || typeof entry !== "object") {
+      dropped += 1;
+      continue;
+    }
+    const candidate = entry;
+    if (typeof candidate.provider !== "string" || candidate.provider.trim() === "" || typeof candidate.model !== "string" || candidate.model.trim() === "" || candidate.reasoningEffort !== undefined && candidate.reasoningEffort !== null && typeof candidate.reasoningEffort !== "string") {
+      dropped += 1;
+      continue;
+    }
+    const effort = typeof candidate.reasoningEffort === "string" ? candidate.reasoningEffort.trim() : "";
+    wellFormed.push({ provider: candidate.provider.trim(), model: candidate.model.trim(), ...effort === "" ? {} : { reasoningEffort: effort } });
+  }
+  let catalog;
+  if (typeof dsh?.llmCatalog === "function") {
+    try {
+      catalog = await dsh.llmCatalog();
+    } catch {
+      catalog = undefined;
+    }
+  }
+  let index = 0;
+  if (catalog !== undefined && !routePositivelyListed(catalog, primary.provider, primary.model)) {
+    const found = wellFormed.findIndex((candidate) => routePositivelyListed(catalog, candidate.provider, candidate.model));
+    if (found >= 0)
+      index = found + 1;
+  }
+  const winner = index === 0 ? primary : wellFormed[index - 1];
+  if (index > 0) {
+    rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${primary.provider}/${primary.model} is not listed by the model catalog — slot fallback #${index} (${winner.provider}/${winner.model}) wins for this run`);
+  }
+  if (dropped > 0) {
+    rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${dropped} malformed fallback entr${dropped === 1 ? "y was" : "ies were"} dropped from the slot's chain (never fatal — the run proceeds)`);
+  }
+  const route = catalog === undefined ? winner : adaptEffortWithCatalog(catalog, winner);
+  return { route, index, fallback: index > 0, dropped };
+}
+function rosterNameHead(label) {
+  if (typeof label !== "string")
+    return "";
+  return label.split(/[—–:|]|\s-\s/)[0]?.trim() ?? "";
+}
+function memberIdentityCandidates(identity) {
+  const candidates = [];
+  if (typeof identity?.role === "string" && identity.role.trim() !== "")
+    candidates.push(identity.role.trim());
+  const head = rosterNameHead(identity?.description);
+  if (head !== "")
+    candidates.push(head);
+  if (typeof identity?.name === "string" && identity.name.trim() !== "")
+    candidates.push(identity.name.trim());
+  const seen = new Set;
+  const unique = [];
+  for (const candidate of candidates) {
+    const key = candidate.toLowerCase();
+    if (seen.has(key))
+      continue;
+    seen.add(key);
+    unique.push(candidate);
+  }
+  return unique;
+}
+function resolveTeamMemberRoute(identity, slotResolutionOf) {
+  if (typeof slotResolutionOf !== "function")
+    return { status: "no-config-service" };
+  for (const candidate of memberIdentityCandidates(identity)) {
+    let answer;
+    try {
+      answer = slotResolutionOf(candidate);
+    } catch {
+      continue;
+    }
+    if (answer === null || typeof answer !== "object")
+      continue;
+    const slotAnswer = answer;
+    if (slotAnswer.ok === true) {
+      const provider = typeof slotAnswer.route?.provider === "string" ? slotAnswer.route.provider.trim() : "";
+      const model = typeof slotAnswer.route?.model === "string" ? slotAnswer.route.model.trim() : "";
+      const slot = typeof slotAnswer.slot === "string" ? slotAnswer.slot : "";
+      if (provider === "" || model === "") {
+        return {
+          status: "unusable",
+          member: candidate,
+          ...slot === "" ? {} : { slot },
+          reason: "invalid",
+          detail: typeof slotAnswer.message === "string" && slotAnswer.message !== "" ? slotAnswer.message : `the mpdConfig service reported a usable slot for ${candidate} but returned no provider/model route`
+        };
+      }
+      const effort = typeof slotAnswer.route?.reasoningEffort === "string" ? slotAnswer.route.reasoningEffort.trim() : "";
+      return {
+        status: "routed",
+        member: candidate,
+        slot,
+        route: { provider, model, ...effort === "" ? {} : { reasoningEffort: effort } },
+        fallbacks: Array.isArray(slotAnswer.fallbacks) ? slotAnswer.fallbacks : []
+      };
+    }
+    if (slotAnswer.ok === false) {
+      if (slotAnswer.status === "unrouted")
+        continue;
+      if (slotAnswer.status === "unconfigured" || slotAnswer.status === "invalid") {
+        const detail = typeof slotAnswer.message === "string" && slotAnswer.message !== "" ? slotAnswer.message : `the mpdConfig service reported ${slotAnswer.status} for ${candidate}`;
+        return {
+          status: "unusable",
+          member: candidate,
+          ...typeof slotAnswer.slot === "string" && slotAnswer.slot !== "" ? { slot: slotAnswer.slot } : {},
+          reason: slotAnswer.status,
+          detail
+        };
+      }
+    }
+  }
+  return { status: "unmatched" };
+}
 function textBlock(content) {
   return [{ type: "text", text: typeof content === "string" ? content : String(content ?? "") }];
 }
@@ -575,6 +710,31 @@ function createDshAdapter(ctx, config = {}) {
       return;
     }
   };
+  const configSlotResolver = () => {
+    const config2 = service("mpdConfig");
+    if (config2 === undefined || config2 === null)
+      return;
+    if (typeof config2.slotResolutionOf !== "function" && typeof config2.teamModelRouteOf !== "function")
+      return;
+    return (member) => {
+      if (typeof config2.slotResolutionOf === "function") {
+        try {
+          const answer = config2.slotResolutionOf.call(config2, member);
+          if (answer !== null && typeof answer === "object" && typeof answer.ok === "boolean")
+            return answer;
+        } catch {}
+      }
+      if (typeof config2.teamModelRouteOf === "function") {
+        try {
+          const route = config2.teamModelRouteOf.call(config2, member);
+          if (route !== null && typeof route === "object")
+            return { ok: true, slot: "", route, fallbacks: [] };
+        } catch {}
+        return { ok: false, status: "unrouted", slot: undefined };
+      }
+      return;
+    };
+  };
   function requireService(serviceName, needed) {
     const found = service(serviceName);
     if (found === undefined || found === null) {
@@ -777,13 +937,24 @@ function createDshAdapter(ctx, config = {}) {
         if (!ready)
           throw new Error(`mpd-dsh-adapter: no team executor is available — ${reason}`);
         const subagents = requireService("subagents", `cannot raise team member "${request.name}"`);
+        let agentOptions = request.agentOptions;
+        if (agentOptions === undefined) {
+          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configSlotResolver());
+          if (outcome.status === "routed") {
+            const resolved = await resolveRunRoute({ llmCatalog }, outcome.route, outcome.fallbacks);
+            agentOptions = resolved.route;
+          } else {
+            const line = outcome.status === "unusable" ? `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — its slot is unusable: ${outcome.detail}` : outcome.status === "no-config-service" ? `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — no mpdConfig service is mounted (is the mpd-config row present?)` : `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — its role, description head and name name no roster member`;
+            rowLogLine("mpd-dsh-adapter", line);
+          }
+        }
         const spec = {
           provider: typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn",
           label: `${request.name} · ${request.teamId}`,
           request: {
             prompt: textBlock(request.prompt),
             parent: caller,
-            ...request.agentOptions === undefined ? {} : { agentOptions: request.agentOptions }
+            ...agentOptions === undefined ? {} : { agentOptions }
           },
           signal: request.signal ?? neverAborted()
         };
@@ -2751,6 +2922,163 @@ function moveIntoArchive(workspace, from, planId) {
   return target;
 }
 
+// packages/mpd-team-core-plugin/src/dependency-guard.ts
+function planTaskId(index) {
+  return "T" + String(index + 1);
+}
+function normalizeScope(scope) {
+  const normalized = scope.replace(/\/\*\*$/u, "").replace(/\/+$/u, "");
+  return normalized === "" && scope !== "" ? "." : normalized;
+}
+function scopeCoversEverything(normalized) {
+  return normalized === "**" || normalized === ".";
+}
+function scopesOverlap(first, second) {
+  const a = normalizeScope(first);
+  const b = normalizeScope(second);
+  if (a === "" || b === "")
+    return false;
+  if (scopeCoversEverything(a) || scopeCoversEverything(b))
+    return true;
+  if (a === b)
+    return true;
+  return a.startsWith(b + "/") || b.startsWith(a + "/");
+}
+function planReferenceTarget(plan, reference) {
+  const numbered = /^T(\d+)$/u.exec(reference) ?? /^(\d+)$/u.exec(reference);
+  if (numbered !== null) {
+    const position = Number(numbered[1]);
+    return position >= 1 && position <= plan.tasks.length ? planTaskId(position - 1) : undefined;
+  }
+  const index = plan.tasks.findIndex((task) => task.subject === reference);
+  return index < 0 ? undefined : planTaskId(index);
+}
+function planDependencyEdges(plan) {
+  return new Map(plan.tasks.map((task, index) => [
+    planTaskId(index),
+    (task.blockedBy ?? []).map((reference) => planReferenceTarget(plan, reference)).filter((id) => id !== undefined)
+  ]));
+}
+function boardDependencyEdges(tasks) {
+  const ids = new Set(tasks.map((task) => task.id));
+  return new Map(tasks.map((task) => [task.id, task.blockedBy.filter((reference) => ids.has(reference))]));
+}
+function dependencyCycle(edges) {
+  const done = new Set;
+  const path = [];
+  const onPath = new Set;
+  const visit = (id) => {
+    if (onPath.has(id)) {
+      const at = path.indexOf(id);
+      return [...path.slice(at), id];
+    }
+    if (done.has(id))
+      return;
+    path.push(id);
+    onPath.add(id);
+    for (const blocker of edges.get(id) ?? []) {
+      const cycle = visit(blocker);
+      if (cycle !== undefined)
+        return cycle;
+    }
+    path.pop();
+    onPath.delete(id);
+    done.add(id);
+    return;
+  };
+  for (const id of edges.keys()) {
+    const cycle = visit(id);
+    if (cycle !== undefined)
+      return cycle;
+  }
+  return;
+}
+function dependencyPath(edges, from, to) {
+  const queue = [from];
+  const seen = new Set;
+  while (queue.length > 0) {
+    const id = queue.pop();
+    if (id === to)
+      return true;
+    if (seen.has(id))
+      continue;
+    seen.add(id);
+    for (const blocker of edges.get(id) ?? [])
+      queue.push(blocker);
+  }
+  return false;
+}
+function planGraphDefect(plan) {
+  const unanswered = plan.tasks.findIndex((task) => !Array.isArray(task.blockedBy));
+  if (unanswered >= 0) {
+    const task = plan.tasks[unanswered];
+    return { kind: "unanswered", id: planTaskId(unanswered), subject: task.subject };
+  }
+  const edges = planDependencyEdges(plan);
+  for (const [id, blockers] of edges) {
+    if (blockers.includes(id))
+      return { kind: "self-edge", id };
+  }
+  const cycle = dependencyCycle(edges);
+  return cycle === undefined ? undefined : { kind: "cycle", path: cycle };
+}
+function scopeClashes(plan) {
+  const edges = planDependencyEdges(plan);
+  const clashes = [];
+  for (let first = 0;first < plan.tasks.length; first += 1) {
+    for (let second = first + 1;second < plan.tasks.length; second += 1) {
+      const firstScopes = plan.tasks[first].writeScopes ?? [];
+      const secondScopes = plan.tasks[second].writeScopes ?? [];
+      if (firstScopes.length === 0 || secondScopes.length === 0)
+        continue;
+      const firstId = planTaskId(first);
+      const secondId = planTaskId(second);
+      if (dependencyPath(edges, firstId, secondId) || dependencyPath(edges, secondId, firstId))
+        continue;
+      for (const scope of firstScopes) {
+        const collidesWith = secondScopes.find((candidate) => scopesOverlap(scope, candidate));
+        if (collidesWith === undefined)
+          continue;
+        clashes.push({
+          first: { id: firstId, subject: plan.tasks[first].subject, scope },
+          second: { id: secondId, subject: plan.tasks[second].subject, scope: collidesWith }
+        });
+        break;
+      }
+    }
+  }
+  return clashes;
+}
+
+// packages/mpd-team-core-plugin/src/team-door-guard.ts
+var TEAM_DOOR_TOOLS = ["spawn_teammate", "team_task_create", "team_task_list", "team_task_get", "team_task_update"];
+function teamDoorRefusal(toolName) {
+  return "team door: `" + toolName + "` is refused — this workspace's team plane is the mpd RECORD " + "(`<workspace>/.mpd/team/teams/<teamId>.json`, served as `mpdTeams`), so the official board is NOT " + "guarded here: it asks no required dependency answer for a task, refuses no write-scope overlap at " + "approve, and gates no claim readiness. Author on the RECORD with `agent_teams_plan " + '{action:"add_member"|"create_task"|"approve"}`, drive it with `agent_teams_task ' + '{action:"claim"|"complete"|"fail"}`, and read it with `agent_teams_plan {action:"status"}` — ' + "every session in this composition carries those tools, so no lane is left without a door.";
+}
+function installTeamDoorGuard(dsh, options) {
+  try {
+    if (dsh.capabilities().toolsGuard !== true) {
+      options.warn("the harness exposes no tools.guard seam — the team door is NOT installed " + "(the official team authoring tools stay available beside the mpd RECORD, so an authoring call " + "is advice-only; mounting a harness with `tools.guard` installs it with no config change)");
+      return { installed: false, reason: "no-guard-seam" };
+    }
+    const door = new Set(TEAM_DOOR_TOOLS);
+    const dispose = dsh.guardTool((exec) => {
+      try {
+        const name = String(exec?.name ?? "");
+        if (!door.has(name))
+          return;
+        return teamDoorRefusal(name);
+      } catch {
+        return;
+      }
+    });
+    return { installed: true, ...typeof dispose === "function" ? { dispose } : {} };
+  } catch (error) {
+    options.warn("installing the team door failed (" + (error instanceof Error ? error.message : String(error)) + ")");
+    return { installed: false, reason: "install-failed" };
+  }
+}
+
 // packages/mpd-team-core-plugin/src/team-web.ts
 var TEAM_STATE_PATH = "/plugins/mpd-team/state";
 var TEAM_PLAN_PATH = "/plugins/mpd-team/plan";
@@ -4260,6 +4588,54 @@ function describePlan(plan) {
   const state = plan.approvedAt !== undefined ? "approved" : plan.discardedAt !== undefined ? "discarded" : "staged";
   return `${plan.planId} (${state}): ${plan.members.length} member(s), ${plan.tasks.length} task(s)`;
 }
+function fieldText(value) {
+  if (typeof value === "string")
+    return value === "" ? "-" : value;
+  return typeof value === "number" ? String(value) : "-";
+}
+function describeTaskLine(task) {
+  const row = task ?? {};
+  const blockedBy = Array.isArray(row.blockedBy) ? row.blockedBy.map(String).filter((entry) => entry !== "") : [];
+  const subject = typeof row.subject === "string" ? JSON.stringify(row.subject) : JSON.stringify("");
+  return `task id=${fieldText(row.id)} owner=${fieldText(row.owner)} status=${fieldText(row.status)} kind=${fieldText(row.kind)} blockedBy=${blockedBy.length === 0 ? "-" : blockedBy.join(",")} subject=${subject}`;
+}
+function describeStatus(value) {
+  const board = value ?? {};
+  const members = Array.isArray(board.members) ? board.members : [];
+  const tasks = Array.isArray(board.tasks) ? board.tasks : [];
+  const plan = board.plan ?? {};
+  const planId = typeof plan.planId === "string" && plan.planId !== "" ? plan.planId : "(none)";
+  const summary = `plan ${planId} · members ${members.length} · tasks ${tasks.length} · hold ${board.hold === null || board.hold === undefined ? "none" : "held"}`;
+  const lines = [summary];
+  for (const member of members) {
+    const row = member ?? {};
+    lines.push(`member id=${fieldText(row.id)} name=${fieldText(row.name)} status=${fieldText(row.status)}`);
+  }
+  for (const task of tasks)
+    lines.push(describeTaskLine(task));
+  return lines.join(`
+`);
+}
+function describeDepend(value) {
+  const answer = value ?? {};
+  const task = answer.task ?? {};
+  const blockedBy = Array.isArray(task.blockedBy) ? task.blockedBy.map(String).filter((entry) => entry !== "") : [];
+  const unresolved = Array.isArray(answer.unresolved) ? answer.unresolved.map(String) : [];
+  const added = Array.isArray(answer.added) ? answer.added.length : 0;
+  const edges = blockedBy.length === 0 ? "-" : blockedBy.join(",");
+  const outcome = answer.idempotent === true ? "unchanged; the reference was already an edge" : `appended ${added} edge(s)`;
+  return `${fieldText(answer.taskId)} blockedBy=[${edges}] (${outcome})` + (unresolved.length === 0 ? "" : ` — WARNING: ${unresolved.join(", ")} name(s) no task on this board; kept verbatim`);
+}
+function describeStagedPlan(plan) {
+  if (plan === undefined)
+    return "no staged plan";
+  const lines = plan.tasks.map((task) => {
+    const blockedBy = (task.blockedBy ?? []).filter((entry) => entry !== "");
+    return `staged task id=- owner=${task.owner ?? "-"} blockedBy=${blockedBy.length === 0 ? "-" : blockedBy.join(",")} subject=${JSON.stringify(task.subject)}`;
+  });
+  return [describePlan(plan), ...lines].join(`
+`);
+}
 function stringList(value) {
   return Array.isArray(value) ? value.map(String) : undefined;
 }
@@ -4282,6 +4658,94 @@ function blockerSentence(blockers) {
   if (unknown.length === 0)
     return ` — blocked_by reads as ${forms}`;
   return ` — WARNING: blocked_by ${unknown.map((reference) => `"${reference}"`).join(", ")} name(s) no task this plan can resolve (only a position like "2", a staged subject, or a board id like "T2" resolves); approval will report it and draw no edge`;
+}
+function describeWireValue(value) {
+  if (value === null)
+    return "null";
+  if (Array.isArray(value))
+    return `an array of ${value.length}`;
+  if (typeof value === "object")
+    return "an object";
+  if (typeof value === "string")
+    return value.length > 60 ? `a string ${JSON.stringify(value.slice(0, 60) + "…")}` : `a string ${JSON.stringify(value)}`;
+  return `a ${typeof value} (${String(value)})`;
+}
+function namedTask(nextId, subject) {
+  return `${nextId} (${JSON.stringify(subject)})`;
+}
+function readDependencyAnswer(raw, args, nextId, subject) {
+  const task = namedTask(nextId, subject);
+  const declarations = [];
+  if (raw.blocked_by !== undefined)
+    declarations.push({ spelling: "task.blocked_by", value: raw.blocked_by });
+  if (raw.blockedBy !== undefined)
+    declarations.push({ spelling: "task.blockedBy", value: raw.blockedBy });
+  if (args?.blocked_by !== undefined)
+    declarations.push({ spelling: "blocked_by", value: args.blocked_by });
+  for (const declaration of declarations) {
+    if (Array.isArray(declaration.value))
+      continue;
+    throw new Error(`create_task for ${task} was given a NON-ARRAY blocked_by at ${declaration.spelling} (${describeWireValue(declaration.value)}): a non-array is never silently dropped. Fix: send an array of references — blocked_by: [] for a genuine root, or blocked_by: ["<blocker id or subject>"] — or independent: true, which is the only other accepted spelling.`);
+  }
+  const lists = declarations.map((declaration) => ({ spelling: declaration.spelling, list: declaration.value.map(String) }));
+  if (lists.length > 1) {
+    const [first, ...rest] = lists;
+    const disagreement = rest.find((candidate) => candidate.list.length !== first.list.length || candidate.list.some((entry, at) => entry !== first.list[at]));
+    if (disagreement !== undefined) {
+      throw new Error(`create_task for ${task} was given TWO disagreeing spellings of blocked_by: ${first.spelling} reads ${JSON.stringify(first.list)} while ${disagreement.spelling} reads ${JSON.stringify(disagreement.list)}. All three spellings (task.blocked_by, task.blockedBy and top-level blocked_by) are accepted, but they must state ONE answer: send the list in a single spelling (or make both agree), or independent: true for a genuine root.`);
+    }
+  }
+  const independent = raw.independent === true || args?.independent === true;
+  const blockedBy = lists.length === 0 ? undefined : lists[0].list;
+  if (blockedBy === undefined && !independent) {
+    throw new Error(`create_task for ${task} must state its DEPENDENCY ANSWER: send blocked_by: [...] — an array, possibly [] for a genuine root — or independent: true. Nothing was staged and no edge was guessed for you, because a captain that does not know its DAG is asked, never guessed for. Fix: send blocked_by: [] for a genuine root, or list what must close first — blocked_by: ["<blocker id or subject>"] — or independent: true.`);
+  }
+  if (independent && blockedBy !== undefined && blockedBy.length > 0) {
+    throw new Error(`create_task for ${task} is CONTRADICTORY: blocked_by is non-empty (${JSON.stringify(blockedBy)}) while independent: true says the task has no blockers. Fix: either keep the blockers and drop independent: true, or drop the list and send blocked_by: [] if this task really is a root.`);
+  }
+  return blockedBy ?? [];
+}
+function assertNoDependencyCycle(edges, subjects, nextId, task, selfReferences) {
+  const label = (id) => subjects.has(id) ? namedTask(id, subjects.get(id)) : id;
+  if (selfReferences.length > 0) {
+    throw new Error(`create_task for ${task} declares a SELF-REFERENCE: blocked_by names ${selfReferences.map((reference) => JSON.stringify(reference)).join(", ")}, which is this very task (${nextId}). A task that blocks itself can never become ready, so it could never be claimed or dispatched. Fix: remove its own subject and its own id (${nextId}) from blocked_by and name the task that must close first — or send blocked_by: [] / independent: true for a genuine root.`);
+  }
+  const cycle = dependencyCycle(edges);
+  if (cycle === undefined)
+    return;
+  throw new Error(`create_task for ${task} would create a dependency CYCLE ${cycle.map(label).join(" -> ")} — every task on it would wait for itself, so no task on it could ever be claimed or dispatched, and no verb can remove an edge afterwards. Fix: leave this task out of the loop — send it with blocked_by: [] (or independent: true) and give the ordering to the other task, then re-send this call.`);
+}
+function assertScopesOrdered(plan) {
+  const [clash] = scopeClashes(plan);
+  if (clash === undefined)
+    return;
+  throw new Error(`plan ${plan.planId} was REFUSED: ${namedTask(clash.first.id, clash.first.subject)} and ${namedTask(clash.second.id, clash.second.subject)} declare OVERLAPPING write scopes (${JSON.stringify(clash.first.scope)} and ${JSON.stringify(clash.second.scope)}) and NEITHER depends on the other, so both could write the same files at the same time. Fix it either way: add a dependency edge so one runs after the other (create ${clash.second.id} with blocked_by: ["${clash.first.id}"], or agent_teams_task {action:"depend", task_id:"${clash.second.id}", blocked_by:["${clash.first.id}"]}), or make the two scopes disjoint so each task owns its own paths.`);
+}
+function assertPlanGraph(plan) {
+  const defect = planGraphDefect(plan);
+  if (defect === undefined)
+    return;
+  if (defect.kind === "unanswered") {
+    throw new Error(`plan ${plan.planId} was REFUSED: staged task ${namedTask(defect.id, defect.subject)} states NO dependency answer, so the plan's graph is incomplete — every staged task MUST answer, a task a bulk edit replaced included. The accepted answers are blocked_by: [...] (an array, possibly [] for a genuine root) or independent: true; nothing was approved, because a captain that does not know its DAG is asked, never guessed for. Fix: re-send the plan with agent_teams_plan {action:"edit", tasks:[...]} giving ${defect.id} blocked_by: [] (or the tasks that must close first), then approve again.`);
+  }
+  const subjects = new Map(plan.tasks.map((task, index) => [planTaskId(index), task.subject]));
+  const label = (id) => subjects.has(id) ? namedTask(id, subjects.get(id)) : id;
+  if (defect.kind === "self-edge") {
+    throw new Error(`plan ${plan.planId} was REFUSED: its staged graph carries a dependency SELF-EDGE ${label(defect.id)} -> ${label(defect.id)} — the task is its own blocker, so it could never become ready, and no verb can remove the edge afterwards. Fix: re-send the plan with agent_teams_plan {action:"edit", tasks:[...]} without that task's own id or subject in its blocked_by — blocked_by: [] for a genuine root, or name the task that must close first — then approve again.`);
+  }
+  throw new Error(`plan ${plan.planId} was REFUSED: its staged graph carries a dependency CYCLE ${defect.path.map(label).join(" -> ")} — every task on it waits for itself, so none could ever be claimed or dispatched, and no verb can remove an edge afterwards. Fix: re-send the plan with agent_teams_plan {action:"edit", tasks:[...]} and drop one edge of the loop — give one task on that path blocked_by: [] (or a blocker outside the loop) — then approve again.`);
+}
+function assertClaimReady(board, task) {
+  const { blocking } = blockingDependencies(board, task.blockedBy);
+  if (blocking.length === 0)
+    return;
+  const label = (id) => {
+    const row = board.find((candidate) => candidate.id === id);
+    return row === undefined ? id : namedTask(id, row.subject);
+  };
+  const dangling = blocking.filter((id) => !board.some((candidate) => candidate.id === id));
+  const first = blocking[0];
+  throw new Error(`task ${namedTask(task.id, task.subject)} is BLOCKED by ${blocking.map(label).join(", ")}: ${blocking.length === 1 ? "the declared blocker is" : "the declared blockers are"} not satisfied, and agent_teams_dispatch refuses the same pairing through the same readiness predicate (its reason reads "not ready (blocked by ${blocking.join(", ")})"). Fix: close ${first} first with agent_teams_task {action:"complete", task_id:"${first}"} — or use {action:"fail", task_id:"${first}"} if it will never be done, because a failed blocker releases its dependents (OPT-1) — then claim ${task.id} again.` + (dangling.length === 0 ? "" : ` NOTE: ${dangling.join(", ")} name(s) no task on this board (a dangling reference that can never be satisfied), so ${namedTask(task.id, task.subject)} can never be claimed. Fix: fail this row with agent_teams_task {action:"fail", task_id:"${task.id}"}, then have the team's Lead append a REPLACEMENT task with agent_teams_plan {action:"create_task", task:{subject, description, blocked_by:[...]}} that carries the corrected blocked_by. A failed row is never reopened, and re-creating the dangling reference will not make it satisfiable.`));
 }
 function adapterFor(ctx) {
   const mounted = typeof ctx?.get === "function" ? ctx.get("mpdDsh") : undefined;
@@ -4369,6 +4833,7 @@ async function bundleApprovalEffects(ctx, dsh, exec, plan) {
 function apply(ctx) {
   const dsh = adapterFor(ctx);
   const disposers = [];
+  let toolRegistrations = 0;
   const now = () => new Date;
   const feed = new ChangeFeed({ warn: (line) => {
     rowLogLine("mpd-team-core", line);
@@ -4554,24 +5019,26 @@ function apply(ctx) {
       rowLogLine("mpd-team-core", `[mpd-team-core] publishing the ${TEAMS_SERVICE} service failed: ${String(error?.message ?? error)}`);
     }
   }
+  toolRegistrations += 1;
   disposers.push(dsh.registerTool({
     name: "agent_teams_plan",
-    description: "The team PLAN. `create` stages a plan and spawns nothing; `add_member`/`create_task` append to it or to the live team; `edit` reads or replaces it; `approve` EXECUTES it through the TEAM EXECUTOR (NATIVE backend DEFAULT, official `dsh.team*` FALLBACK), REFUSING a plan with 0 members and 0 tasks; `delete` archives; `status` shows plan, halt, roster and board.",
+    description: "The team PLAN. `create` stages (spawns nothing); `add_member`/`create_task` append to it or the live team; `edit` reads or replaces it; `approve` EXECUTES through the TEAM EXECUTOR (native default, official fallback), REFUSING an EMPTY plan; `delete` archives; `status` shows plan, hold, roster and board.",
     parameters: {
       type: "object",
       properties: {
         action: { type: "string", enum: ["create", "add_member", "create_task", "edit", "approve", "delete", "status"], description: "What to do." },
-        name: { type: "string", description: "create: the team's name." },
+        name: { type: "string", description: "create: team name." },
         description: { type: "string", description: "create/edit: what the team is for." },
-        approval: { type: "string", enum: ["required", "automatic"], description: "create: `required` (default) waits for `approve`." },
-        replace: { type: "boolean", description: "create: required to replace an ALREADY APPROVED plan." },
-        member: { type: "object", description: "add_member: {name, prompt, description?, role?}; `prompt` is the teammate's instantiation prompt." },
-        task: { type: "object", description: "create_task: {subject, description, blocked_by?, write_scopes?, owner?, kind?, coverageOf?, sourceTaskId?}." },
-        owner: { type: "string", description: "create_task: alias of `task.owner`." },
-        blocked_by: { type: "array", items: { type: "string" }, description: "create_task: alias of `task.blocked_by`." },
+        approval: { type: "string", enum: ["required", "automatic"], description: "create: `required` (default) waits for approve." },
+        replace: { type: "boolean", description: "create: to replace an ALREADY APPROVED plan." },
+        member: { type: "object", description: "add_member: {name, prompt, description?, role?}; prompt is the instantiation prompt." },
+        task: { type: "object", description: "create_task: {subject, description, blocked_by, write_scopes?, owner?, kind?, coverageOf?, sourceTaskId?}; blocked_by or independent:true required." },
+        owner: { type: "string", description: "create_task: alias of task.owner." },
+        blocked_by: { type: "array", items: { type: "string" }, description: "create_task: [] = root." },
+        kind: { type: "string", description: "create_task: alias of task.kind." },
         members: { type: "array", items: { type: "object" }, description: "edit: replacement members." },
         tasks: { type: "array", items: { type: "object" }, description: "edit: replacement tasks." },
-        dry_run: { type: "boolean", description: "approve: report what would be created, and create nothing." }
+        dry_run: { type: "boolean", description: "approve: report what would be created; write nothing." }
       },
       required: ["action"],
       additionalProperties: false
@@ -4596,7 +5063,7 @@ function apply(ctx) {
           blockers: { type: "array", items: { type: "object" } }
         }
       },
-      render: (_args, value) => text(value?.archivedTo !== undefined ? `archived to ${value.archivedTo}` : value?.created !== undefined ? `approved ${value.plan?.planId ?? ""}: ${value.created.members?.length ?? 0} member(s), ${value.created.tasks?.length ?? 0} task(s)` + (value.stoppedAt === undefined ? "" : ` — STOPPED at ${value.stoppedAt}`) + (Array.isArray(value.created.unresolved) && value.created.unresolved.length > 0 ? ` — WARNING: ${value.created.unresolved.length} task(s) carry blockers that name no task (${value.created.unresolved.map((entry) => `${entry.taskId ?? "?"}:[${(entry.references ?? []).join(",")}]`).join(" ")}); they draw no edge` : "") : value?.members !== undefined ? `plan ${value.plan?.planId ?? "(none)"} · members ${value.members.length} · tasks ${value.tasks?.length ?? 0} · hold ${value.hold === null || value.hold === undefined ? "none" : "held"}` : typeof value?.appended === "string" ? value.appended : Array.isArray(value?.blockers) && value.blockers.length > 0 ? `task "${value.plan?.tasks?.at?.(-1)?.subject ?? ""}" staged${blockerSentence(value.blockers)}` : describePlan(value?.plan))
+      render: (_args, value) => text(value?.archivedTo !== undefined ? `archived to ${value.archivedTo}` : value?.created !== undefined ? `approved ${value.plan?.planId ?? ""}: ${value.created.members?.length ?? 0} member(s), ${value.created.tasks?.length ?? 0} task(s)` + (value.stoppedAt === undefined ? "" : ` — STOPPED at ${value.stoppedAt}`) + (Array.isArray(value.created.unresolved) && value.created.unresolved.length > 0 ? ` — WARNING: ${value.created.unresolved.length} task(s) carry blockers that name no task (${value.created.unresolved.map((entry) => `${entry.taskId ?? "?"}:[${(entry.references ?? []).join(",")}]`).join(" ")}); they draw no edge` : "") : value?.members !== undefined ? describeStatus(value) : typeof value?.appended === "string" ? value.appended : Array.isArray(value?.blockers) && value.blockers.length > 0 ? `task "${value.plan?.tasks?.at?.(-1)?.subject ?? ""}" staged${blockerSentence(value.blockers)}` : describeStagedPlan(value?.plan))
     },
     execute: async (args, exec) => {
       const action = String(args?.action ?? "");
@@ -4667,6 +5134,7 @@ function apply(ctx) {
             name: added.name,
             description: added.description === "" ? added.name : added.description,
             prompt: input.prompt === "" ? added.description : input.prompt,
+            ...added.role === undefined ? {} : { role: added.role },
             ...exec.signal === undefined ? {} : { signal: exec.signal }
           });
           const running = updateTeamMember(readTeam(workspace, roster.teamId) ?? roster, added.id, { executorRef: spawned.handle, status: "running" });
@@ -4680,26 +5148,29 @@ function apply(ctx) {
       }
       if (action === "create_task") {
         const raw = args?.task ?? {};
-        const blockedBy = stringList(raw.blocked_by ?? raw.blockedBy ?? args?.blocked_by);
         const writeScopes = stringList(raw.write_scopes ?? raw.writeScopes ?? args?.write_scopes);
         const owner = raw.owner ?? args?.owner;
-        const kind = parseTaskKind(raw.kind);
+        const kind = parseTaskKind(raw.kind ?? args?.kind);
         const coverageOf = raw.coverageOf;
         const sourceTaskId = raw.sourceTaskId;
         const plan = stagedPlan(workspace, sessionId);
         if (plan !== undefined) {
+          const blockedBy2 = readDependencyAnswer(raw, args, planTaskId(plan.tasks.length), String(raw.subject ?? "").trim());
           const next2 = addTask(plan, {
             subject: String(raw.subject ?? ""),
             description: String(raw.description ?? ""),
             ...kind === undefined ? {} : { kind },
-            ...blockedBy === undefined ? {} : { blockedBy },
+            blockedBy: blockedBy2,
             ...writeScopes === undefined ? {} : { writeScopes },
             ...owner === undefined ? {} : { owner: String(owner) },
             ...coverageOf === undefined ? {} : { coverageOf: String(coverageOf) },
             ...sourceTaskId === undefined ? {} : { sourceTaskId: String(sourceTaskId) }
           });
+          const stagedTask = next2.tasks[next2.tasks.length - 1];
+          const stagedId = planTaskId(next2.tasks.length - 1);
+          assertNoDependencyCycle(planDependencyEdges(next2), new Map(next2.tasks.map((task, index) => [planTaskId(index), task.subject])), stagedId, namedTask(stagedId, stagedTask.subject), blockedBy2.filter((reference) => planReferenceTarget(next2, reference) === stagedId));
           writePlan(workspace, next2);
-          return { plan: next2, ...blockedBy === undefined ? {} : { blockers: blockerReading(next2, blockedBy) } };
+          return { plan: next2, ...blockedBy2.length === 0 ? {} : { blockers: blockerReading(next2, blockedBy2) } };
         }
         const resolved = resolveForWrite(workspace, sessionId, lineage, delegated);
         if (resolved.record === undefined)
@@ -4709,18 +5180,20 @@ function apply(ctx) {
         }
         if (String(raw.subject ?? "").trim() === "")
           throw new Error("a task needs a non-empty subject");
+        const blockedBy = readDependencyAnswer(raw, args, "T" + resolved.record.nextTaskNumber, String(raw.subject ?? "").trim());
         const next = addTeamTask(resolved.record, {
           subject: String(raw.subject ?? ""),
           description: String(raw.description ?? ""),
           ...kind === undefined ? {} : { kind },
-          ...blockedBy === undefined ? {} : { blockedBy },
+          blockedBy,
           ...writeScopes === undefined ? {} : { writeScopes },
           ...owner === undefined ? {} : { owner: String(owner) },
           ...coverageOf === undefined ? {} : { coverageOf: String(coverageOf) },
           ...sourceTaskId === undefined ? {} : { sourceTaskId: String(sourceTaskId) }
         }, now());
-        writeTeam(workspace, withDerivedPhase(next));
         const appendedTask = next.tasks[next.tasks.length - 1];
+        assertNoDependencyCycle(boardDependencyEdges(next.tasks), new Map(next.tasks.map((task) => [task.id, task.subject])), appendedTask.id, namedTask(appendedTask.id, appendedTask.subject), appendedTask.blockedBy.filter((reference) => reference === appendedTask.id || reference === appendedTask.subject));
+        writeTeam(workspace, withDerivedPhase(next));
         return {
           team: next,
           task: appendedTask,
@@ -4776,8 +5249,10 @@ function apply(ctx) {
           throw new Error(`plan ${plan.planId} is already approved`);
         const staged = plan.members.length + plan.tasks.length;
         if (staged === 0) {
-          throw new Error(`plan ${plan.planId} is EMPTY — it has 0 members and 0 tasks, and approving it would create a team with nothing in it; add a member with agent_teams_plan {action:"add_member", member:{name, prompt}} and/or a task with {action:"create_task", task:{subject, description}} first`);
+          throw new Error(`plan ${plan.planId} is EMPTY — it has 0 members and 0 tasks, and approving it would create a team with nothing in it; add a member with agent_teams_plan {action:"add_member", member:{name, prompt}} and/or a task with {action:"create_task", task:{subject, description}} first — a task added there must also declare its dependency answer with blocked_by: [...] (possibly []) or independent: true`);
         }
+        assertPlanGraph(plan);
+        assertScopesOrdered(plan);
         if (args?.dry_run === true) {
           return { plan, created: { members: plan.members.map((m) => ({ name: m.name, id: "" })), tasks: plan.tasks.map((t) => ({ subject: t.subject, id: "" })) } };
         }
@@ -4829,7 +5304,7 @@ function apply(ctx) {
               name: member.name,
               description: member.description === "" ? member.name : member.description,
               prompt: plan.members.find((staged2) => staged2.name === member.name)?.prompt ?? member.description,
-              ...member.route === undefined ? {} : { provider: member.route },
+              ...member.role === undefined ? {} : { role: member.role },
               ...exec.signal === undefined ? {} : { signal: exec.signal }
             });
             created.members.push({ name: member.name, id: spawned.handle });
@@ -4856,24 +5331,26 @@ function apply(ctx) {
       throw new Error(`agent_teams_plan: unknown action "${action}" (create | add_member | create_task | edit | approve | delete | status)`);
     }
   }));
+  toolRegistrations += 1;
   disposers.push(dsh.registerTool({
     name: "agent_teams_task",
-    description: "Shared board tasks: `claim` (freezes the contract), `contract`, `release`, and terminal `complete`/`fail` (owner-only; optional `note`/`expected_revision`; a FAIL unblocks its dependents).",
+    description: "Shared board tasks: `claim` (freezes the contract), `contract`, `release`, terminal `complete`/`fail` (owner-only; optional `note`/`expected_revision`; a FAIL unblocks dependents), `depend` (append `blocked_by`; owner or lead).",
     parameters: {
       type: "object",
       properties: {
-        action: { type: "string", enum: ["claim", "contract", "release", "complete", "fail"], description: "What to do." },
-        task_id: { type: "string", description: "the task id; `release` takes the task to free." },
-        claimant: { type: "string", description: "claim: who claims it (default: the caller)." },
-        note: { type: "string", description: "complete/fail: one line recorded on the row." },
-        expected_revision: { type: "number", description: "complete/fail/release: the revision you decided on; stale is refused." }
+        action: { type: "string", enum: ["claim", "contract", "release", "complete", "fail", "depend"], description: "What to do." },
+        task_id: { type: "string", description: "the task id." },
+        claimant: { type: "string", description: "claim: who claims (default: caller)." },
+        note: { type: "string", description: "complete/fail: one line on the row." },
+        expected_revision: { type: "number", description: "the revision you decided on; stale refused." },
+        blocked_by: { type: "array", items: { type: "string" }, description: "depend: blockers to append." }
       },
       required: ["action"],
       additionalProperties: false
     },
     output: {
-      schema: { type: "object", properties: { contract: { type: "object" }, contracts: { type: "array", items: { type: "object" } }, task: { type: "object" }, released: { type: "boolean" }, refused: { type: "string" }, taskId: { type: "string" }, status: { type: "string" }, closedBy: { type: "string" }, attempt: { type: "number" }, revision: { type: "number" }, dependents: { type: "array", items: { type: "object" } }, note: { oneOf: [{ type: "string" }, { type: "null" }] } } },
-      render: (_args, value) => text(value?.refused !== undefined ? `refused: ${value.refused}` : value?.released !== undefined ? value.released ? `${value.taskId} -> ${value.status ?? "pending"} (pairing freed)` : value.status !== undefined ? `${value.taskId} -> ${value.status} (no pairing to free)` : "that task was not dispatched" : value?.status !== undefined ? `${value.taskId} -> ${value.status} (by ${value.closedBy}, attempt ${value.attempt})` : value?.contract !== undefined ? `attempt ${value.contract.attempt} of ${value.contract.taskId} by ${value.contract.claimedBy}` : value?.contracts !== undefined ? `${value.contracts.length} contract(s)` : "no contract")
+      schema: { type: "object", properties: { contract: { type: "object" }, contracts: { type: "array", items: { type: "object" } }, task: { type: "object" }, released: { type: "boolean" }, refused: { type: "string" }, taskId: { type: "string" }, status: { type: "string" }, closedBy: { type: "string" }, attempt: { type: "number" }, revision: { type: "number" }, dependents: { type: "array", items: { type: "object" } }, note: { oneOf: [{ type: "string" }, { type: "null" }] }, added: { type: "array", items: { type: "string" } }, idempotent: { type: "boolean" }, unresolved: { type: "array", items: { type: "string" } } } },
+      render: (_args, value) => text(value?.refused !== undefined ? `refused: ${value.refused}` : value?.idempotent !== undefined ? describeDepend(value) : value?.released !== undefined ? value.released ? `${value.taskId} -> ${value.status ?? "pending"} (pairing freed)` : value.status !== undefined ? `${value.taskId} -> ${value.status} (no pairing to free)` : "that task was not dispatched" : value?.status !== undefined ? `${value.taskId} -> ${value.status} (by ${value.closedBy}, attempt ${value.attempt})` : value?.contract !== undefined ? `attempt ${value.contract.attempt} of ${value.contract.taskId} by ${value.contract.claimedBy}` : value?.contracts !== undefined ? `${value.contracts.length} contract(s)` : "no contract")
     },
     execute: async (args, exec) => {
       const { workspace, sessionId, lineage } = where(exec);
@@ -4898,6 +5375,74 @@ function apply(ctx) {
         const caller = [sessionId, title, String(membership?.name ?? ""), ...identity.ownMember === undefined ? [] : [identity.ownMember.name], ...identity.ancestry].filter((value) => value !== "");
         return releaseDispatchedTask(workspace, resolved.record, taskId, typeof args?.expected_revision === "number" ? args.expected_revision : undefined, caller, membership?.role === "lead");
       }
+      if (action === "depend") {
+        const resolved = resolveForWrite(workspace, sessionId, lineage, delegated);
+        if (resolved.record === undefined)
+          throw new Error(resolved.refusal ?? "no team record in this workspace — approve a plan first");
+        const taskId = String(args?.task_id ?? "");
+        if (taskId === "")
+          throw new Error("agent_teams_task depend: task_id is required");
+        const references = stringList(args?.blocked_by ?? args?.blockedBy) ?? [];
+        if (references.length === 0)
+          throw new Error("agent_teams_task depend: blocked_by is required");
+        const fresh = readTeam(workspace, resolved.record.teamId) ?? resolved.record;
+        const task = fresh.tasks.find((candidate) => candidate.id === taskId);
+        if (task === undefined)
+          return { taskId, refused: `no task "${taskId}" in team ${fresh.teamId}` };
+        const membership = (() => {
+          try {
+            return dsh.teamMembership(exec.agent);
+          } catch {
+            return;
+          }
+        })();
+        const title = sessionTitleOf(exec);
+        const identity = callerIdentity(fresh, sessionId, title, lineage);
+        const caller = [sessionId, title, String(membership?.name ?? ""), ...identity.ownMember === undefined ? [] : [identity.ownMember.name], ...identity.ancestry].filter((value) => value !== "");
+        const refusal = authorizeRelease(fresh, taskId, caller, membership?.role === "lead");
+        if (refusal !== undefined)
+          return { taskId, refused: refusal };
+        if (task.status === "completed" || task.status === "failed")
+          return { taskId, refused: `task ${taskId} is "${task.status}" and its edges are frozen` };
+        const merged = [...task.blockedBy];
+        const added = [];
+        const chainReaches = (fromId, targetId) => {
+          const seen = new Set;
+          const queue = [fromId];
+          while (queue.length > 0) {
+            const id = queue.pop();
+            if (id === targetId)
+              return true;
+            if (seen.has(id))
+              continue;
+            seen.add(id);
+            const row = fresh.tasks.find((candidate) => candidate.id === id);
+            if (row === undefined)
+              continue;
+            for (const parent of resolveBlockers(fresh, row.blockedBy).blockedBy)
+              queue.push(parent);
+          }
+          return false;
+        };
+        for (const reference of references) {
+          const wired = resolveBlockers(fresh, [reference]).blockedBy[0];
+          if (wired === taskId)
+            return { taskId, refused: `task ${taskId} cannot be its own blocker — a self-edge would leave it pending forever, and depend can never remove an edge` };
+          if (chainReaches(wired, taskId))
+            return { taskId, refused: `${wired} already depends on ${taskId}, so blocking ${taskId} on it would create a cycle — depend appends edges and can never remove one` };
+          if (merged.includes(wired))
+            continue;
+          merged.push(wired);
+          added.push(wired);
+        }
+        const outcome = resolveBlockers(fresh, merged);
+        if (added.length === 0)
+          return { taskId, task, idempotent: true, added, unresolved: outcome.unresolved };
+        const next = updateTeamTask(fresh, taskId, { blockedBy: merged }, now());
+        writeTeam(workspace, withDerivedPhase(next));
+        const view = next.tasks.find((candidate) => candidate.id === taskId) ?? task;
+        return { taskId, task: view, idempotent: false, added, unresolved: outcome.unresolved };
+      }
       if (action === "contract") {
         if (args?.task_id === undefined)
           return { contracts: listContracts(workspace) };
@@ -4914,6 +5459,7 @@ function apply(ctx) {
         const task = record.tasks.find((candidate) => candidate.id === String(args?.task_id ?? ""));
         if (task === undefined)
           throw new Error(`no task "${String(args?.task_id ?? "")}" in team ${record.teamId}`);
+        assertClaimReady(record.tasks, task);
         const claimant = String(args?.claimant ?? sessionId);
         const contract = claimContract(workspace, {
           id: task.id,
@@ -4990,9 +5536,10 @@ function apply(ctx) {
           releasedFromDispatch
         };
       }
-      throw new Error(`agent_teams_task: unknown action "${action}" (claim | contract | release | complete | fail)`);
+      throw new Error(`agent_teams_task: unknown action "${action}" (claim | contract | release | complete | fail | depend)`);
     }
   }));
+  toolRegistrations += 1;
   disposers.push(dsh.registerTool({
     name: "agent_teams_dispatch",
     description: "Pair READY shared tasks with IDLE members. `run` pairs each ready task with one idle member and RECORDS the pairing (no second pass can hand it to another member; the ledger is TEAM-SCOPED, so two teams in one workspace never shadow each other). Unpaired tasks are reported with their reason. `release` frees a pairing and reopens the task row to `pending`.",
@@ -5138,6 +5685,7 @@ function apply(ctx) {
       return { pairs: sent, skipped, forgotten, ...holdNote === undefined ? {} : { holdRead: holdNote }, ...reaped.length === 0 ? {} : { reaped } };
     }
   }));
+  toolRegistrations += 1;
   disposers.push(dsh.registerTool({
     name: "agent_teams_mail",
     description: "The team mailbox. `send` messages one member (through the official transport) and records it; `unread` lists what a member has NOT acknowledged; `read` acknowledges ids; `summary` counts total/unread/undelivered per member. Delivery and reading are separate facts: a message the transport accepted is still unread until the recipient acknowledges it.",
@@ -5226,6 +5774,7 @@ ${result.message.body}`, exec.signal);
       };
     }
   }));
+  toolRegistrations += 1;
   disposers.push(dsh.registerTool({
     name: "agent_teams_control",
     description: 'Halt or resume the team. `halt` stops NEW DISPATCH and leaves the team and every teammate alive (use agent_teams_plan action:"delete" to end a team). `resume` clears the hold.',
@@ -5270,6 +5819,11 @@ Add members and tasks with agent_teams_plan {action: "add_member" | "create_task
       };
     }
   }));
+  const teamDoor = installTeamDoorGuard(dsh, { warn: (line) => {
+    rowLogLine("mpd-team-core", line);
+  } });
+  if (teamDoor.dispose !== undefined)
+    disposers.push(teamDoor.dispose);
   const root = (() => {
     try {
       return dsh.workspaceRoot();
@@ -5291,7 +5845,7 @@ Add members and tasks with agent_teams_plan {action: "add_member" | "create_task
         })();
         rowLogLine("mpd-team-core", `[mpd-team-core] team executor: ${view.kind} (${view.reason})`);
       };
-      rowLogLine("mpd-team-core", `[mpd-team-core] team workflow plane: staged=${pending} hold=${readHold(root) === undefined ? "none" : "held"} registrations=${disposers.length} (${disposers.length - 1} tools + the /agent-teams command)`);
+      rowLogLine("mpd-team-core", `[mpd-team-core] team workflow plane: staged=${pending} hold=${readHold(root) === undefined ? "none" : "held"} registrations=${disposers.length} (${toolRegistrations} tools + the /agent-teams command${teamDoor.installed ? " + the team-door guard" : ""})`);
       reportExecutor();
       const workspaceForRequest = (sessionId) => {
         if (sessionId === "")

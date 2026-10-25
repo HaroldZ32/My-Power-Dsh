@@ -31,8 +31,8 @@ const TASK_PATH = "/plugins/mpd-team/task"
 
 /** The workspace the fixture team was read from. */
 const WORKSPACE = "/home/harold/MyProj/DshProj/My-Power-Dsh"
-/** The sentence the empty TASKS panel must keep, verbatim, from the frozen contract. */
-const EMPTY_SENTENCE = "No shared task yet — the captain posts them with team_task_create."
+/** The sentence the empty TASKS panel must keep, verbatim — it names the ALLOWED authoring door, never a refused official tool. */
+const EMPTY_SENTENCE = "No shared task yet — the captain posts them with agent_teams_plan {action:\"create_task\", blocked_by:[…]}."
 /** The Chinese the fixture translator answers with, so every arm can tell a key from its text. */
 const ZH = "ZH:"
 

@@ -7,6 +7,25 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
+/**
+ * A `mpdConfig`-shaped double that routes every base roster member to its SHIPPED chain head.
+ *
+ * The slot-single-source contract deletes the static-chain fallback for roster members, so a row with
+ * no config service refuses every base spawn (asserted in `team-models-routing.test.ts`). These arms
+ * are about labels, personas and deny lists, not routing, so they mount the slot system configured to
+ * the declared route and keep that property out of the way.
+ * @returns the service double the roster row reads for a member's route.
+ */
+function configDouble(): { teamModelRouteOf: (member: string) => { provider: string; model: string } | undefined } {
+  return {
+    teamModelRouteOf: (member: string) => {
+      /** The roster entry this name resolves to, when it is a base member. */
+      const role = ROLES.find((r) => r.name === member)
+      return role === undefined ? undefined : { ...role.chain[0] }
+    },
+  }
+}
+
 /** Apply the plugin to a recording ctx and return the surfaces the arms assert on. */
 function makePlugin(config?: Parameters<typeof apply>[1]): {
   tools: any[]
@@ -32,7 +51,9 @@ function makePlugin(config?: Parameters<typeof apply>[1]): {
         return { result: { structured: { role: "oracle", summary: "done", recommendation: "keep it simple", evidence: ["e1"] }, stopReason: "complete" } }
       }
     },
-    provide: (n: string, v: any) => { provided[n] = v }
+    provide: (n: string, v: any) => { provided[n] = v },
+    // The mounted slot system, configured to each base member's shipped route (see `configDouble`).
+    get: (n: string) => (n === "mpdConfig" ? configDouble() : undefined)
   }
   apply(ctx, config)
   return { tools, spawned, provided, exec: { agent: { id: "agent-1" }, signal: new AbortController().signal } }
@@ -60,6 +81,40 @@ test("persona assets exist for every role and contain real instructions", () => 
     expect(text.length).toBeGreaterThan(200)
     expect(readPersona({}, r)).toBe(text.trim())
   }
+})
+
+/**
+ * The Lead persona is INJECTED into every Lead teammate and is read before any document, so it is a
+ * runtime instruction. The team-door guard REFUSES the official authoring verbs at the tool
+ * boundary, which turns an instruction to use them into a call that can only fail — so this arm
+ * pins the ONE door's vocabulary, the absence of the refused pair and of the retired "the guards
+ * never see it" claim, and the measured length (3154 chars on 2026-10-23 after the rewrite; 2938
+ * before it, so the cap is that rewrite's budget and not room to grow).
+ */
+test("the Lead persona names the ONE team door, never the refused official verbs", async () => {
+  /** A fresh apply whose persona tool returns exactly the text a staging surface receives. */
+  const { tools } = makePlugin()
+  /** The mpd_role_persona definition, addressed by the member NAME a team surface passes. */
+  const persona = tools.find((t) => t.name === "mpd_role_persona")
+  /** The Lead (atlas) persona text as the staging surface receives it. */
+  const text = (await persona.execute({ role: "Lead" }, {})).persona
+  // Every step of the surviving door, in the order the persona spells it.
+  for (const step of ['{action:"add_member"}', '{action:"create_task"}', '{action:"approve"}', '{action:"status"}']) {
+    expect(text).toContain(step)
+  }
+  expect(text).toContain("agent_teams_plan")
+  expect(text).toContain("agent_teams_task")
+  expect(text).toContain("agent_teams_dispatch")
+  expect(text).toContain("mpd_role_persona")
+  // A task's dependency answer is now REFUSED-when-omitted, so the persona must ask for it —
+  // and the retired claim that the guards never see a task must not survive anywhere in the text.
+  expect(text).toContain("blocked_by")
+  expect(text).toContain("independent: true")
+  expect(text).not.toContain("spawn_teammate")
+  expect(text).not.toContain("team_task_create")
+  expect(text).not.toContain("never see it")
+  expect(text).not.toContain("enforces nothing")
+  expect(text.length).toBeLessThanOrEqual(3200)
 })
 
 test("normalizeRoleKey: canonical, chain keys and legacy mpd- ids", () => {
@@ -164,6 +219,42 @@ test("no surface advertises an upstream alias: names plus what a role does", asy
     expect(list.output.render({}, listRes)[0].text).toContain(role.name)
   }
   expect(spawned[0].label).toBe("Plan Reviewer")
+})
+
+/**
+ * The team-door guard REFUSES the official authoring verbs at the tool boundary, so a description
+ * that advertises them is a runtime instruction to fail. These descriptions are read before any
+ * document, so they must name the ONE surviving door — and only the mpd path may be offered.
+ */
+test("the tool descriptions name the mpd team door, never the refused official pair", () => {
+  /** A fresh apply whose three roster tool definitions are the advertised surface. */
+  const { tools } = makePlugin()
+  /** The list definition, located by name rather than index. */
+  const list = tools.find((t) => t.name === "mpd_roles_list")
+  /** The spawn definition, likewise. */
+  const spawn = tools.find((t) => t.name === "mpd_role_spawn")
+  /** The persona definition, likewise. */
+  const persona = tools.find((t) => t.name === "mpd_role_persona")
+  for (const tool of [list, spawn, persona]) {
+    expect(tool.description).not.toContain("spawn_teammate")
+    expect(tool.description).not.toContain("team_task_create")
+  }
+  // Every surface that points at team work names the plan door and the board tools that drive it.
+  expect(list.description).toContain("agent_teams_plan")
+  expect(list.description).toContain("dependency answer")
+  expect(spawn.description).toContain("agent_teams_plan")
+  expect(spawn.description).toContain("`agent_teams_task`/`agent_teams_dispatch`")
+  // THE MODEL-ROUTE SENTENCE IS THE CONTRACT (2026-10-24). The old claim — a team teammate
+  // "inherits the caller's model route" — became FALSE once the team executor resolved a staged
+  // member's `teamModels` slot. What is true: THIS path applies the role's slot, a staged member is
+  // routed the same way by the team executor (`role` first, then the description's head), and ONLY
+  // an unmatched member inherits the staging session's route.
+  expect(spawn.description).toContain("THIS path applies the role's `teamModels` slot")
+  expect(spawn.description).toContain("routed the same way by the team executor")
+  expect(spawn.description).toContain("its `role` first, then its `description` head")
+  expect(spawn.description).toContain("only an UNMATCHED member inherits the staging session's route")
+  expect(spawn.description).not.toContain("a teammate inherits the caller's model route")
+  expect(persona.description).toContain("agent_teams_plan")
 })
 
 /**
@@ -371,8 +462,8 @@ function serviceCtx(): {
   warnings: string[]
   exec: { agent: { id: string }; signal: AbortSignal }
 } {
-  /** The lazily resolved cordis service map ctx.get reads. */
-  const services: Record<string, any> = {}
+  /** The lazily resolved cordis service map ctx.get reads, pre-seeded with the slot system. */
+  const services: Record<string, any> = { mpdConfig: configDouble() }
   /** Tool definitions the extension and roster plugins registered. */
   const tools: any[] = []
   /** Subagent specs recorded by the fake subagents.start. */

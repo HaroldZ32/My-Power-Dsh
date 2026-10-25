@@ -10,6 +10,11 @@
 // is what constructs the run. So a bundle-owned provider can supply the route the team service
 // never sends, and that is what this package registers (`mpd-roster`).
 
+// THE LABEL SPLIT IS NOT RESTATED HERE. `rosterNameHead` in the shared adapter is the ONE
+// implementation (the native team executor reads the same rule), so the official path and the
+// native path cannot disagree about what "the head of a description" means.
+import { rosterNameHead } from "../../mpd-dsh-adapter-plugin/src/index.ts"
+
 /** One member's resolved route, as the mpd `teamModels` slots declare it. */
 export interface SlotRoute {
   /** Provider id the member's teammate must run on (`deepseek-official`, `gateway`, …). */
@@ -42,20 +47,18 @@ export interface RoutableRequest {
  * The contract is therefore: **a description that names a roster member routes that member; one
  * that does not is NOT routed here — `routeFor` returns `undefined`, `applyRoute` returns the request
  * by identity, and the harness-resolved route of the session that staged it stands.** The name is
- * the text before the first separator
- * (`—`, `-`, `:`, `|`) and is matched case-insensitively, so
- * `"Senior Engineer — implements the parser"` routes Senior Engineer while
- * `"check the vendored corpus"` routes nothing. Matching is deliberately conservative: a wrong
- * guess would silently move a teammate onto a model nobody chose.
+ * the head {@link rosterNameHead} extracts (the text before `—`, `–`, `:`, `|` or ` - `; `·` is NOT
+ * a separator) and is matched case-insensitively, so `"Senior Engineer — implements the parser"`
+ * routes Senior Engineer while `"check the vendored corpus"` routes nothing. Matching is
+ * deliberately conservative: a wrong guess would silently move a teammate onto a model nobody chose.
  *
  * @param label - the descriptor label (or the request's own `label`).
  * @param knownNames - the roster's functional names.
  * @returns the matching roster name, or `undefined` when the label names none.
  */
 export function memberFromLabel(label: unknown, knownNames: readonly string[]): string | undefined {
-  if (typeof label !== "string") return undefined
   /** The text before the first separator, trimmed; a member name must be the WHOLE head to match. */
-  const head = label.split(/[—–:|]|\s-\s/)[0]?.trim() ?? ""
+  const head = rosterNameHead(label)
   if (head === "") return undefined
   /** The head lower-cased once, since the comparison below is case-insensitive. */
   const needle = head.toLowerCase()
@@ -65,42 +68,6 @@ export function memberFromLabel(label: unknown, knownNames: readonly string[]): 
     if (needle === name.toLowerCase()) return name
   }
   return undefined
-}
-
-/**
- * The route a member takes, from the slot mapping and the configured slots.
- *
- * @param member - the roster member's functional name.
- * @param slotOf - the member's slot id (`slot1`…`slot4`), or `undefined` when it has none.
- * @param slots - the configured `teamModels` subtree.
- * @returns the route, or `undefined` when this member is not routed by slots at all.
- * @throws when the member HAS a slot but that slot is not fully configured — the rule the one-shot
- *   paths already follow: fail LOUDLY naming the member and the slot, never substitute and never
- *   clamp an effort.
- */
-export function routeForMember(
-  member: string,
-  slotOf: string | undefined,
-  slots: Record<string, unknown> | undefined,
-): SlotRoute | undefined {
-  if (slotOf === undefined) return undefined
-  /** The configured subtree for this member's slot, when the config layer supplies one. */
-  const slot = slots?.[slotOf] as Record<string, unknown> | undefined
-  if (slot === undefined || slot === null || typeof slot !== "object") {
-    throw new Error(`mpd-roster: ${member} is routed by ${slotOf}, but no ${slotOf} is configured for this workspace`)
-  }
-  /** The slot's provider id, trimmed; an empty string counts as unset, not as a route. */
-  const provider = typeof slot.provider === "string" ? slot.provider.trim() : ""
-  /** The slot's model id, trimmed; an empty string counts as unset, not as a route. */
-  const model = typeof slot.model === "string" ? slot.model.trim() : ""
-  /** The slot's optional effort keyword, trimmed; an empty string means the slot states no effort. */
-  const effort = typeof slot.reasoningEffort === "string" ? slot.reasoningEffort.trim() : ""
-  if (provider === "" || model === "") {
-    throw new Error(
-      `mpd-roster: ${member} is routed by ${slotOf}, but that slot is incomplete (provider=${provider === "" ? "unset" : provider}, model=${model === "" ? "unset" : model})`,
-    )
-  }
-  return { provider, model, ...(effort === "" ? {} : { reasoningEffort: effort }) }
 }
 
 /**

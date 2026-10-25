@@ -14,7 +14,7 @@
 import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs"
 import { homedir, userInfo } from "node:os"
 import { join, resolve, sep } from "node:path"
-import { DSH_SEAM_SUBAGENTS, DSH_SEAM_TOOLS, dshSeamInject, installChildPersonaSeam, restrictToolsTolerant, rowLogLine, withSupportedEffort, workspaceRootOf, type DshAdapter, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { DSH_SEAM_SUBAGENTS, DSH_SEAM_TOOLS, dshSeamInject, installChildPersonaSeam, restrictToolsTolerant, rowLogLine, resolveRunRoute, workspaceRootOf, type DshAdapter, textBlock, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
 
 /** The cordis plugin name, matched against this row's id in the bundle patch. */
 export const name = "mpd-workmate"
@@ -760,7 +760,7 @@ export function apply(ctx: Ctx): void {
    *
    * @returns the service double, or undefined when it is absent or refuses the lookup.
    */
-  function configService(): { teamModelRouteOf?: (m: string) => unknown } | undefined {
+  function configService(): { slotResolutionOf?: (m: string) => unknown; teamModelRouteOf?: (m: string) => unknown } | undefined {
     try {
       return ctx.get ? (ctx.get("mpdConfig") as { teamModelRouteOf?: (m: string) => unknown } | undefined) : undefined
     } catch {
@@ -770,43 +770,81 @@ export function apply(ctx: Ctx): void {
   }
 
   /**
-   * The route ONE spawn runs on, re-resolved from the LIVE config (R2/AC4): the base's precedence
-   * chain first (`agentRoutes[base]` > `teamModels.slot{N}` > defaults, served by the config row),
-   * then the roster base's CURRENT chain head (already slot-spliced per call by the roles row),
-   * then the frozen `meta` values — which are PROVENANCE ONLY from this wave on (an init-time
-   * snapshot, never the routing decision).
+   * The route ONE spawn runs on, resolved from the SLOT SERVICE ONLY (contract §5).
    *
-   * The config-service CALL is deliberately unguarded: a `teamModelRouteOf` that THROWS (a
-   * malformed `agentRoutes` entry, an incomplete slot) fails the spawn LOUDLY naming the member —
-   * the registered contract every routing path follows. The roster-base fallback IS guarded: a
-   * composition without the roles row must still spawn on the provenance route.
+   * The frozen `meta.provider`/`meta.model` are PROVENANCE now (a snapshot taken at init), never a
+   * routing decision; so is the roster base's declared chain for a roster member. The slot is the
+   * one route source, resolved PER SPAWN so a config saved between two spawns is what the SECOND
+   * spawn runs on.
    *
-   * @param meta - the instance's metadata, whose `baseName` addresses the base and whose frozen
-   *   `provider`/`model` are the last-resort provenance.
-   * @returns the route this spawn is sent on.
+   * Two cases keep their OWN declared route, because no slot exists for them:
+   *   * an EXTENSION role's base is `unrouted` by the slot groups, and its route is its extension's
+   *     own declaration (the roster service reports it as the base's chain head);
+   *   * a `mpdConfig` that answers nothing at all for a BASE member is a REFUSAL, not a fallback:
+   *     the shipped `roles.data.ts` chain is not a default layer (contract §2), so the spawn fails
+   *     with the canonical `SLOT_UNCONFIGURED` sentence and NOTHING is started.
+   *
+   * @param meta - the instance's metadata, whose `baseName` addresses the base.
+   * @returns the primary route plus the slot's fallback chain (empty when the route is not a slot's).
+   * @throws the structured `SLOT_UNCONFIGURED` failure when a roster member's slot is unusable.
    */
-  function spawnRouteOf(meta: Meta): { provider: string; model: string; reasoningEffort?: string } {
+  function spawnRouteOf(meta: Meta): { route: { provider: string; model: string; reasoningEffort?: string }; fallbacks: readonly unknown[] } {
     /** The live config service, absent until the `mpd-config` row has applied. */
     const live = configService()
+    if (typeof live?.slotResolutionOf === "function") {
+      /** The service's TOTAL resolution, never an exception (contract amendment 1). */
+      const resolution = live.slotResolutionOf(meta.baseName) as
+        | { ok: true; route: { provider: string; model: string; reasoningEffort?: string }; fallbacks?: readonly unknown[] }
+        | { ok: false; status: "unconfigured" | "invalid"; code: string; message: string }
+        | { ok: false; status: "unrouted" }
+      if (resolution !== null && typeof resolution === "object") {
+        if (resolution.ok) return { route: resolution.route, fallbacks: resolution.fallbacks ?? [] }
+        // NOT slot-routed (an extension base): its own declared chain below is the route.
+        if (resolution.status === "unrouted") return { route: declaredRouteOfBase(meta), fallbacks: [] }
+        // Routed but unusable: the ONE structured failure, built by the config service itself.
+        const error = new Error(resolution.message)
+        ;(error as Error & { code?: string }).code = resolution.code
+        throw error
+      }
+    }
+    // A config row from before the total surface: its route read is still authoritative for a member
+    // it routes, and an absent answer falls through to the base's declared chain.
     if (typeof live?.teamModelRouteOf === "function") {
-      // NOT wrapped: the service's loud route errors propagate to the spawn (the registered contract).
-      const value = live.teamModelRouteOf(meta.baseName) as { provider?: unknown; model?: unknown; reasoningEffort?: unknown } | undefined | null
-      if (value !== undefined && value !== null && typeof value === "object") {
+      /** The older total read's route, or undefined when it has none to report. */
+      const route = live.teamModelRouteOf(meta.baseName) as { provider?: unknown; model?: unknown; reasoningEffort?: unknown } | undefined | null
+      if (route !== undefined && route !== null && typeof route === "object") {
         return {
-          provider: String(value.provider ?? ""),
-          model: String(value.model ?? ""),
-          ...(typeof value.reasoningEffort === "string" && value.reasoningEffort !== "" ? { reasoningEffort: value.reasoningEffort } : {}),
+          route: {
+            provider: String(route.provider ?? ""),
+            model: String(route.model ?? ""),
+            ...(typeof route.reasoningEffort === "string" && route.reasoningEffort !== "" ? { reasoningEffort: route.reasoningEffort } : {}),
+          },
+          fallbacks: [],
         }
       }
     }
+    return { route: declaredRouteOfBase(meta), fallbacks: [] }
+  }
+
+  /**
+   * The route a workmate base DECLARES for itself, for the case no slot decides it.
+   *
+   * Only an extension role reaches this: its route is the provider/model its extension declared, which
+   * the roster service reports as the base's chain head. A base with no declared route is an ERROR —
+   * the frozen `meta` values are provenance and must never silently become a route (§5).
+   * @param meta - the instance's metadata.
+   * @returns the base's own declared route.
+   * @throws when the mounted roster reports no route for this base.
+   */
+  function declaredRouteOfBase(meta: Meta): { provider: string; model: string; reasoningEffort?: string } {
     try {
-      /** The base as the roster sees it NOW — its chain head already carries the configured slot. */
+      /** The base as the roster sees it NOW — an extension base carries its declared route here. */
       const base = resolveBase(meta.baseName)
       if (base.provider !== "" && base.model !== "") return { provider: base.provider, model: base.model }
     } catch {
-      // No roster row (or an unreadable one): the provenance route below is the honest fallback.
+      // No roster row (or an unreadable one): the error below names the missing route.
     }
-    return { provider: meta.provider, model: meta.model }
+    throw new Error("mpd_workmate: no route configured for " + meta.baseName + " — its extension declares no provider+model, and a workmate never runs on the frozen meta values (they are provenance). Configure a route for the base, or re-initialize the workmate from a base that declares one.")
   }
 
   /**
@@ -945,7 +983,7 @@ export function apply(ctx: Ctx): void {
       const names = all.map((r: any) => String(r?.name ?? "")).filter((n) => n !== "")
       throw new Error(`mpd_workmate: unknown base — use a functional NAME from mpd_roles_list (${names.join(", ")})`)
     }
-    return { id: String(base.id), name: String(base.name), description: String(base.description ?? ""), readonly: Boolean(base.readonly), provider: base.chain?.[0]?.provider ?? "deepseek-official", model: base.chain?.[0]?.model ?? "", persona: String(base.persona ?? "") }
+    return { id: String(base.id), name: String(base.name), description: String(base.description ?? ""), readonly: Boolean(base.readonly), provider: String(base.chain?.[0]?.provider ?? ""), model: String(base.chain?.[0]?.model ?? ""), persona: String(base.persona ?? "") }
   }
 
   /** Create one instance directory from a base template, under an independent name. */
@@ -972,8 +1010,21 @@ export function apply(ctx: Ctx): void {
     const dir = wmDir(name)
     if (existsSync(dir)) throw new Error(`mpd_workmate: "${name}" already exists — pick another name or reuse it via mpd_workmate_spawn`)
     mkdirSync(dir, { recursive: true })
+    /** The route the instance is BORN with, recorded as provenance only: a usable slot when the base
+     *  is slot-routed, else the base's own declared route (an extension role), else empty — never the
+     *  shipped roster chain, which is not a route any spawn may run on (contract §2/§5). */
+    const born = ((): { provider: string; model: string } => {
+      /** The live slot resolution of the base, when the config row is mounted. */
+      const live = configService()
+      if (typeof live?.slotResolutionOf === "function") {
+        /** The total resolution; only a usable slot names a route here. */
+        const resolution = live.slotResolutionOf(base.name) as { ok: true; route: { provider: string; model: string } } | { ok: false } | undefined
+        if (resolution !== undefined && resolution !== null && resolution.ok === true) return { provider: resolution.route.provider, model: resolution.route.model }
+      }
+      return { provider: base.provider, model: base.model }
+    })()
     /** The fresh metadata; `baseId` is recorded here as INTERNAL provenance and never leaves disk. */
-    const meta: Meta = { name, baseId: base.id, baseName: base.name, description: base.description, provider: base.provider, model: base.model, readonly: base.readonly, createdAt: now(), updatedAt: now(), uses: 0, lastTask: null, renamedFrom: [] }
+    const meta: Meta = { name, baseId: base.id, baseName: base.name, description: base.description, provider: born.provider, model: born.model, readonly: base.readonly, createdAt: now(), updatedAt: now(), uses: 0, lastTask: null, renamedFrom: [] }
     writeFileSync(join(dir, "meta.json"), JSON.stringify(meta, null, 2) + "\n")
     writeFileSync(join(dir, "persona.md"), capText(base.persona, PERSONA_CAP) + "\n")
     writeFileSync(join(dir, "memory.md"), "")
@@ -1061,16 +1112,16 @@ export function apply(ctx: Ctx): void {
       // mutation block on this workmate.
       noteSpawnStart(key)
       try {
-        // R2/AC4: the route is re-resolved from the LIVE config PER SPAWN (agentRoutes > slot >
-        // defaults > roster chain > provenance meta), so a config saved between two spawns is what
-        // the SECOND spawn runs on — an in-flight task keeps its route; the NEXT spawn picks the
-        // change. The frozen meta.provider/model are provenance, never the routing decision.
-        /** The route as the precedence chain decided it — always defined, by construction. */
+        // THE SLOT IS THE ONLY ROUTE SOURCE (contract §5), resolved PER SPAWN, so a config saved
+        // between two spawns is what the SECOND spawn runs on — an in-flight task keeps its route.
+        // The frozen `meta.provider`/`meta.model` are provenance and never decide a route.
+        /** The primary route plus the slot's own fallback chain, or the structured refusal. */
         const decided = spawnRouteOf(meta)
-        /** The decided route after the model-capability adaptation dropped an effort keyword the
-         *  target model cannot take (same adaptation `mpd_role_spawn` applies); the `??` only
-         *  restores totality — the adaptation preserves the definedness of its input. */
-        const route = (await withSupportedEffort(dsh, decided)) ?? decided
+        /** The route this spawn actually sends: the winning candidate after the ONE pre-spawn
+         *  consumption of the fallback chain and the effort adaptation (contract §8). */
+        const run = await resolveRunRoute(dsh, decided.route, decided.fallbacks)
+        /** The adapted route, named for the spawn spec below. */
+        const route = run.route
         /** The spawn result, whose structured report is echoed into this tool's output. */
         const result = await dsh.spawnAgent({
           // Name unification: the workmate's OWN name is the label — the same word a

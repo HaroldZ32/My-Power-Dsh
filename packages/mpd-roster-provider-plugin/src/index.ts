@@ -29,12 +29,12 @@
 // IDENTITY is the one thing the team service does not forward: `request` is `{ prompt, parent }` and
 // the member's name survives only as the descriptor LABEL (the teammate's `description`). See
 // `route.ts` for the matching rule and its conservatism.
-import { rowLogLine, DSH_SEAM_SUBAGENTS, dshSeamInject, withSupportedEffort, type DshAdapter, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index"
+import { rowLogLine, DSH_SEAM_SUBAGENTS, dshSeamInject, resolveRunRoute, type DshAdapter, resolveDshAdapter } from "../../mpd-dsh-adapter-plugin/src/index.ts"
 // THE single declaration of which member a slot routes. Imported rather than restated: the slots'
 // membership is a contract shared with both settings front doors, and a second copy here is exactly
 // how a routing table drifts from the one the user edits.
-import { TEAM_MODEL_SLOT_GROUPS } from "../../mpd-config-plugin/src/settings-schema"
-import { applyRoute, labelOf, memberFromLabel, routeForMember, type RoutableRequest, type SlotRoute } from "./route"
+import { TEAM_MODEL_SLOT_GROUPS } from "../../mpd-config-plugin/src/settings-schema.ts"
+import { applyRoute, labelOf, memberFromLabel, type RoutableRequest, type SlotRoute } from "./route.ts"
 
 /** The plugin id the bundle row mounts this module under. */
 export const name = "mpd-roster-provider"
@@ -128,50 +128,89 @@ export function apply(ctx: any, config: RosterProviderConfig = {}): void {
   /** The slot that routes a member, from the shared membership declaration (never a second copy). */
   const slotOf = (member: string): string | undefined => SLOT_OF_MEMBER.get(member.toLowerCase())
 
-  /** The configured slots, read PER CALL: the config layer can change under a running session. */
-  const slotsNow = (): Record<string, unknown> | undefined => {
+  /** The config service surface this row reads; BOTH reads are total (contract amendment 1). */
+  interface ConfigServiceLike {
+    /** The typed total resolution the slot-single-source wave exposes. */
+    slotResolutionOf?: (member: string) => unknown
+    /** The older total route read, kept for a composition running a stale config-row dist. */
+    teamModelRouteOf?: (member: string) => unknown
+  }
+
+  /** The live config service, or undefined when the composition mounts none (or refuses the lookup). */
+  const configService = (): ConfigServiceLike | undefined => {
     try {
-      /** The runtime config service, when the composition mounts one. */
-      const config = (typeof ctx?.get === "function" ? ctx.get("mpdConfig") : undefined) as ConfigLike | undefined
-      /** The `teamModels` subtree, accepted only when it really is an object. */
-      const value = config?.get?.("teamModels")
-      return value !== null && typeof value === "object" ? (value as Record<string, unknown>) : undefined
+      return (typeof ctx?.get === "function" ? ctx.get("mpdConfig") : undefined) as ConfigServiceLike | undefined
     } catch {
+      // A config service that refuses the lookup reads as ABSENT, never as a boot failure.
       return undefined
     }
   }
 
   /**
-   * The member's route from the config service's FULL precedence chain (R2: `agentRoutes[name]` >
-   * `teamModels.slot{N}` > built-in defaults), resolved PER CALL.
+   * Build the canonical `SLOT_UNCONFIGURED` refusal for a slot-routed member no service can route.
    *
-   * The service lookup alone is guarded: a `teamModelRouteOf` that THROWS (a malformed
-   * `agentRoutes` entry, an incomplete slot) must reach the captain unchanged — the spawn fails
-   * loudly naming the member, never silently substituted — which is the same registered contract
-   * `routeForMember` enforces on the slot-only path.
-   *
-   * @param member - the roster member's functional name.
-   * @returns the precedence-resolved route, or `undefined` when no config service is mounted (the
-   *   slot fallback below then stands, exactly as before this wave).
+   * Only the DEGRADED composition reaches this (no `mpdConfig` at all, or a pre-wave service that
+   * answers nothing): the shipped bundle always mounts the config row, and its own resolver builds the
+   * sentence every other applier throws. This local sentence states the same facts — the member, the
+   * slot, both recovery paths, and that nothing was written and no child was started.
+   * @param member - the roster member the label named.
+   * @returns the refusal error, carrying the branchable code.
    */
-  const liveRouteOf = (member: string): SlotRoute | undefined => {
-    /** The runtime config service, or undefined when the composition mounts none. */
-    let service: { teamModelRouteOf?: (m: string) => unknown } | undefined
-    try {
-      service = (typeof ctx?.get === "function" ? ctx.get("mpdConfig") : undefined) as { teamModelRouteOf?: (m: string) => unknown } | undefined
-    } catch {
-      // A config service that refuses the lookup reads as ABSENT, never as a boot failure.
-      return undefined
+  const slotUnconfigured = (member: string): Error => {
+    /** The slot id that routes the member, when the shared declaration knows it. */
+    const slot = slotOf(member) ?? "teamModels"
+    /** The error, with the code every applier attaches. */
+    const error = new Error("SLOT_UNCONFIGURED: " + member + " is routed by " + slot + ", but the mpdConfig service answered no slot (is the mpd-config row mounted?); nothing was written and no child was started. Configure it with /mpd-model, or set teamModels." + slot + " in .mpd/mpd.jsonc.")
+    ;(error as Error & { code?: string }).code = "SLOT_UNCONFIGURED"
+    return error
+  }
+
+  /**
+   * The route one teammate takes, resolved from the descriptor label — the SLOT is the only source
+   * (contract §6).
+   *
+   * A label that names NO member is NOT routed here: this returns `undefined`, `applyRoute` returns the
+   * request by identity, and the harness-resolved route of the session that staged the teammate stands
+   * (the captain's in a top-level spawn, the Lead's in a team-lead spawn) — §6's "identity, unchanged".
+   * A label that DOES name a member reads the config service's TOTAL resolution per call, so a saved
+   * slot reaches the NEXT teammate; an unusable slot THROWS the canonical refusal, so `base.start` is
+   * never reached and no child is started (the DoD arm).
+   *
+   * @param request - the provider's start request, whose label carries the identity.
+   * @returns the primary route plus the slot's own fallback chain, or undefined to inherit.
+   * @throws the structured `SLOT_UNCONFIGURED` failure for a slot-routed member with an unusable slot.
+   */
+  const routeFor = (request: RoutableRequest): { route: SlotRoute; fallbacks: readonly unknown[] } | undefined => {
+    /** The roster member the label names, or undefined when it names none. */
+    const member = memberFromLabel(labelOf(request), knownNames())
+    if (member === undefined) return undefined
+    /** The live config service, absent under a degraded composition. */
+    const live = configService()
+    if (typeof live?.slotResolutionOf === "function") {
+      /** The service's TOTAL resolution; a malformed answer is treated as "no service". */
+      const resolution = live.slotResolutionOf(member) as
+        | { ok: true; route: SlotRoute; fallbacks?: readonly unknown[] }
+        | { ok: false; status: "unconfigured" | "invalid"; code: string; message: string }
+        | { ok: false; status: "unrouted" }
+        | undefined
+      if (resolution !== undefined && resolution !== null && typeof resolution === "object") {
+        if (resolution.ok) return { route: resolution.route, fallbacks: resolution.fallbacks ?? [] }
+        // Not slot-routed (a name no group carries): this row does not decide its route.
+        if (resolution.status === "unrouted") return undefined
+        /** The refusal the service built, with its branchable code attached. */
+        const error = new Error(resolution.message)
+        ;(error as Error & { code?: string }).code = resolution.code
+        throw error
+      }
     }
-    if (typeof service?.teamModelRouteOf !== "function") return undefined
-    // Deliberately NOT wrapped: the service's loud route errors propagate to the spawn.
-    const value = service.teamModelRouteOf(member) as { provider?: unknown; model?: unknown; reasoningEffort?: unknown } | undefined | null
-    if (value === undefined || value === null || typeof value !== "object") return undefined
-    return {
-      provider: String(value.provider ?? ""),
-      model: String(value.model ?? ""),
-      ...(typeof value.reasoningEffort === "string" && value.reasoningEffort !== "" ? { reasoningEffort: value.reasoningEffort } : {}),
+    // VERSION SKEW: the older total read still answers for the members it routes.
+    if (typeof live?.teamModelRouteOf === "function") {
+      /** The older read's route, or undefined when it has none to report. */
+      const route = live.teamModelRouteOf(member) as SlotRoute | undefined | null
+      if (route !== undefined && route !== null && typeof route === "object") return { route, fallbacks: [] }
     }
+    // No readable slot: a member the roster slot-routes cannot run on an invented route.
+    throw slotUnconfigured(member)
   }
 
   /** The names a label may match: the union of the slots' member lists. */
@@ -197,27 +236,6 @@ export function apply(ctx: any, config: RosterProviderConfig = {}): void {
     } catch {
       return undefined
     }
-  }
-
-  /**
-   * The route one teammate takes, resolved from the descriptor label.
-   *
-   * A member the label does not name — or one the roster does not slot-route — is NOT routed here:
-   * this returns `undefined`, `applyRoute` returns the request by identity, and the harness-resolved
-   * route of the session that staged the teammate stands (the captain's in a top-level spawn, the
-   * Lead's in a team-lead spawn). A member the label DOES name resolves through the config service's
-   * precedence chain first (R2: `agentRoutes` >
-   * slot > defaults, PER CALL so a saved route reaches the NEXT teammate), and only falls back to
-   * the local slot read when no config service is mounted.
-   */
-  const routeFor = (request: RoutableRequest): SlotRoute | undefined => {
-    /** The roster member the label names, or undefined when it names none. */
-    const member = memberFromLabel(labelOf(request), knownNames())
-    if (member === undefined) return undefined
-    /** The precedence-resolved route from the live config service, when it serves one. */
-    const live = liveRouteOf(member)
-    if (live !== undefined) return live
-    return routeForMember(member, slotOf(member), slotsNow())
   }
 
   /** The provider this bundle registers. */
@@ -247,18 +265,13 @@ export function apply(ctx: any, config: RosterProviderConfig = {}): void {
       }
       /** This request read through the routing contract; every other field is forwarded untouched. */
       const routable = request as RoutableRequest
-      // A route resolution that THROWS (an incomplete slot) must reach the captain unchanged: the
-      // spawn fails loudly, naming the member and the slot, and nothing is silently substituted.
+      // A route resolution that THROWS (an unusable slot) must reach the captain unchanged: the spawn
+      // fails loudly, naming the member and the slot, and `base.start` below is never reached.
       const resolved = routeFor(routable)
-      // THE MODEL-CAPABILITY ADAPTATION: a slot is read MATERIALISED over its schema defaults, so a
-      // teammate routed onto a model whose catalog entry declares no reasoning efforts at all would be
-      // handed a keyword the provider cannot accept and its own call would fail. `withSupportedEffort`
-      // drops exactly that keyword (logging it) and leaves every other route untouched — including an
-      // unsupported effort on a model that DOES declare efforts, which stays a visible config error.
-      /** The route as this teammate's run will actually send it. */
-      const route = await withSupportedEffort(dsh, resolved)
-      /** The request with that route applied; identity means "no route", i.e. inheritance. */
-      const routed = applyRoute(routable, route)
+      /** The request with a route applied, or the request itself for an inheriting teammate. */
+      const routed = resolved === undefined
+        ? routable
+        : applyRoute(routable, (await resolveRunRoute(dsh, resolved.route, resolved.fallbacks)).route)
       if (routed !== routable) {
         /** The options the harness will actually run on, logged so a wrong label is visible at spawn time. */
         const options = routed.agentOptions ?? {}
@@ -280,5 +293,5 @@ export function apply(ctx: any, config: RosterProviderConfig = {}): void {
   if (typeof ctx?.on === "function") ctx.on("dispose", () => { for (const dispose of disposers) { try { dispose() } catch { /* already gone */ } } })
 }
 
-export { applyRoute, labelOf, memberFromLabel, routeForMember }
+export { applyRoute, labelOf, memberFromLabel }
 export type { SlotRoute }

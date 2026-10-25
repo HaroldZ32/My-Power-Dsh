@@ -42,6 +42,7 @@ import {
   DAG_TONE_GLYPH,
   DAG_TONE_THEME,
   WORKMATE_PANEL_MIN_COLUMNS,
+  WATCHDOG_PANEL_MIN_COLUMNS,
   type DagTone,
 } from "./dag-theme.js"
 
@@ -1707,9 +1708,12 @@ export function legendLinesFor(cols: number, arrowLines: readonly string[]): str
  * @param which - the page asking.
  * @returns the frozen floor for that page.
  */
-export function panelFloorColumns(which: "dag" | "workmate" | "merged"): number {
+export function panelFloorColumns(which: "dag" | "workmate" | "watchdog" | "merged"): number {
   if (which === "dag") return DAG_PANEL_MIN_COLUMNS
   if (which === "workmate") return WORKMATE_PANEL_MIN_COLUMNS
+  // The watchdog page asks for the same floor as every other MPD page (28, the host's own minimum), so
+  // a narrow sidebar shows the page's own narrow layout rather than the host's too-narrow notice.
+  if (which === "watchdog") return WATCHDOG_PANEL_MIN_COLUMNS
   // The merged page's descriptor and the DAG page's ask the host for the SAME width, so they share the
   // contract's value rather than a second constant that could drift from it.
   return DAG_PANEL_MIN_COLUMNS

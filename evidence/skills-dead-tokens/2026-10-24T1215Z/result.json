@@ -1,0 +1,219 @@
+{
+ "round": "2026-10-24 skills dead-token repair (B1 / H1 / M2 / M5 / N1) + the verifier's M4 missing evidence",
+ "branch": "fix/task-dependency-guard",
+ "head": "e5bbd592",
+ "scope_note": "BEFORE = committed state at HEAD (`git grep -nE <pattern> HEAD -- skills/`, the `HEAD:` prefix stripped). AFTER = the working tree (`grep -rnE <pattern> skills/`). The working-tree AFTER includes gitignored materialized reference files under skills/frontend/references/design/; the tracked-only AFTER count is given wherever it differs.",
+ "repair_findings": [
+  "B1",
+  "H1",
+  "M2",
+  "M5",
+  "N1",
+  "M4"
+ ],
+ "commands": {
+  "A_before": "git grep -nE 'TodoWrite|Lsp[A-Z]|lsp_[a-z]|codegraph_|kill_bash|task_output|monitor\\(|\\bRead\\b|\\bWrite\\b|\\bEdit\\b|\\bBash\\b|\\bGlob\\b|\\bGrep\\b|MultiEdit|NotebookEdit' HEAD -- skills/ | sed 's/^HEAD://'",
+  "A_after": "grep -rnE 'TodoWrite|Lsp[A-Z]|lsp_[a-z]|codegraph_|kill_bash|task_output|monitor\\(|\\bRead\\b|\\bWrite\\b|\\bEdit\\b|\\bBash\\b|\\bGlob\\b|\\bGrep\\b|MultiEdit|NotebookEdit' skills/",
+  "B_before": "git grep -nE 'mass-ulw|ulw-loop|open-design|imagegen|mpd-agent-toolkit' HEAD -- skills/ | sed 's/^HEAD://'",
+  "B_after": "grep -rnE 'mass-ulw|ulw-loop|open-design|imagegen|mpd-agent-toolkit' skills/",
+  "C_before": "git grep -nE 'subagent|subagent_type|task\\(category|task\\(subagent_type|oracle|librarian|momus|metis|workflow' HEAD -- skills/ | sed 's/^HEAD://'",
+  "C_after": "grep -rnE 'subagent|subagent_type|task\\(category|task\\(subagent_type|oracle|librarian|momus|metis|workflow' skills/",
+  "review_panel": "node skills/dsh-qa/scripts/review-panel.ts",
+  "verify_docs": "bun run verify:docs",
+  "verify_vendor": "node scripts/verify-vendor.ts"
+ },
+ "grep_counts": {
+  "A_dead_tool_tokens": {
+   "before": {
+    "lines": 337,
+    "files": 115,
+    "md_lines": 182
+   },
+   "after_worktree": {
+    "lines": 332,
+    "files": 116,
+    "md_lines": 177
+   },
+   "after_tracked_only": 325,
+   "delta": "12 lines cleared by this repair (6 in init-deep, 2 in bundled-js-binary, 2 in remove-ai-slops, 2 in refactor, 1 in programming, 2 tokens on partial-runtime-evidence:1 line); the +7 working-tree-only lines all sit in gitignored skills/frontend/references/design/{ambience-skill,component-catalogs}.md and are ordinary English 'Read' verbs.",
+   "after_composition": "remaining matches are NOT B1 regressions: (a) mounted-tool substrings counted by the literal `codegraph_` arm — 31 x mcp__codegraph__codegraph_explore; (b) ordinary English verbs 'Read/Write/Edit' in prose ('Read the deliverables', 'Write the gate'); (c) `httperr.Write` (Go stdlib API) and PowerShell `Write-Report`/`Write-Output`; (d) 'AST-Grep' as the skill name; (e) the declared leave-alone vendored file skills/ultimate-browsing/references/insane-search/README.md (2 lines, captain-declared verbatim)."
+  },
+  "B_skill_pointers": {
+   "before": {
+    "lines": 33,
+    "files": 7,
+    "md_lines": 32
+   },
+   "after_worktree": {
+    "lines": 34,
+    "files": 8,
+    "md_lines": 33
+   },
+   "after_tracked_only": 33,
+   "delta": "unchanged by this repair; the single working-tree-only line is gitignored skills/frontend/references/design/component-catalogs.md:18 (`open-design`), already reported as out-of-scope in 2026-10-24T1122Z/result.json",
+   "after_composition": "6 ATTRIBUTION provenance lines, 24 imagegen-*.md reference-file names, 10 open-design upstream/reference mentions (overlapping categories), the rest explicit 'NOT mounted' negations and upstream URLs"
+  },
+  "C_delegation_family": {
+   "before": {
+    "lines": 220,
+    "files": 71,
+    "md_lines": 115,
+    "md_files": 52
+   },
+   "after_worktree": {
+    "lines": 220,
+    "files": 71,
+    "md_lines": 115,
+    "md_files": 52
+   },
+   "delta": "no line-count change: the H1 site said 'Metis' (capital M) and this case-sensitive pattern never matched it; `grep -rin metis skills/` went 2 -> 1 (the survivor is the QA fixture id in skills/dsh-qa/scripts/preset-register.ts:30). The M5 rewrite ADDS two `mpd_role_spawn` mentions (both ATTRIBUTION files) and the H1 rewrite adds one, which is why the mounted-channel count rises.",
+   "after_composition": "109 x `workflow` (mostly the English word / skill name), 84 x `subagent` (legacy-name mapping rows in compatibility tables and dsh-qa scripts naming the harness API), 63 x `oracle` (methodology concept name), 7 x `momus` + 1 x `independent` (declared durable state keys), 2 x `librarian`, 1 x `metis` (QA fixture id)"
+  },
+  "mounted_delegation_channel_reconciliation": {
+   "mpd_role_spawn_occurrences_in_md": {
+    "before": 97,
+    "after": 100
+   },
+   "md_files_naming_mpd_role_spawn_or_agent_teams": {
+    "before": 15,
+    "after": 16
+   },
+   "command_before": "git grep -o 'mpd_role_spawn' HEAD -- 'skills/**' | grep '\\.md:' | wc -l; git grep -lE 'mpd_role_spawn|agent_teams_' HEAD -- 'skills/**' | grep '\\.md$' | wc -l",
+   "command_after": "git grep -o 'mpd_role_spawn' -- 'skills/**' | grep '\\.md:' | wc -l; git grep -lE 'mpd_role_spawn|agent_teams_' -- 'skills/**' | grep '\\.md$' | wc -l",
+   "note": "The verifier's own pre-edit measurement (97 occurrences) matches this command exactly. The earlier wave's headline '71 instruction sites / 15 files' is NOT reproduced by the C grep above (220 matching lines across 71 files, 115 of them in *.md / 52 *.md files); treat 71/15 as approximate and superseded by these exact command + counts."
+  }
+ },
+ "capitalized_set_note": "The CAPITALIZED Claude-Code set (`\\bRead\\b|\\bWrite\\b|\\bEdit\\b|\\bBash\\b|\\bGlob\\b|\\bGrep\\b|MultiEdit|NotebookEdit`) was added to the A pattern by THIS repair, because the committed A-grep (TodoWrite|Lsp[A-Z]|lsp_|codegraph_|kill_bash|task_output|monitor\\() was structurally blind to the B1 class.",
+ "finding_checks": {
+  "B1": {
+   "sites_fixed": [
+    "skills/init-deep/SKILL.md — Phase 3 <critical> File Writing Rule now uses `edit` / `write` / `read`; the pseudo-call at the Read-existing step is `read(filePath=file)`; the structural-analysis heading names `bash`",
+    "skills/programming/SKILL.md — PHASE 0 table now says 'open every file below with the `read` tool'",
+    "skills/remove-ai-slops/SKILL.md — Phase 6 now says targeted `edit` / separate `edit` calls and states there is no multi-edit batching tool and no notebook editor",
+    "skills/debugging/references/runtimes/bundled-js-binary.md — both '[4] ... `rg` + `read`, not Ghidra' headings",
+    "skills/debugging/references/methodology/partial-runtime-evidence.md — Reviewer context template now '<paths the Oracle should `read` / `bash` to verify>'",
+    "skills/refactor/SKILL.md — same class in a file this round edits: 'Text-pattern search with `grep`:' heading and '// Use the `edit` tool for precise changes'"
+   ],
+   "after_grep": "A-dead-tool-tokens-after.txt: 332 lines; every cited B1 site absent. Remaining `\\bRead\\b` hits in the named files are English verbs (e.g. 'Read the deliverables.'), plus the mounted `mcp__codegraph__codegraph_explore` substring and the Go API `httperr.Write`.",
+   "declared_residual": "skills/ultimate-browsing/references/insane-search/README.md lines 45 and 286 still say Bash/Read — the captain declared this vendored reference kept verbatim; it is NOT edited."
+  },
+  "H1": {
+   "site": "skills/ulw-plan/references/full-workflow.md:19",
+   "change": "'... + Metis.' -> '... + a `mpd_role_spawn(role=\"Planner\", task=\"gap analysis …\")` consult.'",
+   "check": "grep -rin metis skills/ : 2 lines before -> 1 line after; the survivor is the QA fixture id skills/dsh-qa/scripts/preset-register.ts:30",
+   "bound": "The C pattern is case-sensitive, so the capital-M site never appeared in C-delegation-family-*.txt; the case-insensitive grep is the evidence for this finding."
+  },
+  "M2": {
+   "sites": [
+    "skills/init-deep/SKILL.md:31 — todo_write({ todos: [ ... ] })",
+    "skills/refactor/SKILL.md:85 (Step 0.3) and :375 (4.3) — todo_write({ todos: [ ... ] })"
+   ],
+   "check": "grep -rn 'todo_write(' skills/init-deep/SKILL.md skills/refactor/SKILL.md -> all three sites open `{ todos: [`; no bare-array call remains in the corpus's normalised examples"
+  },
+  "M5": {
+   "sites": [
+    "skills/debugging/ATTRIBUTION.md:22 — now 'the `mpd_role_spawn(...)` consult examples ..., rewritten from upstream's `subagent(...)` / `job_output(...)` dispatch examples'",
+    "skills/refactor/ATTRIBUTION.md:22 — now 'the serial `mpd_role_spawn(...)` consult examples, rewritten from upstream's `subagent(...)` / `job_output(...)` dispatch examples'"
+   ],
+   "check": "both sentences stay provenance notes and now describe the rewritten tree truthfully"
+  },
+  "N1": {
+   "sites": [
+    "skills/ulw-execute/SKILL.md:14 (compatibility table) and :28 ('Two truthful topologies')",
+    "skills/ulw-research/SKILL.md:17 (compatibility table)"
+   ],
+   "change": "'replace a background burst' -> 'can still cover the work, at the cost of concurrency'; topology (a) adds 'the work still gets covered, but with no concurrency'; the team plane remains the concurrency path"
+  }
+ },
+ "files_changed_this_round": [
+  {
+   "path": "skills/debugging/ATTRIBUTION.md",
+   "added": 1,
+   "removed": 1
+  },
+  {
+   "path": "skills/debugging/references/methodology/partial-runtime-evidence.md",
+   "added": 1,
+   "removed": 1
+  },
+  {
+   "path": "skills/debugging/references/runtimes/bundled-js-binary.md",
+   "added": 2,
+   "removed": 2
+  },
+  {
+   "path": "skills/init-deep/SKILL.md",
+   "added": 6,
+   "removed": 6
+  },
+  {
+   "path": "skills/programming/SKILL.md",
+   "added": 1,
+   "removed": 1
+  },
+  {
+   "path": "skills/refactor/ATTRIBUTION.md",
+   "added": 1,
+   "removed": 1
+  },
+  {
+   "path": "skills/refactor/SKILL.md",
+   "added": 6,
+   "removed": 6
+  },
+  {
+   "path": "skills/remove-ai-slops/SKILL.md",
+   "added": 2,
+   "removed": 2
+  },
+  {
+   "path": "skills/ulw-execute/SKILL.md",
+   "added": 2,
+   "removed": 2
+  },
+  {
+   "path": "skills/ulw-plan/references/full-workflow.md",
+   "added": 1,
+   "removed": 1
+  },
+  {
+   "path": "skills/ulw-research/SKILL.md",
+   "added": 1,
+   "removed": 1
+  }
+ ],
+ "files_changed_totals": {
+  "files": 11,
+  "added": 24,
+  "removed": 24
+ },
+ "gates": {
+  "review_panel": {
+   "exit": 0,
+   "observed": "checks: 15 failed: 0 ... [review-panel] PASS",
+   "evidence": "evidence/skills-dead-tokens/2026-10-24T1215Z/review-panel.log",
+   "script_own_record": "evidence/restore/s1/2026-10-24T12-18-27-465Z"
+  },
+  "verify_docs": {
+   "exit": 0,
+   "observed": "pairs=50 failed=0 violations=0 exempt=24 derived=3 links=445 dead=0 — PASS",
+   "evidence": "evidence/skills-dead-tokens/2026-10-24T1215Z/verify-docs.log"
+  },
+  "verify_vendor": {
+   "exit": 1,
+   "observed": "[verify-vendor] FAIL - asset skills treeSha mismatch",
+   "expected": "YES — every skills/** edit invalidates the corpus treeSha; the captain re-pins ONCE afterwards with `node scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step` (AGENTS.md §9/§11). No re-pin was run by this writer.",
+   "evidence": "evidence/skills-dead-tokens/2026-10-24T1215Z/verify-vendor.log"
+  }
+ },
+ "limits": [
+  "No live boot was run: this evidence proves the CHECKOUT text only, never the served/cached skill corpus (the verifier's M3 bound still stands).",
+  "BEFORE greps cover tracked files at HEAD; AFTER greps cover the whole working tree, so the +7 (A) / +1 (B) lines in gitignored materialized references have no BEFORE counterpart. Tracked-only AFTER equals 325 (A) and 33 (B).",
+  "The A pattern's `codegraph_` arm matches the mounted name `mcp__codegraph__codegraph_explore` (31 lines); the A after-count therefore cannot reach 0 without either dropping that arm or excluding mcp__ names.",
+  "`Metis` is capitalised in prose, so the case-sensitive C pattern never counted the H1 site; H1 is evidenced separately by `grep -rin metis skills/` (2 -> 1).",
+  "The old '71 instruction sites / 15 files' headline is not reproduced by the C grep; this round reports the command and the measured 220 lines / 71 files instead of restating the unbacked figure (verifier M4's alternative remedy).",
+  "verify-vendor exit 1 is expected until the captain's single re-pin; it is recorded, not fixed.",
+  "The three todo_write examples were later normalised to the mounted schema {todos:[{content,status}]}; no id/priority key remains (a previous revision of this line claimed otherwise).",
+  "Out of this writer's scope and NOT addressed here: M1 (momus/independent residual declaration in the frozen plan), M3 (served-corpus vs checkout bound), N2 (R25 wording of the frontend design band). They remain for the captain/contract amendment."
+ ]
+}

@@ -214,6 +214,141 @@ function dshSeamInject(...names) {
 var OBJECT_SCHEMA = { type: "object", properties: {} };
 var DEFAULT_TOOL_TIMEOUT_MS = 120000;
 var TEAM_TASK_METHODS = ["createTask", "getTask", "listTasks", "updateTask"];
+function modelDeclaresNoEffort(catalog, provider, model) {
+  const entry = catalog.providers.find((p) => p.id === provider)?.models.find((m) => m.id === model);
+  return entry !== undefined && Array.isArray(entry.efforts) && entry.efforts.length === 0;
+}
+function routePositivelyListed(catalog, provider, model) {
+  return catalog.providers.some((p) => p.id === provider && p.models.some((m) => m.id === model));
+}
+function adaptEffortWithCatalog(catalog, route) {
+  const effort = typeof route.reasoningEffort === "string" ? route.reasoningEffort : "";
+  if (effort === "")
+    return route;
+  if (!modelDeclaresNoEffort(catalog, route.provider, route.model))
+    return route;
+  const adapted = { ...route };
+  delete adapted.reasoningEffort;
+  rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${route.provider}/${route.model} declares no reasoning efforts — the "${effort}" effort is omitted (a keyword this model cannot take fails the call)`);
+  return adapted;
+}
+async function resolveRunRoute(dsh, primary, fallbacks = []) {
+  const wellFormed = [];
+  let dropped = 0;
+  for (const entry of Array.isArray(fallbacks) ? fallbacks : []) {
+    if (entry === null || typeof entry !== "object") {
+      dropped += 1;
+      continue;
+    }
+    const candidate = entry;
+    if (typeof candidate.provider !== "string" || candidate.provider.trim() === "" || typeof candidate.model !== "string" || candidate.model.trim() === "" || candidate.reasoningEffort !== undefined && candidate.reasoningEffort !== null && typeof candidate.reasoningEffort !== "string") {
+      dropped += 1;
+      continue;
+    }
+    const effort = typeof candidate.reasoningEffort === "string" ? candidate.reasoningEffort.trim() : "";
+    wellFormed.push({ provider: candidate.provider.trim(), model: candidate.model.trim(), ...effort === "" ? {} : { reasoningEffort: effort } });
+  }
+  let catalog;
+  if (typeof dsh?.llmCatalog === "function") {
+    try {
+      catalog = await dsh.llmCatalog();
+    } catch {
+      catalog = undefined;
+    }
+  }
+  let index = 0;
+  if (catalog !== undefined && !routePositivelyListed(catalog, primary.provider, primary.model)) {
+    const found = wellFormed.findIndex((candidate) => routePositivelyListed(catalog, candidate.provider, candidate.model));
+    if (found >= 0)
+      index = found + 1;
+  }
+  const winner = index === 0 ? primary : wellFormed[index - 1];
+  if (index > 0) {
+    rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${primary.provider}/${primary.model} is not listed by the model catalog — slot fallback #${index} (${winner.provider}/${winner.model}) wins for this run`);
+  }
+  if (dropped > 0) {
+    rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${dropped} malformed fallback entr${dropped === 1 ? "y was" : "ies were"} dropped from the slot's chain (never fatal — the run proceeds)`);
+  }
+  const route = catalog === undefined ? winner : adaptEffortWithCatalog(catalog, winner);
+  return { route, index, fallback: index > 0, dropped };
+}
+function rosterNameHead(label) {
+  if (typeof label !== "string")
+    return "";
+  return label.split(/[—–:|]|\s-\s/)[0]?.trim() ?? "";
+}
+function memberIdentityCandidates(identity) {
+  const candidates = [];
+  if (typeof identity?.role === "string" && identity.role.trim() !== "")
+    candidates.push(identity.role.trim());
+  const head = rosterNameHead(identity?.description);
+  if (head !== "")
+    candidates.push(head);
+  if (typeof identity?.name === "string" && identity.name.trim() !== "")
+    candidates.push(identity.name.trim());
+  const seen = new Set;
+  const unique = [];
+  for (const candidate of candidates) {
+    const key = candidate.toLowerCase();
+    if (seen.has(key))
+      continue;
+    seen.add(key);
+    unique.push(candidate);
+  }
+  return unique;
+}
+function resolveTeamMemberRoute(identity, slotResolutionOf) {
+  if (typeof slotResolutionOf !== "function")
+    return { status: "no-config-service" };
+  for (const candidate of memberIdentityCandidates(identity)) {
+    let answer;
+    try {
+      answer = slotResolutionOf(candidate);
+    } catch {
+      continue;
+    }
+    if (answer === null || typeof answer !== "object")
+      continue;
+    const slotAnswer = answer;
+    if (slotAnswer.ok === true) {
+      const provider = typeof slotAnswer.route?.provider === "string" ? slotAnswer.route.provider.trim() : "";
+      const model = typeof slotAnswer.route?.model === "string" ? slotAnswer.route.model.trim() : "";
+      const slot = typeof slotAnswer.slot === "string" ? slotAnswer.slot : "";
+      if (provider === "" || model === "") {
+        return {
+          status: "unusable",
+          member: candidate,
+          ...slot === "" ? {} : { slot },
+          reason: "invalid",
+          detail: typeof slotAnswer.message === "string" && slotAnswer.message !== "" ? slotAnswer.message : `the mpdConfig service reported a usable slot for ${candidate} but returned no provider/model route`
+        };
+      }
+      const effort = typeof slotAnswer.route?.reasoningEffort === "string" ? slotAnswer.route.reasoningEffort.trim() : "";
+      return {
+        status: "routed",
+        member: candidate,
+        slot,
+        route: { provider, model, ...effort === "" ? {} : { reasoningEffort: effort } },
+        fallbacks: Array.isArray(slotAnswer.fallbacks) ? slotAnswer.fallbacks : []
+      };
+    }
+    if (slotAnswer.ok === false) {
+      if (slotAnswer.status === "unrouted")
+        continue;
+      if (slotAnswer.status === "unconfigured" || slotAnswer.status === "invalid") {
+        const detail = typeof slotAnswer.message === "string" && slotAnswer.message !== "" ? slotAnswer.message : `the mpdConfig service reported ${slotAnswer.status} for ${candidate}`;
+        return {
+          status: "unusable",
+          member: candidate,
+          ...typeof slotAnswer.slot === "string" && slotAnswer.slot !== "" ? { slot: slotAnswer.slot } : {},
+          reason: slotAnswer.status,
+          detail
+        };
+      }
+    }
+  }
+  return { status: "unmatched" };
+}
 function textBlock(content) {
   return [{ type: "text", text: typeof content === "string" ? content : String(content ?? "") }];
 }
@@ -574,6 +709,31 @@ function createDshAdapter(ctx, config = {}) {
       return;
     }
   };
+  const configSlotResolver = () => {
+    const config2 = service("mpdConfig");
+    if (config2 === undefined || config2 === null)
+      return;
+    if (typeof config2.slotResolutionOf !== "function" && typeof config2.teamModelRouteOf !== "function")
+      return;
+    return (member) => {
+      if (typeof config2.slotResolutionOf === "function") {
+        try {
+          const answer = config2.slotResolutionOf.call(config2, member);
+          if (answer !== null && typeof answer === "object" && typeof answer.ok === "boolean")
+            return answer;
+        } catch {}
+      }
+      if (typeof config2.teamModelRouteOf === "function") {
+        try {
+          const route = config2.teamModelRouteOf.call(config2, member);
+          if (route !== null && typeof route === "object")
+            return { ok: true, slot: "", route, fallbacks: [] };
+        } catch {}
+        return { ok: false, status: "unrouted", slot: undefined };
+      }
+      return;
+    };
+  };
   function requireService(serviceName, needed) {
     const found = service(serviceName);
     if (found === undefined || found === null) {
@@ -776,13 +936,24 @@ function createDshAdapter(ctx, config = {}) {
         if (!ready)
           throw new Error(`mpd-dsh-adapter: no team executor is available — ${reason}`);
         const subagents = requireService("subagents", `cannot raise team member "${request.name}"`);
+        let agentOptions = request.agentOptions;
+        if (agentOptions === undefined) {
+          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configSlotResolver());
+          if (outcome.status === "routed") {
+            const resolved = await resolveRunRoute({ llmCatalog }, outcome.route, outcome.fallbacks);
+            agentOptions = resolved.route;
+          } else {
+            const line = outcome.status === "unusable" ? `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — its slot is unusable: ${outcome.detail}` : outcome.status === "no-config-service" ? `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — no mpdConfig service is mounted (is the mpd-config row present?)` : `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — its role, description head and name name no roster member`;
+            rowLogLine("mpd-dsh-adapter", line);
+          }
+        }
         const spec = {
           provider: typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn",
           label: `${request.name} · ${request.teamId}`,
           request: {
             prompt: textBlock(request.prompt),
             parent: caller,
-            ...request.agentOptions === undefined ? {} : { agentOptions: request.agentOptions }
+            ...agentOptions === undefined ? {} : { agentOptions }
           },
           signal: request.signal ?? neverAborted()
         };
@@ -1859,15 +2030,25 @@ function overlayNow(ctx) {
 function chainsNow(ctx, config) {
   return { ...config?.chains ?? DEFAULT_CHAINS, ...overlayNow(ctx) };
 }
+function slotResolutionIn(ctx, member) {
+  try {
+    const service = ctx.get?.("mpdConfig");
+    if (typeof service?.slotResolutionOf !== "function")
+      return;
+    return service.slotResolutionOf(member);
+  } catch {
+    return;
+  }
+}
 function apply(ctx, config = {}) {
   const dsh = resolveDshAdapter(ctx);
   dsh.registerTool({
     name: "mpd_modelchain_resolve",
-    description: "Resolve the DeepSeek provider/model route for a roster role, addressed by its name (Architect, Researcher, Planner, Deep Worker, Senior Engineer, Lead, Explorer, Reviewer, Plan Reviewer, Vision Analyst, Junior Engineer) — the same names team mode uses. Chains come from the mpd-roles roster, with the adapted fallback chains behind them.",
+    description: "Resolve the DeepSeek provider/model route for a roster role, addressed by its name (Architect, Researcher, Planner, Deep Worker, Senior Engineer, Lead, Explorer, Reviewer, Plan Reviewer, Vision Analyst, Junior Engineer) — the same names team mode uses. A roster member resolves from its `teamModels` slot (the ONE configured route, plus that slot's own fallback chain) and reports `<unconfigured>` honestly when the slot is not configured; an extension role keeps its own declared chain.",
     parameters: { type: "object", properties: { role: { type: "string", description: "role name (see mpd_roles_list)" } }, required: ["role"] },
     output: {
-      schema: { type: "object", properties: { provider: { type: "string" }, model: { type: "string" }, chain: { type: "array", items: { type: "object", properties: { provider: { type: "string" }, model: { type: "string" } }, required: [] } } }, required: ["provider", "model"] },
-      render: (_args, value) => [{ type: "text", text: "role=" + _args?.role + " -> " + value.provider + "/" + value.model + " (chain " + value.chain.length + " entries)" }]
+      schema: { type: "object", properties: { provider: { type: "string" }, model: { type: "string" }, chain: { type: "array", items: { type: "object", properties: { provider: { type: "string" }, model: { type: "string" } }, required: [] } }, status: { type: "string" }, missing: { type: "array", items: { type: "string" } }, reason: { type: "string" } }, required: ["provider", "model"] },
+      render: (_args, value) => [{ type: "text", text: value.status === "unconfigured" ? "role=" + _args?.role + " -> <unconfigured> (missing " + (Array.isArray(value.missing) ? value.missing.join(", ") : "teamModels") + "; " + String(value.reason ?? "") + ")" : "role=" + _args?.role + " -> " + value.provider + "/" + value.model + " (chain " + value.chain.length + " entries)" + (value.status === undefined ? "" : " — " + value.status) }]
     },
     execute: async (args) => {
       const role = String(args?.role ?? "").trim();
@@ -1876,6 +2057,29 @@ function apply(ctx, config = {}) {
       const spec = rolesService?.get?.(role);
       if (spec === undefined || spec === null || roleNameKey(role) !== roleNameKey(String(spec.name ?? ""))) {
         throw new Error("mpd_modelchain_resolve: unknown role — use a roster NAME from mpd_roles_list" + (names.length > 0 ? " (" + names.join(", ") + ")" : " (the mpdRoles roster service answered no names — is the mpd-roles row mounted?)"));
+      }
+      const slot = slotResolutionIn(ctx, String(spec.name));
+      if (slot !== undefined && slot !== null && typeof slot === "object" && typeof slot.ok === "boolean") {
+        if (slot.ok) {
+          const provider = String(slot.route?.provider ?? "");
+          const model = String(slot.route?.model ?? "");
+          return {
+            provider,
+            model,
+            chain: [{ provider, model }, ...(slot.fallbacks ?? []).filter((hop) => isChainArray([hop]))],
+            status: "configured"
+          };
+        }
+        if (slot.status !== "unrouted") {
+          return {
+            provider: "",
+            model: "",
+            chain: [],
+            status: "unconfigured",
+            missing: (slot.missing ?? []).map(String),
+            reason: slot.slot === undefined || slot.slot === "" ? String(slot.message ?? "") : "teamModels." + String(slot.slot) + " is not configured — configure it with /mpd-model"
+          };
+        }
       }
       const configured = overlayNow(ctx)[String(spec.id)];
       if (isChainArray(configured)) {

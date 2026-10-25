@@ -279,6 +279,8 @@ function resolveBoulderDir(value) {
 }
 var STAGING_TOOL_NAME = "agent_teams_plan";
 var PLAN_EXTEND_ACTIONS = ["add_member", "create_task"];
+var BOARD_TOOL_NAME = "agent_teams_task";
+var DISPATCH_TOOL_NAME = "agent_teams_dispatch";
 var STAGED_PLAN_PHRASE = "a team PLAN was STAGED";
 var ALREADY_STAGED_PLAN_PHRASE = "a team PLAN is ALREADY STAGED";
 var INERT_PLAN_PHRASE = "NOTHING has been spawned; the plan is INERT until approved";
@@ -499,7 +501,7 @@ Active plan artifact (signal D): ` + input.planPath),
 }
 function advisoryNoticeText(signals, explicit) {
   const matched = signals.length === 0 ? "complexity signals" : "complexity signals " + signals.join("/");
-  return STARTUP_NOTICE_MARKER + ": this session shows " + matched + ", and " + NO_TEAM_STAGED_PHRASE + " — the gate is ADVISORY " + "and stages nothing while complexity is merely being judged." + (explicit ? "\n- The explicit `team:` / `!team` marker was CONSUMED from the goal text: the request is a reason to stage, not a staged team." : "") + "\n- Stage a team yourself at the moment the work actually warrants one: `spawn_teammate` creates each roster teammate" + " (its prompt text comes from `mpd_role_persona`) and `team_task_create` opens its lane on the shared board; then tell" + " the user the Web plan is ready for review." + `
+  return STARTUP_NOTICE_MARKER + ": this session shows " + matched + ", and " + NO_TEAM_STAGED_PHRASE + " — the gate is ADVISORY " + "and stages nothing while complexity is merely being judged." + (explicit ? "\n- The explicit `team:` / `!team` marker was CONSUMED from the goal text: the request is a reason to stage, not a staged team." : "") + "\n- Stage a team yourself when the work warrants one: `" + STAGING_TOOL_NAME + '` {action:"' + PLAN_EXTEND_ACTIONS[0] + '"} → {action:"' + PLAN_EXTEND_ACTIONS[1] + '"} (each task carrying its dependency answer: `blocked_by` or `independent: true`)' + ' → {action:"approve"}; drive the team with `' + BOARD_TOOL_NAME + "` and `" + DISPATCH_TOOL_NAME + "`." + `
 ` + SOLO_PERMISSION_SENTENCE + " — and say so in one line." + `
 - A team is NOT a precondition of this session, and you may not create a second team while leading one.`;
 }
@@ -507,7 +509,7 @@ function mechanicalNoticeText(input) {
   const matched = input.signals.length === 0 ? "complexity signals" : "complexity signals " + input.signals.join("/");
   const missingId = input.planId === "";
   const id = !missingId ? input.planId : MISSING_PLAN_ID_PHRASE + (input.alreadyStaged ? " — the returned shell's id could not be read, so it CANNOT be approved; report this failure" : " — the shell was staged but CANNOT be approved, so report this failure");
-  const nextStep = !missingId ? "\n- Extend it with `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[0] + "\"}` (each member's prompt comes from `mpd_role_persona`)" + " and `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[1] + '"}`, then approve it with `' + STAGING_TOOL_NAME + ' {action:"approve"}` — approval is what spawns the members and posts the tasks.' : input.alreadyStaged ? `
+  const nextStep = !missingId ? "\n- Extend it with `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[0] + "\"}` (each member's prompt comes from `mpd_role_persona`)" + " and `" + STAGING_TOOL_NAME + ' {action:"' + PLAN_EXTEND_ACTIONS[1] + '"} (each task carrying its dependency answer: `blocked_by` or `independent: true`), then approve it with `' + STAGING_TOOL_NAME + ' {action:"approve"}` — approval is what spawns the members and posts the tasks.' : input.alreadyStaged ? `
 - Do NOT attempt to extend or approve it, and do NOT stage again: the returned shell's id could not be read, so report this failure instead.` : `
 - Do NOT attempt to extend or approve it: the staging call returned no id, so report this failure and re-stage before continuing.`;
   return STARTUP_NOTICE_MARKER + ": this session shows " + matched + ", and " + (input.alreadyStaged ? ALREADY_STAGED_PLAN_PHRASE : STAGED_PLAN_PHRASE) + " — " + id + " (0 members, 0 tasks: a SHELL, not a team)." + (input.alreadyStaged ? `
@@ -834,7 +836,7 @@ function rosterSectionText(members) {
     "## MPD specialist roster",
     "The specialists this deployment stages as teammates, addressed by NAME:",
     ...lines,
-    "Create one with `spawn_teammate` (name = the member name, description = its responsibility, prompt = the persona text from `mpd_role_persona`); `team_task_create` opens its lane on the shared board. A teammate cannot take a model or tool filter: a `teamModels` slot applies when the description NAMES a roster member, and on the single-call `mpd_role_spawn`; any other teammate inherits YOUR model route (the staging session's), and prompt text cannot change a route. A read-only member's write tools are denied by the roster guard."
+    'Create one with `agent_teams_plan` {action:"add_member"} (prompt = the persona text from `mpd_role_persona`) → {action:"create_task"} (each task carrying its dependency answer: `blocked_by` or `independent: true`) → {action:"approve"}; drive with `agent_teams_task`/`agent_teams_dispatch`. A teammate cannot take a model or tool filter: a `teamModels` slot applies by identity — `role`, then the `description` head, then the whole `name`; the single-call `mpd_role_spawn` applies the role\'s slot directly. An UNMATCHED member inherits YOUR model route (the staging session\'s); prompt text cannot change a route. A read-only member\'s write tools are denied by the roster guard.'
   ].join(`
 `);
 }
@@ -1115,26 +1117,136 @@ function modelDeclaresNoEffort(catalog, provider, model) {
   const entry = catalog.providers.find((p) => p.id === provider)?.models.find((m) => m.id === model);
   return entry !== undefined && Array.isArray(entry.efforts) && entry.efforts.length === 0;
 }
-async function withSupportedEffort(dsh, route) {
-  if (route === undefined)
-    return route;
+function routePositivelyListed(catalog, provider, model) {
+  return catalog.providers.some((p) => p.id === provider && p.models.some((m) => m.id === model));
+}
+function adaptEffortWithCatalog(catalog, route) {
   const effort = typeof route.reasoningEffort === "string" ? route.reasoningEffort : "";
   if (effort === "")
     return route;
-  if (typeof dsh?.llmCatalog !== "function")
-    return route;
-  let catalog;
-  try {
-    catalog = await dsh.llmCatalog();
-  } catch {
-    return route;
-  }
   if (!modelDeclaresNoEffort(catalog, route.provider, route.model))
     return route;
   const adapted = { ...route };
   delete adapted.reasoningEffort;
   rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${route.provider}/${route.model} declares no reasoning efforts — the "${effort}" effort is omitted (a keyword this model cannot take fails the call)`);
   return adapted;
+}
+async function resolveRunRoute(dsh, primary, fallbacks = []) {
+  const wellFormed = [];
+  let dropped = 0;
+  for (const entry of Array.isArray(fallbacks) ? fallbacks : []) {
+    if (entry === null || typeof entry !== "object") {
+      dropped += 1;
+      continue;
+    }
+    const candidate = entry;
+    if (typeof candidate.provider !== "string" || candidate.provider.trim() === "" || typeof candidate.model !== "string" || candidate.model.trim() === "" || candidate.reasoningEffort !== undefined && candidate.reasoningEffort !== null && typeof candidate.reasoningEffort !== "string") {
+      dropped += 1;
+      continue;
+    }
+    const effort = typeof candidate.reasoningEffort === "string" ? candidate.reasoningEffort.trim() : "";
+    wellFormed.push({ provider: candidate.provider.trim(), model: candidate.model.trim(), ...effort === "" ? {} : { reasoningEffort: effort } });
+  }
+  let catalog;
+  if (typeof dsh?.llmCatalog === "function") {
+    try {
+      catalog = await dsh.llmCatalog();
+    } catch {
+      catalog = undefined;
+    }
+  }
+  let index = 0;
+  if (catalog !== undefined && !routePositivelyListed(catalog, primary.provider, primary.model)) {
+    const found = wellFormed.findIndex((candidate) => routePositivelyListed(catalog, candidate.provider, candidate.model));
+    if (found >= 0)
+      index = found + 1;
+  }
+  const winner = index === 0 ? primary : wellFormed[index - 1];
+  if (index > 0) {
+    rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${primary.provider}/${primary.model} is not listed by the model catalog — slot fallback #${index} (${winner.provider}/${winner.model}) wins for this run`);
+  }
+  if (dropped > 0) {
+    rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${dropped} malformed fallback entr${dropped === 1 ? "y was" : "ies were"} dropped from the slot's chain (never fatal — the run proceeds)`);
+  }
+  const route = catalog === undefined ? winner : adaptEffortWithCatalog(catalog, winner);
+  return { route, index, fallback: index > 0, dropped };
+}
+function rosterNameHead(label) {
+  if (typeof label !== "string")
+    return "";
+  return label.split(/[—–:|]|\s-\s/)[0]?.trim() ?? "";
+}
+function memberIdentityCandidates(identity) {
+  const candidates = [];
+  if (typeof identity?.role === "string" && identity.role.trim() !== "")
+    candidates.push(identity.role.trim());
+  const head = rosterNameHead(identity?.description);
+  if (head !== "")
+    candidates.push(head);
+  if (typeof identity?.name === "string" && identity.name.trim() !== "")
+    candidates.push(identity.name.trim());
+  const seen = new Set;
+  const unique = [];
+  for (const candidate of candidates) {
+    const key = candidate.toLowerCase();
+    if (seen.has(key))
+      continue;
+    seen.add(key);
+    unique.push(candidate);
+  }
+  return unique;
+}
+function resolveTeamMemberRoute(identity, slotResolutionOf) {
+  if (typeof slotResolutionOf !== "function")
+    return { status: "no-config-service" };
+  for (const candidate of memberIdentityCandidates(identity)) {
+    let answer;
+    try {
+      answer = slotResolutionOf(candidate);
+    } catch {
+      continue;
+    }
+    if (answer === null || typeof answer !== "object")
+      continue;
+    const slotAnswer = answer;
+    if (slotAnswer.ok === true) {
+      const provider = typeof slotAnswer.route?.provider === "string" ? slotAnswer.route.provider.trim() : "";
+      const model = typeof slotAnswer.route?.model === "string" ? slotAnswer.route.model.trim() : "";
+      const slot = typeof slotAnswer.slot === "string" ? slotAnswer.slot : "";
+      if (provider === "" || model === "") {
+        return {
+          status: "unusable",
+          member: candidate,
+          ...slot === "" ? {} : { slot },
+          reason: "invalid",
+          detail: typeof slotAnswer.message === "string" && slotAnswer.message !== "" ? slotAnswer.message : `the mpdConfig service reported a usable slot for ${candidate} but returned no provider/model route`
+        };
+      }
+      const effort = typeof slotAnswer.route?.reasoningEffort === "string" ? slotAnswer.route.reasoningEffort.trim() : "";
+      return {
+        status: "routed",
+        member: candidate,
+        slot,
+        route: { provider, model, ...effort === "" ? {} : { reasoningEffort: effort } },
+        fallbacks: Array.isArray(slotAnswer.fallbacks) ? slotAnswer.fallbacks : []
+      };
+    }
+    if (slotAnswer.ok === false) {
+      if (slotAnswer.status === "unrouted")
+        continue;
+      if (slotAnswer.status === "unconfigured" || slotAnswer.status === "invalid") {
+        const detail = typeof slotAnswer.message === "string" && slotAnswer.message !== "" ? slotAnswer.message : `the mpdConfig service reported ${slotAnswer.status} for ${candidate}`;
+        return {
+          status: "unusable",
+          member: candidate,
+          ...typeof slotAnswer.slot === "string" && slotAnswer.slot !== "" ? { slot: slotAnswer.slot } : {},
+          reason: slotAnswer.status,
+          detail
+        };
+      }
+    }
+  }
+  return { status: "unmatched" };
 }
 function textBlock(content) {
   return [{ type: "text", text: typeof content === "string" ? content : String(content ?? "") }];
@@ -1552,6 +1664,31 @@ function createDshAdapter(ctx, config = {}) {
       return;
     }
   };
+  const configSlotResolver = () => {
+    const config2 = service("mpdConfig");
+    if (config2 === undefined || config2 === null)
+      return;
+    if (typeof config2.slotResolutionOf !== "function" && typeof config2.teamModelRouteOf !== "function")
+      return;
+    return (member) => {
+      if (typeof config2.slotResolutionOf === "function") {
+        try {
+          const answer = config2.slotResolutionOf.call(config2, member);
+          if (answer !== null && typeof answer === "object" && typeof answer.ok === "boolean")
+            return answer;
+        } catch {}
+      }
+      if (typeof config2.teamModelRouteOf === "function") {
+        try {
+          const route = config2.teamModelRouteOf.call(config2, member);
+          if (route !== null && typeof route === "object")
+            return { ok: true, slot: "", route, fallbacks: [] };
+        } catch {}
+        return { ok: false, status: "unrouted", slot: undefined };
+      }
+      return;
+    };
+  };
   function requireService(serviceName, needed) {
     const found = service(serviceName);
     if (found === undefined || found === null) {
@@ -1754,13 +1891,24 @@ function createDshAdapter(ctx, config = {}) {
         if (!ready)
           throw new Error(`mpd-dsh-adapter: no team executor is available — ${reason}`);
         const subagents = requireService("subagents", `cannot raise team member "${request.name}"`);
+        let agentOptions = request.agentOptions;
+        if (agentOptions === undefined) {
+          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configSlotResolver());
+          if (outcome.status === "routed") {
+            const resolved = await resolveRunRoute({ llmCatalog }, outcome.route, outcome.fallbacks);
+            agentOptions = resolved.route;
+          } else {
+            const line = outcome.status === "unusable" ? `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — its slot is unusable: ${outcome.detail}` : outcome.status === "no-config-service" ? `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — no mpdConfig service is mounted (is the mpd-config row present?)` : `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — its role, description head and name name no roster member`;
+            rowLogLine("mpd-dsh-adapter", line);
+          }
+        }
         const spec = {
           provider: typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn",
           label: `${request.name} · ${request.teamId}`,
           request: {
             prompt: textBlock(request.prompt),
             parent: caller,
-            ...request.agentOptions === undefined ? {} : { agentOptions: request.agentOptions }
+            ...agentOptions === undefined ? {} : { agentOptions }
           },
           signal: request.signal ?? neverAborted()
         };
@@ -3251,7 +3399,7 @@ function apply(ctx, config = {}) {
     }
     return [...outcome.applied];
   };
-  const teamModelRoute = (member) => {
+  const slotResolution = (member) => {
     const live = (() => {
       try {
         return ctx.get?.(CONFIG_SERVICE, false);
@@ -3259,23 +3407,47 @@ function apply(ctx, config = {}) {
         return;
       }
     })();
-    if (typeof live?.teamModelRouteOf !== "function")
-      return;
-    const value = live.teamModelRouteOf(member);
-    if (value === undefined || value === null || typeof value !== "object")
-      return;
-    return {
-      provider: String(value.provider ?? ""),
-      model: String(value.model ?? ""),
-      ...typeof value.reasoningEffort === "string" && value.reasoningEffort !== "" ? { reasoningEffort: value.reasoningEffort } : {}
-    };
+    if (typeof live?.slotResolutionOf === "function") {
+      const value = live.slotResolutionOf(member);
+      if (value !== undefined && value !== null && typeof value === "object" && typeof value.ok === "boolean")
+        return value;
+    }
+    if (typeof live?.teamModelRouteOf === "function") {
+      const route = live.teamModelRouteOf(member);
+      if (route !== undefined && route !== null && typeof route === "object") {
+        return { ok: true, slot: "", route, fallbacks: [] };
+      }
+    }
+    if (ROLES.some((r) => r.name === member)) {
+      return {
+        ok: false,
+        status: "unconfigured",
+        slot: "",
+        members: [member],
+        missing: ["provider", "model"],
+        code: "SLOT_UNCONFIGURED",
+        message: "SLOT_UNCONFIGURED: " + member + "'s team-model slot is not configured — the mpdConfig service answered no slot (is the mpd-config row mounted?); nothing was written and no child was started. Configure it with /mpd-model, or set teamModels.<slot> for this member in .mpd/mpd.jsonc."
+      };
+    }
+    return { ok: false, status: "unrouted", slot: undefined };
+  };
+  const throwSlotUnconfigured = (resolution) => {
+    if (resolution.ok)
+      throw new Error("mpd_role_spawn: internal error — a usable slot was passed to the refusal helper");
+    if (resolution.status === "unrouted")
+      throw new Error("mpd_role_spawn: internal error — an unrouted member was passed to the refusal helper");
+    const error = new Error(resolution.message);
+    error.code = resolution.code;
+    throw error;
   };
   const roleSurface = (exec) => {
     const base = ROLES.map((r) => {
       const chain = r.chain.map((c) => ({ ...c }));
-      const route = teamModelRoute(r.name);
-      if (route !== undefined)
-        chain.splice(0, chain.length, { provider: route.provider, model: route.model });
+      const resolution = slotResolution(r.name);
+      if (resolution.ok)
+        chain.splice(0, chain.length, { provider: resolution.route.provider, model: resolution.route.model });
+      else if (resolution.status !== "unrouted")
+        chain.splice(0, chain.length);
       return {
         id: r.id,
         name: r.name,
@@ -3339,7 +3511,7 @@ function apply(ctx, config = {}) {
   });
   dsh.registerTool({
     name: "mpd_roles_list",
-    description: "List the specialist roster — the SAME normal-named specialists team mode stages as teammates, each named for what it does: " + rosterFunctionList() + ". Address a role by that name (any case, space or hyphen spelling). Use this before mpd_role_spawn; for team work stage the roster with spawn_teammate + team_task_create (persona text from mpd_role_persona) instead of repeated single-call consults.",
+    description: "List the specialist roster — the SAME normal-named specialists team mode stages as teammates, each named for what it does: " + rosterFunctionList() + ". Address a role by that name (any case, space or hyphen spelling). Use this before mpd_role_spawn; for team work stage the roster with `agent_teams_plan` (add_member with the persona text from mpd_role_persona → create_task with its dependency answer → approve) instead of repeated single-call consults.",
     parameters: { type: "object", properties: {} },
     output: { schema: { type: "object", properties: { roles: { type: "array", items: { type: "object" } }, count: { type: "integer" }, refused: { type: "array", items: { type: "object", properties: { extension: { type: "string" }, name: { type: "string" }, reason: { type: "string" } }, required: ["extension", "name", "reason"] } } }, required: ["roles", "count"] }, render: (_a, v) => textBlock("roster (" + v.count + `):
 ` + v.roles.map((r) => "- " + r.name + " [" + r.model + (r.readonly ? " readonly" : "") + (r.extension ? " extension:" + r.extension : "") + "] — " + r.description).join(`
@@ -3355,8 +3527,8 @@ refused (` + v.refused.length + `):
   });
   dsh.registerTool({
     name: "mpd_role_spawn",
-    description: "Run ONE bounded delegation with a specialist and return one report — a ONE-SHOT single-call consult: the adapter disposes the activation once the report settles, so the consult is NOT reused — ask a new question with a NEW spawn (the harness catalog is append-only, so a settled child may still list as `inactive`, but the contract is one-shot). It carries the role's persona, model route and read-only discipline (read-only roles get a write-tool deny filter). Roles, each named for what it does: " + rosterFunctionList() + ". The child is labelled with that name. `mpd_workmate_spawn` is the same spawn mechanics for a durable, evolving instance (its persona/memory/note — not the child session — carry continuity). For multi-member team work prefer the official Agent Teams tools (spawn_teammate + team_task_create) instead of repeated single-call consults: a teammate inherits the caller's model route, while THIS path applies the role's teamModels slot route.",
-    parameters: { type: "object", properties: { role: { type: "string", description: 'role name (see mpd_roles_list), e.g. "Architect" or "Deep Worker"' }, task: { type: "string" }, context: { type: "string", description: "optional context block to include" }, model: { type: "string", description: "optional model override (default: the role's primary route)" } }, required: ["role", "task"], additionalProperties: false },
+    description: "Run ONE bounded delegation with a specialist and return one report — a ONE-SHOT single-call consult: the adapter disposes the activation once the report settles, so the consult is NOT reused — ask a new question with a NEW spawn (the harness catalog is append-only, so a settled child may still list as `inactive`, but the contract is one-shot). It carries the role's persona, model route and read-only discipline (read-only roles get a write-tool deny filter). Roles, each named for what it does: " + rosterFunctionList() + ". The child is labelled with that name. `mpd_workmate_spawn` is the same spawn mechanics for a durable, evolving instance (its persona/memory/note — not the child session — carry continuity). For multi-member team work prefer the mpd team path (`agent_teams_plan`: add_member → create_task with its dependency answer → approve; drive with `agent_teams_task`/`agent_teams_dispatch`) instead of repeated single-call consults: THIS path applies the role's `teamModels` slot, and a teammate staged through `agent_teams_plan` is routed the same way by the team executor — its `role` first, then its `description` head; only an UNMATCHED member inherits the staging session's route.",
+    parameters: { type: "object", properties: { role: { type: "string", description: 'role name (see mpd_roles_list), e.g. "Architect" or "Deep Worker"' }, task: { type: "string" }, context: { type: "string", description: "optional context block to include" } }, required: ["role", "task"], additionalProperties: false },
     output: { schema: { type: "object", properties: { role: { type: "string" }, status: { type: "string", enum: ["complete"] }, summary: { type: "string" }, recommendation: { type: "string" }, details: { type: "string" }, evidence: { type: "array", items: { type: "string" } }, stopReason: { type: "string" } }, required: ["role", "status", "summary"] }, render: (_a, v) => textBlock("role " + v.role + " (" + v.status + `)
 summary: ` + v.summary + (v.recommendation ? `
 recommendation: ` + v.recommendation : "") + (v.details ? `
@@ -3373,10 +3545,16 @@ evidence:
       if (!task)
         throw new Error("mpd_role_spawn: task required");
       const persona = spec.persona;
-      const configuredRoute = teamModelRoute(spec.name);
-      const slotRoute = await withSupportedEffort(dsh, configuredRoute);
-      const provider = slotRoute?.provider ?? spec.chain[0]?.provider ?? "deepseek-official";
-      const model = typeof args?.model === "string" && args.model.trim() ? args.model.trim() : slotRoute?.model ?? spec.chain[0]?.model;
+      const resolution = slotResolution(spec.name);
+      if (!resolution.ok && resolution.status !== "unrouted")
+        throwSlotUnconfigured(resolution);
+      const primary = resolution.ok ? resolution.route : spec.chain[0] === undefined ? undefined : { provider: spec.chain[0].provider, model: spec.chain[0].model };
+      if (primary === undefined) {
+        throw new Error("mpd_role_spawn: " + spec.name + " has no configured route — an extension role must declare provider+model, and a roster member needs its teamModels slot configured (/mpd-model)");
+      }
+      const run = await resolveRunRoute(dsh, primary, resolution.ok ? resolution.fallbacks ?? [] : []);
+      const provider = run.route.provider;
+      const model = run.route.model;
       const prompt = persona + `
 
 Task: ` + task + (args?.context ? `
@@ -3394,7 +3572,7 @@ Work with the tools your role requires (read-only roles must never modify anythi
         model,
         persona,
         outputSchema: REPORT_SCHEMA,
-        ...slotRoute?.reasoningEffort === undefined ? {} : { agentOptions: { reasoningEffort: slotRoute.reasoningEffort } },
+        ...run.route.reasoningEffort === undefined ? {} : { agentOptions: { reasoningEffort: run.route.reasoningEffort } },
         ...spec.readonly ? { toolFilter: { deny: validatedReadonlyDeny(exec.agent) } } : {}
       });
       const st = result.structured ?? {};
@@ -3403,7 +3581,7 @@ Work with the tools your role requires (read-only roles must never modify anythi
   });
   dsh.registerTool({
     name: "mpd_role_persona",
-    description: 'Return the full persona text of one roster role, addressed by its name ("Architect", "Deep Worker", "Plan Reviewer"). Use it when a spawn surface takes the persona as TEXT — e.g. the prompt of a spawn_teammate teammate whose name is that same name — so the member gets the real role instructions instead of a bare label.',
+    description: 'Return the full persona text of one roster role, addressed by its name ("Architect", "Deep Worker", "Plan Reviewer"). Use it when a spawn surface takes the persona as TEXT — e.g. the prompt of a teammate staged with `agent_teams_plan` add_member whose name is that same name — so the member gets the real role instructions instead of a bare label.',
     parameters: { type: "object", properties: { role: { type: "string", description: "role name (see mpd_roles_list)" } }, required: ["role"] },
     output: { schema: { type: "object", properties: { role: { type: "string" }, persona: { type: "string" }, chars: { type: "integer" } }, required: ["role", "persona", "chars"] }, render: (_a, v) => textBlock("persona " + v.role + " (" + v.chars + ` chars):
 ` + v.persona) },

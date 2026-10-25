@@ -22,9 +22,10 @@
 // and the real ~/.docker keeps its context (the rootless daemon endpoint), so no credential file is
 // copied anywhere.
 //
-// Exit codes: 0 every assertion true or explicitly null; 1 at least one assertion FALSE; 2 the run
-// produced no result.json at all (the container never reached the reporter); 3 a host prerequisite
-// (docker / compose / daemon) is missing.
+// Exit codes: 0 every assertion true or a DECLARED BOUND; 1 at least one assertion FALSE (a container
+// that wrote no result.json is synthesized as ok:false, so it lands here too); 2 the docker build
+// itself failed, or a child's exit status was unavailable; 3 --require-docker with any skip, a required
+// arm unmeasured, missing team rows, or --live without a key.
 //
 // OFFLINE SELF-TEST: `node scripts/docker-e2e.ts --self-test` needs no docker and no network. It
 // exercises this file's own pure helpers (timestamp, evidence path, redaction, verdict/exit

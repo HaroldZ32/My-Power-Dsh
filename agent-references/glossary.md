@@ -23,6 +23,40 @@ teammate lived in the vendored `dsh-agent-teams` body, which no loader row has m
 Re-establishing it belongs to the OFFICIAL team path, `mpd-roster-provider-plugin`, which already routes
 a teammate whose description names a roster member. The block below predates this note and is history.
 
+**LIVE AMENDMENT (2026-10-23, team door):** the official `spawn_teammate` TOOL is now REFUSED at the
+tool boundary — together with `team_task_create`, `team_task_list`, `team_task_get` and
+`team_task_update`; `send_message` / `list_agents` / `wait_agent` / `interrupt_agent` stay for agent
+communication, and `AGENTS.md` §5 rule 5 / §13 carry the binding wording. The roster and slot bullets
+below still name `spawn_teammate` as the teammate surface, and their slot claim ("an official
+`spawn_teammate` teammate") survives only for the SERVICE-level path — a row that raises a teammate
+through the team service — because the TOOL that used to reach it is refused. What is live and unchanged:
+the slot applies to the single-call consult paths (`mpd_role_spawn`, `mpd_workmate_spawn`, which pass an
+explicit `agentOptions`), the roster is addressed by NAME only, and the eight-name read-only deny list is
+unchanged on both enforcement surfaces. The bound, stated once: the refusal is a TOOL-boundary
+rule, so a ROW that calls the team SERVICE directly (the official-executor fallback) is not a tool call
+and is not gated.
+
+**LIVE AMENDMENT (2026-10-24, team-member routing):** the FOUR `teamModels.slot{1..4}` routes apply to
+BOTH the single-call consults (`mpd_role_spawn`, `mpd_workmate_spawn`, which pass an explicit
+`agentOptions`) AND team members: the NATIVE team executor — the DEFAULT backend — resolves a member's
+route by identity precedence **`role` → the HEAD of its `description` → the whole `name`**, asks the
+config service for the first candidate it recognizes, and applies that member's slot (its own
+`fallbacks` chain consumed once). A member it cannot match, a member whose slot is unconfigured or
+invalid, or a composition with no `mpdConfig` service INHERITS the staging session's route (the
+captain's in a top-level spawn, the Lead's in a team-lead spawn) with ONE log line and NO throw —
+`approve` raises N members in a loop, so a slot never leaves a team half-built. `mpd-team-core` forwards
+the staged `member.role`, so a member staged with a role is matched on that first channel. The
+single-call appliers still REFUSE an unusable slot with `SLOT_UNCONFIGURED`; the team path never does.
+`mpd-roster-provider-plugin` remains wired ONLY to the official `spawn_teammate` path
+(`mpd-tool-agent-team`'s `freshProvider`), and that TOOL is REFUSED by the team-door guard, so in a
+DEFAULT composition the package routes NOTHING — it is the historical/fallback wiring for a composition
+that runs the official executor and whose ROW raises teammates through the team service. The routing
+rule of the verbatim block below ("a description that NAMES a roster member routes that member; any
+other teammate runs on the route of the session that staged it") is therefore NOT the whole rule: the
+native executor's precedence above decides (an explicit `role` routes even when the description names
+nobody), and inheritance is the fallback for UNMATCHED members or unusable slots only. This supersedes
+the routing half of the 2026-10-23 note above.
+
 ## The former §13 body (verbatim)
 
 ## 13. Glossary
@@ -97,30 +131,47 @@ a teammate whose description names a roster member. The block below predates thi
   the same measured reason as the delegation gate. Honest bound, unchanged: the guard reads a TOOL CALL's
   arguments, so a source path reached through the shell (`cat`, `rg`) is not blocked — the persona
   forbids that route by INTENT, and the guard's own doc comment says so.
-- team-model slot: one of the four configurable default model routes of the ROSTER members —
-  `teamModels.slot{1,2,3,4}.{provider,model,reasoningEffort}` in `mpd.jsonc` / the `mpd` settings
-  namespace, whose defaults are `deepseek-official` / `deepseek-v4-flash` at `max`/`high`/`high`, plus
-  `deepseek-official` / `deepseek-v4-flash-vision-exp` at `high` for slot 4. Slot 1 routes
-  Architect/Planner/Reviewer/Lead/Senior Engineer, slot 2 Researcher/Explorer/Plan Reviewer, slot 3 Deep
-  Worker/Junior Engineer, slot 4 Vision Analyst (the vision member; the model here MUST accept image
-  input). A slot that cannot be resolved — a
-  missing service, a missing or incomplete slot, an unknown model, an unsupported effort — fails the
-  corresponding spawn LOUDLY naming the member and the slot, writes no state, and NEVER clamps an
-  effort. **Team teammates ARE routed, through a provider of this bundle's own (2026-09-27).** The slot
-  applies to the mpd single-call consult paths (`mpd_role_spawn`, `mpd_workmate_spawn`), which pass an
-  explicit `agentOptions`, AND to an official `spawn_teammate` teammate: the harness — unlike its own
-  TeamService — is not the limitation. `TeamService` forwards only `{ prompt, parent }`, but
-  `SubagentContinuationManager.startContinuable` resolves `request.agentOptions` into
-  provider/model/reasoningEffort and hands them to the PROVIDER, which is what constructs the run;
-  the provider name is ROW CONFIG (`config.freshProvider`), not a tool argument. So
-  `mpd-roster-provider-plugin` registers the `mpd-roster` provider — it delegates to the
-  composition's own provider and applies the member's slot route — and the bundle points its
-  `mpd-tool-agent-team` row's `freshProvider` at it. IDENTITY is the one thing the team service does
-  not forward, so the routing rule is: **a teammate `description` that NAMES a roster member routes
-  that member; any other teammate runs on the route of the session that staged it (the captain's in a
-  top-level spawn, the Lead's in a team-lead spawn), and prompt text cannot change a route.** An
-  incomplete slot fails the spawn
-  loudly, naming the member and the slot. See `packages/mpd-roster-provider-plugin/README.md`.
+- team-model slot: one of the four configured model routes of the ROSTER members —
+  `teamModels.slot{1,2,3,4}.{provider,model,reasoningEffort?}` plus an optional `fallbacks:
+  [{provider,model,reasoningEffort?}, …]` chain of the slot's OWN, in `mpd.jsonc` / the `mpd` settings
+  namespace. Since the slot-single-source contract (`.mpd/plans/slot-single-source.md`) there is ONE
+  configured route per slot and **no built-in default layer**: `TEAM_MODEL_SLOT_DEFAULTS` and
+  `withTeamModelsDefaults` are deleted, the schema carries no `.default()` in the slot subtree, and the
+  per-member override table `agentRoutes` is deleted (a leftover block in an old file is IGNORED and
+  never rewritten). Slot 1 routes Architect/Planner/Reviewer/Lead/Senior Engineer, slot 2
+  Researcher/Explorer/Plan Reviewer, slot 3 Deep Worker/Junior Engineer, slot 4 Vision Analyst (the
+  vision member; the model here MUST accept image input). A slot that is not configured (or whose leaf
+  is malformed) REFUSES the spawn with ONE structured `SLOT_UNCONFIGURED` error naming the slot, its
+  members, the missing leaves and both recovery paths (`/mpd-model`, `teamModels.slotN` in
+  `.mpd/mpd.jsonc`), and stating that nothing was written and no child was started; an effort is NEVER
+  clamped, and a model whose catalog entry declares NO reasoning efforts at all is sent none so the run
+  still proceeds. The read is TOTAL: `mpdConfig.slotResolutionOf(member)` returns a typed union
+  (`ok` / `unconfigured` / `invalid` / `unrouted`) and never throws, so a display (`/mpd-model`, the Web
+  card, `mpd_modelchain_resolve`, `mpd_roles_list`) renders `<unconfigured>` instead of crashing; only
+  the three spawn appliers turn `ok:false` into the thrown failure. The slot's `fallbacks` chain is
+  consumed ONCE before the spawn — the first route the live catalog POSITIVELY lists wins ("not listed"
+  is not "unavailable"), the winner passes the effort adaptation, a malformed entry is dropped with one
+  log line — and it is never retried after the run starts. INITIAL CONFIG IS FILE INITIALIZATION: a
+  workspace whose file declares no `teamModels` is seeded once at mount from the configured providers
+  via the LLM catalog (the `deepseek-flash` family; slot1 `max`, slots 2-4 `high`), never rewriting an
+  existing block or user edit, and writing nothing when the catalog is unavailable. ONE-TIME IS
+  DURABLE: a successful seed records `<ws>/.mpd/model-config-seed.json` (created with `wx`, never
+  overwritten, and consulted BEFORE any attempt), so a block the user deletes on purpose is never
+  re-seeded — the seed can only ever run once per workspace. **Team teammates ARE
+  routed, through a provider of this bundle's own (2026-09-27).** The slot applies to the mpd
+  single-call consult paths (`mpd_role_spawn`, `mpd_workmate_spawn`), which pass an explicit
+  `agentOptions`, AND to an official `spawn_teammate` teammate: the harness — unlike its own TeamService
+  — is not the limitation. `TeamService` forwards only `{ prompt, parent }`, but the durable-child start
+  (`startContinuable` on 0.1.7-rc.2, `startActivation(spec)` on 0.2.1+) resolves `request.agentOptions`
+  into provider/model/reasoningEffort and hands them to the PROVIDER, which constructs the run; the
+  provider name is ROW CONFIG (`config.freshProvider`), not a tool argument. So
+  `mpd-roster-provider-plugin` registers the `mpd-roster` provider — it delegates to the composition's
+  own provider and applies the member's slot route — and the bundle points its `mpd-tool-agent-team`
+  row's `freshProvider` at it. IDENTITY is the one thing the team service does not forward, so the
+  routing rule is: **a teammate `description` that NAMES a roster member routes that member; any other
+  teammate runs on the route of the session that staged it (the captain's in a top-level spawn, the
+  Lead's in a team-lead spawn), and prompt text cannot change a route.** See
+  `packages/mpd-roster-provider-plugin/README.md`.
 - workmate: a durable, evolving agent instance in `~/.mpd/workmate/` created by `mpd-workmate-plugin`
   (`mpd_workmate_*`) from a roster BASE template with an independent name; it self-summarizes after each
   work (persona + independent memory, size-capped) and keeps a short note card. Reuse is via

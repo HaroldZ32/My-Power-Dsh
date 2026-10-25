@@ -1,16 +1,16 @@
 // `/mpd-model` — the SELECTION-STYLE model settings menu (R3).
 //
 // WHAT THE USER GETS: one command that opens a real host pick-list and walks the chain
-// slot → SCOPE → provider → model → reasoning effort, then WRITES the picked route into the SAME
-// `mpd-config` entry the `/settings` section edits. The SCOPE panel (R2, lane L4) picks WHAT the
-// write addresses: the whole slot (`teamModels.<slot>`, the group's default route), ONE member's
-// OWN override (`agentRoutes.<member>`, which outranks the slot for that member only) — the
-// eleven roster names arrive as OPTIONS, never typed — or the CLEAR branch, which removes the
-// group's member overrides so those members follow their slots again. Each member option states
-// the member's CURRENT EFFECTIVE route (R3's see-before-you-edit at the point of choice). The
-// seam is the package's own `dialogs.ts#createDialogs` wrapper over `TuiAdapter.dialogs()` — this
-// file never names a `ctx.tui*` service (the `no-direct-tui-access` gate) and never writes to
-// fd 1/2 (the `no-terminal-writes` gate).
+// slot → provider → model → reasoning effort, then WRITES the picked route into the SAME
+// `mpd-config` entry the `/settings` section edits. The panel writes
+// `teamModels.<slot>.<leaf>` — and NOTHING else: the per-member override layer (`agentRoutes`) is
+// DELETED by `.mpd/plans/slot-single-source.md` §3, so this dialog no longer offers a scope panel,
+// a member branch or a clear branch. A slot that is not configured is DISPLAYED as
+// `<unconfigured>` in the slot panel (contract AMENDMENT 1: the read is the config service's typed
+// `slotResolutionOf`, which never throws); a read the service does not provide degrades to
+// `<unavailable>`, never to a throw. The seam is the package's own `dialogs.ts#createDialogs` wrapper
+// over `TuiAdapter.dialogs()` — this file never names a `ctx.tui*` service (the
+// `no-direct-tui-access` gate) and never writes to fd 1/2 (the `no-terminal-writes` gate).
 //
 // WHY A MENU WHEN THE SECTION ALREADY HAS THE ROWS: the host renders a `select` field by
 // CYCLING a frozen option list and offers no pick-list dialog (measured; see `settings.ts`), so
@@ -23,25 +23,23 @@
 // provider, a model or an effort is. That matters because a value the panel offers but the
 // schema rejects would fail team creation LATER, naming a member and a slot.
 //
-// DEGRADATION IS EXPLICIT (contract §4). Four things can stop the chain, and each ends it with
+// DEGRADATION IS EXPLICIT (contract §4). Three things can stop the chain, and each ends it with
 // ONE sentence naming WHICH happened:
 //   • the dialogs seam is absent (a headless embedder) — nothing is shown and nothing is written;
 //   • the live catalog is absent or DEGRADED — the panels still open over the declared fallback
 //     options, and the outcome sentence says the list is not the live catalog;
-//   • a panel was cancelled (`undefined`) — the chain stops there and NOTHING is written;
-//   • the write was refused (no settings seam, or the host rejected the mutation) — the outcome
-//     says refused, with the host's own error text.
+//   • a panel was cancelled (`undefined`) — the chain stops there and NOTHING is written.
 //
 // A CANCEL AT ANY PANEL WRITES NOTHING. That is not a convention here: the write is the last
 // statement of a straight-line chain, and every early return above it happens before the ops are
 // built.
-import type { SeamOutcome, TuiAdapter, TuiSettingsFieldLike } from "./types.js"
+import type { PluginContextLike, TuiAdapter } from "./types.js"
 import type { Log } from "./log.js"
 import { scalarText } from "./sanitize.js"
 import { createDialogs } from "./dialogs.js"
 import type { DialogSeam } from "./dialogs.js"
-import { BRIDGE_DISCLOSURE, BRIDGE_NOT_LOST, resolveCatalogReader, teamModelOptionLists, SETTINGS_ENTRY } from "./settings.js"
-import type { CatalogReadSeam, SettingsOption, TeamModelOptionLists, TeamModelLeaf } from "./settings.js"
+import { BRIDGE_DISCLOSURE, BRIDGE_NOT_LOST, configServiceOf, resolveCatalogReader, slotResolutionDisplay, teamModelOptionLists, SETTINGS_ENTRY } from "./settings.js"
+import type { CatalogReadSeam, SettingsOption, SlotResolutionDisplay, SlotResolutionServiceLike, TeamModelOptionLists, TeamModelLeaf } from "./settings.js"
 import { TEAM_MODEL_SLOT_GROUPS, TEAM_MODEL_SLOTS } from "../../mpd-config-plugin/src/settings-schema"
 import { MODEL_COMMAND, MODEL_COMMAND_DESCRIPTIONS, MODEL_COMMAND_DESCRIPTION } from "./command-trees.js"
 import { effortLabel, pick, resolveLang } from "./i18n.js"
@@ -68,8 +66,10 @@ export interface ModelMenuOptions {
   readonly dialogs?: DialogSeam
   /** The catalog/settings seam; resolved from `ctx` through the section's reader when omitted. */
   readonly adapter?: CatalogReadSeam
-  /** The context the default adapter is resolved from. */
+  /** The context the default adapter and the config service are resolved from. */
   readonly ctx?: unknown
+  /** The config service slice the slot descriptions read; resolved from `ctx` when omitted. */
+  readonly slotService?: SlotResolutionServiceLike
   /** The language resolution inputs (`DSH_TUI_LANG` / the preference file / the locale). */
   readonly langInputs?: Parameters<typeof resolveLang>[0]
 }
@@ -87,39 +87,17 @@ const MENU_TEXT = {
   titleModel: { zh: "MPD 模型", en: "MPD model" },
   titleEffort: { zh: "MPD 推理强度", en: "MPD reasoning effort" },
   slotHint: { zh: "该槽位驱动的成员组：{group}", en: "the member group this slot drives: {group}" },
+  // THE SLOT'S CURRENT CONFIGURATION, at the point of choice (R3's see-before-you-edit). The typed
+  // answer comes from the config service's `slotResolutionOf` (contract AMENDMENT 1), so an
+  // unconfigured slot reads as the literal token `<unconfigured>` and never as an empty string.
+  slotCurrent: { zh: "当前：{route}", en: "current: {route}" },
+  slotFallbacks: { zh: "（另有 {n} 个回退）", en: " (+{n} fallbacks)" },
+  slotUnconfigured: { zh: "当前：<unconfigured>", en: "current: <unconfigured>" },
+  slotInvalid: { zh: "当前：<invalid>", en: "current: <invalid>" },
+  slotUnavailable: { zh: "当前：<unavailable>", en: "current: <unavailable>" },
   providerHint: { zh: "该槽位的提供商；模型列表来自它", en: "this slot's provider; the model list comes from it" },
   modelHint: { zh: "该槽位的模型", en: "this slot's model" },
   effortHint: { zh: "该槽位的推理强度", en: "this slot's reasoning effort" },
-  titleTarget: { zh: "应用到哪个范围", en: "apply to which scope" },
-  targetSlotLabel: { zh: "整个槽位", en: "the whole slot" },
-  targetClearLabel: { zh: "清除成员覆盖", en: "clear member overrides" },
-  targetSlotHint: {
-    zh: "整个槽位——该组的所有成员（写入 teamModels，作为这组成员的默认路由）",
-    en: "the whole slot — every member of the group (writes teamModels, the group's default route)",
-  },
-  targetMemberHint: {
-    zh: "仅该成员（写入 agentRoutes，优先于槽位）。当前生效：{route}",
-    en: "this member only (writes agentRoutes, over the slot). effective now: {route}",
-  },
-  targetRouteUnreadable: { zh: "（存储值不可读）", en: " (stored values unreadable)" },
-  targetClearHint: {
-    zh: "清除本组成员的专属覆盖（删除 agentRoutes 条目，成员恢复跟随槽位）",
-    en: "clear this group's member overrides (removes their agentRoutes entries; the members fall back to the slot)",
-  },
-  memberWrote: {
-    zh: "mpd-model: 成员 {name} 的专属路由已设置 提供商 {provider} · 模型 {model} · 推理强度 {effort}；{disclosure}。{notLost}",
-    en: "mpd-model: member {name} own route set to provider {provider} · model {model} · reasoning effort {effort}; {disclosure}. {notLost}",
-  },
-  clearedWrote: {
-    zh: "mpd-model: 已清除 {count} 个成员覆盖叶子（{names}）——这些成员恢复跟随各自槽位",
-    en: "mpd-model: cleared {count} override leaf/leaves ({names}) — those members follow their slots again",
-  },
-  clearedNone: {
-    zh: "mpd-model: 该组成员没有可清除的专属覆盖，未写入任何设置",
-    en: "mpd-model: this group's members carry no overrides to clear — nothing was written",
-  },
-  sealedByCancelTarget: { zh: "mpd-model: 已取消范围选择，未写入任何设置", en: "mpd-model: the scope panel was cancelled — nothing was written" },
-  sealedByNoMember: { zh: "mpd-model: 未知成员“{member}”，未写入任何设置", en: "mpd-model: unknown member \"{member}\" — nothing was written" },
   sealedByDialogs: {
     zh: "mpd-model: 该组合没有对话框接缝（无界面嵌入），未打开菜单，也未写入任何设置",
     en: "mpd-model: this composition has no dialogs seam (a headless embedder) — no menu was opened and nothing was written",
@@ -177,22 +155,50 @@ function short(value: string): string {
 }
 
 /**
+ * The current-configuration sentence of one slot, for the slot panel's description.
+ *
+ * THE TOKENS ARE THE CONTRACT'S OWN (`<unconfigured>`, `<available>` spelling aside): a slot whose
+ * route the config service reports as `unconfigured` shows the literal `<unconfigured>`, so the
+ * reader can tell "nothing is configured" from "the read failed" (`<unavailable>`) and from a real
+ * route. Nothing here throws: the typed union is the service's answer, and an absent method is its own
+ * state.
+ * @param lang - the language to render the sentence in.
+ * @param display - the typed slot answer (see `settings.ts#slotResolutionDisplay`).
+ * @returns the sentence to append to the slot option's description.
+ */
+export function slotCurrentText(lang: TuiLang, display: SlotResolutionDisplay): string {
+  if (display.state === "ok") {
+    /** The route sentence, plus the slot's own fallback count when it carries one. */
+    return say("slotCurrent", lang, { route: display.route }) + (display.fallbacks > 0 ? say("slotFallbacks", lang, { n: String(display.fallbacks) }) : "")
+  }
+  if (display.state === "unconfigured") return pick(MENU_TEXT.slotUnconfigured, lang)
+  if (display.state === "invalid") return pick(MENU_TEXT.slotInvalid, lang)
+  return pick(MENU_TEXT.slotUnavailable, lang)
+}
+
+/**
  * The slot panel's options: one per slot, labelled with the MEMBER GROUP it drives.
  *
  * The group names come from the shared schema (`TEAM_MODEL_SLOT_GROUPS`), which is the same
  * declaration the `/settings` row labels are built from, so the panel and the row cannot name a
- * slot's group differently.
+ * slot's group differently. The description carries the slot's CURRENT configuration (R3's
+ * see-before-you-edit at the point of choice) when the caller could read it.
  * @param lang - the language to render the labels in.
+ * @param displays - the typed slot answers, keyed by slot; omitted by an arm that only wants labels.
  * @returns four options, `slot1` first.
  */
-export function slotPanelOptions(lang: TuiLang): { id: string; label: string; description: string }[] {
+export function slotPanelOptions(lang: TuiLang, displays?: Readonly<Record<string, SlotResolutionDisplay>>): { id: string; label: string; description: string }[] {
   return TEAM_MODEL_SLOTS.map((slot, index) => {
     /** The slot's group identity, shared with the settings schema. */
     const group = TEAM_MODEL_SLOT_GROUPS[slot]
+    /** The group sentence every slot option leads with. */
+    const hint = say("slotHint", lang, { group: lang === "en" ? group.en : group.zh })
+    /** This slot's current-configuration sentence, when the caller supplied one. */
+    const current = displays?.[slot]
     return {
       id: slot,
       label: `${index + 1}. ${lang === "en" ? group.en : group.zh}`,
-      description: say("slotHint", lang, { group: lang === "en" ? group.en : group.zh }),
+      description: current === undefined ? hint : `${hint} · ${slotCurrentText(lang, current)}`,
     }
   })
 }
@@ -400,54 +406,22 @@ export async function openModelMenu(tui: TuiAdapter, log: Log, options: ModelMen
     + ` reasoningEffort=${lists.source.reasoningEffort}(${lists.reasoningEffort.length})`)
 
   // ── panel 1: the slot, labelled with the member group it drives ────────────
+  // THE DESCRIPTION CARRIES THE SLOT'S CURRENT CONFIGURATION (R3's see-before-you-edit), read through
+  // the config service's TYPED slot answer: `<unconfigured>` for a slot nothing is written for,
+  // `<unavailable>` when the composition has no typed read — never a throw, never a blank.
+  /** The config service slice the slot descriptions read; a test may inject its own. */
+  const slotService = options.slotService ?? configServiceOf(options.ctx as PluginContextLike)
+  /** One typed answer per slot, read before the panel opens so its descriptions are current. */
+  const slotDisplays: Record<string, SlotResolutionDisplay> = {}
+  for (const candidate of TEAM_MODEL_SLOTS) {
+    /** The first member of this slot's group; the typed read is addressed by MEMBER. */
+    const member = TEAM_MODEL_SLOT_GROUPS[candidate].members[0] ?? ""
+    slotDisplays[candidate] = slotResolutionDisplay(slotService, member)
+  }
   /** The picked slot; undefined means the chain was cancelled here. */
-  const slot = await dialogs.select(say("titleSlot", lang), slotPanelOptions(lang), PANEL_TIMEOUT_MS)
+  const slot = await dialogs.select(say("titleSlot", lang), slotPanelOptions(lang, slotDisplays), PANEL_TIMEOUT_MS)
   if (slot === undefined) return { kind: "error", text: say("sealedByCancelSlot", lang) }
   if (!TEAM_MODEL_SLOTS.includes(slot as "slot1")) return { kind: "error", text: say("sealedByNoSlot", lang, { slot: short(slot) }) }
-
-  // ── panel 2 (R2): the write SCOPE — the whole slot, ONE member's own override, or clear ──
-  // The member options are ENUMERATED from the slot's group (the shared schema's own membership),
-  // so a roster name is picked, never typed; each option's description states the member's current
-  // effective route (R3's see-before-you-edit at the point of choice).
-  /** The stored route tables the option descriptions read. */
-  const tables = readRouteTables(adapter)
-  /** The picked scope: TARGET_SLOT, a member NAME, or TARGET_CLEAR; undefined when cancelled. */
-  const scope = await dialogs.select(say("titleTarget", lang), targetPanelOptions(slot, tables, lang), PANEL_TIMEOUT_MS)
-  if (scope === undefined) return { kind: "error", text: say("sealedByCancelTarget", lang) }
-  /** The slot's group, whose members the scope names. */
-  const scopeGroup = TEAM_MODEL_SLOT_GROUPS[slot as (typeof TEAM_MODEL_SLOTS)[number]]
-  /** The member whose override is written, undefined for the whole-slot and clear branches. */
-  const member = scope === TARGET_SLOT || scope === TARGET_CLEAR ? undefined : String(scope)
-  if (member !== undefined && !scopeGroup.members.includes(member)) {
-    return { kind: "error", text: say("sealedByNoMember", lang, { member: short(member) }) }
-  }
-
-  // ── the CLEAR branch: unset every stored override leaf of this group's members, then done ────
-  if (scope === TARGET_CLEAR) {
-    if (typeof adapter.settingsMutate !== "function") return { kind: "error", text: say("sealedByNoNamespace", lang) }
-    /** The unset ops: one per STORED leaf (an unset of a leaf that is absent is noise). */
-    const clearOps = scopeGroup.members.flatMap((name) => (["provider", "model", "reasoningEffort"] as const)
-      .filter((leaf) => tables.agentRoutes[name]?.[leaf] !== undefined)
-      .map((leaf) => ({ op: "unset" as const, path: ["agentRoutes", name, leaf] })))
-    if (clearOps.length === 0) return { kind: "success", text: say("clearedNone", lang) }
-    /** The ENTRY document's current revision, the fence the clear write uses. */
-    let entryRevision: number | undefined
-    try {
-      entryRevision = adapter.settingsReader?.(SETTINGS_ENTRY)?.describe()?.revision
-    } catch {
-      // An unreadable descriptor costs the fence, not the write.
-    }
-    /** The write result; never a throw (the adapter's contract). */
-    const cleared = await adapter.settingsMutate(SETTINGS_ENTRY, clearOps, entryRevision)
-    if (!cleared.ok) return { kind: "error", text: say("sealedByRefused", lang, { error: short(cleared.error) }) }
-    /** The members whose entries the clear removed, for the log and the outcome sentence. */
-    const clearedNames = [...new Set(clearOps.map((op) => op.path[1]))].join(", ")
-    log.info(`/${MODEL_COMMAND} cleared agentRoutes for ${clearedNames} (${String(clearOps.length)} leaf/leaves)`)
-    return { kind: "success", text: say("clearedWrote", lang, { count: String(clearOps.length), names: clearedNames }) }
-  }
-
-  /** The write prefix: `teamModels.<slot>` for the slot branch, `agentRoutes.<member>` for the override. */
-  const writePrefix: string[] = member === undefined ? [TEAM_MODELS_PREFIX, slot] : ["agentRoutes", member]
 
   // ── panel 2: the provider ─────────────────────────────────────────────────
   /** The provider picked; undefined when the panel was cancelled. */
@@ -480,30 +454,20 @@ export async function openModelMenu(tui: TuiAdapter, log: Log, options: ModelMen
   )
   if (effort === undefined) return { kind: "error", text: say("sealedByCancelEffort", lang) }
 
-  // ── the write: the same path the section writes with ──────────────────────
-  /** WHERE the write goes and the revision the fence uses (the slot branch keeps the legacy-aware probe). */
-  const target = member === undefined
-    ? locateNamespace(adapter, slot)
-    : { namespace: SETTINGS_ENTRY, revision: ((): number | undefined => {
-        // The ENTRY document's own revision: an agentRoutes write is addressed to the ENTRY by
-        // construction, so the fence must come from THAT document, never the legacy namespace's.
-        try {
-          return adapter.settingsReader?.(SETTINGS_ENTRY)?.describe()?.revision
-        } catch {
-          return undefined
-        }
-      })() }
+  // ── the write: `teamModels.<slot>` in the document the section edits ──────
+  /** WHERE the write goes and the revision the fence uses (the legacy-aware namespace probe). */
+  const target = locateNamespace(adapter, slot)
   if (typeof adapter.settingsMutate !== "function") return { kind: "error", text: say("sealedByNoNamespace", lang) }
-  /** The three ops one write carries — set each leaf under the chosen prefix. */
+  /** The three ops one write carries — set each leaf under `teamModels.<slot>`. */
   const ops = (["provider", "model", "reasoningEffort"] as const).map((leaf) => ({
     op: "set" as const,
-    path: [...writePrefix, leaf],
+    path: [TEAM_MODELS_PREFIX, slot, leaf],
     value: leaf === "provider" ? provider : leaf === "model" ? model : effort,
   }))
   /** The write result; never a throw (the adapter's contract). */
   const written = await adapter.settingsMutate(target.namespace, ops, target.revision)
   if (!written.ok) return { kind: "error", text: say("sealedByRefused", lang, { error: short(written.error) }) }
-  log.info(`/${MODEL_COMMAND} wrote ${target.namespace}.${writePrefix.join(".")} = ${provider}/${model}/${effort}`)
+  log.info(`/${MODEL_COMMAND} wrote ${target.namespace}.${[TEAM_MODELS_PREFIX, slot].join(".")} = ${provider}/${model}/${effort}`)
 
   /** What the outcome sentence says about the catalog the user picked from. */
   const fallback = catalogWhy === undefined ? "" : ` · ${say("catalogFallback", lang, { why: catalogWhy })}`
@@ -511,9 +475,8 @@ export async function openModelMenu(tui: TuiAdapter, log: Log, options: ModelMen
   // it is LIVE (the member's next spawn or resolve carries it), and it is never lost.
   return {
     kind: "success",
-    text: `${say(member === undefined ? "wrote" : "memberWrote", lang, {
+    text: `${say("wrote", lang, {
       slot,
-      name: member ?? "",
       provider: short(provider),
       model: short(model),
       effort: short(effort),
@@ -546,128 +509,4 @@ export function readStoredSlots(adapter: CatalogReadSeam): Record<string, Partia
   const out: Record<string, Partial<Record<TeamModelLeaf, string>>> = {}
   for (const slot of TEAM_MODEL_SLOTS) out[slot] = storedSlot(value, slot)
   return out
-}
-
-/**
- * The BOTH-family route tables the menu reads BEFORE the scope panel (R3's see-before-you-edit at
- * the point of choice): every slot's stored leaves and the stored `agentRoutes` entries, from
- * whichever settings document serves them (the ENTRY document first — its resolved value
- * materialises the slot defaults, so an unconfigured slot still shows its effective route).
- * `agentRoutes` is merged first-half-wins across the root, `user` and `value` halves: the saved
- * `user` half outranks the stale apply-time `value` half (T-93).
- * @param adapter - the catalog/settings seam.
- * @returns the two tables; empty when no settings document answers.
- */
-export function readRouteTables(adapter: CatalogReadSeam): {
-  /** Every slot's stored (or default-materialised) triple. */
-  slots: Record<string, Partial<Record<TeamModelLeaf, string>>>
-  /** The stored agentRoutes entries, keyed by roster member name. */
-  agentRoutes: Record<string, Partial<Record<TeamModelLeaf, string>>>
-} {
-  /** The namespace value the tables are read from; the ENTRY first (defaults materialised). */
-  let value: unknown
-  for (const namespace of [SETTINGS_ENTRY, MODEL_NAMESPACE]) {
-    /** This namespace's read surface, absent when the settings provider is not composed. */
-    const reader = adapter.settingsReader?.(namespace)
-    if (reader === undefined) continue
-    try {
-      value = reader.get()
-    } catch {
-      value = undefined
-    }
-    if (value !== undefined) break
-  }
-  /** Each slot's triple. */
-  const slots: Record<string, Partial<Record<TeamModelLeaf, string>>> = {}
-  for (const slot of TEAM_MODEL_SLOTS) slots[slot] = storedSlot(value, slot)
-  /** The agentRoutes table, looked for at the root and under the two host-document halves. */
-  const agentRoutes: Record<string, Partial<Record<TeamModelLeaf, string>>> = {}
-  for (const candidate of [value, isRecord(value) ? value.user : undefined, isRecord(value) ? value.value : undefined]) {
-    if (!isRecord(candidate)) continue
-    /** This half's `agentRoutes` block, when it carries one. */
-    const table = candidate["agentRoutes"]
-    if (!isRecord(table)) continue
-    for (const [name, entry] of Object.entries(table)) {
-      // FIRST half wins. The host document's `value` half is the APPLY-TIME config (T-93): after a
-      // save its `agentRoutes` entry stays stale, while the `user` half carries the saved leaves. A
-      // later half must therefore never overwrite a name the accumulated table already holds, or the
-      // stale `value` half would clobber the user's saved route.
-      if (agentRoutes[name] !== undefined) continue
-      if (!isRecord(entry)) continue
-      /** This entry's usable string leaves. */
-      const leaves: Partial<Record<TeamModelLeaf, string>> = {}
-      for (const leaf of ["provider", "model", "reasoningEffort"] as const) {
-        /** The leaf's stored value, when it is a usable string. */
-        const found = entry[leaf]
-        if (typeof found === "string" && found.length > 0) leaves[leaf] = found
-      }
-      if (Object.keys(leaves).length > 0) agentRoutes[name] = leaves
-    }
-  }
-  return { slots, agentRoutes }
-}
-
-/**
- * One member's CURRENT EFFECTIVE route from the read tables — the stored `agentRoutes` leaf over
- * the slot's triple (the R2 precedence, applied for DISPLAY only; the loud authority stays the
- * config service). A missing leaf renders as `-`, so an unreadable document degrades visibly.
- * @param tables - the tables {@link readRouteTables} answered.
- * @param member - the roster member the route is for.
- * @param slot - the member's slot.
- * @returns the effective `provider / model / reasoningEffort` fragment.
- */
-export function memberRouteText(
-  tables: { slots: Record<string, Partial<Record<TeamModelLeaf, string>>>; agentRoutes: Record<string, Partial<Record<TeamModelLeaf, string>>> },
-  member: string,
-  slot: string,
-): string {
-  /** The slot's stored triple ({} when unreadable). */
-  const base = tables.slots[slot] ?? {}
-  /** The member's stored override entry ({} when none is set). */
-  const entry = tables.agentRoutes[member] ?? {}
-  /** The three effective leaves, each falling through to the slot's. */
-  const route = (leaf: TeamModelLeaf): string => entry[leaf] ?? base[leaf] ?? ""
-  return `${route("provider") || "-"} / ${route("model") || "-"} / ${route("reasoningEffort") || "-"}`
-}
-
-/** The scope ids the write-target panel answers: the slot itself, a member's override, or the clear branch. */
-export const TARGET_SLOT = "slot"
-/** The clear branch's scope id (its write removes the group's agentRoutes entries). */
-export const TARGET_CLEAR = "clear"
-
-/**
- * The write-target panel's options (R2's front door): the WHOLE SLOT, one option per member of the
- * slot's group (an `agentRoutes` override — the eleven names arrive as OPTIONS, never typed), and
- * the clear branch. Each member option's description states the member's current effective route,
- * so the user sees what a change modifies at the point of choice (R3).
- * @param slot - the slot picked by the first panel.
- * @param tables - the route tables {@link readRouteTables} answered for the descriptions.
- * @param lang - the language to render the labels and descriptions in.
- * @returns the panel's options, slot first, clear last.
- */
-export function targetPanelOptions(
-  slot: string,
-  tables: { slots: Record<string, Partial<Record<TeamModelLeaf, string>>>; agentRoutes: Record<string, Partial<Record<TeamModelLeaf, string>>> },
-  lang: TuiLang,
-): { id: string; label: string; description: string }[] {
-  /** The slot's group identity, shared with the settings schema. */
-  const group = TEAM_MODEL_SLOT_GROUPS[slot as (typeof TEAM_MODEL_SLOTS)[number]]
-  if (group === undefined) return []
-  /** The options, slot first. */
-  const options: { id: string; label: string; description: string }[] = [
-    { id: TARGET_SLOT, label: `1. ${pick(MENU_TEXT.targetSlotLabel, lang)}`, description: say("targetSlotHint", lang) },
-  ]
-  for (const [index, member] of group.members.entries()) {
-    options.push({
-      id: member,
-      label: `${index + 2}. ${member}`,
-      description: say("targetMemberHint", lang, { route: memberRouteText(tables, member, slot) }),
-    })
-  }
-  options.push({
-    id: TARGET_CLEAR,
-    label: `${group.members.length + 2}. ${pick(MENU_TEXT.targetClearLabel, lang)}`,
-    description: say("targetClearHint", lang),
-  })
-  return options
 }

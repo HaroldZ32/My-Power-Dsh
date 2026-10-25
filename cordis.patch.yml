@@ -562,9 +562,14 @@
 # The bundle's team capability is the OFFICIAL plugin set, not a vendored body:
 #   @deepseek-ai/dsh-experimental-agent-team          -> ctx.agentTeams (TeamService:
 #       implicit-root roster, durable peer mailbox, shared task DAG)
-#   @deepseek-ai/dsh-experimental-tool-agent-team     -> the scoped model-facing tools
-#       spawn_teammate / send_message / list_agents / wait_agent / interrupt_agent /
-#       team_task_create|list|get|update + the `team:policy` prompt section
+#   @deepseek-ai/dsh-experimental-tool-agent-team     -> the scoped model-facing tools.
+#       The team-door guard REFUSES the five authoring verbs (`spawn_teammate`,
+#       `team_task_create|list|get|update`), so the team door is `agent_teams_plan`
+#       (stage -> add_member / create_task, each task carrying its dependency answer
+#       `blocked_by` or `independent: true`, -> approve) and the board is
+#       `agent_teams_task` / `agent_teams_dispatch`; `send_message` / `list_agents` /
+#       `wait_agent` / `interrupt_agent` stay for agent communication, plus the
+#       `team:policy` prompt section
 #   @deepseek-ai/dsh-experimental-client-ui-agent-team -> the Web roster, task board
 #       and teammate navigation
 # All three are declared in this package's `dependencies`, so

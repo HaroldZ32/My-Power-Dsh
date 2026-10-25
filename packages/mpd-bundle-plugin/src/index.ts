@@ -136,7 +136,7 @@ function apply(ctx: any): void {
       return false
     }
     // The effective model-config route (R3, lane L4): the Web settings card's live read of the
-    // slot/agentRoutes/modelchain tables. Registered beside the watchdog routes on the SAME
+    // slot blocks and modelchain tables. Registered beside the watchdog routes on the SAME
     // rebind-retried path; a refusal costs the card its live half (it degrades to a notice) and
     // never the section, so it does not gate `registered`.
     const modelConfig = registerModelConfigRoute(webServer, {

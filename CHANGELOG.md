@@ -14,6 +14,71 @@ Further reading:
 - [`VENDOR_LOCK.json`](./VENDOR_LOCK.json) — the pinned upstream baseline each release is measured
   against.
 
+## v0.15.4 — the dependency guard, one team door, and a corpus that names only mounted channels
+
+Patch release over v0.15.2 (**v0.15.3 was skipped and never released**). Four waves: the board now
+REFUSES work that would run in parallel without a declared dependency answer, the official team-authoring
+verbs are closed at the tool boundary, a team member finally runs on its configured model slot, and the
+served skill corpus stops teaching channels this preset does not mount.
+
+**Added — the dependency guard (wave `task-dependency-guard`).** `agent_teams_task` and
+`agent_teams_plan {action:"create_task"}` now REQUIRE an explicit dependency answer: `blocked_by: [...]`
+(an empty array is the explicit ROOT) or `independent: true`. Omitting both is REFUSED with a message
+naming the two spellings, so "the captain forgot `blocked_by`" can no longer quietly produce a parallel
+task. `claim` refuses a task whose declared blockers are unsatisfied — the same readiness predicate
+dispatch uses — while `complete`/`fail`/`release` stay open so a stranded row is always closable.
+`approve` REFUSES two staged tasks whose declared write scopes overlap with no dependency path between
+them, naming the pair, both scopes and both remedies (add the edge, or make the scopes disjoint); the
+check runs ABOVE the `dry_run` return, so a dry run reports the same refusal. The board's terminal verbs
+carry `expected_revision` as a compare-and-set, and `dispatch` honours a task's declared owner.
+
+**Changed — ONE team door.** The five official authoring verbs (`spawn_teammate`, `team_task_create`,
+`team_task_list`, `team_task_get`, `team_task_update`) are now REFUSED at the tool boundary for EVERY
+agent, with no preset bypass: a session creates its team through `agent_teams_plan` and its tasks through
+`create_task`, which is where the dependency answer and the scope check are enforced. `send_message`,
+`list_agents`, `wait_agent` and `interrupt_agent` stay open for agent communication (they are base global
+rows this preset mounts, and the harness tells every continuable child to call `send_message`). The
+closure stops at the TOOL boundary and says so: a row that calls the official team SERVICE directly is
+not gated.
+
+**Fixed — a team member runs on its configured slot.** Before this release the ONLY path that applied a
+`teamModels` slot to a team member was the official `spawn_teammate`, which the team door now refuses, so
+every member of a default-composition team silently inherited the captain's route. Approval now resolves
+each member's route by identity precedence — its `role`, else the HEAD of its `description`, else its
+whole `name` — and passes it to the executor; a member the roster cannot match, or one whose slot is
+unconfigured, INHERITS the staging session's route with ONE log line and no throw (only a single-call
+spawn applier REFUSES an unusable slot, `SLOT_UNCONFIGURED`).
+
+**Fixed — the served skill corpus names only mounted channels (wave `skills-dead-tokens`).** 71 delegation
+instructions across 15 skills stopped describing the harness's generic spawn tools (`subagent`,
+`subagent_type=`, `task(category=)`, the `oracle`/`librarian`/`momus`/`metis` agent words) and now name
+`mpd_role_spawn` (ONE-SHOT consult), the workmate library, or the team plane; 36 dead tool names became
+the mounted spellings (`todo_write`, `mcp__lsp__*`, `mcp__codegraph__*`, `job_*`), the capitalized
+`Read`/`Write`/`Edit`/`Bash` class included; dangling skill pointers were repointed or removed; and three
+capability statements the verifier proved FALSE were corrected — `Reviewer` is write-capable and
+findings-only by DISCIPLINE (the mechanically read-only roles are Architect, Researcher, Planner,
+Explorer, Plan Reviewer and Vision Analyst), `read_image` IS mounted for a vision consult (the spawn
+carries no image ATTACHMENT, so the Lead passes absolute paths), and `mpd_role_spawn` has NO per-call
+`model` override (the `teamModels` slot is the ONE route). Two honest limits are now stated in the corpus
+rather than promised: no asynchronous background lanes with mid-flight steering, and no `subagent_fork`
+equivalent.
+
+**Documentation.** The write-scope rule is now described the same way everywhere — REFUSED on the mpd
+record plane, advisory on the official plane — across `README{,.zh-CN}.md`,
+`docs/{user-guide,design,extensions,extension-authoring-guide,index}{,.zh-CN}.md`, the package README
+twins and `AGENTS.md` §5/§13; `scripts/docker-e2e.ts`'s header states the exit codes it actually returns.
+
+**Evidence.** Every wave carries its records under `evidence/` — `fix-task-dependency-guard/` (gate logs
+per round), `skills-dead-tokens/` (the hash-anchored corpus snapshots, the operative one measured on the
+final tree). Independent verdict on the merged work: `rec-20261025T025911-298855` PASS (risk LOW) on loop
+`loop-20261024T172051-b5375e`, after eight rounds that each found a real defect.
+
+**Gates.** `verify:gates` 9/9 · vendor · dist freshness 33/33 · doc pairs 50 (0 dead links) · plugin
+manifest · declaration comments · row parity · graph model · workflows · `bun test packages`
+**2447 pass / 3 skip / 0 fail** · `test:qa` 51/51 · pack closure · `preset-conformance` (real mount) ·
+`review-panel` (15 checks) · `no-host-override` · `manual-paths` · the Docker real-machine lane in both
+required spellings (credential-free `--no-browser` and `--live`).
+
 ## v0.15.2 — team settlement, an authorized release, and a sidebar DAG that fits
 
 Patch release over v0.15.1. Two merged waves: the team plane now settles its members and scopes its

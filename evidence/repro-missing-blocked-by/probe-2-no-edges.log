@@ -1,0 +1,27 @@
+=== PROBE 2: three tasks, NO blocked_by, then dispatch twice ===
+runner: bun 1.4.2 / node v26.3.0
+plugin under test: packages/mpd-team-core-plugin/src/index.ts (source, not dist)
+create_task #1 answer: {"plan":{"version":1,"planId":"plan-20261023090121737-1lwg-001","sessionId":"lead-session","name":"probe-2","description":"three tasks with no edges","approval":"required","members":[{"name":"Lead","description":"coordinates","prompt":"You lead."},{"name":"Senior Engineer","description":"implements","prompt":"You implement."},{"name":"Reviewer","description":"judges","prompt":"You review."}],"tasks":[{"subject":"requirement: the dependency guard","description":"freeze the acceptance contract","kind":"requirement","owner":"Lead"}],"stagedAt":"2026-10-23T09:01:21.737Z"}}
+create_task #2 answer: {"plan":{"version":1,"planId":"plan-20261023090121737-1lwg-001","sessionId":"lead-session","name":"probe-2","description":"three tasks with no edges","approval":"required","members":[{"name":"Lead","description":"coordinates","prompt":"You lead."},{"name":"Senior Engineer","description":"implements","prompt":"You implement."},{"name":"Reviewer","description":"judges","prompt":"You review."}],"tasks":[{"subject":"requirement: the dependency guard","description":"freeze the acceptance contract","kind":"requirement","owner":"Lead"},{"subject":"work: implement the dependency guard","description":"write the guard","kind":"work","owner":"Senior Engineer"}],"stagedAt":"2026-10-23T09:01:21.737Z"}}
+create_task #3 answer: {"plan":{"version":1,"planId":"plan-20261023090121737-1lwg-001","sessionId":"lead-session","name":"probe-2","description":"three tasks with no edges","approval":"required","members":[{"name":"Lead","description":"coordinates","prompt":"You lead."},{"name":"Senior Engineer","description":"implements","prompt":"You implement."},{"name":"Reviewer","description":"judges","prompt":"You review."}],"tasks":[{"subject":"requirement: the dependency guard","description":"freeze the acceptance contract","kind":"requirement","owner":"Lead"},{"subject":"work: implement the dependency guard","description":"write the guard","kind":"work","owner":"Senior Engineer"},{"subject":"review: verify the dependency guard","description":"judge the guard","kind":"review","owner":"Reviewer"}],"stagedAt":"2026-10-23T09:01:21.737Z"}}
+approval.answer.created: {"members":[{"name":"Lead","id":"child-Lead"},{"name":"Senior Engineer","id":"child-Senior-Engineer"},{"name":"Reviewer","id":"child-Reviewer"}],"tasks":[{"subject":"requirement: the dependency guard","id":"T1"},{"subject":"work: implement the dependency guard","id":"T2"},{"subject":"review: verify the dependency guard","id":"T3"}]}
+approval answer mentions `unresolved`: false
+approval answer.created carries `unresolved`: false
+approval answer records any non-empty blockedBy edge: false
+approval.render: approved plan-20261023090121737-1lwg-001: 3 member(s), 3 task(s)
+approval.render mentions a dependency signal: false
+board after approval (disk): [{"id":"T1","kind":"requirement","status":"pending","owner":"Lead","blockedBy":[]},{"id":"T2","kind":"work","status":"pending","owner":"Senior Engineer","blockedBy":[]},{"id":"T3","kind":"review","status":"pending","owner":"Reviewer","blockedBy":[]}]
+readyTasks after approval (disk): ["T1","T2","T3"]
+
+--- agent_teams_dispatch {action:"run"} (pass 1) ---
+pass1.pairs: [{"taskId":"T1","subject":"requirement: the dependency guard","memberId":"child-Lead","memberName":"Lead"},{"taskId":"T2","subject":"work: implement the dependency guard","memberId":"child-Senior-Engineer","memberName":"Senior Engineer"},{"taskId":"T3","subject":"review: verify the dependency guard","memberId":"child-Reviewer","memberName":"Reviewer"}]
+pass1.skipped: []
+board after pass 1 (disk): [{"id":"T1","kind":"requirement","status":"in_progress","owner":"Lead","blockedBy":[],"startedAt":"2026-10-23T09:01:21.739Z"},{"id":"T2","kind":"work","status":"in_progress","owner":"Senior Engineer","blockedBy":[],"startedAt":"2026-10-23T09:01:21.739Z"},{"id":"T3","kind":"review","status":"in_progress","owner":"Reviewer","blockedBy":[],"startedAt":"2026-10-23T09:01:21.739Z"}]
+
+--- agent_teams_dispatch {action:"run"} (pass 2) ---
+pass2.pairs: []
+pass2.skipped: [{"taskId":"T1","subject":"requirement: the dependency guard","reason":"already dispatched to Lead"},{"taskId":"T2","subject":"work: implement the dependency guard","reason":"already dispatched to Senior Engineer"},{"taskId":"T3","subject":"review: verify the dependency guard","reason":"already dispatched to Reviewer"}]
+
+paired in pass 1 (board order): ["T1","T2","T3"]
+approval silent about dependencies: true
+CONCLUSION: DEFECT REPRODUCED — 3 of 3 flat tasks were paired in one pass in order ["T1","T2","T3"], and the approval answer named no dependency at all

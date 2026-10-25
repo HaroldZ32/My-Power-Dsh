@@ -1,0 +1,358 @@
+### skills/debugging/references/methodology/00-setup.md
+@@ -87,5 +87,5 @@ Goal: <one-sentence user request>
+ - Round 1: <result>
+ - Round 2: <result>
+-<!-- At 2 consecutive failures, invoke Oracle Triple (see 04-oracle-triple.md). -->
++- At 2 consecutive failed rounds, invoke the Oracle Triple (04-oracle-triple.md) instead of starting round 3 in the same frame.
+ 
+ ## Artifacts to revert
+
+### skills/frontend/references/design/design-system-architecture.md
+@@ -217,5 +217,5 @@ New debt is recorded here at the moment it is accepted — never silently.
+ ### For New Projects
+ 
+-1. **Select references before taste** — no visual reference means `_INDEX.md` shortlist of 2-3 Layer B candidates, then exactly one Layer A style skill and one Layer B brand/design-system reference. Use `open-design` only when the curated set has no fit.
++1. **Select references before taste** — no visual reference means `_INDEX.md` shortlist of 2-3 Layer B candidates, then exactly one Layer A style skill and one Layer B brand/design-system reference. When the curated set has no fit, take the nearest Layer B reference and record why — no `open-design` library is mounted.
+ 2. **Assemble from references** — extract tokens, layout grammar, component anatomy, states, motion, and taste decisions, then recombine them into project-specific primitives. Customize for the user's product; never copy logos, trademarked assets, or brand-specific copy.
+ 3. **Define the system** — atmosphere, palette, typography, spacing, and one depth strategy, grounded in the selected references and product semantics. Sanity-check the palette and type pairing with one `ui-ux-db` domain search (CLI in `references/ui-ux-db/README.md`).
+
+### skills/frontend/references/design/_INDEX.md
+@@ -48,5 +48,5 @@ From [Leonxlnx/taste-skill](https://github.com/Leonxlnx/taste-skill).
+ 1. **At most one *style* skill at a time** (`taste-skill`, `gpt-tasteskill`, `minimalist-skill`, `brutalist-skill`, `soft-skill`, `redesign-skill`, `image-to-code-skill`). They encode opposite philosophies — picking two creates contradictions.
+ 2. **`output-skill.md` and `stitch-skill.md` stack on top of any style skill.** They add discipline and output format, not visual direction.
+-3. **`image-to-code-skill.md` pairs with one imagegen skill** for the full flow.
++3. **`image-to-code-skill.md` pairs with one `imagegen-*.md` reference file** for the full flow.
+ 4. **Imagegen skills are image-only.** Do not load them when the user actually wants code.
+ 
+
+### skills/frontend/references/design/print-paged-media.md
+@@ -74,3 +74,3 @@ pdftoppm -png -r 150 report.pdf out/page   # one PNG per page
+ Read every page image for: blank or near-empty pages, a block stranded alone after a keep-together push, a table or figure split mid-exhibit, a heading orphaned at a page foot, clipped or overflowing text, and a running header or footer that drifted or vanished.
+ 
+-Extracting the text proves the words are present. It cannot see any defect in this list - layout is exactly the information that extraction discards. Fix, re-render, and look again until the pages are clean; the same standard governs the `ulw-research` delivery gate and the `mass-ulw` verification wave.
++Extracting the text proves the words are present. It cannot see any defect in this list - layout is exactly the information that extraction discards. Fix, re-render, and look again until the pages are clean; the same standard governs the `ulw-research` delivery gate and the `ulw-execute` verification wave.
+
+### skills/frontend/references/design/README.md
+@@ -21,9 +21,9 @@ The library lives flat in this directory (`references/design/`, max depth 1) and
+ A combined directory of all 83 reference files is at `_INDEX.md`. **Read that index before loading anything** unless the routing is obvious — it has the full mood-mapping and stacking rules in one place.
+ 
+-## Open Design Library
++## Beyond the curated set
+ 
+-For broader brand/style coverage, load the `open-design` skill — the local `nexu-io/open-design` library (150+ design systems).
++For broader brand/style coverage the curated files in this directory are the whole catalogue: no `open-design` library is mounted, so a brand the index does not cover resolves to the nearest Layer B file or a Layer A mood match, with the substitution recorded in `DESIGN.md`.
+ 
+-Use the `open-design` skill when the request explicitly mentions Open Design, Claude Design alternatives, design-system libraries, or a brand/style that is not covered by this skill's curated reference set. Treat Open Design as the expanded reference library; keep this skill responsible for routing discipline, design-system gating, and frontend execution quality.
++When the request explicitly mentions Open Design, Claude Design alternatives, design-system libraries, or a brand/style that is not covered by this skill's curated reference set, answer from the curated set and keep this skill responsible for routing discipline, design-system gating, and frontend execution quality.
+ 
+ ## Phase 0 — Design System Gate (MANDATORY, runs before routing)
+@@ -39,5 +39,5 @@ Before touching any UI code, before routing to any reference, before even thinki
+ 1. Read `design-system-architecture.md` — it defines the exact structure.
+ 2. Identify the branch: greenfield setup, existing UI with implicit patterns/components, or existing UI with no reusable component layer.
+-3. **Greenfield setup:** if the user gave no concrete visual reference, use `_INDEX.md` to shortlist 2-3 plausible Layer B references, then read exactly one Layer A style skill and one Layer B brand/design-system reference in full — every line, no partial reads; use `open-design` only when the curated set has no fit. Open `DESIGN.md` with a `## 0. Research Log` recording each research lane's deliverable (embedded-reference shortlist + pick, lazyweb screens viewed, imagen drafts — see the SKILL.md workflow); a lane with no line did not run. Treat those references as source material, not mood labels: extract tokens, layout grammar, component anatomy, interaction states, motion, and taste decisions into `DESIGN.md`, then recombine them into project-specific primitives. Customize for the user's product and content, but do not freestyle past the selected references; never copy logos, trademarked assets, or brand-specific copy.
++3. **Greenfield setup:** if the user gave no concrete visual reference, use `_INDEX.md` to shortlist 2-3 plausible Layer B references, then read exactly one Layer A style skill and one Layer B brand/design-system reference in full — every line, no partial reads; when the curated set has no fit, take the nearest Layer B reference and record why (no `open-design` library is mounted). Open `DESIGN.md` with a `## 0. Research Log` recording each research lane's deliverable (embedded-reference shortlist + pick, lazyweb screens viewed, imagen drafts — see the SKILL.md workflow); a lane with no line did not run. Treat those references as source material, not mood labels: extract tokens, layout grammar, component anatomy, interaction states, motion, and taste decisions into `DESIGN.md`, then recombine them into project-specific primitives. Customize for the user's product and content, but do not freestyle past the selected references; never copy logos, trademarked assets, or brand-specific copy.
+    - **Commit a distinctive direction BEFORE extracting tokens.** In 1-2 sentences, name the atmosphere, the signature material, the color story, and the one moment a visitor will remember. For an expressive brief, sketch 2-3 genuinely different directions and pick the boldest one you can defend with the loaded reference; do not average them, because the average IS the generic default this skill exists to beat. A locked, never-revisited one-shot decision is how a page ends up flat.
+    - **The reference's distinctive material MUST survive extraction (expressive briefs).** The common failure is loading a rich reference and then distilling it into a generic dark-SaaS token set. Your `DESIGN.md` must carry the *non-default* decisions forward and name which reference each came from: the actual elevation recipe (the specific layers that make a surface read as glass/glossy, not a single blur), a multi-stop perceptual color ramp (not one brand hex reused at varied opacity), the explicit display/body/mono type choices, and one signature interaction. Self-check before writing code: if your `DESIGN.md` could describe any generic dark SaaS, you flattened the reference — go back and put the specific material in.
+@@ -194,5 +194,5 @@ Triggers: an animated, shader, particle, or grid background; a hero that must fe
+ 3. **`output-skill.md` and `stitch-skill.md` stack on top of any style skill.** They add discipline and output format, not visual direction.
+ 4. **`redesign-skill.md` replaces a style-skill** when the task is auditing, not building. Stack a Layer B brand if the user wants a specific direction.
+-5. **`image-to-code-skill.md` pairs with one imagegen skill** for the full flow.
++5. **`image-to-code-skill.md` pairs with one `imagegen-*.md` reference file** for the full flow.
+ 6. **Layer B (brand DESIGN.md) is orthogonal to Layer A.** You can pair any Layer A skill with any Layer B brand. Use Layer B as the source of color/type/component tokens; let Layer A drive the execution discipline.
+ 7. **`layout-skill.md` stacks on top of any style skill** for app-shell / dashboard / split-pane work. It owns spatial structure and scroll ownership only — no visual direction — so it never conflicts with the style skill you picked.
+@@ -206,5 +206,5 @@ Triggers: an animated, shader, particle, or grid background; a hero that must fe
+ - **Don't ignore the user's named brand.** If they say "Linear-style" and you build something that doesn't match Linear's actual aesthetic (purple, ultra-tight spacing, mono accents, etc.), you have failed the routing.
+ - **Don't apply a Layer B brand verbatim if the project is not that brand.** The DESIGN.md captures *inspiration* — extract the tokens (palette, type scale, component patterns) and apply them to the project's own content. Do not copy logos or trademarked imagery.
+-- **Don't use imagegen skills to write code.** They are explicitly image-only. The agent has been observed trying to "describe" the image as React code — that is the wrong skill, switch to `image-to-code-skill.md` instead.
++- **Don't use the `imagegen-*.md` references to write code.** They are explicitly image-only. The agent has been observed trying to "describe" the image as React code — that is the wrong skill, switch to `image-to-code-skill.md` instead.
+ - **Don't suppress style differences with `as any` or `@ts-ignore` to make a borrowed component work.** That is type-safety slop. Adapt the component cleanly.
+ 
+
+### skills/frontend/SKILL.md
+@@ -35,5 +35,5 @@ Every implementation must choose one of these branches before UI code changes:
+    Final QA for both runs `/visual-qa` in reference-fidelity mode: compare the actual UI against the reference pixel-by-pixel and verify the code is an extensible design-system implementation, not a screenshot-matched one-off.
+ 2. **Greenfield or fresh setup:** if the user gave no concrete visual reference, design research is a build step with named deliverables — not exploration to be budgeted. Exploration-stop instincts ("enough exploration", two-wave caps) do not apply here. Fire every research lane IN PARALLEL before `DESIGN.md` is written, and open `DESIGN.md` with a `## 0. Research Log` section recording each lane's deliverable — a lane with no Research Log line did not run. Skip a lane only when its tool or network is genuinely unavailable, and name the skip in `DESIGN.md`:
+-   - **Embedded references:** use `references/design/_INDEX.md` to shortlist 2-3 plausible Layer B references, then read exactly one Layer A style skill and one Layer B reference in full — every line, no partial reads (they are 200-500 lines; a sliced read produces the flattened token set this gate exists to prevent). Log the shortlist, the pick, and why. Use `open-design` only when the curated set has no fit; add `ui-ux-db` lookups for palette/type/domain questions.
++   - **Embedded references:** use `references/design/_INDEX.md` to shortlist 2-3 plausible Layer B references, then read exactly one Layer A style skill and one Layer B reference in full — every line, no partial reads (they are 200-500 lines; a sliced read produces the flattened token set this gate exists to prevent). Log the shortlist, the pick, and why. When the curated set has no fit, take the nearest Layer B reference and record why — no `open-design` library is mounted; add `ui-ux-db` lookups for palette/type/domain questions.
+    - **Lazyweb real-product screens:** READ `references/design/lazyweb.md` FIRST and run its recipe verbatim — do not improvise curl calls against lazyweb.com; the recipe mints its own anonymous token. Log the queries run, how many screens you actually VIEWED, and the layout grammar harvested — never pixel copies.
+    - **StyleGallery spatial patterns:** read `references/design/stylegallery.md` and fetch the pattern whose primary spatial problem matches the screen. Log the pattern adopted and the element that owns the scroll.
+@@ -74,5 +74,5 @@ The reference library has one architecture file, 12 taste skills (Layer A — *h
+ ### Layer B — brand design systems (orthogonal to Layer A; stack freely)
+ 
+-When the user names a brand or site — "Linear-style", "like Stripe's landing", "Aside-style browser agent" — load `references/design/<brand>.md` as the token source of truth (palette, type scale, components, do/don'ts). Coverage includes `aside` `apple` `stripe` `linear.app` `notion` `vercel` `claude` `figma` `airbnb` `nike` `tesla` `spotify` `raycast` `revolut` and ~56 more; the full list with mood shortcuts is in `_INDEX.md`. Extract the tokens and apply them to the project's own content — never copy logos or trademarked imagery. If the named brand is missing, fall back to a Layer A mood match or the `open-design` skill.
++When the user names a brand or site — "Linear-style", "like Stripe's landing", "Aside-style browser agent" — load `references/design/<brand>.md` as the token source of truth (palette, type scale, components, do/don'ts). Coverage includes `aside` `apple` `stripe` `linear.app` `notion` `vercel` `claude` `figma` `airbnb` `nike` `tesla` `spotify` `raycast` `revolut` and ~56 more; the full list with mood shortcuts is in `_INDEX.md`. Extract the tokens and apply them to the project's own content — never copy logos or trademarked imagery. If the named brand is missing, fall back to a Layer A mood match — the curated set is the whole catalogue (no `open-design` library is mounted).
+ 
+ ### React dev tooling
+@@ -148,5 +148,5 @@ Domains: `product` `style` `typography` `color` `landing` `chart` `ux` `react` `
+ | Situation | Load |
+ |---|---|
+-| Brand/style not among the 70 in `references/design/`, or the user says "Open Design" | `open-design` skill — the local nexu-io/open-design library (137+ design skills, 150+ design systems) |
++| Brand/style not among the 70 in `references/design/`, or the user says "Open Design" | Nothing external is mounted: take the nearest Layer B reference from `_INDEX.md`, or a Layer A mood match, and record the substitution |
+ | Driving a browser for the Design QA phase | `visual-qa` skill: the `agent-browser` CLI run from `bash` (owned engine for renders, attached engine for signed-in pages) |
+ | Pure TypeScript/logic work with zero visual surface | `programming` skill alone — this skill adds nothing there |
+
+### skills/init-deep/SKILL.md
+@@ -27,7 +27,7 @@ Generate hierarchical AGENTS.md files. Root + complexity-scored subdirectories.
+ 
+ <critical>
+-**TodoWrite ALL phases. Mark in_progress → completed in real-time.**
++**todo_write ALL phases. Mark in_progress → completed in real-time.**
+ ```
+-TodoWrite([
++todo_write([
+   { id: "discovery", content: "Fire explore agents + LSP/ast-grep map + read existing", status: "pending", priority: "high" },
+   { id: "scoring", content: "Score directories, determine locations", status: "pending", priority: "high" },
+@@ -48,13 +48,13 @@ TodoWrite([
+ `mpd_role_spawn` is ONE-SHOT and synchronous: each `Explorer` consult returns its report as the tool result, so there is no background child, no `job_output` poll and no completion notice to wait for. Issue the six consults SERIALLY and fold each report as it returns. When the project is large enough that the lanes are genuinely concurrent, stage them on the mpd team plane instead (`agent_teams_plan` `create` → one `add_member` per lane → one `create_task` with `independent:true` → `approve` → `agent_teams_dispatch {action:"run"}`).
+ 
+-**Equip every consult with the code graph**: any task touching structure, entry points, dependencies, or hotspots MUST query `codegraph_*` (explore/search/callers/callees/impact) and `lsp_symbols` when present, and ground its claims in that data instead of guessing from conventions. Richer real-graph context per consult = a more accurate project map.
++**Equip every consult with the code graph**: any task touching structure, entry points, dependencies, or hotspots MUST query `mcp__codegraph__codegraph_explore` (overview plus the call path, callers and impact) and `mcp__lsp__find_workspace_symbols` when present, and ground its claims in that data instead of guessing from conventions. Richer real-graph context per consult = a more accurate project map.
+ 
+ ```
+-mpd_role_spawn(role="Explorer", task="TASK: map the real project layout via codegraph_explore/codegraph_files. DELIVERABLE: deviations from standard patterns. SCOPE: read-only. VERIFY: name the query behind each claim.")
+-mpd_role_spawn(role="Explorer", task="TASK: find entry points and trace reach via codegraph_callees + lsp_symbols. DELIVERABLE: non-standard organization. SCOPE: read-only. VERIFY: cite the symbol and its caller/callee edge.")
++mpd_role_spawn(role="Explorer", task="TASK: map the real project layout via mcp__codegraph__codegraph_explore. DELIVERABLE: deviations from standard patterns. SCOPE: read-only. VERIFY: name the query behind each claim.")
++mpd_role_spawn(role="Explorer", task="TASK: find entry points and trace reach via mcp__codegraph__codegraph_explore + mcp__lsp__find_workspace_symbols. DELIVERABLE: non-standard organization. SCOPE: read-only. VERIFY: cite the symbol and its caller/callee edge.")
+ mpd_role_spawn(role="Explorer", task="TASK: find conventions from config files (.eslintrc, pyproject.toml, .editorconfig). DELIVERABLE: project-specific rules. SCOPE: read-only. VERIFY: quote the config key.")
+ mpd_role_spawn(role="Explorer", task="TASK: find anti-patterns in 'DO NOT', 'NEVER', 'ALWAYS', 'DEPRECATED' comments. DELIVERABLE: forbidden patterns. SCOPE: read-only. VERIFY: quote the comment and path.")
+ mpd_role_spawn(role="Explorer", task="TASK: explore build/CI (.github/workflows, Makefile). DELIVERABLE: non-standard patterns. SCOPE: read-only. VERIFY: cite the file.")
+-mpd_role_spawn(role="Explorer", task="TASK: find test patterns/configs; codegraph_callers on core modules to see what is covered. DELIVERABLE: unique conventions. SCOPE: read-only. VERIFY: cite the test path.")
++mpd_role_spawn(role="Explorer", task="TASK: find test patterns/configs; mcp__codegraph__codegraph_explore on core modules to see what is covered. DELIVERABLE: unique conventions. SCOPE: read-only. VERIFY: cite the test path.")
+ ```
+ 
+@@ -121,11 +121,11 @@ If `--create-new`: Read all existing first (preserve context) → then delete al
+ Highest-signal source for the CODE MAP and the Symbol/Export/Reference scoring rows. Complementary, not alternatives - run BOTH when present, alongside the explore agents.
+ 
+-**LSP** - check `lsp_status`; model-facing names are `lsp_status`/`lsp_symbols`/`lsp_find_references`/`lsp_goto_definition` (some harnesses drop the `lsp_` prefix):
+-- `lsp_symbols` scope="document" on each entry point -> file outline.
+-- `lsp_symbols` scope="workspace", query by kind (class/interface/function) -> symbol inventory.
+-- `lsp_find_references` on top exports (line/character from the symbols result) -> reference centrality.
++**LSP** - the mounted surface is `mcp__lsp__*`; model-facing names are `mcp__lsp__find_definition`, `mcp__lsp__find_references`, `mcp__lsp__find_workspace_symbols`, `mcp__lsp__get_diagnostics`, `mcp__lsp__get_hover`, `mcp__lsp__rename_symbol`, `mcp__lsp__rename_symbol_strict`, `mcp__lsp__find_implementation`, `mcp__lsp__prepare_call_hierarchy`:
++- `mcp__lsp__get_diagnostics` on each entry point -> the server answers, and its current errors come back with the file.
++- `mcp__lsp__find_workspace_symbols` query by kind (class/interface/function) -> symbol inventory (no per-file outline tool is mounted, so scope the query by name).
++- `mcp__lsp__find_references` on top exports (line/character from a definition hit) -> reference centrality.
+ 
+-**codegraph** - when `codegraph_*` tools exist (check `codegraph_status`); a first-class peer to LSP, NOT a last resort:
+-- `codegraph_explore` -> overview; `codegraph_callers`/`codegraph_callees`/`codegraph_impact` -> centrality + blast radius for the scoring matrix; `codegraph_search`/`codegraph_files` -> symbol/file inventory.
++**codegraph** - the mounted surface is the single `mcp__codegraph__codegraph_explore` tool (an absent row answers nothing; no `codegraph_status` probe is mounted); a first-class peer to LSP, NOT a last resort:
++- `mcp__codegraph__codegraph_explore` on an entry-point symbol or file -> overview, plus the call path and blast radius for the scoring matrix; ask again with more names when a query comes back thin.
+ 
+ Only if NEITHER exists: `Explorer` consults + the ast-grep skill (`sg`), and mark centrality unmeasured in the CODE MAP.
+
+### skills/refactor/SKILL.md
+@@ -83,5 +83,5 @@ Should I proceed with [recommendation], or would you prefer differently?
+ 
+ \`\`\`
+-TodoWrite([
++todo_write([
+   {"id": "phase-1", "content": "PHASE 1: Codebase Analysis - issue serial Explorer consults", "status": "pending", "priority": "high"},
+   {"id": "phase-2", "content": "PHASE 2: Build Codemap - map dependencies and impact zones", "status": "pending", "priority": "high"},
+@@ -143,15 +143,14 @@ Between consults, use direct tools:
+ \`\`\`typescript
+ // Find definition(s)
+-LspGotoDefinition(filePath, line, character)  // Where is it defined?
++mcp__lsp__find_definition(filePath, line, character)  // Where is it defined?
+ 
+ // Find ALL usages across workspace
+-LspFindReferences(filePath, line, character, includeDeclaration=true)
++mcp__lsp__find_references(filePath, line, character, includeDeclaration=true)
+ 
+-// Get file structure
+-LspDocumentSymbols(filePath)  // Hierarchical outline
+-LspWorkspaceSymbols(filePath, query="[target_symbol]")  // Search by name
++// Find symbols by name (the mounted LSP ships no per-file outline tool)
++mcp__lsp__find_workspace_symbols(query="[target_symbol]")  // Search by name
+ 
+ // Get current diagnostics
+-lsp_diagnostics(filePath)  // Errors, warnings before we start
++mcp__lsp__get_diagnostics(filePath)  // Errors, warnings before we start
+ \`\`\`
+ 
+@@ -307,5 +306,5 @@ Which approach do you prefer?
+ ### Verification Checkpoints
+ After each refactoring step:
+-1. lsp_diagnostics → zero new errors
++1. mcp__lsp__get_diagnostics → zero new errors
+ 2. Run test command → all pass
+ 3. Type check → clean
+@@ -374,5 +373,5 @@ Convert the Planner's output into granular todos:
+ 
+ \`\`\`
+-TodoWrite([
++todo_write([
+   // Each step from the plan becomes a todo
+   {"id": "refactor-1", "content": "Step 1: [description]", "status": "pending", "priority": "high"},
+@@ -399,5 +398,5 @@ For EACH refactoring step:
+ 1. Mark step todo as \`in_progress\`
+ 2. Read current file state
+-3. Verify lsp_diagnostics is baseline
++3. Verify mcp__lsp__get_diagnostics is baseline
+ 
+ ### Execute Step
+@@ -406,6 +405,6 @@ Use appropriate tool:
+ **For Symbol Renames:**
+ \`\`\`typescript
+-lsp_prepare_rename(filePath, line, character)  // Validate rename is possible
+-lsp_rename(filePath, line, character, newName)  // Execute rename
++mcp__lsp__rename_symbol_strict(filePath, line, character, newName, dry_run=true)  // Validate rename is possible
++mcp__lsp__rename_symbol_strict(filePath, line, character, newName)  // Execute rename
+ \`\`\`
+ 
+@@ -429,5 +428,5 @@ edit(filePath, oldString, newString)
+ \`\`\`typescript
+ // 1. Check diagnostics
+-lsp_diagnostics(filePath)  // Must be clean or same as baseline
++mcp__lsp__get_diagnostics(filePath)  // Must be clean or same as baseline
+ 
+ // 2. Run tests
+@@ -509,5 +508,5 @@ bun run build  # or npm run build, etc.
+ // Check all changed files
+ for (file of changedFiles) {
+-  lsp_diagnostics(file)  // Must all be clean
++  mcp__lsp__get_diagnostics(file)  // Must all be clean
+ }
+ \`\`\`
+@@ -542,5 +541,5 @@ All existing tests pass. No new errors introduced.
+ 
+ ## NEVER DO
+-- Skip lsp_diagnostics check after changes
++- Skip mcp__lsp__get_diagnostics check after changes
+ - Proceed with failing tests
+ - Make changes without understanding impact
+@@ -575,8 +574,8 @@ You already know these tools. Use them intelligently:
+ ## LSP Tools
+ Leverage LSP tools for precision analysis. Key patterns:
+-- **Understand before changing**: \`LspGotoDefinition\` to grasp context
+-- **Impact analysis**: \`LspFindReferences\` to map all usages before modification
+-- **Safe refactoring**: \`lsp_prepare_rename\` → \`lsp_rename\` for symbol renames
+-- **Continuous verification**: \`lsp_diagnostics\` after every change
++- **Understand before changing**: \`mcp__lsp__find_definition\` to grasp context
++- **Impact analysis**: \`mcp__lsp__find_references\` to map all usages before modification
++- **Safe refactoring**: \`mcp__lsp__rename_symbol_strict\` with \`dry_run\` first, then applied — for symbol renames
++- **Continuous verification**: \`mcp__lsp__get_diagnostics\` after every change
+ 
+ ## AST-Grep
+@@ -643,5 +642,5 @@ Then choose the path:
+ - **Legacy path (5.1-L)**: otherwise. Use the original 5.1 / 5.2 / 5.3 flow from above.
+ 
+-Record the chosen path in the TodoWrite list.
++Record the chosen path in the todo_write list.
+ 
+ ## Phase 5.1-T: \`refactor-squad\` team execution
+@@ -663,5 +662,5 @@ Record the chosen path in the TodoWrite list.
+       "name": "Mechanical Refactorer A",
+       "description": "Junior Engineer - mechanical refactoring lane",
+-      "prompt": "You handle mechanical refactoring steps (LSP rename, extract variable, inline, simple move, signature change). Use LSP tools for correctness. Apply the task description's per-step instructions verbatim — no scope expansion. After edits, run lsp_diagnostics on touched files. Report via send_message(agent_id=<lead>, message=<files touched + lsp status + diff summary>). Do NOT close the row: the Lead closes it once the external verifier returns PASS. Never run tests — the external verifier handles that. Never git add, never --continue."
++      "prompt": "You handle mechanical refactoring steps (LSP rename, extract variable, inline, simple move, signature change). Use LSP tools for correctness. Apply the task description's per-step instructions verbatim — no scope expansion. After edits, run mcp__lsp__get_diagnostics on touched files. Report via send_message(agent_id=<lead>, message=<files touched + lsp status + diff summary>). Do NOT close the row: the Lead closes it once the external verifier returns PASS. Never run tests — the external verifier handles that. Never git add, never --continue."
+     },
+     { "name": "Mechanical Refactorer B", "description": "Junior Engineer - mechanical refactoring lane (peer)", "prompt": "Same contract as peer mechanical worker." },
+
+### skills/remove-ai-slops/SKILL.md
+@@ -95,5 +95,5 @@ A pass is complete only when all applicable gates are green. Skip gates that are
+ | Regression tests | project's test runner | all green |
+ | Lint | project's linter | zero errors (warnings OK if pre-existing) |
+-| Typecheck | `lsp_diagnostics` on changed files + project type-checker | zero new errors |
++| Typecheck | `mcp__lsp__get_diagnostics` on changed files + project type-checker | zero new errors |
+ | Unit/integration tests | project's test runner | all green (pre-existing failures noted, not introduced) |
+ | Static/security scan | project's scanner | zero new findings, or `N/A` if not configured |
+@@ -103,5 +103,5 @@ A pass is complete only when all applicable gates are green. Skip gates that are
+ ## Process
+ 
+-### Phase 0: Plan with TodoWrite
++### Phase 0: Plan with todo_write
+ 
+ Create todos for all phases below. Mark `in_progress` one at a time.
+@@ -280,5 +280,5 @@ Quality Gates:
+   - Regression tests: PASS (12 tests, 0 failed)
+   - Lint: PASS
+-  - Typecheck (lsp_diagnostics + project): PASS (0 new errors on changed files)
++  - Typecheck (mcp__lsp__get_diagnostics + project): PASS (0 new errors on changed files)
+   - Unit/integration tests: PASS (45 tests, 0 failed)
+   - Static/security scan: N/A (not configured)
+@@ -322,5 +322,5 @@ Final Status: CLEAN | ISSUES FIXED | REQUIRES ATTENTION
+ - Never silently skip a failed tool call.
+ - Never claim a gate passed without running it and reading the output.
+-- If correctness depends on further inspection, keep using `lsp_diagnostics`, the test runner, and direct file reads until the result is grounded.
++- If correctness depends on further inspection, keep using `mcp__lsp__get_diagnostics`, the test runner, and direct file reads until the result is grounded.
+ 
+ ---
+
+### skills/review-work/SKILL.md
+@@ -150,7 +150,7 @@ For GOAL, CONSTRAINTS, BACKGROUND - review the full conversation history. The us
+ ## Phase 1: Manual QA (you run it)
+ 
+-You are the QA lane. Do not delegate hands-on QA to a reviewer lane: the orchestrator owns the real-surface proof, exactly as the ulw-loop final gate records `manualQa` under the main session.
++You are the QA lane. Do not delegate hands-on QA to a reviewer lane: the orchestrator owns the real-surface proof, exactly as the `ulw-execute` final gate records `manualQa` under the main session.
+ 
+-1. **Reuse first.** If this session already captured real-surface evidence for the FINAL tree (an ultrawork or ulw-loop evidence directory, a `visual-qa` verdict on this same build), consume it as QA rows instead of re-running. A fix committed after a capture stales that capture: re-run the rows it covered.
++1. **Reuse first.** If this session already captured real-surface evidence for the FINAL tree (an ultrawork or `ulw-execute` evidence directory, a `visual-qa` verdict on this same build), consume it as QA rows instead of re-running. A fix committed after a capture stales that capture: re-run the rows it covered.
+ 2. **Pick the channel that faithfully exercises the surface** and capture the artifact:
+    - HTTP: `curl -i` (or an API request context) - status line, headers, body.
+
+### skills/ulw-plan/scripts/scaffold-plan.ts
+@@ -284,4 +284,7 @@ export function buildDraft(slug: string, intent: string, { reviewRequired = fals
+ 			: "Record any default you adopt instead of asking, so the user can veto it at the gate.";
+ 	// The review block of the frontmatter: the full pending-review record, or the no-review form.
++	// The lane ids `momus` / `independent` are the durable keys already written into drafts on disk;
++	// they map to the Plan Reviewer and the independent Reviewer roster roles and are deliberately
++	// NOT renamed, so a draft scaffolded by an earlier version stays readable.
+ 	const reviewState = reviewRequired
+ 		? `review_required: true
+@@ -390,5 +393,5 @@ Your next move: <fill - e.g. approve, or run a high-accuracy review>. Full execu
+ > Zero human intervention - all verification is agent-executed.
+ - Test decision: <TDD | tests-after | none> + framework
+-- Evidence: <attemptDir>/task-<N>-${slug}.<ext> (attemptDir = currentAttemptDir from 'mpd-agent-toolkit ulw-loop status --json', .mpd/evidence/ulw/<session>/<goalId>/a<attempt>; outside ulw-loop use .mpd/evidence/)
++- Evidence: <attemptDir>/task-<N>-${slug}.<ext> (attemptDir = currentAttemptDir from 'mpd_boulder_status', .mpd/evidence/ulw/<session>/<goalId>/a<attempt>; outside ulw-execute use .mpd/evidence/)
+ 
+ ## Execution strategy
+
+### skills/ulw-research/SKILL.md
+@@ -47,5 +47,5 @@ The research is done when all of these hold:
+ - The deliverable lane and format were derived from the destination or asked through the empty-info interview without blocking collection, recorded in `brief.md` with `answered_by`, and the final materials match that record.
+ - The delivered artifact passed the delivery gates in order (static gates, layout gates, visual QA, and the proofread pass where the harness provides one), each status is in `outcome.json`, and `outcome verify` passed.
+-- Every excursion opened during the run was closed by an EXIT rule, folded back into the claim or axis that triggered it, and recorded in both `excursion-log.md` and the ulw-loop ledger.
++- Every excursion opened during the run was closed by an EXIT rule, folded back into the claim or axis that triggered it, and recorded in both `excursion-log.md` and the `ulw-execute` ledger.
+ - The delivery message carries the closing briefing printed by `outcome briefing`: sources (total + unique domains), elapsed minutes, every promised deliverable with its status, and any residual defects.
+ - The session journal reconstructs what was searched, found, and expanded, wave by wave, and it was written in real time rather than reconstructed at the end.
+@@ -127,5 +127,5 @@ This is `$SESSION_DIR`. The orchestrator owns the journal: you write every file
+ - `wave-<N>-<kind>-<axis>.md` — your digest of each lane return: key findings, sources with URLs, and the lane's EXPAND markers verbatim.
+ - `expansion-log.md` — per wave: lanes dispatched, markers gained, leads opened and closed.
+-- `excursion-log.md` — one ENTER row and one EXIT row per excursion: `excursion_id`, parent claim or axis, ENTER trigger, depth, workers spent, the EXIT rule that closed it, what it changed in the top-level answer (`none` is a valid, required answer), and the ulw-loop steer/evidence id it was mirrored into.
++- `excursion-log.md` — one ENTER row and one EXIT row per excursion: `excursion_id`, parent claim or axis, ENTER trigger, depth, workers spent, the EXIT rule that closed it, what it changed in the top-level answer (`none` is a valid, required answer), and the `ulw-execute` ledger entry id it was mirrored into.
+ - `intent-diff.md` — orchestrator-owned expected-truth ledger comparing intent/spec/history to observed reality.
+ - `claim-graph.md` — orchestrator-owned claim graph linking every final assertion to observations, counterevidence, dependencies, and verdict.
+@@ -139,5 +139,5 @@ Append each digest the moment its lane returns, not in a batch at the end — th
+ ### Run it as a loop, and journal in real time
+ 
+-ulw-loop is ON by default for this mode: when the `ulw-loop` skill is available, register the research axes as loop goals so the run has durable state and survives a compaction. The session directory's timestamp is the run's start clock — the closing briefing is computed from it, so create it once and never rename it. From that point every finding, source, quote, number, and lead is written into `$SESSION_DIR` **the instant it lands** — never held in the conversation for an end-of-run dump. After any context loss, re-read the brief and the journal before doing anything else, then resume from the open wave.
++`ulw-execute` is ON by default for this mode: when the `ulw-execute` skill is available, register the research axes as Boulder goals so the run has durable state and survives a compaction. The session directory's timestamp is the run's start clock — the closing briefing is computed from it, so create it once and never rename it. From that point every finding, source, quote, number, and lead is written into `$SESSION_DIR` **the instant it lands** — never held in the conversation for an end-of-run dump. After any context loss, re-read the brief and the journal before doing anything else, then resume from the open wave.
+ 
+ ### Deliverable lane, format, and the empty-info interview
+@@ -219,5 +219,5 @@ The Phase 0 core question is the fixed goal of the run and never drifts. An excu
+ Interest alone is not a trigger. Anything without one stays a queued lead in `expansion-log.md`, and the wave plan continues.
+ 
+-**Budget the dive before you take it.** State the worker count and the probe count for this level in the ENTER row. An excursion may spawn at most ONE nested sub-excursion; a third level means the thing has become its own research question — surface immediately and either promote it to a real axis with its own worker or record it as an out-of-scope gap in `SYNTHESIS.md`. When the `ulw-loop` skill is driving the run, a promotion is `mpd-agent-toolkit ulw-loop steer --kind add_subgoal --title "<axis>" --objective "<what it must answer>" --evidence "<what surfaced it>" --rationale "<why the plan changes>"`.
++**Budget the dive before you take it.** State the worker count and the probe count for this level in the ENTER row. An excursion may spawn at most ONE nested sub-excursion; a third level means the thing has become its own research question — surface immediately and either promote it to a real axis with its own worker or record it as an out-of-scope gap in `SYNTHESIS.md`. When the `ulw-execute` skill is driving the run, a promotion is a `subgoal-added` entry in its ledger (`.mpd/ulw-execute/ledger.jsonl`) carrying the axis title, what it must answer, the evidence that surfaced it, and why the plan changes.
+ 
+ **EXIT (surface) the moment any of these holds** — you do not need all of them:
+@@ -228,5 +228,5 @@ Interest alone is not a trigger. Anything without one stays a queued lead in `ex
+ - The level's stated budget is spent.
+ 
+-**Fold back on the way out.** Every EXIT writes one line saying what the excursion changed in the top-level answer, and `none — <reason>` is a legitimate, required outcome; an excursion whose result is silently dropped is a lost run. Update the parent claim node or axis digest with the result, then mirror the whole excursion into the loop ledger — `mpd-agent-toolkit ulw-loop steer --kind annotate_ledger --evidence "<what the excursion observed>" --rationale "<what it changed, or none>"`, and `mpd-agent-toolkit ulw-loop record-evidence --goal-id <id> --criterion-id <id> --status pass|fail|blocked --evidence "<artifact>"` when it settled a criterion. After a compaction, `mpd-agent-toolkit ulw-loop status --json` plus `excursion-log.md` tell you which excursions are still open.
++**Fold back on the way out.** Every EXIT writes one line saying what the excursion changed in the top-level answer, and `none — <reason>` is a legitimate, required outcome; an excursion whose result is silently dropped is a lost run. Update the parent claim node or axis digest with the result, then mirror the whole excursion into the `ulw-execute` ledger (`.mpd/ulw-execute/ledger.jsonl`) as an entry carrying what it observed and what it changed (or `none`), plus a criterion entry naming goal id, criterion id, status (`pass`/`fail`/`blocked`) and the artifact when it settled a criterion. After a compaction, `mpd_boulder_status` plus `excursion-log.md` tell you which excursions are still open.
+ 
+ **Anti-drift.** After every EXIT, re-read the core question in the journal and confirm the run still answers it. Three consecutive excursions that changed nothing end excursions for the run: converge on what you have.
+@@ -325,10 +325,10 @@ Asset lanes (team tasks on the mpd team plane, or serial consults, each fed `des
+ - **Charts for every quantitative finding, computed from real data.** Pull the numbers into an actual table first (CSV/JSON under `$SESSION_DIR`), then plot from that table, never from prose. Follow the data-scientist tool doctrine — numpy always, Polars for filtering/sorting/transforms, DuckDB for joins/aggregations/window functions, never pandas — and load the `data-scientist` skill when this session has it: `uv run --with numpy --with polars --with duckdb --with pyarrow --with matplotlib python`. Keep `pyarrow` in that set — the DuckDB-to-Polars handoff (`.pl()`) fails without it, and `.df()` fails without pandas, so hand data across through `.pl()`, never `.df()`. Save to `$SESSION_DIR/assets/`.
+ - **Mermaid graphs** for process, architecture, argument, timeline, and evidence-flow structure, themed to the spec's fonts and palette. Render each to SVG and confirm the file exists before the document references it.
+-- **Generated visuals through the imagegen skill whenever the session has it:** a cover plus a concept illustration per major theme, prompted from the spec's style, palette, and mood — document-styled illustration, never generic stock art dropped into a designed page.
++- **Generated visuals when — and only when — the session really has an image tool** (no `imagegen` skill is shipped; `frontend` carries design references, not a generator): a cover plus a concept illustration per major theme, prompted from the spec's style, palette, and mood — document-styled illustration, never generic stock art dropped into a designed page.
+ - **Full-page screenshots** of the top 5-10 sources (browsing lane) as provenance you can show.
+ 
+ **Verify the asset manifest before rendering.** List every asset the document references, assert each file exists and is non-empty on disk, and re-render whatever is missing. A document that renders with three broken diagrams is a document you will publish twice.
+ 
+-Assembly lane — `mpd_role_spawn(role="Deep Worker", task=...)`, with the skills it must load named INSIDE `task` (`frontend`, `visual-qa`, `open-design`, `data-scientist`, `imagegen`, `ulw-loop`) because there is no `load_skills` argument: before writing, read every available design and visualization skill and apply it — the report is a designed artifact, not a text dump; the worker's prompt carries `design-spec.md`. Use the template the user approved; absent a stronger house style the default skeleton is executive summary → key findings by theme → detailed analysis (quotes under 20 words with attribution, charts, Mermaid graphs, generated visuals, SHA-pinned permalinks, verification results) → comparative analysis when options compete → numbered sources with access dates → methodology appendix (workers, waves, searches, verifications, debate rounds) → correction log naming what verification overturned. Write it long and specific: every claim cites `[Source N]`, and the sources section lists every source the run actually used rather than a curated few.
++Assembly lane — `mpd_role_spawn(role="Deep Worker", task=...)`, with the skills it must load named INSIDE `task` (`frontend`, `visual-qa`, `data-scientist`, `ulw-execute`) because there is no `load_skills` argument: before writing, read every available design and visualization skill and apply it — the report is a designed artifact, not a text dump; the worker's prompt carries `design-spec.md`. Use the template the user approved; absent a stronger house style the default skeleton is executive summary → key findings by theme → detailed analysis (quotes under 20 words with attribution, charts, Mermaid graphs, generated visuals, SHA-pinned permalinks, verification results) → comparative analysis when options compete → numbered sources with access dates → methodology appendix (workers, waves, searches, verifications, debate rounds) → correction log naming what verification overturned. Write it long and specific: every claim cites `[Source N]`, and the sources section lists every source the run actually used rather than a curated few.
+ 
+ ### The delivery gates — every gate for the QA tier must PASS, in order
+

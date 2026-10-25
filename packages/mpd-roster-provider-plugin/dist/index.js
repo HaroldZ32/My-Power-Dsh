@@ -214,26 +214,136 @@ function modelDeclaresNoEffort(catalog, provider, model) {
   const entry = catalog.providers.find((p) => p.id === provider)?.models.find((m) => m.id === model);
   return entry !== undefined && Array.isArray(entry.efforts) && entry.efforts.length === 0;
 }
-async function withSupportedEffort(dsh, route) {
-  if (route === undefined)
-    return route;
+function routePositivelyListed(catalog, provider, model) {
+  return catalog.providers.some((p) => p.id === provider && p.models.some((m) => m.id === model));
+}
+function adaptEffortWithCatalog(catalog, route) {
   const effort = typeof route.reasoningEffort === "string" ? route.reasoningEffort : "";
   if (effort === "")
     return route;
-  if (typeof dsh?.llmCatalog !== "function")
-    return route;
-  let catalog;
-  try {
-    catalog = await dsh.llmCatalog();
-  } catch {
-    return route;
-  }
   if (!modelDeclaresNoEffort(catalog, route.provider, route.model))
     return route;
   const adapted = { ...route };
   delete adapted.reasoningEffort;
   rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${route.provider}/${route.model} declares no reasoning efforts — the "${effort}" effort is omitted (a keyword this model cannot take fails the call)`);
   return adapted;
+}
+async function resolveRunRoute(dsh, primary, fallbacks = []) {
+  const wellFormed = [];
+  let dropped = 0;
+  for (const entry of Array.isArray(fallbacks) ? fallbacks : []) {
+    if (entry === null || typeof entry !== "object") {
+      dropped += 1;
+      continue;
+    }
+    const candidate = entry;
+    if (typeof candidate.provider !== "string" || candidate.provider.trim() === "" || typeof candidate.model !== "string" || candidate.model.trim() === "" || candidate.reasoningEffort !== undefined && candidate.reasoningEffort !== null && typeof candidate.reasoningEffort !== "string") {
+      dropped += 1;
+      continue;
+    }
+    const effort = typeof candidate.reasoningEffort === "string" ? candidate.reasoningEffort.trim() : "";
+    wellFormed.push({ provider: candidate.provider.trim(), model: candidate.model.trim(), ...effort === "" ? {} : { reasoningEffort: effort } });
+  }
+  let catalog;
+  if (typeof dsh?.llmCatalog === "function") {
+    try {
+      catalog = await dsh.llmCatalog();
+    } catch {
+      catalog = undefined;
+    }
+  }
+  let index = 0;
+  if (catalog !== undefined && !routePositivelyListed(catalog, primary.provider, primary.model)) {
+    const found = wellFormed.findIndex((candidate) => routePositivelyListed(catalog, candidate.provider, candidate.model));
+    if (found >= 0)
+      index = found + 1;
+  }
+  const winner = index === 0 ? primary : wellFormed[index - 1];
+  if (index > 0) {
+    rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${primary.provider}/${primary.model} is not listed by the model catalog — slot fallback #${index} (${winner.provider}/${winner.model}) wins for this run`);
+  }
+  if (dropped > 0) {
+    rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${dropped} malformed fallback entr${dropped === 1 ? "y was" : "ies were"} dropped from the slot's chain (never fatal — the run proceeds)`);
+  }
+  const route = catalog === undefined ? winner : adaptEffortWithCatalog(catalog, winner);
+  return { route, index, fallback: index > 0, dropped };
+}
+function rosterNameHead(label) {
+  if (typeof label !== "string")
+    return "";
+  return label.split(/[—–:|]|\s-\s/)[0]?.trim() ?? "";
+}
+function memberIdentityCandidates(identity) {
+  const candidates = [];
+  if (typeof identity?.role === "string" && identity.role.trim() !== "")
+    candidates.push(identity.role.trim());
+  const head = rosterNameHead(identity?.description);
+  if (head !== "")
+    candidates.push(head);
+  if (typeof identity?.name === "string" && identity.name.trim() !== "")
+    candidates.push(identity.name.trim());
+  const seen = new Set;
+  const unique = [];
+  for (const candidate of candidates) {
+    const key = candidate.toLowerCase();
+    if (seen.has(key))
+      continue;
+    seen.add(key);
+    unique.push(candidate);
+  }
+  return unique;
+}
+function resolveTeamMemberRoute(identity, slotResolutionOf) {
+  if (typeof slotResolutionOf !== "function")
+    return { status: "no-config-service" };
+  for (const candidate of memberIdentityCandidates(identity)) {
+    let answer;
+    try {
+      answer = slotResolutionOf(candidate);
+    } catch {
+      continue;
+    }
+    if (answer === null || typeof answer !== "object")
+      continue;
+    const slotAnswer = answer;
+    if (slotAnswer.ok === true) {
+      const provider = typeof slotAnswer.route?.provider === "string" ? slotAnswer.route.provider.trim() : "";
+      const model = typeof slotAnswer.route?.model === "string" ? slotAnswer.route.model.trim() : "";
+      const slot = typeof slotAnswer.slot === "string" ? slotAnswer.slot : "";
+      if (provider === "" || model === "") {
+        return {
+          status: "unusable",
+          member: candidate,
+          ...slot === "" ? {} : { slot },
+          reason: "invalid",
+          detail: typeof slotAnswer.message === "string" && slotAnswer.message !== "" ? slotAnswer.message : `the mpdConfig service reported a usable slot for ${candidate} but returned no provider/model route`
+        };
+      }
+      const effort = typeof slotAnswer.route?.reasoningEffort === "string" ? slotAnswer.route.reasoningEffort.trim() : "";
+      return {
+        status: "routed",
+        member: candidate,
+        slot,
+        route: { provider, model, ...effort === "" ? {} : { reasoningEffort: effort } },
+        fallbacks: Array.isArray(slotAnswer.fallbacks) ? slotAnswer.fallbacks : []
+      };
+    }
+    if (slotAnswer.ok === false) {
+      if (slotAnswer.status === "unrouted")
+        continue;
+      if (slotAnswer.status === "unconfigured" || slotAnswer.status === "invalid") {
+        const detail = typeof slotAnswer.message === "string" && slotAnswer.message !== "" ? slotAnswer.message : `the mpdConfig service reported ${slotAnswer.status} for ${candidate}`;
+        return {
+          status: "unusable",
+          member: candidate,
+          ...typeof slotAnswer.slot === "string" && slotAnswer.slot !== "" ? { slot: slotAnswer.slot } : {},
+          reason: slotAnswer.status,
+          detail
+        };
+      }
+    }
+  }
+  return { status: "unmatched" };
 }
 function textBlock(content) {
   return [{ type: "text", text: typeof content === "string" ? content : String(content ?? "") }];
@@ -595,6 +705,31 @@ function createDshAdapter(ctx, config = {}) {
       return;
     }
   };
+  const configSlotResolver = () => {
+    const config2 = service("mpdConfig");
+    if (config2 === undefined || config2 === null)
+      return;
+    if (typeof config2.slotResolutionOf !== "function" && typeof config2.teamModelRouteOf !== "function")
+      return;
+    return (member) => {
+      if (typeof config2.slotResolutionOf === "function") {
+        try {
+          const answer = config2.slotResolutionOf.call(config2, member);
+          if (answer !== null && typeof answer === "object" && typeof answer.ok === "boolean")
+            return answer;
+        } catch {}
+      }
+      if (typeof config2.teamModelRouteOf === "function") {
+        try {
+          const route = config2.teamModelRouteOf.call(config2, member);
+          if (route !== null && typeof route === "object")
+            return { ok: true, slot: "", route, fallbacks: [] };
+        } catch {}
+        return { ok: false, status: "unrouted", slot: undefined };
+      }
+      return;
+    };
+  };
   function requireService(serviceName, needed) {
     const found = service(serviceName);
     if (found === undefined || found === null) {
@@ -797,13 +932,24 @@ function createDshAdapter(ctx, config = {}) {
         if (!ready)
           throw new Error(`mpd-dsh-adapter: no team executor is available — ${reason}`);
         const subagents = requireService("subagents", `cannot raise team member "${request.name}"`);
+        let agentOptions = request.agentOptions;
+        if (agentOptions === undefined) {
+          const outcome = resolveTeamMemberRoute({ role: request.role, description: request.description, name: request.name }, configSlotResolver());
+          if (outcome.status === "routed") {
+            const resolved = await resolveRunRoute({ llmCatalog }, outcome.route, outcome.fallbacks);
+            agentOptions = resolved.route;
+          } else {
+            const line = outcome.status === "unusable" ? `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — its slot is unusable: ${outcome.detail}` : outcome.status === "no-config-service" ? `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — no mpdConfig service is mounted (is the mpd-config row present?)` : `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — its role, description head and name name no roster member`;
+            rowLogLine("mpd-dsh-adapter", line);
+          }
+        }
         const spec = {
           provider: typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn",
           label: `${request.name} · ${request.teamId}`,
           request: {
             prompt: textBlock(request.prompt),
             parent: caller,
-            ...request.agentOptions === undefined ? {} : { agentOptions: request.agentOptions }
+            ...agentOptions === undefined ? {} : { agentOptions }
           },
           signal: request.signal ?? neverAborted()
         };
@@ -2694,22 +2840,16 @@ defineMethod("transform", [
 
 // packages/mpd-config-plugin/src/settings-schema.ts
 var TEAM_MODEL_SLOTS = ["slot1", "slot2", "slot3", "slot4"];
-var TEAM_MODEL_SLOT_DEFAULTS = {
-  slot1: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "max" },
-  slot2: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "high" },
-  slot3: { provider: "deepseek-official", model: "deepseek-v4-flash", reasoningEffort: "high" },
-  slot4: { provider: "deepseek-official", model: "deepseek-v4-flash-vision-exp", reasoningEffort: "high" }
-};
 var TEAM_MODEL_FALLBACK_OPTIONS = {
   provider: ["deepseek-official"],
   model: ["deepseek-v4-flash", "deepseek-v4-flash-vision-exp", "deepseek-v4-pro", "deepseek-flash"],
   reasoningEffort: ["off", "low", "high", "max"]
 };
-function teamModelSlotSchema(slot) {
+function teamModelSlotSchema() {
   return Schema.object({
-    provider: Schema.string().default(slot.provider),
-    model: Schema.string().default(slot.model),
-    reasoningEffort: Schema.string().default(slot.reasoningEffort)
+    provider: Schema.string().required(false),
+    model: Schema.string().required(false),
+    reasoningEffort: Schema.string().required(false)
   });
 }
 var TEAM_MODEL_SLOT_GROUPS = {
@@ -2718,13 +2858,6 @@ var TEAM_MODEL_SLOT_GROUPS = {
   slot3: { zh: "执行型成员", en: "execution members", members: ["Deep Worker", "Junior Engineer"] },
   slot4: { zh: "视觉成员", en: "vision member", members: ["Vision Analyst"] }
 };
-var ROSTER_AGENT_NAMES = Object.values(TEAM_MODEL_SLOT_GROUPS).flatMap((group) => [...group.members]);
-var AGENT_ROUTE_SCHEMA = Schema.object({
-  provider: Schema.string().required(false),
-  model: Schema.string().required(false),
-  reasoningEffort: Schema.string().required(false)
-});
-var AGENT_ROUTES_SCHEMA = Schema.dict(AGENT_ROUTE_SCHEMA, Schema.union(ROSTER_AGENT_NAMES.map((name) => Schema.const(name))));
 var SettingsSchema = Schema.object({
   hashline: Schema.object({ maxDiffChars: Schema.number().default(20000) }),
   commentChecker: Schema.object({ autoCheck: Schema.boolean().default(true) }),
@@ -2733,12 +2866,11 @@ var SettingsSchema = Schema.object({
   team: Schema.object({ stateDir: Schema.string().default(".mpd/team") }),
   boulder: Schema.object({ dir: Schema.string().required(false) }),
   teamModels: Schema.object({
-    slot1: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot1),
-    slot2: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot2),
-    slot3: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot3),
-    slot4: teamModelSlotSchema(TEAM_MODEL_SLOT_DEFAULTS.slot4)
+    slot1: teamModelSlotSchema(),
+    slot2: teamModelSlotSchema(),
+    slot3: teamModelSlotSchema(),
+    slot4: teamModelSlotSchema()
   }),
-  agentRoutes: AGENT_ROUTES_SCHEMA,
   watchdog: Schema.object({
     enabled: Schema.boolean().default(true),
     warnSilenceMs: Schema.number().default(600000),
@@ -2750,7 +2882,7 @@ var SettingsSchema = Schema.object({
   }),
   tui: Schema.object({ dashboardKey: Schema.boolean().default(true) })
 });
-var BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect in the RUNNING process — no restart: the config service re-resolves on every settings save and on a watched edit of the project file, and the model routes (teamModels, agentRoutes, modelchain) are read per use, so the next spawn or resolve carries them";
+var BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect in the RUNNING process — no restart: the config service re-resolves on every settings save and on a watched edit of the project file, and the model routes (teamModels, modelchain) are read per use, so the next spawn or resolve carries them";
 var BRIDGE_NOT_LOST = "the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session";
 function knobHint(key, semantics) {
   const pointer = `mpd.jsonc ${key}`;
@@ -2815,45 +2947,6 @@ var TEAM_MODEL_KNOBS = TEAM_MODEL_SLOTS.flatMap((slot) => {
     hint: knobHint(`teamModels.${slot}.${leaf}`, teamModelLeafSentence(slot, leaf, "en"))
   }));
 });
-var AGENT_ROUTE_LEAF_TEMPLATES = {
-  provider: {
-    en: "The provider half of {name}'s OWN route override. An agentRoutes leaf outranks {name}'s team-model slot: it applies to {name} only, and LIVE — the member's next spawn or resolve carries it, no restart and no new team needed. An unset leaf falls through to the slot's provider; clearing every leaf returns {name} to the slot.",
-    zh: "{name} 专属路由覆盖的提供商。agentRoutes 的叶子优先于 {name} 的 team 模型槽位：只作用于 {name} 本人，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的提供商；清空全部叶子即恢复跟随槽位。"
-  },
-  model: {
-    en: "The model half of {name}'s OWN route override. It outranks the model of {name}'s team-model slot ({group}) and applies LIVE — the member's next spawn or resolve carries it, no restart and no new team needed. An unset leaf falls through to the slot's model; clearing every leaf returns {name} to the slot.",
-    zh: "{name} 专属路由覆盖的模型。优先于 {name} 所属槽位（{group}）的模型，且即时生效——该成员下次生成/解析即携带新值，无需重启、也无需重新建队。未设置的叶子回落到槽位的模型；清空全部叶子即恢复跟随槽位。"
-  },
-  reasoningEffort: {
-    en: "The reasoning-effort half of {name}'s OWN route override (off / low / high / max). It outranks the effort of {name}'s team-model slot ({group}) and applies LIVE — the member's next spawn or resolve carries it. An unset leaf falls through to the slot's effort; an effort the chosen model does not support fails that member's spawn loudly, naming the member.",
-    zh: "{name} 专属路由覆盖的推理强度（off / low / high / max）。优先于 {name} 所属槽位（{group}）的推理强度，且即时生效——该成员下次生成/解析即携带新值。未设置的叶子回落到槽位的等级；该模型不支持的等级会让该成员的生成直接报错并点名。"
-  }
-};
-function agentRouteSlotOf(name) {
-  return TEAM_MODEL_SLOTS.find((slot) => TEAM_MODEL_SLOT_GROUPS[slot].members.includes(name));
-}
-function agentRouteLeafSentence(name, leaf, lang) {
-  const slot = agentRouteSlotOf(name);
-  const group = slot === undefined ? lang === "zh" ? "未编组" : "ungrouped" : TEAM_MODEL_SLOT_GROUPS[slot][lang];
-  return AGENT_ROUTE_LEAF_TEMPLATES[leaf][lang].split("{name}").join(name).split("{group}").join(group);
-}
-var AGENT_ROUTE_KNOBS = TEAM_MODEL_SLOTS.flatMap((slot) => TEAM_MODEL_SLOT_GROUPS[slot].members.flatMap((member) => {
-  const leaves = [
-    { leaf: "provider", label: "provider", zh: "提供商" },
-    { leaf: "model", label: "model", zh: "模型" },
-    { leaf: "reasoningEffort", label: "reasoning effort", zh: "推理强度" }
-  ];
-  return leaves.map(({ leaf, label, zh }) => ({
-    path: ["agentRoutes", member, leaf],
-    label: `${member} ${label} (own route)`,
-    zh: `${member} ${zh}（专属路由）`,
-    kind: "select",
-    options: TEAM_MODEL_FALLBACK_OPTIONS[leaf],
-    semantics: agentRouteLeafSentence(member, leaf, "en"),
-    semanticsZh: agentRouteLeafSentence(member, leaf, "zh"),
-    hint: knobHint(`agentRoutes.${member}.${leaf}`, agentRouteLeafSentence(member, leaf, "en"))
-  }));
-}));
 var SETTINGS_KNOBS = [
   { path: ["hashline", "maxDiffChars"], label: "Inline diff limit", zh: "行内 diff 上限", kind: "number" },
   { path: ["commentChecker", "autoCheck"], label: "Comment checker", zh: "注释检查", kind: "boolean" },
@@ -2869,15 +2962,12 @@ var SETTINGS_KNOBS = [
   { path: ["watchdog", "toolInFlightMaxMs"], label: "Tool-in-flight bound (ms, 0 = no bound)", zh: "工具在飞上限（毫秒，0 表示不设上限）", kind: "number", hint: "how long ONE tool call may run before it stops explaining a silent member: past this bound the call is reported ONCE as a `tool-expired` incident (a warning — never a scene, never a hold, never an escalation), and `0` disables the bound" },
   { path: ["watchdog", "holdTtlMs"], label: "Hold TTL (ms, 0 = no expiry)", zh: "暂停持有有效期（毫秒，0 表示不设有效期）", kind: "number", hint: "how long a watchdog hold may stay latched before it auto-releases: past this bound the hold releases itself and changes ZERO team bytes, and activity newer than the hold releases it sooner — `0` disables the expiry" },
   ...TEAM_MODEL_KNOBS,
-  ...AGENT_ROUTE_KNOBS,
   { path: ["tui", "dashboardKey"], label: "Ctrl+A dependency view (old dsh-tui builds)", zh: "Ctrl+A 依赖视图（旧版 dsh-tui）", kind: "boolean", hint: "applies to hosts WITHOUT the sidebar panel seam (dsh-tui before 0.13.0) only: while MPD's team projection has a team with at least one task, Ctrl+A opens MPD's merged dependency view instead of the host's subagent dashboard, and with no team Ctrl+A keeps opening the host dashboard — on a host that offers the panel seam, Ctrl+A always keeps its host dashboard meaning and the merged view opens through alt+a and /mpd panel" }
 ];
 
 // packages/mpd-roster-provider-plugin/src/route.ts
 function memberFromLabel(label, knownNames) {
-  if (typeof label !== "string")
-    return;
-  const head = label.split(/[—–:|]|\s-\s/)[0]?.trim() ?? "";
+  const head = rosterNameHead(label);
   if (head === "")
     return;
   const needle = head.toLowerCase();
@@ -2887,21 +2977,6 @@ function memberFromLabel(label, knownNames) {
       return name;
   }
   return;
-}
-function routeForMember(member, slotOf, slots) {
-  if (slotOf === undefined)
-    return;
-  const slot = slots?.[slotOf];
-  if (slot === undefined || slot === null || typeof slot !== "object") {
-    throw new Error(`mpd-roster: ${member} is routed by ${slotOf}, but no ${slotOf} is configured for this workspace`);
-  }
-  const provider = typeof slot.provider === "string" ? slot.provider.trim() : "";
-  const model = typeof slot.model === "string" ? slot.model.trim() : "";
-  const effort = typeof slot.reasoningEffort === "string" ? slot.reasoningEffort.trim() : "";
-  if (provider === "" || model === "") {
-    throw new Error(`mpd-roster: ${member} is routed by ${slotOf}, but that slot is incomplete (provider=${provider === "" ? "unset" : provider}, model=${model === "" ? "unset" : model})`);
-  }
-  return { provider, model, ...effort === "" ? {} : { reasoningEffort: effort } };
 }
 function applyRoute(request, route) {
   if (route === undefined)
@@ -2927,32 +3002,42 @@ function apply(ctx, config = {}) {
   const dsh = resolveDshAdapter(ctx);
   const disposers = [];
   const slotOf = (member) => SLOT_OF_MEMBER.get(member.toLowerCase());
-  const slotsNow = () => {
+  const configService = () => {
     try {
-      const config2 = typeof ctx?.get === "function" ? ctx.get("mpdConfig") : undefined;
-      const value = config2?.get?.("teamModels");
-      return value !== null && typeof value === "object" ? value : undefined;
+      return typeof ctx?.get === "function" ? ctx.get("mpdConfig") : undefined;
     } catch {
       return;
     }
   };
-  const liveRouteOf = (member) => {
-    let service;
-    try {
-      service = typeof ctx?.get === "function" ? ctx.get("mpdConfig") : undefined;
-    } catch {
+  const slotUnconfigured = (member) => {
+    const slot = slotOf(member) ?? "teamModels";
+    const error = new Error("SLOT_UNCONFIGURED: " + member + " is routed by " + slot + ", but the mpdConfig service answered no slot (is the mpd-config row mounted?); nothing was written and no child was started. Configure it with /mpd-model, or set teamModels." + slot + " in .mpd/mpd.jsonc.");
+    error.code = "SLOT_UNCONFIGURED";
+    return error;
+  };
+  const routeFor = (request) => {
+    const member = memberFromLabel(labelOf(request), knownNames());
+    if (member === undefined)
       return;
+    const live = configService();
+    if (typeof live?.slotResolutionOf === "function") {
+      const resolution = live.slotResolutionOf(member);
+      if (resolution !== undefined && resolution !== null && typeof resolution === "object") {
+        if (resolution.ok)
+          return { route: resolution.route, fallbacks: resolution.fallbacks ?? [] };
+        if (resolution.status === "unrouted")
+          return;
+        const error = new Error(resolution.message);
+        error.code = resolution.code;
+        throw error;
+      }
     }
-    if (typeof service?.teamModelRouteOf !== "function")
-      return;
-    const value = service.teamModelRouteOf(member);
-    if (value === undefined || value === null || typeof value !== "object")
-      return;
-    return {
-      provider: String(value.provider ?? ""),
-      model: String(value.model ?? ""),
-      ...typeof value.reasoningEffort === "string" && value.reasoningEffort !== "" ? { reasoningEffort: value.reasoningEffort } : {}
-    };
+    if (typeof live?.teamModelRouteOf === "function") {
+      const route = live.teamModelRouteOf(member);
+      if (route !== undefined && route !== null && typeof route === "object")
+        return { route, fallbacks: [] };
+    }
+    throw slotUnconfigured(member);
   };
   const knownNames = () => Object.values(TEAM_MODEL_SLOT_GROUPS).flatMap((group) => [...group.members]);
   const configBaseName = typeof config.baseProvider === "string" && config.baseProvider !== "" ? config.baseProvider : "spawn";
@@ -2964,15 +3049,6 @@ function apply(ctx, config = {}) {
     } catch {
       return;
     }
-  };
-  const routeFor = (request) => {
-    const member = memberFromLabel(labelOf(request), knownNames());
-    if (member === undefined)
-      return;
-    const live = liveRouteOf(member);
-    if (live !== undefined)
-      return live;
-    return routeForMember(member, slotOf(member), slotsNow());
   };
   const provider = {
     name: PROVIDER_NAME,
@@ -2992,8 +3068,7 @@ function apply(ctx, config = {}) {
       }
       const routable = request;
       const resolved = routeFor(routable);
-      const route = await withSupportedEffort(dsh, resolved);
-      const routed = applyRoute(routable, route);
+      const routed = resolved === undefined ? routable : applyRoute(routable, (await resolveRunRoute(dsh, resolved.route, resolved.fallbacks)).route);
       if (routed !== routable) {
         const options = routed.agentOptions ?? {};
         rowLogLine("mpd-roster", `[mpd-roster] routed teammate "${String(labelOf(routable) ?? "")}" -> ${String(options.provider)}/${String(options.model)}${options.reasoningEffort === undefined ? "" : " @ " + String(options.reasoningEffort)}`);
@@ -3025,6 +3100,5 @@ export {
   inject,
   labelOf,
   memberFromLabel,
-  name,
-  routeForMember
+  name
 };

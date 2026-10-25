@@ -65,15 +65,24 @@ and the mpd plugins act on it after a restart. The browser reaches the bridge on
 public settings seam; the write-back itself belongs to `packages/mpd-config-plugin`. Rebuild the
 combined client (`node scripts/build-mpd-client.ts`) after touching either half.
 
-**The Web card's team-model pickers.** The card mirrors the ONE 25-row knob declaration of
-`packages/mpd-config-plugin` (the original 13 knobs plus the twelve `teamModels` slot leaves) and
+**The Web card's team-model pickers.** The card mirrors the ONE 26-row knob declaration of
+`packages/mpd-config-plugin` (the original 13 knobs, the twelve `teamModels` slot leaves and the TUI
+surface's own knob) and
 renders each slot as a **dependent, selection-only picker**: a model control whose options are
 the catalog's provider/model pairs (provider shown as a group) and an effort control whose
 options are the SELECTED model's own efforts, re-derived when the model changes. The catalog is
 reached through GUARDED probes of `ctx.get("sessions")` + `ctx.get("modelDirectories")` — the
 existing `team-page.ts` pattern, never a declared inject — and when a probe is absent, no session
 is bound, or `directoryFor` throws, the card falls back to the DECLARED option lists and the
-section still renders. Nothing about a slot is settable only by typing. A browser module cannot
+section still renders. Nothing about a slot is settable only by typing. The see-before-you-edit block shows each slot's STATE and renders
+`<unconfigured>` (naming the leaves it still needs) when the workspace configured none — there is no
+default floor to invent a route — while an INVALID slot (a leaf present but malformed, e.g. a
+non-string, or a slot that is not an object) renders its OWN sentence in both languages instead of
+`<unconfigured>`: `EffectiveRoute.problem` names the offending leaf (`teamModels.slotN.leaf is not a
+string`, or `teamModels.slotN is not an object`), and the `missing` check TRIMS every leaf, so a
+whitespace-only leaf counts as MISSING rather than as configured — a malformed slot must never read as
+absent. The deleted per-member `agentRoutes` rows are gone from the
+card entirely (a leftover block in an old file is IGNORED, never rendered and never rewritten). A browser module cannot
 import the TS declaration, so the card mirrors it and a test pins the declared metadata (path,
 label, zh, kind, declared options, human sentences) element-wise. Each slot row LEADS with its
 group and its own human sentence: the label names the group (`Slot 2 provider (analysis members)`),

@@ -5,7 +5,9 @@
 //
 //   A  BASELINE — create a session; the local DeepSeek-Messages stub answers the parent's
 //      first model step with ONE `mpd_role_spawn` tool call (role "Junior Engineer", slot 3);
-//      the spawned child's own request runs on the slot's DEFAULT model (deepseek-v4-flash).
+//      the spawned child's own request runs on the workspace's CONFIGURED slot3 route
+//      (deepseek-v4-flash): the contract deleted the built-in slot-default layer, so the sandbox's
+//      `.mpd/mpd.jsonc` declares that route before the boot.
 //   B  SAVE — `settings/mutate(ns="mpd-config", set teamModels.slot3.model = deepseek-v4-pro)`
 //      over the host's authenticated gateway API: the SAME entry-config surface the web card
 //      (`ctx.configForms.get("mpd-config")`) and the TUI settings section write through.
@@ -74,11 +76,11 @@ const REPO: string = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.u
 const MEMBER = "Junior Engineer"
 /** The slot leaf the save rewrites, as the settings op path spells it. */
 const SLOT_PATH: readonly string[] = ["teamModels", "slot3", "model"]
-/** The slot's DEFAULT model (L0) — the value the baseline spawn must carry. */
+/** The workspace's CONFIGURED slot3 model — the value the baseline spawn must carry (there is no default layer). */
 const BASELINE_MODEL = "deepseek-v4-flash"
 /** The model phase B saves and phase C's spawn must carry — a different catalog member. */
 const AFTER_MODEL: string = "deepseek-v4-pro"
-/** The provider every phase expects: the slot default provider, routed at the stub. */
+/** The provider every phase expects: the slot's configured provider, routed at the stub. */
 const EXPECTED_PROVIDER = "deepseek-official"
 /** The per-phase task markers, embedded in the spawn task text and searched for in the child log. */
 const MARKER_BASE = "ac6-baseline-" + process.pid
@@ -574,26 +576,61 @@ let naiveCount = -1
 function selfTest(): void {
   // Every assertion label paired with its verdict, so one run reports each break by name.
   const checks: Array<[string, boolean]> = []
-  // The shipped settings schema source, whose slot defaults and model enum this case must match.
+  // The shipped settings schema source, whose slot shape and declared option lists this case mirrors.
   const schemaSrc = readFileSync(join(REPO, "packages", "mpd-config-plugin", "src", "settings-schema.ts"), "utf8")
-  // The config plugin's source, whose live-refresh machinery this case exercises end to end.
+  // The config plugin's source, whose live-refresh machinery and TOTAL slot service this case exercises.
   const pluginSrc = readFileSync(join(REPO, "packages", "mpd-config-plugin", "src", "index.ts"), "utf8")
-  // The slot3 default model, parsed from the shipped defaults table (never duplicated by hand).
-  const slot3 = /slot3: *\{ provider: "([^"]+)", model: "([^"]+)", reasoningEffort: "([^"]+)" \}/.exec(schemaSrc)
-  checks.push(["the shipped slot3 default parses from settings-schema.ts", slot3 !== null])
-  if (slot3 !== null) {
-    checks.push(["BASELINE_MODEL equals the shipped slot3 default model", slot3[2] === BASELINE_MODEL])
-    checks.push(["EXPECTED_PROVIDER equals the shipped slot3 default provider", slot3[1] === EXPECTED_PROVIDER])
-  }
-  // The catalog model enum, which AFTER_MODEL must be a member of (a save of a non-catalog model
-  // would be a validation error, not a route change).
-  const enumHit = /model: *\[[^\]]*"([^"]*)"/.exec(schemaSrc)
-  checks.push(["AFTER_MODEL is a member of the shipped model enum", enumHit !== null && new RegExp('"([^"]*)"').test(enumHit[0]) && schemaSrc.includes('"' + AFTER_MODEL + '"')])
+  // The roster plugin's source, whose spawn tool must carry NO caller model override.
+  const rolesSrc = readFileSync(join(REPO, "packages", "mpd-roles-plugin", "src", "index.ts"), "utf8")
+  // The slot builder's OWN body (brace-terminated at column 0), so a default introduced inside it is caught.
+  const slotBuilder = /function teamModelSlotSchema\(\)[^\n]*\{[\s\S]*?\n\}/.exec(schemaSrc)?.[0] ?? ""
+  // The slot resolution's OWN body, so "never throws" is asserted on the function, not on a comment.
+  const resolveSlotBody = /export function resolveTeamModelSlot\([\s\S]*?\n\}/.exec(pluginSrc)?.[0] ?? ""
+  // The seed coordinator's OWN body, so the marker-first / declared-second order is asserted.
+  const seedBody = /export function seedTeamModelsOnce\([\s\S]*?\n\}/.exec(pluginSrc)?.[0] ?? ""
+  // The mpd_role_spawn parameter list, cut at `required:` so only the declared properties are scanned.
+  const spawnParams = /name: "mpd_role_spawn"[\s\S]*?properties: \{([\s\S]*?)\}, required:/.exec(rolesSrc)?.[1] ?? ""
+  // The three slot leaves exactly as the new contract spells them: present-but-optional, never defaulted.
+  const slotLeaves = ["provider: z.string().required(false)", "model: z.string().required(false)", "reasoningEffort: z.string().required(false)"]
+  // The declared model option list, which BASELINE_MODEL and AFTER_MODEL must both belong to.
+  const modelOptions = /model: \[([^\]]*)\]/.exec(schemaSrc)?.[1] ?? ""
+  // The declared provider option list, which EXPECTED_PROVIDER must belong to.
+  const providerOptions = /provider: \[([^\]]*)\]/.exec(schemaSrc)?.[1] ?? ""
+  // Where the seed's durable-marker guard sits in its body — the FIRST guard of the one-time seed.
+  const markerGuardAt = seedBody.indexOf('if (existsSync(markerFile)) return { status: "marked" }')
+  // The declared-block guard's position, which must come AFTER the marker guard (a deleted block is not re-seeded).
+  const declaredGuardAt = seedBody.indexOf('if (declared === "declared")')
+
+  // ── THE NEW CONTRACT: NO BUILT-IN DEFAULT LAYER, NO PER-MEMBER ROUTE TABLE (contract §2/§3) ──
+  checks.push(["the shipped schema has NO built-in slot default table (TEAM_MODEL_SLOT_DEFAULTS is gone)", !schemaSrc.includes("TEAM_MODEL_SLOT_DEFAULTS")])
+  checks.push(["the shipped sources DECLARE no per-member agentRoutes table (the doc comment naming its absence is not a declaration)", !/\bagentRoutes\s*:/.test(schemaSrc) && !/\bagentRoutes\s*:/.test(pluginSrc)])
+  checks.push(["the slot subtree's three leaves are .required(false) with NO .default()", slotBuilder !== "" && slotLeaves.every((needle) => slotBuilder.includes(needle)) && !slotBuilder.includes(".default(")])
+  checks.push(["the four slots are built by teamModelSlotSchema(), never by an inline default literal", /teamModels: z\.object\(\{[\s\S]*?slot4: teamModelSlotSchema\(\)/.test(schemaSrc) && !/slot[1-4]: *\{ *provider:/.test(schemaSrc)])
+  checks.push(["BASELINE_MODEL is a declared model option", modelOptions.includes('"' + BASELINE_MODEL + '"')])
+  checks.push(["AFTER_MODEL is a declared model option", modelOptions.includes('"' + AFTER_MODEL + '"')])
+  checks.push(["EXPECTED_PROVIDER is a declared provider option", providerOptions.includes('"' + EXPECTED_PROVIDER + '"')])
   checks.push(["BASELINE_MODEL and AFTER_MODEL differ (the save changes the route)", BASELINE_MODEL !== AFTER_MODEL])
+
+  // ── THE SERVICE IS TOTAL: a typed union and a route-or-undefined read, never an exception ──
+  checks.push(["the service exposes the per-call TOTAL slotResolutionOf (typed SlotResolution)", pluginSrc.includes("slotResolutionOf: (member: string): SlotResolution => resolveTeamModelSlot(member, state.config)")])
+  checks.push(["the resolution union is exported as ok:true | ok:false arms", pluginSrc.includes("export type SlotResolution = SlotResolved | SlotUnusable | SlotUnrouted")])
+  checks.push(["the slot resolution RETURNS every refusal — its body carries no throw", resolveSlotBody !== "" && !resolveSlotBody.includes("throw")])
+  checks.push(["the service exposes the TOTAL teamModelRouteOf read (route or undefined)", pluginSrc.includes("teamModelRouteOf: (member: string): TeamModelRoute | undefined => teamModelRouteOfMember(member, state.config)")])
+  checks.push(["the route read answers undefined for every unusable slot, never throws", pluginSrc.includes("return resolution.ok ? resolution.route : undefined")])
+
+  // ── THE SPAWN HAS NO CALLER MODEL OVERRIDE: its route comes from the slot, nowhere else ──
+  checks.push(["mpd_role_spawn declares NO `model` parameter", spawnParams !== "" && spawnParams.includes("role:") && spawnParams.includes("task:") && !/\bmodel\s*:/.test(spawnParams)])
+  checks.push(["mpd_role_spawn's model comes from the resolved slot route", rolesSrc.includes("const model = run.route.model")])
+
+  // ── THE ONE-TIME SEED: a durable marker, and a deleted block is NEVER re-seeded (contract §10) ──
+  checks.push(["the seed marker file name is model-config-seed.json", pluginSrc.includes('export const SEED_MARKER_FILE = "model-config-seed.json"')])
+  checks.push(["the marker path is <ws>/.mpd/model-config-seed.json", pluginSrc.includes('return join(root, ".mpd", SEED_MARKER_FILE)')])
+  checks.push(["the seed consults the MARKER first (a deleted block is never re-seeded)", markerGuardAt >= 0 && declaredGuardAt > markerGuardAt])
+  checks.push(["a declared teamModels block is the user's own and is never rewritten", seedBody.includes('return { status: "declared" }')])
+
   // The machinery under test: the entry-config subscription and the per-call slot read.
   checks.push(["the plugin subscribes the ENTRY config document ('mpd-config')", pluginSrc.includes('onSettingsDocumentUpdated(ENTRY_CONFIG_ID') && pluginSrc.includes('ENTRY_CONFIG_ID = "mpd-config"')])
   checks.push(["the plugin re-loads state on the entry-config update, no restart", pluginSrc.includes("entry-config update: state re-loaded")])
-  checks.push(["the service exposes the per-call teamModelRouteOf read", pluginSrc.includes("teamModelRouteOf: (member: string)")])
 
   // The decode helper on a SYNTHETIC concatenated-zstd store: 3 frames, one record each, so the
   // T-25 trap (naive single-frame read) is proven absent from this case's reader.
@@ -673,6 +710,13 @@ async function runReal(argv: readonly string[]): Promise<number> {
 
   // The isolated sandbox and the two servers this case drives.
   const sandbox = makeSandbox()
+  // THE BASELINE ROUTE IS CONFIGURED, NOT DEFAULTED: the contract deleted the built-in slot-default
+  // layer (`.mpd/plans/slot-single-source.md` §2), so the read root DECLARES slot3's route before the
+  // boot. Phase A then measures the workspace's own configuration, phase B moves the model through the
+  // ENTRY config and phase D through this same file — the two live surfaces this case compares.
+  const rootConfig = join(sandbox.sandbox, ".mpd", "mpd.jsonc")
+  mkdirSync(dirname(rootConfig), { recursive: true })
+  writeFileSync(rootConfig, "{\n  // ac6 baseline: the configured slot3 route\n  \"teamModels\": { \"slot3\": { \"provider\": \"" + EXPECTED_PROVIDER + "\", \"model\": \"" + BASELINE_MODEL + "\" } }\n}\n")
   // The stub provider that answers every model step this case drives.
   const stub = makeStub()
   // The stub's ephemeral loopback port, which the provider overlay points at.
@@ -693,7 +737,7 @@ async function runReal(argv: readonly string[]): Promise<number> {
   // The result packet every phase fills and the end writes once, verdicts included.
   const packet: Record<string, unknown> = { case: SLUG, startedAt, ok: false, boot: { pid: pidAtBaseline, port, stubPort, workspace: sandbox.ws }, phases }
 
-  // PHASE A — baseline: the slot resolves its DEFAULT model before any save.
+  // PHASE A — baseline: the slot resolves the workspace's CONFIGURED route before any save.
   const baseline = await drivePhase("baseline", MARKER_BASE, sandbox, port, bootHandle.cookie, stub)
   // The baseline child's model, read from its own decoded request header.
   const baselineChildModel = baseline.childConfig?.model as string | undefined
@@ -735,9 +779,10 @@ async function runReal(argv: readonly string[]): Promise<number> {
   // file layer, so the frozen materialised defaults buried a file edit exactly as they buried the
   // entry save. With the layer composed from `describe().user` (SAVED leaves only) the file edit
   // stays visible; the boot-pid equality proves neither surface ever reached a restart.
-  const rootConfig = join(sandbox.sandbox, ".mpd", "mpd.jsonc")
+  // The hand edit REPLACES the file's slot3 route — provider included, so the route stays whole under
+  // the schema that no longer invents a default — with the same model phase B saved through the entry.
   mkdirSync(dirname(rootConfig), { recursive: true })
-  writeFileSync(rootConfig, "{\n  // ac6 phase D: the watched hand edit\n  \"teamModels\": { \"slot3\": { \"model\": \"" + AFTER_MODEL + "\" } }\n}\n")
+  writeFileSync(rootConfig, "{\n  // ac6 phase D: the watched hand edit\n  \"teamModels\": { \"slot3\": { \"provider\": \"" + EXPECTED_PROVIDER + "\", \"model\": \"" + AFTER_MODEL + "\" } }\n}\n")
   // The watcher's documented quiet period is a 150 ms debounce plus the reload; settle generously.
   await sleep(2_000)
   // The boot pid read again at the file-edit phase, the last no-restart anchor.
@@ -766,7 +811,7 @@ async function runReal(argv: readonly string[]): Promise<number> {
   const verdicts: Array<[string, boolean, string]> = [
     ["baseline: the parent log carries the spawn call + non-error result", baseline.spawnCalledAndOk, "the harness must record the tool call AND its non-error result (parent log " + baseline.parentLog + ")"],
     ["baseline: the child log was found by its phase marker", baseline.childLog !== undefined, "a session log under " + sandbox.ws + " must carry the marker " + MARKER_BASE],
-    ["baseline (negative): the child ran on the slot DEFAULT model before any save", baselineChildModel === BASELINE_MODEL, "decoded child request config.model=" + JSON.stringify(baselineChildModel) + ", expected " + JSON.stringify(BASELINE_MODEL)],
+    ["baseline (negative): the child ran on the workspace's CONFIGURED slot3 model before any save", baselineChildModel === BASELINE_MODEL, "decoded child request config.model=" + JSON.stringify(baselineChildModel) + ", expected " + JSON.stringify(BASELINE_MODEL)],
     ["save: the entry-config mutate was accepted", saved.status === 200 && saved.error === null && (savedRefusal === undefined || savedRefusal === null), "settings/mutate(ns=mpd-config) status " + saved.status + " error " + JSON.stringify(saved.error ?? savedRefusal)],
     ["save: the descriptor's SAVED OVERRIDE (user) carries the saved model — the layer the config row composes", savedUserSlot === AFTER_MODEL, "user=" + JSON.stringify(savedUserSlot) + ", expected " + JSON.stringify(AFTER_MODEL) + " (value=" + JSON.stringify(savedResolved) + ", base=" + JSON.stringify(savedBaseSlot) + " — T-93: the descriptor's value/base stay apply-time/inherited on harness 0.1.7-rc.2, so `user` is the only half a save moves)"],
     ["no restart: the boot pid is the SAME process across baseline and after-save", pidAtBaseline === pidAtAfter, "pid at baseline " + String(pidAtBaseline) + " vs at after-save " + String(pidAtAfter)],

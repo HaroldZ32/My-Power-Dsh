@@ -100,7 +100,9 @@ describe("the consolidated surface", () => {
     // task absorbed claim_task/task_contract/dispatch_release, and (2026-10-07) gained the TERMINAL
     // verbs `complete`/`fail`: with the official `team_task_*` row disabled in a dsh-tui boot this board
     // is the only board, and a board whose rows never reach a terminal state cannot advance its DAG.
-    expect(actions("agent_teams_task").sort()).toEqual(["claim", "complete", "contract", "fail", "release"])
+    // (2026-10-23) `depend` joins DELIBERATELY: `create_task` mints a row and could not wire an existing
+    // one, so a lane added mid-run could not enter the DAG at all (contract team-tool plan surface §2).
+    expect(actions("agent_teams_task").sort()).toEqual(["claim", "complete", "contract", "depend", "fail", "release"])
     // dispatch absorbed dispatch/dispatch_release
     expect(actions("agent_teams_dispatch").sort()).toEqual(["release", "run"])
     // mail absorbed mailbox (and the older observation-only counter)

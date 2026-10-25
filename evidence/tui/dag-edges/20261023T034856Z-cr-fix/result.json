@@ -1,0 +1,160 @@
+{
+  "contract": "REPAIR of the two CodeRabbit actionable findings on PR #64 (wave `dag-edges`): the long-edge lane search precompute and the fit-width refusal in packages/mpd-tui-plugin/src/graph.ts",
+  "wave": "dag-edges",
+  "pr": 64,
+  "branch": "fix/dag-edges",
+  "baseSha": "30309c9613e9d8d1d421e620c494317be7be4e7c",
+  "baseShaShort": "30309c96",
+  "workingTree": "uncommitted repair on top of 30309c96 (the captain commits; this lane did not)",
+  "startedUtc": "2026-10-23T03:48:56Z",
+  "finishedUtc": "2026-10-23T03:49:28Z",
+  "writer": "Senior Engineer (one bounded lane)",
+  "coderabbitFindings": [
+    {
+      "id": 4355855359,
+      "kind": "Performance & Scalability / Trivial",
+      "file": "packages/mpd-tui-plugin/src/graph.ts",
+      "area": "long-edge lane search, `boxCovers` (review lines ~878-883)",
+      "verdict": "STILL-VALID -> FIXED",
+      "change": "`covered: Array<Set<number>>` is built ONCE per DRAWN rank from `drawn`, `column` and `nodeWidth`; `boxCovers(rank, col)` is now `covered[rank].has(col)`. The per-candidate scan of every task in every intermediate rank is gone. No drawn byte changes.",
+      "behaviorPreserving": true,
+      "evidence": ["evidence/tui/dag-edges/20261023T034856Z-cr-fix/f1-byte-identity.log"]
+    },
+    {
+      "id": 4355855381,
+      "kind": "Functional Correctness / Minor",
+      "file": "packages/mpd-tui-plugin/src/graph.ts",
+      "area": "`layoutBoxes` fit-width return (review line ~963)",
+      "verdict": "STILL-VALID -> FIXED",
+      "change": "`layoutBoxes` returns `undefined` when the finished drawing width (`baseWidth + extraLanes`, i.e. INCLUDING appended long-edge lanes) exceeds `cols`; `layoutGraph` therefore keeps its existing rail fallback. The check lives in `layoutBoxes`, not `layoutGraph`; `nodeWidth` geometry is untouched (clause T1). Declaration comments updated on `layoutBoxes`, `layoutGraph` and the `width` local in `drawBoxes`.",
+      "evidence": [
+        "evidence/tui/dag-edges/20261023T034856Z-cr-fix/f2-premise.log",
+        "evidence/tui/dag-edges/20261023T034856Z-cr-fix/before.log",
+        "evidence/tui/dag-edges/20261023T034856Z-cr-fix/after.log"
+      ]
+    }
+  ],
+  "newArm": {
+    "file": "packages/mpd-tui-plugin/test/dag-edges.test.ts",
+    "describe": "ARM 7 — the fit-width layout never hands back a drawing wider than its cols",
+    "tests": [
+      "a skip edge A→C beside A→B→C is REFUSED at cols 16..34 instead of returning cols + 1",
+      "a board that really fits still draws, at or below its cols, with no lane appended"
+    ],
+    "red": {
+      "source": "commit 30309c96 (the wave's own bytes)",
+      "method": "scratch tree",
+      "log": "evidence/tui/dag-edges/20261023T034856Z-cr-fix/before.log",
+      "result": "14 pass / 1 fail",
+      "failure": "ARM 7's first test received [17, 18, …, 35] for cols [16..34] — `cols + 1` at every width — against the expected 19 refusals",
+      "exit": 1,
+      "bun": "1.4.0 (pinned toolchain)"
+    },
+    "green": {
+      "source": "working tree (30309c96 + the uncommitted repair)",
+      "log": "evidence/tui/dag-edges/20261023T034856Z-cr-fix/after.log",
+      "result": "15 pass / 0 fail, 268 expect() calls",
+      "exit": 0,
+      "bun": "1.4.0 (pinned toolchain)"
+    },
+    "f2Premise": {
+      "fixture": "A -> B -> C plus the skip edge A -> C (one task per rank, so nodeWidth == cols)",
+      "before": "cols 16..34 -> width cols + 1 (see f2-premise.log)",
+      "after": "cols 16..34 -> undefined (the guard)",
+      "control": "the same three tasks without the skip edge still draw at width <= cols for cols 16, 20, 24, 28, 34, 60"
+    }
+  },
+  "scratchTree": {
+    "path": ".mpd/tmp/cr-fix-before (gitignored runtime state; NOT part of the deliverable)",
+    "method": "git archive 30309c96 packages/mpd-tui-plugin/src | tar -xf - -C .mpd/tmp/cr-fix-before; packages/mpd-graph-core symlinked to the real (unchanged) package; the WORKING-TREE test/dag-edges.test.ts copied into the scratch tree unchanged; run as `.toolchain/node_modules/.bin/bun test ./.mpd/tmp/cr-fix-before/packages/mpd-tui-plugin/test/dag-edges.test.ts`",
+    "graphShaAt30309c96": "bcf3b65be6b60687d8335a450831dfee9c5c6807aff9143668f725dc04b9f8d9",
+    "scratchGraphShaVerified": "git show 30309c96:packages/mpd-tui-plugin/src/graph.ts | sha256sum == the scratch file's sha256",
+    "testFileSha": "4e516bcfc98bae382e7a723c737294e0210e80b5af0b18db8dca4a4d4bb6beb8",
+    "testFileShaAt30309c96": "758c1151de5ff83d5e6eebb74c18eee8420c47816858cb4adecff1fbb06d1918 (the wave's file before this repair)"
+  },
+  "f1ByteIdentity": {
+    "probe": "evidence/tui/dag-edges/20261023T034856Z-cr-fix/probe-drawing.ts (archived from .mpd/tmp/render-after.ts, import path rewritten for the evidence location); the BEFORE twin is the same bytes with the import path rewritten to ./packages/... inside the scratch tree",
+    "cases": 10,
+    "casesCovered": [
+      "fit-width: adjacent edges, derived board, focus, CJK",
+      "natural width: long edge with an in-gap lane, appended right-edge lane, derived board, focus, CJK"
+    ],
+    "beforeSha256": "03eba068c6e82701c636dbb818878d374e33ad05fcddec050ce19827b11b911d",
+    "afterSha256": "03eba068c6e82701c636dbb818878d374e33ad05fcddec050ce19827b11b911d",
+    "diff": "empty (byte-identical lines, widths and hit rectangles)",
+    "log": "evidence/tui/dag-edges/20261023T034856Z-cr-fix/f1-byte-identity.log"
+  },
+  "gates": [
+    {
+      "gate": "package tests",
+      "command": "bun test packages/mpd-tui-plugin",
+      "exit": 0,
+      "result": "577 pass / 0 fail, 14641 expect() calls, 23 files (bun 1.4.2 PATH)",
+      "log": "evidence/tui/dag-edges/20261023T034856Z-cr-fix/suite.log"
+    },
+    {
+      "gate": "typecheck",
+      "command": "bun run typecheck",
+      "exit": 0,
+      "result": "tsgo --noEmit clean (bun 1.4.2 PATH)",
+      "log": "evidence/tui/dag-edges/20261023T034856Z-cr-fix/typecheck.log"
+    },
+    {
+      "gate": "dist build",
+      "command": ".toolchain/node_modules/.bin/bun build packages/mpd-tui-plugin/src/index.ts --target node --format esm --outfile packages/mpd-tui-plugin/dist/index.js",
+      "exit": 0,
+      "result": "Bundled 37 modules; dist sha256 49b16450… -> 67133c9c…",
+      "log": "evidence/tui/dag-edges/20261023T034856Z-cr-fix/build.log"
+    },
+    {
+      "gate": "dist freshness",
+      "command": "node scripts/verify-dist-fresh.ts",
+      "exit": 0,
+      "result": "ok: 33/33 targets fresh (each rebuilt twice, byte-identical); 1 pre-existing NOT COVERED file (packages/mpd-mcp-codegraph/dist/serve.js)",
+      "log": "evidence/tui/dag-edges/20261023T034856Z-cr-fix/dist-fresh.log"
+    },
+    {
+      "gate": "declaration comments",
+      "command": "bun run verify:comments",
+      "exit": 0,
+      "result": "PASS — 437 files scanned, 39308 declarations inspected",
+      "log": "evidence/tui/dag-edges/20261023T034856Z-cr-fix/comments.log"
+    },
+    {
+      "gate": "doc pairs",
+      "command": "bun run verify:docs",
+      "exit": 0,
+      "result": "PASS — 50 pairs, 445 links, 0 dead, 0 violations (no human-facing doc changed; run as a no-regression check)",
+      "log": "evidence/tui/dag-edges/20261023T034856Z-cr-fix/docs.log"
+    }
+  ],
+  "files": {
+    "changed": [
+      "packages/mpd-tui-plugin/src/graph.ts (+37/-10): `covered`/`boxCovers` in `drawBoxes`; fit-width guard in `layoutBoxes`; declaration comments on `layoutBoxes`, `layoutGraph` and `drawBoxes`'s `width`",
+      "packages/mpd-tui-plugin/test/dag-edges.test.ts (+46/-3): ARM 7 (two tests) and the header arm list",
+      "packages/mpd-tui-plugin/dist/index.js (+9/-3, rebuilt with the pinned bun 1.4.0)"
+    ],
+    "notTouched": [
+      "docs/**, package README pairs (no human-facing doc changed)",
+      ".git (read-only: status/log/show/archive/rev-parse only; no commit, no index write)",
+      "evidence/tui/dag-edges/20261023T024907Z and evidence/tui/dag-edges/20261023T031930Z-repair (left byte-for-byte untouched)",
+      "evidence/merge-20261022/ (pre-existing untracked directory, untouched)"
+    ]
+  },
+  "artifactHashes": {
+    "graphSrcBefore": "bcf3b65be6b60687d8335a450831dfee9c5c6807aff9143668f725dc04b9f8d9",
+    "graphSrcAfter": "8316bd7b1291a34d7396038a12811f779c4706e4b78dc720b82498ad080ff4e1",
+    "testBefore": "758c1151de5ff83d5e6eebb74c18eee8420c47816858cb4adecff1fbb06d1918",
+    "testAfter": "4e516bcfc98bae382e7a723c737294e0210e80b5af0b18db8dca4a4d4bb6beb8",
+    "distBefore": "49b16450e5e704c5d5d54a12beaf424bf9ced375b861a98fd697cd57ed00cf74",
+    "distAfter": "67133c9c3100a898a9a034d0a40b96ab2c72e1588e80b4302e1ba6362e36636b"
+  },
+  "bounds": [
+    "NO live PTY, dsh boot or visual claim: the real-machine lane is Docker/CI only, and this repair never ran one.",
+    "The fit-width `layoutBoxes` is TREE-SHaken out of the committed `dist/index.js` both BEFORE and AFTER this change (no in-repo plugin caller; the finding says so itself: `layoutGraph` has no call site in packages/mpd-tui-plugin/src, `dagPanelLayout` uses the natural path). F2's guard is therefore proven by the unit arm, `tsc`/typecheck and the comment gate — not by dist bytes. F1's `covered` precompute IS in the rebuilt dist (`boxCovers = covered[rank].has(col)` at dist line ~6156).",
+    "The scratch tree lives under gitignored `.mpd/tmp`; its exact construction is recorded above so the RED run can be replayed. The deliverable keeps only the working-tree sources, the test and the rebuilt dist.",
+    "`bun test packages/mpd-tui-plugin` and `bun run typecheck` were run with the PATH bun 1.4.2 (the repository's documented spelling); the dist build used the PINNED `.toolchain/node_modules/.bin/bun` 1.4.0; the RED/GREEN scratch runs used the pinned 1.4.0 binary.",
+    "The byte-identity probe covers 10 drawings chosen to exercise every lane branch (in-gap lane, appended lane, multi-edge derived board, focus, CJK); it is a sampled proof of the drawing path, not an exhaustive one.",
+    "No commit was made and `.git` was not mutated; `git status` before and after shows only the three intended modified files plus the pre-existing untracked `evidence/merge-20261022/`."
+  ]
+}

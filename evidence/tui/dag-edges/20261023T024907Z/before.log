@@ -1,0 +1,124 @@
+bun test v1.4.2 (744846f84)
+
+packages/mpd-tui-plugin/test/dag-edges.test.ts:
+282 |       const parent = boxOf(view, blocker)
+283 |       // THE DISTANCE IS THE FIXTURE'S OWN: at least one whole rank sits between the two, so an
+284 |       // adjacent-only connector cannot satisfy this arm.
+285 |       expect(parent.rowEnd).toBeLessThan(dependent.row - 1)
+286 |       // THE RUN, followed cell by cell — this is the assertion the defect fails.
+287 |       expect(`${blocker}->T10 run=${runsFromTo(view, blocker, "T10")}`).toBe(`${blocker}->T10 run=true`)
+                                                                              ^
+error: expect(received).toBe(expected)
+
+Expected: "T7->T10 run=true"
+Received: "T7->T10 run=false"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/tmp/head/packages/mpd-tui-plugin/test/dag-edges.test.ts:287:73)
+(fail) ARM 1 — every on-board blocker → dependent edge is drawn, at any rank distance > a GAP-2 edge (T7 → T10, T9 → T10) has a connected run and ONE ▼ at T10 [3.24ms]
+307 |     /** The drawing of that board at its natural width. */
+308 |     const fullView = layoutBoxesNatural(full) as GraphView
+309 |     // THE PREMISE, MEASURED: three ten-cell boxes make 36 cells, and the middle rank holds all three.
+310 |     expect(boxOf(fullView, "B2").row).toBe(boxOf(fullView, "B1").row)
+311 |     expect(fullView.width).toBe(36)
+312 |     expect(`A1->C1 run=${runsFromTo(fullView, "A1", "C1")}`).toBe("A1->C1 run=true")
+                                                                   ^
+error: expect(received).toBe(expected)
+
+Expected: "A1->C1 run=true"
+Received: "A1->C1 run=false"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/tmp/head/packages/mpd-tui-plugin/test/dag-edges.test.ts:312:62)
+(fail) ARM 1 — every on-board blocker → dependent edge is drawn, at any rank distance > a long edge over a FULL intermediate rank keeps its lane, and a ONE-COLUMN board grows one [0.60ms]
+(pass) ARM 1 — every on-board blocker → dependent edge is drawn, at any rank distance > adjacent-rank output is BYTE-IDENTICAL to the shape that already worked [0.72ms]
+351 |     /** The same board with the served rank the host would send: 0 and 2, so rank 1 is EMPTY. */
+352 |     const holed = layoutBoxes(board, 120, undefined, new Map([["H1", 0], ["H2", 2]])) as GraphView
+353 |     // THE 6-ROW HOLE IS THE DEFECT: an empty bucket used to consume a whole rank stride (six rows), so
+354 |     // these two boxes stood TEN rows apart — the multi-rank blank gap in the user's screenshot. One
+355 |     // connector band is four rows apart: the bottom border, three connector rows, the next top border.
+356 |     expect(boxOf(holed, "H2").row - boxOf(holed, "H1").rowEnd).toBe(4)
+                                                                     ^
+error: expect(received).toBe(expected)
+
+Expected: 4
+Received: 10
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/tmp/head/packages/mpd-tui-plugin/test/dag-edges.test.ts:356:64)
+(fail) ARM 2 — an empty rank bucket consumes no rows and breaks no edge > served ranks {0,2}: the dependent sits ONE connector band below its blocker [0.38ms]
+367 |     /** A three-task chain. */
+368 |     const board: GraphTask[] = [task("H1"), task("H2", ["H1"]), task("H3", ["H2"])]
+369 |     /** Three ranks served as 0, 2 and 4, so TWO buckets in between are empty. */
+370 |     const holed = layoutBoxes(board, 120, undefined, new Map([["H1", 0], ["H2", 2], ["H3", 4]])) as GraphView
+371 |     for (const [blocker, blocked] of [["H1", "H2"], ["H2", "H3"]] as const) {
+372 |       expect(`${blocker}->${blocked} run=${runsFromTo(holed, blocker, blocked)}`).toBe(`${blocker}->${blocked} run=true`)
+                                                                                        ^
+error: expect(received).toBe(expected)
+
+Expected: "H1->H2 run=true"
+Received: "H1->H2 run=false"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/tmp/head/packages/mpd-tui-plugin/test/dag-edges.test.ts:372:83)
+(fail) ARM 2 — an empty rank bucket consumes no rows and breaks no edge > served ranks {0,2,4}: every link is drawn and the drawing is exactly as tall as its ranks [0.51ms]
+389 |     /** The record board under the ranks a plan-ordinal host serves. */
+390 |     const view = layoutBoxes(RECORD_BOARD, 160, undefined, RECORD_SERVED) as GraphView
+391 |     // FIVE TASKS, FIVE LINKS, and not one of them may be dropped.
+392 |     expect(view.hits.length).toBe(5)
+393 |     for (const [blocker, blocked] of RECORD_LINKS) {
+394 |       expect(`${blocker}->${blocked} run=${runsFromTo(view, blocker, blocked)}`).toBe(`${blocker}->${blocked} run=true`)
+                                                                                       ^
+error: expect(received).toBe(expected)
+
+Expected: "T1->T2 run=true"
+Received: "T1->T2 run=false"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/tmp/head/packages/mpd-tui-plugin/test/dag-edges.test.ts:394:82)
+(fail) ARM 3 — the 5-task record board draws every link > served ranks 0,2,4,6 (holes at 1,3,5): T1→{T2,T3}→T4→T5 all arrive [0.58ms]
+(pass) ARM 3 — the 5-task record board draws every link > the DERIVED ranks of the same record draw the same five links [0.94ms]
+426 |   test("a drawing wider than the panel is still boxes, and the window pans across it", () => {
+427 |     /** The layout a 60-cell panel gets for an 8-column board. */
+428 |     const layout = dagPanelLayout(WIDE_BOARD, PANEL_COLS)
+429 |     // THE DEFECT IN ONE ASSERTION: the whole-fit rule downgraded this board to the rail, which has no
+430 |     // lines at all. Two node columns fit this panel, so the boxed drawing is the honest choice.
+431 |     expect(`mode=${layout.mode}`).toBe("mode=boxes")
+                                        ^
+error: expect(received).toBe(expected)
+
+Expected: "mode=boxes"
+Received: "mode=rail"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/tmp/head/packages/mpd-tui-plugin/test/dag-edges.test.ts:431:35)
+(fail) ARM 4 — a wide drawing is BOXES while two node columns fit, and the page pans > a drawing wider than the panel is still boxes, and the window pans across it [1.34ms]
+(pass) ARM 4 — a wide drawing is BOXES while two node columns fit, and the page pans > the footer names the COLUMN position, and the row position, while the page overflows [0.07ms]
+470 |     /** A busy board: a 30-task chain plus two more roots, so its widest rank is three boxes wide. */
+471 |     const busy: DagPanelTask[] = [...Array.from({ length: 30 }, (_, index) => panelTask(`B${index + 1}`, index === 0 ? [] : [`B${index}`])), panelTask("Z1"), panelTask("Z2")]
+472 |     expect(`mode=${dagPanelLayout(busy, NARROW_COLS).mode}`).toBe("mode=list")
+473 |     // AT THE FLOOR ITSELF the same board is BOXED, which is the half the defect removed — and it is
+474 |     // boxed however TALL the drawing is: 32 ranks used to be refused by the removed rank cap.
+475 |     expect(`mode=${dagPanelLayout(busy, 23).mode}`).toBe("mode=boxes")
+                                                          ^
+error: expect(received).toBe(expected)
+
+Expected: "mode=boxes"
+Received: "mode=list"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/tmp/head/packages/mpd-tui-plugin/test/dag-edges.test.ts:475:53)
+(fail) ARM 4 — a wide drawing is BOXES while two node columns fit, and the page pans > a panel narrower than two node columns falls back, and the busy board still reaches the list [1.48ms]
+496 |     const view = layoutBoxes(board, 120, "C1") as GraphView
+497 |     // AN IN-CHAIN CONNECTOR STAYS THE LOUD ONE — the highlight the pin exists for is untouched.
+498 |     expect(cellAt(view, boxOf(view, "P1").rowEnd + 1, centreOf(view, "P1")).tone).toBe("chain")
+499 |     // AN OFF-CHAIN CONNECTOR IS STILL DRAWN: `dim` resolves to the host's `inactive` grey over a
+500 |     // `dimColor` flag, which reads as the same grey as the background — the second invisibility path.
+501 |     expect(cellAt(view, boxOf(view, "P2").rowEnd + 1, centreOf(view, "P2")).tone).toBe("edge")
+                                                                                        ^
+error: expect(received).toBe(expected)
+
+Expected: "edge"
+Received: "dim"
+
+      at <anonymous> (/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/.mpd/tmp/head/packages/mpd-tui-plugin/test/dag-edges.test.ts:501:83)
+(fail) ARM 5 — a pinned board draws off-chain connectors in the visible edge tone > an off-chain connector carries `edge`, the chain keeps `chain`, and the boxes may stay dim [0.60ms]
+
+ 3 pass
+ 8 fail
+ 90 expect() calls
+Ran 11 tests across 1 file. [21.00ms]
+EXIT=1

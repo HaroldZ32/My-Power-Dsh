@@ -203,7 +203,7 @@ recorded in `agent-references/context-discipline.md`.
 | Pack closure | `node scripts/verify-pack-closure.ts` (completeness + byte identity of files whose sources did not move; `--self-test` is the fixture-driven arm; `--pack-stamp <t>` re-anchors the comparison) | any pack, any post-pack writer, and the release sweep (§11) |
 | Tests | `bun test` (per package) + `bun run typecheck` (root) | every plugin change |
 | QA self-tests | `bun run test:qa` (all `--self-test`) | every plugin/QA-script change |
-| QA real cases | `node skills/dsh-qa/scripts/<case>.ts` | runtime-behavior changes |
+| QA real cases | `bun skills/dsh-qa/scripts/<case>.ts` (a case whose module graph reaches the extensionless `packages/*/src` needs `bun` — `team-dispatch-guard` is one; a case that reaches no src may run under `node`) | runtime-behavior changes |
 | Installer | `node scripts/install-profile.ts --dry-run` | any bundle-patch/installer change |
 | Doc pairs | `bun run verify:docs` (`scripts/verify-docs-parity.ts`; `--self-test` with a negative control; fails on a zh-only doc or an undocumented package) | any human-facing doc change (`README*.md`, `docs/**`, `packages/*/README*.md`, `extensions/**`, `templates/**`); before release |
 | **Plugin manifest (STANDING — user-mandated)** | `bun run verify:manifest` (= `node scripts/verify-plugin-manifest.ts --pack`): **no `cordis`** in any dependency field (by NAME; the optional field is NOT an exemption), no `preinstall`/`install`/`postinstall`/`prepare` script NAME, VERSION COHERENCE (`dsh-plugin.json` + `dsh-distribution.json` carry `package.json`'s version), plus the packaging contract a one-command install rests on (declared patch files exist, every row module path resolves, `files` admits every runtime path, `evidence/` stays out, `npm pack --dry-run` carries them) | every manifest/patch/row/file-layout/version change, and EVERY release sweep |
@@ -302,8 +302,13 @@ lands (§9/§11).
      withdrawn knob: `agent-references/verification-flow.md`, "§5 rule 2 — the captain's tool pack".**
   3. **Keep requirement / task / review SEPARATE.** A dispatched piece of work gets a requirement task
      (the frozen acceptance contract), a work task and a review task rather than one lumped
-     implementation task; finding-driven work uses `kind=repair` + `sourceTaskId`/`sourceFindingIds`, and
-     `coverageOf` names the user clause a task serves.
+     implementation task; finding-driven work uses `kind=repair` + `sourceTaskId` (+ `coverageOf`) on the
+     BOARD — `sourceFindingIds` is NOT a board field, it belongs to the verify plane's repair record
+     (`.mpd/verify/repairs/<id>.json`) — and
+     `coverageOf` names the user clause a task serves. **Every task MUST declare its dependency answer** —
+     `blocked_by: [...]` (possibly empty, an explicit root) or `independent: true`; omitting both is
+     REFUSED, and `approve` REFUSES two tasks whose declared write scopes overlap with no dependency path
+     between them (naming the pair and the two remedies: add the edge, or make the scopes disjoint).
   4. **A-writes/B-verifies is the RECOMMENDED discipline; its MECHANICAL form is withdrawn.** The
      top-level `mpd` agent MAY `write`/`edit` a code path directly and NO loop needs arming (the
      2026-10-17 ruling removed the write guard; the 2026-10-20 restore did NOT bring it back — only the
@@ -318,7 +323,9 @@ lands (§9/§11).
      **Long form: `agent-references/verification-flow.md`, "§5 rule 2 — the captain's tool pack".**
   5. **The board has terminal verbs, and dispatch honours the declared owner.** `agent_teams_task`
      carries `complete`/`fail` (owner-only, optional `note`, optional `expected_revision`
-     compare-and-set; a FAIL releases its dependents per OPT-1). `agent_teams_dispatch` pairs a ready task
+     compare-and-set; a FAIL releases its dependents per OPT-1). `claim` REFUSES a task whose declared
+     blockers are not satisfied — the SAME readiness predicate dispatch uses — while `complete`/`fail`/
+     `release` stay open, so a stranded row is always closable. `agent_teams_dispatch` pairs a ready task
      with its DECLARED owner when that member is free, and falls back to roster order ONLY with the
      reason reported. **ONE git writer per working tree — the binding bullet earlier in this section — is PROSE since
      2026-10-17:** the
@@ -330,6 +337,15 @@ lands (§9/§11).
      contract — members edit files and run gates, the captain commits — plus review. A session is a child
      only when the harness RECORDED a subagent origin or a delegation depth ≥ 1, so the user's own
      session (`parentSession` + `isSeeded`, depth `0`, no `origin: "subagent"`) is the CAPTAIN.
+     **The old bypass is CLOSED at the tool boundary (2026-10-23).** The team-door guard REFUSES the
+     five official authoring verbs — `spawn_teammate`, `team_task_create`, `team_task_list`,
+     `team_task_get`, `team_task_update` — while `send_message`, `list_agents`, `wait_agent` and
+     `interrupt_agent` stay for agent communication (they are also base global harness rows this preset
+     mounts, and the harness tells every continuable child to call `send_message`). The mpd RECORD is
+     still the only board, so every rule above runs on every task a session can create. **The closure
+     stops at the TOOL boundary:** a ROW that calls the team SERVICE directly (the official-executor
+     fallback) is not a tool call and is NOT gated — the bound, and the no-preset-bypass divergence,
+     are stated in `packages/mpd-team-core-plugin/README.md`.
 
 ---
 
@@ -446,8 +462,9 @@ bound and the conformance failure modes — is in `agent-references/qa-disciplin
   the quoted bytes into its own artifact. Long form: `agent-references/qa-discipline.md`.
 - **Derived surfaces are declared at PLAN time (T-88): `packages/*/dist/**`, `dist/mpd-package/**`,
   `VENDOR_LOCK.json` and `.mpd/plans/**` belong to the INTEGRATION task's `inScope` at CREATION.** A LANE
-  must not declare a `dist/**` pattern for itself (the platform's `inScope overlaps` validator refuses
-  exactly that): pre-declare the derived path on the task whose edits redden it.
+  must not declare a `dist/**` pattern for itself: on the OFFICIAL plane write-scope overlap is ADVISORY
+  ("advisory, not a lock"), and on the mpd record plane `approve` REFUSES two tasks whose scopes overlap
+  with no dependency path between them. Pre-declare the derived path on the task whose edits redden it.
 - **Preset/row conformance against the INSTALLED harness** (`preset-conformance`, required for any
   preset/patch/overlay change): a row config is validated with the installed plugin's own schemastery
   `Config`, because that is what the loader runs, and the `mpd` preset's row set is pinned against the
@@ -577,10 +594,16 @@ lane hold this line.
    - **LAST: the Docker real-machine lane — `--live` with `DEEPSEEK_API_KEY` exported, and
      `--require-docker` so it cannot skip silently** — `node scripts/docker-e2e.ts --mode source
      --require-docker --live` then `--mode oneclick --require-docker --live`. Run it AFTER the last
-     write, and cite the stamps it writes. `--live` WITHOUT a key in the environment is a hard exit 3
+     write, and cite the stamps it writes. **The CREDENTIAL-FREE source run is REQUIRED in EVERY sweep
+     as well** — `node scripts/docker-e2e.ts --mode source --require-docker --no-browser` — because a
+     credentialed run CANNOT see the paths that depend on an EMPTY model catalog: a QA case that
+     silently relied on the deleted built-in slot defaults stayed green through two weeks of
+     `liveRequested:true` runs and reddened only on the credential-free one (2026-10-23, PR #62).
+     Cite BOTH stamps. The credential-free run is a REGRESSION gate, while its `ui.*` rows stay NULL
+     and are NOT evidence of the UI. `--live` WITHOUT a key in the environment is a hard exit 3
      BEFORE the build, and a credential-free browser-enabled run records `ui.replyRendered` as a DECLARED
      BOUND that the required-arm gate turns into exit 3 by design — the credential-free spelling is
-     `--no-browser` (exit 0, every `ui.*` NULL, NOT release evidence).
+     `--no-browser` (exit 0, every `ui.*` NULL).
    - **Release-checklist line (VENDOR_LOCK pairing rule):** `VENDOR_LOCK.json` lands in the SAME commit
      as every `skills/**` change that invalidates its `treeSha`; with the single-skills-writer rule (§9)
      that is exactly ONE re-pin per wave — verify the wave's single re-pin is present and that no
@@ -598,7 +621,8 @@ the T-22 instruction-budget split and hash-verified under `evidence/gates/agents
 ESM-restart trap, the fresh-`/tmp` and `nohup` rules, the single-`skills/**`-writer re-pin rule, the
 `update_task` contract, `--dump-config` vs a mounting boot, schema-union boot failures, credential/sandbox
 traps, the codegraph daemon policy, the preset-plane row-drift class, agent-teams dispatch defects, the
-failed-dependency pinning trap, the `inScope overlaps` validator, profile-row loss after an unrelated
+failed-dependency pinning trap, write-scope overlap (advisory on the official plane, refused by mpd
+`approve`), profile-row loss after an unrelated
 install.
 
 **Harness-owned frictions — CLOSED by a rule plus a helper** (user decision 2026-09-17). Each is DSH
@@ -640,17 +664,29 @@ slot, workmate) stay here, with the verifier's envelope.
   entry breaks every read-only spawn; since 2026-10-10 that validation is TOLERATED instead of fatal
   (`restrictToolsTolerant` prunes the names the harness reports as unknown, with exactly ONE logged
   retry). Full form, including the two enforcement surfaces: `agent-references/glossary.md`.
-- **team-model slot**: one of the FOUR configurable default model routes of the ROSTER members —
-  `teamModels.slot{1,2,3,4}.{provider,model,reasoningEffort}` in `mpd.jsonc` / the `mpd` settings
-  namespace. Slot 1 routes Architect/Planner/Reviewer/Lead/Senior Engineer, slot 2 Researcher/Explorer/
-  Plan Reviewer, slot 3 Deep Worker/Junior Engineer, slot 4 Vision Analyst (its model MUST accept image
-  input). A slot that cannot be resolved fails the spawn LOUDLY, writes no state and NEVER clamps an
-  effort; a slot whose model declares NO reasoning efforts is sent none (`withSupportedEffort` drops the
-  keyword, logging it). Slots apply to the single-call consult paths AND to an official `spawn_teammate` (routed
-  through `mpd-roster-provider-plugin`); because the team service does not forward identity, **a
-  teammate `description` that NAMES a roster member routes that member — any other teammate runs on the
-  route of the session that staged it (the captain's in a top-level spawn, the Lead's in a team-lead
-  spawn), and prompt text cannot change a route**. Long form: `agent-references/glossary.md`.
+- **team-model slot**: one of the FOUR configured model routes of the ROSTER members —
+  `teamModels.slot{1,2,3,4}.{provider,model,reasoningEffort?}` plus an optional `fallbacks` chain of the
+  slot's OWN, in `mpd.jsonc` / the `mpd` settings namespace. **ONE configured route per slot, NO
+  built-in default layer** (`TEAM_MODEL_SLOT_DEFAULTS`/`withTeamModelsDefaults` deleted, no `.default()`
+  in the slot subtree) and **no per-member override** (`agentRoutes` deleted; a leftover block is
+  IGNORED and never rewritten). Slot 1 routes Architect/Planner/Reviewer/Lead/Senior Engineer, slot 2
+  Researcher/Explorer/Plan Reviewer, slot 3 Deep Worker/Junior Engineer, slot 4 Vision Analyst (its
+  model MUST accept image input). An unconfigured or malformed slot REFUSES a single-call spawn with
+  ONE structured `SLOT_UNCONFIGURED` error (slot, members, missing leaves, both recovery paths; nothing
+  written, no child started); the service read is TOTAL (typed union, never throws) so display surfaces
+  render `<unconfigured>`, and only the spawn appliers throw. The chain is consumed ONCE before
+  the spawn (first catalog-POSITIVE route wins; not listed is not unavailable) and NEVER clamps an
+  effort; a model declaring NO reasoning efforts is sent none (`withSupportedEffort`). Initial config is
+  FILE initialization: a file declaring no `teamModels` is seeded ONCE from the configured providers
+  (`deepseek-flash` family; slot1 `max`, slots 2-4 `high`), then durably marked in
+  `<ws>/.mpd/model-config-seed.json` so a deleted block is never re-seeded. Slots apply to the single-call consult paths
+  AND to team members: the team executor resolves a member's route by identity precedence **`role` →
+  the HEAD of its `description` → its whole `name`**, and a member it cannot match — or one whose slot
+  is unconfigured — **INHERITS the staging session's route** (the captain's in a top-level spawn, the
+  Lead's in a team-lead spawn) with ONE log line and no throw; only a spawn applier REFUSES an unusable
+  slot (`SLOT_UNCONFIGURED`). `mpd-roster-provider-plugin` is wired only to the official
+  `spawn_teammate` path, which the team-door guard REFUSES (§5 rule 5), so it routes nothing in a
+  default composition. Long form: `agent-references/glossary.md`.
 - **verifier's envelope**: the tool and path boundary a BOUND VERIFIER SEAT works inside. A seat is bound
   with `mpd_verify_seat`; the boundary it is meant to keep — no shell, no source-returning tools, no
   board mutation (`mpd_verify_*` excepted), reads path-scoped to the frozen docs AND the documentation

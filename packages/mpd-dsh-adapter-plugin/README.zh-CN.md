@@ -86,12 +86,15 @@ Harness 以三个官方包提供 Agent Teams（`@deepseek-ai/dsh-experimental-ag
 
 **teammate 路径上的模型路由（方案 §3）：** `teamSpawnTeammate` 就是 Harness 自己的
 `spawnTeammate`，其 `SubagentStartRequest` 不携带 `agentOptions`、`persona` 或 `toolFilter`。
-若 teammate 的 description **没有**点名名册成员，本 bundle 完全不路由它：请求按原样（by
-identity）透传，由 staging 它的 session 的 Harness 解析路由生效（顶层 spawn 是队长的路由，
-team-lead spawn 是 Lead 的路由），prompt 文本无法改变路由。若 description **点名**了名册成员，
-则通过 `mpd-roster-provider-plugin` 的 `teamModels.slot*` 契约路由。按成员路由同样作用于单次
-咨询路径（`mpd_role_spawn` / `mpd_workmate_spawn`），因为它们自行传入 `agentOptions`；这是
-roster/workmate 的 spawn 路径，并非 team 路径。该咨询是**一次性（one-shot）**的：在暴露
+那是**官方回退**路径：请求按原样（by identity）透传，所以只有 `mpd-roster-provider-plugin` 的
+官方通道路由能作用于它，而发起该路径的 `spawn_teammate` **工具**现已在工具边界被**拒绝**
+（仅历史/回退）。**默认**的原生 `TeamExecutor.spawn` 会**自己**解析成员的 `teamModels` 槽位，按
+身份优先级 `role` → `description` 的头部 → 整个 `name`：匹配到且槽位可用的成员跑在该槽位上
+（其 `fallbacks` 只消费一次）；匹配不到的成员、槽位未配置的成员，或没有 `mpdConfig` 服务的组合，
+则**继承暂存它的会话的路由**（顶层 spawn 是 captain 的，team-lead spawn 是 Lead 的），只记一行
+日志、**绝不抛错** —— `approve` 会循环升起 N 个成员，槽位绝不会让团队半途而废。按成员路由同样作用于
+单次咨询路径（`mpd_role_spawn` / `mpd_workmate_spawn`），因为它们自行传入 `agentOptions`；那些
+应用方仍会用 `SLOT_UNCONFIGURED` **拒绝**不可用的槽位。该咨询是**一次性（one-shot）**的：在暴露
 `startActivation` 的宿主上，报告落定后 `spawnAgent` 会释放（dispose）**这次**激活（尽力而为；
 清理失败绝不改写报告），因此活着的子会话被释放而不是被不断堆积；旧版 `start` 回退路径只返回
 `run.result`，没有可供释放的 activation。诚实边界（harness 0.2.1-rc.2）：`dispose()` 只结算并

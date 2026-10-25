@@ -190,6 +190,30 @@ export function chainsNow(ctx: Ctx, config: Config): Record<string, Array<{ prov
 }
 
 /**
+ * The TOTAL slot resolution of one roster member, when the config row exposes it (contract
+ * `.mpd/plans/slot-single-source.md` §9 + amendment 1).
+ *
+ * A DISPLAY NEVER THROWS: the service's method is total by contract, and a service that REFUSES the
+ * lookup (an agent-scoped ctx without the inject) reads as "no answer" — never as a failure of this
+ * tool. The union is mirrored structurally because a cross-package import would be a new entry in the
+ * frozen coupling inventory.
+ * @param ctx - the row context, for the per-call service lookup.
+ * @param member - the roster member's functional name.
+ * @returns the typed resolution, or undefined when no service answers.
+ */
+function slotResolutionIn(ctx: Ctx, member: string): unknown {
+  try {
+    /** The runtime config service, when the composition mounts one. */
+    const service = ctx.get?.("mpdConfig") as { slotResolutionOf?: (m: string) => unknown } | undefined
+    if (typeof service?.slotResolutionOf !== "function") return undefined
+    return service.slotResolutionOf(member)
+  } catch {
+    // A service that refuses the lookup answers NOTHING; it never fails this tool.
+    return undefined
+  }
+}
+
+/**
  * Register the route resolver and the two memory tools, with the role chains resolved PER CALL
  * from the live config (never a closure frozen at apply).
  *
@@ -202,11 +226,13 @@ export function apply(ctx: Ctx, config: Config = {}): void {
 
   dsh.registerTool({
     name: "mpd_modelchain_resolve",
-    description: "Resolve the DeepSeek provider/model route for a roster role, addressed by its name (Architect, Researcher, Planner, Deep Worker, Senior Engineer, Lead, Explorer, Reviewer, Plan Reviewer, Vision Analyst, Junior Engineer) — the same names team mode uses. Chains come from the mpd-roles roster, with the adapted fallback chains behind them.",
+    description: "Resolve the DeepSeek provider/model route for a roster role, addressed by its name (Architect, Researcher, Planner, Deep Worker, Senior Engineer, Lead, Explorer, Reviewer, Plan Reviewer, Vision Analyst, Junior Engineer) — the same names team mode uses. A roster member resolves from its `teamModels` slot (the ONE configured route, plus that slot's own fallback chain) and reports `<unconfigured>` honestly when the slot is not configured; an extension role keeps its own declared chain.",
     parameters: { type: "object", properties: { role: { type: "string", description: "role name (see mpd_roles_list)" } }, required: ["role"] },
     output: {
-      schema: { type: "object", properties: { provider: { type: "string" }, model: { type: "string" }, chain: { type: "array", items: { type: "object", properties: { provider: { type: "string" }, model: { type: "string" } }, required: [] } } }, required: ["provider", "model"] },
-      render: (_args: any, value: any) => [{ type: "text", text: "role=" + _args?.role + " -> " + value.provider + "/" + value.model + " (chain " + value.chain.length + " entries)" }]
+      schema: { type: "object", properties: { provider: { type: "string" }, model: { type: "string" }, chain: { type: "array", items: { type: "object", properties: { provider: { type: "string" }, model: { type: "string" } }, required: [] } }, status: { type: "string" }, missing: { type: "array", items: { type: "string" } }, reason: { type: "string" } }, required: ["provider", "model"] },
+      render: (_args: any, value: any) => [{ type: "text", text: value.status === "unconfigured"
+        ? "role=" + _args?.role + " -> <unconfigured> (missing " + (Array.isArray(value.missing) ? value.missing.join(", ") : "teamModels") + "; " + String(value.reason ?? "") + ")"
+        : "role=" + _args?.role + " -> " + value.provider + "/" + value.model + " (chain " + value.chain.length + " entries)" + (value.status === undefined ? "" : " — " + value.status) }]
     },
     execute: async (args: any) => {
       /** The role as the caller spelled it. There is NO default: an unnamed role is refused
@@ -230,6 +256,40 @@ export function apply(ctx: Ctx, config: Config = {}): void {
       // the roster's own static chain — `modelchain.<chainKey>` is a documented consumed key and
       // must be what the next resolution answers), then the roster's chain, then the merged
       // fallback table keyed by the INTERNAL id (`resolveRole`'s keys are ids).
+      // THE SLOT IS THE FIRST AND ONLY ROUTE SOURCE for a member it routes (contract §2/§9): the
+      // config service's TOTAL resolution is read per call, so a saved slot is what the NEXT resolve
+      // answers. An unconfigured slot is reported as the typed state — a display must never throw and
+      // must never fall back to the shipped chain, which is not a route any spawn may run on.
+      /** The typed slot resolution, or undefined when no service answers. */
+      const slot = slotResolutionIn(ctx, String(spec.name)) as
+        | { ok: true; route?: { provider?: unknown; model?: unknown }; fallbacks?: readonly unknown[] }
+        | { ok: false; status?: unknown; missing?: readonly unknown[]; message?: unknown; slot?: unknown }
+        | undefined
+      if (slot !== undefined && slot !== null && typeof slot === "object" && typeof slot.ok === "boolean") {
+        if (slot.ok) {
+          /** The slot's own route, read through the same tolerant field handling as every other consumer. */
+          const provider = String(slot.route?.provider ?? "")
+          /** The slot's model id. */
+          const model = String(slot.route?.model ?? "")
+          // The chain is the slot's own: its primary, then its declared fallbacks (in order).
+          return {
+            provider,
+            model,
+            chain: [{ provider, model }, ...(slot.fallbacks ?? []).filter((hop): hop is { provider: string; model: string } => isChainArray([hop]))],
+            status: "configured",
+          }
+        }
+        if (slot.status !== "unrouted") {
+          return {
+            provider: "",
+            model: "",
+            chain: [] as Array<{ provider: string; model: string }>,
+            status: "unconfigured",
+            missing: (slot.missing ?? []).map(String),
+            reason: slot.slot === undefined || slot.slot === "" ? String(slot.message ?? "") : "teamModels." + String(slot.slot) + " is not configured — configure it with /mpd-model",
+          }
+        }
+      }
       /** The configured chain for THIS role's id, when the live config routes one. */
       const configured = overlayNow(ctx)[String(spec.id)]
       if (isChainArray(configured)) {

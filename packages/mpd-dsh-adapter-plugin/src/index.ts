@@ -551,6 +551,13 @@ export interface DshTeamSpawnRequest {
   name: string
   /** One-line description shown on the roster; also the identity the roster route reads. */
   description: string
+  /**
+   * The member's ROLE label, when its creator knows one (`Architect`, `Reviewer`, …).
+   * NATIVE only: it is the FIRST identity channel the route reads, before the description's head
+   * and the whole name. The official backend ignores it — its identity channel is the descriptor
+   * label (`description`) alone.
+   */
+  role?: string
   /** The instantiation prompt the member receives. */
   prompt: string
   /**
@@ -1225,12 +1232,353 @@ export async function withSupportedEffort(
   } catch {
     return route
   }
+  // ONE implementation of the adaptation rule: the helper below is what `resolveRunRoute` reuses
+  // against a catalog it already read, so the two entry points can never drift.
+  return adaptEffortWithCatalog(catalog, route)
+}
+
+/**
+ * The route a run ACTUALLY takes after its slot's fallback chain is consumed (contract §8).
+ *
+ * The chain is consumed ONCE, before the spawn: the first candidate the catalog POSITIVELY lists
+ * (provider listed AND model present) wins, and the winner is then adapted by the SAME
+ * effort rule {@link withSupportedEffort} applies. "Not listed" is NOT "unavailable" — when no
+ * candidate is positively listed the PRIMARY still stands, so a catalog that cannot see a route
+ * never silently moves a run.
+ */
+export interface DshRunRoute {
+  /** The route to send, after the model-capability effort adaptation. */
+  readonly route: DshEffortRoute
+  /** Which candidate won: `0` the primary, `1..n` the fallback's 1-based position in the chain. */
+  readonly index: number
+  /** True when a fallback won, so the caller logs the switch exactly once. */
+  readonly fallback: boolean
+  /** How many malformed fallback entries were ignored (never fatal). */
+  readonly dropped: number
+}
+
+/**
+ * Whether the catalog POSITIVELY lists this route: the provider AND the model both appear.
+ *
+ * This is the only check the fallback consumption may act on: a route nobody listed is NOT thereby
+ * unavailable (it may simply be configured outside the catalog), so it can never REASON a switch
+ * away from a primary that is listed — it only fails to WIN a fallback.
+ * @param catalog - the catalog the adapter projected.
+ * @param provider - the candidate's provider id.
+ * @param model - the candidate's model id.
+ * @returns true when the provider and the model are both listed.
+ */
+export function routePositivelyListed(catalog: DshLlmCatalog, provider: string, model: string): boolean {
+  return catalog.providers.some((p) => p.id === provider && p.models.some((m) => m.id === model))
+}
+
+/**
+ * The effort adaptation against an ALREADY-READ catalog: the one rule {@link withSupportedEffort}
+ * applies, kept here so a consumer that already paid for a catalog read does not pay twice.
+ * @param catalog - the catalog the adapter projected.
+ * @param route - the caller's route.
+ * @returns the SAME route when nothing is adapted, a copy without `reasoningEffort` otherwise.
+ */
+function adaptEffortWithCatalog(catalog: DshLlmCatalog, route: DshEffortRoute): DshEffortRoute {
+  /** The requested keyword; an absent or empty one is nothing to adapt. */
+  const effort = typeof route.reasoningEffort === "string" ? route.reasoningEffort : ""
+  if (effort === "") return route
   if (!modelDeclaresNoEffort(catalog, route.provider, route.model)) return route
   /** The route with the unusable keyword removed; every other field survives untouched. */
   const adapted: DshEffortRoute = { ...route }
   delete adapted.reasoningEffort
   rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${route.provider}/${route.model} declares no reasoning efforts — the "${effort}" effort is omitted (a keyword this model cannot take fails the call)`)
   return adapted
+}
+
+/**
+ * Consume ONE slot's fallback chain and adapt the winner's effort — the single entry point every
+ * spawn applier calls before a child is started (contract §8).
+ *
+ * Rules, in order:
+ *   1. a malformed fallback entry is DROPPED, counted and reported in ONE log line, never fatal;
+ *   2. the catalog is read ONCE (a rejecting or missing seam adapts nothing and keeps the primary);
+ *   3. the first candidate the catalog positively lists wins — the primary included, so a listed
+ *      primary is never displaced;
+ *   4. the winner passes the effort adaptation; ONE log line reports a fallback win.
+ * Never throws: a degraded host cannot fail a spawn here.
+ *
+ * @param dsh - the adapter (or a double) carrying the catalog read.
+ * @param primary - the slot's own configured route.
+ * @param fallbacks - the slot's fallback chain, in the user's order (unknown shapes are dropped).
+ * @returns the route to send plus which candidate won and how many entries were dropped.
+ */
+export async function resolveRunRoute(
+  dsh: { llmCatalog?: (() => Promise<DshLlmCatalog>) | undefined } | undefined,
+  primary: DshEffortRoute,
+  fallbacks: readonly unknown[] = [],
+): Promise<DshRunRoute> {
+  /** The well-formed fallback candidates, in the user's order. */
+  const wellFormed: DshEffortRoute[] = []
+  /** How many declared entries were dropped as malformed. */
+  let dropped = 0
+  for (const entry of Array.isArray(fallbacks) ? fallbacks : []) {
+    if (entry === null || typeof entry !== "object") { dropped += 1; continue }
+    /** The candidate read as the route shape it must be. */
+    const candidate = entry as { provider?: unknown; model?: unknown; reasoningEffort?: unknown }
+    if (typeof candidate.provider !== "string" || candidate.provider.trim() === ""
+      || typeof candidate.model !== "string" || candidate.model.trim() === ""
+      || (candidate.reasoningEffort !== undefined && candidate.reasoningEffort !== null && typeof candidate.reasoningEffort !== "string")) {
+      dropped += 1
+      continue
+    }
+    /** The candidate's optional effort keyword, trimmed; a blank one states none. */
+    const effort = typeof candidate.reasoningEffort === "string" ? candidate.reasoningEffort.trim() : ""
+    wellFormed.push({ provider: candidate.provider.trim(), model: candidate.model.trim(), ...(effort === "" ? {} : { reasoningEffort: effort }) })
+  }
+  /** The catalog as the host projects it, or undefined when the read is unavailable. */
+  let catalog: DshLlmCatalog | undefined
+  if (typeof dsh?.llmCatalog === "function") {
+    try {
+      catalog = await dsh.llmCatalog()
+    } catch {
+      catalog = undefined
+    }
+  }
+  /** The winning candidate's position: 0 is the primary, 1..n the fallback's 1-based index. */
+  let index = 0
+  // The primary wins whenever it is listed — or whenever nothing at all is positively listed, which
+  // is the "not listed is not unavailable" half of the rule.
+  if (catalog !== undefined && !routePositivelyListed(catalog, primary.provider, primary.model)) {
+    /** The first fallback the catalog positively lists, if any. */
+    const found = wellFormed.findIndex((candidate) => routePositivelyListed(catalog as DshLlmCatalog, candidate.provider, candidate.model))
+    if (found >= 0) index = found + 1
+  }
+  /** The winning candidate, before the effort adaptation. */
+  const winner = index === 0 ? primary : wellFormed[index - 1]
+  if (index > 0) {
+    rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${primary.provider}/${primary.model} is not listed by the model catalog — slot fallback #${index} (${winner.provider}/${winner.model}) wins for this run`)
+  }
+  if (dropped > 0) {
+    rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: ${dropped} malformed fallback entr${dropped === 1 ? "y was" : "ies were"} dropped from the slot's chain (never fatal — the run proceeds)`)
+  }
+  /** The route after the effort adaptation: the same catalog read, never a second one. */
+  const route = catalog === undefined ? winner : adaptEffortWithCatalog(catalog, winner)
+  return { route, index, fallback: index > 0, dropped }
+}
+
+// ── THE NATIVE TEAM MEMBER'S ROUTE ──────────────────────────────────────────
+//
+// WHY THIS EXISTS. `nativeTeamExecutor().spawn` used to build the durable-child spec from the
+// caller's request and consult no `teamModels` slot, so in a default (native) composition EVERY
+// team member inherited the STAGING session's model route and the four configured routes applied
+// to no teammate. The route decision now lives here, in ONE pure function, and the spawn turns its
+// answer into the child's `agentOptions`.
+//
+// IDENTITY is the hard half. The native path knows a member's role, its description and its name,
+// but none of them is guaranteed to BE a roster member: a caller may raise a custom helper whose
+// description is ordinary prose. The precedence below is therefore a walk (role, then the
+// description's head, then the whole name) that stops at the FIRST channel the config service
+// recognizes, and the service itself is the membership oracle — this module deliberately imports
+// no roster list, so a role added by an extension can never drift from the routing table.
+
+/** The identity a native team member presents when its model route is resolved. */
+export interface DshTeamMemberIdentity {
+  /** The member's role label, when its creator knows one; the FIRST identity channel. */
+  role?: string
+  /** The member's one-line description; its HEAD is the second identity channel. */
+  description: string
+  /** The member's display name; the last identity channel, before the identity is unmatched. */
+  name: string
+}
+
+/**
+ * The subset of the `mpdConfig` service's TOTAL slot resolution this module reads.
+ *
+ * Mirrored STRUCTURALLY on purpose: a cross-package import would be a new entry in the frozen
+ * coupling inventory, and this module must stay able to answer on a composition whose config-row
+ * dist is older than the current union (see the version-skew fields below).
+ */
+export interface DshTeamSlotAnswer {
+  /** The service's usable marker; `true` carries a route, `false` a status. */
+  ok: boolean
+  /** The slot that routes the member (`slot1`..`slot4`), when the answer names one. */
+  slot?: string
+  /** Why an unusable answer is unusable; `unrouted` means the name is not a roster member. */
+  status?: "unconfigured" | "invalid" | "unrouted"
+  /** The configured primary route; every leaf is optional because an older dist may omit one. */
+  route?: { provider?: string; model?: string; reasoningEffort?: string }
+  /** The slot's OWN fallback chain, forwarded untouched to {@link resolveRunRoute}. */
+  fallbacks?: readonly unknown[]
+  /** The machine-readable refusal code the service attaches (`SLOT_UNCONFIGURED`). */
+  code?: string
+  /** The service's canonical refusal sentence; the spawn quotes it in its ONE log line. */
+  message?: string
+}
+
+/**
+ * What one member's identity resolved to, as a TOTAL union: the spawn branches on it and never on
+ * an exception, because `approve` raises N members in a loop and a throw at member k would leave a
+ * half-built team.
+ */
+export type DshTeamRouteOutcome =
+  | {
+      /** A roster member was recognized and its slot is usable. */
+      status: "routed"
+      /** The identity channel that matched, as it was sent to the service. */
+      member: string
+      /** The slot that routes this member. */
+      slot: string
+      /** The configured primary route, before {@link resolveRunRoute} consumes the chain. */
+      route: DshEffortRoute
+      /** The slot's own fallback chain, in the user's order. */
+      fallbacks: readonly unknown[]
+    }
+  | {
+      /** No identity channel named a roster member: inherit the staging session's route. */
+      status: "unmatched"
+    }
+  | {
+      /** The member is routed by a slot that cannot be used; the spawn still raises it. */
+      status: "unusable"
+      /** The identity channel that matched, as it was sent to the service. */
+      member: string
+      /** The slot that routes the member, when the service named one. */
+      slot?: string
+      /** Which unusable shape the service reported. */
+      reason: "unconfigured" | "invalid"
+      /** The service's own sentence, quoted verbatim in the spawn's ONE log line. */
+      detail: string
+    }
+  | {
+      /** No `mpdConfig` resolver answered at all: the composition has no config row (or no read). */
+      status: "no-config-service"
+    }
+
+/**
+ * The text before the FIRST identity separator in a label.
+ *
+ * The separators are `—` (em dash), `–` (en dash), `:`, `|` and a hyphen with whitespace on both
+ * sides (` - `). The middle dot `·` (U+00B7) is deliberately NOT a separator: it is the native
+ * spec's own `${name} · ${teamId}` spelling, so splitting on it would turn a TEAM ID into a
+ * member name. The head keeps its original case; matching is case-insensitive at the caller.
+ *
+ * @param label - the raw label; a non-string has no head.
+ * @returns the trimmed head with its original case, or "" when the label carries none.
+ */
+export function rosterNameHead(label: unknown): string {
+  if (typeof label !== "string") return ""
+  return label.split(/[—–:|]|\s-\s/)[0]?.trim() ?? ""
+}
+
+/**
+ * The identity channels a member presents, in precedence order, deduplicated case-insensitively.
+ *
+ * WHY THE ORDER: an explicit `role` is the most precise statement a caller can make, the head of a
+ * description is the channel the OFFICIAL provider path also reads, and the whole name is the last
+ * resort for a caller that only had a name. A duplicate spelling is asked ONCE, so a service that
+ * counts its reads cannot observe one identity as two.
+ * @param identity - the identity the spawn request carries.
+ * @returns the non-empty candidate names, in precedence order.
+ */
+function memberIdentityCandidates(identity: DshTeamMemberIdentity): string[] {
+  /** The candidate names, before deduplication. */
+  const candidates: string[] = []
+  if (typeof identity?.role === "string" && identity.role.trim() !== "") candidates.push(identity.role.trim())
+  /** The description's head, the identity channel a roster-named description carries. */
+  const head = rosterNameHead(identity?.description)
+  if (head !== "") candidates.push(head)
+  if (typeof identity?.name === "string" && identity.name.trim() !== "") candidates.push(identity.name.trim())
+  /** The candidates already seen, keyed lower-cased; matching is case-insensitive. */
+  const seen = new Set<string>()
+  /** The candidates to walk, with duplicates removed but order preserved. */
+  const unique: string[] = []
+  for (const candidate of candidates) {
+    /** The case-insensitive key this candidate is compared under. */
+    const key = candidate.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    unique.push(candidate)
+  }
+  return unique
+}
+
+/**
+ * Resolve ONE native team member's `teamModels` route from its identity (contract: role ->
+ * description head -> whole name -> unmatched).
+ *
+ * TOTAL by contract: it never throws. A service that refuses the read, an answer that does not
+ * carry the union's shape, and a matched member whose slot is unusable are all REPORTED as union
+ * states, because the spawn must degrade to today's inheritance instead of leaving a team
+ * half-built.
+ *
+ * @param identity - the member's identity channels, in the caller's own spelling.
+ * @param slotResolutionOf - the live config service's total read, or `undefined` when absent.
+ * @returns the routed route (plus its fallback chain), or the exact reason no route applies.
+ */
+export function resolveTeamMemberRoute(
+  identity: DshTeamMemberIdentity,
+  slotResolutionOf: ((member: string) => unknown) | undefined,
+): DshTeamRouteOutcome {
+  if (typeof slotResolutionOf !== "function") return { status: "no-config-service" }
+  for (const candidate of memberIdentityCandidates(identity)) {
+    /** The service's answer for this candidate, contained: a throwing read is "no answer". */
+    let answer: unknown
+    try {
+      answer = slotResolutionOf(candidate)
+    } catch {
+      continue
+    }
+    if (answer === null || typeof answer !== "object") continue
+    /** The answer read as the service's documented union. */
+    const slotAnswer = answer as DshTeamSlotAnswer
+    if (slotAnswer.ok === true) {
+      /** The primary route's provider, trimmed; an absent/blank one makes the answer unusable. */
+      const provider = typeof slotAnswer.route?.provider === "string" ? slotAnswer.route.provider.trim() : ""
+      /** The primary route's model, trimmed; an absent/blank one makes the answer unusable. */
+      const model = typeof slotAnswer.route?.model === "string" ? slotAnswer.route.model.trim() : ""
+      /** The slot id the answer names, or "" for an older dist that omits it. */
+      const slot = typeof slotAnswer.slot === "string" ? slotAnswer.slot : ""
+      if (provider === "" || model === "") {
+        // `ok: true` with a route nobody can send is a CONTRADICTION, reported as an invalid slot
+        // rather than silently inheriting: the service claimed the member IS routed.
+        return {
+          status: "unusable",
+          member: candidate,
+          ...(slot === "" ? {} : { slot }),
+          reason: "invalid",
+          detail: typeof slotAnswer.message === "string" && slotAnswer.message !== ""
+            ? slotAnswer.message
+            : `the mpdConfig service reported a usable slot for ${candidate} but returned no provider/model route`,
+        }
+      }
+      /** The effort keyword, carried only when the service declared a non-blank one. */
+      const effort = typeof slotAnswer.route?.reasoningEffort === "string" ? slotAnswer.route.reasoningEffort.trim() : ""
+      return {
+        status: "routed",
+        member: candidate,
+        slot,
+        route: { provider, model, ...(effort === "" ? {} : { reasoningEffort: effort }) },
+        fallbacks: Array.isArray(slotAnswer.fallbacks) ? slotAnswer.fallbacks : [],
+      }
+    }
+    if (slotAnswer.ok === false) {
+      // `unrouted` is NOT a failure: the name simply is not a roster member, so the walk continues
+      // to the next identity channel. Only a real member with an unusable slot stops it.
+      if (slotAnswer.status === "unrouted") continue
+      if (slotAnswer.status === "unconfigured" || slotAnswer.status === "invalid") {
+        /** The service's own sentence, which the spawn's ONE log line quotes. */
+        const detail = typeof slotAnswer.message === "string" && slotAnswer.message !== ""
+          ? slotAnswer.message
+          : `the mpdConfig service reported ${slotAnswer.status} for ${candidate}`
+        return {
+          status: "unusable",
+          member: candidate,
+          ...(typeof slotAnswer.slot === "string" && slotAnswer.slot !== "" ? { slot: slotAnswer.slot } : {}),
+          reason: slotAnswer.status,
+          detail,
+        }
+      }
+    }
+    // A malformed answer is no answer: the walk continues, and the identity may still match on
+    // another channel. It can never become a throw.
+  }
+  return { status: "unmatched" }
 }
 
 /**
@@ -3021,6 +3369,53 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
     try { return ctx?.[serviceName] } catch { return undefined }
   }
 
+  /**
+   * The LIVE `mpdConfig` slot resolver, or `undefined` when the composition mounts no config row.
+   *
+   * WHY THE ADAPTER ROW CAN READ IT (measured, this wave): `mpd-config` provides `mpdConfig`
+   * unconditionally in its own `apply`, the two rows are siblings in the same host patch layer,
+   * and cordis 4.0.4 gives every plugin ctx the root `ReflectService` store (`ctx.extend` is
+   * prototype inheritance), so `ctx.get` sees a sibling's provide regardless of row ORDER. The
+   * lookup happens per SPAWN, never at apply time, so a config row that mounts after this one is
+   * still seen — and a composition that has none answers `undefined`, which is exactly the
+   * `no-config-service` outcome rather than a boot failure.
+   *
+   * VERSION SKEW (same two-step read as `mpd-roles` and the roster provider): the typed
+   * `slotResolutionOf` is preferred; a stale config-row dist exposes only the older
+   * `teamModelRouteOf`, whose object answer is promoted to a routed slot answer and whose
+   * `undefined` reads as `unrouted` (the adapter owns no roster list, so "no route" is the only
+   * honest answer that dist can give).
+   * @returns the total slot read the spawn passes to {@link resolveTeamMemberRoute}, or undefined.
+   */
+  const configSlotResolver = (): ((member: string) => unknown) | undefined => {
+    /** The live config service, read per call so a late-mounted row is still seen. */
+    const config = service("mpdConfig") as { slotResolutionOf?: unknown; teamModelRouteOf?: unknown } | undefined
+    if (config === undefined || config === null) return undefined
+    if (typeof config.slotResolutionOf !== "function" && typeof config.teamModelRouteOf !== "function") return undefined
+    return (member: string): unknown => {
+      if (typeof config.slotResolutionOf === "function") {
+        try {
+          /** The service's total answer, trusted only when it carries the union's `ok` marker. */
+          const answer = (config.slotResolutionOf as (m: string) => unknown).call(config, member)
+          if (answer !== null && typeof answer === "object" && typeof (answer as { ok?: unknown }).ok === "boolean") return answer
+        } catch {
+          // A stale service that throws on the typed read still gets the version-skew read below.
+        }
+      }
+      if (typeof config.teamModelRouteOf === "function") {
+        try {
+          /** The older read's route, or undefined when this member has none. */
+          const route = (config.teamModelRouteOf as (m: string) => unknown).call(config, member)
+          if (route !== null && typeof route === "object") return { ok: true, slot: "", route, fallbacks: [] }
+        } catch {
+          // A throwing older read is "no route", never a spawn failure.
+        }
+        return { ok: false, status: "unrouted", slot: undefined }
+      }
+      return undefined
+    }
+  }
+
   /** The service, or a THROW naming the exact action that could not happen. */
   function requireService(serviceName: string, needed: string): any {
     /** The resolved service, rejected when it is nullish. */
@@ -3313,6 +3708,33 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         if (!ready) throw new Error(`mpd-dsh-adapter: no team executor is available — ${reason}`)
         /** The subagents service, or a throw naming the action that could not happen. */
         const subagents = requireService("subagents", `cannot raise team member "${request.name}"`)
+        /** The child's route: the caller's OWN when supplied, else the member's `teamModels` slot. */
+        let agentOptions: unknown = request.agentOptions
+        if (agentOptions === undefined) {
+          // A CALLER'S ROUTE IS NEVER SECOND-GUESSED: when `agentOptions` arrived it was already
+          // resolved by the spawner, so no slot read happens at all.
+          /** What this member's identity resolved to; the config read is per spawn, never cached. */
+          const outcome = resolveTeamMemberRoute(
+            { role: request.role, description: request.description, name: request.name },
+            configSlotResolver(),
+          )
+          if (outcome.status === "routed") {
+            /** The slot's fallback chain consumed ONCE, then the winner's effort adapted. */
+            const resolved = await resolveRunRoute({ llmCatalog }, outcome.route, outcome.fallbacks)
+            agentOptions = resolved.route
+          } else {
+            // EXACTLY ONE line per non-routed spawn. `approve` raises N members in a loop, so this
+            // is a REPORT and never a throw: a throw at member k would leave a half-built team.
+            // Omitting `agentOptions` is today's inheritance (the staging session's route).
+            /** The one diagnostic sentence: every non-routed outcome names the member and why. */
+            const line = outcome.status === "unusable"
+              ? `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — its slot is unusable: ${outcome.detail}`
+              : outcome.status === "no-config-service"
+                ? `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — no mpdConfig service is mounted (is the mpd-config row present?)`
+                : `mpd-dsh-adapter: team member "${request.name}" inherits the staging session's route — its role, description head and name name no roster member`
+            rowLogLine("mpd-dsh-adapter", line)
+          }
+        }
         /** The continuable-start spec: the member's prompt, its parent, and its ROUTE. */
         const spec: Record<string, unknown> = {
           provider: typeof request.provider === "string" && request.provider !== "" ? request.provider : "spawn",
@@ -3320,7 +3742,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
           request: {
             prompt: textBlock(request.prompt),
             parent: caller,
-            ...(request.agentOptions === undefined ? {} : { agentOptions: request.agentOptions }),
+            ...(agentOptions === undefined ? {} : { agentOptions }),
           },
           signal: request.signal ?? neverAborted(),
         }

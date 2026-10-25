@@ -160,8 +160,8 @@ async function approveTeam(h: Harness): Promise<string> {
   await h.call("agent_teams_plan", { action: "create", name: "the wave", description: "one wave" }, LEAD)
   await h.call("agent_teams_plan", { action: "add_member", member: { name: "Senior Engineer", description: "implements", prompt: "You implement." } }, LEAD)
   await h.call("agent_teams_plan", { action: "add_member", member: { name: "Reviewer", description: "judges", prompt: "You review." } }, LEAD)
-  await h.call("agent_teams_plan", { action: "create_task", task: { subject: "the lane work", description: "own the record", owner: "Senior Engineer" } }, LEAD)
-  await h.call("agent_teams_plan", { action: "create_task", task: { subject: "the review", description: "judge it", owner: "Reviewer" } }, LEAD)
+  await h.call("agent_teams_plan", { action: "create_task", task: { subject: "the lane work", description: "own the record", owner: "Senior Engineer", blocked_by: [] } }, LEAD)
+  await h.call("agent_teams_plan", { action: "create_task", task: { subject: "the review", description: "judge it", owner: "Reviewer", blocked_by: [] } }, LEAD)
   await h.call("agent_teams_plan", { action: "approve" }, LEAD)
   /** The team the approval bound to the Lead session. */
   const teamId = activeTeamId(h.workspace, LEAD)

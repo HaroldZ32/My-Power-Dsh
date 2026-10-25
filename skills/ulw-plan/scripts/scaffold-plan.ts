@@ -283,6 +283,9 @@ export function buildDraft(slug: string, intent: string, { reviewRequired = fals
 			? "Intent is UNCLEAR: research resolves ambiguity, defaults are adopted (not asked), and each is surfaced in the plan's human TL;DR for veto."
 			: "Record any default you adopt instead of asking, so the user can veto it at the gate.";
 	// The review block of the frontmatter: the full pending-review record, or the no-review form.
+	// The lane ids `momus` / `independent` are the durable keys already written into drafts on disk;
+	// they map to the Plan Reviewer and the independent Reviewer roster roles and are deliberately
+	// NOT renamed, so a draft scaffolded by an earlier version stays readable.
 	const reviewState = reviewRequired
 		? `review_required: true
 plan_path: .mpd/plans/${slug}.md
@@ -389,7 +392,7 @@ Your next move: <fill - e.g. approve, or run a high-accuracy review>. Full execu
 ## Verification strategy
 > Zero human intervention - all verification is agent-executed.
 - Test decision: <TDD | tests-after | none> + framework
-- Evidence: <attemptDir>/task-<N>-${slug}.<ext> (attemptDir = currentAttemptDir from 'mpd-agent-toolkit ulw-loop status --json', .mpd/evidence/ulw/<session>/<goalId>/a<attempt>; outside ulw-loop use .mpd/evidence/)
+- Evidence: <attemptDir>/task-<N>-${slug}.<ext> (attemptDir = currentAttemptDir from 'mpd_boulder_status', .mpd/evidence/ulw/<session>/<goalId>/a<attempt>; outside ulw-execute use .mpd/evidence/)
 
 ## Execution strategy
 ### Parallel execution waves

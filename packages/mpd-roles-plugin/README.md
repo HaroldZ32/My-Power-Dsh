@@ -33,10 +33,11 @@ read-only discipline.
   NEW question with a NEW spawn. (The harness catalog is append-only, so a settled child may still list
   as `inactive`; the contract is one-shot regardless.) `mpd_workmate_spawn` is the same one-shot spawn
   mechanics for a durable, evolving instance — the RECORD's persona/memory/note carry continuity, not
-  the child session; team work is the official `spawn_teammate` path.
+  the child session; team work is the mpd plan plane (`agent_teams_plan`), never the official
+  `spawn_teammate`, which the team door guard refuses.
 - `mpd_role_persona` — fetch the persona text for spawn surfaces that take
-  persona as text (the official Agent Teams `spawn_teammate` takes it as the
-  teammate's `prompt`).
+  persona as text (a teammate staged with `agent_teams_plan` `add_member` takes it as
+  the member's `prompt`; `spawn_teammate` itself is refused at the tool boundary).
 
 **One vocabulary for both surfaces (name unification).** The role's name is its
 identity: it is the member name agent-teams stages in team mode, and it is the label a
@@ -88,7 +89,7 @@ same way, and an extension that is disabled by config contributes no role at all
 roles are resolved per call from `mpdExtensions`, not when an agent scope is created, so they
 are not named in the `mpd:roster` section below. They stay fully usable: single-call consult through
 `mpd_role_spawn`, as a **workmate BASE template**, and a Lead that knows one can still stage
-it with `spawn_teammate` by passing its `mpd_role_persona` text.
+it with `agent_teams_plan` `add_member` by passing its `mpd_role_persona` text as the prompt.
 
 ## Team mode
 
@@ -96,32 +97,43 @@ Multi-member team work is NOT built here: **staging** runs on the mpd plan plane
 owned by `mpd-team-core-plugin`) and the members themselves ride the **official Agent Teams plugin**
 (`@deepseek-ai/dsh-experimental-agent-team` + `-tool-agent-team` + `-client-ui-agent-team`,
 mounted by this bundle's `mpd-agent-team` / `mpd-tool-agent-team` / `mpd-ui-agent-team` rows),
-whose Lead creates teammates with `spawn_teammate` and opens their lanes with `team_task_create`.
+whose Lead stages teammates and opens their lanes with `agent_teams_plan` (`add_member` /
+`create_task`); the official `spawn_teammate` and `team_task_create` are REFUSED by the team door guard.
 This row contributes the ROSTER side of that path — every call through `mpd-dsh-adapter`:
 
 | Contract | How this row implements it |
 |---|---|
 | the roster reaches the Lead | an **AGENT-SCOPED** `mpd:roster` system-prompt section (order `605`, immediately after the harness's `TEAM_POLICY` at 600), registered for a top-level `mpd` session only — never host-plane (that would inject the roster into every session this process serves), never a teammate's or another preset's session |
-| a teammate's persona | the section names `spawn_teammate` and `mpd_role_persona`: the Lead passes the member's persona text as the prompt |
+| a teammate's persona | the section names `agent_teams_plan`'s `add_member` and `mpd_role_persona`: the Lead passes the member's persona text as the staged prompt |
 | a READ-ONLY teammate's discipline | a TOOL GUARD (below), registered through the adapter |
 | the session-start complexity gate | an `agent/pre-step` listener that STAGES an approvable plan shell when `team.gate` says `mechanical` — the DEFAULT again since 2026-10-20 (below) |
 
-**Model routing follows the label.** `TeamService` forwards only `{prompt, parent}` plus the
-descriptor label (the teammate's `description`), so the label is the only roster identity the
-request carries (`docs/plan-0.1.7-adaptation.md` §3). `mpd-roster-provider-plugin` applies a
-roster member's `teamModels.slot*` route ONLY when that description NAMES the member; every other
-teammate is not routed at all — the request passes through by identity, so the harness-resolved
-route of the session that staged it stands (the captain's in a top-level spawn, the Lead's in a
-team-lead spawn). Prompt text cannot change a route. The same slots also apply to `mpd_role_spawn`
-/ `mpd_workmate_spawn`, which pass explicit `agentOptions`; the roster section says exactly that.
-The route's effort is additionally passed through the
-adapter's `withSupportedEffort` (`mpd-dsh-adapter-plugin`), so a slot whose model declares NO
-reasoning efforts at all is sent none — the spawn runs instead of failing on a keyword the
-provider cannot accept — while a model that declares efforts keeps the slot's keyword.
+**Model routing comes from the four slots, by member identity.** The native team executor resolves a
+staged member's `teamModels.slot*` route by identity precedence — the member's `role` first, then
+the head of its `description`, then its whole `name` (`agent_teams_plan` forwards `role`, and the
+descriptor label still carries the description; `docs/plan-0.1.7-adaptation.md` §3). The TEAM path
+never refuses: a member whose identity matches nothing, a member whose slot is unconfigured or
+invalid, and a composition without `mpdConfig` all INHERIT the staging session's model route (the
+captain's in a top-level spawn, the Lead's in a team-lead spawn), with exactly ONE log line and
+never a throw — `approve` is a batch raise of N members in a loop, so a slot must never leave a team
+half-built. Prompt text cannot change a route. On the official-executor fallback,
+`mpd-roster-provider-plugin` applies — or refuses with `SLOT_UNCONFIGURED` before it starts — the same
+slot from the description label, on its OWN path (`packages/mpd-roster-provider-plugin/README.md`).
+The same four slots also apply to the single-call appliers `mpd_role_spawn` / `mpd_workmate_spawn`,
+which pass explicit `agentOptions`; the roster section says exactly that. On the native team path
+(`approve`) the slot never refuses; ONLY those single-call appliers refuse: a slot is the ONLY route
+source (contract `.mpd/plans/slot-single-source.md`), `agentRoutes` is deleted,
+and an unconfigured or malformed slot refuses there with the structured `SLOT_UNCONFIGURED` failure
+the config row builds — naming the slot, its members, the missing leaves and both recovery paths —
+so no child is ever started on an invented route. The slot's own `fallbacks` chain is
+consumed once before the spawn (the first catalog-POSITIVE candidate wins), and the winning route's
+effort is passed through the adapter's `withSupportedEffort` (`mpd-dsh-adapter-plugin`), so a model
+declaring NO reasoning efforts at all is sent none — the spawn runs instead of failing on a keyword
+the provider cannot accept — while a model that declares efforts keeps the slot's keyword.
 
 ### A read-only teammate is denied mechanically
 
-The seven-name deny list is enforced on BOTH paths, from ONE exported constant
+The eight-name deny list is enforced on BOTH paths, from ONE exported constant
 (`READONLY_DENY`), so the two can never drift:
 
 - **single-call consult** — `mpd_role_spawn` passes `toolFilter: { deny: READONLY_DENY }` (unchanged);

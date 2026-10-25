@@ -1,0 +1,43 @@
+# F2 — THE MEASURED PREMISE: layoutBoxes(skip-edge A->C beside A->B->C, cols 16..34)
+# BEFORE = commit 30309c96 (scratch tree); AFTER = working tree with the guard.
+#
+--- BEFORE (30309c96) ---
+cols=16 width=17 (cols+1)
+cols=17 width=18 (cols+1)
+cols=18 width=19 (cols+1)
+cols=19 width=20 (cols+1)
+cols=20 width=21 (cols+1)
+cols=21 width=22 (cols+1)
+cols=22 width=23 (cols+1)
+cols=23 width=24 (cols+1)
+cols=24 width=25 (cols+1)
+cols=25 width=26 (cols+1)
+cols=26 width=27 (cols+1)
+cols=27 width=28 (cols+1)
+cols=28 width=29 (cols+1)
+cols=29 width=30 (cols+1)
+cols=30 width=31 (cols+1)
+cols=31 width=32 (cols+1)
+cols=32 width=33 (cols+1)
+cols=33 width=34 (cols+1)
+cols=34 width=35 (cols+1)
+--- AFTER (working tree) ---
+cols=16 undefined
+cols=17 undefined
+cols=18 undefined
+cols=19 undefined
+cols=20 undefined
+cols=21 undefined
+cols=22 undefined
+cols=23 undefined
+cols=24 undefined
+cols=25 undefined
+cols=26 undefined
+cols=27 undefined
+cols=28 undefined
+cols=29 undefined
+cols=30 undefined
+cols=31 undefined
+cols=32 undefined
+cols=33 undefined
+cols=34 undefined

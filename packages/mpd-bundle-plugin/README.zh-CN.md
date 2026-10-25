@@ -14,7 +14,13 @@
 
 **TUI 对应面。** 本客户端注册的设置卡片，与 TUI 版本渲染的 `/settings` 区块是**同一个** `mpd` settings 命名空间的两半（`packages/mpd-tui-plugin/src/settings.ts`）：两个前门的标签、提示与中文描述互为镜像，并有测试断言两份列表保持一致；两者也陈述同一句桥接披露——保存会写入 `<workspace>/.mpd/mpd.jsonc`（针对当时处于 live 的会话工作区），mpd 插件在重启后按其生效。浏览器只通过公开的 settings 接缝抵达该桥；回写本身属于 `packages/mpd-config-plugin`。改动任一半后请重建合并客户端（`node scripts/build-mpd-client.ts`）。
 
-**Web 卡片的团队模型选择器。** 卡片镜像 `packages/mpd-config-plugin` 中**唯一**的 25 行 knob 声明（原有 13 个 knob 加十二个 `teamModels` 槽位叶子），并把每个槽位渲染为**联动的、只可选择**的选择器：模型控件的选项是目录中的 provider/model 组合（provider 作为分组显示），推理强度控件的选项是**所选模型自身**的 effort，并在模型变化时重新推导。目录通过**受保护的探针** `ctx.get("sessions")` + `ctx.get("modelDirectories")` 获取 —— 沿用 `team-page.ts` 的既有模式，绝不新增必需注入 —— 当探针缺失、没有绑定会话，或 `directoryFor` 抛错时，卡片回退到**声明**的选项列表，区块照常渲染。槽位的任何一项都不能只靠输入来设置。浏览器模块无法 import TS 声明，因此卡片镜像它，并由测试逐项固定声明元数据（path、label、zh、kind、声明选项、人类语句）。每个槽位行**以所属分组和自身的人类语句开头**：标签写明分组（`槽位 2 提供商（分析型成员）`），每个槽位的三行之上有一行分组标题与一句影响说明，人类语句以正常字号/不透明度渲染，强制披露行更暗地跟在下方。两个前门都写出点号形式的 `mpd.jsonc` key，并在该人类语句**之后**携带披露与"不会丢失"条款：TUI 构造 `<人类语句> mpd.jsonc <key> — <披露> <不会丢失>`，卡片镜像同一份声明、同一顺序。
+**Web 卡片的团队模型选择器。** 卡片镜像 `packages/mpd-config-plugin` 中**唯一**的 26 行 knob 声明（原有 13 个 knob、十二个 `teamModels` 槽位叶子，再加 TUI 界面自身的一个 knob），并把每个槽位渲染为**联动的、只可选择**的选择器：模型控件的选项是目录中的 provider/model 组合（provider 作为分组显示），推理强度控件的选项是**所选模型自身**的 effort，并在模型变化时重新推导。目录通过**受保护的探针** `ctx.get("sessions")` + `ctx.get("modelDirectories")` 获取 —— 沿用 `team-page.ts` 的既有模式，绝不新增必需注入 —— 当探针缺失、没有绑定会话，或 `directoryFor` 抛错时，卡片回退到**声明**的选项列表，区块照常渲染。槽位的任何一项都不能只靠输入来设置。「当前生效」块会显示每个槽位的**状态**：工作区未配置时渲染 `<unconfigured>`（并列出仍缺的叶子）——
+不再有任何默认层去凭空造一条路由——而**无效（invalid）**槽位（叶子存在但格式不对，例如不是字符串，
+或槽位本身不是对象）会以**它自己的**中英文句子渲染，绝不冒充 `<unconfigured>`：`EffectiveRoute.problem`
+点出有问题的那个叶子（`teamModels.slotN.leaf is not a string`，或 `teamModels.slotN is not an object`），
+`missing` 判定会先 **trim** 每个叶子，因此只有空白的叶子算**缺失**而不是"已配置"——格式错误的槽位绝不能
+读成未配置。已删除的逐成员 `agentRoutes` 行也从卡片上彻底消失（旧文件里残留的块
+会被忽略：既不渲染，也永不改写）。浏览器模块无法 import TS 声明，因此卡片镜像它，并由测试逐项固定声明元数据（path、label、zh、kind、声明选项、人类语句）。每个槽位行**以所属分组和自身的人类语句开头**：标签写明分组（`槽位 2 提供商（分析型成员）`），每个槽位的三行之上有一行分组标题与一句影响说明，人类语句以正常字号/不透明度渲染，强制披露行更暗地跟在下方。两个前门都写出点号形式的 `mpd.jsonc` key，并在该人类语句**之后**携带披露与"不会丢失"条款：TUI 构造 `<人类语句> mpd.jsonc <key> — <披露> <不会丢失>`，卡片镜像同一份声明、同一顺序。
 
 ## 配置
 

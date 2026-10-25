@@ -1,0 +1,91 @@
+{
+  "contract": ".mpd/plans/team-tool-dag-surface.md (frozen, incl. Amendment 2)",
+  "wave": "team-tool plan surface: visible DAG + append-only edges",
+  "owner": "T8 (Junior Engineer lane)",
+  "utcStamp": "20261022T164704Z",
+  "workspace": "/home/haroldzhao/MyProj/DshProj/My-Power-Dsh",
+  "scope": "packages/mpd-team-core-plugin ONLY (no dist rebuild, no git write, no other package)",
+  "changed": [
+    {
+      "path": "packages/mpd-team-core-plugin/src/index.ts",
+      "symbols": [
+        "describePlan (unchanged one-line summary, still used by the command)",
+        "fieldText (new, additive render helper)",
+        "describeTaskLine (new: id/owner/status/kind/blockedBy/subject per task)",
+        "describeStatus (new: summary line + one line per member + one per task)",
+        "describeStagedPlan (new: summary line + staged task lines, id printed as '-')",
+        "describeDepend (new: edge set after the call + unresolved warning)",
+        "agent_teams_plan render (status arm -> describeStatus; fallback -> describeStagedPlan)",
+        "agent_teams_plan create_task (kind read from raw.kind ?? args.kind through parseTaskKind)",
+        "agent_teams_plan description/parameters (trimmed to stay in budget; new `kind` alias declared)",
+        "agent_teams_task action enum (+depend), parameters (+blocked_by), output schema (+added/idempotent/unresolved)",
+        "agent_teams_task render (+describeDepend arm)",
+        "agent_teams_task execute (+depend branch: append-only merge, owner-or-lead via authorizeRelease, terminal/unknown refusals, unresolved report)",
+        "agent_teams_task unknown-action message (+depend)"
+      ]
+    },
+    {
+      "path": "packages/mpd-team-core-plugin/test/tool-surface.test.ts",
+      "symbols": ["EVERY action of the retired hand-written surface is still reachable (deliberate +depend update, not a loosening)"]
+    },
+    {
+      "path": "packages/mpd-team-core-plugin/test/tool-dag-surface.test.ts",
+      "symbols": [
+        "13 new tests: status render (two rows with different edges), edit read render (id '-', no minted id), depend append/echo, subject resolution, idempotent repeat with unchanged revision, unresolved persisted as unresolvedBlockers, terminal refusal, unknown task id refusal, owner-or-lead authorization, readiness flip, staged kind parity per kind, live kind passthrough per kind and per spelling, unknown-kind loud refusal with byte-unchanged record"
+      ]
+    }
+  ],
+  "measured": {
+    "renderSample": "see render-sample.txt in this directory — the edit read form, the approved status render, a depend append, an idempotent repeat, an unresolved reference and the status after the edges landed, all produced by the real registered renderers",
+    "toolSurface": {
+      "before": 4919,
+      "after": 4971,
+      "budget": 5000,
+      "perToolAfter": {
+        "agent_teams_plan": { "cost": 1742, "descriptionChars": 305 },
+        "agent_teams_task": { "cost": 880, "descriptionChars": 227 },
+        "agent_teams_dispatch": { "cost": 782, "descriptionChars": 357 },
+        "agent_teams_mail": { "cost": 982, "descriptionChars": 350 },
+        "agent_teams_control": { "cost": 489, "descriptionChars": 175 }
+      },
+      "commandCharCount": 96,
+      "reproduce": "bun evidence/team/tool-dag/20261022T164704Z/surface-probe.ts"
+    },
+    "amendment2KindBeforeFix": {
+      "measuredOn": "unmodified source at HEAD (probe run before the edit)",
+      "nestedKind": "review persisted",
+      "topLevelKind": "review silently stored as work",
+      "unknownNestedKind": "refused (unknown task kind)",
+      "unknownTopLevelKind": "accepted and stored as work"
+    },
+    "amendment2KindAfterFix": "both spellings persist each of requirement/work/review/repair/integration; an unknown kind is refused for both spellings, no row is minted and the team record file is byte-unchanged (asserted)"
+  },
+  "gates": [
+    {
+      "command": "bun test packages/mpd-team-core-plugin",
+      "exit": 0,
+      "observed": "293 pass, 0 fail, 1374 expect() calls, 20 files"
+    },
+    {
+      "command": "bun run typecheck",
+      "exit": 1,
+      "observed": "16 diagnostics, ALL in packages other lanes are editing in this shared tree (mpd-dsh-adapter-plugin, mpd-roles-plugin, mpd-roster-provider-plugin, mpd-workmate-plugin); zero diagnostics name packages/mpd-team-core-plugin",
+      "bound": "the root typecheck cannot be green in a shared tree while other lanes hold in-flight edits; the integration sweep must re-run it"
+    },
+    {
+      "command": "bun run verify:comments",
+      "exit": 1,
+      "observed": "3 violations, all in packages owned by other lanes (mpd-config-plugin/test/team-models.test.ts, mpd-roster-provider-plugin/test/effort-adaptation.test.ts, mpd-tui-plugin/test/panel-attention.test.ts); zero violations in packages/mpd-team-core-plugin",
+      "bound": "same shared-tree bound as typecheck"
+    }
+  ],
+  "notDone": [
+    "packages/mpd-team-core-plugin/dist/ was NOT rebuilt (contract: the integration task owns the dist sweep; the running row loads dist/index.js, so a live-session check would still run the OLD code until that sweep)",
+    "the three mis-recorded rows T5/T6/T9 (kind 'work' instead of 'review') were NOT migrated, per the captain's forward-only rule; no team JSON was hand-edited",
+    "no live dsh mount / real tool call was exercised; verification is the package suite plus the renderer and store reads, which is the narrowest real check for this change"
+  ],
+  "unverified": [
+    "the harness's own output-schema validation at a real mount (the declared keys were extended and the local tool-output-schema suite passes, but no live boot was performed)",
+    "the shared-tree gates above (typecheck / comments) will only be green once the other lanes' edits settle"
+  ]
+}

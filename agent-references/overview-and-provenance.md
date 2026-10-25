@@ -17,6 +17,18 @@ on 2026-10-06, so it still reads `SUL-1.0` in places; those sentences are HISTOR
 the full statement is in "LICENCE STATE (current)" at the foot of this file. Never quote the verbatim
 block as the repository's present terms.
 
+**TEAM-DOOR STATE (current — 2026-10-23): the team path in the block below is HISTORY.** The roster
+bullet below says team work uses the **official Agent Teams plugin** and names its `spawn_teammate` /
+`send_message` / `list_agents` / `wait_agent` / `interrupt_agent` / `team_task_*` tools plus the official
+Web roster and task board. What is live: this bundle's team plane is the mpd RECORD
+(`<workspace>/.mpd/team/teams/<id>.json`, served as `mpdTeams`) driven by `agent_teams_plan` /
+`agent_teams_task` / `agent_teams_dispatch`, and the five official AUTHORING verbs (`spawn_teammate`,
+`team_task_create`, `team_task_list`, `team_task_get`, `team_task_update`) are REFUSED at the tool
+boundary while `send_message` / `list_agents` / `wait_agent` / `interrupt_agent` stay for agent
+communication. The bound, stated once: the refusal is a TOOL-boundary rule, so a ROW that calls the team
+SERVICE directly (the official-executor fallback) is not a tool call and is not gated. `AGENTS.md` §1 and
+§13 carry the binding wording; the block below predates this note.
+
 ## The former §1 body (verbatim)
 
 ## 1. Overview & Provenance

@@ -1,0 +1,5 @@
+# GATE — typecheck
+# command: bun run typecheck
+# bun: 1.4.2 (PATH) ; tsgo --noEmit
+# exit: 0
+$ tsgo --noEmit

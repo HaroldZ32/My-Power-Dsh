@@ -255,13 +255,13 @@ export const FROZEN_COUPLINGS: readonly string[] = [
   "packages/mpd-ext-plugin/src/registry.ts :: import { ROLES, ROLE_BY_ID } from \"../../mpd-roles-plugin/src/roles.data\"",
   // mpd-roster-provider -> mpd-config: the slot membership has ONE declaration for both settings
   // front doors, which is the whole reason this coupling is allowed to exist.
-  "packages/mpd-roster-provider-plugin/src/index.ts :: import { TEAM_MODEL_SLOT_GROUPS } from \"../../mpd-config-plugin/src/settings-schema\"",
+  "packages/mpd-roster-provider-plugin/src/index.ts :: import { TEAM_MODEL_SLOT_GROUPS } from \"../../mpd-config-plugin/src/settings-schema.ts\"",
   // The TUI plane's typed reads of the team record and the watchdog's incident shape. The
   // `import type` entries are ERASED by the build and create no runtime edge; they stay frozen
   // because they are still a source-level dependency on a sibling's internal module path.
   "packages/mpd-tui-plugin/src/index.ts :: import type { TeamRecord } from \"../../mpd-team-core-plugin/src/team-store.js\"",
   "packages/mpd-tui-plugin/src/scenes.ts :: import type { TeamRecord } from \"../../mpd-team-core-plugin/src/team-store.js\"",
-  "packages/mpd-tui-plugin/src/settings.ts :: import { BRIDGE_DISCLOSURE, BRIDGE_NOT_LOST, SettingsSchema, SETTINGS_KNOBS, SETTINGS_NS, TEAM_MODEL_FALLBACK_OPTIONS, markVolatile } from \"../../mpd-config-plugin/src/settings-schema\"",
+  "packages/mpd-tui-plugin/src/settings.ts :: import { BRIDGE_DISCLOSURE, BRIDGE_NOT_LOST, SettingsSchema, SETTINGS_KNOBS, SETTINGS_NS, TEAM_MODEL_FALLBACK_OPTIONS, TEAM_MODEL_SLOT_GROUPS, TEAM_MODEL_SLOTS, markVolatile } from \"../../mpd-config-plugin/src/settings-schema\"",
   // mpd-tui -> mpd-config AGAIN, from the model menu this time, and for the same reason the entry
   // above is allowed: the four slots and their member groups have ONE declaration, and the /mpd-model
   // pick-list has to offer exactly the slots the settings rows expose. Restating them in
