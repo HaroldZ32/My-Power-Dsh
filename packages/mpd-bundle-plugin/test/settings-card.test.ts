@@ -342,6 +342,11 @@ describe("W2 (static): the BUILT and served client carries the SECTION registrat
     // at least one mount-captured group in the exception half, + the boot wording
     expect(CARD_SOURCE).toContain("hashline.*, commentChecker.*, ulw.*, memory.*")
     expect(CARD_SOURCE).toContain("waits for the next dsh boot")
+    // T16-F1: the FILE parenthetical is SCOPED, not blanket — the settings document gets the value at
+    // once, the file only on a host that still serves the legacy namespace. The retracted wording is
+    // pinned ABSENT so it cannot return.
+    expect(CARD_SOURCE).toContain("the settings document receives it at once, and the file does too only on a host that still serves the legacy")
+    expect(CARD_SOURCE).not.toContain("the file and the settings document still receive it at once")
     expect(CARD_SOURCE).toContain("never lost")
     expect(CARD_SOURCE).not.toContain("takes effect in the RUNNING process — no restart")
     expect(CARD_SOURCE).not.toContain("after a restart")
@@ -1886,6 +1891,9 @@ describe("R2: the styled contract (the harness's own settings-form tokens)", () 
     expect(sentences[1]).toContain("are captured by their plugins at mount")
     expect(sentences[1]).toContain("hashline.*")
     expect(sentences[1]).toContain("waits for the next dsh boot")
+    // T16-F1, on the RENDERED paragraph: the scope is what a reader sees.
+    expect(sentences[1]).toContain("the settings document receives it at once, and the file does too only on a host that still serves the legacy")
+    expect(sentences[1]).not.toContain("the file and the settings document still receive it at once")
     expect(sentences[2]).toContain("never lost")
     expect(sentences[3]).toContain("if no session is live")
     // CARD/TUI PARITY OF MEANING, not of a literal copy: both surfaces state the same constants, so

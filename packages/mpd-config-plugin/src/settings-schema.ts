@@ -219,9 +219,14 @@ export const BRIDGE_DISCLOSURE = "a save from this form persists in the HOST's s
  * at apply), `ulw`, `memory` (every tool closes over the `cfg` resolved at apply), `boulder.dir` and
  * `goal.*` (the goal row logs its three values at mount and gates on them). Each surface's ROW HINT
  * still names the key it writes, so a reader can match this sentence to the knob.
+ *
+ * THE FILE PARENTHETICAL IS SCOPED (reviewer T16-F1 on PR #66): the settings DOCUMENT receives the new
+ * value at once on every host, but the FILE only on one that still serves the legacy `mpd` namespace —
+ * the same asymmetry {@link BRIDGE_DISCLOSURE} now states, and the earlier wording ("the file AND the
+ * settings document still receive it at once") contradicted the sentence right before it.
  */
 export const BRIDGE_RESTART_LIMIT =
-  "the other half of that list, so nobody reads it as a blanket: hashline.*, commentChecker.*, ulw.*, memory.*, boulder.dir and goal.* are captured by their plugins at mount instead of reading the live config service per use, so a new value for any of them waits for the next dsh boot (the file and the settings document still receive it at once, and each row names the key it writes)"
+  "the other half of that list, so nobody reads it as a blanket: hashline.*, commentChecker.*, ulw.*, memory.*, boulder.dir and goal.* are captured by their plugins at mount instead of reading the live config service per use, so a new value for any of them waits for the next dsh boot (the settings document receives it at once, and the file does too only on a host that still serves the legacy `mpd` namespace; each row names the key it writes)"
 
 /**
  * The sentence that keeps a settings-only save from reading as a LOST save (captain's ruling 1):

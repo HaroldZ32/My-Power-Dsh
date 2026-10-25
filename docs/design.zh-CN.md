@@ -521,7 +521,8 @@ base 选择器；`GET /plugins/mpd-workmate/get?name=` —— persona/memory/not
   （`tuiSettingsSections`）、全屏看板（`tuiScenes`）、`/mpd` 命令树（`tuiCommandTrees`）、快捷键
   （`tuiShortcuts`）、受管对话框（`tuiDialogs`）以及 transcript renderer 的注册（`tuiRenderers`；宿主
   不为 bundle 的 renderer 事件投射任何行）。所有注册都通过 `ctx.effect` 释放。
-- **不做**：完全不写文件系统 —— settings 回写位于 `packages/mpd-config-plugin`（见下），而 TUI 包的
+- **不做**：完全不写文件系统 —— 旧命名空间回写位于 `packages/mpd-config-plugin`（见下；在固定的宿主上
+  已休眠），而 entry-config 保存在两个包里都不写文件，TUI 包的
   零写入属性由它自己的 lane 断言（`tui-settings-bridge.ts` 的 T7 检查）。它也不主张任何已准入的
   Component 身份：bundle 级 `dsh-plugin.json` 声明 host facet，而宿主自身的准入对四个默认拒绝的
   decision-event 权限给出 `waiting_authorization`，因此 effect ledger 把这次注册记为 `undeclared`
@@ -532,7 +533,14 @@ base 选择器；`GET /plugins/mpd-workmate/get?name=` —— persona/memory/not
 的 `<workspace>/.mpd/mpd.jsonc` 值，一个都没有时取挂载时（无 exec）根，多个时给出
 `ambiguous-multi-root`（绝不臆造 base）—— 并且由它负责**回写**：触发源是宿主
 `settings/document-updated(ns, revision)` 事件中 `source === 'update'` 的那一支，在锁 + 原始字节
-compare-and-swap + 同目录临时文件 + 原子 rename 下完成。（2）**宿主提供的 `tuiSettingsSections` 接缝**
+compare-and-swap + 同目录临时文件 + 原子 rename 下完成。**在本 bundle 所固定的 harness 上，该命名空间
+模型已退役，刚刚描述的全部都是那条休眠路径。** 两扇前门改为保存本行的 config **entry**
+（`configForms.get("mpd-config")`）：entry 文档是**宿主自己的**存储，所以持久化是宿主的事，保存的
+override 成为最顶层（L4），由 `onSettingsDocumentUpdated(ENTRY_CONFIG_ID)` 在进程内重新加载——这条路径
+**不执行任何 `<workspace>/.mpd/mpd.jsonc` 写入**，这是刻意的：该文档还承载表单物化出的默认值，把它们
+投影进文件会污染它。该宿主上 `settingsRegister` 会被拒绝，桥接会记录 "the namespace-registry model is
+RETIRED … The legacy file write-back and override clearing are dormant"，这就是当前状态。（2）**宿主提供的
+`tuiSettingsSections` 接缝**
 负责渲染该分区：TUI 包为命名空间 `mpd` 注册一个分区（对缺少 config 插件的组合保留一个带保护的
 fallback），宿主把这次注册绑定到它自己的 `/settings` 界面 —— 这个"提供方/宿主"分工正是界面能按文件值
 打开、而 TUI 包自身从不读文件的原因。（3）**状态发布方**是 TUI 包的 `tuiStatus` 键：每个键都取自会话
@@ -563,7 +571,8 @@ fallback），宿主把这次注册绑定到它自己的 `/settings` 界面 —�
   应用的改动必须在下次启动时验证。
 - **两条配置路径，生效时机不同。** `mpd.jsonc` 各层（schema 默认值 → patch 行的 `config` → 文件）
   在插件挂载时读取一次，因此 `.mpd/mpd.jsonc` 的改动在下次启动时生效；设置文档路径（TUI
-  `/settings` 界面、回写与 `settings/document-updated` 重读）才是实时路径（§6c、§7b）。
+  `/settings` 界面、`settings/document-updated` 上的 entry-config 重读，以及在仍提供旧命名空间的宿主上的
+  回写）才是实时路径（§6c、§7b）。
 - **watchdog hold 目前是契约，还不是互锁。** 该行拥有 `session-watchdog-hold` / `-resume` 与持久
   hold 记录；让**官方**派发门控真正遵守 hold 是后续任务。在此之前 hold 只被记录与上报，而停下队友当前
   轮次的是官方 `interrupt_agent`（仅 Lead）（§4）。

@@ -464,25 +464,27 @@ transcript line is claimed. The full list is §10 NOT-CLAIMED of [`tui.md`](tui.
 `/settings` edits the real `mpd.jsonc` knobs — 26 in all (the original 13, the twelve `teamModels`
 slot leaves and the TUI surface's own knob; the slot leaves are selection-only fields whose options come
 from the live model catalog, with the declared lists as fallback), among them `hashline.maxDiffChars`,
-`commentChecker.autoCheck`, `ulw.maxRounds`, `memory.vcs`, `team.stateDir` and `boulder.dir` — under the
-harness settings namespace `mpd`. That namespace is served by `packages/mpd-config-plugin`, whose base
-is the workspace FILE value, so the screen opens on your file rather than on a schema default; a save
-**writes `<workspace>/.mpd/mpd.jsonc`** for the live session workspace, preserving comments, key order
-and trailing commas — the same write-back the Web GUI card triggers (§3.1 of [`tui.md`](tui.md)).
+`commentChecker.autoCheck`, `ulw.maxRounds`, `memory.vcs`, `team.stateDir` and `boulder.dir` — through
+the harness's OWN form for this row's config entry (`configForms.get("mpd-config")`; the Web GUI card
+uses the same entry). **On the harness this bundle pins, an entry save is persisted by the HOST and
+performs NO `<workspace>/.mpd/mpd.jsonc` write**: the saved override is the top config layer and takes
+effect in-process, and projecting the form's materialised defaults into your file would pollute it. The
+file write-back is the retired settings-NAMESPACE path — `packages/mpd-config-plugin` still implements
+it, but `settingsRegister` is refused on this harness and that path is **dormant**.
 
 Two things to know before you rely on it:
 
 - **A save lands in the running process.** The config service re-resolves on every settings save and on
   a watched edit of `<workspace>/.mpd/mpd.jsonc`, and the model-config knobs (`modelchain.*`,
   `teamModels.slot*`) are resolved per use, so a saved change reaches the next `mpd_config_get`,
-  `mpd_modelchain_resolve` or spawn with **no restart** (`mpd_config_reload` forces a re-read). The other knobs still follow the mount-time capture — §9.1 states it per knob. The
-  on-screen hint says exactly this.
-- **Two named skip cases.** The settings path carries no workspace identity, so the write target is
-  the live session workspaces at the moment of the save: with **no** live session the save is stored in
-  the host settings document and reported as `no-live-session`; with **more than one** live workspace it
-  is refused as `ambiguous-multi-root` and every candidate is named. In both cases **no file is
-  changed** and the value is **not lost** — it lives in the settings document and the config layer
-  applies it to every workspace immediately; only the file write waits for exactly one live session.
+  `mpd_modelchain_resolve` or spawn with **no restart** (`mpd_config_reload` forces a re-read). The other knobs still follow the mount-time capture — §9.1 states it per knob.
+- **The legacy namespace write-back has two named skip cases (dormant on this harness).** That path
+  carries no workspace identity, so its write target is the live session workspaces at the moment of
+  the save: with **no** live session the save is stored in the host settings document and reported as
+  `no-live-session`; with **more than one** live workspace it is refused as `ambiguous-multi-root` and
+  every candidate is named. In both cases **no file is changed** and the value is **not lost** — it
+  lives in the settings document and the config layer applies it to every workspace immediately; only
+  the file write waits for exactly one live session. An ENTRY save never reaches this code.
 
 A duplicated key in `mpd.jsonc` is edited at its **last** occurrence (the one `JSON.parse` reads) and
 the diagnostic names every occurrence line; a duplicated intermediate object is refused as

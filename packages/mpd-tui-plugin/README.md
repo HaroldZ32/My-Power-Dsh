@@ -20,7 +20,7 @@ would duplicate a loader entry id (the loader rejects duplicates outright).
 |---|---|---|
 | Status line | `ctx.tuiStatus` | one keyed `mpd` contribution above the prompt: `mpd: team … · boulder … · plans … · workmates …` |
 | Transcript renderers | `ctx.tuiRenderers` | the bundle's log-only session events (`agent-teams/*`, `mpd-tui/board-opened`) as plain text rows, live and on replay |
-| Settings section | `ctx.tuiSettingsSections` | the mpd.jsonc knobs — the original 13, the twelve `teamModels` slot leaves and the TUI's own `tui.dashboardKey` (26 in all; the per-member `agentRoutes` rows are gone with the override layer), the slot leaves rendered as **catalog-driven selections** — declared as editable `/settings` fields, **bridged** to `<workspace>/.mpd/mpd.jsonc` (a save writes the file at once, and WHICH knobs then act without a restart is per knob: the model routes, `watchdog.*`, `team.gate`/`team.sensitivity`, the `team.stateDir` reader and the two guards take effect in the running process, while `hashline.*`, `commentChecker.*`, `ulw.*`, `memory.*`, `boulder.dir` and `goal.*` are captured at `apply()` and need the next `dsh` boot); each field hint names its `mpd.jsonc` key, the section states the disclosure once, and the per-knob table is `docs/user-guide.md` §9.1 (see NOT CLAIMED #2) |
+| Settings section | `ctx.tuiSettingsSections` | the mpd.jsonc knobs — the original 13, the twelve `teamModels` slot leaves and the TUI's own `tui.dashboardKey` (26 in all; the per-member `agentRoutes` rows are gone with the override layer), the slot leaves rendered as **catalog-driven selections** — declared as editable `/settings` fields, **bridged** into the config service through the host's settings document: a save from this section is persisted by the HOST as the `mpd-config` ENTRY document (**no workspace file is written on this path** — the only `<workspace>/.mpd/mpd.jsonc` writer is the RETIRED legacy `mpd`-namespace write-back, which the pinned harness refuses, and a hand edit of that file is still read on every resolution). WHICH knobs then act without a restart is per knob: the model routes, `watchdog.*`, `team.gate`/`team.sensitivity`, the `team.stateDir` reader and the two guards take effect in the running process, while `hashline.*`, `commentChecker.*`, `ulw.*`, `memory.*`, `boulder.dir` and `goal.*` are captured at `apply()` and need the next `dsh` boot. Each field hint names its `mpd.jsonc` key, the section states the disclosure once, and the per-knob table is `docs/user-guide.md` §9.1 (see NOT CLAIMED #2) |
 | Full-screen board | `ctx.tuiScenes` | team + task ledger, boulder work ledger, plans, workmate library; two extra rows for a routed team: `team-plan …` (staged only) and `team-hold held (…)` (only while a watchdog hold lasts) |
 | Team workflow scene | `ctx.tuiScenes` | `mpd-tui-team` — open with `/mpd team`, or `a` while the board is open: team id/name/phase, plan-review state, the watchdog hold, the roster (role/model/status/progress/current task) and the task DAG (kind/status/assignee/attempt/round/verdict/deps, depth-indented, `failed-dep=` marked) plus the mailbox tail |
 | Plan scene (approval, W6) | `ctx.tuiScenes` | `mpd-tui-plan` — open with `/mpd plan`. It renders the live board and carries the approval gate: type the EXACT phrase the pane shows (`approve plan-…`, served by the SAME projection the Web panel renders) and press `Ctrl+X`; `Ctrl+D` twice within 10 s discards the staged plan, `Ctrl+R` re-reads, `esc` goes back. The action is an `agent_teams_plan {action:"approve"\|"delete"}` call carrying the LIVE agent resolved from the adapter's own registry — a caller it cannot resolve is refused loudly, never fabricated (below) |
@@ -688,24 +688,27 @@ only when no logger exists to `stderr`, with `debug` gated behind
    nothing. It never calls `admit`/`admitInternal`, never uses the test-only
    token, and never fakes an identity. **No input, rewind, session-switch or
    compact interception is claimed.**
-2. **The `/settings` section IS bridged to `<workspace>/.mpd/mpd.jsonc`, and WHEN a saved value takes
-   effect is PER KNOB.** The fields declare the real mpd.jsonc knobs
+2. **The `/settings` section's save is persisted by the HOST — NOT as a workspace `.mpd/mpd.jsonc`
+   — and WHEN the new value takes effect is PER KNOB.** The fields declare the real mpd.jsonc knobs
    (`hashline.maxDiffChars`, `commentChecker.autoCheck`, `ulw.maxRounds`,
-   `memory.vcs`, `team.stateDir`, `boulder.dir`) and edit them under the harness
-   settings namespace `mpd`. That namespace is **served by
-   `packages/mpd-config-plugin`** (design §10.1), which registers it with a
-   `base`, so both front doors display the file's real values instead of the
-   schema defaults; this plugin is a pure consumer and only registers as a
-   guarded **fallback** when a composition has no config plugin. The base follows
+   `memory.vcs`, `team.stateDir`, `boulder.dir`) and edit them as the fields of the `mpd-config`
+   ENTRY document (the legacy `mpd` namespace is RETIRED on this host). That document is **served by
+   `packages/mpd-config-plugin`** (design §10.1); this plugin is a pure consumer and only registers the
+   legacy namespace as a guarded **fallback** when a composition has no config plugin. On a legacy host
+   the fallback's base follows
    a **cardinality rule**: one live root ⇒ that workspace's `<workspace>/.mpd/mpd.jsonc`;
    zero roots ⇒ the mount-time (exec-less) root, an absent file there giving an
    empty base (schema defaults) — the normal boot path, since this row usually
    precedes any live session; more than one root ⇒ **no file base is invented**
    (`base: undefined`, `ambiguous-multi-root`, every candidate warned and surfaced
    by `states()`), so the namespace shows schema defaults until exactly one
-   workspace is live. A saved edit is written back into the live session
-   workspace's `<workspace>/.mpd/mpd.jsonc` with comments and key order preserved, and the
-   config layer applies it to every workspace immediately. **The READ-BACK is live; the EFFECT is
+   workspace is live. **Where the save goes.** The section saves through the `mpd-config` ENTRY
+   document (`ENTRY_CONFIG_ID`), and the HOST owns that store: the row's own listener
+   (`onSettingsDocumentUpdated(ENTRY_CONFIG_ID, …)`) re-loads its `state` from it and deliberately
+   writes NO file. A `<workspace>/.mpd/mpd.jsonc` write exists only for the LEGACY `mpd` namespace
+   (`SETTINGS_NS`), whose registration this harness REFUSES — `settingsModelRetired`, with the boot
+   warning that "the legacy file write-back and override clearing are dormant" — so on the pinned host
+   that path never runs; a hand edit of the file is still read on every resolution. **The READ-BACK is live; the EFFECT is
    per knob.** The config row arms a file watcher at mount (`watchRoot`) and subscribes to the
    entry-config document, so `mpd_config_get` reports the new value at once — but a consumer reads
    its configuration through the config service when it **mounts** (`apply()`), so a value can be
@@ -722,8 +725,8 @@ only when no logger exists to `stderr`, with `debug` gated behind
      only once the host has handed this session its live input kit.
    `docs/user-guide.md` §9.1 is the per-knob authority, and this section claims no more than that
    table. **A settings-only save is never LOST**: the host settings document keeps the value and the
-   config layer applies it to every workspace immediately — only the FILE WRITE waits for a live
-   session. The disclosure is stated
+   config layer applies it to every workspace immediately — and because this path writes no file, it
+   never waits for a live session. The disclosure is stated
    ONCE per surface, never per row: `knobHint` builds each field hint as the knob's own human
    sentence plus `(mpd.jsonc <key>)`, and the section's own description carries `SECTION_NOTICE`
    (the bridge disclosure and the not-lost clause together), byte-identical to the Web
@@ -731,11 +734,11 @@ only when no logger exists to `stderr`, with `debug` gated behind
    team-model slot hints LEAD with the knob's own human sentence — the group the
    slot routes (`槽位 2 提供商（分析型成员）` / `Slot 2 provider (analysis members)`)
    and what configuring it does — and only then state the key. The
-   write-back **refuses** (loudly, writing no file) when the target is ambiguous
-   — no live session (`no-live-session`), several live workspaces
-   (`ambiguous-multi-root`, every candidate named), a read-only/unparsable/
-   conflicting file — while the settings value still applies; the status line
-   carries the matching runtime notice. Not claimed: a specific front door's
+   **On a legacy host** that still serves that namespace, its write-back **refuses** (loudly, writing no
+   file) when the target is ambiguous — no live session (`no-live-session`), several live workspaces
+   (`ambiguous-multi-root`, every candidate named), a read-only/unparsable/conflicting file — while the
+   settings value still applies; the status line carries the matching runtime notice
+   (`BRIDGE_NO_WORKSPACE_NOTICE`). Not claimed: a specific front door's
    rendering (the Web card's browser render is verified by the user in their GUI).
 3. **Web-only surfaces have no TUI rendering face.** The agent-teams sidebar and
    the workmate tab (`dsh.client.platform = web`) do not render in the TUI. The

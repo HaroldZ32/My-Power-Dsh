@@ -411,11 +411,13 @@ host，直到你选择 `mpd` 为止（TUI 的 `/preset mpd`、Web Settings 的 `
 `/settings` 编辑真实的 `mpd.jsonc` 旋钮 —— 共 26 个（原有 13 个、十二个 `teamModels` 槽位叶子，再加
 TUI 界面自身的一个旋钮；槽位叶子是只可选择字段，选项来自实时模型目录，回退到声明列表），
 其中包括 `hashline.maxDiffChars`、
-`commentChecker.autoCheck`、`ulw.maxRounds`、`memory.vcs`、`team.stateDir`、`boulder.dir` —— 它们位于 harness settings 命名空间
-`mpd` 之下。该命名空间由 `packages/mpd-config-plugin` 提供，其 base 是工作区**文件**里的值，所以界面
-打开时显示的是你的文件值而不是 schema 默认值；保存会**写入 `<workspace>/.mpd/mpd.jsonc`**（针对当时
-存活的会话工作区），并保留注释、键顺序与尾随逗号 —— 与 Web GUI 卡片触发的是同一条回写路径（
-[`tui.zh-CN.md`](tui.zh-CN.md) §3.1）。
+`commentChecker.autoCheck`、`ulw.maxRounds`、`memory.vcs`、`team.stateDir`、`boulder.dir` —— 通过
+harness **自带的**表单编辑这一行的 config entry（`configForms.get("mpd-config")`；Web GUI 卡片用的是
+同一个 entry）。**在本 bundle 所固定的这个 harness 上，entry 保存由宿主持久化，且不会执行任何
+`<workspace>/.mpd/mpd.jsonc` 写入**：保存下来的 override 就是最顶层的配置层，并在进程内生效；而把表单
+物化出的默认值投影进你的文件会污染它。文件回写属于**已退役**的 settings 命名空间路径——
+`packages/mpd-config-plugin` 仍实现它，但该 harness 上 `settingsRegister` 会被拒绝，因此这条路径处于
+**休眠**状态。
 
 在依赖它之前需要知道两件事：
 
@@ -423,11 +425,12 @@ TUI 界面自身的一个旋钮；槽位叶子是只可选择字段，选项来�
   `<workspace>/.mpd/mpd.jsonc` 被编辑时都会重新解析，而模型配置旋钮（`modelchain.*`、
   `teamModels.slot*`）是**每次使用**时读取的，因此保存后的改动会到达下一次
   `mpd_config_get`、`mpd_modelchain_resolve` 或 spawn，**无需重启**（`mpd_config_reload` 可强制重读）。
-  其余旋钮仍适用挂载时捕获的规则 —— §9.1 逐个旋钮说明。界面上的提示就是这么写的。
-- **两个具名跳过场景。** settings 路径本身不携带工作区身份，所以写入目标是保存那一刻存活的会话工作区：
-  没有任何存活会话时，保存只写入宿主 settings 文档并报告 `no-live-session`；有**多于一个**存活工作区时
-  会被拒绝为 `ambiguous-multi-root`，并逐一列出候选。这两种情况下**不会改动任何文件**，而值**不会丢失**
-  —— 它保存在 settings 文档中，配置层立即对所有工作区生效；只有文件写入在等待"恰好一个"存活会话。
+  其余旋钮仍适用挂载时捕获的规则 —— §9.1 逐个旋钮说明。
+- **旧命名空间回写路径有两个具名跳过场景（在本 harness 上已休眠）。** 这条路径本身不携带工作区身份，
+  所以它的写入目标是保存那一刻存活的会话工作区：没有任何存活会话时，保存只写入宿主 settings 文档并报告
+  `no-live-session`；有**多于一个**存活工作区时会被拒绝为 `ambiguous-multi-root`，并逐一列出候选。这两种
+  情况下**不会改动任何文件**，而值**不会丢失**——它保存在 settings 文档中，配置层立即对所有工作区生效；
+  只有文件写入在等待"恰好一个"存活会话。**entry 保存永远不会走到这段代码。**
 
 `mpd.jsonc` 中重复的键会编辑其**最后**一次出现（即 `JSON.parse` 读到的那一个），诊断信息会列出每一处
 出现所在行；重复的中间对象则被拒绝为 `ambiguous-intermediate`，文件保持逐字节不变（

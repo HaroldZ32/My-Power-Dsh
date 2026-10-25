@@ -604,8 +604,9 @@ What that plugin does — and what it deliberately does not:
   (`tuiShortcuts`), managed dialogs (`tuiDialogs`) and the transcript-renderer registration
   (`tuiRenderers`; the host projects no row for the bundle's renderer event). Every registration is
   disposed through `ctx.effect`.
-- **Does not** write to the filesystem at all — the settings write-back lives in
-  `packages/mpd-config-plugin` (below), and the TUI package's zero-write property is asserted by its own
+- **Does not** write to the filesystem at all — the legacy namespace write-back lives in
+  `packages/mpd-config-plugin` (below; dormant on the pinned host), an entry-config save writes no file in
+  either package, and the TUI package's zero-write property is asserted by its own
   lane (`tui-settings-bridge.ts`, check T7). It also claims no admitted Component identity: the
   bundle-level `dsh-plugin.json` declares the host facet, and the host's own admission answers
   `waiting_authorization` for the four default-deny decision-event permissions, so the effect ledger
@@ -617,7 +618,15 @@ provider** is `packages/mpd-config-plugin`: it registers the `mpd` namespace thr
 when exactly one session root is live, the mount-time (exec-less) root when none is, and
 `ambiguous-multi-root` (no invented base) when several are — and it owns the **write-back**, triggered
 by the host's `settings/document-updated(ns, revision)` event filtered to `source === 'update'`, under
-a lock plus compare-and-swap, a sibling temp file and an atomic rename. (2) The **host-served
+a lock plus compare-and-swap, a sibling temp file and an atomic rename. **On the harness this bundle
+pins that namespace model is RETIRED, and everything just described is the dormant path.** Both front
+doors save this row's config ENTRY instead (`configForms.get("mpd-config")`): the entry document is the
+HOST's own store, so persistence is the host's, the saved override becomes the top layer (L4) and
+`onSettingsDocumentUpdated(ENTRY_CONFIG_ID)` re-loads it in-process — with **no**
+`<workspace>/.mpd/mpd.jsonc` write on that path, by design, because the document also carries the form's
+materialised defaults and projecting them into the file would pollute it. `settingsRegister` is refused
+on this host and the bridge logs "the namespace-registry model is RETIRED … The legacy file write-back
+and override clearing are dormant", which is the current state. (2) The **host-served
 `tuiSettingsSections` seam** is what renders the section: the TUI package registers a section for the
 namespace `mpd` (with a guarded fallback for compositions that lack the config plugin) and the host
 binds that registration to its own `/settings` screen — that provider/host split is why the screen can
@@ -651,8 +660,9 @@ document should carry, stated rather than left to be discovered:
   invisible until `dsh` restarts; an edit applied mid-session must be verified on the next boot.
 - **Two configuration paths with different latency.** The `mpd.jsonc` layers (schema defaults → the
   patch row's `config` → the file) are read once at plugin mount, so a `.mpd/mpd.jsonc` edit lands
-  at the next boot; the settings document path (the TUI `/settings` screen, the write-back and the
-  `settings/document-updated` re-read) is the live path (§6c, §7b).
+  at the next boot; the settings document path (the TUI `/settings` screen, the entry-config re-read on
+  `settings/document-updated`, and — on a host that still serves the legacy namespace — its write-back)
+  is the live path (§6c, §7b).
 - **The watchdog hold is a contract, not yet an interlock.** The row owns
   `session-watchdog-hold` / `-resume` and the durable hold record; wiring the OFFICIAL dispatch
   gates that honour a hold is a later task. Until then a hold is recorded and reported, and a

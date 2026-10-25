@@ -87,7 +87,7 @@
    * card's second disclosure paragraph together with the first — never alone: a reader who saw only
    * the live half would read the blanket claim the consumers contradict.
    */
-  const BRIDGE_RESTART_LIMIT = "the other half of that list, so nobody reads it as a blanket: hashline.*, commentChecker.*, ulw.*, memory.*, boulder.dir and goal.* are captured by their plugins at mount instead of reading the live config service per use, so a new value for any of them waits for the next dsh boot (the file and the settings document still receive it at once, and each row names the key it writes)"
+  const BRIDGE_RESTART_LIMIT = "the other half of that list, so nobody reads it as a blanket: hashline.*, commentChecker.*, ulw.*, memory.*, boulder.dir and goal.* are captured by their plugins at mount instead of reading the live config service per use, so a new value for any of them waits for the next dsh boot (the settings document receives it at once, and the file does too only on a host that still serves the legacy `mpd` namespace; each row names the key it writes)"
   /** The third disclosure paragraph: what a save means when no session is live. */
   const NO_WORKSPACE_NOTICE = "if no session is live, the save stays in settings — not written to any .mpd/mpd.jsonc"
   // The clause that keeps a settings-only save from reading as a lost one (same sentence the TUI

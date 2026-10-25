@@ -391,3 +391,86 @@ VERDICT: PASS — the install-time rules and the packaging contract hold.
    read agrees with it.
 4. I still ran ONLY the two gates this lane requires; the full sweep remains the captain's.
 
+---
+
+# T18 (finding T16-F1 / CodeRabbit #4 · F2) — the entry save is HOST-persisted, NOT a workspace file
+
+**Defect.** My earlier text (P-11 → T7) said a save **writes `<workspace>/.mpd/mpd.jsonc`** "for the live
+session workspace(s)" and treated the write-back as the mechanism behind the section. That is false for
+the DEFAULT front door: the entry save is persisted by the HOST and writes NO workspace file. Only the
+RETIRED legacy `mpd`-namespace write-back ever writes the file, and the pinned harness refuses to
+register that namespace. I had inherited the claim from the shipped constant instead of reading the save
+path.
+
+**Truth, verified in code this session**
+
+- The card mounts through `configForms.get(CONFIG_ENTRY)` with `CONFIG_ENTRY = "mpd-config"`
+  (`packages/mpd-bundle-plugin/src/settings-card.ts`), and the TUI section saves through the same
+  `mpd-config` ENTRY document (`ENTRY_CONFIG_ID = "mpd-config"`,
+  `packages/mpd-config-plugin/src/index.ts`).
+- The HOST owns that store. The row's listener `onSettingsDocumentUpdated(ENTRY_CONFIG_ID, …)` re-loads
+  its `state` from the document and deliberately writes NO file.
+- The `<workspace>/.mpd/mpd.jsonc` write-back exists only for the LEGACY `mpd` namespace (`SETTINGS_NS`);
+  the pinned harness REFUSES its registration — `settingsModelRetired`, with the boot warning "the
+  namespace-registry model is RETIRED in this harness … The legacy file write-back and override
+  clearing are dormant." — so that path never runs here.
+- A hand edit of `<workspace>/.mpd/mpd.jsonc` is still read on every resolution.
+- The rewritten constants agree: `BRIDGE_DISCLOSURE` opens with the host-persisted entry save and names
+  the legacy write-back as the only file writer; `BRIDGE_NOT_LOST` adds "because this path writes no
+  file, it never waits for a live session".
+
+**New text (EN + zh, 4 files, both twins saying the same thing)**
+
+- `packages/mpd-tui-plugin/README.md` + `.zh-CN.md`
+  - settings table cell: the save is persisted by the HOST as the `mpd-config` ENTRY document and writes
+    NO workspace file; the legacy `mpd`-namespace write-back is named as the only writer and as refused;
+    a hand edit is read on every resolution — with the per-knob live/captured split retained;
+  - NOT CLAIMED #2 heading: "**The `/settings` section's save is persisted by the HOST — NOT as a
+    workspace `.mpd/mpd.jsonc` — and WHEN the new value takes effect is PER KNOB.**";
+  - new "**Where the save goes**" paragraph citing `ENTRY_CONFIG_ID`,
+    `onSettingsDocumentUpdated(ENTRY_CONFIG_ID, …)` and `settingsModelRetired`;
+  - the fields clause now says they are edited as fields of the `mpd-config` ENTRY document (the legacy
+    namespace is retired), and the `base` cardinality rule is labelled as the legacy fallback's;
+  - not-lost: "because this path writes no file, it never waits for a live session";
+  - the ambiguity-refusal paragraph is labelled "**On a legacy host** that still serves that namespace"
+    and cites `BRIDGE_NO_WORKSPACE_NOTICE`.
+- `packages/mpd-bundle-plugin/README.md` + `.zh-CN.md`
+  - the card is the browser half of the same `mpd-config` ENTRY document (`configForms.get(CONFIG_ENTRY)`,
+    `CONFIG_ENTRY = "mpd-config"`), not of the retired `mpd` namespace;
+  - the disclosure paragraph states the host-persisted save, NO workspace write, the legacy-only writer
+    (dormant) and the per-knob split; "the PERSISTENCE belongs to the host and the entry-document re-read
+    to `packages/mpd-config-plugin` (the legacy write-back lives there too, dormant)".
+
+**Checks re-run (quoted, with exit codes)**
+
+`bun run verify:docs` — **exit 0**, log `evidence/audit-20261025/pkg-readmes-b/verify-docs-t18.log`
+
+```
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=50 failed=0 violations=0 exempt=24 derived=3 links=447 dead=0 — PASS
+```
+
+`bun run verify:manifest` — **exit 0**, log `evidence/audit-20261025/pkg-readmes-b/verify-manifest-t18.log`
+
+```
+ok    packed-content: npm pack --dry-run lists 1044 file(s); 0 required path(s) absent
+
+VERDICT: PASS — the install-time rules and the packaging contract hold.
+```
+
+Diff for the four repaired files: **50 insertions, 39 deletions**.
+
+**Bounds**
+
+1. `BRIDGE_NO_WORKSPACE_NOTICE` still reads "not yet written to any .mpd/mpd.jsonc (no live session)" —
+   that is the LEGACY path's runtime notice; I cite it inside the labelled legacy paragraph and do not
+   claim it fires on the entry path.
+2. `docs/user-guide.md` §9.1 was NOT edited (per the docs lane's instruction); it stays the per-knob
+   authority both READMEs point at.
+3. I did not edit the constants or the card mirror (code lane's scope); the READMEs describe their shape
+   and cite the symbols.
+4. Only the two gates this lane requires were run; the counters (links=447, packed=1044) reflect the
+   shared tree, not a change of mine.
+5. A self-inflicted zh breakage was caught and repaired in the same pass (a sentence half lost while
+   re-anchoring the `base` cardinality rule); the final text was re-read after the fix.
+
+

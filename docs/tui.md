@@ -143,11 +143,11 @@ the shape measured from `dsh-client-ui-settings-models/lib/client.js:2936`): the
 collects that list slot, sorts it by `order` and renders the active one, so `order: 20` places MPD
 after `general` (0), `models` (10) and `plugins` (15) and moves no existing section. The section
 renders the card as-is, declares no nested `children`, and a namespace with no registration renders
-nothing — which is why the knobs were invisible before. Writes use the public
-`ctx.settingsScope.bind({ namespace: 'mpd' }).mutate(ops, revision)` seam (nested paths; `unset` for
-reset), and a non-writable scope renders read-only with the reason and never attempts a write. The
-card's fields, labels and zh descriptions are asserted against the TUI section's descriptor by its own
-test, so the two front doors cannot drift.
+nothing — which is why the knobs were invisible before. Writes go through the harness's own config
+form for the `mpd-config` entry document (`ctx.configForms.get("mpd-config")`), not a
+`settingsScope` binding, and an unwritable form renders read-only with the reason and never attempts a
+write. The card's fields, labels and zh descriptions are asserted against the TUI section's descriptor
+by its own test, so the two front doors cannot drift.
 
 **Evidence level — witnessed:** the registration contract in the **built and served** client bytes
 (`packages/mpd-bundle-plugin/client.js`; the lane re-hashes the artifact it judged and the evidence
@@ -735,17 +735,33 @@ documented in the research record (`.mpd/recon/UPSTREAM-RESEARCH.md`).
 Related: `trusted-in-process` is a **compatibility/audit label, not a security boundary**. A
 SHA-256 digest proves byte identity only — never publisher identity.
 
-### 6.2 The `/settings` section IS bridged to `<workspace>/.mpd/mpd.jsonc` — live for the model routes, with two named skip cases
+### 6.2 The `/settings` section IS bridged — an entry save is host-persisted with NO workspace write; the legacy namespace write-back is named and dormant here
 
 The section declares the real mpd.jsonc knobs (`hashline.maxDiffChars`, `commentChecker.autoCheck`,
 `ulw.maxRounds`, `memory.vcs`, `team.stateDir`, `boulder.dir` and the twelve
-`teamModels.slot{1,2,3,4}.{provider,model,reasoningEffort}` leaves) under the harness settings namespace
-`mpd`, and that namespace is **served by `packages/mpd-config-plugin`** (this package is a pure
-consumer and registers only a guarded fallback when no config plugin is composed). What a save does
-today:
+`teamModels.slot{1,2,3,4}.{provider,model,reasoningEffort}` leaves) as this row's config, through the
+harness's own form for the config ENTRY `mpd-config` (`packages/mpd-config-plugin` owns the entry; this
+package is a pure consumer and registers only a guarded fallback when no config plugin is composed).
+**TWO persistence paths exist, and only the dormant one writes your file:**
 
-**The base is a rule, not a lookup.** The serving package derives the namespace base itself
-(`baseForNamespace()`, registered through the adapter)
+- **Entry-config save — what both front doors do on this harness.** The Web card and this section save
+  `configForms.get("mpd-config")`; the entry document is the HOST's own store, so persistence is the
+  host's. The saved override is the top config layer (L4, `readEntryConfig`) and
+  `onSettingsDocumentUpdated(ENTRY_CONFIG_ID)` re-loads it in-process — **no restart** — and this path
+  performs **NO `<workspace>/.mpd/mpd.jsonc` write**, deliberately: the document also carries the
+  form's materialised defaults, so projecting them into your file would pollute it.
+- **Legacy `mpd`-NAMESPACE write-back — dormant here.** `packages/mpd-config-plugin` still implements
+  it (lock + compare-and-swap + sibling temp file + atomic rename, comments/key order/trailing commas
+  preserved, with the two named skip cases). On the harness this bundle pins, `settingsRegister` is
+  refused ("the namespace-registry model is RETIRED in this harness"), the bridge records that once,
+  and its file write-back and override clearing stay **dormant**. Everything below — the base table, the
+  write-back bullet and the workspace-target bullet — documents THAT path; it is not a promise about an
+  entry save.
+
+What a save does today (the entry path):
+
+**The base is a rule, not a lookup — and it is the LEGACY namespace's base.** The serving package
+derives the namespace base itself (`baseForNamespace()`, registered through the adapter)
 under a cardinality rule:
 
 | Live session roots | The namespace base |
@@ -779,19 +795,23 @@ sentence on this page promises a live-refreshed **base** — only a live-resolve
   `<workspace>/.mpd/mpd.jsonc` < **L3 the settings user section**, which is authoritative at runtime; a
   later FILE edit **unsets** the overlapping settings leaf, so the file's new value wins again and
   neither direction silently loses.
-- **Write-back** — owned by `packages/mpd-config-plugin` (never by this TUI package, which keeps its
+- **Write-back (legacy namespace path — DORMANT on this harness)** — owned by
+  `packages/mpd-config-plugin` (never by this TUI package, which keeps its
   verified zero-write property). It triggers on the host's `settings/document-updated(ns, revision)`
   event filtered to `source === 'update'` (the raw-section event, so the deep-equal gate cannot drop a
   change) and writes the live session workspace's `<workspace>/.mpd/mpd.jsonc` under a lock plus a
   compare-and-swap on the raw bytes, a sibling temp file and an atomic rename. **Comments, key order and
   trailing commas survive**: a real boot rewrote `hashline.maxDiffChars` 20000 → 31415 in a JSONC file
-  and the comment, the key order and the trailing comma were unchanged.
-- **Workspace target** — the settings path carries no identity, so the target set is the **live session
+  and the comment, the key order and the trailing comma were unchanged. None of this runs for an
+  entry-config save (above).
+- **Workspace target (legacy namespace path — DORMANT here)** — that path carries no identity, so the
+  target set is the **live session
   workspaces at event time**: exactly one ⇒ that file is written; **zero ⇒ `no-live-session`**; **more
   than one ⇒ `ambiguous-multi-root`**, with every candidate named. In both skip cases **no file is
   changed** and the edit is **not lost**: it is stored in the host-global settings document and the
   config layer applies it to every workspace immediately — only the FILE WRITE waits for exactly one
-  live session. The TUI status line and the Web card both carry that clause.
+  live session. The TUI status line and the Web card both carry that clause, where they mean the
+  legacy path.
 - **Timing** — the model-config consumers resolve through the live `mpdConfig` service per use
   (`mpd_modelchain_resolve` per call; slot routing at spawn), and the service re-resolves
   on every settings save and on a watched edit of the project file, so a saved edit **reaches the next
@@ -890,17 +910,19 @@ predictable (`evidence/mpd-bridge/dual-path/REPORT.md`, finding D1):
 | Scope | State | Shared when |
 |---|---|---|
 | **DSH-HOME** (`$DSH_HOME/settings.yaml` + user `mpd.jsonc`) | the host's settings document | both front doors live in the **same DSH home** |
-| **workspace** (`<workspace>/.mpd/**`) | `mpd.jsonc` (the bridge's durable projection), `memory.json`, team/plan/boulder state | both doors run in the **same workspace** — by construction |
+| **workspace** (`<workspace>/.mpd/**`) | `mpd.jsonc` (the configuration FILE every layer reads; an entry save does NOT write it — §6.2), `memory.json`, team/plan/boulder state | both doors run in the **same workspace** — by construction |
 | **HOME** (`~/.mpd/workmate`) | the user's cross-project workmate library | same `HOME`, i.e. across profiles of one user; distinct for two users |
 | **bundle** (`<bundle>/…`) | the `mpd` preset/roster and the skill corpus (served, not copied) | both doors **are the same install**, independent of any home |
 
 **The boundary to know:** with ONE DSH home the settings document is shared, so a settings edit is
 visible to both front doors at once. With SEPARATE DSH homes there are **two** settings documents —
 `settings.yaml` is DSH-HOME-scoped — so an edit made in one door is **invisible as a settings VALUE**
-to the other. The durable state still converges: the write-back target is the **workspace** file, and
-both doors write that same `<workspace>/.mpd/mpd.jsonc`. In one sentence: *same DSH home ⇒ the settings
-value is shared; separate homes ⇒ the settings values differ, but the workspace `<workspace>/.mpd/mpd.jsonc` still
-converges.* This is the one place where the two doors can legitimately disagree on an inherited value.
+to the other, and it does not converge through the workspace file either: on this harness an
+entry-config save performs **no `<workspace>/.mpd/mpd.jsonc` write** (§6.2), so nothing syncs the two
+doors automatically. The workspace `mpd.jsonc` changes when something writes it — a hand edit, or the
+dormant legacy namespace write-back where a host still serves it. In one sentence: *same DSH home ⇒ the
+settings value is shared; separate homes ⇒ the settings values differ and no save writes the workspace
+file for you.* This is the one place where the two doors can legitimately disagree on an inherited value.
 
 ## 7. Deliberate deviations from ecosystem convention
 

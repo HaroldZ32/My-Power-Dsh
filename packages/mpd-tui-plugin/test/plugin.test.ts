@@ -1664,6 +1664,10 @@ describe("settings section disclosure (t21)", () => {
     for (const captured of ["hashline.*", "commentChecker.*", "ulw.*", "memory.*", "boulder.dir", "goal.*"]) expect(BRIDGE_RESTART_LIMIT).toContain(captured)
     expect(BRIDGE_RESTART_LIMIT).toContain("instead of reading the live config service per use")
     expect(BRIDGE_RESTART_LIMIT).toContain("waits for the next dsh boot")
+    // T16-F1: the parenthetical names the SAME asymmetry the live half states — the document at once,
+    // the file only on a host that still serves the legacy namespace.
+    expect(BRIDGE_RESTART_LIMIT).toContain("the settings document receives it at once, and the file does too only on a host that still serves the legacy")
+    expect(BRIDGE_RESTART_LIMIT).not.toContain("the file and the settings document still receive it at once")
     // The BLANKET sentence is gone, and the not-lost clause survives.
     expect(BRIDGE_DISCLOSURE).not.toContain("takes effect in the RUNNING process — no restart")
     expect(BRIDGE_DISCLOSURE).not.toContain("after a restart")

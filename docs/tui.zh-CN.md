@@ -126,8 +126,8 @@ dsh-tui 自 0.12.0 起就暴露的十四条接缝，加上 0.13.0 新增的侧�
 形状取自 `dsh-client-ui-settings-models/lib/client.js:2936` 的实测）：设置外壳收集该列表槽位、按 `order`
 排序并渲染当前激活项，因此 `order: 20` 让 MPD 排在 `general`（0）、`models`（10）、`plugins`（15）之后，
 且不移动任何既有栏目。该栏原样渲染卡片，不声明任何嵌套 `children`；没有被注册的命名空间什么也不渲染——这
-正是此前可调项不可见的原因。写入走公开的 `ctx.settingsScope.bind({ namespace: 'mpd' }).mutate(ops, revision)`
-接缝（支持嵌套路径；复位用 `unset`），不可写的 scope 会带原因渲染为只读，并且绝不尝试写入。卡片的字段、
+正是此前可调项不可见的原因。写入走 harness 自己的 config-form（`ctx.configForms.get("mpd-config")`，
+即 `mpd-config` entry 文档），而不是 `settingsScope` 绑定；不可写的表单会带原因渲染为只读，并且绝不尝试写入。卡片的字段、
 标签与中文描述由它自己的测试与 TUI 区块的描述符逐一比对，因此两扇门不会各自漂移。
 
 **证据级别——已见证：** **已构建且已服务**的客户端字节中的注册契约
@@ -596,16 +596,30 @@ profile 安装的插件无法注册 `tui.dsh/v1alpha1#DecisionEvents`：在宿�
 相关：`trusted-in-process` 是**兼容性/审计标签，不是安全边界**。SHA-256 摘要只能证明字节一致，
 **不能**证明发布者身份。
 
-### 6.2 `/settings` 区块**已**与 `<workspace>/.mpd/mpd.jsonc` 打通——模型路由即时生效，另有两种具名跳过情形
+### 6.2 `/settings` 区块**已**打通——entry 保存由宿主持久化、**不写工作区文件**；旧命名空间回写已具名且在此休眠
 
-该区块在宿主 settings 命名空间 `mpd` 下声明的就是真实的 mpd.jsonc 可调项（`hashline.maxDiffChars`、
-`commentChecker.autoCheck`、`ulw.maxRounds`、`memory.vcs`、`team.stateDir`、`boulder.dir` 以及十二个
-`teamModels.slot{1,2,3,4}.{provider,model,reasoningEffort}` 叶子），而该命名空间
-由 `packages/mpd-config-plugin` **提供**（本包只是纯消费者，只在没有配置插件参与组合时才注册一个带守卫的
-兜底）。如今一次保存会发生什么：
+该区块声明的就是真实的 mpd.jsonc 可调项（`hashline.maxDiffChars`、`commentChecker.autoCheck`、
+`ulw.maxRounds`、`memory.vcs`、`team.stateDir`、`boulder.dir` 以及十二个
+`teamModels.slot{1,2,3,4}.{provider,model,reasoningEffort}` 叶子），它们是**本行 config 的入口文档**
+（entry `mpd-config`）里的键，经 harness **自带的**表单编辑（entry 由 `packages/mpd-config-plugin` 拥有；
+本包只是纯消费者，只在没有配置插件参与组合时才注册一个带守卫的兜底）。
+**存在两条持久化路径，只有那条休眠的会写你的文件：**
 
-**`base` 是一条规则，不是一次查表。** 提供该命名空间的包自行推导 base（`baseForNamespace()`，
-经适配器注册），规则按活动根的数量分档：
+- **entry-config 保存——本 harness 上两扇前门都走这条。** Web 卡片与本分区保存的是
+  `configForms.get("mpd-config")`；entry 文档是**宿主自己的**存储，因此持久化是宿主的事。保存下来的
+  override 就是最顶层配置层（L4，`readEntryConfig`），而 `onSettingsDocumentUpdated(ENTRY_CONFIG_ID)`
+  会在进程内重新加载它——**无需重启**——并且这条路径**不执行任何 `<workspace>/.mpd/mpd.jsonc` 写入**，
+  这是刻意的：该文档还承载着表单物化出的默认值，把它们投影进你的文件会污染它。
+- **旧 `mpd` 命名空间回写——在此休眠。** `packages/mpd-config-plugin` 仍实现它（锁 + compare-and-swap +
+  同目录临时文件 + 原子改名，保留注释/键顺序/尾随逗号，并带两个具名跳过情形）。在本 bundle 所固定的
+  harness 上，`settingsRegister` 会被拒绝（"the namespace-registry model is RETIRED in this harness"），
+  桥接只记录一次，其文件回写与 override 清理保持**休眠**。下文的全部内容——base 表、写回条目与工作区
+  目标条目——记录的都是**那条**路径；它不是对 entry 保存的承诺。
+
+一次保存如今会发生什么（entry 路径）：
+
+**`base` 是一条规则，不是一次查表——而且它是「旧命名空间」的 base。** 提供该命名空间的包自行推导 base
+（`baseForNamespace()`，经适配器注册），规则按活动根的数量分档：
 
 | 活动会话根 | 命名空间 base |
 |---|---|
@@ -633,16 +647,18 @@ base 被冻结，**按工作区读取仍然解析各自会话自己的文件**�
 - **读入优先级** —— L0 schema 默认值 < L1 `$DSH_HOME/mpd.jsonc` < L2 `<workspace>/.mpd/mpd.jsonc` <
   **L3 settings 用户区段**（运行期以其为准）；此后若**文件**被再次编辑，重叠的 settings 叶子会被
   **取消设置**，于是文件里的新值重新生效，两个方向都不会静默丢失。
-- **写回** —— 由 `packages/mpd-config-plugin` 拥有（绝不由本 TUI 包执行，后者保持已验证的零写入性质）。
+- **写回（旧命名空间路径——本 harness 上已休眠）** —— 由 `packages/mpd-config-plugin` 拥有（绝不由本
+  TUI 包执行，后者保持已验证的零写入性质）。
   触发点是宿主的 `settings/document-updated(ns, revision)` 事件，并过滤为 `source === 'update'`
   （原始区段事件，因此深比较门不会把变更丢掉）；写入对象是事件时刻实机会话工作区的
   `<workspace>/.mpd/mpd.jsonc`，写入过程持锁、对原始字节做 compare-and-swap、写同目录临时文件、再原子改名。
   **注释、键顺序与尾随逗号都保留**：一次实际启动把 JSONC 文件里的 `hashline.maxDiffChars` 从 20000 改为
-  31415，注释、键顺序与尾随逗号均未改变。
-- **工作区目标** —— settings 路径不携带身份，因此目标集合是**事件时刻的实机会话工作区**：恰好一个 ⇒
-  写入该文件；**零个 ⇒ `no-live-session`**；**多于一个 ⇒ `ambiguous-multi-root`**，并逐一列出候选。
-  两种跳过情形下**都不改动任何文件**，而且这次编辑**没有丢失**：它已存入宿主全局 settings 文档，配置层
-  会立刻对所有工作区生效——只有**文件写入**在等"恰好一个实机会话"。TUI 状态行与 Web 卡片都写明了这一条。
+  31415，注释、键顺序与尾随逗号均未改变。entry-config 保存（见上）不会触发其中任何一步。
+- **工作区目标（旧命名空间路径——此处已休眠）** —— 该路径不携带身份，因此目标集合是**事件时刻的实机会话
+  工作区**：恰好一个 ⇒ 写入该文件；**零个 ⇒ `no-live-session`**；**多于一个 ⇒ `ambiguous-multi-root`**，
+  并逐一列出候选。两种跳过情形下**都不改动任何文件**，而且这次编辑**没有丢失**：它已存入宿主全局 settings
+  文档，配置层会立刻对所有工作区生效——只有**文件写入**在等"恰好一个实机会话"。TUI 状态行与 Web 卡片都
+  写明了这一条，指的都是这条旧路径。
 - **生效时机** —— 模型配置的消费者通过实时 `mpdConfig` 服务按次解析（`mpd_modelchain_resolve`
   每次调用；槽位路由在 spawn 时），而该服务在每次设置保存时、以及监听到项目文件被编辑时
   都会重新解析，因此保存的编辑**在下一次解析或 spawn 时即生效，无需重启**（`mpd_config_reload`
@@ -725,16 +741,17 @@ profile 安装的插件无法到达的准入路径（§6.1），因此不是本�
 | 作用域 | 状态 | 共享条件 |
 |---|---|---|
 | **DSH-HOME**（`$DSH_HOME/settings.yaml` + 用户 `mpd.jsonc`） | 宿主的 settings 文档 | 两扇前门位于**同一个 DSH home** |
-| **workspace**（`<workspace>/.mpd/**`） | `mpd.jsonc`（打通的持久投影）、`memory.json`、team/plan/boulder 状态 | 两扇门运行在**同一工作区**——由构造保证 |
+| **workspace**（`<workspace>/.mpd/**`） | `mpd.jsonc`（每一层都会读取的**配置文件**；entry 保存**不**写它——§6.2）、`memory.json`、team/plan/boulder 状态 | 两扇门运行在**同一工作区**——由构造保证 |
 | **HOME**（`~/.mpd/workmate`） | 用户的跨项目 workmate 库 | 同一 `HOME`，即同一用户的多个 profile 之间；两个用户之间相互独立 |
 | **bundle**（`<bundle>/…`） | `mpd` preset/roster 与技能语料（按引用提供，不复制） | 两扇门**就是同一次安装**，与 home 无关 |
 
 **必须知道的边界：** 只有一个 DSH home 时，settings 文档是共享的，因此一次设置编辑对两扇前门同时可见。
 而**不同的 DSH home 会有两份 settings 文档**——`settings.yaml` 是 DSH-HOME 作用域的——所以在一扇门里做的
-编辑，对另一扇门而言**作为 settings 取值（VALUE）是不可见的**。持久状态仍然会收敛：回写的目标是
-**工作区**文件，两扇门写的是同一个 `<workspace>/.mpd/mpd.jsonc`。一句话概括：*同一个 DSH home ⇒ settings
-取值共享；不同 home ⇒ settings 取值不同，但工作区的 `<workspace>/.mpd/mpd.jsonc` 仍然收敛。* 这是两扇门有可能对同一个
-继承值给出不同显示的唯一情形。
+编辑，对另一扇门而言**作为 settings 取值（VALUE）是不可见的**，而且它也不会经由工作区文件收敛：在本
+harness 上，entry-config 保存**不会执行任何 `<workspace>/.mpd/mpd.jsonc` 写入**（§6.2），因此没有任何机制
+自动同步两扇门。工作区的 `mpd.jsonc` 只在有东西写它时才会变——手工编辑，或者在仍提供旧命名空间的宿主上由
+那条休眠的回写路径写入。一句话概括：*同一个 DSH home ⇒ settings 取值共享；不同 home ⇒ settings 取值不同，
+且没有任何保存会替你写工作区文件。* 这是两扇门有可能对同一个继承值给出不同显示的唯一情形。
 
 ## 7. 对生态惯例的刻意偏离
 

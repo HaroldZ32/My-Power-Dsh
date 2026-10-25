@@ -19,7 +19,7 @@ Cordis 插件行（`mpd-tui`），其模块说明符由 bundle patch 持有：
 |---|---|---|
 | 状态行 | `ctx.tuiStatus` | 提示框上方一个键控的 `mpd` 贡献：`mpd: team … · boulder … · plans … · workmates …` |
 | 条目渲染器 | `ctx.tuiRenderers` | 本包的 log-only 会话事件（`agent-teams/*`、`mpd-tui/board-opened`）渲染为纯文本行，实时与回放同路径 |
-| 设置区块 | `ctx.tuiSettingsSections` | 把 mpd.jsonc 的可调项 —— 原有 13 个、十二个 `teamModels` 槽位叶子与 TUI 自己的 `tui.dashboardKey`（共 26 个；按成员的 `agentRoutes` 行已随覆盖层一起删除），其中槽位叶子渲染为**由模型目录驱动的选择项** —— 声明为 `/settings` 中可编辑的字段，**已与 `<workspace>/.mpd/mpd.jsonc` 打通**（保存会立刻写文件，而**哪些**开关随后无需重启即可生效是**逐开关**的：模型路由、`watchdog.*`、`team.gate`/`team.sensitivity`、`team.stateDir` 读取方与两个守卫在运行中的进程里生效，而 `hashline.*`、`commentChecker.*`、`ulw.*`、`memory.*`、`boulder.dir`、`goal.*` 是 `apply()` 时捕获的、需等下一次 `dsh` 启动）；每个字段提示写出自己的 `mpd.jsonc` 键，披露只由区块陈述一次，逐开关表见 `docs/user-guide.md` §9.1（见“明确不声明”第 2 条） |
+| 设置区块 | `ctx.tuiSettingsSections` | 把 mpd.jsonc 的可调项 —— 原有 13 个、十二个 `teamModels` 槽位叶子与 TUI 自己的 `tui.dashboardKey`（共 26 个；按成员的 `agentRoutes` 行已随覆盖层一起删除），其中槽位叶子渲染为**由模型目录驱动的选择项** —— 声明为 `/settings` 中可编辑的字段，**经宿主的设置文档接入配置服务**：本区块的保存由**宿主**持久化为 `mpd-config` 这个 **ENTRY 文档**（**这条路径不写任何工作区文件** —— 唯一的 `<workspace>/.mpd/mpd.jsonc` 写入方是**已退役**的旧 `mpd` 命名空间回写，被钉住的 harness 拒绝它；而手工编辑该文件仍会在每次解析时被读取）。随后**哪些**开关无需重启即可生效是**逐开关**的：模型路由、`watchdog.*`、`team.gate`/`team.sensitivity`、`team.stateDir` 读取方与两个守卫在运行中的进程里生效，而 `hashline.*`、`commentChecker.*`、`ulw.*`、`memory.*`、`boulder.dir`、`goal.*` 是 `apply()` 时捕获的、需等下一次 `dsh` 启动。每个字段提示写出自己的 `mpd.jsonc` 键，披露只由区块陈述一次，逐开关表见 `docs/user-guide.md` §9.1（见“明确不声明”第 2 条） |
 | 全屏场景 | `ctx.tuiScenes` | 团队与任务账本、boulder 工作账本、计划、workmate 库；已路由团队在面板上多两行：`team-plan …`（仅 staged 时）与 `team-hold held (…)`（仅看门狗 hold 持续期间） |
 | 团队工作流场景 | `ctx.tuiScenes` | `mpd-tui-team` —— 用 `/mpd team` 打开，或在面板中按 `a`：团队 id/名称/阶段、计划审阅状态、看门狗 hold、成员表（角色/模型/状态/进度/当前任务）以及任务 DAG（kind/状态/负责人/尝试/轮次/判定/依赖，按深度缩进，标 `failed-dep=`）与邮箱尾部 |
 | 计划场景（批准流程，W6） | `ctx.tuiScenes` | `mpd-tui-plan` —— 用 `/mpd plan` 打开。它渲染实时任务板，并承载批准闸门：逐字输入该面板显示的**确切**短语（`approve plan-…`，由 Web 面板渲染的**同一份**投影提供），再按 `Ctrl+X`；10 秒内按两次 `Ctrl+D` 丢弃已 stage 的 plan，`Ctrl+R` 重新读取，`esc` 返回。该动作是一次 `agent_teams_plan {action:"approve"\|"delete"}` 调用，携带从适配器**自身注册表**解析出的**实时** agent —— 解析不出调用方时一律**响亮拒绝**，绝不伪造（见下） |
@@ -556,20 +556,22 @@ harness 接缝（tools、skills、agent registry、subagents）不在此处直�
    告警一次**，并且不注册任何东西。它绝不调用 `admit`/`admitInternal`，绝不使用
    测试专用 token，绝不伪造身份。**不声明任何输入 / rewind / 会话切换 / 压缩
    拦截能力。**
-2. **`/settings` 区块已与 `<workspace>/.mpd/mpd.jsonc` 打通，而保存的值“何时”生效是**逐开关**的。** 字段声明的
+2. **`/settings` 区块的保存由**宿主**持久化 —— 不是写成工作区的 `.mpd/mpd.jsonc` —— 而新值的“何时”生效是**逐开关**的。** 字段声明的
    是真实的 mpd.jsonc 可调项（`hashline.maxDiffChars`、`commentChecker.autoCheck`、
-   `ulw.maxRounds`、`memory.vcs`、`team.stateDir`、`boulder.dir`），并在 harness
-   设置命名空间 `mpd` 下编辑它们。该命名空间**由 `packages/mpd-config-plugin`
-   提供**（设计 §10.1）：它以推导出的 `base` 注册，因此两个前门展示的都是文件中的真实
-   取值，而不是 schema 默认值；本插件是**纯消费者**，仅在没有 config 插件的组合中作为
-   **受保护的兜底**注册。`base` 遵循**数量规则**：一个活动根 ⇒ 该工作区的
+   `ulw.maxRounds`、`memory.vcs`、`team.stateDir`、`boulder.dir`），并把它们作为
+   `mpd-config` **ENTRY 文档**的字段编辑（旧 `mpd` 命名空间在本宿主上已**退役**）。该文档**由
+   `packages/mpd-config-plugin` 提供**（设计 §10.1）；本插件是**纯消费者**，仅在没有 config 插件的组合中
+   把旧命名空间作为**受保护的兜底**注册。在旧宿主上，该兜底的 `base` 遵循**数量规则**：一个活动根 ⇒ 该工作区的
    `<workspace>/.mpd/mpd.jsonc`；零个根 ⇒ 挂载时（无 exec）的根，那里文件缺失即得到空
    base（schema 默认值）——这是常规启动路径，因为本行通常先于任何活动会话；多于一个根 ⇒
    **不虚构任何文件 base**（`base: undefined`、`ambiguous-multi-root`，逐一点名全部候选
    并由 `states()` 暴露），因此在恰好一个工作区活动之前该命名空间显示 schema 默认值。
-   保存的编辑会回写到
-   当前会话工作区的 `<workspace>/.mpd/mpd.jsonc`，并保留注释与键顺序，配置层立即对所有工作区
-   生效。**读回是即时的，生效则是逐开关的。** 配置行在挂载时装上文件监听（`watchRoot`）并订阅
+   **保存去了哪里。** 本区块经 `mpd-config` 这个 ENTRY 文档（`ENTRY_CONFIG_ID`）保存，而那个存储**属于宿主**：
+   本行自己的监听器（`onSettingsDocumentUpdated(ENTRY_CONFIG_ID, …)`）从它重新载入 `state`，并且**故意不写任何
+   文件**。`<workspace>/.mpd/mpd.jsonc` 的写入只存在于**旧** `mpd` 命名空间（`SETTINGS_NS`），而本 harness
+   **拒绝**它的注册 —— `settingsModelRetired`，并给出「legacy file write-back 与 override clearing 均处于休眠」
+   的启动告警 —— 因此在被钉住的宿主上这条路径从不运行；而手工编辑该文件仍会在每次解析时被读取。
+   **读回是即时的，生效则是逐开关的。** 配置行在挂载时装上文件监听（`watchRoot`）并订阅
    entry-config 文档，所以 `mpd_config_get` 立刻就能报出新值 —— 但消费者是在**挂载时**
    （`apply()`）通过配置服务读取自身配置的，因此读回已经正确、而运行中的插件仍可能按旧值行动。
    分两组，本区块**两组都写**，绝不只写好看的那一半：
@@ -583,16 +585,16 @@ harness 接缝（tools、skills、agent registry、subagents）不在此处直�
      `tui.dashboardKey` 是**单向**即时的：每次按键都会读取，但接管本身要等宿主把本会话的活的输入
      kit 交来之后才就绪。
    逐开关的权威是 `docs/user-guide.md` §9.1，本区块不会比那张表声称更多。**只存在于设置中的保存
-   永远不会丢失**：设置文档保留该值，配置层立即对所有工作区应用 —— 只有**文件写入**要等一个活动
-   会话。披露**每个界面只陈述一次**，绝不逐行陈述：`knobHint` 把每个
+   永远不会丢失**：宿主设置文档保留该值，配置层立即对所有工作区应用 —— 而因为这条路径不写文件，
+   它从不等待活动会话。披露**每个界面只陈述一次**，绝不逐行陈述：`knobHint` 把每个
    字段提示构造成「开关自身的人类语句 + `(mpd.jsonc <key>)`」，而区块自己的描述携带
    `SECTION_NOTICE`（桥接披露与不会丢失条款合在一起），与
    `settings-card.ts` 里 Web 卡片的同一份声明逐字节相同。十二个团队模型槽位的提示**以该开关自身的
    人类语句开头**（写明该槽位路由哪个成员分组，例如 `槽位 2 提供商（分析型成员）`，以及配置它的
-   影响），之后才写出键。当目标不明确时回写会
+   影响），之后才写出键。**在仍然提供该命名空间的旧宿主上**，它的回写会在目标不明确时
    **明确拒绝且不写文件**（无活动会话 `no-live-session`；多个活动工作区
    `ambiguous-multi-root` 并列出全部候选；只读/不可解析/冲突的文件），而设置值仍然
-   生效；状态行会显示对应的运行时提示。不声明：某个具体前门的渲染效果（Web 卡片的
+   生效；状态行会显示对应的运行时提示（`BRIDGE_NO_WORKSPACE_NOTICE`）。不声明：某个具体前门的渲染效果（Web 卡片的
    浏览器渲染由用户在自己的 GUI 中验证）。
 3. **web 专有界面在 TUI 中没有渲染面。** agent-teams 侧边栏与 workmate 标签页
    （`dsh.client.platform = web`）在 TUI 中不渲染。面板、状态行与对话框是**等价物**，

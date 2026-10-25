@@ -96,6 +96,11 @@ describe("D-18 — the disclosure tells the SCOPED truth, and states BOTH halves
     // rewrite that drops the whole class (restoring the blanket claim) reddens.
     for (const group of MOUNT_CAPTURED) expect(BRIDGE_RESTART_LIMIT).toContain(group)
     expect(BRIDGE_RESTART_LIMIT).toContain("waits for the next dsh boot")
+    // T16-F1: the file parenthetical is SCOPED. The settings DOCUMENT receives the new value at once on
+    // every host; the FILE only where the legacy namespace is still served. The retracted blanket
+    // wording is asserted ABSENT, because it contradicted the sentence right before it.
+    expect(BRIDGE_RESTART_LIMIT).toContain("the settings document receives it at once, and the file does too only on a host that still serves the legacy")
+    expect(BRIDGE_RESTART_LIMIT).not.toContain("the file and the settings document still receive it at once")
   })
 
   test("the section notice renders BOTH halves plus the not-lost clause, and never the blanket sentence", () => {

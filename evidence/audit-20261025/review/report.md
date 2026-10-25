@@ -317,3 +317,102 @@ claimed.
 
 **Final verdict: PASS.**
 
+---
+
+# T16 — FINAL VERIFICATION OF THE CODERABBIT REPAIR COMMIT `c421e157` — 2026-10-25T13:50Z — **FAIL (one finding)**
+
+Commit `c421e157` (PR #66) is the repair commit after `cb348954`; it claims to answer CodeRabbit's
+review as recorded in **AMENDMENT 4** of `.mpd/plans/audit-20261025-fixes.md` (nine inline findings,
+plus the T15 stale-pin follow-up). I verified each finding against the implementation, not against the
+repair report. **Eight of the nine are answered correctly. #4 is only half-answered: the truthful-save
+-path repair stops at the code constants and leaves the same false claim shipped in the human-facing
+band and in the notice's second half.**
+
+## Finding (HIGH — the repair is incomplete, same class as CodeRabbit #4)
+
+CodeRabbit #4 proved (and the repair now states in `BRIDGE_DISCLOSURE`) that a save from the default
+**entry-config** front door persists in the HOST's settings document and **writes NO
+`.mpd/mpd.jsonc`**; only the RETIRED legacy `mpd` namespace had a write-back, and the pinned harness
+refuses that registration (`settingsModelRetired = true`, one boot warning). I confirmed that code
+truth myself: `onSettingsDocumentUpdated(ENTRY_CONFIG_ID, …)` re-loads state and deliberately writes no
+file, the only `writeBack(…)` caller is behind the `SETTINGS_NS` listener, and the namespace
+registration is refused.
+
+The same claim is still shipped as CURRENT in these places (all read on the final tree):
+
+| Site | Surviving claim | Why it is false |
+|---|---|---|
+| `packages/mpd-tui-plugin/README.md` settings row + `README.zh-CN.md` twin | "a save writes the file at once" / "保存会立刻写文件" | the default save writes no file |
+| `packages/mpd-bundle-plugin/README.md` + `README.zh-CN.md` (TUI counterpart paragraph) | "a save writes `<workspace>/.mpd/mpd.jsonc` for the live session workspace(s)" / "保存会写入 …" | same |
+| `docs/user-guide.md` §7.2 + zh | "a save **writes `<workspace>/.mpd/mpd.jsonc`** … the same write-back the Web GUI card triggers" (and "under the harness settings namespace `mpd`") | same; the section is keyed by the ENTRY `mpd-config`, not the namespace, on this host |
+| `docs/tui.md` §7.2 Write-back bullet + zh | "It triggers on … `settings/document-updated` … and writes the live session workspace's `<workspace>/.mpd/mpd.jsonc` under a lock …" | describes the dormant legacy path as the live mechanism, with no qualifier |
+| `docs/design.md` §7b seam-providers paragraph + zh | "it registers the `mpd` namespace … and it owns the **write-back**, triggered by …" | same; the retirement is a host fact the paragraph omits |
+| `BRIDGE_RESTART_LIMIT` (rendered in `BRIDGE_SECTION_NOTICE`, mirrored byte-identically in `settings-card.ts`, copied in `skills/dsh-qa/scripts/lib/settings-bridge-lane.ts` as `TUI_DISCLOSURE_CAPTURED`) | "(the file and the settings document still receive it at once, and each row names the key it writes)" | contradicts the sentence immediately before it ("a `<workspace>/.mpd/mpd.jsonc` write happens only on a host that still serves the RETIRED legacy `mpd` namespace") |
+
+**Why it matters:** this is exactly the class CodeRabbit rated major — a reader who follows §7.2 or a
+README save expects the file to be written; on the shipped host it never is. The repair commit's own
+`settings.ts` header now says the truth, so the tree contradicts itself. **Direction (described, not
+applied):** state the host-persisted/no-file truth in those six sites (EN + zh), scope the restart
+half's parenthetical ("the settings document receives it at once; on a host that still serves the
+legacy namespace so does the file"), mirror it in `settings-card.ts` + `TUI_DISCLOSURE_CAPTURED`, and
+retarget the pins (`settings-card.test.ts`, `plugin.test.ts`, the QA `S1`/`T1`/`T2b` fixtures) so the
+claim cannot return. `BRIDGE_NO_WORKSPACE_NOTICE` / `BRIDGE_AMBIGUOUS_NOTICE` are dead on this host and
+are already recorded by AMENDMENT 4 — not part of this finding.
+
+## Verified answered (the other eight + T15)
+
+- **#1** design §2 now says "36 inserted rows across the TWO additive patch layers … host layer carries
+  35 … the second layer the single `preset-mpd` row — 36 in total, the number `verify:rows` prints"
+  (EN+zh, and no stray "35 = both layers" survives). **#2** the MCP inventory names the `mcp-git` +
+  `mcp-shell` pair as separately disabled, consistent with seven rows. **#3** `docs/tui.md` + zh now
+  scope `tui.dashboardKey` correctly (live in both directions while the row config permits the takeover,
+  one-way only when the ROW config disabled it) — matching `takeoverArmed(seamBound, savedKnob, floor)`.
+- **#5** the four adjacent literals are one (AS I read the diff: three strays deleted; the value is
+  unchanged) and the new `settings-defaults.test.ts` arm scans the source for two consecutive
+  comma-less literal lines, with a negative control. **#6** the ULW README (EN+zh) now describes C's
+  three sub-signals and E's conjunct, and the runtime `ULW_ACTIVATION_DIRECTIVE` was updated in the
+  same commit; the numbers match `SENSITIVITY_THRESHOLDS` (easy 2/2/2, C 2-of-3, E 24+2; normal
+  3/3/3, 60+2; strict 4/4/4, C 3-of-3, 80+3) and E's verb count is C2's.
+- **#7** `checkComponentRefs` now refuses all three vacuous shapes by name (unreadable document, no
+  `distribution.version`, `compared === 0`), `component-ref-version` is green only when something was
+  really compared, and `--self-test` proves each shape one at a time (observed PASS, 7 arms).
+- **#8** the `/settings` pane row pins the material clauses (persistence half, each live group, the
+  one-way toggle, the ordered captured groups, the boot wait, never-lost) instead of a prefix.
+  **#9** the reference pane is built from the shipped constants through `paneClip()` at a DERIVED width
+  (`max(560, SECTION_LINE.length + 40)`), and the self-test proves both directions (560 clips, the lane
+  width does not). The declared bound stands: this is not a claim that the ~1.4k-char notice is fully
+  readable on a real terminal.
+- **T15** the stale lowercase pin now carries the shipped spelling ("The config service re-resolves …")
+  with the reason; the committed `t15-test-packages.log` reports 2459 pass / 6 skip / 0 fail.
+- **Record/evidence integrity:** the commit modifies only two evidence files (the docs-core and
+  pkg-readmes-a reports); every other evidence path is an addition; no historical
+  `result.json`/`output.log` was rewritten. `VENDOR_LOCK.json` re-pins both the skills `treeSha` and the
+  rebuilt `client.js` sha256. AMENDMENT 3's count was corrected to "PASS, 10 checks", and
+  `docs/development.md`'s QA row now quotes the truthful save path and the
+  "take the new value in the RUNNING process" half.
+
+## Gates I ran on the committed tree (all exit 0)
+
+`docs` `ev-20261025T134820-555497` (pairs 50, links 449, dead 0) · `comments`
+`ev-20261025T134820-bc4f7d` · `rows` `ev-20261025T134823-81a62b` (36) · `typecheck`
+`ev-20261025T134823-03e7b1` · `tests` `ev-20261025T134826-b760ee` (**2465 tests / 6 declared skips /
+0 fail** / 40 682 expects) · `manifest` `ev-20261025T134900-818fe9`; plus `verify:vendor` PASS (7
+assets), `verify-dist-fresh` **33/33 fresh**, `verify-no-host-override` PASS, `verify-plugin-manifest
+--self-test` PASS (7 arms incl. the vacuity arm), and `bun run test:qa` → `[test:qa] all self-tests
+passed` (exit 0). The post-rebuild real case `evidence/mpd-bridge/tui-settings-bridge/20261025T133615Z/
+result.json` is `ok: true`, 10/10 checks.
+
+## Nits / bounds
+
+- The commit message says "ten findings"; AMENDMENT 4 records NINE inline findings, and all nine are
+  addressed or dispositioned — the tenth is not identified anywhere (cosmetic).
+- `tui-panels`' real TTY drive was not re-executed after #8/#9 (last lane stamp 12:48Z, before the
+  repair); its self-test and the static/pane model are green, and the readability bound is declared.
+- I did not run the Docker lane, a live-LLM case, or a real TTY/PTY drive of my own; the review lane
+  reads implementation by mandate, so no blindness basis is claimed.
+
+**Verdict on `c421e157`: FAIL — one HIGH finding (the #4 truth-sweep is incomplete across the
+human-facing band and the notice's restart half); the other eight findings and T15 verify clean and
+every gate is green.**
+
+

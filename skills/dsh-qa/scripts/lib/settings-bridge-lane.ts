@@ -384,6 +384,7 @@ export function evaluateBridge(observed: BridgeObserved): LaneVerdict {
     add("S2b", dist.includes(TUI_DISCLOSURE_CAPTURED), "the built TUI bytes carry the MOUNT-CAPTURED half too (the knobs a plugin captures at its own apply() wait for the next boot)")
     add("S3", !dist.includes("not bridged: a save here does not rewrite"), "the old 'not bridged' claim is DELETED from the built TUI bytes")
     add("S3b", !dist.includes(TUI_BLANKET_RETIRED), "the retired BLANKET sentence is ABSENT from the built TUI bytes")
+    add("S3c", !dist.includes(TUI_FILE_PARENTHETICAL_RETIRED), "the retracted FILE parenthetical is ABSENT from the built TUI bytes (T16-F1)")
   }
 
   return { ok: checks.length > 0 && checks.every((check) => check.ok), checks }
@@ -732,7 +733,7 @@ export const TUI_NOTICE = "saved to settings — not yet written to any .mpd/mpd
 export const TUI_DISCLOSURE_LIVE = "a save from this form persists in the HOST's settings document and writes NO .mpd/mpd.jsonc — the host owns that store and this row re-reads it on every save; a <workspace>/.mpd/mpd.jsonc write happens only on a host that still serves the RETIRED legacy `mpd` namespace, where each save's changed leaves go to the live session workspace(s). The config service re-resolves on every settings save and on a watched edit of the project file, and WHICH knobs take the new value in the RUNNING process — no restart — depends on how each one reads it: teamModels.slot*, modelchain.*, watchdog.*, team.stateDir, team.gate, team.sensitivity, captain.investigation and delegation.gate are read per use, and tui.dashboardKey is live ONE WAY (a saved false disables the Ctrl+A takeover at once; a saved true cannot arm a takeover the row config disabled)"
 
 /** The MOUNT-CAPTURED half of the same disclosure, byte-copied from `BRIDGE_RESTART_LIMIT`. */
-export const TUI_DISCLOSURE_CAPTURED = "the other half of that list, so nobody reads it as a blanket: hashline.*, commentChecker.*, ulw.*, memory.*, boulder.dir and goal.* are captured by their plugins at mount instead of reading the live config service per use, so a new value for any of them waits for the next dsh boot (the file and the settings document still receive it at once, and each row names the key it writes)"
+export const TUI_DISCLOSURE_CAPTURED = "the other half of that list, so nobody reads it as a blanket: hashline.*, commentChecker.*, ulw.*, memory.*, boulder.dir and goal.* are captured by their plugins at mount instead of reading the live config service per use, so a new value for any of them waits for the next dsh boot (the settings document receives it at once, and the file does too only on a host that still serves the legacy `mpd` namespace; each row names the key it writes)"
 
 /**
  * The RETIRED blanket sentence (D-18, audit wave 2026-10-25). Its ABSENCE is asserted on the built
@@ -740,6 +741,13 @@ export const TUI_DISCLOSURE_CAPTURED = "the other half of that list, so nobody r
  * sentence is exactly the claim the mount-captured half contradicts.
  */
 export const TUI_BLANKET_RETIRED = "takes effect in the RUNNING process — no restart"
+
+/**
+ * The RETRACTED file parenthetical (reviewer T16-F1 on PR #66): the old restart half ended
+ * "(the file and the settings document still receive it at once, …)", which contradicted the sentence
+ * before it — the default save path writes no file at all. Its ABSENCE is asserted so it cannot return.
+ */
+export const TUI_FILE_PARENTHETICAL_RETIRED = "(the file and the settings document still receive it at once"
 
 /**
  * The PERSISTENCE half of the disclosure — the sentence CodeRabbit #4 proved was missing: a save from
@@ -815,6 +823,7 @@ export function evaluateTuiSurface(observed: TuiSurfaceObserved): LaneVerdict {
   add("T2b", dist.includes(TUI_DISCLOSURE_CAPTURED), "the built bytes carry the MOUNT-CAPTURED half too (the knobs captured at a plugin's own apply())")
   add("T3", !dist.includes("not bridged: a save here does not rewrite"), "the old 'not bridged' claim is DELETED from the built bytes")
   add("T3b", !dist.includes(TUI_BLANKET_RETIRED), "the retired BLANKET sentence is ABSENT from the built bytes")
+  add("T3c", !dist.includes(TUI_FILE_PARENTHETICAL_RETIRED), "the retracted FILE parenthetical is ABSENT from the built bytes (T16-F1)")
   add("T4", dist.includes(notice), "the built bytes carry the §D.2 no-live-session runtime notice")
   add("T5", dist.includes("NO_LIVE_SESSION_NOTICE") && dist.includes("statusLine("), "the notice is WIRED into the status-line composition, not merely defined")
   add("T6", src.includes(notice), "the notice is a single exported constant in the source (one source of truth)")
@@ -1127,6 +1136,7 @@ export function selfTest(arm: string = "web"): void {
     ["S1", "static", (copy) => { copy.tuiDist = copy.tuiDist.replace(PERSISTENCE_HALF, "") }, "a dist that kept the words but dropped the save-path truth (CodeRabbit #4)"],
     ["S2b", "static", (copy) => { copy.tuiDist = TUI_DISCLOSURE_LIVE }, "a built TUI that dropped the MOUNT-CAPTURED half (the blanket-claim regression)"],
     ["S3b", "static", (copy) => { copy.tuiDist = TUI_DISCLOSURE_LIVE + " " + TUI_DISCLOSURE_CAPTURED + " " + TUI_BLANKET_RETIRED }, "the retired BLANKET sentence back in the built TUI bytes"],
+    ["S3c", "static", (copy) => { copy.tuiDist = copy.tuiDist + " " + TUI_FILE_PARENTHETICAL_RETIRED }, "the retracted FILE parenthetical back in the built TUI bytes"],
     ["S1", "static", (copy) => { copy.tuiDist = "nothing to see" }, "a built TUI without the bridge disclosure"],
   ]
   // One fault at a time, each starting from its own deep copy of a green artifact.
@@ -1162,6 +1172,7 @@ export function selfTest(arm: string = "web"): void {
     ["T2", (copy) => { copy.dist = copy.dist.replace(TUI_DISCLOSURE_LIVE, "waits for a restart") }, "a dist that dropped the live half of the disclosure"],
     ["T2b", (copy) => { copy.dist = copy.dist.replace(TUI_DISCLOSURE_CAPTURED, "") }, "a dist that dropped the mount-captured half"],
     ["T3b", (copy) => { copy.dist = copy.dist + " " + TUI_BLANKET_RETIRED }, "the retired blanket sentence back in the dist"],
+    ["T3c", (copy) => { copy.dist = copy.dist + " " + TUI_FILE_PARENTHETICAL_RETIRED }, "the retracted file parenthetical back in the dist"],
     ["T3", (copy) => { copy.dist = copy.dist + " not bridged: a save here does not rewrite" }, "the stale claim back in the dist"],
     ["T4", (copy) => { copy.dist = copy.dist.replace(TUI_NOTICE, "") }, "a dist without the §D.2 notice"],
     ["T5", (copy) => { copy.dist = copy.dist.replace("statusLine(", "") }, "a notice that is defined but never wired into the status line"],

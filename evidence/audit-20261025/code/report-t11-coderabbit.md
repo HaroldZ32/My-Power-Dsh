@@ -155,3 +155,43 @@ at 21:34 already carried the new bytes, so this was the last stale pin, not an a
 Observed after the fix: `bun test packages` → **2459 pass / 6 skip / 0 fail** (40 682 expect() calls,
 148 files) — exit **0** · `bun run typecheck` exit **0** · `bun run verify:comments` PASS.
 Logs: `t15-test-packages.log`, `t15-typecheck.log`, `t15-verify-comments.log`.
+
+## 7. T17 — reviewer T16-F1 (CODE half): the restart half's FILE parenthetical is scoped
+
+Reviewer finding (verified by me in the two sentences side by side): the live half now says a
+`<workspace>/.mpd/mpd.jsonc` write "happens only on a host that still serves the RETIRED legacy `mpd`
+namespace", while `BRIDGE_RESTART_LIMIT`'s parenthetical still promised "(the file **and** the settings
+document still receive it at once …)" — the tree contradicted itself in adjacent clauses.
+
+**Editing sites (3 copies, byte-identical afterwards):**
+`packages/mpd-config-plugin/src/settings-schema.ts` (`BRIDGE_RESTART_LIMIT`, now 442 chars, plus a doc
+comment recording the asymmetry), `packages/mpd-bundle-plugin/src/settings-card.ts` (browser mirror) and
+`skills/dsh-qa/scripts/lib/settings-bridge-lane.ts` (`TUI_DISCLOSURE_CAPTURED`, whose `selfTest()`
+re-reads the schema source and FAILS on drift).
+
+**New parenthetical (exact):**
+> (the settings document receives it at once, and the file does too only on a host that still serves the
+> legacy `mpd` namespace; each row names the key it writes)
+
+**Pins retargeted so the claim cannot return** (presence of the scoped wording + ABSENCE of the
+retracted one, at source, rendered and built-byte levels):
+- `packages/mpd-config-plugin/test/settings-defaults.test.ts` (the constant's own gate),
+- `packages/mpd-tui-plugin/test/plugin.test.ts` (`BRIDGE_RESTART_LIMIT`),
+- `packages/mpd-bundle-plugin/test/settings-card.test.ts` twice: the card SOURCE arm and the RENDERED
+  `R2-D1` paragraph arm,
+- the QA lane gained `TUI_FILE_PARENTHETICAL_RETIRED` and two arms with their own mutants: `S3c`
+  (static arm) and `T3c` (TUI-surface arm) — "the retracted FILE parenthetical is ABSENT". Self-tests
+  now report `23 web-arm + 11 TUI-arm + 4 client-shape` injected faults, each flipping its own check.
+
+**Observed on this tree:** `bun run typecheck` 0 · `bun run verify:comments` PASS ·
+`bun run verify:manifest` PASS · `bun run test:qa` `all self-tests passed` ·
+`bun test packages` 2458 pass / 6 skip / **1 fail** = `R2-D1` only, because it reads the BUILT
+`client.js` and that artifact still carries the pre-scope parenthetical ·
+`node scripts/verify-dist-fresh.ts` **3 of 33 STALE** (`mpd-config-plugin`, `mpd-roster-provider-plugin`,
+`mpd-tui-plugin` — the `settings-schema` inlining fan-out).
+Both are the captain's rebuild step (client + dist), not source defects; the same class as T15's
+artifact lag. Logs: `t17-*.log`.
+
+**Not mine in T16-F1:** the five DOC sites the reviewer listed (`packages/mpd-tui-plugin/README*`,
+`packages/mpd-bundle-plugin/README*`, `docs/user-guide.md` + zh, `docs/tui.md` + zh, `docs/design.md` +
+zh) belong to the docs/README lanes; this task covered the constant + mirror + QA copy + pins.

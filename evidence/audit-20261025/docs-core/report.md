@@ -519,6 +519,64 @@ pinned toolchain), so `packages/mpd-ulw-plugin/dist/index.js` still carries the 
 until that rebuild — `verify-dist-fresh` will flag this entry stale by design. No other code file was
 touched; the README pair needed no edit (already correct).
 
+### T19 — T16-F1: an entry save writes NO workspace file (repair pass 7) — DONE
+
+Source: CodeRabbit MAJOR finding on `packages/mpd-config-plugin/src/settings-schema.ts` ("Do not promise
+a file write for an entry-config save"), re-verified against the current code and applied to the three
+docs sections the task names.
+
+Code truth (opened this session):
+
+- `ENTRY_CONFIG_ID = "mpd-config"`; both front doors save this entry (`configForms.get("mpd-config")` —
+  the Web card in `packages/mpd-bundle-plugin/src/settings-card.ts`, the TUI's `locateNamespace` default
+  in `packages/mpd-tui-plugin/src/settings.ts`).
+- The entry-config subscription `onSettingsDocumentUpdated(ENTRY_CONFIG_ID)`
+  (`packages/mpd-config-plugin/src/index.ts`) re-loads state from the FRESH document (the saved override
+  is L4) and its comment states: "Deliberately NO file write-back on this path: the entry document is
+  the host's own store, the SAVED override (`readEntryConfig`) is ALREADY the top layer (L4), and
+  writing the document's materialised defaults into `.mpd/mpd.jsonc` would pollute the file —
+  persistence of an entry save is the host's."
+- `registerNamespace` reports the namespace model RETIRED on the pinned harness (`settingsRegister`
+  refused) and logs "the legacy file write-back and override clearing are dormant" — so the whole
+  file-write story (lock/CAS/temp+rename, the two skip cases) is the LEGACY namespace path and dormant
+  here.
+- `BridgeReport.applies` stays `"live"` (per-save VALUE) while `states().applies` and both registrations
+  answer `"restart"` — unchanged from T9.
+
+Changed (EN + zh twins):
+
+1. `docs/user-guide.md` §7.2 + zh — the first paragraph no longer promises
+   `<workspace>/.mpd/mpd.jsonc` as the save target: it names the config ENTRY
+   (`configForms.get("mpd-config")`), says the host persists the entry and **no** workspace write
+   happens, and labels the file write-back the retired/dormant namespace path. The "Two named skip
+   cases" bullet is relabelled as the legacy write-back's (dormant) and closes with "An ENTRY save
+   never reaches this code."
+2. `docs/tui.md` §6.2 + zh — heading and intro now state the TWO persistence paths (entry =
+   host-persisted, no workspace write; legacy namespace write-back = dormant here); the base table, the
+   Write-back bullet and the Workspace-target bullet are labelled as the legacy path's, on the page and
+   in the zh text. (The task said "tui §7.2"; the settings section of this file is §6.2 — it is the
+   section the finding is about.)
+3. `docs/design.md` §7b + zh — the "Does not write to the filesystem" bullet now distinguishes the
+   dormant legacy write-back from an entry save (which writes no file), and the settings-provider
+   paragraph adds the retirement + entry path with the no-write reason, quoting the bridge's own log
+   line.
+4. **Adjacent same-class fixes** (same files, reported here): `docs/tui.md` §6.6 + zh — the "state
+   converges through the workspace file" claim was the opposite error; it now says an entry save writes
+   nothing, so SEPARATE DSH homes do NOT converge through the file, and the workspace `mpd.jsonc`
+   changes only when something writes it (a hand edit, or the dormant legacy path). The §6.6 scope
+   table's workspace row is corrected the same way. `docs/design.md` §8b + zh — "the write-back" is no
+   longer called the live path; the entry-config re-read is, and the write-back is qualified as
+   legacy-only.
+
+Verification: `bun run verify:docs` → `pairs=50 failed=0 violations=0 exempt=24 derived=3 links=447
+dead=0 — PASS`, **exit 0** (447 links: the two §3.1 pointers were removed with the false write promise).
+
+Reported, NOT fixed (outside the named sections): `docs/tui.md` §3.1 still says the Web card writes
+through `ctx.settingsScope.bind({ namespace: 'mpd' }).mutate(…)`, while
+`packages/mpd-bundle-plugin/src/settings-card.ts` uses `ctx.configForms.get(namespace)` — a seam-name
+mismatch in a different claim class. `docs/design.md`'s row "- `mpd-config` … owns the settings
+write-back (§7b)" is now disambiguated by §7b itself.
+
 ## Bounds of this lane's evidence
 
 - No git command was run; the captain commits. Nothing under `packages/**`, `.mpd/**`, `skills/**` or

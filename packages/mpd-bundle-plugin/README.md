@@ -57,17 +57,23 @@ loop of ours. Because both hosts render this one component and the effect is per
 panels hold two streams.
 
 **TUI counterpart.** The settings card this client registers is the browser half of the same
-`mpd` settings namespace the TUI edition renders as its `/settings` section
-(`packages/mpd-tui-plugin/src/settings.ts`): labels, hints and zh descriptions are mirrored
+`mpd-config` ENTRY document the TUI edition renders as its `/settings` section
+(`packages/mpd-tui-plugin/src/settings.ts`; the card mounts through `configForms.get(CONFIG_ENTRY)`,
+`CONFIG_ENTRY = "mpd-config"` — the legacy `mpd` namespace is retired): labels, hints and zh
+descriptions are mirrored
 between the two front doors, a test asserts the two lists stay identical, and both state the same
-bridge disclosure — a save writes `<workspace>/.mpd/mpd.jsonc` for the live session workspace(s), and
-the disclosure is SCOPED per knob instead of promising a blanket restart: the model routes,
+bridge disclosure — a save from this card is persisted by the HOST as the `mpd-config` ENTRY document
+and writes NO workspace `<workspace>/.mpd/mpd.jsonc` (the only writer of that file is the RETIRED
+legacy `mpd`-namespace write-back, dormant on the pinned harness, while a hand edit of the file is
+still read on every resolution), and the disclosure is SCOPED per knob instead of promising a blanket
+restart: the model routes,
 `watchdog.*`, the team-gate knobs, the `team.stateDir` reader and the two guards act in the RUNNING
 process, while `hashline.*`, `commentChecker.*`, `ulw.*`, `memory.*`, `boulder.dir` and `goal.*` are
 captured at `apply()` and need the next `dsh` boot (`docs/user-guide.md` §9.1 is the per-knob
 authority; the same declaration in `settings-schema.ts` and in `settings-card.ts`). The browser
 reaches the bridge only through the
-public settings seam; the write-back itself belongs to `packages/mpd-config-plugin`. Rebuild the
+public settings seam; the PERSISTENCE belongs to the host and the entry-document re-read to
+`packages/mpd-config-plugin` (the legacy write-back lives there too, dormant). Rebuild the
 combined client (`node scripts/build-mpd-client.ts`) after touching either half.
 
 **The Web card's team-model pickers.** The card mirrors the ONE 26-row knob declaration of
