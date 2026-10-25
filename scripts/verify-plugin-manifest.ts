@@ -399,9 +399,12 @@ function distributionComponentsOf(doc: Record<string, unknown> | undefined): Dis
  * release. The two predicates:
  *   1. every SELF-URN ref (`urn:dsh:*:mpd:*@<v>`) carries `distribution.version`;
  *   2. every `dependsOn` entry names a component id the SAME document declares.
- * A `pkg:` ref is deliberately out of scope (the host's own version is the host's business), and a
- * document that declares no `distribution.version` is reported as un-comparable instead of passing
- * silently.
+ * A `pkg:` ref is deliberately out of scope (the host's own version is the host's business).
+ *
+ * NO VACUOUS PASS (CodeRabbit #7 on PR #66): the first cut returned `ok` whenever nothing failed to
+ * compare, so an unreadable document, a document with no `distribution.version` and a document whose
+ * refs are all `pkg:` each PASSED while checking nothing. Each of those three is now a violation,
+ * because a gate that cannot compare must refuse rather than bless.
  *
  * @param doc - the parsed `dsh-distribution.json`, or undefined when it cannot be read.
  * @param violations - Collector every finding is appended to.
@@ -412,6 +415,8 @@ function checkComponentRefs(doc: Record<string, unknown> | undefined, violations
   const rows = distributionComponentsOf(doc)
 /** The version every self-urn must carry; undefined when the document declares none. */
   const version = readPath(doc, ["distribution", "version"])
+/** Whether the document was readable at all; an unreadable one cannot be checked. */
+  const readable = doc !== undefined
 /** The component ids this document declares, which `dependsOn` may name. */
   const ids = new Set(rows.map((row) => row.id).filter((id): id is string => typeof id === "string"))
 /** Self-urn refs whose suffix disagrees with `distribution.version`. */
@@ -426,6 +431,15 @@ function checkComponentRefs(doc: Record<string, unknown> | undefined, violations
     if (version === undefined) continue
     compared += 1
     if (declared !== version) stale.push(`${row.ref} (distribution.version is ${version})`)
+  }
+  // THE THREE VACUOUS CASES, each refused by name (CodeRabbit #7): an unreadable document, a document
+  // with no version to compare against, and a document whose refs are all out of scope.
+  if (!readable) {
+    violations.push({ file: "dsh-distribution.json", rule: "component-ref", detail: "the distribution document is missing or unreadable, so no component ref could be compared" })
+  } else if (version === undefined) {
+    violations.push({ file: "dsh-distribution.json", rule: "component-ref", detail: "the document declares no distribution.version, so every self-urn ref is UNCHECKED (the version-coherence carrier already reddens on this; the ref predicate refuses to pass on it)" })
+  } else if (compared === 0) {
+    violations.push({ file: "dsh-distribution.json", rule: "component-ref", detail: `none of the ${rows.length} component row(s) carries a self-urn ref, so the version predicate compared NOTHING — a gate that cannot compare must not bless` })
   }
   for (const entry of stale) {
     violations.push({ file: "dsh-distribution.json", rule: "component-ref", detail: `a self-referencing component ref is stale: ${entry}` })
@@ -442,13 +456,15 @@ function checkComponentRefs(doc: Record<string, unknown> | undefined, violations
   for (const entry of dangling) {
     violations.push({ file: "dsh-distribution.json", rule: "component-ref", detail: `a component dependsOn an id the document does not declare: ${entry}` })
   }
-  /** The version predicate's result, stated with its own coverage. */
+  /** The version predicate's result: green only when something was REALLY compared. */
   const versionResult: CheckResult = {
     id: "component-ref-version",
-    ok: stale.length === 0,
-    detail: version === undefined
-      ? `${rows.length} component row(s), 0 comparable: the document declares no distribution.version`
-      : `${compared} self-urn ref(s) compared against distribution.version ${version}, ${stale.length} stale`,
+    ok: readable && version !== undefined && compared > 0 && stale.length === 0,
+    detail: !readable
+      ? "the distribution document is missing or unreadable: nothing compared"
+      : version === undefined
+        ? `${rows.length} component row(s), 0 comparable: the document declares no distribution.version`
+        : `${compared} self-urn ref(s) compared against distribution.version ${version}, ${stale.length} stale`,
   }
   /** The dependency predicate's result. */
   const dependencyResult: CheckResult = {
@@ -706,7 +722,32 @@ function selfTest(): number {
   const refControlClean = refControlViolations.length === 0 && refControlResults.every((result) => result.ok)
   if (!(refHit && refControlClean)) failures += 1
   console.log(`${refHit && refControlClean ? "ok  " : "FAIL"}  component-ref: expected rule component-ref ${refHit ? "fired twice" : "MISSING"}; clean control ${refControlClean ? "green" : "RED"}`)
-  console.log(failures === 0 ? "self-test PASS (7 arms, each with a clean control)" : `self-test FAIL (${failures} arm(s))`)
+  // #7 (CodeRabbit on PR #66): the FIRST cut of this predicate PASSED VACUOUSLY on three shapes —
+  // an unreadable document, a document with no `distribution.version`, and a document whose refs are
+  // all `pkg:` (nothing to compare). Each must now be REFUSED, proven here one shape at a time.
+/** The three vacuous shapes, each of which must be refused. */
+  const vacuousArms: ReadonlyArray<{ readonly label: string; readonly doc: Record<string, unknown> | undefined }> = [
+    { label: "an unreadable document", doc: undefined },
+    { label: "a document with no distribution.version", doc: { protocols: [{ spec: { components: [{ id: "bundle", ref: "urn:dsh:distribution:mpd:x@1.0.0" }] } }] } },
+    { label: "a document whose refs are all pkg:", doc: { distribution: { version: "1.2.3" }, protocols: [{ spec: { components: [{ id: "host", ref: "pkg:npm/@x/y@9.9.9" }] } }] } },
+  ]
+/** How many vacuous shapes still slipped through (must be 0). */
+  let vacuousMissed = 0
+  for (const arm of vacuousArms) {
+/** Violations this vacuous shape produced. */
+    const found: Violation[] = []
+/** Its predicate results, so the refusal is checked by RULE and by RESULT. */
+    const results = checkComponentRefs(arm.doc, found)
+/** Whether the shape was refused both ways. */
+    const refused = found.some((violation) => violation.rule === "component-ref") && results.some((result) => result.id === "component-ref-version" && !result.ok)
+    if (!refused) {
+      vacuousMissed += 1
+      console.log(`FAIL  component-ref vacuity: ${arm.label} still PASSES`)
+    }
+  }
+  if (vacuousMissed > 0) failures += 1
+  else console.log("ok    component-ref vacuity: an unreadable / versionless / ref-less document is REFUSED, never blessed")
+  console.log(failures === 0 ? "self-test PASS (7 arms, each with a clean control; the component-ref arm also refuses its three vacuous shapes)" : `self-test FAIL (${failures} arm(s))`)
   return failures === 0 ? 0 : 1
 }
 

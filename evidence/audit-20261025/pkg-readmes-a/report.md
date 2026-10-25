@@ -187,18 +187,29 @@ written here.
   C enumerated steps, **D an existing `.mpd/plans` artifact**)."
 - **New text.** The gate is evaluated MECHANICALLY before the directive is injected, with the SAME
   predicate (`evaluateComplexityGate`), the SAME `team.sensitivity` row (`resolveSensitivity`;
-  absent/unknown → `easy`) and the same inputs: A explicit flag, B deliverable verbs, C enumerated
-  steps, **D an ACTIVE boulder work (`readBoulderGate`'s `active`; a `.mpd/plans` FILE is not a
-  signal)**, E a CJK-scale instruction, F large-workspace scale (`readWorkspaceScale`, `easy` row
-  only). It also states that `team.gate: off` returns BEFORE the predicate runs, `mechanical` stages
-  the shell on a fire, and `advisory` reports the verdict and stages nothing.
+  absent/unknown → `easy`, the default) and the same inputs: A explicit flag; B distinct deliverable
+  verbs; **C THREE sub-signals, each scored against the row's own threshold — enumerated lines
+  (numbered / bulleted / table rows), distinct action verbs, and clauses that OPEN with an action
+  verb — of which at least `cSubSignals` must hold**; **D an ACTIVE boulder work
+  (`readBoulderGate`'s `active`; a `.mpd/plans` FILE is not a signal)**; **E BOTH the row's
+  Han-character threshold AND its distinct action-verb threshold** (the count C2 reads); F
+  large-workspace scale (`readWorkspaceScale`, `easy` row only). It names the `easy` numbers
+  (C1/C2/C3 at ≥ 2 each with 2 of the 3 holding; E at ≥ 24 Han characters AND ≥ 2 distinct action
+  verbs) and points at `SENSITIVITY_THRESHOLDS`. It also states that `team.gate: off` returns BEFORE
+  the predicate runs, `mechanical` stages the shell on a fire, and `advisory` reports the verdict and
+  stages nothing. (C's and E's sub-thresholds were added by the CodeRabbit repair — §5.)
 - **Proof.** `packages/mpd-ulw-plugin/src/index.ts` `apply`/activation path:
   `resolveGateMode(...)`, the `mode === GATE_MODE_OFF` early return, `resolveSensitivity(...)`,
   `readBoulderGate(workspace, …)`, the `SENSITIVITY_THRESHOLDS[sensitivity].workspaceScale` gate
   around `readWorkspaceScale(workspace)`, and
   `evaluateComplexityGate(objective, { explicitFlag, activeBoulder: boulder.active, sensitivity,
-  workspaceScale })`; the package's own directive text (line 158) already names "signal A-F"
-  and "D an active boulder work".
+  workspaceScale })`. The C/E wording is proven by `complexity-gate.ts` itself:
+  `SensitivityThresholds` (`enumeratedLines` / `actionVerbs` / `clauseSteps` / `cSubSignals` /
+  `cjkChars` / `cjkVerbs`), `SENSITIVITY_THRESHOLDS.easy` (2/2/2 with `cSubSignals: 2`; `cjkChars:
+  24`, `cjkVerbs: 2`), `enumeratedLineCount` (`ENUMERATED_LINE_PATTERN`), `clauseStepCount`
+  (`CLAUSE_SEPARATOR_PATTERN` + the row's clause-opener lexicon), `cjkCharCount` (`CJK_CHAR_PATTERN`
+  = `\p{Script=Han}` occurrences) and the shared `distinctMatches` action-verb count that both C2 and
+  E read. The package's own directive text names "signal A-F" and "D an active boulder work".
 - zh twin: same correction, same list.
 
 ### P-10 (LOW) `packages/mpd-codegraph-plugin/README.md` — an undocumented default
@@ -249,4 +260,47 @@ git diff --stat -- \
 ```
 
 12 files changed; no other path in this lane's diff (`src/**` untouched, `dist/**` untouched,
-`VENDOR_LOCK.json` untouched, `AGENTS.md` untouched).
+`VENDOR_LOCK.json` untouched, `AGENTS.md` untouched). The T13 CodeRabbit repair below touches two of
+those twelve again (`packages/mpd-ulw-plugin/README{,.zh-CN}.md`), so the count is unchanged.
+
+## 5. CodeRabbit repair (T13, AMENDMENT 4) — `packages/mpd-ulw-plugin` gate signals C and E
+
+- **Finding.** CodeRabbit review of PR #66, comment `id=4370975289` on
+  `packages/mpd-ulw-plugin/README.md:25` (Minor · Functional Correctness · Quick win): "Document all
+  sub-signals for C and E. `evaluateComplexityGate` does not define C as enumerated steps alone. C
+  uses the sensitivity row's threshold across enumerated lines, action verbs, and clause steps. E
+  requires both the CJK-character threshold and the action-verb threshold. Update this text and
+  `README.zh-CN.md:16` so users can predict the gate result."
+  Reconciliation: **STILL-VALID → FIXED** — the P-09 wording said "C enumerated steps" and "E a
+  CJK-scale instruction", which is exactly the under-description the comment names.
+- **New text (EN item 2).** Signal C is now "THREE sub-signals, each scored against the row's own
+  threshold — enumerated lines (numbered / bulleted / table rows), distinct action verbs, and clauses
+  that OPEN with an action verb — of which at least `cSubSignals` must hold"; signal E is "BOTH the
+  row's Han-character threshold AND its distinct action-verb threshold (the same count C2 reads)".
+  The paragraph names the `easy` numbers ("C1/C2/C3 at ≥ 2 each with 2 of the 3 holding, and E at
+  ≥ 24 Han characters AND ≥ 2 distinct action verbs") and points at `SENSITIVITY_THRESHOLDS` for the
+  other rows. The default row stays named (`resolveSensitivity`; absent or unknown reads `easy`).
+- **zh twin.** The same statements on `README.zh-CN.md:16`: 三路子信号 + `cSubSignals`; C1/C2/C3 各需
+  ≥ 2 且三路中至少 2 路成立; E 需**同时**满足汉字数与动作动词数阈值; `easy` 数字; `SENSITIVITY_THRESHOLDS`
+  指针.
+- **Proof symbols** (`packages/mpd-roles-plugin/src/complexity-gate.ts`, read this session):
+  `evaluateComplexityGate`'s C branch — `enumeratedLineCount(...) >= thresholds.enumeratedLines`,
+  `actionVerbs >= thresholds.actionVerbs`, `clauseStepCount(...) >= thresholds.clauseSteps`, then
+  `cSubSignals >= thresholds.cSubSignals`; its E branch —
+  `cjkCharCount(source) >= thresholds.cjkChars && actionVerbs >= thresholds.cjkVerbs`;
+  `SENSITIVITY_THRESHOLDS.easy` — `enumeratedLines: 2`, `actionVerbs: 2`, `clauseSteps: 2`,
+  `cSubSignals: 2`, `cjkChars: 24`, `cjkVerbs: 2`; `ENUMERATED_LINE_PATTERN` (numbered / bulleted /
+  table rows); `clauseStepCount`'s `CLAUSE_SEPARATOR_PATTERN`; `cjkCharCount`'s `CJK_CHAR_PATTERN`
+  (`\p{Script=Han}` occurrences); `distinctMatches` (the distinct action-verb count both C2 and E
+  read).
+- **Gate.** `bun run verify:docs` → **exit 0**,
+  `pairs=50 failed=0 violations=0 links=449 dead=0 — PASS` (final measurement after all edits:
+  **2026-10-25T13:30:21Z**; the intervening run at 13:29:07Z produced the identical line).
+- **Files touched by this repair.** `packages/mpd-ulw-plugin/README.md` and
+  `packages/mpd-ulw-plugin/README.zh-CN.md` only — `git diff --stat` for the pair: 13 insertions, 8
+  deletions.
+- **Out-of-scope observation (NOT changed).** `ULW_ACTIVATION_DIRECTIVE` in
+  `packages/mpd-ulw-plugin/src/index.ts` summarizes the same two signals as "C enumerated steps" and
+  "E a CJK-scale instruction" in its "2. GATE" line. That is a `src/**` file outside this repair's
+  write scope; if the runtime directive should carry the same sub-threshold detail, it is a separate
+  `src/**` edit with its own `dist` rebuild — flagged to the Lead rather than absorbed here.

@@ -27,6 +27,9 @@
 //   bun skills/dsh-qa/scripts/tui-panels.ts [--sandbox-root <dir>] [--control]
 // Evidence -> evidence/tui/lanes/<timestamp>/{result.json,output.log,<step>.pane.txt,negative/}
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
+// The disclosure copies live in the sibling QA lib (one copy, one drift check); this lane imports
+// them so its pane model and its patterns can never disagree with the text the surfaces ship.
+import { PERSISTENCE_HALF, TUI_DISCLOSURE_CAPTURED, TUI_DISCLOSURE_LIVE, TUI_NOT_LOST } from "./lib/settings-bridge-lane.ts"
 import { join } from "node:path"
 import { pathToFileURL } from "node:url"
 import {
@@ -60,7 +63,31 @@ const SLUG = "tui-panels"
  * WIDENING is chosen over weakening the expectation, because a regression that dropped a clause must
  * still redden rather than pass as a prefix.
  */
-const PANE_WIDTH = 560
+/** The exact section description a front door paints: the title, then BOTH halves, then not-lost. */
+const SECTION_LINE = "MPD bundle \u00b7 " + TUI_DISCLOSURE_LIVE + " " + TUI_DISCLOSURE_CAPTURED + " " + TUI_NOT_LOST
+
+/**
+ * Clip one painted line the way the host does: at the pane width, with a trailing ellipsis.
+ * CodeRabbit #9: the fixture used to be un-truncated while the real pane clips, so the model blessed
+ * text a reader could never see. The fixture is built THROUGH this function now, which is what makes
+ * the self-test's width assertions meaningful.
+ * @param text - the line the host would paint.
+ * @param width - the pane's column budget.
+ * @returns the painted line: unchanged when it fits, otherwise cut with `\u2026`.
+ */
+function paneClip(text: string, width: number): string {
+  return text.length <= width ? text : text.slice(0, Math.max(0, width - 2)) + " \u2026"
+}
+
+/**
+ * The pane width: wide enough that the WHOLE section line paints, so no asserted clause is cut.
+ *
+ * D-18 + CodeRabbit #4 made `SECTION_NOTICE` ~1.4k columns; the old 560 was chosen for a 315-column
+ * sentence, so every clause past the cut was invisible while the fixture claimed otherwise. The width
+ * is DERIVED from the sentence rather than re-guessed, and the self-test proves both directions (560
+ * truncates, this width does not).
+ */
+const PANE_WIDTH = Math.max(560, SECTION_LINE.length + 40)
 /** The pane height, kept at the lane's original 50 rows so the number of visible transcript rows is unchanged. */
 const PANE_HEIGHT = 50
 
@@ -296,12 +323,26 @@ export const SURFACES: readonly SurfaceSpec[] = [
   {
     surface: "tuiSettingsSections", step: "settings", source: "pane", keys: ["/settings", "Enter"], waitMs: 8000,
     pattern: /MPD 插件包|MPD bundle/,
+    // CodeRabbit #8: the row used to pin a PREFIX of the disclosure, which proves almost nothing. Every
+    // MATERIAL clause is named: where a save persists, each live knob group, the one-way toggle, each
+    // mount-captured group, the boot wait, and the not-lost clause.
     allPatterns: [
       /MPD 插件包|MPD bundle/,
-      /a save writes <workspace>\/\.mpd\/mpd\.jsonc for the live session workspace\(s\)/,
-      // The LIVE half, then the MOUNT-CAPTURED half (D-18): a surface that dropped either one reddens.
+      /persists in the HOST's settings document/,
+      /writes NO \.mpd\/mpd\.jsonc/,
+      /<workspace>\/\.mpd\/mpd\.jsonc write happens only on a host that still serves the RETIRED legacy/,
       /take the new value in the RUNNING process/,
+      /teamModels\.slot\*/,
+      /modelchain\.\*/,
+      /watchdog\.\*/,
+      /team\.stateDir/,
+      /team\.gate/,
+      /team\.sensitivity/,
+      /captain\.investigation/,
+      /delegation\.gate/,
+      /tui\.dashboardKey is live ONE WAY/,
       /captured by their plugins at mount/,
+      /hashline\.\*.*commentChecker\.\*.*ulw\.\*.*memory\.\*.*boulder\.dir.*goal\.\*/,
       /never lost/,
     ],
     // The retired BLANKET sentence must never come back on the rendered surface.
@@ -504,7 +545,9 @@ function fixturePanes(): PaneText[] {
     { name: "cmd-panel", text: "> /mpd panel\n" },
     { name: "scene", text: "MPD board\n team: none\n q/Esc to close\n" },
     { name: "renderer", text: "mpd board\n board opened via command at 2026-09-15T00:00:00.000Z\n" },
-    { name: "settings", text: "插件设置\n ╭─ MPD 插件包 (mpd) ─╮\n │ ❯ 行内 diff 上限  20000 │\n  mpd.jsonc hashline.maxDiffChars — " + "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s); the config service re-resolves on every settings save and on a watched edit of the project file, and WHICH knobs take the new value in the RUNNING process — no restart — depends on how each one reads it: teamModels.slot*, modelchain.*, watchdog.*, team.stateDir, team.gate, team.sensitivity, captain.investigation and delegation.gate are read per use, and tui.dashboardKey is live ONE WAY (a saved false disables the Ctrl+A takeover at once; a saved true cannot arm a takeover the row config disabled) the other half of that list, so nobody reads it as a blanket: hashline.*, commentChecker.*, ulw.*, memory.*, boulder.dir and goal.* are captured by their plugins at mount instead of reading the live config service per use, so a new value for any of them waits for the next dsh boot (the file and the settings document still receive it at once, and each row names the key it writes) the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session   Enter\n" },
+    // Built from the shipped constants and clipped at PANE_WIDTH, so the reference pane is what a
+    // real pane of this width would paint — not a longer poem the host would ellipsize.
+    { name: "settings", text: "插件设置\n ╭─ MPD 插件包 (mpd) ─╮\n │ ❯ 行内 diff 上限  20000 │\n  " + paneClip(SECTION_LINE, PANE_WIDTH - 4) + "   Enter\n" },
     { name: "dialog", text: "mpd workmates\n qa-tui-probe\n" },
   ]
 }
@@ -597,6 +640,16 @@ function selfTest(): void {
 /** The same probe with a sentence the pane does NOT carry: it must stay green. */
   const retiredClear = evaluateSurfaces(fixturePanes(), [], [{ ...retiredProbe, absentPatterns: [/MPD-PANELS-CONTROL-CANNOT-APPEAR/] }], storeFixture)
   check(retiredClear.ok, "absentPatterns must NOT redden on a sentence the capture never showed")
+
+  // THE PANE-WIDTH MODEL (CodeRabbit #9): the fixture is clipped like a real pane, and the width must be
+  // wide enough that no asserted clause is cut — the two directions are both proven here, so neither a
+  // widened reality nor an un-truncated fixture can drift silently again.
+/** The section line as a 560-wide pane would paint it, which MUST lose text. */
+  const at560 = paneClip(SECTION_LINE, 560)
+  check(at560.length < SECTION_LINE.length && at560.endsWith(" …"), "the pane model must TRUNCATE the section line at 560 columns (the fixture is no longer longer than reality)")
+/** The section line as the lane's own width paints it, which must be complete. */
+  const atLaneWidth = paneClip(SECTION_LINE, PANE_WIDTH - 4)
+  check(atLaneWidth === SECTION_LINE, `PANE_WIDTH (${PANE_WIDTH}) must be wide enough to paint every asserted clause un-truncated`)
 
   // THE MODEL-ECHO SCOPE: a warm root's neighbour record must be out of scope, its OWN record must not.
   const neighbour: UserMessageRecord = { sessionId: "old", seq: 1, text: "/mpd workmates" }

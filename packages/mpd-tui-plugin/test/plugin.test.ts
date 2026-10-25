@@ -1648,7 +1648,11 @@ describe("settings section disclosure (t21)", () => {
     // the RUNNING process — no restart" false for the knobs a plugin captures at apply(), so the
     // sentence NAMES the live groups AND the one-way toggle, and BRIDGE_RESTART_LIMIT names the
     // captured groups. Both directions are pinned: the blanket claim must never come back.
-    expect(BRIDGE_DISCLOSURE).toContain("a save writes <workspace>/.mpd/mpd.jsonc")
+    // CodeRabbit #4: the bridge half is WHERE a save persists — the entry-config path writes no
+    // file, and only the retired legacy namespace wrote <workspace>/.mpd/mpd.jsonc.
+    expect(BRIDGE_DISCLOSURE).toContain("persists in the HOST's settings document")
+    expect(BRIDGE_DISCLOSURE).toContain("writes NO .mpd/mpd.jsonc")
+    expect(BRIDGE_DISCLOSURE).toContain("RETIRED legacy `mpd` namespace")
     expect(BRIDGE_DISCLOSURE).toContain("WHICH knobs take the new value in the RUNNING process — no restart — depends on how each one reads it")
     expect(BRIDGE_DISCLOSURE).toContain("are read per use")
     // The named LIVE groups, so a rewrite that quietly drops one reddens here.

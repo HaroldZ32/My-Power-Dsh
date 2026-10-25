@@ -70,11 +70,13 @@ bundle**（`@mpd-dsh/mpd`）交付，其 `dsh.bundle.patch` 数组
 （先是 `cordis.patch.yml`，再是 `presets/mpd.patch.yml`）向它安装到的任意
 profile 添加行。它贡献：
 
-- **35 个插入行**，分布在**两层**增量 patch 中：7 个 MCP client 行（本地 ast-grep、git-bash
-  [默认禁用]、LSP、codegraph；远端 context7、grep.app）、24 个 `mpd-*` 插件行（含使 bundle 成为
+- **两层增量 patch 合计 36 个插入行。** 宿主层 `cordis.patch.yml` 承载 35 个：7 个 MCP client 行
+  （本地 ast-grep、git-bash 这一对 `mcp-git` + `mcp-shell`——两者均默认禁用——LSP、codegraph；
+  远端 context7、grep.app）、24 个 `mpd-*` 插件行（含使 bundle 成为
   loader entry 的 `mpd-web-compat` 自引用行）、3 个**官方** Agent Teams 行，以及挂载 bundle
   **可选**侧边栏 peer（社区侧边栏宿主，可解析处才挂载）的 `mpd-better-sidebar` 行——§4 逐一列出。
-  第二个 patch 文件贡献的是 `preset-mpd` 行，
+  第二层 `presets/mpd.patch.yml` 只贡献 `preset-mpd` 这一行——合计 36 行，即 `bun run verify:rows`
+  打印的数字，
 - **完全没有任何 id-target**。bundle 增量交付自己的 `mpd` 预设，也不覆盖任何 host 行，因此部署默认
   仍属于 host；设置它是使用者通过文档记载渠道完成的动作（`docs/preset-default.md`，§6c），
 - Harness 适配器（`mpd-dsh-adapter`）：所有其他行都经由它调用，

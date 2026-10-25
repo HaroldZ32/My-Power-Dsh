@@ -761,8 +761,11 @@ blanket: the config service is live (it re-resolves on every settings save and o
 the project file), and each knob's answer depends on WHERE its consumer reads it. Read from the live
 service per use — LIVE, no restart: `teamModels.slot*`, `modelchain.*`, `watchdog.*`, `team.stateDir`,
 `team.gate`, `team.sensitivity`, `captain.investigation`, `delegation.gate`; `tui.dashboardKey` is
-ONE-WAY (its per-press read can turn the Ctrl+A takeover OFF live, but the contact itself is
-registered at `apply()`, so turning it back ON waits for a boot). Captured inside a row's own
+live in BOTH directions while the `mpd-tui` ROW config left the Ctrl+A takeover enabled at mount (a
+saved `false` and then a saved `true` both reach the per-press read), and ONE-WAY only when the ROW
+config disabled the takeover (`dashboardKey: false`): that composition never registers the contact at
+`apply()`, so a saved `true` cannot create one and a boot with the row config permitting it is what
+does. Captured inside a row's own
 `apply()` — RESTART, the captured value keeps until the next `dsh` boot: `hashline.*`,
 `commentChecker.*`, `ulw.*`, `memory.*`, `boulder.dir`, `goal.*` and `extensions.*`. The bundle's own
 hint constants state both halves — `BRIDGE_DISCLOSURE` (the live clause, naming the model routes) and

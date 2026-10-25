@@ -10,6 +10,8 @@
 // The arms read the DECLARATION (the schemastery node tree the settings form renders from), not a
 // resolved file layer: these defaults are exactly what the form shows when the user's file is silent.
 import { describe, expect, test } from "bun:test"
+import { readFileSync } from "node:fs"
+import { join } from "node:path"
 import { BRIDGE_DISCLOSURE, BRIDGE_NOT_LOST, BRIDGE_RESTART_LIMIT, BRIDGE_SECTION_NOTICE, SETTINGS_KNOBS, SettingsSchema } from "../src/settings-schema"
 
 /** The node fields these arms read: the kind, the default, an object's children and a union's members. */
@@ -102,5 +104,44 @@ describe("D-18 — the disclosure tells the SCOPED truth, and states BOTH halves
     expect(BRIDGE_SECTION_NOTICE).toContain(BRIDGE_NOT_LOST)
     // The disproved claim, as an ABSENCE: restoring it is the defect this item repaired.
     expect(BRIDGE_SECTION_NOTICE).not.toContain("takes effect in the RUNNING process — no restart")
+  })
+})
+
+/**
+ * Whether a source line is nothing but one string literal, WITHOUT a trailing comma.
+ *
+ * The comma is what separates an ARRAY element (legitimate: `["a", "b"]` spread over lines) from the
+ * ASI shape this guard hunts: `const X =\n  "one"\n  "two"` — valid JavaScript in which every line
+ * after the first is syntactically a discarded expression statement.
+ * @param line - one line of the source.
+ * @returns true for a bare, comma-less string-literal line.
+ */
+function isDiscardedLiteralLine(line: string): boolean {
+  return /^\s*"(?:[^"\\]|\\.)*"\s*$/.test(line)
+}
+
+describe("the declaration cannot lose text to ASI", () => {
+  test("no line is a BARE string literal directly after another (the CodeRabbit #5 shape)", () => {
+    // CodeRabbit #5 on PR #66 caught `BRIDGE_RESTART_LIMIT` holding FOUR adjacent literals: only the
+    // first is the value and the other three are discarded, so a reader of the source saw text the
+    // process never used. Nothing else in the tree notices — it is legal JavaScript — so this arm is
+    // the guard: two consecutive comma-less literal lines in this file are always a bug.
+    /** The declaration's own source text, which is the only place the discarded siblings survive. */
+    const source = readFileSync(join(import.meta.dir, "..", "src", "settings-schema.ts"), "utf8")
+    /** The lines of that source. */
+    const lines = source.split("\n")
+    /** 1-based line numbers that open a discarded sibling. */
+    const offenders: number[] = []
+    for (let index = 1; index < lines.length; index += 1) {
+      if (isDiscardedLiteralLine(lines[index] ?? "") && isDiscardedLiteralLine(lines[index - 1] ?? "")) offenders.push(index + 1)
+    }
+    expect(offenders).toEqual([])
+  })
+
+  test("the guard itself can redden (negative control)", () => {
+    // Without this, a regex that matched nothing would make the arm above permanently green.
+    expect(isDiscardedLiteralLine('  "the other half of that list"')).toBe(true)
+    expect(isDiscardedLiteralLine('  "an array element",')).toBe(false)
+    expect(isDiscardedLiteralLine("  const x = 1")).toBe(false)
   })
 })

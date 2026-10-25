@@ -333,7 +333,10 @@ describe("W2 (static): the BUILT and served client carries the SECTION registrat
     // one-way toggle, and names the mount-captured groups in the second paragraph. The BLANKET
     // "takes effect in the RUNNING process — no restart" sentence is gone for good — pinned as an
     // absence, because it is exactly the claim a consumer-side read contradicted.
-    expect(CARD_SOURCE).toContain("a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s)")
+    // CodeRabbit #4: the promise is the SAVE PATH, not a file write — the default (entry-config)
+    // form persists in the host document and writes no file, so the copy must say both.
+    expect(CARD_SOURCE).toContain("persists in the HOST's settings document and writes NO .mpd/mpd.jsonc")
+    expect(CARD_SOURCE).toContain("<workspace>/.mpd/mpd.jsonc")
     expect(CARD_SOURCE).toContain("WHICH knobs take the new value in the RUNNING process — no restart")
     expect(CARD_SOURCE).toContain("are read per use")
     // at least one mount-captured group in the exception half, + the boot wording
@@ -411,7 +414,7 @@ describe("the card's form behaviour", () => {
     expect(text).toContain("ulw.maxRounds")
     expect(text).toContain("20000")
     expect(text).toContain("6")
-    expect(text).toContain("a save writes <workspace>/.mpd/mpd.jsonc")
+    expect(text).toContain("persists in the HOST's settings document")
     expect(text).toContain("save")
   })
 
@@ -837,7 +840,7 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
     expect(controlOf(tree, "teamModels.slot1.model")?.type).toBe("select")
     expect(optionValues(controlOf(tree, "teamModels.slot1.model"))).toEqual(["deepseek-v4-flash", "deepseek-v4-flash-vision-exp", "deepseek-v4-pro", "deepseek-flash"])
     expect(optionValues(controlOf(tree, "teamModels.slot1.reasoningEffort"))).toEqual(["off", "low", "high", "max"])
-    expect(textOf(tree)).toContain("a save writes <workspace>/.mpd/mpd.jsonc")
+    expect(textOf(tree)).toContain("persists in the HOST's settings document")
     client.restore()
   })
 
@@ -961,7 +964,11 @@ describe("the team-model slots render as DEPENDENT pickers fed by the live catal
     // The disclosure still REACHES the reader — once, at the top of the card, where the 25 rows no
     // longer repeat it (measured in a real browser: it buried every row's own sentence).
     expect(text).toContain(BRIDGE_DISCLOSURE)
-    expect(text).toContain("the config service re-resolves on every settings save")
+    // SHIPPED SPELLING: the disclosure now opens a NEW SENTENCE here ("… workspace(s). The config
+    // service re-resolves …"), so the pin carries the shipped capital "The" — the old lowercase pin
+    // went stale the moment the save-path sentence was prepended (CodeRabbit #4 repair). The material
+    // clause is unchanged; only the sentence boundary moved.
+    expect(text).toContain("The config service re-resolves on every settings save")
     expect(text).toContain("instead of reading the live config service per use")
     expect(text).toContain(BRIDGE_NOT_LOST)
     expect(text).toContain("if no session is live, the save stays in settings")
@@ -1867,7 +1874,9 @@ describe("R2: the styled contract (the harness's own settings-form tokens)", () 
     // SCOPED truth (D-18): the live half NAMES its groups, the exception half NAMES the captured
     // groups, and the blanket "no restart" claim appears nowhere on the rendered surface.
     expect(sentences.every((sentence) => sentence.length > 0)).toBe(true)
-    expect(sentences[0]).toContain("a save writes <workspace>/.mpd/mpd.jsonc")
+    expect(sentences[0]).toContain("persists in the HOST's settings document")
+    expect(sentences[0]).toContain("writes NO .mpd/mpd.jsonc")
+    expect(sentences[0]).toContain("<workspace>/.mpd/mpd.jsonc")
     // The live half: the sentence qualifies itself instead of promising a blanket no-restart.
     expect(sentences[0]).toContain("WHICH knobs take the new value in the RUNNING process — no restart — depends on how each one reads it")
     expect(sentences[0]).toContain("teamModels.slot*")

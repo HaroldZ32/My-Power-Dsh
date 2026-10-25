@@ -82,12 +82,14 @@ session's request header. my-power-dsh ships as an **npm bundle** (`@mpd-dsh/mpd
 `dsh.bundle.patch` array (`cordis.patch.yml` then `presets/mpd.patch.yml`)
 adds rows to any profile it is installed into. It contributes:
 
-- **35 inserted rows** in TWO additive patch layers: 7 MCP client rows (local ast-grep,
-  git-bash [disabled by default], LSP, codegraph; remote context7, grep.app), 24 `mpd-*`
+- **36 inserted rows across the TWO additive patch layers.** The host layer `cordis.patch.yml` carries
+  35: 7 MCP client rows (local ast-grep, the git-bash pair `mcp-git` + `mcp-shell` — both disabled by
+  default — LSP, codegraph; remote context7, grep.app), 24 `mpd-*`
   plugin rows (including the `mpd-web-compat` self-row that makes the bundle a loader entry),
   the 3 OFFICIAL Agent Teams rows, and the `mpd-better-sidebar` row that mounts the
   bundle's OPTIONAL sidebar peer (the community sidebar host) where it is resolvable — §4 lists every
-  one of them. The second patch file contributes the `preset-mpd` row,
+  one of them. The second layer, `presets/mpd.patch.yml`, contributes the single `preset-mpd` row —
+  36 in total, the number `bun run verify:rows` prints,
 - **no id-target at all.** The bundle ships its `mpd` preset additively and overrides no host row, so
   the deployment default stays the host's; setting it is the user's action through the documented
   channels (`docs/preset-default.md`, §6c),

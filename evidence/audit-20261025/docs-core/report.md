@@ -441,6 +441,84 @@ Read the post-D-18 code and updated both places (EN+zh):
 Re-ran `bun run verify:docs` after both edits: `pairs=50 failed=0 violations=0 exempt=24 derived=3
 links=449 dead=0 — PASS`, **exit 0**.
 
+### T12 — CodeRabbit repair (docs): three findings (repair pass 5) — DONE
+
+Source: PR #66 inline review comments, fetched with
+`gh api --paginate repos/HaroldZ32/My-Power-Dsh/pulls/66/comments`. Each finding was re-verified
+against the current code/text before editing (none was stale).
+
+1. **Two-layer row total** — `docs/design.md` §2 and `docs/design.zh-CN.md` §2. The bullet said
+   "**35 inserted rows** in TWO additive patch layers" while listing the second layer's `preset-mpd`
+   row separately; the two-layer total is **36**. It now reads "**36 inserted rows across the TWO
+   additive patch layers**" — 35 in `cordis.patch.yml` plus the single `preset-mpd` row in
+   `presets/mpd.patch.yml` — and names the gate's number (`bun run verify:rows` prints 36; re-run:
+   `ok: 36 row ids match the 2-file bundle patch layer`).
+2. **`mcp-shell` inventory** — same bullet, both languages. The "7 MCP client rows" enumeration named
+   only six (four local, two remote). It now names "the git-bash pair `mcp-git` + `mcp-shell` — both
+   disabled by default —", so all seven are identifiable: `mcp-astgrep`, `mcp-git`, `mcp-shell`,
+   `mcp-lsp`, `mcp-codegraph`, `mcp-context7`, `mcp-grepapp`. Code: `cordis.patch.yml` ships
+   `mcp-git` (`:230`) and `mcp-shell` (`:256`) with `disabled: true`, both
+   `name: '@deepseek-ai/dsh-mcp-client'`.
+3. **`tui.dashboardKey` restart condition** — `docs/tui.md` §settings and the `docs/tui.zh-CN.md`
+   twin. The sentence said re-enabling "waits for a boot" unconditionally. It now states the
+   condition: live in BOTH directions while the `mpd-tui` ROW config left the takeover enabled at
+   mount (the per-press read honours a saved `false`, then a saved `true`); ONE-WAY only when the row
+   config disabled it (`dashboardKey: false`), because that composition never registers the contact
+   at `apply()`, so a saved `true` cannot create one — a boot with the row config permitting it is
+   what does. Code: `takeoverArmed(seamBound, savedKnob, floor)` in
+   `packages/mpd-tui-plugin/src/panel.ts` (the saved boolean beats the row floor, the seam always
+   wins); `dashboardKeyEnabled` (per press) and the apply-time
+   `resolved.dashboardKey ? registerDashboardKey(…) : tui.skipped(…)` in
+   `packages/mpd-tui-plugin/src/index.ts`; `BRIDGE_RESTART_LIMIT`'s own wording.
+
+Boundary: the other PR-66 findings on this diff are outside this lane (code: `verify-plugin-manifest.ts`,
+`settings-schema.ts`; package READMEs: `mpd-ulw`; QA lane: the disclosure-pattern assertions). This pass
+touched only `docs/design.md`, `docs/design.zh-CN.md`, `docs/tui.md`, `docs/tui.zh-CN.md`.
+
+Re-ran `bun run verify:docs`: `pairs=50 failed=0 violations=0 exempt=24 derived=3 links=449 dead=0 —
+PASS`, **exit 0**.
+
+### T14 — ULW activation directive: C and E sub-thresholds (repair pass 6) — DONE
+
+CodeRabbit's finding (`packages/mpd-ulw-plugin/README.md:23-25`) asked for C's three sub-signals and E's
+two conjuncts. The README pair had **already been updated** (uncommitted, another lane — confirmed by
+`git diff -- packages/mpd-ulw-plugin/README.md`), but the **activation directive itself** still told
+the model the old, incomplete version: "C enumerated steps, … E a CJK-scale instruction"
+(`ULW_ACTIVATION_DIRECTIVE`, `packages/mpd-ulw-plugin/src/index.ts`). This task fixed the directive.
+
+New sentence in the directive (one line of the injected user-role message; the stable head of
+`activationDirective()`):
+
+- the A–F enumeration now reads "A flag, B deliverable verbs, **C three sub-signals**, D an active
+  boulder, **E Han chars AND verbs**, F workspace scale";
+- after the `team.sensitivity` clause it spells the real sub-thresholds: "C scores enumerated lines
+  (numbered / bulleted / table rows), distinct action verbs and clauses that OPEN with an action verb
+  against the row's own thresholds and needs at least `cSubSignals` of the three (2-of-3 on
+  easy/normal, 3-of-3 on strict; C1/C2/C3 >= 2/3/4 per row); E needs BOTH the row's Han-character
+  threshold AND its distinct action-verb threshold (>= 24 Han with >= 2 verbs on easy, >= 60 / >= 2 on
+  normal, >= 80 / >= 3 on strict — the verb count is C2's)."
+
+Code evidence opened this session: `SENSITIVITY_THRESHOLDS` and `SensitivityThresholds`
+(`packages/mpd-roles-plugin/src/complexity-gate.ts`) — easy: C1/C2/C3 = 2/2/2, `cSubSignals` 2,
+`cjkChars` 24, `cjkVerbs` 2; normal: 3/3/3, 2, 60, 2; strict: 4/4/4, 3, 80, 3; the interface comment
+maps `enumeratedLines`/`actionVerbs`/`clauseSteps` to C1/C2/C3 and names C2's count as E's verb
+conjunct.
+
+Verification:
+
+- A one-off `bun -e` import of the exported constant: `qa-regex: true` — the SAME pattern the QA case
+  and unit test use (`/GATE:[\s\S]{0,120}complexity predicate[\s\S]{0,160}signal A-F[\s\S]{0,240}team\.sensitivity/`,
+  `skills/dsh-qa/scripts/ulw-command.ts` C3.2 and `packages/mpd-ulw-plugin/test/commands.test.ts`);
+  `toContain: true` for ``explicit `team:`/`!team` flag OR any matched signal A-F``; `cSubSignals` and
+  the E conjunct present; directive length 2679.
+- `bun test packages/mpd-ulw-plugin` → **26 pass / 0 fail**, 235 `expect()` calls, **exit 0**.
+
+Bound / scope note: this task required ONE source file outside the docs lane
+(`packages/mpd-ulw-plugin/src/index.ts`). **`dist/` was NOT rebuilt** (the captain rebuilds with the
+pinned toolchain), so `packages/mpd-ulw-plugin/dist/index.js` still carries the OLD directive text
+until that rebuild — `verify-dist-fresh` will flag this entry stale by design. No other code file was
+touched; the README pair needed no edit (already correct).
+
 ## Bounds of this lane's evidence
 
 - No git command was run; the captain commits. Nothing under `packages/**`, `.mpd/**`, `skills/**` or

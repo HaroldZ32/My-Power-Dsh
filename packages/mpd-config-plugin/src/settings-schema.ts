@@ -180,8 +180,17 @@ export const SettingsSchema = z.object({
 })
 
 /**
- * The ONE disclosure every settings surface states: what a save writes, and — per KNOB GROUP, never
- * as a blanket — when the new value reaches the running process.
+ * The ONE disclosure every settings surface states: WHERE a save persists, and — per KNOB GROUP,
+ * never as a blanket — when the new value reaches the running process.
+ *
+ * SAVE PATHS (CodeRabbit #4 on PR #66, verified in this row's own code): a save from the DEFAULT
+ * front door travels through the ENTRY-config document (`ENTRY_CONFIG_ID = "mpd-config"`), which the
+ * HOST persists — the listener at `onSettingsDocumentUpdated(ENTRY_CONFIG_ID, …)` re-loads `state`
+ * and deliberately writes NO file ("persistence of an entry save is the host's", measured in the same
+ * comment). The `<workspace>/.mpd/mpd.jsonc` write-back exists only for the LEGACY `mpd` namespace
+ * (`SETTINGS_NS`), whose registration this harness REFUSES (`settingsModelRetired = true`, one boot
+ * warning "the namespace-registry model is RETIRED"), so that path is dormant on the pinned host. The
+ * earlier sentence promised a file write to every saver, which the default path does not do.
  *
  * D-18 (audit wave 2026-10-25): the previous sentence said a save "takes effect in the RUNNING
  * process — no restart", which holds only for a knob that READS the config service per use. An
@@ -198,7 +207,7 @@ export const SettingsSchema = z.object({
  * The MOUNT-CAPTURED half lives in {@link BRIDGE_RESTART_LIMIT}, because the two sentences must be
  * read together; {@link BRIDGE_SECTION_NOTICE} renders both plus the not-lost clause.
  */
-export const BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s); the config service re-resolves on every settings save and on a watched edit of the project file, and WHICH knobs take the new value in the RUNNING process — no restart — depends on how each one reads it: teamModels.slot*, modelchain.*, watchdog.*, team.stateDir, team.gate, team.sensitivity, captain.investigation and delegation.gate are read per use, and tui.dashboardKey is live ONE WAY (a saved false disables the Ctrl+A takeover at once; a saved true cannot arm a takeover the row config disabled)"
+export const BRIDGE_DISCLOSURE = "a save from this form persists in the HOST's settings document and writes NO .mpd/mpd.jsonc — the host owns that store and this row re-reads it on every save; a <workspace>/.mpd/mpd.jsonc write happens only on a host that still serves the RETIRED legacy `mpd` namespace, where each save's changed leaves go to the live session workspace(s). The config service re-resolves on every settings save and on a watched edit of the project file, and WHICH knobs take the new value in the RUNNING process — no restart — depends on how each one reads it: teamModels.slot*, modelchain.*, watchdog.*, team.stateDir, team.gate, team.sensitivity, captain.investigation and delegation.gate are read per use, and tui.dashboardKey is live ONE WAY (a saved false disables the Ctrl+A takeover at once; a saved true cannot arm a takeover the row config disabled)"
 
 /**
  * The MOUNT-CAPTURED half of the same truth: the knobs whose plugins read the config ONCE inside
@@ -213,9 +222,6 @@ export const BRIDGE_DISCLOSURE = "a save writes <workspace>/.mpd/mpd.jsonc for t
  */
 export const BRIDGE_RESTART_LIMIT =
   "the other half of that list, so nobody reads it as a blanket: hashline.*, commentChecker.*, ulw.*, memory.*, boulder.dir and goal.* are captured by their plugins at mount instead of reading the live config service per use, so a new value for any of them waits for the next dsh boot (the file and the settings document still receive it at once, and each row names the key it writes)"
-  "the other half of that list, so nobody reads it as a blanket: hashline.*, commentChecker.*, ulw.*, memory.*, boulder.dir and goal.* are captured by their plugins at mount instead of reading the live config service per use, so a new value for any of them keeps waiting for the next dsh boot — a wait on BEHAVIOUR only, because the new value is already in the file and in the settings document, so nothing is lost and nothing is silently reverted"
-  "the restart half, stated on its own so a surface can print it as a second paragraph: a CAPTURED knob — one whose plugin reads the config once at its own mount instead of reading the live config service per use — keeps its captured value until the next dsh boot, and that wait is on BEHAVIOUR only: the new value is already in the file and in the settings document, so nothing is lost and nothing is silently reverted"
-  "the other half of that list, so nobody reads it as a blanket: hashline.*, commentChecker.*, ulw.*, memory.*, boulder.dir and goal.* are captured by their plugins at mount instead of reading the live config service per use, so a new value for any of them waits for the next dsh boot (the file and the settings document still receive it at once, and each row names the key it writes)"
 
 /**
  * The sentence that keeps a settings-only save from reading as a LOST save (captain's ruling 1):
@@ -223,7 +229,7 @@ export const BRIDGE_RESTART_LIMIT =
  * workspace's resolved config immediately, so a refusal is a persistence delay, never data loss.
  */
 export const BRIDGE_NOT_LOST =
-  "the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session"
+  "the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — and because this path writes no file, it never waits for a live session"
 
 /** The runtime notice for a save that had no live session workspace to write (§D.2 row 2). */
 export const BRIDGE_NO_WORKSPACE_NOTICE = "saved to settings — not yet written to any .mpd/mpd.jsonc (no live session)"

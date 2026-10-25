@@ -618,8 +618,10 @@ settings 安装器同样保持 base 固定。固定 base **并不**表示每个�
 也**不能一概而论**：配置服务本身是实时的（每次设置保存、以及监听到项目文件被编辑时都会重新解析），每个
 旋钮的答案取决于**它的消费者在哪里读取**。由消费者每次使用时从实时服务读取 —— **实时生效、无需重启**：
 `teamModels.slot*`、`modelchain.*`、`watchdog.*`、`team.stateDir`、`team.gate`、`team.sensitivity`、
-`captain.investigation`、`delegation.gate`；`tui.dashboardKey` 是**单向**的（按键时的读取可以在运行中
-关掉 Ctrl+A 接管，但接管接触点本身在 `apply()` 时注册，重新打开要等下一次启动）。在行自己的
+`captain.investigation`、`delegation.gate`；`tui.dashboardKey` 在 `mpd-tui` **行配置**于挂载时允许
+Ctrl+A 接管的前提下**双向**实时（保存的 `false` 之后再来 `true`，都会在下一次按键读取时生效），只有在
+**行配置**禁用了接管（`dashboardKey: false`）时才是**单向**：该组合在 `apply()` 时根本不会注册接触点，
+保存的 `true` 无法凭空创建它，需要以允许接管的行配置重启一次。在行自己的
 `apply()` 里被捕获 —— **需要重启**、捕获值保持到下一次 `dsh` 启动：`hashline.*`、`commentChecker.*`、
 `ulw.*`、`memory.*`、`boulder.dir`、`goal.*` 与 `extensions.*`。本 bundle 自己的提示常量把两半都写了
 出来 —— `BRIDGE_DISCLOSURE`（实时条款，点名模型路由）与 `BRIDGE_RESTART_LIMIT`（边界），而**逐旋钮的

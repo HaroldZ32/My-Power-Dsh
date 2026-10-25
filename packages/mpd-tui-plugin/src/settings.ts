@@ -2,11 +2,14 @@
 //
 // DISCLOSURE (read before trusting the writes): the fields below are the real
 // `.mpd/mpd.jsonc` knobs — the runtime config layer the mpd plugins read through
-// `packages/mpd-config-plugin`. That layer is NOT the harness settings document
-// this screen writes to: the section declares and edits those knobs under the
-// harness settings namespace `mpd`, and the two are BRIDGED (t35): `mpd-config`
-// observes the namespace through the adapter's settings seam and rewrites the value
-// into `<workspace>/.mpd/mpd.jsonc` with comments and key order preserved.
+// `packages/mpd-config-plugin`. That layer is NOT the harness settings document this
+// screen writes to, and the bridge between them is NOT a file write (CodeRabbit #4 on
+// PR #66, verified in `packages/mpd-config-plugin/src/index.ts`): this section is keyed by
+// the config ENTRY (`mpd-config`), whose persistence is the HOST's — the entry-config
+// listener re-loads the row's state and deliberately writes no file. The
+// `<workspace>/.mpd/mpd.jsonc` write-back existed only for the LEGACY `mpd` namespace, and
+// this harness REFUSES that registration (`settingsModelRetired = true`, one boot warning),
+// so that path is dormant here. `BRIDGE_DISCLOSURE` states exactly this to the reader.
 //
 // LIVE REFRESH, PER KNOB GROUP (D-18, audit wave 2026-10-25): the config row arms a file
 // watcher at mount AND subscribes to the entry-config document, so its `state` re-resolves on
