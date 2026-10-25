@@ -99,13 +99,42 @@ Four slots, twelve leaves plus each slot's own optional fallback chain:
   cross-package import.
 - `mpd_config_get` / `mpd_config_reload` tools.
 
-## The `/settings` bridge (write-back)
+## The `/settings` bridge
 
-This package owns the **write-back** half of the harness settings bridge: the
-TUI `/settings` section and the Web GUI card edit the `mpd` settings namespace,
-and a saved edit is projected into the workspace's `<workspace>/.mpd/mpd.jsonc`.
+This package owns the config side of the harness settings bridge. **The live save path is the ENTRY
+document; the `mpd.jsonc` write-back is the RETIRED legacy path.** The TUI `/settings` section and the
+Web GUI card both save the row's `mpd-config` ENTRY document (`ENTRY_CONFIG_ID`,
+`configForms.get("mpd-config")`), and the HOST owns that store: this row's
+`onSettingsDocumentUpdated(ENTRY_CONFIG_ID, …)` listener re-loads `state` from it and deliberately
+writes NO workspace file. A `<workspace>/.mpd/mpd.jsonc` write exists only for the LEGACY `mpd`
+namespace (`SETTINGS_NS`), whose registration the pinned harness REFUSES — `settingsModelRetired`, one
+boot warning: "the legacy file write-back and override clearing are dormant" — so on the pinned host
+that path never runs. A hand edit of `<workspace>/.mpd/mpd.jsonc` IS still read: the file layers are
+re-read on every resolution and a mount-time `watchRoot` watcher picks the edit up through the same
+150 ms debounce.
 
-- **The namespace base (this package owns it):** `baseForNamespace()`
+**The READ-BACK is live; the EFFECT is per knob.** `mpd_config_get` / `mpd_config_reload` re-read the
+layers on every call and report the new value at once, but a consumer that captured its configuration
+at `apply()` still acts on the old one. Two groups, and this section states BOTH — never only the
+promising half (`docs/user-guide.md` §9.1 is the per-knob authority):
+
+- **live in the running process** — the model routes (`teamModels.slot*`, `modelchain.*`),
+  `watchdog.*`, `team.gate` / `team.sensitivity`, the `team.stateDir` reader, and the two guards
+  `captain.investigation` / `delegation.gate` (each reads the row's own `configValue` per decision);
+- **captured at `apply()`, so they need the next `dsh` boot** — `hashline.*`, `commentChecker.*`,
+  `ulw.*`, `memory.*`, `boulder.dir`, `goal.*`.
+
+A settings-only save is never LOST: the host settings document keeps the value and the config layer
+applies it to every workspace immediately — and because this path writes no file, it never waits for a
+live session.
+
+### The LEGACY namespace path (DORMANT on the pinned host)
+
+The bullets below describe the `mpd` NAMESPACE bridge (`SETTINGS_NS`) — exactly what a host that still
+serves that namespace runs. The pinned harness refuses the registration, so on this host the whole path
+is dormant; it stays documented because the code still ships it and a legacy host still executes it.
+
+- **The namespace base (this package owns it; LEGACY):** `baseForNamespace()`
   derives the base under a cardinality rule — one live root ⇒
   that workspace's `<workspace>/.mpd/mpd.jsonc`; zero roots ⇒ the mount-time
   (exec-less) root (`DSH_WORKSPACE_ROOT` or the process cwd), an absent file there
@@ -113,44 +142,42 @@ and a saved edit is projected into the workspace's `<workspace>/.mpd/mpd.jsonc`.
   root ⇒ **no file base is invented** (`base: undefined`, reason
   `ambiguous-multi-root`, every candidate warned and surfaced by `states()`), and a
   save in that state is refused. The base is **fixed for the process lifetime**
-  (the host exposes no disposal handle for a live registration), which is why the
-  shipped hint says "after a restart"; the **resolved value** plus this layer's
-  **per-call file reads** are what consumers use, so each session still resolves its
+  (the host exposes no disposal handle for a live registration); the **resolved value** plus the
+  config layer's **per-call file reads** are what consumers use, so each session still resolves its
   own file.
-- **Read-in precedence:** L0 schema defaults < L1 `$DSH_HOME/mpd.jsonc` < L2
+- **Read-in precedence (LEGACY namespace layer):** L0 schema defaults < L1 `$DSH_HOME/mpd.jsonc` < L2
   `<workspace>/.mpd/mpd.jsonc` < **L3 the settings user section**, which is
   authoritative at runtime; a later file edit **unsets** the overlapping settings
-  leaf, so neither direction silently loses a value.
-- **Write-back** triggers on the host's `settings/document-updated(ns, revision)`
+  leaf, so neither direction silently loses a value. L3 needs a host that still serves the namespace;
+  the L0–L2 FILE layers are the live read described above.
+- **Write-back (LEGACY, dormant)** triggers on the host's `settings/document-updated(ns, revision)`
   event filtered to `source === 'update'`, and writes under a lock, a
   compare-and-swap on the raw bytes, a sibling temp file and an atomic rename.
-  **Comments, key order and trailing commas survive** (measured: a real boot
+  **Comments, key order and trailing commas survive** (measured on the legacy path: a real boot
   rewrote `hashline.maxDiffChars` 20000 → 31415 in a 21-line JSONC unchanged
   otherwise).
-- **Workspace target:** the settings path carries no identity, so the target set
+- **Workspace target (LEGACY, dormant):** the settings path carries no identity, so the target set
   is the live session workspaces at event time — exactly one ⇒ write; **zero ⇒
   `no-live-session`**; **several ⇒ `ambiguous-multi-root`** (every candidate
   named). Both skip cases change **no file** and the edit is **never lost**: it
   is stored in the host-global settings document and the config layer applies it
   to every workspace immediately.
-- **Timing:** consumers read the config at plugin `apply()`, so a saved edit
-  takes effect for the mpd plugins **after a restart**.
-- **Degenerate targets are loud:** missing (created with a header comment),
+- **Degenerate targets are loud (LEGACY, dormant):** missing (created with a header comment),
   read-only (`denied` + path + errno, the settings edit still succeeds),
   concurrent (retry ×3 then `conflict`, the human's file untouched), unparsable
   (`unparsable`, never repaired).
-- **Duplicate keys:** `SET` edits the LAST occurrence of a path and warns naming
+- **Duplicate keys (LEGACY, dormant):** `SET` edits the LAST occurrence of a path and warns naming
   every occurrence line; `UNSET` removes EVERY occurrence in one descending-span
   pass (leaving one behind would keep the key effective in the file while the
   settings layer reports it unset). Refusal is reserved for unprovable spans,
   duplicated intermediates (`ambiguous-intermediate`), unparsable documents and
   read-only targets. The user-facing statement of this rule is `docs/tui.md` §6.5.
 
-Evidence: `evidence/mpd-bridge/implementation/20260915T080138Z/` (two real boots,
+The LEGACY bridge's evidence: `evidence/mpd-bridge/implementation/20260915T080138Z/` (two real boots,
 one live root and two live roots), lane `skills/dsh-qa/scripts/tui-settings-bridge.ts`,
 re-review `evidence/mpd-bridge/review/REREVIEW-t49.md`, ruling
 `evidence/mpd-bridge/captain/RULING-duplicate-unset-FINAL.md`.
 
 Boundary: the bundle patch stays the composition truth; this layer only feeds
-plugin runtime config — plus the write-back projection above — and never mutates
-dsh patch rows.
+plugin runtime config — plus the LEGACY write-back projection above, which the pinned host never runs —
+and never mutates dsh patch rows.

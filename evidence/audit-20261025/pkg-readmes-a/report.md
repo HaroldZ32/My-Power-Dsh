@@ -304,3 +304,72 @@ those twelve again (`packages/mpd-ulw-plugin/README{,.zh-CN}.md`), so the count 
   "E a CJK-scale instruction" in its "2. GATE" line. That is a `src/**` file outside this repair's
   write scope; if the runtime directive should carry the same sub-threshold detail, it is a separate
   `src/**` edit with its own `dist` rebuild — flagged to the Lead rather than absorbed here.
+
+## 6. T20-F1 repair — `packages/mpd-config-plugin` no longer teaches the retired bridge as live
+
+- **Finding.** T20-F1 (HIGH, from the re-verification of `d2bd08b6`): the package that OWNS the bridge
+  was not swept — `packages/mpd-config-plugin/README.md` + `README.zh-CN.md` said the front doors
+  "edit the `mpd` settings namespace, and a saved edit is projected into the workspace's
+  `<workspace>/.mpd/mpd.jsonc`", said the shipped hint claims "after a restart", and stated the blanket
+  "a saved edit takes effect for the mpd plugins **after a restart**", with no retirement/dormant note
+  anywhere in the pair. Reconciliation: **STILL-VALID → FIXED**.
+- **1. Section retitled and intro replaced.** `## The /settings bridge (write-back)` →
+  `## The /settings bridge` (zh `## /settings 打通`). The new intro states the live model: both front
+  doors save the row's `mpd-config` ENTRY document (`ENTRY_CONFIG_ID`,
+  `configForms.get("mpd-config")`); the HOST owns that store and the row's
+  `onSettingsDocumentUpdated(ENTRY_CONFIG_ID, …)` listener re-loads `state` and writes NO workspace
+  file; a `<workspace>/.mpd/mpd.jsonc` write exists only for the LEGACY `mpd` namespace (`SETTINGS_NS`),
+  whose registration the pinned harness REFUSES (`settingsModelRetired`; the boot warning "the legacy
+  file write-back and override clearing are dormant"), so that path never runs on the pinned host; and
+  a hand edit of the file IS still read (file layers re-read per resolution + the mount-time
+  `watchRoot` watcher through the same 150 ms debounce).
+- **2. The stale hint clause deleted.** "which is why the shipped hint says 'after a restart'" is gone
+  in both languages — the shipped `BRIDGE_DISCLOSURE` now says "take the new value in the RUNNING
+  process — no restart", and `docs/development.md`'s `tui-settings-bridge` row records that the
+  retired "… after a restart" wording is exactly what its negative control rejects (D-18/A-11).
+- **3. The blanket "Timing" bullet replaced (both languages).** It is now "The READ-BACK is live; the
+  EFFECT is per knob": `mpd_config_get` / `mpd_config_reload` re-read per call, while a consumer that
+  captured its config at `apply()` still acts on the old value; the two groups are BOTH named, with
+  `docs/user-guide.md` §9.1 as the per-knob authority —
+  - live: `teamModels.slot*`, `modelchain.*`, `watchdog.*`, `team.stateDir`, `team.gate` /
+    `team.sensitivity`, `captain.investigation`, `delegation.gate`;
+  - mount-captured: `hashline.*`, `commentChecker.*`, `ulw.*`, `memory.*`, `boulder.dir`, `goal.*`.
+  The `BRIDGE_NOT_LOST` sentence is folded in: a settings-only save is never lost and never waits for a
+  live session, because this path writes no file.
+- **4. The legacy bullets labelled.** A new `### The LEGACY namespace path (DORMANT on the pinned
+  host)` subsection carries the base, read-in-precedence, write-back, workspace-target, degenerate-
+  target and duplicate-key bullets, each labelled LEGACY/LEGACY-dormant; the L3 precedence is scoped to
+  "a host that still serves the namespace" while the L0–L2 FILE layers stay the live read (a hand edit
+  is re-read). The closing sentence now reads "plus the LEGACY write-back projection above, which the
+  pinned host never runs".
+- **Proof symbols** (all opened this session):
+  - `packages/mpd-config-plugin/src/index.ts` — `ENTRY_CONFIG_ID`'s doc comment ("BOTH front doors
+    (the Web card's `configForms.get("mpd-config")` and the TUI's `locateNamespace` default) read and
+    write the ENTRY document"); the `onSettingsDocumentUpdated(ENTRY_CONFIG_ID, …)` listener ("no file
+    write-back on this path … persistence of an entry save is the host's", log "no restart needed");
+    `registerNamespace` (`settingsRegister(SETTINGS_NS, …)` refused → `settingsModelRetired = true` +
+    the exact boot warning); `reconcile`'s early return when retired; the mount-time watcher
+    (`watchRoot(readRoot())` plus every live session root, "the same 150 ms debounce"); the §10.1
+    comment "the file layers are re-read by the config layer on every resolution" and `reload` /
+    `reloadAt`; `readSection` (returns undefined when the namespace reader is absent → L3 scoped).
+  - `packages/mpd-config-plugin/src/settings-schema.ts` — `BRIDGE_DISCLOSURE` (the live groups + the
+    "writes NO .mpd/mpd.jsonc" / legacy-only-write sentence + "no restart"), `BRIDGE_RESTART_LIMIT`
+    (the mount-captured groups), `BRIDGE_NOT_LOST`, and their D-18 / CodeRabbit-#4 provenance comments
+    that record why the previous wording was wrong.
+  - `docs/user-guide.md` §9.1 "When a saved knob takes effect" — the per-knob table the README now
+    points at (read, not edited).
+- **Gate.** `bun run verify:docs` → **exit 0**,
+  `pairs=50 failed=0 violations=0 links=447 dead=0 — PASS` (final measurement after all edits:
+  **2026-10-25T14:17:20Z**; the run at 14:16:30Z produced the identical line).
+- **Files touched.** `packages/mpd-config-plugin/README.md` and
+  `packages/mpd-config-plugin/README.zh-CN.md` only — `git diff --stat`: 75 insertions, 39 deletions.
+  No `src/**`, no `docs/**`, no git writes.
+- **Self-check against the finding's four sub-claims.** (a) no unqualified "a save writes
+  `<workspace>/.mpd/mpd.jsonc`" remains — `grep -n "write-back\|回写"` returns only RETIRED/LEGACY/
+  dormant-labelled hits; (b) the "shipped hint says after a restart" clause is deleted; (c) the blanket
+  restart claim is replaced by the two-group per-knob truth; (d) the pair now carries the retirement
+  note in both languages and a dedicated LEGACY (DORMANT) subsection.
+- **Bounds.** No boot was run: the wording is proven against the source symbols above and mirrors the
+  already-swept `mpd-tui-plugin` / `mpd-bundle-plugin` README wording, not against a live settings
+  save. No pin was added (the finding notes the pair is unpinned; a pin is a QA/src change outside this
+  task's write scope).

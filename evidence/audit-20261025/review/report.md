@@ -415,4 +415,82 @@ result.json` is `ok: true`, 10/10 checks.
 human-facing band and the notice's restart half); the other eight findings and T15 verify clean and
 every gate is green.**
 
+---
+
+# T20 — RE-VERIFICATION OF THE SAVE-PATH SWEEP `d2bd08b6` — 2026-10-25T14:10Z — **FAIL (residual: the owning package's README was missed)**
+
+Commit `d2bd08b6` ("sweep the truthful save path through every live site") fixes every one of the six
+sites T16-F1 named, correctly, and adds the guards I asked for. I re-derived each fix from the files:
+
+- `BRIDGE_RESTART_LIMIT` is now scoped — "(the settings document receives it at once, and the file does
+  too only on a host that still serves the legacy `mpd` namespace; each row names the key it writes)" —
+  byte-identical in the schema and the browser mirror (`BRIDGE_DISCLOSURE` 842 chars,
+  `BRIDGE_RESTART_LIMIT` 442 chars, both identical), copied into the QA lane's `TUI_DISCLOSURE_CAPTURED`,
+  with new absence arms `S3c`/`T3c` over `TUI_FILE_PARENTHETICAL_RETIRED` and three pin sites asserting
+  the scoped wording AND the retracted one's ABSENCE.
+- The five human-facing passages now state the truth in EN **and** zh: `mpd-tui-plugin/README` (host
+  entry document, "no workspace file is written on this path", legacy writer retired/refused),
+  `mpd-bundle-plugin/README` (same, plus the hand-edit clause), `docs/user-guide.md` §7.2 (host
+  persistence, no `<workspace>/.mpd/mpd.jsonc` write, legacy path "dormant"), `docs/tui.md` §7.2
+  (Write-back and Workspace-target bullets relabelled "legacy namespace path — DORMANT on this
+  harness"; "None of this runs for an entry-config save"), `docs/design.md` §7b (namespace model
+  RETIRED, dormant path, entry persistence explained). A band-wide grep finds no remaining current-tense
+  "a save writes the file" claim in those files or their twins.
+
+## Finding (HIGH — the same class survives in the package that OWNS the bridge)
+
+`packages/mpd-config-plugin/README.md` **and** `packages/mpd-config-plugin/README.zh-CN.md` were not
+swept. They still present the retired namespace model as the live mechanism, with no retirement note
+anywhere in the file:
+
+1. "## The `/settings` bridge (write-back)": "the TUI `/settings` section and the Web GUI card edit the
+   `mpd` settings namespace, and a saved edit is projected into the workspace's
+   `<workspace>/.mpd/mpd.jsonc`." (zh: "…编辑 `mpd` 设置命名空间，保存的编辑会被投影到工作区的
+   `<workspace>/.mpd/mpd.jsonc`") — false on the pinned host: the front doors edit the `mpd-config`
+   ENTRY document, and no file is written.
+2. "the base is **fixed for the process lifetime** … which is why the shipped hint says 'after a
+   restart'" (zh: "这就是界面提示写作'重启后生效'的原因") — the shipped hint no longer says that; D-18/A-11
+   replaced it with the scoped disclosure.
+3. "**Timing:** consumers read the config at plugin `apply()`, so a saved edit takes effect for the mpd
+   plugins **after a restart**" — the blanket restart claim D-18 corrected everywhere else; `§9.1` is
+   per knob (model routes, watchdog, gate knobs live; the captured groups not).
+4. The base/read-in/write-back/workspace-target bullets and the closing boundary sentence ("plus the
+   write-back projection above") all describe the dormant path as current.
+
+**Why it matters:** `packages/*/README.md` IS the package's contract (AGENTS.md §3), and this is the
+package the other documents point at for the bridge — so the sweep's own goal ("through every live
+site") is not met, and a developer reading the owning README learns the retired model and a blanket
+restart. **Direction:** state the entry-path truth + the retired legacy path in that README pair
+(EN+zh) and scope the timing line to `docs/user-guide.md` §9.1, mirroring the wording the five swept
+sites now use.
+
+## Secondary residual (MEDIUM — same stale premise, adjacent package)
+
+`packages/mpd-team-watchdog-plugin/README.md` (and the zh twin): "The `mpd` settings namespace is the
+live authority … the `mpd` namespace is registered *deferred* (mpd-config parks its registration on the
+settings service)" — on the pinned harness `settingsRegister` is refused (`settingsModelRetired`), so
+the authority is the entry-config document / live config service, not the retired namespace. The live
+re-read behaviour the paragraph justifies is true; the premise wording is stale and teaches the retired
+model. Worth fixing in the same docs pass.
+
+## Verified on the committed tree (my own runs, all exit 0)
+
+`docs` `ev-20261025T140856-771278` (pairs 50, links 447, dead 0) · `comments`
+`ev-20261025T140856-13281c` · `rows` `ev-20261025T140859-58ec5f` (36) · `typecheck`
+`ev-20261025T140859-99ffa1` · `tests` `ev-20261025T140902-db9540` (**2465 tests / 6 declared skips /
+0 fail** / 40 690 expects) · `manifest` `ev-20261025T140935-c88fb2`; plus `verify:vendor` PASS (7
+assets), `verify-dist-fresh` **33/33 fresh**, `verify-no-host-override` PASS. The post-sweep real case
+`evidence/mpd-bridge/tui-settings-bridge/20261025T140013Z/result.json` is `ok: true` with **11/11**
+checks (it now runs the new guards); the captain's credential-free oneclick lane
+(`evidence/docker/client-install/2026-10-25T14-00-21Z/`) is `ok: true`, 77 passed / 0 failed / 45 null
+(the `live.*`/`ui.*` nulls are its declared credential-free bounds). The commit's modification of MY
+report is my own T16 append being committed verbatim (I checked the diff — no edit by the author).
+`tui-panels`' real TTY lane still has no post-repair stamp (last 12:48Z); its self-test/static model are
+green and the notice-readability bound stays declared.
+
+**Verdict on `d2bd08b6`: FAIL — the six named sites and the constants are correctly swept with real
+pins, but the owning package's README pair (plus the watchdog README pair's namespace premise) still
+teaches the retired model and a blanket restart; two README pairs close it.**
+
+
 

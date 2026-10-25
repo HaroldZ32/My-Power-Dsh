@@ -473,4 +473,164 @@ Diff for the four repaired files: **50 insertions, 39 deletions**.
 5. A self-inflicted zh breakage was caught and repaired in the same pass (a sentence half lost while
    re-anchoring the `base` cardinality rule); the final text was re-read after the fix.
 
+---
+
+# T22 (finding T20-F2) — the watchdog README called the refused `mpd` namespace the live authority
+
+**Defect.** `packages/mpd-team-watchdog-plugin/README.md` + `.zh-CN.md` opened "The knobs" with: "The
+`mpd` settings namespace is the live authority; the row config is the defaults layer … The per-tick
+re-read is deliberate: the `mpd` namespace is registered *deferred* (mpd-config parks its registration
+on the settings service) …". On the pinned harness nothing registers that namespace, so the sentence
+named a refused registration as the authority.
+
+**What the code does (opened this session)**
+
+- `readNamespaceValue` (`packages/mpd-team-watchdog-plugin/src/engine.ts`) reads through the adapter:
+  `dsh.settingsReader("mpd").get()`, i.e. `settings.get("mpd")` (`packages/mpd-dsh-adapter-plugin/src/index.ts`,
+  `settingsReader(namespace)` → `settings.get(namespace)`).
+- `SETTINGS_NS = "mpd"` (`packages/mpd-config-plugin/src/settings-schema.ts`) and
+  `registerNamespace` (`packages/mpd-config-plugin/src/index.ts`) calls
+  `settingsRegister(SETTINGS_NS, …)`, and on `ok !== true` sets `settingsModelRetired = true`, warns
+  "…the mpd knobs are served as this row's config (entry `mpd-config`)… The legacy file write-back and
+  override clearing are dormant." and RETURNS — **nothing registers the namespace on the pinned host**.
+  The served surface is the row's config under the entry `mpd-config` (`ENTRY_CONFIG_ID`).
+- The live path that does move is the FILE layer: `refreshKnobs()` reads the settings value AND
+  `observeFile()`, tracks `layerDigests.namespace` / `layerDigests.file`, sets
+  `liveLayer = "file" | "namespace"` and overlays via `overlayWatchdogSection(namespaceValue,
+  file.section)`; `readKnobs(base, env, this.knobDefaults())` then resolves.
+- The conclusion the old premise justified is unchanged and still true: the knobs are re-read on every
+  tick and on a settings-document update (`onSettingsDocumentUpdated`), and `knobReadings`
+  (`machine.ts`) prints live vs file with `restartRequired`.
+
+**New text (EN + zh, same meaning)**
+
+- EN: "The knobs resolve from three layers: this row's own config (the DEFAULTS layer), the live
+  settings read through the adapter — `settingsReader("mpd")`, which on the pinned harness is
+  **unserved**: `settingsRegister("mpd", …)` is REFUSED (`settingsModelRetired`), and the knobs are
+  served as this row's config under the entry `mpd-config` (`ENTRY_CONFIG_ID`) instead, so nothing
+  registers a namespace — and the workspace `.mpd/mpd.jsonc` FILE layer, observed live and overlaid
+  when it is the layer that moved. …re-read **on every tick** and on `settings/document-updated` … a
+  cadence change replaces the single tick interval. The per-tick re-read is deliberate: the settings
+  value is not a mount-time snapshot and nothing guarantees it arrives before this row applies…"
+- zh: the same three layers, same refusal, same conclusion, in 简体中文.
+- The claim "the `mpd` namespace is registered *deferred* (mpd-config parks its registration on the
+  settings service)" is GONE from both languages.
+
+**CODE CONTRADICTION — recorded, not absorbed (report to the Lead)**
+
+The finding says "the authority is the `mpd-config` entry-config document / live config service". The
+code does **not** read that document: the watchdog asks for `settings.get("mpd")`, which on the pinned
+harness is unserved (`settingsModelRetired`), so its settings half yields nothing and it falls back to
+its own row config plus the FILE overlay. Combined with T18 (an entry save writes NO workspace file),
+the practical consequence is that **a settings-form save does not reach this row on the pinned host**;
+only a hand-edited `.mpd/mpd.jsonc` (the file layer) does. I therefore did NOT write "the entry document
+is the authority" as the finding worded it — that would be a new false claim — and instead wrote the
+three-layer read path that the code supports. Either the row should read
+`settingsReader(ENTRY_CONFIG_ID)`/the live config service, or the README must keep admitting the gap;
+that is a CODE change, outside this lane.
+
+**Adjacent sentences deliberately NOT changed** (the finding said "do not change any other claim"):
+EN "the knobs are read through the `mpd` namespace and … a knob is readable and settable from the
+namespace" (the schemastery/declaration paragraph) and EN "`.mpd/mpd.jsonc` reaches a process's `mpd`
+namespace once, at mount" (§7.2/§7.3). Both still describe the namespace as a read surface and are
+worth the Lead's judgement as follow-ups; touching them would have exceeded the assigned item.
+
+**Checks re-run (quoted, with exit codes)**
+
+`bun run verify:docs` — **exit 0**, log `evidence/audit-20261025/pkg-readmes-b/verify-docs-t22.log`
+
+```
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=50 failed=0 violations=0 exempt=24 derived=3 links=447 dead=0 — PASS
+```
+
+`bun run verify:manifest` — **exit 0**, log `evidence/audit-20261025/pkg-readmes-b/verify-manifest-t22.log`
+
+```
+ok    packed-content: npm pack --dry-run lists 1044 file(s); 0 required path(s) absent
+
+VERDICT: PASS — the install-time rules and the packaging contract hold.
+```
+
+Diff: 2 files, **18 insertions, 11 deletions**.
+
+**Bounds**
+
+1. The finding's suggested wording was not adopted verbatim, for the code reason above; the README now
+   states the read path the code implements.
+2. I did not touch `src/**`; the underlying gap (a settings-form save not reaching this row) remains and
+   is reported, not fixed.
+3. Only the two gates this lane requires were run.
+4. The zh twin was re-read after the edit and says the same three layers with the same refusal.
+
+---
+
+# T23 — the two remaining namespace-as-read-surface sentences (plus a third found by grep)
+
+**Defect.** The T22 report listed two sentences that still presented the `mpd` namespace as a READ
+surface: (1) the knob-declaration paragraph ("the knobs are read through the `mpd` namespace and …
+readable and settable from the namespace"), and (2) the §7.2/§7.3 paragraph ("`.mpd/mpd.jsonc` reaches
+a process's `mpd` namespace **once, at mount**: a file edit is invisible until the next `dsh` boot").
+
+**Truth, from code opened in the T22/T23 passes**
+
+- Pre-declaration surfaces: the row config (the defaults layer) and the workspace `.mpd/mpd.jsonc` file
+  layer, which `config-file.ts` parses on **every** re-read. The legacy `mpd` namespace is a surface
+  only on a host that still serves it (its schemastery schema keeps unknown keys); on the pinned host
+  nothing registers it (`settingsModelRetired`).
+- The §7.2/§7.3 sentence was the pre-T-18 state. `refreshKnobs` (`engine.ts`) keeps `layerDigests` for
+  the namespace section and the file section and lets **the layer that MOVED win**: a file edit with no
+  settings write in the same window is applied **live, in this process, no restart** ("the measured
+  T-18 case" in the method's own doc comment); a settings write outranks a file that did not move; with
+  neither or both moving, the last winner stays (first call: namespace wins).
+- `noteKnobDivergence` is the residue, not the normal path: it reports the knobs whose FILE value the
+  running process is NOT using (a file edit in the same observation window as a settings write, or
+  values that arrived before the process observed them), `restartRequired = divergent.length > 0`, and
+  the one KNOBS DIVERGE line distinguishes `fileApplied` ("these could not be applied and wait for the
+  next dsh boot") from "a .mpd/mpd.jsonc edit applies live once this process has observed the file".
+
+**New text (EN + zh)**
+
+- Declaration paragraph: the front-door declaration "is about the FRONT DOORS, not about whether this
+  row can see a value" — a knob is readable/settable before it lands through the row config and the
+  file layer, and (legacy hosts only) the namespace; on the pinned harness the row config and the file
+  "are the pre-declaration surfaces that actually exist".
+- §7.2/§7.3: "The SETTINGS value a process reads is a snapshot taken at mount, but `.mpd/mpd.jsonc` is
+  not…" — layer-that-moved-wins, the measured live file case, the settings-write precedence, then the
+  residue + `restartRequired` + the KNOBS DIVERGE line's own two cases.
+- **Third instance (not named in the task, fixed anyway):** the "Known limits" bullet
+  "**`toolInFlightMaxMs` is not in the front-door declaration yet.** It is read through the `mpd`
+  namespace and the row config…" carried the identical claim. Now reads "through the row config (the
+  defaults layer) and the `.mpd/mpd.jsonc` file layer like the other knobs — and, on a host that still
+  serves it, the legacy `mpd` namespace". Flagged to the Lead as one bullet beyond the two assigned.
+
+**Checks re-run (quoted, with exit codes)**
+
+`bun run verify:docs` — **exit 0**, log `evidence/audit-20261025/pkg-readmes-b/verify-docs-t23.log`
+
+```
+[verify-docs-parity] root=/home/haroldzhao/MyProj/DshProj/My-Power-Dsh pairs=50 failed=0 violations=0 exempt=24 derived=3 links=447 dead=0 — PASS
+```
+
+`bun run verify:manifest` — **exit 0**, log `evidence/audit-20261025/pkg-readmes-b/verify-manifest-t23.log`
+
+```
+ok    packed-content: npm pack --dry-run lists 1044 file(s); 0 required path(s) absent
+
+VERDICT: PASS — the install-time rules and the packaging contract hold.
+```
+
+Diff: 2 files, **55 insertions, 28 deletions** (T22 + T23 together on this README pair).
+
+**Bounds**
+
+1. The third bullet was outside the literal "two sentences" assignment; it is the same claim in the same
+   file and I am its only writer, so I fixed it and report it explicitly rather than leave a known-false
+   sentence for the reviewer.
+2. `The /watchdog/ namespace is the only thing this package writes` is the HTTP ROUTE namespace, not the
+   settings namespace — deliberately untouched.
+3. Nothing outside the watchdog README pair was edited; `src/**` untouched; only the two gates this lane
+   requires were run.
+
+
+
 
