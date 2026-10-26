@@ -1,0 +1,37 @@
+{
+  "kind": "mount-proof",
+  "subject": "mpd-cellwork row applies under a real dsh boot (offline)",
+  "capturedAt": "2026-10-26T09:39:31.685Z",
+  "command": "cd <sandbox-ws> && DSH_HOME=<sandbox>/home HOME=<sandbox>/userhome DSH_WORKSPACE_ROOT=<sandbox>/ws dsh --profile w --patch <sandbox>/cellwork-overlay.yml --port 3299 --no-open",
+  "profile": {
+    "shape": "sandbox profile w: dsh.profile.bundles = [@deepseek-ai/dsh-base, @deepseek-ai/dsh-web-app, @mpd-dsh/mpd]; node_modules/@mpd-dsh/mpd symlinked to the checkout; dependencies.@mpd-dsh/mpd = link:<checkout>",
+    "frozenCopy": "sandbox-profile-package.json"
+  },
+  "overlay": {
+    "file": "cellwork-overlay.yml",
+    "row": "- id: mpd-cellwork / name: '<checkout>/packages/mpd-cellwork-plugin/dist/index.js' / config: {}",
+    "why": "On this machine the bundle resolution picks a STALE @mpd-dsh/mpd (0.15.5, no cellwork row) even when the profile links the checkout, so the row was supplied through a --patch overlay with an ABSOLUTE module path. This proves the row MODULE applies; it does not prove the bundle patch is the source."
+  },
+  "observed": {
+    "cellworkMountLine": "[2026-10-26T09:39:31.685Z] [mpd-cellwork] mounted: guard=on depthMax=3 checkpointRatio=0.5 windowFraction=0.25 windowOverride=none",
+    "composedRow": "- id: mpd-cellwork ... file:///<checkout>/packages/mpd-cellwork-plugin/dist/index.js",
+    "artifacts": [
+      "cellwork-mount.log",
+      "dump-config-composed-row.txt",
+      "cellwork-overlay.yml",
+      "sandbox-profile-package.json"
+    ],
+    "loaderFailures": "none observed (no 'failed to apply loader entry' / 'failed to load' line)"
+  },
+  "proves": [
+    "The row's apply() ran to completion under a REAL dsh boot in an isolated DSH_HOME/HOME/workspace (not --dump-config).",
+    "The mount line is written at the END of apply(), after the guard install and the three registerTool calls and the cellwork command registration, with the config it resolved (guard=on, depthMax=3, checkpointRatio=0.5, windowFraction=0.25, no override).",
+    "The boot's composed tree contained the row at the absolute module path (dump-config excerpt)."
+  ],
+  "doesNotProve": [
+    "That the bundle's own cordis.patch.yml row is the source of that mount — an overlay row was used because the local bundle resolution is stale. The bundle wiring is proven separately by verify:rows (37 ids incl mpd-cellwork) and verify:manifest (row module paths resolve).",
+    "The `dsh plugin add` install/uninstall path (needs the registry; bundle-lifecycle dies at install on this network — recorded bound).",
+    "A session-level tool LIST (a request/header tools[] witness for cellwork_status/cellwork_start/cellwork_stop); the unit suite proves the registrations, this boot proves apply."
+  ],
+  "sandbox": "<workspace>/.mpd/tmp/mount-proof-overlay-20261026T173917Z (gitignored runtime; the four frozen artifacts above are the durable record)"
+}

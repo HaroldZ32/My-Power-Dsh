@@ -1,0 +1,4 @@
+- insert:
+    - id: mpd-cellwork
+      name: '/home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/dist/index.js'
+      config: {}
