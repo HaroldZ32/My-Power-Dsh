@@ -178,6 +178,33 @@ UTF-8 字符 3 字节、按每字符 1 token），因此中文密集的任务只
 
 队长不是成员，在 v1 中永远不会被检查点。
 
+## 嵌套 DAG：子单元画成分组盒子
+
+被晋升的副队长会拉起子 team，而共享图把那个子单元画成一个**盒子**，盒子内部就是该子单元自己的 DAG。这条规则
+住在模型里（`packages/mpd-graph-core`，它的 README 双语对完整陈述了它）；本节记录 cellwork 对它承诺了什么，以及
+读者可以期待看到什么。
+
+- **每个子单元一个盒子。** 盒子是**父帧**里的一个节点——它的 id 就是子 team 的 id，它的 `dependencies` 是附着到
+  它边框上的阻断者——而盒子内部装着子 team 自己的任务，按它们自己的模型排序。
+- **外部边附着到帧上。** 一端在盒子内、另一端在盒子外的依赖，会被重锚到盒子上（盒子即包含内侧端点的最内层帧）；
+  因此一条线永远不会逃出盒子。完全落在内部的边保留它原来的两个任务，两个盒子之间的边变成 box→box，而盒子的派生
+  边是由拉起该子单元的那个任务**推导**出来的，不是在哪儿手写的。
+- **递归属于模型，而不是第二套概念。** 一个子单元还可以包含子单元：每一帧各自排序，嵌套一直重复到上面的深度围栏。
+  id 必须在整棵树内唯一，因为 id 是两个渲染方共同依赖的连接键——团队平面对被复用的任务编号使用的写法是
+  `<teamId>::<taskId>`。
+
+**这条缝是隐式推导，并且没有一个可以被忘记的参数。** `cellwork_subteam` 把父 cell 的**实时** team id 写到新 cell
+的 `CellState.parentTeamId` 上，并把 `subcell-created` 连同它写进 journal；子 team 本身在登记时**不传**
+`parent_team_id`。团队平面在**批准时**从父 team 自己的名册推导这条链接（`deriveParentTeam`），因为登记子 team 的
+那个 session 本身就是父 team 的成员——记录本来就知道。正因如此，嵌套不会漂移：没有第二个值需要保持同步。同一段
+代码会拒绝一个不把该 session 记作 Lead 或成员的父亲，也会拒绝一条绕回自身的 `parentTeamId` 链，所以投影
+（`mpdTeams.graph(workspace, teamId)`）可以顺着 `parentTeamId` 递归合并成嵌套分组而不担心成环。
+
+**本波次交付的表面是 TUI。** 面板在它的字符网格里画出这些盒子——第二套单格字形家族、横跨内部各行的帧框、到达边画
+端口而穿过的边画交叉、分组命中身份，以及"宁可折叠也不半画"的宽度守卫
+（`packages/mpd-tui-plugin/README.md` 的 "Nested groups: subcells as boxes"）。web DAG 的分组帧**不属于**本次交付；
+"声明边界"一节对此有明确交代。
+
 ## 感知 cell 的邮件
 
 cell 内的智能体可以互相通信，不经过用户界面，也不经过队长：
@@ -259,8 +286,13 @@ cell id 形如 `cell-<UTC 时刻>`；子 cell 会记录 `parentCellId` 与 `dept
 - **深度围栏默认三层。** 被晋升的副队长可以拉起子 team，`cellwork_subteam` 在超过 `depthMax` 时拒绝；
   嵌套能力本身依赖 adapter 的直接启动路径与显式的绝对 `maxDepth`，这一点在能力尖刺
   （`evidence/cellwork/capability-spike/`）中作为源码阅读记录在案。
-- **`parent_team_id` 推迟。** 把子 team 的父级登记到 team 记录上，以及随之而来的嵌套 DAG 分组渲染，都是
-  Wave 4 的事——不属于本模式 v1。
+- **`parent_team_id` 是隐式推导，不是旋钮。** 子 team 的父级由团队平面在批准时从父 team 的名册推导
+  （`deriveParentTeam`）；`cellwork_subteam` 把推导出来的父 team id 记在 cell 记录上，全程不传任何父级 id，因此
+  没有调用方可以搞错的参数——也没有办法把子 team 指向一个不把该 session 记作成成员的 team。
+- **WEB 端的嵌套帧在本波次不交付。** team 记录、共享模型与 TUI 都带上了嵌套分组（见"嵌套 DAG：子单元画成分组
+  盒子"）；web DAG 的分组帧、它的递归几何与它的 client 重建都是**后续工作**，补丁计划冻结在
+  `.mpd/plans/cellwork-w4-t7-plan.md`。本文档没有任何一句声称 web 表面会画盒子，读者也不得把 TUI 的词汇当成 web
+  的能力。
 - **「盲」始终是书面约定**，与本仓库其它地方一致：cellwork 接好合约、循环与裁决，但不假装能观测到验证者
   读过什么。
 

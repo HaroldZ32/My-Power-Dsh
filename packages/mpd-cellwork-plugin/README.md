@@ -126,6 +126,17 @@ whose window cannot be read can be certified deliberately, and it is recorded as
 **Config precedence, stated once for both languages:** project file (`<workspace>/.mpd/mpd.jsonc`,
 `cellwork.*`) > row config (the bundle patch's `config:` block) > shipped documented default.
 
+### Subcells render as nested groups
+
+A subcell is drawn as a GROUP BOX in the shared DAG: the box's interior is that subcell's own graph, a
+dependency from outside attaches to the box's frame instead of to a task inside it, and the nesting
+recurses. This package supplies the FACT the picture is made from, not the picture itself.
+`cellwork_subteam` stamps the parent cell's LIVE team id on the new cell as `CellState.parentTeamId` and
+journals `subcell-created` with it, and it passes NO parent id: the team plane derives the link at approval
+from the parent team's own roster (`deriveParentTeam`), because the session staging the sub-team is already
+a member of it. The TUI is the surface that draws the boxes this wave; the web DAG's group frame is a
+declared follow-up (`docs/cellwork.md`, "Declared bounds").
+
 ## Declared bounds
 
 - The guard is **process-wide and dispatch-time only**. It cannot see intent, it cannot stop a model from

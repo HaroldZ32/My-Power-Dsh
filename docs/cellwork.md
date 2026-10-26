@@ -212,6 +212,41 @@ and hands the work to a successor. The sequence is mechanical:
 
 The captain is not a member and is never checkpointed in v1.
 
+## Nested DAG: subcells as group boxes
+
+A promoted subcaptain raises a sub-team, and the shared graph draws that subcell as a BOX whose interior is
+the subcell's own DAG. The rule lives in the model (`packages/mpd-graph-core`, whose README pair states it in
+full); this section records what cellwork owes it and what a reader may expect to see.
+
+- **One box per subcell.** The box is a node of the PARENT frame — its id is the sub-team's id, and its
+  `dependencies` are the blockers attached to its border — while its interior holds the sub-team's own
+  tasks, ranked as their own model.
+- **External edges attach to the frame.** A dependency with one endpoint inside the box and the other
+  outside is re-anchored to the box, where the box is the innermost frame containing the inside endpoint; a
+  line therefore never escapes a box. An edge fully inside keeps its two tasks, an edge between two boxes
+  becomes box→box, and the box's spawn edge is DERIVED from the task that raised the subcell rather than
+  authored anywhere.
+- **The recursion is the model's, not a second concept.** A subcell may hold subcells: each frame is ranked
+  on its own and the nesting repeats to the depth cap above. Ids must be unique across the whole tree,
+  because the id is the join key both renderers draw by — the team plane's own spelling for a reused task
+  number is `<teamId>::<taskId>`.
+
+**The seam is implicit derivation, and it has no argument to forget.** `cellwork_subteam` stamps the parent
+cell's LIVE team id on the new cell as `CellState.parentTeamId` and journals `subcell-created` with it; the
+sub-team itself is staged with NO `parent_team_id`. The team plane derives the link AT APPROVAL from the
+parent team's own roster (`deriveParentTeam`), because the session that stages a sub-team is already a
+member of the parent team — the record already knows. That is why the nesting cannot drift: there is no
+second value to keep in sync. The same code refuses a parent that does not record the session as its Lead
+or as a member, and refuses a `parentTeamId` chain that comes back to itself, so the projection
+(`mpdTeams.graph(workspace, teamId)`) can follow `parentTeamId` into nested groups recursively without
+risking a loop.
+
+**The delivered surface this wave is the TUI.** The panel draws those boxes in its character grid — a
+second one-cell glyph family, a frame spanning its interior's rows, ports for arriving edges versus
+crossings for passing ones, a group hit identity, and a collapse-not-half width guard
+(`packages/mpd-tui-plugin/README.md`, "Nested groups: subcells as boxes"). The web DAG's group frame is NOT
+part of this delivery; the bound in "Declared bounds" says so explicitly.
+
 ## Cell-aware mail
 
 Agents in a cell talk to each other without routing through the user interface or through the captain:
@@ -307,8 +342,15 @@ whose window cannot be read can be certified deliberately, and it is recorded as
   `cellwork_subteam` refuses past `depthMax`; the nesting capability itself rests on the adapter's
   direct start path with an explicit absolute `maxDepth`, recorded as a source read in the capability
   spike (`evidence/cellwork/capability-spike/`).
-- **`parent_team_id` is deferred.** Registering a sub-team's parent on the team record, and the nested
-  DAG group rendering that goes with it, is Wave 4 — not part of this mode's v1.
+- **`parent_team_id` is implicit, not a knob.** A sub-team's parent is DERIVED by the team plane at
+  approval from the parent team's roster (`deriveParentTeam`); `cellwork_subteam` stamps the resulting
+  parent team id on the cell record and passes no parent id at all, so there is no argument for a caller to
+  get wrong — and no way to point a sub-team at a team that does not record the session as a member.
+- **The WEB nested frame is NOT delivered this wave.** The team record, the shared model and the TUI carry
+  nested groups (see "Nested DAG: subcells as group boxes"); the web DAG's group frame, its recursive
+  geometry and its client rebuild are a FOLLOW-UP with their patch plan frozen at
+  `.mpd/plans/cellwork-w4-t7-plan.md`. Nothing in this document claims the web surface renders a box, and a
+  reader must not read the TUI's vocabulary as a web capability.
 - **Blindness stays prose**, exactly as this repository states it: cellwork wires the contract, the
   loop and the verdict, and does not pretend to observe what a verifier read.
 

@@ -111,6 +111,15 @@ cell 登记）、`cellwork_send` / `cellwork_inbox`（持久的 cell 邮件）�
 **配置优先级（两种语言同述）：** 项目文件（`<workspace>/.mpd/mpd.jsonc` 的 `cellwork.*`）> 行配置
 （bundle patch 的 `config:` 块）> 随包发布的文档默认值。
 
+### 子单元渲染为嵌套分组
+
+子单元在共享 DAG 里被画成一个**分组盒子**：盒子的内部就是该子单元自己的图，来自外部的依赖附着到盒子的帧上、
+而不是盒内某个任务上，并且嵌套会递归。本包提供的是这张图所依据的**事实**，而不是图本身。
+`cellwork_subteam` 把父 cell 的**实时** team id 写到新 cell 的 `CellState.parentTeamId` 上，并把
+`subcell-created` 连同它写进 journal，且**不传**任何父级 id：团队平面在批准时从父 team 自己的名册推导这条
+链接（`deriveParentTeam`），因为登记子 team 的 session 本身就是它的成员。本波次画盒子的是 TUI；web DAG 的分组帧
+是已声明的后续工作（`docs/cellwork.md` 的"声明边界"）。
+
 ## 声明边界
 
 - 守卫是**进程级、且只在派发时刻**生效。它看不见意图，无法阻止模型去"尝试"某个名字，也覆盖不到绕过工具

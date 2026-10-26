@@ -461,6 +461,41 @@ Observed on the frozen revision at 120 columns: the page's own line reads
 `view rail · 12 tasks · ranks derived`, and the legend's state key disambiguates the shared glyph as
 `○ open=blocked · ○ blocked=open`.
 
+### Nested groups: subcells as boxes
+
+A subcell draws as a BOX whose interior is that subcell's own DAG, and a dependency from outside attaches
+to the box rather than to a task inside it (`cellwork` wave 4, frozen contract D3). The drawing stays a
+character grid: no host `ui.Box` is spent per group, so the picture remains one grid of cells the panel
+can pan, scroll and hit-test.
+
+- **A SECOND glyph family.** `dag-theme.ts` declares `DAG_GROUP_CHARS`, the double-line set
+  `╔ ╗ ╚ ╝ ║ ═`, visually distinct from the node family's rounded single lines (`╭ ╮ ╰ ╯ │ ─`).
+  Every glyph is asserted to be exactly ONE cell (`DAG_GROUP_CHARS_ONE_CELL`) and the two families are
+  asserted to share no glyph: a box that CONTAINS boxes must be readable as one in a monochrome terminal,
+  and a wide glyph in either family would shear a border off its own column.
+- **The recursion is the layout's, not a second engine.** `dag-groups.ts` builds the frame tree (a group
+  names its parent, a task names its innermost group), anchors every edge to the boxes ONE frame can see,
+  and measures each frame bottom-up. Each frame then places its children as its own little board — columns
+  top to bottom, boxes side by side inside a column, one band of rows between two columns — and a GROUP
+  child is laid out by the SAME code one level down, at the rectangle its parent gave it.
+- **Crossing versus terminating.** An edge arriving on a box's side draws that side's PORT glyph (`╧` on a
+  top side), so the arrow points at a port and the dependency reads as attached to the BOX. An edge that
+  passes THROUGH a side — it leaves a box, or its real endpoint is nested deeper than the box this frame
+  draws — draws the CROSSING glyph (`╫`), a single line through a double one. They are separate glyphs by
+  construction, so a run that continues inside is never drawn as an arrival.
+- **Group hit identity.** `hitTestGroup(view, row, col)` answers with the INNERMOST frame holding a cell,
+  and `dagRowClick` reports `groupId` when the pointer landed on a frame rather than on a task. A task
+  still outranks the frame around it, because the box is painted over it.
+- **Never half a GROUP.** A frame the vertical window would cut loses its OWN cells (its two rules on a
+  border row, its two sides on an interior row) and keeps its interior's text — the per-node "whole or
+  nothing" rule, extended to the thing that contains nodes. The width guard is the existing one: when the
+  panel cannot show two node columns, the ladder falls through to the rail/list and every group is then
+  reported COLLAPSED in `collapsedGroups` instead of being painted half-drawn.
+- **Declared bounds.** A group the tree cannot place (an unknown parent, a parent cycle, an id colliding
+  with a task) gets no box and is reported in `collapsedGroups`; a board with no groups takes the flat
+  drawing byte for byte (a test pins it); and where an arrival port lands on a frame's title the port keeps
+  the cell, with the rest of the title reading around it.
+
 ### The workmate page: the library as its own read-only shelf
 
 `src/panel-workmate.ts` (frozen R12) renders the durable workmate library (`$HOME/.mpd/workmate/<key>/`)

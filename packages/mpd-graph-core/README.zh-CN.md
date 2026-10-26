@@ -38,11 +38,13 @@ barrel，因为 barrel 还带着两个 `node:fs` 模块；两条路径是同一�
 形状（全部是纯 JSON——没有 `Map`、没有 `Set`、没有类实例、没有函数）：
 
 ```
-GraphModel  = { nodes, edges, ranks, cycles, report }
-GraphNode   = { id, subject, kind?, visual, assignee?, dependencies, depth, planned, title?, status? }
-GraphEdge   = { from, to, source: "board" | "plan" | "both" }
+GraphModel  = { nodes, edges, ranks, cycles, report, groups? }
+GraphNode   = { id, subject, kind?, visual, assignee?, dependencies, depth, planned, title?, status?, group? }
+GraphEdge   = { from, to, source: "board" | "plan" | "both" | "derived" }
 GraphReport = { boardOnly, planOnly, edgePlanOnly, edgeBoardOnly,
                 planProblems, unresolved, ranksDerived }
+GraphGroup  = { id, label, parentId, memberIds, depth, originTaskId? }
+GraphGroupInput = { id, label, originTaskId?, board?, plan?, groups? }
 ```
 
 节点上的 `depth` 是**已解析的列**（从阻断图推导，或报告会说明的 served-depth 回退），所以消费方不再自行分桶。
@@ -54,6 +56,52 @@ GraphReport = { boardOnly, planOnly, edgePlanOnly, edgeBoardOnly,
 
 **环与扁平看板都如实绘制。** 依赖环让每个 rank 保持有限，并列进 `cycles`；所有 `blockedBy` 都是 `[]` 的看板就画成
 扁平的——一个 rank、没有边——那是真实的画面，不是缺陷。
+
+## 分组（嵌套子单元）
+
+一个子单元就是一个**分组**：一个盒子，盒子的内部就是这个子单元自己的依赖图。`buildModel` 以**树**的形式接收
+分组输入，返回一个模型，盒子和任务都能从它抵达：
+
+```ts
+buildModel({
+  board, plan,                        // 根帧：调用方自己的任务
+  groups: [{
+    id: "teamB", label: "Subcell B",
+    originTaskId: "T2",               // 派生出它的那个任务（已知时）
+    board, plan,                      // teamB 自己的内部输入
+    groups: [ /* … 递归 … */ ],
+  }],
+})
+```
+
+**附着规则（强制）。** 一条边一端在分组 G 内部、另一端在外部，就**重锚到 G 的帧**（G 是包含内侧端点的最内层
+分组）；完全落在一个分组内部的边保留它原来的两个任务；两个分组之间的边变成 group→group；分组的派生边由
+`originTaskId` **推导**（`source: "derived"`），调用方永不手写。两次声明重锚到同一对端点时，只画**一个**端口。
+
+**盒子本身也是节点。** 每个分组都画成父帧里的一个伪节点：`id` = 分组 id、`subject` = 它的标签、`visual` =
+`"group"`、`dependencies` = 重锚后附着到它边框上的阻断者。`ranks` 仍然只为**根帧**分桶（它自己的任务加上顶层
+盒子），而每个节点的 `depth` 是它**在自己帧内**的列——这正是渲染方能够递归的依据。
+
+**排序。** 外层模型对**分组伪节点**排序，所以外部列是对的；每个分组的内部则按它自己的模型排序：内部对帧外任务的
+引用在帧内解析不到，而那正是依赖附着到边框的位置。
+
+**哪个字段对什么权威。** `edges` 是**画出来的结构**，并且是 `ranks`、每个节点的 `depth` 与 `cycles` 的**唯一**
+输入：跨越帧边界的引用会被画成连到（或来自）该帧某个盒子的线，所以列和查环都跟着这条线走。节点的 `dependencies`
+是**手写的原文**，逐字保留（含帧外与解析不到的引用），让读者看到调用方究竟写了什么——永远不要从它推导结构。
+盒子是唯一一种 `dependencies` 本身就是画出内容的节点，因为盒子没有自己的手写原文。
+
+**纯 JSON 与确定性。** `groups` 按（`depth`、再 `id`）排序，父在子前；`memberIds` 按 id 比较器排序；
+`JSON.parse(JSON.stringify(model))` 往返后与原模型深等。
+
+**向后保证。** 不提供任何分组时，结果与引入分组之前的扁平模型**逐字节相同**：没有 `groups` 键、节点上没有
+`group`、同样的 rank、同样的序列化字节。包内测试用一段固定的 JSON 钉住它，`verify-graph-model` 门禁还会再查一遍
+扁平模型不携带 `groups` 键。
+
+**id 必须在整棵树内唯一。** id 是两个平面绘制时共用的连接键，所以一棵树里两个帧复用同一个 id——或某个分组 id 与
+任务 id 相同——会被**拒绝**并抛出一个同时点名两个帧的 `Error`，因为静默地留下其中一个，画出的就是没人声明过的树。
+团队各自复用 `T<n>` 编号空间的调用方，应当在构建前给内部 id 加上限定前缀（团队平面自己的写法是
+`<teamId>::<taskId>`）。`originTaskId` 指不到任何节点时记入 `report.unresolved`；指到它自己内部的任务时不推导任何
+边，因为盒子不能被自己的内部阻塞。
 
 ## 任务计划 Markdown 子集
 
@@ -171,7 +219,7 @@ resolvePlanFile(workspaceRoot): string | undefined
 readPlanFile(path): PlanDocument
 
 // model.ts —— 唯一的模型
-buildModel({ board?, plan? }): GraphModel
+buildModel({ board?, plan?, groups? }): GraphModel
 
 // watch.ts —— 唯一的监听器
 watchGraph(targets, options?): GraphWatcher
@@ -195,5 +243,16 @@ watchGraph(targets, options?): GraphWatcher
   --target node --format esm --outfile packages/mpd-graph-core/dist/index.js
 bun test packages/mpd-graph-core
 ```
+
+独立于实现的"画面对输入"门禁在仓库根目录，它是唯一拿模型去对**契约**（而不是对它自己）的命令：
+
+```
+node scripts/verify-graph-model.ts              # 扁平 fixture，输出与引入分组前逐字节一致
+node scripts/verify-graph-model.ts --grouped    # 分组用例：内置的嵌套 fixture
+node scripts/verify-graph-model.ts --self-test  # 正反两个方向、分组的用例与各种路径形式
+```
+
+`--seed-wrong-edge`（扁平）与 `--seed-wrong-anchor`（分组）是播种负例：每一个都必须以非零退出，并打印一条**点名**
+它所破坏那条边的 FAIL 行，而 `--self-test` 正是这样断言的——所以绿灯意味着门禁真的能分辨，而不是仅仅跑过。
 
 本包交付 `src/index.ts`（barrel）、这份中英 README 对，以及上面命令产出的 `dist/index.js`。它不声明任何依赖。
