@@ -1,0 +1,7 @@
+# T12 byte budget (FINAL)
+AGENTS.md BEFORE : 64165 bytes  (git HEAD, measured at task start)
+AGENTS.md AFTER  : 63478 bytes
+delta            : -687 bytes
+reserved cut     : 65536 bytes; margin: 2058 bytes (manual §3 wants >= 2048)
+note: after the first pass the file was 63505 B; two micro-trims took it to 63475 B, then a cosmetic re-wrap of one long line added +3 B (newline+3-space indent) leaving 63478 B. No text changed in the re-wrap.
+target: <= 64165 (mandatory), ideally <= 63600 -> MET

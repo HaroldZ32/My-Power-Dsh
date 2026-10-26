@@ -504,8 +504,9 @@ lane hold this line.
 ### Primary flow: ONE command, no extra step
 
 - **The USER-facing install is ONE command against the PUBLISHED package — no clone, no build:**
-  `dsh plugin --profile web add @mpd-dsh/mpd` — LIVE on the registry at **0.15.5** (measured
-  2026-10-26T02:36Z); `dsh plugin --profile web add github:HaroldZ32/My-Power-Dsh` is the same one
+  `dsh plugin --profile web add @mpd-dsh/mpd@0.15.5` (this release, named by explicit spec) or the
+  unversioned `@mpd-dsh/mpd`, which takes whatever `latest` the registry serves;
+  `dsh plugin --profile web add github:HaroldZ32/My-Power-Dsh` is the same one
   command from the repository (and the Docker lane's proof spec, §4). pnpm packs it through the
   manifest's **`files` allowlist**, then `reconcile` reads the
   installed package's `dsh.bundle.patch` files, validates that they load, and appends the package name to
@@ -582,30 +583,23 @@ lane hold this line.
 1. From dev: `git checkout -b release/vX.Y.Z`; bump the version in ALL THREE carriers —
    `package.json`, `dsh-plugin.json`, `dsh-distribution.json` (`verify:manifest` reddens on any
    mismatch) — plus the changelog note.
-2. Full gate sweep, each command named exactly: `bun run verify:vendor` (after the wave's single `node
-   scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step` re-pin when `skills/**` changed),
-   `bun test packages` (a repo-root `bun test` also scans the historical `evidence/**` fixtures and
-   reddens on them), `bun run typecheck`, `bun run test:qa`, `bun run verify:docs`, `bun run verify:rows`,
-   `node skills/dsh-qa/scripts/preset-conformance.ts --self-test`, `node scripts/verify-dist-fresh.ts`,
-   `node scripts/verify-pack-closure.ts` (freshness read from the `expected-after-pack` list at the
-   re-pack, never from its exit code — §4's bound), plus the real smoke cases (`dual-track-smoke`,
-   `mcp-call`). `bun run verify:gates` covers the nine static members (vendor, dist freshness, row
-   parity, doc pairs, preset conformance, plugin manifest, comment coverage, graph model, workflows).
-   `node scripts/verify-no-host-override.ts` is NOT a member of that aggregate and is REQUIRED for EVERY
-   release sweep; `node scripts/verify-manual-paths.ts` is REQUIRED whenever `AGENTS.md` changed.
-   - **LAST: the Docker real-machine lane — `--live` with `DEEPSEEK_API_KEY` exported, and
-     `--require-docker` so it cannot skip silently** — `node scripts/docker-e2e.ts --mode source
-     --require-docker --live` then `--mode oneclick --require-docker --live`. Run it AFTER the last
-     write, and cite the stamps it writes. **The CREDENTIAL-FREE source run is REQUIRED in EVERY sweep
-     as well** — `node scripts/docker-e2e.ts --mode source --require-docker --no-browser` — because a
-     credentialed run CANNOT see the paths that depend on an EMPTY model catalog: a QA case that
-     silently relied on the deleted built-in slot defaults stayed green through two weeks of
-     `liveRequested:true` runs and reddened only on the credential-free one (2026-10-23, PR #62).
-     Cite BOTH stamps. The credential-free run is a REGRESSION gate, while its `ui.*` rows stay NULL
-     and are NOT evidence of the UI. `--live` WITHOUT a key in the environment is a hard exit 3
-     BEFORE the build, and a credential-free browser-enabled run records `ui.replyRendered` as a DECLARED
-     BOUND that the required-arm gate turns into exit 3 by design — the credential-free spelling is
-     `--no-browser` (exit 0, every `ui.*` NULL).
+   - **Version + docs move TOGETHER:** every version literal and every published-version statement
+     (README table row + Notes, §8's install line) lands in THIS commit — no post-publish docs PR.
+2. Full gate sweep. §4's gate table is the authority: run every row it marks for this change, plus the
+   two it does not carry — `node scripts/verify-no-host-override.ts` (NOT a `verify:gates` member) and
+   `node scripts/verify-manual-paths.ts` (whenever `AGENTS.md` changed) — plus the real smoke cases
+   `dual-track-smoke` and `mcp-call`. `bun run verify:gates` aggregates §4's nine static members. Two
+   preconditions are easy to miss: `bun run verify:vendor` only AFTER the wave's single
+   `node scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step` re-pin when `skills/**`
+   changed, and a repo-root `bun test` (unlike `bun test packages`) also scans the `evidence/**`
+   fixtures and reddens on them.
+   - **LAST: the Docker real-machine lane, per §4's Docker row — BOTH runs, both stamps cited.** The
+     credentialed `node scripts/docker-e2e.ts --mode source --require-docker --live` then `--mode
+     oneclick --require-docker --live`, AND the credential-free `--mode source --require-docker
+     --no-browser` regression run — a credentialed run cannot see a path that depends on an EMPTY model
+     catalog (measured 2026-10-23, PR #62). `--no-browser` IS the credential-free spelling: a
+     browser-enabled one records `ui.replyRendered` as a DECLARED BOUND that the required-arm gate turns
+     into exit 3 by design, and `--live` with no key exits 3 before the build.
    - **Release-checklist line (VENDOR_LOCK pairing rule):** `VENDOR_LOCK.json` lands in the SAME commit
      as every `skills/**` change that invalidates its `treeSha`; with the single-skills-writer rule (§9)
      that is exactly ONE re-pin per wave — verify the wave's single re-pin is present and that no

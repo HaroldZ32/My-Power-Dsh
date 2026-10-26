@@ -152,14 +152,16 @@ DSH-TUI pin in [`dsh-plugin.json`](./dsh-plugin.json) `compat.hosts` plus the `h
 [`dsh-distribution.json`](./dsh-distribution.json). A newer host is not claimed until a release row
 names it: pin both.
 
+**The newest row is the version this package publishes; the rows below it are the pins of earlier releases, kept as history.**
+
 | `@mpd-dsh/mpd` | DeepSeek Harness | DSH-TUI | Notes |
 |---|---|---|---|
-| 0.15.5 | 0.2.1-rc.3 | 0.17.0 | this release |
-| 0.15.4 | 0.2.1-rc.2 | 0.16.1 | |
-| 0.15.2 | 0.2.1-rc.2 | 0.16.1 | |
-| 0.15.1 | 0.2.1-rc.2 | 0.16.1 | |
-| 0.15.0 | 0.2.1-rc.2 | 0.16.1 | |
-| 0.14.0 | 0.2.1-rc.2 | 0.16.1 | the harness-0.2.1 adaptation release |
+| 0.15.5 | 0.2.1-rc.3 | 0.17.0 | the current release — installable from the registry |
+| 0.15.4 | 0.2.1-rc.2 | 0.16.1 | previous |
+| 0.15.2 | 0.2.1-rc.2 | 0.16.1 | previous |
+| 0.15.1 | 0.2.1-rc.2 | 0.16.1 | previous |
+| 0.15.0 | 0.2.1-rc.2 | 0.16.1 | previous |
+| 0.14.0 | 0.2.1-rc.2 | 0.16.1 | previous — the harness-0.2.1 adaptation release |
 
 ## Quick start
 
