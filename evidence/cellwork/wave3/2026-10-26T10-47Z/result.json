@@ -1,0 +1,119 @@
+{
+  "kind": "wave-result",
+  "wave": "cellwork-wave3",
+  "capturedAt": "2026-10-26T10:48:00Z",
+  "branch": "feature/cellwork",
+  "commits": {
+    "feature": "7e187fb2",
+    "docs": "b23a41fe",
+    "evidence": "see the follow-up evidence commit"
+  },
+  "scope": {
+    "C1": "live-team re-split (delta materialisation, forward-only revisions, cancelled dropped rows excluded from dispatch, replacement splitter row)",
+    "C2": "hardening of the T6 low finding (compaction reason vocabulary journaled after the retry budget; cross-cell tree-only mail into the recipient cell's mail.jsonl with sender journal cell:/toCell; unread + wakeFailures on supervise)",
+    "C3": "cellwork-command QA case (harness-evidence registration + activation-directive submission, negative control)",
+    "C4": "cellwork-mount QA case (installed row removed so the overlay is the only source; mount line; negative control)",
+    "C5": "bilingual feature docs, README rules, user-guide pointers, CHANGELOG",
+    "Amendment 6": "R1 dispatched contract path uses the split key (activation passes this revision's activatedTasks map); R2 a refused resubmission never overwrites the accepted verdict"
+  },
+  "vendorRepin": {
+    "why": "skills/** changed (two QA case scripts, a probe lib, SKILL.md rows)",
+    "skillsTreeSha": "efa5600f81a0ff5dbe0def2bcd70d730811c4470f786dc131f7e34cb915339bd -> 104cbc00911278628ee838711f8269977b5ce3c51c70e479b3616979b58afb8f",
+    "verifyVendor": "exit 0 after the single per-wave re-pin"
+  },
+  "gates": {
+    "packageTests": "48 pass / 0 fail / 597 expect calls",
+    "aggregateTests": "2565 pass / 6 skip / 0 fail (2571 tests / 153 files)",
+    "typecheck": "exit 0",
+    "comments": "PASS (470 files / 42011 declarations)",
+    "docsParity": "pairs=52 failed=0 violations=0 links=465 dead=0",
+    "distFresh": "34/34 fresh (pinned bun 1.4.0)",
+    "rows": "exit 0",
+    "manifest": "exit 0",
+    "noHostOverride": "exit 0 (0 of 214)",
+    "installProfileDryRun": "exit 0 with the row present",
+    "vendor": "exit 0 (after the re-pin)",
+    "testQa": "exit 0 (all QA self-tests)",
+    "qaRealRuns": [
+      "evidence/cellwork/qa/2026-10-26T10-27-00.242Z-command (T1 run, re-inspected by the verifier)",
+      "evidence/cellwork/qa/2026-10-26T10-27-10.531Z-mount",
+      "evidence/cellwork/qa/2026-10-26T10-34-20.181Z-command (T3-verified run)",
+      "evidence/cellwork/qa/2026-10-26T10-34-37.048Z-mount",
+      "evidence/cellwork/qa/2026-10-26T10-41-45.118Z-command (T5 re-run)",
+      "evidence/cellwork/qa/2026-10-26T10-41-56.684Z-mount"
+    ],
+    "packClosure": "RED by design: PACKED-MISSING [mpd-cellwork-plugin] until the Wave-5 re-pack"
+  },
+  "verdicts": [
+    {
+      "task": "T4",
+      "items": "C5 (docs)",
+      "record": "rec-20261026T101136-b7bc59",
+      "loop": "loop-20261026T095624-e75a74",
+      "verdict": "PASS",
+      "basis": "blind",
+      "evidence": ["ev-20261026T100523-05df40"]
+    },
+    {
+      "task": "T3",
+      "items": "C1-C4 (code + QA cases)",
+      "record": "rec-20261026T103647-7513cc",
+      "loop": "loop-20261026T095624-7aed34",
+      "verdict": "PASS",
+      "basis": "blind",
+      "evidence": ["ev-20261026T103216-9a4938", "ev-20261026T103225-b7924d", "ev-20261026T103209-2c0a55", "ev-20261026T103212-73153a", "ev-20261026T103220-9c2a3a", "ev-20261026T103203-9d6730", "ev-20261026T103203-611205"]
+    },
+    {
+      "task": "T6",
+      "items": "Amendment 6 R1/R2",
+      "record": "rec-20261026T104707-73718a",
+      "loop": "loop-20261026T103044-f19aea",
+      "verdict": "PASS",
+      "basis": "blind",
+      "evidence": ["ev-20261026T104450-39b5af", "ev-20261026T104459-d0e10a", "ev-20261026T104451-8ec35d", "ev-20261026T104456-df1a27", "ev-20261026T104456-4efe05"]
+    }
+  ],
+  "findingsAndDisposition": [
+    {
+      "id": "T4-NIT-evidence-pointer",
+      "status": "FIXED and verified",
+      "detail": "the docs claimed every evidence/cellwork dir carries 'the raw logs'; the capability spike is a read-only consult (result.json + report.md). Reworded in both languages; confirmed inside T3's and T6's docs gates."
+    },
+    {
+      "id": "docs-mail-store-contradiction",
+      "status": "FIXED and verified",
+      "detail": "docs said cell mail journals in .mpd/team/mailbox.jsonl with a cell stamp; the implementation appends to the TARGET cell's mail.jsonl and records cell:<cellId>/toCell in the sender journal. Four files corrected; the team-mailbox string has zero occurrences; confirmed in T6."
+    },
+    {
+      "id": "R1-dispatched-contract-path",
+      "status": "FIXED and verified",
+      "detail": "the dispatched message named contracts/<boardId>.md (nonexistent). Now the split key, and activation passes this revision's activatedTasks map (without which the fix stayed inert). Arm asserts the named file exists and equals the mpd_verify_open contract argument."
+    },
+    {
+      "id": "R2-accepted-verdict-durability",
+      "status": "FIXED and verified",
+      "detail": "a refused same-revision resubmission overwrote the accepted split verdict. Refusals now write split/<rev>.refused.json; an arm pins the canonical accepted file byte-identical, show still ACCEPTED, and a newer acceptance reporting supersededRevision:1 with exactly one journal row. That arm name also closed the earlier 'superseded not in an arm name' note."
+    }
+  ],
+  "incidents": [
+    {
+      "id": "team-mailbox-bound",
+      "observed": "sends to flow-engineer and docs-engineer were refused at 8 undelivered messages while they were idle/inactive; the verifier's releases to flow-engineer were refused too",
+      "action": "releases and verdicts were relayed through the harness send_message channel (session ids), which is not subject to the team-mail bound; all relays confirmed delivered"
+    },
+    {
+      "id": "claim-identity-mishap",
+      "observed": "T2 was first claimed under the identity string 'w3-docs', which made it un-releasable; re-claimed as docs-engineer (attempt 11) and completed by owner",
+      "action": "recorded here so the board history is explained; the owner-complete is the terminal record"
+    }
+  ],
+  "declaredBounds": [
+    "verify-pack-closure remains red (PACKED-MISSING) until the Wave-5 re-pack + --require-packed + the T-91 expected-after-pack list.",
+    "The QA mount case proves the row MODULE applies via an overlay; the bundle-patch source rests on verify:rows/manifest.",
+    "Compaction/mail wake-up is best-effort; member->captain mail is durable and polled.",
+    "The reseed path interrupts the old child best-effort (no dispose for a settled activation).",
+    "Checkpoints require an OBSERVED window.",
+    "The sub-team parent_team_id hand-off is Wave 4 (W4-T5); flow-engineer has stated the seam it needs: the field settable at team creation, either an explicit parentTeamId on agent_teams_plan create or an implicit derivation from the staging session's own team record — W4-T2 freezes which.",
+    "T6 falsifiability of the R1/R2 arms rests on artifact-level assertions + an exact +2 arm delta; no pre-T5 snapshot existed."
+  ]
+}

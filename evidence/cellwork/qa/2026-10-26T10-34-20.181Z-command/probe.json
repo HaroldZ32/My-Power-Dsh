@@ -1,0 +1,104 @@
+{
+  "at": "2026-10-26T10:34:24.069Z",
+  "objective": "qa-cellwork-objective-command",
+  "cwd": "/tmp/mpd-cellwork-command-EgTpIJ/ws",
+  "listed": [
+    "agent-teams",
+    "cellwork",
+    "compact",
+    "feedback",
+    "goal",
+    "mpd",
+    "mpd-model",
+    "permission",
+    "plan",
+    "ultrawork",
+    "ulw"
+  ],
+  "descriptors": [
+    {
+      "name": "agent-teams",
+      "description": "Stage a team for the current goal: /agent-teams <what the team is for>",
+      "hint": "what the team is for"
+    },
+    {
+      "name": "cellwork",
+      "description": "Start cell-work for an objective: a dedicated planner interview, a measured task split, and a team that dispatches, hands off, compacts and promotes (captain dispatches only).",
+      "hint": "objective"
+    },
+    {
+      "name": "compact",
+      "description": "Compact older conversation history",
+      "hint": null
+    },
+    {
+      "name": "feedback",
+      "description": "Record feedback about this session",
+      "hint": "<text>"
+    },
+    {
+      "name": "goal",
+      "description": "Set or view the goal for a long-running task",
+      "hint": "[<objective>|clear|edit <objective>|pause|resume]"
+    },
+    {
+      "name": "mpd",
+      "description": "MPD: open the board or the team surfaces, list the workmate library, or print the status line",
+      "hint": null
+    },
+    {
+      "name": "mpd-model",
+      "description": "Pick-list model settings: group → whole group or one agent → provider → model → reasoning effort (a group write asks for confirmation)",
+      "hint": null
+    },
+    {
+      "name": "permission",
+      "description": "Switch the permission preset (sandbox mode + approval policy)",
+      "hint": "<preset>"
+    },
+    {
+      "name": "plan",
+      "description": "Enter or leave plan mode",
+      "hint": "[off|message]"
+    },
+    {
+      "name": "ultrawork",
+      "description": "Run the ULW discipline for an objective, fully autonomously (identical alias: /ulw)",
+      "hint": "objective"
+    },
+    {
+      "name": "ulw",
+      "description": "Run the ULW discipline for an objective, fully autonomously (identical alias: /ultrawork)",
+      "hint": "objective"
+    }
+  ],
+  "empty": {
+    "commandId": "cmd-787a228e-1",
+    "kind": "error",
+    "text": "usage: /cellwork <objective> — starts cell-work for that objective: a dedicated planner runs a Socratic requirements interview through you, the requirements are split into tasks whose context cost the plugin MEASURES against the executing model's own window, and the team works, hands off, compacts and promotes itself. `/cellwork` is the only way to start the mode."
+  },
+  "filled": {
+    "commandId": "cmd-787a228e-2",
+    "kind": "success",
+    "text": "cellwork active: cell-20261026T103430663Z — the activation directive was submitted as this agent's next turn"
+  },
+  "cells": [
+    {
+      "cellId": "cell-20261026T103430663Z",
+      "state": {
+        "objective": "qa-cellwork-objective-command",
+        "phase": "requirements",
+        "captainSessionId": "session-fbc4c22a-d0b7-4c6e-aa95-53c6a0be701b"
+      },
+      "statePath": "/tmp/mpd-cellwork-command-EgTpIJ/ws/.mpd/cellwork/cell-20261026T103430663Z/state.json",
+      "firstJournalEvent": {
+        "at": "2026-10-26T10:34:30.663Z",
+        "event": "start",
+        "phase": "requirements",
+        "objective": "qa-cellwork-objective-command",
+        "captainSessionId": "session-fbc4c22a-d0b7-4c6e-aa95-53c6a0be701b"
+      }
+    }
+  ],
+  "errors": []
+}

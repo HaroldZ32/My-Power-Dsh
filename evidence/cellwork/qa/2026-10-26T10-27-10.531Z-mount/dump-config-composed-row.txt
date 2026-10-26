@@ -1,0 +1,4 @@
+# == @deepseek-ai/dsh-base, patched by /tmp/mpd-cellwork-mount-nuJ92X/dsh-home/cordis.patch.yml
+# == /tmp/mpd-cellwork-mount-nuJ92X/dsh-home/cordis.patch.yml
+- id: mpd-cellwork
+    file:///home/haroldzhao/MyProj/DshProj/My-Power-Dsh/packages/mpd-cellwork-plugin/dist/index.js

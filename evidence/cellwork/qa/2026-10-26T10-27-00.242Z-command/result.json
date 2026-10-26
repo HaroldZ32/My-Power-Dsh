@@ -1,0 +1,98 @@
+{
+  "ok": true,
+  "slug": "cellwork-command",
+  "subject": "`/cellwork` is registered in the LIVE command registry and its handler submits the activation directive, on a real isolated boot",
+  "case": "cellwork-command",
+  "wave": "cellwork-w3",
+  "objective": "qa-cellwork-objective-command",
+  "prompt": "Reply with exactly: cellwork-command-qa",
+  "command": "dsh --profile mpd-headless --patch <probe-overlay> \"Reply with exactly: cellwork-command-qa\"",
+  "sandbox": {
+    "root": "/tmp/mpd-cellwork-command-K1eEyB",
+    "dshHome": "/tmp/mpd-cellwork-command-K1eEyB/dsh-home",
+    "home": "/tmp/mpd-cellwork-command-K1eEyB/run-home",
+    "ws": "/tmp/mpd-cellwork-command-K1eEyB/ws"
+  },
+  "steps": {
+    "install": {
+      "ok": true,
+      "exit": 0
+    },
+    "boot": {
+      "ok": true,
+      "exit": 0,
+      "stubRequests": 3
+    },
+    "listing": {
+      "ok": true,
+      "names": [
+        "agent-teams",
+        "cellwork",
+        "compact",
+        "feedback",
+        "goal",
+        "mpd",
+        "mpd-model",
+        "permission",
+        "plan",
+        "ultrawork",
+        "ulw"
+      ],
+      "problems": []
+    },
+    "usage": {
+      "ok": true,
+      "kind": "error",
+      "problems": []
+    },
+    "activation": {
+      "ok": true,
+      "kind": "success",
+      "problems": []
+    },
+    "cells": {
+      "ok": true,
+      "ids": [
+        "cell-20261026T102707678Z"
+      ],
+      "problems": []
+    },
+    "directive": {
+      "ok": true,
+      "problems": []
+    },
+    "commandLifecycle": {
+      "ok": true,
+      "names": [
+        "cellwork",
+        "cellwork"
+      ],
+      "problems": []
+    },
+    "cwd": {
+      "ok": true,
+      "recorded": "/tmp/mpd-cellwork-command-K1eEyB/ws",
+      "expected": "/tmp/mpd-cellwork-command-K1eEyB/ws"
+    },
+    "isolation": {
+      "ok": true,
+      "checked": 1,
+      "keys": [
+        "--tmp-mpd-cellwork-command-K1eEyB-ws--"
+      ]
+    },
+    "probeErrors": []
+  },
+  "problems": [],
+  "proves": [
+    "The live `commands` registry listed `cellwork` with a description and the `objective` input hint (harness service, not a source grep).",
+    "An EMPTY `/cellwork` settled kind=error with the usage line and left the cell root empty.",
+    "A NON-EMPTY `/cellwork <objective>` settled kind=success, and the harness session log records the activation directive as a USER-ROLE message carrying the objective and the `cellwork_start` instruction.",
+    "The handler wrote exactly one cell whose state.json carries the objective, phase requirements and a captain session, and whose journal starts with `start`."
+  ],
+  "doesNotProve": [
+    "Any live-LLM cell run: the model step is a local stub, so no planner/splitter/team work is exercised here (the unit suite proves the protocol logic).",
+    "That the BUNDLE row is the source of the mount: the profile install writes checkout-absolute rows, and the bundle wiring rests on verify:rows / verify:manifest.",
+    "That a real slash-command INVOCATION from a TUI/web surface behaves the same; the dispatcher call is the harness's own, but the entry surface is not exercised."
+  ]
+}
