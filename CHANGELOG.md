@@ -14,6 +14,18 @@ Further reading:
 - [`VENDOR_LOCK.json`](./VENDOR_LOCK.json) — the pinned upstream baseline each release is measured
   against.
 
+## 0.16.1 — 2026-10-27 — the packed artifact's root assets
+
+The relocatable `dist/mpd-package` was assembled from a hand-kept list of eight prose docs while
+`package.json.files` also declares `dsh-plugin.json`, `icon.svg` and `locale/*.json`; every gate agreed
+with its own declaration and only a REAL install saw the hole (the Docker one-click lane's
+`requiredPaths`). `scripts/pack-mpd.ts` now DERIVES the copy list from `files`, FAILS the pack when a
+declared root entry is missing, and writes the packed manifest's `files` from the same table. Docker:
+the local artifact passes `oneclick.requiredPaths`, and the same tree through the git dependency shape
+runs 76 passed / 0 failed with `install.profileDep=true`, `MCP_TOOLS 3/3` and the lsp bootstrap
+servers > 0. One known cosmetic follow-up: the packed `files` list carries a duplicate
+`cordis.patch.yml` entry (0.16.2).
+
 ## 0.16.0 — 2026-10-26 — model routing returns to the per-agent unit, cell-work mode joins the bundle, and the nested-DAG wave
 
 **Closed in this release.** The web nested-DAG frame ships (D4): a `.mpd-dag-group` channel plus a

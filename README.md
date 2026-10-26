@@ -2,7 +2,7 @@
 
 **English** | [中文](./README.zh-CN.md)
 
-[![Version](https://img.shields.io/badge/version-0.16.0-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
+[![Version](https://img.shields.io/badge/version-0.16.1-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
 [![npm](https://img.shields.io/badge/npm-%40mpd--dsh%2Fmpd-CB3837.svg)](https://www.npmjs.com/package/@mpd-dsh/mpd)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE.md)
 [![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-0.2.1--rc.3-4B32C3.svg)](#acknowledgements)
@@ -156,7 +156,7 @@ names it: pin both.
 
 | `@mpd-dsh/mpd` | DeepSeek Harness | DSH-TUI | Notes |
 |---|---|---|---|
-| 0.16.0 | 0.2.1-rc.3 | 0.17.0 | the current release — installable from the registry |
+| 0.16.1 | 0.2.1-rc.3 | 0.17.0 | the current release — installable from the registry |
 | 0.15.4 | 0.2.1-rc.2 | 0.16.1 | previous |
 | 0.15.2 | 0.2.1-rc.2 | 0.16.1 | previous |
 | 0.15.1 | 0.2.1-rc.2 | 0.16.1 | previous |
@@ -278,7 +278,7 @@ bilingual (English and 简体中文).
 ## Changelog
 
 Release notes live in [`CHANGELOG.md`](./CHANGELOG.md), newest first, one section per released
-version (the current release is **v0.16.0**). Annotated tags are listed under
+version (the current release is **v0.16.1**). Annotated tags are listed under
 [Releases](https://github.com/HaroldZ32/My-Power-Dsh/releases).
 
 ## Acknowledgements
