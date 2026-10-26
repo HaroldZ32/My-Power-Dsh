@@ -211,13 +211,19 @@ evidence/<domain>/<slug>/<timestamp>/output.log
 冻结的 `evidence/` 树不在其中。
 
 ```bash
-npm publish --dry-run     # 走完整条发布路径，只是不上传
-npm publish --access public
+npm pack --dry-run        # 整个 tarball，只是不上传
 ```
 
-`npm publish --dry-run` 会打印 tarball 摘要（名称、版本、文件数、压缩后体积）并在上传前停止，因此它是
+`npm pack --dry-run` 会打印 tarball 摘要（名称、版本、文件数、压缩后体积），不写盘也不上传，因此它是
 评审时应当运行的检查。`node scripts/verify-plugin-manifest.ts --pack` 从另一侧断言同一性质：npm 自己的
 打包清单包含插件行引用的每一条路径。
+
+**发布由工作流负责，绝不是本地命令。** `.github/workflows/publish.yml` 是唯一的发布路径：推送 `v*`
+标签会打包并执行 `npm stage publish --access public` —— 这只是一次 STAGE，版本尚未公开、`latest` 也未
+移动 —— 随后由人执行 `npm stage approve <stage-id>`，这一步才真正发布并应用 dist-tag。该批准需要对同一
+工作流做**第二次** `workflow_dispatch`，并把 `stage_id` 设为该次运行打印出来的 id（`npm stage list`）：
+运行的 OIDC token 能 stage 却不能 approve，因为批准要携带 2FA 的存在性证明。请按版本升序批准 —— 最后
+批准较旧的 stage 会把 `latest` 移回旧版本 —— 然后在宣布之前确认 registry 确实在提供该版本。
 
 ## 提交 pull request
 

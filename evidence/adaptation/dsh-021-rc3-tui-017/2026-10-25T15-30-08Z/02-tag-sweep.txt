@@ -1,0 +1,95 @@
+# release-tag sweep (contract §5) — read at 2026-10-25T15:37:36Z
+== v0.14.0
+  "version": "0.14.0",
+    "@deepseek-ai/dsh-experimental-agent-team": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-experimental-client-ui-agent-team": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-experimental-tool-agent-team": "0.2.1-rc.2",
+-- dsh-plugin.json compat
+  "compat": {
+    "hosts": [
+      "@deepseek-harness-tui/dsh-tui@0.16.1"
+    ]
+-- dsh-distribution.json host-tui
+            "id": "host-tui",
+            "ref": "pkg:npm/@deepseek-harness-tui/dsh-tui@0.16.1"
+--
+              "host-tui"
+            ]
+== v0.15.0
+  "version": "0.15.0",
+    "@deepseek-ai/dsh-experimental-agent-team": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-experimental-client-ui-agent-team": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-experimental-tool-agent-team": "0.2.1-rc.2",
+-- dsh-plugin.json compat
+  "compat": {
+    "hosts": [
+      "@deepseek-harness-tui/dsh-tui@0.16.1"
+    ]
+-- dsh-distribution.json host-tui
+            "id": "host-tui",
+            "ref": "pkg:npm/@deepseek-harness-tui/dsh-tui@0.16.1"
+--
+              "host-tui"
+            ]
+== v0.15.1
+  "version": "0.15.1",
+    "@deepseek-ai/dsh-experimental-agent-team": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-experimental-client-ui-agent-team": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-experimental-tool-agent-team": "0.2.1-rc.2",
+-- dsh-plugin.json compat
+  "compat": {
+    "hosts": [
+      "@deepseek-harness-tui/dsh-tui@0.16.1"
+    ]
+-- dsh-distribution.json host-tui
+            "id": "host-tui",
+            "ref": "pkg:npm/@deepseek-harness-tui/dsh-tui@0.16.1"
+--
+              "host-tui"
+            ]
+== v0.15.2
+  "version": "0.15.2",
+    "@deepseek-ai/dsh-experimental-agent-team": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-experimental-client-ui-agent-team": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-experimental-tool-agent-team": "0.2.1-rc.2",
+-- dsh-plugin.json compat
+  "compat": {
+    "hosts": [
+      "@deepseek-harness-tui/dsh-tui@0.16.1"
+    ]
+-- dsh-distribution.json host-tui
+            "id": "host-tui",
+            "ref": "pkg:npm/@deepseek-harness-tui/dsh-tui@0.16.1"
+--
+              "host-tui"
+            ]
+== v0.15.4
+  "version": "0.15.4",
+    "@deepseek-ai/dsh-experimental-agent-team": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-experimental-client-ui-agent-team": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-experimental-tool-agent-team": "0.2.1-rc.2",
+-- dsh-plugin.json compat
+  "compat": {
+    "hosts": [
+      "@deepseek-harness-tui/dsh-tui@0.16.1"
+    ]
+-- dsh-distribution.json host-tui
+            "id": "host-tui",
+            "ref": "pkg:npm/@deepseek-harness-tui/dsh-tui@0.16.1"
+--
+              "host-tui"
+            ]
+== HEAD (unreleased 0.15.5)
+  "version": "0.15.5",
+    "@deepseek-ai/dsh-experimental-agent-team": "0.2.1-rc.3",
+    "@deepseek-ai/dsh-experimental-client-ui-agent-team": "0.2.1-rc.3",
+    "@deepseek-ai/dsh-experimental-tool-agent-team": "0.2.1-rc.3",
+  "compat": {
+    "hosts": [
+      "@deepseek-harness-tui/dsh-tui@0.17.0"
+    ]
+            "id": "host-tui",
+            "ref": "pkg:npm/@deepseek-harness-tui/dsh-tui@0.17.0"
+--
+              "host-tui"
+            ]

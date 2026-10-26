@@ -32,10 +32,12 @@
 // THE 0.28 CONTRACT (measured 2026-10-21 in `dsh-better-sidebar@0.28.0`'s `lib/index.js`):
 //   • `inject = ['webServer', 'sessions', 'connection', 'tools']`;
 //   • the `/sidebar/api` fence is `ctx.connection.requestRejection(req) === undefined`.
-// `connection` is a cordis Service provided by `@deepseek-ai/dsh-client-connection`, i.e. by harness
-// 0.2.1-rc.1+ (the host's peer floor and this bundle's pinned 0.2.1-rc.2 both satisfy it). So the shim
-// now restates `connection` in its inject list and mounts the host as soon as that service exists; the
-// only self-disable left is the honest "this composition provides no connection service" one.
+// `connection` is a cordis Service provided by `@deepseek-ai/dsh-client-connection`, i.e. by any harness
+// at or past the host's peer floor (0.2.1-rc.1+). So the shim restates `connection` in its inject list
+// and mounts the host as soon as that service exists — in every composition whose installed harness
+// satisfies the host's peer floor and the pin this bundle declares alike. No version literal is named
+// here on purpose: the shipped pin moves with each host bump, and only this policy stays true. The only
+// self-disable left is the honest "this composition provides no connection service" one.
 import { dirname, join } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 // The host-plane seams this row injects, named by their adapter constants: the same single source of

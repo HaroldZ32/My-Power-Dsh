@@ -19,21 +19,24 @@ Cordis 插件行（`mpd-tui`），其模块说明符由 bundle patch 持有：
 |---|---|---|
 | 状态行 | `ctx.tuiStatus` | 提示框上方一个键控的 `mpd` 贡献：`mpd: team … · boulder … · plans … · workmates …` |
 | 条目渲染器 | `ctx.tuiRenderers` | 本包的 log-only 会话事件（`agent-teams/*`、`mpd-tui/board-opened`）渲染为纯文本行，实时与回放同路径 |
-| 设置区块 | `ctx.tuiSettingsSections` | 把 mpd.jsonc 的可调项 —— 原有 13 个、十二个 `teamModels` 槽位叶子与 TUI 自己的 `tui.dashboardKey`（共 26 个；按成员的 `agentRoutes` 行已随覆盖层一起删除），其中槽位叶子渲染为**由模型目录驱动的选择项** —— 声明为 `/settings` 中可编辑的字段，**已与 `<workspace>/.mpd/mpd.jsonc` 打通**（保存会写入文件；插件行为需重启后生效）；每个字段的提示在界面上直接写明（见"明确不声明"第 2 条） |
+| 设置区块 | `ctx.tuiSettingsSections` | 把 mpd.jsonc 的可调项 —— 原有 13 个、十二个 `teamModels` 槽位叶子与 TUI 自己的 `tui.dashboardKey`（共 26 个；按成员的 `agentRoutes` 行已随覆盖层一起删除），其中槽位叶子渲染为**由模型目录驱动的选择项** —— 声明为 `/settings` 中可编辑的字段，**经宿主的设置文档接入配置服务**：本区块的保存由**宿主**持久化为 `mpd-config` 这个 **ENTRY 文档**（**这条路径不写任何工作区文件** —— 唯一的 `<workspace>/.mpd/mpd.jsonc` 写入方是**已退役**的旧 `mpd` 命名空间回写，被钉住的 harness 拒绝它；而手工编辑该文件仍会在每次解析时被读取）。随后**哪些**开关无需重启即可生效是**逐开关**的：模型路由、`team.gate`/`team.sensitivity`、`team.stateDir` 读取方与两个守卫在运行中的进程里生效，而 `hashline.*`、`commentChecker.*`、`ulw.*`、`memory.*`、`boulder.dir`、`goal.*` 是 `apply()` 时捕获的、需等下一次 `dsh` 启动 —— 而 `watchdog.*` **两边都不属于**：手工编辑 `<workspace>/.mpd/mpd.jsonc` 即时生效，但 `/settings` 的保存永远到不了这些旋钮。每个字段提示写出自己的 `mpd.jsonc` 键，披露只由区块陈述一次，逐开关表见 `docs/user-guide.md` §9.1（见“明确不声明”第 2 条） |
 | 全屏场景 | `ctx.tuiScenes` | 团队与任务账本、boulder 工作账本、计划、workmate 库；已路由团队在面板上多两行：`team-plan …`（仅 staged 时）与 `team-hold held (…)`（仅看门狗 hold 持续期间） |
 | 团队工作流场景 | `ctx.tuiScenes` | `mpd-tui-team` —— 用 `/mpd team` 打开，或在面板中按 `a`：团队 id/名称/阶段、计划审阅状态、看门狗 hold、成员表（角色/模型/状态/进度/当前任务）以及任务 DAG（kind/状态/负责人/尝试/轮次/判定/依赖，按深度缩进，标 `failed-dep=`）与邮箱尾部 |
 | 计划场景（批准流程，W6） | `ctx.tuiScenes` | `mpd-tui-plan` —— 用 `/mpd plan` 打开。它渲染实时任务板，并承载批准闸门：逐字输入该面板显示的**确切**短语（`approve plan-…`，由 Web 面板渲染的**同一份**投影提供），再按 `Ctrl+X`；10 秒内按两次 `Ctrl+D` 丢弃已 stage 的 plan，`Ctrl+R` 重新读取，`esc` 返回。该动作是一次 `agent_teams_plan {action:"approve"\|"delete"}` 调用，携带从适配器**自身注册表**解析出的**实时** agent —— 解析不出调用方时一律**响亮拒绝**，绝不伪造（见下） |
 | 命令树 | `ctx.tuiCommandTrees` | `/mpd board`、`/mpd team`、`/mpd plan`、`/mpd status`、`/mpd panel`、`/mpd dag`、`/mpd workmate`、`/mpd workmates`、`/mpd watchdog` 补全，以及 `/mpd-model` 根；两个根与每个子项都在 `descriptions` 中同时提供中英双语，由宿主按其当前 `/lang` 解析 |
 | 模型菜单（R3） | `ctx.tuiDialogs` + 共享的目录/设置接缝 | **`/mpd-model`** —— 一个真正的选择式菜单，依次选择 槽位 → 提供商 → 模型 → 推理强度，并把所选路由写入 `/settings` 区块所编辑的 `mpd-config` 条目。选项来自该区块**自己**的投影（`teamModelOptionLists`）与同一份实时模型目录，因此菜单与设置行不可能互相矛盾；输出结果携带与区块完全相同的披露语句。任一档取消即不写入任何内容。它的槽位面板还会通过配置服务的类型化 `slotResolutionOf` 答案（契约修订 1）显示每个槽位的**当前**配置：未配置的槽位渲染 `<unconfigured>` 并点名缺失的叶子，畸形叶子渲染 `<invalid>`，组合中没有配置服务时渲染 `<unavailable>` —— 并且对话框**从不**把这次读取包进 try/catch，因此降级是服务报告的状态，而不是在显示路径上被吞掉的异常 |
 | 快捷键 | `ctx.tuiShortcuts` | `alt+m` 打开面板 · `alt+a` 子代理 + 团队面板 · `alt+t` 团队工作流 · `alt+w` workmate 选择器 · `alt+r` 立即刷新状态行 |
-| 侧栏页面（dsh-tui 0.13.0+，已适配 0.16.1） | `ctx.tuiPanels`（经适配器） | **三个**页面 —— `team`（`MPD`、`❖`、`order` 10，合并的**富**视图：宿主自己整理的子代理行位于 DAG 页的外框/图例/按键/钉住正文之上）、`workmate`（`MPD workmate`、`⬢`、`order` 12）与看门狗波次新增的 `watchdog`（`MPD watchdog`、`⚠`、`order` 13：每团队的暂停状态与阶段、`mpd-tui` 未读数与事件列表，配 `a`/`r`/滚动键）。独立的 `dag` 页已**退役**并合并进 `MPD`（用户条款「DAG页作为MPD面板」），因此 `/mpd dag` 改瞄到 `MPD` 面板、以富形态团队场景作为回退 —— 没有任何路由、选择器条目或 `⤢` 变成死路。三个页面都声明图标（与宿主的八个内置标签页不同）、都不声明 `compact`，且都请求 `minColumns` 28。接缝已绑定时，`alt+a`、`/mpd panel` 与 `/mpd subagents` 经 `tuiPanels.open()` 路由到 MPD 面板；`/mpd dag` 改瞄到同一面板，`/mpd workmate` 路由到它自己的页面。**任何**拒绝都会回退到一个全屏界面（路由回退用 `mpd-tui-subagents`，MPD 页自己的 `⤢` 用富形态 `mpd-tui-team` 场景，`workmate` 用看板场景）—— 绝不静默无操作 —— 每条命令都会打印一行双语状态，点名它到达的界面与最终 id。页面能否出现在屏幕上由宿主自己的两个开关决定，见下方"如何到达"一段 |
+| 侧栏页面（dsh-tui 0.13.0+，已适配 0.17.0） | `ctx.tuiPanels`（经适配器） | **三个**页面 —— `team`（`MPD`、`❖`、`order` 10，合并的**富**视图：宿主自己整理的子代理行位于 DAG 页的外框/图例/按键/钉住正文之上）、`workmate`（`MPD workmate`、`⬢`、`order` 12）与看门狗波次新增的 `watchdog`（`MPD watchdog`、`⚠`、`order` 13：每团队的暂停状态与阶段、`mpd-tui` 未读数与事件列表，配 `a`/`r`/滚动键）。独立的 `dag` 页已**退役**并合并进 `MPD`（用户条款「DAG页作为MPD面板」），因此 `/mpd dag` 改瞄到 `MPD` 面板、以富形态团队场景作为回退 —— 没有任何路由、选择器条目或 `⤢` 变成死路。三个页面都声明图标（与宿主的八个内置标签页不同）、都不声明 `compact`，且都请求 `minColumns` 28。接缝已绑定时，`alt+a`、`/mpd panel` 与 `/mpd subagents` 经 `tuiPanels.open()` 路由到 MPD 面板；`/mpd dag` 改瞄到同一面板，`/mpd workmate` 路由到它自己的页面。**任何**拒绝都会回退到一个全屏界面（路由回退用 `mpd-tui-subagents`，MPD 页自己的 `⤢` 用富形态 `mpd-tui-team` 场景，`workmate` 用看板场景）—— 绝不静默无操作 —— 每条命令都会打印一行双语状态，点名它到达的界面与最终 id。页面能否出现在屏幕上由宿主自己的两个开关决定，见下方"如何到达"一段 |
 | 合并面板 | `ctx.tuiScenes` | `mpd-tui-subagents`——宿主自己的子代理行（含其 运行中/已完成/失败 计数）、团队正文，以及每条**已绘制**依赖边都以方向箭头 `▼` 收尾、下方带图例的任务 DAG：它是**回退**界面 —— 宿主没有面板接缝、或拒绝了打开请求时，`alt+a` 与 `/mpd panel` 落到这里；在 0.13.0 之前的宿主上，工作区存在团队时也可用 **`Ctrl+A`** 打开（见下方接管说明）。`enter` 打开选中子代理的详情，`i` 中断选中的活跃运行，鼠标点击选中行 |
 | `Ctrl+A` 接管 | 一个 `ctx.tuiStatus` 视图 + 适配器的宿主输入接触面 | 当团队投影含有一个至少带一项任务的团队时，`Ctrl+A` 打开合并面板而非宿主自带的 dashboard；没有团队时——或宿主输入总线无法被适配器触达时——该键行为与今天完全一致（`tui.dashboardKey`，默认 `true`；见"明确不声明"第 7–9 条） |
 | 对话框 | `ctx.tuiDialogs` | 托管式 workmate 选择器（`select`） |
 | 决策事件 | `tuiPluginHost.subscribeDecision` | 已尝试注册、预期被拒绝、**未激活**（见下） |
 
-支撑面（不属于上述七个接缝）：harness 命令注册表上的 `/mpd` 命令、`mpd` 设置
-命名空间注册、以及 log-only 的 `mpd-tui/board-opened` 会话记录。
+接缝数量与表外界面：适配器的 `TUI_SEAMS` 表声明了 **18** 个条目 —— 十五个真实的 `tui*` 服务、一个
+**幽灵** id（`tuiPrompt`，列在 `PHANTOM_SEAM_KEYS` 里：没有任何 dsh-tui 构建声明它），以及两个
+harness 服务 `commands` 与 `settings`。harness 命令注册表上的 `/mpd` 命令与 `mpd` 设置命名空间
+正对应最后这两个，而 log-only 的 `mpd-tui/board-opened` 会话记录**根本不是接缝** —— 只有在事件
+类型被确认是某个可达 `dsh-session` 副本已知的类型之后，它才会被追加。
 
 ### 三个侧栏页面：合并的富页面 `MPD`、workmate 书架与看门狗页
 
@@ -523,7 +526,7 @@ harness 接缝（tools、skills、agent registry、subagents）不在此处直�
 | `commands` | `true` | 注册 `/mpd` 命令（面板的打开入口） |
 | `shortcuts` | `true` | 注册快捷键 |
 | `panel` | `true` | 贡献 MPD 侧栏页（dsh-tui 0.13.0）并把 `alt+a` / `/mpd panel` 路由到它。关闭 ⇒ 不再尝试注册（聚合行上报适配器自己的 `skipped("panels", …)` 结果并点名该配置），两个入口都保持面板出现之前的路径：全屏合并场景 |
-| `workmate` | `true` | 贡献 WORKMATE 侧栏页 —— 它**自己的**开关，与 `panel` **相互独立**，因此 MPD 的两个页可以分别开关。关闭 ⇒ 该页完全不注册（聚合行上报 `skipped("panels", …)` 并点名 `workmate: false`），`/mpd workmate` 保持它的全屏界面（看板场景）。因为「从未注册的页」不可能被任何东西加回来 —— 宿主的配置重写不会、运行时的启用保持器也不会 —— 所以这个开关**能真正留住**；两个开关都需要重启生效，而且**两者都作为勾选框出现在宿主的 `/settings` 对话框里** —— 因为该行配置被标记为 volatile，而那个标记正是对话框 `volatileForm` 遍历所读的字段 |
+| `workmate` | `true` | 贡献 WORKMATE 侧栏页 —— 它**自己的**开关，与 `panel`、`watchdog` **相互独立**，因此 MPD 的三个页可以分别开关。关闭 ⇒ 该页完全不注册（聚合行上报 `skipped("panels", …)` 并点名 `workmate: false`），`/mpd workmate` 保持它的全屏界面（看板场景）。因为「从未注册的页」不可能被任何东西加回来 —— 宿主的配置重写不会、运行时的启用保持器也不会 —— 所以这个开关**能真正留住**；三个页面开关都需要重启生效，而且**三者都作为勾选框出现在宿主的 `/settings` 对话框里** —— 因为该行配置被标记为 volatile，而那个标记正是对话框 `volatileForm` 遍历所读的字段 |
 | `watchdog` | `true` | 贡献 WATCHDOG 侧栏页 —— 它**自己的**开关，与 `panel`、`workmate` **相互独立**，因此三个页可以分别开关。关闭 ⇒ 该页完全不注册（聚合行上报适配器自己的 `skipped("panels", …)` 并点名 **`watchdog: false`** —— 该页**自己的**开关，绝不是 `panel`），`/mpd watchdog` 用一行报告这一点（`watchdog: false`，与「缺少接缝」「注册被拒」「本次打开被拒」是不同的事实）：该页**没有**全屏回退，因为没有场景绘制事件列表。与每个行配置开关一样需要重启生效 |
 | `panelAutoOpen` | `true` | 在本进程内**第一次**出现活跃团队时，把 MPD 页打开一次。否则该页只能通过 `alt+a`、`/mpd panel` 与宿主的页签栏到达，不知道这些入口的用户永远看不到 DAG。它不会为启动时就已存在的团队触发；无论宿主如何回答，每进程至多一次；被拒绝即不重试（宿主对 `open()` 有每插件 5 秒一次的限速）。**徽标**是另一件事 —— 它在每次团队状态变化时从 apply 侧发布，因此关掉本项不会让告警失效 |
 | `dashboardKey` | `true` | 启用 `Ctrl+A` 接管：工作区存在团队时 `Ctrl+A` 打开合并面板；无团队（或本项关闭）时该键保持宿主原有含义。与本节其它旋钮不同，它**每次按键**都通过配置层重新读取，因此 `/settings` 保存后**无需重启**即生效。接管本身会在宿主把活的输入 kit 交给本会话之后就绪——即任意一次 MPD 场景/面板渲染之后（见"明确不声明"第 12 条）。**在提供侧栏面板接缝的宿主（dsh-tui 0.13.0+）上本旋钮是惰性的** —— 无论它说什么，接触面都保持解除武装，因此它只在旧宿主上有意义 |
@@ -553,31 +556,48 @@ harness 接缝（tools、skills、agent registry、subagents）不在此处直�
    告警一次**，并且不注册任何东西。它绝不调用 `admit`/`admitInternal`，绝不使用
    测试专用 token，绝不伪造身份。**不声明任何输入 / rewind / 会话切换 / 压缩
    拦截能力。**
-2. **`/settings` 区块已与 `<workspace>/.mpd/mpd.jsonc` 打通，但行为变更需要重启。** 字段声明的
+2. **`/settings` 区块的保存由**宿主**持久化 —— 不是写成工作区的 `.mpd/mpd.jsonc` —— 而新值的“何时”生效是**逐开关**的。** 字段声明的
    是真实的 mpd.jsonc 可调项（`hashline.maxDiffChars`、`commentChecker.autoCheck`、
-   `ulw.maxRounds`、`memory.vcs`、`team.stateDir`、`boulder.dir`），并在 harness
-   设置命名空间 `mpd` 下编辑它们。该命名空间**由 `packages/mpd-config-plugin`
-   提供**（设计 §10.1）：它以推导出的 `base` 注册，因此两个前门展示的都是文件中的真实
-   取值，而不是 schema 默认值；本插件是**纯消费者**，仅在没有 config 插件的组合中作为
-   **受保护的兜底**注册。`base` 遵循**数量规则**：一个活动根 ⇒ 该工作区的
+   `ulw.maxRounds`、`memory.vcs`、`team.stateDir`、`boulder.dir`），并把它们作为
+   `mpd-config` **ENTRY 文档**的字段编辑（旧 `mpd` 命名空间在本宿主上已**退役**）。该文档**由
+   `packages/mpd-config-plugin` 提供**（设计 §10.1）；本插件是**纯消费者**，仅在没有 config 插件的组合中
+   把旧命名空间作为**受保护的兜底**注册。在旧宿主上，该兜底的 `base` 遵循**数量规则**：一个活动根 ⇒ 该工作区的
    `<workspace>/.mpd/mpd.jsonc`；零个根 ⇒ 挂载时（无 exec）的根，那里文件缺失即得到空
    base（schema 默认值）——这是常规启动路径，因为本行通常先于任何活动会话；多于一个根 ⇒
    **不虚构任何文件 base**（`base: undefined`、`ambiguous-multi-root`，逐一点名全部候选
    并由 `states()` 暴露），因此在恰好一个工作区活动之前该命名空间显示 schema 默认值。
-   `base` 在整个**进程生命周期内固定**（宿主对一次活动注册不提供注销句柄）——这正是下方
-   句子写作"重启后生效"的诚实理由——而插件真正使用的是**已解析的值**与配置层的
-   **逐次调用文件读取**。保存的编辑会回写到
-   当前会话工作区的 `<workspace>/.mpd/mpd.jsonc`，并保留注释与键顺序，配置层立即对所有工作区
-   生效。**本区块的每个开关对插件行为的影响都需要重启**，因为 mpd 消费方在
-   `apply()` 时读取配置——界面上同样如此说明：每个字段提示都写出自己的 mpd.jsonc 键并携带 `a
-   save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and
-   takes effect for the mpd plugins after a restart (this knob is read at plugin
-   mount)`，并附上「仅存于设置中的保存不会丢失」的说明。十二个团队模型槽位的提示**以该开关自身的
+   **保存去了哪里。** 本区块经 `mpd-config` 这个 ENTRY 文档（`ENTRY_CONFIG_ID`）保存，而那个存储**属于宿主**：
+   本行自己的监听器（`onSettingsDocumentUpdated(ENTRY_CONFIG_ID, …)`）从它重新载入 `state`，并且**故意不写任何
+   文件**。`<workspace>/.mpd/mpd.jsonc` 的写入只存在于**旧** `mpd` 命名空间（`SETTINGS_NS`），而本 harness
+   **拒绝**它的注册 —— `settingsModelRetired`，并给出「legacy file write-back 与 override clearing 均处于休眠」
+   的启动告警 —— 因此在被钉住的宿主上这条路径从不运行；而手工编辑该文件仍会在每次解析时被读取。
+   **读回是即时的，生效则是逐开关的。** 配置行在挂载时装上文件监听（`watchRoot`）并订阅
+   entry-config 文档，所以 `mpd_config_get` 立刻就能报出新值 —— 但消费者是在**挂载时**
+   （`apply()`）通过配置服务读取自身配置的，因此读回已经正确、而运行中的插件仍可能按旧值行动。
+   分两组，本区块**两组都写**，绝不只写好看的那一半：
+   - **在运行中的进程里即生效** —— 模型路由（`teamModels.slot*`、`modelchain.*`）、
+     `team.gate` / `team.sensitivity`、`team.stateDir` 读取方，以及两个守卫
+     `captain.investigation` / `delegation.gate`（各自在**每次判定**时读本行的 `configValue`，而该
+     读取经已挂载的服务解析 —— 也就是 `delegation-gate.ts` 所说「`.mpd/mpd.jsonc` 的编辑会被 LIVE
+     拾取」的那套机制）；
+   - **`apply()` 时捕获，需等下一次 `dsh` 启动** —— `hashline.*`（`maxDiffChars`、`guardEditTools`、
+     `registryFile`）、`commentChecker.*`、`ulw.*`、`memory.*`、`boulder.dir`、`goal.*`。
+     `tui.dashboardKey` 是**单向**即时的：每次按键都会读取，但接管本身要等宿主把本会话的活的输入
+     kit 交来之后才就绪。
+   - **两边都不属于：`watchdog.*`** —— 看门狗这一行读的是 `settingsReader("mpd")`（在被钉住的
+     harness 上被拒绝，`settingsModelRetired`），并且**自己**解析 `<workspace>/.mpd/mpd.jsonc`，因此
+     手工编辑该**文件**即时生效，而 `/settings` 的保存永远到不了这些旋钮。
+   逐开关的权威是 `docs/user-guide.md` §9.1，本区块不会比那张表声称更多。**只存在于设置中的保存
+   永远不会丢失**：宿主设置文档保留该值，配置层立即对所有工作区应用 —— 而因为这条路径不写文件，
+   它从不等待活动会话。披露**每个界面只陈述一次**，绝不逐行陈述：`knobHint` 把每个
+   字段提示构造成「开关自身的人类语句 + `(mpd.jsonc <key>)`」，而区块自己的描述携带
+   `SECTION_NOTICE`（桥接披露与不会丢失条款合在一起），与
+   `settings-card.ts` 里 Web 卡片的同一份声明逐字节相同。十二个团队模型槽位的提示**以该开关自身的
    人类语句开头**（写明该槽位路由哪个成员分组，例如 `槽位 2 提供商（分析型成员）`，以及配置它的
-   影响），之后才写出键与上述披露。当目标不明确时回写会
+   影响），之后才写出键。**在仍然提供该命名空间的旧宿主上**，它的回写会在目标不明确时
    **明确拒绝且不写文件**（无活动会话 `no-live-session`；多个活动工作区
    `ambiguous-multi-root` 并列出全部候选；只读/不可解析/冲突的文件），而设置值仍然
-   生效；状态行会显示对应的运行时提示。不声明：某个具体前门的渲染效果（Web 卡片的
+   生效；状态行会显示对应的运行时提示（`BRIDGE_NO_WORKSPACE_NOTICE`）。不声明：某个具体前门的渲染效果（Web 卡片的
    浏览器渲染由用户在自己的 GUI 中验证）。
 3. **web 专有界面在 TUI 中没有渲染面。** agent-teams 侧边栏与 workmate 标签页
    （`dsh.client.platform = web`）在 TUI 中不渲染。面板、状态行与对话框是**等价物**，

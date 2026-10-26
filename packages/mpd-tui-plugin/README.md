@@ -20,22 +20,25 @@ would duplicate a loader entry id (the loader rejects duplicates outright).
 |---|---|---|
 | Status line | `ctx.tuiStatus` | one keyed `mpd` contribution above the prompt: `mpd: team … · boulder … · plans … · workmates …` |
 | Transcript renderers | `ctx.tuiRenderers` | the bundle's log-only session events (`agent-teams/*`, `mpd-tui/board-opened`) as plain text rows, live and on replay |
-| Settings section | `ctx.tuiSettingsSections` | the mpd.jsonc knobs — the original 13, the twelve `teamModels` slot leaves and the TUI's own `tui.dashboardKey` (26 in all; the per-member `agentRoutes` rows are gone with the override layer), the slot leaves rendered as **catalog-driven selections** — declared as editable `/settings` fields, **bridged** to `<workspace>/.mpd/mpd.jsonc` (a save writes the file; the plugin behaviour needs a restart); every field hint says so on screen (see NOT CLAIMED #2) |
+| Settings section | `ctx.tuiSettingsSections` | the mpd.jsonc knobs — the original 13, the twelve `teamModels` slot leaves and the TUI's own `tui.dashboardKey` (26 in all; the per-member `agentRoutes` rows are gone with the override layer), the slot leaves rendered as **catalog-driven selections** — declared as editable `/settings` fields, **bridged** into the config service through the host's settings document: a save from this section is persisted by the HOST as the `mpd-config` ENTRY document (**no workspace file is written on this path** — the only `<workspace>/.mpd/mpd.jsonc` writer is the RETIRED legacy `mpd`-namespace write-back, which the pinned harness refuses, and a hand edit of that file is still read on every resolution). WHICH knobs then act without a restart is per knob: the model routes, `team.gate`/`team.sensitivity`, the `team.stateDir` reader and the two guards take effect in the running process, while `hashline.*`, `commentChecker.*`, `ulw.*`, `memory.*`, `boulder.dir` and `goal.*` are captured at `apply()` and need the next `dsh` boot — and `watchdog.*` is NEITHER: live from a hand-edited `<workspace>/.mpd/mpd.jsonc`, but a `/settings` save never reaches those knobs. Each field hint names its `mpd.jsonc` key, the section states the disclosure once, and the per-knob table is `docs/user-guide.md` §9.1 (see NOT CLAIMED #2) |
 | Full-screen board | `ctx.tuiScenes` | team + task ledger, boulder work ledger, plans, workmate library; two extra rows for a routed team: `team-plan …` (staged only) and `team-hold held (…)` (only while a watchdog hold lasts) |
 | Team workflow scene | `ctx.tuiScenes` | `mpd-tui-team` — open with `/mpd team`, or `a` while the board is open: team id/name/phase, plan-review state, the watchdog hold, the roster (role/model/status/progress/current task) and the task DAG (kind/status/assignee/attempt/round/verdict/deps, depth-indented, `failed-dep=` marked) plus the mailbox tail |
 | Plan scene (approval, W6) | `ctx.tuiScenes` | `mpd-tui-plan` — open with `/mpd plan`. It renders the live board and carries the approval gate: type the EXACT phrase the pane shows (`approve plan-…`, served by the SAME projection the Web panel renders) and press `Ctrl+X`; `Ctrl+D` twice within 10 s discards the staged plan, `Ctrl+R` re-reads, `esc` goes back. The action is an `agent_teams_plan {action:"approve"\|"delete"}` call carrying the LIVE agent resolved from the adapter's own registry — a caller it cannot resolve is refused loudly, never fabricated (below) |
 | Command tree | `ctx.tuiCommandTrees` | `/mpd board`, `/mpd team`, `/mpd plan`, `/mpd status`, `/mpd panel`, `/mpd dag`, `/mpd workmate`, `/mpd workmates`, `/mpd watchdog` completion, plus the `/mpd-model` root — both roots and every child carry BOTH languages in `descriptions`, resolved by the host with its own active `/lang` |
 | Model menu (R3) | `ctx.tuiDialogs` + the shared catalog/settings seam | **`/mpd-model`** — a real pick-list that walks slot → provider → model → reasoning effort and writes the picked route into the `mpd-config` entry the `/settings` section edits. The options are the section's OWN projection (`teamModelOptionLists`) over the same live catalog, so the menu and the rows cannot disagree; the outcome carries the same disclosure sentence the section carries. Cancelling any panel writes nothing. Its slot panel also shows each slot's CURRENT configuration from the config service's typed `slotResolutionOf` answer (contract AMENDMENT 1): an unconfigured slot renders `<unconfigured>` and names its missing leaves, a malformed leaf renders `<invalid>`, and a composition with no config service renders `<unavailable>` — and the dialog NEVER wraps that read in a try/catch, so a degrade is a state the service reports rather than an exception swallowed on the display path |
 | Shortcuts | `ctx.tuiShortcuts` | `alt+m` board · `alt+a` the subagents + team panel · `alt+t` team workflow · `alt+w` workmate picker · `alt+r` refresh the status line |
-| Sidebar pages (dsh-tui 0.13.0+, adapted to 0.16.1) | `ctx.tuiPanels` (through the adapter) | **THREE** pages — `team` (`MPD`, `❖`, `order` 10, the merged RICH view: the host's curated subagent rows above the DAG page's frame/legend/keys/pin body), `workmate` (`MPD workmate`, `⬢`, `order` 12) and, since the watchdog wave, `watchdog` (`MPD watchdog`, `⚠`, `order` 13: per-team held state and phase, the `mpd-tui` unread count and the incident list, with `a`/`r`/scroll keys). The standalone `dag` page is RETIRED and merged into `MPD` (user clause 「DAG页作为MPD面板」), so `/mpd dag` re-aims onto the `MPD` panel with the rich team scene as its fallback — no route, picker entry or `⤢` became a dead end. All three pages declare an icon (distinct from the host's eight builtin tabs) and no `compact`, and all three ask `minColumns` 28. `alt+a`, `/mpd panel` and `/mpd subagents` route the MPD panel through `tuiPanels.open()` when the seam is bound; `/mpd dag` re-aims onto that same panel, and `/mpd workmate` routes its own page. EVERY refusal FALLS BACK to a full-screen surface (`mpd-tui-subagents` for the routed open, the RICH `mpd-tui-team` scene for the MPD page's own `⤢`, the board for `workmate`) — never a silent no-op — and each command prints a bilingual status line naming the surface and the final id it reached. See the reachability paragraph below: the host's own two switches are what put a page on screen |
+| Sidebar pages (dsh-tui 0.13.0+, adapted to 0.17.0) | `ctx.tuiPanels` (through the adapter) | **THREE** pages — `team` (`MPD`, `❖`, `order` 10, the merged RICH view: the host's curated subagent rows above the DAG page's frame/legend/keys/pin body), `workmate` (`MPD workmate`, `⬢`, `order` 12) and, since the watchdog wave, `watchdog` (`MPD watchdog`, `⚠`, `order` 13: per-team held state and phase, the `mpd-tui` unread count and the incident list, with `a`/`r`/scroll keys). The standalone `dag` page is RETIRED and merged into `MPD` (user clause 「DAG页作为MPD面板」), so `/mpd dag` re-aims onto the `MPD` panel with the rich team scene as its fallback — no route, picker entry or `⤢` became a dead end. All three pages declare an icon (distinct from the host's eight builtin tabs) and no `compact`, and all three ask `minColumns` 28. `alt+a`, `/mpd panel` and `/mpd subagents` route the MPD panel through `tuiPanels.open()` when the seam is bound; `/mpd dag` re-aims onto that same panel, and `/mpd workmate` routes its own page. EVERY refusal FALLS BACK to a full-screen surface (`mpd-tui-subagents` for the routed open, the RICH `mpd-tui-team` scene for the MPD page's own `⤢`, the board for `workmate`) — never a silent no-op — and each command prints a bilingual status line naming the surface and the final id it reached. See the reachability paragraph below: the host's own two switches are what put a page on screen |
 | Merged panel | `ctx.tuiScenes` | `mpd-tui-subagents` — the host's own subagent rows (with its running/completed/failed counts), the team body, and the task DAG whose every drawn edge ends in a directional `▼` with a legend under it: this is the FALLBACK surface — `alt+a` and `/mpd panel` land here when the host has no panel seam or refuses the open — and on a pre-0.13.0 host **`Ctrl+A`** reaches it whenever the workspace holds a team (the take-over below). `enter` opens the selected subagent's detail, `i` interrupts the selected live run, a click selects a row |
 | `Ctrl+A` take-over | a `ctx.tuiStatus` view + the adapter's host-input contact | `Ctrl+A` opens the merged panel instead of the host's own dashboard while the team projection holds a team with at least one task; with no team — or on a host whose input bus the adapter cannot reach — the key behaves exactly as before (`tui.dashboardKey`, default `true`; see NOT CLAIMED 7-9) |
 | Dialogs | `ctx.tuiDialogs` | the mediated workmate picker (`select`) |
 | Decision events | `tuiPluginHost.subscribeDecision` | attempted, expected to be refused, **not activated** (see below) |
 
-Supporting surfaces (not one of the seven seams): the `/mpd` command on the
-harness command registry, the `mpd` settings namespace registration, and the
-log-only `mpd-tui/board-opened` session record.
+Seam count and what sits outside it: the adapter's `TUI_SEAMS` table declares EIGHTEEN entries —
+fifteen real `tui*` services, one **phantom** id (`tuiPrompt`, in `PHANTOM_SEAM_KEYS`: no dsh-tui
+build declares it) and the two harness services `commands` and `settings`. The `/mpd` command on the
+harness command registry and the `mpd` settings namespace registration are those last two, while the
+log-only `mpd-tui/board-opened` session record is not a seam at all — it is appended only after the
+event type is verified known to a reachable `dsh-session` copy.
 
 ### Three sidebar pages: the merged rich page `MPD`, the workmate shelf and the watchdog page
 
@@ -651,7 +654,7 @@ soft probe, which is the host's documented idiom.
 | `commands` | `true` | register the `/mpd` command (the board's opening path) |
 | `shortcuts` | `true` | register the key bindings |
 | `panel` | `true` | contribute the MPD sidebar page (dsh-tui 0.13.0) and route `alt+a` / `/mpd panel` through it. Off ⇒ no registration is attempted (the aggregate reports the adapter's own `skipped("panels", …)` outcome naming the config) and both entry points keep the pre-panel path, the full-screen merged scene |
-| `workmate` | `true` | contribute the WORKMATE sidebar page — its OWN knob, INDEPENDENT of `panel`, so the two MPD pages toggle apart. Off ⇒ that page is never registered (the aggregate reports `skipped("panels", …)` naming `workmate: false`) and `/mpd workmate` keeps its full-screen surface, the board scene. because a page that is never registered cannot be re-added by anything — not the host's config re-apply, not the runtime enable keeper — this is the switch that STICKS; both knobs are restart-scoped, and BOTH are listed as CHECKBOXES in the harness `/settings` dialog, because the row config is marked volatile and that flag is what the dialog's `volatileForm` walk reads |
+| `workmate` | `true` | contribute the WORKMATE sidebar page — its OWN knob, INDEPENDENT of `panel` and `watchdog`, so the three MPD pages toggle apart. Off ⇒ that page is never registered (the aggregate reports `skipped("panels", …)` naming `workmate: false`) and `/mpd workmate` keeps its full-screen surface, the board scene. because a page that is never registered cannot be re-added by anything — not the host's config re-apply, not the runtime enable keeper — this is the switch that STICKS; all three page knobs are restart-scoped, and ALL THREE are listed as CHECKBOXES in the harness `/settings` dialog, because the row config is marked volatile and that flag is what the dialog's `volatileForm` walk reads |
 | `watchdog` | `true` | contribute the WATCHDOG sidebar page — its OWN knob, INDEPENDENT of `panel` and `workmate`, so the three pages toggle apart. Off ⇒ the page is never registered (the aggregate reports the adapter's own `skipped("panels", …)` outcome naming **`watchdog: false`** — the page's OWN knob, never `panel`), and `/mpd watchdog` reports that in one line (`watchdog: false`, distinct from a missing seam, a refused registration or a declined open): the page has NO full-screen fallback, because no scene draws the incident list. Restart-scoped like every row-config knob |
 | `panelAutoOpen` | `true` | open the MPD page ONCE when the first team becomes live in this process. The page is otherwise reachable only through `alt+a`, `/mpd panel` and the host's panel bar, so a user who knows none of them never sees the DAG. It never fires for a team that already existed at boot, fires at most once per process whatever the host answers, and never retries a refusal (the host rate-limits `open()` per plugin, one per 5 s). The BADGE stays a separate concern — it is published on every team-state change from apply, so turning this off does not silence warnings |
 | `dashboardKey` | `true` | arm the `Ctrl+A` take-over: with a team in the workspace `Ctrl+A` opens the merged panel, and with no team (or with this off) the key keeps the host's own meaning. UNLIKE every other knob here it is read PER KEYPRESS through the config layer, so a `/settings` save applies without a restart. The take-over itself arms once the host has handed this session its live input kit — i.e. after any MPD scene or panel render (NOT CLAIMED 12). **On a host that offers the sidebar panel seam (dsh-tui 0.13.0+) this knob is INERT** — the contact stays disarmed whatever it says, so it is meaningful on OLD hosts only |
@@ -685,41 +688,60 @@ only when no logger exists to `stderr`, with `debug` gated behind
    nothing. It never calls `admit`/`admitInternal`, never uses the test-only
    token, and never fakes an identity. **No input, rewind, session-switch or
    compact interception is claimed.**
-2. **The `/settings` section IS bridged to `<workspace>/.mpd/mpd.jsonc`, and the behaviour
-   change needs a restart.** The fields declare the real mpd.jsonc knobs
+2. **The `/settings` section's save is persisted by the HOST — NOT as a workspace `.mpd/mpd.jsonc`
+   — and WHEN the new value takes effect is PER KNOB.** The fields declare the real mpd.jsonc knobs
    (`hashline.maxDiffChars`, `commentChecker.autoCheck`, `ulw.maxRounds`,
-   `memory.vcs`, `team.stateDir`, `boulder.dir`) and edit them under the harness
-   settings namespace `mpd`. That namespace is **served by
-   `packages/mpd-config-plugin`** (design §10.1), which registers it with a
-   `base`, so both front doors display the file's real values instead of the
-   schema defaults; this plugin is a pure consumer and only registers as a
-   guarded **fallback** when a composition has no config plugin. The base follows
+   `memory.vcs`, `team.stateDir`, `boulder.dir`) and edit them as the fields of the `mpd-config`
+   ENTRY document (the legacy `mpd` namespace is RETIRED on this host). That document is **served by
+   `packages/mpd-config-plugin`** (design §10.1); this plugin is a pure consumer and only registers the
+   legacy namespace as a guarded **fallback** when a composition has no config plugin. On a legacy host
+   the fallback's base follows
    a **cardinality rule**: one live root ⇒ that workspace's `<workspace>/.mpd/mpd.jsonc`;
    zero roots ⇒ the mount-time (exec-less) root, an absent file there giving an
    empty base (schema defaults) — the normal boot path, since this row usually
    precedes any live session; more than one root ⇒ **no file base is invented**
    (`base: undefined`, `ambiguous-multi-root`, every candidate warned and surfaced
    by `states()`), so the namespace shows schema defaults until exactly one
-   workspace is live. The base is **fixed for the process lifetime** (the host
-   exposes no disposal handle for a live registration) — the honest reason the
-   sentence below says "after a restart" — while the **resolved value** and the
-   config layer's **per-call file reads** are what the plugins actually use. A saved edit is written back into the live session
-   workspace's `<workspace>/.mpd/mpd.jsonc` with comments and key order preserved, and the
-   config layer applies it to every workspace immediately. **The plugin
-   BEHAVIOUR change needs a restart** for every knob in this section, because the
-   mpd consumers capture their config at `apply()` — stated in the same words on
-   screen: every field hint names its mpd.jsonc key and carries `a save writes
-   <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect
-   for the mpd plugins after a restart (this knob is read at plugin mount)`,
-   followed by the clause that a settings-only save is never a lost save. The twelve
+   workspace is live. **Where the save goes.** The section saves through the `mpd-config` ENTRY
+   document (`ENTRY_CONFIG_ID`), and the HOST owns that store: the row's own listener
+   (`onSettingsDocumentUpdated(ENTRY_CONFIG_ID, …)`) re-loads its `state` from it and deliberately
+   writes NO file. A `<workspace>/.mpd/mpd.jsonc` write exists only for the LEGACY `mpd` namespace
+   (`SETTINGS_NS`), whose registration this harness REFUSES — `settingsModelRetired`, with the boot
+   warning that "the legacy file write-back and override clearing are dormant" — so on the pinned host
+   that path never runs; a hand edit of the file is still read on every resolution. **The READ-BACK is live; the EFFECT is
+   per knob.** The config row arms a file watcher at mount (`watchRoot`) and subscribes to the
+   entry-config document, so `mpd_config_get` reports the new value at once — but a consumer reads
+   its configuration through the config service when it **mounts** (`apply()`), so a value can be
+   correct in the read-back while the already-mounted plugin still acts on the old one. Two groups,
+   and this section states BOTH — never only the promising half:
+   - **live in the running process** — the model routes (`teamModels.slot*`, `modelchain.*`),
+     `team.gate` / `team.sensitivity`, the `team.stateDir` reader, and the two guards
+     `captain.investigation` / `delegation.gate` (each reads the row's own `configValue` per
+     decision, and that reader resolves through the mounted service — the mechanism
+     `delegation-gate.ts` describes as picking a `.mpd/mpd.jsonc` edit up LIVE);
+   - **captured at `apply()`, so they need the next `dsh` boot** — `hashline.*` (`maxDiffChars`,
+     `guardEditTools`, `registryFile`), `commentChecker.*`, `ulw.*`, `memory.*`, `boulder.dir`,
+     `goal.*`. `tui.dashboardKey` is live ONE-WAY: read per keypress, but the take-over itself arms
+     only once the host has handed this session its live input kit.
+   - **NEITHER half: `watchdog.*`** — the watchdog row reads `settingsReader("mpd")` (refused on the
+     pinned harness, `settingsModelRetired`) and parses `<workspace>/.mpd/mpd.jsonc` ITSELF, so a hand
+     edit of that FILE applies with no restart while a `/settings` save never reaches these knobs.
+   `docs/user-guide.md` §9.1 is the per-knob authority, and this section claims no more than that
+   table. **A settings-only save is never LOST**: the host settings document keeps the value and the
+   config layer applies it to every workspace immediately — and because this path writes no file, it
+   never waits for a live session. The disclosure is stated
+   ONCE per surface, never per row: `knobHint` builds each field hint as the knob's own human
+   sentence plus `(mpd.jsonc <key>)`, and the section's own description carries `SECTION_NOTICE`
+   (the bridge disclosure and the not-lost clause together), byte-identical to the Web
+   card's copy in `settings-card.ts`. The twelve
    team-model slot hints LEAD with the knob's own human sentence — the group the
    slot routes (`槽位 2 提供商（分析型成员）` / `Slot 2 provider (analysis members)`)
-   and what configuring it does — and only then state the key and that disclosure. The
-   write-back **refuses** (loudly, writing no file) when the target is ambiguous
-   — no live session (`no-live-session`), several live workspaces
-   (`ambiguous-multi-root`, every candidate named), a read-only/unparsable/
-   conflicting file — while the settings value still applies; the status line
-   carries the matching runtime notice. Not claimed: a specific front door's
+   and what configuring it does — and only then state the key. The
+   **On a legacy host** that still serves that namespace, its write-back **refuses** (loudly, writing no
+   file) when the target is ambiguous — no live session (`no-live-session`), several live workspaces
+   (`ambiguous-multi-root`, every candidate named), a read-only/unparsable/conflicting file — while the
+   settings value still applies; the status line carries the matching runtime notice
+   (`BRIDGE_NO_WORKSPACE_NOTICE`). Not claimed: a specific front door's
    rendering (the Web card's browser render is verified by the user in their GUI).
 3. **Web-only surfaces have no TUI rendering face.** The agent-teams sidebar and
    the workmate tab (`dsh.client.platform = web`) do not render in the TUI. The

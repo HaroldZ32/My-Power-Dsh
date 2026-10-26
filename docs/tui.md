@@ -4,10 +4,13 @@
 
 This page describes the **DSH-TUI edition** of the my-power-dsh bundle: what it ships, how to
 install it, what the per-package compatibility measurement found, and what it explicitly does
-**not** claim. It targets `@deepseek-harness-tui/dsh-tui` **0.16.1** and its built-in admission
-profile — the first dsh-tui release whose declared peers admit DeepSeek Harness `0.2.1-rc.2`. §11.8
+**not** claim. It targets `@deepseek-harness-tui/dsh-tui` **0.17.0** and its built-in admission
+profile — the first dsh-tui release whose declared peers admit DeepSeek Harness `0.2.1-rc.3`. §11.10
 is this wave's amendment: it records the move, the unchanged seam inventory and the carriers it
-touched. **The pin before it was 0.14.0, and that statement stays readable as history**: 0.14.0 is
+touched. **The pin before it was 0.16.1, and that statement stays readable as history**: 0.16.1 is the
+first dsh-tui release whose declared peer bands included harness `0.2.1-rc.2` (all 36 of its
+`@deepseek-ai/dsh-*` peers listed it), and §11.8 is that wave's amendment.
+**The pin before it was 0.14.0, and that statement stays readable as history**: 0.14.0 is
 the release that adds the **Claude backend peer** (`@anthropic-ai/claude-agent-sdk` 0.3.287) and the
 `ws` runtime dependency, an **eighth** builtin sidebar panel (`btw`) and a **carousel** `PanelBar`
 that draws the active tab's title plus `○`/`●` dots and no longer paints a plugin's declared icon;
@@ -45,7 +48,7 @@ work below was measured on 0.10.1 and is re-verified in the Docker end-to-end te
 | TUI surface package | `packages/mpd-tui-plugin/` | The TUI-native surfaces: the **three sidebar pages** (`src/panel.ts` — title `MPD`, the primary entry point and, since the 0.14.0 wave, the rich DAG page itself, §3.3/§3.4 — `src/panel-workmate.ts`, and `src/panel-watchdog.ts` since the 2026-10-23 watchdog wave), status line, `/settings` section, full-screen scenes, `/mpd` command tree, keyboard shortcuts, mediated dialogs, a transcript-renderer **registration the host does not project** (NOT-CLAIMED #10), and the decision-event seam built ready-but-not-activated. |
 | Admission manifest | `dsh-plugin.json` (repo root) | ONE bundle-level Community v0.15 manifest for the whole bundle — a deliberate deviation (see §7). |
 | Environment descriptor | `dsh-distribution.json` (repo root) | A `DistributionDescriptor` for the dsh-distribution meta-protocol (Draft). |
-| TUI composition | `cordis.patch.yml` | Adds the `mpd-tui` row and the `dsh-tui` roster default so a TUI session starts on the **mpd** preset. |
+| TUI composition | `cordis.patch.yml` + `presets/mpd.patch.yml` | Adds the `mpd-tui` row and registers the **mpd** preset additively; the deployment default stays the host's (`standard`), so a TUI session starts on `standard` until `mpd` is selected (§2). |
 | These docs | `docs/tui.md`, `docs/tui.zh-CN.md` | Human-facing description of the above. |
 
 The web edition is untouched: the same bundle still installs into a web profile.
@@ -62,15 +65,26 @@ second mount would duplicate a loader entry id, which the loader rejects outrigh
 
 Measured composition after that install (t5, `evidence/tui/composition/20260915T053445Z/`):
 `dsh.profile.bundles` = `["@deepseek-ai/dsh-base", "@deepseek-harness-tui/dsh-tui", "@mpd-dsh/mpd"]`
-— this bundle is the **third** patch layer; the bundle patch contributes 24 rows; the live boot
+— this bundle is the **third** patch layer; the two-file bundle patch layer declares **36** rows
+(35 in `cordis.patch.yml`, 1 in `presets/mpd.patch.yml` — the row count `bun run verify:rows`
+prints); the live boot
 logged **0** apply-crash signatures (`unsupported JSON schema`, `JsonSchemaError`, `plugin tree
 failed to load`, `failed to apply loader entry`, `Error:`); no duplicate loader entry id.
 **Backed at:** `Observed` (a recorded live dsh-TUI boot plus the host's own `--dump-config`).
 `--dump-config` alone proves composition only — the crash-signature count comes from the live boot.
 
-A TUI session defaults to the **mpd** preset, carried by the id-targeted `agent-preset-registry` row
-(`default: mpd`) together with the `preset-mpd` row in `presets/mpd.patch.yml` (measured from a
-captured session record, not from the patch text).
+A TUI session resolves the HOST's default preset, not `mpd`: the row that holds the deployment
+`default` is declared by a host layer (`agent-preset-registry` by `@deepseek-ai/dsh-web-app` on the web
+plane, `dsh-tui-agent-preset-registry` by `@deepseek-harness-tui/dsh-tui` on the TUI plane), and this
+bundle ships no id-target against either — `node scripts/verify-no-host-override.ts` fails the build on
+any id-target whose id a host layer declares, and the two id-targets that used to carry
+`config.default: mpd` were removed under the strict zero-override decision of 2026-10-02 (the removed
+blocks are recorded in `cordis.patch.yml`). `mpd` is therefore available but OPT-IN: `/preset mpd` in
+the TUI (the host's `presetPrefs.js` persists it to `~/.dsh-tui/agent-preset.json`), an explicit
+`preset: mpd` on the host's `dsh-tui` row (or `DSH_TUI_PRESET=mpd`), the Web Settings
+`selectedDefault`, or the one-command helper `node scripts/set-default-preset.ts --yes` (dry-run by
+default). Every channel is documented, with its trade-offs, in
+[`preset-default.md`](preset-default.md).
 
 Requirement for any live lane: `dsh-tui` refuses to boot when stdout is not a TTY
 (`dsh-tui requires an interactive terminal (stdout must be a TTY)`), so the QA lanes must drive the
@@ -132,11 +146,11 @@ the shape measured from `dsh-client-ui-settings-models/lib/client.js:2936`): the
 collects that list slot, sorts it by `order` and renders the active one, so `order: 20` places MPD
 after `general` (0), `models` (10) and `plugins` (15) and moves no existing section. The section
 renders the card as-is, declares no nested `children`, and a namespace with no registration renders
-nothing — which is why the knobs were invisible before. Writes use the public
-`ctx.settingsScope.bind({ namespace: 'mpd' }).mutate(ops, revision)` seam (nested paths; `unset` for
-reset), and a non-writable scope renders read-only with the reason and never attempts a write. The
-card's fields, labels and zh descriptions are asserted against the TUI section's descriptor by its own
-test, so the two front doors cannot drift.
+nothing — which is why the knobs were invisible before. Writes go through the harness's own config
+form for the `mpd-config` entry document (`ctx.configForms.get("mpd-config")`), not a
+`settingsScope` binding, and an unwritable form renders read-only with the reason and never attempts a
+write. The card's fields, labels and zh descriptions are asserted against the TUI section's descriptor
+by its own test, so the two front doors cannot drift.
 
 **Evidence level — witnessed:** the registration contract in the **built and served** client bytes
 (`packages/mpd-bundle-plugin/client.js`; the lane re-hashes the artifact it judged and the evidence
@@ -724,17 +738,33 @@ documented in the research record (`.mpd/recon/UPSTREAM-RESEARCH.md`).
 Related: `trusted-in-process` is a **compatibility/audit label, not a security boundary**. A
 SHA-256 digest proves byte identity only — never publisher identity.
 
-### 6.2 The `/settings` section IS bridged to `<workspace>/.mpd/mpd.jsonc` — live for the model routes, with two named skip cases
+### 6.2 The `/settings` section IS bridged — an entry save is host-persisted with NO workspace write; the legacy namespace write-back is named and dormant here
 
 The section declares the real mpd.jsonc knobs (`hashline.maxDiffChars`, `commentChecker.autoCheck`,
 `ulw.maxRounds`, `memory.vcs`, `team.stateDir`, `boulder.dir` and the twelve
-`teamModels.slot{1,2,3,4}.{provider,model,reasoningEffort}` leaves) under the harness settings namespace
-`mpd`, and that namespace is **served by `packages/mpd-config-plugin`** (this package is a pure
-consumer and registers only a guarded fallback when no config plugin is composed). What a save does
-today:
+`teamModels.slot{1,2,3,4}.{provider,model,reasoningEffort}` leaves) as this row's config, through the
+harness's own form for the config ENTRY `mpd-config` (`packages/mpd-config-plugin` owns the entry; this
+package is a pure consumer and registers only a guarded fallback when no config plugin is composed).
+**TWO persistence paths exist, and only the dormant one writes your file:**
 
-**The base is a rule, not a lookup.** The serving package derives the namespace base itself
-(`baseForNamespace()`, registered through the adapter)
+- **Entry-config save — what both front doors do on this harness.** The Web card and this section save
+  `configForms.get("mpd-config")`; the entry document is the HOST's own store, so persistence is the
+  host's. The saved override is the top config layer (L4, `readEntryConfig`) and
+  `onSettingsDocumentUpdated(ENTRY_CONFIG_ID)` re-loads it in-process — **no restart** — and this path
+  performs **NO `<workspace>/.mpd/mpd.jsonc` write**, deliberately: the document also carries the
+  form's materialised defaults, so projecting them into your file would pollute it.
+- **Legacy `mpd`-NAMESPACE write-back — dormant here.** `packages/mpd-config-plugin` still implements
+  it (lock + compare-and-swap + sibling temp file + atomic rename, comments/key order/trailing commas
+  preserved, with the two named skip cases). On the harness this bundle pins, `settingsRegister` is
+  refused ("the namespace-registry model is RETIRED in this harness"), the bridge records that once,
+  and its file write-back and override clearing stay **dormant**. Everything below — the base table, the
+  write-back bullet and the workspace-target bullet — documents THAT path; it is not a promise about an
+  entry save.
+
+What a save does today (the entry path):
+
+**The base is a rule, not a lookup — and it is the LEGACY namespace's base.** The serving package
+derives the namespace base itself (`baseForNamespace()`, registered through the adapter)
 under a cardinality rule:
 
 | Live session roots | The namespace base |
@@ -744,39 +774,63 @@ under a cardinality rule:
 | **more than one** | **no file base is invented**: `base: undefined`, reason `ambiguous-multi-root`, a warn naming every candidate, surfaced by `states()`. The namespace shows the schema defaults until exactly one workspace is live; a save in that state is REFUSED (below), so the ambiguity cannot reach disk |
 
 **The base is fixed for the process lifetime** — the host exposes **no disposal handle** for a live
-registration, and its own settings installers keep their base fixed the same way. That fix no longer
-implies a restart for the mpd model configuration: the shipped sentence now says the save **takes effect
-in the RUNNING process — no restart** (the config service re-resolves on every settings save and on a
-watched edit of the project file, and the model routes are read per use). What the plugins actually use
-is the **resolved value** plus the config layer's **per-call file reads**: the L1/L2 file layers are
-re-read on every resolution, so the **per-workspace read-in still resolves each session's own file**
-even while the base is frozen. No sentence on this page promises a live-refreshed **base** — only a
-live-resolved **value**.
+registration, and its own settings installers keep their base fixed the same way. A fixed base does
+**not** make every saved knob wait for a restart, and the no-restart wording must not be read as
+blanket: the config service is live (it re-resolves on every settings save and on a watched edit of
+the project file), and each knob's answer depends on WHERE its consumer reads it. Read from the live
+service per use — LIVE, no restart: `teamModels.slot*`, `modelchain.*`, `team.stateDir`,
+`team.gate`, `team.sensitivity`, `captain.investigation`, `delegation.gate`; `watchdog.*` is live too,
+but from the ROW's own read of `<workspace>/.mpd/mpd.jsonc` (it does not read the `mpd-config` entry, so
+a FORM save does not reach it — user-guide §9.1); `tui.dashboardKey` is
+live in BOTH directions while the `mpd-tui` ROW config left the Ctrl+A takeover enabled at mount (a
+saved `false` and then a saved `true` both reach the per-press read), and ONE-WAY only when the ROW
+config disabled the takeover (`dashboardKey: false`): that composition never registers the contact at
+`apply()`, so a saved `true` cannot create one and a boot with the row config permitting it is what
+does. Captured inside a row's own
+`apply()` — RESTART, the captured value keeps until the next `dsh` boot: `hashline.*`,
+`commentChecker.*`, `ulw.*`, `memory.*`, `boulder.dir`, `goal.*` and `extensions.*`. The bundle's own
+hint constants state both halves — `BRIDGE_DISCLOSURE` (the live clause, naming the model routes) and
+`BRIDGE_RESTART_LIMIT` (the bound) — and the **canonical per-knob table is
+[`user-guide.md`](user-guide.md) §9.1**. What the plugins actually use is the **resolved value** plus
+the config layer's **per-call file reads**: the L1/L2 file layers are re-read on every resolution, so
+the **per-workspace read-in still resolves each session's own file** even while the base is frozen. No
+sentence on this page promises a live-refreshed **base** — only a live-resolved **value**.
 
 - **Read-in precedence** — L0 schema defaults < L1 `$DSH_HOME/mpd.jsonc` < L2
   `<workspace>/.mpd/mpd.jsonc` < **L3 the settings user section**, which is authoritative at runtime; a
   later FILE edit **unsets** the overlapping settings leaf, so the file's new value wins again and
   neither direction silently loses.
-- **Write-back** — owned by `packages/mpd-config-plugin` (never by this TUI package, which keeps its
+- **Write-back (legacy namespace path — DORMANT on this harness)** — owned by
+  `packages/mpd-config-plugin` (never by this TUI package, which keeps its
   verified zero-write property). It triggers on the host's `settings/document-updated(ns, revision)`
   event filtered to `source === 'update'` (the raw-section event, so the deep-equal gate cannot drop a
   change) and writes the live session workspace's `<workspace>/.mpd/mpd.jsonc` under a lock plus a
   compare-and-swap on the raw bytes, a sibling temp file and an atomic rename. **Comments, key order and
   trailing commas survive**: a real boot rewrote `hashline.maxDiffChars` 20000 → 31415 in a JSONC file
-  and the comment, the key order and the trailing comma were unchanged.
-- **Workspace target** — the settings path carries no identity, so the target set is the **live session
+  and the comment, the key order and the trailing comma were unchanged. None of this runs for an
+  entry-config save (above).
+- **Workspace target (legacy namespace path — DORMANT here)** — that path carries no identity, so the
+  target set is the **live session
   workspaces at event time**: exactly one ⇒ that file is written; **zero ⇒ `no-live-session`**; **more
   than one ⇒ `ambiguous-multi-root`**, with every candidate named. In both skip cases **no file is
   changed** and the edit is **not lost**: it is stored in the host-global settings document and the
   config layer applies it to every workspace immediately — only the FILE WRITE waits for exactly one
-  live session. The TUI status line and the Web card both carry that clause.
+  live session. The TUI status line and the Web card both carry that clause, where they mean the
+  legacy path.
 - **Timing** — the model-config consumers resolve through the live `mpdConfig` service per use
   (`mpd_modelchain_resolve` per call; slot routing at spawn), and the service re-resolves
   on every settings save and on a watched edit of the project file, so a saved edit **reaches the next
-  resolve or spawn with no restart** (`mpd_config_reload` forces a re-read). Consumers that still
-  capture at plugin `apply()` are the exception the bridge report's `applies: 'live'` documents, and
-  are named per knob in the user guide's §9.1. The
-  on-screen hint says exactly this.
+  resolve or spawn with no restart** (`mpd_config_reload` forces a re-read). Two different `applies`
+  answers exist and must not be conflated: `BridgeReport.applies`
+  (`packages/mpd-config-plugin/src/bridge.ts`) is typed `"live"` and records, per save, that the
+  RESOLVED VALUE reaches the RUNNING process, while the NAMESPACE-level answer is `"restart"` on every
+  surface that carries one — the service's own `states().applies` (D-18,
+  `packages/mpd-config-plugin/src/index.ts`), `dsh.settingsRegister(…)` in `mpd-config`, and this
+  package's `registerSettingsNamespace(…)` all answer/pass `restart` — because the namespace as a
+  whole is not fully live: the knobs `BRIDGE_RESTART_LIMIT` names are captured inside their own
+  `apply()`. The report's `live` therefore does NOT cover every consumer's behaviour, and the
+  canonical per-knob table is the user guide's §9.1. The TUI section notice carries ALL THREE halves
+  (`SECTION_NOTICE` = `BRIDGE_DISCLOSURE` + `BRIDGE_RESTART_LIMIT` + `BRIDGE_NOT_LOST`).
 - **Degenerate targets are loud** — missing (created with a header comment), read-only (`denied` + path +
   errno, the settings edit still succeeds), concurrent (retry ×3 then `conflict`, the human's file left
   untouched), unparsable (`unparsable`, never repaired).
@@ -861,17 +915,19 @@ predictable (`evidence/mpd-bridge/dual-path/REPORT.md`, finding D1):
 | Scope | State | Shared when |
 |---|---|---|
 | **DSH-HOME** (`$DSH_HOME/settings.yaml` + user `mpd.jsonc`) | the host's settings document | both front doors live in the **same DSH home** |
-| **workspace** (`<workspace>/.mpd/**`) | `mpd.jsonc` (the bridge's durable projection), `memory.json`, team/plan/boulder state | both doors run in the **same workspace** — by construction |
+| **workspace** (`<workspace>/.mpd/**`) | `mpd.jsonc` (the configuration FILE every layer reads; an entry save does NOT write it — §6.2), `memory.json`, team/plan/boulder state | both doors run in the **same workspace** — by construction |
 | **HOME** (`~/.mpd/workmate`) | the user's cross-project workmate library | same `HOME`, i.e. across profiles of one user; distinct for two users |
 | **bundle** (`<bundle>/…`) | the `mpd` preset/roster and the skill corpus (served, not copied) | both doors **are the same install**, independent of any home |
 
 **The boundary to know:** with ONE DSH home the settings document is shared, so a settings edit is
 visible to both front doors at once. With SEPARATE DSH homes there are **two** settings documents —
 `settings.yaml` is DSH-HOME-scoped — so an edit made in one door is **invisible as a settings VALUE**
-to the other. The durable state still converges: the write-back target is the **workspace** file, and
-both doors write that same `<workspace>/.mpd/mpd.jsonc`. In one sentence: *same DSH home ⇒ the settings
-value is shared; separate homes ⇒ the settings values differ, but the workspace `<workspace>/.mpd/mpd.jsonc` still
-converges.* This is the one place where the two doors can legitimately disagree on an inherited value.
+to the other, and it does not converge through the workspace file either: on this harness an
+entry-config save performs **no `<workspace>/.mpd/mpd.jsonc` write** (§6.2), so nothing syncs the two
+doors automatically. The workspace `mpd.jsonc` changes when something writes it — a hand edit, or the
+dormant legacy namespace write-back where a host still serves it. In one sentence: *same DSH home ⇒ the
+settings value is shared; separate homes ⇒ the settings values differ and no save writes the workspace
+file for you.* This is the one place where the two doors can legitimately disagree on an inherited value.
 
 ## 7. Deliberate deviations from ecosystem convention
 
@@ -907,7 +963,7 @@ as a current capability.
 
 | Package | Role | Class | Live witness |
 |---|---|---|---|
-| `mpd-bundle` | composition layer (the bundle patch itself) | usable | composed config rows incl. `mpd-tui` and the `agent-preset-registry` id-target; live boot with 0 crash signatures |
+| `mpd-bundle` | composition layer (the bundle patch itself) | usable | composed config rows incl. `mpd-tui`; live boot with 0 crash signatures. The `agent-preset-registry` id-target this row once recorded was REMOVED on 2026-10-02 under the strict zero-override decision — superseded by §2 |
 | `mpd-dsh-adapter-plugin` | single contact surface with the harness seams | usable | apply-time log line `[mpd-dsh-adapter] mpdDsh provided` |
 | `mpd-config-plugin` | mpd.jsonc runtime config layer | usable | tools `mpd_config_get`, `mpd_config_reload` |
 | `mpd-tools-plugin` | write guard / truncation / waterfall | usable | composed row `mpd-tools` with its config; owns no tool name |
@@ -1053,7 +1109,7 @@ citation of the delivered artifact.
 
 | Statement group | Level claimed here | Status / evidence |
 |---|---|---|
-| Install / triple layering / 24 rows / 0 crash signatures / mpd preset default | Observed | backed — t5 `evidence/tui/composition/20260915T053445Z/`, re-run by t8 (`evidence/tui/live/20260915T063140Z/lanes/tui-mount/`) and t9 (`…/conformance/20260915T064521Z/09-mount-boot.log`, `10-mount-boot-clean-root.log`) |
+| Install / triple layering / 36 rows / 0 crash signatures / mpd preset AVAILABLE (not the default) | Observed | the layering and crash-signature halves stand as measured at t5 `evidence/tui/composition/20260915T053445Z/`, re-run by t8 (`evidence/tui/live/20260915T063140Z/lanes/tui-mount/`) and t9 (`…/conformance/20260915T064521Z/09-mount-boot.log`, `10-mount-boot-clean-root.log`); the row count and the preset claim are SUPERSEDED by §2 — 36 rows (35 `cordis.patch.yml` + 1 `presets/mpd.patch.yml`), and the deployment default stays the host's |
 | Manifest parsed, projected, negotiated (`waiting_authorization`), live `/plugins check` | Parsed + Negotiated | backed — t9 `…/conformance/20260915T064521Z/01-admission-static.log` (manifest `84ed4a5d…`, entry `5dce2563…`) and `02-admission-live.log` |
 | Per-package ledger | Observed (per package) | backed — `ledger.json` (t5); its structure re-checked by t8 |
 | Plugin contract shape (no default export, cleanup, soft probes) | Tested (unit) | backed — `evidence/tui/plugin/20260915T054343Z/` (t4); 547 package tests pass (t9) |
@@ -1554,3 +1610,29 @@ was taken** — the contract's minimum rung (a mounted boot that registers the p
 what the plugin-contract arm proves, and the page's content is proven through the host-kit double. The
 `ui.Image` inventory in the decision record is read from the installed host's own type declarations
 (0.16.1), not from a rendered image.
+
+### 11.10 Amendment after the DSH-TUI 0.17.0 adaptation wave (2026-10-25)
+
+This wave moves the pin pair to the host re-certified against it, and changes no plugin source:
+
+| Subject | Before | After |
+|---|---|---|
+| This page's target host (§ preamble) | **0.16.1** | **0.17.0** — the first dsh-tui release whose declared peer bands admit harness `0.2.1-rc.3`: 36 of its 39 `@deepseek-ai/dsh-*` peers append the `0.2.1-rc.3` band, which no 0.16.1 peer list carries (read from the published 0.17.0 tarball) |
+| §3 seam inventory | fifteen `tui*` seams, unchanged 0.13.0→0.16.1 | **still fifteen, and 0.17.0 breaks nothing in the adapter**: the fifteen seam declarations under `lib/types/dsh-adapter/` are byte-identical, `dsh-adapter/plugin-host.d.ts` and `adapter/standard/negotiate.d.ts` are byte-identical, and `tui-profile/registry/registry-0.15.json` plus every shipped contract file are byte-identical — so the admission profile stays **v0.15** and `manifestVersion`/`$schema` do NOT move. The real 0.17.0 additions are additive or outside this path: panel kit components `Markdown`/`CodeBlock` (`panels.d.ts`), the two host panel-CSV helpers consolidated into `tuiDisplayPrefs.applySidePanelPanels`, a Windows notification channel and a new `cli/` tree |
+| §3.3 / §7 — the pin carriers and `MPD_E2E_DSH_VERSION` | `0.16.1` carriers, harness `0.2.1-rc.2` | **`0.17.0` carriers and harness `0.2.1-rc.3`**: both Docker lanes (`MPD_E2E_TUI_VERSION`, `MPD_E2E_DSH_VERSION`), the UI stack (`MPD_UI_TUI_VERSION`, `MPD_UI_DSH_VERSION`), `dsh-distribution.json`'s `host-tui` ref (`…@0.17.0`), `dsh-plugin.json`'s `compat.hosts` (`…@0.17.0`), the QA host spec in `skills/dsh-qa/scripts/tui-mount.ts` and every `npm i -g @deepseek-harness-tui/dsh-tui@…` PREREQ remedy. The harness pin itself lives in `package.json`'s three `@deepseek-ai/dsh-experimental-*` dependencies (`0.2.1-rc.3`) |
+| The adapter's version gates | `PANEL_CSV_HOST_OWNED_SINCE = "0.16.1"`, `PANEL_CSV_SELF_HEAL_SINCE = "0.15.0"`, the `hostVersion` fixtures `0.14.0/0.15.0/0.16.0/0.17.0` | **unchanged** — they encode WHEN the host changed behaviour, never which host is current, so a blanket version replace would corrupt them |
+| "on dsh-tui >= 0.16.1 …" range statements (§6.2 and the user guide) | a gate threshold | **unchanged** — a range, not a target version |
+
+**Honest bounds.** Both Docker real-machine lanes RAN on this wave's final tree in a bare
+`ubuntu:24.04`, and their committed results are this page's PTY evidence.
+`evidence/docker/client-install/2026-10-25T16-02-51Z/result.json` — `ok: true`, 122 assertions, 77
+passed, 0 failed, 45 null (the four `oneclick.*` rows by mode; the credential-gated `live.*` rows plus
+`boot.llmTurn`; the nine `ui.*` rows, the browser lane being opt-in; and `qa.mcpCall`, which needs a key)
+— carries all 22 `tui.*` assertions true: `tui.boot` reached the chat screen on a real PTY,
+`tui.hostInstall` reported `version=0.17.0`, `tui.sessionPreset` reported `agentPreset=mpd`, beside
+`boot.presetMount` and `harness.version = 0.2.1-rc.3`. `…/2026-10-25T16-13-29Z/result.json` — `ok: true`,
+117 passed, 0 failed, 5 null (the four `oneclick.*` rows plus `ui.teamBoard`, not asked) — records
+`live.web`, `live.tui` and `live.headless` each with `mpdToolCalled` and `assistantReplied` true,
+`boot.llmTurn` true and the `ui.*` rows true. ONE bound stands: the **one-click lane against the
+published package was NOT run** in this wave, so its rows stay null — what these stamps measured is the
+checkout install, never the packed artifact.

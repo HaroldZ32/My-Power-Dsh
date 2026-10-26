@@ -18,7 +18,7 @@
 // engine is re-run against the SAME captured panes with one expectation injected that
 // cannot appear — if that does not fail, the lane cannot fail and the run is void.
 //
-// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.16.1"
+// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.17.0"
 // PREREQ: absent-runtime tmux "install tmux; the TUI requires a real TTY"
 // PREREQ: absent-fixture tui profile in the sandbox root "bun skills/dsh-qa/scripts/tui-mount.ts --sandbox-root <root> --install"
 //
@@ -27,6 +27,9 @@
 //   bun skills/dsh-qa/scripts/tui-panels.ts [--sandbox-root <dir>] [--control]
 // Evidence -> evidence/tui/lanes/<timestamp>/{result.json,output.log,<step>.pane.txt,negative/}
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
+// The disclosure copies live in the sibling QA lib (one copy, one drift check); this lane imports
+// them so its pane model and its patterns can never disagree with the text the surfaces ship.
+import { PERSISTENCE_HALF, TUI_DISCLOSURE_CAPTURED, TUI_DISCLOSURE_LIVE, TUI_NOT_LOST } from "./lib/settings-bridge-lane.ts"
 import { join } from "node:path"
 import { pathToFileURL } from "node:url"
 import {
@@ -46,21 +49,45 @@ const SLUG = "tui-panels"
  * The tmux pane geometry this lane drives.
  *
  * WIDENED 220 -> 320 (measured 2026-10-06, 0.13.0) and 320 -> 560 (measured 2026-10-14, 0.15.0).
- * The `/settings` section renders its ONE long disclosure hint on a single line and the host
- * ellipsizes it to the pane width (`… ` before the `╮` border), so a clause past the cut is simply
- * not painted. The disclosure was 315 columns when the 320-wide pane was chosen; commit cc5387e0
- * (`fix(model-config): live-refresh model routes in-process …`) rewrote `SECTION_NOTICE` to
- * "… takes effect in the RUNNING process — no restart: the config service re-resolves on every
- * settings save and on a watched edit of the project file, and the model routes (teamModels,
- * agentRoutes, modelchain) are read per use, so the next spawn or resolve carries them …", which is
- * ~520 columns with the knob prefix — at 320 the visible line still ended at `are read pe…` and the
- * last clause (`never lost`) was BEYOND the cut (measured: the arm's only missing pattern was
- * `/never lost/`). At 560 the whole disclosure fits and all four frozen phrases match. WIDENING is
- * chosen over weakening the expectation: the four-clause disclosure stays asserted VERBATIM, so a
- * regression that dropped a clause still reddens, whereas accepting a prefix plus a truncation marker
- * would let exactly that regression through.
+ * The `/settings` section renders its disclosure on a single line and the host ellipsizes it to the
+ * pane width (`… ` before the `╮` border), so a clause past the cut is simply not painted. At the
+ * 320-wide pane the visible line ended at `are read pe…` and the last clause (`never lost`) was
+ * BEYOND the cut (measured: the arm's only missing pattern was `/never lost/`).
+ *
+ * D-18 (audit wave 2026-10-25): the disclosure is now SCOPED — `SECTION_NOTICE` = BRIDGE_DISCLOSURE
+ * (the LIVE groups: a save is served in the RUNNING process for the knobs read per use) +
+ * BRIDGE_RESTART_LIMIT (the MOUNT-CAPTURED groups: a knob a plugin captures at its own `apply()` keeps
+ * its captured value until the next boot) + BRIDGE_NOT_LOST. Both halves are asserted below, and the
+ * retired blanket sentence ("takes effect in the RUNNING process — no restart", the claim the captured
+ * class contradicts) is asserted ABSENT. The pane is wider than the text, so no clause is cut;
+ * WIDENING is chosen over weakening the expectation, because a regression that dropped a clause must
+ * still redden rather than pass as a prefix.
  */
-const PANE_WIDTH = 560
+/** The exact section description a front door paints: the title, then BOTH halves, then not-lost. */
+const SECTION_LINE = "MPD bundle \u00b7 " + TUI_DISCLOSURE_LIVE + " " + TUI_DISCLOSURE_CAPTURED + " " + TUI_NOT_LOST
+
+/**
+ * Clip one painted line the way the host does: at the pane width, with a trailing ellipsis.
+ * CodeRabbit #9: the fixture used to be un-truncated while the real pane clips, so the model blessed
+ * text a reader could never see. The fixture is built THROUGH this function now, which is what makes
+ * the self-test's width assertions meaningful.
+ * @param text - the line the host would paint.
+ * @param width - the pane's column budget.
+ * @returns the painted line: unchanged when it fits, otherwise cut with `\u2026`.
+ */
+function paneClip(text: string, width: number): string {
+  return text.length <= width ? text : text.slice(0, Math.max(0, width - 2)) + " \u2026"
+}
+
+/**
+ * The pane width: wide enough that the WHOLE section line paints, so no asserted clause is cut.
+ *
+ * D-18 + CodeRabbit #4 made `SECTION_NOTICE` ~1.4k columns; the old 560 was chosen for a 315-column
+ * sentence, so every clause past the cut was invisible while the fixture claimed otherwise. The width
+ * is DERIVED from the sentence rather than re-guessed, and the self-test proves both directions (560
+ * truncates, this width does not).
+ */
+const PANE_WIDTH = Math.max(560, SECTION_LINE.length + 40)
 /** The pane height, kept at the lane's original 50 rows so the number of visible transcript rows is unchanged. */
 const PANE_HEIGHT = 50
 
@@ -150,6 +177,11 @@ export interface SurfaceRow {
   readonly pattern: RegExp
   /** Every pattern that must match in the SAME capture; overrides `pattern` when present. */
   readonly allPatterns?: readonly RegExp[]
+  /**
+   * Patterns that must NOT appear in the judged text (D-18: the retired blanket "no restart"
+   * sentence). A hit makes the row UNRENDERED, so a claim the product deleted cannot quietly return.
+   */
+  readonly absentPatterns?: readonly RegExp[]
   /** The structural store proof a `source: "store"` row must ALSO satisfy; ignored by pane rows. */
   readonly storeProof?: StoreProof
   /** Human-readable statement of what a match proves, recorded per result. */
@@ -184,6 +216,8 @@ export interface SurfaceResult {
   readonly missingPatterns: string[]
   /** The structural store proof that did NOT hold, stringified; `[]` for pane rows that declare none. */
   readonly missingProof: string[]
+  /** The RETIRED sentences the capture did show; empty when the row rendered. */
+  readonly foundRetired: string[]
   /** True when at least one pattern was required and every one of them matched. */
   readonly rendered: boolean
   /** Number of characters the store half of the judged text carried, `0` for pane rows. */
@@ -289,13 +323,33 @@ export const SURFACES: readonly SurfaceSpec[] = [
   {
     surface: "tuiSettingsSections", step: "settings", source: "pane", keys: ["/settings", "Enter"], waitMs: 8000,
     pattern: /MPD 插件包|MPD bundle/,
+    // CodeRabbit #8: the row used to pin a PREFIX of the disclosure, which proves almost nothing. Every
+    // MATERIAL clause is named: where a save persists, each live knob group, the one-way toggle, each
+    // mount-captured group, the boot wait, and the not-lost clause.
     allPatterns: [
       /MPD 插件包|MPD bundle/,
-      /a save writes <workspace>\/\.mpd\/mpd\.jsonc for the live session workspace\(s\)/,
-      /takes effect in the RUNNING process — no restart/,
+      /persists in the HOST's settings document/,
+      /writes NO \.mpd\/mpd\.jsonc/,
+      /<workspace>\/\.mpd\/mpd\.jsonc write happens only on a host that still serves the RETIRED legacy/,
+      /take the new value in the RUNNING process/,
+      /teamModels\.slot\*/,
+      /modelchain\.\*/,
+      // `watchdog.*` is NOT a live group (T20-F2): the row pins its scope-qualified EXCEPTION instead.
+      /EXCEPTION: the watchdog's knobs are re-read every tick from the row config and the \.mpd\/mpd\.jsonc FILE layer/,
+      /a hand edit reaches them and a save from this form never does/,
+      /team\.stateDir/,
+      /team\.gate/,
+      /team\.sensitivity/,
+      /captain\.investigation/,
+      /delegation\.gate/,
+      /tui\.dashboardKey is live ONE WAY/,
+      /captured by their plugins at mount/,
+      /hashline\.\*.*commentChecker\.\*.*ulw\.\*.*memory\.\*.*boulder\.dir.*goal\.\*/,
       /never lost/,
     ],
-    label: `the /settings section rendered WITH its bridge+no-restart+never-lost disclosure (pane widened to ${PANE_WIDTH} so the hint is not cut)`,
+    // The retired BLANKET sentence must never come back on the rendered surface.
+    absentPatterns: [/takes effect in the RUNNING process — no restart/],
+    label: `the /settings section rendered WITH its bridge+live-groups+captured-groups+never-lost disclosure (pane widened to ${PANE_WIDTH} so no clause is cut)`,
   },
   { surface: "tuiDialogs", step: "dialog", source: "pane", pre: ["Escape"], keys: ["M-w"], waitMs: 8000, pattern: /mpd workmates/, label: "the managed select dialog appeared" },
 ]
@@ -328,18 +382,21 @@ export function evaluateSurfaces(panes: readonly PaneText[], surfaces: readonly 
     const required = surface.allPatterns ?? [surface.pattern].filter((entry) => entry !== undefined)
     // The required patterns this capture did not match, stringified for the report.
     const missing = required.filter((entry) => !entry.test(text)).map((entry) => String(entry))
+    // The retired patterns the capture DID show: any hit keeps the row unrendered.
+    const foundRetired = (surface.absentPatterns ?? []).filter((entry) => entry.test(text)).map((entry) => String(entry))
     // The structural store proof a store row additionally declares; absent for every pane row.
     const missingProof = surface.source !== "store" || surface.storeProof === undefined || store === undefined
       ? []
       : storeProofFindings(store, surface.storeProof, surface.step)
     // A row renders only when it required at least one pattern, matched every one, and satisfied its proof.
-    const rendered = required.length > 0 && missing.length === 0 && missingProof.length === 0
+    const rendered = required.length > 0 && missing.length === 0 && missingProof.length === 0 && foundRetired.length === 0
     results.push({
       ...surface,
       pattern: String(surface.pattern),
       requiredPatterns: required.map((entry) => String(entry)),
       missingPatterns: missing,
       missingProof,
+      foundRetired,
       rendered,
       sourceChars: storeText.length,
       paneChars: paneText.length,
@@ -490,7 +547,9 @@ function fixturePanes(): PaneText[] {
     { name: "cmd-panel", text: "> /mpd panel\n" },
     { name: "scene", text: "MPD board\n team: none\n q/Esc to close\n" },
     { name: "renderer", text: "mpd board\n board opened via command at 2026-09-15T00:00:00.000Z\n" },
-    { name: "settings", text: "插件设置\n ╭─ MPD 插件包 (mpd) ─╮\n │ ❯ 行内 diff 上限  20000 │\n  mpd.jsonc hashline.maxDiffChars — a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect in the RUNNING process — no restart: the config service re-resolves on every settings save and on a watched edit of the project file, and the model routes (teamModels, agentRoutes, modelchain) are read per use, so the next spawn or resolve carries them the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — only the file write waits for exactly one live session   Enter\n" },
+    // Built from the shipped constants and clipped at PANE_WIDTH, so the reference pane is what a
+    // real pane of this width would paint — not a longer poem the host would ellipsize.
+    { name: "settings", text: "插件设置\n ╭─ MPD 插件包 (mpd) ─╮\n │ ❯ 行内 diff 上限  20000 │\n  " + paneClip(SECTION_LINE, PANE_WIDTH - 4) + "   Enter\n" },
     { name: "dialog", text: "mpd workmates\n qa-tui-probe\n" },
   ]
 }
@@ -572,6 +631,27 @@ function selfTest(): void {
   // The engine re-run with ONLY an expectation that cannot appear; it must go red.
   const control = evaluateSurfaces(fixturePanes(), [], [{ surface: "negative-control", step: "boot", source: "pane", pattern: /MPD-PANELS-CONTROL-CANNOT-APPEAR/, label: "impossible expectation" }], storeFixture)
   check(!control.ok, "the negative control must fail on an expectation that cannot appear")
+
+  // THE RETIRED-SENTENCE CONTROL (D-18): an `absentPatterns` row matches the reference panes, so the
+  // new field must be able to REDDEN — otherwise the settlement row could hide a returned claim.
+/** A probe row that requires a phrase the settings pane carries and forbids one it also carries. */
+  const retiredProbe = { surface: "retired-sentence-control", step: "settings", source: "pane" as const, pattern: /MPD 插件包|MPD bundle/, allPatterns: [/MPD 插件包|MPD bundle/], absentPatterns: [/never lost/], label: "a retired sentence the settings pane still shows" }
+  /** The probe's verdict on the reference panes, which must be RED with exactly one retired hit. */
+  const retiredHit = evaluateSurfaces(fixturePanes(), [], [retiredProbe], storeFixture)
+  check(!retiredHit.ok && (retiredHit.results[0]?.foundRetired.length ?? 0) === 1, "the absentPatterns field must REDDEN a row whose retired sentence is present")
+/** The same probe with a sentence the pane does NOT carry: it must stay green. */
+  const retiredClear = evaluateSurfaces(fixturePanes(), [], [{ ...retiredProbe, absentPatterns: [/MPD-PANELS-CONTROL-CANNOT-APPEAR/] }], storeFixture)
+  check(retiredClear.ok, "absentPatterns must NOT redden on a sentence the capture never showed")
+
+  // THE PANE-WIDTH MODEL (CodeRabbit #9): the fixture is clipped like a real pane, and the width must be
+  // wide enough that no asserted clause is cut — the two directions are both proven here, so neither a
+  // widened reality nor an un-truncated fixture can drift silently again.
+/** The section line as a 560-wide pane would paint it, which MUST lose text. */
+  const at560 = paneClip(SECTION_LINE, 560)
+  check(at560.length < SECTION_LINE.length && at560.endsWith(" …"), "the pane model must TRUNCATE the section line at 560 columns (the fixture is no longer longer than reality)")
+/** The section line as the lane's own width paints it, which must be complete. */
+  const atLaneWidth = paneClip(SECTION_LINE, PANE_WIDTH - 4)
+  check(atLaneWidth === SECTION_LINE, `PANE_WIDTH (${PANE_WIDTH}) must be wide enough to paint every asserted clause un-truncated`)
 
   // THE MODEL-ECHO SCOPE: a warm root's neighbour record must be out of scope, its OWN record must not.
   const neighbour: UserMessageRecord = { sessionId: "old", seq: 1, text: "/mpd workmates" }

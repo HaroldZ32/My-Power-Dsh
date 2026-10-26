@@ -1,0 +1,9 @@
+ok    cordis-in-dependencies: expected rule cordis-dependency fired; clean control green
+ok    cordis-in-optionalDependencies: expected rule cordis-dependency fired; clean control green
+ok    cordis-scoped-in-peerDependencies: expected rule cordis-dependency fired; clean control green
+ok    postinstall-script: expected rule lifecycle-script fired; clean control green
+ok    prepare-script: expected rule lifecycle-script fired; clean control green
+ok    version-coherence: expected rule version-coherence fired; clean control green
+ok    component-ref: expected rule component-ref fired twice; clean control green
+ok    component-ref vacuity: an unreadable / versionless / ref-less document is REFUSED, never blessed
+self-test PASS (7 arms, each with a clean control; the component-ref arm also refuses its three vacuous shapes)

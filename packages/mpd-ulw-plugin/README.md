@@ -17,9 +17,20 @@ An activated ULW run asks the user nothing:
 
 1. **Triage first** — an unclear objective, or an investigate-then-execute task, gets one
    normal-MPD investigation round before the gate, a team, or the loop.
-2. **The same complexity gate** — the run evaluates the session-start predicate: an
-   explicit `team:` / `!team` flag OR any matched signal (A explicit flag, B deliverable
-   verbs, C enumerated steps, D an existing `.mpd/plans` artifact). Never a second predicate.
+2. **The same complexity gate — evaluated MECHANICALLY before the directive is injected.** The run
+   reads the SAME frozen predicate (`evaluateComplexityGate`) with the SAME `team.sensitivity`
+   threshold row (`resolveSensitivity`; absent or unknown reads `easy`, the default) and the same
+   inputs the session-start gate uses: signal **A** the explicit `team:` / `!team` flag; **B**
+   distinct deliverable verbs; **C** THREE sub-signals, each scored against the row's own threshold —
+   enumerated lines (numbered / bulleted / table rows), distinct action verbs, and clauses that OPEN
+   with an action verb — of which at least `cSubSignals` must hold; **D** an ACTIVE boulder work
+   (`readBoulderGate`'s `active` — a `.mpd/plans` FILE is not a signal); **E** BOTH the row's
+   Han-character threshold AND its distinct action-verb threshold (the same count C2 reads); **F**
+   large-workspace scale (`readWorkspaceScale`, `easy` row only). On the `easy` row: C1/C2/C3 at ≥ 2
+   each with 2 of the 3 holding, and E at ≥ 24 Han characters AND ≥ 2 distinct action verbs — every
+   row's numbers are in `SENSITIVITY_THRESHOLDS`. Never a second predicate. `team.gate: off` returns
+   BEFORE the predicate runs; a fired gate under `mechanical` stages the plan shell, while `advisory`
+   reports the verdict and stages nothing.
 3. **A team when warranted** — a fired gate (or genuinely complex work) means the run stages the
    team ITSELF, and the DEFAULT is the staged-plan path: `agent_teams_plan` with `add_member` per
    roster member, then `create_task` for each DAG node (carrying its dependency answer), then

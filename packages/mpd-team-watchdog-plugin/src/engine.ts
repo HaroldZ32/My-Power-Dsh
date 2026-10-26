@@ -8,6 +8,22 @@
 // paused a healthy team (measured on our own team). The POST stamp keeps its W-9 semantics
 // (completion, never before dispatch); the PRE stamp is what makes the pair readable.
 //
+// KNOB SOURCES (measured, reviewer T20-F2 / AMENDMENT 6 — do not restate this as "live"): the engine
+// takes its knobs from THREE layers, re-read together by `refreshKnobs` at apply, on a settings
+// `document-updated` for the LEGACY `mpd` namespace, and once per tick:
+//   1. the row config (the defaults layer);
+//   2. `<workspace>/.mpd/mpd.jsonc`, parsed by `config-file.ts` on EVERY call — this is the layer that
+//      is genuinely live: a hand edit reaches a running watchdog and, when the file moved and the
+//      namespace did not, its stated leaves WIN;
+//   3. `dsh.settingsReader("mpd")` — the LEGACY settings namespace, which `mpd-config`'s
+//      `settingsRegister("mpd", …)` is REFUSED on the pinned harness (it warns "the namespace-registry
+//      model is RETIRED"), so this read normally answers nothing.
+// CONSEQUENCE, and the reason the settings disclosure names `watchdog.*` as an EXCEPTION rather than a
+// live group: this package never reads the config service (`mpdConfig` / the `mpd-config` ENTRY
+// document) and subscribes `onSettingsDocumentUpdated("mpd", …)`, which an entry-config SAVE never
+// fires. A settings-FORM save therefore does not reach these knobs at all; only a hand-edited file (or
+// a changed row config) does.
+//
 // Everything the engine touches goes through the adapter or the plugin's own
 // store; nothing here reaches a harness service directly (AGENTS.md §6). The
 // engine is a plain class so a test or a lane can drive `tickOnce(now)` with an
@@ -347,8 +363,12 @@ export class WatchdogEngine {
   }
   /**
    * T-18 (wave 2, user ruling): the knob layers as LAST OBSERVED, so the engine can tell a file
-   * edit from a settings edit and let the layer that MOVED win (the settings front door stays the
-   * tie-breaker, and the mount-time rule is unchanged: the resolved namespace is authoritative).
+   * edit from a settings edit and let the layer that MOVED win.
+   *
+   * SCOPED BY THE HOST (T20-F2): the namespace tie-breaker is only meaningful where the legacy `mpd`
+   * namespace is SERVED. On the pinned harness that registration is refused, so the namespace read
+   * answers nothing and the FILE layer is what actually moves — i.e. the layer that reaches a
+   * running watchdog is the hand-edited `.mpd/mpd.jsonc`, never a settings-FORM save.
    */
   private readonly layerDigests: { namespace: string | null; file: string | null } = { namespace: null, file: null }
   /** Whether both layer digests have been observed at least once (the mount call seeds them). */
@@ -460,10 +480,9 @@ export class WatchdogEngine {
    * Re-read the knob set (called at apply, on `settings/document-updated`, and once per tick).
    *
    * T-18 (wave 2, user ruling): `knobs are DATA, so T-21's module-cache limit does not apply`.
-   * The namespace VALUE is the frozen part — a settings registration resolves a snapshot at mount
-   * and a `.mpd/mpd.jsonc` edit reaches it only at the next boot (`mpd-config`'s own note). The
-   * window's OWN file is parsed live by `config-file.ts` on every call, so this method lets the
-   * layer that MOVED win:
+   * The namespace VALUE is the frozen part of the read (and on the pinned harness it is EMPTY: the
+   * legacy `mpd` registration is refused, see the header). The window's OWN file is parsed live by
+   * `config-file.ts` on every call, so this method lets the layer that MOVED win:
    *
    *   * the settings namespace moved and the file did not  ⇒ the settings front door wins;
    *   * the FILE moved and the namespace did not           ⇒ the file's stated leaves win, live,

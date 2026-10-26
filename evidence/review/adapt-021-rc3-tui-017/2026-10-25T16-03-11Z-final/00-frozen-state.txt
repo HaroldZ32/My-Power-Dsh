@@ -1,0 +1,82 @@
+measure_moment_utc=2026-10-25T16:03:11Z
+HEAD=faa273f5fa3a6d82e7ee53a4ca47062d98dc08bc
+branch=release/v0.15.5
+ M AGENTS.md
+ M CHANGELOG.md
+ M README.md
+ M README.zh-CN.md
+ M VENDOR_LOCK.json
+ M bun.lock
+ M docker/README.md
+ M docker/README.zh-CN.md
+ M docker/docker-compose.yml
+ M docker/entrypoint.sh
+ M docker/tui-lane.sh
+ M docker/ui/docker-compose.yml
+ M docker/ui/entrypoint.sh
+ M docs/development.md
+ M docs/development.zh-CN.md
+ M docs/tui.md
+ M docs/tui.zh-CN.md
+ M docs/user-guide.md
+ M docs/user-guide.zh-CN.md
+ M dsh-distribution.json
+ M dsh-plugin.json
+ M package.json
+ M packages/mpd-better-sidebar-host/README.md
+ M packages/mpd-better-sidebar-host/README.zh-CN.md
+ M packages/mpd-better-sidebar-host/src/index.ts
+ M packages/mpd-tui-adapter-plugin/src/index.ts
+ M packages/mpd-tui-plugin/README.md
+ M packages/mpd-tui-plugin/README.zh-CN.md
+ M presets/mpd.patch.yml
+ M skills/dsh-qa/SKILL.md
+ M skills/dsh-qa/scripts/install-dependencies.ts
+ M skills/dsh-qa/scripts/lib/tui-lane.ts
+ M skills/dsh-qa/scripts/tui-admission.ts
+ M skills/dsh-qa/scripts/tui-deps-ctrla.ts
+ M skills/dsh-qa/scripts/tui-keeper-standdown.ts
+ M skills/dsh-qa/scripts/tui-mount.ts
+ M skills/dsh-qa/scripts/tui-panels.ts
+ M skills/dsh-qa/scripts/tui-team-surface.ts
+--- sha256 of every modified tracked path ---
+e3374d4c1168ccd43499d614cfa22b1ffb871fabe9df5b5c0c10308c05d0c413  AGENTS.md
+051da30a231618003f1b52d7883e9e5550ad0a5dfb4c8a0bbbea5039e48ce762  CHANGELOG.md
+f885f82aa0e0a6f6088223580142cba798531b4983c8fb35ceb894ebc25d674c  README.md
+f2544497b3ba80861e6f7fe8cddaa33c5623d2fcd66ab0d361980c21aa70f4eb  README.zh-CN.md
+1b17facb32155f13ff43b3fd8cca5b0df1a8d1b2e7f95145462c6ac03d66927c  VENDOR_LOCK.json
+e773571340b03528fe6b6239e6c3f1a92d8e052351a7ac9caba4ca9c514fc9a4  bun.lock
+7cacc5f30bcd95ea4b0d3c55b2a27a775362ba30e1f752d42d7238338c5d1da1  docker/README.md
+fa5455fd3e9247080167c576609a239140fd777003c610ac3b032e6655541ea6  docker/README.zh-CN.md
+3501dfcde9ec35f143e9f921665ec2ffeaed41aa933d96191d383cecf5ae6a31  docker/docker-compose.yml
+8c9eaaf76a0396fdba4f3527aaa6e5d2fb885e9112531be1c5947a09539b449f  docker/entrypoint.sh
+d4d2a25bad7abcb14df28b70780085effb10f571a5c22d69906cb780ae1429fe  docker/tui-lane.sh
+f69de4ef10d0c7a5f75832309a058cf5a8e95ce2f1d0081ae479a901cea56d56  docker/ui/docker-compose.yml
+90a01e81c475818398d3edde5b6d2c22c05905d2ca5994d71b1686b81f92f5b4  docker/ui/entrypoint.sh
+869603e2d6a8700f852d67946b2a46c2c603423f843cb86d81aaf83990faef38  docs/development.md
+57e7fafa5db4cc7b94840c3e2b3935ce5c6f2330fe82fa20dbab1c4bf406a997  docs/development.zh-CN.md
+8bc21650ca3619b253a1983c343ebb6af0c602e77d8689b451d18208975ba0a4  docs/tui.md
+acce53922b0144c208100a8ea1e2ec5df2d90904dc625922e32cb8004ffb0f5e  docs/tui.zh-CN.md
+822f139c5a60f2e55c246c9876e55d4bd1c915850fc33f14753761dc23078437  docs/user-guide.md
+53e44f72f95f82539b828aa3e37cdb2e30ffd16d403e83c97c8ef77765e03c2e  docs/user-guide.zh-CN.md
+bf6bb4a08ce9b4af17dd483ceaefa4504811795d8e583c30b45c9bc77a31dbf1  dsh-distribution.json
+f45edf5244a72fcad869940bba0dcdd904ccc5af44734d1f976ea5a59c2db852  dsh-plugin.json
+53704a4a62eddac27209f13162664fe64aca6fe0907a117778b1cdf7e9ed371d  package.json
+cffa6f852cbae8e23e157fc3e397b8f7cb60355853fdfdc0b609542385729dd4  packages/mpd-better-sidebar-host/README.md
+685441b1fae238f69b57633349321a7ed5ec2d6f67786e6447215a23be12d359  packages/mpd-better-sidebar-host/README.zh-CN.md
+fc8efd18156165c56bd95b53ce1238bff35c8b7574d325d282f5abe24f25e16e  packages/mpd-better-sidebar-host/src/index.ts
+c3249830b7da9ca8adae649bd432d80819d7471b750d297061bd6c291170c70c  packages/mpd-tui-adapter-plugin/src/index.ts
+11c4bb2deb8ef7b7b3fcf9be593feec18d2a997dac9fe99954d57a21655d3a74  packages/mpd-tui-plugin/README.md
+f9c3b665643c7faa19e0323badd996244011682f38c5f19db2eb271c8e9bd73a  packages/mpd-tui-plugin/README.zh-CN.md
+e45883ef298d4c288acedd8e76c370cb5fb0020b672941dba64fb626c8db98d2  presets/mpd.patch.yml
+6cc396a7224661c5a263def30f0e36ec0e14b2ba4f6784433e25d7bc0a0e81f2  skills/dsh-qa/SKILL.md
+cbb8ecc6992b84df68bbd30b48f7dac618ea30b5f463a138f7235d4f3ec08f45  skills/dsh-qa/scripts/install-dependencies.ts
+7df44084e15450e0fdce7df4992d0bb1f2d6ce85f3d51d6f7dda24f9742a2b21  skills/dsh-qa/scripts/lib/tui-lane.ts
+9ce09d7f6c47cbaa6e47e5450dbc5becdb385b68d57d5d442b0b740971797619  skills/dsh-qa/scripts/tui-admission.ts
+bb836e48a4cb6b553884ee0b551a973bedc05c314fc6cf278faf63703c270848  skills/dsh-qa/scripts/tui-deps-ctrla.ts
+dd326b90b7fff1359f9b1da6df09d6aec1b789aa324b279c24b5ba70f4278814  skills/dsh-qa/scripts/tui-keeper-standdown.ts
+34d3da128d138dc0805c2cf0edc35b9b2cf4742b6aa300aea5088a1322dc4bbb  skills/dsh-qa/scripts/tui-mount.ts
+eda16459a3e307c0d4e533918780f9ae25766781ab93a9e03e07e6d4e8f8067d  skills/dsh-qa/scripts/tui-panels.ts
+3b20b3e8ec847c94add5cb718f6b2c36d8926b6f4217a87bf44a45d14985edc1  skills/dsh-qa/scripts/tui-team-surface.ts
+--- aggregate ---
+64da200f2f5d31e1a8ef91786ce3f9f78fcf18cf4b246bbfb1ea2de3aa8bea50  -

@@ -58,8 +58,12 @@ workspace.
 |---|---|---|
 | `autoInit` | boolean | `true` |
 | `initTimeoutMs` | number | `60000` |
-| `cooldownMs` | number | — |
+| `cooldownMs` | number | `900000` (`15 * 60_000`, i.e. 15 minutes) |
 | `binary` | string | resolved per above |
+
+`cooldownMs` is the window after a failed `codegraph init` during which the next attempt is skipped —
+`cooldownFresh` compares the `.codegraph/init.cooldown` stamp's age against it, so a broken binary
+cannot retry on every boot.
 
 ## Env
 

@@ -342,7 +342,13 @@ function cleanLegacyCopies(ctx: Ctx, corpus: string, presets: string, config: Co
         ids = readdirSync(presets)
           .map((entry) => (entry.endsWith(".patch.yml") ? entry.slice(0, -".patch.yml".length) : entry))
           .filter((id) => id === "mpd" || id.startsWith("mpd-"))
-      } catch { ids = [] }
+      } catch (error) {
+        // Non-fatal by design: the migration then finds no shipped preset ID to remove. But a boot log
+        // must be able to explain WHY no legacy preset copy was taken, so the directory and the error
+        // are both named instead of the failure disappearing.
+        warn(ctx, `legacy preset cleanup: could not list ${presets}: ${String((error as Error)?.message ?? error)}`)
+        ids = []
+      }
       for (const id of ids) {
         // One stamped home preset copy: the ID SET comes from the bundle's own presets dir, never from the home, so a user dir named like a shipped preset is matched too.
         const target = join(harnessHome(), ".agent-presets", id)

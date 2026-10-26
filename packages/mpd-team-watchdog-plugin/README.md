@@ -235,12 +235,25 @@ nothing to wait for).
 
 ### The knobs
 
-The `mpd` settings namespace is the live authority; the row config is the defaults
-layer. All of them are re-read **on every tick** and on `settings/document-updated`, so a
-live edit takes effect without a host restart, and a cadence change replaces the single
-tick interval. The per-tick re-read is deliberate: the `mpd` namespace is registered
-*deferred* (mpd-config parks its registration on the settings service), so a row that
-applied first would otherwise sit on its own defaults until somebody edited settings.
+The knobs resolve from three layers: **this row's own config** in the bundle patch (the DEFAULTS layer
+— the WATCHDOG row, not the config row), the settings read through the adapter —
+`settingsReader("mpd")`, which on the pinned harness is **unserved** because `settingsRegister("mpd",
+…)` is REFUSED (`settingsModelRetired`) and nothing registers a namespace, and the workspace
+`.mpd/mpd.jsonc` FILE layer, observed live and overlaid when it is the layer that moved. All of them
+are re-read **on every tick**, and on a `settings/document-updated` for the legacy `mpd` NAMESPACE
+(retired here, so that event never fires), so a change that reaches a layer
+takes effect without a host restart, and a cadence change replaces the single tick interval. The
+per-tick re-read is deliberate: the settings value is not a mount-time snapshot and nothing guarantees
+it arrives before this row applies, so a row that applied first would otherwise sit on its own defaults
+until a layer it reads changes.
+
+**On the pinned harness a settings-FORM save does not reach these knobs.** The two front doors write
+the CONFIG row's own config — the `mpd-config` entry document (`ENTRY_CONFIG_ID`), persisted by the
+host — while THIS row reads neither that document nor a served namespace: it asks for the `mpd`
+namespace and gets nothing. A save made in the TUI `/settings` section or the Web card therefore
+leaves these values alone; what actually changes them is this row's own patch config, or a hand-edited
+`<workspace>/.mpd/mpd.jsonc` (the FILE layer, live). That is a recorded CODE gap, not a claim that the
+settings half is live.
 
 | Knob | Default | Meaning |
 |---|---|---|
@@ -255,9 +268,13 @@ applied first would otherwise sit on its own defaults until somebody edited sett
 These numbers are the frozen §3 table: they appear in `machine.ts`'s `WATCHDOG_DEFAULTS`,
 in this row's own `Config` schema and in the bundle patch's row config, and the three layers
 must agree exactly. The declaration of the first five in `mpd-config`'s schema and in the Web
-card's own `FIELDS` list belongs to **those packages, not here**; the knobs are read through
-the `mpd` namespace and, because schemastery keeps unknown keys, a knob is readable and
-settable from the namespace (and from this row's config) before that declaration lands.
+card's own `FIELDS` list belongs to **those packages, not here** — and it is about the FRONT DOORS,
+not about whether this row can see a value: a knob is readable and settable before that declaration
+lands through this row's own config (the defaults layer) and through the workspace `.mpd/mpd.jsonc`
+file layer that `config-file.ts` parses on every re-read. On a host that still serves the legacy `mpd`
+namespace the same holds there too, because its schemastery schema keeps unknown keys; on the pinned
+harness nothing registers that namespace, so the row config and that file are the pre-declaration
+surfaces that actually exist.
 `holdTtlMs` is declared, resolved AND consumed on this row: a hold persisted by a `pause`
 escalation carries it, and T-17's auto-release path lifts the pause when the bound elapses (or
 when the team produces a stamp newer than `since`), with a durable `hold-auto-released` record.
@@ -340,11 +357,18 @@ kept so a consumer's payload shape is unchanged).
 
 ### §7.2/§7.3 — the knobs' live value vs the FILE's
 
-`.mpd/mpd.jsonc` reaches a process's `mpd` namespace **once, at mount**: a file edit is invisible
-until the next `dsh` boot. The status view therefore prints, per knob, the **live** value the
+The SETTINGS value a process reads is a snapshot taken at mount, but `.mpd/mpd.jsonc` is not: the
+workspace file is parsed on every re-read (`config-file.ts`), and `refreshKnobs` lets the layer that
+MOVED win — a file edit with no settings write in the same window is applied **live, in this process,
+with no restart** (the measured T-18 case), while a settings write outranks a file that did not move.
+What remains is the honest residue: when the process is NOT using a value the file states (a file edit
+that landed in the same observation window as a settings write, or values that arrived before this
+process observed them), the status view prints, per knob, the **live** value the
 process is running with and the **file** value when it differs, plus a `restartRequired` boolean
 (`warnSilenceMs=7200000 (file 900000, restartRequired)`); the engine logs ONE warning per process
-naming both values the first time it sees a divergence (`KNOBS DIVERGE (§7.3) … `). The file is
+naming both values the first time it sees a divergence (`KNOBS DIVERGE (§7.3) … `), and the line says
+whether the file layer was applied for its OTHER values — in which case these particular knobs wait
+for the next `dsh` boot. The file is
 read from the workspace (never `DSH_HOME`) with a tolerant JSONC reader — comments, a trailing
 comma, a missing file or a malformed document all degrade to "the file states nothing", which can
 only ever suppress a divergence report, never invent one.
@@ -431,8 +455,9 @@ unreachable).
   a member wedged *inside* one is reported (a `tool-expired` incident once the bound passes) and
   never escalated or paused. Stated in the bound section above, and it is the price of not pausing
   healthy teams for running real work.
-* **`toolInFlightMaxMs` is not in the front-door declaration yet.** It is read through the `mpd`
-  namespace and the row config like the other knobs, but `mpd-config`'s schema/`FIELDS` row lives in
+* **`toolInFlightMaxMs` is not in the front-door declaration yet.** It is read through the row config
+  (the defaults layer) and the `.mpd/mpd.jsonc` file layer like the other knobs — and, on a host that
+  still serves it, the legacy `mpd` namespace — but `mpd-config`'s schema/`FIELDS` row lives in
   that package, so the two front doors do not render it until that declaration lands.
 * **An in-flight turn is not aborted.** The hold stops new dispatch; only a real chat
   interrupt ends a wedged turn. A member that recovers after ESCALATE finds the team held

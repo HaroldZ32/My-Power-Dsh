@@ -12,6 +12,7 @@ import * as configNamespace from "../src/index"
 import {
   BRIDGE_DISCLOSURE,
   BRIDGE_NOT_LOST,
+  BRIDGE_RESTART_LIMIT,
   BRIDGE_SECTION_NOTICE,
   SETTINGS_KNOBS,
   SettingsSchema,
@@ -220,8 +221,10 @@ describe("A3 — twelve knobs in the ONE declaration, in slot order", () => {
       expect(hint).not.toContain(BRIDGE_NOT_LOST)
       for (const member of KNOWN_CLASSES[String(knob.path[1])]) expect(hint).toContain(member)
     }
-    // ...and the one place that DOES state it.
+    // ...and the one place that DOES state it — BOTH halves of the timing truth (D-18), never just
+    // the promising one, then the not-lost clause.
     expect(BRIDGE_SECTION_NOTICE).toContain(BRIDGE_DISCLOSURE)
+    expect(BRIDGE_SECTION_NOTICE).toContain(BRIDGE_RESTART_LIMIT)
     expect(BRIDGE_SECTION_NOTICE).toContain(BRIDGE_NOT_LOST)
     // Vision Analyst is slot 4's member and the slots 1-3 sentences say which slot drives it.
     expect(String(slotKnobs[3].hint)).toContain("Vision Analyst")

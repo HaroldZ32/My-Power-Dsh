@@ -220,14 +220,22 @@ script — so an install never executes code from the package. Everything a user
 MCP launchers) is inside the allowlist; the frozen `evidence/` tree is not.
 
 ```bash
-npm publish --dry-run     # the whole publish path, minus the upload
-npm publish --access public
+npm pack --dry-run        # the whole tarball, minus the upload
 ```
 
-`npm publish --dry-run` prints the tarball summary (name, version, file count, packed size) and stops
-before the upload, so it is the check to run in a review. `node scripts/verify-plugin-manifest.ts
+`npm pack --dry-run` prints the tarball summary (name, version, file count, packed size) and writes
+nothing, so it is the check to run in a review. `node scripts/verify-plugin-manifest.ts
 --pack` asserts the same property from the other side: npm's own packlist carries every path a plugin
 row names.
+
+**Publishing is the workflow's job, never a local command.** `.github/workflows/publish.yml` is the one
+publish path: a `v*` tag push packs the tree and runs `npm stage publish --access public` — a STAGE, so
+the version is not public yet and `latest` has not moved — and a human then runs `npm stage approve
+<stage-id>`, which publishes it and applies the dist-tag. That approval is a SECOND
+`workflow_dispatch` of the same workflow with `stage_id` set to the id the run printed (`npm stage
+list`): the run's OIDC token can stage but cannot approve, because approval carries the 2FA
+proof-of-presence. Approve in ascending version order — approving an older stage last would move
+`latest` backward — then confirm the registry actually serves the version before announcing it.
 
 ## Submitting a pull request
 

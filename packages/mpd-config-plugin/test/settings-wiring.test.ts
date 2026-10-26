@@ -327,7 +327,10 @@ describe("read-in precedence (design §1.1/§10.4, U12)", () => {
     apply(h.ctx)
     expect(h.provided.mpdConfig.get("bridge")).toBeUndefined()
     expect(h.provided.mpdConfig.get()).toEqual({ ulw: { maxRounds: 9 } })
-    expect(h.provided.mpdConfig.states().applies).toBe("live") // U17
+    // D-18: the namespace answer is "restart" (the host's `applies` is PER NAMESPACE and both
+    // registrations say restart; the RESOLVED value still reaches the process — that is the
+    // `BridgeReport.applies` field, a different surface).
+    expect(h.provided.mpdConfig.states().applies).toBe("restart") // U17
   })
 
   test("with the namespace unserved the file layers still resolve (degraded, not fatal)", () => {

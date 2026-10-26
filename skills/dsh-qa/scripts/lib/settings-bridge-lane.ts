@@ -376,9 +376,15 @@ export function evaluateBridge(observed: BridgeObserved): LaneVerdict {
   if (mode === "static") {
     // The built TUI bytes, empty when the caller measured none.
     const dist = String(observed.tuiDist ?? "")
-    add("S1", dist.includes("a save writes <workspace>/.mpd/mpd.jsonc"), "the built TUI bytes carry the bridge disclosure")
-    add("S2", dist.includes("takes effect in the RUNNING process"), "the built TUI bytes carry the LIVE half of the disclosure (wave fix/model-config-live-refresh: a save is served in-process, never 'after a restart')")
+    add("S1", dist.includes(PERSISTENCE_HALF), "the built TUI bytes carry the bridge disclosure")
+    // D-18 (audit wave 2026-10-25): the disclosure is SCOPED, so the LIVE half and the
+    // MOUNT-CAPTURED half are asserted separately — a blanket "no restart" sentence is exactly the
+    // claim the captured class contradicts, and it is pinned ABSENT below.
+    add("S2", dist.includes(TUI_DISCLOSURE_LIVE), "the built TUI bytes carry the LIVE half of the disclosure, byte-identical to the shared BRIDGE_DISCLOSURE (a save is served in-process for the knobs read per use)")
+    add("S2b", dist.includes(TUI_DISCLOSURE_CAPTURED), "the built TUI bytes carry the MOUNT-CAPTURED half too (the knobs a plugin captures at its own apply() wait for the next boot)")
     add("S3", !dist.includes("not bridged: a save here does not rewrite"), "the old 'not bridged' claim is DELETED from the built TUI bytes")
+    add("S3b", !dist.includes(TUI_BLANKET_RETIRED), "the retired BLANKET sentence is ABSENT from the built TUI bytes")
+    add("S3c", !dist.includes(TUI_FILE_PARENTHETICAL_RETIRED), "the retracted FILE parenthetical is ABSENT from the built TUI bytes (T16-F1)")
   }
 
   return { ok: checks.length > 0 && checks.every((check) => check.ok), checks }
@@ -716,6 +722,44 @@ export interface TuiSurfaceObserved {
 /** The §D.2 runtime notice the TUI prints when a settings save has no live session to write to. */
 export const TUI_NOTICE = "saved to settings — not yet written to any .mpd/mpd.jsonc (no live session)"
 
+/**
+ * The LIVE half of the settings disclosure, BYTE-COPIED from `BRIDGE_DISCLOSURE`
+ * (`packages/mpd-config-plugin/src/settings-schema.ts`).
+ *
+ * It is a copy, not an import, on purpose: this lane judges the BUILT bytes, and importing the
+ * schema module would pull a `packages/<pkg>/src` module graph into a lane whose whole subject is what
+ * the build emitted. `selfTest()` re-reads the schema source and fails when this copy drifts.
+ */
+export const TUI_DISCLOSURE_LIVE = "a save from this form persists in the HOST's settings document and writes NO .mpd/mpd.jsonc — the host owns that store and this row re-reads it on every save; a <workspace>/.mpd/mpd.jsonc write happens only on a host that still serves the RETIRED legacy `mpd` namespace, where each save's changed leaves go to the live session workspace(s). The config service re-resolves on every settings save and on a watched edit of the project file, and WHICH knobs take the new value in the RUNNING process — no restart — depends on how each one reads it: teamModels.slot*, modelchain.*, team.stateDir, team.gate, team.sensitivity, captain.investigation and delegation.gate are read per use, and tui.dashboardKey is live ONE WAY (a saved false disables the Ctrl+A takeover at once; a saved true cannot arm a takeover the row config disabled). EXCEPTION: the watchdog's knobs are re-read every tick from the row config and the .mpd/mpd.jsonc FILE layer, so a hand edit reaches them and a save from this form never does (the legacy `mpd` namespace they also read is unserved on this host)"
+
+/** The MOUNT-CAPTURED half of the same disclosure, byte-copied from `BRIDGE_RESTART_LIMIT`. */
+export const TUI_DISCLOSURE_CAPTURED = "the other half of that list, so nobody reads it as a blanket: hashline.*, commentChecker.*, ulw.*, memory.*, boulder.dir and goal.* are captured by their plugins at mount instead of reading the live config service per use, so a new value for any of them waits for the next dsh boot (the settings document receives it at once, and the file does too only on a host that still serves the legacy `mpd` namespace; each row names the key it writes)"
+
+/**
+ * The RETIRED blanket sentence (D-18, audit wave 2026-10-25). Its ABSENCE is asserted on the built
+ * bytes: a plugin that captures its knobs at `apply()` never sees a mid-process change, so this
+ * sentence is exactly the claim the mount-captured half contradicts.
+ */
+export const TUI_BLANKET_RETIRED = "takes effect in the RUNNING process — no restart"
+
+/**
+ * The RETRACTED file parenthetical (reviewer T16-F1 on PR #66): the old restart half ended
+ * "(the file and the settings document still receive it at once, …)", which contradicted the sentence
+ * before it — the default save path writes no file at all. Its ABSENCE is asserted so it cannot return.
+ */
+export const TUI_FILE_PARENTHETICAL_RETIRED = "(the file and the settings document still receive it at once"
+
+/**
+ * The PERSISTENCE half of the disclosure — the sentence CodeRabbit #4 proved was missing: a save from
+ * the default (entry-config) front door persists in the HOST's settings document and writes NO file,
+ * and only the RETIRED legacy `mpd` namespace ever wrote `<workspace>/.mpd/mpd.jsonc`. Kept as its own
+ * constant so the arms can name the claim instead of a fragment of prose.
+ */
+export const PERSISTENCE_HALF = "persists in the HOST's settings document and writes NO .mpd/mpd.jsonc"
+
+/** The not-lost clause, byte-copied from `BRIDGE_NOT_LOST` (same copy discipline as the two halves). */
+export const TUI_NOT_LOST = "the value is never lost: it is stored in the host settings document and the config layer applies it to every workspace immediately — and because this path writes no file, it never waits for a live session"
+
 /** The filesystem-writing API names the TUI package's OWN modules must never carry (check `T7`). */
 export const TUI_WRITE_APIS: readonly string[] = ["writeFileSync", "appendFileSync", "mkdirSync", "cpSync", "rmSync", "unlinkSync", "createWriteStream"]
 
@@ -774,9 +818,12 @@ export function evaluateTuiSurface(observed: TuiSurfaceObserved): LaneVerdict {
   const checks: LaneCheck[] = []
   // Record one check: `ok` is coerced, `detail` stringified, so a judge cannot push a non-boolean.
   const add = (id: string, ok: boolean, detail: string): number => checks.push({ id, ok: Boolean(ok), detail: String(detail) })
-  add("T1", dist.includes("a save writes <workspace>/.mpd/mpd.jsonc"), "the built bytes carry the bridge disclosure")
-  add("T2", dist.includes("takes effect in the RUNNING process"), "the built bytes carry the LIVE half of the disclosure (a save is served in-process, never 'after a restart')")
+  add("T1", dist.includes(PERSISTENCE_HALF), "the built bytes carry the bridge disclosure")
+  add("T2", dist.includes(TUI_DISCLOSURE_LIVE), "the built bytes carry the LIVE half of the disclosure, byte-identical to the shared BRIDGE_DISCLOSURE")
+  add("T2b", dist.includes(TUI_DISCLOSURE_CAPTURED), "the built bytes carry the MOUNT-CAPTURED half too (the knobs captured at a plugin's own apply())")
   add("T3", !dist.includes("not bridged: a save here does not rewrite"), "the old 'not bridged' claim is DELETED from the built bytes")
+  add("T3b", !dist.includes(TUI_BLANKET_RETIRED), "the retired BLANKET sentence is ABSENT from the built bytes")
+  add("T3c", !dist.includes(TUI_FILE_PARENTHETICAL_RETIRED), "the retracted FILE parenthetical is ABSENT from the built bytes (T16-F1)")
   add("T4", dist.includes(notice), "the built bytes carry the §D.2 no-live-session runtime notice")
   add("T5", dist.includes("NO_LIVE_SESSION_NOTICE") && dist.includes("statusLine("), "the notice is WIRED into the status-line composition, not merely defined")
   add("T6", src.includes(notice), "the notice is a single exported constant in the source (one source of truth)")
@@ -940,7 +987,7 @@ export function evaluateSettingsSectionShape(clientBytes: string | undefined, ca
   add("W2b", slot === '"settings.section"' && id === '"mpd"' && order === "20" && locale === '"mpdSettings"', "the built client names the slot " + String(slot) + " with id " + String(id) + ", order " + String(order) + ", locale " + String(locale) + ' (want "settings.section" / "mpd" / 20 / "mpdSettings")')
   add("W2c", bytes.includes('ctx.inject(["settingsScope"]'), "the section's mount is DEFERRED through ctx.inject (never a declared dependency)")
   add("W2d", bytes.includes('const REQUIRED_SERVICES = ["slots", "locale"]') && !bytes.includes('REQUIRED_SERVICES = ["slots", "locale", "settingsScope"]'), "the client still declares only the stable seams")
-  add("W2e", src.includes("a save writes <workspace>/.mpd/mpd.jsonc"), "the section's copy is the same disclosure the TUI states")
+  add("W2e", src.includes(PERSISTENCE_HALF), "the section's copy states the SAME persistence half the TUI states")
   add("W2f", !bytes.includes("settings.plugin.item"), "the PRE-MOVE `settings.plugin.item` card slot is ABSENT from the built client (the move to its own section is complete)")
   return { ok: checks.every((check) => check.ok), checks }
 }
@@ -1055,7 +1102,7 @@ export function selfTest(arm: string = "web"): void {
       files: [{ before: fixture(VALUE_WRITE), after: fixture(VALUE_WRITE) }, { before: fixture(VALUE_INITIAL), after: fixture(VALUE_INITIAL) }],
       log: '[mpd-config] settings bridge: saved to settings — NOT written to any file: 2 live workspaces, so the target is ambiguous. Candidates: /ws1, /ws2. Keep one session live, or edit that workspace\'s .mpd/mpd.jsonc directly.\n[mpd-config] settings bridge ambiguous-multi-root: {"writtenTo":[],"skipped":"ambiguous-multi-root","candidates":["/ws1","/ws2"],"results":[],"applies":"live","source":"update","revision":5}\n',
     },
-    static: { mode: "static", tuiDist: "var BRIDGE_DISCLOSURE = \"a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect in the RUNNING process — no restart: the config service re-resolves on every settings save and on a watched edit of the project file, and the model routes (teamModels, agentRoutes, modelchain) are read per use, so the next spawn or resolve carries them\";" },
+    static: { mode: "static", tuiDist: "var BRIDGE_DISCLOSURE = " + JSON.stringify(TUI_DISCLOSURE_LIVE) + "; var BRIDGE_RESTART_LIMIT = " + JSON.stringify(TUI_DISCLOSURE_CAPTURED) + ";" },
   }
   // One green artifact per mode, in the object's own insertion order.
   for (const [name, observed] of Object.entries(green)) {
@@ -1085,7 +1132,11 @@ export function selfTest(arm: string = "web"): void {
     ["A4", "ambiguous", (copy) => { copy.log = copy.log.replaceAll('"/ws2"', '"/ws-x"') }, "a structured refusal that omits a candidate"],
     ["A5", "ambiguous", (copy) => { copy.log = copy.log.replaceAll("/ws2", "/ws-x") }, "a diagnostic that does not name every candidate"],
     ["S3", "static", (copy) => { copy.tuiDist = "not bridged: a save here does not rewrite .mpd/mpd.jsonc" }, "the stale 'not bridged' claim in the built TUI bytes"],
-    ["S2", "static", (copy) => { copy.tuiDist = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s)" }, "a built TUI that dropped the LIVE half of the disclosure (the retired restart-only text)"],
+    ["S2", "static", (copy) => { copy.tuiDist = "no disclosure here" }, "a built TUI that dropped the disclosure entirely"],
+    ["S1", "static", (copy) => { copy.tuiDist = copy.tuiDist.replace(PERSISTENCE_HALF, "") }, "a dist that kept the words but dropped the save-path truth (CodeRabbit #4)"],
+    ["S2b", "static", (copy) => { copy.tuiDist = TUI_DISCLOSURE_LIVE }, "a built TUI that dropped the MOUNT-CAPTURED half (the blanket-claim regression)"],
+    ["S3b", "static", (copy) => { copy.tuiDist = TUI_DISCLOSURE_LIVE + " " + TUI_DISCLOSURE_CAPTURED + " " + TUI_BLANKET_RETIRED }, "the retired BLANKET sentence back in the built TUI bytes"],
+    ["S3c", "static", (copy) => { copy.tuiDist = copy.tuiDist + " " + TUI_FILE_PARENTHETICAL_RETIRED }, "the retracted FILE parenthetical back in the built TUI bytes"],
     ["S1", "static", (copy) => { copy.tuiDist = "nothing to see" }, "a built TUI without the bridge disclosure"],
   ]
   // One fault at a time, each starting from its own deep copy of a green artifact.
@@ -1101,16 +1152,27 @@ export function selfTest(arm: string = "web"): void {
     else if (check.ok) problems.push("self-test: injected fault is INVISIBLE to the lane — " + label + " did not flip " + id)
     if (verdict.ok) problems.push("self-test: injected fault left the overall verdict GREEN — " + label)
   }
+  // THE COPIES ARE CHECKED AGAINST THE SOURCE. This lane deliberately copies the disclosure instead
+  // of importing `packages/<pkg>/src`; the copy is only honest while it is byte-identical to the shared
+  // declaration, so the schema's own text is re-read here and a drift fails the self-test.
+/** The shared declaration's source text, the one authority for both copies. */
+  const schemaSource = readFileSync(join(REPO, "packages", "mpd-config-plugin", "src", "settings-schema.ts"), "utf8")
+  if (!schemaSource.includes(TUI_DISCLOSURE_LIVE)) problems.push("self-test: TUI_DISCLOSURE_LIVE no longer matches BRIDGE_DISCLOSURE in settings-schema.ts")
+  if (!schemaSource.includes(TUI_DISCLOSURE_CAPTURED)) problems.push("self-test: TUI_DISCLOSURE_CAPTURED no longer matches BRIDGE_RESTART_LIMIT in settings-schema.ts")
+  if (!schemaSource.includes(TUI_NOT_LOST)) problems.push("self-test: TUI_NOT_LOST no longer matches BRIDGE_NOT_LOST in settings-schema.ts")
   // The TUI arm's pure evaluator, falsified with its own injected faults.
   // The synthetic GREEN TUI surface: the built bytes carrying every required sentence.
-  const greenTui: TuiSurfaceObserved = { dist: "NO_LIVE_SESSION_NOTICE " + TUI_NOTICE + " a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s) and takes effect in the RUNNING process — no restart never lost applies it to every workspace immediately statusLine( ", src: TUI_NOTICE, notice: TUI_NOTICE }
+  const greenTui: TuiSurfaceObserved = { dist: "NO_LIVE_SESSION_NOTICE " + TUI_NOTICE + " " + TUI_DISCLOSURE_LIVE + " " + TUI_DISCLOSURE_CAPTURED + " never lost applies it to every workspace immediately statusLine( ", src: TUI_NOTICE, notice: TUI_NOTICE }
   // The verdict the synthetic green TUI surface must pass.
   const tuiVerdict = evaluateTuiSurface(greenTui)
   if (!tuiVerdict.ok) problems.push("self-test: the synthetic GREEN TUI surface must pass, failed: " + JSON.stringify(tuiVerdict.checks.filter((check) => !check.ok)))
   // The TUI-arm faults: the check id each must flip, its mutation and its label.
   const tuiFaults: readonly TuiFault[] = [
-    ["T1", (copy) => { copy.dist = copy.dist.replace("a save writes <workspace>/.mpd/mpd.jsonc", "nothing") }, "a dist without the disclosure"],
-    ["T2", (copy) => { copy.dist = copy.dist.replace("takes effect in the RUNNING process", "waits for a restart") }, "a dist that dropped the live-refresh half of the disclosure"],
+    ["T1", (copy) => { copy.dist = copy.dist.replace(PERSISTENCE_HALF, "nothing") }, "a dist without the save-path half of the disclosure"],
+    ["T2", (copy) => { copy.dist = copy.dist.replace(TUI_DISCLOSURE_LIVE, "waits for a restart") }, "a dist that dropped the live half of the disclosure"],
+    ["T2b", (copy) => { copy.dist = copy.dist.replace(TUI_DISCLOSURE_CAPTURED, "") }, "a dist that dropped the mount-captured half"],
+    ["T3b", (copy) => { copy.dist = copy.dist + " " + TUI_BLANKET_RETIRED }, "the retired blanket sentence back in the dist"],
+    ["T3c", (copy) => { copy.dist = copy.dist + " " + TUI_FILE_PARENTHETICAL_RETIRED }, "the retracted file parenthetical back in the dist"],
     ["T3", (copy) => { copy.dist = copy.dist + " not bridged: a save here does not rewrite" }, "the stale claim back in the dist"],
     ["T4", (copy) => { copy.dist = copy.dist.replace(TUI_NOTICE, "") }, "a dist without the §D.2 notice"],
     ["T5", (copy) => { copy.dist = copy.dist.replace("statusLine(", "") }, "a notice that is defined but never wired into the status line"],
@@ -1156,7 +1218,7 @@ export function selfTest(arm: string = "web"): void {
     'const REQUIRED_SERVICES = ["slots", "locale"]',
   ].join("\n")
   // The section's own disclosure text, as the shipped registration carries it.
-  const greenCardSource = "a save writes <workspace>/.mpd/mpd.jsonc for the live session workspace(s)"
+  const greenCardSource = PERSISTENCE_HALF + " — " + TUI_DISCLOSURE_LIVE
   // The verdict the synthetic green built-client shape must pass.
   const greenShape = evaluateSettingsSectionShape(greenClient, greenCardSource)
   if (!greenShape.ok) problems.push("self-test: the synthetic GREEN built-client shape must pass, failed: " + JSON.stringify(greenShape.checks.filter((check) => !check.ok)))

@@ -27,7 +27,7 @@ preset-DIRECTORY form under `packages/mpd-bootstrap-plugin/presets/` does not ex
 harness 0.1.7-rc.2 preset model is one row per preset, carrying the child list inline.) The
 specialists exist as a subagent roster (`mpd-roles-plugin`), not as presets.
 
-## Session-start team gate (binding, OPT-IN)
+## Session-start team gate (binding, ON by default)
 
 A session starts with **NO team** — a team is not a precondition of a session. The frozen predicate is
 evaluated at the session's first pre-step and carried by `mpd-roles-plugin` on the
@@ -39,15 +39,24 @@ trigger = explicit flag OR (matchedSignals >= 1)
 
 - The explicit flag (**A**) is a `team:` prefix or a token-boundary `!team`; the marker is CONSUMED, so
   it never reaches the model as goal text.
-- The soft signals are (**B**) ≥ 4 distinct deliverable verbs, (**C**) ONE signal satisfied by 2 of its
-  3 sub-signals (≥ 3 enumerated lines, ≥ 3 distinct action verbs, ≥ 3 action clauses), and (**D**) an
-  ACTIVE boulder work for the session workspace (`status: "active"` in `.mpd/boulder.json`) — a plan
-  FILE alone is NOT a signal (the retired plan-file probe fired in every session of this workspace).
+- The soft signals are read off the threshold row `team.sensitivity` selects (`resolveSensitivity`:
+  absent or unknown reads `easy`, the DEFAULT since 2026-10-22), and this is the `easy` row the shipped
+  configuration actually uses: (**B**) ≥ 2 distinct deliverable verbs, (**C**) ONE signal satisfied by 2
+  of its 3 sub-signals (≥ 2 enumerated lines, ≥ 2 distinct action verbs, ≥ 2 action clauses), (**D**) an
+  ACTIVE boulder work for the session workspace (`status: "active"` in `.mpd/boulder.json`; a plan FILE
+  alone is NOT a signal — the retired plan-file probe fired in every session of this workspace),
+  (**E**) ≥ 24 Han characters AND ≥ 2 distinct action verbs, and (**F**) workspace scale — ONE bounded
+  root listing carrying at least one project manifest, at least one conventional project directory and
+  ≥ 8 visible entries (`readWorkspaceScale`; dotfiles never count). F is evaluated on the `easy` row
+  only; `normal` (`B`=4, C 2-of-3 with each sub-signal at 3, `E`=60, `F` off) reproduces the
+  pre-2026-10-22 five-signal predicate and `strict` (`B`=6, C 3-of-3 with each sub-signal at 4, `E`=80,
+  `F` off) tightens it — all three rows live in `SENSITIVITY_THRESHOLDS`.
 - **Not triggered** → the session runs solo; no team, no notice.
 
-`team.gate` in `mpd.jsonc` selects what a TRIGGER does, resolved PER CALL: `off` (**the DEFAULT** — an
-ABSENT or unknown value reads `off`, so the ceremony is opt-in and a typo can never arm it) | `advisory`
-| `mechanical` (the only spellings that arm it are `"mechanical"` and the legacy `true`).
+`team.gate` in `mpd.jsonc` selects what a TRIGGER does, resolved PER CALL by `resolveGateMode`:
+`mechanical` (**the DEFAULT since the 2026-10-20 restore** — an ABSENT key and every UNKNOWN value,
+`"bogus"` / `0` / an object and the legacy `true` alike, read `mechanical`, so a typo can never silently
+disarm the rule) | `advisory` | `off` (only `"off"` and `false` disarm).
 
 - **mechanical** → the gate STAGES an APPROVABLE PLAN SHELL through the bundle's OWN `agent_teams_plan`
   tool — 0 members, 0 tasks, `approval: required` — and injects exactly ONE notice carrying the marker
@@ -65,7 +74,7 @@ An explicit `team:` / `!team` request is signal **A** and travels the SAME route
 stages the shell too). The gate is scoped to top-level `mpd` sessions — a subagent/member session
 (`parentSession` set) never qualifies, and neither does another preset's session — settles once per
 session, and a failure inside it leaves the step untouched. The `mpd` preset persona carries the
-matching session-start convention (the frozen notice marker, the `team.gate` knob and its opt-in
+matching session-start convention (the frozen notice marker, the `team.gate` knob and its `mechanical`
 default), so the captain behaves correctly whether or not the gate fired.
 
 **RETIRED — kept as history, not as configuration.** This section used to document the vendored
@@ -78,10 +87,14 @@ flow exists in a shipped session.
 
 The team plane's own configuration is the gate's key plus the rows' own:
 
-- `team.gate` — `off` (**the DEFAULT since the 2026-10-17 rollback**; the gate is opt-in) | `advisory` |
-  `mechanical`, read PER CALL by `mpd-roles-plugin`. The captain's three mechanical guards
-  (investigation, delegation, write) are WITHDRAWN by the same ruling; the row's boot line reports each as
-  `absent reason=…`.
+- `team.gate` — `mechanical` (**the DEFAULT since the 2026-10-20 restore**) | `advisory` | `off` (only
+  `"off"` and `false`), read PER CALL by `mpd-roles-plugin`'s `resolveGateMode`. Of the captain's three
+  mechanical guards only the WRITE guard is withdrawn — the row's boot line reports
+  `verifyGate=absent reason=…` — while `installCaptainInvestigationGuard` (`captain.investigation`,
+  `"deny"` DEFAULT | `"allow"`) and `installDelegationGate` (`delegation.gate`, `"deny"` DEFAULT |
+  `"captain"` | `"allow"`) ARE installed by the same row, and the boot line reports
+  `captainInvestigation=<mode>` / `delegationGate=<mode>` — `absent reason=…` only when the seam itself is
+  missing.
 - The official `mpd-agent-team` row carries its limits from the patch: `maxMembers: 16`,
   `maxTasks: 256`, `maxMessageBytes: 32768`, `disposalTimeoutMs: 5000`. `maxPendingMessagesPerMember` is
   GONE: harness 0.2.1-rc.2's schema no longer declares it, so the row does not set it.
@@ -100,23 +113,31 @@ The same patch also composes the TUI edition: the `mpd-tui` row mounts
 `@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js` (that package ships no patch of its own, so
 this row is the only mount and no composition can duplicate the loader entry id).
 
-Preset selection has **TWO** id-targets, one per plane, both naming the same package with
-`config.default: mpd`:
-- `agent-preset-registry` — the row `dsh-web-app` inserts for the web/base composition;
-- `dsh-tui-agent-preset-registry` — the SCOPED row `dsh-tui` mints for its own composition.
+### Preset selection — the user's own default
 
-The second is not redundant: a `dsh-tui` profile composes no `dsh-web-app` layer, so the first
-target is skipped there (`patch: entry agent-preset-registry not found`) and the TUI's own row would
-keep `default: standard` — while nothing in that composition declares a `standard` preset
-(`@deepseek-harness-tui/dsh-tui@0.12.0` declares no `@deepseek-ai/dsh-agent-preset` row at all —
-measured 2026-10-02: its own scoped registry row still carries `default: standard`, while the only
-preset directory that release ships is `presets/liangshen/`), so every new TUI session would ask
-for a preset that does not exist. Each id exists in exactly ONE composition, so the other profile
-only logs a not-found warning and applies nothing; an id-target assigns only the keys this file
-carries and skips `id`, so the TUI row's own compiled-DISABLED expression survives untouched.
-Harness 0.1.7-rc.2 removed the preset-ROOT rows this file used to target (`agent-presets` /
-`dsh-tui-agent-presets`, both naming the deleted `@deepseek-ai/dsh-agent-presets` package).
-A composition that carries no such row — the headless profile, or a `dsh-tui` plane that mints a
-differently-named registry row — logs `patch: entry agent-preset-registry not found` and keeps its
-own default; the `mpd` preset itself is declared by the second patch file
+There is **NO preset id-target in this bundle** (strict zero-override, user decision 2026-10-02). The two
+registry rows a preset could be selected through — `agent-preset-registry`, which `dsh-web-app` inserts
+for the web/base composition, and the SCOPED `dsh-tui-agent-preset-registry`, which `dsh-tui` mints for
+its own composition — are HOST-owned, and an id-target REPLACES a host layer's decision: exactly what the
+policy forbids, and `node scripts/verify-no-host-override.ts` fails the build on any future one. An
+additive second registry row is not the workaround either: two rows mounting
+`@deepseek-ai/dsh-agent-preset-registry` each `provide` the same `agentPresets` service, and a duplicate
+`provide` is a hard cordis boot error.
+
+**The deployment default is therefore the user's to choose**, through the channels
+`docs/preset-default.md` documents (`scripts/set-default-preset.ts` automates the dsh-tui one):
+
+- **web / headless** → the `selectedDefault` volatile field of the `agent-preset-registry` entry, set
+  from the Settings UI (the registry reads it for new sessions and prefers it over the deployment
+  `default`). This bundle writes nothing itself.
+- **dsh-tui** → `/preset mpd`, which persists `{ "preset": "mpd" }` to `~/.dsh-tui/agent-preset.json`;
+  or `DSH_TUI_PRESET=mpd` in the user's OWN profile patch, which WINS over the persisted preference; or
+  the one-command helper `node scripts/set-default-preset.ts --yes` (dry-run by default), which writes
+  that same file in dsh-tui's own byte shape.
+
+Without that user action a profile keeps the HOST default `standard`, so `mpd` is OPT-IN here; on the
+dsh-tui plane `cordis.patch.yml` documents (0.12.0, its row id / `default: standard` config /
+`presets/liangshen/` re-verified against 0.13.0) that release declares no `standard` preset row at all,
+so a session resolving it composes with the documented `agent-preset/not-found` warning — the exact gap
+`docs/preset-default.md` exists to close. The `mpd` preset itself is declared by the second patch file
 (`presets/mpd.patch.yml`, row `preset-mpd`), which no composition has to opt into separately.

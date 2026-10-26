@@ -405,8 +405,8 @@ analysis, the delta-registry mechanics and every adapter API signature — is in
   relative specifier carries the explicit `.ts` extension**; `import type` for type-only imports; no
   `tsconfig`-`paths` mapping. `packages/*/src` differs in FORM only (`bun build` → `dist/*.js`,
   extensionless specifiers), and a genuine CommonJS module is spelled `.cts`. The ONLY JavaScript left is
-  **57 files**, for a MEASURED reason (a shipped bundle sits under `node_modules`, where Node refuses to
-  strip types): 33 `packages/*/dist/**` build artifacts, 2 browser bundles and 22 vendored skill-corpus
+  **58 files**, for a MEASURED reason (a shipped bundle sits under `node_modules`, where Node refuses to
+  strip types): 34 `packages/*/dist/**` build artifacts, 2 browser bundles and 22 vendored skill-corpus
   files — the list is in `agent-references/troubleshooting.md`.
 - **Every declaration is documented and every named function is fully typed — binding, enforced by §4's
   `verify:comments`.** A comment states the contract, unit, invariant or reason — never a restatement of
@@ -504,8 +504,10 @@ lane hold this line.
 ### Primary flow: ONE command, no extra step
 
 - **The USER-facing install is ONE command against the PUBLISHED package — no clone, no build:**
-  `dsh plugin --profile web add github:HaroldZ32/My-Power-Dsh` (or `… add @mpd-dsh/mpd` once it is on the
-  registry). pnpm packs it through the manifest's **`files` allowlist**, then `reconcile` reads the
+  `dsh plugin --profile web add @mpd-dsh/mpd` — LIVE on the registry at **0.15.4** (measured
+  2026-10-25); `dsh plugin --profile web add github:HaroldZ32/My-Power-Dsh` is the same one command
+  from the repository (and the Docker lane's proof spec, §4). pnpm packs it through the manifest's
+  **`files` allowlist**, then `reconcile` reads the
   installed package's `dsh.bundle.patch` files, validates that they load, and appends the package name to
   `dsh.profile.bundles`. Proof: the live lane `node scripts/docker-e2e.ts --mode oneclick --spec
   github:HaroldZ32/My-Power-Dsh` on a bare `ubuntu:24.04`.
@@ -523,7 +525,7 @@ lane hold this line.
   (the transitive `node-pty` postinstall that OLDER releases pulled is the historical reason; it has been
   gone since 0.24.1, measured 2026-10-02, and 0.28.0 ships no install script either, measured 2026-10-21
   — its row's mount guard disables it when absent). 0.28.0 requires harness 0.2.1-rc.1+ (this repo pins
-  0.2.1-rc.2), injects `["webServer","sessions","connection","tools"]`, and contributes each mpd sidebar
+  0.2.1-rc.3), injects `["webServer","sessions","connection","tools"]`, and contributes each mpd sidebar
   page twice — the primary tab plus a `bottomOnly` bottom-workbench twin (`<id>:bottom`) — with the
   official right sidebar as the fallback when the package is absent. `@ast-grep/cli` +
   `@code-yeongyu/comment-checker` left `optionalDependencies`.
@@ -610,6 +612,9 @@ lane hold this line.
      `skills/**` change is committed without it.
 3. Merge `--no-ff` to master with `release: vX.Y.Z …`; annotated tag `vX.Y.Z`.
 4. Push master + tag; announce with evidence links.
+5. **Publish — a human step.** The `v*` tag push STAGES the release on npm; nothing is public and
+   `latest` does not move until a human runs `npm stage approve <stage-id>`. Runbook:
+   `agent-references/installer-and-profiles.md`, "Publishing to npm".
 
 ---
 

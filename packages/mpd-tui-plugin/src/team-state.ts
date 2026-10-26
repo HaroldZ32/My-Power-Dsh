@@ -376,8 +376,17 @@ export function taskDepths(tasks: readonly { id: string; dependencies: readonly 
     visiting.add(taskId)
     /** The task's known dependencies, sorted so the walk is deterministic. */
     const dependencies = [...task.dependencies].filter((id) => byId.has(id)).sort()
+    // A LOOP, never `1 + Math.max(...deps)`: a spread over a pathologically long dependency array
+    // overflows the stack, and a record that wide must degrade to a depth instead of a crash.
+    /** The deepest dependency path found so far; `dependencies.length === 0` falls out as 0 below. */
+    let deepest = 0
+    for (const id of dependencies) {
+      /** This dependency's own depth, memoized by the walk. */
+      const depth = depthOf(id)
+      if (depth > deepest) deepest = depth
+    }
     /** One plus the deepest dependency, or 0 when nothing depends below this task. */
-    const depth = dependencies.length === 0 ? 0 : 1 + Math.max(...dependencies.map(depthOf))
+    const depth = dependencies.length === 0 ? 0 : 1 + deepest
     visiting.delete(taskId)
     depths.set(taskId, depth)
     return depth

@@ -60,14 +60,15 @@ STATE_FILE="${STATE_FILE:?}"
 FACTS_FILE="${FACTS_FILE:?}"
 APP_DIR="${APP_DIR:?}"
 WORK_DIR="${WORK_DIR:?}"
-# Same default as docker/entrypoint.sh, and for the same reason: 0.16.1 is the dsh-tui release this
-# bundle targets, and it is the FIRST host whose declared peer bands include harness 0.2.1-rc.2 (every
-# one of its 36 `@deepseek-ai/dsh-*` peers lists it). 0.15.0's bands stop at 0.2.0-rc.2, so pinning it
+# Same default as docker/entrypoint.sh, and for the same reason: 0.17.0 is the dsh-tui release this
+# bundle targets, and it is the FIRST host whose declared peer bands include harness 0.2.1-rc.3 (36 of
+# its 39 `@deepseek-ai/dsh-*` peers append that band, where 0.16.1's lists stop at 0.2.1-rc.2).
+# 0.15.0's bands stop at 0.2.0-rc.2, so pinning it
 # against a 0.2.1 profile is REFUSED on peer ranges — the lane then REDDENS at that step and the row's
 # raw quotes the host's own refusal, because the `add-host.log` capture below copies the step log into
-# the evidence tree (`tui-logs/`) and clips its first/error lines. (0.14.0, 0.13.0 and 0.12.0 were the
-# pins before it.) Keep the two in step.
-TUI_VERSION="${TUI_VERSION:-0.16.1}"
+# the evidence tree (`tui-logs/`) and clips its first/error lines. (0.16.1, 0.15.0, 0.14.0, 0.13.0 and
+# 0.12.0 were the pins before it.) Keep the two in step.
+TUI_VERSION="${TUI_VERSION:-0.17.0}"
 # The apparatus library (docker/lib/live-verdict.ts) and the caller's live-arm switch. Both are handed
 # over by docker/entrypoint.sh, which also owns the credential staging — the TUI cannot run a real
 # turn without them, and a missing LIB_DIR then reddens live.tui.* instead of passing silently.

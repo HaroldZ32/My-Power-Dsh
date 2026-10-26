@@ -193,7 +193,7 @@ lane's earlier post-repair run `…14-24-22.312Z` agrees). The first reading sta
 in this ledger as the history of the measurement, not as a current status.
 
 **D2 — one frozen row label has no locatable Web anchor (severity low; owner: the frozen contract;
-STILL OPEN).**
+CLOSED-BY-DE-VENDOR — no subject left).**
 The mandatory row `activity-panel/merge-autonomous-plan` is kept (an omitted row is a defect), but
 the label itself could not be located in the adopted client bytes: a case-insensitive search for
 `autonomous|merge` over `packages/mpd-agent-teams-plugin/lib/client.js` and `lib/client/**` returned
@@ -247,14 +247,15 @@ binding. Evidence: `evidence/tui/team-surface-integrate/2026-09-16T14-17-24.000Z
 9. **`alt+t`** is best-effort and may be refused; `/mpd team` is the guaranteed entry point.
 
 **Named limit carried from t4's independent review and the captain's ruling (risk class (c)) —
-CONTAINED, NOT FIXED, and deliberately out of this wave:** an **unbounded `dependencies` array** can
-still make the projection throw deep in the depth walk (the `Math.max(...)` spread) and degrade to
-the bounded read-failure line instead of the §5.5 note it would otherwise render. It cannot crash
-the TUI loop — the read path catches it and renders the failure line — which is why it is contained
-rather than blocking. It is **not** in this wave and it is **not** described as fixed anywhere on
-this page. Reason it is out of scope: a dependency cap would have to change the frozen §5.5 cap list
-(`MAX_TASKS`, `MAX_TEAMS`, `MAX_PROBLEMS`), i.e. the interface, not the implementation. Recording
-it here is the whole remedy available to this wave.
+RESOLVED 2026-10-25 (was "CONTAINED, NOT FIXED", and the history is kept deliberately):** an
+**unbounded `dependencies` array** used to make the projection throw deep in the depth walk (the
+`Math.max(...)` spread) and degrade to the bounded read-failure line instead of the §5.5 note it would
+otherwise render. It could not crash the TUI loop — the read path caught it and rendered the failure
+line — which is why it was contained rather than blocking. The 2026-10-25 audit wave replaced the
+spread with a bounded loop inside `taskDepths` (`packages/mpd-tui-plugin/src/team-state.ts`), pinned by
+a 1,000,000-edge arm, so the depth walk no longer throws on a pathologically long dependency array.
+The frozen §5.5 cap list (`MAX_TASKS`, `MAX_TEAMS`, `MAX_PROBLEMS`) and the failure line itself are
+unchanged: this fixed the implementation, not the interface.
 
 **This wave's own additions:** the team scene's rows are proven at suite level (E2) and by scene
 registration (E1 A1), not by a live-pane capture of the team scene; `alt+t` remains unexercised; and

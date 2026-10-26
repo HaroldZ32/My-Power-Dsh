@@ -79,7 +79,7 @@
           # `{{model}}` is the ONLY prompt variable safe here: the loop registers `provider`
           # and `model`, and DELIBERATELY does not register `{{cwd}}` — an unresolved
           # reference throws during prompt assembly, before any model request (the
-          # dsh-system-prompt README, 0.2.1-rc.2, says so explicitly). The
+          # dsh-system-prompt README, 0.2.1-rc.3, says so explicitly). The
           # working-directory service supplies the current directory as literal runtime
           # context, so the persona must not restate it with a template variable.
           #
@@ -167,7 +167,7 @@
                 - CLAUDE.md
 
           # The current time and the per-step elapsed time, from the shipped `standard`
-          # preset (harness 0.2.1-rc.2): a session without it cannot tell a remembered
+          # preset (harness 0.2.1-rc.3): a session without it cannot tell a remembered
           # date from today's. No config in the host's own definition.
           - id: time-context
             name: '@deepseek-ai/dsh-time-context'
@@ -214,7 +214,7 @@
             name: '@deepseek-ai/dsh-tool-jobs'
 
           # Model-facing reminder tools (schedule_create/list/update/delete) over the host
-          # `ctx.schedule` service. New in the 0.2.1-rc.2 `standard` preset; no config in
+          # `ctx.schedule` service. New in the 0.2.1-rc.3 `standard` preset; no config in
           # the host's own definition.
           - id: tool-schedule
             name: '@deepseek-ai/dsh-tool-schedule'
@@ -382,7 +382,7 @@
             name: '@deepseek-ai/dsh-tool-present'
 
           # Profile plugin/bundle management and the plugin market, both DISABLED exactly as the
-          # 0.2.1-rc.2 `standard` preset ships them: the host enables `plugin_manager` in Creator
+          # 0.2.1-rc.3 `standard` preset ships them: the host enables `plugin_manager` in Creator
           # mode only and other presets keep the row disabled, and `plugin_market` registers
           # nothing until a `pluginManager` service exists (its index sources are user-configured).
           # A deployment that wants them sets `disabled: false` in its profile patch.

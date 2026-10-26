@@ -2,21 +2,28 @@
 //
 // DISCLOSURE (read before trusting the writes): the fields below are the real
 // `.mpd/mpd.jsonc` knobs — the runtime config layer the mpd plugins read through
-// `packages/mpd-config-plugin`. That layer is NOT the harness settings document
-// this screen writes to: the section declares and edits those knobs under the
-// harness settings namespace `mpd`, and the two are BRIDGED (t35): `mpd-config`
-// observes the namespace through the adapter's settings seam and rewrites the value
-// into `<workspace>/.mpd/mpd.jsonc` with comments and key order preserved.
+// `packages/mpd-config-plugin`. That layer is NOT the harness settings document this
+// screen writes to, and the bridge between them is NOT a file write (CodeRabbit #4 on
+// PR #66, verified in `packages/mpd-config-plugin/src/index.ts`): this section is keyed by
+// the config ENTRY (`mpd-config`), whose persistence is the HOST's — the entry-config
+// listener re-loads the row's state and deliberately writes no file. The
+// `<workspace>/.mpd/mpd.jsonc` write-back existed only for the LEGACY `mpd` namespace, and
+// this harness REFUSES that registration (`settingsModelRetired = true`, one boot warning),
+// so that path is dormant here. `BRIDGE_DISCLOSURE` states exactly this to the reader.
 //
-// LIVE REFRESH (wave fix/model-config-live-refresh, L1): the old "a RUNNING session's
-// plugin behaviour changes only after a restart" claim is DELETED, not softened — the
-// config row now arms a file watcher at mount AND subscribes to the entry-config
-// document, so its `state` re-resolves on every settings save and on a watched edit of
-// the project file. The model routes this section edits (`teamModels`, `modelchain`) are read
-// PER USE (L2/L3), so the next spawn or resolve carries them —
-// no restart. What still waits for a boot is one class only: a knob some plugin
-// CAPTURED at its own mount instead of reading the live config service per use
-// (`BRIDGE_RESTART_LIMIT` carries that sentence, and neither front door claims more).
+// LIVE REFRESH, PER KNOB GROUP (D-18, audit wave 2026-10-25): the config row arms a file
+// watcher at mount AND subscribes to the entry-config document, so its `state` re-resolves on
+// every settings save and on a watched edit of the project file. WHICH knobs that reaches in a
+// RUNNING process is NOT blanket: the model routes this section edits (`teamModels`,
+// `modelchain`), `team.stateDir`, `team.gate`/`team.sensitivity`, `captain.investigation` and
+// `delegation.gate` are read PER USE, so the next spawn or guarded call carries them;
+// `tui.dashboardKey` is live one way (false disables at once). `watchdog.*` is the EXCEPTION and is
+// NOT in that list: the watchdog engine never reads the config service — it re-reads the legacy
+// (unserved) `mpd` namespace, the row config and the workspace FILE layer every tick, so a hand edit
+// of `.mpd/mpd.jsonc` reaches it and a save from this form does not (reviewer T20-F2, AMENDMENT 6).
+// A knob some plugin CAPTURED at its own mount — `hashline.*`, `commentChecker.*`, `ulw.*`,
+// `memory.*`, `boulder.dir`, `goal.*` — still waits for the next boot, which
+// `BRIDGE_RESTART_LIMIT` names, and SECTION_NOTICE below renders BOTH halves.
 //
 // SEE BEFORE YOU EDIT (R3): the section's own description carries
 // `effectiveModelSummary` — the four effective slot routes and the configured
@@ -37,7 +44,7 @@ import type { PluginContextLike, SeamOutcome, SeamState, SettingsProviderLike, T
 // ONE source for the namespace schema, the twenty-two knobs and the disclosure: `mpd-config-plugin`
 // owns the namespace (design §10.1) and exports them; this package consumes them for its
 // guarded FALLBACK registration and for the section it declares.
-import { BRIDGE_DISCLOSURE, BRIDGE_NOT_LOST, SettingsSchema, SETTINGS_KNOBS, SETTINGS_NS, TEAM_MODEL_FALLBACK_OPTIONS, TEAM_MODEL_SLOT_GROUPS, TEAM_MODEL_SLOTS, markVolatile } from "../../mpd-config-plugin/src/settings-schema"
+import { BRIDGE_DISCLOSURE, BRIDGE_NOT_LOST, BRIDGE_RESTART_LIMIT, SettingsSchema, SETTINGS_KNOBS, SETTINGS_NS, TEAM_MODEL_FALLBACK_OPTIONS, TEAM_MODEL_SLOT_GROUPS, TEAM_MODEL_SLOTS, markVolatile } from "../../mpd-config-plugin/src/settings-schema"
 
 // RE-EXPORTED so this row marks its OWN config volatile WITHOUT adding a second cross-package import
 // edge (the coupling inventory pins ONE edge per file, and it may only shrink).
@@ -72,6 +79,7 @@ export { SettingsSchema }
  */
 export { BRIDGE_DISCLOSURE }
 export { BRIDGE_NOT_LOST }
+export { BRIDGE_RESTART_LIMIT }
 
 /**
  * The runtime notice the surfaces show when the save had no live session workspace to
@@ -588,8 +596,13 @@ export function settingsFields(lists: TeamModelOptionLists): readonly TuiSetting
  * This is the DECLARED shape (cloned per registration, with the slot options replaced by
  * the catalog projection). It is exported so the declared baseline stays inspectable.
  */
-/** The one-sentence disclosure BOTH front doors state once, above their rows. */
-export const SECTION_NOTICE = `${BRIDGE_DISCLOSURE} ${BRIDGE_NOT_LOST}`
+/**
+ * The disclosure BOTH front doors state once, above their rows: the live groups, then the
+ * mount-captured exception, then the not-lost clause (D-18 — rendering only the promising half
+ * would restore the blanket claim this section used to make). ONE description, not a second block:
+ * the three sentences are concatenated into the section's own `descriptions` string.
+ */
+export const SECTION_NOTICE = `${BRIDGE_DISCLOSURE} ${BRIDGE_RESTART_LIMIT} ${BRIDGE_NOT_LOST}`
 
 /** The declared section shape: cloned per registration, with the slot options replaced by the catalog projection. */
 export const SETTINGS_SECTION: TuiSettingsSectionLike = {

@@ -1,0 +1,47 @@
+=== status (my paths)
+ M .github/workflows/publish.yml
+ M AGENTS.md
+ M CONTRIBUTING.md
+ M CONTRIBUTING.zh-CN.md
+ M agent-references/installer-and-profiles.md
+ M docs/development.md
+ M docs/development.zh-CN.md
+ M docs/plan-webui-tui-i18n.md
+
+=== diffstat
+ .github/workflows/publish.yml              | 11 ++++++-----
+ AGENTS.md                                  |  3 +++
+ CONTRIBUTING.md                            | 16 +++++++++++----
+ CONTRIBUTING.zh-CN.md                      | 12 +++++++++---
+ agent-references/installer-and-profiles.md | 31 ++++++++++++++++++++++++++++++
+ docs/development.md                        |  7 +++++++
+ docs/development.zh-CN.md                  |  6 ++++++
+ docs/plan-webui-tui-i18n.md                |  4 ++--
+ 8 files changed, 76 insertions(+), 14 deletions(-)
+
+=== AGENTS.md diff
+diff --git a/AGENTS.md b/AGENTS.md
+index 9582a9db..fa0fd0e5 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -612,6 +612,9 @@ lane hold this line.
+      `skills/**` change is committed without it.
+ 3. Merge `--no-ff` to master with `release: vX.Y.Z …`; annotated tag `vX.Y.Z`.
+ 4. Push master + tag; announce with evidence links.
++5. **Publish — a human step.** The `v*` tag push STAGES the release on npm; nothing is public and
++   `latest` does not move until a human runs `npm stage approve <stage-id>`. Runbook:
++   `agent-references/installer-and-profiles.md`, "Publishing to npm".
+ 
+ ---
+ 
+
+=== hashes
+443f2e1b66f6692458011c784d8a015c  CONTRIBUTING.md
+f1085a02d9107b6708bbeb349e113905  CONTRIBUTING.zh-CN.md
+7a81d7ac0554599990ebfae02df2379e  AGENTS.md
+80e92e8197cf87349b95028fecba0bcd  docs/development.md
+015c6097c30c4c35bbee478a99991aaa  docs/development.zh-CN.md
+9ff1dbb8741531cf651f145b01e208c4  docs/plan-webui-tui-i18n.md
+86b88c31fe4431a3b124b2bdbbd9aec4  .github/workflows/publish.yml
+0884ff93bf67a83c81e5f0bb699401c5  agent-references/installer-and-profiles.md
+2026-10-26T02:11:06Z

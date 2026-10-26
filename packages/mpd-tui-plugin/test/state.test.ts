@@ -198,8 +198,32 @@ describe("state projection", () => {
     expect(state.boulder).toBeUndefined()
     expect(state.plans.count).toBe(0)
     expect(state.workmates.count).toBe(0)
+    // ABSENT is not a FAULT: a section that is simply not there reports no problem note.
+    expect(state.problems).toEqual([])
     expect(statusLine(state)).toContain("mpd:")
     expect(boardLines(state).join("\n")).toContain(t("board.noBoulder"))
+  })
+
+  test("an UNREADABLE plan directory and workmate entry are reported, never rendered as empty", () => {
+    /** This arm's own isolated workspace and home. */
+    const { workspace, home } = fixture()
+    // A FILE where the plan DIRECTORY belongs makes the read throw ENOTDIR: a portable unreadable
+    // directory that needs no chmod (and holds for the process's own user, including root).
+    rmSync(join(workspace, ".mpd", "plans"), { recursive: true, force: true })
+    writeFileSync(join(workspace, ".mpd", "plans"), "not a directory\n")
+    // A metadata file that IS there but cannot be parsed is a fault, unlike an orphan directory.
+    writeFileSync(join(home, ".mpd", "workmate", "one", "meta.json"), "{ not json")
+    /** The projection of that damaged state tree. */
+    const state = readBoardState(workspace, home, [])
+    expect(state.plans).toEqual({ count: 0 })
+    expect(state.workmates).toEqual({ count: 1, names: ["two"] })
+    // One bounded note per fault, naming the section it belongs to.
+    expect(state.problems.some((problem) => problem.startsWith("plans: "))).toBe(true)
+    expect(state.problems.some((problem) => problem.startsWith("workmate one: "))).toBe(true)
+    // The bound holds: a long error text cannot widen the note.
+    expect(state.problems.every((problem) => problem.length <= "workmate one: ".length + 120)).toBe(true)
+    // The fault REACHES the rendered board instead of reading as "no plans" / "no workmates".
+    expect(boardLines(state).join("\n")).toContain("note       plans: ")
   })
 
   test("a team READOUT that throws is reported as a note, not as a crash", () => {
