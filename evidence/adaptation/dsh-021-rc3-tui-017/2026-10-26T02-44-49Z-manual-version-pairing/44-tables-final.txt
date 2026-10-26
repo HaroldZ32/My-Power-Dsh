@@ -1,0 +1,44 @@
+# EN table (final)
+## Version compatibility
+
+Each row is the host pair a release was **built and verified against** — the Docker real-machine
+lanes run the install and the mount on exactly that pair. The harness pin lives in
+[`package.json`](./package.json) (the three `@deepseek-ai/dsh-experimental-*` dependencies) and the
+DSH-TUI pin in [`dsh-plugin.json`](./dsh-plugin.json) `compat.hosts` plus the `host-tui` ref in
+[`dsh-distribution.json`](./dsh-distribution.json). A newer host is not claimed until a release row
+names it: pin both.
+
+**The newest row is the version this package publishes; the rows below it are the pins of earlier releases, kept as history.**
+
+| `@mpd-dsh/mpd` | DeepSeek Harness | DSH-TUI | Notes |
+|---|---|---|---|
+| 0.15.5 | 0.2.1-rc.3 | 0.17.0 | the current release — installable from the registry |
+| 0.15.4 | 0.2.1-rc.2 | 0.16.1 | previous |
+| 0.15.2 | 0.2.1-rc.2 | 0.16.1 | previous |
+| 0.15.1 | 0.2.1-rc.2 | 0.16.1 | previous |
+| 0.15.0 | 0.2.1-rc.2 | 0.16.1 | previous |
+| 0.14.0 | 0.2.1-rc.2 | 0.16.1 | previous — the harness-0.2.1 adaptation release |
+
+## Quick start
+
+# zh table (final)
+## 版本对应关系
+
+表中每一行都是某个版本**构建并验证时**所针对的那一对宿主 —— Docker 真机车道正是拿着这一对跑安装与挂载。
+harness 的 pin 记在 [`package.json`](./package.json)（三个 `@deepseek-ai/dsh-experimental-*` 依赖），
+DSH-TUI 的 pin 记在 [`dsh-plugin.json`](./dsh-plugin.json) 的 `compat.hosts` 与
+[`dsh-distribution.json`](./dsh-distribution.json) 的 `host-tui` 引用里。更新的宿主在被某个发布行写明之前
+**不作声明**：这两个版本请一起钉。
+
+**最新一行是本包当前发布的版本（可从 registry 安装）；其下各行是更早版本钉定的组合，标注为 `previous`，作为历史保留。**
+
+| `@mpd-dsh/mpd` | DeepSeek Harness | DSH-TUI | 说明 |
+|---|---|---|---|
+| 0.15.5 | 0.2.1-rc.3 | 0.17.0 | 本次发布 —— 可从 registry 安装 |
+| 0.15.4 | 0.2.1-rc.2 | 0.16.1 | `previous` |
+| 0.15.2 | 0.2.1-rc.2 | 0.16.1 | `previous` |
+| 0.15.1 | 0.2.1-rc.2 | 0.16.1 | `previous` |
+| 0.15.0 | 0.2.1-rc.2 | 0.16.1 | `previous` |
+| 0.14.0 | 0.2.1-rc.2 | 0.16.1 | `previous` —— harness 0.2.1 适配发布 |
+
+## 快速上手

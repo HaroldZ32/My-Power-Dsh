@@ -1,0 +1,124 @@
+# T12 change set (FINAL)
+ AGENTS.md       | 46 ++++++++++++++++++++--------------------------
+ README.md       | 14 ++++++++------
+ README.zh-CN.md | 14 ++++++++------
+ 3 files changed, 36 insertions(+), 38 deletions(-)
+
+diff --git a/AGENTS.md b/AGENTS.md
+index 693456bf..eccc3fde 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -504,8 +504,9 @@ lane hold this line.
+ ### Primary flow: ONE command, no extra step
+ 
+ - **The USER-facing install is ONE command against the PUBLISHED package — no clone, no build:**
+-  `dsh plugin --profile web add @mpd-dsh/mpd` — LIVE on the registry at **0.15.5** (measured
+-  2026-10-26T02:36Z); `dsh plugin --profile web add github:HaroldZ32/My-Power-Dsh` is the same one
++  `dsh plugin --profile web add @mpd-dsh/mpd@0.15.5` (this release, named by explicit spec) or the
++  unversioned `@mpd-dsh/mpd`, which takes whatever `latest` the registry serves;
++  `dsh plugin --profile web add github:HaroldZ32/My-Power-Dsh` is the same one
+   command from the repository (and the Docker lane's proof spec, §4). pnpm packs it through the
+   manifest's **`files` allowlist**, then `reconcile` reads the
+   installed package's `dsh.bundle.patch` files, validates that they load, and appends the package name to
+@@ -582,30 +583,23 @@ lane hold this line.
+ 1. From dev: `git checkout -b release/vX.Y.Z`; bump the version in ALL THREE carriers —
+    `package.json`, `dsh-plugin.json`, `dsh-distribution.json` (`verify:manifest` reddens on any
+    mismatch) — plus the changelog note.
+-2. Full gate sweep, each command named exactly: `bun run verify:vendor` (after the wave's single `node
+-   scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step` re-pin when `skills/**` changed),
+-   `bun test packages` (a repo-root `bun test` also scans the historical `evidence/**` fixtures and
+-   reddens on them), `bun run typecheck`, `bun run test:qa`, `bun run verify:docs`, `bun run verify:rows`,
+-   `node skills/dsh-qa/scripts/preset-conformance.ts --self-test`, `node scripts/verify-dist-fresh.ts`,
+-   `node scripts/verify-pack-closure.ts` (freshness read from the `expected-after-pack` list at the
+-   re-pack, never from its exit code — §4's bound), plus the real smoke cases (`dual-track-smoke`,
+-   `mcp-call`). `bun run verify:gates` covers the nine static members (vendor, dist freshness, row
+-   parity, doc pairs, preset conformance, plugin manifest, comment coverage, graph model, workflows).
+-   `node scripts/verify-no-host-override.ts` is NOT a member of that aggregate and is REQUIRED for EVERY
+-   release sweep; `node scripts/verify-manual-paths.ts` is REQUIRED whenever `AGENTS.md` changed.
+-   - **LAST: the Docker real-machine lane — `--live` with `DEEPSEEK_API_KEY` exported, and
+-     `--require-docker` so it cannot skip silently** — `node scripts/docker-e2e.ts --mode source
+-     --require-docker --live` then `--mode oneclick --require-docker --live`. Run it AFTER the last
+-     write, and cite the stamps it writes. **The CREDENTIAL-FREE source run is REQUIRED in EVERY sweep
+-     as well** — `node scripts/docker-e2e.ts --mode source --require-docker --no-browser` — because a
+-     credentialed run CANNOT see the paths that depend on an EMPTY model catalog: a QA case that
+-     silently relied on the deleted built-in slot defaults stayed green through two weeks of
+-     `liveRequested:true` runs and reddened only on the credential-free one (2026-10-23, PR #62).
+-     Cite BOTH stamps. The credential-free run is a REGRESSION gate, while its `ui.*` rows stay NULL
+-     and are NOT evidence of the UI. `--live` WITHOUT a key in the environment is a hard exit 3
+-     BEFORE the build, and a credential-free browser-enabled run records `ui.replyRendered` as a DECLARED
+-     BOUND that the required-arm gate turns into exit 3 by design — the credential-free spelling is
+-     `--no-browser` (exit 0, every `ui.*` NULL).
++   - **Version + docs move TOGETHER:** every version literal and every published-version statement
++     (README table row + Notes, §8's install line) lands in THIS commit — no post-publish docs PR.
++2. Full gate sweep. §4's gate table is the authority: run every row it marks for this change, plus the
++   two it does not carry — `node scripts/verify-no-host-override.ts` (NOT a `verify:gates` member) and
++   `node scripts/verify-manual-paths.ts` (whenever `AGENTS.md` changed) — plus the real smoke cases
++   `dual-track-smoke` and `mcp-call`. `bun run verify:gates` aggregates §4's nine static members. Two
++   preconditions are easy to miss: `bun run verify:vendor` only AFTER the wave's single
++   `node scripts/repin-vendor.ts --write --i-know-this-is-the-captains-step` re-pin when `skills/**`
++   changed, and a repo-root `bun test` (unlike `bun test packages`) also scans the `evidence/**`
++   fixtures and reddens on them.
++   - **LAST: the Docker real-machine lane, per §4's Docker row — BOTH runs, both stamps cited.** The
++     credentialed `node scripts/docker-e2e.ts --mode source --require-docker --live` then `--mode
++     oneclick --require-docker --live`, AND the credential-free `--mode source --require-docker
++     --no-browser` regression run — a credentialed run cannot see a path that depends on an EMPTY model
++     catalog (measured 2026-10-23, PR #62). `--no-browser` IS the credential-free spelling: a
++     browser-enabled one records `ui.replyRendered` as a DECLARED BOUND that the required-arm gate turns
++     into exit 3 by design, and `--live` with no key exits 3 before the build.
+    - **Release-checklist line (VENDOR_LOCK pairing rule):** `VENDOR_LOCK.json` lands in the SAME commit
+      as every `skills/**` change that invalidates its `treeSha`; with the single-skills-writer rule (§9)
+      that is exactly ONE re-pin per wave — verify the wave's single re-pin is present and that no
+diff --git a/README.md b/README.md
+index bcfdd38e..2c10a788 100644
+--- a/README.md
++++ b/README.md
+@@ -152,14 +152,16 @@ DSH-TUI pin in [`dsh-plugin.json`](./dsh-plugin.json) `compat.hosts` plus the `h
+ [`dsh-distribution.json`](./dsh-distribution.json). A newer host is not claimed until a release row
+ names it: pin both.
+ 
++**The newest row is the version this package publishes; the rows below it are the pins of earlier releases, kept as history.**
++
+ | `@mpd-dsh/mpd` | DeepSeek Harness | DSH-TUI | Notes |
+ |---|---|---|---|
+-| 0.15.5 | 0.2.1-rc.3 | 0.17.0 | this release |
+-| 0.15.4 | 0.2.1-rc.2 | 0.16.1 | |
+-| 0.15.2 | 0.2.1-rc.2 | 0.16.1 | |
+-| 0.15.1 | 0.2.1-rc.2 | 0.16.1 | |
+-| 0.15.0 | 0.2.1-rc.2 | 0.16.1 | |
+-| 0.14.0 | 0.2.1-rc.2 | 0.16.1 | the harness-0.2.1 adaptation release |
++| 0.15.5 | 0.2.1-rc.3 | 0.17.0 | the current release — installable from the registry |
++| 0.15.4 | 0.2.1-rc.2 | 0.16.1 | previous |
++| 0.15.2 | 0.2.1-rc.2 | 0.16.1 | previous |
++| 0.15.1 | 0.2.1-rc.2 | 0.16.1 | previous |
++| 0.15.0 | 0.2.1-rc.2 | 0.16.1 | previous |
++| 0.14.0 | 0.2.1-rc.2 | 0.16.1 | previous — the harness-0.2.1 adaptation release |
+ 
+ ## Quick start
+ 
+diff --git a/README.zh-CN.md b/README.zh-CN.md
+index 467433b0..06d0ae3d 100644
+--- a/README.zh-CN.md
++++ b/README.zh-CN.md
+@@ -135,14 +135,16 @@ DSH-TUI 的 pin 记在 [`dsh-plugin.json`](./dsh-plugin.json) 的 `compat.hosts`
+ [`dsh-distribution.json`](./dsh-distribution.json) 的 `host-tui` 引用里。更新的宿主在被某个发布行写明之前
+ **不作声明**：这两个版本请一起钉。
+ 
++**最新一行是本包当前发布的版本（可从 registry 安装）；其下各行是更早版本钉定的组合，标注为 `previous`，作为历史保留。**
++
+ | `@mpd-dsh/mpd` | DeepSeek Harness | DSH-TUI | 说明 |
+ |---|---|---|---|
+-| 0.15.5 | 0.2.1-rc.3 | 0.17.0 | 本次发布 |
+-| 0.15.4 | 0.2.1-rc.2 | 0.16.1 | |
+-| 0.15.2 | 0.2.1-rc.2 | 0.16.1 | |
+-| 0.15.1 | 0.2.1-rc.2 | 0.16.1 | |
+-| 0.15.0 | 0.2.1-rc.2 | 0.16.1 | |
+-| 0.14.0 | 0.2.1-rc.2 | 0.16.1 | harness 0.2.1 适配发布 |
++| 0.15.5 | 0.2.1-rc.3 | 0.17.0 | 本次发布 —— 可从 registry 安装 |
++| 0.15.4 | 0.2.1-rc.2 | 0.16.1 | `previous` |
++| 0.15.2 | 0.2.1-rc.2 | 0.16.1 | `previous` |
++| 0.15.1 | 0.2.1-rc.2 | 0.16.1 | `previous` |
++| 0.15.0 | 0.2.1-rc.2 | 0.16.1 | `previous` |
++| 0.14.0 | 0.2.1-rc.2 | 0.16.1 | `previous` —— harness 0.2.1 适配发布 |
+ 
+ ## 快速上手
+ 
