@@ -49,6 +49,10 @@
       "name": "@mpd-dsh/bundle",
       "version": "0.1.0",
     },
+    "packages/mpd-cellwork-plugin": {
+      "name": "@mpd-dsh/cellwork",
+      "version": "0.1.0",
+    },
     "packages/mpd-comment-checker-plugin": {
       "name": "@mpd-dsh/comment-checker",
       "version": "0.2.3",
@@ -384,6 +388,8 @@
     "@mpd-dsh/boulder": ["@mpd-dsh/boulder@workspace:packages/mpd-boulder-plugin"],
 
     "@mpd-dsh/bundle": ["@mpd-dsh/bundle@workspace:packages/mpd-bundle-plugin"],
+
+    "@mpd-dsh/cellwork": ["@mpd-dsh/cellwork@workspace:packages/mpd-cellwork-plugin"],
 
     "@mpd-dsh/comment-checker": ["@mpd-dsh/comment-checker@workspace:packages/mpd-comment-checker-plugin"],
 

@@ -418,6 +418,13 @@ function buildPlan(o: PlanInputs): Plan {
       config: {}
     },
     {
+      // The cell-work row (C9): mirrors the bundle patch row value for value. `/cellwork` is the only
+      // entry point, the row installs the dispatch-only captain guard and registers the three core
+      // tools; its knobs live in `cellwork.*` of mpd.jsonc, so the row config stays empty.
+      id: "mpd-cellwork", name: p("packages/mpd-cellwork-plugin/dist/index.js"),
+      config: {}
+    },
+    {
       // The watchdog core (w3): mirrors the bundle patch row, DEFAULTS INCLUDED —
       // these four are the frozen values until a settings edit lands, and the tick
       // re-reads them on settings/document-updated (the `mpd` namespace is
