@@ -1,0 +1,14 @@
+=== final hashes (settled, after the blank-line fix)
+4621c11e79633fb199382a6650e59ac1  CHANGELOG.md
+e38bceb7e49f4f05dd2d34c049c41547  packages/mpd-better-sidebar-host/src/index.ts
+185c806f4b300fb879c09e721eab91f9  packages/mpd-better-sidebar-host/dist/index.js
+2026-10-25T15:59:47Z
+
+=== untouched-vs-touched
+ M CHANGELOG.md
+ M packages/mpd-better-sidebar-host/README.md
+ M packages/mpd-better-sidebar-host/README.zh-CN.md
+ M packages/mpd-better-sidebar-host/src/index.ts
+
+=== residual rc.2 in sidebar-host src (history narrative, NOT touched)
+28://   • 0.2.1-rc.2 provides no `webRuntime` at all — `@deepseek-ai/dsh-web-app` now provides only

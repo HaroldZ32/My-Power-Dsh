@@ -56,7 +56,7 @@ manifest 声明了一个外部运行时依赖 `dsh-better-sidebar`（承载 mpd 
 `bun add dsh-better-sidebar@0.28.0 --ignore-scripts` 跳过构建脚本安装（只有侧边栏的终端
 面板会降级；当初需要这个开关的传递依赖 `node-pty` 自 `0.24.1` 起已被移除，2026-10-02 实测；
 `0.28.0` 同样不含任何安装脚本，2026-10-21 实测）。`0.28.0` 要求 harness **DSH 0.2.1-rc.1+**
-（本仓库固定 `0.2.1-rc.2`），并通过 `connection` 服务做路由围栏；`packages/mpd-better-sidebar-host`
+（本仓库固定 `0.2.1-rc.3`），并通过 `connection` 服务做路由围栏；`packages/mpd-better-sidebar-host`
 适配层重述的正是它的注入列表。打包安装则由 pnpm 负责。
 
 **没有 MCP 构建步骤。** MCP 服务器来自**声明式**的 npm 包，由薄启动器在安装 profile 实际物化它们的位置解析后启动：`cclsp`（LSP 服务器）与 git/shell 这一对 `@cyanheads/git-mcp-server` + `mcp-server-commands` 通过 `packages/mpd-mcp-shared/dependency-entry.ts` 的 `resolveDependencyEntry` 解析，而采纳的 ast-grep 与 codegraph 产物随各自启动器一起放在该包的 `dist/` 内。唯一在运行时解析（而非 import）的可执行文件是 `ast-grep` **二进制**：`packages/mpd-mcp-shared/bin-resolve.ts` 的 `resolveAstGrepBinary` 依次尝试 (1) 调用方已设的 `MPD_AST_GREP_SG_PATH`——启动器不会改动既有固定值——然后是 (2) `$MPD_AST_GREP_BIN_DIR/{ast-grep,sg}`、(3) 通过 `createRequire` 读该包自己的 `bin` 入口、(4) `<bundle>/.toolchain/node_modules/.bin`、(5) `<bundle>/node_modules/.bin`；候选都没通过 `--version` 探针时，启动器保持环境变量未设，由被采纳的服务器报出它自己的 `BINARY_NOT_FOUND`。因此检出目录**完全不需要** MCP 构建步骤：退役的 `scripts/build-mcp.ts` 及其 `vendor/mcp-src/**` 快照已随 de-omo 波次 B2 删除。

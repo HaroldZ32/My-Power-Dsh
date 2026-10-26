@@ -1,0 +1,42 @@
+=== current-pin phrasing sweep (pins/固定/目标/current) ===
+docs/development.zh-CN.md:59:（本仓库固定 `0.2.1-rc.3`），并通过 `connection` 服务做路由围栏；`packages/mpd-better-sidebar-host`
+docs/tui.md:7:**not** claim. It targets `@deepseek-harness-tui/dsh-tui` **0.17.0** and its built-in admission
+docs/user-guide.md:43:pins `0.2.1-rc.3`. A packed install needs no extra step: pnpm
+docs/user-guide.zh-CN.md:39:**DSH 0.2.1-rc.1 或更新**；本 bundle 固定的是 `0.2.1-rc.3`。
+packages/mpd-better-sidebar-host/README.md:47:repository pins `0.2.1-rc.3`, so the row mounts on every supported composition. The shim arms on the
+packages/mpd-better-sidebar-host/README.zh-CN.md:39:`@deepseek-ai/dsh-client-connection` 提供 —— 本仓库固定的是 `0.2.1-rc.3`，因此在所有受支持的组合里该行都会挂载。
+
+=== README correspondence table rows ===
+[`package.json`](./package.json) (the three `@deepseek-ai/dsh-experimental-*` dependencies) and the
+DSH-TUI pin in [`dsh-plugin.json`](./dsh-plugin.json) `compat.hosts` plus the `host-tui` ref in
+[`dsh-distribution.json`](./dsh-distribution.json). A newer host is not claimed until a release row
+names it: pin both.
+
+| `@mpd-dsh/mpd` | DeepSeek Harness | DSH-TUI | Notes |
+|---|---|---|---|
+| 0.15.5 | 0.2.1-rc.3 | 0.17.0 | this release |
+| 0.15.4 | 0.2.1-rc.2 | 0.16.1 | |
+| 0.15.2 | 0.2.1-rc.2 | 0.16.1 | |
+| 0.15.1 | 0.2.1-rc.2 | 0.16.1 | |
+| 0.15.0 | 0.2.1-rc.2 | 0.16.1 | |
+| 0.14.0 | 0.2.1-rc.2 | 0.16.1 | the harness-0.2.1 adaptation release |
+
+## Quick start
+
+
+=== README.zh table ===
+DSH-TUI 的 pin 记在 [`dsh-plugin.json`](./dsh-plugin.json) 的 `compat.hosts` 与
+[`dsh-distribution.json`](./dsh-distribution.json) 的 `host-tui` 引用里。更新的宿主在被某个发布行写明之前
+**不作声明**：这两个版本请一起钉。
+
+| `@mpd-dsh/mpd` | DeepSeek Harness | DSH-TUI | 说明 |
+|---|---|---|---|
+| 0.15.5 | 0.2.1-rc.3 | 0.17.0 | 本次发布 |
+| 0.15.4 | 0.2.1-rc.2 | 0.16.1 | |
+| 0.15.2 | 0.2.1-rc.2 | 0.16.1 | |
+| 0.15.1 | 0.2.1-rc.2 | 0.16.1 | |
+| 0.15.0 | 0.2.1-rc.2 | 0.16.1 | |
+| 0.14.0 | 0.2.1-rc.2 | 0.16.1 | harness 0.2.1 适配发布 |
+
+## 快速上手
+

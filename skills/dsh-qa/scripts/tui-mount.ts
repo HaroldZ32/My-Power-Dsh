@@ -14,7 +14,7 @@
 // so the boot happens inside tmux and this process owns the whole lifecycle; the
 // profile is WARM in the sandbox root and is never silently reinstalled.
 //
-// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.16.1"
+// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.17.0"
 // PREREQ: absent-runtime tmux "install tmux; the TUI requires a real TTY"
 // PREREQ: absent-fixture tui profile in the sandbox root "bun skills/dsh-qa/scripts/tui-mount.ts --sandbox-root <root> --install"
 //
@@ -151,6 +151,13 @@ import type { TuiHomeFixture } from "./lib/tui-lane.ts"
 /**
  * The dsh-tui host this lane installs into the sandbox profile.
  *
+ * MOVED 0.16.1 -> 0.17.0 (2026-10-25): 0.17.0 is the first dsh-tui release whose declared peer bands
+ * include harness 0.2.1-rc.3 (36 of its 39 `@deepseek-ai/dsh-*` peers append that band), while 0.16.1's
+ * lists stop at 0.2.1-rc.2 and are REFUSED against a 0.2.1-rc.3 harness. The fifteen seam declarations
+ * and every shipped contract file (including `registry-0.15.json`) are byte-identical, so the fixture
+ * keeps the same seam and this is a carrier move. The default follows the Docker lane's pin
+ * (`docker/tui-lane.sh`), so one env var still moves both.
+ *
  * MOVED 0.15.0 -> 0.16.1 (2026-10-18): 0.16.1 is the first dsh-tui release whose declared peers admit
  * harness 0.2.1-rc.2 (all 36 `@deepseek-ai/dsh-*` peers list it), while 0.15.0's bands stop at
  * 0.2.0-rc.2 and are REFUSED against a 0.2.1 profile. The default follows the Docker lane's pin
@@ -188,7 +195,7 @@ import type { TuiHomeFixture } from "./lib/tui-lane.ts"
  *
  * The env override matches the Docker lane's knob, so one variable moves both.
  */
-const TUI_HOST_SPEC: string = "@deepseek-harness-tui/dsh-tui@" + (process.env.MPD_E2E_TUI_VERSION ?? "0.16.1")
+const TUI_HOST_SPEC: string = "@deepseek-harness-tui/dsh-tui@" + (process.env.MPD_E2E_TUI_VERSION ?? "0.17.0")
 
 /** What the `--install` arm attempted, and where it recorded the attempt. */
 interface InstallAttempt {

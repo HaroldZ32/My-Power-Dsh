@@ -1,0 +1,230 @@
+AGENTS.md:507:  `dsh plugin --profile web add @mpd-dsh/mpd` — LIVE on the registry at **0.15.4** (measured
+AGENTS.md:528:  0.2.1-rc.2), injects `["webServer","sessions","connection","tools"]`, and contributes each mpd sidebar
+CHANGELOG.md:17:## v0.15.4 — the dependency guard, one team door, and a corpus that names only mounted channels
+CHANGELOG.md:154:the TUI sidebar deployment stateless on dsh-tui ≥ 0.16.1 with a panel attention badge, and teaches the
+CHANGELOG.md:200:- **On dsh-tui ≥ 0.16.1 the deployment is stateless.** `hostOwnsPanelCsv` gates a READ-ONLY stand-down:
+CHANGELOG.md:254:  stateless ≥ 0.16.1 deployment.
+CHANGELOG.md:255:- The `tui.md` pair's preamble target is REWRITTEN to dsh-tui **0.16.1** and points at §11.8 (the 0.14.0
+CHANGELOG.md:257:  `packages/mpd-tui-plugin/README` halves read "adapted to 0.16.1".
+CHANGELOG.md:264:## v0.14.0 — DeepSeek Harness 0.2.1-rc.2 + dsh-tui 0.16.1, one shared plan→graph model, and a real-team acceptance lane
+CHANGELOG.md:267:**0.2.1-rc.2** and dsh-tui **0.16.1**; the plan→graph model is computed once in the host plane and drawn
+CHANGELOG.md:275:**Changed — the harness seam (0.2.1-rc.2).**
+CHANGELOG.md:365:  instead of reading as merely absent. The target then moved to dsh-tui **0.16.1** (the
+README.md:5:[![Version](https://img.shields.io/badge/version-0.15.4-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
+README.md:216:- **Built and verified against a prerelease harness.** The bundle is tested against **0.2.1-rc.2**.
+README.md:261:version (the current release is **v0.15.4**). Annotated tags are listed under
+README.zh-CN.md:5:[![版本](https://img.shields.io/badge/version-0.15.4-blue.svg)](https://github.com/HaroldZ32/My-Power-Dsh/releases)
+README.zh-CN.md:195:- **针对一个预发布版 harness 构建和验证。** 套件按 **0.2.1-rc.2** 测试。上游稳定之前请预期会有破坏，
+README.zh-CN.md:234:发布说明在 [`CHANGELOG.md`](./CHANGELOG.md)，最新的在前，每个已发布版本一节（当前版本是 **v0.15.4**）。
+agent-references/troubleshooting.md:83:| a captain expects an overlapping write scope to be refused when a TASK is created | nothing refuses it: there is NO write-scope validator in either mounted official build (checked 2026-10-23 for `.mpd/plans/task-dependency-guard.md` R6 — the "the validator checks the new task's scope against every OPEN sibling WRITE task" belief this row used to carry was FALSE, and the wave-4 collision rules below it never ran). The OFFICIAL plane only ADVISES: its own wording is "Write-scope overlap is advisory, not a lock", so a task declared with a scope another lane also holds is accepted. The guard is on the MPD RECORD plane and fires at APPROVAL: `agent_teams_plan {action:"approve"}` REFUSES two tasks whose normalised scopes overlap (a trailing `/**` stripped, then equal or a path prefix at a SEGMENT boundary; `**` and `.` cover everything; an empty scope list never overlaps) while NEITHER depends on the other, naming the pair and both remedies — add a `blocked_by` edge so one runs after the other, or make the scopes disjoint (`packages/mpd-team-core-plugin/src/dependency-guard.ts`). Absence basis: a direct string check of both mounted official 0.2.1-rc.2 builds on 2026-10-23 — `grep -c` of the stale validator's `inScope` / `overlaps` wording returns 0 for `node_modules/@deepseek-ai/dsh-experimental-tool-agent-team/lib/index.js` and for `~/.dsh/profiles/dsh-tui/node_modules/@deepseek-ai/dsh-experimental-tool-agent-team/lib/index.js` — while both carry the wording "Write-scope overlap is advisory, not a lock". The probes under `evidence/repro-missing-blocked-by/` prove only the reproduced claim-path and edge-less defects; on the official tool path a scope clash is warned about, never gated. |
+bun.lock:8:        "@deepseek-ai/dsh-experimental-agent-team": "0.2.1-rc.2",
+bun.lock:9:        "@deepseek-ai/dsh-experimental-client-ui-agent-team": "0.2.1-rc.2",
+bun.lock:10:        "@deepseek-ai/dsh-experimental-tool-agent-team": "0.2.1-rc.2",
+bun.lock:234:    "@deepseek-ai/dsh-brand": ["@deepseek-ai/dsh-brand@0.2.1-rc.2", "", { "peerDependencies": { "@deepseek-ai/cordis": "~4.0.5" } }, "sha512-T2kcygikRS8rv8cKjgho2x381EgGprv5yQmvHl4/iYbuHE19OW+SLGtHWbV27PGdSHz5U8CJxasYzFosKW4e2A=="],
+bun.lock:250:    "@deepseek-ai/dsh-experimental-agent-team": ["@deepseek-ai/dsh-experimental-agent-team@0.2.1-rc.2", "", { "dependencies": { "@deepseek-ai/dsh-brand": "0.2.1-rc.2", "@deepseek-ai/schemastery": "~3.18.5", "zod": "4.4.3" }, "peerDependencies": { "@deepseek-ai/cordis": "~4.0.5", "@deepseek-ai/dsh-agent": "0.2.1-rc.2", "@deepseek-ai/dsh-llm": "0.2.1-rc.2", "@deepseek-ai/dsh-session": "0.2.1-rc.2", "@deepseek-ai/dsh-session-persistence": "0.2.1-rc.2", "@deepseek-ai/dsh-session-projection": "0.2.1-rc.2", "@deepseek-ai/dsh-subagent": "0.2.1-rc.2" } }, "sha512-cVOE7ucS693WuBFgwOEdHSqyoDeEJMAMKz94yvkg3vefArXDHWI7vUh1B7TntTogWyqfCBiS/V7DBI67P1eoVw=="],
+bun.lock:252:    "@deepseek-ai/dsh-experimental-client-ui-agent-team": ["@deepseek-ai/dsh-experimental-client-ui-agent-team@0.2.1-rc.2", "", { "peerDependencies": { "@deepseek-ai/cordis": "~4.0.5" } }, "sha512-PkNw1hKdbr/Xc3y+LxpDWXorupF8RHVqCJxySfK8nd2CG83MHBl8HomuhR2ljNBUQfrEZLPYsYOB+K5tz91rSg=="],
+bun.lock:254:    "@deepseek-ai/dsh-experimental-tool-agent-team": ["@deepseek-ai/dsh-experimental-tool-agent-team@0.2.1-rc.2", "", { "dependencies": { "@deepseek-ai/schemastery": "~3.18.5" }, "peerDependencies": { "@deepseek-ai/cordis": "~4.0.5", "@deepseek-ai/dsh-agent": "0.2.1-rc.2", "@deepseek-ai/dsh-experimental-agent-team": "0.2.1-rc.2", "@deepseek-ai/dsh-session": "0.2.1-rc.2", "@deepseek-ai/dsh-system-prompt": "0.2.1-rc.2", "@deepseek-ai/dsh-tools": "0.2.1-rc.2" } }, "sha512-5Dh7yTa/CXpuZV09F9PKiTjIxUQZ6ACZNBfchKXfL0dwBDzycyKSOYZ8wyoSDO0c7h6Ru7/8CCDRkEoWFTmy+w=="],
+docker/README.md:35:5. `npm i -g @deepseek-ai/dsh@0.2.1-rc.2` (the default pin — override it with
+docker/README.md:97:    on a real PTY. It installs `@deepseek-harness-tui/dsh-tui@0.16.1` — the dsh-tui release this
+docker/README.md:98:    bundle now targets. 0.16.1 is the FIRST host whose declared peer bands include harness
+docker/README.md:99:    `0.2.1-rc.2` (all 36 of its `@deepseek-ai/dsh-*` peers list it), so it serves both the
+docker/README.zh-CN.md:34:5. `npm i -g @deepseek-ai/dsh@0.2.1-rc.2`（默认 pin；可用 `MPD_E2E_DSH_VERSION=<版本>` 覆盖 ——
+docker/README.zh-CN.md:84:    装进一个可写的全局前缀，并在真正的 PTY 上启动。该步安装 `@deepseek-harness-tui/dsh-tui@0.16.1`
+docker/README.zh-CN.md:85:    —— 即本 bundle 现在对标的 dsh-tui 版本。0.16.1 是**第一个**在声明的 peer 范围里包含 harness
+docker/README.zh-CN.md:86:    `0.2.1-rc.2` 的宿主（其 36 个 `@deepseek-ai/dsh-*` peer 全部列出该版本），因此同时服务 `0.2.0-rc.2`
+docker/docker-compose.yml:36:# The harness pin is `MPD_E2E_DSH_VERSION` (default 0.2.1-rc.2). It MUST be declared below as well as
+docker/docker-compose.yml:56:      # 0.2.1-rc.2 is the pinned baseline: the `mpd` preset plane now declares rows that exist only in
+docker/docker-compose.yml:59:      MPD_E2E_DSH_VERSION: ${MPD_E2E_DSH_VERSION:-0.2.1-rc.2}
+docker/docker-compose.yml:61:      # 0.16.1 is the first host whose 36 declared `@deepseek-ai/dsh-*` peers ALL include harness
+docker/docker-compose.yml:62:      # 0.2.1-rc.2, so it serves both the 0.2.0-rc.2 baseline and the 0.2.1 wave. 0.15.0 covers only
+docker/docker-compose.yml:66:      MPD_E2E_TUI_VERSION: ${MPD_E2E_TUI_VERSION:-0.16.1}
+docker/docker-compose.yml:116:      MPD_E2E_DSH_VERSION: ${MPD_E2E_DSH_VERSION:-0.2.1-rc.2}
+docker/docker-compose.yml:117:      MPD_E2E_TUI_VERSION: ${MPD_E2E_TUI_VERSION:-0.16.1}
+docker/entrypoint.sh:68:# The harness pin. 0.2.1-rc.2 is the bundle's baseline: the `mpd` preset declares rows that exist only
+docker/entrypoint.sh:70:DSH_VERSION="${MPD_E2E_DSH_VERSION:-0.2.1-rc.2}"
+docker/entrypoint.sh:72:# The DSH-TUI host. 0.16.1 is the dsh-tui release this bundle targets, and it is the FIRST host whose
+docker/entrypoint.sh:73:# declared peer bands include harness 0.2.1-rc.2 — every one of its 36 `@deepseek-ai/dsh-*` peers
+docker/entrypoint.sh:74:# lists it (e.g. `dsh-agent`: `… || 0.2.0-rc.2 || 0.2.1-rc.2`) — so it serves BOTH the 0.2.0-rc.2
+docker/entrypoint.sh:78:# evidence/docker/client-install/2026-09-29T07-07-01Z) and again 2026-10-17 on 0.15.0/0.2.1-rc.2.
+docker/entrypoint.sh:79:TUI_VERSION="${MPD_E2E_TUI_VERSION:-0.16.1}"
+docker/tui-lane.sh:63:# Same default as docker/entrypoint.sh, and for the same reason: 0.16.1 is the dsh-tui release this
+docker/tui-lane.sh:64:# bundle targets, and it is the FIRST host whose declared peer bands include harness 0.2.1-rc.2 (every
+docker/tui-lane.sh:70:TUI_VERSION="${TUI_VERSION:-0.16.1}"
+docker/tui-lane.sh:465:# ── 4.0 THE SESSION MATERIALIZER (measured 2026-10-14 on dsh-tui 0.15.0; the 0.16.1 host was
+docker/ui/docker-compose.yml:27:      MPD_UI_DSH_VERSION: "0.2.1-rc.2"
+docker/ui/docker-compose.yml:28:      MPD_UI_TUI_VERSION: "0.16.1"
+docker/ui/entrypoint.sh:55:  command -v dsh >/dev/null 2>&1 || npm i -g "@deepseek-ai/dsh@${MPD_UI_DSH_VERSION:-0.2.1-rc.2}" >>"$LOG_DIR/apt.log" 2>&1
+docker/ui/entrypoint.sh:173:npm i -g "@deepseek-harness-tui/dsh-tui@${MPD_UI_TUI_VERSION:-0.16.1}" >>"$LOG_DIR/tui-install.log" 2>&1
+docker/ui/entrypoint.sh:175:DSH_HOME=/data/dsh-tui HOME=/data/home-tui dsh plugin --profile dsh-tui add "@deepseek-harness-tui/dsh-tui@${MPD_UI_TUI_VERSION:-0.16.1}" >>"$LOG_DIR/tui-add.log" 2>&1
+docs/development.md:65:`0.2.1-rc.2`) and fences its routes through the `connection` service, whose inject list the
+docs/development.zh-CN.md:59:（本仓库固定 `0.2.1-rc.2`），并通过 `connection` 服务做路由围栏；`packages/mpd-better-sidebar-host`
+docs/plan-webui-tui-i18n.md:330:   **Closed by:** `dist/mpd-package/package.json` now carries the root version (`0.15.4`, measured
+docs/tui-dag-renderer.md:49:The host does expose an image primitive (`ui.Image`, read from the installed dsh-tui **0.16.1** type
+docs/tui-dag-renderer.md:114:- **Read from the installed host**: dsh-tui **0.16.1**'s own type declarations
+docs/tui-dag-renderer.zh-CN.md:42:宿主确实暴露了图像原语（`ui.Image`，读取自已安装的 dsh-tui **0.16.1** 类型声明）。它自己的契约就排除了 DAG：
+docs/tui-dag-renderer.zh-CN.md:99:- **读取自已安装的宿主**：dsh-tui **0.16.1** 自己的类型声明
+docs/tui.md:7:**not** claim. It targets `@deepseek-harness-tui/dsh-tui` **0.16.1** and its built-in admission
+docs/tui.md:8:profile — the first dsh-tui release whose declared peers admit DeepSeek Harness `0.2.1-rc.2`. §11.8
+docs/tui.md:29:those carriers moved again in the 0.14.0 and 0.16.1 waves: §11.8 — not this paragraph — states the
+docs/tui.md:606:  host dsh-tui 0.16.1 `lib/types/utils/fullscreen.js#isMouseClicksDisabled` feeds
+docs/tui.md:1464:**AMENDED 2026-10-20 — on a host that OWNS the enable list (`>= 0.16.1`) the adapter is READ-ONLY.** 0.16.1's
+docs/tui.md:1471:(`standing down READ-ONLY on host 0.16.1 …`). The 0.15.x path keeps the S1 migration byte-for-byte — the 0.16.0
+docs/tui.md:1573:### 11.8 Amendment after the DSH-TUI 0.16.1 adaptation wave (2026-10-18)
+docs/tui.md:1575:0.16.1 is the first dsh-tui release whose declared peers admit harness `0.2.1-rc.2`: all 36
+docs/tui.md:1576:`@deepseek-ai/dsh-*` peers carry that band (e.g. `dsh-agent: … || 0.2.0-rc.2 || 0.2.1-rc.2`,
+docs/tui.md:1577:`dsh-app-boot: 0.2.0-rc.2 || 0.2.1-rc.2`), while 0.15.0 enumerated the same family only up to
+docs/tui.md:1579:profile. The target moves to **0.16.1**; the following supersedes §11.7 where it disagrees:
+docs/tui.md:1583:| This page's target host (§ preamble) | **0.14.0** | **0.16.1** |
+docs/tui.md:1584:| §3 seam inventory | fifteen `tui*` seams, unchanged 0.13.0→0.15.0 | **still fifteen, and 0.16.1 breaks nothing in the adapter**: the same six `Tui*Like` shapes, `close(): void` + `active.id`, `tuiPanels`, `tuiPrompt` still a phantom, and `lib/types/ui.js` still exports `useStdin`; the only addition is the `EFFECT_LEDGER_NAME` const, which neither the adapter nor the bundle declares or consumes. No adapter code change was needed |
+docs/tui.md:1585:| §3.3 / §7 — the pin carriers and `MPD_E2E_DSH_VERSION` | `0.15.0` carriers; `MPD_E2E_DSH_VERSION` stayed `0.2.0-rc.2` | **`0.16.1` carriers and harness `0.2.1-rc.2`**: both Docker lanes (`MPD_E2E_TUI_VERSION`, `MPD_E2E_DSH_VERSION`), `dsh-distribution.json`'s `host-tui` ref (`…@0.16.1`) and `dsh-plugin.json`'s `compat.hosts` (`…@0.16.1`, moved off the stale `0.10.1`). `MPD_E2E_DSH_VERSION` now defaults to `0.2.1-rc.2` because the host's peer band admits it |
+docs/tui.md:1587:The TUI lane uses the configured `TUI_VERSION` (default `0.16.1`) and `MPD_E2E_DSH_VERSION` (default
+docs/tui.md:1588:`0.2.1-rc.2`) pins. It records `tui.hostInstall`, `tui.pluginAddHost`, `tui.pluginAddBundle` and
+docs/tui.md:1609:(0.16.1), not from a rendered image.
+docs/tui.zh-CN.md:6:**明确不声明**什么。目标宿主为 `@deepseek-harness-tui/dsh-tui` **0.16.1** 及其内置的准入
+docs/tui.zh-CN.md:7:（admission）配置文件——它是第一个声明 peer 接受 DeepSeek Harness `0.2.1-rc.2` 的 dsh-tui 版本。
+docs/tui.zh-CN.md:25:`0.13.0`）。**这两类载体在 0.14.0 与 0.16.1 波次中又移动过——当前生效的取值由 §11.8 那一节给出，而不是本节。**
+docs/tui.zh-CN.md:485:- **`DSH_TUI_DISABLE_MOUSE=1` 只关闭应用内的点击与选区处理。** 在钉住的宿主 dsh-tui 0.16.1 上，
+docs/tui.zh-CN.md:1203:**2026-10-20 修订 —— 在**拥有**启用清单的宿主（`>= 0.16.1`）上，适配器是**只读**的。** 0.16.1 的
+docs/tui.zh-CN.md:1208:都不跑**，并留一行说明（`standing down READ-ONLY on host 0.16.1 …`）。0.15.x 路径逐字节保留 S1 迁移——
+docs/tui.zh-CN.md:1282:### 11.8 DSH-TUI 0.16.1 适配波次之后的修订（2026-10-18）
+docs/tui.zh-CN.md:1284:0.16.1 是第一个声明 peer 接受 harness `0.2.1-rc.2` 的 dsh-tui 版本：36 个 `@deepseek-ai/dsh-*` peer
+docs/tui.zh-CN.md:1285:全部带该段（例如 `dsh-agent: … || 0.2.0-rc.2 || 0.2.1-rc.2`、
+docs/tui.zh-CN.md:1286:`dsh-app-boot: 0.2.0-rc.2 || 0.2.1-rc.2`），而 0.15.0 的同一族只列到 `0.2.0-rc.2`——这正是
+docs/tui.zh-CN.md:1288:**0.16.1**；以下各条在与 §11.7 冲突处取代它：
+docs/tui.zh-CN.md:1292:| 本页对标宿主（§ 前言） | **0.14.0** | **0.16.1** |
+docs/tui.zh-CN.md:1293:| §3 接缝清单 | 十五个 `tui*` 接缝，0.13.0→0.15.0 不变 | **仍是十五个，且 0.16.1 没有破坏适配器的任何东西**：同样六个 `Tui*Like` 形状、`close(): void` + `active.id`、`tuiPanels`、`tuiPrompt` 仍是 phantom、`lib/types/ui.js` 仍导出 `useStdin`；唯一新增是 `EFFECT_LEDGER_NAME` 常量，适配器与 bundle 都不声明、不消费。适配器代码无需改动 |
+docs/tui.zh-CN.md:1294:| §3.3 / §7 —— 版本钉住载体与 `MPD_E2E_DSH_VERSION` | 载体为 `0.15.0`；`MPD_E2E_DSH_VERSION` 保持 `0.2.0-rc.2` | **载体为 `0.16.1`，harness 为 `0.2.1-rc.2`**：两条 Docker 车道（`MPD_E2E_TUI_VERSION`、`MPD_E2E_DSH_VERSION`）、`dsh-distribution.json` 的 `host-tui` 引用（`…@0.16.1`）与 `dsh-plugin.json` 的 `compat.hosts`（`…@0.16.1`，从陈旧的 `0.10.1` 移来）。`MPD_E2E_DSH_VERSION` 现默认 `0.2.1-rc.2`，因为宿主的 peer 带接受它 |
+docs/tui.zh-CN.md:1296:TUI 车道使用配置好的 `TUI_VERSION`（默认 `0.16.1`）与 `MPD_E2E_DSH_VERSION`（默认 `0.2.1-rc.2`）
+docs/tui.zh-CN.md:1315:页面内容则由宿主 kit 替身证明。决策记录里的 `ui.Image` 清单读取自已安装宿主自身的类型声明（0.16.1），
+docs/user-guide.md:43:pins `0.2.1-rc.2`. A packed install needs no extra step: pnpm
+docs/user-guide.md:454:- **On dsh-tui ≥ 0.16.1 the deployment is stateless.** That host OWNS the sidebar enable list: its
+docs/user-guide.md:1104:# On the dsh 0.2.1-rc.2 baseline, grant the exact-version exemption first:
+docs/user-guide.md:1105:dsh plugin --profile web allow-version @dsh-std/adapter-dsh@0.1.1-rc.2 --dsh-version 0.2.1-rc.2 --accept-risk
+docs/user-guide.md:1111:line while this bundle's baseline is dsh `0.2.1-rc.2`, so the exemption is the profile owner's explicit
+docs/user-guide.zh-CN.md:39:**DSH 0.2.1-rc.1 或更新**；本 bundle 固定的是 `0.2.1-rc.2`。
+docs/user-guide.zh-CN.md:403:- **在 dsh-tui ≥ 0.16.1 上部署是 STATELESS 的。** 该宿主**自己掌管**侧栏启用清单：它的注册表在注册时
+docs/user-guide.zh-CN.md:988:# 在 dsh 0.2.1-rc.2 基线上，先授予精确版本豁免：
+docs/user-guide.zh-CN.md:989:dsh plugin --profile web allow-version @dsh-std/adapter-dsh@0.1.1-rc.2 --dsh-version 0.2.1-rc.2 --accept-risk
+docs/user-guide.zh-CN.md:995:而本 bundle 的基线是 dsh `0.2.1-rc.2`，于是豁免只能是 profile 拥有者对自己 profile 的显式风险决定；
+dsh-distribution.json:6:    "version": "0.15.4"
+dsh-distribution.json:22:            "ref": "pkg:npm/@deepseek-harness-tui/dsh-tui@0.16.1"
+dsh-distribution.json:26:            "ref": "urn:dsh:distribution:mpd:my-power-dsh@0.15.4",
+dsh-distribution.json:33:            "ref": "urn:dsh:component:mpd:plugins@0.15.4",
+dsh-distribution.json:40:            "ref": "urn:dsh:component:mpd:mcp-servers@0.15.4",
+dsh-distribution.json:47:            "ref": "urn:dsh:component:mpd:skills-corpus@0.15.4",
+dsh-distribution.json:54:            "ref": "urn:dsh:component:mpd:web-client@0.15.4",
+dsh-distribution.json:61:            "ref": "urn:dsh:component:mpd:tui-edition@0.15.4",
+dsh-plugin.json:6:  "version": "0.15.4",
+dsh-plugin.json:55:      "@deepseek-harness-tui/dsh-tui@0.16.1"
+package.json:6:  "version": "0.15.4",
+package.json:113:    "@deepseek-ai/dsh-experimental-agent-team": "0.2.1-rc.2",
+package.json:114:    "@deepseek-ai/dsh-experimental-client-ui-agent-team": "0.2.1-rc.2",
+package.json:115:    "@deepseek-ai/dsh-experimental-tool-agent-team": "0.2.1-rc.2",
+packages/mpd-better-sidebar-host/README.md:47:repository pins `0.2.1-rc.2`, so the row mounts on every supported composition. The shim arms on the
+packages/mpd-better-sidebar-host/README.zh-CN.md:39:`@deepseek-ai/dsh-client-connection` 提供 —— 本仓库固定的是 `0.2.1-rc.2`，因此在所有受支持的组合里该行都会挂载。
+packages/mpd-better-sidebar-host/src/index.ts:28://   • 0.2.1-rc.2 provides no `webRuntime` at all — `@deepseek-ai/dsh-web-app` now provides only
+packages/mpd-better-sidebar-host/src/index.ts:36:// 0.2.1-rc.1+ (the host's peer floor and this bundle's pinned 0.2.1-rc.2 both satisfy it). So the shim
+packages/mpd-better-sidebar-host/test/host-contract.test.ts:8:// `ctx.webRuntime.trustedHosts`; harness 0.2.1-rc.2 provides no `webRuntime` at all, so the row now
+packages/mpd-bootstrap-plugin/dist/index.js:684:      rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: spawnAgent was given "${field}", which harness 0.2.1-rc.2 removed from the start request — it is NOT forwarded, so the child runs without it (the selected preset owns persona and tool composition now)`);
+packages/mpd-boulder-plugin/dist/index.js:1340:      rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: spawnAgent was given "${field}", which harness 0.2.1-rc.2 removed from the start request — it is NOT forwarded, so the child runs without it (the selected preset owns persona and tool composition now)`);
+packages/mpd-bundle-plugin/dist/index.js:707:      rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: spawnAgent was given "${field}", which harness 0.2.1-rc.2 removed from the start request — it is NOT forwarded, so the child runs without it (the selected preset owns persona and tool composition now)`);
+packages/mpd-bundle-plugin/test/preset-prompt-variables.test.ts:1:// Regression pin for the 2026-10-19 TURN failure reported against harness 0.2.1-rc.2:
+packages/mpd-bundle-plugin/test/preset-prompt-variables.test.ts:8:// and `model` (dsh-agent-loop), and the 0.2.1-rc.2 dsh-system-prompt README states that
+packages/mpd-bundle/README.md:100:  GONE: harness 0.2.1-rc.2's schema no longer declares it, so the row does not set it.
+packages/mpd-bundle/README.zh-CN.md:38:- 官方 `mpd-agent-team` 行携带 patch 中的上限：`maxMembers: 16`、`maxTasks: 256`、`maxMessageBytes: 32768`、`disposalTimeoutMs: 5000`。`maxPendingMessagesPerMember` 已**移除**：harness 0.2.1-rc.2 的 schema 不再声明它，因此该行不再设置。
+packages/mpd-codegraph-plugin/dist/index.js:681:      rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: spawnAgent was given "${field}", which harness 0.2.1-rc.2 removed from the start request — it is NOT forwarded, so the child runs without it (the selected preset owns persona and tool composition now)`);
+packages/mpd-comment-checker-plugin/dist/index.js:684:      rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: spawnAgent was given "${field}", which harness 0.2.1-rc.2 removed from the start request — it is NOT forwarded, so the child runs without it (the selected preset owns persona and tool composition now)`);
+packages/mpd-config-plugin/dist/index.js:678:      rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: spawnAgent was given "${field}", which harness 0.2.1-rc.2 removed from the start request — it is NOT forwarded, so the child runs without it (the selected preset owns persona and tool composition now)`);
+packages/mpd-dsh-adapter-plugin/README.md:113:activation to dispose. Honest bound on harness 0.2.1-rc.2: `dispose()` settles and releases the live
+packages/mpd-dsh-adapter-plugin/README.zh-CN.md:100:`run.result`，没有可供释放的 activation。诚实边界（harness 0.2.1-rc.2）：`dispose()` 只结算并
+packages/mpd-dsh-adapter-plugin/dist/index.js:779:      rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: spawnAgent was given "${field}", which harness 0.2.1-rc.2 removed from the start request — it is NOT forwarded, so the child runs without it (the selected preset owns persona and tool composition now)`);
+packages/mpd-dsh-adapter-plugin/src/index.ts:331:   * Harness 0.2.1-rc.2 dropped `persona` from the start request, so it is forwarded on the
+packages/mpd-dsh-adapter-plugin/src/index.ts:340:   * Like {@link DshSpawnSpec.persona}, 0.2.1-rc.2 removed it from the start request: the
+packages/mpd-dsh-adapter-plugin/src/index.ts:2009:   * The honest bound on harness 0.2.1-rc.2: `dispose()` settles and releases the LIVE activation
+packages/mpd-dsh-adapter-plugin/src/index.ts:2306:   * WHY THIS SEAM EXISTS. Harness 0.2.1-rc.2 removed `persona` / `toolFilter` from the subagent
+packages/mpd-dsh-adapter-plugin/src/index.ts:2775: * 0.2.1-rc.2 removed from the subagent start request.
+packages/mpd-dsh-adapter-plugin/src/index.ts:3202:// Harness 0.2.1-rc.2 REMOVED `SubagentRuntime.startContinuable()` and `.start()`. A durable child
+packages/mpd-dsh-adapter-plugin/src/index.ts:3215: * The ONE-TRUE predicate behind both the call path and `capabilities().subagentsSpawn`: 0.2.1-rc.2
+packages/mpd-dsh-adapter-plugin/src/index.ts:3297: * 0.2.1-rc.2 removed `persona` and `toolFilter` from `SubagentStartRequest`, and in-repo callers
+packages/mpd-dsh-adapter-plugin/src/index.ts:3308:      rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: spawnAgent was given "${field}", which harness 0.2.1-rc.2 removed from the start request — it is NOT forwarded, so the child runs without it (the selected preset owns persona and tool composition now)`)
+packages/mpd-dsh-adapter-plugin/src/index.ts:4579:      // 0.2.1-rc.2 removed `start(mode, request)` and made `signal` a REQUIRED spec field, so the
+packages/mpd-dsh-adapter-plugin/test/adapter-agent-teams-surface.test.ts:499:    // RE-PURPOSED for harness 0.2.1-rc.2: that release removed `startContinuable()`, so the seam
+packages/mpd-dsh-adapter-plugin/test/adapter-subagent-seam-generations.test.ts:1:// THE DURABLE-CHILD SEAM, ACROSS HARNESS GENERATIONS (harness 0.2.1-rc.2 adaptation).
+packages/mpd-dsh-adapter-plugin/test/adapter-subagent-seam-generations.test.ts:3:// WHAT BROKE. Release 0.2.1-rc.2 REMOVED `SubagentRuntime.startContinuable()` — and with it
+packages/mpd-dsh-adapter-plugin/test/adapter-subagent-seam-generations.test.ts:5:// whole 0.2.1-rc.2 closure at `.mpd/reference/harness-021/node_modules/@deepseek-ai/` returns
+packages/mpd-dsh-adapter-plugin/test/child-persona-seam.test.ts:1:// THE CHILD-PERSONA SEAM (harness 0.2.1-rc.2): persona + read-only discipline for spawned children.
+packages/mpd-dsh-adapter-plugin/test/child-persona-seam.test.ts:3:// WHAT THIS FILE PROVES. 0.2.1-rc.2 removed `persona` and `toolFilter` from the subagent start
+packages/mpd-ext-plugin/dist/index.js:679:      rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: spawnAgent was given "${field}", which harness 0.2.1-rc.2 removed from the start request — it is NOT forwarded, so the child runs without it (the selected preset owns persona and tool composition now)`);
+packages/mpd-goal-plugin/dist/index.js:677:      rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: spawnAgent was given "${field}", which harness 0.2.1-rc.2 removed from the start request — it is NOT forwarded, so the child runs without it (the selected preset owns persona and tool composition now)`);
+packages/mpd-hashline-plugin/dist/index.js:1541:      rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: spawnAgent was given "${field}", which harness 0.2.1-rc.2 removed from the start request — it is NOT forwarded, so the child runs without it (the selected preset owns persona and tool composition now)`);
+packages/mpd-memory-plugin/dist/index.js:678:      rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: spawnAgent was given "${field}", which harness 0.2.1-rc.2 removed from the start request — it is NOT forwarded, so the child runs without it (the selected preset owns persona and tool composition now)`);
+packages/mpd-modelchain-plugin/dist/index.js:677:      rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: spawnAgent was given "${field}", which harness 0.2.1-rc.2 removed from the start request — it is NOT forwarded, so the child runs without it (the selected preset owns persona and tool composition now)`);
+packages/mpd-project-init-plugin/dist/index.js:677:      rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: spawnAgent was given "${field}", which harness 0.2.1-rc.2 removed from the start request — it is NOT forwarded, so the child runs without it (the selected preset owns persona and tool composition now)`);
+packages/mpd-qa-roles-probe/dist/index.js:679:      rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: spawnAgent was given "${field}", which harness 0.2.1-rc.2 removed from the start request — it is NOT forwarded, so the child runs without it (the selected preset owns persona and tool composition now)`);
+packages/mpd-roles-plugin/dist/index.js:1632:      rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: spawnAgent was given "${field}", which harness 0.2.1-rc.2 removed from the start request — it is NOT forwarded, so the child runs without it (the selected preset owns persona and tool composition now)`);
+packages/mpd-roles-plugin/src/index.ts:738:  // ── the child's persona and read-only discipline (harness 0.2.1-rc.2) ──────────────────────
+packages/mpd-roles-plugin/src/index.ts:740:  // 0.2.1-rc.2 REMOVED `persona` and `toolFilter` from the subagent start request, so
+packages/mpd-roster-provider-plugin/dist/index.js:673:      rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: spawnAgent was given "${field}", which harness 0.2.1-rc.2 removed from the start request — it is NOT forwarded, so the child runs without it (the selected preset owns persona and tool composition now)`);
+packages/mpd-roster-provider-plugin/src/index.ts:6:// subagent seam (the durable-child start, named `startActivation` since 0.2.1-rc.2), so the mpd
+packages/mpd-roster-provider-plugin/src/index.ts:13:// generation's; 0.2.1-rc.2 renamed the start to `startActivation(spec)` and dropped the
+packages/mpd-roster-provider-plugin/src/index.ts:74: * EXACTLY these four exist in harness 0.2.1-rc.2. The retired `persona` and `toolFilter` are
+packages/mpd-roster-provider-plugin/src/route.ts:8:// `startActivation(spec)` in 0.2.1-rc.2, with the same contract for this module) resolves
+packages/mpd-roster-provider-plugin/src/route.ts:44: * name (`request` is `{ prompt, parent }`, and no persona field is forwarded either — 0.2.1-rc.2
+packages/mpd-team-compact-plugin/dist/index.js:677:      rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: spawnAgent was given "${field}", which harness 0.2.1-rc.2 removed from the start request — it is NOT forwarded, so the child runs without it (the selected preset owns persona and tool composition now)`);
+packages/mpd-team-core-plugin/dist/index.js:678:      rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: spawnAgent was given "${field}", which harness 0.2.1-rc.2 removed from the start request — it is NOT forwarded, so the child runs without it (the selected preset owns persona and tool composition now)`);
+packages/mpd-team-watchdog-plugin/dist/index.js:1589:      rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: spawnAgent was given "${field}", which harness 0.2.1-rc.2 removed from the start request — it is NOT forwarded, so the child runs without it (the selected preset owns persona and tool composition now)`);
+packages/mpd-tools-plugin/dist/index.js:677:      rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: spawnAgent was given "${field}", which harness 0.2.1-rc.2 removed from the start request — it is NOT forwarded, so the child runs without it (the selected preset owns persona and tool composition now)`);
+packages/mpd-tui-adapter-plugin/README.md:117:**The enable-list keeper is READ-ONLY on a host that owns the list (`>= 0.16.1`, 2026-10-20).** The keeper
+packages/mpd-tui-adapter-plugin/README.md:121:0.16.1 owns the list outright (it enables a panel on registration and removes it on dispose), and every write
+packages/mpd-tui-adapter-plugin/README.zh-CN.md:96:**在拥有启用清单的宿主（`>= 0.16.1`，2026-10-20）上，启用清单守卫是只读的。** 该守卫只为一件缺陷而生：
+packages/mpd-tui-adapter-plugin/README.zh-CN.md:99:0.16.1 则完全拥有清单（注册即启用、dispose 即移除），任何残余写入都只会与那个注册表赛跑，于是
+packages/mpd-tui-adapter-plugin/dist/index.js:296:var PANEL_CSV_HOST_OWNED_SINCE = "0.16.1";
+packages/mpd-tui-adapter-plugin/src/index.ts:993: * 0.16.1 is the release this bundle is admitted on (`dsh-plugin.json` compat), and its
+packages/mpd-tui-adapter-plugin/src/index.ts:999:export const PANEL_CSV_HOST_OWNED_SINCE = "0.16.1"
+packages/mpd-tui-adapter-plugin/src/index.ts:1743:          // 0.16.1+ — THE HOST OWNS THE LIST (G1 of the stateless-deployment wave): the adapter is
+packages/mpd-tui-adapter-plugin/test/panel-enable-migration.test.ts:921:// READ-ONLY. 0.16.1's `TuiPanelRuntime.register()` enables a panel on registration, `dispose()` removes
+packages/mpd-tui-adapter-plugin/test/panel-enable-migration.test.ts:927:// feed on >= 0.16.1, while the 0.15.0 host keeps the S1 migration byte for byte (the arms above).
+packages/mpd-tui-adapter-plugin/test/panel-enable-migration.test.ts:928:describe("G1 · the adapter is READ-ONLY on a host that owns the enable list (>= 0.16.1)", () => {
+packages/mpd-tui-adapter-plugin/test/panel-enable-migration.test.ts:929:  test("the ownership predicate starts at 0.16.1, and unreadable versions stay out of it", () => {
+packages/mpd-tui-adapter-plugin/test/panel-enable-migration.test.ts:930:    expect(hostOwnsPanelCsv("0.16.1")).toBe(true)
+packages/mpd-tui-adapter-plugin/test/panel-enable-migration.test.ts:931:    expect(hostOwnsPanelCsv("0.16.1-rc.2")).toBe(true)
+packages/mpd-tui-adapter-plugin/test/panel-enable-migration.test.ts:941:    expect(hostVersionAtLeast("0.16.1", "0.16.1")).toBe(true)
+packages/mpd-tui-adapter-plugin/test/panel-enable-migration.test.ts:942:    expect(hostVersionAtLeast("0.16.0", "0.16.1")).toBe(false)
+packages/mpd-tui-adapter-plugin/test/panel-enable-migration.test.ts:943:    expect(hostVersionAtLeast("garbage", "0.16.1")).toBe(false)
+packages/mpd-tui-adapter-plugin/test/panel-enable-migration.test.ts:946:  test("(a) 0.16.1 with a STALE PIN: the keeper writes NOTHING — no migration, no belt, no feed", async () => {
+packages/mpd-tui-adapter-plugin/test/panel-enable-migration.test.ts:947:    /** The host store, with a feed exposed (0.16.1 has one) so a belt WOULD be observable. */
+packages/mpd-tui-adapter-plugin/test/panel-enable-migration.test.ts:954:    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: fake.store, hostVersion: "0.16.1", defaultIds: HOST_DEFAULT }), schedule: clock.schedule, pastIds: () => [], log: (line: string): void => { logged.push(line) } })
+packages/mpd-tui-adapter-plugin/test/panel-enable-migration.test.ts:969:    expect(logged.some((line) => line.includes("standing down READ-ONLY on host 0.16.1"))).toBe(true)
+packages/mpd-tui-adapter-plugin/test/panel-enable-migration.test.ts:974:  test("(b) 0.16.1 with a CURRENT list: still nothing written, and no tick is left armed", async () => {
+packages/mpd-tui-adapter-plugin/test/panel-enable-migration.test.ts:980:    const keeper = createPanelEnableKeeper({ loadPrefs: async () => ({ prefs: fake.store, hostVersion: "0.16.1", defaultIds: HOST_DEFAULT }), schedule: clock.schedule, pastIds: () => [] })
+packages/mpd-tui-plugin/README.md:30:| Sidebar pages (dsh-tui 0.13.0+, adapted to 0.16.1) | `ctx.tuiPanels` (through the adapter) | **THREE** pages — `team` (`MPD`, `❖`, `order` 10, the merged RICH view: the host's curated subagent rows above the DAG page's frame/legend/keys/pin body), `workmate` (`MPD workmate`, `⬢`, `order` 12) and, since the watchdog wave, `watchdog` (`MPD watchdog`, `⚠`, `order` 13: per-team held state and phase, the `mpd-tui` unread count and the incident list, with `a`/`r`/scroll keys). The standalone `dag` page is RETIRED and merged into `MPD` (user clause 「DAG页作为MPD面板」), so `/mpd dag` re-aims onto the `MPD` panel with the rich team scene as its fallback — no route, picker entry or `⤢` became a dead end. All three pages declare an icon (distinct from the host's eight builtin tabs) and no `compact`, and all three ask `minColumns` 28. `alt+a`, `/mpd panel` and `/mpd subagents` route the MPD panel through `tuiPanels.open()` when the seam is bound; `/mpd dag` re-aims onto that same panel, and `/mpd workmate` routes its own page. EVERY refusal FALLS BACK to a full-screen surface (`mpd-tui-subagents` for the routed open, the RICH `mpd-tui-team` scene for the MPD page's own `⤢`, the board for `workmate`) — never a silent no-op — and each command prints a bilingual status line naming the surface and the final id it reached. See the reachability paragraph below: the host's own two switches are what put a page on screen |
+packages/mpd-tui-plugin/README.zh-CN.md:29:| 侧栏页面（dsh-tui 0.13.0+，已适配 0.16.1） | `ctx.tuiPanels`（经适配器） | **三个**页面 —— `team`（`MPD`、`❖`、`order` 10，合并的**富**视图：宿主自己整理的子代理行位于 DAG 页的外框/图例/按键/钉住正文之上）、`workmate`（`MPD workmate`、`⬢`、`order` 12）与看门狗波次新增的 `watchdog`（`MPD watchdog`、`⚠`、`order` 13：每团队的暂停状态与阶段、`mpd-tui` 未读数与事件列表，配 `a`/`r`/滚动键）。独立的 `dag` 页已**退役**并合并进 `MPD`（用户条款「DAG页作为MPD面板」），因此 `/mpd dag` 改瞄到 `MPD` 面板、以富形态团队场景作为回退 —— 没有任何路由、选择器条目或 `⤢` 变成死路。三个页面都声明图标（与宿主的八个内置标签页不同）、都不声明 `compact`，且都请求 `minColumns` 28。接缝已绑定时，`alt+a`、`/mpd panel` 与 `/mpd subagents` 经 `tuiPanels.open()` 路由到 MPD 面板；`/mpd dag` 改瞄到同一面板，`/mpd workmate` 路由到它自己的页面。**任何**拒绝都会回退到一个全屏界面（路由回退用 `mpd-tui-subagents`，MPD 页自己的 `⤢` 用富形态 `mpd-tui-team` 场景，`workmate` 用看板场景）—— 绝不静默无操作 —— 每条命令都会打印一行双语状态，点名它到达的界面与最终 id。页面能否出现在屏幕上由宿主自己的两个开关决定，见下方"如何到达"一段 |
+packages/mpd-tui-plugin/dist/index.js:1741:      rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: spawnAgent was given "${field}", which harness 0.2.1-rc.2 removed from the start request — it is NOT forwarded, so the child runs without it (the selected preset owns persona and tool composition now)`);
+packages/mpd-tui-plugin/dist/index.js:3284:var PANEL_CSV_HOST_OWNED_SINCE = "0.16.1";
+packages/mpd-tui-plugin/test/panel-attention.test.ts:552:      keeper: { state: "confirmed", detail: "read-only: the host 0.16.1 owns the enable list (>= 0.16.1), so this keeper writes nothing" },
+packages/mpd-tui-plugin/test/panel-attention.test.ts:553:    })).toBe("panels: team=act1:team workmate=act1:workmate · seam bound · keeper confirmed — read-only: the host 0.16.1 owns the enable list (>= 0.16.1), so this keeper writes nothing")
+packages/mpd-ulw-plugin/dist/index.js:679:      rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: spawnAgent was given "${field}", which harness 0.2.1-rc.2 removed from the start request — it is NOT forwarded, so the child runs without it (the selected preset owns persona and tool composition now)`);
+packages/mpd-verify-plugin/dist/index.js:677:      rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: spawnAgent was given "${field}", which harness 0.2.1-rc.2 removed from the start request — it is NOT forwarded, so the child runs without it (the selected preset owns persona and tool composition now)`);
+packages/mpd-workmate-plugin/dist/index.js:735:      rowLogLine("mpd-dsh-adapter", `mpd-dsh-adapter: spawnAgent was given "${field}", which harness 0.2.1-rc.2 removed from the start request — it is NOT forwarded, so the child runs without it (the selected preset owns persona and tool composition now)`);
+packages/mpd-workmate-plugin/src/index.ts:893:  // ── the child's CURRENT persona and read-only discipline (harness 0.2.1-rc.2) ───────────────
+packages/mpd-workmate-plugin/src/index.ts:895:  // 0.2.1-rc.2 REMOVED `persona` and `toolFilter` from the subagent start request, so a workmate
+presets/mpd.patch.yml:82:          # dsh-system-prompt README, 0.2.1-rc.2, says so explicitly). The
+presets/mpd.patch.yml:170:          # preset (harness 0.2.1-rc.2): a session without it cannot tell a remembered
+presets/mpd.patch.yml:217:          # `ctx.schedule` service. New in the 0.2.1-rc.2 `standard` preset; no config in
+presets/mpd.patch.yml:385:          # 0.2.1-rc.2 `standard` preset ships them: the host enables `plugin_manager` in Creator
+scripts/verify-plugin-manifest.ts:708:      { id: "host-tui", ref: "pkg:npm/@deepseek-harness-tui/dsh-tui@0.16.1" },
+skills/dsh-qa/SKILL.md:121:| tui-keeper-standdown | DSH-TUI edition (tui-015/C2) | the KEEPER STAND-DOWN real-PTY arm on the installed 0.16.1 host: BOTH MPD sidebar panels are unticked via real `/settings` keystrokes (adaptive focus hunting over captured panes — rows found by the host's own `插件面板（actN）` / `Plugin panel (actN)` descriptions, never by restated ids), the user-layer `settings.json` CSV must lose every `act<N>:` token (only this bundle's dotted component id takes the host's act prefix), and the removal must STAY through two more settings-apply hops (a builtin row toggled off and back on) plus a 25 s poll — the 0.14-era enable-list keeper stands down and never repairs an explicit removal. The NEGATIVE CONTROL MUST REDDEN: `act1:team` hand-written back into the user layer must flip the SAME detector to present, and the restore must flip it back. `--self-test` falsifies the CSV detector, the user-layer reader/writer, the row matcher and the pointer finder offline | v0.13.0/TUI |
+skills/dsh-qa/scripts/install-dependencies.ts:638:    remedy: "dsh plugin --profile dsh-tui add @deepseek-harness-tui/dsh-tui@0.16.1",
+skills/dsh-qa/scripts/lib/tui-lane.ts:10://   • `dsh plugin --profile dsh-tui add @deepseek-harness-tui/dsh-tui@0.16.1` needs
+skills/dsh-qa/scripts/lib/tui-lane.ts:1285:    { code: "absent-dsh-binary", probe: "dsh-tui", remedy: "npm i -g @deepseek-harness-tui/dsh-tui@0.16.1", present: tuiBinaryPresent },
+skills/dsh-qa/scripts/tui-admission.ts:48:// PREREQ: absent-runtime dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.16.1"
+skills/dsh-qa/scripts/tui-deps-ctrla.ts:28:// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.16.1"
+skills/dsh-qa/scripts/tui-keeper-standdown.ts:3:// INSTALLED 0.16.1 host, that an explicit `/settings` removal of BOTH MPD sidebar panels STAYS
+skills/dsh-qa/scripts/tui-keeper-standdown.ts:24:// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.16.1"
+skills/dsh-qa/scripts/tui-mount.ts:17:// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.16.1"
+skills/dsh-qa/scripts/tui-mount.ts:154: * MOVED 0.15.0 -> 0.16.1 (2026-10-18): 0.16.1 is the first dsh-tui release whose declared peers admit
+skills/dsh-qa/scripts/tui-mount.ts:155: * harness 0.2.1-rc.2 (all 36 `@deepseek-ai/dsh-*` peers list it), while 0.15.0's bands stop at
+skills/dsh-qa/scripts/tui-mount.ts:191:const TUI_HOST_SPEC: string = "@deepseek-harness-tui/dsh-tui@" + (process.env.MPD_E2E_TUI_VERSION ?? "0.16.1")
+skills/dsh-qa/scripts/tui-panels.ts:21:// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.16.1"
+skills/dsh-qa/scripts/tui-team-surface.ts:36:// PREREQ: absent-dsh-binary dsh-tui "npm i -g @deepseek-harness-tui/dsh-tui@0.16.1"
+skills/dsh-qa/scripts/tui-team-surface.ts:1599:    { code: "absent-dsh-binary", probe: "dsh-tui", remedy: "npm i -g @deepseek-harness-tui/dsh-tui@0.16.1", present: () => binaryOnPath("dsh-tui") },

@@ -44,7 +44,7 @@ service a 0.28 composition provides.
 `dsh-better-sidebar@0.28.0` fences `/sidebar/api` with
 `ctx.connection.requestRejection(req) === undefined` and declares `connection` in its own inject list.
 That service is provided by `@deepseek-ai/dsh-client-connection` on harness **0.2.1-rc.1+** — this
-repository pins `0.2.1-rc.2`, so the row mounts on every supported composition. The shim arms on the
+repository pins `0.2.1-rc.3`, so the row mounts on every supported composition. The shim arms on the
 service's presence, mounts the host inside an injected scope that declares it, and otherwise disables
 itself with `[mpd-better-sidebar] disabled: … [reason=absent]`, naming the missing service. It never
 waits for a service no build provides.

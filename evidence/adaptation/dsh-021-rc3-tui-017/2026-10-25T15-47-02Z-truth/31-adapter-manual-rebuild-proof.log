@@ -1,0 +1,17 @@
+# CMD: TMPDIR=<ws>/.mpd/tmp/bun-tmp ./.toolchain/node_modules/.bin/bun build packages/mpd-tui-adapter-plugin/src/index.ts --target node --format esm --outfile .mpd/tmp/t3-rebuild/tui-adapter.js
+# then cmp against the committed dist
+Bundled 1 module in 7ms
+
+  tui-adapter.js  55.40 KB  (entry point)
+
+BYTE-IDENTICAL to the committed dist/index.js
+
+# Cross-check: JSDoc blocks in ANY committed packages/*/dist/*.js
+files with a /** block: 2 of 34
+# grep in the adapter dist:
+0
+
+# The 2 matches are STRING LITERALS, not emitted comments:
+#   packages/mpd-boulder-plugin/dist/index.js:440   var STATE_DIR_GITIGNORE = ["*", "!/rules/", "!/rules/**", ...]
+#   packages/mpd-roles-plugin/dist/index.js:646    a prose string ending in a glob ('/rules/**' inside a message)
+# => ZERO dist files carry an emitted comment; the adapter docblock cannot reach dist/index.js.

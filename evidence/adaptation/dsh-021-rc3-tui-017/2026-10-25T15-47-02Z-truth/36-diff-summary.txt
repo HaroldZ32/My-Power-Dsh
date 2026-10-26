@@ -1,0 +1,58 @@
+# T3 change set (three files) — git diff --stat + hunks
+ packages/mpd-tui-adapter-plugin/src/index.ts | 12 +++++++-----
+ packages/mpd-tui-plugin/README.md            |  2 +-
+ packages/mpd-tui-plugin/README.zh-CN.md      |  2 +-
+ 3 files changed, 9 insertions(+), 7 deletions(-)
+
+diff --git a/packages/mpd-tui-adapter-plugin/src/index.ts b/packages/mpd-tui-adapter-plugin/src/index.ts
+index 1025997a..48382e50 100644
+--- a/packages/mpd-tui-adapter-plugin/src/index.ts
++++ b/packages/mpd-tui-adapter-plugin/src/index.ts
+@@ -990,11 +990,13 @@ export function hostSelfHealsPanelCsv(version: string): boolean {
+ /**
+  * The first host release whose ENABLE LIST is OWNED by the host, for this bundle's purposes.
+  *
+- * 0.16.1 is the release this bundle is admitted on (`dsh-plugin.json` compat), and its
+- * `TuiPanelRuntime.register()` enables a panel on registration, `dispose()` removes it, and the boot
+- * and settings applies union every registered id back. There is therefore NO enable-list state this
+- * adapter could still author — anything it wrote would be a second writer racing the host's own
+- * merge, which is exactly the incident class (`fix/sidebar-015-keeper-migration`) this gate retires.
++ * 0.16.1 is the release that INTRODUCED host ownership — the behaviour this gate retires the keeper
++ * for — so the constant keeps 0.16.1 forever: `TuiPanelRuntime.register()` enables a panel on
++ * registration, `dispose()` removes it, and the boot and settings applies union every registered id
++ * back. There is therefore NO enable-list state this adapter could still author — anything it wrote
++ * would be a second writer racing the host's own merge, which is exactly the incident class
++ * (`fix/sidebar-015-keeper-migration`) this gate retires. Which host the bundle is ADMITTED on is a
++ * different fact, declared in `dsh-plugin.json` `compat.hosts` (0.17.0 since v0.15.5).
+  */
+ export const PANEL_CSV_HOST_OWNED_SINCE = "0.16.1"
+ 
+diff --git a/packages/mpd-tui-plugin/README.md b/packages/mpd-tui-plugin/README.md
+index fcccd238..2f55b7e2 100644
+--- a/packages/mpd-tui-plugin/README.md
++++ b/packages/mpd-tui-plugin/README.md
+@@ -27,7 +27,7 @@ would duplicate a loader entry id (the loader rejects duplicates outright).
+ | Command tree | `ctx.tuiCommandTrees` | `/mpd board`, `/mpd team`, `/mpd plan`, `/mpd status`, `/mpd panel`, `/mpd dag`, `/mpd workmate`, `/mpd workmates`, `/mpd watchdog` completion, plus the `/mpd-model` root — both roots and every child carry BOTH languages in `descriptions`, resolved by the host with its own active `/lang` |
+ | Model menu (R3) | `ctx.tuiDialogs` + the shared catalog/settings seam | **`/mpd-model`** — a real pick-list that walks slot → provider → model → reasoning effort and writes the picked route into the `mpd-config` entry the `/settings` section edits. The options are the section's OWN projection (`teamModelOptionLists`) over the same live catalog, so the menu and the rows cannot disagree; the outcome carries the same disclosure sentence the section carries. Cancelling any panel writes nothing. Its slot panel also shows each slot's CURRENT configuration from the config service's typed `slotResolutionOf` answer (contract AMENDMENT 1): an unconfigured slot renders `<unconfigured>` and names its missing leaves, a malformed leaf renders `<invalid>`, and a composition with no config service renders `<unavailable>` — and the dialog NEVER wraps that read in a try/catch, so a degrade is a state the service reports rather than an exception swallowed on the display path |
+ | Shortcuts | `ctx.tuiShortcuts` | `alt+m` board · `alt+a` the subagents + team panel · `alt+t` team workflow · `alt+w` workmate picker · `alt+r` refresh the status line |
+-| Sidebar pages (dsh-tui 0.13.0+, adapted to 0.16.1) | `ctx.tuiPanels` (through the adapter) | **THREE** pages — `team` (`MPD`, `❖`, `order` 10, the merged RICH view: the host's curated subagent rows above the DAG page's frame/legend/keys/pin body), `workmate` (`MPD workmate`, `⬢`, `order` 12) and, since the watchdog wave, `watchdog` (`MPD watchdog`, `⚠`, `order` 13: per-team held state and phase, the `mpd-tui` unread count and the incident list, with `a`/`r`/scroll keys). The standalone `dag` page is RETIRED and merged into `MPD` (user clause 「DAG页作为MPD面板」), so `/mpd dag` re-aims onto the `MPD` panel with the rich team scene as its fallback — no route, picker entry or `⤢` became a dead end. All three pages declare an icon (distinct from the host's eight builtin tabs) and no `compact`, and all three ask `minColumns` 28. `alt+a`, `/mpd panel` and `/mpd subagents` route the MPD panel through `tuiPanels.open()` when the seam is bound; `/mpd dag` re-aims onto that same panel, and `/mpd workmate` routes its own page. EVERY refusal FALLS BACK to a full-screen surface (`mpd-tui-subagents` for the routed open, the RICH `mpd-tui-team` scene for the MPD page's own `⤢`, the board for `workmate`) — never a silent no-op — and each command prints a bilingual status line naming the surface and the final id it reached. See the reachability paragraph below: the host's own two switches are what put a page on screen |
++| Sidebar pages (dsh-tui 0.13.0+, adapted to 0.17.0) | `ctx.tuiPanels` (through the adapter) | **THREE** pages — `team` (`MPD`, `❖`, `order` 10, the merged RICH view: the host's curated subagent rows above the DAG page's frame/legend/keys/pin body), `workmate` (`MPD workmate`, `⬢`, `order` 12) and, since the watchdog wave, `watchdog` (`MPD watchdog`, `⚠`, `order` 13: per-team held state and phase, the `mpd-tui` unread count and the incident list, with `a`/`r`/scroll keys). The standalone `dag` page is RETIRED and merged into `MPD` (user clause 「DAG页作为MPD面板」), so `/mpd dag` re-aims onto the `MPD` panel with the rich team scene as its fallback — no route, picker entry or `⤢` became a dead end. All three pages declare an icon (distinct from the host's eight builtin tabs) and no `compact`, and all three ask `minColumns` 28. `alt+a`, `/mpd panel` and `/mpd subagents` route the MPD panel through `tuiPanels.open()` when the seam is bound; `/mpd dag` re-aims onto that same panel, and `/mpd workmate` routes its own page. EVERY refusal FALLS BACK to a full-screen surface (`mpd-tui-subagents` for the routed open, the RICH `mpd-tui-team` scene for the MPD page's own `⤢`, the board for `workmate`) — never a silent no-op — and each command prints a bilingual status line naming the surface and the final id it reached. See the reachability paragraph below: the host's own two switches are what put a page on screen |
+ | Merged panel | `ctx.tuiScenes` | `mpd-tui-subagents` — the host's own subagent rows (with its running/completed/failed counts), the team body, and the task DAG whose every drawn edge ends in a directional `▼` with a legend under it: this is the FALLBACK surface — `alt+a` and `/mpd panel` land here when the host has no panel seam or refuses the open — and on a pre-0.13.0 host **`Ctrl+A`** reaches it whenever the workspace holds a team (the take-over below). `enter` opens the selected subagent's detail, `i` interrupts the selected live run, a click selects a row |
+ | `Ctrl+A` take-over | a `ctx.tuiStatus` view + the adapter's host-input contact | `Ctrl+A` opens the merged panel instead of the host's own dashboard while the team projection holds a team with at least one task; with no team — or on a host whose input bus the adapter cannot reach — the key behaves exactly as before (`tui.dashboardKey`, default `true`; see NOT CLAIMED 7-9) |
+ | Dialogs | `ctx.tuiDialogs` | the mediated workmate picker (`select`) |
+diff --git a/packages/mpd-tui-plugin/README.zh-CN.md b/packages/mpd-tui-plugin/README.zh-CN.md
+index 8c8d9e6c..177e5da3 100644
+--- a/packages/mpd-tui-plugin/README.zh-CN.md
++++ b/packages/mpd-tui-plugin/README.zh-CN.md
+@@ -26,7 +26,7 @@ Cordis 插件行（`mpd-tui`），其模块说明符由 bundle patch 持有：
+ | 命令树 | `ctx.tuiCommandTrees` | `/mpd board`、`/mpd team`、`/mpd plan`、`/mpd status`、`/mpd panel`、`/mpd dag`、`/mpd workmate`、`/mpd workmates`、`/mpd watchdog` 补全，以及 `/mpd-model` 根；两个根与每个子项都在 `descriptions` 中同时提供中英双语，由宿主按其当前 `/lang` 解析 |
+ | 模型菜单（R3） | `ctx.tuiDialogs` + 共享的目录/设置接缝 | **`/mpd-model`** —— 一个真正的选择式菜单，依次选择 槽位 → 提供商 → 模型 → 推理强度，并把所选路由写入 `/settings` 区块所编辑的 `mpd-config` 条目。选项来自该区块**自己**的投影（`teamModelOptionLists`）与同一份实时模型目录，因此菜单与设置行不可能互相矛盾；输出结果携带与区块完全相同的披露语句。任一档取消即不写入任何内容。它的槽位面板还会通过配置服务的类型化 `slotResolutionOf` 答案（契约修订 1）显示每个槽位的**当前**配置：未配置的槽位渲染 `<unconfigured>` 并点名缺失的叶子，畸形叶子渲染 `<invalid>`，组合中没有配置服务时渲染 `<unavailable>` —— 并且对话框**从不**把这次读取包进 try/catch，因此降级是服务报告的状态，而不是在显示路径上被吞掉的异常 |
+ | 快捷键 | `ctx.tuiShortcuts` | `alt+m` 打开面板 · `alt+a` 子代理 + 团队面板 · `alt+t` 团队工作流 · `alt+w` workmate 选择器 · `alt+r` 立即刷新状态行 |
+-| 侧栏页面（dsh-tui 0.13.0+，已适配 0.16.1） | `ctx.tuiPanels`（经适配器） | **三个**页面 —— `team`（`MPD`、`❖`、`order` 10，合并的**富**视图：宿主自己整理的子代理行位于 DAG 页的外框/图例/按键/钉住正文之上）、`workmate`（`MPD workmate`、`⬢`、`order` 12）与看门狗波次新增的 `watchdog`（`MPD watchdog`、`⚠`、`order` 13：每团队的暂停状态与阶段、`mpd-tui` 未读数与事件列表，配 `a`/`r`/滚动键）。独立的 `dag` 页已**退役**并合并进 `MPD`（用户条款「DAG页作为MPD面板」），因此 `/mpd dag` 改瞄到 `MPD` 面板、以富形态团队场景作为回退 —— 没有任何路由、选择器条目或 `⤢` 变成死路。三个页面都声明图标（与宿主的八个内置标签页不同）、都不声明 `compact`，且都请求 `minColumns` 28。接缝已绑定时，`alt+a`、`/mpd panel` 与 `/mpd subagents` 经 `tuiPanels.open()` 路由到 MPD 面板；`/mpd dag` 改瞄到同一面板，`/mpd workmate` 路由到它自己的页面。**任何**拒绝都会回退到一个全屏界面（路由回退用 `mpd-tui-subagents`，MPD 页自己的 `⤢` 用富形态 `mpd-tui-team` 场景，`workmate` 用看板场景）—— 绝不静默无操作 —— 每条命令都会打印一行双语状态，点名它到达的界面与最终 id。页面能否出现在屏幕上由宿主自己的两个开关决定，见下方"如何到达"一段 |
++| 侧栏页面（dsh-tui 0.13.0+，已适配 0.17.0） | `ctx.tuiPanels`（经适配器） | **三个**页面 —— `team`（`MPD`、`❖`、`order` 10，合并的**富**视图：宿主自己整理的子代理行位于 DAG 页的外框/图例/按键/钉住正文之上）、`workmate`（`MPD workmate`、`⬢`、`order` 12）与看门狗波次新增的 `watchdog`（`MPD watchdog`、`⚠`、`order` 13：每团队的暂停状态与阶段、`mpd-tui` 未读数与事件列表，配 `a`/`r`/滚动键）。独立的 `dag` 页已**退役**并合并进 `MPD`（用户条款「DAG页作为MPD面板」），因此 `/mpd dag` 改瞄到 `MPD` 面板、以富形态团队场景作为回退 —— 没有任何路由、选择器条目或 `⤢` 变成死路。三个页面都声明图标（与宿主的八个内置标签页不同）、都不声明 `compact`，且都请求 `minColumns` 28。接缝已绑定时，`alt+a`、`/mpd panel` 与 `/mpd subagents` 经 `tuiPanels.open()` 路由到 MPD 面板；`/mpd dag` 改瞄到同一面板，`/mpd workmate` 路由到它自己的页面。**任何**拒绝都会回退到一个全屏界面（路由回退用 `mpd-tui-subagents`，MPD 页自己的 `⤢` 用富形态 `mpd-tui-team` 场景，`workmate` 用看板场景）—— 绝不静默无操作 —— 每条命令都会打印一行双语状态，点名它到达的界面与最终 id。页面能否出现在屏幕上由宿主自己的两个开关决定，见下方"如何到达"一段 |
+ | 合并面板 | `ctx.tuiScenes` | `mpd-tui-subagents`——宿主自己的子代理行（含其 运行中/已完成/失败 计数）、团队正文，以及每条**已绘制**依赖边都以方向箭头 `▼` 收尾、下方带图例的任务 DAG：它是**回退**界面 —— 宿主没有面板接缝、或拒绝了打开请求时，`alt+a` 与 `/mpd panel` 落到这里；在 0.13.0 之前的宿主上，工作区存在团队时也可用 **`Ctrl+A`** 打开（见下方接管说明）。`enter` 打开选中子代理的详情，`i` 中断选中的活跃运行，鼠标点击选中行 |
+ | `Ctrl+A` 接管 | 一个 `ctx.tuiStatus` 视图 + 适配器的宿主输入接触面 | 当团队投影含有一个至少带一项任务的团队时，`Ctrl+A` 打开合并面板而非宿主自带的 dashboard；没有团队时——或宿主输入总线无法被适配器触达时——该键行为与今天完全一致（`tui.dashboardKey`，默认 `true`；见"明确不声明"第 7–9 条） |
+ | 对话框 | `ctx.tuiDialogs` | 托管式 workmate 选择器（`select`） |
+
+# dist integrity: files under packages/*/dist modified = 0
+# whole worktree modified (T1 + T3): 35

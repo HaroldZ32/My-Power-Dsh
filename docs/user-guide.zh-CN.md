@@ -36,7 +36,7 @@ cd <repo> && bun install          # 只需一次：把声明的运行时依赖�
 `bun add dsh-better-sidebar@0.28.0 --ignore-scripts` 跳过构建脚本装上这个**可选 peer** —— 只有侧边栏的
 终端面板会降级。（当初需要这个开关的传递依赖 `node-pty` 自 `0.24.1` 起已被移除，2026-10-02 实测；
 `0.28.0` 同样不含任何安装脚本，2026-10-21 实测。）`dsh-better-sidebar@0.28.0` 要求 harness
-**DSH 0.2.1-rc.1 或更新**；本 bundle 固定的是 `0.2.1-rc.2`。
+**DSH 0.2.1-rc.1 或更新**；本 bundle 固定的是 `0.2.1-rc.3`。
 从打包产物安装时无需额外步骤：pnpm 会替你装好那些已声明的依赖（见下方 *打包产物*）。
 
 **每条 `dsh plugin` 命令都必须带 `--profile`**，`--help` 与 `remove` 也不例外：不带时 CLI 会直接
@@ -985,14 +985,14 @@ mcp__grep_app__searchGitHub { "query": "registerTool({", "language": ["TypeScrip
 把它装进自己的 profile：
 
 ```bash
-# 在 dsh 0.2.1-rc.2 基线上，先授予精确版本豁免：
-dsh plugin --profile web allow-version @dsh-std/adapter-dsh@0.1.1-rc.2 --dsh-version 0.2.1-rc.2 --accept-risk
+# 在 dsh 0.2.1-rc.3 基线上，先授予精确版本豁免：
+dsh plugin --profile web allow-version @dsh-std/adapter-dsh@0.1.1-rc.2 --dsh-version 0.2.1-rc.3 --accept-risk
 # 再执行 adapter 自己设计的这一条安装命令：
 dsh plugin --profile web add @dsh-std/adapter-dsh
 ```
 
 本 bundle 之所以不随包提供它：adapter 的 peer 把宿主 `@deepseek-ai/dsh-*` 盯在 `0.1.2-alpha` 线上，
-而本 bundle 的基线是 dsh `0.2.1-rc.2`，于是豁免只能是 profile 拥有者对自己 profile 的显式风险决定；
+而本 bundle 的基线是 dsh `0.2.1-rc.3`，于是豁免只能是 profile 拥有者对自己 profile 的显式风险决定；
 而把它随包提供也不是中立的替代方案：插件管理器在安装时做两次兼容检查 —— 先在 `pnpm` 运行之前，
 对显式指定的安装规格做预检；再在安装之后，对 profile 里已直接安装的依赖、以及被改动 bundle 的
 patch 行所点名的组件清单做后验 —— 从不递归扫描整个传递闭包。我们在本改动的一个 v1 变体上实测过
