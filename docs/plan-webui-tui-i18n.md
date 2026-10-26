@@ -327,8 +327,8 @@ the measured artifact that closed it:**
 4. **`node scripts/pack-mpd.ts` not re-run**, so `dist/mpd-package/` is behind this branch's sources.
    §11 makes the pack a release step and the closure gate reports it as its own
    `CONTENT-DRIFT-EXPECTED` class (exit 0).
-   **Closed by:** `dist/mpd-package/package.json` now carries the root version (`0.15.4`, measured
-   2026-10-25); whether every packed BYTE is fresh stays the subject of the pack-closure gate, as it
+   **Closed by:** `dist/mpd-package/package.json` now carries the root version (`0.15.5`, measured
+   2026-10-26); whether every packed BYTE is fresh stays the subject of the pack-closure gate, as it
    was written.
 
 ### 8-i18n-gap. R4's boundary: the preset's name and description are the HARNESS's to localize

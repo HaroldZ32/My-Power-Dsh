@@ -612,6 +612,9 @@ lane hold this line.
      `skills/**` change is committed without it.
 3. Merge `--no-ff` to master with `release: vX.Y.Z …`; annotated tag `vX.Y.Z`.
 4. Push master + tag; announce with evidence links.
+5. **Publish — a human step.** The `v*` tag push STAGES the release on npm; nothing is public and
+   `latest` does not move until a human runs `npm stage approve <stage-id>`. Runbook:
+   `agent-references/installer-and-profiles.md`, "Publishing to npm".
 
 ---
 
