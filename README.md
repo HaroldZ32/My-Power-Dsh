@@ -67,9 +67,9 @@ row-by-row ledger behind this table — every row names its evidence, and every 
 open is recorded there. The rows above whose two columns are not the same sentence are exactly those
 recorded deviations. Read the ledger before you rely on the TUI for a Web capability.
 
-![The Team view in the DSH Web GUI sidebar: team id and phase, a progress bar, five members with their model routes and per-member task counts, and a six-node frosted-glass task graph with status colours, dependency edges and a hover card showing the pinned task's status, owner, elapsed time, subject and progress.](./docs/assets/images/web-team-board-v2.png)
+![The Team view in the DSH Web GUI: the team header and progress, the roster with each member's model route, and the nested task graph — a subcell drawn as the subcell-auth FRAME (a .mpd-dag-group box) with a dependency arriving on its border and its own four-card DAG inside it, while the parent's tasks flow around it.](./docs/assets/images/web-team-dag-groups.png)
 
-![The DSH-TUI's /mpd team scene: the team header and progress bar, the roster line, and the six-node task graph in box-drawing characters, above the key hints.](./docs/assets/images/tui-team-dag.png)
+![The DSH-TUI's DAG page for the same nested team: the subcell-auth group frame in the second border-glyph family (╔ ╗ ╚ ╝ ║ ═) with a ╧ port where the outside dependency attaches, and the subcell's own cards drawn inside the frame, above the key hints.](./docs/assets/images/tui-team-dag-groups.png)
 
 ## Features
 

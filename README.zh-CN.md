@@ -60,9 +60,9 @@ Chromium 驱动真实应用截取；终端图把**真实 TUI 在真实 PTY 上�
 [`docs/tui-parity.md`](./docs/tui-parity.md)，每一行都写明了证据，每一条仍然开放的偏差都记录在案。
 上表中两列不是同一句话的那些行，正是台账里记下的偏差。在拿 TUI 顶替一项 Web 能力之前，请先读那份台账。
 
-![DSH Web GUI 的 Team 视图：团队 id 与阶段、一条进度条、五位成员各自的模型路由与任务计数，以及一张带状态配色、依赖连边、毛玻璃节点卡和悬浮信息卡的六节点任务图。](./docs/assets/images/zh-CN/web-team-board-v2.png)
+![DSH Web GUI 的 Team 视图：团队头部与进度、成员各自的模型路由，以及嵌套任务图——子单元画成 subcell-auth 的**分组框**（`.mpd-dag-group`），外部依赖落在框的边框上，框内是它自己的四任务 DAG，父团队的任务在框外侧流动。](./docs/assets/images/zh-CN/web-team-dag-groups.png)
 
-![DSH-TUI 的 /mpd team 场景：团队头部与进度条、名册行，以及用制表符画出的六节点任务依赖图，下面是该场景的按键提示。](./docs/assets/images/zh-CN/tui-team-dag.png)
+![DSH-TUI 的 DAG 页，同一个嵌套团队：subcell-auth 分组帧框用第二套边框字形（╔ ╗ ╚ ╝ ║ ═），外部依赖落在 ╧ 端口上，子单元自己的任务卡画在框内，下面是按键提示（TUI 场景正文按设计保持英文，故此图与英文版共用同一次渲染）。](./docs/assets/images/tui-team-dag-groups.png)
 
 ## 特性
 
