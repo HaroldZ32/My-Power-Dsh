@@ -3363,7 +3363,8 @@ async function startContinuableChild(subagents: any, spec: Record<string, unknow
 }
 
 /**
- * Release ONE settled consult activation — the one-shot half of {@link DshAdapter.spawnAgent}.
+ * Release ONE activation the harness handed back — the teardown used by BOTH the one-shot consult and a
+ * team raise that could not be recorded.
  *
  * `activation.result` has already settled when this runs, so the report is captured and a failed
  * teardown can no longer change it. The 0.2.1 handle documents `dispose()` as cancelling that exact
@@ -3376,7 +3377,7 @@ async function startContinuableChild(subagents: any, spec: Record<string, unknow
  * stay listed `inactive` and is technically cold-resumable. The CONTRACT is one-shot regardless.
  * @param activation - the handle `startActivation` returned, read for its `dispose` member only.
  */
-async function disposeSettledConsult(activation: unknown): Promise<void> {
+async function releaseActivation(activation: unknown): Promise<void> {
   /** The handle's own teardown member; only a callable may be invoked. */
   const dispose = (activation as { dispose?: unknown } | undefined)?.dispose
   if (typeof dispose !== "function") return
@@ -3961,8 +3962,16 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         /** The durable child id, or the empty string when the manager reported none. */
         const handle = String(started?.childId ?? started?.id ?? "")
         // A start that resolved WITHOUT an id is a backend contradiction, and recording it would
-        // put a member on the roster that no later call could reach. It is refused here.
-        if (handle === "") throw new Error(`mpd-dsh-adapter: the native backend raised "${request.name}" but reported no child id`)
+        // put a member on the roster that no later call could reach. It is refused here — AFTER the
+        // activation is RELEASED: the harness counted that child the moment it started (the measured
+        // `subagent limit reached (active child limit: 8)` behind contract
+        // `.mpd/plans/agent-slot-hygiene.md`), so a refusal that walked away would leak exactly one
+        // slot per attempt. `dispose()` is the only release this adapter has, and it is the adapter's
+        // to call: the activation lives here, and no consumer may touch the subagents seam.
+        if (handle === "") {
+          await releaseActivation(started)
+          throw new Error(`mpd-dsh-adapter: the native backend raised "${request.name}" but reported no child id — the activation was RELEASED, so no slot is held`)
+        }
         nativeMembers.set(handle, { teamId: request.teamId, memberId: request.memberId, name: request.name, description: request.description })
         return { handle, executor: "native" }
       },
@@ -4820,7 +4829,7 @@ export function createDshAdapter(ctx: any, config: { defaultTimeoutMs?: number }
         // ONE-SHOT (R2): the report is captured, so release the exact activation ONCE. This is
         // best-effort and cannot change the projection below; `startContinuableAgent` stays the
         // durable seam, so team continuity is untouched.
-        await disposeSettledConsult(activation)
+        await releaseActivation(activation)
         return {
           output: textOfOutput(settled.output),
           structured: settled.structured,

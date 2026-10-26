@@ -386,8 +386,12 @@ describe("approval builds an mpd-owned team record", () => {
     expect(result.stoppedAt).toContain("Reviewer")
     /** The record written despite the failure. */
     const record = listTeams(h.workspace)[0]
-    // The member that failed says so; the one that spawned keeps its handle.
-    expect(record.members.map((member) => member.status)).toEqual(["running", "failed"])
+    // THE FAILED RAISE LEAVES NO ZOMBIE (contract `.mpd/plans/agent-slot-hygiene.md`): only the member
+    // that actually spawned is on the roster. The old rule kept a `failed` row, which the capacity and
+    // every roster consumer counted as a teammate.
+    expect(record.members.map((member) => member.name)).toEqual(["Senior Engineer"])
+    expect(record.members.map((member) => member.status)).toEqual(["running"])
+    expect(record.members.some((member) => member.name === "Reviewer")).toBe(false)
     // No board task was created, because a half-built roster must not be handed work.
     expect(h.calls.some((call) => call.method === "createTask")).toBe(false)
     expect(record.tasks.every((task) => task.executorRef === undefined)).toBe(true)

@@ -273,8 +273,12 @@ cell id 形如 `cell-<UTC 时刻>`；子 cell 会记录 `parentCellId` 与 `dept
   所以挂载证明用 `--patch` overlay 以绝对模块路径提供这一行，并在真实隔离启动下证明该行**能被应用**。
   bundle 接线——即随包 patch 层是这一行的来源——由 `verify:rows` 与 `verify:manifest` 证明，而不是由那次
   启动证明。
-- **打包闭合尚未变绿。** 在 Wave-5 重新打包之前，`verify-pack-closure` 保持红色（`PACKED-MISSING`）：
-  打包产物还没有刷新到包含新包。
+- **打包闭合已由 Wave-5 重打包关闭。** `verify-pack-closure --require-packed` 报告 622/622 个内容文件
+  字节一致、0 漂移（打包戳 2026-10-26T12:23:55Z），打包产物已包含新包。
+- **并发子会话由 harness 设上限。** `maxActiveSubagents`（subagent 插件的设置字段，默认 8，无上限）
+  限制同时驻留的成员会话数，超过上限的 cell 无法一次全部拉起。用 cellwork 时建议在
+  **Settings → Subagent limits** 调到 **32–64**（它会写进当前 profile 的 Cordis patch）；随包无法替你
+  设置——随包 patch 行绝不能 id-target 宿主行——而 agent 沙箱对 `~/.dsh` 只读，所以这是一次性的用户操作。
 - **不宣称做过真·LLM 端到端 cell 运行。** 单元测试用假上下文证明命令面、各模式下守卫的判定、状态存储、
   估算算术与协议逻辑；Wave-3 的 QA 用例证明命令已注册、其处理函数确实提交了指令，并复现挂载。两者都不是
   模型驱动的运行。

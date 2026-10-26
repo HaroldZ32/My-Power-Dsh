@@ -11215,10 +11215,19 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
                                                                                                    
                                                                                                         
       
-                                                                                                     
+                                                                                                         
+                                                                                               
+                                                                                                          
+                                                                                     
+      
                                                                                                       
-                                                                                                       
-                                                                 
+                                                                                                      
+                                                                                                         
+                                                                                                    
+                                                                                        
+      
+                                                                                                    
+                                                                                  
        
                          
        
@@ -11226,8 +11235,9 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
                                                                                                           
                            
       
-                                                                                                      
-                                                                             
+                                                                                                      
+                                                                                                       
+                        
        
                  
        
@@ -11243,8 +11253,9 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
   /**
    * One painted frame: the rectangle a subcell's box occupies, in the canvas's own pixels.
    *
-   * The numbers are the LAYOUT's own — the same cell the item was placed in — so the asserted frame and
-   * the painted one cannot drift, exactly as `data-mpd-box` is for a task.
+   * The numbers are the LAYOUT's own — on the nested path the rectangle the interior was planned inside,
+   * on the flat path the cell the item was placed in — so the asserted frame and the painted one cannot
+   * drift, exactly as `data-mpd-box` is for a task.
    */
                         
                                                                       
@@ -12788,9 +12799,11 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
         // have occupied, so every existing proof transfers unchanged: `overlapAudit` still sees the
         // item as a box, and a route cannot enter a frame for the same reason it cannot enter a task.
         //
-        // DECLARED BOUND: the frame's interior is COLLAPSED. The nested items are not re-laid out inside
-        // it; recursive, variable-column geometry (a subcell's own DAG drawn in place) is the remaining
-        // half of D4 and is NOT claimed by this build.
+        // THIS IS THE FLAT PATH'S OWN PASS, and it draws a box on the item's cell WITHOUT recursion. The
+        // router never reaches it with a grouped model — `layout` sends every payload that declares a
+        // group to `layoutNested`, which draws the interior inside the rectangle — so this pass is the
+        // retained fallback for a DIRECT `layoutFlat` call (kept, not deleted, because it is the flat
+        // path's contract with its own arms).
         /** One frame per served group whose item this drawing actually carries. */
         const groups               = []
         for (const group of served !== undefined && Array.isArray(served.groups) ? served.groups : []) {
@@ -13222,7 +13235,11 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
           /** The cards as items, each in the column the host served for it. */
           const items               = rows.map((task) => ({
             id: task.id,
-            rank: typeof task.rank === "number" && Number.isFinite(task.rank) ? Math.max(0, Math.floor(task.rank)) : 0,
+            // THE SAME DEGRADE THE FLAT PATH USES: a payload that carries only the served `depth` (an older
+            // server) still lands in a column, instead of every card collapsing into column 0.
+            rank: typeof task.rank === "number" && Number.isFinite(task.rank)
+              ? Math.max(0, Math.floor(task.rank))
+              : (Number.isFinite(task.depth) && task.depth > 0 ? Math.floor(task.depth) : 0),
             task,
             left: 0,
             top: 0,
@@ -13314,7 +13331,39 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
             incident.get(want.from.id)?.push({ key: want.key, counterpart: want.to })
             incident.get(want.to.id)?.push({ key: want.key, counterpart: want.from })
           }
-          /** The port y of every edge on every item: spread by counterpart, so two runs never share a y. */
+          /**
+           * Snap one port's y onto its COLUMN's parity channel, inside the item's own band.
+           *
+           * WHY A PARITY CHANNEL AT ALL (CodeRabbit 4378469416). Ports are spread around each item's
+           * middle, and that is not enough once items have DIFFERENT heights: a 166px box in row 0 has
+           * its middle at y=83, and a 62px box in row 1 of the NEXT column can have its middle at y=83 as
+           * well. A departure run and an arrival run land in the SAME gutter at the same y, and
+           * `overlapAudit` (which tolerates 0.5px) sees two horizontal runs sharing two pixels — the
+           * "one thicker line" class the whole router exists to prevent.
+           *
+           * THE RULE. A port carries its own column's parity, so two different columns can never align:
+           * ranks r and r+1 differ by one, therefore their ports differ by at least one pixel, WHATEVER
+           * the heights are. Items of the SAME column share the channel but are stacked, so their bands —
+           * and therefore their ports — are disjoint; and one item's fan-in is spread by
+           * {@link portStepOf}. The band is respected (the walk stays inside `lo..hi`), which is what
+           * "accounting for variable heights" means: the channel does not move a port out of its box.
+           * @param wanted - the y the fan-in geometry asked for.
+           * @param parity - the parity its column carries (`rank % 2`).
+           * @param lo - the highest y this item's band allows.
+           * @param hi - the lowest y this item's band allows.
+           * @returns the nearest y to `wanted` inside `lo..hi` that carries `parity`.
+           */
+          const snapToParity = (wanted        , parity        , lo        , hi        )         => {
+            /** The nearest value at or below the asked one that carries the channel. */
+            let y = Math.floor((wanted - parity) / 2) * 2 + parity
+            // TWO-PIXEL STEPS, so the walk cannot leave the channel it was just snapped onto. The band is
+            // at least 37px tall on every item this layout draws (a 42px card keeps 2px clear at each
+            // end), so one of the two directions always lands inside it.
+            while (y < lo) y += 2
+            while (y > hi) y -= 2
+            return y
+          }
+          /** The port y of every edge on every item: spread by counterpart, then put on its channel. */
           const portOf = new Map                             ()
           for (const item of items) {
             /** This item's edges, ordered by the counterpart's own middle. */
@@ -13330,10 +13379,10 @@ window.__ModuleLoader__.load({ id: "@mpd-dsh/mpd", factory: // mpd bundle web cl
             /** This item's ports, by edge key. */
             const ports = new Map                ()
             ordered.forEach((entry, index) => {
-              // CLAMPED INSIDE THE ITEM: a tall box has room for any fan-in, and a card's ports are held
-              // to the same two-pixel margin the flat path keeps, so a port never lands on a corner.
+              // SPREAD, THEN SNAPPED: the fan-in decides the ORDER of the ports, and the column's parity
+              // channel decides their y — clamped inside the item so a port never lands on a corner.
               const wanted = middle + (index - (ordered.length - 1) / 2) * pitch
-              ports.set(entry.key, Math.max(item.top + 2, Math.min(item.top + item.height - 3, wanted)))
+              ports.set(entry.key, snapToParity(wanted, item.rank % 2, item.top + 2, item.top + item.height - 3))
             })
             portOf.set(item.id, ports)
           }

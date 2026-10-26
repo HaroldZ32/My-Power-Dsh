@@ -661,7 +661,7 @@ async function startContinuableChild(subagents, spec, action) {
   const argument = member === "startActivation" ? { ...spec, delivery: "parent" } : spec;
   return subagents[member].call(subagents, argument);
 }
-async function disposeSettledConsult(activation) {
+async function releaseActivation(activation) {
   const dispose = activation?.dispose;
   if (typeof dispose !== "function")
     return;
@@ -1017,8 +1017,10 @@ function createDshAdapter(ctx, config = {}) {
         };
         const started = await startContinuableChild(subagents, spec, `cannot raise team member "${request.name}"`);
         const handle = String(started?.childId ?? started?.id ?? "");
-        if (handle === "")
-          throw new Error(`mpd-dsh-adapter: the native backend raised "${request.name}" but reported no child id`);
+        if (handle === "") {
+          await releaseActivation(started);
+          throw new Error(`mpd-dsh-adapter: the native backend raised "${request.name}" but reported no child id — the activation was RELEASED, so no slot is held`);
+        }
         nativeMembers.set(handle, { teamId: request.teamId, memberId: request.memberId, name: request.name, description: request.description });
         return { handle, executor: "native" };
       },
@@ -1514,7 +1516,7 @@ function createDshAdapter(ctx, config = {}) {
           delivery: "parent"
         });
         const settled = await (activation?.result ?? {});
-        await disposeSettledConsult(activation);
+        await releaseActivation(activation);
         return {
           output: textOfOutput(settled.output),
           structured: settled.structured,
@@ -2735,6 +2737,10 @@ function updateTeamMember(record, key, patch) {
   });
   return touched ? { ...record, members } : record;
 }
+function removeTeamMember(record, key) {
+  const members = record.members.filter((member) => member.id !== key && member.name !== key);
+  return members.length === record.members.length ? record : { ...record, members };
+}
 function settleMember(record, sessionId, now) {
   const member = record.members.find((candidate) => candidate.executorRef === sessionId);
   if (member === undefined)
@@ -3224,7 +3230,7 @@ function buildWorkspaceTeams(teams, activeId) {
         completed: team.tasks.filter((task) => task.status === "completed").length,
         failed: team.tasks.filter((task) => task.status === "failed").length
       },
-      members: team.members.length,
+      members: team.members.filter((member) => member.status !== "failed").length,
       active: team.teamId === activeId
     })),
     ...activeId === undefined ? {} : { activeId }
@@ -3304,7 +3310,7 @@ function buildTeamState(record, workspace, sessionId, executor, workspaceTeams, 
       failed: summary.failed,
       releasedByFailure: summary.releasedByFailure
     },
-    members: record.members.map((member) => {
+    members: record.members.filter((member) => member.status !== "failed").map((member) => {
       const progress = memberProgress(record, member.name);
       return {
         id: member.id,
@@ -5508,7 +5514,7 @@ function apply(ctx) {
           plan: readPlan(workspace, sessionId) ?? null,
           hold: readHold(workspace) ?? null,
           team: record ?? null,
-          members: record === undefined ? read(() => dsh.teamListMembers(exec.agent), []) : record.members,
+          members: record === undefined ? read(() => dsh.teamListMembers(exec.agent), []) : record.members.filter((member) => member.status !== "failed"),
           tasks: record === undefined ? read(() => dsh.teamListTasks(exec.agent), []) : record.tasks,
           summary: record === undefined ? null : losslessSummary(summariseTeam(record)),
           contracts: read(() => listContracts(workspace), [])
@@ -5567,9 +5573,9 @@ function apply(ctx) {
           writeTeam(workspace, withDerivedPhase(running));
           return { team: running, member: { ...added, executorRef: spawned.handle, status: "running" }, spawned: spawned.handle, appended: `member ${added.name} (${added.id}) appended to the live team ${running.teamId}` };
         } catch (error) {
-          const failed = updateTeamMember(readTeam(workspace, roster.teamId) ?? roster, added.id, { status: "failed" });
-          writeTeam(workspace, withDerivedPhase(failed));
-          return { team: failed, member: { ...added, status: "failed" }, stoppedAt: `member ${added.name}: ${String(error?.message ?? error)}`, appended: `member ${added.name} (${added.id}) appended to the live team ${failed.teamId}, but the raise FAILED` };
+          const released = removeTeamMember(readTeam(workspace, roster.teamId) ?? roster, added.id);
+          writeTeam(workspace, withDerivedPhase(released));
+          return { team: released, member: { ...added, status: "failed" }, stoppedAt: `member ${added.name}: ${String(error?.message ?? error)}`, appended: `member ${added.name} (${added.id}) was NOT added to team ${released.teamId}: the raise FAILED, and its roster row was REMOVED so no failed slot is held` };
         }
       }
       if (action === "create_task") {
@@ -5743,7 +5749,7 @@ function apply(ctx) {
             created.members.push({ name: member.name, id: spawned.handle });
             record = updateTeamMember(record, member.id, { executorRef: spawned.handle, status: "running" });
           } catch (error) {
-            record = updateTeamMember(record, member.id, { status: "failed" });
+            record = removeTeamMember(record, member.id);
             stoppedAt = `member ${member.name}: ${String(error?.message ?? error)}`;
             break;
           }

@@ -328,8 +328,15 @@ whose window cannot be read can be certified deliberately, and it is recorded as
   absolute module path and proves the row APPLIES under a real isolated boot. The bundle wiring — that
   the shipped patch layer is the source — rests on `verify:rows` and `verify:manifest`, not on that
   boot.
-- **Pack closure is not green yet.** `verify-pack-closure` remains red (`PACKED-MISSING`) until the
-  Wave-5 re-pack; the packed artifact is not yet refreshed to carry the new package.
+- **Pack closure is green since the Wave-5 re-pack.** `verify-pack-closure --require-packed` reports
+  622/622 content files byte-identical with 0 drift (pack stamp 2026-10-26T12:23:55Z), and the packed
+  artifact carries the new package.
+- **Concurrent children are capped by the harness.** `maxActiveSubagents` (the subagent plugin's
+  settings field, default 8, no upper bound) limits how many member sessions stay resident, so a cell
+  larger than the cap cannot raise them all at once. For cellwork raise it to **32–64** in
+  **Settings → Subagent limits** (it persists into the active profile's Cordis patch); the bundle
+  cannot set it — a shipped patch row must never id-target a host-owned row — and the agent sandbox
+  cannot write `~/.dsh`, so this is a one-time user step.
 - **No live-LLM end-to-end cell run is claimed.** The unit suite proves the command surface, the guard
   decisions per mode, the state store, the estimator arithmetic and the protocol logic against a fake
   context; the Wave-3 QA cases prove that the command is registered and that its handler submits the

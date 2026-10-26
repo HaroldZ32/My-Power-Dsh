@@ -109,6 +109,7 @@ import {
   rememberLead,
   summariseTeam,
   taskDepths,
+  removeTeamMember,
   taskVisual,
   unbindActiveTeam,
   updateTeamMember,
@@ -1450,7 +1451,10 @@ export function apply(ctx: any): void {
           plan: readPlan(workspace, sessionId) ?? null,
           hold: readHold(workspace) ?? null,
           team: record ?? null,
-          members: record === undefined ? read(() => dsh.teamListMembers(exec.agent), []) : record.members,
+          // A `failed` row is a raise that never happened: the live append and the approval REMOVE it, and
+          // a legacy record may still carry one — rendering it as a live roster row is exactly the defect
+          // this contract closes, so the status answer names only the members the team actually has.
+          members: record === undefined ? read(() => dsh.teamListMembers(exec.agent), []) : record.members.filter((member) => member.status !== "failed"),
           tasks: record === undefined ? read(() => dsh.teamListTasks(exec.agent), []) : record.tasks,
           // The summary crosses a TOOL boundary, so it is projected to lossless JSON here: the store's
           // own `depths` is a Map and a Map cannot survive the harness's snapshot (defect 1).
@@ -1541,10 +1545,15 @@ export function apply(ctx: any): void {
           writeTeam(workspace, withDerivedPhase(running))
           return { team: running, member: { ...added, executorRef: spawned.handle, status: "running" }, spawned: spawned.handle, appended: `member ${added.name} (${added.id}) appended to the live team ${running.teamId}` }
         } catch (error) {
-          /** The record with the member marked failed, so the roster never shows a member that is not there. */
-          const failed = updateTeamMember(readTeam(workspace, roster.teamId) ?? roster, added.id, { status: "failed" })
-          writeTeam(workspace, withDerivedPhase(failed))
-          return { team: failed, member: { ...added, status: "failed" }, stoppedAt: `member ${added.name}: ${String((error as Error)?.message ?? error)}`, appended: `member ${added.name} (${added.id}) appended to the live team ${failed.teamId}, but the raise FAILED` }
+          // A FAILED RAISE LEAVES NO ZOMBIE (contract `.mpd/plans/agent-slot-hygiene.md`). The row this
+          // append wrote is REMOVED, not marked `failed`: a member the harness never raised is counted by
+          // the active-child capacity and rendered by every roster consumer, and five such rows exhausted
+          // the harness's pool in the cellwork wave. The failure is reported in the ANSWER (`stoppedAt`
+          // and `appended`), and whatever slot the executor took is released by the executor itself.
+          /** The record with the never-raised row dropped, so the roster and the capacity agree. */
+          const released = removeTeamMember(readTeam(workspace, roster.teamId) ?? roster, added.id)
+          writeTeam(workspace, withDerivedPhase(released))
+          return { team: released, member: { ...added, status: "failed" }, stoppedAt: `member ${added.name}: ${String((error as Error)?.message ?? error)}`, appended: `member ${added.name} (${added.id}) was NOT added to team ${released.teamId}: the raise FAILED, and its roster row was REMOVED so no failed slot is held` }
         }
       }
 
@@ -1868,7 +1877,11 @@ export function apply(ctx: any): void {
             created.members.push({ name: member.name, id: spawned.handle })
             record = updateTeamMember(record, member.id, { executorRef: spawned.handle, status: "running" })
           } catch (error) {
-            record = updateTeamMember(record, member.id, { status: "failed" })
+            // THE SAME RULE AS THE LIVE APPEND (contract `.mpd/plans/agent-slot-hygiene.md`): a member
+            // the harness never raised is DROPPED rather than kept as a `failed` row, because a partial
+            // approval would otherwise hand the roster — and the capacity — a teammate that does not
+            // exist, and a repaired approval could never reuse the name.
+            record = removeTeamMember(record, member.id)
             stoppedAt = `member ${member.name}: ${String((error as Error)?.message ?? error)}`
             break
           }

@@ -3266,3 +3266,81 @@ describe("T23 · the recursive geometry draws a box's interior inside it", () =>
     expect(order.indexOf("node")).toBeGreaterThan(order.indexOf("frames"))
   })
 })
+
+// ── T25 · MIXED HEIGHTS: the parity channel is what keeps two columns' runs apart ─────────────────
+//
+// THE WITNESS (CodeRabbit 4378469416). Ports are spread around each item's middle, and equal middles are
+// exactly what a HEIGHT MIX produces: a 166px box in row 0 of the left column and a 62px box in row 1 of
+// the right column both put their middle at y=83. The departure run of `P→Q` and the arrival run of
+// `W→U` then sit in the one gutter at the same y — collinear, and a collision the moment their lanes
+// order the other way round. The parity channel makes a port carry its OWN column's parity, so two
+// neighbouring columns can never align whatever their heights are.
+//
+// WHAT DISCRIMINATES, MEASURED. Reverting the channel to the centre-based clamp (control run) keeps
+// `overlaps` EMPTY for this serving order — the two runs meet at a single corner x, which `overlapAudit`
+// tolerates by design (it allows a corner touch and flags > 0.5px) — and reddens the PORT assertion below
+// with `Received: 0`, i.e. the two ends share one y. So the audit is stated as an invariant here, while the
+// y-separation is the assertion that fails if the fix is reverted.
+describe("T25 · mixed heights keep the nested lanes apart", () => {
+  test("equal MIDDLES in neighbouring columns never become collinear runs", () => {
+    /** The three-card row `P`’s interior stacks, which is what makes the box 166px tall. */
+    const stacked = ["P1", "P2", "P3"]
+    /** One board row for the core: the minimum a task must carry in. */
+    const row = (id: string, blockedBy: string[]): BoardTask => ({ id, subject: id, status: "open", visual: "open", blockedBy, depth: 0 })
+    /** THE MIXED-HEIGHT TREE: `P` (a tall box) and `W` share column 0; `Q` and `U` (a short box) share 1. */
+    const model = buildModel({
+      // `Q` names a task INSIDE `P`, so the core's attachment rule re-anchors the edge onto the BOX
+      // (`P → Q`) — the dependency this arm needs, authored the way a real board declares one.
+      board: [row("W", []), row("Q", ["P1"])],
+      groups: [
+        // P: three cards at ONE rank, so its interior is one tall column rather than three wide ones.
+        { id: "P", label: "Box P", board: stacked.map((id) => row(id, [])) },
+        // U: one card blocked by the OTHER column's `W`, which the core re-anchors to `U` itself.
+        { id: "U", label: "Box U", board: [row("U1", ["W"])] },
+      ],
+    })
+    /** The view module, for the pure layout. */
+    const view = loadFactory()({}).createTeamView({ react: null, statePath: STATE_PATH })
+    // THE ROOT ROWS ARE READ OFF THE MODEL, exactly as the route fills them: a hand-written `rank` here
+    // could disagree with the host's own column and make the arm pass on a fixture the server never sends.
+    /** Every root-frame CARD the core placed, with the column it was served. */
+    const rootRows = (model.nodes as Array<{ id: string; depth: number; visual?: string; group?: string }>)
+      .filter((node) => node.group === undefined && node.visual !== "group")
+      .map((node) => ({ id: node.id, subject: node.id, status: "open", visual: "open", blockedBy: [] as string[], failedBy: [] as string[], depth: node.depth, rank: node.depth }))
+    /** The payload: the root frame's cards plus the model that carries the two boxes. */
+    const state = { ...(stateOf(rootRows) as Record<string, unknown>), tasks: rootRows, model }
+    /** The drawing of the mixed-height tree. */
+    const graph = view.layout(state.tasks as Parameters<ViewModule["layout"]>[0], undefined, state.model as Parameters<ViewModule["layout"]>[2])
+    /** The tall box. */
+    const boxP = graph.groups?.find((frame) => frame.id === "P")
+    /** The short box. */
+    const boxU = graph.groups?.find((frame) => frame.id === "U")
+    // THE PRECONDITION THAT MAKES THIS FIXTURE THE WITNESS: the two boxes' MIDDLES coincide exactly, so a
+    // centre-based port rule would hand the two runs the same y. This is asserted rather than assumed —
+    // a fixture that stopped mixing heights would otherwise pass vacuously.
+    expect(boxP?.height).toBe(166)
+    expect(boxU?.height).toBe(62)
+    expect((boxP?.top as number) + (boxP?.height as number) / 2).toBe((boxU?.top as number) + (boxU?.height as number) / 2)
+    // THE INVARIANT the whole router exists for, on a board where two neighbouring items' CENTRES coincide.
+    expect(graph.overlaps).toEqual([])
+    // AND THE SEPARATION IS THE ONE THAT COLLIDED — THE DISCRIMINATOR: `P→Q` leaves the tall box's right
+    // border, `W→U` arrives on the short box's left border, and the parity channel puts those two ys at
+    // least one pixel apart. With the centre-based clamp this assertion reads `Received: 0` (measured).
+    /** The run that left the tall box. */
+    const departure = graph.edges.find((edge) => edge.parent === "P" && edge.child === "Q")
+    /** The run that arrived on the short box. */
+    const arrival = graph.edges.find((edge) => edge.parent === "W" && edge.child === "U")
+    expect(departure).toBeDefined()
+    expect(arrival).toBeDefined()
+    /** The y the departure really leaves at (the route's first vertex). */
+    const departureY = departure?.curve.points[0]?.y as number
+    /** The y the arrival really lands at (the arrow's tip). */
+    const arrivalY = arrival?.curve.tip.y as number
+    expect(Math.abs(departureY - arrivalY)).toBeGreaterThanOrEqual(1)
+    // Both ends are still INSIDE their boxes: the channel snapped the port, it did not move it out.
+    expect(departureY).toBeGreaterThan(boxP?.top as number)
+    expect(departureY).toBeLessThan((boxP?.top as number) + (boxP?.height as number))
+    expect(arrivalY).toBeGreaterThan(boxU?.top as number)
+    expect(arrivalY).toBeLessThan((boxU?.top as number) + (boxU?.height as number))
+  })
+})

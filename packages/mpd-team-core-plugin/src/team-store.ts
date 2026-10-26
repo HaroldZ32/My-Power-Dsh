@@ -1198,6 +1198,26 @@ export function updateTeamMember(record: TeamRecord, key: string, patch: MemberP
 }
 
 /**
+ * Drop one member row from a roster — the FAILED-RAISE release.
+ *
+ * WHY REMOVAL RATHER THAN A STATUS (contract `.mpd/plans/agent-slot-hygiene.md`): a `failed` row is a
+ * member the harness never raised. Every consumer that counts or renders the roster treats it as a
+ * teammate, and the capacity accounting a fresh raise depends on counts it too, so a row nobody can
+ * reach is not history — it is a leak. The raise's failure is reported in the ANSWER (`stoppedAt`), and
+ * the record keeps no trace of a member that never existed.
+ *
+ * @param record - the record to read; it is never mutated.
+ * @param key - the member's id or its name.
+ * @returns a new record without that row; the SAME record when nothing matched, which is every store
+ *   mutation's own "nothing changed, do not write" signal.
+ */
+export function removeTeamMember(record: TeamRecord, key: string): TeamRecord {
+  /** The roster without the named row. */
+  const members = record.members.filter((member) => member.id !== key && member.name !== key)
+  return members.length === record.members.length ? record : { ...record, members }
+}
+
+/**
  * Settle one member: mark it `inactive` once it owns no open task.
  *
  * WHY THIS EXISTS (R2). A member is written `running` when the executor reports its session, and
