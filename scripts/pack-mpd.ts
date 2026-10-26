@@ -364,18 +364,58 @@ const SOURCE_PKGS: readonly string[] = [
   "mpd-schemastery",
 ]
 
-// Root-level FILES the packed tree carries by name (not by directory). Same contract shape as
-// ROOT_ASSET_DIRS and for the same measured reason: a file that no table names is simply NOT
-// packed while `npm run pack` still exits 0, and the closure gate cannot report that from the
-// artifact alone — its manifest arm is DECLARATION-DRIVEN, so an asset declared NOWHERE is
-// invisible by construction. Naming this list, and letting `scripts/verify-pack-closure.ts`
-// parse it, is what makes the ADDITION-omission loud instead of only a later removal. The
-// extension author's machine contract joins the licence/README set because the artifact's own
-// README, docs/index.md and the extension authoring guide link to it by RELATIVE path: without
-// the file those links break for an external author who holds only the artifact (T-70). The
-// contributor set (CONTRIBUTING pair + CHANGELOG) is named for the same reason: the shipped
-// README/docs hub link to them by relative path.
-/** Root-level files copied by name into the packed tree (a missing one is skipped, not fatal). */
+// Root-level ASSETS the packed tree carries — and the reason this table is DERIVED, not hand-kept.
+//
+// MEASURED FAILURE IT FIXES (T-35, the v0.16.0 one-click lane, 2026-10-26): the table below used to be
+// a hand-written list of eight prose docs. Three DSH HOST-SURFACE assets that `package.json`'s `files`
+// allowlist declares — `dsh-plugin.json`, `icon.svg`, `locale/*.json` — were named by NOBODY, so
+// `scripts/pack-mpd.ts` assembled an artifact without them while every gate stayed green:
+// `verify:manifest`'s packed-content arm reads `files` (so it agreed with the declaration) and
+// `verify-pack-closure.ts` compares the artifact against its own required list (so it agreed with the
+// artifact). Only a REAL install could see the hole, and it did: `oneclick.requiredPaths` FAILED on
+// `icon.svg`, `locale/en.json`, `dsh-plugin.json` — an install from the artifact whose own rows cannot
+// resolve their paths. The class is the T-70 one (a declaration and a copy list that CAN disagree), so
+// the copy list is now the manifest's own answer, and a declared entry that is MISSING is FATAL rather
+// than skipped: "skipped, not fatal" is precisely what made the omission silent.
+/**
+ * The root-level entries `package.json`'s `files` allowlist declares.
+ *
+ * Only ROOT-level shapes are returned: an entry with no separator is a root FILE, and `<dir>/*.<ext>`
+ * is a root PATTERN (one level, one suffix — `locale/*.json` today). Every deeper entry belongs to a
+ * tree this packer assembles through its own dedicated path, so it is deliberately not answered here.
+ * @returns the declared root files and the declared root patterns, in manifest order.
+ */
+function declaredRootEntries(): { readonly files: readonly string[]; readonly patterns: readonly string[] } {
+  /** The manifest this package ships under. */
+  const manifest = readJson<{ files?: unknown }>(join(repoRoot, "package.json"))
+  /** The allowlist without its negations, or none when the manifest declares no `files`. */
+  const listed = Array.isArray(manifest.files) ? manifest.files.filter((entry): entry is string => typeof entry === "string" && !entry.startsWith("!")) : []
+  /** The root-level FILES and the single-level PATTERNS the allowlist names. */
+  const files: string[] = []
+  /** The `<dir>/*.<ext>` entries, which name files one directory level down (`locale/*.json`). */
+  const patterns: string[] = []
+  for (const entry of listed) {
+    if (!entry.includes("/")) files.push(entry)
+    else if (/^[^/]+\/\*\.[a-z0-9]+$/i.test(entry)) patterns.push(entry)
+  }
+  return { files, patterns }
+}
+
+/** The declared root assets, computed ONCE so the copy loop and the packed manifest cannot disagree. */
+const ROOT_DECLARED: { readonly files: readonly string[]; readonly patterns: readonly string[] } = declaredRootEntries()
+
+// THE PRESENCE ANCHOR, KEPT FOR THE CLOSURE GATE — and NOT the copy decision any more.
+//
+// `scripts/verify-pack-closure.ts` refuses to report PASS unless the parsed array literal is present
+// ("the named-root-file contract is gone"), which is a VACUOUS-PASS guard worth keeping: it is how the
+// gate notices that the named-root-file contract was deleted rather than satisfied. This comment
+// deliberately does NOT spell that literal: the gate's scanner anchors on the first textual match, so a
+// comment repeating the pattern would capture the scan before the real array is reached. It is therefore NOT the list of files that get copied — `ROOT_DECLARED` above is —
+// and the two are reconciled at pack time: an entry here that `package.json`'s `files` does not declare
+// FAILS the pack (a copied file npm would not ship), and a DECLARED root file missing here prints one
+// NOTE telling the maintainer to extend this anchor (the copy still carries it, so the artifact is
+// correct either way; only the gate's byte check would skip it).
+/** Root-level files the closure gate's presence check names — reconciled against the manifest at pack time. */
 const ROOT_FILES: readonly string[] = [
   "LICENSE.md",
   "LICENSE-NOTICES.md",
@@ -493,8 +533,47 @@ function cpAssets(): void {
   // declaration below, so the copies and the declaration can never disagree about WHICH root
   // files ship (T-70: the author contract was copied by nobody and declared nowhere, while six
   // shipped files linked to it).
-  for (const f of ROOT_FILES) {
-    if (existsSync(join(repoRoot, f))) cpSync(join(repoRoot, f), join(outDir, f))
+  // THE COPY IS THE MANIFEST'S ANSWER (T-35): every root-level entry `files` declares is copied, and a
+  // declared entry that is not there FAILS the pack instead of being skipped. The comment above states
+  // the measured one-click failure this rule removes.
+  // THE TWO TABLES ARE RECONCILED BEFORE ANYTHING IS COPIED (T-35): the anchor may only name files the
+  // manifest declares, and a declared file the anchor omits gets one NOTE so the gate's byte check can be
+  // extended without inventing a maintenance rule nobody would follow.
+  /** Anchor entries the manifest does NOT declare — a copied file npm would not ship. */
+  const anchorUndeclared = ROOT_FILES.filter((file) => !ROOT_DECLARED.files.includes(file))
+  if (anchorUndeclared.length > 0) {
+    console.error("[pack-mpd] FAIL: ROOT_FILES names file(s) package.json `files` does not declare: " + anchorUndeclared.join(", ") + " — the anchor and the manifest disagree about what ships")
+    process.exit(1)
+  }
+  /** Declared root files the anchor omits — copied anyway, and reported so the anchor can catch up. */
+  const anchorBehind = ROOT_DECLARED.files.filter((file) => !ROOT_FILES.includes(file))
+  if (anchorBehind.length > 0) {
+    console.log("[pack-mpd] NOTE: package.json declares root file(s) the closure gate's ROOT_FILES anchor omits: " + anchorBehind.join(", ") + " — they ARE packed (the copy is the manifest's answer); extend the anchor in scripts/pack-mpd.ts so the gate byte-checks them too")
+  }
+  /** The declared root assets that failed to arrive, so ONE message names them all. */
+  const absentRoot: string[] = []
+  for (const f of ROOT_DECLARED.files) {
+    /** One declared root file in this checkout. */
+    const from = join(repoRoot, f)
+    if (!existsSync(from)) { absentRoot.push(f); continue }
+    cpSync(from, join(outDir, f))
+  }
+  for (const pattern of ROOT_DECLARED.patterns) {
+    /** The directory half of a `<dir>/*.<ext>` entry. */
+    const dir = pattern.slice(0, pattern.indexOf("/"))
+    /** The suffix half (`*.json` -> `.json`). */
+    const suffix = pattern.slice(pattern.lastIndexOf("*") + 1)
+    /** That directory's own members, or none when this checkout lacks the directory. */
+    const names = existsSync(join(repoRoot, dir)) ? readdirSync(join(repoRoot, dir)) : []
+    /** The members the pattern names. */
+    const matched = names.filter((name: string) => name.endsWith(suffix))
+    if (matched.length === 0) { absentRoot.push(pattern); continue }
+    mkdirSync(join(outDir, dir), { recursive: true })
+    for (const name of matched) cpSync(join(repoRoot, dir, name), join(outDir, dir, name))
+  }
+  if (absentRoot.length > 0) {
+    console.error("[pack-mpd] FAIL: package.json `files` declares root asset(s) the artifact did not get: " + absentRoot.join(", ") + " — an install from this artifact would miss a path its own rows name (see T-35)")
+    process.exit(1)
   }
   // MCP install/activation helper ships with the package so dist installs can
   // bootstrap the sg/codegraph binaries + wave MCPs too. The extension CLI ships for
@@ -825,9 +904,11 @@ function writeManifest(): void {
       // future patch lands somewhere the wildcards do not reach. `cordis.patch.yml`
       // is NOT listed separately — the main patch IS a `patchTargets` entry.
       ...patchTargets.map((target: string): string => target.replace(/^\.\//, "")),
-      // the named root files, from the SAME table the copy loop uses — one source of truth, so a
-      // file cannot be copied without being declared or declared without being copied (T-70).
-      ...ROOT_FILES
+      // the root assets the manifest's OWN `files` allowlist declares, from the table the copy loop
+      // uses — one source of truth, so a file cannot be copied without being declared or declared
+      // without being copied (T-70; T-35 made that table the manifest's answer).
+      ...ROOT_DECLARED.files,
+      ...ROOT_DECLARED.patterns
     ],
     dsh: {
       bundle: { patch: PATCHES.array ? patchTargets : patchTargets[0] },
