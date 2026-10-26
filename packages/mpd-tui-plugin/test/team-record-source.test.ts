@@ -394,6 +394,23 @@ describe("nested teams · the merged model reaches the LIVE projection (T31)", (
     expect(layout.view.groups).toBeUndefined()
   })
 
+  test("a `group` tag naming an UNDECLARED group explains NOTHING, so the model is refused", () => {
+    // THE DECLARED-GROUP CLAUSE (CodeRabbit finding 4379575369). `group` is only evidence of nesting when
+    // the model's OWN `groups` carries that id: a tag pointing at a group the model never declares would
+    // let any model smuggle arbitrary extra nodes past the guard by writing a string on them.
+    /** The parent record. */
+    const parent = record()
+    /** The merged model, then one extra node whose `group` names an id no group carries. */
+    const smuggled = mergedModel(parent, record({ teamId: CHILD, name: "nested subcell", parentTeamId: PARENT }))
+    smuggled.nodes.push({ id: "Y1", subject: "undeclared frame member", visual: "open", dependencies: [], depth: 0, planned: false, group: "group-that-does-not-exist" })
+    /** A service answering that model. */
+    const teams: MpdTeamsLike = { graph: () => smuggled }
+    /** The projection under test. */
+    const workflow = readScopedWorkflow({ workspace: "/ws", sessionId: "sess-1", holds: [], teams, records: [parent], views: [] })
+    expect(workflow.model).toBeUndefined()
+    expect(dagPageOf(workflow)?.groups).toBeUndefined()
+  })
+
   test("an UNEXPLAINED extra task still costs the model — the nesting does not open the guard", () => {
     // THE NEGATIVE CONTROL for the relaxed guard: a foreign task with no `group` and no box visual is
     // another team's row, and accepting it would mix two boards in one picture.

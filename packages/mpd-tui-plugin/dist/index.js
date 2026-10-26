@@ -4949,7 +4949,8 @@ function attachModel(workflow, teams, workspace, teamId) {
   const boardIds = new Set(workflow.tasks.map((task) => task.id));
   const rootIds = model.nodes.filter((node) => node.planned === false && node.group === undefined && node.visual !== GROUP_VISUAL).map((node) => node.id);
   const rootSet = new Set(rootIds);
-  const extrasExplained = model.nodes.every((node) => boardIds.has(node.id) || node.planned === true || node.group !== undefined || node.visual === GROUP_VISUAL);
+  const declaredGroups = new Set((model.groups ?? []).map((group) => group.id));
+  const extrasExplained = model.nodes.every((node) => boardIds.has(node.id) || node.planned === true || node.group !== undefined && declaredGroups.has(node.group) || node.visual === GROUP_VISUAL);
   const sameBoard = rootSet.size === boardIds.size && rootIds.length === rootSet.size && [...boardIds].every((id) => rootSet.has(id)) && extrasExplained;
   return sameBoard ? { ...workflow, model } : workflow;
 }

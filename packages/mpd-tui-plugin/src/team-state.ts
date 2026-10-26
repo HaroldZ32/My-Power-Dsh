@@ -1040,10 +1040,16 @@ function attachModel(workflow: TeamWorkflow, teams: MpdTeamsLike | undefined, wo
   const rootIds = model.nodes.filter((node) => node.planned === false && node.group === undefined && node.visual !== GROUP_VISUAL).map((node) => node.id)
   /** Those ids as a set, so a duplicated node cannot inflate the count. */
   const rootSet = new Set(rootIds)
-  // EVERY EXTRA NODE MUST BE EXPLAINED by the nesting: a subcell member (`group`), a subcell's own box
-  // (`visual: "group"`), or a plan-only ghost. An unexplained extra real task is another team's row —
-  // the exact collision the bijection exists to refuse — so it costs the model.
-  const extrasExplained = model.nodes.every((node) => boardIds.has(node.id) || node.planned === true || node.group !== undefined || node.visual === GROUP_VISUAL)
+  // EVERY EXTRA NODE MUST BE EXPLAINED by the nesting: a member of a group THIS MODEL DECLARES (`group`
+  // names one of `model.groups`), a subcell's own box (`visual: "group"`), or a plan-only ghost. The
+  // declared-group check is load-bearing rather than tidy — a `group` tag naming an id no group carries
+  // explains nothing, and accepting it would let a model smuggled from another source pass itself off as
+  // nested. An unexplained extra real task is another team's row, the exact collision the bijection
+  // exists to refuse, so it costs the model.
+  /** The group ids the MODEL ITSELF declares — the only ids a node's `group` tag may name. */
+  const declaredGroups = new Set((model.groups ?? []).map((group) => group.id))
+  /** Whether every node outside this board is a nested member of a DECLARED group, a box, or a ghost. */
+  const extrasExplained = model.nodes.every((node) => boardIds.has(node.id) || node.planned === true || (node.group !== undefined && declaredGroups.has(node.group)) || node.visual === GROUP_VISUAL)
   // THE BIJECTION OVER THE ROOT FRAME: equal cardinality, no duplicate root nodes, and the board is a
   // subset of them — which, with equal cardinality, makes the two sets EQUAL.
   const sameBoard = rootSet.size === boardIds.size && rootIds.length === rootSet.size && [...boardIds].every((id) => rootSet.has(id)) && extrasExplained
