@@ -12,7 +12,11 @@
 //
 // IT NEVER RE-CREATES THE TEAM. The planning team staged by `cellwork_start` is the live record every
 // call addresses; activation appends to it, which is also what makes the re-split path (Wave 3) an append
-// rather than a second team.
+// rather than a second team: work the new revision KEEPS reuses the board row it already has, work the
+// new revision ADDS is appended (member, task, contract, verify loop), and work the revision DROPS is
+// marked CANCELLED on the cell record (`CellState.cancelledTasks`) — never deleted. The team-plane verbs
+// this build has cannot cancel a row, so the cell record is where that fact lives and `cellwork_dispatch`
+// is what refuses to wake a cancelled row.
 //
 // THE PRODUCER IDENTITY FOR `mpd_verify_open`. The captain's own session is fenced by the cellwork guard
 // (B2's allowlist has no `mpd_verify_*`), and the verifier does not exist as a live agent yet. The loop is
@@ -84,12 +88,20 @@ export interface ActivatedLoop {
 
 /** What a successful activation produced. */
 export interface ActivateOutcome {
-  /** Absolute paths of the frozen contracts written. */
+  /** `initial` for the first materialisation, `resplit` when a new revision appended to the same team. */
+  mode: "initial" | "resplit"
+  /** Absolute paths of the frozen contracts written (empty on a re-split that adds no code task). */
   contracts: string[]
   /** The member rows this call raised, keyed by board name — the handles the guard resolves against. */
   members: Record<string, CellMemberRecord>
-  /** Every task, in creation order. */
+  /** Every task, in creation order (only the rows this call minted). */
   tasks: ActivatedTask[]
+  /** The board id every split key of THIS revision is materialised as, kept keys included. */
+  boardIds: Record<string, string>
+  /** The split keys this call REUSED a live board row for (the previous revision already had them). */
+  kept: string[]
+  /** The rows a new revision DROPPED, marked cancelled on the cell record and never deleted. */
+  cancelled: Array<{ key: string; boardId: string }>
   /** Every verify loop opened. */
   loops: ActivatedLoop[]
   /** The owner-only dispatch pass's report. */
@@ -265,14 +277,26 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
     if (!result.ok) return { ok: false, error: typeof result.error === "string" ? result.error : "the agent_teams_plan call failed" }
     return { ok: true, value: typeof result.value === "object" && result.value !== null ? result.value as Record<string, unknown> : {} }
   }
-  /** The code tasks: the ones that declare a write scope. */
-  const codeTasks = deps.split.tasks.filter((task) => task.writeScopes.length > 0)
   /** The review task that verifies one work key, when one exists. */
   const reviewerOf = (key: string): SplitTaskVerdict | undefined => deps.split.tasks.find((candidate) => candidate.kind === "review" && candidate.blockedBy.includes(key))
-  // 1. CONTRACTS, before anything can be dispatched.
+  // 0. THE DELTA: what this revision keeps, adds and drops, decided before anything is written.
+  /** `initial` for the first materialisation, `resplit` when the team already carries a revision. */
+  const mode: "initial" | "resplit" = deps.cell.activatedRevision === null ? "initial" : "resplit"
+  /** The board ids the PREVIOUS activation minted, by split key. */
+  const previous = new Map(Object.entries(deps.cell.activatedTasks))
+  /** The split keys this revision KEEPS: the previous activation already materialised a row for them. */
+  const keptKeys = new Set(deps.split.tasks.filter((task) => previous.has(task.key)).map((task) => task.key))
+  /** The keys this revision DROPS, minus the ones an earlier activation already cancelled. */
+  const droppedKeys = [...previous.keys()].filter((key) => !keptKeys.has(key) && deps.cell.cancelledTasks[key] === undefined)
+  /** The split tasks this call must materialise — everything the previous revision did not already have. */
+  const fresh = deps.split.tasks.filter((task) => !keptKeys.has(task.key))
+  /** The code tasks among them, which are the ones a contract and a verify loop are written for. */
+  const freshCode = fresh.filter((task) => task.writeScopes.length > 0)
+  // 1. CONTRACTS, before anything can be dispatched. A KEPT task's contract is deliberately NOT
+  // rewritten: it is frozen, and a verifier may already be reading it.
   /** The absolute contract paths written, by split key. */
   const contractPaths = new Map<string, string>()
-  for (const task of codeTasks) {
+  for (const task of freshCode) {
     /** The review task that will verify this one, when the split declared one. */
     const reviewer = reviewerOf(task.key)
     /** The contract document. */
@@ -289,7 +313,7 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
   const handledRoles = new Set<string>()
   /** The member rows this pass raised, keyed by board name. */
   const newMembers: Record<string, CellMemberRecord> = {}
-  for (const task of deps.split.tasks) {
+  for (const task of fresh) {
     /** The owner role's comparison key. */
     const key = roleKey(task.ownerRole)
     if (handledRoles.has(key)) continue
@@ -313,16 +337,22 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
     if (handle === "") return { ok: false, error: "cellwork_activate raised " + JSON.stringify(name) + " but the answer carried no executor handle" }
     newMembers[name] = { name, role: name, sessionId: handle, executorRef: handle, mode: pureVerifier ? "verifier" : "member", handoffReady: false, handoffs: 0, joinedAt: deps.now.toISOString() }
   }
-  // 3. TASKS in dependency order; the board mints the ids every later call addresses.
-  /** The board id each split key became. */
+  // 3. TASKS in dependency order; the board mints the ids every later call addresses. A KEPT key keeps
+  // the id it was minted with — the live row is reused, never duplicated.
+  /** The board id each split key is materialised as: the kept rows first, the new ones as they mint. */
   const boardIds = new Map<string, string>()
+  for (const key of keptKeys) {
+    /** The id the previous activation minted for that key. */
+    const id = previous.get(key)
+    if (id !== undefined && id !== "") boardIds.set(key, id)
+  }
   /** The tasks as they landed, in creation order. */
   const activated: ActivatedTask[] = []
-  for (const task of topologicalOrder(deps.split.tasks)) {
+  for (const task of topologicalOrder(fresh)) {
     /** The owner member name (`cell-planner` for a cell role, else the role spelling). */
     const memberName = task.ownerRole.trim()
     /** The mapped blockers: keys already minted become board ids; a cell role is not a task so none remain. */
-    const mappedBlockers = task.blockedBy.map((reference) => boardIds.get(reference) ?? reference)
+    const mappedBlockers = task.blockedBy.map((reference) => boardIds.get(reference) ?? previous.get(reference) ?? reference)
     /** The task's description; a review task additionally names its frozen contract. */
     const description = task.kind === "review"
       ? reviewTaskDescription(task, deps.split.tasks.find((candidate) => candidate.key === task.blockedBy[0]) ?? task, deps.cell.cellId)
@@ -348,10 +378,11 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
     boardIds.set(task.key, boardId)
     activated.push({ key: task.key, boardId, kind: task.kind, ownerRole: task.ownerRole, memberName })
   }
-  // 4. VERIFY LOOPS, before dispatch: a verdict with no armed loop is a verdict nobody checks.
+  // 4. VERIFY LOOPS, before dispatch: a verdict with no armed loop is a verdict nobody checks. A kept
+  // task's loop was armed by the activation that minted it, so opening a second one would arm nothing.
   /** The loops opened. */
   const loops: ActivatedLoop[] = []
-  for (const task of codeTasks) {
+  for (const task of freshCode) {
     /** The board id the task minted. */
     const boardId = boardIds.get(task.key) ?? ""
     if (boardId === "") continue
@@ -381,15 +412,33 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
       // the verifier reads, and it now names the loop.
     }
   }
+  // 4b. CANCELLATION: work this revision dropped is marked on the cell record and journaled, never
+  // deleted. The board row survives — this build has no cancel verb on the team plane — so the cell
+  // plane carries the fact and the dispatch pass below refuses to wake those ids.
+  /** The rows marked cancelled by this activation. */
+  const cancelled: Array<{ key: string; boardId: string }> = []
+  for (const key of droppedKeys) {
+    /** The board id the dropped key was materialised as. */
+    const boardId = previous.get(key) ?? ""
+    cancelled.push({ key, boardId })
+    appendJournal(deps.workspace, deps.cell.cellId, { event: "task-cancelled", key, boardId, revision: deps.split.revision, reason: "the accepted split no longer carries this task; the board row is kept and dispatch skips it" }, deps.now)
+  }
   // 5. DISPATCH, owner-only, after the loops exist.
   /** The live record, re-read after every append. */
   const record = deps.recordFor(teamId)
   /** The delivery binding, when this composition exposes the team executor. */
   const send = sendThroughExecutor(deps.dsh.teamExecutor(), deps.captainAgent)
+  /** The board ids this cell will never dispatch: every row cancelled before, plus this revision's. */
+  const excludedTaskIds = [...Object.values(deps.cell.cancelledTasks), ...cancelled.map((entry) => entry.boardId)].filter((id) => id !== "")
+  // THE DISPATCH SEES THE MAPPING IT JUST MINTED. The cell record passed in predates this activation, so
+  // its `activatedTasks` is the PREVIOUS revision's map; the dispatch message resolves each board id back
+  // to its split key through it (Amendment 6 R1), so the pass is handed the map as of THIS revision.
+  /** The cell view the dispatch pass reads: the recorded cell with this revision's key→board id mapping. */
+  const cellForDispatch: CellState = { ...deps.cell, activatedTasks: Object.fromEntries(boardIds) }
   /** The dispatch report (or the refusal when no executor seam exists). */
   const dispatch: DispatchReport = send === undefined
     ? { pairs: [], skipped: [], refused: "the team executor seam is absent, so no member can be woken — the board is materialised and ready for a manual `cellwork_dispatch`" }
-    : await dispatchOwnerOnly({ workspace: deps.workspace, cell: deps.cell, record, send, now: deps.now })
+    : await dispatchOwnerOnly({ workspace: deps.workspace, cell: cellForDispatch, record, send, excludedTaskIds, now: deps.now })
   // THE SPLIT TASK CLOSES HERE, not on acceptance: it stayed open through a requirements update so the
   // SAME row could be re-dispatched, and materialisation is the moment its work is done.
   /** The splitter's board row, when it is still open. */
@@ -402,13 +451,30 @@ export async function materializeSplit(deps: ActivateDeps): Promise<ActivateResu
   appendJournal(deps.workspace, deps.cell.cellId, {
     event: "activate",
     teamId,
+    mode,
     splitRevision: deps.split.revision,
     tasks: activated.map((task) => ({ key: task.key, boardId: task.boardId, owner: task.memberName, kind: task.kind })),
+    kept: [...keptKeys],
+    cancelled,
     contracts: [...contractPaths.values()],
     loops: loops.map((loop) => ({ taskKey: loop.taskKey, loopId: loop.loopId })),
     dispatched: dispatch.pairs.length,
     skipped: dispatch.skipped.length,
     ...(splitTaskId === "" ? {} : { splitTaskId }),
   }, deps.now)
-  return { ok: true, outcome: { contracts: [...contractPaths.values()], members: newMembers, tasks: activated, loops, dispatch, ...(splitTaskId === "" ? {} : { splitTaskId }) } }
+  return {
+    ok: true,
+    outcome: {
+      mode,
+      contracts: [...contractPaths.values()],
+      members: newMembers,
+      tasks: activated,
+      boardIds: Object.fromEntries(boardIds),
+      kept: [...keptKeys],
+      cancelled,
+      loops,
+      dispatch,
+      ...(splitTaskId === "" ? {} : { splitTaskId }),
+    },
+  }
 }

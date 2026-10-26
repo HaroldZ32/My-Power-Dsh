@@ -76,6 +76,14 @@ export interface DispatchDeps {
    * the team record's `executorRef` still names the settled child, so delivery must prefer this.
    */
   handleFor?: (memberName: string) => string | undefined
+  /**
+   * Board ids the CELL has cancelled.
+   *
+   * A later split revision drops work without deleting its row (the team plane offers no cancel verb),
+   * so the row is still `pending` on the board; pairing it would wake a member for work the accepted
+   * graph no longer contains. The ids come from `CellState.cancelledTasks`.
+   */
+  excludedTaskIds?: readonly string[]
 }
 
 /** One recorded delivery. */
@@ -179,6 +187,27 @@ export function resolveOwner(members: readonly DispatchMemberView[], owner: stri
 }
 
 /**
+ * The SPLIT KEY a board task id was materialised from, when the cell record still knows it.
+ *
+ * The contract file is named by the SPLIT KEY (`contracts/<key>.md`, the path activation writes and
+ * `mpd_verify_open` freezes), while the board mints its OWN id (`T3`, …). A dispatched member must be
+ * told the file that EXISTS, so the board id is inverted through `CellState.activatedTasks` — the map
+ * every activation records — instead of being used as a file name (Amendment 6 R1).
+ *
+ * @param cell - the cell whose mapping is read.
+ * @param boardId - the board task id the dispatch is pairing.
+ * @returns the split key, or undefined for a record written before the mapping existed.
+ */
+function splitKeyOfBoardId(cell: Pick<CellState, "activatedTasks">, boardId: string): string | undefined {
+  /** The mapping as this build writes it, defaulted for a record from an older build. */
+  const mapping = cell.activatedTasks ?? {}
+  for (const [key, id] of Object.entries(mapping)) {
+    if (id === boardId) return key
+  }
+  return undefined
+}
+
+/**
  * Build the dispatch message one member receives.
  *
  * @param deps - the cell and workspace the message is built for.
@@ -187,8 +216,10 @@ export function resolveOwner(members: readonly DispatchMemberView[], owner: stri
  * @returns the message text.
  */
 export function dispatchMessageFor(deps: Pick<DispatchDeps, "workspace" | "cell">, task: DispatchTaskView, boardId: string): string {
-  /** The relative contract path a code task's verifier will be handed. */
-  const contract = contractRelativePath(deps.cell.cellId, String(task.id ?? boardId))
+  /** The split key this board row was materialised from, when the cell record still maps it. */
+  const splitKey = splitKeyOfBoardId(deps.cell, boardId)
+  /** The relative contract path the verifier's loop froze, or null when the key cannot be resolved. */
+  const contract = splitKey === undefined ? null : contractRelativePath(deps.cell.cellId, splitKey)
   /** The write scopes, or an explicit "no code" line. */
   const scopes = (task.writeScopes ?? []).length === 0 ? "(this task declares no write scope — it produces no code)" : (task.writeScopes ?? []).join(", ")
   return [
@@ -198,7 +229,11 @@ export function dispatchMessageFor(deps: Pick<DispatchDeps, "workspace" | "cell"
     "",
     "CLAIM IT FIRST: agent_teams_task {action:\"claim\", task_id:\"" + boardId + "\"}.",
     "WRITE ONLY INSIDE: " + scopes,
-    ...((task.writeScopes ?? []).length === 0 ? [] : ["FROZEN CONTRACT (your verifier reads this; yours is the same deliverable): " + contract]),
+    ...((task.writeScopes ?? []).length === 0
+      ? []
+      : contract === null
+        ? ["FROZEN CONTRACT: this cell record carries no split-key mapping for task " + boardId + ", so the contract path cannot be named here — call `cellwork_status` and use the contract your verification loop froze."]
+        : ["FROZEN CONTRACT (your verifier reads this; yours is the same deliverable): " + contract]),
     "WHEN DONE: agent_teams_task {action:\"complete\", task_id:\"" + boardId + "\", note:\"<one line>\"}.",
     "IF BLOCKED OR THE USER MUST DECIDE: mail the captain — the captain relays every user question.",
     "IF THE PLUGIN TELLS YOU TO CHECKPOINT: call cellwork_handoff, then end your turn.",
@@ -237,12 +272,18 @@ export async function dispatchOwnerOnly(deps: DispatchDeps): Promise<DispatchRep
   const byId = new Map(tasks.map((task) => [String(task.id ?? ""), task]))
   /** Members already paired in THIS pass (at most one task each). */
   const paired = new Set<string>()
+  /** The cancelled ids as a lookup, so the check below is one hash probe per task. */
+  const excluded = new Set((deps.excludedTaskIds ?? []).filter((id) => id !== ""))
   for (const task of tasks) {
     /** The task's board id, or "" for a malformed row. */
     const taskId = String(task.id ?? "")
     if (taskId === "") continue
     /** The task's title, for the report. */
     const subject = String(task.subject ?? "")
+    if (excluded.has(taskId)) {
+      report.skipped.push({ taskId, subject, reason: "CANCELLED by a later split revision — the row is kept on the board and never dispatched" })
+      continue
+    }
     if (task.status !== "pending") {
       report.skipped.push({ taskId, subject, reason: "not pending (status " + String(task.status ?? "unknown") + ")" })
       continue

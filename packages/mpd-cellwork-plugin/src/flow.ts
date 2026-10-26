@@ -14,7 +14,7 @@ import { appendJournal, listCellIds, readCell, writeCell, requirementsPath, type
 import { callerContext, type CallerContext, type TeamsServiceView } from "./caller"
 import { type CellworkConfig } from "./config"
 import { readRequirements, validateRequirementsText, writeRequirements } from "./requirements"
-import { latestSplit, submitSplit, type SplitSubmission, type SplitTaskInput, type SplitVerdict } from "./split"
+import { latestSplit, readSplit, submitSplit, type SplitSubmission, type SplitTaskInput, type SplitVerdict } from "./split"
 import { resolveTaskWindow, type RouteResolutionView, type WindowReading } from "./budget"
 import { runRecon } from "./recon"
 import { materializeSplit, type ActivateResult } from "./activate"
@@ -76,6 +76,25 @@ interface FlowFailure {
  */
 function roleKeyOfOwner(row: Record<string, unknown>): string {
   return String(row.owner ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")
+}
+
+/**
+ * The workspace-relative spelling of a stored split verdict's own file.
+ *
+ * A REFUSED resubmission of an already-accepted revision lands beside the canonical file (Amendment 6
+ * R2), so the path is read from the verdict instead of being rebuilt from its revision.
+ *
+ * @param workspace - the caller's workspace root.
+ * @param verdict - the stored verdict whose path is wanted.
+ * @returns the path relative to the workspace, or the absolute path for a verdict outside it.
+ */
+function splitPathFor(workspace: string, verdict: SplitVerdict): string {
+  /** The path the verdict was persisted to, when it recorded one. */
+  const file = verdict.file
+  if (file === undefined || file === "") return [".mpd", "cellwork", verdict.cellId, "split", String(verdict.revision) + ".json"].join("/")
+  /** The workspace prefix both spellings share, normalized once. */
+  const prefix = workspace.endsWith("/") ? workspace : workspace + "/"
+  return file.startsWith(prefix) ? file.slice(prefix.length) : file
 }
 
 /**
@@ -289,6 +308,10 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
           missing: { type: "array", items: { type: "string" } },
           sections: { type: "array", items: { type: "object" } },
           requirementsPath: { type: "string" },
+          splitTaskId: { type: "string" },
+          splitTaskStatus: { type: "string" },
+          redispatchable: { type: "boolean" },
+          replacementSplitTaskId: { type: "string" },
           closedTaskId: { type: "string" },
         },
         required: ["ok"],
@@ -377,9 +400,42 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
       const splitTaskStatus = splitTask === undefined ? "" : String(splitTask.status ?? "")
       /** Whether the row can still be dispatched (a terminal row cannot be reopened on this board). */
       const redispatchable = splitTaskStatus === "pending" || splitTaskStatus === "claimed" || splitTaskStatus === "in_progress"
+      // A TERMINAL SPLIT ROW CANNOT BE REOPENED, and after the first activation it always is one (the
+      // activation closes it). The re-split path therefore APPENDS a replacement splitter row — same
+      // owner, same cell role, the new revision in its subject — rather than duplicating the graph: the
+      // splitter needs one open row to claim, exactly as it had on the first pass.
+      /** The replacement row this update appended, when the original row was terminal. */
+      let replacementSplitTaskId = ""
+      if (!redispatchable && state.teamId !== "") {
+        /** The append onto the LIVE team (spawns nobody; the splitter already exists). */
+        const appended = await dsh.executeTool({
+          name: "agent_teams_plan",
+          arguments: {
+            action: "create_task",
+            task: {
+              subject: "Re-split for requirements revision " + String(revision),
+              description: "The requirements document moved to revision " + String(revision) + ". Re-read `<cell>/requirements.md` and `cellwork_status`, then submit ONE measured graph against revision " + String(revision) + " with `cellwork_split {action:\"submit\"}`. Only NEW or CHANGED work needs a task: the activation reuses the board row of every key it keeps, and marks what you drop cancelled.",
+              kind: "work",
+              owner: SPLITTER_MEMBER,
+              blocked_by: [],
+            },
+          },
+          agent: exec.agent,
+        })
+        if (appended.ok) {
+          /** The appended row's board id, when the answer carried one. */
+          const row = typeof appended.value === "object" && appended.value !== null ? appended.value as Record<string, unknown> : {}
+          /** The minted task, when the answer carried it. */
+          const task = typeof row.task === "object" && row.task !== null ? row.task as Record<string, unknown> : undefined
+          replacementSplitTaskId = typeof task?.id === "string" ? task.id : ""
+        }
+      }
       /** The record after the transition. */
       const next: CellState = { ...state, requirementsRevision: revision, splitStale: state.splitRevision !== null ? true : state.splitStale }
-      transition(caller.workspace, next, { event: "requirements-update", revision, previousRevision: state.requirementsRevision, splitStale: next.splitStale, splitTaskId, splitTaskStatus, redispatchable }, now)
+      transition(caller.workspace, next, { event: "requirements-update", revision, previousRevision: state.requirementsRevision, splitStale: next.splitStale, splitTaskId, splitTaskStatus, redispatchable, ...(replacementSplitTaskId === "" ? {} : { replacementSplitTaskId }) }, now)
+      if (replacementSplitTaskId !== "") {
+        appendJournal(caller.workspace, caller.cell.cellId, { event: "split-task-replaced", previousTaskId: splitTaskId, replacementTaskId: replacementSplitTaskId, revision }, now)
+      }
       return {
         ok: true,
         action,
@@ -391,9 +447,10 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
         splitTaskId,
         splitTaskStatus,
         redispatchable,
+        replacementSplitTaskId,
         ...(splitTaskId === "" ? { message: "no split task is on the board yet — the splitter will receive the whole graph when it is dispatched" } : redispatchable
           ? { message: "the SAME split task " + splitTaskId + " is re-dispatched with revision " + String(revision) + (next.splitStale ? " and the split marked STALE" : "") + " — dispatch it with `cellwork_dispatch`" }
-          : { message: "split task " + splitTaskId + " is " + splitTaskStatus + " and this board has no reopen verb; the re-split path (Wave 3) appends a replacement row" }),
+          : { message: "split task " + splitTaskId + " is " + splitTaskStatus + " and this board has no reopen verb, so a replacement row " + (replacementSplitTaskId === "" ? "could NOT be appended (no live team to append to)" : replacementSplitTaskId) + " carries the re-split with revision " + String(revision) + " — dispatch it with `cellwork_dispatch`" }),
       }
     },
   }))
@@ -514,6 +571,7 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
           tasks: { type: "array", items: { type: "object" } },
           totals: { type: "object" },
           splitPath: { type: "string" },
+          supersededRevision: { oneOf: [{ type: "number" }, { type: "null" }] },
           message: { type: "string" },
         },
         required: ["ok"],
@@ -523,7 +581,7 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
         const result = typeof value === "object" && value !== null ? value as Record<string, unknown> : {}
         if (result.ok === false) return text("cellwork_split refused: " + String(result.error ?? "unknown refusal"))
         if (typeof result.message === "string") return text(result.message)
-        return text("split revision " + String(result.revision ?? "?") + ": " + (result.accepted === true ? "ACCEPTED" : "REFUSED") + "\n" + JSON.stringify(result.totals ?? {}, null, 2))
+        return text("split revision " + String(result.revision ?? "?") + ": " + (result.accepted === true ? "ACCEPTED" : "REFUSED") + (result.accepted === true ? "" : " — the per-task breakdown is at " + String(result.splitPath ?? "?")) + "\n" + JSON.stringify(result.totals ?? {}, null, 2))
       },
     },
     execute: async (args: unknown, exec: DshToolExec): Promise<FlowResult> => {
@@ -547,7 +605,7 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
         if (!read.ok) return { ok: false, error: "cellwork_split show: " + read.detail, path: read.path }
         /** The stored verdict. */
         const verdict = read.verdict
-        return { ok: true, action, accepted: verdict.accepted, revision: verdict.revision, findings: verdict.findings, roles: verdict.roles, tasks: verdict.tasks, totals: verdict.totals, splitPath: [".mpd", "cellwork", state.cellId, "split", String(verdict.revision) + ".json"].join("/") }
+        return { ok: true, action, accepted: verdict.accepted, revision: verdict.revision, findings: verdict.findings, roles: verdict.roles, tasks: verdict.tasks, totals: verdict.totals, splitPath: splitPathFor(caller.workspace, verdict) }
       }
       if (action !== "submit") return { ok: false, error: "cellwork_split: action must be `submit` or `show` (got " + JSON.stringify(action) + ")" }
       if (caller.member !== SPLITTER_MEMBER) {
@@ -587,14 +645,20 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
       }
       /** The measured verdict (already persisted to split/<revision>.json). */
       const verdict: SplitVerdict = await submitSplit({ workspace: caller.workspace, cellId: state.cellId, config, roster, window: windowFor, now: new Date() }, submission)
-      /** The verdict path for the render/report. */
-      const splitPath = [".mpd", "cellwork", state.cellId, "split", String(verdict.revision) + ".json"].join("/")
+      /** The verdict path for the render/report, read from the verdict (a refusal may sit beside the canonical file). */
+      const splitPath = splitPathFor(caller.workspace, verdict)
       if (verdict.accepted) {
         // THE SPLIT TASK STAYS OPEN (Amendment 5, arm a): it is the vehicle a requirements `update`
         // re-dispatches with the new revision, and it is closed by `cellwork_activate` once the work is
         // materialised. Closing it here would leave a re-split with no same-task row to reopen.
-        transition(caller.workspace, { ...state, splitRevision: verdict.revision, splitStale: false }, { event: "split-accepted", revision: verdict.revision, totals: verdict.totals }, new Date())
-        return { ok: true, action, accepted: true, revision: verdict.revision, findings: verdict.findings, roles: verdict.roles, tasks: verdict.tasks, totals: verdict.totals, splitPath, message: "split revision " + String(verdict.revision) + " ACCEPTED — the captain may call `cellwork_activate`" }
+        /** The revision this one supersedes, when an accepted split already existed and differs. */
+        const supersededRevision = state.splitRevision !== null && state.splitRevision !== verdict.revision ? state.splitRevision : null
+        transition(caller.workspace, { ...state, splitRevision: verdict.revision, splitStale: false }, { event: "split-accepted", revision: verdict.revision, totals: verdict.totals, ...(supersededRevision === null ? {} : { supersededRevision }) }, new Date())
+        if (supersededRevision !== null) {
+          // The PREVIOUS accepted revision is superseded, recorded where a reader of the history finds it.
+          appendJournal(caller.workspace, state.cellId, { event: "split-superseded", revision: supersededRevision, by: verdict.revision, activated: state.activatedRevision }, new Date())
+        }
+        return { ok: true, action, accepted: true, revision: verdict.revision, findings: verdict.findings, roles: verdict.roles, tasks: verdict.tasks, totals: verdict.totals, splitPath, supersededRevision, message: "split revision " + String(verdict.revision) + " ACCEPTED" + (supersededRevision === null ? "" : " (revision " + String(supersededRevision) + " is superseded)") + " — the captain may call `cellwork_activate`" }
       }
       appendJournal(caller.workspace, state.cellId, { event: "split-refused", revision: verdict.revision, findings: verdict.findings.length, refused: verdict.totals.refusedCount }, new Date())
       return { ok: true, action, accepted: false, revision: verdict.revision, findings: verdict.findings, roles: verdict.roles, tasks: verdict.tasks, totals: verdict.totals, splitPath }
@@ -604,7 +668,7 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
   // ── cellwork_activate ────────────────────────────────────────────────────
   disposers.push(dsh.registerTool({
     name: "cellwork_activate",
-    description: "CAPTAIN only: materialise an ACCEPTED split on the LIVE team record. Requires an accepted split of the CURRENT requirements revision (a stale split is refused unless its revision is passed explicitly). Writes one frozen contract per code task, raises each owner role as a member (persona TEXT in the prompt), appends each task with reviews blocked by their work task, opens one verify loop per code task BEFORE dispatch, then dispatches owner-only. It never re-creates the team.",
+    description: "CAPTAIN only: materialise an ACCEPTED split on the LIVE team record. Requires an accepted split of the CURRENT requirements revision (a stale split is refused unless its revision is passed explicitly). Writes one frozen contract per NEW code task, raises each owner role as a member (persona TEXT in the prompt), appends each NEW task with reviews blocked by their work task, opens one verify loop per NEW code task BEFORE dispatch, then dispatches owner-only. A NEWER revision APPENDS to the same team: kept work reuses its board row, added work is appended, dropped work is marked `cancelled` and never deleted. It never re-creates the team.",
     parameters: {
       type: "object",
       properties: {
@@ -620,10 +684,13 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
           error: { type: "string" },
           path: { type: "string" },
           cellId: { type: "string" },
+          mode: { type: "string", description: "`initial` for the first materialisation, `resplit` when a newer revision appended to the same team." },
           revision: { type: "number" },
           contracts: { type: "array", items: { type: "string" } },
           membersRaised: { type: "array", items: { type: "string" } },
           tasks: { type: "array", items: { type: "object" } },
+          kept: { type: "array", items: { type: "string" }, description: "Split keys whose live board row was reused (never duplicated)." },
+          cancelled: { type: "array", items: { type: "object" }, description: "Work this revision dropped: `{key, boardId}`, marked cancelled on the cell record and never deleted." },
           loops: { type: "array", items: { type: "object" } },
           dispatch: { type: "object" },
         },
@@ -639,7 +706,7 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
         const pairs = Array.isArray(dispatch.pairs) ? dispatch.pairs as Array<Record<string, unknown>> : []
         /** The tasks left out. */
         const skipped = Array.isArray(dispatch.skipped) ? dispatch.skipped as Array<Record<string, unknown>> : []
-        return text("cell activated on split revision " + String(result.revision ?? "?") + ": " + String(Array.isArray(result.tasks) ? result.tasks.length : 0) + " task(s), " + String(Array.isArray(result.loops) ? result.loops.length : 0) + " verify loop(s), " + pairs.length + " dispatched" + (skipped.length === 0 ? "" : ", " + skipped.length + " reported: " + skipped.map((row) => String(row.subject ?? row.taskId) + ": " + String(row.reason)).join("; ")))
+        return text("cell activated on split revision " + String(result.revision ?? "?") + (result.mode === "resplit" ? " (re-split: " + String(Array.isArray(result.kept) ? result.kept.length : 0) + " kept, " + String(Array.isArray(result.cancelled) ? result.cancelled.length : 0) + " cancelled)" : "") + ": " + String(Array.isArray(result.tasks) ? result.tasks.length : 0) + " task(s), " + String(Array.isArray(result.loops) ? result.loops.length : 0) + " verify loop(s), " + pairs.length + " dispatched" + (skipped.length === 0 ? "" : ", " + skipped.length + " reported: " + skipped.map((row) => String(row.subject ?? row.taskId) + ": " + String(row.reason)).join("; ")))
       },
     },
     execute: async (args: unknown, exec: DshToolExec): Promise<FlowResult> => {
@@ -665,15 +732,17 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
         return { ok: false, error: "cellwork_activate: split revision " + String(acceptedRevision) + " is STALE (requirements revision " + String(state.requirementsRevision) + (state.splitStale ? ", marked stale by an update" : "") + ") — the splitter must re-submit against the current revision; to activate the stale revision deliberately, pass {revision:" + String(acceptedRevision) + "}" }
       }
       if (state.activatedRevision !== null) {
-        return { ok: false, error: "cellwork_activate: split revision " + String(state.activatedRevision) + " is already materialised on team " + state.teamId + "; the re-split path (adds without re-creating the team) lands in Wave 3" }
+        // A SECOND ACTIVATION IS THE RE-SPLIT PATH, and it is only ever FORWARD: the same revision is
+        // already on the board (nothing to append), and an earlier one has been superseded.
+        if (acceptedRevision === state.activatedRevision) {
+          return { ok: false, error: "cellwork_activate: split revision " + String(state.activatedRevision) + " is already materialised on team " + state.teamId + " — nothing would be added. A re-split is a requirements `update` (which bumps the revision and marks the split stale), a NEW accepted split revision, then this call again" }
+        }
+        if (acceptedRevision < state.activatedRevision) {
+          return { ok: false, error: "cellwork_activate: split revision " + String(acceptedRevision) + " is OLDER than the materialised revision " + String(state.activatedRevision) + " — revisions only move forward; accept a newer split instead" }
+        }
       }
-      /** The stored verdict. */
-      const stored = ((): { ok: true; verdict: SplitVerdict } | { ok: false; path: string; detail: string } => {
-        /** The latest stored verdict for the accepted revision. */
-        const latest = latestSplit(caller.workspace, state.cellId)
-        if (latest === null || latest.revision !== acceptedRevision) return { ok: false, path: "", detail: "no stored verdict for revision " + String(acceptedRevision) }
-        return latest.read
-      })()
+      /** The stored verdict of the revision being activated (not "the latest": a stale one may be activated on purpose). */
+      const stored = readSplit(caller.workspace, state.cellId, acceptedRevision)
       if (!stored.ok) return { ok: false, error: "cellwork_activate: " + stored.detail, path: stored.path }
       if (!stored.verdict.accepted) return { ok: false, error: "cellwork_activate: revision " + String(acceptedRevision) + " was REFUSED by the measured verdict — the splitter must fix the findings and resubmit" }
       /** The materialisation. */
@@ -689,21 +758,30 @@ export function installCellworkFlow(deps: FlowDeps): Array<() => void> {
         now: new Date(),
       })
       if (!activated.ok) return { ok: false, error: activated.error }
-      /** The record after activation: the raised members (with their handles) and the executing phase. */
+      /** The cancellations this activation recorded, keyed by split key for the cell record. */
+      const cancelledNow: Record<string, string> = {}
+      for (const entry of activated.outcome.cancelled) cancelledNow[entry.key] = entry.boardId
+      /** The record after activation: the raised members, the live board mapping and the executing phase. */
       const next: CellState = {
         ...state,
         phase: "executing",
         activatedRevision: acceptedRevision,
+        activatedTasks: { ...activated.outcome.boardIds },
+        cancelledTasks: { ...state.cancelledTasks, ...cancelledNow },
+        splitStale: false,
         members: { ...state.members, ...activated.outcome.members },
       }
-      transition(caller.workspace, next, { event: "cell-activation", revision: acceptedRevision, tasks: activated.outcome.tasks.length, loops: activated.outcome.loops.length }, new Date())
+      transition(caller.workspace, next, { event: "cell-activation", mode: activated.outcome.mode, revision: acceptedRevision, tasks: activated.outcome.tasks.length, kept: activated.outcome.kept.length, cancelled: activated.outcome.cancelled.length, loops: activated.outcome.loops.length }, new Date())
       return {
         ok: true,
         cellId: state.cellId,
+        mode: activated.outcome.mode,
         revision: acceptedRevision,
         contracts: activated.outcome.contracts,
         membersRaised: Object.keys(activated.outcome.members),
         tasks: activated.outcome.tasks,
+        kept: activated.outcome.kept,
+        cancelled: activated.outcome.cancelled,
         loops: activated.outcome.loops,
         dispatch: activated.outcome.dispatch,
       }

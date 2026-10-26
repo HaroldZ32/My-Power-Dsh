@@ -13,6 +13,7 @@ import { appendCellMail, foldCellMail, mailId, readCellMail, unreadFor, wakeFail
 import {
   applyCheckpoint,
   checkpointDirective,
+  compactionJournalEntry,
   handoffWrittenDirective,
   nextStepOf,
   planCheckpoint,
@@ -204,6 +205,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
         send,
         now: new Date(),
         handleFor: (name) => cell.members[name]?.executorRef,
+        excludedTaskIds: Object.values(cell.cancelledTasks),
       })
       appendJournal(caller.workspace, cell.cellId, { event: "dispatch-pass", pairs: report.pairs.length, skipped: report.skipped.length }, new Date())
       return { ok: true, pairs: report.pairs, skipped: report.skipped, ...(report.refused === undefined ? {} : { refused: report.refused }) }
@@ -470,11 +472,11 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
   // ── cellwork_send ────────────────────────────────────────────────────────
   disposers.push(dsh.registerTool({
     name: "cellwork_send",
-    description: "Any cell seat: send one durable cell message to `captain` or a cell member by name. The row is appended to the cell's own mail log FIRST (durable), then a wake-up is attempted through the team executor when the sender is the captain and the recipient holds a handle; a failed wake-up is journaled and surfaced on `cellwork_supervise`. The journal carries the `cell:<cellId>` stamp.",
+    description: "Any cell seat: send one durable cell message to `captain`, a member of this cell by name, or `<cellId>/<captain|member>` for a cell in this cell's tree (a sub-cell it registered, or its parent). The row is appended to the RECIPIENT cell's own mail log FIRST (durable), then a wake-up is attempted through the team executor when the sender is this cell's captain and the recipient holds a handle; a failed wake-up is journaled and surfaced on `cellwork_supervise`. The journal carries the `cell:<cellId>` stamp.",
     parameters: {
       type: "object",
       properties: {
-        to: { type: "string", description: "`captain` or a cell member's board name." },
+        to: { type: "string", description: "`captain`, a cell member's board name, or `<cellId>/<captain|member>` for a cross-cell recipient in this cell's tree." },
         subject: { type: "string", description: "One-line subject." },
         body: { type: "string", description: "The message text, delivered verbatim." },
       },
@@ -489,6 +491,8 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
           error: { type: "string" },
           id: { type: "string" },
           to: { type: "string" },
+          crossCell: { type: "string", description: "The cell id the row was written into, when the send crossed cells." },
+          fromCell: { type: "string", description: "The sender's own cell id, mirrored onto a cross-cell row." },
           wakeSent: { type: "boolean" },
           wakeReason: { type: "string" },
         },
@@ -510,27 +514,57 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       if (caller.cell === null || caller.member === "") return { ok: false, error: "cellwork_send: this session belongs to no active cell" }
       /** The requested recipient. */
       const requested = argString(argv, "to").trim()
-      if (requested === "") return { ok: false, error: "cellwork_send: `to` is required (`captain` or a member name)" }
-      /** Whether the recipient is the captain. */
-      const toCaptain = nameKey(requested) === "captain"
-      /** The member row the recipient names, when it is a member. */
-      const recipientMember = toCaptain ? undefined : Object.values(caller.cell.members).find((member) => nameKey(member.name) === nameKey(requested))
-      if (!toCaptain && recipientMember === undefined) return { ok: false, error: "cellwork_send: " + JSON.stringify(requested) + " is neither `captain` nor a member of cell " + caller.cell.cellId + " (members: " + Object.keys(caller.cell.members).join(", ") + ")" }
-      /** The canonical recipient name. */
-      const to = toCaptain ? "captain" : String(recipientMember?.name ?? requested)
-      if (nameKey(to) === nameKey(caller.member)) return { ok: false, error: "cellwork_send: a seat cannot message itself" }
+      if (requested === "") return { ok: false, error: "cellwork_send: `to` is required (`captain`, a member name, or `<cellId>/<captain|member>` for a cell in this cell's tree)" }
       /** The subject. */
       const subject = argString(argv, "subject").trim()
       /** The body. */
       const body = argString(argv, "body")
       if (subject === "" || body.trim() === "") return { ok: false, error: "cellwork_send: `subject` and `body` are both required" }
+      /**
+       * The CROSS-CELL spelling `<cellId>/<name>`.
+       *
+       * A sub-cell and its parent address each other by the same rule (§4.9's "cross-cell"), and the
+       * recipient may only be a cell IN THIS CELL'S TREE — a sub-cell it registered, or its own parent.
+       * Cell ids and member names alike contain no `/`, so the last slash is the separator.
+       */
+      const slash = requested.lastIndexOf("/")
+      /** The cell the row is addressed to: the caller's own cell, or the tree member named before the slash. */
+      const targetCellId = slash < 0 ? caller.cell.cellId : requested.slice(0, slash).trim()
+      /** The name the recipient answers to inside the target cell. */
+      const requestedName = slash < 0 ? requested : requested.slice(slash + 1).trim()
+      if (requestedName === "") return { ok: false, error: "cellwork_send: " + JSON.stringify(requested) + " names no recipient — use `<cellId>/<captain|member>`" }
+      /** Whether this send crosses into another cell of the tree. */
+      const crossCell = targetCellId !== caller.cell.cellId
+      /** The target cell's record, when this send crosses cells. */
+      let target: CellState = caller.cell
+      if (crossCell) {
+        if (targetCellId !== caller.cell.parentCellId && !caller.cell.subcellIds.includes(targetCellId)) {
+          return { ok: false, error: "cellwork_send: " + JSON.stringify(targetCellId) + " is not in this cell's tree — a cross-cell recipient must be a SUB-CELL of " + caller.cell.cellId + " (" + (caller.cell.subcellIds.join(", ") || "none") + ") or its parent cell (" + (caller.cell.parentCellId ?? "none") + ")" }
+        }
+        /** The target cell's record, or the refusal this send answers with. */
+        const read = readCell(caller.workspace, targetCellId)
+        if (!read.ok) return { ok: false, error: "cellwork_send: the cross-cell recipient's record at " + read.path + " cannot be read (" + read.reason + ": " + read.detail + ") — nothing was sent", path: read.path }
+        target = read.state
+      }
+      /** Whether the recipient is the target cell's captain. */
+      const toCaptain = nameKey(requestedName) === "captain"
+      /** The member row the recipient names, when it is a member of the target cell. */
+      const recipientMember = toCaptain ? undefined : Object.values(target.members).find((member) => nameKey(member.name) === nameKey(requestedName))
+      if (!toCaptain && recipientMember === undefined) {
+        return { ok: false, error: "cellwork_send: " + JSON.stringify(requestedName) + " is neither `captain` nor a member of cell " + targetCellId + " (members: " + Object.keys(target.members).join(", ") + ")" }
+      }
+      /** The canonical recipient name. */
+      const to = toCaptain ? "captain" : String(recipientMember?.name ?? requestedName)
+      if (!crossCell && nameKey(to) === nameKey(caller.member)) return { ok: false, error: "cellwork_send: a seat cannot message itself" }
       /** The instant this row is stamped with. */
       const now = new Date()
       /** Whether a wake-up was handed to the transport. */
       let wakeSent = false
       /** Why no wake-up went out, when it did not. */
       let wakeReason: string | undefined
-      if (toCaptain) {
+      if (crossCell) {
+        wakeReason = "cross-cell mail is DURABLE ONLY — this cell holds no Lead authority over " + targetCellId + ", so its captain wakes the row (it shows on that cell's `cellwork_supervise`)"
+      } else if (toCaptain) {
         wakeReason = "the Lead has no executor handle in this composition; the captain reads it on `cellwork_inbox`"
       } else if (caller.sessionId !== caller.cell.captainSessionId) {
         wakeReason = "only the captain holds the Lead authority the executor needs; a member-to-member message is durable and read on `cellwork_inbox`"
@@ -549,13 +583,18 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
           }
         }
       }
-      /** The message id. */
-      const id = mailId(now, (mailSequence += 1))
-      /** Whether the durable row reached the log. */
-      const appended = appendCellMail(caller.workspace, caller.cell.cellId, { t: "send", id, cellId: caller.cell.cellId, from: caller.member, to, subject, body, at: now.toISOString(), wakeSent, ...(wakeReason === undefined ? {} : { wakeReason }) })
+      // THE ROW LANDS WHERE THE RECIPIENT READS IT: a cross-cell message is appended to the TARGET cell's
+      // log (its `cellwork_inbox` reads that log), while the SENDER's journal records that it went out.
+      /** The id already used by the log this row is appended to, so a cross-cell id cannot shadow one. */
+      const taken = new Set(readCellMail(caller.workspace, targetCellId).map((record) => record.id))
+      /** The next unused id: the per-process sequence advanced until it is free in the target log. */
+      let id = mailId(now, (mailSequence += 1))
+      while (taken.has(id)) id = mailId(now, (mailSequence += 1))
+      /** Whether the durable row reached the recipient's log. */
+      const appended = appendCellMail(caller.workspace, targetCellId, { t: "send", id, cellId: targetCellId, from: caller.member, to, subject, body, at: now.toISOString(), wakeSent, ...(crossCell ? { fromCell: caller.cell.cellId } : {}), ...(wakeReason === undefined ? {} : { wakeReason }) })
       if (!appended) return { ok: false, error: "cellwork_send: the message row could not be written — no message was sent (mail is durable first)" }
-      appendJournal(caller.workspace, caller.cell.cellId, { event: "mail", cell: "cell:" + caller.cell.cellId, id, from: caller.member, to, subject, wakeSent }, now)
-      return { ok: true, id, to, wakeSent, ...(wakeReason === undefined ? {} : { wakeReason }) }
+      appendJournal(caller.workspace, caller.cell.cellId, { event: "mail", cell: "cell:" + caller.cell.cellId, id, from: caller.member, to, ...(crossCell ? { toCell: targetCellId } : {}), subject, wakeSent }, now)
+      return { ok: true, id, to, wakeSent, ...(crossCell ? { crossCell: targetCellId, fromCell: caller.cell.cellId } : {}), ...(wakeReason === undefined ? {} : { wakeReason }) }
     },
   }))
 
@@ -702,7 +741,7 @@ export function installCellworkProtocol(deps: ProtocolDeps): Array<() => void> {
       }
       /** The record after the barrier. */
       const next: CellState = { ...fresh.state, members: { ...fresh.state.members, [caller.member]: updated } }
-      transition(caller.workspace, next, { event: "compaction", member: caller.member, outcome: result.outcome, attempts: result.attempts, reason: result.reason, ...(result.newHandle === undefined ? {} : { newHandle: result.newHandle }) }, now)
+      transition(caller.workspace, next, compactionJournalEntry(caller.member, result), now)
     } finally {
       inFlight.delete(key)
     }

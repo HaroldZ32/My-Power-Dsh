@@ -20,7 +20,7 @@
 // Everything here is pure apart from `node:fs`; the window reader and the clock are injected.
 import { readdirSync, readFileSync } from "node:fs"
 import { dirname } from "node:path"
-import { atomicWriteText, splitPath, CELL_SPLIT_DIR, cellDir } from "./state"
+import { atomicWriteText, refusedSplitPath, splitPath, CELL_SPLIT_DIR, cellDir } from "./state"
 import { applyBudget, estimateTask, measureInput, type BudgetVerdict, type TaskEstimate, type WindowReading } from "./budget"
 import type { CellworkConfig } from "./config"
 
@@ -136,6 +136,14 @@ export interface SplitVerdict {
   tasks: SplitTaskVerdict[]
   /** The summed estimates and the counts a renderer shows. */
   totals: { estimate: number; taskCount: number; acceptedCount: number; refusedCount: number }
+  /**
+   * The absolute path this verdict was persisted to.
+   *
+   * The canonical per-revision file (`split/<revision>.json`) — EXCEPT for a REFUSED resubmission of a
+   * revision whose canonical file already holds an ACCEPTED verdict: that refusal lands beside it at
+   * `split/<revision>.refused.json` (Amendment 6 R2), so the accepted record survives byte-identically.
+   */
+  file?: string
 }
 
 /** What {@link submitSplit} needs: where to measure, the roster, the window reader and the clock. */
@@ -406,8 +414,22 @@ export async function submitSplit(deps: SubmitDeps, submission: SplitSubmission)
       refusedCount: tasks.filter((task) => !task.accepted).length,
     },
   }
-  atomicWriteText(splitPath(deps.workspace, deps.cellId, submission.revision), JSON.stringify(verdict, null, 2) + "\n")
-  return verdict
+  // THE ACCEPTED VERDICT IS NEVER DESTROYED (Amendment 6 R2). The canonical per-revision file is the
+  // record of what was ACCEPTED; a refused resubmission of a revision that already holds an accepted
+  // verdict therefore lands BESIDE it, so `readSplit`/`latestSplit` keep answering with the acceptance and
+  // a splitter still gets its refusal's per-task breakdown on disk.
+  /** The canonical per-revision verdict path. */
+  const canonical = splitPath(deps.workspace, deps.cellId, submission.revision)
+  /** What the canonical path already holds, when it holds anything readable. */
+  const stored = readSplit(deps.workspace, deps.cellId, submission.revision)
+  /** Whether writing this refusal to the canonical path would replace an ACCEPTED verdict. */
+  const wouldDestroyAccepted = !accepted && stored.ok && stored.verdict.accepted
+  /** The path this verdict is written to. */
+  const file = wouldDestroyAccepted ? refusedSplitPath(deps.workspace, deps.cellId, submission.revision) : canonical
+  /** The persisted document, carrying its own path so a reader never has to guess which file it read. */
+  const persisted: SplitVerdict = { ...verdict, file }
+  atomicWriteText(file, JSON.stringify(persisted, null, 2) + "\n")
+  return persisted
 }
 
 /** The result of reading one stored split: the verdict, or the refusal naming the path. */

@@ -238,15 +238,26 @@ export function classifyCompactionResult(result: unknown): "compacted" | "no-saf
 /**
  * Classify one `compactNow` rejection.
  *
- * @param error - the thrown value.
+ * THREE families, because the barrier's journal row is what an operator reads afterwards: a CANCELLATION
+ * (the drive was aborted, by the caller or by the engine's own `AbortError`) must never reach the record
+ * as an unexplained failure; a BUSY engine — the engine's `ManualCompactionError` code, or the word in the
+ * message, which is the only signal a composed engine may offer — is a RETRYABLE refusal; anything else is
+ * a real failure. The busy reading mirrors `mpd-team-compact-plugin`'s classifier, which is where the code
+ * vocabulary is defined.
+ *
+ * @param error - the thrown value (any value may be thrown).
  * @param signal - the signal the drive ran under.
- * @returns `aborted` when the signal caused it, `failed` otherwise.
+ * @returns `aborted`, `busy` or `failed`.
  */
-export function classifyCompactionError(error: unknown, signal: AbortSignal): "aborted" | "failed" {
+export function classifyCompactionError(error: unknown, signal: AbortSignal): "aborted" | "busy" | "failed" {
   if (signal.aborted) return "aborted"
-  /** The error's name, read defensively. */
-  const name = typeof error === "object" && error !== null && typeof (error as { name?: unknown }).name === "string" ? String((error as { name: unknown }).name) : ""
-  return name === "AbortError" ? "aborted" : "failed"
+  /** The thrown value, read defensively: any value may be thrown. */
+  const shaped = typeof error === "object" && error !== null ? error as { name?: unknown; code?: unknown; message?: unknown } : {}
+  if (shaped.name === "AbortError" || shaped.code === "ABORT_ERR") return "aborted"
+  if (shaped.code === "busy") return "busy"
+  /** The message text, which is where a composed engine's busy refusal usually surfaces. */
+  const text = typeof shaped.message === "string" ? shaped.message : String(error)
+  return /\bbusy\b/i.test(text) ? "busy" : "failed"
 }
 
 /**
@@ -300,6 +311,27 @@ export interface PromotionResult {
 }
 
 /**
+ * The journal row ONE barrier outcome writes (`agent/turn-stopping` → `runBarrier`).
+ *
+ * Extracted so the row is the same wherever it is written and so a test can assert the CLASSIFICATIONS the
+ * record carries (`reason`: `compacted`, `no-safe-range`, `busy`, `aborted`, `failed`, `no-engine`).
+ *
+ * @param memberName - the member the barrier ran for.
+ * @param result - the barrier's outcome.
+ * @returns the journal entry (the caller appends the instant and the cell id).
+ */
+export function compactionJournalEntry(memberName: string, result: PromotionResult): Record<string, unknown> {
+  return {
+    event: "compaction",
+    member: memberName,
+    outcome: result.outcome,
+    attempts: result.attempts,
+    reason: result.reason,
+    ...(result.newHandle === undefined ? {} : { newHandle: result.newHandle }),
+  }
+}
+
+/**
  * Compress one handoff into the member's own engine, and promote or reseed it.
  *
  * The barrier is BOUNDED: `compactionRetries` attempts, `idleBarrierDelayMs` apart. A `null` result means
@@ -317,7 +349,7 @@ export async function promoteAfterHandoff(deps: PromotionDeps): Promise<Promotio
     /** The member's own engine, resolved by its session id. */
     const engine = deps.dsh.compactionEngineForAgent(deps.sessionId) as { compactNow?: (agent: unknown, signal: AbortSignal) => Promise<unknown> } | undefined
     if (engine === undefined || typeof engine.compactNow !== "function") {
-      lastReason = "no compaction engine for this session"
+      lastReason = "no-engine"
       continue
     }
     /** A real signal, never `undefined` (the engine's first statement aborts on it). */

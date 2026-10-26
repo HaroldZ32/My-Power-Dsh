@@ -17,11 +17,13 @@ import {
   applyCheckpoint,
   classifyCompactionError,
   classifyCompactionResult,
+  compactionJournalEntry,
   compactionSignal,
   nextStepOf,
   planCheckpoint,
   promoteAfterHandoff,
 } from "../src/protocol-core.ts"
+import { foldCellMail, readCellMail } from "../src/mail.ts"
 import type { DshContextPressure } from "../../mpd-dsh-adapter-plugin/src/index"
 import { dispatchOwnerOnly, type DispatchRecordView } from "../src/dispatch.ts"
 import { DEFAULT_CELLWORK_CONFIG } from "../src/config.ts"
@@ -920,4 +922,419 @@ test("cellwork_dispatch and cellwork_supervise are captain-only; supervise repor
   expect(sweep.ok).toBe(true)
   expect(Array.isArray(sweep.members)).toBe(true)
   expect(String(sweep.phase)).toBe("requirements")
+})
+
+// ── Wave 3 (C1): the re-split path on the LIVE team record ──────────────────
+
+/** One valid graph for the SECOND revision: two keys kept, one work+review pair added. */
+function resplitTasks(): Array<Record<string, unknown>> {
+  return [
+    { key: "auth-core", subject: "Implement the auth core", description: "Add the token store and its unit test.", kind: "work", ownerRole: "Senior Engineer", writeScopes: ["src/auth/"], blockedBy: [], inputs: [], verify: true },
+    { key: "auth-review", subject: "Review the auth core", description: "Blind review against the frozen contract.", kind: "review", ownerRole: "Reviewer", writeScopes: [], blockedBy: ["auth-core"], inputs: [], verify: false },
+    { key: "spec-digest", subject: "Digest the spec", description: "Write the digest the release note needs.", kind: "work", ownerRole: "Lead", writeScopes: ["docs/spec/"], blockedBy: [], inputs: [], verify: true },
+    { key: "spec-review", subject: "Review the spec digest", description: "Blind review of the digest against its contract.", kind: "review", ownerRole: "Reviewer", writeScopes: [], blockedBy: ["spec-digest"], inputs: [], verify: false },
+  ]
+}
+
+/** The graph the THIRD revision submits: the added pair is dropped again. */
+function droppedTasks(): Array<Record<string, unknown>> {
+  return validTasks()
+}
+
+/**
+ * Drive a cell to its first activation: command, start, finalize, accepted split, activation.
+ *
+ * @param harness - the harness to drive.
+ * @returns the cell id and the activation answer.
+ */
+async function activatedCell(harness: Harness): Promise<{ cellId: string; activated: Record<string, any> }> {
+  /** The started cell. */
+  const cellId = await startCell(harness)
+  await runTool(harness, "cellwork_requirements", { action: "finalize", content: COMPLETE_REQUIREMENTS }, plannerAgent(harness))
+  await runTool(harness, "cellwork_split", { action: "submit", tasks: validTasks() }, splitterAgent(harness))
+  /** The first activation. */
+  const activated = await runTool(harness, "cellwork_activate", {}, harness.captain)
+  if (activated.ok !== true) throw new Error("the first activation refused: " + String(activated.error))
+  return { cellId, activated }
+}
+
+test("C1: a second activation ADDS tasks and members on the SAME team and reuses every kept row", async () => {
+  /** The harness at its first activation. */
+  const harness = makeHarness()
+  /** The cell and its first activation. */
+  const { cellId, activated } = await activatedCell(harness)
+  /** The board after the first activation. */
+  const board = harness.teamRecords.get("team-1")
+  expect(activated.mode).toBe("initial")
+  /** The kept work row's id, minted by the first activation. */
+  const keptRowId = board?.tasks.find((task: Record<string, any>) => task.subject === "Implement the auth core")?.id
+  expect(typeof keptRowId).toBe("string")
+  /** The messages delivered before the re-split. */
+  const sendsBefore = harness.sends.length
+  // The requirements document moves on: revision 2, the accepted split is STALE.
+  const updated = await runTool(harness, "cellwork_requirements", { action: "update", content: COMPLETE_REQUIREMENTS + "\n## Extra\nmore\n" }, plannerAgent(harness))
+  expect(updated.revision).toBe(2)
+  expect(updated.splitStale).toBe(true)
+  // A split submitted against the OLD revision is refused with the teaching sentence.
+  /** The mismatched submission. */
+  const mismatch = await runTool(harness, "cellwork_split", { action: "submit", revision: 1, tasks: resplitTasks() }, splitterAgent(harness))
+  expect(mismatch.ok).toBe(false)
+  expect(String(mismatch.error)).toContain("does not match the accepted requirements revision 2")
+  // The activation of the STALE split is refused until the splitter resubmits.
+  /** The stale activation refusal. */
+  const staleRefusal = await runTool(harness, "cellwork_activate", {}, harness.captain)
+  expect(staleRefusal.ok).toBe(false)
+  expect(String(staleRefusal.error)).toContain("STALE")
+  // THE SPLIT TASK: the first activation closed the original row, so the update APPENDED exactly one
+  // replacement (same owner, the new revision in its subject) — a terminal row cannot be reopened, and
+  // the splitter needs one open row to claim.
+  expect(String(updated.replacementSplitTaskId)).not.toBe("")
+  /** The splitter rows that are still open after the update. */
+  const openSplitterRows = (board?.tasks ?? []).filter((task: Record<string, any>) => String(task.owner ?? "") === "cell-splitter" && task.status !== "completed" && task.status !== "failed" && task.status !== "cancelled")
+  expect(openSplitterRows.length).toBe(1)
+  expect(openSplitterRows[0].id).toBe(updated.replacementSplitTaskId)
+  /** The board size just before the re-split activation (the replacement row is already on it). */
+  const sizeBeforeResplit = board?.tasks.length ?? 0
+  // Revision 2 is submitted and ACCEPTED, superseding revision 1.
+  /** The accepted second revision. */
+  const accepted = await runTool(harness, "cellwork_split", { action: "submit", tasks: resplitTasks() }, splitterAgent(harness))
+  expect(accepted.accepted).toBe(true)
+  expect(accepted.supersededRevision).toBe(1)
+  // THE RE-SPLIT: a second activation appends to the SAME team.
+  /** The re-split activation. */
+  const resplit = await runTool(harness, "cellwork_activate", {}, harness.captain)
+  expect(resplit.ok).toBe(true)
+  expect(resplit.mode).toBe("resplit")
+  expect(resplit.revision).toBe(2)
+  expect(resplit.kept).toEqual(["auth-core", "auth-review"])
+  expect(resplit.cancelled).toEqual([])
+  // The team is the SAME record, and only the NEW rows were appended.
+  expect(harness.teamRecords.size).toBe(1)
+  expect((resplit.tasks as Array<Record<string, unknown>>).map((row) => row.key).sort()).toEqual(["spec-digest", "spec-review"])
+  expect(board?.tasks.length).toBe(sizeBeforeResplit + 2)
+  // The kept work row is REUSED, never duplicated: one row carries that subject, with its original id.
+  /** Every board row carrying the kept subject. */
+  const keptRows = board?.tasks.filter((task: Record<string, any>) => task.subject === "Implement the auth core") ?? []
+  expect(keptRows.length).toBe(1)
+  expect(keptRows[0].id).toBe(keptRowId)
+  // The new review row is blocked by the NEW work row's board id.
+  /** The new work row. */
+  const digestRow = board?.tasks.find((task: Record<string, any>) => task.subject === "Digest the spec")
+  /** The new review row. */
+  const digestReview = board?.tasks.find((task: Record<string, any>) => task.subject === "Review the spec digest")
+  expect(digestReview?.blockedBy).toEqual([digestRow?.id])
+  // The new ROLE was raised as a member on the same team; the existing ones were not raised twice.
+  expect((resplit.membersRaised as string[]).sort()).toEqual(["Lead"])
+  expect((board?.members ?? []).filter((member: Record<string, any>) => member.name === "Senior Engineer").length).toBe(1)
+  // ONE verify loop for the ONE new code task — the kept task's loop stays the one already armed.
+  expect((resplit.loops as Array<Record<string, unknown>>).map((row) => row.taskKey)).toEqual(["spec-digest"])
+  /** The kept task's frozen contract, as the first activation wrote it. */
+  const keptContract = readFileSync(join(harness.workspace, ".mpd", "cellwork", cellId, "contracts", "auth-core.md"), "utf8")
+  expect(keptContract).toContain("loop-1")
+  expect(keptContract).not.toContain("loop-2")
+  // The new code task got a contract naming ITS loop, and its owner was woken.
+  /** The new contract. */
+  const digestContract = readFileSync(join(harness.workspace, ".mpd", "cellwork", cellId, "contracts", "spec-digest.md"), "utf8")
+  expect(digestContract).toContain("loop-2")
+  expect(harness.sends.slice(sendsBefore).some((send) => send.handle === "handle-Lead")).toBe(true)
+  // The cell record carries the full mapping of the LIVE revision and nothing cancelled.
+  /** The record after the re-split. */
+  const stored = readCell(harness.workspace, cellId)
+  if (!stored.ok) throw new Error("expected a record")
+  expect(stored.state.activatedRevision).toBe(2)
+  expect(stored.state.splitStale).toBe(false)
+  expect(stored.state.activatedTasks["auth-core"]).toBe(keptRowId)
+  expect(Object.keys(stored.state.activatedTasks).sort()).toEqual(["auth-core", "auth-review", "spec-digest", "spec-review"])
+  expect(stored.state.cancelledTasks).toEqual({})
+  // The SAME revision can never be activated twice.
+  /** The duplicate activation. */
+  const again = await runTool(harness, "cellwork_activate", { revision: 2 }, harness.captain)
+  expect(again.ok).toBe(false)
+  expect(String(again.error)).toContain("already materialised")
+})
+
+test("C1: work a later revision drops is marked cancelled, never deleted, and never dispatched", async () => {
+  /** The harness at its first activation. */
+  const harness = makeHarness()
+  /** The cell and its first activation. */
+  const { cellId } = await activatedCell(harness)
+  // Revision 2 adds the pair, so revision 3 has something to drop.
+  await runTool(harness, "cellwork_requirements", { action: "update", content: COMPLETE_REQUIREMENTS + "\n## Extra\nmore\n" }, plannerAgent(harness))
+  await runTool(harness, "cellwork_split", { action: "submit", tasks: resplitTasks() }, splitterAgent(harness))
+  /** The second activation, which adds the pair. */
+  const second = await runTool(harness, "cellwork_activate", {}, harness.captain)
+  expect(second.ok).toBe(true)
+  /** The board before the third revision. */
+  const board = harness.teamRecords.get("team-1")
+  /** Every board id present before the drop: not one of them may disappear. */
+  const idsBefore = (board?.tasks ?? []).map((task: Record<string, any>) => String(task.id)).sort()
+  /** The added work row's id. */
+  const digestRowId = board?.tasks.find((task: Record<string, any>) => task.subject === "Digest the spec")?.id
+  expect(typeof digestRowId).toBe("string")
+  // Revision 3 drops the added pair again.
+  await runTool(harness, "cellwork_requirements", { action: "update", content: COMPLETE_REQUIREMENTS + "\n## Extra\nmore again\n" }, plannerAgent(harness))
+  /** The accepted third revision. */
+  const third = await runTool(harness, "cellwork_split", { action: "submit", tasks: droppedTasks() }, splitterAgent(harness))
+  expect(third.accepted).toBe(true)
+  /** The third activation, which drops the pair. */
+  const resplit = await runTool(harness, "cellwork_activate", {}, harness.captain)
+  expect(resplit.ok).toBe(true)
+  expect(resplit.mode).toBe("resplit")
+  expect((resplit.cancelled as Array<Record<string, unknown>>).map((row) => row.key).sort()).toEqual(["spec-digest", "spec-review"])
+  // NOTHING WAS DELETED: every row the board carried before the drop is still there (the update did
+  // append one replacement split row of its own, which is growth, not a deletion).
+  /** The board ids after the drop. */
+  const idsAfter = (board?.tasks ?? []).map((task: Record<string, any>) => String(task.id))
+  /** The ids that would be missing, which must be none. */
+  const missingIds = idsBefore.filter((id: string) => !idsAfter.includes(id))
+  expect(missingIds).toEqual([])
+  // The cell record marks the dropped keys cancelled against the ids their rows still carry.
+  /** The record after the drop. */
+  const stored = readCell(harness.workspace, cellId)
+  if (!stored.ok) throw new Error("expected a record")
+  expect(stored.state.cancelledTasks["spec-digest"]).toBe(digestRowId)
+  expect(typeof stored.state.cancelledTasks["spec-review"]).toBe("string")
+  expect(Object.keys(stored.state.activatedTasks).sort()).toEqual(["auth-core", "auth-review"])
+  // The journal names each cancellation, and the accepted revision superseded the previous one.
+  /** The journal lines. */
+  const journal = readFileSync(journalPath(harness.workspace, cellId), "utf8").split("\n").filter((line) => line.trim() !== "").map((line) => JSON.parse(line) as Record<string, unknown>)
+  expect(journal.filter((row) => row.event === "task-cancelled").length).toBe(2)
+  expect(journal.filter((row) => row.event === "split-superseded").length).toBeGreaterThanOrEqual(1)
+  // A dispatch pass NEVER wakes a cancelled row, and says so.
+  /** The dispatch pass after the drop. */
+  const dispatch = await runTool(harness, "cellwork_dispatch", {}, harness.captain)
+  expect(dispatch.ok).toBe(true)
+  /** The cancelled rows as the pass reported them. */
+  const cancelledSkips = (dispatch.skipped as Array<Record<string, unknown>>).filter((row) => String(row.reason).includes("CANCELLED"))
+  expect(cancelledSkips.map((row) => row.taskId).sort()).toEqual([String(digestRowId), String(stored.state.cancelledTasks["spec-review"])].sort())
+})
+
+// ── Wave 3 (C2): the three T6-low arms ─────────────────────────────────────
+
+test("C2.1: the compaction barrier classifies busy, error and no-engine after the retry budget", async () => {
+  /** The cell whose member is handoff-ready. */
+  const cell = cellWithWorker()
+  /** Two bounded attempts with no real wait. */
+  const config = { ...DEFAULT_CELLWORK_CONFIG, compactionRetries: 2, idleBarrierDelayMs: 0 }
+  /** The reseed and interrupt seams, shared by every arm below. */
+  const seams = { startContinuableAgent: async (): Promise<unknown> => ({ childId: "handle-fresh" }), interruptAgent: (): void => {} }
+  /** How many drives the BUSY engine was handed. */
+  let busyAttempts = 0
+  // A BUSY engine spends the whole retry budget and is classified as busy, not as an unexplained failure.
+  /** The barrier's answer for a busy engine. */
+  const busy = await promoteAfterHandoff({
+    dsh: { ...seams, compactionEngineForAgent: () => ({ compactNow: async (): Promise<unknown> => { busyAttempts += 1; throw Object.assign(new Error("another compaction is already running"), { code: "busy" }) } }) },
+    agent: {}, memberName: "worker", sessionId: "session-worker", cell, config,
+    handoffText: "## Next step\nfinish B", nextStep: "finish B",
+    injectDirective: () => {}, sleep: async () => {},
+  })
+  expect(busyAttempts).toBe(2)
+  expect(busy.outcome).toBe("reseeded")
+  expect(busy.reason).toBe("busy")
+  /** The journal row that outcome writes. */
+  const busyRow = compactionJournalEntry("worker", busy)
+  expect(busyRow.event).toBe("compaction")
+  expect(busyRow.reason).toBe("busy")
+  expect(busyRow.attempts).toBe(2)
+  // A THROWN ERROR is its own classification, and the reseed still happens.
+  /** The barrier's answer for a failing engine. */
+  const failed = await promoteAfterHandoff({
+    dsh: { ...seams, compactionEngineForAgent: () => ({ compactNow: async (): Promise<unknown> => { throw new Error("the summarizer exploded") } }) },
+    agent: {}, memberName: "worker", sessionId: "session-worker", cell, config,
+    handoffText: "## Next step\nfinish B", nextStep: "finish B",
+    injectDirective: () => {}, sleep: async () => {},
+  })
+  expect(failed.outcome).toBe("reseeded")
+  expect(failed.reason).toBe("failed")
+  expect(compactionJournalEntry("worker", failed).reason).toBe("failed")
+  // An ABORT is a cancellation, never a failure; and the classifier reads a busy word too.
+  expect(classifyCompactionError(new Error("boom"), compactionSignal().signal)).toBe("failed")
+  expect(classifyCompactionError(Object.assign(new Error("x"), { name: "AbortError" }), compactionSignal().signal)).toBe("aborted")
+  expect(classifyCompactionError(new Error("compactNow: busy"), compactionSignal().signal)).toBe("busy")
+  // An ABSENT engine is its own token, so "no engine" is never reported as a failure either.
+  /** The barrier's answer when the composition exposes no engine. */
+  const noEngine = await promoteAfterHandoff({
+    dsh: { ...seams, compactionEngineForAgent: () => undefined },
+    agent: {}, memberName: "worker", sessionId: "session-worker", cell, config,
+    handoffText: "## Next step\nfinish B", nextStep: "finish B",
+    injectDirective: () => {}, sleep: async () => {},
+  })
+  expect(noEngine.reason).toBe("no-engine")
+  expect(noEngine.attempts).toBe(2)
+})
+
+test("C2.2: mail addresses a member, `captain` and a cross-subcell recipient, and the journal carries the cell stamp", async () => {
+  /** The harness with a started cell. */
+  const harness = makeHarness()
+  /** The started cell. */
+  const cellId = await startCell(harness)
+  // 1. A MEMBER by name: durable, and no wake-up because only the captain holds Lead authority.
+  /** The member-to-member message. */
+  const toMember = await runTool(harness, "cellwork_send", { to: "cell-splitter", subject: "peer check", body: "is the graph ready?" }, plannerAgent(harness))
+  expect(toMember.ok).toBe(true)
+  expect(toMember.to).toBe("cell-splitter")
+  expect(toMember.wakeSent).toBe(false)
+  expect(String(toMember.wakeReason)).toContain("member-to-member")
+  // 2. `captain` by name.
+  /** The message to the captain. */
+  const toCaptain = await runTool(harness, "cellwork_send", { to: "captain", subject: "which scope?", body: "A or B?" }, plannerAgent(harness))
+  expect(toCaptain.ok).toBe(true)
+  expect(toCaptain.to).toBe("captain")
+  expect(String(toCaptain.wakeReason)).toContain("Lead has no executor handle")
+  // 3. A CROSS-SUBCELL recipient: `<cellId>/<member>` in this cell's tree.
+  /** The parent record, so the planner can be promoted to subcaptain. */
+  const parent = readCell(harness.workspace, cellId)
+  if (!parent.ok) throw new Error("expected a record")
+  writeCell(harness.workspace, { ...parent.state, members: { ...parent.state.members, "cell-planner": { ...parent.state.members["cell-planner"], mode: "subcaptain" } } })
+  /** The registered sub-cell. */
+  const subcell = await runTool(harness, "cellwork_subteam", { objective: "child objective" }, plannerAgent(harness))
+  expect(subcell.ok).toBe(true)
+  /** The sub-cell id. */
+  const subcellId = String(subcell.cellId)
+  // A cell OUTSIDE the tree is refused, so the tree membership is what authorises the send.
+  /** The refused out-of-tree recipient. */
+  const outside = await runTool(harness, "cellwork_send", { to: "cell-not-in-tree/captain", subject: "s", body: "b" }, harness.captain)
+  expect(outside.ok).toBe(false)
+  expect(String(outside.error)).toContain("not in this cell's tree")
+  /** The cross-cell message into the sub-cell's captain. */
+  const cross = await runTool(harness, "cellwork_send", { to: subcellId + "/captain", subject: "child status", body: "report the child's first gate" }, harness.captain)
+  expect(cross.ok).toBe(true)
+  expect(cross.crossCell).toBe(subcellId)
+  expect(cross.fromCell).toBe(cellId)
+  expect(cross.to).toBe("captain")
+  expect(cross.wakeSent).toBe(false)
+  expect(String(cross.wakeReason)).toContain("cross-cell")
+  // THE ROW LANDED WHERE THE RECIPIENT READS IT: the SUB-CELL's log, stamped with the sender's cell.
+  /** The sub-cell's folded mail. */
+  const subcellMail = foldCellMail(readCellMail(harness.workspace, subcellId))
+  expect(subcellMail.length).toBe(1)
+  expect(subcellMail[0].cellId).toBe(subcellId)
+  expect(subcellMail[0].fromCell).toBe(cellId)
+  expect(subcellMail[0].to).toBe("captain")
+  expect(subcellMail[0].read).toBe(false)
+  // The sender's own log never gained that row; its JOURNAL did, under the `cell:<cellId>` stamp.
+  /** The sender cell's folded mail. */
+  const senderMail = foldCellMail(readCellMail(harness.workspace, cellId))
+  expect(senderMail.some((message) => message.subject === "child status")).toBe(false)
+  /** The journal lines. */
+  const journal = readFileSync(journalPath(harness.workspace, cellId), "utf8").split("\n").filter((line) => line.trim() !== "").map((line) => JSON.parse(line) as Record<string, unknown>)
+  /** The three sends as the journal recorded them. */
+  const sends = journal.filter((row) => row.event === "mail")
+  expect(sends.length).toBe(3)
+  expect(sends.every((row) => row.cell === "cell:" + cellId)).toBe(true)
+  expect(sends.filter((row) => row.toCell === subcellId).length).toBe(1)
+})
+
+test("C2.3: an UNDELIVERED mail row is surfaced by cellwork_supervise, not only by the pending board", async () => {
+  /** The harness with a started cell. */
+  const harness = makeHarness()
+  await startCell(harness)
+  // A row whose wake-up could never be sent: the planner mails the captain, who holds no executor handle.
+  const sent = await runTool(harness, "cellwork_send", { to: "captain", subject: "Need a decision", body: "ship or hold?" }, plannerAgent(harness))
+  expect(sent.ok).toBe(true)
+  expect(sent.wakeSent).toBe(false)
+  // The captain's sweep surfaces it BY NAME, with the reason no wake-up went out.
+  /** The captain's sweep. */
+  const sweep = await runTool(harness, "cellwork_supervise", {}, harness.captain)
+  expect(sweep.ok).toBe(true)
+  expect(Number(sweep.unreadMail)).toBe(1)
+  /** The undelivered rows as the sweep reports them. */
+  const undelivered = sweep.wakeFailures as Array<Record<string, unknown>>
+  expect(undelivered.length).toBe(1)
+  expect(undelivered[0].id).toBe(sent.id)
+  expect(undelivered[0].to).toBe("captain")
+  expect(undelivered[0].subject).toBe("Need a decision")
+  expect(String(undelivered[0].reason)).toContain("Lead has no executor handle")
+  // Acknowledging it through the inbox clears it from the sweep: the surface reports LIVE undelivered mail.
+  await runTool(harness, "cellwork_inbox", {}, harness.captain)
+  /** The sweep after the acknowledgement. */
+  const after = await runTool(harness, "cellwork_supervise", {}, harness.captain)
+  expect(Number(after.unreadMail)).toBe(0)
+  expect((after.wakeFailures as unknown[]).length).toBe(0)
+})
+
+// ── Wave 3 (Amendment 6 / T5): the two repair items ────────────────────────
+
+/** The graph whose review is owned by the WORK's own role, which the graph rules refuse (self-review). */
+function selfReviewTasks(): Array<Record<string, unknown>> {
+  return [
+    { key: "auth-core", subject: "Implement the auth core", description: "Add the token store and its unit test.", kind: "work", ownerRole: "Senior Engineer", writeScopes: ["src/auth/"], blockedBy: [], inputs: [], verify: true },
+    { key: "auth-review", subject: "Review the auth core", description: "Blind review against the frozen contract.", kind: "review", ownerRole: "Senior Engineer", writeScopes: [], blockedBy: ["auth-core"], inputs: [], verify: false },
+  ]
+}
+
+test("Amendment 6 R1: the dispatched message names the contract file the verify loop froze, and that file EXISTS", async () => {
+  /** The harness at its first activation. */
+  const harness = makeHarness()
+  /** The cell and its first activation. */
+  const { cellId } = await activatedCell(harness)
+  // The activation delivered exactly ONE message: the READY code task, to its declared owner.
+  expect(harness.sends.length).toBe(1)
+  /** The dispatched text. */
+  const text = harness.sends[0].text
+  /** The contract path the message names, scraped from its FROZEN CONTRACT line. */
+  const match = /FROZEN CONTRACT[^\n]*?: (\S+\.md)/.exec(text)
+  expect(match).not.toBeNull()
+  /** The path the member is told to read. */
+  const named = String(match?.[1] ?? "")
+  // It is the SPLIT KEY's file, never the board id's (the defect this repair closes named contracts/T3.md).
+  expect(named).toBe(".mpd/cellwork/" + cellId + "/contracts/auth-core.md")
+  /** The board id the same task was minted as. */
+  const boardId = String(harness.teamRecords.get("team-1")?.tasks.find((task: Record<string, any>) => task.subject === "Implement the auth core")?.id ?? "")
+  expect(boardId).not.toBe("")
+  expect(named).not.toContain(boardId + ".md")
+  // THE FILE EXISTS: a dispatch cannot point a member at a document nobody wrote.
+  expect(existsSync(join(harness.workspace, named))).toBe(true)
+  // ... and it is the SAME path the verify loop froze for that task's verifier.
+  /** The verify-loop call the activation made. */
+  const opened = harness.calls.find((call) => call.name === "mpd_verify_open")
+  expect(opened).toBeDefined()
+  expect(String(opened?.arguments.contract)).toBe(named)
+})
+
+test("Amendment 6 R2: an accepted verdict is SUPERSEDED by a newer revision and SURVIVES a refused resubmission", async () => {
+  /** The harness with a started cell. */
+  const harness = makeHarness()
+  /** The started cell. */
+  const cellId = await startCell(harness)
+  await runTool(harness, "cellwork_requirements", { action: "finalize", content: COMPLETE_REQUIREMENTS }, plannerAgent(harness))
+  /** The accepted first revision. */
+  const first = await runTool(harness, "cellwork_split", { action: "submit", tasks: validTasks() }, splitterAgent(harness))
+  expect(first.accepted).toBe(true)
+  expect(first.splitPath).toBe(".mpd/cellwork/" + cellId + "/split/1.json")
+  /** The canonical verdict file. */
+  const canonical = join(harness.workspace, ".mpd", "cellwork", cellId, "split", "1.json")
+  /** Its BYTES before the refused resubmission, kept for byte identity. */
+  const bytesBefore = readFileSync(canonical)
+  // A REFUSED resubmission at the SAME revision (the review is owned by the work's own role).
+  /** The refused verdict. */
+  const refused = await runTool(harness, "cellwork_split", { action: "submit", tasks: selfReviewTasks() }, splitterAgent(harness))
+  expect(refused.accepted).toBe(false)
+  // The refusal landed BESIDE the accepted file, not on top of it.
+  expect(String(refused.splitPath)).toBe(".mpd/cellwork/" + cellId + "/split/1.refused.json")
+  expect(existsSync(join(harness.workspace, String(refused.splitPath)))).toBe(true)
+  // BYTE IDENTITY: the accepted document is untouched by the refusal.
+  expect(readFileSync(canonical).equals(bytesBefore)).toBe(true)
+  // The accepted verdict is still what `show` answers, at the canonical path ...
+  /** The stored verdict as the tool still reports it. */
+  const shown = await runTool(harness, "cellwork_split", { action: "show" }, harness.captain)
+  expect(shown.accepted).toBe(true)
+  expect(shown.splitPath).toBe(".mpd/cellwork/" + cellId + "/split/1.json")
+  // ... and it is still ACTIVATABLE, which is the durability that matters.
+  /** The activation of the accepted revision. */
+  const activated = await runTool(harness, "cellwork_activate", {}, harness.captain)
+  expect(activated.ok).toBe(true)
+  // A newer accepted revision SUPERSEDES the first one, which the journal records by name.
+  await runTool(harness, "cellwork_requirements", { action: "update", content: COMPLETE_REQUIREMENTS + "\n## Extra\nmore\n" }, plannerAgent(harness))
+  /** The accepted second revision. */
+  const second = await runTool(harness, "cellwork_split", { action: "submit", tasks: validTasks() }, splitterAgent(harness))
+  expect(second.accepted).toBe(true)
+  expect(second.supersededRevision).toBe(1)
+  /** The journal lines. */
+  const journal = readFileSync(journalPath(harness.workspace, cellId), "utf8").split("\n").filter((line) => line.trim() !== "").map((line) => JSON.parse(line) as Record<string, unknown>)
+  /** The supersede rows. */
+  const superseded = journal.filter((row) => row.event === "split-superseded")
+  expect(superseded.length).toBe(1)
+  expect(superseded[0].revision).toBe(1)
+  expect(superseded[0].by).toBe(2)
 })

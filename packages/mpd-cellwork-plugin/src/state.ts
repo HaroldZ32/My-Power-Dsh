@@ -125,6 +125,22 @@ export interface CellState {
   splitRevision: number | null
   /** The split revision MATERIALISED on the live team (null before the first activation). */
   activatedRevision: number | null
+  /**
+   * The board id every split key of {@link CellState.activatedRevision} was materialised as.
+   *
+   * The re-split path reads this map to REUSE a live board row for work that survives a new revision
+   * instead of appending a duplicate, and to know which rows a later revision dropped. It is replaced
+   * on every activation (a key's board id never changes once minted).
+   */
+  activatedTasks: Record<string, string>
+  /**
+   * Split keys an activation CANCELLED, mapped to the board id their row still carries.
+   *
+   * Work a later revision DROPS is marked cancelled on the cell record and never deleted: the board
+   * row stays (this build has no cancel verb on the team plane), so the cell plane is where the
+   * cancellation is recorded and `cellwork_dispatch` skips these ids.
+   */
+  cancelledTasks: Record<string, string>
   /** Set by a requirements update: the accepted split no longer matches the document. */
   splitStale: boolean
   /** ISO instant `cellwork_start` staged the planner team, or `""` before that. */
@@ -223,6 +239,24 @@ export function splitPath(workspace: string, cellId: string, revision: number): 
   return join(cellDir(workspace, cellId), CELL_SPLIT_DIR, String(revision) + ".json")
 }
 
+/**
+ * The BESIDE path a REFUSED verdict takes when `split/<revision>.json` already holds an ACCEPTED one:
+ * `split/<revision>.refused.json`.
+ *
+ * Amendment 6 R2: a refused same-revision resubmission must never destroy the accepted verdict on disk.
+ * The refusal still lands (the splitter needs its per-task breakdown), but at its own path, so the
+ * canonical per-revision file stays the record of what was ACCEPTED and `latestSplit` never mistakes a
+ * refusal for an acceptance.
+ *
+ * @param workspace - the workspace root the caller resolved through the adapter.
+ * @param cellId - the cell that owns the split.
+ * @param revision - the requirements revision the refused graph targeted.
+ * @returns the absolute path of the refusal document.
+ */
+export function refusedSplitPath(workspace: string, cellId: string, revision: number): string {
+  return join(cellDir(workspace, cellId), CELL_SPLIT_DIR, String(revision) + ".refused.json")
+}
+
 /** One task's frozen acceptance contract: `contracts/<taskKey>.md`. */
 export function contractPath(workspace: string, cellId: string, taskKey: string): string {
   return join(cellDir(workspace, cellId), CELL_CONTRACTS_DIR, taskKey + ".md")
@@ -283,6 +317,8 @@ export function newCellState(input: NewCellInput): CellState {
     requirementsRevision: 0,
     splitRevision: null,
     activatedRevision: null,
+    activatedTasks: {},
+    cancelledTasks: {},
     splitStale: false,
     startedAt: "",
     stopReason: "",
@@ -499,6 +535,17 @@ function normalizeMember(name: string, raw: unknown): CellMemberRecord | null {
   }
 }
 
+/** One string-valued map, keeping only the entries whose value is a string (a board id). */
+function stringMap(value: unknown): Record<string, string> {
+  /** The validated map. */
+  const kept: Record<string, string> = {}
+  if (!isRecord(value)) return kept
+  for (const [key, entry] of Object.entries(value)) {
+    if (typeof entry === "string") kept[key] = entry
+  }
+  return kept
+}
+
 /**
  * Validate one parsed value as a cell record, filling every COLLECTION with its empty default.
  *
@@ -555,6 +602,8 @@ function normalizeCellState(raw: unknown): CellState | null {
     requirementsRevision: typeof raw.requirementsRevision === "number" ? raw.requirementsRevision : 0,
     splitRevision: typeof raw.splitRevision === "number" ? raw.splitRevision : null,
     activatedRevision: typeof raw.activatedRevision === "number" ? raw.activatedRevision : null,
+    activatedTasks: stringMap(raw.activatedTasks),
+    cancelledTasks: stringMap(raw.cancelledTasks),
     splitStale: raw.splitStale === true,
     startedAt: typeof raw.startedAt === "string" ? raw.startedAt : "",
     stopReason: typeof raw.stopReason === "string" ? raw.stopReason : "",

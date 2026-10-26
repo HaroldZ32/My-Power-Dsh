@@ -31,6 +31,8 @@ export interface CellMailSend {
   cellId: string
   /** The sender's cell name (`captain`, `cell-planner`, …). */
   from: string
+  /** The sender's CELL id, when the row was written into another cell's log (a cross-cell message). */
+  fromCell?: string
   /** The recipient's cell name, as addressed. */
   to: string
   /** One-line subject. */
