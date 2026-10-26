@@ -1329,6 +1329,13 @@ TUI 车道使用配置好的 `TUI_VERSION`（默认 `0.16.1`）与 `MPD_E2E_DSH_
 | 适配器的版本闸门 | `PANEL_CSV_HOST_OWNED_SINCE = "0.16.1"`、`PANEL_CSV_SELF_HEAL_SINCE = "0.15.0"`，以及 `hostVersion` 夹具 `0.14.0/0.15.0/0.16.0/0.17.0` | **不变** —— 它们编码的是宿主**何时**改变行为，而不是当前宿主是哪个；盲目全量替换版本号会把它们改坏 |
 | “在 dsh-tui >= 0.16.1 上……”这类范围表述（§6.2 与使用者指南） | 一个闸门阈值 | **不变** —— 这是范围，不是目标版本 |
 
-**诚实的边界。** 本波次没有做实时 PTY 抓取：它是一个钉定与文档波次，自身证据是发布 tag 的扫描、
-三载体版本一致性检查与仓库门禁。Docker 真机车道携带了新的默认值，而运行它们是发布扫描的一步
-（仓库手册 §4），不是本波次的一步。
+**诚实的边界。** 本波次的两条 Docker 真机车道都在最终树上跑过（裸 `ubuntu:24.04`），其提交的结果就是本页的
+PTY 证据。`evidence/docker/client-install/2026-10-25T16-02-51Z/result.json` —— `ok: true`，122 条断言、
+77 通过、0 失败、45 条 null（4 条 `oneclick.*` 因模式未跑；需要凭据的 `live.*` 各行与 `boot.llmTurn`；
+9 条 `ui.*` 行因浏览器车道需显式开启；以及需要密钥的 `qa.mcpCall`）—— 其 22 条 `tui.*` 断言全部为真：
+`tui.boot` 在真实 PTY 上到达聊天界面、`tui.hostInstall` 报 `version=0.17.0`、`tui.sessionPreset` 报
+`agentPreset=mpd`，另有 `boot.presetMount` 与 `harness.version = 0.2.1-rc.3`。
+`…/2026-10-25T16-13-29Z/result.json` —— `ok: true`，117 通过、0 失败、5 条 null（4 条 `oneclick.*` 与
+未被询问的 `ui.teamBoard`）—— 记录到 `live.web`、`live.tui`、`live.headless` 三路的 `mpdToolCalled` 与
+`assistantReplied` 均为真，`boot.llmTurn` 为真，`ui.*` 各行为真。仍有一条边界成立：**针对已发布包的
+一键车道本波次没有跑**，因此它的行保持 null —— 这些 stamp 度量的是检出安装，绝不是打包产物。

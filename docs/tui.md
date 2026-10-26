@@ -1623,7 +1623,16 @@ This wave moves the pin pair to the host re-certified against it, and changes no
 | The adapter's version gates | `PANEL_CSV_HOST_OWNED_SINCE = "0.16.1"`, `PANEL_CSV_SELF_HEAL_SINCE = "0.15.0"`, the `hostVersion` fixtures `0.14.0/0.15.0/0.16.0/0.17.0` | **unchanged** — they encode WHEN the host changed behaviour, never which host is current, so a blanket version replace would corrupt them |
 | "on dsh-tui >= 0.16.1 …" range statements (§6.2 and the user guide) | a gate threshold | **unchanged** — a range, not a target version |
 
-**Honest bounds.** No live PTY capture was taken for this wave: it is a pin-and-documents wave whose own
-evidence is the release-tag sweep, the three-carrier coherence check and the repository gates. The
-Docker real-machine lanes carry the new defaults, and running them is the release sweep's step (§4 of
-the repository manual), not this wave's.
+**Honest bounds.** Both Docker real-machine lanes RAN on this wave's final tree in a bare
+`ubuntu:24.04`, and their committed results are this page's PTY evidence.
+`evidence/docker/client-install/2026-10-25T16-02-51Z/result.json` — `ok: true`, 122 assertions, 77
+passed, 0 failed, 45 null (the four `oneclick.*` rows by mode; the credential-gated `live.*` rows plus
+`boot.llmTurn`; the nine `ui.*` rows, the browser lane being opt-in; and `qa.mcpCall`, which needs a key)
+— carries all 22 `tui.*` assertions true: `tui.boot` reached the chat screen on a real PTY,
+`tui.hostInstall` reported `version=0.17.0`, `tui.sessionPreset` reported `agentPreset=mpd`, beside
+`boot.presetMount` and `harness.version = 0.2.1-rc.3`. `…/2026-10-25T16-13-29Z/result.json` — `ok: true`,
+117 passed, 0 failed, 5 null (the four `oneclick.*` rows plus `ui.teamBoard`, not asked) — records
+`live.web`, `live.tui` and `live.headless` each with `mpdToolCalled` and `assistantReplied` true,
+`boot.llmTurn` true and the `ui.*` rows true. ONE bound stands: the **one-click lane against the
+published package was NOT run** in this wave, so its rows stay null — what these stamps measured is the
+checkout install, never the packed artifact.

@@ -1,0 +1,50 @@
+=== git status (my four paths)
+ M CHANGELOG.md
+ M docs/tui.md
+ M docs/tui.zh-CN.md
+ M dsh-plugin.json
+
+=== dsh-plugin.json diff (must be ONE literal)
+diff --git a/dsh-plugin.json b/dsh-plugin.json
+index 4772a820..ed6ee54e 100644
+--- a/dsh-plugin.json
++++ b/dsh-plugin.json
+@@ -56,7 +56,7 @@
+     ]
+   },
+   "x-mpd-tui-surfaces": {
+-    "note": "Disclosure, not a contribution point. This file sits at the root of the @mpd-dsh/mpd bundle package (version 0.15.1) and self-describes as THAT package, because the admission path resolves a row's specifier ('@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js') to the package that carries it. It declares ONE Community v0.15 host facet whose module is packages/mpd-tui-plugin/dist/index.js, implemented by the separate @mpd-dsh/mpd-tui package (version 0.1.0, from its own package.json). The bundle-level manifest is intentional (user decision D6), so no per-package manifest exists.",
++    "note": "Disclosure, not a contribution point. This file sits at the root of the @mpd-dsh/mpd bundle package (version 0.15.5) and self-describes as THAT package, because the admission path resolves a row's specifier ('@mpd-dsh/mpd/packages/mpd-tui-plugin/dist/index.js') to the package that carries it. It declares ONE Community v0.15 host facet whose module is packages/mpd-tui-plugin/dist/index.js, implemented by the separate @mpd-dsh/mpd-tui package (version 0.1.0, from its own package.json). The bundle-level manifest is intentional (user decision D6), so no per-package manifest exists.",
+     "runtimeBoundSurfaces": [
+       "tuiStatus",
+       "tuiRenderers",
+
+=== CHANGELOG diff of the table bullet
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index 8fbd49b1..cd9726f3 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -37,7 +37,9 @@ changed behaviour, not which host is current.
+ **Added — the README version-correspondence table.** `README.md` and `README.zh-CN.md` both carry one
+ table right after Install: the release, the DeepSeek Harness it was built and verified against, and its
+-DSH-TUI row — six releases from 0.14.0 through 0.15.5, every cell read from its release tag
+-(`git show v<release>:package.json`, `dsh-plugin.json`'s `compat`, `dsh-distribution.json`'s `host-tui`),
+-not inferred. The section also says where the two pins live (`package.json` for the harness,
++DSH-TUI row — six releases from 0.14.0 through 0.15.5. The five historical rows were read from their
++release tags (`git show v<release>:package.json`, `dsh-plugin.json`'s `compat`,
++`dsh-distribution.json`'s `host-tui`); the 0.15.5 row is read from THIS release's own files in the release
++commit, because its tag is cut at release and does not exist yet — not inferred either way. The section
++also says where the two pins live (`package.json` for the harness,
+ `dsh-plugin.json` `compat.hosts` + `dsh-distribution.json` for the TUI) and that a newer host is not
+ claimed until a release row names it.
+
+=== json still parses + version keys
+version 0.15.5 | manifestVersion 0.15 | $schema https://dsh.community/schemas/dsh-plugin-0.15.json
+note has 0.15.5: True | tui pkg 0.1.0 kept: True
+
+=== hashes
+3dce8cd790b547586c3ca89aae47c4ac  CHANGELOG.md
+64a4879b10d7e2350d4b06ace3dc6d51  docs/tui.md
+986fd9eb5c0f27e107481c7b9e3a0800  docs/tui.zh-CN.md
+32029930a3393d74e6befc53a1c6ab62  dsh-plugin.json
+2026-10-26T01:32:01Z

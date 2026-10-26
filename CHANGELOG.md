@@ -36,9 +36,11 @@ changed behaviour, not which host is current.
 
 **Added — the README version-correspondence table.** `README.md` and `README.zh-CN.md` both carry one
 table right after Install: the release, the DeepSeek Harness it was built and verified against, and its
-DSH-TUI row — six releases from 0.14.0 through 0.15.5, every cell read from its release tag
-(`git show v<release>:package.json`, `dsh-plugin.json`'s `compat`, `dsh-distribution.json`'s `host-tui`),
-not inferred. The section also says where the two pins live (`package.json` for the harness,
+DSH-TUI row — six releases from 0.14.0 through 0.15.5. The five historical rows were read from their
+release tags (`git show v<release>:package.json`, `dsh-plugin.json`'s `compat`,
+`dsh-distribution.json`'s `host-tui`); the 0.15.5 row is read from THIS release's own files in the release
+commit, because its tag is cut at release and does not exist yet — not inferred either way. The section
+also says where the two pins live (`package.json` for the harness,
 `dsh-plugin.json` `compat.hosts` + `dsh-distribution.json` for the TUI) and that a newer host is not
 claimed until a release row names it.
 
