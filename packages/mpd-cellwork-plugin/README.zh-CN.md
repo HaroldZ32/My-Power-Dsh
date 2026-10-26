@@ -93,9 +93,20 @@ cell 登记）、`cellwork_send` / `cellwork_inbox`（持久的 cell 邮件）�
   队长会话被守卫围栏，而激活时验证者还不是活代理。
 - **一个 override、一个身份。** `windowOverride` 是单值：它认证**任何**目录读不到窗口的 route，并记录为
   `override`。规划任务由**调用者自己的身份**（规划器/切分器）关闭，关闭失败只记入 journal，绝不影响修订。
-- **邮件与重种边界。** cell 邮件先落盘（持久），唤醒尽力而为：Lead 没有 executor handle，成员 → 队长的行由
-  队长在 `cellwork_inbox` 读取（并在 `cellwork_supervise` 上呈现）。压缩屏障无法压缩时，代理会从交接文档重种；
-  原生后端不暴露已落地激活的 dispose，因此旧子代理只做尽力中断，新 handle 记录在 cell 上。
+- **压缩结果必须分类。** 屏障先等该 agent 空闲（`compactionRetries` 次有界重试，间隔 `idleBarrierDelayMs`），
+  再带真实的 `AbortController` 信号压缩。写入 journal 的原因取值是 `compacted` | `no-safe-range` | `busy` |
+  `aborted` | `failed` | `no-engine` 之一；重试预算用完绝不是一次静默的空操作。
+- **邮件与重种边界。** cell 邮件先落盘（持久），唤醒尽力而为。`cellwork_send` 在 cell 树里解析收件人 ——
+  成员名、`captain`，或跨 cell 形式 `"<cellId>/<captain|member>"`，其中 `<cellId>` 必须是**本** cell 登记过的
+  子 cell 或本 cell 的父 cell（`cell.subcellIds` / `cell.parentCellId`），其它一律以
+  `"not in this cell's tree"` 拒绝。一次发送会把该行追加到**目标 cell** 的 `mail.jsonl`——跨 cell 发送时就是
+  **收件方 cell** 的文件，该 cell 的 `cellwork_inbox` 从这里读取——而**发送方**的 journal 会以
+  `cell:<cellId>` 戳并带 `toCell:<target>` 记录这次发送。跨 cell 的行会镜像 `fromCell`，只做持久投递——跨
+  cell 不尝试唤醒——并出现在**那个** cell 的 `cellwork_supervise` 上。Lead 没有 executor handle，成员 → 队长的
+  行由队长在 `cellwork_inbox` 读取（并在 `cellwork_supervise` 上呈现）；唤醒从未发出的行保持**未投递**状态，
+  同样会在那里呈现（`unreadMail` 加上 `wakeFailures[]` 行，每行 `{id,to,subject,reason}`），而不只是出现在
+  待办看板上。压缩屏障无法压缩时，代理会从交接文档重种；原生后端不暴露已落地激活的 dispose，因此旧子代理只
+  做尽力中断，新 handle 记录在 cell 上。
 
 **配置优先级（两种语言同述）：** 项目文件（`<workspace>/.mpd/mpd.jsonc` 的 `cellwork.*`）> 行配置
 （bundle patch 的 `config:` 块）> 随包发布的文档默认值。
@@ -106,6 +117,9 @@ cell 登记）、`cellwork_send` / `cellwork_inbox`（持久的 cell 邮件）�
   直接调用 service 的代码行。
 - 读不出来的 cell 记录会放行所有调用者：守卫无法执行一个它看不见的模式。此时拒绝会带着记录路径出现在命令
   与 `cellwork_status` 上。
+- **取消记在 cell 记录上，而不是团队平面。** 团队平面没有取消动词：被后续切分修订去掉的任务会在 cell 记录里
+  标记为 `cancelled`（`state.json: cancelledTasks`，key → 看板 id），它的看板行仍然**可见**。派发之所以跳过
+  它，只是因为 cellwork 自己的派发会读取 cell 记录——单看看板仍然能看到这一行。
 - 验证者的"盲"始终是**书面约定**，与本仓库其它地方一致：cellwork 接好合约、循环与裁决，但不假装能观测到
   验证者读过什么。
 - 1/4 窗口规则是基于实测字节与可配置比率得出的**经认证估算**，不是测量，并且对 CJK 刻意从严。

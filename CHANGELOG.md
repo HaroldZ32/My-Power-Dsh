@@ -14,7 +14,7 @@ Further reading:
 - [`VENDOR_LOCK.json`](./VENDOR_LOCK.json) — the pinned upstream baseline each release is measured
   against.
 
-## Unreleased — model routing returns to the per-agent unit, and the four groups become a bulk-edit shortcut
+## Unreleased — model routing returns to the per-agent unit, cell-work mode joins the bundle, and two adjacent Wave-1 fixes
 
 A semantics **REVERSAL** of the 2026-10-23 slot-single-source wave. That wave made `teamModels.slot{1,2,3,4}`
 the single persisted unit and deleted the per-agent layer. This wave restores the AGENT as the unit of model
@@ -49,6 +49,75 @@ raw pass-through — never for routing, and this bundle never writes it.
 `docs/tui{,.zh-CN}.md`, `docs/design{,.zh-CN}.md` and the `mpd-config` / `mpd-roles` / `mpd-workmate` /
 `mpd-roster-provider` / `mpd-tui` / `mpd-bundle` README pairs now state the per-agent semantics in both
 languages.
+
+**Added — cell-work mode (`/cellwork`)**, a new host-plane package `packages/mpd-cellwork-plugin` and
+its bundle row. The `/cellwork <objective>` command is the ONLY entry point: it writes one cell record
+(`<ws>/.mpd/cellwork/cell-<UTC instant>/state.json`) and submits exactly one activation directive as
+the invoking agent's own next turn, and nothing else in the bundle — no tool, no event, no preset flag
+— can start the mode. The command-triggered mode runs four phases: a **planner** settles the
+requirements with the user through mail → captain → `ask_user_question`; a **splitter** submits a task
+graph that the PLUGIN validates and prices; `cellwork_activate` materialises an accepted split on the
+live team record, writes one frozen acceptance contract per code task and opens one verify loop per
+code task BEFORE the dispatch pass; and a requirements `update` bumps the revision, marks the split
+stale and re-splits on the SAME team (removed work is `cancelled`, never deleted, and the team id and
+cell id do not change).
+
+The budget is measured, not guessed: every declared input path is `stat`-ed, its first 16 KiB sampled
+for a CJK ratio and priced at the configurable ratios, and no task may estimate above **1/4 of the
+window it will run against**. The window itself is READ — from the adapter's model catalog at split
+time (`catalog`), from the host's observed token meter at runtime (`observed`), or from an operator
+`windowOverride` (`override`) — and a route with no readable window makes its tasks `uncertified`
+rather than silently budgeted. The 1/4 rule is a certified ESTIMATE with a declared **±25% English**
+error bound and deliberately punitive CJK pricing, not a tokenizer measurement. Runtime checkpoints
+use a different fraction: a member at **1/2 of its OBSERVED** window is checkpointed at the next step
+boundary.
+
+ONE `tools.guard` predicate carries the mode: the **captain** is limited to `cellwork_*` (except
+`cellwork_handoff`), `agent_teams_*`, `ask_user_question`, `todo_write` and `mpd_memory_*`; a
+**verifier** loses every write tool but keeps `read`/`grep`/`glob`, `bash` for gates and
+`mpd_verify_*`; a member at its **checkpoint** keeps only `cellwork_handoff`/`cellwork_context`/
+`cellwork_status`; a **subcaptain** is a mini-captain with no file-work tool at all. A session in no
+cell is untouched. A checkpointed member writes a validated handoff, the plugin compacts it with a
+real `AbortController` after a bounded idle barrier and journals the outcome (`null`, `busy` and
+`error` are all classified, so a spent retry budget is never a silent no-op), then PROMOTES the same
+session to subcaptain — or, when compaction finds no safe range, reseeds a fresh child from the
+handoff. Depth is capped at three, and the nesting capability rides the adapter's direct start path
+with an absolute `maxDepth`.
+
+Cell mail is cell-aware: `cellwork_send` resolves a member name, `captain` or a recipient in another
+sub-cell, journals the row in `<ws>/.mpd/team/mailbox.jsonl` with a `cell:<cellId>` stamp, and treats
+delivery as durable while the wake-up is best-effort — an UNDELIVERED row is surfaced by
+`cellwork_supervise`, not only on the pending board. The cell record is versioned, written through a
+temporary file plus a rename, refuses a corrupt or future-version state by absolute path, and is
+archived (never deleted) by `cellwork_stop`. Every number is a `cellwork.<key>` knob, with project
+file > row config > shipped default precedence.
+
+Docs ship as a bilingual pair: `docs/cellwork.md` + `docs/cellwork.zh-CN.md` (switch link under the
+title, identical heading tree) plus pointers from `docs/user-guide{,.zh-CN}.md` §6 and §12, and the
+package README pair. **Declared bounds, stated in both languages:** the mount proof supplies the row
+through a `--patch` overlay with an absolute module path because this machine resolves a stale
+`@mpd-dsh/mpd` (the bundle wiring itself rests on `verify:rows`/`verify:manifest`);
+`verify-pack-closure` stays red (`PACKED-MISSING`) until the Wave-5 re-pack; mail wake-up and reseed
+are best-effort; checkpoints require an OBSERVED window; `parent_team_id` and nested DAG groups are
+deferred to Wave 4; no live-LLM end-to-end cell run is claimed.
+
+**Fixed — `mpd-team-compact` passes a real `AbortSignal` to `compactNow`.** The call passed
+`undefined`, and `compactNow`'s first statement (`signal.throwIfAborted()`, outside its own try
+block) turned that into a raw `TypeError` that escaped the engine's `ManualCompactionError`
+classification; typecheck could not see it because the engine is cast. Each drive now carries its own
+`AbortController` signal, an abort is classified as `cancelled`, and the six existing codes plus the
+unclassified path are preserved.
+
+**Fixed — the TUI panel-enablement arms are re-judged against the installed host 0.17.0.** Five
+R13/R13b arms had drifted from the installed host: the mechanism a few of them named no longer
+exists. The arms and their assertions are preserved, a re-judged title now states the current rule
+and pins the removed mechanism as an explicit absence, and the package went from 39 pass / 5 fail to
+44 pass / 0 fail.
+
+**Evidence.** Wave 1 and Wave 2 records, the capability spike and the mount proof live under
+`evidence/cellwork/` (`wave1/2026-10-26T08-22Z/`, `wave2/2026-10-26T09-52Z/`,
+`capability-spike/2026-10-26T07-30-00Z/`, `mount-proof/2026-10-26T09-39-31Z/`), each with its
+`result.json` and raw gate logs.
 
 ## v0.15.5 — the host pair moves to DeepSeek Harness 0.2.1-rc.3 + dsh-tui 0.17.0, and a README table says which pair each release was verified on
 

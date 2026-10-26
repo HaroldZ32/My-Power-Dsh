@@ -361,6 +361,9 @@ interrupt_agent { "agent_id": "senior-1" }     # 仅 Lead：停下当前轮次�
 §13.1 是可照抄的完整走法 —— 创建成员与任务、操作任务板、改派、收尾一波。
 `session-watchdog-*` 是另一套独立的内层停滞检测实现（见 §12 与 [`tui.md`](tui.md)）。
 
+对于超大规模的工作，[`cellwork.md`](cellwork.zh-CN.md) 记录了由命令触发的 **cell-work 模式**：
+规划器与你把需求谈定，切分器按执行模型自己的窗口逐任务计价，队长只负责调度、转达与记录。
+
 ## 7. DSH-TUI 版本（终端界面）
 
 同一个 bundle 在宿主 `dsh-tui` profile 下就是 **TUI 版本**：由 profile 自带的终端界面承载与 Web GUI
@@ -702,9 +705,10 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp   # 从一个可工作的骨�
 
 ## 12. 命令参考
 
-会话中可用的全部斜杠命令，以及各自生效的位置。表里有两类：本 bundle **贡献的六条命令**
+会话中可用的全部斜杠命令，以及各自生效的位置。表里有两类：本 bundle **贡献的七条命令**
 （`mpd-ulw` 注册 `/ulw` 与 `/ultrawork`，`mpd-codegraph` 注册 `/mpd-codegraph`，`mpd-tui` 注册
-`/mpd` 与模型选择菜单 `/mpd-model`，团队行注册 `/agent-teams`），以及本 bundle 只是
+`/mpd` 与模型选择菜单 `/mpd-model`，团队行注册 `/agent-teams`，`mpd-cellwork` 注册
+`/cellwork`），以及本 bundle 只是
 **记录**的两条 **宿主命令** —— `/settings`（宿主 TUI 设置界面，其 MPD 区块由本 bundle 扩展）与
 `/goal`（宿主 goal 命令，由 `mpd` preset 挂载）。除此之外没有别的命令 —— 特别地，**不存在
 `/roster` 命令**（名册要通过 `mpd_roles_list` 工具访问）。
@@ -713,6 +717,7 @@ bun scripts/mpd-ext.ts scaffold my-ext --dir /tmp   # 从一个可工作的骨�
 |---|---|---|
 | `/ulw <objective>` | 针对该目标启动 ultrawork 循环 —— 与 `mpd_ulw` 同一引擎，使用较轻的默认档位 | Web + TUI |
 | `/ultrawork <objective>` | 与 `/ulw` 完全相同（两者都会把 ULW 激活指令作为你的下一条用户消息提交） | Web + TUI |
+| `/cellwork <objective>` | 启动只做调度的 cell-work 模式：命令写入一份 cell 记录，并把激活指令作为你的下一条用户消息提交 —— 模式、工具与边界见 [`cellwork.md`](cellwork.zh-CN.md) | Web + TUI |
 | `/mpd-codegraph` | 解析 codegraph 二进制并在 `.codegraph/` 下初始化/刷新项目索引 | Web + TUI |
 | `/agent-teams <what the team is for>` | 团队行恰好只注册这一条命令：它按文本 stage 一份需要批准的 plan（在你批准之前不会 spawn 任何人），不带参数调用时打印用法 | Web + TUI |
 | `/mpd` | TUI 上覆盖 bundle 状态的命令树：裸 `/mpd` 打开选择器，`/mpd <value>` 直接进入，`/mpd status` 打印摘要 | **仅 TUI** —— 在 Web 下注册被拒绝，什么都不会暴露 |

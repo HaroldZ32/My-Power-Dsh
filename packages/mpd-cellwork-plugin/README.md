@@ -104,11 +104,24 @@ whose window cannot be read can be certified deliberately, and it is recorded as
 - **One override, one identity.** `windowOverride` is a single value: it certifies ANY route the catalog
   cannot report, recorded as `override`. The planning tasks are closed under the CALLER's own identity
   (the planner/splitter), and a completion failure is journaled, never fatal to the revision.
-- **Mail and reseed bounds.** Cell mail is durable first and woken best-effort: the Lead has no executor
-  handle, so a member→captain row is read by the captain's `cellwork_inbox` (surfaced on
-  `cellwork_supervise`). When the compaction barrier cannot compact, the agent is reseeded from its
-  handoff; the native backend exposes no dispose for the settled activation, so the old child is
-  interrupted best-effort and the fresh handle is recorded on the cell.
+- **Compaction outcomes are classified, never swallowed.** The barrier waits for the agent to be idle
+  with a bounded retry budget (`compactionRetries`, `idleBarrierDelayMs`), then compacts with a real
+  `AbortController` signal. The journaled reason is one of `compacted` | `no-safe-range` | `busy` |
+  `aborted` | `failed` | `no-engine`; exhausting the retry budget is never a silent no-op.
+- **Mail and reseed bounds.** Cell mail is durable first and woken best-effort. `cellwork_send` resolves
+  the recipient in the cell tree — a member name, `captain`, or the cross-cell form
+  `"<cellId>/<captain|member>"`, where `<cellId>` must be a sub-cell THIS cell registered or this cell's
+  parent (`cell.subcellIds` / `cell.parentCellId`); anything else is refused as `"not in this cell's
+  tree"`. A send appends the row to the TARGET cell's `mail.jsonl` — for a cross-cell send, the
+  RECIPIENT cell's file, where that cell's `cellwork_inbox` reads it — and the SENDER's journal records
+  the send under a `cell:<cellId>` stamp with `toCell:<target>`. A cross-cell row mirrors `fromCell`, is
+  durable-only — no wake-up is attempted across cells — and appears on THAT cell's `cellwork_supervise`.
+  The Lead has no executor handle, so a member→captain row is read by the captain's `cellwork_inbox` and
+  surfaced on `cellwork_supervise`; a row whose wake-up never went out stays UNDELIVERED and is surfaced
+  there too (`unreadMail` plus the `wakeFailures[]` rows, each `{id,to,subject,reason}`), not only on the
+  pending board. When the compaction barrier cannot compact, the agent is reseeded from its handoff; the
+  native backend exposes no dispose for the settled activation, so the old child is interrupted
+  best-effort and the fresh handle is recorded on the cell.
 
 **Config precedence, stated once for both languages:** project file (`<workspace>/.mpd/mpd.jsonc`,
 `cellwork.*`) > row config (the bundle patch's `config:` block) > shipped documented default.
@@ -119,6 +132,10 @@ whose window cannot be read can be certified deliberately, and it is recorded as
   attempting a name, and it covers no row that calls a service directly instead of going through a tool.
 - A cell record that cannot be read releases every caller: a guard cannot enforce a mode it cannot see.
   The refusal then surfaces on the command and on `cellwork_status` with the record's path.
+- **Cancellation lives on the cell record, not the team plane.** The team plane exposes no cancel verb:
+  a task dropped by a later split revision is marked `cancelled` in the cell record (`state.json:
+  cancelledTasks`, key → board id), and its board row stays VISIBLE on the board. Dispatch skips it only
+  because cellwork's own dispatch pass reads the cell record — a bare board read still shows the row.
 - Verification blindness stays PROSE, exactly as this repository states it: cellwork wires the contract,
   the loop and the verdict, and does not pretend to observe what a verifier read.
 - The 1/4-of-window rule is a certified ESTIMATE from measured bytes and configurable ratios — not a
